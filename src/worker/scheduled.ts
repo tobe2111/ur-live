@@ -194,6 +194,11 @@ export async function handleCronScheduled(
       const { matureAffiliateEarnings } = await import('./utils/affiliate-credit');
       await matureAffiliateEarnings(env.DB, env);
     }));
+    // ⏳ 2026-06-15 추천 트리(referral_commissions) 적립도 동일 T+7 hold — pending→granted 확정 시 잔액 적립.
+    ctx.waitUntil(safeCron('referral-mature', async () => {
+      const { matureReferralCommissions } = await import('../features/referral/api/referral-tree.routes');
+      await matureReferralCommissions(env.DB, env);
+    }));
     ctx.waitUntil(safeCron('daily-self-diagnostic', () => runDailySelfDiagnostic(env)));
     // 🏭 2026-06-08 DATA-1: 도매 고아행(FK 부재) 일일 스윕 (flag-only, 삭제 X).
     ctx.waitUntil(safeCron('wholesale-orphan-sweep', () => handleWholesaleOrphanSweep(env)));

@@ -1649,6 +1649,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'idx_invite_rewards_pair', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_invite_rewards_pair ON invite_rewards(inviter_user_id, invited_user_id)` },
     // 🛡️ 2026-06-11 머니 감사: 주간 정산 cron 이중실행 시 (payee, 기간) 중복 pending payout 차단.
     { name: 'idx_payouts_period_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_payouts_period_unique ON payouts(payee_type, payee_id, period_start, period_end)` },
+    // 🔐 2026-06-15 (링크샵 적립 머니룰 #3): affiliate_earnings 멱등 — referrer+order 당 1행만.
+    //   기존 SELECT 체크만으론 동시요청 이중적립 race. INSERT OR IGNORE 가 이 인덱스에 의존.
+    //   기존 중복 행 존재 시 생성 실패 → 리포트로 발견 후 정리(다른 _pair 인덱스와 동일 컨벤션).
+    { name: 'idx_affiliate_earnings_referrer_order', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_affiliate_earnings_referrer_order ON affiliate_earnings(referrer_id, order_id) WHERE order_id IS NOT NULL` },
 
     // 🏬 2026-06-09 도매몰 멀티-몰 테넌시 — 몰 설정 테이블 + 기본 몰(id=1) 시드.
     //   한 운영자가 카테고리별 분리 몰(식품/패션 등) 운영. 기본 몰 = 기존 유통스타트(slug='default', host=utongstart.com).

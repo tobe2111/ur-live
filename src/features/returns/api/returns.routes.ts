@@ -638,6 +638,10 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
         "UPDATE referral_commissions SET status = 'withdrawn' WHERE order_id = ? AND status = 'granted'"
       ).bind(returnRecord.order_id).run().catch(swallow('returns:api:returns'));
     }
+    // ⏳ 2026-06-15 (T+7 hold): 미성숙(pending=보류, 잔액 미적립) 추천 커미션은 잔액 회수 없이 상태만 닫음.
+    await DB.prepare(
+      "UPDATE referral_commissions SET status = 'withdrawn' WHERE order_id = ? AND status = 'pending'"
+    ).bind(returnRecord.order_id).run().catch(swallow('returns:api:returns:pending'));
   } catch { /* ledger may not exist */ }
 
   try {

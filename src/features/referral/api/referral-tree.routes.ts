@@ -21,7 +21,7 @@ import { requireAuth, getCurrentUser, requireAdmin } from '@/worker/middleware/a
 import type { Env } from '@/worker/types/env'
 import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database'
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
-import { pointCreditUpsertStatement, recordPointTransaction } from '@/worker/utils/point-ledger'
+import { adjustUserPoints } from '@/worker/utils/point-ledger'
 
 // ---------------------------------------------------------------------------
 // Router
@@ -332,17 +332,19 @@ export async function calculateMultiTierCommission(
     const beneficiaryType = await getBeneficiaryType(DB, c.beneficiary_id)
 
     // Insert commission record
+    // 🔐 2026-06-15 (T+7 hold 확장 — 대표 승인): 적립을 'pending'(보류)로만 기록 — 잔액 미반영.
+    //   기존엔 'granted' 즉시 + user_points 즉시 적립 → buy→사용/출금→환불 시 MAX(0) clamp 누수.
+    //   이제 matureReferralCommissions cron 이 T+7 + 미환불 주문분을 pending→granted 로 확정하며 그때 잔액 적립.
+    //   ⚠️ status CHECK 가 ('pending','granted','withdrawal_requested','paid_out','withdrawn') 만 허용 →
+    //      'holding' 신규값 금지(CHECK 위반=grant 전체 실패). 'pending' 재사용(=UI '대기', affiliate hold 와 동일 의미).
     statements.push(
       DB.prepare(
         `INSERT INTO referral_commissions
          (order_id, order_amount, tier, beneficiary_id, beneficiary_type, source_user_id, commission_rate, commission_amount, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'granted')`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
       ).bind(orderId, orderAmount, c.tier, c.beneficiary_id, beneficiaryType, buyerUserId, c.rate / 100, c.amount),
     )
-
-    // Grant deal points to beneficiary via user_points table (Single Source of Truth)
-    // 💸 2026-06-12 (4차 감사 D1): UPSERT 문을 point-ledger 헬퍼로 수렴 — SQL 의미 동일(batch 원자성 보존).
-    statements.push(pointCreditUpsertStatement(DB, { userId: String(c.beneficiary_id), delta: c.amount }))
+    // ⏳ 잔액 적립은 maturity cron 으로 이연 — grant 시점 user_points 미변경.
   }
 
   // HIGH-3: D1 batch atomicity — do NOT fall back to per-statement execution on
@@ -355,24 +357,81 @@ export async function calculateMultiTierCommission(
     throw new Error('Commission write failed')
   }
 
-  // 💸 2026-06-12 (4차 감사 D1): point_transactions 장부 추가 — batch 성공 후 fail-soft.
-  //   batch 안에 넣지 않는 이유: 레거시 DB 의 type CHECK 잔존 시 장부 실패가 커미션 적립
-  //   전체를 롤백시키면 안 됨 (잔액이 돈, 장부는 audit). 동작/금액 불변.
-  for (const c of commissions) {
-    await recordPointTransaction(DB, {
-      userId: String(c.beneficiary_id),
-      delta: c.amount,
-      type: 'referral_bonus',
-      description: `추천 ${c.tier}단계 커미션`,
-      orderId: orderId,
-    })
-  }
+  // 🔐 2026-06-15: 잔액/장부 기록은 pending→granted 확정 시점(matureReferralCommissions)으로 이연 —
+  //   grant 시점엔 referral_commissions row(pending)만 존재, user_points/point_transactions 미변경.
 
   return commissions.map(c => ({
     tier: c.tier,
     beneficiary_id: c.beneficiary_id,
     commission_amount: c.amount,
   }))
+}
+
+// ---------------------------------------------------------------------------
+// 🔐 2026-06-15 (T+7 hold 확장 — 대표 승인): 추천 트리 커미션 확정 cron.
+//   grant 시 'pending'(보류, 잔액 미반영) 으로만 기록된 커미션을 환불창(T+7) 경과 + 주문 미환불일 때
+//   pending→granted CAS 후 그 시점에 잔액 적립(claim-before-credit, 머니 룰 #1). 환불 시엔 cron 이
+//   확정 안 함(주문 status 가드) + refund 경로가 pending→withdrawn 플립(잔액 회수 없음). matureAffiliateEarnings 미러.
+//   hold 일수는 affiliate 와 동일 knob('affiliate_hold_days', default 7) 재사용.
+// ---------------------------------------------------------------------------
+export async function matureReferralCommissions(
+  DB: D1Database,
+  env: unknown,
+): Promise<{ matured: number; credited: number }> {
+  let holdDays = 7
+  try {
+    const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'affiliate_hold_days'").first<{ value: string }>()
+    const n = Number(row?.value)
+    if (Number.isFinite(n) && n >= 0) holdDays = n
+  } catch { /* default */ }
+
+  let matured = 0
+  let credited = 0
+  try {
+    const due = await DB.prepare(`
+      SELECT rc.id, rc.beneficiary_id, rc.commission_amount, rc.order_id, rc.tier
+      FROM referral_commissions rc
+      JOIN orders o ON o.id = rc.order_id
+      WHERE rc.status = 'pending'
+        AND rc.created_at <= datetime('now', ?)
+        AND UPPER(COALESCE(o.status, '')) NOT IN ('REFUNDED', 'CANCELLED', 'FAILED')
+      LIMIT 500
+    `).bind(`-${holdDays} days`).all<{ id: number; beneficiary_id: string; commission_amount: number; order_id: number | null; tier: number }>()
+      .catch(() => ({ results: [] as { id: number; beneficiary_id: string; commission_amount: number; order_id: number | null; tier: number }[] }))
+
+    for (const row of due.results ?? []) {
+      // claim-before-credit: pending→granted CAS — 동시 cron/재시도에도 1회만 적립.
+      const claim = await DB.prepare(
+        "UPDATE referral_commissions SET status = 'granted' WHERE id = ? AND status = 'pending'",
+      ).bind(row.id).run().catch(() => null)
+      if ((((claim as { meta?: { changes?: number } } | null)?.meta?.changes) ?? 0) !== 1) continue
+      matured++
+      const amt = Number(row.commission_amount) || 0
+      if (amt <= 0) continue
+      await adjustUserPoints(DB, {
+        userId: String(row.beneficiary_id),
+        delta: amt,
+        type: 'referral_bonus',
+        description: `추천 ${row.tier}단계 커미션 확정`,
+        orderId: row.order_id ?? undefined,
+      })
+      credited += amt
+      await DB.prepare(`
+        INSERT INTO user_notifications (user_id, type, title, message, link, created_at)
+        VALUES (?, 'referral_commission', ?, ?, '/my-commissions', datetime('now'))
+      `).bind(String(row.beneficiary_id), '✅ 추천 적립 확정!', `${amt.toLocaleString('ko-KR')}딜이 확정되었습니다`).run().catch(() => {})
+      try {
+        const { sendSystemPush } = await import('../../../lib/system-push')
+        await sendSystemPush(env as never, 'user', String(row.beneficiary_id), {
+          title: '✅ 추천 적립 확정!',
+          body: `${amt.toLocaleString('ko-KR')}딜이 확정되었습니다`,
+          url: '/my-commissions',
+          tag: `referral-mature-${row.id}`,
+        })
+      } catch { /* push fail-soft */ }
+    }
+  } catch { /* fail-soft */ }
+  return { matured, credited }
 }
 
 // ---------------------------------------------------------------------------

@@ -37,6 +37,10 @@ async function ensureTable(DB: D1Database) {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `).run()
+    // 🔐 2026-06-15 (머니룰 #3): referrer+order 멱등 — INSERT OR IGNORE 가 의존. 기존 중복 행 있으면 실패(graceful).
+    await DB.prepare(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_affiliate_earnings_referrer_order ON affiliate_earnings(referrer_id, order_id) WHERE order_id IS NOT NULL`
+    ).run().catch(() => {})
   } catch {}
 }
 
