@@ -5672,7 +5672,10 @@
       "noData": "아직 데이터가 없어요. 친구에게 핀을 공유해보세요!"
     },
     "dashboardError": "대시보드 로딩 실패",
-    "makeMine": "나도 내 링크샵 만들기 — 추천하면 적립"
+    "makeMine": "나도 내 링크샵 만들기 — 추천하면 적립",
+    "console": {
+      "title": "크리에이터 콘솔"
+    }
   },
   "shipping": {
     "trackingTitle": "배송 추적",

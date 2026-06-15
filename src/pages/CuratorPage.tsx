@@ -218,10 +218,10 @@ export default function CuratorPage() {
           <div className="sticky top-0 z-30 bg-gray-900 dark:bg-white text-white dark:text-[#020202] px-4 py-2 text-xs font-bold flex items-center justify-between gap-2">
             <span>✏️ 내 링크샵 — 이름/소개/이미지/배경 클릭해 바로 편집</span>
             <Link
-              to="/u/me/earnings"
+              to="/creator"
               className="px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded text-[10px] font-bold whitespace-nowrap"
             >
-              수익 보기
+              크리에이터 콘솔
             </Link>
           </div>
         )}

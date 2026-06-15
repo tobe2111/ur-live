@@ -581,6 +581,12 @@ function AppContent() {
             <Route path="/search" element={<SearchPage />} />
 
             {/* 🛡️ 2026-05-25 큐레이터 링크샵 (migration 0278) */}
+            {/* 🏁 2026-06-15 (옵션 1): /creator = 크리에이터 콘솔 정식 URL (메인 앱 내, 별도 로그인 X). /u/me/earnings 는 하위호환 alias. */}
+            <Route path="/creator" element={
+              <ProtectedRoute requireUser>
+                <ErrorBoundary><CuratorEarningsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
             <Route path="/u/me/earnings" element={
               <ProtectedRoute requireUser>
                 <ErrorBoundary><CuratorEarningsPage /></ErrorBoundary>

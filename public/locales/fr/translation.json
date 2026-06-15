@@ -5680,7 +5680,10 @@
       "noData": "Pas encore de données. Partagez vos épingles avec des amis !"
     },
     "dashboardError": "Échec du chargement du tableau de bord",
-    "makeMine": "Créer mon linkshop — gagnez en recommandant"
+    "makeMine": "Créer mon linkshop — gagnez en recommandant",
+    "console": {
+      "title": "Console créateur"
+    }
   },
   "shipping": {
     "trackingTitle": "Suivi de livraison",
