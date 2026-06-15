@@ -5680,7 +5680,10 @@
       "noData": "No data yet. Share your pins with friends!"
     },
     "dashboardError": "Failed to load dashboard",
-    "makeMine": "Make my own linkshop — earn by recommending"
+    "makeMine": "Make my own linkshop — earn by recommending",
+    "console": {
+      "title": "Creator Console"
+    }
   },
   "shipping": {
     "trackingTitle": "Shipping Tracking",

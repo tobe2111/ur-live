@@ -69,13 +69,13 @@ export default function CuratorEarningsPage() {
 
   return (
     <>
-      <SEO title={t('curator.earnings.title', { defaultValue: '내 링크샵 수익' })} noindex />
+      <SEO title={t('curator.console.title', { defaultValue: '크리에이터 콘솔' })} noindex />
       <div className="min-h-screen bg-white dark:bg-[#0A0A0A] text-gray-900 dark:text-white pb-24">
         <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <h1 className="text-lg font-bold">💰 {t('curator.earnings.title', { defaultValue: '내 링크샵 수익' })}</h1>
+            <h1 className="text-lg font-bold">🎤 {t('curator.console.title', { defaultValue: '크리에이터 콘솔' })}</h1>
             {handle && (
-              <Link to={`/u/${handle}`} className="text-sm text-pink-500 dark:text-pink-400 hover:underline">
+              <Link to={`/u/${handle}`} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                 @{handle}
               </Link>
             )}
@@ -83,6 +83,19 @@ export default function CuratorEarningsPage() {
         </header>
 
         <div className="max-w-3xl mx-auto px-4 py-6">
+          {/* 🏁 2026-06-15 (옵션 1 콘솔): 크리에이터 핵심 동선 빠른 진입 — 링크샵/공구 호스팅 */}
+          <div className="grid grid-cols-2 gap-2 mb-5">
+            <Link to={handle ? `/u/${handle}` : '/u/me'}
+              className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] active:bg-gray-200 dark:active:bg-white/[0.08] p-4 transition-colors">
+              <p className="text-[13px] font-bold text-gray-900 dark:text-white">🔗 내 링크샵</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">상품 핀 추가·정렬·공유</p>
+            </Link>
+            <Link to="/host"
+              className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] active:bg-gray-200 dark:active:bg-white/[0.08] p-4 transition-colors">
+              <p className="text-[13px] font-bold text-gray-900 dark:text-white">✨ 공구 호스팅</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">동네 공구 직접 제안</p>
+            </Link>
+          </div>
           {loading ? (
             <p className="text-center text-gray-500 dark:text-gray-400 py-12">{t('common.loading')}</p>
           ) : error ? (

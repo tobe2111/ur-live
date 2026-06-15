@@ -5680,7 +5680,10 @@
       "noData": "暂无数据。和朋友分享你的Pin!"
     },
     "dashboardError": "仪表板加载失败",
-    "makeMine": "我也要开链接小店 — 推荐即赚"
+    "makeMine": "我也要开链接小店 — 推荐即赚",
+    "console": {
+      "title": "创作者控制台"
+    }
   },
   "shipping": {
     "trackingTitle": "配送追踪",

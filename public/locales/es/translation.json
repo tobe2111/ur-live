@@ -5680,7 +5680,10 @@
       "noData": "Aún no hay datos. ¡Comparte tus pines con amigos!"
     },
     "dashboardError": "Error al cargar panel",
-    "makeMine": "Crear mi linkshop — gana recomendando"
+    "makeMine": "Crear mi linkshop — gana recomendando",
+    "console": {
+      "title": "Consola de creador"
+    }
   },
   "shipping": {
     "trackingTitle": "Seguimiento de envío",
