@@ -649,10 +649,13 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
         `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
          WHERE referrer_id = ? AND COALESCE(status, 'pending') = 'holding'`,
       ).bind(userId).first<{ total: number }>().catch(() => null),
+      // 전체 클릭 + 순클릭(ip+ua+일자 dedup) — raw click_count 는 새로고침/봇 부풀림 포함.
       DB.prepare(
-        `SELECT COUNT(*) AS cnt FROM pin_click_logs
+        `SELECT COUNT(*) AS cnt,
+                COUNT(DISTINCT ip_hash || '|' || user_agent_hash || '|' || date(created_at)) AS uniq
+         FROM pin_click_logs
          WHERE curator_user_id = ? AND created_at >= datetime('now', '-30 days')`,
-      ).bind(userId).first<{ cnt: number }>().catch(() => null),
+      ).bind(userId).first<{ cnt: number; uniq: number }>().catch(() => null),
       // 🛡️ 2026-06-12 (감사 1단계 — 수익 표시 정합): month_earnings 와 동일하게 환불 제외.
       DB.prepare(
         `SELECT COUNT(*) AS cnt FROM affiliate_earnings
@@ -718,6 +721,10 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
         month_earnings: earnings30?.total ?? 0,
         pending_earnings: pending30?.total ?? 0,
         clicks_30d: clicks30?.cnt ?? 0,
+        unique_clicks_30d: clicks30?.uniq ?? 0,
+        conversion_rate_30d: (clicks30?.uniq ?? 0) > 0
+          ? Math.round(((purchases30?.cnt ?? 0) / (clicks30!.uniq)) * 1000) / 10
+          : 0,
         purchases_30d: purchases30?.cnt ?? 0,
         top_pins: topPinsR.results ?? [],
         earnings_daily_30d: dailyR.results ?? [],

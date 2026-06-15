@@ -57,12 +57,17 @@ export interface PinStats {
 
 export interface DashboardStats {
   month_earnings: number
+  // ⏳ 2026-06-15: 적립 예정(holding) — T+7 확정 대기분. month_earnings 는 확정분만.
+  pending_earnings?: number
   clicks_30d: number
+  // 2026-06-15: 순클릭(ip+ua+일자 dedup) + 전환율(구매/순클릭 %).
+  unique_clicks_30d?: number
+  conversion_rate_30d?: number
   purchases_30d: number
   top_pins: Array<{ id: number; product_id: number; click_count: number; product_name: string; thumbnail: string | null; image_url: string | null }>
   earnings_daily_30d: Array<{ date: string; amount: number }>
-  // 🛡️ 2026-05-31: 원천별 수익 내역 (어느 상품/주문에서 적립됐는지).
-  recent_earnings?: Array<{ id: number; product_id: number; product_name: string | null; commission: number; order_amount: number; created_at: string }>
+  // 🛡️ 2026-05-31: 원천별 수익 내역 (어느 상품/주문에서 적립됐는지). status: holding=적립예정.
+  recent_earnings?: Array<{ id: number; product_id: number; product_name: string | null; commission: number; order_amount: number; created_at: string; status?: string }>
 }
 
 export const curatorApi = {

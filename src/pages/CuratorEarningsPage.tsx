@@ -530,10 +530,29 @@ function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalInfo; onC
 
 function SummaryCards({ stats }: { stats: DashboardStats }) {
   const { t } = useTranslation()
-  const cards: Array<{ label: string; value: string; accent: string }> = [
-    { label: t('curator.earnings.monthEarning', { defaultValue: '30일 적립' }), value: formatWon(stats.month_earnings), accent: 'text-pink-500 dark:text-pink-400' },
-    { label: t('curator.earnings.clicks30d', { defaultValue: '30일 클릭' }), value: formatNumber(stats.clicks_30d), accent: 'text-blue-500 dark:text-blue-400' },
-    { label: t('curator.earnings.purchases30d', { defaultValue: '30일 구매' }), value: formatNumber(stats.purchases_30d), accent: 'text-emerald-500 dark:text-emerald-400' },
+  const pending = safeNum(stats.pending_earnings)
+  const uniqueClicks = stats.unique_clicks_30d != null ? safeNum(stats.unique_clicks_30d) : safeNum(stats.clicks_30d)
+  const conversion = safeNum(stats.conversion_rate_30d)
+  const cards: Array<{ label: string; value: string; sub?: string; accent: string }> = [
+    {
+      label: t('curator.earnings.monthEarning', { defaultValue: '30일 적립 (확정)' }),
+      value: formatWon(stats.month_earnings),
+      sub: pending > 0 ? `+ ${formatNumber(pending)}딜 적립예정` : undefined,
+      accent: 'text-pink-500 dark:text-pink-400',
+    },
+    {
+      // 순클릭(ip+ua+일자 dedup) — raw 클릭은 새로고침/봇 부풀림 포함.
+      label: t('curator.earnings.uniqueClicks30d', { defaultValue: '30일 순클릭' }),
+      value: formatNumber(uniqueClicks),
+      sub: stats.unique_clicks_30d != null && stats.clicks_30d > uniqueClicks ? `전체 ${formatNumber(stats.clicks_30d)}` : undefined,
+      accent: 'text-blue-500 dark:text-blue-400',
+    },
+    {
+      label: t('curator.earnings.conversion30d', { defaultValue: '30일 전환율' }),
+      value: `${conversion}%`,
+      sub: `구매 ${formatNumber(stats.purchases_30d)}`,
+      accent: 'text-emerald-500 dark:text-emerald-400',
+    },
   ]
   return (
     <div className="grid grid-cols-3 gap-3 mb-6">
@@ -541,6 +560,7 @@ function SummaryCards({ stats }: { stats: DashboardStats }) {
         <div key={card.label} className="bg-gray-50 dark:bg-[#121212] rounded-xl p-3 border border-gray-100 dark:border-[#1A1A1A]">
           <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">{card.label}</p>
           <p className={`text-lg font-bold ${card.accent}`}>{card.value}</p>
+          {card.sub && <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{card.sub}</p>}
         </div>
       ))}
     </div>
@@ -590,13 +610,20 @@ function RecentEarningsSection({ stats }: { stats: DashboardStats }) {
             className="flex items-center justify-between gap-3 bg-gray-50 dark:bg-[#121212] rounded-xl p-3 border border-gray-100 dark:border-[#1A1A1A] hover:border-pink-500/50 transition-colors"
           >
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{e.product_name || t('curator.earnings.unknownProduct', { defaultValue: '상품' })}</p>
+              <p className="text-sm font-medium truncate">
+                {e.product_name || t('curator.earnings.unknownProduct', { defaultValue: '상품' })}
+                {e.status === 'holding' && (
+                  <span className="ml-1.5 align-middle inline-block px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                    적립예정
+                  </span>
+                )}
+              </p>
               <p className="text-[11px] text-gray-500 dark:text-gray-400">
                 {new Date(e.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                 {e.order_amount ? ` · 주문 ${formatWon(e.order_amount)}` : ''}
               </p>
             </div>
-            <span className="text-sm font-bold text-pink-500 shrink-0">+{formatWon(e.commission)}</span>
+            <span className={`text-sm font-bold shrink-0 ${e.status === 'holding' ? 'text-amber-500' : 'text-pink-500'}`}>+{formatWon(e.commission)}</span>
           </Link>
         ))}
       </div>
