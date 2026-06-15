@@ -751,13 +751,14 @@ curatorRoutes.get('/me/pins/stats', requireAuth(), async (c) => {
     const { results } = await c.env.DB.prepare(
       `SELECT pp.id, pp.product_id, pp.click_count AS lifetime_clicks,
               (SELECT COUNT(*) FROM pin_click_logs WHERE pin_id = pp.id AND created_at >= datetime('now', ?)) AS clicks,
-              (SELECT COUNT(*) FROM affiliate_earnings ae WHERE ae.referrer_id = pp.user_id AND ae.product_id = pp.product_id AND ae.created_at >= datetime('now', ?)) AS purchases,
-              (SELECT COALESCE(SUM(commission), 0) FROM affiliate_earnings ae WHERE ae.referrer_id = pp.user_id AND ae.product_id = pp.product_id AND ae.created_at >= datetime('now', ?)) AS earnings
+              (SELECT COUNT(DISTINCT ip_hash || '|' || user_agent_hash || '|' || date(created_at)) FROM pin_click_logs WHERE pin_id = pp.id AND created_at >= datetime('now', ?)) AS unique_clicks,
+              (SELECT COUNT(*) FROM affiliate_earnings ae WHERE ae.referrer_id = pp.user_id AND ae.product_id = pp.product_id AND COALESCE(ae.status,'pending') != 'refunded' AND ae.created_at >= datetime('now', ?)) AS purchases,
+              (SELECT COALESCE(SUM(commission), 0) FROM affiliate_earnings ae WHERE ae.referrer_id = pp.user_id AND ae.product_id = pp.product_id AND COALESCE(ae.status,'pending') != 'refunded' AND ae.created_at >= datetime('now', ?)) AS earnings
        FROM product_pins pp
        WHERE pp.user_id = ?
        ORDER BY pp.position ASC
        LIMIT ?`,
-    ).bind(since, since, since, userId, CURATOR_DEFAULTS.PIN_MAX_PER_USER).all()
+    ).bind(since, since, since, since, userId, CURATOR_DEFAULTS.PIN_MAX_PER_USER).all()
 
     return c.json({ success: true, range, stats: results ?? [] })
   } catch (err) {
