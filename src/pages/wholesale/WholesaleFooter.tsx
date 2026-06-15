@@ -143,8 +143,8 @@ export default function WholesaleFooter() {
             {' '}{BUSINESS_INFO.corp} 또는 각 공급사에 있으며, 무단 복제 · 배포 · 도용 시 저작권법에 따라
             민 · 형사상 책임을 질 수 있습니다. 도매 공급가 및 거래 정보는 회원 외부 유출을 금합니다.
           </p>
-          <p className="text-[10px]" style={{ color: '#8A929E' }}>
-            Copyright © {BUSINESS_INFO.corp} ({BUSINESS_INFO.brand}). All rights reserved.
+          <p className="text-[10px] tracking-wide" style={{ color: '#8A929E' }}>
+            COPYRIGHT © 2026 Lister Corporation by UrTeam. ALL RIGHTS RESERVED.
           </p>
         </div>
       </div>
