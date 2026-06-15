@@ -14,6 +14,7 @@ import { toast } from '@/hooks/useToast'
 import { cfImage } from '@/utils/cf-image'
 import { WT } from './wholesale-theme'
 import WholesaleShippingGuide from './WholesaleShippingGuide'
+import WholesaleProposalBoard from './WholesaleProposalBoard'
 
 type Tab = 'notice' | 'archive' | 'shipping' | 'report'
 const TABS: { key: Tab; label: string; icon: typeof Megaphone }[] = [
@@ -88,9 +89,8 @@ export default function WholesaleBoardPage() {
   const loggedIn = !!sellerToken()
   const isAdmin = isAdminUser()
   const [tickets, setTickets] = useState<Ticket[] | null>(null)
-  const [form, setForm] = useState({ type: 'report', target: '', subject: '', body: '' })
-  const [submitting, setSubmitting] = useState(false)
 
+  // 내 접수 내역(본인 글의 운영팀 답변 확인). 작성 폼은 WholesaleProposalBoard 가 담당.
   const loadTickets = useCallback(() => {
     if (!sellerToken()) return
     api.get('/api/wholesale/proposal-tickets', auth())
@@ -98,24 +98,6 @@ export default function WholesaleBoardPage() {
       .catch(() => setTickets([]))
   }, [])
   useEffect(() => { if (tab === 'report' && loggedIn) loadTickets() }, [tab, loggedIn, loadTickets])
-
-  async function submitTicket() {
-    if (submitting) return
-    if (!form.subject.trim()) { toast.error('제목을 입력해주세요'); return }
-    if (!form.body.trim()) { toast.error('내용을 입력해주세요'); return }
-    setSubmitting(true)
-    try {
-      const res = await api.post('/api/wholesale/proposal-tickets', form, auth())
-      if (res.data?.success) {
-        toast.success('접수됐어요 — 운영팀이 확인 후 처리합니다')
-        setForm({ type: 'report', target: '', subject: '', body: '' })
-        loadTickets()
-      } else toast.error(res.data?.error || '접수 실패')
-    } catch (err) {
-      const e = err as { response?: { data?: { error?: string } } }
-      toast.error(e.response?.data?.error || '접수 실패')
-    } finally { setSubmitting(false) }
-  }
 
   return (
     <div className="min-h-screen pb-24" style={{ background: WT.fill }}>
@@ -265,45 +247,13 @@ export default function WholesaleBoardPage() {
           )
         )}
 
-        {/* ── 신고·제안 ── */}
+        {/* ── 신고·제안 (sellpie형 공개 게시판) ── */}
         {tab === 'report' && (
-          !loggedIn ? (
-            <div className="rounded-2xl py-16 text-center" style={{ background: '#fff', border: '1px solid ' + WT.line }}>
-              <p className="text-[14px] font-bold" style={{ color: WT.ink }}>신고·제안은 유통회원 전용이에요</p>
-              <p className="text-[12.5px] mt-1" style={{ color: WT.ink3 }}>최저가 미준수 신고, 상품 제안 등을 접수할 수 있어요</p>
-              <button onClick={() => navigate('/wholesale/login')}
-                className="mt-4 px-6 h-11 rounded-xl text-[14px] font-bold text-white" style={{ background: WT.brand }}>
-                로그인하기
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="rounded-2xl p-5" style={{ background: '#fff', border: '1px solid ' + WT.line }}>
-                <h3 className="text-[15px] font-extrabold mb-3" style={{ color: WT.ink }}>신고·제안 접수</h3>
-                <div className="grid grid-cols-2 gap-2 mb-2">
-                  {[{ v: 'report', l: '🚨 신고 (최저가 미준수 등)' }, { v: 'proposal', l: '💡 제안' }].map(o => (
-                    <button key={o.v} onClick={() => setForm(f => ({ ...f, type: o.v }))}
-                      className="h-11 rounded-xl text-[13px] font-bold transition-colors"
-                      style={form.type === o.v ? { background: WT.brandSoft, color: WT.brand, border: '1px solid ' + WT.brand } : { background: WT.fill, color: WT.ink2, border: '1px solid transparent' }}>
-                      {o.l}
-                    </button>
-                  ))}
-                </div>
-                <input value={form.target} onChange={e => setForm(f => ({ ...f, target: e.target.value }))} maxLength={200}
-                  placeholder="대상 상품/판매처 (선택) — 예: 상품명, 판매 링크"
-                  className="w-full h-11 rounded-xl px-3.5 text-[13px] text-gray-900 mb-2 focus:outline-none" style={{ background: WT.fill, border: '1px solid ' + WT.line }} />
-                <input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} maxLength={120}
-                  placeholder="제목 — 예: ○○ 상품 최저가 미준수 신고"
-                  className="w-full h-11 rounded-xl px-3.5 text-[13px] text-gray-900 mb-2 focus:outline-none" style={{ background: WT.fill, border: '1px solid ' + WT.line }} />
-                <textarea value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} maxLength={4000} rows={5}
-                  placeholder="내용 — 위반 가격/캡처 링크, 제안 상세 등을 적어주세요"
-                  className="w-full rounded-xl px-3.5 py-3 text-[13px] text-gray-900 resize-none focus:outline-none" style={{ background: WT.fill, border: '1px solid ' + WT.line }} />
-                <button onClick={submitTicket} disabled={submitting}
-                  className="mt-3 w-full h-12 rounded-xl text-[14px] font-bold text-white disabled:opacity-50" style={{ background: WT.brand }}>
-                  {submitting ? '접수 중…' : '접수하기'}
-                </button>
-              </div>
+          <div className="space-y-5">
+            <WholesaleProposalBoard />
 
+            {/* 내 접수 내역 — 로그인 유통회원만(본인 글의 운영팀 답변 확인용). */}
+            {loggedIn && (
               <div className="rounded-2xl p-5" style={{ background: '#fff', border: '1px solid ' + WT.line }}>
                 <h3 className="text-[15px] font-extrabold mb-3" style={{ color: WT.ink }}>내 접수 내역</h3>
                 {tickets === null ? (
@@ -330,8 +280,8 @@ export default function WholesaleBoardPage() {
                   </div>
                 )}
               </div>
-            </div>
-          )
+            )}
+          </div>
         )}
       </main>
     </div>

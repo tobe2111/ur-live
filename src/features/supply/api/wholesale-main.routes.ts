@@ -33,6 +33,7 @@ import { requireAdmin } from '@/worker/middleware/auth'
 import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admin-security'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { resolveMallId, DEFAULT_MALL_ID } from './wholesale-malls'
+import { PROPOSAL_CATEGORY_KEYS, categoryToType } from '@/shared/wholesale-proposal-categories'
 
 // ── 멱등 ensure (repair-schema 와 동일 DDL — cold isolate self-heal) ────────────
 const _bannerEnsured = new WeakSet<object>()
@@ -78,6 +79,8 @@ async function ensureProposalSchema(DB: D1Database): Promise<void> {
   // 🏬 멀티-몰 테넌시 — mall_id(DEFAULT 1). repair-schema 와 멱등 동일. 기본 몰만 있으면 전 행 1 → 동작 불변.
   await DB.prepare('ALTER TABLE wholesale_proposal_tickets ADD COLUMN mall_id INTEGER DEFAULT 1').run().catch(swallow('wholesale-proposals:mall_id'))
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_proposal_tickets_mall ON wholesale_proposal_tickets(mall_id, id DESC)').run().catch(swallow('wholesale-proposals:idx-mall'))
+  // 🏬 2026-06-15 (sellpie형 게시판): 세부 카테고리(supply/codev/live/sns/report/inquiry). type 은 admin 호환 유지.
+  await DB.prepare('ALTER TABLE wholesale_proposal_tickets ADD COLUMN category TEXT').run().catch(swallow('wholesale-proposals:category'))
 }
 
 const _premiumEnsured = new WeakSet<object>()
@@ -160,7 +163,10 @@ pub.post('/proposal-tickets', rateLimit({ action: 'wholesale-proposal-create', m
   try {
     await ensureProposalSchema(DB)
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
-    const type = String(body.type || 'proposal').trim()
+    // 🏬 2026-06-15: category(세부) 우선 — 미지정 시 기존 type 호환(proposal/report).
+    const rawCat = String(body.category || '').trim()
+    const category = PROPOSAL_CATEGORY_KEYS.has(rawCat) ? rawCat : ''
+    const type = category ? categoryToType(category) : String(body.type || 'proposal').trim()
     if (!VALID_PROPOSAL_TYPE.has(type)) return c.json({ success: false, error: '유형이 올바르지 않습니다 (proposal/report)' }, 400)
     const subject = String(body.subject || '').trim().slice(0, 120)
     const text = String(body.body || '').trim().slice(0, 4000)
@@ -171,8 +177,8 @@ pub.post('/proposal-tickets', rateLimit({ action: 'wholesale-proposal-create', m
     // 🏬 멀티-몰: 작성자(유통사) 계정 몰을 스탬프(기본 1). 로그인 토큰 → 계정 mall_id.
     const mallId = await resolveMallId(c)
     const ins = await DB.prepare(
-      "INSERT INTO wholesale_proposal_tickets (seller_id, type, target, subject, body, status, mall_id) VALUES (?, ?, ?, ?, ?, 'open', ?)"
-    ).bind(sellerId, type, target, subject, text, mallId).run()
+      "INSERT INTO wholesale_proposal_tickets (seller_id, type, category, target, subject, body, status, mall_id) VALUES (?, ?, ?, ?, ?, ?, 'open', ?)"
+    ).bind(sellerId, type, category || null, target, subject, text, mallId).run()
     const id = Number(ins.meta?.last_row_id)
     if (!id) return c.json({ success: false, error: '등록 중 오류가 발생했습니다' }, 500)
 
@@ -199,12 +205,59 @@ pub.get('/proposal-tickets', async (c) => {
   try {
     await ensureProposalSchema(DB)
     const { results } = await DB.prepare(
-      `SELECT id, type, target, subject, body, status, admin_memo, created_at, resolved_at
+      `SELECT id, type, category, target, subject, body, status, admin_memo, created_at, resolved_at
        FROM wholesale_proposal_tickets WHERE seller_id = ? ORDER BY id DESC LIMIT 100`
     ).bind(sellerId).all()
     return c.json({ success: true, proposals: results ?? [] })
   } catch (err) {
     return safeError(c, err, '제안/신고 조회 중 오류가 발생했습니다', '[wholesale-proposals]')
+  }
+})
+
+// ── GET /proposal-tickets/board — 공개 게시판 목록 (sellpie형, 작성자 마스킹) ──
+//   🛡️ 본문(body)·작성자 실명 비노출 — 목록 메타만(번호/카테고리/제목/마스킹작성자/날짜/답변여부).
+//      B2B 신고·제안은 민감 → 비밀글 모델: 제목·작성자 일부만 공개, 상세는 본인/어드민만(별도).
+//   비로그인도 목록 열람 가능(가입 유도). 몰 스코프. 페이지네이션(15/page).
+pub.get('/proposal-tickets/board', async (c) => {
+  const { DB } = c.env
+  try {
+    await ensureProposalSchema(DB)
+    const mallId = await resolveMallId(c)
+    const cat = String(c.req.query('category') || '').trim()
+    const page = Math.max(1, Math.floor(Number(c.req.query('page')) || 1))
+    const PER = 15
+    const conds = ['COALESCE(wp.mall_id, 1) = ?']
+    const binds: (string | number)[] = [Number(mallId) || DEFAULT_MALL_ID]
+    if (PROPOSAL_CATEGORY_KEYS.has(cat)) { conds.push('wp.category = ?'); binds.push(cat) }
+    const where = conds.join(' AND ')
+    const totalRow = await DB.prepare(`SELECT COUNT(*) AS n FROM wholesale_proposal_tickets wp WHERE ${where}`)
+      .bind(...binds).first<{ n: number }>().catch(() => null)
+    const total = Number(totalRow?.n) || 0
+    const { results } = await DB.prepare(
+      `SELECT wp.id, wp.category, wp.type, wp.subject, wp.status, wp.admin_memo, wp.created_at,
+              s.business_name AS biz, s.name AS nm
+       FROM wholesale_proposal_tickets wp
+       LEFT JOIN sellers s ON s.id = wp.seller_id
+       WHERE ${where}
+       ORDER BY wp.id DESC LIMIT ? OFFSET ?`
+    ).bind(...binds, PER, (page - 1) * PER).all<{ id: number; category: string | null; type: string; subject: string; status: string; admin_memo: string | null; created_at: string; biz: string | null; nm: string | null }>()
+    const rows = (results ?? []).map(r => {
+      const name = (r.biz || r.nm || '회원').trim()
+      // 작성자 마스킹: 첫 글자 + **** (sellpie 패턴).
+      const author = name ? `${[...name][0]}****` : '****'
+      const answered = r.status === 'resolved' || r.status === 'in_progress' || !!r.admin_memo || r.status === 'rejected'
+      return {
+        id: r.id,
+        category: r.category || (r.type === 'report' ? 'report' : 'supply'),
+        subject: r.subject,
+        author,
+        answered,
+        created_at: r.created_at,
+      }
+    })
+    return c.json({ success: true, rows, total, page, per_page: PER })
+  } catch (err) {
+    return safeError(c, err, '게시판 조회 중 오류가 발생했습니다', '[wholesale-proposals]')
   }
 })
 
