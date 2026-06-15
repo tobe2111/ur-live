@@ -11,7 +11,7 @@ import { downloadSupplierCsv } from './download-csv'
 import MultiImageUpload from './MultiImageUpload'
 
 export default function AddProductModal({ t, onClose, onCreated }: { t: (k: string, o?: Record<string, unknown>) => string; onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', category: 'lifestyle', image_url: '', detail_images: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '' })
+  const [form, setForm] = useState({ name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', shipping_fee: '', category: 'lifestyle', image_url: '', detail_images: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   // 📥 2026-06-12 (사용자 요청): 등록 진입점에서 대량등록 옵션 선택 가능 — CatalogTab 과 동일 흐름 공유.
@@ -47,6 +47,7 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
         min_order_qty: Number(form.min_order_qty) || 1,
         pack_size: Number(form.pack_size) || 1,
         order_multiple: Number(form.order_multiple) || 1,
+        shipping_fee: form.shipping_fee !== '' ? Math.max(0, Math.floor(Number(form.shipping_fee))) : undefined,
         category: form.category,
         image_url: form.image_url.trim() || undefined,
         detail_images: form.detail_images.trim() || undefined, // 🖼️ 쉼표 구분 여러 장 — 서버가 JSON 배열로 정규화
@@ -140,6 +141,12 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
                 ))}
               </select>
             </div>
+          </div>
+          {/* 🚚 2026-06-15 (대표 요청): 상품별 배송비 — 비우면 제조사 기본 배송정책, 0 입력 시 무료배송. */}
+          <div>
+            <label className={labelCls}>{t('supplier.fieldShippingFee', { defaultValue: '배송비 (원)' })}</label>
+            <input type="number" min={0} disabled={saving} value={form.shipping_fee} onChange={e => setForm(f => ({ ...f, shipping_fee: e.target.value }))} className={inputCls} placeholder={t('supplier.fieldShippingFeePh', { defaultValue: '예: 3000 · 0 = 무료배송' })} />
+            <p className="text-[11px] text-gray-400 mt-1">{t('supplier.shippingFeeHint', { defaultValue: '이 상품의 배송비입니다. 비우면 내 기본 배송정책을 따르고, 0 입력 시 무료배송. 같은 제조사 묶음배송은 가장 높은 배송비 1회만 청구됩니다.' })}</p>
           </div>
           {/* 🏭 BIZ-8 (2026-06-08) MOQ / 박스당 수량 / 주문 배수 — 수량 제약(가격과 무관). */}
           <div className="grid grid-cols-3 gap-3">

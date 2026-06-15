@@ -18,6 +18,7 @@ import { requireSupplier } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { swallow } from '@/worker/utils/swallow';
+import { setSupplyMeta } from '@/worker/utils/product-supply-meta';
 import { ensureSupplyVisibilitySchema, normalizeVisibility, recordSupplyPriceChange } from './supply-visibility';
 import { buildCsv, csvResponse, parseCsv } from './supply-csv';
 import { buildXlsx, xlsxResponse, type XlsxCell } from './xlsx';
@@ -343,6 +344,14 @@ supplierDashboardRoutes.post('/products', async (c) => {
       sid, // 🏬 mall_id = 공급자 소속 몰(서브쿼리 바인드) — 신규 몰 제조사 상품이 그 몰 카탈로그에 노출
       slug,
     ).run();
+
+    // 🚚 2026-06-15 (대표 요청): 상품별 배송비 — product_supply_meta(products 컬럼 미증식). 0=무료, 미입력=제조사 정책 폴백.
+    {
+      const shipRaw = (body as { shipping_fee?: unknown }).shipping_fee;
+      if (shipRaw != null && shipRaw !== '' && Number.isFinite(Number(shipRaw))) {
+        await setSupplyMeta(DB, Number(result.meta.last_row_id), { wholesale_shipping_fee: Math.max(0, Math.floor(Number(shipRaw))) }).catch(swallow('supplier-dashboard:ship-meta'));
+      }
+    }
 
     // 어드민 승인 큐 알림.
     createDashboardNotification(DB, 'admin', null, 'supply_product_submitted', '공급상품 승인 요청',

@@ -21,6 +21,7 @@ import {
 } from '@/lib/distributor-pricing'
 import { confirmTossPayment, cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { swallow } from '@/worker/utils/swallow'
+import { getSupplyMeta } from '@/worker/utils/product-supply-meta'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAuth } from '@/worker/middleware/auth'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
@@ -138,24 +139,32 @@ interface SupplierShipResult {
   shortfalls: Array<{ supplier_group: string; min_order_amount: number; subtotal: number; shortfall: number }>
 }
 function computeSupplierShipping(
-  lines: Array<{ supplier_id: number | null; line_total: number }>,
+  lines: Array<{ supplier_id: number | null; line_total: number; product_shipping_fee?: number | null }>,
   policies: Map<number, SupplierPolicy>,
 ): SupplierShipResult {
-  // 제조사별 subtotal 합산. supplier_id 없는(NULL) 라인은 단일 'no-supplier' 그룹(정책 없음 → 배송비 0, min 0).
-  const bySupplier = new Map<string, { supplier_id: number | null; subtotal: number; policy: SupplierPolicy }>()
+  // 🚚 2026-06-15 (대표 요청): 상품별 배송비 우선 — 라인에 product_shipping_fee(>=0, 0=무료)가 있으면 그 값,
+  //   없으면 제조사 정책 배송비. 제조사 그룹(묶음배송)의 배송비 = 그룹 내 라인별 유효 배송비의 최댓값(1회 청구).
+  //   ⚠️ 하위호환: 라인에 product_shipping_fee 가 하나도 없으면 모든 유효값 = 정책 배송비 → max = 정책 배송비(현행 불변).
+  const bySupplier = new Map<string, { supplier_id: number | null; subtotal: number; policy: SupplierPolicy; effFee: number }>()
   for (const l of lines) {
     const sid = (Number.isFinite(l.supplier_id as number) && (l.supplier_id as number) > 0) ? (l.supplier_id as number) : null
     const key = sid != null ? `s${sid}` : 'none'
     const pol = sid != null ? (policies.get(sid) || { min_order_amount: 0, shipping_fee: 0, free_ship_threshold: 0 }) : { min_order_amount: 0, shipping_fee: 0, free_ship_threshold: 0 }
-    const cur = bySupplier.get(key) || { supplier_id: sid, subtotal: 0, policy: pol }
+    const cur = bySupplier.get(key) || { supplier_id: sid, subtotal: 0, policy: pol, effFee: 0 }
     cur.subtotal += Math.max(0, Math.floor(l.line_total || 0))
+    // 상품별 배송비(0 포함)가 지정됐으면 그 값, 아니면 제조사 정책 배송비. 그룹 배송비 = 라인 유효배송비의 최댓값.
+    const lineFee = (l.product_shipping_fee != null && Number.isFinite(l.product_shipping_fee))
+      ? Math.max(0, Math.floor(l.product_shipping_fee))
+      : Math.max(0, Math.floor(pol.shipping_fee || 0))
+    cur.effFee = Math.max(cur.effFee, lineFee)
     bySupplier.set(key, cur)
   }
   const perSupplier: SupplierShipResult['perSupplier'] = []
   const shortfalls: SupplierShipResult['shortfalls'] = []
   let shippingTotal = 0
   for (const [key, g] of bySupplier) {
-    const { min_order_amount, shipping_fee, free_ship_threshold } = g.policy
+    const { min_order_amount, free_ship_threshold } = g.policy
+    const shipping_fee = g.effFee // 유효 배송비(상품별 우선·정책 폴백의 그룹 최댓값)
     const meetsMin = !(min_order_amount > 0 && g.subtotal < min_order_amount)
     const shortfall = meetsMin ? 0 : Math.max(0, min_order_amount - g.subtotal)
     const shipping = (free_ship_threshold > 0 && g.subtotal >= free_ship_threshold) ? 0 : shipping_fee
@@ -165,6 +174,14 @@ function computeSupplierShipping(
     if (!meetsMin) shortfalls.push({ supplier_group: key, min_order_amount, subtotal: g.subtotal, shortfall })
   }
   return { perSupplier, shippingTotal, shortfalls }
+}
+
+// 🚚 product_supply_meta 의 상품별 배송비(wholesale_shipping_fee) 파싱 — 미설정/빈값이면 undefined(정책 폴백).
+function parseProductShipFee(meta: Record<string, string> | undefined): number | undefined {
+  const raw = meta?.['wholesale_shipping_fee']
+  if (raw == null || raw === '') return undefined
+  const n = Number(raw)
+  return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : undefined
 }
 
 // ── BIZ-8 (2026-06-08) MOQ/단가 고도화 — pack_size / order_multiple 컬럼 멱등 ensure. ───
@@ -1477,8 +1494,9 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
 
     // 수량 구간 할인 tier 일괄 로드 (authoritative 단가에 적용).
     const tierMap = await loadQtyTiers(DB, ids)
+    const shipMeta = await getSupplyMeta(DB, ids) // 🚚 상품별 배송비(wholesale_shipping_fee) 일괄 로드 — 없으면 제조사 정책 폴백.
     let subtotal = 0, supplyTotal = 0
-    const lines: Array<{ product_id: number; supplier_id: number | null; name: string; qty: number; base: number; unit: number; line_total: number }> = []
+    const lines: Array<{ product_id: number; supplier_id: number | null; name: string; qty: number; base: number; unit: number; line_total: number; product_shipping_fee?: number }> = []
     for (const p of found) {
       const qty = reqMap.get(p.id) || 0
       // 🏭 2026-06-04 MOQ 검증 — 최소 주문 수량 미만 차단(서버 방어; 클라 UI 도 동일 강제).
@@ -1509,7 +1527,7 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
       const lineTotal = unit * qty
       subtotal += lineTotal
       supplyTotal += p.supply_price * qty
-      lines.push({ product_id: p.id, supplier_id: p.supplier_id, name: p.name, qty, base: p.supply_price, unit, line_total: lineTotal })
+      lines.push({ product_id: p.id, supplier_id: p.supplier_id, name: p.name, qty, base: p.supply_price, unit, line_total: lineTotal, product_shipping_fee: parseProductShipFee(shipMeta.get(p.id)) })
     }
     if (subtotal <= 0) return c.json({ success: false, error: '결제 금액이 올바르지 않습니다' }, 400)
 
@@ -2134,7 +2152,8 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
 
     const items: Array<{ product_id: number; name: string; image_url: string | null; qty: number; unit_price: number; line_total: number; moq: number; order_multiple: number }> = []
     // 🚚 제조사별 min-order/배송비 계산용 라인(검증/표시 only — 청구 X). supplier_id 는 응답에 비노출.
-    const previewLines: Array<{ supplier_id: number | null; line_total: number }> = []
+    const shipMetaPreview = await getSupplyMeta(DB, ids) // 🚚 상품별 배송비 — 미리보기도 주문과 동일 산식.
+    const previewLines: Array<{ supplier_id: number | null; line_total: number; product_shipping_fee?: number }> = []
     let subtotal = 0
     for (const pid of ids) {
       const qty = reqMap.get(pid) || 0
@@ -2165,7 +2184,7 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
       const lineTotal = unit * qty
       subtotal += lineTotal
       items.push({ product_id: pid, name: p.name, image_url: p.image_url, qty, unit_price: unit, line_total: lineTotal, moq, order_multiple: orderMultiple })
-      previewLines.push({ supplier_id: p.supplier_id, line_total: lineTotal })
+      previewLines.push({ supplier_id: p.supplier_id, line_total: lineTotal, product_shipping_fee: parseProductShipFee(shipMetaPreview.get(pid)) })
     }
 
     // 🚚 제조사별 최소주문금액 충족 여부 + 배송비 + 총 청구 예상액(결제 X). supplier_id 미노출(group key 만).

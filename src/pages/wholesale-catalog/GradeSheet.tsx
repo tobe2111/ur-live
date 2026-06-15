@@ -1,30 +1,31 @@
 import { X } from 'lucide-react'
-import { WT, GRADE_LABEL } from '../wholesale/wholesale-theme'
+import { WT, GRADE_NAME } from '../wholesale/wholesale-theme'
 
-// ── 등급 안내 시트 ──
+// ── 등급 안내 시트 ── (2026-06-15 대표 모델: 일반 / 플러스 / 프리미엄)
+//   가입 형태로 구분 — 일반=승인 가입 / 플러스=연 구독 / 프리미엄=일정 매출 달성. 등급↑ = 더 낮은 공급가.
 const GRADE_SHEET = [
-  { g: '특별가', mark: '★', desc: '임박·덤핑 전용 · 관리자 선정 회원만', margin: '개별 책정', special: true },
-  { g: 'A', mark: 'A', desc: '최저 공급가 · 월 5,000만원↑', margin: '마진 +10%' },
-  { g: 'B', mark: 'B', desc: '우대 공급가 · 월 1,500만원↑', margin: '마진 +15%' },
-  { g: 'C', mark: 'C', desc: '기본 공급가 · 신규/일반 회원', margin: '마진 +20%' },
+  { name: '프리미엄', desc: '일정 매출 달성 회원 · 최저 공급가', margin: '마진 +10%' },
+  { name: '플러스', desc: '연 구독제 회원 · 우대 공급가', margin: '마진 +15%' },
+  { name: '일반', desc: '승인 후 가입한 회원 · 기본 공급가', margin: '마진 +20%' },
 ]
 export default function GradeSheet({ current, onClose }: { current: string; onClose: () => void }) {
+  const currentName = GRADE_NAME[current] || current
   return (
     <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center" style={{ background: 'rgba(20,22,28,0.4)' }} onClick={onClose}>
       <div className="w-full lg:max-w-md bg-white rounded-t-3xl lg:rounded-3xl p-5 pb-7" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[18px] font-extrabold" style={{ color: WT.ink }}>등급별 공급가 안내</h3>
+          <h3 className="text-[18px] font-extrabold" style={{ color: WT.ink }}>회원 등급별 공급가 안내</h3>
           <button onClick={onClose} aria-label="닫기"><X className="w-5 h-5" style={{ color: WT.ink3 }} /></button>
         </div>
         <div className="space-y-2">
           {GRADE_SHEET.map((g) => {
-            const cur = (GRADE_LABEL[current] || current) === g.g
+            const cur = currentName === g.name
             return (
-              <div key={g.g} className="flex items-center gap-3 rounded-2xl p-3.5" style={cur ? { background: WT.brandSoft } : { background: WT.fill }}>
-                <span className="flex h-9 w-9 items-center justify-center rounded-full text-[14px] font-extrabold shrink-0"
-                  style={g.special ? { background: WT.ink, color: '#fff' } : cur ? { background: WT.brand, color: '#fff' } : { background: '#fff', color: WT.ink2 }}>{g.mark}</span>
+              <div key={g.name} className="flex items-center gap-3 rounded-2xl p-3.5" style={cur ? { background: WT.brandSoft } : { background: WT.fill }}>
+                <span className="inline-flex items-center justify-center rounded-full px-3 h-7 text-[12.5px] font-extrabold shrink-0 whitespace-nowrap"
+                  style={cur ? { background: WT.brand, color: '#fff' } : { background: '#fff', color: WT.ink2, border: '1px solid ' + WT.line2 }}>{g.name}</span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[14px] font-bold" style={{ color: cur ? WT.brand : WT.ink }}>{g.g}등급{cur && ' · 현재'}</div>
+                  <div className="text-[14px] font-bold" style={{ color: cur ? WT.brand : WT.ink }}>{g.name} 회원{cur && ' · 현재'}</div>
                   <div className="text-[12px] mt-0.5" style={{ color: WT.ink3 }}>{g.desc}</div>
                 </div>
                 <span className="text-[12px] font-bold shrink-0" style={{ color: WT.ink2 }}>{g.margin}</span>
@@ -33,7 +34,7 @@ export default function GradeSheet({ current, onClose }: { current: string; onCl
           })}
         </div>
         <p className="mt-4 text-[12px] leading-relaxed" style={{ color: WT.ink3 }}>
-          더 좋은 공급가가 필요하면 관리자에게 등급 상향을 문의하세요. 월 사입액 기준으로 자동 검토됩니다.
+          <b style={{ color: WT.ink2 }}>플러스</b>는 연 구독으로, <b style={{ color: WT.ink2 }}>프리미엄</b>은 유통스타트를 통한 일정 매출 달성 시 전환됩니다. 자세한 전환 안내는 관리자에게 문의하세요.
         </p>
       </div>
     </div>

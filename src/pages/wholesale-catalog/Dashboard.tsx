@@ -1,5 +1,5 @@
 import { ChevronRight } from 'lucide-react'
-import { WT, won, comma, GRADE_LABEL } from '../wholesale/wholesale-theme'
+import { WT, won, comma, GRADE_NAME } from '../wholesale/wholesale-theme'
 
 // ── 사입 현황 대시보드 ──
 export default function Dashboard({ grade, marginPct, company, monthSpend, orderCount, depositBalance, onGrade, onCharge }: {
@@ -13,9 +13,9 @@ export default function Dashboard({ grade, marginPct, company, monthSpend, order
   return (
     <div className="rounded-2xl bg-white p-5" style={{ boxShadow: WT.shCard }}>
       <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full text-[16px] font-extrabold text-white shrink-0" style={{ background: WT.brand }}>{GRADE_LABEL[grade] || grade}</span>
+        <span className="inline-flex items-center justify-center rounded-full px-3.5 h-9 text-[14px] font-extrabold text-white shrink-0 whitespace-nowrap" style={{ background: WT.brand }}>{GRADE_NAME[grade] || grade}</span>
         <div className="flex-1 min-w-0">
-          <div className="text-[15px] font-bold truncate" style={{ color: WT.ink }}>{company} · <span style={{ color: WT.brand }}>{GRADE_LABEL[grade] || grade}등급</span> 단가 적용중</div>
+          <div className="text-[15px] font-bold truncate" style={{ color: WT.ink }}>{company} · <span style={{ color: WT.brand }}>{GRADE_NAME[grade] || grade} 회원</span> 단가 적용중</div>
           <div className="text-[12px] mt-0.5 truncate" style={{ color: WT.ink3 }}>모든 단가는 회원님 등급 기준 공급가예요</div>
         </div>
         <button onClick={onGrade} className="text-[13px] font-semibold shrink-0 flex items-center gap-0.5" style={{ color: WT.ink2 }}>등급 <ChevronRight className="w-4 h-4" /></button>

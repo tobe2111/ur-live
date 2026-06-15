@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-15 — 회원 등급명(일반/플러스/프리미엄) + 상품별 배송비 (대표 요청, AskUserQuestion 확정)
+**대표 모델**: 등급 = 일반(승인 가입)/플러스(연 구독)/프리미엄(일정 매출 달성). 배송비 = 상품 등록 시 입력. 확정(AskUserQuestion): ① 등급별 공급가 차등 ② 라벨+가격 매핑 먼저(구독결제·자동승급은 다음) ③ 상품별 배송비(체크아웃 상품별 우선·제조사 폴백).
+- **등급 라벨 매핑(머니 엔진 무변경)** — `distributor-pricing` 코드 A/B/C 유지, 표시명만 `GRADE_NAME`(A=프리미엄 10%/B=플러스 15%/C=일반 20% 기본) 신설(`wholesale-theme.ts`). 소비자 표면 전부 치환: `GradeSheet`(3등급 사다리 + 가입형태별 안내 — 일반=승인/플러스=연구독/프리미엄=매출), `Dashboard`(배지 원→펠릿·"○○ 회원"), `CatalogHeader` 다크 유틸바("○○ 회원"). 마진율/엔진/`distributor_grades` DB/cron 전부 불변 → 머니 0 리스크. 구독 결제·매출 자동승급은 다음 단계.
+- **상품별 배송비** — `AddProductModal` 에 배송비 입력(0=무료, 비우면 제조사 정책 폴백). 저장은 **products 컬럼 미증식**(`product_supply_meta` K-V, key `wholesale_shipping_fee`) — 예산제 룰 준수. `supplier-dashboard.routes` POST /products 가 `setSupplyMeta` 로 기록.
+- **체크아웃 배선(하위호환)** — `wholesale.routes computeSupplierShipping` 에 라인별 `product_shipping_fee` 추가: 그룹(묶음배송) 배송비 = 라인별 유효배송비(상품별 우선·정책 폴백) **최댓값** 1회 청구. 주문(`/orders`)·미리보기 양쪽이 `getSupplyMeta` 로딩 후 라인에 첨부. **상품별 배송비가 하나도 없으면 max=정책배송비 → 현행 완전 동일**(역마진/무료배송 임계/min-order 게이트 불변). Toss 금액검증·CAS·예치금 차감 무변경.
+- 검증: tsc 0 · client+worker build OK · 테마검사 통과. ⚠️ 실결제 staging E2E 1회 권장(배송비 합산 표시·청구 정합). 후속: 상품 상세에 배송비 표시, 상품 수정(PATCH) 폼에도 배송비, 어드민 등급 드롭다운 라벨(현 코드 A/B/C 표시 — 매핑 안내).
+
 ## ✅ 2026-06-15 — 도매몰 홈 시안 리디자인 (Claude Design 핸드오프 `유통스타트 도매몰.dc.html`)
 **배경**: 사용자가 Claude Design 핸드오프 번들(tar→README+`.dc.html`+스크린샷+chat)을 전달, "참고해서 디자인 전면 수정 / 기존과 다른 부분 확인하며 이상적으로". chat 인텔: "AI 티" 원인 = ① 회색 상품박스 ② 의미없는 통계 슬롭 ③ 과한 라운드/회색 패널. 확정 = 셰브론 런치마크 + 신뢰 신호 전면 + #FF0033은 가격/CTA에만. 시안 범위 = 홈+로고.
 - **디자인 토큰 시안 정렬** (`wholesale-theme.ts`): ink `#17181C→#15171C`, `inkPink #FF5C7A`(다크 위 액센트)·`trustBg #FAFBFC`·`line2 #E7E9ED`·`shHover` 추가. (WT는 도매 전 surface SSOT — 전역 정렬.)

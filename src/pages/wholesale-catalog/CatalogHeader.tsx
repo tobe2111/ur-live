@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, X, LogIn, LogOut, Factory, Heart, ShoppingCart, FileText } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
-import { WT, won, GRADE_LABEL } from '../wholesale/wholesale-theme'
+import { WT, won, GRADE_NAME } from '../wholesale/wholesale-theme'
 import { WholesaleWordmark } from './WholesaleLogo'
 import type { CatOpt } from './types'
 import type { CatalogSort } from './catalog-controls'
@@ -48,7 +48,7 @@ export default function CatalogHeader({
   const { pathname } = useLocation()
   const { t } = useTranslation()
   const companyName = (typeof window !== 'undefined' && localStorage.getItem('seller_name')) || '회원'
-  const gradeLabel = GRADE_LABEL[grade || 'C'] || grade || 'C'
+  const gradeLabel = GRADE_NAME[grade || 'C'] || grade || 'C'
   // 회원 전용 메뉴 — 비로그인은 로그인 유도.
   const memberOnlyGo = (to: string) => {
     if (!loggedIn) { toast.error(t('wholesale.memberOnly', { defaultValue: '회원 전용 메뉴예요 — 로그인 후 이용해주세요' })); goLogin(); return }
@@ -71,7 +71,7 @@ export default function CatalogHeader({
           <div className="flex items-center gap-2.5 lg:gap-3.5 shrink-0">
             {loggedIn ? (
               <>
-                <span className="hidden md:inline whitespace-nowrap"><b className="text-white">{companyName}</b> 님 · <span className="font-bold" style={{ color: WT.inkPink }}>{gradeLabel}등급</span></span>
+                <span className="hidden md:inline whitespace-nowrap"><b className="text-white">{companyName}</b> 님 · <span className="font-bold" style={{ color: WT.inkPink }}>{gradeLabel} 회원</span></span>
                 <span className="opacity-30 hidden md:inline">|</span>
                 <span className="whitespace-nowrap">{t('wholesale.icon.deposit', { defaultValue: '예치금' })} <b className="text-white tabular-nums">{won(depositBalance)}</b></span>
                 <button onClick={() => navigate('/wholesale/deposits')} className="font-bold text-white rounded-md px-2.5 py-1 whitespace-nowrap" style={{ background: WT.brand }}>{t('wholesale.charge', { defaultValue: '충전' })}</button>

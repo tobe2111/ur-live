@@ -39,9 +39,19 @@ export const unitMargin = (supply: number, retail: number) => Math.max(0, (retai
 export const marginRate = (supply: number, retail: number) =>
   supply > 0 && retail > supply ? Math.round(((retail - supply) / supply) * 100) : 0
 
-/** 등급 라벨 (코드 → 한국어) */
+/** 등급 라벨 (코드 → 짧은 배지용) */
 export const GRADE_LABEL: Record<string, string> = {
   A: 'A', B: 'B', C: 'C', D: 'D', OEM: 'OEM', SPECIAL: '특별가',
+}
+
+/**
+ * 🏷️ 2026-06-15 (대표 모델 확정) 회원 등급명 — 일반 / 플러스 / 프리미엄.
+ *   엔진(distributor-pricing 코드 A/B/C)은 무변경, 표시명만 매핑 → 머니 로직 0 리스크.
+ *   프리미엄 = A(일정 매출 달성, 최저 공급가) · 플러스 = B(연 구독, 우대 공급가) · 일반 = C(승인 가입, 기본).
+ *   D/OEM/특별가는 어드민 엣지 케이스로 라벨 유지.
+ */
+export const GRADE_NAME: Record<string, string> = {
+  A: '프리미엄', B: '플러스', C: '일반', D: 'D', OEM: 'OEM', SPECIAL: '특별가',
 }
 
 /**
