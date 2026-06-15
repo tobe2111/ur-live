@@ -54,19 +54,19 @@ export default function CuratorEarningsCard() {
 
   return (
     <Link
-      to="/u/me/earnings"
-      className="block mx-4 lg:mx-8 mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212] overflow-hidden hover:border-pink-200 dark:hover:border-pink-800 transition-colors"
+      to="/creator"
+      className="block mx-4 lg:mx-8 mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212] overflow-hidden hover:border-gray-300 dark:hover:border-[#2A2A2A] transition-colors"
     >
-      <div className={`p-4 ${isCash ? 'bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20' : 'bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-900/20 dark:to-orange-800/20'}`}>
+      <div className="p-4 bg-gray-50 dark:bg-white/[0.04]">
         <div className="flex items-center justify-between mb-1">
           <p className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-            <Sparkles className={`w-3.5 h-3.5 ${isCash ? 'text-pink-500' : 'text-amber-500'}`} />
-            큐레이터 수익
+            <Sparkles className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
+            크리에이터 콘솔
           </p>
           <ChevronRight className="w-4 h-4 text-gray-400" />
         </div>
         <div className="flex items-baseline gap-2 mt-2">
-          <p className={`text-2xl font-bold ${isCash ? 'text-pink-600 dark:text-pink-400' : 'text-orange-600 dark:text-orange-400'}`}>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">
             {isCash ? formatWon(info.available) : `${formatNumber(info.lifetime_earnings)}딜`}
           </p>
           <p className="text-[11px] text-gray-500 dark:text-gray-400">

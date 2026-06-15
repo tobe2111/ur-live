@@ -140,6 +140,38 @@ export default function SellerRegisterBusinessPage() {
     )
   }
 
+  // 🏁 2026-06-15 (옵션 1 — 크리에이터=유저 분리, 대표 승인): 크리에이터는 더 이상 "셀러"로 가입하지 않는다.
+  //   신규 가입 폼 대신 안내 화면. 기존 셀러(pending/active)는 위에서 이미 분기되어 영향 없음.
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <SEO title="크리에이터 시작 - 유어딜" description="크리에이터는 별도 가입 없이 로그인만 하면 시작" url="/seller/register/business" noindex />
+      <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-center space-y-4 shadow-sm">
+        <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center bg-gray-900 text-white text-2xl">🎤</div>
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">크리에이터는 가입이 필요 없어요</h2>
+          <p className="text-sm text-gray-500 mt-1 leading-relaxed">
+            이제 별도 셀러 가입 없이 <b>로그인만 하면</b> 바로 내 링크샵으로 상품을 추천하고 커미션을 받을 수 있어요.
+            <br />매장(가게)을 운영하신다면 <b>매장 가입</b>을 이용해주세요.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <button
+            onClick={() => navigate(localStorage.getItem('user_id') ? '/creator' : '/login')}
+            className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-sm">
+            {localStorage.getItem('user_id') ? '크리에이터 콘솔로 이동' : '로그인하고 시작'}
+          </button>
+          <button
+            onClick={() => navigate('/seller/register/supplier')}
+            className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold text-sm">
+            매장(가게) 가입하기
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+
+  // ⛔ 아래 레거시 influencer 셀러 가입 폼은 비활성(위 안내 화면이 먼저 반환됨). 추후 정리.
+  // eslint-disable-next-line no-unreachable
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <SEO title={`${t('sellerRegisterBusiness.title')} - 유어딜`} description={t('sellerRegisterBusiness.description')} url="/seller/register/business" noindex />
