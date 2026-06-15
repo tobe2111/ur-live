@@ -30,6 +30,7 @@ import HomeRails from './wholesale-catalog/HomeRails'
 import ShowcaseBanners from './wholesale-catalog/ShowcaseBanners'
 import FilterControls from './wholesale-catalog/FilterControls'
 import BulkOrderPanel from './wholesale-catalog/BulkOrderPanel'
+import { TrustBar, SupplierCTA } from './wholesale-catalog/HomeSections'
 
 // 🏭 2026-06-09 Wave 4b: 채팅 floating 버튼 — lazy(채팅 코드 0 byte in 초기 번들).
 //   버튼 자체는 unread 배지 폴링만, 무거운 위젯은 버튼 클릭 시 한 번 더 lazy 로드.
@@ -208,6 +209,8 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const loading = catalogQ.isLoading
   // 그리드 = 서버가 이미 검색/카테고리/정렬/필터 적용한 결과 그대로(클라 재정렬/재필터 없음).
   const items = allItems
+  // 🏭 2026-06-15 시안: 비로그인 히어로 우측 추천 상품 — 첫 이미지 보유 상품(공급가는 비노출).
+  const featured = items.find((p) => p.image_url) ?? null
 
   // 🏭 2026-06-08 SEO: 카탈로그 상품 ItemList JSON-LD — 이름·이미지·utongstart URL 만(공급가 절대 제외).
   //   기본(검색/필터 없는) 카탈로그에서만 노출 → 정규 도매 인덱스 시그널. 상위 24개로 제한.
@@ -418,6 +421,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
         mallName={mallName}
         mallLogo={mallLogo}
         depositBalance={Number(depositQ.data?.balance) || 0}
+        grade={grade}
         search={search}
         setSearch={setSearch}
         setCommittedSearch={setCommittedSearch}
@@ -464,7 +468,13 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
             orderCount={orderCount}
             depositBalance={Number(depositQ.data?.balance) || 0}
             setGradeOpen={setGradeOpen}
+            featured={featured}
           />
+
+          {/* 🏭 2026-06-15 시안: 신뢰 신호 바 (사업자인증/에스크로/세금계산서/무재고) */}
+          <div className="pt-1 pb-1">
+            <TrustBar />
+          </div>
 
           {/* 빠른 재주문 / 전용 공급 / 베스트 / 신규 입고 레일 */}
           <HomeRails
@@ -567,6 +577,13 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
           </div>
         </section>
         )}
+        {/* 🏭 2026-06-15 시안: 제조사 입점 CTA 배너 (비로그인 마케팅 면) */}
+        {!collectionMode && !loggedIn && (
+          <div className="pt-2 pb-6">
+            <SupplierCTA onApply={() => navigate('/supplier/register')} />
+          </div>
+        )}
+
         {/* 🏭 2026-06-13 (사용자 요청): 서비스 정체성 히어로 — 회사정보(푸터) 바로 위에 배치(홈만). */}
         {/* 🧹 2026-06-15 (사용자 요청 — 홈 정리): 마케팅 카피는 비로그인 방문자 전환용에만. 로그인 사입자에겐 숨김(반복 노출 제거). */}
         {!collectionMode && !loggedIn && (

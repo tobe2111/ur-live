@@ -5,6 +5,7 @@
 //   고객상담센터 + 무통장입금안내 + 저작권/지재권 밴드 + PG/에스크로 배지).
 // ──────────────────────────────────────────────────────────────
 import { WT } from './wholesale-theme'
+import { WholesaleMark } from '../wholesale-catalog/WholesaleLogo'
 
 // 🏢 사업자정보 — 리스터코퍼레이션(유어팀) 공식 정보. 한 곳만 고치면 푸터 전체 반영.
 const BUSINESS_INFO = {
@@ -78,8 +79,8 @@ export default function WholesaleFooter() {
           {/* 사업자정보 */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-1.5">
-              <span className="flex h-5 w-5 items-center justify-center rounded-md text-white font-extrabold text-[10px]" style={{ background: WT.brand }}>유</span>
-              <span className="text-[12px] font-bold" style={{ color: WT.ink }}>유통스타트 도매몰</span>
+              <WholesaleMark size={20} />
+              <span className="text-[14px] font-extrabold" style={{ color: WT.ink, letterSpacing: '-0.04em' }}>유통스타트 도매몰</span>
             </div>
             <div className="text-[11px] leading-relaxed" style={{ color: WT.ink3 }}>
               <p>
