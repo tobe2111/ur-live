@@ -395,7 +395,20 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: C
         </div>
         <div className="p-2.5" style={{ color: grad.text }}>
           <p className="text-xs line-clamp-2 leading-tight font-medium">{pin.product_name}</p>
-          <p className="text-sm font-extrabold mt-1" style={{ color: grad.accent }}>{formatWon(pin.price)}</p>
+          {/* 🏁 2026-06-15: 딜 가치 표시 — 정가 취소선 + 할인율 + 판매가 (original_price 활용, 분홍 없음) */}
+          {pin.original_price && pin.original_price > pin.price ? (
+            <div className="mt-1">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[11px] font-extrabold" style={{ color: grad.accent }}>
+                  {Math.round((1 - pin.price / pin.original_price) * 100)}%
+                </span>
+                <span className="text-[10px] line-through" style={{ color: grad.sub }}>{formatWon(pin.original_price)}</span>
+              </div>
+              <p className="text-sm font-extrabold" style={{ color: grad.accent }}>{formatWon(pin.price)}</p>
+            </div>
+          ) : (
+            <p className="text-sm font-extrabold mt-1" style={{ color: grad.accent }}>{formatWon(pin.price)}</p>
+          )}
           {pin.note && <p className="text-[10px] mt-1 line-clamp-1" style={{ color: grad.sub }}>💬 {pin.note}</p>}
 
         </div>
