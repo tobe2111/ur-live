@@ -4,7 +4,9 @@
 **배경**: 위 4종 후 "더 이상적으로?" 재질문 → 남은 비이상 4가지 제시, 대표가 전부 선택. 조사 결과 ②hold 전체 스트림은 **대부분 이미 성숙(hold) 보유**(influencer_attributions T+7 payout·supplier matureSettlements·agency 월정산) → 즉시-잔액 적립 + MAX(0) clawback 누수가 남은 건 `referral_commissions`(추천 트리, 별도 출금 서브시스템)뿐. stays 인플 적립은 `payment.routes`(잠금) 직접 INSERT 라 잔액 미적립(누수 아님). 따라서 이번 turn 은 안전·명확한 ①③ 구현, ② referral_commissions hold·④ 유저 현금화 정책은 대표 결정 후 별도 진행.
 - **① 멱등 UNIQUE** (`affiliate-credit.ts`/`affiliate.routes.ts`/`repair-schema`): SELECT-후-INSERT(race) → `affiliate_earnings(referrer_id, order_id)` partial UNIQUE + `INSERT OR IGNORE`(changes===0=멱등 DUPLICATE, 잔액/알림 없음). 머니룰 #3 정합. 기존 중복 행 있으면 인덱스 생성 실패→repair 리포트(타 _pair 인덱스 컨벤션).
 - **③ 핀별 순클릭 + 로그 retention** (`curator.routes`/`scheduled-cleanup`): `/me/pins/stats` 에 핀별 unique_clicks(ip+ua+일자 dedup) + purchases/earnings 환불 제외. `pin_click_logs` 180일 경과 삭제(chunk 5000, 집계 click_count 무영향).
-- 검증: tsc 0 · 전체 build. **남은 결정대기**: referral_commissions 에 동일 T+7 hold 확장(별도 서브시스템·신중), 일반 유저 성과 현금화(원천징수/세금 정책 — 대표 판단 필요).
+- **② referral_commissions T+7 hold 확장** (대표 "확장 진행") — 추천 트리(친구추천) 적립도 즉시 'granted'+잔액 → **'pending'(보류, 잔액 미반영)**. ⚠️ status CHECK 가 'holding' 신규값 금지 → 'pending' 재사용(=UI '대기', affiliate hold 와 동의어). 신규 cron `matureReferralCommissions`(`referral-tree.routes`, scheduled.ts `referral-mature`)이 T+7(`affiliate_hold_days` 공유)+미환불 주문분을 pending→granted CAS 후 `adjustUserPoints` 적립(claim-before-credit). 환불 4경로(order-refund/returns/order.routes×2) pending→withdrawn 플립(잔액 회수 X). webhook.routes(잠금)는 미수정 — cron 주문-status 가드가 머니 누수 차단. grant 의 `pointCreditUpsertStatement`/`recordPointTransaction` 즉시기록 제거 → maturity 로 이연. 모든 소비처(seller-analytics/ledger/withdrawal)는 pending=대기로 정합(출금 granted만).
+- **④ 유저 현금화 정책** = 대표 **A) 현행 유지(딜만)** 선택 → 코드 변경 없음.
+- 검증: tsc 0 · status-constraint 0 · 전체 build.
 
 ## ✅ 2026-06-15 — 링크샵 추천 적립 "이상적 구조" 4종 (대표 승인 — 진단/라인별/T+7/순클릭 전부)
 **배경**: 대표 질문 "링크샵 담기 시 각 유저 성과로 잘 찍히나? 쿠팡파트너스처럼?" → 감사 결과 기여모델(라스트클릭+24h쿠키)·적립무결성(멱등·환불역전·자기추천/IP차단)은 이미 이상적이나, **3가지가 비이상적**: (a) 멀티상품 주문 첫상품 기준 적립 (b) 확정 유예 없어 buy→사용/출금→환불 시 `MAX(0,…)` clamp 누수 (c) raw 클릭(새로고침/봇 포함). 대표가 `AskUserQuestion` 에서 4개 전부 선택(진단부터).

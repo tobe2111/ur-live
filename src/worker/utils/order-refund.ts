@@ -128,6 +128,10 @@ export async function refundOrderFully(
       await DB.prepare("UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE order_id = ? AND status = 'granted'")
         .bind(Number(order.id)).run().catch(swallow('order-refund:referral-status'))
     }
+    // ⏳ 2026-06-15 (T+7 hold): 미성숙(pending=보류, 잔액 미적립) 추천 커미션은 잔액 회수 없이 상태만 닫음 —
+    //   성숙 cron 의 주문-status 가드와 이중 안전망. granted clawback 과 달리 user_points 변경 없음.
+    await DB.prepare("UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE order_id = ? AND status = 'pending'")
+      .bind(Number(order.id)).run().catch(swallow('order-refund:referral-pending'))
   } catch { /* table may not exist */ }
 
   // 6. affiliate 적립 역전.
