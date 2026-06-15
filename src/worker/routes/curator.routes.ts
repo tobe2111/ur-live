@@ -633,15 +633,21 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
     //   handle NULL 인 사용자도 자동 생성 → /host/new fall through 영구 차단.
     //   user.name 기반 slug → 충돌 시 user2/3..99 → random hex.
     // 🏁 2026-06-11: meRow/linkedSeller/통계 6종 — 전부 userId 만 의존 → 한 번에 병렬 (3 RTT → 1 RTT).
-    const [meRow0, linkedSeller0, earnings30, clicks30, purchases30, topPinsR, dailyR, recentR] = await Promise.all([
+    const [meRow0, linkedSeller0, earnings30, pending30, clicks30, purchases30, topPinsR, dailyR, recentR] = await Promise.all([
       DB.prepare('SELECT handle, name FROM users WHERE id = ? LIMIT 1')
         .bind(userId).first<{ handle: string | null; name: string | null }>().catch(() => null),
       DB.prepare(
         `SELECT id, username FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
       ).bind(userId).first<{ id: number; username: string }>().catch(() => null),
+      // 확정(granted/legacy) 적립만 — holding(미성숙)은 pending_earnings 로 분리 표시.
       DB.prepare(
         `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
-         WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded' AND created_at >= datetime('now', '-30 days')`,
+         WHERE referrer_id = ? AND COALESCE(status, 'pending') NOT IN ('refunded', 'holding') AND created_at >= datetime('now', '-30 days')`,
+      ).bind(userId).first<{ total: number }>().catch(() => null),
+      // ⏳ 적립 예정 (holding) — T+7 확정 대기분 (기간 제한 없음, 짧으므로 전체).
+      DB.prepare(
+        `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
+         WHERE referrer_id = ? AND COALESCE(status, 'pending') = 'holding'`,
       ).bind(userId).first<{ total: number }>().catch(() => null),
       DB.prepare(
         `SELECT COUNT(*) AS cnt FROM pin_click_logs
@@ -664,7 +670,8 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
       ).bind(userId).all().catch(() => ({ results: [] as any[] })),
       // 🛡️ 2026-06-12 (감사 1단계 — 수익 표시 정합): 환불 적립이 내역에 남아 합계와 불일치 → 동일 필터.
       DB.prepare(
-        `SELECT id, product_id, product_name, commission, order_amount, created_at
+        `SELECT id, product_id, product_name, commission, order_amount, created_at,
+                COALESCE(status, 'pending') AS status
          FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'
          ORDER BY created_at DESC LIMIT 30`,
       ).bind(userId).all().catch(() => ({ results: [] as any[] })),
@@ -709,6 +716,7 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
       linked_seller: linkedSeller ? { id: linkedSeller.id, username: linkedSeller.username } : null,
       stats: {
         month_earnings: earnings30?.total ?? 0,
+        pending_earnings: pending30?.total ?? 0,
         clicks_30d: clicks30?.cnt ?? 0,
         purchases_30d: purchases30?.cnt ?? 0,
         top_pins: topPinsR.results ?? [],
@@ -844,7 +852,7 @@ curatorRoutes.post('/me/withdrawal', rateLimit({ action: 'curator_withdrawal', m
     const balance = await DB.prepare(
       `SELECT
          MIN(
-           COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'), 0)
+           COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') NOT IN ('refunded', 'holding')), 0)
            - COALESCE((SELECT SUM(amount) FROM user_withdrawals WHERE user_id = ? AND status IN ('requested','approved','paid')), 0),
            COALESCE((SELECT balance FROM user_points WHERE user_id = ?), 0)
          ) AS available`,
@@ -873,7 +881,7 @@ curatorRoutes.post('/me/withdrawal', rateLimit({ action: 'curator_withdrawal', m
         `INSERT INTO user_withdrawals (user_id, amount, withholding_tax, net_amount, bank_name, bank_account, account_holder, status, deal_deducted)
          SELECT ?, ?, ?, ?, ?, ?, ?, 'requested', 1
          WHERE (
-           COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'), 0)
+           COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') NOT IN ('refunded', 'holding')), 0)
            - COALESCE((SELECT SUM(amount) FROM user_withdrawals WHERE user_id = ? AND status IN ('requested','approved','paid')), 0)
          ) >= ?`,
       ).bind(String(userId), amount, withholdingTax, netAmount, bankName, bankAccount, accountHolder, String(userId), String(userId), amount).run()
@@ -923,7 +931,7 @@ curatorRoutes.get('/me/withdrawal', requireAuth(), async (c) => {
     // 🛡️ 2026-05-25: 테이블 미존재 시 graceful — 0 fallback.
     //   🛡️ 2026-05-31: 환불 커미션 제외 (출금 잔액 정합).
     const earnings = await DB.prepare(
-      `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'`,
+      `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') NOT IN ('refunded', 'holding')`,
     ).bind(String(userId)).first<{ total: number }>().catch(() => null)
 
     const withdrawn = await DB.prepare(

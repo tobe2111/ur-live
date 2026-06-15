@@ -292,6 +292,9 @@ export async function clawbackVoucherCommission(
         }
         clawed += share
       }
+      // ⏳ holding(미성숙·미적립) 적립: 잔액 회수 없이 상태만 refunded — 성숙 cron 이 확정 안 함.
+      await DB.prepare("UPDATE affiliate_earnings SET status = 'refunded', commission = 0 WHERE order_id = ? AND COALESCE(status,'pending') = 'holding'")
+        .bind(orderId).run().catch(() => null)
     } catch { /* affiliate 테이블 없거나 미적립 — best-effort */ }
   }
 

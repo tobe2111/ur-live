@@ -143,6 +143,9 @@ export async function refundOrderFully(
       await DB.prepare("UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status,'pending') IN ('granted','pending')")
         .bind(Number(order.id)).run().catch(swallow('order-refund:affiliate-status'))
     }
+    // ⏳ holding(미성숙·미적립) 적립: 잔액 회수 없이 상태만 refunded — 성숙 cron 이 확정 안 함.
+    await DB.prepare("UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status,'pending') = 'holding'")
+      .bind(Number(order.id)).run().catch(swallow('order-refund:affiliate-holding'))
   } catch { /* table may not exist */ }
 
   // 7. 공급자(B2B) + 영입자 매장영입 적립 역전.

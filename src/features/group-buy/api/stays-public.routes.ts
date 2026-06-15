@@ -1013,7 +1013,7 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
       ).bind(orderId).run().catch(() => { /* noop */ })
       // 🛡️ 2026-05-31: 오버부킹 자동 환불 시 인플 affiliate 커미션도 reverse (출금 누수 차단).
       await c.env.DB.prepare(
-        "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status, 'pending') IN ('granted', 'pending')"
+        "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status, 'pending') IN ('granted', 'pending', 'holding')"
       ).bind(orderId).run().catch(() => { /* noop */ })
       return c.json({
         success: false,
@@ -1193,7 +1193,7 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), async (c) => {
     //   환불 발생 건만 'refunded' → curator 출금 잔액 SUM 에서 제외됨.
     if (refundActuallyDone) {
       await c.env.DB.prepare(
-        "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status, 'pending') IN ('granted', 'pending')"
+        "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status, 'pending') IN ('granted', 'pending', 'holding')"
       ).bind(booking.order_id).run().catch(() => null)
     }
 
