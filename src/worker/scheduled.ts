@@ -188,6 +188,12 @@ export async function handleCronScheduled(
       const { matureSupplierSettlements } = await import('../features/supply/api/supply-settlement');
       await matureSupplierSettlements(env.DB);
     }));
+    // ⏳ 2026-06-15 링크샵: 추천 적립 성숙 — holding 상태 T+7(환불창) 경과 + 미환불 주문분을
+    //   granted 로 확정 + 그때 딜 잔액 적립. 즉시적립 후 환불 시 회수불가(MAX0 clamp) 누수 차단.
+    ctx.waitUntil(safeCron('affiliate-mature', async () => {
+      const { matureAffiliateEarnings } = await import('./utils/affiliate-credit');
+      await matureAffiliateEarnings(env.DB, env);
+    }));
     ctx.waitUntil(safeCron('daily-self-diagnostic', () => runDailySelfDiagnostic(env)));
     // 🏭 2026-06-08 DATA-1: 도매 고아행(FK 부재) 일일 스윕 (flag-only, 삭제 X).
     ctx.waitUntil(safeCron('wholesale-orphan-sweep', () => handleWholesaleOrphanSweep(env)));

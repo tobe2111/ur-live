@@ -50,6 +50,72 @@ export type AffiliateCreditResult =
   | { ok: true; commission: number }
   | { ok: false; code: 'NOT_FOUND' | 'NOT_PAID' | 'SELF_REFERRAL' | 'SELF_PURCHASE' | 'DUPLICATE' | 'IP_ABUSE' | 'REFERRAL_DISABLED' | 'ERROR' }
 
+interface CommissionBreakdown {
+  commission: number
+  primaryProductId: number | null
+  primaryProductName: string | null
+  eligibleLines: number
+}
+
+/**
+ * 🧾 주문 라인별 추천 커미션 계산 (멀티상품 정확 귀속).
+ *   order_items 의 referral_enabled 라인만 각 상품 비율로 적립액 합산 (배송비/비대상 상품 제외).
+ *   기존엔 첫 상품 비율 × 주문총액(배송비 포함) 이라 멀티상품 주문에서 과/미적립.
+ *   order_items 부재(레거시/직접결제) 시 fallbackProductId 비율 × 주문총액으로 fallback.
+ *   반환 null = 적립 대상 라인 0 (REFERRAL_DISABLED).
+ */
+async function computeOrderCommission(
+  DB: D1Database,
+  orderId: number,
+  orderAmount: number,
+  fallbackProductId: number | null | undefined,
+  fallbackProductName: string | null | undefined,
+): Promise<CommissionBreakdown | null> {
+  let lines: { product_id: number | null; product_name: string | null; line_amount: number }[] = []
+  try {
+    const r = await DB.prepare(
+      `SELECT product_id, product_name,
+              COALESCE(subtotal, price * quantity, price, 0) AS line_amount
+       FROM order_items WHERE order_id = ?`,
+    ).bind(orderId).all<{ product_id: number | null; product_name: string | null; line_amount: number }>()
+    lines = r.results ?? []
+  } catch { /* order_items 없음 — fallback */ }
+
+  if (lines.length > 0) {
+    let commission = 0
+    let eligibleLines = 0
+    let primaryProductId: number | null = null
+    let primaryProductName: string | null = null
+    for (const ln of lines) {
+      const pid = ln.product_id != null ? Number(ln.product_id) : null
+      const rate = await resolveCommissionRate(DB, pid)
+      if (rate == null) continue          // 이 상품은 추천 비대상 — skip
+      const amt = Number(ln.line_amount) || 0
+      if (amt <= 0) continue
+      commission += Math.round(amt * rate)
+      eligibleLines++
+      if (primaryProductId == null) {
+        primaryProductId = pid
+        primaryProductName = ln.product_name ?? null
+      }
+    }
+    if (eligibleLines === 0 || commission <= 0) return null
+    return { commission, primaryProductId, primaryProductName, eligibleLines }
+  }
+
+  // Fallback — order_items 없음: 기존 단일 상품 비율 × 주문총액
+  const rate = await resolveCommissionRate(DB, fallbackProductId != null ? Number(fallbackProductId) : null)
+  if (rate == null) return null
+  const commission = Math.round((Number(orderAmount) || 0) * rate)
+  if (commission <= 0) return null
+  return {
+    commission,
+    primaryProductId: fallbackProductId != null ? Number(fallbackProductId) : null,
+    primaryProductName: fallbackProductName ?? null,
+    eligibleLines: 1,
+  }
+}
+
 export async function creditAffiliateForOrder(
   DB: D1Database,
   env: unknown,
@@ -100,38 +166,35 @@ export async function creditAffiliateForOrder(
     }
 
     const orderAmount = Number(order.total_amount) || 0
-    const rate = await resolveCommissionRate(DB, productId ? Number(productId) : null)
-    if (rate == null) return { ok: false, code: 'REFERRAL_DISABLED' }
-    const commission = Math.round(orderAmount * rate)
+    // 🧾 라인별 귀속 (멀티상품 정확) — order_items 의 referral_enabled 라인만 각 비율로 합산.
+    const breakdown = await computeOrderCommission(DB, Number(order.id), orderAmount, productId, productName)
+    if (!breakdown) return { ok: false, code: 'REFERRAL_DISABLED' }
+    const commission = breakdown.commission
+    const storeProductId = breakdown.primaryProductId
+    const storeProductName = breakdown.primaryProductName
 
+    // ⏳ 확정 유예(hold): status='holding' 으로만 기록 — 잔액(user_points)은 아직 미반영.
+    //   환불창(T+7) 경과 후 matureAffiliateEarnings cron 이 holding→granted 전환 + 그때 잔액 적립.
+    //   이유: 즉시 잔액 적립 시 buy→출금/사용→환불 어뷰즈에서 MAX(0,...) clamp 로 회수 불가(누수).
+    //   hold 동안은 출금 가용액 SUM 에서도 제외(NOT IN ('refunded','holding')) → 출금 불가.
     await DB.prepare(`
-      INSERT INTO affiliate_earnings (referrer_id, order_id, product_id, product_name, buyer_id, buyer_ip, order_amount, commission)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO affiliate_earnings (referrer_id, order_id, product_id, product_name, buyer_id, buyer_ip, order_amount, commission, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'holding')
     `).bind(
-      String(referrerId), order.id, productId || null, productName || null,
+      String(referrerId), order.id, storeProductId, storeProductName,
       String(order.user_id), buyerIp || null, orderAmount, commission,
     ).run()
-
-    // 💸 2026-06-12 (4차 감사 D1): 잔액변경 + point_transactions 장부 동시 기록 (adjustUserPoints SSOT).
-    //   기존 UPSERT 와 금액/동작 동일 — 장부만 추가. 실패해도 earnings 기록은 보존 (cron 재집계 가능).
-    await adjustUserPoints(DB, {
-      userId: String(referrerId),
-      delta: commission,
-      type: 'affiliate_commission',
-      description: productName ? `핀 추천 적립 (${String(productName).slice(0, 80)})` : '핀 추천 적립',
-      orderId: order.id,
-    })
 
     await DB.prepare(`
       INSERT INTO user_notifications (user_id, type, title, message, link, created_at)
       VALUES (?, 'affiliate_earning', ?, ?, '/u/me/earnings', datetime('now'))
-    `).bind(String(referrerId), '💰 핀으로 적립!', `${commission}딜이 적립되었습니다`).run().catch(() => {})
+    `).bind(String(referrerId), '🕒 적립 예정', `${commission.toLocaleString('ko-KR')}딜 적립 예정 (확정 시 알림드려요)`).run().catch(() => {})
 
     try {
       const { sendSystemPush } = await import('../../lib/system-push')
       await sendSystemPush(env as never, 'user', String(referrerId), {
-        title: '💰 핀으로 적립!',
-        body: `${commission.toLocaleString('ko-KR')}딜이 적립되었습니다`,
+        title: '🕒 적립 예정',
+        body: `${commission.toLocaleString('ko-KR')}딜 적립 예정 (확정 시 알림)`,
         url: '/u/me/earnings',
         tag: `affiliate-${order.id}`,
       })
@@ -141,6 +204,73 @@ export async function creditAffiliateForOrder(
   } catch {
     return { ok: false, code: 'ERROR' }
   }
+}
+
+const HOLD_DAYS_DEFAULT = 7
+
+/**
+ * ⏳ 추천 적립 성숙 cron — holding 상태로 T+7(기본) 경과 + 주문 미환불 건을 granted 로 확정.
+ *   claim-before-credit: holding→granted CAS(meta.changes===1) 후에만 잔액 적립 → 동시/중복 방지.
+ *   주문 status 가드(REFUNDED/CANCELLED/FAILED 제외)로, 환불 사이트가 holding 플립을 놓쳐도
+ *   환불 주문은 절대 확정/적립 안 됨(안전망). dynamic policy: affiliate_hold_days.
+ */
+export async function matureAffiliateEarnings(
+  DB: D1Database,
+  env: unknown,
+): Promise<{ matured: number; credited: number }> {
+  let holdDays = HOLD_DAYS_DEFAULT
+  try {
+    const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'affiliate_hold_days'").first<{ value: string }>()
+    const n = Number(row?.value)
+    if (Number.isFinite(n) && n >= 0) holdDays = n
+  } catch { /* default */ }
+
+  let matured = 0
+  let credited = 0
+  try {
+    const due = await DB.prepare(`
+      SELECT ae.id, ae.referrer_id, ae.commission, ae.order_id, ae.product_name
+      FROM affiliate_earnings ae
+      JOIN orders o ON o.id = ae.order_id
+      WHERE COALESCE(ae.status, 'pending') = 'holding'
+        AND ae.created_at <= datetime('now', ?)
+        AND UPPER(COALESCE(o.status, '')) NOT IN ('REFUNDED', 'CANCELLED', 'FAILED')
+      LIMIT 500
+    `).bind(`-${holdDays} days`).all<{ id: number; referrer_id: string; commission: number; order_id: number | null; product_name: string | null }>()
+      .catch(() => ({ results: [] as { id: number; referrer_id: string; commission: number; order_id: number | null; product_name: string | null }[] }))
+
+    for (const row of due.results ?? []) {
+      const claim = await DB.prepare(
+        "UPDATE affiliate_earnings SET status = 'granted' WHERE id = ? AND COALESCE(status, 'pending') = 'holding'",
+      ).bind(row.id).run().catch(() => null)
+      if ((((claim as { meta?: { changes?: number } } | null)?.meta?.changes) ?? 0) !== 1) continue
+      matured++
+      const amt = Number(row.commission) || 0
+      if (amt <= 0) continue
+      await adjustUserPoints(DB, {
+        userId: String(row.referrer_id),
+        delta: amt,
+        type: 'affiliate_commission',
+        description: row.product_name ? `핀 추천 적립 확정 (${String(row.product_name).slice(0, 80)})` : '핀 추천 적립 확정',
+        orderId: row.order_id ?? undefined,
+      })
+      credited += amt
+      await DB.prepare(`
+        INSERT INTO user_notifications (user_id, type, title, message, link, created_at)
+        VALUES (?, 'affiliate_earning', ?, ?, '/u/me/earnings', datetime('now'))
+      `).bind(String(row.referrer_id), '✅ 적립 확정!', `${amt.toLocaleString('ko-KR')}딜이 확정되었습니다`).run().catch(() => {})
+      try {
+        const { sendSystemPush } = await import('../../lib/system-push')
+        await sendSystemPush(env as never, 'user', String(row.referrer_id), {
+          title: '✅ 적립 확정!',
+          body: `${amt.toLocaleString('ko-KR')}딜이 확정되었습니다`,
+          url: '/u/me/earnings',
+          tag: `affiliate-mature-${row.id}`,
+        })
+      } catch { /* push fail-soft */ }
+    }
+  } catch { /* fail-soft */ }
+  return { matured, credited }
 }
 
 /** 주문 생성 시 추천 의도 저장 (결제 확정 시 creditAffiliateForOrder 가 소비). */

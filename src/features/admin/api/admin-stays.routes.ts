@@ -161,7 +161,7 @@ adminStaysRoutes.patch('/stays/bookings/:id/refund', cors(), async (c) => {
     // 🛡️ 2026-05-31: 환불 성공 시 인플 affiliate 커미션 reverse — 환불 매출 출금 누수 차단.
     if (refundActuallyDone && fullBooking?.order_id) {
       await c.env.DB.prepare(
-        "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status, 'pending') IN ('granted', 'pending')"
+        "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status, 'pending') IN ('granted', 'pending', 'holding')"
       ).bind(fullBooking.order_id).run().catch(() => null)
     }
 

@@ -12,6 +12,14 @@
 - **기존과 다른 부분(사용자 요청 확인)**: 시안은 Unsplash 샘플·하드코딩 통계(1,240/38만)·"마감임박 04:12:39" 카운트다운 사용 → **실데이터 원칙**으로 통계/카운트다운 미도입, 공급가 게스트 비노출 규칙 적용(시안은 게스트에 ₩19,800 노출 — 도메인 위반이라 미반영). 카테고리 타일 8종·5열 큐레이션 그리드는 후속(현 기능 그리드+필터 유지).
 - **잠금 보존**: SSR consume(`__SSR_INITIAL_WHOLESALE__`)·placeholderData·prefetch·lazy·memo·기본 catalog 요청 byte-identity 무변경. tsc 0 · client build OK(71.84KB) · 테마검사 통과.
 - **후속 백로그**: 상품상세/장바구니/결제/가입/마이/제조사입점 화면을 같은 시안 톤으로(시안 미포함 — chat "다음 단계"), 카테고리 타일·5열 큐레이션 섹션.
+## ✅ 2026-06-15 — 링크샵 추천 적립 "이상적 구조" 4종 (대표 승인 — 진단/라인별/T+7/순클릭 전부)
+**배경**: 대표 질문 "링크샵 담기 시 각 유저 성과로 잘 찍히나? 쿠팡파트너스처럼?" → 감사 결과 기여모델(라스트클릭+24h쿠키)·적립무결성(멱등·환불역전·자기추천/IP차단)은 이미 이상적이나, **3가지가 비이상적**: (a) 멀티상품 주문 첫상품 기준 적립 (b) 확정 유예 없어 buy→사용/출금→환불 시 `MAX(0,…)` clamp 누수 (c) raw 클릭(새로고침/봇 포함). 대표가 `AskUserQuestion` 에서 4개 전부 선택(진단부터).
+- **① 진단 엔드포인트** (read-only, requireAdmin) `GET /api/curator/admin/affiliate-diagnostic` — status분포/멀티상품 적립규모/환불-후-사용 프록시(환불적립+잔액0)/30일 클릭 부풀림/top큐레이터. 코드변경 전 ground truth.
+- **② 라인별 귀속** `affiliate-credit.ts computeOrderCommission()` — order_items 의 referral_enabled 라인만 각 상품비율로 합산(배송비/비대상 제외). 기존 첫상품비율×주문총액 → 과/미적립 해소. order_items 부재 시 기존 fallback. 멱등(referrer+order) 불변.
+- **③ T+7 확정 유예(hold)** — 신규 적립 `status='holding'` 로만 기록(잔액 미반영). `matureAffiliateEarnings` cron(daily 18:00)이 T+7(dynamic `affiliate_hold_days`)+미환불 주문분을 holding→granted CAS 후 잔액 적립(claim-before-credit + order status 가드=안전망). holding 은 출금 가용액 SUM 제외. **레거시 pending/NULL/granted 무영향(migration-safe)**. 환불 사이트 6곳 holding→refunded 플립(무회수): order-refund/returns/voucher-clawback(helpers)/stays×2/admin-stays. 대시보드 month_earnings(확정) vs pending_earnings(예정) 분리 + recent_earnings 에 status.
+- **④ 순클릭/전환율** 대시보드 unique_clicks_30d(ip+ua+일자 dedup)+conversion_rate_30d. `CuratorEarningsPage` 30일적립(확정/+예정)·순클릭(전체 sub)·전환율(구매 sub)·내역 '적립예정' 배지.
+- **잠금 영향 없음**: `payment.routes.ts`(잠금)는 기존 helper 호출만 — `creditAffiliateFromIntent` 시그니처 불변. `affiliate-credit.ts` 는 비잠금. **Toss confirm/금액검증/CAS 전부 무변경.**
+- 검증: tsc 0 · 전체 build (client+worker+prepare) — push 전 확인. ⚠️ hold 는 행동변경(적립 7일 보류) — prod 반영 후 진단 엔드포인트로 holding/granted 추이 1회 확인 권장.
 
 ## ✅ 2026-06-15 — 도매몰 `/wholesale` 홈 정리 (사용자 신고 "난잡" — 전수조사 1차)
 **배경**: 사용자가 `/wholesale` 카탈로그 홈이 난잡하다고 신고. 코드 해부 결과 로그인 사입자 기준 헤더 3단 + 본문 12~15블록(배너·대시보드·OEM·레일4·BulkOrder패널·그리드·BrandHero)이 적층. 근본원인 = *비로그인 마케팅 페이지*와 *로그인 빠른 카탈로그*를 한 화면에 전부 노출. 사용자 승인(4개 정리 전부 + 지금 구현).

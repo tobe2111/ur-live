@@ -659,6 +659,10 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
         "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status, 'pending') IN ('granted', 'pending')"
       ).bind(returnRecord.order_id).run().catch(swallow('returns:api:returns'));
     }
+    // ⏳ holding(미성숙·미적립) 적립: 잔액 회수 없이 상태만 refunded — 성숙 cron 이 확정 안 함.
+    await DB.prepare(
+      "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status, 'pending') = 'holding'"
+    ).bind(returnRecord.order_id).run().catch(swallow('returns:api:returns-holding'));
   } catch { /* table may not exist */ }
 
   // 🛡️ 2026-05-31 도매몰 INC-5b: 공급(B2B) 상품 환불 시 공급자 적립 역전 (출금 누수 차단).

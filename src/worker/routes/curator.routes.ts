@@ -15,7 +15,7 @@
 
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
-import { requireAuth, optionalAuth } from '../middleware/auth'
+import { requireAuth, optionalAuth, requireAdmin } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
 import { safeError } from '../utils/safe-error'
 import {
@@ -633,20 +633,29 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
     //   handle NULL 인 사용자도 자동 생성 → /host/new fall through 영구 차단.
     //   user.name 기반 slug → 충돌 시 user2/3..99 → random hex.
     // 🏁 2026-06-11: meRow/linkedSeller/통계 6종 — 전부 userId 만 의존 → 한 번에 병렬 (3 RTT → 1 RTT).
-    const [meRow0, linkedSeller0, earnings30, clicks30, purchases30, topPinsR, dailyR, recentR] = await Promise.all([
+    const [meRow0, linkedSeller0, earnings30, pending30, clicks30, purchases30, topPinsR, dailyR, recentR] = await Promise.all([
       DB.prepare('SELECT handle, name FROM users WHERE id = ? LIMIT 1')
         .bind(userId).first<{ handle: string | null; name: string | null }>().catch(() => null),
       DB.prepare(
         `SELECT id, username FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
       ).bind(userId).first<{ id: number; username: string }>().catch(() => null),
+      // 확정(granted/legacy) 적립만 — holding(미성숙)은 pending_earnings 로 분리 표시.
       DB.prepare(
         `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
-         WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded' AND created_at >= datetime('now', '-30 days')`,
+         WHERE referrer_id = ? AND COALESCE(status, 'pending') NOT IN ('refunded', 'holding') AND created_at >= datetime('now', '-30 days')`,
       ).bind(userId).first<{ total: number }>().catch(() => null),
+      // ⏳ 적립 예정 (holding) — T+7 확정 대기분 (기간 제한 없음, 짧으므로 전체).
       DB.prepare(
-        `SELECT COUNT(*) AS cnt FROM pin_click_logs
+        `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
+         WHERE referrer_id = ? AND COALESCE(status, 'pending') = 'holding'`,
+      ).bind(userId).first<{ total: number }>().catch(() => null),
+      // 전체 클릭 + 순클릭(ip+ua+일자 dedup) — raw click_count 는 새로고침/봇 부풀림 포함.
+      DB.prepare(
+        `SELECT COUNT(*) AS cnt,
+                COUNT(DISTINCT ip_hash || '|' || user_agent_hash || '|' || date(created_at)) AS uniq
+         FROM pin_click_logs
          WHERE curator_user_id = ? AND created_at >= datetime('now', '-30 days')`,
-      ).bind(userId).first<{ cnt: number }>().catch(() => null),
+      ).bind(userId).first<{ cnt: number; uniq: number }>().catch(() => null),
       // 🛡️ 2026-06-12 (감사 1단계 — 수익 표시 정합): month_earnings 와 동일하게 환불 제외.
       DB.prepare(
         `SELECT COUNT(*) AS cnt FROM affiliate_earnings
@@ -664,7 +673,8 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
       ).bind(userId).all().catch(() => ({ results: [] as any[] })),
       // 🛡️ 2026-06-12 (감사 1단계 — 수익 표시 정합): 환불 적립이 내역에 남아 합계와 불일치 → 동일 필터.
       DB.prepare(
-        `SELECT id, product_id, product_name, commission, order_amount, created_at
+        `SELECT id, product_id, product_name, commission, order_amount, created_at,
+                COALESCE(status, 'pending') AS status
          FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'
          ORDER BY created_at DESC LIMIT 30`,
       ).bind(userId).all().catch(() => ({ results: [] as any[] })),
@@ -709,7 +719,12 @@ curatorRoutes.get('/me/dashboard', requireAuth(), async (c) => {
       linked_seller: linkedSeller ? { id: linkedSeller.id, username: linkedSeller.username } : null,
       stats: {
         month_earnings: earnings30?.total ?? 0,
+        pending_earnings: pending30?.total ?? 0,
         clicks_30d: clicks30?.cnt ?? 0,
+        unique_clicks_30d: clicks30?.uniq ?? 0,
+        conversion_rate_30d: (clicks30?.uniq ?? 0) > 0
+          ? Math.round(((purchases30?.cnt ?? 0) / (clicks30!.uniq)) * 1000) / 10
+          : 0,
         purchases_30d: purchases30?.cnt ?? 0,
         top_pins: topPinsR.results ?? [],
         earnings_daily_30d: dailyR.results ?? [],
@@ -844,7 +859,7 @@ curatorRoutes.post('/me/withdrawal', rateLimit({ action: 'curator_withdrawal', m
     const balance = await DB.prepare(
       `SELECT
          MIN(
-           COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'), 0)
+           COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') NOT IN ('refunded', 'holding')), 0)
            - COALESCE((SELECT SUM(amount) FROM user_withdrawals WHERE user_id = ? AND status IN ('requested','approved','paid')), 0),
            COALESCE((SELECT balance FROM user_points WHERE user_id = ?), 0)
          ) AS available`,
@@ -873,7 +888,7 @@ curatorRoutes.post('/me/withdrawal', rateLimit({ action: 'curator_withdrawal', m
         `INSERT INTO user_withdrawals (user_id, amount, withholding_tax, net_amount, bank_name, bank_account, account_holder, status, deal_deducted)
          SELECT ?, ?, ?, ?, ?, ?, ?, 'requested', 1
          WHERE (
-           COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'), 0)
+           COALESCE((SELECT SUM(commission) FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') NOT IN ('refunded', 'holding')), 0)
            - COALESCE((SELECT SUM(amount) FROM user_withdrawals WHERE user_id = ? AND status IN ('requested','approved','paid')), 0)
          ) >= ?`,
       ).bind(String(userId), amount, withholdingTax, netAmount, bankName, bankAccount, accountHolder, String(userId), String(userId), amount).run()
@@ -923,7 +938,7 @@ curatorRoutes.get('/me/withdrawal', requireAuth(), async (c) => {
     // 🛡️ 2026-05-25: 테이블 미존재 시 graceful — 0 fallback.
     //   🛡️ 2026-05-31: 환불 커미션 제외 (출금 잔액 정합).
     const earnings = await DB.prepare(
-      `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') != 'refunded'`,
+      `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings WHERE referrer_id = ? AND COALESCE(status, 'pending') NOT IN ('refunded', 'holding')`,
     ).bind(String(userId)).first<{ total: number }>().catch(() => null)
 
     const withdrawn = await DB.prepare(
@@ -1190,6 +1205,95 @@ curatorRoutes.post('/me/proxy-product', requireAuth(), async (c) => {
     })
   } catch (err) {
     return safeError(c, err, '대행 등록 중 오류가 발생했습니다', '[curator:proxy-product]')
+  }
+})
+
+// ============================================================
+// GET /api/curator/admin/affiliate-diagnostic  (requireAdmin)
+// 🔬 링크샵/추천 적립 ground-truth — 코드 변경 전 prod 실태 수집 (read-only).
+//   상태 분포 / 멀티상품 귀속 규모 / 환불-후-사용 누수 프록시 / 클릭 부풀림 / top 큐레이터.
+//   CLAUDE.md "진단 페이지 먼저" 룰 — 추측 대신 실데이터로 개선 우선순위 결정.
+// ============================================================
+curatorRoutes.get('/admin/affiliate-diagnostic', requireAdmin(), async (c) => {
+  try {
+    const DB = c.env.DB
+
+    const [byStatus, multiItem, refundProxy, clicks, topReferrers] = await Promise.all([
+      // 1) affiliate_earnings 상태 분포 (NULL = legacy 'pending' 으로 합산)
+      DB.prepare(
+        `SELECT COALESCE(NULLIF(status, ''), 'pending') AS status,
+                COUNT(*) AS cnt, COALESCE(SUM(commission), 0) AS total
+         FROM affiliate_earnings GROUP BY 1 ORDER BY 2 DESC`,
+      ).all<{ status: string; cnt: number; total: number }>().catch(() => ({ results: [] as any[] })),
+
+      // 2) 멀티상품 주문에 붙은 적립 규모 — 라인별 귀속 개선 영향도 측정
+      //    (order_items 가 2개 이상인 주문에 affiliate_earning 이 달린 건수/금액)
+      DB.prepare(
+        `SELECT COUNT(*) AS orders, COALESCE(SUM(ae.commission), 0) AS commission
+         FROM affiliate_earnings ae
+         WHERE ae.order_id IS NOT NULL
+           AND (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = ae.order_id) > 1`,
+      ).first<{ orders: number; commission: number }>().catch(() => null),
+
+      // 3) 환불-후-사용 누수 프록시 — 환불된 적립이 있는데 현재 딜 잔액이 0 인 큐레이터
+      //    (적립을 이미 쓰고 난 뒤 환불돼 MAX(0,...) clamp 로 회수 못 한 정황)
+      DB.prepare(
+        `SELECT COUNT(*) AS referrers,
+                COALESCE(SUM(ae.refunded_commission), 0) AS refunded_total
+         FROM (
+           SELECT referrer_id, SUM(commission) AS refunded_commission
+           FROM affiliate_earnings
+           WHERE COALESCE(status, 'pending') = 'refunded'
+           GROUP BY referrer_id
+         ) ae
+         LEFT JOIN user_points up ON up.user_id = ae.referrer_id
+         WHERE COALESCE(up.balance, 0) = 0`,
+      ).first<{ referrers: number; refunded_total: number }>().catch(() => null),
+
+      // 4) 클릭 부풀림 — 최근 30일 전체 클릭 vs 순클릭(ip+ua+일자 dedup)
+      DB.prepare(
+        `SELECT COUNT(*) AS total,
+                COUNT(DISTINCT ip_hash || '|' || user_agent_hash || '|' || date(created_at)) AS uniq
+         FROM pin_click_logs WHERE created_at >= datetime('now', '-30 days')`,
+      ).first<{ total: number; uniq: number }>().catch(() => null),
+
+      // 5) top 큐레이터 (환불 제외 누적 적립)
+      DB.prepare(
+        `SELECT referrer_id, COUNT(*) AS earnings,
+                COALESCE(SUM(commission), 0) AS total
+         FROM affiliate_earnings
+         WHERE COALESCE(status, 'pending') != 'refunded'
+         GROUP BY referrer_id ORDER BY total DESC LIMIT 10`,
+      ).all<{ referrer_id: string; earnings: number; total: number }>().catch(() => ({ results: [] as any[] })),
+    ])
+
+    const totalClicks = clicks?.total ?? 0
+    const uniqClicks = clicks?.uniq ?? 0
+
+    return c.json({
+      success: true,
+      generated_at: new Date().toISOString(),
+      earnings_by_status: byStatus.results ?? [],
+      multi_item_attribution: {
+        orders: multiItem?.orders ?? 0,
+        commission: multiItem?.commission ?? 0,
+        note: '2개 이상 상품 주문에 붙은 적립 — 현재는 첫 상품 기준으로 전체 주문액에 적립됨(라인별 귀속 개선 대상)',
+      },
+      refund_after_spend_proxy: {
+        referrers: refundProxy?.referrers ?? 0,
+        refunded_total: refundProxy?.refunded_total ?? 0,
+        note: '환불 적립 보유 + 현재 딜 잔액 0 인 큐레이터 — 적립을 쓴 뒤 환불돼 회수 못 했을 가능성(T+7 hold 로 차단 대상)',
+      },
+      clicks_30d: {
+        total: totalClicks,
+        unique: uniqClicks,
+        inflation_pct: totalClicks > 0 ? Math.round((1 - uniqClicks / totalClicks) * 100) : 0,
+        note: '전체 클릭 대비 순클릭(ip+ua+일자) — 차이가 크면 새로고침/봇 부풀림',
+      },
+      top_referrers: topReferrers.results ?? [],
+    })
+  } catch (err) {
+    return safeError(c, err, '진단 조회 중 오류가 발생했습니다', '[curator:affiliate-diagnostic]')
   }
 })
 
