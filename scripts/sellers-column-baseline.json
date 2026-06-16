@@ -68,6 +68,7 @@
   "outstanding_balance",
   "phone",
   "pin_hash",
+  "plus_until",
   "preferred_settlement_method",
   "profile_image",
   "referral_bonus_until",
