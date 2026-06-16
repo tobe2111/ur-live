@@ -88,6 +88,8 @@ export default function CuratorPage() {
   const [query, setQuery] = useState('')
   // 🎨 2026-06-16 링크샵 시안: 본인 핀 관리(드래그 정렬) 모드 토글.
   const [manageMode, setManageMode] = useState(false)
+  // 🎨 2026-06-16 링크샵 시안: '방문자 미리보기' — 본인이 남이 보는 화면 그대로 확인.
+  const [previewAsVisitor, setPreviewAsVisitor] = useState(false)
   const currentUser = useAuthStore((s: any) => s.user)
   // 🛡️ 2026-05-27 (편집 UI 영구 fix): useAuthStore.user 가 sync 안 된 카카오 user 도 isOwner 인정.
   //   localStorage user_id fallback — RouteGuards / lib/api 의 토큰 검사 패턴과 일관.
@@ -215,8 +217,10 @@ export default function CuratorPage() {
     return q ? arr.filter(p => (`${p.product_name} ${p.note || ''}`).toLowerCase().includes(q)) : arr
   }
   const onPinDeleted = (pinId: number) => setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== pinId) } : prev)
+  // 🎨 2026-06-16 시안: 본인이 '전체 미리보기' 누르면 방문자 화면 그대로(편집/관리 숨김) 렌더. 실제 소유권(isOwner)은 보존.
+  const ownerView = isOwner && !previewAsVisitor
   const renderPinTab = (arr: CuratorPin[], emptyType?: 'shop' | 'voucher') => {
-    if (arr.length === 0) return <EmptyLinkshop handle={curator.handle} isOwner={isOwner} emptyType={emptyType} curatorName={curator.name} />
+    if (arr.length === 0) return <EmptyLinkshop handle={curator.handle} isOwner={ownerView} emptyType={emptyType} curatorName={curator.name} />
     const f = applyQ(arr)
     if (f.length === 0) return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
@@ -224,7 +228,7 @@ export default function CuratorPage() {
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">다른 키워드로 찾아보세요.</p>
       </div>
     )
-    return <PinGrid pins={f} handle={curator.handle} isOwner={isOwner} onPinDeleted={onPinDeleted} curatorName={curator.name} curatorAvatar={curator.profile_image} />
+    return <PinGrid pins={f} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} curatorName={curator.name} curatorAvatar={curator.profile_image} />
   }
 
   return (
@@ -236,7 +240,14 @@ export default function CuratorPage() {
         image={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
       />
       <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-28">
-        {isOwner && showOnboard && (
+        {/* 🎨 2026-06-16 시안: 방문자 미리보기 모드 배너 (본인 → 남이 보는 화면 그대로 확인) */}
+        {isOwner && previewAsVisitor && (
+          <div className="sticky top-0 z-40 bg-[#141A2E] text-white px-4 py-2 text-[12.5px] font-bold flex items-center justify-between gap-2">
+            <span>👀 방문자 미리보기 — 다른 사람에게 보이는 화면이에요</span>
+            <button onClick={() => setPreviewAsVisitor(false)} className="shrink-0 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-[11.5px] whitespace-nowrap">편집으로 돌아가기</button>
+          </div>
+        )}
+        {ownerView && showOnboard && (
           <LinkshopOnboardModal
             curatorId={curator.id}
             currentHandle={curator.handle}
@@ -257,14 +268,31 @@ export default function CuratorPage() {
         <CuratorHeader
           curator={curator}
           pinCount={pins.length}
-          isOwner={isOwner}
+          isOwner={ownerView}
           onCopyLink={copyLink}
           onCuratorUpdate={(next) => setData(prev => prev ? { ...prev, curator: { ...prev.curator, ...next } } : prev)}
         />
         {/* 🛠️ 2026-06-16: 핀이 있을 때만 적립 strip — 갓 가입(온보딩)·빈 링크샵엔 0/0/0 노이즈 숨김. */}
-        {isOwner && pins.length > 0 && <OwnerEarningsStrip />}
+        {ownerView && pins.length > 0 && <OwnerEarningsStrip />}
+        {/* 🎨 2026-06-16 시안: 방문자 미리보기 카드 — '남이 볼 땐 이렇게 보여요' + 전체 미리보기 진입 */}
+        {ownerView && pins.length > 0 && (
+          <div className="max-w-3xl mx-auto px-4 pt-3">
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-[13.5px] font-extrabold text-gray-900 dark:text-white">방문자에게 이렇게 보여요</p>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">편집은 나만 보이고, 남에겐 깔끔한 공개 화면만 보여요.</p>
+              </div>
+              <button
+                onClick={() => { setManageMode(false); setPreviewAsVisitor(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                className="shrink-0 h-9 px-3.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12.5px] font-bold"
+              >
+                전체 미리보기 →
+              </button>
+            </div>
+          </div>
+        )}
         {/* 🎨 2026-06-16 링크샵 시안: 본인 핀 정렬·관리 토글 */}
-        {isOwner && pins.length > 0 && (
+        {ownerView && pins.length > 0 && (
           <div className="max-w-3xl mx-auto px-4 pt-3 flex justify-end">
             <button
               onClick={() => setManageMode(m => !m)}
@@ -274,7 +302,7 @@ export default function CuratorPage() {
             </button>
           </div>
         )}
-        {isOwner && manageMode ? (
+        {ownerView && manageMode ? (
           <PinManageList
             pins={pins}
             onReorder={(next) => setData(prev => prev ? { ...prev, pins: next } : prev)}
@@ -315,7 +343,7 @@ export default function CuratorPage() {
           </>
         )}
         {/* 🛡️ 2026-06-11 (사용자): '정보' 탭 제거 — 핸들 변경 기능만 오너 전용 슬림 행으로 보존 */}
-        {isOwner && (
+        {ownerView && (
           <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between text-sm border-t border-gray-100 dark:border-[#1A1A1A] mt-6">
             <span className="text-gray-400">링크샵 주소</span>
             <HandleEditor handle={curator.handle} />
@@ -324,7 +352,7 @@ export default function CuratorPage() {
 
         {/* 🧭 2026-06-10 (UI 100점 패스 — 방문자 전환): 비소유자 성장 루프 CTA.
             링크트리식 — 방문자가 1탭으로 자기 링크샵 시작(적립 루프 신규 큐레이터 유입). */}
-        {!isOwner && (
+        {!ownerView && (
           <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-4 inset-x-0 z-30 pointer-events-none">
             <div className="max-w-3xl mx-auto px-4">
               <Link
