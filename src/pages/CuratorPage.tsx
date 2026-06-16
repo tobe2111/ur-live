@@ -272,6 +272,15 @@ export default function CuratorPage() {
           onCopyLink={copyLink}
           onCuratorUpdate={(next) => setData(prev => prev ? { ...prev, curator: { ...prev.curator, ...next } } : prev)}
         />
+        {/* 🎨 2026-06-16 링크샵 개선안(design): 본인 뷰 = 명시적 '편집 모드' 안내 — 사진·이름·소개·핀을 눌러 바로 수정. theme-dual: 의도적 네이비 배너 */}
+        {ownerView && (
+          <div className="max-w-3xl mx-auto px-4 pt-3">
+            <div className="flex items-center gap-2 rounded-xl bg-[#141A2E] px-3.5 py-2.5 text-[12.5px] font-semibold text-white">
+              <span className="text-[#FF5634] text-[14px] leading-none">✎</span>
+              <span>편집 모드 · 사진·이름·소개·핀을 눌러 바로 수정하세요</span>
+            </div>
+          </div>
+        )}
         {/* 🛠️ 2026-06-16: 핀이 있을 때만 적립 strip — 갓 가입(온보딩)·빈 링크샵엔 0/0/0 노이즈 숨김. */}
         {ownerView && pins.length > 0 && <OwnerEarningsStrip />}
         {/* 🎨 2026-06-16 시안: 방문자 미리보기 카드 — '남이 볼 땐 이렇게 보여요' + 전체 미리보기 진입 */}
