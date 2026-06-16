@@ -18,9 +18,9 @@ import SEO from '@/components/SEO'
 import { curatorApi, type CuratorPageResponse, type CuratorPin, type DashboardStats } from '@/features/curator/api/curator-api'
 import { useAuthStore } from '@/client/stores/auth.store'
 import { formatWon, formatNumber } from '@/utils/format'
-import { cfImage, cfSrcSet } from '@/utils/cf-image'
-import { cardGradient } from '@/utils/card-gradient'
-import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
+import { cfImage } from '@/utils/cf-image'
+import { reportDominantColor } from '@/utils/dominant-color'
+import EditorialProductCard from '@/components/linkshop/EditorialProductCard'
 import { Search, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
@@ -441,15 +441,9 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted, curatorName, curatorAvat
 
 function PinCard({ pin, index, handle, isOwner, aboveFold, hero, onDeleted, curatorName, curatorAvatar }: { pin: CuratorPin; index: number; handle: string; isOwner: boolean; aboveFold: boolean; hero?: boolean; onDeleted: (id: number) => void; curatorName?: string; curatorAvatar?: string | null }) {
   const { t } = useTranslation()
-  const productImg = pin.thumbnail || pin.image_url || ''
-  // 🛡️ 2026-05-27 (404 fix — 사용자 보고): SPA route 는 /u/:handle/p/:productId (no /redirect suffix).
-  //   /redirect suffix 는 worker /api/curator/... endpoint 용. SPA fallback 은 CuratorPinClientRedirect 가 자동 호출.
+  // 🛡️ 2026-05-27 (404 fix): SPA route 는 /u/:handle/p/:productId. /redirect 는 worker endpoint — CuratorPinClientRedirect 가 자동 호출.
   const redirectUrl = `/u/${handle}/p/${pin.product_id}`
   const [deleting, setDeleting] = useState(false)
-  // 🏭 2026-06-05 (사용자 요청 — 링크샵 그라데이션 통일): 쇼핑/동네딜 카드와 동일한 대표색 번짐.
-  const [cardColor, setCardColor] = useState<string | null>(pin.dominant_color || null)
-  const [imgError, setImgError] = useState(false)
-  const grad = cardGradient(cardColor)
 
   async function handleDelete(e: React.MouseEvent) {
     e.preventDefault()
@@ -473,106 +467,24 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, hero, onDeleted, cura
     }
   }
 
-  // 🏁 2026-06-16 (링크샵 개선안 — 에디토리얼 카드): 할인%·절약액은 기존 데이터(original_price/price)로 계산.
-  const hasDeal = !!pin.original_price && pin.original_price > pin.price
-  const discountPct = hasDeal ? Math.round((1 - pin.price / (pin.original_price as number)) * 100) : 0
-  const savings = hasDeal ? (pin.original_price as number) - pin.price : 0
   // 🎨 2026-06-16 시안 히어로: 카테고리 라벨 (동네딜=voucher/deal_only, 그 외 상품)
   const heroCatLabel = ((pin as { deal_only?: number }).deal_only === 1 || /voucher/i.test((pin as { category?: string }).category || '')) ? '동네딜' : '상품'
 
   return (
-    <div className={`relative group ${hero ? 'col-span-2 sm:col-span-3' : ''}`}>
-      {/* 🎨 2026-06-16 링크샵 개선안: 흰 에디토리얼 카드(AI 그라데이션 제거) — 번호 코너플래그 + 다크 가격칩 + 절약 초록 + coral-rule 인용. #1 은 풀폭 히어로. */}
-      <a href={redirectUrl} className="block rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] active:scale-[0.98] transition-transform">
-        <div className={`relative ${hero ? 'aspect-[16/9]' : 'aspect-[3/2]'}`} style={{ backgroundColor: grad.base }}>
-          {/* 큐레이션 순번 = 좌상단 코너 플래그 (sort order) */}
-          <span className={`absolute top-0 left-0 z-10 px-1.5 bg-[#FF5634] text-white font-extrabold flex items-center justify-center rounded-br-[11px] ${hero ? 'min-w-[2rem] h-8 text-[17px]' : 'min-w-[1.5rem] h-6 text-[13px]'}`}>
-            {index + 1}
-          </span>
-          {productImg && !imgError ? (
-            <img
-              src={cfImage(productImg, { width: hero ? 640 : 200, format: 'auto' }) || productImg}
-              srcSet={cfSrcSet(productImg, hero ? 640 : 200) || undefined}
-              sizes={hero ? '(max-width: 768px) 100vw, 720px' : '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px'}
-              alt={pin.product_name}
-              loading={aboveFold ? 'eager' : 'lazy'}
-              fetchPriority={aboveFold ? 'high' : 'auto'}
-              decoding="async"
-              onLoad={(e) => {
-                const color = extractDominantColor(e.currentTarget as HTMLImageElement)
-                if (color) {
-                  if (!cardColor) setCardColor(color)
-                  if (!pin.dominant_color) reportDominantColor(pin.product_id, color)
-                }
-              }}
-              onError={() => setImgError(true)}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: grad.sub }}>no image</div>
-          )}
-          {/* 딜 가치 칩: hero=할인%+정가취소선+판매가 통합(시안), 일반=할인%만 */}
-          {hero ? (
-            <div className="absolute bottom-2.5 left-2.5 z-10 flex items-baseline gap-1.5 px-2.5 py-1 rounded-[10px] bg-[#141A2E]/92 backdrop-blur">
-              {discountPct > 0 && <span className="text-[17px] font-extrabold text-[#FF7A5C]">{discountPct}%</span>}
-              {hasDeal && <span className="text-[11px] line-through text-white/50">{(pin.original_price as number).toLocaleString('ko-KR')}</span>}
-              <span className="text-[14px] font-extrabold text-white">{pin.price.toLocaleString('ko-KR')}원</span>
-            </div>
-          ) : (
-            discountPct > 0 && (
-              <span className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-md bg-[#141A2E]/90 text-[#FF7A5C] text-[12px] font-extrabold backdrop-blur">
-                {discountPct}%
-              </span>
-            )
-          )}
-        </div>
-        {hero ? (
-          /* 🎨 시안 히어로 본문: 카테고리 줄 + 제목/절약 + note(인용+큐레이터 얼굴/이름) — 가격은 이미지 칩에 통합. */
-          <div className="p-3.5">
-            <span className="text-[11px] font-extrabold tracking-[0.14em] text-[#FF5634]">강력 추천 · {heroCatLabel}</span>
-            <div className="mt-1.5 flex items-start justify-between gap-2.5">
-              <p className="text-[16px] font-bold leading-snug text-[#141A2E] dark:text-white line-clamp-2">{pin.product_name}</p>
-              {savings > 0 && (
-                <span className="shrink-0 mt-0.5 text-[12px] font-extrabold text-[#0E9F6E]">{formatWon(savings)}<span className="font-semibold opacity-70"> 절약</span></span>
-              )}
-            </div>
-            {pin.note && (
-              <div className="mt-3 pl-3 border-l-[2.5px] border-[#FF5634]">
-                <p className="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">“{pin.note}”</p>
-                {(curatorName || curatorAvatar) && (
-                  <div className="mt-2 flex items-center gap-1.5">
-                    {curatorAvatar
-                      ? <img src={cfImage(curatorAvatar, { width: 40, format: 'auto' }) || curatorAvatar} alt="" className="w-5 h-5 rounded-full object-cover" loading="lazy" decoding="async" />
-                      : <div className="w-5 h-5 rounded-full bg-gradient-to-br from-gray-300 to-gray-400" />}
-                    {curatorName && <span className="text-[11.5px] font-semibold text-gray-500 dark:text-gray-400">{curatorName}</span>}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="p-2.5">
-            <p className="text-[13px] font-bold leading-tight line-clamp-2 text-[#141A2E] dark:text-white">{pin.product_name}</p>
-            <div className="mt-1.5 flex items-baseline gap-1.5 flex-wrap">
-              {hasDeal && (
-                <span className="text-[11px] line-through text-gray-400 dark:text-gray-500">{formatWon(pin.original_price as number)}</span>
-              )}
-              <span className="text-[15px] font-extrabold text-[#141A2E] dark:text-white">{formatWon(pin.price)}</span>
-              {savings > 0 && (
-                <span className="ml-auto text-[11px] font-extrabold text-[#0E9F6E]">{formatWon(savings)}<span className="font-semibold opacity-70"> 절약</span></span>
-              )}
-            </div>
-            {/* 추천 이유(note): 좌측 coral rule + 인용 */}
-            {pin.note && (
-              <div className="mt-2 pl-2 border-l-2 border-[#FF5634]">
-                <p className="text-[11.5px] leading-snug line-clamp-2 text-gray-700 dark:text-gray-300">{pin.note}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </a>
-      {/* 🛡️ 2026-05-27 (사용자 요청): 본인 view 에서 핀 삭제 버튼. */}
-      {isOwner && (
+    <EditorialProductCard
+      product={{ id: pin.product_id, name: pin.product_name, price: pin.price, original_price: pin.original_price, image: pin.thumbnail || pin.image_url, dominant_color: pin.dominant_color }}
+      href={redirectUrl}
+      variant={hero ? 'hero' : 'standard'}
+      aspect="3by2"
+      aboveFold={aboveFold}
+      rank={index + 1}
+      note={pin.note}
+      curatorName={curatorName}
+      curatorAvatar={curatorAvatar}
+      heroCatLabel={heroCatLabel}
+      onColor={(c) => { if (!pin.dominant_color) reportDominantColor(pin.product_id, c) }}
+      overlay={isOwner ? (
+        // 🛡️ 2026-05-27 (사용자 요청): 본인 view 에서 핀 삭제 버튼.
         <button
           onClick={handleDelete}
           disabled={deleting}
@@ -581,8 +493,8 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, hero, onDeleted, cura
         >
           ✕
         </button>
-      )}
-    </div>
+      ) : null}
+    />
   )
 }
 
