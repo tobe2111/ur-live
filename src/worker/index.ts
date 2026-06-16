@@ -1336,6 +1336,10 @@ app.route('/api/admin/distributor', distributorAdminRoutes); // 유통스타트:
 app.use('/api/wholesale/banners', publicCache(120));
 app.use('/api/wholesale/mall', publicCache(300));
 app.use('/api/wholesale/board/posts', publicCache(120));
+// 🏭 2026-06-16 [LOADING_ADDITIVE] 상품 상세(/catalog/:id) 게스트 엣지캐시 — edgeCache(bypassIfAuthed): 게스트=캐시(가격 null),
+//   로그인(Authorization 헤더)=bypass→핸들러(등급가). 200 만 캐시(edge-cache.ts:150, 4xx/5xx 제외) → 머니/오류 안전.
+//   리스트(/catalog)는 핸들러 내부 조기 단락으로 처리(여긴 /catalog/* = 상세만 매칭).
+app.use('/api/wholesale/catalog/*', edgeCache(120));
 app.route('/api/wholesale', wholesaleRoutes); // 유통스타트: 유통사 도매 카탈로그 + B2B 주문 (Phase 2)
 app.route('/api/supplier/wholesale', wholesaleSupplierRoutes); // 유통스타트: 제조사 도매주문 송장/반품 (Phase 3)
 app.route('/api/wholesale', wholesaleClaimsRoutes); // BIZ-1: 유통사 발의 클레임/RMA + admin 검수
