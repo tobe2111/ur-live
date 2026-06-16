@@ -21,6 +21,7 @@ import { formatWon, formatNumber } from '@/utils/format'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
+import { Search, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
 import CuratorTabs, { type CuratorTab } from './curator-page/CuratorTabs'
@@ -83,6 +84,8 @@ export default function CuratorPage() {
   const [loading, setLoading] = useState(!data)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<CuratorTab>('home')
+  // 🔍 2026-06-16 링크샵 시안: 검색 — 상품명 + 추천 코멘트(note) 라이브 필터.
+  const [query, setQuery] = useState('')
   const currentUser = useAuthStore((s: any) => s.user)
   // 🛡️ 2026-05-27 (편집 UI 영구 fix): useAuthStore.user 가 sync 안 된 카카오 user 도 isOwner 인정.
   //   localStorage user_id fallback — RouteGuards / lib/api 의 토큰 검사 패턴과 일관.
@@ -204,6 +207,24 @@ export default function CuratorPage() {
     )
   }
 
+  // 🔍 2026-06-16 링크샵 시안: 탭 공통 — 검색 필터(상품명+note) + 빈/무결과 처리.
+  const applyQ = (arr: CuratorPin[]) => {
+    const q = query.trim().toLowerCase()
+    return q ? arr.filter(p => (`${p.product_name} ${p.note || ''}`).toLowerCase().includes(q)) : arr
+  }
+  const onPinDeleted = (pinId: number) => setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== pinId) } : prev)
+  const renderPinTab = (arr: CuratorPin[], emptyType?: 'shop' | 'voucher') => {
+    if (arr.length === 0) return <EmptyLinkshop handle={curator.handle} isOwner={isOwner} emptyType={emptyType} />
+    const f = applyQ(arr)
+    if (f.length === 0) return (
+      <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+        <p className="text-sm font-bold text-gray-900 dark:text-white">검색 결과가 없어요</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">다른 키워드로 찾아보세요.</p>
+      </div>
+    )
+    return <PinGrid pins={f} handle={curator.handle} isOwner={isOwner} onPinDeleted={onPinDeleted} />
+  }
+
   return (
     <>
       <SEO
@@ -252,6 +273,25 @@ export default function CuratorPage() {
         />
         {/* 🛠️ 2026-06-16: 핀이 있을 때만 적립 strip — 갓 가입(온보딩)·빈 링크샵엔 0/0/0 노이즈 숨김. */}
         {isOwner && pins.length > 0 && <OwnerEarningsStrip />}
+        {/* 🔍 2026-06-16 링크샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터. */}
+        {pins.length > 0 && (
+          <div className="max-w-3xl mx-auto px-4 pt-3 pb-1">
+            <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212]">
+              <Search className="w-4 h-4 text-gray-400 shrink-0" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="상품·딜 이름으로 검색"
+                className="flex-1 min-w-0 bg-transparent outline-none text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400"
+              />
+              {query && (
+                <button onClick={() => setQuery('')} aria-label="지우기" className="shrink-0 w-5 h-5 rounded-full bg-gray-300 dark:bg-[#3A3A3A] text-white flex items-center justify-center">
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         <CuratorTabs
           tab={tab}
           onChange={setTab}
@@ -260,36 +300,9 @@ export default function CuratorPage() {
           voucherCount={voucherPins.length}
         />
 
-        {tab === 'home' && (
-          pins.length === 0
-            ? <EmptyLinkshop handle={curator.handle} isOwner={isOwner} />
-            : <PinGrid
-                pins={homePins}
-                handle={curator.handle}
-                isOwner={isOwner}
-                onPinDeleted={(pinId) => setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== pinId) } : prev)}
-              />
-        )}
-        {tab === 'shop' && (
-          shopPins.length === 0
-            ? <EmptyLinkshop handle={curator.handle} isOwner={isOwner} emptyType="shop" />
-            : <PinGrid
-                pins={shopPins}
-                handle={curator.handle}
-                isOwner={isOwner}
-                onPinDeleted={(pinId) => setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== pinId) } : prev)}
-              />
-        )}
-        {tab === 'vouchers' && (
-          voucherPins.length === 0
-            ? <EmptyLinkshop handle={curator.handle} isOwner={isOwner} emptyType="voucher" />
-            : <PinGrid
-                pins={voucherPins}
-                handle={curator.handle}
-                isOwner={isOwner}
-                onPinDeleted={(pinId) => setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== pinId) } : prev)}
-              />
-        )}
+        {tab === 'home' && renderPinTab(homePins)}
+        {tab === 'shop' && renderPinTab(shopPins, 'shop')}
+        {tab === 'vouchers' && renderPinTab(voucherPins, 'voucher')}
         {/* 🛡️ 2026-06-11 (사용자): '정보' 탭 제거 — 핸들 변경 기능만 오너 전용 슬림 행으로 보존 */}
         {isOwner && (
           <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between text-sm border-t border-gray-100 dark:border-[#1A1A1A] mt-6">
