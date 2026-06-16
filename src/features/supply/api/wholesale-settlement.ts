@@ -17,6 +17,30 @@ const REFUND_WINDOW_DAYS = 7
 // 🛡️ 브랜드제품: '거의 당일' 정산이되 최소 환불 클로백 안전창(1일) 확보 — 지급 후 환불로 인한 미회수 방지.
 const BRAND_REFUND_WINDOW_DAYS = 1
 
+/**
+ * 🆕 2026-06-16 플랫폼 수수료율(%) — 대표 모델: "공급가에 우리(플랫폼) 마진 N%가 포함".
+ *   제조사 정산 = max(원가, round(공급가 × (1 − N/100)))  → 제조사는 원가 이상 보장.
+ *   플랫폼 수익 = 공급가 − 제조사 정산  (스프레드가 충분하면 정확히 공급가의 N%).
+ *   어드민(platform_settings.wholesale_platform_commission_pct)에서 조정. 기본 10, 0~90 클램프.
+ */
+export const DEFAULT_PLATFORM_COMMISSION_PCT = 10
+export async function loadPlatformCommissionPct(DB: D1Database): Promise<number> {
+  const row = await DB.prepare(
+    "SELECT value FROM platform_settings WHERE key = 'wholesale_platform_commission_pct'"
+  ).first<{ value: string }>().catch(() => null)
+  const v = Number(row?.value)
+  return Number.isFinite(v) && v >= 0 && v <= 90 ? v : DEFAULT_PLATFORM_COMMISSION_PCT
+}
+
+/** 라인 단가 정산 분해 — 제조사 단가(원가 하한) / 플랫폼 단가(수수료). 주문생성·정산 공용 SSOT. */
+export function splitWholesaleUnit(distributorUnit: number, costFloor: number, commPct: number): { manufacturerUnit: number; platformUnit: number } {
+  const dist = Math.max(0, Math.floor(distributorUnit || 0))
+  const floor = Math.max(0, Math.floor(costFloor || 0))
+  const c = Number.isFinite(commPct) ? Math.min(90, Math.max(0, commPct)) : DEFAULT_PLATFORM_COMMISSION_PCT
+  const manufacturerUnit = Math.max(floor, Math.round(dist * (1 - c / 100)))
+  return { manufacturerUnit, platformUnit: Math.max(0, dist - manufacturerUnit) }
+}
+
 // 🛡️ 2026-06-08 OPS-2: 완료된 ensure 만 promise 로 캐시(supply-visibility.ts 패턴).
 //   기존 WeakSet 는 add 를 await *전* 에 해서, 첫 호출의 ALTER 가 일시 실패(락/타임아웃)하면
 //   DB 가 '완료됨'으로 영구 마킹돼 컬럼 없는 채 모든 후속 호출이 통과 → source 쿼리 500 영구화.
@@ -73,13 +97,17 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
 
   let credited = 0
   const notifySuppliers = new Set<number>()
+  // 🆕 2026-06-16 정산 분배: 제조사 = max(원가, 공급가×(1−수수료%)), 플랫폼 = 공급가 − 제조사(= 수수료).
+  const commPct = await loadPlatformCommissionPct(DB)
   const generalAvailableAt = new Date(Date.now() + REFUND_WINDOW_DAYS * 86400_000).toISOString()
   const brandAvailableAt = new Date(Date.now() + BRAND_REFUND_WINDOW_DAYS * 86400_000).toISOString()
   for (const r of rows.results || []) {
     const qty = Math.max(1, Math.floor(Number(r.qty) || 1))
-    const supplyAmount = Math.floor(Number(r.base_supply_price) || 0) * qty
+    const distUnit = Math.floor(Number(r.distributor_unit_price) || 0) // 유통사 지불 단가(공급가, tier할인 반영)
+    const { manufacturerUnit } = splitWholesaleUnit(distUnit, Number(r.base_supply_price) || 0, commPct)
+    const supplyAmount = manufacturerUnit * qty // 제조사 정산액(원가 하한)
     if (supplyAmount <= 0) continue
-    const retailAmount = Math.floor(Number(r.distributor_unit_price) || 0) * qty // 유통사 지불액(참고)
+    const retailAmount = distUnit * qty // 유통사 지불액(공급가 — retail−supply = 플랫폼 수수료)
     const isBrand = Number(r.is_brand_product) === 1
     const availableAt = isBrand ? brandAvailableAt : generalAvailableAt
     const noteText = isBrand ? 'B2B 도매주문(브랜드 — 익일정산/1일보호창)' : 'B2B 도매주문(일반 — 7일성숙)'

@@ -25,7 +25,7 @@ import { getSupplyMeta } from '@/worker/utils/product-supply-meta'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAuth } from '@/worker/middleware/auth'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
-import { creditSupplierOnWholesaleOrder } from './wholesale-settlement'
+import { creditSupplierOnWholesaleOrder, loadPlatformCommissionPct, splitWholesaleUnit } from './wholesale-settlement'
 import { generateWholesaleSalesInvoice, generateWholesalePurchaseInvoices, listDistributorSalesInvoices } from './wholesale-tax-invoices'
 import { ensureSupplyVisibilitySchema, visibilityWhere } from './supply-visibility'
 import { ensureDepositSchema, deductDeposit, recordDepositTxn, compensateDepositOrderOnce } from './wholesale-deposit-core'
@@ -1509,7 +1509,8 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     await ensureSupplyVisibilitySchema(DB)
     await ensureQtyConstraintSchema(DB) // BIZ-8: pack_size / order_multiple 컬럼 보장(SELECT 전).
     // 🛡️ PRC-1: 최소 플랫폼 마진율(%) 요청당 1회 — CHARGE 가 DISPLAY(카탈로그)와 동일 floor 를 쓰도록(기본 0=현행 불변).
-    const [sg, table, minMarginPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
+    // 🆕 2026-06-16 commPct: 정산 분배(제조사 vs 플랫폼). 정산 호출(creditSupplier…)이 같은 요청에서 동기 실행 → drift 없음.
+    const [sg, table, minMarginPct, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB), loadPlatformCommissionPct(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
     const ids = [...reqMap.keys()]
     const placeholders = ids.map(() => '?').join(',')
     // 가시성 가드 — 유통사가 볼 수 없는(선정 안 된) 공급상품은 주문 불가.
@@ -1567,7 +1568,9 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
       const unit = tierUnitPrice(price, qty, tierMap.get(p.id), tierFloor)
       const lineTotal = unit * qty
       subtotal += lineTotal
-      supplyTotal += p.supply_price * qty
+      // 🆕 2026-06-16 supply_total = 제조사 정산액(공급가×(1−수수료%), 원가 하한). margin_total = subtotal − supply_total = 플랫폼 수수료.
+      const { manufacturerUnit } = splitWholesaleUnit(unit, p.supply_price, commPct)
+      supplyTotal += manufacturerUnit * qty
       lines.push({ product_id: p.id, supplier_id: p.supplier_id, name: p.name, qty, base: p.supply_price, unit, line_total: lineTotal, product_shipping_fee: parseProductShipFee(shipMeta.get(p.id)) })
     }
     if (subtotal <= 0) return c.json({ success: false, error: '결제 금액이 올바르지 않습니다' }, 400)
