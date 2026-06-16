@@ -127,8 +127,8 @@ export default function WholesaleDashboardPage() {
     { label: '거래내역', desc: '매입 거래명세', icon: Receipt, to: '/wholesale/statement' },
     { label: '자료', desc: '거래명세서·세금계산서', icon: FileText, to: '/wholesale/documents' },
     { label: 'OEM/ODM', desc: '제조 의뢰', icon: Factory, to: '/wholesale/oem' },
-    // 🛒 2026-06-12 네이버 커머스API Phase A — 스마트스토어 연동 (사입→내 스토어 등록).
-    { label: '스마트스토어 연동', desc: '사입 상품을 내 스토어로', icon: Store, to: '/wholesale/naver' },
+    // 🛒 2026-06-16 무재고 위탁판매 허브 — 스마트스토어/쿠팡 연동 통합(채널 연동).
+    { label: '판매채널 연동', desc: '사입 상품을 내 스토어로', icon: Store, to: '/wholesale/channels' },
   ]
 
   return (
