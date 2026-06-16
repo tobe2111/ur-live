@@ -449,7 +449,7 @@ adminKtAlphaRoutes.post('/kt-alpha/bulk-import', cors(), async (c) => {
         `[${r.brand_name || '브랜드'}] ${r.name}`,
         r.content || '',
         r.content_add_desc || '',
-        r.valid_period_days ? `\n📅 유효기간: ${r.valid_period_days}일 (KT Alpha B2B 정책)` : '',
+        r.valid_period_days ? `\n📅 유효기간: ${r.valid_period_days}일` : '',
         '\n⚠️ 본 상품은 본인 명의 휴대폰으로만 발송되며, 발송 후 환불/취소가 불가합니다.',
       ].filter(Boolean).join('\n')
 
