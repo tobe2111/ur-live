@@ -1330,6 +1330,12 @@ app.route('/api/supply', supplyRoutes);
 app.route('/api/supplier', supplierAuthRoutes); // 도매몰 INC-3: 외부 도매상 인증
 app.route('/api/supplier', supplierDashboardRoutes); // 도매몰 INC-4/6: 공급자 카탈로그 self-serve + 대시보드
 app.route('/api/admin/distributor', distributorAdminRoutes); // 유통스타트: 유통사 등급/마진 설정 (Phase 1b)
+// 🏭 2026-06-16 [LOADING_ADDITIVE] 도매 user-agnostic 엔드포인트 엣지캐시 — 소비자 /api/products 와 동일 publicCache.
+//   실측: 기존 cf-cache DYNAMIC(매 요청 워커) → publicCache 로 HIT(~10ms). banners/mall/board 는 전 사용자 동일 응답.
+//   (catalog 는 등급가라 핸들러 내부 캐시로 처리 — 여기 미적용.) 라우트 mount 보다 먼저 등록해야 적용됨.
+app.use('/api/wholesale/banners', publicCache(120));
+app.use('/api/wholesale/mall', publicCache(300));
+app.use('/api/wholesale/board/posts', publicCache(120));
 app.route('/api/wholesale', wholesaleRoutes); // 유통스타트: 유통사 도매 카탈로그 + B2B 주문 (Phase 2)
 app.route('/api/supplier/wholesale', wholesaleSupplierRoutes); // 유통스타트: 제조사 도매주문 송장/반품 (Phase 3)
 app.route('/api/wholesale', wholesaleClaimsRoutes); // BIZ-1: 유통사 발의 클레임/RMA + admin 검수

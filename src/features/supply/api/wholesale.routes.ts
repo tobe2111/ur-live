@@ -1087,6 +1087,25 @@ app.get('/catalog', async (c) => {
   const brandsMode = c.req.query('brands') === '1'
 
   try {
+    // 🏭 2026-06-16 [LOADING_ADDITIVE] (사용자 신고 — 도매 느림, 전수조사): 게스트 기본 카탈로그 조기 캐시 단락.
+    //   실측: 도매 catalog 는 publicCache 미적용 → 매 요청 워커 풀(server-timing 200-470ms, 저트래픽 cold isolate 빈발).
+    //   소비자(/api/products)는 edge HIT(0.14s). 여기서 핸들러 맨 앞(pragma/ensure/lookup/query 전)에 caches.default(canon)
+    //   를 직접 read → guest HIT 면 즉시 반환(setup 전부 skip). 아래 put(비어있지 않을 때만)·prewarm 과 동일 키.
+    //   guest = 가격 null 이라 머니 무관. 로그인은 미적용(등급가 → 기존 grade-cache 경로).
+    {
+      const isDefaultGuestReqEarly = guest && page === 1 && !search && !category && !sortKey
+        && minPrice == null && maxPrice == null && !inStock && !premiumOnly && !brand && !brandsMode
+      if (isDefaultGuestReqEarly) {
+        try {
+          // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts 동일 패턴)
+          const early = (await caches.default.match(new Request(c.req.url, { method: 'GET' })).catch(() => null)) as Response | null
+          if (early) {
+            const body = await early.text()
+            if (body) return c.body(body, 200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60', 'CDN-Cache-Control': 'public, max-age=300', 'X-WS-Cache': 'HIT' })
+          }
+        } catch { /* caches 미지원/오류 — 라이브 쿼리로 진행 */ }
+      }
+    }
     // 🏭 2026-06-10 (사용자 신고 — 카탈로그 느림, 전수조사): pragma 존재 체크를 isolate 당 1회로.
     //   기존: 매 요청 pragma_table_info 쿼리(+1 RTT). 양성(컬럼 있음)만 캐시 — 음성은 repair 후 즉시 복귀.
     if (!_supplyCatalogReady.has(DB)) {
