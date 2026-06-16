@@ -250,7 +250,8 @@ export default function CuratorPage() {
           onCopyLink={copyLink}
           onCuratorUpdate={(next) => setData(prev => prev ? { ...prev, curator: { ...prev.curator, ...next } } : prev)}
         />
-        {isOwner && <OwnerEarningsStrip />}
+        {/* 🛠️ 2026-06-16: 핀이 있을 때만 적립 strip — 갓 가입(온보딩)·빈 링크샵엔 0/0/0 노이즈 숨김. */}
+        {isOwner && pins.length > 0 && <OwnerEarningsStrip />}
         <CuratorTabs
           tab={tab}
           onChange={setTab}
