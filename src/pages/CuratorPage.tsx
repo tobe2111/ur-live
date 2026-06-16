@@ -586,7 +586,7 @@ function EmptyLinkshop({ handle, isOwner, emptyType }: { handle: string; isOwner
   //   외부 이미지 핫링크 대신 스켈레톤 블록(프로덕션 안전) — "카드가 이렇게 채워진다" 미리보기.
   return (
     <div className="max-w-3xl mx-auto px-4 pt-4">
-      <div className="relative overflow-hidden" style={{ height: 400 }}>
+      <div className="relative overflow-hidden" style={{ height: 300 }}>
         <div
           className="grid grid-cols-2 gap-3 pointer-events-none select-none"
           style={{ filter: 'blur(3px) saturate(.9)', opacity: 0.55, WebkitMaskImage: 'linear-gradient(180deg, rgba(0,0,0,.85) 0%, rgba(0,0,0,.35) 45%, transparent 80%)', maskImage: 'linear-gradient(180deg, rgba(0,0,0,.85) 0%, rgba(0,0,0,.35) 45%, transparent 80%)' }}
