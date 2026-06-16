@@ -13,16 +13,36 @@ jobs:
   diag:
     runs-on: ubuntu-latest
     steps:
-      - name: wholesale catalog API
+      - name: wholesale 전수 레이턴시 (왜 느린지)
         run: |
+          echo "##### baseline: /api/version x6 (cold→warm) #####"
+          for i in 1 2 3 4 5 6; do
+            curl -s -o /dev/null -w "version#$i  HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s\n" --max-time 30 "https://live.ur-team.com/api/version" || true
+          done
+          echo
+          echo "##### wholesale 엔드포인트 (2회씩 — cold→warm/cache) #####"
           for u in \
-            "https://live.ur-team.com/api/wholesale/catalog" \
-            "https://live.ur-team.com/api/wholesale/catalog?limit=2" \
-            "https://live.ur-team.com/api/wholesale/home" \
-            "https://live.ur-team.com/api/version" ; do
-            echo "===== $u ====="
-            curl -s -o /tmp/body -w "HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s\n" --max-time 30 "$u" -H 'accept: application/json' || true
-            head -c 500 /tmp/body; echo
+            "/api/wholesale/catalog" \
+            "/api/wholesale/catalog/6" \
+            "/api/wholesale/banners" \
+            "/api/wholesale/mall" \
+            "/api/wholesale/board/posts?type=notice" \
+            "/api/wholesale/catalog?brands=1" ; do
+            for i in 1 2; do
+              echo "===== [$i] $u ====="
+              curl -s -o /tmp/b -D /tmp/hh -w "HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s | size %{size_download}\n" --max-time 30 "https://live.ur-team.com$u" -H 'accept: application/json' || true
+              grep -i "cf-cache-status\|x-grade-cache\|^cache-control\|cdn-cache-control\|server-timing" /tmp/hh || true
+            done
+          done
+          echo
+          echo "##### 소비자 비교 (warm) #####"
+          curl -s -o /dev/null -w "products  HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s\n" --max-time 30 "https://live.ur-team.com/api/products?page=1&limit=24&deal_only=1&sort=price_low" || true
+          curl -s -o /dev/null -w "groupbuy  HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s\n" --max-time 30 "https://live.ur-team.com/api/group-buy/products?status=active" || true
+          echo
+          echo "##### /wholesale HTML server-timing x2 #####"
+          for i in 1 2; do
+            curl -s -o /dev/null -D /tmp/h -w "wholesale-html#$i  HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s\n" --max-time 30 "https://live.ur-team.com/wholesale" || true
+            grep -i "server-timing\|x-ssr-status\|cf-cache" /tmp/h || true
           done
 
       - name: 카드 이미지 로딩 타이밍 (교환권/상품)
