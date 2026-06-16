@@ -41,7 +41,7 @@ const WholesaleProposalModal = lazy(() => import('./wholesale/WholesaleProposalM
 
 // ──────────────────────────────────────────────────────────────
 // 🏭 2026-06-04 유통스타트 도매몰 홈 — Claude Design 시안 구현 (TDS/Toss 라이트).
-//   무채색 베이스 + #FF0033 1포인트 · 브랜드 히어로 · 사입 대시보드 · 정제된 카드.
+//   무채색 베이스 + #FC5424 1포인트 · 브랜드 히어로 · 사입 대시보드 · 정제된 카드.
 //   제조사 신원·원가(supply_price) 비노출, 등급 공급가 + 권장가(마진 산출)만.
 //   라이트 고정 B2B 서피스 (대시보드 계열) — dark: variant 없음.
 // ──────────────────────────────────────────────────────────────
@@ -191,7 +191,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const meQ = useWholesaleMe()
   const depositQ = useWholesaleDeposit()
   const homeQ = useWholesaleHome()
-  // 🏬 2026-06-09 멀티-몰 브랜딩 — host → mall (없으면 유통스타트/#FF0033 기본 → byte-identical).
+  // 🏬 2026-06-09 멀티-몰 브랜딩 — host → mall (없으면 유통스타트/#FC5424 기본 → byte-identical).
   //   헤더 워드마크(name+logo) + 브랜드 색(CSS 변수 --ud-brand). 기본 몰이면 모든 값이 현 디폴트와 동일.
   const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo } = useWholesaleMall()
   // 도매 서피스에서 문서 타이틀을 몰 이름으로(선택). 기본 몰이면 '유통스타트' → 동작 불변.
@@ -406,7 +406,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const grade = me?.grade || home?.grade || 'C'
 
   return (
-    // 🏬 --ud-brand: 몰 브랜드 색(기본 몰 → #FF0033 → 현 디자인과 동일). 주요 브랜드 요소가 var() 로 참조.
+    // 🏬 --ud-brand: 몰 브랜드 색(기본 몰 → #FC5424 → 현 디자인과 동일). 주요 브랜드 요소가 var() 로 참조.
     <div className="min-h-screen" style={{ background: '#fff', color: WT.ink, ['--ud-brand' as string]: mallBrand }}>
       <SEO
         domain="wholesale"

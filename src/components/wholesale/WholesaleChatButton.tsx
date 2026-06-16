@@ -68,11 +68,11 @@ export default function WholesaleChatButton({ initialCounterpartId = null, initi
             : t('wholesaleChat.open', { defaultValue: '채팅 열기' })
         }
         className="fixed z-40 bottom-5 right-5 h-14 w-14 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95"
-        style={{ background: '#FF0033', color: '#fff', boxShadow: '0 6px 20px -6px rgba(255,0,51,0.6)' }}
+        style={{ background: '#FC5424', color: '#fff', boxShadow: '0 6px 20px -6px rgba(255,0,51,0.6)' }}
       >
         <MessageCircle className="w-6 h-6" strokeWidth={2.2} />
         {unread > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 flex items-center justify-center rounded-full bg-white text-[#FF0033] text-[11px] font-extrabold border-2 border-[#FF0033]">
+          <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 flex items-center justify-center rounded-full bg-white text-[#FC5424] text-[11px] font-extrabold border-2 border-[#FC5424]">
             {unread > 99 ? '99+' : unread}
           </span>
         )}

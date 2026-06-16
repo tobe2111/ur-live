@@ -59,7 +59,7 @@ export default function HeroSection({ loggedIn, userSession, grade, me, monthSpe
   return (
     <div className="pt-4 pb-1 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
       {/* 좌 — 트러스트 히어로 (창고 사진 + 다크 그라데이션 오버레이, 시안 그대로) */}
-      <div className="relative rounded-2xl overflow-hidden min-h-[244px] lg:min-h-[290px] flex" style={{ background: '#15171C' }}>
+      <div className="relative rounded-2xl overflow-hidden min-h-[244px] lg:min-h-[290px] flex" style={{ background: '#0C2454' }}>
         <img src={WHOLESALE_HERO_IMG} alt="" aria-hidden onError={(e) => { e.currentTarget.style.display = 'none' }} className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(100deg, rgba(21,23,28,0.92) 0%, rgba(21,23,28,0.72) 48%, rgba(21,23,28,0.20) 100%)' }} />
         <div className="relative p-6 lg:p-9 flex flex-col justify-center text-white lg:max-w-[560px]">

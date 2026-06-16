@@ -49,17 +49,17 @@ export default function WholesaleStaffLoginPage() {
     } finally { setLoading(false) }
   }
 
-  const inputCls = 'w-full h-12 px-3.5 rounded-xl border border-[#ECEEF1] text-[15px] text-[#17181C] outline-none focus:border-[#17181C] transition-colors'
+  const inputCls = 'w-full h-12 px-3.5 rounded-xl border border-[#ECEEF1] text-[15px] text-[#0C2454] outline-none focus:border-[#0C2454] transition-colors'
 
   return (
-    <div className="min-h-screen bg-white text-[#17181C]">
+    <div className="min-h-screen bg-white text-[#0C2454]">
       <SEO title="직원 로그인 — 유통사 도매몰" description="유통사 직원 로그인 — 회사 계정으로 사입을 도와드립니다." url="/wholesale/staff-login" noindex />
       <header className="border-b border-[#ECEEF1]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">
           <button onClick={() => navigate('/wholesale')} className="flex items-center gap-2">
             <WholesaleWordmark height={28} />
           </button>
-          <button onClick={() => navigate('/wholesale/login')} className="text-sm text-[#4E5560] hover:text-[#17181C] font-medium">대표자 로그인</button>
+          <button onClick={() => navigate('/wholesale/login')} className="text-sm text-[#4E5560] hover:text-[#0C2454] font-medium">대표자 로그인</button>
         </div>
       </header>
 
@@ -79,14 +79,14 @@ export default function WholesaleStaffLoginPage() {
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} disabled={loading} className={inputCls} placeholder="비밀번호" autoComplete="current-password" />
           </div>
           <button type="submit" disabled={loading}
-            className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-[#FF0033] text-white font-bold text-[15px] hover:bg-[#e0002e] transition-colors disabled:opacity-60 mt-1">
+            className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-[#FC5424] text-white font-bold text-[15px] hover:bg-[#e0002e] transition-colors disabled:opacity-60 mt-1">
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>로그인 <ArrowRight className="w-5 h-5" /></>}
           </button>
         </form>
 
         <div className="mt-6 text-center text-sm text-[#8A929E]">
           대표자(회사 owner)이신가요?{' '}
-          <button onClick={() => navigate('/wholesale/login')} className="text-[#FF0033] font-semibold">대표자 로그인 →</button>
+          <button onClick={() => navigate('/wholesale/login')} className="text-[#FC5424] font-semibold">대표자 로그인 →</button>
         </div>
       </main>
     </div>

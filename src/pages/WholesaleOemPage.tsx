@@ -83,7 +83,7 @@ export default function WholesaleOemPage() {
         />
         <Factory className="w-12 h-12 text-[#D1D6DB] mb-4" />
         <p className="text-[#4E5560] mb-6">유통사 로그인 후 이용할 수 있습니다.</p>
-        <button onClick={() => navigate('/wholesale/login')} className="px-6 py-3 bg-[#17181C] text-white rounded-lg font-semibold">유통사 로그인</button>
+        <button onClick={() => navigate('/wholesale/login')} className="px-6 py-3 bg-[#0C2454] text-white rounded-lg font-semibold">유통사 로그인</button>
       </div>
     )
   }
@@ -108,7 +108,7 @@ export default function WholesaleOemPage() {
   }
 
   const requests = listQ.data ?? []
-  const inputCls = 'w-full px-3 py-2.5 border border-[#D1D6DB] rounded-lg text-sm text-[#17181C] focus:ring-2 focus:ring-[#17181C]/15 outline-none'
+  const inputCls = 'w-full px-3 py-2.5 border border-[#D1D6DB] rounded-lg text-sm text-[#0C2454] focus:ring-2 focus:ring-[#0C2454]/15 outline-none'
 
   return (
     <div className="min-h-screen bg-[#F4F5F7]">
@@ -116,8 +116,8 @@ export default function WholesaleOemPage() {
       <header className="bg-white border-b border-[#ECEEF1]">
         <div className="ur-content-medium px-4 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Factory className="w-6 h-6 text-[#17181C]" />
-            <span className="text-lg font-bold text-[#17181C]">OEM / ODM 신청</span>
+            <Factory className="w-6 h-6 text-[#0C2454]" />
+            <span className="text-lg font-bold text-[#0C2454]">OEM / ODM 신청</span>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => downloadCsv('/api/wholesale/catalog-export', 'wholesale-catalog.xlsx')}
@@ -128,14 +128,14 @@ export default function WholesaleOemPage() {
               className="inline-flex items-center gap-1 px-3 py-2 text-sm border border-[#D1D6DB] rounded-lg text-[#4E5560] hover:bg-[#F4F5F7]">
               <Download className="w-4 h-4" /> 주문양식
             </button>
-            <button onClick={() => navigate('/wholesale')} className="text-sm text-[#4E5560] hover:text-[#17181C]">← 도매몰</button>
+            <button onClick={() => navigate('/wholesale')} className="text-sm text-[#4E5560] hover:text-[#0C2454]">← 도매몰</button>
           </div>
         </div>
       </header>
 
       <main className="ur-content-medium px-4 lg:px-8 py-6 space-y-6">
         <section className="bg-white rounded-2xl border border-[#ECEEF1] p-6">
-          <h2 className="text-base font-bold text-[#17181C] mb-1">자사 브랜드 제품 제작 신청</h2>
+          <h2 className="text-base font-bold text-[#0C2454] mb-1">자사 브랜드 제품 제작 신청</h2>
           <p className="text-xs text-[#4E5560] mb-4">원하는 제품을 신청하면 유통스타트가 제조사를 찾아 연결하고 생산까지 지원합니다.</p>
           <form onSubmit={submit} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
@@ -169,14 +169,14 @@ export default function WholesaleOemPage() {
               <label className="block text-xs font-medium text-[#4E5560] mb-1">상세 요청</label>
               <textarea rows={3} value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} className={inputCls} placeholder="원료, 패키지, 인증, 납기 등" />
             </div>
-            <button type="submit" disabled={saving} className="w-full py-3 rounded-xl bg-[#17181C] text-white font-semibold text-sm disabled:opacity-60">
+            <button type="submit" disabled={saving} className="w-full py-3 rounded-xl bg-[#0C2454] text-white font-semibold text-sm disabled:opacity-60">
               {saving ? '접수 중...' : '신청하기'}
             </button>
           </form>
         </section>
 
         <section>
-          <h2 className="text-sm font-bold text-[#17181C] mb-3">내 신청 내역</h2>
+          <h2 className="text-sm font-bold text-[#0C2454] mb-3">내 신청 내역</h2>
           {listQ.isLoading ? (
             <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#B6BCC4]" /></div>
           ) : requests.length === 0 ? (
@@ -189,8 +189,8 @@ export default function WholesaleOemPage() {
                   <div key={r.id} className="bg-white rounded-xl border border-[#ECEEF1] p-4">
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#17181C] text-white">{r.kind}</span>
-                        <p className="font-semibold text-[#17181C] text-sm">{r.product_name}</p>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#0C2454] text-white">{r.kind}</span>
+                        <p className="font-semibold text-[#0C2454] text-sm">{r.product_name}</p>
                       </div>
                       <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${st.cls}`}>{st.label}</span>
                     </div>

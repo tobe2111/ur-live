@@ -34,7 +34,7 @@ export default function Dashboard({ grade, marginPct, company, monthSpend, order
           <span className="text-[12px] shrink-0" style={{ color: WT.ink3 }}>예치금 잔액</span>
           <span className="text-[17px] font-extrabold tabular-nums truncate" style={{ color: WT.ink }}>{won(depositBalance)}</span>
         </div>
-        <button onClick={onCharge} className="shrink-0 rounded-lg px-3.5 py-1.5 text-[12px] font-bold text-white" style={{ background: 'var(--ud-brand, #FF0033)' }}>충전하기</button>
+        <button onClick={onCharge} className="shrink-0 rounded-lg px-3.5 py-1.5 text-[12px] font-bold text-white" style={{ background: 'var(--ud-brand, #FC5424)' }}>충전하기</button>
       </div>
     </div>
   )

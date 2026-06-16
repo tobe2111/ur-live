@@ -16,7 +16,7 @@ import { WholesaleWordmark } from './wholesale-catalog/WholesaleLogo'
 
 export default function WholesaleJoinPage() {
   const navigate = useNavigate()
-  // 🏬 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FF0033 → byte-identical).
+  // 🏬 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FC5424 → byte-identical).
   const { displayName: mallName, logoUrl: mallLogo } = useWholesaleMall()
   const hasSeller = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
   // 카카오로 로그인된 유저(아직 유통회원 아님) — 이메일/비번 없이 사업자 정보만 입력.
@@ -131,7 +131,7 @@ export default function WholesaleJoinPage() {
 
   if (pendingStatus) {
     return (
-      <div className="min-h-screen bg-white text-[#17181C] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-white text-[#0C2454] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-5"><span className="text-2xl">⏳</span></div>
           <h1 className="text-xl font-extrabold mb-2">승인 심사 중이에요</h1>
@@ -141,8 +141,8 @@ export default function WholesaleJoinPage() {
             급하신가요? <a href="mailto:jiwon@ur-team.com?subject=%5B%EC%9C%A0%ED%86%B5%ED%9A%8C%EC%9B%90%20%EC%8A%B9%EC%9D%B8%20%EB%AC%B8%EC%9D%98%5D" className="underline font-semibold text-[#4E5560]">jiwon@ur-team.com</a> 으로 상호·사업자번호와 함께 문의해주세요.
           </p>
           <div className="mt-6 flex gap-2 justify-center">
-            <button onClick={() => window.location.reload()} className="px-5 h-11 rounded-xl font-bold border border-[#ECEEF1] text-[#17181C]">승인 다시 확인</button>
-            <button onClick={() => navigate('/wholesale')} className="px-5 h-11 rounded-xl font-bold text-white" style={{ background: '#17181C' }}>도매몰 둘러보기</button>
+            <button onClick={() => window.location.reload()} className="px-5 h-11 rounded-xl font-bold border border-[#ECEEF1] text-[#0C2454]">승인 다시 확인</button>
+            <button onClick={() => navigate('/wholesale')} className="px-5 h-11 rounded-xl font-bold text-white" style={{ background: '#0C2454' }}>도매몰 둘러보기</button>
           </div>
         </div>
       </div>
@@ -151,7 +151,7 @@ export default function WholesaleJoinPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-white text-[#17181C] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-white text-[#0C2454] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 rounded-2xl bg-[#11875A]/10 flex items-center justify-center mx-auto mb-5"><CheckCircle2 className="w-7 h-7 text-[#11875A]" /></div>
           <h1 className="text-xl font-extrabold mb-2">유통회원 신청이 완료됐어요</h1>
@@ -159,16 +159,16 @@ export default function WholesaleJoinPage() {
           <p className="text-[#8A929E] text-[12.5px] mt-3">
             급하신가요? <a href="mailto:jiwon@ur-team.com?subject=%5B%EC%9C%A0%ED%86%B5%ED%9A%8C%EC%9B%90%20%EC%8A%B9%EC%9D%B8%20%EB%AC%B8%EC%9D%98%5D" className="underline font-semibold text-[#4E5560]">jiwon@ur-team.com</a> 으로 상호·사업자번호와 함께 문의해주세요.
           </p>
-          <button onClick={() => navigate('/wholesale')} className="mt-6 px-5 h-11 rounded-xl font-bold text-white" style={{ background: '#17181C' }}>도매몰 둘러보기</button>
+          <button onClick={() => navigate('/wholesale')} className="mt-6 px-5 h-11 rounded-xl font-bold text-white" style={{ background: '#0C2454' }}>도매몰 둘러보기</button>
         </div>
       </div>
     )
   }
 
-  const inputCls = 'w-full h-12 px-3.5 rounded-xl border border-[#ECEEF1] text-[15px] text-[#17181C] outline-none focus:border-[#17181C] transition-colors'
+  const inputCls = 'w-full h-12 px-3.5 rounded-xl border border-[#ECEEF1] text-[15px] text-[#0C2454] outline-none focus:border-[#0C2454] transition-colors'
 
   return (
-    <div className="min-h-screen bg-white text-[#17181C]">
+    <div className="min-h-screen bg-white text-[#0C2454]">
       <SEO domain="wholesale" title="유통사 입점·도매 회원가입 — 유통스타트 B2B 도매몰" description="유통사로 도매 회원가입하고 검증된 제조사 상품을 등급별 도매가(공급가)로 사입하세요. 가입 즉시 C등급, 가입비·월 고정비 0원 — 무재고 위탁판매·대량 사입까지." url="/wholesale/join" jsonLd={[wholesaleStoreJsonLd, breadcrumbJsonLd([{ name: '유통스타트', url: 'https://utongstart.com/wholesale' }, { name: '유통사 도매 회원가입', url: 'https://utongstart.com/wholesale/join' }])]} />
       <header className="border-b border-[#ECEEF1]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">
@@ -179,14 +179,14 @@ export default function WholesaleJoinPage() {
               <WholesaleWordmark height={28} />
             )}
           </button>
-          <button onClick={() => navigate('/wholesale/login')} className="text-sm text-[#4E5560] hover:text-[#17181C] font-medium">이미 가입했어요</button>
+          <button onClick={() => navigate('/wholesale/login')} className="text-sm text-[#4E5560] hover:text-[#0C2454] font-medium">이미 가입했어요</button>
         </div>
       </header>
 
       <main className="ur-content-narrow mx-auto px-4 lg:px-8 py-10 lg:py-14">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-[#FF0033]/10 flex items-center justify-center mx-auto mb-5">
-            <Store className="w-7 h-7 text-[#FF0033]" />
+          <div className="w-14 h-14 rounded-2xl bg-[#FC5424]/10 flex items-center justify-center mx-auto mb-5">
+            <Store className="w-7 h-7 text-[#FC5424]" />
           </div>
           <h1 className="text-2xl lg:text-3xl font-extrabold mb-2">유통사로 가입하기</h1>
           <p className="text-[#4E5560] text-[15px]">검증된 제조사 상품을 등급 공급가로 사입하세요.</p>
@@ -200,7 +200,7 @@ export default function WholesaleJoinPage() {
               '엑셀 대량 주문 · 단가표 다운 · OEM/ODM 신청',
               '가입비·월 고정비 0원',
             ].map((t, i) => (
-              <li key={i} className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-[#FF0033] shrink-0 mt-0.5" />{t}</li>
+              <li key={i} className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-[#FC5424] shrink-0 mt-0.5" />{t}</li>
             ))}
           </ul>
         </div>
@@ -213,24 +213,24 @@ export default function WholesaleJoinPage() {
         <form onSubmit={submit} className="space-y-3">
           {/* 사업자 정보 */}
           <div>
-            <label className="block text-[13px] font-semibold mb-1.5">상호(회사명) <span className="text-[#FF0033]">*</span></label>
+            <label className="block text-[13px] font-semibold mb-1.5">상호(회사명) <span className="text-[#FC5424]">*</span></label>
             <input value={form.business_name} onChange={set('business_name')} disabled={loading} className={inputCls} placeholder="예: (주)유통상사" />
           </div>
           <div>
-            <label className="block text-[13px] font-semibold mb-1.5">사업자등록번호 <span className="text-[#FF0033]">*</span></label>
+            <label className="block text-[13px] font-semibold mb-1.5">사업자등록번호 <span className="text-[#FC5424]">*</span></label>
             <input value={form.business_number} onChange={set('business_number')} disabled={loading} className={inputCls} placeholder="000-00-00000" />
           </div>
 
           {/* 대표자 정보 */}
           <div className="pt-3 mt-3 border-t border-[#ECEEF1]">
-            <p className="text-[13px] font-bold text-[#17181C] mb-2.5">대표자 정보</p>
+            <p className="text-[13px] font-bold text-[#0C2454] mb-2.5">대표자 정보</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[13px] font-semibold mb-1.5">대표자 성명 <span className="text-[#FF0033]">*</span></label>
+                <label className="block text-[13px] font-semibold mb-1.5">대표자 성명 <span className="text-[#FC5424]">*</span></label>
                 <input value={form.representative} onChange={setRep('representative')} disabled={loading} className={inputCls} placeholder="예: 홍길동" />
               </div>
               <div>
-                <label className="block text-[13px] font-semibold mb-1.5">대표자 연락처 <span className="text-[#FF0033]">*</span></label>
+                <label className="block text-[13px] font-semibold mb-1.5">대표자 연락처 <span className="text-[#FC5424]">*</span></label>
                 <input value={form.representative_phone} onChange={setRep('representative_phone')} disabled={loading} className={inputCls} placeholder="010-0000-0000" />
               </div>
             </div>
@@ -239,19 +239,19 @@ export default function WholesaleJoinPage() {
           {/* 담당자 정보 */}
           <div className="pt-3 mt-3 border-t border-[#ECEEF1]">
             <div className="flex items-center justify-between mb-2.5">
-              <p className="text-[13px] font-bold text-[#17181C]">담당자 정보</p>
+              <p className="text-[13px] font-bold text-[#0C2454]">담당자 정보</p>
               <label className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[#4E5560] cursor-pointer select-none">
-                <input type="checkbox" checked={sameAsRep} onChange={(e) => toggleSame(e.target.checked)} disabled={loading} className="w-4 h-4 rounded accent-[#FF0033]" />
+                <input type="checkbox" checked={sameAsRep} onChange={(e) => toggleSame(e.target.checked)} disabled={loading} className="w-4 h-4 rounded accent-[#FC5424]" />
                 대표자와 동일
               </label>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[13px] font-semibold mb-1.5">담당자 성명 <span className="text-[#FF0033]">*</span></label>
+                <label className="block text-[13px] font-semibold mb-1.5">담당자 성명 <span className="text-[#FC5424]">*</span></label>
                 <input value={form.manager_name} onChange={set('manager_name')} disabled={loading || sameAsRep} className={`${inputCls} ${sameAsRep ? 'bg-[#F4F5F7] text-[#8A929E]' : ''}`} placeholder="예: 김담당" />
               </div>
               <div>
-                <label className="block text-[13px] font-semibold mb-1.5">담당자 연락처 <span className="text-[#FF0033]">*</span></label>
+                <label className="block text-[13px] font-semibold mb-1.5">담당자 연락처 <span className="text-[#FC5424]">*</span></label>
                 <input value={form.manager_phone} onChange={set('manager_phone')} disabled={loading || sameAsRep} className={`${inputCls} ${sameAsRep ? 'bg-[#F4F5F7] text-[#8A929E]' : ''}`} placeholder="010-0000-0000" />
               </div>
             </div>
@@ -263,13 +263,13 @@ export default function WholesaleJoinPage() {
 
           {!kakaoUser && (
             <div className="pt-3 mt-3 border-t border-[#ECEEF1] space-y-3">
-              <p className="text-[13px] font-bold text-[#17181C]">로그인 계정</p>
+              <p className="text-[13px] font-bold text-[#0C2454]">로그인 계정</p>
               <div>
-                <label className="block text-[13px] font-semibold mb-1.5">이메일 <span className="text-[#FF0033]">*</span></label>
+                <label className="block text-[13px] font-semibold mb-1.5">이메일 <span className="text-[#FC5424]">*</span></label>
                 <input type="email" value={form.email} onChange={set('email')} disabled={loading} className={inputCls} placeholder="login@email.com" autoComplete="email" />
               </div>
               <div>
-                <label className="block text-[13px] font-semibold mb-1.5">비밀번호 <span className="text-[#FF0033]">*</span></label>
+                <label className="block text-[13px] font-semibold mb-1.5">비밀번호 <span className="text-[#FC5424]">*</span></label>
                 <input type="password" value={form.password} onChange={set('password')} disabled={loading} className={inputCls} placeholder="10자 이상, 대/소문자+숫자" autoComplete="new-password" />
               </div>
             </div>
@@ -281,13 +281,13 @@ export default function WholesaleJoinPage() {
           <label className="flex items-start gap-2.5 rounded-xl p-3.5 cursor-pointer" style={{ background: '#F8F9FB', border: '1px solid #ECEEF1' }}>
             <input type="checkbox" checked={agreeTerms} onChange={e => setAgreeTerms(e.target.checked)} className="w-4 h-4 mt-0.5 shrink-0" />
             <span className="text-[12.5px] leading-relaxed text-[#4E5560]">
-              <a href="/wholesale/terms" target="_blank" rel="noopener noreferrer" className="font-bold underline text-[#17181C]">도매몰 이용약관</a>
-              에 동의합니다. (가격 정책·최저가 준수, 예치금 결제, 상품 자료 사용 조건 포함) <span className="text-[#FF0033]">*</span>
+              <a href="/wholesale/terms" target="_blank" rel="noopener noreferrer" className="font-bold underline text-[#0C2454]">도매몰 이용약관</a>
+              에 동의합니다. (가격 정책·최저가 준수, 예치금 결제, 상품 자료 사용 조건 포함) <span className="text-[#FC5424]">*</span>
             </span>
           </label>
 
           <button type="submit" disabled={loading || !agreeTerms}
-            className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-[#FF0033] text-white font-bold text-[15px] hover:bg-[#e0002e] transition-colors disabled:opacity-60 mt-1">
+            className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-[#FC5424] text-white font-bold text-[15px] hover:bg-[#e0002e] transition-colors disabled:opacity-60 mt-1">
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>유통회원 가입 신청 <ArrowRight className="w-5 h-5" /></>}
           </button>
         </form>
@@ -309,7 +309,7 @@ export default function WholesaleJoinPage() {
 
         <div className="mt-8 pt-6 border-t border-[#ECEEF1] text-center text-sm text-[#8A929E]">
           제조사(공급사)이신가요?{' '}
-          <button onClick={() => navigate('/supplier/register')} className="text-[#FF0033] font-semibold inline-flex items-center gap-1"><Factory className="w-4 h-4" /> 제조사 입점 →</button>
+          <button onClick={() => navigate('/supplier/register')} className="text-[#FC5424] font-semibold inline-flex items-center gap-1"><Factory className="w-4 h-4" /> 제조사 입점 →</button>
         </div>
       </main>
     </div>

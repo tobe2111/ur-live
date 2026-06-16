@@ -42,7 +42,7 @@ export interface WholesaleCatalogItem {
 }
 
 // ── 🏬 2026-06-09 멀티-몰 테넌시 — 현재 호스트의 몰 브랜딩 (PUBLIC) ────────────────
-//   host → mall (없으면 기본 몰 '유통스타트'/#FF0033). 헤더 브랜드명·로고·색·카테고리에 사용.
+//   host → mall (없으면 기본 몰 '유통스타트'/#FC5424). 헤더 브랜드명·로고·색·카테고리에 사용.
 //   per-host 라서 staleTime 길게(어차피 한 도메인은 한 몰). deposit_account/commission 미노출.
 export interface WholesaleMallBrand {
   slug: string
@@ -53,12 +53,12 @@ export interface WholesaleMallBrand {
   categories: { id: string; label: string }[] | null
 }
 
-/** 기본 몰 fallback — config 없거나 로딩 전이면 항상 유통스타트/#FF0033 (default 몰 byte-identical). */
+/** 기본 몰 fallback — config 없거나 로딩 전이면 항상 유통스타트/#FC5424 (default 몰 byte-identical). */
 export const DEFAULT_MALL_BRAND: WholesaleMallBrand = {
   slug: 'default',
   name: '유통스타트',
   brand_name: '유통스타트',
-  brand_color: '#FF0033',
+  brand_color: '#FC5424',
   logo_url: null,
   categories: null,
 }
@@ -81,7 +81,7 @@ export function useWholesaleMall() {
     mall,
     // 표시용 편의 — brand_name 우선, 없으면 name, 둘 다 없으면 유통스타트.
     displayName: mall.brand_name || mall.name || '유통스타트',
-    brandColor: mall.brand_color || '#FF0033',
+    brandColor: mall.brand_color || '#FC5424',
     logoUrl: mall.logo_url || null,
     categories: mall.categories || null,
     isLoading: q.isLoading,

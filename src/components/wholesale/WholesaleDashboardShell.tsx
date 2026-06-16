@@ -53,7 +53,7 @@ export default function WholesaleDashboardShell({
           <UrDealLogo size={14} forceDark />
           <span
             className="font-bold uppercase"
-            style={{ fontSize: '9px', letterSpacing: '0.08em', color: '#FF0033' }}
+            style={{ fontSize: '9px', letterSpacing: '0.08em', color: '#FC5424' }}
           >
             {brand}
           </span>
@@ -78,7 +78,7 @@ export default function WholesaleDashboardShell({
             aria-current={active ? 'page' : undefined}
             className={`w-full flex items-center gap-2.5 px-4 py-[9px] text-[12px] font-semibold transition-colors border-l-[2.5px] text-left ${
               active
-                ? 'text-white border-[#FF0033] ur-seller-nav-active'
+                ? 'text-white border-[#FC5424] ur-seller-nav-active'
                 : 'text-white/55 hover:text-white border-transparent'
             }`}
           >

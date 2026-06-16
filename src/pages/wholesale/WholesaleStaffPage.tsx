@@ -89,7 +89,7 @@ export default function WholesaleStaffPage() {
 
   const navItems = buildWholesaleNav(location.pathname, navigate, canManage)
 
-  const inputCls = 'w-full h-11 px-3 rounded-lg border text-[14px] outline-none focus:border-[#17181C] transition-colors text-gray-900'
+  const inputCls = 'w-full h-11 px-3 rounded-lg border text-[14px] outline-none focus:border-[#0C2454] transition-colors text-gray-900'
 
   return (
     <WholesaleDashboardShell brand={mallName} navItems={navItems} title="직원 계정 관리">

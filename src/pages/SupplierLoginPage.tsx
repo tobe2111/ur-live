@@ -16,7 +16,7 @@ import { useWholesaleMall } from '@/hooks/queries/useWholesale'
 export default function SupplierLoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  // 🏬 2026-06-09 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FF0033 → byte-identical).
+  // 🏬 2026-06-09 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FC5424 → byte-identical).
   const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo } = useWholesaleMall()
   const [form, setForm] = useState({ email: '', password: '' })
   const [showPw, setShowPw] = useState(false)
@@ -147,7 +147,7 @@ export default function SupplierLoginPage() {
                 <p className="text-xs text-amber-700 mt-1">제조사라면 입점 신청을, 유통사(사입)라면 유통사 로그인으로 이동하세요.</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button type="button" onClick={() => navigate('/supplier/register')}
-                    className="px-3 py-2 rounded-lg bg-[#FF0033] text-white text-xs font-bold">제조회원 입점 신청</button>
+                    className="px-3 py-2 rounded-lg bg-[#FC5424] text-white text-xs font-bold">제조회원 입점 신청</button>
                   <button type="button" onClick={() => navigate('/wholesale/login')}
                     className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 text-xs font-bold">유통사 로그인 →</button>
                 </div>
@@ -163,7 +163,7 @@ export default function SupplierLoginPage() {
                     id="sup-email" type="email" required autoComplete="email" disabled={loading}
                     value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                     placeholder="supplier@example.com"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none transition-all disabled:bg-gray-50"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#FC5424]/30 focus:border-[#FC5424] outline-none transition-all disabled:bg-gray-50"
                   />
                 </div>
               </div>
@@ -175,7 +175,7 @@ export default function SupplierLoginPage() {
                   <input
                     id="sup-pw" type={showPw ? 'text' : 'password'} required autoComplete="current-password" disabled={loading}
                     value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                    className="w-full pl-10 pr-11 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none transition-all disabled:bg-gray-50"
+                    className="w-full pl-10 pr-11 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#FC5424]/30 focus:border-[#FC5424] outline-none transition-all disabled:bg-gray-50"
                   />
                   <button type="button" onClick={() => setShowPw(v => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" aria-label="toggle password">
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -203,14 +203,14 @@ export default function SupplierLoginPage() {
 
             <p className="mt-6 text-center text-sm text-gray-600">
               {t('supplier.noAccount', { defaultValue: '계정이 없으신가요?' })}{' '}
-              <Link to="/supplier/register" className="font-bold text-[#FF0033] hover:underline">
+              <Link to="/supplier/register" className="font-bold text-[#FC5424] hover:underline">
                 {t('supplier.registerLink', { defaultValue: '공급자 가입' })}
               </Link>
             </p>
             {/* 🛡️ 2026-06-01 도매몰 크로스링크: 셀러 진입 */}
             <p className="mt-2 text-center text-xs text-gray-400">
               {t('supplier.areYouSeller', { defaultValue: '라이브/매장 셀러이신가요?' })}{' '}
-              <Link to="/seller/login" className="text-[#FF0033] font-medium hover:underline">
+              <Link to="/seller/login" className="text-[#FC5424] font-medium hover:underline">
                 {t('supplier.goSeller', { defaultValue: '셀러 로그인 →' })}
               </Link>
             </p>
