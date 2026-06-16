@@ -13,6 +13,7 @@ import KakaoShareButton from '@/components/KakaoShareButton'
 import PinButton from '@/components/curator/PinButton'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { cfImage } from '@/utils/cf-image'
 import { reportFunnel } from '@/lib/web-vitals-report'
 import { recordRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip'
 import { useInvalidateMyVouchers } from '@/hooks/queries'
@@ -20,7 +21,7 @@ import { useInvalidateMyVouchers } from '@/hooks/queries'
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
 //   - RestaurantMiniMap: 매장 정보 아래 (fold 직후, Kakao Maps SDK 포함)
-const Confetti = lazy(() => import('@/components/group-buy/Confetti'))
+// 🎨 2026-06-16 리디자인: Confetti(공구 연출) 제거 — 정직한 즉시구매. RestaurantMiniMap 만 lazy 유지.
 const RestaurantMiniMap = lazy(() => import('@/components/RestaurantMiniMap'))
 
 // 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/group-buy/:id`)
@@ -77,39 +78,7 @@ function CategoryEmoji({ cat }: { cat: string }) {
   return <span>{map[cat] || '🎫'}</span>
 }
 
-function CountdownRing({ deadline }: { deadline?: string }) {
-  const [now, setNow] = useState(Date.now())
-  useEffect(() => {
-    if (!deadline) return
-    let timer: ReturnType<typeof setTimeout> | null = null
-    const tick = () => {
-      const ts = Date.now()
-      setNow(ts)
-      const remain = Math.max(0, new Date(deadline).getTime() - ts)
-      if (remain === 0) return
-      // 1일+ 남으면 60초 단위 (분 표시), 1시간+ 5초 단위, 마감 임박 1초 단위.
-      const next = remain > 86400000 ? 60000 : remain > 3600000 ? 5000 : 1000
-      timer = setTimeout(tick, next)
-    }
-    tick()
-    return () => { if (timer) clearTimeout(timer) }
-  }, [deadline])
-  if (!deadline) return null
-  const end = new Date(deadline).getTime()
-  const diff = Math.max(0, end - now)
-  if (diff === 0) return <span className="text-red-500 font-bold">마감됨</span>
-  const days = Math.floor(diff / 86400000)
-  const hours = Math.floor((diff % 86400000) / 3600000)
-  const mins = Math.floor((diff % 3600000) / 60000)
-  const secs = Math.floor((diff % 60000) / 1000)
-  const urgent = diff < 24 * 3600000
-  return (
-    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${urgent ? 'bg-red-50 text-red-600 animate-pulse' : 'bg-amber-50 text-amber-700'}`}>
-      <Clock className="w-3 h-3" />
-      {days > 0 ? `${days}일 ${hours}시간 남음` : `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')} 남음`}
-    </div>
-  )
-}
+// 🎨 2026-06-16 리디자인: CountdownRing(공구 마감 연출) 제거 — 정직한 즉시 할인 구매로 전환 (사용자 design 결정).
 
 export default function GroupBuyDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -149,12 +118,10 @@ export default function GroupBuyDetailPage() {
   const [loading, setLoading] = useState(true)
   const [joining, setJoining] = useState(false)
   const [quantity, setQuantity] = useState(1)
-  const [showConfetti, setShowConfetti] = useState(false)
-  // 🛡️ 2026-05-15: Promo 코드 입력 + 미리보기
-  const [promoCode, setPromoCode] = useState('')
-  const [promoPreview, setPromoPreview] = useState<{ discount_pct: number; audience: string; description: string | null } | null>(null)
-  const [promoError, setPromoError] = useState('')
-  const [checkingPromo, setCheckingPromo] = useState(false)
+  // 🎨 2026-06-16 리디자인: 스와이프 갤러리 활성 인덱스 + 이 셀러의 다른 공구
+  const [activeImage, setActiveImage] = useState(0)
+  const [otherDeals, setOtherDeals] = useState<Array<{ id: number; name: string; price: number; original_price?: number | null; image_url?: string | null; discount_pct?: number | null }>>([])
+  const galRef = useRef<HTMLDivElement | null>(null)
   // 🏭 2026-06-07 (당근 스타일 hero 재설계): 스크롤-aware 헤더.
   //   hero 이미지를 지나치면 투명 overlay → solid 테마 바로 전환 + 제목 fade-in.
   //   passive scroll listener + ref 로 hero 높이 측정 (threshold ≈ heroHeight - headerHeight).
@@ -240,46 +207,38 @@ export default function GroupBuyDetailPage() {
     return () => { cancelled = true }
   }, [productId, navigate])
 
+  // 🎨 2026-06-16 리디자인: 이 셀러의 다른 공구 — active 목록에서 같은 seller 필터(현재 상품 제외).
+  useEffect(() => {
+    const sid = detail?.seller_id
+    if (!sid) return
+    let cancelled = false
+    api.get('/api/group-buy/products?status=active')
+      .then(r => {
+        if (cancelled) return
+        const list = (r.data?.data || r.data || []) as Array<{ id: number; name: string; price: number; original_price?: number | null; image_url?: string | null; seller_id?: number; discount_rate?: number | null; current_price?: number | null }>
+        const mine = (Array.isArray(list) ? list : [])
+          .filter(p => Number(p.seller_id) === Number(sid) && Number(p.id) !== productId)
+          .slice(0, 8)
+          .map(p => ({ id: p.id, name: p.name, price: Number(p.current_price ?? p.price), original_price: p.original_price, image_url: p.image_url, discount_pct: p.discount_rate ?? null }))
+        setOtherDeals(mine)
+      })
+      .catch(() => { /* silent */ })
+    return () => { cancelled = true }
+  }, [detail?.seller_id, productId])
+
   // 🛡️ 2026-05-15: 실시간 polling — 5초±2초 jitter. 페이지 hidden 시 일시정지 (배터리 보호 + D1 thundering herd 방어).
   //   active 공구만 polling. participant 카운터 + 신규 참여자 등장 → toast.
   useEffect(() => {
     if (!detail || (detail.group_buy_status !== 'active' && detail.group_buy_status !== 'achieved')) return
     let timer: ReturnType<typeof setTimeout> | null = null
     let cancelled = false
-    let lastCount = detail.group_buy_current
-    let prevParticipantNames = participants.slice(0, 5).map(p => p.masked_name).join(',')
 
+    // 🎨 2026-06-16 리디자인(정직한 즉시구매): 참여수 toast·confetti 연출 제거 — 상태/가격 freshness 만 silent 갱신.
     const poll = async () => {
       if (document.hidden) return
       try {
-        const [d, p] = await Promise.all([
-          api.get(`/api/group-buy/products/${productId}`),
-          api.get(`/api/group-buy/products/${productId}/participants`).catch(() => ({ data: { data: [] } })),
-        ])
-        if (d.data?.success) {
-          const newDetail = d.data.data
-          const delta = newDetail.group_buy_current - lastCount
-          if (delta > 0) {
-            toast.success(`🎉 방금 ${delta}명이 참여했어요!`)
-            // 🛡️ 2026-05-15: 100% 달성 감지 시 confetti
-            const wasBelow = lastCount < newDetail.group_buy_target
-            const nowReached = newDetail.group_buy_current >= newDetail.group_buy_target
-            if (wasBelow && nowReached && newDetail.group_buy_target > 0) {
-              setShowConfetti(true)
-              try { if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]) } catch { /* unsupported */ }
-            }
-            lastCount = newDetail.group_buy_current
-          }
-          setDetail(newDetail)
-        }
-        if (p.data?.data) {
-          const newParticipants = p.data.data
-          const newNamesKey = newParticipants.slice(0, 5).map((np: Participant) => np.masked_name).join(',')
-          if (newNamesKey !== prevParticipantNames) {
-            prevParticipantNames = newNamesKey
-            setParticipants(newParticipants)
-          }
-        }
+        const d = await api.get(`/api/group-buy/products/${productId}`)
+        if (d.data?.success) setDetail(d.data.data)
       } catch { /* silent */ }
     }
     // 🛡️ 2026-05-15 (TD-G07): jitter — 동시 사용자 많을 때 D1 thundering herd 방어
@@ -318,46 +277,25 @@ export default function GroupBuyDetailPage() {
   const totalSaving = unitSaving * quantity
   const isJoinable = detail?.group_buy_status === 'active' || detail?.group_buy_status === 'achieved'
 
-  async function checkPromo() {
-    setPromoError('')
-    setPromoPreview(null)
-    const code = promoCode.trim().toUpperCase()
-    if (!/^[A-Z0-9]{4,20}$/.test(code)) {
-      setPromoError('영문 대문자 + 숫자 4-20자')
-      return
+  // 🎨 2026-06-16 리디자인: 스와이프 갤러리 이미지 — image_url + detail_images/image_urls(JSON) 병합·중복제거.
+  const galleryImages: string[] = (() => {
+    if (!detail) return []
+    const out: string[] = []
+    if (detail.image_url) out.push(detail.image_url)
+    const extra = detail as { detail_images?: string | null; image_urls?: string | null }
+    for (const raw of [extra.image_urls, extra.detail_images]) {
+      if (!raw) continue
+      try { const arr = JSON.parse(raw); if (Array.isArray(arr)) for (const u of arr) if (typeof u === 'string' && u) out.push(u) } catch { /* not json */ }
     }
-    setCheckingPromo(true)
-    try {
-      const res = await api.post('/api/promo/redeem', { code, product_id: productId })
-      if (res.data?.success) {
-        const d = res.data.data
-        // 셀러 매칭 확인 — 서버에서 검증되지만 클라이언트도 확인
-        if (detail && d.seller_id !== detail.seller_id) {
-          setPromoError('이 셀러 상품이 아닌 코드')
-          return
-        }
-        setPromoPreview({ discount_pct: d.discount_pct, audience: 'all', description: d.message || null })
-        toast.success(`✅ ${d.discount_pct}% 할인 적용 가능`)
-      } else {
-        setPromoError(res.data?.error || '사용 불가')
-      }
-    } catch (err) {
-      const e = err as { response?: { data?: { error?: string; code?: string } } }
-      const errCode = e?.response?.data?.code
-      setPromoError(e?.response?.data?.error || '코드 확인 실패')
-      if (errCode === 'FOLLOWERS_ONLY') {
-        // 단골 등록 안 됨 — 단골 등록 유도
-      }
-    } finally {
-      setCheckingPromo(false)
-    }
+    return Array.from(new Set(out)).slice(0, 8)
+  })()
+  const onGalScroll = () => {
+    const el = galRef.current; if (!el) return
+    const i = Math.round(el.scrollLeft / el.clientWidth)
+    if (i !== activeImage) setActiveImage(i)
   }
 
-  function clearPromo() {
-    setPromoCode('')
-    setPromoPreview(null)
-    setPromoError('')
-  }
+  // 🎨 2026-06-16 리디자인: 할인코드(promo) 입력 UI 제거 — checkPromo/clearPromo 삭제.
 
   async function handleJoin() {
     if (!detail) return
@@ -388,7 +326,6 @@ export default function GroupBuyDetailPage() {
         const idempotency_key = `gb_${productId}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
         const res = await api.post(`/api/group-buy/join/${productId}`, {
           quantity, payment_method: 'deal', ref, idempotency_key,
-          promo_code: promoPreview ? promoCode.trim().toUpperCase() : undefined,
         })
         if (res.data?.success) {
           toast.success('🎁 교환권 발급 완료')
@@ -424,7 +361,6 @@ export default function GroupBuyDetailPage() {
       const { getTrackedSellerId: getRef } = await import('@/lib/seller-tracking')
       const initRes = await api.post(`/api/group-buy/join/${productId}`, {
         quantity, payment_method: 'toss', ref: getRef() || undefined,
-        promo_code: promoPreview ? promoCode.trim().toUpperCase() : undefined,
       })
       if (!initRes.data?.success) {
         toast.error(initRes.data?.error || '공구 결제 시작 실패')
@@ -521,12 +457,7 @@ export default function GroupBuyDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
-      {showConfetti && (
-        <Suspense fallback={null}>
-          <Confetti onDone={() => setShowConfetti(false)} />
-        </Suspense>
-      )}
+    <div className="gbd" style={{ background: 'var(--gbd-card)', color: 'var(--gbd-ink)', minHeight: '100vh' }}>
       {/* 🛡️ 2026-05-15: SEO 풀 적용 — JSON-LD Product/Offer schema + 동적 OG image */}
       <SEO
         title={`${detail.name} 공동구매 - ${detail.restaurant_name || '유어딜'}`}
@@ -636,207 +567,107 @@ export default function GroupBuyDetailPage() {
         </div>
       </header>
 
-      {/* 이미지 + 상태 — 🏭 2026-06-07 (당근 스타일): 최상단까지 닿는 full-bleed hero.
-            content flow 의 첫 요소 — overlay 헤더가 그 위에 floating. */}
-      <div ref={heroRef} className="ur-content-narrow mx-auto relative bg-white dark:bg-[#0A0A0A] overflow-hidden">
-        {detail.image_url ? (
-          <img
-            src={detail.image_url}
-            alt={detail.name}
-            className="w-full aspect-square object-cover bg-gradient-to-br from-gray-100 to-gray-200 dark:from-[#1A1A1A] dark:to-[#0A0A0A]"
-            width={1200}
-            height={1200}
-            loading="eager"
-            decoding="async"
-            fetchPriority="high"
-          />
-        ) : (
-          <div className="w-full aspect-square bg-gradient-to-br from-gray-100 to-gray-200 dark:from-[#1A1A1A] dark:to-[#0A0A0A] flex items-center justify-center text-6xl">
-            <CategoryEmoji cat={detail.category} />
-          </div>
-        )}
-        {/* 상단 scrim — 흰 버튼/배지 가독성 보장 (밝은 사진 대응) */}
-        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/30 to-transparent pointer-events-none" />
-        {/* 카테고리/상태 배지 — 헤더 버튼과 충돌 방지 위해 좌하단 배치 */}
-        <div className="absolute bottom-3 left-3 flex gap-2">
-          <span className="bg-black/35 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-            <CategoryEmoji cat={detail.category} />
-            <span className="text-white">{detail.category.replace('_voucher', '')}</span>
-          </span>
-          {detail.group_buy_status === 'achieved' && (
-            <span className="bg-green-500 text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> 달성
-            </span>
-          )}
-          {detail.group_buy_status === 'expired' && (
-            <span className="bg-gray-700 text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">마감</span>
-          )}
-          {detail.group_buy_status === 'cancelled' && (
-            <span className="bg-red-500 text-white px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">취소</span>
-          )}
-        </div>
-        {/* CountdownRing — 우하단 (우상단 share 버튼과 분리) */}
-        <div className="absolute bottom-3 right-3">
-          <CountdownRing deadline={detail.group_buy_deadline} />
-        </div>
-      </div>
-
-      <main id="gb-main" className="ur-content-narrow mx-auto px-4 lg:px-8 py-4 space-y-4" role="main">
-        {/* 🛡️ 2026-05-15: 인플루언서 attribution 배너 (?ref= 진입 시) — hero 아래로 이동 */}
-        {isInfluencerLanding && (
-          <div className="bg-gray-900 text-white rounded-2xl p-3 flex items-center gap-3 shadow-lg">
-            <Sparkles className="w-5 h-5 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold opacity-90">친구 추천 공구</p>
-              <p className="text-sm font-extrabold">참여 시 양쪽 0.5% 보너스 딜 🎁</p>
-            </div>
-          </div>
-        )}
-
-        {/* 제품 정보 */}
-        <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A] space-y-3">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">{detail.name}</h1>
-          {detail.restaurant_name && (
-            <div className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
-              <MapPin className="w-4 h-4 text-gray-400 dark:text-gray-500 mt-0.5 shrink-0" />
-              <div>
-                <p className="font-medium text-gray-700 dark:text-gray-200">{detail.restaurant_name}</p>
-                {detail.restaurant_address && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{detail.restaurant_address}</p>}
-              </div>
-            </div>
-          )}
-          {detail.restaurant_phone && (
-            <a href={`tel:${detail.restaurant_phone}`} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
-              <Phone className="w-4 h-4 text-gray-400" />
-              <span>{detail.restaurant_phone}</span>
-            </a>
-          )}
-
-          {/* 가격 — 🛡️ 2026-05-19: 공동구매는 소비자 구매라 '원' 단위. (교환권만 '딜')
-                🏭 2026-06-06 (사용자 요청): '정가 대비 N,NNN원 절약' 체감 금액 강조 — 전환 설득력 ↑. */}
-          <div className="pt-3 border-t border-gray-100 dark:border-[#1A1A1A]">
-            {/* 정가(취소선) → 할인 판매가. 사용자 요청: "기존에는 얼마인데 얼마에 판다" 명확화 */}
-            {unitSaving > 0 && (
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs text-gray-500 dark:text-gray-400">정가</span>
-                <span className="text-sm text-gray-400 dark:text-gray-500 line-through">{formatNumber(refPrice)}원</span>
-              </div>
-            )}
-            <div className="flex items-baseline gap-2">
-              {detail.current_discount_pct > 0 && (
-                <span className="text-2xl font-extrabold text-gray-900 dark:text-white">{detail.current_discount_pct}%</span>
-              )}
-              <span className="text-2xl font-extrabold text-gray-900 dark:text-white">{formatNumber(unitPrice)}</span>
-              <span className="text-sm font-bold text-gray-900 dark:text-white">원</span>
-              {unitSaving > 0 && (
-                <span className="ml-auto bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-2 py-0.5 rounded-md text-[11px] font-bold">
-                  {formatNumber(unitSaving)}원 할인
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* 🏭 2026-06-07 (사용자 요청): 이 공구를 올린 셀러가 작성한 안내 내용을 안내문구처럼 노출. */}
-        {detail.description && (
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A]">
-            <p className="text-sm font-bold text-gray-900 dark:text-white mb-2">공구 안내</p>
-            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{detail.description}</p>
-          </div>
-        )}
-
-        {/* 🏭 2026-06-06 (사용자 요청 — 구매 신뢰도): 안전결제·정품·환불 trust 배지 줄. 정적(데이터 무관). */}
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { icon: ShieldCheck, label: '안전결제', sub: '토스페이먼츠' },
-            { icon: CheckCircle2, label: '정식 판매', sub: '검증 셀러' },
-            { icon: RefreshCcw, label: '안심 거래', sub: '환불 정책 보장' },
-          ].map(({ icon: Icon, label, sub }) => (
-            <div key={label} className="bg-white dark:bg-[#0A0A0A] rounded-xl border border-gray-100 dark:border-[#1A1A1A] py-2.5 px-2 flex flex-col items-center text-center gap-1">
-              <Icon className="w-4 h-4 text-gray-900 dark:text-white" />
-              <span className="text-[11px] font-bold text-gray-800 dark:text-gray-100 leading-none">{label}</span>
-              <span className="text-[9px] text-gray-400 dark:text-gray-500 leading-none">{sub}</span>
+      {/* 🎨 2026-06-16 리디자인: 스와이프 이미지 갤러리 (fixed 헤더가 위에 floating) */}
+      <div ref={heroRef} className="relative" style={{ background: 'var(--gbd-card)' }}>
+        <div ref={galRef} onScroll={onGalScroll} className="noscroll" style={{ display: 'flex', overflowX: 'auto', aspectRatio: '1/1', scrollSnapType: 'x mandatory' }}>
+          {(galleryImages.length ? galleryImages : ['']).map((src, i) => (
+            <div key={i} role="img" aria-label={detail.name} className="flex items-center justify-center text-6xl" style={{ flex: '0 0 100%', scrollSnapAlign: 'center', backgroundColor: '#1a1a1a', backgroundImage: src ? `url("${cfImage(src, { width: 900, format: 'auto' }) || src}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+              {!src && <CategoryEmoji cat={detail.category} />}
             </div>
           ))}
         </div>
-
-        {/* 🛡️ 2026-05-17: 매장 위치 미니 지도 — 매장 기반 voucher 의 위치 발견성 향상.
-              restaurant_lat/lng 우선 사용, 없으면 address 로 geocoding. */}
-        {(detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) && (
-          <Suspense fallback={<div className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A]" style={{ height: 200 }} />}>
-            <RestaurantMiniMap
-              name={detail.restaurant_name}
-              address={detail.restaurant_address}
-              lat={detail.restaurant_lat}
-              lng={detail.restaurant_lng}
-            />
-          </Suspense>
+        <div style={{ position: 'absolute', inset: '0 0 auto 0', height: 110, pointerEvents: 'none', background: 'linear-gradient(180deg, rgba(0,0,0,.4), transparent)' }} />
+        <div style={{ position: 'absolute', inset: 'auto 0 0 0', height: 120, pointerEvents: 'none', background: 'linear-gradient(0deg, rgba(0,0,0,.32), transparent)' }} />
+        <div style={{ position: 'absolute', left: 16, bottom: 17, display: 'flex', alignItems: 'center', gap: 6 }}>
+          {detail.current_discount_pct > 0 && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>{detail.current_discount_pct}% 할인</span>
+          )}
+          <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 10px', borderRadius: 6, background: 'rgba(18,20,23,.5)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
+            {({ meal_voucher: '식사권', beauty_voucher: '뷰티', health_voucher: '건강', pet_voucher: '반려', stay_voucher: '숙박', activity_voucher: '액티비티' } as Record<string, string>)[detail.category] || '교환권'}
+          </span>
+          {detail.group_buy_status === 'expired' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'rgba(55,55,55,.78)', color: '#fff', fontSize: 12, fontWeight: 700 }}>마감</span>}
+          {detail.group_buy_status === 'cancelled' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 700 }}>취소</span>}
+        </div>
+        {galleryImages.length > 1 && (
+          <div style={{ position: 'absolute', right: 16, bottom: 19, display: 'flex', alignItems: 'center', gap: 5 }}>
+            {galleryImages.map((_, i) => (
+              <span key={i} style={{ height: 5, borderRadius: 99, transition: 'width .25s, background .25s', width: i === activeImage ? 16 : 5, background: i === activeImage ? '#fff' : 'rgba(255,255,255,.5)' }} />
+            ))}
+          </div>
         )}
+      </div>
 
-        {/* 🏭 2026-06-07 (사용자 요청): 진행 현황(참여율/목표) + 참여자 아바타 제거 —
-            공구는 1인이라도 즉시 구매 가능(즉시판매 단일가)하므로 참여 인원 진척도가 무의미. */}
-
-        {/* 🛡️ 2026-05-15: 본인 product 인 경우 셀러 대시보드 진입점 (공구 플로우 활용도 ↑) */}
-        {isOwnProduct && (
-          <div className="bg-gray-50 dark:bg-[#141414] border-2 border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-4 flex items-center gap-3">
-            <Sparkles className="w-5 h-5 text-gray-900 dark:text-white shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-gray-900 dark:text-white">내 공구</p>
-              <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5">대시보드에서 voucher 통계 / 정산 확인</p>
+      <main id="gb-main" role="main">
+        {/* 추천 진입 배너 (?ref=) — 어트리뷰션 유지 */}
+        {isInfluencerLanding && (
+          <div style={{ margin: '14px 18px 0', borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10, background: 'var(--gbd-ink)', color: 'var(--gbd-card)' }}>
+            <Sparkles style={{ width: 20, height: 20, flex: '0 0 auto' }} />
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 11.5, fontWeight: 700, opacity: .9, margin: 0 }}>친구 추천 공구</p>
+              <p style={{ fontSize: 13.5, fontWeight: 800, margin: '2px 0 0' }}>참여 시 양쪽 0.5% 보너스 딜 🎁</p>
             </div>
-            <button
-              onClick={() => navigate('/seller/group-buy')}
-              className="px-3 py-1.5 bg-gray-900 dark:bg-white hover:bg-black dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-lg text-xs font-bold shrink-0"
-            >
-              공구 관리 →
-            </button>
           </div>
         )}
 
-        {/* 🏭 2026-06-07 (사용자 요청): 할인 코드(선택) 입력 제거. */}
+        {/* 타이틀 */}
+        <div style={{ padding: '20px 18px 0' }}>
+          {detail.restaurant_name && <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-accent)', letterSpacing: '.01em' }}>{detail.restaurant_name} · 정식 등록 매장</div>}
+          <h1 style={{ margin: '7px 0 0', fontSize: 22, lineHeight: 1.34, fontWeight: 800, letterSpacing: '-.025em', color: 'var(--gbd-ink)' }}>{detail.name}</h1>
+          {(detail.restaurant_address || detail.restaurant_phone) && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginTop: 12 }}>
+              <MapPin style={{ width: 17, height: 17, marginTop: 2, flex: '0 0 auto', color: 'var(--gbd-sub)' }} />
+              <div style={{ fontSize: 13.5, color: 'var(--gbd-sub)', lineHeight: 1.5 }}>
+                {detail.restaurant_address || ''}
+                {detail.restaurant_phone && <> · <a href={`tel:${detail.restaurant_phone}`} style={{ color: 'var(--gbd-ink2)', textDecoration: 'none', fontWeight: 600, borderBottom: '1px solid var(--gbd-line2)' }}>{detail.restaurant_phone}</a></>}
+              </div>
+            </div>
+          )}
+        </div>
 
-        {/* 셀러 정보 + SNS — 🛡️ 2026-05-27 사용자 요청: 채팅/매너온도 X, SNS 만 */}
+        {/* 가격 */}
+        <div style={{ padding: '18px 18px 22px' }}>
+          {unitSaving > 0 && <div style={{ fontSize: 13.5, color: 'var(--gbd-sub2)', textDecoration: 'line-through', letterSpacing: '-.01em' }}>{formatNumber(refPrice)}원</div>}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, marginTop: 3 }}>
+            {detail.current_discount_pct > 0 && <span style={{ fontSize: 27, fontWeight: 800, color: 'var(--gbd-danger)', letterSpacing: '-.03em' }}>{detail.current_discount_pct}%</span>}
+            <span style={{ fontSize: 30, fontWeight: 900, color: 'var(--gbd-ink)', letterSpacing: '-.035em' }}>{formatNumber(unitPrice)}원</span>
+          </div>
+          <div style={{ marginTop: 9, fontSize: 13, color: 'var(--gbd-ink2)', fontWeight: 500 }}>{unitSaving > 0 && <>1매당 <b style={{ fontWeight: 800, color: 'var(--gbd-danger)' }}>{formatNumber(unitSaving)}원</b> 저렴 · </>}결제 즉시 교환권 발급</div>
+        </div>
+
+        <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
+
+        {/* 셀러 (컴팩트) + SNS */}
         {detail.seller_name && (() => {
           const snsLinks = [
-            detail.seller_instagram && { icon: Instagram, url: detail.seller_instagram, label: 'Instagram', color: 'text-gray-900 dark:text-white' },
-            detail.seller_youtube && { icon: Youtube, url: detail.seller_youtube, label: 'YouTube', color: 'text-red-500' },
-            detail.seller_tiktok && { icon: Music2, url: detail.seller_tiktok, label: 'TikTok', color: 'text-gray-900 dark:text-white' },
-            detail.seller_facebook && { icon: Facebook, url: detail.seller_facebook, label: 'Facebook', color: 'text-blue-600' },
-          ].filter(Boolean) as { icon: typeof Instagram; url: string; label: string; color: string }[]
-          // 외부 URL 정규화 — http:// 없으면 자동 추가
+            detail.seller_instagram && { icon: Instagram, url: detail.seller_instagram, label: 'Instagram' },
+            detail.seller_youtube && { icon: Youtube, url: detail.seller_youtube, label: 'YouTube' },
+            detail.seller_tiktok && { icon: Music2, url: detail.seller_tiktok, label: 'TikTok' },
+            detail.seller_facebook && { icon: Facebook, url: detail.seller_facebook, label: 'Facebook' },
+          ].filter(Boolean) as { icon: typeof Instagram; url: string; label: string }[]
           const normalizeUrl = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`
           return (
-            <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] overflow-hidden">
-              <button
-                onClick={() => {
-                  const target = detail.seller_username || detail.seller_id
-                  if (target) navigate(`/profile/${target}`)
-                }}
-                className="w-full p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-[#121212] transition-colors"
-              >
-                {detail.seller_avatar ? (
-                  <img src={detail.seller_avatar} alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover" loading="lazy" decoding="async" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-[#2A2A2A] dark:to-[#1A1A1A]" />
-                )}
-                <div className="flex-1 text-left">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">판매자</p>
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">{detail.seller_name}</p>
+            <div style={{ padding: '16px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {detail.seller_avatar
+                  ? <div role="img" aria-label={detail.seller_name} style={{ width: 44, height: 44, borderRadius: '50%', flex: '0 0 auto', backgroundColor: 'var(--gbd-chip)', backgroundImage: `url("${cfImage(detail.seller_avatar, { width: 120, format: 'auto' }) || detail.seller_avatar}")`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                  : <div style={{ width: 44, height: 44, borderRadius: '50%', flex: '0 0 auto', background: 'var(--gbd-chip)' }} />}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>{detail.seller_name}</span>
+                    <CheckCircle2 style={{ width: 15, height: 15, color: 'var(--gbd-accent)', flex: '0 0 auto' }} />
+                    <span style={{ fontSize: 12, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>검증 셀러</span>
+                  </div>
+                  {detail.seller_username && <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', marginTop: 2 }}>@{detail.seller_username}</div>}
                 </div>
-                <span className="text-xs text-gray-400">프로필 →</span>
-              </button>
+                <button onClick={() => { const t = detail.seller_username || detail.seller_id; if (t) navigate(`/profile/${t}`) }} style={{ display: 'inline-flex', alignItems: 'center', gap: 1, padding: '8px 12px', border: '1px solid var(--gbd-line2)', borderRadius: 10, background: 'var(--gbd-card)', color: 'var(--gbd-ink2)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+                  프로필<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                </button>
+              </div>
               {snsLinks.length > 0 && (
-                <div className="flex items-center gap-2 px-4 pb-3 -mt-1">
-                  {snsLinks.map(({ icon: Icon, url, label, color }) => (
-                    <a
-                      key={label}
-                      href={normalizeUrl(url)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={label}
-                      className={`w-9 h-9 rounded-full bg-gray-50 dark:bg-[#1A1A1A] flex items-center justify-center ${color} hover:bg-gray-100 dark:hover:bg-[#1A1A1A] transition-colors`}
-                    >
-                      <Icon className="w-4 h-4" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+                  {snsLinks.map(({ icon: Icon, url, label }) => (
+                    <a key={label} href={normalizeUrl(url)} target="_blank" rel="noopener noreferrer" aria-label={label} style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--gbd-chip)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gbd-ink)' }}>
+                      <Icon style={{ width: 16, height: 16 }} />
                     </a>
                   ))}
                 </div>
@@ -845,71 +676,205 @@ export default function GroupBuyDetailPage() {
           )
         })()}
 
-        {/* 사용 안내 */}
-        {detail.voucher_terms && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-            <p className="text-xs font-bold text-amber-700 mb-2 flex items-center gap-1">
-              <AlertCircle className="w-3.5 h-3.5" /> 사용 안내
-            </p>
-            <p className="text-xs text-amber-800 whitespace-pre-line leading-relaxed">{detail.voucher_terms}</p>
+        <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
+
+        {/* 신뢰 인라인 스트립 */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 18px' }}>
+          {[
+            { title: '안전결제', sub: '토스페이먼츠' },
+            { title: '정식판매', sub: '검증 셀러' },
+            { title: '환불보장', sub: '안심거래' },
+          ].map((tr) => (
+            <div key={tr.title} style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+              <ShieldCheck style={{ width: 16, height: 16, flex: '0 0 auto', color: 'var(--gbd-ink)' }} />
+              <div style={{ lineHeight: 1.25, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>{tr.title}</div>
+                <div style={{ fontSize: 11, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>{tr.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
+
+        {/* 상품 안내 */}
+        <div style={{ padding: '22px 18px' }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>상품 안내</div>
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 13 }}>
+            {['즉시 교환권 발급', '전 지점 사용', detail.voucher_expiry ? `${new Date(detail.voucher_expiry).toLocaleDateString('ko-KR')}까지` : '결제 즉시 사용'].map((chip) => (
+              <span key={chip} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 99, border: '1px solid var(--gbd-line2)', fontSize: 12.5, fontWeight: 600, color: 'var(--gbd-ink2)', whiteSpace: 'nowrap' }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gbd-accent)' }} />{chip}
+              </span>
+            ))}
+          </div>
+          {detail.description && <p style={{ margin: '14px 0 0', fontSize: 14.5, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{detail.description}</p>}
+        </div>
+
+        {/* 대표 메뉴 — 백엔드 menu 데이터 있을 때만 (data-gate; docs/design/group-buy-detail.md) */}
+        {(() => {
+          const menuItems = ((detail as { menu?: Array<{ name: string; desc?: string; price?: string; image?: string; hot?: boolean }> }).menu) || []
+          if (!menuItems.length) return null
+          return (
+            <>
+              <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
+              <div style={{ padding: '22px 18px' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>대표 메뉴</div>
+                  <span style={{ fontSize: 12, color: 'var(--gbd-sub)' }}>식사권으로 주문 가능</span>
+                </div>
+                <div style={{ marginTop: 8, borderBottom: '1px solid var(--gbd-line2)' }}>
+                  {menuItems.map((m, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '12px 0', borderTop: '1px solid var(--gbd-line2)' }}>
+                      <div style={{ width: 56, height: 56, borderRadius: 11, flex: '0 0 auto', backgroundColor: 'var(--gbd-chip)', backgroundImage: m.image ? `url("${cfImage(m.image, { width: 120, format: 'auto' }) || m.image}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--gbd-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
+                          {m.hot && <span style={{ flex: '0 0 auto', padding: '2px 6px', borderRadius: 5, background: 'var(--gbd-danger-soft)', color: 'var(--gbd-danger)', fontSize: 10.5, fontWeight: 800 }}>인기</span>}
+                        </div>
+                        {m.desc && <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.desc}</div>}
+                      </div>
+                      {m.price && <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>{m.price}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )
+        })()}
+
+        {/* 매장 위치 — RestaurantMiniMap(잠금 lazy) + 주소 카드 + 길찾기 */}
+        {(detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) && (
+          <>
+            <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
+            <div style={{ padding: '22px 18px' }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em', marginBottom: 13 }}>매장 위치</div>
+              <div style={{ borderRadius: '14px 14px 0 0', overflow: 'hidden', border: '1px solid var(--gbd-line2)', borderBottom: 'none' }}>
+                <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>
+                  <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} />
+                </Suspense>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '13px 14px', border: '1px solid var(--gbd-line2)', borderTop: 'none', borderRadius: '0 0 14px 14px' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {detail.restaurant_name && <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>{detail.restaurant_name}</div>}
+                  {detail.restaurant_address && <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detail.restaurant_address}</div>}
+                </div>
+                <a
+                  href={`https://map.kakao.com/link/${detail.restaurant_lat && detail.restaurant_lng ? `to/${encodeURIComponent(detail.restaurant_name || '매장')},${detail.restaurant_lat},${detail.restaurant_lng}` : `search/${encodeURIComponent(detail.restaurant_address || detail.restaurant_name || '')}`}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '9px 14px', border: '1px solid var(--gbd-line2)', borderRadius: 11, background: 'var(--gbd-card)', color: 'var(--gbd-ink)', fontSize: 13, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap', flex: '0 0 auto' }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gbd-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z" /></svg>
+                  길찾기
+                </a>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* 본인 product CTA (셀러 대시보드 진입) */}
+        {isOwnProduct && (
+          <div style={{ margin: '0 18px 14px', display: 'flex', alignItems: 'center', gap: 11, padding: '13px 14px', border: '1px solid var(--gbd-line2)', borderRadius: 14 }}>
+            <Sparkles style={{ width: 18, height: 18, flex: '0 0 auto', color: 'var(--gbd-ink)' }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-ink)', margin: 0 }}>내 공구</p>
+              <p style={{ fontSize: 11.5, color: 'var(--gbd-sub)', margin: '2px 0 0' }}>대시보드에서 통계 / 정산 확인</p>
+            </div>
+            <button onClick={() => navigate('/seller/group-buy')} style={{ padding: '8px 12px', background: 'var(--gbd-cta-bg)', color: 'var(--gbd-cta-fg)', border: 'none', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' }}>공구 관리 →</button>
           </div>
         )}
 
-        {detail.voucher_expiry && (
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 text-center">
-            바우처 사용 기한: {new Date(detail.voucher_expiry).toLocaleDateString('ko-KR')}
-          </p>
+        <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
+
+        {/* 이용 안내 — 헤어라인 스펙표 + 점불릿 유의사항 */}
+        <div style={{ padding: '22px 18px' }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>이용 안내</div>
+          <div style={{ marginTop: 15 }}>
+            {[
+              { k: '사용기한', v: detail.voucher_expiry ? `${new Date(detail.voucher_expiry).toLocaleDateString('ko-KR')} 까지` : '발급 후 사용 기간 적용' },
+              { k: '사용처', v: detail.restaurant_name || '전 지점' },
+              { k: '사용 방법', v: '매장에서 교환권 제시' },
+            ].map((row, i, arr) => (
+              <div key={row.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 0', borderTop: '1px solid var(--gbd-line2)', borderBottom: i === arr.length - 1 ? '1px solid var(--gbd-line2)' : 'none' }}>
+                <span style={{ fontSize: 13.5, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>{row.k}</span>
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gbd-ink)' }}>{row.v}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {(detail.voucher_terms
+              ? detail.voucher_terms.split('\n').map(s => s.trim()).filter(Boolean)
+              : ['현장에서 추가 할인이나 다른 쿠폰과 중복 적용되지 않아요.', '잔액은 환불되지 않으니 한 번에 사용하시길 권장해요.']
+            ).map((line, i) => (
+              <div key={i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
+                <span style={{ flex: '0 0 auto', width: 4, height: 4, borderRadius: '50%', background: 'var(--gbd-sub2)', marginTop: 8 }} />
+                <span style={{ fontSize: 13, color: 'var(--gbd-sub)', lineHeight: 1.5 }}>{line}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 이 셀러의 다른 공구 — 가로 스크롤 */}
+        {otherDeals.length > 0 && (
+          <>
+            <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
+            <div style={{ padding: '22px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px' }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>이 셀러의 다른 공구</div>
+                {detail.seller_username && <a href={`/profile/${detail.seller_username}`} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>전체보기</a>}
+              </div>
+              <div className="noscroll" style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '14px 18px 2px', scrollSnapType: 'x proximity' }}>
+                {otherDeals.map((o) => {
+                  const pct = o.discount_pct || (o.original_price && o.original_price > o.price ? Math.round((1 - o.price / o.original_price) * 100) : 0)
+                  return (
+                    <a key={o.id} href={`/group-buy/${o.id}`} style={{ flex: '0 0 152px', textDecoration: 'none', scrollSnapAlign: 'start' }}>
+                      <div style={{ position: 'relative', width: 152, height: 152, borderRadius: 14, overflow: 'hidden', backgroundColor: 'var(--gbd-chip)', backgroundImage: o.image_url ? `url("${cfImage(o.image_url, { width: 300, format: 'auto' }) || o.image_url}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                        {pct > 0 && <span style={{ position: 'absolute', left: 8, top: 8, padding: '3px 7px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 11, fontWeight: 800 }}>{pct}%</span>}
+                      </div>
+                      <div style={{ marginTop: 9, fontSize: 13, fontWeight: 600, color: 'var(--gbd-ink)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 4 }}>
+                        <span style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--gbd-ink)' }}>{formatNumber(o.price)}원</span>
+                        {o.original_price && o.original_price > o.price && <span style={{ fontSize: 11.5, color: 'var(--gbd-sub2)', textDecoration: 'line-through' }}>{formatNumber(o.original_price)}원</span>}
+                      </div>
+                    </a>
+                  )
+                })}
+              </div>
+            </div>
+          </>
         )}
 
-        {/* 🏭 2026-06-07 (사용자 요청): 공구 상품 상세에서 리뷰 섹션 제거. */}
-
-        <div style={{ height: 100 }} />
+        <div style={{ height: 112 }} />
       </main>
 
-      {/* sticky 하단 결제 영역 — BottomNav (z-9999) 위로 올림 + BottomNav 높이만큼 ur-content padding 적용됨 */}
-      <footer className="fixed bottom-0 inset-x-0 bg-white dark:bg-[#0A0A0A] border-t border-gray-200 dark:border-[#2A2A2A] p-3 z-[10002] lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[var(--app-frame)] lg:rounded-t-2xl lg:shadow-xl" role="contentinfo" aria-label="결제 영역">
-        {/* 🏭 2026-06-06 (사용자 요청 — 가격 설득력): 결제 직전 절약액 강조. 수량 변경 시 실시간 갱신. */}
-        {isJoinable && totalSaving > 0 && (
-          <div className="flex items-center justify-between mb-2 px-0.5">
-            <span className="text-[11px] text-gray-500 dark:text-gray-400">
-              정가 <span className="line-through">{formatNumber(refPrice * quantity)}원</span>
-            </span>
-            <span className="text-[11px] font-bold text-gray-900 dark:text-white">
-              {formatNumber(totalSaving)}원 절약
-            </span>
+      {/* 🎨 2026-06-16 리디자인 결제 푸터 — 할인중 + 수량 스테퍼 + 안심 카피 + 잉크블랙 '구매하기'.
+            fixed + 프레임 정렬(lg) 유지 (BottomNav z-9999 위). gbd 자손이라 var() 상속. */}
+      <footer
+        className="fixed bottom-0 inset-x-0 z-[10002] lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[var(--app-frame)] lg:rounded-t-2xl"
+        style={{ background: 'var(--gbd-card)', borderTop: '1px solid var(--gbd-line2)', padding: '11px 16px calc(13px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 30px -18px rgba(0,0,0,.3)' }}
+        role="contentinfo" aria-label="결제 영역"
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-danger)', whiteSpace: 'nowrap' }}>
+            {isJoinable && totalSaving > 0 ? (quantity > 1 ? `총 ${formatNumber(totalSaving)}원 할인 중` : `${formatNumber(unitSaving)}원 할인 중`) : ''}
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--gbd-line2)', borderRadius: 10, overflow: 'hidden' }} role="group" aria-label="수량 조절">
+            <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!isJoinable || quantity <= 1} aria-label="수량 감소" style={{ width: 32, height: 32, border: 'none', background: 'var(--gbd-card)', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!isJoinable || quantity <= 1) ? .4 : 1 }}>−</button>
+            <span style={{ minWidth: 30, textAlign: 'center', fontSize: 14, fontWeight: 700, color: 'var(--gbd-ink)' }} aria-live="polite" aria-label={`현재 ${quantity}장`}>{quantity}</span>
+            <button onClick={() => setQuantity(q => Math.min(10, q + 1))} disabled={!isJoinable || quantity >= 10} aria-label="수량 증가" style={{ width: 32, height: 32, border: 'none', background: 'var(--gbd-card)', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!isJoinable || quantity >= 10) ? .4 : 1 }}>+</button>
           </div>
-        )}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-gray-100 dark:bg-[#1A1A1A] rounded-lg overflow-hidden" role="group" aria-label="수량 조절">
-            <button
-              onClick={() => setQuantity(q => Math.max(1, q - 1))}
-              disabled={!isJoinable || quantity <= 1}
-              className="w-9 h-9 flex items-center justify-center text-gray-700 dark:text-gray-200 disabled:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white focus-visible:outline-none"
-              aria-label="수량 감소"
-            >−</button>
-            <span className="w-10 text-center text-sm font-bold text-gray-900 dark:text-white" aria-live="polite" aria-label={`현재 ${quantity}장`}>{quantity}</span>
-            <button
-              onClick={() => setQuantity(q => Math.min(10, q + 1))}
-              disabled={!isJoinable || quantity >= 10}
-              className="w-9 h-9 flex items-center justify-center text-gray-700 dark:text-gray-200 disabled:text-gray-400 focus-visible:ring-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white focus-visible:outline-none"
-              aria-label="수량 증가"
-            >+</button>
-          </div>
-          <button
-            onClick={handleJoin}
-            disabled={!isJoinable || joining}
-            className={`flex-1 h-11 rounded-lg text-sm font-bold transition-all focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-gray-900 dark:focus-visible:ring-white focus-visible:outline-none ${
-              isJoinable
-                ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-black dark:hover:bg-gray-100 active:scale-[0.98]'
-                : 'bg-gray-300 dark:bg-[#2A2A2A] text-white dark:text-gray-500'
-            }`}
-            aria-label={isJoinable ? `${formatNumber(total)}원으로 ${quantity}장 참여하기` : '참여 불가'}
-          >
-            {joining ? '처리 중…' :
-              !isJoinable ? '참여 불가' :
-              `${formatNumber(total)}원 참여하기`}
-          </button>
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 9 }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--gbd-sub)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+          <span style={{ fontSize: 11.5, color: 'var(--gbd-sub)', fontWeight: 500, whiteSpace: 'nowrap' }}>토스로 3초 안전결제 · 미사용 시 100% 자동환불</span>
+        </div>
+        <button
+          onClick={handleJoin}
+          disabled={!isJoinable || joining}
+          aria-label={isJoinable ? `${formatNumber(total)}원 구매하기` : '구매 불가'}
+          style={{ width: '100%', height: 53, border: 'none', borderRadius: 14, background: isJoinable ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: isJoinable ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+        >
+          {joining ? '처리 중…' : !isJoinable ? '구매 불가' : <>{formatNumber(total)}원 구매하기<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
+        </button>
       </footer>
     </div>
   )
