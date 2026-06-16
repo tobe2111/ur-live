@@ -21,8 +21,10 @@ export interface WholesaleNavItem {
 }
 
 interface WholesaleDashboardShellProps {
-  /** 사이드바 상단 역할 태그 (예: 'SUPPLIER', '유통스타트'). */
+  /** 사이드바 상단 역할명 (예: '제조사 센터', '유통사 센터'). */
   brand: string
+  /** 역할 아이콘 (제조사=Factory, 유통사=Store 등) — 한눈에 역할 구분. */
+  roleIcon?: LucideIcon
   /** 사이드바 상단 부제 (예: 사업자명/등급). */
   brandSubtitle?: string
   navItems: WholesaleNavItem[]
@@ -35,6 +37,7 @@ interface WholesaleDashboardShellProps {
 
 export default function WholesaleDashboardShell({
   brand,
+  roleIcon: RoleIcon,
   brandSubtitle,
   navItems,
   title,
@@ -47,10 +50,17 @@ export default function WholesaleDashboardShell({
   // 흰색 좌측 메뉴 (데스크톱 + 모바일 drawer 공용).
   const sidebar = (
     <aside className="w-[214px] flex-shrink-0 flex flex-col h-full bg-white" style={{ borderRight: '1px solid ' + WT.line }}>
-      {/* 사업자/역할 블록 */}
-      <div className="px-4 pt-5 pb-4" style={{ borderBottom: '1px solid ' + WT.line }}>
-        {brand && <p className="font-extrabold uppercase" style={{ fontSize: '10px', letterSpacing: '0.08em', color: WT.brand }}>{brand}</p>}
-        {brandSubtitle && <p className="mt-1.5 truncate font-bold" style={{ fontSize: '13.5px', color: WT.ink }}>{brandSubtitle}</p>}
+      {/* 역할 헤더 — 아이콘 + 역할명(제조사/유통사 센터) + 사업자명 */}
+      <div className="px-4 pt-4 pb-4" style={{ borderBottom: '1px solid ' + WT.line }}>
+        <div className="flex items-center gap-2">
+          {RoleIcon && (
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg shrink-0" style={{ background: WT.brandSoft }}>
+              <RoleIcon size={15} strokeWidth={2.2} style={{ color: WT.brand }} />
+            </span>
+          )}
+          {brand && <span className="font-extrabold truncate" style={{ fontSize: '14px', letterSpacing: '-0.01em', color: WT.ink }}>{brand}</span>}
+        </div>
+        {brandSubtitle && <p className="mt-2 truncate font-semibold" style={{ fontSize: '12px', color: WT.ink3 }}>{brandSubtitle}</p>}
       </div>
       {/* 네비게이션 */}
       <nav className="flex-1 overflow-y-auto scrollbar-hide py-2.5 px-2.5">

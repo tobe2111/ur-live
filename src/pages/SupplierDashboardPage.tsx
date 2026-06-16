@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Package, Wallet, Receipt, LogOut, Truck, MessageCircle, Loader2, Download } from 'lucide-react'
+import { Package, Wallet, Receipt, LogOut, Truck, MessageCircle, Loader2, Download, Factory } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { supplierApi, isSupplierLoggedIn, clearSupplierSession } from '@/lib/supplier-api'
 import WholesaleDashboardShell, { type WholesaleNavItem } from '@/components/wholesale/WholesaleDashboardShell'
@@ -189,7 +189,8 @@ export default function SupplierDashboardPage() {
 
   return (
     <WholesaleDashboardShell
-      brand={t('supplier.studio', { defaultValue: 'SUPPLIER' })}
+      brand={t('supplier.center', { defaultValue: '제조사 센터' })}
+      roleIcon={Factory}
       brandSubtitle={me?.profile.business_name}
       navItems={navItems}
       title={activeTabLabel}

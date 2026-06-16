@@ -6,7 +6,7 @@
 // ──────────────────────────────────────────────────────────────
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Users, ShieldCheck, Eye, Pencil, Loader2, Trash2, UserPlus } from 'lucide-react'
+import { Users, ShieldCheck, Eye, Pencil, Loader2, Trash2, UserPlus, Store } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { WT } from './wholesale-theme'
 import WholesaleDashboardShell from '@/components/wholesale/WholesaleDashboardShell'
@@ -92,7 +92,7 @@ export default function WholesaleStaffPage() {
   const inputCls = 'w-full h-11 px-3 rounded-lg border text-[14px] outline-none focus:border-[#0C2454] transition-colors text-gray-900'
 
   return (
-    <WholesaleDashboardShell brand={mallName} navItems={navItems} title="직원 계정 관리">
+    <WholesaleDashboardShell brand="유통사 센터" roleIcon={Store} navItems={navItems} title="직원 계정 관리">
       <SEO title="직원 계정 관리 — 유통사" description="유통사 직원 서브계정 초대/권한 관리" url="/wholesale/staff" noindex />
 
       <div className="space-y-6">

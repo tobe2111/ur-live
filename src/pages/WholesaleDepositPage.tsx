@@ -8,7 +8,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   Wallet, LogOut, ShoppingCart, Loader2, Copy, ArrowDownCircle, ArrowUpCircle,
-  RotateCcw, SlidersHorizontal, Building2,
+  RotateCcw, SlidersHorizontal, Building2, Store,
 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
@@ -137,7 +137,8 @@ export default function WholesaleDepositPage() {
 
   return (
     <WholesaleDashboardShell
-      brand={mallName}
+      brand="유통사 센터"
+      roleIcon={Store}
       brandSubtitle={company}
       navItems={navItems}
       title={t('wholesale.deposit.title', { defaultValue: '예치금' })}

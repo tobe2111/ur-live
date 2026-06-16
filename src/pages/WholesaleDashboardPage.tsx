@@ -132,7 +132,8 @@ export default function WholesaleDashboardPage() {
 
   return (
     <WholesaleDashboardShell
-      brand={mallName}
+      brand="유통사 센터"
+      roleIcon={Store}
       brandSubtitle={company}
       navItems={navItems}
       title="유통사 대시보드"
