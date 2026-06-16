@@ -9,6 +9,7 @@
  * 화이트/다크 토글 페이지라 dark: variant 필수.
  */
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { curatorApi } from '@/features/curator/api/curator-api'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -95,7 +96,10 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
 
   const handleValid = !handle || (available === true)
 
-  return (
+  // 🛠️ 2026-06-16 (모바일 팝업 안 보임 신고): 부모에 transform 이 있으면 position:fixed 가 뷰포트가
+  //   아니라 그 부모 기준이 돼 모달이 화면 밖으로 잘림 → document.body 로 portal 해 항상 뷰포트 고정.
+  if (typeof document === 'undefined') return null
+  return createPortal((
     <div className="fixed inset-0 z-[9500] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" role="dialog" aria-modal="true">
       <div className="w-full sm:max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-[#121212] rounded-t-3xl sm:rounded-3xl border border-gray-200 dark:border-[#2A2A2A] p-5 animate-sheet-up">
         <div className="flex items-start justify-between mb-1">
@@ -150,5 +154,5 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
         </div>
       </div>
     </div>
-  )
+  ), document.body)
 }
