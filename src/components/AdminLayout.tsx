@@ -10,6 +10,7 @@ import {
   type LucideIcon
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
+import { normalizeAdminRole, ADMIN_ROLE_LABEL, type AdminRole } from '@/shared/admin-roles'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import { usePersistScroll } from '@/hooks/usePersistScroll'
@@ -282,6 +283,14 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   }
 
   const [adminName] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('admin_name') || localStorage.getItem('admin_email') : null) || '관리자')
+  // 🛡️ 2026-06-16 RBAC 네비 게이트 — 슈퍼 전용 항목(계정/감사/2FA)은 슈퍼만 노출. 변경 권한 강제는 서버(admin-rbac).
+  const [adminRole] = useState<AdminRole>(() => normalizeAdminRole(typeof window !== 'undefined' ? localStorage.getItem('admin_role') : null))
+  const SUPER_ONLY_NAV = new Set(['/admin/accounts', '/admin/audit-log'])
+  const roleNavGroups = adminRole === 'super'
+    ? VISIBLE_NAV_GROUPS
+    : VISIBLE_NAV_GROUPS
+        .map((g) => ({ ...g, items: g.items.filter((it) => !SUPER_ONLY_NAV.has(it.path)) }))
+        .filter((g) => g.items.length > 0)
 
   function logout() {
     clearAuthData('admin')
@@ -345,7 +354,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
 
       {/* Grouped navigation — 그룹 헤더 클릭으로 접기/펼치기 (활성 그룹은 강제 펼침) */}
       <nav ref={navScrollRef} className="flex-1 overflow-y-auto scrollbar-hide pb-2">
-        {VISIBLE_NAV_GROUPS.map((group) => {
+        {roleNavGroups.map((group) => {
           const hasActive = group.items.some((it) => isActive(it.path, it.exact, it.also))
           const collapsed = !!collapsedGroups[group.title] && !hasActive
           return (
@@ -416,7 +425,10 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-extrabold text-white truncate">{adminName}</p>
-            <p className="text-[9px] text-white/50">플랫폼 운영팀 · 관리자</p>
+            <p className="text-[9px] text-white/50">
+              플랫폼 운영팀 · <span className={adminRole === 'viewer' ? 'text-amber-300' : adminRole === 'super' ? 'text-red-300' : 'text-white/70'}>{ADMIN_ROLE_LABEL[adminRole]}</span>
+              {adminRole === 'viewer' && ' (읽기전용)'}
+            </p>
           </div>
         </div>
         <button

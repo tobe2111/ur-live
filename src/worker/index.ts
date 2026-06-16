@@ -159,6 +159,7 @@ import { cafe24Routes } from '../features/cafe24/api/cafe24.routes';
 import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/constants';
 import { requireAdmin, requireAuth } from './middleware/auth';
 import { adminIpWhitelist, adminAuditMiddleware } from './middleware/admin-security';
+import { adminRbacMiddleware } from './middleware/admin-rbac';
 import { rateLimit } from './middleware/rate-limit';
 import { hashPassword } from '../lib/password';
 import { botProtection } from './middleware/bot-detection';
@@ -972,6 +973,10 @@ app.use('/api/agency/forgot-password', exactPostBot('/api/agency/forgot-password
 app.use('/api/admin/login', rateLimit({ action: 'admin_login', max: 5, windowSec: 300 }));
 app.use('/api/admin/refresh', rateLimit({ action: 'admin_refresh', max: 10, windowSec: 60 }));
 app.use('/api/admin/2fa/*', rateLimit({ action: 'admin_2fa', max: 5, windowSec: 300 }));
+// 🛡️ 2026-06-16 어드민 RBAC 게이트 — 제한 역할(ops/cs/finance/viewer) 강제. 모든 /api/admin/* 라우트보다 먼저.
+//   (login/refresh 는 토큰 전이라 통과 — 미들웨어가 role 미상 시 next). admin-payouts(하이픈)도 별도 게이트.
+app.use('/api/admin/*', adminRbacMiddleware());
+app.use('/api/admin-payouts/*', adminRbacMiddleware());
 app.route('/api/admin', adminAuthRoutes);
 
 // -------------------------------------------------------

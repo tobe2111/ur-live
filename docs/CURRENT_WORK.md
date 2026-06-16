@@ -1,5 +1,9 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-16 어드민 활동로그(A) + 역할권한 강제(B)
+- **(A)**: 뷰어/엔드포인트/자동기록 미들웨어/nav 전부 이미 존재 — 유일 결함 `admin_audit_logs` 테이블이 repair-schema 누락(prod 로그 유실) → 추가.
+- **(B) RBAC**: SSOT `src/shared/admin-roles.ts` + 전역 `worker/middleware/admin-rbac.ts`(`/api/admin/*`,`/api/admin-payouts/*` Bearer role 디코드). super=전권/admin=운영전권/viewer=읽기전용/ops·cs·finance=도메인 변경만, 읽기 전역 허용. `/admins`·`/audit-logs`=슈퍼전용(2FA 제외). 프론트 admin_role 저장+nav 게이트+배지. 테스트 8. 신규역할 기존계정 0 → 무영향. ⚠️ prod admins CHECK 제약이 옛값이면 제한역할 생성 막힐 수 있음(에러 시 안전 재빌드).
+
 ## 🔴 2026-06-16 — 플랫폼 수수료율 어드민 조정 (정산 분배, 머니 크리티컬) — ⚠️ staging E2E 필수
 대표 확정: "공급가에 플랫폼 마진 N%가 포함" (공급가 8,500 → 플랫폼 850 / 제조사 7,650).
 - **신설 설정** `platform_settings.wholesale_platform_commission_pct`(기본 10, 0~90) — `/admin/distributor-grades` 에서 조정.
