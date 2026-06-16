@@ -20,6 +20,16 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { compressForUpload } from '@/lib/image-compress'
 
+// 🎨 2026-06-16 링크샵 시안: SNS 핸들/URL → 절대 URL (핸들·@핸들·전체URL 허용).
+function snsUrl(platform: 'youtube' | 'instagram' | 'tiktok', v: string): string {
+  const s = v.trim()
+  if (/^https?:\/\//i.test(s)) return s
+  const h = s.replace(/^@/, '')
+  if (platform === 'youtube') return `https://youtube.com/@${h}`
+  if (platform === 'instagram') return `https://instagram.com/${h}`
+  return `https://tiktok.com/@${h}`
+}
+
 interface CuratorHeaderProps {
   curator: {
     id: number
@@ -28,6 +38,9 @@ interface CuratorHeaderProps {
     bio: string | null
     profile_image: string | null
     banner_url?: string | null // 레거시 — 더 이상 렌더하지 않음 (배경 제거)
+    youtube_url?: string | null
+    instagram_url?: string | null
+    tiktok_url?: string | null
   }
   pinCount: number
   isOwner: boolean
@@ -49,6 +62,29 @@ export default function CuratorHeader({
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // 🎨 2026-06-16 링크샵 시안: SNS 링크 편집(소유자).
+  const [editingSns, setEditingSns] = useState(false)
+  const [snsForm, setSnsForm] = useState({
+    youtube_url: curator.youtube_url || '',
+    instagram_url: curator.instagram_url || '',
+    tiktok_url: curator.tiktok_url || '',
+  })
+  async function saveSns() {
+    if (saving) return
+    setSaving(true)
+    try {
+      const payload = {
+        youtube_url: snsForm.youtube_url.trim(),
+        instagram_url: snsForm.instagram_url.trim(),
+        tiktok_url: snsForm.tiktok_url.trim(),
+      }
+      const res = await api.patch('/api/curator/me/profile', payload)
+      if (res.data?.success) {
+        onCuratorUpdate?.(payload)
+        setEditingSns(false)
+      }
+    } catch { /* no-op */ } finally { setSaving(false) }
+  }
 
   async function saveField(field: 'name' | 'bio', value: string) {
     if (saving) return
@@ -217,8 +253,54 @@ export default function CuratorHeader({
                 {curator.bio || (isOwner ? '한 줄 소개를 입력해주세요 ✎' : '')}
               </p>
             )}
+            {/* 🎨 2026-06-16 링크샵 시안: SNS 버튼 (유튜브/인스타/틱톡) + 소유자 편집 토글 */}
+            {(curator.youtube_url || curator.instagram_url || curator.tiktok_url || isOwner) && (
+              <div className="flex items-center gap-2 mt-2">
+                {curator.youtube_url && (
+                  <a href={snsUrl('youtube', curator.youtube_url)} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="w-[30px] h-[30px] rounded-[9px] bg-[#FF0000] flex items-center justify-center">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" /></svg>
+                  </a>
+                )}
+                {curator.instagram_url && (
+                  <a href={snsUrl('instagram', curator.instagram_url)} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="w-[30px] h-[30px] rounded-[9px] flex items-center justify-center" style={{ background: 'linear-gradient(45deg,#F9CE34,#EE2A7B,#6228D7)' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="3.7" /><circle cx="17.3" cy="6.7" r="1.1" fill="#fff" stroke="none" /></svg>
+                  </a>
+                )}
+                {curator.tiktok_url && (
+                  <a href={snsUrl('tiktok', curator.tiktok_url)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="w-[30px] h-[30px] rounded-[9px] bg-[#141A2E] flex items-center justify-center">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z" /></svg>
+                  </a>
+                )}
+                {isOwner && (
+                  <button onClick={() => setEditingSns(v => !v)} className="text-[11px] font-bold text-gray-400 dark:text-gray-500 px-1.5 py-1 active:opacity-70">
+                    {(curator.youtube_url || curator.instagram_url || curator.tiktok_url) ? 'SNS 편집' : '+ SNS 링크'}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
+
+        {/* SNS 편집 패널 (소유자) */}
+        {isOwner && editingSns && (
+          <div className="mt-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#0A0A0A] p-3 space-y-2">
+            {([['youtube_url', '유튜브'], ['instagram_url', '인스타그램'], ['tiktok_url', '틱톡']] as const).map(([key, label]) => (
+              <div key={key} className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 w-14 shrink-0">{label}</span>
+                <input
+                  value={snsForm[key]}
+                  onChange={(e) => setSnsForm(s => ({ ...s, [key]: e.target.value }))}
+                  placeholder="@핸들 또는 링크"
+                  className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none"
+                />
+              </div>
+            ))}
+            <div className="flex gap-2 pt-1">
+              <button onClick={saveSns} disabled={saving} className="flex-1 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[13px] font-bold disabled:opacity-50">{saving ? '저장 중…' : '저장'}</button>
+              <button onClick={() => setEditingSns(false)} className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 text-[13px] font-bold">취소</button>
+            </div>
+          </div>
+        )}
 
         {/* CTA — 본인: 프로필 수정 / 수익 대시보드, 방문자: 카카오 공유 + 복사 */}
         {isOwner ? (
