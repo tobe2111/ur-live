@@ -1106,6 +1106,31 @@ app.get('/catalog', async (c) => {
         } catch { /* caches 미지원/오류 — 라이브 쿼리로 진행 */ }
       }
     }
+    // 🏭 2026-06-16 [LOADING_ADDITIVE] 로그인 등급캐시 조기 단락 — 저트래픽 mall 의 cold isolate 에서 무거운
+    //   setup(pragma/ensure/lookup/query) 전에 colo 공유 등급캐시를 먼저 read → HIT 면 즉시 반환(setup skip).
+    //   miss 면 아래 기존 흐름 그대로(lookup 재로드 — 가격계산/캐시키 무변경, additive). 필요 lookup 은 product-column
+    //   ensure 불필요(loadSellerGrade=sellers / resolveMallId=host / hasRestrictedVisibility=catch 폴백) → 안전.
+    if (!guest && !brandsMode) {
+      try {
+        const [sgE, mallIdE, visE] = await Promise.all([
+          loadSellerGrade(DB, sellerId!),
+          resolveMallId(c),
+          hasRestrictedVisibility(DB).catch(() => true), // 못 정하면 restricted 취급 → 조기캐시 미사용(안전)
+        ])
+        if (visE === false) {
+          const gradeE = effectiveGrade({ grade: sgE.distributor_grade, specialUntil: sgE.special_discount_until })
+          const u = new URL(c.req.url)
+          u.searchParams.set('__g', gradeE)
+          u.searchParams.set('__m', String(mallIdE))
+          // @ts-expect-error — Cloudflare Workers 전역 caches
+          const hit = (await caches.default.match(new Request(u.toString(), { method: 'GET' })).catch(() => null)) as Response | null
+          if (hit) {
+            const body = await hit.text()
+            if (body) return c.body(body, 200, { 'Content-Type': 'application/json', 'Cache-Control': 'private, max-age=30, stale-while-revalidate=60', 'X-Grade-Cache': 'HIT-EARLY' })
+          }
+        }
+      } catch { /* 폴백: 아래 정상 경로로 진행 */ }
+    }
     // 🏭 2026-06-10 (사용자 신고 — 카탈로그 느림, 전수조사): pragma 존재 체크를 isolate 당 1회로.
     //   기존: 매 요청 pragma_table_info 쿼리(+1 RTT). 양성(컬럼 있음)만 캐시 — 음성은 repair 후 즉시 복귀.
     if (!_supplyCatalogReady.has(DB)) {
