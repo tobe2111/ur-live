@@ -1,6 +1,7 @@
 // 🛡️ 2026-04-28: 카카오톡 인앱 강제 외부 브라우저 redirect (흰화면 + 무한 reload 회피)
 //   *반드시* React/i18n/sentry 등 import 보다 먼저 실행 (모듈 로딩 자체 차단 위해).
 import { autoRedirectKakaoToExternal, detectInAppBrowser } from '@/lib/in-app-browser'
+import { isChunkLoadError, isAppChunkUrl } from '@/utils/chunk-error'
 const _kakaoRedirected = autoRedirectKakaoToExternal()
 
 // 🛡️ 2026-05-07: Safari Date 파싱 글로벌 정상화.
@@ -95,30 +96,28 @@ try {
 
 // 🛡️ 2026-05-07: dynamic import (lazy chunk) 로드 실패 자동 복구.
 //   원인: 새 배포 후 사용자 브라우저는 옛 HTML 가지고 있음 → 옛 HTML 이 참조하는 옛 chunk
-//   해시 (e.g. SellerPage-Dnxck7Qn.js) 가 새 빌드에 없어 404 → React lazy() throw.
+//   해시 (e.g. SellerPage-Dnxck7Qn.js) 가 새 빌드에 없어 404 → SPA HTML 폴백(text/html) →
+//   React lazy() throw / modulepreload MIME 에러.
 //   처리: 같은 세션에서 1회만 자동 reload (무한 reload 차단 sessionStorage 가드).
-//   Sentry 에는 noisy 한 chunk-load 에러 안 올림 (빌드 사이 정상 케이스).
+//   🛡️ 2026-06-16 (사용자 신고 — VoucherDetailPage MIME 에러): isChunkLoadError SSOT 로 변종 전부 감지
+//     (Chrome MIME "Expected a JavaScript-or-Wasm module script ..." 포함) + modulepreload 리소스 실패도 capture.
+const reloadOnceForChunk = () => {
+  try {
+    const k = '__ur_chunk_reload__'
+    if (sessionStorage.getItem(k)) return // 이미 1회 시도 — 무한 reload 차단
+    sessionStorage.setItem(k, '1')
+    window.location.reload()
+  } catch { /* sessionStorage 차단 환경 — silent */ }
+}
 window.addEventListener('error', (e) => {
-  const msg = String(e.message || '')
-  if (msg.includes('Failed to fetch dynamically imported module') || msg.includes('error loading dynamically imported module')) {
-    try {
-      const k = '__ur_chunk_reload__'
-      if (sessionStorage.getItem(k)) return // 이미 1회 시도 — 무한 reload 차단
-      sessionStorage.setItem(k, '1')
-      window.location.reload()
-    } catch { /* sessionStorage 차단 환경 — silent */ }
-  }
-})
+  if (isChunkLoadError(e.message)) { reloadOnceForChunk(); return }
+  // modulepreload/script 리소스 로드 실패 (message 없음 — target 검사). 우리 청크(/assets/*.js)만.
+  const t = e.target as (HTMLScriptElement & HTMLLinkElement) | null
+  const src = t && (t.src || t.href)
+  if (src && isAppChunkUrl(src)) reloadOnceForChunk()
+}, true) // capture: 리소스 에러는 버블 안 함 → capture 로 window 에서 포착
 window.addEventListener('unhandledrejection', (e) => {
-  const msg = String((e.reason as { message?: string })?.message || '')
-  if (msg.includes('Failed to fetch dynamically imported module') || msg.includes('error loading dynamically imported module')) {
-    try {
-      const k = '__ur_chunk_reload__'
-      if (sessionStorage.getItem(k)) return
-      sessionStorage.setItem(k, '1')
-      window.location.reload()
-    } catch { /* silent */ }
-  }
+  if (isChunkLoadError((e.reason as { message?: string })?.message)) reloadOnceForChunk()
 })
 
 // 카카오 외부브라우저 redirect 시도했으면 React 마운트 skip (이미 외부 브라우저로 이동 중)

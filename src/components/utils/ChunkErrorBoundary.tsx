@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { isChunkLoadError } from '@/utils/chunk-error';
 
 interface Props {
   children: ReactNode;
@@ -35,11 +36,8 @@ export class ChunkErrorBoundary extends Component<Props, State> {
     // CRITICAL: Ensure error is an Error instance to prevent React Error #31
     const actualError = error instanceof Error ? error : new Error(String(error));
     
-    // 청크 로딩 실패 감지
-    const isChunkError =
-      actualError.message.includes('Failed to fetch dynamically imported module') ||
-      actualError.message.includes('Importing a module script failed') ||
-      actualError.message.includes('error loading dynamically imported module');
+    // 청크 로딩 실패 감지 (SSOT — Chrome MIME 변종 "Expected a JavaScript-or-Wasm module script" 포함)
+    const isChunkError = isChunkLoadError(actualError.message);
 
     if (import.meta.env.DEV) console.error('[ChunkErrorBoundary] Error caught:', {
       message: actualError.message,
