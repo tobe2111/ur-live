@@ -586,9 +586,13 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       name?: string; description?: string; supply_price?: number; suggested_retail_price?: number;
       stock?: number; image_url?: string; category?: string;
       supply_visibility?: string; barcode?: string; is_brand_product?: boolean; brand_name?: string; brand_logo_url?: string; lowest_price_url?: string;
-      min_order_qty?: number; pack_size?: number; order_multiple?: number;
+      min_order_qty?: number; pack_size?: number; order_multiple?: number; shipping_fee?: number;
     };
     const body = await c.req.json<EditBody>().catch(() => ({} as EditBody));
+    // 🚚 2026-06-16: 상품별 배송비 수정 — product_supply_meta(wholesale_shipping_fee). 컬럼 아님(예산제) → sets 와 별개.
+    const shipFee = (body.shipping_fee != null && Number.isFinite(Number(body.shipping_fee)))
+      ? Math.max(0, Math.floor(Number(body.shipping_fee)))
+      : undefined;
     await ensureSupplyVisibilitySchema(DB);
     await ensureQtyConstraintSchema(DB); // BIZ-8: pack_size / order_multiple 컬럼 보장(UPDATE 전).
 
@@ -634,11 +638,16 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       sets.push('price = ?'); params.push(Math.floor(r));
     }
 
-    if (sets.length === 0) return c.json({ success: false, error: '변경할 내용이 없습니다' }, 400);
+    if (sets.length === 0 && shipFee === undefined) return c.json({ success: false, error: '변경할 내용이 없습니다' }, 400);
 
     // 거부 상태였으면 재제출 → 다시 pending.
     sets.push("supply_approval_status = 'pending'", 'is_active = 0', "updated_at = datetime('now')");
     await DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`).bind(...params, pid).run();
+
+    // 🚚 상품별 배송비(meta) — 컬럼이 아니라 product_supply_meta. 제공 시에만 갱신(fail-soft).
+    if (shipFee !== undefined) {
+      await setSupplyMeta(DB, Number(pid), { wholesale_shipping_fee: shipFee }).catch(swallow('supplier-dashboard:patch-ship-meta'));
+    }
 
     // 🛡️ 스펙: 공급가 수정 시 수정 전 금액 기록 (관리자만 확인).
     if (supplyChanged) {
