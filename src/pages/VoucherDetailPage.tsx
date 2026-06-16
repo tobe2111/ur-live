@@ -206,28 +206,31 @@ export default function VoucherDetailPage() {
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-44 lg:pb-32">
       <SEO title={`${product.name} 교환권 - 유어딜`} description={product.description || ''} url={`/vouchers/${product.id}`} noindex />
 
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-        <button onClick={() => navigate(-1)} aria-label="뒤로"><ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" /></button>
-        <h1 className="text-[15px] font-bold text-gray-900 dark:text-white">{label}</h1>
-        <div className="w-5" />
-      </header>
-
-      {product.image_url && (
-        <div className="w-full aspect-square bg-gray-50 dark:bg-[#121212]">
-          {/* 🛡️ 2026-05-27 (loading P0): cfImage 변환 — 원본 (1MB+) → WebP 80KB.
-                LCP 우선 이미지 → eager + fetchPriority=high. */}
-          <img
-            src={cfImage(product.image_url, { width: 800, format: 'auto' }) || product.image_url}
-            srcSet={cfSrcSet(product.image_url, 800) || undefined}
-            sizes="(max-width: 640px) 100vw, 800px"
-            alt={product.name}
-            loading="eager"
-            fetchPriority="high"
-            decoding="async"
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
+      {/* 🛡️ 2026-06-16 (사용자 요청): 상단 '바우처' 타이틀 바 제거 → 이미지 위 floating 뒤로가기 버튼 */}
+      <div className="relative">
+        {product.image_url && (
+          <div className="w-full aspect-square bg-gray-50 dark:bg-[#121212]">
+            {/* 🛡️ 2026-05-27 (loading P0): cfImage 변환 — 원본 (1MB+) → WebP 80KB. LCP 우선 → eager. */}
+            <img
+              src={cfImage(product.image_url, { width: 800, format: 'auto' }) || product.image_url}
+              srcSet={cfSrcSet(product.image_url, 800) || undefined}
+              sizes="(max-width: 640px) 100vw, 800px"
+              alt={product.name}
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+        <button
+          onClick={() => navigate(-1)}
+          aria-label="뒤로"
+          className="absolute top-3 left-3 z-40 w-9 h-9 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur shadow-sm flex items-center justify-center active:scale-95"
+        >
+          <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
+        </button>
+      </div>
 
       <div className="px-4 py-5 space-y-3">
         <div className="inline-block px-2 py-0.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[11px] font-bold rounded">{label}</div>
