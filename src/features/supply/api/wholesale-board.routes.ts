@@ -21,6 +21,8 @@ import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
 import { resolveMallId } from './wholesale-malls'
+import { resolveDistributorPrice } from '@/lib/distributor-pricing'
+import { loadGradeTable, loadSellerGrade } from './wholesale.routes'
 
 type D1Database = Env['DB']
 
@@ -143,15 +145,35 @@ wish.get('/', async (c) => {
   const { DB } = c.env
   try {
     await ensureBoardSchema(DB)
+    // ⚠️ supply_price(제조사 공급원가)·supplier_id 는 응답에 노출 X — 등급 공급가(distributor_price) 산출용으로만 SELECT.
     const { results } = await DB.prepare(
       `SELECT w.product_id, w.created_at,
-              p.name, p.image_url, p.category, p.brand_name, p.price, p.is_active
+              p.name, p.image_url, p.category, p.brand_name, p.price AS retail_price, p.is_active,
+              COALESCE(p.supply_price, 0) AS supply_price, p.supply_margin_override_pct AS margin_override,
+              COALESCE(p.is_supply_product, 0) AS is_supply_product, COALESCE(p.stock, 0) AS stock
        FROM wholesale_wishlists w
        LEFT JOIN products p ON p.id = w.product_id
        WHERE w.seller_id = ?
        ORDER BY w.id DESC LIMIT 200`
-    ).bind(sellerId).all()
-    return c.json({ success: true, items: results ?? [] })
+    ).bind(sellerId).all<{
+      product_id: number; created_at: string; name: string | null; image_url: string | null
+      category: string | null; brand_name: string | null; retail_price: number | null; is_active: number | null
+      supply_price: number; margin_override: number | null; is_supply_product: number; stock: number
+    }>()
+    const rows = results ?? []
+    // 🏷️ 등급 공급가 enrich — 카탈로그와 동일 SSOT(resolveDistributorPrice). 공급상품이고 원가>0 일 때만.
+    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])
+    const items = rows.map((r) => {
+      const distributor_price = r.is_supply_product && r.supply_price > 0
+        ? resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override }).price
+        : null
+      return {
+        product_id: r.product_id, created_at: r.created_at, name: r.name, image_url: r.image_url,
+        category: r.category, brand_name: r.brand_name, retail_price: r.retail_price || null,
+        is_active: r.is_active, stock: r.stock, distributor_price,
+      }
+    })
+    return c.json({ success: true, items })
   } catch (err) {
     return safeError(c, err, '찜 목록 조회 중 오류가 발생했습니다', '[wholesale-wishlist]')
   }
