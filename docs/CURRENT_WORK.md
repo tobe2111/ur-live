@@ -22,6 +22,12 @@
 - **시안 큐레이션 추가(사용자 "똑같이" 요청)**: ① 카테고리 타일 8종(`CuratedSections.tsx CategoryTiles` — 클릭 시 cat 필터) ② "실시간 베스트" 탭+순위(1~5) 5열 그리드(`BestGrid`, `ProductCard` 에 `rank` 배지 prop 추가) ③ 메인 그리드 5열化 + 비로그인 기본 랜딩(`cleanHome`)에선 필터 사이드바/컨트롤 숨겨 풀폭(시안처럼) — 카테고리/검색 선택 시 노출. 베스트/신규 레일 → BestGrid 로 대체(HomeRails 는 재주문/전용공급만), BrandHero 제거(시안 미포함), 기본 라벨 "오늘의 도매 특가".
 - **후속 백로그**: 상품상세/장바구니/결제/가입/마이/제조사입점 화면을 같은 시안 톤으로(chat "다음 단계"). 히어로 사진은 추후 자체 호스팅(R2) 검토(현재 Unsplash 핫링크).
 
+## ✅ 2026-06-15 — sellers 컬럼 예산제 확장 (배포 로그 `sellers 100컬럼 = D1 한도 도달` 발견)
+**배경**: REPAIR_SCHEMA_TOKEN 확인차 배포 로그 점검 중 자동복구 응답에 `sellers 컬럼 100개 — D1 결과셋 한도(100) 임박` 경고 발견 — 2026-06-10 교환권 상세 전사 500(products 컬럼 100 초과 → `SELECT p.*` 한도 초과)과 **동일 사고 클래스**. 조사 결과 즉시-500은 없음(sellers 100컬럼을 통째 반환하는 `SELECT s.*`/`SELECT * FROM sellers` 쿼리 부재 — seller 도메인 star-select 는 전부 타 테이블). **진짜 갭 = 예산제 CI(`check-products-column-budget.mjs`)가 products 만 감시, sellers 는 무감시** → 101번째 컬럼 추가 시 그때 터짐.
+- **fix**: 예산 체크를 products+sellers **멀티테이블**로 일반화(파일 1회 스캔 캐시 + 테이블별 baseline). `scripts/sellers-column-baseline.json`(현 96 ALTER 컬럼) 신설 — 기존 컬럼 통과 + 신규 `ALTER TABLE sellers ADD COLUMN` 차단. verify.yml 호출 지점 무변경(같은 스크립트). CLAUDE.md 방어선 표 갱신.
+- **검증**: 양 테이블 통과(exit 0) + 음성 테스트(임시 sellers 컬럼 → exit 1, 정확한 위치/대안 메시지) + cleanup 후 통과 확인.
+- **남은 권고**: 향후 sellers 부가속성은 K-V 사이드테이블로(예산 escape hatch). 컬럼 DROP(트리밍)은 D1 위험 → 미실시(증식 차단이 우선).
+
 ## ✅ 2026-06-15 — 링크샵 적립 마감재 2종 (남은 비이상 — 멱등 UNIQUE + 핀별 순클릭/로그정리)
 **배경**: 위 4종 후 "더 이상적으로?" 재질문 → 남은 비이상 4가지 제시, 대표가 전부 선택. 조사 결과 ②hold 전체 스트림은 **대부분 이미 성숙(hold) 보유**(influencer_attributions T+7 payout·supplier matureSettlements·agency 월정산) → 즉시-잔액 적립 + MAX(0) clawback 누수가 남은 건 `referral_commissions`(추천 트리, 별도 출금 서브시스템)뿐. stays 인플 적립은 `payment.routes`(잠금) 직접 INSERT 라 잔액 미적립(누수 아님). 따라서 이번 turn 은 안전·명확한 ①③ 구현, ② referral_commissions hold·④ 유저 현금화 정책은 대표 결정 후 별도 진행.
 - **① 멱등 UNIQUE** (`affiliate-credit.ts`/`affiliate.routes.ts`/`repair-schema`): SELECT-후-INSERT(race) → `affiliate_earnings(referrer_id, order_id)` partial UNIQUE + `INSERT OR IGNORE`(changes===0=멱등 DUPLICATE, 잔액/알림 없음). 머니룰 #3 정합. 기존 중복 행 있으면 인덱스 생성 실패→repair 리포트(타 _pair 인덱스 컨벤션).
