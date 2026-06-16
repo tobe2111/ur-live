@@ -30,7 +30,7 @@ export default function WithdrawModal({ t, spendable, onClose, onDone }: {
     } finally { setSaving(false) }
   }
 
-  const inputCls = "w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none"
+  const inputCls = "w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FC5424]/30 focus:border-[#FC5424] outline-none"
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-0 sm:px-4" onClick={onClose}>
       <div className="bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-6" onClick={e => e.stopPropagation()}>
@@ -49,13 +49,13 @@ export default function WithdrawModal({ t, spendable, onClose, onDone }: {
               value={amount} onChange={e => setAmount(e.target.value)}
               placeholder="10000" className={inputCls}
             />
-            <button type="button" onClick={() => setAmount(String(spendable))} className="mt-1.5 text-xs font-medium text-[#FF0033]">
+            <button type="button" onClick={() => setAmount(String(spendable))} className="mt-1.5 text-xs font-medium text-[#FC5424]">
               {t('supplier.withdrawAll', { defaultValue: '전액 신청' })}
             </button>
           </div>
           <p className="text-xs text-gray-500">{t('supplier.withdrawNote', { defaultValue: '등록된 정산 계좌로 송금됩니다. 신청 후 관리자 송금 확인 시 처리 완료됩니다.' })}</p>
           {error && <p className="text-sm text-red-500">{error}</p>}
-          <button type="submit" disabled={saving} className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-[#FF0033] text-white font-bold text-sm disabled:opacity-50">
+          <button type="submit" disabled={saving} className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-[#FC5424] text-white font-bold text-sm disabled:opacity-50">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             {t('supplier.withdrawSubmit', { defaultValue: '출금 신청하기' })}
           </button>

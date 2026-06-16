@@ -25,7 +25,7 @@ export default function WithdrawalSection({ spendable, items, t, onRequest }: {
         <button
           onClick={onRequest}
           disabled={spendable < 10000}
-          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FF0033] text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FC5424] text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Wallet className="w-4 h-4" /> {t('supplier.withdrawBtn', { defaultValue: '출금 신청' })}
         </button>

@@ -20,7 +20,7 @@ export default function OrdersTab({ items, t, status, setStatus, onShip }: {
       <div className="flex gap-1 mb-4 bg-white rounded-xl p-1 border border-gray-200 w-fit">
         {([['to_ship', t('supplier.toShip', { defaultValue: '발송 대기' })], ['shipped', t('supplier.shipped', { defaultValue: '발송 완료' })]] as const).map(([k, label]) => (
           <button key={k} onClick={() => setStatus(k)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${status === k ? 'bg-[#FF0033] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${status === k ? 'bg-[#FC5424] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
             {label}
           </button>
         ))}
@@ -49,7 +49,7 @@ export default function OrdersTab({ items, t, status, setStatus, onShip }: {
                     )}
                   </div>
                   {status === 'to_ship' && (
-                    <button onClick={() => onShip(o)} className="shrink-0 flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-[#FF0033] text-white rounded-lg">
+                    <button onClick={() => onShip(o)} className="shrink-0 flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-[#FC5424] text-white rounded-lg">
                       <Truck className="w-3.5 h-3.5" /> {t('supplier.enterTracking', { defaultValue: '운송장 입력' })}
                     </button>
                   )}

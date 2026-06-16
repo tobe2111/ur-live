@@ -105,7 +105,7 @@ export default function SupplyChannelGuide({ supplyPrice, retailPrice, t }: {
           </div>
 
           {next && (
-            <p className="text-[11px] font-semibold text-[#FF0033] mt-2">
+            <p className="text-[11px] font-semibold text-[#FC5424] mt-2">
               {t('supplier.channelGuideNudge', {
                 defaultValue: '공급가를 {{price}} 이하로 낮추면 {{channel}} 채널까지 제안 가능해져요!',
                 price: formatWon(next.maxSupplyPrice),

@@ -84,7 +84,7 @@ export default function CatalogTab({ items, t, onAdd, onBulkDone, onManageChanne
             <Download className="w-4 h-4" /> {t('supplier.storeImportBtn2', { defaultValue: '내 스토어에서 가져오기' })}
           </button>
           <input ref={fileRef} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={onFile} />
-          <button onClick={onAdd} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#FF0033] text-white text-sm font-semibold">
+          <button onClick={onAdd} className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#FC5424] text-white text-sm font-semibold">
             <Plus className="w-4 h-4" /> {t('supplier.addProduct', { defaultValue: '공급상품 등록' })}
           </button>
         </div>
@@ -156,7 +156,7 @@ export default function CatalogTab({ items, t, onAdd, onBulkDone, onManageChanne
                       </button>
                     )}
                     {item.approval_status === 'approved' && item.pending_supply_price == null && (
-                      <button onClick={() => onRequestPriceChange(item)} className="inline-flex items-center gap-1 text-[11px] font-medium text-[#FF0033] border border-[#FF0033]/30 rounded-lg px-2 py-1 hover:bg-[#FF0033]/5">
+                      <button onClick={() => onRequestPriceChange(item)} className="inline-flex items-center gap-1 text-[11px] font-medium text-[#FC5424] border border-[#FC5424]/30 rounded-lg px-2 py-1 hover:bg-[#FC5424]/5">
                         <Tag className="w-3 h-3" /> {t('supplier.requestPriceChange', { defaultValue: '가격 수정 요청' })}
                       </button>
                     )}

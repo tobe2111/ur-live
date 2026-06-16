@@ -193,7 +193,7 @@ export default function StoreImportModal({ t, onClose, onImported }: {
                   })}
                 </div>
                 <button onClick={runImport} disabled={importing || selected.size === 0}
-                  className="w-full h-12 rounded-xl bg-[#FF0033] text-white text-[14px] font-bold disabled:opacity-50">
+                  className="w-full h-12 rounded-xl bg-[#FC5424] text-white text-[14px] font-bold disabled:opacity-50">
                   {importing
                     ? <span className="inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> 가져오는 중...</span>
                     : t('supplier.storeImportBtn', { defaultValue: '{{n}}개 공급상품으로 등록', n: selected.size }).replace('{{n}}', String(selected.size))}

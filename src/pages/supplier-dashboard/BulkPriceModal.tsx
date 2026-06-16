@@ -57,7 +57,7 @@ export default function BulkPriceModal({ t, items, onClose, onDone }: {
     } finally { setSaving(false) }
   }
 
-  const cellCls = "w-24 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none"
+  const cellCls = "w-24 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FC5424]/30 focus:border-[#FC5424] outline-none"
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-0 sm:px-4" onClick={onClose}>
       <div className="bg-white w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -85,7 +85,7 @@ export default function BulkPriceModal({ t, items, onClose, onDone }: {
                   {items.map(it => {
                     const e = edits[it.id]
                     return (
-                      <tr key={it.id} className={e?.selected ? 'bg-[#FF0033]/5' : ''}>
+                      <tr key={it.id} className={e?.selected ? 'bg-[#FC5424]/5' : ''}>
                         <td className="px-2 py-2 text-center">
                           <input type="checkbox" checked={!!e?.selected} onChange={() => toggle(it.id)} disabled={saving} className="w-4 h-4" />
                         </td>
@@ -107,11 +107,11 @@ export default function BulkPriceModal({ t, items, onClose, onDone }: {
             <div className="mb-4">
               <label className="block text-xs font-medium text-gray-600 mb-1">{t('supplier.fieldReason', { defaultValue: '변경 사유 (선택)' })}</label>
               <input value={reason} onChange={e => setReason(e.target.value)} disabled={saving}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FC5424]/30 focus:border-[#FC5424] outline-none"
                 placeholder={t('supplier.reasonPh', { defaultValue: '예: 원자재 가격 인상 반영' })} />
             </div>
             <button onClick={submit} disabled={saving || selectedCount === 0}
-              className="w-full py-3 rounded-xl bg-[#FF0033] text-white font-semibold text-sm disabled:opacity-60">
+              className="w-full py-3 rounded-xl bg-[#FC5424] text-white font-semibold text-sm disabled:opacity-60">
               {saving
                 ? t('common.loading', { defaultValue: '처리 중...' })
                 : t('supplier.submitBulkPrice', { defaultValue: '{{n}}개 가격 변경 요청', n: selectedCount }).replace('{{n}}', String(selectedCount))}

@@ -17,7 +17,7 @@ import { useWholesaleMall } from '@/hooks/queries/useWholesale'
 export default function SupplierRegisterPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  // 🏬 2026-06-09 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FF0033 → byte-identical).
+  // 🏬 2026-06-09 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FC5424 → byte-identical).
   const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo } = useWholesaleMall()
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
@@ -158,7 +158,7 @@ export default function SupplierRegisterPage() {
     )
   }
 
-  const inputCls = "w-full px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none transition-all disabled:bg-gray-50"
+  const inputCls = "w-full px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#FC5424]/30 focus:border-[#FC5424] outline-none transition-all disabled:bg-gray-50"
   const labelCls = "block text-sm font-medium text-gray-700 mb-1.5"
 
   return (
@@ -206,7 +206,7 @@ export default function SupplierRegisterPage() {
               <input required disabled={loading} value={form.business_name} onChange={set('business_name')} className={inputCls} placeholder={t('supplier.phBizName', { defaultValue: '예: (주)유어딜무역' })} />
             </div>
             <div>
-              <label className={labelCls}>{t('supplier.fieldBizNumber', { defaultValue: '사업자등록번호' })} <span className="text-[#FF0033]">*</span></label>
+              <label className={labelCls}>{t('supplier.fieldBizNumber', { defaultValue: '사업자등록번호' })} <span className="text-[#FC5424]">*</span></label>
               <input required disabled={loading} value={form.business_number} onChange={onBizNum} inputMode="numeric" maxLength={12} className={inputCls} placeholder="000-00-00000" />
             </div>
             {/* 🏭 2026-06-04 사업자등록증 이미지 (승인 심사용) */}
@@ -232,7 +232,7 @@ export default function SupplierRegisterPage() {
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-bold text-gray-900">{t('supplier.managerSection', { defaultValue: '담당자 정보' })}</p>
                 <label className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 cursor-pointer select-none">
-                  <input type="checkbox" checked={sameAsRep} onChange={(e) => toggleSame(e.target.checked)} disabled={loading} className="w-4 h-4 rounded accent-[#FF0033]" />
+                  <input type="checkbox" checked={sameAsRep} onChange={(e) => toggleSame(e.target.checked)} disabled={loading} className="w-4 h-4 rounded accent-[#FC5424]" />
                   {t('supplier.sameAsRep', { defaultValue: '대표자와 동일' })}
                 </label>
               </div>

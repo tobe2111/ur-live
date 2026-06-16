@@ -44,7 +44,7 @@ export default function PriceChangeModal({ t, item, onClose, onDone }: {
     } finally { setSaving(false) }
   }
 
-  const inputCls = "w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none"
+  const inputCls = "w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FC5424]/30 focus:border-[#FC5424] outline-none"
   const labelCls = "block text-xs font-medium text-gray-600 mb-1"
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-0 sm:px-4" onClick={onClose}>
@@ -85,7 +85,7 @@ export default function PriceChangeModal({ t, item, onClose, onDone }: {
             <label className={labelCls}>{t('supplier.fieldReason', { defaultValue: '변경 사유 (선택)' })}</label>
             <textarea disabled={saving} value={reason} onChange={e => setReason(e.target.value)} rows={2} className={inputCls} placeholder={t('supplier.reasonPh', { defaultValue: '예: 원자재 가격 인상 반영' })} />
           </div>
-          <button type="submit" disabled={saving} className="w-full py-3 rounded-xl bg-[#FF0033] text-white font-semibold text-sm disabled:opacity-60 mt-2">
+          <button type="submit" disabled={saving} className="w-full py-3 rounded-xl bg-[#FC5424] text-white font-semibold text-sm disabled:opacity-60 mt-2">
             {saving ? t('common.loading', { defaultValue: '처리 중...' }) : t('supplier.submitPriceChange', { defaultValue: '가격 수정 요청' })}
           </button>
         </form>

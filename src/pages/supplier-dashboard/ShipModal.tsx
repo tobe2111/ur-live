@@ -29,7 +29,7 @@ export default function ShipModal({ t, order, onClose, onShipped }: {
     } finally { setSaving(false) }
   }
 
-  const inputCls = "w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none"
+  const inputCls = "w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FC5424]/30 focus:border-[#FC5424] outline-none"
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-0 sm:px-4" onClick={onClose}>
       <div className="bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl p-6" onClick={e => e.stopPropagation()}>
@@ -48,7 +48,7 @@ export default function ShipModal({ t, order, onClose, onShipped }: {
             <label className="block text-xs font-medium text-gray-600 mb-1">{t('supplier.trackingNo', { defaultValue: '운송장 번호' })} <span className="text-red-500">*</span></label>
             <input value={tracking} onChange={e => setTracking(e.target.value)} className={inputCls} disabled={saving} />
           </div>
-          <button type="submit" disabled={saving} className="w-full py-3 rounded-xl bg-[#FF0033] text-white font-semibold text-sm disabled:opacity-60 mt-2">
+          <button type="submit" disabled={saving} className="w-full py-3 rounded-xl bg-[#FC5424] text-white font-semibold text-sm disabled:opacity-60 mt-2">
             {saving ? t('common.loading', { defaultValue: '처리 중...' }) : t('supplier.registerTracking', { defaultValue: '발송 등록' })}
           </button>
         </form>

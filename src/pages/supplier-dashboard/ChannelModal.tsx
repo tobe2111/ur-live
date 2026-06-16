@@ -35,7 +35,7 @@ export default function ChannelModal({ t, item, onClose }: { t: (k: string, o?: 
         <p className="text-xs text-gray-500 mb-4">{item.name} · {t('supplier.channelHint', { defaultValue: '승인한 유통사에게만 이 상품이 노출·주문됩니다.' })}</p>
         <div className="flex gap-2 mb-4">
           <input value={sellerId} onChange={e => setSellerId(e.target.value)} type="number" placeholder={t('supplier.distributorId', { defaultValue: '유통사 ID' })} className={inputCls} />
-          <button onClick={add} disabled={busy} className="px-4 py-2 bg-[#FF0033] text-white rounded-lg text-sm font-semibold disabled:opacity-60">{t('common.add', { defaultValue: '추가' })}</button>
+          <button onClick={add} disabled={busy} className="px-4 py-2 bg-[#FC5424] text-white rounded-lg text-sm font-semibold disabled:opacity-60">{t('common.add', { defaultValue: '추가' })}</button>
         </div>
         {list.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-6">{t('supplier.noChannel', { defaultValue: '승인된 유통사가 없습니다.' })}</p>

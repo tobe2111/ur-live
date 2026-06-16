@@ -35,7 +35,7 @@ export default function AnalyticsTab({ data, loading, period, setPeriod, t }: {
       <div className="flex gap-1 bg-white rounded-xl p-1 border border-gray-200 w-fit">
         {periods.map(p => (
           <button key={p.key} onClick={() => setPeriod(p.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${period === p.key ? 'bg-[#FF0033] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${period === p.key ? 'bg-[#FC5424] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
             {p.label}
           </button>
         ))}
@@ -73,7 +73,7 @@ export default function AnalyticsTab({ data, loading, period, setPeriod, t }: {
 
           {/* 매출 시계열 (CSS 막대) */}
           <div className="bg-white rounded-2xl border border-gray-200 p-5">
-            <p className="text-sm font-semibold text-gray-900 mb-4 inline-flex items-center gap-1.5"><BarChart3 className="w-4 h-4 text-[#FF0033]" />{t('supplier.aRevenueTrend', { defaultValue: '매출 추이' })}</p>
+            <p className="text-sm font-semibold text-gray-900 mb-4 inline-flex items-center gap-1.5"><BarChart3 className="w-4 h-4 text-[#FC5424]" />{t('supplier.aRevenueTrend', { defaultValue: '매출 추이' })}</p>
             {(data?.series || []).length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-10">{t('supplier.aNoData', { defaultValue: '해당 기간 매출 데이터가 없습니다.' })}</p>
             ) : (
@@ -83,7 +83,7 @@ export default function AnalyticsTab({ data, loading, period, setPeriod, t }: {
                   const neg = p.revenue < 0
                   return (
                     <div key={p.bucket} className="flex-1 min-w-[8px] flex flex-col items-center justify-end h-full group relative">
-                      <div className={`w-full rounded-t ${neg ? 'bg-red-300' : 'bg-[#FF0033]/70'} group-hover:bg-[#FF0033] transition-colors`} style={{ height: `${h}%` }} />
+                      <div className={`w-full rounded-t ${neg ? 'bg-red-300' : 'bg-[#FC5424]/70'} group-hover:bg-[#FC5424] transition-colors`} style={{ height: `${h}%` }} />
                       <div className="absolute bottom-full mb-1 hidden group-hover:block whitespace-nowrap bg-gray-900 text-white text-[10px] rounded px-1.5 py-1 z-10">
                         {p.bucket}<br />{formatWon(p.revenue)} · {formatNumber(p.orders)}{t('supplier.aOrdersUnit', { defaultValue: '건' })}
                       </div>

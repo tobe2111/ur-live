@@ -9,7 +9,7 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
   if (meError) return (
     <div className="py-16 text-center">
       <p className="text-sm text-gray-500 mb-3">{t('supplier.meLoadFailed', { defaultValue: '데이터를 불러오지 못했어요.' })}</p>
-      <button onClick={onRetry} className="px-4 py-2 bg-[#FF0033] text-white rounded-xl text-sm font-semibold">{t('common.retry', { defaultValue: '다시 시도' })}</button>
+      <button onClick={onRetry} className="px-4 py-2 bg-[#FC5424] text-white rounded-xl text-sm font-semibold">{t('common.retry', { defaultValue: '다시 시도' })}</button>
     </div>
   )
   if (!me) return (
@@ -60,15 +60,15 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
 
       {/* 빈 상태 히어로 or 상단 등록 CTA */}
       {approved && noProducts ? (
-        <div className="rounded-2xl p-6 text-white" style={{ background: 'linear-gradient(135deg,#FF0033,#FF4D77)' }}>
+        <div className="rounded-2xl p-6 text-white" style={{ background: 'linear-gradient(135deg,#FC5424,#FF4D77)' }}>
           <h3 className="text-lg font-bold">{t('supplier.emptyHeroTitle', { defaultValue: '첫 공급상품을 등록하세요' })}</h3>
           <p className="text-sm text-white/85 mt-1 mb-4">{t('supplier.emptyHeroDesc', { defaultValue: '등록 → 관리자 검수 → 도매몰 노출. 전국 유통사가 내 등급 공급가로 사입합니다.' })}</p>
-          <button onClick={onAdd} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-[#FF0033] font-bold text-sm">
+          <button onClick={onAdd} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-[#FC5424] font-bold text-sm">
             <Plus className="w-4 h-4" /> {t('supplier.addProductBtn', { defaultValue: '상품 등록하기' })}
           </button>
         </div>
       ) : approved ? (
-        <button onClick={onAdd} className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-[#FF0033] text-white font-bold text-sm">
+        <button onClick={onAdd} className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-[#FC5424] text-white font-bold text-sm">
           <Plus className="w-4 h-4" /> {t('supplier.addProductNew', { defaultValue: '새 상품 등록' })}
         </button>
       ) : null}
@@ -93,7 +93,7 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
             <div className="flex items-center gap-1.5 flex-wrap">
               {steps.map((s, i) => (
                 <div key={s.label} className="flex items-center gap-1.5">
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-bold ${s.done ? 'bg-green-50 text-green-700' : s === next ? 'bg-[#FFF0F2] text-[#FF0033]' : 'bg-gray-50 text-gray-400'}`}>
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-bold ${s.done ? 'bg-green-50 text-green-700' : s === next ? 'bg-[#FFF0F2] text-[#FC5424]' : 'bg-gray-50 text-gray-400'}`}>
                     {s.done ? <CheckCircle className="w-3 h-3" /> : null}{s.label}
                   </span>
                   {i < steps.length - 1 && <span className="text-gray-300 text-[10px]">→</span>}
@@ -135,8 +135,8 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {actions.map(a => (
             <button key={a.label} onClick={a.disabled ? undefined : a.on} disabled={a.disabled}
-              className={`text-left rounded-2xl border p-4 transition-colors ${a.disabled ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed' : a.primary ? 'border-[#FF0033]/30 bg-[#FF0033]/5 hover:bg-[#FF0033]/10' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
-              <a.Icon className={`w-5 h-5 mb-2 ${a.primary ? 'text-[#FF0033]' : 'text-gray-500'}`} />
+              className={`text-left rounded-2xl border p-4 transition-colors ${a.disabled ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed' : a.primary ? 'border-[#FC5424]/30 bg-[#FC5424]/5 hover:bg-[#FC5424]/10' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+              <a.Icon className={`w-5 h-5 mb-2 ${a.primary ? 'text-[#FC5424]' : 'text-gray-500'}`} />
               <p className="text-sm font-bold text-gray-900">{a.label}</p>
               <p className="text-xs text-gray-500 mt-0.5">{a.desc}</p>
             </button>
@@ -161,7 +161,7 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm font-semibold text-gray-900">{t('supplier.productSummary', { defaultValue: '공급상품 현황' })}</p>
-          <button onClick={() => onGoTab('catalog')} className="text-xs font-bold text-[#FF0033]">{t('supplier.viewAll', { defaultValue: '전체 보기 →' })}</button>
+          <button onClick={() => onGoTab('catalog')} className="text-xs font-bold text-[#FC5424]">{t('supplier.viewAll', { defaultValue: '전체 보기 →' })}</button>
         </div>
         <div className="grid grid-cols-4 gap-3 text-center">
           {[
@@ -223,12 +223,12 @@ function ShippingPolicyCard({ t }: { t: (k: string, o?: Record<string, unknown>)
     } finally { setSaving(false) }
   }
 
-  const inputCls = 'w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none'
+  const inputCls = 'w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FC5424]/30 focus:border-[#FC5424] outline-none'
   const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-5">
       <div className="flex items-center gap-2 mb-1">
-        <Truck className="w-4 h-4 text-[#FF0033]" />
+        <Truck className="w-4 h-4 text-[#FC5424]" />
         <p className="text-sm font-semibold text-gray-900">{t('supplier.shipPolicyTitle', { defaultValue: '배송/주문 정책' })}</p>
       </div>
       <p className="text-xs text-gray-500 mb-4">{t('supplier.shipPolicyDesc', { defaultValue: '유통사 장바구니에서 우리 상품 합계가 최소주문금액 미만이면 주문할 수 없어요. 배송비는 주문 시 자동 합산됩니다. (0 = 제한/배송비/무료배송 없음)' })}</p>
@@ -250,7 +250,7 @@ function ShippingPolicyCard({ t }: { t: (k: string, o?: Record<string, unknown>)
               <input type="number" min={0} value={freeShip} disabled={saving} onChange={e => setFreeShip(e.target.value)} className={inputCls} placeholder="0" />
             </div>
           </div>
-          <button onClick={save} disabled={saving} className="mt-4 w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#FF0033] text-white font-semibold text-sm disabled:opacity-60">
+          <button onClick={save} disabled={saving} className="mt-4 w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#FC5424] text-white font-semibold text-sm disabled:opacity-60">
             {saving ? t('common.loading', { defaultValue: '저장 중...' }) : t('supplier.savePolicy', { defaultValue: '정책 저장' })}
           </button>
         </>
