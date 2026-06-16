@@ -165,7 +165,7 @@ wish.get('/', async (c) => {
     const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])
     const items = rows.map((r) => {
       const distributor_price = r.is_supply_product && r.supply_price > 0
-        ? resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override }).price
+        ? resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: r.retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override }).price
         : null
       return {
         product_id: r.product_id, created_at: r.created_at, name: r.name, image_url: r.image_url,

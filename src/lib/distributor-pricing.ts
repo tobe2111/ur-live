@@ -1,14 +1,17 @@
 /**
  * 🏭 2026-06-01 유통스타트 도매몰 — 유통사 등급별 공급가 산출.
  *
- * 모델 (docs/design/wholesale-utongstart.md, 사용자 확정):
- *   - 제조사 공급가(base) = 제조사가 유통스타트에 주는 가격 (= products.supply_price).
- *   - 유통사 공급가 = base × (1 + 등급마진율/100).  ← 유통사가 유통스타트에 지불(선결제).
- *   - 유통스타트 마진(수익) = 유통사 공급가 − base.  ← 제조사에는 base 만 정산.
- *   - 등급: A/B/C/D/OEM + SPECIAL(특별할인, 기간한정 — 덤핑/임박품).
- *   - D-B 결정: 고등급(A)일수록 마진율 ↓(저렴), 저등급일수록 ↑. SPECIAL = 최저(덤핑).
+ * 모델 (2026-06-16 대표 확정 — 판매가 기준 보장마진):
+ *   - 판매가(retail) = 제조사가 등록한 권장소비자가 (= products.price). 전 등급 동일.
+ *   - 등급마진율 = 유통사에게 **보장**되는 판매가 대비 마진 (일반 15% / 프로 30% / 프리미엄 38%).
+ *   - 유통사 공급가 = max(제조사원가, 판매가 × (1 − 등급마진율/100)).  ← 원가를 하한(플랫폼 손실 차단).
+ *       예) 판매가 10,000 → 일반 8,500 / 프로 7,000 / 프리미엄 6,200 (원가가 그보다 낮을 때).
+ *   - 유통스타트 마진(수익) = 유통사 공급가 − 제조사원가.  ← 제조사에는 원가(supply_price)만 정산(불변).
+ *   - 등급: A/B/C/D/OEM + SPECIAL. 고등급(A)일수록 마진율 ↑(= 공급가 ↓, 더 저렴).
  *
- * 등급 마진율은 distributor_grades 테이블(어드민 편집)에서 옴 — 여기선 순수 계산만.
+ * ⚠️ 2026-06-16 공식 전환: (구) 원가×(1+마크업) → (신) 판매가×(1−보장마진), 원가 하한.
+ *   등급마진율 의미가 '원가 위 마크업' → '판매가 대비 보장마진'으로 바뀜 → distributor_grades 값도 신모델로 마이그레이션.
+ *   등급 마진율은 distributor_grades 테이블(어드민 편집)에서 옴 — 여기선 순수 계산만.
  */
 
 export type DistributorGrade = 'A' | 'B' | 'C' | 'D' | 'OEM' | 'SPECIAL';
@@ -20,23 +23,38 @@ export interface GradeMargin {
   is_special?: boolean;
 }
 
-/** 어드민 미설정 시 사용하는 안전 기본값 (고등급일수록 저마진). admin 이 distributor_grades 로 덮어씀. */
+/** 어드민 미설정 시 사용하는 안전 기본값 = 판매가 대비 보장마진(%). 고등급일수록 고마진(저공급가). admin 이 distributor_grades 로 덮어씀. */
 export const DEFAULT_GRADE_MARGINS: Record<DistributorGrade, number> = {
-  A: 10,
-  B: 15,
-  C: 20,
-  D: 25,
-  OEM: 8,
-  SPECIAL: 0,
+  A: 38, // 프리미엄
+  B: 30, // 프로(연 구독)
+  C: 15, // 일반(승인 가입)
+  D: 8,  // 하향(엣지)
+  OEM: 40,
+  SPECIAL: 45,
 };
 
 /** 미배정 유통사 기본 등급 — 스펙: "유통회원 가입 시 자동 C등급". 어드민이 A/B 상향 또는 D 하향 배정. */
 export const DEFAULT_UNGRADED: DistributorGrade = 'C';
 
 /**
- * 유통사가 지불할 공급가 (원 단위 반올림).
- * @param baseSupplyPrice 제조사 공급가 (products.supply_price)
- * @param marginPct 등급 마진율 (%)
+ * 🆕 2026-06-16 유통사 공급가(원 단위 반올림) — 신모델: 판매가 × (1 − 보장마진%), 단 제조사 원가를 하한.
+ * @param retailPrice 판매가(권장소비자가, products.price)
+ * @param supplyFloor 제조사 원가(products.supply_price) — 이 값 아래로는 절대 안 내려감(플랫폼 손실 차단)
+ * @param marginPct 등급 보장마진율 (%) — 0~95 클램프
+ */
+export function distributorPriceFromRetail(retailPrice: number, supplyFloor: number, marginPct: number): number {
+  const retail = Math.max(0, Math.floor(retailPrice || 0));
+  const floor = Math.max(0, Math.floor(supplyFloor || 0));
+  const m = Number.isFinite(marginPct) ? Math.min(95, Math.max(0, marginPct)) : 0;
+  // 판매가 미설정(0)이면 원가로 — 원가 이하 판매 방지(제조사가 권장가 입력 전 degenerate fallback).
+  if (retail <= 0) return floor;
+  const byMargin = Math.round(retail * (1 - m / 100));
+  return Math.max(floor, byMargin);
+}
+
+/**
+ * (구 모델 — 원가 위 마크업) 유통사 공급가. 신모델 전환(2026-06-16) 후 직접 사용 X — 하위호환/테스트용 유지.
+ * @deprecated 신모델은 distributorPriceFromRetail. resolveDistributorPrice 가 신공식 사용.
  */
 export function distributorPrice(baseSupplyPrice: number, marginPct: number): number {
   const base = Math.max(0, Math.floor(baseSupplyPrice || 0));
@@ -151,6 +169,7 @@ export function tierUnitPrice(gradePrice: number, qty: number, tiers?: QtyTier[]
  *  이 마진을 그 상품 전 유통사에 동일 적용(전략/특가 상품). 미설정(null)이면 기존 등급 마진. */
 export function resolveDistributorPrice(opts: {
   baseSupplyPrice: number;
+  retailPrice?: number | null;
   grade?: string | null;
   specialUntil?: string | null;
   table?: GradeMargin[] | null;
@@ -161,9 +180,12 @@ export function resolveDistributorPrice(opts: {
   const ov = opts.marginOverridePct;
   const hasOverride = ov != null && Number.isFinite(Number(ov)) && Number(ov) >= 0;
   const marginPct = hasOverride ? Math.max(0, Number(ov)) : marginForGrade(grade, opts.table);
+  // 🆕 2026-06-16 신모델: 판매가 × (1 − 보장마진%), 제조사 원가 하한. retailPrice 미전달/0 이면 원가로 폴백.
+  const supplyFloor = Math.max(0, Math.floor(opts.baseSupplyPrice || 0));
+  const price = distributorPriceFromRetail(Number(opts.retailPrice) || 0, supplyFloor, marginPct);
   return {
-    price: distributorPrice(opts.baseSupplyPrice, marginPct),
-    margin: platformMargin(opts.baseSupplyPrice, marginPct),
+    price,
+    margin: Math.max(0, price - supplyFloor), // 플랫폼 수익 = 공급가 − 제조사원가
     grade,
     marginPct,
     overridden: hasOverride,

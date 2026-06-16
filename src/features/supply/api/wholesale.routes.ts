@@ -974,7 +974,7 @@ app.get('/home', async (c) => {
     const baseWhere = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND COALESCE(p.mall_id,1) = ${Number(homeMallId) || 1} AND ${visibilityWhere('p')}`
     const cols = `p.id, p.name, p.image_url, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, COALESCE(p.min_order_qty,1) AS moq, EXISTS(SELECT 1 FROM product_qty_tiers t WHERE t.product_id = p.id) AS has_tiers, p.supply_margin_override_pct AS margin_override, p.dominant_color, COALESCE(p.sold_count,0) AS sold_count`
     const enrich = (rows: HomeRow[]) => (rows || []).map(r => {
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
       // ⚠️ retail_price = 권장소비자가(공급자 입력) — 원가(supply_price)/제조사 신원은 비노출. 유통사 마진 산출용.
       return { id: r.id, name: r.name, image_url: r.image_url, category: r.category, stock: r.stock, dominant_color: r.dominant_color ?? null, distributor_price: price, retail_price: r.retail_price || null, moq: Math.max(1, r.moq || 1), has_tiers: !!r.has_tiers, sold_count: r.sold_count || 0 }
     })
@@ -1037,7 +1037,7 @@ app.get('/recent-items', async (c) => {
     const items = ids.map(id => {
       const p = byId.get(id); const meta = seen.get(id)
       if (!p) return null
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: p.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override })
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: p.supply_price, retailPrice: (p as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override })
       const moq = Math.max(1, p.moq || 1)
       return { id: p.id, name: p.name, image_url: p.image_url, stock: p.stock, distributor_price: price, retail_price: p.retail_price || null, moq, last_qty: Math.max(moq, meta?.qty || moq), last_date: (meta?.created_at || '').slice(0, 10) }
     }).filter(Boolean)
@@ -1234,7 +1234,7 @@ app.get('/catalog', async (c) => {
     //   비로그인(guest) → 도매가/권장가/마진 전부 가림(null) + requires_login. (옵션 A: 도매가 숨김)
     const items = (rows.results || []).map(r => {
       const price = guest ? null : resolveDistributorPrice({
-        baseSupplyPrice: r.supply_price, grade: sg.distributor_grade,
+        baseSupplyPrice: r.supply_price, retailPrice: r.retail_price, grade: sg.distributor_grade,
         specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override,
       }).price
       const supId = (Number.isFinite(r.supplier_id as number) && (r.supplier_id as number) > 0) ? (r.supplier_id as number) : null
@@ -1390,7 +1390,7 @@ app.get('/catalog/:id', async (c) => {
       loadQtyTiers(DB, [id]),
     ])
     const { price, grade } = resolveDistributorPrice({
-      baseSupplyPrice: r.supply_price, grade: sg.distributor_grade,
+      baseSupplyPrice: r.supply_price, retailPrice: r.retail_price, grade: sg.distributor_grade,
       specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override,
     })
     const rawTiers = tierMap.get(r.id) || []
@@ -1516,12 +1516,12 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     // 🏬 감사 🟡#3: mall 스코프 — 카탈로그처럼 주문도 요청 유통사의 몰로 제한(크로스몰 주문 차단).
     const orderMallId = await resolveMallId(c)
     const prods = await DB.prepare(`
-      SELECT p.id, p.name, p.supplier_id, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple, p.supply_margin_override_pct AS margin_override
+      SELECT p.id, p.name, p.supplier_id, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple, p.supply_margin_override_pct AS margin_override
       FROM products p
       WHERE p.id IN (${placeholders}) AND p.is_supply_product = 1 AND p.is_active = 1
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
         AND COALESCE(p.mall_id,1) = ? AND ${visibilityWhere('p')}
-    `).bind(...ids, orderMallId, sellerId).all<{ id: number; name: string; supplier_id: number | null; stock: number | null; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
+    `).bind(...ids, orderMallId, sellerId).all<{ id: number; name: string; supplier_id: number | null; stock: number | null; supply_price: number; retail_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const found = prods.results || []
     if (found.length !== ids.length) {
       // 어떤 상품이 주문 불가인지 이름으로 안내(카트 부분 불가 UX) — 비노출 정보 없이 name 만.
@@ -1556,7 +1556,7 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
         return c.json({ success: false, error: `재고가 부족합니다: ${p.name}` }, 400)
       }
       const { price } = resolveDistributorPrice({
-        baseSupplyPrice: p.supply_price, grade: sg.distributor_grade,
+        baseSupplyPrice: p.supply_price, retailPrice: p.retail_price, grade: sg.distributor_grade,
         specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override,
       })
       // 🛡️ PRC-1: CHARGE 도 DISPLAY(카탈로그 /catalog/:id) 와 동일 floor 사용 — display==charge 정합 필수.
@@ -1943,7 +1943,7 @@ app.get('/proposals', async (c) => {
     const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
     const { results } = await DB.prepare(`
       SELECT wp.id, wp.note, wp.created_at, p.id AS product_id, p.name, p.image_url, p.stock,
-             COALESCE(p.supply_price,0) AS supply_price, p.supply_margin_override_pct AS margin_override
+             COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, p.supply_margin_override_pct AS margin_override
       FROM wholesale_proposals wp
       JOIN products p ON p.id = wp.product_id
       WHERE wp.distributor_seller_id = ? AND wp.status = 'active'
@@ -1951,7 +1951,7 @@ app.get('/proposals', async (c) => {
       ORDER BY wp.created_at DESC LIMIT 50
     `).bind(sellerId).all<{ id: number; note: string | null; created_at: string; product_id: number; name: string; image_url: string | null; stock: number; supply_price: number; margin_override: number | null }>()
     const items = (results || []).map(r => {
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
       return { id: r.id, note: r.note, product_id: r.product_id, name: r.name, image_url: r.image_url, stock: r.stock, distributor_price: price }
     })
     return c.json({ success: true, proposals: items })
@@ -2040,14 +2040,14 @@ app.get('/catalog-export', async (c) => {
     await ensureSupplyVisibilitySchema(DB)
     const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
     const rows = await DB.prepare(`
-      SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, p.supply_margin_override_pct AS margin_override
+      SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, p.supply_margin_override_pct AS margin_override
       FROM products p
       WHERE p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL
         AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
       ORDER BY p.name LIMIT 10000
     `).bind(sellerId).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; margin_override: number | null }>()
     const out = (rows.results || []).map(r => {
-      const { price, grade } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
+      const { price, grade } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
       return [r.id, r.name, r.category || '', r.stock, price, grade]
     })
     return xlsxResponse(buildXlsx(['product_id', '상품명', '카테고리', '재고', '공급가(내등급)', '적용등급'], out), `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.xlsx`)
@@ -2070,7 +2070,7 @@ app.get('/catalog/export', async (c) => {
     await ensureQtyConstraintSchema(DB) // pack_size / order_multiple 컬럼 보장(SELECT 전).
     const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])
     const rows = await DB.prepare(`
-      SELECT p.id, p.name, p.barcode, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price,
+      SELECT p.id, p.name, p.barcode, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple,
              p.supply_margin_override_pct AS margin_override
       FROM products p
@@ -2081,7 +2081,7 @@ app.get('/catalog/export', async (c) => {
     const header = ['상품명', '바코드', '공급가(내등급)', 'MOQ', '박스단위', '재고']
     const out = (rows.results || []).map(r => {
       // ⚠️ 내 등급 단가만 계산 — 타 등급가 누출 없음(카탈로그/주문과 동일 SSOT).
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
       return [r.name, r.barcode || '', price, Math.max(1, r.moq || 1), Math.max(1, r.order_multiple || 1), r.stock]
     })
     return csvResponse(buildCsv(header, out), `wholesale-pricelist-${new Date().toISOString().slice(0, 10)}.csv`)
@@ -2106,7 +2106,7 @@ app.get('/order-template', async (c) => {
     await ensureQtyConstraintSchema(DB) // order_multiple 컬럼 보장(SELECT 전).
     const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
     const rows = await DB.prepare(`
-      SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price,
+      SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple,
              p.supply_margin_override_pct AS margin_override
       FROM products p
@@ -2115,7 +2115,7 @@ app.get('/order-template', async (c) => {
       ORDER BY p.category, p.name LIMIT 10000
     `).bind(sellerId).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const out = (rows.results || []).map(r => {
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
       return [r.id, r.name, r.category || '', r.stock, price, Math.max(1, r.moq || 1), Math.max(1, r.order_multiple || 1), ''] // 주문수량은 빈칸 — 유통사가 입력
     })
     return csvResponse(buildCsv(header, out), `wholesale-order-form-${new Date().toISOString().slice(0, 10)}.csv`)
@@ -2180,7 +2180,7 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
     // 🏬 감사 🟡#3: 미리보기도 주문과 동일 mall 스코프(크로스몰 차단).
     const previewMallId = await resolveMallId(c)
     const prods = await DB.prepare(`
-      SELECT p.id, p.name, p.image_url, p.supplier_id, p.stock, COALESCE(p.supply_price,0) AS supply_price,
+      SELECT p.id, p.name, p.image_url, p.supplier_id, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple,
              p.supply_margin_override_pct AS margin_override
       FROM products p
@@ -2219,7 +2219,7 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
         continue
       }
       // 등급 단가 → tier floor → 수량구간 할인 적용 (주문 생성과 동일 산식 — 표시 정합).
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: p.supply_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override })
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: p.supply_price, retailPrice: (p as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override })
       const tierFloor = effectiveTierFloor(price, p.supply_price, minMarginPct)
       const unit = tierUnitPrice(price, qty, tierMap.get(pid), tierFloor)
       const lineTotal = unit * qty

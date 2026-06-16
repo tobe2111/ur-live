@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, memo } from 'react'
 import { ChevronRight, Plus, Check, Lock, BellRing, BellOff, Heart } from 'lucide-react'
 import {
-  WT, won, comma, discountRate, marginRate,
+  WT, won, comma, discountRate, marginVsRetail,
 } from '../wholesale/wholesale-theme'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { cfImage } from '@/utils/cf-image'
@@ -67,7 +67,7 @@ export const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed,
   }, [onPrefetch, p.id])
   const prefetch = () => onPrefetch?.(p.id)
   const soldOut = p.stock <= 0
-  const mr = p.retail_price && p.distributor_price != null ? marginRate(p.distributor_price, p.retail_price) : 0
+  const mr = p.retail_price && p.distributor_price != null ? marginVsRetail(p.distributor_price, p.retail_price) : 0
   const moq = Math.max(1, p.moq || 1)
   const om = Math.max(1, p.order_multiple || 1)
   // 🎨 2026-06-16 (대표 요청 "그라데이션으로 맞추면 좋겠어"): 대표색 그라데이션 카드 복원.
@@ -159,7 +159,7 @@ export const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed,
               <span className="text-[19px] font-extrabold tabular-nums tracking-[-0.02em]" style={{ color: grad.text }}>{won(p.distributor_price)}</span>
             </div>
             <div className="flex gap-1.5 flex-wrap">
-              {mr > 0 && <span className="text-[10.5px] font-bold rounded-[5px] px-1.5 py-0.5 whitespace-nowrap" style={chipMargin}>마진 +{mr}%</span>}
+              {mr > 0 && <span className="text-[10.5px] font-bold rounded-[5px] px-1.5 py-0.5 whitespace-nowrap" style={chipMargin}>마진 {mr}%</span>}
               {moq > 1 && <span className="text-[10.5px] font-bold rounded-[5px] px-1.5 py-0.5 whitespace-nowrap" style={chipBorder}>MOQ {comma(moq)}</span>}
               {om > 1 && <span className="text-[10.5px] font-bold rounded-[5px] px-1.5 py-0.5 whitespace-nowrap" style={chipBorder}>{comma(om)}개 단위</span>}
             </div>

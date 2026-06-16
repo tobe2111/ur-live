@@ -6,7 +6,7 @@ import { ArrowLeft, Loader2, Check, Lock, BellRing, BellOff, MessageCircle, Stor
 import { toast } from '@/hooks/useToast'
 import { useWholesaleProduct } from '@/hooks/queries/useWholesale'
 import { cfImage } from '@/utils/cf-image'
-import { WT, won, comma, discountRate, unitMargin, marginRate, GRADE_LABEL, WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
+import { WT, won, comma, discountRate, unitMargin, marginVsRetail, GRADE_LABEL, WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
 
 // 💬 채팅 위젯은 lazy — 상품 상세 초기 청크에 채팅 코드 0 byte(버튼 클릭 시에만 fetch).
@@ -230,7 +230,7 @@ export default function WholesaleProductPage() {
   const total = effUnit * qty
   const dr = item.retail_price ? discountRate(item.distributor_price ?? 0, item.retail_price) : 0
   const um = item.retail_price ? unitMargin(item.distributor_price ?? 0, item.retail_price) : 0
-  const mr = item.retail_price ? marginRate(item.distributor_price ?? 0, item.retail_price) : 0
+  const mr = item.retail_price ? marginVsRetail(item.distributor_price ?? 0, item.retail_price) : 0
   const catLabel = WHOLESALE_CATEGORIES.find(c => c.id === item.category)?.label
   const tabs: [typeof tab, string][] = [['desc', '상세설명'], ['ship', '배송'], ['settle', '정산'], ['return', '반품·교환']]
 
