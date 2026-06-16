@@ -163,7 +163,7 @@ export default function WholesaleDashboardPage() {
           ))}
         </section>
 
-        {/* 🏅 플러스 멤버십(연 구독) — 예치금 차감. 일반→구독 CTA / 플러스→만료·연장 / 프리미엄→안내 */}
+        {/* 🏅 프로 멤버십(연 구독) — 예치금 차감. 일반→구독 CTA / 프로→만료·연장 / 프리미엄→안내 */}
         <PlusMembershipCard />
 
         {/* 제조사 겸업 — 제조사 대시보드 진입 */}

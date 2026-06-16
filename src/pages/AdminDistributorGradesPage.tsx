@@ -484,7 +484,7 @@ export default function AdminDistributorGradesPage() {
             <Percent className="w-4 h-4 text-gray-500" /> 등급별 마진율
           </h2>
           <p className="text-sm text-gray-500 mb-4">
-            유통사 공급가 = 제조사 공급가 × (1 + 마진율). 고등급(A)일수록 낮게, 특별할인은 기간 한정 최저가.
+            유통사 공급가 = max(제조사 원가, 판매가 × (1 − 보장마진율)). 마진율 = <b>판매가 대비</b> 보장마진(고등급일수록 큼 = 더 낮은 공급가). 원가가 하한, 특별할인은 기간 한정 최고마진.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

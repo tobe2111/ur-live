@@ -273,7 +273,9 @@ supplierDashboardRoutes.post('/products', async (c) => {
 
     const name = (body.name || '').trim();
     const supplyPrice = Number(body.supply_price);
-    const suggestedRetail = Number(body.suggested_retail_price ?? body.supply_price);
+    // 🆕 2026-06-16 신모델(판매가 대비 보장마진): 권장 소비자가(판매가) 필수 + 공급가보다 높아야 함.
+    //   유통사/플랫폼 마진이 전부 (판매가−공급가) 에서 나옴 — 미입력/동일가면 마진 0(팔 수 없는 상품)이라 차단.
+    const suggestedRetail = Number(body.suggested_retail_price);
     const stock = Number.isFinite(Number(body.stock)) ? Math.max(0, Math.floor(Number(body.stock))) : 0;
     // MOQ — 최소 주문 수량(박스 단위). 1~100000, 기본 1.
     const moq = Number.isFinite(Number(body.min_order_qty)) ? Math.min(100000, Math.max(1, Math.floor(Number(body.min_order_qty)))) : 1;
@@ -284,8 +286,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
     if (!name) return c.json({ success: false, error: '상품명은 필수입니다' }, 400);
     if (name.length > 200) return c.json({ success: false, error: '상품명은 200자 이하여야 합니다' }, 400);
     if (!Number.isFinite(supplyPrice) || supplyPrice <= 0) return c.json({ success: false, error: '공급가는 0원 이상이어야 합니다' }, 400);
-    if (!Number.isFinite(suggestedRetail) || suggestedRetail < supplyPrice) {
-      return c.json({ success: false, error: '권장 소비자가는 공급가 이상이어야 합니다' }, 400);
+    if (!Number.isFinite(suggestedRetail) || suggestedRetail <= supplyPrice) {
+      return c.json({ success: false, error: '권장 소비자가(판매가)는 공급가보다 높아야 합니다 — 유통 마진이 여기서 나옵니다', code: 'RETAIL_TOO_LOW' }, 400);
     }
 
     // 승인된 공급자만 등록 가능 (정지/대기 차단).
@@ -634,7 +636,8 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     }
     if (body.suggested_retail_price != null) {
       const r = Number(body.suggested_retail_price);
-      if (!Number.isFinite(r) || r < newSupply) return c.json({ success: false, error: '권장 소비자가는 공급가 이상이어야 합니다' }, 400);
+      // 🆕 2026-06-16 신모델: 판매가 > 공급가 (동일가 = 마진 0 차단).
+      if (!Number.isFinite(r) || r <= newSupply) return c.json({ success: false, error: '권장 소비자가(판매가)는 공급가보다 높아야 합니다', code: 'RETAIL_TOO_LOW' }, 400);
       sets.push('price = ?'); params.push(Math.floor(r));
     }
 
@@ -692,12 +695,12 @@ supplierDashboardRoutes.post('/products/:id/price-change-request', async (c) => 
     if (!Number.isFinite(newSupply) || newSupply <= 0) {
       return c.json({ success: false, error: '변경할 공급가는 0원 이상이어야 합니다' }, 400);
     }
-    // 권장 소비자가는 선택 — 미입력 시 기존 유지. 입력 시 새 공급가 이상이어야 함.
+    // 권장 소비자가는 미입력 시 기존 유지. 입력 시 새 공급가보다 높아야 함(신모델 — 마진 0 차단).
     let newRetail: number | null = null;
     if (body.new_retail_price != null && String(body.new_retail_price) !== '') {
       const r = Math.floor(Number(body.new_retail_price));
-      if (!Number.isFinite(r) || r < newSupply) {
-        return c.json({ success: false, error: '권장 소비자가는 공급가 이상이어야 합니다' }, 400);
+      if (!Number.isFinite(r) || r <= newSupply) {
+        return c.json({ success: false, error: '권장 소비자가(판매가)는 공급가보다 높아야 합니다', code: 'RETAIL_TOO_LOW' }, 400);
       }
       newRetail = r;
     }
