@@ -27,14 +27,24 @@
 | 핀 추가 동선 | 콘솔에만 | 그리드 끝 점선 카드(본인) | ✅ |
 | 빈 상태 | 텍스트 CTA | ghost 샘플 + 떠있는 CTA | ✅ |
 
-## 구현 todo
+## 구현 todo (2026-06-16 전부 완료)
+**유저 링크샵 (CuratorPage `/u/:handle`)**
 - [x] 에디토리얼 카드 (번호 코너플래그 · 다크 가격칩 · 절약 초록 · coral-rule note)
 - [x] 그리드 끝 "+ 핀 추가하기" 점선 카드 (본인 한정)
-- [ ] 프로필 가로형 컴팩트 + 인증 배지
-- [ ] 검색창 (sticky, 이름+note 라이브 필터)
-- [ ] #1 풀폭 히어로 카드
-- [ ] 빈 상태 ghost 샘플 + 떠있는 CTA
-- [ ] SNS 링크 (백엔드: 유저 SNS 필드 — `user_social_links` 사이드테이블 권장)
+- [x] 프로필 가로형 컴팩트
+- [x] 검색창 (이름+note 라이브 필터 + 결과없음)
+- [x] #1 풀폭 히어로 카드
+- [x] 빈 상태 ghost 샘플(스켈레톤, mask gradient) + 떠있는 CTA
+- [x] SNS 링크 — users.youtube_url/instagram_url/tiktok_url 컬럼 + GET/PATCH + 헤더 버튼 + 소유자 인라인 편집
+- [x] 확정/예정 적립 strip (T+7 hold 정직 표시)
+
+**셀러 링크샵 (SellerPublicPage `/profile/:id`)** — 셀러는 이게 링크샵
+- [x] 에디토리얼 카드 (상품 + 홈 식사권 카드 → 다크 할인칩·초록 절약·coral)
+- [x] SNS 버튼 (sns_youtube/sns_instagram/external_live_tiktok — 데이터 보유, 백엔드 불필요)
+- [x] 상품 탭 검색창
+- [~] 프로필: 커버/사업자/통계가 있는 더 풍부한 컴포넌트라 컴팩트 전면교체 대신 시안 요소(카드·SNS)만 이식(의도적)
+
+**버그픽스**: i18n strip `returned an object`(curator.console 충돌) · 모바일 온보딩 팝업 잘림(createPortal)
 
 ## 피드백 요약 (가장 이상적인지)
 세션 응답 참조. 핵심: 방향성(딜가치+추천이유 카드 중심)은 정확. 단 ① SNS는 신규 데이터라 별도 백엔드 ② 히어로 #1은 sort=1 핀으로 매핑(featured 플래그 불필요) ③ 절약액/할인%/번호는 전부 기존 데이터로 즉시 구현 가능.
