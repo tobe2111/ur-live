@@ -238,9 +238,44 @@ export async function lapseExpiredPlus(DB: D1Database): Promise<number> {
   return n;
 }
 
+/**
+ * 🏅 2026-06-16 — 플러스 만료 임박(14일 내) 1회 알림.
+ *   아직 만료 전 + 14일 이내인 플러스(B) 구독자에게 연장 안내. 같은 알림 20일 내 중복 발송 방지(주간 cron 재전송 dedup).
+ */
+export async function notifyExpiringPlus(DB: D1Database): Promise<number> {
+  const rows = await DB.prepare(
+    "SELECT id, plus_until FROM sellers WHERE distributor_grade = 'B' AND plus_until IS NOT NULL " +
+    "AND plus_until >= datetime('now') AND plus_until < datetime('now','+14 days') LIMIT 500"
+  ).all<{ id: number; plus_until: string }>().catch(() => ({ results: [] as { id: number; plus_until: string }[] }));
+  let n = 0;
+  for (const s of rows.results || []) {
+    try {
+      const dup = await DB.prepare(
+        "SELECT 1 AS x FROM dashboard_notifications WHERE recipient_type = 'seller' AND recipient_id = ? " +
+        "AND type = 'wholesale_plus_expiring' AND created_at > datetime('now','-20 days') LIMIT 1"
+      ).bind(String(s.id)).first<{ x: number }>().catch(() => null);
+      if (dup) continue;
+      await DB.prepare(
+        "INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at) " +
+        "VALUES ('seller', ?, 'wholesale_plus_expiring', ?, ?, '/wholesale/dashboard', datetime('now'))"
+      ).bind(
+        String(s.id),
+        '플러스 멤버십 만료 예정',
+        `플러스 등급이 ${(s.plus_until || '').slice(0, 10)}에 만료돼요. 예치금에서 연장하면 계속 더 낮은 공급가로 사입할 수 있어요.`,
+      ).run().catch(swallow('wholesale-grade-eval:notify-expiring'));
+      n++;
+    } catch (err) {
+      console.error(`[cron:wholesale-grade-eval] notify-expiring seller ${s.id}:`, err);
+    }
+  }
+  if (n > 0) console.info(`[cron:wholesale-grade-eval] notified expiring plus: ${n}`);
+  return n;
+}
+
 /** cron 진입점 (scheduled.ts 에서 호출). */
 export async function handleWholesaleGradeEval(env: Env): Promise<void> {
-  // 만료 플러스 강등 먼저(강등 후 볼륨 자격 있으면 같은 배치에서 재승급 가능) → GMV 자동 승급.
+  // 만료 플러스 강등 먼저(강등 후 볼륨 자격 있으면 같은 배치에서 재승급 가능) → GMV 자동 승급 → 만료 임박 알림.
   await lapseExpiredPlus(env.DB).catch((e) => console.error('[cron:wholesale-grade-eval] lapse error:', e));
   await evaluateWholesaleGrades(env, false);
+  await notifyExpiringPlus(env.DB).catch((e) => console.error('[cron:wholesale-grade-eval] notify-expiring error:', e));
 }
