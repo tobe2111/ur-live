@@ -33,6 +33,8 @@ interface DetailItem {
   // 🚚 제조사별 배송/주문 정책(비식별 group key + 정책 숫자) — 카트 그룹 계산용.
   supplier_group?: string | null
   supplier_policy?: { min_order_amount?: number; shipping_fee?: number; free_ship_threshold?: number } | null
+  // 🚚 2026-06-16: 상품별 배송비(설정 시 정책 배송비보다 우선). null = 미설정 → 정책 배송비 폴백.
+  product_shipping_fee?: number | null
   // 🛡️ 2026-06-13 (채팅 fix): 연결된 제조사 있는 상품만 true → '제조사에 문의' 노출.
   inquirable?: boolean
 }
@@ -305,13 +307,25 @@ export default function WholesaleProductPage() {
           )}
 
           {/* 정보 리스트 */}
-          <div className="mt-3.5 rounded-2xl overflow-hidden" style={{ background: WT.fill2 }}>
-            <KV label="재고" value={comma(item.stock) + '개'} accent={item.stock < 200 ? '#C2620C' : undefined} />
-            <div style={{ borderTop: '1px solid ' + WT.line }} />
-            <KV label="누적 사입" value={comma(item.sold_count || 0) + '건'} />
-            <div style={{ borderTop: '1px solid ' + WT.line }} />
-            <KV label="공급사" value="검증 제조사 (신원 비공개)" />
-          </div>
+          {(() => {
+            // 🚚 2026-06-16: 배송비 표시 — 상품별 배송비(설정 시 우선) > 제조사 정책 배송비 > 0(무료).
+            const effShip = item.product_shipping_fee != null ? item.product_shipping_fee : (item.supplier_policy?.shipping_fee ?? 0)
+            const freeThreshold = item.supplier_policy?.free_ship_threshold ?? 0
+            return (
+              <div className="mt-3.5 rounded-2xl overflow-hidden" style={{ background: WT.fill2 }}>
+                <KV label="재고" value={comma(item.stock) + '개'} accent={item.stock < 200 ? '#C2620C' : undefined} />
+                <div style={{ borderTop: '1px solid ' + WT.line }} />
+                <KV label="배송비" value={effShip > 0 ? won(effShip) : '무료'} accent={effShip === 0 ? WT.pos : undefined} />
+                {freeThreshold > 0 && effShip > 0 && (
+                  <div className="px-4 pb-2.5 -mt-1 text-[12px]" style={{ color: WT.ink3 }}>{won(freeThreshold)} 이상 무료배송</div>
+                )}
+                <div style={{ borderTop: '1px solid ' + WT.line }} />
+                <KV label="누적 사입" value={comma(item.sold_count || 0) + '건'} />
+                <div style={{ borderTop: '1px solid ' + WT.line }} />
+                <KV label="공급사" value="검증 제조사 (신원 비공개)" />
+              </div>
+            )
+          })()}
 
           {/* 📊 2026-06-12 (감사 개선 ⑤): 시장 신호 — 시중 최저가 vs 내 공급가, 수요/시즌. 사입 확신 보조. */}
           {!locked && token && (

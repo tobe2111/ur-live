@@ -1350,6 +1350,10 @@ app.get('/catalog/:id', async (c) => {
     const supplierPolicy = supId != null
       ? { min_order_amount: supPol?.min_order_amount ?? 0, shipping_fee: supPol?.shipping_fee ?? 0, free_ship_threshold: supPol?.free_ship_threshold ?? 0 }
       : null
+    // 🚚 2026-06-16: 상품별 배송비(product_supply_meta.wholesale_shipping_fee) — 설정 시 제조사 정책 배송비 대신
+    //   이 값 우선(체크아웃 computeSupplierShipping 과 동일 SSOT). 미설정이면 null → 클라가 정책 배송비로 폴백 표시.
+    const shipMeta = (await getSupplyMeta(DB, [id]).catch(() => undefined))?.get(id)
+    const productShippingFee = parseProductShipFee(shipMeta) ?? null
 
     const moq = Math.max(1, r.moq || 1)
     const packSize = Math.max(1, r.pack_size || 1)
@@ -1370,6 +1374,7 @@ app.get('/catalog/:id', async (c) => {
           retail_price: null, moq, pack_size: packSize, order_multiple: orderMultiple,
           sold_count: r.sold_count || 0, tiers: [], requires_login: true,
           supplier_group: supplierGroup, supplier_policy: supplierPolicy,
+          product_shipping_fee: productShippingFee,
           inquirable: supId != null,
         },
         grade: null, requires_login: true,
@@ -1404,6 +1409,7 @@ app.get('/catalog/:id', async (c) => {
         sold_count: r.sold_count || 0,
         tiers,
         supplier_group: supplierGroup, supplier_policy: supplierPolicy,
+        product_shipping_fee: productShippingFee,
         // 🛡️ 2026-06-13 (채팅 fix): 연결된 제조사 있을 때만 '제조사에 문의' 노출 (신원 비공개 — boolean 만).
         inquirable: supId != null,
       },
