@@ -94,6 +94,7 @@ export default function AdminLoginPage() {
         localStorage.setItem('admin_id', admin.id.toString())
         localStorage.setItem('admin_name', admin.name || '')
         localStorage.setItem('admin_email', admin.email || '')
+        localStorage.setItem('admin_role', admin.role || 'admin') // 🛡️ RBAC — 네비/UI 역할 게이트(권한 강제는 서버)
 
         navigate('/admin', { replace: true })
       }

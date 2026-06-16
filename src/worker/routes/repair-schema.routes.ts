@@ -1409,6 +1409,26 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       ('OEM','OEM',40,5,0),
       ('SPECIAL','특별할인(기간한정)',45,9,1)` },
 
+    // 🛡️ 2026-06-16 어드민 활동 감사로그 — writeAuditLog/adminAuditMiddleware 가 기록(모든 어드민 변경 자동).
+    //   ⚠️ 마이그레이션(0126/0128)에만 있어 prod(마이그 미실행)엔 테이블이 없을 수 있음 → writeAuditLog 가
+    //   조용히 실패(try-catch)해 로그 유실. repair-schema 에 보장해야 실제로 기록됨.
+    { name: 'admin_audit_logs', sql: `CREATE TABLE IF NOT EXISTS admin_audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id TEXT NOT NULL,
+      admin_email TEXT,
+      action TEXT NOT NULL,
+      target_type TEXT,
+      target_id TEXT,
+      before_value TEXT,
+      after_value TEXT,
+      ip TEXT,
+      user_agent TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_admin_audit_admin_id', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_admin_id ON admin_audit_logs(admin_id, created_at)` },
+    { name: 'idx_admin_audit_action', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_action ON admin_audit_logs(action, created_at)` },
+    { name: 'idx_admin_audit_created', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit_logs(created_at DESC)` },
+
     // 🏭 2026-06-01 유통스타트: B2B 선결제 도매 주문 (유통사→유통스타트).
     { name: 'wholesale_orders', sql: `CREATE TABLE IF NOT EXISTS wholesale_orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
