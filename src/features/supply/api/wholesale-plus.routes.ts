@@ -22,8 +22,8 @@ import { isViewerToken } from './sub-account-gate'
 
 type D1Database = Env['DB']
 
-const DEFAULT_PLUS_ANNUAL_FEE = 99_000
-const PLUS_FEE_KEY = 'wholesale_plus_annual_fee'
+export const DEFAULT_PLUS_ANNUAL_FEE = 99_000
+export const PLUS_FEE_KEY = 'wholesale_plus_annual_fee'
 
 async function distributorFrom(authorization: string | undefined, jwtSecret: string): Promise<{ sellerId: number; isDistributor: boolean } | null> {
   if (!authorization?.startsWith('Bearer ')) return null

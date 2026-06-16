@@ -37,6 +37,7 @@ import {
   AUTO_GRADE_LAST_RUN_KEY,
   type ThresholdRow,
 } from '@/worker/cron/wholesale-grade-eval'
+import { PLUS_FEE_KEY, DEFAULT_PLUS_ANNUAL_FEE } from './wholesale-plus.routes'
 
 const app = new Hono<{ Bindings: Env }>()
 // 🏭 2026-06-07 (보안 audit, 사용자 승인): 이 라우터는 adminApp 밖에 마운트돼 IP 화이트리스트·감사로그가
@@ -1177,21 +1178,25 @@ async function writeSettingRaw(DB: D1Database, key: string, value: string): Prom
 app.get('/auto-grade/settings', async (c) => {
   try {
     const DB = c.env.DB
-    const [enabledRaw, thresholdsRaw, windowRaw, lastRun] = await Promise.all([
+    const [enabledRaw, thresholdsRaw, windowRaw, lastRun, plusFeeRaw] = await Promise.all([
       readSettingRaw(DB, AUTO_GRADE_ENABLED_KEY),
       readSettingRaw(DB, AUTO_GRADE_THRESHOLDS_KEY),
       readSettingRaw(DB, AUTO_GRADE_WINDOW_DAYS_KEY),
       readSettingRaw(DB, AUTO_GRADE_LAST_RUN_KEY),
+      readSettingRaw(DB, PLUS_FEE_KEY),
     ])
     const enabled = enabledRaw === '1' || enabledRaw === 'true'
     const thresholds = parseThresholds(thresholdsRaw)
     const w = Number(windowRaw)
     const windowDays = Number.isFinite(w) && w >= 1 && w <= 365 ? Math.floor(w) : 90
+    const pf = Math.floor(Number(plusFeeRaw))
+    const plusAnnualFee = Number.isFinite(pf) && pf > 0 ? pf : DEFAULT_PLUS_ANNUAL_FEE
     return c.json({
       success: true,
       enabled,
       thresholds,        // [{ grade, min_gmv }] (min_gmv 내림차순)
       window_days: windowDays,
+      plus_annual_fee: plusAnnualFee, // 🏅 플러스 연 구독료(원) — 0 이하/미설정이면 기본 99,000
       last_run: lastRun, // ISO 또는 null (한 번도 안 돌면)
       defaults: DEFAULT_THRESHOLDS,
     })
@@ -1264,7 +1269,18 @@ app.patch('/auto-grade/settings', async (c) => {
       after.window_days = w
     }
 
-    if (!stmts.length) return c.json({ success: false, error: '변경할 내용이 없습니다 (enabled / thresholds / window_days)' }, 400)
+    // 🏅 플러스 연 구독료 — 1,000 ~ 1,000만원. 0/미설정이면 기본값 적용(엔드포인트 fallback).
+    if (body.plus_annual_fee !== undefined) {
+      const f = Math.floor(Number(body.plus_annual_fee))
+      if (!Number.isFinite(f) || f < 1000 || f > 10_000_000) return c.json({ success: false, error: '플러스 연 구독료는 1,000원 ~ 1,000만원 사이여야 합니다' }, 400)
+      stmts.push(DB.prepare(
+        `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
+      ).bind(PLUS_FEE_KEY, String(f)))
+      after.plus_annual_fee = f
+    }
+
+    if (!stmts.length) return c.json({ success: false, error: '변경할 내용이 없습니다 (enabled / thresholds / window_days / plus_annual_fee)' }, 400)
     await DB.batch(stmts)
 
     await writeAuditLog(c, {
