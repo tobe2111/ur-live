@@ -482,7 +482,7 @@ export default function GroupBuyDetailPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
         {/* 🏭 2026-06-07: 투명 overlay 헤더 — solid 흰 바 깜빡임 없이 이미지가 최상단까지. */}
         <div
-          className="fixed top-0 inset-x-0 z-30 px-3 flex items-center justify-between lg:max-w-[720px] lg:left-1/2 lg:-translate-x-1/2"
+          className="fixed top-0 inset-x-0 z-30 px-3 flex items-center justify-between lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[var(--app-frame)]"
           style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))', paddingBottom: '0.625rem' }}
         >
           <div className="w-9 h-9 rounded-full bg-black/25 backdrop-blur-sm animate-pulse" />
@@ -588,7 +588,7 @@ export default function GroupBuyDetailPage() {
       {/* 상단 chrome — 🏭 2026-06-07 (당근 스타일): 투명 overlay → 스크롤 시 solid 바 전환.
             position fixed 로 이미지 위에 floating, 데스크탑은 footer 와 동일 centering. */}
       <header
-        className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:max-w-[720px] lg:left-1/2 lg:-translate-x-1/2 ${
+        className={`fixed top-0 inset-x-0 z-40 transition-colors duration-200 lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[var(--app-frame)] ${
           headerSolid
             ? 'bg-white/90 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]'
             : 'bg-transparent border-b border-transparent'
@@ -867,7 +867,7 @@ export default function GroupBuyDetailPage() {
       </main>
 
       {/* sticky 하단 결제 영역 — BottomNav (z-9999) 위로 올림 + BottomNav 높이만큼 ur-content padding 적용됨 */}
-      <footer className="fixed bottom-0 inset-x-0 bg-white dark:bg-[#0A0A0A] border-t border-gray-200 dark:border-[#2A2A2A] p-3 z-[10002] lg:max-w-[720px] lg:left-1/2 lg:-translate-x-1/2 lg:rounded-t-2xl lg:shadow-xl" role="contentinfo" aria-label="결제 영역">
+      <footer className="fixed bottom-0 inset-x-0 bg-white dark:bg-[#0A0A0A] border-t border-gray-200 dark:border-[#2A2A2A] p-3 z-[10002] lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[var(--app-frame)] lg:rounded-t-2xl lg:shadow-xl" role="contentinfo" aria-label="결제 영역">
         {/* 🏭 2026-06-06 (사용자 요청 — 가격 설득력): 결제 직전 절약액 강조. 수량 변경 시 실시간 갱신. */}
         {isJoinable && totalSaving > 0 && (
           <div className="flex items-center justify-between mb-2 px-0.5">
