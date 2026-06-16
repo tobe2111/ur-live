@@ -696,8 +696,15 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
        WHERE id = ?
     `).bind(qty, qty, productId).run()
 
+    // 🛡️ 2026-06-16 (치명 버그 fix — 교환권 발급 500 + 자동환불): milestone_notified_* 컬럼이 prod D1 에
+    //   없으면(스키마 드리프트 — repair-schema/production-schema 누락) 이 SELECT 가 throw → 딜 차감 후
+    //   rollback(자동환불) → "참여 중 오류" 500. 모든 딜 결제 교환권 발급이 차단됨.
+    //   핵심 컬럼만으로 fallback (마일스톤 푸시 알림만 skip — 비핵심) → 발급은 정상 진행. repair-schema 에 컬럼 보강도 함께.
     const updated = await DB.prepare('SELECT group_buy_current, group_buy_target, group_buy_status, milestone_notified_50, milestone_notified_80, milestone_notified_lastone FROM products WHERE id = ?')
       .bind(productId).first<Pick<GroupBuyProductRow, 'group_buy_current' | 'group_buy_target' | 'group_buy_status' | 'milestone_notified_50' | 'milestone_notified_80' | 'milestone_notified_lastone'>>()
+      .catch(() => DB.prepare('SELECT group_buy_current, group_buy_target, group_buy_status FROM products WHERE id = ?')
+        .bind(productId).first<Pick<GroupBuyProductRow, 'group_buy_current' | 'group_buy_target' | 'group_buy_status' | 'milestone_notified_50' | 'milestone_notified_80' | 'milestone_notified_lastone'>>()
+        .catch(() => null))
 
     // 🏁 2026-06-11 (참여하기 느림 수술): 마일스톤 푸시(관심유저 N명 순차 외부호출) — 응답 후 실행(waitUntil).
     //   블록 내용/순서/에러처리 불변 — 실행 시점만 이동. ctx 없으면(테스트) 기존처럼 동기 실행.
