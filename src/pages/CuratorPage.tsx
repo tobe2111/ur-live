@@ -214,7 +214,7 @@ export default function CuratorPage() {
   }
   const onPinDeleted = (pinId: number) => setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== pinId) } : prev)
   const renderPinTab = (arr: CuratorPin[], emptyType?: 'shop' | 'voucher') => {
-    if (arr.length === 0) return <EmptyLinkshop handle={curator.handle} isOwner={isOwner} emptyType={emptyType} />
+    if (arr.length === 0) return <EmptyLinkshop handle={curator.handle} isOwner={isOwner} emptyType={emptyType} curatorName={curator.name} />
     const f = applyQ(arr)
     if (f.length === 0) return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
@@ -591,7 +591,7 @@ function HandleEditor({ handle }: { handle: string }) {
   )
 }
 
-function EmptyLinkshop({ handle, isOwner, emptyType }: { handle: string; isOwner: boolean; emptyType?: 'shop' | 'voucher' }) {
+function EmptyLinkshop({ handle, isOwner, emptyType, curatorName }: { handle: string; isOwner: boolean; emptyType?: 'shop' | 'voucher'; curatorName?: string }) {
   const { t } = useTranslation()
   const browseLink = emptyType === 'voucher' ? '/vouchers' : '/browse'
   const browseLabel = emptyType === 'voucher'
@@ -606,10 +606,29 @@ function EmptyLinkshop({ handle, isOwner, emptyType }: { handle: string; isOwner
       </div>
     )
   }
+  // 🎨 2026-06-16 링크샵 시안: 온보딩 진행 카드 — 이름/주소/첫핀 3단계. 빈 상태(핀 0)라 첫핀은 항상 미완.
+  const nameDone = !!curatorName && !/^user\d+$/i.test(curatorName.trim())
+  const handleDone = !/^user\d+$/i.test(handle)
+  const doneCount = (nameDone ? 1 : 0) + (handleDone ? 1 : 0)
   // 🎨 2026-06-16 링크샵 시안(A안): 흐릿한 샘플 ghost 핀(mask gradient 로 아래로 페이드, 비활성) + 떠있는 CTA.
   //   외부 이미지 핫링크 대신 스켈레톤 블록(프로덕션 안전) — "카드가 이렇게 채워진다" 미리보기.
   return (
     <div className="max-w-3xl mx-auto px-4 pt-4">
+      {/* 온보딩 진행 카드 (시안) */}
+      <div className="mb-3 rounded-2xl border border-[#FFE0D6] dark:border-[#3a2218] bg-[#FFF6F3] dark:bg-[#1A1410] px-4 py-3.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] font-extrabold text-[#B4422A] dark:text-[#FF9576]">링크샵 완성까지 {3 - doneCount}단계</span>
+          <span className="text-[12px] font-bold text-[#B4422A] dark:text-[#FF9576]">{doneCount}/3</span>
+        </div>
+        <div className="mt-2.5 h-[7px] rounded-full bg-[#FFE0D6] dark:bg-[#3a2218] overflow-hidden">
+          <div className="h-full rounded-full bg-[#FF5634] transition-all" style={{ width: `${Math.round((doneCount / 3) * 100)}%` }} />
+        </div>
+        <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-[#7A4232] dark:text-[#c79a87]">
+          <span className={nameDone ? '' : 'font-bold text-[#141A2E] dark:text-white'}>{nameDone ? '✓' : '○'} 이름 설정</span>
+          <span className={handleDone ? '' : 'font-bold text-[#141A2E] dark:text-white'}>{handleDone ? '✓' : '○'} 주소 설정</span>
+          <span className="font-bold text-[#141A2E] dark:text-white">○ 첫 핀 추가</span>
+        </div>
+      </div>
       <div className="relative overflow-hidden" style={{ height: 230 }}>
         <div
           className="grid grid-cols-2 gap-3 pointer-events-none select-none"
