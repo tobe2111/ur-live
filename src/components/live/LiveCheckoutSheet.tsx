@@ -200,7 +200,7 @@ export default function LiveCheckoutSheet({
       <div className="absolute inset-0 bg-black/70" />
       {/* Sheet */}
       <div
-        className="relative w-full bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto animate-sheet-up"
+        className="relative w-full bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto animate-sheet-up-bottom"
         onClick={e => e.stopPropagation()}
         style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
       >

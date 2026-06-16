@@ -165,7 +165,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="donation-sheet-title"
-            className="fixed inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up max-h-[85dvh] overflow-y-auto"
+            className="fixed inset-x-0 bottom-0 z-[90] bg-white rounded-t-3xl animate-sheet-up-bottom max-h-[85dvh] overflow-y-auto"
           >
             <div className="p-5 pb-8">
               {/* Header */}
