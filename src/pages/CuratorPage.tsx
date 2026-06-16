@@ -15,7 +15,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { curatorApi, type CuratorPageResponse, type CuratorPin } from '@/features/curator/api/curator-api'
+import { curatorApi, type CuratorPageResponse, type CuratorPin, type DashboardStats } from '@/features/curator/api/curator-api'
 import { useAuthStore } from '@/client/stores/auth.store'
 import { formatWon, formatNumber } from '@/utils/format'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
@@ -250,6 +250,7 @@ export default function CuratorPage() {
           onCopyLink={copyLink}
           onCuratorUpdate={(next) => setData(prev => prev ? { ...prev, curator: { ...prev.curator, ...next } } : prev)}
         />
+        {isOwner && <OwnerEarningsStrip />}
         <CuratorTabs
           tab={tab}
           onChange={setTab}
@@ -312,6 +313,56 @@ export default function CuratorPage() {
         )}
       </div>
     </>
+  )
+}
+
+// 🏁 2026-06-16 (링크샵 개선안 — 정직한 적립 표시): 본인 뷰 상단 적립 strip.
+//   ⚠️ T+7 hold(2026-06-15) 도입으로 적립은 보류→확정 단계가 있음 — 시안의 "이번 주 적립" 단일 숫자를
+//   그대로 쓰면 크리에이터가 즉시 현금을 기대 → 혼란. 확정(출금가능) + 예정(보류) 을 명확히 분리 표기.
+function OwnerEarningsStrip() {
+  const { t } = useTranslation()
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => {
+    let alive = true
+    curatorApi.getDashboard()
+      .then((r) => { if (alive && r?.success) setStats(r.stats) })
+      .catch(() => { /* 조용히 — strip 은 보조 정보, 실패해도 핀 그리드 우선 */ })
+      .finally(() => { if (alive) setLoaded(true) })
+    return () => { alive = false }
+  }, [])
+  // 로딩/실패 시 strip 숨김 (레이아웃 점프 없이 핀이 먼저). 적립 0 이어도 표시 — 시작 동기 부여.
+  if (!loaded || !stats) return null
+  const confirmed = stats.month_earnings ?? 0
+  const pending = stats.pending_earnings ?? 0
+  const clicks = stats.unique_clicks_30d ?? stats.clicks_30d ?? 0
+  const purchases = stats.purchases_30d ?? 0
+  const conv = stats.conversion_rate_30d ?? 0
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 pt-3">
+      {/* 다크 네이비 strip (시안 톤) — 라이트/다크 공통 고정색 카드(컬러 배경 위 흰 글씨). theme-dual */}
+      <div className="rounded-2xl p-4 text-white" style={{ background: 'linear-gradient(120deg,#141A2E,#2A3658)' }}>
+        <div className="flex items-center justify-between">
+          <span className="text-[12px] text-white/60">{t('curator.earn30dConfirmed', { defaultValue: '최근 30일 확정 적립' })}</span>
+          <Link to="/creator" className="text-[11px] font-bold text-white/70 hover:text-white">{t('curator.console', { defaultValue: '콘솔' })} →</Link>
+        </div>
+        <div className="mt-1 flex items-baseline gap-2 flex-wrap">
+          <span className="text-[26px] font-extrabold leading-none">{formatWon(confirmed)}</span>
+          {pending > 0 && (
+            <span className="text-[12px] font-bold text-[#FFB59E]">+ {formatWon(pending)} {t('curator.pendingEarn', { defaultValue: '적립 예정' })}</span>
+          )}
+        </div>
+        <div className="mt-3 flex gap-4 text-[11.5px] text-white/70">
+          <span>{t('curator.statClicks', { defaultValue: '순클릭' })} <b className="text-white">{formatNumber(clicks)}</b></span>
+          <span>{t('curator.statPurchases', { defaultValue: '구매' })} <b className="text-white">{formatNumber(purchases)}</b></span>
+          <span>{t('curator.statConv', { defaultValue: '전환율' })} <b className="text-[#37D399]">{conv}%</b></span>
+        </div>
+        {pending > 0 && (
+          <div className="mt-2 text-[10.5px] text-white/45">{t('curator.holdNote', { defaultValue: '적립 예정은 구매 확정(약 7일) 후 출금 가능액으로 전환돼요' })}</div>
+        )}
+      </div>
+    </div>
   )
 }
 
