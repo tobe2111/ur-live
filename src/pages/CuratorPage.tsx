@@ -234,18 +234,6 @@ export default function CuratorPage() {
         image={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
       />
       <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-28">
-        {/* 🛡️ 2026-05-27 (셀러 페이지 통일): owner sticky 안내 배너 — 셀러 페이지와 같은 패턴. */}
-        {isOwner && (
-          <div className="sticky top-0 z-30 bg-gray-900 dark:bg-white text-white dark:text-[#020202] px-4 py-2 text-xs font-bold flex items-center justify-between gap-2">
-            <span>✏️ 내 링크샵 — 이름/소개/이미지/배경 클릭해 바로 편집</span>
-            <Link
-              to="/creator"
-              className="px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded text-[10px] font-bold whitespace-nowrap"
-            >
-              크리에이터 콘솔
-            </Link>
-          </div>
-        )}
         {isOwner && showOnboard && (
           <LinkshopOnboardModal
             curatorId={curator.id}
