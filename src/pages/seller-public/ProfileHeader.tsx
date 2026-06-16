@@ -13,6 +13,16 @@ import { cfImage } from '@/utils/cf-image'
 import type { Seller, LiveStream, Product } from './types'
 import type { ThemeTokens } from './theme'
 
+// 🎨 2026-06-16 링크샵 시안: SNS 핸들/URL → 절대 URL 정규화 (핸들·@핸들·전체URL 모두 허용).
+function snsUrl(platform: 'youtube' | 'instagram' | 'tiktok', v: string): string {
+  const s = v.trim()
+  if (/^https?:\/\//i.test(s)) return s
+  const h = s.replace(/^@/, '')
+  if (platform === 'youtube') return `https://youtube.com/@${h}`
+  if (platform === 'instagram') return `https://instagram.com/${h}`
+  return `https://tiktok.com/@${h}`
+}
+
 interface Props {
   seller: Seller
   sellerId: string
@@ -190,6 +200,30 @@ export default function ProfileHeader({
               )}
             </div>
           )
+        )}
+
+        {/* 🎨 2026-06-16 링크샵 시안: SNS 버튼 (유튜브/인스타/틱톡) — 채널로 새 탭 이동. */}
+        {(seller.sns_youtube || seller.sns_instagram || seller.external_live_tiktok) && (
+          <div className="flex gap-2 mt-3">
+            {seller.sns_youtube && (
+              <a href={snsUrl('youtube', seller.sns_youtube)} target="_blank" rel="noopener noreferrer" aria-label="YouTube"
+                className="w-[30px] h-[30px] rounded-[9px] bg-[#FF0000] flex items-center justify-center">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" /></svg>
+              </a>
+            )}
+            {seller.sns_instagram && (
+              <a href={snsUrl('instagram', seller.sns_instagram)} target="_blank" rel="noopener noreferrer" aria-label="Instagram"
+                className="w-[30px] h-[30px] rounded-[9px] flex items-center justify-center" style={{ background: 'linear-gradient(45deg,#F9CE34,#EE2A7B,#6228D7)' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="3.7" /><circle cx="17.3" cy="6.7" r="1.1" fill="#fff" stroke="none" /></svg>
+              </a>
+            )}
+            {seller.external_live_tiktok && (
+              <a href={snsUrl('tiktok', seller.external_live_tiktok)} target="_blank" rel="noopener noreferrer" aria-label="TikTok"
+                className="w-[30px] h-[30px] rounded-[9px] bg-[#141A2E] flex items-center justify-center">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z" /></svg>
+              </a>
+            )}
+          </div>
         )}
 
         {/* 통계 */}
