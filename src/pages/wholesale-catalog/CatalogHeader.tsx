@@ -106,7 +106,7 @@ export default function CatalogHeader({
                 <span className="text-[18px] font-extrabold whitespace-nowrap" style={{ letterSpacing: '-0.055em', color: WT.ink }}>{mallName}</span>
               </div>
             ) : (
-              <WholesaleWordmark name={mallName} />
+              <WholesaleWordmark height={32} />
             )}
           </button>
 

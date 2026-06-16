@@ -9,8 +9,9 @@ import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Boxes, Loader2, Factory, ArrowRight, Users } from 'lucide-react'
+import { Loader2, Factory, ArrowRight, Users } from 'lucide-react'
 import { useWholesaleMall } from '@/hooks/queries/useWholesale'
+import { WholesaleWordmark } from './wholesale-catalog/WholesaleLogo'
 
 export default function WholesaleLoginPage() {
   const navigate = useNavigate()
@@ -20,7 +21,7 @@ export default function WholesaleLoginPage() {
   // 🏭 2026-06-16 (사용자 요청): 로그인 진입 시 유통사/제조사 먼저 선택. 'choose' → 유통사 폼('distributor') 또는 /supplier/login.
   const [mode, setMode] = useState<'choose' | 'distributor'>('choose')
   // 🏬 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FF0033 → byte-identical). 조기 return 전에 호출.
-  const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo } = useWholesaleMall()
+  const { displayName: mallName, logoUrl: mallLogo } = useWholesaleMall()
 
   // 이미 유통사 로그인 상태면 대시보드로(유통사 아닌 셀러면 카탈로그).
   const alreadyIn = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
@@ -65,8 +66,11 @@ export default function WholesaleLoginPage() {
       <header className="border-b border-[#ECEEF1]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">
           <button onClick={() => navigate('/wholesale')} className="flex items-center gap-2">
-            {mallLogo ? <img src={mallLogo} alt={mallName} className="w-6 h-6 rounded object-cover" /> : <Boxes className="w-6 h-6" style={{ color: mallBrand }} />}
-            <span className="text-lg font-extrabold">{mallName}</span>
+            {mallLogo ? (
+              <><img src={mallLogo} alt={mallName} className="w-6 h-6 rounded object-cover" /><span className="text-lg font-extrabold">{mallName}</span></>
+            ) : (
+              <WholesaleWordmark height={28} />
+            )}
           </button>
           <button onClick={() => navigate('/wholesale/join')} className="text-sm text-[#4E5560] hover:text-[#17181C] font-medium">유통사 가입</button>
         </div>

@@ -3,7 +3,7 @@
 //   신뢰 배지 행 + (좌: 셰브론 로고·사업자정보·정책 링크 / 우: 고객센터·제휴문의). 라이트 고정.
 // ──────────────────────────────────────────────────────────────
 import { WT } from './wholesale-theme'
-import { WholesaleMark } from '../wholesale-catalog/WholesaleLogo'
+import { WholesaleWordmark } from '../wholesale-catalog/WholesaleLogo'
 
 // 🏢 사업자정보 — 사람과고리 공식 정보(2026-06-16 사용자 제공). 한 곳만 고치면 푸터 전체 반영.
 const BUSINESS_INFO = {
@@ -54,9 +54,8 @@ export default function WholesaleFooter() {
         <div className="flex flex-col sm:flex-row sm:justify-between gap-6 sm:gap-8 pt-5" style={{ borderTop: '1px solid ' + WT.line }}>
           {/* 좌 — 로고 + 사업자정보 + 정책 링크 */}
           <div className="text-[12.5px] leading-[1.8]" style={{ color: WT.ink3 }}>
-            <div className="flex items-center gap-2 mb-2">
-              <WholesaleMark size={20} />
-              <span className="text-[14px] font-extrabold" style={{ color: WT.ink, letterSpacing: '-0.04em' }}>유통스타트 도매몰</span>
+            <div className="mb-2.5">
+              <WholesaleWordmark height={26} />
             </div>
             {BUSINESS_INFO.company} · 대표 {BUSINESS_INFO.ceo} · 사업자등록번호 {BUSINESS_INFO.bizRegNo}<br />
             통신판매신고 {BUSINESS_INFO.mailOrderNo}<br />
