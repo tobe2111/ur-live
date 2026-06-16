@@ -54,7 +54,7 @@ export default function ReelChatSheet({
         onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') onClose() }}
       />
       <div
-        className="absolute inset-x-0 z-[90] bg-white rounded-t-3xl animate-sheet-up"
+        className="absolute inset-x-0 z-[90] bg-white rounded-t-3xl animate-sheet-up-bottom"
         style={{ bottom: bottomOffset }}
       >
         <div className="p-4">

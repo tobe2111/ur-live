@@ -284,6 +284,18 @@
   animation-fill-mode: both;
 }
 
+/* 🛠️ 2026-06-16: 바텀시트 슬라이드업 (translateX 없음 — inset-x-0 / full-width / relative 바텀시트용).
+   animate-sheet-up 의 translateX(-50%) 는 left-1/2 정렬 시트 전용 — 바텀시트에 쓰면 fill-mode 로
+   영구 왼쪽-잘림(화면 절반 이탈) 유발. 아래로부터 위로만 슬라이드. */
+@keyframes sheet-up-bottom {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-sheet-up-bottom {
+  animation: sheet-up-bottom 0.3s cubic-bezier(0.28, 0.11, 0.32, 1);
+  animation-fill-mode: both;
+}
+
 @keyframes donation-pop {
   0% {
     opacity: 0;
