@@ -6,7 +6,8 @@
 - **신규 `wholesale-plus.routes.ts`** (`/api/wholesale/plus`): `GET /info`(구독료·잔액·등급·만료) + `POST /subscribe`(claim-before-charge: 행 CAS 선점 → `deductDeposit` 차감 → 실패 시 등급/만료 롤백 → 차감 원장 + 알림). 멱등(만료30일내만 1회 선점, 더블클릭/동시요청 이중차감 차단). 구독료 = `platform_settings.wholesale_plus_annual_fee`(기본 99,000).
 - **만료 강등 cron** `lapseExpiredPlus`(wholesale-grade-eval 주간배치): `distributor_grade='B' AND plus_until < now` → 'C'. 구독만 plus_until 을 쓰므로 관리자/볼륨 B(plus_until=null)는 비대상. 가격 산식 불변(등급 컬럼만).
 - **스키마**: `sellers.plus_until TEXT`(repair-schema + ensure). **UI**: `PlusMembershipCard`(대시보드) — 일반→구독 CTA / 플러스→만료·연장 / 프리미엄→안내. 예치금 부족 시 충전 유도.
-- 검증: tsc 0 · client+worker build · money-pattern 통과. ⚠️ 실 staging E2E 1회 권장(차감·등급 반영·잔액부족 롤백). 후속: 어드민이 구독료/프리미엄 임계 설정 UI(현 platform_settings 직접), 만료 임박 알림.
+- **운영 완성도 추가(같은 세션)**: ① 어드민 구독료 설정 UI(`distributor-admin /auto-grade/settings` 에 `plus_annual_fee` + `AdminDistributorGradesPage` 입력·등급모델 안내). ② 어드민 등급 라벨 매핑(A·프리미엄/B·플러스/C·일반 — 배정/임계/마진 테이블, `gradeLabel`+GRADE_NAME SSOT). ③ 만료 임박 알림 cron(`notifyExpiringPlus` — 14일내 1회, 20일 dedup). ④ GradeSheet 자가 구독 CTA(관리자 문의 → '플러스 구독하기'→대시보드).
+- 검증: tsc 0 · client+worker build · money-pattern 통과. ⚠️ 실 staging E2E 1회 권장(차감·등급 반영·잔액부족 롤백). 남은 후속(사용자 입력 필요): 시드상품 정리(게이트 시 게스트 카탈로그 빔 — 결정 필요), 어드민 도매 nav IA 정리, ③ 드랍쉬핑(보류).
 
 ## ✅ 2026-06-16 — 상품별 배송비 표시 마감 (①/4)
 - `/catalog/:id` 응답에 `product_shipping_fee`(상품별 배송비 meta) 추가 + `WholesaleProductPage` 정보리스트 '배송비' 행(상품별>정책>무료 + 무료배송 기준 안내). `PATCH /products/:id` 가 shipping_fee 수용(setSupplyMeta, meta-only 변경 허용). 체크아웃 computeSupplierShipping 과 동일 SSOT.
