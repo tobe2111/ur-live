@@ -8,15 +8,14 @@ import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Users, Loader2, ArrowRight } from 'lucide-react'
-import { useWholesaleMall } from '@/hooks/queries/useWholesale'
+import { Loader2, ArrowRight } from 'lucide-react'
+import { WholesaleWordmark } from '../wholesale-catalog/WholesaleLogo'
 
 export default function WholesaleStaffLoginPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const { displayName: mallName, brandColor: mallBrand } = useWholesaleMall()
 
   const alreadyIn = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
   useEffect(() => { if (alreadyIn) navigate('/wholesale/dashboard', { replace: true }) }, [alreadyIn, navigate])
@@ -58,8 +57,7 @@ export default function WholesaleStaffLoginPage() {
       <header className="border-b border-[#ECEEF1]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">
           <button onClick={() => navigate('/wholesale')} className="flex items-center gap-2">
-            <Users className="w-6 h-6" style={{ color: mallBrand }} />
-            <span className="text-lg font-extrabold">{mallName}</span>
+            <WholesaleWordmark height={28} />
           </button>
           <button onClick={() => navigate('/wholesale/login')} className="text-sm text-[#4E5560] hover:text-[#17181C] font-medium">대표자 로그인</button>
         </div>

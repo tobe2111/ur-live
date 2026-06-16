@@ -5,7 +5,8 @@
  */
 import { useNavigate } from 'react-router-dom'
 import SEO, { wholesaleStoreJsonLd, faqJsonLd, breadcrumbJsonLd } from '@/components/SEO'
-import { Factory, Store, ArrowRight, PackageCheck, TrendingDown, FileSpreadsheet, ShieldCheck, Boxes, Layers } from 'lucide-react'
+import { Factory, Store, ArrowRight, PackageCheck, TrendingDown, FileSpreadsheet, ShieldCheck, Layers } from 'lucide-react'
+import { WholesaleWordmark } from './wholesale-catalog/WholesaleLogo'
 
 export default function WholesaleIntroPage() {
   const navigate = useNavigate()
@@ -46,8 +47,7 @@ export default function WholesaleIntroPage() {
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-[#ECEEF1]">
         <div className="ur-content-wide mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Boxes className="w-6 h-6 text-[#FF0033]" />
-            <span className="text-lg font-extrabold tracking-tight">유통스타트</span>
+            <WholesaleWordmark height={28} />
             <span className="text-xs text-[#B6BCC4] hidden sm:inline">B2B 도매몰</span>
           </div>
           <div className="flex items-center gap-1.5 text-sm">
