@@ -573,26 +573,47 @@ function EmptyLinkshop({ handle, isOwner, emptyType }: { handle: string; isOwner
   const browseLabel = emptyType === 'voucher'
     ? t('curator.browseVouchers', { defaultValue: '교환권 둘러보기' })
     : t('curator.browseProducts', { defaultValue: '상품 둘러보기' })
-  const emoji = emptyType === 'voucher' ? '🎁' : '📌'
-  const emptyMessage = emptyType === 'shop' ? t('curator.emptyShop', { defaultValue: '아직 담은 상품이 없어요' })
-    : emptyType === 'voucher' ? t('curator.emptyVoucher', { defaultValue: '아직 담은 교환권이 없어요' })
-    : t('curator.emptyTitle', { defaultValue: '아직 핀이 없어요' })
+  // 방문자: 심플 메시지 (ghost 는 소유자 동기부여용).
+  if (!isOwner) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+        <h2 className="text-lg font-bold mb-2 text-gray-900 dark:text-white">{t('curator.emptyTitle', { defaultValue: '아직 추천이 없어요' })}</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t('curator.emptyOther', { defaultValue: `@${handle} 의 첫 추천을 기다리는 중`, handle })}</p>
+      </div>
+    )
+  }
+  // 🎨 2026-06-16 링크샵 시안(A안): 흐릿한 샘플 ghost 핀(mask gradient 로 아래로 페이드, 비활성) + 떠있는 CTA.
+  //   외부 이미지 핫링크 대신 스켈레톤 블록(프로덕션 안전) — "카드가 이렇게 채워진다" 미리보기.
   return (
-    <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-      <p className="text-5xl mb-4">{emoji}</p>
-      <h2 className="text-lg font-bold mb-2 text-gray-900 dark:text-white">{emptyMessage}</h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-        {isOwner
-          // 🛡️ 2026-06-12 (감사 1단계): 실제 동작과 일치 — 링크 복사 자동담기 기능은 없음, 📌 핀 버튼이 실동작.
-          ? t('curator.emptyOwner', { defaultValue: '상품을 둘러보고 상세 페이지의 ➕ 핀 버튼으로 담아보세요' })
-          : t('curator.emptyOther', { defaultValue: `@${handle} 의 첫 추천을 기다리는 중`, handle })}
-      </p>
-      <Link
-        to={browseLink}
-        className="inline-block px-6 py-3 bg-gray-900 hover:bg-black dark:bg-white dark:hover:bg-gray-100 rounded-xl font-bold text-white dark:text-[#020202] transition-colors"
-      >
-        {isOwner ? browseLabel : t('curator.exploreShop', { defaultValue: '쇼핑 둘러보기' })}
-      </Link>
+    <div className="max-w-3xl mx-auto px-4 pt-4">
+      <div className="relative overflow-hidden" style={{ height: 400 }}>
+        <div
+          className="grid grid-cols-2 gap-3 pointer-events-none select-none"
+          style={{ filter: 'blur(3px) saturate(.9)', opacity: 0.55, WebkitMaskImage: 'linear-gradient(180deg, rgba(0,0,0,.85) 0%, rgba(0,0,0,.35) 45%, transparent 80%)', maskImage: 'linear-gradient(180deg, rgba(0,0,0,.85) 0%, rgba(0,0,0,.35) 45%, transparent 80%)' }}
+          aria-hidden="true"
+        >
+          {[1, 2, 3, 4].map((n) => (
+            <div key={n} className="rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212]">
+              <div className="aspect-[3/2] relative bg-gray-200 dark:bg-[#1A1A1A]">
+                <span className="absolute top-0 left-0 min-w-[1.5rem] h-6 px-1.5 bg-[#FF5634] text-white text-[13px] font-extrabold flex items-center justify-center rounded-br-[11px]">{n}</span>
+              </div>
+              <div className="p-2.5">
+                <div className="h-3 w-4/5 rounded bg-gray-200 dark:bg-[#1A1A1A]" />
+                <div className="h-3.5 w-1/2 rounded bg-gray-200 dark:bg-[#1A1A1A] mt-2" />
+                <div className="mt-2 pl-2 border-l-2 border-[#FF5634]"><div className="h-2.5 w-11/12 rounded bg-gray-100 dark:bg-[#161616]" /></div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="absolute inset-x-0 bottom-0 flex flex-col items-center text-center px-6 pb-1">
+          <div className="w-14 h-14 rounded-2xl bg-[#FF5634] flex items-center justify-center text-white" style={{ boxShadow: '0 10px 24px -8px rgba(255,86,52,.6)' }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4h12v16l-6-4-6 4V4Z" /></svg>
+          </div>
+          <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white mt-3">{t('curator.emptyOwnerTitle', { defaultValue: '첫 핀을 추가해 보세요' })}</h2>
+          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5 max-w-[270px] leading-snug">{t('curator.emptyOwnerDesc', { defaultValue: '마음에 든 딜·상품을 핀하면 이렇게 나만의 스토어가 채워져요.' })}</p>
+          <Link to={browseLink} className="mt-4 w-full max-w-xs py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[14px] font-bold">{browseLabel}</Link>
+        </div>
+      </div>
     </div>
   )
 }
