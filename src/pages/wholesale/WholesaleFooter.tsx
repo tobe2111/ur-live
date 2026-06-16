@@ -5,8 +5,8 @@
 import { WT } from './wholesale-theme'
 import { WholesaleWordmark } from '../wholesale-catalog/WholesaleLogo'
 
-// 🏢 사업자정보 — 사람과고리 공식 정보(2026-06-16 사용자 제공). 한 곳만 고치면 푸터 전체 반영.
-const BUSINESS_INFO = {
+// 🏢 사업자정보 — 사람과고리 공식 정보(2026-06-16 사용자 제공). 한 곳만 고치면 푸터/고객센터 전체 반영.
+export const BUSINESS_INFO = {
   company: '사람과고리',
   ceo: '송유미',
   bizRegNo: '108-20-56790',

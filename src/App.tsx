@@ -57,6 +57,7 @@ const WholesaleQuotesPage = lazy(() => import('./pages/wholesale/WholesaleQuotes
 const WholesaleNaverPage = lazy(() => import('./pages/wholesale/WholesaleNaverPage'))
 const WholesaleStartPage = lazy(() => import('./pages/wholesale/WholesaleStartPage'))
 const WholesaleBoardPage = lazy(() => import('./pages/wholesale/WholesaleBoardPage'))
+const WholesaleSupportPage = lazy(() => import('./pages/wholesale/WholesaleSupportPage'))
 const WholesaleTermsPage = lazy(() => import('./pages/wholesale/WholesaleTermsPage'))
 const PartnershipInquiryPage = lazy(() => import('./pages/PartnershipInquiryPage'))
 const WholesaleWishlistPage = lazy(() => import('./pages/wholesale/WholesaleWishlistPage'))
@@ -543,6 +544,7 @@ function AppContent() {
             <Route path="/wholesale/naver" element={<WholesaleNaverPage />} />
             <Route path="/wholesale/start" element={<WholesaleStartPage />} />
             <Route path="/wholesale/board" element={<WholesaleBoardPage />} />
+            <Route path="/wholesale/support" element={<WholesaleSupportPage />} />
             <Route path="/wholesale/terms" element={<WholesaleTermsPage />} />
             <Route path="/partnership" element={<PartnershipInquiryPage />} />
             <Route path="/wholesale/wishlist" element={<WholesaleWishlistPage />} />

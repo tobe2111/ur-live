@@ -7,12 +7,13 @@
  */
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, Pin, Download, Megaphone, FolderDown, Truck, MessageSquareWarning, ExternalLink, PenLine } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Pin, Download, Megaphone, FolderDown, Truck, MessageSquareWarning, ExternalLink, PenLine } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { cfImage } from '@/utils/cf-image'
 import { WT } from './wholesale-theme'
+import { WholesaleWordmark } from '@/pages/wholesale-catalog/WholesaleLogo'
 import WholesaleShippingGuide from './WholesaleShippingGuide'
 import WholesaleProposalBoard from './WholesaleProposalBoard'
 
@@ -105,11 +106,12 @@ export default function WholesaleBoardPage() {
 
       {/* 헤더 */}
       <header className="sticky top-0 z-30" style={{ background: '#fff', borderBottom: '1px solid ' + WT.line }}>
-        <div className="ur-content-wide px-5 lg:px-8 flex items-center h-14">
-          <button onClick={() => navigate('/wholesale')} aria-label="도매몰 홈" className="p-1.5 -ml-1.5">
-            <ChevronLeft className="w-5 h-5" style={{ color: WT.ink }} />
+        <div className="ur-content-wide px-5 lg:px-8 flex items-center gap-3 h-14">
+          <button onClick={() => navigate('/wholesale')} aria-label="도매몰 홈" className="shrink-0">
+            <WholesaleWordmark height={26} />
           </button>
-          <h1 className="ml-1 text-[16px] font-extrabold" style={{ color: WT.ink }}>게시판</h1>
+          <ChevronRight className="w-4 h-4 shrink-0" style={{ color: WT.ink4 }} />
+          <span className="text-[14px] font-bold" style={{ color: WT.ink }}>공지 · 자료실</span>
           {/* 🛡️ 2026-06-11 (사용자 요청): 관리자에게만 작성 버튼 — /admin/wholesale-board (공지/자료실 CRUD) */}
           {isAdmin && (
             <button onClick={() => navigate('/admin/wholesale-board')}

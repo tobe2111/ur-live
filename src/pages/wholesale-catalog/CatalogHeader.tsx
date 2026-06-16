@@ -65,7 +65,7 @@ export default function CatalogHeader({
           <div className="flex items-center gap-3 lg:gap-4 min-w-0">
             <button onClick={() => navigate(supplierToken ? '/supplier' : '/supplier/login')} className="font-semibold text-white whitespace-nowrap">{t('wholesale.util.supplierJoin', { defaultValue: '제조사 입점' })}</button>
             <span className="opacity-30 hidden sm:inline">|</span>
-            <a href="mailto:jiwon@ur-team.com" className="hidden sm:inline whitespace-nowrap">{t('wholesale.util.cs', { defaultValue: '고객센터' })}</a>
+            <button onClick={() => navigate('/wholesale/support')} className="hidden sm:inline whitespace-nowrap">{t('wholesale.util.cs', { defaultValue: '고객센터' })}</button>
             <button onClick={() => navigate('/wholesale/board')} className="hidden sm:inline whitespace-nowrap">{t('wholesale.util.board', { defaultValue: '공지·자료실' })}</button>
           </div>
           <div className="flex items-center gap-2.5 lg:gap-3.5 shrink-0">
