@@ -222,7 +222,7 @@ export default function CuratorPage() {
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">다른 키워드로 찾아보세요.</p>
       </div>
     )
-    return <PinGrid pins={f} handle={curator.handle} isOwner={isOwner} onPinDeleted={onPinDeleted} />
+    return <PinGrid pins={f} handle={curator.handle} isOwner={isOwner} onPinDeleted={onPinDeleted} curatorName={curator.name} curatorAvatar={curator.profile_image} />
   }
 
   return (
@@ -368,11 +368,11 @@ function OwnerEarningsStrip() {
   )
 }
 
-function PinGrid({ pins, handle, isOwner, onPinDeleted }: { pins: CuratorPin[]; handle: string; isOwner: boolean; onPinDeleted: (id: number) => void }) {
+function PinGrid({ pins, handle, isOwner, onPinDeleted, curatorName, curatorAvatar }: { pins: CuratorPin[]; handle: string; isOwner: boolean; onPinDeleted: (id: number) => void; curatorName?: string; curatorAvatar?: string | null }) {
   return (
     <div className="max-w-3xl mx-auto p-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
       {pins.map((pin, idx) => (
-        <PinCard key={pin.id} pin={pin} index={idx} handle={handle} isOwner={isOwner} aboveFold={idx < 4} hero={idx === 0} onDeleted={onPinDeleted} />
+        <PinCard key={pin.id} pin={pin} index={idx} handle={handle} isOwner={isOwner} aboveFold={idx < 4} hero={idx === 0} onDeleted={onPinDeleted} curatorName={curatorName} curatorAvatar={curatorAvatar} />
       ))}
       {/* 🏁 2026-06-16 링크샵 개선안: 본인이 핀 채워진 화면에서도 항상 추가 동선 — 그리드 끝 점선 카드. */}
       {isOwner && (
@@ -388,7 +388,7 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted }: { pins: CuratorPin[]; 
   )
 }
 
-function PinCard({ pin, index, handle, isOwner, aboveFold, hero, onDeleted }: { pin: CuratorPin; index: number; handle: string; isOwner: boolean; aboveFold: boolean; hero?: boolean; onDeleted: (id: number) => void }) {
+function PinCard({ pin, index, handle, isOwner, aboveFold, hero, onDeleted, curatorName, curatorAvatar }: { pin: CuratorPin; index: number; handle: string; isOwner: boolean; aboveFold: boolean; hero?: boolean; onDeleted: (id: number) => void; curatorName?: string; curatorAvatar?: string | null }) {
   const { t } = useTranslation()
   const productImg = pin.thumbnail || pin.image_url || ''
   // 🛡️ 2026-05-27 (404 fix — 사용자 보고): SPA route 는 /u/:handle/p/:productId (no /redirect suffix).
@@ -426,6 +426,8 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, hero, onDeleted }: { 
   const hasDeal = !!pin.original_price && pin.original_price > pin.price
   const discountPct = hasDeal ? Math.round((1 - pin.price / (pin.original_price as number)) * 100) : 0
   const savings = hasDeal ? (pin.original_price as number) - pin.price : 0
+  // 🎨 2026-06-16 시안 히어로: 카테고리 라벨 (동네딜=voucher/deal_only, 그 외 상품)
+  const heroCatLabel = ((pin as { deal_only?: number }).deal_only === 1 || /voucher/i.test((pin as { category?: string }).category || '')) ? '동네딜' : '상품'
 
   return (
     <div className={`relative group ${hero ? 'col-span-2 sm:col-span-3' : ''}`}>
@@ -458,31 +460,65 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, hero, onDeleted }: { 
           ) : (
             <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: grad.sub }}>no image</div>
           )}
-          {/* 딜 가치: 이미지 위 다크 가격칩 (할인율) */}
-          {discountPct > 0 && (
-            <span className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-md bg-[#141A2E]/90 text-[#FF7A5C] text-[12px] font-extrabold backdrop-blur">
-              {discountPct}%
-            </span>
+          {/* 딜 가치 칩: hero=할인%+정가취소선+판매가 통합(시안), 일반=할인%만 */}
+          {hero ? (
+            <div className="absolute bottom-2.5 left-2.5 z-10 flex items-baseline gap-1.5 px-2.5 py-1 rounded-[10px] bg-[#141A2E]/92 backdrop-blur">
+              {discountPct > 0 && <span className="text-[17px] font-extrabold text-[#FF7A5C]">{discountPct}%</span>}
+              {hasDeal && <span className="text-[11px] line-through text-white/50">{(pin.original_price as number).toLocaleString('ko-KR')}</span>}
+              <span className="text-[14px] font-extrabold text-white">{pin.price.toLocaleString('ko-KR')}원</span>
+            </div>
+          ) : (
+            discountPct > 0 && (
+              <span className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-md bg-[#141A2E]/90 text-[#FF7A5C] text-[12px] font-extrabold backdrop-blur">
+                {discountPct}%
+              </span>
+            )
           )}
         </div>
-        <div className={hero ? 'p-3.5' : 'p-2.5'}>
-          <p className={`font-bold leading-tight line-clamp-2 text-[#141A2E] dark:text-white ${hero ? 'text-[16px]' : 'text-[13px]'}`}>{pin.product_name}</p>
-          <div className="mt-1.5 flex items-baseline gap-1.5 flex-wrap">
-            {hasDeal && (
-              <span className="text-[11px] line-through text-gray-400 dark:text-gray-500">{formatWon(pin.original_price as number)}</span>
-            )}
-            <span className="text-[15px] font-extrabold text-[#141A2E] dark:text-white">{formatWon(pin.price)}</span>
-            {savings > 0 && (
-              <span className="ml-auto text-[11px] font-extrabold text-[#0E9F6E]">{formatWon(savings)}<span className="font-semibold opacity-70"> 절약</span></span>
+        {hero ? (
+          /* 🎨 시안 히어로 본문: 카테고리 줄 + 제목/절약 + note(인용+큐레이터 얼굴/이름) — 가격은 이미지 칩에 통합. */
+          <div className="p-3.5">
+            <span className="text-[11px] font-extrabold tracking-[0.14em] text-[#FF5634]">강력 추천 · {heroCatLabel}</span>
+            <div className="mt-1.5 flex items-start justify-between gap-2.5">
+              <p className="text-[16px] font-bold leading-snug text-[#141A2E] dark:text-white line-clamp-2">{pin.product_name}</p>
+              {savings > 0 && (
+                <span className="shrink-0 mt-0.5 text-[12px] font-extrabold text-[#0E9F6E]">{formatWon(savings)}<span className="font-semibold opacity-70"> 절약</span></span>
+              )}
+            </div>
+            {pin.note && (
+              <div className="mt-3 pl-3 border-l-[2.5px] border-[#FF5634]">
+                <p className="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">“{pin.note}”</p>
+                {(curatorName || curatorAvatar) && (
+                  <div className="mt-2 flex items-center gap-1.5">
+                    {curatorAvatar
+                      ? <img src={cfImage(curatorAvatar, { width: 40, format: 'auto' }) || curatorAvatar} alt="" className="w-5 h-5 rounded-full object-cover" loading="lazy" decoding="async" />
+                      : <div className="w-5 h-5 rounded-full bg-gradient-to-br from-gray-300 to-gray-400" />}
+                    {curatorName && <span className="text-[11.5px] font-semibold text-gray-500 dark:text-gray-400">{curatorName}</span>}
+                  </div>
+                )}
+              </div>
             )}
           </div>
-          {/* 추천 이유(note): 좌측 coral rule + 인용 (이모지 제거 — "사람이 직접 골랐다" 신뢰) */}
-          {pin.note && (
-            <div className="mt-2 pl-2 border-l-2 border-[#FF5634]">
-              <p className="text-[11.5px] leading-snug line-clamp-2 text-gray-700 dark:text-gray-300">{pin.note}</p>
+        ) : (
+          <div className="p-2.5">
+            <p className="text-[13px] font-bold leading-tight line-clamp-2 text-[#141A2E] dark:text-white">{pin.product_name}</p>
+            <div className="mt-1.5 flex items-baseline gap-1.5 flex-wrap">
+              {hasDeal && (
+                <span className="text-[11px] line-through text-gray-400 dark:text-gray-500">{formatWon(pin.original_price as number)}</span>
+              )}
+              <span className="text-[15px] font-extrabold text-[#141A2E] dark:text-white">{formatWon(pin.price)}</span>
+              {savings > 0 && (
+                <span className="ml-auto text-[11px] font-extrabold text-[#0E9F6E]">{formatWon(savings)}<span className="font-semibold opacity-70"> 절약</span></span>
+              )}
             </div>
-          )}
-        </div>
+            {/* 추천 이유(note): 좌측 coral rule + 인용 */}
+            {pin.note && (
+              <div className="mt-2 pl-2 border-l-2 border-[#FF5634]">
+                <p className="text-[11.5px] leading-snug line-clamp-2 text-gray-700 dark:text-gray-300">{pin.note}</p>
+              </div>
+            )}
+          </div>
+        )}
       </a>
       {/* 🛡️ 2026-05-27 (사용자 요청): 본인 view 에서 핀 삭제 버튼. */}
       {isOwner && (
