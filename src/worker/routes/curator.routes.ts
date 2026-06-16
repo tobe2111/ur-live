@@ -1219,7 +1219,7 @@ curatorRoutes.get('/admin/affiliate-diagnostic', requireAdmin(), async (c) => {
   try {
     const DB = c.env.DB
 
-    const [byStatus, multiItem, refundProxy, clicks, topReferrers] = await Promise.all([
+    const [byStatus, multiItem, refundProxy, clicks, topReferrers, referralByStatus, referralStuck] = await Promise.all([
       // 1) affiliate_earnings 상태 분포 (NULL = legacy 'pending' 으로 합산)
       DB.prepare(
         `SELECT COALESCE(NULLIF(status, ''), 'pending') AS status,
@@ -1266,6 +1266,24 @@ curatorRoutes.get('/admin/affiliate-diagnostic', requireAdmin(), async (c) => {
          WHERE COALESCE(status, 'pending') != 'refunded'
          GROUP BY referrer_id ORDER BY total DESC LIMIT 10`,
       ).all<{ referrer_id: string; earnings: number; total: number }>().catch(() => ({ results: [] as any[] })),
+
+      // 6) 추천 트리(referral_commissions) 상태 분포 — 2026-06-15 T+7 hold 확장 후 모니터.
+      //    pending=보류(미성숙·잔액 미반영) / granted=확정(잔액 적립됨) / withdrawn=환불역전·출금
+      DB.prepare(
+        `SELECT COALESCE(NULLIF(status, ''), 'pending') AS status,
+                COUNT(*) AS cnt, COALESCE(SUM(commission_amount), 0) AS total
+         FROM referral_commissions GROUP BY 1 ORDER BY 2 DESC`,
+      ).all<{ status: string; cnt: number; total: number }>().catch(() => ({ results: [] as any[] })),
+
+      // 7) 추천 적립 성숙 cron 헬스 — hold 기간(8일) 넘게 pending 인데 주문이 정상(미환불)인 건수.
+      //    >0 이면 matureReferralCommissions cron(referral-mature)이 안 돌고 있을 가능성.
+      DB.prepare(
+        `SELECT COUNT(*) AS cnt, COALESCE(SUM(rc.commission_amount), 0) AS total
+         FROM referral_commissions rc JOIN orders o ON o.id = rc.order_id
+         WHERE rc.status = 'pending'
+           AND rc.created_at <= datetime('now', '-8 days')
+           AND UPPER(COALESCE(o.status, '')) NOT IN ('REFUNDED', 'CANCELLED', 'FAILED')`,
+      ).first<{ cnt: number; total: number }>().catch(() => null),
     ])
 
     const totalClicks = clicks?.total ?? 0
@@ -1292,6 +1310,15 @@ curatorRoutes.get('/admin/affiliate-diagnostic', requireAdmin(), async (c) => {
         note: '전체 클릭 대비 순클릭(ip+ua+일자) — 차이가 크면 새로고침/봇 부풀림',
       },
       top_referrers: topReferrers.results ?? [],
+      referral_commissions: {
+        by_status: referralByStatus.results ?? [],
+        stuck_pending: {
+          count: referralStuck?.cnt ?? 0,
+          total: referralStuck?.total ?? 0,
+          note: 'hold(7일) 초과인데 미확정(pending)+주문 정상 — >0 이면 성숙 cron(referral-mature) 점검 필요',
+        },
+        note: 'pending=보류(잔액 미반영)/granted=확정(잔액 적립)/withdrawn=환불역전·출금. 추천 트리도 affiliate 와 동일 T+7 hold(2026-06-15)',
+      },
     })
   } catch (err) {
     return safeError(c, err, '진단 조회 중 오류가 발생했습니다', '[curator:affiliate-diagnostic]')
