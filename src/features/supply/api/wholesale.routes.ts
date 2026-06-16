@@ -388,7 +388,7 @@ interface SellerGradeRow {
   special_discount_until: string | null
 }
 
-async function loadGradeTable(DB: D1Database): Promise<GradeMargin[]> {
+export async function loadGradeTable(DB: D1Database): Promise<GradeMargin[]> {
   const { results } = await DB.prepare(
     'SELECT grade, margin_pct, is_special FROM distributor_grades WHERE active = 1'
   ).all<{ grade: string; margin_pct: number; is_special: number }>().catch(() => ({ results: [] as { grade: string; margin_pct: number; is_special: number }[] }))
@@ -410,7 +410,7 @@ async function loadMinPlatformMarginPct(DB: D1Database): Promise<number> {
   return Number.isFinite(n) && n > 0 ? n : 0
 }
 
-async function loadSellerGrade(DB: D1Database, sellerId: number): Promise<SellerGradeRow> {
+export async function loadSellerGrade(DB: D1Database, sellerId: number): Promise<SellerGradeRow> {
   const row = await DB.prepare(
     'SELECT distributor_grade, special_discount_until FROM sellers WHERE id = ?'
   ).bind(sellerId).first<SellerGradeRow>().catch(() => null)
