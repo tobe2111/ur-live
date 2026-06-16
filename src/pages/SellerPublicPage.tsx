@@ -7,7 +7,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { compressForThumbnail } from '@/lib/image-compress'
 import { useTheme } from '@/shared/stores/useTheme'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Search, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import StreamCard from './seller-public/StreamCard'
@@ -44,6 +44,8 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
   const [shorts, setShorts] = useState<Short[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('home')
+  // 🔍 2026-06-16 링크샵 시안: 상품 탭 검색 (이름 필터).
+  const [shopQuery, setShopQuery] = useState('')
 
   // 셀러 본인인지 확인 (편집 버튼 표시용) — seller 로드 후 id/username 비교
   // 🛡️ 2026-04-30: 듀얼 세션 (user_type='user' + seller_token 동시 보유) 도 owner 인정.
@@ -366,8 +368,15 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
                 : t('seller.publicPage.noShopProducts', { defaultValue: '등록된 상품이 없습니다.' })}
             </div>
           ) : (
+            <>
+            {/* 🔍 2026-06-16 링크샵 시안: 상품 검색 (이름 필터) */}
+            <div className="flex items-center gap-2 h-11 px-3.5 mb-4 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212]">
+              <Search className="w-4 h-4 text-gray-400 shrink-0" />
+              <input value={shopQuery} onChange={(e) => setShopQuery(e.target.value)} placeholder="상품 이름으로 검색" className={`flex-1 min-w-0 bg-transparent outline-none text-[14px] ${T.text} placeholder:text-gray-400`} />
+              {shopQuery && <button onClick={() => setShopQuery('')} aria-label="지우기" className="shrink-0 w-5 h-5 rounded-full bg-gray-300 dark:bg-[#3A3A3A] text-white flex items-center justify-center"><X className="w-3 h-3" /></button>}
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8">
-              {shopProducts.map(p => {
+              {shopProducts.filter(p => !shopQuery.trim() || p.name.toLowerCase().includes(shopQuery.trim().toLowerCase())).map(p => {
                 const discountRate = p.discount_rate || (p.original_price ? Math.round((1 - p.price / p.original_price) * 100) : 0)
                 const savings = p.original_price && p.original_price > p.price ? p.original_price - p.price : 0
                 return (
@@ -414,6 +423,7 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
                 )
               })}
             </div>
+            </>
           )
         )}
 
