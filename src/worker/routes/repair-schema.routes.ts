@@ -101,6 +101,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'orders.last_tracking_sync_at', sql: "ALTER TABLE orders ADD COLUMN last_tracking_sync_at DATETIME" },
     { desc: 'orders.tracking_status', sql: "ALTER TABLE orders ADD COLUMN tracking_status TEXT" },
     { desc: 'orders.tracking_carrier_code', sql: "ALTER TABLE orders ADD COLUMN tracking_carrier_code TEXT" },
+    // 🔐 2026-06-16: agency 자동정산(agency-auto-settle cron) 멱등 마커 — 없으면 SELECT 부터
+    //   'no such column' 으로 터져 자동정산이 영구 미작동(매 agency try-catch 로 silent skip). check-sql-column-exists 도 차단.
+    { desc: 'orders.agency_settled', sql: "ALTER TABLE orders ADD COLUMN agency_settled INTEGER NOT NULL DEFAULT 0" },
     // 🛡️ 2026-05-25 (migration 0280): 셀러 승급 트래킹
     { desc: 'users.curator_total_lifetime_earnings', sql: "ALTER TABLE users ADD COLUMN curator_total_lifetime_earnings INTEGER NOT NULL DEFAULT 0" },
     { desc: 'users.seller_upgrade_offered_at', sql: "ALTER TABLE users ADD COLUMN seller_upgrade_offered_at DATETIME" },
