@@ -1090,12 +1090,20 @@ app.get('/catalog', async (c) => {
     // 🏭 2026-06-10 (사용자 신고 — 카탈로그 느림, 전수조사): pragma 존재 체크를 isolate 당 1회로.
     //   기존: 매 요청 pragma_table_info 쿼리(+1 RTT). 양성(컬럼 있음)만 캐시 — 음성은 repair 후 즉시 복귀.
     if (!_supplyCatalogReady.has(DB)) {
-      const hasCol = await DB.prepare(
-        "SELECT COUNT(*) as c FROM pragma_table_info('products') WHERE name='is_supply_product'"
-      ).first<{ c: number }>().catch(() => null)
+      // 🚑 2026-06-16 (사용자 — "상품 안 뜨는 문제 예방"): 일시적 스키마 체크 오류를 '상품 0개(성공)'로
+      //   위장하지 않는다. 빈 결과를 반환하면 캐시/SSR 로 빈 그리드가 퍼지는 게 '상품 안 뜸'의 근본 producer.
+      //   → 오류면 throw(→ safeError 500 → 클라 retry 로 자동 복구, 절대 캐시 안 됨). 컬럼이 '실제로' 없을 때만
+      //   (repair 전) 빈 응답 + no-store. COUNT(*) 은 항상 row 반환하므로 정상 경로에선 c≥1.
+      let hasCol: { c: number } | null
+      try {
+        hasCol = await DB.prepare(
+          "SELECT COUNT(*) as c FROM pragma_table_info('products') WHERE name='is_supply_product'"
+        ).first<{ c: number }>()
+      } catch {
+        throw new Error('wholesale-catalog: supply schema check failed (transient)')
+      }
       if (!hasCol || hasCol.c === 0) {
-        // 🚑 2026-06-16: 콜드 isolate / 일시 pragma 오류로 컬럼 미확인 → 빈 응답. 절대 캐시 금지
-        //   (캐시되면 빈 그리드 고착). no-store 로 다음 요청이 즉시 재시도(컬럼 실제 존재 시 정상 복귀).
+        // 컬럼 실제 부재(repair-schema 실행 전) — 빈 응답이지만 절대 캐시 금지(빈 그리드 고착 방지).
         c.header('Cache-Control', 'private, no-store')
         return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: 'C' })
       }
