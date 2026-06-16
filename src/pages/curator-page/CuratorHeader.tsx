@@ -13,7 +13,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Share2, Heart, Pencil, Check, X, Camera, Settings } from 'lucide-react'
+import { Share2, Pencil, Check, X, Camera, Settings } from 'lucide-react'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import { cfImage } from '@/utils/cf-image'
 import api from '@/lib/api'
@@ -111,171 +111,155 @@ export default function CuratorHeader({
   useEffect(() => { setAvatarBroken(false) }, [normalizedAvatar])
 
   return (
-    <header className="max-w-3xl mx-auto px-4 pt-10 pb-5 text-center">
-      {/* 아바타 — 가운데, 모노크롬 링. 배경 없는 디자인의 시각적 앵커. */}
-      <div className="relative inline-block">
-        <div
-          className={`w-24 h-24 rounded-full ring-1 ring-gray-200 dark:ring-[#2A2A2A] bg-gray-100 dark:bg-[#121212] overflow-hidden shadow-sm mx-auto ${isOwner ? 'cursor-pointer' : ''}`}
-          onClick={() => isOwner && fileInputRef.current?.click()}
-        >
-          {(avatarPreview || normalizedAvatar) && !avatarBroken ? (
-            <img
-              src={avatarPreview || cfImage(normalizedAvatar!, { width: 192, format: 'auto' }) || normalizedAvatar!}
-              alt=""
-              className="w-full h-full object-cover"
-              loading="eager"
-              decoding="async"
-              onError={(e) => {
-                // 🏭 2026-06-07: resize 프록시 깨진 응답 시 same-origin R2 원본 1회 폴백 → 이니셜.
-                const img = e.currentTarget
-                if (img.dataset.fb !== '1' && normalizedAvatar && !avatarPreview) { img.dataset.fb = '1'; img.src = normalizedAvatar }
-                else setAvatarBroken(true)
-              }}
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center text-3xl font-bold text-white">
-              {(curator.name || '?').slice(0, 1)}
+    // 🎨 2026-06-16 링크샵 시안 그대로: 가로형 컴팩트 프로필(아바타 좌 · 이름/핸들/소개 우) — 흰 배경 + 얇은 구분선, 세로 높이 절반.
+    <header className="bg-white dark:bg-[#020202] border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="max-w-3xl mx-auto px-4 pt-4 pb-4">
+        <div className="flex items-center gap-3.5">
+          {/* 아바타 (62px) + 업로드(본인) */}
+          <div className="relative shrink-0">
+            <div
+              className={`w-[62px] h-[62px] rounded-full ring-1 ring-gray-200 dark:ring-[#2A2A2A] bg-gray-100 dark:bg-[#121212] overflow-hidden shadow-sm ${isOwner ? 'cursor-pointer' : ''}`}
+              onClick={() => isOwner && fileInputRef.current?.click()}
+            >
+              {(avatarPreview || normalizedAvatar) && !avatarBroken ? (
+                <img
+                  src={avatarPreview || cfImage(normalizedAvatar!, { width: 160, format: 'auto' }) || normalizedAvatar!}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  loading="eager"
+                  decoding="async"
+                  onError={(e) => {
+                    const img = e.currentTarget
+                    if (img.dataset.fb !== '1' && normalizedAvatar && !avatarPreview) { img.dataset.fb = '1'; img.src = normalizedAvatar }
+                    else setAvatarBroken(true)
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center text-2xl font-bold text-white">
+                  {(curator.name || '?').slice(0, 1)}
+                </div>
+              )}
+              {isOwner && uploading && (
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                  <Camera className="w-5 h-5 text-white" />
+                </div>
+              )}
             </div>
-          )}
-          {isOwner && (
-            <div className={`absolute inset-0 rounded-full bg-black/30 flex items-center justify-center transition-opacity ${uploading ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}>
-              <Camera className="w-5 h-5 text-white" />
-            </div>
-          )}
-        </div>
-        {/* 🏭 2026-06-05: 항상 보이는 카메라 뱃지 (모바일은 hover 없음). */}
-        {isOwner && (
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            aria-label="프로필 사진 변경"
-            className="absolute bottom-0 right-0 z-10 w-8 h-8 rounded-full bg-gray-900 dark:bg-white border-2 border-white dark:border-[#020202] flex items-center justify-center shadow-md active:scale-90 transition-transform"
-          >
-            <Camera className="w-4 h-4 text-white dark:text-[#020202]" />
-          </button>
-        )}
-        {isOwner && (
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0]
-              if (f) uploadProfileImage(f)
-            }}
-          />
-        )}
-      </div>
+            {isOwner && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="프로필 사진 변경"
+                className="absolute -bottom-0.5 -right-0.5 z-10 w-6 h-6 rounded-full bg-gray-900 dark:bg-white border-2 border-white dark:border-[#020202] flex items-center justify-center shadow-md active:scale-90 transition-transform"
+              >
+                <Camera className="w-3 h-3 text-white dark:text-[#020202]" />
+              </button>
+            )}
+            {isOwner && (
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProfileImage(f) }}
+              />
+            )}
+          </div>
 
-      {/* 이름 + handle — 가운데 정렬, 인라인 편집 */}
-      <div className="mt-4">
-        {editingField === 'name' ? (
-          <div className="flex items-center justify-center gap-2 max-w-sm mx-auto">
-            <input
-              autoFocus
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              className="text-xl font-extrabold text-center text-gray-900 dark:text-white bg-transparent border-b-2 border-gray-900 dark:border-white focus:outline-none flex-1 min-w-0"
-              onKeyDown={(e) => e.key === 'Enter' && saveField('name', editName)}
-              maxLength={40}
-            />
-            {/* 🛡️ 2026-05-31: 터치 타깃 ~44px 유지. */}
-            <button onClick={() => saveField('name', editName)} disabled={saving} aria-label="저장" className="p-2.5 bg-gray-900 dark:bg-white rounded-full text-white dark:text-[#020202] shrink-0 active:scale-95 transition-transform disabled:opacity-50"><Check className="w-5 h-5" /></button>
-            <button onClick={() => setEditingField(null)} aria-label="취소" className="p-2.5 bg-gray-200 dark:bg-[#2A2A2A] rounded-full text-gray-600 dark:text-gray-300 shrink-0 active:scale-95 transition-transform"><X className="w-5 h-5" /></button>
+          {/* 이름 / 핸들 / 소개 — 우측 컬럼 */}
+          <div className="flex-1 min-w-0">
+            {editingField === 'name' ? (
+              <div className="flex items-center gap-2">
+                <input
+                  autoFocus
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="text-[18px] font-extrabold text-gray-900 dark:text-white bg-transparent border-b-2 border-gray-900 dark:border-white focus:outline-none flex-1 min-w-0"
+                  onKeyDown={(e) => e.key === 'Enter' && saveField('name', editName)}
+                  maxLength={40}
+                />
+                <button onClick={() => saveField('name', editName)} disabled={saving} aria-label="저장" className="p-1.5 bg-gray-900 dark:bg-white rounded-full text-white dark:text-[#020202] shrink-0 active:scale-95 disabled:opacity-50"><Check className="w-4 h-4" /></button>
+                <button onClick={() => setEditingField(null)} aria-label="취소" className="p-1.5 bg-gray-200 dark:bg-[#2A2A2A] rounded-full text-gray-600 dark:text-gray-300 shrink-0 active:scale-95"><X className="w-4 h-4" /></button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h1
+                  className={`text-[18px] font-extrabold text-gray-900 dark:text-white leading-tight ${isOwner ? 'cursor-pointer' : ''}`}
+                  onClick={() => isOwner && setEditingField('name')}
+                >
+                  {curator.name}
+                </h1>
+                <span className="text-[12.5px] text-gray-400 dark:text-gray-500 font-medium">@{curator.handle}</span>
+                {isOwner && <Pencil className="w-3 h-3 text-gray-400 dark:text-gray-500 cursor-pointer" onClick={() => setEditingField('name')} />}
+              </div>
+            )}
+
+            {editingField === 'bio' ? (
+              <div className="mt-1.5">
+                <textarea
+                  autoFocus
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  rows={2}
+                  maxLength={200}
+                  className="w-full text-[13px] text-gray-900 dark:text-white bg-gray-50 dark:bg-[#0A0A0A] border border-gray-900 dark:border-white rounded-lg p-2 focus:outline-none resize-none"
+                />
+                <div className="flex gap-2 mt-1">
+                  <button onClick={() => saveField('bio', editBio)} disabled={saving} className="px-3 py-1 bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-xs font-bold rounded-lg">저장</button>
+                  <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 text-xs rounded-lg">취소</button>
+                </div>
+              </div>
+            ) : (curator.bio || isOwner) && (
+              <p
+                className={`text-[12.5px] text-gray-600 dark:text-gray-300 mt-1 leading-snug line-clamp-2 ${isOwner ? 'cursor-pointer' : ''}`}
+                onClick={() => isOwner && setEditingField('bio')}
+              >
+                {curator.bio || (isOwner ? '한 줄 소개를 입력해주세요 ✎' : '')}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* CTA — 본인: 프로필 수정 / 수익 대시보드, 방문자: 카카오 공유 + 복사 */}
+        {isOwner ? (
+          <div className="grid grid-cols-2 gap-2 mt-3.5">
+            <button
+              type="button"
+              onClick={() => setEditingField('name')}
+              className="py-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
+            >
+              <Pencil className="w-3.5 h-3.5" /> 프로필 수정
+            </button>
+            <Link
+              to="/u/me/earnings"
+              className="py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
+            >
+              <Settings className="w-3.5 h-3.5" /> 수익 대시보드
+            </Link>
           </div>
         ) : (
-          <h1
-            className={`text-xl font-extrabold text-gray-900 dark:text-white ${isOwner ? 'cursor-pointer' : ''}`}
-            onClick={() => isOwner && setEditingField('name')}
-          >
-            {curator.name}
-            {isOwner && <Pencil className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 inline ml-2" />}
-          </h1>
+          <div className="flex gap-2 mt-3.5">
+            <div className="flex-1">
+              <KakaoShareButton
+                title={`${curator.name} 의 링크샵`}
+                description={curator.bio || `${pinCount}개 상품 추천 중`}
+                imageUrl={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
+                link={`/u/${curator.handle}`}
+                className="w-full py-2.5 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-sm font-bold transition-colors"
+                buttonText="카카오톡 공유"
+              />
+            </div>
+            <button
+              onClick={onCopyLink}
+              className="px-4 py-2.5 bg-gray-100 dark:bg-[#121212] hover:bg-gray-200 dark:hover:bg-[#1A1A1A] rounded-xl text-sm font-bold text-gray-900 dark:text-white transition-colors"
+              aria-label={t('curator.copyLink', { defaultValue: '링크 복사' })}
+              title="링크 복사"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+          </div>
         )}
-        <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-0.5">@{curator.handle}</p>
       </div>
-
-      {/* bio — 가운데 정렬, 인라인 편집 */}
-      {editingField === 'bio' ? (
-        <div className="mt-3 max-w-sm mx-auto text-left">
-          <textarea
-            autoFocus
-            value={editBio}
-            onChange={(e) => setEditBio(e.target.value)}
-            rows={3}
-            maxLength={200}
-            className="w-full text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-[#0A0A0A] border border-gray-900 dark:border-white rounded-lg p-2 focus:outline-none resize-none"
-          />
-          <div className="flex gap-2 mt-1 justify-center">
-            <button onClick={() => saveField('bio', editBio)} disabled={saving} className="px-3 py-1 bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-xs font-bold rounded-lg">저장</button>
-            <button onClick={() => setEditingField(null)} className="px-3 py-1 bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 text-xs rounded-lg">취소</button>
-          </div>
-        </div>
-      ) : (curator.bio || isOwner) && (
-        <div
-          className={`mt-2 max-w-sm mx-auto ${isOwner ? 'cursor-pointer rounded-lg px-2 py-1 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition-colors' : ''}`}
-          onClick={() => isOwner && setEditingField('bio')}
-        >
-          <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3">
-            {curator.bio || (isOwner ? '한 줄 소개를 입력해주세요' : '')}
-          </p>
-          {isOwner && !curator.bio && (
-            <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-gray-500 dark:text-gray-400">
-              <Pencil className="w-3 h-3" /> 클릭하여 편집
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* CTA — 본인: 프로필 수정 / 수익 대시보드, 방문자: 공유/복사/좋아요 */}
-      {isOwner ? (
-        <div className="grid grid-cols-2 gap-2 mt-5 max-w-sm mx-auto">
-          <button
-            type="button"
-            onClick={() => setEditingField('name')}
-            className="py-3 rounded-2xl bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white active:opacity-80 transition-all text-[14px] font-bold flex items-center justify-center gap-2"
-          >
-            <Pencil className="w-4 h-4" />
-            프로필 수정
-          </button>
-          <Link
-            to="/u/me/earnings"
-            className="py-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] active:opacity-80 transition-all text-[14px] font-bold flex items-center justify-center gap-2"
-          >
-            <Settings className="w-4 h-4" />
-            수익 대시보드
-          </Link>
-        </div>
-      ) : (
-        <div className="flex gap-2 mt-4 max-w-sm mx-auto">
-          <div className="flex-1">
-            <KakaoShareButton
-              title={`${curator.name} 의 링크샵`}
-              description={curator.bio || `${pinCount}개 상품 추천 중`}
-              imageUrl={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
-              link={`/u/${curator.handle}`}
-              className="w-full py-2.5 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-sm font-bold transition-colors"
-              buttonText="링크샵 둘러보기"
-            />
-          </div>
-          <button
-            onClick={onCopyLink}
-            className="px-4 py-2.5 bg-gray-100 dark:bg-[#121212] hover:bg-gray-200 dark:hover:bg-[#1A1A1A] rounded-xl text-sm font-bold text-gray-900 dark:text-white transition-colors"
-            aria-label={t('curator.copyLink', { defaultValue: '링크 복사' })}
-            title="링크 복사"
-          >
-            <Share2 className="w-4 h-4" />
-          </button>
-          <button
-            className="px-4 py-2.5 bg-gray-100 dark:bg-[#121212] hover:bg-gray-200 dark:hover:bg-[#1A1A1A] rounded-xl text-sm font-bold text-gray-900 dark:text-white transition-colors"
-            aria-label="좋아요"
-            title="좋아요"
-          >
-            <Heart className="w-4 h-4" />
-          </button>
-        </div>
-      )}
     </header>
   )
 }
