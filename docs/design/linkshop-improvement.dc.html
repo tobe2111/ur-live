@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+  body { margin: 0; font-family: "Pretendard Variable", Pretendard, -apple-system, sans-serif; }
+  @keyframes lsPulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  @keyframes lsTickerIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes lsShine { 0% { background-position: -120% 0; } 100% { background-position: 220% 0; } }
+  .ls-scroll::-webkit-scrollbar { width: 0; height: 0; }
+</style>
+</helmet>
+
+<div ref="{{ rootRef }}" style="background: #EBEDF1; min-height: 100vh; padding: 56px 32px 96px; font-family: 'Pretendard Variable', Pretendard, sans-serif;">
+
+  <input ref="{{ avatarInput }}" type="file" accept="image/*" onChange="{{ onAvatarChange }}" style="display:none;">
+
+  <!-- ===== Page header ===== -->
+  <div style="max-width: 1320px; margin: 0 auto 8px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width: 34px; height: 34px; border-radius: 10px; background: #141A2E; display: flex; align-items: center; justify-content: center; color: #FF5634; font-size: 19px; font-weight: 800;">⚲</div>
+      <div style="font-size: 26px; font-weight: 800; color: #141A2E; letter-spacing: -.02em;">링크샵 — UX/UI 개선안</div>
+    </div>
+    <div style="margin: 10px 0 0 46px; font-size: 15px; color: #6B7280; line-height: 1.6; max-width: 760px;">전환의 두 축인 <b style="color:#141A2E;">딜 가치</b>와 <b style="color:#141A2E;">추천 이유(note)</b>를 카드 중심에 올리고, <b style="color:#141A2E;">큐레이션 순번</b>과 검증 배지로 신뢰를 더했습니다.</div>
+  </div>
+
+  <!-- ===== Row 1: Visitor view + Card anatomy ===== -->
+  <div style="max-width: 1320px; margin: 44px auto 0; display: flex; flex-wrap: wrap; gap: 56px; align-items: flex-start;">
+
+    <!-- VISITOR VIEW -->
+    <div data-screen-label="방문자 뷰" style="flex: 0 0 auto;">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+        <span style="font-size: 13px; font-weight: 800; letter-spacing: .04em; color: #FF5634; background: #FFEDE8; padding: 5px 11px; border-radius: 999px;">전환 히어로</span>
+        <span style="font-size: 18px; font-weight: 700; color: #141A2E;">방문자 뷰 · /u/jiwon</span>
+      </div>
+
+      <!-- phone -->
+      <div style="width: 392px; background: #fff; border-radius: 40px; box-shadow: 0 30px 70px -20px rgba(20,26,46,.35), 0 0 0 1px rgba(20,26,46,.05); overflow: hidden;">
+        <!-- status bar -->
+        <div style="height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 26px; font-size: 13px; font-weight: 700; color: #141A2E; background:#fff;">
+          <span>9:41</span>
+          <span style="display:flex; gap:6px; align-items:center; opacity:.85;">▬▬▮ &nbsp;📶 &nbsp;🔋</span>
+        </div>
+
+        <!-- scroll body -->
+        <div class="ls-scroll" style="height: 760px; overflow-y: auto; background: #fff;">
+
+          <!-- cover + profile -->
+          <div style="position: relative; background: #fff; border-bottom:1px solid #F0F1F4; padding: 16px 18px 16px;">
+            <div style="position:absolute; top:16px; right:16px;">
+              <div style="width:32px;height:32px;border-radius:50%;background:rgba(20,26,46,.06);display:flex;align-items:center;justify-content:center;color:#141A2E;font-size:15px;">⤴</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:14px;">
+              <div style="position: relative; flex:0 0 auto;">
+                <img data-avatar src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop" style="width: 62px; height: 62px; border-radius: 50%; object-fit: cover; border: 2.5px solid #fff; box-shadow:0 5px 14px rgba(20,26,46,.14);">
+                <div style="position:absolute; bottom:-1px; right:-1px; width:21px;height:21px;border-radius:50%;background:#2EC4B6;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:900;">✓</div>
+              </div>
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; gap:6px; color:#141A2E; font-size: 18px; font-weight: 800; letter-spacing:-.01em;">정지원<span style="color:#F5A623;font-size:13px;">★</span><span style="color:#8A909C;font-size:12.5px;font-weight:500;">@jiwon</span></div>
+                <div style="color: #5B6270; font-size: 12.5px; margin-top: 4px; line-height:1.45;">맛집·가성비 득템만 골라 담는 동네 큐레이터 🍣</div>
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                  <a href="https://youtube.com/@jiwon" target="_blank" rel="noopener" aria-label="YouTube" style="width:30px; height:30px; border-radius:9px; background:#FF0000; display:flex; align-items:center; justify-content:center; text-decoration:none; box-shadow:0 3px 8px -2px rgba(255,0,0,.4);"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z"/></svg></a>
+                  <a href="https://instagram.com/jiwon" target="_blank" rel="noopener" aria-label="Instagram" style="width:30px; height:30px; border-radius:9px; background:linear-gradient(45deg,#F9CE34,#EE2A7B,#6228D7); display:flex; align-items:center; justify-content:center; text-decoration:none; box-shadow:0 3px 8px -2px rgba(238,42,123,.4);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.7"/><circle cx="17.3" cy="6.7" r="1.1" fill="#fff" stroke="none"/></svg></a>
+                  <a href="https://tiktok.com/@jiwon" target="_blank" rel="noopener" aria-label="TikTok" style="width:30px; height:30px; border-radius:9px; background:#141A2E; display:flex; align-items:center; justify-content:center; text-decoration:none; box-shadow:0 3px 8px -2px rgba(20,26,46,.4);"><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z"/></svg></a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CTA row -->
+          <div style="display:flex; gap:10px; padding: 14px 16px 4px;">
+            <button style="flex:1; height:46px; border:none; border-radius:13px; background:#FEE500; color:#3C1E1E; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer; display:flex;align-items:center;justify-content:center;gap:7px;">💬 카카오톡 공유</button>
+            <button style="width:46px; height:46px; border:1px solid #E7E8EC; border-radius:13px; background:#fff; color:#6B7280; font-size:17px; cursor:pointer;">🔗</button>
+          </div>
+
+          <!-- search + tabs (sticky) -->
+          <div style="position: sticky; top:0; background:#fff; z-index:5; padding: 12px 16px 6px;">
+            <div style="display:flex; align-items:center; gap:9px; height:42px; padding:0 14px; border:1px solid #E7E8EC; border-radius:13px; background:#F7F8FA;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9499A4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+              <input ref="{{ searchInput }}" onInput="{{ onSearch }}" placeholder="상품·딜 이름으로 검색" style="flex:1; min-width:0; border:none; outline:none; background:transparent; font-family:inherit; font-size:14px; color:#141A2E;">
+              <button onClick="{{ clearSearch }}" ref="{{ clearBtn }}" style="display:none; flex:0 0 auto; width:20px; height:20px; border:none; border-radius:50%; background:#D8DAE0; color:#fff; cursor:pointer; align-items:center; justify-content:center; padding:0;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+            </div>
+            <div style="display:flex; gap:6px; margin-top:10px;">
+              <button data-tab="all" onClick="{{ selectTab }}" style="flex:1; height:38px; border:none; border-radius:10px; background:#141A2E; color:#fff; font-size:13.5px; font-weight:700; font-family:inherit; cursor:pointer;">전체 <span style="opacity:.6;">24</span></button>
+              <button data-tab="deal" onClick="{{ selectTab }}" style="flex:1; height:38px; border:none; border-radius:10px; background:#F3F4F6; color:#5B6270; font-size:13.5px; font-weight:700; font-family:inherit; cursor:pointer;">동네딜 <span style="opacity:.55;">11</span></button>
+              <button data-tab="product" onClick="{{ selectTab }}" style="flex:1; height:38px; border:none; border-radius:10px; background:#F3F4F6; color:#5B6270; font-size:13.5px; font-weight:700; font-family:inherit; cursor:pointer;">상품 <span style="opacity:.55;">13</span></button>
+            </div>
+          </div>
+
+          <!-- empty search result -->
+          <div ref="{{ noResults }}" style="display:none; flex-direction:column; align-items:center; text-align:center; padding:40px 24px 8px;">
+            <div style="width:60px; height:60px; border-radius:18px; background:#F3F4F6; display:flex; align-items:center; justify-content:center; color:#B6BAC2;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg></div>
+            <div style="font-size:14.5px; font-weight:700; color:#141A2E; margin-top:14px;">검색 결과가 없어요</div>
+            <div style="font-size:12.5px; color:#9499A4; margin-top:5px;">다른 키워드로 찾아보세요.</div>
+          </div>
+
+          <!-- ===== FEATURED hero pin (full width) ===== -->
+          <div data-cat="deal" style="margin: 8px 16px 0; border-radius:16px; overflow:hidden; border:1px solid #ECEDF1; box-shadow: 0 10px 30px -18px rgba(20,26,46,.25); background:#fff;">
+            <div style="position:relative;">
+              <img src="https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=720&h=400&fit=crop" style="width:100%; height:182px; object-fit:cover; display:block;">
+              <span style="position:absolute; top:0; left:0; min-width:34px; height:34px; padding:0 9px; background:#FF5634; color:#fff; font-size:17px; font-weight:800; display:flex; align-items:center; justify-content:center; border-bottom-right-radius:14px;">1</span>
+              <div style="position:absolute; bottom:12px; left:12px; background:rgba(20,26,46,.92); backdrop-filter:blur(4px); color:#fff; border-radius:10px; padding:7px 11px; display:flex; align-items:baseline; gap:7px;">
+                <span style="font-size:19px; font-weight:800; color:#FF7A5C;">45%</span>
+                <span style="font-size:12px; text-decoration:line-through; color:rgba(255,255,255,.5);">89,000</span>
+                <span style="font-size:16px; font-weight:800;">49,000원</span>
+              </div>
+            </div>
+            <div style="padding: 14px 15px 15px; background:#fff;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <span style="font-size:11px; font-weight:800; letter-spacing:.14em; color:#FF5634;">강력 추천 · 동네딜</span>
+                <span style="flex:0 0 auto; font-size:11px; font-weight:800; color:#FF5634; background:#FFEDE8; padding:3px 8px; border-radius:7px;">마감 D-2</span>
+              </div>
+              <div style="margin-top:6px; display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
+                <div style="font-size:16px; font-weight:700; color:#141A2E; line-height:1.35; letter-spacing:-.01em;">스시 오마카세 디너 2인</div>
+                <span style="flex:0 0 auto; font-size:12px; font-weight:800; color:#0E9F6E; margin-top:2px;">₩40,000<span style="font-weight:600; color:#6FBF9E;"> 절약</span></span>
+              </div>
+              <div style="margin-top:13px; padding-left:13px; border-left:2.5px solid #FF5634;">
+                <div style="font-size:13.5px; color:#2C3242; line-height:1.6;">“기념일에 갔는데 가성비 미쳤어요. 오마카세 입문으로 강력 추천해요.”</div>
+                <div style="margin-top:9px; display:flex; align-items:center; gap:7px;">
+                  <img data-avatar src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop" style="width:20px;height:20px;border-radius:50%;object-fit:cover;">
+                  <span style="font-size:11.5px; color:#8A909C; font-weight:600;">정지원</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== 2-col grid ===== -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; padding: 12px 16px 24px;">
+
+            <!-- card -->
+            <div data-cat="deal" style="border-radius:14px; overflow:hidden; border:1px solid #ECEDF1; background:#fff;">
+              <div style="position:relative;">
+                <img src="https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=360&h=240&fit=crop" style="width:100%;height:112px;object-fit:cover;display:block;">
+                <span style="position:absolute; top:0; left:0; min-width:25px; height:25px; padding:0 7px; background:#FF5634; color:#fff; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; border-bottom-right-radius:11px;">2</span>
+                <span style="position:absolute; bottom:8px; left:8px; background:rgba(20,26,46,.9); color:#FF7A5C; font-size:12px; font-weight:800; padding:3px 8px; border-radius:7px;">38%</span>
+              </div>
+              <div style="padding:11px 11px 12px;">
+                <div style="font-size:13px; font-weight:700; color:#141A2E; line-height:1.35;">마라탕 무한리필 2인</div>
+                <div style="margin-top:6px; display:flex; align-items:baseline; gap:6px;">
+                  <span style="font-size:11px; text-decoration:line-through; color:#B6BAC2;">32,000</span>
+                  <span style="font-size:15px; font-weight:800; color:#141A2E;">19,900원</span>
+                </div>
+                <div style="margin-top:9px; padding-left:9px; border-left:2px solid #FF5634;">
+                  <div style="font-size:11.5px; color:#3A4150; line-height:1.5;">맵찔이도 안심, 맵기 조절돼요</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- card -->
+            <div data-cat="product" style="border-radius:14px; overflow:hidden; border:1px solid #ECEDF1; background:#fff;">
+              <div style="position:relative;">
+                <img src="https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=360&h=240&fit=crop" style="width:100%;height:112px;object-fit:cover;display:block;">
+                <span style="position:absolute; top:0; left:0; min-width:25px; height:25px; padding:0 7px; background:#FF5634; color:#fff; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; border-bottom-right-radius:11px;">3</span>
+                <span style="position:absolute; bottom:8px; left:8px; background:rgba(20,26,46,.9); color:#FF7A5C; font-size:12px; font-weight:800; padding:3px 8px; border-radius:7px;">44%</span>
+              </div>
+              <div style="padding:11px 11px 12px;">
+                <div style="font-size:13px; font-weight:700; color:#141A2E; line-height:1.35;">무선 노이즈캔슬링 이어버드</div>
+                <div style="margin-top:6px; display:flex; align-items:baseline; gap:6px;">
+                  <span style="font-size:11px; text-decoration:line-through; color:#B6BAC2;">159,000</span>
+                  <span style="font-size:15px; font-weight:800; color:#141A2E;">89,000원</span>
+                </div>
+                <div style="margin-top:9px; padding-left:9px; border-left:2px solid #FF5634;">
+                  <div style="font-size:11.5px; color:#3A4150; line-height:1.5;">이 가격 실화에요, 출퇴근 필수템</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- card -->
+            <div data-cat="deal" style="border-radius:14px; overflow:hidden; border:1px solid #ECEDF1; background:#fff;">
+              <div style="position:relative;">
+                <img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=360&h=240&fit=crop" style="width:100%;height:112px;object-fit:cover;display:block;">
+                <span style="position:absolute; top:0; left:0; min-width:25px; height:25px; padding:0 7px; background:#FF5634; color:#fff; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; border-bottom-right-radius:11px;">4</span>
+                <span style="position:absolute; bottom:8px; left:8px; background:rgba(20,26,46,.9); color:#FF7A5C; font-size:12px; font-weight:800; padding:3px 8px; border-radius:7px;">37%</span>
+              </div>
+              <div style="padding:11px 11px 12px;">
+                <div style="font-size:13px; font-weight:700; color:#141A2E; line-height:1.35;">브런치 카페 2인 세트</div>
+                <div style="margin-top:6px; display:flex; align-items:baseline; gap:6px;">
+                  <span style="font-size:11px; text-decoration:line-through; color:#B6BAC2;">28,000</span>
+                  <span style="font-size:15px; font-weight:800; color:#141A2E;">17,500원</span>
+                </div>
+                <div style="margin-top:9px; padding-left:9px; border-left:2px solid #FF5634;">
+                  <div style="font-size:11.5px; color:#3A4150; line-height:1.5;">주말 브런치 웨이팅 값어치 합니다</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- card -->
+            <div data-cat="product" style="border-radius:14px; overflow:hidden; border:1px solid #ECEDF1; background:#fff;">
+              <div style="position:relative;">
+                <img src="https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=360&h=240&fit=crop" style="width:100%;height:112px;object-fit:cover;display:block;">
+                <span style="position:absolute; top:0; left:0; min-width:25px; height:25px; padding:0 7px; background:#FF5634; color:#fff; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; border-bottom-right-radius:11px;">5</span>
+                <span style="position:absolute; bottom:8px; left:8px; background:rgba(20,26,46,.9); color:#FF7A5C; font-size:12px; font-weight:800; padding:3px 8px; border-radius:7px;">43%</span>
+              </div>
+              <div style="padding:11px 11px 12px;">
+                <div style="font-size:13px; font-weight:700; color:#141A2E; line-height:1.35;">보온 텀블러 500ml</div>
+                <div style="margin-top:6px; display:flex; align-items:baseline; gap:6px;">
+                  <span style="font-size:11px; text-decoration:line-through; color:#B6BAC2;">35,000</span>
+                  <span style="font-size:15px; font-weight:800; color:#141A2E;">19,800원</span>
+                </div>
+                <div style="margin-top:9px; padding-left:9px; border-left:2px solid #FF5634;">
+                  <div style="font-size:11.5px; color:#3A4150; line-height:1.5;">하루 종일 얼음이 안 녹아요</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- add pin (owner only) -->
+            <button style="grid-column: span 2; display:flex; align-items:center; justify-content:center; gap:8px; height:52px; border:1.5px dashed #FFB59E; border-radius:14px; background:#FFF6F3; color:#FF5634; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>핀 추가하기</button>
+
+          </div>
+        </div>
+
+        <!-- bottom nav -->
+        <div style="display:flex; align-items:center; justify-content:space-around; height:64px; border-top:1px solid #F0F1F4; background:#fff; padding-bottom:6px;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#9499A4;font-size:10px;font-weight:500;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg><span>홈</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#9499A4;font-size:10px;font-weight:500;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg><span>동네딜</span></div>
+          <div style="width:46px;height:46px;border-radius:16px;background:#141A2E;color:#fff;display:flex;align-items:center;justify-content:center;margin-top:-14px;box-shadow:0 8px 18px -6px rgba(20,26,46,.5);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#FF5634;font-size:10px;font-weight:700;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>링크샵</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#9499A4;font-size:10px;font-weight:500;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/></svg><span>마이</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CARD ANATOMY -->
+    <div data-screen-label="카드 해부도" style="flex: 1 1 380px; min-width: 360px; max-width: 560px;">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+        <span style="font-size: 13px; font-weight: 800; letter-spacing: .04em; color: #0E9F6E; background: #E7F7F0; padding: 5px 11px; border-radius: 999px;">전환 단위</span>
+        <span style="font-size: 18px; font-weight: 700; color: #141A2E;">카드 해부도</span>
+      </div>
+
+      <div style="background:#fff; border-radius:24px; padding: 32px; box-shadow: 0 24px 60px -28px rgba(20,26,46,.28); border:1px solid #EFF0F3;">
+        <!-- the card, enlarged -->
+        <div style="max-width: 320px; margin: 0 auto; border-radius:16px; overflow:hidden; border:1px solid #ECEDF1; box-shadow: 0 12px 30px -18px rgba(20,26,46,.25); background:#fff;">
+          <div style="position:relative;">
+            <img src="https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=720&h=400&fit=crop" style="width:100%; height:172px; object-fit:cover; display:block;">
+            <span style="position:absolute; top:0; left:0; min-width:34px; height:34px; padding:0 9px; background:#FF5634; color:#fff; font-size:17px; font-weight:800; display:flex; align-items:center; justify-content:center; border-bottom-right-radius:14px;">1</span>
+            <div style="position:absolute; bottom:12px; left:12px; background:rgba(20,26,46,.92); color:#fff; border-radius:10px; padding:7px 11px; display:flex; align-items:baseline; gap:7px;">
+              <span style="font-size:19px; font-weight:800; color:#FF7A5C;">45%</span>
+              <span style="font-size:12px; text-decoration:line-through; color:rgba(255,255,255,.5);">89,000</span>
+              <span style="font-size:16px; font-weight:800;">49,000원</span>
+            </div>
+          </div>
+          <div style="padding:14px 15px 15px; background:#fff;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+              <span style="font-size:11px; font-weight:800; letter-spacing:.14em; color:#FF5634;">강력 추천 · 동네딜</span>
+              <span style="flex:0 0 auto; font-size:11px; font-weight:800; color:#FF5634; background:#FFEDE8; padding:3px 8px; border-radius:7px;">마감 D-2</span>
+            </div>
+            <div style="margin-top:6px; display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
+              <div style="font-size:16px; font-weight:700; color:#141A2E; line-height:1.35; letter-spacing:-.01em;">스시 오마카세 디너 2인</div>
+              <span style="flex:0 0 auto; font-size:12px; font-weight:800; color:#0E9F6E; margin-top:2px;">₩40,000<span style="font-weight:600; color:#6FBF9E;"> 절약</span></span>
+            </div>
+            <div style="margin-top:13px; padding-left:13px; border-left:2.5px solid #FF5634;">
+              <div style="font-size:13.5px; color:#2C3242; line-height:1.6;">“기념일에 갔는데 가성비 미쳤어요. 오마카세 입문으로 강력 추천해요.”</div>
+              <div style="margin-top:9px; display:flex; align-items:center; gap:7px;">
+                <img data-avatar src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop" style="width:20px;height:20px;border-radius:50%;object-fit:cover;">
+                <span style="font-size:11.5px; color:#8A909C; font-weight:600;">정지원</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- annotations -->
+        <div style="margin-top: 28px; display:flex; flex-direction:column; gap:14px;">
+          <div style="display:flex; gap:12px; align-items:flex-start;">
+            <span style="flex:0 0 auto; width:24px; height:24px; border-radius:7px; background:#FFEDE8; color:#FF5634; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center;">1</span>
+            <div><b style="color:#141A2E; font-size:14px;">딜 가치를 한눈에</b><div style="font-size:13px; color:#6B7280; margin-top:2px; line-height:1.5;">할인율·정가취소선·판매가를 이미지 위 한 칩에 묶고, <b style="color:#0E9F6E;">절약액</b>을 초록 배지로 분리해 강조.</div></div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start;">
+            <span style="flex:0 0 auto; width:24px; height:24px; border-radius:7px; background:#FFEDE8; color:#FF5634; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center;">2</span>
+            <div><b style="color:#141A2E; font-size:14px;">추천 이유(note)에 얼굴을 붙임</b><div style="font-size:13px; color:#6B7280; margin-top:2px; line-height:1.5;">좌측 코랄 룰 + 큐레이터 인용 형식 — "사람이 직접 골랐다"는 신뢰의 핵심.</div></div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start;">
+            <span style="flex:0 0 auto; width:24px; height:24px; border-radius:7px; background:#FFEDE8; color:#FF5634; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center;">3</span>
+            <div><b style="color:#141A2E; font-size:14px;">마감 임박을 상단에</b><div style="font-size:13px; color:#6B7280; margin-top:2px; line-height:1.5;">마감 D-2 같은 시간 압박 신호를 카테고리 줄 오른쪽으로 올려 첫눈에 — 군더더기 통계는 덜어냈습니다.</div></div>
+          </div>
+          <div style="display:flex; gap:12px; align-items:flex-start;">
+            <span style="flex:0 0 auto; width:24px; height:24px; border-radius:7px; background:#FFEDE8; color:#FF5634; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center;">4</span>
+            <div><b style="color:#141A2E; font-size:14px;">큐레이션 순번</b><div style="font-size:13px; color:#6B7280; margin-top:2px; line-height:1.5;">정렬순서(sort order)를 카드 좌상단 번호로 노출 — "1번이 제일 강추"라는 큐레이터의 우선순위가 한눈에.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Row 2: Owner view + Empty/Onboarding ===== -->
+  <div style="max-width: 1320px; margin: 64px auto 0; display: flex; flex-wrap: wrap; gap: 56px; align-items: flex-start;">
+
+    <!-- OWNER VIEW -->
+    <div data-screen-label="본인 뷰" style="flex:0 0 auto;">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+        <span style="font-size: 13px; font-weight: 800; letter-spacing: .04em; color: #5B6270; background: #ECEEF1; padding: 5px 11px; border-radius: 999px;">관리</span>
+        <span style="font-size: 18px; font-weight: 700; color: #141A2E;">본인 뷰 · 편집 모드</span>
+      </div>
+
+      <div style="width: 392px; background: #fff; border-radius: 40px; box-shadow: 0 30px 70px -20px rgba(20,26,46,.35), 0 0 0 1px rgba(20,26,46,.05); overflow: hidden;">
+        <div style="height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 26px; font-size: 13px; font-weight: 700; color: #141A2E;"><span>9:41</span><span style="opacity:.85;">▬▬▮ 📶 🔋</span></div>
+
+        <div class="ls-scroll" style="height: 600px; overflow-y:auto;">
+          <!-- owner banner -->
+          <div style="background:#141A2E; padding: 12px 16px; display:flex; align-items:center; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:8px; color:#fff; font-size:13px; font-weight:600;"><span style="color:#FF5634;">✎</span> 편집 모드 · 클릭해서 바로 수정</div>
+            <button style="background:#FF5634; border:none; color:#fff; font-size:12.5px; font-weight:700; padding:7px 12px; border-radius:9px; font-family:inherit; cursor:pointer;">콘솔 →</button>
+          </div>
+
+          <!-- this week earnings strip -->
+          <div style="margin: 14px 16px 0; background: linear-gradient(120deg,#141A2E,#2A3658); border-radius:18px; padding: 16px 18px; color:#fff;">
+            <div style="font-size:12px; color:rgba(255,255,255,.6);">이번 주 적립</div>
+            <div style="display:flex; align-items:baseline; gap:8px; margin-top:4px;">
+              <span style="font-size:26px; font-weight:800;">₩48,200</span>
+              <span style="font-size:12px; color:#37D399; font-weight:700;">▲ 12%</span>
+            </div>
+            <div style="display:flex; gap:18px; margin-top:14px; font-size:11.5px; color:rgba(255,255,255,.7);">
+              <span>클릭 <b style="color:#fff;">1.4k</b></span><span>구매 <b style="color:#fff;">31</b></span><span>전환율 <b style="color:#37D399;">2.2%</b></span>
+            </div>
+          </div>
+
+          <!-- visitor preview -->
+          <div style="margin:14px 16px 0; border:1px solid #EEEFF2; border-radius:18px; padding:13px; display:flex; gap:13px; align-items:center; background:#fff;">
+            <div style="flex:0 0 auto; width:92px; border-radius:13px; overflow:hidden; border:1px solid #ECEDF1; box-shadow:0 6px 16px -10px rgba(20,26,46,.35);">
+              <div style="background:#fff; border-bottom:1px solid #F0F1F4; padding:9px 0 7px; display:flex; flex-direction:column; align-items:center;">
+                <img data-avatar src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop" style="width:26px;height:26px;border-radius:50%;object-fit:cover;border:1.5px solid #fff;">
+                <div style="font-size:8px; font-weight:800; color:#141A2E; margin-top:4px;">정지원</div>
+                <div style="font-size:6.5px; color:#8A909C; margin-top:1px;">@jiwon</div>
+              </div>
+              <div style="padding:6px; display:grid; grid-template-columns:1fr 1fr; gap:4px; background:#fff;">
+                <img src="https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=120&h=120&fit=crop" style="width:100%; height:26px; object-fit:cover; border-radius:4px;">
+                <img src="https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=120&h=120&fit=crop" style="width:100%; height:26px; object-fit:cover; border-radius:4px;">
+                <img src="https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=120&h=120&fit=crop" style="width:100%; height:26px; object-fit:cover; border-radius:4px;">
+                <img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=120&h=120&fit=crop" style="width:100%; height:26px; object-fit:cover; border-radius:4px;">
+              </div>
+            </div>
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:13.5px; font-weight:800; color:#141A2E;">방문자에게 이렇게 보여요</div>
+              <div style="font-size:12px; color:#8A909C; margin-top:4px; line-height:1.5;">공개 링크샵 화면을 그대로 확인해요.</div>
+              <button onClick="{{ openPreview }}" style="margin-top:10px; height:36px; padding:0 14px; border:none; border-radius:10px; background:#141A2E; color:#fff; font-size:12.5px; font-weight:700; font-family:inherit; cursor:pointer;">전체 미리보기 →</button>
+            </div>
+          </div>
+
+          <!-- profile edit row -->
+          <div style="display:flex; align-items:center; gap:13px; padding: 18px 16px 6px;">
+            <div onClick="{{ pickAvatar }}" style="position:relative; cursor:pointer;">
+              <img data-avatar src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&h=120&fit=crop" style="width:56px;height:56px;border-radius:50%;object-fit:cover;">
+              <div style="position:absolute; bottom:-2px; right:-2px; width:22px;height:22px;border-radius:50%;background:#141A2E;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid #fff;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h3l1.5-2h9L18 8h3v12H3V8Z"/><circle cx="12" cy="13" r="3.2"/></svg></div>
+            </div>
+            <div style="flex:1;">
+              <div style="display:flex; align-items:center; gap:6px;"><span style="font-size:16px;font-weight:800;color:#141A2E;">정지원</span><span style="color:#B6BAC2;font-size:13px;">✎</span></div>
+              <div style="font-size:12.5px;color:#8A909C;margin-top:2px;">맛집·가성비 득템만 골라 담는… <span style="color:#FF5634;font-weight:600;">편집</span></div>
+            </div>
+          </div>
+
+          <!-- link address row -->
+          <div style="margin: 10px 16px 0; border:1px solid #EEEFF2; border-radius:13px; padding: 12px 14px; display:flex; align-items:center; justify-content:space-between;">
+            <div><div style="font-size:11px; color:#9499A4;">링크샵 주소</div><div style="font-size:13.5px; font-weight:700; color:#141A2E; margin-top:2px;">live.ur-team.com/u/<span style="color:#FF5634;">jiwon</span></div></div>
+            <button style="border:1px solid #E7E8EC; background:#fff; color:#5B6270; font-size:12px; font-weight:700; padding:7px 11px; border-radius:9px; font-family:inherit; cursor:pointer;">복사</button>
+          </div>
+
+          <!-- SNS links (owner editable) -->
+          <div style="margin: 10px 16px 0; border:1px solid #EEEFF2; border-radius:13px; padding: 12px 14px;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <div style="font-size:11px; color:#9499A4;">SNS 링크</div>
+              <span style="font-size:11.5px; color:#FF5634; font-weight:700;">편집</span>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:10px;">
+              <div style="flex:1; display:flex; align-items:center; gap:7px; border:1px solid #EEEFF2; border-radius:9px; padding:7px 9px;">
+                <span style="width:18px;height:18px;border-radius:6px;background:#FF0000;display:flex;align-items:center;justify-content:center;flex:0 0 auto;"><svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z"/></svg></span>
+                <span style="font-size:11.5px; color:#141A2E; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">@jiwon</span>
+              </div>
+              <div style="flex:1; display:flex; align-items:center; gap:7px; border:1px solid #EEEFF2; border-radius:9px; padding:7px 9px;">
+                <span style="width:18px;height:18px;border-radius:6px;background:linear-gradient(45deg,#F9CE34,#EE2A7B,#6228D7);display:flex;align-items:center;justify-content:center;flex:0 0 auto;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.7"/></svg></span>
+                <span style="font-size:11.5px; color:#141A2E; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">@jiwon</span>
+              </div>
+              <div style="flex:0 0 auto; width:38px; display:flex; align-items:center; justify-content:center; gap:6px; border:1px dashed #D8DAE0; border-radius:9px; padding:7px 0; color:#9499A4;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+            </div>
+          </div>
+
+          <!-- pin management list -->
+          <div style="display:flex; align-items:center; justify-content:space-between; padding: 20px 16px 8px;">
+            <div style="font-size:14px; font-weight:800; color:#141A2E;">내 핀 24개</div>
+            <div style="font-size:12px; color:#8A909C; display:flex; gap:6px; align-items:center;">⇅ 끌어서 정렬</div>
+          </div>
+
+          <div style="padding: 0 16px 20px; display:flex; flex-direction:column; gap:10px;">
+            <!-- editable pin row 1 -->
+            <div style="display:flex; gap:11px; align-items:center; border:1px solid #EEEFF2; border-radius:14px; padding:9px; background:#fff;">
+              <span style="color:#C9CDD4; font-size:16px; cursor:grab;">⋮⋮</span>
+              <img src="https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=120&h=120&fit=crop" style="width:52px;height:52px;border-radius:10px;object-fit:cover;">
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; gap:5px;"><span style="font-size:13px; font-weight:700; color:#141A2E; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">스시 오마카세 디너 2인</span><span style="flex:0 0 auto; font-size:9.5px; font-weight:800; color:#FF5634; background:#FFEDE8; padding:2px 5px; border-radius:5px;">강추</span></div>
+                <div style="font-size:11.5px; color:#8A909C; margin-top:3px;">조회 1.2k · 적립 ₩4,900/건</div>
+              </div>
+              <button style="border:none; background:#F3F4F6; color:#5B6270; font-size:14px; width:30px; height:30px; border-radius:8px; cursor:pointer;">⋯</button>
+            </div>
+            <!-- editable pin row 2 -->
+            <div style="display:flex; gap:11px; align-items:center; border:1px solid #EEEFF2; border-radius:14px; padding:9px; background:#fff;">
+              <span style="color:#C9CDD4; font-size:16px; cursor:grab;">⋮⋮</span>
+              <img src="https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=120&h=120&fit=crop" style="width:52px;height:52px;border-radius:10px;object-fit:cover;">
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:13px; font-weight:700; color:#141A2E; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">무선 노이즈캔슬링 이어버드</div>
+                <div style="font-size:11.5px; color:#8A909C; margin-top:3px;">조회 2.1k · 적립 ₩8,900/건</div>
+              </div>
+              <button style="border:none; background:#F3F4F6; color:#5B6270; font-size:14px; width:30px; height:30px; border-radius:8px; cursor:pointer;">⋯</button>
+            </div>
+            <!-- editable pin row 3 -->
+            <div style="display:flex; gap:11px; align-items:center; border:1px solid #EEEFF2; border-radius:14px; padding:9px; background:#fff;">
+              <span style="color:#C9CDD4; font-size:16px; cursor:grab;">⋮⋮</span>
+              <img src="https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=120&h=120&fit=crop" style="width:52px;height:52px;border-radius:10px;object-fit:cover;">
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:13px; font-weight:700; color:#141A2E; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">마라탕 무한리필 2인</div>
+                <div style="font-size:11.5px; color:#C2491F; margin-top:3px;">추천 코멘트 없음 · 추가하면 전환 ↑</div>
+              </div>
+              <button style="border:none; background:#F3F4F6; color:#5B6270; font-size:14px; width:30px; height:30px; border-radius:8px; cursor:pointer;">⋯</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-around; height:64px; border-top:1px solid #F0F1F4; background:#fff; padding-bottom:6px;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#9499A4;font-size:10px;font-weight:500;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg><span>홈</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#9499A4;font-size:10px;font-weight:500;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg><span>동네딜</span></div>
+          <div style="width:46px;height:46px;border-radius:16px;background:#141A2E;color:#fff;display:flex;align-items:center;justify-content:center;margin-top:-14px;box-shadow:0 8px 18px -6px rgba(20,26,46,.5);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#FF5634;font-size:10px;font-weight:700;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span>링크샵</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#9499A4;font-size:10px;font-weight:500;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/></svg><span>마이</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMPTY + ONBOARDING -->
+    <div data-screen-label="빈 상태 & 온보딩" style="flex:0 0 auto; display:flex; gap:40px; flex-wrap:wrap;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+          <span style="font-size: 13px; font-weight: 800; letter-spacing: .04em; color: #5B6270; background: #ECEEF1; padding: 5px 11px; border-radius: 999px;">시작</span>
+          <span style="font-size: 18px; font-weight: 700; color: #141A2E;">빈 상태 <span style="color:#9499A4; font-weight:500;">· A. 샘플 흐릿</span></span>
+        </div>
+        <div style="width: 392px; background: #fff; border-radius: 40px; box-shadow: 0 30px 70px -20px rgba(20,26,46,.35), 0 0 0 1px rgba(20,26,46,.05); overflow: hidden;">
+          <div style="height: 44px; display:flex; align-items:center; justify-content:space-between; padding:0 26px; font-size:13px; font-weight:700; color:#141A2E;"><span>9:41</span><span style="opacity:.85;">▬▬▮ 📶 🔋</span></div>
+          <div style="height: 600px; padding: 0 0;">
+            <div style="background:#fff; border-bottom:1px solid #F0F1F4; padding: 16px 18px; display:flex; align-items:center; gap:14px;">
+              <img data-avatar src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2.5px solid #fff;box-shadow:0 5px 14px rgba(20,26,46,.14); flex:0 0 auto;">
+              <div style="flex:1; min-width:0;">
+                <div style="color:#141A2E; font-size:18px; font-weight:800;">정지원 <span style="color:#8A909C;font-size:12.5px;font-weight:500;">@jiwon</span></div>
+                <div style="color:#8A909C; font-size:12px; margin-top:3px;">소개를 추가하고 첫 핀을 담아보세요</div>
+              </div>
+            </div>
+            <!-- progress -->
+            <div style="margin: 18px 16px 0; background:#FFF6F3; border:1px solid #FFE0D6; border-radius:14px; padding: 14px 15px;">
+              <div style="display:flex; align-items:center; justify-content:space-between;">
+                <span style="font-size:13px; font-weight:800; color:#B4422A;">링크샵 완성까지 1단계</span>
+                <span style="font-size:12px; color:#B4422A; font-weight:700;">2/3</span>
+              </div>
+              <div style="margin-top:9px; height:7px; border-radius:4px; background:#FFE0D6; overflow:hidden;"><div style="width:66%; height:100%; background:#FF5634; border-radius:4px;"></div></div>
+              <div style="margin-top:10px; font-size:12px; color:#7A4232; line-height:1.5;">✓ 이름 설정 &nbsp; ✓ 주소 설정 &nbsp; <b>○ 첫 핀 추가</b></div>
+            </div>
+
+            <!-- empty illustration -->
+            <!-- ghost sample pins + floating CTA -->
+            <div style="position:relative; margin-top:14px; height:312px; overflow:hidden;">
+
+              <!-- blurred sample pins (non-interactive) -->
+              <!-- blurred sample pins (non-interactive), fading via mask gradient -->
+              <div style="filter: blur(2.5px) saturate(.85) brightness(.99); opacity:.62; pointer-events:none; user-select:none; padding: 0 16px; -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.7) 0%, rgba(0,0,0,.38) 32%, rgba(0,0,0,.12) 60%, transparent 84%); mask-image: linear-gradient(180deg, rgba(0,0,0,.7) 0%, rgba(0,0,0,.38) 32%, rgba(0,0,0,.12) 60%, transparent 84%);">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                  <div style="width:90px; height:13px; border-radius:4px; background:#141A2E; opacity:.85;"></div>
+                  <div style="width:54px; height:11px; border-radius:4px; background:#D8DAE0;"></div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                  <div style="border-radius:14px; overflow:hidden; border:1px solid #ECEDF1; background:#fff;">
+                    <div style="position:relative;"><img src="https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=360&h=240&fit=crop" style="width:100%; height:96px; object-fit:cover; display:block;"><span style="position:absolute; top:0; left:0; min-width:24px; height:24px; padding:0 7px; background:#FF5634; color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; border-bottom-right-radius:11px;">1</span></div>
+                    <div style="padding:10px 11px 12px;"><div style="width:80%; height:11px; border-radius:4px; background:#141A2E; opacity:.8;"></div><div style="width:50%; height:13px; border-radius:4px; background:#141A2E; margin-top:8px;"></div><div style="height:24px; border-left:2px solid #FF5634; margin-top:9px; padding-left:8px;"><div style="width:90%; height:8px; border-radius:3px; background:#E2E4E9; margin-top:2px;"></div><div style="width:60%; height:8px; border-radius:3px; background:#E2E4E9; margin-top:5px;"></div></div></div>
+                  </div>
+                  <div style="border-radius:14px; overflow:hidden; border:1px solid #ECEDF1; background:#fff;">
+                    <div style="position:relative;"><img src="https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=360&h=240&fit=crop" style="width:100%; height:96px; object-fit:cover; display:block;"><span style="position:absolute; top:0; left:0; min-width:24px; height:24px; padding:0 7px; background:#FF5634; color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; border-bottom-right-radius:11px;">2</span></div>
+                    <div style="padding:10px 11px 12px;"><div style="width:75%; height:11px; border-radius:4px; background:#141A2E; opacity:.8;"></div><div style="width:55%; height:13px; border-radius:4px; background:#141A2E; margin-top:8px;"></div><div style="height:24px; border-left:2px solid #FF5634; margin-top:9px; padding-left:8px;"><div style="width:85%; height:8px; border-radius:3px; background:#E2E4E9; margin-top:2px;"></div><div style="width:55%; height:8px; border-radius:3px; background:#E2E4E9; margin-top:5px;"></div></div></div>
+                  </div>
+                  <div style="border-radius:14px; overflow:hidden; border:1px solid #ECEDF1; background:#fff;">
+                    <div style="position:relative;"><img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=360&h=240&fit=crop" style="width:100%; height:96px; object-fit:cover; display:block;"><span style="position:absolute; top:0; left:0; min-width:24px; height:24px; padding:0 7px; background:#FF5634; color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; border-bottom-right-radius:11px;">3</span></div>
+                    <div style="padding:10px 11px 12px;"><div style="width:82%; height:11px; border-radius:4px; background:#141A2E; opacity:.8;"></div><div style="width:50%; height:13px; border-radius:4px; background:#141A2E; margin-top:8px;"></div></div>
+                  </div>
+                  <div style="border-radius:14px; overflow:hidden; border:1px solid #ECEDF1; background:#fff;">
+                    <div style="position:relative;"><img src="https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=360&h=240&fit=crop" style="width:100%; height:96px; object-fit:cover; display:block;"><span style="position:absolute; top:0; left:0; min-width:24px; height:24px; padding:0 7px; background:#FF5634; color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; border-bottom-right-radius:11px;">4</span></div>
+                    <div style="padding:10px 11px 12px;"><div style="width:78%; height:11px; border-radius:4px; background:#141A2E; opacity:.8;"></div><div style="width:55%; height:13px; border-radius:4px; background:#141A2E; margin-top:8px;"></div></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- dark scrim + floating CTA -->
+              <div style="position:absolute; left:0; right:0; bottom:0; top:0; background:linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.15) 40%, rgba(255,255,255,.55) 72%, #fff 100%); display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding: 0 24px 46px; text-align:center;">
+                <div style="width:60px; height:60px; border-radius:18px; background:#FF5634; display:flex; align-items:center; justify-content:center; color:#fff; box-shadow:0 10px 24px -8px rgba(255,86,52,.6);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v16l-6-4-6 4V4Z"/></svg></div>
+                <div style="font-size:18px; font-weight:800; color:#141A2E; margin-top:14px;">첫 핀을 추가해 보세요</div>
+                <div style="font-size:13px; color:#8A909C; margin-top:6px; line-height:1.55; max-width:270px;">마음에 든 딜·상품을 핀하면 이렇게 나만의 스토어가 채워져요.</div>
+                <button style="margin-top:18px; width:100%; height:50px; border:none; border-radius:14px; background:#141A2E; color:#fff; font-size:15px; font-weight:800; font-family:inherit; cursor:pointer;">상품 둘러보고 핀하기</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- empty B: no samples -->
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+          <span style="font-size: 13px; font-weight: 800; letter-spacing: .04em; color: #5B6270; background: #ECEEF1; padding: 5px 11px; border-radius: 999px;">시작</span>
+          <span style="font-size: 18px; font-weight: 700; color: #141A2E;">빈 상태 <span style="color:#9499A4; font-weight:500;">· B. 샘플 없음</span></span>
+        </div>
+        <div style="width: 392px; background: #fff; border-radius: 40px; box-shadow: 0 30px 70px -20px rgba(20,26,46,.35), 0 0 0 1px rgba(20,26,46,.05); overflow: hidden;">
+          <div style="height: 44px; display:flex; align-items:center; justify-content:space-between; padding:0 26px; font-size:13px; font-weight:700; color:#141A2E;"><span>9:41</span><span style="opacity:.85;">▬▬▮ 📶 🔋</span></div>
+          <div style="height: 600px; padding: 0 0;">
+            <div style="background:#fff; border-bottom:1px solid #F0F1F4; padding: 16px 18px; display:flex; align-items:center; gap:14px;">
+              <img data-avatar src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2.5px solid #fff;box-shadow:0 5px 14px rgba(20,26,46,.14); flex:0 0 auto;">
+              <div style="flex:1; min-width:0;">
+                <div style="color:#141A2E; font-size:18px; font-weight:800;">정지원 <span style="color:#8A909C;font-size:12.5px;font-weight:500;">@jiwon</span></div>
+                <div style="color:#8A909C; font-size:12px; margin-top:3px;">소개를 추가하고 첫 핀을 담아보세요</div>
+              </div>
+            </div>
+            <!-- progress -->
+            <div style="margin: 18px 16px 0; background:#FFF6F3; border:1px solid #FFE0D6; border-radius:14px; padding: 14px 15px;">
+              <div style="display:flex; align-items:center; justify-content:space-between;">
+                <span style="font-size:13px; font-weight:800; color:#B4422A;">링크샵 완성까지 1단계</span>
+                <span style="font-size:12px; color:#B4422A; font-weight:700;">2/3</span>
+              </div>
+              <div style="margin-top:9px; height:7px; border-radius:4px; background:#FFE0D6; overflow:hidden;"><div style="width:66%; height:100%; background:#FF5634; border-radius:4px;"></div></div>
+              <div style="margin-top:10px; font-size:12px; color:#7A4232; line-height:1.5;">✓ 이름 설정 &nbsp; ✓ 주소 설정 &nbsp; <b>○ 첫 핀 추가</b></div>
+            </div>
+
+            <!-- clean empty illustration -->
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding: 0 28px; height:340px;">
+              <div style="width:72px; height:72px; border-radius:22px; background:#FFF1EC; display:flex; align-items:center; justify-content:center; color:#FF5634;"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v16l-6-4-6 4V4Z"/></svg></div>
+              <div style="font-size:18px; font-weight:800; color:#141A2E; margin-top:18px;">첫 핀을 추가해 보세요</div>
+              <div style="font-size:13px; color:#8A909C; margin-top:7px; line-height:1.6; max-width:260px;">마음에 든 딜·상품을 핀하면 친구에게 공유할 나만의 스토어가 완성돼요.</div>
+              <button style="margin-top:22px; width:100%; height:50px; border:none; border-radius:14px; background:#141A2E; color:#fff; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer;">상품 둘러보고 핀하기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- onboarding modal -->
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+          <span style="font-size: 13px; font-weight: 800; letter-spacing: .04em; color: #5B6270; background: #ECEEF1; padding: 5px 11px; border-radius: 999px;">신규</span>
+          <span style="font-size: 18px; font-weight: 700; color: #141A2E;">꾸미기 온보딩</span>
+        </div>
+        <div style="width: 392px; height: 644px; background: #141A2E; border-radius: 40px; box-shadow: 0 30px 70px -20px rgba(20,26,46,.35); overflow: hidden; position:relative;">
+          <!-- dimmed bg hint -->
+          <div style="position:absolute; inset:0; background:rgba(20,26,46,.55); backdrop-filter: blur(2px);"></div>
+          <!-- sheet -->
+          <div style="position:absolute; left:0; right:0; bottom:0; background:#fff; border-radius:28px 28px 40px 40px; padding: 22px 22px 30px;">
+            <div style="width:40px; height:5px; border-radius:3px; background:#E2E4E9; margin:0 auto 20px;"></div>
+            <div style="font-size:21px; font-weight:800; color:#141A2E; letter-spacing:-.01em;">내 링크샵 꾸미기</div>
+            <div style="font-size:13.5px; color:#8A909C; margin-top:6px; line-height:1.5;">친구에게 보여줄 이름과 주소를 정해요. 나중에 바꿀 수 있어요.</div>
+
+            <div style="margin-top:22px;">
+              <label style="font-size:12.5px; font-weight:700; color:#5B6270;">이름</label>
+              <div style="margin-top:7px; border:1.5px solid #141A2E; border-radius:13px; padding:13px 15px; font-size:15px; font-weight:600; color:#141A2E; display:flex; justify-content:space-between;">정지원 <span style="color:#0E9F6E;">✓</span></div>
+            </div>
+            <div style="margin-top:16px;">
+              <label style="font-size:12.5px; font-weight:700; color:#5B6270;">링크샵 주소</label>
+              <div style="margin-top:7px; border:1.5px solid #E7E8EC; border-radius:13px; padding:13px 15px; font-size:14.5px; color:#141A2E; display:flex; align-items:center;">
+                <span style="color:#B6BAC2;">live.ur-team.com/u/</span><span style="font-weight:700;">jiwon</span><span style="margin-left:auto; color:#0E9F6E; font-size:12px; font-weight:700;">사용 가능</span>
+              </div>
+              <div style="margin-top:8px; font-size:11.5px; color:#9499A4;">기본값 <span style="text-decoration:line-through;">@user2</span> 대신 기억하기 쉬운 주소로 바꿔보세요.</div>
+            </div>
+
+            <button style="margin-top:24px; width:100%; height:52px; border:none; border-radius:14px; background:#FF5634; color:#fff; font-size:16px; font-weight:800; font-family:inherit; cursor:pointer; box-shadow:0 10px 22px -8px rgba(255,86,52,.55);">시작하기</button>
+            <button style="margin-top:8px; width:100%; height:42px; border:none; background:transparent; color:#9499A4; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer;">나중에 하기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      rootRef: (el) => { this.root = el; },
+      avatarInput: (el) => { this.avInput = el; },
+      pickAvatar: () => { if (this.avInput) this.avInput.click(); },
+      onAvatarChange: (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const url = reader.result;
+          try { localStorage.setItem('ls-avatar-photo', url); } catch (_) {}
+          this.applyAvatar(url);
+        };
+        reader.readAsDataURL(f);
+      },
+      openPreview: () => {
+        const root = this.root || document;
+        const target = root.querySelector('[data-screen-label="방문자 뷰"]');
+        if (target) {
+          const top = target.getBoundingClientRect().top + window.scrollY - 24;
+          window.scrollTo({ top, behavior: 'smooth' });
+        }
+      },
+      searchInput: (el) => { this.search = el; },
+      clearBtn: (el) => { this.clearBtnEl = el; },
+      noResults: (el) => { this.noResultsEl = el; },
+      onSearch: (e) => {
+        this._q = (e.target.value || '').trim().toLowerCase();
+        if (this.clearBtnEl) this.clearBtnEl.style.display = this._q ? 'flex' : 'none';
+        this.applyFilter();
+      },
+      clearSearch: () => {
+        this._q = '';
+        if (this.search) this.search.value = '';
+        if (this.clearBtnEl) this.clearBtnEl.style.display = 'none';
+        this.applyFilter();
+      },
+      selectTab: (e) => {
+        const btn = e.currentTarget;
+        this._tab = btn.getAttribute('data-tab');
+        const bar = btn.parentElement;
+        [...bar.children].forEach(b => {
+          const active = b === btn;
+          b.style.background = active ? '#141A2E' : '#F3F4F6';
+          b.style.color = active ? '#fff' : '#5B6270';
+          b.querySelectorAll('span').forEach(s => s.style.opacity = active ? '.6' : '.55');
+        });
+        this.applyFilter();
+      }
+    };
+  }
+
+  applyFilter() {
+    const body = (this.search && this.search.closest('.ls-scroll')) || this.root;
+    if (!body) return;
+    const tab = this._tab || 'all';
+    const q = this._q || '';
+    let visible = 0;
+    body.querySelectorAll('[data-cat]').forEach(card => {
+      const cat = card.getAttribute('data-cat');
+      const tabOk = (tab === 'all' || cat === tab);
+      const qOk = !q || card.textContent.toLowerCase().includes(q);
+      const show = tabOk && qOk;
+      card.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    if (this.noResultsEl) this.noResultsEl.style.display = (visible === 0) ? 'flex' : 'none';
+  }
+
+  applyAvatar(url) {
+    const root = this.root || document;
+    root.querySelectorAll('[data-avatar]').forEach((img) => { img.src = url; });
+  }
+
+  componentDidMount() {
+    try {
+      const u = localStorage.getItem('ls-avatar-photo');
+      if (u) this.applyAvatar(u);
+    } catch (_) {}
+  }
+}
+</script>
+</body>
+</html>
