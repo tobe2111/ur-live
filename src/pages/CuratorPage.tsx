@@ -292,7 +292,7 @@ export default function CuratorPage() {
                 <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">편집은 나만 보이고, 남에겐 깔끔한 공개 화면만 보여요.</p>
               </div>
               <button
-                onClick={() => { setManageMode(false); setPreviewAsVisitor(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                onClick={() => { setPreviewAsVisitor(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
                 className="shrink-0 h-9 px-3.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12.5px] font-bold"
               >
                 전체 미리보기 →
@@ -300,23 +300,16 @@ export default function CuratorPage() {
             </div>
           </div>
         )}
-        {/* 🎨 2026-06-16 링크샵 시안: 본인 핀 정렬·관리 토글 */}
-        {ownerView && pins.length > 0 && (
-          <div className="max-w-3xl mx-auto px-4 pt-3 flex justify-end">
-            <button
-              onClick={() => setManageMode(m => !m)}
-              className="text-[12.5px] font-bold px-3.5 py-2 rounded-xl bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 active:opacity-80"
-            >
-              {manageMode ? '✓ 완료' : '⇅ 핀 정렬·관리'}
-            </button>
-          </div>
-        )}
-        {ownerView && manageMode ? (
-          <PinManageList
-            pins={pins}
-            onReorder={(next) => setData(prev => prev ? { ...prev, pins: next } : prev)}
-            onDeleted={onPinDeleted}
-          />
+        {/* 🎨 2026-06-16 링크샵 개선안(시안): 본인 뷰 = 편집/관리 리스트가 기본 화면.
+            공개 storefront(검색·탭·카드)는 '전체 미리보기'(previewAsVisitor)로만 전환. 핀 없으면 온보딩 빈 상태. */}
+        {ownerView ? (
+          pins.length === 0
+            ? <EmptyLinkshop handle={curator.handle} isOwner curatorName={curator.name} />
+            : <PinManageList
+                pins={pins}
+                onReorder={(next) => setData(prev => prev ? { ...prev, pins: next } : prev)}
+                onDeleted={onPinDeleted}
+              />
         ) : (
           <>
             {/* 🔍 2026-06-16 링크샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터. */}
