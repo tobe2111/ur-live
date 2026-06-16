@@ -1,5 +1,16 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-16 — 등급 Phase 2: 플러스 연 구독(예치금 결제) + 프리미엄 자동승급(기존) (②/4)
+**모델**: 일반(C, 승인) / 플러스(B, 연 구독) / 프리미엄(A, 매출 자동). ⚠️ 도매몰 PG 미사용 — 구독료는 **예치금(계좌이체 충전 잔액)에서 차감**(Toss 아님).
+- **프리미엄 자동승급은 이미 구현됨**(`handleWholesaleGradeEval`, BIZ-7 — GMV promote-only, 설정 가능, 주1회 cron + 어드민 트리거). Phase 2 신규 = 플러스 구독만.
+- **신규 `wholesale-plus.routes.ts`** (`/api/wholesale/plus`): `GET /info`(구독료·잔액·등급·만료) + `POST /subscribe`(claim-before-charge: 행 CAS 선점 → `deductDeposit` 차감 → 실패 시 등급/만료 롤백 → 차감 원장 + 알림). 멱등(만료30일내만 1회 선점, 더블클릭/동시요청 이중차감 차단). 구독료 = `platform_settings.wholesale_plus_annual_fee`(기본 99,000).
+- **만료 강등 cron** `lapseExpiredPlus`(wholesale-grade-eval 주간배치): `distributor_grade='B' AND plus_until < now` → 'C'. 구독만 plus_until 을 쓰므로 관리자/볼륨 B(plus_until=null)는 비대상. 가격 산식 불변(등급 컬럼만).
+- **스키마**: `sellers.plus_until TEXT`(repair-schema + ensure). **UI**: `PlusMembershipCard`(대시보드) — 일반→구독 CTA / 플러스→만료·연장 / 프리미엄→안내. 예치금 부족 시 충전 유도.
+- 검증: tsc 0 · client+worker build · money-pattern 통과. ⚠️ 실 staging E2E 1회 권장(차감·등급 반영·잔액부족 롤백). 후속: 어드민이 구독료/프리미엄 임계 설정 UI(현 platform_settings 직접), 만료 임박 알림.
+
+## ✅ 2026-06-16 — 상품별 배송비 표시 마감 (①/4)
+- `/catalog/:id` 응답에 `product_shipping_fee`(상품별 배송비 meta) 추가 + `WholesaleProductPage` 정보리스트 '배송비' 행(상품별>정책>무료 + 무료배송 기준 안내). `PATCH /products/:id` 가 shipping_fee 수용(setSupplyMeta, meta-only 변경 허용). 체크아웃 computeSupplierShipping 과 동일 SSOT.
+
 ## ✅ 2026-06-16 — 도매몰 카탈로그 '상품 왔다갔다'(간헐적 빈 그리드) 영구 수정 (사용자 신고, prod-diag 실측)
 **근본원인**(GitHub Actions prod-diag 측정 — 컨테이너 egress 차단이라 ground truth 수집): guest `/api/wholesale/catalog` 가 빈 결과(콜드 isolate/일시 pragma·D1 오류)를 만들면 ① 공유 캐시(CDN-Cache-Control max-age=300)에 빈 응답 저장 → 5분간 모두 빈 그리드 ② worker SSR 가 빈 배열을 initialData 주입 → guest 가 staleTime(60s) 동안 refetch 안 함 → 고착 ③ 클라 `.catch(()=>[])` 가 일시 오류를 '성공한 빈 결과'로 삼켜 재시도 없이 빈 그리드. isolate/캐시 상태별로 빈 결과가 들쭉날쭉 → '왔다갔다'.
 - **서버**(`wholesale.routes.ts /catalog`): 빈 카탈로그(items=0)는 절대 공유 캐시 금지(`no-store`) — guest/등급/콜드 pragma 분기 전부. 비어있지 않은 기본 guest 응답만 SSR/prewarm 캐논 키(`/api/wholesale/catalog[?]`)에 명시적 `caches.default.put` → SSR 의 edge-read 가 매번 miss(self-fetch 261ms)하던 것 edge-hit(~4ms)로.

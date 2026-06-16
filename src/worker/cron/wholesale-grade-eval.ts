@@ -222,7 +222,25 @@ export async function evaluateWholesaleGrades(env: Env, force = false): Promise<
   return out;
 }
 
+/**
+ * 🏅 2026-06-16 — 만료된 플러스(연 구독) 자동 강등.
+ *   플러스는 sellers.plus_until 에 만료일 저장(구독만 이 컬럼을 씀 → 관리자/볼륨 B 는 plus_until=null 이라 비대상).
+ *   만료(plus_until < now) 된 B 등급만 일반(C)으로 강등. promote-only GMV cron 은 B→C 를 안 하므로 여기서만.
+ *   ⚠️ 가격 산식 불변(등급 컬럼만). A(프리미엄)로 승급된 구버독 구독행은 grade!='B' 라 비대상(만료일 stale 무해).
+ */
+export async function lapseExpiredPlus(DB: D1Database): Promise<number> {
+  const r = await DB.prepare(
+    "UPDATE sellers SET distributor_grade = 'C', updated_at = datetime('now') " +
+    "WHERE distributor_grade = 'B' AND plus_until IS NOT NULL AND plus_until < datetime('now')"
+  ).run().catch((e) => { swallow('wholesale-grade-eval:lapse-plus')(e); return { meta: { changes: 0 } }; });
+  const n = r?.meta?.changes ?? 0;
+  if (n > 0) console.info(`[cron:wholesale-grade-eval] lapsed expired plus: ${n}`);
+  return n;
+}
+
 /** cron 진입점 (scheduled.ts 에서 호출). */
 export async function handleWholesaleGradeEval(env: Env): Promise<void> {
+  // 만료 플러스 강등 먼저(강등 후 볼륨 자격 있으면 같은 배치에서 재승급 가능) → GMV 자동 승급.
+  await lapseExpiredPlus(env.DB).catch((e) => console.error('[cron:wholesale-grade-eval] lapse error:', e));
   await evaluateWholesaleGrades(env, false);
 }
