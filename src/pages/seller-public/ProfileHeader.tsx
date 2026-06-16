@@ -4,12 +4,11 @@
  */
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Share2, Camera, Pencil, Check, X, MapPin, Star, MessageCircle, Heart, Settings } from 'lucide-react'
+import { ArrowLeft, Share2, Camera, Pencil, Check, X, MapPin, MessageCircle, Heart, Settings } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import FollowButton from './FollowButton'
 import RegularBadge from './RegularBadge'
 import ExternalLivePlatforms from './ExternalLivePlatforms'
-import { cfImage } from '@/utils/cf-image'
 import type { Seller, LiveStream, Product } from './types'
 import type { ThemeTokens } from './theme'
 
@@ -56,251 +55,191 @@ export default function ProfileHeader({
   const navigate = useNavigate()
 
   // 🛡️ 2026-05-15 (PRISM 따라잡기): brand_color 가 있으면 커버 그라디언트 대신 컬러 사용
-  const customCoverStyle = seller.brand_color
-    ? { background: `linear-gradient(135deg, ${seller.brand_color}, ${seller.brand_color}cc)` }
-    : undefined
-
   return (
     <>
-      {/* 커버 + 프로필 */}
-      <div className="relative">
-        {/* 🛡️ 2026-05-15: banner_url 우선 → brand_color 그라디언트 → 기본 그라디언트 */}
-        {seller.banner_url ? (
-          <div className="h-44 relative overflow-hidden">
-            {/* 🛡️ 2026-05-15 (Lighthouse): CF Image Resizing — webp/avif 자동 + 1280 width */}
-            <img
-              src={cfImage(seller.banner_url, { width: 1280, format: 'auto', quality: 85 })}
-              srcSet={`${cfImage(seller.banner_url, { width: 640, format: 'auto' })} 640w, ${cfImage(seller.banner_url, { width: 1280, format: 'auto' })} 1280w, ${cfImage(seller.banner_url, { width: 1920, format: 'auto' })} 1920w`}
-              sizes="100vw"
-              alt=""
-              width={1280}
-              height={320}
-              className="w-full h-full object-cover"
-              loading="eager"
-              decoding="async"
-              fetchPriority="high"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-          </div>
-        ) : (
-          <div className={`h-44 bg-gradient-to-br ${customCoverStyle ? '' : T.cover}`} style={customCoverStyle} />
-        )}
-
-        {/* 상단 네비 */}
-        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 pt-safe pb-2 z-10">
-          <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.08] backdrop-blur-md">
-            <ArrowLeft className="w-4 h-4 text-white" aria-hidden="true" />
+      {/* 🎨 2026-06-16 링크샵 시안(대표 승인 "시안처럼 컴팩트화"): 커버 배너·통계 그리드 제거 +
+          아바타 좌 / 이름·매장·소개·SNS 우 가로형. 편집/업로드/팔로우/단골/SNS 로직은 보존. */}
+      <div className={`border-b ${isDark ? 'border-[#1A1A1A]' : 'border-gray-100'}`}>
+        {/* 상단 바: 뒤로 / 공유 (커버 없으니 페이지 배경 위) */}
+        <div className="flex items-center justify-between px-3 pb-1" style={{ paddingTop: 'max(env(safe-area-inset-top), 8px)' }}>
+          <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className={`rounded-full flex items-center justify-center w-[34px] h-[34px] ${isDark ? 'bg-white/[0.08] text-white' : 'bg-gray-100 text-gray-700'}`}>
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           </button>
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                const url = window.location.href
-                if (navigator.share) navigator.share({ title: seller.name, url })
-                else { navigator.clipboard?.writeText(url); toast.success(t('seller.linkCopiedToast')) }
-              }}
-              aria-label="공유"
-              className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-white/[0.08] backdrop-blur-md"
-            >
-              <Share2 className="w-4 h-4 text-white" aria-hidden="true" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const url = window.location.href
+              if (navigator.share) navigator.share({ title: seller.name, url })
+              else { navigator.clipboard?.writeText(url); toast.success(t('seller.linkCopiedToast')) }
+            }}
+            aria-label="공유"
+            className={`rounded-full flex items-center justify-center w-[34px] h-[34px] ${isDark ? 'bg-white/[0.08] text-white' : 'bg-gray-100 text-gray-700'}`}
+          >
+            <Share2 className="w-4 h-4" aria-hidden="true" />
+          </button>
         </div>
 
-        {/* 프로필 아바타 */}
-        <div className="absolute -bottom-10 left-5">
-          <div className="relative">
-            <div
-              className={`w-20 h-20 rounded-full border-4 ${T.avatarBorder} bg-gray-700 overflow-hidden shadow-lg ${isOwner ? 'cursor-pointer' : ''}`}
-              onClick={() => isOwner && fileInputRef.current?.click()}
-            >
-              {seller.profile_image ? (
-                <img src={seller.profile_image} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
+        <div className="px-5 pb-4">
+          <div className="flex items-center gap-3.5">
+            {/* 아바타 (62px) 인라인 + 업로드 + LIVE */}
+            <div className="relative shrink-0">
+              <div
+                className={`w-[62px] h-[62px] rounded-full ring-2 ${T.avatarBorder} bg-gray-700 overflow-hidden shadow ${isOwner ? 'cursor-pointer' : ''}`}
+                onClick={() => isOwner && fileInputRef.current?.click()}
+              >
+                {seller.profile_image ? (
+                  <img src={seller.profile_image} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
+                    <span className="text-2xl font-bold text-white">{(seller.name || '?').charAt(0)}</span>
+                  </div>
+                )}
+                {isOwner && (
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                    <Camera className="w-5 h-5 text-white" />
+                  </div>
+                )}
+              </div>
+              {isOwner && <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleProfileImageUpload} />}
+              {liveNow && (
+                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">LIVE</span>
+              )}
+            </div>
+
+            {/* 이름 / 매장 / 소개 — 우측 컬럼 */}
+            <div className="flex-1 min-w-0">
+              {editingField === 'name' ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    className={`text-[18px] font-extrabold ${T.text} bg-transparent border-b-2 border-pink-500 focus:outline-none flex-1 min-w-0`}
+                    onKeyDown={e => e.key === 'Enter' && saveEdit('name', editName)}
+                  />
+                  <button onClick={() => saveEdit('name', editName)} disabled={saving} className="p-1.5 bg-pink-500 rounded-full text-white shrink-0"><Check className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => setEditingField(null)} aria-label={t('common.cancelEdit')} className="p-1.5 bg-gray-200 rounded-full text-gray-500 shrink-0"><X className="w-3.5 h-3.5" /></button>
+                </div>
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
-                  <span className={`text-2xl font-bold ${T.text}`}>{(seller.name || '?').charAt(0)}</span>
+                <h1 className={`text-[18px] font-extrabold ${T.text} leading-tight ${isOwner ? 'cursor-pointer' : ''}`} onClick={() => startEdit('name')}>
+                  {(() => {
+                    const PLACEHOLDERS = ['메인 판매자', '셀러', '인플루언서', '매장']
+                    if (seller.name && !PLACEHOLDERS.includes(seller.name)) return seller.name
+                    if (isOwner) return seller.name || t('seller.publicPage.noName')
+                    return seller.username || t('seller.publicPage.noName')
+                  })()}
+                  {isOwner && <Pencil className="w-3 h-3 text-pink-400 inline ml-1.5" />}
+                </h1>
+              )}
+              {seller.business_name && (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <MapPin className={`w-3 h-3 ${T.textMuted}`} />
+                  <span className={`text-[11px] ${T.textMuted}`}>{seller.business_name}</span>
                 </div>
               )}
-              {isOwner && (
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                  <Camera className="w-5 h-5 text-white" />
+              {editingField === 'bio' ? (
+                <div className="mt-1.5">
+                  <textarea
+                    autoFocus
+                    value={editBio}
+                    onChange={e => setEditBio(e.target.value)}
+                    rows={2}
+                    className={`w-full text-[13px] ${T.input} border border-pink-500 rounded-lg p-2 focus:outline-none resize-none`}
+                  />
+                  <div className="flex gap-2 mt-1">
+                    <button onClick={() => saveEdit('bio', editBio)} disabled={saving} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">{t('common.save')}</button>
+                    <button onClick={() => setEditingField(null)} className={`px-3 py-1 ${T.cardAlt} ${T.textMuted} text-xs rounded-lg`}>{t('common.cancel')}</button>
+                  </div>
                 </div>
+              ) : (
+                (seller.bio || isOwner) && (
+                  <p
+                    className={`text-[12.5px] ${T.textSub} mt-1 leading-snug line-clamp-2 ${isOwner ? 'cursor-pointer' : ''}`}
+                    onClick={() => startEdit('bio')}
+                  >
+                    {seller.bio || (isOwner ? `${t('seller.publicPage.enterBio')} ✎` : '')}
+                  </p>
+                )
               )}
             </div>
-            {isOwner && <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleProfileImageUpload} />}
-            {liveNow && (
-              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">LIVE</span>
-            )}
           </div>
-        </div>
-      </div>
 
-      {/* 셀러 정보 */}
-      <div className="pt-14 px-5 pb-4">
-        <div className="flex items-center justify-between">
-          {editingField === 'name' ? (
-            <div className="flex items-center gap-2 flex-1">
-              <input
-                autoFocus
-                value={editName}
-                onChange={e => setEditName(e.target.value)}
-                className={`text-xl font-extrabold ${T.text} bg-transparent border-b-2 border-pink-500 focus:outline-none flex-1`}
-                onKeyDown={e => e.key === 'Enter' && saveEdit('name', editName)}
-              />
-              <button onClick={() => saveEdit('name', editName)} disabled={saving} className="p-1.5 bg-pink-500 rounded-full text-white"><Check className="w-3.5 h-3.5" /></button>
-              <button onClick={() => setEditingField(null)} aria-label={t('common.cancelEdit')} className="p-1.5 bg-gray-200 rounded-full text-gray-500"><X className="w-3.5 h-3.5" /></button>
-            </div>
-          ) : (
-            <h1 className={`text-xl font-extrabold ${T.text} group`} onClick={() => startEdit('name')}>
-              {/* 🛡️ 2026-05-27: placeholder name ('메인 판매자' 등) 은 다른 사용자에게 username 으로 fallback. */}
-              {(() => {
-                const PLACEHOLDERS = ['메인 판매자', '셀러', '인플루언서', '매장']
-                if (seller.name && !PLACEHOLDERS.includes(seller.name)) return seller.name
-                if (isOwner) return seller.name || t('seller.publicPage.noName')
-                return seller.username || t('seller.publicPage.noName')
-              })()}
-              {isOwner && <Pencil className="w-3.5 h-3.5 text-pink-400 inline ml-2 opacity-100" />}
-            </h1>
-          )}
-        </div>
-        {seller.business_name && (
-          <div className="flex items-center gap-1 mt-0.5">
-            <MapPin className={`w-3 h-3 ${T.textMuted}`} />
-            <span className={`text-xs ${T.textMuted}`}>{seller.business_name}</span>
-          </div>
-        )}
-        {editingField === 'bio' ? (
-          <div className="mt-2">
-            <textarea
-              autoFocus
-              value={editBio}
-              onChange={e => setEditBio(e.target.value)}
-              rows={3}
-              className={`w-full text-sm ${T.input} border border-pink-500 rounded-lg p-2 focus:outline-none focus:border-pink-500 resize-none`}
-            />
-            <div className="flex gap-2 mt-1">
-              <button onClick={() => saveEdit('bio', editBio)} disabled={saving} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">{t('common.save')}</button>
-              <button onClick={() => setEditingField(null)} className={`px-3 py-1 ${T.cardAlt} ${T.textMuted} text-xs rounded-lg`}>{t('common.cancel')}</button>
-            </div>
-          </div>
-        ) : (
-          // 🛡️ 2026-05-27: 다른 사용자 view 에서 bio 비어있으면 영역 자체 hide (빈 mt-2 space 제거).
-          (seller.bio || isOwner) && (
-            <div
-              className={`group mt-2 ${isOwner ? 'cursor-pointer rounded-lg px-2 py-1 -mx-2 hover:bg-pink-500/10 transition-colors' : ''}`}
-              onClick={() => startEdit('bio')}
-            >
-              <p className={`text-sm ${T.textSub} leading-relaxed line-clamp-2`}>
-                {seller.bio || (isOwner ? t('seller.publicPage.enterBio') : '')}
-              </p>
-              {isOwner && !seller.bio && (
-                <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-pink-400">
-                  <Pencil className="w-3 h-3" /> {t('seller.publicPage.clickToEdit', { defaultValue: '클릭하여 편집' })}
-                </span>
-              )}
-            </div>
-          )
-        )}
-
-        {/* 🎨 2026-06-16 링크샵 시안: SNS 버튼 (유튜브/인스타/틱톡) — 채널로 새 탭 이동. */}
-        {(seller.sns_youtube || seller.sns_instagram || seller.external_live_tiktok) && (
-          <div className="flex gap-2 mt-3">
-            {seller.sns_youtube && (
-              <a href={snsUrl('youtube', seller.sns_youtube)} target="_blank" rel="noopener noreferrer" aria-label="YouTube"
-                className="w-[30px] h-[30px] rounded-[9px] bg-[#FF0000] flex items-center justify-center">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" /></svg>
-              </a>
-            )}
-            {seller.sns_instagram && (
-              <a href={snsUrl('instagram', seller.sns_instagram)} target="_blank" rel="noopener noreferrer" aria-label="Instagram"
-                className="w-[30px] h-[30px] rounded-[9px] flex items-center justify-center" style={{ background: 'linear-gradient(45deg,#F9CE34,#EE2A7B,#6228D7)' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="3.7" /><circle cx="17.3" cy="6.7" r="1.1" fill="#fff" stroke="none" /></svg>
-              </a>
-            )}
-            {seller.external_live_tiktok && (
-              <a href={snsUrl('tiktok', seller.external_live_tiktok)} target="_blank" rel="noopener noreferrer" aria-label="TikTok"
-                className="w-[30px] h-[30px] rounded-[9px] bg-[#141A2E] flex items-center justify-center">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z" /></svg>
-              </a>
-            )}
-          </div>
-        )}
-
-        {/* 통계 */}
-        <div className="grid grid-cols-3 gap-2 mt-4 mb-2">
-          <div className={`rounded-2xl px-3 py-2.5 ${isDark ? 'bg-white/[0.04]' : 'bg-gray-100'}`}>
-            <p className={`text-[10px] ${T.textMuted}`}>{t('seller.tabProducts')}</p>
-            <p className={`text-[15px] font-extrabold ${T.text} mt-0.5`} style={{ letterSpacing: '-0.02em' }}>{products.length}</p>
-          </div>
-          <div className={`rounded-2xl px-3 py-2.5 ${isDark ? 'bg-white/[0.04]' : 'bg-gray-100'}`}>
-            <p className={`text-[10px] ${T.textMuted}`}>{t('seller.tabLive')}</p>
-            <p className={`text-[15px] font-extrabold ${T.text} mt-0.5`} style={{ letterSpacing: '-0.02em' }}>{streams.length}</p>
-          </div>
-          <div className={`rounded-2xl px-3 py-2.5 ${isDark ? 'bg-white/[0.04]' : 'bg-gray-100'}`}>
-            <p className={`text-[10px] ${T.textMuted}`}>{t('seller.rating')}</p>
-            <p className={`text-[15px] font-extrabold ${T.text} mt-0.5 flex items-center gap-0.5`} style={{ letterSpacing: '-0.02em' }}>
-              <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" aria-hidden="true" />
-              {(seller as any)?.average_rating != null
-                ? Number((seller as any).average_rating).toFixed(1)
-                : <span className={`${T.textMuted} text-[11px] font-semibold`}>{t('common.new')}</span>}
-            </p>
-          </div>
-        </div>
-
-        {/* CTA */}
-        {isOwner ? (
-          // 🛡️ 2026-05-27: 본인 view — 프로필 수정 + 대시보드 inline 2-column.
-          //   기존: 프로필 수정 full-width + OwnerDashboardFab (카드 가림 floating button) → UX 어색
-          //   변경: 둘 다 헤더 안 grid-2 → floating button 제거.
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            <button
-              type="button"
-              onClick={() => navigate('/seller/profile')}
-              className={`py-3 rounded-2xl ${isDark ? 'bg-white/[0.08] text-white' : 'bg-gray-100 text-gray-900'} active:opacity-80 transition-all text-[14px] font-bold flex items-center justify-center gap-2`}
-            >
-              <Pencil className="w-4 h-4" aria-hidden="true" />
-              {t('seller.publicPage.editProfile', { defaultValue: '프로필 수정' })}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/seller')}
-              className="py-3 rounded-2xl bg-blue-600 text-white active:opacity-80 transition-all text-[14px] font-bold flex items-center justify-center gap-2"
-            >
-              <Settings className="w-4 h-4" aria-hidden="true" />
-              {t('seller.dashboard', { defaultValue: '대시보드' })}
-            </button>
-          </div>
-        ) : (
-          <>
-            {/* 🛡️ 2026-05-15: liveNow 일 때 외부 플랫폼 (TikTok/Instagram) 라이브 배지 */}
-            {liveNow && (seller.external_live_tiktok || seller.external_live_instagram || seller.external_live_facebook) && (
-              <ExternalLivePlatforms externalLiveUrls={{
-                tiktok: seller.external_live_tiktok,
-                instagram: seller.external_live_instagram,
-                facebook: seller.external_live_facebook,
-              }} />
-            )}
-            <FollowButton sellerId={sellerId} />
-            {/* 🛡️ 2026-05-15 (PRISM 따라잡기): 단골 등록 (알림 opt-in) */}
-            <div className="mt-2">
-              <RegularBadge sellerId={Number(sellerId)} variant="full" />
-            </div>
-            <div className="flex gap-2 mt-2">
-              {seller.kakao_chat_link && (
-                <a href={seller.kakao_chat_link} target="_blank" rel="noopener" className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl ${isDark ? 'bg-white/[0.04] active:bg-white/[0.08] text-white' : 'bg-gray-100 active:bg-gray-200 text-gray-900'} transition-colors text-[12px] font-medium`}>
-                  <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" /> {t('seller.oneOnOneInquiry')}
+          {/* 🎨 2026-06-16 링크샵 시안: SNS 버튼 (유튜브/인스타/틱톡) — 채널로 새 탭 이동. */}
+          {(seller.sns_youtube || seller.sns_instagram || seller.external_live_tiktok) && (
+            <div className="flex gap-2 mt-3">
+              {seller.sns_youtube && (
+                <a href={snsUrl('youtube', seller.sns_youtube)} target="_blank" rel="noopener noreferrer" aria-label="YouTube"
+                  className="w-[30px] h-[30px] rounded-[9px] bg-[#FF0000] flex items-center justify-center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" /></svg>
                 </a>
               )}
+              {seller.sns_instagram && (
+                <a href={snsUrl('instagram', seller.sns_instagram)} target="_blank" rel="noopener noreferrer" aria-label="Instagram"
+                  className="w-[30px] h-[30px] rounded-[9px] flex items-center justify-center" style={{ background: 'linear-gradient(45deg,#F9CE34,#EE2A7B,#6228D7)' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="3.7" /><circle cx="17.3" cy="6.7" r="1.1" fill="#fff" stroke="none" /></svg>
+                </a>
+              )}
+              {seller.external_live_tiktok && (
+                <a href={snsUrl('tiktok', seller.external_live_tiktok)} target="_blank" rel="noopener noreferrer" aria-label="TikTok"
+                  className="w-[30px] h-[30px] rounded-[9px] bg-[#141A2E] flex items-center justify-center">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z" /></svg>
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* CTA */}
+          {isOwner ? (
+            <div className="grid grid-cols-2 gap-2 mt-3.5">
               <button
                 type="button"
-                onClick={() => liveNow ? navigate(`/live/${liveNow.id}`) : toast.info(t('seller.noLiveNow'))}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl ${isDark ? 'bg-white/[0.04] active:bg-white/[0.08] text-white' : 'bg-gray-100 active:bg-gray-200 text-gray-900'} transition-colors text-[12px] font-medium`}
+                onClick={() => navigate('/seller/profile')}
+                className={`py-3 rounded-2xl ${isDark ? 'bg-white/[0.08] text-white' : 'bg-gray-100 text-gray-900'} active:opacity-80 transition-all text-[14px] font-bold flex items-center justify-center gap-2`}
               >
-                <Heart className="w-3.5 h-3.5" aria-hidden="true" /> {t('seller.donateButton')}
+                <Pencil className="w-4 h-4" aria-hidden="true" />
+                {t('seller.publicPage.editProfile', { defaultValue: '프로필 수정' })}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/seller')}
+                className="py-3 rounded-2xl bg-blue-600 text-white active:opacity-80 transition-all text-[14px] font-bold flex items-center justify-center gap-2"
+              >
+                <Settings className="w-4 h-4" aria-hidden="true" />
+                {t('seller.dashboard', { defaultValue: '대시보드' })}
               </button>
             </div>
-          </>
-        )}
+          ) : (
+            <div className="mt-3.5">
+              {/* 🛡️ 2026-05-15: liveNow 일 때 외부 플랫폼 (TikTok/Instagram) 라이브 배지 */}
+              {liveNow && (seller.external_live_tiktok || seller.external_live_instagram || seller.external_live_facebook) && (
+                <ExternalLivePlatforms externalLiveUrls={{
+                  tiktok: seller.external_live_tiktok,
+                  instagram: seller.external_live_instagram,
+                  facebook: seller.external_live_facebook,
+                }} />
+              )}
+              <FollowButton sellerId={sellerId} />
+              {/* 🛡️ 2026-05-15 (PRISM 따라잡기): 단골 등록 (알림 opt-in) */}
+              <div className="mt-2">
+                <RegularBadge sellerId={Number(sellerId)} variant="full" />
+              </div>
+              <div className="flex gap-2 mt-2">
+                {seller.kakao_chat_link && (
+                  <a href={seller.kakao_chat_link} target="_blank" rel="noopener" className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl ${isDark ? 'bg-white/[0.04] active:bg-white/[0.08] text-white' : 'bg-gray-100 active:bg-gray-200 text-gray-900'} transition-colors text-[12px] font-medium`}>
+                    <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" /> {t('seller.oneOnOneInquiry')}
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => liveNow ? navigate(`/live/${liveNow.id}`) : toast.info(t('seller.noLiveNow'))}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl ${isDark ? 'bg-white/[0.04] active:bg-white/[0.08] text-white' : 'bg-gray-100 active:bg-gray-200 text-gray-900'} transition-colors text-[12px] font-medium`}
+                >
+                  <Heart className="w-3.5 h-3.5" aria-hidden="true" /> {t('seller.donateButton')}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </>
   )
