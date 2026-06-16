@@ -3,7 +3,7 @@
 //   매입현황 · 진행중 주문 · 누적 매입 · 등급 · 빠른 진입(카탈로그/주문/거래/자료/OEM) 한 화면.
 //   서버 신규 엔드포인트 없이 기존 /me + /orders 재사용(클라 집계). WT 라이트 고정 B2B 서피스.
 // ──────────────────────────────────────────────────────────────
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   ShoppingBag, ClipboardList, Receipt, FileText, Factory, Wallet,
@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { WT, won, comma, GRADE_LABEL, wholesaleOrderStatusBadge } from './wholesale/wholesale-theme'
-import { useWholesaleMe, useWholesaleOrders, useWholesaleDeposit, useWholesaleMall, type WholesaleOrderRow } from '@/hooks/queries/useWholesale'
+import { useWholesaleMe, useWholesaleOrders, useWholesaleDeposit, type WholesaleOrderRow } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
 import { buildWholesaleNav } from './wholesale/wholesale-nav'
 import { getSupplierToken } from '@/lib/supplier-api'
@@ -29,8 +29,6 @@ export default function WholesaleDashboardPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const supplierToken = typeof window !== 'undefined' ? getSupplierToken() : null
   const isDistributor = typeof window !== 'undefined' && localStorage.getItem('is_distributor') === '1'
-  // 🏬 멀티-몰 브랜딩 — 셸 워드마크를 몰 이름으로(기본 몰 → 유통스타트 → 동작 불변).
-  const { displayName: mallName } = useWholesaleMall()
 
   // 🏭 2026-06-08: 유통사(seller_token + is_distributor) 전용 — 역할 엄격화(제조사 가드와 대칭).
   //   미로그인 → 유통사 로그인. 셀러지만 유통사 아님 → 카탈로그(유통사 전환 CTA).
@@ -43,6 +41,7 @@ export default function WholesaleDashboardPage() {
   const ordersQ = useWholesaleOrders()
   const depositQ = useWholesaleDeposit()
   const cart = useWholesaleCart()
+  const [orderTab, setOrderTab] = useState('all')
 
   const me = (meQ.data ?? null) as { grade: string; margin_pct: number; special_active: boolean; sub_role?: string | null; can_manage_staff?: boolean } | null
   const grade = me?.grade || 'C'
@@ -61,7 +60,9 @@ export default function WholesaleDashboardPage() {
     .reduce((s, o) => s + (o.subtotal || 0), 0)
   const totalSpend = paidOrders.reduce((s, o) => s + (o.subtotal || 0), 0)
   const activeCount = orders.filter((o) => o.status === 'PAID').length
-  const recent = orders.slice(0, 5)
+  // 🧾 주문 내역 — 상태 탭 필터 (시안: 마이페이지 주문관리 테이블)
+  const ORDER_TABS = [{ id: 'all', label: '전체' }, { id: 'PAID', label: '결제완료' }, { id: 'SHIPPED', label: '배송중' }, { id: 'DONE', label: '구매확정' }]
+  const filteredOrders = (orderTab === 'all' ? orders : orders.filter((o) => o.status === orderTab)).slice(0, 12)
 
   const company = localStorage.getItem('seller_name') || '유통사'
   const depositBalance = Number(depositQ.data?.balance) || 0
@@ -113,10 +114,10 @@ export default function WholesaleDashboardPage() {
   )
 
   const stats = [
-    { label: '예치금 잔액', value: won(depositBalance), icon: Wallet, accent: WT.brand },
-    { label: '이번달 매입액', value: won(thisMonthSpend), icon: TrendingUp, accent: WT.brand },
-    { label: '진행중 주문', value: `${comma(activeCount)}건`, icon: Box, accent: WT.ink },
-    { label: '누적 매입액', value: won(totalSpend), icon: Wallet, accent: WT.pos },
+    { label: '예치금 잔액', value: won(depositBalance), icon: Wallet, accent: WT.brand, sub: '주문 결제에 사용' },
+    { label: '이번달 매입액', value: won(thisMonthSpend), icon: TrendingUp, accent: WT.ink, sub: `${ym} 기준` },
+    { label: '진행중 주문', value: `${comma(activeCount)}건`, icon: Box, accent: WT.ink, sub: '배송 진행 중' },
+    { label: '누적 매입액', value: won(totalSpend), icon: Wallet, accent: WT.pos, sub: `${comma(paidOrders.length)}건 완료` },
   ]
 
   const actions = [
@@ -142,31 +143,21 @@ export default function WholesaleDashboardPage() {
       <SEO title="유통사 대시보드 - 유통스타트 도매몰" description="매입 현황과 주문·거래·자료를 한 화면에서 관리하세요." url="/wholesale/dashboard" noindex />
 
       <div className="space-y-5">
-        {/* 등급 히어로 */}
-        <section className="rounded-2xl p-5 flex items-center gap-4" style={{ background: WT.ink, boxShadow: WT.shCard }}>
-          <span className="flex h-12 w-12 items-center justify-center rounded-full text-[18px] font-extrabold text-white shrink-0" style={{ background: WT.brand }}>
-            {GRADE_LABEL[grade] || grade}
+        {/* 인사 + 등급 칩 (시안: 라이트 마이페이지) */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <h2 className="text-[20px] lg:text-[23px] font-extrabold tracking-[-0.02em]" style={{ color: WT.ink }}>{company}님</h2>
+          <span className="text-[11.5px] font-bold rounded-full px-2.5 py-1" style={{ background: WT.brandSoft, color: WT.brand }}>
+            {GRADE_LABEL[grade] || grade}등급 · 마진 {me?.margin_pct ?? 0}%{me?.special_active ? ' · 특별가' : ''}
           </span>
-          <div className="min-w-0 flex-1">
-            <div className="text-[15px] font-extrabold text-white truncate">
-              {company} · <span style={{ color: '#FF4D66' }}>{GRADE_LABEL[grade] || grade}등급</span> 단가 적용중
-            </div>
-            <div className="text-[12px] mt-0.5" style={{ color: 'rgba(255,255,255,0.65)' }}>
-              {me ? `등급 마진 ${me.margin_pct}%` : '등급 정보를 불러오는 중'}{me?.special_active ? ' · 특별가 적용중' : ''} · 실적이 쌓이면 등급이 상향됩니다
-            </div>
-          </div>
-          <ChevronRight className="w-5 h-5 shrink-0" style={{ color: 'rgba(255,255,255,0.4)' }} />
-        </section>
+        </div>
 
-        {/* 통계 카드 */}
+        {/* KPI 카드 (라이트 보더 + 색상 값 + 부제) */}
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {stats.map((s) => (
-            <div key={s.label} className="rounded-2xl bg-white p-4" style={{ boxShadow: WT.shSoft }}>
-              <div className="flex items-center justify-between">
-                <span className="text-[12px] font-bold" style={{ color: WT.ink3 }}>{s.label}</span>
-                <s.icon className="w-4 h-4" style={{ color: s.accent }} />
-              </div>
-              <div className="text-[20px] font-extrabold mt-2 truncate" style={{ color: WT.ink }}>{s.value}</div>
+            <div key={s.label} className="rounded-xl bg-white p-4" style={{ border: '1px solid ' + WT.line2 }}>
+              <div className="text-[12px]" style={{ color: WT.ink3 }}>{s.label}</div>
+              <div className="text-[21px] font-extrabold tracking-[-0.02em] mt-1.5 truncate" style={{ color: s.accent }}>{s.value}</div>
+              <div className="text-[11px] mt-1 truncate" style={{ color: WT.ink4 }}>{s.sub}</div>
             </div>
           ))}
         </section>
@@ -208,47 +199,60 @@ export default function WholesaleDashboardPage() {
           </div>
         </section>
 
-        {/* 최근 주문 */}
-        <section className="rounded-2xl bg-white overflow-hidden" style={{ boxShadow: WT.shSoft }}>
-          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid ' + WT.line }}>
-            <h2 className="text-[14px] font-extrabold" style={{ color: WT.ink }}>최근 주문</h2>
-            <button onClick={() => navigate('/wholesale/orders')} className="inline-flex items-center gap-0.5 text-[12px] font-bold" style={{ color: WT.brand }}>
-              전체보기 <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          {ordersQ.isLoading ? (
-            <div className="py-12 text-center text-[13px]" style={{ color: WT.ink4 }}>불러오는 중…</div>
-          ) : recent.length === 0 ? (
-            <div className="py-12 text-center" style={{ color: WT.ink3 }}>
-              <Sparkles className="w-6 h-6 mx-auto mb-2" style={{ color: WT.ink4 }} />
-              <p className="text-[13px]">아직 주문이 없어요</p>
-              <button onClick={() => navigate('/wholesale')} className="mt-3 inline-flex items-center gap-1 rounded-full px-4 py-2 text-[12px] font-bold text-white" style={{ background: WT.brand }}>
-                <ShoppingBag className="w-3.5 h-3.5" /> 카탈로그에서 사입 시작
-              </button>
-            </div>
-          ) : (
-            <ul>
-              {recent.map((o) => {
-                const badge = wholesaleOrderStatusBadge(o.status)
+        {/* 주문 내역 — 상태 탭 + 테이블 (시안) */}
+        <section>
+          <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+            <h2 className="text-[16px] font-extrabold" style={{ color: WT.ink }}>주문 내역</h2>
+            <div className="flex gap-1.5">
+              {ORDER_TABS.map((tb) => {
+                const on = orderTab === tb.id
                 return (
-                  <li key={o.id}>
-                    <button onClick={() => navigate('/wholesale/orders')} className="w-full flex items-center gap-3 px-4 py-3 text-left" style={{ borderTop: '1px solid ' + WT.line }}>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[13px] font-bold truncate" style={{ color: WT.ink }}>
-                          주문 #{o.id}{o.toss_order_id ? ` · ${o.toss_order_id}` : ''}
-                        </div>
-                        <div className="text-[11px] mt-0.5" style={{ color: WT.ink3 }}>
-                          {(o.paid_at || o.created_at || '').slice(0, 10)}
-                        </div>
-                      </div>
-                      <span className="text-[14px] font-extrabold shrink-0" style={{ color: WT.ink }}>{won(o.subtotal)}</span>
-                      <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ color: badge.color, background: badge.bg }}>{badge.label}</span>
-                    </button>
-                  </li>
+                  <button key={tb.id} onClick={() => setOrderTab(tb.id)} className="text-[12px] font-semibold rounded-full px-3 py-1.5 transition-colors"
+                    style={on ? { background: WT.ink, color: '#fff' } : { background: '#fff', color: WT.ink2, border: '1px solid ' + WT.line2 }}>{tb.label}</button>
                 )
               })}
-            </ul>
-          )}
+            </div>
+          </div>
+          <div className="rounded-xl overflow-hidden bg-white" style={{ border: '1px solid ' + WT.line2 }}>
+            <div className="hidden lg:grid grid-cols-[1.7fr_1fr_1fr_0.7fr] gap-3 px-4 py-3 text-[11.5px] font-bold" style={{ color: WT.ink3, background: WT.trustBg, borderBottom: '1px solid ' + WT.line }}>
+              <span>주문번호</span><span className="text-right">결제금액</span><span className="text-center">상태</span><span className="text-center">상세</span>
+            </div>
+            {ordersQ.isLoading ? (
+              <div className="py-12 text-center text-[13px]" style={{ color: WT.ink4 }}>불러오는 중…</div>
+            ) : filteredOrders.length === 0 ? (
+              <div className="py-12 text-center" style={{ color: WT.ink3 }}>
+                <Sparkles className="w-6 h-6 mx-auto mb-2" style={{ color: WT.ink4 }} />
+                <p className="text-[13px]">{orderTab === 'all' ? '아직 주문이 없어요' : '해당 상태의 주문이 없어요'}</p>
+                {orderTab === 'all' && (
+                  <button onClick={() => navigate('/wholesale')} className="mt-3 inline-flex items-center gap-1 rounded-full px-4 py-2 text-[12px] font-bold text-white" style={{ background: WT.brand }}>
+                    <ShoppingBag className="w-3.5 h-3.5" /> 카탈로그에서 사입 시작
+                  </button>
+                )}
+              </div>
+            ) : (
+              <ul>
+                {filteredOrders.map((o) => {
+                  const badge = wholesaleOrderStatusBadge(o.status)
+                  return (
+                    <li key={o.id}>
+                      <button onClick={() => navigate('/wholesale/orders')} className="w-full flex lg:grid lg:grid-cols-[1.7fr_1fr_1fr_0.7fr] items-center gap-3 px-4 py-3.5 text-left" style={{ borderTop: '1px solid ' + WT.line }}>
+                        <div className="min-w-0 flex-1 lg:flex-none">
+                          <div className="text-[13px] font-bold truncate" style={{ color: WT.ink }}>주문 #{o.id}{o.toss_order_id ? ` · ${o.toss_order_id}` : ''}</div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[11px]" style={{ color: WT.ink3 }}>{(o.paid_at || o.created_at || '').slice(0, 10)}</span>
+                            <span className="lg:hidden rounded-full px-2 py-0.5 text-[10.5px] font-bold whitespace-nowrap" style={{ color: badge.color, background: badge.bg }}>{badge.label}</span>
+                          </div>
+                        </div>
+                        <span className="text-[14px] lg:text-[13px] font-extrabold tabular-nums shrink-0 lg:text-right" style={{ color: WT.ink }}>{won(o.subtotal)}</span>
+                        <span className="hidden lg:flex justify-center"><span className="rounded-full px-2 py-0.5 text-[11px] font-bold whitespace-nowrap" style={{ color: badge.color, background: badge.bg }}>{badge.label}</span></span>
+                        <span className="hidden lg:flex justify-center"><ChevronRight className="w-4 h-4" style={{ color: WT.ink4 }} /></span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
         </section>
 
       </div>
