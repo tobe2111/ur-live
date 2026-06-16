@@ -101,7 +101,7 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
   if (typeof document === 'undefined') return null
   return createPortal((
     <div className="fixed inset-0 z-[9500] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" role="dialog" aria-modal="true">
-      <div className="w-full sm:max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-[#121212] rounded-t-3xl sm:rounded-3xl border border-gray-200 dark:border-[#2A2A2A] p-5 animate-sheet-up">
+      <div className="w-full sm:max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-[#121212] rounded-t-3xl sm:rounded-3xl border border-gray-200 dark:border-[#2A2A2A] p-5 animate-sheet-rise">
         <div className="flex items-start justify-between mb-1">
           <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">내 링크샵 꾸미기</h2>
           <button onClick={dismissPermanently} aria-label="닫기" className="p-1 -m-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
