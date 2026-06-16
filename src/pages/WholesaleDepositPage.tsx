@@ -16,7 +16,7 @@ import { WT, won, comma, GRADE_LABEL } from './wholesale/wholesale-theme'
 import { buildWholesaleNav } from './wholesale/wholesale-nav'
 import {
   useWholesaleMe, useWholesaleDeposit, useWholesaleChargeRequests,
-  useWholesaleChargeRequestMutation, useWholesaleMall,
+  useWholesaleChargeRequestMutation,
   type WholesaleDepositTxn, type WholesaleChargeStatus,
 } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
@@ -55,8 +55,6 @@ export default function WholesaleDepositPage() {
   const depositQ = useWholesaleDeposit()
   const requestsQ = useWholesaleChargeRequests()
   const chargeMut = useWholesaleChargeRequestMutation()
-  // 🏬 멀티-몰 브랜딩 — 셸 워드마크(기본 몰 → 유통스타트 → 동작 불변).
-  const { displayName: mallName } = useWholesaleMall()
   const cart = useWholesaleCart()
 
   const me = (meQ.data ?? null) as { grade: string } | null
@@ -71,6 +69,12 @@ export default function WholesaleDepositPage() {
   const [amount, setAmount] = useState<number>(0)
   const [depositorName, setDepositorName] = useState('')
   const [showGuide, setShowGuide] = useState(false)
+
+  // 이번달 충전·사용 합계(최근 거래 기준 — 요약 표시용). order 는 음수라 절대값.
+  const ym = new Date().toISOString().slice(0, 7)
+  const monthCharged = txns.filter((tx) => tx.type === 'charge' && (tx.created_at || '').slice(0, 7) === ym).reduce((s, tx) => s + Math.abs(tx.amount), 0)
+  const monthUsed = txns.filter((tx) => tx.type === 'order' && (tx.created_at || '').slice(0, 7) === ym).reduce((s, tx) => s + Math.abs(tx.amount), 0)
+  const afterCharge = balance + (amount > 0 ? amount : 0)
 
   const navItems = buildWholesaleNav(location.pathname, navigate)
 
@@ -147,125 +151,165 @@ export default function WholesaleDepositPage() {
       <SEO title="예치금 - 유통스타트 도매몰" description="예치금을 충전하고 도매 주문 결제에 사용하세요." url="/wholesale/deposits" noindex />
 
       <div className="space-y-5">
-        {/* 잔액 카드 */}
-        <section className="rounded-2xl p-5" style={{ background: WT.ink, boxShadow: WT.shCard }}>
-          <div className="flex items-center gap-2 text-[12px] font-bold" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            <Wallet className="w-4 h-4" />
-            {t('wholesale.deposit.balanceLabel', { defaultValue: '현재 예치금 잔액' })}
-          </div>
-          <div className="mt-2 text-[34px] font-extrabold tabular-nums text-white">
-            {depositQ.isLoading ? <Loader2 className="w-7 h-7 animate-spin" /> : won(balance)}
-          </div>
-          <p className="mt-1 text-[12px]" style={{ color: 'rgba(255,255,255,0.55)' }}>
-            {t('wholesale.deposit.balanceHint', { defaultValue: '예치금으로 도매 주문을 즉시 결제합니다. 잔액이 부족하면 충전하세요.' })}
-          </p>
-        </section>
-
-        {/* 충전 신청 폼 */}
-        <section className="rounded-2xl bg-white p-5" style={{ boxShadow: WT.shSoft }}>
-          <h2 className="text-[15px] font-extrabold mb-1" style={{ color: WT.ink }}>
-            {t('wholesale.deposit.chargeTitle', { defaultValue: '예치금 충전 신청' })}
-          </h2>
-          <p className="text-[12px] mb-4" style={{ color: WT.ink3 }}>
-            {t('wholesale.deposit.chargeFlow', { defaultValue: '송금 → 관리자 확인 → 충전 순서로 처리됩니다.' })}
-          </p>
-
-          {/* 👥 2026-06-12 (감사 부채): viewer 직원 사전 안내. */}
-          {isViewer && <div className="mb-3"><ViewerNotice action="예치금 충전 신청" /></div>}
-
-          {/* 빠른 금액 */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-            {QUICK_AMOUNTS.map((amt) => {
-              const on = amount === amt
-              return (
-                <button
-                  key={amt}
-                  type="button"
-                  onClick={() => setAmount(amt)}
-                  className="h-11 rounded-xl text-[14px] font-bold tabular-nums transition"
-                  style={{
-                    border: '1.5px solid ' + (on ? WT.brand : WT.line),
-                    background: on ? WT.brandSoft : '#fff',
-                    color: on ? WT.brand : WT.ink,
-                  }}
-                >
-                  {comma(amt)}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* 직접 입력 */}
-          <label className="block text-[12px] font-bold mb-1" style={{ color: WT.ink2 }}>
-            {t('wholesale.deposit.amountLabel', { defaultValue: '충전 금액(원)' })}
-          </label>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            value={amount > 0 ? String(amount) : ''}
-            onChange={(e) => setAmount(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
-            placeholder={t('wholesale.deposit.amountPlaceholder', { defaultValue: '직접 입력' })}
-            className="w-full h-12 px-3.5 rounded-xl text-[15px] font-bold text-gray-900 tabular-nums mb-3"
-            style={{ border: '1.5px solid ' + WT.line, background: WT.fill2 }}
-          />
-
-          {/* 입금자명 */}
-          <label className="block text-[12px] font-bold mb-1" style={{ color: WT.ink2 }}>
-            {t('wholesale.deposit.depositorLabel', { defaultValue: '입금자명' })}
-          </label>
-          <input
-            type="text"
-            value={depositorName}
-            onChange={(e) => setDepositorName(e.target.value)}
-            placeholder={t('wholesale.deposit.depositorPlaceholder', { defaultValue: '실제 송금하실 입금자명' })}
-            maxLength={40}
-            className="w-full h-12 px-3.5 rounded-xl text-[15px] font-medium text-gray-900 mb-4"
-            style={{ border: '1.5px solid ' + WT.line, background: WT.fill2 }}
-          />
-
-          <button
-            type="button"
-            onClick={submitCharge}
-            disabled={submitDisabled}
-            className="w-full py-3.5 rounded-2xl text-[15px] font-bold text-white disabled:opacity-50"
-            style={{ background: WT.brand }}
-          >
-            {chargeMut.isPending
-              ? <span className="inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />{t('common.processing', { defaultValue: '처리 중...' })}</span>
-              : t('wholesale.deposit.submitCharge', { defaultValue: '충전 신청하기' })}
-          </button>
-
-          {/* 입금 안내 박스 */}
-          {(showGuide || !!depositAccount) && (
-            <div className="mt-4 rounded-xl p-4" style={{ background: WT.brandSoft, border: '1px solid #F8C9D2' }}>
-              <div className="flex items-center gap-2 text-[13px] font-extrabold mb-1.5" style={{ color: WT.brand }}>
-                <Building2 className="w-4 h-4" />
-                {t('wholesale.deposit.guideTitle', { defaultValue: '입금 안내' })}
+        {/* 충전 폼(좌) + 충전 요약(우) */}
+        <div className="grid lg:grid-cols-[1fr_340px] gap-5 items-start">
+          <div className="space-y-5">
+            {/* 잔액 카드 (navy + 이번달 충전/사용) */}
+            <section className="relative overflow-hidden rounded-2xl p-5" style={{ background: WT.ink, boxShadow: WT.shCard }}>
+              <div className="flex items-center gap-2 text-[12px] font-bold" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                <Wallet className="w-4 h-4" />
+                {t('wholesale.deposit.balanceLabel', { defaultValue: '현재 예치금 잔액' })}
               </div>
-              {depositAccount ? (
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[14px] font-bold tabular-nums" style={{ color: WT.ink }}>{depositAccount}</span>
-                  <button
-                    type="button"
-                    onClick={copyAccount}
-                    className="shrink-0 inline-flex items-center gap-1 px-2.5 h-8 rounded-lg text-[12px] font-bold"
-                    style={{ background: '#fff', color: WT.ink2, border: '1px solid ' + WT.line }}
-                  >
-                    <Copy className="w-3.5 h-3.5" /> {t('common.copy', { defaultValue: '복사' })}
-                  </button>
+              <div className="mt-2 text-[34px] font-extrabold tabular-nums text-white">
+                {depositQ.isLoading ? <Loader2 className="w-7 h-7 animate-spin" /> : won(balance)}
+              </div>
+              <div className="mt-4 flex gap-6">
+                <div>
+                  <div className="text-[11px]" style={{ color: 'rgba(255,255,255,0.5)' }}>{t('wholesale.deposit.monthCharged', { defaultValue: '이번달 충전' })}</div>
+                  <div className="mt-0.5 text-[14px] font-bold tabular-nums text-white">{won(monthCharged)}</div>
                 </div>
-              ) : (
-                <p className="text-[13px] font-medium" style={{ color: WT.ink2 }}>
-                  {t('wholesale.deposit.noAccount', { defaultValue: '관리자에게 입금 계좌를 문의하세요.' })}
+                <div>
+                  <div className="text-[11px]" style={{ color: 'rgba(255,255,255,0.5)' }}>{t('wholesale.deposit.monthUsed', { defaultValue: '이번달 사용' })}</div>
+                  <div className="mt-0.5 text-[14px] font-bold tabular-nums text-white">{won(monthUsed)}</div>
+                </div>
+              </div>
+            </section>
+
+            {/* 충전 금액 */}
+            <section className="rounded-2xl bg-white p-5" style={{ boxShadow: WT.shSoft }}>
+              <h2 className="text-[15px] font-extrabold mb-3" style={{ color: WT.ink }}>
+                {t('wholesale.deposit.amountLabel', { defaultValue: '충전 금액' })}
+              </h2>
+
+              {/* 👥 2026-06-12 (감사 부채): viewer 직원 사전 안내. */}
+              {isViewer && <div className="mb-3"><ViewerNotice action="예치금 충전 신청" /></div>}
+
+              {/* 빠른 금액 */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                {QUICK_AMOUNTS.map((amt) => {
+                  const on = amount === amt
+                  return (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setAmount(amt)}
+                      className="h-11 rounded-xl text-[14px] font-bold tabular-nums transition"
+                      style={{
+                        border: '1.5px solid ' + (on ? WT.brand : WT.line),
+                        background: on ? WT.brandSoft : '#fff',
+                        color: on ? WT.brand : WT.ink,
+                      }}
+                    >
+                      {comma(amt)}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* 직접 입력 */}
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={amount > 0 ? String(amount) : ''}
+                onChange={(e) => setAmount(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                placeholder={t('wholesale.deposit.amountPlaceholder', { defaultValue: '직접 입력' })}
+                className="w-full h-12 px-3.5 rounded-xl text-[15px] font-bold text-gray-900 tabular-nums mb-4"
+                style={{ border: '1.5px solid ' + WT.line, background: WT.fill2 }}
+              />
+
+              {/* 입금자명 */}
+              <label className="block text-[12px] font-bold mb-1" style={{ color: WT.ink2 }}>
+                {t('wholesale.deposit.depositorLabel', { defaultValue: '입금자명' })}
+              </label>
+              <input
+                type="text"
+                value={depositorName}
+                onChange={(e) => setDepositorName(e.target.value)}
+                placeholder={t('wholesale.deposit.depositorPlaceholder', { defaultValue: '실제 송금하실 입금자명' })}
+                maxLength={40}
+                className="w-full h-12 px-3.5 rounded-xl text-[15px] font-medium text-gray-900"
+                style={{ border: '1.5px solid ' + WT.line, background: WT.fill2 }}
+              />
+            </section>
+
+            {/* 결제 수단 — 계좌이체(무통장입금) 전용 */}
+            <section className="rounded-2xl bg-white p-5" style={{ boxShadow: WT.shSoft }}>
+              <h2 className="text-[15px] font-extrabold mb-3" style={{ color: WT.ink }}>
+                {t('wholesale.deposit.methodTitle', { defaultValue: '결제 수단' })}
+              </h2>
+              <div className="rounded-xl p-4" style={{ border: '1.5px solid ' + WT.ink, background: WT.fill2 }}>
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-[10px] shrink-0" style={{ background: WT.ink }}>
+                    <Building2 className="w-[18px] h-[18px] text-white" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-[14px] font-bold" style={{ color: WT.ink }}>{t('wholesale.deposit.bankTransfer', { defaultValue: '계좌이체 (무통장입금)' })}</div>
+                    <div className="text-[12px]" style={{ color: WT.ink3 }}>{t('wholesale.deposit.bankTransferDesc', { defaultValue: '유통스타트 도매몰은 계좌이체로 예치금을 충전합니다' })}</div>
+                  </div>
+                  <span className="ml-auto shrink-0 text-[11px] font-bold px-2 py-1 rounded-md text-white" style={{ background: WT.ink }}>{t('common.default', { defaultValue: '기본' })}</span>
+                </div>
+                {depositAccount ? (
+                  <div className="rounded-lg bg-white p-3.5" style={{ border: '1px solid ' + WT.line }}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[14px] font-bold tabular-nums" style={{ color: WT.ink }}>{depositAccount}</span>
+                      <button
+                        type="button"
+                        onClick={copyAccount}
+                        className="shrink-0 inline-flex items-center gap-1 px-2.5 h-8 rounded-lg text-[12px] font-bold"
+                        style={{ background: WT.fill, color: WT.ink2, border: '1px solid ' + WT.line }}
+                      >
+                        <Copy className="w-3.5 h-3.5" /> {t('common.copy', { defaultValue: '복사' })}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[13px] font-medium" style={{ color: WT.ink2 }}>
+                    {t('wholesale.deposit.noAccount', { defaultValue: '관리자에게 입금 계좌를 문의하세요.' })}
+                  </p>
+                )}
+                <p className="mt-3 text-[11.5px] leading-relaxed" style={{ color: WT.ink3 }}>
+                  {t('wholesale.deposit.guideNote', { defaultValue: '위 계좌로 송금하시면 관리자 확인 후 예치금이 충전됩니다. 입금자명을 정확히 입력해주세요.' })}
+                </p>
+              </div>
+            </section>
+          </div>
+
+          {/* 충전 요약 (sticky) */}
+          <aside className="lg:sticky lg:top-2">
+            <section className="rounded-2xl bg-white p-5" style={{ border: '1px solid ' + WT.line }}>
+              <h2 className="text-[15px] font-extrabold mb-4" style={{ color: WT.ink }}>{t('wholesale.deposit.summaryTitle', { defaultValue: '충전 요약' })}</h2>
+              <div className="space-y-2.5 text-[13.5px]">
+                <div className="flex justify-between"><span style={{ color: WT.ink3 }}>{t('wholesale.deposit.amountLabel', { defaultValue: '충전 금액' })}</span><span className="font-semibold tabular-nums" style={{ color: WT.ink }}>{won(amount)}</span></div>
+                <div className="flex justify-between"><span style={{ color: WT.ink3 }}>{t('wholesale.deposit.methodTitle', { defaultValue: '결제 수단' })}</span><span className="font-semibold" style={{ color: WT.ink }}>{t('wholesale.deposit.bankTransferShort', { defaultValue: '계좌이체' })}</span></div>
+                <div className="flex justify-between"><span style={{ color: WT.ink3 }}>{t('wholesale.deposit.afterBalance', { defaultValue: '충전 후 잔액' })}</span><span className="font-semibold tabular-nums" style={{ color: WT.ink }}>{won(afterCharge)}</span></div>
+              </div>
+              <div className="mt-4 pt-4 flex items-baseline justify-between" style={{ borderTop: '1px solid ' + WT.line }}>
+                <span className="text-[14px] font-bold" style={{ color: WT.ink }}>{t('wholesale.deposit.payAmount', { defaultValue: '입금할 금액' })}</span>
+                <span className="text-[22px] font-extrabold tabular-nums tracking-[-0.02em]" style={{ color: WT.brand }}>{won(amount)}</span>
+              </div>
+              <button
+                type="button"
+                onClick={submitCharge}
+                disabled={submitDisabled}
+                className="mt-4 w-full py-3.5 rounded-xl text-[15px] font-bold text-white disabled:opacity-50"
+                style={{ background: WT.brand }}
+              >
+                {chargeMut.isPending
+                  ? <span className="inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />{t('common.processing', { defaultValue: '처리 중...' })}</span>
+                  : t('wholesale.deposit.submitCharge', { defaultValue: '충전 신청하기' })}
+              </button>
+              {showGuide && (
+                <p className="mt-3 text-[11.5px] text-center leading-relaxed" style={{ color: WT.pos }}>
+                  {t('wholesale.deposit.chargeRequested', { defaultValue: '입금 확인 후 충전됩니다' })}
                 </p>
               )}
-              <p className="mt-2 text-[12px]" style={{ color: WT.ink3 }}>
-                {t('wholesale.deposit.guideNote', { defaultValue: '위 계좌로 송금하시면 관리자 확인 후 예치금이 충전됩니다. 입금자명을 정확히 입력해주세요.' })}
+              <p className="mt-2 text-[11px] text-center leading-relaxed" style={{ color: WT.ink4 }}>
+                {t('wholesale.deposit.chargeFlow', { defaultValue: '송금 → 관리자 확인 → 충전 순서로 처리됩니다.' })}
               </p>
-            </div>
-          )}
-        </section>
+            </section>
+          </aside>
+        </div>
 
         {/* 충전 신청 내역 */}
         <section className="rounded-2xl bg-white overflow-hidden" style={{ boxShadow: WT.shSoft }}>
