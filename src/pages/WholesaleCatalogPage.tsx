@@ -147,11 +147,15 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
       if (selectedBrand) params.set('brand', selectedBrand)
       const tk = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
       const qs = params.toString()
+      // 🚑 2026-06-16 (사용자 신고 — 상품 왔다갔다): 일시 오류를 빈 배열로 삼키지 않음.
+      //   기존 .catch(()=>[]) 는 네트워크/5xx 를 '성공한 빈 결과'로 만들어 staleTime 동안 빈 그리드 고착 +
+      //   재시도 없음. 이제 reject 를 그대로 던져 React Query 가 재시도(retry) → 일시 장애 자동 복구.
       return api
         .get(`/api/wholesale/catalog${qs ? `?${qs}` : '?'}`, { headers: tk ? { Authorization: `Bearer ${tk}` } : {} })
         .then((r) => (r.data?.success ? ((r.data.items || []) as CatalogItem[]) : []))
-        .catch(() => [])
     },
+    retry: 2,
+    retryDelay: (n) => Math.min(1000 * 2 ** n, 4000),
     staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,

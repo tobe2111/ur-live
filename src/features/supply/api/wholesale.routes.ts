@@ -1094,6 +1094,9 @@ app.get('/catalog', async (c) => {
         "SELECT COUNT(*) as c FROM pragma_table_info('products') WHERE name='is_supply_product'"
       ).first<{ c: number }>().catch(() => null)
       if (!hasCol || hasCol.c === 0) {
+        // 🚑 2026-06-16: 콜드 isolate / 일시 pragma 오류로 컬럼 미확인 → 빈 응답. 절대 캐시 금지
+        //   (캐시되면 빈 그리드 고착). no-store 로 다음 요청이 즉시 재시도(컬럼 실제 존재 시 정상 복귀).
+        c.header('Cache-Control', 'private, no-store')
         return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: 'C' })
       }
       _supplyCatalogReady.add(DB)
@@ -1253,13 +1256,37 @@ app.get('/catalog', async (c) => {
     // 🏭 2026-06-10 (전수조사): 로그인도 no-store → private+max-age=30 — 같은 사용자 브라우저만 30초 재사용
     //   (탭 이동/뒤로가기 즉시). 등급 변경 반영 지연 최대 30초 — 허용 범위. 공유캐시는 여전히 금지(private).
     const payload = JSON.stringify({ success: true, items, total, page, limit, has_more: offset + items.length < total, grade: guest ? null : grade, requires_login: guest })
+    // 🚑 2026-06-16 (사용자 신고 — "상품이 안 뜰 때도 있고 왔다갔다"): 빈 결과(콜드 isolate/일시 D1 오류로
+    //   items=0)는 절대 공유 캐시 금지. 캐시되면 max-age 동안 모든 사용자에게 빈 그리드 + SSR 가 빈 배열을
+    //   initialData 로 주입 → guest 가 refetch 없이 빈 화면 고착. 비어있으면 no-store 로 다음 요청이 즉시 재시도.
+    const isEmptyCatalog = items.length === 0
+    // 기본 guest 요청(검색/카테고리/정렬/가격/프리미엄/브랜드 미지정) — SSR/prewarm 이 읽는 캐논 키와 1:1.
+    const isDefaultGuestReq = guest && page === 1 && !search && !category && !sortKey
+      && minPrice == null && maxPrice == null && !inStock && !premiumOnly && !brand && !brandsMode
     if (guest) {
-      c.header('Cache-Control', 'public, max-age=60')
-      c.header('CDN-Cache-Control', 'public, max-age=300')
+      if (isEmptyCatalog) {
+        c.header('Cache-Control', 'private, no-store')
+      } else {
+        c.header('Cache-Control', 'public, max-age=60')
+        c.header('CDN-Cache-Control', 'public, max-age=300')
+        // 🏭 2026-06-16: 기본 guest 카탈로그(비어있지 않을 때만)를 SSR/prewarm 캐논 키에 명시적 edge put.
+        //   기존엔 put 이 없어 worker SSR 의 caches.default.match 가 매번 miss → self-fetch(261ms). 이제 edge-hit(~3ms).
+        //   빈 응답은 위 분기에서 제외돼 절대 캐시되지 않음(빈 그리드 고착 방지).
+        if (isDefaultGuestReq && c.executionCtx) {
+          const origin = new URL(c.req.url).origin
+          const mkRes = () => new Response(payload, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300' } })
+          c.executionCtx.waitUntil(Promise.all([
+            // @ts-expect-error — Cloudflare Workers 전역 caches
+            caches.default.put(new Request(`${origin}/api/wholesale/catalog`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
+            // @ts-expect-error — Cloudflare Workers 전역 caches
+            caches.default.put(new Request(`${origin}/api/wholesale/catalog?`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
+          ]))
+        }
+      }
     } else {
       c.header('Cache-Control', 'private, max-age=30, stale-while-revalidate=60')
-      // 🏭 등급 단위 엣지 캐시 저장 (60s) — 같은 등급의 다음 사용자/요청은 D1 0회.
-      if (gradeCacheKey && c.executionCtx) {
+      // 🏭 등급 단위 엣지 캐시 저장 (60s) — 같은 등급의 다음 사용자/요청은 D1 0회. 빈 결과는 캐시 금지(고착 방지).
+      if (gradeCacheKey && !isEmptyCatalog && c.executionCtx) {
         c.executionCtx.waitUntil(
           // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 동일 패턴)
           caches.default.put(gradeCacheKey, new Response(payload, {
