@@ -321,6 +321,16 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted }: { pins: CuratorPin[]; 
       {pins.map((pin, idx) => (
         <PinCard key={pin.id} pin={pin} index={idx} handle={handle} isOwner={isOwner} aboveFold={idx < 4} onDeleted={onPinDeleted} />
       ))}
+      {/* 🏁 2026-06-16 링크샵 개선안: 본인이 핀 채워진 화면에서도 항상 추가 동선 — 그리드 끝 점선 카드. */}
+      {isOwner && (
+        <Link
+          to="/browse"
+          className="col-span-2 sm:col-span-3 flex items-center justify-center gap-2 h-[52px] rounded-xl border-[1.5px] border-dashed border-[#FFB59E] bg-[#FFF6F3] dark:bg-[#1A1410] text-[#FF5634] text-sm font-bold active:scale-[0.99] transition-transform"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+          핀 추가하기
+        </Link>
+      )}
     </div>
   )
 }
@@ -359,13 +369,18 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: C
     }
   }
 
+  // 🏁 2026-06-16 (링크샵 개선안 — 에디토리얼 카드): 할인%·절약액은 기존 데이터(original_price/price)로 계산.
+  const hasDeal = !!pin.original_price && pin.original_price > pin.price
+  const discountPct = hasDeal ? Math.round((1 - pin.price / (pin.original_price as number)) * 100) : 0
+  const savings = hasDeal ? (pin.original_price as number) - pin.price : 0
+
   return (
     <div className="relative group">
-      <a href={redirectUrl} className="block rounded-xl overflow-hidden active:scale-[0.98] transition-transform" style={{ backgroundColor: grad.base }}>
-        {/* 🏭 2026-06-05 (사용자 요청 — 그라데이션 통일): 대표색 단색 카드 + 같은 색 번짐(경계 제거). */}
-        <div className="aspect-square relative" style={{ backgroundColor: grad.base }}>
-          {/* 🛡️ 2026-05-28: 링크샵 카드 순번 뱃지 (position 순) */}
-          <span className="absolute top-1.5 left-1.5 z-10 min-w-[1.25rem] h-5 px-1.5 rounded-full bg-black/70 text-white text-[11px] font-bold flex items-center justify-center backdrop-blur">
+      {/* 🎨 2026-06-16 링크샵 개선안: 흰 에디토리얼 카드(AI 그라데이션 제거) — 번호 코너플래그 + 다크 가격칩 + 절약 초록 + coral-rule 인용. */}
+      <a href={redirectUrl} className="block rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] active:scale-[0.98] transition-transform">
+        <div className="aspect-[3/2] relative" style={{ backgroundColor: grad.base }}>
+          {/* 큐레이션 순번 = 좌상단 코너 플래그 (sort order) */}
+          <span className="absolute top-0 left-0 z-10 min-w-[1.5rem] h-6 px-1.5 bg-[#FF5634] text-white text-[13px] font-extrabold flex items-center justify-center rounded-br-[11px]">
             {index + 1}
           </span>
           {productImg && !imgError ? (
@@ -390,27 +405,30 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: C
           ) : (
             <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: grad.sub }}>no image</div>
           )}
-          {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거) */}
-          <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
-        </div>
-        <div className="p-2.5" style={{ color: grad.text }}>
-          <p className="text-xs line-clamp-2 leading-tight font-medium">{pin.product_name}</p>
-          {/* 🏁 2026-06-15: 딜 가치 표시 — 정가 취소선 + 할인율 + 판매가 (original_price 활용, 분홍 없음) */}
-          {pin.original_price && pin.original_price > pin.price ? (
-            <div className="mt-1">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[11px] font-extrabold" style={{ color: grad.accent }}>
-                  {Math.round((1 - pin.price / pin.original_price) * 100)}%
-                </span>
-                <span className="text-[10px] line-through" style={{ color: grad.sub }}>{formatWon(pin.original_price)}</span>
-              </div>
-              <p className="text-sm font-extrabold" style={{ color: grad.accent }}>{formatWon(pin.price)}</p>
-            </div>
-          ) : (
-            <p className="text-sm font-extrabold mt-1" style={{ color: grad.accent }}>{formatWon(pin.price)}</p>
+          {/* 딜 가치: 이미지 위 다크 가격칩 (할인율) */}
+          {discountPct > 0 && (
+            <span className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-md bg-[#141A2E]/90 text-[#FF7A5C] text-[12px] font-extrabold backdrop-blur">
+              {discountPct}%
+            </span>
           )}
-          {pin.note && <p className="text-[10px] mt-1 line-clamp-1" style={{ color: grad.sub }}>💬 {pin.note}</p>}
-
+        </div>
+        <div className="p-2.5">
+          <p className="text-[13px] font-bold leading-tight line-clamp-2 text-[#141A2E] dark:text-white">{pin.product_name}</p>
+          <div className="mt-1.5 flex items-baseline gap-1.5 flex-wrap">
+            {hasDeal && (
+              <span className="text-[11px] line-through text-gray-400 dark:text-gray-500">{formatWon(pin.original_price as number)}</span>
+            )}
+            <span className="text-[15px] font-extrabold text-[#141A2E] dark:text-white">{formatWon(pin.price)}</span>
+            {savings > 0 && (
+              <span className="ml-auto text-[11px] font-extrabold text-[#0E9F6E]">{formatWon(savings)}<span className="font-semibold opacity-70"> 절약</span></span>
+            )}
+          </div>
+          {/* 추천 이유(note): 좌측 coral rule + 인용 (이모지 제거 — "사람이 직접 골랐다" 신뢰) */}
+          {pin.note && (
+            <div className="mt-2 pl-2 border-l-2 border-[#FF5634]">
+              <p className="text-[11.5px] leading-snug line-clamp-2 text-gray-700 dark:text-gray-300">{pin.note}</p>
+            </div>
+          )}
         </div>
       </a>
       {/* 🛡️ 2026-05-27 (사용자 요청): 본인 view 에서 핀 삭제 버튼. */}
