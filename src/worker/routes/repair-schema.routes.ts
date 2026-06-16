@@ -554,6 +554,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.sns_tiktok', sql: "ALTER TABLE sellers ADD COLUMN sns_tiktok TEXT" },
     // 🛡️ 2026-05-27 (큐레이터 banner 편집): users.banner_url — 큐레이터 공개 페이지 배경.
     { desc: 'users.banner_url', sql: "ALTER TABLE users ADD COLUMN banner_url TEXT" },
+    // 🎨 2026-06-16 (링크샵 시안): 크리에이터 SNS 링크 (유튜브/인스타/틱톡).
+    { desc: 'users.youtube_url', sql: "ALTER TABLE users ADD COLUMN youtube_url TEXT" },
+    { desc: 'users.instagram_url', sql: "ALTER TABLE users ADD COLUMN instagram_url TEXT" },
+    { desc: 'users.tiktok_url', sql: "ALTER TABLE users ADD COLUMN tiktok_url TEXT" },
     // 🛡️ 2026-05-27 (리뷰 집계 영구 fix — 사용자 보고):
     //   product_reviews INSERT 경로 7곳 (사용자/시드/admin) 마다 products UPDATE 누락 위험.
     //   D1 트리거로 모든 INSERT/UPDATE/DELETE 자동 처리 → review_count + avg_rating 영구 동기화.

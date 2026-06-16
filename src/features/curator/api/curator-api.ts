@@ -35,6 +35,10 @@ export interface CuratorProfile {
   profile_image: string | null
   banner_url?: string | null
   theme: 'dark' | 'light' | string
+  // 🎨 2026-06-16 링크샵 시안: 크리에이터 SNS 링크.
+  youtube_url?: string | null
+  instagram_url?: string | null
+  tiktok_url?: string | null
 }
 
 export interface CuratorPageResponse {

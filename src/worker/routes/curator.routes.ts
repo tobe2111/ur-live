@@ -69,6 +69,10 @@ async function ensureUserProfileCols(DB: D1Database): Promise<void> {
     'ALTER TABLE users ADD COLUMN banner_url TEXT',
     'ALTER TABLE users ADD COLUMN profile_image TEXT',
     'ALTER TABLE users ADD COLUMN updated_at TEXT',
+    // 🎨 2026-06-16 링크샵 시안: 크리에이터 SNS 링크 (유튜브/인스타/틱톡).
+    'ALTER TABLE users ADD COLUMN youtube_url TEXT',
+    'ALTER TABLE users ADD COLUMN instagram_url TEXT',
+    'ALTER TABLE users ADD COLUMN tiktok_url TEXT',
   ]) {
     await DB.prepare(sql).run().catch(() => { /* 이미 존재 → 정상 */ })
   }
@@ -121,23 +125,20 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     //   🏭 2026-06-04: 컬럼 존재 여부 모듈 캐시(_bannerUrlCol) — 없는 환경에서 매 요청 2회 user 쿼리 방지.
     type CuratorUser = {
       id: number; handle: string; name: string; bio: string | null;
-      profile_image: string | null; linkshop_theme: string; banner_url?: string | null
+      profile_image: string | null; linkshop_theme: string; banner_url?: string | null;
+      youtube_url?: string | null; instagram_url?: string | null; tiktok_url?: string | null
     }
-    let user: CuratorUser | null = null
-    if (_bannerUrlCol !== false) {
-      user = await DB.prepare(
-        `SELECT id, handle, name, bio, profile_image, linkshop_theme, banner_url
-         FROM users WHERE handle = ? LIMIT 1`,
-      ).bind(handle).first<CuratorUser>().catch(() => null)
-      if (user) _bannerUrlCol = true   // 컬럼 존재 확정
-    }
-    if (!user && _bannerUrlCol !== true) {
-      // banner_url 컬럼 없는 환경 — fallback. 이 쿼리가 행을 반환하면 컬럼이 없다는 뜻 → 기억.
+    // 🎨 2026-06-16: banner_url + SNS 포함 전체 SELECT 우선 — 컬럼 없는 레거시 DB 면 throw → undefined →
+    //   최소 컬럼 폴백(과거 _bannerUrlCol 분기 대체, 같은 1-query 정상상태 + 컬럼 부재시 graceful).
+    let user = await DB.prepare(
+      `SELECT id, handle, name, bio, profile_image, linkshop_theme, banner_url, youtube_url, instagram_url, tiktok_url
+       FROM users WHERE handle = ? LIMIT 1`,
+    ).bind(handle).first<CuratorUser>().catch(() => undefined)
+    if (user === undefined) {
       user = await DB.prepare(
         `SELECT id, handle, name, bio, profile_image, linkshop_theme
          FROM users WHERE handle = ? LIMIT 1`,
-      ).bind(handle).first<CuratorUser>().catch(() => null)
-      if (user) _bannerUrlCol = false  // 컬럼 미존재 확정 (다음부터 1쿼리)
+      ).bind(handle).first<CuratorUser>().catch(() => null) ?? null
     }
 
     if (!user) return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)
@@ -194,6 +195,10 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         // 레거시 'r2://key' 저장분(2026-06-05 이전 버그) 읽기측 정규화 — 모든 소비처 동시 치유.
         banner_url: user.banner_url?.startsWith('r2://') ? `/api/media/${user.banner_url.slice(5)}` : (user.banner_url ?? null),
         theme: user.linkshop_theme || 'dark',
+        // 🎨 2026-06-16 링크샵 시안: 크리에이터 SNS 링크.
+        youtube_url: user.youtube_url ?? null,
+        instagram_url: user.instagram_url ?? null,
+        tiktok_url: user.tiktok_url ?? null,
       },
       pins: pins ?? [],
       // 🛡️ 2026-05-25 신모델: linked seller 있으면 셀러 공개페이지로 자연 흡수.
@@ -553,7 +558,8 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
-    const body = await c.req.json<{ name?: string; bio?: string; profile_image?: string; banner_url?: string }>().catch(() => ({} as { name?: string; bio?: string; profile_image?: string; banner_url?: string }))
+    type ProfileBody = { name?: string; bio?: string; profile_image?: string; banner_url?: string; youtube_url?: string; instagram_url?: string; tiktok_url?: string }
+    const body = await c.req.json<ProfileBody>().catch(() => ({} as ProfileBody))
 
     const updates: string[] = []
     const binds: (string | number)[] = []
@@ -585,6 +591,16 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
       }
       updates.push('banner_url = ?')
       binds.push(v)
+    }
+    // 🎨 2026-06-16 링크샵 시안: SNS 링크 — 핸들/@핸들/http(s) URL 허용, 빈 문자열=해제. (표시 시 정규화)
+    const isAllowedSns = (v: string) => v === '' || /^https?:\/\//i.test(v) || /^@?[A-Za-z0-9._-]{1,60}$/.test(v)
+    for (const key of ['youtube_url', 'instagram_url', 'tiktok_url'] as const) {
+      if (typeof body[key] === 'string') {
+        const v = (body[key] as string).trim().slice(0, 200)
+        if (v && !isAllowedSns(v)) return c.json({ success: false, error: 'SNS 링크 형식 오류' }, 400)
+        updates.push(`${key} = ?`)
+        binds.push(v)
+      }
     }
     if (updates.length === 0) return c.json({ success: false, error: '변경할 필드 없음' }, 400)
 
