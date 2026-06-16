@@ -384,7 +384,7 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted }: { pins: CuratorPin[]; 
   return (
     <div className="max-w-3xl mx-auto p-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
       {pins.map((pin, idx) => (
-        <PinCard key={pin.id} pin={pin} index={idx} handle={handle} isOwner={isOwner} aboveFold={idx < 4} onDeleted={onPinDeleted} />
+        <PinCard key={pin.id} pin={pin} index={idx} handle={handle} isOwner={isOwner} aboveFold={idx < 4} hero={idx === 0} onDeleted={onPinDeleted} />
       ))}
       {/* 🏁 2026-06-16 링크샵 개선안: 본인이 핀 채워진 화면에서도 항상 추가 동선 — 그리드 끝 점선 카드. */}
       {isOwner && (
@@ -400,7 +400,7 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted }: { pins: CuratorPin[]; 
   )
 }
 
-function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorPin; index: number; handle: string; isOwner: boolean; aboveFold: boolean; onDeleted: (id: number) => void }) {
+function PinCard({ pin, index, handle, isOwner, aboveFold, hero, onDeleted }: { pin: CuratorPin; index: number; handle: string; isOwner: boolean; aboveFold: boolean; hero?: boolean; onDeleted: (id: number) => void }) {
   const { t } = useTranslation()
   const productImg = pin.thumbnail || pin.image_url || ''
   // 🛡️ 2026-05-27 (404 fix — 사용자 보고): SPA route 는 /u/:handle/p/:productId (no /redirect suffix).
@@ -440,19 +440,19 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: C
   const savings = hasDeal ? (pin.original_price as number) - pin.price : 0
 
   return (
-    <div className="relative group">
-      {/* 🎨 2026-06-16 링크샵 개선안: 흰 에디토리얼 카드(AI 그라데이션 제거) — 번호 코너플래그 + 다크 가격칩 + 절약 초록 + coral-rule 인용. */}
+    <div className={`relative group ${hero ? 'col-span-2 sm:col-span-3' : ''}`}>
+      {/* 🎨 2026-06-16 링크샵 개선안: 흰 에디토리얼 카드(AI 그라데이션 제거) — 번호 코너플래그 + 다크 가격칩 + 절약 초록 + coral-rule 인용. #1 은 풀폭 히어로. */}
       <a href={redirectUrl} className="block rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] active:scale-[0.98] transition-transform">
-        <div className="aspect-[3/2] relative" style={{ backgroundColor: grad.base }}>
+        <div className={`relative ${hero ? 'aspect-[16/9]' : 'aspect-[3/2]'}`} style={{ backgroundColor: grad.base }}>
           {/* 큐레이션 순번 = 좌상단 코너 플래그 (sort order) */}
-          <span className="absolute top-0 left-0 z-10 min-w-[1.5rem] h-6 px-1.5 bg-[#FF5634] text-white text-[13px] font-extrabold flex items-center justify-center rounded-br-[11px]">
+          <span className={`absolute top-0 left-0 z-10 px-1.5 bg-[#FF5634] text-white font-extrabold flex items-center justify-center rounded-br-[11px] ${hero ? 'min-w-[2rem] h-8 text-[17px]' : 'min-w-[1.5rem] h-6 text-[13px]'}`}>
             {index + 1}
           </span>
           {productImg && !imgError ? (
             <img
-              src={cfImage(productImg, { width: 200, format: 'auto' }) || productImg}
-              srcSet={cfSrcSet(productImg, 200) || undefined}
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px"
+              src={cfImage(productImg, { width: hero ? 640 : 200, format: 'auto' }) || productImg}
+              srcSet={cfSrcSet(productImg, hero ? 640 : 200) || undefined}
+              sizes={hero ? '(max-width: 768px) 100vw, 720px' : '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 200px'}
               alt={pin.product_name}
               loading={aboveFold ? 'eager' : 'lazy'}
               fetchPriority={aboveFold ? 'high' : 'auto'}
@@ -477,8 +477,8 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, onDeleted }: { pin: C
             </span>
           )}
         </div>
-        <div className="p-2.5">
-          <p className="text-[13px] font-bold leading-tight line-clamp-2 text-[#141A2E] dark:text-white">{pin.product_name}</p>
+        <div className={hero ? 'p-3.5' : 'p-2.5'}>
+          <p className={`font-bold leading-tight line-clamp-2 text-[#141A2E] dark:text-white ${hero ? 'text-[16px]' : 'text-[13px]'}`}>{pin.product_name}</p>
           <div className="mt-1.5 flex items-baseline gap-1.5 flex-wrap">
             {hasDeal && (
               <span className="text-[11px] line-through text-gray-400 dark:text-gray-500">{formatWon(pin.original_price as number)}</span>
