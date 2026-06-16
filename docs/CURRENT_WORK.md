@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-16 — 도매몰 서브페이지·대시보드 시안 리디자인 (Claude Design `유통스타트 서브페이지/판매자·계정.dc.html`, opus)
+**배경**: 네이비 #0C2454 + 오렌지 #FC5424 리브랜드 + UTONG START 로고(WholesaleWordmark) 통일 위에서, 서브페이지를 **장바구니부터 순차 리디자인**(사용자 "가장 이상적으로"). AskUserQuestion 확정: 비로그인 가격=가림 유지, 다크용 흰 로고 제작.
+- **유통사 대시보드 마이페이지** (`WholesaleDashboardPage`): 다크 등급 hero → 라이트 인사+등급칩 + KPI 카드 4(보더·색상값·부제) + 주문내역 상태탭(전체/결제완료/배송중/구매확정) 테이블. 미사용 useWholesaleMall 제거.
+- **관심상품** (`WholesaleWishlistPage`): 로고 브레드크럼 + 필터칩(전체/판매중/품절·중지) + 카드(권장가·등급 공급가·마진칩·장바구니). 백엔드 `/api/wholesale/wishlist` 가 `distributor_price` enrich(resolveDistributorPrice SSOT 재사용 — 원가/제조사 신원 비노출). `wholesale.routes` `loadGradeTable/loadSellerGrade` export.
+- **견적함** (`WholesaleQuotesPage`): 제목/CTA + 상태칩(전체/진행중/완료) + 표(요청수량/희망단가/제시단가/상태) + 확장 상세행(수락/반려) + 요청 모달.
+- **예치금 충전** (`WholesaleDepositPage`): navy 잔액카드(이번달 충전/사용) + 2단(좌 충전금액·계좌이체 전용안내 / 우 충전요약 sticky). 셸(사이드바) 유지·충전 로직 무변경.
+- **고객센터** (`WholesaleSupportPage` 신규, `/wholesale/support`): navy 히어로(검색·키워드) + FAQ(카테고리/검색/아코디언 9문항) + 1:1 문의(→ 신고·제안 게시판) + 연락처(BUSINESS_INFO SSOT). CatalogHeader 고객센터 mailto→페이지.
+- **공지·자료실** (`WholesaleBoardPage`): 헤더 로고 브레드크럼 정렬(탭/콘텐츠 불변).
+- 검증: tsc 0 · client+worker build OK · 테마검사 통과. 남음: 위탁·무재고 채널연동(시안03)·제조사 입점관리(시안04=SupplierDashboard 셸 적용 완료) 점검, 우체국 계좌번호(푸터 bankNo) 수령 대기.
+
 ## ✅ 2026-06-15 — 회원 등급명(일반/플러스/프리미엄) + 상품별 배송비 (대표 요청, AskUserQuestion 확정)
 **대표 모델**: 등급 = 일반(승인 가입)/플러스(연 구독)/프리미엄(일정 매출 달성). 배송비 = 상품 등록 시 입력. 확정(AskUserQuestion): ① 등급별 공급가 차등 ② 라벨+가격 매핑 먼저(구독결제·자동승급은 다음) ③ 상품별 배송비(체크아웃 상품별 우선·제조사 폴백).
 - **등급 라벨 매핑(머니 엔진 무변경)** — `distributor-pricing` 코드 A/B/C 유지, 표시명만 `GRADE_NAME`(A=프리미엄 10%/B=플러스 15%/C=일반 20% 기본) 신설(`wholesale-theme.ts`). 소비자 표면 전부 치환: `GradeSheet`(3등급 사다리 + 가입형태별 안내 — 일반=승인/플러스=연구독/프리미엄=매출), `Dashboard`(배지 원→펠릿·"○○ 회원"), `CatalogHeader` 다크 유틸바("○○ 회원"). 마진율/엔진/`distributor_grades` DB/cron 전부 불변 → 머니 0 리스크. 구독 결제·매출 자동승급은 다음 단계.
