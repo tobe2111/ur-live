@@ -120,6 +120,8 @@ export default function AdminDistributorGradesPage() {
   const [agEnabled, setAgEnabled] = useState(false)
   const [agThresholds, setAgThresholds] = useState<AutoGradeThreshold[]>([])
   const [agWindowDays, setAgWindowDays] = useState(90)
+  // 🏅 플러스 멤버십 연 구독료(원) — 유통사가 예치금에서 결제(PG 미사용).
+  const [agPlusFee, setAgPlusFee] = useState(99000)
   const [agLastRun, setAgLastRun] = useState<string | null>(null)
   const [agLoading, setAgLoading] = useState(true)
   const [agSaving, setAgSaving] = useState(false)
@@ -133,6 +135,7 @@ export default function AdminDistributorGradesPage() {
           setAgEnabled(!!r.data.enabled)
           setAgThresholds(Array.isArray(r.data.thresholds) ? r.data.thresholds : [])
           setAgWindowDays(Number(r.data.window_days) || 90)
+          setAgPlusFee(Number(r.data.plus_annual_fee) || 99000)
           setAgLastRun(r.data.last_run ?? null)
         }
       })
@@ -231,12 +234,14 @@ export default function AdminDistributorGradesPage() {
     }
     if (agThresholds.length === 0) { toast.error('최소 1개 이상의 등급 임계값이 필요합니다'); return }
     if (!Number.isFinite(agWindowDays) || agWindowDays < 1 || agWindowDays > 365) { toast.error('집계 기간은 1~365일이어야 합니다'); return }
+    if (!Number.isFinite(agPlusFee) || agPlusFee < 1000 || agPlusFee > 10_000_000) { toast.error('플러스 연 구독료는 1,000원 ~ 1,000만원이어야 합니다'); return }
     setAgSaving(true)
     try {
       const r = await api.patch('/api/admin/distributor/auto-grade/settings', {
         enabled: agEnabled,
         thresholds: agThresholds,
         window_days: agWindowDays,
+        plus_annual_fee: agPlusFee,
       }, h)
       if (r.data?.success) { toast.success('자동등급 설정 저장됨'); loadAutoGrade() }
       else toast.error(r.data?.error || '저장 실패')
@@ -569,8 +574,8 @@ export default function AdminDistributorGradesPage() {
                 </span>
               </div>
 
-              {/* 집계 기간 */}
-              <div className="flex items-end gap-2">
+              {/* 집계 기간 + 🏅 플러스 연 구독료 */}
+              <div className="flex flex-wrap items-end gap-4">
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">집계 기간 (최근 N일 거래액)</label>
                   <div className="relative">
@@ -580,7 +585,17 @@ export default function AdminDistributorGradesPage() {
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">일</span>
                   </div>
                 </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">🏅 플러스 연 구독료 (예치금 결제)</label>
+                  <div className="relative">
+                    <input type="number" min={1000} max={10000000} step={1000} value={agPlusFee}
+                      onChange={e => setAgPlusFee(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                      className="w-40 pl-3 pr-8 py-2 border border-gray-200 rounded-lg text-gray-900" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">원</span>
+                  </div>
+                </div>
               </div>
+              <p className="text-xs text-gray-400">플러스(B)는 유통사가 연 구독료를 <b>예치금에서 결제</b>해 1년간 적용(PG 미사용). 프리미엄(A)은 위 매출 임계 자동 승급. 일반(C)은 가입 승인 기본.</p>
 
               {/* 임계값 테이블 */}
               <div>
