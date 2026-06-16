@@ -17,6 +17,8 @@ export default function WholesaleLoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  // 🏭 2026-06-16 (사용자 요청): 로그인 진입 시 유통사/제조사 먼저 선택. 'choose' → 유통사 폼('distributor') 또는 /supplier/login.
+  const [mode, setMode] = useState<'choose' | 'distributor'>('choose')
   // 🏬 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FF0033 → byte-identical). 조기 return 전에 호출.
   const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo } = useWholesaleMall()
 
@@ -71,6 +73,42 @@ export default function WholesaleLoginPage() {
       </header>
 
       <main className="ur-content-narrow mx-auto px-4 lg:px-8 py-12 lg:py-16 max-w-md">
+        {mode === 'choose' ? (
+          <>
+            <div className="text-center mb-8">
+              <h1 className="text-2xl lg:text-3xl font-extrabold mb-2">로그인</h1>
+              <p className="text-[#4E5560] text-[15px]">어떤 회원으로 로그인하시나요?</p>
+            </div>
+            <div className="space-y-3">
+              <button onClick={() => setMode('distributor')}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-[#ECEEF1] hover:border-[#17181C] transition-colors text-left">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl shrink-0" style={{ background: '#F4F5F7' }}><Users className="w-6 h-6" style={{ color: '#17181C' }} /></span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[16px] font-extrabold text-[#17181C]">유통사(판매) 로그인</span>
+                  <span className="block text-[13px] text-[#8A929E] mt-0.5">등급 공급가로 사입하는 유통회원</span>
+                </span>
+                <ArrowRight className="w-5 h-5 text-[#B6BCC4] shrink-0" />
+              </button>
+              <button onClick={() => navigate('/supplier/login')}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-[#ECEEF1] hover:border-[#17181C] transition-colors text-left">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl shrink-0" style={{ background: '#F4F5F7' }}><Factory className="w-6 h-6" style={{ color: '#17181C' }} /></span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[16px] font-extrabold text-[#17181C]">제조사(브랜드사) 로그인</span>
+                  <span className="block text-[13px] text-[#8A929E] mt-0.5">상품을 공급하는 제조(공급)회원</span>
+                </span>
+                <ArrowRight className="w-5 h-5 text-[#B6BCC4] shrink-0" />
+              </button>
+            </div>
+            <div className="mt-8 text-center text-sm text-[#8A929E]">
+              아직 회원이 아니신가요?{' '}
+              <button onClick={() => navigate('/wholesale/start')} className="text-[#FF0033] font-semibold">회원가입 →</button>
+            </div>
+          </>
+        ) : (
+          <>
+        <button onClick={() => setMode('choose')} className="mb-5 inline-flex items-center gap-1 text-sm text-[#8A929E] hover:text-[#17181C] font-medium">
+          <ArrowRight className="w-4 h-4 rotate-180" /> 로그인 유형 다시 선택
+        </button>
         <div className="text-center mb-8">
           <h1 className="text-2xl lg:text-3xl font-extrabold mb-2">유통사 로그인</h1>
           <p className="text-[#4E5560] text-[15px]">검증된 제조사 상품을 등급 공급가로 사입하세요.</p>
@@ -117,6 +155,8 @@ export default function WholesaleLoginPage() {
           제조사(공급사)이신가요?{' '}
           <button onClick={() => navigate('/supplier/login')} className="text-[#FF0033] font-semibold inline-flex items-center gap-1"><Factory className="w-4 h-4" /> 제조(브랜드)회원 로그인 →</button>
         </div>
+          </>
+        )}
       </main>
     </div>
   )
