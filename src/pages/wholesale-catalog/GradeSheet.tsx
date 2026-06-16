@@ -1,4 +1,5 @@
-import { X } from 'lucide-react'
+import { X, Sparkles } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { WT, GRADE_NAME } from '../wholesale/wholesale-theme'
 
 // ── 등급 안내 시트 ── (2026-06-15 대표 모델: 일반 / 플러스 / 프리미엄)
@@ -9,7 +10,12 @@ const GRADE_SHEET = [
   { name: '일반', desc: '승인 후 가입한 회원 · 기본 공급가', margin: '마진 +20%' },
 ]
 export default function GradeSheet({ current, onClose }: { current: string; onClose: () => void }) {
+  const navigate = useNavigate()
   const currentName = GRADE_NAME[current] || current
+  const code = (current || '').toUpperCase()
+  const loggedIn = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
+  // 플러스 자가 구독 동선 — 프리미엄(A) 이면 이미 최상위라 CTA 숨김.
+  const go = () => { onClose(); navigate(loggedIn ? '/wholesale/dashboard' : '/wholesale/login') }
   return (
     <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center" style={{ background: 'rgba(20,22,28,0.4)' }} onClick={onClose}>
       <div className="w-full lg:max-w-md bg-white rounded-t-3xl lg:rounded-3xl p-5 pb-7" onClick={e => e.stopPropagation()}>
@@ -34,8 +40,15 @@ export default function GradeSheet({ current, onClose }: { current: string; onCl
           })}
         </div>
         <p className="mt-4 text-[12px] leading-relaxed" style={{ color: WT.ink3 }}>
-          <b style={{ color: WT.ink2 }}>플러스</b>는 연 구독으로, <b style={{ color: WT.ink2 }}>프리미엄</b>은 유통스타트를 통한 일정 매출 달성 시 전환됩니다. 자세한 전환 안내는 관리자에게 문의하세요.
+          <b style={{ color: WT.ink2 }}>플러스</b>는 예치금에서 연 구독료를 결제하면 바로 적용되고, <b style={{ color: WT.ink2 }}>프리미엄</b>은 일정 매출 달성 시 자동 전환됩니다.
         </p>
+        {code !== 'A' && (
+          <button onClick={go}
+            className="mt-3 w-full inline-flex items-center justify-center gap-1.5 h-12 rounded-xl text-white text-[14px] font-bold"
+            style={{ background: WT.brand }}>
+            <Sparkles className="w-4 h-4" /> {code === 'B' ? '플러스 연장하기' : loggedIn ? '플러스 구독하기' : '로그인하고 시작하기'}
+          </button>
+        )}
       </div>
     </div>
   )
