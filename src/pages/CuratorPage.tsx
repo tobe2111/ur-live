@@ -10,7 +10,7 @@
  * Phase 1+ 사용자 결정 C 옵션: URL 통합 (셀러 권한 시 자동 redirect).
  */
 
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -86,6 +86,8 @@ export default function CuratorPage() {
   const [tab, setTab] = useState<CuratorTab>('home')
   // 🔍 2026-06-16 링크샵 시안: 검색 — 상품명 + 추천 코멘트(note) 라이브 필터.
   const [query, setQuery] = useState('')
+  // 🎨 2026-06-16 링크샵 시안: 본인 핀 관리(드래그 정렬) 모드 토글.
+  const [manageMode, setManageMode] = useState(false)
   const currentUser = useAuthStore((s: any) => s.user)
   // 🛡️ 2026-05-27 (편집 UI 영구 fix): useAuthStore.user 가 sync 안 된 카카오 user 도 isOwner 인정.
   //   localStorage user_id fallback — RouteGuards / lib/api 의 토큰 검사 패턴과 일관.
@@ -261,36 +263,57 @@ export default function CuratorPage() {
         />
         {/* 🛠️ 2026-06-16: 핀이 있을 때만 적립 strip — 갓 가입(온보딩)·빈 링크샵엔 0/0/0 노이즈 숨김. */}
         {isOwner && pins.length > 0 && <OwnerEarningsStrip />}
-        {/* 🔍 2026-06-16 링크샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터. */}
-        {pins.length > 0 && (
-          <div className="max-w-3xl mx-auto px-4 pt-3 pb-1">
-            <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212]">
-              <Search className="w-4 h-4 text-gray-400 shrink-0" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="상품·딜 이름으로 검색"
-                className="flex-1 min-w-0 bg-transparent outline-none text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400"
-              />
-              {query && (
-                <button onClick={() => setQuery('')} aria-label="지우기" className="shrink-0 w-5 h-5 rounded-full bg-gray-300 dark:bg-[#3A3A3A] text-white flex items-center justify-center">
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
+        {/* 🎨 2026-06-16 링크샵 시안: 본인 핀 정렬·관리 토글 */}
+        {isOwner && pins.length > 0 && (
+          <div className="max-w-3xl mx-auto px-4 pt-3 flex justify-end">
+            <button
+              onClick={() => setManageMode(m => !m)}
+              className="text-[12.5px] font-bold px-3.5 py-2 rounded-xl bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 active:opacity-80"
+            >
+              {manageMode ? '✓ 완료' : '⇅ 핀 정렬·관리'}
+            </button>
           </div>
         )}
-        <CuratorTabs
-          tab={tab}
-          onChange={setTab}
-          pinCount={pins.length}
-          shopCount={shopPins.length}
-          voucherCount={voucherPins.length}
-        />
+        {isOwner && manageMode ? (
+          <PinManageList
+            pins={pins}
+            onReorder={(next) => setData(prev => prev ? { ...prev, pins: next } : prev)}
+            onDeleted={onPinDeleted}
+          />
+        ) : (
+          <>
+            {/* 🔍 2026-06-16 링크샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터. */}
+            {pins.length > 0 && (
+              <div className="max-w-3xl mx-auto px-4 pt-3 pb-1">
+                <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212]">
+                  <Search className="w-4 h-4 text-gray-400 shrink-0" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="상품·딜 이름으로 검색"
+                    className="flex-1 min-w-0 bg-transparent outline-none text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400"
+                  />
+                  {query && (
+                    <button onClick={() => setQuery('')} aria-label="지우기" className="shrink-0 w-5 h-5 rounded-full bg-gray-300 dark:bg-[#3A3A3A] text-white flex items-center justify-center">
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            <CuratorTabs
+              tab={tab}
+              onChange={setTab}
+              pinCount={pins.length}
+              shopCount={shopPins.length}
+              voucherCount={voucherPins.length}
+            />
 
-        {tab === 'home' && renderPinTab(homePins)}
-        {tab === 'shop' && renderPinTab(shopPins, 'shop')}
-        {tab === 'vouchers' && renderPinTab(voucherPins, 'voucher')}
+            {tab === 'home' && renderPinTab(homePins)}
+            {tab === 'shop' && renderPinTab(shopPins, 'shop')}
+            {tab === 'vouchers' && renderPinTab(voucherPins, 'voucher')}
+          </>
+        )}
         {/* 🛡️ 2026-06-11 (사용자): '정보' 탭 제거 — 핸들 변경 기능만 오너 전용 슬림 행으로 보존 */}
         {isOwner && (
           <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between text-sm border-t border-gray-100 dark:border-[#1A1A1A] mt-6">
@@ -588,6 +611,109 @@ function HandleEditor({ handle }: { handle: string }) {
       </div>
       {msg && <span className={`text-[10px] ${status === 'ok' ? 'text-emerald-400' : status === 'checking' ? 'text-gray-400' : 'text-red-400'}`}>{msg}</span>}
     </dd>
+  )
+}
+
+// 🎨 2026-06-16 링크샵 시안: 본인 핀 관리 리스트 — 드래그(터치+마우스) 정렬 + 핀별 통계 + 코멘트 넛지 + 삭제.
+//   드래그 라이브러리 없이 pointer 이벤트로 구현 (window 리스너 + ref, 모바일 스크롤 방지 touch-action:none).
+function PinManageList({ pins, onReorder, onDeleted }: { pins: CuratorPin[]; onReorder: (next: CuratorPin[]) => void; onDeleted: (id: number) => void }) {
+  const [items, setItems] = useState<CuratorPin[]>(pins)
+  const itemsRef = useRef(items)
+  itemsRef.current = items
+  useEffect(() => { setItems(pins) }, [pins])
+  const dragIdxRef = useRef<number | null>(null)
+  const [draggingId, setDraggingId] = useState<number | null>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  function reorderTo(clientY: number) {
+    const container = listRef.current
+    const from = dragIdxRef.current
+    if (!container || from == null) return
+    const rows = Array.from(container.querySelectorAll('[data-pinrow]')) as HTMLElement[]
+    let target = rows.length - 1
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i].getBoundingClientRect()
+      if (clientY < r.top + r.height / 2) { target = i; break }
+    }
+    if (target !== from) {
+      setItems(prev => {
+        const next = [...prev]
+        const [m] = next.splice(from, 1)
+        next.splice(target, 0, m)
+        return next
+      })
+      dragIdxRef.current = target
+    }
+  }
+  useEffect(() => {
+    function onMove(e: PointerEvent) { if (dragIdxRef.current != null) { e.preventDefault(); reorderTo(e.clientY) } }
+    function onUp() {
+      if (dragIdxRef.current == null) return
+      dragIdxRef.current = null
+      setDraggingId(null)
+      const finalItems = itemsRef.current
+      onReorder(finalItems)
+      curatorApi.reorderPins(finalItems.map(p => p.id)).catch(() => { /* best-effort */ })
+    }
+    window.addEventListener('pointermove', onMove, { passive: false })
+    window.addEventListener('pointerup', onUp)
+    return () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp) }
+  }, [onReorder])
+
+  async function del(id: number) {
+    const ok = await confirmDialog({ message: '이 핀을 삭제할까요?', danger: true })
+    if (!ok) return
+    try {
+      const r = await curatorApi.removePin(id)
+      if (r?.success) { setItems(prev => prev.filter(p => p.id !== id)); onDeleted(id); toast.success('핀 삭제됨') }
+      else toast.error('삭제 실패')
+    } catch { toast.error('삭제 실패') }
+  }
+
+  const fmtK = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 pt-3 pb-6">
+      <div className="flex items-center justify-between mb-2.5">
+        <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">내 핀 {items.length}개</span>
+        <span className="text-[12px] text-gray-400 dark:text-gray-500">⇅ 끌어서 정렬</span>
+      </div>
+      <div ref={listRef} className="flex flex-col gap-2.5">
+        {items.map((pin, idx) => {
+          const img = pin.thumbnail || pin.image_url || ''
+          const est = pin.commission_rate > 0 ? Math.round(pin.price * pin.commission_rate / 100) : 0
+          const dragging = draggingId === pin.id
+          return (
+            <div
+              key={pin.id}
+              data-pinrow
+              className={`flex items-center gap-3 rounded-2xl border p-2.5 bg-white dark:bg-[#121212] ${dragging ? 'border-[#FF5634] shadow-lg' : 'border-gray-200 dark:border-[#2A2A2A]'}`}
+              style={{ opacity: dragging ? 0.92 : 1 }}
+            >
+              <span
+                onPointerDown={(e) => { e.preventDefault(); dragIdxRef.current = idx; setDraggingId(pin.id) }}
+                style={{ touchAction: 'none', cursor: 'grab' }}
+                className="text-gray-300 dark:text-gray-600 text-lg px-1 select-none leading-none"
+                aria-label="끌어서 정렬"
+              >⋮⋮</span>
+              {img
+                ? <img src={cfImage(img, { width: 100, format: 'auto' }) || img} alt="" className="w-[52px] h-[52px] rounded-xl object-cover shrink-0" loading="lazy" decoding="async" />
+                : <div className="w-[52px] h-[52px] rounded-xl bg-gray-100 dark:bg-[#1A1A1A] shrink-0" />}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[13px] font-bold text-gray-900 dark:text-white truncate">{pin.product_name}</span>
+                  {idx === 0 && <span className="shrink-0 text-[9.5px] font-extrabold text-[#FF5634] bg-[#FFEDE8] dark:bg-[#2a1812] px-1.5 py-0.5 rounded">강추</span>}
+                </div>
+                {pin.note
+                  ? <div className="text-[11.5px] text-gray-500 dark:text-gray-400 mt-1">조회 {fmtK(pin.click_count || 0)}{est > 0 ? ` · 적립 ₩${est.toLocaleString('ko-KR')}/건` : ''}</div>
+                  : <div className="text-[11.5px] font-semibold text-[#C2491F] dark:text-[#FF9576] mt-1">추천 코멘트 없음 · 추가하면 전환 ↑</div>}
+              </div>
+              <button onClick={() => del(pin.id)} aria-label="삭제" className="shrink-0 w-[30px] h-[30px] rounded-lg bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors text-sm font-bold">✕</button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
