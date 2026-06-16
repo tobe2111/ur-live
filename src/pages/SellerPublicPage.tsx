@@ -304,8 +304,8 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
         </div>
       )}
       <SEO
-        title={seller.name || t('product.seller')}
-        description={seller.bio || `${seller.name || t('product.seller')} - Ur Deal`}
+        title={`${seller.name || seller.username || t('product.seller')} 의 링크샵`}
+        description={seller.bio || `${seller.name || seller.username || t('product.seller')} 님의 링크샵`}
         image={seller.profile_image}
         url={`/profile/${seller.username || seller.slug || seller.id}`}
         /* 🛡️ 2026-04-22: Person/Organization JSON-LD 추가 (Google 셀러 카드 노출) */
