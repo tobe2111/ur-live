@@ -58,24 +58,27 @@ export default function HomeTab({
                         className="w-full h-full object-cover"
                       />
                     )}
-                    {disc > 0 && <span className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">-{disc}%</span>}
-                    {isAchieved && <span className="absolute top-1.5 right-1.5 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">{t('seller.publicPage.achieved')}</span>}
+                    {disc > 0 && <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md bg-[#141A2E]/90 text-[#FF7A5C] text-[11px] font-extrabold backdrop-blur">{disc}%</span>}
+                    {isAchieved && <span className="absolute top-1.5 right-1.5 bg-[#0E9F6E] text-white text-[9px] font-bold px-1.5 py-0.5 rounded">{t('seller.publicPage.achieved')}</span>}
                   </div>
                   <div className="mt-2">
                     <p className={`text-[12px] font-medium ${textClass} line-clamp-1`}>{p.name}</p>
                     {p.restaurant_name && <p className="text-[10px] text-gray-500 flex items-center gap-0.5 mt-0.5"><MapPin className="w-2.5 h-2.5" />{p.restaurant_name}</p>}
                     <div className="flex items-baseline gap-1.5 mt-0.5">
-                      <span className="text-[13px] font-extrabold text-red-500">{formatNumber(p.price || 0)}원</span>
+                      <span className={`text-[13px] font-extrabold ${textClass}`}>{formatNumber(p.price || 0)}원</span>
                       {p.original_price && p.original_price > p.price && (
-                        <span className="text-[10px] text-gray-500 line-through">{formatNumber(p.original_price || 0)}</span>
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(p.original_price || 0)}</span>
+                      )}
+                      {p.original_price && p.original_price > p.price && (
+                        <span className="ml-auto text-[10px] font-extrabold text-[#0E9F6E]">{formatNumber(p.original_price - (p.price || 0))} 절약</span>
                       )}
                     </div>
                     {(p.group_buy_target ?? 0) > 0 && (
                       <div className="mt-1.5">
-                        <div className="w-full bg-gray-700 rounded-full h-1.5"><div className="h-full bg-pink-500 rounded-full transition-all" style={{ width: `${progress}%` }} /></div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5"><div className="h-full bg-[#FF5634] rounded-full transition-all" style={{ width: `${progress}%` }} /></div>
                         <div className="flex items-center justify-between mt-0.5">
                           <p className="text-[9px] text-gray-400">{p.group_buy_current || 0}/{p.group_buy_target}명</p>
-                          {!isAchieved && <p className="text-[9px] text-pink-400 font-medium">{t('seller.publicPage.joinGroupBuy')}</p>}
+                          {!isAchieved && <p className="text-[9px] text-[#FF5634] font-medium">{t('seller.publicPage.joinGroupBuy')}</p>}
                         </div>
                       </div>
                     )}

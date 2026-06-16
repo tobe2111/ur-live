@@ -345,7 +345,7 @@ function OwnerEarningsStrip() {
       <div className="rounded-2xl p-4 text-white" style={{ background: 'linear-gradient(120deg,#141A2E,#2A3658)' }}>
         <div className="flex items-center justify-between">
           <span className="text-[12px] text-white/60">{t('curator.earn30dConfirmed', { defaultValue: '최근 30일 확정 적립' })}</span>
-          <Link to="/creator" className="text-[11px] font-bold text-white/70 hover:text-white">{t('curator.console', { defaultValue: '콘솔' })} →</Link>
+          <Link to="/creator" className="text-[11px] font-bold text-white/70 hover:text-white">{t('curator.consoleLink', { defaultValue: '콘솔' })} →</Link>
         </div>
         <div className="mt-1 flex items-baseline gap-2 flex-wrap">
           <span className="text-[26px] font-extrabold leading-none">{formatWon(confirmed)}</span>

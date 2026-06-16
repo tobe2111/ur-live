@@ -369,14 +369,16 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8">
               {shopProducts.map(p => {
                 const discountRate = p.discount_rate || (p.original_price ? Math.round((1 - p.price / p.original_price) * 100) : 0)
+                const savings = p.original_price && p.original_price > p.price ? p.original_price - p.price : 0
                 return (
                   <button
                     key={p.id}
                     type="button"
                     onClick={() => navigate(`/products/${p.id}`)}
-                    className="text-left active:scale-[0.98] transition-transform w-full block"
+                    className="text-left active:scale-[0.98] transition-transform w-full block rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212]"
                   >
-                    <div className="relative aspect-square w-full overflow-hidden bg-gray-50 rounded-xl" style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}>
+                    {/* 🎨 2026-06-16 링크샵 시안: 에디토리얼 카드 — 다크 네이비 할인칩(이미지 위) + 초록 절약액. */}
+                    <div className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#1A1A1A]" style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}>
                       {p.image_url ? (
                         <img
                           src={cfImage(p.image_url, { width: 300, format: 'auto' }) || p.image_url}
@@ -388,22 +390,24 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gray-100" />
+                        <div className="w-full h-full bg-gray-100 dark:bg-[#1A1A1A]" />
                       )}
                       {discountRate > 0 && (
-                        <span className="absolute top-1.5 left-1.5 rounded-md px-1.5 py-0.5 bg-red-500 text-white text-[9px] font-extrabold">
-                          -{discountRate}%
+                        <span className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-md bg-[#141A2E]/90 text-[#FF7A5C] text-[12px] font-extrabold backdrop-blur">
+                          {discountRate}%
                         </span>
                       )}
                     </div>
-                    <div className="mt-2">
-                      <p className={`text-[12px] ${T.text} leading-tight line-clamp-2`}>{p.name}</p>
-                      {p.original_price && p.original_price > p.price && (
-                        <p className="text-[10px] text-gray-400 line-through mt-1">{p.original_price.toLocaleString('ko-KR')}원</p>
-                      )}
-                      <div className="flex items-baseline gap-1 mt-0.5">
-                        {discountRate > 0 && <span className="text-[13px] font-extrabold text-red-500">{discountRate}%</span>}
-                        <span className={`text-[13px] font-extrabold ${T.text}`}>{p.price.toLocaleString('ko-KR')}원</span>
+                    <div className="p-2.5">
+                      <p className={`text-[13px] font-bold ${T.text} leading-tight line-clamp-2`}>{p.name}</p>
+                      <div className="mt-1.5 flex items-baseline gap-1.5 flex-wrap">
+                        {p.original_price && p.original_price > p.price && (
+                          <span className="text-[11px] text-gray-400 dark:text-gray-500 line-through">{p.original_price.toLocaleString('ko-KR')}원</span>
+                        )}
+                        <span className={`text-[15px] font-extrabold ${T.text}`}>{p.price.toLocaleString('ko-KR')}원</span>
+                        {savings > 0 && (
+                          <span className="ml-auto text-[11px] font-extrabold text-[#0E9F6E]">{savings.toLocaleString('ko-KR')}원<span className="font-semibold opacity-70"> 절약</span></span>
+                        )}
                       </div>
                     </div>
                   </button>
