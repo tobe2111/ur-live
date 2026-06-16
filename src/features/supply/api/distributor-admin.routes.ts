@@ -23,7 +23,7 @@ import { ensureDepositSchema, refundDeposit, recordDepositTxn, hasDepositRefundT
 import { ensureSupplyVisibilitySchema, normalizeVisibility } from './supply-visibility'
 import { ensureOemSchema, normalizeOemStatus } from './oem-requests'
 import { buildXlsx, xlsxResponse } from './xlsx'
-import { distributorPrice, marginForGrade, type GradeMargin } from '@/lib/distributor-pricing'
+import { distributorPriceFromRetail, marginForGrade, type GradeMargin } from '@/lib/distributor-pricing'
 import { SUPPLY_CHANNELS, SUPPLY_CHANNEL_THRESHOLDS_KEY, parseChannelThresholds } from '@/shared/supply-channels'
 import { ensureTaxDocSchema, splitVat, renderTaxDocHtml, type TaxDocRow } from './tax-documents'
 import { isBarobillConfigured, issueBarobillTaxInvoice, type BarobillEnv } from '@/services/barobill'
@@ -62,10 +62,26 @@ async function ensureGrades(db: D1Database) {
     active INTEGER NOT NULL DEFAULT 1,
     updated_at DATETIME DEFAULT (datetime('now'))
   )`).run().catch(swallow('distributor-admin:create-table'))
+  // 🆕 2026-06-16 신모델 = 판매가 대비 보장마진(%). 프리미엄 38 / 프로 30 / 일반 15.
   await db.prepare(`INSERT OR IGNORE INTO distributor_grades (grade, label, margin_pct, sort_order, is_special) VALUES
-    ('A','A등급',10,1,0),('B','B등급',15,2,0),('C','C등급(기본)',20,3,0),
-    ('D','D등급',25,4,0),('OEM','OEM',8,5,0),('SPECIAL','특별할인(기간한정)',0,9,1)`)
+    ('A','프리미엄',38,1,0),('B','프로',30,2,0),('C','일반',15,3,0),
+    ('D','D등급',8,4,0),('OEM','OEM',40,5,0),('SPECIAL','특별할인(기간한정)',45,9,1)`)
     .run().catch(swallow('distributor-admin:seed'))
+  // 🆕 2026-06-16 공식 전환(원가×마크업 → 판매가×(1−보장마진)) 1회 마이그레이션. 기존 행은 구 마크업 값
+  //   (A10/B15/C20)이라 그대로 두면 신엔진이 보장마진으로 오해석 → 가격 역전. flag 로 1회만 값/라벨 갱신.
+  const MIGRATE_FLAG = 'wholesale_grade_model_v2_20260616'
+  const flag = await db.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(MIGRATE_FLAG).first<{ value: string }>().catch(() => null)
+  if (!flag) {
+    await db.batch([
+      db.prepare("UPDATE distributor_grades SET margin_pct = 38, label = '프리미엄' WHERE grade = 'A'"),
+      db.prepare("UPDATE distributor_grades SET margin_pct = 30, label = '프로' WHERE grade = 'B'"),
+      db.prepare("UPDATE distributor_grades SET margin_pct = 15, label = '일반' WHERE grade = 'C'"),
+      db.prepare("UPDATE distributor_grades SET margin_pct = 8 WHERE grade = 'D'"),
+      db.prepare("UPDATE distributor_grades SET margin_pct = 40 WHERE grade = 'OEM'"),
+      db.prepare("UPDATE distributor_grades SET margin_pct = 45 WHERE grade = 'SPECIAL'"),
+      db.prepare("INSERT INTO platform_settings (key, value, updated_at) VALUES (?, '1', datetime('now')) ON CONFLICT(key) DO UPDATE SET value = '1', updated_at = datetime('now')").bind(MIGRATE_FLAG),
+    ]).catch(swallow('distributor-admin:grade-model-v2-migrate'))
+  }
 }
 
 // ── GET /grades ──────────────────────────────────────────────────────────────
@@ -718,20 +734,21 @@ app.get('/products/export', async (c) => {
     const table: GradeMargin[] = (gradesRes.results || []).map(r => ({ grade: r.grade, margin_pct: r.margin_pct, is_special: !!r.is_special }))
     const rows = await c.env.DB.prepare(`
       SELECT p.id, p.name, p.category, p.stock, p.barcode, COALESCE(p.supply_visibility,'ALL') AS supply_visibility,
-             COALESCE(p.supply_price,0) AS supply_price, p.supply_margin_override_pct AS margin_override, sup.business_name AS supplier_name
+             COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, p.supply_margin_override_pct AS margin_override, sup.business_name AS supplier_name
       FROM products p LEFT JOIN suppliers sup ON sup.id = p.supplier_id
       WHERE p.is_supply_product = 1 AND p.supply_source_id IS NULL
       ORDER BY p.created_at DESC LIMIT 10000
-    `).all<{ id: number; name: string; category: string | null; stock: number; barcode: string | null; supply_visibility: string; supply_price: number; margin_override: number | null; supplier_name: string | null }>()
+    `).all<{ id: number; name: string; category: string | null; stock: number; barcode: string | null; supply_visibility: string; supply_price: number; retail_price: number; margin_override: number | null; supplier_name: string | null }>()
     const out = (rows.results || []).map(r => {
       // 상품별 마진 override(고정) 설정 시 등급 무관 동일가 — A/B/C 컬럼 모두 override 가로 표기.
       const ovSet = r.margin_override != null && Number.isFinite(Number(r.margin_override)) && Number(r.margin_override) >= 0
       const effMargin = (g: string) => (ovSet ? Number(r.margin_override) : marginForGrade(g, table))
+      // 🆕 2026-06-16 신모델: 공급가 = max(원가, 판매가×(1−보장마진%)).
       return [
         r.id, r.name, r.supplier_name || '', r.category || '', r.stock, r.barcode || '', r.supply_visibility, r.supply_price,
-        distributorPrice(r.supply_price, effMargin('A')),
-        distributorPrice(r.supply_price, effMargin('B')),
-        distributorPrice(r.supply_price, effMargin('C')),
+        distributorPriceFromRetail(r.retail_price, r.supply_price, effMargin('A')),
+        distributorPriceFromRetail(r.retail_price, r.supply_price, effMargin('B')),
+        distributorPriceFromRetail(r.retail_price, r.supply_price, effMargin('C')),
         ovSet ? `${Number(r.margin_override)}%` : '',
       ]
     })

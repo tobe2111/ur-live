@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+## 🔴 2026-06-16 — 등급/마진 모델 전면 전환 (대표 확정, 머니 크리티컬) — ⚠️ staging E2E 필수
+**모델 변경**: 등급 = 일반/프로/프리미엄(가칭). 마진 = **판매가(권장소비자가) 대비 보장마진** (일반 15% / 프로 30% / 프리미엄 38%).
+- **공식 전환**(`distributor-pricing.ts`): (구) `공급가 = 원가 × (1+마크업)` → (신) **`공급가 = max(제조사원가, 판매가 × (1−보장마진%))`** (원가 하한=플랫폼 손실 차단). 신규 `distributorPriceFromRetail()`. `resolveDistributorPrice` 에 `retailPrice` 인자 추가. `DEFAULT_GRADE_MARGINS` A38/B30/C15/D8/OEM40/SPECIAL45.
+- **전 호출부 retailPrice 배선**(wholesale.routes 12곳: 카탈로그 리스트/상세/홈/재주문/**주문청구**/미리보기/엑셀·CSV 내보내기/제안 + wholesale-board 찜 + distributor-admin 전등급 미리보기). 누락 시 일부 화면만 옛값=가격 불일치 → 전수 배선. SELECT 에 `p.price AS retail_price` 추가.
+- **prod 데이터 마이그레이션**: `distributor_grades` 값 의미가 마크업→보장마진으로 flip → `ensureGrades` 에 1회 마이그레이션(flag `wholesale_grade_model_v2_20260616`): A38/B30/C15 + 라벨(프리미엄/프로/일반). 시드 기본값도 신모델.
+- **명칭/구독료**: 플러스→**프로**, 프로 연 구독료 기본 **100만원**(was 99,000). GRADE_NAME/GradeSheet(마진 15/30/38)/PlusMembershipCard/cron 알림/어드민 라벨 전부 정합.
+- **표시 마진**: `marginVsRetail()` 신설(판매가 대비) — 카드/상세 '마진 +N%(원가대비)' → '마진 N%(판매가대비)'.
+- **정산 불변**: 제조사 = 원가(supply_price) 정산, 플랫폼 = 공급가−원가 스프레드(자연 ~10%). 정산 로직 무수정.
+- 검증: tsc 0 · 전체 unit 2104 통과(pricing 14 재작성) · client+worker build · money/sql/theme 통과. **⚠️⚠️ 실 staging 결제 E2E 필수**(전 등급 표시가=청구가 일치, 원가 하한, 주문 차감) — 외부 검증 불가 환경이라 prod 반영 전 1회 필수.
+
 ## ✅ 2026-06-16 — 등급 Phase 2: 플러스 연 구독(예치금 결제) + 프리미엄 자동승급(기존) (②/4)
 **모델**: 일반(C, 승인) / 플러스(B, 연 구독) / 프리미엄(A, 매출 자동). ⚠️ 도매몰 PG 미사용 — 구독료는 **예치금(계좌이체 충전 잔액)에서 차감**(Toss 아님).
 - **프리미엄 자동승급은 이미 구현됨**(`handleWholesaleGradeEval`, BIZ-7 — GMV promote-only, 설정 가능, 주1회 cron + 어드민 트리거). Phase 2 신규 = 플러스 구독만.

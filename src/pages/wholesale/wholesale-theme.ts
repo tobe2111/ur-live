@@ -39,6 +39,9 @@ export const unitMargin = (supply: number, retail: number) => Math.max(0, (retai
 /** 공급가 대비 마진율 (%) */
 export const marginRate = (supply: number, retail: number) =>
   supply > 0 && retail > supply ? Math.round(((retail - supply) / supply) * 100) : 0
+/** 🆕 2026-06-16 판매가(권장가) 대비 마진율 (%) — (판매가 − 공급가)/판매가. 신모델(보장마진) 표시 SSOT. */
+export const marginVsRetail = (cost: number, retail: number) =>
+  retail > 0 && retail > cost ? Math.round(((retail - cost) / retail) * 100) : 0
 
 /** 등급 라벨 (코드 → 짧은 배지용) */
 export const GRADE_LABEL: Record<string, string> = {
@@ -52,7 +55,7 @@ export const GRADE_LABEL: Record<string, string> = {
  *   D/OEM/특별가는 어드민 엣지 케이스로 라벨 유지.
  */
 export const GRADE_NAME: Record<string, string> = {
-  A: '프리미엄', B: '플러스', C: '일반', D: 'D', OEM: 'OEM', SPECIAL: '특별가',
+  A: '프리미엄', B: '프로', C: '일반', D: 'D', OEM: 'OEM', SPECIAL: '특별가',
 }
 
 /**
