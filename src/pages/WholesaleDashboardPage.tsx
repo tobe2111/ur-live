@@ -17,6 +17,7 @@ import { buildWholesaleNav } from './wholesale/wholesale-nav'
 import { getSupplierToken } from '@/lib/supplier-api'
 import { clearAuthData } from '@/utils/auth'
 import WholesaleDashboardShell from '@/components/wholesale/WholesaleDashboardShell'
+import PlusMembershipCard from '@/components/wholesale/PlusMembershipCard'
 
 // 🏭 2026-06-12 (감사 부채): 주문 상태 뱃지 → wholesale-theme.ts SSOT 로 통합.
 //   기존 자체 정의(5종)는 주문내역 페이지와 라벨이 달랐음('배송준비' vs '결제완료').
@@ -161,6 +162,9 @@ export default function WholesaleDashboardPage() {
             </div>
           ))}
         </section>
+
+        {/* 🏅 플러스 멤버십(연 구독) — 예치금 차감. 일반→구독 CTA / 플러스→만료·연장 / 프리미엄→안내 */}
+        <PlusMembershipCard />
 
         {/* 제조사 겸업 — 제조사 대시보드 진입 */}
         {supplierToken && (

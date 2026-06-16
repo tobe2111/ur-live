@@ -281,6 +281,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   distributor_grade: A/B/C/D/OEM (NULL=미배정→기본 D). special_discount_until: 이 시각 전까지 SPECIAL 등급가 적용.
     { desc: 'sellers.distributor_grade', sql: "ALTER TABLE sellers ADD COLUMN distributor_grade TEXT" },
     { desc: 'sellers.special_discount_until', sql: "ALTER TABLE sellers ADD COLUMN special_discount_until DATETIME" },
+    // 🏅 2026-06-16 플러스 멤버십(연 구독) 만료일 — 구독만 이 컬럼을 씀(만료 시 cron 이 B→C 강등).
+    { desc: 'sellers.plus_until', sql: "ALTER TABLE sellers ADD COLUMN plus_until TEXT" },
     // 🏭 2026-06-09 도매몰 가입 — 대표자 연락처 + 담당자(성명/연락처/이메일) 분리 수집. (유통사=sellers, 제조사=suppliers 양쪽)
     { desc: 'sellers.representative_phone', sql: "ALTER TABLE sellers ADD COLUMN representative_phone TEXT" },
     { desc: 'sellers.manager_name', sql: "ALTER TABLE sellers ADD COLUMN manager_name TEXT" },
