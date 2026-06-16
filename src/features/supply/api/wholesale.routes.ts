@@ -1050,27 +1050,6 @@ app.get('/recent-items', async (c) => {
 // ── GET /catalog ────────────────────────────────────────────────────────────
 //   🔭 향후(BIZ-4 후속, OUT OF SCOPE): 품절 상품 '재입고 알림 구독'(restock-alert) — 별도 구독 테이블 +
 //      재고 0→N 전환 감지 cron + 알림 발송 필요. 이번 작업 범위 아님(검색/정렬/필터만).
-// 🔭 2026-06-16 (사용자 신고 — 도매 상품 노출 안됨, 근본원인 진단): 공급상품 필터 깔때기 카운트.
-//   read-only, 카운트만(민감정보 0). 카탈로그 WHERE 의 각 조건이 상품을 어디서 떨어뜨리는지 가시화.
-//   /api/wholesale/catalog 가 total=1 인 게 '데이터(공급상품 없음)' 인지 '필터 버그'인지 판별용.
-app.get('/_diag/counts', async (c) => {
-  const { DB } = c.env
-  const q = async (sql: string) => ((await DB.prepare(sql).first<{ c: number }>().catch(() => null))?.c ?? -1)
-  const out = {
-    products_total: await q('SELECT COUNT(*) c FROM products'),
-    is_supply: await q('SELECT COUNT(*) c FROM products WHERE is_supply_product=1'),
-    plus_active: await q('SELECT COUNT(*) c FROM products WHERE is_supply_product=1 AND is_active=1'),
-    plus_origin: await q('SELECT COUNT(*) c FROM products WHERE is_supply_product=1 AND is_active=1 AND supply_source_id IS NULL'),
-    plus_priced: await q('SELECT COUNT(*) c FROM products WHERE is_supply_product=1 AND is_active=1 AND supply_source_id IS NULL AND COALESCE(supply_price,0)>0'),
-    plus_mall1: await q('SELECT COUNT(*) c FROM products WHERE is_supply_product=1 AND is_active=1 AND supply_source_id IS NULL AND COALESCE(supply_price,0)>0 AND COALESCE(mall_id,1)=1'),
-    catalogable_all_vis: await q("SELECT COUNT(*) c FROM products WHERE is_supply_product=1 AND is_active=1 AND supply_source_id IS NULL AND COALESCE(supply_price,0)>0 AND COALESCE(mall_id,1)=1 AND COALESCE(supply_visibility,'ALL')='ALL'"),
-    by_mall: (await DB.prepare('SELECT COALESCE(mall_id,1) m, COUNT(*) c FROM products WHERE is_supply_product=1 AND is_active=1 AND supply_source_id IS NULL AND COALESCE(supply_price,0)>0 GROUP BY COALESCE(mall_id,1)').all().catch(() => ({ results: [] }))).results,
-    by_visibility: (await DB.prepare("SELECT COALESCE(supply_visibility,'ALL') v, COUNT(*) c FROM products WHERE is_supply_product=1 AND is_active=1 AND supply_source_id IS NULL AND COALESCE(supply_price,0)>0 GROUP BY COALESCE(supply_visibility,'ALL')").all().catch(() => ({ results: [] }))).results,
-  }
-  c.header('Cache-Control', 'no-store')
-  return c.json({ success: true, ...out })
-})
-
 app.get('/catalog', async (c) => {
   // 🏭 2026-06-04 몰-first: 비로그인도 카탈로그 둘러보기 가능. 가격(등급 공급가)은 로그인 시에만.
   //   비로그인 → distributor_price=null + requires_login. 가시성은 ALL 만(허용목록 매칭 X).
