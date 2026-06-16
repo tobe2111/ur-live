@@ -9,7 +9,7 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Menu, X, type LucideIcon } from 'lucide-react'
-import UrDealLogo from '@/components/brand/UrDealLogo'
+import { WholesaleWordmark } from '../../pages/wholesale-catalog/WholesaleLogo'
 
 export interface WholesaleNavItem {
   key: string
@@ -49,8 +49,8 @@ export default function WholesaleDashboardShell({
     <aside className="w-[232px] flex-shrink-0 flex flex-col h-full" style={{ background: '#0A0A0B' }}>
       {/* Branding */}
       <div className="px-4 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <div className="flex items-center gap-2.5">
-          <UrDealLogo size={14} forceDark />
+        <div className="flex items-center gap-2 flex-wrap">
+          <WholesaleWordmark dark height={18} />
           <span
             className="font-bold uppercase"
             style={{ fontSize: '9px', letterSpacing: '0.08em', color: '#FC5424' }}
