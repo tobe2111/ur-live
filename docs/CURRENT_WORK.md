@@ -1,5 +1,18 @@
 # 🚧 진행 중 작업
 
+## 🔴 2026-06-16 — 플랫폼 수수료율 어드민 조정 (정산 분배, 머니 크리티컬) — ⚠️ staging E2E 필수
+대표 확정: "공급가에 플랫폼 마진 N%가 포함" (공급가 8,500 → 플랫폼 850 / 제조사 7,650).
+- **신설 설정** `platform_settings.wholesale_platform_commission_pct`(기본 10, 0~90) — `/admin/distributor-grades` 에서 조정.
+- **정산 분배 변경**(`wholesale-settlement.ts`): 제조사 정산 = `max(원가, round(공급가×(1−수수료%)))`(원가 이상 보장), 플랫폼 = 공급가 − 제조사. `splitWholesaleUnit()` SSOT + `loadPlatformCommissionPct()`. **기존엔 제조사=원가·플랫폼=스프레드 전체 → 이제 플랫폼=공급가의 N%(제조사가 90% 수령)**. ⚠️ 신규 주문 제조사 지급액 상승/플랫폼 마진 하락(의도).
+- **주문 생성**(`wholesale.routes.ts`): supply_total = Σ제조사정산, margin_total = subtotal−supply_total(=Σ수수료). 정산 호출이 같은 요청 동기 실행 → comm% drift 없음. 환불 역전은 저장된 settlement supply/retail 사용 → 자동 정합.
+- **어드민 UI**: AdminDistributorGradesPage 수수료율 입력(%) + 예시 안내. distributor-admin GET/PATCH `/auto-grade/settings` 에 platform_commission_pct 추가.
+- 검증: tsc 0 · split 단위테스트 8 통과 · build · money/theme. **⚠️ staging 결제→정산 E2E 필수**(제조사 지급=공급가×90%·원가하한, 플랫폼=10%).
+- ⚠️ 미해결 질문: 이 모델은 플랫폼 마진이 '스프레드 전체'→'공급가 10%'로 **하락**. 대표 의도 재확인 필요(공급가에 10% 포함 = 맞으면 그대로).
+
+### 후속 대기 (사용자 요청 — 추천 후 승인 대기)
+- **어드민 하위계정 권한 제한**: requireAdminRole() 인프라는 있으나 일부 엔드포인트(payouts/settlement)에만 적용 → 대부분 엔드포인트는 requireAdmin(아무 어드민이나 전권). 제한 역할(ops/cs/finance/viewer)을 실제 강제하려면 어드민 라우트 전반에 role 게이트 적용 필요(큰 작업).
+- **어드민 활동 로그 뷰어**: writeAuditLog+audit_logs 인프라 존재(55개 호출). 뷰어 페이지(`/admin/audit-log`) + 커버리지 보강 제안.
+
 ## 🔴 2026-06-16 — 등급/마진 모델 전면 전환 (대표 확정, 머니 크리티컬) — ⚠️ staging E2E 필수
 **모델 변경**: 등급 = 일반/프로/프리미엄(가칭). 마진 = **판매가(권장소비자가) 대비 보장마진** (일반 15% / 프로 30% / 프리미엄 38%).
 - **공식 전환**(`distributor-pricing.ts`): (구) `공급가 = 원가 × (1+마크업)` → (신) **`공급가 = max(제조사원가, 판매가 × (1−보장마진%))`** (원가 하한=플랫폼 손실 차단). 신규 `distributorPriceFromRetail()`. `resolveDistributorPrice` 에 `retailPrice` 인자 추가. `DEFAULT_GRADE_MARGINS` A38/B30/C15/D8/OEM40/SPECIAL45.

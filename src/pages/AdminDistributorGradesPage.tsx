@@ -126,6 +126,8 @@ export default function AdminDistributorGradesPage() {
   const [agWindowDays, setAgWindowDays] = useState(90)
   // 🏅 프로 멤버십 연 구독료(원) — 유통사가 예치금에서 결제(PG 미사용).
   const [agPlusFee, setAgPlusFee] = useState(1000000)
+  // 🆕 2026-06-16 플랫폼 수수료율(%) — 공급가에 포함된 플랫폼 마진. 제조사=공급가×(1−이값)(원가 하한).
+  const [agCommPct, setAgCommPct] = useState(10)
   const [agLastRun, setAgLastRun] = useState<string | null>(null)
   const [agLoading, setAgLoading] = useState(true)
   const [agSaving, setAgSaving] = useState(false)
@@ -140,6 +142,7 @@ export default function AdminDistributorGradesPage() {
           setAgThresholds(Array.isArray(r.data.thresholds) ? r.data.thresholds : [])
           setAgWindowDays(Number(r.data.window_days) || 90)
           setAgPlusFee(Number(r.data.plus_annual_fee) || 1000000)
+          setAgCommPct(Number.isFinite(Number(r.data.platform_commission_pct)) ? Number(r.data.platform_commission_pct) : 10)
           setAgLastRun(r.data.last_run ?? null)
         }
       })
@@ -239,6 +242,7 @@ export default function AdminDistributorGradesPage() {
     if (agThresholds.length === 0) { toast.error('최소 1개 이상의 등급 임계값이 필요합니다'); return }
     if (!Number.isFinite(agWindowDays) || agWindowDays < 1 || agWindowDays > 365) { toast.error('집계 기간은 1~365일이어야 합니다'); return }
     if (!Number.isFinite(agPlusFee) || agPlusFee < 1000 || agPlusFee > 10_000_000) { toast.error('프로 연 구독료는 1,000원 ~ 1,000만원이어야 합니다'); return }
+    if (!Number.isFinite(agCommPct) || agCommPct < 0 || agCommPct > 90) { toast.error('플랫폼 수수료율은 0~90% 사이여야 합니다'); return }
     setAgSaving(true)
     try {
       const r = await api.patch('/api/admin/distributor/auto-grade/settings', {
@@ -246,6 +250,7 @@ export default function AdminDistributorGradesPage() {
         thresholds: agThresholds,
         window_days: agWindowDays,
         plus_annual_fee: agPlusFee,
+        platform_commission_pct: agCommPct,
       }, h)
       if (r.data?.success) { toast.success('자동등급 설정 저장됨'); loadAutoGrade() }
       else toast.error(r.data?.error || '저장 실패')
@@ -601,8 +606,18 @@ export default function AdminDistributorGradesPage() {
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">원</span>
                   </div>
                 </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">💰 플랫폼 수수료율 (공급가 내 우리 마진)</label>
+                  <div className="relative">
+                    <input type="number" min={0} max={90} step={0.5} value={agCommPct}
+                      onChange={e => setAgCommPct(Math.max(0, Math.min(90, Number(e.target.value) || 0)))}
+                      className="w-28 pl-3 pr-8 py-2 border border-gray-200 rounded-lg text-gray-900" />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                  </div>
+                </div>
               </div>
               <p className="text-xs text-gray-400">프로(B)는 유통사가 연 구독료를 <b>예치금에서 결제</b>해 1년간 적용(PG 미사용). 프리미엄(A)은 위 매출 임계 자동 승급. 일반(C)은 가입 승인 기본.</p>
+              <p className="text-xs text-gray-400">💰 <b>플랫폼 수수료율</b>: 유통사가 낸 공급가 중 플랫폼이 가져가는 몫(%). 제조사 정산 = 공급가×(1−이 값), 단 제조사 원가 이상 보장. 예) 수수료 10% · 공급가 8,500 → 플랫폼 850 / 제조사 7,650.</p>
 
               {/* 임계값 테이블 */}
               <div>

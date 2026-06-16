@@ -18,7 +18,7 @@ import { adminIpWhitelist, adminAuditMiddleware, writeAuditLog } from '@/worker/
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
-import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
+import { reverseSupplierOnWholesaleRefund, DEFAULT_PLATFORM_COMMISSION_PCT } from './wholesale-settlement'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn, hasDepositRefundTxn } from './wholesale-deposit-core'
 import { ensureSupplyVisibilitySchema, normalizeVisibility } from './supply-visibility'
 import { ensureOemSchema, normalizeOemStatus } from './oem-requests'
@@ -1195,12 +1195,13 @@ async function writeSettingRaw(DB: D1Database, key: string, value: string): Prom
 app.get('/auto-grade/settings', async (c) => {
   try {
     const DB = c.env.DB
-    const [enabledRaw, thresholdsRaw, windowRaw, lastRun, plusFeeRaw] = await Promise.all([
+    const [enabledRaw, thresholdsRaw, windowRaw, lastRun, plusFeeRaw, commRaw] = await Promise.all([
       readSettingRaw(DB, AUTO_GRADE_ENABLED_KEY),
       readSettingRaw(DB, AUTO_GRADE_THRESHOLDS_KEY),
       readSettingRaw(DB, AUTO_GRADE_WINDOW_DAYS_KEY),
       readSettingRaw(DB, AUTO_GRADE_LAST_RUN_KEY),
       readSettingRaw(DB, PLUS_FEE_KEY),
+      readSettingRaw(DB, 'wholesale_platform_commission_pct'),
     ])
     const enabled = enabledRaw === '1' || enabledRaw === 'true'
     const thresholds = parseThresholds(thresholdsRaw)
@@ -1208,12 +1209,15 @@ app.get('/auto-grade/settings', async (c) => {
     const windowDays = Number.isFinite(w) && w >= 1 && w <= 365 ? Math.floor(w) : 90
     const pf = Math.floor(Number(plusFeeRaw))
     const plusAnnualFee = Number.isFinite(pf) && pf > 0 ? pf : DEFAULT_PLUS_ANNUAL_FEE
+    const pc = Number(commRaw)
+    const platformCommissionPct = Number.isFinite(pc) && pc >= 0 && pc <= 90 ? pc : DEFAULT_PLATFORM_COMMISSION_PCT
     return c.json({
       success: true,
       enabled,
       thresholds,        // [{ grade, min_gmv }] (min_gmv 내림차순)
       window_days: windowDays,
       plus_annual_fee: plusAnnualFee, // 🏅 프로 연 구독료(원) — 0 이하/미설정이면 기본 1,000,000
+      platform_commission_pct: platformCommissionPct, // 🆕 플랫폼 수수료율(%) — 공급가에 포함된 플랫폼 마진. 기본 10.
       last_run: lastRun, // ISO 또는 null (한 번도 안 돌면)
       defaults: DEFAULT_THRESHOLDS,
     })
@@ -1297,7 +1301,18 @@ app.patch('/auto-grade/settings', async (c) => {
       after.plus_annual_fee = f
     }
 
-    if (!stmts.length) return c.json({ success: false, error: '변경할 내용이 없습니다 (enabled / thresholds / window_days / plus_annual_fee)' }, 400)
+    // 🆕 2026-06-16 플랫폼 수수료율(%) — 공급가에 포함된 플랫폼 마진. 0~90. 제조사=공급가×(1−이값)(원가 하한), 플랫폼=공급가×이값.
+    if (body.platform_commission_pct !== undefined) {
+      const pc = Number(body.platform_commission_pct)
+      if (!Number.isFinite(pc) || pc < 0 || pc > 90) return c.json({ success: false, error: '플랫폼 수수료율은 0~90% 사이여야 합니다' }, 400)
+      stmts.push(DB.prepare(
+        `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
+      ).bind('wholesale_platform_commission_pct', String(pc)))
+      after.platform_commission_pct = pc
+    }
+
+    if (!stmts.length) return c.json({ success: false, error: '변경할 내용이 없습니다 (enabled / thresholds / window_days / plus_annual_fee / platform_commission_pct)' }, 400)
     await DB.batch(stmts)
 
     await writeAuditLog(c, {
