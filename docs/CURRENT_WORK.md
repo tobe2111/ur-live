@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-16 — 도매몰 카탈로그 '상품 왔다갔다'(간헐적 빈 그리드) 영구 수정 (사용자 신고, prod-diag 실측)
+**근본원인**(GitHub Actions prod-diag 측정 — 컨테이너 egress 차단이라 ground truth 수집): guest `/api/wholesale/catalog` 가 빈 결과(콜드 isolate/일시 pragma·D1 오류)를 만들면 ① 공유 캐시(CDN-Cache-Control max-age=300)에 빈 응답 저장 → 5분간 모두 빈 그리드 ② worker SSR 가 빈 배열을 initialData 주입 → guest 가 staleTime(60s) 동안 refetch 안 함 → 고착 ③ 클라 `.catch(()=>[])` 가 일시 오류를 '성공한 빈 결과'로 삼켜 재시도 없이 빈 그리드. isolate/캐시 상태별로 빈 결과가 들쭉날쭉 → '왔다갔다'.
+- **서버**(`wholesale.routes.ts /catalog`): 빈 카탈로그(items=0)는 절대 공유 캐시 금지(`no-store`) — guest/등급/콜드 pragma 분기 전부. 비어있지 않은 기본 guest 응답만 SSR/prewarm 캐논 키(`/api/wholesale/catalog[?]`)에 명시적 `caches.default.put` → SSR 의 edge-read 가 매번 miss(self-fetch 261ms)하던 것 edge-hit(~4ms)로.
+- **SSR 리더**(`wholesale-catalog/ssr.ts`): 빈 배열 페이로드는 '없음' 취급(length>0 일 때만 consume) → 빈 SSR 이면 클라가 정상 fetch 복구.
+- **클라**(`WholesaleCatalogPage.tsx`): `.catch(()=>[])` 제거 + `retry:2` → 일시 오류 자동 재시도.
+- **prod 검증**(배포 후 재측정): `x-ssr-status WHOLESALE:self-fetch-hit(261ms)` → `edge-hit(4ms)`, `/wholesale` TTFB 0.333s→**0.081s**, 카탈로그 API 2회 모두 non-empty. **Toss/금액/등급가 계산 무변경 · worker SSR inject 블록 무수정(잠금 보존)** — 캐시 정책·복구 경로만.
+
 ## ✅ 2026-06-16 — 도매몰 서브페이지·대시보드 시안 리디자인 (Claude Design `유통스타트 서브페이지/판매자·계정.dc.html`, opus)
 **배경**: 네이비 #0C2454 + 오렌지 #FC5424 리브랜드 + UTONG START 로고(WholesaleWordmark) 통일 위에서, 서브페이지를 **장바구니부터 순차 리디자인**(사용자 "가장 이상적으로"). AskUserQuestion 확정: 비로그인 가격=가림 유지, 다크용 흰 로고 제작.
 - **유통사 대시보드 마이페이지** (`WholesaleDashboardPage`): 다크 등급 hero → 라이트 인사+등급칩 + KPI 카드 4(보더·색상값·부제) + 주문내역 상태탭(전체/결제완료/배송중/구매확정) 테이블. 미사용 useWholesaleMall 제거.
