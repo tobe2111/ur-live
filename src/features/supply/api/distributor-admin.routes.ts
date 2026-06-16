@@ -1213,7 +1213,7 @@ app.get('/auto-grade/settings', async (c) => {
       enabled,
       thresholds,        // [{ grade, min_gmv }] (min_gmv 내림차순)
       window_days: windowDays,
-      plus_annual_fee: plusAnnualFee, // 🏅 플러스 연 구독료(원) — 0 이하/미설정이면 기본 99,000
+      plus_annual_fee: plusAnnualFee, // 🏅 프로 연 구독료(원) — 0 이하/미설정이면 기본 1,000,000
       last_run: lastRun, // ISO 또는 null (한 번도 안 돌면)
       defaults: DEFAULT_THRESHOLDS,
     })
@@ -1286,10 +1286,10 @@ app.patch('/auto-grade/settings', async (c) => {
       after.window_days = w
     }
 
-    // 🏅 플러스 연 구독료 — 1,000 ~ 1,000만원. 0/미설정이면 기본값 적용(엔드포인트 fallback).
+    // 🏅 프로 연 구독료 — 1,000 ~ 1,000만원. 0/미설정이면 기본값 적용(엔드포인트 fallback).
     if (body.plus_annual_fee !== undefined) {
       const f = Math.floor(Number(body.plus_annual_fee))
-      if (!Number.isFinite(f) || f < 1000 || f > 10_000_000) return c.json({ success: false, error: '플러스 연 구독료는 1,000원 ~ 1,000만원 사이여야 합니다' }, 400)
+      if (!Number.isFinite(f) || f < 1000 || f > 10_000_000) return c.json({ success: false, error: '프로 연 구독료는 1,000원 ~ 1,000만원 사이여야 합니다' }, 400)
       stmts.push(DB.prepare(
         `INSERT INTO platform_settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`

@@ -32,10 +32,11 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
     e.preventDefault()
     setError('')
     const supply = Number(form.supply_price)
-    const retail = Number(form.suggested_retail_price || form.supply_price)
+    // 🆕 2026-06-16 신모델: 권장 소비자가(판매가) 필수 — 폴백 제거. 유통 마진이 (판매가−공급가) 에서 나옴.
+    const retail = Number(form.suggested_retail_price)
     if (!form.name.trim()) { setError(t('supplier.errName', { defaultValue: '상품명을 입력해주세요' })); return }
     if (!Number.isFinite(supply) || supply <= 0) { setError(t('supplier.errSupply', { defaultValue: '공급가를 올바르게 입력해주세요' })); return }
-    if (retail < supply) { setError(t('supplier.errRetail', { defaultValue: '권장 소비자가는 공급가 이상이어야 합니다' })); return }
+    if (!form.suggested_retail_price || !Number.isFinite(retail) || retail <= supply) { setError(t('supplier.errRetail', { defaultValue: '권장 소비자가(판매가)는 공급가보다 높아야 합니다 — 유통 마진이 여기서 나옵니다' })); return }
     setSaving(true)
     try {
       await supplierApi.post('/api/supplier/products', {
@@ -115,8 +116,8 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
               <input required type="number" min={1} disabled={saving} value={form.supply_price} onChange={e => setForm(f => ({ ...f, supply_price: e.target.value }))} className={inputCls} />
             </div>
             <div>
-              <label className={labelCls}>{t('supplier.fieldRetail', { defaultValue: '권장 소비자가(원)' })}</label>
-              <input type="number" min={0} disabled={saving} value={form.suggested_retail_price} onChange={e => setForm(f => ({ ...f, suggested_retail_price: e.target.value }))} className={inputCls} />
+              <label className={labelCls}>{t('supplier.fieldRetail', { defaultValue: '권장 소비자가(원)' })} <span className="text-red-500">*</span></label>
+              <input required type="number" min={1} disabled={saving} value={form.suggested_retail_price} onChange={e => setForm(f => ({ ...f, suggested_retail_price: e.target.value }))} className={inputCls} />
             </div>
           </div>
           {/* 🏭 2026-06-12 (영업단 제안): 공급률 실시간 안내 — 낮출수록 더 많은 채널 잠금해제.

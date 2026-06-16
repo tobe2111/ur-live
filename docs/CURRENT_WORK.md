@@ -10,6 +10,12 @@
 - **정산 불변**: 제조사 = 원가(supply_price) 정산, 플랫폼 = 공급가−원가 스프레드(자연 ~10%). 정산 로직 무수정.
 - 검증: tsc 0 · 전체 unit 2104 통과(pricing 14 재작성) · client+worker build · money/sql/theme 통과. **⚠️⚠️ 실 staging 결제 E2E 필수**(전 등급 표시가=청구가 일치, 원가 하한, 주문 차감) — 외부 검증 불가 환경이라 prod 반영 전 1회 필수.
 
+### 후속 (2026-06-16, ①②③ 동시 진행)
+- **① 판매가 필수화** — 제조사 상품 등록/수정 시 권장소비자가(판매가) 필수 + **공급가보다 높게**(폴백/동일가 차단). 서버 authoritative(POST `/products` + PATCH + price-change-request 전부 `<=supply` 400 `RETAIL_TOO_LOW`) + 클라(AddProductModal/PriceChangeModal required·검증). 신모델 마진 0 상품 생성 원천 차단.
+- **② 운영 가이드 3종** — guide-seed-wholesale(공식 max(원가,판매가×(1−보장마진))+기본 38/30/15+프로 100만원), guide-seed-seller(등급 일반/프로/프리미엄+보장마진). auto-reference 재생성.
+- **③ 문구 전수 정합** — 플러스→프로(wholesale-theme/Support/Dashboard/worker route/repair/distributor-admin), repair-schema `distributor_grades` 시드 신값/라벨(38/30/15·프리미엄/프로/일반), AdminDistributorGradesPage 공식 설명, 구독료 99,000→100만원 코멘트. (홈플러스=매장명 무관 유지)
+
+
 ## ✅ 2026-06-16 — 등급 Phase 2: 플러스 연 구독(예치금 결제) + 프리미엄 자동승급(기존) (②/4)
 **모델**: 일반(C, 승인) / 플러스(B, 연 구독) / 프리미엄(A, 매출 자동). ⚠️ 도매몰 PG 미사용 — 구독료는 **예치금(계좌이체 충전 잔액)에서 차감**(Toss 아님).
 - **프리미엄 자동승급은 이미 구현됨**(`handleWholesaleGradeEval`, BIZ-7 — GMV promote-only, 설정 가능, 주1회 cron + 어드민 트리거). Phase 2 신규 = 플러스 구독만.

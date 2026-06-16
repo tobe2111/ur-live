@@ -26,9 +26,10 @@ export default function PriceChangeModal({ t, item, onClose, onDone }: {
     e.preventDefault()
     setError('')
     const newSupply = Number(supply)
-    const newRetail = Number(retail || supply)
+    // 🆕 2026-06-16 신모델: 판매가 필수 + 공급가보다 높아야(폴백 제거).
+    const newRetail = Number(retail)
     if (!Number.isFinite(newSupply) || newSupply <= 0) { setError(t('supplier.errSupply', { defaultValue: '공급가를 올바르게 입력해주세요' })); return }
-    if (newRetail < newSupply) { setError(t('supplier.errRetail', { defaultValue: '권장 소비자가는 공급가 이상이어야 합니다' })); return }
+    if (!retail || !Number.isFinite(newRetail) || newRetail <= newSupply) { setError(t('supplier.errRetail', { defaultValue: '권장 소비자가(판매가)는 공급가보다 높아야 합니다 — 유통 마진이 여기서 나옵니다' })); return }
     setSaving(true)
     try {
       await supplierApi.post(`/api/supplier/products/${item.id}/price-change-request`, {
@@ -68,8 +69,8 @@ export default function PriceChangeModal({ t, item, onClose, onDone }: {
               <input required type="number" min={1} disabled={saving} value={supply} onChange={e => setSupply(e.target.value)} className={inputCls} />
             </div>
             <div>
-              <label className={labelCls}>{t('supplier.fieldRetail', { defaultValue: '권장 소비자가(원)' })}</label>
-              <input type="number" min={0} disabled={saving} value={retail} onChange={e => setRetail(e.target.value)} className={inputCls} />
+              <label className={labelCls}>{t('supplier.fieldRetail', { defaultValue: '권장 소비자가(원)' })} <span className="text-red-500">*</span></label>
+              <input required type="number" min={1} disabled={saving} value={retail} onChange={e => setRetail(e.target.value)} className={inputCls} />
             </div>
           </div>
           {/* 🏭 2026-06-12 (영업단 제안): 새 가격 기준 공급률·제안 가능 채널 실시간 안내. */}
