@@ -648,7 +648,7 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 | NOT NULL INSERT 누락 | `check-sql-not-null-insert.mjs` (warn) | `verify.yml` (warn) | 2026-05-17 알림 silent fail 사고 (notifications.body 컬럼 없음) |
 | 존재하지 않는 컬럼 참조 | `check-sql-column-exists.mjs` (warn) | `verify.yml` (warn) | 2026-05-17 'no such column' SqlError 방지 |
 | products `SELECT *`/`p.*` | - | `verify.yml` (strict) | 2026-06-10 D1 컬럼 한도(100) 초과 — 교환권/공구 상세 전체 500. `productDetailCols()` 명시 목록 사용 |
-| products 새 컬럼 (예산제) | - | `verify.yml` (strict) | 같은 사고 구조적 후속 — 새 메타는 `product_supply_meta` K-V 사이드테이블, products ALTER 는 baseline 등록 필수 |
+| products/sellers 새 컬럼 (예산제) | - | `verify.yml` (strict) | 같은 사고 구조적 후속 — 새 메타는 K-V 사이드테이블(`product_supply_meta`), products/sellers ALTER 는 baseline 등록 필수. **sellers 는 이미 100컬럼(D1 한도 도달)** — `check-products-column-budget.mjs` 가 두 테이블 모두 감시 (`scripts/{products,sellers}-column-baseline.json`) |
 | PRODUCT_DETAIL_FIELDS 복구 가능성 | - | `verify.yml` (strict) | 2026-06-10 상품 상세 500 전수조사 — 명시 목록 컬럼은 base CREATE ∪ repair-schema 로 반드시 복구 가능해야 함 (`check-product-detail-fields-repairable.mjs`). 소비자 products SELECT 는 `productDetailColsHealed`+`withColumnPruning` 자가치유 필수 |
 
 **Bypass (정당 사유만):**
