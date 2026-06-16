@@ -69,7 +69,7 @@ export default function ProfileHeader({
             type="button"
             onClick={() => {
               const url = window.location.href
-              if (navigator.share) navigator.share({ title: seller.name, url })
+              if (navigator.share) navigator.share({ title: `${seller.name || seller.username || ''} 의 링크샵`.trim(), url })
               else { navigator.clipboard?.writeText(url); toast.success(t('seller.linkCopiedToast')) }
             }}
             aria-label="공유"
