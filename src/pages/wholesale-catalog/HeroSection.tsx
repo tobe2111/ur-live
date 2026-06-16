@@ -1,10 +1,21 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Factory, ChevronRight, Lock } from 'lucide-react'
-import { WT, won } from '../wholesale/wholesale-theme'
+import { WT, won, discountRate } from '../wholesale/wholesale-theme'
 import { cfImage } from '@/utils/cf-image'
 import { WHOLESALE_HERO_IMG } from './HomeSections'
 import Dashboard from './Dashboard'
 import type { CatalogItem } from './types'
+
+// ⏱️ 오늘의 마감임박 특가 — 자정까지 남은 시간 카운트다운(격리 컴포넌트 → 배지만 1초마다 갱신).
+function CountdownBadge() {
+  const msLeft = () => { const n = new Date(); const end = new Date(n); end.setHours(24, 0, 0, 0); return Math.max(0, end.getTime() - n.getTime()) }
+  const [ms, setMs] = useState(msLeft)
+  useEffect(() => { const id = setInterval(() => setMs(msLeft()), 1000); return () => clearInterval(id) }, [])
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000)
+  return <span className="text-[11.5px] font-extrabold rounded-md px-2 py-1 text-white tabular-nums" style={{ background: WT.ink }}>{pad(h)}:{pad(m)}:{pad(s)}</span>
+}
 
 // 히어로 + 대시보드 + OEM — 2026-06-15 시안 리디자인(유통스타트 도매몰.dc.html).
 //   로그인 사입자 = 슬림 사입 대시보드(기존). 비로그인/카카오 = 2단 트러스트 히어로 + 추천 상품(가입 유도).
@@ -66,26 +77,35 @@ export default function HeroSection({ loggedIn, userSession, grade, me, monthSpe
         </div>
       </div>
 
-      {/* 우 — 추천 상품(가입 유도). 공급가는 비노출(도메인 규칙) → '가입하면 공개'. */}
+      {/* 우 — 오늘의 마감임박 특가 (시안 그대로). 공급가는 로그인 시 노출(도메인 규칙) → 비로그인 잠금. */}
       {featured ? (
-        <button onClick={() => navigate(`/wholesale/product/${featured.id}`)} className="text-left rounded-2xl p-4 flex flex-col bg-white" style={{ border: '1px solid ' + WT.line2 }}>
+        <div className="rounded-2xl p-4 flex flex-col bg-white" style={{ border: '1px solid ' + WT.line2 }}>
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[12px] font-extrabold" style={{ color: WT.ink }}>⚡ 오늘의 추천</span>
-            <span className="text-[11px] font-bold rounded-md px-2 py-1 text-white" style={{ background: WT.ink }}>가입 혜택</span>
+            <span className="text-[12px] font-extrabold" style={{ color: WT.ink }}>⚡ 오늘의 마감임박 특가</span>
+            <CountdownBadge />
           </div>
-          <div className="relative rounded-xl overflow-hidden" style={{ aspectRatio: '16/11', background: WT.fill }}>
+          <button onClick={() => navigate(`/wholesale/product/${featured.id}`)} className="relative rounded-xl overflow-hidden block w-full" style={{ aspectRatio: '16/11', background: WT.fill }} aria-label={featured.name}>
             {featured.image_url && <img src={cfImage(featured.image_url, { width: 500, format: 'auto' }) || featured.image_url} alt={featured.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />}
-          </div>
-          <div className="text-[14px] font-medium mt-3 leading-snug line-clamp-2" style={{ color: WT.ink }}>{featured.name}</div>
+          </button>
+          <button onClick={() => navigate(`/wholesale/product/${featured.id}`)} className="text-left text-[14px] font-medium mt-3 leading-snug line-clamp-2" style={{ color: WT.ink }}>{featured.name}</button>
           {featured.retail_price ? (
             <div className="flex items-baseline gap-1.5 mt-2">
               <span className="text-[12px] line-through tabular-nums" style={{ color: WT.ink4 }}>{won(featured.retail_price)}</span>
               <span className="text-[11px]" style={{ color: WT.ink3 }}>권장소비자가</span>
             </div>
           ) : null}
-          <div className="mt-2 inline-flex items-center gap-1 self-start rounded-md px-2.5 py-1 text-[12px] font-bold" style={{ background: WT.brandSoft, color: WT.brand }}><Lock className="w-3 h-3" />가입하면 도매 공급가 공개</div>
-          <div className="mt-3 rounded-[10px] py-2.5 text-center text-[14px] font-bold text-white" style={{ background: WT.brand }}>공급가 보러가기</div>
-        </button>
+          {featured.distributor_price != null ? (
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-[24px] font-extrabold tabular-nums tracking-[-0.02em]" style={{ color: WT.ink }}>{won(featured.distributor_price)}</span>
+              {featured.retail_price && discountRate(featured.distributor_price, featured.retail_price) > 0 && (
+                <span className="text-[13px] font-extrabold" style={{ color: WT.brand }}>-{discountRate(featured.distributor_price, featured.retail_price)}%</span>
+              )}
+            </div>
+          ) : (
+            <div className="mt-2 inline-flex items-center gap-1 self-start rounded-md px-2.5 py-1 text-[12px] font-bold" style={{ background: WT.brandSoft, color: WT.brand }}><Lock className="w-3 h-3" />로그인하면 도매 공급가 공개</div>
+          )}
+          <button onClick={() => navigate(featured.distributor_price != null ? `/wholesale/product/${featured.id}` : '/wholesale/login')} className="mt-3 rounded-[10px] py-2.5 text-center text-[14px] font-bold text-white" style={{ background: WT.brand }}>바로 사입하기</button>
+        </div>
       ) : (
         <div className="rounded-2xl p-6 flex flex-col justify-center gap-2 bg-white" style={{ border: '1px solid ' + WT.line2 }}>
           <span className="text-[12px] font-extrabold" style={{ color: WT.brand }}>가입 혜택</span>

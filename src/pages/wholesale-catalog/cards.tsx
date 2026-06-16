@@ -5,6 +5,7 @@ import {
 } from '../wholesale/wholesale-theme'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { cfImage } from '@/utils/cf-image'
+import { cardGradient } from '@/utils/card-gradient'
 import type { CatalogItem, ReorderItem } from './types'
 
 // ── 가격 라인 (할인% + 공급가 앵커) ── 비로그인 → 도매가 숨김 + 로그인 유도. (레일 미니카드용)
@@ -69,14 +70,18 @@ export const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed,
   const mr = p.retail_price && p.distributor_price != null ? marginRate(p.distributor_price, p.retail_price) : 0
   const moq = Math.max(1, p.moq || 1)
   const om = Math.max(1, p.order_multiple || 1)
-  // dominant_color = 이미지 로드 전 placeholder 배경(백필 보존). 카드 본문은 흰색(시안).
+  // 🎨 2026-06-16 (대표 요청 "그라데이션으로 맞추면 좋겠어"): 대표색 그라데이션 카드 복원.
+  //   dominant_color → cardGradient(base/text/sub/imageFade/isLight). 가격/칩 색은 카드 밝기에 적응.
   const [cardColor, setCardColor] = useState<string | null>((p as { dominant_color?: string | null }).dominant_color || null)
+  const grad = cardGradient(cardColor)
+  const chipMargin = grad.isLight ? { background: WT.brandSoft, color: WT.brand } : { background: 'rgba(255,255,255,0.18)', color: '#fff' }
+  const chipBorder = { border: '1px solid ' + (grad.isLight ? 'rgba(0,0,0,0.10)' : 'rgba(255,255,255,0.24)'), color: grad.sub }
   const locked = p.distributor_price == null
   return (
     <div ref={wrapRef} onMouseEnter={prefetch} onTouchStart={prefetch} onFocusCapture={prefetch}
-      className="group flex flex-col rounded-[13px] overflow-hidden bg-white transition-shadow hover:shadow-[0_10px_22px_rgba(20,24,31,0.08)]"
-      style={{ border: '1px solid ' + WT.line }}>
-      <div className="relative w-full aspect-square overflow-hidden" style={{ background: cardColor || WT.fill }}>
+      className="group flex flex-col rounded-2xl overflow-hidden transition-shadow hover:shadow-[0_10px_22px_rgba(20,24,31,0.10)]"
+      style={{ background: grad.base }}>
+      <div className="relative w-full aspect-square overflow-hidden" style={{ background: grad.base }}>
         <button onClick={() => onOpen(p)} aria-label={p.name + ' 상세보기'} className="block w-full h-full">
           {p.image_url && (
             <img
@@ -97,6 +102,8 @@ export const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed,
             />
           )}
         </button>
+        {/* 사진 하단 → 카드색 번짐(그라데이션) */}
+        <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
         <div className="absolute top-2.5 left-2.5 z-10 flex flex-col items-start gap-1">
           {rank != null && <span className="flex h-[22px] w-[22px] items-center justify-center text-[11px] font-extrabold leading-none rounded-md text-white" style={{ background: WT.brand }}>{rank}</span>}
           {soldOut && <span className="px-2 py-[3px] text-[11px] font-bold leading-none rounded-md text-white" style={{ background: 'rgba(21,23,28,0.86)' }}>품절</span>}
@@ -128,14 +135,14 @@ export const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed,
           <QuickAdd p={p} onAdd={onAdd} />
         )}
       </div>
-      <div className="px-3 pt-2.5 pb-3 flex flex-col gap-1.5">
-        <button onClick={() => onOpen(p)} className="text-left text-[13px] leading-[1.4] line-clamp-2 min-h-[37px] block w-full" style={{ color: WT.ink }}>{p.name}</button>
+      <div className="px-3 pt-2.5 pb-3 flex flex-col gap-1.5" style={{ color: grad.text }}>
+        <button onClick={() => onOpen(p)} className="text-left text-[13px] leading-[1.4] line-clamp-2 min-h-[37px] block w-full" style={{ color: grad.text }}>{p.name}</button>
         {locked ? (
           priceLoading ? (
             /* 등급가 도착 전(placeholder) — 잠금 칩 오표시 대신 스켈레톤 */
-            <span className="block h-5 w-24 rounded animate-pulse" style={{ background: WT.fill }} />
+            <span className="block h-5 w-24 rounded animate-pulse" style={{ background: grad.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.18)' }} />
           ) : (
-            <span className="inline-flex items-center gap-1 self-start rounded-md px-2.5 py-1 text-[12px] font-bold" style={{ background: WT.brandSoft, color: WT.brand }}>
+            <span className="inline-flex items-center gap-1 self-start rounded-md px-2.5 py-1 text-[12px] font-bold" style={chipMargin}>
               <Lock className="w-3 h-3" /> 로그인하고 공급가
             </span>
           )
@@ -143,18 +150,18 @@ export const ProductCard = memo(function ProductCard({ p, onOpen, onAdd, subbed,
           <>
             {p.retail_price ? (
               <div className="flex items-baseline gap-1.5">
-                <span className="text-[11.5px] line-through tabular-nums" style={{ color: WT.ink4 }}>{won(p.retail_price)}</span>
-                <span className="text-[10px]" style={{ color: WT.ink3 }}>권장가</span>
+                <span className="text-[11.5px] line-through tabular-nums" style={{ color: grad.sub }}>{won(p.retail_price)}</span>
+                <span className="text-[10px]" style={{ color: grad.sub }}>권장가</span>
               </div>
             ) : null}
             <div className="flex items-baseline gap-1.5">
-              <span className="text-[10.5px]" style={{ color: WT.ink2 }}>공급가</span>
-              <span className="text-[19px] font-extrabold tabular-nums tracking-[-0.02em]" style={{ color: WT.ink }}>{won(p.distributor_price)}</span>
+              <span className="text-[10.5px]" style={{ color: grad.sub }}>공급가</span>
+              <span className="text-[19px] font-extrabold tabular-nums tracking-[-0.02em]" style={{ color: grad.text }}>{won(p.distributor_price)}</span>
             </div>
             <div className="flex gap-1.5 flex-wrap">
-              {mr > 0 && <span className="text-[10.5px] font-bold rounded-[5px] px-1.5 py-0.5 whitespace-nowrap" style={{ background: WT.brandSoft, color: WT.brand }}>마진 +{mr}%</span>}
-              {moq > 1 && <span className="text-[10.5px] font-bold rounded-[5px] px-1.5 py-0.5 whitespace-nowrap" style={{ border: '1px solid ' + WT.line2, color: WT.ink2 }}>MOQ {comma(moq)}</span>}
-              {om > 1 && <span className="text-[10.5px] font-bold rounded-[5px] px-1.5 py-0.5 whitespace-nowrap" style={{ border: '1px solid ' + WT.line2, color: WT.ink2 }}>{comma(om)}개 단위</span>}
+              {mr > 0 && <span className="text-[10.5px] font-bold rounded-[5px] px-1.5 py-0.5 whitespace-nowrap" style={chipMargin}>마진 +{mr}%</span>}
+              {moq > 1 && <span className="text-[10.5px] font-bold rounded-[5px] px-1.5 py-0.5 whitespace-nowrap" style={chipBorder}>MOQ {comma(moq)}</span>}
+              {om > 1 && <span className="text-[10.5px] font-bold rounded-[5px] px-1.5 py-0.5 whitespace-nowrap" style={chipBorder}>{comma(om)}개 단위</span>}
             </div>
           </>
         )}
