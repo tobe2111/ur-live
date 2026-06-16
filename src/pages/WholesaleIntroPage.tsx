@@ -70,7 +70,7 @@ export default function WholesaleIntroPage() {
         </p>
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
           <button onClick={() => navigate('/wholesale/join')}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-[#FC5424] text-white font-bold text-[15px] hover:bg-[#e0002e] transition-colors">
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-[#FC5424] text-white font-bold text-[15px] hover:bg-[#E0461C] transition-colors">
             <Store className="w-5 h-5" /> 유통사로 가입하기 <ArrowRight className="w-4 h-4" />
           </button>
           <button onClick={() => navigate('/supplier/register')}
@@ -148,7 +148,7 @@ export default function WholesaleIntroPage() {
         <h2 className="text-2xl lg:text-3xl font-extrabold mb-4">지금 시작하세요</h2>
         <p className="text-[#4E5560] mb-8">가입비·월 고정비 없이, 오늘 바로 거래를 시작할 수 있습니다.</p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <button onClick={() => navigate('/wholesale/join')} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-[#FC5424] text-white font-bold hover:bg-[#e0002e] transition-colors"><Store className="w-5 h-5" /> 유통사로 가입</button>
+          <button onClick={() => navigate('/wholesale/join')} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-[#FC5424] text-white font-bold hover:bg-[#E0461C] transition-colors"><Store className="w-5 h-5" /> 유통사로 가입</button>
           <button onClick={() => navigate('/supplier/register')} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-[#0C2454] text-white font-bold hover:bg-[#2A2F37] transition-colors"><Factory className="w-5 h-5" /> 제조사로 입점</button>
         </div>
       </section>

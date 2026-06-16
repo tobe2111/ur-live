@@ -287,7 +287,7 @@ export default function WholesaleJoinPage() {
           </label>
 
           <button type="submit" disabled={loading || !agreeTerms}
-            className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-[#FC5424] text-white font-bold text-[15px] hover:bg-[#e0002e] transition-colors disabled:opacity-60 mt-1">
+            className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-[#FC5424] text-white font-bold text-[15px] hover:bg-[#E0461C] transition-colors disabled:opacity-60 mt-1">
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>유통회원 가입 신청 <ArrowRight className="w-5 h-5" /></>}
           </button>
         </form>
