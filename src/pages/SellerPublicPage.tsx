@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 const CuratorPinsSection = lazy(() => import('./seller-public/CuratorPinsSection'))
 import { lazy, Suspense } from 'react'
-import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import EditorialProductCard from '@/components/linkshop/EditorialProductCard'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
@@ -376,52 +376,17 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
               {shopQuery && <button onClick={() => setShopQuery('')} aria-label="지우기" className="shrink-0 w-5 h-5 rounded-full bg-gray-300 dark:bg-[#3A3A3A] text-white flex items-center justify-center"><X className="w-3 h-3" /></button>}
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8">
-              {shopProducts.filter(p => !shopQuery.trim() || p.name.toLowerCase().includes(shopQuery.trim().toLowerCase())).map(p => {
-                const discountRate = p.discount_rate || (p.original_price ? Math.round((1 - p.price / p.original_price) * 100) : 0)
-                const savings = p.original_price && p.original_price > p.price ? p.original_price - p.price : 0
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => navigate(`/products/${p.id}`)}
-                    className="text-left active:scale-[0.98] transition-transform w-full block rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212]"
-                  >
-                    {/* 🎨 2026-06-16 링크샵 시안: 에디토리얼 카드 — 다크 네이비 할인칩(이미지 위) + 초록 절약액. */}
-                    <div className="relative aspect-square w-full overflow-hidden bg-gray-50 dark:bg-[#1A1A1A]" style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}>
-                      {p.image_url ? (
-                        <img
-                          src={cfImage(p.image_url, { width: 300, format: 'auto' }) || p.image_url}
-                          srcSet={cfSrcSet(p.image_url, 300) || undefined}
-                          sizes="(max-width: 640px) 50vw, 200px"
-                          alt={p.name} loading="lazy" decoding="async"
-                          onLoad={(e) => { e.currentTarget.style.opacity = '1' }}
-                          style={{ opacity: 0, transition: 'opacity 200ms ease-out' }}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gray-100 dark:bg-[#1A1A1A]" />
-                      )}
-                      {discountRate > 0 && (
-                        <span className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-md bg-[#141A2E]/90 text-[#FF7A5C] text-[12px] font-extrabold backdrop-blur">
-                          {discountRate}%
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-2.5">
-                      <p className={`text-[13px] font-bold ${T.text} leading-tight line-clamp-2`}>{p.name}</p>
-                      <div className="mt-1.5 flex items-baseline gap-1.5 flex-wrap">
-                        {p.original_price && p.original_price > p.price && (
-                          <span className="text-[11px] text-gray-400 dark:text-gray-500 line-through">{p.original_price.toLocaleString('ko-KR')}원</span>
-                        )}
-                        <span className={`text-[15px] font-extrabold ${T.text}`}>{p.price.toLocaleString('ko-KR')}원</span>
-                        {savings > 0 && (
-                          <span className="ml-auto text-[11px] font-extrabold text-[#0E9F6E]">{savings.toLocaleString('ko-KR')}원<span className="font-semibold opacity-70"> 절약</span></span>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
+              {shopProducts.filter(p => !shopQuery.trim() || p.name.toLowerCase().includes(shopQuery.trim().toLowerCase())).map(p => (
+                // 🎨 2026-06-16 링크샵 통일: 공유 에디토리얼 카드 (docs/design/linkshop-unification.md 2단계)
+                <EditorialProductCard
+                  key={p.id}
+                  product={{ id: p.id, name: p.name, price: p.price, original_price: p.original_price, image: p.image_url, dominant_color: p.dominant_color }}
+                  onClick={() => navigate(`/products/${p.id}`)}
+                  aspect="square"
+                  textClass={T.text}
+                  discountPct={p.discount_rate || undefined}
+                />
+              ))}
             </div>
             </>
           )
