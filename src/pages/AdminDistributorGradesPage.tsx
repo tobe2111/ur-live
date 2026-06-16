@@ -9,6 +9,10 @@ import { Layers, Save, Loader2, Search, Tag, Percent, Sparkles, Receipt, Plus, X
 import { toast } from '@/hooks/useToast'
 import { formatWon, formatNumber } from '@/utils/format'
 import { SUPPLY_CHANNELS, DEFAULT_SUPPLY_CHANNEL_THRESHOLDS, type SupplyChannelThresholds } from '@/shared/supply-channels'
+import { GRADE_NAME } from '@/pages/wholesale/wholesale-theme'
+
+// 🏅 등급 코드(A/B/C…) + 친화 라벨(프리미엄/플러스/일반) 동시 표기 — 운영자 혼동 방지.
+const gradeLabel = (g: string) => { const n = GRADE_NAME[g]; return n && n !== g ? `${g} · ${n}` : g }
 
 // 🏭 2026-06-01 유통스타트 도매몰 — 유통사 등급/마진 설정 (Phase 1b).
 // 도매몰 한정: distributor_grade 는 도매 카탈로그 가격 계산에서만 쓰임.
@@ -501,6 +505,9 @@ export default function AdminDistributorGradesPage() {
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${g.is_special ? 'bg-rose-50 text-rose-600' : 'bg-gray-100 text-gray-700'}`}>
                         <Tag className="w-3 h-3" />{g.grade}
                       </span>
+                      {GRADE_NAME[g.grade] && GRADE_NAME[g.grade] !== g.grade && (
+                        <span className="ml-1.5 text-[11px] text-gray-400">{GRADE_NAME[g.grade]}</span>
+                      )}
                     </td>
                     <td className="py-2 pr-4">
                       <input
@@ -623,7 +630,7 @@ export default function AdminDistributorGradesPage() {
                         <tr key={idx} className="border-b border-gray-50">
                           <td className="py-2 pr-4">
                             <select value={t.grade} onChange={e => updateThreshold(idx, 'grade', e.target.value)} className="px-2 py-1 border border-gray-200 rounded text-gray-900">
-                              {AUTO_GRADE_GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                              {AUTO_GRADE_GRADES.map(g => <option key={g} value={g}>{gradeLabel(g)}</option>)}
                             </select>
                           </td>
                           <td className="py-2 pr-4">
@@ -1081,7 +1088,7 @@ function DistributorRowEditor({
       <td className="py-2 pr-4">
         <select value={grade} onChange={e => setGrade(e.target.value)} className="px-2 py-1 border border-gray-200 rounded text-gray-900">
           <option value="">미배정</option>
-          {ASSIGNABLE.map(g => <option key={g} value={g}>{g}</option>)}
+          {ASSIGNABLE.map(g => <option key={g} value={g}>{gradeLabel(g)}</option>)}
         </select>
       </td>
       <td className="py-2 pr-4">
