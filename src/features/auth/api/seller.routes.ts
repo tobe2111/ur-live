@@ -25,7 +25,7 @@ import { maskEmail } from '@/lib/mask';
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout';
 
 import { swallow } from '@/worker/utils/swallow';
-import { startDashboardSession, isDashboardSessionCurrent } from '@/worker/utils/dashboard-session';
+import { startDashboardSession, isDashboardSessionCurrent, deriveDashboardSeat } from '@/worker/utils/dashboard-session';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -442,8 +442,9 @@ sellerRoutes.post('/refresh', cors(), rateLimit({ action: 'seller_refresh', max:
 
     // 3. DB에서 셀러 정보 조회 (계정 상태 확인)
     const sellerId = payload.seller_id || payload.sub;
-    // 🔐 단일 세션 강제 — 옛 기기 refresh 우회 차단 (서브계정은 v1 제외).
-    if (!(await isDashboardSessionCurrent(DB, 'seller', sellerId, payload.iat, { subAccount: !!payload.sub_account_id }))) {
+    // 🔐 단일 세션 강제 — 옛 기기 refresh 우회 차단 (시트별: 도매 서브계정은 sub_account_id 시트).
+    const refreshSeat = deriveDashboardSeat(payload);
+    if (refreshSeat && !(await isDashboardSessionCurrent(DB, refreshSeat.role, refreshSeat.id, payload.iat))) {
       return c.json<AuthResponse>({ success: false, error: '다른 기기에서 로그인되어 세션이 만료되었습니다. 다시 로그인해주세요.', code: 'SESSION_SUPERSEDED' }, 401);
     }
     const seller = await DB.prepare(`

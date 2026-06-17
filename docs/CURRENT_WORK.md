@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 단일 세션 강제 확장: per-seat 키 + 카카오 토큰 + 로그아웃 문구 (대표 "가장 이상적으로")
+**배경**: 단일 세션 v1(admin/seller/supplier)에서 제외했던 멀티시트(에이전시 멤버·도매 직원)와 카카오 발급 토큰까지 확장 + 안내 문구 구체화.
+- **per-seat 키** (`dashboard-session.ts deriveDashboardSeat`): 토큰에서 시트 키 도출 — `sub_account_id`→`('seller_sub', id)`, `agency`+`member_id`→`('agency_member', id)`, `agency`(멤버없음/카카오)→`('agency', agencyId)`, admin/seller/supplier→`(type, id)`. **같은 회사의 다른 직원/멤버는 각자 시트 → 동시 로그인 보존**, 같은 시트의 다른 기기만 단일 세션. 미들웨어 3경로(Bearer/쿠키/SSR)·seller refresh 모두 seat 기반으로 전환(subAccount 옵션 제거).
+- **에이전시** (`agency.routes`): 로그인 시 멤버 시트(Bearer/SSR)+org 시트(세션 쿠키, member_id 미포함) 동시 갱신. `/refresh` 도 멤버 시트 iat 검사(옛 기기 우회 차단).
+- **도매 직원** (`wholesale.routes /sub-login`): `('seller_sub', sub_account_id)` 시트. 토큰에 이미 sub_account_id 존재 → 미들웨어 자동 도출.
+- **카카오** (`kakao.routes` `issueLinkedRoleTokens`, [UNLOCK_LOADING] additive): 카카오 로그인 셀러→seller 시트 갱신. 에이전시→소유 멤버 id 조회 후 토큰에 `member_id` additive 추가 + 멤버 시트 갱신(이메일 로그인과 **동일 시트 키**로 완전 통일 — 두 방식 상호 무효화). **응답 shape/redirect/CSRF/seller.username 불변**.
+- **문구**(③): 미들웨어/리프레시가 `SESSION_SUPERSEDED` 401 → `api.ts` 가 감지해 refresh 시도 생략 + `?error=session_superseded` 로 로그아웃. 3 로그인 페이지(admin/seller/agency)가 "다른 기기/브라우저에서 로그인되어 자동 로그아웃" 토스트.
+- 검증: tsc 0 · `npm run build` 0 · 단위 88(deriveDashboardSeat+per-seat 시트 독립성 신규) · schema/sql-bind/theme 0. ⚠️ staging 권장: 같은 에이전시 멤버 2명 동시 로그인 유지 + 같은 멤버 2기기 단일화 확인.
+
 ## 🔴 2026-06-17 — 도매몰 마진 모델 전면 전환 (대표 확정, 머니 크리티컬) — ⚠️ staging E2E 필수
 **대표 확정 모델(cost-plus)**: 제조사가 받을 금액(공급원가) **위에** 플랫폼 마진%를 *붙여* 공급가 산출. (구: 판매가−등급보장마진 / 정산 공급가×90% → 정반대)
 - **공급가 = clamp(round(공급원가 × (1 + 유효마진%)), 하한=공급원가, 상한=판매가)**. 유효마진% = 제품별 마진%(`supply_margin_override_pct`, 없으면 전역 `wholesale_platform_commission_pct` 기본10) × 등급배수%/100.

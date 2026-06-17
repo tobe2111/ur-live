@@ -12,7 +12,7 @@ import { Context, Next } from 'hono';
 import * as jwt from '@tsndr/cloudflare-worker-jwt';
 import { unauthorizedResponse, forbiddenResponse } from '../utils/response';
 import { parseSessionCookie } from '../utils/session';
-import { isDashboardSessionCurrent } from '../utils/dashboard-session';
+import { isDashboardSessionCurrent, deriveDashboardSeat } from '../utils/dashboard-session';
 
 // 🔐 2026-06-17 단일 세션 강제 — 다른 기기/브라우저 로그인으로 무효화된 대시보드 세션 응답.
 function sessionSupersededResponse() {
@@ -310,11 +310,11 @@ export function requireAuth() {
           role: jwtPayload.role,
         };
 
-        // 🔐 단일 세션 강제 (대시보드) — 더 늦은 로그인이 무효화한 토큰 거부.
-        if (!(await isDashboardSessionCurrent(
-          (c.env as { DB: D1Database }).DB, user.type, jwtId,
+        // 🔐 단일 세션 강제 (대시보드) — 시트별 키로 더 늦은 로그인이 무효화한 토큰 거부.
+        const seatB = deriveDashboardSeat(jwtPayload);
+        if (seatB && !(await isDashboardSessionCurrent(
+          (c.env as { DB: D1Database }).DB, seatB.role, seatB.id,
           typeof jwtPayload.iat === 'number' ? jwtPayload.iat : undefined,
-          { subAccount: !!jwtPayload.sub_account_id },
         ))) {
           return c.json(sessionSupersededResponse(), 401);
         }
@@ -352,9 +352,10 @@ export function requireAuth() {
       const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret);
       if (sessionUser) {
         const sessionType = sessionUser.type || 'user';
-        // 🔐 단일 세션 강제 (대시보드 세션 쿠키).
-        if (!(await isDashboardSessionCurrent(
-          (c.env as { DB: D1Database }).DB, sessionType, sessionUser.userId, sessionUser.iat,
+        // 🔐 단일 세션 강제 (대시보드 세션 쿠키 — member_id 없음 → agency 는 org 시트).
+        const seatC = deriveDashboardSeat({ type: sessionType, sub: sessionUser.userId });
+        if (seatC && !(await isDashboardSessionCurrent(
+          (c.env as { DB: D1Database }).DB, seatC.role, seatC.id, sessionUser.iat,
         ))) {
           return c.json(sessionSupersededResponse(), 401);
         }
@@ -384,11 +385,11 @@ export function requireAuth() {
           const pid = p.userId ?? p.sub;
           if (pid) {
             const ptype = (p.type || 'user') as UserType;
-            // 🔐 단일 세션 강제 (SSR forward 토큰).
-            if (!(await isDashboardSessionCurrent(
-              (c.env as { DB: D1Database }).DB, ptype, pid,
+            // 🔐 단일 세션 강제 (SSR forward 토큰 — 시트별 키).
+            const seatS = deriveDashboardSeat(p);
+            if (seatS && !(await isDashboardSessionCurrent(
+              (c.env as { DB: D1Database }).DB, seatS.role, seatS.id,
               typeof p.iat === 'number' ? p.iat : undefined,
-              { subAccount: !!p.sub_account_id },
             ))) {
               return c.json(sessionSupersededResponse(), 401);
             }

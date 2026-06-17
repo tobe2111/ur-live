@@ -472,7 +472,11 @@ api.interceptors.response.use(
         const refreshTokenKey = isAgency ? 'agency_refresh_token' : isSeller ? 'seller_refresh_token' : 'admin_refresh_token';
         const refreshToken = localStorage.getItem(refreshTokenKey);
 
-        if (refreshToken) {
+        // 🔐 단일 세션: 다른 기기/브라우저 로그인으로 무효화된 세션 — refresh 시도해도 실패하므로
+        //   즉시 강제 로그아웃 + 전용 안내. (서버 미들웨어/리프레시가 code='SESSION_SUPERSEDED' 반환)
+        const _superseded = (error.response?.data as { code?: string } | undefined)?.code === 'SESSION_SUPERSEDED';
+
+        if (refreshToken && !_superseded) {
           // 🛡️ 2026-04-29: inflight 락 — 동시 401 들이 모두 같은 refresh 결과 공유.
           //   이전 동작: 동시 401 → 동시 refresh 호출 → token rotation 시 race condition.
           // 🏁 2026-06-13: agency 누락분 추가 — 이전엔 agency 도 /api/admin/refresh 로 잘못 호출(버그).
@@ -502,8 +506,8 @@ api.interceptors.response.use(
         // 🛡️ 2026-04-29: alert 제거 — 카톡 인앱이 alert 차단 → throw → 흰화면.
         //   대신 로그인 페이지에서 ?error=session_expired query 감지해 toast 표시.
         const loginUrl = isAgency ? '/agency/login' : isSeller ? '/seller/login' : '/admin/login';
-        console.warn(`[Auth] ${roleLabel} 인증 만료 — 로그인 페이지 이동`);
-        window.location.href = `${loginUrl}?error=session_expired`;
+        console.warn(`[Auth] ${roleLabel} 인증 ${_superseded ? '다른 기기 로그인으로 종료' : '만료'} — 로그인 페이지 이동`);
+        window.location.href = `${loginUrl}?error=${_superseded ? 'session_superseded' : 'session_expired'}`;
         return Promise.reject(error);
       }
 

@@ -27,6 +27,7 @@ import type { Context, Next } from 'hono'
 import { verifyPassword, hashPassword, validatePasswordComplexity } from '@/lib/password'
 import { sendEmail } from '@/services/email'
 import { maskEmail } from '@/lib/mask'
+import { startDashboardSession, isDashboardSessionCurrent } from '@/worker/utils/dashboard-session'
 import type { Env } from '@/worker/types/env'
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout'
 
@@ -446,11 +447,19 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
     }
   } catch { /* migration 0217 미적용 — owner fallback */ }
 
+  const agencyIat = Math.floor(Date.now() / 1000)
   const token = await signAgencyToken(c.env.JWT_SECRET, agency.id, agency.email, {
     memberRole, memberId,
   })
   // 🏁 2026-06-13: refresh token 동시 발급 — 자동 로그아웃 근본수정.
   const refreshToken = await signAgencyRefreshToken(c.env.JWT_SECRET, agency.id, agency.email)
+
+  // 🔐 단일 세션 강제 — 멤버 시트(Bearer/SSR) + org 시트(세션 쿠키)를 함께 갱신.
+  {
+    const ua = c.req.header('User-Agent'); const ip = c.req.header('CF-Connecting-IP')
+    if (memberId) await startDashboardSession(c.env.DB, 'agency_member', memberId, agencyIat, { userAgent: ua, ip })
+    await startDashboardSession(c.env.DB, 'agency', agency.id, agencyIat, { userAgent: ua, ip })
+  }
 
   // 🔐 2026-06-11 SSR Phase 2: ud_agency_token dual-write (docs/SSR_PHASE2_AUTH.md §3.2)
   try {
@@ -519,6 +528,15 @@ app.post('/refresh', cors(), rateLimit({ action: 'agency_refresh', max: 20, wind
     ).bind(agency.id, agency.email).first<{ id: number; role: string }>()
     if (m) { memberRole = m.role; memberId = m.id }
   } catch { /* migration 미적용 — owner fallback */ }
+
+  // 🔐 단일 세션 강제 — 옛 기기 refresh 우회 차단 (멤버 시트, 멤버 없으면 org 시트).
+  {
+    const seatRole = memberId ? 'agency_member' : 'agency'
+    const seatId = memberId ?? agency.id
+    if (!(await isDashboardSessionCurrent(c.env.DB, seatRole, seatId, typeof payload.iat === 'number' ? payload.iat : undefined))) {
+      return c.json({ success: false, error: '다른 기기에서 로그인되어 세션이 만료되었습니다. 다시 로그인해주세요.', code: 'SESSION_SUPERSEDED' }, 401)
+    }
+  }
 
   const accessToken = await signAgencyToken(JWT_SECRET, agency.id, agency.email, { memberRole, memberId })
   const newRefreshToken = await signAgencyRefreshToken(JWT_SECRET, agency.id, agency.email)

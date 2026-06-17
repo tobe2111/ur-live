@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import {
   startDashboardSession,
   isDashboardSessionCurrent,
+  deriveDashboardSeat,
   SINGLE_SESSION_ROLES,
 } from '@/worker/utils/dashboard-session'
 
@@ -54,12 +55,38 @@ describe('dashboard-session 단일 세션 강제', () => {
   let db: ReturnType<typeof makeFakeDB>
   beforeEach(() => { db = makeFakeDB() })
 
-  it('대상 역할 집합 = admin/seller/supplier (agency 제외)', () => {
-    expect(SINGLE_SESSION_ROLES.has('admin')).toBe(true)
-    expect(SINGLE_SESSION_ROLES.has('seller')).toBe(true)
-    expect(SINGLE_SESSION_ROLES.has('supplier')).toBe(true)
-    expect(SINGLE_SESSION_ROLES.has('agency')).toBe(false)
+  it('대상 시트 역할 집합 = admin/seller/supplier/agency/agency_member/seller_sub (user 제외)', () => {
+    for (const r of ['admin', 'seller', 'supplier', 'agency', 'agency_member', 'seller_sub']) {
+      expect(SINGLE_SESSION_ROLES.has(r)).toBe(true)
+    }
     expect(SINGLE_SESSION_ROLES.has('user')).toBe(false)
+  })
+
+  it('deriveDashboardSeat — 시트 키 도출', () => {
+    expect(deriveDashboardSeat({ type: 'admin', sub: '7' })).toEqual({ role: 'admin', id: 7 })
+    expect(deriveDashboardSeat({ type: 'seller', userId: 3 })).toEqual({ role: 'seller', id: 3 })
+    expect(deriveDashboardSeat({ type: 'supplier', sub: '9' })).toEqual({ role: 'supplier', id: 9 })
+    // 도매 직원 서브계정 → seller_sub(sub_account_id), sub(부모)보다 우선
+    expect(deriveDashboardSeat({ type: 'seller', sub: '100', sub_account_id: 42 })).toEqual({ role: 'seller_sub', id: 42 })
+    // 에이전시 멤버 → agency_member(member_id)
+    expect(deriveDashboardSeat({ type: 'agency', sub: '5', member_id: 11 })).toEqual({ role: 'agency_member', id: 11 })
+    // 에이전시 멤버 없음(카카오/레거시) → org 시트
+    expect(deriveDashboardSeat({ type: 'agency', sub: '5' })).toEqual({ role: 'agency', id: 5 })
+    // 비대상
+    expect(deriveDashboardSeat({ type: 'user', sub: '1' })).toBeNull()
+    expect(deriveDashboardSeat({})).toBeNull()
+  })
+
+  it('서로 다른 시트(직원/멤버)는 독립 단일 세션 — 상호 무영향', async () => {
+    // 같은 회사 직원 두 명: seller_sub 42, seller_sub 43
+    await startDashboardSession(asDB(db), 'seller_sub', 42, 1000)
+    await startDashboardSession(asDB(db), 'seller_sub', 43, 2000)
+    // 42 의 옛 토큰(iat=1000) 은 43 로그인에 영향 없음 — 여전히 유효
+    expect(await isDashboardSessionCurrent(asDB(db), 'seller_sub', 42, 1000)).toBe(true)
+    // 42 가 다른 기기로 재로그인(iat=3000) → 42 의 옛 토큰 무효
+    await startDashboardSession(asDB(db), 'seller_sub', 42, 3000)
+    expect(await isDashboardSessionCurrent(asDB(db), 'seller_sub', 42, 1000)).toBe(false)
+    expect(await isDashboardSessionCurrent(asDB(db), 'seller_sub', 43, 2000)).toBe(true) // 43 무영향
   })
 
   it('새 로그인이 더 이른 iat 토큰을 무효화(미들웨어 거부)', async () => {
@@ -91,17 +118,10 @@ describe('dashboard-session 단일 세션 강제', () => {
     expect(await isDashboardSessionCurrent(asDB(db), 'admin', 7, undefined)).toBe(true)
   })
 
-  it('비대상 역할(agency/user) = 항상 통과(추적 안 함)', async () => {
-    await startDashboardSession(asDB(db), 'agency', 1, 1000) // no-op
+  it('비대상 역할(user) = 항상 통과(추적 안 함)', async () => {
+    await startDashboardSession(asDB(db), 'user', 1, 1000) // no-op (SINGLE_SESSION_ROLES 아님)
     expect(db._store.size).toBe(0)
-    expect(await isDashboardSessionCurrent(asDB(db), 'agency', 1, 1)).toBe(true)
     expect(await isDashboardSessionCurrent(asDB(db), 'user', 1, 1)).toBe(true)
-  })
-
-  it('서브계정(opts.subAccount) = 강제 제외', async () => {
-    await startDashboardSession(asDB(db), 'seller', 5, 2000)
-    // 서브계정 토큰(같은 seller id 공유)은 iat 가 낮아도 통과
-    expect(await isDashboardSessionCurrent(asDB(db), 'seller', 5, 1, { subAccount: true })).toBe(true)
   })
 
   it('D1 오류 시 fail-open(통과) — 대시보드 락아웃 방지', async () => {

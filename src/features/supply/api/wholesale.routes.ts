@@ -22,6 +22,7 @@ import {
 import { confirmTossPayment, cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { swallow } from '@/worker/utils/swallow'
 import { getSupplyMeta } from '@/worker/utils/product-supply-meta'
+import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAuth } from '@/worker/middleware/auth'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
@@ -893,6 +894,9 @@ app.post('/sub-login', rateLimit({ action: 'wholesale-sub-login', max: 10, windo
     }
     const token = await sign(payload, JWT_SECRET)
     const refreshToken = await sign({ ...payload, exp: nowSec + 90 * 24 * 60 * 60 }, JWT_SECRET)
+
+    // 🔐 단일 세션 강제 — 도매 직원(서브계정)은 sub_account_id 시트로 독립 단일 세션.
+    await startDashboardSession(c.env.DB, 'seller_sub', sub.id, nowSec, { userAgent: c.req.header('User-Agent'), ip: c.req.header('CF-Connecting-IP') })
 
     // last_login_at 갱신(best-effort).
     await DB.prepare("UPDATE wholesale_sub_accounts SET last_login_at = datetime('now') WHERE id = ?").bind(sub.id).run().catch(swallow('wholesale:sub-login:last-login'))
