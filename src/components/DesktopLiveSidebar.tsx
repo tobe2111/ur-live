@@ -8,8 +8,9 @@
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, Radio, Compass, MapPin, Utensils, Sparkles, Bed, Tag, Package, User, PackageSearch, Heart, BookOpen } from 'lucide-react'
+import { Home, Radio, Compass, MapPin, Utensils, Sparkles, Bed, Tag, Package, User, PackageSearch, Heart, BookOpen, Store } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
+import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 interface NavItem {
@@ -81,6 +82,12 @@ export default function DesktopLiveSidebar() {
   const location = useLocation()
   const pathname = location.pathname
   const search = location.search
+  // 🔗 2026-06-17 (대표 신고): PC 에 링크샵 진입 버튼 없음 → MY 섹션 최상단에 추가(모바일 BottomNav 와 동일 경로).
+  const linkshopPath = useLinkshopPath()
+  const linkshopItem: NavItem = {
+    labelKey: 'nav.linkshop', labelDefault: '링크샵', icon: Store, path: linkshopPath,
+    active: (p) => p.startsWith('/u/') || p.startsWith('/profile/') || p.startsWith('/s/'),
+  }
 
   return (
     <aside
@@ -133,6 +140,12 @@ export default function DesktopLiveSidebar() {
           <p className="hidden xl:block text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
             {t('nav.sectionMy', { defaultValue: 'My' })}
           </p>
+          {/* 🔗 링크샵 — 본인 공개페이지(모바일 BottomNav 와 동일 경로). PC 진입 버튼 누락 수정. */}
+          <NavBtn
+            item={linkshopItem}
+            isActive={linkshopItem.active?.(pathname, search) ?? false}
+            onClick={() => navigate(linkshopPath)}
+          />
           {MY_ITEMS.map(item => (
             <NavBtn
               key={item.path}
