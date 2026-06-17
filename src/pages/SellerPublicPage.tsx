@@ -18,6 +18,7 @@ import ProfileHeader from './seller-public/ProfileHeader'
 import InfoTab from './seller-public/InfoTab'
 import TabsNav from './seller-public/TabsNav'
 import { getThemeTokens } from './seller-public/theme'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import type { Seller, LiveStream, Product, Short, Tab } from './seller-public/types'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / FollowButton / StreamCard 를
@@ -279,12 +280,17 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
   // 🛡️ 2026-05-19: '상품' 탭 — 식사권 외 일반 상품 (deal_only 교환권은 셀러가 등록 안 하므로 자동 제외).
   const shopProducts = products.filter(p => p.category !== 'meal_voucher' && Number(p.deal_only) !== 1)
 
+  // 🏁 2026-06-17 (사용자 "라이브 커머스 안 해" 영구 결정): 라이브/쇼츠(동영상) 탭 숨김.
+  //   LIVE_COMMERCE_SUSPENDED SSOT 가 라이브·쇼츠를 함께 묶음 → 셀러 공개 링크샵에서도 일관 적용.
+  //   default tab='home' 이라 선택 깨짐 없음. 복원: 플래그 false (사용자 허가 필요).
   const TABS: { key: Tab; label: string }[] = [
     { key: 'home', label: t('seller.tabHome') },
     { key: 'shop', label: `${t('seller.publicPage.shop', { defaultValue: '상품' })} ${shopProducts.length}` },
     { key: 'vouchers', label: `${t('seller.publicPage.vouchers')} ${mealVouchers.length}` },
-    { key: 'shorts', label: `${t('seller.publicPage.videos')} ${shorts.length}` },
-    { key: 'live', label: `${t('seller.tabLive')} ${streams.length}` },
+    ...(LIVE_COMMERCE_SUSPENDED ? [] : [
+      { key: 'shorts' as Tab, label: `${t('seller.publicPage.videos')} ${shorts.length}` },
+      { key: 'live' as Tab, label: `${t('seller.tabLive')} ${streams.length}` },
+    ]),
     { key: 'info', label: t('seller.tabInfo') },
   ]
 
