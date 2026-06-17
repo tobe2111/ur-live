@@ -20,8 +20,8 @@ import { useAuthStore } from '@/client/stores/auth.store'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatWon, formatNumber } from '@/utils/format'
 import { cfImage } from '@/utils/cf-image'
-import { reportDominantColor } from '@/utils/dominant-color'
-import EditorialProductCard from '@/components/linkshop/EditorialProductCard'
+import BrowseProductCard from './browse/BrowseProductCard'
+import type { Product as BrowseProduct } from './browse/types'
 import { Search, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
@@ -227,7 +227,7 @@ export default function CuratorPage() {
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">다른 키워드로 찾아보세요.</p>
       </div>
     )
-    return <PinGrid pins={f} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} curatorName={curator.name} curatorAvatar={curator.profile_image} />
+    return <PinGrid pins={f} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} />
   }
 
   return (
@@ -418,12 +418,11 @@ function OwnerEarningsStrip() {
   )
 }
 
-function PinGrid({ pins, handle, isOwner, onPinDeleted, curatorName, curatorAvatar }: { pins: CuratorPin[]; handle: string; isOwner: boolean; onPinDeleted: (id: number) => void; curatorName?: string; curatorAvatar?: string | null }) {
+function PinGrid({ pins, handle, isOwner, onPinDeleted }: { pins: CuratorPin[]; handle: string; isOwner: boolean; onPinDeleted: (id: number) => void }) {
   return (
     <div className="max-w-3xl mx-auto p-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
-      {/* 🛠️ 2026-06-17 (사용자 요청): 1번 상품도 전체폭 hero 대신 균일 2열(모바일)/3열(sm+) — hero=false. */}
       {pins.map((pin, idx) => (
-        <PinCard key={pin.id} pin={pin} index={idx} handle={handle} isOwner={isOwner} aboveFold={idx < 4} hero={false} onDeleted={onPinDeleted} curatorName={curatorName} curatorAvatar={curatorAvatar} />
+        <PinCard key={pin.id} pin={pin} handle={handle} isOwner={isOwner} aboveFold={idx < 4} onDeleted={onPinDeleted} />
       ))}
       {/* 🏁 2026-06-16 링크샵 개선안: 본인이 핀 채워진 화면에서도 항상 추가 동선 — 그리드 끝 점선 카드. */}
       {isOwner && (
@@ -439,10 +438,11 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted, curatorName, curatorAvat
   )
 }
 
-function PinCard({ pin, index, handle, isOwner, aboveFold, hero, onDeleted, curatorName, curatorAvatar }: { pin: CuratorPin; index: number; handle: string; isOwner: boolean; aboveFold: boolean; hero?: boolean; onDeleted: (id: number) => void; curatorName?: string; curatorAvatar?: string | null }) {
-  const { t } = useTranslation()
-  // 🛡️ 2026-05-27 (404 fix): SPA route 는 /u/:handle/p/:productId. /redirect 는 worker endpoint — CuratorPinClientRedirect 가 자동 호출.
-  const redirectUrl = `/u/${handle}/p/${pin.product_id}`
+// 🧭 2026-06-17 (사용자 요청 — "링크샵도 홈/동네딜/쇼핑과 똑같은 그라데이션 상품 카드를 그대로 써라.
+//   커스텀 카드(EditorialProductCard) 그만 만들고 영구 고정"): 표준 카드 BrowseProductCard 를 그대로 재사용
+//   → 쇼핑 카드 디자인과 영구 동기화(2개씩/그라데이션). 클릭만 핀 redirect(/u/:handle/p/:id, to override)로
+//   보내 클릭집계+추천적립 루프 유지(잠금 불변).
+function PinCard({ pin, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorPin; handle: string; isOwner: boolean; aboveFold: boolean; onDeleted: (id: number) => void }) {
   const [deleting, setDeleting] = useState(false)
 
   async function handleDelete(e: React.MouseEvent) {
@@ -454,12 +454,8 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, hero, onDeleted, cura
     setDeleting(true)
     try {
       const res = await curatorApi.removePin(pin.id)
-      if (res?.success) {
-        onDeleted(pin.id)
-        toast.success('핀 삭제됨')
-      } else {
-        toast.error('삭제 실패')
-      }
+      if (res?.success) { onDeleted(pin.id); toast.success('핀 삭제됨') }
+      else { toast.error('삭제 실패') }
     } catch {
       toast.error('삭제 실패')
     } finally {
@@ -467,34 +463,33 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, hero, onDeleted, cura
     }
   }
 
-  // 🎨 2026-06-16 시안 히어로: 카테고리 라벨 (동네딜=voucher/deal_only, 그 외 상품)
-  const heroCatLabel = ((pin as { deal_only?: number }).deal_only === 1 || /voucher/i.test((pin as { category?: string }).category || '')) ? '동네딜' : '상품'
+  const product: BrowseProduct = {
+    id: pin.product_id,
+    name: pin.product_name,
+    price: pin.price,
+    current_price: pin.price,
+    original_price: pin.original_price ?? undefined,
+    discount_rate: 0, // BrowseProductCard 가 original_price 로 자동 계산
+    image_url: pin.thumbnail || pin.image_url || '',
+    stock: 0,
+    dominant_color: pin.dominant_color,
+    deal_only: pin.deal_only,
+  }
 
   return (
-    <EditorialProductCard
-      product={{ id: pin.product_id, name: pin.product_name, price: pin.price, original_price: pin.original_price, image: pin.thumbnail || pin.image_url, dominant_color: pin.dominant_color }}
-      href={redirectUrl}
-      variant={hero ? 'hero' : 'standard'}
-      aspect="3by2"
-      aboveFold={aboveFold}
-      rank={index + 1}
-      note={pin.note}
-      curatorName={curatorName}
-      curatorAvatar={curatorAvatar}
-      heroCatLabel={heroCatLabel}
-      onColor={(c) => { if (!pin.dominant_color) reportDominantColor(pin.product_id, c) }}
-      overlay={isOwner ? (
-        // 🛡️ 2026-05-27 (사용자 요청): 본인 view 에서 핀 삭제 버튼.
+    <div className="relative group">
+      <BrowseProductCard product={product} aboveFold={aboveFold} to={`/u/${handle}/p/${pin.product_id}`} />
+      {isOwner && (
         <button
           onClick={handleDelete}
           disabled={deleting}
           aria-label="핀 삭제"
-          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 hover:bg-red-500 text-white flex items-center justify-center transition-colors text-sm font-bold opacity-0 group-hover:opacity-100 disabled:opacity-50"
+          className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/70 hover:bg-red-500 text-white flex items-center justify-center transition-colors text-sm font-bold opacity-0 group-hover:opacity-100 disabled:opacity-50"
         >
           ✕
         </button>
-      ) : null}
-    />
+      )}
+    </div>
   )
 }
 
