@@ -1266,6 +1266,16 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'backfill: users.handle reserved rename', sql: `UPDATE users SET handle = 'user' || id
       WHERE handle IN ('user','admin','me','api','host','new','login','seller','shop')
         AND NOT EXISTS (SELECT 1 FROM users u2 WHERE u2.handle = 'user' || users.id AND u2.id != users.id)` },
+    // 🏁 2026-06-17 (핸들 변경 리다이렉트): 옛 핸들 → user_id 매핑. /u/{옛핸들} → /u/{현재핸들} 자동 이동.
+    { name: 'user_handle_aliases', sql: `CREATE TABLE IF NOT EXISTS user_handle_aliases (
+      alias TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    )` },
+    // 🏁 2026-06-17 (사용자 신고 — /u/user2 핸들 변경 후 깨짐): 리다이렉트 기능 도입 前 변경된
+    //   user2→jiwon 1회성 백필. alias 는 라이브 핸들 미스 시에만 사용(라이브 우선)이라 안전, INSERT OR IGNORE 멱등.
+    { name: 'backfill: handle alias user2->jiwon (pre-feature)', sql: `INSERT OR IGNORE INTO user_handle_aliases (alias, user_id)
+      SELECT 'user2', id FROM users WHERE handle = 'jiwon' LIMIT 1` },
     { name: 'product_pins', sql: `CREATE TABLE IF NOT EXISTS product_pins (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,

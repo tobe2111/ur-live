@@ -114,6 +114,9 @@ export default function CuratorPage() {
     fetchCuratorPage(handle)
       .then((res) => {
         if (!alive) return
+        // 🏁 2026-06-17 (핸들 변경 리다이렉트): 옛 핸들이면 서버가 new_handle 반환 → /u/{현재핸들} 자동 이동.
+        const moved = (res as { new_handle?: string } | null)?.new_handle
+        if (moved) { navigate(`/u/${moved}`, { replace: true }); return }
         if (!res || !res.success) {
           setError(res?.error || t('curator.notFound', { defaultValue: '큐레이터를 찾을 수 없어요' }))
           return

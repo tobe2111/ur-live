@@ -103,6 +103,12 @@ async function ensureCuratorTables(DB: D1Database): Promise<void> {
       await DB.prepare(sql).run().catch(() => null)
     }
     await DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_handle_unique ON users(handle) WHERE handle IS NOT NULL`).run().catch(() => null)
+    // 🏁 2026-06-17 (핸들 변경 리다이렉트): 옛 핸들 → user_id 매핑. /u/{옛핸들} → /u/{현재핸들} 자동 이동.
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS user_handle_aliases (
+      alias TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`).run().catch(() => null)
     _curatorTablesReady = true  // 성공 시에만 — 실패하면 다음 요청 재시도
   } catch { /* graceful */ }
 }
@@ -141,7 +147,23 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
       ).bind(handle).first<CuratorUser>().catch(() => null) ?? null
     }
 
-    if (!user) return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)
+    if (!user) {
+      // 🏁 2026-06-17 (핸들 변경 리다이렉트): 옛 핸들이면 현재 핸들을 알려줘 클라가 /u/{현재} 로 이동.
+      //   404 가 아니라 200 + code 로 반환(axios throw 회피 → 클라가 new_handle 읽음).
+      try {
+        await ensureCuratorTables(DB)
+        const alias = await DB.prepare('SELECT user_id FROM user_handle_aliases WHERE alias = ? LIMIT 1')
+          .bind(handle).first<{ user_id: number }>()
+        if (alias?.user_id) {
+          const cur = await DB.prepare('SELECT handle FROM users WHERE id = ? AND handle IS NOT NULL AND handle != \'\' LIMIT 1')
+            .bind(alias.user_id).first<{ handle: string }>()
+          if (cur?.handle && cur.handle !== handle) {
+            return c.json({ success: false, code: 'HANDLE_MOVED', new_handle: cur.handle }, 200)
+          }
+        }
+      } catch { /* alias 테이블 없거나 조회 실패 — 일반 404 로 */ }
+      return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)
+    }
 
     // 🛡️ 2026-05-25 (C 옵션): linked seller + pins — 둘 다 user.id 에만 의존 → 병렬(Promise.all).
     //   🏭 2026-06-04 (perf 전수조사): 기존 순차 2 round-trip → 1 round-trip 으로 단축.
@@ -542,6 +564,17 @@ curatorRoutes.patch('/me/handle', requireAuth(), async (c) => {
     await DB.prepare('UPDATE users SET handle = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
       .bind(newHandle, userId)
       .run()
+
+    // 🏁 2026-06-17 (핸들 변경 리다이렉트): 옛 핸들 → 본인 user_id 기록 → /u/{옛핸들} 자동 이동.
+    //   + 새 핸들이 과거 누군가의 alias 였다면 제거(라이브 핸들이 우선이라 무해하지만 정리).
+    try {
+      await ensureCuratorTables(DB)
+      if (user.handle) {
+        await DB.prepare("INSERT OR REPLACE INTO user_handle_aliases (alias, user_id, created_at) VALUES (?, ?, datetime('now'))")
+          .bind(user.handle, userId).run()
+      }
+      await DB.prepare('DELETE FROM user_handle_aliases WHERE alias = ?').bind(newHandle).run()
+    } catch { /* best-effort — 리다이렉트 기록 실패해도 핸들 변경은 성공 */ }
 
     return c.json({ success: true, handle: newHandle })
   } catch (err) {
