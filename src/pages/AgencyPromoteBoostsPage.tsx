@@ -143,8 +143,8 @@ export default function AgencyPromoteBoostsPage() {
           ) : (
             <div className="divide-y divide-gray-100">
               {items.map(b => {
-                const tierMeta = TIER_META[b.tier]
-                const status = STATUS_LABEL[b.status]
+                const tierMeta = TIER_META[b.tier] || TIER_META.bronze
+                const status = STATUS_LABEL[b.status] || STATUS_LABEL.unused
                 return (
                   <div key={b.id} className={`p-4 ${tierMeta.bg} border-l-4`}>
                     <div className="flex items-center justify-between mb-2">

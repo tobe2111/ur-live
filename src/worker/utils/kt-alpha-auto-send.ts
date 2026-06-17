@@ -26,6 +26,23 @@ interface OrderRow {
   user_id?: string | number | null
 }
 
+// 🔔 2026-06-17 (사용자 요청): 발송 실패 시 유저에게도 알림(기존엔 admin frontend_errors/dashboard 만).
+//   best-effort — notifications 테이블/컬럼 차이여도 발송 흐름에 영향 없음.
+async function notifyUserKtSendFailed(
+  env: { DB: D1Database },
+  userId: string | number | null | undefined,
+  title: string,
+  message: string,
+): Promise<void> {
+  if (userId === null || userId === undefined || userId === '') return
+  try {
+    await env.DB.prepare(
+      `INSERT INTO notifications (user_id, type, title, message, link, created_at)
+       VALUES (?, 'kt_alpha_send_failed', ?, ?, '/my-vouchers', datetime('now'))`
+    ).bind(String(userId), title, message).run()
+  } catch { /* notifications 테이블/컬럼 차이 — silent (best-effort) */ }
+}
+
 export async function autoSendKtAlphaVouchersForOrders(
   env: Env,
   orders: OrderRow[],
@@ -156,6 +173,10 @@ export async function autoSendKtAlphaVouchersForOrders(
           `INSERT INTO frontend_errors (message, type, url, user_id, created_at) VALUES (?, 'kt_alpha_no_phone', ?, ?, datetime('now'))`,
         ).bind(`KT Alpha skip — order ${oid} 에 폰 없음 (users.phone 비어있거나 잘못된 형식). 사용자가 마이/내정보 에서 폰 등록 필요.`, '/admin/voucher-orders', String(order.user_id || fallbackUserId)).run().catch(() => null)
       } catch { /* graceful */ }
+      // 🔔 유저 알림 — 전화번호 미등록으로 발송 못 함 (등록 후 재발송 요청 안내).
+      await notifyUserKtSendFailed(env, order.user_id || fallbackUserId,
+        '🎫 교환권 발송 실패',
+        '전화번호가 없어 교환권을 발송하지 못했어요. 내 정보에서 전화번호 등록 후 고객센터에 재발송을 요청해 주세요.')
       continue
     }
 
@@ -235,6 +256,10 @@ export async function autoSendKtAlphaVouchersForOrders(
           }
           console.error('[kt-alpha auto-send] failed', { oid, code: item.kt_alpha_gift_code, errMsg })
           totalFailed++
+          // 🔔 유저 알림 — 발송 실패 (재발송 요청 안내). 결제는 이미 완료라 사용자 인지 필요.
+          await notifyUserKtSendFailed(env, order.user_id || fallbackUserId,
+            '🎫 교환권 발송 실패',
+            `${item.product_name} 교환권 발송에 실패했어요. 고객센터로 재발송을 요청해 주세요.`)
           // 어드민 알림 — 1시간 중복 방지.
           const recent = await env.DB.prepare(
             `SELECT id FROM dashboard_notifications

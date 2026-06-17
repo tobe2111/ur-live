@@ -1,22 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { swallow } from '@/shared/utils/swallow'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { SellerPinPrompt } from '@/components/auth/SellerPinPrompt'
-import { DollarSign, CheckCircle, Clock, Loader2, ArrowRight, Banknote } from 'lucide-react'
+import { DollarSign, CheckCircle, Clock, Loader2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 export default function AgencySettlementsPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
-  const [requesting, setRequesting] = useState(false)
-  const [pinPrompt, setPinPrompt] = useState(false)
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (data+summary).
   const { data: settle, isLoading: loading, refetch } = useApiQuery<{ data: any[]; summary: any }>(
     ['agency', 'settlements'], '/api/agency/settlements',
@@ -28,33 +22,8 @@ export default function AgencySettlementsPage() {
 
   const payableAmount = summary.total_agency_commission || 0
   const confirmedCount = summary.confirmed || 0
-
-  async function requestPayout() {
-    if (confirmedCount === 0) { toast.error(t('agency.settlements.noPayableOrders', { defaultValue: '정산 가능한 주문이 없습니다' })); return }
-    if (!(await confirmDialog(`${formatNumber(payableAmount)}${t('agency.settlements.confirmPayout', { defaultValue: '원 정산을 신청하시겠습니까?' })}`))) return
-    setRequesting(true)
-    try {
-      const res = await api.post('/api/agency/settlements/request')
-      if (res.data.success) {
-        toast.success(`${t('agency.settlements.requestDone', { defaultValue: '정산 신청 완료!' })} ${formatNumber(res.data.data.commission_amount)}원`)
-        load()
-      } else {
-        toast.error(res.data.error || t('agency.settlements.requestFailed', { defaultValue: '정산 신청 실패' }))
-      }
-    } catch (e: any) {
-      const code = e?.response?.data?.code
-      if (code === 'PIN_REQUIRED') {
-        setPinPrompt(true)
-        return
-      }
-      if (code === 'PIN_NOT_SET') {
-        toast.error(t('agency.settlements.pinNotSet', { defaultValue: '보안 PIN이 설정되지 않았어요. 프로필에서 먼저 설정해주세요.' }))
-        navigate('/agency/profile')
-        return
-      }
-      toast.error(e?.response?.data?.error || t('agency.settlements.requestFailed', { defaultValue: '정산 신청에 실패했습니다' }))
-    } finally { setRequesting(false) }
-  }
+  // 🏁 2026-06-17 (전수조사): 수동 정산 신청 레일은 P3(2026-06-12)에 폐기 — 백엔드 POST /settlements/request 가
+  //   410(RAIL_DEPRECATED) 반환. requestPayout/PIN 분기는 도달 불가 죽은 코드라 제거(자동 집계·매주 지급으로 대체).
 
   return (
     <AgencyLayout title={t('agency.settlements')}>
@@ -117,6 +86,9 @@ export default function AgencySettlementsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
+                {data.length === 0 && (
+                  <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-400">{t('agency.settlements.noSettlements', { defaultValue: '정산 내역이 없습니다.' })}</td></tr>
+                )}
                 {data.map((r: { id: number; order_number: string; seller_name: string; total_amount?: number; settlement_status: string; created_at: string }) => (
                   <tr key={r.id}>
                     <td className="px-4 py-3 font-mono text-xs">{r.order_number}</td>
@@ -140,13 +112,6 @@ export default function AgencySettlementsPage() {
         {/* 🛡️ 2026-04-26 M6: 월별 송장 (자동 발행) */}
         <SettlementInvoicesSection />
       </div>
-      {pinPrompt && (
-        <SellerPinPrompt
-          role="agency"
-          onVerified={() => { setPinPrompt(false); requestPayout() }}
-          onCancel={() => setPinPrompt(false)}
-        />
-      )}
     </AgencyLayout>
   )
 }

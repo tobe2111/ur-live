@@ -27,9 +27,11 @@ export default function AgencyProfilePage() {
 
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery. 편집형 폼이라 데이터 도착 시 로컬 state 시드.
   //   /api/agency/profile 은 인터셉터가 토큰 자동 주입(headers 전달 X — 토큰 회전 시 stale 헤더가 인터셉터 fresh 토큰을 덮어쓰는 문제 회피).
-  //   /api/agency-public/* 는 미주입 prefix → headers 수동 전달 필요.
+  //   🏁 2026-06-17 (전수조사): 브랜드 편집 엔드포인트는 /api/agency/public-profile 에 마운트됨(index.ts).
+  //   이전엔 /api/agency-public/me/public(공개 라우터, GET /:slug 뿐)로 잘못 호출 → GET 400(slug 'me' invalid)·PATCH 404.
+  //   /api/agency/* prefix 라 인터셉터가 토큰 자동 주입.
   const profileQ = useApiQuery<any>(['agency', 'profile-edit'], '/api/agency/profile', { select: (r: any) => (r?.success ? r.data : null) })
-  const brandQ = useApiQuery<any>(['agency', 'brand-public'], '/api/agency-public/me/public', { headers, select: (r: any) => (r?.success ? r.data : null) })
+  const brandQ = useApiQuery<any>(['agency', 'brand-public'], '/api/agency/public-profile/me/public', { headers, select: (r: any) => (r?.success ? r.data : null) })
   const profile = profileQ.data ?? null
   const loading = profileQ.isLoading
 
@@ -58,7 +60,7 @@ export default function AgencyProfilePage() {
   async function handleSaveBrand() {
     setSavingBrand(true)
     try {
-      const res = await api.patch('/api/agency-public/me/public', brand, { headers })
+      const res = await api.patch('/api/agency/public-profile/me/public', brand, { headers })
       if (res.data?.success) {
         toast.success(t('agency.agencyProfile.brandSavedToast', { defaultValue: '브랜드 설정이 저장되었습니다' }))
       } else {

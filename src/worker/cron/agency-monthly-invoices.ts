@@ -19,6 +19,9 @@
 
 import type { Env } from '../types/env'
 import { swallow } from '../utils/swallow'
+// 🏁 2026-06-17 (전수조사): 원천징수율 하드코딩 제거 — SSOT 상수. (인보이스는 정보용 — agencies 는 tax_type 컬럼이
+//   없어 전부 사업소득 3.3%. seller 전용 withholdAndLog 부적합. 값 동일, 동작 보존.)
+import { WITHHOLDING_RATES } from '../utils/tax-withholding'
 interface BackupEnvLike extends Env {
   BACKUP_BUCKET?: any  // R2Bucket — 옵션
 }
@@ -38,7 +41,7 @@ interface MonthlyTotals {
   total_amount: number
 }
 
-const TAX_RATE = 0.033  // 3.3% (소득세 + 지방세)
+const TAX_RATE = WITHHOLDING_RATES.business_income  // 3.3% (소득세 + 지방세) — SSOT 상수
 
 export async function handleAgencyMonthlyInvoices(env: BackupEnvLike): Promise<{
   generated: number

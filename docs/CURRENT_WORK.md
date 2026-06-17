@@ -7,11 +7,29 @@
 - **③ 토큰 수명 단축 (안 함 — 권하지 않음)**: XSS는 localStorage 통째로 읽어 **refresh까지 탈취** → access만 단축해도 XSS 방어 거의 0. 게다가 30일은 "모바일 잦은 만료 민원"으로 *일부러* 늘린 값 → 단축=UX 후퇴. 비용 대비 무의미.
 - 검증: 가드 테스트 통과 · tsc 영향 없음(standalone mjs).
 
+## ✅ 2026-06-17 — 어드민 주문 페이지: 종류 구별(교환권/상품) + 체크박스 일괄 처리 (대표 요청)
+**요청**: `/admin/orders` 에서 교환권/상품/도매몰 구별 + 체크박스 선택.
+- **종류 구별**: GET `/api/admin/orders` SELECT 에 `first_item_category`(첫 주문상품 category) 추가 → 프론트 `orderKind()` 가 `isVoucherCategory` 면 **교환권**(+식사/미용/숙소/기타 서브), 아니면 **상품**. 신규 '종류' 컬럼(amber 교환권 / sky 상품 배지). bind param 무변경(정적 서브쿼리).
+- **도매몰(B2B)**: 별도 `wholesale_orders` 테이블이라 이 페이지(=`orders`)엔 **구조적으로 안 나옴** → '도매몰(B2B) 주문 보기' 링크(`/admin/wholesale-orders`)로 안내(혼동 방지).
+- **체크박스 일괄 처리**: 행별 체크박스 + 전체선택(indeterminate) + 1+선택 시 액션바(상품 준비/배송중/배송완료 일괄). **기존 `PATCH /orders/bulk-status` 재사용**(상태 검증·결제완료 일괄취소 차단·state-machine 그대로). 페이지/필터 변경 시 선택 자동 정리.
+- 검증: tsc 0 · `npm run build` 0 · 대시보드 테마 0 · sql-bind 0. 머니 로직 무변경(상태 플립만, bulk-status 의 캡처 주문 취소 차단 유지).
+
 ## 🔐 2026-06-17 — 쿠키 전환(C) Phase 1 구현: httpOnly 토큰 쿠키 발급 일원화 (대표 "무조건 하자, 모두 이상적으로")
 **방침**: 인증은 prod 자동배포 + 쿠키/웹뷰 E2E 불가 → 한 방 컷오버 시 전 대시보드(대표 어드민 포함) 락아웃 위험 → **다크론치**(무해 기반 먼저, 실제 전환은 flag+staging 게이트).
 - **Phase 1(배포·무해·추가형)**: 모든 대시보드 로그인이 `ud_*` httpOnly 쿠키 발급하도록 통일. `auth-cookies.ts` 4역할 확장(+admin/supplier), `admin.routes`(ud_admin_token)·`supplier-auth.routes`(ud_supplier_token login+become) 발급 추가, `logout-cookies` 4역할 정리, 단위테스트 5. **기존 Bearer/localStorage·응답 바디 byte-identical → 무회귀·락아웃 0.** 읽기는 GET 전용 fallback(Bearer 우선)이라 **보안 이득은 아직 0**(localStorage 토큰 잔존) — 다음 컷오버에서 발생.
 - **Phase 2~3(미구현, staging 게이트)**: CSRF 강제 확대(쿠키 mutation, Bearer skip) + 미들웨어 쿠키 mutation 읽기 + **클라 컷오버(localStorage 토큰 제거 = 실제 XSS 차단)**. feature flag `DASHBOARD_COOKIE_AUTH`(OFF) 뒤. **이 환경 E2E 불가** → 대표 staging 검증 게이트(특히 카톡 인앱). 설계: `docs/design/dashboard-cookie-auth.md` §11.
 - 검증: tsc 0 · 단위(auth-cookies 5) · `npm run build` exit 0.
+
+## ✅ 2026-06-17 — 에이전시 대시보드 전수조사 + 기능 버그 수정 (대표 "전수조사 → 🔴+🟡+🟢 전부 수정")
+**감사 범위**: 페이지 50+·백엔드 라우트 23(전부 마운트·`requireAgency` 가드 정상, 죽은 cron 0, IDOR 0 — 골격 양호). 발견된 **실동작 버그 4 + 머니 규칙 위반 2 + 경미 3** 전부 수정.
+- **🔴 공동구매 지표 깨짐** (`AgencyGroupBuyPage`): 백엔드 `community_group_buys` 컬럼(`current_count`/`target_count`/`total_deposited`)을 페이지가 `participant_count`/`target_participants`/`total_deposit_deals` 로 읽어 참여자/예치/예상수익 전부 undefined·0. **프론트 `select`에 `normalizeGroupBuy` 매핑**(소비자 피드 공유 백엔드 무변경).
+- **🔴 라이브 시청자 항상 0** (`AgencyStreamsPage`): `/streams` 가 `current_viewers`/`scheduled_at` 반환인데 `viewer_count`/`started_at` 로 읽음 → select 정규화.
+- **🔴 브랜드 편집기 먹통** (`AgencyProfilePage`): `/api/agency-public/me/public`(공개 라우터, GET /:slug 뿐) 호출 → 실제 마운트는 `/api/agency/public-profile/me/public`. GET 400·PATCH 404 → 경로 교정(인터셉터 토큰 자동주입).
+- **🔴 셀러이전 받은/보낸 분류 깨짐** (`AgencyTransfersPage`): 미존재 `/api/agency/me` 404 → `myAgencyId` 항상 null → `/api/agency/profile`(data.id)로 재연결.
+- **🟡 원천징수율 하드코딩 제거**(`agency-auto-settle.ts`·`agency-monthly-invoices.ts`): `0.033` 리터럴 → SSOT `WITHHOLDING_RATES.business_income`(값 동일, 동작 보존). seller 전용 `withholdAndLog`는 sellers 테이블 조회라 부적합(agencies 는 tax_type 컬럼 없음 — 향후 도입 시 비율분기는 별도 머니작업).
+- **🟡 자동정산 멱등성**(`agency-auto-settle.ts`): SELECT→INSERT→mark(이중정산 창) → `UPDATE...RETURNING` 원자적 claim-before-credit(선점한 행으로만 수수료 산출, 동시실행 RETURNING 0건 → skip). ⚠️ 머니 — **staging 실정산 E2E 1회 필요**.
+- **🟢 경미**: enum 폴백 가드(`AgencySelfEventsPage`/`AgencyPromoteBoostsPage` — 데이터 드리프트 크래시 방지), `AgencySellersPage.loadStats` 조용한 실패→토스트, `AgencySettlementsPage` 죽은 `requestPayout`(410) 제거+빈 테이블 empty-state, `AgencyContractsPage`/`AgencyNoticesPage` 한글 하드코딩 `t()` 래핑.
+- 검증: `npm run build`(client+worker) exit 0 · 머니패턴·테마 검사 clean. tsc 는 환경 TS버전 `baseUrl` deprecation(레포 전역, 변경 무관)로 미실행.
 
 ## ✅ 2026-06-17 — 이메일 기억하기 4개 대시보드 추가 + 자동 로그인 정합 (대표 신고)
 **신고**: "각 대시보드마다 이메일 기억하기 잘 되나? 자동 로그인도 안 되는 것 같다." 전수조사: 이메일 기억은 **admin·seller만 있고 agency/supplier/wholesale(owner·staff) 4곳 누락**. 자동 로그인은 **전용 토글 없음**(토큰 30일+refresh 90일+자동갱신으로 암묵 유지).
@@ -122,6 +140,16 @@
 **발견**: 직전에 숙소를 동네딜 그리드에 인라인 필터로 옮겼는데, **숙소 상품은 `products.price=0`(실가격은 객실 테이블 별도) + 위치·평점이 `product_stay_info` 별도 테이블**이라 그리드 카드론 **₩0·정보누락으로 깨짐**(seller-stays INSERT 확인). group_buy_status 기본값 'active'라 stays 가 피드에 들어와 '전체' 탭에도 ₩0 카드로 샐 수 있었음(잠재 선재버그 포함).
 - **수정(올바른 방향)**: 숙소는 전용 `/stays`(=`/api/group-buy/stays/search`, product_stay_info join)에서만 표시. ① 숙소 탭/사이드바 → `/stays` 환원 ② `GroupBuyListPage` 클라 필터에 `stay_voucher` **그리드 전역 제외**(전체 포함 — ₩0 카드 누수 차단) ③ 인라인용 stay 카드 라우팅/뱃지/CTA·Calendar import 정리(clean revert) ④ **`/stays` 헤더에 동네딜 카테고리 칩 추가**(전체/맛집식사권/미용/숙소(active)/기타/일반상품) — 숙소가 "다른 카테고리처럼" 보이길 원한 최초 요구를 예약 흐름 깨지 않고 충족(내비 일관성).
 - 일반 상품 피드 수정([UNLOCK_LOADING])·i18n·PC 바탕 다크는 그대로 유효. 검증: tsc 0 · build 0 · 테마·머니패턴 통과 · i18n 키 타 사용처 0(이모지 부작용 없음).
+
+## ✅ 2026-06-17 — 크리에이터→판매자 통합 + 링크샵 flip-flop 수정 (사용자 "모두 진행")
+**배경**: 사용자가 링크샵(`/u/{handle}`)이 새로고침마다 셀러↔핀 "왔다갔다" 신고 + "사업자 등록한 유저가 자기 상품도 올리게" 요청. AskUserQuestion 으로 (어드민 승인 후 판매 / 인라인+제한 대시보드) 확정 후 4건 진행.
+- **#0 발견 가능성 (commit 54a7dd0)**: 카카오 유저는 마이페이지 셀러전환 버튼이 숨겨져(`SellerSwitchInline` is_kakao_user && !has_seller→null) 사업자 등록해도 판매 입구가 안 보였음. CuratorEarningsPage 에 `SellOwnProductsCTA`(셀러 상태별: 없음→등록 / pending / approved→등록·대시보드 / rejected) 추가.
+- **#2 flip-flop 근본수정 (commit 05f4eed, [UNLOCK_LOADING])**: `/api/curator/:handle` `publicCache(300)+cacheControl(60,900)` → `edgeCache(300)`. 원인: publicCache(bypassIfAuthed:false)가 URL-key 캐시를 소유자에게도 서빙 + cacheControl 이 핸들러의 owner `no-store`(curator.routes:178)를 덮어씀 → `linked_seller`(셀러 inline vs 핀)가 stale↔fresh 튐. edgeCache 는 인증요청 우회 → 소유자 항상 fresh. 익명/SSR self-fetch/cron 은 caches.default 캐싱 → SSR 0-RTT/CDN분리/useKv:false 불변. audit log 기록됨.
+- **#1 사업자정보 이중입력 제거 (commit b4f62b7)**: 현행 모델(SERVICE_MODEL v2 "셀러=매장")에서 판매=매장(store_owner) 등록. CTA 타깃을 비활성 `/seller/register/business` → 현행 `/seller/register/supplier`(register-from-user store_owner). SellerRegisterSupplierPage 가 `?from=curator` 진입 시 `/api/curator/me/business` 의 상호/사업자번호로 폼 자동채움(빈 필드만, representative/start_date 는 큐레이터측 미저장).
+- **#3a 인라인 빠른 상품등록 (commit c4be6f8)**: 승인 판매자는 콘솔에서 `QuickProductModal`(상품명/가격/재고/카테고리)로 대시보드 안 나가고 등록. 기존 POST /api/seller/products 재활용, 셀러토큰 transient(switch-to-seller accessToken 헤더만, localStorage 미저장). 이미지/상세는 대시보드에서.
+- **#3b 제한 대시보드**: SellerLayout 의 mode/hideFor/seller_type 스코핑으로 **이미 충족**(store_owner=라이브·큐레이터·영입·prospects 숨김) → 무변경(튜닝된 공용 nav 회귀방지).
+- 검증: tsc 0 · `npm run build`(client+worker) 0 · 테마검사 통과. 잠금 파일: edge-cache.ts/curator 핸들러 무수정(미들웨어 1줄만).
+- ⚠️ **미검증(실환경 권장)**: ① flip-flop 실제 해소 prod 확인(승인직후 ≤900s 익명캐시 transition 은 cron/TTL self-heal) ② 매장 가입→어드민 승인→인라인 등록 E2E 1회 ③ QuickProductModal 의 transient 토큰 상품등록 실결제전 1회.
 
 ## ✅ 2026-06-17 — 동네딜 카테고리 마감재 4종 (사용자 "모두 다 이상적으로")
 **배경**: 숙소 인라인화·일반상품 추가 후 "더 이상적으로?" → 4건 전부 진행.
