@@ -26,8 +26,14 @@ interface VoucherOrderRow {
   external_order_id: string | null
   sent_at: string | null
   failure_reason: string | null
+  retry_count: number
   created_at: string
   updated_at: string
+}
+
+interface FailureSummaryRow {
+  reason: string
+  cnt: number
 }
 
 interface KtAlphaStatus {
@@ -56,15 +62,16 @@ export default function AdminVoucherOrdersPage() {
   })
   const ktStatus = ktStatusQ.data ?? null
 
-  const ordersQ = useApiQuery<{ rows: VoucherOrderRow[]; stats: { processing: number; sent: number; failed: number; failed_all: number } }>(
+  const ordersQ = useApiQuery<{ rows: VoucherOrderRow[]; stats: { processing: number; sent: number; failed: number; failed_all: number }; failureSummary: FailureSummaryRow[] }>(
     ['admin', 'voucher-orders', hours, statusFilter], '/api/admin/voucher-orders',
     {
       params: { hours, limit: 500, ...(statusFilter !== 'all' ? { status: statusFilter } : {}) },
-      select: (r: any) => ({ rows: r?.success ? (r.data || []) : [], stats: r?.stats || { processing: 0, sent: 0, failed: 0, failed_all: 0 } }),
+      select: (r: any) => ({ rows: r?.success ? (r.data || []) : [], stats: r?.stats || { processing: 0, sent: 0, failed: 0, failed_all: 0 }, failureSummary: r?.failure_summary || [] }),
     },
   )
   const rows = ordersQ.data?.rows ?? []
   const stats = ordersQ.data?.stats ?? { processing: 0, sent: 0, failed: 0, failed_all: 0 }
+  const failureSummary = ordersQ.data?.failureSummary ?? []
   const loading = ordersQ.isLoading
   const load = () => ordersQ.refetch()
 
@@ -113,6 +120,31 @@ export default function AdminVoucherOrdersPage() {
                   실패 {stats.failed_all}건 모두 보기 →
                 </button>
               )}
+            </div>
+          )}
+
+          {/* 🎫 2026-06-17 (사용자 요청 "문제 없게"): 자동 복구 동작 안내 — 운영자가 매번 수동 재발송 안 해도 됨을 명시. */}
+          <div className="mb-3 px-4 py-3 rounded-lg border border-blue-200 bg-blue-50 text-xs text-blue-800 leading-relaxed">
+            <span className="font-bold">🤖 자동 복구 동작 중</span> — 발송 실패 건은 매시간 자동으로 최대 3회 재시도됩니다
+            (미발송 확정 건이라 중복 발송 위험 없음). 3회까지 실패한 건만 아래에서 <span className="font-semibold">수동 재발송</span>하면 됩니다.
+            <br />
+            <span className="text-blue-600">
+              ※ "처리 중"이 30분 넘게 멈춘 건은 발송 여부가 불확실하여 중복 발송 방지를 위해 자동 재시도하지 않고 실패로 표시됩니다 — KT Alpha 구매내역 확인 후 필요 시 수동 재발송하세요.
+            </span>
+          </div>
+
+          {/* 🎫 2026-06-17: 실패 사유 집계 — 전화번호 없음 / API 에러 등 패턴 한눈에. */}
+          {failureSummary.length > 0 && (
+            <div className="mb-3 px-4 py-3 rounded-lg border border-gray-200 bg-white">
+              <div className="text-xs font-bold text-gray-700 mb-2">📊 실패 사유 분포 (기간 무관)</div>
+              <div className="space-y-1">
+                {failureSummary.map((f, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <span className="shrink-0 font-bold text-red-600 w-10 text-right">{f.cnt}건</span>
+                    <span className="text-gray-600 truncate">{f.reason || '(사유 없음)'}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -217,6 +249,12 @@ export default function AdminVoucherOrdersPage() {
                   {r.external_order_id && <p className="text-[10px] text-gray-400 font-mono mt-1">KT 주문번호: {r.external_order_id}</p>}
                   {r.failure_reason && (
                     <p className="text-[11px] text-red-700 mt-2 p-2 bg-red-50 rounded">⚠️ 실패 사유: {r.failure_reason}</p>
+                  )}
+                  {/* 🎫 2026-06-17: 자동 재시도 횟수 — 3회 도달 시 수동 재발송만 남음을 안내. */}
+                  {r.status === 'failed' && r.retry_count > 0 && (
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      🤖 자동 재시도 {r.retry_count}/3회{r.retry_count >= 3 ? ' — 자동 복구 소진, 수동 재발송 필요' : ' (다음 시간대 자동 재시도 예정)'}
+                    </p>
                   )}
                 </div>
                 {r.status === 'failed' && (

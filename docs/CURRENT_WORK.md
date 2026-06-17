@@ -1,5 +1,16 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 교환권 발송 실패 "이상적 해결": 자동 복구 + 끼임 surface (대표 "가장 이상적으로 해결해줘. 어떻게 해야 문제가 없는지")
+**배경**: 위 가시성 fix 후속 — 실패가 보이는 것에서 **문제 없게(자가치유)** 로. 기존엔 실패 시 알림(유저/Discord/dashboard)만 있고 **자동 재시도 0**(운영자가 매번 수동 '재발송' 클릭) + **'processing' 끼임 영구 잔존**(sendCoupon 직후 UPDATE 전 크래시) + 실패 사유 집계 없음.
+- **신규 cron `kt-alpha-voucher-retry.ts`** (`scheduled.ts` 매시간 `0 * * * *` 등록):
+  - **A. 'failed' 자동 재시도(안전)**: status='failed'=sendCoupon throw=**미발송 확정**이라 재시도해도 중복 0(수동 재발송과 동일 sendCoupon). 가드 `retry_count<3 · 최근14일 · 유효폰(GLOB 01[0-9]*+JS regex) · goods_code`. exponential backoff(last_retry_at+2^retry_count h). run당 20건. **CAS(failed→processing, retry_count++)** 선점 후 발송 → 성공 'sent'/실패 retry_count 유지. 3회 소진분 Discord 1회 요약.
+  - **B. 'processing' 끼임 surface(위험회피)**: 30분 초과 미완료를 'failed'(retry_count=3=소진)로 전환 → **자동 재발송 안 함**(발송 성공 여부 불명 → 중복발송/이중과금 위험). 실패 목록엔 보이되 자동 대상 제외 → 운영자가 KT 구매내역 확인 후 수동 재발송.
+  - **config(user_id/callback_no) 미설정 시 자동 재시도 전체 skip** — retry_count 안 태움(끼임 정리는 수행).
+- **스키마**: `voucher_orders.retry_count INTEGER DEFAULT 0` + `last_retry_at DATETIME` — repair-schema ALTER(requiresTable 가드) + CREATE TABLE 3곳(repair-schema/kt-alpha-auto-send lazy) 동시 추가. ensureVoucherRetryColumns(WeakSet 메모이즈, 머니룰 per-request DDL 준수).
+- **어드민 페이지**(`AdminVoucherOrdersPage`): ① 🤖 자동복구 동작 안내 배너(실패=자동3회/끼임=수동) ② 📊 실패 사유 분포 집계(백엔드 `failure_summary` GROUP BY) ③ 행별 자동 재시도 `N/3회` 표시. GET `/voucher-orders` 응답에 `retry_count`(COALESCE graceful) + `failure_summary` 추가.
+- **문제 없게 운영하려면(대표 안내)**: 자동 복구가 일시적 KT API 오류는 자가치유. 단 ① KT Alpha 잔액 유지(잔액부족 실패는 충전 후 자동 재시도) ② dev_mode 무관(sendCoupon 은 항상 실발송) — 즉 별도 조치 거의 불필요. 3회 소진/끼임만 가끔 수동 확인.
+- **검증**: tsc 0 · `npm run build`(client+ssr+worker+prepare) exit 0 · 대시보드 테마(AdminVoucherOrdersPage 무플래그) · sql-bind 0 · money-pattern 0 · schema-refs 0.
+
 ## ✅ 2026-06-17 — 교환권 발송 실패가 목록에 안 보이던 문제 (대표 신고)
 **신고**: `/admin/voucher-orders` 에서 "발송 실패됐다는데" 페이지엔 안 보임.
 - **원인**: `GET /voucher-orders` 가 **시간창 필터**(기본 24h, 최대 7일)로 row 를 거름 → **7일보다 오래되거나 24h 밖의 실패 건이 숨겨짐**. 대시보드 failed 카운트(admin-stats:151)는 **기간 무관 전체**라 "실패 N"은 뜨는데 목록 0건 → 불일치. (모든 voucher 는 source='kt_alpha' 라 출처 필터는 무관.)
