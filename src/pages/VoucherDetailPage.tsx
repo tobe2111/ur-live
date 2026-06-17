@@ -36,6 +36,8 @@ interface VoucherProduct {
   name: string
   description: string | null
   price: number
+  original_price?: number | null
+  discount_rate?: number | null
   image_url: string | null
   category: string
   deal_only?: number
@@ -234,6 +236,11 @@ export default function VoucherDetailPage() {
   const balancePending = balanceFetching && balance === 0
   // 🧹 공급사(KT Alpha) 내부 정책 표기 제거 후 표시 (prod DB 잔존 행도 즉시 정리).
   const cleanDescription = product.description ? stripSupplierPolicy(product.description) : ''
+  // 🎨 정가(원) > 교환가(딜=원) 일 때만 할인 표시 (KT Alpha 교환권 등). 데이터 없으면 미표시.
+  const hasDiscount = !!product.original_price && product.original_price > product.price
+  const discountPct = hasDiscount
+    ? Math.round(((product.original_price! - product.price) / product.original_price!) * 100)
+    : 0
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-52 lg:pb-40">
@@ -280,9 +287,18 @@ export default function VoucherDetailPage() {
           {product.restaurant_name && (
             <div className="mt-1 text-[13.5px] text-gray-400 dark:text-gray-500">{product.restaurant_name}{product.restaurant_address ? ` · ${product.restaurant_address}` : ''}</div>
           )}
-          <div className="mt-4 flex items-baseline gap-1">
-            <span className="text-[32px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(product.price)}</span>
-            <span className="text-[18px] font-bold text-[#171B24] dark:text-white">딜</span>
+          {/* 🎨 2026-06-17: 시안 의도 복원 — original_price(정가) 있으면 취소선 + 실제 할인율 표시 */}
+          <div className="mt-4 flex items-end justify-between gap-3">
+            <div className="flex items-baseline gap-1">
+              <span className="text-[32px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(product.price)}</span>
+              <span className="text-[18px] font-bold text-[#171B24] dark:text-white">딜</span>
+            </div>
+            {hasDiscount && (
+              <div className="text-right leading-tight">
+                <div className="text-[12px] text-gray-400 dark:text-gray-500 line-through">정가 ₩{formatNumber(product.original_price!)}</div>
+                <div className="text-[12.5px] font-bold text-[#0E9F6E] dark:text-emerald-400">{discountPct}% 할인 교환</div>
+              </div>
+            )}
           </div>
 
           <div className="h-px bg-[#EEF0F3] dark:bg-[#1A1A1A] my-4" />
