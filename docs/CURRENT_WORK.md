@@ -11,6 +11,15 @@
 - ⚠️⚠️ **실 staging 결제 E2E 1회 필수**(외부 검증 불가): 공급가=공급원가×(1+마진)·제조사 지급=공급원가 전액·플랫폼=스프레드·판매가 상한·환불 역전. `docs/WHOLESALE_SETTLEMENT_E2E.md` 갱신본 참조.
 - **후속**: ① 등급배수 어드민 편집 UI(현재 상수) ② 제품별 마진 입력 UI 확인/라벨(supply_margin_override_pct) ③ GET /me·admin 등급 미리보기의 옛 marginForGrade 표시 정합 ④ guide-seed-wholesale 공식 문구.
 
+## ✅ 2026-06-17 — 대시보드 단일 세션 강제 (대표 결정: "단일 세션 강제로 하자", 범위 AskUserQuestion=대시보드 전체)
+**목적**: 한 대시보드 계정 = 한 곳(기기/브라우저)만 로그인. 새 기기 로그인 시 기존 세션 자동 로그아웃. 외부 도매 동업자/어드민 **계정 공유·도용 방지**(최근 PIN/2FA 와 같은 맥락).
+- **설계(iat 에포크 — payload 무변경)**: 모든 대시보드 토큰에 이미 있는 `iat` 활용. 신규 `dashboard_sessions(account_type, account_id, min_valid_iat)`. 로그인 시 `min_valid_iat=로그인 iat` 갱신 → 미들웨어/리프레시가 `토큰 iat < min_valid_iat` 면 401. **더 늦은 로그인이 이전 세션 무효화**. sid 를 전 payload 에 심는 방식 대비 변경면 최소.
+- **신규 헬퍼** `worker/utils/dashboard-session.ts`: `startDashboardSession`(로그인 갱신)·`isDashboardSessionCurrent`(검증, 1초 skew). **전 함수 fail-open/soft** — D1 장애·레거시(iat 없음)·추적행 없음(롤아웃 전)·비대상역할·서브계정은 모두 통과(인증/로그인 안 깨짐).
+- **범위(v1)**: admin / seller(=도매 사장, `/api/seller/login` 경유) / supplier. **제외**: agency(멀티 멤버)·wholesale 서브계정(`sub_account_id`) — 토큰 sub 가 부모ID라 시트별 키 필요(정상 동시 직원 오로그아웃 방지). 카카오 발급 셀러/에이전시 토큰도 v1 grandfather(잠금 kakao.routes 미변경). → **후속**: 멀티시트 per-seat 키 + 카카오 토큰.
+- **미들웨어**(`auth.ts requireAuth`): Bearer/세션쿠키/SSR-forward 3경로 모두 검증(`SESSION_SUPERSEDED` 401). `optionalAuth` 는 제외(선택 인증에 401 부적절). **리프레시 차단**: admin/seller `/refresh` 가 옛 토큰 iat 검사 → 옛 기기가 refresh 로 우회 못 함(서브계정 제외). 로그인 6지점 `startDashboardSession` 1줄씩(admin/seller/supplier login+become/seller-registration). 쿠키 경로 위해 `session.ts SessionUser.iat` 추가.
+- **클라 무변경**: 옛 기기 401→기존 refresh 실패→강제 로그아웃→`/{role}/login?error=session_expired`(기존 흐름이 그대로 처리). 메시지는 일반 "세션 만료"(향후 "다른 기기 로그인" 문구로 개선 가능).
+- 검증: tsc 0 · `npm run build` 0 · 단위 87 통과(dashboard-session 9 신규) · schema-refs/sql-bind 0. ⚠️ 배포 후 실 staging 1회 권장(A 로그인→B 로그인→A 자동 로그아웃 확인).
+
 ## ✅ 2026-06-17 — 어드민 대시보드 라이브 스트림 관리: 체크박스 일괄 삭제 (사용자 요청)
 **요청**: 어드민 대시보드 '라이브 스트림 관리' 테이블을 체크박스로 다중 선택 삭제.
 - **구조적 발견**: 테이블이 public `/api/streams`(소프트삭제 `deleted_at` 미필터)에서 로드 → soft-delete(status='ended'+deleted_at)해도 행이 안 사라지던 구조(단건 삭제조차). 근본수정으로 **테이블 데이터 소스를 admin 전용 `/api/admin/streams` 로 전환 + 거기서 `deleted_at IS NULL` 필터**(저트래픽 admin 경로라 hot public 피드 무변경 — 회귀 0).
