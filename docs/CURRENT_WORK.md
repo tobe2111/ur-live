@@ -6,6 +6,12 @@
 - **AgencyPage 라이브 잔재 4곳 처리**: ① 5번째 KPI 카드 `라이브`→`진행중 공구`(amber, Ticket) 스왑(라이브 복원 시 환원) ② 인사이트 '오늘 라이브 없음'(→/schedule) `!LIVE_COMMERCE_SUSPENDED` 게이트 ③ 서브타이틀 '…/라이브'→'…/공구' ④ 'Live Schedule' 섹션 + 셀러랭킹 LIVE 배지 게이트.
 - **AgencyLayout 모바일 FAB**: '라이브 편성'(→/schedule, **게이트 없던 잔재**) → 라이브 중단 시 '공구 관리'(→/agency/group-buy, Utensils)로 repurpose.
 - 전부 `LIVE_COMMERCE_SUSPENDED` 분기라 **flag false 시 라이브 UI 자동 복원**(코드 보존 정책 준수). 검증: client+worker build exit 0 · 테마 clean. (직전 전수조사 commit 의 AgencyGroupBuyPage 데이터매핑 수정과 연속.)
+## ✅ 2026-06-17 — 듀얼 로그인 영구 방어선 + CSP/토큰 대안 평가 (대표 "1,2,3 다 하자")
+대표가 쿠키 컷오버 대신 가벼운 대안 3종 요청 → 정직하게 분류 후 안전한 것만 실행:
+- **① 재발방지 CI 가드 (구현·배포)**: `scripts/check-dual-login-guard.mjs` — 클라 `localStorage.getItem('user_type') === 'user'` *로그인 게이트* 안티패턴(세션 풀림 사고 근본원인) 신규 추가 감지. App.tsx(글로벌 Firebase init, 세션드롭 아님)만 allowlist. pre-commit warn(`install-git-hooks.sh`) + **verify.yml CI strict(현재 위반 0)**. 동시로그인 해결을 *영구*로 못박음. 런타임 위험 0(검사 스크립트). 음성/양성/strict 테스트 통과.
+- **② CSP (점검만 — 변경 안 함)**: 이미 잘 하드닝 — script-src `nonce + strict-dynamic`(CSP3에서 unsafe-inline·host 무력화=사실상 nonce 전용, XSS 핵심방어) + object-src 'none'·base-uri·form-action·frame-ancestors 'self'. style-src는 과거 사고(2026-05-21 nonce)로 잠김, connect/img 타이트닝은 통합 깨짐+E2E 불가 → **안전한 추가 변경 없음**(억지 변경이 해로움). 쿠키 전환의 marginal 이득이 작은 근거이기도 함.
+- **③ 토큰 수명 단축 (안 함 — 권하지 않음)**: XSS는 localStorage 통째로 읽어 **refresh까지 탈취** → access만 단축해도 XSS 방어 거의 0. 게다가 30일은 "모바일 잦은 만료 민원"으로 *일부러* 늘린 값 → 단축=UX 후퇴. 비용 대비 무의미.
+- 검증: 가드 테스트 통과 · tsc 영향 없음(standalone mjs).
 
 ## ✅ 2026-06-17 — 어드민 주문 페이지: 종류 구별(교환권/상품) + 체크박스 일괄 처리 (대표 요청)
 **요청**: `/admin/orders` 에서 교환권/상품/도매몰 구별 + 체크박스 선택.
@@ -140,6 +146,16 @@
 **발견**: 직전에 숙소를 동네딜 그리드에 인라인 필터로 옮겼는데, **숙소 상품은 `products.price=0`(실가격은 객실 테이블 별도) + 위치·평점이 `product_stay_info` 별도 테이블**이라 그리드 카드론 **₩0·정보누락으로 깨짐**(seller-stays INSERT 확인). group_buy_status 기본값 'active'라 stays 가 피드에 들어와 '전체' 탭에도 ₩0 카드로 샐 수 있었음(잠재 선재버그 포함).
 - **수정(올바른 방향)**: 숙소는 전용 `/stays`(=`/api/group-buy/stays/search`, product_stay_info join)에서만 표시. ① 숙소 탭/사이드바 → `/stays` 환원 ② `GroupBuyListPage` 클라 필터에 `stay_voucher` **그리드 전역 제외**(전체 포함 — ₩0 카드 누수 차단) ③ 인라인용 stay 카드 라우팅/뱃지/CTA·Calendar import 정리(clean revert) ④ **`/stays` 헤더에 동네딜 카테고리 칩 추가**(전체/맛집식사권/미용/숙소(active)/기타/일반상품) — 숙소가 "다른 카테고리처럼" 보이길 원한 최초 요구를 예약 흐름 깨지 않고 충족(내비 일관성).
 - 일반 상품 피드 수정([UNLOCK_LOADING])·i18n·PC 바탕 다크는 그대로 유효. 검증: tsc 0 · build 0 · 테마·머니패턴 통과 · i18n 키 타 사용처 0(이모지 부작용 없음).
+
+## ✅ 2026-06-17 — 크리에이터→판매자 통합 + 링크샵 flip-flop 수정 (사용자 "모두 진행")
+**배경**: 사용자가 링크샵(`/u/{handle}`)이 새로고침마다 셀러↔핀 "왔다갔다" 신고 + "사업자 등록한 유저가 자기 상품도 올리게" 요청. AskUserQuestion 으로 (어드민 승인 후 판매 / 인라인+제한 대시보드) 확정 후 4건 진행.
+- **#0 발견 가능성 (commit 54a7dd0)**: 카카오 유저는 마이페이지 셀러전환 버튼이 숨겨져(`SellerSwitchInline` is_kakao_user && !has_seller→null) 사업자 등록해도 판매 입구가 안 보였음. CuratorEarningsPage 에 `SellOwnProductsCTA`(셀러 상태별: 없음→등록 / pending / approved→등록·대시보드 / rejected) 추가.
+- **#2 flip-flop 근본수정 (commit 05f4eed, [UNLOCK_LOADING])**: `/api/curator/:handle` `publicCache(300)+cacheControl(60,900)` → `edgeCache(300)`. 원인: publicCache(bypassIfAuthed:false)가 URL-key 캐시를 소유자에게도 서빙 + cacheControl 이 핸들러의 owner `no-store`(curator.routes:178)를 덮어씀 → `linked_seller`(셀러 inline vs 핀)가 stale↔fresh 튐. edgeCache 는 인증요청 우회 → 소유자 항상 fresh. 익명/SSR self-fetch/cron 은 caches.default 캐싱 → SSR 0-RTT/CDN분리/useKv:false 불변. audit log 기록됨.
+- **#1 사업자정보 이중입력 제거 (commit b4f62b7)**: 현행 모델(SERVICE_MODEL v2 "셀러=매장")에서 판매=매장(store_owner) 등록. CTA 타깃을 비활성 `/seller/register/business` → 현행 `/seller/register/supplier`(register-from-user store_owner). SellerRegisterSupplierPage 가 `?from=curator` 진입 시 `/api/curator/me/business` 의 상호/사업자번호로 폼 자동채움(빈 필드만, representative/start_date 는 큐레이터측 미저장).
+- **#3a 인라인 빠른 상품등록 (commit c4be6f8)**: 승인 판매자는 콘솔에서 `QuickProductModal`(상품명/가격/재고/카테고리)로 대시보드 안 나가고 등록. 기존 POST /api/seller/products 재활용, 셀러토큰 transient(switch-to-seller accessToken 헤더만, localStorage 미저장). 이미지/상세는 대시보드에서.
+- **#3b 제한 대시보드**: SellerLayout 의 mode/hideFor/seller_type 스코핑으로 **이미 충족**(store_owner=라이브·큐레이터·영입·prospects 숨김) → 무변경(튜닝된 공용 nav 회귀방지).
+- 검증: tsc 0 · `npm run build`(client+worker) 0 · 테마검사 통과. 잠금 파일: edge-cache.ts/curator 핸들러 무수정(미들웨어 1줄만).
+- ⚠️ **미검증(실환경 권장)**: ① flip-flop 실제 해소 prod 확인(승인직후 ≤900s 익명캐시 transition 은 cron/TTL self-heal) ② 매장 가입→어드민 승인→인라인 등록 E2E 1회 ③ QuickProductModal 의 transient 토큰 상품등록 실결제전 1회.
 
 ## ✅ 2026-06-17 — 동네딜 카테고리 마감재 4종 (사용자 "모두 다 이상적으로")
 **배경**: 숙소 인라인화·일반상품 추가 후 "더 이상적으로?" → 4건 전부 진행.

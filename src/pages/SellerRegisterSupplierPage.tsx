@@ -89,6 +89,29 @@ export default function SellerRegisterSupplierPage() {
     })()
   }, [])
 
+  // 🏁 2026-06-17 (#1 이중입력 제거): 크리에이터 콘솔에서 진입(?from=curator) 시 큐레이터 사업자
+  //   정보(이미 입력한 상호/사업자번호)로 매장 등록 폼 자동채움 — 같은 정보 두 번 입력 방지.
+  //   curator /me/business 는 representative/start_date 미저장 → 겹치는 2필드만. 빈 필드에만 채워
+  //   사용자 입력 보존. 무인증/사업자정보 없으면 조용히 skip(매장 폼 그대로).
+  const fromCurator = searchParams.get('from') === 'curator'
+  useEffect(() => {
+    if (!fromCurator) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await api.get('/api/curator/me/business')
+        const biz = res.data?.data as { business_name?: string; business_number?: string } | undefined
+        if (!biz || cancelled) return
+        setForm(f => ({
+          ...f,
+          business_name: f.business_name || (biz.business_name ? String(biz.business_name) : ''),
+          business_number: f.business_number || (biz.business_number ? formatBusinessNumber(String(biz.business_number)) : ''),
+        }))
+      } catch { /* 사업자 정보 없음/미인증 — skip */ }
+    })()
+    return () => { cancelled = true }
+  }, [fromCurator])
+
   async function submit() {
     if (!form.business_name.trim() || !form.business_number.trim() || !form.phone.trim() || !form.representative_name.trim() || !form.business_start_date) {
       toast.error(t('seller.register.requiredFields', { defaultValue: '필수 항목을 입력해주세요' }))
