@@ -22,6 +22,8 @@ import { productDetailCols, productDetailColsHealed, withColumnPruning } from '@
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import type { GroupBuyProductRow, VoucherRow } from '@/shared/db/group-buy-types'
 import { ensureTables, maxTierDiscount, getMealVoucherCommissionRate, getSellerCommissionRate } from './helpers'
+// 🍽️ 2026-06-17 (#5 대표 메뉴): products god-table 증식 차단용 K-V 사이드테이블에서 메뉴 읽기.
+import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
 
 // 🛡️ 2026-05-22 module-scope: gift_catalog JOIN 가능 여부 캐시.
 //   null = 미확인, true = 가능, false = table 부재 → fallback 만 사용.
@@ -383,6 +385,14 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       }
     } catch { /* invalid JSON — null */ }
 
+    // 🍽️ 2026-06-17 (#5 대표 메뉴): product_supply_meta 'menu' (JSON 배열) enrich. 없으면 undefined → 상세 섹션 숨김.
+    let menu: Array<{ name: string; desc?: string; price?: string; image?: string; hot?: boolean }> | undefined
+    try {
+      const metaMap = await getSupplyMeta(DB, [Number(id)])
+      const raw = metaMap.get(Number(id))?.menu
+      if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr) && arr.length) menu = arr }
+    } catch { /* meta 테이블/데이터 없음 — 메뉴 없음 */ }
+
     return c.json({
       success: true,
       data: {
@@ -391,6 +401,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         current_discount_pct: fixedDiscountPct,  // 🛡️ 2026-05-30: 단일가 — 인원 무관 고정
         next_tier: null,                          // 🛡️ 2026-05-30: 동적 인하 제거 (즉시판매)
         next_tier_remaining: null,
+        ...(menu ? { menu } : {}),                // 🍽️ #5: 대표 메뉴 (있을 때만)
       },
     })
     } catch (err) {
