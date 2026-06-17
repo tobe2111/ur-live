@@ -375,16 +375,25 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
       {/* 탭 콘텐츠 */}
       <div className="ur-content-wide px-4 lg:px-8 py-5">
         {tab === 'home' && (
-          <HomeTab
-            mealVouchers={mealVouchers}
-            shorts={shorts}
-            recentStreams={recentStreams}
-            streams={streams}
-            isOwner={ownerView}
-            textClass={T.text}
-            setTab={setTab}
-            sellerId={seller?.id ? Number(seller.id) : undefined}
-          />
+          <>
+            {/* 🏁 2026-06-17 (#3): 추천 핀을 홈 탭 상단으로 승격 — 기존엔 모든 탭 맨 아래 8개로 매몰됐음.
+                연결된 큐레이터(사업자 유저)의 추천이 링크샵 정체성의 핵심이라 상단 노출. */}
+            {(seller as { curator_handle?: string | null })?.curator_handle && (
+              <Suspense fallback={null}>
+                <CuratorPinsSection handle={(seller as { curator_handle?: string | null }).curator_handle} />
+              </Suspense>
+            )}
+            <HomeTab
+              mealVouchers={mealVouchers}
+              shorts={shorts}
+              recentStreams={recentStreams}
+              streams={streams}
+              isOwner={ownerView}
+              textClass={T.text}
+              setTab={setTab}
+              sellerId={seller?.id ? Number(seller.id) : undefined}
+            />
+          </>
         )}
 
         {tab === 'shop' && (
@@ -472,13 +481,7 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
         )}
       </div>
 
-      {/* 🏁 2026-06-12 (P5 — additive): 연결된 큐레이터의 추천 핀 — curator_handle 있을 때만 lazy 렌더.
-          SSR 슬롯/탭/편집 로직 무변경. 클릭은 /u/:handle/p/:id (적립 redirect) 경유. */}
-      {(seller as { curator_handle?: string | null })?.curator_handle && (
-        <Suspense fallback={null}>
-          <CuratorPinsSection handle={(seller as { curator_handle?: string | null }).curator_handle} />
-        </Suspense>
-      )}
+      {/* 🏁 2026-06-17 (#3): 추천 핀 섹션은 홈 탭 상단으로 이동(위) — 맨 아래 매몰 제거. */}
 
       {/* 🛡️ 2026-05-27: OwnerDashboardFab 제거 — ProfileHeader 의 grid-2 inline 버튼 (프로필 수정 | 대시보드) 으로 통합.
           기존 floating FAB 가 상품 카드 가림 → 인라인으로 변경. */}

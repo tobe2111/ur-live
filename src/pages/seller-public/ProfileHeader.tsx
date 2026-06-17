@@ -10,6 +10,7 @@ import { toast } from '@/hooks/useToast'
 import FollowButton from './FollowButton'
 import RegularBadge from './RegularBadge'
 import ExternalLivePlatforms from './ExternalLivePlatforms'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import type { Seller, LiveStream, Product } from './types'
 import type { ThemeTokens } from './theme'
 
@@ -222,13 +223,16 @@ export default function ProfileHeader({
                     <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" /> {t('seller.oneOnOneInquiry')}
                   </a>
                 )}
-                <button
-                  type="button"
-                  onClick={() => liveNow ? navigate(`/live/${liveNow.id}`) : toast.info(t('seller.noLiveNow'))}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl ${isDark ? 'bg-white/[0.04] active:bg-white/[0.08] text-white' : 'bg-gray-100 active:bg-gray-200 text-gray-900'} transition-colors text-[12px] font-medium`}
-                >
-                  <Heart className="w-3.5 h-3.5" aria-hidden="true" /> {t('seller.donateButton')}
-                </button>
+                {/* 🏁 2026-06-17 (#5): 후원 버튼은 라이브 후원 기반 → 라이브 영구중단으로 게이트(클릭 시 '라이브 없음' 토스트 = 죽은 affordance 제거) */}
+                {!LIVE_COMMERCE_SUSPENDED && (
+                  <button
+                    type="button"
+                    onClick={() => liveNow ? navigate(`/live/${liveNow.id}`) : toast.info(t('seller.noLiveNow'))}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl ${isDark ? 'bg-white/[0.04] active:bg-white/[0.08] text-white' : 'bg-gray-100 active:bg-gray-200 text-gray-900'} transition-colors text-[12px] font-medium`}
+                  >
+                    <Heart className="w-3.5 h-3.5" aria-hidden="true" /> {t('seller.donateButton')}
+                  </button>
+                )}
               </div>
             </div>
           )}
