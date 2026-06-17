@@ -18,6 +18,7 @@ interface ImportResult {
   summary: { total: number; created: number; failed: number }
   results: { row: number; name?: string; status: 'ok' | 'error'; reason?: string }[]
 }
+interface SupplyStats { total: number; demo: number; real: number; active: number; suppliers: number }
 
 export default function AdminWholesaleImportPage() {
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
@@ -27,6 +28,14 @@ export default function AdminWholesaleImportPage() {
   const [csv, setCsv] = useState('')
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
+  const [stats, setStats] = useState<SupplyStats | null>(null)
+  const [cleaning, setCleaning] = useState(false)
+
+  const loadStats = () => {
+    api.get('/api/admin/distributor/supply-stats', h)
+      .then(r => { if (r.data?.success) setStats(r.data as SupplyStats) })
+      .catch(() => { /* 현황 실패는 무시 */ })
+  }
 
   useEffect(() => {
     api.get('/api/admin/suppliers?status=approved&limit=200', h)
@@ -35,8 +44,27 @@ export default function AdminWholesaleImportPage() {
         setSuppliers(items.filter(s => s && s.id).map(s => ({ id: s.id, business_name: s.business_name || `제조사 #${s.id}` })))
       })
       .catch(() => { /* 목록 실패해도 직매입 자동 생성으로 진행 가능 */ })
+    loadStats()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const clearDemo = async () => {
+    if (!confirm('데모 상품(demo-wholesale-*)을 모두 삭제할까요? 실제 임포트 상품은 영향받지 않습니다.')) return
+    setCleaning(true)
+    try {
+      const r = await api.delete('/api/admin/distributor/seed-demo-products', h)
+      toast.success(`데모 상품 ${r.data?.deleted ?? 0}개 삭제`)
+      loadStats()
+    } catch { toast.error('데모 정리 중 오류') } finally { setCleaning(false) }
+  }
+  const seedDemo = async () => {
+    setCleaning(true)
+    try {
+      const r = await api.post('/api/admin/distributor/seed-demo-products', {}, h)
+      toast.success(r.data?.seeded ? `데모 상품 ${r.data.seeded}개 생성` : (r.data?.message || '이미 데모 상품이 있습니다'))
+      loadStats()
+    } catch { toast.error('데모 생성 중 오류') } finally { setCleaning(false) }
+  }
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
@@ -68,6 +96,7 @@ export default function AdminWholesaleImportPage() {
       if (r.data?.success) {
         setResult(r.data as ImportResult)
         toast.success(`${r.data.summary?.created ?? 0}개 등록 완료`)
+        loadStats()
       } else {
         toast.error(r.data?.error || '등록 실패')
       }
@@ -86,6 +115,27 @@ export default function AdminWholesaleImportPage() {
     <AdminLayout title="도매 상품 일괄 등록">
       <div className="ur-content-wide px-4 lg:px-6 py-5 space-y-5">
         <DashboardPageHeader title="도매 상품 일괄 등록" subtitle="CSV로 공급상품을 한 번에 등록 — 즉시 도매몰 카탈로그에 노출됩니다." />
+
+        {stats && (
+          <div className={card}>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-5 flex-wrap">
+                <div><p className="text-[11px] text-gray-400">전체 공급상품</p><p className="text-xl font-bold text-gray-900">{stats.total.toLocaleString()}</p></div>
+                <div><p className="text-[11px] text-gray-400">실상품</p><p className="text-xl font-bold text-emerald-600">{stats.real.toLocaleString()}</p></div>
+                <div><p className="text-[11px] text-gray-400">데모</p><p className="text-xl font-bold text-amber-500">{stats.demo.toLocaleString()}</p></div>
+                <div><p className="text-[11px] text-gray-400">노출중</p><p className="text-xl font-bold text-gray-700">{stats.active.toLocaleString()}</p></div>
+                <div><p className="text-[11px] text-gray-400">승인 제조사</p><p className="text-xl font-bold text-gray-700">{stats.suppliers.toLocaleString()}</p></div>
+              </div>
+              <div className="flex items-center gap-2">
+                {stats.demo > 0 && (
+                  <button onClick={clearDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">데모 {stats.demo}개 정리</button>
+                )}
+                <button onClick={seedDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">데모 채우기</button>
+              </div>
+            </div>
+            {stats.demo > 0 && <p className="text-[11px] text-amber-600 mt-2">⚠️ 데모 상품 {stats.demo}개가 카탈로그에 섞여 있습니다 — 실상품 등록 전 정리를 권장합니다.</p>}
+          </div>
+        )}
 
         <div className={card}>
           <div className="flex items-center justify-between gap-3 flex-wrap">

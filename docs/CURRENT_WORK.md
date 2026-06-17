@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 도매몰 채우기(일괄 등록) + 출시 준비 3트랙 + UTONG START 로고 벡터화
+**배경**: 도매몰이 사실상 비어있음(공급상품 1개) → "채울 수단" 신설 + 출시 전 블로커 정리. 대표 "모두 다 진행".
+- **(채우기) 어드민 CSV 일괄 등록** — `POST /api/admin/distributor/supply-bulk-import`(finance/admin/super, RBAC distributor 세그먼트). 제조사 self-serve bulk 와 동일 한글 CSV 포맷이되 **즉시 노출**(is_active=1, approved). supplier_id 없으면 직매입 제조사 find-or-create. 판매가 미입력 시 공급가×1.6 자동. 청크 batch + 행별 리포트 + audit log. UI `AdminWholesaleImportPage`(/admin/wholesale-import, nav '상품 일괄 등록') — 제조사 선택/직매입 자동 + CSV 붙여넣기·업로드·템플릿 + 결과표.
+- **(Track 2 카탈로그) 데모 정리** — `GET /supply-stats`(전체/실/데모/노출/제조사 카운트) + 임포트 페이지에 현황 카드 + 데모(slug `demo-wholesale-%`) 정리/채우기 버튼(기존 seed/delete 엔드포인트 재사용). 실상품 등록 전 데모 분리.
+- **(Track 1 머니 검증) staging E2E** — `docs/WHOLESALE_SETTLEMENT_E2E.md`(가격표시·정산분배·원가하한·환불역전·플러스구독·배송비 체크리스트 + 워크드 표) + `wholesale-settlement-scenarios.test.ts`(문서 숫자를 실코드로 잠금 — 드리프트 0). ⚠️ **line-14 플랫폼 모델(공급가의 10%) 대표 1줄 확인 + staging 결제 1회 필요**(머니 4건 미검증 잔존).
+- **(Track 3 RBAC) 확인** — admin-rbac.ts 전역 미들웨어 이미 마운트(`/api/admin/*`)+테스트 존재. 신규 bulk-import 가 distributor(finance) 영역임을 admin-roles.test 에 잠금(ops/viewer 차단 검증).
+- **(로고) UTONG START 벡터화** — `WholesaleLogo.tsx`: PNG `<img>` → **inline SVG/HTML 벡터**(네이비 U + 오렌지 상승 화살표 마크 + TONG 네이비/START 오렌지 italic). WholesaleWordmark 15곳 동시 반영, dark=네이비→흰색. 모든 height 선명. PNG 되돌림 경로(WHOLESALE_LOGO_SRC) 보존.
+- 검증: tsc 0 · 단위 16(roles+commission+scenarios) · client+worker build · theme. **머니 로직 무변경**(가격/정산 SSOT 호출만, 신규 적립/차감 0).
+
 ## ✅ 2026-06-17 — 교환권 상세 페이지 리디자인 (Claude Design `Voucher - Final (A)`)
 시안 = A·Refined Classic(6안 중 사용자 확정). 다크 네이비 CTA + 브랜드 옐로우(#FFCE00) 포인트, 미니멀 톤 유지. 대상 `VoucherDetailPage` (`/vouchers/:id`).
 - **상품 카드 = 그라데이션 유지**(사용자 지시): 풀블리드 사진 → `radius:28px` 그라데이션 카드(`#F7F8FA→#EFF1F4`, 다크 변형) 위 상품 `object-contain`+drop-shadow. 이미지 없으면 그라데이션만.

@@ -47,6 +47,11 @@ describe('admin-roles RBAC SSOT', () => {
     expect(canAdminRoleMutate('finance', '/api/admin-payouts/run')).toBe(true);
     expect(canAdminRoleMutate('finance', '/api/admin/orders/1/cancel')).toBe(false);
     expect(canAdminRoleMutate('finance', '/api/admin/products/1')).toBe(false);
+    // 도매 공급상품 일괄 등록/현황 = distributor 세그먼트 → finance(+admin/super) 영역.
+    // (distributor-admin 에 정산/등급/예치금이 함께 있어 ops 노출은 위험 → 의도적으로 finance 게이트)
+    expect(canAdminRoleMutate('finance', '/api/admin/distributor/supply-bulk-import')).toBe(true);
+    expect(canAdminRoleMutate('ops', '/api/admin/distributor/supply-bulk-import')).toBe(false);
+    expect(canAdminRoleMutate('viewer', '/api/admin/distributor/supply-bulk-import')).toBe(false);
   });
 
   it('ops: 주문/상품 도메인만 — 정산은 불가', () => {
