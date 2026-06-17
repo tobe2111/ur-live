@@ -615,16 +615,22 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
     // 🛡️ 2026-06-10 (사용자 신고 — 저장 후 새로고침하면 옛 모습): GET /api/curator/:handle 은
     //   edge 900s 캐시(로딩 잠금 — TTL 약화 금지). 대신 저장 성공 시 본인 공개 응답을 현재 colo 에서
     //   purge(best-effort) → 같은 지역 재방문/SSR inject 이 즉시 신선본. 실패해도 저장은 이미 완료.
+    // 🏎️ 2026-06-17 (링크샵 데이터 변경 속도 감사): handle 조회 + colo purge 를 응답 경로에서 분리해
+    //   waitUntil 로 이동 — 저장 응답이 'SELECT handle' 1 RTT 만큼 빨라짐(purge 는 본래 best-effort).
     try {
-      const me = await c.env.DB.prepare('SELECT handle FROM users WHERE id = ? LIMIT 1')
-        .bind(userId).first<{ handle: string | null }>()
-      if (me?.handle) {
-        const url = new URL(c.req.url)
-        // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 와 동일 패턴)
-        const purge = caches.default.delete(new Request(`${url.origin}/api/curator/${encodeURIComponent(me.handle)}`)) as Promise<boolean>
-        c.executionCtx.waitUntil(purge.then(() => undefined))
-      }
-    } catch { /* best-effort — purge 실패해도 저장 완료 */ }
+      const origin = new URL(c.req.url).origin
+      const purgeTask = (async () => {
+        try {
+          const me = await c.env.DB.prepare('SELECT handle FROM users WHERE id = ? LIMIT 1')
+            .bind(userId).first<{ handle: string | null }>()
+          if (me?.handle) {
+            // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 와 동일 패턴)
+            await (caches.default.delete(new Request(`${origin}/api/curator/${encodeURIComponent(me.handle)}`)) as Promise<boolean>)
+          }
+        } catch { /* best-effort — purge 실패해도 저장 완료 */ }
+      })()
+      c.executionCtx?.waitUntil?.(purgeTask)
+    } catch { /* no ctx — purge skip */ }
 
     return c.json({ success: true })
   } catch (err) {
