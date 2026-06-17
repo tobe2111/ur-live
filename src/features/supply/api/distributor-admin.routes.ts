@@ -21,6 +21,7 @@ import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund, DEFAULT_PLATFORM_COMMISSION_PCT } from './wholesale-settlement'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn, hasDepositRefundTxn } from './wholesale-deposit-core'
 import { ensureSupplyVisibilitySchema, normalizeVisibility } from './supply-visibility'
+import { ensureMallSchema } from './wholesale-malls'
 import { parseCsv, buildCsv, csvResponse } from './supply-csv'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { ensureOemSchema, normalizeOemStatus } from './oem-requests'
@@ -1133,18 +1134,47 @@ app.patch('/tax-documents/:id', async (c) => {
 //   slug 'demo-wholesale-N' 마커로 식별 → 재실행 시 중복 안 함, DELETE 로 일괄 제거.
 //   ⚠️ 표시용 데모 — supplier_id=NULL (주문 시 정산은 데모이므로 무의미). 운영 데이터 아님.
 const DEMO_SLUG_PREFIX = 'demo-wholesale-'
+// 🖼️ 2026-06-17 (사용자 신고 — 데모 이미지가 상품과 안 맞음): picsum.photos/seed 는 시드 기반 *무작위* 사진이라
+//   상품(커피/견과/마스크팩…)과 전혀 무관한 이미지가 들어갔음. → loremflickr 의 카테고리 키워드 매칭으로 교체.
+//   /600/600/<keyword>?lock=<n> : keyword 로 주제 매칭(coffee→커피 등) + lock 으로 이미지 고정(매 로드 동일).
+//   호스트 비-allowlist → cfImage 가 원본 URL 그대로 반환(브라우저 직접 로드, CSP img-src https: 허용). 데모 표시용.
 const DEMO_PRODUCTS: { name: string; category: string; supply: number; retail: number; stock: number; moq: number; color: string; img: string }[] = [
-  { name: '프리미엄 블렌드 원두 커피 1kg', category: 'food', supply: 9800, retail: 16000, stock: 480, moq: 10, color: '#6F4E37', img: 'https://picsum.photos/seed/urwh1/600/600' },
-  { name: '유기농 데일리 견과 믹스 500g', category: 'food', supply: 7200, retail: 12900, stock: 320, moq: 10, color: '#C8A06A', img: 'https://picsum.photos/seed/urwh2/600/600' },
-  { name: '수분 진정 마스크팩 30매', category: 'beauty', supply: 8500, retail: 19900, stock: 150, moq: 5, color: '#9FD8CB', img: 'https://picsum.photos/seed/urwh3/600/600' },
-  { name: '비타민C 브라이트닝 앰플 30ml', category: 'beauty', supply: 11200, retail: 24000, stock: 90, moq: 3, color: '#F2B705', img: 'https://picsum.photos/seed/urwh4/600/600' },
-  { name: '호텔 컬렉션 극세사 수건 10장', category: 'living', supply: 14500, retail: 26000, stock: 60, moq: 2, color: '#D9E4EC', img: 'https://picsum.photos/seed/urwh5/600/600' },
-  { name: '진공 보온 스테인리스 텀블러 500ml', category: 'living', supply: 6900, retail: 13900, stock: 240, moq: 6, color: '#4A5A6A', img: 'https://picsum.photos/seed/urwh6/600/600' },
-  { name: '베이직 무지 반팔 티셔츠 (5color)', category: 'fashion', supply: 4300, retail: 9900, stock: 600, moq: 10, color: '#2E2E2E', img: 'https://picsum.photos/seed/urwh7/600/600' },
-  { name: '데일리 컴포트 양말 10족 세트', category: 'fashion', supply: 3200, retail: 7900, stock: 800, moq: 10, color: '#B0A8B9', img: 'https://picsum.photos/seed/urwh8/600/600' },
-  { name: '고속 충전 USB-C 케이블 3개입', category: 'digital', supply: 5100, retail: 11900, stock: 360, moq: 5, color: '#1F6FEB', img: 'https://picsum.photos/seed/urwh9/600/600' },
-  { name: '차량용 디퓨저 방향제 세트', category: 'lifestyle', supply: 4600, retail: 9900, stock: 280, moq: 5, color: '#7FB069', img: 'https://picsum.photos/seed/urwh10/600/600' },
+  { name: '프리미엄 블렌드 원두 커피 1kg', category: 'food', supply: 9800, retail: 16000, stock: 480, moq: 10, color: '#6F4E37', img: 'https://loremflickr.com/600/600/coffee?lock=11' },
+  { name: '유기농 데일리 견과 믹스 500g', category: 'food', supply: 7200, retail: 12900, stock: 320, moq: 10, color: '#C8A06A', img: 'https://loremflickr.com/600/600/almonds?lock=12' },
+  { name: '수분 진정 마스크팩 30매', category: 'beauty', supply: 8500, retail: 19900, stock: 150, moq: 5, color: '#9FD8CB', img: 'https://loremflickr.com/600/600/skincare?lock=13' },
+  { name: '비타민C 브라이트닝 앰플 30ml', category: 'beauty', supply: 11200, retail: 24000, stock: 90, moq: 3, color: '#F2B705', img: 'https://loremflickr.com/600/600/cosmetics?lock=14' },
+  { name: '호텔 컬렉션 극세사 수건 10장', category: 'living', supply: 14500, retail: 26000, stock: 60, moq: 2, color: '#D9E4EC', img: 'https://loremflickr.com/600/600/towel?lock=15' },
+  { name: '진공 보온 스테인리스 텀블러 500ml', category: 'living', supply: 6900, retail: 13900, stock: 240, moq: 6, color: '#4A5A6A', img: 'https://loremflickr.com/600/600/mug?lock=16' },
+  { name: '베이직 무지 반팔 티셔츠 (5color)', category: 'fashion', supply: 4300, retail: 9900, stock: 600, moq: 10, color: '#2E2E2E', img: 'https://loremflickr.com/600/600/tshirt?lock=17' },
+  { name: '데일리 컴포트 양말 10족 세트', category: 'fashion', supply: 3200, retail: 7900, stock: 800, moq: 10, color: '#B0A8B9', img: 'https://loremflickr.com/600/600/socks?lock=18' },
+  { name: '고속 충전 USB-C 케이블 3개입', category: 'digital', supply: 5100, retail: 11900, stock: 360, moq: 5, color: '#1F6FEB', img: 'https://loremflickr.com/600/600/charger?lock=19' },
+  { name: '차량용 디퓨저 방향제 세트', category: 'lifestyle', supply: 4600, retail: 9900, stock: 280, moq: 5, color: '#7FB069', img: 'https://loremflickr.com/600/600/perfume?lock=20' },
 ]
+
+// 🩹 2026-06-17 (사용자 신고 — 데모 '정리' 500 근본수정): products 의 FTS 삭제 트리거를 외부콘텐츠
+//   (content=products) FTS5 정식 'delete' 커맨드 패턴으로 교정. 기존 트리거(`DELETE FROM products_fts
+//   WHERE rowid=OLD.id`)는 AFTER DELETE 시점에 원본 행이 이미 사라져 인덱스에서 제거할 콘텐츠를 못 읽어
+//   throw → 상품 하드삭제(데모 정리)가 500. 정식 'delete' 커맨드는 OLD 값을 명시 전달하므로 행 소실과
+//   무관하게 인덱스 동기화 성공. CREATE TRIGGER IF NOT EXISTS 는 기존을 안 바꾸므로 DROP 후 재생성(멱등).
+//   하드삭제는 이 앱에서 드물어(보통 is_active 소프트삭제) 현재 100% 깨진 경로라 — 회귀 위험 없음(개선만).
+//   update/insert 트리거는 하드에러 없이 상시 동작(상품 수정/생성 정상) → 범위 밖, 건드리지 않음(블래스트 최소).
+const _ftsDeleteTriggerFixed = new WeakSet<object>()
+async function ensureProductsFtsDeleteTrigger(DB: D1Database): Promise<void> {
+  if (_ftsDeleteTriggerFixed.has(DB)) return
+  _ftsDeleteTriggerFixed.add(DB)
+  try {
+    await DB.prepare('DROP TRIGGER IF EXISTS products_fts_delete').run()
+    await DB.prepare(
+      `CREATE TRIGGER products_fts_delete AFTER DELETE ON products BEGIN
+        INSERT INTO products_fts(products_fts, rowid, name, description, category)
+        VALUES('delete', OLD.id, COALESCE(OLD.name,''), COALESCE(OLD.description,''), COALESCE(OLD.category,''));
+      END`,
+    ).run()
+  } catch (e) {
+    // products_fts 미설치(FTS 미사용 DB)·드문 오류 — 폴백(소프트 아카이브)이 처리. DROP 만 성공해도 하드삭제는 가능.
+    swallow('distributor-admin:fts-delete-trigger')(e)
+  }
+}
 
 app.post('/seed-demo-products', rateLimit({ action: 'wholesale-seed-demo', max: 5, windowSec: 60 }), async (c) => {
   const { DB } = c.env
@@ -1153,7 +1183,17 @@ app.post('/seed-demo-products', rateLimit({ action: 'wholesale-seed-demo', max: 
     await DB.prepare('ALTER TABLE products ADD COLUMN dominant_color TEXT').run().catch(swallow('seed-demo:dc'))
     const existing = await DB.prepare(`SELECT COUNT(*) AS c FROM products WHERE slug LIKE ?`).bind(DEMO_SLUG_PREFIX + '%').first<{ c: number }>()
     if ((existing?.c ?? 0) > 0) {
-      return c.json({ success: true, seeded: 0, existing: existing?.c ?? 0, message: '이미 데모 상품이 있습니다 (삭제 후 재생성하세요)' })
+      // 🩹 2026-06-17 (사용자 신고 — 데모 이미지가 상품과 안 맞음): 이미 시드된 데모는 slug 매칭으로
+      //   이미지/대표색을 현재 DEMO_PRODUCTS 정의로 일괄 갱신 → 삭제·재생성 없이 '데모 채우기' 재클릭만으로 치유.
+      let refreshed = 0
+      for (let i = 0; i < DEMO_PRODUCTS.length; i++) {
+        const d = DEMO_PRODUCTS[i]
+        const r = await DB.prepare(
+          `UPDATE products SET image_url = ?, dominant_color = ?, updated_at = datetime('now') WHERE slug = ?`,
+        ).bind(d.img, d.color, DEMO_SLUG_PREFIX + (i + 1)).run()
+        refreshed += r.meta?.changes ?? 0
+      }
+      return c.json({ success: true, seeded: 0, refreshed, existing: existing?.c ?? 0, message: `데모 상품 이미지 ${refreshed}개를 상품에 맞게 갱신했습니다` })
     }
     let seeded = 0
     for (let i = 0; i < DEMO_PRODUCTS.length; i++) {
@@ -1177,8 +1217,27 @@ app.post('/seed-demo-products', rateLimit({ action: 'wholesale-seed-demo', max: 
 app.delete('/seed-demo-products', async (c) => {
   const { DB } = c.env
   try {
-    const r = await DB.prepare(`DELETE FROM products WHERE slug LIKE ?`).bind(DEMO_SLUG_PREFIX + '%').run()
-    return c.json({ success: true, deleted: r.meta?.changes ?? 0 })
+    // 🩹 근본수정: 하드삭제 전에 깨진 FTS 삭제 트리거를 정식 'delete' 커맨드 패턴으로 교정(isolate 당 1회, 멱등).
+    //   이걸로 아래 하드삭제가 정상 성공 → 폴백 불필요. 교정 실패해도 아래 try/catch 폴백이 안전망.
+    await ensureProductsFtsDeleteTrigger(DB)
+    // 🩹 2026-06-17 (사용자 신고 — '데모 정리' 500): 데모 하드삭제가 products 의 AFTER DELETE FTS 트리거에서
+    //   throw 함. products_fts 는 외부콘텐츠(content=products) FTS5 라, AFTER DELETE 시점엔 원본 행이 이미
+    //   사라져 인덱스 동기화에 필요한 콘텐츠를 못 읽음 → 에러. 하드삭제는 이 앱에서 드물어(보통 is_active 소프트삭제)
+    //   잠복해 있던 버그가 유일한 하드삭제 경로인 데모 '정리'에서 표면화. INSERT/UPDATE 트리거는 행이 존재해 정상.
+    //   → 하드삭제 시도 후 실패하면 소프트 아카이브(is_active=0 + slug 재명명)로 폴백. UPDATE 경로
+    //   (products_fts_update)는 상시 동작이라 안전. 결과: 카탈로그(is_active=1 요구)에서 제거 + 데모 통계
+    //   (slug LIKE 'demo-wholesale-%') 0 + 재시드 정상. 자식 FK 참조 케이스도 동일 폴백으로 처리.
+    try {
+      const r = await DB.prepare(`DELETE FROM products WHERE slug LIKE ?`).bind(DEMO_SLUG_PREFIX + '%').run()
+      return c.json({ success: true, deleted: r.meta?.changes ?? 0, method: 'delete' })
+    } catch (delErr) {
+      const r = await DB.prepare(
+        `UPDATE products SET is_active = 0, slug = 'archived-' || id || '-' || slug, updated_at = datetime('now') WHERE slug LIKE ?`,
+      ).bind(DEMO_SLUG_PREFIX + '%').run()
+      const msg = String((delErr as { message?: string })?.message || '').toLowerCase()
+      const reason = /foreign key/.test(msg) ? 'fk' : (/fts|trigger|malformed|no such/.test(msg) ? 'fts_trigger' : 'other')
+      return c.json({ success: true, deleted: r.meta?.changes ?? 0, method: 'archived', reason })
+    }
   } catch (err) {
     return safeError(c, err, '데모 상품 삭제 중 오류가 발생했습니다', '[distributor-admin]')
   }
@@ -1506,6 +1565,211 @@ app.get('/supply-export', async (c) => {
     return csvResponse(buildCsv(header, data), `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.csv`)
   } catch (err) {
     return safeError(c, err, '카탈로그 내보내기 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// 📋 2026-06-17 (대표 요청 — 일괄등록 페이지에서 개별 상품 삭제): 도매 공급상품 목록(JSON, 페이지네이션·검색).
+//   supply-export(CSV)의 화면용 JSON 버전 — 어드민이 카탈로그를 보고 개별 삭제할 수 있게.
+app.get('/supply-list', async (c) => {
+  const { DB } = c.env
+  try {
+    const page = Math.max(1, Number(c.req.query('page') || 1))
+    const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') || 30)))
+    const offset = (page - 1) * limit
+    const search = String(c.req.query('search') || '').slice(0, 100).trim()
+    const params: unknown[] = []
+    let searchClause = ''
+    if (search) { searchClause = ' AND p.name LIKE ?'; params.push(`%${search}%`) }
+    const baseWhere = `p.is_supply_product = 1 AND (p.supply_source_id IS NULL OR p.supply_source_id = 0)`
+    const totalRow = await DB.prepare(`SELECT COUNT(*) AS c FROM products p WHERE ${baseWhere}${searchClause}`)
+      .bind(...params).first<{ c: number }>().catch(() => null)
+    const rows = await DB.prepare(
+      `SELECT p.id, p.name, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
+              COALESCE(p.stock,0) AS stock, COALESCE(p.category,'') AS category, COALESCE(p.image_url,'') AS image_url,
+              COALESCE(s.business_name,'') AS supplier, COALESCE(p.is_active,1) AS is_active,
+              CASE WHEN p.slug LIKE 'demo-wholesale-%' THEN 1 ELSE 0 END AS is_demo
+       FROM products p LEFT JOIN suppliers s ON s.id = p.supplier_id
+       WHERE ${baseWhere}${searchClause}
+       ORDER BY p.created_at DESC LIMIT ? OFFSET ?`
+    ).bind(...params, limit, offset).all().catch(() => ({ results: [] as Record<string, unknown>[] }))
+    return c.json({ success: true, items: rows.results ?? [], pagination: { page, limit, total: Number(totalRow?.c ?? 0) } })
+  } catch (err) {
+    return safeError(c, err, '상품 목록 조회 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// 🩺 2026-06-17 (대표 신고 — "상품이 admin엔 있는데 도매몰엔 안 떠, 영구해결"): 카탈로그 노출 자가진단.
+//   근본문제: admin 목록 WHERE(`is_supply_product=1 AND source NULL/0`) 보다 카탈로그 WHERE 가 엄격
+//   (`+is_active=1 +supply_source_id IS NULL +supply_price>0 +mall_id=요청몰 +visibility`). 한 조건이라도
+//   어긋나면 admin엔 보이고 카탈로그엔 안 뜸. 추측 대신 사유별 카운트 + 숨은 샘플 + 몰/가시성 분포를 실측.
+app.get('/catalog-diagnostic', async (c) => {
+  const { DB } = c.env
+  try {
+    await ensureMallSchema(DB).catch(() => {})
+    // admin-목록 유니버스 = 공급원본(source NULL/0). 그 안에서 카탈로그 노출 조건별 분해.
+    //   ⚠️ 카탈로그 노출조건과 동일 predicate(mall=1·공개 가시성 기준). 허용목록(per-seller)은 제외 — 공개 노출만 셈.
+    const uni = `is_supply_product = 1 AND (supply_source_id IS NULL OR supply_source_id = 0)`
+    const visiblePred = `is_active = 1 AND supply_source_id IS NULL AND COALESCE(supply_price,0) > 0 AND COALESCE(mall_id,1) = 1 AND (supply_visibility = 'ALL' OR supply_visibility IS NULL)`
+    const agg = await DB.prepare(
+      `SELECT
+         COUNT(*) AS total,
+         SUM(CASE WHEN COALESCE(is_active,1) != 1 THEN 1 ELSE 0 END) AS inactive,
+         SUM(CASE WHEN supply_source_id = 0 THEN 1 ELSE 0 END) AS source_zero,
+         SUM(CASE WHEN supply_source_id IS NOT NULL AND supply_source_id != 0 THEN 1 ELSE 0 END) AS source_real,
+         SUM(CASE WHEN COALESCE(supply_price,0) <= 0 THEN 1 ELSE 0 END) AS zero_price,
+         SUM(CASE WHEN COALESCE(mall_id,1) != 1 THEN 1 ELSE 0 END) AS not_mall1,
+         SUM(CASE WHEN supply_visibility IS NOT NULL AND supply_visibility != 'ALL' THEN 1 ELSE 0 END) AS restricted_vis,
+         SUM(CASE WHEN ${visiblePred} THEN 1 ELSE 0 END) AS catalog_visible
+       FROM products WHERE ${uni}`
+    ).first<Record<string, number>>().catch(() => null)
+    const byMall = await DB.prepare(
+      `SELECT COALESCE(mall_id,1) AS mall_id, COUNT(*) AS c FROM products WHERE ${uni} GROUP BY COALESCE(mall_id,1) ORDER BY mall_id`
+    ).all<{ mall_id: number; c: number }>().catch(() => ({ results: [] as { mall_id: number; c: number }[] }))
+    const byVis = await DB.prepare(
+      `SELECT COALESCE(supply_visibility,'(NULL)') AS v, COUNT(*) AS c FROM products WHERE ${uni} GROUP BY COALESCE(supply_visibility,'(NULL)') ORDER BY c DESC`
+    ).all<{ v: string; c: number }>().catch(() => ({ results: [] as { v: string; c: number }[] }))
+    // admin엔 보이나 카탈로그(mall1·공개)엔 안 뜨는 실제 상품 샘플 — 필드값으로 원인 즉시 판별.
+    const hidden = await DB.prepare(
+      `SELECT id, name, COALESCE(is_active,1) AS is_active, supply_source_id,
+              COALESCE(supply_price,0) AS supply_price, COALESCE(mall_id,1) AS mall_id,
+              COALESCE(supply_visibility,'(NULL)') AS supply_visibility,
+              CASE WHEN slug LIKE 'demo-wholesale-%' THEN 1 ELSE 0 END AS is_demo
+       FROM products WHERE ${uni} AND NOT (${visiblePred})
+       ORDER BY created_at DESC LIMIT 20`
+    ).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+    const malls = await DB.prepare(
+      `SELECT id, name, host, COALESCE(active,1) AS active FROM wholesale_malls ORDER BY id`
+    ).all<{ id: number; name: string; host: string | null; active: number }>().catch(() => ({ results: [] as { id: number; name: string; host: string | null; active: number }[] }))
+    return c.json({
+      success: true,
+      summary: agg || {},
+      by_mall: byMall.results || [],
+      by_visibility: byVis.results || [],
+      hidden_sample: hidden.results || [],
+      malls: malls.results || [],
+    })
+  } catch (err) {
+    return safeError(c, err, '카탈로그 진단 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// 🛠️ 2026-06-17 (대표 요청 "영구해결"): 카탈로그 노출 정정. 기본 = 데이터정합 정규화만(항상 안전 —
+//   상품을 잘못 노출시키지 않음): supply_source_id 0→NULL, mall_id NULL/0→1. 옵션(명시 선택 시): 비활성
+//   공급원본 노출(activate), 제한 가시성→ALL(open_visibility). 공급원본(source NULL/0)만 대상.
+app.post('/catalog-repair', async (c) => {
+  const { DB } = c.env
+  try {
+    const body = await c.req.json<{ activate?: boolean; open_visibility?: boolean }>().catch(() => ({} as { activate?: boolean; open_visibility?: boolean }))
+    const uni = `is_supply_product = 1 AND (supply_source_id IS NULL OR supply_source_id = 0)`
+    const changed: Record<string, number> = {}
+    // 1) source 0 → NULL (0 = '원본'(소스없음) 의미 — 카탈로그 IS NULL 과 일치시킴). 항상 안전.
+    const r1 = await DB.prepare(`UPDATE products SET supply_source_id = NULL, updated_at = datetime('now') WHERE is_supply_product = 1 AND supply_source_id = 0`).run().catch(() => null)
+    changed.source_normalized = Number(r1?.meta?.changes || 0)
+    // 2) mall_id NULL/0 → 1 (기본 몰). 항상 안전.
+    const r2 = await DB.prepare(`UPDATE products SET mall_id = 1, updated_at = datetime('now') WHERE ${uni} AND (mall_id IS NULL OR mall_id = 0)`).run().catch(() => null)
+    changed.mall_normalized = Number(r2?.meta?.changes || 0)
+    // 3) (옵션) 비활성 공급원본 노출.
+    if (body.activate === true) {
+      const r3 = await DB.prepare(`UPDATE products SET is_active = 1, updated_at = datetime('now') WHERE ${uni} AND COALESCE(is_active,1) != 1`).run().catch(() => null)
+      changed.activated = Number(r3?.meta?.changes || 0)
+    }
+    // 4) (옵션) 제한 가시성 → ALL(전체 공개).
+    if (body.open_visibility === true) {
+      const r4 = await DB.prepare(`UPDATE products SET supply_visibility = 'ALL', updated_at = datetime('now') WHERE ${uni} AND supply_visibility IS NOT NULL AND supply_visibility != 'ALL'`).run().catch(() => null)
+      changed.visibility_opened = Number(r4?.meta?.changes || 0)
+    }
+    await writeAuditLog(c, { action: 'wholesale_catalog_repair', targetType: 'products', targetId: 0, after: changed })
+    return c.json({ success: true, changed })
+  } catch (err) {
+    return safeError(c, err, '카탈로그 정정 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// 🗑️ 2026-06-17 (대표 요청): 도매 공급상품 개별 삭제. 공급원본(supply_source_id NULL)만 — 복사본/소비자상품 보호.
+//   FTS 삭제 트리거 교정(자가치유) 후 하드삭제 시도 → 실패(주문이력 FK·트리거 등) 시 소프트 아카이브
+//   (is_active=0 + is_supply_product=0 + slug 재명명)로 폴백 → 카탈로그·목록·통계에서 제거 + 주문이력 보존.
+app.delete('/products/:id', async (c) => {
+  const { DB } = c.env
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 상품 ID' }, 400)
+  try {
+    const prod = await DB.prepare(
+      `SELECT id, name, slug FROM products WHERE id = ? AND is_supply_product = 1 AND (supply_source_id IS NULL OR supply_source_id = 0)`
+    ).bind(id).first<{ id: number; name: string; slug: string | null }>().catch(() => null)
+    if (!prod) return c.json({ success: false, error: '해당 공급상품을 찾을 수 없습니다' }, 404)
+    await ensureProductsFtsDeleteTrigger(DB)
+    let method = 'delete'
+    try {
+      await DB.prepare('DELETE FROM products WHERE id = ?').bind(id).run()
+    } catch {
+      await DB.prepare(
+        `UPDATE products SET is_active = 0, is_supply_product = 0,
+                slug = 'archived-' || id || '-' || COALESCE(slug, 'p'), updated_at = datetime('now')
+          WHERE id = ?`,
+      ).bind(id).run()
+      method = 'archived'
+    }
+    await writeAuditLog(c, {
+      action: 'wholesale_product_delete',
+      targetType: 'product',
+      targetId: String(id),
+      before: { name: prod.name },
+      after: { method },
+    }).catch(() => { /* audit 실패해도 성공 처리 */ })
+    return c.json({ success: true, method })
+  } catch (err) {
+    return safeError(c, err, '상품 삭제 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// 🗑️ 2026-06-17 (대표 요청 — 체크박스 일괄/모두 삭제): 도매 공급상품 다건 삭제. 개별 삭제와 동일 안전 패턴.
+//   단일 `DELETE ... IN (...)` 시도(주문이력 없는 흔한 경우 1쿼리) → 실패(일부 FK/트리거) 시 건별
+//   하드삭제→소프트 아카이브 폴백. 공급원본(supply_source_id NULL)만 — 복사본/소비자상품 보호. 최대 200건.
+app.post('/supply-bulk-delete', async (c) => {
+  const { DB } = c.env
+  try {
+    const body = await c.req.json<{ ids?: unknown }>().catch(() => ({} as { ids?: unknown }))
+    const ids = Array.isArray(body.ids)
+      ? [...new Set(body.ids.map((v) => Number(v)).filter((n) => Number.isFinite(n) && n > 0))].slice(0, 200)
+      : []
+    if (ids.length === 0) return c.json({ success: false, error: '삭제할 상품을 선택해주세요' }, 400)
+    await ensureProductsFtsDeleteTrigger(DB)
+    const ph = ids.map(() => '?').join(',')
+    const rows = await DB.prepare(
+      `SELECT id FROM products WHERE id IN (${ph}) AND is_supply_product = 1 AND (supply_source_id IS NULL OR supply_source_id = 0)`,
+    ).bind(...ids).all<{ id: number }>().catch(() => ({ results: [] as { id: number }[] }))
+    const valid = (rows.results || []).map((r) => Number(r.id))
+    let deleted = 0
+    let archived = 0
+    if (valid.length > 0) {
+      const vph = valid.map(() => '?').join(',')
+      try {
+        const r = await DB.prepare(`DELETE FROM products WHERE id IN (${vph})`).bind(...valid).run()
+        deleted = r.meta?.changes ?? valid.length
+      } catch {
+        // 일부가 주문이력 FK·트리거 등으로 실패 → 건별 처리(하드삭제 시도 → 소프트 아카이브).
+        for (const id of valid) {
+          try { await DB.prepare('DELETE FROM products WHERE id = ?').bind(id).run(); deleted++ } catch {
+            await DB.prepare(
+              `UPDATE products SET is_active = 0, is_supply_product = 0,
+                      slug = 'archived-' || id || '-' || COALESCE(slug, 'p'), updated_at = datetime('now')
+                WHERE id = ?`,
+            ).bind(id).run().catch(() => { /* noop */ })
+            archived++
+          }
+        }
+      }
+    }
+    await writeAuditLog(c, {
+      action: 'wholesale_product_bulk_delete',
+      targetType: 'product',
+      targetId: valid.join(','),
+      before: { requested: ids.length },
+      after: { deleted, archived },
+    }).catch(() => { /* audit 실패해도 성공 처리 */ })
+    return c.json({ success: true, deleted, archived, total: deleted + archived })
+  } catch (err) {
+    return safeError(c, err, '일괄 삭제 중 오류가 발생했습니다', '[distributor-admin]')
   }
 })
 

@@ -24,6 +24,13 @@ export default function SupplierLoginPage() {
   const [error, setError] = useState('')
   // 🏭 2026-06-08: 카카오 계정에 제조회원 계정이 없을 때 — register 강제이동 대신 선택지 안내(#2 수정).
   const [kakaoNoSupplier, setKakaoNoSupplier] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
+
+  // 🛡️ 2026-06-17: 이메일 기억하기 — 저장된 이메일 자동 채움 (admin/seller 와 동형).
+  useEffect(() => {
+    const saved = localStorage.getItem('supplier_remember_email')
+    if (saved) { setForm(f => ({ ...f, email: saved })); setRememberMe(true) }
+  }, [])
 
   useEffect(() => {
     if (isSupplierLoggedIn()) { navigate('/supplier', { replace: true }); return }
@@ -33,9 +40,9 @@ export default function SupplierLoginPage() {
       (async () => {
         try {
           const res = await fetch('/api/supplier/become', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}' })
-          const data = await res.json().catch(() => ({})) as { success?: boolean; status?: string; message?: string; data?: { token: string; supplier: { id: number; business_name: string; email: string } } }
+          const data = await res.json().catch(() => ({})) as { success?: boolean; status?: string; message?: string; data?: { token: string; refreshToken?: string; supplier: { id: number; business_name: string; email: string } } }
           if (data.success && data.status === 'approved' && data.data) {
-            setSupplierSession(data.data.token, data.data.supplier)
+            setSupplierSession(data.data.token, data.data.supplier, data.data.refreshToken)
             toast.success('제조회원으로 로그인되었습니다')
             navigate('/supplier', { replace: true })
           } else if (data.success && data.status === 'pending') {
@@ -63,12 +70,15 @@ export default function SupplierLoginPage() {
       })
       const data = await res.json().catch(() => ({})) as {
         success?: boolean; error?: string;
-        data?: { token: string; supplier: { id: number; business_name: string; email: string } }
+        data?: { token: string; refreshToken?: string; supplier: { id: number; business_name: string; email: string } }
       }
       if (!res.ok || !data.success || !data.data) {
         throw new Error(data.error || t('supplier.loginFailed', { defaultValue: '로그인에 실패했습니다' }))
       }
-      setSupplierSession(data.data.token, data.data.supplier)
+      // 🛡️ 2026-06-17: 이메일 기억하기 저장/삭제.
+      if (rememberMe) localStorage.setItem('supplier_remember_email', form.email.trim())
+      else localStorage.removeItem('supplier_remember_email')
+      setSupplierSession(data.data.token, data.data.supplier, data.data.refreshToken)
       toast.success(t('supplier.loginSuccess', { defaultValue: '로그인되었습니다' }))
       navigate('/supplier', { replace: true })
     } catch (err) {
@@ -182,6 +192,16 @@ export default function SupplierLoginPage() {
                   </button>
                 </div>
               </div>
+
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={e => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-[#FC5424] focus:ring-[#FC5424]/30"
+                />
+                <span className="text-sm text-gray-600">{t('auth.rememberEmail', { defaultValue: '이메일 기억하기' })}</span>
+              </label>
 
               <button type="submit" disabled={loading}
                 className="w-full py-3.5 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60 transition-all"

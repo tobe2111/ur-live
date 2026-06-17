@@ -23,6 +23,8 @@ import { useInvalidateMyVouchers } from '@/hooks/queries'
 //   - RestaurantMiniMap: 매장 정보 아래 (fold 직후, Kakao Maps SDK 포함)
 // 🎨 2026-06-16 리디자인: Confetti(공구 연출) 제거 — 정직한 즉시구매. RestaurantMiniMap 만 lazy 유지.
 const RestaurantMiniMap = lazy(() => import('@/components/RestaurantMiniMap'))
+// 🎨 2026-06-17 (공구상세 후속 — 디자이너 제안 "후기·평점이 가장 큰 신뢰 레버"): 기존 ProductReviews 재사용(lazy, below-fold).
+const ProductReviews = lazy(() => import('./product-detail/ProductReviews'))
 
 // 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/group-buy/:id`)
 //   - 카운트다운 ring + 티어 진행 바 + 참여자 아바타 + 마감 timer + share CTA
@@ -50,8 +52,6 @@ interface GroupBuyDetail {
   // 🛡️ 2026-05-27: 서버가 array 로 미리 parse 해서 보냄. 구 응답 (stale edge cache) 은 string — 둘 다 handle.
   group_buy_tiers?: string | Array<{ min: number; discount_pct: number }> | null
   current_discount_pct: number
-  next_tier?: { min: number; discount_pct: number } | null
-  next_tier_remaining?: number | null
   seller_id?: number
   seller_name?: string
   seller_username?: string
@@ -262,9 +262,7 @@ export default function GroupBuyDetailPage() {
   // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 단계별 tier 사다리 UI 제거 (design/groupbuy-instant-sale.md).
   //   공구가는 인원 무관 고정(최대 할인 적용)이라 group_buy_tiers 렌더링 불필요.
 
-  const progress = detail && detail.group_buy_target > 0
-    ? Math.min(100, (detail.group_buy_current / detail.group_buy_target) * 100)
-    : 0
+  // 🧭 2026-06-17: 즉시판매 단일가 모델 — 진행률 바/티어 사다리 제거 후 미사용이던 progress 변수 정리.
   const unitPrice = detail ? Math.round(detail.price * (1 - (detail.current_discount_pct || 0) / 100)) : 0
   const total = unitPrice * quantity
   // 🏭 2026-06-06 (사용자 요청 — 가격 설득력): 정가(있으면) 대비 실제 결제가 절약액 계산.
@@ -463,8 +461,8 @@ export default function GroupBuyDetailPage() {
         title={`${detail.name} 공동구매 - ${detail.restaurant_name || '유어딜'}`}
         description={
           detail.current_discount_pct > 0
-            ? `🎉 ${detail.current_discount_pct}% 할인 진행 중! ${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}/${detail.group_buy_target}명 참여, ${unitPrice.toLocaleString('ko-KR')}원`
-            : `${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}/${detail.group_buy_target}명 참여 중, ${detail.price.toLocaleString('ko-KR')}원부터`
+            ? `🎉 ${detail.current_discount_pct}% 할인! ${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${unitPrice.toLocaleString('ko-KR')}원`
+            : `${detail.restaurant_name || ''} ${detail.name} 공동구매 — ${detail.group_buy_current}명 함께 구매 중, ${detail.price.toLocaleString('ko-KR')}원`
         }
         url={`/group-buy/${productId}`}
         image={detail.image_url || `https://live.ur-team.com/api/og/group-buy/${productId}.png`}
@@ -555,7 +553,7 @@ export default function GroupBuyDetailPage() {
           />
           <KakaoShareButton
             title={`${detail.name} 공구 참여하기`}
-            description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}/${detail.group_buy_target}명 참여 중 · ${detail.current_discount_pct > 0 ? `${detail.current_discount_pct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
+            description={`${detail.restaurant_name ? detail.restaurant_name + ' · ' : ''}${detail.group_buy_current}명 함께 구매 중 · ${detail.current_discount_pct > 0 ? `${detail.current_discount_pct}% 할인` : '공동구매 특가'}${myUserId ? ' · 친구 초대 시 양쪽 0.5% 보너스 (첫 1회)' : ''}`}
             imageUrl={`https://live.ur-team.com/api/og/group-buy/${productId}`}
             link={shareLink}
             buttonText="나도 참여하기"
@@ -811,6 +809,14 @@ export default function GroupBuyDetailPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* 후기·평점 — 신뢰 레버 (디자이너 후속 제안). 기존 ProductReviews 재사용(lazy, 빈 상태/작성 폼 내장). */}
+        <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
+        <div style={{ padding: '22px 18px' }}>
+          <Suspense fallback={<div style={{ height: 80, background: 'var(--gbd-chip)', borderRadius: 12 }} />}>
+            <ProductReviews productId={productId} limit={5} />
+          </Suspense>
         </div>
 
         {/* 이 셀러의 다른 공구 — 가로 스크롤 */}

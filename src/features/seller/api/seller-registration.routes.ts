@@ -21,6 +21,7 @@ import {DEFAULT_COMMISSION_RATE } from '@/shared/constants'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
+import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
@@ -634,6 +635,9 @@ sellerRegistrationRoutes.post('/switch-to-seller', async (c) => {
     const accessToken = await sign(payload, jwtSecret);
     const refreshPayload = { ...payload, exp: now + (30 * 24 * 60 * 60) };
     const refreshToken = await sign(refreshPayload, jwtSecret);
+
+    // 🔐 단일 세션 강제 — 가입 직후 자동 로그인도 세션 시작.
+    await startDashboardSession(c.env.DB, 'seller', seller.id, payload.iat, { userAgent: c.req.header('User-Agent'), ip: c.req.header('CF-Connecting-IP') });
 
     return c.json({
       success: true,

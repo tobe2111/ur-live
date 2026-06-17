@@ -27,6 +27,9 @@ export function useCartCount() {
         return 0
       }).catch(() => readCache<number>(CACHE_KEY, 0)),
     initialData: () => readCache<number>(CACHE_KEY, 0),
+    // 🛠️ 2026-06-17 (useBalance 와 동일 근본수정): 캐시 seed 를 즉시 stale 처리 → refetchOnMount 가
+    //   cold mount 1회 서버 보정. 없으면 initialData(0)가 fresh 로 간주돼 60초간 잘못된 0 뱃지.
+    initialDataUpdatedAt: 0,
     enabled: isLoggedInSync(),
     staleTime: 60_000,
     gcTime: 30 * 60 * 1000,

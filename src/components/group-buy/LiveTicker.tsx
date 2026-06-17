@@ -28,6 +28,7 @@ interface TickerEntry {
 const CATEGORY_EMOJI: Record<string, string> = {
   meal_voucher: '🍽️', beauty_voucher: '💇', health_voucher: '💪',
   pet_voucher: '🐶', stay_voucher: '🏨', activity_voucher: '🎯',
+  etc_voucher: '🎯', general: '🛍️',
 }
 
 function timeAgo(iso: string): string {

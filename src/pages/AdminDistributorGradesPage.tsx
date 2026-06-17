@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import api from '@/lib/api'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -51,8 +51,26 @@ const AUTO_GRADE_GRADES = ['A', 'B', 'C', 'D']
 
 const ASSIGNABLE = ['A', 'B', 'C', 'D', 'OEM']
 
+// 🗂️ 2026-06-17: 1,170줄 단일 페이지를 4개 탭(딥링크 라우트)으로 분리 — 머니 로직 무변경(섹션 그룹만 탭 조건부 렌더).
+//   각 탭은 자기 데이터만 로드(useApiQuery enabled 게이트) → 가벼워짐. 사이드바 4개 항목 → 각 탭 라우트.
+type DistTab = 'grades' | 'credit' | 'tax' | 'supply'
+const DIST_TABS: { key: DistTab; path: string; label: string }[] = [
+  { key: 'grades', path: '/admin/distributor-grades', label: '등급·마진' },
+  { key: 'credit', path: '/admin/distributor-credit', label: '여신·외상' },
+  { key: 'tax', path: '/admin/distributor-tax', label: '제안·세금' },
+  { key: 'supply', path: '/admin/distributor-supply', label: '공급가·채널·OEM' },
+]
+function tabFromPath(p: string): DistTab {
+  if (p.includes('distributor-credit')) return 'credit'
+  if (p.includes('distributor-tax')) return 'tax'
+  if (p.includes('distributor-supply')) return 'supply'
+  return 'grades'
+}
+
 export default function AdminDistributorGradesPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const tab = tabFromPath(location.pathname)
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
 
   const [grades, setGrades] = useState<GradeRow[]>([])
@@ -69,11 +87,10 @@ export default function AdminDistributorGradesPage() {
   const [propProduct, setPropProduct] = useState('')
   const [propNote, setPropNote] = useState('')
   const [propBusy, setPropBusy] = useState(false)
-  const [demoBusy, setDemoBusy] = useState(false)
   // 🛡️ 2026-06-03 Tier2(대시보드): proposals 리스트 → useApiQuery (grades/distributors 는 인라인 편집 명령형 유지).
   const proposalsQ = useApiQuery<Array<{ id: number; distributor_seller_id: number; product_name: string; product_id: number; note: string | null }>>(
     ['admin', 'distributor-proposals'], '/api/admin/distributor/proposals',
-    { headers: h.headers, select: (r: any) => (r?.success ? r.proposals || [] : []) },
+    { enabled: tab === 'tax', headers: h.headers, select: (r: any) => (r?.success ? r.proposals || [] : []) },
   )
   const proposals = proposalsQ.data ?? []
 
@@ -86,11 +103,11 @@ export default function AdminDistributorGradesPage() {
   const [oemStatus, setOemStatus] = useState('')
   const oemQ = useApiQuery<Array<Record<string, any>>>(
     ['admin', 'dist-oem', oemStatus], '/api/admin/distributor/oem-requests',
-    { params: oemStatus ? { status: oemStatus } : {}, headers: h.headers, select: (r: any) => (r?.success ? r.requests || [] : []) },
+    { enabled: tab === 'supply', params: oemStatus ? { status: oemStatus } : {}, headers: h.headers, select: (r: any) => (r?.success ? r.requests || [] : []) },
   )
   const taxDocsQ = useApiQuery<Array<Record<string, any>>>(
     ['admin', 'dist-taxdocs', taxMonth], '/api/admin/distributor/tax-documents',
-    { params: { month: taxMonth }, headers: h.headers, select: (r: any) => (r?.success ? r.documents || [] : []) },
+    { enabled: tab === 'tax', params: { month: taxMonth }, headers: h.headers, select: (r: any) => (r?.success ? r.documents || [] : []) },
   )
   const [issuing, setIssuing] = useState(false)
   // 유통채널 선정(product-access)
@@ -98,7 +115,7 @@ export default function AdminDistributorGradesPage() {
   const [accessProductQuery, setAccessProductQuery] = useState('')
   const accessQ = useApiQuery<{ product: any; distributors: Array<Record<string, any>> } | null>(
     ['admin', 'dist-access', accessProductQuery], '/api/admin/distributor/product-access',
-    { params: accessProductQuery ? { product_id: accessProductQuery } : {}, enabled: !!accessProductQuery, headers: h.headers, select: (r: any) => (r?.success ? { product: r.product, distributors: r.distributors || [] } : null) },
+    { params: accessProductQuery ? { product_id: accessProductQuery } : {}, enabled: !!accessProductQuery && tab === 'supply', headers: h.headers, select: (r: any) => (r?.success ? { product: r.product, distributors: r.distributors || [] } : null) },
   )
   const [accessSeller, setAccessSeller] = useState('')
   // 🏭 2026-06-04 상품별 등급마진 override(특가) — 설정 시 등급 무관 동일가.
@@ -384,7 +401,7 @@ export default function AdminDistributorGradesPage() {
     if (!Number.isFinite(pid) || pid <= 0 || !Number.isFinite(sid) || sid <= 0) { toast.error('상품 ID와 유통사 ID를 입력하세요'); return }
     try {
       await api.post('/api/admin/distributor/product-access', { product_id: pid, distributor_seller_id: sid }, h)
-      toast.success('유통회원 선정됨'); setAccessProductQuery(String(pid)); setAccessSeller(''); accessQ.refetch()
+      toast.success('판매사(유통사) 선정됨'); setAccessProductQuery(String(pid)); setAccessSeller(''); accessQ.refetch()
     } catch (e: unknown) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '선정 실패') }
   }
   async function revokeAccess(id: number) {
@@ -432,57 +449,32 @@ export default function AdminDistributorGradesPage() {
       .catch(() => toast.error('상품 내보내기 실패'))
   }
 
-  // 🏭 2026-06-04 도매몰 데모 상품 시드 — /wholesale 카탈로그에 바로 노출되는 공급상품 10개 생성/삭제.
-  async function seedDemoProducts() {
-    setDemoBusy(true)
-    try {
-      const r = await api.post('/api/admin/distributor/seed-demo-products', {}, h)
-      if (r.data?.success) toast.success(r.data.seeded > 0 ? `데모 상품 ${r.data.seeded}개 생성 — /wholesale 에서 확인하세요` : (r.data.message || '이미 존재합니다'))
-      else toast.error(r.data?.error || '생성 실패')
-    } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '생성 중 오류') }
-    finally { setDemoBusy(false) }
-  }
-  async function clearDemoProducts() {
-    if (!(await confirmDialog({ message: '데모 상품을 모두 삭제할까요?', danger: true }))) return
-    setDemoBusy(true)
-    try {
-      const r = await api.delete('/api/admin/distributor/seed-demo-products', h)
-      if (r.data?.success) toast.success(`데모 상품 ${r.data.deleted}개 삭제`)
-      else toast.error(r.data?.error || '삭제 실패')
-    } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '삭제 중 오류') }
-    finally { setDemoBusy(false) }
-  }
+  // 🗂️ 2026-06-17: 데모 상품 시딩 함수는 '상품 일괄 등록'(AdminWholesaleImportPage)으로 일원화 — 여기서 제거(중복).
 
-  if (loading) return <AdminLayout title="유통사 등급"><DashboardLoading /></AdminLayout>
+  if (loading) return <AdminLayout title="판매사(유통사) 등급"><DashboardLoading /></AdminLayout>
 
   return (
-    <AdminLayout title="유통사 등급">
+    <AdminLayout title="판매사(유통사) 등급">
       <div className="ur-content-full px-4 lg:px-8 py-6 space-y-8">
         <DashboardPageHeader
           icon={<Layers className="w-5 h-5" />}
-          title="유통사 등급 · 마진 설정"
-          subtitle="유통스타트 도매몰 — 등급별 마진율과 유통사 배정을 관리합니다. (도매 카탈로그 가격에만 적용)"
+          title={`판매사 · ${DIST_TABS.find(t => t.key === tab)?.label ?? '등급·마진'}`}
+          subtitle="유통스타트 도매몰 — 등급/여신/세금/공급가를 탭으로 나눠 관리합니다. (도매 카탈로그 가격에만 적용)"
         />
 
-        {/* ── 데모 상품 (도매몰 미리보기용) ── */}
-        <section className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-base font-semibold text-gray-900 mb-1">도매몰 데모 상품</h2>
-          <p className="text-sm text-gray-500 mb-3">
-            제조사 입점 전 미리보기용 — <b>/wholesale 카탈로그에 바로 노출되는 공급상품 10개</b>를 생성합니다.
-            (표시용 데모 데이터. 실제 운영 시작 시 삭제하세요.)
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button onClick={seedDemoProducts} disabled={demoBusy}
-              className="px-4 h-10 rounded-lg bg-gray-900 text-white text-sm font-bold disabled:opacity-50">
-              {demoBusy ? '처리 중…' : '데모 상품 10개 생성'}
-            </button>
-            <button onClick={clearDemoProducts} disabled={demoBusy}
-              className="px-4 h-10 rounded-lg border border-gray-200 text-gray-700 text-sm font-bold disabled:opacity-50">
-              데모 상품 전체 삭제
-            </button>
-          </div>
-        </section>
+        {/* 🗂️ 2026-06-17 데모 상품 시딩은 '상품 일괄 등록'(/admin/wholesale-import)으로 일원화(중복 제거). */}
 
+        {/* 🗂️ 탭 — 딥링크 라우트로 분리 (사이드바 4개 항목과 정합) */}
+        <div className="flex flex-wrap gap-1.5 border-b border-gray-200">
+          {DIST_TABS.map((tb) => (
+            <button key={tb.key} type="button" onClick={() => navigate(tb.path)}
+              className={`px-4 py-2 text-sm font-semibold rounded-t-lg -mb-px border-b-2 transition-colors ${tab === tb.key ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-400 hover:text-gray-700'}`}>
+              {tb.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'grades' && (<>
         {/* ── 등급별 마진율 ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
@@ -731,7 +723,9 @@ export default function AdminDistributorGradesPage() {
             </div>
           )}
         </section>
+        </>)}
 
+        {tab === 'credit' && (<>
         {/* ── 여신/외상 관리 (BIZ-2 v1) ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
@@ -826,7 +820,9 @@ export default function AdminDistributorGradesPage() {
             </div>
           )}
         </section>
+        </>)}
 
+        {tab === 'tax' && (<>
         {/* ── 상품 제안 (어드민 → 유통사) ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
@@ -961,7 +957,9 @@ export default function AdminDistributorGradesPage() {
             )}
           </div>
         </section>
+        </>)}
 
+        {tab === 'supply' && (<>
         {/* ── 유통채널 선정 (유통스타트 유통채널 공급 상품 → 선정 유통회원) ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
@@ -1079,6 +1077,7 @@ export default function AdminDistributorGradesPage() {
             </div>
           )}
         </section>
+        </>)}
       </div>
     </AdminLayout>
   )

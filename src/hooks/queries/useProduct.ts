@@ -38,6 +38,8 @@ export function useProduct(id: number | string | undefined) {
     queryKey: queryKeys.product(productId || 'none'),
     queryFn: () => fetchProduct(productId).catch(() => readCache<Product | null>(`product:${productId}`, null)),
     initialData: () => readCache<Product | null>(`product:${productId}`, null),
+    // 🛠️ 2026-06-17 (근본수정): 캐시 seed 즉시 stale → cold mount 1회 서버 보정(SSR 0-RTT paint 무관).
+    initialDataUpdatedAt: 0,
     // 🛡️ placeholderData: 목록에서 이미 받은 product 가 cache 에 있으면 → partial 즉시 표시.
     placeholderData: () => {
       if (!productId) return undefined

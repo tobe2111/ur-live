@@ -55,7 +55,7 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
         supply_visibility: form.supply_visibility,
         barcode: form.barcode.trim() || undefined,
         is_brand_product: form.is_brand_product,
-        brand_name: form.is_brand_product ? (form.brand_name.trim() || undefined) : undefined,
+        brand_name: form.brand_name.trim() || undefined,
         brand_logo_url: form.is_brand_product ? (form.brand_logo_url.trim() || undefined) : undefined,
         lowest_price_url: form.lowest_price_url.trim() || undefined,
       })
@@ -143,6 +143,12 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
               </select>
             </div>
           </div>
+          {/* 🏷️ 2026-06-17 (대표 요청): 브랜드명 상시 노출 — 모든 상품 등록 시 입력 가능(선택). */}
+          <div>
+            <label className={labelCls}>{t('supplier.fieldBrandName', { defaultValue: '브랜드명' })} <span className="text-gray-400 font-normal">(선택)</span></label>
+            <input disabled={saving} value={form.brand_name} onChange={e => setForm(f => ({ ...f, brand_name: e.target.value }))} className={inputCls} placeholder={t('supplier.fieldBrandNamePh', { defaultValue: '예: 코카콜라, 농심' })} maxLength={120} />
+            <p className="text-[11px] text-gray-400 mt-1">{t('supplier.brandNameHint2', { defaultValue: '입력 시 도매몰 브랜드 전시관에 이 브랜드로 묶여 노출됩니다.' })}</p>
+          </div>
           {/* 🚚 2026-06-15 (대표 요청): 상품별 배송비 — 비우면 제조사 기본 배송정책, 0 입력 시 무료배송. */}
           <div>
             <label className={labelCls}>{t('supplier.fieldShippingFee', { defaultValue: '배송비 (원)' })}</label>
@@ -202,14 +208,9 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
             {t('supplier.fieldBrand', { defaultValue: '브랜드제품 (판매 후 당일 정산)' })}
           </label>
           <p className="text-[11px] text-gray-400 -mt-1">{t('supplier.brandHint', { defaultValue: '체크 시 판매 후 당일 정산, 미체크 시 일반제품(7일 환불창 후 정산).' })}</p>
-          {/* 🏷️ 브랜드 전시관 — 브랜드제품 체크 시에만 브랜드명 입력(브랜드 전시관 그리드에 노출). */}
+          {/* 🏷️ 브랜드제품 체크 시 로고만 추가 입력(브랜드명은 위에서 상시 입력). */}
           {form.is_brand_product && (
             <div className="space-y-3">
-              <div>
-                <label className={labelCls}>{t('supplier.fieldBrandName', { defaultValue: '브랜드명' })}</label>
-                <input disabled={saving} value={form.brand_name} onChange={e => setForm(f => ({ ...f, brand_name: e.target.value }))} className={inputCls} placeholder={t('supplier.fieldBrandNamePh', { defaultValue: '예: 코카콜라, 농심' })} maxLength={120} />
-                <p className="text-[11px] text-gray-400 mt-1">{t('supplier.brandNameHint', { defaultValue: '도매몰 브랜드 전시관에 이 브랜드로 묶여 노출됩니다.' })}</p>
-              </div>
               <div>
                 <label className={labelCls}>{t('supplier.fieldBrandLogoUrl', { defaultValue: '브랜드 로고 URL (선택)' })}</label>
                 <input disabled={saving} value={form.brand_logo_url} onChange={e => setForm(f => ({ ...f, brand_logo_url: e.target.value }))} className={inputCls} placeholder="https://..." maxLength={1000} />

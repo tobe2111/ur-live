@@ -102,7 +102,7 @@ export default function AdminWholesaleQuotesPage() {
     <AdminLayout title="견적/발주 관리">
       <DashboardPageHeader
         title="견적 / 발주 관리"
-        subtitle="유통회원 견적요청에 단가·MOQ·유효기간을 회신합니다. 수락 시 알림을 받아 기존 발주 흐름으로 주문을 생성하세요."
+        subtitle="판매사(유통사) 견적요청에 단가·MOQ·유효기간을 회신합니다. 수락 시 알림을 받아 기존 발주 흐름으로 주문을 생성하세요."
         icon={<FileText className="w-5 h-5" />}
       />
 

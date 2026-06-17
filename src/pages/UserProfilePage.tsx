@@ -15,6 +15,7 @@ import EarningsGroup from './user-profile/EarningsGroup'
 import ReferralEarnedCard from './user-profile/ReferralEarnedCard'
 import CuratorEarningsCard from './user-profile/CuratorEarningsCard'
 import MyReferralCard from '@/components/MyReferralCard'
+import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 import RoleCtaGrid from './user-profile/RoleCtaGrid'
 import ChatNameSetting from './user-profile/ChatNameSetting'
 import CouponVoucherStats from './user-profile/CouponVoucherStats'
@@ -232,7 +233,8 @@ export default function UserProfilePage() {
           {[
             { icon: '📍', label: t('userProfile.addressManage'), path: '/mypage/addresses' },
             { icon: '📝', label: t('userProfile.myReviews'), path: '/my-reviews' },
-            { icon: '👥', label: t('userProfile.inviteFriends'), path: '/referral' },
+            // 🧭 2026-06-17: 그룹 referral(/referral) 숨김 — 초대보너스는 위 MyReferralCard 가 같은 페이지에 이미 노출(중복 메뉴 제거, 플래그 false 면 복원).
+            ...(REFERRAL_GROUP_DISCOUNT_DISABLED ? [] : [{ icon: '👥', label: t('userProfile.inviteFriends'), path: '/referral' }]),
             // 🛡️ 2026-05-16: 인플루언서 활동 진입점 (누구나 가능 — 추천 링크 생성 + 정산)
             { icon: '🎤', label: t('userProfile.influencerActivity', { defaultValue: '인플루언서 활동 (추천/정산)' }), path: '/influencer/settlement' },
           ].map((item, i) => (

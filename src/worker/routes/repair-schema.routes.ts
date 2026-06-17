@@ -111,6 +111,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🔐 2026-06-16: agency 자동정산(agency-auto-settle cron) 멱등 마커 — 없으면 SELECT 부터
     //   'no such column' 으로 터져 자동정산이 영구 미작동(매 agency try-catch 로 silent skip). check-sql-column-exists 도 차단.
     { desc: 'orders.agency_settled', sql: "ALTER TABLE orders ADD COLUMN agency_settled INTEGER NOT NULL DEFAULT 0" },
+    // 💸 2026-06-17: 혼합결제(Toss+딜) 의 '딜 사용분' — 결제 성공(/confirm) 시 이 값만큼 잔액 차감, 환불 시 복원.
+    { desc: 'orders.deal_used', sql: "ALTER TABLE orders ADD COLUMN deal_used INTEGER NOT NULL DEFAULT 0" },
     // 🛡️ 2026-05-25 (migration 0280): 셀러 승급 트래킹
     { desc: 'users.curator_total_lifetime_earnings', sql: "ALTER TABLE users ADD COLUMN curator_total_lifetime_earnings INTEGER NOT NULL DEFAULT 0" },
     { desc: 'users.seller_upgrade_offered_at', sql: "ALTER TABLE users ADD COLUMN seller_upgrade_offered_at DATETIME" },
@@ -346,6 +348,17 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { desc: 'idx_wh_sub_accounts_email', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_wh_sub_accounts_email ON wholesale_sub_accounts(email)" },
     { desc: 'idx_wh_sub_accounts_parent', sql: "CREATE INDEX IF NOT EXISTS idx_wh_sub_accounts_parent ON wholesale_sub_accounts(parent_seller_id)" },
+    // 🔐 2026-06-17 단일 세션 강제 (대시보드) — account 별 min_valid_iat. 로그인 시 갱신,
+    //   미들웨어가 토큰 iat < min_valid_iat 면 거부. (런타임 ensureDashboardSessionsTable 도 best-effort CREATE.)
+    { desc: 'dashboard_sessions', sql: `CREATE TABLE IF NOT EXISTS dashboard_sessions (
+      account_type  TEXT    NOT NULL,
+      account_id    INTEGER NOT NULL,
+      min_valid_iat INTEGER NOT NULL DEFAULT 0,
+      updated_at    TEXT,
+      user_agent    TEXT,
+      ip            TEXT,
+      PRIMARY KEY (account_type, account_id)
+    )` },
     // 🏦 2026-06-09 예치금(선불 deposit) 결제 — 도매 Toss 대체. (wholesale-deposit-core ensureDepositSchema 가 런타임 CREATE — 여기선 best-effort 보강.)
     //   wholesale_deposits: 유통사별 잔액(seller_id PK). txns: 거래원장. requests: 무통장입금 충전요청(어드민 확인 대상).
     { desc: 'wholesale_deposits', sql: `CREATE TABLE IF NOT EXISTS wholesale_deposits (
@@ -1177,10 +1190,16 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
             category = COALESCE(NEW.category,'')
         WHERE rowid = NEW.id;
       END` },
+    // 🩹 2026-06-17 (데모 '정리' 500 근본수정): 외부콘텐츠(content=products) FTS5 는 AFTER DELETE 시점에
+    //   원본 행이 사라져 `DELETE FROM products_fts WHERE rowid=OLD.id` 가 제거할 콘텐츠를 못 읽어 throw →
+    //   상품 하드삭제가 500. 정식 'delete' 커맨드(OLD 값 명시 전달)로 교정. 기존 트리거는 DROP 후 재생성
+    //   (CREATE IF NOT EXISTS 는 기존을 안 바꾸므로 선행 DROP 필수).
+    { name: 'products_fts_delete_trigger_drop_legacy', sql: `DROP TRIGGER IF EXISTS products_fts_delete` },
     { name: 'products_fts_delete_trigger', sql: `CREATE TRIGGER IF NOT EXISTS products_fts_delete
       AFTER DELETE ON products
       BEGIN
-        DELETE FROM products_fts WHERE rowid = OLD.id;
+        INSERT INTO products_fts(products_fts, rowid, name, description, category)
+        VALUES('delete', OLD.id, COALESCE(OLD.name,''), COALESCE(OLD.description,''), COALESCE(OLD.category,''));
       END` },
     // 🛡️ 2026-05-20: 에이전시 입점 가게 commission ledger.
     //   에이전시가 입점시킨 가게 (sellers.introduced_by_agency_id) 의 모든 공구권 매출 →

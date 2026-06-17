@@ -17,11 +17,21 @@ export default function AgencyLoginPage() {
   const [showPw, setShowPw] = useState(false)
   // 🛡️ 2026-05-03: Turnstile token (분산 봇 brute-force 방어)
   const [turnstileToken, setTurnstileToken] = useState<string>('')
+  const [rememberMe, setRememberMe] = useState(false)
+
+  // 🛡️ 2026-06-17: 이메일 기억하기 — 저장된 이메일 자동 채움 (admin/seller 와 동형).
+  useEffect(() => {
+    const saved = localStorage.getItem('agency_remember_email')
+    if (saved) { setFormData(p => ({ ...p, email: saved })); setRememberMe(true) }
+  }, [])
 
   // 🛡️ 2026-04-29: 401 인터셉터가 ?error=session_expired 로 redirect 시 toast 표시
   useEffect(() => {
-    if (searchParams.get('error') === 'session_expired') {
-      toast.error(t('auth.sessionExpired'))
+    const _err = searchParams.get('error')
+    if (_err === 'session_expired' || _err === 'session_superseded') {
+      toast.error(_err === 'session_superseded'
+        ? t('auth.sessionSuperseded', { defaultValue: '다른 기기 또는 브라우저에서 로그인되어 자동 로그아웃되었습니다.' })
+        : t('auth.sessionExpired'))
       const next = new URLSearchParams(searchParams)
       next.delete('error')
       setSearchParams(next, { replace: true })
@@ -35,6 +45,9 @@ export default function AgencyLoginPage() {
     try {
       const res = await api.post('/api/agency/login', { ...formData, turnstile_token: turnstileToken })
       if (res.data.success) {
+        // 🛡️ 2026-06-17: 이메일 기억하기 저장/삭제.
+        if (rememberMe) localStorage.setItem('agency_remember_email', formData.email)
+        else localStorage.removeItem('agency_remember_email')
         const { token, refreshToken, agency } = res.data
         localStorage.setItem('agency_token', token)
         // 🏁 2026-06-13: refresh token 저장 — 자동 로그아웃 근본수정(admin/seller 와 동형)
@@ -125,6 +138,7 @@ export default function AgencyLoginPage() {
                   <input
                     id="agency-email"
                     type="email"
+                    autoComplete="email"
                     required
                     value={formData.email}
                     onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
@@ -142,6 +156,7 @@ export default function AgencyLoginPage() {
                   <input
                     id="agency-password"
                     type={showPw ? 'text' : 'password'}
+                    autoComplete="current-password"
                     required
                     value={formData.password}
                     onChange={e => setFormData(p => ({ ...p, password: e.target.value }))}
@@ -160,7 +175,16 @@ export default function AgencyLoginPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={e => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 text-[#8B5CF6] focus:ring-[#8B5CF6]"
+                  />
+                  <span className="text-sm text-gray-600">{t('auth.rememberEmail', { defaultValue: '이메일 기억하기' })}</span>
+                </label>
                 <Link
                   to="/agency/forgot-password"
                   className="text-sm text-[#8B5CF6] hover:text-[#7C3AED] font-medium"

@@ -22,6 +22,7 @@ import {
 import { confirmTossPayment, cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { swallow } from '@/worker/utils/swallow'
 import { getSupplyMeta } from '@/worker/utils/product-supply-meta'
+import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAuth } from '@/worker/middleware/auth'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
@@ -670,6 +671,9 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       const payload = { sub: String(seller.id), seller_id: seller.id, email: seller.email || email, name: seller.name || name, username: seller.username, type: 'seller', status: seller.status, seller_type: seller.seller_type || 'influencer', is_distributor: 1, iat: nowSec, exp: nowSec + 30 * 24 * 60 * 60 }
       const token = await sign(payload, JWT_SECRET)
       const refreshToken = await sign({ ...payload, exp: nowSec + 90 * 24 * 60 * 60 }, JWT_SECRET)
+      // 🔐 단일 세션: 도매 대표 1차 로그인은 /api/seller/login(seller.routes, 이미 커버) 경유.
+      //   become 은 카탈로그 자동연결 프로브로도 토큰을 재발급 → 여기서 세션 갱신하면 churn/ping-pong
+      //   위험 → 의도적으로 호출 안 함(seller 로그인이 도매 사장 세션을 관장).
       return c.json({ success: true, status: 'approved', data: { accessToken: token, refreshToken, token, seller: { id: seller.id, username: seller.username, email: seller.email || email, name: seller.name || name, status: seller.status, seller_type: seller.seller_type || 'influencer', is_distributor: 1 } } })
     }
 
@@ -890,6 +894,9 @@ app.post('/sub-login', rateLimit({ action: 'wholesale-sub-login', max: 10, windo
     }
     const token = await sign(payload, JWT_SECRET)
     const refreshToken = await sign({ ...payload, exp: nowSec + 90 * 24 * 60 * 60 }, JWT_SECRET)
+
+    // 🔐 단일 세션 강제 — 도매 직원(서브계정)은 sub_account_id 시트로 독립 단일 세션.
+    await startDashboardSession(c.env.DB, 'seller_sub', sub.id, nowSec, { userAgent: c.req.header('User-Agent'), ip: c.req.header('CF-Connecting-IP') })
 
     // last_login_at 갱신(best-effort).
     await DB.prepare("UPDATE wholesale_sub_accounts SET last_login_at = datetime('now') WHERE id = ?").bind(sub.id).run().catch(swallow('wholesale:sub-login:last-login'))

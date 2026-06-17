@@ -227,7 +227,8 @@ export function resolveDistributorPrice(opts: {
   const dflt = (opts.defaultPlatformMarginPct != null && Number.isFinite(Number(opts.defaultPlatformMarginPct)) && Number(opts.defaultPlatformMarginPct) >= 0)
     ? Number(opts.defaultPlatformMarginPct) : DEFAULT_PLATFORM_MARGIN_PCT;
   const basePct = hasOverride ? Math.max(0, Number(ov)) : dflt; // 제품별 플랫폼 마진%(없으면 전역 기본)
-  const effMarginPct = Math.max(0, basePct * gradeMarginMultiplier(grade) / 100); // 등급 인하 반영
+  // 🆕 2026-06-17 (대표 확정): 모든 등급 동일 마진 — 등급은 가격 차등 X(노출 큐레이션 전용). 마진은 조율 가능.
+  const effMarginPct = Math.max(0, basePct);
   const price = distributorPriceFromCost(cost, effMarginPct, retail);
   return {
     price,

@@ -1,11 +1,17 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Users, Gift, ShoppingBag, Share2 } from 'lucide-react'
 import SEO from '@/components/SEO'
+import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 
 export default function ReferralIndexPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+
+  // 🧭 2026-06-17 (사용자 결정 — 그룹 referral 완전 숨김): '친구 모으면 싸게' 그룹 랜딩은
+  //   할인 종료로 껍데기 + 거짓 안내였음. 살아있는 '친구 초대 보너스'(MyReferralCard)가 있는
+  //   /user/profile 로 리다이렉트. 플래그 false 면 즉시 원복.
+  if (REFERRAL_GROUP_DISCOUNT_DISABLED) return <Navigate to="/user/profile" replace />
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
@@ -36,7 +42,7 @@ export default function ReferralIndexPage() {
             <span className="text-pink-500">{t('referral.heroTitle2', { defaultValue: '더 저렴하게' })}</span> {t('referral.heroTitle3', { defaultValue: '쇼핑하세요' })}
           </h2>
           <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
-            {t('referral.heroDesc', { defaultValue: '공동구매 인원이 모일수록 할인율이 커져요' })}
+            {t('referral.heroDesc', { defaultValue: '친구와 함께 공동구매가로 구매하고, 초대 보너스도 받으세요' })}
           </p>
         </section>
 
@@ -48,7 +54,7 @@ export default function ReferralIndexPage() {
               {
                 icon: ShoppingBag,
                 title: t('referral.step1Title', { defaultValue: '공동구매 상품 선택' }),
-                desc: t('referral.step1Desc', { defaultValue: '라이브나 쇼핑 페이지에서 공동구매 가능한 상품을 둘러보세요' }),
+                desc: t('referral.step1Desc', { defaultValue: '진행 중인 공동구매 상품을 둘러보세요' }),
                 tint: 'bg-blue-50 text-blue-500',
               },
               {
@@ -59,8 +65,8 @@ export default function ReferralIndexPage() {
               },
               {
                 icon: Gift,
-                title: t('referral.step3Title', { defaultValue: '목표 달성 시 할인 적용' }),
-                desc: t('referral.step3Desc', { defaultValue: '정해진 인원이 모이면 모두에게 추가 할인이 자동 적용됩니다' }),
+                title: t('referral.step3Title', { defaultValue: '친구 초대 보너스' }),
+                desc: t('referral.step3Desc', { defaultValue: '친구를 초대해 함께 구매하면 보너스 딜을 받을 수 있어요' }),
                 tint: 'bg-amber-50 text-amber-500',
               },
             ].map((step, i) => {

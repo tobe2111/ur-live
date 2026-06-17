@@ -71,7 +71,7 @@ export default function GroupBuyConfirmPaymentPage() {
       <div className="text-center max-w-sm">
         {state === 'processing' && (
           <>
-            <Loader2 className="w-12 h-12 animate-spin text-pink-500 mx-auto mb-4" />
+            <Loader2 className="w-12 h-12 animate-spin text-gray-900 dark:text-white mx-auto mb-4" />
             <p className="text-lg font-bold text-gray-900 dark:text-white">결제 승인 중...</p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">잠시만 기다려주세요</p>
           </>

@@ -1,18 +1,29 @@
 import { useEffect, useState } from 'react'
 import i18next from 'i18next'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { formatKST } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
+import { isVoucherCategory, VOUCHER_CATEGORY_LABEL } from '@/shared/constants/voucher-categories'
 import {
   Package, Truck, CheckCircle2, XCircle, Loader2, Eye,
   Calendar, User, Search, Filter, Download, ChevronLeft,
-  ChevronRight, RefreshCw, Clock, DollarSign
+  ChevronRight, RefreshCw, Clock, DollarSign, Ticket, Store, ExternalLink
 } from 'lucide-react'
+
+// 🗂️ 2026-06-17: 주문 종류 구별 — 첫 상품 category 로 교환권/상품 분류.
+//   ⚠️ 도매몰(B2B) 주문은 별도 wholesale_orders 테이블 → /admin/wholesale-orders (이 페이지엔 안 나옴).
+function orderKind(category?: string | null): { label: string; sub: string; color: string; bg: string; icon: 'voucher' | 'product' } {
+  if (isVoucherCategory(category)) {
+    const m = category ? VOUCHER_CATEGORY_LABEL[category] : undefined
+    return { label: '교환권', sub: m?.short || '', color: 'text-amber-700', bg: 'bg-amber-50', icon: 'voucher' }
+  }
+  return { label: '상품', sub: '', color: 'text-sky-700', bg: 'bg-sky-50', icon: 'product' }
+}
 
 // Module-scope t — uses i18next instance directly (for module-level constants below)
 const t: (key: string, opts?: { defaultValue?: string; [k: string]: unknown }) => string = (key, opts) => i18next.t(key, opts as never) as unknown as string
@@ -50,6 +61,7 @@ interface Order {
   item_count?: number | null
   total_quantity?: number | null
   first_item_name?: string | null
+  first_item_category?: string | null
   items?: OrderItem[]
 }
 
@@ -196,6 +208,44 @@ export default function AdminOrdersPage() {
   // 서버 페이지네이션 — orders 가 이미 한 page. 클라 측 slice 불필요.
   const totalPages = Math.max(1, Math.ceil(totalCount / itemsPerPage))
   const currentOrders = orders
+
+  // 🗂️ 2026-06-17: 체크박스 다중 선택 → 일괄 주문 상태 변경 (PATCH /orders/bulk-status).
+  const [selectedNumbers, setSelectedNumbers] = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
+  useEffect(() => {
+    setSelectedNumbers((prev) => {
+      if (prev.size === 0) return prev
+      const valid = new Set(orders.map((o) => o.order_number))
+      let changed = false; const next = new Set<string>()
+      prev.forEach((n) => { if (valid.has(n)) next.add(n); else changed = true })
+      return changed ? next : prev
+    })
+  }, [orders])
+  const allSelected = currentOrders.length > 0 && selectedNumbers.size === currentOrders.length
+  const someSelected = selectedNumbers.size > 0 && selectedNumbers.size < currentOrders.length
+  function toggleSelect(n: string) {
+    setSelectedNumbers((prev) => { const s = new Set(prev); if (s.has(n)) s.delete(n); else s.add(n); return s })
+  }
+  function toggleSelectAll() {
+    setSelectedNumbers(allSelected ? new Set() : new Set(currentOrders.map((o) => o.order_number)))
+  }
+  async function bulkUpdateStatus(status: string) {
+    if (selectedNumbers.size === 0) return
+    const order_numbers = Array.from(selectedNumbers)
+    if (!confirm(`선택한 ${order_numbers.length}건을 '${STATUS_STYLES[status]?.label || status}'(으)로 일괄 변경할까요?`)) return
+    setBulkBusy(true)
+    try {
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+      const res = await api.patch('/api/admin/orders/bulk-status', { order_numbers, status }, { headers: { Authorization: `Bearer ${token}` } })
+      const d = res.data?.data
+      toast.success(`${d?.updated ?? 0}건 '${STATUS_STYLES[status]?.label || status}'(으)로 변경됨${(d?.skipped ?? 0) > 0 ? ` · ${d.skipped}건 건너뜀` : ''}`)
+      setSelectedNumbers(new Set())
+      loadOrders()
+    } catch (err: unknown) {
+      const err_ = err as { response?: { data?: { error?: string } } }
+      toast.error(err_.response?.data?.error || t('admin.orders.k030', { defaultValue: '일괄 변경에 실패했습니다.' }))
+    } finally { setBulkBusy(false) }
+  }
 
   async function viewOrderDetail(orderNumber: string) {
     try {
@@ -363,6 +413,26 @@ export default function AdminOrdersPage() {
         </div>
       )}
 
+      {/* 🗂️ 2026-06-17: 도매몰(B2B) 주문은 별도 테이블/페이지 안내 + 체크박스 일괄 상태변경 바 */}
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <Link to="/admin/wholesale-orders" className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors">
+          <Store className="w-3.5 h-3.5" /> 도매몰(B2B) 주문 보기 <ExternalLink className="w-3 h-3" />
+        </Link>
+        {selectedNumbers.size > 0 && (
+          <div className="flex flex-wrap items-center gap-2 ml-auto">
+            <span className="text-xs text-gray-600 font-medium">{selectedNumbers.size}건 선택됨</span>
+            <button type="button" onClick={() => setSelectedNumbers(new Set())} className="text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2">선택 해제</button>
+            <span className="text-xs text-gray-400">일괄 변경:</span>
+            {['PREPARING', 'SHIPPING', 'DELIVERED'].map((st) => (
+              <button key={st} type="button" onClick={() => bulkUpdateStatus(st)} disabled={bulkBusy}
+                className="px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-md hover:bg-gray-800 disabled:opacity-50">
+                {STATUS_STYLES[st]?.label || st}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* 주문 테이블 */}
       {/* 🛡️ 2026-06-14: 컬럼 상세화 — 주문번호/일시 / 고객(명·이메일·연락처마스킹) / 상품요약(수량) /
           판매자 / 결제수단 / 주문상태 / 결제상태 / 금액 / 배송(송장). 한눈에 "누가 무엇을 얼마에" 파악. */}
@@ -371,14 +441,19 @@ export default function AdminOrdersPage() {
           <table className="w-full min-w-[1180px]">
             <thead>
               <tr className="bg-gray-50">
-                {['주문 / 일시', '고객 정보', '주문 상품', '판매자', '결제수단', '주문 상태', '결제 상태', '배송', '금액', ''].map(h => (
+                <th className="px-3 py-3 w-10">
+                  <input type="checkbox" checked={allSelected} ref={(el) => { if (el) el.indeterminate = someSelected }}
+                    onChange={toggleSelectAll} disabled={currentOrders.length === 0} aria-label="전체 선택"
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-40" />
+                </th>
+                {['주문 / 일시', '종류', '고객 정보', '주문 상품', '판매자', '결제수단', '주문 상태', '결제 상태', '배송', '금액', ''].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {currentOrders.length === 0 ? (
-                <tr><td colSpan={10} className="px-4 py-12 text-center text-sm text-gray-400">{t('admin.orders.k052', { defaultValue: '주문 내역이 없습니다.' })}</td></tr>
+                <tr><td colSpan={12} className="px-4 py-12 text-center text-sm text-gray-400">{t('admin.orders.k052', { defaultValue: '주문 내역이 없습니다.' })}</td></tr>
               ) : currentOrders.map(order => {
                 const ss = STATUS_STYLES[order.status] || { label: order.status, color: 'text-gray-600', bg: 'bg-gray-100' }
                 const ps = PAYMENT_STYLES[order.payment_status] || { label: order.payment_status, color: 'text-gray-600', bg: 'bg-gray-100' }
@@ -386,11 +461,24 @@ export default function AdminOrdersPage() {
                 const productSummary = order.first_item_name
                   ? (extraCount > 0 ? `${order.first_item_name} 외 ${extraCount}건` : order.first_item_name)
                   : '-'
+                const kind = orderKind(order.first_item_category)
+                const checked = selectedNumbers.has(order.order_number)
                 return (
-                  <tr key={order.order_number} className="hover:bg-gray-50 align-top">
+                  <tr key={order.order_number} className={`hover:bg-gray-50 align-top ${checked ? 'bg-blue-50/40' : ''}`}>
+                    <td className="px-3 py-3 w-10">
+                      <input type="checkbox" checked={checked} onChange={() => toggleSelect(order.order_number)}
+                        aria-label={`${order.order_number} 선택`}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                    </td>
                     <td className="px-4 py-3">
                       <p className="text-xs font-mono text-gray-700">{order.order_number}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{formatKST(order.created_at)}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full whitespace-nowrap ${kind.bg} ${kind.color}`}>
+                        {kind.icon === 'voucher' ? <Ticket className="w-3 h-3" /> : <Package className="w-3 h-3" />}
+                        {kind.label}{kind.sub ? `·${kind.sub}` : ''}
+                      </span>
                     </td>
                     <td className="px-4 py-3 max-w-[200px]">
                       <p className="text-xs font-semibold text-gray-900">{order.shipping_name || order.user_name || '-'}</p>

@@ -89,6 +89,8 @@ export default function CuratorPage() {
   const [query, setQuery] = useState('')
   // 🎨 2026-06-16 링크샵 시안: '방문자 미리보기' — 본인이 남이 보는 화면 그대로 확인.
   const [previewAsVisitor, setPreviewAsVisitor] = useState(false)
+  // 🎨 2026-06-17 (사용자 요청): 오너 기본 화면 = 방문자와 같은 카드 그리드. 순서 바꾸기는 드래그 모드 토글로.
+  const [reorderMode, setReorderMode] = useState(false)
   const currentUser = useAuthStore((s: any) => s.user)
   // 🛡️ 2026-05-27 (편집 UI 영구 fix): useAuthStore.user 가 sync 안 된 카카오 user 도 isOwner 인정.
   //   localStorage user_id fallback — RouteGuards / lib/api 의 토큰 검사 패턴과 일관.
@@ -299,18 +301,30 @@ export default function CuratorPage() {
             </div>
           </div>
         )}
-        {/* 🎨 2026-06-16 링크샵 개선안(시안): 본인 뷰 = 편집/관리 리스트가 기본 화면.
-            공개 storefront(검색·탭·카드)는 '전체 미리보기'(previewAsVisitor)로만 전환. 핀 없으면 온보딩 빈 상태. */}
-        {ownerView ? (
-          pins.length === 0
-            ? <EmptyLinkshop handle={curator.handle} isOwner curatorName={curator.name} />
-            : <PinManageList
-                pins={pins}
-                onReorder={(next) => setData(prev => prev ? { ...prev, pins: next } : prev)}
-                onDeleted={onPinDeleted}
-              />
+        {/* 🎨 2026-06-17 (사용자 요청 — 오너 화면 불일치 해소): 오너도 방문자와 동일한 그라데이션 카드 그리드를
+            기본으로 보고, 카드마다 삭제(✕) + '순서 바꾸기'(드래그 모드)만 추가. 빈 링크샵은 온보딩 빈 상태. */}
+        {ownerView && pins.length === 0 ? (
+          <EmptyLinkshop handle={curator.handle} isOwner curatorName={curator.name} />
+        ) : ownerView && reorderMode ? (
+          <div className="max-w-3xl mx-auto px-4 pt-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">핀 순서 바꾸기</span>
+              <button onClick={() => setReorderMode(false)} className="px-3.5 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12.5px] font-bold active:opacity-80">완료</button>
+            </div>
+            <PinManageList
+              pins={pins}
+              onReorder={(next) => setData(prev => prev ? { ...prev, pins: next } : prev)}
+              onDeleted={onPinDeleted}
+            />
+          </div>
         ) : (
           <>
+            {/* 오너: 순서 바꾸기 진입 (핀 2개 이상). 방문자에겐 안 보임. */}
+            {ownerView && pins.length > 1 && (
+              <div className="max-w-3xl mx-auto px-4 pt-3 flex justify-end">
+                <button onClick={() => setReorderMode(true)} className="inline-flex items-center gap-1 text-[12.5px] font-bold text-gray-600 dark:text-gray-300 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-white/[0.06] active:opacity-70">⇅ 순서 바꾸기</button>
+              </div>
+            )}
             {/* 🔍 2026-06-16 링크샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터. */}
             {pins.length > 0 && (
               <div className="max-w-3xl mx-auto px-4 pt-3 pb-1">
@@ -343,13 +357,8 @@ export default function CuratorPage() {
             {tab === 'vouchers' && renderPinTab(voucherPins, 'voucher')}
           </>
         )}
-        {/* 🛡️ 2026-06-11 (사용자): '정보' 탭 제거 — 핸들 변경 기능만 오너 전용 슬림 행으로 보존 */}
-        {ownerView && (
-          <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between text-sm border-t border-gray-100 dark:border-[#1A1A1A] mt-6">
-            <span className="text-gray-400">링크샵 주소</span>
-            <HandleEditor handle={curator.handle} />
-          </div>
-        )}
+        {/* 🔗 2026-06-17 (사용자 요청): 링크샵 주소 변경 + 공유는 헤더의 '내 링크샵 주소' 카드로 통합 이동
+            (CuratorHeader). 맨 아래 외딴 행 제거 — 보는 곳=고치는 곳=공유하는 곳 한 곳에. */}
 
         {/* 🧭 2026-06-10 (UI 100점 패스 — 방문자 전환): 비소유자 성장 루프 CTA.
             링크트리식 — 방문자가 1탭으로 자기 링크샵 시작(적립 루프 신규 큐레이터 유입). */}
@@ -480,11 +489,12 @@ function PinCard({ pin, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorP
     <div className="relative group">
       <BrowseProductCard product={product} aboveFold={aboveFold} to={`/u/${handle}/p/${pin.product_id}`} />
       {isOwner && (
+        // 🎨 2026-06-17: 모바일엔 hover 가 없어 항상 보이게(이전 opacity-0 group-hover 는 터치에서 숨김).
         <button
           onClick={handleDelete}
           disabled={deleting}
           aria-label="핀 삭제"
-          className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/70 hover:bg-red-500 text-white flex items-center justify-center transition-colors text-sm font-bold opacity-0 group-hover:opacity-100 disabled:opacity-50"
+          className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/60 hover:bg-red-500 text-white flex items-center justify-center transition-colors text-sm font-bold shadow-sm disabled:opacity-50"
         >
           ✕
         </button>
@@ -493,63 +503,8 @@ function PinCard({ pin, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorP
   )
 }
 
-// 🏭 2026-06-05 (사용자 요청 — @user2 같은 핸들 변경): 핸들 편집기(소유자). 저장 시 /u/{새핸들} 로 URL 변경.
-//   백엔드는 이미 존재(PATCH /api/curator/me/handle + checkHandle) — UI 만 없었음.
-function HandleEditor({ handle }: { handle: string }) {
-  const navigate = useNavigate()
-  const [editing, setEditing] = useState(false)
-  const [val, setVal] = useState(handle)
-  const [status, setStatus] = useState<'idle' | 'checking' | 'ok' | 'bad' | 'saving'>('idle')
-  const [msg, setMsg] = useState('')
-  useEffect(() => {
-    if (!editing) return
-    const h = val.trim().toLowerCase()
-    if (h === handle) { setStatus('idle'); setMsg(''); return }
-    if (!/^[a-z0-9_]{3,30}$/.test(h)) { setStatus('bad'); setMsg('영문 소문자/숫자/_ 3~30자'); return }
-    setStatus('checking'); setMsg('확인 중…')
-    const tm = setTimeout(async () => {
-      try {
-        const r = await curatorApi.checkHandle(h)
-        if (r.available) { setStatus('ok'); setMsg('사용 가능합니다') }
-        else { setStatus('bad'); setMsg(r.message || '이미 사용 중입니다') }
-      } catch { setStatus('idle'); setMsg('') }
-    }, 400)
-    return () => clearTimeout(tm)
-  }, [val, editing, handle])
-  const save = async () => {
-    const h = val.trim().toLowerCase()
-    if (h === handle) { setEditing(false); return }
-    if (status !== 'ok') return
-    setStatus('saving')
-    try {
-      const r = await curatorApi.updateHandle(h)
-      if (r.success && r.handle) { navigate(`/u/${r.handle}`, { replace: true }); setEditing(false) }
-      else { setStatus('bad'); setMsg(r.error || '변경에 실패했습니다') }
-    } catch { setStatus('bad'); setMsg('변경에 실패했습니다') }
-  }
-  // 🎨 2026-06-17 (라이트 테마 가시성 fix): bare text-white 는 light(bg-white)에서 흰글자=투명 →
-  //   핸들/입력 안 보였음. text-gray-900 dark:text-white 로 양모드 대응. <dd>(dl 없는 무효 HTML)도 div 로.
-  if (!editing) {
-    return (
-      <div className="text-gray-900 dark:text-white font-mono flex items-center gap-2">
-        @{handle}
-        <button onClick={() => { setEditing(true); setVal(handle); setStatus('idle'); setMsg('') }} className="text-[11px] text-gray-900 dark:text-white font-bold font-sans">변경</button>
-      </div>
-    )
-  }
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex items-center gap-1">
-        <span className="text-gray-400 dark:text-white/50 font-mono text-sm">@</span>
-        <input value={val} onChange={e => setVal(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase())} maxLength={30}
-          className="w-28 bg-transparent border-b border-gray-300 dark:border-gray-500 text-gray-900 dark:text-white font-mono text-sm focus:outline-none focus:border-gray-900 dark:focus:border-white" autoFocus />
-        <button onClick={save} disabled={status !== 'ok'} className="text-[12px] text-gray-900 dark:text-white font-bold disabled:opacity-40">{status === 'saving' ? '저장 중' : '저장'}</button>
-        <button onClick={() => { setEditing(false); setVal(handle); setStatus('idle') }} className="text-[12px] text-gray-500">취소</button>
-      </div>
-      {msg && <span className={`text-[10px] ${status === 'ok' ? 'text-emerald-500 dark:text-emerald-400' : status === 'checking' ? 'text-gray-400' : 'text-red-500 dark:text-red-400'}`}>{msg}</span>}
-    </div>
-  )
-}
+// 🔗 2026-06-17 (사용자 요청): 핸들 편집기(HandleEditor)는 헤더의 '내 링크샵 주소' 카드(CuratorHeader)로
+//   공유(복사/카카오)와 함께 통합 이동 — 여기서 제거.
 
 // 🎨 2026-06-16 링크샵 시안: 본인 핀 관리 리스트 — 드래그(터치+마우스) 정렬 + 핀별 통계 + 코멘트 넛지 + 삭제.
 //   드래그 라이브러리 없이 pointer 이벤트로 구현 (window 리스너 + ref, 모바일 스크롤 방지 touch-action:none).

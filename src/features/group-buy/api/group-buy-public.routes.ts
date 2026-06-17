@@ -582,7 +582,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           vo.external_order_id LIKE 'u' || o.id || '-%' OR
           vo.external_order_id LIKE 'ur-cons-' || o.id || '-%'
         )
-        WHERE o.user_id = ? AND vo.status IN ('sent', 'processing')
+        WHERE o.user_id = ? AND vo.status IN ('sent', 'processing', 'failed')
         ORDER BY vo.created_at DESC
         LIMIT 100
       `).bind(Number(user.id)).all().catch(() => ({ results: [] as any[] }))
@@ -595,7 +595,9 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         user_id: String(user.id),
         product_id: null,
         order_id: vo.order_id,
-        status: vo.status === 'sent' ? 'unused' : 'processing',
+        // 🔔 2026-06-17: failed 도 노출(유저가 '결제됐는데 안 옴' 인지). card 는 kt_status 로 실패 UI.
+        //   failed→'unused'(목록 노출) / sent→'unused' / processing→'processing'(전송중, 그룹서 숨김).
+        status: (vo.status === 'sent' || vo.status === 'failed') ? 'unused' : 'processing',
         expires_at: null,
         used_at: null,
         created_at: vo.sent_at || vo.created_at,

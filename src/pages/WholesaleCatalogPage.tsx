@@ -29,7 +29,6 @@ import HomeRails from './wholesale-catalog/HomeRails'
 import ShowcaseBanners from './wholesale-catalog/ShowcaseBanners'
 import FilterControls from './wholesale-catalog/FilterControls'
 import BulkOrderPanel from './wholesale-catalog/BulkOrderPanel'
-import { TrustBar, SupplierCTA } from './wholesale-catalog/HomeSections'
 import { CategoryTiles, BestGrid } from './wholesale-catalog/CuratedSections'
 
 // 🏭 2026-06-09 Wave 4b: 채팅 floating 버튼 — lazy(채팅 코드 0 byte in 초기 번들).
@@ -123,6 +122,8 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const isDefaultCatalog = !committedSearch && cat === 'all' && sort === 'popular' && !inStock && !band && !premiumView && !selectedBrand
   const catalogQ = useQuery<CatalogItem[]>({
     queryKey: queryKeys.wholesale('catalog', catalogKey),
+    // initialdata-check-ok: 의도적 — guest 기본 카탈로그는 SSR(__SSR_INITIAL_WHOLESALE__) 로 0-RTT 완결
+    //   (fetch 자체 없음, 잠긴 로딩 최적화). 빈 결과는 readSsrWholesale 가 'none' 처리 → 클라 정상 fetch 복구.
     initialData: () => {
       if (!isDefaultCatalog) return undefined
       if (typeof window !== 'undefined' && localStorage.getItem('seller_token')) return undefined // 로그인 = 등급가 fetch 필수
@@ -479,12 +480,9 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
             featured={featured}
           />
 
-          {/* 🏭 2026-06-15 시안: 신뢰 신호 바 (사업자인증/에스크로/세금계산서/무재고) */}
-          <div className="pt-1 pb-1">
-            <TrustBar />
-          </div>
+          {/* 🧹 2026-06-17 (시안): 신뢰 신호 바 삭제 */}
 
-          {/* 🏭 2026-06-15 시안: 카테고리 타일 8종 + 실시간 베스트(순위 그리드) — 비로그인 마케팅 랜딩 */}
+          {/* 🏭 2026-06-15 시안: 카테고리 타일 + 베스트 — 비로그인 마케팅 랜딩 */}
           {!loggedIn && (
             <div className="pt-4 space-y-8">
               <CategoryTiles onPick={(id) => { setCat(id); setPremiumView(false); setBrandView(false); setSelectedBrand('') }} />
@@ -529,7 +527,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
             </div>
           )}
           <SectionHead
-            title={selectedBrand ? t('wholesale.brand.heading', { defaultValue: '브랜드 상품' }) : (premiumView ? t('wholesale.premium.heading', { defaultValue: '프리미엄 상품' }) : (cat === 'all' ? (cleanHome ? '오늘의 도매 특가' : t('wholesale.allProducts', { defaultValue: '전체 상품' })) : (cats.find(c => c.id === cat)?.label || '상품')))}
+            title={selectedBrand ? t('wholesale.brand.heading', { defaultValue: '브랜드 상품' }) : (premiumView ? t('wholesale.premium.heading', { defaultValue: '프리미엄 상품' }) : (cat === 'all' ? t('wholesale.allProducts', { defaultValue: '전체 상품' }) : (cats.find(c => c.id === cat)?.label || '상품')))}
             sub={cleanHome ? (loggedIn ? '내 등급 기준 공급가' : '검증 제조사 직거래 공급가') : (comma(items.length) + '개')}
           />
           {!cleanHome && <div className="lg:hidden mb-3"><CatChips cat={cat} setCat={setCat} cats={cats} /></div>}
@@ -594,12 +592,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
           </div>
         </section>
         )}
-        {/* 🏭 2026-06-15 시안: 제조사 입점 CTA 배너 (비로그인 마케팅 면) */}
-        {!collectionMode && !loggedIn && (
-          <div className="pt-2 pb-6">
-            <SupplierCTA onApply={() => navigate('/supplier/register')} />
-          </div>
-        )}
+        {/* 🧹 2026-06-17 (시안): 제조사 입점 CTA 배너 + 하단 트러스트 칩 삭제 */}
 
       </main>
 

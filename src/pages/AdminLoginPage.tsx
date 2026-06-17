@@ -21,7 +21,7 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPw, setShowPw] = useState(false)
-  // 🆕 2026-06-17 보안 PIN: needPin=true 면 PIN 입력칸 노출(서버가 pin_required 반환).
+  // 🆕 2026-06-17 보안 PIN: PIN 칸은 처음부터 노출(한 번에 입력). needPin=true 면 강조(서버가 pin_required 반환).
   const [needPin, setNeedPin] = useState(false)
   const [pin, setPin] = useState('')
 
@@ -36,8 +36,11 @@ export default function AdminLoginPage() {
 
   // 🛡️ 2026-04-29: 401 인터셉터가 ?error=session_expired 로 redirect 시 toast 표시
   useEffect(() => {
-    if (searchParams.get('error') === 'session_expired') {
-      toast.error(t('auth.sessionExpired'))
+    const _err = searchParams.get('error')
+    if (_err === 'session_expired' || _err === 'session_superseded') {
+      toast.error(_err === 'session_superseded'
+        ? t('auth.sessionSuperseded', { defaultValue: '다른 기기 또는 브라우저에서 로그인되어 자동 로그아웃되었습니다.' })
+        : t('auth.sessionExpired'))
       const next = new URLSearchParams(searchParams)
       next.delete('error')
       setSearchParams(next, { replace: true })
@@ -67,11 +70,12 @@ export default function AdminLoginPage() {
       } catch (_) {} // non-critical: best-effort signOut before admin login
 
       // JWT-based Login (NO Firebase!)
+      // 🆕 보안 PIN: 처음부터 함께 전송 → PIN 설정 계정도 한 번에 로그인(2단계 제거). 비우면 미전송.
       const response = await api.post('/api/admin/login', {
         email,
         password,
         turnstile_token: turnstileToken,
-        pin: needPin ? pin.trim() : undefined,
+        pin: pin.trim() || undefined,
       })
 
       // 🆕 보안 PIN: 서버가 PIN 요구(미입력/형식오류) → PIN 입력 단계로.
@@ -237,26 +241,27 @@ export default function AdminLoginPage() {
                 </div>
               </div>
 
-              {/* 🆕 보안 PIN — 서버가 pin_required 반환 시 노출. 관리자가 설정한 6자리 PIN. */}
-              {needPin && (
-                <div>
-                  <label htmlFor="admin-pin" className="block text-sm font-medium text-gray-700 mb-1.5">6자리 보안 PIN</label>
-                  <input
-                    id="admin-pin"
-                    type="password"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    maxLength={6}
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="••••••"
-                    aria-label="보안 PIN"
-                    autoFocus
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-center text-lg tracking-[0.4em] font-mono text-gray-900 bg-white [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
-                  />
-                  <p className="text-[11px] text-gray-400 mt-1">처음 설정한 6자리 보안 PIN을 입력하세요.</p>
-                </div>
-              )}
+              {/* 🆕 보안 PIN — 처음부터 노출(아이디/비번과 함께 한 번에 입력). 설정한 계정만 입력, 미설정은 비워둠. */}
+              <div>
+                <label htmlFor="admin-pin" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  6자리 보안 PIN <span className="font-normal text-gray-400">(설정한 경우)</span>
+                </label>
+                <input
+                  id="admin-pin"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={6}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="••••••"
+                  aria-label="보안 PIN"
+                  className={`w-full px-4 py-3 border rounded-xl text-center text-lg tracking-[0.4em] font-mono text-gray-900 bg-white [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent ${needPin ? 'border-[#F59E0B]' : 'border-gray-200'}`}
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  {needPin ? '이 계정은 보안 PIN이 필요합니다. 6자리 PIN을 입력하세요.' : 'PIN을 설정한 계정만 입력하세요. 미설정 계정은 비워두면 됩니다.'}
+                </p>
+              </div>
 
               {/* Remember Me */}
               <div className="flex items-center gap-2">

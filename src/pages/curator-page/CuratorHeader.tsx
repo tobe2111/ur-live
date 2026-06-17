@@ -12,12 +12,13 @@
 
 import { useRef, useState, useEffect } from 'react'
 import { snsUrl } from '@/utils/sns-url'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Share2, Pencil, Check, X, Camera, Settings } from 'lucide-react'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import { cfImage } from '@/utils/cf-image'
 import api from '@/lib/api'
+import { curatorApi } from '@/features/curator/api/curator-api'
 import { toast } from '@/hooks/useToast'
 import { compressForUpload } from '@/lib/image-compress'
 
@@ -49,7 +50,44 @@ export default function CuratorHeader({
   onCuratorUpdate,
 }: CuratorHeaderProps) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [editingField, setEditingField] = useState<'name' | 'bio' | null>(null)
+  // 🔗 2026-06-17 (사용자 요청 — 공유 우선 + 주소변경 통합): 헤더 '내 링크샵 주소' 카드의 주소 변경 인라인.
+  const shareHost = typeof window !== 'undefined' ? window.location.host : 'live.ur-team.com'
+  const [editingHandle, setEditingHandle] = useState(false)
+  const [handleVal, setHandleVal] = useState(curator.handle)
+  const [handleStatus, setHandleStatus] = useState<'idle' | 'checking' | 'ok' | 'bad' | 'saving'>('idle')
+  const [handleMsg, setHandleMsg] = useState('')
+  useEffect(() => {
+    if (!editingHandle) return
+    const h = handleVal.trim().toLowerCase()
+    if (h === curator.handle) { setHandleStatus('idle'); setHandleMsg(''); return }
+    if (!/^[a-z0-9_]{3,20}$/.test(h)) { setHandleStatus('bad'); setHandleMsg('소문자/숫자/_ 3~20자'); return }
+    setHandleStatus('checking'); setHandleMsg('확인 중…')
+    const tm = setTimeout(async () => {
+      try {
+        const r = await curatorApi.checkHandle(h)
+        if (r.available) { setHandleStatus('ok'); setHandleMsg('사용 가능한 주소예요') }
+        else { setHandleStatus('bad'); setHandleMsg(r.message || '이미 사용 중이에요') }
+      } catch { setHandleStatus('idle'); setHandleMsg('') }
+    }, 400)
+    return () => clearTimeout(tm)
+  }, [handleVal, editingHandle, curator.handle])
+  async function saveHandle() {
+    const h = handleVal.trim().toLowerCase()
+    if (h === curator.handle) { setEditingHandle(false); return }
+    if (handleStatus !== 'ok') return
+    setHandleStatus('saving')
+    try {
+      const r = await curatorApi.updateHandle(h)
+      if (r.success && r.handle) {
+        onCuratorUpdate?.({ handle: r.handle })
+        setEditingHandle(false)
+        navigate(`/u/${r.handle}`, { replace: true })
+        toast.success('링크샵 주소가 변경됐어요')
+      } else { setHandleStatus('bad'); setHandleMsg(r.error || '변경에 실패했어요') }
+    } catch { setHandleStatus('bad'); setHandleMsg('변경에 실패했어요') }
+  }
   const [editName, setEditName] = useState(curator.name)
   const [editBio, setEditBio] = useState(curator.bio || '')
   const [saving, setSaving] = useState(false)
@@ -315,43 +353,104 @@ export default function CuratorHeader({
           </div>
         )}
 
-        {/* CTA — 본인: 프로필 수정 / 수익 대시보드, 방문자: 카카오 공유 + 복사 */}
+        {/* CTA — 본인: [내 링크샵 주소 카드: 공유+주소변경] + 프로필 수정/수익 대시보드 / 방문자: 카카오 공유 + 복사 */}
         {isOwner ? (
-          <div className="grid grid-cols-2 gap-2 mt-3.5">
-            <button
-              type="button"
-              onClick={() => setEditingField('name')}
-              className="py-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
-            >
-              <Pencil className="w-3.5 h-3.5" /> 프로필 수정
-            </button>
-            <Link
-              to="/u/me/earnings"
-              className="py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
-            >
-              <Settings className="w-3.5 h-3.5" /> 수익 대시보드
-            </Link>
+          <div className="mt-3.5 space-y-2.5">
+            {/* 🔗 2026-06-17 (사용자 요청 — "링크 공유가 우선, 주소 변경과 묶어서"): 주소 표시 + 복사/카카오 공유 + 주소 변경 한 카드. */}
+            <div className="rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#0A0A0A] p-3.5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400">내 링크샵 주소</span>
+                {!editingHandle && (
+                  <button
+                    onClick={() => { setEditingHandle(true); setHandleVal(curator.handle); setHandleStatus('idle'); setHandleMsg('') }}
+                    className="text-[11.5px] font-bold text-gray-900 dark:text-white active:opacity-70"
+                  >
+                    주소 변경
+                  </button>
+                )}
+              </div>
+              {editingHandle ? (
+                <div>
+                  <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-gray-300 dark:border-[#2A2A2A] bg-white dark:bg-[#121212]">
+                    <span className="shrink-0 text-[13px] font-mono text-gray-400">{shareHost}/u/</span>
+                    <input
+                      value={handleVal}
+                      onChange={(e) => setHandleVal(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20))}
+                      autoFocus
+                      className="flex-1 min-w-0 bg-transparent font-mono text-[13px] text-gray-900 dark:text-white outline-none"
+                    />
+                    {handleStatus === 'checking' && <span className="shrink-0 text-[11px] text-gray-400">확인중…</span>}
+                  </div>
+                  {handleMsg && (
+                    <p className={`text-[11.5px] mt-1.5 ${handleStatus === 'ok' ? 'text-emerald-600 dark:text-emerald-400' : handleStatus === 'checking' ? 'text-gray-400' : 'text-red-500'}`}>{handleMsg}</p>
+                  )}
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={saveHandle} disabled={handleStatus !== 'ok'} className="flex-1 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[13px] font-bold disabled:opacity-40">{handleStatus === 'saving' ? '저장 중…' : '주소 저장'}</button>
+                    <button onClick={() => { setEditingHandle(false); setHandleVal(curator.handle); setHandleStatus('idle'); setHandleMsg('') }} className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 text-[13px] font-bold">취소</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center px-3 py-2.5 rounded-xl bg-white dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A]">
+                    <span className="truncate text-[13px] font-mono text-gray-700 dark:text-gray-300">{shareHost}/u/{curator.handle}</span>
+                  </div>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={onCopyLink}
+                      className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
+                    >
+                      <Share2 className="w-3.5 h-3.5" /> 링크 복사
+                    </button>
+                    <div className="flex-1">
+                      <KakaoShareButton
+                        title={`${curator.name} 의 링크샵`}
+                        description={curator.bio || `${pinCount}개 추천 중`}
+                        imageUrl={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
+                        link={`/u/${curator.handle}`}
+                        className="w-full py-2.5 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[13px] font-bold transition-colors"
+                        buttonText="카카오 공유"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setEditingField('name')}
+                className="py-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
+              >
+                <Pencil className="w-3.5 h-3.5" /> 프로필 수정
+              </button>
+              <Link
+                to="/u/me/earnings"
+                className="py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
+              >
+                <Settings className="w-3.5 h-3.5" /> 수익 대시보드
+              </Link>
+            </div>
           </div>
         ) : (
+          // 🔗 2026-06-17 (사용자 요청 — 방문자 공유 손봄): 아이콘만이던 복사 버튼을 라벨 단 균등 2버튼으로
+          //   (오너 카드와 동일 톤). '카카오톡 공유'→'카카오 공유' 통일.
           <div className="flex gap-2 mt-3.5">
+            <button
+              onClick={onCopyLink}
+              className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
+            >
+              <Share2 className="w-3.5 h-3.5" /> {t('curator.copyLink', { defaultValue: '링크 복사' })}
+            </button>
             <div className="flex-1">
               <KakaoShareButton
                 title={`${curator.name} 의 링크샵`}
                 description={curator.bio || `${pinCount}개 상품 추천 중`}
                 imageUrl={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
                 link={`/u/${curator.handle}`}
-                className="w-full py-2.5 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-sm font-bold transition-colors"
-                buttonText="카카오톡 공유"
+                className="w-full py-2.5 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[13px] font-bold transition-colors"
+                buttonText="카카오 공유"
               />
             </div>
-            <button
-              onClick={onCopyLink}
-              className="px-4 py-2.5 bg-gray-100 dark:bg-[#121212] hover:bg-gray-200 dark:hover:bg-[#1A1A1A] rounded-xl text-sm font-bold text-gray-900 dark:text-white transition-colors"
-              aria-label={t('curator.copyLink', { defaultValue: '링크 복사' })}
-              title="링크 복사"
-            >
-              <Share2 className="w-4 h-4" />
-            </button>
           </div>
         )}
       </div>

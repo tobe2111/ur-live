@@ -70,15 +70,18 @@ function ReviewBonusButton({ voucherCode }: { voucherCode: string }) {
     if (file.size > 5 * 1024 * 1024) { toast.error('5MB 이하만'); return }
     setUploading(true)
     try {
+      // 🛠️ 2026-06-17 (기술부채 청산): DataURL(멀티MB base64 를 POST 본문/DB 에 저장하던 임시) →
+      //   검증된 R2 업로드 endpoint(/api/upload/image, 유저 쿠키 인증)로. 응답 URL 만 제출.
       const fd = new FormData()
-      fd.append('image', file)
-      // 셀러 upload endpoint 재사용 — 일반 user 도 imgbb 업로드 필요
-      // ★ 별도 user-upload endpoint 필요하나, 우선 imgbb 직접 호출 X. 임시: DataURL.
-      const reader = new FileReader()
-      reader.onload = () => { setScreenshotUrl(reader.result as string); setUploading(false) }
-      reader.onerror = () => { toast.error('읽기 실패'); setUploading(false) }
-      reader.readAsDataURL(file)
-    } catch { toast.error('업로드 실패'); setUploading(false) }
+      fd.append('file', file)
+      const res = await api.post('/api/upload/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const url = res.data?.data?.url
+      if (res.data?.success && url) setScreenshotUrl(url)
+      else toast.error(res.data?.error || '업로드 실패')
+    } catch (err) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e?.response?.data?.error || '업로드 실패')
+    } finally { setUploading(false) }
   }
 
   async function submit() {
@@ -824,6 +827,8 @@ function KtAlphaVoucherCard({ v, muted, t }: {
     : ""
   // 🔢 #4: PIN 모드 발급분(kt_pin 보유)은 인앱 바코드. 아니면 MMS 안내(기존).
   const hasBarcode = !!v.kt_pin && v.status === 'unused'
+  // 🔔 2026-06-17 (사용자 요청): 발송 실패(잔액부족/API오류 등) 명시 — '결제됐는데 안 옴' 깜깜이 해소.
+  const sendFailed = v.kt_status === 'failed'
 
   // 🎨 2026-06-17 (사용자 요청 — 카드 톤 통일): amber 그라데이션 카드 → 식사권과 동일한 클린
   //   화이트 카드 + 84px 썸네일 + 잉크 타이포. 기프티쇼 정체성은 작은 amber 칩으로만 구분.
@@ -858,21 +863,32 @@ function KtAlphaVoucherCard({ v, muted, t }: {
             <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400">
               📱 기프티쇼
             </span>
-            {statusBadge && <span className="ml-auto">{statusBadge}</span>}
+            {sendFailed ? (
+              <span className="ml-auto shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400">발송 실패</span>
+            ) : statusBadge ? <span className="ml-auto">{statusBadge}</span> : null}
           </div>
           <p className="line-clamp-2 mt-1 text-gray-900 dark:text-white font-bold text-[14px] leading-snug tracking-tight">{v.product_name}</p>
           {v.applied_price && (
             <p className="mt-0.5 text-[13px] font-extrabold text-gray-900 dark:text-white">{formatNumber(v.applied_price)}원</p>
           )}
           <div className="mt-auto pt-1.5">
-            {maskedPhone && !hasBarcode && (
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">📞 {maskedPhone} 로 발송됨</p>
+            {sendFailed ? (
+              <>
+                <p className="text-[11px] font-bold text-red-600 dark:text-red-400">발송에 실패했어요</p>
+                <p className="mt-0.5 text-[10.5px] leading-relaxed text-gray-500 dark:text-gray-400">결제는 완료됐어요. 고객센터로 재발송을 요청해 주세요.</p>
+              </>
+            ) : (
+              <>
+                {maskedPhone && !hasBarcode && (
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">📞 {maskedPhone} 로 발송됨</p>
+                )}
+                <p className="mt-0.5 text-[10.5px] leading-relaxed text-gray-400 dark:text-gray-500">
+                  {hasBarcode
+                    ? t('voucher.ktShowBarcode', { defaultValue: '매장에서 아래 바코드를 제시하세요' })
+                    : t('voucher.ktCheckMms', { defaultValue: '휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.' })}
+                </p>
+              </>
             )}
-            <p className="mt-0.5 text-[10.5px] leading-relaxed text-gray-400 dark:text-gray-500">
-              {hasBarcode
-                ? t('voucher.ktShowBarcode', { defaultValue: '매장에서 아래 바코드를 제시하세요' })
-                : t('voucher.ktCheckMms', { defaultValue: '휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.' })}
-            </p>
           </div>
         </div>
       </div>

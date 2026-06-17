@@ -144,6 +144,10 @@ export default function AgencySellersPage() {
     try {
       const r = await api.get(`/api/agency/sellers/${seller.id}/stats?period=${p}`, { headers })
       setSellerStats(r.data.data)
+    } catch {
+      // 🏁 2026-06-17 (전수조사): 통계 fetch 실패 시 조용히 빈 화면이던 것 → 토스트 + stats 비움.
+      setSellerStats(null)
+      toast.error(t('agency.sellers.statsLoadFailed', { defaultValue: '셀러 통계를 불러오지 못했습니다.' }))
     } finally {
       setStatsLoading(false)
     }
