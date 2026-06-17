@@ -7,6 +7,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Link2, Store, UserPlus, Wallet } from 'lucide-react'
+import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 
 export default function DealEarnStrip() {
   const navigate = useNavigate()
@@ -33,7 +34,8 @@ export default function DealEarnStrip() {
       icon: UserPlus,
       label: t('dealEarn.invite', { defaultValue: '친구 초대' }),
       desc: t('dealEarn.inviteDesc', { defaultValue: '초대하면 딜 보너스' }),
-      to: '/referral',
+      // 🧭 2026-06-17: 그룹 referral 숨김 — 살아있는 초대보너스 카드(MyReferralCard)가 있는 /user/profile 로.
+      to: REFERRAL_GROUP_DISCOUNT_DISABLED ? '/user/profile' : '/referral',
       tint: 'bg-sky-50 text-sky-500 dark:bg-sky-500/12 dark:text-sky-400',
     },
     {

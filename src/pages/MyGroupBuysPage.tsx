@@ -6,6 +6,7 @@ import SEO from '@/components/SEO';
 import { toast } from '@/hooks/useToast';
 import { useMyGroupBuys, type ReferralGroup, type VoucherEntry, type CommunityGroupBuy, type ProductInfo } from '@/hooks/queries/useMyGroupBuys';
 import { hasConsumerSession } from '@/utils/auth';
+import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags';
 
 // ─────────────────────────────────────────────────────────────────────
 // Types
@@ -167,7 +168,8 @@ export default function MyGroupBuysPage() {
       return String(bTime).localeCompare(String(aTime));
     });
 
-    return items;
+    // 🧭 2026-06-17 (그룹 referral 완전 숨김): '친구초대' 그룹 항목 비노출(플래그 false 면 복원).
+    return REFERRAL_GROUP_DISCOUNT_DISABLED ? items.filter(i => i.source !== 'referral') : items;
   }, [referralGroups, vouchers, community, products, t, navigate]);
 
   const filtered = useMemo(() => {
@@ -179,7 +181,8 @@ export default function MyGroupBuysPage() {
     { key: 'all', label: t('myGroupBuys.tabAll', { defaultValue: '전체' }), count: unified.length },
     { key: 'voucher', label: t('myGroupBuys.tabVoucher', { defaultValue: '식사권' }), count: vouchers.length },
     { key: 'community', label: t('myGroupBuys.tabCommunity', { defaultValue: '공구 제안' }), count: community.length },
-    { key: 'referral', label: t('myGroupBuys.tabReferral', { defaultValue: '친구초대' }), count: referralGroups.length },
+    // 🧭 2026-06-17: 그룹 referral 숨김 — '친구초대' 탭 비노출(플래그 false 면 복원).
+    ...(REFERRAL_GROUP_DISCOUNT_DISABLED ? [] : [{ key: 'referral' as TabKey, label: t('myGroupBuys.tabReferral', { defaultValue: '친구초대' }), count: referralGroups.length }]),
   ];
 
   return (
