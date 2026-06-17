@@ -384,7 +384,7 @@ export default function AdminDistributorGradesPage() {
     if (!Number.isFinite(pid) || pid <= 0 || !Number.isFinite(sid) || sid <= 0) { toast.error('상품 ID와 유통사 ID를 입력하세요'); return }
     try {
       await api.post('/api/admin/distributor/product-access', { product_id: pid, distributor_seller_id: sid }, h)
-      toast.success('유통회원 선정됨'); setAccessProductQuery(String(pid)); setAccessSeller(''); accessQ.refetch()
+      toast.success('판매사(유통사) 선정됨'); setAccessProductQuery(String(pid)); setAccessSeller(''); accessQ.refetch()
     } catch (e: unknown) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '선정 실패') }
   }
   async function revokeAccess(id: number) {
@@ -453,15 +453,15 @@ export default function AdminDistributorGradesPage() {
     finally { setDemoBusy(false) }
   }
 
-  if (loading) return <AdminLayout title="유통사 등급"><DashboardLoading /></AdminLayout>
+  if (loading) return <AdminLayout title="판매사(유통사) 등급"><DashboardLoading /></AdminLayout>
 
   return (
-    <AdminLayout title="유통사 등급">
+    <AdminLayout title="판매사(유통사) 등급">
       <div className="ur-content-full px-4 lg:px-8 py-6 space-y-8">
         <DashboardPageHeader
           icon={<Layers className="w-5 h-5" />}
-          title="유통사 등급 · 마진 설정"
-          subtitle="유통스타트 도매몰 — 등급별 마진율과 유통사 배정을 관리합니다. (도매 카탈로그 가격에만 적용)"
+          title="판매사(유통사) 등급 · 마진 설정"
+          subtitle="유통스타트 도매몰 — 등급별 마진율과 판매사(유통사) 배정을 관리합니다. (도매 카탈로그 가격에만 적용)"
         />
 
         {/* ── 데모 상품 (도매몰 미리보기용) ── */}
