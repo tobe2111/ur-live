@@ -52,8 +52,6 @@ interface GroupBuyDetail {
   // 🛡️ 2026-05-27: 서버가 array 로 미리 parse 해서 보냄. 구 응답 (stale edge cache) 은 string — 둘 다 handle.
   group_buy_tiers?: string | Array<{ min: number; discount_pct: number }> | null
   current_discount_pct: number
-  next_tier?: { min: number; discount_pct: number } | null
-  next_tier_remaining?: number | null
   seller_id?: number
   seller_name?: string
   seller_username?: string
