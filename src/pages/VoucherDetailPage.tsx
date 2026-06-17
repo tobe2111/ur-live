@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Ticket, CalendarDays, ShieldAlert, Info } from 'lucide-react'
+import { ArrowLeft, Info } from 'lucide-react'
 import api from '@/lib/api'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
 import SEO from '@/components/SEO'
@@ -9,7 +9,8 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 import { formatPhone } from '@/utils/format-phone'
-import { useInvalidateMyVouchers } from '@/hooks/queries'
+import { useInvalidateMyVouchers, useBalance } from '@/hooks/queries'
+import { isLoggedInSync } from '@/utils/auth'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 /**
@@ -49,6 +50,8 @@ export default function VoucherDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const invalidateVouchers = useInvalidateMyVouchers()
+  // 🎨 2026-06-17 (교환권 상세 리디자인): 보유 딜 + 교환 후 잔액 표시. localStorage cache → 0ms.
+  const { data: balance = 0 } = useBalance()
   const [product, setProduct] = useState<VoucherProduct | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -201,107 +204,127 @@ export default function VoucherDetailPage() {
 
   const total = product.price * quantity
   const label = getVoucherShortLabel(product.category)
+  // 🎨 2026-06-17 (리디자인): 로그인 시에만 잔액 박스 노출. 교환 후 = 보유 − 결제 딜.
+  const loggedIn = isLoggedInSync()
+  const afterBalance = balance - total
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-44 lg:pb-32">
+    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-52 lg:pb-40">
       <SEO title={`${product.name} 교환권 - 유어딜`} description={product.description || ''} url={`/vouchers/${product.id}`} noindex />
 
-      {/* 🛡️ 2026-06-16 (사용자 요청): 상단 '바우처' 타이틀 바 제거 → 이미지 위 floating 뒤로가기 버튼 */}
-      <div className="relative">
-        {product.image_url && (
-          <div className="w-full aspect-square bg-gray-50 dark:bg-[#121212]">
-            {/* 🛡️ 2026-05-27 (loading P0): cfImage 변환 — 원본 (1MB+) → WebP 80KB. LCP 우선 → eager. */}
+      {/* 🛡️ 2026-06-16 (사용자 요청): 상단 '바우처' 타이틀 바 제거. 🎨 2026-06-17 리디자인: 헤더 바 + 뒤로가기. */}
+      <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur">
+        <div className="ur-content-narrow h-14 px-2 flex items-center">
+          <button
+            onClick={() => navigate(-1)}
+            aria-label="뒤로"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-gray-900 dark:text-white active:scale-95"
+          >
+            <ArrowLeft className="w-[22px] h-[22px]" />
+          </button>
+        </div>
+      </div>
+
+      <div className="ur-content-narrow px-4">
+        {/* 🎨 상품 카드 — 사용자 요청: 이미지 영역은 그라데이션으로 유지. 이미지는 그라데이션 위에 contain. */}
+        <div className="relative h-[278px] rounded-[28px] overflow-hidden bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] dark:from-[#15171C] dark:to-[#0F1115] flex items-center justify-center">
+          {product.image_url && (
+            // 🛡️ 2026-05-27 (loading P0): cfImage 변환 — 원본 (1MB+) → WebP. LCP 우선 → eager.
             <img
-              src={cfImage(product.image_url, { width: 800, format: 'auto' }) || product.image_url}
-              srcSet={cfSrcSet(product.image_url, 800) || undefined}
-              sizes="(max-width: 640px) 100vw, 800px"
+              src={cfImage(product.image_url, { width: 600, format: 'auto' }) || product.image_url}
+              srcSet={cfSrcSet(product.image_url, 600) || undefined}
+              sizes="(max-width: 640px) 90vw, 600px"
               alt={product.name}
               loading="eager"
               fetchPriority="high"
               decoding="async"
-              className="w-full h-full object-cover"
+              className="max-h-[242px] max-w-[78%] object-contain"
+              style={{ filter: 'drop-shadow(0 18px 24px rgba(20,28,45,.18))' }}
             />
-          </div>
-        )}
-        <button
-          onClick={() => navigate(-1)}
-          aria-label="뒤로"
-          className="absolute top-3 left-3 z-40 w-9 h-9 rounded-full bg-white/80 dark:bg-black/40 backdrop-blur shadow-sm flex items-center justify-center active:scale-95"
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
-        </button>
-      </div>
-
-      <div className="px-4 py-5 space-y-3">
-        <div className="inline-block px-2 py-0.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[11px] font-bold rounded">{label}</div>
-        <h2 className="text-[20px] font-extrabold text-gray-900 dark:text-white leading-snug">{product.name}</h2>
-        <div className="flex items-baseline gap-1">
-          <span className="text-[28px] font-extrabold text-gray-900 dark:text-white">{formatNumber(product.price)}</span>
-          <span className="text-[14px] font-bold text-gray-900 dark:text-white">딜</span>
+          )}
         </div>
-        {product.restaurant_name && (
-          <p className="text-[13px] text-gray-600 dark:text-gray-300">📍 {product.restaurant_name}{product.restaurant_address ? ` · ${product.restaurant_address}` : ''}</p>
-        )}
-        {product.description && (
-          <p className="text-[13px] text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap mt-4">{product.description}</p>
-        )}
-      </div>
 
-      {/* 🏭 2026-06-05 (사용자 요청 — 교환권 안내 디자인 개선): 평면 amber 박스(다크 미대응) → 아이콘 행 카드. */}
-      <div className="mx-4 mt-4 rounded-2xl border border-gray-100 dark:border-[#1A1A1A] bg-gray-50 dark:bg-[#121212] overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A] flex items-center gap-2">
-          <Info className="w-4 h-4 text-gray-900 dark:text-white" />
-          <p className="text-[13px] font-bold text-gray-900 dark:text-white">교환권 안내</p>
-        </div>
-        <div className="divide-y divide-gray-100 dark:divide-[#1A1A1A]">
-          <div className="flex items-start gap-3 px-4 py-3">
-            <div className="shrink-0 w-8 h-8 rounded-xl bg-gray-100 dark:bg-white/[0.06] flex items-center justify-center">
-              <Ticket className="w-[18px] h-[18px] text-gray-900 dark:text-white" />
+        {/* 정보 */}
+        <div className="pt-[18px]">
+          <div className="flex items-center">
+            <span className="text-[11.5px] font-bold text-[#171B24] bg-[#FFCE00] rounded-md px-[9px] py-1 whitespace-nowrap">{label}</span>
+          </div>
+          <h2 className="mt-[7px] text-[23px] font-extrabold text-[#171B24] dark:text-white leading-tight tracking-tight">{product.name}</h2>
+          {product.restaurant_name && (
+            <div className="mt-1 text-[13.5px] text-gray-400 dark:text-gray-500">{product.restaurant_name}{product.restaurant_address ? ` · ${product.restaurant_address}` : ''}</div>
+          )}
+          <div className="mt-4 flex items-baseline gap-1">
+            <span className="text-[32px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(product.price)}</span>
+            <span className="text-[18px] font-bold text-[#171B24] dark:text-white">딜</span>
+          </div>
+
+          <div className="h-px bg-[#EEF0F3] dark:bg-[#1A1A1A] my-4" />
+
+          <div className="flex flex-col gap-[11px]">
+            <div className="flex justify-between items-start text-[13.5px]">
+              <span className="text-gray-400 dark:text-gray-500">유효기간</span>
+              <span className="text-[#3A404C] dark:text-gray-200 font-semibold text-right">{product.voucher_expiry || '발급 후 사용 기간 적용'}</span>
             </div>
-            <div className="min-w-0">
-              <p className="text-[13px] font-bold text-gray-900 dark:text-white">즉시 발급</p>
-              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">딜 결제 즉시 발급돼요 · <span className="font-semibold text-gray-700 dark:text-gray-300">마이 → 교환권</span> 에서 확인</p>
+            <div className="flex justify-between items-start text-[13.5px]">
+              <span className="text-gray-400 dark:text-gray-500">사용처</span>
+              <span className="text-[#3A404C] dark:text-gray-200 font-semibold text-right">{product.restaurant_name || '전국 가맹 매장'}</span>
+            </div>
+            <div className="flex justify-between items-start text-[13.5px]">
+              <span className="text-gray-400 dark:text-gray-500">환불</span>
+              <span className="text-[#3A404C] dark:text-gray-200 font-semibold text-right">환불 불가</span>
             </div>
           </div>
-          <div className="flex items-start gap-3 px-4 py-3">
-            <div className="shrink-0 w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center">
-              <CalendarDays className="w-[18px] h-[18px] text-amber-500" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[13px] font-bold text-gray-900 dark:text-white">유효 기간</p>
-              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{product.voucher_expiry ? product.voucher_expiry : '발급 후 사용 기간이 적용돼요'}</p>
-            </div>
+
+          {/* 사용 안내 */}
+          <div className="mt-[14px] flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
+            <Info className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-[12px]">매장에서 바코드 제시 후 사용 가능</span>
           </div>
-          <div className="flex items-start gap-3 px-4 py-3">
-            <div className="shrink-0 w-8 h-8 rounded-xl bg-gray-100 dark:bg-white/[0.06] flex items-center justify-center">
-              <ShieldAlert className="w-[18px] h-[18px] text-gray-400 dark:text-gray-500" />
+
+          {/* 🎨 2026-06-17 (사용자 요청): 상품 상세 내용은 '매장에서 바코드 제시 후 사용 가능' 아래에. */}
+          {product.description && (
+            <div className="mt-5 pt-5 border-t border-[#EEF0F3] dark:border-[#1A1A1A]">
+              <p className="text-[13px] text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">{product.description}</p>
             </div>
-            <div className="min-w-0">
-              <p className="text-[13px] font-bold text-gray-900 dark:text-white">환불 안내</p>
-              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">발급 후 환불·취소가 제한될 수 있어요</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
       {/* 🛡️ 2026-05-23: BottomNav (h-14 + safe-area) 위에 표시. z-[10002] = nav (z-9999) 위. */}
       <div
-        className="fixed bottom-14 left-0 right-0 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 z-[10002] lg:bottom-0"
+        className="fixed bottom-14 left-0 right-0 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] z-[10002] lg:bottom-0"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
-        <div className="ur-content-narrow px-4 pt-3 flex items-center gap-2">
-          <div className="flex items-center gap-2 border border-gray-200 rounded-lg overflow-hidden shrink-0">
-            <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="w-9 h-10 text-gray-700 dark:text-gray-200">−</button>
-            <span className="w-8 text-center text-sm font-bold text-gray-900 dark:text-white">{quantity}</span>
-            <button onClick={() => setQuantity(q => q + 1)} className="w-9 h-10 text-gray-700 dark:text-gray-200">+</button>
+        <div className="ur-content-narrow px-4 pt-3">
+          {/* 🎨 보유 딜 + 교환 후 잔액 (로그인 시) */}
+          {loggedIn && (
+            <div className="flex items-center justify-between bg-[#F6F7F9] dark:bg-[#121212] rounded-xl px-3.5 py-2.5 mb-3">
+              <span className="text-[12.5px] text-gray-500 dark:text-gray-400">보유 <b className="font-semibold text-gray-700 dark:text-gray-200">{formatNumber(balance)}딜</b></span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[11.5px] font-semibold text-gray-500 dark:text-gray-400">교환 후</span>
+                {afterBalance >= 0 ? (
+                  <span className="text-[18px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(afterBalance)}딜</span>
+                ) : (
+                  <span className="text-[15px] font-extrabold text-red-500">딜 부족</span>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3.5 border border-[#E6E9ED] dark:border-[#2A2A2A] rounded-2xl px-3.5 h-[54px] shrink-0">
+              <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1} aria-label="수량 감소" className="text-[20px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">−</button>
+              <span className="min-w-[14px] text-center text-[16px] font-bold text-gray-900 dark:text-white">{quantity}</span>
+              <button onClick={() => setQuantity(q => q + 1)} aria-label="수량 증가" className="text-[20px] font-semibold text-gray-900 dark:text-white">+</button>
+            </div>
+            <button
+              onClick={handleExchange}
+              disabled={exchanging}
+              className="flex-1 h-[54px] rounded-2xl text-white text-[16px] font-bold disabled:opacity-50"
+              style={{ background: 'linear-gradient(180deg,#222B3F,#10172A)' }}
+            >
+              {exchanging ? '교환 중…' : `${formatNumber(total)}딜로 교환하기`}
+            </button>
           </div>
-          <button
-            onClick={handleExchange}
-            disabled={exchanging}
-            className="flex-1 py-3 bg-gray-900 hover:bg-black text-white text-[15px] font-bold rounded-full disabled:opacity-50"
-          >
-            {exchanging ? '교환 중…' : `${formatNumber(total)}딜로 교환하기`}
-          </button>
         </div>
       </div>
 
