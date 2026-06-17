@@ -341,6 +341,14 @@ app.post('/orders/:id/refund', async (c) => {
     const newStatus = (remain?.c ?? 0) === 0 ? 'REFUNDED' : 'PARTIAL_REFUNDED'
     await DB.prepare("UPDATE wholesale_orders SET status = ? WHERE id = ?").bind(newStatus, orderId).run()
 
+    // 🔔 2026-06-17 (알림 완성도): 유통사(바이어)에게 환불 처리 알림 — 입금확인/발송/출금/클레임엔 알림이
+    //   있었으나 제조사 직접 환불(반품 승인)만 바이어 통지가 없던 누락 보강. fail-soft.
+    if (order.distributor_seller_id) {
+      createDashboardNotification(
+        DB, 'seller', String(order.distributor_seller_id), 'wholesale_refunded',
+        '도매 주문 환불 처리', `주문 #${orderId} ${refundAmount.toLocaleString('ko-KR')}원이 환불되었습니다 (${newStatus === 'REFUNDED' ? '전체' : '부분'} 환불).`, '/wholesale/dashboard',
+      ).catch(swallow('wholesale-supplier:notify-refund'))
+    }
     return c.json({ success: true, refunded_amount: refundAmount, order_status: newStatus })
   } catch (err) {
     return safeError(c, err, '환불 처리 중 오류가 발생했습니다', '[wholesale-supplier]')

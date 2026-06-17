@@ -22,6 +22,7 @@ import { reverseSupplierOnWholesaleRefund, DEFAULT_PLATFORM_COMMISSION_PCT } fro
 import { ensureDepositSchema, refundDeposit, recordDepositTxn, hasDepositRefundTxn } from './wholesale-deposit-core'
 import { ensureSupplyVisibilitySchema, normalizeVisibility } from './supply-visibility'
 import { parseCsv, buildCsv, csvResponse } from './supply-csv'
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { ensureOemSchema, normalizeOemStatus } from './oem-requests'
 import { buildXlsx, xlsxResponse } from './xlsx'
 import { distributorPriceFromRetail, marginForGrade, type GradeMargin } from '@/lib/distributor-pricing'
@@ -563,6 +564,14 @@ app.post('/orders/:id/refund', rateLimit({ action: 'admin-wholesale-refund', max
       await c.env.DB.prepare(
         "UPDATE products SET stock = COALESCE(stock,0) + ?, sold_count = MAX(0, COALESCE(sold_count,0) - ?), updated_at = datetime('now') WHERE id = ? AND stock IS NOT NULL"
       ).bind(l.qty, l.qty, l.product_id).run().catch(swallow('admin:refund-stock-restore'))
+    }
+    // 🔔 2026-06-17 (알림 완성도): 직접 어드민 환불 시 바이어 통지 — 클레임 경유 환불은 클레임 알림이 있으나
+    //   어드민이 직접 환불하는 경로는 바이어 통지가 없던 누락 보강. fail-soft.
+    if (order.distributor_seller_id) {
+      createDashboardNotification(
+        c.env.DB, 'seller', String(order.distributor_seller_id), 'wholesale_refunded',
+        '도매 주문 환불', `주문 #${id} ${remaining.toLocaleString('ko-KR')}원이 환불되었습니다. (${reason})`, '/wholesale/dashboard',
+      ).catch(swallow('distributor-admin:notify-refund'))
     }
     return c.json({ success: true, refunded_amount: remaining })
   } catch (err) {
