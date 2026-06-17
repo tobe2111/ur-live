@@ -16,9 +16,15 @@ import { isLoggedInSync } from '@/utils/auth'
 const CACHE_KEY = 'balance'
 
 // 🛡️ 2026-05-24: 잔액 표시 정확성 영구 fix (사용자 신고 "/points/charge 잔액 안 맞아").
-//   기본 옵션 = 안전한 캐시 (5분 stale). 단 fresh=true 옵션으로 짧은 stale 도 가능.
-//   기본 hook 도 refetchOnMount 활성 → cache stale 일 때 fresh fetch + cache 가 0 이라
-//   초기 잘못된 0 표시 방지.
+//   기본 옵션 = 안전한 캐시 (60초 stale). fresh=true 면 0초 stale + mount/focus 마다 refetch.
+// 🛠️ 2026-06-17 (근본 원인 — 사용자 신고 "교환권 상세서 딜 부족 오표시"):
+//   기존 주석은 "기본 모드도 refetchOnMount 로 자가보정"이라 적었지만 **틀렸다**.
+//   React Query 는 `initialData`(initialDataUpdatedAt 미지정)를 "방금 fetch 한 fresh 데이터"로
+//   간주(dataUpdatedAt=mount 시각) → staleTime(60s) 동안 fresh → `refetchOnMount: true`(=stale 일
+//   때만 refetch)가 동작 안 함 → 캐시 seed(미캐시면 0)를 60초간 그대로 노출. 잔액 0 은 "미로딩"이
+//   아니라 "잔액 부족"의 의미값이라, 결제 판단 화면에서 false '딜 부족' 으로 이어졌다.
+//   fix: `initialDataUpdatedAt: 0` 으로 캐시 seed 를 "즉시 stale" 처리 → refetchOnMount 가 실제로
+//   refetch(0ms 즉시표시 유지 + cold mount 마다 서버값으로 보정). fresh=true 경로엔 영향 없음(이미 always).
 export function useBalance(opts?: { fresh?: boolean }) {
   const fresh = opts?.fresh === true
   return useQuery<number>({
@@ -33,9 +39,11 @@ export function useBalance(opts?: { fresh?: boolean }) {
         return 0
       }).catch(() => readCache<number>(CACHE_KEY, 0)),
     initialData: () => readCache<number>(CACHE_KEY, 0),
+    // 🛠️ 캐시 seed 를 즉시 stale 로 — refetchOnMount 가 반드시 1회 서버 확인하게(false 0 표시 방지).
+    initialDataUpdatedAt: 0,
     enabled: isLoggedInSync(),
     // fresh=true (PointsChargePage) — 0초 stale, mount 마다 refetch.
-    // 기본 — 60초 stale (이전 5분 너무 길어 충전 직후 잔액 반영 X 사고).
+    // 기본 — 60초 stale (이전 5분 너무 길어 충전 직후 잔액 반영 X 사고). + initialDataUpdatedAt:0 로 cold mount 보정.
     staleTime: fresh ? 0 : 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnMount: fresh ? 'always' : true,
