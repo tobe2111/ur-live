@@ -12,7 +12,7 @@ export default function SiteFooter() {
             🏪 사장님이세요? 가게 입점 →
           </a>
           <a href="/seller/register/business" className="text-blue-600 dark:text-blue-400 hover:underline">
-            📺 라이브 셀러로 시작 →
+            🎤 셀러로 시작 →
           </a>
           <a href="/agency/register/business" className="text-violet-600 dark:text-violet-400 hover:underline">
             🤵 에이전시 사업 시작 →
