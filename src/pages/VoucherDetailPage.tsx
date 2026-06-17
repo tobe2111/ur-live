@@ -67,6 +67,58 @@ function stripSupplierPolicy(desc: string): string {
     .trim()
 }
 
+/**
+ * 🎨 2026-06-17 (사용자 — "안내 문구 가시성 떨어짐"): KT Alpha 등 상품 안내(description) 평문 한 덩어리를
+ *   구조화 렌더. **데이터(텍스트)는 무변경, 표시만 개선**:
+ *     - `[유의사항]` 같은 대괄호-단독 라인 → 섹션 헤더(볼드)
+ *     - `- ...` → 불릿 리스트
+ *     - 단독 URL → 클릭 가능 링크
+ *     - `⚠️` 경고 → amber 강조 / `📅` 등 → 콜아웃
+ *   첫 줄이 `[브랜드] 상품명` 타이틀이면 상단 h2 와 중복이라 제거.
+ */
+function VoucherNotice({ text }: { text: string }) {
+  let lines = text.split('\n')
+  const firstIdx = lines.findIndex((l) => l.trim())
+  if (firstIdx >= 0 && /^\[[^\]]+\]\s*\S/.test(lines[firstIdx].trim())) {
+    lines = lines.filter((_, i) => i !== firstIdx)
+  }
+  return (
+    <div className="space-y-1.5">
+      {lines.map((raw, i) => {
+        const line = raw.trim()
+        if (!line) return <div key={i} className="h-1" />
+        const url = line.match(/^(https?:\/\/\S+)$/)?.[1]
+        if (url) {
+          return (
+            <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-gray-900 dark:text-white underline underline-offset-2 break-all">
+              🔗 안내 링크 열기
+            </a>
+          )
+        }
+        if (/^\[[^\]]+\]$/.test(line)) {
+          return <p key={i} className="text-[12.5px] font-extrabold text-gray-900 dark:text-white mt-3 first:mt-0">{line.replace(/^\[|\]$/g, '')}</p>
+        }
+        if (/^[-•]\s+/.test(line)) {
+          return (
+            <div key={i} className="flex gap-1.5 text-[12.5px] text-gray-600 dark:text-gray-300 leading-relaxed">
+              <span className="text-gray-300 dark:text-gray-600 shrink-0">•</span>
+              <span className="flex-1">{line.replace(/^[-•]\s+/, '')}</span>
+            </div>
+          )
+        }
+        if (/^⚠️/.test(line)) {
+          return <p key={i} className="text-[12px] font-medium text-amber-700 dark:text-amber-400 leading-relaxed">{line}</p>
+        }
+        if (/^(📅|❗|✅|💡|📌)/.test(line)) {
+          return <p key={i} className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed">{line}</p>
+        }
+        return <p key={i} className="text-[12.5px] text-gray-600 dark:text-gray-300 leading-relaxed">{line}</p>
+      })}
+    </div>
+  )
+}
+
 export default function VoucherDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -324,10 +376,12 @@ export default function VoucherDetailPage() {
             <span className="text-[12px]">매장에서 바코드 제시 후 사용 가능</span>
           </div>
 
-          {/* 🎨 2026-06-17 (사용자 요청): 상품 상세 내용은 '매장에서 바코드 제시 후 사용 가능' 아래에. */}
+          {/* 🎨 2026-06-17 (사용자 요청): 상품 상세 내용은 '매장에서 바코드 제시 후 사용 가능' 아래에.
+              + 가시성 개선 — 평문 → 구조화 렌더(VoucherNotice). 데이터 무변경, 표시만. */}
           {cleanDescription && (
             <div className="mt-5 pt-5 border-t border-[#EEF0F3] dark:border-[#1A1A1A]">
-              <p className="text-[13px] text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">{cleanDescription}</p>
+              <p className="text-[12px] font-bold text-gray-400 dark:text-gray-500 mb-2.5">상품 안내</p>
+              <VoucherNotice text={cleanDescription} />
             </div>
           )}
         </div>
