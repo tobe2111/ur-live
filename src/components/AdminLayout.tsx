@@ -49,26 +49,38 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    // 🏭 도매몰 (유통스타트 B2B)
-    title: '🏭 도매몰',
+    // 🏭 도매몰 (유통스타트 B2B) — 운영: 카탈로그·주문·회원·설정
+    title: '🏭 도매몰 · 운영',
     items: [
       { path: '/admin/wholesale-overview', label: '도매 통합 현황', icon: LayoutDashboard },
-      { path: '/admin/wholesale-malls',    label: '도매 몰 관리',  icon: Building2 },
-      { path: '/admin/suppliers',          label: '공급자 관리',   icon: Store },
+      { path: '/admin/suppliers',          label: '공급자(제조사) 관리', icon: Store },
       { path: '/admin/wholesale-import',   label: '상품 일괄 등록', icon: Upload },
-      { path: '/admin/distributor-grades', label: '유통사 등급',   icon: Layers },
-      { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
-      { path: '/admin/wholesale-banners',  label: '도매 배너',     icon: Image },
-      { path: '/admin/wholesale-board',    label: '도매 게시판',   icon: Megaphone },
-      { path: '/admin/partnership',        label: '광고·제휴 문의', icon: Mail },
       { path: '/admin/wholesale-products', label: '도매 프리미엄관', icon: Crown },
-      { path: '/admin/wholesale-proposals', label: '도매 제안/신고', icon: MessageSquare },
+      { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
+      { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
+      { path: '/admin/distributor-grades', label: '유통사 등급·수수료', icon: Layers },
+      { path: '/admin/wholesale-malls',    label: '도매 몰 관리',  icon: Building2 },
+    ],
+  },
+  {
+    // 🏭 도매몰 — 정산/머니
+    title: '💰 도매몰 · 정산',
+    items: [
       { path: '/admin/wholesale-deposits', label: '도매 예치금',   icon: Wallet },
       { path: '/admin/wholesale-withdrawals', label: '제조사 출금', icon: Wallet },
-      { path: '/admin/wholesale-claims',   label: '도매 클레임',   icon: AlertTriangle },
-      { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
       { path: '/admin/wholesale-tax',      label: '도매 세무/정산', icon: Wallet },
       { path: '/admin/wholesale-integrity', label: '도매 무결성',   icon: Shield },
+    ],
+  },
+  {
+    // 🏭 도매몰 — CS / 콘텐츠
+    title: '🛟 도매몰 · CS·콘텐츠',
+    items: [
+      { path: '/admin/wholesale-claims',   label: '도매 클레임',   icon: AlertTriangle },
+      { path: '/admin/wholesale-proposals', label: '도매 제안/신고', icon: MessageSquare },
+      { path: '/admin/partnership',        label: '광고·제휴 문의', icon: Mail },
+      { path: '/admin/wholesale-board',    label: '도매 게시판',   icon: Megaphone },
+      { path: '/admin/wholesale-banners',  label: '도매 배너',     icon: Image },
       { path: '/admin/wholesale-guide',    label: '도매몰 운영 가이드', icon: BookOpen },
     ],
   },
