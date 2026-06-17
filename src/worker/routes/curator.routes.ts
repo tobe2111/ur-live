@@ -1318,7 +1318,7 @@ curatorRoutes.get('/admin/affiliate-diagnostic', requireAdmin(), async (c) => {
       multi_item_attribution: {
         orders: multiItem?.orders ?? 0,
         commission: multiItem?.commission ?? 0,
-        note: '2개 이상 상품 주문에 붙은 적립 — 현재는 첫 상품 기준으로 전체 주문액에 적립됨(라인별 귀속 개선 대상)',
+        note: '2개 이상 상품 주문에 붙은 적립 규모(모니터링용). 2026-06-12 라인별 귀속 적용 완료 — affiliate-credit.computeOrderCommission 이 order_items 의 referral_enabled 라인만 각 상품 비율로 합산(배송비/비대상 제외). order_items 부재(레거시/직접결제)만 단일상품 비율×주문총액 fallback. /track·/confirm 동일 SSOT.',
       },
       refund_after_spend_proxy: {
         referrers: refundProxy?.referrers ?? 0,
