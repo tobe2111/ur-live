@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 교환권 발송 실패가 목록에 안 보이던 문제 (대표 신고)
+**신고**: `/admin/voucher-orders` 에서 "발송 실패됐다는데" 페이지엔 안 보임.
+- **원인**: `GET /voucher-orders` 가 **시간창 필터**(기본 24h, 최대 7일)로 row 를 거름 → **7일보다 오래되거나 24h 밖의 실패 건이 숨겨짐**. 대시보드 failed 카운트(admin-stats:151)는 **기간 무관 전체**라 "실패 N"은 뜨는데 목록 0건 → 불일치. (모든 voucher 는 source='kt_alpha' 라 출처 필터는 무관.)
+- **수정**: ① 백엔드 — `status=failed` 필터 시 `created_at` 시간 조건 **제거**(모든 실패 항상 표시·재발송 가능). stats 에 `failed_all`(기간 무관 전체 실패) 추가. ② 프론트 — `failed_all>0` 이면 **상단 빨강 배너** "발송 실패 N건(기간 무관)" + '모두 보기' 버튼(failed 필터). failed 필터 시 "기간 무관 전체" 주석. 시간창 통계(processing/sent/failed)는 기존대로 윈도우 유지.
+- 검증: tsc 0 · build 0 · 대시보드 테마 0 · sql-bind 0(시간조건은 sanitized number 인터폴레이션, bind 무변경).
+
 ## ✅ 2026-06-17 — 에이전시 매장 영입 개선점 12종 일괄 (대표 "모두 진행, 가장 이상적으로")
 전면 재편 후 발견된 개선점 12개를 우선순위로 처리(🔴 정합성 → 🟡 완결성 → 🟢/검증).
 - **🔴 정합성**: ①'진행중 공구' KPI 스코프를 `agency_sellers` OR `introduced_by_agency_id` 둘 다로(영입 매장 공구가 KPI 에 잡히도록 — 재편의 모순 해소) ③동네공구 '예상 수익'→**'예상 거래액'(GMV)**: 동네공구 확정엔 에이전시 직접 적립 코드 없음(확인) → 오해 라벨 정정, commission_rate fetch 제거. ⑩`AgencyGroupBuyAlert` 미사용 `active_groups`를 헤더 배지로 노출.
