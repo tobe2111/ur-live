@@ -1567,4 +1567,71 @@ app.get('/supply-export', async (c) => {
   }
 })
 
+// 📋 2026-06-17 (대표 요청 — 일괄등록 페이지에서 개별 상품 삭제): 도매 공급상품 목록(JSON, 페이지네이션·검색).
+//   supply-export(CSV)의 화면용 JSON 버전 — 어드민이 카탈로그를 보고 개별 삭제할 수 있게.
+app.get('/supply-list', async (c) => {
+  const { DB } = c.env
+  try {
+    const page = Math.max(1, Number(c.req.query('page') || 1))
+    const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') || 30)))
+    const offset = (page - 1) * limit
+    const search = String(c.req.query('search') || '').slice(0, 100).trim()
+    const params: unknown[] = []
+    let searchClause = ''
+    if (search) { searchClause = ' AND p.name LIKE ?'; params.push(`%${search}%`) }
+    const baseWhere = `p.is_supply_product = 1 AND (p.supply_source_id IS NULL OR p.supply_source_id = 0)`
+    const totalRow = await DB.prepare(`SELECT COUNT(*) AS c FROM products p WHERE ${baseWhere}${searchClause}`)
+      .bind(...params).first<{ c: number }>().catch(() => null)
+    const rows = await DB.prepare(
+      `SELECT p.id, p.name, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
+              COALESCE(p.stock,0) AS stock, COALESCE(p.category,'') AS category, COALESCE(p.image_url,'') AS image_url,
+              COALESCE(s.business_name,'') AS supplier, COALESCE(p.is_active,1) AS is_active,
+              CASE WHEN p.slug LIKE 'demo-wholesale-%' THEN 1 ELSE 0 END AS is_demo
+       FROM products p LEFT JOIN suppliers s ON s.id = p.supplier_id
+       WHERE ${baseWhere}${searchClause}
+       ORDER BY p.created_at DESC LIMIT ? OFFSET ?`
+    ).bind(...params, limit, offset).all().catch(() => ({ results: [] as Record<string, unknown>[] }))
+    return c.json({ success: true, items: rows.results ?? [], pagination: { page, limit, total: Number(totalRow?.c ?? 0) } })
+  } catch (err) {
+    return safeError(c, err, '상품 목록 조회 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// 🗑️ 2026-06-17 (대표 요청): 도매 공급상품 개별 삭제. 공급원본(supply_source_id NULL)만 — 복사본/소비자상품 보호.
+//   FTS 삭제 트리거 교정(자가치유) 후 하드삭제 시도 → 실패(주문이력 FK·트리거 등) 시 소프트 아카이브
+//   (is_active=0 + is_supply_product=0 + slug 재명명)로 폴백 → 카탈로그·목록·통계에서 제거 + 주문이력 보존.
+app.delete('/products/:id', async (c) => {
+  const { DB } = c.env
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 상품 ID' }, 400)
+  try {
+    const prod = await DB.prepare(
+      `SELECT id, name, slug FROM products WHERE id = ? AND is_supply_product = 1 AND (supply_source_id IS NULL OR supply_source_id = 0)`
+    ).bind(id).first<{ id: number; name: string; slug: string | null }>().catch(() => null)
+    if (!prod) return c.json({ success: false, error: '해당 공급상품을 찾을 수 없습니다' }, 404)
+    await ensureProductsFtsDeleteTrigger(DB)
+    let method = 'delete'
+    try {
+      await DB.prepare('DELETE FROM products WHERE id = ?').bind(id).run()
+    } catch {
+      await DB.prepare(
+        `UPDATE products SET is_active = 0, is_supply_product = 0,
+                slug = 'archived-' || id || '-' || COALESCE(slug, 'p'), updated_at = datetime('now')
+          WHERE id = ?`,
+      ).bind(id).run()
+      method = 'archived'
+    }
+    await writeAuditLog(c, {
+      action: 'wholesale_product_delete',
+      targetType: 'product',
+      targetId: String(id),
+      before: { name: prod.name },
+      after: { method },
+    }).catch(() => { /* audit 실패해도 성공 처리 */ })
+    return c.json({ success: true, method })
+  } catch (err) {
+    return safeError(c, err, '상품 삭제 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
 export { app as distributorAdminRoutes }

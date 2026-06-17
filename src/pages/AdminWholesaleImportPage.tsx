@@ -3,7 +3,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { Upload, Download, PackagePlus, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Upload, Download, PackagePlus, CheckCircle2, AlertTriangle, Trash2 } from 'lucide-react'
 
 // 🏭 2026-06-16 (대표 요청 — 도매몰 채우기): 어드민 공급상품 CSV 일괄 등록.
 //   백엔드 POST /api/admin/distributor/supply-bulk-import — 즉시 노출(is_active=1, approved).
@@ -19,6 +19,11 @@ interface ImportResult {
   results: { row: number; name?: string; status: 'ok' | 'error'; reason?: string }[]
 }
 interface SupplyStats { total: number; demo: number; real: number; active: number; suppliers: number }
+interface SupplyProduct {
+  id: number; name: string; supply_price: number; retail_price: number; stock: number;
+  category: string; image_url: string; supplier: string; is_active: number; is_demo: number
+}
+const PROD_LIMIT = 20
 
 export default function AdminWholesaleImportPage() {
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
@@ -30,11 +35,52 @@ export default function AdminWholesaleImportPage() {
   const [result, setResult] = useState<ImportResult | null>(null)
   const [stats, setStats] = useState<SupplyStats | null>(null)
   const [cleaning, setCleaning] = useState(false)
+  // 🗑️ 2026-06-17 (대표 요청): 도매 상품 목록 + 개별 삭제
+  const [products, setProducts] = useState<SupplyProduct[]>([])
+  const [prodTotal, setProdTotal] = useState(0)
+  const [prodPage, setProdPage] = useState(1)
+  const [prodSearch, setProdSearch] = useState('')
+  const [committedProdSearch, setCommittedProdSearch] = useState('')
+  const [prodLoading, setProdLoading] = useState(false)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const prodPages = Math.max(1, Math.ceil(prodTotal / PROD_LIMIT))
 
   const loadStats = () => {
     api.get('/api/admin/distributor/supply-stats', h)
       .then(r => { if (r.data?.success) setStats(r.data as SupplyStats) })
       .catch(() => { /* 현황 실패는 무시 */ })
+  }
+
+  const loadProducts = (page: number, search: string) => {
+    setProdLoading(true)
+    api.get(`/api/admin/distributor/supply-list?page=${page}&limit=${PROD_LIMIT}&search=${encodeURIComponent(search.trim())}`, h)
+      .then(r => {
+        if (r.data?.success) {
+          setProducts((r.data.items || []) as SupplyProduct[])
+          setProdTotal(Number(r.data.pagination?.total) || 0)
+        }
+      })
+      .catch(() => { /* 목록 실패는 무시 */ })
+      .finally(() => setProdLoading(false))
+  }
+
+  const deleteProduct = async (p: SupplyProduct) => {
+    if (!confirm(`'${p.name}' 상품을 삭제할까요?\n주문 이력이 있으면 목록에서 숨김 처리됩니다(이력 보존).`)) return
+    setDeletingId(p.id)
+    try {
+      const r = await api.delete(`/api/admin/distributor/products/${p.id}`, h)
+      if (r.data?.success) {
+        toast.success(r.data.method === 'archived' ? '상품을 숨김 처리했어요 (주문 이력 보존)' : '상품을 삭제했어요')
+        // 마지막 1건 삭제로 현재 페이지가 비면 한 페이지 앞으로
+        if (products.length === 1 && prodPage > 1) setProdPage(prodPage - 1)
+        else loadProducts(prodPage, committedProdSearch)
+        loadStats()
+      } else {
+        toast.error(r.data?.error || '삭제 실패')
+      }
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '삭제 중 오류')
+    } finally { setDeletingId(null) }
   }
 
   useEffect(() => {
@@ -47,6 +93,11 @@ export default function AdminWholesaleImportPage() {
     loadStats()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    loadProducts(prodPage, committedProdSearch)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prodPage, committedProdSearch])
 
   const clearDemo = async () => {
     if (!confirm('데모 상품(demo-wholesale-*)을 모두 삭제할까요? 실제 임포트 상품은 영향받지 않습니다.')) return
@@ -150,6 +201,78 @@ export default function AdminWholesaleImportPage() {
             {stats.demo > 0 && <p className="text-[11px] text-amber-600 mt-2">⚠️ 데모 상품 {stats.demo}개가 카탈로그에 섞여 있습니다 — 실상품 등록 전 정리를 권장합니다.</p>}
           </div>
         )}
+
+        {/* 🗑️ 도매 상품 목록 + 개별 삭제 */}
+        <div className={card}>
+          <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+            <p className="text-sm font-bold text-gray-900">도매 상품 목록 <span className="text-gray-400 font-normal">({prodTotal.toLocaleString()}개)</span></p>
+            <form onSubmit={e => { e.preventDefault(); setProdPage(1); setCommittedProdSearch(prodSearch) }} className="flex items-center gap-2">
+              <input value={prodSearch} onChange={e => setProdSearch(e.target.value)} placeholder="상품명 검색" className={`${input} w-44`} />
+              <button type="submit" className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 whitespace-nowrap">검색</button>
+            </form>
+          </div>
+          {prodLoading ? (
+            <p className="text-center py-8 text-sm text-gray-400">불러오는 중…</p>
+          ) : products.length === 0 ? (
+            <p className="text-center py-8 text-sm text-gray-400">{committedProdSearch ? '검색 결과가 없습니다.' : '등록된 도매 상품이 없습니다.'}</p>
+          ) : (
+            <div className="overflow-auto rounded-lg border border-gray-100">
+              <table className="w-full text-[13px]">
+                <thead className="bg-gray-50 text-gray-500 sticky top-0">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-semibold">상품</th>
+                    <th className="text-right px-3 py-2 font-semibold whitespace-nowrap">공급가</th>
+                    <th className="text-right px-3 py-2 font-semibold">재고</th>
+                    <th className="text-left px-3 py-2 font-semibold">제조사</th>
+                    <th className="text-center px-3 py-2 font-semibold">상태</th>
+                    <th className="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map(p => (
+                    <tr key={p.id} className="border-t border-gray-100">
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {p.image_url
+                            ? <img src={p.image_url} alt="" className="w-9 h-9 rounded object-cover bg-gray-100 shrink-0" onError={e => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden' }} />
+                            : <div className="w-9 h-9 rounded bg-gray-100 shrink-0" />}
+                          <div className="min-w-0">
+                            <p className="text-gray-900 truncate max-w-[220px]">{p.name}</p>
+                            <p className="text-[11px] text-gray-400">#{p.id}{p.category ? ` · ${p.category}` : ''}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-gray-700 whitespace-nowrap">{(p.supply_price || 0).toLocaleString()}원</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-gray-700">{(p.stock || 0).toLocaleString()}</td>
+                      <td className="px-3 py-2 text-gray-600 truncate max-w-[120px]">{p.supplier || '-'}</td>
+                      <td className="px-3 py-2 text-center whitespace-nowrap">
+                        {p.is_demo
+                          ? <span className="text-[11px] font-semibold text-amber-600">데모</span>
+                          : Number(p.is_active) === 1
+                            ? <span className="text-[11px] font-semibold text-emerald-600">노출</span>
+                            : <span className="text-[11px] text-gray-400">숨김</span>}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <button onClick={() => deleteProduct(p)} disabled={deletingId === p.id}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">
+                          <Trash2 className="w-3.5 h-3.5" /> {deletingId === p.id ? '삭제 중' : '삭제'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {prodPages > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-3">
+              <button onClick={() => setProdPage(p => Math.max(1, p - 1))} disabled={prodPage <= 1} className="px-3 py-1.5 rounded-lg text-sm bg-gray-100 text-gray-700 disabled:opacity-40">이전</button>
+              <span className="text-sm text-gray-500 tabular-nums">{prodPage} / {prodPages}</span>
+              <button onClick={() => setProdPage(p => Math.min(prodPages, p + 1))} disabled={prodPage >= prodPages} className="px-3 py-1.5 rounded-lg text-sm bg-gray-100 text-gray-700 disabled:opacity-40">다음</button>
+            </div>
+          )}
+          <p className="text-[11px] text-gray-400 mt-2">삭제 시 카탈로그·목록에서 제거됩니다. 주문 이력이 있는 상품은 이력 보존을 위해 숨김 처리(소프트 삭제)됩니다.</p>
+        </div>
 
         <div className={card}>
           <div className="flex items-center justify-between gap-3 flex-wrap">
