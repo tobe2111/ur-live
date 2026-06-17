@@ -1634,4 +1634,55 @@ app.delete('/products/:id', async (c) => {
   }
 })
 
+// 🗑️ 2026-06-17 (대표 요청 — 체크박스 일괄/모두 삭제): 도매 공급상품 다건 삭제. 개별 삭제와 동일 안전 패턴.
+//   단일 `DELETE ... IN (...)` 시도(주문이력 없는 흔한 경우 1쿼리) → 실패(일부 FK/트리거) 시 건별
+//   하드삭제→소프트 아카이브 폴백. 공급원본(supply_source_id NULL)만 — 복사본/소비자상품 보호. 최대 200건.
+app.post('/supply-bulk-delete', async (c) => {
+  const { DB } = c.env
+  try {
+    const body = await c.req.json<{ ids?: unknown }>().catch(() => ({} as { ids?: unknown }))
+    const ids = Array.isArray(body.ids)
+      ? [...new Set(body.ids.map((v) => Number(v)).filter((n) => Number.isFinite(n) && n > 0))].slice(0, 200)
+      : []
+    if (ids.length === 0) return c.json({ success: false, error: '삭제할 상품을 선택해주세요' }, 400)
+    await ensureProductsFtsDeleteTrigger(DB)
+    const ph = ids.map(() => '?').join(',')
+    const rows = await DB.prepare(
+      `SELECT id FROM products WHERE id IN (${ph}) AND is_supply_product = 1 AND (supply_source_id IS NULL OR supply_source_id = 0)`,
+    ).bind(...ids).all<{ id: number }>().catch(() => ({ results: [] as { id: number }[] }))
+    const valid = (rows.results || []).map((r) => Number(r.id))
+    let deleted = 0
+    let archived = 0
+    if (valid.length > 0) {
+      const vph = valid.map(() => '?').join(',')
+      try {
+        const r = await DB.prepare(`DELETE FROM products WHERE id IN (${vph})`).bind(...valid).run()
+        deleted = r.meta?.changes ?? valid.length
+      } catch {
+        // 일부가 주문이력 FK·트리거 등으로 실패 → 건별 처리(하드삭제 시도 → 소프트 아카이브).
+        for (const id of valid) {
+          try { await DB.prepare('DELETE FROM products WHERE id = ?').bind(id).run(); deleted++ } catch {
+            await DB.prepare(
+              `UPDATE products SET is_active = 0, is_supply_product = 0,
+                      slug = 'archived-' || id || '-' || COALESCE(slug, 'p'), updated_at = datetime('now')
+                WHERE id = ?`,
+            ).bind(id).run().catch(() => { /* noop */ })
+            archived++
+          }
+        }
+      }
+    }
+    await writeAuditLog(c, {
+      action: 'wholesale_product_bulk_delete',
+      targetType: 'product',
+      targetId: valid.join(','),
+      before: { requested: ids.length },
+      after: { deleted, archived },
+    }).catch(() => { /* audit 실패해도 성공 처리 */ })
+    return c.json({ success: true, deleted, archived, total: deleted + archived })
+  } catch (err) {
+    return safeError(c, err, '일괄 삭제 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
 export { app as distributorAdminRoutes }

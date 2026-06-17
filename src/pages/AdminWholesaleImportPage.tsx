@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
@@ -43,7 +43,21 @@ export default function AdminWholesaleImportPage() {
   const [committedProdSearch, setCommittedProdSearch] = useState('')
   const [prodLoading, setProdLoading] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const selectAllRef = useRef<HTMLInputElement>(null)
   const prodPages = Math.max(1, Math.ceil(prodTotal / PROD_LIMIT))
+  const allOnPageSelected = products.length > 0 && products.every(p => selectedIds.has(p.id))
+  const someSelected = selectedIds.size > 0 && !allOnPageSelected
+  useEffect(() => { if (selectAllRef.current) selectAllRef.current.indeterminate = someSelected }, [someSelected])
+  const toggleOne = (id: number) => setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  const toggleAllOnPage = () => setSelectedIds(prev => {
+    const allSel = products.length > 0 && products.every(p => prev.has(p.id))
+    const n = new Set(prev)
+    if (allSel) products.forEach(p => n.delete(p.id))
+    else products.forEach(p => n.add(p.id))
+    return n
+  })
 
   const loadStats = () => {
     api.get('/api/admin/distributor/supply-stats', h)
@@ -95,9 +109,32 @@ export default function AdminWholesaleImportPage() {
   }, [])
 
   useEffect(() => {
+    setSelectedIds(new Set())
     loadProducts(prodPage, committedProdSearch)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prodPage, committedProdSearch])
+
+  const bulkDelete = async () => {
+    const ids = [...selectedIds]
+    if (ids.length === 0) return
+    if (!confirm(`선택한 ${ids.length}개 상품을 삭제할까요?\n주문 이력이 있는 상품은 목록에서 숨김 처리됩니다(이력 보존).`)) return
+    setBulkDeleting(true)
+    try {
+      const r = await api.post('/api/admin/distributor/supply-bulk-delete', { ids }, h)
+      if (r.data?.success) {
+        const total = Number(r.data.total ?? ids.length)
+        toast.success(`${total}개 처리 완료 (삭제 ${r.data.deleted ?? 0} · 숨김 ${r.data.archived ?? 0})`)
+        setSelectedIds(new Set())
+        if (products.length <= total && prodPage > 1) setProdPage(prodPage - 1)
+        else loadProducts(prodPage, committedProdSearch)
+        loadStats()
+      } else {
+        toast.error(r.data?.error || '일괄 삭제 실패')
+      }
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '일괄 삭제 중 오류')
+    } finally { setBulkDeleting(false) }
+  }
 
   const clearDemo = async () => {
     if (!confirm('데모 상품(demo-wholesale-*)을 모두 삭제할까요? 실제 임포트 상품은 영향받지 않습니다.')) return
@@ -211,6 +248,17 @@ export default function AdminWholesaleImportPage() {
               <button type="submit" className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 whitespace-nowrap">검색</button>
             </form>
           </div>
+          {selectedIds.size > 0 && (
+            <div className="flex items-center justify-between gap-3 mb-3 px-3 py-2 rounded-lg bg-red-50 border border-red-100">
+              <span className="text-sm font-semibold text-red-700">{selectedIds.size}개 선택됨</span>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setSelectedIds(new Set())} className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-white text-gray-600 border border-gray-200 hover:bg-gray-50">선택 해제</button>
+                <button onClick={bulkDelete} disabled={bulkDeleting} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-bold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+                  <Trash2 className="w-4 h-4" /> {bulkDeleting ? '삭제 중…' : `선택 ${selectedIds.size}개 삭제`}
+                </button>
+              </div>
+            </div>
+          )}
           {prodLoading ? (
             <p className="text-center py-8 text-sm text-gray-400">불러오는 중…</p>
           ) : products.length === 0 ? (
@@ -220,6 +268,10 @@ export default function AdminWholesaleImportPage() {
               <table className="w-full text-[13px]">
                 <thead className="bg-gray-50 text-gray-500 sticky top-0">
                   <tr>
+                    <th className="px-3 py-2 w-10">
+                      <input ref={selectAllRef} type="checkbox" checked={allOnPageSelected} onChange={toggleAllOnPage}
+                        aria-label="이 페이지 전체 선택" className="w-4 h-4 accent-red-600 cursor-pointer" />
+                    </th>
                     <th className="text-left px-3 py-2 font-semibold">상품</th>
                     <th className="text-right px-3 py-2 font-semibold whitespace-nowrap">공급가</th>
                     <th className="text-right px-3 py-2 font-semibold">재고</th>
@@ -230,7 +282,11 @@ export default function AdminWholesaleImportPage() {
                 </thead>
                 <tbody>
                   {products.map(p => (
-                    <tr key={p.id} className="border-t border-gray-100">
+                    <tr key={p.id} className={'border-t border-gray-100 ' + (selectedIds.has(p.id) ? 'bg-red-50/50' : '')}>
+                      <td className="px-3 py-2 text-center">
+                        <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleOne(p.id)}
+                          aria-label={`${p.name} 선택`} className="w-4 h-4 accent-red-600 cursor-pointer" />
+                      </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2 min-w-0">
                           {p.image_url
