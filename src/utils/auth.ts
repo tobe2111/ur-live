@@ -291,15 +291,15 @@ export function hasConsumerSession(): boolean {
 }
 
 export async function getUserId(): Promise<string | null> {
-  const userType = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_TYPE)
-  
-  // 1️⃣ Check localStorage first (user_type이 'user'인 경우에만!)
-  if (userType === 'user' || !userType) {
-    const userId = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_ID) || 
-                   localStorage.getItem(LEGACY_KEYS.USER_ID_ALT)
-    if (userId) {
-      return userId
-    }
+  // 1️⃣ Check localStorage first.
+  // 🛡️ 2026-06-17 (듀얼 로그인 충돌 수정): user_id 는 항상 소비자(구매자) id 이므로 user_type 무관하게
+  //   우선 반환한다. 기존 `user_type === 'user'` 게이트는 어드민/셀러 + 소비자 듀얼 로그인 시
+  //   user_type 이 'admin'/'seller' 로 남아 소비자 user_id 를 건너뛰고 Firebase 로 빠지는 버그였다.
+  //   (getUserIdSync 와 동일 기준 — 일관성. 소비자 컨텍스트 호출자만 이 함수를 사용.)
+  const localUserId = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_ID) ||
+                      localStorage.getItem(LEGACY_KEYS.USER_ID_ALT)
+  if (localUserId) {
+    return localUserId
   }
   
   // 2️⃣ Firebase Custom Claims (buyers with Kakao/Email login)
