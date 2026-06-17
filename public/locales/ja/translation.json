@@ -6170,6 +6170,8 @@
     "mealVoucher": "グルメ食事券",
     "beauty": "美容",
     "stay": "宿泊",
-    "etc": "その他"
-  }
+    "etc": "その他",
+    "general": "General Products"
+  },
+  "groupBuy.stayDateSearch": "日付・人数で検索"
 }

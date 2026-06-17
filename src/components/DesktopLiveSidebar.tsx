@@ -8,7 +8,7 @@
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, Radio, Compass, MapPin, Utensils, Sparkles, Bed, Tag, User, PackageSearch, Heart, BookOpen } from 'lucide-react'
+import { Home, Radio, Compass, MapPin, Utensils, Sparkles, Bed, Tag, Package, User, PackageSearch, Heart, BookOpen } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
@@ -28,20 +28,23 @@ const MENU_ITEMS: NavItem[] = [
   { labelKey: 'nav.browse',          labelDefault: '둘러보기',       icon: Compass, path: '/browse',    active: (p, s) => p === '/browse' && !s.includes('category=') },
   { labelKey: 'nav.offlineGroupBuy', labelDefault: '오프라인 공동구매', icon: MapPin, path: '/group-buy',
     // 동네딜 허브(전체) — 특정 카테고리 필터일 땐 아래 CATEGORY 항목이 활성, 여기선 비활성(이중 강조 방지).
-    active: (p, s) => p.startsWith('/group-buy') && !/category=(meal_voucher|beauty_voucher|stay_voucher|etc_voucher)/.test(s) },
+    active: (p, s) => p.startsWith('/group-buy') && !/category=(meal_voucher|beauty_voucher|stay_voucher|etc_voucher|general)/.test(s) },
 ]
 
-// 🧭 2026-06-17 (사용자 요청): 오프라인 공동구매(동네딜) 카테고리 — GroupBuyListPage 정의와 동일.
-//   맛집 식사권 / 미용 / 숙소 / 기타. 숙소만 전용 /stays(객실·날짜 모드), 나머지는 /group-buy?category=.
+// 🧭 2026-06-17 (사용자 요청): 오프라인 공동구매(동네딜) 카테고리 — GroupBuyListPage 탭과 1:1.
+//   맛집 식사권 / 미용 / 숙소 / 기타 / 일반 상품. 모두 /group-buy?category= 로 동일 그리드 안에서 필터(일관성).
+//   숙소는 그리드에 인라인 노출하되 카드 클릭만 /stays/:id(객실·날짜 예약)로 — GroupBuyListPage 참조.
 const CATEGORY_ITEMS: NavItem[] = [
   { labelKey: 'category.mealVoucher', labelDefault: '맛집 식사권', icon: Utensils, path: '/group-buy?category=meal_voucher',
     active: (p, s) => (p.startsWith('/group-buy') && s.includes('category=meal_voucher')) || p.startsWith('/meal-vouchers') },
   { labelKey: 'category.beauty',      labelDefault: '미용',        icon: Sparkles, path: '/group-buy?category=beauty_voucher',
     active: (p, s) => p.startsWith('/group-buy') && s.includes('category=beauty_voucher') },
-  { labelKey: 'category.stay',        labelDefault: '숙소',        icon: Bed,      path: '/stays',
-    active: (p) => p.startsWith('/stays') },
+  { labelKey: 'category.stay',        labelDefault: '숙소',        icon: Bed,      path: '/group-buy?category=stay_voucher',
+    active: (p, s) => p.startsWith('/stays') || (p.startsWith('/group-buy') && s.includes('category=stay_voucher')) },
   { labelKey: 'category.etc',         labelDefault: '기타',        icon: Tag,      path: '/group-buy?category=etc_voucher',
     active: (p, s) => p.startsWith('/group-buy') && s.includes('category=etc_voucher') },
+  { labelKey: 'category.general',     labelDefault: '일반 상품',   icon: Package,  path: '/group-buy?category=general',
+    active: (p, s) => p.startsWith('/group-buy') && s.includes('category=general') },
 ]
 
 const MY_ITEMS: NavItem[] = [
