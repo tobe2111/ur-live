@@ -122,26 +122,20 @@ export default function ReelProductCard({
         )}
       </div>
 
-      {/* 🛡️ 2026-05-13 (공구 #5): 공구 진도바 — 모바일 가시성 ↑ (h-1.5 → h-2 + 명확한 카운트) */}
+      {/* 🧭 2026-06-17: 즉시판매 단일가 모델 — '모이면 시작' 임계 표현 + 진행률 바 제거,
+            인원은 소셜 증거('함께 구매 중')로만 노출 (가격 게이트 아님). */}
       {currentProduct?.group_buy_target && currentProduct.group_buy_target > 0 && (() => {
-        const target = currentProduct.group_buy_target
         const current = currentProduct.group_buy_current ?? 0
-        const progress = Math.min(100, Math.round((current / target) * 100))
         const achieved = currentProduct.group_buy_status === 'achieved'
         return (
           <div className="px-3 pb-1.5">
-            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${achieved ? 'bg-emerald-500' : 'bg-gradient-to-r from-pink-500 to-orange-500'}`}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <p className="text-[10px] mt-1 flex items-center justify-between">
-              <span className={achieved ? 'text-emerald-600 font-bold' : 'text-pink-600 font-semibold'}>
-                {achieved ? `✓ ${current}/${target}명 달성!` : `${current}/${target}명 모이면 시작`}
-              </span>
-              {!achieved && (
-                <span className="text-gray-500 font-medium">{progress}%</span>
+            <p className="text-[10px]">
+              {achieved ? (
+                <span className="text-emerald-600 font-bold">🎉 {current.toLocaleString('ko-KR')}명 함께 구매 중</span>
+              ) : current > 0 ? (
+                <span className="text-pink-600 font-semibold">🔥 {current.toLocaleString('ko-KR')}명 함께 구매 중</span>
+              ) : (
+                <span className="text-gray-500 font-medium">지금 바로 그룹 특가</span>
               )}
             </p>
           </div>

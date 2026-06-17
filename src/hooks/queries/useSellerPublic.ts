@@ -28,6 +28,8 @@ export function useSellerPublic(id: number | string | undefined) {
         return data ?? null
       }).catch(() => readCache<SellerPublic | null>(`seller:${sellerId}`, null)),
     initialData: () => readCache<SellerPublic | null>(`seller:${sellerId}`, null),
+    // 🛠️ 2026-06-17 (근본수정): 캐시 seed 즉시 stale → cold mount 1회 서버 보정(SSR 0-RTT paint 무관).
+    initialDataUpdatedAt: 0,
     enabled: !!sellerId,
     staleTime: 10 * 60 * 1000,
     gcTime: 60 * 60 * 1000,

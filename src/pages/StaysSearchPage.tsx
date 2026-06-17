@@ -139,7 +139,8 @@ export default function StaysSearchPage() {
             <p className="text-sm text-gray-400">검색 결과가 없습니다</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          // 📐 PC 프레임(720) 안에서 뷰포트 기준 lg/xl 이 4열까지 곱해져 숙소 카드가 좁아지던 것 방지 — 최대 2열 cap.
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {items.map((s) => {
               const amenitiesArr: string[] = (() => {
                 if (!s.amenities) return []

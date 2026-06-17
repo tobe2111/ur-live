@@ -53,7 +53,10 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   const showSidebar = !hideSidebar
   // 컨슈머 프레임 — 대시보드/도매몰/비디오는 제외 (전 컨슈머 적용).
   const framed = !mobileOnly && !hideSidebar
-  const frameWidth = GRID_FRAME_PATHS.has(location.pathname) ? '720px' : '430px'
+  // 📐 상품 상세(/products/:id)는 lg+ 2단(이미지|구매) 레이아웃이라 넓은 프레임(720) — 430 에 욱여넣어
+  //   2단이 짜부되던 것 방지. 그 외 상세(공구/교환권)는 단일 컬럼이라 430 유지.
+  const isWideDetail = location.pathname.startsWith('/products/')
+  const frameWidth = (GRID_FRAME_PATHS.has(location.pathname) || isWideDetail) ? '720px' : '430px'
 
   // 📐 2026-06-17: PC 프레임 양옆 배경(바탕)을 현재 테마에 직접 연동 (사용자 신고
   //   "다크 테마인데 PC 바탕이 흰색"). 기존엔 `body:has(.app-framed)` CSS 로만 처리했는데

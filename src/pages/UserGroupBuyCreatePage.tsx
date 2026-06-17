@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, MapPin, Phone, Loader2, AlertCircle } from 'lucide-react'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
@@ -17,9 +17,23 @@ interface SelectedRestaurant {
   lng: string
 }
 
+// 🧭 2026-06-17 (사용자 요청 B): 동네딜 빈 화면/배너에서 카테고리를 ?category= 로 전달 — 등록 플로우
+//   문구를 선택 카테고리에 맞춤(맛집 외 숙소·미용·기타). 장소 picker(KakaoMapPicker)는 키워드 검색이라
+//   카테고리 무관 동작. meta=null 이면 기존 '맛집' 문구 그대로(기본/전체 경로 무회귀).
+const CREATE_CATEGORY_META: Record<string, { label: string; place: string }> = {
+  beauty_voucher:   { label: '미용', place: '미용실·샵' },
+  health_voucher:   { label: '미용', place: '미용실·샵' },
+  stay_voucher:     { label: '숙소', place: '숙소' },
+  etc_voucher:      { label: '기타', place: '매장·장소' },
+  pet_voucher:      { label: '기타', place: '매장·장소' },
+  activity_voucher: { label: '기타', place: '매장·장소' },
+}
+
 export default function UserGroupBuyCreatePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const catMeta = CREATE_CATEGORY_META[searchParams.get('category') || ''] || null
 
   // Auth check — user_type 비의존 (듀얼 로그인 충돌 방지)
   const sellerToken = localStorage.getItem('seller_token')
@@ -158,7 +172,9 @@ export default function UserGroupBuyCreatePage() {
       const data = res.data?.data || res.data
       const inviteCode = data?.invite_code
       if (inviteCode) {
-        toast.success(t('groupbuy.successMsg', { defaultValue: '맛집 공구가 시작되었습니다!' }))
+        toast.success(catMeta
+          ? t('groupbuy.successMsgCat', { defaultValue: '{{label}} 공구가 시작되었습니다!', label: catMeta.label })
+          : t('groupbuy.successMsg', { defaultValue: '맛집 공구가 시작되었습니다!' }))
         navigate(`/community-group-buy/${inviteCode}`)
       } else {
         toast.error(t('groupbuy.failMsg', { defaultValue: '공구 생성에 실패했습니다' }))
@@ -177,8 +193,12 @@ export default function UserGroupBuyCreatePage() {
   return (
     <div className="bg-white dark:bg-[#0A0A0A] min-h-screen pb-24">
       <SEO
-        title={t('groupbuy.seoTitle', { defaultValue: '맛집 공구 시작' })}
-        description={t('groupbuy.seoDesc', { defaultValue: '내가 좋아하는 맛집의 식사권을 공동구매로 더 싸게! 맛집 공구를 시작해보세요.' })}
+        title={catMeta
+          ? t('groupbuy.seoTitleCat', { defaultValue: '{{label}} 공구 시작', label: catMeta.label })
+          : t('groupbuy.seoTitle', { defaultValue: '맛집 공구 시작' })}
+        description={catMeta
+          ? t('groupbuy.seoDescCat', { defaultValue: '{{label}} 공동구매를 더 싸게! 함께 모여 {{label}} 공구를 시작해보세요.', label: catMeta.label })
+          : t('groupbuy.seoDesc', { defaultValue: '내가 좋아하는 맛집의 식사권을 공동구매로 더 싸게! 맛집 공구를 시작해보세요.' })}
         url="/community-group-buy/new"
       />
       {/* Header */}
@@ -192,7 +212,9 @@ export default function UserGroupBuyCreatePage() {
             <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
           </button>
           <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white flex-1 text-center pr-8">
-            {t('groupbuy.createTitle', { defaultValue: '맛집 공구 시작하기' })}
+            {catMeta
+              ? t('groupbuy.createTitleCat', { defaultValue: '{{label}} 공구 시작하기', label: catMeta.label })
+              : t('groupbuy.createTitle', { defaultValue: '맛집 공구 시작하기' })}
           </h1>
         </div>
       </header>
@@ -204,7 +226,9 @@ export default function UserGroupBuyCreatePage() {
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[12px] font-bold mr-2">
               1
             </span>
-            {t('groupbuy.step1Title', { defaultValue: '맛집 선택' })}
+            {catMeta
+              ? t('groupbuy.step1TitleCat', { defaultValue: '{{place}} 선택', place: catMeta.place })
+              : t('groupbuy.step1Title', { defaultValue: '맛집 선택' })}
           </h2>
 
           <KakaoMapPicker
@@ -267,7 +291,9 @@ export default function UserGroupBuyCreatePage() {
             {/* 희망 식사권 가격 */}
             <div>
               <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                {t('groupbuy.priceLabel', { defaultValue: '희망 식사권 가격' })}
+                {catMeta
+                  ? t('groupbuy.priceLabelGeneric', { defaultValue: '희망 가격' })
+                  : t('groupbuy.priceLabel', { defaultValue: '희망 식사권 가격' })}
               </label>
               <div className="relative">
                 <input
@@ -378,7 +404,7 @@ export default function UserGroupBuyCreatePage() {
             {/* Summary card */}
             <div className="border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4 space-y-3 bg-white dark:bg-[#1C1C1E]">
               <div>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">{t('groupbuy.summaryRestaurant', { defaultValue: '맛집' })}</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">{catMeta ? catMeta.place : t('groupbuy.summaryRestaurant', { defaultValue: '맛집' })}</p>
                 <p className="text-[14px] font-bold text-gray-900 dark:text-white">
                   {restaurant.name}
                 </p>

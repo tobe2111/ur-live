@@ -1,23 +1,22 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Play, ChevronRight, Check, Star, Users, Zap, ShoppingBag, MessageCircle, Bell } from 'lucide-react'
+import { ChevronRight, Check, Star, Users, Zap, ShoppingBag, MapPin, Ticket, Gift } from 'lucide-react'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import api from '@/lib/api'
-import { onYoutubeThumbError } from '@/utils/youtube-thumb'
+import { cfImage } from '@/utils/cf-image'
 
 const APP_STORE_URL = 'https://apps.apple.com/kr/app/%EC%9C%A0%EC%96%B4%EB%94%9C/id6745051422'
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.urdeal.app'
 
-interface LiveStream {
+interface GbItem {
   id: number
-  title: string
-  seller_name?: string
-  viewer_count?: number
-  thumbnail_url?: string
+  name: string
+  restaurant_name?: string
   image_url?: string
-  youtube_video_id?: string
+  price?: number
+  original_price?: number
 }
 
 function AppBadges({ className = '' }: { className?: string }) {
@@ -63,34 +62,34 @@ function AppBadges({ className = '' }: { className?: string }) {
 export default function IntroducePage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [liveStreams, setLiveStreams] = useState<LiveStream[]>([])
+  const [deals, setDeals] = useState<GbItem[]>([])
   const [faqOpen, setFaqOpen] = useState<number | null>(0)
 
   useEffect(() => {
-    api.get('/api/streams?status=live')
-      .then(r => { if (r.data.success) setLiveStreams(r.data.data?.slice(0, 4) || []) })
+    api.get('/api/group-buy/products?status=active&limit=4')
+      .then(r => { if (r.data.success) setDeals((r.data.data || []).slice(0, 4)) })
       .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
   }, [])
 
   const faqs = [
-    { q: t('introduce.faq1Q', { defaultValue: '꼭 앱을 설치해야 하나요?' }), a: t('introduce.faq1A', { defaultValue: '웹에서도 라이브 시청과 구매 모두 가능합니다. 단, 라이브 알림·쿠폰 등 기능은 앱에서 더 편하게 이용하실 수 있어요.' }) },
-    { q: t('introduce.faq2Q', { defaultValue: '식사권을 샀는데 환불 되나요?' }), a: t('introduce.faq2A', { defaultValue: '구매일로부터 7일 이내·미사용 쿠폰은 100% 환불 가능합니다. 유효기간 내에만 사용하시면 되고, 양도도 자유롭게 하실 수 있어요.' }) },
-    { q: t('introduce.faq3Q', { defaultValue: '공구 목표 인원이 안 모이면?' }), a: t('introduce.faq3A', { defaultValue: '공구가 성사되지 않으면 자동으로 결제가 취소되고 전액 환불됩니다.' }) },
-    { q: t('introduce.faq4Q', { defaultValue: '라이브는 언제 볼 수 있나요?' }), a: t('introduce.faq4A', { defaultValue: '홈 상단의 "지금 라이브"에서 바로 시청 가능하고, 예정된 라이브는 편성표에서 확인할 수 있어요.' }) },
+    { q: t('introduce.faq1Q', { defaultValue: '꼭 앱을 설치해야 하나요?' }), a: t('introduce.faq1A', { defaultValue: '웹에서도 둘러보기와 구매 모두 가능합니다. 단, 공구 오픈 알림·쿠폰 등은 앱에서 더 편하게 이용하실 수 있어요.' }) },
+    { q: t('introduce.faq2Q', { defaultValue: '교환권을 샀는데 환불 되나요?' }), a: t('introduce.faq2A', { defaultValue: '구매일로부터 7일 이내·미사용 교환권은 100% 환불 가능합니다. 유효기간 내에만 사용하시면 되고, 양도도 자유롭게 하실 수 있어요.' }) },
+    { q: t('introduce.faq3Q', { defaultValue: '목표 인원이 안 모이면 어떻게 되나요?' }), a: t('introduce.faq3A', { defaultValue: '동네 공구는 즉시 구매·확정 발급이에요. 목표 인원과 관계없이 지금 바로 그룹 특가로 결제되고 교환권이 곧장 발급됩니다. 인원은 함께 사는 분들을 보여주는 소셜 표시일 뿐이에요.' }) },
+    { q: t('introduce.faq4Q', { defaultValue: '동네 공구는 어디서 찾나요?' }), a: t('introduce.faq4A', { defaultValue: '홈 또는 "동네 공구" 탭에서 지역·카테고리(맛집·뷰티·숙소 등)별로 진행 중인 공구를 확인할 수 있어요.' }) },
     { q: t('introduce.faq5Q', { defaultValue: '셀러 입점 조건은?' }), a: t('introduce.faq5A', { defaultValue: '사업자 등록이 된 식당·브랜드라면 누구나 신청 가능합니다. 입점 수수료는 없고 판매 수수료만 부담합니다.' }) },
     { q: t('introduce.faq6Q', { defaultValue: '결제는 어떤 방법이 가능한가요?' }), a: t('introduce.faq6A', { defaultValue: '신용카드·체크카드·계좌이체·간편결제(카카오페이/토스) 모두 지원합니다.' }) },
   ]
 
   const features = [
-    { icon: Play, color: '#EF4444', title: '실시간 라이브', desc: '사장님이 직접 켜는 라이브커머스. 셰프의 요리 과정부터 산지 직송까지 눈으로 확인하세요.' },
-    { icon: ShoppingBag, color: '#EC4899', title: '공동구매 특가', desc: '많이 모일수록 할인이 커지는 공구. 최대 50% 할인가로 동네 맛집과 인기 브랜드를 만나보세요.' },
-    { icon: MessageCircle, color: '#F59E0B', title: '실시간 소통', desc: '방송 중 채팅으로 사장님께 직접 질문하고 메뉴 추천도 받으세요. 쿠폰 증정 이벤트도 진행돼요.' },
-    { icon: Bell, color: '#10B981', title: '알림 · 편성표', desc: '좋아하는 셀러가 라이브를 시작하면 앱으로 즉시 알림. 예정 방송 편성표도 미리 확인하세요.' },
+    { icon: ShoppingBag, color: '#EF4444', title: '동네 공구 단일 특가', desc: '대량 단가를 미리 떼와 처음부터 모두에게 같은 그룹 특가. 인원에 따라 가격이 오르내리지 않아요.' },
+    { icon: Ticket, color: '#EC4899', title: '교환권 즉시 발급', desc: '결제하면 교환권이 바로 발급돼요. 목표 인원과 무관하게 즉시 확정 — 매장에서 바로 사용하세요.' },
+    { icon: MapPin, color: '#F59E0B', title: '우리 동네 기반', desc: '맛집·뷰티·숙소·헬스까지. 내 지역에서 진행 중인 공구를 카테고리·지역별로 골라보세요.' },
+    { icon: Gift, color: '#10B981', title: '친구 초대 보너스', desc: '친구를 초대해 함께 구매하면 두 분 모두에게 보너스 딜이 적립돼요.' },
   ]
 
   return (
     <div className="bg-[#020202] text-white min-h-screen">
-      <SEO title={t('introduce.seoTitle', { defaultValue: '유어딜 - 라이브 커머스 맛집 공동구매' })} description={t('introduce.seoDesc', { defaultValue: '사장님이 직접 켜는 라이브커머스. 우리 동네 맛집을 특가로 만나는 가장 빠른 방법.' })} url="/introduce" />
+      <SEO title={t('introduce.seoTitle', { defaultValue: '유어딜 - 우리 동네 공동구매 (맛집·뷰티·숙소)' })} description={t('introduce.seoDesc', { defaultValue: '우리 동네 맛집·뷰티·숙소를 그룹 특가로. 함께 사서 더 좋은 가격, 교환권은 결제 즉시 발급.' })} url="/introduce" />
 
       {/* ─── NAV ─── */}
       <header className="sticky top-0 z-50 bg-[#020202]/90 backdrop-blur-md border-b border-[#1A1A1A]">
@@ -100,7 +99,7 @@ export default function IntroducePage() {
           </button>
           <nav className="hidden md:flex items-center gap-1">
             <a href="#features" className="px-3 py-2 text-[13px] font-semibold text-gray-400 hover:text-white transition-colors">기능</a>
-            <a href="#live-now" className="px-3 py-2 text-[13px] font-semibold text-gray-400 hover:text-white transition-colors">라이브</a>
+            <a href="#deals" className="px-3 py-2 text-[13px] font-semibold text-gray-400 hover:text-white transition-colors">동네 공구</a>
             <a href="#for-sellers" className="px-3 py-2 text-[13px] font-semibold text-gray-400 hover:text-white transition-colors">셀러 입점</a>
             <a href="#faq" className="px-3 py-2 text-[13px] font-semibold text-gray-400 hover:text-white transition-colors">FAQ</a>
           </nav>
@@ -135,19 +134,19 @@ export default function IntroducePage() {
           <div className="flex-1 min-w-0">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-[12px] font-extrabold text-red-400">라이브 커머스 · 공동구매</span>
+              <span className="text-[12px] font-extrabold text-red-400">우리 동네 공동구매</span>
             </div>
             <h1
               className="text-[clamp(40px,5.5vw,72px)] font-black leading-[1.02] text-white"
               style={{ letterSpacing: '-0.04em' }}
             >
-              지금 <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-pink-500">라이브</span>로<br />
-              맛집 만나고,<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-pink-500 italic">특가</span>로 먹자.
+              우리 동네<br />
+              맛집·뷰티·숙소,<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-pink-500 italic">함께 사서 특가.</span>
             </h1>
             <p className="text-[16px] text-gray-400 mt-6 max-w-[480px] leading-relaxed">
-              우리 동네 사장님이 직접 라이브 방송을 켭니다.<br />
-              실시간 소통하며 식사권·밀키트를 최대 50% 할인가로.
+              대량 단가를 미리 떼와 처음부터 모두에게 같은 그룹 특가.<br />
+              결제하면 교환권이 바로 발급돼요.
             </p>
 
             {/* App download buttons */}
@@ -158,16 +157,16 @@ export default function IntroducePage() {
 
             <div className="flex flex-wrap items-center gap-4 mt-8">
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/group-buy')}
                 className="flex items-center gap-2 px-6 py-3.5 rounded-2xl text-gray-900 text-[14px] font-extrabold bg-white hover:bg-gray-100 transition-colors"
               >
-                <Play className="w-4 h-4 fill-gray-900" /> 웹에서 바로 시작
+                <ShoppingBag className="w-4 h-4" /> 동네 공구 둘러보기
               </button>
               <button
-                onClick={() => navigate('/browse')}
+                onClick={() => navigate('/')}
                 className="flex items-center gap-1 text-[14px] font-semibold text-gray-400 hover:text-white transition-colors"
               >
-                둘러보기 <ChevronRight className="w-4 h-4" />
+                웹에서 바로 시작 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
 
@@ -194,12 +193,11 @@ export default function IntroducePage() {
                 <div className="w-full h-full rounded-[34px] bg-[#0A0A0A] relative overflow-hidden">
                   {/* notch */}
                   <div className="absolute top-3 left-1/2 -translate-x-1/2 w-[80px] h-[22px] bg-black rounded-2xl z-20" />
-                  {/* live badge */}
+                  {/* 공구 badge */}
                   <div className="absolute top-12 left-4 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-500 z-10">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                    <span className="text-[10px] font-extrabold text-white">LIVE · 1.2K</span>
+                    <span className="text-[10px] font-extrabold text-white">🔥 동네 공구</span>
                   </div>
-                  {/* fake video bg */}
+                  {/* fake bg */}
                   <div className="absolute inset-0 bg-gradient-to-b from-[#2A0A0A] via-[#1A0808] to-black" />
                   {/* bottom product card */}
                   <div className="absolute bottom-4 left-3 right-3 rounded-2xl p-3.5 bg-black/80 backdrop-blur-md border border-white/10 z-10">
@@ -210,8 +208,8 @@ export default function IntroducePage() {
                       <span className="text-[10px] text-gray-500 line-through">26,900원</span>
                     </div>
                     <div className="mt-2 flex gap-2">
-                      <div className="flex-1 py-1.5 rounded-lg bg-gradient-to-r from-red-500 to-pink-500 text-center text-[10px] font-extrabold text-white">바로구매</div>
-                      <div className="flex-1 py-1.5 rounded-lg bg-white/10 text-center text-[10px] font-bold text-white">장바구니</div>
+                      <div className="flex-1 py-1.5 rounded-lg bg-gradient-to-r from-red-500 to-pink-500 text-center text-[10px] font-extrabold text-white">바로 구매</div>
+                      <div className="flex-1 py-1.5 rounded-lg bg-white/10 text-center text-[10px] font-bold text-white">교환권 발급</div>
                     </div>
                   </div>
                 </div>
@@ -243,7 +241,7 @@ export default function IntroducePage() {
         <div className="mb-12 text-center">
           <p className="text-[11px] font-extrabold text-red-400 tracking-[0.15em] mb-3">WHY URDEAL</p>
           <h2 className="text-[clamp(28px,4vw,48px)] font-black text-white" style={{ letterSpacing: '-0.03em' }}>
-            라이브 커머스, 이렇게 다릅니다
+            동네 공구, 이렇게 다릅니다
           </h2>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -265,53 +263,48 @@ export default function IntroducePage() {
         </div>
       </section>
 
-      {/* ─── LIVE PREVIEW ─── */}
-      <section id="live-now" className="max-w-[1280px] mx-auto px-6 py-16">
+      {/* ─── 인기 동네 공구 ─── */}
+      <section id="deals" className="max-w-[1280px] mx-auto px-6 py-16">
         <div className="mb-8">
-          <p className="text-[11px] font-extrabold text-red-400 tracking-[0.15em] mb-3">● LIVE NOW</p>
+          <p className="text-[11px] font-extrabold text-red-400 tracking-[0.15em] mb-3">● 동네 공구</p>
           <h2 className="text-[clamp(24px,3.5vw,44px)] font-black text-white" style={{ letterSpacing: '-0.03em' }}>
-            지금 켜져 있는 라이브
+            지금 인기 동네 공구
           </h2>
-          <p className="text-[15px] text-gray-500 mt-3">사장님이 지금 방송 중이에요. 바로 시청하고 실시간으로 소통해보세요.</p>
+          <p className="text-[15px] text-gray-500 mt-3">우리 동네 맛집·뷰티·숙소를 그룹 특가로. 결제 즉시 교환권이 발급돼요.</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {(liveStreams.length > 0 ? liveStreams : [
-            { id: 0, title: '곧 라이브가 시작됩니다', seller_name: '유어딜' },
-            { id: 0, title: '신선한 해산물 특가', seller_name: '수협마켓' },
-            { id: 0, title: '수제 디저트 공구', seller_name: '베이커리카페' },
-            { id: 0, title: '수제 맥주 라이브', seller_name: '크래프트비어' },
-          ] as LiveStream[]).map((s, idx) => (
+          {(deals.length > 0 ? deals : [
+            { id: 0, name: '동네 맛집 식사권', restaurant_name: '곧 오픈' },
+            { id: 0, name: '뷰티 시술 공구', restaurant_name: '곧 오픈' },
+            { id: 0, name: '펜션·호텔 숙박', restaurant_name: '곧 오픈' },
+            { id: 0, name: '헬스 PT 공구', restaurant_name: '곧 오픈' },
+          ] as GbItem[]).map((d, idx) => (
             <button
-              key={`${s.id}-${idx}`}
-              onClick={() => s.id ? navigate(`/live/${s.id}`) : undefined}
+              key={`${d.id}-${idx}`}
+              onClick={() => d.id ? navigate(`/group-buy/${d.id}`) : navigate('/group-buy')}
               className="block rounded-2xl overflow-hidden border border-[#1A1A1A] hover:border-[#2A2A2A] transition-all hover:scale-[1.02]"
             >
               <div className="aspect-[3/4] relative bg-gradient-to-br from-[#1A0808] to-[#0A0A0A]">
-                {(s.thumbnail_url || s.youtube_video_id) && (
+                {d.image_url && (
                   <img
-                    src={s.thumbnail_url || `https://img.youtube.com/vi/${s.youtube_video_id}/hqdefault.jpg`}
+                    src={cfImage(d.image_url, { width: 320, format: 'auto' })}
                     alt=""
                     className="absolute inset-0 w-full h-full object-cover"
                     loading="lazy"
                     decoding="async"
-                    onError={onYoutubeThumbError}
                   />
                 )}
                 <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.4), transparent 35%, rgba(0,0,0,0.85))' }} />
-                {s.viewer_count != null && (
+                {d.original_price && d.price && d.original_price > d.price && (
                   <div className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500">
-                    <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
-                    <span className="text-[9px] font-bold text-white">LIVE</span>
-                  </div>
-                )}
-                {!s.id && (
-                  <div className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-600">
-                    <span className="text-[9px] font-bold text-white">예정</span>
+                    <span className="text-[9px] font-extrabold text-white">{Math.round((1 - d.price / d.original_price) * 100)}%</span>
                   </div>
                 )}
                 <div className="absolute bottom-2.5 left-2.5 right-2.5">
-                  <p className="text-[12px] font-bold text-white line-clamp-2 leading-tight">{s.title}</p>
-                  <p className="text-[10px] text-white/60 mt-0.5">{s.seller_name}</p>
+                  <p className="text-[12px] font-bold text-white line-clamp-2 leading-tight">{d.name}</p>
+                  <p className="text-[10px] text-white/60 mt-0.5">
+                    {d.restaurant_name}{d.price ? ` · ${d.price.toLocaleString('ko-KR')}원` : ''}
+                  </p>
                 </div>
               </div>
             </button>
@@ -319,10 +312,10 @@ export default function IntroducePage() {
         </div>
         <div className="mt-6 text-center">
           <button
-            onClick={() => navigate('/live')}
+            onClick={() => navigate('/group-buy')}
             className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full border border-[#2A2A2A] text-[13px] font-bold text-gray-300 hover:border-[#444] hover:text-white transition-colors"
           >
-            전체 라이브 보기 <ChevronRight className="w-4 h-4" />
+            전체 동네 공구 보기 <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </section>
@@ -333,14 +326,14 @@ export default function IntroducePage() {
           <div className="mb-12 text-center">
             <p className="text-[11px] font-extrabold text-red-400 tracking-[0.15em] mb-3">HOW IT WORKS</p>
             <h2 className="text-[clamp(24px,3.5vw,44px)] font-black text-white" style={{ letterSpacing: '-0.03em' }}>
-              라이브 켜고, 보고, 사고, 먹기.
+              고르고, 함께 사고, 매장에서 쓰기.
             </h2>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { n: '01', emoji: '👀', title: '라이브 시청', desc: '홈에서 지금 방송 중인 사장님 라이브를 바로 시청하세요. 실시간 채팅으로 질문도 하고, 메뉴 추천도 받을 수 있어요.' },
-              { n: '02', emoji: '🛒', title: '식사권 공구', desc: '라이브 중 소개된 식사권·밀키트를 최대 50% 할인가로. 공구 인원이 모일수록 할인폭이 커져요.' },
-              { n: '03', emoji: '🍽️', title: '매장 방문·사용', desc: '구매한 쿠폰을 매장에서 제시하고 맛있게 드세요. 배송 상품은 집에서 바로 받아볼 수 있어요.' },
+              { n: '01', emoji: '🔎', title: '동네 공구 고르기', desc: '홈 또는 동네 공구 탭에서 지역·카테고리(맛집·뷰티·숙소 등)별로 진행 중인 공구를 골라보세요.' },
+              { n: '02', emoji: '🛒', title: '그룹 특가로 구매', desc: '인원과 무관하게 처음부터 같은 그룹 특가. 결제하면 교환권이 즉시 발급돼요.' },
+              { n: '03', emoji: '🍽️', title: '매장 방문·사용', desc: '발급된 교환권을 매장에서 제시하고 사용하세요. 숙소·배송 상품은 안내에 따라 이용하시면 돼요.' },
             ].map(s => (
               <div key={s.n} className="relative p-8 rounded-3xl bg-[#111] border border-[#1A1A1A] overflow-hidden">
                 <div className="absolute -top-4 -right-2 text-[100px] font-black opacity-[0.04] text-white select-none">{s.n}</div>
@@ -364,7 +357,7 @@ export default function IntroducePage() {
               <span className="text-[12px] font-extrabold text-white">앱에서 진짜 시작돼요</span>
             </div>
             <h2 className="text-[clamp(28px,4vw,48px)] font-black text-white leading-tight mb-3" style={{ letterSpacing: '-0.03em' }}>
-              지금 시작하면<br />첫 라이브 시청 시<br /><span className="opacity-90">5,000원 쿠폰</span> 🎁
+              지금 시작하고<br />우리 동네<br /><span className="opacity-90">그룹 특가</span> 받기 🎁
             </h2>
             <p className="text-[15px] text-white/80 mb-8">전화번호만 있으면 3초 만에 시작할 수 있어요.</p>
             <AppBadges />
@@ -384,13 +377,13 @@ export default function IntroducePage() {
           <div className="max-w-[680px]">
             <p className="text-[11px] font-extrabold text-red-400 tracking-[0.15em] mb-3">FOR SELLERS</p>
             <h2 className="text-[clamp(28px,4vw,48px)] font-black text-white mb-8" style={{ letterSpacing: '-0.03em' }}>
-              우리 가게, 오늘부터<br />라이브커머스 맛집.
+              우리 가게, 오늘부터<br />동네 공구 맛집.
             </h2>
             <div className="space-y-5 mb-10">
               {[
                 { title: '입점 수수료 0원, 판매 수수료만', desc: '판매되는 만큼만 부담해요. 가입비·월 고정비 없습니다.' },
-                { title: '에이전시 매칭으로 방송 대행까지', desc: '직접 방송하기 어렵다면 검증된 에이전시가 도와줘요.' },
-                { title: '당일 정산, 셀러 대시보드 제공', desc: '실시간 KPI · 주문 모니터링 · 리뷰 관리까지 한 곳에서.' },
+                { title: '에이전시 매칭으로 공구 운영까지', desc: '직접 운영이 어렵다면 검증된 에이전시가 공구 등록·관리를 도와줘요.' },
+                { title: '정산·셀러 대시보드 제공', desc: '주문 모니터링 · 정산 · 리뷰 관리까지 한 곳에서.' },
               ].map(b => (
                 <div key={b.title} className="flex items-start gap-4">
                   <div className="w-7 h-7 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 mt-0.5">
@@ -464,7 +457,7 @@ export default function IntroducePage() {
                 <UrDealLogo size={22} forceDark />
               </div>
               <p className="text-[13px] text-gray-500 leading-relaxed max-w-[320px]">
-                사장님이 직접 켜는 라이브커머스.<br />우리 동네 맛집을 특가로 만나는 가장 빠른 방법.
+                우리 동네 맛집·뷰티·숙소를 그룹 특가로.<br />함께 사서 더 좋은 가격, 교환권은 결제 즉시 발급.
               </p>
             </div>
             <div>

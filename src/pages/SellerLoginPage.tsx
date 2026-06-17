@@ -28,8 +28,11 @@ export default function SellerLoginPage() {
 
   // 🛡️ 2026-04-29: 401 인터셉터가 ?error=session_expired 로 redirect 시 toast 표시
   useEffect(() => {
-    if (searchParams.get('error') === 'session_expired') {
-      toast.error(t('auth.sessionExpired'))
+    const _err = searchParams.get('error')
+    if (_err === 'session_expired' || _err === 'session_superseded') {
+      toast.error(_err === 'session_superseded'
+        ? t('auth.sessionSuperseded', { defaultValue: '다른 기기 또는 브라우저에서 로그인되어 자동 로그아웃되었습니다.' })
+        : t('auth.sessionExpired'))
       const next = new URLSearchParams(searchParams)
       next.delete('error')
       setSearchParams(next, { replace: true })
