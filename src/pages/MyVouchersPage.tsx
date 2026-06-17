@@ -70,15 +70,18 @@ function ReviewBonusButton({ voucherCode }: { voucherCode: string }) {
     if (file.size > 5 * 1024 * 1024) { toast.error('5MB 이하만'); return }
     setUploading(true)
     try {
+      // 🛠️ 2026-06-17 (기술부채 청산): DataURL(멀티MB base64 를 POST 본문/DB 에 저장하던 임시) →
+      //   검증된 R2 업로드 endpoint(/api/upload/image, 유저 쿠키 인증)로. 응답 URL 만 제출.
       const fd = new FormData()
-      fd.append('image', file)
-      // 셀러 upload endpoint 재사용 — 일반 user 도 imgbb 업로드 필요
-      // ★ 별도 user-upload endpoint 필요하나, 우선 imgbb 직접 호출 X. 임시: DataURL.
-      const reader = new FileReader()
-      reader.onload = () => { setScreenshotUrl(reader.result as string); setUploading(false) }
-      reader.onerror = () => { toast.error('읽기 실패'); setUploading(false) }
-      reader.readAsDataURL(file)
-    } catch { toast.error('업로드 실패'); setUploading(false) }
+      fd.append('file', file)
+      const res = await api.post('/api/upload/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const url = res.data?.data?.url
+      if (res.data?.success && url) setScreenshotUrl(url)
+      else toast.error(res.data?.error || '업로드 실패')
+    } catch (err) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e?.response?.data?.error || '업로드 실패')
+    } finally { setUploading(false) }
   }
 
   async function submit() {
