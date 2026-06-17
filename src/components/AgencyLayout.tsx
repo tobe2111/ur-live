@@ -41,38 +41,34 @@ interface NavGroup {
   items: NavItem[]
 }
 
+// 🏪 2026-06-17 매장 영입 중심 IA 재편: 에이전시 핵심 = 오프라인 매장 영입(공구 운영).
+//   '매장 영입' 그룹을 최상단으로, 라이브 시대의 '소속 셀러 관리'는 '셀러 관리' 보조 그룹으로 강등(코드/경로 전부 보존).
 const NAV_GROUPS: NavGroup[] = [
   {
     label: '운영', i18nKey: 'agency.nav.operations',
     items: [
       { path: '/agency',          label: '대시보드',    i18nKey: 'agency.nav.dashboard', icon: LayoutDashboard, exact: true, mode: 'common' },
-      { path: '/agency/sellers',  label: '담당 셀러',   i18nKey: 'agency.nav.sellers', icon: Users, mode: 'common' },
-      // 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 (Phase 2). 입점 가게 + commission 관리.
+    ],
+  },
+  {
+    // 🏪 핵심 그룹 — 매장 영입 → 입점 → 공구 운영
+    label: '매장 영입', i18nKey: 'agency.nav.storeRecruit',
+    items: [
       { path: '/agency/introduced-stores', label: '내 입점 가게', i18nKey: 'agency.nav.introducedStores', icon: Store, mode: 'common' },
-      { path: '/agency/streams',  label: '라이브 현황',  i18nKey: 'agency.nav.streams', icon: Radio, liveBadge: true, mode: 'live' },
-      { path: '/agency/schedule', label: '방송 캘린더',  i18nKey: 'agency.nav.schedule', icon: Calendar, mode: 'live' },
+      { path: '/agency/prospects',  label: '매장 영입 현황', i18nKey: 'agency.nav.prospects', icon: UserPlus, mode: 'common' },
+      { path: '/agency/group-buy', label: '공동구매',  i18nKey: 'agency.nav.groupBuy', icon: Utensils, mode: 'store' },
+      // 🛡️ 2026-05-18: 숙소 공구 — PR 5/6.
+      { path: '/agency/stays', label: '숙소 운영', i18nKey: 'agency.nav.stays', icon: Building2, mode: 'store' },
     ],
   },
   {
     label: '판매 관리', i18nKey: 'agency.nav.sales',
     items: [
       { path: '/agency/orders',    label: '주문 현황', i18nKey: 'agency.nav.orders', icon: ShoppingBag, mode: 'common' },
-      { path: '/agency/group-buy', label: '공동구매',  i18nKey: 'agency.nav.groupBuy', icon: Utensils, mode: 'store' },
-      // 🛡️ 2026-05-18: 숙소 공구 — PR 5/6.
-      { path: '/agency/stays', label: '숙소 운영', i18nKey: 'agency.nav.stays', icon: Building2, mode: 'store' },
       { path: '/agency/returns',   label: '반품/CS',  i18nKey: 'agency.nav.returns', icon: ShoppingBag, mode: 'common' },
     ],
   },
-  {
-    label: '분석 & 성과', i18nKey: 'agency.nav.analytics',
-    items: [
-      { path: '/agency/stats',   label: '통계 분석', i18nKey: 'agency.nav.stats', icon: BarChart2, mode: 'common' },
-      { path: '/agency/ranking', label: '셀러 랭킹', i18nKey: 'agency.nav.ranking', icon: BarChart2, mode: 'common' },
-      { path: '/agency/compare', label: '셀러 비교', i18nKey: 'agency.nav.compare', icon: GitCompare, mode: 'common' },
-      { path: '/agency/targets', label: '매출 목표', i18nKey: 'agency.nav.targets', icon: Target, mode: 'common' },
-    ],
-  },
-  // 🛡️ 2026-04-26: TikTok Backstage 학습 기반 신규 운영 도구
+  // 🛡️ 2026-04-26: TikTok Backstage 학습 기반 신규 운영 도구 (공구 매출 촉진)
   {
     label: '캠페인 & 영업', i18nKey: 'agency.nav.campaignSales',
     items: [
@@ -80,15 +76,31 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/agency/incentives', label: '인센티브 규칙', i18nKey: 'agency.nav.incentives', icon: Award, mode: 'common' },
       { path: '/agency/messages',   label: '메시지 템플릿', i18nKey: 'agency.nav.messages', icon: MessageSquare, mode: 'common' },
       { path: '/agency/coupons',    label: '쿠폰 배포',     i18nKey: 'agency.nav.coupons', icon: Ticket, mode: 'common' },
+      { path: '/agency/events',     label: '자사 챌린지',   i18nKey: 'agency.nav.events', icon: Trophy, mode: 'common' },
       { path: '/agency/calendar',   label: '라이브 캘린더', i18nKey: 'agency.nav.calendar', icon: Calendar, mode: 'live' },
-      { path: '/agency/invites',    label: '셀러 영입',     i18nKey: 'agency.nav.invites', icon: QrCode, mode: 'common' },
-      // 🏁 2026-06-12 (4차 감사 D5): /agency/prospects 고아 라우트 진입점 — 매장 영입 prospects 현황.
-      { path: '/agency/prospects',  label: '매장 영입 현황', i18nKey: 'agency.nav.prospects', icon: Store, mode: 'common' },
       { path: '/agency/match-suggestions', label: '자동 매칭 제안', i18nKey: 'agency.nav.matchSuggestions', icon: UserPlus, mode: 'live' },
       { path: '/agency/pk',         label: 'PK 이벤트',     i18nKey: 'agency.nav.pk', icon: Swords, mode: 'live' },
-      { path: '/agency/events',     label: '자사 챌린지',   i18nKey: 'agency.nav.events', icon: Trophy, mode: 'common' },
       { path: '/agency/promote-boosts', label: '노출 부스팅', i18nKey: 'agency.nav.promoteBoosts', icon: Rocket, mode: 'live' },
+    ],
+  },
+  {
+    label: '분석 & 성과', i18nKey: 'agency.nav.analytics',
+    items: [
+      { path: '/agency/stats',   label: '통계 분석', i18nKey: 'agency.nav.stats', icon: BarChart2, mode: 'common' },
+      { path: '/agency/targets', label: '매출 목표', i18nKey: 'agency.nav.targets', icon: Target, mode: 'common' },
+    ],
+  },
+  {
+    // 소속 셀러 관리 (라이브 시대 유산 — 보존, 후순위 노출)
+    label: '셀러 관리', i18nKey: 'agency.nav.sellerMgmt',
+    items: [
+      { path: '/agency/sellers',  label: '담당 셀러',   i18nKey: 'agency.nav.sellers', icon: Users, mode: 'common' },
+      { path: '/agency/ranking', label: '셀러 랭킹', i18nKey: 'agency.nav.ranking', icon: BarChart2, mode: 'common' },
+      { path: '/agency/compare', label: '셀러 비교', i18nKey: 'agency.nav.compare', icon: GitCompare, mode: 'common' },
+      { path: '/agency/invites',    label: '셀러 영입',     i18nKey: 'agency.nav.invites', icon: QrCode, mode: 'common' },
       { path: '/agency/transfers',  label: '셀러 이전',     i18nKey: 'agency.nav.transfers', icon: ArrowRightLeft, mode: 'common' },
+      { path: '/agency/streams',  label: '라이브 현황',  i18nKey: 'agency.nav.streams', icon: Radio, liveBadge: true, mode: 'live' },
+      { path: '/agency/schedule', label: '방송 캘린더',  i18nKey: 'agency.nav.schedule', icon: Calendar, mode: 'live' },
     ],
   },
   {
@@ -129,7 +141,8 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
 
   const [agencyName, setAgencyName] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('agency_name') : null) || '에이전시')
   const [agencyStatus, setAgencyStatus] = useState<string | null>(null)
-  const [sellerCount, setSellerCount] = useState(0)
+  // 🏪 2026-06-17 매장 영입 중심 — 사이드바 헤드라인 미니 통계를 '영입 가게' 수로.
+  const [storeCount, setStoreCount] = useState(0)
 
   // 🛡️ 2026-05-17: Mode 토글 — 라이브 위주 에이전시 vs 매장 위주 에이전시 UI 선호.
   //   default 'all' = 모든 항목 (backward compat). localStorage 에 저장.
@@ -173,12 +186,12 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
         if (status) setAgencyStatus(status)
       })
       .catch((e) => { if (import.meta.env.DEV) console.warn('[AgencyLayout] profile fetch failed:', e) })
-    api.get('/api/agency/sellers', { headers: { Authorization: `Bearer ${token}` } })
+    api.get('/api/agency/introduced-stores/summary', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => {
-        const sellers = r.data?.data || []
-        setSellerCount(sellers.length)
+        const n = r.data?.data?.total_stores
+        if (typeof n === 'number') setStoreCount(n)
       })
-      .catch((e) => { if (import.meta.env.DEV) console.warn('[AgencyLayout] sellers fetch failed:', e) })
+      .catch((e) => { if (import.meta.env.DEV) console.warn('[AgencyLayout] stores summary fetch failed:', e) })
     api.get('/api/agency/stats', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => {
         const rev = r.data?.data?.revenue_30d
@@ -242,8 +255,8 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
             className="rounded-lg px-2.5 py-2 text-center"
             style={{ background: 'rgba(255,255,255,0.04)' }}
           >
-            <p className="text-[10px] font-bold text-white/40">담당</p>
-            <p className="text-[13px] font-extrabold text-white">{sellerCount}<span className="text-[9px] text-white/50 ml-0.5">셀러</span></p>
+            <p className="text-[10px] font-bold text-white/40">영입</p>
+            <p className="text-[13px] font-extrabold text-white">{storeCount}<span className="text-[9px] text-white/50 ml-0.5">가게</span></p>
           </div>
           <div
             className="rounded-lg px-2.5 py-2 text-center"
@@ -343,12 +356,12 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
       {/* Bottom: invite button + logout */}
       <div className="px-4 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <button
-          onClick={() => navigate('/agency/sellers')}
+          onClick={() => navigate('/agency/introduced-stores')}
           className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[12px] font-extrabold text-white transition-all hover:opacity-90"
-          style={{ background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)' }}
+          style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}
         >
-          <UserPlus size={14} strokeWidth={2} />
-          셀러 초대
+          <Store size={14} strokeWidth={2} />
+          {t('agency.inviteStore', { defaultValue: '가게 영입' })}
         </button>
         <button
           onClick={logout}

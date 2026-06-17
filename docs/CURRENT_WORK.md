@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 에이전시 대시보드 '매장 영입' 중심 전면 재편 (대표 AskUserQuestion="메인+사이드바 전면 재편")
+**배경**: 대표 통찰 — 공구 모델에서 에이전시의 본질은 **매장 영입**(오프라인 가게를 입점→공구 운영)이고 '소속 셀러 매니징'은 라이브 시대 유산. 매장 영입 **엔진**(결제확정 시 `creditAgencyStoreIntroCommission` 실호출=가입 ₩30,000+매출 2%·멱등, 월 ₩50,000 cron, 환불역전, introduced-stores/prospects 페이지)은 이미 잘 배선됨 — **대시보드 IA가 여전히 소속 셀러 중심**이던 갭을 해소(소속 셀러 기능은 전부 코드/경로 보존, 노출만 강등).
+- **사이드바**(`AgencyLayout`): '매장 영입' 그룹을 대시보드 바로 아래 **최상단**으로 신설(내 입점 가게·매장 영입 현황·공동구매·숙소). 소속 셀러(담당 셀러·랭킹·비교·셀러영입·이전 + 라이브현황·방송캘린더)는 **'셀러 관리' 보조 그룹**으로 강등. 하단 CTA '셀러 초대'→**'가게 영입'**(/introduced-stores), 미니통계 '담당 N셀러'→**'영입 N가게'**(summary fetch).
+- **메인**(`AgencyPage`): KPI Row 재배열 — ①영입 가게 ②이번달 영입 수익(실 commission) ③진행중 공구 ④30일 매출 ⑤담당 셀러(후순위). Commission 배너를 **매장 영입 누적 수익(실 적립)** 우선 + 소속 셀러 추정 수수료는 보조줄. Quick Actions '가게 영입'/'공구 관리' 우선. 라이브 전용 `KpiMetricsGrid`(diamond/live_rate) 게이트.
+- **백엔드**(`agency.routes` bundle): `/introduced-stores/summary` 9번째 서브요청 추가(단일 fetch 유지, 한도 50 안전) → 메인 대시보드가 매장 영입 지표 0-RTT.
+- 검증: client+worker build exit 0 · 테마 clean. 소속 셀러 라우트/페이지 무삭제(가역).
+
 ## ✅ 2026-06-17 — 에이전시 대시보드 라이브 잔재 제거 + 공구 집중 repurpose (대표 "가장 이상적으로, 공구 집중")
 **배경**: 라이브커머스 영구중단(`LIVE_COMMERCE_SUSPENDED=true`)인데 에이전시 대시보드에 **게이트 안 된 라이브 잔재 5곳**이 그대로 노출됨(나머지 nav/소비자 표면은 게이트 정상 — 에이전트 전수확인). 단순 숨김이 아니라 **공구 지표로 repurpose**(복원 시 자동 환원).
 - **진행중 공구 KPI 신설**(`agency-stats.routes /stats` + `types.ts`): 소속 셀러의 `group_buy_status='active'` 공구 상품 수(`active_group_buys`, disputes-overview 와 동일 스코프, agency_sellers 조인). bundle 은 `/stats` 서브요청이라 자동 반영(백엔드 1곳만).
