@@ -228,6 +228,24 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
   )
 })
 
+// 🧭 2026-06-17 (사용자 요청 A): 빈 화면을 선택 카테고리에 맞춰 — 부제목 + "곧 오픈" 쇼케이스 카드.
+//   특정 카테고리 선택 시 해당 카드 1개만(+카테고리 부제목), 전체/일반은 4종 전부 노출.
+const CAT_EMPTY_META: Partial<Record<CategoryFilter, { noun: string; card: { emoji: string; label: string; desc: string } }>> = {
+  meal_voucher:     { noun: '맛집', card: { emoji: '🍽️', label: '식사권 공구', desc: '맛집 단체 할인' } },
+  beauty_voucher:   { noun: '미용', card: { emoji: '💇', label: '뷰티 공구', desc: '시술 공동 예약' } },
+  health_voucher:   { noun: '미용', card: { emoji: '💇', label: '뷰티 공구', desc: '시술 공동 예약' } },
+  stay_voucher:     { noun: '숙소', card: { emoji: '🏨', label: '숙박 공구', desc: '펜션·호텔 단체' } },
+  etc_voucher:      { noun: '기타', card: { emoji: '🎯', label: '기타 공구', desc: '헬스·펫·액티비티' } },
+  pet_voucher:      { noun: '기타', card: { emoji: '🎯', label: '기타 공구', desc: '헬스·펫·액티비티' } },
+  activity_voucher: { noun: '기타', card: { emoji: '🎯', label: '기타 공구', desc: '헬스·펫·액티비티' } },
+}
+const DEFAULT_SHOWCASE = [
+  { emoji: '🍽️', label: '식사권 공구', desc: '맛집 단체 할인' },
+  { emoji: '💇', label: '뷰티 공구', desc: '시술 공동 예약' },
+  { emoji: '💪', label: '헬스 PT 공구', desc: '월 회원권 공동' },
+  { emoji: '🏨', label: '숙박 공구', desc: '펜션·호텔 단체' },
+]
+
 export default function GroupBuyListPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -569,6 +587,11 @@ export default function GroupBuyListPage() {
     }
   })()
 
+  // 🧭 2026-06-17 (A): 빈 화면 부제목/쇼케이스를 선택 카테고리에 맞춤. (B): 등록 플로우에 카테고리 전달.
+  const catEmpty = CAT_EMPTY_META[category]
+  const showcaseCards = catEmpty ? [catEmpty.card] : DEFAULT_SHOWCASE
+  const createPath = catEmpty ? `/community-group-buy/new?category=${category}` : '/community-group-buy/new'
+
   return (
     <div className="bg-white dark:bg-[#0A0A0A] min-h-screen">
       <SEO
@@ -624,7 +647,7 @@ export default function GroupBuyListPage() {
             </p>
           </div>
           <button
-            onClick={() => navigate('/community-group-buy/new')}
+            onClick={() => navigate(createPath)}
             className="shrink-0 flex items-center gap-1 bg-white dark:bg-white text-gray-900 dark:text-gray-900 px-3 py-2 rounded-full text-[12px] font-extrabold shadow-sm active:scale-95 transition-transform"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -718,9 +741,9 @@ export default function GroupBuyListPage() {
           <button
             onClick={() => applyRegion(null, null)}
             className="text-[12px] text-gray-500 dark:text-gray-400 underline underline-offset-2"
-            aria-label="지역 필터 해제"
+            aria-label={t('groupBuy.clearRegion', { defaultValue: '지역 필터 해제' })}
           >
-            해제
+            {t('groupBuy.clearRegionShort', { defaultValue: '해제' })}
           </button>
         )}
         {/* 🧭 2026-06-17: 숙소는 그리드에 인라인 노출하되, 날짜·인원 기반 전용 검색은 /stays 로 보존(가역).
@@ -760,6 +783,9 @@ export default function GroupBuyListPage() {
           <button
             onClick={() => setShowSortDropdown((v) => !v)}
             className="flex items-center gap-1 text-[13px] text-gray-700 dark:text-gray-300 font-semibold"
+            aria-label={t('groupBuy.sortAria', { defaultValue: '정렬 기준 선택' })}
+            aria-haspopup="menu"
+            aria-expanded={showSortDropdown}
           >
             {SORT_LABELS[sortBy]}
             <ChevronDown
@@ -769,10 +795,12 @@ export default function GroupBuyListPage() {
             />
           </button>
           {showSortDropdown && (
-            <div className="absolute top-full right-0 mt-1 w-36 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#2A2A2A] rounded-xl shadow-lg z-30 overflow-hidden">
+            <div role="menu" className="absolute top-full right-0 mt-1 w-36 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#2A2A2A] rounded-xl shadow-lg z-30 overflow-hidden">
               {(Object.keys(SORT_LABELS) as SortOption[]).map((opt) => (
                 <button
                   key={opt}
+                  role="menuitemradio"
+                  aria-checked={sortBy === opt}
                   onClick={() => {
                     setSortBy(opt)
                     setShowSortDropdown(false)
@@ -859,27 +887,24 @@ export default function GroupBuyListPage() {
                     {t('groupBuy.emptySellerNew', { defaultValue: '곧 오픈 예정' })}
                   </p>
                   <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
-                    {t('groupBuy.emptySellerNewSub', { defaultValue: '셀러들이 매일 새 공구를 등록 중이에요. 알림 받아두세요!' })}
+                    {catEmpty
+                      ? t('groupBuy.emptyCatSub', { defaultValue: '{{noun}} 공구가 곧 시작될 예정이에요. 알림 받아두세요!', noun: catEmpty.noun })
+                      : t('groupBuy.emptySellerNewSub', { defaultValue: '셀러들이 매일 새 공구를 등록 중이에요. 알림 받아두세요!' })}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-3 max-w-md mx-auto">
-                  {[
-                    { emoji: '🍽️', label: '식사권 공구', desc: '맛집 단체 할인' },
-                    { emoji: '💇', label: '뷰티 공구', desc: '시술 공동 예약' },
-                    { emoji: '💪', label: '헬스 PT 공구', desc: '월 회원권 공동' },
-                    { emoji: '🏨', label: '숙박 공구', desc: '펜션·호텔 단체' },
-                  ].map((c, i) => (
-                    <div key={i} className="bg-white dark:bg-[#0A0A0A] border-2 border-dashed border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-4 text-center opacity-70 hover:opacity-100 transition-opacity">
+                <div className={`max-w-md mx-auto ${showcaseCards.length === 1 ? 'flex justify-center' : 'grid grid-cols-2 gap-3'}`}>
+                  {showcaseCards.map((c, i) => (
+                    <div key={i} className={`bg-white dark:bg-[#0A0A0A] border-2 border-dashed border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-4 text-center opacity-70 hover:opacity-100 transition-opacity ${showcaseCards.length === 1 ? 'w-44' : ''}`}>
                       <p className="text-3xl mb-1.5">{c.emoji}</p>
                       <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{c.label}</p>
                       <p className="text-[10px] text-gray-400 mt-0.5">{c.desc}</p>
-                      <span className="inline-block mt-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[9px] font-bold">곧 오픈</span>
+                      <span className="inline-block mt-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[9px] font-bold">{t('groupBuy.soonOpen', { defaultValue: '곧 오픈' })}</span>
                     </div>
                   ))}
                 </div>
                 <div className="mt-5 flex gap-2 justify-center flex-wrap">
                   <button
-                    onClick={() => navigate('/community-group-buy/new')}
+                    onClick={() => navigate(createPath)}
                     className="flex items-center gap-1 px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
                   >
                     <Plus className="w-3.5 h-3.5" /> {startCtaLabel}
@@ -932,7 +957,7 @@ export default function GroupBuyListPage() {
                   {t('groupBuy.emptyCommunitySub', { defaultValue: '원하는 맛집 공구를 직접 시작해보세요!' })}
                 </p>
                 <button
-                  onClick={() => navigate('/community-group-buy/new')}
+                  onClick={() => navigate(createPath)}
                   className="mt-5 px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
                 >
                   {t('groupBuy.ctaStart', { defaultValue: '공구 시작하기' })}
@@ -1042,9 +1067,9 @@ export default function GroupBuyListPage() {
                         </div>
                       </div>
 
-                      {/* 참여하기 CTA */}
+                      {/* 참여하기 CTA — 부모가 이미 <button> 이라 중첩 불가, 표시용 div 유지 */}
                       <div className="mt-3 bg-gray-900 text-white text-center py-2 rounded-xl text-[13px] font-bold">
-                        참여하기
+                        {t('groupBuy.joinCta', { defaultValue: '참여하기' })}
                       </div>
                     </button>
                   )
