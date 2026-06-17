@@ -5657,7 +5657,11 @@
   "cancelOrder": {},
   "groupBuy": {
     "tabSeller": "Local deals",
-    "tabCommunity": "Group up"
+    "tabCommunity": "Group up",
+    "emptyFilteredTitle": "No group buys yet",
+    "emptyFilteredSub": "Try another category or region",
+    "resetToAll": "See all group buys",
+    "clearRegion": "Clear region"
   },
   "blogDetail": {},
   "liveWs": {},

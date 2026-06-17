@@ -5657,7 +5657,11 @@
   "cancelOrder": {},
   "groupBuy": {
     "tabSeller": "Ofertas locales",
-    "tabCommunity": "Agruparse"
+    "tabCommunity": "Agruparse",
+    "emptyFilteredTitle": "Aún no hay compras grupales",
+    "emptyFilteredSub": "Prueba otra categoría o región",
+    "resetToAll": "Ver todas las compras grupales",
+    "clearRegion": "Quitar región"
   },
   "blogDetail": {},
   "liveWs": {},

@@ -5657,7 +5657,11 @@
   "cancelOrder": {},
   "groupBuy": {
     "tabSeller": "社区团购",
-    "tabCommunity": "一起拼"
+    "tabCommunity": "一起拼",
+    "emptyFilteredTitle": "暂无团购",
+    "emptyFilteredSub": "看看其他分类或地区吧",
+    "resetToAll": "查看全部团购",
+    "clearRegion": "清除地区"
   },
   "blogDetail": {},
   "liveWs": {},

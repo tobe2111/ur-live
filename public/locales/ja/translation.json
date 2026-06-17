@@ -5657,7 +5657,11 @@
   "cancelOrder": {},
   "groupBuy": {
     "tabSeller": "ご近所共同購入",
-    "tabCommunity": "みんなで集める"
+    "tabCommunity": "みんなで集める",
+    "emptyFilteredTitle": "まだ共同購入がありません",
+    "emptyFilteredSub": "他のカテゴリや地域も見てみましょう",
+    "resetToAll": "すべての共同購入を見る",
+    "clearRegion": "地域を解除"
   },
   "blogDetail": {},
   "liveWs": {},

@@ -6116,7 +6116,11 @@
   },
   "groupBuy": {
     "tabSeller": "동네 공구",
-    "tabCommunity": "같이 모으기"
+    "tabCommunity": "같이 모으기",
+    "emptyFilteredTitle": "공구가 아직 없어요",
+    "emptyFilteredSub": "다른 카테고리나 지역도 둘러보세요",
+    "resetToAll": "전체 공구 보기",
+    "clearRegion": "지역 해제"
   },
   "my": {
     "earningsGroupTitle": "내 수익·추천",
