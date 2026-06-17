@@ -320,7 +320,7 @@ function SellOwnProductsCTA() {
       <section className="mb-6 bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 rounded-xl p-4">
         <p className="text-sm font-bold text-pink-800 dark:text-pink-200">✅ 사업자 유저 — 판매·현금 정산 활성</p>
         <p className="text-xs text-pink-700 dark:text-pink-300 mt-1 mb-3">
-          여기서 바로 상품을 등록하거나, 판매 관리에서 주문·정산을 확인하세요. 등록한 상품은 내 링크샵에 함께 표시됩니다.
+          여기서 바로 상품을 등록하거나, 셀러 대시보드에서 주문·정산을 관리하세요. 등록한 상품은 내 링크샵에 함께 표시됩니다.
         </p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -334,7 +334,7 @@ function SellOwnProductsCTA() {
             disabled={switching}
             className="px-4 py-2 bg-white dark:bg-[#1A1A1A] border border-pink-300 dark:border-pink-700 text-pink-700 dark:text-pink-300 text-xs font-bold rounded-lg disabled:opacity-50"
           >
-            {switching ? '이동 중…' : '판매 관리 →'}
+            {switching ? '이동 중…' : '셀러 대시보드 →'}
           </button>
         </div>
         {showQuickAdd && (
