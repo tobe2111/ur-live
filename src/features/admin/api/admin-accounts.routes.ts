@@ -17,6 +17,7 @@ import { executeQuery, executeRun } from '@/worker/utils/database';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { hashPassword, validatePasswordComplexity } from '@/lib/password';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { ensureAdminsRoleUnconstrained } from '@/worker/utils/ensure-admins-role';
 
 export const adminAccountsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -63,8 +64,8 @@ adminAccountsRoutes.post('/admins', cors(), async (c) => {
 
     // SECURITY: only super_admin can create admins
     {
-      const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
-      const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
       const currentAdmin = await DB.prepare(
         'SELECT role FROM admins WHERE id = ?'
       ).bind(currentAdminId).first<{ role: string }>();
@@ -99,6 +100,10 @@ adminAccountsRoutes.post('/admins', cors(), async (c) => {
 
     const resolvedUsername = (username && username.trim()) || email.split('@')[0];
 
+    // 🛠️ 2026-06-17: 옛 admins.role CHECK 가 제한역할(ops/cs/finance/viewer/wholesale) INSERT 를
+    //   막아 500 나던 것 자가치유 — 제약 있으면 안전 재빌드(멱등, isolate 당 1회).
+    await ensureAdminsRoleUnconstrained(DB);
+
     const passwordHash = await hashPassword(password);
     await executeRun(DB,
       `INSERT INTO admins (username, email, password_hash, name, role, created_at)
@@ -125,8 +130,8 @@ adminAccountsRoutes.patch('/admins/:id', cors(), async (c) => {
     const DB = c.env.DB;
 
     {
-      const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
-      const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
       const currentAdmin = await DB.prepare(
         'SELECT role FROM admins WHERE id = ?'
       ).bind(currentAdminId).first<{ role: string }>();
@@ -150,8 +155,8 @@ adminAccountsRoutes.patch('/admins/:id', cors(), async (c) => {
     const current = rows[0];
 
     if (role && role !== current.role) {
-      const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
-      const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
       if (String(currentAdminId) === String(adminId) && current.role === 'super_admin') {
         return c.json({ success: false, error: 'super_admin은 자신의 역할을 변경할 수 없습니다' }, 403);
       }
@@ -172,6 +177,9 @@ adminAccountsRoutes.patch('/admins/:id', cors(), async (c) => {
     if (updates.length === 0) {
       return c.json({ success: false, error: '변경할 항목이 없습니다' }, 400);
     }
+
+    // 🛠️ 2026-06-17: 역할 변경도 옛 CHECK 에 걸릴 수 있어 동일 자가치유(제약 있을 때만 재빌드).
+    if (role !== undefined) await ensureAdminsRoleUnconstrained(DB);
 
     params.push(adminId);
     await executeRun(DB, `UPDATE admins SET ${updates.join(', ')} WHERE id = ?`, params);
@@ -195,8 +203,8 @@ adminAccountsRoutes.delete('/admins/:id', cors(), async (c) => {
     const DB = c.env.DB;
 
     {
-      const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
-      const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
       const currentAdmin = await DB.prepare(
         'SELECT role FROM admins WHERE id = ?'
       ).bind(currentAdminId).first<{ role: string }>();
@@ -207,9 +215,9 @@ adminAccountsRoutes.delete('/admins/:id', cors(), async (c) => {
 
     const adminId = c.req.param('id');
 
-    const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
-    const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
-    if (String(currentAdminId) === String(adminId)) {
+    const selfUser = c.get('user' as never) as { id?: string | number } | undefined;
+    const selfAdminId = selfUser?.id;
+    if (String(selfAdminId) === String(adminId)) {
       return c.json({ success: false, error: '자기 자신을 삭제할 수 없습니다' }, 403);
     }
 
@@ -269,8 +277,8 @@ adminAccountsRoutes.post('/admins/:id/reset-password', cors(), rateLimit({ actio
     const DB = c.env.DB;
 
     {
-      const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
-      const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
       const currentAdmin = await DB.prepare(
         'SELECT role FROM admins WHERE id = ?'
       ).bind(currentAdminId).first<{ role: string }>();

@@ -17,6 +17,7 @@ import { Hono } from 'hono';
 import type { Env } from '@/worker/types/env';
 import { requireAdmin } from '../middleware/auth';
 import { swallow } from '@/shared/utils/swallow';
+import { ensureAdminsRoleUnconstrained } from '@/worker/utils/ensure-admins-role';
 
 const repairSchemaRoutes = new Hono<{ Bindings: Env }>();
 
@@ -1794,6 +1795,15 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
 
   // 🛡️ 2026-06-10: 테이블 보장 후 컬럼/인덱스/백필 실행 (위 runColumnSteps 참조).
   await runColumnSteps();
+
+  // 🛠️ 2026-06-17: admins.role 옛 CHECK(role IN ('admin','super_admin')) 가 제한역할(ops/cs/finance/
+  //   viewer/wholesale) 생성을 막아 "새 관리자 추가 500" → 제약 있으면 안전 재빌드(원자 batch, 멱등).
+  try {
+    const adminsRole = await ensureAdminsRoleUnconstrained(DB);
+    results.push({ desc: 'admins.role CHECK 재빌드', status: adminsRole === 'rebuilt' ? 'added' : adminsRole === 'error' ? 'error' : 'exists' });
+  } catch (e) {
+    results.push({ desc: 'admins.role CHECK 재빌드', status: 'error', error: String(e).slice(0, 200) });
+  }
 
   // 🏭 2026-06-07: operation_guides CHECK 제약 확장 — guide_type 에 'wholesale' 추가.
   //   기존 프로덕션 테이블은 CHECK(guide_type IN ('admin','seller','agency')) 라서

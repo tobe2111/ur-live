@@ -13,7 +13,6 @@ import {
   HandCoins,
   Bell,
   Store,
-  Calendar,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
@@ -106,15 +105,12 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
   //   '달성' 뱃지(이미지 우상단)는 유지. 진행률 바 + 참여 인원 텍스트 삭제 → 업장명/주소/판매자 노출.
   const achieved = target > 0 && current >= target
   const timeLeft = formatTimeLeft(p.group_buy_deadline)
-  // 🧭 2026-06-17: 숙소(stay_voucher)는 그리드에 인라인 노출하되, 상세/예약은 전용 /stays/:id(객실·날짜)로.
-  const isStay = p.category === 'stay_voucher'
-  const detailPath = isStay ? `/stays/${p.id}` : `/group-buy/${p.id}`
   return (
     <button
-      onClick={() => navigate(detailPath)}
-      onMouseEnter={() => { if (!isStay) prefetch(p.id) }}
-      onTouchStart={() => { if (!isStay) prefetch(p.id) }}
-      onFocus={() => { if (!isStay) prefetch(p.id) }}
+      onClick={() => navigate(`/group-buy/${p.id}`)}
+      onMouseEnter={() => prefetch(p.id)}
+      onTouchStart={() => prefetch(p.id)}
+      onFocus={() => prefetch(p.id)}
       className="text-left active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col"
       style={{ backgroundColor: grad.base }}
     >
@@ -156,12 +152,8 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
           </span>
         )}
 
-        {/* 숙박 뱃지(숙소) — 객실·날짜 예약형이라 그룹 '달성' 대신 카테고리 표식 */}
-        {isStay ? (
-          <span className="absolute top-2 right-2 flex items-center gap-0.5 bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow">
-            🏨 {t('groupBuy.stayBadge', { defaultValue: '숙박' })}
-          </span>
-        ) : achieved && (
+        {/* 달성 뱃지 */}
+        {achieved && (
           <span className="absolute top-2 right-2 flex items-center gap-0.5 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow">
             <CheckCircle2 className="w-3 h-3" />
             {t('groupBuy.achieved', { defaultValue: '달성' })}
@@ -384,6 +376,10 @@ export default function GroupBuyListPage() {
       activity_voucher: 'etc_voucher',
     }
     const normalizeCat = (c: string | undefined | null) => (c && LEGACY_TO_NEW[c]) || c || ''
+    // 🛡️ 2026-06-17: 숙소(stay_voucher)는 전용 /stays 페이지(객실·날짜·가격 join)에서만 표시.
+    //   products.price=0 + 위치/평점이 product_stay_info 별도 테이블이라 동네딜 그리드 카드엔 ₩0·정보누락으로
+    //   부적합 → 그리드(전체 포함) 전역 제외. 숙소 탭은 /stays 로 리다이렉트.
+    result = result.filter((p) => normalizeCat(p.category) !== 'stay_voucher')
     if (category === 'general') {
       result = result.filter((p) => !VOUCHER_CATEGORIES.includes(p.category || ''))
     } else if (category !== 'all') {
@@ -655,8 +651,9 @@ export default function GroupBuyListPage() {
               <button
                 key={tab.key}
                 onClick={() => {
-                  // 🧭 2026-06-17 (사용자 요청): 숙소도 다른 카테고리처럼 동네딜 그리드 안에서 필터(이전엔
-                  //   /stays 로 리다이렉트). 숙소 카드만 클릭 시 전용 /stays/:id(객실·날짜 예약)로 — 카드 참조.
+                  // 🛡️ 숙소(stay_voucher)는 products.price=0 + 위치·객실이 product_stay_info 별도 테이블이라
+                  //   그리드 카드로는 ₩0·정보누락으로 깨짐 → 전용 /stays(객실·날짜·가격 join) 페이지로.
+                  if (tab.key === 'stay_voucher') { navigate('/stays'); return }
                   setCategory(tab.key)
                   // 🧭 2026-06-17: URL 도 동기화 — PC 사이드바/딥링크와 단일 소스(공유·뒤로가기 지원).
                   const next = new URLSearchParams(searchParams)
@@ -699,18 +696,6 @@ export default function GroupBuyListPage() {
             aria-label="지역 필터 해제"
           >
             해제
-          </button>
-        )}
-        {/* 🧭 2026-06-17: 숙소는 그리드에 인라인 노출하되, 날짜·인원 기반 전용 검색은 /stays 로 보존(가역).
-            숙박은 보통 날짜로 찾으므로 강조 색(accent)으로 눈에 띄게. */}
-        {category === 'stay_voucher' && (
-          <button
-            onClick={() => navigate('/stays')}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-bold bg-indigo-500 text-white shadow-sm active:scale-95 transition-transform"
-            aria-label="숙소 날짜·인원 검색"
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>{t('groupBuy.stayDateSearch', { defaultValue: '날짜·인원 검색' })}</span>
           </button>
         )}
       </div>
