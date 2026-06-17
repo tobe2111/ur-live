@@ -101,6 +101,12 @@ async function _ensureSupplyVisibilitySchema(DB: D1Database): Promise<void> {
   if (!have.has('dominant_color')) {
     await DB.prepare('ALTER TABLE products ADD COLUMN dominant_color TEXT').run().catch(swallow('supply-vis:add-dominant-color'))
   }
+  // 🚑 2026-06-17 (대표 신고 — "admin엔 있는데 도매몰 '해당 조건 상품 없어요'"): supply_source_id 0 → NULL 정규화.
+  //   일부 등록 경로가 '소스없음'을 NULL 대신 0 으로 남김. admin 목록은 (IS NULL OR =0) 둘 다 노출하지만
+  //   카탈로그/홈/리스트 9개 쿼리는 엄격히 `supply_source_id IS NULL` → 0 인 공급원본이 전부 제외돼 "0개"로 보임.
+  //   0 은 유효 product id 가 아니므로 '원본'(NULL)으로 정규화 → 9개 쿼리 일괄 치유. 멱등(이후 0행 매칭).
+  await DB.prepare("UPDATE products SET supply_source_id = NULL WHERE is_supply_product = 1 AND supply_source_id = 0")
+    .run().catch(swallow('supply-vis:normalize-source-zero'))
   if (!have.has('min_order_qty')) {
     // 🏭 2026-06-04 최소 주문 수량(MOQ) — 도매 박스 단위. 공급자 설정, 기본 1(낱개).
     //   카드/상세/카트 박스·개당 단가 병기 + 주문 서버 검증(qty >= moq).
