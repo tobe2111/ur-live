@@ -247,20 +247,20 @@ export default function VoucherDetailPage() {
       </div>
 
       <div className="ur-content-narrow px-4">
-        {/* 🎨 상품 카드 — 사용자 요청: 이미지 영역은 그라데이션으로 유지. 이미지는 그라데이션 위에 contain. */}
-        <div className="relative h-[278px] rounded-[28px] overflow-hidden bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] dark:from-[#15171C] dark:to-[#0F1115] flex items-center justify-center">
+        {/* 🎨 상품 카드 — 사용자 요청: 사진이 카드를 가득 채움(object-cover, 정사각 풀블리드).
+            그라데이션은 로딩 중/투명 이미지 대비 base 로만 유지(채워지면 안 보임). */}
+        <div className="relative aspect-square w-full rounded-[28px] overflow-hidden bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] dark:from-[#15171C] dark:to-[#0F1115]">
           {product.image_url && (
             // 🛡️ 2026-05-27 (loading P0): cfImage 변환 — 원본 (1MB+) → WebP. LCP 우선 → eager.
             <img
-              src={cfImage(product.image_url, { width: 600, format: 'auto' }) || product.image_url}
-              srcSet={cfSrcSet(product.image_url, 600) || undefined}
-              sizes="(max-width: 640px) 90vw, 600px"
+              src={cfImage(product.image_url, { width: 800, format: 'auto' }) || product.image_url}
+              srcSet={cfSrcSet(product.image_url, 800) || undefined}
+              sizes="(max-width: 640px) 100vw, 720px"
               alt={product.name}
               loading="eager"
               fetchPriority="high"
               decoding="async"
-              className="max-h-[242px] max-w-[78%] object-contain"
-              style={{ filter: 'drop-shadow(0 18px 24px rgba(20,28,45,.18))' }}
+              className="w-full h-full object-cover"
             />
           )}
         </div>
