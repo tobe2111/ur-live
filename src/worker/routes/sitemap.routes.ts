@@ -101,12 +101,16 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
         urls.push({ loc: `/products/${p.id}`, priority: 0.8, changefreq: 'weekly' });
       }
 
-      // 활성 셀러 공개 프로필
+      // 활성 셀러 공개 프로필 — 🔗 2026-06-17 링크샵 URL 통일: 연결 유저 handle 있으면 /u/{handle}(통일 canonical),
+      //   없으면 기존 /s/{username} (둘 다 워커가 처리). 검색엔진이 통일 URL 을 인덱싱.
       const sellers = await DB.prepare(
-        `SELECT id, username FROM sellers WHERE status = 'approved' ORDER BY id DESC LIMIT 200`
-      ).all<{ id: number; username: string }>();
+        `SELECT s.id AS id, s.username AS username, u.handle AS handle
+           FROM sellers s LEFT JOIN users u ON u.id = s.linked_user_id
+          WHERE s.status = 'approved' ORDER BY s.id DESC LIMIT 200`
+      ).all<{ id: number; username: string; handle: string | null }>();
       for (const s of sellers.results || []) {
-        urls.push({ loc: `/s/${s.username || s.id}`, priority: 0.7, changefreq: 'weekly' });
+        const loc = s.handle ? `/u/${s.handle}` : `/s/${s.username || s.id}`;
+        urls.push({ loc, priority: 0.7, changefreq: 'weekly' });
       }
 
       // 최근 라이브 스트림
