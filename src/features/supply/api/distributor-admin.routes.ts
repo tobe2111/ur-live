@@ -21,6 +21,7 @@ import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund, DEFAULT_PLATFORM_COMMISSION_PCT } from './wholesale-settlement'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn, hasDepositRefundTxn } from './wholesale-deposit-core'
 import { ensureSupplyVisibilitySchema, normalizeVisibility } from './supply-visibility'
+import { ensureMallSchema } from './wholesale-malls'
 import { parseCsv, buildCsv, csvResponse } from './supply-csv'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { ensureOemSchema, normalizeOemStatus } from './oem-requests'
@@ -1594,6 +1595,93 @@ app.get('/supply-list', async (c) => {
     return c.json({ success: true, items: rows.results ?? [], pagination: { page, limit, total: Number(totalRow?.c ?? 0) } })
   } catch (err) {
     return safeError(c, err, '상품 목록 조회 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// 🩺 2026-06-17 (대표 신고 — "상품이 admin엔 있는데 도매몰엔 안 떠, 영구해결"): 카탈로그 노출 자가진단.
+//   근본문제: admin 목록 WHERE(`is_supply_product=1 AND source NULL/0`) 보다 카탈로그 WHERE 가 엄격
+//   (`+is_active=1 +supply_source_id IS NULL +supply_price>0 +mall_id=요청몰 +visibility`). 한 조건이라도
+//   어긋나면 admin엔 보이고 카탈로그엔 안 뜸. 추측 대신 사유별 카운트 + 숨은 샘플 + 몰/가시성 분포를 실측.
+app.get('/catalog-diagnostic', async (c) => {
+  const { DB } = c.env
+  try {
+    await ensureMallSchema(DB).catch(() => {})
+    // admin-목록 유니버스 = 공급원본(source NULL/0). 그 안에서 카탈로그 노출 조건별 분해.
+    //   ⚠️ 카탈로그 노출조건과 동일 predicate(mall=1·공개 가시성 기준). 허용목록(per-seller)은 제외 — 공개 노출만 셈.
+    const uni = `is_supply_product = 1 AND (supply_source_id IS NULL OR supply_source_id = 0)`
+    const visiblePred = `is_active = 1 AND supply_source_id IS NULL AND COALESCE(supply_price,0) > 0 AND COALESCE(mall_id,1) = 1 AND (supply_visibility = 'ALL' OR supply_visibility IS NULL)`
+    const agg = await DB.prepare(
+      `SELECT
+         COUNT(*) AS total,
+         SUM(CASE WHEN COALESCE(is_active,1) != 1 THEN 1 ELSE 0 END) AS inactive,
+         SUM(CASE WHEN supply_source_id = 0 THEN 1 ELSE 0 END) AS source_zero,
+         SUM(CASE WHEN supply_source_id IS NOT NULL AND supply_source_id != 0 THEN 1 ELSE 0 END) AS source_real,
+         SUM(CASE WHEN COALESCE(supply_price,0) <= 0 THEN 1 ELSE 0 END) AS zero_price,
+         SUM(CASE WHEN COALESCE(mall_id,1) != 1 THEN 1 ELSE 0 END) AS not_mall1,
+         SUM(CASE WHEN supply_visibility IS NOT NULL AND supply_visibility != 'ALL' THEN 1 ELSE 0 END) AS restricted_vis,
+         SUM(CASE WHEN ${visiblePred} THEN 1 ELSE 0 END) AS catalog_visible
+       FROM products WHERE ${uni}`
+    ).first<Record<string, number>>().catch(() => null)
+    const byMall = await DB.prepare(
+      `SELECT COALESCE(mall_id,1) AS mall_id, COUNT(*) AS c FROM products WHERE ${uni} GROUP BY COALESCE(mall_id,1) ORDER BY mall_id`
+    ).all<{ mall_id: number; c: number }>().catch(() => ({ results: [] as { mall_id: number; c: number }[] }))
+    const byVis = await DB.prepare(
+      `SELECT COALESCE(supply_visibility,'(NULL)') AS v, COUNT(*) AS c FROM products WHERE ${uni} GROUP BY COALESCE(supply_visibility,'(NULL)') ORDER BY c DESC`
+    ).all<{ v: string; c: number }>().catch(() => ({ results: [] as { v: string; c: number }[] }))
+    // admin엔 보이나 카탈로그(mall1·공개)엔 안 뜨는 실제 상품 샘플 — 필드값으로 원인 즉시 판별.
+    const hidden = await DB.prepare(
+      `SELECT id, name, COALESCE(is_active,1) AS is_active, supply_source_id,
+              COALESCE(supply_price,0) AS supply_price, COALESCE(mall_id,1) AS mall_id,
+              COALESCE(supply_visibility,'(NULL)') AS supply_visibility,
+              CASE WHEN slug LIKE 'demo-wholesale-%' THEN 1 ELSE 0 END AS is_demo
+       FROM products WHERE ${uni} AND NOT (${visiblePred})
+       ORDER BY created_at DESC LIMIT 20`
+    ).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+    const malls = await DB.prepare(
+      `SELECT id, name, host, COALESCE(active,1) AS active FROM wholesale_malls ORDER BY id`
+    ).all<{ id: number; name: string; host: string | null; active: number }>().catch(() => ({ results: [] as { id: number; name: string; host: string | null; active: number }[] }))
+    return c.json({
+      success: true,
+      summary: agg || {},
+      by_mall: byMall.results || [],
+      by_visibility: byVis.results || [],
+      hidden_sample: hidden.results || [],
+      malls: malls.results || [],
+    })
+  } catch (err) {
+    return safeError(c, err, '카탈로그 진단 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// 🛠️ 2026-06-17 (대표 요청 "영구해결"): 카탈로그 노출 정정. 기본 = 데이터정합 정규화만(항상 안전 —
+//   상품을 잘못 노출시키지 않음): supply_source_id 0→NULL, mall_id NULL/0→1. 옵션(명시 선택 시): 비활성
+//   공급원본 노출(activate), 제한 가시성→ALL(open_visibility). 공급원본(source NULL/0)만 대상.
+app.post('/catalog-repair', async (c) => {
+  const { DB } = c.env
+  try {
+    const body = await c.req.json<{ activate?: boolean; open_visibility?: boolean }>().catch(() => ({} as { activate?: boolean; open_visibility?: boolean }))
+    const uni = `is_supply_product = 1 AND (supply_source_id IS NULL OR supply_source_id = 0)`
+    const changed: Record<string, number> = {}
+    // 1) source 0 → NULL (0 = '원본'(소스없음) 의미 — 카탈로그 IS NULL 과 일치시킴). 항상 안전.
+    const r1 = await DB.prepare(`UPDATE products SET supply_source_id = NULL, updated_at = datetime('now') WHERE is_supply_product = 1 AND supply_source_id = 0`).run().catch(() => null)
+    changed.source_normalized = Number(r1?.meta?.changes || 0)
+    // 2) mall_id NULL/0 → 1 (기본 몰). 항상 안전.
+    const r2 = await DB.prepare(`UPDATE products SET mall_id = 1, updated_at = datetime('now') WHERE ${uni} AND (mall_id IS NULL OR mall_id = 0)`).run().catch(() => null)
+    changed.mall_normalized = Number(r2?.meta?.changes || 0)
+    // 3) (옵션) 비활성 공급원본 노출.
+    if (body.activate === true) {
+      const r3 = await DB.prepare(`UPDATE products SET is_active = 1, updated_at = datetime('now') WHERE ${uni} AND COALESCE(is_active,1) != 1`).run().catch(() => null)
+      changed.activated = Number(r3?.meta?.changes || 0)
+    }
+    // 4) (옵션) 제한 가시성 → ALL(전체 공개).
+    if (body.open_visibility === true) {
+      const r4 = await DB.prepare(`UPDATE products SET supply_visibility = 'ALL', updated_at = datetime('now') WHERE ${uni} AND supply_visibility IS NOT NULL AND supply_visibility != 'ALL'`).run().catch(() => null)
+      changed.visibility_opened = Number(r4?.meta?.changes || 0)
+    }
+    await writeAuditLog(c, { action: 'wholesale_catalog_repair', targetType: 'products', targetId: 0, after: changed })
+    return c.json({ success: true, changed })
+  } catch (err) {
+    return safeError(c, err, '카탈로그 정정 중 오류가 발생했습니다', '[distributor-admin]')
   }
 })
 
