@@ -142,23 +142,23 @@ export default function BottomNav() {
     if (typeof window === 'undefined') return
     if (!isLoggedIn) { setLinkshopPath('/host/new'); return }
     try {
-      // 🏭 2026-06-05 (사용자 신고 — /api/curator/user 400): stale/예약 핸들 가드.
-      //   옛 계정의 'user'(generic @user) 등 예약·무효 핸들이 캐시에 남아 /u/user → 400 나던 것 차단.
-      //   reserved/짧은 값은 무시하고 stale 키 정리 → /u/me(현재 본인) 로 자연 fallback.
+      // 🏭 2026-06-05: stale/예약 핸들 가드 (옛 'user' generic 핸들 등 → /u/user 400 차단).
       const RESERVED = new Set(['user', 'me', 'admin', 'seller', 'api', 'host', 'new'])
       const badHandle = (v: string | null): boolean => !v || v.length < 3 || RESERVED.has(v.toLowerCase())
-      // 1차: localStorage cache
-      const sellerUsername = localStorage.getItem('seller_username')
-      if (sellerUsername && !badHandle(sellerUsername)) { setLinkshopPath(`/profile/${sellerUsername}`); return }
-      if (sellerUsername && badHandle(sellerUsername)) { try { localStorage.removeItem('seller_username') } catch { /* */ } }
-      const cachedSeller = localStorage.getItem('linked_seller_username')
-      if (cachedSeller && !badHandle(cachedSeller)) { setLinkshopPath(`/profile/${cachedSeller}`); return }
-      if (cachedSeller && badHandle(cachedSeller)) { try { localStorage.removeItem('linked_seller_username') } catch { /* */ } }
+      // 🔗 2026-06-17 [UNLOCK_LOADING] (사용자 결정 — 링크샵 /u/ 단일화): 소비자(큐레이터) 계정이 있으면
+      //   통합 링크샵 /u/{handle} 우선. 셀러여도 /u/{handle} 는 CuratorPage 가 linked_seller 면 셀러
+      //   storefront 를 inline 렌더 → 콘텐츠 손실 없이 URL 만 /profile→/u 통일(unification 북극성).
+      //   셀러-only(소비자 계정 없음)만 /profile 유지 — 그들의 유일한 링크샵이라 회귀 방지.
       const cachedHandle = localStorage.getItem('user_handle')
       if (cachedHandle && !badHandle(cachedHandle)) { setLinkshopPath(`/u/${cachedHandle}`); return }
       if (cachedHandle && badHandle(cachedHandle)) { try { localStorage.removeItem('user_handle') } catch { /* */ } }
+      const hasConsumer = hasAccessToken || hasSessionLogin
+      if (hasConsumer) { setLinkshopPath('/u/me'); return } // 핸들 캐시 없음 → UMeRedirect 가 본인 핸들 해석
 
-      // 2차: seller_token payload 에서 username 추출 (영구 fallback)
+      // 셀러-only fallback (소비자 계정 없음) — 셀러 공개페이지가 유일한 링크샵.
+      const sellerUsername = localStorage.getItem('seller_username')
+      if (sellerUsername && !badHandle(sellerUsername)) { setLinkshopPath(`/profile/${sellerUsername}`); return }
+      if (sellerUsername && badHandle(sellerUsername)) { try { localStorage.removeItem('seller_username') } catch { /* */ } }
       if (hasSellerToken) {
         const token = localStorage.getItem('seller_token')
         if (token) {
@@ -178,7 +178,7 @@ export default function BottomNav() {
       }
     } catch { /* ignore */ }
     setLinkshopPath('/u/me')
-  }, [isLoggedIn, hasSellerToken])
+  }, [isLoggedIn, hasSellerToken, hasAccessToken, hasSessionLogin])
   // 🛡️ 2026-06-01 [UNLOCK_LOADING] 하단바 재구성 (사용자 승인): 교환권 탭 제거 → 동네딜(오프라인 공구) 추가.
   //   순서 = 홈 / 동네딜 / 쇼핑 / 링크샵 / 마이. 교환권 콘텐츠는 홈 상단 + /vouchers 전체보기로 유지.
   //   linkshop localStorage 경로 로직·active-path 패턴은 그대로 보존.

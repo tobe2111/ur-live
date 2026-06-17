@@ -295,6 +295,11 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
     const { token, refreshToken, iat } = await issueSupplierTokens(DB, c.env.JWT_SECRET, sup);
     // 🔐 단일 세션 강제 — 제조회원 전환(=첫 로그인) 시 세션 시작. 토큰 iat 와 동일 값(자기 토큰 거부 방지).
     await startDashboardSession(c.env.DB, 'supplier', sup.id, iat, { userAgent: c.req.header('User-Agent'), ip: c.req.header('CF-Connecting-IP') });
+    // 🔐 2026-06-17 쿠키 전환 Phase 1: ud_supplier_token dual-write (GET 전용 읽기 — Bearer 흐름 불변).
+    try {
+      const { authTokenSetCookie } = await import('../../../worker/utils/auth-cookies');
+      c.header('Set-Cookie', authTokenSetCookie('ud_supplier_token', token, new URL(c.req.url).hostname), { append: true });
+    } catch { /* dual-write 실패해도 로그인 정상 */ }
     return c.json({ success: true, status: 'approved', data: { token, refreshToken, supplier: { id: sup.id, business_name: sup.business_name, email: sup.email } } });
   } catch (err) {
     return safeError(c, err, '제조회원 전환 중 오류가 발생했습니다', '[supplier-auth]');
@@ -337,6 +342,12 @@ supplierAuthRoutes.post('/login', cors(), rateLimit({ action: 'supplier_login', 
 
     // 🔐 단일 세션 강제 — 이 로그인 이전 발급된 supplier 토큰 전부 무효화. 토큰 iat 와 동일 값(자기 토큰 거부 방지).
     await startDashboardSession(c.env.DB, 'supplier', supplier.id, iat, { userAgent: c.req.header('User-Agent'), ip: c.req.header('CF-Connecting-IP') });
+
+    // 🔐 2026-06-17 쿠키 전환 Phase 1: ud_supplier_token dual-write (GET 전용 읽기 — Bearer 흐름 불변).
+    try {
+      const { authTokenSetCookie } = await import('../../../worker/utils/auth-cookies');
+      c.header('Set-Cookie', authTokenSetCookie('ud_supplier_token', token, new URL(c.req.url).hostname), { append: true });
+    } catch { /* dual-write 실패해도 로그인 정상 */ }
 
     return c.json({
       success: true,

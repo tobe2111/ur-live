@@ -1372,6 +1372,9 @@ app.post('/api/auth/logout-cookies', async (c) => {
   const host = new URL(c.req.url).hostname;
   c.header('Set-Cookie', authTokenClearCookie('ud_seller_token', host), { append: true });
   c.header('Set-Cookie', authTokenClearCookie('ud_agency_token', host), { append: true });
+  // 🔐 2026-06-17 쿠키 전환 Phase 1: admin/supplier ud_* 도 정리.
+  c.header('Set-Cookie', authTokenClearCookie('ud_admin_token', host), { append: true });
+  c.header('Set-Cookie', authTokenClearCookie('ud_supplier_token', host), { append: true });
   return c.json({ success: true });
 });
 app.route('/api/admin/wholesale-proposals', adminWholesaleProposalRoutes); // 어드민 제안·신고 큐/처리

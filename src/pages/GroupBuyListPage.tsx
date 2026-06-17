@@ -867,6 +867,36 @@ export default function GroupBuyListPage() {
                 ))}
               </div>
             ) : filtered.length === 0 ? (
+              (category !== 'all' || !!regionKey || !!searchQuery.trim()) ? (
+                /* 🧭 2026-06-17 (대표 신고 — 빈 카테고리 UX): 카테고리/지역/검색으로 0건이면 '곧 오픈' 대신
+                   '이 조건만 없음 + 초기화' — 다른 카테고리엔 공구가 있을 수 있음을 알려 이탈 방지. */
+                <div className="py-14 text-center">
+                  <p className="text-[34px] mb-2">🔍</p>
+                  <p className="text-gray-900 dark:text-white font-bold text-[15px]">
+                    {(category === 'meal_voucher' ? '식사권 ' : category === 'beauty_voucher' ? '미용 ' : category === 'etc_voucher' ? '기타 ' : category === 'general' ? '온라인 ' : '')}
+                    {t('groupBuy.emptyFilteredTitle', { defaultValue: '공구가 아직 없어요' })}
+                  </p>
+                  <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
+                    {t('groupBuy.emptyFilteredSub', { defaultValue: '다른 카테고리나 지역도 둘러보세요' })}
+                  </p>
+                  <div className="mt-4 flex gap-2 justify-center flex-wrap">
+                    <button
+                      onClick={() => { setCategory('all'); setSearchQuery(''); applyRegion(null, null); const n = new URLSearchParams(searchParams); n.delete('category'); setSearchParams(n, { replace: true }) }}
+                      className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[13px] font-bold rounded-full"
+                    >
+                      {t('groupBuy.resetToAll', { defaultValue: '전체 공구 보기' })}
+                    </button>
+                    {regionKey && (
+                      <button
+                        onClick={() => applyRegion(null, null)}
+                        className="px-5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 text-[13px] font-semibold rounded-full"
+                      >
+                        {t('groupBuy.clearRegion', { defaultValue: '지역 해제' })}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
               <div className="space-y-4 py-8">
                 {/* 🛡️ 2026-05-15: 빈 화면 → "곧 오픈 예정" Coming Soon 카드 (3 AI 합의) */}
                 <div className="text-center mb-4">
@@ -908,6 +938,7 @@ export default function GroupBuyListPage() {
                   </button>
                 </div>
               </div>
+              )
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5">
                 {filtered.slice(0, visibleCount).map((p, idx) => (

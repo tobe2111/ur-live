@@ -1,5 +1,23 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 어드민 주문 페이지: 종류 구별(교환권/상품) + 체크박스 일괄 처리 (대표 요청)
+**요청**: `/admin/orders` 에서 교환권/상품/도매몰 구별 + 체크박스 선택.
+- **종류 구별**: GET `/api/admin/orders` SELECT 에 `first_item_category`(첫 주문상품 category) 추가 → 프론트 `orderKind()` 가 `isVoucherCategory` 면 **교환권**(+식사/미용/숙소/기타 서브), 아니면 **상품**. 신규 '종류' 컬럼(amber 교환권 / sky 상품 배지). bind param 무변경(정적 서브쿼리).
+- **도매몰(B2B)**: 별도 `wholesale_orders` 테이블이라 이 페이지(=`orders`)엔 **구조적으로 안 나옴** → '도매몰(B2B) 주문 보기' 링크(`/admin/wholesale-orders`)로 안내(혼동 방지).
+- **체크박스 일괄 처리**: 행별 체크박스 + 전체선택(indeterminate) + 1+선택 시 액션바(상품 준비/배송중/배송완료 일괄). **기존 `PATCH /orders/bulk-status` 재사용**(상태 검증·결제완료 일괄취소 차단·state-machine 그대로). 페이지/필터 변경 시 선택 자동 정리.
+- 검증: tsc 0 · `npm run build` 0 · 대시보드 테마 0 · sql-bind 0. 머니 로직 무변경(상태 플립만, bulk-status 의 캡처 주문 취소 차단 유지).
+
+## 🔐 2026-06-17 — 쿠키 전환(C) Phase 1 구현: httpOnly 토큰 쿠키 발급 일원화 (대표 "무조건 하자, 모두 이상적으로")
+**방침**: 인증은 prod 자동배포 + 쿠키/웹뷰 E2E 불가 → 한 방 컷오버 시 전 대시보드(대표 어드민 포함) 락아웃 위험 → **다크론치**(무해 기반 먼저, 실제 전환은 flag+staging 게이트).
+- **Phase 1(배포·무해·추가형)**: 모든 대시보드 로그인이 `ud_*` httpOnly 쿠키 발급하도록 통일. `auth-cookies.ts` 4역할 확장(+admin/supplier), `admin.routes`(ud_admin_token)·`supplier-auth.routes`(ud_supplier_token login+become) 발급 추가, `logout-cookies` 4역할 정리, 단위테스트 5. **기존 Bearer/localStorage·응답 바디 byte-identical → 무회귀·락아웃 0.** 읽기는 GET 전용 fallback(Bearer 우선)이라 **보안 이득은 아직 0**(localStorage 토큰 잔존) — 다음 컷오버에서 발생.
+- **Phase 2~3(미구현, staging 게이트)**: CSRF 강제 확대(쿠키 mutation, Bearer skip) + 미들웨어 쿠키 mutation 읽기 + **클라 컷오버(localStorage 토큰 제거 = 실제 XSS 차단)**. feature flag `DASHBOARD_COOKIE_AUTH`(OFF) 뒤. **이 환경 E2E 불가** → 대표 staging 검증 게이트(특히 카톡 인앱). 설계: `docs/design/dashboard-cookie-auth.md` §11.
+- 검증: tsc 0 · 단위(auth-cookies 5) · `npm run build` exit 0.
+
+## ✅ 2026-06-17 — 이메일 기억하기 4개 대시보드 추가 + 자동 로그인 정합 (대표 신고)
+**신고**: "각 대시보드마다 이메일 기억하기 잘 되나? 자동 로그인도 안 되는 것 같다." 전수조사: 이메일 기억은 **admin·seller만 있고 agency/supplier/wholesale(owner·staff) 4곳 누락**. 자동 로그인은 **전용 토글 없음**(토큰 30일+refresh 90일+자동갱신으로 암묵 유지).
+- **이메일 기억 4곳 추가**(대표 "4곳 모두"): `AgencyLoginPage`/`SupplierLoginPage`/`WholesaleLoginPage`/`WholesaleStaffLoginPage` 에 admin/seller 패턴 미러링 — 체크박스 + 마운트 시 자동채움 + submit 시 저장/삭제. 키 `{agency,supplier,wholesale,wholesale_staff}_remember_email`. 프론트만, 라이트 테마(위반 0), tsc 0 · build 0.
+- **자동 로그인(대표 "추천대로")**: 별도 sessionStorage 토글은 **미구현**(택트 — 토큰 읽기 경로 변경 = 리스크 + E2E 불가, 게다가 대표 pain은 "로그아웃됨"이라 opt-out 토글은 무관). 대신 **재로그인 마찰 최소화 = 이메일 기억 전 대시보드 통일**로 해결(단일세션 유지 시 비번만 입력). 지속(자동 유지)은 이미 30일 동작. **느낌상 풀림의 유력 원인 = 방금 배포된 단일 세션(다른 기기 로그인 시 이전 기기 로그아웃)** — 대표가 "추천대로"라 단일세션 유지.
+
 ## ✅ 2026-06-17 — 판매사 등급 페이지(1,170줄) 4탭 분리 (대표 "지금 하자, 가장 이상적이고 신중하게")
 **배경**: `AdminDistributorGradesPage` 1,170줄에 12기능 집약(등급/마진/자동승급/배정/여신/제안/세금/유통채널/특가/수량할인/OEM/회사정보). 머니 크리티컬(staging E2E 불가)이라 **로직 0 변경 + 섹션을 연속 범위 그대로 탭으로 묶는** 최-안전 방식 채택.
 - **4탭(딥링크 라우트)**: `등급·마진`(/distributor-grades) · `여신·외상`(/distributor-credit) · `제안·세금`(/distributor-tax) · `공급가·채널·OEM`(/distributor-supply). 같은 컴포넌트가 `useLocation` 경로로 탭 결정 → 4 라우트가 동일 컴포넌트 렌더(인스턴스 보존 = 탭 전환 시 재마운트/재fetch 없음).

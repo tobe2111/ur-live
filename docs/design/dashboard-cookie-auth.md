@@ -75,3 +75,26 @@
 1. **Phase 0(CSRF 강제 확대)** 구현 — 추가형·단위테스트 가능·무회귀(권장 첫 코드 스텝).
 2. Phase 1(어드민) 쿠키 발급+dual-read → staging E2E → 클라 컷오버.
 3. 이후 단계 순차.
+
+---
+
+## 11. 구현 진행 (실제 코드)
+
+### ✅ Phase 1 — httpOnly 쿠키 발급 일원화 (무해·추가형, 배포됨)
+**모든 대시보드 로그인이 `ud_*` httpOnly 토큰 쿠키를 발급**하도록 통일. 기존 Bearer/localStorage 흐름·응답 바디 **byte-identical**(추가 Set-Cookie 만) → **무회귀·락아웃 0**.
+- `auth-cookies.ts`: `AuthTokenCookieName` 4역할로 확장(seller/agency → +admin/supplier). `readAuthTokenCookie` 정규식도 4역할(GET 전용 읽기는 미들웨어가 이미 수행).
+- 발급 추가: `admin.routes`(`ud_admin_token`), `supplier-auth.routes`(`ud_supplier_token`, login+become). seller/agency 는 이미 발급 중(로그인/refresh/kakao).
+- `logout-cookies`: admin/supplier ud_* 도 정리(멱등).
+- 단위테스트 `auth-cookies.test.ts`(5): 4역할 발급 포맷·도메인 분기(ur-team.com=공유 / utongstart·pages.dev=host-only)·읽기.
+- **현 효과**: 쿠키가 발급되지만 **읽기는 GET 전용 fallback**(Bearer 우선). 즉 *보안 이득은 아직 0*(localStorage 토큰 잔존) — 다음 단계(컷오버)에서 발생. 이 단계는 **무해한 기반**일 뿐.
+
+### ⏳ Phase 2 — CSRF 강제 확대 + 쿠키 mutation 읽기 (flag-gated, staging E2E 게이트)
+- `csrfProtection()` 를 **쿠키 인증 mutation** 에 적용(Bearer skip → 현행 무영향). 단 `/api/*/login|register|refresh|forgot|reset` + 공개 GET + 멀티파트 skip 정밀 열거 필수. **csrf_token 발급(GET) 보편화 선행** 필요(미발급 시 쿠키 mutation 403).
+- 미들웨어 `ud_*` 읽기를 GET→전 메서드로 확대(위 CSRF 가드 하에서만).
+- **feature flag `DASHBOARD_COOKIE_AUTH`(기본 OFF)** 뒤에서 — flag OFF 면 코드는 inert.
+
+### ⏳ Phase 3 — 클라 컷오버 (역할별, staging E2E 통과 후 flag ON)
+- 클라가 Bearer 첨부 중단 + **localStorage 토큰 미저장**(여기서 비로소 XSS 탈취 차단 = 실제 보안 이득). 401 refresh 흐름 쿠키 기반 재배선.
+- 순서: 어드민 → 제조사/에이전시 → 셀러(웹뷰 최우선). 각 역할 staging(특히 카톡 인앱) E2E 통과 후 flag ON, 문제 시 flag OFF 즉시 롤백.
+
+> ⚠️ **Phase 2~3 는 이 작업 환경에서 E2E 불가** → 코드는 flag-OFF 로 inert 배포 후, **대표님 staging 검증을 게이트**로 단계 활성화. Phase 1 만으로는 사용자 체감/보안 변화 0(무해 기반).
