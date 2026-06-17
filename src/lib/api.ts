@@ -605,6 +605,11 @@ api.interceptors.response.use(
       //   헬스 엔드포인트가 쿠키로 최종 판정하므로 비-소비자에겐 무해 — session:false 면 정상 정리.)
       const isSessionCookieUser = !!localStorage.getItem('session_login') || !!localStorage.getItem('user_id');
       if (isSessionCookieUser) {
+        // 🛡️ 2026-06-17 (소비자 자동 로그아웃 근본수정): 세션이 *죽었다는 확정 증거(session===false)* 가
+        //   있을 때만 로그아웃한다. 헬스체크가 네트워크/타임아웃/5xx 로 실패하는 건 "세션 무효"의 증거가
+        //   아니므로 로그아웃하지 않는다. 기존엔 catch 후 그대로 clearAuthData('user') → 헬스 일시오류·느린
+        //   응답·듀얼유저 대시보드 토큰 401 fall-through 등으로 소비자 세션이 *부당하게* 풀리던 사고.
+        let sessionConfirmedDead = false;
         try {
           const health = await axios.get('/api/auth/session/health', { withCredentials: true });
           if (health.data?.data?.session) {
@@ -612,7 +617,15 @@ api.interceptors.response.use(
             captureError(new Error('Buyer 401: API-specific (session valid)'), { url });
             return Promise.reject(error);
           }
-        } catch {}
+          if (health.data?.data?.session === false) sessionConfirmedDead = true;
+        } catch {
+          // 헬스 확인 실패 = 세션 무효 증거 아님 → 로그아웃하지 않음
+        }
+        if (!sessionConfirmedDead) {
+          // 죽었다는 확정 못 함 → 소비자 세션 유지(이 API 자체 권한/일시 문제로 간주)
+          captureError(new Error('Buyer 401: session unconfirmed — keep'), { url });
+          return Promise.reject(error);
+        }
       }
 
       clearFirebaseTokenCache();

@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 소비자(유저) 자동 로그아웃 근본수정: 401 핸들러 fail-safe (대표 신고 "계속 유저 로그아웃")
+**신고**: "뭔가 계속 자동 로그아웃, 특히 유저(소비자)." 전수조사 결과 **`lib/api.ts` 소비자 401 핸들러가 fail-OPEN-to-logout** 이었음.
+- **결함**: 401 시 `/api/auth/session/health` 로 세션 확인하는데, **헬스 요청이 네트워크/타임아웃/5xx 로 실패하면 `catch {}` 가 삼키고 그대로 `clearAuthData('user')`** → 로그아웃. 즉 "세션이 죽었다"가 아니라 "확인을 못 했다"인데도 소비자 세션을 지움. 헬스 일시오류·느린 응답·듀얼유저(대시보드 토큰이 `/api/notifications` 등 비-`_isDashboardUrl` 호출에 붙어 401 SESSION_SUPERSEDED → 소비자 흐름 fall-through) 에서 부당 로그아웃.
+- **수정(fail-safe)**: **세션이 죽었다는 확정 증거(`health.data.data.session === false`) 가 있을 때만 로그아웃.** 헬스 실패(catch)·확정 불가 시 → 세션 유지(이 API 자체 권한/일시 문제로 간주, reject만). 진짜 만료(session:false)는 그대로 로그아웃(정상). `parseSessionCookie` 가 'user' 쿠키 우선이라 멀티쿠키는 무관 확인.
+- **참고**: `auth-callback-bootstrap` 자가점검은 이미 fail-safe(명시 session===false + r.ok 일 때만 wipe). api.ts 핸들러만 결함이었음.
+- 검증: tsc 0 · `npm run build` exit 0. ⚠️ 실 로그인 모니터링 권장(Sentry breadcrumb `Buyer 401: session unconfirmed — keep` 추가로 추적 가능).
+
 ## ✅ 2026-06-17 — 듀얼 로그인 영구 방어선 + CSP/토큰 대안 평가 (대표 "1,2,3 다 하자")
 대표가 쿠키 컷오버 대신 가벼운 대안 3종 요청 → 정직하게 분류 후 안전한 것만 실행:
 - **① 재발방지 CI 가드 (구현·배포)**: `scripts/check-dual-login-guard.mjs` — 클라 `localStorage.getItem('user_type') === 'user'` *로그인 게이트* 안티패턴(세션 풀림 사고 근본원인) 신규 추가 감지. App.tsx(글로벌 Firebase init, 세션드롭 아님)만 allowlist. pre-commit warn(`install-git-hooks.sh`) + **verify.yml CI strict(현재 위반 0)**. 동시로그인 해결을 *영구*로 못박음. 런타임 위험 0(검사 스크립트). 음성/양성/strict 테스트 통과.
