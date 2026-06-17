@@ -22,6 +22,7 @@ const AdminProductsPage = lazy(() => import('@/pages/AdminProductsPage'))
 const AdminSuppliersPage = lazy(() => import('@/pages/AdminSuppliersPage'))
 const AdminDistributorGradesPage = lazy(() => import('@/pages/AdminDistributorGradesPage'))
 const AdminWholesaleImportPage = lazy(() => import('@/pages/AdminWholesaleImportPage'))
+const AdminDongnedealImportPage = lazy(() => import('@/pages/AdminDongnedealImportPage'))
 const AdminWholesaleActivityPage = lazy(() => import('@/pages/admin/AdminWholesaleActivityPage'))
 const AdminLoginHistoryPage = lazy(() => import('@/pages/AdminLoginHistoryPage'))
 const AdminWholesaleOrdersPage = lazy(() => import('@/pages/AdminWholesaleOrdersPage'))
@@ -227,6 +228,11 @@ export function AdminRoutes() {
       <Route path="/admin/wholesale-import" element={
         <ProtectedRoute requireAdmin>
           <AdminWholesaleImportPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/dongnedeal-import" element={
+        <ProtectedRoute requireAdmin>
+          <AdminDongnedealImportPage />
         </ProtectedRoute>
       } />
       <Route path="/admin/wholesale-activity" element={

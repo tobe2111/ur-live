@@ -72,8 +72,12 @@
 
 위 일반 주문을 **환불**(returns) 처리 후:
 
-✅ **체크**: ① 유통사 환불 17,000 · ② 제조사 정산 −15,300 역전(저장된 settlement supply/retail 사용) ·
-③ 플랫폼 마진 −1,700 역전 · ④ **재고 복원** · ⑤ 중복 환불 차단(멱등 — 두 번 눌러도 1회만).
+✅ **체크**: ① 유통사 환불 17,000 — ⚠️ **예치금 잔액(deposit ledger)으로 환원**(`refundDeposit`, Toss 카드취소 아님 — 도매몰은 PG 미사용). 카드 환불이 아니라 **예치금이 17,000 늘었는지** 확인 ·
+② 제조사 정산 −15,300 역전(저장된 settlement supply/retail 사용 — pending/available 은 `cancelled`, 이미 지급분은 음수 clawback 행) ·
+③ 플랫폼 마진 역전 — `wholesale_orders.margin_total` 이 −1,700 되어(여기선 1,700→0) 줄었는지 직접 확인 ·
+④ **재고 복원** · ⑤ 중복 환불 차단(멱등 — 두 번 눌러도 환불·역전 각 1회만).
+
+✅ **부분(라인) 환불 별도 체크**(공급자/제조사 측 라인 선택 환불 — `wholesale-supplier.routes` productIds-scoped): 선택 라인만큼만 ① 예치금 환원 ② 해당 라인 제조사 정산 역전(over-clawback 없음) ③ 주문 status `PARTIAL_REFUNDED`. 전체 환불과 동일하게 멱등.
 
 ---
 
