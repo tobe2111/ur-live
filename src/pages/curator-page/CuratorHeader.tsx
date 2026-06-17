@@ -11,6 +11,7 @@
  */
 
 import { useRef, useState, useEffect } from 'react'
+import { snsUrl } from '@/utils/sns-url'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Share2, Pencil, Check, X, Camera, Settings } from 'lucide-react'
@@ -20,15 +21,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { compressForUpload } from '@/lib/image-compress'
 
-// 🎨 2026-06-16 링크샵 시안: SNS 핸들/URL → 절대 URL (핸들·@핸들·전체URL 허용).
-function snsUrl(platform: 'youtube' | 'instagram' | 'tiktok', v: string): string {
-  const s = v.trim()
-  if (/^https?:\/\//i.test(s)) return s
-  const h = s.replace(/^@/, '')
-  if (platform === 'youtube') return `https://youtube.com/@${h}`
-  if (platform === 'instagram') return `https://instagram.com/${h}`
-  return `https://tiktok.com/@${h}`
-}
+// 🔗 2026-06-17 (#6 링크샵 통일): snsUrl → @/utils/sns-url 공유 (셀러 ProfileHeader 와 dedup)
 
 interface CuratorHeaderProps {
   curator: {
