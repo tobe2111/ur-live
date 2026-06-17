@@ -186,6 +186,23 @@
   --ring: 211 100% 50%;
 }
 
+/* 🛡️ 2026-06-17 (사용자 신고 — 새 관리자 추가 입력칸 글자 흰색): 어드민/셀러는 라이트 고정인데 OS/앱 다크모드에서
+   폼 컨트롤이 다크 UA(흰 글자/커서) + 자동완성 흰 글자로 렌더돼 안 보임. color-scheme:light 강제 + autofill 색 고정. */
+.admin-light-theme,
+.seller-light-theme,
+.admin-light-theme input, .admin-light-theme textarea, .admin-light-theme select,
+.seller-light-theme input, .seller-light-theme textarea, .seller-light-theme select {
+  color-scheme: light;
+}
+.admin-light-theme input:-webkit-autofill,
+.admin-light-theme input:-webkit-autofill:hover,
+.admin-light-theme input:-webkit-autofill:focus,
+.seller-light-theme input:-webkit-autofill {
+  -webkit-text-fill-color: #111827;
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+  caret-color: #111827;
+}
+
 .seller-light-theme .apple-card,
 .admin-light-theme .apple-card {
   background: #ffffff;
