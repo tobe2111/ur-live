@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 어드민 로그인 PIN 한-화면화 (대표 신고 "2단계 불편")
+**신고**: 보안 PIN 설정 계정이 아이디/비번 → 로그인 클릭 → 그제서야 PIN 입력칸이 뜨는 2단계라 불편.
+- **원인**: 백엔드(`admin.routes /login`)는 **이미 첫 요청에서 `pin` 수용**(hasPin이면 검증) — 2단계는 순전히 프론트(`AdminLoginPage`)가 `needPin` 응답 받고서야 PIN 칸을 노출하던 것.
+- **수정(프론트 only)**: PIN 칸을 **처음부터 노출**(라벨 "6자리 보안 PIN (설정한 경우)" + 미설정은 비워두라는 힌트) + 로그인 요청에 `pin: pin.trim() || undefined` 항상 동봉 → PIN 계정도 **한 번에** 로그인. `needPin`(서버 pin_required)은 이제 칸 강조(보더 색)+안내문구 전환용으로만 유지(틀린 PIN/누락 시 폴백 동작 보존). **백엔드/PIN 검증 로직 무변경.**
+- 검증: tsc 0 · `npm run build` 0 · 대시보드 테마검사(AdminLoginPage 위반 0).
+
 ## ✅ 2026-06-17 — 단일 세션 강제 확장: per-seat 키 + 카카오 토큰 + 로그아웃 문구 (대표 "가장 이상적으로")
 **배경**: 단일 세션 v1(admin/seller/supplier)에서 제외했던 멀티시트(에이전시 멤버·도매 직원)와 카카오 발급 토큰까지 확장 + 안내 문구 구체화.
 - **per-seat 키** (`dashboard-session.ts deriveDashboardSeat`): 토큰에서 시트 키 도출 — `sub_account_id`→`('seller_sub', id)`, `agency`+`member_id`→`('agency_member', id)`, `agency`(멤버없음/카카오)→`('agency', agencyId)`, admin/seller/supplier→`(type, id)`. **같은 회사의 다른 직원/멤버는 각자 시트 → 동시 로그인 보존**, 같은 시트의 다른 기기만 단일 세션. 미들웨어 3경로(Bearer/쿠키/SSR)·seller refresh 모두 seat 기반으로 전환(subAccount 옵션 제거).
