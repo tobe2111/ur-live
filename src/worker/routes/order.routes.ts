@@ -81,10 +81,10 @@ const createOrderSchema = z.object({
   //   coupon_id → 서버가 쿠폰 규칙으로 재계산 + 1회 소비. deal_used → 잔액 검증 후 적용.
   //   discount_amount/coupon_discount → 공구할인 portion(= 총할인 − 쿠폰 − 딜) 분리용 입력(클램프).
   //   (구버전 zod 가 이 필드를 strip 해 total_amount 에서 할인 누락 → confirm 금액불일치 400.)
-  coupon_id: z.union([z.number().int().positive(), z.string().min(1)]).nullish(),
-  deal_used: z.number().int().nonnegative().max(1_000_000_000).nullish(),
-  discount_amount: z.number().int().nonnegative().max(1_000_000_000).nullish(),
-  coupon_discount: z.number().int().nonnegative().max(1_000_000_000).nullish(),
+  coupon_id: z.number().int().positive().nullish(),
+  deal_used: z.number().int().nonnegative().max(1_000_000_000).optional(),
+  discount_amount: z.number().int().nonnegative().max(1_000_000_000).optional(),
+  coupon_discount: z.number().int().nonnegative().max(1_000_000_000).optional(),
 });
 
 // POST /api/orders
