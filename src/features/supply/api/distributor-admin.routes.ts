@@ -21,7 +21,7 @@ import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund, DEFAULT_PLATFORM_COMMISSION_PCT } from './wholesale-settlement'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn, hasDepositRefundTxn } from './wholesale-deposit-core'
 import { ensureSupplyVisibilitySchema, normalizeVisibility } from './supply-visibility'
-import { parseCsv } from './supply-csv'
+import { parseCsv, buildCsv, csvResponse } from './supply-csv'
 import { ensureOemSchema, normalizeOemStatus } from './oem-requests'
 import { buildXlsx, xlsxResponse } from './xlsx'
 import { distributorPriceFromRetail, marginForGrade, type GradeMargin } from '@/lib/distributor-pricing'
@@ -1470,6 +1470,33 @@ app.get('/activity-log', async (c) => {
     return c.json({ success: true, data: rows.results ?? [], pagination: { page, limit, total: Number(totalRow?.c ?? 0) } })
   } catch (err) {
     return safeError(c, err, '처리 이력 조회 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// 📤 2026-06-17 (#2 카탈로그 도구 보강): 현재 도매 공급상품 CSV 내보내기 — 일괄 등록 템플릿과 동일 헤더라
+//   내보내기→편집→재업로드(신규 추가) 라운드트립 + 백업/검수용. 최신 10,000건.
+app.get('/supply-export', async (c) => {
+  const { DB } = c.env
+  try {
+    const rows = await DB.prepare(
+      `SELECT p.name, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail,
+              COALESCE(p.stock,0) AS stock, COALESCE(p.category,'') AS category, COALESCE(p.barcode,'') AS barcode,
+              COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.image_url,'') AS image_url,
+              COALESCE(s.business_name,'') AS supplier, p.is_active,
+              CASE WHEN p.slug LIKE 'demo-wholesale-%' THEN 'Y' ELSE '' END AS is_demo
+       FROM products p LEFT JOIN suppliers s ON s.id = p.supplier_id
+       WHERE p.is_supply_product = 1 AND (p.supply_source_id IS NULL OR p.supply_source_id = 0)
+       ORDER BY p.created_at DESC LIMIT 10000`
+    ).all<{ name: string; supply_price: number; retail: number; stock: number; category: string; barcode: string; moq: number; image_url: string; supplier: string; is_active: number; is_demo: string }>()
+      .catch(() => ({ results: [] as Record<string, unknown>[] }))
+    const header = ['상품명', '공급가', '권장소비자가', '재고', '카테고리', '바코드', '최소주문수량', '썸네일 이미지URL', '제조사', '노출', '데모']
+    const data = (rows.results || []).map((r) => [
+      r.name, r.supply_price, r.retail, r.stock, r.category, r.barcode, r.moq, r.image_url, r.supplier,
+      Number(r.is_active) === 1 ? '노출' : '숨김', r.is_demo,
+    ])
+    return csvResponse(buildCsv(header, data), `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.csv`)
+  } catch (err) {
+    return safeError(c, err, '카탈로그 내보내기 중 오류가 발생했습니다', '[distributor-admin]')
   }
 })
 

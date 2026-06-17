@@ -80,7 +80,7 @@ export default function CatalogTab({ items, t, onAdd, onBulkDone, onManageChanne
           </button>
           {/* 📥 2026-06-12: 내 스토어 상품 가져오기 (스마트스토어/쿠팡 — 역방향 임포트). */}
           <button onClick={() => setStoreImportOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-semibold hover:bg-emerald-100">
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50">
             <Download className="w-4 h-4" /> {t('supplier.storeImportBtn2', { defaultValue: '내 스토어에서 가져오기' })}
           </button>
           <input ref={fileRef} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={onFile} />
