@@ -273,34 +273,33 @@ export default function CuratorPage() {
           onCopyLink={copyLink}
           onCuratorUpdate={(next) => setData(prev => prev ? { ...prev, curator: { ...prev.curator, ...next } } : prev)}
         />
-        {/* 🎨 2026-06-16 링크샵 개선안(design): 본인 뷰 = 명시적 '편집 모드' 안내 — 사진·이름·소개·핀을 눌러 바로 수정. theme-dual: 의도적 네이비 배너 */}
-        {ownerView && (
+        {/* 🎨 2026-06-17 (C — 편집 모드 정리): 네이비 편집배너 + 미리보기 카드 + 순서바꾸기 버튼(3블록)을
+            한 줄 슬림 툴바로 통합. 오너 기본 화면을 방문자 공개뷰(헤더+핀)에 가깝게 — 관리 chrome 최소화.
+            기능(미리보기/순서/인라인 편집)은 전부 보존. design: docs/design/linkshop-edit-declutter.md */}
+        {ownerView && pins.length > 0 && !reorderMode && (
           <div className="max-w-3xl mx-auto px-4 pt-3">
-            <div className="flex items-center gap-2 rounded-xl bg-[#141A2E] px-3.5 py-2.5 text-[12.5px] font-semibold text-white">
-              <span className="text-[#FF5634] text-[14px] leading-none">✎</span>
-              <span>편집 모드 · 사진·이름·소개·핀을 눌러 바로 수정하세요</span>
-            </div>
-          </div>
-        )}
-        {/* 🛠️ 2026-06-16: 핀이 있을 때만 적립 strip — 갓 가입(온보딩)·빈 링크샵엔 0/0/0 노이즈 숨김. */}
-        {ownerView && pins.length > 0 && <OwnerEarningsStrip />}
-        {/* 🎨 2026-06-16 시안: 방문자 미리보기 카드 — '남이 볼 땐 이렇게 보여요' + 전체 미리보기 진입 */}
-        {ownerView && pins.length > 0 && (
-          <div className="max-w-3xl mx-auto px-4 pt-3">
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] px-4 py-3">
-              <div className="min-w-0">
-                <p className="text-[13.5px] font-extrabold text-gray-900 dark:text-white">방문자에게 이렇게 보여요</p>
-                <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">편집은 나만 보이고, 남에겐 깔끔한 공개 화면만 보여요.</p>
-              </div>
+            <div className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-[#1F1F1F] bg-gray-50 dark:bg-[#0E0E0E] px-2.5 py-1.5">
+              <span className="flex items-center gap-1.5 mr-auto pl-1 text-[12px] font-bold text-gray-500 dark:text-gray-400">
+                <span className="text-[#FF5634] text-[13px] leading-none">✎</span>
+                편집 모드
+                <span className="hidden sm:inline font-medium text-gray-400 dark:text-gray-500">· 눌러서 바로 수정</span>
+              </span>
+              {pins.length > 1 && (
+                <button
+                  onClick={() => setReorderMode(true)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-gray-200 dark:border-transparent bg-white dark:bg-white/[0.06] px-2.5 py-1.5 text-[12px] font-bold text-gray-700 dark:text-gray-200 active:opacity-70"
+                >⇅ 순서</button>
+              )}
               <button
                 onClick={() => { setPreviewAsVisitor(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-                className="shrink-0 h-9 px-3.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12.5px] font-bold"
-              >
-                전체 미리보기 →
-              </button>
+                className="inline-flex items-center gap-1 rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1.5 text-[12px] font-bold text-white dark:text-[#020202] active:opacity-80"
+              >👁 미리보기</button>
             </div>
           </div>
         )}
+        {/* 🛠️ 2026-06-16: 핀이 있을 때만 적립 — 갓 가입(온보딩)·빈 링크샵엔 0/0/0 노이즈 숨김.
+            2026-06-17 (C): 큰 네이비 카드 → 한 줄 compact (상세는 콘솔). */}
+        {ownerView && pins.length > 0 && !reorderMode && <OwnerEarningsStrip />}
         {/* 🎨 2026-06-17 (사용자 요청 — 오너 화면 불일치 해소): 오너도 방문자와 동일한 그라데이션 카드 그리드를
             기본으로 보고, 카드마다 삭제(✕) + '순서 바꾸기'(드래그 모드)만 추가. 빈 링크샵은 온보딩 빈 상태. */}
         {ownerView && pins.length === 0 ? (
@@ -319,12 +318,7 @@ export default function CuratorPage() {
           </div>
         ) : (
           <>
-            {/* 오너: 순서 바꾸기 진입 (핀 2개 이상). 방문자에겐 안 보임. */}
-            {ownerView && pins.length > 1 && (
-              <div className="max-w-3xl mx-auto px-4 pt-3 flex justify-end">
-                <button onClick={() => setReorderMode(true)} className="inline-flex items-center gap-1 text-[12.5px] font-bold text-gray-600 dark:text-gray-300 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-white/[0.06] active:opacity-70">⇅ 순서 바꾸기</button>
-              </div>
-            )}
+            {/* 🎨 2026-06-17 (C): '순서 바꾸기' 진입 버튼은 상단 슬림 툴바로 이동(중복 행 제거). */}
             {/* 🔍 2026-06-16 링크샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터. */}
             {pins.length > 0 && (
               <div className="max-w-3xl mx-auto px-4 pt-3 pb-1">
@@ -392,37 +386,33 @@ function OwnerEarningsStrip() {
     { select: (raw) => ((raw as { success?: boolean; stats?: DashboardStats })?.success ? ((raw as { stats: DashboardStats }).stats) : null) },
   )
   const stats = dashQ.data ?? null
-  // 로딩/실패 시 strip 숨김 (레이아웃 점프 없이 핀이 먼저). 적립 0 이어도 표시 — 시작 동기 부여.
+  // 로딩/실패 시 숨김 (레이아웃 점프 없이 핀이 먼저). 적립 0 이어도 표시 — 시작 동기 부여.
   if (!stats) return null
   const confirmed = stats.month_earnings ?? 0
   const pending = stats.pending_earnings ?? 0
   const clicks = stats.unique_clicks_30d ?? stats.clicks_30d ?? 0
-  const purchases = stats.purchases_30d ?? 0
   const conv = stats.conversion_rate_30d ?? 0
 
+  // 🎨 2026-06-17 (C — 편집 모드 정리): 큰 멀티라인 네이비 카드 → 한 줄 탭 가능 바.
+  //   상세(구매수/보류 설명)는 콘솔(/creator)에서. 공개뷰에 가깝게 시각 무게만 축소(데이터/링크 동일). theme-dual
   return (
-    <div className="max-w-3xl mx-auto px-4 pt-3">
-      {/* 다크 네이비 strip (시안 톤) — 라이트/다크 공통 고정색 카드(컬러 배경 위 흰 글씨). theme-dual */}
-      <div className="rounded-2xl p-4 text-white" style={{ background: 'linear-gradient(120deg,#141A2E,#2A3658)' }}>
-        <div className="flex items-center justify-between">
-          <span className="text-[12px] text-white/60">{t('curator.earn30dConfirmed', { defaultValue: '최근 30일 확정 적립' })}</span>
-          <Link to="/creator" className="text-[11px] font-bold text-white/70 hover:text-white">{t('curator.consoleLink', { defaultValue: '콘솔' })} →</Link>
-        </div>
-        <div className="mt-1 flex items-baseline gap-2 flex-wrap">
-          <span className="text-[26px] font-extrabold leading-none">{formatWon(confirmed)}</span>
-          {pending > 0 && (
-            <span className="text-[12px] font-bold text-[#FFB59E]">+ {formatWon(pending)} {t('curator.pendingEarn', { defaultValue: '적립 예정' })}</span>
-          )}
-        </div>
-        <div className="mt-3 flex gap-4 text-[11.5px] text-white/70">
-          <span>{t('curator.statClicks', { defaultValue: '순클릭' })} <b className="text-white">{formatNumber(clicks)}</b></span>
-          <span>{t('curator.statPurchases', { defaultValue: '구매' })} <b className="text-white">{formatNumber(purchases)}</b></span>
-          <span>{t('curator.statConv', { defaultValue: '전환율' })} <b className="text-[#37D399]">{conv}%</b></span>
-        </div>
-        {pending > 0 && (
-          <div className="mt-2 text-[10.5px] text-white/45">{t('curator.holdNote', { defaultValue: '적립 예정은 구매 확정(약 7일) 후 출금 가능액으로 전환돼요' })}</div>
-        )}
-      </div>
+    <div className="max-w-3xl mx-auto px-4 pt-2">
+      <Link
+        to="/creator"
+        className="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2 text-white active:opacity-90"
+        style={{ background: 'linear-gradient(120deg,#141A2E,#2A3658)' }}
+      >
+        <span className="flex items-baseline gap-1.5 min-w-0">
+          <span className="shrink-0 text-[11px] text-white/55">{t('curator.earn30dConfirmed', { defaultValue: '최근 30일 적립' })}</span>
+          <b className="text-[15px] font-extrabold leading-none">{formatWon(confirmed)}</b>
+          {pending > 0 && <span className="truncate text-[11px] font-bold text-[#FFB59E]">+{formatWon(pending)} {t('curator.pendingEarn', { defaultValue: '예정' })}</span>}
+        </span>
+        <span className="flex shrink-0 items-center gap-2.5 text-[11px] text-white/70">
+          <span className="hidden xs:inline">{t('curator.statClicks', { defaultValue: '클릭' })} <b className="text-white">{formatNumber(clicks)}</b></span>
+          <span>{t('curator.statConv', { defaultValue: '전환' })} <b className="text-[#37D399]">{conv}%</b></span>
+          <span className="font-bold text-white/85">{t('curator.consoleLink', { defaultValue: '콘솔' })} →</span>
+        </span>
+      </Link>
     </div>
   )
 }
