@@ -36,7 +36,7 @@ export default function ReferralIndexPage() {
             <span className="text-pink-500">{t('referral.heroTitle2', { defaultValue: '더 저렴하게' })}</span> {t('referral.heroTitle3', { defaultValue: '쇼핑하세요' })}
           </h2>
           <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">
-            {t('referral.heroDesc', { defaultValue: '공동구매 인원이 모일수록 할인율이 커져요' })}
+            {t('referral.heroDesc', { defaultValue: '친구와 함께 공동구매가로 구매하고, 초대 보너스도 받으세요' })}
           </p>
         </section>
 
@@ -48,7 +48,7 @@ export default function ReferralIndexPage() {
               {
                 icon: ShoppingBag,
                 title: t('referral.step1Title', { defaultValue: '공동구매 상품 선택' }),
-                desc: t('referral.step1Desc', { defaultValue: '라이브나 쇼핑 페이지에서 공동구매 가능한 상품을 둘러보세요' }),
+                desc: t('referral.step1Desc', { defaultValue: '진행 중인 공동구매 상품을 둘러보세요' }),
                 tint: 'bg-blue-50 text-blue-500',
               },
               {
@@ -59,8 +59,8 @@ export default function ReferralIndexPage() {
               },
               {
                 icon: Gift,
-                title: t('referral.step3Title', { defaultValue: '목표 달성 시 할인 적용' }),
-                desc: t('referral.step3Desc', { defaultValue: '정해진 인원이 모이면 모두에게 추가 할인이 자동 적용됩니다' }),
+                title: t('referral.step3Title', { defaultValue: '친구 초대 보너스' }),
+                desc: t('referral.step3Desc', { defaultValue: '친구를 초대해 함께 구매하면 보너스 딜을 받을 수 있어요' }),
                 tint: 'bg-amber-50 text-amber-500',
               },
             ].map((step, i) => {
