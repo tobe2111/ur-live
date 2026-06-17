@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 듀얼 로그인 영구 방어선 + CSP/토큰 대안 평가 (대표 "1,2,3 다 하자")
+대표가 쿠키 컷오버 대신 가벼운 대안 3종 요청 → 정직하게 분류 후 안전한 것만 실행:
+- **① 재발방지 CI 가드 (구현·배포)**: `scripts/check-dual-login-guard.mjs` — 클라 `localStorage.getItem('user_type') === 'user'` *로그인 게이트* 안티패턴(세션 풀림 사고 근본원인) 신규 추가 감지. App.tsx(글로벌 Firebase init, 세션드롭 아님)만 allowlist. pre-commit warn(`install-git-hooks.sh`) + **verify.yml CI strict(현재 위반 0)**. 동시로그인 해결을 *영구*로 못박음. 런타임 위험 0(검사 스크립트). 음성/양성/strict 테스트 통과.
+- **② CSP (점검만 — 변경 안 함)**: 이미 잘 하드닝 — script-src `nonce + strict-dynamic`(CSP3에서 unsafe-inline·host 무력화=사실상 nonce 전용, XSS 핵심방어) + object-src 'none'·base-uri·form-action·frame-ancestors 'self'. style-src는 과거 사고(2026-05-21 nonce)로 잠김, connect/img 타이트닝은 통합 깨짐+E2E 불가 → **안전한 추가 변경 없음**(억지 변경이 해로움). 쿠키 전환의 marginal 이득이 작은 근거이기도 함.
+- **③ 토큰 수명 단축 (안 함 — 권하지 않음)**: XSS는 localStorage 통째로 읽어 **refresh까지 탈취** → access만 단축해도 XSS 방어 거의 0. 게다가 30일은 "모바일 잦은 만료 민원"으로 *일부러* 늘린 값 → 단축=UX 후퇴. 비용 대비 무의미.
+- 검증: 가드 테스트 통과 · tsc 영향 없음(standalone mjs).
+
 ## 🔐 2026-06-17 — 쿠키 전환(C) Phase 1 구현: httpOnly 토큰 쿠키 발급 일원화 (대표 "무조건 하자, 모두 이상적으로")
 **방침**: 인증은 prod 자동배포 + 쿠키/웹뷰 E2E 불가 → 한 방 컷오버 시 전 대시보드(대표 어드민 포함) 락아웃 위험 → **다크론치**(무해 기반 먼저, 실제 전환은 flag+staging 게이트).
 - **Phase 1(배포·무해·추가형)**: 모든 대시보드 로그인이 `ud_*` httpOnly 쿠키 발급하도록 통일. `auth-cookies.ts` 4역할 확장(+admin/supplier), `admin.routes`(ud_admin_token)·`supplier-auth.routes`(ud_supplier_token login+become) 발급 추가, `logout-cookies` 4역할 정리, 단위테스트 5. **기존 Bearer/localStorage·응답 바디 byte-identical → 무회귀·락아웃 0.** 읽기는 GET 전용 fallback(Bearer 우선)이라 **보안 이득은 아직 0**(localStorage 토큰 잔존) — 다음 컷오버에서 발생.
