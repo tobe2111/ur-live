@@ -187,20 +187,31 @@
 }
 
 /* 🛡️ 2026-06-17 (사용자 신고 — 새 관리자 추가 입력칸 글자 흰색): 어드민/셀러는 라이트 고정인데 OS/앱 다크모드에서
-   폼 컨트롤이 다크 UA(흰 글자/커서) + 자동완성 흰 글자로 렌더돼 안 보임. color-scheme:light 강제 + autofill 색 고정. */
+   상속된 -webkit-text-fill-color:white 가 글자색을 덮어쓰고 폼 컨트롤이 다크 UA 로 렌더돼 안 보임.
+   → 입력칸 글자색/fill 을 직접 다크로 강제 + color-scheme:light + autofill 색 고정. placeholder 는 회색 유지. */
 .admin-light-theme,
-.seller-light-theme,
+.seller-light-theme {
+  color-scheme: light;
+}
 .admin-light-theme input, .admin-light-theme textarea, .admin-light-theme select,
 .seller-light-theme input, .seller-light-theme textarea, .seller-light-theme select {
   color-scheme: light;
+  color: #16181b;
+  -webkit-text-fill-color: #16181b;
+  caret-color: #16181b;
+}
+.admin-light-theme input::placeholder, .admin-light-theme textarea::placeholder,
+.seller-light-theme input::placeholder, .seller-light-theme textarea::placeholder {
+  color: #9aa0a6;
+  -webkit-text-fill-color: #9aa0a6;
 }
 .admin-light-theme input:-webkit-autofill,
 .admin-light-theme input:-webkit-autofill:hover,
 .admin-light-theme input:-webkit-autofill:focus,
 .seller-light-theme input:-webkit-autofill {
-  -webkit-text-fill-color: #111827;
+  -webkit-text-fill-color: #16181b;
   -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
-  caret-color: #111827;
+  caret-color: #16181b;
 }
 
 .seller-light-theme .apple-card,
