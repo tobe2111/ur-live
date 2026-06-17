@@ -547,6 +547,28 @@ export default function GroupBuyListPage() {
   const currentCount = mainTab === 'seller' ? filtered.length : filteredCommunity.length
   const isCurrentLoading = mainTab === 'seller' ? loading : communityLoading
 
+  // 🧭 2026-06-17 (사용자 신고): 빈 화면 CTA 버튼이 선택 카테고리와 무관하게 항상 "맛집 공구 시작"
+  //   으로 떠 — 숙소/미용/기타 탭에서도 "맛집"이라고 표기되던 문제. 선택 카테고리를 반영하도록.
+  const startCtaLabel = (() => {
+    switch (category) {
+      case 'meal_voucher':
+        return t('groupBuy.ctaStartMeal', { defaultValue: '맛집 공구 시작' })
+      case 'beauty_voucher':
+      case 'health_voucher':
+        return t('groupBuy.ctaStartBeauty', { defaultValue: '미용 공구 시작' })
+      case 'stay_voucher':
+        return t('groupBuy.ctaStartStay', { defaultValue: '숙소 공구 시작' })
+      case 'etc_voucher':
+      case 'pet_voucher':
+      case 'activity_voucher':
+        return t('groupBuy.ctaStartEtc', { defaultValue: '기타 공구 시작' })
+      case 'general':
+        return t('groupBuy.ctaStartGeneral', { defaultValue: '공구 시작' })
+      default:
+        return t('groupBuy.ctaStartNeighborhood', { defaultValue: '동네 공구 시작' })
+    }
+  })()
+
   return (
     <div className="bg-white dark:bg-[#0A0A0A] min-h-screen">
       <SEO
@@ -860,7 +882,7 @@ export default function GroupBuyListPage() {
                     onClick={() => navigate('/community-group-buy/new')}
                     className="flex items-center gap-1 px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
                   >
-                    <Plus className="w-3.5 h-3.5" /> {t('groupBuy.ctaStartMeal', { defaultValue: '내 동네 공구 제안' })}
+                    <Plus className="w-3.5 h-3.5" /> {startCtaLabel}
                   </button>
                   {/* 🧭 2026-06-10: 쇼핑 잠정 숨김 동안엔 숨겨진 표면으로 보내지 않음 — 홈(교환권)으로 */}
                   <button
