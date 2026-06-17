@@ -37,6 +37,17 @@ export function isSuperOnlyAdminPath(pathname: string): boolean {
   return seg === 'admins' || seg === 'audit-logs' || seg === 'login-history';
 }
 
+/**
+ * 본인 계정 보안 self-service 경로 — 역할 무관 전 관리자 허용.
+ * ⚠️ 강제 보안 게이트(로그인 PIN / 2FA)가 제한·도메인-한정 역할(wholesale 등)을 RBAC 로 막아
+ *    "PIN 설정 강제됐는데 설정 API 는 403" 데드락이 나던 것 방지(대표 신고 2026-06-17).
+ *    본인 토큰으로 본인 계정(user.id)만 변경하므로 도메인 격리와 무관하게 안전.
+ */
+export function isSelfServiceAdminPath(pathname: string): boolean {
+  const seg = adminPathSegment(pathname);
+  return seg === 'set-login-pin' || seg === '2fa';
+}
+
 /** /api/admin/<seg>... 또는 /api/admin-<seg>... 에서 첫 도메인 세그먼트 추출(소문자). */
 export function adminPathSegment(pathname: string): string {
   const m = String(pathname || '').match(/\/api\/admin[/-]([a-z0-9-]+)/i);

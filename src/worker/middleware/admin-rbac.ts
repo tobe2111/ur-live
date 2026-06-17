@@ -18,6 +18,7 @@ import * as jwt from '@tsndr/cloudflare-worker-jwt';
 import {
   normalizeAdminRole,
   isSuperOnlyAdminPath,
+  isSelfServiceAdminPath,
   canAdminRoleMutate,
   isScopedAdminRole,
   scopedRoleCanAccess,
@@ -52,6 +53,11 @@ export function adminRbacMiddleware() {
     if (!role || role === 'super') return next();
 
     const pathname = new URL(c.req.url).pathname;
+
+    // 본인 계정 보안 self-service(로그인 PIN / 2FA 설정)는 역할 무관 허용 —
+    //   강제 보안 게이트가 제한·도메인-한정 역할(wholesale 등) 본인을 막아 데드락 나는 것 방지.
+    //   (requireAdmin 이 뒤에서 본인 토큰 검증, 본인 user.id 만 변경.)
+    if (isSelfServiceAdminPath(pathname)) return next();
 
     // 계정관리·감사로그·2FA = 슈퍼 전용(읽기·쓰기 모두).
     if (isSuperOnlyAdminPath(pathname)) {
