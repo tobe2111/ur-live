@@ -17,7 +17,6 @@
 - **백엔드** (`admin-streams.routes.ts`): ① GET `/streams` 에 `deleted_at IS NULL` 필터 + `ensureStreamDeletedAt`(per-worker defensive ALTER) ② 신규 `DELETE /streams/bulk`(`/streams/:id` 보다 **먼저** 등록 — :id 캡처 방지) — ids 검증(>0, ≤100), 이미 삭제분 skip, live-monitor/bulk 와 동일 soft-delete 패턴(status='ended'+deleted_at, 매출/이력 보존). adminApp 의 requireAdmin+IP화이트리스트+audit 체인 상속.
 - **프론트** (`StreamsTable.tsx`): 체크박스 열 + 전체선택(indeterminate) + 일괄삭제 액션 바(라이브 모니터 history 와 동일 UX). 선택은 컴포넌트 내부 상태, refetch 후 사라진 항목 자동 정리(useEffect prune). dark: variant 추가 0(대시보드 화이트 고정). (`AdminPage.tsx`): `bulkDeleteStreams` 핸들러(confirm→`DELETE /api/admin/streams/bulk`→성공 시 true 반환·refetch).
 - 검증: tsc 0 · `npm run build`(client+SSR+prerender+worker+prepare) 0 · 대시보드 테마검사(내 파일 위반 0) · 스키마 참조 0.
->>>>>>> origin/main
 
 ## ✅ 2026-06-17 — 로그인 "계속 풀림" = 메인↔대시보드 듀얼 로그인 충돌 (사용자 신고 → 전수조사 후 근본수정)
 **신고**: "로그인이 계속 풀린다 / 대시보드에 로그인하면 기존 메인 유저 로그인이 로그아웃되는 느낌." 전수조사 결과 **단일 키 `user_type` 의존 잔존 코드**가 근본원인 — RouteGuards/isLoggedInSync/UserProfilePage 는 이미 토큰 기반으로 고쳤으나 **401 인터셉터 + 소비자 페이지 10곳이 누락**(부분 수정).
