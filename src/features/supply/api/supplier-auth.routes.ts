@@ -14,6 +14,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit';
 import { requireAuth } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
 import { swallow } from '@/worker/utils/swallow';
+import { startDashboardSession } from '@/worker/utils/dashboard-session';
 import { maskEmail } from '@/lib/mask';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { registrationMallId } from './wholesale-malls';
@@ -252,6 +253,8 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
       sub: sup.id.toString(), supplier_id: sup.id, email: sup.email, name: sup.business_name,
       type: 'supplier', iat: nowSec, exp: nowSec + 30 * 24 * 60 * 60,
     }, c.env.JWT_SECRET);
+    // 🔐 단일 세션 강제 — 제조회원 전환(=첫 로그인) 시 세션 시작.
+    await startDashboardSession(c.env.DB, 'supplier', sup.id, nowSec, { userAgent: c.req.header('User-Agent'), ip: c.req.header('CF-Connecting-IP') });
     return c.json({ success: true, status: 'approved', data: { token, supplier: { id: sup.id, business_name: sup.business_name, email: sup.email } } });
   } catch (err) {
     return safeError(c, err, '제조회원 전환 중 오류가 발생했습니다', '[supplier-auth]');
@@ -300,6 +303,9 @@ supplierAuthRoutes.post('/login', cors(), rateLimit({ action: 'supplier_login', 
       iat: nowSec,
       exp: nowSec + 30 * 24 * 60 * 60,
     }, c.env.JWT_SECRET);
+
+    // 🔐 단일 세션 강제 — 이 로그인 이전 발급된 supplier 토큰 전부 무효화.
+    await startDashboardSession(c.env.DB, 'supplier', supplier.id, nowSec, { userAgent: c.req.header('User-Agent'), ip: c.req.header('CF-Connecting-IP') });
 
     return c.json({
       success: true,

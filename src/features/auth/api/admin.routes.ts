@@ -12,6 +12,7 @@ import { sign, verify } from 'hono/jwt';
 import { verifyPassword, hashPassword } from '@/lib/password';
 import { validateRequired } from '@/worker/utils/validation';
 import { executeQuery } from '@/worker/utils/database';
+import { startDashboardSession, isDashboardSessionCurrent } from '@/worker/utils/dashboard-session';
 import { maskEmail } from '@/lib/mask';
 import { verifyTurnstile } from '@/worker/utils/turnstile';
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout';
@@ -204,6 +205,9 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
     const refreshPayload = { ...payload, exp: now + (30 * 24 * 60 * 60) };
     const refreshToken = await sign(refreshPayload, JWT_SECRET);
 
+    // 🔐 단일 세션 강제 — 이 로그인(iat) 이전 발급된 admin 토큰 전부 무효화.
+    await startDashboardSession(DB, 'admin', admin.id, payload.iat, { userAgent: c.req.header('User-Agent'), ip: reqIp });
+
     // ── refresh token 해시 저장 (rotation/revocation 기반) ────
     try {
       await ensureAuthRefreshTokensTable(DB);
@@ -333,6 +337,11 @@ adminRoutes.post('/refresh', cors(), rateLimit({ action: 'admin_refresh', max: 2
     } catch (e) {
       console.error('[Admin Refresh] token store verify failed:', e);
       // 가용성: 저장소 오류로 인한 차단은 하지 않음
+    }
+
+    // 🔐 단일 세션 강제 — 더 늦은 로그인이 무효화한 refresh 로는 갱신 거부(옛 기기 우회 차단).
+    if (!(await isDashboardSessionCurrent(DB, 'admin', adminId, payload.iat))) {
+      return c.json({ success: false, error: '다른 기기에서 로그인되어 세션이 만료되었습니다. 다시 로그인해주세요.', code: 'SESSION_SUPERSEDED' }, 401);
     }
 
     const admin = admins[0];

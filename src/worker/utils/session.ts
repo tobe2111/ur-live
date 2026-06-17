@@ -37,6 +37,7 @@ export interface SessionUser {
   role?: string;
   type?: SessionType;
   isDbId?: boolean;  // true면 userId가 DB users.id (숫자 변환 불필요)
+  iat?: number;      // 🔐 발급시각(초) — 단일 세션 강제(dashboard-session) 검증용
 }
 
 /**
@@ -115,6 +116,7 @@ export async function parseSessionCookie(
         type: (payload.type as SessionType) || t,
         role: t,
         isDbId: !!payload.isDbId,
+        iat: typeof payload.iat === 'number' ? payload.iat : undefined,
       };
     } catch {
       continue;
