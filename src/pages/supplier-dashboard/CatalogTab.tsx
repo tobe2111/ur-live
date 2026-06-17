@@ -116,6 +116,8 @@ export default function CatalogTab({ items, t, onAdd, onBulkDone, onManageChanne
             const badge = STATUS_BADGE[item.approval_status] || STATUS_BADGE.pending
             const Icon = badge.Icon
             const margin = item.retail_price - item.supply_price
+            const stockNum = Number(item.stock) || 0
+            const isLive = item.approval_status === 'approved'
             return (
               <div key={item.id} className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
@@ -134,11 +136,22 @@ export default function CatalogTab({ items, t, onAdd, onBulkDone, onManageChanne
                         <Clock className="w-3 h-3" /> {t('supplier.priceChangePendingBadge', { defaultValue: '가격변경 승인 대기' })}
                       </span>
                     )}
+                    {/* 🆕 2026-06-17 (재고 가시성): 노출 상품인데 품절/재고부족이면 경고 — 침묵 손실(주문불가) 방지. */}
+                    {isLive && stockNum === 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-red-200 bg-red-50 text-red-700 text-[11px] font-semibold">
+                        ⚠ {t('supplier.outOfStock', { defaultValue: '품절 — 주문 불가' })}
+                      </span>
+                    )}
+                    {isLive && stockNum > 0 && stockNum <= 10 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700 text-[11px] font-semibold">
+                        {t('supplier.lowStock', { defaultValue: '재고 부족' })}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-500">
                     {t('supplier.supplyPrice', { defaultValue: '공급가' })} <b className="text-gray-700">{formatWon(item.supply_price)}</b>
                     {' · '}{t('supplier.suggestedRetail', { defaultValue: '권장가' })} {formatWon(item.retail_price)}
-                    {' · '}{t('supplier.stock', { defaultValue: '재고' })} {item.stock}
+                    {' · '}{t('supplier.stock', { defaultValue: '재고' })} <b className={stockNum === 0 ? 'text-red-600' : stockNum <= 10 ? 'text-amber-600' : 'text-gray-700'}>{item.stock}</b>
                   </p>
                   {item.pending_supply_price != null && (
                     <p className="text-xs text-amber-600 mt-1">
