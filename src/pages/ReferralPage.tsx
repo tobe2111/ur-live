@@ -198,7 +198,7 @@ export default function ReferralPage() {
         </div>
 
         {/* 하단 참여 CTA */}
-        <div className="fixed bottom-0 left-0 right-0 xl:left-56 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] px-4 py-3 z-50">
+        <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] px-4 py-3 z-50">
           <div className="ur-content-narrow">
             <button
               onClick={handleJoinCommunity}

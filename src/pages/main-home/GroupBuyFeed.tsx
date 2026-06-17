@@ -157,7 +157,7 @@ export default function GroupBuyFeed() {
 
       {/* 피드 — 2열 그리드 (당근식) */}
       {loading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 px-4 pb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8">
           {/* 🛡️ 2026-05-27 (사용자 요청): 카드 모양 shimmer skeleton — 이미지 + 텍스트 2줄 + 가격. */}
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex flex-col gap-1.5">
@@ -173,7 +173,7 @@ export default function GroupBuyFeed() {
         //   선택 카테고리에 결과 없으면 전체 카테고리로 자동 fallback fetch.
         <EmptyStateWithFallback category={category} onReset={() => setCategory('all')} />
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 px-4 pb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8">
           {/* 🛡️ 2026-05-24 (loading P0): 첫 4개 카드 = above-fold → eager + fetchpriority=high (LCP 단축).
               나머지는 lazy 유지 (scroll 시 자연 로드). */}
           {sorted.map((p, idx) => (
@@ -251,13 +251,13 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
             </span>
           </div>
           {fbLoading ? (
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-[#121212] animate-pulse" />
               ))}
             </div>
           ) : fallback && fallback.length > 0 ? (
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {fallback.map(p => <GroupBuyFeedCard key={p.id} p={p} />)}
             </div>
           ) : null}

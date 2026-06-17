@@ -207,7 +207,7 @@ export default function TossWidgetPayPage() {
 
       {/* 하단 결제하기 버튼 */}
       <div
-        className="fixed bottom-0 left-0 right-0 xl:left-56 bg-white border-t border-gray-100 z-30"
+        className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar bg-white border-t border-gray-100 z-30"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
         <div className="ur-content-narrow px-4 pt-3">

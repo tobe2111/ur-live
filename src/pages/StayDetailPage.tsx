@@ -420,7 +420,7 @@ export default function StayDetailPage() {
         const totalQty = cartItems.reduce((s, r) => s + (cartQty[r.room_id] || 0), 0)
         const cartSubtotal = cartItems.reduce((s, r) => s + r.total_price * (cartQty[r.room_id] || 0), 0)
         return (
-          <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur border-t border-pink-500/30 p-3">
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 app-frame-bar backdrop-blur border-t border-pink-500/30 p-3">
             <div className="max-w-md mx-auto flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] text-gray-400">{cartItems.length}종 객실 / {totalQty}객실</p>
