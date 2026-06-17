@@ -14,32 +14,10 @@ import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
 import { autoSeedFakeReviews } from '../../../worker/utils/auto-seed-fake-reviews'
 import { safeError } from '../../../worker/utils/safe-error'
+// 🧹 2026-06-17: description 의 공급사 정책 괄호 제거 — cron(1회 자동) 과 공용 SSOT.
+import { cleanupKtAlphaDescriptions } from '../../../worker/utils/kt-alpha-cleanup'
 
 export const adminKtAlphaRoutes = new Hono<{ Bindings: Env }>()
-
-/**
- * 🧹 2026-06-17 (사용자 요청 — 근본 수정): 과거 KT Alpha sync 가 products.description 에 박아둔
- *   공급사 내부 정책 괄호 "(KT Alpha B2B 정책)" / "(KT Alpha B2B 쿠폰 정책)" 를 일괄 제거.
- *   commit addbc2b 가 sync 합성 코드는 고쳤지만 **이미 prod DB 에 저장된 description 행은 그대로** →
- *   이 일회성 UPDATE 로 데이터 자체를 정정 (VoucherDetailPage 의 렌더 strip 은 방어선으로 유지).
- *   멱등: WHERE 가 잔여 괄호 보유 행만 매칭 → 두 번 돌려도 추가 변경 0.
- */
-async function cleanupKtAlphaDescriptions(DB: Env['DB']): Promise<number> {
-  const r = await DB.prepare(
-    `UPDATE products
-        SET description = TRIM(
-              REPLACE(
-                REPLACE(
-                  REPLACE(description, ' (KT Alpha B2B 정책)', ''),
-                  '(KT Alpha B2B 정책)', ''),
-                '(KT Alpha B2B 쿠폰 정책)', '')
-            ),
-            updated_at = datetime('now')
-      WHERE description LIKE '%(KT Alpha B2B 정책)%'
-         OR description LIKE '%(KT Alpha B2B 쿠폰 정책)%'`
-  ).run()
-  return (r.meta?.changes ?? 0) as number
-}
 
 // 1. GET /settings
 adminKtAlphaRoutes.get('/kt-alpha/settings', cors(), async (c) => {

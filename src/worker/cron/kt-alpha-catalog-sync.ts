@@ -208,6 +208,28 @@ export async function runKtAlphaCatalogSync(env: Env): Promise<{
       console.info(`[kt-alpha sync] auto-recategorized ${recategorized} products / brand_name backfilled ${brandFilled}`)
     }
 
+    // 5. 🧹 2026-06-17 (사용자 요청 — 자동 1회): 과거 sync 가 description 에 박은
+    //    "(KT Alpha B2B 정책)" 괄호를 일괄 제거. one-time 플래그(platform_settings)로 단 1회만
+    //    실행 → 이후 sync 는 skip (멱등이지만 매일 UPDATE 부하 회피). 운영자 수동 버튼과 독립.
+    try {
+      const flagKey = 'kt_alpha_desc_policy_cleanup_v1'
+      const done = await env.DB.prepare(
+        `SELECT value FROM platform_settings WHERE key = ?`
+      ).bind(flagKey).first<{ value: string }>().catch(() => null)
+      if (!done) {
+        const { cleanupKtAlphaDescriptions } = await import('../utils/kt-alpha-cleanup')
+        const cleaned = await cleanupKtAlphaDescriptions(env.DB)
+        await env.DB.prepare(
+          `INSERT INTO platform_settings (key, value, updated_at)
+           VALUES (?, ?, datetime('now'))
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
+        ).bind(flagKey, `done:${cleaned}@${new Date().toISOString()}`).run().catch(() => { /* noop */ })
+        console.info(`[kt-alpha sync] one-time desc policy cleanup removed parenthetical from ${cleaned} products`)
+      }
+    } catch (e) {
+      console.error('[kt-alpha desc cleanup]', String(e).slice(0, 200))
+    }
+
     return { synced, deactivated, balance, recategorized }
   } catch (err) {
     // 🛡️ 2026-05-19: sync 실패 → 어드민 알림 (24h 중복 방지).
