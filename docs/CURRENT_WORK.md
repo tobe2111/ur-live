@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 어드민 대시보드 라이브 스트림 관리: 체크박스 일괄 삭제 (사용자 요청)
+**요청**: 어드민 대시보드 '라이브 스트림 관리' 테이블을 체크박스로 다중 선택 삭제.
+- **구조적 발견**: 테이블이 public `/api/streams`(소프트삭제 `deleted_at` 미필터)에서 로드 → soft-delete(status='ended'+deleted_at)해도 행이 안 사라지던 구조(단건 삭제조차). 근본수정으로 **테이블 데이터 소스를 admin 전용 `/api/admin/streams` 로 전환 + 거기서 `deleted_at IS NULL` 필터**(저트래픽 admin 경로라 hot public 피드 무변경 — 회귀 0).
+- **백엔드** (`admin-streams.routes.ts`): ① GET `/streams` 에 `deleted_at IS NULL` 필터 + `ensureStreamDeletedAt`(per-worker defensive ALTER) ② 신규 `DELETE /streams/bulk`(`/streams/:id` 보다 **먼저** 등록 — :id 캡처 방지) — ids 검증(>0, ≤100), 이미 삭제분 skip, live-monitor/bulk 와 동일 soft-delete 패턴(status='ended'+deleted_at, 매출/이력 보존). adminApp 의 requireAdmin+IP화이트리스트+audit 체인 상속.
+- **프론트** (`StreamsTable.tsx`): 체크박스 열 + 전체선택(indeterminate) + 일괄삭제 액션 바(라이브 모니터 history 와 동일 UX). 선택은 컴포넌트 내부 상태, refetch 후 사라진 항목 자동 정리(useEffect prune). dark: variant 추가 0(대시보드 화이트 고정). (`AdminPage.tsx`): `bulkDeleteStreams` 핸들러(confirm→`DELETE /api/admin/streams/bulk`→성공 시 true 반환·refetch).
+- 검증: tsc 0 · `npm run build`(client+SSR+prerender+worker+prepare) 0 · 대시보드 테마검사(내 파일 위반 0) · 스키마 참조 0.
+
 ## ✅ 2026-06-17 — 숙소 인라인 회귀 자체수정 (사용자 "다른 문제 없을까?" → 감사로 발견)
 **발견**: 직전에 숙소를 동네딜 그리드에 인라인 필터로 옮겼는데, **숙소 상품은 `products.price=0`(실가격은 객실 테이블 별도) + 위치·평점이 `product_stay_info` 별도 테이블**이라 그리드 카드론 **₩0·정보누락으로 깨짐**(seller-stays INSERT 확인). group_buy_status 기본값 'active'라 stays 가 피드에 들어와 '전체' 탭에도 ₩0 카드로 샐 수 있었음(잠재 선재버그 포함).
 - **수정(올바른 방향)**: 숙소는 전용 `/stays`(=`/api/group-buy/stays/search`, product_stay_info join)에서만 표시. ① 숙소 탭/사이드바 → `/stays` 환원 ② `GroupBuyListPage` 클라 필터에 `stay_voucher` **그리드 전역 제외**(전체 포함 — ₩0 카드 누수 차단) ③ 인라인용 stay 카드 라우팅/뱃지/CTA·Calendar import 정리(clean revert) ④ **`/stays` 헤더에 동네딜 카테고리 칩 추가**(전체/맛집식사권/미용/숙소(active)/기타/일반상품) — 숙소가 "다른 카테고리처럼" 보이길 원한 최초 요구를 예약 흐름 깨지 않고 충족(내비 일관성).

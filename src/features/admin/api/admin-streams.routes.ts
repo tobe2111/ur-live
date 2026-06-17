@@ -90,11 +90,17 @@ adminStreamsRoutes.post('/streams/replay', cors(), async (c) => {
 adminStreamsRoutes.get('/streams', cors(), async (c) => {
   try {
     const { DB } = c.env;
+    // 🛡️ 2026-06-17: 소프트 삭제(deleted_at) 스트림은 관리 목록에서 제외 — 삭제(단건/일괄) 후
+    //   행이 실제로 사라지도록. status CHECK 제약상 'deleted' 를 못 쓰므로 deleted_at 으로 표시.
+    await ensureStreamDeletedAt(DB);
     const status = c.req.query('status') || '';
-    let sql = `SELECT ls.*, s.name AS seller_name FROM live_streams ls LEFT JOIN sellers s ON s.id = ls.seller_id`;
+    const conditions: string[] = ['ls.deleted_at IS NULL'];
     const params: unknown[] = [];
-    if (status) { sql += ' WHERE ls.status = ?'; params.push(status); }
-    sql += ' ORDER BY ls.created_at DESC LIMIT 100';
+    if (status) { conditions.push('ls.status = ?'); params.push(status); }
+    const sql = `SELECT ls.*, s.name AS seller_name FROM live_streams ls
+       LEFT JOIN sellers s ON s.id = ls.seller_id
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY ls.created_at DESC LIMIT 100`;
     const { results } = await DB.prepare(sql).bind(...params).all();
     return c.json({ success: true, data: results || [] });
   } catch (err) {
@@ -138,6 +144,50 @@ adminStreamsRoutes.put('/streams/:id', cors(), async (c) => {
     }
 
     return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// 🛡️ 2026-06-17: 라이브 스트림 일괄 소프트 삭제 (어드민 대시보드 체크박스 선택).
+//   ⚠️ 라우트 순서 — 반드시 '/streams/:id' 보다 먼저 등록해야 함 (그렇지 않으면 :id='bulk' 로 캡처됨).
+//   live-monitor/bulk 와 동일 패턴: status='ended' + deleted_at (status CHECK 위반 방지, 매출/이력 보존).
+adminStreamsRoutes.delete('/streams/bulk', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const body = await c.req.json<{ ids?: unknown }>().catch(() => ({ ids: undefined }));
+    const rawIds = Array.isArray(body.ids) ? body.ids : [];
+    const ids = rawIds.map((v) => Number(v)).filter((n) => Number.isFinite(n) && n > 0);
+    if (ids.length === 0) return c.json({ success: false, error: '삭제할 ID 가 없습니다' }, 400);
+    if (ids.length > 100) return c.json({ success: false, error: '한번에 최대 100건까지 삭제 가능합니다' }, 400);
+
+    await ensureStreamDeletedAt(DB);
+
+    const placeholders = ids.map(() => '?').join(',');
+    const targets = await executeQuery<{ id: number; deleted_at: string | null }>(
+      DB,
+      `SELECT id, deleted_at FROM live_streams WHERE id IN (${placeholders})`,
+      ids,
+    );
+    if (targets.length === 0) return c.json({ success: false, error: '대상 스트림을 찾을 수 없습니다' }, 404);
+
+    const toDelete = targets.filter((t) => !t.deleted_at).map((t) => t.id);
+    const skipped = targets.length - toDelete.length;
+    if (toDelete.length > 0) {
+      const updPlaceholders = toDelete.map(() => '?').join(',');
+      await executeQuery(
+        DB,
+        `UPDATE live_streams SET status = 'ended', ended_at = COALESCE(ended_at, datetime('now')),
+         deleted_at = datetime('now') WHERE id IN (${updPlaceholders})`,
+        toDelete,
+      );
+    }
+    return c.json({
+      success: true,
+      deleted: toDelete.length,
+      skipped,
+      message: `${toDelete.length}건 삭제됨${skipped > 0 ? ` (${skipped}건은 이미 삭제됨)` : ''}`,
+    });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
@@ -303,3 +353,12 @@ export default adminStreamsRoutes;
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
 const _done_ensureAlimtalkPackagesTable = new WeakSet<object>()
+
+// 🛡️ 2026-06-17: live_streams.deleted_at defensive ALTER (per-worker 1회).
+//   소프트 삭제 표식 컬럼 — 목록 필터(deleted_at IS NULL) + 일괄 삭제에서 참조.
+const _done_ensureStreamDeletedAt = new WeakSet<object>()
+async function ensureStreamDeletedAt(DB: D1Database) {
+  if (_done_ensureStreamDeletedAt.has(DB)) return
+  _done_ensureStreamDeletedAt.add(DB)
+  try { await DB.prepare(`ALTER TABLE live_streams ADD COLUMN deleted_at DATETIME`).run() } catch { /* 이미 존재 */ }
+}
