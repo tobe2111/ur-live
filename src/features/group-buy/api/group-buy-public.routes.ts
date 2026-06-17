@@ -514,6 +514,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       FROM vouchers v
       LEFT JOIN products p ON v.product_id = p.id
       WHERE v.user_id = ?
+        AND (p.kt_alpha_gift_code IS NULL OR p.kt_alpha_gift_code = '')
       ORDER BY v.created_at DESC
       LIMIT 200
     `).bind(String(user.id)).all().catch(async (err) => {
