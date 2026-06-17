@@ -1133,17 +1133,21 @@ app.patch('/tax-documents/:id', async (c) => {
 //   slug 'demo-wholesale-N' 마커로 식별 → 재실행 시 중복 안 함, DELETE 로 일괄 제거.
 //   ⚠️ 표시용 데모 — supplier_id=NULL (주문 시 정산은 데모이므로 무의미). 운영 데이터 아님.
 const DEMO_SLUG_PREFIX = 'demo-wholesale-'
+// 🖼️ 2026-06-17 (사용자 신고 — 데모 이미지가 상품과 안 맞음): picsum.photos/seed 는 시드 기반 *무작위* 사진이라
+//   상품(커피/견과/마스크팩…)과 전혀 무관한 이미지가 들어갔음. → loremflickr 의 카테고리 키워드 매칭으로 교체.
+//   /600/600/<keyword>?lock=<n> : keyword 로 주제 매칭(coffee→커피 등) + lock 으로 이미지 고정(매 로드 동일).
+//   호스트 비-allowlist → cfImage 가 원본 URL 그대로 반환(브라우저 직접 로드, CSP img-src https: 허용). 데모 표시용.
 const DEMO_PRODUCTS: { name: string; category: string; supply: number; retail: number; stock: number; moq: number; color: string; img: string }[] = [
-  { name: '프리미엄 블렌드 원두 커피 1kg', category: 'food', supply: 9800, retail: 16000, stock: 480, moq: 10, color: '#6F4E37', img: 'https://picsum.photos/seed/urwh1/600/600' },
-  { name: '유기농 데일리 견과 믹스 500g', category: 'food', supply: 7200, retail: 12900, stock: 320, moq: 10, color: '#C8A06A', img: 'https://picsum.photos/seed/urwh2/600/600' },
-  { name: '수분 진정 마스크팩 30매', category: 'beauty', supply: 8500, retail: 19900, stock: 150, moq: 5, color: '#9FD8CB', img: 'https://picsum.photos/seed/urwh3/600/600' },
-  { name: '비타민C 브라이트닝 앰플 30ml', category: 'beauty', supply: 11200, retail: 24000, stock: 90, moq: 3, color: '#F2B705', img: 'https://picsum.photos/seed/urwh4/600/600' },
-  { name: '호텔 컬렉션 극세사 수건 10장', category: 'living', supply: 14500, retail: 26000, stock: 60, moq: 2, color: '#D9E4EC', img: 'https://picsum.photos/seed/urwh5/600/600' },
-  { name: '진공 보온 스테인리스 텀블러 500ml', category: 'living', supply: 6900, retail: 13900, stock: 240, moq: 6, color: '#4A5A6A', img: 'https://picsum.photos/seed/urwh6/600/600' },
-  { name: '베이직 무지 반팔 티셔츠 (5color)', category: 'fashion', supply: 4300, retail: 9900, stock: 600, moq: 10, color: '#2E2E2E', img: 'https://picsum.photos/seed/urwh7/600/600' },
-  { name: '데일리 컴포트 양말 10족 세트', category: 'fashion', supply: 3200, retail: 7900, stock: 800, moq: 10, color: '#B0A8B9', img: 'https://picsum.photos/seed/urwh8/600/600' },
-  { name: '고속 충전 USB-C 케이블 3개입', category: 'digital', supply: 5100, retail: 11900, stock: 360, moq: 5, color: '#1F6FEB', img: 'https://picsum.photos/seed/urwh9/600/600' },
-  { name: '차량용 디퓨저 방향제 세트', category: 'lifestyle', supply: 4600, retail: 9900, stock: 280, moq: 5, color: '#7FB069', img: 'https://picsum.photos/seed/urwh10/600/600' },
+  { name: '프리미엄 블렌드 원두 커피 1kg', category: 'food', supply: 9800, retail: 16000, stock: 480, moq: 10, color: '#6F4E37', img: 'https://loremflickr.com/600/600/coffee?lock=11' },
+  { name: '유기농 데일리 견과 믹스 500g', category: 'food', supply: 7200, retail: 12900, stock: 320, moq: 10, color: '#C8A06A', img: 'https://loremflickr.com/600/600/almonds?lock=12' },
+  { name: '수분 진정 마스크팩 30매', category: 'beauty', supply: 8500, retail: 19900, stock: 150, moq: 5, color: '#9FD8CB', img: 'https://loremflickr.com/600/600/skincare?lock=13' },
+  { name: '비타민C 브라이트닝 앰플 30ml', category: 'beauty', supply: 11200, retail: 24000, stock: 90, moq: 3, color: '#F2B705', img: 'https://loremflickr.com/600/600/cosmetics?lock=14' },
+  { name: '호텔 컬렉션 극세사 수건 10장', category: 'living', supply: 14500, retail: 26000, stock: 60, moq: 2, color: '#D9E4EC', img: 'https://loremflickr.com/600/600/towel?lock=15' },
+  { name: '진공 보온 스테인리스 텀블러 500ml', category: 'living', supply: 6900, retail: 13900, stock: 240, moq: 6, color: '#4A5A6A', img: 'https://loremflickr.com/600/600/mug?lock=16' },
+  { name: '베이직 무지 반팔 티셔츠 (5color)', category: 'fashion', supply: 4300, retail: 9900, stock: 600, moq: 10, color: '#2E2E2E', img: 'https://loremflickr.com/600/600/tshirt?lock=17' },
+  { name: '데일리 컴포트 양말 10족 세트', category: 'fashion', supply: 3200, retail: 7900, stock: 800, moq: 10, color: '#B0A8B9', img: 'https://loremflickr.com/600/600/socks?lock=18' },
+  { name: '고속 충전 USB-C 케이블 3개입', category: 'digital', supply: 5100, retail: 11900, stock: 360, moq: 5, color: '#1F6FEB', img: 'https://loremflickr.com/600/600/charger?lock=19' },
+  { name: '차량용 디퓨저 방향제 세트', category: 'lifestyle', supply: 4600, retail: 9900, stock: 280, moq: 5, color: '#7FB069', img: 'https://loremflickr.com/600/600/perfume?lock=20' },
 ]
 
 app.post('/seed-demo-products', rateLimit({ action: 'wholesale-seed-demo', max: 5, windowSec: 60 }), async (c) => {
@@ -1153,7 +1157,17 @@ app.post('/seed-demo-products', rateLimit({ action: 'wholesale-seed-demo', max: 
     await DB.prepare('ALTER TABLE products ADD COLUMN dominant_color TEXT').run().catch(swallow('seed-demo:dc'))
     const existing = await DB.prepare(`SELECT COUNT(*) AS c FROM products WHERE slug LIKE ?`).bind(DEMO_SLUG_PREFIX + '%').first<{ c: number }>()
     if ((existing?.c ?? 0) > 0) {
-      return c.json({ success: true, seeded: 0, existing: existing?.c ?? 0, message: '이미 데모 상품이 있습니다 (삭제 후 재생성하세요)' })
+      // 🩹 2026-06-17 (사용자 신고 — 데모 이미지가 상품과 안 맞음): 이미 시드된 데모는 slug 매칭으로
+      //   이미지/대표색을 현재 DEMO_PRODUCTS 정의로 일괄 갱신 → 삭제·재생성 없이 '데모 채우기' 재클릭만으로 치유.
+      let refreshed = 0
+      for (let i = 0; i < DEMO_PRODUCTS.length; i++) {
+        const d = DEMO_PRODUCTS[i]
+        const r = await DB.prepare(
+          `UPDATE products SET image_url = ?, dominant_color = ?, updated_at = datetime('now') WHERE slug = ?`,
+        ).bind(d.img, d.color, DEMO_SLUG_PREFIX + (i + 1)).run()
+        refreshed += r.meta?.changes ?? 0
+      }
+      return c.json({ success: true, seeded: 0, refreshed, existing: existing?.c ?? 0, message: `데모 상품 이미지 ${refreshed}개를 상품에 맞게 갱신했습니다` })
     }
     let seeded = 0
     for (let i = 0; i < DEMO_PRODUCTS.length; i++) {
