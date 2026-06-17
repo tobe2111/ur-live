@@ -1,5 +1,16 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 에이전시 대시보드 전수조사 + 기능 버그 수정 (대표 "전수조사 → 🔴+🟡+🟢 전부 수정")
+**감사 범위**: 페이지 50+·백엔드 라우트 23(전부 마운트·`requireAgency` 가드 정상, 죽은 cron 0, IDOR 0 — 골격 양호). 발견된 **실동작 버그 4 + 머니 규칙 위반 2 + 경미 3** 전부 수정.
+- **🔴 공동구매 지표 깨짐** (`AgencyGroupBuyPage`): 백엔드 `community_group_buys` 컬럼(`current_count`/`target_count`/`total_deposited`)을 페이지가 `participant_count`/`target_participants`/`total_deposit_deals` 로 읽어 참여자/예치/예상수익 전부 undefined·0. **프론트 `select`에 `normalizeGroupBuy` 매핑**(소비자 피드 공유 백엔드 무변경).
+- **🔴 라이브 시청자 항상 0** (`AgencyStreamsPage`): `/streams` 가 `current_viewers`/`scheduled_at` 반환인데 `viewer_count`/`started_at` 로 읽음 → select 정규화.
+- **🔴 브랜드 편집기 먹통** (`AgencyProfilePage`): `/api/agency-public/me/public`(공개 라우터, GET /:slug 뿐) 호출 → 실제 마운트는 `/api/agency/public-profile/me/public`. GET 400·PATCH 404 → 경로 교정(인터셉터 토큰 자동주입).
+- **🔴 셀러이전 받은/보낸 분류 깨짐** (`AgencyTransfersPage`): 미존재 `/api/agency/me` 404 → `myAgencyId` 항상 null → `/api/agency/profile`(data.id)로 재연결.
+- **🟡 원천징수율 하드코딩 제거**(`agency-auto-settle.ts`·`agency-monthly-invoices.ts`): `0.033` 리터럴 → SSOT `WITHHOLDING_RATES.business_income`(값 동일, 동작 보존). seller 전용 `withholdAndLog`는 sellers 테이블 조회라 부적합(agencies 는 tax_type 컬럼 없음 — 향후 도입 시 비율분기는 별도 머니작업).
+- **🟡 자동정산 멱등성**(`agency-auto-settle.ts`): SELECT→INSERT→mark(이중정산 창) → `UPDATE...RETURNING` 원자적 claim-before-credit(선점한 행으로만 수수료 산출, 동시실행 RETURNING 0건 → skip). ⚠️ 머니 — **staging 실정산 E2E 1회 필요**.
+- **🟢 경미**: enum 폴백 가드(`AgencySelfEventsPage`/`AgencyPromoteBoostsPage` — 데이터 드리프트 크래시 방지), `AgencySellersPage.loadStats` 조용한 실패→토스트, `AgencySettlementsPage` 죽은 `requestPayout`(410) 제거+빈 테이블 empty-state, `AgencyContractsPage`/`AgencyNoticesPage` 한글 하드코딩 `t()` 래핑.
+- 검증: `npm run build`(client+worker) exit 0 · 머니패턴·테마 검사 clean. tsc 는 환경 TS버전 `baseUrl` deprecation(레포 전역, 변경 무관)로 미실행.
+
 ## ✅ 2026-06-17 — 이메일 기억하기 4개 대시보드 추가 + 자동 로그인 정합 (대표 신고)
 **신고**: "각 대시보드마다 이메일 기억하기 잘 되나? 자동 로그인도 안 되는 것 같다." 전수조사: 이메일 기억은 **admin·seller만 있고 agency/supplier/wholesale(owner·staff) 4곳 누락**. 자동 로그인은 **전용 토글 없음**(토큰 30일+refresh 90일+자동갱신으로 암묵 유지).
 - **이메일 기억 4곳 추가**(대표 "4곳 모두"): `AgencyLoginPage`/`SupplierLoginPage`/`WholesaleLoginPage`/`WholesaleStaffLoginPage` 에 admin/seller 패턴 미러링 — 체크박스 + 마운트 시 자동채움 + submit 시 저장/삭제. 키 `{agency,supplier,wholesale,wholesale_staff}_remember_email`. 프론트만, 라이트 테마(위반 0), tsc 0 · build 0.
