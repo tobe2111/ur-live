@@ -1427,4 +1427,23 @@ app.post('/supply-bulk-import', rateLimit({ action: 'wholesale-bulk-import', max
   }
 })
 
+// 📊 2026-06-16: 도매몰 카탈로그 현황 — 일괄 등록 페이지 표시 + 데모/실상품 분리 판단용.
+app.get('/supply-stats', async (c) => {
+  const { DB } = c.env
+  try {
+    const row = await DB.prepare(
+      `SELECT COUNT(*) AS total,
+         SUM(CASE WHEN slug LIKE 'demo-wholesale-%' THEN 1 ELSE 0 END) AS demo,
+         SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active
+       FROM products WHERE is_supply_product = 1 AND (supply_source_id IS NULL OR supply_source_id = 0)`
+    ).first<{ total: number; demo: number; active: number }>().catch(() => null)
+    const sup = await DB.prepare("SELECT COUNT(*) AS c FROM suppliers WHERE status = 'approved'").first<{ c: number }>().catch(() => null)
+    const total = Number(row?.total ?? 0)
+    const demo = Number(row?.demo ?? 0)
+    return c.json({ success: true, total, demo, real: Math.max(0, total - demo), active: Number(row?.active ?? 0), suppliers: Number(sup?.c ?? 0) })
+  } catch (err) {
+    return safeError(c, err, '현황 조회 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
 export { app as distributorAdminRoutes }
