@@ -8,7 +8,7 @@
  */
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { sign } from 'hono/jwt';
+import { sign, verify } from 'hono/jwt';
 import { hashPassword, verifyPassword } from '@/lib/password';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { requireAuth } from '@/worker/middleware/auth';
@@ -65,6 +65,50 @@ async function ensureSupplierSchema(DB: D1Database): Promise<void> {
   }
   await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_email ON suppliers(email) WHERE email IS NOT NULL').run().catch(swallow('supplier-auth:idx-email'));
   await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_linked_user ON suppliers(linked_user_id) WHERE linked_user_id IS NOT NULL').run().catch(swallow('supplier-auth:idx-linked-user'));
+}
+
+// 🛡️ 2026-06-17 (로그인 영역 감사 — 제조사 refresh): 셀러/어드민과 동일한 auth_refresh_tokens
+//   보조 테이블 사용(공유 스키마). 기존엔 supplier 토큰이 refresh 없이 30일 후 강제 재로그인이었음.
+const _supplierRefreshTableEnsured = new WeakSet<object>();
+async function ensureSupplierAuthRefreshTable(DB: D1Database): Promise<void> {
+  if (_supplierRefreshTableEnsured.has(DB)) return;
+  _supplierRefreshTableEnsured.add(DB);
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS auth_refresh_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_type TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    token_hash TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`).run().catch(swallow('supplier-auth:refresh-table'));
+  await DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_auth_refresh_tokens_user ON auth_refresh_tokens(user_type, user_id)'
+  ).run().catch(swallow('supplier-auth:refresh-idx'));
+}
+
+/**
+ * supplier access(30일) + refresh(90일) 토큰 발급 + refresh 해시 저장(rotation 기반).
+ * 셀러 패턴(seller.routes.ts) 미러링 — login / become(승인) / refresh 가 공통 사용.
+ */
+async function issueSupplierTokens(
+  DB: D1Database,
+  jwtSecret: string,
+  sup: { id: number; business_name: string; email: string | null },
+): Promise<{ token: string; refreshToken: string }> {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const base = { sub: String(sup.id), supplier_id: sup.id, email: sup.email, name: sup.business_name, type: 'supplier' as const };
+  const token = await sign({ ...base, iat: nowSec, exp: nowSec + 30 * 24 * 60 * 60 }, jwtSecret);
+  const refreshToken = await sign({ ...base, token_use: 'refresh', iat: nowSec, exp: nowSec + 90 * 24 * 60 * 60 }, jwtSecret);
+  try {
+    await ensureSupplierAuthRefreshTable(DB);
+    const refreshHash = await hashPassword(refreshToken);
+    await DB.prepare(
+      `INSERT INTO auth_refresh_tokens (user_type, user_id, token_hash, expires_at) VALUES ('supplier', ?, ?, ?)`
+    ).bind(sup.id, refreshHash, new Date((nowSec + 90 * 24 * 3600) * 1000).toISOString()).run();
+  } catch (e) {
+    if (import.meta.env.DEV) console.error('[supplier-auth] refresh token persist failed:', e);
+  }
+  return { token, refreshToken };
 }
 
 // ── POST /register — 도매상 가입 ──────────────────────────────────────────────
@@ -246,13 +290,9 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
     if (sup.status !== 'approved') {
       return c.json({ success: true, status: sup.status, message: sup.status === 'pending' ? '관리자 승인 대기 중입니다' : '이용할 수 없는 계정 상태입니다' });
     }
-    // 승인됨 → supplier_token 발급 (login 과 동일 payload).
-    const nowSec = Math.floor(Date.now() / 1000);
-    const token = await sign({
-      sub: sup.id.toString(), supplier_id: sup.id, email: sup.email, name: sup.business_name,
-      type: 'supplier', iat: nowSec, exp: nowSec + 30 * 24 * 60 * 60,
-    }, c.env.JWT_SECRET);
-    return c.json({ success: true, status: 'approved', data: { token, supplier: { id: sup.id, business_name: sup.business_name, email: sup.email } } });
+    // 승인됨 → supplier_token + refresh 발급 (login 과 동일 경로).
+    const { token, refreshToken } = await issueSupplierTokens(DB, c.env.JWT_SECRET, sup);
+    return c.json({ success: true, status: 'approved', data: { token, refreshToken, supplier: { id: sup.id, business_name: sup.business_name, email: sup.email } } });
   } catch (err) {
     return safeError(c, err, '제조회원 전환 중 오류가 발생했습니다', '[supplier-auth]');
   }
@@ -290,22 +330,82 @@ supplierAuthRoutes.post('/login', cors(), rateLimit({ action: 'supplier_login', 
       return c.json({ success: false, error: msg, code: 'SUPPLIER_NOT_APPROVED' }, 403);
     }
 
-    const nowSec = Math.floor(Date.now() / 1000);
-    const token = await sign({
-      sub: supplier.id.toString(),
-      supplier_id: supplier.id,
-      email: supplier.email,
-      name: supplier.business_name,
-      type: 'supplier',
-      iat: nowSec,
-      exp: nowSec + 30 * 24 * 60 * 60,
-    }, c.env.JWT_SECRET);
+    const { token, refreshToken } = await issueSupplierTokens(DB, c.env.JWT_SECRET, supplier);
 
     return c.json({
       success: true,
-      data: { token, supplier: { id: supplier.id, business_name: supplier.business_name, email: supplier.email } },
+      data: { token, refreshToken, supplier: { id: supplier.id, business_name: supplier.business_name, email: supplier.email } },
     });
   } catch (err) {
     return safeError(c, err, '로그인 처리 중 오류가 발생했습니다', '[supplier-auth]');
+  }
+});
+
+// ── POST /refresh — supplier access token 갱신 (rotation + reuse 감지) ─────────
+// 🛡️ 2026-06-17 (로그인 영역 감사): 셀러/어드민과 동일하게 refresh 흐름 추가.
+//   기존엔 supplier 토큰이 30일 후 만료되면 무조건 재로그인이었음(refresh 부재). 이제 access 만료 시
+//   클라(supplier-api.ts)가 이 엔드포인트로 갱신 → 90일 refresh 동안 자동 유지.
+//   레거시(이 배포 전 로그인) 사용자는 client 에 refresh 토큰이 없어 1회 재로그인 후부터 적용(자연 마이그레이션).
+supplierAuthRoutes.post('/refresh', cors(), rateLimit({ action: 'supplier_refresh', max: 30, windowSec: 300 }), async (c) => {
+  const { DB, JWT_SECRET } = c.env;
+  try {
+    const body = await c.req.json<{ refreshToken?: string }>().catch(() => ({} as { refreshToken?: string }));
+    const refreshToken = body.refreshToken;
+    if (!refreshToken) return c.json({ success: false, error: 'Refresh Token이 필요합니다', code: 'NO_REFRESH_TOKEN' }, 400);
+
+    // 1) JWT 서명 + 만료 검증 (hono verify 는 만료 시 throw)
+    let payload: Record<string, unknown>;
+    try {
+      payload = await verify(refreshToken, JWT_SECRET, 'HS256') as Record<string, unknown>;
+    } catch {
+      return c.json({ success: false, error: 'Refresh Token이 유효하지 않습니다', code: 'INVALID_REFRESH_TOKEN' }, 401);
+    }
+    if (payload.type !== 'supplier' || !payload.supplier_id) {
+      return c.json({ success: false, error: 'Refresh Token이 유효하지 않습니다', code: 'INVALID_REFRESH_TOKEN' }, 401);
+    }
+    const supplierId = Number(payload.supplier_id);
+
+    // 2) 계정 상태 확인 (정지/미승인 → 갱신 거부)
+    const supplier = await DB.prepare(
+      'SELECT id, business_name, email, status FROM suppliers WHERE id = ? LIMIT 1'
+    ).bind(supplierId).first<{ id: number; business_name: string; email: string | null; status: string }>().catch(() => null);
+    if (!supplier) return c.json({ success: false, error: '계정을 찾을 수 없습니다', code: 'NOT_FOUND' }, 401);
+    if (supplier.status !== 'approved') {
+      return c.json({ success: false, error: '이용할 수 없는 계정 상태입니다', code: 'SUPPLIER_NOT_APPROVED' }, 403);
+    }
+
+    // 3) 저장된 refresh 해시 검증 + rotation (seller.routes.ts 패턴)
+    try {
+      await ensureSupplierAuthRefreshTable(DB);
+      const rows = await DB.prepare(
+        `SELECT id, token_hash FROM auth_refresh_tokens WHERE user_type = 'supplier' AND user_id = ?`
+      ).bind(supplierId).all<{ id: number; token_hash: string }>();
+      const candidates = rows.results || [];
+      if (candidates.length > 0) {
+        let matchedId: number | null = null;
+        for (const row of candidates) {
+          const { valid } = await verifyPassword(refreshToken, row.token_hash);
+          if (valid) { matchedId = row.id; break; }
+        }
+        if (matchedId === null) {
+          if (import.meta.env.DEV) console.warn('[Supplier Refresh] refresh token not recognized (revoked or reused)');
+          return c.json({ success: false, error: 'Refresh Token이 유효하지 않습니다', code: 'INVALID_REFRESH_TOKEN' }, 401);
+        }
+        const del = await DB.prepare('DELETE FROM auth_refresh_tokens WHERE id = ?').bind(matchedId).run();
+        if (!del.meta?.changes) {
+          return c.json({ success: false, error: '토큰 갱신에 실패했습니다. 다시 로그인해주세요', code: 'TOKEN_ROTATION_FAILED' }, 401);
+        }
+      }
+      // candidates.length === 0 → 레거시(저장된 해시 없음). JWT 서명/만료는 이미 검증됨 → 신규 발급 허용(자연 마이그레이션).
+    } catch (e) {
+      if (import.meta.env.DEV) console.error('[Supplier Refresh] token store verify failed:', e);
+      return c.json({ success: false, error: '토큰 검증에 실패했습니다', code: 'TOKEN_VERIFY_FAILED' }, 500);
+    }
+
+    // 4) 새 access + refresh 발급 (issueSupplierTokens 가 새 refresh 해시 저장)
+    const { token, refreshToken: newRefreshToken } = await issueSupplierTokens(DB, JWT_SECRET, supplier);
+    return c.json({ success: true, data: { accessToken: token, refreshToken: newRefreshToken } });
+  } catch (err) {
+    return safeError(c, err, '토큰 갱신 중 오류가 발생했습니다', '[supplier-auth]');
   }
 });
