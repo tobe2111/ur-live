@@ -63,10 +63,11 @@ export default function CatalogHeader({
       <div style={{ background: WT.ink, color: '#C2C6CC' }}>
         <div className="ur-content-wide px-5 lg:px-8 h-9 flex items-center justify-between text-[12px]">
           <div className="flex items-center gap-3 lg:gap-4 min-w-0">
-            <button onClick={() => navigate(supplierToken ? '/supplier' : '/supplier/login')} className="font-semibold text-white whitespace-nowrap">{t('wholesale.util.supplierJoin', { defaultValue: '제조사 입점' })}</button>
+            {/* 🧹 2026-06-17 (시안): 제조사 입점 삭제 · 순서 공지사항/고객센터/문의·신고 */}
+            <button onClick={() => navigate('/wholesale/board')} className="font-semibold text-white whitespace-nowrap">{t('wholesale.util.notice', { defaultValue: '공지사항' })}</button>
             <span className="opacity-30 hidden sm:inline">|</span>
             <button onClick={() => navigate('/wholesale/support')} className="hidden sm:inline whitespace-nowrap">{t('wholesale.util.cs', { defaultValue: '고객센터' })}</button>
-            <button onClick={() => navigate('/wholesale/board')} className="hidden sm:inline whitespace-nowrap">{t('wholesale.util.board', { defaultValue: '공지·자료실' })}</button>
+            <button onClick={() => navigate('/wholesale/board?tab=report')} className="hidden sm:inline whitespace-nowrap">{t('wholesale.util.report', { defaultValue: '문의·신고' })}</button>
           </div>
           <div className="flex items-center gap-2.5 lg:gap-3.5 shrink-0">
             {loggedIn ? (
@@ -168,6 +169,8 @@ export default function CatalogHeader({
             {t('wholesale.nav.allCategories', { defaultValue: '전체 카테고리' })}
           </button>
           <div className="flex items-center gap-5 lg:gap-6 pl-5 text-[13.5px] font-semibold shrink-0">
+            {/* 🧹 2026-06-17 (시안): 전체상품 — 카테고리 네비 맨 앞 */}
+            <button onClick={() => navigate('/wholesale')} className="whitespace-nowrap font-bold" style={{ color: navColor('/wholesale') }}>{t('wholesale.nav.all', { defaultValue: '전체상품' })}</button>
             <button onClick={() => navigate('/wholesale/brands')} className="whitespace-nowrap font-bold" style={{ color: navColor('/wholesale/brands') }}>{t('wholesale.nav.brands', { defaultValue: '브랜드관' })}</button>
             <button onClick={() => navigate('/wholesale/best')} className="whitespace-nowrap" style={{ color: navColor('/wholesale/best') }}>{t('wholesale.nav.best', { defaultValue: '월간 베스트' })}</button>
             <button onClick={() => navigate('/wholesale/new')} className="whitespace-nowrap" style={{ color: navColor('/wholesale/new') }}>{t('wholesale.nav.new', { defaultValue: '신상품' })}</button>
