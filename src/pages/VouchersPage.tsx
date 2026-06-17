@@ -23,7 +23,6 @@ import { getUserIdSync } from '@/utils/auth'
 import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
-import { cardGradient } from '@/utils/card-gradient'
 import { SortMenu } from '@/components/ui/sort-menu'
 
 // 🛡️ 2026-05-21: 교환권 정렬 옵션 (사용자 요청).
@@ -136,12 +135,12 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
     : soldCount >= 1000
     ? `${(soldCount / 1000).toFixed(1).replace(/\.0$/, '')}천`
     : String(soldCount)
-  // 🏭 2026-06-05 (사용자 요청): 홈 교환권 카드도 쇼핑/동네딜처럼 대표색 그라데이션.
+  // 🎨 2026-06-17 (교환권 상세와 같은 톤): dominant_color 는 이미지 로딩 플레이스홀더로 유지(잠금 보존)
+  //   하되, 카드 본문은 상세 페이지처럼 클린 화이트(다크 토글 대응)로. 색 추출/리포트 파이프라인 불변.
   const [cardColor, setCardColor] = useState<string | null>(p.dominant_color || null)
   // 🏭 2026-06-05 (사용자 신고 — 가끔 이미지가 깨져 빈 회색 카드): 이미지 로드 실패 시 Gift 폴백.
   //   기존엔 onLoad 로만 노출(opacity 0→1)하고 onError 가 없어, 깨진 이미지는 opacity 0 인 채 빈칸으로 남았음.
   const [imgError, setImgError] = useState(false)
-  const grad = cardGradient(cardColor)
   return (
     <button
       type="button"
@@ -149,10 +148,13 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
       onMouseEnter={() => prefetchProduct(p.id)}
       onTouchStart={() => prefetchProduct(p.id)}
       onFocus={() => prefetchProduct(p.id)}
-      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full block flex flex-col rounded-2xl overflow-hidden"
-      style={{ backgroundColor: grad.base }}
+      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-[#121212] border border-gray-100 dark:border-[#1A1A1A]"
     >
-      <div className="relative aspect-square w-full overflow-hidden" style={{ backgroundColor: grad.base }}>
+      {/* 🎨 이미지 영역 — 상세와 동톤(은은한 그라데이션). dominant_color 있으면 로딩 플레이스홀더로(잠금). */}
+      <div
+        className="relative aspect-square w-full overflow-hidden bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] dark:from-[#15171C] dark:to-[#0F1115]"
+        style={cardColor ? { backgroundColor: cardColor } : undefined}
+      >
         {p.image_url && !imgError ? (
           <img
             src={cfImage(p.image_url, { width: 300, format: 'auto' }) || p.image_url}
@@ -178,33 +180,34 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-1">
-            <Gift className="w-10 h-10" style={{ color: grad.sub }} />
-            {p.brand_name && <span className="text-[11px] font-bold" style={{ color: grad.sub }}>{p.brand_name}</span>}
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-gray-300 dark:text-gray-600">
+            <Gift className="w-10 h-10" />
+            {p.brand_name && <span className="text-[11px] font-bold">{p.brand_name}</span>}
           </div>
         )}
-        {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거) */}
-        <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
-      </div>
-      <div className="px-2.5 pt-1 pb-2.5 flex flex-col flex-1" style={{ color: grad.text }}>
-        {p.brand_name && (
-          <p className="text-[11px] font-semibold leading-none mb-1" style={{ color: grad.sub }}>[{p.brand_name}]</p>
+        {/* 🎨 할인 배지 — 브랜드 옐로우(상세 페이지 칩과 동일 톤) */}
+        {discountRate > 0 && (
+          <span className="absolute top-2 left-2 text-[11px] font-extrabold text-[#171B24] bg-[#FFCE00] rounded-md px-1.5 py-0.5">{discountRate}%</span>
         )}
-        <p className="text-[13px] leading-tight line-clamp-2 font-medium">{p.name}</p>
-        <p className="text-[11px] mt-0.5 leading-none line-through" style={{ color: grad.sub, visibility: hasStrike ? 'visible' : 'hidden' }}>
-          {hasStrike ? `${formatNumber(p.original_price!)}딜` : ' '}
-        </p>
-        <div className="flex items-baseline gap-1 mt-0.5">
-          {discountRate > 0 && (
-            <span className="text-[15px] font-extrabold" style={{ color: grad.accent }}>{discountRate}%</span>
-          )}
-          <span className="text-[15px] font-extrabold">{formatNumber(p.price)}딜</span>
+      </div>
+      {/* 🎨 본문 — 클린 화이트(다크 토글 대응). 잉크 가격 강조 + 뉴트럴 메타. */}
+      <div className="px-2.5 pt-2 pb-2.5 flex flex-col flex-1">
+        {p.brand_name && (
+          <p className="text-[11px] font-semibold leading-none mb-1 text-gray-400 dark:text-gray-500">{p.brand_name}</p>
+        )}
+        <p className="text-[13px] leading-tight line-clamp-2 font-medium text-gray-800 dark:text-gray-100">{p.name}</p>
+        {hasStrike && (
+          <p className="text-[11px] mt-1 leading-none line-through text-gray-300 dark:text-gray-600">{formatNumber(p.original_price!)}딜</p>
+        )}
+        <div className="flex items-baseline gap-0.5 mt-0.5">
+          <span className="text-[16px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
+          <span className="text-[12px] font-bold text-[#171B24] dark:text-white">딜</span>
         </div>
-        <div className="flex items-center gap-2 mt-1 text-[11px]" style={{ color: grad.sub }}>
+        <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-400 dark:text-gray-500">
           <span className="inline-flex items-center gap-0.5">
-            <span style={{ color: '#facc15' }}>★</span>
+            <span className="text-amber-400">★</span>
             {rating > 0 ? (
-              <span className="font-bold" style={{ color: grad.text }}>{rating.toFixed(1)}</span>
+              <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
             ) : (
               <span className="font-semibold">신규</span>
             )}
@@ -659,12 +662,15 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* 금액권 그리드 */}
       <div className="ur-content-wide px-4 lg:px-8 py-4">
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5">
+
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="aspect-[4/3] bg-gray-100 dark:bg-[#1A1A1A] rounded-xl" />
-                <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1A1A1A] rounded w-3/4" />
-                <div className="h-3 mt-1 bg-gray-100 dark:bg-[#1A1A1A] rounded w-1/2" />
+              <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212]">
+                <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A]" />
+                <div className="px-2.5 pt-2 pb-2.5">
+                  <div className="h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded w-3/4" />
+                  <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1A1A1A] rounded w-1/2" />
+                </div>
               </div>
             ))}
           </div>
