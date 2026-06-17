@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — PC 프레임 바탕(gutter)이 다크 테마에서 흰색으로 남던 문제 (사용자 신고)
+**신고**: PC(`/user/profile` 등)에서 다크 테마인데 프레임 양옆 바탕이 흰색. **원인**: PC 컨슈머 프레임(`.app-framed`, 430/720px 가운데 액자)의 양옆 바탕을 `body:has(.mobile-app-container.app-framed)` CSS 만으로 칠했음 → `:has()` 미지원 브라우저/스테일 캐시/캐스케이드 엣지에서 라이트 바탕(`#e9ebef`)이 남을 수 있음.
+- **fix(결정적)**: `MobileAppLayout` 이 테마 store 의 `applied`('light'|'dark') 로 `<body>` 에 `app-frame-host`(+다크면 `app-frame-dark`) 클래스를 직접 토글 → `index.css` `body.app-frame-host[.app-frame-dark]` 규칙으로 바탕색 확정(다크=`#000`). 기존 `:has()` 규칙은 첫 페인트용으로 존치(2차).
+- ⚠️ `:has()` 규칙과 body-class 규칙은 **반드시 분리**(comma 목록 금지) — `:has()` 미지원 브라우저가 목록 전체를 무효화하기 때문. PC(`min-width:1024px`)에서만 적용, 모바일/대시보드/도매몰/비디오 무영향.
+- 검증: tsc 0 · `npm run build`(client+worker+prepare) 0 · 테마검사 통과 · 컴파일된 CSS 에 두 규칙 모두 존재 확인. **잠금 파일 무변경**(SSR inject/edge-cache 등).
+
 ## ✅ 2026-06-17 도매몰 채우기(일괄 등록) + 출시 준비 3트랙 + UTONG START 로고 벡터화
 **배경**: 도매몰이 사실상 비어있음(공급상품 1개) → "채울 수단" 신설 + 출시 전 블로커 정리. 대표 "모두 다 진행".
 - **(채우기) 어드민 CSV 일괄 등록** — `POST /api/admin/distributor/supply-bulk-import`(finance/admin/super, RBAC distributor 세그먼트). 제조사 self-serve bulk 와 동일 한글 CSV 포맷이되 **즉시 노출**(is_active=1, approved). supplier_id 없으면 직매입 제조사 find-or-create. 판매가 미입력 시 공급가×1.6 자동. 청크 batch + 행별 리포트 + audit log. UI `AdminWholesaleImportPage`(/admin/wholesale-import, nav '상품 일괄 등록') — 제조사 선택/직매입 자동 + CSV 붙여넣기·업로드·템플릿 + 결과표.

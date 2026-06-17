@@ -713,13 +713,15 @@ html.dark .gbd {
     min-height: 100vh;
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 10px 50px rgba(0, 0, 0, 0.08);
   }
-  /* 프레임 양옆 배경 — body{#111} 보다 밝은 뉴트럴 (컨슈머용). 다크 모드는 순흑. */
-  body:has(.mobile-app-container.app-framed) {
-    background-color: #e9ebef;
-  }
-  html.dark body:has(.mobile-app-container.app-framed) {
-    background-color: #000000;
-  }
+  /* 프레임 양옆 배경(바탕) — body{#111} 보다 밝은 뉴트럴 (컨슈머용). 다크 모드는 순흑.
+     2026-06-17 (사용자 신고 "다크인데 PC 바탕이 흰색"): `:has()` 단독 의존 제거.
+     ⚠️ `:has()` 미지원 브라우저는 comma 선택자 목록 전체를 무효화하므로 반드시 규칙을 분리한다
+     (각 규칙이 독립적으로 평가되도록). `body.app-frame-host[.app-frame-dark]` 는 MobileAppLayout 이
+     테마 store 의 applied 값으로 직접 토글 → 결정적으로 적용. */
+  body.app-frame-host { background-color: #e9ebef; }
+  body.app-frame-host.app-frame-dark { background-color: #000000; }
+  body:has(.mobile-app-container.app-framed) { background-color: #e9ebef; }
+  html.dark body:has(.mobile-app-container.app-framed) { background-color: #000000; }
   html.dark .mobile-app-container.app-framed {
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 50px rgba(0, 0, 0, 0.5);
   }
