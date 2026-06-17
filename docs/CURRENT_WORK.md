@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 에이전시 매장 영입 개선점 12종 일괄 (대표 "모두 진행, 가장 이상적으로")
+전면 재편 후 발견된 개선점 12개를 우선순위로 처리(🔴 정합성 → 🟡 완결성 → 🟢/검증).
+- **🔴 정합성**: ①'진행중 공구' KPI 스코프를 `agency_sellers` OR `introduced_by_agency_id` 둘 다로(영입 매장 공구가 KPI 에 잡히도록 — 재편의 모순 해소) ③동네공구 '예상 수익'→**'예상 거래액'(GMV)**: 동네공구 확정엔 에이전시 직접 적립 코드 없음(확인) → 오해 라벨 정정, commission_rate fetch 제거. ⑩`AgencyGroupBuyAlert` 미사용 `active_groups`를 헤더 배지로 노출.
+- **🟡 매장 영입 완결**: ⑦가게별 진행중 공구 컬럼(/introduced-stores backend+page) ⑥영입 깔때기(영입→활성→공구운영→매출 4단계, 클라 파생) ⑧부진 영입 매장 인사이트(summary.inactive_stores → 메인 대시보드, 매장 영입 1순위 배너) ⑨영입 링크 복사 CTA(introduced-stores 기존 + 메인 '가게 영입' 연결 — 충족).
+- **검증으로 해소(코드 무변경)**: ⑤매장영입 commission 원천징수 = `commission_withdrawals.withholding_tax` 로 이미 반영(admin-payout-center) — 갭 아님. ⑪i18n = 6개 언어 0-missing sync 통과(defaultValue 컨벤션).
+- **남은 운영 액션(이 환경 불가)**: ②에이전시↔셀러 3중 연결(agency_sellers/agency_id/introduced_by) 전역 SSOT 통일은 다수 쿼리 영향이라 위험 — #1 로 가장 가시적 증상은 해소, 전역 통일은 별도 신중 작업. ④자동정산 staging 실결제 E2E 1회. ⑫운영 가이드 prod 재시드.
+- 검증: 전 batch client+worker build exit 0 · 테마 clean.
+
 ## ✅ 2026-06-17 — 에이전시 대시보드 '매장 영입' 중심 전면 재편 (대표 AskUserQuestion="메인+사이드바 전면 재편")
 **배경**: 대표 통찰 — 공구 모델에서 에이전시의 본질은 **매장 영입**(오프라인 가게를 입점→공구 운영)이고 '소속 셀러 매니징'은 라이브 시대 유산. 매장 영입 **엔진**(결제확정 시 `creditAgencyStoreIntroCommission` 실호출=가입 ₩30,000+매출 2%·멱등, 월 ₩50,000 cron, 환불역전, introduced-stores/prospects 페이지)은 이미 잘 배선됨 — **대시보드 IA가 여전히 소속 셀러 중심**이던 갭을 해소(소속 셀러 기능은 전부 코드/경로 보존, 노출만 강등).
 - **사이드바**(`AgencyLayout`): '매장 영입' 그룹을 대시보드 바로 아래 **최상단**으로 신설(내 입점 가게·매장 영입 현황·공동구매·숙소). 소속 셀러(담당 셀러·랭킹·비교·셀러영입·이전 + 라이브현황·방송캘린더)는 **'셀러 관리' 보조 그룹**으로 강등. 하단 CTA '셀러 초대'→**'가게 영입'**(/introduced-stores), 미니통계 '담당 N셀러'→**'영입 N가게'**(summary fetch).
