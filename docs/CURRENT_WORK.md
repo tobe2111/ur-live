@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 역할 명칭 확정(유저 / 사업자 유저) + 사업자등록 진입 일원화 (사용자 결정)
+**사용자 확정 스키마**: 링크샵 가진 사람 = **유저**(회원가입하면 누구나, /u/{handle} 자동 생성, 추천/핀). 사업자등록+판매승인 받으면 = **사업자 유저**(판매 + 현금정산). 큐레이터/크리에이터/인플루언서/셀러/매장 → 이 2개로 흡수(사용자-가시 라벨; 코드 식별자·seller_type 값은 유지). 에이전시·도매 공급자는 B2B 조직 축이라 별도 유지.
+- **셀러 대시보드 실측 주체**: store_owner(매장/사업자) = 주력·활성(신규 가입 전부 이쪽), influencer(크리에이터) = 라이브 중단으로 사실상 휴면(신규 생성 경로도 막힘). → 대시보드 ≈ "파는 사람(사업자 유저)"의 도구.
+- **사업자등록 진입 일원화** (`CuratorEarningsPage`): "사업자 등록"이 2군데였음 — BusinessSection(users.business_*, 현금정산용)과 SellOwnProductsCTA(매장등록, 판매용). 그런데 **현금 출금 게이트(curator.routes:861)가 이미 '연결 승인 매장'을 요구** → BusinessSection-only 등록은 현금정산 불가(오해유발). **BusinessSection 은퇴**(렌더+함수 제거), SellOwnProductsCTA를 단일 "사업자 등록 → 사업자 유저" 진입으로. 출금 게이트/은행(WithdrawModal 입력)/세금(curator_withholding_rate policy)/세무 backend **전부 무수정** — 진입 UI만 1→통합.
+- **라벨 정리**(CuratorEarningsPage): 판매자/셀러/매장 → "사업자 등록"·"사업자 유저"·"판매 관리". (그 외 /seller/* i18n 의 "셀러" 잔여 sweep 은 후속 — 6개 언어 t() 키라 별도 작업.)
+- 검증: tsc 0 · build(client+worker) 0 · 테마검사 통과. ⚠️ getBusiness 의 is_store_seller 파생(직전 커밋)은 BusinessSection 은퇴로 미사용 dead 됐으나 read-only·무해라 존치.
+
 ## ✅ 2026-06-17 — 크리에이터→판매자 통합 + 링크샵 flip-flop 수정 (사용자 "모두 진행")
 **배경**: 사용자가 링크샵(`/u/{handle}`)이 새로고침마다 셀러↔핀 "왔다갔다" 신고 + "사업자 등록한 유저가 자기 상품도 올리게" 요청. AskUserQuestion 으로 (어드민 승인 후 판매 / 인라인+제한 대시보드) 확정 후 4건 진행.
 - **#0 발견 가능성 (commit 54a7dd0)**: 카카오 유저는 마이페이지 셀러전환 버튼이 숨겨져(`SellerSwitchInline` is_kakao_user && !has_seller→null) 사업자 등록해도 판매 입구가 안 보였음. CuratorEarningsPage 에 `SellOwnProductsCTA`(셀러 상태별: 없음→등록 / pending / approved→등록·대시보드 / rejected) 추가.
