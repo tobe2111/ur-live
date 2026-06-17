@@ -1,5 +1,16 @@
 # 🚧 진행 중 작업
 
+## 🔴 2026-06-17 — 도매몰 마진 모델 전면 전환 (대표 확정, 머니 크리티컬) — ⚠️ staging E2E 필수
+**대표 확정 모델(cost-plus)**: 제조사가 받을 금액(공급원가) **위에** 플랫폼 마진%를 *붙여* 공급가 산출. (구: 판매가−등급보장마진 / 정산 공급가×90% → 정반대)
+- **공급가 = clamp(round(공급원가 × (1 + 유효마진%)), 하한=공급원가, 상한=판매가)**. 유효마진% = 제품별 마진%(`supply_margin_override_pct`, 없으면 전역 `wholesale_platform_commission_pct` 기본10) × 등급배수%/100.
+- **제조사 정산 = 공급원가 전액** / **플랫폼 = 공급가 − 공급원가** (`splitWholesaleUnit` 단순 분리 — 마진은 공급가에 내재, commPct 인자 무시). ⚠️ 구 코드의 "제조사=공급가×90%" 불일치/버그 해소.
+- **등급배수**(고등급=유료 우대): 일반C 100 / 프로B 70 / 프리미엄A 50 → 공급가 ↓ → 판매사 마진 ↑. (현재 `DEFAULT_GRADE_MULTIPLIERS` 상수 — **등급배수 어드민 편집은 후속**.)
+- **부가세**: 포함가 그대로(표시·청구·정산), 세금계산서만 `splitVat`(10/110) 분리 — **이미 구현됨**.
+- **변경 파일**: `distributor-pricing.ts`(resolveDistributorPrice→cost-plus, `distributorPriceFromCost`/`gradeMarginMultiplier`/`DEFAULT_PLATFORM_MARGIN_PCT`/`DEFAULT_GRADE_MULTIPLIERS` 신설, 구 distributorPriceFromRetail/marginForGrade deprecated 보존), `wholesale-settlement.ts`(splitWholesaleUnit 제조사=공급원가), `wholesale.routes.ts`(주문 라우트가 전역 기본마진 `commPct` 를 `defaultPlatformMarginPct` 로 전달 — 1줄), `AdminDistributorGradesPage`(라벨: 수수료율→기본 플랫폼 마진율), E2E 문서 재작성.
+- **검증**: tsc 0 · **단위 130 pass**(3개 시나리오 테스트 cost-plus 로 재작성 — 워크드 숫자 잠금) · money-pattern 0 · client+worker build 0.
+- ⚠️⚠️ **실 staging 결제 E2E 1회 필수**(외부 검증 불가): 공급가=공급원가×(1+마진)·제조사 지급=공급원가 전액·플랫폼=스프레드·판매가 상한·환불 역전. `docs/WHOLESALE_SETTLEMENT_E2E.md` 갱신본 참조.
+- **후속**: ① 등급배수 어드민 편집 UI(현재 상수) ② 제품별 마진 입력 UI 확인/라벨(supply_margin_override_pct) ③ GET /me·admin 등급 미리보기의 옛 marginForGrade 표시 정합 ④ guide-seed-wholesale 공식 문구.
+
 ## ✅ 2026-06-17 — 로그인 "계속 풀림" = 메인↔대시보드 듀얼 로그인 충돌 (사용자 신고 → 전수조사 후 근본수정)
 **신고**: "로그인이 계속 풀린다 / 대시보드에 로그인하면 기존 메인 유저 로그인이 로그아웃되는 느낌." 전수조사 결과 **단일 키 `user_type` 의존 잔존 코드**가 근본원인 — RouteGuards/isLoggedInSync/UserProfilePage 는 이미 토큰 기반으로 고쳤으나 **401 인터셉터 + 소비자 페이지 10곳이 누락**(부분 수정).
 - **메커니즘**: 한 브라우저에서 대시보드(셀러/어드민/에이전시)+소비자 동시 로그인 시 단일 키 `user_type` 이 'admin'/'seller' 로 덮임(`KakaoCallbackPage:69` admin/agency 토큰 있으면 'user' 미설정 + 대시보드 로그인이 직접 set). 그런데 `user_type === 'user'` 로 로그인을 판단하던 코드들이 멀쩡한 소비자 세션(user_id+쿠키)을 "로그아웃"으로 오인 → ① 즉시 체감(로그인 버튼/빈 화면) ② **실제 삭제**: `api.ts:597` 401 핸들러가 `isSessionCookieUser`(user_type==='user') false 면 **세션 헬스체크 보호를 건너뛰고** `clearAuthData('user')` 실행 → user_id+session_login 삭제.

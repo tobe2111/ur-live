@@ -1603,6 +1603,7 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
       const { price } = resolveDistributorPrice({
         baseSupplyPrice: p.supply_price, retailPrice: p.retail_price, grade: sg.distributor_grade,
         specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override,
+        defaultPlatformMarginPct: commPct, // 🆕 제품별 마진 미설정 시 어드민 전역 기본(%)
       })
       // 🛡️ PRC-1: CHARGE 도 DISPLAY(카탈로그 /catalog/:id) 와 동일 floor 사용 — display==charge 정합 필수.
       //   floor = effectiveTierFloor(등급가, 공급원가, 최소마진%) = min(등급가, round(공급가×(1+최소마진%))).
