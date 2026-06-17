@@ -71,6 +71,36 @@ async function _ensureSupplyVisibilitySchema(DB: D1Database): Promise<void> {
     //   전 유통사에 동일 적용(전략/특가 상품). NULL = 기존 등급별 마진. 관리자만 설정.
     await DB.prepare('ALTER TABLE products ADD COLUMN supply_margin_override_pct REAL').run().catch(swallow('supply-vis:add-margin-override'))
   }
+  // 🚑 2026-06-17 (대표 신고 — "admin엔 있는데 도매몰엔 안 떠 / 스켈레톤만 계속"): 카탈로그 메인 쿼리
+  //   (/api/wholesale/catalog SELECT)가 참조하지만 인라인 ensure 엔 없던 컬럼들 self-heal. 그동안 이들은
+  //   repair-schema(수동 실행)에만 있어, 미실행 환경에선 mall_id/brand_name/brand_logo_url/is_premium/
+  //   sold_count 참조 시 "no such column" → 메인 쿼리 throw(.catch 없음) → 500 → 클라가 placeholder(SSR)에
+  //   고착돼 스켈레톤 영구 표시 = "상품 안 뜸"의 근본 producer. 카탈로그가 이 ensure 를 항상 호출하므로
+  //   여기서 보장하면 다음 배포 첫 요청에서 자동 복구(멱등, pragma-guarded).
+  if (!have.has('mall_id')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN mall_id INTEGER DEFAULT 1').run().catch(swallow('supply-vis:add-mall-id'))
+  }
+  if (!have.has('is_premium')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN is_premium INTEGER DEFAULT 0').run().catch(swallow('supply-vis:add-is-premium'))
+  }
+  if (!have.has('brand_name')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN brand_name TEXT').run().catch(swallow('supply-vis:add-brand-name'))
+  }
+  if (!have.has('brand_logo_url')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN brand_logo_url TEXT').run().catch(swallow('supply-vis:add-brand-logo'))
+  }
+  if (!have.has('sold_count')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN sold_count INTEGER DEFAULT 0').run().catch(swallow('supply-vis:add-sold-count'))
+  }
+  if (!have.has('pack_size')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN pack_size INTEGER DEFAULT 1').run().catch(swallow('supply-vis:add-pack-size'))
+  }
+  if (!have.has('order_multiple')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN order_multiple INTEGER DEFAULT 1').run().catch(swallow('supply-vis:add-order-multiple'))
+  }
+  if (!have.has('dominant_color')) {
+    await DB.prepare('ALTER TABLE products ADD COLUMN dominant_color TEXT').run().catch(swallow('supply-vis:add-dominant-color'))
+  }
   if (!have.has('min_order_qty')) {
     // 🏭 2026-06-04 최소 주문 수량(MOQ) — 도매 박스 단위. 공급자 설정, 기본 1(낱개).
     //   카드/상세/카트 박스·개당 단가 병기 + 주문 서버 검증(qty >= moq).
