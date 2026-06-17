@@ -500,19 +500,21 @@ export default function GroupBuyListPage() {
   }, [loading, mainTab])
 
   // 🛡️ 2026-06-04: 큐레이션 3종 — filtered 변경 시에만 재계산(매 렌더/스크롤 재계산 방지).
+  // 🧭 2026-06-17: 즉시판매 단일가 모델 정합(design/groupbuy-instant-sale.md) — 인원은 '가격 게이트'가
+  //   아니라 소셜 증거. 기존 '1명 남음 / 거의 성공(70%)' 임계 큐레이션은 "더 모으면 싸진다"는 기만 소지라
+  //   '인기(함께 구매 중) / 오늘 마감(긴장감) / 목표 달성(연출 배지)' 으로 정직하게 전환.
   const curation = useMemo(() => {
-    const lastOne = filtered.filter(p => (p.group_buy_target ?? 0) > 0 && ((p.group_buy_target ?? 0) - (p.group_buy_current ?? 0)) === 1).slice(0, 4)
+    const popular = [...filtered]
+      .filter(p => (p.group_buy_current ?? 0) > 0)
+      .sort((a, b) => (b.group_buy_current ?? 0) - (a.group_buy_current ?? 0))
+      .slice(0, 4)
     const closingToday = filtered.filter(p => {
       if (!p.group_buy_deadline) return false
       const ms = new Date(p.group_buy_deadline).getTime() - Date.now()
       return ms > 0 && ms < 24 * 3600 * 1000
     }).slice(0, 4)
-    const almostDone = filtered.filter(p => {
-      if (!p.group_buy_target) return false
-      const pct = (p.group_buy_current ?? 0) / p.group_buy_target
-      return pct >= 0.7 && pct < 1
-    }).slice(0, 4)
-    return { lastOne, closingToday, almostDone }
+    const goalReached = filtered.filter(p => (p.group_buy_target ?? 0) > 0 && (p.group_buy_current ?? 0) >= (p.group_buy_target ?? 0)).slice(0, 4)
+    return { popular, closingToday, goalReached }
   }, [filtered])
 
   const filteredCommunity = useMemo(() => {
@@ -634,16 +636,17 @@ export default function GroupBuyListPage() {
           md+)가 normal flow 로 상단을 차지하므로 아래 배너가 자연히 그 밑에 위치 — 별도 top offset 불필요.
           모바일은 배너의 pt-4 로 상단 여백 확보. */}
 
-      {/* 배너 — 클릭 시 맛집 공구 시작 */}
+      {/* 배너 — 클릭 시 동네 공구 제안. 🧭 2026-06-17: 즉시판매 단일가 모델 — '모일수록 싸진다/목표
+          달성 시 특가' 처럼 인원에 따라 가격이 변하는 듯한 문구(기만 소지)를 정직한 단일가로 교체. */}
       <div className="ur-content-wide px-4 lg:px-8 pt-4">
         <div className="bg-gray-900 rounded-2xl px-5 py-4 flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-white text-[15px] font-extrabold">
               <Sparkles className="inline w-4 h-4 mr-1 -mt-0.5" />
-              {t('groupBuy.bannerHeadline', { defaultValue: '함께 모일수록 더 싸져요!' })}
+              {t('groupBuy.bannerHeadline', { defaultValue: '함께라서 더 좋은 가격' })}
             </p>
             <p className="text-white/90 text-[11px] mt-1">
-              {t('groupBuy.bannerSubline', { defaultValue: '최대 50% 할인 — 목표 달성 시 특가로 구매 가능' })}
+              {t('groupBuy.bannerSubline', { defaultValue: '지금 바로 공동구매가로 구매하세요' })}
             </p>
           </div>
           <button
@@ -835,32 +838,32 @@ export default function GroupBuyListPage() {
           <>
             {/* 🛡️ 2026-06-04 (사용자 요청): '최근 본 공구' 제거. */}
 
-            {/* 🛡️ 2026-05-15: 큐레이션 섹션 — 1명 남음 / 오늘 마감 / 거의 성공 (useMemo 로 매 렌더 재계산 방지) */}
+            {/* 🧭 2026-06-17: 큐레이션 섹션 — 인기 / 오늘 마감 / 목표 달성 (즉시판매 단일가 정합) */}
             {!loading && filtered.length > 0 && (
               <>
-                {curation.lastOne.length > 0 && (
+                {curation.popular.length > 0 && (
                   <CurationStrip
-                    title="🔥 1명만 더 모이면 성공"
-                    subtitle="지금 참여하면 바로 공구 확정"
-                    items={curation.lastOne}
+                    title={t('groupBuy.curPopular', { defaultValue: '🔥 지금 인기 공구' })}
+                    subtitle={t('groupBuy.curPopularSub', { defaultValue: '많은 분이 함께 구매 중' })}
+                    items={curation.popular}
                     navigate={navigate}
                     accent="red"
                   />
                 )}
                 {curation.closingToday.length > 0 && (
                   <CurationStrip
-                    title="⏰ 오늘 마감"
-                    subtitle="놓치면 다음 기회까지 며칠"
+                    title={t('groupBuy.curClosing', { defaultValue: '⏰ 오늘 마감' })}
+                    subtitle={t('groupBuy.curClosingSub', { defaultValue: '마감 전 한정 공구' })}
                     items={curation.closingToday}
                     navigate={navigate}
                     accent="amber"
                   />
                 )}
-                {curation.almostDone.length > 0 && (
+                {curation.goalReached.length > 0 && (
                   <CurationStrip
-                    title="✨ 거의 성공"
-                    subtitle="목표의 70% 이상"
-                    items={curation.almostDone}
+                    title={t('groupBuy.curGoal', { defaultValue: '🎉 목표 달성 공구' })}
+                    subtitle={t('groupBuy.curGoalSub', { defaultValue: '목표 인원을 채운 인기 공구' })}
+                    items={curation.goalReached}
                     navigate={navigate}
                     accent="neutral"
                   />
@@ -954,7 +957,7 @@ export default function GroupBuyListPage() {
                   {t('groupBuy.emptyCommunity', { defaultValue: '진행 중인 유저 공구가 없습니다' })}
                 </p>
                 <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
-                  {t('groupBuy.emptyCommunitySub', { defaultValue: '원하는 맛집 공구를 직접 시작해보세요!' })}
+                  {t('groupBuy.emptyCommunitySub', { defaultValue: '원하는 공구를 직접 제안해보세요!' })}
                 </p>
                 <button
                   onClick={() => navigate(createPath)}
@@ -1093,7 +1096,8 @@ export default function GroupBuyListPage() {
 }
 
 
-// 🛡️ 2026-05-15: 큐레이션 strip — horizontal scroll 카드 (1명 남음 / 오늘 마감 / 거의 성공)
+// 🧭 2026-06-17: 큐레이션 strip — horizontal scroll 카드 (인기 / 오늘 마감 / 목표 달성).
+//   즉시판매 단일가 정합: 진행률 바 + 'N명 남음'(임계 게이트 연상) 제거 → 소셜 증거('N명 함께 구매 중').
 function CurationStrip({
   title, subtitle, items, navigate, accent,
 }: {
@@ -1103,12 +1107,18 @@ function CurationStrip({
   navigate: (to: string) => void
   accent: "red" | "amber" | "neutral"
 }) {
+  const { t } = useTranslation()
   const accentMap = {
-    red:     { bg: "bg-red-50",   text: "text-red-600",   bar: "bg-red-500"   },
-    amber:   { bg: "bg-amber-50", text: "text-amber-600", bar: "bg-amber-500" },
-    neutral: { bg: "bg-gray-900", text: "text-white",     bar: "bg-gray-900"  },
+    red:     { bg: "bg-red-50",   text: "text-red-600"   },
+    amber:   { bg: "bg-amber-50", text: "text-amber-600" },
+    neutral: { bg: "bg-gray-900", text: "text-white"     },
   }
   const a = accentMap[accent]
+  const badge = accent === "red"
+    ? t('groupBuy.curBadgePopular', { defaultValue: '🔥 인기' })
+    : accent === "amber"
+    ? t('groupBuy.curBadgeClosing', { defaultValue: '오늘 마감' })
+    : t('groupBuy.curBadgeGoal', { defaultValue: '달성 🎉' })
   return (
     <section className="mb-6">
       <div className="flex items-baseline justify-between mb-2 px-1">
@@ -1117,10 +1127,7 @@ function CurationStrip({
       </div>
       <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 lg:-mx-8 px-4 lg:px-8 scrollbar-hide snap-x snap-mandatory">
         {items.map((p) => {
-          const progress = (p.group_buy_target ?? 0) > 0
-            ? Math.min(100, ((p.group_buy_current ?? 0) / (p.group_buy_target ?? 1)) * 100)
-            : 0
-          const remaining = Math.max(0, (p.group_buy_target ?? 0) - (p.group_buy_current ?? 0))
+          const current = p.group_buy_current ?? 0
           return (
             <button
               key={p.id}
@@ -1144,16 +1151,21 @@ function CurationStrip({
                   <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-[#1A1A1A] dark:to-[#0A0A0A]" />
                 )}
                 <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full ${a.bg} ${a.text} text-[9px] font-extrabold`}>
-                  {accent === "red" ? "1명 남음" : accent === "amber" ? "오늘 마감" : `${Math.round(progress)}%`}
+                  {badge}
                 </div>
               </div>
               <div className="p-2.5 space-y-1">
                 <p className="text-[12px] font-bold text-gray-900 dark:text-white truncate">{p.name}</p>
                 {p.restaurant_name && <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{p.restaurant_name}</p>}
-                <div className="w-full bg-gray-100 dark:bg-[#1A1A1A] rounded-full h-1.5 overflow-hidden">
-                  <div className={`h-full ${a.bar} rounded-full transition-all`} style={{ width: `${progress}%` }} />
-                </div>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400"><span className={`${a.text} font-bold`}>{remaining}명</span> 남음 · ₩{p.price?.toLocaleString("ko-KR") ?? "-"}</p>
+                {/* 즉시판매 단일가 — 진행률 바 제거. 인원은 소셜 증거로만 노출(0명이면 가격만). */}
+                <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                  {current > 0 && (
+                    <span className={`${a.text} font-bold`}>
+                      {t('groupBuy.curBuying', { defaultValue: '👥 {{count}}명 함께', count: current })} ·{' '}
+                    </span>
+                  )}
+                  ₩{p.price?.toLocaleString("ko-KR") ?? "-"}
+                </p>
               </div>
             </button>
           )
