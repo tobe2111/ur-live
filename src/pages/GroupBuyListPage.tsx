@@ -354,6 +354,15 @@ export default function GroupBuyListPage() {
     return () => document.removeEventListener('click', handler)
   }, [showSortDropdown])
 
+  // 🧭 2026-06-17: URL ?category= 를 카테고리 상태와 동기화 — PC 사이드바/딥링크에서 (이미 이 페이지에
+  //   머문 상태에서도) 카테고리 전환이 반영되도록. 인페이지 탭은 아래에서 URL 도 함께 갱신해 양방향 일치.
+  useEffect(() => {
+    const c = (searchParams.get('category') || '').toLowerCase()
+    const nextCat = (VALID_CATEGORIES.includes(c as CategoryFilter) ? c : 'all') as CategoryFilter
+    setCategory((prev) => (prev === nextCat ? prev : nextCat))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
   const filtered = useMemo(() => {
     let result = [...items]
 
@@ -641,6 +650,10 @@ export default function GroupBuyListPage() {
                   // 🛡️ 2026-05-18: 숙소 카테고리 → /stays 전용 페이지 (객실/voucher/날짜 모드 분기 필요).
                   if (tab.key === 'stay_voucher') { navigate('/stays'); return }
                   setCategory(tab.key)
+                  // 🧭 2026-06-17: URL 도 동기화 — PC 사이드바/딥링크와 단일 소스(공유·뒤로가기 지원).
+                  const next = new URLSearchParams(searchParams)
+                  if (tab.key === 'all') next.delete('category'); else next.set('category', tab.key)
+                  setSearchParams(next, { replace: true })
                 }}
                 className={`px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap border transition-colors ${
                   category === tab.key

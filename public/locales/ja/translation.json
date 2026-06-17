@@ -4099,7 +4099,8 @@
     "linkshop": "リンクショップ",
     "vouchers": "クーポン",
     "dongnedeal": "ご近所ディール",
-    "create": "作成"
+    "create": "作成",
+    "offlineGroupBuy": "オフライン共同購入"
   },
   "bulkUpload": {
     "title": "商品一括登録",
@@ -6164,5 +6165,11 @@
     "remaining": "残り{{n}}",
     "submitting": "予約中...",
     "submit": "予約を確定"
+  },
+  "category": {
+    "mealVoucher": "グルメ食事券",
+    "beauty": "美容",
+    "stay": "宿泊",
+    "etc": "その他"
   }
 }

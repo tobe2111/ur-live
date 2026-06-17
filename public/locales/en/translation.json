@@ -4099,7 +4099,8 @@
     "linkshop": "Linkshop",
     "vouchers": "Vouchers",
     "dongnedeal": "Local Deals",
-    "create": "Create"
+    "create": "Create",
+    "offlineGroupBuy": "Local Group Buy"
   },
   "bulkUpload": {
     "title": "Bulk Product Upload",
@@ -6164,5 +6165,11 @@
     "remaining": "{{n}} left",
     "submitting": "Booking...",
     "submit": "Confirm booking"
+  },
+  "category": {
+    "mealVoucher": "Dining",
+    "beauty": "Beauty",
+    "stay": "Stays",
+    "etc": "Others"
   }
 }
