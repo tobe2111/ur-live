@@ -19,6 +19,13 @@ interface ImportResult {
   results: { row: number; name?: string; status: 'ok' | 'error'; reason?: string }[]
 }
 interface SupplyStats { total: number; demo: number; real: number; active: number; suppliers: number }
+interface CatalogDiag {
+  summary: { total?: number; inactive?: number; source_zero?: number; source_real?: number; zero_price?: number; not_mall1?: number; restricted_vis?: number; catalog_visible?: number }
+  by_mall: { mall_id: number; c: number }[]
+  by_visibility: { v: string; c: number }[]
+  hidden_sample: { id: number; name: string; is_active: number; supply_source_id: number | null; supply_price: number; mall_id: number; supply_visibility: string; is_demo: number }[]
+  malls: { id: number; name: string; host: string | null; active: number }[]
+}
 interface SupplyProduct {
   id: number; name: string; supply_price: number; retail_price: number; stock: number;
   category: string; image_url: string; supplier: string; is_active: number; is_demo: number
@@ -35,6 +42,10 @@ export default function AdminWholesaleImportPage() {
   const [result, setResult] = useState<ImportResult | null>(null)
   const [stats, setStats] = useState<SupplyStats | null>(null)
   const [cleaning, setCleaning] = useState(false)
+  // 🩺 2026-06-17 (대표 신고 — admin엔 보이는데 도매몰엔 안 뜸): 카탈로그 노출 자가진단/정정
+  const [diag, setDiag] = useState<CatalogDiag | null>(null)
+  const [diagLoading, setDiagLoading] = useState(false)
+  const [repairing, setRepairing] = useState(false)
   // 🗑️ 2026-06-17 (대표 요청): 도매 상품 목록 + 개별 삭제
   const [products, setProducts] = useState<SupplyProduct[]>([])
   const [prodTotal, setProdTotal] = useState(0)
@@ -154,6 +165,28 @@ export default function AdminWholesaleImportPage() {
     } catch { toast.error('데모 생성 중 오류') } finally { setCleaning(false) }
   }
 
+  const runDiagnostic = async () => {
+    setDiagLoading(true)
+    try {
+      const r = await api.get('/api/admin/distributor/catalog-diagnostic', h)
+      if (r.data?.success) setDiag(r.data as CatalogDiag)
+      else toast.error(r.data?.error || '진단 실패')
+    } catch { toast.error('진단 중 오류') } finally { setDiagLoading(false) }
+  }
+  const runRepair = async (opts: { activate?: boolean; open_visibility?: boolean }) => {
+    const extra = [opts.activate ? '비활성 상품 노출' : '', opts.open_visibility ? '공급범위 전체 공개' : ''].filter(Boolean).join(' + ')
+    if (!confirm(`카탈로그 노출을 정정할까요?\n· 데이터 정합 정규화(소스ID 0→NULL, 몰 0/NULL→1)${extra ? `\n· ${extra}` : ''}`)) return
+    setRepairing(true)
+    try {
+      const r = await api.post('/api/admin/distributor/catalog-repair', opts, h)
+      if (r.data?.success) {
+        const ch = (r.data.changed || {}) as Record<string, number>
+        toast.success(`정정 완료 — 소스 ${ch.source_normalized || 0} · 몰 ${ch.mall_normalized || 0}${ch.activated != null ? ` · 노출 ${ch.activated}` : ''}${ch.visibility_opened != null ? ` · 공개 ${ch.visibility_opened}` : ''}`)
+        runDiagnostic(); loadStats(); loadProducts(prodPage, committedProdSearch)
+      } else toast.error(r.data?.error || '정정 실패')
+    } catch { toast.error('정정 중 오류') } finally { setRepairing(false) }
+  }
+
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
     if (!f) return
@@ -238,6 +271,111 @@ export default function AdminWholesaleImportPage() {
             {stats.demo > 0 && <p className="text-[11px] text-amber-600 mt-2">⚠️ 데모 상품 {stats.demo}개가 카탈로그에 섞여 있습니다 — 실상품 등록 전 정리를 권장합니다.</p>}
           </div>
         )}
+
+        {/* 🩺 카탈로그 노출 진단 — "admin엔 있는데 도매몰엔 안 떠" 근본진단 */}
+        <div className={card}>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-sm font-bold text-gray-900">🩺 카탈로그 노출 진단</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">상품을 등록했는데 도매몰에 안 보일 때 — 왜 숨겨졌는지 사유별로 진단하고 한 번에 정정합니다.</p>
+            </div>
+            <button onClick={runDiagnostic} disabled={diagLoading} className="px-3 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap">{diagLoading ? '진단 중…' : '진단 실행'}</button>
+          </div>
+          {diag && (() => {
+            const s = diag.summary || {}
+            const hidden = Math.max(0, (s.total || 0) - (s.catalog_visible || 0))
+            const reasons = [
+              { k: '비활성 (is_active=0)', v: s.inactive || 0 },
+              { k: '공급가 0 이하', v: s.zero_price || 0 },
+              { k: '소스ID = 0 (정규화 필요)', v: s.source_zero || 0 },
+              { k: '복사본 (소스ID 있음)', v: s.source_real || 0 },
+              { k: '다른 몰 (mall_id ≠ 1)', v: s.not_mall1 || 0 },
+              { k: '공급범위 제한 (≠ ALL)', v: s.restricted_vis || 0 },
+            ].filter(r => r.v > 0)
+            return (
+              <div className="mt-4 space-y-4">
+                <div className="flex items-center gap-6 flex-wrap">
+                  <div><p className="text-[11px] text-gray-400">공급원본 전체</p><p className="text-xl font-bold text-gray-900">{(s.total || 0).toLocaleString()}</p></div>
+                  <div><p className="text-[11px] text-gray-400">카탈로그 노출</p><p className="text-xl font-bold text-emerald-600">{(s.catalog_visible || 0).toLocaleString()}</p></div>
+                  <div><p className="text-[11px] text-gray-400">숨김</p><p className="text-xl font-bold text-red-600">{hidden.toLocaleString()}</p></div>
+                </div>
+
+                {reasons.length === 0 ? (
+                  <p className="text-sm text-emerald-600">✅ 숨김 사유 없음 — 모든 공급원본이 카탈로그 조건을 통과합니다. 그래도 안 보이면 캐시/콜드부팅 — 60초 후 도매몰 새로고침하세요.</p>
+                ) : (
+                  <div className="text-sm">
+                    <p className="font-semibold text-gray-700 mb-1.5">숨김 사유 (조건별 — 중복 가능)</p>
+                    <ul className="space-y-1">
+                      {reasons.map(r => (
+                        <li key={r.k} className="flex justify-between gap-3 text-gray-600"><span>{r.k}</span><span className="font-bold text-red-600">{r.v.toLocaleString()}개</span></li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="text-sm">
+                    <p className="font-semibold text-gray-700 mb-1.5">몰별 공급원본 분포</p>
+                    <ul className="space-y-1">
+                      {(diag.by_mall || []).map(m => (
+                        <li key={m.mall_id} className="flex justify-between gap-3 text-gray-600"><span>몰 #{m.mall_id}{m.mall_id !== 1 ? ' ⚠️' : ''}</span><span className="font-semibold text-gray-800">{m.c.toLocaleString()}개</span></li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="text-sm">
+                    <p className="font-semibold text-gray-700 mb-1.5">공급범위 분포</p>
+                    <ul className="space-y-1">
+                      {(diag.by_visibility || []).map(v => (
+                        <li key={v.v} className="flex justify-between gap-3 text-gray-600"><span>{v.v}</span><span className="font-semibold text-gray-800">{v.c.toLocaleString()}개</span></li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {(diag.malls || []).length > 1 && (
+                  <div className="text-[12px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                    ⚠️ 몰이 {diag.malls.length}개 있습니다. 유통사 계정이 속한 몰과 상품의 몰이 다르면 상품이 안 보입니다 — 위 '몰별 분포'와 대조하세요.
+                    <div className="mt-1 space-y-0.5">{diag.malls.map(m => <div key={m.id}>· 몰 #{m.id} {m.name || ''} {m.host ? `(${m.host})` : ''} {m.active ? '' : '[비활성]'}</div>)}</div>
+                  </div>
+                )}
+
+                {(diag.hidden_sample || []).length > 0 && (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-700 mb-1.5">숨은 상품 샘플 (최근 {diag.hidden_sample.length}개)</p>
+                    <div className="overflow-auto rounded-lg border border-gray-100">
+                      <table className="w-full text-[12px]">
+                        <thead className="bg-gray-50 text-gray-500"><tr>
+                          <th className="px-2 py-1.5 text-left">상품명</th><th className="px-2 py-1.5">노출</th><th className="px-2 py-1.5">소스</th><th className="px-2 py-1.5">공급가</th><th className="px-2 py-1.5">몰</th><th className="px-2 py-1.5">공급범위</th>
+                        </tr></thead>
+                        <tbody>
+                          {diag.hidden_sample.map(p => (
+                            <tr key={p.id} className="border-t border-gray-50 text-gray-600">
+                              <td className="px-2 py-1.5 text-gray-900">{p.name}{p.is_demo ? ' (데모)' : ''}</td>
+                              <td className="px-2 py-1.5 text-center">{p.is_active ? '✅' : '❌'}</td>
+                              <td className="px-2 py-1.5 text-center">{p.supply_source_id == null ? 'NULL' : p.supply_source_id}</td>
+                              <td className="px-2 py-1.5 text-right">{(p.supply_price || 0).toLocaleString()}</td>
+                              <td className="px-2 py-1.5 text-center">{p.mall_id !== 1 ? `${p.mall_id} ⚠️` : p.mall_id}</td>
+                              <td className="px-2 py-1.5 text-center">{p.supply_visibility}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {hidden > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button onClick={() => runRepair({})} disabled={repairing} className="px-3 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">데이터 정합 정정 (소스·몰)</button>
+                    <button onClick={() => runRepair({ activate: true })} disabled={repairing} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50">+ 비활성 상품 노출</button>
+                    <button onClick={() => runRepair({ activate: true, open_visibility: true })} disabled={repairing} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50">+ 공급범위까지 전체 공개</button>
+                  </div>
+                )}
+                <p className="text-[11px] text-gray-400">정정은 공급원본(원본 상품)만 대상이며, 데이터 정합 정규화는 항상 안전합니다. 정정 후 도매몰 반영까지 최대 60초(엣지 캐시).</p>
+              </div>
+            )
+          })()}
+        </div>
 
         {/* 🗑️ 도매 상품 목록 + 개별 삭제 */}
         <div className={card}>
