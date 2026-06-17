@@ -1191,8 +1191,24 @@ app.post('/seed-demo-products', rateLimit({ action: 'wholesale-seed-demo', max: 
 app.delete('/seed-demo-products', async (c) => {
   const { DB } = c.env
   try {
-    const r = await DB.prepare(`DELETE FROM products WHERE slug LIKE ?`).bind(DEMO_SLUG_PREFIX + '%').run()
-    return c.json({ success: true, deleted: r.meta?.changes ?? 0 })
+    // 🩹 2026-06-17 (사용자 신고 — '데모 정리' 500): 데모 하드삭제가 products 의 AFTER DELETE FTS 트리거에서
+    //   throw 함. products_fts 는 외부콘텐츠(content=products) FTS5 라, AFTER DELETE 시점엔 원본 행이 이미
+    //   사라져 인덱스 동기화에 필요한 콘텐츠를 못 읽음 → 에러. 하드삭제는 이 앱에서 드물어(보통 is_active 소프트삭제)
+    //   잠복해 있던 버그가 유일한 하드삭제 경로인 데모 '정리'에서 표면화. INSERT/UPDATE 트리거는 행이 존재해 정상.
+    //   → 하드삭제 시도 후 실패하면 소프트 아카이브(is_active=0 + slug 재명명)로 폴백. UPDATE 경로
+    //   (products_fts_update)는 상시 동작이라 안전. 결과: 카탈로그(is_active=1 요구)에서 제거 + 데모 통계
+    //   (slug LIKE 'demo-wholesale-%') 0 + 재시드 정상. 자식 FK 참조 케이스도 동일 폴백으로 처리.
+    try {
+      const r = await DB.prepare(`DELETE FROM products WHERE slug LIKE ?`).bind(DEMO_SLUG_PREFIX + '%').run()
+      return c.json({ success: true, deleted: r.meta?.changes ?? 0, method: 'delete' })
+    } catch (delErr) {
+      const r = await DB.prepare(
+        `UPDATE products SET is_active = 0, slug = 'archived-' || id || '-' || slug, updated_at = datetime('now') WHERE slug LIKE ?`,
+      ).bind(DEMO_SLUG_PREFIX + '%').run()
+      const msg = String((delErr as { message?: string })?.message || '').toLowerCase()
+      const reason = /foreign key/.test(msg) ? 'fk' : (/fts|trigger|malformed|no such/.test(msg) ? 'fts_trigger' : 'other')
+      return c.json({ success: true, deleted: r.meta?.changes ?? 0, method: 'archived', reason })
+    }
   } catch (err) {
     return safeError(c, err, '데모 상품 삭제 중 오류가 발생했습니다', '[distributor-admin]')
   }
