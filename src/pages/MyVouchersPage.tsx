@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect } from 'react'
+import { lazy, Suspense, useState, useEffect, useRef } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useNavigate } from 'react-router-dom'
 
@@ -37,6 +37,7 @@ interface Voucher {
   kt_alpha_voucher_order_id?: number
   kt_recipient_phone?: string
   kt_status?: string  // 'sent' | 'processing'
+  kt_pin?: string | null  // 🔢 #4: PIN 모드 발급분의 쿠폰 PIN/바코드 (인앱 표시용)
   order_id?: number
 }
 
@@ -779,6 +780,20 @@ function deriveCategoryLabel(productName: string, restaurantName?: string): stri
 }
 
 // 🛡️ 2026-05-25 (A 옵션): KT Alpha 쿠폰 카드 — MMS 발송된 기프티쇼 표시.
+// 🔢 2026-06-17 (#4): 쿠폰 PIN → CODE128 바코드. jsbarcode 동적 import (페이지 chunk 영향 0).
+function Barcode({ value }: { value: string }) {
+  const ref = useRef<SVGSVGElement>(null)
+  useEffect(() => {
+    let cancelled = false
+    import('jsbarcode').then(({ default: JsBarcode }) => {
+      if (cancelled || !ref.current) return
+      try { JsBarcode(ref.current, value, { format: 'CODE128', displayValue: false, height: 54, margin: 0, width: 1.7 }) } catch { /* invalid value */ }
+    }).catch(() => { /* lib load fail */ })
+    return () => { cancelled = true }
+  }, [value])
+  return <svg ref={ref} aria-label="쿠폰 바코드" className="max-w-full" />
+}
+
 function KtAlphaVoucherCard({ v, muted, t }: {
   v: Voucher
   muted: boolean
@@ -790,35 +805,52 @@ function KtAlphaVoucherCard({ v, muted, t }: {
   const maskedPhone = v.kt_recipient_phone
     ? v.kt_recipient_phone.replace(/(\d{3})\d{4}(\d{4})/, "$1-****-$2")
     : ""
+  // 🔢 #4: PIN 모드 발급분(kt_pin 보유)은 인앱 바코드. 아니면 MMS 안내(기존).
+  const hasBarcode = !!v.kt_pin && v.status === 'unused'
 
   return (
     <div
-      className="relative flex rounded-xl overflow-hidden bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800"
+      className="relative rounded-xl overflow-hidden bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800"
       style={{ opacity: muted ? 0.55 : 1 }}
     >
-      <div className="flex-1 p-4 min-w-0">
-        <div className="flex items-center gap-1.5 mb-1">
-          <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "#F59E0B", display: "inline-block", flexShrink: 0 }} />
-          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.08em" }} className="text-amber-700 dark:text-amber-400">
-            📱 KT ALPHA · 기프티쇼
-          </span>
+      <div className="flex">
+        <div className="flex-1 p-4 min-w-0">
+          <div className="flex items-center gap-1.5 mb-1">
+            <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "#F59E0B", display: "inline-block", flexShrink: 0 }} />
+            <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.08em" }} className="text-amber-700 dark:text-amber-400">
+              📱 KT ALPHA · 기프티쇼
+            </span>
+          </div>
+          <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{v.product_name}</p>
+          {v.applied_price && (
+            <p className="text-sm text-amber-600 dark:text-amber-400 font-bold mt-0.5">{formatNumber(v.applied_price)}원</p>
+          )}
+          {maskedPhone && !hasBarcode && (
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+              📞 {maskedPhone} 로 발송됨
+            </p>
+          )}
+          {hasBarcode ? (
+            <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-2 font-semibold leading-relaxed">
+              {t('voucher.ktShowBarcode', { defaultValue: '매장에서 아래 바코드를 제시하세요' })}
+            </p>
+          ) : (
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">
+              {t('voucher.ktCheckMms', { defaultValue: '휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.' })}
+            </p>
+          )}
         </div>
-        <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{v.product_name}</p>
-        {v.applied_price && (
-          <p className="text-sm text-amber-600 dark:text-amber-400 font-bold mt-0.5">{formatNumber(v.applied_price)}원</p>
+        {v.product_image && !hasBarcode && (
+          <div className="w-24 h-24 m-3 rounded-lg overflow-hidden bg-white dark:bg-[#0A0A0A] shrink-0">
+            <img src={v.product_image} alt={v.product_name} className="w-full h-full object-cover" loading="lazy" />
+          </div>
         )}
-        {maskedPhone && (
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-            📞 {maskedPhone} 로 발송됨
-          </p>
-        )}
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">
-          휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.
-        </p>
       </div>
-      {v.product_image && (
-        <div className="w-24 h-24 m-3 rounded-lg overflow-hidden bg-white dark:bg-[#0A0A0A] shrink-0">
-          <img src={v.product_image} alt={v.product_name} className="w-full h-full object-cover" loading="lazy" />
+      {/* 🔢 #4: 인앱 바코드 (PIN 모드 발급분) */}
+      {hasBarcode && (
+        <div className="mx-3 mb-3 px-3 py-3 rounded-lg bg-white dark:bg-[#0A0A0A] flex flex-col items-center gap-1.5">
+          <Barcode value={v.kt_pin as string} />
+          <span className="text-[12px] font-mono font-bold tracking-[0.15em] text-gray-900 dark:text-white">{v.kt_pin}</span>
         </div>
       )}
     </div>

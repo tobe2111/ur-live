@@ -586,6 +586,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         id: `kt-${vo.id}`,
         kt_alpha_voucher_order_id: vo.id,
         code: vo.coupon_code || vo.external_order_id || `KT-${vo.id}`,
+        kt_pin: vo.coupon_code || null,  // 🔢 #4: PIN 모드 발급분만 채워짐 → 카드가 바코드 렌더
         user_id: String(user.id),
         product_id: null,
         order_id: vo.order_id,
