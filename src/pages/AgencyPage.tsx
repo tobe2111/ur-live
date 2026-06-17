@@ -356,10 +356,16 @@ export default function AgencyPage() {
           { label: t('agency.kpiSellerRevenue'), value: `${((stats?.net_revenue_30d ?? 0) / 10000).toFixed(0)}${t('agency.manwon')}`, sub: t('agency.kpiSellerRevenueSub'), icon: TrendingUp, color: 'bg-violet-500', delta: revenueDelta, showDelta },
           // 🏁 2026-06-17 (공구 집중): 라이브 중단 시 5번째 KPI 를 '진행중 공구'로 교체(라이브 복원 시 자동 환원).
           LIVE_COMMERCE_SUSPENDED
-            ? { label: t('agency.kpiGroupBuys', { defaultValue: '진행중 공구' }), value: String(stats?.active_group_buys ?? 0), sub: t('agency.kpiGroupBuysSub', { defaultValue: '소속 셀러' }), icon: Ticket, color: 'bg-amber-500', delta: 0, showDelta: false }
+            ? { label: t('agency.kpiGroupBuys', { defaultValue: '진행중 공구' }), value: String(stats?.active_group_buys ?? 0), sub: t('agency.kpiGroupBuysSub', { defaultValue: '소속 셀러' }), icon: Ticket, color: 'bg-amber-500', delta: 0, showDelta: false, path: '/agency/group-buy' }
             : { label: t('agency.kpiLive'), value: String(stats?.active_streams ?? 0), sub: t('agency.kpiLiveSub'), icon: Play, color: 'bg-rose-500', delta: 0, showDelta: false },
-        ].map((kpi) => (
-          <div key={kpi.label} className="rounded-2xl p-4 bg-white border border-[#E8EAEE]">
+        ].map((kpi) => {
+          const kpiPath = (kpi as { path?: string }).path
+          return (
+          <div
+            key={kpi.label}
+            onClick={kpiPath ? () => navigate(kpiPath) : undefined}
+            className={`rounded-2xl p-4 bg-white border border-[#E8EAEE] ${kpiPath ? 'cursor-pointer hover:border-amber-300 transition-colors' : ''}`}
+          >
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B7280] mb-1">{kpi.label}</p>
@@ -385,7 +391,8 @@ export default function AgencyPage() {
               </div>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* 🛡️ 2026-04-26 L2: TikTok 스타일 핵심 지표 6가지 (Q5) */}

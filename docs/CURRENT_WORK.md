@@ -6,6 +6,8 @@
 - **AgencyPage 라이브 잔재 4곳 처리**: ① 5번째 KPI 카드 `라이브`→`진행중 공구`(amber, Ticket) 스왑(라이브 복원 시 환원) ② 인사이트 '오늘 라이브 없음'(→/schedule) `!LIVE_COMMERCE_SUSPENDED` 게이트 ③ 서브타이틀 '…/라이브'→'…/공구' ④ 'Live Schedule' 섹션 + 셀러랭킹 LIVE 배지 게이트.
 - **AgencyLayout 모바일 FAB**: '라이브 편성'(→/schedule, **게이트 없던 잔재**) → 라이브 중단 시 '공구 관리'(→/agency/group-buy, Utensils)로 repurpose.
 - 전부 `LIVE_COMMERCE_SUSPENDED` 분기라 **flag false 시 라이브 UI 자동 복원**(코드 보존 정책 준수). 검증: client+worker build exit 0 · 테마 clean. (직전 전수조사 commit 의 AgencyGroupBuyPage 데이터매핑 수정과 연속.)
+- **후속(공구 폴리시, 같은 세션)**: ① `AgencyGroupBuyPage` 예상수익 하드코딩 3% → **에이전시 실제 `commission_rate`**(profile, default 2.0%) — 주석에 '미구현 fallback' 이라 적혀있던 의도 완성 ② 대시보드 '진행중 공구' KPI **클릭 → /agency/group-buy**(공구 관리 진입 강화) ③ 소비자 공구 서비스(GroupBuyList/Detail·community-group-buy·main-home 피드) 전수 스캔 결과 **라이브 잔재 0·엔드포인트/필드 정합 양호**(에이전트 확인 — 추가 수정 불요).
+
 ## ✅ 2026-06-17 — 듀얼 로그인 영구 방어선 + CSP/토큰 대안 평가 (대표 "1,2,3 다 하자")
 대표가 쿠키 컷오버 대신 가벼운 대안 3종 요청 → 정직하게 분류 후 안전한 것만 실행:
 - **① 재발방지 CI 가드 (구현·배포)**: `scripts/check-dual-login-guard.mjs` — 클라 `localStorage.getItem('user_type') === 'user'` *로그인 게이트* 안티패턴(세션 풀림 사고 근본원인) 신규 추가 감지. App.tsx(글로벌 Firebase init, 세션드롭 아님)만 allowlist. pre-commit warn(`install-git-hooks.sh`) + **verify.yml CI strict(현재 위반 0)**. 동시로그인 해결을 *영구*로 못박음. 런타임 위험 0(검사 스크립트). 음성/양성/strict 테스트 통과.

@@ -327,12 +327,16 @@ export default function AgencyGroupBuyPage() {
   const loading = listQ.isLoading
   const fetchData = (_tab?: TabKey) => { listQ.refetch(); statsQ.refetch() }
 
-  // 🛡️ 2026-05-13 (공구 UX): 에이전시 수익 계산 — 확정가 × 참여자 × 수수료율.
-  //   기본 3% (agency_commission_rate platform 설정값 미구현 시 fallback).
-  const AGENCY_COMMISSION_RATE = 0.03
+  // 🏁 2026-06-17 (공구 집중): 에이전시 실제 수수료율(profile.commission_rate) 사용 — 기존 하드코딩 3% 제거.
+  //   주석에 명시돼 있던 '미구현 fallback' 을 완성. platform 기본 2.0% (대시보드와 동일 default).
+  const agencyCommissionPct = useApiQuery<number>(['agency', 'gb-commission'], '/api/agency/profile', {
+    select: (r: any) => (r?.success && typeof r.data?.commission_rate === 'number' ? r.data.commission_rate : 2.0),
+  }).data ?? 2.0
+
+  // 에이전시 예상 수익 = 확정가 × 참여자 × 수수료율 (추정치).
   function estimateAgencyRevenue(g: GroupBuy): number {
     if (!g.confirmed_price || !g.participant_count) return 0
-    return Math.round(g.confirmed_price * g.participant_count * AGENCY_COMMISSION_RATE)
+    return Math.round(g.confirmed_price * g.participant_count * (agencyCommissionPct / 100))
   }
 
   useEffect(() => {
