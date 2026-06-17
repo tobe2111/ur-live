@@ -183,6 +183,13 @@
 - **수정(올바른 방향)**: 숙소는 전용 `/stays`(=`/api/group-buy/stays/search`, product_stay_info join)에서만 표시. ① 숙소 탭/사이드바 → `/stays` 환원 ② `GroupBuyListPage` 클라 필터에 `stay_voucher` **그리드 전역 제외**(전체 포함 — ₩0 카드 누수 차단) ③ 인라인용 stay 카드 라우팅/뱃지/CTA·Calendar import 정리(clean revert) ④ **`/stays` 헤더에 동네딜 카테고리 칩 추가**(전체/맛집식사권/미용/숙소(active)/기타/일반상품) — 숙소가 "다른 카테고리처럼" 보이길 원한 최초 요구를 예약 흐름 깨지 않고 충족(내비 일관성).
 - 일반 상품 피드 수정([UNLOCK_LOADING])·i18n·PC 바탕 다크는 그대로 유효. 검증: tsc 0 · build 0 · 테마·머니패턴 통과 · i18n 키 타 사용처 0(이모지 부작용 없음).
 
+## ✅ 2026-06-17 — 역할 명칭 확정(유저 / 사업자 유저) + 사업자등록 진입 일원화 (사용자 결정)
+**사용자 확정 스키마**: 링크샵 가진 사람 = **유저**(회원가입하면 누구나, /u/{handle} 자동 생성, 추천/핀). 사업자등록+판매승인 받으면 = **사업자 유저**(판매 + 현금정산). 큐레이터/크리에이터/인플루언서/셀러/매장 → 이 2개로 흡수(사용자-가시 라벨; 코드 식별자·seller_type 값은 유지). 에이전시·도매 공급자는 B2B 조직 축이라 별도 유지.
+- **셀러 대시보드 실측 주체**: store_owner(매장/사업자) = 주력·활성(신규 가입 전부 이쪽), influencer(크리에이터) = 라이브 중단으로 사실상 휴면(신규 생성 경로도 막힘). → 대시보드 ≈ "파는 사람(사업자 유저)"의 도구.
+- **사업자등록 진입 일원화** (`CuratorEarningsPage`): "사업자 등록"이 2군데였음 — BusinessSection(users.business_*, 현금정산용)과 SellOwnProductsCTA(매장등록, 판매용). 그런데 **현금 출금 게이트(curator.routes:861)가 이미 '연결 승인 매장'을 요구** → BusinessSection-only 등록은 현금정산 불가(오해유발). **BusinessSection 은퇴**(렌더+함수 제거), SellOwnProductsCTA를 단일 "사업자 등록 → 사업자 유저" 진입으로. 출금 게이트/은행(WithdrawModal 입력)/세금(curator_withholding_rate policy)/세무 backend **전부 무수정** — 진입 UI만 1→통합.
+- **라벨 정리**(CuratorEarningsPage): 판매자/셀러/매장 → "사업자 등록"·"사업자 유저"·"판매 관리". (그 외 /seller/* i18n 의 "셀러" 잔여 sweep 은 후속 — 6개 언어 t() 키라 별도 작업.)
+- 검증: tsc 0 · build(client+worker) 0 · 테마검사 통과. ⚠️ getBusiness 의 is_store_seller 파생(직전 커밋)은 BusinessSection 은퇴로 미사용 dead 됐으나 read-only·무해라 존치.
+
 ## ✅ 2026-06-17 — 크리에이터→판매자 통합 + 링크샵 flip-flop 수정 (사용자 "모두 진행")
 **배경**: 사용자가 링크샵(`/u/{handle}`)이 새로고침마다 셀러↔핀 "왔다갔다" 신고 + "사업자 등록한 유저가 자기 상품도 올리게" 요청. AskUserQuestion 으로 (어드민 승인 후 판매 / 인라인+제한 대시보드) 확정 후 4건 진행.
 - **#0 발견 가능성 (commit 54a7dd0)**: 카카오 유저는 마이페이지 셀러전환 버튼이 숨겨져(`SellerSwitchInline` is_kakao_user && !has_seller→null) 사업자 등록해도 판매 입구가 안 보였음. CuratorEarningsPage 에 `SellOwnProductsCTA`(셀러 상태별: 없음→등록 / pending / approved→등록·대시보드 / rejected) 추가.
