@@ -423,8 +423,9 @@ function OwnerEarningsStrip() {
 function PinGrid({ pins, handle, isOwner, onPinDeleted, curatorName, curatorAvatar }: { pins: CuratorPin[]; handle: string; isOwner: boolean; onPinDeleted: (id: number) => void; curatorName?: string; curatorAvatar?: string | null }) {
   return (
     <div className="max-w-3xl mx-auto p-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {/* 🛠️ 2026-06-17 (사용자 요청): 1번 상품도 전체폭 hero 대신 균일 2열(모바일)/3열(sm+) — hero=false. */}
       {pins.map((pin, idx) => (
-        <PinCard key={pin.id} pin={pin} index={idx} handle={handle} isOwner={isOwner} aboveFold={idx < 4} hero={idx === 0} onDeleted={onPinDeleted} curatorName={curatorName} curatorAvatar={curatorAvatar} />
+        <PinCard key={pin.id} pin={pin} index={idx} handle={handle} isOwner={isOwner} aboveFold={idx < 4} hero={false} onDeleted={onPinDeleted} curatorName={curatorName} curatorAvatar={curatorAvatar} />
       ))}
       {/* 🏁 2026-06-16 링크샵 개선안: 본인이 핀 채워진 화면에서도 항상 추가 동선 — 그리드 끝 점선 카드. */}
       {isOwner && (
