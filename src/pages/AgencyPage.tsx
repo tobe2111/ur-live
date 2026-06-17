@@ -11,10 +11,11 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { swallow } from '@/shared/utils/swallow'
 import { formatNumber } from '@/utils/format'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import {
   Users, ShoppingBag, DollarSign, Play,
   TrendingUp, ArrowUpRight, Download, Bell,
-  Eye, AlertTriangle, ChevronRight, UserCheck, Radio
+  Eye, AlertTriangle, ChevronRight, UserCheck, Radio, Ticket
 } from 'lucide-react'
 import NotificationList from './agency-page/NotificationList'
 import { StatusBadge, PayBadge } from './agency-page/badges'
@@ -242,17 +243,19 @@ export default function AgencyPage() {
       })
     }
 
-    // 4) 진행중 라이브 0 && 승인 셀러 > 0
-    const liveStreams = stats?.active_streams ?? 0
-    const activeSellers = sellers.filter(s => s.status === 'approved').length
-    if (liveStreams === 0 && activeSellers > 0) {
-      list.push({
-        severity: 'info',
-        icon: Radio,
-        title: t('agency.noLiveTodayTitle'),
-        description: t('agency.noLiveTodayDesc', { count: activeSellers }),
-        action: { label: t('agency.viewSchedule'), path: '/agency/schedule' },
-      })
+    // 4) 진행중 라이브 0 && 승인 셀러 > 0 — 🏁 라이브 중단 시 숨김(공구 집중).
+    if (!LIVE_COMMERCE_SUSPENDED) {
+      const liveStreams = stats?.active_streams ?? 0
+      const activeSellers = sellers.filter(s => s.status === 'approved').length
+      if (liveStreams === 0 && activeSellers > 0) {
+        list.push({
+          severity: 'info',
+          icon: Radio,
+          title: t('agency.noLiveTodayTitle'),
+          description: t('agency.noLiveTodayDesc', { count: activeSellers }),
+          action: { label: t('agency.viewSchedule'), path: '/agency/schedule' },
+        })
+      }
     }
 
     return list
@@ -281,7 +284,9 @@ export default function AgencyPage() {
         {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.dashboard')}
-          subtitle={t('agency.dashboardSubtitle', { defaultValue: '에이전시 종합 현황 — 소속 셀러 성과 / 매출 / 라이브' })}
+          subtitle={LIVE_COMMERCE_SUSPENDED
+            ? t('agency.dashboardSubtitleStore', { defaultValue: '에이전시 종합 현황 — 소속 셀러 성과 / 매출 / 공구' })
+            : t('agency.dashboardSubtitle', { defaultValue: '에이전시 종합 현황 — 소속 셀러 성과 / 매출 / 라이브' })}
           icon={<LayoutDashboard className="h-5 w-5" />}
         />
 
@@ -349,7 +354,10 @@ export default function AgencyPage() {
           { label: t('agency.kpiOrders'), value: String(stats?.orders_30d ?? 0), sub: t('agency.kpiOrdersSub'), icon: ShoppingBag, color: 'bg-blue-500', delta: ordersDelta, showDelta },
           { label: t('agency.kpiRevenue'), value: `${((stats?.revenue_30d ?? 0) / 10000).toFixed(0)}${t('agency.manwon')}`, sub: t('agency.kpiRevenueSub'), icon: DollarSign, color: 'bg-emerald-500', delta: revenueDelta, showDelta },
           { label: t('agency.kpiSellerRevenue'), value: `${((stats?.net_revenue_30d ?? 0) / 10000).toFixed(0)}${t('agency.manwon')}`, sub: t('agency.kpiSellerRevenueSub'), icon: TrendingUp, color: 'bg-violet-500', delta: revenueDelta, showDelta },
-          { label: t('agency.kpiLive'), value: String(stats?.active_streams ?? 0), sub: t('agency.kpiLiveSub'), icon: Play, color: 'bg-rose-500', delta: 0, showDelta: false },
+          // 🏁 2026-06-17 (공구 집중): 라이브 중단 시 5번째 KPI 를 '진행중 공구'로 교체(라이브 복원 시 자동 환원).
+          LIVE_COMMERCE_SUSPENDED
+            ? { label: t('agency.kpiGroupBuys', { defaultValue: '진행중 공구' }), value: String(stats?.active_group_buys ?? 0), sub: t('agency.kpiGroupBuysSub', { defaultValue: '소속 셀러' }), icon: Ticket, color: 'bg-amber-500', delta: 0, showDelta: false }
+            : { label: t('agency.kpiLive'), value: String(stats?.active_streams ?? 0), sub: t('agency.kpiLiveSub'), icon: Play, color: 'bg-rose-500', delta: 0, showDelta: false },
         ].map((kpi) => (
           <div key={kpi.label} className="rounded-2xl p-4 bg-white border border-[#E8EAEE]">
             <div className="flex items-start justify-between">
@@ -560,7 +568,7 @@ export default function AgencyPage() {
                       <p className="text-xs font-semibold text-gray-900">{(s.total_revenue / 10000).toFixed(0)}{t('agency.manwon')}</p>
                       <p className="text-xs text-gray-400">{s.total_orders}{t('agency.unitCase')}</p>
                     </div>
-                    {s.active_streams > 0 && (
+                    {!LIVE_COMMERCE_SUSPENDED && s.active_streams > 0 && (
                       <span className="flex items-center gap-1 text-xs bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full">
                         <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
                         LIVE
@@ -622,8 +630,8 @@ export default function AgencyPage() {
         </div>
       </div>
 
-      {/* 7. Live Schedule */}
-      {liveScheduleItems.length > 0 && (
+      {/* 7. Live Schedule — 🏁 라이브 중단 시 숨김(공구 집중) */}
+      {!LIVE_COMMERCE_SUSPENDED && liveScheduleItems.length > 0 && (
         <div className="rounded-2xl bg-white border border-[#E8EAEE] overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <h2 className="text-sm font-bold text-gray-900">{t('agency.liveInProgress')}</h2>

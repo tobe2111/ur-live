@@ -39,7 +39,7 @@ app.get('/stats', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { id: agencyId } = c.get('agency') as { id: number }
 
-  const [sellerCount, orderStats, activeStreams] = await Promise.all([
+  const [sellerCount, orderStats, activeStreams, activeGroupBuys] = await Promise.all([
     c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM agency_sellers WHERE agency_id = ?')
       .bind(agencyId).first<{ cnt: number }>(),
     c.env.DB.prepare(`
@@ -58,6 +58,16 @@ app.get('/stats', async (c) => {
       INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
       WHERE ag.agency_id = ? AND ls.status = 'live'
     `).bind(agencyId).first<{ cnt: number }>(),
+    // 🏁 2026-06-17 (공구 집중): 소속 셀러의 진행중 공구(상품) 수 — 라이브 KPI 대체용.
+    //   disputes/agency-overview 와 동일 스코프(공구 상품 카테고리), agency_sellers 조인으로 타 stat 과 정합.
+    c.env.DB.prepare(`
+      SELECT COUNT(*) AS cnt
+      FROM products p
+      INNER JOIN agency_sellers ag ON ag.seller_id = p.seller_id
+      WHERE ag.agency_id = ?
+        AND p.group_buy_status = 'active'
+        AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+    `).bind(agencyId).first<{ cnt: number }>().catch(() => null),
   ])
 
   return c.json({
@@ -68,6 +78,7 @@ app.get('/stats', async (c) => {
       revenue_30d: orderStats?.total_revenue ?? 0,
       net_revenue_30d: orderStats?.net_revenue ?? 0,
       active_streams: activeStreams?.cnt ?? 0,
+      active_group_buys: activeGroupBuys?.cnt ?? 0,
     },
   })
 })

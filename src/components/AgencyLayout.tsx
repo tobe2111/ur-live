@@ -402,15 +402,17 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
         </main>
       </div>
 
-      {/* Mobile quick-action FAB */}
+      {/* Mobile quick-action FAB — 🏁 2026-06-17 라이브 중단 시 '공구 관리'로 repurpose(복원 시 환원) */}
       <div className="md:hidden fixed bottom-6 right-4 z-40">
         <button
-          onClick={() => navigate('/agency/schedule')}
+          onClick={() => navigate(LIVE_COMMERCE_SUSPENDED ? '/agency/group-buy' : '/agency/schedule')}
           className="flex items-center gap-2 px-5 py-3 rounded-full text-white font-bold text-sm shadow-lg active:scale-95 transition-transform"
           style={{ background: 'linear-gradient(90deg, #8B5CF6, #EC4899)', boxShadow: '0 8px 24px rgba(139,92,246,0.3)' }}
         >
-          <Calendar className="w-4 h-4" />
-          라이브 편성
+          {LIVE_COMMERCE_SUSPENDED ? <Utensils className="w-4 h-4" /> : <Calendar className="w-4 h-4" />}
+          {LIVE_COMMERCE_SUSPENDED
+            ? t('agency.nav.manageGroupBuy', { defaultValue: '공구 관리' })
+            : t('agency.fabScheduleLive', { defaultValue: '라이브 편성' })}
         </button>
       </div>
     </div>

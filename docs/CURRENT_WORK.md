@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 에이전시 대시보드 라이브 잔재 제거 + 공구 집중 repurpose (대표 "가장 이상적으로, 공구 집중")
+**배경**: 라이브커머스 영구중단(`LIVE_COMMERCE_SUSPENDED=true`)인데 에이전시 대시보드에 **게이트 안 된 라이브 잔재 5곳**이 그대로 노출됨(나머지 nav/소비자 표면은 게이트 정상 — 에이전트 전수확인). 단순 숨김이 아니라 **공구 지표로 repurpose**(복원 시 자동 환원).
+- **진행중 공구 KPI 신설**(`agency-stats.routes /stats` + `types.ts`): 소속 셀러의 `group_buy_status='active'` 공구 상품 수(`active_group_buys`, disputes-overview 와 동일 스코프, agency_sellers 조인). bundle 은 `/stats` 서브요청이라 자동 반영(백엔드 1곳만).
+- **AgencyPage 라이브 잔재 4곳 처리**: ① 5번째 KPI 카드 `라이브`→`진행중 공구`(amber, Ticket) 스왑(라이브 복원 시 환원) ② 인사이트 '오늘 라이브 없음'(→/schedule) `!LIVE_COMMERCE_SUSPENDED` 게이트 ③ 서브타이틀 '…/라이브'→'…/공구' ④ 'Live Schedule' 섹션 + 셀러랭킹 LIVE 배지 게이트.
+- **AgencyLayout 모바일 FAB**: '라이브 편성'(→/schedule, **게이트 없던 잔재**) → 라이브 중단 시 '공구 관리'(→/agency/group-buy, Utensils)로 repurpose.
+- 전부 `LIVE_COMMERCE_SUSPENDED` 분기라 **flag false 시 라이브 UI 자동 복원**(코드 보존 정책 준수). 검증: client+worker build exit 0 · 테마 clean. (직전 전수조사 commit 의 AgencyGroupBuyPage 데이터매핑 수정과 연속.)
+
 ## ✅ 2026-06-17 — 어드민 주문 페이지: 종류 구별(교환권/상품) + 체크박스 일괄 처리 (대표 요청)
 **요청**: `/admin/orders` 에서 교환권/상품/도매몰 구별 + 체크박스 선택.
 - **종류 구별**: GET `/api/admin/orders` SELECT 에 `first_item_category`(첫 주문상품 category) 추가 → 프론트 `orderKind()` 가 `isVoucherCategory` 면 **교환권**(+식사/미용/숙소/기타 서브), 아니면 **상품**. 신규 '종류' 컬럼(amber 교환권 / sky 상품 배지). bind param 무변경(정적 서브쿼리).
