@@ -1,5 +1,10 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 이메일 기억하기 4개 대시보드 추가 + 자동 로그인 정합 (대표 신고)
+**신고**: "각 대시보드마다 이메일 기억하기 잘 되나? 자동 로그인도 안 되는 것 같다." 전수조사: 이메일 기억은 **admin·seller만 있고 agency/supplier/wholesale(owner·staff) 4곳 누락**. 자동 로그인은 **전용 토글 없음**(토큰 30일+refresh 90일+자동갱신으로 암묵 유지).
+- **이메일 기억 4곳 추가**(대표 "4곳 모두"): `AgencyLoginPage`/`SupplierLoginPage`/`WholesaleLoginPage`/`WholesaleStaffLoginPage` 에 admin/seller 패턴 미러링 — 체크박스 + 마운트 시 자동채움 + submit 시 저장/삭제. 키 `{agency,supplier,wholesale,wholesale_staff}_remember_email`. 프론트만, 라이트 테마(위반 0), tsc 0 · build 0.
+- **자동 로그인(대표 "추천대로")**: 별도 sessionStorage 토글은 **미구현**(택트 — 토큰 읽기 경로 변경 = 리스크 + E2E 불가, 게다가 대표 pain은 "로그아웃됨"이라 opt-out 토글은 무관). 대신 **재로그인 마찰 최소화 = 이메일 기억 전 대시보드 통일**로 해결(단일세션 유지 시 비번만 입력). 지속(자동 유지)은 이미 30일 동작. **느낌상 풀림의 유력 원인 = 방금 배포된 단일 세션(다른 기기 로그인 시 이전 기기 로그아웃)** — 대표가 "추천대로"라 단일세션 유지.
+
 ## 🔐 2026-06-17 — 대시보드 토큰 httpOnly 쿠키 전환 (XSS 하드닝, 옵션 C) — 설계 박제 / 단계 구현 대기
 **배경**: 사용자 "모두 가장 이상적으로 진행". 대시보드 토큰(seller/admin/agency/supplier + refresh)이 localStorage 라 XSS 시 탈취·30일 takeover 가능 — 외부 파트너(도매 admin·제조사) 증가로 노출↑. 목표 = JS 못 읽는 httpOnly 쿠키 의존(방어심화).
 - **설계 문서**: `docs/design/dashboard-cookie-auth.md` (현황 해부 + 단계 + 리스크/E2E 체크리스트 + 롤백).
