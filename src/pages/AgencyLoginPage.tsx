@@ -138,6 +138,7 @@ export default function AgencyLoginPage() {
                   <input
                     id="agency-email"
                     type="email"
+                    autoComplete="email"
                     required
                     value={formData.email}
                     onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
@@ -155,6 +156,7 @@ export default function AgencyLoginPage() {
                   <input
                     id="agency-password"
                     type={showPw ? 'text' : 'password'}
+                    autoComplete="current-password"
                     required
                     value={formData.password}
                     onChange={e => setFormData(p => ({ ...p, password: e.target.value }))}
