@@ -432,25 +432,25 @@ export default function CuratorHeader({
             </div>
           </div>
         ) : (
+          // 🔗 2026-06-17 (사용자 요청 — 방문자 공유 손봄): 아이콘만이던 복사 버튼을 라벨 단 균등 2버튼으로
+          //   (오너 카드와 동일 톤). '카카오톡 공유'→'카카오 공유' 통일.
           <div className="flex gap-2 mt-3.5">
+            <button
+              onClick={onCopyLink}
+              className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
+            >
+              <Share2 className="w-3.5 h-3.5" /> {t('curator.copyLink', { defaultValue: '링크 복사' })}
+            </button>
             <div className="flex-1">
               <KakaoShareButton
                 title={`${curator.name} 의 링크샵`}
                 description={curator.bio || `${pinCount}개 상품 추천 중`}
                 imageUrl={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
                 link={`/u/${curator.handle}`}
-                className="w-full py-2.5 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-sm font-bold transition-colors"
-                buttonText="카카오톡 공유"
+                className="w-full py-2.5 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[13px] font-bold transition-colors"
+                buttonText="카카오 공유"
               />
             </div>
-            <button
-              onClick={onCopyLink}
-              className="px-4 py-2.5 bg-gray-100 dark:bg-[#121212] hover:bg-gray-200 dark:hover:bg-[#1A1A1A] rounded-xl text-sm font-bold text-gray-900 dark:text-white transition-colors"
-              aria-label={t('curator.copyLink', { defaultValue: '링크 복사' })}
-              title="링크 복사"
-            >
-              <Share2 className="w-4 h-4" />
-            </button>
           </div>
         )}
       </div>
