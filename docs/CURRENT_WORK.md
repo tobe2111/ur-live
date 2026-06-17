@@ -1,5 +1,20 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 도매 어드민 페이지 정리 1차 (대표 확정: 데모 중복 제거 + 무결성 강등)
+**배경**: 도매 어드민 18개 페이지 전수 감사(에이전트 병렬) — 빈 스텁/삭제 대상은 0(전부 실동작). 비이상 4건 중 대표가 저위험 2건 선택(등급 페이지 분할은 머니 크리티컬이라 별도 보류).
+- **① 데모 시딩 중복 제거**: `seed-demo-products`가 '상품 일괄 등록'(`AdminWholesaleImportPage`, 현황통계·정리·경고 완비)과 '유통사 등급'(`AdminDistributorGradesPage`) 양쪽에 중복 → **Import 로 일원화**. 등급 페이지에서 데모 섹션 JSX·함수(`seedDemoProducts`/`clearDemoProducts`)·`demoBusy` 상태 제거(등급/마진 전용으로 정리). `confirmDialog` 등 잔여 import 는 타 사용처 있어 유지.
+- **② 무결성 페이지 강등**: `도매 무결성`(진단 전용 — 고아 데이터 표시)을 `AdminLayout` 상단 nav('도매몰·정산' 그룹)에서 제거 → `AdminWholesaleOverviewPage` Totals strip 아래 '데이터 무결성 점검' 링크로 접근. **라우트(`admin.routes.tsx:324`)·페이지·API 전부 유지** — nav 노출만 강등(가역). `Shield`는 타 nav 사용 중이라 import 보존.
+- 검증: tsc 0 · `npm run build` 0 · 대시보드 테마(변경 3파일 위반 0). 머니 로직 무변경.
+- **보류(대표 미선택)**: 등급 페이지(1,207줄, 12기능) 분할 — 마진·신용·정산 얽힘으로 staging E2E 필수, 별도 신중 진행. 프리미엄관↔등급 가격 겹침도 분할 시 함께 정리.
+
+## 🔐 2026-06-17 — 대시보드 토큰 httpOnly 쿠키 전환 (XSS 하드닝, 옵션 C) — 설계 박제 / 단계 구현 대기
+**배경**: 사용자 "모두 가장 이상적으로 진행". 대시보드 토큰(seller/admin/agency/supplier + refresh)이 localStorage 라 XSS 시 탈취·30일 takeover 가능 — 외부 파트너(도매 admin·제조사) 증가로 노출↑. 목표 = JS 못 읽는 httpOnly 쿠키 의존(방어심화).
+- **설계 문서**: `docs/design/dashboard-cookie-auth.md` (현황 해부 + 단계 + 리스크/E2E 체크리스트 + 롤백).
+- **핵심 통찰(코드 해부)**: 세션 쿠키(`createSessionCookie`/`parseSessionCookie`)는 **이미 전 메서드 인증**됨(auth.ts:350-373) → 인프라 사실상 완성. `ud_*` 쿠키는 **CSRF 미보장이라 GET 전용**(auth.ts:378). 따라서 C의 선결과제 = **대시보드 변경요청 CSRF 강제 확대**(`csrfProtection()` 은 Bearer skip이라 현행 무회귀). 클라(api.ts:221)는 이미 `X-CSRF-Token` 첨부. refresh 토큰도 쿠키화 대상.
+- **단계(독립 배포·롤백)**: Phase0 CSRF 강제 확대 → P1 어드민 → P2 제조사/에이전시(utongstart.com host-only 쿠키 주의) → P3 셀러(웹뷰 최우선).
+- **⚠️ 진행 안 한 이유(정직)**: ① CSRF 블랭킷 적용은 `/api/*/login|register|refresh`(Bearer 없는 비인증 POST)를 403으로 막아 **로그인 락아웃** → skip 경로 정밀 열거 필요. ② 쿠키/SameSite/도메인/카톡 인앱 동작은 **이 환경에서 E2E 불가** → 각 단계 클라 컷오버 전 staging E2E 가 게이트. 블라인드 강행 = "이상적"의 반대라 설계+검토 우선.
+- **다음**: Phase0(어드민 한정부터, skip 경로 전수 열거 + 단위테스트) 구현 — 사용자 확인 후.
+
 ## ✅ 2026-06-17 — 도매 프리미엄관 체크박스 일괄 선택 (대표 요청)
 **요청**: `/admin/wholesale-products`(도매 프리미엄관) 상품 리스트 체크박스 선택.
 - **백엔드** (`wholesale-main.routes.ts`): 신규 `POST /api/admin/wholesale-products/bulk-premium` ({ ids[], is_premium 0|1 }) — 단일 batch UPDATE(공급상품·복사본 제외 가드), ids 검증(>0, ≤200). 기존 단건 `/:id/premium` 보존, `/bulk-premium`(1세그) vs `/:id/premium`(2세그) 충돌 없음. adminApp requireAdmin 상속.

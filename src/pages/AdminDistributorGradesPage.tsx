@@ -69,7 +69,6 @@ export default function AdminDistributorGradesPage() {
   const [propProduct, setPropProduct] = useState('')
   const [propNote, setPropNote] = useState('')
   const [propBusy, setPropBusy] = useState(false)
-  const [demoBusy, setDemoBusy] = useState(false)
   // 🛡️ 2026-06-03 Tier2(대시보드): proposals 리스트 → useApiQuery (grades/distributors 는 인라인 편집 명령형 유지).
   const proposalsQ = useApiQuery<Array<{ id: number; distributor_seller_id: number; product_name: string; product_id: number; note: string | null }>>(
     ['admin', 'distributor-proposals'], '/api/admin/distributor/proposals',
@@ -432,26 +431,7 @@ export default function AdminDistributorGradesPage() {
       .catch(() => toast.error('상품 내보내기 실패'))
   }
 
-  // 🏭 2026-06-04 도매몰 데모 상품 시드 — /wholesale 카탈로그에 바로 노출되는 공급상품 10개 생성/삭제.
-  async function seedDemoProducts() {
-    setDemoBusy(true)
-    try {
-      const r = await api.post('/api/admin/distributor/seed-demo-products', {}, h)
-      if (r.data?.success) toast.success(r.data.seeded > 0 ? `데모 상품 ${r.data.seeded}개 생성 — /wholesale 에서 확인하세요` : (r.data.message || '이미 존재합니다'))
-      else toast.error(r.data?.error || '생성 실패')
-    } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '생성 중 오류') }
-    finally { setDemoBusy(false) }
-  }
-  async function clearDemoProducts() {
-    if (!(await confirmDialog({ message: '데모 상품을 모두 삭제할까요?', danger: true }))) return
-    setDemoBusy(true)
-    try {
-      const r = await api.delete('/api/admin/distributor/seed-demo-products', h)
-      if (r.data?.success) toast.success(`데모 상품 ${r.data.deleted}개 삭제`)
-      else toast.error(r.data?.error || '삭제 실패')
-    } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '삭제 중 오류') }
-    finally { setDemoBusy(false) }
-  }
+  // 🗂️ 2026-06-17: 데모 상품 시딩 함수는 '상품 일괄 등록'(AdminWholesaleImportPage)으로 일원화 — 여기서 제거(중복).
 
   if (loading) return <AdminLayout title="판매사(유통사) 등급"><DashboardLoading /></AdminLayout>
 
@@ -464,24 +444,7 @@ export default function AdminDistributorGradesPage() {
           subtitle="유통스타트 도매몰 — 등급별 마진율과 판매사(유통사) 배정을 관리합니다. (도매 카탈로그 가격에만 적용)"
         />
 
-        {/* ── 데모 상품 (도매몰 미리보기용) ── */}
-        <section className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-base font-semibold text-gray-900 mb-1">도매몰 데모 상품</h2>
-          <p className="text-sm text-gray-500 mb-3">
-            제조사 입점 전 미리보기용 — <b>/wholesale 카탈로그에 바로 노출되는 공급상품 10개</b>를 생성합니다.
-            (표시용 데모 데이터. 실제 운영 시작 시 삭제하세요.)
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button onClick={seedDemoProducts} disabled={demoBusy}
-              className="px-4 h-10 rounded-lg bg-gray-900 text-white text-sm font-bold disabled:opacity-50">
-              {demoBusy ? '처리 중…' : '데모 상품 10개 생성'}
-            </button>
-            <button onClick={clearDemoProducts} disabled={demoBusy}
-              className="px-4 h-10 rounded-lg border border-gray-200 text-gray-700 text-sm font-bold disabled:opacity-50">
-              데모 상품 전체 삭제
-            </button>
-          </div>
-        </section>
+        {/* 🗂️ 2026-06-17 데모 상품 시딩은 '상품 일괄 등록'(/admin/wholesale-import)으로 일원화(중복 제거). */}
 
         {/* ── 등급별 마진율 ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">

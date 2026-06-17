@@ -74,7 +74,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/wholesale-deposits', label: '도매 예치금',   icon: Wallet },
       { path: '/admin/wholesale-withdrawals', label: '제조사 출금', icon: Wallet },
       { path: '/admin/wholesale-tax',      label: '도매 세무/정산', icon: Wallet },
-      { path: '/admin/wholesale-integrity', label: '도매 무결성',   icon: Shield },
+      // 🗂️ 2026-06-17: '도매 무결성'(진단 전용)은 상단 nav에서 강등 — '통합 현황' 카드 링크로 접근(/admin/wholesale-integrity 라우트 유지).
     ],
   },
   {
