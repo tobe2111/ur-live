@@ -9,7 +9,7 @@
 - **미도입(실데이터 원칙)**: 시안의 `정가 ₩4,500` 취소선/`52% 할인`·`~2026.09.15` 만료일·옵션 서브타이틀 — 데이터 모델에 필드 없어 가짜 수치 금지. `voucher_expiry` 있으면 그대로 표시.
 - **잠금/중요 로직 무변경**: `useInvalidateMyVouchers()`(발급 후), `__SSR_INITIAL_DETAIL__` SSR consume, idempotency_key, `INSUFFICIENT_POINTS`→충전, `PHONE_REQUIRED` 모달, 어필리에이트 track. 모든 토큰 `dark:` variant(토글 지원).
 - 시안 archive: `docs/design/voucher-detail.md` + `voucher-detail-final-A.dc.html`. 검증: tsc 0 · `npm run build` 0 · 테마검사 통과.
-- **`(KT Alpha B2B 정책)` 표기 근본 제거 (사용자 "근본적으로 진행")**: 과거 sync 가 `products.description` 에 박아둔 공급사 정책 괄호가 prod DB 행에 잔존(commit addbc2b 는 sync 코드만 수정 → 신규만 적용) → 같은 상품 재조회 시 계속 노출. ① 렌더 strip(`stripSupplierPolicy`, 방어선) ② **DB 정정**: admin-kt-alpha `POST /kt-alpha/cleanup-descriptions`(단일 REPLACE UPDATE, 멱등, node:sqlite 로 검증) + `run-all-backfills` 에 `descriptions_cleaned` 스텝 추가 + AdminKtAlphaPage "🧹 설명 정책표기 정리" 버튼. **운영자 1회 클릭으로 기존 행까지 정정.**
+- **`(KT Alpha B2B 정책)` 표기 근본 제거 (사용자 "근본적으로 진행")**: 과거 sync 가 `products.description` 에 박아둔 공급사 정책 괄호가 prod DB 행에 잔존(commit addbc2b 는 sync 코드만 수정 → 신규만 적용) → 같은 상품 재조회 시 계속 노출. ① 렌더 strip(`stripSupplierPolicy`, 방어선) ② **DB 정정**: 공용 helper `worker/utils/kt-alpha-cleanup.ts`(단일 REPLACE/TRIM UPDATE, 멱등, node:sqlite 로 검증) — admin-kt-alpha `POST /kt-alpha/cleanup-descriptions` + `run-all-backfills`(`descriptions_cleaned`) + AdminKtAlphaPage "🧹 설명 정책표기 정리" 버튼. ③ **자동 1회**: `kt-alpha-catalog-sync` cron(매일 03:00 UTC)에 one-time 플래그(`platform_settings.kt_alpha_desc_policy_cleanup_v1`) 가드로 헬퍼 1회 자동 실행 → 운영자 클릭 불필요(다음 sync tick 에 정정 후 플래그 set, 이후 skip). **운영자 액션 0.**
 
 ## ✅ 2026-06-16 어드민 활동로그(A) + 역할권한 강제(B)
 - **(A)**: 뷰어/엔드포인트/자동기록 미들웨어/nav 전부 이미 존재 — 유일 결함 `admin_audit_logs` 테이블이 repair-schema 누락(prod 로그 유실) → 추가.
