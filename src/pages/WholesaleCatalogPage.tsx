@@ -123,6 +123,8 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const isDefaultCatalog = !committedSearch && cat === 'all' && sort === 'popular' && !inStock && !band && !premiumView && !selectedBrand
   const catalogQ = useQuery<CatalogItem[]>({
     queryKey: queryKeys.wholesale('catalog', catalogKey),
+    // initialdata-check-ok: 의도적 — guest 기본 카탈로그는 SSR(__SSR_INITIAL_WHOLESALE__) 로 0-RTT 완결
+    //   (fetch 자체 없음, 잠긴 로딩 최적화). 빈 결과는 readSsrWholesale 가 'none' 처리 → 클라 정상 fetch 복구.
     initialData: () => {
       if (!isDefaultCatalog) return undefined
       if (typeof window !== 'undefined' && localStorage.getItem('seller_token')) return undefined // 로그인 = 등급가 fetch 필수
