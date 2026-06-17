@@ -497,7 +497,7 @@ function AppContent() {
           {!hideBottomNav && <DesktopTopNav />}
           <div className="flex-1">
           <InAppBrowserBanner />
-          <Suspense fallback={null}><PWAInstallPrompt /></Suspense>
+          {/* 🗑️ 2026-06-17 (사용자 요청): 앱 설치 팝업(PWAInstallPrompt) 제거 */}
           <Suspense fallback={null}><OnboardingTrigger /></Suspense>
           <Suspense fallback={null}><RestoreAccountModal /></Suspense>
           <OfflineBanner />

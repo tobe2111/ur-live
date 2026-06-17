@@ -150,18 +150,7 @@ export default function DesktopLiveSidebar() {
         </section>
       </div>
 
-      {/* 앱 다운로드 CTA — xl 에서만 */}
-      <div className="hidden xl:block mx-3 mb-4 rounded-xl bg-pink-500 p-3 shrink-0">
-        <p className="text-white text-[13px] font-bold leading-tight">유어딜 앱으로</p>
-        <p className="text-white/80 text-[11px] mt-1 leading-snug">라이브 알림 + 추천 / 앱 전용 혜택</p>
-        <button
-          type="button"
-          onClick={() => navigate('/introduce')}
-          className="mt-2.5 w-full bg-black text-white text-[12px] font-bold py-1.5 rounded-lg"
-        >
-          {t('nav.appDownload', { defaultValue: '앱 다운로드' })}
-        </button>
-      </div>
+      {/* 🗑️ 2026-06-17 (사용자 요청): 앱 다운로드 CTA 제거 */}
     </aside>
   )
 }
