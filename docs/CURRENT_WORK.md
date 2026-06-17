@@ -7,6 +7,7 @@
 - **AgencyLayout 모바일 FAB**: '라이브 편성'(→/schedule, **게이트 없던 잔재**) → 라이브 중단 시 '공구 관리'(→/agency/group-buy, Utensils)로 repurpose.
 - 전부 `LIVE_COMMERCE_SUSPENDED` 분기라 **flag false 시 라이브 UI 자동 복원**(코드 보존 정책 준수). 검증: client+worker build exit 0 · 테마 clean. (직전 전수조사 commit 의 AgencyGroupBuyPage 데이터매핑 수정과 연속.)
 - **후속(공구 폴리시, 같은 세션)**: ① `AgencyGroupBuyPage` 예상수익 하드코딩 3% → **에이전시 실제 `commission_rate`**(profile, default 2.0%) — 주석에 '미구현 fallback' 이라 적혀있던 의도 완성 ② 대시보드 '진행중 공구' KPI **클릭 → /agency/group-buy**(공구 관리 진입 강화) ③ 소비자 공구 서비스(GroupBuyList/Detail·community-group-buy·main-home 피드) 전수 스캔 결과 **라이브 잔재 0·엔드포인트/필드 정합 양호**(에이전트 확인 — 추가 수정 불요).
+- **에이전시 운영 가이드 재정렬(`guide-seed-agency.ts`)**: 520줄 가이드가 **전부 라이브 방송 프레이밍**(공구 언급 0)이던 것 → 사실정보(수수료 2%/정산/등급/PIN 등) 보존하고 **라이브→공구·매장 운영**으로 재정렬(공구 언급 0→20). welcome 기능목록에 공구관리/매장영입 추가, recruit 셀러기준·어필·흔한오해, support 온보딩/코칭/도구/성장전략, performance KPI표, coupon 시청자→고객, faq 점검항목. incentives `streams/viewers` metric 은 **실제 백엔드 metric 이라 보존 + '라이브 시대 지표(현재 비활성)' 주석**(sales/orders/rating 권장 안내). ⚠️ **seed 는 빈 DB/재시드 시 적용** — 기존 에이전시 반영하려면 prod `operation_guides` agency 섹션 DELETE 후 재시드 or `/admin/operations-guide` UI 편집 필요.
 
 ## ✅ 2026-06-17 — 듀얼 로그인 영구 방어선 + CSP/토큰 대안 평가 (대표 "1,2,3 다 하자")
 대표가 쿠키 컷오버 대신 가벼운 대안 3종 요청 → 정직하게 분류 후 안전한 것만 실행:
