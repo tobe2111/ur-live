@@ -33,9 +33,9 @@ export default function SupplierLoginPage() {
       (async () => {
         try {
           const res = await fetch('/api/supplier/become', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}' })
-          const data = await res.json().catch(() => ({})) as { success?: boolean; status?: string; message?: string; data?: { token: string; supplier: { id: number; business_name: string; email: string } } }
+          const data = await res.json().catch(() => ({})) as { success?: boolean; status?: string; message?: string; data?: { token: string; refreshToken?: string; supplier: { id: number; business_name: string; email: string } } }
           if (data.success && data.status === 'approved' && data.data) {
-            setSupplierSession(data.data.token, data.data.supplier)
+            setSupplierSession(data.data.token, data.data.supplier, data.data.refreshToken)
             toast.success('제조회원으로 로그인되었습니다')
             navigate('/supplier', { replace: true })
           } else if (data.success && data.status === 'pending') {
@@ -63,12 +63,12 @@ export default function SupplierLoginPage() {
       })
       const data = await res.json().catch(() => ({})) as {
         success?: boolean; error?: string;
-        data?: { token: string; supplier: { id: number; business_name: string; email: string } }
+        data?: { token: string; refreshToken?: string; supplier: { id: number; business_name: string; email: string } }
       }
       if (!res.ok || !data.success || !data.data) {
         throw new Error(data.error || t('supplier.loginFailed', { defaultValue: '로그인에 실패했습니다' }))
       }
-      setSupplierSession(data.data.token, data.data.supplier)
+      setSupplierSession(data.data.token, data.data.supplier, data.data.refreshToken)
       toast.success(t('supplier.loginSuccess', { defaultValue: '로그인되었습니다' }))
       navigate('/supplier', { replace: true })
     } catch (err) {
