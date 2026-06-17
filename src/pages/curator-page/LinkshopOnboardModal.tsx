@@ -98,10 +98,16 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
 
   // 🛠️ 2026-06-16 (모바일 팝업 안 보임 신고): 부모에 transform 이 있으면 position:fixed 가 뷰포트가
   //   아니라 그 부모 기준이 돼 모달이 화면 밖으로 잘림 → document.body 로 portal 해 항상 뷰포트 고정.
+  // 🛠️ 2026-06-17 (하단 버튼 네비바에 가려짐 신고): overlay z-index 를 BottomNav(z-9999) 위로 올려
+  //   (z-[10100], AccountControlsSection 등 동일 패턴) 모달이 네비바를 덮게 하고, 시트 하단에
+  //   safe-area 패딩을 줘 '저장하기'/'나중에' 버튼이 홈 인디케이터·네비바에 가리지 않게 한다.
   if (typeof document === 'undefined') return null
   return createPortal((
-    <div className="fixed inset-0 z-[9500] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" role="dialog" aria-modal="true">
-      <div className="w-full sm:max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-[#121212] rounded-t-3xl sm:rounded-3xl border border-gray-200 dark:border-[#2A2A2A] p-5 animate-sheet-rise">
+    <div className="fixed inset-0 z-[10100] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" role="dialog" aria-modal="true">
+      <div
+        className="w-full sm:max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-[#121212] rounded-t-3xl sm:rounded-3xl border border-gray-200 dark:border-[#2A2A2A] p-5 animate-sheet-rise"
+        style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+      >
         <div className="flex items-start justify-between mb-1">
           <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">내 링크샵 꾸미기</h2>
           <button onClick={dismissPermanently} aria-label="닫기" className="p-1 -m-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
