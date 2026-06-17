@@ -450,15 +450,15 @@ function SellOwnProductsCTA() {
     )
   }
 
-  // 셀러 아님 → 판매 시작 안내 (기존 셀러 등록 플로우로 연결)
+  // 셀러 아님 → 판매 시작 안내 (현행 모델: 판매=매장 등록 → /seller/register/supplier, register-from-user store_owner)
   return (
     <section className="mb-6 bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
       <p className="text-sm font-bold text-gray-900 dark:text-white">🛍️ 내 상품도 직접 팔고 싶으세요?</p>
       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
-        판매자로 등록하면 내 상품을 올려 팔 수 있어요. 관리자 승인 후 활성화되며, 승인되면 내 링크샵에 추천 핀과 함께 표시됩니다.
+        판매자(매장)로 등록하면 내 상품·공구권을 올려 팔 수 있어요. 관리자 승인 후 활성화되며, 승인되면 내 링크샵에 추천 핀과 함께 표시됩니다.
       </p>
       <button
-        onClick={() => navigate('/seller/register/business?from=curator')}
+        onClick={() => navigate('/seller/register/supplier?from=curator')}
         className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg"
       >
         판매자 등록하기 →
