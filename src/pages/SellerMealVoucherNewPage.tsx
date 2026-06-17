@@ -672,13 +672,13 @@ export default function SellerMealVoucherNewPage() {
                 </div>
               </div>
 
-              {/* 🛡️ 2026-05-21: 고급 설정 토글 — 약관 + 티어 할인 접기 */}
+              {/* 🛡️ 2026-05-21: 고급 설정 토글 — 약관 + 예약 링크 접기 (티어 할인은 2026-05-30 단일가 모델로 제거) */}
               <button
                 type="button"
                 onClick={() => setShowAdvanced(v => !v)}
                 className="w-full flex items-center justify-between py-2 px-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition"
               >
-                <span>⚙️ 고급 설정 (이용약관 · 단계별 할인)</span>
+                <span>⚙️ 고급 설정 (이용약관 · 예약 링크)</span>
                 <span className="text-xs text-gray-400">{showAdvanced ? '접기 ▲' : '펼치기 ▼'}</span>
               </button>
 

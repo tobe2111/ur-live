@@ -36,6 +36,8 @@ interface VoucherProduct {
   name: string
   description: string | null
   price: number
+  original_price?: number | null
+  discount_rate?: number | null
   image_url: string | null
   category: string
   deal_only?: number
@@ -63,6 +65,58 @@ function stripSupplierPolicy(desc: string): string {
     .split('\n').map(l => l.replace(/[ \t]+$/g, '')).join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
+}
+
+/**
+ * 🎨 2026-06-17 (사용자 — "안내 문구 가시성 떨어짐"): KT Alpha 등 상품 안내(description) 평문 한 덩어리를
+ *   구조화 렌더. **데이터(텍스트)는 무변경, 표시만 개선**:
+ *     - `[유의사항]` 같은 대괄호-단독 라인 → 섹션 헤더(볼드)
+ *     - `- ...` → 불릿 리스트
+ *     - 단독 URL → 클릭 가능 링크
+ *     - `⚠️` 경고 → amber 강조 / `📅` 등 → 콜아웃
+ *   첫 줄이 `[브랜드] 상품명` 타이틀이면 상단 h2 와 중복이라 제거.
+ */
+function VoucherNotice({ text }: { text: string }) {
+  let lines = text.split('\n')
+  const firstIdx = lines.findIndex((l) => l.trim())
+  if (firstIdx >= 0 && /^\[[^\]]+\]\s*\S/.test(lines[firstIdx].trim())) {
+    lines = lines.filter((_, i) => i !== firstIdx)
+  }
+  return (
+    <div className="space-y-1.5">
+      {lines.map((raw, i) => {
+        const line = raw.trim()
+        if (!line) return <div key={i} className="h-1" />
+        const url = line.match(/^(https?:\/\/\S+)$/)?.[1]
+        if (url) {
+          return (
+            <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-gray-900 dark:text-white underline underline-offset-2 break-all">
+              🔗 안내 링크 열기
+            </a>
+          )
+        }
+        if (/^\[[^\]]+\]$/.test(line)) {
+          return <p key={i} className="text-[12.5px] font-extrabold text-gray-900 dark:text-white mt-3 first:mt-0">{line.replace(/^\[|\]$/g, '')}</p>
+        }
+        if (/^[-•]\s+/.test(line)) {
+          return (
+            <div key={i} className="flex gap-1.5 text-[12.5px] text-gray-600 dark:text-gray-300 leading-relaxed">
+              <span className="text-gray-300 dark:text-gray-600 shrink-0">•</span>
+              <span className="flex-1">{line.replace(/^[-•]\s+/, '')}</span>
+            </div>
+          )
+        }
+        if (/^⚠️/.test(line)) {
+          return <p key={i} className="text-[12px] font-medium text-amber-700 dark:text-amber-400 leading-relaxed">{line}</p>
+        }
+        if (/^(📅|❗|✅|💡|📌)/.test(line)) {
+          return <p key={i} className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed">{line}</p>
+        }
+        return <p key={i} className="text-[12.5px] text-gray-600 dark:text-gray-300 leading-relaxed">{line}</p>
+      })}
+    </div>
+  )
 }
 
 export default function VoucherDetailPage() {
@@ -234,6 +288,11 @@ export default function VoucherDetailPage() {
   const balancePending = balanceFetching && balance === 0
   // 🧹 공급사(KT Alpha) 내부 정책 표기 제거 후 표시 (prod DB 잔존 행도 즉시 정리).
   const cleanDescription = product.description ? stripSupplierPolicy(product.description) : ''
+  // 🎨 정가(원) > 교환가(딜=원) 일 때만 할인 표시 (KT Alpha 교환권 등). 데이터 없으면 미표시.
+  const hasDiscount = !!product.original_price && product.original_price > product.price
+  const discountPct = hasDiscount
+    ? Math.round(((product.original_price! - product.price) / product.original_price!) * 100)
+    : 0
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-52 lg:pb-40">
@@ -280,9 +339,18 @@ export default function VoucherDetailPage() {
           {product.restaurant_name && (
             <div className="mt-1 text-[13.5px] text-gray-400 dark:text-gray-500">{product.restaurant_name}{product.restaurant_address ? ` · ${product.restaurant_address}` : ''}</div>
           )}
-          <div className="mt-4 flex items-baseline gap-1">
-            <span className="text-[32px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(product.price)}</span>
-            <span className="text-[18px] font-bold text-[#171B24] dark:text-white">딜</span>
+          {/* 🎨 2026-06-17: 시안 의도 복원 — original_price(정가) 있으면 취소선 + 실제 할인율 표시 */}
+          <div className="mt-4 flex items-end justify-between gap-3">
+            <div className="flex items-baseline gap-1">
+              <span className="text-[32px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(product.price)}</span>
+              <span className="text-[18px] font-bold text-[#171B24] dark:text-white">딜</span>
+            </div>
+            {hasDiscount && (
+              <div className="text-right leading-tight">
+                <div className="text-[12px] text-gray-400 dark:text-gray-500 line-through">정가 ₩{formatNumber(product.original_price!)}</div>
+                <div className="text-[12.5px] font-bold text-[#0E9F6E] dark:text-emerald-400">{discountPct}% 할인 교환</div>
+              </div>
+            )}
           </div>
 
           <div className="h-px bg-[#EEF0F3] dark:bg-[#1A1A1A] my-4" />
@@ -308,10 +376,12 @@ export default function VoucherDetailPage() {
             <span className="text-[12px]">매장에서 바코드 제시 후 사용 가능</span>
           </div>
 
-          {/* 🎨 2026-06-17 (사용자 요청): 상품 상세 내용은 '매장에서 바코드 제시 후 사용 가능' 아래에. */}
+          {/* 🎨 2026-06-17 (사용자 요청): 상품 상세 내용은 '매장에서 바코드 제시 후 사용 가능' 아래에.
+              + 가시성 개선 — 평문 → 구조화 렌더(VoucherNotice). 데이터 무변경, 표시만. */}
           {cleanDescription && (
             <div className="mt-5 pt-5 border-t border-[#EEF0F3] dark:border-[#1A1A1A]">
-              <p className="text-[13px] text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">{cleanDescription}</p>
+              <p className="text-[12px] font-bold text-gray-400 dark:text-gray-500 mb-2.5">상품 안내</p>
+              <VoucherNotice text={cleanDescription} />
             </div>
           )}
         </div>

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Users, Gift, Clock, ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
+import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 
 interface GroupTier {
   count: number
@@ -77,6 +78,8 @@ export default function ReferralSection({
   const tiers = parseTiers(productTiers)
 
   useEffect(() => {
+    // 🧭 2026-06-17 (단일가 통일): 친구초대 동적 할인 종료 — 진행 그룹 조회/표시 안 함.
+    if (REFERRAL_GROUP_DISCOUNT_DISABLED) { setLoadingGroups(false); return }
     let cancelled = false
     setLoadingGroups(true)
     api.get(`/api/referral/product/${productId}`)
@@ -119,6 +122,10 @@ export default function ReferralSection({
   }
 
   const tierPreview = tiers.map(t => `${t.count}명: ${t.discount}%할인`).join(' → ')
+
+  // 🧭 2026-06-17 (사용자 결정 — 즉시판매 단일가 통일): "친구 모을수록 더 싸진다"는 동적 할인 종료.
+  //   이 섹션 자체를 숨김(친구 초대 보너스 적립은 affiliate 공유로 별도 동작 — 영향 없음).
+  if (REFERRAL_GROUP_DISCOUNT_DISABLED) return null
 
   return (
     <div className="mx-4 mb-3 bg-white dark:bg-[#0A0A0A] rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-4">

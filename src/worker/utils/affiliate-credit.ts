@@ -173,8 +173,10 @@ export async function creditAffiliateForOrder(
     const storeProductId = breakdown.primaryProductId
     const storeProductName = breakdown.primaryProductName
 
-    // ⏳ 확정 유예(hold): status='holding' 으로만 기록 — 잔액(user_points)은 아직 미반영.
-    //   환불창(T+7) 경과 후 matureAffiliateEarnings cron 이 holding→granted 전환 + 그때 잔액 적립.
+    // ⏳ 확정 유예(hold): status='holding' 으로만 기록 — 잔액(user_points)은 아직 미반영(= '적립 예정').
+    //   확정(granted+잔액) 시점(대표 결정 2026-06-17 "예정→사용 시 확정"):
+    //     • 교환권 주문 → 구매자가 매장에서 실제 사용(QR/PIN)한 시점 (matureAffiliateForOrder), 미사용 만료분은 cron.
+    //     • 비교환권 주문(실물 등) → T+holdDays 경과(matureAffiliateEarnings cron).
     //   이유: 즉시 잔액 적립 시 buy→출금/사용→환불 어뷰즈에서 MAX(0,...) clamp 로 회수 불가(누수).
     //   hold 동안은 출금 가용액 SUM 에서도 제외(NOT IN ('refunded','holding')) → 출금 불가.
     // 🔐 멱등 = UNIQUE(referrer_id, order_id) + INSERT OR IGNORE (머니룰 #3) — 위 SELECT 는 빠른 경로,
@@ -214,10 +216,72 @@ export async function creditAffiliateForOrder(
 const HOLD_DAYS_DEFAULT = 7
 
 /**
- * ⏳ 추천 적립 성숙 cron — holding 상태로 T+7(기본) 경과 + 주문 미환불 건을 granted 로 확정.
- *   claim-before-credit: holding→granted CAS(meta.changes===1) 후에만 잔액 적립 → 동시/중복 방지.
- *   주문 status 가드(REFUNDED/CANCELLED/FAILED 제외)로, 환불 사이트가 holding 플립을 놓쳐도
- *   환불 주문은 절대 확정/적립 안 됨(안전망). dynamic policy: affiliate_hold_days.
+ * 🔐 holding → granted 확정 + 잔액 적립 + 알림 (단일 SSOT — cron / 사용시 인라인 공용).
+ *   claim-before-credit: CAS(meta.changes===1) 통과한 행만 적립 → 동시/중복 차단(머니룰 #1).
+ *   반환: 적립된 금액(확정 실패/중복/0원이면 0).
+ */
+async function grantHoldingEarning(
+  DB: D1Database,
+  env: unknown,
+  row: { id: number; referrer_id: string; commission: number; order_id: number | null; product_name: string | null },
+): Promise<number> {
+  const claim = await DB.prepare(
+    "UPDATE affiliate_earnings SET status = 'granted' WHERE id = ? AND COALESCE(status, 'pending') = 'holding'",
+  ).bind(row.id).run().catch(() => null)
+  if ((((claim as { meta?: { changes?: number } } | null)?.meta?.changes) ?? 0) !== 1) return 0
+  const amt = Number(row.commission) || 0
+  if (amt <= 0) return 0
+  await adjustUserPoints(DB, {
+    userId: String(row.referrer_id),
+    delta: amt,
+    type: 'affiliate_commission',
+    description: row.product_name ? `핀 추천 적립 확정 (${String(row.product_name).slice(0, 80)})` : '핀 추천 적립 확정',
+    orderId: row.order_id ?? undefined,
+  })
+  await DB.prepare(`
+    INSERT INTO user_notifications (user_id, type, title, message, link, created_at)
+    VALUES (?, 'affiliate_earning', ?, ?, '/u/me/earnings', datetime('now'))
+  `).bind(String(row.referrer_id), '✅ 적립 확정!', `${amt.toLocaleString('ko-KR')}딜이 확정되었습니다`).run().catch(() => {})
+  try {
+    const { sendSystemPush } = await import('../../lib/system-push')
+    await sendSystemPush(env as never, 'user', String(row.referrer_id), {
+      title: '✅ 적립 확정!',
+      body: `${amt.toLocaleString('ko-KR')}딜이 확정되었습니다`,
+      url: '/u/me/earnings',
+      tag: `affiliate-mature-${row.id}`,
+    })
+  } catch { /* push fail-soft */ }
+  return amt
+}
+
+/**
+ * 🆕 2026-06-17 (대표 결정 "둘 다 — 예정→사용 시 확정"): 교환권을 실제 사용(QR/PIN)한 시점에
+ *   해당 주문의 holding 추천적립을 즉시 확정(granted)+잔액 적립. group-buy-voucher 사용 핸들러가 호출.
+ *   멱등(CAS) — cron 안전망과 동시 실행돼도 한 번만 확정. 반환: 적립 금액 합.
+ */
+export async function matureAffiliateForOrder(DB: D1Database, env: unknown, orderId: number): Promise<number> {
+  try {
+    const due = await DB.prepare(`
+      SELECT ae.id, ae.referrer_id, ae.commission, ae.order_id, ae.product_name
+      FROM affiliate_earnings ae
+      JOIN orders o ON o.id = ae.order_id
+      WHERE ae.order_id = ? AND COALESCE(ae.status, 'pending') = 'holding'
+        AND UPPER(COALESCE(o.status, '')) NOT IN ('REFUNDED', 'CANCELLED', 'FAILED')
+    `).bind(orderId).all<{ id: number; referrer_id: string; commission: number; order_id: number | null; product_name: string | null }>()
+      .catch(() => ({ results: [] as { id: number; referrer_id: string; commission: number; order_id: number | null; product_name: string | null }[] }))
+    let credited = 0
+    for (const row of due.results ?? []) credited += await grantHoldingEarning(DB, env, row)
+    return credited
+  } catch { return 0 }
+}
+
+/**
+ * ⏳ 추천 적립 성숙 cron — 대표 결정(2026-06-17 "예정→사용 시 확정")으로 정책 분기:
+ *   • 교환권 주문: 교환권이 실제 사용('used')/만료('expired' 또는 expires_at 경과)되면 확정.
+ *     → 평소엔 사용 시점에 matureAffiliateForOrder 가 즉시 확정하고, 이 cron 은 누락분+만료분 안전망.
+ *     (미사용·미만료 교환권은 계속 holding = '적립 예정' 유지 — 실제 써야 확정되는 정직 모델.)
+ *   • 비교환권 주문(실물 배송 등 '사용' 이벤트 없음): 기존대로 T+holdDays 경과로 확정.
+ *   claim-before-credit CAS + 주문 status 가드(REFUNDED/CANCELLED/FAILED 제외). policy: affiliate_hold_days.
  */
 export async function matureAffiliateEarnings(
   DB: D1Database,
@@ -238,41 +302,25 @@ export async function matureAffiliateEarnings(
       FROM affiliate_earnings ae
       JOIN orders o ON o.id = ae.order_id
       WHERE COALESCE(ae.status, 'pending') = 'holding'
-        AND ae.created_at <= datetime('now', ?)
         AND UPPER(COALESCE(o.status, '')) NOT IN ('REFUNDED', 'CANCELLED', 'FAILED')
+        AND (
+          EXISTS (
+            SELECT 1 FROM vouchers v WHERE v.order_id = ae.order_id
+              AND ( v.status IN ('used', 'expired')
+                    OR (v.status = 'unused' AND v.expires_at IS NOT NULL AND v.expires_at < datetime('now')) )
+          )
+          OR (
+            NOT EXISTS (SELECT 1 FROM vouchers v2 WHERE v2.order_id = ae.order_id)
+            AND ae.created_at <= datetime('now', ?)
+          )
+        )
       LIMIT 500
     `).bind(`-${holdDays} days`).all<{ id: number; referrer_id: string; commission: number; order_id: number | null; product_name: string | null }>()
       .catch(() => ({ results: [] as { id: number; referrer_id: string; commission: number; order_id: number | null; product_name: string | null }[] }))
 
     for (const row of due.results ?? []) {
-      const claim = await DB.prepare(
-        "UPDATE affiliate_earnings SET status = 'granted' WHERE id = ? AND COALESCE(status, 'pending') = 'holding'",
-      ).bind(row.id).run().catch(() => null)
-      if ((((claim as { meta?: { changes?: number } } | null)?.meta?.changes) ?? 0) !== 1) continue
-      matured++
-      const amt = Number(row.commission) || 0
-      if (amt <= 0) continue
-      await adjustUserPoints(DB, {
-        userId: String(row.referrer_id),
-        delta: amt,
-        type: 'affiliate_commission',
-        description: row.product_name ? `핀 추천 적립 확정 (${String(row.product_name).slice(0, 80)})` : '핀 추천 적립 확정',
-        orderId: row.order_id ?? undefined,
-      })
-      credited += amt
-      await DB.prepare(`
-        INSERT INTO user_notifications (user_id, type, title, message, link, created_at)
-        VALUES (?, 'affiliate_earning', ?, ?, '/u/me/earnings', datetime('now'))
-      `).bind(String(row.referrer_id), '✅ 적립 확정!', `${amt.toLocaleString('ko-KR')}딜이 확정되었습니다`).run().catch(() => {})
-      try {
-        const { sendSystemPush } = await import('../../lib/system-push')
-        await sendSystemPush(env as never, 'user', String(row.referrer_id), {
-          title: '✅ 적립 확정!',
-          body: `${amt.toLocaleString('ko-KR')}딜이 확정되었습니다`,
-          url: '/u/me/earnings',
-          tag: `affiliate-mature-${row.id}`,
-        })
-      } catch { /* push fail-soft */ }
+      const amt = await grantHoldingEarning(DB, env, row)
+      if (amt > 0) { matured++; credited += amt }
     }
   } catch { /* fail-soft */ }
   return { matured, credited }

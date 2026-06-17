@@ -104,7 +104,7 @@ export async function handleSellerChurnDetect(env: Env): Promise<void> {
             `).bind(
               s.user_id,
               '✨ 새 공구 시작해보세요',
-              `요즘 공구 진행률이 낮아요. 단계별 할인이나 마감 임박 push 를 활용해보세요.`,
+              `요즘 공구 진행률이 낮아요. 공구 특가를 키우거나 마감 임박 push 를 활용해보세요.`,
             )
           )
         }

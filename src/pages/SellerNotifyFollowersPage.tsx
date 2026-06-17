@@ -37,7 +37,7 @@ const PRESETS: Record<Reason, { title: string; message: string; url: string }> =
   },
   group_buy: {
     title: '🔥 공구 시작',
-    message: '새 공동구매가 시작됐어요. 빨리 참여하면 단계별 할인!',
+    message: '새 공동구매가 시작됐어요. 지금 바로 공구 특가로 만나보세요!',
     url: '/group-buy',
   },
   custom: {
