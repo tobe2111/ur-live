@@ -98,6 +98,26 @@ export async function refundOrderFully(
       .catch(swallow('order-refund:deal-tx'))
   }
 
+  // 3b. 💸 2026-06-17 혼합결제(Toss+딜) 의 '딜 사용분' 복원 (적립-역전 대칭, 머니 룰 #2).
+  //   전액 딜(isDeal)은 step3 가 처리 → 여기선 카드/Toss 주문의 부분 딜만(중복 방지).
+  //   CAS 전이 후라 1회만 실행(멱등). deal_used 컬럼 부재 시 best-effort skip.
+  if (!isDeal) {
+    try {
+      const dealRow = await DB.prepare('SELECT deal_used FROM orders WHERE id = ?')
+        .bind(Number(order.id)).first<{ deal_used: number | null }>().catch(() => null)
+      const dealUsed = Math.max(0, Math.round(Number(dealRow?.deal_used ?? 0)))
+      if (dealUsed > 0) {
+        const { adjustUserPoints } = await import('./point-ledger')
+        await adjustUserPoints(DB, {
+          userId: order.user_id, delta: dealUsed, type: 'refund',
+          description: `[환불] 주문 딜 사용분 복원 (order:${order.order_number})`, orderId: order.id,
+        })
+        // 잔여 딜 원장 0 — 부분반품이 일부 복원했어도 전액환불은 남은 만큼만 복원(위 SELECT) 후 소진.
+        await DB.prepare('UPDATE orders SET deal_used = 0 WHERE id = ?').bind(Number(order.id)).run().catch(swallow('order-refund:deal-used-zero'))
+      }
+    } catch { /* best-effort — deal_used 컬럼 부재 등 */ }
+  }
+
   // 4. 재고 복원(물리상품) + 디지털 revoke.
   try {
     const items = await DB.prepare(`
@@ -171,6 +191,19 @@ export async function refundOrderFully(
     const { reverseReferralBonusOnRefund } = await import('../../features/group-buy/api/helpers')
     if (order.order_number) await reverseReferralBonusOnRefund(DB, String(order.order_number))
   } catch { /* best-effort */ }
+
+  // 9. 💸 2026-06-17 쿠폰 사용 복원 — 이 주문에 묶인 coupon_uses 삭제 + used_count 감소(재사용 가능).
+  //   CAS 전이 후라 멱등(2회차엔 DELETE 대상 0 → 이중복원 없음).
+  try {
+    const cu = await DB.prepare('SELECT coupon_id FROM coupon_uses WHERE order_id = ?')
+      .bind(Number(order.id)).all<{ coupon_id: number }>().catch(() => ({ results: [] as Array<{ coupon_id: number }> }))
+    for (const row of (cu?.results ?? [])) {
+      await DB.prepare('UPDATE coupons SET used_count = MAX(0, used_count - 1) WHERE id = ?')
+        .bind(row.coupon_id).run().catch(swallow('order-refund:coupon-count'))
+    }
+    await DB.prepare('DELETE FROM coupon_uses WHERE order_id = ?')
+      .bind(Number(order.id)).run().catch(swallow('order-refund:coupon-uses'))
+  } catch { /* best-effort — coupon_uses 부재 등 */ }
 
   // 8. 누적 환불액 기록.
   await DB.prepare('UPDATE orders SET refunded_amount = COALESCE(refunded_amount, 0) + ? WHERE id = ?')

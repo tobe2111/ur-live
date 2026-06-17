@@ -7,7 +7,7 @@
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
-import { captureError, addBreadcrumb } from '@/lib/sentry'
+import { addBreadcrumb } from '@/lib/sentry'
 import type { CartItem } from '@/types/cart'
 import type { ShippingAddress, SellerGroup } from './types'
 
@@ -149,13 +149,8 @@ export function useBeforePayment(opts: UseBeforePaymentOptions) {
           throw new Error(`${data?.error || t('payment.errors.orderCreateFailed')}\n${debugInfo}`)
         }
         if (!response.data.success) throw new Error(response.data.error || t('payment.errors.orderCreateFailed'))
-        if (couponId && couponDiscount > 0 && response.data.data?.order_id) {
-          try {
-            await api.post('/api/coupons/use', { coupon_id: couponId, order_id: response.data.data.order_id, discount_amount: couponDiscount })
-          } catch (couponErr) {
-            captureError(couponErr as Error, { context: 'CheckoutPage.couponUse', couponId })
-          }
-        }
+        // 💸 2026-06-17: 쿠폰은 서버가 주문 생성 시 권위 재계산 + coupon_uses UNIQUE 로 1회 소비한다.
+        //   (handlePayWithDeals 와 동일 — 별도 /coupons/use 호출 폐지. 이중 소비/409 방지.)
       }
     } finally {
       isSubmittingRef.current = false

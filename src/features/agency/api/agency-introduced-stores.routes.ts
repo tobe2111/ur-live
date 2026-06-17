@@ -26,6 +26,7 @@ interface IntroducedStoreRow {
   created_at: string
   total_orders: number
   total_sales: number
+  active_group_buys: number
   total_commission: number
   pending_commission: number
 }
@@ -39,6 +40,7 @@ app.get('/introduced-stores', async (c) => {
     `SELECT s.id, s.business_name, s.name, s.status, s.introduced_at, s.created_at,
             COALESCE((SELECT COUNT(*) FROM orders o WHERE o.seller_id = s.id AND o.status IN ('PAID','DONE','SHIPPING','COMPLETED')), 0) as total_orders,
             COALESCE((SELECT SUM(o.total_amount) FROM orders o WHERE o.seller_id = s.id AND o.status IN ('PAID','DONE','SHIPPING','COMPLETED')), 0) as total_sales,
+            COALESCE((SELECT COUNT(*) FROM products p WHERE p.seller_id = s.id AND p.group_buy_status = 'active' AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')), 0) as active_group_buys,
             COALESCE((SELECT SUM(commission_amount) FROM agency_store_intro_commissions WHERE store_seller_id = s.id AND agency_id = ?), 0) as total_commission,
             COALESCE((SELECT SUM(commission_amount) FROM agency_store_intro_commissions WHERE store_seller_id = s.id AND agency_id = ? AND status = 'pending'), 0) as pending_commission
        FROM sellers s
@@ -83,20 +85,24 @@ app.get('/introduced-stores/summary', async (c) => {
     `SELECT
         (SELECT COUNT(*) FROM sellers WHERE introduced_by_agency_id = ?) as total_stores,
         (SELECT COUNT(*) FROM sellers WHERE introduced_by_agency_id = ? AND status = 'active') as active_stores,
+        (SELECT COUNT(*) FROM sellers s2 WHERE s2.introduced_by_agency_id = ? AND s2.status = 'active'
+           AND NOT EXISTS (SELECT 1 FROM products p WHERE p.seller_id = s2.id AND p.group_buy_status = 'active'
+             AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher'))
+        ) as inactive_stores,
         (SELECT COALESCE(SUM(commission_amount), 0) FROM agency_store_intro_commissions WHERE agency_id = ?) as total_commission,
         (SELECT COALESCE(SUM(commission_amount), 0) FROM agency_store_intro_commissions WHERE agency_id = ? AND created_at >= ?) as month_commission,
         (SELECT COALESCE(SUM(commission_amount), 0) FROM agency_store_intro_commissions WHERE agency_id = ? AND status = 'pending') as pending_commission,
         (SELECT COALESCE(SUM(commission_amount), 0) FROM agency_store_intro_commissions WHERE agency_id = ? AND status = 'available') as available_commission,
         (SELECT COALESCE(SUM(commission_amount), 0) FROM agency_store_intro_commissions WHERE agency_id = ? AND status = 'paid') as paid_commission`
-  ).bind(agencyId, agencyId, agencyId, agencyId, monthStart, agencyId, agencyId, agencyId)
+  ).bind(agencyId, agencyId, agencyId, agencyId, agencyId, monthStart, agencyId, agencyId, agencyId)
     .first<{
-      total_stores: number; active_stores: number;
+      total_stores: number; active_stores: number; inactive_stores: number;
       total_commission: number; month_commission: number;
       pending_commission: number; available_commission: number; paid_commission: number;
     }>().catch(() => null)
 
   return c.json({ success: true, data: summary || {
-    total_stores: 0, active_stores: 0,
+    total_stores: 0, active_stores: 0, inactive_stores: 0,
     total_commission: 0, month_commission: 0,
     pending_commission: 0, available_commission: 0, paid_commission: 0,
   } })

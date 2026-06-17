@@ -56,15 +56,15 @@ export default function AdminVoucherOrdersPage() {
   })
   const ktStatus = ktStatusQ.data ?? null
 
-  const ordersQ = useApiQuery<{ rows: VoucherOrderRow[]; stats: { processing: number; sent: number; failed: number } }>(
+  const ordersQ = useApiQuery<{ rows: VoucherOrderRow[]; stats: { processing: number; sent: number; failed: number; failed_all: number } }>(
     ['admin', 'voucher-orders', hours, statusFilter], '/api/admin/voucher-orders',
     {
       params: { hours, limit: 500, ...(statusFilter !== 'all' ? { status: statusFilter } : {}) },
-      select: (r: any) => ({ rows: r?.success ? (r.data || []) : [], stats: r?.stats || { processing: 0, sent: 0, failed: 0 } }),
+      select: (r: any) => ({ rows: r?.success ? (r.data || []) : [], stats: r?.stats || { processing: 0, sent: 0, failed: 0, failed_all: 0 } }),
     },
   )
   const rows = ordersQ.data?.rows ?? []
-  const stats = ordersQ.data?.stats ?? { processing: 0, sent: 0, failed: 0 }
+  const stats = ordersQ.data?.stats ?? { processing: 0, sent: 0, failed: 0, failed_all: 0 }
   const loading = ordersQ.isLoading
   const load = () => ordersQ.refetch()
 
@@ -101,6 +101,20 @@ export default function AdminVoucherOrdersPage() {
             고객이 결제한 교환권을 KT Alpha 기프티쇼로 자동 발송한 내역입니다.
             고객 휴대폰으로 기프티콘이 전송되며, 실패 건은 아래에서 <span className="font-semibold text-gray-700">재발송</span>할 수 있습니다.
           </p>
+
+          {/* 🛡️ 2026-06-17: 전체 발송 실패 배너 — 기간 무관(대시보드 "실패 N"과 일치). 시간창에 가려 안 보이던 문제 해소. */}
+          {stats.failed_all > 0 && (
+            <div className="mb-3 px-4 py-3 rounded-lg border border-red-300 bg-red-50 flex flex-wrap items-center gap-2">
+              <span className="text-sm font-bold text-red-700">⚠️ 발송 실패 {stats.failed_all}건 (기간 무관 전체)</span>
+              <span className="text-xs text-red-600">— 아래 기간 필터와 무관하게 모든 실패 건입니다.</span>
+              {statusFilter !== 'failed' && (
+                <button onClick={() => setStatusFilter('failed')}
+                  className="ml-auto px-3 py-1.5 text-xs font-semibold bg-red-600 text-white rounded hover:bg-red-700">
+                  실패 {stats.failed_all}건 모두 보기 →
+                </button>
+              )}
+            </div>
+          )}
 
           {/* 🛡️ 2026-06-14: 상태 의미 범례 */}
           <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
@@ -142,6 +156,9 @@ export default function AdminVoucherOrdersPage() {
               </button>
             ))}
             <button onClick={load} className="px-3 py-1.5 text-sm bg-gray-100 rounded">새로고침</button>
+            {statusFilter === 'failed' && (
+              <span className="self-center text-xs text-red-600 font-medium">※ 발송 실패 목록은 기간 무관 전체 표시</span>
+            )}
           </div>
           <div className="flex gap-2 mb-3">
             {(['all', 'processing', 'sent', 'failed'] as const).map(s => (

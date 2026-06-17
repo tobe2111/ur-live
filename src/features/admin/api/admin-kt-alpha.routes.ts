@@ -1203,29 +1203,33 @@ adminKtAlphaRoutes.get('/voucher-orders', cors(), async (c) => {
   try {
     const statusFilter = status && ['processing', 'sent', 'failed'].includes(status)
       ? `AND status = '${status}'` : ''
+    // 🛡️ 2026-06-17: 발송 실패는 '기간 무관 전체' 표시 — 오래된 미해결 실패가 시간창(기본 24h/최대 7일)에
+    //   가려져 "실패했다는데 목록에 안 보임" 신고 발생(대시보드 failed 카운트는 기간 무관 전체라 불일치).
+    //   failed 필터 시 created_at 조건 제거 → 모든 실패 건이 항상 보이고 재발송 가능.
+    const timeFilter = status === 'failed' ? '' : `AND created_at >= datetime('now', '-${hours} hours')`
     const rows = await c.env.DB.prepare(
       `SELECT id, goods_name, recipient_phone, unit_price, quantity, status,
               external_order_id, sent_at, failure_reason, created_at, updated_at
          FROM voucher_orders
         WHERE source = 'kt_alpha'
-          AND created_at >= datetime('now', '-${hours} hours')
+          ${timeFilter}
           ${statusFilter}
         ORDER BY created_at DESC LIMIT ?`
     ).bind(limit).all().catch(() => ({ results: [] }))
 
     const stats = await c.env.DB.prepare(
       `SELECT
-         SUM(CASE WHEN status='processing' THEN 1 ELSE 0 END) AS processing,
-         SUM(CASE WHEN status='sent' THEN 1 ELSE 0 END) AS sent,
-         SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) AS failed
-       FROM voucher_orders
-      WHERE source = 'kt_alpha' AND created_at >= datetime('now', '-${hours} hours')`
-    ).first<{ processing: number; sent: number; failed: number }>().catch(() => null)
+         SUM(CASE WHEN status='processing' AND created_at >= datetime('now', '-${hours} hours') THEN 1 ELSE 0 END) AS processing,
+         SUM(CASE WHEN status='sent'       AND created_at >= datetime('now', '-${hours} hours') THEN 1 ELSE 0 END) AS sent,
+         SUM(CASE WHEN status='failed'     AND created_at >= datetime('now', '-${hours} hours') THEN 1 ELSE 0 END) AS failed,
+         SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) AS failed_all
+       FROM voucher_orders WHERE source = 'kt_alpha'`
+    ).first<{ processing: number; sent: number; failed: number; failed_all: number }>().catch(() => null)
 
     return c.json({
       success: true,
       data: rows.results || [],
-      stats: stats || { processing: 0, sent: 0, failed: 0 },
+      stats: stats || { processing: 0, sent: 0, failed: 0, failed_all: 0 },
     })
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')

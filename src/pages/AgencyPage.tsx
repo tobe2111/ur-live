@@ -11,10 +11,11 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { swallow } from '@/shared/utils/swallow'
 import { formatNumber } from '@/utils/format'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import {
-  Users, ShoppingBag, DollarSign, Play,
+  Users, Store, DollarSign, Play,
   TrendingUp, ArrowUpRight, Download, Bell,
-  Eye, AlertTriangle, ChevronRight, UserCheck, Radio
+  Eye, AlertTriangle, ChevronRight, UserCheck, Radio, Ticket
 } from 'lucide-react'
 import NotificationList from './agency-page/NotificationList'
 import { StatusBadge, PayBadge } from './agency-page/badges'
@@ -32,10 +33,17 @@ const Skel = ({ className }: { className?: string }) => (
   <div className={`animate-pulse bg-gray-200 rounded ${className || ''}`} />
 )
 
+type IntroducedSummary = {
+  total_stores: number; active_stores: number; inactive_stores?: number
+  total_commission: number; month_commission: number
+  pending_commission: number; available_commission: number; paid_commission: number
+}
+
 type AgencyBundle = {
   stats: Stats | null; kpiData: KpiData | null; monthlyTasks: MonthlyTask[]
   sellers: Seller[]; orders: Order[]; daily: DailyStat[]; streams: Stream[]
   agencyProfile: { commission_rate?: number } | null
+  introducedSummary: IntroducedSummary | null
 }
 
 // sessionStorage 즉시렌더 캐시 (5분 TTL) → useQuery initialData seed (이미 shaped — select 미사용).
@@ -49,6 +57,7 @@ function readAgencyCache(): AgencyBundle | undefined {
       stats: c.stats ?? null, kpiData: null, monthlyTasks: [],
       sellers: Array.isArray(c.sellers) ? c.sellers : [], orders: Array.isArray(c.orders) ? c.orders : [],
       daily: Array.isArray(c.daily) ? c.daily : [], streams: [], agencyProfile: null,
+      introducedSummary: c.introducedSummary ?? null,
     }
   } catch { return undefined }
 }
@@ -69,10 +78,12 @@ async function fetchAgencyBundle(): Promise<AgencyBundle | null> {
     daily: b.daily?.data ?? [],
     streams: b.streams?.data ?? [],
     agencyProfile: b.profile?.success ? b.profile.data : null,
+    introducedSummary: b.introducedSummary?.success ? b.introducedSummary.data : null,
   }
   try {
     sessionStorage.setItem('agency_dashboard_cache', JSON.stringify({
       ts: Date.now(), stats: bundle.stats, sellers: bundle.sellers, orders: bundle.orders, daily: bundle.daily,
+      introducedSummary: bundle.introducedSummary,
     }))
   } catch { /* quota 무시 */ }
   return bundle
@@ -117,6 +128,8 @@ export default function AgencyPage() {
   const daily = bundleQ.data?.daily ?? []
   const streams = bundleQ.data?.streams ?? []
   const agencyProfile = bundleQ.data?.agencyProfile ?? null
+  // 🏪 매장 영입 요약 (대시보드 1순위 지표)
+  const introduced = bundleQ.data?.introducedSummary ?? null
   const loading = bundleQ.isLoading && !bundleQ.data
 
   // 세션 만료(success=false → fetcher 가 null 반환) → 로그인. (캐시 갱신은 fetcher 내부에서 성공 시 수행.)
@@ -146,7 +159,7 @@ export default function AgencyPage() {
     if (curr > 0) return 100
     return 0
   }
-  const { revenueDelta, ordersDelta } = useMemo(() => {
+  const { revenueDelta } = useMemo(() => {
     if (!daily || daily.length === 0) return { revenueDelta: 0, ordersDelta: 0 }
     const half = Math.max(1, Math.floor(daily.length / 2))
     const prev = daily.slice(0, half)
@@ -186,7 +199,7 @@ export default function AgencyPage() {
   // ── Actionable insights ────────────────────────────────────────────────────
   // 에이전시 대시보드 데이터로 자동 파생되는 배너
   type AgencyInsightSeverity = 'high' | 'medium' | 'info'
-  type AgencyInsightIcon = typeof AlertTriangle | typeof TrendingUp | typeof UserCheck | typeof Radio
+  type AgencyInsightIcon = typeof AlertTriangle | typeof TrendingUp | typeof UserCheck | typeof Radio | typeof Store
   interface AgencyInsight {
     severity: AgencyInsightSeverity
     icon: AgencyInsightIcon
@@ -196,6 +209,18 @@ export default function AgencyPage() {
   }
   const insights: AgencyInsight[] = useMemo(() => {
     const list: AgencyInsight[] = []
+
+    // 🏪 0) 부진 영입 매장 — 영입했지만 진행중 공구 0인 활성 매장(매장 영입 중심 1순위 인사이트)
+    const inactiveStores = introduced?.inactive_stores ?? 0
+    if (inactiveStores >= 1) {
+      list.push({
+        severity: 'medium',
+        icon: Store,
+        title: t('agency.inactiveStoresTitle', { defaultValue: '{{count}}곳 영입 매장 — 공구 미운영', count: inactiveStores }),
+        description: t('agency.inactiveStoresDesc', { defaultValue: '입점했지만 진행중 공구가 없어요. 공구 등록을 독려해 매출·commission 을 시작하세요.' }),
+        action: { label: t('agency.manageStores', { defaultValue: '영입 가게 보기' }), path: '/agency/introduced-stores' },
+      })
+    }
 
     // 1) 비활성 셀러 ≥ 1
     // proxy: 승인 상태이면서 총 주문 0건이고 현재 라이브 없음
@@ -242,21 +267,23 @@ export default function AgencyPage() {
       })
     }
 
-    // 4) 진행중 라이브 0 && 승인 셀러 > 0
-    const liveStreams = stats?.active_streams ?? 0
-    const activeSellers = sellers.filter(s => s.status === 'approved').length
-    if (liveStreams === 0 && activeSellers > 0) {
-      list.push({
-        severity: 'info',
-        icon: Radio,
-        title: t('agency.noLiveTodayTitle'),
-        description: t('agency.noLiveTodayDesc', { count: activeSellers }),
-        action: { label: t('agency.viewSchedule'), path: '/agency/schedule' },
-      })
+    // 4) 진행중 라이브 0 && 승인 셀러 > 0 — 🏁 라이브 중단 시 숨김(공구 집중).
+    if (!LIVE_COMMERCE_SUSPENDED) {
+      const liveStreams = stats?.active_streams ?? 0
+      const activeSellers = sellers.filter(s => s.status === 'approved').length
+      if (liveStreams === 0 && activeSellers > 0) {
+        list.push({
+          severity: 'info',
+          icon: Radio,
+          title: t('agency.noLiveTodayTitle'),
+          description: t('agency.noLiveTodayDesc', { count: activeSellers }),
+          action: { label: t('agency.viewSchedule'), path: '/agency/schedule' },
+        })
+      }
     }
 
     return list
-  }, [sellers, stats, daily])
+  }, [sellers, stats, daily, introduced])
 
   const showStatsSkeleton = loading && !stats
 
@@ -281,7 +308,9 @@ export default function AgencyPage() {
         {/* 🛡️ 2026-04-22 배치 130: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.dashboard')}
-          subtitle={t('agency.dashboardSubtitle', { defaultValue: '에이전시 종합 현황 — 소속 셀러 성과 / 매출 / 라이브' })}
+          subtitle={LIVE_COMMERCE_SUSPENDED
+            ? t('agency.dashboardSubtitleStore', { defaultValue: '에이전시 종합 현황 — 소속 셀러 성과 / 매출 / 공구' })
+            : t('agency.dashboardSubtitle', { defaultValue: '에이전시 종합 현황 — 소속 셀러 성과 / 매출 / 라이브' })}
           icon={<LayoutDashboard className="h-5 w-5" />}
         />
 
@@ -342,16 +371,29 @@ export default function AgencyPage() {
         </p>
       </div>
 
-      {/* 1. KPI Row */}
+      {/* 1. KPI Row — 🏪 2026-06-17 매장 영입 중심 재편(소속 셀러 지표는 보존하되 후순위로). */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
-          { label: t('agency.kpiSellers'), value: String(stats?.sellers ?? 0), sub: t('common.person'), icon: Users, color: 'bg-blue-600', delta: 0, showDelta: false },
-          { label: t('agency.kpiOrders'), value: String(stats?.orders_30d ?? 0), sub: t('agency.kpiOrdersSub'), icon: ShoppingBag, color: 'bg-blue-500', delta: ordersDelta, showDelta },
-          { label: t('agency.kpiRevenue'), value: `${((stats?.revenue_30d ?? 0) / 10000).toFixed(0)}${t('agency.manwon')}`, sub: t('agency.kpiRevenueSub'), icon: DollarSign, color: 'bg-emerald-500', delta: revenueDelta, showDelta },
-          { label: t('agency.kpiSellerRevenue'), value: `${((stats?.net_revenue_30d ?? 0) / 10000).toFixed(0)}${t('agency.manwon')}`, sub: t('agency.kpiSellerRevenueSub'), icon: TrendingUp, color: 'bg-violet-500', delta: revenueDelta, showDelta },
-          { label: t('agency.kpiLive'), value: String(stats?.active_streams ?? 0), sub: t('agency.kpiLiveSub'), icon: Play, color: 'bg-rose-500', delta: 0, showDelta: false },
-        ].map((kpi) => (
-          <div key={kpi.label} className="rounded-2xl p-4 bg-white border border-[#E8EAEE]">
+          // ① 영입 가게 — 에이전시 핵심 지표
+          { label: t('agency.kpiStores', { defaultValue: '영입 가게' }), value: String(introduced?.total_stores ?? 0), sub: t('agency.kpiStoresSub', { defaultValue: '입점 매장' }), icon: Store, color: 'bg-indigo-600', delta: 0, showDelta: false, path: '/agency/introduced-stores' },
+          // ② 이번달 영입 수익 (실 적립 commission)
+          { label: t('agency.kpiStoreCommission', { defaultValue: '이번달 영입 수익' }), value: `${formatNumber(introduced?.month_commission ?? 0)}${t('common.won')}`, sub: t('agency.kpiStoreCommissionSub', { defaultValue: '매장 commission' }), icon: DollarSign, color: 'bg-emerald-500', delta: 0, showDelta: false, path: '/agency/settlements' },
+          // ③ 진행중 공구 (라이브 중단 시) / 라이브 (복원 시)
+          LIVE_COMMERCE_SUSPENDED
+            ? { label: t('agency.kpiGroupBuys', { defaultValue: '진행중 공구' }), value: String(stats?.active_group_buys ?? 0), sub: t('agency.kpiGroupBuysSub', { defaultValue: '소속 셀러' }), icon: Ticket, color: 'bg-amber-500', delta: 0, showDelta: false, path: '/agency/group-buy' }
+            : { label: t('agency.kpiLive'), value: String(stats?.active_streams ?? 0), sub: t('agency.kpiLiveSub'), icon: Play, color: 'bg-rose-500', delta: 0, showDelta: false },
+          // ④ 30일 총매출 (영입 매장 + 소속 셀러 합산)
+          { label: t('agency.kpiRevenue'), value: `${((stats?.revenue_30d ?? 0) / 10000).toFixed(0)}${t('agency.manwon')}`, sub: t('agency.kpiRevenueSub'), icon: TrendingUp, color: 'bg-blue-500', delta: revenueDelta, showDelta },
+          // ⑤ 담당 셀러 (보존 — 후순위)
+          { label: t('agency.kpiSellers'), value: String(stats?.sellers ?? 0), sub: t('common.person'), icon: Users, color: 'bg-violet-500', delta: 0, showDelta: false, path: '/agency/sellers' },
+        ].map((kpi) => {
+          const kpiPath = (kpi as { path?: string }).path
+          return (
+          <div
+            key={kpi.label}
+            onClick={kpiPath ? () => navigate(kpiPath) : undefined}
+            className={`rounded-2xl p-4 bg-white border border-[#E8EAEE] ${kpiPath ? 'cursor-pointer hover:border-amber-300 transition-colors' : ''}`}
+          >
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B7280] mb-1">{kpi.label}</p>
@@ -377,11 +419,12 @@ export default function AgencyPage() {
               </div>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* 🛡️ 2026-04-26 L2: TikTok 스타일 핵심 지표 6가지 (Q5) */}
-      {kpiData && <KpiMetricsGrid kpiData={kpiData} />}
+      {!LIVE_COMMERCE_SUSPENDED && kpiData && <KpiMetricsGrid kpiData={kpiData} />}
 
       {/* 🛡️ 2026-04-27 Phase 2-2: PL 시뮬레이터 */}
       <PLSimulator />
@@ -411,19 +454,31 @@ export default function AgencyPage() {
         </div>
       )}
 
-      {/* 2. Commission Banner */}
+      {/* 2. Commission Banner — 🏪 매장 영입 누적 수익(실 적립) 우선 + 소속 셀러 추정 수수료는 보조 */}
       <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-5 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm opacity-80">{t('agency.commissionTitle')}</p>
+            <p className="text-sm opacity-80">{t('agency.storeCommissionTitle', { defaultValue: '매장 영입 누적 수익' })}</p>
             <p className="text-2xl font-extrabold mt-1">
-              {formatNumber(commission)}{t('common.won')}
+              {formatNumber(introduced?.total_commission ?? 0)}{t('common.won')}
             </p>
-            <p className="text-xs opacity-60 mt-1">{t('agency.commissionDesc', { rate: commissionRate })}</p>
+            <p className="text-xs opacity-70 mt-1">
+              {t('agency.storeCommissionBreakdown', {
+                defaultValue: '이번달 {{month}}원 · 정산 가능 {{avail}}원',
+                month: formatNumber(introduced?.month_commission ?? 0),
+                avail: formatNumber(introduced?.available_commission ?? 0),
+              })}
+            </p>
+            <p className="text-[11px] opacity-50 mt-0.5">
+              {t('agency.sellerCommissionAside', {
+                defaultValue: '소속 셀러 매출 추정 수수료 {{c}}원 ({{rate}}%)',
+                c: formatNumber(commission), rate: commissionRate,
+              })}
+            </p>
           </div>
           <button
             onClick={() => navigate('/agency/settlements')}
-            className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-bold transition-colors"
+            className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-bold transition-colors shrink-0"
           >
             {t('agency.settlementManage')} →
           </button>
@@ -457,11 +512,12 @@ export default function AgencyPage() {
         )}
       </div>
 
-      {/* 3. Quick Actions */}
+      {/* 3. Quick Actions — 🏪 매장 영입 우선 */}
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => navigate('/agency/sellers')} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700">+ {t('agency.inviteSeller')}</button>
+        <button onClick={() => navigate('/agency/introduced-stores')} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700">+ {t('agency.inviteStore', { defaultValue: '가게 영입' })}</button>
+        <button onClick={() => navigate('/agency/group-buy')} className="px-4 py-2 bg-amber-500 text-white rounded-lg text-xs font-bold hover:bg-amber-600">{t('agency.manageGroupBuyAction', { defaultValue: '공구 관리' })}</button>
         <button onClick={() => navigate('/agency/notices')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">{t('agency.sendNotice')}</button>
-        <button onClick={() => navigate('/agency/compare')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">{t('agency.compareSellers')}</button>
+        <button onClick={() => navigate('/agency/sellers')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">{t('agency.inviteSeller')}</button>
         <button onClick={() => navigate('/agency/targets')} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200">{t('agency.revenueGoal')}</button>
       </div>
 
@@ -560,7 +616,7 @@ export default function AgencyPage() {
                       <p className="text-xs font-semibold text-gray-900">{(s.total_revenue / 10000).toFixed(0)}{t('agency.manwon')}</p>
                       <p className="text-xs text-gray-400">{s.total_orders}{t('agency.unitCase')}</p>
                     </div>
-                    {s.active_streams > 0 && (
+                    {!LIVE_COMMERCE_SUSPENDED && s.active_streams > 0 && (
                       <span className="flex items-center gap-1 text-xs bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full">
                         <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
                         LIVE
@@ -622,8 +678,8 @@ export default function AgencyPage() {
         </div>
       </div>
 
-      {/* 7. Live Schedule */}
-      {liveScheduleItems.length > 0 && (
+      {/* 7. Live Schedule — 🏁 라이브 중단 시 숨김(공구 집중) */}
+      {!LIVE_COMMERCE_SUSPENDED && liveScheduleItems.length > 0 && (
         <div className="rounded-2xl bg-white border border-[#E8EAEE] overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <h2 className="text-sm font-bold text-gray-900">{t('agency.liveInProgress')}</h2>

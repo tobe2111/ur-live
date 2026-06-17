@@ -39,6 +39,7 @@ interface IntroducedStore {
   created_at: string
   total_orders: number
   total_sales: number
+  active_group_buys: number
   total_commission: number
   pending_commission: number
 }
@@ -86,6 +87,13 @@ export default function AgencyIntroducedStoresPage() {
   const introCodeQ = useApiQuery<IntroCode | null>(['agency', 'intro-code'], '/api/agency/intro-code', { select: (r: any) => (r?.success ? r.data : null) })
   const summary = summaryQ.data ?? null
   const stores = storesQ.data ?? []
+  // 🏪 2026-06-17 영입 깔때기 — 영입 → 활성 입점 → 공구 운영 → 매출 발생 (stores 리스트에서 파생).
+  const funnel = {
+    total: stores.length,
+    active: stores.filter(s => s.status === 'active').length,
+    running: stores.filter(s => (s.active_group_buys || 0) > 0).length,
+    selling: stores.filter(s => (s.total_sales || 0) > 0).length,
+  }
   const commissions = commissionsQ.data ?? []
   const introCode = introCodeQ.data ?? null
   const loading = summaryQ.isLoading || storesQ.isLoading || commissionsQ.isLoading || introCodeQ.isLoading
@@ -170,6 +178,36 @@ export default function AgencyIntroducedStoresPage() {
               </p>
             </div>
 
+            {/* 🏪 영입 깔때기 — 영입 → 활성 → 공구 운영 → 매출 */}
+            {funnel.total > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-4">
+                <h2 className="text-sm font-bold text-gray-900 mb-3">영입 단계</h2>
+                <div className="grid grid-cols-4 gap-2">
+                  {([
+                    { label: '영입', value: funnel.total, color: 'bg-indigo-500', textColor: 'text-indigo-600' },
+                    { label: '활성 입점', value: funnel.active, color: 'bg-blue-500', textColor: 'text-blue-600' },
+                    { label: '공구 운영', value: funnel.running, color: 'bg-amber-500', textColor: 'text-amber-600' },
+                    { label: '매출 발생', value: funnel.selling, color: 'bg-emerald-500', textColor: 'text-emerald-600' },
+                  ] as const).map((step, i) => {
+                    const pct = funnel.total > 0 ? Math.round((step.value / funnel.total) * 100) : 0
+                    return (
+                      <div key={i}>
+                        <div className="flex items-baseline justify-between mb-1">
+                          <span className="text-[10px] font-bold text-gray-500">{step.label}</span>
+                          <span className={`text-sm font-extrabold ${step.textColor}`}>{step.value}</span>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                          <div className={`h-full rounded-full ${step.color}`} style={{ width: `${pct}%` }} />
+                        </div>
+                        <p className="text-[9px] text-gray-400 mt-0.5">{pct}%</p>
+                      </div>
+                    )
+                  })}
+                </div>
+                <p className="text-[10px] text-gray-400 mt-2">전환이 떨어지는 단계의 가게에 공구 등록·운영을 독려하세요.</p>
+              </div>
+            )}
+
             {/* 입점 가게 리스트 */}
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
@@ -193,6 +231,11 @@ export default function AgencyIntroducedStoresPage() {
                           {s.introduced_at ? `입점 ${new Date(s.introduced_at).toLocaleDateString('ko-KR')}` : '입점일 미상'}
                           {s.status && <span className="ml-2">· {s.status}</span>}
                         </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[10px] text-gray-500">진행중 공구</p>
+                        <p className={`text-sm font-bold ${s.active_group_buys > 0 ? 'text-amber-600' : 'text-gray-300'}`}>{s.active_group_buys}</p>
+                        <p className="text-[10px] text-gray-400">개</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] text-gray-500">누적 매출</p>

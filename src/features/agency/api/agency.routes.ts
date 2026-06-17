@@ -708,7 +708,7 @@ app.get('/dashboard/bundle', async (c) => {
   const origin = new URL(c.req.url).origin
   const headers = { Authorization: auth }
 
-  // sub-request 8개 — Cloudflare Workers 한도 50 안전.
+  // sub-request 9개 — Cloudflare Workers 한도 50 안전. (introduced-stores/summary: 매장 영입 KPI)
   const endpoints = [
     '/api/agency/stats',
     '/api/agency/stats/kpi',
@@ -718,6 +718,7 @@ app.get('/dashboard/bundle', async (c) => {
     '/api/agency/streams?status=live&limit=50',
     '/api/agency/profile',
     '/api/agency/monthly-tasks',
+    '/api/agency/introduced-stores/summary',
   ] as const
 
   const results = await Promise.allSettled(
@@ -726,12 +727,12 @@ app.get('/dashboard/bundle', async (c) => {
       .catch(() => null))
   )
 
-  const [stats, kpi, daily, sellers, orders, streams, profile, monthlyTasks] =
+  const [stats, kpi, daily, sellers, orders, streams, profile, monthlyTasks, introducedSummary] =
     results.map(r => r.status === 'fulfilled' ? r.value : null)
 
   return c.json({
     success: true,
-    data: { stats, kpi, daily, sellers, orders, streams, profile, monthlyTasks },
+    data: { stats, kpi, daily, sellers, orders, streams, profile, monthlyTasks, introducedSummary },
   })
 })
 
