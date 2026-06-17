@@ -165,6 +165,7 @@ export const curatorApi = {
     business_number?: string | null; business_name?: string | null;
     business_status?: string; tax_type?: string | null;
     bank_name?: string | null; bank_account?: string | null; account_holder?: string | null;
+    is_store_seller?: boolean;
   } }> {
     const res = await api.get('/api/curator/me/business')
     return res.data
