@@ -1150,6 +1150,31 @@ const DEMO_PRODUCTS: { name: string; category: string; supply: number; retail: n
   { name: '차량용 디퓨저 방향제 세트', category: 'lifestyle', supply: 4600, retail: 9900, stock: 280, moq: 5, color: '#7FB069', img: 'https://loremflickr.com/600/600/perfume?lock=20' },
 ]
 
+// 🩹 2026-06-17 (사용자 신고 — 데모 '정리' 500 근본수정): products 의 FTS 삭제 트리거를 외부콘텐츠
+//   (content=products) FTS5 정식 'delete' 커맨드 패턴으로 교정. 기존 트리거(`DELETE FROM products_fts
+//   WHERE rowid=OLD.id`)는 AFTER DELETE 시점에 원본 행이 이미 사라져 인덱스에서 제거할 콘텐츠를 못 읽어
+//   throw → 상품 하드삭제(데모 정리)가 500. 정식 'delete' 커맨드는 OLD 값을 명시 전달하므로 행 소실과
+//   무관하게 인덱스 동기화 성공. CREATE TRIGGER IF NOT EXISTS 는 기존을 안 바꾸므로 DROP 후 재생성(멱등).
+//   하드삭제는 이 앱에서 드물어(보통 is_active 소프트삭제) 현재 100% 깨진 경로라 — 회귀 위험 없음(개선만).
+//   update/insert 트리거는 하드에러 없이 상시 동작(상품 수정/생성 정상) → 범위 밖, 건드리지 않음(블래스트 최소).
+const _ftsDeleteTriggerFixed = new WeakSet<object>()
+async function ensureProductsFtsDeleteTrigger(DB: D1Database): Promise<void> {
+  if (_ftsDeleteTriggerFixed.has(DB)) return
+  _ftsDeleteTriggerFixed.add(DB)
+  try {
+    await DB.prepare('DROP TRIGGER IF EXISTS products_fts_delete').run()
+    await DB.prepare(
+      `CREATE TRIGGER products_fts_delete AFTER DELETE ON products BEGIN
+        INSERT INTO products_fts(products_fts, rowid, name, description, category)
+        VALUES('delete', OLD.id, COALESCE(OLD.name,''), COALESCE(OLD.description,''), COALESCE(OLD.category,''));
+      END`,
+    ).run()
+  } catch (e) {
+    // products_fts 미설치(FTS 미사용 DB)·드문 오류 — 폴백(소프트 아카이브)이 처리. DROP 만 성공해도 하드삭제는 가능.
+    swallow('distributor-admin:fts-delete-trigger')(e)
+  }
+}
+
 app.post('/seed-demo-products', rateLimit({ action: 'wholesale-seed-demo', max: 5, windowSec: 60 }), async (c) => {
   const { DB } = c.env
   try {
@@ -1191,6 +1216,9 @@ app.post('/seed-demo-products', rateLimit({ action: 'wholesale-seed-demo', max: 
 app.delete('/seed-demo-products', async (c) => {
   const { DB } = c.env
   try {
+    // 🩹 근본수정: 하드삭제 전에 깨진 FTS 삭제 트리거를 정식 'delete' 커맨드 패턴으로 교정(isolate 당 1회, 멱등).
+    //   이걸로 아래 하드삭제가 정상 성공 → 폴백 불필요. 교정 실패해도 아래 try/catch 폴백이 안전망.
+    await ensureProductsFtsDeleteTrigger(DB)
     // 🩹 2026-06-17 (사용자 신고 — '데모 정리' 500): 데모 하드삭제가 products 의 AFTER DELETE FTS 트리거에서
     //   throw 함. products_fts 는 외부콘텐츠(content=products) FTS5 라, AFTER DELETE 시점엔 원본 행이 이미
     //   사라져 인덱스 동기화에 필요한 콘텐츠를 못 읽음 → 에러. 하드삭제는 이 앱에서 드물어(보통 is_active 소프트삭제)

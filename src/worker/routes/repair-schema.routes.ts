@@ -1188,10 +1188,16 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
             category = COALESCE(NEW.category,'')
         WHERE rowid = NEW.id;
       END` },
+    // 🩹 2026-06-17 (데모 '정리' 500 근본수정): 외부콘텐츠(content=products) FTS5 는 AFTER DELETE 시점에
+    //   원본 행이 사라져 `DELETE FROM products_fts WHERE rowid=OLD.id` 가 제거할 콘텐츠를 못 읽어 throw →
+    //   상품 하드삭제가 500. 정식 'delete' 커맨드(OLD 값 명시 전달)로 교정. 기존 트리거는 DROP 후 재생성
+    //   (CREATE IF NOT EXISTS 는 기존을 안 바꾸므로 선행 DROP 필수).
+    { name: 'products_fts_delete_trigger_drop_legacy', sql: `DROP TRIGGER IF EXISTS products_fts_delete` },
     { name: 'products_fts_delete_trigger', sql: `CREATE TRIGGER IF NOT EXISTS products_fts_delete
       AFTER DELETE ON products
       BEGIN
-        DELETE FROM products_fts WHERE rowid = OLD.id;
+        INSERT INTO products_fts(products_fts, rowid, name, description, category)
+        VALUES('delete', OLD.id, COALESCE(OLD.name,''), COALESCE(OLD.description,''), COALESCE(OLD.category,''));
       END` },
     // 🛡️ 2026-05-20: 에이전시 입점 가게 commission ledger.
     //   에이전시가 입점시킨 가게 (sellers.introduced_by_agency_id) 의 모든 공구권 매출 →
