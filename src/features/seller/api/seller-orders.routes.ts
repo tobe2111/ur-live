@@ -712,6 +712,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
       content_format?: string | null;
       access_duration_days?: number | null;
       preview_url?: string | null;
+      // 🍽️ 2026-06-17 (#5 대표 메뉴): OCR/수동 추출 메뉴 — product_supply_meta 'menu' 에 저장 (products 컬럼 증식 방지).
+      menu?: Array<{ name: string; price?: string; desc?: string }>;
     }>();
 
     const { name, description, price, stock, image_url, category } = body;
@@ -766,6 +768,18 @@ sellerOrdersRoutes.post('/products', async (c) => {
 
     // 식사권/공동구매 필드 저장 (별도 UPDATE — INSERT fallback 구조 유지)
     const productId = result.meta.last_row_id;
+
+    // 🍽️ 2026-06-17 (#5 대표 메뉴): 메뉴(OCR/수동)를 product_supply_meta 사이드테이블에 저장 → 공구 상세가 표시.
+    if (Array.isArray(body.menu) && body.menu.length > 0) {
+      try {
+        const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+        const clean = body.menu
+          .filter(m => m && typeof m.name === 'string' && m.name.trim())
+          .map(m => ({ name: String(m.name).slice(0, 60), price: m.price ? String(m.price).slice(0, 20) : undefined, desc: m.desc ? String(m.desc).slice(0, 80) : undefined }))
+          .slice(0, 20);
+        if (clean.length) await setSupplyMeta(db, Number(productId), { menu: JSON.stringify(clean) });
+      } catch { /* meta 저장 실패 — 상품 생성은 유지 (fail-soft) */ }
+    }
 
     // 🛡️ 2026-05-05: 디지털 상품 필드 저장 (UPDATE — migration 0243 후 컬럼 존재)
     if (body.product_kind && body.product_kind !== 'physical') {
