@@ -1885,6 +1885,26 @@ repairSchemaRoutes.post('/api/_internal/repair-schema/auto', async (c) => {
   return c.json({ success: true, errors: errs, warnings: result.column_warnings || [], counts: result.column_counts || {} })
 })
 
+// 🛡️ 2026-06-17 경량 부트스트랩 — 전체 repair-schema(수백 마이그레이션 → 524 타임아웃) 대신
+//   슈퍼 어드민 복구 2줄만 빠르게 실행. admin 토큰만 있으면 호출 가능(내부 경로).
+repairSchemaRoutes.get('/api/_internal/bootstrap-super', requireAdmin(), async (c) => {
+  const DB = (c.env as { DB: D1Database }).DB;
+  const out: { byEmail: number; oldestPromoted?: number } = { byEmail: 0 };
+  try {
+    const r1 = await DB.prepare("UPDATE admins SET role = 'super_admin' WHERE lower(email) = 'tobe2111@naver.com'").run();
+    out.byEmail = r1.meta?.changes ?? 0;
+    const hasSuper = await DB.prepare("SELECT COUNT(*) AS c FROM admins WHERE role = 'super_admin'").first<{ c: number }>();
+    if ((hasSuper?.c ?? 0) === 0) {
+      const r2 = await DB.prepare("UPDATE admins SET role = 'super_admin' WHERE id = (SELECT id FROM admins ORDER BY id ASC LIMIT 1)").run();
+      out.oldestPromoted = r2.meta?.changes ?? 0;
+    }
+    const supers = await DB.prepare("SELECT id, email, name, role FROM admins WHERE role = 'super_admin'").all();
+    return c.json({ success: true, ...out, super_admins: supers.results ?? [] });
+  } catch (err) {
+    return c.json({ success: false, error: '부트스트랩 실패', _debug: String(err).slice(0, 200) }, 500);
+  }
+});
+
 // HTTP wrapper — admin auth + JSON response.
 repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c) => {
   const env = c.env as any;
