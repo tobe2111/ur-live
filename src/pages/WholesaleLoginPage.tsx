@@ -72,7 +72,7 @@ export default function WholesaleLoginPage() {
               <WholesaleWordmark height={28} />
             )}
           </button>
-          <button onClick={() => navigate('/wholesale/join')} className="text-sm text-[#4E5560] hover:text-[#0C2454] font-medium">유통사 가입</button>
+          {/* 🧹 2026-06-17 (시안): 우상단 '유통사 가입' 버튼 삭제 */}
         </div>
       </header>
 
@@ -88,8 +88,8 @@ export default function WholesaleLoginPage() {
                 className="w-full flex items-center gap-4 p-4 rounded-2xl border border-[#ECEEF1] hover:border-[#0C2454] transition-colors text-left">
                 <span className="flex h-12 w-12 items-center justify-center rounded-xl shrink-0" style={{ background: '#F4F5F7' }}><Users className="w-6 h-6" style={{ color: '#0C2454' }} /></span>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-[16px] font-extrabold text-[#0C2454]">유통사(판매) 로그인</span>
-                  <span className="block text-[13px] text-[#8A929E] mt-0.5">등급 공급가로 사입하는 유통회원</span>
+                  <span className="block text-[16px] font-extrabold text-[#0C2454]">판매사(유통사) 로그인</span>
+                  <span className="block text-[13px] text-[#8A929E] mt-0.5">등급 공급가로 사입하는 판매사</span>
                 </span>
                 <ArrowRight className="w-5 h-5 text-[#B6BCC4] shrink-0" />
               </button>
@@ -97,8 +97,8 @@ export default function WholesaleLoginPage() {
                 className="w-full flex items-center gap-4 p-4 rounded-2xl border border-[#ECEEF1] hover:border-[#0C2454] transition-colors text-left">
                 <span className="flex h-12 w-12 items-center justify-center rounded-xl shrink-0" style={{ background: '#F4F5F7' }}><Factory className="w-6 h-6" style={{ color: '#0C2454' }} /></span>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-[16px] font-extrabold text-[#0C2454]">제조사(브랜드사) 로그인</span>
-                  <span className="block text-[13px] text-[#8A929E] mt-0.5">상품을 공급하는 제조(공급)회원</span>
+                  <span className="block text-[16px] font-extrabold text-[#0C2454]">제조사(공급사) 로그인</span>
+                  <span className="block text-[13px] text-[#8A929E] mt-0.5">상품을 공급하는 제조사(공급사)</span>
                 </span>
                 <ArrowRight className="w-5 h-5 text-[#B6BCC4] shrink-0" />
               </button>
@@ -114,7 +114,7 @@ export default function WholesaleLoginPage() {
           <ArrowRight className="w-4 h-4 rotate-180" /> 로그인 유형 다시 선택
         </button>
         <div className="text-center mb-8">
-          <h1 className="text-2xl lg:text-3xl font-extrabold mb-2">유통사 로그인</h1>
+          <h1 className="text-2xl lg:text-3xl font-extrabold mb-2">판매사(유통사) 로그인</h1>
           <p className="text-[#4E5560] text-[15px]">검증된 제조사 상품을 등급 공급가로 사입하세요.</p>
         </div>
 

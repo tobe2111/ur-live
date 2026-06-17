@@ -154,7 +154,7 @@ export default function WholesaleJoinPage() {
       <div className="min-h-screen bg-white text-[#0C2454] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 rounded-2xl bg-[#11875A]/10 flex items-center justify-center mx-auto mb-5"><CheckCircle2 className="w-7 h-7 text-[#11875A]" /></div>
-          <h1 className="text-xl font-extrabold mb-2">유통회원 신청이 완료됐어요</h1>
+          <h1 className="text-xl font-extrabold mb-2">판매사(유통사) 신청이 완료됐어요</h1>
           <p className="text-[#4E5560] text-[14px] leading-relaxed">제출하신 <b>사업자 정보</b>를 확인한 뒤 관리자 승인되면 도매몰을 이용할 수 있어요. (영업일 기준 1~2일)<br/>승인되면 등급 공급가가 열립니다.</p>
           <p className="text-[#8A929E] text-[12.5px] mt-3">
             급하신가요? <a href="mailto:jiwon@ur-team.com?subject=%5B%EC%9C%A0%ED%86%B5%ED%9A%8C%EC%9B%90%20%EC%8A%B9%EC%9D%B8%20%EB%AC%B8%EC%9D%98%5D" className="underline font-semibold text-[#4E5560]">jiwon@ur-team.com</a> 으로 상호·사업자번호와 함께 문의해주세요.
@@ -188,7 +188,7 @@ export default function WholesaleJoinPage() {
           <div className="w-14 h-14 rounded-2xl bg-[#FC5424]/10 flex items-center justify-center mx-auto mb-5">
             <Store className="w-7 h-7 text-[#FC5424]" />
           </div>
-          <h1 className="text-2xl lg:text-3xl font-extrabold mb-2">유통사로 가입하기</h1>
+          <h1 className="text-2xl lg:text-3xl font-extrabold mb-2">판매사(유통사)로 가입하기</h1>
           <p className="text-[#4E5560] text-[15px]">검증된 제조사 상품을 등급 공급가로 사입하세요.</p>
         </div>
 
@@ -288,7 +288,7 @@ export default function WholesaleJoinPage() {
 
           <button type="submit" disabled={loading || !agreeTerms}
             className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-[#FC5424] text-white font-bold text-[15px] hover:bg-[#E0461C] transition-colors disabled:opacity-60 mt-1">
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>유통회원 가입 신청 <ArrowRight className="w-5 h-5" /></>}
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>판매사(유통사) 가입 신청 <ArrowRight className="w-5 h-5" /></>}
           </button>
         </form>
 
