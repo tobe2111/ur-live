@@ -126,7 +126,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
       </div>
 
       <div
-        className="fixed bottom-0 left-0 right-0 xl:left-56 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] px-4 py-3 z-40 safe-bottom"
+        className="app-frame-bar fixed bottom-0 left-0 right-0 xl:left-56 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] px-4 py-3 z-40 safe-bottom"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
         <button
