@@ -228,12 +228,16 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
 
     // 🛡️ 2026-04-22 Phase 1: httpOnly 쿠키 추가 (Bearer 병행)
     let adminCookie = '';
+    let adminUdCookie = '';
     try {
       const { createSessionCookie } = await import('../../../worker/utils/session');
       adminCookie = await createSessionCookie(
         admin.id as number, admin.name as string, admin.email as string,
         null, JWT_SECRET, 'admin',
       );
+      // 🔐 2026-06-17 쿠키 전환 Phase 1: ud_admin_token dual-write (GET 전용 읽기 — Bearer/localStorage 흐름 불변).
+      const { authTokenSetCookie } = await import('../../../worker/utils/auth-cookies');
+      adminUdCookie = authTokenSetCookie('ud_admin_token', token, new URL(c.req.url).hostname);
     } catch {}
 
     const res = c.json({
@@ -254,6 +258,7 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
       message: 'Login successful'
     });
     if (adminCookie) res.headers.append('Set-Cookie', adminCookie);
+    if (adminUdCookie) res.headers.append('Set-Cookie', adminUdCookie);
     return res;
 
   } catch (error) {

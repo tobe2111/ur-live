@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## 🔐 2026-06-17 — 쿠키 전환(C) Phase 1 구현: httpOnly 토큰 쿠키 발급 일원화 (대표 "무조건 하자, 모두 이상적으로")
+**방침**: 인증은 prod 자동배포 + 쿠키/웹뷰 E2E 불가 → 한 방 컷오버 시 전 대시보드(대표 어드민 포함) 락아웃 위험 → **다크론치**(무해 기반 먼저, 실제 전환은 flag+staging 게이트).
+- **Phase 1(배포·무해·추가형)**: 모든 대시보드 로그인이 `ud_*` httpOnly 쿠키 발급하도록 통일. `auth-cookies.ts` 4역할 확장(+admin/supplier), `admin.routes`(ud_admin_token)·`supplier-auth.routes`(ud_supplier_token login+become) 발급 추가, `logout-cookies` 4역할 정리, 단위테스트 5. **기존 Bearer/localStorage·응답 바디 byte-identical → 무회귀·락아웃 0.** 읽기는 GET 전용 fallback(Bearer 우선)이라 **보안 이득은 아직 0**(localStorage 토큰 잔존) — 다음 컷오버에서 발생.
+- **Phase 2~3(미구현, staging 게이트)**: CSRF 강제 확대(쿠키 mutation, Bearer skip) + 미들웨어 쿠키 mutation 읽기 + **클라 컷오버(localStorage 토큰 제거 = 실제 XSS 차단)**. feature flag `DASHBOARD_COOKIE_AUTH`(OFF) 뒤. **이 환경 E2E 불가** → 대표 staging 검증 게이트(특히 카톡 인앱). 설계: `docs/design/dashboard-cookie-auth.md` §11.
+- 검증: tsc 0 · 단위(auth-cookies 5) · `npm run build` exit 0.
+
 ## ✅ 2026-06-17 — 이메일 기억하기 4개 대시보드 추가 + 자동 로그인 정합 (대표 신고)
 **신고**: "각 대시보드마다 이메일 기억하기 잘 되나? 자동 로그인도 안 되는 것 같다." 전수조사: 이메일 기억은 **admin·seller만 있고 agency/supplier/wholesale(owner·staff) 4곳 누락**. 자동 로그인은 **전용 토글 없음**(토큰 30일+refresh 90일+자동갱신으로 암묵 유지).
 - **이메일 기억 4곳 추가**(대표 "4곳 모두"): `AgencyLoginPage`/`SupplierLoginPage`/`WholesaleLoginPage`/`WholesaleStaffLoginPage` 에 admin/seller 패턴 미러링 — 체크박스 + 마운트 시 자동채움 + submit 시 저장/삭제. 키 `{agency,supplier,wholesale,wholesale_staff}_remember_email`. 프론트만, 라이트 테마(위반 0), tsc 0 · build 0.
