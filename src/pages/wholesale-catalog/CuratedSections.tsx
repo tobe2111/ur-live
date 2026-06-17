@@ -71,7 +71,8 @@ export function BestGrid({ items, onOpen, onAdd, onPrefetch }: {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-6">
           {shown.map((p, i) => (
-            <ProductCard key={p.id} p={p} rank={i + 1} onOpen={onOpen} onAdd={onAdd} onPrefetch={onPrefetch} aboveFold={i < 5} />
+            // 🧹 2026-06-17 (사용자 요청): 베스트 그리드 순위 번호 배지 제거 — rank 미전달 → 카드 좌상단 번호 안 붙음.
+            <ProductCard key={p.id} p={p} onOpen={onOpen} onAdd={onAdd} onPrefetch={onPrefetch} aboveFold={i < 5} />
           ))}
         </div>
       )}

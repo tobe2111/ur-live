@@ -16,6 +16,7 @@ import { formatWon, formatNumber, safeNum } from '@/utils/format'
 import { cfImage } from '@/utils/cf-image'
 import { toast } from '@/hooks/useToast'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import ImageUpload from '@/components/ImageUpload'
 
 interface WithdrawalInfo {
   lifetime_earnings: number
@@ -260,7 +261,7 @@ function ProxyProductModal({ merchant, onClose }: { merchant: { id: number; name
 }
 
 function BusinessSection() {
-  const [biz, setBiz] = useState<{ business_status?: string; business_name?: string | null; business_number?: string | null } | null>(null)
+  const [biz, setBiz] = useState<{ business_status?: string; business_name?: string | null; business_number?: string | null; is_store_seller?: boolean } | null>(null)
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({ business_number: '', business_name: '', representative: '', start_date: '', tax_type: 'business_income', bank_name: '', bank_account: '', account_holder: '' })
   const [submitting, setSubmitting] = useState(false)
@@ -273,9 +274,13 @@ function BusinessSection() {
   if (status === 'verified') {
     return (
       <section className="mb-6 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4">
-        <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">✅ 사업자 인증 완료</p>
+        <p className="text-sm font-bold text-emerald-800 dark:text-emerald-200">
+          {biz?.is_store_seller ? '✅ 매장 등록 완료 — 현금 정산 활성' : '✅ 사업자 인증 완료'}
+        </p>
         <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-1">
-          {biz?.business_name} — 영입/추천 수익이 현금으로 정산됩니다 (주 1회).
+          {biz?.is_store_seller
+            ? '판매 매출과 추천·영입 수익이 모두 현금으로 정산됩니다 (주 1회). 별도 사업자 등록이 필요 없어요.'
+            : `${biz?.business_name ?? ''} — 영입/추천 수익이 현금으로 정산됩니다 (주 1회).`}
         </p>
       </section>
     )
@@ -490,11 +495,39 @@ function SellOwnProductsCTA() {
  *   이미지=공용 ImageUpload(이미지압축 dynamic import). 상세옵션은 셀러 대시보드에서.
  */
 function QuickProductModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const [form, setForm] = useState({ name: '', price: '', stock: '', category: 'lifestyle' })
+  const [form, setForm] = useState({ name: '', price: '', stock: '', category: 'lifestyle', image_url: '' })
   const [submitting, setSubmitting] = useState(false)
+  // 셀러 컨텍스트 준비: seller_token 보장(없으면 switch-to-seller 로 발급·저장). BottomNav DISPLAY 는
+  //   active_role 기준이라 seller_token 저장이 소비자 UI 를 안 바꿈(BottomNav line 121) → 저장 안전.
+  //   이미지 업로드(/api/seller/upload-image)·상품 POST 가 api client 의 자동 seller_token 부착으로 동작.
+  const [sellerReady, setSellerReady] = useState(!!(typeof window !== 'undefined' && localStorage.getItem('seller_token')))
+
+  useEffect(() => {
+    if (sellerReady) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { default: api } = await import('@/lib/api')
+        const sw = await api.post('/api/seller/switch-to-seller')
+        if (!cancelled && sw.data?.success) {
+          const { accessToken, refreshToken, seller } = sw.data.data
+          localStorage.setItem('seller_token', accessToken)
+          localStorage.setItem('seller_refresh_token', refreshToken)
+          localStorage.setItem('seller_id', String(seller.id))
+          localStorage.setItem('seller_name', seller.name)
+          localStorage.setItem('seller_email', seller.email)
+          localStorage.setItem('seller_username', seller.username)
+          localStorage.setItem('seller_type', seller.seller_type)
+          setSellerReady(true)
+        }
+      } catch { /* 준비 실패 — submit 시 안내 */ }
+    })()
+    return () => { cancelled = true }
+  }, [sellerReady])
 
   const submit = async () => {
     if (submitting) return
+    if (!sellerReady) { toast.error('판매자 준비 중입니다. 잠시 후 다시 시도해주세요'); return }
     const price = Number(form.price)
     if (!form.name.trim()) { toast.error('상품명을 입력해주세요'); return }
     if (!Number.isFinite(price) || price < 0) { toast.error('가격을 올바르게 입력해주세요'); return }
@@ -503,20 +536,15 @@ function QuickProductModal({ onClose, onSuccess }: { onClose: () => void; onSucc
     setSubmitting(true)
     try {
       const { default: api } = await import('@/lib/api')
-      // 셀러 토큰: 이미 있으면 api client 자동 부착, 없으면 transient 발급(헤더로만 — 저장 X)
-      let headers: Record<string, string> | undefined
-      if (!localStorage.getItem('seller_token')) {
-        const sw = await api.post('/api/seller/switch-to-seller')
-        if (sw.data?.success) headers = { Authorization: `Bearer ${sw.data.data.accessToken}` }
-        else { toast.error('판매자 인증에 실패했습니다'); setSubmitting(false); return }
-      }
+      // seller_token 은 위 useEffect 에서 보장 → api client 가 /api/seller/* 에 자동 부착
       const res = await api.post('/api/seller/products', {
         name: form.name.trim(),
         price,
         stock: stockNum,
         category: form.category,
         delivery_type: 'shipping',
-      }, headers ? { headers } : undefined)
+        ...(form.image_url ? { image_url: form.image_url } : {}),
+      })
       if (res.data?.success) {
         toast.success('상품이 등록됐어요! 내 상점·링크샵에 표시됩니다.')
         onSuccess()
@@ -578,16 +606,24 @@ function QuickProductModal({ onClose, onSuccess }: { onClose: () => void; onSucc
             <option value="electronics">전자기기</option>
             <option value="lifestyle">라이프스타일</option>
           </select>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">상품 이미지 (선택)</label>
+            {sellerReady ? (
+              <ImageUpload value={form.image_url} onChange={(url) => setForm(f => ({ ...f, image_url: url }))} label="" maxSizeKB={800} />
+            ) : (
+              <div className="text-xs text-gray-400 dark:text-gray-500 py-3 px-3.5 bg-gray-100 dark:bg-[#1A1A1A] rounded-xl">판매자 준비 중…</div>
+            )}
+          </div>
         </div>
         <button
           onClick={submit}
-          disabled={submitting}
+          disabled={submitting || !sellerReady}
           className="w-full mt-5 py-3.5 bg-pink-500 text-white font-bold rounded-xl text-sm disabled:opacity-50"
         >
-          {submitting ? '등록 중…' : '상품 등록'}
+          {submitting ? '등록 중…' : !sellerReady ? '준비 중…' : '상품 등록'}
         </button>
         <p className="text-[11px] text-gray-500 dark:text-gray-400 text-center mt-2">
-          이미지·상세설명·옵션은 등록 후 셀러 대시보드에서 추가할 수 있어요.
+          상세설명·옵션·디지털상품 등 자세한 설정은 셀러 대시보드에서 편집할 수 있어요.
         </p>
       </div>
     </div>

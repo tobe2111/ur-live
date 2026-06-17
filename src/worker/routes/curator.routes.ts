@@ -1067,6 +1067,26 @@ curatorRoutes.get('/me/business', requireAuth(), async (c) => {
               tax_type, bank_name, bank_account, account_holder
          FROM users WHERE id = ?`,
     ).bind(userId).first<Record<string, unknown>>().catch(() => null)
+    // 🏁 2026-06-17 (사업자등록 일원화 — 사용자 결정 "진짜 일원화"): 승인된 연결 매장(셀러)이 있으면
+    //   = 검증된 사업자 → 현금정산 자격. 출금 게이트(line 861-870)·payout_mode(line 1015)가 이미
+    //   'linked approved seller' 기준이라, 본 조회만 정합 맞춰 콘솔이 "매장 등록 = 현금정산 활성"을
+    //   인식(중복 '사업자 등록' 프롬프트 제거). **read-only — 머니 쓰기 0**, 출금 게이트 무변경.
+    const storeSeller = await c.env.DB.prepare(
+      `SELECT business_name, business_number FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
+    ).bind(userId).first<{ business_name: string | null; business_number: string | null }>().catch(() => null)
+    if (storeSeller) {
+      const r = (row || {}) as Record<string, unknown>
+      return c.json({
+        success: true,
+        data: {
+          ...r,
+          business_status: 'verified',
+          business_name: (r.business_name as string | undefined) || storeSeller.business_name || null,
+          business_number: (r.business_number as string | undefined) || storeSeller.business_number || null,
+          is_store_seller: true,
+        },
+      })
+    }
     return c.json({
       success: true,
       data: row || { business_status: 'none' },
