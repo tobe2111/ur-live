@@ -8,6 +8,14 @@
 - **프론트**: AdminLayout 가 wholesale 역할에 **도매 3그룹(domain:'wholesale')만 노출** + 비-도매 경로 진입 시 `/admin/wholesale-overview` 리다이렉트(깨진 화면 방지). 로그인 랜딩도 도매 현황.
 - 검증: tsc 0 · admin-roles 단위 12(scoped 4 신규) · client+worker build. 기존 super/admin 계정 무영향(신규 역할 계정 0). **다음(Phase 2): 처리자(누가 처리했는지) 표시 — 대표 요청.**
 
+## ✅ 2026-06-17 — PC 좌측 사이드바 IA: '오프라인 공동구매(동네딜)' 정합 (사용자 신고, AskUserQuestion 확정)
+**신고**: PC 사이드바 MENU 가 홈/공구/식사권인데 '공구'·'식사권' 둘 다 /group-buy 계열이라 혼란 + CATEGORY 가 '식사권' 하나뿐. 대표 확정(AskUserQuestion): **MENU 통합** + CATEGORY = 동네딜 정의.
+- **MENU 통합** (`DesktopLiveSidebar.tsx`): '공구'(nav.groupBuy)+'식사권'(/meal-vouchers) → 단일 **'오프라인 공동구매'**(nav.offlineGroupBuy, MapPin, /group-buy). /live·/browse 항목은 플래그 숨김이나 가역 위해 보존.
+- **CATEGORY = 동네딜 4종** (`GroupBuyListPage` 정의와 1:1): 맛집 식사권(/group-buy?category=meal_voucher)·미용(beauty_voucher)·숙소(/stays 전용)·기타(etc_voucher). CATEGORY 렌더를 NavBtn 재사용으로 단순화.
+- **URL 단일 소스** (`GroupBuyListPage`): `?category=` → category 상태 동기화 useEffect 추가 + 인페이지 탭도 setSearchParams 갱신 → PC 사이드바(상주)에서 이미 /group-buy 에 머문 상태에서도 카테고리 전환 반영(+공유·뒤로가기). 인페이지 탭/지역필터와 무충돌(category param 있을 때만 적용·탭이 URL 기록).
+- **i18n**: nav.offlineGroupBuy + category.{mealVoucher,beauty,stay,etc} 6개 언어 추가(기존 category.* 비어있던 것 정식화).
+- 검증: tsc 0 · `npm run build` 0 · 테마검사 통과.
+
 ## ✅ 2026-06-17 — PC 프레임 바탕(gutter)이 다크 테마에서 흰색으로 남던 문제 (사용자 신고)
 **신고**: PC(`/user/profile` 등)에서 다크 테마인데 프레임 양옆 바탕이 흰색. **원인**: PC 컨슈머 프레임(`.app-framed`, 430/720px 가운데 액자)의 양옆 바탕을 `body:has(.mobile-app-container.app-framed)` CSS 만으로 칠했음 → `:has()` 미지원 브라우저/스테일 캐시/캐스케이드 엣지에서 라이트 바탕(`#e9ebef`)이 남을 수 있음.
 - **fix(결정적)**: `MobileAppLayout` 이 테마 store 의 `applied`('light'|'dark') 로 `<body>` 에 `app-frame-host`(+다크면 `app-frame-dark`) 클래스를 직접 토글 → `index.css` `body.app-frame-host[.app-frame-dark]` 규칙으로 바탕색 확정(다크=`#000`). 기존 `:has()` 규칙은 첫 페인트용으로 존치(2차).

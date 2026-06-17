@@ -4099,7 +4099,8 @@
     "linkshop": "链接店",
     "vouchers": "券",
     "dongnedeal": "附近团购",
-    "create": "创建"
+    "create": "创建",
+    "offlineGroupBuy": "本地团购"
   },
   "bulkUpload": {
     "title": "批量上传商品",
@@ -6164,5 +6165,11 @@
     "remaining": "剩余 {{n}}",
     "submitting": "预约中...",
     "submit": "确认预约"
+  },
+  "category": {
+    "mealVoucher": "美食餐券",
+    "beauty": "美容",
+    "stay": "住宿",
+    "etc": "其他"
   }
 }

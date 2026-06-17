@@ -8,7 +8,7 @@
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, Radio, Compass, ShoppingBag, Ticket, Utensils, Globe, Sparkles, Sofa, User, PackageSearch, Heart, BookOpen } from 'lucide-react'
+import { Home, Radio, Compass, MapPin, Utensils, Sparkles, Bed, Tag, User, PackageSearch, Heart, BookOpen } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
@@ -20,21 +20,28 @@ interface NavItem {
   active?: (pathname: string, search: string) => boolean
 }
 
+// 🧭 2026-06-17 (사용자 요청): '공구'·'식사권'(둘 다 /group-buy 계열) → 단일 '오프라인 공동구매'(동네딜) 로 통합.
+//   /live·/browse 는 플래그로 숨김 상태이나 가역 위해 항목 보존(아래 filter).
 const MENU_ITEMS: NavItem[] = [
-  { labelKey: 'nav.home',      labelDefault: '홈',       icon: Home,        path: '/',             active: (p) => p === '/' },
-  { labelKey: 'nav.live',      labelDefault: '라이브',   icon: Radio,       path: '/live',         active: (p) => p.startsWith('/live') },
-  { labelKey: 'nav.browse',    labelDefault: '둘러보기', icon: Compass,     path: '/browse',       active: (p, s) => p === '/browse' && !s.includes('category=') },
-  { labelKey: 'nav.groupBuy',  labelDefault: '공동구매', icon: ShoppingBag, path: '/group-buy',    active: (p) => p.startsWith('/group-buy') },
-  { labelKey: 'nav.voucher',   labelDefault: '식사권',   icon: Ticket,      path: '/meal-vouchers', active: (p) => p.startsWith('/meal-vouchers') },
+  { labelKey: 'nav.home',            labelDefault: '홈',             icon: Home,    path: '/',          active: (p) => p === '/' },
+  { labelKey: 'nav.live',            labelDefault: '라이브',         icon: Radio,   path: '/live',      active: (p) => p.startsWith('/live') },
+  { labelKey: 'nav.browse',          labelDefault: '둘러보기',       icon: Compass, path: '/browse',    active: (p, s) => p === '/browse' && !s.includes('category=') },
+  { labelKey: 'nav.offlineGroupBuy', labelDefault: '오프라인 공동구매', icon: MapPin, path: '/group-buy',
+    // 동네딜 허브(전체) — 특정 카테고리 필터일 땐 아래 CATEGORY 항목이 활성, 여기선 비활성(이중 강조 방지).
+    active: (p, s) => p.startsWith('/group-buy') && !/category=(meal_voucher|beauty_voucher|stay_voucher|etc_voucher)/.test(s) },
 ]
 
-// 🛡️ 2026-05-16: '음식·식사권' 제거 — MENU 의 '식사권' 과 중복 (사용자 보고).
-const CATEGORY_ITEMS = [
-  { labelKey: 'category.voucher',  labelDefault: '식사권',        icon: Ticket,          slug: 'meal_voucher' },
-  { labelKey: 'category.beauty',   labelDefault: '뷰티·헬스',     icon: Sparkles,        slug: 'beauty' },
-  { labelKey: 'category.living',   labelDefault: '리빙·인테리어', icon: Sofa,            slug: 'living' },
-  { labelKey: 'category.fashion',  labelDefault: '패션',          icon: ShoppingBag,     slug: 'fashion' },
-  { labelKey: 'category.digital',  labelDefault: '디지털',        icon: Globe,           slug: 'digital' },
+// 🧭 2026-06-17 (사용자 요청): 오프라인 공동구매(동네딜) 카테고리 — GroupBuyListPage 정의와 동일.
+//   맛집 식사권 / 미용 / 숙소 / 기타. 숙소만 전용 /stays(객실·날짜 모드), 나머지는 /group-buy?category=.
+const CATEGORY_ITEMS: NavItem[] = [
+  { labelKey: 'category.mealVoucher', labelDefault: '맛집 식사권', icon: Utensils, path: '/group-buy?category=meal_voucher',
+    active: (p, s) => (p.startsWith('/group-buy') && s.includes('category=meal_voucher')) || p.startsWith('/meal-vouchers') },
+  { labelKey: 'category.beauty',      labelDefault: '미용',        icon: Sparkles, path: '/group-buy?category=beauty_voucher',
+    active: (p, s) => p.startsWith('/group-buy') && s.includes('category=beauty_voucher') },
+  { labelKey: 'category.stay',        labelDefault: '숙소',        icon: Bed,      path: '/stays',
+    active: (p) => p.startsWith('/stays') },
+  { labelKey: 'category.etc',         labelDefault: '기타',        icon: Tag,      path: '/group-buy?category=etc_voucher',
+    active: (p, s) => p.startsWith('/group-buy') && s.includes('category=etc_voucher') },
 ]
 
 const MY_ITEMS: NavItem[] = [
@@ -103,35 +110,19 @@ export default function DesktopLiveSidebar() {
           ))}
         </section>
 
-        {/* CATEGORY — 쇼핑 숨김 동안 식사권 외 /browse 카테고리 비노출 (라우트는 보존) */}
+        {/* CATEGORY — 오프라인 공동구매(동네딜) 카테고리: 맛집 식사권 / 미용 / 숙소 / 기타 */}
         <section>
           <p className="hidden xl:block text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
             {t('nav.sectionCategory', { defaultValue: 'Category' })}
           </p>
-          {CATEGORY_ITEMS.filter(cat => !SHOPPING_TAB_HIDDEN || cat.slug === 'meal_voucher').map(cat => {
-            const Icon = cat.icon
-            const catPath = cat.slug === 'meal_voucher' ? '/meal-vouchers' : `/browse?category=${cat.slug}`
-            const isActive = cat.slug === 'meal_voucher'
-              ? pathname.startsWith('/meal-vouchers')
-              : pathname === '/browse' && search.includes(`category=${cat.slug}`)
-            return (
-              <button
-                key={cat.labelDefault}
-                type="button"
-                title={t(cat.labelKey, { defaultValue: cat.labelDefault })}
-                onClick={() => navigate(catPath)}
-                className={`flex items-center xl:gap-2.5 w-full xl:px-3 py-2 text-left transition-colors text-[13px] font-medium
-                  md:justify-center md:h-12 md:rounded-none md:border-l-2 xl:justify-start xl:h-auto xl:border-l-0 xl:rounded-lg
-                  ${isActive
-                    ? 'md:border-l-red-500 md:bg-red-500/[0.08] xl:border-l-transparent xl:bg-pink-50 xl:dark:bg-pink-500/10 text-pink-600 dark:text-pink-400'
-                    : 'border-l-transparent text-gray-600 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-white'
-                  }`}
-              >
-                <Icon className="w-[18px] h-[18px] shrink-0" />
-                <span className="hidden xl:inline">{t(cat.labelKey, { defaultValue: cat.labelDefault })}</span>
-              </button>
-            )
-          })}
+          {CATEGORY_ITEMS.map(item => (
+            <NavBtn
+              key={item.path}
+              item={item}
+              isActive={item.active?.(pathname, search) ?? false}
+              onClick={() => navigate(item.path)}
+            />
+          ))}
         </section>
 
         {/* MY */}
