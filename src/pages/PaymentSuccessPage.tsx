@@ -305,7 +305,7 @@ export default function PaymentSuccessPage() {
     return (
       <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#007aff] mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-900 dark:border-white mx-auto mb-4"></div>
           <p className="text-[#6e6e73] dark:text-gray-400 font-medium">{t('paymentSuccess.approving')}</p>
         </div>
       </div>
@@ -328,7 +328,7 @@ export default function PaymentSuccessPage() {
             </Button>
             <Button
               onClick={() => navigate('/')}
-              className="flex-1 bg-[#007aff] hover:bg-[#0051d5] text-white"
+              className="flex-1 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white"
             >
               메인으로
             </Button>
@@ -355,29 +355,29 @@ export default function PaymentSuccessPage() {
           {/* 🛡️ 2026-05-21 Phase B-2: 예약 잡기 CTA — booking_required 상품이 있으면 자동 노출.
                 결제 직후 사용자가 예약 잊지 않게 강조 배치. */}
           {pendingBookings.length > 0 && (
-            <div className="rounded-xl border-2 border-purple-300 dark:border-purple-700 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-4 mb-4">
+            <div className="rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-500/10 p-4 mb-4">
               <div className="flex items-start gap-3 mb-3">
                 <span className="text-2xl">📅</span>
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-purple-900 dark:text-purple-200">예약이 필요한 상품 {pendingBookings.length}개</p>
-                  <p className="text-[11px] text-purple-700 dark:text-purple-300 mt-0.5">아래 상품은 매장 방문 전 시간 예약이 필요합니다. 지금 잡으시면 매장에서 헛걸음하지 않아요.</p>
+                  <p className="text-sm font-bold text-amber-900 dark:text-amber-200">예약이 필요한 상품 {pendingBookings.length}개</p>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">아래 상품은 매장 방문 전 시간 예약이 필요합니다. 지금 잡으시면 매장에서 헛걸음하지 않아요.</p>
                 </div>
               </div>
               <div className="space-y-1.5 mb-3">
                 {pendingBookings.slice(0, 3).map(p => (
-                  <div key={p.product_id} className="flex items-center gap-2 text-xs text-purple-900 dark:text-purple-200">
-                    <span>•</span>
+                  <div key={p.product_id} className="flex items-center gap-2 text-xs text-gray-800 dark:text-gray-100">
+                    <span className="text-gray-400">•</span>
                     <span className="font-medium line-clamp-1">{p.product_name}</span>
-                    {p.restaurant_name && <span className="text-purple-600 dark:text-purple-400 text-[10px]">({p.restaurant_name})</span>}
+                    {p.restaurant_name && <span className="text-gray-500 dark:text-gray-400 text-[10px]">({p.restaurant_name})</span>}
                   </div>
                 ))}
                 {pendingBookings.length > 3 && (
-                  <div className="text-[10px] text-purple-600 dark:text-purple-400">외 {pendingBookings.length - 3}개</div>
+                  <div className="text-[10px] text-gray-500 dark:text-gray-400">외 {pendingBookings.length - 3}개</div>
                 )}
               </div>
               <button
                 onClick={() => navigate('/my-appointments?from_payment=' + orderId)}
-                className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-lg"
+                className="w-full py-2.5 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white text-sm font-bold rounded-lg"
               >
                 지금 예약 잡기 →
               </button>
@@ -389,7 +389,7 @@ export default function PaymentSuccessPage() {
             <div className="space-y-3 sm:space-y-4 lg:space-y-6">
               <div className="bg-[#f5f5f7] dark:bg-[#1A1A1A] rounded-lg sm:rounded-xl p-4 sm:p-5 lg:p-6">
                 <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-[#1d1d1f] dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
-                  <Package className="h-4 w-4 sm:h-5 sm:w-5 text-[#007aff]" />
+                  <Package className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900 dark:text-white" />
                   주문 정보
                 </h2>
 
@@ -397,7 +397,7 @@ export default function PaymentSuccessPage() {
                   {/* 주문번호 */}
                   <div className="flex justify-between items-start gap-3">
                     <span className="text-xs sm:text-sm text-[#6e6e73] dark:text-gray-400 font-medium shrink-0">{t('paymentSuccess.orderNumber')}</span>
-                    <span className="text-xs sm:text-sm font-semibold text-[#007aff] font-mono break-all text-right max-w-[65%]">
+                    <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white font-mono break-all text-right max-w-[65%]">
                       {orderInfo.orderId || orderId}
                     </span>
                   </div>
@@ -438,7 +438,7 @@ export default function PaymentSuccessPage() {
 
                   <div className="flex justify-between items-center pt-2.5 sm:pt-3 mt-1 border-t border-[#d2d2d7] dark:border-[#2A2A2A]">
                     <span className="text-sm sm:text-base lg:text-lg font-medium text-[#1d1d1f] dark:text-white">{t('paymentSuccess.paymentAmount')}</span>
-                    <span className="text-lg sm:text-xl lg:text-2xl font-bold text-[#007aff]">
+                    <span className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
                       {formatNumber(parseInt(amount || '0'))}원
                     </span>
                   </div>
@@ -467,7 +467,7 @@ export default function PaymentSuccessPage() {
                       <p className="text-xs sm:text-sm font-semibold text-[#1d1d1f] dark:text-white">📄 영수증 보기</p>
                       <p className="text-[10px] sm:text-xs text-[#6e6e73] dark:text-gray-400 mt-0.5">토스페이먼츠 호스팅</p>
                     </div>
-                    <span className="text-[#007aff] text-xs">→</span>
+                    <span className="text-gray-400 text-xs">→</span>
                   </div>
                 </a>
               )}
@@ -487,7 +487,7 @@ export default function PaymentSuccessPage() {
                         {orderInfo.payment.cashReceipt.type ? `${orderInfo.payment.cashReceipt.type} — ` : ''}국세청 발급 완료 후 홈택스 조회 가능
                       </p>
                     </div>
-                    <span className="text-[#007aff] text-xs">→</span>
+                    <span className="text-gray-400 text-xs">→</span>
                   </div>
                 </a>
               )}
@@ -500,8 +500,8 @@ export default function PaymentSuccessPage() {
                   </p>
                 </div>
               ) : (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40 rounded-lg sm:rounded-xl p-3 sm:p-4">
-                  <p className="text-xs sm:text-sm lg:text-base text-blue-900 dark:text-blue-300 leading-relaxed">
+                <div className="bg-gray-50 dark:bg-[#141414] border border-gray-200 dark:border-[#2A2A2A] rounded-lg sm:rounded-xl p-3 sm:p-4">
+                  <p className="text-xs sm:text-sm lg:text-base text-gray-700 dark:text-gray-300 leading-relaxed">
                     주문이 정상적으로 완료되었습니다. 배송 현황은 주문 내역에서 확인하실 수 있습니다.
                   </p>
                 </div>
@@ -521,7 +521,7 @@ export default function PaymentSuccessPage() {
                 </Button>
                 <Button
                   onClick={() => navigate('/')}
-                  className="w-full sm:flex-1 bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-all"
+                  className="w-full sm:flex-1 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
                 >
                   메인으로
                 </Button>
@@ -547,7 +547,7 @@ export default function PaymentSuccessPage() {
                       navigate('/')
                     }
                   }}
-                  className="w-full sm:flex-1 bg-gradient-to-r from-[#007aff] to-[#0051d5] hover:from-[#0051d5] hover:to-[#003d99] text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-all"
+                  className="w-full sm:flex-1 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
                 >
                   {autoReturnSec !== null && autoReturnSec > 0
                     ? `라이브 복귀 (${autoReturnSec}초)`

@@ -23,6 +23,8 @@ import { useInvalidateMyVouchers } from '@/hooks/queries'
 //   - RestaurantMiniMap: 매장 정보 아래 (fold 직후, Kakao Maps SDK 포함)
 // 🎨 2026-06-16 리디자인: Confetti(공구 연출) 제거 — 정직한 즉시구매. RestaurantMiniMap 만 lazy 유지.
 const RestaurantMiniMap = lazy(() => import('@/components/RestaurantMiniMap'))
+// 🎨 2026-06-17 (공구상세 후속 — 디자이너 제안 "후기·평점이 가장 큰 신뢰 레버"): 기존 ProductReviews 재사용(lazy, below-fold).
+const ProductReviews = lazy(() => import('./product-detail/ProductReviews'))
 
 // 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/group-buy/:id`)
 //   - 카운트다운 ring + 티어 진행 바 + 참여자 아바타 + 마감 timer + share CTA
@@ -50,8 +52,6 @@ interface GroupBuyDetail {
   // 🛡️ 2026-05-27: 서버가 array 로 미리 parse 해서 보냄. 구 응답 (stale edge cache) 은 string — 둘 다 handle.
   group_buy_tiers?: string | Array<{ min: number; discount_pct: number }> | null
   current_discount_pct: number
-  next_tier?: { min: number; discount_pct: number } | null
-  next_tier_remaining?: number | null
   seller_id?: number
   seller_name?: string
   seller_username?: string
@@ -809,6 +809,14 @@ export default function GroupBuyDetailPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* 후기·평점 — 신뢰 레버 (디자이너 후속 제안). 기존 ProductReviews 재사용(lazy, 빈 상태/작성 폼 내장). */}
+        <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
+        <div style={{ padding: '22px 18px' }}>
+          <Suspense fallback={<div style={{ height: 80, background: 'var(--gbd-chip)', borderRadius: 12 }} />}>
+            <ProductReviews productId={productId} limit={5} />
+          </Suspense>
         </div>
 
         {/* 이 셀러의 다른 공구 — 가로 스크롤 */}

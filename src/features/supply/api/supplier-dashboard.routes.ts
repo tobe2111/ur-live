@@ -303,8 +303,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
     const visibility = normalizeVisibility(body.supply_visibility, true);
     const barcode = (body.barcode || '').trim().slice(0, 64) || null;
     const isBrand = body.is_brand_product ? 1 : 0;
-    // 🏷️ 브랜드명 — 브랜드제품(is_brand_product=1)일 때만 저장. 일반제품이면 무시(null).
-    const brandName = isBrand ? ((body.brand_name || '').trim().slice(0, 120) || null) : null;
+    // 🏷️ 2026-06-17 (대표 요청): 브랜드명 상시 입력 — is_brand_product 체크 무관하게 저장(브랜드 전시관 노출용).
+    const brandName = (body.brand_name || '').trim().slice(0, 120) || null;
     // 🏷️ 브랜드 로고 URL — 브랜드제품일 때만 저장. http(s) 또는 /api/... 상대경로(≤1000자).
     const brandLogoRaw = (body.brand_logo_url || '').trim().slice(0, 1000);
     const brandLogoUrl = isBrand && (/^https?:\/\//i.test(brandLogoRaw) || /^\//.test(brandLogoRaw)) ? brandLogoRaw : null;

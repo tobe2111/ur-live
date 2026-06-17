@@ -130,14 +130,14 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       }
       try {
         const meta = await DB.prepare(
-          `SELECT v.id AS voucher_id, v.user_id, v.applied_price, u.phone,
+          `SELECT v.id AS voucher_id, v.order_id, v.user_id, v.applied_price, u.phone,
                   p.name AS product_name, p.restaurant_name, p.category,
                   p.seller_id, p.consigned_from_seller_id
            FROM vouchers v
            LEFT JOIN users u ON u.id = v.user_id
            LEFT JOIN products p ON p.id = v.product_id
            WHERE v.code = ?`
-        ).bind(code).first<{ voucher_id: number; user_id: string; applied_price: number | null; phone: string | null; product_name: string; restaurant_name: string | null; category: string | null; seller_id: number | null; consigned_from_seller_id: number | null }>()
+        ).bind(code).first<{ voucher_id: number; order_id: number | null; user_id: string; applied_price: number | null; phone: string | null; product_name: string; restaurant_name: string | null; category: string | null; seller_id: number | null; consigned_from_seller_id: number | null }>()
         if (meta) {
           responseMeta = { product_name: meta.product_name, restaurant_name: meta.restaurant_name }
           // 🛡️ 2026-05-21 Phase C: voucher 사용 시점 자동 정산 ledger entries 3개 기록.
@@ -171,6 +171,14 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
                 })
               }
             } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher-used-ledger]', e) }
+            // 🆕 2026-06-17 (대표 결정 "예정→사용 시 확정"): 이 교환권 주문의 holding 추천적립(링크샵/추천)을
+            //   '사용한 바로 이 시점'에 확정(granted)+딜 잔액 적립. 멱등(CAS) — 성숙 cron 안전망과 충돌 없음.
+            try {
+              if (meta.order_id) {
+                const { matureAffiliateForOrder } = await import('../../../worker/utils/affiliate-credit')
+                await matureAffiliateForOrder(DB, c.env, Number(meta.order_id))
+              }
+            } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher-used-affiliate]', e) }
           })())
           // 🛡️ 2026-05-16: 어느 인플이 데려온 손님인지 attribution 조회 (사장님 화면 표시용)
           try {

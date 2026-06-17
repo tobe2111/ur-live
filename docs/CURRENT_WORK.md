@@ -5,6 +5,22 @@
 - **이메일 기억 4곳 추가**(대표 "4곳 모두"): `AgencyLoginPage`/`SupplierLoginPage`/`WholesaleLoginPage`/`WholesaleStaffLoginPage` 에 admin/seller 패턴 미러링 — 체크박스 + 마운트 시 자동채움 + submit 시 저장/삭제. 키 `{agency,supplier,wholesale,wholesale_staff}_remember_email`. 프론트만, 라이트 테마(위반 0), tsc 0 · build 0.
 - **자동 로그인(대표 "추천대로")**: 별도 sessionStorage 토글은 **미구현**(택트 — 토큰 읽기 경로 변경 = 리스크 + E2E 불가, 게다가 대표 pain은 "로그아웃됨"이라 opt-out 토글은 무관). 대신 **재로그인 마찰 최소화 = 이메일 기억 전 대시보드 통일**로 해결(단일세션 유지 시 비번만 입력). 지속(자동 유지)은 이미 30일 동작. **느낌상 풀림의 유력 원인 = 방금 배포된 단일 세션(다른 기기 로그인 시 이전 기기 로그아웃)** — 대표가 "추천대로"라 단일세션 유지.
 
+## ✅ 2026-06-17 — 판매사 등급 페이지(1,170줄) 4탭 분리 (대표 "지금 하자, 가장 이상적이고 신중하게")
+**배경**: `AdminDistributorGradesPage` 1,170줄에 12기능 집약(등급/마진/자동승급/배정/여신/제안/세금/유통채널/특가/수량할인/OEM/회사정보). 머니 크리티컬(staging E2E 불가)이라 **로직 0 변경 + 섹션을 연속 범위 그대로 탭으로 묶는** 최-안전 방식 채택.
+- **4탭(딥링크 라우트)**: `등급·마진`(/distributor-grades) · `여신·외상`(/distributor-credit) · `제안·세금`(/distributor-tax) · `공급가·채널·OEM`(/distributor-supply). 같은 컴포넌트가 `useLocation` 경로로 탭 결정 → 4 라우트가 동일 컴포넌트 렌더(인스턴스 보존 = 탭 전환 시 재마운트/재fetch 없음).
+- **머니 안전 검증**: `git diff` 결과 **api 호출 라인 변경 0**(핸들러·검증·요청 body 전부 byte-identical). 섹션은 원래 순서대로 연속 그룹이라 **JSX 블록 이동 없음** — 탭 조건부 래퍼만 삽입. tsc 0 · build 0 · 대시보드 테마 0.
+- **부수 이득**: 각 탭 useApiQuery `enabled: tab===X` 게이트(proposals/oem/taxDocs/access) → 그 탭일 때만 fetch(가벼움). 사이드바 1항목 → 4항목(도매 도메인 그룹, 파트너 RBAC allowlist 자동 포함).
+- **RBAC 준비**: 이제 기능별 라우트가 생겨 향후 직원별 권한 분리 가능(현재는 4탭 모두 admin/도매파트너 공통).
+- **병합**: 동시 진행된 '유통사→판매사' 용어 변경과 충돌 → 4탭 분할 유지 + '판매사' 용어 채택으로 해소.
+- ⚠️ 미진(의도적 안전 선택): 컴포넌트 파일 자체는 아직 1개(탭 분리). 완전 파일 분리(유지보수/번들 추가 이득)는 staging 검증 후 phase 2.
+
+## ✅ 2026-06-17 — 도매 어드민 페이지 정리 1차 (대표 확정: 데모 중복 제거 + 무결성 강등)
+**배경**: 도매 어드민 18개 페이지 전수 감사(에이전트 병렬) — 빈 스텁/삭제 대상은 0(전부 실동작). 비이상 4건 중 대표가 저위험 2건 선택(등급 페이지 분할은 머니 크리티컬이라 별도 보류).
+- **① 데모 시딩 중복 제거**: `seed-demo-products`가 '상품 일괄 등록'(`AdminWholesaleImportPage`, 현황통계·정리·경고 완비)과 '유통사 등급'(`AdminDistributorGradesPage`) 양쪽에 중복 → **Import 로 일원화**. 등급 페이지에서 데모 섹션 JSX·함수(`seedDemoProducts`/`clearDemoProducts`)·`demoBusy` 상태 제거(등급/마진 전용으로 정리). `confirmDialog` 등 잔여 import 는 타 사용처 있어 유지.
+- **② 무결성 페이지 강등**: `도매 무결성`(진단 전용 — 고아 데이터 표시)을 `AdminLayout` 상단 nav('도매몰·정산' 그룹)에서 제거 → `AdminWholesaleOverviewPage` Totals strip 아래 '데이터 무결성 점검' 링크로 접근. **라우트(`admin.routes.tsx:324`)·페이지·API 전부 유지** — nav 노출만 강등(가역). `Shield`는 타 nav 사용 중이라 import 보존.
+- 검증: tsc 0 · `npm run build` 0 · 대시보드 테마(변경 3파일 위반 0). 머니 로직 무변경.
+- **보류(대표 미선택)**: 등급 페이지(1,207줄, 12기능) 분할 — 마진·신용·정산 얽힘으로 staging E2E 필수, 별도 신중 진행. 프리미엄관↔등급 가격 겹침도 분할 시 함께 정리.
+
 ## 🔐 2026-06-17 — 대시보드 토큰 httpOnly 쿠키 전환 (XSS 하드닝, 옵션 C) — 설계 박제 / 단계 구현 대기
 **배경**: 사용자 "모두 가장 이상적으로 진행". 대시보드 토큰(seller/admin/agency/supplier + refresh)이 localStorage 라 XSS 시 탈취·30일 takeover 가능 — 외부 파트너(도매 admin·제조사) 증가로 노출↑. 목표 = JS 못 읽는 httpOnly 쿠키 의존(방어심화).
 - **설계 문서**: `docs/design/dashboard-cookie-auth.md` (현황 해부 + 단계 + 리스크/E2E 체크리스트 + 롤백).

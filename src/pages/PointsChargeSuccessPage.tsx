@@ -63,7 +63,7 @@ export default function PointsChargeSuccessPage() {
       <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center">
         <SEO title={t('pointsCharge.processingTitle', { defaultValue: '딜 충전 처리' })} description={t('pointsCharge.processingDesc', { defaultValue: '딜 포인트 충전 처리 중' })} url="/points/charge/success" noindex />
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-pink-500 mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 animate-spin text-gray-900 dark:text-white mx-auto mb-4" />
           <p className="text-gray-500 dark:text-gray-400">{t('pointsCharge.processingMsg', { defaultValue: '충전을 처리하는 중...' })}</p>
         </div>
       </div>
@@ -74,9 +74,9 @@ export default function PointsChargeSuccessPage() {
     return (
       <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center p-4">
         <SEO title={t('pointsCharge.failTitle', { defaultValue: '딜 충전 실패' })} description={t('pointsCharge.failDesc', { defaultValue: '딜 포인트 충전에 실패했습니다' })} url="/points/charge/success" noindex />
-        <div className="max-w-md w-full text-center bg-white dark:bg-[#0A0A0A] rounded-2xl p-8 shadow-lg">
+        <div className="max-w-md w-full text-center bg-white dark:bg-[#0A0A0A] rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-[#1A1A1A]">
           <p className="text-red-600 mb-4">{error}</p>
-          <button onClick={() => navigate('/points/charge')} className="px-6 py-3 bg-pink-500 text-white rounded-xl font-bold">
+          <button onClick={() => navigate('/points/charge')} className="px-6 py-3 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white rounded-xl font-bold">
             {t('common.retry', { defaultValue: '다시 시도' })}
           </button>
         </div>
@@ -87,18 +87,19 @@ export default function PointsChargeSuccessPage() {
   return (
     <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0A0A0A] flex items-center justify-center p-4">
       <SEO title={t('pointsCharge.successTitle', { defaultValue: '딜 충전 완료' })} description={t('pointsCharge.successDesc', { defaultValue: '딜 포인트 충전이 완료되었습니다' })} url="/points/charge/success" noindex />
-      <div className="max-w-md w-full bg-white dark:bg-[#0A0A0A] rounded-2xl p-8 shadow-lg text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
-          <CheckCircle className="w-10 h-10 text-green-600" />
+      <div className="max-w-md w-full bg-white dark:bg-[#0A0A0A] rounded-2xl p-8 shadow-lg text-center border border-gray-100 dark:border-[#1A1A1A]">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
+          <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t('pointsCharge.successHeading', { defaultValue: '충전 완료!' })}</h1>
-        <div className="bg-gradient-to-r from-pink-50 to-orange-50 rounded-xl p-5 my-6">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Zap className="w-5 h-5 text-pink-500" />
-            <span className="text-sm text-gray-600 dark:text-gray-300">{t('pointsCharge.chargedDeals', { defaultValue: '충전된 딜' })}</span>
+        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-2">{t('pointsCharge.successHeading', { defaultValue: '충전 완료!' })}</h1>
+        {/* 🎨 2026-06-17: 분홍 그라데이션 → 프리미엄 다크 카드(교환권/잔액 카드 톤) + 브랜드 옐로우 액센트 */}
+        <div className="rounded-2xl p-5 my-6" style={{ background: 'linear-gradient(135deg,#211d3a 0%,#15131f 45%,#050505 100%)' }}>
+          <div className="flex items-center justify-center gap-1.5 mb-1.5">
+            <Zap className="w-4 h-4 text-[#FFCE00]" />
+            <span className="text-[12px] text-white/55">{t('pointsCharge.chargedDeals', { defaultValue: '충전된 딜' })}</span>
           </div>
-          <p className="text-3xl font-bold text-pink-600">+{formatNumber(result?.points_added)}딜</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{t('pointsCharge.successBalance', { balance: formatNumber(result?.balance), defaultValue: '현재 잔액: {{balance}}딜' })}</p>
+          <p className="text-[34px] font-extrabold text-white leading-none tracking-tight">+{formatNumber(result?.points_added)}<span className="text-[20px] font-bold ml-0.5">딜</span></p>
+          <p className="text-[12px] text-white/55 mt-2.5">{t('pointsCharge.successBalance', { balance: formatNumber(result?.balance), defaultValue: '현재 잔액: {{balance}}딜' })}</p>
         </div>
         <div className="flex gap-3">
           <button
@@ -119,7 +120,7 @@ export default function PointsChargeSuccessPage() {
           </button>
           <button
             onClick={() => navigate('/points/charge')}
-            className="flex-1 py-3 bg-pink-500 text-white rounded-xl font-bold"
+            className="flex-1 py-3 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white rounded-xl font-bold"
           >
             {t('pointsCharge.chargeMore', { defaultValue: '추가 충전' })}
           </button>
