@@ -174,8 +174,9 @@ const NAV_GROUPS: NavGroup[] = [
     title: '시스템',
     items: [
       { path: '/admin/accounts',          label: '관리자 계정',   icon: UserCog },
+      { path: '/admin/login-history',     label: '로그인 이력(IP)', icon: History },
       { path: '/admin/audit-log',         label: '감사 로그',     icon: Shield },
-      { path: '/admin/2fa',               label: '2단계 인증',    icon: Shield },
+      { path: '/admin/set-pin',           label: '로그인 PIN',    icon: Shield },
       { path: '/admin/platform-settings',      label: '플랫폼 설정',   icon: Settings },
       { path: '/admin/notification-settings',  label: '알림 채널 설정', icon: Bell },
       { path: '/admin/alimtalk',               label: '브랜드메시지',  icon: Bell },
@@ -304,7 +305,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   const [adminName] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('admin_name') || localStorage.getItem('admin_email') : null) || '관리자')
   // 🛡️ 2026-06-16 RBAC 네비 게이트 — 슈퍼 전용 항목(계정/감사/2FA)은 슈퍼만 노출. 변경 권한 강제는 서버(admin-rbac).
   const [adminRole] = useState<AdminRole>(() => normalizeAdminRole(typeof window !== 'undefined' ? localStorage.getItem('admin_role') : null))
-  const SUPER_ONLY_NAV = new Set(['/admin/accounts', '/admin/audit-log'])
+  const SUPER_ONLY_NAV = new Set(['/admin/accounts', '/admin/audit-log', '/admin/login-history'])
   const roleNavGroups = adminRole === 'super'
     ? VISIBLE_NAV_GROUPS
     : adminRole === 'wholesale'
@@ -323,6 +324,16 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
     if (!ok) navigate('/admin/wholesale-overview', { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminRole, location.pathname])
+
+  // 🆕 보안 PIN 강제 설정 게이트 — 강제 대상(도매 파트너/슈퍼)인데 미설정이면 PIN 설정 페이지로 가둠.
+  //   로그인 시 must_set_pin 플래그 설정 → 설정 성공 시 해제. /admin/set-pin 자신은 면제(루프 방지).
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (localStorage.getItem('admin_must_set_pin') === '1' && location.pathname !== '/admin/set-pin') {
+      navigate('/admin/set-pin', { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname])
 
   function logout() {
     clearAuthData('admin')

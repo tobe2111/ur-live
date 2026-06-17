@@ -23,6 +23,7 @@ const AdminSuppliersPage = lazy(() => import('@/pages/AdminSuppliersPage'))
 const AdminDistributorGradesPage = lazy(() => import('@/pages/AdminDistributorGradesPage'))
 const AdminWholesaleImportPage = lazy(() => import('@/pages/AdminWholesaleImportPage'))
 const AdminWholesaleActivityPage = lazy(() => import('@/pages/admin/AdminWholesaleActivityPage'))
+const AdminLoginHistoryPage = lazy(() => import('@/pages/AdminLoginHistoryPage'))
 const AdminWholesaleOrdersPage = lazy(() => import('@/pages/AdminWholesaleOrdersPage'))
 // 🏦 2026-06-09: 도매 예치금 입금확인 페이지.
 const AdminWholesaleDepositsPage = lazy(() => import('@/pages/AdminWholesaleDepositsPage'))
@@ -103,6 +104,7 @@ const AdminOpsInsightsPage = lazy(() => import('@/pages/AdminOpsInsightsPage'))
 const AdminGroupBuyPage = lazy(() => import('@/pages/AdminGroupBuyPage'))
 const AdminDisputesPage = lazy(() => import('@/pages/AdminDisputesPage'))
 const Admin2FASetupPage = lazy(() => import('@/pages/Admin2FASetupPage'))
+const AdminPinSetupPage = lazy(() => import('@/pages/AdminPinSetupPage'))
 const AdminCommissionWithdrawalsPage = lazy(() => import('@/pages/AdminCommissionWithdrawalsPage'))
 const AdminPayoutCenterPage = lazy(() => import('@/pages/AdminPayoutCenterPage'))
 const AdminPayoutsPage = lazy(() => import('@/pages/AdminPayoutsPage'))
@@ -230,6 +232,11 @@ export function AdminRoutes() {
       <Route path="/admin/wholesale-activity" element={
         <ProtectedRoute requireAdmin>
           <AdminWholesaleActivityPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/login-history" element={
+        <ProtectedRoute requireAdmin>
+          <AdminLoginHistoryPage />
         </ProtectedRoute>
       } />
       <Route path="/admin/wholesale-orders" element={
@@ -388,10 +395,16 @@ export function AdminRoutes() {
           <ErrorBoundary><AdminDisputesPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      {/* 🛡️ 2026-05-15: 어드민 2FA TOTP 설정 */}
+      {/* 🛡️ 2026-05-15: 어드민 2FA TOTP 설정 (선택 — 강제 흐름은 /admin/set-pin) */}
       <Route path="/admin/2fa" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><Admin2FASetupPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🔐 2026-06-17: 로그인 보안 PIN 설정 (대표 결정 — 6자리 PIN) */}
+      <Route path="/admin/set-pin" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminPinSetupPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/reviews" element={

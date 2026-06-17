@@ -34,7 +34,7 @@ export function normalizeAdminRole(raw: string | null | undefined): AdminRole {
  *  ⚠️ /2fa 는 각 관리자 본인 2단계인증 self-service 라 제외(전 역할 허용). */
 export function isSuperOnlyAdminPath(pathname: string): boolean {
   const seg = adminPathSegment(pathname);
-  return seg === 'admins' || seg === 'audit-logs';
+  return seg === 'admins' || seg === 'audit-logs' || seg === 'login-history';
 }
 
 /** /api/admin/<seg>... 또는 /api/admin-<seg>... 에서 첫 도메인 세그먼트 추출(소문자). */

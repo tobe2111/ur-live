@@ -73,6 +73,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'admins.role', sql: "ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'admin'" },
     { desc: 'admins.is_active', sql: "ALTER TABLE admins ADD COLUMN is_active INTEGER DEFAULT 1" },
     { desc: 'admins.last_login_at', sql: "ALTER TABLE admins ADD COLUMN last_login_at TEXT" },
+    { desc: 'admins.login_pin_hash', sql: "ALTER TABLE admins ADD COLUMN login_pin_hash TEXT" },
     // ── RBAC 부트스트랩 (2026-06-17) ───────────────────────────────────────────
     //   2026-06-16 RBAC 도입 때 admins.role 가 DEFAULT 'admin' 로 추가되며 기존 슈퍼 계정이
     //   'admin' 으로 강등 → 슈퍼 전용(계정관리/감사로그) 접근 소실. 아래로 자가 복구(멱등).
@@ -1430,6 +1431,16 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       user_agent TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )` },
+    { name: 'admin_login_history', sql: `CREATE TABLE IF NOT EXISTS admin_login_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id TEXT NOT NULL,
+      email TEXT,
+      ip TEXT,
+      user_agent TEXT,
+      success INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_admin_login_history_created', sql: `CREATE INDEX IF NOT EXISTS idx_admin_login_history_created ON admin_login_history(created_at DESC)` },
     { name: 'idx_admin_audit_admin_id', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_admin_id ON admin_audit_logs(admin_id, created_at)` },
     { name: 'idx_admin_audit_action', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_action ON admin_audit_logs(action, created_at)` },
     { name: 'idx_admin_audit_created', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit_logs(created_at DESC)` },
@@ -1889,6 +1900,22 @@ repairSchemaRoutes.post('/api/_internal/repair-schema/auto', async (c) => {
   return c.json({ success: true, errors: errs, warnings: result.column_warnings || [], counts: result.column_counts || {} })
 })
 
+// 🛡️ 2026-06-17 보안 PIN 잠금 복구(무로그인) — REPAIR_SCHEMA_TOKEN 인증. PIN 분실로 로그인 불가 시
+//   CF env 토큰으로 해당 계정 PIN 해제(로그인 불가 상태에서도 복구). 해제 후 다음 로그인 시 재설정(must_set_pin).
+repairSchemaRoutes.post('/api/_internal/reset-pin-token', async (c) => {
+  const expected = (c.env as { REPAIR_SCHEMA_TOKEN?: string }).REPAIR_SCHEMA_TOKEN
+  const got = c.req.header('X-Repair-Token') || ''
+  if (!expected || got !== expected) return c.json({ success: false, error: 'unauthorized' }, 403)
+  const DB = (c.env as { DB?: D1Database }).DB
+  if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500)
+  let email = ''
+  try { const b = await c.req.json<{ email?: string }>(); email = String(b?.email || '').trim().toLowerCase() } catch { /* query fallback */ }
+  if (!email) email = String(c.req.query('email') || '').trim().toLowerCase()
+  if (!email) return c.json({ success: false, error: 'email 필요' }, 400)
+  const r = await DB.prepare("UPDATE admins SET login_pin_hash = NULL WHERE lower(email) = ?").bind(email).run().catch(() => null)
+  return c.json({ success: true, email, reset: r?.meta?.changes ?? 0, message: 'PIN 해제됨 — 다음 로그인 시 재설정' })
+})
+
 // 🛡️ 2026-06-17 경량 부트스트랩 — 전체 repair-schema(수백 마이그레이션 → 524 타임아웃) 대신
 //   슈퍼 어드민 복구 2줄만 빠르게 실행. admin 토큰만 있으면 호출 가능(내부 경로).
 repairSchemaRoutes.get('/api/_internal/bootstrap-super', requireAdmin(), async (c) => {
@@ -1906,6 +1933,22 @@ repairSchemaRoutes.get('/api/_internal/bootstrap-super', requireAdmin(), async (
     return c.json({ success: true, ...out, super_admins: supers.results ?? [] });
   } catch (err) {
     return c.json({ success: false, error: '부트스트랩 실패', _debug: String(err).slice(0, 200) }, 500);
+  }
+});
+
+// 🛡️ 2026-06-17 보안 PIN 잠금 복구 — PIN 분실 시 해당 계정 PIN 해제(재설정 유도). 슈퍼관리자만.
+repairSchemaRoutes.get('/api/_internal/reset-pin', requireAdmin(), async (c) => {
+  const DB = (c.env as { DB: D1Database }).DB;
+  try {
+    const caller = ((c as unknown as { get: (k: string) => unknown }).get('user')) as { id?: string | number } | undefined;
+    const me = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(caller?.id).first<{ role: string }>().catch(() => null);
+    if (!me || me.role !== 'super_admin') return c.json({ success: false, error: '슈퍼관리자만 가능합니다' }, 403);
+    const email = String(c.req.query('email') || '').trim().toLowerCase();
+    if (!email) return c.json({ success: false, error: 'email 쿼리 필요' }, 400);
+    const r = await DB.prepare("UPDATE admins SET login_pin_hash = NULL WHERE lower(email) = ?").bind(email).run().catch(() => null);
+    return c.json({ success: true, email, reset: r?.meta?.changes ?? 0, message: 'PIN 해제됨 — 해당 계정 다음 로그인 시 재설정 필요' });
+  } catch (err) {
+    return c.json({ success: false, error: 'PIN 해제 실패', _debug: String(err).slice(0, 150) }, 500);
   }
 });
 

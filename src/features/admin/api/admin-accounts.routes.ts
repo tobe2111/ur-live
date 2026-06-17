@@ -84,7 +84,8 @@ adminAccountsRoutes.post('/admins', cors(), async (c) => {
       return c.json({ success: false, error: `유효하지 않은 역할입니다. ${VALID_ADMIN_ROLES.join(', ')} 중 선택하세요` }, 400);
     }
 
-    const complexity = validatePasswordComplexity(password);
+    // 🆕 2026-06-17 (대표 요청): 새 관리자 추가는 완화 규칙(8자+ / 영문·숫자·특수 2종+) — 대문자 강제 X.
+    const complexity = validatePasswordComplexity(password, { relaxed: true });
     if (!complexity.ok) {
       return c.json({ success: false, error: complexity.error ?? '비밀번호 복잡도 부족' }, 400);
     }

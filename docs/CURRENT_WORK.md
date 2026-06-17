@@ -14,6 +14,18 @@
 - **사이드바** (`DesktopLiveSidebar`): 숙소 → `?category=stay_voucher`(인라인), **'일반 상품'(general) 카테고리 추가**(Package 아이콘). MENU '오프라인 공동구매' 활성 정규식에 general 포함(이중강조 방지).
 - **i18n**: `category.general`(nested) + `groupBuy.stayDateSearch`(flat) 6개 언어. (i18next ignoreJSONStructure 로 nested/flat 모두 resolve 확인.)
 - 검증: tsc 0 · `npm run build` 0 · 테마검사 통과.
+## ✅ 2026-06-17 계정 보안 — 로그인 보안 PIN 강제 + 로그인 이력(IP) (대표 요청 "서로 계정 로그인 방지")
+> ⚠️ 정정: 대표 결정으로 **앱 TOTP → 6자리 보안 PIN** 전환. 서버 PIN(`login_pin_hash`/`pin_required`/
+> `must_set_pin`/`POST /api/admin/set-login-pin`, 단순PIN 차단). 프론트 PIN 정합(AdminLoginPage PIN 입력 ·
+> AdminLayout `must_set_pin`→`/admin/set-pin` 게이트 · 신규 `AdminPinSetupPage`). 강제=super_admin+wholesale.
+> 잠금복구 `GET /api/_internal/reset-pin`(슈퍼). 또: 새 관리자 추가 비번 규칙 완화(8자+/2종+, 대문자 강제 X —
+> `validatePasswordComplexity({relaxed:true})`). 아래 원문(TOTP)은 히스토리.
+**배경**: 도매 동업자 다수 → 계정 공유/도용 방지. 2FA(인증앱 TOTP)가 가장 강력 — 인프라(/api/2fa/* generic store=admins.totp_secret/totp_enabled, Admin2FASetupPage /admin/2fa)는 있었으나 **로그인 강제 미배선**.
+- **2FA 강제 (도매 파트너 + 슈퍼)** — `admin.routes /login`: 비밀번호 OK 후 `admins.totp_enabled=1`이면 OTP 필수(미입력→`twofa_required` 토큰 미발급, 불일치→401). 강제 대상 역할인데 미등록이면 토큰 발급+`must_enroll_2fa`. **컬럼 미존재 catch→fail-safe(로그인 안 깨짐)**. 검증=utils/totp verifyTOTP(generic store와 RFC6238 호환 확인).
+- **프론트**: AdminLoginPage OTP 입력 단계(`needOtp`/`twofa_required`) + `must_enroll_2fa`→`/admin/2fa` 강제 + AdminLayout 등록 게이트(미등록 시 다른 경로 진입→2FA 페이지 가둠, verify 성공 시 해제). Admin2FASetupPage verify 성공 시 게이트 해제+랜딩.
+- **로그인 이력(IP)** — `/login` 성공 시 `admin_login_history`(admin_id/email/ip/UA) fail-soft INSERT(ensure WeakSet). 뷰어 `GET /api/admin/login-history`(슈퍼 전용 isSuperOnlyAdminPath) + `AdminLoginHistoryPage`(/admin/login-history, 시스템 nav). repair-schema 테이블 등록.
+- **잠금 복구**: `GET /api/_internal/reset-2fa?email=`(슈퍼만) — 기기 분실 시 2FA 해제→재등록. + must_enroll 게이트라 첫 등록은 잠금 없음(토큰 발급+유도).
+- ⚠️ **롤아웃**: 배포 후 대표님(super)부터 다음 로그인 시 2FA 등록 강제됨 — QR 스캔(Google Authenticator) + **secret 백업 권장**. 검증: tsc 0 · theme · client+worker build. ⚠️ 실 TOTP 라운드트립 staging 1회 권장.
 
 ## ✅ 2026-06-17 도매 전용 어드민 역할 `wholesale` (외부 동업자용 — 권한 분리, 앱 분리 X)
 **배경**: 도매몰 동업자(외부 파트너)가 어드민 접근 필요 → 완전 분리 대신 **RBAC 도메인-한정 역할**(대표 "추천대로", 범위 "도매 전체 정산·머니 포함"). 별도 앱 복제 X(유지보수·보안 2배 회피) — 같은 코드, 역할로 격리.
