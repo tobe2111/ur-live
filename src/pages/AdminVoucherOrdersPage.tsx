@@ -83,6 +83,28 @@ export default function AdminVoucherOrdersPage() {
     }
   }
 
+  // 🔁 2026-06-17 (사용자 요청): failed 일괄 재발송 — 옛 ERR0807(거래ID 20자 초과) backlog 등 한 번에.
+  //   새 짧은 trId 로 재시도 + CAS 선점(이중발송 차단). 최근 90일·최대 200건.
+  const [bulkResending, setBulkResending] = useState(false)
+  async function handleResendAllFailed() {
+    if (!(await confirmDialog('발송 실패한 교환권(최근 90일)을 일괄 재발송할까요?\n새 거래ID로 다시 시도하며, 성공 시 비즈머니가 차감됩니다.'))) return
+    setBulkResending(true)
+    try {
+      const res = await api.post('/api/admin/voucher-orders/resend-failed', { limit: 200, days: 90 })
+      if (res.data?.success) {
+        const d = res.data.data as { scanned: number; resent: number; stillFailed: number }
+        toast.success(`재발송 ${d.resent}건 성공 · ${d.stillFailed}건 여전히 실패 (검사 ${d.scanned}건)`)
+        load()
+      } else {
+        toast.error(res.data?.error || '일괄 재발송 실패')
+      }
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBulkResending(false)
+    }
+  }
+
   // 🛡️ 2026-06-14: 상태 의미를 한국어로 명시 (운영자가 영문 status 만 보고 의미 모름 신고).
   const STATUS_META: Record<VoucherOrderRow['status'], { label: string; desc: string; cls: string }> = {
     processing: { label: '처리 중', desc: 'KT 발송 요청 후 결과 대기', cls: 'bg-amber-100 text-amber-700' },
@@ -101,6 +123,16 @@ export default function AdminVoucherOrdersPage() {
             고객이 결제한 교환권을 KT Alpha 기프티쇼로 자동 발송한 내역입니다.
             고객 휴대폰으로 기프티콘이 전송되며, 실패 건은 아래에서 <span className="font-semibold text-gray-700">재발송</span>할 수 있습니다.
           </p>
+
+          {/* 🔁 2026-06-17: 발송 실패분 일괄 재발송 (옛 ERR0807 backlog 등 — 새 거래ID로 한 번에) */}
+          <button
+            onClick={handleResendAllFailed}
+            disabled={bulkResending}
+            className="mb-3 inline-flex items-center gap-1.5 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg disabled:opacity-50"
+            title="발송 실패한 교환권을 새 거래ID로 일괄 재발송 (최근 90일·최대 200건)"
+          >
+            {bulkResending ? '재발송 중…' : '🔁 발송 실패분 일괄 재발송 (최근 90일)'}
+          </button>
 
           {/* 🛡️ 2026-06-14: 상태 의미 범례 */}
           <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3 p-3 bg-gray-50 rounded-lg border border-gray-100">

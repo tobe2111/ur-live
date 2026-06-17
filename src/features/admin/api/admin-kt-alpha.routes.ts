@@ -1289,6 +1289,83 @@ adminKtAlphaRoutes.post('/voucher-orders/:id/resend', cors(), async (c) => {
   }
 })
 
+// 🔁 2026-06-17 (사용자 요청): failed KT Alpha 발송 일괄 재발송 — 옛 ERR0807(거래ID 20자 초과) backlog 등
+//   '결제됐는데 안 옴' 건을 새 짧은 trId 로 한 번에 재시도. 운영자 트리거(비즈머니 통제).
+//   안전: status='failed' + 유효 폰만 / CAS(failed→processing) 선점으로 동시·중복 발송 차단 /
+//   성공분만 'sent' 전환(재실행해도 멱등) / limit·days 상한.
+adminKtAlphaRoutes.post('/voucher-orders/resend-failed', cors(), async (c) => {
+  try {
+    const body = await c.req.json<{ limit?: number; days?: number }>().catch(() => ({} as { limit?: number; days?: number }))
+    const limit = Math.min(Math.max(Number(body.limit) || 50, 1), 200)
+    const days = Math.min(Math.max(Number(body.days) || 90, 1), 365)
+
+    const settings = await c.env.DB.prepare(
+      "SELECT key, value FROM platform_settings WHERE key IN ('kt_alpha_user_id','kt_alpha_callback_no','kt_alpha_template_id','kt_alpha_banner_id')"
+    ).all<{ key: string; value: string }>().catch(() => ({ results: [] }))
+    const sMap: Record<string, string> = {}
+    for (const r of (settings.results || [])) sMap[r.key] = r.value
+    if (!sMap.kt_alpha_user_id || !sMap.kt_alpha_callback_no) {
+      return c.json({ success: false, error: 'kt_alpha_user_id/callback_no 설정 누락' }, 503)
+    }
+
+    const failed = await c.env.DB.prepare(
+      `SELECT id, goods_code, goods_name, recipient_phone
+         FROM voucher_orders
+        WHERE source = 'kt_alpha' AND status = 'failed'
+          AND recipient_phone IS NOT NULL AND recipient_phone != ''
+          AND created_at >= datetime('now', ?)
+        ORDER BY created_at DESC LIMIT ?`
+    ).bind(`-${days} days`, limit).all<{ id: number; goods_code: string; goods_name: string; recipient_phone: string }>().catch(() => ({ results: [] }))
+
+    const orders = failed.results || []
+    const { sendCoupon } = await import('../../../worker/utils/giftishow-api')
+    let resent = 0
+    let stillFailed = 0
+    const errors: string[] = []
+
+    for (const vo of orders) {
+      const phone = String(vo.recipient_phone || '').replace(/\D/g, '')
+      if (!/^01\d{8,9}$/.test(phone)) { stillFailed++; continue }
+      // 💰 CAS 선점 — failed→processing 원자 전환. 다른 발송/재발송이 이미 잡았으면 changes=0 → skip(이중발송 차단).
+      const claim = await c.env.DB.prepare(
+        "UPDATE voucher_orders SET status='processing', failure_reason=NULL, updated_at=datetime('now') WHERE id=? AND status='failed'"
+      ).bind(vo.id).run().catch(() => null)
+      if (!claim?.meta?.changes) continue
+      const trId = `r${vo.id}-${Date.now().toString(36)}`
+      try {
+        const res = await sendCoupon(c.env as unknown as Parameters<typeof sendCoupon>[0], {
+          goodsCode: vo.goods_code,
+          phoneNo: phone,
+          callbackNo: sMap.kt_alpha_callback_no,
+          mmsTitle: '유어딜 교환권',
+          mmsMsg: `${vo.goods_name} 교환권이 도착했습니다. 30일 이내 사용해주세요.`,
+          trId,
+          userId: sMap.kt_alpha_user_id,
+          orderNo: `r-${vo.id}`,
+          gubun: 'N',
+          templateId: sMap.kt_alpha_template_id || undefined,
+          bannerId: sMap.kt_alpha_banner_id || undefined,
+        })
+        await c.env.DB.prepare(
+          "UPDATE voucher_orders SET status='sent', external_order_id=?, sent_at=datetime('now'), updated_at=datetime('now') WHERE id=?"
+        ).bind(res.orderNo || trId, vo.id).run()
+        resent++
+      } catch (sendErr) {
+        const msg = (sendErr as Error).message.slice(0, 500)
+        await c.env.DB.prepare(
+          "UPDATE voucher_orders SET status='failed', failure_reason=?, updated_at=datetime('now') WHERE id=?"
+        ).bind(msg, vo.id).run().catch(() => null)
+        stillFailed++
+        if (errors.length < 5) errors.push(`#${vo.id}: ${msg.slice(0, 120)}`)
+      }
+    }
+
+    return c.json({ success: true, data: { scanned: orders.length, resent, stillFailed, errors } })
+  } catch (err) {
+    return safeError(c, err, '일괄 재발송 중 오류가 발생했습니다', '[kt-alpha-resend-failed]')
+  }
+})
+
 // 🛡️ 2026-05-25 사용자 명령 (B 옵션): "유어딜 공식" 운영 seller 자동 생성 + platform_settings 자동 set.
 //   기존 fallback (첫 approved seller) → system 명의로 분리.
 //   idempotent — 이미 username='system-kt-alpha' 있으면 그 id 반환.
