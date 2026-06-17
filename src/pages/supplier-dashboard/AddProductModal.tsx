@@ -169,6 +169,10 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
             <label className={labelCls}>{t('supplier.fieldImage', { defaultValue: '썸네일(대표) 이미지 URL' })}</label>
             <input disabled={saving} value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} className={inputCls} placeholder="https://..." />
           </div>
+          {/* 🧩 2026-06-17 (입점폼 간소화): 부가 항목은 접어서 첫 등록 마찰 감소. 안의 값은 그대로 제출됨. */}
+          <details className="border border-gray-200 rounded-xl">
+            <summary className="cursor-pointer select-none text-sm font-semibold text-gray-700 px-3 py-2.5">⚙️ {t('supplier.moreFields', { defaultValue: '더보기 — 상세이미지 · 최저가 링크 · 바코드 · 공급범위 · 브랜드' })}</summary>
+            <div className="px-3 pb-3 space-y-3">
           {/* 🖼️ 2026-06-13 (사용자 요청): 상세페이지 이미지 — 세로로 긴 사진·GIF 다수 직접 업로드(무압축 원본). */}
           <div>
             <label className={labelCls}>{t('supplier.fieldDetailImages2', { defaultValue: '상세페이지 이미지 (여러 장·GIF 가능)' })}</label>
@@ -213,6 +217,8 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
               </div>
             </div>
           )}
+            </div>
+          </details>
           <button type="submit" disabled={saving} className="w-full py-3 rounded-xl bg-[#FC5424] text-white font-semibold text-sm disabled:opacity-60 mt-2">
             {saving ? t('common.loading', { defaultValue: '처리 중...' }) : t('supplier.submitProduct', { defaultValue: '등록 신청' })}
           </button>
