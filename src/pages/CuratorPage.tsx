@@ -89,6 +89,8 @@ export default function CuratorPage() {
   const [query, setQuery] = useState('')
   // 🎨 2026-06-16 링크샵 시안: '방문자 미리보기' — 본인이 남이 보는 화면 그대로 확인.
   const [previewAsVisitor, setPreviewAsVisitor] = useState(false)
+  // 🎨 2026-06-17 (사용자 요청): 오너 기본 화면 = 방문자와 같은 카드 그리드. 순서 바꾸기는 드래그 모드 토글로.
+  const [reorderMode, setReorderMode] = useState(false)
   const currentUser = useAuthStore((s: any) => s.user)
   // 🛡️ 2026-05-27 (편집 UI 영구 fix): useAuthStore.user 가 sync 안 된 카카오 user 도 isOwner 인정.
   //   localStorage user_id fallback — RouteGuards / lib/api 의 토큰 검사 패턴과 일관.
@@ -299,18 +301,30 @@ export default function CuratorPage() {
             </div>
           </div>
         )}
-        {/* 🎨 2026-06-16 링크샵 개선안(시안): 본인 뷰 = 편집/관리 리스트가 기본 화면.
-            공개 storefront(검색·탭·카드)는 '전체 미리보기'(previewAsVisitor)로만 전환. 핀 없으면 온보딩 빈 상태. */}
-        {ownerView ? (
-          pins.length === 0
-            ? <EmptyLinkshop handle={curator.handle} isOwner curatorName={curator.name} />
-            : <PinManageList
-                pins={pins}
-                onReorder={(next) => setData(prev => prev ? { ...prev, pins: next } : prev)}
-                onDeleted={onPinDeleted}
-              />
+        {/* 🎨 2026-06-17 (사용자 요청 — 오너 화면 불일치 해소): 오너도 방문자와 동일한 그라데이션 카드 그리드를
+            기본으로 보고, 카드마다 삭제(✕) + '순서 바꾸기'(드래그 모드)만 추가. 빈 링크샵은 온보딩 빈 상태. */}
+        {ownerView && pins.length === 0 ? (
+          <EmptyLinkshop handle={curator.handle} isOwner curatorName={curator.name} />
+        ) : ownerView && reorderMode ? (
+          <div className="max-w-3xl mx-auto px-4 pt-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">핀 순서 바꾸기</span>
+              <button onClick={() => setReorderMode(false)} className="px-3.5 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12.5px] font-bold active:opacity-80">완료</button>
+            </div>
+            <PinManageList
+              pins={pins}
+              onReorder={(next) => setData(prev => prev ? { ...prev, pins: next } : prev)}
+              onDeleted={onPinDeleted}
+            />
+          </div>
         ) : (
           <>
+            {/* 오너: 순서 바꾸기 진입 (핀 2개 이상). 방문자에겐 안 보임. */}
+            {ownerView && pins.length > 1 && (
+              <div className="max-w-3xl mx-auto px-4 pt-3 flex justify-end">
+                <button onClick={() => setReorderMode(true)} className="inline-flex items-center gap-1 text-[12.5px] font-bold text-gray-600 dark:text-gray-300 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-white/[0.06] active:opacity-70">⇅ 순서 바꾸기</button>
+              </div>
+            )}
             {/* 🔍 2026-06-16 링크샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터. */}
             {pins.length > 0 && (
               <div className="max-w-3xl mx-auto px-4 pt-3 pb-1">
@@ -475,11 +489,12 @@ function PinCard({ pin, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorP
     <div className="relative group">
       <BrowseProductCard product={product} aboveFold={aboveFold} to={`/u/${handle}/p/${pin.product_id}`} />
       {isOwner && (
+        // 🎨 2026-06-17: 모바일엔 hover 가 없어 항상 보이게(이전 opacity-0 group-hover 는 터치에서 숨김).
         <button
           onClick={handleDelete}
           disabled={deleting}
           aria-label="핀 삭제"
-          className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/70 hover:bg-red-500 text-white flex items-center justify-center transition-colors text-sm font-bold opacity-0 group-hover:opacity-100 disabled:opacity-50"
+          className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/60 hover:bg-red-500 text-white flex items-center justify-center transition-colors text-sm font-bold shadow-sm disabled:opacity-50"
         >
           ✕
         </button>
