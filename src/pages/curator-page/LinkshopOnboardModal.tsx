@@ -98,10 +98,15 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
 
   // 🛠️ 2026-06-16 (모바일 팝업 안 보임 신고): 부모에 transform 이 있으면 position:fixed 가 뷰포트가
   //   아니라 그 부모 기준이 돼 모달이 화면 밖으로 잘림 → document.body 로 portal 해 항상 뷰포트 고정.
+  // 🛠️ 2026-06-17 (하단 버튼 네비바에 가려짐 — 결정적 해결): z-index/Tailwind calc 임의값에 의존하지 않고,
+  //   버튼 아래에 **인라인 style 높이 스페이서**(네비바 h-14=3.5rem + safe-area)를 둬 버튼을 네비바 띠보다
+  //   물리적으로 위로 밀어올린다. sm:hidden(데스크톱 네비바 없음). z-index 가 이기든 지든 버튼은 항상 보임.
   if (typeof document === 'undefined') return null
   return createPortal((
-    <div className="fixed inset-0 z-[9500] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" role="dialog" aria-modal="true">
-      <div className="w-full sm:max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-[#121212] rounded-t-3xl sm:rounded-3xl border border-gray-200 dark:border-[#2A2A2A] p-5 animate-sheet-rise">
+    <div className="fixed inset-0 z-[10100] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4" role="dialog" aria-modal="true">
+      <div
+        className="w-full sm:max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-[#121212] rounded-t-3xl sm:rounded-3xl border border-gray-200 dark:border-[#2A2A2A] p-5 animate-sheet-rise"
+      >
         <div className="flex items-start justify-between mb-1">
           <h2 className="text-[17px] font-bold text-gray-900 dark:text-white">내 링크샵 꾸미기</h2>
           <button onClick={dismissPermanently} aria-label="닫기" className="p-1 -m-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
@@ -152,6 +157,9 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
             {saving ? '저장 중…' : '저장하기'}
           </button>
         </div>
+        {/* 🛠️ 2026-06-17: 모바일 하단 네비바(h-14 + safe-area) 클리어런스 — 위 버튼이 네비바에 가리지 않도록
+            아래에 같은 높이의 빈 공간을 둔다. 인라인 calc(유효 CSS 보장) + sm:hidden(PC 는 네비바 없음). */}
+        <div aria-hidden className="sm:hidden" style={{ height: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))' }} />
       </div>
     </div>
   ), document.body)

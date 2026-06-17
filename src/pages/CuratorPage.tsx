@@ -17,10 +17,11 @@ import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { curatorApi, type CuratorPageResponse, type CuratorPin, type DashboardStats } from '@/features/curator/api/curator-api'
 import { useAuthStore } from '@/client/stores/auth.store'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatWon, formatNumber } from '@/utils/format'
 import { cfImage } from '@/utils/cf-image'
-import { reportDominantColor } from '@/utils/dominant-color'
-import EditorialProductCard from '@/components/linkshop/EditorialProductCard'
+import BrowseProductCard from './browse/BrowseProductCard'
+import type { Product as BrowseProduct } from './browse/types'
 import { Search, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
@@ -86,8 +87,6 @@ export default function CuratorPage() {
   const [tab, setTab] = useState<CuratorTab>('home')
   // 🔍 2026-06-16 링크샵 시안: 검색 — 상품명 + 추천 코멘트(note) 라이브 필터.
   const [query, setQuery] = useState('')
-  // 🎨 2026-06-16 링크샵 시안: 본인 핀 관리(드래그 정렬) 모드 토글.
-  const [manageMode, setManageMode] = useState(false)
   // 🎨 2026-06-16 링크샵 시안: '방문자 미리보기' — 본인이 남이 보는 화면 그대로 확인.
   const [previewAsVisitor, setPreviewAsVisitor] = useState(false)
   const currentUser = useAuthStore((s: any) => s.user)
@@ -228,7 +227,7 @@ export default function CuratorPage() {
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">다른 키워드로 찾아보세요.</p>
       </div>
     )
-    return <PinGrid pins={f} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} curatorName={curator.name} curatorAvatar={curator.profile_image} />
+    return <PinGrid pins={f} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} />
   }
 
   return (
@@ -376,18 +375,16 @@ export default function CuratorPage() {
 //   그대로 쓰면 크리에이터가 즉시 현금을 기대 → 혼란. 확정(출금가능) + 예정(보류) 을 명확히 분리 표기.
 function OwnerEarningsStrip() {
   const { t } = useTranslation()
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loaded, setLoaded] = useState(false)
-  useEffect(() => {
-    let alive = true
-    curatorApi.getDashboard()
-      .then((r) => { if (alive && r?.success) setStats(r.stats) })
-      .catch(() => { /* 조용히 — strip 은 보조 정보, 실패해도 핀 그리드 우선 */ })
-      .finally(() => { if (alive) setLoaded(true) })
-    return () => { alive = false }
-  }, [])
+  // 🏎️ 2026-06-17 (링크샵 감사): 무거운 9쿼리 /me/dashboard 를 수익 콘솔(CuratorEarningsPage)과
+  //   동일 RQ 키로 공유 — 링크샵 strip → 콘솔 진입 시 재요청 없이 캐시 재사용(staleTime 60s). D1 부하 절감.
+  const dashQ = useApiQuery<DashboardStats | null>(
+    ['curator', 'dashboard'],
+    '/api/curator/me/dashboard',
+    { select: (raw) => ((raw as { success?: boolean; stats?: DashboardStats })?.success ? ((raw as { stats: DashboardStats }).stats) : null) },
+  )
+  const stats = dashQ.data ?? null
   // 로딩/실패 시 strip 숨김 (레이아웃 점프 없이 핀이 먼저). 적립 0 이어도 표시 — 시작 동기 부여.
-  if (!loaded || !stats) return null
+  if (!stats) return null
   const confirmed = stats.month_earnings ?? 0
   const pending = stats.pending_earnings ?? 0
   const clicks = stats.unique_clicks_30d ?? stats.clicks_30d ?? 0
@@ -421,11 +418,11 @@ function OwnerEarningsStrip() {
   )
 }
 
-function PinGrid({ pins, handle, isOwner, onPinDeleted, curatorName, curatorAvatar }: { pins: CuratorPin[]; handle: string; isOwner: boolean; onPinDeleted: (id: number) => void; curatorName?: string; curatorAvatar?: string | null }) {
+function PinGrid({ pins, handle, isOwner, onPinDeleted }: { pins: CuratorPin[]; handle: string; isOwner: boolean; onPinDeleted: (id: number) => void }) {
   return (
     <div className="max-w-3xl mx-auto p-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
       {pins.map((pin, idx) => (
-        <PinCard key={pin.id} pin={pin} index={idx} handle={handle} isOwner={isOwner} aboveFold={idx < 4} hero={idx === 0} onDeleted={onPinDeleted} curatorName={curatorName} curatorAvatar={curatorAvatar} />
+        <PinCard key={pin.id} pin={pin} handle={handle} isOwner={isOwner} aboveFold={idx < 4} onDeleted={onPinDeleted} />
       ))}
       {/* 🏁 2026-06-16 링크샵 개선안: 본인이 핀 채워진 화면에서도 항상 추가 동선 — 그리드 끝 점선 카드. */}
       {isOwner && (
@@ -441,10 +438,11 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted, curatorName, curatorAvat
   )
 }
 
-function PinCard({ pin, index, handle, isOwner, aboveFold, hero, onDeleted, curatorName, curatorAvatar }: { pin: CuratorPin; index: number; handle: string; isOwner: boolean; aboveFold: boolean; hero?: boolean; onDeleted: (id: number) => void; curatorName?: string; curatorAvatar?: string | null }) {
-  const { t } = useTranslation()
-  // 🛡️ 2026-05-27 (404 fix): SPA route 는 /u/:handle/p/:productId. /redirect 는 worker endpoint — CuratorPinClientRedirect 가 자동 호출.
-  const redirectUrl = `/u/${handle}/p/${pin.product_id}`
+// 🧭 2026-06-17 (사용자 요청 — "링크샵도 홈/동네딜/쇼핑과 똑같은 그라데이션 상품 카드를 그대로 써라.
+//   커스텀 카드(EditorialProductCard) 그만 만들고 영구 고정"): 표준 카드 BrowseProductCard 를 그대로 재사용
+//   → 쇼핑 카드 디자인과 영구 동기화(2개씩/그라데이션). 클릭만 핀 redirect(/u/:handle/p/:id, to override)로
+//   보내 클릭집계+추천적립 루프 유지(잠금 불변).
+function PinCard({ pin, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorPin; handle: string; isOwner: boolean; aboveFold: boolean; onDeleted: (id: number) => void }) {
   const [deleting, setDeleting] = useState(false)
 
   async function handleDelete(e: React.MouseEvent) {
@@ -456,12 +454,8 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, hero, onDeleted, cura
     setDeleting(true)
     try {
       const res = await curatorApi.removePin(pin.id)
-      if (res?.success) {
-        onDeleted(pin.id)
-        toast.success('핀 삭제됨')
-      } else {
-        toast.error('삭제 실패')
-      }
+      if (res?.success) { onDeleted(pin.id); toast.success('핀 삭제됨') }
+      else { toast.error('삭제 실패') }
     } catch {
       toast.error('삭제 실패')
     } finally {
@@ -469,34 +463,33 @@ function PinCard({ pin, index, handle, isOwner, aboveFold, hero, onDeleted, cura
     }
   }
 
-  // 🎨 2026-06-16 시안 히어로: 카테고리 라벨 (동네딜=voucher/deal_only, 그 외 상품)
-  const heroCatLabel = ((pin as { deal_only?: number }).deal_only === 1 || /voucher/i.test((pin as { category?: string }).category || '')) ? '동네딜' : '상품'
+  const product: BrowseProduct = {
+    id: pin.product_id,
+    name: pin.product_name,
+    price: pin.price,
+    current_price: pin.price,
+    original_price: pin.original_price ?? undefined,
+    discount_rate: 0, // BrowseProductCard 가 original_price 로 자동 계산
+    image_url: pin.thumbnail || pin.image_url || '',
+    stock: 0,
+    dominant_color: pin.dominant_color,
+    deal_only: pin.deal_only,
+  }
 
   return (
-    <EditorialProductCard
-      product={{ id: pin.product_id, name: pin.product_name, price: pin.price, original_price: pin.original_price, image: pin.thumbnail || pin.image_url, dominant_color: pin.dominant_color }}
-      href={redirectUrl}
-      variant={hero ? 'hero' : 'standard'}
-      aspect="3by2"
-      aboveFold={aboveFold}
-      rank={index + 1}
-      note={pin.note}
-      curatorName={curatorName}
-      curatorAvatar={curatorAvatar}
-      heroCatLabel={heroCatLabel}
-      onColor={(c) => { if (!pin.dominant_color) reportDominantColor(pin.product_id, c) }}
-      overlay={isOwner ? (
-        // 🛡️ 2026-05-27 (사용자 요청): 본인 view 에서 핀 삭제 버튼.
+    <div className="relative group">
+      <BrowseProductCard product={product} aboveFold={aboveFold} to={`/u/${handle}/p/${pin.product_id}`} />
+      {isOwner && (
         <button
           onClick={handleDelete}
           disabled={deleting}
           aria-label="핀 삭제"
-          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 hover:bg-red-500 text-white flex items-center justify-center transition-colors text-sm font-bold opacity-0 group-hover:opacity-100 disabled:opacity-50"
+          className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/70 hover:bg-red-500 text-white flex items-center justify-center transition-colors text-sm font-bold opacity-0 group-hover:opacity-100 disabled:opacity-50"
         >
           ✕
         </button>
-      ) : null}
-    />
+      )}
+    </div>
   )
 }
 
@@ -534,25 +527,27 @@ function HandleEditor({ handle }: { handle: string }) {
       else { setStatus('bad'); setMsg(r.error || '변경에 실패했습니다') }
     } catch { setStatus('bad'); setMsg('변경에 실패했습니다') }
   }
+  // 🎨 2026-06-17 (라이트 테마 가시성 fix): bare text-white 는 light(bg-white)에서 흰글자=투명 →
+  //   핸들/입력 안 보였음. text-gray-900 dark:text-white 로 양모드 대응. <dd>(dl 없는 무효 HTML)도 div 로.
   if (!editing) {
     return (
-      <dd className="text-white font-mono flex items-center gap-2">
+      <div className="text-gray-900 dark:text-white font-mono flex items-center gap-2">
         @{handle}
         <button onClick={() => { setEditing(true); setVal(handle); setStatus('idle'); setMsg('') }} className="text-[11px] text-gray-900 dark:text-white font-bold font-sans">변경</button>
-      </dd>
+      </div>
     )
   }
   return (
-    <dd className="flex flex-col items-end gap-1">
+    <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-1">
-        <span className="text-white/50 font-mono text-sm">@</span>
+        <span className="text-gray-400 dark:text-white/50 font-mono text-sm">@</span>
         <input value={val} onChange={e => setVal(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase())} maxLength={30}
-          className="w-28 bg-transparent border-b border-gray-500 text-white font-mono text-sm focus:outline-none focus:border-gray-900 dark:border-white" autoFocus />
+          className="w-28 bg-transparent border-b border-gray-300 dark:border-gray-500 text-gray-900 dark:text-white font-mono text-sm focus:outline-none focus:border-gray-900 dark:focus:border-white" autoFocus />
         <button onClick={save} disabled={status !== 'ok'} className="text-[12px] text-gray-900 dark:text-white font-bold disabled:opacity-40">{status === 'saving' ? '저장 중' : '저장'}</button>
         <button onClick={() => { setEditing(false); setVal(handle); setStatus('idle') }} className="text-[12px] text-gray-500">취소</button>
       </div>
-      {msg && <span className={`text-[10px] ${status === 'ok' ? 'text-emerald-400' : status === 'checking' ? 'text-gray-400' : 'text-red-400'}`}>{msg}</span>}
-    </dd>
+      {msg && <span className={`text-[10px] ${status === 'ok' ? 'text-emerald-500 dark:text-emerald-400' : status === 'checking' ? 'text-gray-400' : 'text-red-500 dark:text-red-400'}`}>{msg}</span>}
+    </div>
   )
 }
 

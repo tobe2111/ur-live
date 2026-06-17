@@ -49,7 +49,9 @@ async function fetchAdminDashboard(): Promise<AdminBundle> {
   const [sellersRes, pendingRes, streamsRes, liveStreamsRes] = await Promise.allSettled([
     api.get('/api/admin/sellers?limit=200'),
     api.get('/api/admin/sellers/pending?limit=100'),
-    api.get('/api/streams?limit=100'),
+    // 🛡️ 2026-06-17: 관리 테이블은 admin 엔드포인트 사용 — 소프트 삭제(deleted_at) 스트림 제외
+    //   → 단건/일괄 삭제 후 행이 실제로 사라짐. (public /api/streams 는 deleted_at 미필터)
+    api.get('/api/admin/streams?limit=100'),
     api.get('/api/streams?status=live&limit=50'),
   ])
   const sellers = sellersRes.status === 'fulfilled' ? (sellersRes.value.data.data || []) : []
@@ -302,6 +304,23 @@ export default function AdminPage() {
     } catch (err: unknown) {
       const apiErr = err as ApiError
       toast.error(`삭제 실패: ${apiErr.response?.data?.error || apiErr.message}`)
+    }
+  }
+
+  // 🛡️ 2026-06-17: 체크박스 일괄 삭제 — 선택한 라이브를 한번에 소프트 삭제.
+  //   confirm → 삭제됨이면 true 반환(StreamsTable 이 선택 초기화) + refetch 로 행 제거.
+  async function bulkDeleteStreams(ids: number[]): Promise<boolean> {
+    if (ids.length === 0) return false
+    if (!(await confirmDialog({ message: t('admin.dashboard.k072', { defaultValue: `선택한 ${ids.length}개 라이브를 삭제하시겠습니까?\n\n· 소프트 삭제 (이력/매출은 보존)\n· 메인/홈/다시보기 피드에서 즉시 제거됩니다` }), danger: true }))) return false
+    try {
+      const res = await api.delete('/api/admin/streams/bulk', { data: { ids } })
+      toast.success(res.data?.message || t('admin.dashboard.k073', { defaultValue: `${res.data?.deleted ?? ids.length}건 삭제 완료!` }))
+      loadData()
+      return true
+    } catch (err: unknown) {
+      const apiErr = err as ApiError
+      toast.error(`${t('admin.dashboard.k074', { defaultValue: '일괄 삭제 실패' })}: ${apiErr.response?.data?.error || apiErr.message}`)
+      return false
     }
   }
 
@@ -662,6 +681,7 @@ export default function AdminPage() {
         streams={streams}
         loading={loading}
         onDelete={deleteStream}
+        onBulkDelete={bulkDeleteStreams}
       />
       {/* ── 사업자 정보 상세 모달 ── */}
       {bizInfoSeller && (

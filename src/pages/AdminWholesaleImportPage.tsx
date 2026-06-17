@@ -84,6 +84,20 @@ export default function AdminWholesaleImportPage() {
     URL.revokeObjectURL(a.href)
   }
 
+  // 📤 현재 도매 카탈로그 CSV 내보내기 (백업/검수 + 실데이터 템플릿). 인증 필요 → fetch+blob 다운로드.
+  const exportCatalog = async () => {
+    try {
+      const res = await fetch('/api/admin/distributor/supply-export', h)
+      if (!res.ok) { toast.error('내보내기 실패'); return }
+      const blob = await res.blob()
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      URL.revokeObjectURL(a.href)
+    } catch { toast.error('내보내기 중 오류') }
+  }
+
   const submit = async () => {
     if (!csv.trim()) { toast.error('CSV를 붙여넣거나 파일을 업로드해주세요'); return }
     setBusy(true); setResult(null)
@@ -140,6 +154,9 @@ export default function AdminWholesaleImportPage() {
         <div className={card}>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-sm text-gray-600">① 템플릿을 받아 채운 뒤, ② 제조사를 고르고, ③ CSV를 붙여넣어 등록하세요.</p>
+            <button onClick={exportCatalog} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200">
+              <Download className="w-4 h-4" /> 현재 카탈로그 내보내기
+            </button>
             <button onClick={downloadTemplate} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200">
               <Download className="w-4 h-4" /> CSV 템플릿 받기
             </button>

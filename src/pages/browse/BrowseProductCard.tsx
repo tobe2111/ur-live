@@ -18,13 +18,16 @@ import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
 import type { Product } from './types'
 
 const BrowseProductCard = memo(function BrowseProductCard({
-  product, aboveFold, isMealVoucher = false, interested = false, onToggleInterest,
+  product, aboveFold, isMealVoucher = false, interested = false, onToggleInterest, to,
 }: {
   product: Product
   aboveFold: boolean
   isMealVoucher?: boolean
   interested?: boolean
   onToggleInterest?: (e: React.MouseEvent, productId: number, productName: string | undefined, currentlyInterested: boolean) => void
+  // 🔗 2026-06-17 [LOADING_ADDITIVE] (링크샵 카드 통일): 네비 목적지 override(링크샵 핀 redirect URL 등).
+  //   미지정 시 기존과 동일하게 /products/:id. memo/이미지 속성/prefetch 동작 불변(추가만).
+  to?: string
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -44,7 +47,7 @@ const BrowseProductCard = memo(function BrowseProductCard({
   const grad = cardGradient(cardColor)
   return (
     <button
-      onClick={() => navigate(`/products/${product.id}`)}
+      onClick={() => navigate(to ?? `/products/${product.id}`)}
       onMouseEnter={() => prefetchProduct(product.id)}
       onTouchStart={() => prefetchProduct(product.id)}
       onFocus={() => prefetchProduct(product.id)}

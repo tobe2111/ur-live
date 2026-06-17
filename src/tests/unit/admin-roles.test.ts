@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   normalizeAdminRole,
   isSuperOnlyAdminPath,
+  isSelfServiceAdminPath,
   canAdminRoleMutate,
   adminPathSegment,
   isScopedAdminRole,
@@ -30,6 +31,16 @@ describe('admin-roles RBAC SSOT', () => {
     expect(isSuperOnlyAdminPath('/api/admin/audit-logs?page=1')).toBe(true);
     expect(isSuperOnlyAdminPath('/api/admin/2fa/setup')).toBe(false);
     expect(isSuperOnlyAdminPath('/api/admin/orders')).toBe(false);
+  });
+
+  it('isSelfServiceAdminPath: 본인 보안(로그인 PIN/2FA)은 역할 무관 허용 — 강제 게이트 데드락 방지', () => {
+    // 강제 PIN 설정/2FA 는 도매(scoped) 역할이라도 본인 계정엔 가능해야 함.
+    expect(isSelfServiceAdminPath('/api/admin/set-login-pin')).toBe(true);
+    expect(isSelfServiceAdminPath('/api/admin/2fa/setup')).toBe(true);
+    expect(isSelfServiceAdminPath('/api/admin/2fa/verify')).toBe(true);
+    // 그 외 경로는 self-service 아님(일반 RBAC 적용).
+    expect(isSelfServiceAdminPath('/api/admin/orders')).toBe(false);
+    expect(isSelfServiceAdminPath('/api/admin/admins')).toBe(false);
   });
 
   it('viewer: 어떤 경로도 변경 불가', () => {

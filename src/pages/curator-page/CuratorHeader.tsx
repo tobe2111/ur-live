@@ -64,35 +64,55 @@ export default function CuratorHeader({
   })
   async function saveSns() {
     if (saving) return
+    // 🏎️ 2026-06-17 (링크샵 데이터 변경 속도 감사): 낙관적 저장 — 즉시 반영 + 패널 닫기, 실패 시 되돌림.
+    const payload = {
+      youtube_url: snsForm.youtube_url.trim(),
+      instagram_url: snsForm.instagram_url.trim(),
+      tiktok_url: snsForm.tiktok_url.trim(),
+    }
+    const prev = {
+      youtube_url: curator.youtube_url || '',
+      instagram_url: curator.instagram_url || '',
+      tiktok_url: curator.tiktok_url || '',
+    }
+    onCuratorUpdate?.(payload)
+    setEditingSns(false)
     setSaving(true)
     try {
-      const payload = {
-        youtube_url: snsForm.youtube_url.trim(),
-        instagram_url: snsForm.instagram_url.trim(),
-        tiktok_url: snsForm.tiktok_url.trim(),
-      }
       const res = await api.patch('/api/curator/me/profile', payload)
-      if (res.data?.success) {
-        onCuratorUpdate?.(payload)
-        setEditingSns(false)
-      }
-    } catch { /* no-op */ } finally { setSaving(false) }
-  }
-
-  async function saveField(field: 'name' | 'bio', value: string) {
-    if (saving) return
-    setSaving(true)
-    try {
-      const payload = field === 'name' ? { name: value.trim() } : { bio: value.trim() }
-      const res = await api.patch('/api/curator/me/profile', payload)
-      if (res.data?.success) {
-        onCuratorUpdate?.({ [field]: value.trim() })
-        toast.success('저장됐어요')
-        setEditingField(null)
-      } else {
+      if (!res.data?.success) {
+        onCuratorUpdate?.(prev)
         toast.error(res.data?.error || '저장 실패')
       }
     } catch {
+      onCuratorUpdate?.(prev)
+      toast.error('저장 실패')
+    } finally { setSaving(false) }
+  }
+
+  // 🏎️ 2026-06-17 (링크샵 데이터 변경 속도 감사): 낙관적 저장 — 값 즉시 반영 + 편집 닫기,
+  //   PATCH 는 백그라운드. 실패 시 이전 값으로 되돌림. (핀 정렬과 동일한 즉시 반영 패턴 — 이름/소개글만
+  //   서버 왕복을 동기로 기다려 편집창이 멈춰 보이던 것 해소.)
+  async function saveField(field: 'name' | 'bio', value: string) {
+    if (saving) return
+    const next = value.trim()
+    // 이름은 최소 1자(서버 검증과 동일) — 빈 값이면 낙관 적용 없이 편집 유지.
+    if (field === 'name' && !next) { toast.error('이름은 최소 1자 필요해요'); return }
+    const prev = field === 'name' ? curator.name : (curator.bio || '')
+    if (next === prev) { setEditingField(null); return }
+    // 낙관적 반영 — 즉시 값 갱신 + 편집 닫기.
+    onCuratorUpdate?.({ [field]: next })
+    setEditingField(null)
+    setSaving(true)
+    try {
+      const payload = field === 'name' ? { name: next } : { bio: next }
+      const res = await api.patch('/api/curator/me/profile', payload)
+      if (!res.data?.success) {
+        onCuratorUpdate?.({ [field]: prev }) // 실패 → 되돌림
+        toast.error(res.data?.error || '저장 실패')
+      }
+    } catch {
+      onCuratorUpdate?.({ [field]: prev })
       toast.error('저장 실패')
     } finally {
       setSaving(false)
