@@ -19,6 +19,8 @@ import {
   normalizeAdminRole,
   isSuperOnlyAdminPath,
   canAdminRoleMutate,
+  isScopedAdminRole,
+  scopedRoleCanAccess,
   type AdminRole,
 } from '../../shared/admin-roles';
 
@@ -54,6 +56,13 @@ export function adminRbacMiddleware() {
     // 계정관리·감사로그·2FA = 슈퍼 전용(읽기·쓰기 모두).
     if (isSuperOnlyAdminPath(pathname)) {
       return c.json({ success: false, error: '이 영역은 슈퍼관리자만 접근할 수 있습니다', code: 'ADMIN_ROLE_FORBIDDEN' }, 403);
+    }
+
+    // 🆕 도메인-한정 역할(도매 파트너 등) — 읽기·쓰기 모두 자기 도메인만. 그 외 /api/admin/* 는 읽기도 차단.
+    if (isScopedAdminRole(role)) {
+      return scopedRoleCanAccess(role, pathname)
+        ? next()
+        : c.json({ success: false, error: '담당 도메인 밖의 영역입니다 (도매 전용 계정)', code: 'ADMIN_ROLE_FORBIDDEN' }, 403);
     }
 
     // 읽기는 허용(대시보드 조회).

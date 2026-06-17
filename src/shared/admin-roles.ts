@@ -11,20 +11,22 @@
  *   - cs: 주문 조회·반품/클레임·문의·리뷰.
  *   - finance: 정산·출금·세금·수수료/등급 설정.
  *   - viewer: 읽기 전용(모든 변경 차단).
+ *   - wholesale: 🆕 도매(유통스타트) 전용 — 도매 도메인만 읽기·쓰기, 그 외 /api/admin/* 전부 차단(외부 동업자).
  *
- * 정책: 읽기(GET/HEAD)는 슈퍼전용 경로를 제외하고 전 역할 허용. 변경은 역할별 도메인 제한.
- * ⚠️ ops/cs/finance/viewer 는 신규 역할(기존 계정 0) → 강제해도 기존 super/admin 워크플로 무영향.
+ * 정책: (일반역할) 읽기는 슈퍼전용 제외 전 허용, 변경은 도메인 제한.
+ *       (도메인-한정역할 wholesale) 읽기·쓰기 모두 자기 도메인만 — 유어딜 소비자 어드민 데이터 격리.
+ * ⚠️ ops/cs/finance/viewer/wholesale 는 신규 역할(기존 계정 0) → 강제해도 기존 super/admin 워크플로 무영향.
  */
 
-export type AdminRole = 'super' | 'admin' | 'ops' | 'cs' | 'finance' | 'viewer';
+export type AdminRole = 'super' | 'admin' | 'ops' | 'cs' | 'finance' | 'viewer' | 'wholesale';
 
-export const ADMIN_ROLES: AdminRole[] = ['super', 'admin', 'ops', 'cs', 'finance', 'viewer'];
+export const ADMIN_ROLES: AdminRole[] = ['super', 'admin', 'ops', 'cs', 'finance', 'viewer', 'wholesale'];
 
 /** admins.role 원시값 → 정규화. 미지/레거시는 super(전권) — 기존 계정 보호(역호환). */
 export function normalizeAdminRole(raw: string | null | undefined): AdminRole {
   const r = String(raw || '').toLowerCase().trim();
   if (r === 'super_admin' || r === 'super') return 'super';
-  if (r === 'admin' || r === 'ops' || r === 'cs' || r === 'finance' || r === 'viewer') return r as AdminRole;
+  if (r === 'admin' || r === 'ops' || r === 'cs' || r === 'finance' || r === 'viewer' || r === 'wholesale') return r as AdminRole;
   return 'super';
 }
 
@@ -59,13 +61,43 @@ const WRITE_DOMAINS: Record<'ops' | 'cs' | 'finance', readonly string[]> = {
   ],
 };
 
+/**
+ * 🆕 도메인-한정 역할 — 읽기·쓰기 모두 자기 도메인만(그 외 /api/admin/* 전부 차단).
+ *   ops/cs/finance(읽기 개방) 와 달리, 외부 동업자(wholesale)는 유어딜 소비자 데이터도 못 봄.
+ *   prefixes: 세그먼트가 이 접두로 시작하면 허용. exact: 정확 일치 허용.
+ */
+const SCOPED_ROLE_DOMAINS: Partial<Record<AdminRole, { prefixes: readonly string[]; exact: readonly string[] }>> = {
+  // 도매: /api/admin/wholesale*(deposits/withdrawals/orders/board/banners/products/malls/proposals/claims/quotes/tax/integrity/guide/overview)
+  //   + /api/admin/wholesale/*(tax·integrity) + distributor(등급/주문/일괄등록/통계) + suppliers(제조사) + partnership(제휴문의).
+  wholesale: {
+    prefixes: ['wholesale', 'partnership', 'distributor', 'supplier'],
+    exact: ['suppliers'],
+  },
+};
+
+/** 도메인-한정 역할인가(읽기까지 격리). */
+export function isScopedAdminRole(role: AdminRole): boolean {
+  return Object.prototype.hasOwnProperty.call(SCOPED_ROLE_DOMAINS, role);
+}
+
+/** 도메인-한정 역할이 이 경로(읽기·쓰기 공통)에 접근 가능한가. */
+export function scopedRoleCanAccess(role: AdminRole, pathname: string): boolean {
+  const cfg = SCOPED_ROLE_DOMAINS[role];
+  if (!cfg) return false;
+  const seg = adminPathSegment(pathname);
+  if (!seg) return false;
+  if (cfg.exact.includes(seg)) return true;
+  return cfg.prefixes.some((p) => seg === p || seg.startsWith(p));
+}
+
 /** 이 역할이 해당 경로에 '변경(mutation)' 을 할 수 있는가. (슈퍼전용 경로 차단은 호출 전 isSuperOnlyAdminPath 로) */
 export function canAdminRoleMutate(role: AdminRole, pathname: string): boolean {
   if (role === 'super' || role === 'admin') return true;
   if (role === 'viewer') return false;
+  if (isScopedAdminRole(role)) return scopedRoleCanAccess(role, pathname); // 도매: 자기 도메인만 변경
   const seg = adminPathSegment(pathname);
   if (!seg) return false;
-  const domains = WRITE_DOMAINS[role];
+  const domains = WRITE_DOMAINS[role as 'ops' | 'cs' | 'finance'];
   return !!domains && domains.includes(seg);
 }
 
@@ -77,4 +109,5 @@ export const ADMIN_ROLE_LABEL: Record<AdminRole, string> = {
   cs: '고객응대(CS)',
   finance: '정산/회계',
   viewer: '읽기전용',
+  wholesale: '도매 파트너',
 };

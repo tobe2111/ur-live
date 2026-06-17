@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 도매 전용 어드민 역할 `wholesale` (외부 동업자용 — 권한 분리, 앱 분리 X)
+**배경**: 도매몰 동업자(외부 파트너)가 어드민 접근 필요 → 완전 분리 대신 **RBAC 도메인-한정 역할**(대표 "추천대로", 범위 "도매 전체 정산·머니 포함"). 별도 앱 복제 X(유지보수·보안 2배 회피) — 같은 코드, 역할로 격리.
+- **SSOT `admin-roles.ts`**: `wholesale` 역할 신설(도메인-한정). 일반역할(ops/cs/finance=읽기 개방)과 달리 **읽기·쓰기 모두 도매 도메인만** — 유어딜 소비자 어드민 데이터 격리. `SCOPED_ROLE_DOMAINS`(prefixes: wholesale/partnership/distributor/supplier, exact: suppliers) + `isScopedAdminRole`/`scopedRoleCanAccess`. `canAdminRoleMutate` 가 scoped 위임.
+- **미들웨어 `admin-rbac.ts`**: scoped 역할이면 super-only 차단 후 `scopedRoleCanAccess` 로 읽기·쓰기 동시 게이트(그 외 /api/admin/* 읽기도 403). `/api/admin-payouts/*`(payouts)·users·settlements·group-buy 등 전부 차단.
+- **계정 발급**: `admin-accounts.routes` VALID_ROLES + `AdminAccountsPage` ROLE_OPTIONS 에 '도매 파트너' 추가(슈퍼가 발급). admins.role CHECK 없음(repair-schema) → 안전.
+- **프론트**: AdminLayout 가 wholesale 역할에 **도매 3그룹(domain:'wholesale')만 노출** + 비-도매 경로 진입 시 `/admin/wholesale-overview` 리다이렉트(깨진 화면 방지). 로그인 랜딩도 도매 현황.
+- 검증: tsc 0 · admin-roles 단위 12(scoped 4 신규) · client+worker build. 기존 super/admin 계정 무영향(신규 역할 계정 0). **다음(Phase 2): 처리자(누가 처리했는지) 표시 — 대표 요청.**
+
 ## ✅ 2026-06-17 도매몰 채우기(일괄 등록) + 출시 준비 3트랙 + UTONG START 로고 벡터화
 **배경**: 도매몰이 사실상 비어있음(공급상품 1개) → "채울 수단" 신설 + 출시 전 블로커 정리. 대표 "모두 다 진행".
 - **(채우기) 어드민 CSV 일괄 등록** — `POST /api/admin/distributor/supply-bulk-import`(finance/admin/super, RBAC distributor 세그먼트). 제조사 self-serve bulk 와 동일 한글 CSV 포맷이되 **즉시 노출**(is_active=1, approved). supplier_id 없으면 직매입 제조사 find-or-create. 판매가 미입력 시 공급가×1.6 자동. 청크 batch + 행별 리포트 + audit log. UI `AdminWholesaleImportPage`(/admin/wholesale-import, nav '상품 일괄 등록') — 제조사 선택/직매입 자동 + CSV 붙여넣기·업로드·템플릿 + 결과표.
