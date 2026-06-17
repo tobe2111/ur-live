@@ -64,8 +64,8 @@ adminAccountsRoutes.post('/admins', cors(), async (c) => {
 
     // SECURITY: only super_admin can create admins
     {
-      const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
-      const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
       const currentAdmin = await DB.prepare(
         'SELECT role FROM admins WHERE id = ?'
       ).bind(currentAdminId).first<{ role: string }>();
@@ -129,8 +129,8 @@ adminAccountsRoutes.patch('/admins/:id', cors(), async (c) => {
     const DB = c.env.DB;
 
     {
-      const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
-      const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
       const currentAdmin = await DB.prepare(
         'SELECT role FROM admins WHERE id = ?'
       ).bind(currentAdminId).first<{ role: string }>();
@@ -154,8 +154,8 @@ adminAccountsRoutes.patch('/admins/:id', cors(), async (c) => {
     const current = rows[0];
 
     if (role && role !== current.role) {
-      const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
-      const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
       if (String(currentAdminId) === String(adminId) && current.role === 'super_admin') {
         return c.json({ success: false, error: 'super_admin은 자신의 역할을 변경할 수 없습니다' }, 403);
       }
@@ -202,8 +202,8 @@ adminAccountsRoutes.delete('/admins/:id', cors(), async (c) => {
     const DB = c.env.DB;
 
     {
-      const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
-      const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
       const currentAdmin = await DB.prepare(
         'SELECT role FROM admins WHERE id = ?'
       ).bind(currentAdminId).first<{ role: string }>();
@@ -214,9 +214,9 @@ adminAccountsRoutes.delete('/admins/:id', cors(), async (c) => {
 
     const adminId = c.req.param('id');
 
-    const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
-    const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
-    if (String(currentAdminId) === String(adminId)) {
+    const selfUser = c.get('user' as never) as { id?: string | number } | undefined;
+    const selfAdminId = selfUser?.id;
+    if (String(selfAdminId) === String(adminId)) {
       return c.json({ success: false, error: '자기 자신을 삭제할 수 없습니다' }, 403);
     }
 
@@ -276,8 +276,8 @@ adminAccountsRoutes.post('/admins/:id/reset-password', cors(), rateLimit({ actio
     const DB = c.env.DB;
 
     {
-      const jwtPayload = c.get('jwtPayload' as never) as { sub?: string; id?: number } | undefined;
-      const currentAdminId = jwtPayload?.id || jwtPayload?.sub;
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
       const currentAdmin = await DB.prepare(
         'SELECT role FROM admins WHERE id = ?'
       ).bind(currentAdminId).first<{ role: string }>();
