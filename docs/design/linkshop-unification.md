@@ -1,5 +1,14 @@
 # 링크샵 통일 (Linkshop Unification) — 설계 북극성
 
+> 🔒 **2026-06-17 사용자 확정 (반복 변경 금지)**: "링크샵 상품/동네딜 카드는 홈·동네딜·쇼핑에서
+> **원래 쓰던 표준 그라데이션 카드(`src/pages/browse/BrowseProductCard.tsx`)를 그대로** 써라.
+> 커스텀 카드 그만 만들고(=`EditorialProductCard` 같은 별도 디자인 X) 영구 고정하라."
+> → CuratorPage 핀 그리드는 `BrowseProductCard` 재사용(클릭만 핀 redirect `to` override 로 추천적립 유지).
+> 카드 디자인을 바꾸려면 `BrowseProductCard` 자체를 고쳐 쇼핑/링크샵이 **함께** 바뀌게 할 것. 링크샵 전용
+> 카드 컴포넌트 신설 금지. (아래 step 2 의 EditorialProductCard 노선은 이 결정으로 **CuratorPage 에선 폐기**;
+> SellerPublicPage 는 잠금이라 추후 동일 카드로 수렴 예정.)
+
+
 > 2026-06-16 사용자 결정: "링크샵이라는 이름으로 통일하자. 일반·사업자로 나뉘더라도."
 > 이 문서는 **다음 세션/에이전트도 같은 북극성을 보도록** 박제한 SSOT.
 
