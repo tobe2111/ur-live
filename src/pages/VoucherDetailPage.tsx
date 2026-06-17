@@ -69,8 +69,12 @@ export default function VoucherDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const invalidateVouchers = useInvalidateMyVouchers()
-  // 🎨 2026-06-17 (교환권 상세 리디자인): 보유 딜 + 교환 후 잔액 표시. localStorage cache → 0ms.
-  const { data: balance = 0 } = useBalance()
+  // 🎨 2026-06-17 (교환권 상세 리디자인): 보유 딜 + 교환 후 잔액 표시.
+  // 🛠️ 2026-06-17 (사용자 신고 — "딜 부족"으로 잘못 뜸): 기본 useBalance() 는 initialData(localStorage,
+  //   기본 0)를 staleTime(60s) 동안 fresh 로 간주 → 이 페이지를 직접 진입(잔액 미캐시 브라우저)하면
+  //   refetch 없이 0 표시 → '딜 부족' 오표시. 결제 판단 페이지라 PointsChargePage 와 동일하게 fresh
+  //   fetch(0s stale + mount 마다 refetch + focus refetch)로 항상 최신 잔액 반영.
+  const { data: balance = 0, isFetching: balanceFetching } = useBalance({ fresh: true })
   const [product, setProduct] = useState<VoucherProduct | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -226,6 +230,8 @@ export default function VoucherDetailPage() {
   // 🎨 2026-06-17 (리디자인): 로그인 시에만 잔액 박스 노출. 교환 후 = 보유 − 결제 딜.
   const loggedIn = isLoggedInSync()
   const afterBalance = balance - total
+  // 🛠️ 첫 조회 중(캐시값 없는 0)엔 '딜 부족' 오표시 금지 — 실제 잔액 확정 전까지 '…' 표시.
+  const balancePending = balanceFetching && balance === 0
   // 🧹 공급사(KT Alpha) 내부 정책 표기 제거 후 표시 (prod DB 잔존 행도 즉시 정리).
   const cleanDescription = product.description ? stripSupplierPolicy(product.description) : ''
 
@@ -320,10 +326,12 @@ export default function VoucherDetailPage() {
           {/* 🎨 보유 딜 + 교환 후 잔액 (로그인 시) */}
           {loggedIn && (
             <div className="flex items-center justify-between bg-[#F6F7F9] dark:bg-[#121212] rounded-xl px-3.5 py-2.5 mb-3">
-              <span className="text-[12.5px] text-gray-500 dark:text-gray-400">보유 <b className="font-semibold text-gray-700 dark:text-gray-200">{formatNumber(balance)}딜</b></span>
+              <span className="text-[12.5px] text-gray-500 dark:text-gray-400">보유 <b className="font-semibold text-gray-700 dark:text-gray-200">{balancePending ? '…' : `${formatNumber(balance)}딜`}</b></span>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-[11.5px] font-semibold text-gray-500 dark:text-gray-400">교환 후</span>
-                {afterBalance >= 0 ? (
+                {balancePending ? (
+                  <span className="text-[18px] font-extrabold text-gray-400 dark:text-gray-500 tracking-tight">…</span>
+                ) : afterBalance >= 0 ? (
                   <span className="text-[18px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(afterBalance)}딜</span>
                 ) : (
                   <span className="text-[15px] font-extrabold text-red-500">딜 부족</span>

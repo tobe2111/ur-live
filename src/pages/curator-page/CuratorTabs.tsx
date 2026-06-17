@@ -21,7 +21,7 @@ export default function CuratorTabs({ tab, onChange, pinCount, shopCount = 0, vo
   // 🧭 2026-06-10 (동네딜 집중 재정향): 식사권(교환권) 탭을 상품 앞으로 — 링크샵 = 동네딜/교환권 유통 채널.
   const tabs: Array<{ key: CuratorTab; label: string; badge?: string }> = [
     { key: 'home', label: t('curator.tabs.home', { defaultValue: '홈' }), badge: pinCount > 0 ? String(pinCount) : undefined },
-    { key: 'vouchers', label: t('curator.tabs.vouchers', { defaultValue: '식사권' }), badge: voucherCount > 0 ? String(voucherCount) : undefined },
+    { key: 'vouchers', label: t('curator.tabs.dongnedeal', { defaultValue: '동네딜' }), badge: voucherCount > 0 ? String(voucherCount) : undefined },
     { key: 'shop', label: t('curator.tabs.shop', { defaultValue: '상품' }), badge: shopCount > 0 ? String(shopCount) : undefined },
   ]
 
