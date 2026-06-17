@@ -13,6 +13,7 @@ import SEO from '@/components/SEO'
 import { curatorApi, type DashboardStats } from '@/features/curator/api/curator-api'
 import { useAuthStore } from '@/client/stores/auth.store'
 import { formatWon, formatNumber, safeNum } from '@/utils/format'
+import { cfImage } from '@/utils/cf-image'
 import { toast } from '@/hooks/useToast'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
@@ -33,7 +34,14 @@ interface WithdrawalInfo {
 export default function CuratorEarningsPage() {
   const { t } = useTranslation()
   const user = useAuthStore((s: any) => s.user)
-  const [handle, setHandle] = useState<string | null>((user as any)?.handle || null)
+  // 🎨 2026-06-17 (콘솔 @handle 표시 fix): dashboard select 가 handle 을 버려 user.handle(주로 null)에만
+  //   의존 → 헤더 @handle 미표시 + '내 링크샵' 이 /u/me 리다이렉트 홉. localStorage.user_handle
+  //   (App/UMeRedirect/Kakao 가 기록, BottomNav 와 동일 소스)로 seed → 직접 /u/{handle} 진입.
+  const [handle, setHandle] = useState<string | null>(() => {
+    const fromUser = (user as any)?.handle
+    if (fromUser) return fromUser
+    try { return localStorage.getItem('user_handle') || null } catch { return null }
+  })
   const [wdInfo, setWdInfo] = useState<WithdrawalInfo | null>(null)
   const [showWithdraw, setShowWithdraw] = useState(false)
 
@@ -582,7 +590,13 @@ function TopPinsSection({ stats }: { stats: DashboardStats }) {
           >
             <div className="text-lg font-bold text-gray-400 dark:text-gray-500 w-6">{idx + 1}</div>
             {(pin.thumbnail || pin.image_url) && (
-              <img src={pin.thumbnail || pin.image_url || ''} alt={pin.product_name} className="w-12 h-12 rounded object-cover" />
+              <img
+                src={cfImage(pin.thumbnail || pin.image_url || '', { width: 96, format: 'auto' }) || (pin.thumbnail || pin.image_url || '')}
+                alt={pin.product_name}
+                className="w-12 h-12 rounded object-cover"
+                loading="lazy"
+                decoding="async"
+              />
             )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{pin.product_name}</p>

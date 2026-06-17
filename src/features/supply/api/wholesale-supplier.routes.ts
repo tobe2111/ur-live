@@ -19,6 +19,7 @@ import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn } from './wholesale-deposit-core'
 import { parseCsv } from './supply-csv'
 import { buildXlsx, xlsxResponse } from './xlsx'
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireSupplier())
@@ -203,8 +204,8 @@ app.post('/orders/:id/ship-all', async (c) => {
     if (!courier || !tracking) return c.json({ success: false, error: '택배사와 운송장 번호를 입력해주세요' }, 400)
 
     // 주문 존재 + 발송 가능 상태 확인.
-    const order = await DB.prepare("SELECT id, status FROM wholesale_orders WHERE id = ?")
-      .bind(orderId).first<{ id: number; status: string }>()
+    const order = await DB.prepare("SELECT id, status, distributor_seller_id FROM wholesale_orders WHERE id = ?")
+      .bind(orderId).first<{ id: number; status: string; distributor_seller_id: number }>()
     if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
     if (!['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(order.status)) {
       return c.json({ success: false, error: '발송할 수 없는 주문 상태입니다' }, 400)
@@ -224,6 +225,15 @@ app.post('/orders/:id/ship-all', async (c) => {
     if ((pending?.c ?? 0) === 0) {
       await DB.prepare("UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now') WHERE id=? AND status='PAID'")
         .bind(orderId).run()
+    }
+
+    // 🔔 2026-06-17 (알림 루프 보강): 유통사(바이어)에게 배송 시작 알림 — 기존엔 제조사만 신규주문 알림을 받고
+    //   발송 시 바이어 통지가 없었음. fail-soft(알림 실패가 발송 처리를 막지 않음).
+    if (order.distributor_seller_id) {
+      createDashboardNotification(
+        DB, 'seller', String(order.distributor_seller_id), 'wholesale_shipped',
+        '도매 주문 발송 시작', `주문 #${orderId} 상품이 발송되었습니다. (${courier} ${tracking})`, '/wholesale/dashboard',
+      ).catch(swallow('wholesale-supplier:notify-ship'))
     }
     return c.json({ success: true, shipped })
   } catch (err) {
@@ -331,6 +341,14 @@ app.post('/orders/:id/refund', async (c) => {
     const newStatus = (remain?.c ?? 0) === 0 ? 'REFUNDED' : 'PARTIAL_REFUNDED'
     await DB.prepare("UPDATE wholesale_orders SET status = ? WHERE id = ?").bind(newStatus, orderId).run()
 
+    // 🔔 2026-06-17 (알림 완성도): 유통사(바이어)에게 환불 처리 알림 — 입금확인/발송/출금/클레임엔 알림이
+    //   있었으나 제조사 직접 환불(반품 승인)만 바이어 통지가 없던 누락 보강. fail-soft.
+    if (order.distributor_seller_id) {
+      createDashboardNotification(
+        DB, 'seller', String(order.distributor_seller_id), 'wholesale_refunded',
+        '도매 주문 환불 처리', `주문 #${orderId} ${refundAmount.toLocaleString('ko-KR')}원이 환불되었습니다 (${newStatus === 'REFUNDED' ? '전체' : '부분'} 환불).`, '/wholesale/dashboard',
+      ).catch(swallow('wholesale-supplier:notify-refund'))
+    }
     return c.json({ success: true, refunded_amount: refundAmount, order_status: newStatus })
   } catch (err) {
     return safeError(c, err, '환불 처리 중 오류가 발생했습니다', '[wholesale-supplier]')

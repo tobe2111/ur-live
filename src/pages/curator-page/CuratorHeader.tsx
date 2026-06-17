@@ -12,12 +12,13 @@
 
 import { useRef, useState, useEffect } from 'react'
 import { snsUrl } from '@/utils/sns-url'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Share2, Pencil, Check, X, Camera, Settings } from 'lucide-react'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import { cfImage } from '@/utils/cf-image'
 import api from '@/lib/api'
+import { curatorApi } from '@/features/curator/api/curator-api'
 import { toast } from '@/hooks/useToast'
 import { compressForUpload } from '@/lib/image-compress'
 
@@ -49,7 +50,44 @@ export default function CuratorHeader({
   onCuratorUpdate,
 }: CuratorHeaderProps) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [editingField, setEditingField] = useState<'name' | 'bio' | null>(null)
+  // 🔗 2026-06-17 (사용자 요청 — 공유 우선 + 주소변경 통합): 헤더 '내 링크샵 주소' 카드의 주소 변경 인라인.
+  const shareHost = typeof window !== 'undefined' ? window.location.host : 'live.ur-team.com'
+  const [editingHandle, setEditingHandle] = useState(false)
+  const [handleVal, setHandleVal] = useState(curator.handle)
+  const [handleStatus, setHandleStatus] = useState<'idle' | 'checking' | 'ok' | 'bad' | 'saving'>('idle')
+  const [handleMsg, setHandleMsg] = useState('')
+  useEffect(() => {
+    if (!editingHandle) return
+    const h = handleVal.trim().toLowerCase()
+    if (h === curator.handle) { setHandleStatus('idle'); setHandleMsg(''); return }
+    if (!/^[a-z0-9_]{3,20}$/.test(h)) { setHandleStatus('bad'); setHandleMsg('소문자/숫자/_ 3~20자'); return }
+    setHandleStatus('checking'); setHandleMsg('확인 중…')
+    const tm = setTimeout(async () => {
+      try {
+        const r = await curatorApi.checkHandle(h)
+        if (r.available) { setHandleStatus('ok'); setHandleMsg('사용 가능한 주소예요') }
+        else { setHandleStatus('bad'); setHandleMsg(r.message || '이미 사용 중이에요') }
+      } catch { setHandleStatus('idle'); setHandleMsg('') }
+    }, 400)
+    return () => clearTimeout(tm)
+  }, [handleVal, editingHandle, curator.handle])
+  async function saveHandle() {
+    const h = handleVal.trim().toLowerCase()
+    if (h === curator.handle) { setEditingHandle(false); return }
+    if (handleStatus !== 'ok') return
+    setHandleStatus('saving')
+    try {
+      const r = await curatorApi.updateHandle(h)
+      if (r.success && r.handle) {
+        onCuratorUpdate?.({ handle: r.handle })
+        setEditingHandle(false)
+        navigate(`/u/${r.handle}`, { replace: true })
+        toast.success('링크샵 주소가 변경됐어요')
+      } else { setHandleStatus('bad'); setHandleMsg(r.error || '변경에 실패했어요') }
+    } catch { setHandleStatus('bad'); setHandleMsg('변경에 실패했어요') }
+  }
   const [editName, setEditName] = useState(curator.name)
   const [editBio, setEditBio] = useState(curator.bio || '')
   const [saving, setSaving] = useState(false)
@@ -64,35 +102,55 @@ export default function CuratorHeader({
   })
   async function saveSns() {
     if (saving) return
+    // 🏎️ 2026-06-17 (링크샵 데이터 변경 속도 감사): 낙관적 저장 — 즉시 반영 + 패널 닫기, 실패 시 되돌림.
+    const payload = {
+      youtube_url: snsForm.youtube_url.trim(),
+      instagram_url: snsForm.instagram_url.trim(),
+      tiktok_url: snsForm.tiktok_url.trim(),
+    }
+    const prev = {
+      youtube_url: curator.youtube_url || '',
+      instagram_url: curator.instagram_url || '',
+      tiktok_url: curator.tiktok_url || '',
+    }
+    onCuratorUpdate?.(payload)
+    setEditingSns(false)
     setSaving(true)
     try {
-      const payload = {
-        youtube_url: snsForm.youtube_url.trim(),
-        instagram_url: snsForm.instagram_url.trim(),
-        tiktok_url: snsForm.tiktok_url.trim(),
-      }
       const res = await api.patch('/api/curator/me/profile', payload)
-      if (res.data?.success) {
-        onCuratorUpdate?.(payload)
-        setEditingSns(false)
-      }
-    } catch { /* no-op */ } finally { setSaving(false) }
-  }
-
-  async function saveField(field: 'name' | 'bio', value: string) {
-    if (saving) return
-    setSaving(true)
-    try {
-      const payload = field === 'name' ? { name: value.trim() } : { bio: value.trim() }
-      const res = await api.patch('/api/curator/me/profile', payload)
-      if (res.data?.success) {
-        onCuratorUpdate?.({ [field]: value.trim() })
-        toast.success('저장됐어요')
-        setEditingField(null)
-      } else {
+      if (!res.data?.success) {
+        onCuratorUpdate?.(prev)
         toast.error(res.data?.error || '저장 실패')
       }
     } catch {
+      onCuratorUpdate?.(prev)
+      toast.error('저장 실패')
+    } finally { setSaving(false) }
+  }
+
+  // 🏎️ 2026-06-17 (링크샵 데이터 변경 속도 감사): 낙관적 저장 — 값 즉시 반영 + 편집 닫기,
+  //   PATCH 는 백그라운드. 실패 시 이전 값으로 되돌림. (핀 정렬과 동일한 즉시 반영 패턴 — 이름/소개글만
+  //   서버 왕복을 동기로 기다려 편집창이 멈춰 보이던 것 해소.)
+  async function saveField(field: 'name' | 'bio', value: string) {
+    if (saving) return
+    const next = value.trim()
+    // 이름은 최소 1자(서버 검증과 동일) — 빈 값이면 낙관 적용 없이 편집 유지.
+    if (field === 'name' && !next) { toast.error('이름은 최소 1자 필요해요'); return }
+    const prev = field === 'name' ? curator.name : (curator.bio || '')
+    if (next === prev) { setEditingField(null); return }
+    // 낙관적 반영 — 즉시 값 갱신 + 편집 닫기.
+    onCuratorUpdate?.({ [field]: next })
+    setEditingField(null)
+    setSaving(true)
+    try {
+      const payload = field === 'name' ? { name: next } : { bio: next }
+      const res = await api.patch('/api/curator/me/profile', payload)
+      if (!res.data?.success) {
+        onCuratorUpdate?.({ [field]: prev }) // 실패 → 되돌림
+        toast.error(res.data?.error || '저장 실패')
+      }
+    } catch {
+      onCuratorUpdate?.({ [field]: prev })
       toast.error('저장 실패')
     } finally {
       setSaving(false)
@@ -295,22 +353,83 @@ export default function CuratorHeader({
           </div>
         )}
 
-        {/* CTA — 본인: 프로필 수정 / 수익 대시보드, 방문자: 카카오 공유 + 복사 */}
+        {/* CTA — 본인: [내 링크샵 주소 카드: 공유+주소변경] + 프로필 수정/수익 대시보드 / 방문자: 카카오 공유 + 복사 */}
         {isOwner ? (
-          <div className="grid grid-cols-2 gap-2 mt-3.5">
-            <button
-              type="button"
-              onClick={() => setEditingField('name')}
-              className="py-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
-            >
-              <Pencil className="w-3.5 h-3.5" /> 프로필 수정
-            </button>
-            <Link
-              to="/u/me/earnings"
-              className="py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
-            >
-              <Settings className="w-3.5 h-3.5" /> 수익 대시보드
-            </Link>
+          <div className="mt-3.5 space-y-2.5">
+            {/* 🔗 2026-06-17 (사용자 요청 — "링크 공유가 우선, 주소 변경과 묶어서"): 주소 표시 + 복사/카카오 공유 + 주소 변경 한 카드. */}
+            <div className="rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#0A0A0A] p-3.5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400">내 링크샵 주소</span>
+                {!editingHandle && (
+                  <button
+                    onClick={() => { setEditingHandle(true); setHandleVal(curator.handle); setHandleStatus('idle'); setHandleMsg('') }}
+                    className="text-[11.5px] font-bold text-gray-900 dark:text-white active:opacity-70"
+                  >
+                    주소 변경
+                  </button>
+                )}
+              </div>
+              {editingHandle ? (
+                <div>
+                  <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-gray-300 dark:border-[#2A2A2A] bg-white dark:bg-[#121212]">
+                    <span className="shrink-0 text-[13px] font-mono text-gray-400">{shareHost}/u/</span>
+                    <input
+                      value={handleVal}
+                      onChange={(e) => setHandleVal(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20))}
+                      autoFocus
+                      className="flex-1 min-w-0 bg-transparent font-mono text-[13px] text-gray-900 dark:text-white outline-none"
+                    />
+                    {handleStatus === 'checking' && <span className="shrink-0 text-[11px] text-gray-400">확인중…</span>}
+                  </div>
+                  {handleMsg && (
+                    <p className={`text-[11.5px] mt-1.5 ${handleStatus === 'ok' ? 'text-emerald-600 dark:text-emerald-400' : handleStatus === 'checking' ? 'text-gray-400' : 'text-red-500'}`}>{handleMsg}</p>
+                  )}
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={saveHandle} disabled={handleStatus !== 'ok'} className="flex-1 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[13px] font-bold disabled:opacity-40">{handleStatus === 'saving' ? '저장 중…' : '주소 저장'}</button>
+                    <button onClick={() => { setEditingHandle(false); setHandleVal(curator.handle); setHandleStatus('idle'); setHandleMsg('') }} className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 text-[13px] font-bold">취소</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center px-3 py-2.5 rounded-xl bg-white dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A]">
+                    <span className="truncate text-[13px] font-mono text-gray-700 dark:text-gray-300">{shareHost}/u/{curator.handle}</span>
+                  </div>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={onCopyLink}
+                      className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
+                    >
+                      <Share2 className="w-3.5 h-3.5" /> 링크 복사
+                    </button>
+                    <div className="flex-1">
+                      <KakaoShareButton
+                        title={`${curator.name} 의 링크샵`}
+                        description={curator.bio || `${pinCount}개 추천 중`}
+                        imageUrl={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
+                        link={`/u/${curator.handle}`}
+                        className="w-full py-2.5 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[13px] font-bold transition-colors"
+                        buttonText="카카오 공유"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setEditingField('name')}
+                className="py-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
+              >
+                <Pencil className="w-3.5 h-3.5" /> 프로필 수정
+              </button>
+              <Link
+                to="/u/me/earnings"
+                className="py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
+              >
+                <Settings className="w-3.5 h-3.5" /> 수익 대시보드
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="flex gap-2 mt-3.5">

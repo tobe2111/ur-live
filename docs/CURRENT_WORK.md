@@ -1,5 +1,64 @@
 # 🚧 진행 중 작업
 
+## 🔴 2026-06-17 — 도매몰 마진 모델 전면 전환 (대표 확정, 머니 크리티컬) — ⚠️ staging E2E 필수
+**대표 확정 모델(cost-plus)**: 제조사가 받을 금액(공급원가) **위에** 플랫폼 마진%를 *붙여* 공급가 산출. (구: 판매가−등급보장마진 / 정산 공급가×90% → 정반대)
+- **공급가 = clamp(round(공급원가 × (1 + 유효마진%)), 하한=공급원가, 상한=판매가)**. 유효마진% = 제품별 마진%(`supply_margin_override_pct`, 없으면 전역 `wholesale_platform_commission_pct` 기본10) × 등급배수%/100.
+- **제조사 정산 = 공급원가 전액** / **플랫폼 = 공급가 − 공급원가** (`splitWholesaleUnit` 단순 분리 — 마진은 공급가에 내재, commPct 인자 무시). ⚠️ 구 코드의 "제조사=공급가×90%" 불일치/버그 해소.
+- **등급배수**(고등급=유료 우대): 일반C 100 / 프로B 70 / 프리미엄A 50 → 공급가 ↓ → 판매사 마진 ↑. (현재 `DEFAULT_GRADE_MULTIPLIERS` 상수 — **등급배수 어드민 편집은 후속**.)
+- **부가세**: 포함가 그대로(표시·청구·정산), 세금계산서만 `splitVat`(10/110) 분리 — **이미 구현됨**.
+- **변경 파일**: `distributor-pricing.ts`(resolveDistributorPrice→cost-plus, `distributorPriceFromCost`/`gradeMarginMultiplier`/`DEFAULT_PLATFORM_MARGIN_PCT`/`DEFAULT_GRADE_MULTIPLIERS` 신설, 구 distributorPriceFromRetail/marginForGrade deprecated 보존), `wholesale-settlement.ts`(splitWholesaleUnit 제조사=공급원가), `wholesale.routes.ts`(주문 라우트가 전역 기본마진 `commPct` 를 `defaultPlatformMarginPct` 로 전달 — 1줄), `AdminDistributorGradesPage`(라벨: 수수료율→기본 플랫폼 마진율), E2E 문서 재작성.
+- **검증**: tsc 0 · **단위 130 pass**(3개 시나리오 테스트 cost-plus 로 재작성 — 워크드 숫자 잠금) · money-pattern 0 · client+worker build 0.
+- ⚠️⚠️ **실 staging 결제 E2E 1회 필수**(외부 검증 불가): 공급가=공급원가×(1+마진)·제조사 지급=공급원가 전액·플랫폼=스프레드·판매가 상한·환불 역전. `docs/WHOLESALE_SETTLEMENT_E2E.md` 갱신본 참조.
+- **후속**: ① 등급배수 어드민 편집 UI(현재 상수) ② 제품별 마진 입력 UI 확인/라벨(supply_margin_override_pct) ③ GET /me·admin 등급 미리보기의 옛 marginForGrade 표시 정합 ④ guide-seed-wholesale 공식 문구.
+
+## ✅ 2026-06-17 — 대시보드 단일 세션 강제 (대표 결정: "단일 세션 강제로 하자", 범위 AskUserQuestion=대시보드 전체)
+**목적**: 한 대시보드 계정 = 한 곳(기기/브라우저)만 로그인. 새 기기 로그인 시 기존 세션 자동 로그아웃. 외부 도매 동업자/어드민 **계정 공유·도용 방지**(최근 PIN/2FA 와 같은 맥락).
+- **설계(iat 에포크 — payload 무변경)**: 모든 대시보드 토큰에 이미 있는 `iat` 활용. 신규 `dashboard_sessions(account_type, account_id, min_valid_iat)`. 로그인 시 `min_valid_iat=로그인 iat` 갱신 → 미들웨어/리프레시가 `토큰 iat < min_valid_iat` 면 401. **더 늦은 로그인이 이전 세션 무효화**. sid 를 전 payload 에 심는 방식 대비 변경면 최소.
+- **신규 헬퍼** `worker/utils/dashboard-session.ts`: `startDashboardSession`(로그인 갱신)·`isDashboardSessionCurrent`(검증, 1초 skew). **전 함수 fail-open/soft** — D1 장애·레거시(iat 없음)·추적행 없음(롤아웃 전)·비대상역할·서브계정은 모두 통과(인증/로그인 안 깨짐).
+- **범위(v1)**: admin / seller(=도매 사장, `/api/seller/login` 경유) / supplier. **제외**: agency(멀티 멤버)·wholesale 서브계정(`sub_account_id`) — 토큰 sub 가 부모ID라 시트별 키 필요(정상 동시 직원 오로그아웃 방지). 카카오 발급 셀러/에이전시 토큰도 v1 grandfather(잠금 kakao.routes 미변경). → **후속**: 멀티시트 per-seat 키 + 카카오 토큰.
+- **미들웨어**(`auth.ts requireAuth`): Bearer/세션쿠키/SSR-forward 3경로 모두 검증(`SESSION_SUPERSEDED` 401). `optionalAuth` 는 제외(선택 인증에 401 부적절). **리프레시 차단**: admin/seller `/refresh` 가 옛 토큰 iat 검사 → 옛 기기가 refresh 로 우회 못 함(서브계정 제외). 로그인 6지점 `startDashboardSession` 1줄씩(admin/seller/supplier login+become/seller-registration). 쿠키 경로 위해 `session.ts SessionUser.iat` 추가.
+- **클라 무변경**: 옛 기기 401→기존 refresh 실패→강제 로그아웃→`/{role}/login?error=session_expired`(기존 흐름이 그대로 처리). 메시지는 일반 "세션 만료"(향후 "다른 기기 로그인" 문구로 개선 가능).
+- 검증: tsc 0 · `npm run build` 0 · 단위 87 통과(dashboard-session 9 신규) · schema-refs/sql-bind 0. ⚠️ 배포 후 실 staging 1회 권장(A 로그인→B 로그인→A 자동 로그아웃 확인).
+
+## ✅ 2026-06-17 — 어드민 대시보드 라이브 스트림 관리: 체크박스 일괄 삭제 (사용자 요청)
+**요청**: 어드민 대시보드 '라이브 스트림 관리' 테이블을 체크박스로 다중 선택 삭제.
+- **구조적 발견**: 테이블이 public `/api/streams`(소프트삭제 `deleted_at` 미필터)에서 로드 → soft-delete(status='ended'+deleted_at)해도 행이 안 사라지던 구조(단건 삭제조차). 근본수정으로 **테이블 데이터 소스를 admin 전용 `/api/admin/streams` 로 전환 + 거기서 `deleted_at IS NULL` 필터**(저트래픽 admin 경로라 hot public 피드 무변경 — 회귀 0).
+- **백엔드** (`admin-streams.routes.ts`): ① GET `/streams` 에 `deleted_at IS NULL` 필터 + `ensureStreamDeletedAt`(per-worker defensive ALTER) ② 신규 `DELETE /streams/bulk`(`/streams/:id` 보다 **먼저** 등록 — :id 캡처 방지) — ids 검증(>0, ≤100), 이미 삭제분 skip, live-monitor/bulk 와 동일 soft-delete 패턴(status='ended'+deleted_at, 매출/이력 보존). adminApp 의 requireAdmin+IP화이트리스트+audit 체인 상속.
+- **프론트** (`StreamsTable.tsx`): 체크박스 열 + 전체선택(indeterminate) + 일괄삭제 액션 바(라이브 모니터 history 와 동일 UX). 선택은 컴포넌트 내부 상태, refetch 후 사라진 항목 자동 정리(useEffect prune). dark: variant 추가 0(대시보드 화이트 고정). (`AdminPage.tsx`): `bulkDeleteStreams` 핸들러(confirm→`DELETE /api/admin/streams/bulk`→성공 시 true 반환·refetch).
+- 검증: tsc 0 · `npm run build`(client+SSR+prerender+worker+prepare) 0 · 대시보드 테마검사(내 파일 위반 0) · 스키마 참조 0.
+
+## ✅ 2026-06-17 — 로그인 "계속 풀림" = 메인↔대시보드 듀얼 로그인 충돌 (사용자 신고 → 전수조사 후 근본수정)
+**신고**: "로그인이 계속 풀린다 / 대시보드에 로그인하면 기존 메인 유저 로그인이 로그아웃되는 느낌." 전수조사 결과 **단일 키 `user_type` 의존 잔존 코드**가 근본원인 — RouteGuards/isLoggedInSync/UserProfilePage 는 이미 토큰 기반으로 고쳤으나 **401 인터셉터 + 소비자 페이지 10곳이 누락**(부분 수정).
+- **메커니즘**: 한 브라우저에서 대시보드(셀러/어드민/에이전시)+소비자 동시 로그인 시 단일 키 `user_type` 이 'admin'/'seller' 로 덮임(`KakaoCallbackPage:69` admin/agency 토큰 있으면 'user' 미설정 + 대시보드 로그인이 직접 set). 그런데 `user_type === 'user'` 로 로그인을 판단하던 코드들이 멀쩡한 소비자 세션(user_id+쿠키)을 "로그아웃"으로 오인 → ① 즉시 체감(로그인 버튼/빈 화면) ② **실제 삭제**: `api.ts:597` 401 핸들러가 `isSessionCookieUser`(user_type==='user') false 면 **세션 헬스체크 보호를 건너뛰고** `clearAuthData('user')` 실행 → user_id+session_login 삭제.
+- **수정(근본)**: 신규 SSOT `auth.ts hasConsumerSession()`(user_id || session_login || firebase_token — **user_type 비의존**, seller/admin 토큰 단독은 비포함=구매자 식별용). 적용: 🔴 `api.ts:597` 401 게이트(이거 하나로 실제 풀림 차단) + 🟠 소비자 페이지 10곳(Cart/Checkout/ProductDetail/CouponClaim/Register/Login/MyGroupBuys/UserGroupBuyCreate/InfluencerDashboard/Referral). 헬스 엔드포인트가 쿠키로 최종 판정하므로 비-소비자엔 무해(session:false→정상 정리).
+- **의도적 제외**: `getLoginType`(호출자 0) · `App.tsx:344`(글로벌 Firebase init, 삭제 아님) · `auth-callback-bootstrap:169`(session:false 일 때만 삭제 — 무해, 401 경로가 reactively 처리).
+- **회귀 테스트**: `auth-utils.test.ts` 에 hasConsumerSession 8케이스(듀얼 로그인 user_type=admin/seller 에도 true, seller/admin 토큰 단독은 false). 검증: tsc 0 · 단위 55/55 · `npm run build`(client+ssr+prerender+worker+prepare) exit 0.
+- **후속(완전 이상적化 — 같은 클래스 2곳 추가 마감, 사용자 "이어서 진행")**: ① `auth.ts getUserId()`(async) 의 `user_type==='user'` 게이트 제거 — user_id 는 항상 소비자 id 라 user_type 무관하게 우선 반환(듀얼유저가 Firebase 로 빠져 소비자 id 를 못 받던 버그; getUserIdSync 와 일관). ② `ReelCard` 셀러 본인 방송 소유권 판정을 `user_type==='seller'` → `seller_token` 존재로(듀얼 셀러가 소비자로 마지막 로그인 시 본인 방송 컨트롤 상실 해소; id 비교 의미 보존 → non-셀러 false-positive 0). **의도적 유지**: `getUserNameSync`/`getUserEmail` role-dispatch(seller_name/admin_name)는 대시보드 표시에 필요 — 미변경(소비자 표시 nuance만, 세션 무관). BottomNav 는 이미 토큰/active_role 기반(무변경). 검증: tsc 0 · 인증 단위 90/90 · build exit 0.
+- **죽은 코드 제거(사용자 "제거하자")**: `src/client/lib/api.ts` 삭제 — 401 시 무조건 `clearAuth()` 호출하는 별도 fetch 클라이언트였으나 **import 0건(완전 미사용)**. 미래에 소비자 호출에 쓰이면 메인 `lib/api.ts` 의 세션-헬스 보호를 우회하는 공격적 로그아웃이 될 footgun → 선제 제거. `ApiError` export 도 외부 사용 0(다른 ApiError 들은 별개 정의), 배럴 재export 없음 확인. 검증: tsc 0 · build exit 0. (라이브 채팅 표시명 항목은 **라이브 서비스 영구 중단으로 폐기**.)
+- **공급사(제조사) 403 부당 로그아웃 수정(사용자 "진행하자")**: `src/lib/supplier-api.ts` 가 `401 || 403` 둘 다 `clearSupplierSession()`+/supplier/login 리다이렉트 → 제조사가 권한 없음/일시적 403 에도 세션 멀쩡한데 로그아웃되던 버그(소비자/대시보드와 같은 클래스 — 401 외 상태로 세션 파괴). **401 에서만 로그아웃**, 403 은 throw 만(페이지가 권한 없음 처리)로 수정. 메인 `lib/api.ts`(403=console.warn, 로그아웃 X)와 정합. supplierApi 는 제조사 입점 대시보드 전반에서 실사용(죽은 코드 아님). **미해결(낮은 우선순위)**: 공급사 토큰은 refresh 메커니즘 부재(30일 access 후 재로그인) — 타 역할은 90일 refresh+자동갱신. 사용자 결정 대기. 검증: tsc 0 · build exit 0.
+
+## ✅ 2026-06-17 — A) 동네딜 상품 일괄 등록 도구 + B) 도매몰 머니로직 검증 (대표 "모두 진행, 순서대로")
+**A. 동네딜 채우기 도구** (`admin-products.routes.ts` + `AdminDongnedealImportPage`): "총 0개"를 채울 수단. `/api/admin/dongnedeal/{stats,seed-demo(POST/DELETE),bulk-import}` — 동네딜 피드 형태(category meal/beauty/etc/general + is_active=1 + group_buy_status='active')로 products INSERT → 즉시 노출. CSV 한글 헤더(상품명/카테고리/판매가/정가/매장명/주소/이미지URL/설명) 행단위 검증·리포트, 카테고리 별칭 매핑, **숙소는 거부**(product_stay_info 필요 — 숙소 전용 등록). 데모 10종(slug `demo-deal-`, 멱등) + 정리. UI = 어드민 '🏪 오프라인 공구 › 동네딜 상품 등록'(/admin/dongnedeal-import), 현황카드(전체/노출/데모/카테고리별)+CSV. adminApp 글로벌 requireAdmin+RBAC. ⚠️ **실상품 데이터는 대표 준비 필요**(도구는 빠른 입력 수단).
+**B. 도매몰 머니 검증**(병렬 에이전트 read-only 감사): **수식·테스트 전부 정상** — `splitWholesaleUnit`(제조사=max(원가,round(공급가×(1−수수료%))), 플랫폼=공급가−제조사, 합보존)·`distributorPriceFromRetail` 확인, **unit 130 tests pass**, **표시가=청구가=정산액 동일 보장**(단일 SSOT 동기계산), **환불 역전 멱등**(admin full + supplier line, productIds-scoped, margin_total 비례역전). 기본 수수료 10%(=제조사 90%). `WHOLESALE_SETTLEMENT_E2E.md` §4 보강(예치금 환원 명시·margin_total 감소 체크·부분환불 행). ⚠️ **남은 건 2가지 — (1) "플랫폼=공급가 10%" 모델이 대표 의도인지 1줄 확인, (2) staging 실결제 1회**(코드는 검증 완료, 외부망 차단이라 실결제는 권한자 실행).
+- 검증: tsc 0 · client+worker build 0 · 테마·sql-bind·not-null·api-auth(경고는 기존 집계) 통과.
+
+## ✅ 2026-06-17 — 도매 관리자 보안 게이트 데드락/깜빡임 수정 + 후속 개선 (대표 신고 연쇄)
+**배경**: 강제 PIN(이 세션 외) + 도매 RBAC(타 세션) 교차로 도매 역할 관리자가 깨짐. 4갈래 순차 진행.
+- **깜빡임 무한루프 수정** (`AdminLayout`): wholesale 역할 + `must_set_pin` 일 때 PIN 게이트(→`/admin/set-pin`) ↔ RBAC 리다이렉트(→`/admin/wholesale-overview`)가 핑퐁 → remount 폭주 + dashboard-notifications 429. 보안 self-service 경로(`/admin/set-pin`,`/admin/2fa`)를 RBAC 리다이렉트에서 면제.
+- **403 데드락 수정** (`admin-rbac.ts`+`admin-roles.ts` SSOT): scoped(wholesale) 역할이 강제된 `POST /set-login-pin` 자체를 RBAC 가 막아 PIN 설정 불가(가둠). `isSelfServiceAdminPath()` 추가 → super-only/scoped 검사보다 먼저 통과(본인 user.id 만 변경이라 안전). 유닛테스트 추가.
+- **새 관리자 추가 400**: 백엔드가 name 필수였는데 폼은 선택 → name 옵셔널(이메일 local part fallback).
+- **PIN 분실 복구 UI** (`AdminAccountsPage`+`admin-accounts.routes`): 슈퍼 전용 `POST /admins/:id/reset-pin`(login_pin_hash NULL, 감사) + 'PIN 초기화' 버튼.
+- **홈 일반상품 카드 폭** (`HomeProductsRail`): 프레임(720) 안 xl:grid-cols-6 → sm:grid-cols-3 cap.
+- **PC 프레임 전수 점검**: StaysSearchPage/FlashDealsHero 그리드 cap, CartTab 고정바 `app-frame-bar`(마이페이지 버튼 프레임 넘침), 상품상세(/products/:id) 720 프레임(lg 2단 짜부 방지).
+- **링크샵 #6 통일**: 셀러 링크샵에 '방문자 미리보기'(previewAsVisitor) 추가 — 큐레이터와 파리티. 기본 off 라 기존 동작 불변.
+- 검증: tsc 0 · build 0 · admin-roles 유닛 13 통과.
+- **외부(대표 액션)**: ① 기프티쇼 이미지 리사이즈 복구 = giftishow 측 CF IP 화이트리스트 필요(현재 raw URL 무료 동작) ② KT 인앱 바코드/PIN = KT Alpha PIN 발급 계약 확인 후 CF env `KT_ALPHA_PIN_MODE=1`.
+
+## ✅ 2026-06-17 — 숙소 인라인 회귀 자체수정 (사용자 "다른 문제 없을까?" → 감사로 발견)
+**발견**: 직전에 숙소를 동네딜 그리드에 인라인 필터로 옮겼는데, **숙소 상품은 `products.price=0`(실가격은 객실 테이블 별도) + 위치·평점이 `product_stay_info` 별도 테이블**이라 그리드 카드론 **₩0·정보누락으로 깨짐**(seller-stays INSERT 확인). group_buy_status 기본값 'active'라 stays 가 피드에 들어와 '전체' 탭에도 ₩0 카드로 샐 수 있었음(잠재 선재버그 포함).
+- **수정(올바른 방향)**: 숙소는 전용 `/stays`(=`/api/group-buy/stays/search`, product_stay_info join)에서만 표시. ① 숙소 탭/사이드바 → `/stays` 환원 ② `GroupBuyListPage` 클라 필터에 `stay_voucher` **그리드 전역 제외**(전체 포함 — ₩0 카드 누수 차단) ③ 인라인용 stay 카드 라우팅/뱃지/CTA·Calendar import 정리(clean revert) ④ **`/stays` 헤더에 동네딜 카테고리 칩 추가**(전체/맛집식사권/미용/숙소(active)/기타/일반상품) — 숙소가 "다른 카테고리처럼" 보이길 원한 최초 요구를 예약 흐름 깨지 않고 충족(내비 일관성).
+- 일반 상품 피드 수정([UNLOCK_LOADING])·i18n·PC 바탕 다크는 그대로 유효. 검증: tsc 0 · build 0 · 테마·머니패턴 통과 · i18n 키 타 사용처 0(이모지 부작용 없음).
+
 ## ✅ 2026-06-17 — 동네딜 카테고리 마감재 4종 (사용자 "모두 다 이상적으로")
 **배경**: 숙소 인라인화·일반상품 추가 후 "더 이상적으로?" → 4건 전부 진행.
 - **#1 일반 상품 구조적 빈 카테고리 근본수정** (`group-buy-public.routes.ts`, [UNLOCK_LOADING]): general 이 `VOUCHER_CATEGORIES` 에 없어 항상 voucher 폴백 → 클라 필터에서 0개로 사라지던 버그. `category=general` 요청 시에만 `categories=['general']`. **기본 피드/캐시/SSR/Cache-Control 전부 불변**(general 전용 캐시키 신규). ※ "총 0개"의 나머지(맛집/미용/숙소)는 **실데이터 없음**(코드 정상) — 활성 group_buy 상품 등록 필요.
@@ -14,6 +73,18 @@
 - **사이드바** (`DesktopLiveSidebar`): 숙소 → `?category=stay_voucher`(인라인), **'일반 상품'(general) 카테고리 추가**(Package 아이콘). MENU '오프라인 공동구매' 활성 정규식에 general 포함(이중강조 방지).
 - **i18n**: `category.general`(nested) + `groupBuy.stayDateSearch`(flat) 6개 언어. (i18next ignoreJSONStructure 로 nested/flat 모두 resolve 확인.)
 - 검증: tsc 0 · `npm run build` 0 · 테마검사 통과.
+## ✅ 2026-06-17 계정 보안 — 로그인 보안 PIN 강제 + 로그인 이력(IP) (대표 요청 "서로 계정 로그인 방지")
+> ⚠️ 정정: 대표 결정으로 **앱 TOTP → 6자리 보안 PIN** 전환. 서버 PIN(`login_pin_hash`/`pin_required`/
+> `must_set_pin`/`POST /api/admin/set-login-pin`, 단순PIN 차단). 프론트 PIN 정합(AdminLoginPage PIN 입력 ·
+> AdminLayout `must_set_pin`→`/admin/set-pin` 게이트 · 신규 `AdminPinSetupPage`). 강제=super_admin+wholesale.
+> 잠금복구 `GET /api/_internal/reset-pin`(슈퍼). 또: 새 관리자 추가 비번 규칙 완화(8자+/2종+, 대문자 강제 X —
+> `validatePasswordComplexity({relaxed:true})`). 아래 원문(TOTP)은 히스토리.
+**배경**: 도매 동업자 다수 → 계정 공유/도용 방지. 2FA(인증앱 TOTP)가 가장 강력 — 인프라(/api/2fa/* generic store=admins.totp_secret/totp_enabled, Admin2FASetupPage /admin/2fa)는 있었으나 **로그인 강제 미배선**.
+- **2FA 강제 (도매 파트너 + 슈퍼)** — `admin.routes /login`: 비밀번호 OK 후 `admins.totp_enabled=1`이면 OTP 필수(미입력→`twofa_required` 토큰 미발급, 불일치→401). 강제 대상 역할인데 미등록이면 토큰 발급+`must_enroll_2fa`. **컬럼 미존재 catch→fail-safe(로그인 안 깨짐)**. 검증=utils/totp verifyTOTP(generic store와 RFC6238 호환 확인).
+- **프론트**: AdminLoginPage OTP 입력 단계(`needOtp`/`twofa_required`) + `must_enroll_2fa`→`/admin/2fa` 강제 + AdminLayout 등록 게이트(미등록 시 다른 경로 진입→2FA 페이지 가둠, verify 성공 시 해제). Admin2FASetupPage verify 성공 시 게이트 해제+랜딩.
+- **로그인 이력(IP)** — `/login` 성공 시 `admin_login_history`(admin_id/email/ip/UA) fail-soft INSERT(ensure WeakSet). 뷰어 `GET /api/admin/login-history`(슈퍼 전용 isSuperOnlyAdminPath) + `AdminLoginHistoryPage`(/admin/login-history, 시스템 nav). repair-schema 테이블 등록.
+- **잠금 복구**: `GET /api/_internal/reset-2fa?email=`(슈퍼만) — 기기 분실 시 2FA 해제→재등록. + must_enroll 게이트라 첫 등록은 잠금 없음(토큰 발급+유도).
+- ⚠️ **롤아웃**: 배포 후 대표님(super)부터 다음 로그인 시 2FA 등록 강제됨 — QR 스캔(Google Authenticator) + **secret 백업 권장**. 검증: tsc 0 · theme · client+worker build. ⚠️ 실 TOTP 라운드트립 staging 1회 권장.
 
 ## ✅ 2026-06-17 도매 전용 어드민 역할 `wholesale` (외부 동업자용 — 권한 분리, 앱 분리 X)
 **배경**: 도매몰 동업자(외부 파트너)가 어드민 접근 필요 → 완전 분리 대신 **RBAC 도메인-한정 역할**(대표 "추천대로", 범위 "도매 전체 정산·머니 포함"). 별도 앱 복제 X(유지보수·보안 2배 회피) — 같은 코드, 역할로 격리.

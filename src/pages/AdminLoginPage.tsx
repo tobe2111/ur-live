@@ -21,6 +21,9 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPw, setShowPw] = useState(false)
+  // 🆕 2026-06-17 보안 PIN: needPin=true 면 PIN 입력칸 노출(서버가 pin_required 반환).
+  const [needPin, setNeedPin] = useState(false)
+  const [pin, setPin] = useState('')
 
   // Remember Me 이메일 불러오기 (리다이렉트는 PublicRoute(forAdmin)에서 처리)
   useEffect(() => {
@@ -68,7 +71,16 @@ export default function AdminLoginPage() {
         email,
         password,
         turnstile_token: turnstileToken,
+        pin: needPin ? pin.trim() : undefined,
       })
+
+      // 🆕 보안 PIN: 서버가 PIN 요구(미입력/형식오류) → PIN 입력 단계로.
+      if (!response.data.success && response.data.pin_required) {
+        setNeedPin(true)
+        setError(response.data.error || response.data.message || '6자리 보안 PIN을 입력하세요')
+        setLoading(false)
+        return
+      }
 
       if (response.data.success) {
         // Save email if "Remember Me" is checked
@@ -96,12 +108,22 @@ export default function AdminLoginPage() {
         localStorage.setItem('admin_email', admin.email || '')
         localStorage.setItem('admin_role', admin.role || 'admin') // 🛡️ RBAC — 네비/UI 역할 게이트(권한 강제는 서버)
 
+        // 🆕 보안 PIN 강제 대상(도매 파트너/슈퍼)인데 미설정 → PIN 설정 페이지로 강제 유도.
+        if (response.data.data.must_set_pin) {
+          localStorage.setItem('admin_must_set_pin', '1')
+          navigate('/admin/set-pin', { replace: true })
+          return
+        }
+        localStorage.removeItem('admin_must_set_pin')
+
         // 🆕 도매 파트너(wholesale)는 소비자 어드민 홈(/admin) 접근 불가 → 도매 통합 현황으로 랜딩.
         const landing = String(admin.role || '').toLowerCase() === 'wholesale' ? '/admin/wholesale-overview' : '/admin'
         navigate(landing, { replace: true })
       }
     } catch (err: any) {
       if (import.meta.env.DEV) console.error('[AdminLogin] Error:', err)
+      // 🆕 보안 PIN: 잘못된 PIN(401)도 pin_required → PIN 단계 유지.
+      if (err.response?.data?.pin_required) setNeedPin(true)
       setError(err.response?.data?.message || err.response?.data?.error || t('admin.login.failed'))
     } finally {
       setLoading(false)
@@ -214,6 +236,27 @@ export default function AdminLoginPage() {
                   </button>
                 </div>
               </div>
+
+              {/* 🆕 보안 PIN — 서버가 pin_required 반환 시 노출. 관리자가 설정한 6자리 PIN. */}
+              {needPin && (
+                <div>
+                  <label htmlFor="admin-pin" className="block text-sm font-medium text-gray-700 mb-1.5">6자리 보안 PIN</label>
+                  <input
+                    id="admin-pin"
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={6}
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="••••••"
+                    aria-label="보안 PIN"
+                    autoFocus
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-center text-lg tracking-[0.4em] font-mono text-gray-900 bg-white [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">처음 설정한 6자리 보안 PIN을 입력하세요.</p>
+                </div>
+              )}
 
               {/* Remember Me */}
               <div className="flex items-center gap-2">

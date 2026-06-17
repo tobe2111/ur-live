@@ -15,6 +15,7 @@ import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import { walletTokens } from '@/components/wallet/walletTokens'
 import { formatNumber } from '@/utils/format'
+import { formatPhone } from '@/utils/format-phone'
 
 interface Voucher {
   id: number | string  // KT Alpha 는 'kt-{voId}' 형식
@@ -347,6 +348,8 @@ export default function MyVouchersPage() {
   const [justJoined, setJustJoined] = useState<{ product_id: number; name: string; image_url?: string } | null>(null)
   // 🛡️ 2026-05-24: phone 미등록 사용자 안내 배너 (한 번 dismiss 하면 7일 숨김).
   const [showPhoneBanner, setShowPhoneBanner] = useState(false)
+  // 🛠️ 2026-06-17 (사용자 신고 — '등록하러 가기' 가 마이페이지로만 이동): 인라인 등록 모달.
+  const [showPhoneModal, setShowPhoneModal] = useState(false)
   useEffect(() => {
     const dismissedAt = Number(localStorage.getItem('phone_banner_dismissed_at') || 0)
     if (Date.now() - dismissedAt < 7 * 86400000) return
@@ -436,7 +439,7 @@ export default function MyVouchersPage() {
                 기프티쇼 교환권은 휴대폰 MMS 로 발송됩니다. 등록하면 다음 교환권부터 자동 발송돼요.
               </p>
               <div className="mt-2 flex gap-2">
-                <button onClick={() => navigate('/user/profile')}
+                <button onClick={() => setShowPhoneModal(true)}
                   className="px-3 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg">
                   등록하러 가기
                 </button>
@@ -548,6 +551,14 @@ export default function MyVouchersPage() {
       {/* QR Code Modal */}
       {qrVoucher && <QRModal voucher={qrVoucher} onClose={() => setQrVoucher(null)} />}
 
+      {/* 🛠️ 2026-06-17: 전화번호 인라인 등록 (마이페이지 이동 X) */}
+      {showPhoneModal && (
+        <PhoneRegisterModal
+          onClose={() => setShowPhoneModal(false)}
+          onSaved={() => { setShowPhoneModal(false); setShowPhoneBanner(false) }}
+        />
+      )}
+
       {/* 🛡️ 2026-05-15: 참여 직후 share prompt (3 AI 합의: post-purchase share boost) */}
       {justJoined && <PostJoinShareModal data={justJoined} onClose={() => setJustJoined(null)} />}
     </WalletPageWrapper>
@@ -608,6 +619,71 @@ function PostJoinShareModal({ data, onClose }: { data: { product_id: number; nam
 }
 
 /**
+ * 🛠️ 2026-06-17 (사용자 신고): '등록하러 가기' 가 마이페이지로만 이동하던 것 → 인라인 전화번호 등록 모달.
+ *   저장은 PATCH /api/auth/profile (VoucherDetailPage 와 동일 검증된 엔드포인트 — phone 정상 저장됨).
+ *   개인정보보호법: 수집·이용 동의 체크박스 필수.
+ */
+function PhoneRegisterModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [phone, setPhone] = useState('')
+  const [consent, setConsent] = useState(false)
+  const [saving, setSaving] = useState(false)
+  useEscapeKey(onClose)
+
+  async function save() {
+    if (!consent) { toast.error('개인정보 수집·이용 동의 후 진행 가능합니다'); return }
+    const clean = phone.replace(/[-\s]/g, '')
+    if (!/^01\d{8,9}$/.test(clean)) { toast.error('010 으로 시작하는 휴대폰 번호를 입력하세요'); return }
+    setSaving(true)
+    try {
+      const res = await api.patch('/api/auth/profile', { phone: clean })
+      if (res.data?.success) { toast.success('전화번호 저장 완료'); onSaved() }
+      else toast.error(res.data?.error || '전화번호 저장 실패')
+    } catch (err) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e?.response?.data?.error || '전화번호 저장 실패')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[10100] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={onClose} role="presentation">
+      <div className="bg-white dark:bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-5 animate-slideUp" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-base font-extrabold text-gray-900 dark:text-white">📱 휴대폰 번호 등록</h3>
+          <button onClick={onClose} aria-label="닫기" className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-white"><X className="w-5 h-5" /></button>
+        </div>
+        <p className="text-xs text-gray-600 dark:text-gray-300 mb-4 leading-relaxed">
+          기프티쇼 교환권은 휴대폰 MMS 로 발송됩니다.<br />등록하면 다음 교환권부터 자동 발송돼요.
+        </p>
+        <input
+          type="tel" inputMode="numeric" maxLength={13}
+          value={phone}
+          onChange={(e) => setPhone(formatPhone(e.target.value))}
+          onKeyDown={(e) => { if (e.key === 'Enter') save() }}
+          placeholder="010-1234-5678"
+          className="w-full px-3 py-2.5 border border-gray-300 dark:border-[#2A2A2A] dark:bg-[#141414] rounded-xl text-base text-gray-900 dark:text-white mb-3"
+          autoFocus
+        />
+        <label className="flex items-start gap-2 mb-4 cursor-pointer">
+          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 w-4 h-4 accent-amber-500" />
+          <span className="text-[11px] text-gray-700 dark:text-gray-200 leading-relaxed">
+            <b>휴대폰 번호 수집·이용에 동의</b>합니다 (필수)
+            <br />
+            <span className="text-gray-500 dark:text-gray-400">· 이용 목적: 교환권 MMS / 알림톡 발송 · 보유 기간: 회원 탈퇴 시까지</span>
+          </span>
+        </label>
+        <button
+          onClick={save}
+          disabled={!phone || !consent || saving}
+          className="w-full py-3 bg-amber-500 text-white rounded-2xl text-sm font-extrabold disabled:opacity-40 active:scale-[0.99] transition-transform"
+        >
+          {saving ? '저장 중…' : '저장하기'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/**
  * Ticket-style voucher card.
  * Left: category dot + product name + restaurant + code.
  * Right: perforation (notch + dotted line) + sub QR + use button.
@@ -631,66 +707,52 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
   const usedAt = v.used_at ? new Date(v.used_at) : null
   const daysLeft = expiresAt ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : null
 
-  // 카테고리 라벨 — 식당명/상품명에서 키워드 추출. 디자인 v4 톤에 맞춰 영문 대문자.
-  const categoryLabel = deriveCategoryLabel(v.product_name, v.restaurant_name)
-  const accentDot = '#EF4444'
-
-  const statusBadge = (() => {
-    if (v.status === 'unused') return null
-    return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md"
-        style={{
-          fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
-          background: v.status === 'used' ? 'rgba(0,0,0,0.06)' : v.status === 'expired' ? 'rgba(239,68,68,0.10)' : 'rgba(245,158,11,0.10)',
-          color: v.status === 'used' ? '#6B7280' : v.status === 'expired' ? '#DC2626' : '#D97706',
-        }}>
-        {t(`voucher.status.${v.status}`)}
-      </span>
-    )
-  })()
-
   // 🛡️ 2026-05-25 (A 옵션): KT Alpha 쿠폰은 별도 카드 형식 (재발송 버튼 포함)
   if (v.source === 'kt_alpha') {
     return <KtAlphaVoucherCard v={v} muted={muted} t={t} />
   }
 
+  // 🎨 2026-06-17 (사용자 신고 — UI 별로): 텍스트-only 절취선 티켓 + 영문 휴리스틱 라벨 폐기.
+  //   → 음식 사진(식사권 핵심) 노출 + 클린 카드 톤(교환권 상세/목록과 정합).
+  const urgent = v.status === 'unused' && daysLeft !== null && daysLeft <= 3
+  const statusBadge = v.status !== 'unused' ? (
+    <span className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide"
+      style={{
+        background: v.status === 'used' ? 'rgba(0,0,0,0.06)' : v.status === 'expired' ? 'rgba(239,68,68,0.10)' : 'rgba(245,158,11,0.12)',
+        color: v.status === 'used' ? '#6B7280' : v.status === 'expired' ? '#DC2626' : '#D97706',
+      }}>
+      {t(`voucher.status.${v.status}`)}
+    </span>
+  ) : null
+
   return (
     <div
-      className="relative flex rounded-xl overflow-hidden bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F]"
+      className="relative flex items-stretch gap-3 rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F] p-3"
       style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 3px rgba(0,0,0,0.04)' }}
     >
-      {/* 좌측 본문 (~75%) */}
-      <div className="flex-1 p-4 pr-3 min-w-0">
-        {/* 카테고리 라벨 + 상태 뱃지 */}
-        <div className="flex items-center gap-1.5 mb-1">
-          <span
-            aria-hidden
-            style={{ width: 6, height: 6, borderRadius: '50%', background: accentDot, display: 'inline-block', flexShrink: 0 }}
-          />
-          <span style={{
-            fontSize: 9, fontWeight: 800, letterSpacing: '0.08em',
-            color: '#6B7280', textTransform: 'uppercase',
-          }}>
-            {categoryLabel}
-          </span>
-          {statusBadge && <span className="ml-auto">{statusBadge}</span>}
+      {/* 🎨 음식 사진 — 기존 식사권 카드엔 사진이 없어 밋밋했음(상세/목록 톤과 정합). */}
+      <div className="w-[84px] h-[84px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F]">
+        {v.product_image ? (
+          <img src={v.product_image} alt={v.product_name} loading="lazy" className="w-full h-full object-cover" />
+        ) : (
+          <Ticket className="w-7 h-7 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
+        )}
+      </div>
+
+      {/* 본문 */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex items-start gap-2">
+          <p className="flex-1 line-clamp-2 text-gray-900 dark:text-white font-bold text-[14px] leading-snug tracking-tight">
+            {v.product_name}
+          </p>
+          {statusBadge}
         </div>
-
-        {/* 상품명 — 🏭 2026-06-05 (사용자 신고 — 다크에서 안 보임): 하드코딩 #0A0A0A → 테마 대응 클래스. */}
-        <p className="line-clamp-2 mb-1 text-gray-900 dark:text-white" style={{ fontSize: 14, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.3 }}>
-          {v.product_name}
-        </p>
-
-        {/* 식당명 */}
         {v.restaurant_name && (
-          <p className="flex items-center gap-1 mb-2.5" style={{ fontSize: 11, color: '#6B7280' }}>
-            <MapPin className="w-3 h-3" style={{ flexShrink: 0 }} />
-            <span className="truncate">{v.restaurant_name}</span>
+          <p className="flex items-center gap-1 mt-1 text-[11.5px] text-gray-500 dark:text-gray-400">
+            <MapPin className="w-3 h-3 shrink-0" /><span className="truncate">{v.restaurant_name}</span>
           </p>
         )}
-
-        {/* 코드 + D-day row */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="mt-auto pt-2 flex items-center gap-2 flex-wrap">
           <code
             onClick={(e) => {
               e.stopPropagation()
@@ -698,85 +760,40 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
               navigator.clipboard?.writeText(v.code)
               toast.success(t('voucher.copied', { defaultValue: '복사됨' }))
             }}
-            className={`text-gray-900 dark:text-white bg-black/[0.04] dark:bg-white/10 ${v.status === 'unused' ? 'cursor-pointer active:opacity-70' : ''}`}
-            style={{
-              fontSize: 11, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-              fontWeight: 700, letterSpacing: '0.02em',
-              padding: '3px 6px', borderRadius: 4,
-            }}>
+            className={`font-mono text-[11px] font-bold tracking-wide text-gray-700 dark:text-gray-200 bg-black/[0.04] dark:bg-white/10 rounded px-1.5 py-0.5 ${v.status === 'unused' ? 'cursor-pointer active:opacity-70' : ''}`}
+          >
             {v.code}
           </code>
           {v.status === 'unused' && daysLeft !== null && (
-            <span style={{
-              fontSize: 10, fontWeight: 700,
-              color: daysLeft <= 3 ? '#DC2626' : '#6B7280',
-              letterSpacing: '-0.01em',
-            }}>
+            <span className={`text-[11px] font-extrabold rounded-md px-1.5 py-0.5 ${urgent ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300'}`}>
               {daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`}
             </span>
           )}
           {v.status === 'used' && usedAt && (
-            <span style={{ fontSize: 10, color: '#9CA3AF' }}>
+            <span className="text-[10px] text-gray-400 dark:text-gray-500">
               {t('voucher.usedAt')} · {usedAt.toLocaleDateString(locale)}
             </span>
           )}
         </div>
       </div>
 
-      {/* 절취선 노치 (top + bottom round cutouts) + 점선 — 🏭 2026-06-05: 노치는 페이지 배경색(테마), 점선은 테마 대응. */}
-      <div className="relative flex items-stretch" style={{ width: 1 }}>
-        <span aria-hidden className="absolute w-3.5 h-3.5 rounded-full bg-gray-50 dark:bg-[#020202]" style={{ left: -7, top: -7 }} />
-        <span aria-hidden className="absolute w-3.5 h-3.5 rounded-full bg-gray-50 dark:bg-[#020202]" style={{ left: -7, bottom: -7 }} />
-        <span aria-hidden className="self-stretch border-l border-dashed border-black/20 dark:border-white/20" style={{ marginTop: 12, marginBottom: 12 }} />
-      </div>
-
-      {/* 우측 액션 (~25%) */}
-      <div className="w-[88px] flex flex-col items-center justify-center gap-1.5 px-2 py-3 shrink-0 bg-black/[0.025] dark:bg-white/[0.04]">
-        {v.status === 'unused' ? (
-          <>
-            {/* 미니 QR placeholder */}
-            {/* 🏭 2026-06-05 (사용자 신고 — 다크에서 안 보임): QR 버튼·'사용' 라벨 테마 대응. */}
-            <button
-              onClick={onShowQr}
-              aria-label={t('voucher.scan')}
-              className="w-12 h-12 rounded-md flex items-center justify-center active:opacity-80 bg-gray-900 text-white dark:bg-white dark:text-gray-900"
-            >
-              <QrCode className="w-6 h-6" strokeWidth={1.5} />
-            </button>
-            <span className="text-gray-900 dark:text-white" style={{ fontSize: 10, fontWeight: 700, letterSpacing: '-0.01em' }}>
-              {t('voucher.use', { defaultValue: '사용' })}
-            </span>
-          </>
-        ) : (
-          <div className="flex flex-col items-center gap-1 opacity-60">
-            <Ticket className="w-7 h-7" style={{ color: '#9CA3AF' }} strokeWidth={1.5} />
-            <span style={{ fontSize: 9, color: '#9CA3AF', fontWeight: 600 }}>
-              {t(`voucher.status.${v.status}`)}
-            </span>
-          </div>
-        )}
-      </div>
+      {/* 액션 — 사용 가능 시 QR/사용, 그 외 상태 아이콘 */}
+      {v.status === 'unused' ? (
+        <button
+          onClick={onShowQr}
+          aria-label={t('voucher.scan')}
+          className="shrink-0 self-center flex flex-col items-center justify-center gap-1 w-[62px] h-[70px] rounded-xl bg-gray-900 text-white dark:bg-white dark:text-gray-900 active:scale-95 transition-transform"
+        >
+          <QrCode className="w-6 h-6" strokeWidth={1.6} />
+          <span className="text-[10px] font-extrabold">{t('voucher.use', { defaultValue: '사용' })}</span>
+        </button>
+      ) : (
+        <div className="shrink-0 self-center w-[62px] flex items-center justify-center opacity-50">
+          <Ticket className="w-6 h-6 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
+        </div>
+      )}
     </div>
   )
-}
-
-/**
- * Derive a short uppercase English category from product name / restaurant.
- * Heuristic — keeps the v4 design's editorial feel without requiring backend changes.
- */
-function deriveCategoryLabel(productName: string, restaurantName?: string): string {
-  const text = `${productName} ${restaurantName || ''}`.toLowerCase()
-  if (/한우|소고기|등심|채끝|안심|beef/.test(text)) return 'KOREAN BEEF'
-  if (/오마카세|omakase|스시|sushi|초밥/.test(text)) return 'OMAKASE'
-  if (/그릴|grill|스테이크|steak/.test(text)) return 'GRILL'
-  if (/돼지|삼겹|pork|족발|보쌈/.test(text)) return 'PORK'
-  if (/치킨|chicken|닭/.test(text)) return 'CHICKEN'
-  if (/파스타|pasta|피자|pizza|이탈리|italian/.test(text)) return 'ITALIAN'
-  if (/중식|짜장|짬뽕|마라|chinese/.test(text)) return 'CHINESE'
-  if (/일식|라멘|돈카츠|japanese|udon|우동/.test(text)) return 'JAPANESE'
-  if (/카페|coffee|디저트|dessert|cafe/.test(text)) return 'CAFE'
-  if (/술|와인|맥주|bar|pub/.test(text)) return 'BAR'
-  return 'MEAL'
 }
 
 // 🛡️ 2026-05-25 (A 옵션): KT Alpha 쿠폰 카드 — MMS 발송된 기프티쇼 표시.
@@ -808,47 +825,61 @@ function KtAlphaVoucherCard({ v, muted, t }: {
   // 🔢 #4: PIN 모드 발급분(kt_pin 보유)은 인앱 바코드. 아니면 MMS 안내(기존).
   const hasBarcode = !!v.kt_pin && v.status === 'unused'
 
+  // 🎨 2026-06-17 (사용자 요청 — 카드 톤 통일): amber 그라데이션 카드 → 식사권과 동일한 클린
+  //   화이트 카드 + 84px 썸네일 + 잉크 타이포. 기프티쇼 정체성은 작은 amber 칩으로만 구분.
+  const statusBadge = v.status !== 'unused' ? (
+    <span className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide"
+      style={{
+        background: v.status === 'used' ? 'rgba(0,0,0,0.06)' : v.status === 'expired' ? 'rgba(239,68,68,0.10)' : 'rgba(245,158,11,0.12)',
+        color: v.status === 'used' ? '#6B7280' : v.status === 'expired' ? '#DC2626' : '#D97706',
+      }}>
+      {t(`voucher.status.${v.status}`)}
+    </span>
+  ) : null
+
   return (
     <div
-      className="relative rounded-xl overflow-hidden bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800"
-      style={{ opacity: muted ? 0.55 : 1 }}
+      className="relative rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F] p-3"
+      style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 3px rgba(0,0,0,0.04)' }}
     >
-      <div className="flex">
-        <div className="flex-1 p-4 min-w-0">
-          <div className="flex items-center gap-1.5 mb-1">
-            <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "#F59E0B", display: "inline-block", flexShrink: 0 }} />
-            <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.08em" }} className="text-amber-700 dark:text-amber-400">
-              📱 KT ALPHA · 기프티쇼
-            </span>
-          </div>
-          <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{v.product_name}</p>
-          {v.applied_price && (
-            <p className="text-sm text-amber-600 dark:text-amber-400 font-bold mt-0.5">{formatNumber(v.applied_price)}원</p>
-          )}
-          {maskedPhone && !hasBarcode && (
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-              📞 {maskedPhone} 로 발송됨
-            </p>
-          )}
-          {hasBarcode ? (
-            <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-2 font-semibold leading-relaxed">
-              {t('voucher.ktShowBarcode', { defaultValue: '매장에서 아래 바코드를 제시하세요' })}
-            </p>
+      <div className="flex items-stretch gap-3">
+        {/* 상품 이미지 (식사권 카드와 동일 규격) */}
+        <div className="w-[84px] h-[84px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#FFF7E6] to-[#FFF0F0] dark:from-[#1A1A1A] dark:to-[#0F0F0F]">
+          {v.product_image ? (
+            <img src={v.product_image} alt={v.product_name} loading="lazy" className="w-full h-full object-cover" />
           ) : (
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">
-              {t('voucher.ktCheckMms', { defaultValue: '휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.' })}
-            </p>
+            <Ticket className="w-7 h-7 text-amber-300 dark:text-amber-700/60" strokeWidth={1.5} />
           )}
         </div>
-        {v.product_image && !hasBarcode && (
-          <div className="w-24 h-24 m-3 rounded-lg overflow-hidden bg-white dark:bg-[#0A0A0A] shrink-0">
-            <img src={v.product_image} alt={v.product_name} className="w-full h-full object-cover" loading="lazy" />
+
+        {/* 본문 */}
+        <div className="flex-1 min-w-0 flex flex-col">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400">
+              📱 기프티쇼
+            </span>
+            {statusBadge && <span className="ml-auto">{statusBadge}</span>}
           </div>
-        )}
+          <p className="line-clamp-2 mt-1 text-gray-900 dark:text-white font-bold text-[14px] leading-snug tracking-tight">{v.product_name}</p>
+          {v.applied_price && (
+            <p className="mt-0.5 text-[13px] font-extrabold text-gray-900 dark:text-white">{formatNumber(v.applied_price)}원</p>
+          )}
+          <div className="mt-auto pt-1.5">
+            {maskedPhone && !hasBarcode && (
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">📞 {maskedPhone} 로 발송됨</p>
+            )}
+            <p className="mt-0.5 text-[10.5px] leading-relaxed text-gray-400 dark:text-gray-500">
+              {hasBarcode
+                ? t('voucher.ktShowBarcode', { defaultValue: '매장에서 아래 바코드를 제시하세요' })
+                : t('voucher.ktCheckMms', { defaultValue: '휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.' })}
+            </p>
+          </div>
+        </div>
       </div>
+
       {/* 🔢 #4: 인앱 바코드 (PIN 모드 발급분) */}
       {hasBarcode && (
-        <div className="mx-3 mb-3 px-3 py-3 rounded-lg bg-white dark:bg-[#0A0A0A] flex flex-col items-center gap-1.5">
+        <div className="mt-3 px-3 py-3 rounded-xl bg-gray-50 dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1F1F1F] flex flex-col items-center gap-1.5">
           <Barcode value={v.kt_pin as string} />
           <span className="text-[12px] font-mono font-bold tracking-[0.15em] text-gray-900 dark:text-white">{v.kt_pin}</span>
         </div>

@@ -78,14 +78,18 @@ adminAccountsRoutes.post('/admins', cors(), async (c) => {
       email: string; password: string; name: string; role: string; username?: string;
     }>();
 
-    if (!email || !password || !name || !role) {
-      return c.json({ success: false, error: '필수 항목이 누락되었습니다 (email, password, name, role)' }, 400);
+    // 🆕 2026-06-17 (대표 신고 — 새 관리자 추가 400): name 은 프런트 폼에서 선택 입력이라
+    //   비워도 400 안 나게 이메일 local part 로 fallback (username 과 동일 정책). 필수는 email/password/role.
+    if (!email || !password || !role) {
+      return c.json({ success: false, error: '필수 항목이 누락되었습니다 (email, password, role)' }, 400);
     }
     if (!VALID_ADMIN_ROLES.includes(role)) {
       return c.json({ success: false, error: `유효하지 않은 역할입니다. ${VALID_ADMIN_ROLES.join(', ')} 중 선택하세요` }, 400);
     }
+    const resolvedName = (name && name.trim()) || email.split('@')[0];
 
-    const complexity = validatePasswordComplexity(password);
+    // 🆕 2026-06-17 (대표 요청): 새 관리자 추가는 완화 규칙(8자+ / 영문·숫자·특수 2종+) — 대문자 강제 X.
+    const complexity = validatePasswordComplexity(password, { relaxed: true });
     if (!complexity.ok) {
       return c.json({ success: false, error: complexity.error ?? '비밀번호 복잡도 부족' }, 400);
     }
@@ -107,14 +111,14 @@ adminAccountsRoutes.post('/admins', cors(), async (c) => {
     await executeRun(DB,
       `INSERT INTO admins (username, email, password_hash, name, role, created_at)
        VALUES (?, ?, ?, ?, ?, datetime('now'))`,
-      [resolvedUsername, email, passwordHash, name, role]
+      [resolvedUsername, email, passwordHash, resolvedName, role]
     );
 
     await writeAuditLog(c, {
       action: 'create_admin',
       targetType: 'admin',
       targetId: email,
-      after: { email, name, role }
+      after: { email, name: resolvedName, role }
     });
 
     return c.json({ success: true, message: '관리자가 생성되었습니다' });
@@ -318,6 +322,51 @@ adminAccountsRoutes.post('/admins/:id/reset-password', cors(), rateLimit({ actio
     return c.json({ success: true, message: '비밀번호가 재설정되었습니다' });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] reset password error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// 🆕 2026-06-17: 로그인 보안 PIN 초기화 (super_admin 전용) — 도매 파트너 등이 6자리 PIN 분실 시 복구.
+//   login_pin_hash = NULL → 다음 로그인 때 비밀번호만으로 통과하고, 강제 대상 역할(도매/슈퍼)은
+//   must_set_pin 으로 다시 PIN 설정 화면에 유도됨(서버 login 핸들러가 재평가). 본인 PIN 은 본인 화면에서 변경.
+adminAccountsRoutes.post('/admins/:id/reset-pin', cors(), rateLimit({ action: 'admin_reset_admin_pin', max: 20, windowSec: 3600 }), async (c) => {
+  try {
+    const DB = c.env.DB;
+
+    {
+      const currentUser = c.get('user' as never) as { id?: string | number; role?: string } | undefined;
+      const currentAdminId = currentUser?.id;
+      const currentAdmin = await DB.prepare(
+        'SELECT role FROM admins WHERE id = ?'
+      ).bind(currentAdminId).first<{ role: string }>();
+      if (!currentAdmin || currentAdmin.role !== 'super_admin') {
+        return c.json({ success: false, error: 'super_admin 권한이 필요합니다' }, 403);
+      }
+    }
+
+    const adminId = c.req.param('id');
+    const rows = await executeQuery<{ id: number; email: string }>(DB,
+      `SELECT id, email FROM admins WHERE id = ?`, [adminId]
+    );
+    if (rows.length === 0) {
+      return c.json({ success: false, error: '관리자를 찾을 수 없습니다' }, 404);
+    }
+
+    // login_pin_hash 컬럼 미존재(레거시 DB)면 초기화할 PIN 자체가 없음 → 멱등 성공.
+    await DB.prepare(`UPDATE admins SET login_pin_hash = NULL WHERE id = ?`)
+      .bind(adminId).run()
+      .catch((_e) => { if (import.meta.env.DEV) console.warn('[Admin] reset-pin (no column?)', _e); });
+
+    await writeAuditLog(c, {
+      action: 'reset_admin_pin',
+      targetType: 'admin',
+      targetId: adminId,
+      after: { pin_reset: true }
+    });
+
+    return c.json({ success: true, message: '보안 PIN이 초기화되었습니다. 해당 관리자는 다음 로그인 시 새 PIN을 설정합니다.' });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] reset pin error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });

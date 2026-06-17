@@ -25,6 +25,7 @@ import { maskEmail } from '@/lib/mask';
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout';
 
 import { swallow } from '@/worker/utils/swallow';
+import { startDashboardSession, isDashboardSessionCurrent } from '@/worker/utils/dashboard-session';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -297,6 +298,9 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
     };
     const refreshToken = await sign(refreshPayload, JWT_SECRET);
 
+    // 🔐 단일 세션 강제 — 이 로그인(iat) 이전 발급된 seller 토큰 전부 무효화.
+    await startDashboardSession(DB, 'seller', seller.id, payload.iat, { userAgent: c.req.header('User-Agent'), ip: c.req.header('CF-Connecting-IP') });
+
     // ── refresh token 해시 저장 (rotation 기반) ─────────────
     try {
       await ensureAuthRefreshTokensTable(DB);
@@ -438,6 +442,10 @@ sellerRoutes.post('/refresh', cors(), rateLimit({ action: 'seller_refresh', max:
 
     // 3. DB에서 셀러 정보 조회 (계정 상태 확인)
     const sellerId = payload.seller_id || payload.sub;
+    // 🔐 단일 세션 강제 — 옛 기기 refresh 우회 차단 (서브계정은 v1 제외).
+    if (!(await isDashboardSessionCurrent(DB, 'seller', sellerId, payload.iat, { subAccount: !!payload.sub_account_id }))) {
+      return c.json<AuthResponse>({ success: false, error: '다른 기기에서 로그인되어 세션이 만료되었습니다. 다시 로그인해주세요.', code: 'SESSION_SUPERSEDED' }, 401);
+    }
     const seller = await DB.prepare(`
       SELECT id, email, name, username, status, business_name, commission_rate, seller_type
       FROM sellers

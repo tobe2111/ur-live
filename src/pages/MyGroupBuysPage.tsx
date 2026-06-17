@@ -5,6 +5,7 @@ import { ChevronLeft, Users, Clock, ShoppingBag, Gift, Ticket, Store } from 'luc
 import SEO from '@/components/SEO';
 import { toast } from '@/hooks/useToast';
 import { useMyGroupBuys, type ReferralGroup, type VoucherEntry, type CommunityGroupBuy, type ProductInfo } from '@/hooks/queries/useMyGroupBuys';
+import { hasConsumerSession } from '@/utils/auth';
 
 // ─────────────────────────────────────────────────────────────────────
 // Types
@@ -70,9 +71,8 @@ export default function MyGroupBuysPage() {
   const products: Record<number, ProductInfo> = data?.products ?? {};
 
   useEffect(() => {
-    const userType = localStorage.getItem('user_type');
-    const userId = localStorage.getItem('user_id');
-    if (userType !== 'user' || !userId) {
+    // 🛡️ 2026-06-17 듀얼 로그인 충돌 수정: user_type 비의존 — 소비자 세션 존재만 검사.
+    if (!hasConsumerSession()) {
       toast.info(t('myGroupBuys.loginRequired'));
       navigate('/login');
     }

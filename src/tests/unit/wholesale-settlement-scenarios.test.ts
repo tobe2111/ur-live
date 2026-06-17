@@ -1,39 +1,57 @@
 import { describe, it, expect } from 'vitest';
-import { distributorPriceFromRetail, DEFAULT_GRADE_MARGINS } from '@/lib/distributor-pricing';
+import { resolveDistributorPrice, gradeMarginMultiplier, DEFAULT_PLATFORM_MARGIN_PCT } from '@/lib/distributor-pricing';
 import { splitWholesaleUnit } from '@/features/supply/api/wholesale-settlement';
 
-// 🧾 2026-06-16 도매 정산 E2E 시나리오 — docs/WHOLESALE_SETTLEMENT_E2E.md 의 표와 1:1 잠금.
-//   판매가 → 등급 공급가(distributorPriceFromRetail) → 정산 분배(splitWholesaleUnit, 플랫폼 수수료 10%).
-//   문서 숫자가 코드와 절대 어긋나지 않게 함(둘 중 하나만 바뀌면 이 테스트가 깨져 동기화를 강제).
-describe('도매 정산 E2E 시나리오 (문서 표 잠금)', () => {
-  const cost = 10000;   // 제조사 원가 (supply floor)
-  const retail = 20000; // 판매가(권장소비자가)
-  const comm = 10;      // 플랫폼 수수료 %
+// 🧾 2026-06-17 도매 정산 E2E 시나리오 (cost-plus) — docs/WHOLESALE_SETTLEMENT_E2E.md 표와 1:1 잠금.
+//   제조사가(공급원가) 위에 플랫폼 마진%를 붙여 공급가 산출 → 정산: 제조사 = 공급원가 전액, 플랫폼 = 공급가 − 공급원가.
+//   등급(유료) 배수로 고등급 판매사는 마진 인하 → 공급가 ↓ → 판매사 마진 ↑.
+describe('도매 정산 cost-plus 시나리오 (문서 표 잠금)', () => {
+  const cost = 10000;   // 제조사가 받을 금액(supply_price)
+  const retail = 20000; // 판매가(권장소비자가) — 상한
 
-  const cases = [
-    { grade: 'C', label: '일반',     margin: 15, supply: 17000, manuf: 15300, plat: 1700 },
-    { grade: 'B', label: '프로',     margin: 30, supply: 14000, manuf: 12600, plat: 1400 },
-    { grade: 'A', label: '프리미엄', margin: 38, supply: 12400, manuf: 11160, plat: 1240 },
-  ] as const;
-
-  it.each(cases)('판매가 20,000 / 원가 10,000 · $label($grade) 마진 $margin%', (cs) => {
-    expect(DEFAULT_GRADE_MARGINS[cs.grade]).toBe(cs.margin);
-    // 공급가(유통사 단가) = max(원가, round(판매가 × (1 − 마진%)))
-    const supply = distributorPriceFromRetail(retail, cost, cs.margin);
-    expect(supply).toBe(cs.supply);
-    // 정산: 제조사 = max(원가, round(공급가 × 90%)), 플랫폼 = 공급가 − 제조사 (= 공급가 × 10%)
-    const { manufacturerUnit, platformUnit } = splitWholesaleUnit(supply, cost, comm);
-    expect(manufacturerUnit).toBe(cs.manuf);
-    expect(platformUnit).toBe(cs.plat);
-    expect(manufacturerUnit + platformUnit).toBe(supply);  // 합 = 공급가 (누수 0)
-    expect(manufacturerUnit).toBeGreaterThanOrEqual(cost);  // 제조사 원가 이상 보장
+  it('기본 플랫폼 마진 10% — 등급별 공급가/정산', () => {
+    expect(DEFAULT_PLATFORM_MARGIN_PCT).toBe(10);
+    const cases = [
+      { grade: 'C', mult: 100, supply: 11000, plat: 1000 }, // 일반: 10% 그대로
+      { grade: 'B', mult: 70,  supply: 10700, plat: 700 },  // 프로: 7%
+      { grade: 'A', mult: 50,  supply: 10500, plat: 500 },  // 프리미엄: 5%
+    ] as const;
+    for (const cs of cases) {
+      expect(gradeMarginMultiplier(cs.grade)).toBe(cs.mult);
+      const r = resolveDistributorPrice({ baseSupplyPrice: cost, retailPrice: retail, grade: cs.grade });
+      expect(r.price).toBe(cs.supply);
+      expect(r.margin).toBe(cs.plat);
+      const { manufacturerUnit, platformUnit } = splitWholesaleUnit(r.price, cost);
+      expect(manufacturerUnit).toBe(cost);     // 제조사 = 입력가 전액
+      expect(platformUnit).toBe(cs.plat);      // 플랫폼 = 공급가 − 공급원가
+      expect(manufacturerUnit + platformUnit).toBe(r.price); // 누수 0
+    }
   });
 
-  it('원가 하한 바인딩: 판매가가 낮으면 공급가=원가, 플랫폼=0 (degenerate 안전 — 손실 차단)', () => {
-    const supply = distributorPriceFromRetail(11000, 10000, 38); // round(11000×0.62)=6820 < 10000 → 10000
-    expect(supply).toBe(10000);
-    const { manufacturerUnit, platformUnit } = splitWholesaleUnit(supply, 10000, comm);
-    expect(manufacturerUnit).toBe(10000); // round(10000×0.9)=9000 < 10000 floor → 10000
-    expect(platformUnit).toBe(0);         // 플랫폼 마진 0 (원가 보호 우선)
+  it('제품별 플랫폼 마진 40%(스프레드 큰 상품) — 등급별', () => {
+    const cases = [
+      { grade: 'C', supply: 14000, plat: 4000, seller: 6000 }, // 40%
+      { grade: 'B', supply: 12800, plat: 2800, seller: 7200 }, // 40×0.7=28%
+      { grade: 'A', supply: 12000, plat: 2000, seller: 8000 }, // 40×0.5=20%
+    ] as const;
+    for (const cs of cases) {
+      const r = resolveDistributorPrice({ baseSupplyPrice: cost, retailPrice: retail, grade: cs.grade, marginOverridePct: 40 });
+      expect(r.price).toBe(cs.supply);
+      expect(r.margin).toBe(cs.plat);
+      expect(retail - r.price).toBe(cs.seller); // 판매사 마진 = 판매가 − 공급가
+      expect(splitWholesaleUnit(r.price, cost).manufacturerUnit).toBe(cost);
+    }
+  });
+
+  it('판매가 상한: 공급가가 판매가를 넘지 않음(판매사 마진 음수 차단)', () => {
+    const r = resolveDistributorPrice({ baseSupplyPrice: 10000, retailPrice: 12000, grade: 'C', marginOverridePct: 50 });
+    expect(r.price).toBe(12000); // round(10000×1.5)=15000 > 12000 → 12000
+    expect(r.margin).toBe(2000);
+  });
+
+  it('전역 기본 마진은 어드민 조정 가능(defaultPlatformMarginPct 전달)', () => {
+    const r = resolveDistributorPrice({ baseSupplyPrice: cost, retailPrice: retail, grade: 'C', defaultPlatformMarginPct: 25 });
+    expect(r.price).toBe(12500); // 25% (제품별 미설정 → 전역값)
+    expect(r.margin).toBe(2500);
   });
 });

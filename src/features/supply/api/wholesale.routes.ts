@@ -670,6 +670,9 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       const payload = { sub: String(seller.id), seller_id: seller.id, email: seller.email || email, name: seller.name || name, username: seller.username, type: 'seller', status: seller.status, seller_type: seller.seller_type || 'influencer', is_distributor: 1, iat: nowSec, exp: nowSec + 30 * 24 * 60 * 60 }
       const token = await sign(payload, JWT_SECRET)
       const refreshToken = await sign({ ...payload, exp: nowSec + 90 * 24 * 60 * 60 }, JWT_SECRET)
+      // 🔐 단일 세션: 도매 대표 1차 로그인은 /api/seller/login(seller.routes, 이미 커버) 경유.
+      //   become 은 카탈로그 자동연결 프로브로도 토큰을 재발급 → 여기서 세션 갱신하면 churn/ping-pong
+      //   위험 → 의도적으로 호출 안 함(seller 로그인이 도매 사장 세션을 관장).
       return c.json({ success: true, status: 'approved', data: { accessToken: token, refreshToken, token, seller: { id: seller.id, username: seller.username, email: seller.email || email, name: seller.name || name, status: seller.status, seller_type: seller.seller_type || 'influencer', is_distributor: 1 } } })
     }
 
@@ -1603,6 +1606,7 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
       const { price } = resolveDistributorPrice({
         baseSupplyPrice: p.supply_price, retailPrice: p.retail_price, grade: sg.distributor_grade,
         specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override,
+        defaultPlatformMarginPct: commPct, // 🆕 제품별 마진 미설정 시 어드민 전역 기본(%)
       })
       // 🛡️ PRC-1: CHARGE 도 DISPLAY(카탈로그 /catalog/:id) 와 동일 floor 사용 — display==charge 정합 필수.
       //   floor = effectiveTierFloor(등급가, 공급원가, 최소마진%) = min(등급가, round(공급가×(1+최소마진%))).

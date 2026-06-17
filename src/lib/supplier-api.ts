@@ -42,8 +42,11 @@ async function request<T = Json>(method: string, path: string, body?: unknown): 
     body: body != null ? JSON.stringify(body) : undefined,
   });
 
-  // 인증 만료 → 세션 정리 후 로그인 이동.
-  if (res.status === 401 || res.status === 403) {
+  // 🛡️ 2026-06-17 (로그인 영역 감사): 401(인증 만료)에서만 로그아웃.
+  //   403(권한 없음)은 인증과 무관 → 세션을 건드리지 않고 에러만 throw(페이지가 "권한 없음" 처리).
+  //   기존엔 401||403 둘 다 로그아웃해, 제조사가 단순 권한/일시적 403 에도 부당 로그아웃됐다.
+  //   (메인 lib/api.ts 와 정합 — 거기도 403 은 로그아웃하지 않음.)
+  if (res.status === 401) {
     clearSupplierSession();
     if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/supplier/login')) {
       window.location.href = '/supplier/login';

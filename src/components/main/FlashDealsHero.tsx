@@ -148,7 +148,8 @@ export default function FlashDealsHero() {
 
         {/* ── 타임딜 그리드 ── */}
         <div className="flex-1 min-w-0">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
+          {/* 📐 PC 프레임(720) 안에서 xl 이 4열로 곱해져 카드가 좁아지던 것 방지 — 최대 3열 cap. */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {data.deals.map(deal => (
               <TimedealCard
                 key={deal.id}

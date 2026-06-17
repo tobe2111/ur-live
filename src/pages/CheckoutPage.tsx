@@ -8,7 +8,7 @@ import api from '@/lib/api'
 import { handleApiError, getUserFriendlyError } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
 import { AlertCircle } from 'lucide-react'
-import { getUserIdSync } from '@/utils/auth'
+import { getUserIdSync, hasConsumerSession } from '@/utils/auth'
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/config/region'
@@ -378,7 +378,7 @@ function CartCheckout() {
   }
 
   // ✅ BUG #3 FIX: Auth/loading guards (all hooks called above this line)
-  const isSessionUser = localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id')
+  const isSessionUser = hasConsumerSession()
   if (!isSessionUser && (!isAuthReady || authLoading))
     return <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4" /><p className="text-gray-400 dark:text-gray-500">{t('common.loading', { defaultValue: '로딩 중...' })}</p></div></div>
   if (!user && !isSessionUser) return null

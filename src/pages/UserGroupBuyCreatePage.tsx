@@ -7,6 +7,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { hasConsumerSession } from '@/utils/auth'
 
 interface SelectedRestaurant {
   name: string
@@ -34,11 +35,9 @@ export default function UserGroupBuyCreatePage() {
   const [searchParams] = useSearchParams()
   const catMeta = CREATE_CATEGORY_META[searchParams.get('category') || ''] || null
 
-  // Auth check
-  const userType = localStorage.getItem('user_type')
-  const userId = localStorage.getItem('user_id')
+  // Auth check — user_type 비의존 (듀얼 로그인 충돌 방지)
   const sellerToken = localStorage.getItem('seller_token')
-  const isLoggedIn = userType === 'user' && !!userId
+  const isLoggedIn = hasConsumerSession()
 
   // 🛡️ 2026-05-16: 공구 등록 권한 강화 — 점주(셀러) OR 인플루언서만 등록 가능
   //   일반 user (영업/공구 등록 자격 없음) 차단 — 사용자 보고:
