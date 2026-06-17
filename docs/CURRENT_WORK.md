@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 교환권 상세 페이지 리디자인 (Claude Design `Voucher - Final (A)`)
+시안 = A·Refined Classic(6안 중 사용자 확정). 다크 네이비 CTA + 브랜드 옐로우(#FFCE00) 포인트, 미니멀 톤 유지. 대상 `VoucherDetailPage` (`/vouchers/:id`).
+- **상품 카드 = 그라데이션 유지**(사용자 지시): 풀블리드 사진 → `radius:28px` 그라데이션 카드(`#F7F8FA→#EFF1F4`, 다크 변형) 위 상품 `object-contain`+drop-shadow. 이미지 없으면 그라데이션만.
+- **정보 재구성**: 옐로우 카테고리 칩 + 상품명(23px) + 딜 가격(32px) + 구분선 + 정보행(유효기간/사용처/환불 불가) + "매장에서 바코드 제시 후 사용 가능" 사용 안내. 기존 "교환권 안내" 3행 카드 제거.
+- **상품 상세(`description`)는 "매장에서 바코드 제시 후 사용 가능" 아래 배치**(사용자 지시).
+- **보유 딜 + 교환 후 잔액 박스**(chat 요청): `useBalance()`(localStorage 0ms) — 로그인 시 노출, 부족 시 "딜 부족"(빨강). 다크 네이비 그라데이션 CTA + 수량 스테퍼(−는 1일 때 비활성).
+- **미도입(실데이터 원칙)**: 시안의 `정가 ₩4,500` 취소선/`52% 할인`·`~2026.09.15` 만료일·옵션 서브타이틀 — 데이터 모델에 필드 없어 가짜 수치 금지. `voucher_expiry` 있으면 그대로 표시.
+- **잠금/중요 로직 무변경**: `useInvalidateMyVouchers()`(발급 후), `__SSR_INITIAL_DETAIL__` SSR consume, idempotency_key, `INSUFFICIENT_POINTS`→충전, `PHONE_REQUIRED` 모달, 어필리에이트 track. 모든 토큰 `dark:` variant(토글 지원).
+- 시안 archive: `docs/design/voucher-detail.md` + `voucher-detail-final-A.dc.html`. 검증: tsc 0 · `npm run build` 0 · 테마검사 통과.
+
 ## ✅ 2026-06-16 어드민 활동로그(A) + 역할권한 강제(B)
 - **(A)**: 뷰어/엔드포인트/자동기록 미들웨어/nav 전부 이미 존재 — 유일 결함 `admin_audit_logs` 테이블이 repair-schema 누락(prod 로그 유실) → 추가.
 - **(B) RBAC**: SSOT `src/shared/admin-roles.ts` + 전역 `worker/middleware/admin-rbac.ts`(`/api/admin/*`,`/api/admin-payouts/*` Bearer role 디코드). super=전권/admin=운영전권/viewer=읽기전용/ops·cs·finance=도메인 변경만, 읽기 전역 허용. `/admins`·`/audit-logs`=슈퍼전용(2FA 제외). 프론트 admin_role 저장+nav 게이트+배지. 테스트 8. 신규역할 기존계정 0 → 무영향. ⚠️ prod admins CHECK 제약이 옛값이면 제한역할 생성 막힐 수 있음(에러 시 안전 재빌드).
