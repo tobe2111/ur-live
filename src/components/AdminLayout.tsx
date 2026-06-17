@@ -6,7 +6,7 @@ import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
   BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers, Mail, Crown,
-  ChevronDown, Wrench, RotateCcw, Upload,
+  ChevronDown, Wrench, RotateCcw, Upload, History,
   type LucideIcon
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
@@ -63,6 +63,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
       { path: '/admin/distributor-grades', label: '유통사 등급·수수료', icon: Layers },
       { path: '/admin/wholesale-malls',    label: '도매 몰 관리',  icon: Building2 },
+      { path: '/admin/wholesale-activity', label: '처리 이력 (누가 처리?)', icon: History },
     ],
   },
   {
