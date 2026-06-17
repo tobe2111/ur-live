@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 동네딜 카테고리 마감재 4종 (사용자 "모두 다 이상적으로")
+**배경**: 숙소 인라인화·일반상품 추가 후 "더 이상적으로?" → 4건 전부 진행.
+- **#1 일반 상품 구조적 빈 카테고리 근본수정** (`group-buy-public.routes.ts`, [UNLOCK_LOADING]): general 이 `VOUCHER_CATEGORIES` 에 없어 항상 voucher 폴백 → 클라 필터에서 0개로 사라지던 버그. `category=general` 요청 시에만 `categories=['general']`. **기본 피드/캐시/SSR/Cache-Control 전부 불변**(general 전용 캐시키 신규). ※ "총 0개"의 나머지(맛집/미용/숙소)는 **실데이터 없음**(코드 정상) — 활성 group_buy 상품 등록 필요.
+- **#2 숙소 카드 표식** (`GroupBuyListPage` GroupBuyGridCard): stay_voucher 카드에 '🏨 숙박' 뱃지(그룹 '달성' 대신). 카드 클릭은 이미 `/stays/:id`(예약).
+- **#3 숙박 날짜검색 강조**: 숙소 필터 시 '날짜·인원 검색'(→/stays) CTA 를 outline→indigo 채움으로 부각(숙박은 날짜 검색이 핵심).
+- **#4 i18n 정식 현지화**: 인페이지 카테고리 탭(`groupBuy.category*` flat, 이모지 포함)·사이드바(`category.general`)·`groupBuy.stayBadge` 6개 언어 — 기존 ja/zh 영어 placeholder('Restaurant Vouchers') + beauty/stay/etc 키 부재(전 언어 한글 폴백) 해소.
+- 검증: tsc 0 · `npm run build` 0 · 테마검사 통과.
+
 ## ✅ 2026-06-17 — 숙소 카테고리 인라인화 + 일반 상품 카테고리 추가 (사용자 신고)
 **신고**: ① `/stays` 숙소는 다른 동네딜 카테고리처럼 같은 그리드/탭으로 안 보이고 별도 페이지로 튐 ② PC 사이드바 CATEGORY 에 '일반 상품' 누락.
 - **숙소 인라인화** (`GroupBuyListPage`): 숙소 탭의 `navigate('/stays')` 리다이렉트 제거 → 다른 카테고리처럼 `?category=stay_voucher` 로 동네딜 그리드 안에서 필터. 숙소는 products 테이블에 `category='stay_voucher'` 로 저장되므로 피드에 포함됨(확인). **예약 보존**: `GroupBuyGridCard` 가 stay_voucher 카드만 클릭 시 전용 `/stays/:id`(객실·날짜 예약)로 라우팅(나머지는 `/group-buy/:id`), prefetch 도 stay 제외. 날짜·인원 전용 검색은 숙소 필터 시 `/stays` 링크로 보존(가역).

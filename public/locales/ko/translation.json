@@ -5318,8 +5318,8 @@
   "groupBuy.seoTitle": "공동구매",
   "groupBuy.seoDesc": "인기 공동구매 상품을 한눈에. 맛집 식사권부터 공동구매 특가 상품까지",
   "groupBuy.categoryAll": "전체",
-  "groupBuy.categoryMealVoucher": "맛집 식사권",
-  "groupBuy.categoryGeneral": "일반 상품",
+  "groupBuy.categoryMealVoucher": "🍽️ 맛집 식사권",
+  "groupBuy.categoryGeneral": "🛍️ 일반 상품",
   "groupBuy.title": "공동구매",
   "groupBuy.bannerHeadline": "함께 모일수록 더 싸져요!",
   "groupBuy.bannerSubline": "최대 50% 할인 — 목표 달성 시 특가로 구매 가능",
@@ -6169,5 +6169,9 @@
     "etc": "기타",
     "general": "일반 상품"
   },
-  "groupBuy.stayDateSearch": "날짜·인원 검색"
+  "groupBuy.stayDateSearch": "날짜·인원 검색",
+  "groupBuy.categoryBeauty": "💇 미용",
+  "groupBuy.categoryStay": "🏨 숙소",
+  "groupBuy.categoryEtc": "🎯 기타",
+  "groupBuy.stayBadge": "숙박"
 }

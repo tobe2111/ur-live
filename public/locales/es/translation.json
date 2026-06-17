@@ -5125,9 +5125,9 @@
   "payment.errors.approvalError": "An error occurred during payment approval.",
   "groupBuy.seoTitle": "Group Buy",
   "groupBuy.seoDesc": "Browse popular group buy products. From restaurant vouchers to special deals.",
-  "groupBuy.categoryAll": "All",
-  "groupBuy.categoryMealVoucher": "Restaurant Vouchers",
-  "groupBuy.categoryGeneral": "General Products",
+  "groupBuy.categoryAll": "Todos",
+  "groupBuy.categoryMealVoucher": "🍽️ Restaurantes",
+  "groupBuy.categoryGeneral": "🛍️ General",
   "common.back": "Back",
   "common.networkError": "A network error occurred",
   "common.wishlist": "Add to wishlist",
@@ -6171,7 +6171,11 @@
     "beauty": "Belleza",
     "stay": "Alojamiento",
     "etc": "Otros",
-    "general": "General Products"
+    "general": "General"
   },
-  "groupBuy.stayDateSearch": "Buscar por fecha"
+  "groupBuy.stayDateSearch": "Buscar por fecha",
+  "groupBuy.categoryBeauty": "💇 Belleza",
+  "groupBuy.categoryStay": "🏨 Alojamiento",
+  "groupBuy.categoryEtc": "🎯 Otros",
+  "groupBuy.stayBadge": "Hotel"
 }
