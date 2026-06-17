@@ -825,47 +825,61 @@ function KtAlphaVoucherCard({ v, muted, t }: {
   // 🔢 #4: PIN 모드 발급분(kt_pin 보유)은 인앱 바코드. 아니면 MMS 안내(기존).
   const hasBarcode = !!v.kt_pin && v.status === 'unused'
 
+  // 🎨 2026-06-17 (사용자 요청 — 카드 톤 통일): amber 그라데이션 카드 → 식사권과 동일한 클린
+  //   화이트 카드 + 84px 썸네일 + 잉크 타이포. 기프티쇼 정체성은 작은 amber 칩으로만 구분.
+  const statusBadge = v.status !== 'unused' ? (
+    <span className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide"
+      style={{
+        background: v.status === 'used' ? 'rgba(0,0,0,0.06)' : v.status === 'expired' ? 'rgba(239,68,68,0.10)' : 'rgba(245,158,11,0.12)',
+        color: v.status === 'used' ? '#6B7280' : v.status === 'expired' ? '#DC2626' : '#D97706',
+      }}>
+      {t(`voucher.status.${v.status}`)}
+    </span>
+  ) : null
+
   return (
     <div
-      className="relative rounded-xl overflow-hidden bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800"
-      style={{ opacity: muted ? 0.55 : 1 }}
+      className="relative rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F] p-3"
+      style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 3px rgba(0,0,0,0.04)' }}
     >
-      <div className="flex">
-        <div className="flex-1 p-4 min-w-0">
-          <div className="flex items-center gap-1.5 mb-1">
-            <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "#F59E0B", display: "inline-block", flexShrink: 0 }} />
-            <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.08em" }} className="text-amber-700 dark:text-amber-400">
-              📱 KT ALPHA · 기프티쇼
-            </span>
-          </div>
-          <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{v.product_name}</p>
-          {v.applied_price && (
-            <p className="text-sm text-amber-600 dark:text-amber-400 font-bold mt-0.5">{formatNumber(v.applied_price)}원</p>
-          )}
-          {maskedPhone && !hasBarcode && (
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-              📞 {maskedPhone} 로 발송됨
-            </p>
-          )}
-          {hasBarcode ? (
-            <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-2 font-semibold leading-relaxed">
-              {t('voucher.ktShowBarcode', { defaultValue: '매장에서 아래 바코드를 제시하세요' })}
-            </p>
+      <div className="flex items-stretch gap-3">
+        {/* 상품 이미지 (식사권 카드와 동일 규격) */}
+        <div className="w-[84px] h-[84px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#FFF7E6] to-[#FFF0F0] dark:from-[#1A1A1A] dark:to-[#0F0F0F]">
+          {v.product_image ? (
+            <img src={v.product_image} alt={v.product_name} loading="lazy" className="w-full h-full object-cover" />
           ) : (
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">
-              {t('voucher.ktCheckMms', { defaultValue: '휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.' })}
-            </p>
+            <Ticket className="w-7 h-7 text-amber-300 dark:text-amber-700/60" strokeWidth={1.5} />
           )}
         </div>
-        {v.product_image && !hasBarcode && (
-          <div className="w-24 h-24 m-3 rounded-lg overflow-hidden bg-white dark:bg-[#0A0A0A] shrink-0">
-            <img src={v.product_image} alt={v.product_name} className="w-full h-full object-cover" loading="lazy" />
+
+        {/* 본문 */}
+        <div className="flex-1 min-w-0 flex flex-col">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400">
+              📱 기프티쇼
+            </span>
+            {statusBadge && <span className="ml-auto">{statusBadge}</span>}
           </div>
-        )}
+          <p className="line-clamp-2 mt-1 text-gray-900 dark:text-white font-bold text-[14px] leading-snug tracking-tight">{v.product_name}</p>
+          {v.applied_price && (
+            <p className="mt-0.5 text-[13px] font-extrabold text-gray-900 dark:text-white">{formatNumber(v.applied_price)}원</p>
+          )}
+          <div className="mt-auto pt-1.5">
+            {maskedPhone && !hasBarcode && (
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">📞 {maskedPhone} 로 발송됨</p>
+            )}
+            <p className="mt-0.5 text-[10.5px] leading-relaxed text-gray-400 dark:text-gray-500">
+              {hasBarcode
+                ? t('voucher.ktShowBarcode', { defaultValue: '매장에서 아래 바코드를 제시하세요' })
+                : t('voucher.ktCheckMms', { defaultValue: '휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.' })}
+            </p>
+          </div>
+        </div>
       </div>
+
       {/* 🔢 #4: 인앱 바코드 (PIN 모드 발급분) */}
       {hasBarcode && (
-        <div className="mx-3 mb-3 px-3 py-3 rounded-lg bg-white dark:bg-[#0A0A0A] flex flex-col items-center gap-1.5">
+        <div className="mt-3 px-3 py-3 rounded-xl bg-gray-50 dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1F1F1F] flex flex-col items-center gap-1.5">
           <Barcode value={v.kt_pin as string} />
           <span className="text-[12px] font-mono font-bold tracking-[0.15em] text-gray-900 dark:text-white">{v.kt_pin}</span>
         </div>
