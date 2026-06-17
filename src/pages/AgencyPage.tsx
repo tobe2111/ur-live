@@ -34,7 +34,7 @@ const Skel = ({ className }: { className?: string }) => (
 )
 
 type IntroducedSummary = {
-  total_stores: number; active_stores: number
+  total_stores: number; active_stores: number; inactive_stores?: number
   total_commission: number; month_commission: number
   pending_commission: number; available_commission: number; paid_commission: number
 }
@@ -199,7 +199,7 @@ export default function AgencyPage() {
   // ── Actionable insights ────────────────────────────────────────────────────
   // 에이전시 대시보드 데이터로 자동 파생되는 배너
   type AgencyInsightSeverity = 'high' | 'medium' | 'info'
-  type AgencyInsightIcon = typeof AlertTriangle | typeof TrendingUp | typeof UserCheck | typeof Radio
+  type AgencyInsightIcon = typeof AlertTriangle | typeof TrendingUp | typeof UserCheck | typeof Radio | typeof Store
   interface AgencyInsight {
     severity: AgencyInsightSeverity
     icon: AgencyInsightIcon
@@ -209,6 +209,18 @@ export default function AgencyPage() {
   }
   const insights: AgencyInsight[] = useMemo(() => {
     const list: AgencyInsight[] = []
+
+    // 🏪 0) 부진 영입 매장 — 영입했지만 진행중 공구 0인 활성 매장(매장 영입 중심 1순위 인사이트)
+    const inactiveStores = introduced?.inactive_stores ?? 0
+    if (inactiveStores >= 1) {
+      list.push({
+        severity: 'medium',
+        icon: Store,
+        title: t('agency.inactiveStoresTitle', { defaultValue: '{{count}}곳 영입 매장 — 공구 미운영', count: inactiveStores }),
+        description: t('agency.inactiveStoresDesc', { defaultValue: '입점했지만 진행중 공구가 없어요. 공구 등록을 독려해 매출·commission 을 시작하세요.' }),
+        action: { label: t('agency.manageStores', { defaultValue: '영입 가게 보기' }), path: '/agency/introduced-stores' },
+      })
+    }
 
     // 1) 비활성 셀러 ≥ 1
     // proxy: 승인 상태이면서 총 주문 0건이고 현재 라이브 없음
@@ -271,7 +283,7 @@ export default function AgencyPage() {
     }
 
     return list
-  }, [sellers, stats, daily])
+  }, [sellers, stats, daily, introduced])
 
   const showStatsSkeleton = loading && !stats
 
