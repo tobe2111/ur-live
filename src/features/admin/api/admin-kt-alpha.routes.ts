@@ -17,6 +17,30 @@ import { safeError } from '../../../worker/utils/safe-error'
 
 export const adminKtAlphaRoutes = new Hono<{ Bindings: Env }>()
 
+/**
+ * 🧹 2026-06-17 (사용자 요청 — 근본 수정): 과거 KT Alpha sync 가 products.description 에 박아둔
+ *   공급사 내부 정책 괄호 "(KT Alpha B2B 정책)" / "(KT Alpha B2B 쿠폰 정책)" 를 일괄 제거.
+ *   commit addbc2b 가 sync 합성 코드는 고쳤지만 **이미 prod DB 에 저장된 description 행은 그대로** →
+ *   이 일회성 UPDATE 로 데이터 자체를 정정 (VoucherDetailPage 의 렌더 strip 은 방어선으로 유지).
+ *   멱등: WHERE 가 잔여 괄호 보유 행만 매칭 → 두 번 돌려도 추가 변경 0.
+ */
+async function cleanupKtAlphaDescriptions(DB: Env['DB']): Promise<number> {
+  const r = await DB.prepare(
+    `UPDATE products
+        SET description = TRIM(
+              REPLACE(
+                REPLACE(
+                  REPLACE(description, ' (KT Alpha B2B 정책)', ''),
+                  '(KT Alpha B2B 정책)', ''),
+                '(KT Alpha B2B 쿠폰 정책)', '')
+            ),
+            updated_at = datetime('now')
+      WHERE description LIKE '%(KT Alpha B2B 정책)%'
+         OR description LIKE '%(KT Alpha B2B 쿠폰 정책)%'`
+  ).run()
+  return (r.meta?.changes ?? 0) as number
+}
+
 // 1. GET /settings
 adminKtAlphaRoutes.get('/kt-alpha/settings', cors(), async (c) => {
   try {
@@ -950,6 +974,16 @@ adminKtAlphaRoutes.post('/kt-alpha/full-resync', cors(), async (c) => {
   })
 })
 
+// 🧹 2026-06-17: description 의 공급사 정책 괄호 일괄 제거 (근본 수정 — prod DB 정정).
+adminKtAlphaRoutes.post('/kt-alpha/cleanup-descriptions', cors(), async (c) => {
+  try {
+    const cleaned = await cleanupKtAlphaDescriptions(c.env.DB)
+    return c.json({ success: true, data: { cleaned, message: `${cleaned}개 상품 설명에서 '(KT Alpha B2B 정책)' 표기를 제거했습니다.` } })
+  } catch (err) {
+    return safeError(c, err, '설명 정리 중 오류가 발생했습니다', '[kt-alpha-cleanup-desc]')
+  }
+})
+
 // 🛡️ 2026-05-21: 사용자 요청 — "전체 즉시 실행" mega endpoint.
 //   1) products.category auto-classify (gift_catalog.goods_type_detail)
 //   2) products.brand_name + brand_icon_url backfill (gift_catalog)
@@ -961,6 +995,7 @@ adminKtAlphaRoutes.post('/kt-alpha/run-all-backfills', cors(), async (c) => {
     categorized: 0,
     brand_filled: 0,
     review_names: 0,
+    descriptions_cleaned: 0,
     columns_added: [] as string[],
     errors: [] as string[],
   }
@@ -1036,6 +1071,11 @@ adminKtAlphaRoutes.post('/kt-alpha/run-all-backfills', cors(), async (c) => {
     `).run()
     results.review_names = (r.meta?.changes ?? 0) as number
   } catch (e) { results.errors.push(`reviews: ${(e as Error).message.slice(0, 100)}`) }
+
+  // 4. 🧹 description 의 공급사 정책 괄호 "(KT Alpha B2B 정책)" 일괄 제거.
+  try {
+    results.descriptions_cleaned = await cleanupKtAlphaDescriptions(DB)
+  } catch (e) { results.errors.push(`desc-cleanup: ${(e as Error).message.slice(0, 100)}`) }
 
   return c.json({ success: true, data: results })
 })

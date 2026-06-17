@@ -333,7 +333,8 @@ export default function AdminKtAlphaPage() {
           `✅ 전체 즉시 실행 완료\n\n` +
           `• 카테고리 분류: ${d.categorized}개\n` +
           `• 브랜드 채움: ${d.brand_filled}개\n` +
-          `• 리뷰 이름: ${d.review_names}개` +
+          `• 리뷰 이름: ${d.review_names}개\n` +
+          `• 설명 정책표기 정리: ${d.descriptions_cleaned ?? 0}개` +
           (d.columns_added?.length ? `\n\n📐 컬럼 추가: ${d.columns_added.join(', ')}` : '') +
           (d.errors?.length ? `\n\n⚠️ 일부 오류:\n${d.errors.join('\n')}` : '')
         toast.success(summary, { duration: 10000 })
@@ -343,6 +344,23 @@ export default function AdminKtAlphaPage() {
     } catch (err: unknown) {
       const ax = err as { response?: { data?: unknown }; message?: string }
       console.error('[run-all-backfills] threw:', ax)
+      toast.error(ax.response?.data ? extractErrorMessage(ax.response.data) : `네트워크: ${ax.message || ''}`)
+    }
+  }
+
+  // 🧹 2026-06-17 (사용자 요청 — 근본 수정): 기존 상품 설명의 공급사 정책 괄호 일괄 제거.
+  async function cleanupDescriptions() {
+    if (!(await confirmDialog("기존 KT Alpha 상품 설명에서 '(KT Alpha B2B 정책)' 표기를 모두 제거할까요?\n\n소비자 교환권 상세에 노출되던 공급사 정책 문구를 DB 에서 직접 정리합니다 (멱등 — 여러 번 눌러도 안전)."))) return
+    try {
+      const r = await api.post('/api/admin/kt-alpha/cleanup-descriptions', {}, { headers: h() })
+      if (r.data?.success) {
+        toast.success(`✅ ${r.data.data?.cleaned ?? 0}개 상품 설명 정리 완료`)
+        loadAll()
+      } else {
+        toast.error(extractErrorMessage(r.data))
+      }
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: unknown }; message?: string }
       toast.error(ax.response?.data ? extractErrorMessage(ax.response.data) : `네트워크: ${ax.message || ''}`)
     }
   }
@@ -942,6 +960,13 @@ export default function AdminKtAlphaPage() {
                       title="KT Alpha 카탈로그 / products 분류 상태 종합 진단"
                     >
                       🔍 분류 진단
+                    </button>
+                    {/* 🧹 2026-06-17: 기존 상품 설명의 '(KT Alpha B2B 정책)' 표기 일괄 제거 */}
+                    <button onClick={cleanupDescriptions}
+                      className="px-3 py-2 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700"
+                      title="기존 상품 description 의 '(KT Alpha B2B 정책)' 공급사 정책 표기를 DB 에서 일괄 제거"
+                    >
+                      🧹 설명 정책표기 정리
                     </button>
                     {/* 🛡️ 2026-05-19: KT Alpha 카테고리 자동 재분류 (gift_catalog + brand 키워드). */}
                     <button onClick={autoClassifyCategories}
