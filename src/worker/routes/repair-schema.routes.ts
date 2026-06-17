@@ -826,6 +826,11 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   생성으로 완전 복귀. 멱등(있으면 exists).
     { desc: 'products.images', sql: "ALTER TABLE products ADD COLUMN images TEXT" },
     { desc: 'products.stock_quantity', sql: "ALTER TABLE products ADD COLUMN stock_quantity INTEGER" },
+    // 🎫 2026-06-17 (교환권 발송 자동 복구): voucher_orders 재시도 추적 컬럼.
+    //   kt-alpha-voucher-retry cron 이 'failed' 자동 재시도(retry_count<3, backoff) 시 참조.
+    //   requiresTable 가드 — voucher_orders 는 아래 tables 루프에서 먼저 생성됨.
+    { desc: 'voucher_orders.retry_count', sql: "ALTER TABLE voucher_orders ADD COLUMN retry_count INTEGER DEFAULT 0", requiresTable: 'voucher_orders' },
+    { desc: 'voucher_orders.last_retry_at', sql: "ALTER TABLE voucher_orders ADD COLUMN last_retry_at DATETIME", requiresTable: 'voucher_orders' },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];
@@ -1676,6 +1681,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       external_order_id TEXT,
       coupon_code TEXT,
       failure_reason TEXT,
+      retry_count INTEGER DEFAULT 0,
+      last_retry_at DATETIME,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       sent_at DATETIME,
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP

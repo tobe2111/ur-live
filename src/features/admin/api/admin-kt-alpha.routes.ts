@@ -1207,9 +1207,11 @@ adminKtAlphaRoutes.get('/voucher-orders', cors(), async (c) => {
     //   가려져 "실패했다는데 목록에 안 보임" 신고 발생(대시보드 failed 카운트는 기간 무관 전체라 불일치).
     //   failed 필터 시 created_at 조건 제거 → 모든 실패 건이 항상 보이고 재발송 가능.
     const timeFilter = status === 'failed' ? '' : `AND created_at >= datetime('now', '-${hours} hours')`
+    // 🎫 2026-06-17: retry_count(자동 재시도 횟수) 노출 — COALESCE 로 컬럼 미적용 환경(NULL) graceful.
     const rows = await c.env.DB.prepare(
       `SELECT id, goods_name, recipient_phone, unit_price, quantity, status,
-              external_order_id, sent_at, failure_reason, created_at, updated_at
+              external_order_id, sent_at, failure_reason, created_at, updated_at,
+              COALESCE(retry_count, 0) AS retry_count
          FROM voucher_orders
         WHERE source = 'kt_alpha'
           ${timeFilter}
@@ -1226,10 +1228,19 @@ adminKtAlphaRoutes.get('/voucher-orders', cors(), async (c) => {
        FROM voucher_orders WHERE source = 'kt_alpha'`
     ).first<{ processing: number; sent: number; failed: number; failed_all: number }>().catch(() => null)
 
+    // 🎫 2026-06-17: 실패 사유 집계 (기간 무관) — 운영자가 패턴(전화번호 없음 / API 에러 등) 한눈에 파악.
+    const failureSummary = await c.env.DB.prepare(
+      `SELECT failure_reason AS reason, COUNT(*) AS cnt
+         FROM voucher_orders
+        WHERE source = 'kt_alpha' AND status = 'failed' AND failure_reason IS NOT NULL
+        GROUP BY failure_reason ORDER BY cnt DESC LIMIT 10`
+    ).all<{ reason: string; cnt: number }>().catch(() => ({ results: [] as { reason: string; cnt: number }[] }))
+
     return c.json({
       success: true,
       data: rows.results || [],
       stats: stats || { processing: 0, sent: 0, failed: 0, failed_all: 0 },
+      failure_summary: failureSummary.results || [],
     })
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
