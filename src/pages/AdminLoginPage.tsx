@@ -96,7 +96,9 @@ export default function AdminLoginPage() {
         localStorage.setItem('admin_email', admin.email || '')
         localStorage.setItem('admin_role', admin.role || 'admin') // 🛡️ RBAC — 네비/UI 역할 게이트(권한 강제는 서버)
 
-        navigate('/admin', { replace: true })
+        // 🆕 도매 파트너(wholesale)는 소비자 어드민 홈(/admin) 접근 불가 → 도매 통합 현황으로 랜딩.
+        const landing = String(admin.role || '').toLowerCase() === 'wholesale' ? '/admin/wholesale-overview' : '/admin'
+        navigate(landing, { replace: true })
       }
     } catch (err: any) {
       if (import.meta.env.DEV) console.error('[AdminLogin] Error:', err)
