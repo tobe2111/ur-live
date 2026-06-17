@@ -1446,4 +1446,31 @@ app.get('/supply-stats', async (c) => {
   }
 })
 
+// 🕵️ 2026-06-17 (대표 요청 "누가 처리했는지"): 도매 처리 이력 — admin_audit_logs(자동기록) 를 도매 액션만
+//   필터 + admins JOIN 으로 처리자 '이름' 해석. 도매 파트너(wholesale 역할)도 distributor 세그먼트라 조회 가능.
+app.get('/activity-log', async (c) => {
+  const { DB } = c.env
+  try {
+    const page = Math.max(1, Number(c.req.query('page') || 1))
+    const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') || 50)))
+    const offset = (page - 1) * limit
+    // auto-audit action = 'METHOD /api/admin/...path' — 도매 관련 경로만.
+    const like = `(a.action LIKE '%/wholesale%' OR a.action LIKE '%/distributor%' OR a.action LIKE '%/suppliers%' OR a.action LIKE '%/supplier%' OR a.action LIKE '%/partnership%')`
+    const totalRow = await DB.prepare(`SELECT COUNT(*) AS c FROM admin_audit_logs a WHERE ${like}`).first<{ c: number }>().catch(() => null)
+    const rows = await DB.prepare(
+      `SELECT a.id, a.admin_id, a.admin_email, a.action, a.ip, a.created_at,
+              COALESCE(NULLIF(ad.name, ''), NULLIF(ad.username, ''), NULLIF(a.admin_email, ''), 'ID ' || a.admin_id) AS admin_name,
+              ad.role AS admin_role
+       FROM admin_audit_logs a
+       LEFT JOIN admins ad ON CAST(ad.id AS TEXT) = a.admin_id
+       WHERE ${like}
+       ORDER BY a.created_at DESC
+       LIMIT ? OFFSET ?`
+    ).bind(limit, offset).all().catch(() => ({ results: [] as unknown[] }))
+    return c.json({ success: true, data: rows.results ?? [], pagination: { page, limit, total: Number(totalRow?.c ?? 0) } })
+  } catch (err) {
+    return safeError(c, err, '처리 이력 조회 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
 export { app as distributorAdminRoutes }
