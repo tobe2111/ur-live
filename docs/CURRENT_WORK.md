@@ -1,5 +1,17 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 도매 관리자 보안 게이트 데드락/깜빡임 수정 + 후속 개선 (대표 신고 연쇄)
+**배경**: 강제 PIN(이 세션 외) + 도매 RBAC(타 세션) 교차로 도매 역할 관리자가 깨짐. 4갈래 순차 진행.
+- **깜빡임 무한루프 수정** (`AdminLayout`): wholesale 역할 + `must_set_pin` 일 때 PIN 게이트(→`/admin/set-pin`) ↔ RBAC 리다이렉트(→`/admin/wholesale-overview`)가 핑퐁 → remount 폭주 + dashboard-notifications 429. 보안 self-service 경로(`/admin/set-pin`,`/admin/2fa`)를 RBAC 리다이렉트에서 면제.
+- **403 데드락 수정** (`admin-rbac.ts`+`admin-roles.ts` SSOT): scoped(wholesale) 역할이 강제된 `POST /set-login-pin` 자체를 RBAC 가 막아 PIN 설정 불가(가둠). `isSelfServiceAdminPath()` 추가 → super-only/scoped 검사보다 먼저 통과(본인 user.id 만 변경이라 안전). 유닛테스트 추가.
+- **새 관리자 추가 400**: 백엔드가 name 필수였는데 폼은 선택 → name 옵셔널(이메일 local part fallback).
+- **PIN 분실 복구 UI** (`AdminAccountsPage`+`admin-accounts.routes`): 슈퍼 전용 `POST /admins/:id/reset-pin`(login_pin_hash NULL, 감사) + 'PIN 초기화' 버튼.
+- **홈 일반상품 카드 폭** (`HomeProductsRail`): 프레임(720) 안 xl:grid-cols-6 → sm:grid-cols-3 cap.
+- **PC 프레임 전수 점검**: StaysSearchPage/FlashDealsHero 그리드 cap, CartTab 고정바 `app-frame-bar`(마이페이지 버튼 프레임 넘침), 상품상세(/products/:id) 720 프레임(lg 2단 짜부 방지).
+- **링크샵 #6 통일**: 셀러 링크샵에 '방문자 미리보기'(previewAsVisitor) 추가 — 큐레이터와 파리티. 기본 off 라 기존 동작 불변.
+- 검증: tsc 0 · build 0 · admin-roles 유닛 13 통과.
+- **외부(대표 액션)**: ① 기프티쇼 이미지 리사이즈 복구 = giftishow 측 CF IP 화이트리스트 필요(현재 raw URL 무료 동작) ② KT 인앱 바코드/PIN = KT Alpha PIN 발급 계약 확인 후 CF env `KT_ALPHA_PIN_MODE=1`.
+
 ## ✅ 2026-06-17 — 숙소 인라인 회귀 자체수정 (사용자 "다른 문제 없을까?" → 감사로 발견)
 **발견**: 직전에 숙소를 동네딜 그리드에 인라인 필터로 옮겼는데, **숙소 상품은 `products.price=0`(실가격은 객실 테이블 별도) + 위치·평점이 `product_stay_info` 별도 테이블**이라 그리드 카드론 **₩0·정보누락으로 깨짐**(seller-stays INSERT 확인). group_buy_status 기본값 'active'라 stays 가 피드에 들어와 '전체' 탭에도 ₩0 카드로 샐 수 있었음(잠재 선재버그 포함).
 - **수정(올바른 방향)**: 숙소는 전용 `/stays`(=`/api/group-buy/stays/search`, product_stay_info join)에서만 표시. ① 숙소 탭/사이드바 → `/stays` 환원 ② `GroupBuyListPage` 클라 필터에 `stay_voucher` **그리드 전역 제외**(전체 포함 — ₩0 카드 누수 차단) ③ 인라인용 stay 카드 라우팅/뱃지/CTA·Calendar import 정리(clean revert) ④ **`/stays` 헤더에 동네딜 카테고리 칩 추가**(전체/맛집식사권/미용/숙소(active)/기타/일반상품) — 숙소가 "다른 카테고리처럼" 보이길 원한 최초 요구를 예약 흐름 깨지 않고 충족(내비 일관성).
