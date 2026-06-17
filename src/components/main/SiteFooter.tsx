@@ -1,3 +1,5 @@
+import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
+
 export default function SiteFooter() {
   return (
     <footer className="px-4 pt-6 pb-6 bg-white dark:bg-[#020202] border-t border-gray-100 dark:border-[#1A1A1A]">
@@ -5,9 +7,12 @@ export default function SiteFooter() {
         {/* 🛡️ 2026-05-21: 역할별 진입 CTA — 사용자/사장님/셀러/에이전시 가입 직접 link.
               마이페이지의 CTA grid 와 동일 destination. */}
         <div className="flex flex-col gap-1 mb-3 text-[12px] font-semibold">
+          {/* 🧭 2026-06-17: 그룹 referral(/referral) 숨김 — '공구 개최하기' CTA 비노출(플래그 false 면 복원). */}
+          {!REFERRAL_GROUP_DISCOUNT_DISABLED && (
           <a href="/referral" className="text-pink-600 dark:text-pink-400 hover:underline">
             🤝 공구 개최하기 →
           </a>
+          )}
           <a href="/seller/register/supplier" className="text-emerald-600 dark:text-emerald-400 hover:underline">
             🏪 사장님이세요? 가게 입점 →
           </a>
