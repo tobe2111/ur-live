@@ -8,13 +8,13 @@ import { toast } from '@/hooks/useToast'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import { formatNumber } from '@/utils/format'
 import { useReferral, type Tier, type Member, type ReferralGroup, type ProductInfo } from '@/hooks/queries/useReferral'
+import { hasConsumerSession } from '@/utils/auth'
 
-/** 로그인 여부 판단 (localStorage) */
+/** 로그인 여부 판단 (localStorage) — user_type 비의존 (듀얼 로그인 충돌 방지) */
 function useCurrentUserId(): string | null {
-  const userType = typeof window !== 'undefined' ? localStorage.getItem('user_type') : null
-  const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null
-  if (userType === 'user' && userId) return userId
-  return null
+  if (typeof window === 'undefined') return null
+  if (!hasConsumerSession()) return null
+  return localStorage.getItem('user_id')
 }
 
 /** 카운트다운 훅 — 매초 업데이트 */

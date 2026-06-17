@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { Gift, CheckCircle, XCircle, Loader2, ShoppingBag } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { hasConsumerSession } from '@/utils/auth'
 
 function ConfettiCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -100,7 +101,7 @@ export default function CouponClaimPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const [showContent, setShowContent] = useState(false)
 
-  const isLoggedIn = localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id')
+  const isLoggedIn = hasConsumerSession()
 
   useEffect(() => {
     if (!code) { setStatus('error'); setErrorMsg(t('couponClaim.noCode')); return }

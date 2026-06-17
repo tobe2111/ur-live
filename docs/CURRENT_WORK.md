@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 로그인 "계속 풀림" = 메인↔대시보드 듀얼 로그인 충돌 (사용자 신고 → 전수조사 후 근본수정)
+**신고**: "로그인이 계속 풀린다 / 대시보드에 로그인하면 기존 메인 유저 로그인이 로그아웃되는 느낌." 전수조사 결과 **단일 키 `user_type` 의존 잔존 코드**가 근본원인 — RouteGuards/isLoggedInSync/UserProfilePage 는 이미 토큰 기반으로 고쳤으나 **401 인터셉터 + 소비자 페이지 10곳이 누락**(부분 수정).
+- **메커니즘**: 한 브라우저에서 대시보드(셀러/어드민/에이전시)+소비자 동시 로그인 시 단일 키 `user_type` 이 'admin'/'seller' 로 덮임(`KakaoCallbackPage:69` admin/agency 토큰 있으면 'user' 미설정 + 대시보드 로그인이 직접 set). 그런데 `user_type === 'user'` 로 로그인을 판단하던 코드들이 멀쩡한 소비자 세션(user_id+쿠키)을 "로그아웃"으로 오인 → ① 즉시 체감(로그인 버튼/빈 화면) ② **실제 삭제**: `api.ts:597` 401 핸들러가 `isSessionCookieUser`(user_type==='user') false 면 **세션 헬스체크 보호를 건너뛰고** `clearAuthData('user')` 실행 → user_id+session_login 삭제.
+- **수정(근본)**: 신규 SSOT `auth.ts hasConsumerSession()`(user_id || session_login || firebase_token — **user_type 비의존**, seller/admin 토큰 단독은 비포함=구매자 식별용). 적용: 🔴 `api.ts:597` 401 게이트(이거 하나로 실제 풀림 차단) + 🟠 소비자 페이지 10곳(Cart/Checkout/ProductDetail/CouponClaim/Register/Login/MyGroupBuys/UserGroupBuyCreate/InfluencerDashboard/Referral). 헬스 엔드포인트가 쿠키로 최종 판정하므로 비-소비자엔 무해(session:false→정상 정리).
+- **의도적 제외**: `ReelCard:99`(셀러 본인 방송 소유권 체크 — 소비자 로그인 아님, 별도 셀러-신원 이슈) · `getLoginType`(호출자 0) · `App.tsx:344`(글로벌 Firebase init, 삭제 아님) · `auth-callback-bootstrap:169`(session:false 일 때만 삭제 — 무해, 401 경로가 reactively 처리).
+- **회귀 테스트**: `auth-utils.test.ts` 에 hasConsumerSession 8케이스(듀얼 로그인 user_type=admin/seller 에도 true, seller/admin 토큰 단독은 false). 검증: tsc 0 · 단위 55/55 · `npm run build`(client+ssr+prerender+worker+prepare) exit 0.
+
 ## ✅ 2026-06-17 — 숙소 인라인 회귀 자체수정 (사용자 "다른 문제 없을까?" → 감사로 발견)
 **발견**: 직전에 숙소를 동네딜 그리드에 인라인 필터로 옮겼는데, **숙소 상품은 `products.price=0`(실가격은 객실 테이블 별도) + 위치·평점이 `product_stay_info` 별도 테이블**이라 그리드 카드론 **₩0·정보누락으로 깨짐**(seller-stays INSERT 확인). group_buy_status 기본값 'active'라 stays 가 피드에 들어와 '전체' 탭에도 ₩0 카드로 샐 수 있었음(잠재 선재버그 포함).
 - **수정(올바른 방향)**: 숙소는 전용 `/stays`(=`/api/group-buy/stays/search`, product_stay_info join)에서만 표시. ① 숙소 탭/사이드바 → `/stays` 환원 ② `GroupBuyListPage` 클라 필터에 `stay_voucher` **그리드 전역 제외**(전체 포함 — ₩0 카드 누수 차단) ③ 인라인용 stay 카드 라우팅/뱃지/CTA·Calendar import 정리(clean revert) ④ **`/stays` 헤더에 동네딜 카테고리 칩 추가**(전체/맛집식사권/미용/숙소(active)/기타/일반상품) — 숙소가 "다른 카테고리처럼" 보이길 원한 최초 요구를 예약 흐름 깨지 않고 충족(내비 일관성).
