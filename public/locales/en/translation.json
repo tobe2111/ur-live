@@ -1868,7 +1868,10 @@
       "follow": "+ Follow",
       "shop": "Shop",
       "noShopProductsOwner": "No products yet. Add some from your seller dashboard.",
-      "noShopProducts": "No products yet."
+      "noShopProducts": "No products yet.",
+      "previewVisitor": "👀 Preview",
+      "previewBanner": "Visitor preview — this is what others see",
+      "backToEdit": "Back to editing"
     },
     "storeIntro": "Store Introduction",
     "shippingInfo": "Shipping Info",
@@ -4354,7 +4357,9 @@
     "groupUnused": "Available",
     "groupUsed": "Used",
     "groupExpired": "Expired",
-    "groupRefunded": "Refunded"
+    "groupRefunded": "Refunded",
+    "ktShowBarcode": "Show the barcode below at the store",
+    "ktCheckMms": "Check the coupon in your phone messages. KakaoTalk gift box linking available."
   },
   "sellerWaiting": {
     "title": "Seller Approval Pending",

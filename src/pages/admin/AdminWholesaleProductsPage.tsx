@@ -38,6 +38,9 @@ export default function AdminWholesaleProductsPage() {
   const [togglingId, setTogglingId] = useState<number | null>(null)
   // 낙관적 업데이트용 로컬 오버라이드 (id → is_premium).
   const [optimistic, setOptimistic] = useState<Record<number, number>>({})
+  // 🆕 2026-06-17: 체크박스 다중 선택 → 프리미엄 일괄 추가/제외.
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   const token = () => localStorage.getItem('admin_token') || localStorage.getItem('access_token')
 
@@ -53,6 +56,51 @@ export default function AdminWholesaleProductsPage() {
   )
   const items = data?.items ?? []
   const premiumCount = data?.premium_count ?? 0
+
+  // 🆕 목록 갱신(refetch/필터) 시 더 이상 없는 선택 항목 정리.
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev
+      const valid = new Set(items.map((p) => p.id))
+      let changed = false
+      const next = new Set<number>()
+      prev.forEach((id) => { if (valid.has(id)) next.add(id); else changed = true })
+      return changed ? next : prev
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items])
+
+  const allSelected = items.length > 0 && selectedIds.size === items.length
+  const someSelected = selectedIds.size > 0 && selectedIds.size < items.length
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const n = new Set(prev)
+      if (n.has(id)) n.delete(id); else n.add(id)
+      return n
+    })
+  }
+  function toggleSelectAll() {
+    setSelectedIds(allSelected ? new Set() : new Set(items.map((p) => p.id)))
+  }
+  async function bulkSetPremium(isPremium: 0 | 1) {
+    if (selectedIds.size === 0) return
+    const ids = Array.from(selectedIds)
+    setBulkBusy(true)
+    setOptimistic((o) => { const n = { ...o }; ids.forEach((id) => { n[id] = isPremium }); return n }) // 낙관적
+    try {
+      const res = await api.post('/api/admin/wholesale-products/bulk-premium', { ids, is_premium: isPremium }, { headers: { Authorization: `Bearer ${token()}` } })
+      const cnt = res.data?.updated ?? ids.length
+      toast.success(isPremium === 1
+        ? t('admin.wholesaleProducts.bulkSetPremium', { count: cnt, defaultValue: `${cnt}개를 프리미엄 전용관에 추가했습니다.` })
+        : t('admin.wholesaleProducts.bulkUnsetPremium', { count: cnt, defaultValue: `${cnt}개를 프리미엄 전용관에서 제외했습니다.` }))
+      setSelectedIds(new Set())
+      refetch()
+    } catch (err: unknown) {
+      setOptimistic((o) => { const n = { ...o }; ids.forEach((id) => { delete n[id] }); return n }) // 롤백
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e.response?.data?.error || t('admin.wholesaleProducts.bulkFail', { defaultValue: '프리미엄 일괄 설정에 실패했습니다.' }))
+    } finally { setBulkBusy(false) }
+  }
 
   async function togglePremium(p: WholesaleProductRow) {
     const current = optimistic[p.id] ?? p.is_premium
@@ -130,13 +178,41 @@ export default function AdminWholesaleProductsPage() {
             <p className="text-sm text-gray-400">{t('admin.wholesaleProducts.empty', { defaultValue: '도매 상품이 없습니다.' })}</p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <>
+            {/* 🆕 전체 선택 + 일괄 프리미엄 동작 바 */}
+            <div className="flex items-center gap-3 px-1 py-1">
+              <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+                <input type="checkbox" checked={allSelected} ref={(el) => { if (el) el.indeterminate = someSelected }} onChange={toggleSelectAll}
+                  aria-label={t('admin.wholesaleProducts.selectAll', { defaultValue: '전체 선택' })}
+                  className="h-4 w-4 rounded border-gray-300 text-amber-500 focus:ring-amber-500 cursor-pointer" />
+                {t('admin.wholesaleProducts.selectAll', { defaultValue: '전체 선택' })}
+              </label>
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
+                  <span className="text-xs text-gray-500 font-medium">{t('admin.wholesaleProducts.selectedN', { count: selectedIds.size, defaultValue: `${selectedIds.size}개 선택됨` })}</span>
+                  <button type="button" onClick={() => setSelectedIds(new Set())} className="text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2">{t('admin.wholesaleProducts.clearSel', { defaultValue: '선택 해제' })}</button>
+                  <button type="button" onClick={() => bulkSetPremium(1)} disabled={bulkBusy}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 disabled:opacity-50">
+                    <Crown className="w-3.5 h-3.5" /> {t('admin.wholesaleProducts.bulkAddPremium', { defaultValue: '프리미엄 추가' })}
+                  </button>
+                  <button type="button" onClick={() => bulkSetPremium(0)} disabled={bulkBusy}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 disabled:opacity-50">
+                    {t('admin.wholesaleProducts.bulkRemovePremium', { defaultValue: '프리미엄 제외' })}
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
             {items.map((p) => {
               const isPremium = (optimistic[p.id] ?? p.is_premium) === 1
               const busy = togglingId === p.id
+              const checked = selectedIds.has(p.id)
               return (
-                <div key={p.id} className={`bg-white rounded-xl border p-4 flex items-center justify-between gap-4 ${isPremium ? 'border-amber-200 bg-amber-50/30' : 'border-gray-200'}`}>
-                  <div className="min-w-0">
+                <div key={p.id} className={`bg-white rounded-xl border p-4 flex items-center gap-4 ${isPremium ? 'border-amber-200 bg-amber-50/30' : 'border-gray-200'} ${checked ? 'ring-2 ring-amber-300' : ''}`}>
+                  <input type="checkbox" checked={checked} onChange={() => toggleSelect(p.id)}
+                    aria-label={t('admin.wholesaleProducts.selectOne', { defaultValue: `"${p.name}" 선택` })}
+                    className="h-4 w-4 rounded border-gray-300 text-amber-500 focus:ring-amber-500 cursor-pointer shrink-0" />
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       {isPremium && <Crown className="w-4 h-4 text-amber-500 shrink-0" />}
                       <p className="font-semibold text-gray-900 truncate">{p.name || t('admin.wholesaleProducts.noName', { defaultValue: '(이름 없음)' })}</p>
@@ -173,7 +249,8 @@ export default function AdminWholesaleProductsPage() {
                 </div>
               )
             })}
-          </div>
+            </div>
+          </>
         )}
       </div>
     </AdminLayout>

@@ -8,6 +8,17 @@
 - **⚠️ 진행 안 한 이유(정직)**: ① CSRF 블랭킷 적용은 `/api/*/login|register|refresh`(Bearer 없는 비인증 POST)를 403으로 막아 **로그인 락아웃** → skip 경로 정밀 열거 필요. ② 쿠키/SameSite/도메인/카톡 인앱 동작은 **이 환경에서 E2E 불가** → 각 단계 클라 컷오버 전 staging E2E 가 게이트. 블라인드 강행 = "이상적"의 반대라 설계+검토 우선.
 - **다음**: Phase0(어드민 한정부터, skip 경로 전수 열거 + 단위테스트) 구현 — 사용자 확인 후.
 
+## ✅ 2026-06-17 — 도매 프리미엄관 체크박스 일괄 선택 (대표 요청)
+**요청**: `/admin/wholesale-products`(도매 프리미엄관) 상품 리스트 체크박스 선택.
+- **백엔드** (`wholesale-main.routes.ts`): 신규 `POST /api/admin/wholesale-products/bulk-premium` ({ ids[], is_premium 0|1 }) — 단일 batch UPDATE(공급상품·복사본 제외 가드), ids 검증(>0, ≤200). 기존 단건 `/:id/premium` 보존, `/bulk-premium`(1세그) vs `/:id/premium`(2세그) 충돌 없음. adminApp requireAdmin 상속.
+- **프론트** (`AdminWholesaleProductsPage`): 행별 체크박스 + 전체선택(indeterminate) + 1+ 선택 시 액션바(프리미엄 추가/제외/선택해제). 낙관적 업데이트 + 실패 롤백, refetch 후 선택 자동 정리. 카드 레이아웃 justify-between→gap+flex-1(체크박스 수용), 선택 시 amber ring. dark: 추가 0.
+- 검증: tsc 0 · `npm run build` 0 · 대시보드 테마(위반 0) · sql-bind 0.
+
+## ✅ 2026-06-17 — 어드민 로그인 PIN 한-화면화 (대표 신고 "2단계 불편")
+**신고**: 보안 PIN 설정 계정이 아이디/비번 → 로그인 클릭 → 그제서야 PIN 입력칸이 뜨는 2단계라 불편.
+- **원인**: 백엔드(`admin.routes /login`)는 **이미 첫 요청에서 `pin` 수용**(hasPin이면 검증) — 2단계는 순전히 프론트(`AdminLoginPage`)가 `needPin` 응답 받고서야 PIN 칸을 노출하던 것.
+- **수정(프론트 only)**: PIN 칸을 **처음부터 노출**(라벨 "6자리 보안 PIN (설정한 경우)" + 미설정은 비워두라는 힌트) + 로그인 요청에 `pin: pin.trim() || undefined` 항상 동봉 → PIN 계정도 **한 번에** 로그인. `needPin`(서버 pin_required)은 이제 칸 강조(보더 색)+안내문구 전환용으로만 유지(틀린 PIN/누락 시 폴백 동작 보존). **백엔드/PIN 검증 로직 무변경.**
+- 검증: tsc 0 · `npm run build` 0 · 대시보드 테마검사(AdminLoginPage 위반 0).
 
 ## ✅ 2026-06-17 — 단일 세션 강제 확장: per-seat 키 + 카카오 토큰 + 로그아웃 문구 (대표 "가장 이상적으로")
 **배경**: 단일 세션 v1(admin/seller/supplier)에서 제외했던 멀티시트(에이전시 멤버·도매 직원)와 카카오 발급 토큰까지 확장 + 안내 문구 구체화.

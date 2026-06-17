@@ -293,7 +293,9 @@ adminAccountsRoutes.post('/admins/:id/reset-password', cors(), rateLimit({ actio
     const adminId = c.req.param('id');
     const { newPassword } = await c.req.json<{ newPassword: string }>();
 
-    const complexity = validatePasswordComplexity(newPassword ?? '');
+    // 🆕 2026-06-17: 생성 경로와 동일한 완화 규칙(8자+/2종+, 대문자 강제 X) — 슈퍼가 파트너 임시비번을
+    //   만들 때 빡센 규칙(대문자+특수문자+10자)에 막히던 불일치 해소. 생성(line 92)과 정합.
+    const complexity = validatePasswordComplexity(newPassword ?? '', { relaxed: true });
     if (!complexity.ok) {
       return c.json({ success: false, error: complexity.error ?? '비밀번호 복잡도 부족' }, 400);
     }
