@@ -36,6 +36,45 @@ export const DEFAULT_GRADE_MARGINS: Record<DistributorGrade, number> = {
 /** 미배정 유통사 기본 등급 — 스펙: "유통회원 가입 시 자동 C등급". 어드민이 A/B 상향 또는 D 하향 배정. */
 export const DEFAULT_UNGRADED: DistributorGrade = 'C';
 
+// ── 🆕 2026-06-17 대표 확정 모델: "제조사가+플랫폼 마진" (cost-plus) ──────────────────────────
+//   제조사가 받을 금액(supply_price) 위에 플랫폼 마진%를 *붙여* 공급가 산출. 제조사는 입력가 전액 정산,
+//   플랫폼 = 공급가 − 제조사가. (구 모델 '판매가−보장마진' 과 정반대 — distributorPriceFromRetail 은 deprecated.)
+//     공급가 = clamp( round(제조사가 × (1 + 유효마진%)),  하한=제조사가,  상한=판매가(소비자가) )
+//     유효마진% = 제품별 플랫폼마진%(supply_margin_override_pct, 없으면 기본 10·어드민 편집) × 등급배수%/100
+//   등급배수: 고등급(유료) 판매사일수록 낮춰 공급가 ↓ → 판매사 마진 ↑ (일반 100 / 프로 70 / 프리미엄 50).
+/** 제품별 플랫폼 마진 미설정 시 기본값(%). 어드민 platform_settings.wholesale_platform_commission_pct 로 전역 조정 가능(호출부가 전달). */
+export const DEFAULT_PLATFORM_MARGIN_PCT = 10;
+/** 등급별 플랫폼 마진 배수(%) — 100=마진 그대로, 낮을수록 플랫폼 마진↓·판매사 마진↑. 고등급(유료) 우대. */
+export const DEFAULT_GRADE_MULTIPLIERS: Record<DistributorGrade, number> = {
+  C: 100, // 일반(승인 가입) — 마진 전액
+  B: 70,  // 프로(유료 구독) — 마진 30% 인하
+  A: 50,  // 프리미엄(매출 자동) — 마진 50% 인하
+  D: 100, // 하향 — 일반과 동일
+  OEM: 50,
+  SPECIAL: 50,
+};
+/** 등급 → 플랫폼 마진 배수(%). (등급별 조정은 추후 어드민 설정 — 현재 안전 기본값.) */
+export function gradeMarginMultiplier(grade: string): number {
+  const v = DEFAULT_GRADE_MULTIPLIERS[(grade || '').toUpperCase() as DistributorGrade];
+  return Number.isFinite(v) ? v : DEFAULT_GRADE_MULTIPLIERS[DEFAULT_UNGRADED];
+}
+
+/**
+ * 🆕 2026-06-17 cost-plus 공급가 — 제조사가 위에 플랫폼 마진을 붙임. 판매가(소비자가) 상한·제조사가 하한.
+ * @param cost 제조사가 받을 금액(products.supply_price)
+ * @param platformMarginPct 유효 플랫폼 마진%(제품별×등급배수 적용 후)
+ * @param retailCeil 판매가(권장소비자가) — 공급가가 이를 넘지 않게(판매사 마진 음수 방지). 0/미지정이면 상한 없음.
+ */
+export function distributorPriceFromCost(cost: number, platformMarginPct: number, retailCeil = 0): number {
+  const base = Math.max(0, Math.floor(cost || 0));
+  const m = Number.isFinite(platformMarginPct) ? Math.max(0, platformMarginPct) : 0;
+  let price = Math.round(base * (1 + m / 100));
+  const ceil = Math.max(0, Math.floor(retailCeil || 0));
+  if (ceil > 0 && price > ceil) price = ceil; // 판매가 초과 금지
+  if (price < base) price = base;              // 제조사가 미만 금지(플랫폼 마진 음수 차단)
+  return price;
+}
+
 /**
  * 🆕 2026-06-16 유통사 공급가(원 단위 반올림) — 신모델: 판매가 × (1 − 보장마진%), 단 제조사 원가를 하한.
  * @param retailPrice 판매가(권장소비자가, products.price)
@@ -164,9 +203,12 @@ export function tierUnitPrice(gradePrice: number, qty: number, tiers?: QtyTier[]
   return Math.max(lo, discounted)
 }
 
-/** 한 번에: 유통사가 볼 공급가 + 플랫폼 마진 + 적용 등급.
- *  marginOverridePct(상품별 고정 마진, 사용자 확정 2026-06-04): 설정(>=0)되면 등급/특별 무관
- *  이 마진을 그 상품 전 유통사에 동일 적용(전략/특가 상품). 미설정(null)이면 기존 등급 마진. */
+/** 한 번에: 유통사가 볼 공급가 + 플랫폼 마진 + 적용 등급. (🆕 2026-06-17 cost-plus — 대표 확정)
+ *  - baseSupplyPrice = 제조사가 받을 금액(supply_price). 제조사 정산 = 이 값 전액(splitWholesaleUnit).
+ *  - marginOverridePct(제품별 플랫폼 마진%, supply_margin_override_pct): 설정(>=0)되면 그 제품의 기본 플랫폼 마진%.
+ *      미설정(null)이면 defaultPlatformMarginPct(어드민 전역값) → 없으면 DEFAULT_PLATFORM_MARGIN_PCT(10).
+ *  - 등급배수(gradeMarginMultiplier)로 고등급(유료) 판매사는 마진 인하 → 공급가 ↓ → 판매사 마진 ↑.
+ *  - 공급가 = clamp(round(제조사가 × (1 + 유효마진%)), 하한=제조사가, 상한=판매가). margin = 공급가 − 제조사가(=플랫폼). */
 export function resolveDistributorPrice(opts: {
   baseSupplyPrice: number;
   retailPrice?: number | null;
@@ -174,20 +216,24 @@ export function resolveDistributorPrice(opts: {
   specialUntil?: string | null;
   table?: GradeMargin[] | null;
   marginOverridePct?: number | null;
+  defaultPlatformMarginPct?: number | null;
   now?: Date;
 }): { price: number; margin: number; grade: DistributorGrade; marginPct: number; overridden: boolean } {
   const grade = effectiveGrade(opts);
+  const cost = Math.max(0, Math.floor(opts.baseSupplyPrice || 0));
+  const retail = Math.max(0, Math.floor(Number(opts.retailPrice) || 0));
   const ov = opts.marginOverridePct;
   const hasOverride = ov != null && Number.isFinite(Number(ov)) && Number(ov) >= 0;
-  const marginPct = hasOverride ? Math.max(0, Number(ov)) : marginForGrade(grade, opts.table);
-  // 🆕 2026-06-16 신모델: 판매가 × (1 − 보장마진%), 제조사 원가 하한. retailPrice 미전달/0 이면 원가로 폴백.
-  const supplyFloor = Math.max(0, Math.floor(opts.baseSupplyPrice || 0));
-  const price = distributorPriceFromRetail(Number(opts.retailPrice) || 0, supplyFloor, marginPct);
+  const dflt = (opts.defaultPlatformMarginPct != null && Number.isFinite(Number(opts.defaultPlatformMarginPct)) && Number(opts.defaultPlatformMarginPct) >= 0)
+    ? Number(opts.defaultPlatformMarginPct) : DEFAULT_PLATFORM_MARGIN_PCT;
+  const basePct = hasOverride ? Math.max(0, Number(ov)) : dflt; // 제품별 플랫폼 마진%(없으면 전역 기본)
+  const effMarginPct = Math.max(0, basePct * gradeMarginMultiplier(grade) / 100); // 등급 인하 반영
+  const price = distributorPriceFromCost(cost, effMarginPct, retail);
   return {
     price,
-    margin: Math.max(0, price - supplyFloor), // 플랫폼 수익 = 공급가 − 제조사원가
+    margin: Math.max(0, price - cost), // 플랫폼 마진 = 공급가 − 제조사가
     grade,
-    marginPct,
+    marginPct: effMarginPct,
     overridden: hasOverride,
   };
 }

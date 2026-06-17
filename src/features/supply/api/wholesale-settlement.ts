@@ -18,10 +18,11 @@ const REFUND_WINDOW_DAYS = 7
 const BRAND_REFUND_WINDOW_DAYS = 1
 
 /**
- * 🆕 2026-06-16 플랫폼 수수료율(%) — 대표 모델: "공급가에 우리(플랫폼) 마진 N%가 포함".
- *   제조사 정산 = max(원가, round(공급가 × (1 − N/100)))  → 제조사는 원가 이상 보장.
- *   플랫폼 수익 = 공급가 − 제조사 정산  (스프레드가 충분하면 정확히 공급가의 N%).
- *   어드민(platform_settings.wholesale_platform_commission_pct)에서 조정. 기본 10, 0~90 클램프.
+ * 🆕 2026-06-17 대표 확정 모델 (cost-plus): 제조사가 받을 금액(공급원가) *위에* 플랫폼 마진%를 붙여 공급가 산출.
+ *   → 공급가에는 이미 플랫폼 마진이 *포함*돼 있으므로, 정산은 단순 분리:
+ *        제조사 정산 = 공급원가(입력가) 전액,  플랫폼 = 공급가 − 공급원가.
+ *   기본 마진은 platform_settings.wholesale_platform_commission_pct(기본 10, 어드민 편집) — 공급가 *산출* 단계
+ *   (distributor-pricing.resolveDistributorPrice)에서 적용되고, 여기 분리에는 commPct 가 더는 필요 없음(공급가에 내재).
  */
 export const DEFAULT_PLATFORM_COMMISSION_PCT = 10
 export async function loadPlatformCommissionPct(DB: D1Database): Promise<number> {
@@ -32,12 +33,12 @@ export async function loadPlatformCommissionPct(DB: D1Database): Promise<number>
   return Number.isFinite(v) && v >= 0 && v <= 90 ? v : DEFAULT_PLATFORM_COMMISSION_PCT
 }
 
-/** 라인 단가 정산 분해 — 제조사 단가(원가 하한) / 플랫폼 단가(수수료). 주문생성·정산 공용 SSOT. */
-export function splitWholesaleUnit(distributorUnit: number, costFloor: number, commPct: number): { manufacturerUnit: number; platformUnit: number } {
+/** 라인 단가 정산 분해 — 제조사 = 공급원가 전액(입력가), 플랫폼 = 공급가 − 공급원가. 주문생성·정산 공용 SSOT.
+ *  (🆕 2026-06-17: 마진은 공급가 산출 시 이미 붙으므로 commPct 미사용 — 시그니처 호환 위해 인자만 보존.) */
+export function splitWholesaleUnit(distributorUnit: number, costFloor: number, _commPct?: number): { manufacturerUnit: number; platformUnit: number } {
   const dist = Math.max(0, Math.floor(distributorUnit || 0))
   const floor = Math.max(0, Math.floor(costFloor || 0))
-  const c = Number.isFinite(commPct) ? Math.min(90, Math.max(0, commPct)) : DEFAULT_PLATFORM_COMMISSION_PCT
-  const manufacturerUnit = Math.max(floor, Math.round(dist * (1 - c / 100)))
+  const manufacturerUnit = Math.min(floor, dist) // 제조사 = 입력가 전액(공급가 초과 안 하도록 안전 clamp)
   return { manufacturerUnit, platformUnit: Math.max(0, dist - manufacturerUnit) }
 }
 

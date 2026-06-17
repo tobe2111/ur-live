@@ -607,7 +607,7 @@ export default function AdminDistributorGradesPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">💰 플랫폼 수수료율 (공급가 내 우리 마진)</label>
+                  <label className="block text-xs text-gray-500 mb-1">💰 기본 플랫폼 마진율 (제조사가 위에 가산)</label>
                   <div className="relative">
                     <input type="number" min={0} max={90} step={0.5} value={agCommPct}
                       onChange={e => setAgCommPct(Math.max(0, Math.min(90, Number(e.target.value) || 0)))}
@@ -617,7 +617,7 @@ export default function AdminDistributorGradesPage() {
                 </div>
               </div>
               <p className="text-xs text-gray-400">프로(B)는 유통사가 연 구독료를 <b>예치금에서 결제</b>해 1년간 적용(PG 미사용). 프리미엄(A)은 위 매출 임계 자동 승급. 일반(C)은 가입 승인 기본.</p>
-              <p className="text-xs text-gray-400">💰 <b>플랫폼 수수료율</b>: 유통사가 낸 공급가 중 플랫폼이 가져가는 몫(%). 제조사 정산 = 공급가×(1−이 값), 단 제조사 원가 이상 보장. 예) 수수료 10% · 공급가 8,500 → 플랫폼 850 / 제조사 7,650.</p>
+              <p className="text-xs text-gray-400">💰 <b>기본 플랫폼 마진율</b>: 제조사가 받을 금액(공급원가) <b>위에</b> 붙이는 기본 마진(%). 공급가 = 공급원가 × (1 + 이 값), 제조사 정산 = 공급원가 전액, 플랫폼 = 공급가 − 공급원가. 예) 마진 10% · 공급원가 10,000 → 공급가 11,000 / 제조사 10,000 / 플랫폼 1,000. <b>상품별로</b> 다르게(스프레드 큰 상품은 더 높게) 설정 가능하며, 고등급(프로/프리미엄) 판매사는 마진을 낮춰 더 싸게 공급합니다.</p>
 
               {/* 임계값 테이블 */}
               <div>

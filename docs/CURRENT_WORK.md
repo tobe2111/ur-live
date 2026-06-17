@@ -1,5 +1,16 @@
 # 🚧 진행 중 작업
 
+## 🔴 2026-06-17 — 도매몰 마진 모델 전면 전환 (대표 확정, 머니 크리티컬) — ⚠️ staging E2E 필수
+**대표 확정 모델(cost-plus)**: 제조사가 받을 금액(공급원가) **위에** 플랫폼 마진%를 *붙여* 공급가 산출. (구: 판매가−등급보장마진 / 정산 공급가×90% → 정반대)
+- **공급가 = clamp(round(공급원가 × (1 + 유효마진%)), 하한=공급원가, 상한=판매가)**. 유효마진% = 제품별 마진%(`supply_margin_override_pct`, 없으면 전역 `wholesale_platform_commission_pct` 기본10) × 등급배수%/100.
+- **제조사 정산 = 공급원가 전액** / **플랫폼 = 공급가 − 공급원가** (`splitWholesaleUnit` 단순 분리 — 마진은 공급가에 내재, commPct 인자 무시). ⚠️ 구 코드의 "제조사=공급가×90%" 불일치/버그 해소.
+- **등급배수**(고등급=유료 우대): 일반C 100 / 프로B 70 / 프리미엄A 50 → 공급가 ↓ → 판매사 마진 ↑. (현재 `DEFAULT_GRADE_MULTIPLIERS` 상수 — **등급배수 어드민 편집은 후속**.)
+- **부가세**: 포함가 그대로(표시·청구·정산), 세금계산서만 `splitVat`(10/110) 분리 — **이미 구현됨**.
+- **변경 파일**: `distributor-pricing.ts`(resolveDistributorPrice→cost-plus, `distributorPriceFromCost`/`gradeMarginMultiplier`/`DEFAULT_PLATFORM_MARGIN_PCT`/`DEFAULT_GRADE_MULTIPLIERS` 신설, 구 distributorPriceFromRetail/marginForGrade deprecated 보존), `wholesale-settlement.ts`(splitWholesaleUnit 제조사=공급원가), `wholesale.routes.ts`(주문 라우트가 전역 기본마진 `commPct` 를 `defaultPlatformMarginPct` 로 전달 — 1줄), `AdminDistributorGradesPage`(라벨: 수수료율→기본 플랫폼 마진율), E2E 문서 재작성.
+- **검증**: tsc 0 · **단위 130 pass**(3개 시나리오 테스트 cost-plus 로 재작성 — 워크드 숫자 잠금) · money-pattern 0 · client+worker build 0.
+- ⚠️⚠️ **실 staging 결제 E2E 1회 필수**(외부 검증 불가): 공급가=공급원가×(1+마진)·제조사 지급=공급원가 전액·플랫폼=스프레드·판매가 상한·환불 역전. `docs/WHOLESALE_SETTLEMENT_E2E.md` 갱신본 참조.
+- **후속**: ① 등급배수 어드민 편집 UI(현재 상수) ② 제품별 마진 입력 UI 확인/라벨(supply_margin_override_pct) ③ GET /me·admin 등급 미리보기의 옛 marginForGrade 표시 정합 ④ guide-seed-wholesale 공식 문구.
+
 ## ✅ 2026-06-17 — 어드민 대시보드 라이브 스트림 관리: 체크박스 일괄 삭제 (사용자 요청)
 **요청**: 어드민 대시보드 '라이브 스트림 관리' 테이블을 체크박스로 다중 선택 삭제.
 - **구조적 발견**: 테이블이 public `/api/streams`(소프트삭제 `deleted_at` 미필터)에서 로드 → soft-delete(status='ended'+deleted_at)해도 행이 안 사라지던 구조(단건 삭제조차). 근본수정으로 **테이블 데이터 소스를 admin 전용 `/api/admin/streams` 로 전환 + 거기서 `deleted_at IS NULL` 필터**(저트래픽 admin 경로라 hot public 피드 무변경 — 회귀 0).
