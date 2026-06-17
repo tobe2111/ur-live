@@ -32,12 +32,14 @@ export default function UMeRedirectPage() {
           if (handle) localStorage.setItem('user_handle', handle)
         } catch { /* ignore */ }
 
-        if (linkedSeller?.username) {
-          navigate(`/profile/${linkedSeller.username}`, { replace: true })
-          return
-        }
+        // 🔗 2026-06-17 (사용자 결정 — /u/ 단일화): 큐레이터 핸들(/u/{handle}) 우선.
+        //   셀러여도 /u/{handle} 가 CuratorPage 에서 linked_seller 면 storefront inline → URL 통일.
         if (handle) {
           navigate(`/u/${handle}`, { replace: true })
+          return
+        }
+        if (linkedSeller?.username) {
+          navigate(`/profile/${linkedSeller.username}`, { replace: true })
           return
         }
         // 🛡️ 2026-05-27 (큐레이터 모델 영구): dashboard endpoint 가 handle 자동 생성 → 여기 도달 거의 X.
