@@ -6170,6 +6170,8 @@
     "mealVoucher": "美食餐券",
     "beauty": "美容",
     "stay": "住宿",
-    "etc": "其他"
-  }
+    "etc": "其他",
+    "general": "General Products"
+  },
+  "groupBuy.stayDateSearch": "按日期搜索"
 }

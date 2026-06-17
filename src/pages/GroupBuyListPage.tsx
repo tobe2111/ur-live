@@ -13,6 +13,7 @@ import {
   HandCoins,
   Bell,
   Store,
+  Calendar,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
@@ -105,12 +106,15 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
   //   '달성' 뱃지(이미지 우상단)는 유지. 진행률 바 + 참여 인원 텍스트 삭제 → 업장명/주소/판매자 노출.
   const achieved = target > 0 && current >= target
   const timeLeft = formatTimeLeft(p.group_buy_deadline)
+  // 🧭 2026-06-17: 숙소(stay_voucher)는 그리드에 인라인 노출하되, 상세/예약은 전용 /stays/:id(객실·날짜)로.
+  const isStay = p.category === 'stay_voucher'
+  const detailPath = isStay ? `/stays/${p.id}` : `/group-buy/${p.id}`
   return (
     <button
-      onClick={() => navigate(`/group-buy/${p.id}`)}
-      onMouseEnter={() => prefetch(p.id)}
-      onTouchStart={() => prefetch(p.id)}
-      onFocus={() => prefetch(p.id)}
+      onClick={() => navigate(detailPath)}
+      onMouseEnter={() => { if (!isStay) prefetch(p.id) }}
+      onTouchStart={() => { if (!isStay) prefetch(p.id) }}
+      onFocus={() => { if (!isStay) prefetch(p.id) }}
       className="text-left active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col"
       style={{ backgroundColor: grad.base }}
     >
@@ -647,8 +651,8 @@ export default function GroupBuyListPage() {
               <button
                 key={tab.key}
                 onClick={() => {
-                  // 🛡️ 2026-05-18: 숙소 카테고리 → /stays 전용 페이지 (객실/voucher/날짜 모드 분기 필요).
-                  if (tab.key === 'stay_voucher') { navigate('/stays'); return }
+                  // 🧭 2026-06-17 (사용자 요청): 숙소도 다른 카테고리처럼 동네딜 그리드 안에서 필터(이전엔
+                  //   /stays 로 리다이렉트). 숙소 카드만 클릭 시 전용 /stays/:id(객실·날짜 예약)로 — 카드 참조.
                   setCategory(tab.key)
                   // 🧭 2026-06-17: URL 도 동기화 — PC 사이드바/딥링크와 단일 소스(공유·뒤로가기 지원).
                   const next = new URLSearchParams(searchParams)
@@ -691,6 +695,17 @@ export default function GroupBuyListPage() {
             aria-label="지역 필터 해제"
           >
             해제
+          </button>
+        )}
+        {/* 🧭 2026-06-17: 숙소는 그리드에 인라인 노출하되, 날짜·인원 기반 전용 검색은 /stays 로 보존(가역). */}
+        {category === 'stay_voucher' && (
+          <button
+            onClick={() => navigate('/stays')}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300"
+            aria-label="숙소 날짜·인원 검색"
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{t('groupBuy.stayDateSearch', { defaultValue: '날짜·인원 검색' })}</span>
           </button>
         )}
       </div>

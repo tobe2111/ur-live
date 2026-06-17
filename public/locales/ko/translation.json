@@ -6166,6 +6166,8 @@
     "mealVoucher": "맛집 식사권",
     "beauty": "미용",
     "stay": "숙소",
-    "etc": "기타"
-  }
+    "etc": "기타",
+    "general": "일반 상품"
+  },
+  "groupBuy.stayDateSearch": "날짜·인원 검색"
 }

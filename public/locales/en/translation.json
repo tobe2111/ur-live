@@ -6170,6 +6170,8 @@
     "mealVoucher": "Dining",
     "beauty": "Beauty",
     "stay": "Stays",
-    "etc": "Others"
-  }
+    "etc": "Others",
+    "general": "General Products"
+  },
+  "groupBuy.stayDateSearch": "Search by date"
 }
