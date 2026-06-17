@@ -5125,9 +5125,9 @@
   "payment.errors.approvalError": "An error occurred during payment approval.",
   "groupBuy.seoTitle": "Group Buy",
   "groupBuy.seoDesc": "Browse popular group buy products. From restaurant vouchers to special deals.",
-  "groupBuy.categoryAll": "All",
-  "groupBuy.categoryMealVoucher": "Restaurant Vouchers",
-  "groupBuy.categoryGeneral": "General Products",
+  "groupBuy.categoryAll": "全部",
+  "groupBuy.categoryMealVoucher": "🍽️ 美食餐券",
+  "groupBuy.categoryGeneral": "🛍️ 普通商品",
   "common.back": "Back",
   "common.networkError": "A network error occurred",
   "common.wishlist": "Add to wishlist",
@@ -6171,7 +6171,11 @@
     "beauty": "美容",
     "stay": "住宿",
     "etc": "其他",
-    "general": "General Products"
+    "general": "普通商品"
   },
-  "groupBuy.stayDateSearch": "按日期搜索"
+  "groupBuy.stayDateSearch": "按日期搜索",
+  "groupBuy.categoryBeauty": "💇 美容",
+  "groupBuy.categoryStay": "🏨 住宿",
+  "groupBuy.categoryEtc": "🎯 其他",
+  "groupBuy.stayBadge": "住宿"
 }

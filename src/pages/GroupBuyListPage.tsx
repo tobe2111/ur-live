@@ -156,8 +156,12 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
           </span>
         )}
 
-        {/* 달성 뱃지 */}
-        {achieved && (
+        {/* 숙박 뱃지(숙소) — 객실·날짜 예약형이라 그룹 '달성' 대신 카테고리 표식 */}
+        {isStay ? (
+          <span className="absolute top-2 right-2 flex items-center gap-0.5 bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow">
+            🏨 {t('groupBuy.stayBadge', { defaultValue: '숙박' })}
+          </span>
+        ) : achieved && (
           <span className="absolute top-2 right-2 flex items-center gap-0.5 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow">
             <CheckCircle2 className="w-3 h-3" />
             {t('groupBuy.achieved', { defaultValue: '달성' })}
@@ -697,11 +701,12 @@ export default function GroupBuyListPage() {
             해제
           </button>
         )}
-        {/* 🧭 2026-06-17: 숙소는 그리드에 인라인 노출하되, 날짜·인원 기반 전용 검색은 /stays 로 보존(가역). */}
+        {/* 🧭 2026-06-17: 숙소는 그리드에 인라인 노출하되, 날짜·인원 기반 전용 검색은 /stays 로 보존(가역).
+            숙박은 보통 날짜로 찾으므로 강조 색(accent)으로 눈에 띄게. */}
         {category === 'stay_voucher' && (
           <button
             onClick={() => navigate('/stays')}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300"
+            className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-bold bg-indigo-500 text-white shadow-sm active:scale-95 transition-transform"
             aria-label="숙소 날짜·인원 검색"
           >
             <Calendar className="w-3.5 h-3.5" />

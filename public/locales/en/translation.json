@@ -5126,8 +5126,8 @@
   "groupBuy.seoTitle": "Group Buy",
   "groupBuy.seoDesc": "Browse popular group buy products. From restaurant vouchers to special deals.",
   "groupBuy.categoryAll": "All",
-  "groupBuy.categoryMealVoucher": "Restaurant Vouchers",
-  "groupBuy.categoryGeneral": "General Products",
+  "groupBuy.categoryMealVoucher": "🍽️ Dining",
+  "groupBuy.categoryGeneral": "🛍️ General",
   "groupBuy.title": "Group Buy",
   "groupBuy.bannerHeadline": "Cheaper when we gather together!",
   "groupBuy.bannerSubline": "Up to 50% off — special pricing when the goal is met",
@@ -6171,7 +6171,11 @@
     "beauty": "Beauty",
     "stay": "Stays",
     "etc": "Others",
-    "general": "General Products"
+    "general": "General"
   },
-  "groupBuy.stayDateSearch": "Search by date"
+  "groupBuy.stayDateSearch": "Search by date",
+  "groupBuy.categoryBeauty": "💇 Beauty",
+  "groupBuy.categoryStay": "🏨 Stays",
+  "groupBuy.categoryEtc": "🎯 Others",
+  "groupBuy.stayBadge": "Stay"
 }
