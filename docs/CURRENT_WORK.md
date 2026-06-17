@@ -37,6 +37,18 @@
 - **③ 토큰 수명 단축 (안 함 — 권하지 않음)**: XSS는 localStorage 통째로 읽어 **refresh까지 탈취** → access만 단축해도 XSS 방어 거의 0. 게다가 30일은 "모바일 잦은 만료 민원"으로 *일부러* 늘린 값 → 단축=UX 후퇴. 비용 대비 무의미.
 - 검증: 가드 테스트 통과 · tsc 영향 없음(standalone mjs).
 
+## ✅ 2026-06-17 — G1 쇼핑 할인결제 완전수정: 서버 권위 할인 + 딜 실차감 (대표 "완전 fix (딜 차감까지)") — ⚠️ staging E2E 필수
+**배경**: 주문 zod(`order.routes` createOrderSchema)가 할인필드(쿠폰/딜/공구할인)를 strip → `total_amount` 에서 할인 누락 → 쿠폰·딜 쓴 결제 전부 confirm 금액불일치 400(과금 0, fail-safe). 게다가 `deal_used` 는 **서버에서 한 번도 차감 안 됨**(클라가 보내기만 — '딜 안 빠지는데 할인은 들어가는' 머니 구멍). 라이브 영향 0(쇼핑탭 숨김 + 동네딜 결제는 별도 `/api/group-buy/join` 서버계산 경로라 무관).
+- **설계(validate-by-cap)**: 클라 할인액을 신뢰하지 않고 서버가 각 항목을 권위 상한 이하로만 인정 + 실제 소비/차감. 정직한 클라는 서버 total 이 클라 totalAmount 와 정확히 일치(confirm 통과), 악의적 클라는 항목별 cap 클램프(구멍 차단).
+  - **쿠폰**(`coupon-discount.ts` 순수 SSOT `computeCouponDiscount` 신설 + `/coupons/use` 와 공유): 클라 coupon_discount 를 `computeCouponDiscount(coupon, base)` 상한 이하로 인정 + `coupon_uses` UNIQUE 1회 소비(주문생성 시, 멀티셀러 동일쿠폰은 첫 그룹만). 클라 별도 `/coupons/use` 호출 폐지(이중소비 방지).
+  - **딜**: 클라 deal_used 잔액·잔여 클램프 → `orders.deal_used`(신규 컬럼) 저장 → **결제 성공(`/confirm`)에서 실제 잔액 차감**(`adjustUserPoints` CAS, confirmClaim 직후 1회 멱등). `[UNLOCK]` payment.routes.ts(대표 "결제 성공 시점" 승인 — CLAUDE.md audit log 기록).
+  - **공구할인 portion**(=총할인−쿠폰−딜): 회귀 이전과 동일 클라-신뢰(클램프) — 신규 구멍 X.
+- **역전 대칭(머니룰 #2)**: `order-refund.ts`(전액환불) — 딜 사용분 복원 + 쿠폰 un-use + used_count 감소(CAS 후 멱등). `returns.routes.ts`(부분반품) — refund_amount 비례 딜 복원 + `orders.deal_used` 잔여 차감(여러 부분반품+전액환불 합쳐도 초과복원 0). 둘 다 `deal_used` 를 '미복원 잔여' 원장으로 사용.
+- **변경 파일**: `coupon-discount.ts`(신규 순수+테스트 5) · `coupon-discount.test.ts`(신규) · `coupons.routes.ts`(/use 가 SSOT 위임) · `order.routes.ts`(스키마+validate-by-cap 블록+딜저장/쿠폰링크/롤백) · `order.repository.ts`(createOrder opts.discountAmount) · `payment.routes.ts`[UNLOCK](딜 차감) · `order-refund.ts`+`returns.routes.ts`(역전) · `ensure-order-columns.ts`(신규 memoized ALTER) · `repair-schema`(orders.deal_used) · `useBeforePayment.ts`(/coupons/use 호출 제거).
+- **검증**: tsc 0 · `npm run build`(client+ssr+worker+prepare) exit 0 · **단위 2152 pass**(coupon-discount 5 신규) · money-pattern/sql-bind/sql-column/schema-refs clean.
+- ⚠️⚠️ **쇼핑탭 재오픈 전 staging 실결제 1회 필수**(외부망 차단으로 E2E 불가): ① 쿠폰만 ② 딜만 ③ 쿠폰+딜 동시 → 각각 confirm 통과 + 잔액 정확 차감 + 환불 시 딜 복원·쿠폰 재사용가능 확인. **단일셀러 카트 기준**(멀티셀러+동일쿠폰은 첫 그룹만 적용 → 안전하나 confirm 400 가능 — 후속).
+- **후속(비긴급)**: ① 멀티셀러 카트 단일콜 주문화(서버 완전권위 + 클라 서버total 청구 — TossPaymentWidget 잠금이라 prop 경로 확인 필요) ② 공구할인 portion 서버 파생(현 클라-신뢰) ③ 부분반품 쿠폰 부분복원.
+
 ## ✅ 2026-06-17 — 어드민 주문 페이지: 종류 구별(교환권/상품) + 체크박스 일괄 처리 (대표 요청)
 **요청**: `/admin/orders` 에서 교환권/상품/도매몰 구별 + 체크박스 선택.
 - **종류 구별**: GET `/api/admin/orders` SELECT 에 `first_item_category`(첫 주문상품 category) 추가 → 프론트 `orderKind()` 가 `isVoucherCategory` 면 **교환권**(+식사/미용/숙소/기타 서브), 아니면 **상품**. 신규 '종류' 컬럼(amber 교환권 / sky 상품 배지). bind param 무변경(정적 서브쿼리).
