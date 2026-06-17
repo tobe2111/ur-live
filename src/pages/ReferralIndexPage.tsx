@@ -1,11 +1,17 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Users, Gift, ShoppingBag, Share2 } from 'lucide-react'
 import SEO from '@/components/SEO'
+import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 
 export default function ReferralIndexPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+
+  // 🧭 2026-06-17 (사용자 결정 — 그룹 referral 완전 숨김): '친구 모으면 싸게' 그룹 랜딩은
+  //   할인 종료로 껍데기 + 거짓 안내였음. 살아있는 '친구 초대 보너스'(MyReferralCard)가 있는
+  //   /user/profile 로 리다이렉트. 플래그 false 면 즉시 원복.
+  if (REFERRAL_GROUP_DISCOUNT_DISABLED) return <Navigate to="/user/profile" replace />
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
