@@ -290,14 +290,14 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
 
   return (
     <div className={`min-h-screen ${T.bg} pb-28`}>
-      {/* 🛡️ 2026-05-20: 사용자 신고 — "지금 편집 가능한지 UI 상 불명확". owner 모드일 때 sticky 안내 배너. */}
+      {/* 🎨 2026-06-17 링크샵 개선안(시안) 통일: 큐레이터 링크샵과 동일한 네이비 '✎ 편집 모드' 배너. theme-dual: 의도적 네이비 */}
       {isOwner && (
-        <div className="sticky top-0 z-30 bg-pink-500 text-white px-4 py-2 text-xs font-bold flex items-center justify-between gap-2">
-          <span>✏️ {t('seller.publicPage.ownerModeNotice', { defaultValue: '내 페이지 — 이름/소개/이미지 클릭해 바로 편집' })}</span>
+        <div className="sticky top-0 z-30 bg-[#141A2E] text-white px-3.5 py-2.5 text-[12.5px] font-semibold flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2"><span className="text-[#FF5634] text-[14px] leading-none">✎</span>{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 사진·이름·소개를 눌러 바로 수정하세요' })}</span>
           <button
             type="button"
             onClick={() => navigate('/seller/profile?tab=business')}
-            className="px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded text-[10px] font-bold whitespace-nowrap"
+            className="shrink-0 px-2.5 py-1 bg-white/15 hover:bg-white/25 rounded-lg text-[11px] font-bold whitespace-nowrap"
           >
             {t('seller.publicPage.fullSettings', { defaultValue: '전체 설정' })}
           </button>

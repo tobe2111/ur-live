@@ -733,6 +733,11 @@ html.dark .gbd {
     width: 100% !important;
     max-width: var(--app-frame, 430px) !important;
   }
+  /* 📐 프레임 페이지에선 풀폭 DesktopTopNav 숨김 — 프레임 밖으로 버튼이 삐져나오던 문제(사용자 신고).
+     PC 네비게이션은 좌측 DesktopLiveSidebar + 프레임 내부 모바일 헤더가 담당. */
+  body:has(.mobile-app-container.app-framed) .desktop-topnav {
+    display: none !important;
+  }
 }
 
 /* PC 콘텐츠 폭 토큰 — 페이지별 max-width 가이드.

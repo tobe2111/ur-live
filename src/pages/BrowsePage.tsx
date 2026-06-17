@@ -412,7 +412,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         {/* 섹션 헤더 — 🏭 2026-06-04: 기본('전체')에선 '오늘의 핫딜' 타이틀 숨김(핫딜 섹션 제거). 카테고리 선택 시엔 라벨 표시. */}
         {category !== 'all' && (
           <div className="flex items-center justify-between mb-3">
-            <h1 className="text-xl lg:text-3xl font-extrabold text-gray-900 dark:text-white">{(({'fashion':t('browse.categoryFashion'),'beauty':t('browse.categoryBeauty'),'food':t('browse.categoryFood'),'living':t('browse.categoryLiving'),'digital':t('browse.categoryDigital')} as Record<string, string>)[category] || category)}</h1>
+            <h1 className="text-xl lg:text-3xl font-extrabold text-gray-900 dark:text-white">{(({'fashion':t('browse.categoryFashion'),'beauty':t('browse.categoryBeauty'),'food':t('browse.categoryFood'),'living':t('browse.categoryLiving'),'digital':t('browse.categoryDigital'),'meal_voucher':'식사권','beauty_voucher':'뷰티 교환권','health_voucher':'건강 교환권','pet_voucher':'반려 교환권','stay_voucher':'숙박 교환권','activity_voucher':'액티비티 교환권','etc_voucher':'기타 교환권'} as Record<string, string>)[category] || category)}</h1>
           </div>
         )}
 
