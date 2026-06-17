@@ -87,8 +87,6 @@ export default function CuratorPage() {
   const [tab, setTab] = useState<CuratorTab>('home')
   // 🔍 2026-06-16 링크샵 시안: 검색 — 상품명 + 추천 코멘트(note) 라이브 필터.
   const [query, setQuery] = useState('')
-  // 🎨 2026-06-16 링크샵 시안: 본인 핀 관리(드래그 정렬) 모드 토글.
-  const [manageMode, setManageMode] = useState(false)
   // 🎨 2026-06-16 링크샵 시안: '방문자 미리보기' — 본인이 남이 보는 화면 그대로 확인.
   const [previewAsVisitor, setPreviewAsVisitor] = useState(false)
   const currentUser = useAuthStore((s: any) => s.user)
@@ -534,25 +532,27 @@ function HandleEditor({ handle }: { handle: string }) {
       else { setStatus('bad'); setMsg(r.error || '변경에 실패했습니다') }
     } catch { setStatus('bad'); setMsg('변경에 실패했습니다') }
   }
+  // 🎨 2026-06-17 (라이트 테마 가시성 fix): bare text-white 는 light(bg-white)에서 흰글자=투명 →
+  //   핸들/입력 안 보였음. text-gray-900 dark:text-white 로 양모드 대응. <dd>(dl 없는 무효 HTML)도 div 로.
   if (!editing) {
     return (
-      <dd className="text-white font-mono flex items-center gap-2">
+      <div className="text-gray-900 dark:text-white font-mono flex items-center gap-2">
         @{handle}
         <button onClick={() => { setEditing(true); setVal(handle); setStatus('idle'); setMsg('') }} className="text-[11px] text-gray-900 dark:text-white font-bold font-sans">변경</button>
-      </dd>
+      </div>
     )
   }
   return (
-    <dd className="flex flex-col items-end gap-1">
+    <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-1">
-        <span className="text-white/50 font-mono text-sm">@</span>
+        <span className="text-gray-400 dark:text-white/50 font-mono text-sm">@</span>
         <input value={val} onChange={e => setVal(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase())} maxLength={30}
-          className="w-28 bg-transparent border-b border-gray-500 text-white font-mono text-sm focus:outline-none focus:border-gray-900 dark:border-white" autoFocus />
+          className="w-28 bg-transparent border-b border-gray-300 dark:border-gray-500 text-gray-900 dark:text-white font-mono text-sm focus:outline-none focus:border-gray-900 dark:focus:border-white" autoFocus />
         <button onClick={save} disabled={status !== 'ok'} className="text-[12px] text-gray-900 dark:text-white font-bold disabled:opacity-40">{status === 'saving' ? '저장 중' : '저장'}</button>
         <button onClick={() => { setEditing(false); setVal(handle); setStatus('idle') }} className="text-[12px] text-gray-500">취소</button>
       </div>
-      {msg && <span className={`text-[10px] ${status === 'ok' ? 'text-emerald-400' : status === 'checking' ? 'text-gray-400' : 'text-red-400'}`}>{msg}</span>}
-    </dd>
+      {msg && <span className={`text-[10px] ${status === 'ok' ? 'text-emerald-500 dark:text-emerald-400' : status === 'checking' ? 'text-gray-400' : 'text-red-500 dark:text-red-400'}`}>{msg}</span>}
+    </div>
   )
 }
 

@@ -34,7 +34,14 @@ interface WithdrawalInfo {
 export default function CuratorEarningsPage() {
   const { t } = useTranslation()
   const user = useAuthStore((s: any) => s.user)
-  const [handle, setHandle] = useState<string | null>((user as any)?.handle || null)
+  // 🎨 2026-06-17 (콘솔 @handle 표시 fix): dashboard select 가 handle 을 버려 user.handle(주로 null)에만
+  //   의존 → 헤더 @handle 미표시 + '내 링크샵' 이 /u/me 리다이렉트 홉. localStorage.user_handle
+  //   (App/UMeRedirect/Kakao 가 기록, BottomNav 와 동일 소스)로 seed → 직접 /u/{handle} 진입.
+  const [handle, setHandle] = useState<string | null>(() => {
+    const fromUser = (user as any)?.handle
+    if (fromUser) return fromUser
+    try { return localStorage.getItem('user_handle') || null } catch { return null }
+  })
   const [wdInfo, setWdInfo] = useState<WithdrawalInfo | null>(null)
   const [showWithdraw, setShowWithdraw] = useState(false)
 
