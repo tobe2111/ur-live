@@ -7,6 +7,8 @@
 - **#1 사업자정보 이중입력 제거 (commit b4f62b7)**: 현행 모델(SERVICE_MODEL v2 "셀러=매장")에서 판매=매장(store_owner) 등록. CTA 타깃을 비활성 `/seller/register/business` → 현행 `/seller/register/supplier`(register-from-user store_owner). SellerRegisterSupplierPage 가 `?from=curator` 진입 시 `/api/curator/me/business` 의 상호/사업자번호로 폼 자동채움(빈 필드만, representative/start_date 는 큐레이터측 미저장).
 - **#3a 인라인 빠른 상품등록 (commit c4be6f8)**: 승인 판매자는 콘솔에서 `QuickProductModal`(상품명/가격/재고/카테고리)로 대시보드 안 나가고 등록. 기존 POST /api/seller/products 재활용, 셀러토큰 transient(switch-to-seller accessToken 헤더만, localStorage 미저장). 이미지/상세는 대시보드에서.
 - **#3b 제한 대시보드**: SellerLayout 의 mode/hideFor/seller_type 스코핑으로 **이미 충족**(store_owner=라이브·큐레이터·영입·prospects 숨김) → 무변경(튜닝된 공용 nav 회귀방지).
+- **후속(사용자 "진짜 일원화 — 현금정산도 자동", commit 71301d4)**: ① **사업자등록 일원화** — 현금 출금 게이트(curator.routes:861)·payout_mode(1015)가 이미 '연결 승인 매장' 기준인데 GET /me/business 만 정합 안 맞아 매장이어도 '사업자 등록하기' 중복 프롬프트. GET /me/business 가 승인 연결매장 있으면 `business_status='verified'`(+is_store_seller) **read-only 파생** 반환 → BusinessSection '✅ 매장 등록=현금정산 활성' (출금 게이트·머니쓰기 무변경) → 매장 1번 등록으로 판매+추천수익 현금정산 둘 다 열림. ② **빠른등록 이미지** — QuickProductModal 이 오픈 시 seller_token 보장(switch-to-seller 저장; BottomNav DISPLAY=active_role 기준이라 소비자 UI 무영향) → ImageUpload+상품POST 자동토큰 동작(transient 헤더 방식 폐기).
+- **개념 모델 확정(사용자)**: `/u/{handle}` 링크 고정 + 능력 켜질수록 같은 링크에서 더 열림(기본 핀 → +판매승인 상점 → +라이브). 대시보드도 seller_type 으로 해당 기능만 노출. = SERVICE_MODEL §1 "신분이 아니라 능력". 미진행(의도적): 단일 레코드 정체성 / 단일 대시보드(주문·정산까지 한 화면) — 큰 리팩토링이라 보류.
 - 검증: tsc 0 · `npm run build`(client+worker) 0 · 테마검사 통과. 잠금 파일: edge-cache.ts/curator 핸들러 무수정(미들웨어 1줄만).
 - ⚠️ **미검증(실환경 권장)**: ① flip-flop 실제 해소 prod 확인(승인직후 ≤900s 익명캐시 transition 은 cron/TTL self-heal) ② 매장 가입→어드민 승인→인라인 등록 E2E 1회 ③ QuickProductModal 의 transient 토큰 상품등록 실결제전 1회.
 
