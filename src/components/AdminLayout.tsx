@@ -95,6 +95,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: '🏪 오프라인 공구',
     items: [
       { path: '/admin/group-buy',        label: '공동구매',      icon: Ticket },
+      { path: '/admin/dongnedeal-import', label: '동네딜 상품 등록', icon: Upload },
       { path: '/admin/stays',            label: '숙소 운영',     icon: Building2 },
       { path: '/admin/pending-sellers',  label: '매장 검수',     icon: UserCheck },
       { path: '/admin/coupons',          label: '쿠폰 관리',     icon: Ticket },
@@ -209,6 +210,12 @@ const VISIBLE_NAV_GROUPS: NavGroup[] = LIVE_COMMERCE_SUSPENDED
   ? NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((it) => !LIVE_ADMIN_PATHS.has(it.path)) })).filter((g) => g.items.length > 0)
   : NAV_GROUPS
 
+// 🛡️ 2026-06-17 (대표 신고 — 로그인 시 화면이 미친듯이 깜빡): 강제 보안 설정/계정 보안 페이지는
+//   역할과 무관하게 항상 도달 가능해야 한다. 도매 RBAC 리다이렉트(아래)가 강제 PIN 게이트
+//   (/admin/set-pin)와 충돌하면 /admin/set-pin ⟷ /admin/wholesale-overview 무한 루프 →
+//   AdminLayout remount 반복 → 화면 깜빡 + dashboard-notifications 폭주(429). 이 경로들은 RBAC 리다이렉트에서 면제.
+const ALWAYS_ALLOWED_ADMIN_PATHS = ['/admin/set-pin', '/admin/2fa']
+
 interface AdminLayoutProps {
   title: string
   children: React.ReactNode
@@ -319,7 +326,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   //   서버 RBAC 가 데이터는 이미 403 차단 — 이건 깨진 화면 대신 안전한 랜딩을 위한 UX 가드.
   useEffect(() => {
     if (adminRole !== 'wholesale') return
-    const allowed = roleNavGroups.flatMap((g) => g.items.map((it) => it.path))
+    const allowed = [...roleNavGroups.flatMap((g) => g.items.map((it) => it.path)), ...ALWAYS_ALLOWED_ADMIN_PATHS]
     const ok = allowed.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))
     if (!ok) navigate('/admin/wholesale-overview', { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps

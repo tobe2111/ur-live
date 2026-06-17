@@ -78,12 +78,15 @@ adminAccountsRoutes.post('/admins', cors(), async (c) => {
       email: string; password: string; name: string; role: string; username?: string;
     }>();
 
-    if (!email || !password || !name || !role) {
-      return c.json({ success: false, error: '필수 항목이 누락되었습니다 (email, password, name, role)' }, 400);
+    // 🆕 2026-06-17 (대표 신고 — 새 관리자 추가 400): name 은 프런트 폼에서 선택 입력이라
+    //   비워도 400 안 나게 이메일 local part 로 fallback (username 과 동일 정책). 필수는 email/password/role.
+    if (!email || !password || !role) {
+      return c.json({ success: false, error: '필수 항목이 누락되었습니다 (email, password, role)' }, 400);
     }
     if (!VALID_ADMIN_ROLES.includes(role)) {
       return c.json({ success: false, error: `유효하지 않은 역할입니다. ${VALID_ADMIN_ROLES.join(', ')} 중 선택하세요` }, 400);
     }
+    const resolvedName = (name && name.trim()) || email.split('@')[0];
 
     // 🆕 2026-06-17 (대표 요청): 새 관리자 추가는 완화 규칙(8자+ / 영문·숫자·특수 2종+) — 대문자 강제 X.
     const complexity = validatePasswordComplexity(password, { relaxed: true });
@@ -108,14 +111,14 @@ adminAccountsRoutes.post('/admins', cors(), async (c) => {
     await executeRun(DB,
       `INSERT INTO admins (username, email, password_hash, name, role, created_at)
        VALUES (?, ?, ?, ?, ?, datetime('now'))`,
-      [resolvedUsername, email, passwordHash, name, role]
+      [resolvedUsername, email, passwordHash, resolvedName, role]
     );
 
     await writeAuditLog(c, {
       action: 'create_admin',
       targetType: 'admin',
       targetId: email,
-      after: { email, name, role }
+      after: { email, name: resolvedName, role }
     });
 
     return c.json({ success: true, message: '관리자가 생성되었습니다' });

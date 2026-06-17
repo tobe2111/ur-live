@@ -594,7 +594,12 @@ api.interceptors.response.use(
       }
 
       // 세션 쿠키 유저는 쿠키가 유효한지 확인 후 처리
-      const isSessionCookieUser = localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id');
+      // 🛡️ 2026-06-17 (듀얼 로그인 충돌 수정): user_type 비의존 — 세션 흔적(session_login/user_id)이
+      //   있으면 헬스체크 보호 적용. 기존 user_type==='user' 게이트는 어드민/셀러/에이전시 + 소비자
+      //   듀얼 로그인 시 user_type 이 'admin'/'seller' 로 남아 보호를 건너뛰고 → 401 한 번에
+      //   소비자 세션(user_id+session_login)을 삭제했다. (auth.ts hasConsumerSession() 과 동일 기준.
+      //   헬스 엔드포인트가 쿠키로 최종 판정하므로 비-소비자에겐 무해 — session:false 면 정상 정리.)
+      const isSessionCookieUser = !!localStorage.getItem('session_login') || !!localStorage.getItem('user_id');
       if (isSessionCookieUser) {
         try {
           const health = await axios.get('/api/auth/session/health', { withCredentials: true });

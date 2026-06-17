@@ -7,6 +7,7 @@ import {
   getUserType,
   getUserProfileImage,
   isLoggedInSync,
+  hasConsumerSession,
   getAccessToken,
   clearAuthData,
   saveTempCartItem,
@@ -202,6 +203,57 @@ describe('isLoggedInSync', () => {
   it('returns false when only user_type is set without user_id', () => {
     localStorage.setItem('user_type', 'user');
     expect(isLoggedInSync()).toBe(false);
+  });
+});
+
+describe('hasConsumerSession (dual-login conflict guard)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('returns false when nothing is stored', () => {
+    expect(hasConsumerSession()).toBe(false);
+  });
+
+  it('returns true for plain consumer (user_id + user_type=user)', () => {
+    localStorage.setItem('user_id', '123');
+    localStorage.setItem('user_type', 'user');
+    expect(hasConsumerSession()).toBe(true);
+  });
+
+  it('returns true when session_login cookie flag is set', () => {
+    localStorage.setItem('session_login', 'true');
+    expect(hasConsumerSession()).toBe(true);
+  });
+
+  // 🛡️ 핵심 회귀: 어드민/셀러 대시보드 + 소비자 듀얼 로그인 시 user_type 이 'admin'/'seller' 로
+  //   덮여도 소비자 세션(user_id/session_login)은 살아있다고 인정해야 한다.
+  it('returns true for dual login when user_type=admin but consumer session exists', () => {
+    localStorage.setItem('user_id', '123');
+    localStorage.setItem('session_login', 'true');
+    localStorage.setItem('admin_token', 'admin-jwt');
+    localStorage.setItem('user_type', 'admin');
+    expect(hasConsumerSession()).toBe(true);
+  });
+
+  it('returns true for dual login when user_type=seller but consumer session exists', () => {
+    localStorage.setItem('user_id', '123');
+    localStorage.setItem('seller_token', 'seller-jwt');
+    localStorage.setItem('user_type', 'seller');
+    expect(hasConsumerSession()).toBe(true);
+  });
+
+  // 셀러/어드민 토큰 단독은 *소비자* 세션이 아니다 (구매자 식별용 — 오인 금지).
+  it('returns false when only seller_token exists (no consumer session)', () => {
+    localStorage.setItem('seller_token', 'seller-jwt');
+    localStorage.setItem('user_type', 'seller');
+    expect(hasConsumerSession()).toBe(false);
+  });
+
+  it('returns false when only admin_token exists (no consumer session)', () => {
+    localStorage.setItem('admin_token', 'admin-jwt');
+    localStorage.setItem('user_type', 'admin');
+    expect(hasConsumerSession()).toBe(false);
   });
 });
 

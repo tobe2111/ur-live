@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Gift, ChevronRight, ChevronLeft, Bookmark } from 'lucide-react'
 import api from '@/lib/api'
-import { getUserId } from '@/utils/auth'
+import { getUserId, hasConsumerSession } from '@/utils/auth'
 import { resolveProductFlow } from '@/shared/product-flow'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -62,7 +62,7 @@ export default function ProductDetailPage() {
   
   // ✅ Selector로 필요한 상태만 구독
   const user = isKorea() ? krUser : worldUser
-  const isLoggedIn = !!user || (localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id'))
+  const isLoggedIn = !!user || hasConsumerSession()
   
   // 🔥 React Query로 데이터 fetching (자동 캐싱 + 재시도)
   const { data: product, isLoading, error } = useProduct(id)

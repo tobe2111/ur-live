@@ -14,6 +14,7 @@ import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { ChevronLeft, Share2, TrendingUp, Users, DollarSign, Copy, Building2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { hasConsumerSession } from '@/utils/auth'
 
 interface Stats {
   total_referrals: number
@@ -55,8 +56,7 @@ export default function InfluencerDashboardPage() {
   //         InfluencerDashboardPage 는 token() 빈값 → /login 다시 보냄 → 사이클.
   //   해결: LoginPage 와 동일 기준 — user_id+user_type 도 인증으로 인정.
   //         쿠키 사용자는 access_token 없어도 OK. api.get 자체가 쿠키 자동 전송.
-  const hasToken = !!token() ||
-    (localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id'))
+  const hasToken = !!token() || hasConsumerSession()
 
   useEffect(() => {
     if (!hasToken) {

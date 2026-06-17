@@ -96,8 +96,10 @@ function ReelCardImpl({
   // Seller control (now safe to use stream)
   const [changingProduct, setChangingProduct] = useState(false)
   const userId = getUserId()
-  const userType = localStorage.getItem('user_type')
-  const isSeller = userType === 'seller' && userId && stream.seller_id === parseInt(userId)
+  // 🛡️ 2026-06-17 (듀얼 로그인 충돌 수정): user_type 비의존 — seller_token 존재로 셀러 판정.
+  //   기존 `user_type === 'seller'` 는 듀얼 로그인(소비자로 마지막 로그인 → user_type='user') 시
+  //   셀러가 본인 방송 컨트롤을 잃었다. id 비교(stream.seller_id===userId)는 기존 의미 보존.
+  const isSeller = !!localStorage.getItem('seller_token') && userId && stream.seller_id === parseInt(userId)
   
   // Donation effects
   const [donationEffects, setDonationEffects] = useState<Array<{ id: string; donorName: string; amount: number; message: string }>>([])
