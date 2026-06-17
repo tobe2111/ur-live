@@ -247,16 +247,16 @@ export default function AdminAccountsPage() {
             </div>
             <div className="space-y-3">
               <input type="email" placeholder={t('auth.email')} value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]" />
               <input type="text" placeholder={t('common.name')} value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]" />
               <input type="password" placeholder={t('auth.password')} value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]" />
               {/* 🛡️ 2026-06-14: 제한 권한 분리 선택 */}
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">접근 권한 (역할)</label>
                 <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900">
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]">
                   {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
                 <p className="text-[11px] text-gray-400 mt-1">{ROLE_LABELS[form.role]?.desc}</p>
@@ -280,13 +280,13 @@ export default function AdminAccountsPage() {
             <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('admin.accounts.editAdmin', { email: showEdit.email })}</h3>
             <div className="space-y-3">
               <input type="text" placeholder={t('common.name')} value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]" />
               <input type="email" placeholder={t('auth.email')} value={editForm.email} onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]" />
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">접근 권한 (역할)</label>
                 <select value={editForm.role} onChange={e => setEditForm(p => ({ ...p, role: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900">
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]">
                   {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
                 <p className="text-[11px] text-gray-400 mt-1">{ROLE_LABELS[editForm.role]?.desc}</p>
@@ -309,7 +309,7 @@ export default function AdminAccountsPage() {
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('admin.accounts.changePasswordFor', { email: showResetPw.email })}</h3>
             <input type="password" placeholder={t('admin.accounts.newPasswordPlaceholder')} value={newPassword} onChange={e => setNewPassword(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900" />
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]" />
             <div className="flex gap-2 mt-5">
               <button onClick={() => setShowResetPw(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg">{t('common.cancel')}</button>
               <button onClick={resetPassword} disabled={saving} className="flex-1 py-2.5 bg-amber-500 text-white text-sm font-medium rounded-lg disabled:opacity-50">
