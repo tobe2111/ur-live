@@ -23,6 +23,7 @@ const AdminSuppliersPage = lazy(() => import('@/pages/AdminSuppliersPage'))
 const AdminDistributorGradesPage = lazy(() => import('@/pages/AdminDistributorGradesPage'))
 const AdminWholesaleImportPage = lazy(() => import('@/pages/AdminWholesaleImportPage'))
 const AdminWholesaleActivityPage = lazy(() => import('@/pages/admin/AdminWholesaleActivityPage'))
+const AdminLoginHistoryPage = lazy(() => import('@/pages/AdminLoginHistoryPage'))
 const AdminWholesaleOrdersPage = lazy(() => import('@/pages/AdminWholesaleOrdersPage'))
 // 🏦 2026-06-09: 도매 예치금 입금확인 페이지.
 const AdminWholesaleDepositsPage = lazy(() => import('@/pages/AdminWholesaleDepositsPage'))
@@ -230,6 +231,11 @@ export function AdminRoutes() {
       <Route path="/admin/wholesale-activity" element={
         <ProtectedRoute requireAdmin>
           <AdminWholesaleActivityPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/login-history" element={
+        <ProtectedRoute requireAdmin>
+          <AdminLoginHistoryPage />
         </ProtectedRoute>
       } />
       <Route path="/admin/wholesale-orders" element={

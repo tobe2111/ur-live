@@ -21,6 +21,9 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPw, setShowPw] = useState(false)
+  // 🆕 2026-06-17 2FA: needOtp=true 면 OTP 입력칸 노출(서버가 twofa_required 반환).
+  const [needOtp, setNeedOtp] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
 
   // Remember Me 이메일 불러오기 (리다이렉트는 PublicRoute(forAdmin)에서 처리)
   useEffect(() => {
@@ -68,7 +71,16 @@ export default function AdminLoginPage() {
         email,
         password,
         turnstile_token: turnstileToken,
+        totp_code: needOtp ? otpCode.trim() : undefined,
       })
+
+      // 🆕 2FA: 서버가 OTP 요구(코드 미입력/형식오류) → OTP 입력 단계로.
+      if (!response.data.success && response.data.twofa_required) {
+        setNeedOtp(true)
+        setError(response.data.error || response.data.message || 'OTP 코드(인증앱 6자리)를 입력하세요')
+        setLoading(false)
+        return
+      }
 
       if (response.data.success) {
         // Save email if "Remember Me" is checked
@@ -96,12 +108,22 @@ export default function AdminLoginPage() {
         localStorage.setItem('admin_email', admin.email || '')
         localStorage.setItem('admin_role', admin.role || 'admin') // 🛡️ RBAC — 네비/UI 역할 게이트(권한 강제는 서버)
 
+        // 🆕 2FA 강제 대상(도매 파트너/슈퍼)인데 미등록 → 등록 게이트(2FA 설정 페이지로 강제).
+        if (response.data.data.must_enroll_2fa) {
+          localStorage.setItem('admin_must_enroll_2fa', '1')
+          navigate('/admin/2fa', { replace: true })
+          return
+        }
+        localStorage.removeItem('admin_must_enroll_2fa')
+
         // 🆕 도매 파트너(wholesale)는 소비자 어드민 홈(/admin) 접근 불가 → 도매 통합 현황으로 랜딩.
         const landing = String(admin.role || '').toLowerCase() === 'wholesale' ? '/admin/wholesale-overview' : '/admin'
         navigate(landing, { replace: true })
       }
     } catch (err: any) {
       if (import.meta.env.DEV) console.error('[AdminLogin] Error:', err)
+      // 🆕 2FA: 잘못된 OTP(401)도 twofa_required → OTP 단계 유지.
+      if (err.response?.data?.twofa_required) setNeedOtp(true)
       setError(err.response?.data?.message || err.response?.data?.error || t('admin.login.failed'))
     } finally {
       setLoading(false)
@@ -214,6 +236,27 @@ export default function AdminLoginPage() {
                   </button>
                 </div>
               </div>
+
+              {/* 🆕 2FA OTP — 서버가 twofa_required 반환 시 노출. 인증앱 6자리. */}
+              {needOtp && (
+                <div>
+                  <label htmlFor="admin-otp" className="block text-sm font-medium text-gray-700 mb-1.5">인증앱 6자리 코드</label>
+                  <input
+                    id="admin-otp"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    aria-label="2FA 인증 코드"
+                    autoFocus
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-center text-lg tracking-[0.4em] font-mono text-gray-900 bg-white [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">Google Authenticator 등 인증앱에 표시된 6자리 코드를 입력하세요.</p>
+                </div>
+              )}
 
               {/* Remember Me */}
               <div className="flex items-center gap-2">

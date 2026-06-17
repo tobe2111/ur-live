@@ -1426,6 +1426,16 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       user_agent TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )` },
+    { name: 'admin_login_history', sql: `CREATE TABLE IF NOT EXISTS admin_login_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id TEXT NOT NULL,
+      email TEXT,
+      ip TEXT,
+      user_agent TEXT,
+      success INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_admin_login_history_created', sql: `CREATE INDEX IF NOT EXISTS idx_admin_login_history_created ON admin_login_history(created_at DESC)` },
     { name: 'idx_admin_audit_admin_id', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_admin_id ON admin_audit_logs(admin_id, created_at)` },
     { name: 'idx_admin_audit_action', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_action ON admin_audit_logs(action, created_at)` },
     { name: 'idx_admin_audit_created', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit_logs(created_at DESC)` },
@@ -1902,6 +1912,23 @@ repairSchemaRoutes.get('/api/_internal/bootstrap-super', requireAdmin(), async (
     return c.json({ success: true, ...out, super_admins: supers.results ?? [] });
   } catch (err) {
     return c.json({ success: false, error: '부트스트랩 실패', _debug: String(err).slice(0, 200) }, 500);
+  }
+});
+
+// 🛡️ 2026-06-17 2FA 잠금 복구 — 기기 분실 등으로 OTP 로그인 불가 시 해당 계정의 2FA 해제(재등록 유도).
+//   슈퍼관리자만 호출 가능(타 계정 2FA 무단 해제 차단). 해제 후 다음 로그인 시 강제 재등록(미등록=must_enroll).
+repairSchemaRoutes.get('/api/_internal/reset-2fa', requireAdmin(), async (c) => {
+  const DB = (c.env as { DB: D1Database }).DB;
+  try {
+    const caller = ((c as unknown as { get: (k: string) => unknown }).get('user')) as { id?: string | number } | undefined;
+    const me = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(caller?.id).first<{ role: string }>().catch(() => null);
+    if (!me || me.role !== 'super_admin') return c.json({ success: false, error: '슈퍼관리자만 가능합니다' }, 403);
+    const email = String(c.req.query('email') || '').trim().toLowerCase();
+    if (!email) return c.json({ success: false, error: 'email 쿼리 필요' }, 400);
+    const r = await DB.prepare("UPDATE admins SET totp_enabled = 0, totp_secret = NULL WHERE lower(email) = ?").bind(email).run().catch(() => null);
+    return c.json({ success: true, email, reset: r?.meta?.changes ?? 0, message: '2FA 해제됨 — 해당 계정 다음 로그인 시 재등록 필요' });
+  } catch (err) {
+    return c.json({ success: false, error: '2FA 해제 실패', _debug: String(err).slice(0, 150) }, 500);
   }
 });
 

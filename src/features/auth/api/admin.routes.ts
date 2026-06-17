@@ -53,6 +53,28 @@ type AdminLoginRequest = {
 
 export const adminRoutes = new Hono<{ Bindings: Bindings }>();
 
+// 🆕 2026-06-17 관리자 로그인 이력 테이블 — per-request DDL 방지(WeakSet 메모이즈).
+const _loginHistEnsured = new WeakSet<D1Database>();
+async function ensureAdminLoginHistory(DB: D1Database): Promise<void> {
+  if (_loginHistEnsured.has(DB)) return;
+  _loginHistEnsured.add(DB);
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS admin_login_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id TEXT NOT NULL,
+      email TEXT,
+      ip TEXT,
+      user_agent TEXT,
+      success INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`).run();
+    await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_admin_login_history_created ON admin_login_history(created_at DESC)`).run().catch(() => {});
+  } catch (e) {
+    _loginHistEnsured.delete(DB);
+    console.error('[ensureAdminLoginHistory]', e);
+  }
+}
+
 /**
  * POST /api/admin/login
  * 관리자 로그인
@@ -124,7 +146,46 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
 
     // 🛡️ 성공 시 실패 카운터 초기화
     await clearFailures(DB, 'admin', String(admin.id));
-    
+
+    // 🆕 2026-06-17 2FA 강제 (도매 파트너 + 슈퍼) + 로그인 이력(IP).
+    //   - 활성 2FA(admin_2fa.is_active=1) 있으면 OTP 코드 필수(없으면 twofa_required 반환 → 토큰 미발급).
+    //   - 강제 대상 역할인데 미등록이면 토큰은 발급하되 must_enroll_2fa 플래그(프론트가 등록 게이트).
+    //   ⚠️ 현재 활성 2FA 계정 0 → 기존 로그인 무영향(twofa_required 미발생). must_enroll 은 구 프론트가 무시.
+    const reqIp = c.req.header('CF-Connecting-IP') || c.req.header('cf-connecting-ip') || null;
+    let mustEnroll2fa = false;
+    {
+      const ENFORCED_2FA_ROLES = ['super_admin', 'wholesale'];
+      // 🔑 enrollment 페이지(/admin/2fa)가 쓰는 generic store = admins.totp_secret/totp_enabled (RFC6238 base32).
+      //   컬럼 미존재(미설정 환경)면 catch → null → 로그인 안 깨짐(fail-safe).
+      const tw = await DB.prepare('SELECT totp_secret, totp_enabled FROM admins WHERE id = ?')
+        .bind(admin.id).first<{ totp_secret: string | null; totp_enabled: number | null }>().catch(() => null);
+      const has2fa = !!(tw && Number(tw.totp_enabled) === 1 && tw.totp_secret);
+      if (has2fa) {
+        const code = String((body as { totp_code?: string }).totp_code || '').trim();
+        if (!/^\d{6}$/.test(code)) {
+          return c.json({ success: false, twofa_required: true, message: 'OTP 코드(인증앱 6자리)를 입력하세요' }, 200);
+        }
+        try {
+          const { verifyTOTP } = await import('../../../worker/utils/totp');
+          const ok = await verifyTOTP(tw!.totp_secret as string, code);
+          if (!ok) return c.json({ success: false, twofa_required: true, error: 'OTP 코드가 올바르지 않습니다' }, 401);
+        } catch (e) {
+          console.error('[Admin Login] 2FA verify error:', e);
+          return c.json({ success: false, twofa_required: true, error: 'OTP 검증 오류 — 다시 시도해주세요' }, 500);
+        }
+      } else if (ENFORCED_2FA_ROLES.includes(String(admin.role))) {
+        mustEnroll2fa = true;
+      }
+    }
+
+    // 🆕 로그인 이력(IP) 기록 — fail-soft (로그인 차단 안 함).
+    try {
+      await ensureAdminLoginHistory(DB);
+      await DB.prepare(
+        `INSERT INTO admin_login_history (admin_id, email, ip, user_agent, success) VALUES (?, ?, ?, ?, 1)`
+      ).bind(String(admin.id), admin.email, reqIp, c.req.header('User-Agent') || null).run();
+    } catch (e) { console.error('[Admin Login] login history write failed:', e); }
+
     const now = Math.floor(Date.now() / 1000);
     const payload = {
       sub: admin.id.toString(),
@@ -177,6 +238,7 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
         accessToken: token,
         refreshToken,
         token, // backward compatibility
+        must_enroll_2fa: mustEnroll2fa, // 🆕 강제 대상(도매 파트너/슈퍼)인데 2FA 미등록 → 프론트가 등록 게이트
         admin: {
           id: admin.id as number,
           username: admin.username as string,
