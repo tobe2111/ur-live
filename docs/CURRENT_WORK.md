@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## 🔐 2026-06-17 — 대시보드 토큰 httpOnly 쿠키 전환 (XSS 하드닝, 옵션 C) — 설계 박제 / 단계 구현 대기
+**배경**: 사용자 "모두 가장 이상적으로 진행". 대시보드 토큰(seller/admin/agency/supplier + refresh)이 localStorage 라 XSS 시 탈취·30일 takeover 가능 — 외부 파트너(도매 admin·제조사) 증가로 노출↑. 목표 = JS 못 읽는 httpOnly 쿠키 의존(방어심화).
+- **설계 문서**: `docs/design/dashboard-cookie-auth.md` (현황 해부 + 단계 + 리스크/E2E 체크리스트 + 롤백).
+- **핵심 통찰(코드 해부)**: 세션 쿠키(`createSessionCookie`/`parseSessionCookie`)는 **이미 전 메서드 인증**됨(auth.ts:350-373) → 인프라 사실상 완성. `ud_*` 쿠키는 **CSRF 미보장이라 GET 전용**(auth.ts:378). 따라서 C의 선결과제 = **대시보드 변경요청 CSRF 강제 확대**(`csrfProtection()` 은 Bearer skip이라 현행 무회귀). 클라(api.ts:221)는 이미 `X-CSRF-Token` 첨부. refresh 토큰도 쿠키화 대상.
+- **단계(독립 배포·롤백)**: Phase0 CSRF 강제 확대 → P1 어드민 → P2 제조사/에이전시(utongstart.com host-only 쿠키 주의) → P3 셀러(웹뷰 최우선).
+- **⚠️ 진행 안 한 이유(정직)**: ① CSRF 블랭킷 적용은 `/api/*/login|register|refresh`(Bearer 없는 비인증 POST)를 403으로 막아 **로그인 락아웃** → skip 경로 정밀 열거 필요. ② 쿠키/SameSite/도메인/카톡 인앱 동작은 **이 환경에서 E2E 불가** → 각 단계 클라 컷오버 전 staging E2E 가 게이트. 블라인드 강행 = "이상적"의 반대라 설계+검토 우선.
+- **다음**: Phase0(어드민 한정부터, skip 경로 전수 열거 + 단위테스트) 구현 — 사용자 확인 후.
+
+
 ## ✅ 2026-06-17 — 단일 세션 강제 확장: per-seat 키 + 카카오 토큰 + 로그아웃 문구 (대표 "가장 이상적으로")
 **배경**: 단일 세션 v1(admin/seller/supplier)에서 제외했던 멀티시트(에이전시 멤버·도매 직원)와 카카오 발급 토큰까지 확장 + 안내 문구 구체화.
 - **per-seat 키** (`dashboard-session.ts deriveDashboardSeat`): 토큰에서 시트 키 도출 — `sub_account_id`→`('seller_sub', id)`, `agency`+`member_id`→`('agency_member', id)`, `agency`(멤버없음/카카오)→`('agency', agencyId)`, admin/seller/supplier→`(type, id)`. **같은 회사의 다른 직원/멤버는 각자 시트 → 동시 로그인 보존**, 같은 시트의 다른 기기만 단일 세션. 미들웨어 3경로(Bearer/쿠키/SSR)·seller refresh 모두 seat 기반으로 전환(subAccount 옵션 제거).
