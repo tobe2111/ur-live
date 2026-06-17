@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { curatorApi, type CuratorPageResponse, type CuratorPin, type DashboardStats } from '@/features/curator/api/curator-api'
 import { useAuthStore } from '@/client/stores/auth.store'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatWon, formatNumber } from '@/utils/format'
 import { cfImage } from '@/utils/cf-image'
 import { reportDominantColor } from '@/utils/dominant-color'
@@ -376,18 +377,16 @@ export default function CuratorPage() {
 //   그대로 쓰면 크리에이터가 즉시 현금을 기대 → 혼란. 확정(출금가능) + 예정(보류) 을 명확히 분리 표기.
 function OwnerEarningsStrip() {
   const { t } = useTranslation()
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loaded, setLoaded] = useState(false)
-  useEffect(() => {
-    let alive = true
-    curatorApi.getDashboard()
-      .then((r) => { if (alive && r?.success) setStats(r.stats) })
-      .catch(() => { /* 조용히 — strip 은 보조 정보, 실패해도 핀 그리드 우선 */ })
-      .finally(() => { if (alive) setLoaded(true) })
-    return () => { alive = false }
-  }, [])
+  // 🏎️ 2026-06-17 (링크샵 감사): 무거운 9쿼리 /me/dashboard 를 수익 콘솔(CuratorEarningsPage)과
+  //   동일 RQ 키로 공유 — 링크샵 strip → 콘솔 진입 시 재요청 없이 캐시 재사용(staleTime 60s). D1 부하 절감.
+  const dashQ = useApiQuery<DashboardStats | null>(
+    ['curator', 'dashboard'],
+    '/api/curator/me/dashboard',
+    { select: (raw) => ((raw as { success?: boolean; stats?: DashboardStats })?.success ? ((raw as { stats: DashboardStats }).stats) : null) },
+  )
+  const stats = dashQ.data ?? null
   // 로딩/실패 시 strip 숨김 (레이아웃 점프 없이 핀이 먼저). 적립 0 이어도 표시 — 시작 동기 부여.
-  if (!loaded || !stats) return null
+  if (!stats) return null
   const confirmed = stats.month_earnings ?? 0
   const pending = stats.pending_earnings ?? 0
   const clicks = stats.unique_clicks_30d ?? stats.clicks_30d ?? 0
