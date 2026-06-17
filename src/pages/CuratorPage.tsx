@@ -276,34 +276,26 @@ export default function CuratorPage() {
           onCopyLink={copyLink}
           onCuratorUpdate={(next) => setData(prev => prev ? { ...prev, curator: { ...prev.curator, ...next } } : prev)}
         />
-        {/* 🎨 2026-06-16 링크샵 개선안(design): 본인 뷰 = 명시적 '편집 모드' 안내 — 사진·이름·소개·핀을 눌러 바로 수정. theme-dual: 의도적 네이비 배너 */}
-        {ownerView && (
+        {/* 🎨 2026-06-17 (사용자 — UI 번잡 정리): 소유자 컨트롤 1줄 통합(편집 안내 + 순서 + 미리보기).
+            기존 편집배너/미리보기 카드/순서 버튼 3개를 한 줄로. 방문자 화면 불변. theme-dual: 의도적 네이비 */}
+        {ownerView && !reorderMode && pins.length > 0 && (
           <div className="max-w-3xl mx-auto px-4 pt-3">
-            <div className="flex items-center gap-2 rounded-xl bg-[#141A2E] px-3.5 py-2.5 text-[12.5px] font-semibold text-white">
-              <span className="text-[#FF5634] text-[14px] leading-none">✎</span>
-              <span>편집 모드 · 사진·이름·소개·핀을 눌러 바로 수정하세요</span>
+            <div className="flex items-center justify-between gap-2 rounded-xl bg-[#141A2E] px-3.5 py-2">
+              <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-white min-w-0">
+                <span className="text-[#FF5634] text-[14px] leading-none shrink-0">✎</span>
+                <span className="truncate">편집 모드 · 눌러서 바로 수정</span>
+              </span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {pins.length > 1 && (
+                  <button onClick={() => setReorderMode(true)} className="px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[11.5px] font-bold">⇅ 순서</button>
+                )}
+                <button onClick={() => { setPreviewAsVisitor(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }} className="px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[11.5px] font-bold">👀 미리보기</button>
+              </div>
             </div>
           </div>
         )}
         {/* 🛠️ 2026-06-16: 핀이 있을 때만 적립 strip — 갓 가입(온보딩)·빈 링크샵엔 0/0/0 노이즈 숨김. */}
         {ownerView && pins.length > 0 && <OwnerEarningsStrip />}
-        {/* 🎨 2026-06-16 시안: 방문자 미리보기 카드 — '남이 볼 땐 이렇게 보여요' + 전체 미리보기 진입 */}
-        {ownerView && pins.length > 0 && (
-          <div className="max-w-3xl mx-auto px-4 pt-3">
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] px-4 py-3">
-              <div className="min-w-0">
-                <p className="text-[13.5px] font-extrabold text-gray-900 dark:text-white">방문자에게 이렇게 보여요</p>
-                <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">편집은 나만 보이고, 남에겐 깔끔한 공개 화면만 보여요.</p>
-              </div>
-              <button
-                onClick={() => { setPreviewAsVisitor(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-                className="shrink-0 h-9 px-3.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12.5px] font-bold"
-              >
-                전체 미리보기 →
-              </button>
-            </div>
-          </div>
-        )}
         {/* 🎨 2026-06-17 (사용자 요청 — 오너 화면 불일치 해소): 오너도 방문자와 동일한 그라데이션 카드 그리드를
             기본으로 보고, 카드마다 삭제(✕) + '순서 바꾸기'(드래그 모드)만 추가. 빈 링크샵은 온보딩 빈 상태. */}
         {ownerView && pins.length === 0 ? (
@@ -322,13 +314,7 @@ export default function CuratorPage() {
           </div>
         ) : (
           <>
-            {/* 오너: 순서 바꾸기 진입 (핀 2개 이상). 방문자에겐 안 보임. */}
-            {ownerView && pins.length > 1 && (
-              <div className="max-w-3xl mx-auto px-4 pt-3 flex justify-end">
-                <button onClick={() => setReorderMode(true)} className="inline-flex items-center gap-1 text-[12.5px] font-bold text-gray-600 dark:text-gray-300 px-2.5 py-1.5 rounded-lg bg-gray-100 dark:bg-white/[0.06] active:opacity-70">⇅ 순서 바꾸기</button>
-              </div>
-            )}
-            {/* 🔍 2026-06-16 링크샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터. */}
+            {/* 🔍 2026-06-16 링크샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터. (순서·미리보기는 상단 통합 툴바로 이동) */}
             {pins.length > 0 && (
               <div className="max-w-3xl mx-auto px-4 pt-3 pb-1">
                 <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212]">
