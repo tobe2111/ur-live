@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { curatorApi, type DashboardStats } from '@/features/curator/api/curator-api'
@@ -123,6 +123,7 @@ export default function CuratorEarningsPage() {
               )}
               <IntroducedStoresSection />
               <BusinessSection />
+              <SellOwnProductsCTA />
               <TopPinsSection stats={stats} />
               <RecentEarningsSection stats={stats} />
               <DailyChart stats={stats} />
@@ -350,6 +351,118 @@ function BusinessSection() {
           )}
         </>
       )}
+    </section>
+  )
+}
+
+/**
+ * 🏁 2026-06-17 — 큐레이터 콘솔에서 "내 상품 직접 판매" 입구 (사용자 결정 — 단순화).
+ *   배경: 카카오 유저는 마이페이지 셀러전환 버튼이 숨겨져(SellerSwitchInline 라인 67 — is_kakao_user
+ *   && !has_seller → null) 사업자 등록을 해도 자기 상품 판매 입구가 안 보였음. '사업자 등록(현금
+ *   정산 — 추천수익)' 과 '셀러(상품 판매)' 가 분리돼 혼란.
+ *   해결: 기존 검증된 셀러 등록(/seller/register/business → register-from-user, linked_user_id 연결)
+ *   + 어드민 승인 플로우를 그대로 재활용해 "발견 가능"하게 잇기만. 신규 판매/정산 코드 0.
+ *   승인되면 /u/{handle} 가 자동으로 셀러 상점 + 추천 핀(CuratorPinsSection) 통합 페이지가 됨.
+ */
+function SellOwnProductsCTA() {
+  const navigate = useNavigate()
+  const [sellerStatus, setSellerStatus] = useState<{ has_seller?: boolean; status?: string } | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [switching, setSwitching] = useState(false)
+
+  useEffect(() => {
+    import('@/lib/api').then(({ default: api }) => {
+      api.get('/api/seller/my-seller-status')
+        .then((r) => { if (r.data?.success) setSellerStatus(r.data.data) })
+        .catch((e) => { if (import.meta.env.DEV) console.warn('[curator:sell-cta]', e) })
+        .finally(() => setLoading(false))
+    })
+  }, [])
+
+  if (loading) return null
+
+  const st = sellerStatus?.status
+  const hasSeller = !!sellerStatus?.has_seller
+
+  // 승인됨 → 셀러 컨텍스트로 전환(토큰 발급) 후 상품 등록 화면으로 바로
+  if (hasSeller && (st === 'approved' || st === 'active')) {
+    const goSell = async () => {
+      if (switching) return
+      setSwitching(true)
+      try {
+        const { default: api } = await import('@/lib/api')
+        const res = await api.post('/api/seller/switch-to-seller')
+        if (res.data?.success) {
+          const { accessToken, refreshToken, seller } = res.data.data
+          localStorage.setItem('seller_token', accessToken)
+          localStorage.setItem('seller_refresh_token', refreshToken)
+          localStorage.setItem('seller_id', String(seller.id))
+          localStorage.setItem('seller_name', seller.name)
+          localStorage.setItem('seller_email', seller.email)
+          localStorage.setItem('seller_username', seller.username)
+          localStorage.setItem('seller_type', seller.seller_type)
+          navigate('/seller/products/new')
+        } else {
+          toast.error('셀러 전환에 실패했습니다')
+        }
+      } catch {
+        toast.error('셀러 전환에 실패했습니다')
+      } finally {
+        setSwitching(false)
+      }
+    }
+    return (
+      <section className="mb-6 bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 rounded-xl p-4">
+        <p className="text-sm font-bold text-pink-800 dark:text-pink-200">🛍️ 내 상품 판매 — 승인 완료</p>
+        <p className="text-xs text-pink-700 dark:text-pink-300 mt-1 mb-3">
+          내 상품을 직접 올려 팔 수 있어요. 등록한 상품은 내 링크샵에 추천 핀과 함께 표시됩니다.
+        </p>
+        <button
+          onClick={goSell}
+          disabled={switching}
+          className="px-4 py-2 bg-pink-500 text-white text-xs font-bold rounded-lg disabled:opacity-50"
+        >
+          {switching ? '이동 중…' : '내 상품 올리기 →'}
+        </button>
+      </section>
+    )
+  }
+
+  // 심사 중 (셀러 신청 접수됨)
+  if (hasSeller && st === 'pending') {
+    return (
+      <section className="mb-6 bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
+        <p className="text-sm font-bold text-gray-900 dark:text-white">🛍️ 판매자 신청 접수됨</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          관리자 승인 후 내 상품을 올릴 수 있어요.
+        </p>
+      </section>
+    )
+  }
+
+  // 반려/정지
+  if (hasSeller && (st === 'rejected' || st === 'suspended')) {
+    return (
+      <section className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+        <p className="text-sm font-bold text-red-800 dark:text-red-200">🛍️ 판매자 신청 {st === 'rejected' ? '반려됨' : '정지됨'}</p>
+        <p className="text-xs text-red-700 dark:text-red-300 mt-1">자세한 내용은 고객센터로 문의해주세요.</p>
+      </section>
+    )
+  }
+
+  // 셀러 아님 → 판매 시작 안내 (기존 셀러 등록 플로우로 연결)
+  return (
+    <section className="mb-6 bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
+      <p className="text-sm font-bold text-gray-900 dark:text-white">🛍️ 내 상품도 직접 팔고 싶으세요?</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
+        판매자로 등록하면 내 상품을 올려 팔 수 있어요. 관리자 승인 후 활성화되며, 승인되면 내 링크샵에 추천 핀과 함께 표시됩니다.
+      </p>
+      <button
+        onClick={() => navigate('/seller/register/business?from=curator')}
+        className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg"
+      >
+        판매자 등록하기 →
+      </button>
     </section>
   )
 }
