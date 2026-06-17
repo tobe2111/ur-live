@@ -151,6 +151,14 @@ jobs:
           STRICT_THEME: '1'
         continue-on-error: false
 
+      # 🛡️ 2026-06-17: React Query "stale initialData" 버그 클래스 방어.
+      #   useQuery/useApiQuery 의 initialData(localStorage/SSR seed)가 initialDataUpdatedAt 또는
+      #   refetchOnMount:'always' 없이 fresh 로 간주돼 cold mount 에서 refetch 안 되던 사고
+      #   (잔액 '딜 부족' 오표시) 재발 방지. 현재 위반 0 → strict.
+      - name: React Query initialData freshness guard (strict)
+        run: node scripts/check-query-initialdata.mjs -s
+        continue-on-error: false
+
       # 🛡️ 2026-05-17: CHECK 제약 위반 — admin live-monitor delete 500 사고 재발 방지.
       #   리터럴 'UPDATE <t> SET <c> = ...' 패턴이 마이그레이션의 CHECK(IN (...)) 허용값과
       #   불일치하면 보고. SQL 실행 시 SqlError → 500. strict 모드.

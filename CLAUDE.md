@@ -651,6 +651,7 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 | products `SELECT *`/`p.*` | - | `verify.yml` (strict) | 2026-06-10 D1 컬럼 한도(100) 초과 — 교환권/공구 상세 전체 500. `productDetailCols()` 명시 목록 사용 |
 | products/sellers 새 컬럼 (예산제) | - | `verify.yml` (strict) | 같은 사고 구조적 후속 — 새 메타는 K-V 사이드테이블(`product_supply_meta`), products/sellers ALTER 는 baseline 등록 필수. **sellers 는 이미 100컬럼(D1 한도 도달)** — `check-products-column-budget.mjs` 가 두 테이블 모두 감시 (`scripts/{products,sellers}-column-baseline.json`) |
 | PRODUCT_DETAIL_FIELDS 복구 가능성 | - | `verify.yml` (strict) | 2026-06-10 상품 상세 500 전수조사 — 명시 목록 컬럼은 base CREATE ∪ repair-schema 로 반드시 복구 가능해야 함 (`check-product-detail-fields-repairable.mjs`). 소비자 products SELECT 는 `productDetailColsHealed`+`withColumnPruning` 자가치유 필수 |
+| RQ initialData 신선도 | `check-query-initialdata.mjs` (warn) | `verify.yml` (strict) | 2026-06-17 잔액 '딜 부족' 오표시 — useQuery/useApiQuery 의 `initialData`(localStorage/SSR seed)가 `initialDataUpdatedAt`/`refetchOnMount:'always'` 없이 fresh 로 간주돼 cold mount refetch 누락 → 잘못된 0/null/옛값 노출. 둘 중 하나 필수(보통 `initialDataUpdatedAt: 0`). 의도적 예외는 옵션 객체에 `initialdata-check-ok` 주석 |
 
 **Bypass (정당 사유만):**
 - commit message 에 `[SKIP_ROUTER_CHECK]` / `[SKIP_BUILD_CHECK]` / `[SKIP_SECRET_CHECK]` / `[STRICT_SILENT]` 등 명시
