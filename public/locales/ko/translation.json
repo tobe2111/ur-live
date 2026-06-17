@@ -1898,7 +1898,10 @@
       "follow": "+ 팔로우",
       "shop": "상품",
       "noShopProductsOwner": "등록한 상품이 없습니다. 셀러 대시보드 → 상품 등록에서 추가하세요.",
-      "noShopProducts": "등록된 상품이 없습니다."
+      "noShopProducts": "등록된 상품이 없습니다.",
+      "previewVisitor": "👀 미리보기",
+      "previewBanner": "방문자 미리보기 — 다른 사람에게 보이는 화면이에요",
+      "backToEdit": "편집으로 돌아가기"
     },
     "storeIntro": "스토어 소개",
     "shippingInfo": "배송 정보",
@@ -4354,7 +4357,9 @@
     "groupUnused": "사용 가능",
     "groupUsed": "사용 완료",
     "groupExpired": "만료",
-    "groupRefunded": "환불"
+    "groupRefunded": "환불",
+    "ktShowBarcode": "매장에서 아래 바코드를 제시하세요",
+    "ktCheckMms": "휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능."
   },
   "sellerWaiting": {
     "title": "셀러 승인 대기",
