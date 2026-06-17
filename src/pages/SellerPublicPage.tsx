@@ -290,14 +290,14 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
 
   return (
     <div className={`min-h-screen ${T.bg} pb-28`}>
-      {/* 🛡️ 2026-05-20: 사용자 신고 — "지금 편집 가능한지 UI 상 불명확". owner 모드일 때 sticky 안내 배너. */}
+      {/* 🎨 2026-06-17 링크샵 개선안(시안) 통일: 큐레이터 링크샵과 동일한 네이비 '✎ 편집 모드' 배너. theme-dual: 의도적 네이비 */}
       {isOwner && (
-        <div className="sticky top-0 z-30 bg-pink-500 text-white px-4 py-2 text-xs font-bold flex items-center justify-between gap-2">
-          <span>✏️ {t('seller.publicPage.ownerModeNotice', { defaultValue: '내 페이지 — 이름/소개/이미지 클릭해 바로 편집' })}</span>
+        <div className="sticky top-0 z-30 bg-[#141A2E] text-white px-3.5 py-2.5 text-[12.5px] font-semibold flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2"><span className="text-[#FF5634] text-[14px] leading-none">✎</span>{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 사진·이름·소개를 눌러 바로 수정하세요' })}</span>
           <button
             type="button"
             onClick={() => navigate('/seller/profile?tab=business')}
-            className="px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded text-[10px] font-bold whitespace-nowrap"
+            className="shrink-0 px-2.5 py-1 bg-white/15 hover:bg-white/25 rounded-lg text-[11px] font-bold whitespace-nowrap"
           >
             {t('seller.publicPage.fullSettings', { defaultValue: '전체 설정' })}
           </button>
@@ -362,10 +362,20 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
 
         {tab === 'shop' && (
           shopProducts.length === 0 ? (
-            <div className="text-center py-16 text-gray-400 text-sm">
-              {isOwner
-                ? t('seller.publicPage.noShopProductsOwner', { defaultValue: '등록한 상품이 없습니다. 셀러 대시보드 → 상품 등록에서 추가하세요.' })
-                : t('seller.publicPage.noShopProducts', { defaultValue: '등록된 상품이 없습니다.' })}
+            // 🎨 2026-06-17 링크샵 통일: 평면 텍스트 → ghost/CTA 빈 상태 (큐레이터 링크샵과 톤 맞춤)
+            <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] flex items-center justify-center text-2xl">🛍️</div>
+              <p className="text-[15px] font-bold text-gray-900 dark:text-white">
+                {isOwner ? t('seller.publicPage.noShopOwnerTitle', { defaultValue: '아직 등록한 상품이 없어요' }) : t('seller.publicPage.noShopTitle', { defaultValue: '등록된 상품이 없어요' })}
+              </p>
+              <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
+                {isOwner ? t('seller.publicPage.noShopOwnerDesc', { defaultValue: '셀러 대시보드에서 상품을 추가해 보세요' }) : t('seller.publicPage.noShopDesc', { defaultValue: '곧 새로운 상품이 올라와요' })}
+              </p>
+              {isOwner && (
+                <button onClick={() => navigate('/seller')} className="mt-4 inline-flex items-center h-10 px-4 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[13px] font-bold active:scale-95">
+                  {t('seller.publicPage.goAddProduct', { defaultValue: '대시보드에서 등록하기 →' })}
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -375,7 +385,7 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
               <input value={shopQuery} onChange={(e) => setShopQuery(e.target.value)} placeholder="상품 이름으로 검색" className={`flex-1 min-w-0 bg-transparent outline-none text-[14px] ${T.text} placeholder:text-gray-400`} />
               {shopQuery && <button onClick={() => setShopQuery('')} aria-label="지우기" className="shrink-0 w-5 h-5 rounded-full bg-gray-300 dark:bg-[#3A3A3A] text-white flex items-center justify-center"><X className="w-3 h-3" /></button>}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8">
               {shopProducts.filter(p => !shopQuery.trim() || p.name.toLowerCase().includes(shopQuery.trim().toLowerCase())).map(p => (
                 // 🎨 2026-06-16 링크샵 통일: 공유 에디토리얼 카드 (docs/design/linkshop-unification.md 2단계)
                 <EditorialProductCard
@@ -404,7 +414,7 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
           streams.length === 0 ? (
             <div className="text-center py-16 text-gray-400 text-sm">{t('seller.publicPage.noLiveRecords')}</div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {streams.map(s => (
                 <StreamCard key={s.id} stream={s} onClick={() => navigate(`/live/${s.id}`)} />
               ))}

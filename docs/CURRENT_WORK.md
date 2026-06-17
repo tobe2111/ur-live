@@ -1,5 +1,43 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 숙소 카테고리 인라인화 + 일반 상품 카테고리 추가 (사용자 신고)
+**신고**: ① `/stays` 숙소는 다른 동네딜 카테고리처럼 같은 그리드/탭으로 안 보이고 별도 페이지로 튐 ② PC 사이드바 CATEGORY 에 '일반 상품' 누락.
+- **숙소 인라인화** (`GroupBuyListPage`): 숙소 탭의 `navigate('/stays')` 리다이렉트 제거 → 다른 카테고리처럼 `?category=stay_voucher` 로 동네딜 그리드 안에서 필터. 숙소는 products 테이블에 `category='stay_voucher'` 로 저장되므로 피드에 포함됨(확인). **예약 보존**: `GroupBuyGridCard` 가 stay_voucher 카드만 클릭 시 전용 `/stays/:id`(객실·날짜 예약)로 라우팅(나머지는 `/group-buy/:id`), prefetch 도 stay 제외. 날짜·인원 전용 검색은 숙소 필터 시 `/stays` 링크로 보존(가역).
+- **사이드바** (`DesktopLiveSidebar`): 숙소 → `?category=stay_voucher`(인라인), **'일반 상품'(general) 카테고리 추가**(Package 아이콘). MENU '오프라인 공동구매' 활성 정규식에 general 포함(이중강조 방지).
+- **i18n**: `category.general`(nested) + `groupBuy.stayDateSearch`(flat) 6개 언어. (i18next ignoreJSONStructure 로 nested/flat 모두 resolve 확인.)
+- 검증: tsc 0 · `npm run build` 0 · 테마검사 통과.
+
+## ✅ 2026-06-17 도매 전용 어드민 역할 `wholesale` (외부 동업자용 — 권한 분리, 앱 분리 X)
+**배경**: 도매몰 동업자(외부 파트너)가 어드민 접근 필요 → 완전 분리 대신 **RBAC 도메인-한정 역할**(대표 "추천대로", 범위 "도매 전체 정산·머니 포함"). 별도 앱 복제 X(유지보수·보안 2배 회피) — 같은 코드, 역할로 격리.
+- **SSOT `admin-roles.ts`**: `wholesale` 역할 신설(도메인-한정). 일반역할(ops/cs/finance=읽기 개방)과 달리 **읽기·쓰기 모두 도매 도메인만** — 유어딜 소비자 어드민 데이터 격리. `SCOPED_ROLE_DOMAINS`(prefixes: wholesale/partnership/distributor/supplier, exact: suppliers) + `isScopedAdminRole`/`scopedRoleCanAccess`. `canAdminRoleMutate` 가 scoped 위임.
+- **미들웨어 `admin-rbac.ts`**: scoped 역할이면 super-only 차단 후 `scopedRoleCanAccess` 로 읽기·쓰기 동시 게이트(그 외 /api/admin/* 읽기도 403). `/api/admin-payouts/*`(payouts)·users·settlements·group-buy 등 전부 차단.
+- **계정 발급**: `admin-accounts.routes` VALID_ROLES + `AdminAccountsPage` ROLE_OPTIONS 에 '도매 파트너' 추가(슈퍼가 발급). admins.role CHECK 없음(repair-schema) → 안전.
+- **프론트**: AdminLayout 가 wholesale 역할에 **도매 3그룹(domain:'wholesale')만 노출** + 비-도매 경로 진입 시 `/admin/wholesale-overview` 리다이렉트(깨진 화면 방지). 로그인 랜딩도 도매 현황.
+- 검증: tsc 0 · admin-roles 단위 12(scoped 4 신규) · client+worker build. 기존 super/admin 계정 무영향(신규 역할 계정 0). **다음(Phase 2): 처리자(누가 처리했는지) 표시 — 대표 요청.**
+
+## ✅ 2026-06-17 — PC 좌측 사이드바 IA: '오프라인 공동구매(동네딜)' 정합 (사용자 신고, AskUserQuestion 확정)
+**신고**: PC 사이드바 MENU 가 홈/공구/식사권인데 '공구'·'식사권' 둘 다 /group-buy 계열이라 혼란 + CATEGORY 가 '식사권' 하나뿐. 대표 확정(AskUserQuestion): **MENU 통합** + CATEGORY = 동네딜 정의.
+- **MENU 통합** (`DesktopLiveSidebar.tsx`): '공구'(nav.groupBuy)+'식사권'(/meal-vouchers) → 단일 **'오프라인 공동구매'**(nav.offlineGroupBuy, MapPin, /group-buy). /live·/browse 항목은 플래그 숨김이나 가역 위해 보존.
+- **CATEGORY = 동네딜 4종** (`GroupBuyListPage` 정의와 1:1): 맛집 식사권(/group-buy?category=meal_voucher)·미용(beauty_voucher)·숙소(/stays 전용)·기타(etc_voucher). CATEGORY 렌더를 NavBtn 재사용으로 단순화.
+- **URL 단일 소스** (`GroupBuyListPage`): `?category=` → category 상태 동기화 useEffect 추가 + 인페이지 탭도 setSearchParams 갱신 → PC 사이드바(상주)에서 이미 /group-buy 에 머문 상태에서도 카테고리 전환 반영(+공유·뒤로가기). 인페이지 탭/지역필터와 무충돌(category param 있을 때만 적용·탭이 URL 기록).
+- **i18n**: nav.offlineGroupBuy + category.{mealVoucher,beauty,stay,etc} 6개 언어 추가(기존 category.* 비어있던 것 정식화).
+- 검증: tsc 0 · `npm run build` 0 · 테마검사 통과.
+
+## ✅ 2026-06-17 — PC 프레임 바탕(gutter)이 다크 테마에서 흰색으로 남던 문제 (사용자 신고)
+**신고**: PC(`/user/profile` 등)에서 다크 테마인데 프레임 양옆 바탕이 흰색. **원인**: PC 컨슈머 프레임(`.app-framed`, 430/720px 가운데 액자)의 양옆 바탕을 `body:has(.mobile-app-container.app-framed)` CSS 만으로 칠했음 → `:has()` 미지원 브라우저/스테일 캐시/캐스케이드 엣지에서 라이트 바탕(`#e9ebef`)이 남을 수 있음.
+- **fix(결정적)**: `MobileAppLayout` 이 테마 store 의 `applied`('light'|'dark') 로 `<body>` 에 `app-frame-host`(+다크면 `app-frame-dark`) 클래스를 직접 토글 → `index.css` `body.app-frame-host[.app-frame-dark]` 규칙으로 바탕색 확정(다크=`#000`). 기존 `:has()` 규칙은 첫 페인트용으로 존치(2차).
+- ⚠️ `:has()` 규칙과 body-class 규칙은 **반드시 분리**(comma 목록 금지) — `:has()` 미지원 브라우저가 목록 전체를 무효화하기 때문. PC(`min-width:1024px`)에서만 적용, 모바일/대시보드/도매몰/비디오 무영향.
+- 검증: tsc 0 · `npm run build`(client+worker+prepare) 0 · 테마검사 통과 · 컴파일된 CSS 에 두 규칙 모두 존재 확인. **잠금 파일 무변경**(SSR inject/edge-cache 등).
+
+## ✅ 2026-06-17 도매몰 채우기(일괄 등록) + 출시 준비 3트랙 + UTONG START 로고 벡터화
+**배경**: 도매몰이 사실상 비어있음(공급상품 1개) → "채울 수단" 신설 + 출시 전 블로커 정리. 대표 "모두 다 진행".
+- **(채우기) 어드민 CSV 일괄 등록** — `POST /api/admin/distributor/supply-bulk-import`(finance/admin/super, RBAC distributor 세그먼트). 제조사 self-serve bulk 와 동일 한글 CSV 포맷이되 **즉시 노출**(is_active=1, approved). supplier_id 없으면 직매입 제조사 find-or-create. 판매가 미입력 시 공급가×1.6 자동. 청크 batch + 행별 리포트 + audit log. UI `AdminWholesaleImportPage`(/admin/wholesale-import, nav '상품 일괄 등록') — 제조사 선택/직매입 자동 + CSV 붙여넣기·업로드·템플릿 + 결과표.
+- **(Track 2 카탈로그) 데모 정리** — `GET /supply-stats`(전체/실/데모/노출/제조사 카운트) + 임포트 페이지에 현황 카드 + 데모(slug `demo-wholesale-%`) 정리/채우기 버튼(기존 seed/delete 엔드포인트 재사용). 실상품 등록 전 데모 분리.
+- **(Track 1 머니 검증) staging E2E** — `docs/WHOLESALE_SETTLEMENT_E2E.md`(가격표시·정산분배·원가하한·환불역전·플러스구독·배송비 체크리스트 + 워크드 표) + `wholesale-settlement-scenarios.test.ts`(문서 숫자를 실코드로 잠금 — 드리프트 0). ⚠️ **line-14 플랫폼 모델(공급가의 10%) 대표 1줄 확인 + staging 결제 1회 필요**(머니 4건 미검증 잔존).
+- **(Track 3 RBAC) 확인** — admin-rbac.ts 전역 미들웨어 이미 마운트(`/api/admin/*`)+테스트 존재. 신규 bulk-import 가 distributor(finance) 영역임을 admin-roles.test 에 잠금(ops/viewer 차단 검증).
+- **(로고) UTONG START 벡터화** — `WholesaleLogo.tsx`: PNG `<img>` → **inline SVG/HTML 벡터**(네이비 U + 오렌지 상승 화살표 마크 + TONG 네이비/START 오렌지 italic). WholesaleWordmark 15곳 동시 반영, dark=네이비→흰색. 모든 height 선명. PNG 되돌림 경로(WHOLESALE_LOGO_SRC) 보존.
+- 검증: tsc 0 · 단위 16(roles+commission+scenarios) · client+worker build · theme. **머니 로직 무변경**(가격/정산 SSOT 호출만, 신규 적립/차감 0).
+
 ## ✅ 2026-06-17 — 교환권 상세 페이지 리디자인 (Claude Design `Voucher - Final (A)`)
 시안 = A·Refined Classic(6안 중 사용자 확정). 다크 네이비 CTA + 브랜드 옐로우(#FFCE00) 포인트, 미니멀 톤 유지. 대상 `VoucherDetailPage` (`/vouchers/:id`).
 - **상품 카드 = 그라데이션 유지**(사용자 지시): 풀블리드 사진 → `radius:28px` 그라데이션 카드(`#F7F8FA→#EFF1F4`, 다크 변형) 위 상품 `object-contain`+drop-shadow. 이미지 없으면 그라데이션만.

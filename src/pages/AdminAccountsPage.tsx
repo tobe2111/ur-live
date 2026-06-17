@@ -34,6 +34,7 @@ export default function AdminAccountsPage() {
     cs: { label: '고객응대(CS)', color: 'bg-teal-100 text-teal-700', desc: '주문 조회·반품·문의 응대' },
     finance: { label: '정산/회계', color: 'bg-emerald-100 text-emerald-700', desc: '정산·출금·세금 처리' },
     viewer: { label: t('admin.accounts.roleViewer', { defaultValue: '읽기전용' }), color: 'bg-gray-100 text-gray-600', desc: '조회만 가능 (변경 불가)' },
+    wholesale: { label: '도매 파트너', color: 'bg-orange-100 text-orange-700', desc: '도매(유통스타트) 전용 — 도매 외 데이터 접근 차단' },
   }
   const ROLE_OPTIONS: Array<{ value: string; label: string }> = [
     { value: 'super_admin', label: '슈퍼관리자 — 전체 권한' },
@@ -41,6 +42,7 @@ export default function AdminAccountsPage() {
     { value: 'ops', label: '운영 — 주문·상품·배송만' },
     { value: 'cs', label: '고객응대(CS) — 주문 조회·반품만' },
     { value: 'finance', label: '정산/회계 — 정산·출금·세금만' },
+    { value: 'wholesale', label: '도매 파트너 — 도매(유통스타트) 전용' },
     { value: 'viewer', label: '읽기전용 — 조회만' },
   ]
 
@@ -245,16 +247,16 @@ export default function AdminAccountsPage() {
             </div>
             <div className="space-y-3">
               <input type="email" placeholder={t('auth.email')} value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]" />
               <input type="text" placeholder={t('common.name')} value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]" />
               <input type="password" placeholder={t('auth.password')} value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]" />
               {/* 🛡️ 2026-06-14: 제한 권한 분리 선택 */}
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">접근 권한 (역할)</label>
                 <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900">
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]">
                   {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
                 <p className="text-[11px] text-gray-400 mt-1">{ROLE_LABELS[form.role]?.desc}</p>
@@ -278,13 +280,13 @@ export default function AdminAccountsPage() {
             <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('admin.accounts.editAdmin', { email: showEdit.email })}</h3>
             <div className="space-y-3">
               <input type="text" placeholder={t('common.name')} value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]" />
               <input type="email" placeholder={t('auth.email')} value={editForm.email} onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]" />
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">접근 권한 (역할)</label>
                 <select value={editForm.role} onChange={e => setEditForm(p => ({ ...p, role: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900">
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]">
                   {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
                 <p className="text-[11px] text-gray-400 mt-1">{ROLE_LABELS[editForm.role]?.desc}</p>
@@ -307,7 +309,7 @@ export default function AdminAccountsPage() {
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('admin.accounts.changePasswordFor', { email: showResetPw.email })}</h3>
             <input type="password" placeholder={t('admin.accounts.newPasswordPlaceholder')} value={newPassword} onChange={e => setNewPassword(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900" />
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]" />
             <div className="flex gap-2 mt-5">
               <button onClick={() => setShowResetPw(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg">{t('common.cancel')}</button>
               <button onClick={resetPassword} disabled={saving} className="flex-1 py-2.5 bg-amber-500 text-white text-sm font-medium rounded-lg disabled:opacity-50">

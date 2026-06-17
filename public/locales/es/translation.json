@@ -3424,7 +3424,8 @@
     "linkshop": "Linkshop",
     "vouchers": "Cupones",
     "dongnedeal": "Ofertas locales",
-    "create": "Crear"
+    "create": "Crear",
+    "offlineGroupBuy": "Compra grupal local"
   },
   "bulkUpload": {
     "title": "Carga masiva de productos",
@@ -6164,5 +6165,13 @@
     "remaining": "Quedan {{n}}",
     "submitting": "Reservando...",
     "submit": "Confirmar reserva"
-  }
+  },
+  "category": {
+    "mealVoucher": "Restaurantes",
+    "beauty": "Belleza",
+    "stay": "Alojamiento",
+    "etc": "Otros",
+    "general": "General Products"
+  },
+  "groupBuy.stayDateSearch": "Buscar por fecha"
 }

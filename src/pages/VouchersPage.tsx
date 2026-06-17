@@ -662,7 +662,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* 금액권 그리드 */}
       <div className="ur-content-wide px-4 lg:px-8 py-4">
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5">
+
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212]">
                 <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A]" />
@@ -679,7 +680,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5">
               {(embedded ? displayProducts.slice(0, embedVisible) : displayProducts).map((p, idx) => (
                 <Fragment key={p.id}>
                   <VoucherCard p={p} aboveFold={idx < 4} />

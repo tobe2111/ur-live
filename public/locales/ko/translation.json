@@ -4099,7 +4099,8 @@
     "restaurants": "맛집",
     "groupBuy": "공구",
     "dongnedeal": "동네딜",
-    "create": "만들기"
+    "create": "만들기",
+    "offlineGroupBuy": "오프라인 공동구매"
   },
   "bulkUpload": {
     "title": "상품 대량등록",
@@ -4326,7 +4327,7 @@
       "refunded": "환불됨"
     },
     "verify": {
-      "title": "식사권 인증",
+      "title": "교환권 인증",
       "subtitle": "고객의 바우처 코드를 확인하세요",
       "codeLabel": "바우처 코드",
       "codePlaceholder": "UR-XXXX-XXXX",
@@ -4341,8 +4342,8 @@
       "cancel": "취소",
       "notFound": "바우처를 찾을 수 없습니다",
       "processingError": "처리 중 오류가 발생했습니다",
-      "seoTitle": "식사권 확인",
-      "seoDescription": "QR 코드로 식사권을 확인합니다"
+      "seoTitle": "교환권 확인",
+      "seoDescription": "QR 코드로 교환권을 확인합니다"
     },
     "qrCode": "QR 코드",
     "share": "공유",
@@ -6160,5 +6161,13 @@
     "remaining": "잔여 {{n}}",
     "submitting": "예약 중...",
     "submit": "예약 확정"
-  }
+  },
+  "category": {
+    "mealVoucher": "맛집 식사권",
+    "beauty": "미용",
+    "stay": "숙소",
+    "etc": "기타",
+    "general": "일반 상품"
+  },
+  "groupBuy.stayDateSearch": "날짜·인원 검색"
 }

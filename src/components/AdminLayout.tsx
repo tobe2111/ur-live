@@ -6,7 +6,7 @@ import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
   BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers, Mail, Crown,
-  ChevronDown, Wrench, RotateCcw,
+  ChevronDown, Wrench, RotateCcw, Upload, History,
   type LucideIcon
 } from 'lucide-react'
 import { clearAuthData } from '@/utils/auth'
@@ -29,6 +29,8 @@ interface NavItem {
 interface NavGroup {
   title: string
   items: NavItem[]
+  /** 🆕 도메인 태그 — 도메인-한정 역할(wholesale)에게 이 도메인 그룹만 노출. */
+  domain?: 'wholesale'
   /** 🔧 진단성 그룹 등 평소 접어둘 그룹 (사용자 토글이 항상 우선). */
   defaultCollapsed?: boolean
 }
@@ -49,25 +51,42 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    // 🏭 도매몰 (유통스타트 B2B)
-    title: '🏭 도매몰',
+    // 🏭 도매몰 (유통스타트 B2B) — 운영: 카탈로그·주문·회원·설정
+    title: '🏭 도매몰 · 운영',
+    domain: 'wholesale',
     items: [
       { path: '/admin/wholesale-overview', label: '도매 통합 현황', icon: LayoutDashboard },
-      { path: '/admin/wholesale-malls',    label: '도매 몰 관리',  icon: Building2 },
-      { path: '/admin/suppliers',          label: '공급자 관리',   icon: Store },
-      { path: '/admin/distributor-grades', label: '유통사 등급',   icon: Layers },
-      { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
-      { path: '/admin/wholesale-banners',  label: '도매 배너',     icon: Image },
-      { path: '/admin/wholesale-board',    label: '도매 게시판',   icon: Megaphone },
-      { path: '/admin/partnership',        label: '광고·제휴 문의', icon: Mail },
+      { path: '/admin/suppliers',          label: '공급자(제조사) 관리', icon: Store },
+      { path: '/admin/wholesale-import',   label: '상품 일괄 등록', icon: Upload },
       { path: '/admin/wholesale-products', label: '도매 프리미엄관', icon: Crown },
-      { path: '/admin/wholesale-proposals', label: '도매 제안/신고', icon: MessageSquare },
+      { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
+      { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
+      { path: '/admin/distributor-grades', label: '유통사 등급·수수료', icon: Layers },
+      { path: '/admin/wholesale-malls',    label: '도매 몰 관리',  icon: Building2 },
+      { path: '/admin/wholesale-activity', label: '처리 이력 (누가 처리?)', icon: History },
+    ],
+  },
+  {
+    // 🏭 도매몰 — 정산/머니
+    title: '💰 도매몰 · 정산',
+    domain: 'wholesale',
+    items: [
       { path: '/admin/wholesale-deposits', label: '도매 예치금',   icon: Wallet },
       { path: '/admin/wholesale-withdrawals', label: '제조사 출금', icon: Wallet },
-      { path: '/admin/wholesale-claims',   label: '도매 클레임',   icon: AlertTriangle },
-      { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
       { path: '/admin/wholesale-tax',      label: '도매 세무/정산', icon: Wallet },
       { path: '/admin/wholesale-integrity', label: '도매 무결성',   icon: Shield },
+    ],
+  },
+  {
+    // 🏭 도매몰 — CS / 콘텐츠
+    title: '🛟 도매몰 · CS·콘텐츠',
+    domain: 'wholesale',
+    items: [
+      { path: '/admin/wholesale-claims',   label: '도매 클레임',   icon: AlertTriangle },
+      { path: '/admin/wholesale-proposals', label: '도매 제안/신고', icon: MessageSquare },
+      { path: '/admin/partnership',        label: '광고·제휴 문의', icon: Mail },
+      { path: '/admin/wholesale-board',    label: '도매 게시판',   icon: Megaphone },
+      { path: '/admin/wholesale-banners',  label: '도매 배너',     icon: Image },
       { path: '/admin/wholesale-guide',    label: '도매몰 운영 가이드', icon: BookOpen },
     ],
   },
@@ -288,9 +307,22 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   const SUPER_ONLY_NAV = new Set(['/admin/accounts', '/admin/audit-log'])
   const roleNavGroups = adminRole === 'super'
     ? VISIBLE_NAV_GROUPS
-    : VISIBLE_NAV_GROUPS
-        .map((g) => ({ ...g, items: g.items.filter((it) => !SUPER_ONLY_NAV.has(it.path)) }))
-        .filter((g) => g.items.length > 0)
+    : adminRole === 'wholesale'
+      // 🆕 도매 파트너 — 도매 도메인 그룹만 노출(유어딜 소비자 어드민 전부 숨김). 서버 RBAC 와 정합.
+      ? VISIBLE_NAV_GROUPS.filter((g) => g.domain === 'wholesale')
+      : VISIBLE_NAV_GROUPS
+          .map((g) => ({ ...g, items: g.items.filter((it) => !SUPER_ONLY_NAV.has(it.path)) }))
+          .filter((g) => g.items.length > 0)
+
+  // 🆕 도매 파트너가 비-도매 어드민 경로(/admin 소비자 홈, /admin/users 등)로 직접 진입 시 도매 현황으로 리다이렉트.
+  //   서버 RBAC 가 데이터는 이미 403 차단 — 이건 깨진 화면 대신 안전한 랜딩을 위한 UX 가드.
+  useEffect(() => {
+    if (adminRole !== 'wholesale') return
+    const allowed = roleNavGroups.flatMap((g) => g.items.map((it) => it.path))
+    const ok = allowed.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))
+    if (!ok) navigate('/admin/wholesale-overview', { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminRole, location.pathname])
 
   function logout() {
     clearAuthData('admin')
@@ -443,7 +475,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   )
 
   return (
-    <div className="admin-light-theme flex h-screen overflow-hidden bg-[#F4F5F7] text-gray-900">
+    <div className="admin-light-theme flex h-screen overflow-hidden bg-[#F4F5F7] text-gray-900 [color-scheme:light]">
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}

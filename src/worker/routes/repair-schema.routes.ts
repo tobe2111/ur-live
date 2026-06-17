@@ -73,6 +73,11 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'admins.role', sql: "ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'admin'" },
     { desc: 'admins.is_active', sql: "ALTER TABLE admins ADD COLUMN is_active INTEGER DEFAULT 1" },
     { desc: 'admins.last_login_at', sql: "ALTER TABLE admins ADD COLUMN last_login_at TEXT" },
+    // ── RBAC 부트스트랩 (2026-06-17) ───────────────────────────────────────────
+    //   2026-06-16 RBAC 도입 때 admins.role 가 DEFAULT 'admin' 로 추가되며 기존 슈퍼 계정이
+    //   'admin' 으로 강등 → 슈퍼 전용(계정관리/감사로그) 접근 소실. 아래로 자가 복구(멱등).
+    { desc: 'bootstrap: 지정 슈퍼 어드민 복구', sql: "UPDATE admins SET role = 'super_admin' WHERE lower(email) = 'tobe2111@naver.com'" },
+    { desc: 'bootstrap: super_admin 최소 1명 보장(없으면 최초 어드민)', sql: "UPDATE admins SET role = 'super_admin' WHERE id = (SELECT id FROM admins ORDER BY id ASC LIMIT 1) AND NOT EXISTS (SELECT 1 FROM admins WHERE role = 'super_admin')" },
 
     // ── users (CRITICAL — 감사에서 발견) ─────────────
     { desc: 'users.password_hash', sql: "ALTER TABLE users ADD COLUMN password_hash TEXT" },
@@ -1883,6 +1888,26 @@ repairSchemaRoutes.post('/api/_internal/repair-schema/auto', async (c) => {
   const errs = result.columns.filter((r) => r.status === 'error').length
   return c.json({ success: true, errors: errs, warnings: result.column_warnings || [], counts: result.column_counts || {} })
 })
+
+// 🛡️ 2026-06-17 경량 부트스트랩 — 전체 repair-schema(수백 마이그레이션 → 524 타임아웃) 대신
+//   슈퍼 어드민 복구 2줄만 빠르게 실행. admin 토큰만 있으면 호출 가능(내부 경로).
+repairSchemaRoutes.get('/api/_internal/bootstrap-super', requireAdmin(), async (c) => {
+  const DB = (c.env as { DB: D1Database }).DB;
+  const out: { byEmail: number; oldestPromoted?: number } = { byEmail: 0 };
+  try {
+    const r1 = await DB.prepare("UPDATE admins SET role = 'super_admin' WHERE lower(email) = 'tobe2111@naver.com'").run();
+    out.byEmail = r1.meta?.changes ?? 0;
+    const hasSuper = await DB.prepare("SELECT COUNT(*) AS c FROM admins WHERE role = 'super_admin'").first<{ c: number }>();
+    if ((hasSuper?.c ?? 0) === 0) {
+      const r2 = await DB.prepare("UPDATE admins SET role = 'super_admin' WHERE id = (SELECT id FROM admins ORDER BY id ASC LIMIT 1)").run();
+      out.oldestPromoted = r2.meta?.changes ?? 0;
+    }
+    const supers = await DB.prepare("SELECT id, email, name, role FROM admins WHERE role = 'super_admin'").all();
+    return c.json({ success: true, ...out, super_admins: supers.results ?? [] });
+  } catch (err) {
+    return c.json({ success: false, error: '부트스트랩 실패', _debug: String(err).slice(0, 200) }, 500);
+  }
+});
 
 // HTTP wrapper — admin auth + JSON response.
 repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c) => {

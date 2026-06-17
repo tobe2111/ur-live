@@ -21,6 +21,7 @@ import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund, DEFAULT_PLATFORM_COMMISSION_PCT } from './wholesale-settlement'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn, hasDepositRefundTxn } from './wholesale-deposit-core'
 import { ensureSupplyVisibilitySchema, normalizeVisibility } from './supply-visibility'
+import { parseCsv } from './supply-csv'
 import { ensureOemSchema, normalizeOemStatus } from './oem-requests'
 import { buildXlsx, xlsxResponse } from './xlsx'
 import { distributorPriceFromRetail, marginForGrade, type GradeMargin } from '@/lib/distributor-pricing'
@@ -1348,6 +1349,127 @@ app.post('/auto-grade/run', rateLimit({ action: 'wholesale-auto-grade-run', max:
     return c.json({ success: true, ...result })
   } catch (err) {
     return safeError(c, err, '자동등급 수동 실행 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// 🏭 2026-06-16 (대표 요청 — 도매몰 채우기): 어드민 공급상품 CSV 일괄 임포트.
+//   제조사 self-serve bulk(POST /api/supplier/products/bulk)과 동일 한글 CSV 포맷이되, 어드민이 제조사 지정 +
+//   즉시 노출(is_active=1, supply_approval_status='approved'). supplier_id 없으면 직매입 제조사 find-or-create.
+app.post('/supply-bulk-import', rateLimit({ action: 'wholesale-bulk-import', max: 20, windowSec: 300 }), async (c) => {
+  const { DB } = c.env
+  try {
+    const body = await c.req.json<{ csv?: string; supplier_id?: number; supplier_name?: string }>().catch(() => ({} as { csv?: string; supplier_id?: number; supplier_name?: string }))
+    if (!body.csv || typeof body.csv !== 'string') return c.json({ success: false, error: 'CSV 데이터가 없습니다' }, 400)
+    await ensureSupplyVisibilitySchema(DB)
+
+    // 제조사 결정: supplier_id 우선. 없으면 supplier_name 으로 find-or-create(직매입 제조사, status=approved).
+    let sid = Number(body.supplier_id) || 0
+    if (sid) {
+      const ex = await DB.prepare('SELECT id FROM suppliers WHERE id = ?').bind(sid).first<{ id: number }>().catch(() => null)
+      if (!ex) return c.json({ success: false, error: '존재하지 않는 제조사입니다' }, 400)
+    } else {
+      const sname = ((body.supplier_name || '').trim().slice(0, 120)) || '유통스타트 직매입'
+      const ex = await DB.prepare('SELECT id FROM suppliers WHERE business_name = ? LIMIT 1').bind(sname).first<{ id: number }>().catch(() => null)
+      if (ex) sid = ex.id
+      else {
+        const r = await DB.prepare(
+          "INSERT INTO suppliers (business_name, business_number, status, created_at, updated_at) VALUES (?, ?, 'approved', datetime('now'), datetime('now'))"
+        ).bind(sname, `UTONG-${Date.now()}`).run().catch(() => null)
+        sid = Number(r?.meta?.last_row_id) || 0
+        if (sid) await DB.prepare('UPDATE suppliers SET mall_id = 1 WHERE id = ?').bind(sid).run().catch(() => { /* mall_id 컬럼 없으면 무시 */ })
+      }
+    }
+    if (!sid) return c.json({ success: false, error: '제조사 생성에 실패했습니다 (먼저 제조사를 선택해주세요)' }, 500)
+
+    const rows = parseCsv(body.csv, 5000)
+    if (!rows.length) return c.json({ success: false, error: '처리할 행이 없습니다 (헤더 + 데이터 필요)' }, 400)
+
+    const results: { row: number; name?: string; status: 'ok' | 'error'; reason?: string }[] = []
+    const stmts: D1PreparedStatement[] = []
+    // 어드민 임포트 = 즉시 노출(is_active=1, approved). supply_source_id NULL(원본), seller_id NULL(기본).
+    const INSERT_SQL = `INSERT INTO products (name, description, price, supply_price, stock, image_url, category, product_type,
+       is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, barcode, min_order_qty, mall_id, slug, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 1, 1, ?, 'approved', ?, ?, ?, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i]
+      if (Object.values(r).every(v => !String(v ?? '').trim())) continue
+      const name = String(r['상품명'] || r.name || '').trim()
+      const supplyPrice = Number(String(r['공급가'] || r.supply_price || '').replace(/[,\s]/g, ''))
+      const retail = Number(String(r['권장소비자가'] || r['판매가'] || r.suggested_retail_price || '').replace(/[,\s]/g, ''))
+      const stock = Math.max(0, Math.floor(Number(String(r['재고'] || r.stock || '0').replace(/[,\s]/g, '')) || 0))
+      if (!name) { results.push({ row: i + 2, status: 'error', reason: '상품명 누락' }); continue }
+      if (!Number.isFinite(supplyPrice) || supplyPrice <= 0) { results.push({ row: i + 2, name, status: 'error', reason: '공급가 오류' }); continue }
+      // 신모델: 판매가 > 공급가 필요. 미입력/이하이면 공급가의 1.6배 자동(전 등급 마진 확보 — 운영자 정정 권장).
+      const retailFinal = Number.isFinite(retail) && retail > supplyPrice ? retail : Math.round(supplyPrice * 1.6)
+      const visibility = normalizeVisibility(r['공급범위'] || r.supply_visibility, true)
+      const barcode = String(r['바코드'] || r.barcode || '').trim().slice(0, 64) || null
+      const moq = Math.min(100000, Math.max(1, Math.floor(Number(String(r['최소주문수량'] || r.min_order_qty || '1').replace(/[,\s]/g, '')) || 1)))
+      const imageUrlRaw = String(r['썸네일 이미지URL'] || r['이미지URL'] || r.image_url || '').trim().slice(0, 500)
+      const imageUrl = /^https?:\/\//i.test(imageUrlRaw) ? imageUrlRaw : ''
+      const slug = `adm-${sid}-${Date.now()}-${i}`
+      stmts.push(DB.prepare(INSERT_SQL).bind(
+        name.slice(0, 200), String(r['설명'] || r.description || '').slice(0, 5000),
+        Math.floor(retailFinal), Math.floor(supplyPrice), stock, imageUrl,
+        String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, moq, sid, slug,
+      ))
+      results.push({ row: i + 2, name, status: 'ok' })
+    }
+    let created = 0
+    const CHUNK = 100
+    for (let i = 0; i < stmts.length; i += CHUNK) {
+      try { const res = await DB.batch(stmts.slice(i, i + CHUNK)); created += res.length }
+      catch (e) { if (import.meta.env.DEV) console.error('[bulk-import chunk]', e) }
+    }
+    await writeAuditLog(c, { action: 'wholesale_supply_bulk_import', targetType: 'supplier', targetId: sid, after: { created, total: rows.length } })
+    return c.json({ success: true, supplier_id: sid, summary: { total: rows.length, created, failed: results.filter(r => r.status === 'error').length }, results: results.slice(0, 500) })
+  } catch (err) {
+    return safeError(c, err, '일괄 임포트 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// 📊 2026-06-16: 도매몰 카탈로그 현황 — 일괄 등록 페이지 표시 + 데모/실상품 분리 판단용.
+app.get('/supply-stats', async (c) => {
+  const { DB } = c.env
+  try {
+    const row = await DB.prepare(
+      `SELECT COUNT(*) AS total,
+         SUM(CASE WHEN slug LIKE 'demo-wholesale-%' THEN 1 ELSE 0 END) AS demo,
+         SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active
+       FROM products WHERE is_supply_product = 1 AND (supply_source_id IS NULL OR supply_source_id = 0)`
+    ).first<{ total: number; demo: number; active: number }>().catch(() => null)
+    const sup = await DB.prepare("SELECT COUNT(*) AS c FROM suppliers WHERE status = 'approved'").first<{ c: number }>().catch(() => null)
+    const total = Number(row?.total ?? 0)
+    const demo = Number(row?.demo ?? 0)
+    return c.json({ success: true, total, demo, real: Math.max(0, total - demo), active: Number(row?.active ?? 0), suppliers: Number(sup?.c ?? 0) })
+  } catch (err) {
+    return safeError(c, err, '현황 조회 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
+// 🕵️ 2026-06-17 (대표 요청 "누가 처리했는지"): 도매 처리 이력 — admin_audit_logs(자동기록) 를 도매 액션만
+//   필터 + admins JOIN 으로 처리자 '이름' 해석. 도매 파트너(wholesale 역할)도 distributor 세그먼트라 조회 가능.
+app.get('/activity-log', async (c) => {
+  const { DB } = c.env
+  try {
+    const page = Math.max(1, Number(c.req.query('page') || 1))
+    const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') || 50)))
+    const offset = (page - 1) * limit
+    // auto-audit action = 'METHOD /api/admin/...path' — 도매 관련 경로만.
+    const like = `(a.action LIKE '%/wholesale%' OR a.action LIKE '%/distributor%' OR a.action LIKE '%/suppliers%' OR a.action LIKE '%/supplier%' OR a.action LIKE '%/partnership%')`
+    const totalRow = await DB.prepare(`SELECT COUNT(*) AS c FROM admin_audit_logs a WHERE ${like}`).first<{ c: number }>().catch(() => null)
+    const rows = await DB.prepare(
+      `SELECT a.id, a.admin_id, a.admin_email, a.action, a.ip, a.created_at,
+              COALESCE(NULLIF(ad.name, ''), NULLIF(ad.username, ''), NULLIF(a.admin_email, ''), 'ID ' || a.admin_id) AS admin_name,
+              ad.role AS admin_role
+       FROM admin_audit_logs a
+       LEFT JOIN admins ad ON CAST(ad.id AS TEXT) = a.admin_id
+       WHERE ${like}
+       ORDER BY a.created_at DESC
+       LIMIT ? OFFSET ?`
+    ).bind(limit, offset).all().catch(() => ({ results: [] as unknown[] }))
+    return c.json({ success: true, data: rows.results ?? [], pagination: { page, limit, total: Number(totalRow?.c ?? 0) } })
+  } catch (err) {
+    return safeError(c, err, '처리 이력 조회 중 오류가 발생했습니다', '[distributor-admin]')
   }
 })
 

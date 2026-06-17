@@ -174,7 +174,14 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   ⚠️ 워커 경로(/api/media 등)는 zone 리사이저가 origin 을 못 풀어 404(2026-06-06 사고) —
       //   그 분기는 기존 프록시 유지. EXTERNAL_PROXY_HOSTS 목록·Save-Data quality 불변(제거 X).
       // media.ur-team.com: 2026-06-11 diag 실측 통과 (cf-resized, 779KB→9.7KB) — 신규 업로드 절대 URL 용.
-      const CDN_CGI_VERIFIED = ['giftishow.com', 'kt.com', 'media.ur-team.com']
+      // 🔴 2026-06-17 [UNLOCK_LOADING] (사용자 승인 — 무료 524 수리): giftishow 가 데이터센터/CF IP 를 차단해
+      //   cdn-cgi 리사이저·워커 프록시 둘 다 서버사이드 fetch 실패(524/403). → 원본 URL 로 브라우저 직접 로드
+      //   (리사이즈 없음·비용 0, 느리지만 표시됨). R2 재호스팅은 바이트를 못 받아(IP 차단) 불가 — giftishow 가
+      //   CF IP 화이트리스트 해주면 cdn-cgi/R2 로 복원. EXTERNAL_PROXY_HOSTS 목록은 불변(분기만 raw).
+      if (host === 'giftishow.com' || host.endsWith('.giftishow.com')) {
+        return src
+      }
+      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com']  // giftishow 제거 (524 — 위에서 raw 처리)
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
         return `/cdn-cgi/image/width=${w},quality=${q},format=auto/${src}`
       }

@@ -155,7 +155,7 @@ export default function CatalogHeader({
         </div>
       </div>
 
-      {/* 3. 카테고리 네비 (시안) — ≡ 전체 카테고리 + 브랜드관/월간베스트/신상품/고마진특가/프리미엄/위탁·드랍쉽 */}
+      {/* 3. 카테고리 네비 (시안) — ≡ 전체 카테고리 + 브랜드관/월간베스트/신상품/고마진특가/프리미엄 */}
       <div className="bg-white" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-wide px-5 lg:px-8 flex items-center h-[46px] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button onClick={() => setMegaOpen(v => !v)} aria-expanded={megaOpen}
@@ -173,7 +173,6 @@ export default function CatalogHeader({
             <button onClick={() => navigate('/wholesale/new')} className="whitespace-nowrap" style={{ color: navColor('/wholesale/new') }}>{t('wholesale.nav.new', { defaultValue: '신상품' })}</button>
             <button onClick={() => memberOnlyGo('/wholesale/margin')} className="whitespace-nowrap font-bold" style={{ color: WT.brand }}>{t('wholesale.nav.highMargin', { defaultValue: '고마진 특가' })}</button>
             <button onClick={() => memberOnlyGo('/wholesale/premium')} className="whitespace-nowrap" style={{ color: navColor('/wholesale/premium') }}>{t('wholesale.nav.premium', { defaultValue: '프리미엄 전용관' })}</button>
-            <button onClick={() => navigate('/wholesale/intro')} className="whitespace-nowrap" style={{ color: navColor('/wholesale/intro') }}>{t('wholesale.nav.dropship', { defaultValue: '위탁·드랍쉽' })}</button>
           </div>
         </div>
         {/* 전체카테고리 메가 드롭다운 — 기존 cats 재활용 */}

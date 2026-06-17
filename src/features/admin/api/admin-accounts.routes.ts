@@ -23,7 +23,8 @@ export const adminAccountsRoutes = new Hono<{ Bindings: Env }>();
 // 🛡️ 2026-06-14: 관리자 역할 — 전권 + 제한 권한 세분화 (사용자 요구: 제한된 접근 권한 분리).
 //   super_admin: 전체 권한 / admin: 일반 운영 / ops: 주문·상품·배송 / cs: 고객 응대(주문 조회/반품) /
 //   finance: 정산·출금·세금 / viewer: 읽기 전용. ops/cs/finance 는 worker auth.ts requireAdminRole 게이트와 정합.
-const VALID_ADMIN_ROLES = ['super_admin', 'admin', 'ops', 'cs', 'finance', 'viewer'];
+//   wholesale: 🆕 도매(유통스타트) 전용 — 도매 도메인만 읽기·쓰기, 그 외 어드민 전부 차단(외부 동업자).
+const VALID_ADMIN_ROLES = ['super_admin', 'admin', 'ops', 'cs', 'finance', 'viewer', 'wholesale'];
 
 function safeAdminError(err: unknown, env: Env): string {
   const isProd = (env as Env & { ENVIRONMENT?: string }).ENVIRONMENT === 'production';

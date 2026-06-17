@@ -458,7 +458,7 @@ export default function ProductDetailPage() {
         {/* 함께 보면 좋은 소식 (선택) */}
 
         {/* 하단 노란 CTA */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-amber-400">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-amber-400 app-frame-bar">
           <button onClick={handleBuyNow}
             className="w-full py-4 text-center text-[16px] font-bold text-gray-900 dark:text-white active:bg-amber-500"
             style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}

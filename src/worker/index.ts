@@ -2057,7 +2057,28 @@ export default {
         // 🏭 몰-first: 도매몰 도메인 비-도매몰 경로 → 카탈로그(/wholesale)로 302. (utongstart + 등록 몰 호스트)
         return Response.redirect(`${url.origin}/wholesale`, 302);
       }
-    } catch { /* URL 파싱 실패 시 통과 */ }
+      // 🔗 2026-06-17 [UNLOCK_LOADING] 링크샵 URL 통일 (사용자 승인 "전체 통일 + 301"):
+      //   셀러 공개 URL /profile/:username · /s/:slug → 연결 유저 handle 있으면 /u/{handle} 로 301(영구).
+      //   handle 없으면 통과(기존 SellerPublicPage 그대로). 검색 노출/외부링크를 /u/ 로 통일.
+      //   /u/{seller-handle} 은 CuratorPage 가 linked_seller 감지해 SellerPublicPage 를 inline 렌더(기존 동작).
+      //   additive 진입 가드 — 잠긴 SSR inject 블록 무수정. /profile/:x, /s/:x exact 1세그먼트만 매칭(서브경로 X).
+      const lsMatch = url.pathname.match(/^\/(?:profile|s)\/([A-Za-z0-9_-]{1,40})\/?$/);
+      if (lsMatch) {
+        try {
+          const DB = (env as { DB?: D1Database }).DB;
+          if (DB) {
+            const slug = lsMatch[1];
+            const row = await DB.prepare(
+              `SELECT u.handle AS handle FROM sellers s JOIN users u ON u.id = s.linked_user_id
+               WHERE (s.username = ? OR CAST(s.id AS TEXT) = ?) AND u.handle IS NOT NULL AND u.handle != '' LIMIT 1`
+            ).bind(slug, slug).first<{ handle: string }>();
+            if (row?.handle && row.handle.toLowerCase() !== 'me' && row.handle.toLowerCase() !== slug.toLowerCase()) {
+              return Response.redirect(`${url.origin}/u/${encodeURIComponent(row.handle)}${url.search || ''}`, 301);
+            }
+          }
+        } catch { /* 조회 실패 — 기존 /profile 서빙으로 통과 */ }
+      }
+    } catch { /* URL 파싱 시 통과 */ }
     // @ts-expect-error — Hono app.fetch 시그니처로 위임 (env/ctx passthrough).
     return app.fetch(request, env, ctx);
   },
