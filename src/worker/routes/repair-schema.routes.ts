@@ -74,6 +74,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'admins.role', sql: "ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'admin'" },
     { desc: 'admins.is_active', sql: "ALTER TABLE admins ADD COLUMN is_active INTEGER DEFAULT 1" },
     { desc: 'admins.last_login_at', sql: "ALTER TABLE admins ADD COLUMN last_login_at TEXT" },
+    { desc: 'admins.login_pin_hash', sql: "ALTER TABLE admins ADD COLUMN login_pin_hash TEXT" },
     // ── RBAC 부트스트랩 (2026-06-17) ───────────────────────────────────────────
     //   2026-06-16 RBAC 도입 때 admins.role 가 DEFAULT 'admin' 로 추가되며 기존 슈퍼 계정이
     //   'admin' 으로 강등 → 슈퍼 전용(계정관리/감사로그) 접근 소실. 아래로 자가 복구(멱등).
@@ -110,6 +111,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🔐 2026-06-16: agency 자동정산(agency-auto-settle cron) 멱등 마커 — 없으면 SELECT 부터
     //   'no such column' 으로 터져 자동정산이 영구 미작동(매 agency try-catch 로 silent skip). check-sql-column-exists 도 차단.
     { desc: 'orders.agency_settled', sql: "ALTER TABLE orders ADD COLUMN agency_settled INTEGER NOT NULL DEFAULT 0" },
+    // 💸 2026-06-17: 혼합결제(Toss+딜) 의 '딜 사용분' — 결제 성공(/confirm) 시 이 값만큼 잔액 차감, 환불 시 복원.
+    { desc: 'orders.deal_used', sql: "ALTER TABLE orders ADD COLUMN deal_used INTEGER NOT NULL DEFAULT 0" },
     // 🛡️ 2026-05-25 (migration 0280): 셀러 승급 트래킹
     { desc: 'users.curator_total_lifetime_earnings', sql: "ALTER TABLE users ADD COLUMN curator_total_lifetime_earnings INTEGER NOT NULL DEFAULT 0" },
     { desc: 'users.seller_upgrade_offered_at', sql: "ALTER TABLE users ADD COLUMN seller_upgrade_offered_at DATETIME" },
@@ -345,6 +348,17 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { desc: 'idx_wh_sub_accounts_email', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_wh_sub_accounts_email ON wholesale_sub_accounts(email)" },
     { desc: 'idx_wh_sub_accounts_parent', sql: "CREATE INDEX IF NOT EXISTS idx_wh_sub_accounts_parent ON wholesale_sub_accounts(parent_seller_id)" },
+    // 🔐 2026-06-17 단일 세션 강제 (대시보드) — account 별 min_valid_iat. 로그인 시 갱신,
+    //   미들웨어가 토큰 iat < min_valid_iat 면 거부. (런타임 ensureDashboardSessionsTable 도 best-effort CREATE.)
+    { desc: 'dashboard_sessions', sql: `CREATE TABLE IF NOT EXISTS dashboard_sessions (
+      account_type  TEXT    NOT NULL,
+      account_id    INTEGER NOT NULL,
+      min_valid_iat INTEGER NOT NULL DEFAULT 0,
+      updated_at    TEXT,
+      user_agent    TEXT,
+      ip            TEXT,
+      PRIMARY KEY (account_type, account_id)
+    )` },
     // 🏦 2026-06-09 예치금(선불 deposit) 결제 — 도매 Toss 대체. (wholesale-deposit-core ensureDepositSchema 가 런타임 CREATE — 여기선 best-effort 보강.)
     //   wholesale_deposits: 유통사별 잔액(seller_id PK). txns: 거래원장. requests: 무통장입금 충전요청(어드민 확인 대상).
     { desc: 'wholesale_deposits', sql: `CREATE TABLE IF NOT EXISTS wholesale_deposits (
@@ -812,6 +826,11 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   생성으로 완전 복귀. 멱등(있으면 exists).
     { desc: 'products.images', sql: "ALTER TABLE products ADD COLUMN images TEXT" },
     { desc: 'products.stock_quantity', sql: "ALTER TABLE products ADD COLUMN stock_quantity INTEGER" },
+    // 🎫 2026-06-17 (교환권 발송 자동 복구): voucher_orders 재시도 추적 컬럼.
+    //   kt-alpha-voucher-retry cron 이 'failed' 자동 재시도(retry_count<3, backoff) 시 참조.
+    //   requiresTable 가드 — voucher_orders 는 아래 tables 루프에서 먼저 생성됨.
+    { desc: 'voucher_orders.retry_count', sql: "ALTER TABLE voucher_orders ADD COLUMN retry_count INTEGER DEFAULT 0", requiresTable: 'voucher_orders' },
+    { desc: 'voucher_orders.last_retry_at', sql: "ALTER TABLE voucher_orders ADD COLUMN last_retry_at DATETIME", requiresTable: 'voucher_orders' },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];
@@ -1176,10 +1195,16 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
             category = COALESCE(NEW.category,'')
         WHERE rowid = NEW.id;
       END` },
+    // 🩹 2026-06-17 (데모 '정리' 500 근본수정): 외부콘텐츠(content=products) FTS5 는 AFTER DELETE 시점에
+    //   원본 행이 사라져 `DELETE FROM products_fts WHERE rowid=OLD.id` 가 제거할 콘텐츠를 못 읽어 throw →
+    //   상품 하드삭제가 500. 정식 'delete' 커맨드(OLD 값 명시 전달)로 교정. 기존 트리거는 DROP 후 재생성
+    //   (CREATE IF NOT EXISTS 는 기존을 안 바꾸므로 선행 DROP 필수).
+    { name: 'products_fts_delete_trigger_drop_legacy', sql: `DROP TRIGGER IF EXISTS products_fts_delete` },
     { name: 'products_fts_delete_trigger', sql: `CREATE TRIGGER IF NOT EXISTS products_fts_delete
       AFTER DELETE ON products
       BEGIN
-        DELETE FROM products_fts WHERE rowid = OLD.id;
+        INSERT INTO products_fts(products_fts, rowid, name, description, category)
+        VALUES('delete', OLD.id, COALESCE(OLD.name,''), COALESCE(OLD.description,''), COALESCE(OLD.category,''));
       END` },
     // 🛡️ 2026-05-20: 에이전시 입점 가게 commission ledger.
     //   에이전시가 입점시킨 가게 (sellers.introduced_by_agency_id) 의 모든 공구권 매출 →
@@ -1431,6 +1456,16 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       user_agent TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )` },
+    { name: 'admin_login_history', sql: `CREATE TABLE IF NOT EXISTS admin_login_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id TEXT NOT NULL,
+      email TEXT,
+      ip TEXT,
+      user_agent TEXT,
+      success INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_admin_login_history_created', sql: `CREATE INDEX IF NOT EXISTS idx_admin_login_history_created ON admin_login_history(created_at DESC)` },
     { name: 'idx_admin_audit_admin_id', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_admin_id ON admin_audit_logs(admin_id, created_at)` },
     { name: 'idx_admin_audit_action', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_action ON admin_audit_logs(action, created_at)` },
     { name: 'idx_admin_audit_created', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit_logs(created_at DESC)` },
@@ -1646,6 +1681,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       external_order_id TEXT,
       coupon_code TEXT,
       failure_reason TEXT,
+      retry_count INTEGER DEFAULT 0,
+      last_retry_at DATETIME,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       sent_at DATETIME,
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -1899,6 +1936,22 @@ repairSchemaRoutes.post('/api/_internal/repair-schema/auto', async (c) => {
   return c.json({ success: true, errors: errs, warnings: result.column_warnings || [], counts: result.column_counts || {} })
 })
 
+// 🛡️ 2026-06-17 보안 PIN 잠금 복구(무로그인) — REPAIR_SCHEMA_TOKEN 인증. PIN 분실로 로그인 불가 시
+//   CF env 토큰으로 해당 계정 PIN 해제(로그인 불가 상태에서도 복구). 해제 후 다음 로그인 시 재설정(must_set_pin).
+repairSchemaRoutes.post('/api/_internal/reset-pin-token', async (c) => {
+  const expected = (c.env as { REPAIR_SCHEMA_TOKEN?: string }).REPAIR_SCHEMA_TOKEN
+  const got = c.req.header('X-Repair-Token') || ''
+  if (!expected || got !== expected) return c.json({ success: false, error: 'unauthorized' }, 403)
+  const DB = (c.env as { DB?: D1Database }).DB
+  if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500)
+  let email = ''
+  try { const b = await c.req.json<{ email?: string }>(); email = String(b?.email || '').trim().toLowerCase() } catch { /* query fallback */ }
+  if (!email) email = String(c.req.query('email') || '').trim().toLowerCase()
+  if (!email) return c.json({ success: false, error: 'email 필요' }, 400)
+  const r = await DB.prepare("UPDATE admins SET login_pin_hash = NULL WHERE lower(email) = ?").bind(email).run().catch(() => null)
+  return c.json({ success: true, email, reset: r?.meta?.changes ?? 0, message: 'PIN 해제됨 — 다음 로그인 시 재설정' })
+})
+
 // 🛡️ 2026-06-17 경량 부트스트랩 — 전체 repair-schema(수백 마이그레이션 → 524 타임아웃) 대신
 //   슈퍼 어드민 복구 2줄만 빠르게 실행. admin 토큰만 있으면 호출 가능(내부 경로).
 repairSchemaRoutes.get('/api/_internal/bootstrap-super', requireAdmin(), async (c) => {
@@ -1916,6 +1969,22 @@ repairSchemaRoutes.get('/api/_internal/bootstrap-super', requireAdmin(), async (
     return c.json({ success: true, ...out, super_admins: supers.results ?? [] });
   } catch (err) {
     return c.json({ success: false, error: '부트스트랩 실패', _debug: String(err).slice(0, 200) }, 500);
+  }
+});
+
+// 🛡️ 2026-06-17 보안 PIN 잠금 복구 — PIN 분실 시 해당 계정 PIN 해제(재설정 유도). 슈퍼관리자만.
+repairSchemaRoutes.get('/api/_internal/reset-pin', requireAdmin(), async (c) => {
+  const DB = (c.env as { DB: D1Database }).DB;
+  try {
+    const caller = ((c as unknown as { get: (k: string) => unknown }).get('user')) as { id?: string | number } | undefined;
+    const me = await DB.prepare('SELECT role FROM admins WHERE id = ?').bind(caller?.id).first<{ role: string }>().catch(() => null);
+    if (!me || me.role !== 'super_admin') return c.json({ success: false, error: '슈퍼관리자만 가능합니다' }, 403);
+    const email = String(c.req.query('email') || '').trim().toLowerCase();
+    if (!email) return c.json({ success: false, error: 'email 쿼리 필요' }, 400);
+    const r = await DB.prepare("UPDATE admins SET login_pin_hash = NULL WHERE lower(email) = ?").bind(email).run().catch(() => null);
+    return c.json({ success: true, email, reset: r?.meta?.changes ?? 0, message: 'PIN 해제됨 — 해당 계정 다음 로그인 시 재설정 필요' });
+  } catch (err) {
+    return c.json({ success: false, error: 'PIN 해제 실패', _debug: String(err).slice(0, 150) }, 500);
   }
 });
 

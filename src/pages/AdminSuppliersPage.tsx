@@ -94,7 +94,7 @@ export default function AdminSuppliersPage() {
   ]
 
   return (
-    <AdminLayout title={t('admin.suppliers.title', { defaultValue: '공급자 관리' })}>
+    <AdminLayout title={t('admin.suppliers.title', { defaultValue: '제조사(공급사) 관리' })}>
       <div className="flex items-center gap-2 mb-4">
         {filters.map(f => (
           <button key={f.key} onClick={() => setStatusFilter(f.key)}

@@ -8,6 +8,7 @@ export interface Stats {
   revenue_30d: number
   net_revenue_30d: number
   active_streams: number
+  active_group_buys?: number
 }
 
 export interface Seller {

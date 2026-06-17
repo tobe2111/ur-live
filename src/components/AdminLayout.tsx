@@ -56,12 +56,16 @@ const NAV_GROUPS: NavGroup[] = [
     domain: 'wholesale',
     items: [
       { path: '/admin/wholesale-overview', label: '도매 통합 현황', icon: LayoutDashboard },
-      { path: '/admin/suppliers',          label: '공급자(제조사) 관리', icon: Store },
+      { path: '/admin/suppliers',          label: '제조사(공급사) 관리', icon: Store },
       { path: '/admin/wholesale-import',   label: '상품 일괄 등록', icon: Upload },
       { path: '/admin/wholesale-products', label: '도매 프리미엄관', icon: Crown },
       { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
       { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
-      { path: '/admin/distributor-grades', label: '유통사 등급·수수료', icon: Layers },
+      // 🗂️ 2026-06-17: '판매사(유통사) 등급·수수료'(1,170줄) → 4개 탭 페이지로 분리(딥링크 라우트).
+      { path: '/admin/distributor-grades', label: '판매사 등급·마진', icon: Layers },
+      { path: '/admin/distributor-credit', label: '판매사 여신·외상', icon: CreditCard },
+      { path: '/admin/distributor-tax',    label: '판매사 제안·세금', icon: DollarSign },
+      { path: '/admin/distributor-supply', label: '판매사 공급가·채널·OEM', icon: Package },
       { path: '/admin/wholesale-malls',    label: '도매 몰 관리',  icon: Building2 },
       { path: '/admin/wholesale-activity', label: '처리 이력 (누가 처리?)', icon: History },
     ],
@@ -74,7 +78,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/wholesale-deposits', label: '도매 예치금',   icon: Wallet },
       { path: '/admin/wholesale-withdrawals', label: '제조사 출금', icon: Wallet },
       { path: '/admin/wholesale-tax',      label: '도매 세무/정산', icon: Wallet },
-      { path: '/admin/wholesale-integrity', label: '도매 무결성',   icon: Shield },
+      // 🗂️ 2026-06-17: '도매 무결성'(진단 전용)은 상단 nav에서 강등 — '통합 현황' 카드 링크로 접근(/admin/wholesale-integrity 라우트 유지).
     ],
   },
   {
@@ -95,6 +99,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: '🏪 오프라인 공구',
     items: [
       { path: '/admin/group-buy',        label: '공동구매',      icon: Ticket },
+      { path: '/admin/dongnedeal-import', label: '동네딜 상품 등록', icon: Upload },
       { path: '/admin/stays',            label: '숙소 운영',     icon: Building2 },
       { path: '/admin/pending-sellers',  label: '매장 검수',     icon: UserCheck },
       { path: '/admin/coupons',          label: '쿠폰 관리',     icon: Ticket },
@@ -174,8 +179,9 @@ const NAV_GROUPS: NavGroup[] = [
     title: '시스템',
     items: [
       { path: '/admin/accounts',          label: '관리자 계정',   icon: UserCog },
+      { path: '/admin/login-history',     label: '로그인 이력(IP)', icon: History },
       { path: '/admin/audit-log',         label: '감사 로그',     icon: Shield },
-      { path: '/admin/2fa',               label: '2단계 인증',    icon: Shield },
+      { path: '/admin/set-pin',           label: '로그인 PIN',    icon: Shield },
       { path: '/admin/platform-settings',      label: '플랫폼 설정',   icon: Settings },
       { path: '/admin/notification-settings',  label: '알림 채널 설정', icon: Bell },
       { path: '/admin/alimtalk',               label: '브랜드메시지',  icon: Bell },
@@ -207,6 +213,12 @@ const LIVE_ADMIN_PATHS = new Set<string>([
 const VISIBLE_NAV_GROUPS: NavGroup[] = LIVE_COMMERCE_SUSPENDED
   ? NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((it) => !LIVE_ADMIN_PATHS.has(it.path)) })).filter((g) => g.items.length > 0)
   : NAV_GROUPS
+
+// 🛡️ 2026-06-17 (대표 신고 — 로그인 시 화면이 미친듯이 깜빡): 강제 보안 설정/계정 보안 페이지는
+//   역할과 무관하게 항상 도달 가능해야 한다. 도매 RBAC 리다이렉트(아래)가 강제 PIN 게이트
+//   (/admin/set-pin)와 충돌하면 /admin/set-pin ⟷ /admin/wholesale-overview 무한 루프 →
+//   AdminLayout remount 반복 → 화면 깜빡 + dashboard-notifications 폭주(429). 이 경로들은 RBAC 리다이렉트에서 면제.
+const ALWAYS_ALLOWED_ADMIN_PATHS = ['/admin/set-pin', '/admin/2fa']
 
 interface AdminLayoutProps {
   title: string
@@ -304,7 +316,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   const [adminName] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('admin_name') || localStorage.getItem('admin_email') : null) || '관리자')
   // 🛡️ 2026-06-16 RBAC 네비 게이트 — 슈퍼 전용 항목(계정/감사/2FA)은 슈퍼만 노출. 변경 권한 강제는 서버(admin-rbac).
   const [adminRole] = useState<AdminRole>(() => normalizeAdminRole(typeof window !== 'undefined' ? localStorage.getItem('admin_role') : null))
-  const SUPER_ONLY_NAV = new Set(['/admin/accounts', '/admin/audit-log'])
+  const SUPER_ONLY_NAV = new Set(['/admin/accounts', '/admin/audit-log', '/admin/login-history'])
   const roleNavGroups = adminRole === 'super'
     ? VISIBLE_NAV_GROUPS
     : adminRole === 'wholesale'
@@ -318,11 +330,21 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   //   서버 RBAC 가 데이터는 이미 403 차단 — 이건 깨진 화면 대신 안전한 랜딩을 위한 UX 가드.
   useEffect(() => {
     if (adminRole !== 'wholesale') return
-    const allowed = roleNavGroups.flatMap((g) => g.items.map((it) => it.path))
+    const allowed = [...roleNavGroups.flatMap((g) => g.items.map((it) => it.path)), ...ALWAYS_ALLOWED_ADMIN_PATHS]
     const ok = allowed.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))
     if (!ok) navigate('/admin/wholesale-overview', { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminRole, location.pathname])
+
+  // 🆕 보안 PIN 강제 설정 게이트 — 강제 대상(도매 파트너/슈퍼)인데 미설정이면 PIN 설정 페이지로 가둠.
+  //   로그인 시 must_set_pin 플래그 설정 → 설정 성공 시 해제. /admin/set-pin 자신은 면제(루프 방지).
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (localStorage.getItem('admin_must_set_pin') === '1' && location.pathname !== '/admin/set-pin') {
+      navigate('/admin/set-pin', { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname])
 
   function logout() {
     clearAuthData('admin')

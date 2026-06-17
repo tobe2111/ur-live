@@ -16,6 +16,7 @@ import { sendSellerAlimtalk } from '../../features/alimtalk/send';
 import { swallow } from '../utils/swallow';
 import { buildOrderConfirmMessage } from '../../features/alimtalk/aligo';
 import { captureException } from '../utils/sentry';
+import { adjustUserPoints } from '../utils/point-ledger';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
 import { logInfo, logError, logWarn } from '../utils/logger';
 import { sendAlert } from '../utils/alerts';
@@ -356,6 +357,42 @@ paymentsRouter.post('/confirm', async (c) => {
     // Reduce stock
     for (const order of orders) {
       await orderRepo.reduceStock(order.id);
+    }
+
+    // 💸 2026-06-17 [UNLOCK] (대표 승인 "결제 성공 시점"): 혼합결제(Toss+딜) 의 '딜 사용분'을
+    //   결제 성공 시점에 실제 잔액 차감. 위 confirmClaim 직후라 이 thread 만 1회 실행(멱등) —
+    //   changes==0 동시요청은 이 코드 앞에서 early-return(라인 302) 되므로 이중차감 없음.
+    //   total_amount 는 주문생성에서 이미 딜만큼 깎였고(Toss 는 그 금액 청구) — 여기선 잔액만 차감.
+    //   adjustUserPoints CAS(guardBalance) 로 음수잔액 방지. fail-soft(경보로 추적, 결제확정 불막음).
+    //   ⚠️ Toss confirm/금액검증/confirmClaim 무수정 — side-effect 차감 1블록 추가만.
+    try {
+      const dealRows = await c.env.DB.prepare(
+        'SELECT id, user_id, deal_used FROM orders WHERE order_number = ?'
+      ).all<{ id: string | number; user_id: string | number | null; deal_used: number | null }>().catch(() => ({ results: [] as Array<{ id: string | number; user_id: string | number | null; deal_used: number | null }> }));
+      for (const r of (dealRows?.results ?? [])) {
+        const used = Math.max(0, Math.round(Number(r.deal_used ?? 0)));
+        if (used > 0 && r.user_id != null) {
+          const res = await adjustUserPoints(c.env.DB, {
+            userId: r.user_id, delta: -used, type: 'order_payment',
+            description: `주문 결제 딜 사용 (#${r.id})`, orderId: r.id, guardBalance: true,
+          });
+          if (!res.ok && res.reason === 'insufficient') {
+            // 드문 레이스(주문생성~확정 사이 딜 소진) — 가능한 만큼(잔액 전부)만 차감(음수 방지) + 경보.
+            const balRow = await c.env.DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+              .bind(String(r.user_id)).first<{ balance: number }>().catch(() => null);
+            const avail = Math.max(0, Number(balRow?.balance ?? 0));
+            if (avail > 0) {
+              await adjustUserPoints(c.env.DB, { userId: r.user_id, delta: -avail, type: 'order_payment', description: `주문 결제 딜 사용(부분 — 잔액부족) (#${r.id})`, orderId: r.id, guardBalance: true }).catch(() => {});
+            }
+            captureException(new Error('ORDER_DEAL_DEDUCT_INSUFFICIENT'), {
+              tags: { area: 'payment', kind: 'deal_deduct', severity: 'warning' },
+              extra: { orderId: r.id, userId: r.user_id, requested: used, available: avail },
+            }).catch(swallow('payment:deal-deduct-insufficient'));
+          }
+        }
+      }
+    } catch (dealErr) {
+      captureException(dealErr as Error, { tags: { area: 'payment', kind: 'deal_deduct' } }).catch(swallow('payment:deal-deduct'));
     }
 
     // 🏁 2026-06-12 [UNLOCK] (사용자 승인 "나머지 다 이상적으로 진행" — 전 플로우 감사 배선 3종):

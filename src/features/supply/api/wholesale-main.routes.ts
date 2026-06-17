@@ -493,6 +493,28 @@ adminProduct.get('/', async (c) => {
   }
 })
 
+// 🆕 2026-06-17: 체크박스 다중 선택 → 프리미엄 일괄 추가/제외 (어드민 프리미엄관).
+//   ⚠️ '/bulk-premium'(1세그) vs '/:id/premium'(2세그) — 경로 패턴이 달라 충돌 없음.
+adminProduct.post('/bulk-premium', rateLimit({ action: 'admin-wholesale-premium-bulk', max: 30, windowSec: 60 }), async (c) => {
+  const { DB } = c.env
+  try {
+    await ensurePremiumColumn(DB)
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const rawIds = Array.isArray((body as { ids?: unknown }).ids) ? (body as { ids: unknown[] }).ids : []
+    const ids = rawIds.map((v) => Number(v)).filter((n) => Number.isFinite(n) && n > 0)
+    const isPremium = Number((body as { is_premium?: unknown }).is_premium) === 1 ? 1 : 0
+    if (ids.length === 0) return c.json({ success: false, error: '선택된 상품이 없습니다' }, 400)
+    if (ids.length > 200) return c.json({ success: false, error: '한번에 최대 200개까지 처리할 수 있습니다' }, 400)
+    const placeholders = ids.map(() => '?').join(',')
+    const up = await DB.prepare(
+      `UPDATE products SET is_premium = ? WHERE id IN (${placeholders}) AND is_supply_product = 1 AND supply_source_id IS NULL`
+    ).bind(isPremium, ...ids).run()
+    return c.json({ success: true, updated: up.meta?.changes ?? 0, is_premium: isPremium })
+  } catch (err) {
+    return safeError(c, err, '프리미엄 일괄 설정 중 오류가 발생했습니다', '[admin-wholesale-products]')
+  }
+})
+
 adminProduct.post('/:id/premium', rateLimit({ action: 'admin-wholesale-premium-toggle', max: 60, windowSec: 60 }), async (c) => {
   const { DB } = c.env
   const id = Number(c.req.param('id'))

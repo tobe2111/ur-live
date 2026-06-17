@@ -46,14 +46,18 @@ export class OrderRepository {
       options?: Record<string, string>;
     }[],
     subtotal: number,
-    shippingFee: number
+    shippingFee: number,
+    opts?: { discountAmount?: number }
   ): Promise<Order> {
-    // 🛡️ 2026-04-22: 할인 로직 구현. 이전엔 discount_amount=0 hardcode → 쿠폰/포인트 미반영.
-    // request.discount_amount (쿠폰+포인트 합산) + 서버 검증 후 저장.
+    // 🛡️ 2026-04-22 / 2026-06-17: 할인은 서버 권위. 호출자(order.routes)가 쿠폰 재계산 +
+    //   딜 잔액검증으로 산출한 opts.discountAmount 를 우선 사용(클라 discount_amount 불신).
+    //   opts 미제공(레거시 호출자)은 기존 request.discount_amount 동작 보존.
     // 서버 재계산: total_amount = subtotal + shipping - discount (음수 방지)
-    const requestedDiscount = Number((request as any).discount_amount ?? 0);
+    const requestedDiscount = opts?.discountAmount != null
+      ? Number(opts.discountAmount)
+      : Number((request as any).discount_amount ?? 0);
     // 검증: 0 <= discount <= subtotal+shipping (음수 결제 방지)
-    const safeDiscount = Math.max(0, Math.min(requestedDiscount, subtotal + shippingFee));
+    const safeDiscount = Math.max(0, Math.min(Math.round(requestedDiscount) || 0, subtotal + shippingFee));
     const totalAmount = Math.max(0, subtotal + shippingFee - safeDiscount);
 
     // Step 1: INSERT order — id 생략하여 INTEGER PRIMARY KEY AUTOINCREMENT 호환

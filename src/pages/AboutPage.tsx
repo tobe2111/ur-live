@@ -7,8 +7,6 @@ import {
   Zap,
   ShoppingBag,
   Gift,
-  Gavel,
-  Tv,
   Bot,
   MapPin,
   Wallet,
@@ -16,7 +14,6 @@ import {
   Printer,
   ArrowRight,
   Rocket,
-  TrendingUp,
   Globe,
   Star,
   CheckCircle2,
@@ -53,7 +50,7 @@ export default function AboutPage() {
     <>
       <SEO
         title="서비스 소개 - 유어딜"
-        description="라이브 커머스 + 식사권 공구의 새로운 표준. 셀러·에이전시·소비자 모두에게 최고의 가치를."
+        description="우리 동네 맛집·뷰티·숙소를 그룹 특가로. 함께 사서 더 좋은 가격, 교환권은 결제 즉시 발급. 소상공인·크리에이터·소비자 모두에게 최고의 가치를."
         url="/about"
       />
 
@@ -64,38 +61,38 @@ export default function AboutPage() {
             <div className="text-center max-w-4xl mx-auto">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-300 text-xs font-semibold mb-6">
                 <Sparkles className="w-3.5 h-3.5" />
-                Korean Live Commerce, Reinvented
+                우리 동네 공동구매
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold tracking-tight leading-tight mb-6">
                 유어딜
-                <span className="block text-pink-500 mt-2">라이브 커머스의 새로운 표준</span>
+                <span className="block text-pink-500 mt-2">함께라서 더 좋은 가격</span>
               </h1>
               <p className="text-base sm:text-lg lg:text-xl text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-                라이브 방송 + 후원 + 경매 + 공구를 한 화면에서.
+                우리 동네 맛집·뷰티·숙소를 그룹 특가로.
               </p>
               <p className="text-base sm:text-lg lg:text-xl text-gray-600 dark:text-gray-300 leading-relaxed mb-10">
-                셀러는 5분 만에 시작, 소비자는 팬덤 경험으로 산다.
+                인원과 상관없이 처음부터 같은 가격, 교환권은 결제 즉시 발급.
               </p>
 
               <div className="flex flex-wrap gap-3 justify-center">
                 <Link
-                  to="/seller/login"
+                  to="/group-buy"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-pink-500 hover:bg-pink-600 text-white font-bold text-sm lg:text-base transition-colors shadow-lg shadow-pink-500/20"
                 >
-                  셀러로 시작하기
+                  동네 공구 둘러보기
                   <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
-                  to="/agency/login"
+                  to="/seller/login"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 font-bold text-sm lg:text-base transition-colors"
                 >
-                  에이전시 가입
+                  셀러 입점
                 </Link>
                 <Link
-                  to="/"
+                  to="/agency/login"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#121212] font-bold text-sm lg:text-base transition-colors"
                 >
-                  서비스 둘러보기
+                  에이전시 가입
                 </Link>
                 <button
                   onClick={handleDownloadPdf}
@@ -113,93 +110,58 @@ export default function AboutPage() {
         <Section id="tldr" title="30초 요약" subtitle="대상별 핵심 가치">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <ValueCard
-              icon={<Tv className="w-6 h-6" />}
-              tag="셀러"
-              title="5분 내 첫 방송"
-              desc="카카오 로그인 한 번으로 상품·후원·경매·공구 4개 수익원. 정산 D+5일 (업계 최단)."
-              color="pink"
-            />
-            <ValueCard
-              icon={<Users className="w-6 h-6" />}
-              tag="에이전시 (MCN)"
-              title="멤버 셀러 통합 관리"
-              desc="PK 배틀 트래픽 폭증, AI 셀러 매칭, 그룹 인센티브, 정산 자동 일괄."
-              color="purple"
-            />
-            <ValueCard
-              icon={<Sparkles className="w-6 h-6" />}
+              icon={<ShoppingBag className="w-6 h-6" />}
               tag="소비자"
-              title="쇼핑이 게임이 된다"
-              desc="라이브 경매 낙찰의 짜릿함, 식사권 공구 카카오 바이럴, 셀러에게 직접 후원·인사받기."
+              title="동네를 그룹 특가로"
+              desc="맛집·뷰티·숙소를 처음부터 같은 그룹 특가로. 결제 즉시 교환권 발급, 친구 초대 보너스까지."
               color="amber"
             />
             <ValueCard
-              icon={<TrendingUp className="w-6 h-6" />}
-              tag="투자자"
-              title="한국 시장 PMF"
-              desc="카카오 OAuth + 토스 결제 네이티브 + 식당 O2O = Pinduoduo 가 못 한 한국 로컬 침투."
+              icon={<MapPin className="w-6 h-6" />}
+              tag="사장님 / 매장"
+              title="입점 수수료 0원"
+              desc="카카오 로그인으로 바로 입점. 공구로 신규 손님 유치, 교환권 사용·정산까지 한 앱에서."
+              color="pink"
+            />
+            <ValueCard
+              icon={<Sparkles className="w-6 h-6" />}
+              tag="크리에이터"
+              title="링크샵으로 공구 홍보"
+              desc="내 링크샵에 공구·교환권을 핀하고 공유. 친구가 사면 보너스, 매장 영입 수익까지."
+              color="purple"
+            />
+            <ValueCard
+              icon={<Users className="w-6 h-6" />}
+              tag="에이전시"
+              title="소속 관리 + 정산"
+              desc="담당 셀러·매장의 공구/주문/정산을 한 화면에서 통합 관리."
               color="emerald"
             />
           </div>
         </Section>
 
         {/* ========== 차별점 ========== */}
-        <Section id="diff" title="우리는 무엇이 다른가" subtitle="경쟁 서비스와의 차별점">
-          <div className="space-y-12">
-            <ComparisonTable
-              title="vs 그립 / 카카오쇼핑라이브 (라이브커머스 1세대)"
-              caption="그립은 'TV홈쇼핑의 라이브화', 유어딜은 '트위치+쿠팡+카카오선물의 결합'."
-              headers={['항목', '그립 / 카카오쇼핑라이브', '유어딜']}
-              rows={[
-                ['셀러 진입', '별도 앱 + 심사 + 보증금', '브라우저만 OBS 송출, 카카오 5분'],
-                ['후원 시스템', '없음 (쇼핑만)', '딜 포인트 후원 내장 — 라이브 닉네임 노출'],
-                ['경매', '없음', '실시간 경매 — 가격 하락 / 누군가 낚아챔'],
-                ['식사권/오프라인', '없음', '그룹바이 식사권 카테고리 독자 운영'],
-                ['정산', 'D+15~30', '상품 D+5, 후원 D+10'],
-              ]}
+        <Section id="diff" title="유어딜은 무엇이 다른가" subtitle="동네 공동구매를 가장 정직하게">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FeatureCard
+              icon={<ShoppingBag className="w-5 h-5" />}
+              title="정직한 단일 그룹가"
+              desc="인원에 따라 가격이 오르내리지 않아요. 처음부터 모두에게 같은 그룹 특가, 결제하면 바로 확정·발급됩니다."
             />
-            <ComparisonTable
-              title="vs YouTube Shopping"
-              caption="YouTube Shopping 은 '콘텐츠 부가수익', 유어딜은 '커머스가 본업'."
-              headers={['항목', 'YouTube Shopping', '유어딜']}
-              rows={[
-                ['정산', '월 단위, 채널 페이아웃 통합', '상품별 D+5일, 투명 즉시 가시화'],
-                ['결제', '글로벌 카드 위주', '토스·카카오페이 네이티브 + 가상계좌'],
-                ['오프라인 연계', '없음', '식당 O2O — 식사권 발급/사용까지 한 앱'],
-                ['한국 셀러 진입', '채널 1000명 + 4000시간 + 심사', '카카오 로그인 즉시'],
-                ['후원/도네이션', 'Super Chat (라이브 한정)', '모든 셀러 페이지 상시 후원'],
-              ]}
+            <FeatureCard
+              icon={<MapPin className="w-5 h-5" />}
+              title="우리 동네 오프라인 중심"
+              desc="맛집·뷰티·숙소·헬스 등 지역 매장 공구. 종이 쿠폰 없이 앱 교환권을 매장에서 바로 사용해요."
             />
-            <ComparisonTable
-              title="vs 티몬 / 위메프 슈퍼딜"
-              caption="슈퍼딜은 '싼 거 사러 가는 곳', 유어딜은 '좋아하는 셀러 보러 가서 사는 곳'."
-              headers={['항목', '슈퍼딜', '유어딜']}
-              rows={[
-                ['본질', '가격 할인 게시판', '라이브 + 후원 + 경매 = 팬덤 경험'],
-                ['셀러-소비자 관계', '익명 트랜잭션', '닉네임 후원, 셀러 직접 감사 인사'],
-                ['시간 압박', '24시간 한정 할인', '방송 중 N분 한정 경매 — 즉시성'],
-                ['충성도', '가격이 떠나면 떠남', '셀러 팬덤 락인'],
-              ]}
+            <FeatureCard
+              icon={<Zap className="w-5 h-5" />}
+              title="카카오 네이티브 경험"
+              desc="카카오 로그인 · 카카오페이 결제 · 카카오톡 공유까지, 한국 사람에게 가장 익숙한 동선 그대로."
             />
-            <ComparisonTable
-              title="vs Naver Smart Store / 쿠팡"
-              caption="쿠팡은 '검색해서 사는 곳', 유어딜은 '재미있어서 들렀다 사는 곳'."
-              headers={['항목', '스마트스토어 / 쿠팡', '유어딜']}
-              rows={[
-                ['디스커버리', 'SEO·광고 입찰 (CPC 부담)', '라이브 + 알고리즘 추천 + 셀러 팬덤'],
-                ['셀러 차별화', '가격·리뷰 경쟁', '방송 콘텐츠 + 후원 + 경매로 차별화'],
-                ['광고비', '매출의 5~15% 광고 의존', '방송 자체가 마케팅'],
-              ]}
-            />
-            <ComparisonTable
-              title="vs Pinduoduo (중국 공동구매)"
-              caption="Pinduoduo 가 한국에서 못 한 '카카오 + 식당 O2O' 침투를 우리가 한다."
-              headers={['항목', 'Pinduoduo', '유어딜']}
-              rows={[
-                ['바이럴 채널', 'WeChat', '카카오톡 공유 네이티브'],
-                ['카테고리', '저가 일반 상품 위주', '식사권/오프라인 카테고리 독자'],
-                ['라이브 결합', '별도 앱 분리', '공구 + 라이브 + 후원 통합'],
-              ]}
+            <FeatureCard
+              icon={<Sparkles className="w-5 h-5" />}
+              title="크리에이터 링크샵"
+              desc="크리에이터가 동네 공구를 큐레이션·홍보하고, 매장은 새 손님을 얻는 선순환. 친구 초대 보너스까지."
             />
           </div>
         </Section>
@@ -209,28 +171,26 @@ export default function AboutPage() {
           <div className="space-y-10">
             <SubBlock title="2-1. 진입장벽 ZERO" icon={<Zap className="w-5 h-5" />}>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300 text-sm lg:text-base">
-                <li>· 카카오 로그인 → 5분 내 첫 방송</li>
-                <li>· YouTube 채널만 있으면 즉시 셀러 등록 (사업자 미요건, 매출 도달 시 통신판매업)</li>
-                <li>· OBS / 모바일 카메라 송출 — 브라우저만 있으면 시작 (앱 설치 X)</li>
+                <li>· 카카오 로그인 → 5분 내 공구 등록</li>
+                <li>· 사업자 등록된 매장이면 누구나 입점 신청 — 입점 수수료 0원</li>
+                <li>· 브라우저만 있으면 시작 (앱 설치 X) — 공구 등록·주문·정산 한 곳에서</li>
                 <li>· 자체 쇼핑몰 구축 비용 0원 (Shopify 월 $29 + 도메인 + PG 부담 X)</li>
               </ul>
               <p className="mt-3 p-3 rounded-lg bg-pink-50 dark:bg-pink-900/20 text-pink-700 dark:text-pink-300 text-xs lg:text-sm">
-                비교: 자체 YouTube 채널 + Shopify 시작 시 평균 2~3개월 + 200만원. 유어딜은 <strong>0원 / 5분</strong>.
+                비교: 자체 쇼핑몰 구축 시 평균 2~3개월 + 200만원. 유어딜은 <strong>0원 / 5분</strong>.
               </p>
             </SubBlock>
 
-            <SubBlock title="2-2. 다중 수익원 — 4가지 수익화" icon={<Wallet className="w-5 h-5" />}>
+            <SubBlock title="2-2. 낮은 수수료" icon={<Wallet className="w-5 h-5" />}>
               <SimpleTable
                 headers={['수익원', '플랫폼 수수료', '셀러 수령']}
                 rows={[
+                  ['동네 공구 (공동구매)', '5%', '95%'],
                   ['상품 판매', '10%', '90%'],
-                  ['라이브 후원', '15% (기본)', '85%'],
-                  ['실시간 경매', '10%', '90%'],
-                  ['그룹바이 (공구)', '5%', '95%'],
                 ]}
               />
               <p className="mt-3 text-xs lg:text-sm text-gray-600 dark:text-gray-400">
-                단일 셀러가 상품 + 후원 + 경매 + 공구 4개 채널로 동시 매출.
+                공동구매 수수료 5% — 판매되는 만큼만 부담해요. 가입비·월 고정비 없습니다.
               </p>
             </SubBlock>
 
@@ -252,10 +212,10 @@ export default function AboutPage() {
               </ul>
             </SubBlock>
 
-            <SubBlock title="2-4. AI 매칭 — 영업 없이 협업" icon={<Bot className="w-5 h-5" />}>
+            <SubBlock title="2-4. 에이전시 매칭 — 영업 없이 협업" icon={<Bot className="w-5 h-5" />}>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300 text-sm lg:text-base">
-                <li>· 유어딜 에이전시 매칭 추천 (카테고리/규모/지역)</li>
-                <li>· 셀러간 PK 배틀 매칭 — 비슷한 규모와 라이브 대결, 시청자 풀 합산</li>
+                <li>· 카테고리/규모/지역 기반 에이전시 매칭 추천</li>
+                <li>· 공구 운영이 어려우면 검증된 에이전시가 등록·관리 대행</li>
               </ul>
             </SubBlock>
 
@@ -271,9 +231,8 @@ export default function AboutPage() {
               <SimpleTable
                 headers={['정산 항목', '유어딜', '업계 평균']}
                 rows={[
+                  ['동네 공구 (사용 후)', 'D+7일', 'D+30'],
                   ['상품 (배송 확정 후)', 'D+5일', 'D+15~30'],
-                  ['라이브 후원', 'D+10일', '(지원 안 함)'],
-                  ['그룹바이', 'D+7일', 'D+30'],
                 ]}
               />
               <p className="mt-3 text-xs lg:text-sm text-gray-600 dark:text-gray-400">
@@ -289,12 +248,12 @@ export default function AboutPage() {
             <FeatureCard
               icon={<Users className="w-5 h-5" />}
               title="멤버 셀러 통합 대시보드"
-              desc="모든 소속 셀러의 매출/방송/시청자/후원/정산 한 화면. KPI 비교 → 코칭 우선순위 자동 추출. 일/주/월 리포트 자동."
+              desc="모든 소속 셀러·매장의 매출/공구/주문/정산을 한 화면에서. KPI 비교 → 코칭 우선순위 자동 추출. 일/주/월 리포트 자동."
             />
             <FeatureCard
               icon={<Trophy className="w-5 h-5" />}
-              title="PK 배틀 — 자체 토너먼트"
-              desc="소속 셀러간 PK 매칭 → 트래픽 합산 + 응원 후원. 토너먼트 시즌 운영 → 우승자 노출 부스트 + 상금. 신인 데뷔 가속."
+              title="공구 캠페인 운영"
+              desc="소속 셀러·매장의 공구를 시즌·테마로 묶어 운영. 노출 부스트로 신규 매장 데뷔를 가속해요."
             />
             <FeatureCard
               icon={<Rocket className="w-5 h-5" />}
@@ -320,55 +279,34 @@ export default function AboutPage() {
         </Section>
 
         {/* ========== 소비자 wow ========== */}
-        <Section id="consumer" title='소비자 "wow" 모먼트' subtitle="왜 쿠팡 대신 유어딜인가" tone="amber">
+        <Section id="consumer" title='소비자 "wow" 모먼트' subtitle="왜 우리 동네는 유어딜인가" tone="amber">
           <div className="space-y-8">
             <WowMoment
-              icon={<Gavel className="w-6 h-6" />}
-              title="4-1. 경매 낙찰의 짜릿함"
-              quote='"라이브 보다가 5만원 한정판이 3만원으로 떨어지는 순간 — 누가 먼저 클릭하느냐."'
-              points={[
-                '셀러가 라이브에서 경매 시작 버튼',
-                '가격 실시간 하락 → 누군가 클릭하면 즉시 낙찰',
-                '즉시 결제 → 1주일 후 받기',
-                '채팅창에 "낙찰 축하합니다!" 표시',
-              ]}
-              tagline="쇼핑이 게임이 된다."
-            />
-            <WowMoment
               icon={<Users className="w-6 h-6" />}
-              title="4-2. 식사권 공구 — 친구 모아 30% 할인"
-              quote='"강남 한우 5만원 → 50명 모이면 3만 5천원. 카카오톡으로 친구 5명 초대하면 추가 5천원 할인."'
+              title="4-1. 동네 공구 — 함께라서 더 좋은 가격"
+              quote='"강남 한우 정가 5만원 → 공구가 3만 5천원, 지금 바로. 카카오톡으로 친구 초대하면 둘 다 보너스 딜."'
               points={[
-                '식사권 그룹바이 50명 달성 시 자동 30% 할인',
-                '친구 카카오 공유 → 인당 추가 할인',
-                '식당 가서 앱 화면 보여주기만 (종이/플라스틱 X)',
-                'QR 스캔 → 사용 처리 자동',
+                '인원과 상관없이 처음부터 같은 그룹 특가 (단일가)',
+                '결제 즉시 교환권 발급 — 목표 미달이어도 유효',
+                '친구 카카오 공유 → 친구 초대 보너스',
+                '식당 가서 앱 화면 보여주기만 (종이/플라스틱 X), QR 스캔 자동 처리',
               ]}
-            />
-            <WowMoment
-              icon={<Sparkles className="w-6 h-6" />}
-              title="4-3. 셀러 후원 → 라이브 노출 → 직접 인사"
-              quote='"좋아하는 셀러에게 1만 딜 후원 → 라이브 화면에 내 닉네임 큰 글씨 → 셀러가 마이크 잡고 ○○님 감사합니다!"'
-              points={[
-                '트위치 도네이션과 동일한 팬덤 메커니즘',
-                '후원 메시지 라이브 자막',
-                '단골 후원자 자동 VIP 태깅 → 신상품 우선 안내',
-              ]}
+              tagline="더 모아야 싸지는 게 아니라, 처음부터 그룹 특가."
             />
             <WowMoment
               icon={<MapPin className="w-6 h-6" />}
-              title="4-4. 식사권 디지털 사용 — 종이 쿠폰 시대 종료"
+              title="4-2. 교환권 디지털 사용 — 종이 쿠폰 시대 종료"
               quote=""
               points={[
-                '구매 즉시 앱에 디지털 식사권 발급',
-                '식당 가서 앱 보여주기 → 점원 "사용 완료" 버튼',
+                '구매 즉시 앱에 디지털 교환권 발급',
+                '매장 가서 앱 보여주기 → 점원 "사용 완료" 버튼',
                 '사용 가능 매장 지도 (/restaurant-map) 한눈에',
-                '쓰지 못하면 자동 환불',
+                '쓰지 못하면 환불',
               ]}
             />
             <WowMoment
               icon={<Zap className="w-6 h-6" />}
-              title="4-5. 카카오 네이티브 경험"
+              title="4-3. 카카오 네이티브 경험"
               quote=""
               points={[
                 '카카오 로그인 1초',
@@ -385,16 +323,16 @@ export default function AboutPage() {
         <Section id="features" title="핵심 기능 한눈에" subtitle="10가지 핵심 기능">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
             {[
-              { icon: <Tv className="w-5 h-5" />, title: '라이브 방송', desc: 'WebRTC + HLS 듀얼. 9:16 풀스크린 모바일 우선, OBS RTMP 지원.' },
-              { icon: <ShoppingBag className="w-5 h-5" />, title: '상품 / 주문', desc: '토스/가상계좌/카카오페이/딜 포인트. CJ 배송 추적. 자동 D+5 정산.' },
-              { icon: <Users className="w-5 h-5" />, title: '그룹바이 (공동구매)', desc: '목표 인원 달성 자동 할인. 미달성 시 전액 자동 환불. 식사권 특화.' },
-              { icon: <Gavel className="w-5 h-5" />, title: '라이브 경매', desc: 'Dutch auction. 시작가/최저가/시간. 첫 클릭 낙찰. 즉시 결제.' },
-              { icon: <Gift className="w-5 h-5" />, title: '후원 (도네이션)', desc: '최소 500딜. 라이브 자막 + 채팅 강조. D+10 정산. Turnstile 봇 차단.' },
-              { icon: <Wallet className="w-5 h-5" />, title: '딜 포인트', desc: '1원 = 1딜 (수수료 ZERO 충전). 후원/결제/경매 모두. 최소 500딜.' },
+              { icon: <Users className="w-5 h-5" />, title: '동네 공구 (공동구매)', desc: '인원 무관 단일 그룹 특가. 결제 즉시 교환권 발급. 맛집·뷰티·숙소 특화.' },
+              { icon: <MapPin className="w-5 h-5" />, title: '교환권 · 매장 사용', desc: '디지털 교환권. 매장 지도. 미사용 환불. QR 없이 앱 화면만.' },
+              { icon: <ShoppingBag className="w-5 h-5" />, title: '상품 / 주문', desc: '토스/가상계좌/카카오페이/딜 포인트. 배송 추적. 자동 D+5 정산.' },
+              { icon: <Wallet className="w-5 h-5" />, title: '딜 포인트', desc: '1원 = 1딜 (수수료 ZERO 충전). 결제·딜 모으기에 사용.' },
+              { icon: <Sparkles className="w-5 h-5" />, title: '크리에이터 링크샵', desc: '공구·교환권을 핀해 공유. 친구 초대 보너스 + 매장 영입 수익.' },
               { icon: <Trophy className="w-5 h-5" />, title: '셀러 등급 / 수수료', desc: '신규→브론즈→실버→골드→플래티넘. 진급 시 수수료 차감 + 노출 가중.' },
-              { icon: <MapPin className="w-5 h-5" />, title: '식당 O2O', desc: '디지털 식사권. 매장 지도. 미사용 자동 환불. QR 없이 앱 화면만.' },
-              { icon: <Trophy className="w-5 h-5" />, title: 'PK 배틀', desc: '셀러간/에이전시간 라이브 대결. 후원 합산 승부. 자체 토너먼트 시즌.' },
-              { icon: <Bot className="w-5 h-5" />, title: 'AI 추천', desc: '셀러↔에이전시, 셀러↔셀러 PK, 사용자↔라이브 추천 피드.' },
+              { icon: <Users className="w-5 h-5" />, title: '에이전시 통합 관리', desc: '담당 셀러·매장의 공구/주문/정산 한 화면. 정산 자동 일괄.' },
+              { icon: <ShoppingBag className="w-5 h-5" />, title: '도매몰 (B2B)', desc: '제조사·유통사 도매 거래. 상품 일괄 등록·내보내기.' },
+              { icon: <MapPin className="w-5 h-5" />, title: '지역 기반', desc: '내 동네 지역·카테고리별 공구 탐색. 당근 스타일 지역 필터.' },
+              { icon: <Bot className="w-5 h-5" />, title: 'AI 추천', desc: '셀러↔에이전시 매칭, 사용자↔공구 추천 피드.' },
             ].map((f, i) => (
               <div
                 key={i}
@@ -423,7 +361,7 @@ export default function AboutPage() {
               ['Rate Limit', 'KV 기반 IP/계정 limiter'],
               ['다국어', '한/영/일/중/스/프 6개 언어'],
               ['다크모드', '사용자 선택 (시스템/라이트/다크)'],
-              ['PC/모바일', '반응형 + 9:16 라이브 액자 모드'],
+              ['PC/모바일', '반응형 — 모바일 우선 + PC 대응'],
             ]}
           />
         </Section>
@@ -435,9 +373,9 @@ export default function AboutPage() {
               tag="단기 (Q2 2026)"
               icon={<Zap className="w-5 h-5" />}
               items={[
-                '셀러 등급별 광고 인벤토리',
-                '에이전시 PK 토너먼트 시즌 정식 런칭',
-                '식사권 매장 1000개 확장',
+                '식사권·교환권 사용 매장 1000개 확장',
+                '지역 공구 카테고리 확대 (뷰티·숙소·헬스)',
+                '크리에이터 링크샵 고도화',
               ]}
             />
             <RoadmapCard
@@ -445,16 +383,16 @@ export default function AboutPage() {
               icon={<Globe className="w-5 h-5" />}
               items={[
                 '글로벌 진출 (일본/동남아) — Firebase Auth 베이스',
-                'AI 자동 방송 요약 / 하이라이트 클립',
-                '셀러 라이브 송출 자체 SDK (모바일 앱 임베드)',
+                '도매몰 (B2B) 확대 — 제조사·유통사 연동',
+                '공구 추천 알고리즘 고도화',
               ]}
             />
             <RoadmapCard
               tag="장기 (2027+)"
               icon={<Rocket className="w-5 h-5" />}
               items={[
-                'B2B 라이브커머스 SaaS — 화이트라벨',
-                '오프라인 매장 디지털 사이니지 라이브 송출',
+                'B2B 공동구매 SaaS — 화이트라벨',
+                '오프라인 매장 연동 확대',
                 'AR 가상 피팅 / 시연',
               ]}
             />
@@ -465,13 +403,13 @@ export default function AboutPage() {
         <Section id="fit" title="누구에게 가장 적합한가" subtitle="이런 분들께 추천드립니다">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FitCard
-              title="셀러"
-              icon={<Tv className="w-5 h-5" />}
+              title="셀러 / 매장"
+              icon={<MapPin className="w-5 h-5" />}
               items={[
-                'YouTube/인스타 1만+ 크리에이터',
+                '식당/카페/뷰티샵/헬스장 등 오프라인 매장',
                 '자체 쇼핑몰 부담스러운 소상공인',
-                '식당/카페/헬스장 등 오프라인 매장',
-                '한정판/한정 수량 (경매 강점)',
+                '숙소(펜션·호텔) 등 예약형 매장',
+                '신규 손님 유치가 필요한 동네 가게',
                 '시즌성 강한 카테고리',
               ]}
             />
@@ -488,8 +426,8 @@ export default function AboutPage() {
               title="소비자"
               icon={<Sparkles className="w-5 h-5" />}
               items={[
-                '라이브쇼핑/트위치 도네이션 익숙한 20-40대',
-                '"재미있게 사고 싶은" 사람',
+                '동네 맛집·뷰티·숙소를 자주 찾는 20-40대',
+                '"합리적으로 더 싸게 사고 싶은" 사람',
                 '식당/오프라인 경험 좋아하는 사람',
                 '카카오 생태계 헤비 유저',
               ]}
@@ -502,15 +440,15 @@ export default function AboutPage() {
           <div className="ur-content-wide px-4 lg:px-8 text-center">
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold mb-4">시작하기</h2>
             <p className="text-base lg:text-lg text-white/90 mb-10 max-w-2xl mx-auto">
-              유어딜은 한국에서 라이브커머스의 새로운 표준을 만듭니다.
+              유어딜은 우리 동네를 그룹 특가로 잇습니다.
               <br />
-              5분 만에 시작할 자유, 멤버를 키울 무대, 쇼핑 이상의 경험.
+              5분 만에 시작할 자유, 함께라서 더 좋은 가격.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 max-w-4xl mx-auto mb-10">
-              <CTACard to="/seller/login" title="셀러" subtitle="카카오 로그인 → 5분 후 방송" />
+              <CTACard to="/seller/login" title="셀러 / 매장" subtitle="카카오 로그인 → 5분 후 공구 등록" />
               <CTACard to="/agency/login" title="에이전시" subtitle="사업자 인증 → 멤버 초대" />
-              <CTACard to="/login" title="소비자" subtitle="카카오/이메일 → 라이브 시청" />
+              <CTACard to="/login" title="소비자" subtitle="카카오/이메일 → 동네 공구" />
               <CTACard to="/admin/login" title="어드민" subtitle="운영팀 전용" />
             </div>
 

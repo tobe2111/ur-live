@@ -83,10 +83,10 @@ export default function FollowingPage() {
               {t('following.emptyHint', { defaultValue: '관심 있는 셀러를 팔로우해보세요' })}
             </p>
             <button
-              onClick={() => navigate('/live')}
+              onClick={() => navigate('/group-buy')}
               className="mt-5 px-5 py-2.5 bg-pink-500 text-white text-[13px] font-semibold rounded-full"
             >
-              {t('following.exploreLive', { defaultValue: '라이브 둘러보기' })}
+              {t('following.exploreLive', { defaultValue: '동네 공구 둘러보기' })}
             </button>
           </div>
         ) : (

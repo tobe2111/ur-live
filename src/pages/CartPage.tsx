@@ -12,15 +12,16 @@ import { ShoppingCart, ChevronRight, Store, X } from 'lucide-react'
 import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
 import { formatNumber } from '@/utils/format'
+import { hasConsumerSession } from '@/utils/auth'
 import CustomModal from './cart/CustomModal'
 
 // 🛡️ 2026-05-02: TD-018 분할 — CustomModal 을 ./cart/CustomModal 로 추출.
 //   CustomModal 내부에서 쓰던 lucide 아이콘 (AlertCircle, CheckCircle, Info) 은
 //   해당 파일로 이동. 본체에서 X 아이콘은 헤더 닫기 버튼에서 계속 사용.
 
-/** 로그인 여부를 localStorage로 동기 확인 (Firebase user 기준) */
+/** 로그인 여부를 localStorage로 동기 확인 — user_type 비의존 (듀얼 로그인 충돌 방지) */
 function isUserLoggedIn(): boolean {
-  return localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id')
+  return hasConsumerSession()
 }
 
 export default function CartPage() {

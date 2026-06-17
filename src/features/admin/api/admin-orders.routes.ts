@@ -51,6 +51,7 @@ interface OrderRow {
   item_count?: number | null;
   total_quantity?: number | null;
   first_item_name?: string | null;
+  first_item_category?: string | null;
   items?: OrderItemRow[];
 }
 
@@ -128,7 +129,9 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
                COALESCE(s.business_name, s.name, '') as seller_name,
                (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as item_count,
                (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.order_id = o.id) as total_quantity,
-               (SELECT oi.product_name FROM order_items oi WHERE oi.order_id = o.id ORDER BY oi.id LIMIT 1) as first_item_name
+               (SELECT oi.product_name FROM order_items oi WHERE oi.order_id = o.id ORDER BY oi.id LIMIT 1) as first_item_name,
+               -- 🗂️ 2026-06-17: 주문 종류 구별(교환권/상품) — 첫 상품의 category. voucher 카테고리면 교환권.
+               (SELECT p.category FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = o.id ORDER BY oi.id LIMIT 1) as first_item_category
         FROM orders o
         LEFT JOIN users u ON o.user_id = u.id
         LEFT JOIN sellers s ON o.seller_id = s.id

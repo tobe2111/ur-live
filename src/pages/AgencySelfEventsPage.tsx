@@ -184,7 +184,7 @@ export default function AgencySelfEventsPage() {
           ) : (
             <div className="divide-y divide-gray-100">
               {items.map(e => {
-                const meta = METRIC_ICON[e.metric]
+                const meta = METRIC_ICON[e.metric] || METRIC_ICON.revenue
                 const statusCls = STATUS_CLS_SE[e.status] || STATUS_CLS_SE.active
                 const Icon = meta.icon
                 return (

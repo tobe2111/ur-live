@@ -13,7 +13,6 @@ import {
   HandCoins,
   Bell,
   Store,
-  Calendar,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
@@ -106,15 +105,12 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
   //   '달성' 뱃지(이미지 우상단)는 유지. 진행률 바 + 참여 인원 텍스트 삭제 → 업장명/주소/판매자 노출.
   const achieved = target > 0 && current >= target
   const timeLeft = formatTimeLeft(p.group_buy_deadline)
-  // 🧭 2026-06-17: 숙소(stay_voucher)는 그리드에 인라인 노출하되, 상세/예약은 전용 /stays/:id(객실·날짜)로.
-  const isStay = p.category === 'stay_voucher'
-  const detailPath = isStay ? `/stays/${p.id}` : `/group-buy/${p.id}`
   return (
     <button
-      onClick={() => navigate(detailPath)}
-      onMouseEnter={() => { if (!isStay) prefetch(p.id) }}
-      onTouchStart={() => { if (!isStay) prefetch(p.id) }}
-      onFocus={() => { if (!isStay) prefetch(p.id) }}
+      onClick={() => navigate(`/group-buy/${p.id}`)}
+      onMouseEnter={() => prefetch(p.id)}
+      onTouchStart={() => prefetch(p.id)}
+      onFocus={() => prefetch(p.id)}
       className="text-left active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col"
       style={{ backgroundColor: grad.base }}
     >
@@ -223,6 +219,24 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
     </button>
   )
 })
+
+// 🧭 2026-06-17 (사용자 요청 A): 빈 화면을 선택 카테고리에 맞춰 — 부제목 + "곧 오픈" 쇼케이스 카드.
+//   특정 카테고리 선택 시 해당 카드 1개만(+카테고리 부제목), 전체/일반은 4종 전부 노출.
+const CAT_EMPTY_META: Partial<Record<CategoryFilter, { noun: string; card: { emoji: string; label: string; desc: string } }>> = {
+  meal_voucher:     { noun: '맛집', card: { emoji: '🍽️', label: '식사권 공구', desc: '맛집 단체 할인' } },
+  beauty_voucher:   { noun: '미용', card: { emoji: '💇', label: '뷰티 공구', desc: '시술 공동 예약' } },
+  health_voucher:   { noun: '미용', card: { emoji: '💇', label: '뷰티 공구', desc: '시술 공동 예약' } },
+  stay_voucher:     { noun: '숙소', card: { emoji: '🏨', label: '숙박 공구', desc: '펜션·호텔 단체' } },
+  etc_voucher:      { noun: '기타', card: { emoji: '🎯', label: '기타 공구', desc: '헬스·펫·액티비티' } },
+  pet_voucher:      { noun: '기타', card: { emoji: '🎯', label: '기타 공구', desc: '헬스·펫·액티비티' } },
+  activity_voucher: { noun: '기타', card: { emoji: '🎯', label: '기타 공구', desc: '헬스·펫·액티비티' } },
+}
+const DEFAULT_SHOWCASE = [
+  { emoji: '🍽️', label: '식사권 공구', desc: '맛집 단체 할인' },
+  { emoji: '💇', label: '뷰티 공구', desc: '시술 공동 예약' },
+  { emoji: '💪', label: '헬스 PT 공구', desc: '월 회원권 공동' },
+  { emoji: '🏨', label: '숙박 공구', desc: '펜션·호텔 단체' },
+]
 
 export default function GroupBuyListPage() {
   const { t } = useTranslation()
@@ -380,6 +394,10 @@ export default function GroupBuyListPage() {
       activity_voucher: 'etc_voucher',
     }
     const normalizeCat = (c: string | undefined | null) => (c && LEGACY_TO_NEW[c]) || c || ''
+    // 🛡️ 2026-06-17: 숙소(stay_voucher)는 전용 /stays 페이지(객실·날짜·가격 join)에서만 표시.
+    //   products.price=0 + 위치/평점이 product_stay_info 별도 테이블이라 동네딜 그리드 카드엔 ₩0·정보누락으로
+    //   부적합 → 그리드(전체 포함) 전역 제외. 숙소 탭은 /stays 로 리다이렉트.
+    result = result.filter((p) => normalizeCat(p.category) !== 'stay_voucher')
     if (category === 'general') {
       result = result.filter((p) => !VOUCHER_CATEGORIES.includes(p.category || ''))
     } else if (category !== 'all') {
@@ -478,19 +496,21 @@ export default function GroupBuyListPage() {
   }, [loading, mainTab])
 
   // 🛡️ 2026-06-04: 큐레이션 3종 — filtered 변경 시에만 재계산(매 렌더/스크롤 재계산 방지).
+  // 🧭 2026-06-17: 즉시판매 단일가 모델 정합(design/groupbuy-instant-sale.md) — 인원은 '가격 게이트'가
+  //   아니라 소셜 증거. 기존 '1명 남음 / 거의 성공(70%)' 임계 큐레이션은 "더 모으면 싸진다"는 기만 소지라
+  //   '인기(함께 구매 중) / 오늘 마감(긴장감) / 목표 달성(연출 배지)' 으로 정직하게 전환.
   const curation = useMemo(() => {
-    const lastOne = filtered.filter(p => (p.group_buy_target ?? 0) > 0 && ((p.group_buy_target ?? 0) - (p.group_buy_current ?? 0)) === 1).slice(0, 4)
+    const popular = [...filtered]
+      .filter(p => (p.group_buy_current ?? 0) > 0)
+      .sort((a, b) => (b.group_buy_current ?? 0) - (a.group_buy_current ?? 0))
+      .slice(0, 4)
     const closingToday = filtered.filter(p => {
       if (!p.group_buy_deadline) return false
       const ms = new Date(p.group_buy_deadline).getTime() - Date.now()
       return ms > 0 && ms < 24 * 3600 * 1000
     }).slice(0, 4)
-    const almostDone = filtered.filter(p => {
-      if (!p.group_buy_target) return false
-      const pct = (p.group_buy_current ?? 0) / p.group_buy_target
-      return pct >= 0.7 && pct < 1
-    }).slice(0, 4)
-    return { lastOne, closingToday, almostDone }
+    const goalReached = filtered.filter(p => (p.group_buy_target ?? 0) > 0 && (p.group_buy_current ?? 0) >= (p.group_buy_target ?? 0)).slice(0, 4)
+    return { popular, closingToday, goalReached }
   }, [filtered])
 
   const filteredCommunity = useMemo(() => {
@@ -543,6 +563,33 @@ export default function GroupBuyListPage() {
   const currentCount = mainTab === 'seller' ? filtered.length : filteredCommunity.length
   const isCurrentLoading = mainTab === 'seller' ? loading : communityLoading
 
+  // 🧭 2026-06-17 (사용자 신고): 빈 화면 CTA 버튼이 선택 카테고리와 무관하게 항상 "맛집 공구 시작"
+  //   으로 떠 — 숙소/미용/기타 탭에서도 "맛집"이라고 표기되던 문제. 선택 카테고리를 반영하도록.
+  const startCtaLabel = (() => {
+    switch (category) {
+      case 'meal_voucher':
+        return t('groupBuy.ctaStartMeal', { defaultValue: '맛집 공구 시작' })
+      case 'beauty_voucher':
+      case 'health_voucher':
+        return t('groupBuy.ctaStartBeauty', { defaultValue: '미용 공구 시작' })
+      case 'stay_voucher':
+        return t('groupBuy.ctaStartStay', { defaultValue: '숙소 공구 시작' })
+      case 'etc_voucher':
+      case 'pet_voucher':
+      case 'activity_voucher':
+        return t('groupBuy.ctaStartEtc', { defaultValue: '기타 공구 시작' })
+      case 'general':
+        return t('groupBuy.ctaStartGeneral', { defaultValue: '공구 시작' })
+      default:
+        return t('groupBuy.ctaStartNeighborhood', { defaultValue: '동네 공구 시작' })
+    }
+  })()
+
+  // 🧭 2026-06-17 (A): 빈 화면 부제목/쇼케이스를 선택 카테고리에 맞춤. (B): 등록 플로우에 카테고리 전달.
+  const catEmpty = CAT_EMPTY_META[category]
+  const showcaseCards = catEmpty ? [catEmpty.card] : DEFAULT_SHOWCASE
+  const createPath = catEmpty ? `/community-group-buy/new?category=${category}` : '/community-group-buy/new'
+
   return (
     <div className="bg-white dark:bg-[#0A0A0A] min-h-screen">
       <SEO
@@ -585,20 +632,21 @@ export default function GroupBuyListPage() {
           md+)가 normal flow 로 상단을 차지하므로 아래 배너가 자연히 그 밑에 위치 — 별도 top offset 불필요.
           모바일은 배너의 pt-4 로 상단 여백 확보. */}
 
-      {/* 배너 — 클릭 시 맛집 공구 시작 */}
+      {/* 배너 — 클릭 시 동네 공구 제안. 🧭 2026-06-17: 즉시판매 단일가 모델 — '모일수록 싸진다/목표
+          달성 시 특가' 처럼 인원에 따라 가격이 변하는 듯한 문구(기만 소지)를 정직한 단일가로 교체. */}
       <div className="ur-content-wide px-4 lg:px-8 pt-4">
         <div className="bg-gray-900 rounded-2xl px-5 py-4 flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-white text-[15px] font-extrabold">
               <Sparkles className="inline w-4 h-4 mr-1 -mt-0.5" />
-              {t('groupBuy.bannerHeadline', { defaultValue: '함께 모일수록 더 싸져요!' })}
+              {t('groupBuy.bannerHeadline', { defaultValue: '함께라서 더 좋은 가격' })}
             </p>
             <p className="text-white/90 text-[11px] mt-1">
-              {t('groupBuy.bannerSubline', { defaultValue: '최대 50% 할인 — 목표 달성 시 특가로 구매 가능' })}
+              {t('groupBuy.bannerSubline', { defaultValue: '지금 바로 공동구매가로 구매하세요' })}
             </p>
           </div>
           <button
-            onClick={() => navigate('/community-group-buy/new')}
+            onClick={() => navigate(createPath)}
             className="shrink-0 flex items-center gap-1 bg-white dark:bg-white text-gray-900 dark:text-gray-900 px-3 py-2 rounded-full text-[12px] font-extrabold shadow-sm active:scale-95 transition-transform"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -651,8 +699,9 @@ export default function GroupBuyListPage() {
               <button
                 key={tab.key}
                 onClick={() => {
-                  // 🧭 2026-06-17 (사용자 요청): 숙소도 다른 카테고리처럼 동네딜 그리드 안에서 필터(이전엔
-                  //   /stays 로 리다이렉트). 숙소 카드만 클릭 시 전용 /stays/:id(객실·날짜 예약)로 — 카드 참조.
+                  // 🛡️ 숙소(stay_voucher)는 products.price=0 + 위치·객실이 product_stay_info 별도 테이블이라
+                  //   그리드 카드로는 ₩0·정보누락으로 깨짐 → 전용 /stays(객실·날짜·가격 join) 페이지로.
+                  if (tab.key === 'stay_voucher') { navigate('/stays'); return }
                   setCategory(tab.key)
                   // 🧭 2026-06-17: URL 도 동기화 — PC 사이드바/딥링크와 단일 소스(공유·뒤로가기 지원).
                   const next = new URLSearchParams(searchParams)
@@ -692,20 +741,9 @@ export default function GroupBuyListPage() {
           <button
             onClick={() => applyRegion(null, null)}
             className="text-[12px] text-gray-500 dark:text-gray-400 underline underline-offset-2"
-            aria-label="지역 필터 해제"
+            aria-label={t('groupBuy.clearRegion', { defaultValue: '지역 필터 해제' })}
           >
-            해제
-          </button>
-        )}
-        {/* 🧭 2026-06-17: 숙소는 그리드에 인라인 노출하되, 날짜·인원 기반 전용 검색은 /stays 로 보존(가역). */}
-        {category === 'stay_voucher' && (
-          <button
-            onClick={() => navigate('/stays')}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300"
-            aria-label="숙소 날짜·인원 검색"
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>{t('groupBuy.stayDateSearch', { defaultValue: '날짜·인원 검색' })}</span>
+            {t('groupBuy.clearRegionShort', { defaultValue: '해제' })}
           </button>
         )}
       </div>
@@ -733,6 +771,9 @@ export default function GroupBuyListPage() {
           <button
             onClick={() => setShowSortDropdown((v) => !v)}
             className="flex items-center gap-1 text-[13px] text-gray-700 dark:text-gray-300 font-semibold"
+            aria-label={t('groupBuy.sortAria', { defaultValue: '정렬 기준 선택' })}
+            aria-haspopup="menu"
+            aria-expanded={showSortDropdown}
           >
             {SORT_LABELS[sortBy]}
             <ChevronDown
@@ -742,10 +783,12 @@ export default function GroupBuyListPage() {
             />
           </button>
           {showSortDropdown && (
-            <div className="absolute top-full right-0 mt-1 w-36 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#2A2A2A] rounded-xl shadow-lg z-30 overflow-hidden">
+            <div role="menu" className="absolute top-full right-0 mt-1 w-36 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#2A2A2A] rounded-xl shadow-lg z-30 overflow-hidden">
               {(Object.keys(SORT_LABELS) as SortOption[]).map((opt) => (
                 <button
                   key={opt}
+                  role="menuitemradio"
+                  aria-checked={sortBy === opt}
                   onClick={() => {
                     setSortBy(opt)
                     setShowSortDropdown(false)
@@ -780,32 +823,32 @@ export default function GroupBuyListPage() {
           <>
             {/* 🛡️ 2026-06-04 (사용자 요청): '최근 본 공구' 제거. */}
 
-            {/* 🛡️ 2026-05-15: 큐레이션 섹션 — 1명 남음 / 오늘 마감 / 거의 성공 (useMemo 로 매 렌더 재계산 방지) */}
+            {/* 🧭 2026-06-17: 큐레이션 섹션 — 인기 / 오늘 마감 / 목표 달성 (즉시판매 단일가 정합) */}
             {!loading && filtered.length > 0 && (
               <>
-                {curation.lastOne.length > 0 && (
+                {curation.popular.length > 0 && (
                   <CurationStrip
-                    title="🔥 1명만 더 모이면 성공"
-                    subtitle="지금 참여하면 바로 공구 확정"
-                    items={curation.lastOne}
+                    title={t('groupBuy.curPopular', { defaultValue: '🔥 지금 인기 공구' })}
+                    subtitle={t('groupBuy.curPopularSub', { defaultValue: '많은 분이 함께 구매 중' })}
+                    items={curation.popular}
                     navigate={navigate}
                     accent="red"
                   />
                 )}
                 {curation.closingToday.length > 0 && (
                   <CurationStrip
-                    title="⏰ 오늘 마감"
-                    subtitle="놓치면 다음 기회까지 며칠"
+                    title={t('groupBuy.curClosing', { defaultValue: '⏰ 오늘 마감' })}
+                    subtitle={t('groupBuy.curClosingSub', { defaultValue: '마감 전 한정 공구' })}
                     items={curation.closingToday}
                     navigate={navigate}
                     accent="amber"
                   />
                 )}
-                {curation.almostDone.length > 0 && (
+                {curation.goalReached.length > 0 && (
                   <CurationStrip
-                    title="✨ 거의 성공"
-                    subtitle="목표의 70% 이상"
-                    items={curation.almostDone}
+                    title={t('groupBuy.curGoal', { defaultValue: '🎉 목표 달성 공구' })}
+                    subtitle={t('groupBuy.curGoalSub', { defaultValue: '목표 인원을 채운 인기 공구' })}
+                    items={curation.goalReached}
                     navigate={navigate}
                     accent="neutral"
                   />
@@ -824,6 +867,36 @@ export default function GroupBuyListPage() {
                 ))}
               </div>
             ) : filtered.length === 0 ? (
+              (category !== 'all' || !!regionKey || !!searchQuery.trim()) ? (
+                /* 🧭 2026-06-17 (대표 신고 — 빈 카테고리 UX): 카테고리/지역/검색으로 0건이면 '곧 오픈' 대신
+                   '이 조건만 없음 + 초기화' — 다른 카테고리엔 공구가 있을 수 있음을 알려 이탈 방지. */
+                <div className="py-14 text-center">
+                  <p className="text-[34px] mb-2">🔍</p>
+                  <p className="text-gray-900 dark:text-white font-bold text-[15px]">
+                    {(category === 'meal_voucher' ? '식사권 ' : category === 'beauty_voucher' ? '미용 ' : category === 'etc_voucher' ? '기타 ' : category === 'general' ? '온라인 ' : '')}
+                    {t('groupBuy.emptyFilteredTitle', { defaultValue: '공구가 아직 없어요' })}
+                  </p>
+                  <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
+                    {t('groupBuy.emptyFilteredSub', { defaultValue: '다른 카테고리나 지역도 둘러보세요' })}
+                  </p>
+                  <div className="mt-4 flex gap-2 justify-center flex-wrap">
+                    <button
+                      onClick={() => { setCategory('all'); setSearchQuery(''); applyRegion(null, null); const n = new URLSearchParams(searchParams); n.delete('category'); setSearchParams(n, { replace: true }) }}
+                      className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[13px] font-bold rounded-full"
+                    >
+                      {t('groupBuy.resetToAll', { defaultValue: '전체 공구 보기' })}
+                    </button>
+                    {regionKey && (
+                      <button
+                        onClick={() => applyRegion(null, null)}
+                        className="px-5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 text-[13px] font-semibold rounded-full"
+                      >
+                        {t('groupBuy.clearRegion', { defaultValue: '지역 해제' })}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
               <div className="space-y-4 py-8">
                 {/* 🛡️ 2026-05-15: 빈 화면 → "곧 오픈 예정" Coming Soon 카드 (3 AI 합의) */}
                 <div className="text-center mb-4">
@@ -832,30 +905,27 @@ export default function GroupBuyListPage() {
                     {t('groupBuy.emptySellerNew', { defaultValue: '곧 오픈 예정' })}
                   </p>
                   <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
-                    {t('groupBuy.emptySellerNewSub', { defaultValue: '셀러들이 매일 새 공구를 등록 중이에요. 알림 받아두세요!' })}
+                    {catEmpty
+                      ? t('groupBuy.emptyCatSub', { defaultValue: '{{noun}} 공구가 곧 시작될 예정이에요. 알림 받아두세요!', noun: catEmpty.noun })
+                      : t('groupBuy.emptySellerNewSub', { defaultValue: '셀러들이 매일 새 공구를 등록 중이에요. 알림 받아두세요!' })}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-3 max-w-md mx-auto">
-                  {[
-                    { emoji: '🍽️', label: '식사권 공구', desc: '맛집 단체 할인' },
-                    { emoji: '💇', label: '뷰티 공구', desc: '시술 공동 예약' },
-                    { emoji: '💪', label: '헬스 PT 공구', desc: '월 회원권 공동' },
-                    { emoji: '🏨', label: '숙박 공구', desc: '펜션·호텔 단체' },
-                  ].map((c, i) => (
-                    <div key={i} className="bg-white dark:bg-[#0A0A0A] border-2 border-dashed border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-4 text-center opacity-70 hover:opacity-100 transition-opacity">
+                <div className={`max-w-md mx-auto ${showcaseCards.length === 1 ? 'flex justify-center' : 'grid grid-cols-2 gap-3'}`}>
+                  {showcaseCards.map((c, i) => (
+                    <div key={i} className={`bg-white dark:bg-[#0A0A0A] border-2 border-dashed border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-4 text-center opacity-70 hover:opacity-100 transition-opacity ${showcaseCards.length === 1 ? 'w-44' : ''}`}>
                       <p className="text-3xl mb-1.5">{c.emoji}</p>
                       <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{c.label}</p>
                       <p className="text-[10px] text-gray-400 mt-0.5">{c.desc}</p>
-                      <span className="inline-block mt-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[9px] font-bold">곧 오픈</span>
+                      <span className="inline-block mt-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[9px] font-bold">{t('groupBuy.soonOpen', { defaultValue: '곧 오픈' })}</span>
                     </div>
                   ))}
                 </div>
                 <div className="mt-5 flex gap-2 justify-center flex-wrap">
                   <button
-                    onClick={() => navigate('/community-group-buy/new')}
+                    onClick={() => navigate(createPath)}
                     className="flex items-center gap-1 px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
                   >
-                    <Plus className="w-3.5 h-3.5" /> {t('groupBuy.ctaStartMeal', { defaultValue: '내 동네 공구 제안' })}
+                    <Plus className="w-3.5 h-3.5" /> {startCtaLabel}
                   </button>
                   {/* 🧭 2026-06-10: 쇼핑 잠정 숨김 동안엔 숨겨진 표면으로 보내지 않음 — 홈(교환권)으로 */}
                   <button
@@ -868,6 +938,7 @@ export default function GroupBuyListPage() {
                   </button>
                 </div>
               </div>
+              )
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5">
                 {filtered.slice(0, visibleCount).map((p, idx) => (
@@ -902,10 +973,10 @@ export default function GroupBuyListPage() {
                   {t('groupBuy.emptyCommunity', { defaultValue: '진행 중인 유저 공구가 없습니다' })}
                 </p>
                 <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
-                  {t('groupBuy.emptyCommunitySub', { defaultValue: '원하는 맛집 공구를 직접 시작해보세요!' })}
+                  {t('groupBuy.emptyCommunitySub', { defaultValue: '원하는 공구를 직접 제안해보세요!' })}
                 </p>
                 <button
-                  onClick={() => navigate('/community-group-buy/new')}
+                  onClick={() => navigate(createPath)}
                   className="mt-5 px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
                 >
                   {t('groupBuy.ctaStart', { defaultValue: '공구 시작하기' })}
@@ -1015,9 +1086,9 @@ export default function GroupBuyListPage() {
                         </div>
                       </div>
 
-                      {/* 참여하기 CTA */}
+                      {/* 참여하기 CTA — 부모가 이미 <button> 이라 중첩 불가, 표시용 div 유지 */}
                       <div className="mt-3 bg-gray-900 text-white text-center py-2 rounded-xl text-[13px] font-bold">
-                        참여하기
+                        {t('groupBuy.joinCta', { defaultValue: '참여하기' })}
                       </div>
                     </button>
                   )
@@ -1041,7 +1112,8 @@ export default function GroupBuyListPage() {
 }
 
 
-// 🛡️ 2026-05-15: 큐레이션 strip — horizontal scroll 카드 (1명 남음 / 오늘 마감 / 거의 성공)
+// 🧭 2026-06-17: 큐레이션 strip — horizontal scroll 카드 (인기 / 오늘 마감 / 목표 달성).
+//   즉시판매 단일가 정합: 진행률 바 + 'N명 남음'(임계 게이트 연상) 제거 → 소셜 증거('N명 함께 구매 중').
 function CurationStrip({
   title, subtitle, items, navigate, accent,
 }: {
@@ -1051,12 +1123,18 @@ function CurationStrip({
   navigate: (to: string) => void
   accent: "red" | "amber" | "neutral"
 }) {
+  const { t } = useTranslation()
   const accentMap = {
-    red:     { bg: "bg-red-50",   text: "text-red-600",   bar: "bg-red-500"   },
-    amber:   { bg: "bg-amber-50", text: "text-amber-600", bar: "bg-amber-500" },
-    neutral: { bg: "bg-gray-900", text: "text-white",     bar: "bg-gray-900"  },
+    red:     { bg: "bg-red-50",   text: "text-red-600"   },
+    amber:   { bg: "bg-amber-50", text: "text-amber-600" },
+    neutral: { bg: "bg-gray-900", text: "text-white"     },
   }
   const a = accentMap[accent]
+  const badge = accent === "red"
+    ? t('groupBuy.curBadgePopular', { defaultValue: '🔥 인기' })
+    : accent === "amber"
+    ? t('groupBuy.curBadgeClosing', { defaultValue: '오늘 마감' })
+    : t('groupBuy.curBadgeGoal', { defaultValue: '달성 🎉' })
   return (
     <section className="mb-6">
       <div className="flex items-baseline justify-between mb-2 px-1">
@@ -1065,10 +1143,7 @@ function CurationStrip({
       </div>
       <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 lg:-mx-8 px-4 lg:px-8 scrollbar-hide snap-x snap-mandatory">
         {items.map((p) => {
-          const progress = (p.group_buy_target ?? 0) > 0
-            ? Math.min(100, ((p.group_buy_current ?? 0) / (p.group_buy_target ?? 1)) * 100)
-            : 0
-          const remaining = Math.max(0, (p.group_buy_target ?? 0) - (p.group_buy_current ?? 0))
+          const current = p.group_buy_current ?? 0
           return (
             <button
               key={p.id}
@@ -1092,16 +1167,21 @@ function CurationStrip({
                   <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-[#1A1A1A] dark:to-[#0A0A0A]" />
                 )}
                 <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full ${a.bg} ${a.text} text-[9px] font-extrabold`}>
-                  {accent === "red" ? "1명 남음" : accent === "amber" ? "오늘 마감" : `${Math.round(progress)}%`}
+                  {badge}
                 </div>
               </div>
               <div className="p-2.5 space-y-1">
                 <p className="text-[12px] font-bold text-gray-900 dark:text-white truncate">{p.name}</p>
                 {p.restaurant_name && <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{p.restaurant_name}</p>}
-                <div className="w-full bg-gray-100 dark:bg-[#1A1A1A] rounded-full h-1.5 overflow-hidden">
-                  <div className={`h-full ${a.bar} rounded-full transition-all`} style={{ width: `${progress}%` }} />
-                </div>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400"><span className={`${a.text} font-bold`}>{remaining}명</span> 남음 · ₩{p.price?.toLocaleString("ko-KR") ?? "-"}</p>
+                {/* 즉시판매 단일가 — 진행률 바 제거. 인원은 소셜 증거로만 노출(0명이면 가격만). */}
+                <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                  {current > 0 && (
+                    <span className={`${a.text} font-bold`}>
+                      {t('groupBuy.curBuying', { defaultValue: '👥 {{count}}명 함께', count: current })} ·{' '}
+                    </span>
+                  )}
+                  ₩{p.price?.toLocaleString("ko-KR") ?? "-"}
+                </p>
               </div>
             </button>
           )

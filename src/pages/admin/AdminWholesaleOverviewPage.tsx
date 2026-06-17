@@ -17,7 +17,7 @@ import { DashboardPageHeader, DashboardStatCard } from '@/components/dashboard'
 import { formatWon, formatNumber } from '@/utils/format'
 import {
   LayoutDashboard, Loader2, Wallet, ShoppingBag, Users, Store, Package,
-  Inbox, MessageSquare, Settings, ArrowUpRight, AlertCircle,
+  Inbox, MessageSquare, Settings, ArrowUpRight, AlertCircle, Shield,
 } from 'lucide-react'
 
 interface MallRow {
@@ -160,6 +160,14 @@ export default function AdminWholesaleOverviewPage() {
                 hint={t('admin.wsOverview.mallCount', { defaultValue: '몰 {{n}}개', n: formatNumber(totals.malls) })}
                 accent="violet"
               />
+            </div>
+
+            {/* 🗂️ 2026-06-17: '도매 무결성'(진단 전용)은 상단 nav에서 강등 → 여기 점검 링크로 접근. */}
+            <div className="mt-3">
+              <Link to="/admin/wholesale-integrity"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors">
+                <Shield className="w-3.5 h-3.5" /> {t('admin.wsOverview.integrityLink', { defaultValue: '데이터 무결성 점검' })}
+              </Link>
             </div>
 
             {/* ── Per-mall cards ─────────────────────────────────────────── */}

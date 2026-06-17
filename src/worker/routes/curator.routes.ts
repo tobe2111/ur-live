@@ -615,16 +615,22 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
     // 🛡️ 2026-06-10 (사용자 신고 — 저장 후 새로고침하면 옛 모습): GET /api/curator/:handle 은
     //   edge 900s 캐시(로딩 잠금 — TTL 약화 금지). 대신 저장 성공 시 본인 공개 응답을 현재 colo 에서
     //   purge(best-effort) → 같은 지역 재방문/SSR inject 이 즉시 신선본. 실패해도 저장은 이미 완료.
+    // 🏎️ 2026-06-17 (링크샵 데이터 변경 속도 감사): handle 조회 + colo purge 를 응답 경로에서 분리해
+    //   waitUntil 로 이동 — 저장 응답이 'SELECT handle' 1 RTT 만큼 빨라짐(purge 는 본래 best-effort).
     try {
-      const me = await c.env.DB.prepare('SELECT handle FROM users WHERE id = ? LIMIT 1')
-        .bind(userId).first<{ handle: string | null }>()
-      if (me?.handle) {
-        const url = new URL(c.req.url)
-        // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 와 동일 패턴)
-        const purge = caches.default.delete(new Request(`${url.origin}/api/curator/${encodeURIComponent(me.handle)}`)) as Promise<boolean>
-        c.executionCtx.waitUntil(purge.then(() => undefined))
-      }
-    } catch { /* best-effort — purge 실패해도 저장 완료 */ }
+      const origin = new URL(c.req.url).origin
+      const purgeTask = (async () => {
+        try {
+          const me = await c.env.DB.prepare('SELECT handle FROM users WHERE id = ? LIMIT 1')
+            .bind(userId).first<{ handle: string | null }>()
+          if (me?.handle) {
+            // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts:110 와 동일 패턴)
+            await (caches.default.delete(new Request(`${origin}/api/curator/${encodeURIComponent(me.handle)}`)) as Promise<boolean>)
+          }
+        } catch { /* best-effort — purge 실패해도 저장 완료 */ }
+      })()
+      c.executionCtx?.waitUntil?.(purgeTask)
+    } catch { /* no ctx — purge skip */ }
 
     return c.json({ success: true })
   } catch (err) {
@@ -1061,6 +1067,26 @@ curatorRoutes.get('/me/business', requireAuth(), async (c) => {
               tax_type, bank_name, bank_account, account_holder
          FROM users WHERE id = ?`,
     ).bind(userId).first<Record<string, unknown>>().catch(() => null)
+    // 🏁 2026-06-17 (사업자등록 일원화 — 사용자 결정 "진짜 일원화"): 승인된 연결 매장(셀러)이 있으면
+    //   = 검증된 사업자 → 현금정산 자격. 출금 게이트(line 861-870)·payout_mode(line 1015)가 이미
+    //   'linked approved seller' 기준이라, 본 조회만 정합 맞춰 콘솔이 "매장 등록 = 현금정산 활성"을
+    //   인식(중복 '사업자 등록' 프롬프트 제거). **read-only — 머니 쓰기 0**, 출금 게이트 무변경.
+    const storeSeller = await c.env.DB.prepare(
+      `SELECT business_name, business_number FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
+    ).bind(userId).first<{ business_name: string | null; business_number: string | null }>().catch(() => null)
+    if (storeSeller) {
+      const r = (row || {}) as Record<string, unknown>
+      return c.json({
+        success: true,
+        data: {
+          ...r,
+          business_status: 'verified',
+          business_name: (r.business_name as string | undefined) || storeSeller.business_name || null,
+          business_number: (r.business_number as string | undefined) || storeSeller.business_number || null,
+          is_store_seller: true,
+        },
+      })
+    }
     return c.json({
       success: true,
       data: row || { business_status: 'none' },
@@ -1312,7 +1338,7 @@ curatorRoutes.get('/admin/affiliate-diagnostic', requireAdmin(), async (c) => {
       multi_item_attribution: {
         orders: multiItem?.orders ?? 0,
         commission: multiItem?.commission ?? 0,
-        note: '2개 이상 상품 주문에 붙은 적립 — 현재는 첫 상품 기준으로 전체 주문액에 적립됨(라인별 귀속 개선 대상)',
+        note: '2개 이상 상품 주문에 붙은 적립 규모(모니터링용). 2026-06-12 라인별 귀속 적용 완료 — affiliate-credit.computeOrderCommission 이 order_items 의 referral_enabled 라인만 각 상품 비율로 합산(배송비/비대상 제외). order_items 부재(레거시/직접결제)만 단일상품 비율×주문총액 fallback. /track·/confirm 동일 SSOT.',
       },
       refund_after_spend_proxy: {
         referrers: refundProxy?.referrers ?? 0,

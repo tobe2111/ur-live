@@ -117,8 +117,9 @@ export default function HomeProductsRail() {
           </p>
         )
       ) : (
-        /* /browse 본 페이지와 동일 그리드 (2열 기본) — 카드 컴포넌트 자체도 동일 */
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-2 gap-y-2.5 items-stretch">
+        /* /browse 본 페이지와 동일 그리드 — PC 프레임(약 720px) 안에서 뷰포트 기준 lg/xl 브레이크포인트가
+           6열까지 곱해져 카드가 과도하게 좁아지던 문제 수정. BrowsePage 와 동일하게 최대 3열로 cap. */
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5 items-stretch">
           {items.map((p) => (
             <BrowseProductCard key={p.id} product={p} aboveFold={false} />
           ))}

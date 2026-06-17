@@ -22,6 +22,13 @@ export default function WholesaleLoginPage() {
   const [mode, setMode] = useState<'choose' | 'distributor'>('choose')
   // 🏬 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FC5424 → byte-identical). 조기 return 전에 호출.
   const { displayName: mallName, logoUrl: mallLogo } = useWholesaleMall()
+  const [rememberMe, setRememberMe] = useState(false)
+
+  // 🛡️ 2026-06-17: 이메일 기억하기 — 저장된 이메일 자동 채움 (admin/seller 와 동형).
+  useEffect(() => {
+    const saved = localStorage.getItem('wholesale_remember_email')
+    if (saved) { setEmail(saved); setRememberMe(true) }
+  }, [])
 
   // 이미 유통사 로그인 상태면 대시보드로(유통사 아닌 셀러면 카탈로그).
   const alreadyIn = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
@@ -38,6 +45,9 @@ export default function WholesaleLoginPage() {
       const r = await api.post('/api/seller/login', { email: email.trim(), password })
       const d = r.data?.data
       if (!r.data?.success || !d?.accessToken) throw new Error(r.data?.error || '로그인 실패')
+      // 🛡️ 2026-06-17: 이메일 기억하기 저장/삭제.
+      if (rememberMe) localStorage.setItem('wholesale_remember_email', email.trim())
+      else localStorage.removeItem('wholesale_remember_email')
       const s = d.seller
       localStorage.setItem('seller_token', d.accessToken)
       localStorage.setItem('access_token', d.accessToken)
@@ -72,7 +82,7 @@ export default function WholesaleLoginPage() {
               <WholesaleWordmark height={28} />
             )}
           </button>
-          <button onClick={() => navigate('/wholesale/join')} className="text-sm text-[#4E5560] hover:text-[#0C2454] font-medium">유통사 가입</button>
+          {/* 🧹 2026-06-17 (시안): 우상단 '유통사 가입' 버튼 삭제 */}
         </div>
       </header>
 
@@ -88,8 +98,8 @@ export default function WholesaleLoginPage() {
                 className="w-full flex items-center gap-4 p-4 rounded-2xl border border-[#ECEEF1] hover:border-[#0C2454] transition-colors text-left">
                 <span className="flex h-12 w-12 items-center justify-center rounded-xl shrink-0" style={{ background: '#F4F5F7' }}><Users className="w-6 h-6" style={{ color: '#0C2454' }} /></span>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-[16px] font-extrabold text-[#0C2454]">유통사(판매) 로그인</span>
-                  <span className="block text-[13px] text-[#8A929E] mt-0.5">등급 공급가로 사입하는 유통회원</span>
+                  <span className="block text-[16px] font-extrabold text-[#0C2454]">판매사(유통사) 로그인</span>
+                  <span className="block text-[13px] text-[#8A929E] mt-0.5">등급 공급가로 사입하는 판매사</span>
                 </span>
                 <ArrowRight className="w-5 h-5 text-[#B6BCC4] shrink-0" />
               </button>
@@ -97,8 +107,8 @@ export default function WholesaleLoginPage() {
                 className="w-full flex items-center gap-4 p-4 rounded-2xl border border-[#ECEEF1] hover:border-[#0C2454] transition-colors text-left">
                 <span className="flex h-12 w-12 items-center justify-center rounded-xl shrink-0" style={{ background: '#F4F5F7' }}><Factory className="w-6 h-6" style={{ color: '#0C2454' }} /></span>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-[16px] font-extrabold text-[#0C2454]">제조사(브랜드사) 로그인</span>
-                  <span className="block text-[13px] text-[#8A929E] mt-0.5">상품을 공급하는 제조(공급)회원</span>
+                  <span className="block text-[16px] font-extrabold text-[#0C2454]">제조사(공급사) 로그인</span>
+                  <span className="block text-[13px] text-[#8A929E] mt-0.5">상품을 공급하는 제조사(공급사)</span>
                 </span>
                 <ArrowRight className="w-5 h-5 text-[#B6BCC4] shrink-0" />
               </button>
@@ -114,7 +124,7 @@ export default function WholesaleLoginPage() {
           <ArrowRight className="w-4 h-4 rotate-180" /> 로그인 유형 다시 선택
         </button>
         <div className="text-center mb-8">
-          <h1 className="text-2xl lg:text-3xl font-extrabold mb-2">유통사 로그인</h1>
+          <h1 className="text-2xl lg:text-3xl font-extrabold mb-2">판매사(유통사) 로그인</h1>
           <p className="text-[#4E5560] text-[15px]">검증된 제조사 상품을 등급 공급가로 사입하세요.</p>
         </div>
 
@@ -127,6 +137,11 @@ export default function WholesaleLoginPage() {
             <label className="block text-[13px] font-semibold mb-1.5">비밀번호</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} disabled={loading} className={inputCls} placeholder="비밀번호" autoComplete="current-password" />
           </div>
+          <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+            <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}
+              className="w-4 h-4 rounded border-[#ECEEF1] text-[#FC5424] focus:ring-[#FC5424]/30" />
+            <span className="text-[13px] text-[#4E5560]">이메일 기억하기</span>
+          </label>
           <button type="submit" disabled={loading}
             className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-[#FC5424] text-white font-bold text-[15px] hover:bg-[#E0461C] transition-colors disabled:opacity-60 mt-1">
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>로그인 <ArrowRight className="w-5 h-5" /></>}

@@ -21,16 +21,26 @@ const PBKDF2_BITS = 256;
  * 비밀번호 복잡도 검증 — 신규 가입/비번 변경 시에만 적용.
  * 기존 사용자의 로그인은 차단하지 않는다.
  *
- * 조건:
+ * 조건 (기본/strict — 신규 사용자 가입):
  *  - 10 <= length <= 128
- *  - 대문자 1+ / 소문자 1+ / 숫자 1+ 포함
+ *  - 대문자 1+ / 소문자 1+ / 숫자 1+ / 특수문자 1+ 모두 포함
+ *
+ * relaxed (2026-06-17 대표 요청 — 새 관리자 추가 전용 완화):
+ *  - 8 <= length <= 128
+ *  - 영문/숫자/특수문자 4종 중 2종 이상 포함 (대문자 필수 X) → 예: "1q2w3e4r$#@!" 허용
+ *  (어드민 계정 생성 경로만 relaxed 사용. 일반 사용자 가입은 strict 유지.)
  */
-export function validatePasswordComplexity(password: string): { ok: true } | { ok: false; error: string } {
+export function validatePasswordComplexity(
+  password: string,
+  opts?: { relaxed?: boolean },
+): { ok: true } | { ok: false; error: string } {
   if (typeof password !== 'string') {
     return { ok: false, error: '비밀번호가 올바르지 않습니다.' };
   }
-  if (password.length < 10) {
-    return { ok: false, error: '비밀번호는 10자 이상이어야 합니다.' };
+  const relaxed = !!opts?.relaxed;
+  const minLen = relaxed ? 8 : 10;
+  if (password.length < minLen) {
+    return { ok: false, error: `비밀번호는 ${minLen}자 이상이어야 합니다.` };
   }
   if (password.length > 128) {
     return { ok: false, error: '비밀번호는 128자 이하여야 합니다.' };
@@ -40,7 +50,13 @@ export function validatePasswordComplexity(password: string): { ok: true } | { o
   const hasNum = /[0-9]/.test(password);
   // 🛡️ 2026-04-22: 특수문자 필수 (이전엔 대/소/숫자 3 class 만 요구)
   const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(password);
-  if (!hasUpper || !hasLower || !hasNum || !hasSpecial) {
+  const classes = [hasUpper, hasLower, hasNum, hasSpecial].filter(Boolean).length;
+  if (relaxed) {
+    // 완화: 4종 중 2종 이상이면 통과 (대문자 강제 X).
+    if (classes < 2) {
+      return { ok: false, error: '비밀번호는 영문·숫자·특수문자 중 2종류 이상 포함해야 합니다.' };
+    }
+  } else if (!hasUpper || !hasLower || !hasNum || !hasSpecial) {
     return {
       ok: false,
       error: '비밀번호는 대문자, 소문자, 숫자, 특수문자를 모두 포함해야 합니다.'

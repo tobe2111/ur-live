@@ -50,8 +50,13 @@ export default function Admin2FASetupPage() {
     try {
       const res = await api.post('/api/2fa/verify', { code }, { headers })
       if (res.data?.success) {
-        toast.success('🎉 2FA 활성화 완료! 이후 sensitive action 시 코드 필요.')
+        toast.success('🎉 2FA 활성화 완료! 다음 로그인부터 인증앱 6자리 코드가 필요합니다.')
         setEnabled(true); setSetupData(null); setCode('')
+        // 🆕 강제 등록 게이트 해제 + 등록 직후 대시보드로.
+        if (localStorage.getItem('admin_must_enroll_2fa')) {
+          localStorage.removeItem('admin_must_enroll_2fa')
+          setTimeout(() => navigate('/admin', { replace: true }), 800)
+        }
       } else toast.error(res.data?.error || '코드 불일치')
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }

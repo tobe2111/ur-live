@@ -20,7 +20,7 @@ interface Props {
   tokenKey?: 'seller_token' | 'admin_token' | 'agency_token' | 'access_token'
   label?: string
   required?: boolean
-  aspectRatio?: 'square' | 'video' | 'auto'
+  aspectRatio?: 'square' | 'video' | 'auto' | 'banner'
   className?: string
 }
 
@@ -145,6 +145,7 @@ export default function ImageUpload({
 
   const aspectClass = aspectRatio === 'square' ? 'aspect-square'
     : aspectRatio === 'video' ? 'aspect-video'
+    : aspectRatio === 'banner' ? 'aspect-[16/6]'
     : ''
 
   return (

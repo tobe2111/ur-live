@@ -12,6 +12,7 @@ import { sign, verify } from 'hono/jwt';
 import { verifyPassword, hashPassword } from '@/lib/password';
 import { validateRequired } from '@/worker/utils/validation';
 import { executeQuery } from '@/worker/utils/database';
+import { startDashboardSession, isDashboardSessionCurrent } from '@/worker/utils/dashboard-session';
 import { maskEmail } from '@/lib/mask';
 import { verifyTurnstile } from '@/worker/utils/turnstile';
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout';
@@ -52,6 +53,36 @@ type AdminLoginRequest = {
 };
 
 export const adminRoutes = new Hono<{ Bindings: Bindings }>();
+
+// 🆕 2026-06-17 관리자 로그인 이력 테이블 — per-request DDL 방지(WeakSet 메모이즈).
+const _loginHistEnsured = new WeakSet<D1Database>();
+async function ensureAdminLoginHistory(DB: D1Database): Promise<void> {
+  if (_loginHistEnsured.has(DB)) return;
+  _loginHistEnsured.add(DB);
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS admin_login_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id TEXT NOT NULL,
+      email TEXT,
+      ip TEXT,
+      user_agent TEXT,
+      success INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`).run();
+    await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_admin_login_history_created ON admin_login_history(created_at DESC)`).run().catch(() => {});
+  } catch (e) {
+    _loginHistEnsured.delete(DB);
+    console.error('[ensureAdminLoginHistory]', e);
+  }
+}
+
+// 🆕 2026-06-17 관리자 보안 PIN 컬럼 — per-request DDL 방지(WeakSet 메모이즈).
+const _loginPinEnsured = new WeakSet<D1Database>();
+async function ensureLoginPinColumn(DB: D1Database): Promise<void> {
+  if (_loginPinEnsured.has(DB)) return;
+  _loginPinEnsured.add(DB);
+  try { await DB.prepare('ALTER TABLE admins ADD COLUMN login_pin_hash TEXT').run() } catch { /* exists */ }
+}
 
 /**
  * POST /api/admin/login
@@ -124,7 +155,38 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
 
     // 🛡️ 성공 시 실패 카운터 초기화
     await clearFailures(DB, 'admin', String(admin.id));
-    
+
+    // 🆕 2026-06-17 보안 PIN 강제 (도매 파트너 + 슈퍼) + 로그인 이력(IP).
+    //   - 관리자가 처음 설정한 6자리 PIN(login_pin_hash) 있으면 매 로그인 PIN 필수(없으면 pin_required → 토큰 미발급).
+    //   - 강제 대상 역할인데 PIN 미설정이면 토큰은 발급하되 must_set_pin 플래그(프론트가 PIN 설정 유도).
+    //   ⚠️ login_pin_hash 컬럼 미존재면 catch → null → 로그인 fail-safe.
+    const reqIp = c.req.header('CF-Connecting-IP') || c.req.header('cf-connecting-ip') || null;
+    let mustSetPin = false;
+    {
+      const ENFORCED_PIN_ROLES = ['super_admin', 'wholesale'];
+      const pinRow = await DB.prepare('SELECT login_pin_hash FROM admins WHERE id = ?')
+        .bind(admin.id).first<{ login_pin_hash: string | null }>().catch(() => null);
+      const hasPin = !!(pinRow && pinRow.login_pin_hash);
+      if (hasPin) {
+        const pin = String((body as { pin?: string }).pin || '').trim();
+        if (!/^\d{6}$/.test(pin)) {
+          return c.json({ success: false, pin_required: true, message: '6자리 보안 PIN을 입력하세요' }, 200);
+        }
+        const { valid: pinOk } = await verifyPassword(pin, pinRow!.login_pin_hash as string);
+        if (!pinOk) return c.json({ success: false, pin_required: true, error: '보안 PIN이 올바르지 않습니다' }, 401);
+      } else if (ENFORCED_PIN_ROLES.includes(String(admin.role))) {
+        mustSetPin = true;
+      }
+    }
+
+    // 🆕 로그인 이력(IP) 기록 — fail-soft (로그인 차단 안 함).
+    try {
+      await ensureAdminLoginHistory(DB);
+      await DB.prepare(
+        `INSERT INTO admin_login_history (admin_id, email, ip, user_agent, success) VALUES (?, ?, ?, ?, 1)`
+      ).bind(String(admin.id), admin.email, reqIp, c.req.header('User-Agent') || null).run();
+    } catch (e) { console.error('[Admin Login] login history write failed:', e); }
+
     const now = Math.floor(Date.now() / 1000);
     const payload = {
       sub: admin.id.toString(),
@@ -142,6 +204,9 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
     const token = await sign(payload, JWT_SECRET);
     const refreshPayload = { ...payload, exp: now + (30 * 24 * 60 * 60) };
     const refreshToken = await sign(refreshPayload, JWT_SECRET);
+
+    // 🔐 단일 세션 강제 — 이 로그인(iat) 이전 발급된 admin 토큰 전부 무효화.
+    await startDashboardSession(DB, 'admin', admin.id, payload.iat, { userAgent: c.req.header('User-Agent'), ip: reqIp });
 
     // ── refresh token 해시 저장 (rotation/revocation 기반) ────
     try {
@@ -163,12 +228,16 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
 
     // 🛡️ 2026-04-22 Phase 1: httpOnly 쿠키 추가 (Bearer 병행)
     let adminCookie = '';
+    let adminUdCookie = '';
     try {
       const { createSessionCookie } = await import('../../../worker/utils/session');
       adminCookie = await createSessionCookie(
         admin.id as number, admin.name as string, admin.email as string,
         null, JWT_SECRET, 'admin',
       );
+      // 🔐 2026-06-17 쿠키 전환 Phase 1: ud_admin_token dual-write (GET 전용 읽기 — Bearer/localStorage 흐름 불변).
+      const { authTokenSetCookie } = await import('../../../worker/utils/auth-cookies');
+      adminUdCookie = authTokenSetCookie('ud_admin_token', token, new URL(c.req.url).hostname);
     } catch {}
 
     const res = c.json({
@@ -177,6 +246,7 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
         accessToken: token,
         refreshToken,
         token, // backward compatibility
+        must_set_pin: mustSetPin, // 🆕 강제 대상(도매 파트너/슈퍼)인데 보안 PIN 미설정 → 프론트가 PIN 설정 유도
         admin: {
           id: admin.id as number,
           username: admin.username as string,
@@ -188,6 +258,7 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
       message: 'Login successful'
     });
     if (adminCookie) res.headers.append('Set-Cookie', adminCookie);
+    if (adminUdCookie) res.headers.append('Set-Cookie', adminUdCookie);
     return res;
 
   } catch (error) {
@@ -273,6 +344,11 @@ adminRoutes.post('/refresh', cors(), rateLimit({ action: 'admin_refresh', max: 2
       // 가용성: 저장소 오류로 인한 차단은 하지 않음
     }
 
+    // 🔐 단일 세션 강제 — 더 늦은 로그인이 무효화한 refresh 로는 갱신 거부(옛 기기 우회 차단).
+    if (!(await isDashboardSessionCurrent(DB, 'admin', adminId, payload.iat))) {
+      return c.json({ success: false, error: '다른 기기에서 로그인되어 세션이 만료되었습니다. 다시 로그인해주세요.', code: 'SESSION_SUPERSEDED' }, 401);
+    }
+
     const admin = admins[0];
     const now = Math.floor(Date.now() / 1000);
     const newPayload = {
@@ -339,6 +415,30 @@ adminRoutes.post('/refresh', cors(), rateLimit({ action: 'admin_refresh', max: 2
 import { requireAdmin } from '@/worker/middleware/auth';
 
 import { swallow } from '@/worker/utils/swallow';
+
+// 🆕 2026-06-17 보안 PIN 설정/변경 — 로그인된 관리자가 6자리 PIN 설정(해시 저장). 이후 매 로그인 필수.
+adminRoutes.post('/set-login-pin', cors(), rateLimit({ action: 'admin_set_pin', max: 10, windowSec: 600 }), requireAdmin() as any, async (c) => {
+  const { DB } = c.env;
+  const user = (c as unknown as { get: (k: string) => unknown }).get('user') as { id?: string | number } | undefined;
+  if (!user?.id) return c.json({ success: false, error: 'Unauthorized' }, 401);
+  let pin = '';
+  try { pin = String(((await c.req.json<{ pin?: string }>()) || {}).pin || '').trim(); } catch { /* invalid json */ }
+  if (!/^\d{6}$/.test(pin)) return c.json({ success: false, error: '6자리 숫자 PIN을 입력하세요' }, 400);
+  // 너무 단순한 PIN 차단 (같은 숫자 6개 / 순차).
+  if (/^(\d)\1{5}$/.test(pin) || ['123456', '654321', '012345', '111111'].includes(pin)) {
+    return c.json({ success: false, error: '너무 단순한 PIN 입니다. 다른 6자리를 사용하세요' }, 400);
+  }
+  try {
+    await ensureLoginPinColumn(DB);
+    const hash = await hashPassword(pin);
+    await DB.prepare('UPDATE admins SET login_pin_hash = ? WHERE id = ?').bind(hash, user.id).run();
+    return c.json({ success: true, message: '보안 PIN이 설정되었습니다. 다음 로그인부터 사용됩니다.' });
+  } catch (e) {
+    console.error('[Admin set-login-pin] error:', e);
+    return c.json({ success: false, error: 'PIN 설정 실패' }, 500);
+  }
+});
+
 // Setup: TOTP secret 생성 → QR 코드용 URI 반환
 adminRoutes.post('/2fa/setup', cors(), rateLimit({ action: 'admin_2fa_setup', max: 10, windowSec: 600 }), requireAdmin() as any, async (c) => {
   const { DB } = c.env;

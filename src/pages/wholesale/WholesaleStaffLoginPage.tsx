@@ -16,6 +16,13 @@ export default function WholesaleStaffLoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
+
+  // 🛡️ 2026-06-17: 이메일 기억하기 — 저장된 이메일 자동 채움 (admin/seller 와 동형).
+  useEffect(() => {
+    const saved = localStorage.getItem('wholesale_staff_remember_email')
+    if (saved) { setEmail(saved); setRememberMe(true) }
+  }, [])
 
   const alreadyIn = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
   useEffect(() => { if (alreadyIn) navigate('/wholesale/dashboard', { replace: true }) }, [alreadyIn, navigate])
@@ -30,6 +37,9 @@ export default function WholesaleStaffLoginPage() {
       const r = await api.post('/api/wholesale/sub-login', { email: email.trim(), password })
       const d = r.data?.data
       if (!r.data?.success || !d?.accessToken) throw new Error(r.data?.error || '로그인 실패')
+      // 🛡️ 2026-06-17: 이메일 기억하기 저장/삭제.
+      if (rememberMe) localStorage.setItem('wholesale_staff_remember_email', email.trim())
+      else localStorage.removeItem('wholesale_staff_remember_email')
       const s = d.seller
       // ⚠️ 일반 셀러 로그인과 byte-identical 저장 — 토큰의 seller_id 는 회사(parent) id.
       localStorage.setItem('seller_token', d.accessToken)
@@ -78,6 +88,11 @@ export default function WholesaleStaffLoginPage() {
             <label className="block text-[13px] font-semibold mb-1.5">비밀번호</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} disabled={loading} className={inputCls} placeholder="비밀번호" autoComplete="current-password" />
           </div>
+          <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+            <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}
+              className="w-4 h-4 rounded border-[#ECEEF1] text-[#FC5424] focus:ring-[#FC5424]/30" />
+            <span className="text-[13px] text-[#4E5560]">이메일 기억하기</span>
+          </label>
           <button type="submit" disabled={loading}
             className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-[#FC5424] text-white font-bold text-[15px] hover:bg-[#E0461C] transition-colors disabled:opacity-60 mt-1">
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>로그인 <ArrowRight className="w-5 h-5" /></>}

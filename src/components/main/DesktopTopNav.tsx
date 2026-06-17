@@ -10,6 +10,7 @@ import { useState, useRef } from 'react'
 import { useUnreadCount, useCartCount } from '@/hooks/queries'
 import { isLoggedInSync } from '@/utils/auth'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
+import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 export default function DesktopTopNav() {
@@ -19,6 +20,8 @@ export default function DesktopTopNav() {
   const [searchQuery, setSearchQuery] = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
   const loggedIn = isLoggedInSync()
+  // 🔗 2026-06-17 (대표 신고): 링크샵 탭이 항상 /host/new 로 가던 버그 — 본인 링크샵 경로로 정합(BottomNav 와 동일).
+  const linkshopPath = useLinkshopPath()
 
   // 🛡️ 2026-05-22 v5: 공통 hook 사용. MainHomePage 와 자동 dedup + localStorage 즉시 표시.
   const { data: unreadCount = 0 } = useUnreadCount()
@@ -31,7 +34,7 @@ export default function DesktopTopNav() {
     ...(LIVE_COMMERCE_SUSPENDED ? [] : [{ icon: Radio, key: 'live', label: t('nav.live', { defaultValue: '라이브' }), path: '/live' }]),
     { icon: Gift, key: 'groupBuy', label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/group-buy' },
     ...(SHOPPING_TAB_HIDDEN ? [] : [{ icon: ShoppingCart, key: 'shop', label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' }]),
-    { icon: Sparkles, key: 'linkshop', label: t('nav.linkshop', { defaultValue: '링크샵' }), path: '/host/new' },
+    { icon: Sparkles, key: 'linkshop', label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath },
   ]
 
   const isActivePath = (path: string) => {

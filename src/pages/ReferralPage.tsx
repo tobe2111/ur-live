@@ -8,13 +8,14 @@ import { toast } from '@/hooks/useToast'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import { formatNumber } from '@/utils/format'
 import { useReferral, type Tier, type Member, type ReferralGroup, type ProductInfo } from '@/hooks/queries/useReferral'
+import { hasConsumerSession } from '@/utils/auth'
+import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 
-/** 로그인 여부 판단 (localStorage) */
+/** 로그인 여부 판단 (localStorage) — user_type 비의존 (듀얼 로그인 충돌 방지) */
 function useCurrentUserId(): string | null {
-  const userType = typeof window !== 'undefined' ? localStorage.getItem('user_type') : null
-  const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null
-  if (userType === 'user' && userId) return userId
-  return null
+  if (typeof window === 'undefined') return null
+  if (!hasConsumerSession()) return null
+  return localStorage.getItem('user_id')
 }
 
 /** 카운트다운 훅 — 매초 업데이트 */
@@ -88,9 +89,9 @@ export default function ReferralPage() {
       const res = await api.post(`/api/referral/join/${code}`)
       if (res.data.success) {
         const d = res.data.data
-        if (d.status === 'achieved') {
+        if (!REFERRAL_GROUP_DISCOUNT_DISABLED && d.status === 'achieved') {
           toast.success(`목표 달성! ${d.discount_percent}% 할인 적용`)
-        } else if (d.unlocked_tier) {
+        } else if (!REFERRAL_GROUP_DISCOUNT_DISABLED && d.unlocked_tier) {
           toast.success(`${d.unlocked_tier.discount}% 할인 단계 달성!`)
         } else {
           toast.success(t('referralPage.joinSuccess'))
@@ -240,7 +241,8 @@ export default function ReferralPage() {
     })
 
   const topTier = group.tiers[group.tiers.length - 1]
-  const currentDiscount = group.unlocked_tier?.discount ?? 0
+  // 🧭 2026-06-17 (단일가 통일): 친구초대 동적 할인 종료 → 항상 0%(가격/버튼 단일가로 표시).
+  const currentDiscount = REFERRAL_GROUP_DISCOUNT_DISABLED ? 0 : (group.unlocked_tier?.discount ?? 0)
   const discountedPrice = product
     ? Math.round(product.price * (100 - currentDiscount) / 100)
     : 0
@@ -248,7 +250,9 @@ export default function ReferralPage() {
   const shareTitle = product
     ? `🎁 ${product.name} 공동구매 같이 해요!`
     : `🎁 ${group.creator_name}님의 공동구매 같이 해요!`
-  const shareDescription = `지금 ${group.current_count}/${group.target_count}명 모였어요. 친구 초대하면 최대 ${topTier?.discount ?? 0}% 할인!`
+  const shareDescription = REFERRAL_GROUP_DISCOUNT_DISABLED
+    ? `${group.current_count}명이 함께 구매 중! 지금 바로 공동구매가로 만나보세요.`
+    : `지금 ${group.current_count}/${group.target_count}명 모였어요. 친구 초대하면 최대 ${topTier?.discount ?? 0}% 할인!`
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
@@ -315,7 +319,9 @@ export default function ReferralPage() {
           </div>
         </section>
 
-        {/* 2. Tier Progress Bar */}
+        {/* 2. Tier Progress Bar — 🧭 2026-06-17: 친구초대 동적 할인 종료 시 숨김(단일가 통일).
+              참여 인원은 아래 Participants 섹션에서 소셜 증거로 노출. */}
+        {!REFERRAL_GROUP_DISCOUNT_DISABLED && (
         <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-5 border border-gray-200 dark:border-[#2A2A2A]">
           {/* 현재 할인 표시 */}
           <div className="text-center mb-5">
@@ -349,6 +355,7 @@ export default function ReferralPage() {
             targetCount={group.target_count}
           />
         </section>
+        )}
 
         {/* v4 Participants — 아바타 스택 + 최근 참여자 */}
         <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-100 dark:border-[#1A1A1A]">
@@ -402,7 +409,8 @@ export default function ReferralPage() {
           </div>
         </section>
 
-        {/* v4 티어별 할인표 */}
+        {/* v4 티어별 할인표 — 🧭 2026-06-17: 친구초대 동적 할인 종료 시 숨김(단일가 통일). */}
+        {!REFERRAL_GROUP_DISCOUNT_DISABLED && (
         <section className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-4 border border-gray-100 dark:border-[#1A1A1A]">
           <div className="flex items-center gap-1.5 mb-3">
             <span className="text-sm">🎁</span>
@@ -425,6 +433,7 @@ export default function ReferralPage() {
             })}
           </div>
         </section>
+        )}
       </div>
 
       {/* 4. Action Buttons (fixed bottom) */}
@@ -437,7 +446,9 @@ export default function ReferralPage() {
             >
               <ShoppingBag className="w-4 h-4" />
               {product
-                ? `${formatNumber(discountedPrice)}원에 결제하기 (${currentDiscount}% 할인)`
+                ? (currentDiscount > 0
+                    ? `${formatNumber(discountedPrice)}원에 결제하기 (${currentDiscount}% 할인)`
+                    : `${formatNumber(product.price)}원에 결제하기`)
                 : t('referralPage.checkout')}
             </button>
           ) : isExpired ? (

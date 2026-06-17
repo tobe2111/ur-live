@@ -12,6 +12,7 @@ import { sign as jwtSign } from 'hono/jwt';
 import { KakaoAuthService } from '../services/KakaoAuthService';
 // 🛡️ 2026-05-01: FirebaseAuthService import 제거 — KR Kakao 흐름은 Firebase 0.
 import { createSessionCookie, clearSessionCookie } from '@/worker/utils/session';
+import { startDashboardSession } from '@/worker/utils/dashboard-session';
 import { encryptAtRest } from '@/worker/utils/data-crypto';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
 import { rateLimit } from '@/worker/middleware/rate-limit';
@@ -60,6 +61,8 @@ async function issueLinkedRoleTokens(
           exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 🛡️ 2026-04-30: 7일 → 30일
         }
         out.seller_token = await jwtSign(payload, jwtSecret)
+        // 🔐 단일 세션 강제 — 카카오 로그인 셀러도 단일 세션 시트(seller) 갱신.
+        await startDashboardSession(DB, 'seller', seller.id, payload.iat)
       }
     }
   } catch { /* sellers 테이블 없거나 linked_user_id 컬럼 없음 — skip */ }
@@ -73,6 +76,14 @@ async function issueLinkedRoleTokens(
       // 레거시 호환: 'approved' 도 active 와 동등 (email 로그인·seller 블록과 일관)
       if (agency.status === 'active' || agency.status === 'approved') {
         const now = Math.floor(Date.now() / 1000)
+        // 🔐 단일 세션 강제 — 멤버 시트 일관성(이메일 로그인과 동일 키): 소유 멤버 id 조회.
+        let agencyMemberId: number | undefined
+        try {
+          const m = await DB.prepare(
+            "SELECT id FROM agency_members WHERE agency_id = ? AND email = ? AND status = 'active' LIMIT 1"
+          ).bind(agency.id, agency.email).first<{ id: number }>()
+          if (m) agencyMemberId = m.id
+        } catch { /* agency_members 미적용 — org 시트 fallback */ }
         const payload = {
           sub: String(agency.id),
           agency_id: agency.id,
@@ -80,10 +91,13 @@ async function issueLinkedRoleTokens(
           name: agency.name,
           contact_name: agency.contact_name,
           type: 'agency',
+          ...(agencyMemberId ? { member_id: agencyMemberId } : {}),
           iat: now,
           exp: now + 30 * 24 * 60 * 60, // 🛡️ 2026-04-30: 7일 → 30일
         }
         out.agency_token = await jwtSign(payload, jwtSecret)
+        // 🔐 단일 세션 강제 — 멤버 시트(없으면 org 시트) 갱신.
+        await startDashboardSession(DB, agencyMemberId ? 'agency_member' : 'agency', agencyMemberId ?? agency.id, now)
         // 🏁 2026-06-13: refresh token 동봉 — 카카오 로그인 에이전시도 자동 로그아웃 방지.
         out.agency_refresh_token = await jwtSign({
           sub: String(agency.id), email: agency.email, type: 'agency',

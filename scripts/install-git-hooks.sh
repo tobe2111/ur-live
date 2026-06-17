@@ -153,6 +153,11 @@ fi
 echo "==> Pre-commit: React Query initialData 신선도 검사 (warn-only)..."
 node scripts/check-query-initialdata.mjs || true
 
+# 🛡️ 2026-06-17: 듀얼 로그인(소비자↔대시보드) 재발 방지 (warn-only).
+#   localStorage user_type === 'user' 로 로그인 판단하는 안티패턴 신규 추가 감지 → 세션 풀림 사고 재발 차단.
+echo "==> Pre-commit: 듀얼 로그인 가드 (warn-only)..."
+node scripts/check-dual-login-guard.mjs || true
+
 # 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
 staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)
 if [ -n "$staged_migrations" ]; then

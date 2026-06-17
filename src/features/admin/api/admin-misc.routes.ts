@@ -385,6 +385,30 @@ adminMiscRoutes.get('/audit-logs', cors(), async (c) => {
   }
 });
 
+// 🆕 2026-06-17 관리자 로그인 이력(IP) — 슈퍼 전용(isSuperOnlyAdminPath). 누가 언제 어느 IP/기기에서 로그인.
+adminMiscRoutes.get('/login-history', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    const page = Math.max(1, parseInt(c.req.query('page') || '1'));
+    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50')));
+    const offset = (page - 1) * limit;
+    const totalRow = await DB.prepare('SELECT COUNT(*) AS c FROM admin_login_history').first<{ c: number }>().catch(() => null);
+    const rows = await DB.prepare(
+      `SELECT h.id, h.admin_id, h.email, h.ip, h.user_agent, h.success, h.created_at,
+              COALESCE(NULLIF(a.name, ''), NULLIF(a.username, ''), NULLIF(h.email, ''), 'ID ' || h.admin_id) AS admin_name,
+              a.role AS admin_role
+       FROM admin_login_history h
+       LEFT JOIN admins a ON CAST(a.id AS TEXT) = h.admin_id
+       ORDER BY h.created_at DESC
+       LIMIT ? OFFSET ?`
+    ).bind(limit, offset).all().catch(() => ({ results: [] as unknown[] }));
+    return c.json({ success: true, data: rows.results ?? [], pagination: { page, limit, total: Number(totalRow?.c ?? 0) } });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] login-history error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 // 🛡️ 2026-05-19: 수동 cron trigger — 어드민 전용.
 //   body: { name: 'restaurant-geocode' | 'kt-alpha-catalog-sync' }
 //   화이트리스트 외 이름은 거부 (RCE 방지). 결과 JSON 으로 반환.

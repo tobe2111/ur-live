@@ -13,6 +13,7 @@ import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { addBreadcrumb, maskEmail } from '@/lib/sentry'
 import { safeInternalPath } from '@/utils/safe-internal-path'
+import { hasConsumerSession } from '@/utils/auth'
 
 // Kakao SDK 타입 선언
 interface KakaoAuth {
@@ -82,7 +83,7 @@ export default function LoginPage() {
     returnUrlRef.current = safeInternalPath(raw, '/')
   }
   const returnUrl = returnUrlRef.current
-  const isLoggedIn = !!user || (localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id'))
+  const isLoggedIn = !!user || hasConsumerSession()
   // 🛡️ 2026-05-01: ?switch=1 query — 명시적 계정 전환 의도 (다른 사람 디바이스 등).
   //   localStorage 청소 + auto-redirect skip → 로그인 UI 표시.
   const wantsSwitch = searchParams.get('switch') === '1'

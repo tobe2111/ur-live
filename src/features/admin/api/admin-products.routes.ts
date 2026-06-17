@@ -776,4 +776,162 @@ adminProductsRoutes.patch('/supplier-products/:id/price-change', cors(), async (
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 🧭 2026-06-17 (대표 요청 — 동네딜 채우기): 동네딜(오프라인 공동구매) 상품 일괄 등록 + 데모 시드.
+//   동네딜 피드(group-buy-public GET /products)는 category IN(meal/beauty/etc/general) + is_active=1 +
+//   group_buy_status='active' 인 products 를 노출 → 여기서 그 형태로 INSERT 하면 즉시 동네딜에 표시.
+//   ⚠️ 숙소(stay_voucher)는 product_stay_info(객실/날짜) 별도 테이블이 필요해 이 도구로 등록 불가
+//      (셀러 숙소 등록 플로우 전용) — CSV 에 숙소가 오면 행 단위로 거부.
+//   (adminApp 가 requireAdmin + admin-rbac + audit 적용 — 별도 미들웨어 불필요.)
+
+const DEAL_DEMO_SLUG = 'demo-deal-';
+
+const DEAL_CATEGORY_ALIAS: Record<string, string> = {
+  '식사권': 'meal_voucher', '맛집': 'meal_voucher', '맛집 식사권': 'meal_voucher', 'meal': 'meal_voucher', 'meal_voucher': 'meal_voucher',
+  '미용': 'beauty_voucher', '뷰티': 'beauty_voucher', 'beauty': 'beauty_voucher', 'beauty_voucher': 'beauty_voucher',
+  '기타': 'etc_voucher', 'etc': 'etc_voucher', 'etc_voucher': 'etc_voucher',
+  '일반': 'general', '일반 상품': 'general', '온라인': 'general', 'general': 'general',
+  '숙소': 'stay_voucher', 'stay': 'stay_voucher', 'stay_voucher': 'stay_voucher',
+};
+function mapDealCategory(raw: string): string | null {
+  const t = (raw || '').trim();
+  return DEAL_CATEGORY_ALIAS[t] ?? DEAL_CATEGORY_ALIAS[t.toLowerCase()] ?? null;
+}
+
+function parseDealCsv(text: string): Record<string, string>[] {
+  const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter((l) => l.trim().length);
+  if (lines.length < 2) return [];
+  const parseLine = (line: string): string[] => {
+    const out: string[] = []; let cur = ''; let q = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (q) { if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+      else { if (ch === '"') q = true; else if (ch === ',') { out.push(cur); cur = ''; } else cur += ch; }
+    }
+    out.push(cur);
+    return out.map((s) => s.trim());
+  };
+  const headers = parseLine(lines[0]);
+  return lines.slice(1).map((line) => {
+    const cells = parseLine(line);
+    const obj: Record<string, string> = {};
+    headers.forEach((h, i) => { obj[h] = cells[i] ?? ''; });
+    return obj;
+  });
+}
+
+const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest: string; addr: string; img: string }[] = [
+  { name: '[강남] 1++ 한우 오마카세 2인', cat: 'meal_voucher', price: 89000, orig: 140000, rest: '한우공방 강남점', addr: '서울 강남구 봉은사로', img: 'https://picsum.photos/seed/urdeal1/600/600' },
+  { name: '[연남] 화덕피자 + 파스타 2인 세트', cat: 'meal_voucher', price: 25900, orig: 39000, rest: '포르노 로마노', addr: '서울 마포구 동교로', img: 'https://picsum.photos/seed/urdeal2/600/600' },
+  { name: '[성수] 스페셜티 핸드드립 2인 + 디저트', cat: 'meal_voucher', price: 12900, orig: 21000, rest: '성수 로스터스', addr: '서울 성동구 연무장길', img: 'https://picsum.photos/seed/urdeal3/600/600' },
+  { name: '두피 스케일링 + 헤어 클리닉', cat: 'beauty_voucher', price: 39000, orig: 80000, rest: '살롱 드 모드', addr: '서울 강남구 압구정로', img: 'https://picsum.photos/seed/urdeal4/600/600' },
+  { name: '왁싱 전신 패키지', cat: 'beauty_voucher', price: 49000, orig: 90000, rest: '스무스 왁싱 라운지', addr: '서울 서초구 강남대로', img: 'https://picsum.photos/seed/urdeal5/600/600' },
+  { name: '속눈썹 연장 풀세트 + 리터치', cat: 'beauty_voucher', price: 29000, orig: 55000, rest: '아이래쉬 스튜디오', addr: '서울 마포구 양화로', img: 'https://picsum.photos/seed/urdeal6/600/600' },
+  { name: '반려견 종합 미용 (목욕+커트)', cat: 'etc_voucher', price: 35000, orig: 60000, rest: '댕댕살롱', addr: '서울 송파구 올림픽로', img: 'https://picsum.photos/seed/urdeal7/600/600' },
+  { name: '실내 클라이밍 1일 체험 + 강습', cat: 'etc_voucher', price: 19000, orig: 35000, rest: '더 클라임', addr: '서울 광진구 아차산로', img: 'https://picsum.photos/seed/urdeal8/600/600' },
+  { name: '프리미엄 원두 드립백 30개입 (무료배송)', cat: 'general', price: 18900, orig: 32000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal9/600/600' },
+  { name: '제주 한라봉 5kg 산지직송', cat: 'general', price: 21900, orig: 35000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal10/600/600' },
+];
+
+// GET /dongnedeal/stats — 동네딜 상품 현황(전체/노출/데모/카테고리별)
+adminProductsRoutes.get('/dongnedeal/stats', cors(), async (c) => {
+  try {
+    const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher', 'general'];
+    const ph = cats.map(() => '?').join(',');
+    const row = await c.env.DB.prepare(
+      `SELECT COUNT(*) AS total, SUM(CASE WHEN COALESCE(is_active,1)=1 AND group_buy_status='active' THEN 1 ELSE 0 END) AS active FROM products WHERE category IN (${ph})`
+    ).bind(...cats).first<{ total: number; active: number }>().catch(() => ({ total: 0, active: 0 }));
+    const demo = await c.env.DB.prepare(`SELECT COUNT(*) AS c FROM products WHERE slug LIKE ?`).bind(DEAL_DEMO_SLUG + '%').first<{ c: number }>().catch(() => ({ c: 0 }));
+    const byCat = await c.env.DB.prepare(
+      `SELECT category, COUNT(*) AS c FROM products WHERE category IN (${ph}) AND COALESCE(is_active,1)=1 AND group_buy_status='active' GROUP BY category`
+    ).bind(...cats).all<{ category: string; c: number }>().catch(() => ({ results: [] as { category: string; c: number }[] }));
+    return c.json({ success: true, total: row?.total ?? 0, active: row?.active ?? 0, demo: demo?.c ?? 0, by_category: byCat.results ?? [] });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env), total: 0, active: 0, demo: 0, by_category: [] }, 200);
+  }
+});
+
+// POST /dongnedeal/seed-demo — 데모 동네딜 상품 시드 (멱등, slug 'demo-deal-N')
+adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const existing = await DB.prepare(`SELECT COUNT(*) AS c FROM products WHERE slug LIKE ?`).bind(DEAL_DEMO_SLUG + '%').first<{ c: number }>();
+    if ((existing?.c ?? 0) > 0) {
+      return c.json({ success: true, seeded: 0, existing: existing?.c ?? 0, message: '이미 데모 동네딜 상품이 있습니다 (삭제 후 재생성하세요)' });
+    }
+    let seeded = 0;
+    for (let i = 0; i < DEAL_DEMO.length; i++) {
+      const d = DEAL_DEMO[i];
+      await DB.prepare(
+        `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
+           is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, slug, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, datetime('now'), datetime('now'))`
+      ).bind(d.name, `데모 동네딜 — ${d.name}`, d.price, d.orig, d.img, d.cat, d.rest || null, d.addr || null, DEAL_DEMO_SLUG + (i + 1)).run();
+      seeded++;
+    }
+    await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded } }).catch(() => {});
+    return c.json({ success: true, seeded });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// DELETE /dongnedeal/seed-demo — 데모 동네딜 상품 일괄 삭제
+adminProductsRoutes.delete('/dongnedeal/seed-demo', cors(), async (c) => {
+  try {
+    const r = await c.env.DB.prepare(`DELETE FROM products WHERE slug LIKE ?`).bind(DEAL_DEMO_SLUG + '%').run();
+    await writeAuditLog(c, { action: 'dongnedeal_clear_demo', targetType: 'product', after: { deleted: r.meta?.changes ?? 0 } }).catch(() => {});
+    return c.json({ success: true, deleted: r.meta?.changes ?? 0 });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// POST /dongnedeal/bulk-import — CSV 동네딜 상품 일괄 등록 (즉시 노출). 행 단위 검증 + 리포트.
+adminProductsRoutes.post('/dongnedeal/bulk-import', cors(), async (c) => {
+  try {
+    const body = (await c.req.json().catch(() => ({}))) as { csv?: string };
+    const csv = String(body.csv || '');
+    if (!csv.trim()) return c.json({ success: false, error: 'CSV 내용이 비어 있습니다' }, 400);
+    const rows = parseDealCsv(csv);
+    if (!rows.length) return c.json({ success: false, error: '데이터 행이 없습니다 (헤더만 있거나 빈 CSV)' }, 400);
+
+    const results: { row: number; name?: string; status: 'ok' | 'error'; reason?: string }[] = [];
+    let created = 0;
+    for (let idx = 0; idx < rows.length; idx++) {
+      const r = rows[idx];
+      const rowNum = idx + 2; // 헤더가 1행
+      const name = (r['상품명'] || r['name'] || '').trim();
+      const price = Math.round(Number((r['판매가'] || r['가격'] || r['price'] || '').replace(/[^\d.-]/g, '')));
+      const catRaw = (r['카테고리'] || r['category'] || '').trim();
+      const cat = mapDealCategory(catRaw);
+      if (!name) { results.push({ row: rowNum, status: 'error', reason: '상품명 누락' }); continue; }
+      if (!Number.isFinite(price) || price <= 0) { results.push({ row: rowNum, name, status: 'error', reason: '판매가가 올바르지 않습니다' }); continue; }
+      if (!cat) { results.push({ row: rowNum, name, status: 'error', reason: `카테고리 인식 불가 (${catRaw || '빈값'}) — 식사권/미용/기타/일반 중 하나` }); continue; }
+      if (cat === 'stay_voucher') { results.push({ row: rowNum, name, status: 'error', reason: '숙소는 이 도구로 등록 불가 (숙소 전용 등록을 사용하세요)' }); continue; }
+      const orig = (r['정가'] || r['original_price'] || '').replace(/[^\d.-]/g, '');
+      const origNum = orig ? Math.round(Number(orig)) : 0;
+      const img = (r['이미지URL'] || r['이미지'] || r['image_url'] || '').trim() || null;
+      const rest = (r['매장명'] || r['restaurant_name'] || '').trim() || null;
+      const addr = (r['주소'] || r['address'] || '').trim() || null;
+      const desc = (r['설명'] || r['description'] || '').trim() || name;
+      try {
+        await c.env.DB.prepare(
+          `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
+             is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, datetime('now'), datetime('now'))`
+        ).bind(name, desc, price, origNum > price ? origNum : null, img, cat, rest, addr).run();
+        created++;
+        results.push({ row: rowNum, name, status: 'ok' });
+      } catch (e) {
+        results.push({ row: rowNum, name, status: 'error', reason: safeAdminError(e, c.env) });
+      }
+    }
+    await writeAuditLog(c, { action: 'dongnedeal_bulk_import', targetType: 'product', after: { total: rows.length, created } }).catch(() => {});
+    return c.json({ success: true, summary: { total: rows.length, created, failed: rows.length - created }, results });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 export default adminProductsRoutes;

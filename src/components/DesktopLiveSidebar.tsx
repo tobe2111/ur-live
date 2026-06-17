@@ -8,8 +8,9 @@
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, Radio, Compass, MapPin, Utensils, Sparkles, Bed, Tag, Package, User, PackageSearch, Heart, BookOpen } from 'lucide-react'
+import { Home, Radio, Compass, MapPin, Utensils, Sparkles, Bed, Tag, Package, User, PackageSearch, Heart, BookOpen, Store, Plus } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
+import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 interface NavItem {
@@ -29,6 +30,8 @@ const MENU_ITEMS: NavItem[] = [
   { labelKey: 'nav.offlineGroupBuy', labelDefault: '오프라인 공동구매', icon: MapPin, path: '/group-buy',
     // 동네딜 허브(전체) — 특정 카테고리 필터일 땐 아래 CATEGORY 항목이 활성, 여기선 비활성(이중 강조 방지).
     active: (p, s) => p.startsWith('/group-buy') && !/category=(meal_voucher|beauty_voucher|stay_voucher|etc_voucher|general)/.test(s) },
+  // 🆕 2026-06-17 (대표 신고 — PC 진입 버튼 누락): 공구 제안/만들기 (모바일 하단바 ➕ 와 동일 목적지).
+  { labelKey: 'nav.create',          labelDefault: '공구 제안',       icon: Plus,    path: '/community-group-buy/new', active: (p) => p.startsWith('/community-group-buy/new') },
 ]
 
 // 🧭 2026-06-17 (사용자 요청): 오프라인 공동구매(동네딜) 카테고리 — GroupBuyListPage 탭과 1:1.
@@ -39,8 +42,8 @@ const CATEGORY_ITEMS: NavItem[] = [
     active: (p, s) => (p.startsWith('/group-buy') && s.includes('category=meal_voucher')) || p.startsWith('/meal-vouchers') },
   { labelKey: 'category.beauty',      labelDefault: '미용',        icon: Sparkles, path: '/group-buy?category=beauty_voucher',
     active: (p, s) => p.startsWith('/group-buy') && s.includes('category=beauty_voucher') },
-  { labelKey: 'category.stay',        labelDefault: '숙소',        icon: Bed,      path: '/group-buy?category=stay_voucher',
-    active: (p, s) => p.startsWith('/stays') || (p.startsWith('/group-buy') && s.includes('category=stay_voucher')) },
+  { labelKey: 'category.stay',        labelDefault: '숙소',        icon: Bed,      path: '/stays',
+    active: (p) => p.startsWith('/stays') },
   { labelKey: 'category.etc',         labelDefault: '기타',        icon: Tag,      path: '/group-buy?category=etc_voucher',
     active: (p, s) => p.startsWith('/group-buy') && s.includes('category=etc_voucher') },
   { labelKey: 'category.general',     labelDefault: '일반 상품',   icon: Package,  path: '/group-buy?category=general',
@@ -81,6 +84,12 @@ export default function DesktopLiveSidebar() {
   const location = useLocation()
   const pathname = location.pathname
   const search = location.search
+  // 🔗 2026-06-17 (대표 신고): PC 에 링크샵 진입 버튼 없음 → MY 섹션 최상단에 추가(모바일 BottomNav 와 동일 경로).
+  const linkshopPath = useLinkshopPath()
+  const linkshopItem: NavItem = {
+    labelKey: 'nav.linkshop', labelDefault: '링크샵', icon: Store, path: linkshopPath,
+    active: (p) => p.startsWith('/u/') || p.startsWith('/profile/') || p.startsWith('/s/'),
+  }
 
   return (
     <aside
@@ -133,6 +142,12 @@ export default function DesktopLiveSidebar() {
           <p className="hidden xl:block text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
             {t('nav.sectionMy', { defaultValue: 'My' })}
           </p>
+          {/* 🔗 링크샵 — 본인 공개페이지(모바일 BottomNav 와 동일 경로). PC 진입 버튼 누락 수정. */}
+          <NavBtn
+            item={linkshopItem}
+            isActive={linkshopItem.active?.(pathname, search) ?? false}
+            onClick={() => navigate(linkshopPath)}
+          />
           {MY_ITEMS.map(item => (
             <NavBtn
               key={item.path}

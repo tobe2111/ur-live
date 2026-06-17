@@ -207,7 +207,7 @@ affiliateRoutes.get('/funnel', requireAuth(), async (c) => {
 })
 
 // ── GET /api/affiliate/top-groups — 인플루언서 추천: 지금 share 하면 좋을 공구 ──
-// 🛡️ 2026-05-15: 알고리즘 — (1) 마감임박 + (2) 진행률 60%+ + (3) 단계별 할인 활성
+// 🛡️ 2026-05-15: 알고리즘 — (1) 마감임박(72h) + (2) 진행률 높은 순
 //   = 지금 share → 친구 가입 가능성 높음 (양쪽 0.5% 보너스).
 affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
   const user = getCurrentUser(c)

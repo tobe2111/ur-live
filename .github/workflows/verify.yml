@@ -159,6 +159,12 @@ jobs:
         run: node scripts/check-query-initialdata.mjs -s
         continue-on-error: false
 
+      # 🛡️ 2026-06-17: 듀얼 로그인(소비자↔대시보드) 재발 방지 — 현재 위반 0 → strict.
+      #   localStorage user_type === 'user' 로그인 게이트(세션 풀림 사고 근본원인) 신규 추가 차단.
+      - name: Dual-login regression guard (strict)
+        run: STRICT_DUAL_LOGIN=1 node scripts/check-dual-login-guard.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-05-17: CHECK 제약 위반 — admin live-monitor delete 500 사고 재발 방지.
       #   리터럴 'UPDATE <t> SET <c> = ...' 패턴이 마이그레이션의 CHECK(IN (...)) 허용값과
       #   불일치하면 보고. SQL 실행 시 SqlError → 500. strict 모드.

@@ -91,9 +91,14 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const status = c.req.query('status') || 'active'
     const categoryParam = c.req.query('category') || 'all'
     const validCategories = VOUCHER_CATEGORIES as readonly string[]
+    // 🧭 2026-06-17 [UNLOCK_LOADING] (사용자 요청 — 일반 상품 카테고리): general 은 VOUCHER_CATEGORIES 에
+    //   없어 기존엔 항상 voucher 로 폴백 → 클라 필터에서 0개로 사라지는 구조적 빈 카테고리였음.
+    //   이제 general 도 명시 지원(해당 카테고리 요청 시에만 — 기본 'all' 피드/캐시키/SSR 는 voucher 그대로 불변).
     const categories = categoryParam === 'all'
       ? validCategories
-      : (validCategories.includes(categoryParam) ? [categoryParam] : validCategories)
+      : categoryParam === 'general'
+        ? ['general']
+        : (validCategories.includes(categoryParam) ? [categoryParam] : validCategories)
 
     // 🏭 2026-06-05 [UNLOCK_LOADING] (사용자 승인 — 동네딜 필터 근본수정): sort + 페이지네이션 서버사이드.
     //   기존: 클라가 항상 ?status=active(파라미터 없음)로 받아 최신 50개만 → 카테고리/정렬/검색을 클라에서

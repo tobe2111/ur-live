@@ -82,6 +82,32 @@ export default function StaysSearchPage() {
           </button>
         </div>
 
+        {/* 🧭 2026-06-17: 동네딜 카테고리 칩 — /stays 도 같은 분류 내비(일관성). 숙소만 현재 페이지,
+            나머지는 동네딜(/group-buy?category=)로. 숙소는 전용 검색/예약이 필요해 별도 페이지 유지. */}
+        <div className="ur-content-wide px-4 lg:px-8 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+          {[
+            { key: 'all', to: '/group-buy', label: t('groupBuy.categoryAll', { defaultValue: '전체' }) },
+            { key: 'meal_voucher', to: '/group-buy?category=meal_voucher', label: t('groupBuy.categoryMealVoucher', { defaultValue: '🍽️ 맛집 식사권' }) },
+            { key: 'beauty_voucher', to: '/group-buy?category=beauty_voucher', label: t('groupBuy.categoryBeauty', { defaultValue: '💇 미용' }) },
+            { key: 'stay_voucher', to: '/stays', label: t('groupBuy.categoryStay', { defaultValue: '🏨 숙소' }) },
+            { key: 'etc_voucher', to: '/group-buy?category=etc_voucher', label: t('groupBuy.categoryEtc', { defaultValue: '🎯 기타' }) },
+            { key: 'general', to: '/group-buy?category=general', label: t('groupBuy.categoryGeneral', { defaultValue: '🛍️ 일반 상품' }) },
+          ].map((cat) => {
+            const active = cat.key === 'stay_voucher'
+            return (
+              <Link
+                key={cat.key}
+                to={cat.to}
+                className={`shrink-0 px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap border transition-colors ${
+                  active ? 'bg-white text-gray-900 border-white' : 'bg-transparent text-gray-300 border-[#2A2A2A] hover:bg-white/[0.06] hover:text-white'
+                }`}
+              >
+                {cat.label}
+              </Link>
+            )
+          })}
+        </div>
+
         {/* Quick filters bar */}
         <div className="ur-content-wide px-4 lg:px-8 pb-3 flex gap-2 overflow-x-auto no-scrollbar">
           <button onClick={() => setShowFilters(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.06] rounded-full text-xs whitespace-nowrap">
@@ -113,7 +139,8 @@ export default function StaysSearchPage() {
             <p className="text-sm text-gray-400">검색 결과가 없습니다</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          // 📐 PC 프레임(720) 안에서 뷰포트 기준 lg/xl 이 4열까지 곱해져 숙소 카드가 좁아지던 것 방지 — 최대 2열 cap.
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {items.map((s) => {
               const amenitiesArr: string[] = (() => {
                 if (!s.amenities) return []

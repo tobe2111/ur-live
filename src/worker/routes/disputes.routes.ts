@@ -428,19 +428,25 @@ disputesRoutes.get('/agency-overview', requireAuth(), async (c) => {
           END) AS at_risk_count
         FROM products p
         JOIN sellers s ON s.id = p.seller_id
-        WHERE s.agency_id = ?
-          AND p.group_buy_status = 'active'
+        WHERE p.group_buy_status = 'active'
           AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
-      `).bind(cutoff24h, userAsAny.id).first<{ active_count: number; at_risk_count: number }>().catch(() => null),
+          AND (
+            s.introduced_by_agency_id = ?
+            OR EXISTS (SELECT 1 FROM agency_sellers ag WHERE ag.seller_id = p.seller_id AND ag.agency_id = ?)
+          )
+      `).bind(cutoff24h, userAsAny.id, userAsAny.id).first<{ active_count: number; at_risk_count: number }>().catch(() => null),
       DB.prepare(`
         SELECT COUNT(*) AS churn_count
         FROM sellers s
-        WHERE s.agency_id = ?
+        WHERE (
+            s.introduced_by_agency_id = ?
+            OR EXISTS (SELECT 1 FROM agency_sellers ag WHERE ag.seller_id = s.id AND ag.agency_id = ?)
+          )
           AND s.status = 'approved'
           AND NOT EXISTS (
             SELECT 1 FROM products p WHERE p.seller_id = s.id AND p.created_at >= ?
           )
-      `).bind(userAsAny.id, cutoff14d).first<{ churn_count: number }>().catch(() => null),
+      `).bind(userAsAny.id, userAsAny.id, cutoff14d).first<{ churn_count: number }>().catch(() => null),
     ])
 
     return c.json({

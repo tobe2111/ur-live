@@ -232,6 +232,8 @@ export default function SellerMealVoucherNewPage() {
         // 🛡️ 2026-05-21: 지역 자동 파싱 — restaurant_address 첫 단어 = region_si.
         region_si: form.region_si || (form.restaurant_address ? form.restaurant_address.split(/\s+/)[0]?.replace(/(특별시|광역시|특별자치시|특별자치도|도)$/, '').slice(0, 4) : null),
         region_gu: form.region_gu || (form.restaurant_address ? form.restaurant_address.split(/\s+/)[1] || null : null),
+        // 🍽️ 2026-06-17 (#5 대표 메뉴): OCR 추출 메뉴 → 공구 상세 '대표 메뉴' 섹션으로 저장 (product_supply_meta).
+        menu: ocrItems.length > 0 ? ocrItems.map(it => ({ name: it.menu, price: `${formatNumber(it.price)}원` })) : undefined,
         // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 동적 tier 미사용. 공구가는 price 단일 적용.
         group_buy_tiers: null,
       }
@@ -670,13 +672,13 @@ export default function SellerMealVoucherNewPage() {
                 </div>
               </div>
 
-              {/* 🛡️ 2026-05-21: 고급 설정 토글 — 약관 + 티어 할인 접기 */}
+              {/* 🛡️ 2026-05-21: 고급 설정 토글 — 약관 + 예약 링크 접기 (티어 할인은 2026-05-30 단일가 모델로 제거) */}
               <button
                 type="button"
                 onClick={() => setShowAdvanced(v => !v)}
                 className="w-full flex items-center justify-between py-2 px-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition"
               >
-                <span>⚙️ 고급 설정 (이용약관 · 단계별 할인)</span>
+                <span>⚙️ 고급 설정 (이용약관 · 예약 링크)</span>
                 <span className="text-xs text-gray-400">{showAdvanced ? '접기 ▲' : '펼치기 ▼'}</span>
               </button>
 

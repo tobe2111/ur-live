@@ -16,6 +16,7 @@ import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database';
 import { notifyUser } from '@/lib/notifications';
 
 import { swallow } from '@/worker/utils/swallow';
+import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags';
 const referralRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -67,6 +68,8 @@ export async function getBestReferralDiscountPct(
   userId: string | number,
   productId: string | number,
 ): Promise<number> {
+  // 🧭 2026-06-17 (사용자 결정 — 단일가 통일): 친구초대 동적 할인 종료 → 항상 0%(결제가 불변).
+  if (REFERRAL_GROUP_DISCOUNT_DISABLED) return 0;
   try {
     const rows = await executeQuery<{
       discount_percent: number; tiers: unknown; current_count: number; status: string;
@@ -145,6 +148,10 @@ function generateCode(): string {
 
 // POST /api/referral/create — 그룹 생성 (티어 또는 단일 할인)
 referralRoutes.post('/create', requireAuth(), async (c) => {
+  // 🧭 2026-06-17 (단일가 통일): 동적 할인 공구 생성 종료 — 신규 그룹 생성 차단(기존 데이터는 보존).
+  if (REFERRAL_GROUP_DISCOUNT_DISABLED) {
+    return c.json({ success: false, error: '친구초대 할인 공구는 현재 운영하지 않습니다. 지금 바로 단일 공구가로 구매하세요.' }, 410);
+  }
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401);
 
@@ -348,6 +355,8 @@ referralRoutes.post('/join/:code', requireAuth(), async (c) => {
 
 // GET /api/referral/discount/:productId — 해당 상품에 대한 유저의 최고 달성 할인 조회 (티어 반영)
 referralRoutes.get('/discount/:productId', requireAuth(), async (c) => {
+  // 🧭 2026-06-17 (단일가 통일): 친구초대 동적 할인 종료 → 표시용 할인도 없음(서버 0%와 일치).
+  if (REFERRAL_GROUP_DISCOUNT_DISABLED) return c.json({ success: true, data: null });
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: true, data: null });
 

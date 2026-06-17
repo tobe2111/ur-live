@@ -271,16 +271,35 @@ export function isLoggedInSync(): boolean {
   return false
 }
 
+/**
+ * 소비자(메인 서비스) 세션 존재 여부 — `user_type` 비의존.
+ *
+ * 🛡️ 2026-06-17 (듀얼 로그인 충돌 수정): 어드민/셀러/에이전시 대시보드 + 소비자를 한 브라우저에서
+ *   동시 로그인하면 단일 키 `user_type` 이 'admin'/'seller' 로 덮인다. 기존 다수 소비자 페이지가
+ *   `user_type === 'user' && user_id` 로 로그인을 판단해 → 쿠키가 멀쩡한 소비자 세션을 "로그아웃"으로
+ *   오인했다 (대시보드 로그인 직후 메인이 로그아웃돼 보이는 체감 + 401 시 실제 세션 삭제).
+ *   RouteGuards / isLoggedInSync 와 동일하게 *세션 존재* 로만 판단한다.
+ *
+ *   주의: seller_token / admin_token 단독은 *소비자* 세션이 아니므로 포함하지 않는다 (구매자 식별용).
+ *   소비자 신호: user_id (카카오/이메일) · session_login (세션 쿠키 발급) · firebase_token (레거시).
+ */
+export function hasConsumerSession(): boolean {
+  if (typeof localStorage === 'undefined') return false
+  return !!localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_ID) ||
+         !!localStorage.getItem('session_login') ||
+         !!localStorage.getItem(FIREBASE_STORAGE_KEYS.FIREBASE_TOKEN)
+}
+
 export async function getUserId(): Promise<string | null> {
-  const userType = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_TYPE)
-  
-  // 1️⃣ Check localStorage first (user_type이 'user'인 경우에만!)
-  if (userType === 'user' || !userType) {
-    const userId = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_ID) || 
-                   localStorage.getItem(LEGACY_KEYS.USER_ID_ALT)
-    if (userId) {
-      return userId
-    }
+  // 1️⃣ Check localStorage first.
+  // 🛡️ 2026-06-17 (듀얼 로그인 충돌 수정): user_id 는 항상 소비자(구매자) id 이므로 user_type 무관하게
+  //   우선 반환한다. 기존 `user_type === 'user'` 게이트는 어드민/셀러 + 소비자 듀얼 로그인 시
+  //   user_type 이 'admin'/'seller' 로 남아 소비자 user_id 를 건너뛰고 Firebase 로 빠지는 버그였다.
+  //   (getUserIdSync 와 동일 기준 — 일관성. 소비자 컨텍스트 호출자만 이 함수를 사용.)
+  const localUserId = localStorage.getItem(FIREBASE_STORAGE_KEYS.USER_ID) ||
+                      localStorage.getItem(LEGACY_KEYS.USER_ID_ALT)
+  if (localUserId) {
+    return localUserId
   }
   
   // 2️⃣ Firebase Custom Claims (buyers with Kakao/Email login)

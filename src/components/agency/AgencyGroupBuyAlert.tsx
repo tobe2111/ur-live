@@ -53,6 +53,12 @@ export default function AgencyGroupBuyAlert() {
         <h3 className="text-sm font-extrabold text-amber-900 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4" /> 즉시 액션 필요
         </h3>
+        {/* 🏪 2026-06-17: active_groups(진행중 공구) 컨텍스트 — 기존 fetch만 하고 미표시던 값 활용 */}
+        {data.active_groups > 0 && (
+          <span className="text-[11px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+            진행중 공구 {data.active_groups}개
+          </span>
+        )}
       </div>
 
       <div className="space-y-2">

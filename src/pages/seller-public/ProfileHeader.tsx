@@ -3,6 +3,7 @@
  * state 는 부모(SellerPublicPage) 에 보존, 핸들러는 props 로 받음.
  */
 import { useTranslation } from 'react-i18next'
+import { snsUrl } from '@/utils/sns-url'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Share2, Camera, Pencil, Check, X, MapPin, MessageCircle, Heart, Settings } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
@@ -12,15 +13,7 @@ import ExternalLivePlatforms from './ExternalLivePlatforms'
 import type { Seller, LiveStream, Product } from './types'
 import type { ThemeTokens } from './theme'
 
-// 🎨 2026-06-16 링크샵 시안: SNS 핸들/URL → 절대 URL 정규화 (핸들·@핸들·전체URL 모두 허용).
-function snsUrl(platform: 'youtube' | 'instagram' | 'tiktok', v: string): string {
-  const s = v.trim()
-  if (/^https?:\/\//i.test(s)) return s
-  const h = s.replace(/^@/, '')
-  if (platform === 'youtube') return `https://youtube.com/@${h}`
-  if (platform === 'instagram') return `https://instagram.com/${h}`
-  return `https://tiktok.com/@${h}`
-}
+// 🔗 2026-06-17 (#6 링크샵 통일): snsUrl → @/utils/sns-url 공유 (큐레이터 CuratorHeader 와 dedup)
 
 interface Props {
   seller: Seller

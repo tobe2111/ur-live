@@ -176,7 +176,7 @@ export default function AdminWholesaleBannersPage() {
               <button onClick={() => setShowForm(false)} aria-label="닫기"><X className="w-5 h-5 text-gray-400" /></button>
             </div>
             <form onSubmit={submit} className="space-y-4">
-              <ImageUpload value={form.image_url} onChange={(url) => setForm((f) => ({ ...f, image_url: url }))} tokenKey="admin_token" label="배너 이미지" aspectRatio="video" required />
+              <ImageUpload value={form.image_url} onChange={(url) => setForm((f) => ({ ...f, image_url: url }))} tokenKey="admin_token" label="배너 이미지 (권장 1280×480 · 16:6)" aspectRatio="banner" required />
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">제목 (선택)</label>
                 <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} maxLength={120} className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400" placeholder="배너 위에 표시할 문구" />

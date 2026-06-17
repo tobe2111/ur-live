@@ -18,6 +18,7 @@ import ProfileHeader from './seller-public/ProfileHeader'
 import InfoTab from './seller-public/InfoTab'
 import TabsNav from './seller-public/TabsNav'
 import { getThemeTokens } from './seller-public/theme'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import type { Seller, LiveStream, Product, Short, Tab } from './seller-public/types'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / FollowButton / StreamCard 를
@@ -67,6 +68,11 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
       rawParam,
     })
   }
+
+  // 🎨 2026-06-17 (#6 링크샵 통일): 큐레이터 링크샵과 동일한 '방문자 미리보기' — 본인이 남이 보는 화면 그대로 확인.
+  //   previewAsVisitor=false 기본이라 ownerView===isOwner → 기존 동작 불변(편집 어포던스만 ownerView 로 게이트).
+  const [previewAsVisitor, setPreviewAsVisitor] = useState(false)
+  const ownerView = isOwner && !previewAsVisitor
 
   // ── 인라인 편집 상태 ──
   const [editingField, setEditingField] = useState<string | null>(null)
@@ -279,28 +285,49 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
   // 🛡️ 2026-05-19: '상품' 탭 — 식사권 외 일반 상품 (deal_only 교환권은 셀러가 등록 안 하므로 자동 제외).
   const shopProducts = products.filter(p => p.category !== 'meal_voucher' && Number(p.deal_only) !== 1)
 
+  // 🏁 2026-06-17 (사용자 "라이브 커머스 안 해" 영구 결정): 라이브/쇼츠(동영상) 탭 숨김.
+  //   LIVE_COMMERCE_SUSPENDED SSOT 가 라이브·쇼츠를 함께 묶음 → 셀러 공개 링크샵에서도 일관 적용.
+  //   default tab='home' 이라 선택 깨짐 없음. 복원: 플래그 false (사용자 허가 필요).
   const TABS: { key: Tab; label: string }[] = [
     { key: 'home', label: t('seller.tabHome') },
     { key: 'shop', label: `${t('seller.publicPage.shop', { defaultValue: '상품' })} ${shopProducts.length}` },
     { key: 'vouchers', label: `${t('seller.publicPage.vouchers')} ${mealVouchers.length}` },
-    { key: 'shorts', label: `${t('seller.publicPage.videos')} ${shorts.length}` },
-    { key: 'live', label: `${t('seller.tabLive')} ${streams.length}` },
+    ...(LIVE_COMMERCE_SUSPENDED ? [] : [
+      { key: 'shorts' as Tab, label: `${t('seller.publicPage.videos')} ${shorts.length}` },
+      { key: 'live' as Tab, label: `${t('seller.tabLive')} ${streams.length}` },
+    ]),
     { key: 'info', label: t('seller.tabInfo') },
   ]
 
   return (
     <div className={`min-h-screen ${T.bg} pb-28`}>
       {/* 🎨 2026-06-17 링크샵 개선안(시안) 통일: 큐레이터 링크샵과 동일한 네이비 '✎ 편집 모드' 배너. theme-dual: 의도적 네이비 */}
-      {isOwner && (
+      {ownerView && (
         <div className="sticky top-0 z-30 bg-[#141A2E] text-white px-3.5 py-2.5 text-[12.5px] font-semibold flex items-center justify-between gap-2">
-          <span className="flex items-center gap-2"><span className="text-[#FF5634] text-[14px] leading-none">✎</span>{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 사진·이름·소개를 눌러 바로 수정하세요' })}</span>
-          <button
-            type="button"
-            onClick={() => navigate('/seller/profile?tab=business')}
-            className="shrink-0 px-2.5 py-1 bg-white/15 hover:bg-white/25 rounded-lg text-[11px] font-bold whitespace-nowrap"
-          >
-            {t('seller.publicPage.fullSettings', { defaultValue: '전체 설정' })}
-          </button>
+          <span className="flex items-center gap-2 min-w-0"><span className="text-[#FF5634] text-[14px] leading-none shrink-0">✎</span><span className="truncate">{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 사진·이름·소개를 눌러 바로 수정하세요' })}</span></span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setPreviewAsVisitor(true)}
+              className="px-2.5 py-1 bg-white/15 hover:bg-white/25 rounded-lg text-[11px] font-bold whitespace-nowrap"
+            >
+              {t('seller.publicPage.previewVisitor', { defaultValue: '👀 미리보기' })}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/seller/profile?tab=business')}
+              className="px-2.5 py-1 bg-white/15 hover:bg-white/25 rounded-lg text-[11px] font-bold whitespace-nowrap"
+            >
+              {t('seller.publicPage.fullSettings', { defaultValue: '전체 설정' })}
+            </button>
+          </div>
+        </div>
+      )}
+      {/* 🎨 2026-06-17 (#6 통일): 방문자 미리보기 중 — 큐레이터 링크샵과 동일 패턴. theme-dual: 의도적 네이비 */}
+      {isOwner && previewAsVisitor && (
+        <div className="sticky top-0 z-40 bg-[#141A2E] text-white px-4 py-2 text-[12.5px] font-bold flex items-center justify-between gap-2">
+          <span className="truncate">👀 {t('seller.publicPage.previewBanner', { defaultValue: '방문자 미리보기 — 다른 사람에게 보이는 화면이에요' })}</span>
+          <button onClick={() => setPreviewAsVisitor(false)} className="shrink-0 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-[11.5px] whitespace-nowrap">{t('seller.publicPage.backToEdit', { defaultValue: '편집으로 돌아가기' })}</button>
         </div>
       )}
       <SEO
@@ -323,7 +350,7 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
       <ProfileHeader
         seller={seller}
         sellerId={sellerId!}
-        isOwner={isOwner}
+        isOwner={ownerView}
         isDark={isDark}
         T={T}
         liveNow={liveNow}
@@ -353,7 +380,7 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
             shorts={shorts}
             recentStreams={recentStreams}
             streams={streams}
-            isOwner={isOwner}
+            isOwner={ownerView}
             textClass={T.text}
             setTab={setTab}
             sellerId={seller?.id ? Number(seller.id) : undefined}
@@ -366,12 +393,12 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
             <div className="max-w-3xl mx-auto px-4 py-16 text-center">
               <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] flex items-center justify-center text-2xl">🛍️</div>
               <p className="text-[15px] font-bold text-gray-900 dark:text-white">
-                {isOwner ? t('seller.publicPage.noShopOwnerTitle', { defaultValue: '아직 등록한 상품이 없어요' }) : t('seller.publicPage.noShopTitle', { defaultValue: '등록된 상품이 없어요' })}
+                {ownerView ? t('seller.publicPage.noShopOwnerTitle', { defaultValue: '아직 등록한 상품이 없어요' }) : t('seller.publicPage.noShopTitle', { defaultValue: '등록된 상품이 없어요' })}
               </p>
               <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
-                {isOwner ? t('seller.publicPage.noShopOwnerDesc', { defaultValue: '셀러 대시보드에서 상품을 추가해 보세요' }) : t('seller.publicPage.noShopDesc', { defaultValue: '곧 새로운 상품이 올라와요' })}
+                {ownerView ? t('seller.publicPage.noShopOwnerDesc', { defaultValue: '셀러 대시보드에서 상품을 추가해 보세요' }) : t('seller.publicPage.noShopDesc', { defaultValue: '곧 새로운 상품이 올라와요' })}
               </p>
-              {isOwner && (
+              {ownerView && (
                 <button onClick={() => navigate('/seller')} className="mt-4 inline-flex items-center h-10 px-4 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[13px] font-bold active:scale-95">
                   {t('seller.publicPage.goAddProduct', { defaultValue: '대시보드에서 등록하기 →' })}
                 </button>
@@ -403,11 +430,11 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
         )}
 
         {tab === 'vouchers' && (
-          <VouchersTab mealVouchers={mealVouchers} isOwner={isOwner} textClass={T.text} />
+          <VouchersTab mealVouchers={mealVouchers} isOwner={ownerView} textClass={T.text} />
         )}
 
         {tab === 'shorts' && (
-          <VideosTab shorts={shorts} isOwner={isOwner} textClass={T.text} />
+          <VideosTab shorts={shorts} isOwner={ownerView} textClass={T.text} />
         )}
 
         {tab === 'live' && (
@@ -426,7 +453,7 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
           <InfoTab
             seller={seller}
             sellerId={sellerId!}
-            isOwner={isOwner}
+            isOwner={ownerView}
             T={T}
             editingField={editingField}
             setEditingField={setEditingField}

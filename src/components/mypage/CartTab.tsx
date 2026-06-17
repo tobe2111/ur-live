@@ -34,13 +34,13 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
             {t('cart.emptyTitle', { defaultValue: '장바구니가 비어있습니다' })}
           </h2>
           <p className="text-[14px] text-gray-500 dark:text-gray-400 mb-6">
-            {t('cart.emptyMsg', { defaultValue: '라이브를 시청하며 상품을 담아보세요' })}
+            {t('cart.emptyMsg', { defaultValue: '마음에 드는 상품을 담아보세요' })}
           </p>
           <Link
             to="/"
             className="inline-flex items-center justify-center px-6 py-3 bg-gray-900 text-white text-[14px] font-semibold rounded-full hover:bg-gray-800 active:bg-gray-700 transition-colors"
           >
-            {t('cart.goLive', { defaultValue: '라이브 보러가기' })}
+            {t('cart.goLive', { defaultValue: '둘러보러 가기' })}
           </Link>
         </div>
       </div>
@@ -126,7 +126,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
       </div>
 
       <div
-        className="fixed bottom-0 left-0 right-0 xl:left-56 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] px-4 py-3 z-40 safe-bottom"
+        className="app-frame-bar fixed bottom-0 left-0 right-0 xl:left-56 bg-white dark:bg-[#0A0A0A] border-t border-gray-100 dark:border-[#1A1A1A] px-4 py-3 z-40 safe-bottom"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
         <button

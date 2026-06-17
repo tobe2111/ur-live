@@ -472,7 +472,11 @@ api.interceptors.response.use(
         const refreshTokenKey = isAgency ? 'agency_refresh_token' : isSeller ? 'seller_refresh_token' : 'admin_refresh_token';
         const refreshToken = localStorage.getItem(refreshTokenKey);
 
-        if (refreshToken) {
+        // 🔐 단일 세션: 다른 기기/브라우저 로그인으로 무효화된 세션 — refresh 시도해도 실패하므로
+        //   즉시 강제 로그아웃 + 전용 안내. (서버 미들웨어/리프레시가 code='SESSION_SUPERSEDED' 반환)
+        const _superseded = (error.response?.data as { code?: string } | undefined)?.code === 'SESSION_SUPERSEDED';
+
+        if (refreshToken && !_superseded) {
           // 🛡️ 2026-04-29: inflight 락 — 동시 401 들이 모두 같은 refresh 결과 공유.
           //   이전 동작: 동시 401 → 동시 refresh 호출 → token rotation 시 race condition.
           // 🏁 2026-06-13: agency 누락분 추가 — 이전엔 agency 도 /api/admin/refresh 로 잘못 호출(버그).
@@ -502,8 +506,8 @@ api.interceptors.response.use(
         // 🛡️ 2026-04-29: alert 제거 — 카톡 인앱이 alert 차단 → throw → 흰화면.
         //   대신 로그인 페이지에서 ?error=session_expired query 감지해 toast 표시.
         const loginUrl = isAgency ? '/agency/login' : isSeller ? '/seller/login' : '/admin/login';
-        console.warn(`[Auth] ${roleLabel} 인증 만료 — 로그인 페이지 이동`);
-        window.location.href = `${loginUrl}?error=session_expired`;
+        console.warn(`[Auth] ${roleLabel} 인증 ${_superseded ? '다른 기기 로그인으로 종료' : '만료'} — 로그인 페이지 이동`);
+        window.location.href = `${loginUrl}?error=${_superseded ? 'session_superseded' : 'session_expired'}`;
         return Promise.reject(error);
       }
 
@@ -594,8 +598,18 @@ api.interceptors.response.use(
       }
 
       // 세션 쿠키 유저는 쿠키가 유효한지 확인 후 처리
-      const isSessionCookieUser = localStorage.getItem('user_type') === 'user' && localStorage.getItem('user_id');
+      // 🛡️ 2026-06-17 (듀얼 로그인 충돌 수정): user_type 비의존 — 세션 흔적(session_login/user_id)이
+      //   있으면 헬스체크 보호 적용. 기존 user_type==='user' 게이트는 어드민/셀러/에이전시 + 소비자
+      //   듀얼 로그인 시 user_type 이 'admin'/'seller' 로 남아 보호를 건너뛰고 → 401 한 번에
+      //   소비자 세션(user_id+session_login)을 삭제했다. (auth.ts hasConsumerSession() 과 동일 기준.
+      //   헬스 엔드포인트가 쿠키로 최종 판정하므로 비-소비자에겐 무해 — session:false 면 정상 정리.)
+      const isSessionCookieUser = !!localStorage.getItem('session_login') || !!localStorage.getItem('user_id');
       if (isSessionCookieUser) {
+        // 🛡️ 2026-06-17 (소비자 자동 로그아웃 근본수정): 세션이 *죽었다는 확정 증거(session===false)* 가
+        //   있을 때만 로그아웃한다. 헬스체크가 네트워크/타임아웃/5xx 로 실패하는 건 "세션 무효"의 증거가
+        //   아니므로 로그아웃하지 않는다. 기존엔 catch 후 그대로 clearAuthData('user') → 헬스 일시오류·느린
+        //   응답·듀얼유저 대시보드 토큰 401 fall-through 등으로 소비자 세션이 *부당하게* 풀리던 사고.
+        let sessionConfirmedDead = false;
         try {
           const health = await axios.get('/api/auth/session/health', { withCredentials: true });
           if (health.data?.data?.session) {
@@ -603,7 +617,15 @@ api.interceptors.response.use(
             captureError(new Error('Buyer 401: API-specific (session valid)'), { url });
             return Promise.reject(error);
           }
-        } catch {}
+          if (health.data?.data?.session === false) sessionConfirmedDead = true;
+        } catch {
+          // 헬스 확인 실패 = 세션 무효 증거 아님 → 로그아웃하지 않음
+        }
+        if (!sessionConfirmedDead) {
+          // 죽었다는 확정 못 함 → 소비자 세션 유지(이 API 자체 권한/일시 문제로 간주)
+          captureError(new Error('Buyer 401: session unconfirmed — keep'), { url });
+          return Promise.reject(error);
+        }
       }
 
       clearFirebaseTokenCache();
