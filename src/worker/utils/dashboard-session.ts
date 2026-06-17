@@ -9,16 +9,52 @@
  *   - 미들웨어/리프레시에서 토큰 iat 가 min_valid_iat 미만이면 거부(isDashboardSessionCurrent).
  *   → 더 늦게 로그인한 세션이 이전 세션을 무효화. payload 구조 변경 불필요(iat 기존 존재).
  *
- * 범위(v1): admin / seller(도매 사장 포함) / supplier 만. agency(멀티 멤버)·wholesale 서브계정
- *   (sub_account_id) 은 토큰 sub 가 부모 ID라 시트별 키가 필요 → v1 제외(정상 동시 직원 오로그아웃 방지).
+ * 범위: 시트(seat)별 단일 세션 — admin / seller / supplier 는 계정 id, agency 멤버는 member_id,
+ *   wholesale 서브계정은 sub_account_id 를 시트 키로 사용(deriveDashboardSeat). 같은 회사의 서로 다른
+ *   직원(멤버/서브계정)은 각자 시트라 동시 로그인 보존, 같은 시트의 다른 기기만 단일 세션.
  *
  * 안전성: 전 함수 fail-soft / fail-open — D1 장애·레거시 토큰(iat 없음)·추적행 없음(롤아웃 전)·
  *   비대상 역할은 모두 '통과' 처리하여 인증 자체를 깨뜨리지 않음.
  */
 import type { D1Database } from '@cloudflare/workers-types'
 
-/** 단일 세션 강제 대상 대시보드 역할 (멀티시트 agency 는 의도적 제외). */
-export const SINGLE_SESSION_ROLES: ReadonlySet<string> = new Set(['admin', 'seller', 'supplier'])
+/** 단일 세션 강제 대상 시트 역할(라벨). */
+export const SINGLE_SESSION_ROLES: ReadonlySet<string> = new Set([
+  'admin', 'seller', 'supplier', 'agency', 'agency_member', 'seller_sub',
+])
+
+/**
+ * 토큰/세션 payload 에서 단일 세션 '시트(seat)' 키를 도출. 로그인·미들웨어·리프레시가 동일 함수를
+ * 써서 키 일치 보장. null = 강제 비대상(user 등).
+ *   - sub_account_id (도매 직원)      → ('seller_sub', sub_account_id)
+ *   - type='agency' + member_id        → ('agency_member', member_id)
+ *   - type='agency' (멤버 없음/카카오)  → ('agency', agencyId)
+ *   - type='admin'|'seller'|'supplier' → (type, 계정 id)
+ */
+export function deriveDashboardSeat(p: {
+  type?: unknown; sub?: unknown; userId?: unknown;
+  sub_account_id?: unknown; member_id?: unknown;
+}): { role: string; id: number } | null {
+  const toId = (v: unknown): number => Number(typeof v === 'string' ? v : v as number)
+  if (p.sub_account_id != null) {
+    const id = toId(p.sub_account_id)
+    return Number.isFinite(id) && id > 0 ? { role: 'seller_sub', id } : null
+  }
+  const type = typeof p.type === 'string' ? p.type : ''
+  if (type === 'agency') {
+    if (p.member_id != null) {
+      const mid = toId(p.member_id)
+      if (Number.isFinite(mid) && mid > 0) return { role: 'agency_member', id: mid }
+    }
+    const aid = toId(p.sub ?? p.userId)
+    return Number.isFinite(aid) && aid > 0 ? { role: 'agency', id: aid } : null
+  }
+  if (type === 'admin' || type === 'seller' || type === 'supplier') {
+    const id = toId(p.userId ?? p.sub)
+    return Number.isFinite(id) && id > 0 ? { role: type, id } : null
+  }
+  return null
+}
 
 const _ensured = new WeakSet<object>()
 async function ensureDashboardSessionsTable(DB: D1Database): Promise<void> {
@@ -82,10 +118,8 @@ export async function isDashboardSessionCurrent(
   role: string,
   accountId: number | string,
   tokenIatSec: number | undefined | null,
-  opts?: { subAccount?: boolean },
 ): Promise<boolean> {
-  if (opts?.subAccount) return true                 // 멀티시트 서브계정 = v1 제외
-  if (!SINGLE_SESSION_ROLES.has(role)) return true  // 비대상(agency/user 등)
+  if (!SINGLE_SESSION_ROLES.has(role)) return true  // 비대상(user 등)
   if (typeof tokenIatSec !== 'number') return true  // iat 없는 레거시 토큰 = grandfather
   const id = Number(accountId)
   if (!Number.isFinite(id) || id <= 0) return true
