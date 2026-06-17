@@ -6,7 +6,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
-import { UserCog, Plus, Trash2, Key, Edit2, X } from 'lucide-react'
+import { UserCog, Plus, Trash2, Key, Edit2, X, ShieldOff } from 'lucide-react'
 import { formatKST } from '@/utils/date'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
@@ -172,6 +172,25 @@ export default function AdminAccountsPage() {
     } finally { setSaving(false) }
   }
 
+  // 🆕 2026-06-17: 로그인 보안 PIN 초기화 — 도매 파트너 등이 6자리 PIN 분실 시 슈퍼가 복구.
+  //   초기화하면 해당 관리자는 다음 로그인 때 비밀번호로 통과 후 새 PIN 을 다시 설정함.
+  async function resetPin(admin: Admin) {
+    if (!(await confirmDialog({
+      message: `${admin.name || admin.email} 님의 로그인 보안 PIN을 초기화할까요?\n초기화 후 해당 관리자는 다음 로그인 시 새 PIN을 설정합니다.`,
+    }))) return
+    try {
+      const res = await api.post(`/api/admin/admins/${admin.id}/reset-pin`, {}, h)
+      if (res.data.success) {
+        toast.success(res.data.message || '보안 PIN이 초기화되었습니다')
+      } else {
+        toast.error(res.data.error || 'PIN 초기화 실패')
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e.response?.data?.error || 'PIN 초기화 실패')
+    }
+  }
+
   function openEdit(admin: Admin) {
     setEditForm({ name: admin.name || '', role: admin.role, email: admin.email })
     setShowEdit(admin)
@@ -224,6 +243,7 @@ export default function AdminAccountsPage() {
                         <div className="flex items-center gap-2">
                           <button onClick={() => openEdit(admin)} className="p-1 rounded hover:bg-gray-100" aria-label={t("common.edit", { defaultValue: "수정" })} title={t("common.edit")}><Edit2 className="w-3.5 h-3.5 text-gray-500" /></button>
                           <button onClick={() => { setShowResetPw(admin); setNewPassword('') }} className="p-1 rounded hover:bg-gray-100" aria-label={t("admin.accounts.changePassword", { defaultValue: "비밀번호 변경" })} title={t("admin.accounts.changePassword")}><Key className="w-3.5 h-3.5 text-amber-500" /></button>
+                          <button onClick={() => resetPin(admin)} className="p-1 rounded hover:bg-gray-100" aria-label="로그인 PIN 초기화" title="로그인 PIN 초기화 (분실 복구)"><ShieldOff className="w-3.5 h-3.5 text-orange-500" /></button>
                           <button onClick={() => deleteAdmin(admin)} className="p-1 rounded hover:bg-gray-100" aria-label={t("common.delete", { defaultValue: "삭제" })} title={t("common.delete")}><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
                         </div>
                       </td>
