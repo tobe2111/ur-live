@@ -1867,7 +1867,10 @@
       "follow": "+ フォロー",
       "shop": "商品",
       "noShopProductsOwner": "登録された商品がありません。セラーダッシュボードから追加してください。",
-      "noShopProducts": "登録された商品がありません。"
+      "noShopProducts": "登録された商品がありません。",
+      "previewVisitor": "👀 プレビュー",
+      "previewBanner": "訪問者プレビュー — 他の人に見える画面です",
+      "backToEdit": "編集に戻る"
     },
     "storeIntro": "ストア紹介",
     "shippingInfo": "配送情報",
@@ -4354,7 +4357,9 @@
     "groupUnused": "利用可能",
     "groupUsed": "利用済み",
     "groupExpired": "期限切れ",
-    "groupRefunded": "返金済み"
+    "groupRefunded": "返金済み",
+    "ktShowBarcode": "店舗で下のバーコードを提示してください",
+    "ktCheckMms": "携帯のメッセージでクーポンをご確認ください。カカオトークのギフトボックス連携も可能です。"
   },
   "sellerWaiting": {
     "title": "セラー承認待機",

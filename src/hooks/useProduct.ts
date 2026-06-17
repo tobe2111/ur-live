@@ -83,6 +83,9 @@ export function useProduct(productId: string | undefined) {
     },
     enabled: !!productId,
     initialData: () => readSsrProduct(productId),
+    // 🛠️ 2026-06-17 (initialData stale 버그 클래스 방어): SSR seed 를 즉시 stale 처리 →
+    //   첫 페인트는 SSR 로 0-RTT 유지하되, mount 후 1회 refetch 로 가격/재고 최신화(30분 고착 방지).
+    initialDataUpdatedAt: 0,
   })
 }
 

@@ -1,5 +1,17 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 도매 프리미엄관 체크박스 일괄 선택 (대표 요청)
+**요청**: `/admin/wholesale-products`(도매 프리미엄관) 상품 리스트 체크박스 선택.
+- **백엔드** (`wholesale-main.routes.ts`): 신규 `POST /api/admin/wholesale-products/bulk-premium` ({ ids[], is_premium 0|1 }) — 단일 batch UPDATE(공급상품·복사본 제외 가드), ids 검증(>0, ≤200). 기존 단건 `/:id/premium` 보존, `/bulk-premium`(1세그) vs `/:id/premium`(2세그) 충돌 없음. adminApp requireAdmin 상속.
+- **프론트** (`AdminWholesaleProductsPage`): 행별 체크박스 + 전체선택(indeterminate) + 1+ 선택 시 액션바(프리미엄 추가/제외/선택해제). 낙관적 업데이트 + 실패 롤백, refetch 후 선택 자동 정리. 카드 레이아웃 justify-between→gap+flex-1(체크박스 수용), 선택 시 amber ring. dark: 추가 0.
+- 검증: tsc 0 · `npm run build` 0 · 대시보드 테마(위반 0) · sql-bind 0.
+
+## ✅ 2026-06-17 — 어드민 로그인 PIN 한-화면화 (대표 신고 "2단계 불편")
+**신고**: 보안 PIN 설정 계정이 아이디/비번 → 로그인 클릭 → 그제서야 PIN 입력칸이 뜨는 2단계라 불편.
+- **원인**: 백엔드(`admin.routes /login`)는 **이미 첫 요청에서 `pin` 수용**(hasPin이면 검증) — 2단계는 순전히 프론트(`AdminLoginPage`)가 `needPin` 응답 받고서야 PIN 칸을 노출하던 것.
+- **수정(프론트 only)**: PIN 칸을 **처음부터 노출**(라벨 "6자리 보안 PIN (설정한 경우)" + 미설정은 비워두라는 힌트) + 로그인 요청에 `pin: pin.trim() || undefined` 항상 동봉 → PIN 계정도 **한 번에** 로그인. `needPin`(서버 pin_required)은 이제 칸 강조(보더 색)+안내문구 전환용으로만 유지(틀린 PIN/누락 시 폴백 동작 보존). **백엔드/PIN 검증 로직 무변경.**
+- 검증: tsc 0 · `npm run build` 0 · 대시보드 테마검사(AdminLoginPage 위반 0).
+
 ## ✅ 2026-06-17 — 단일 세션 강제 확장: per-seat 키 + 카카오 토큰 + 로그아웃 문구 (대표 "가장 이상적으로")
 **배경**: 단일 세션 v1(admin/seller/supplier)에서 제외했던 멀티시트(에이전시 멤버·도매 직원)와 카카오 발급 토큰까지 확장 + 안내 문구 구체화.
 - **per-seat 키** (`dashboard-session.ts deriveDashboardSeat`): 토큰에서 시트 키 도출 — `sub_account_id`→`('seller_sub', id)`, `agency`+`member_id`→`('agency_member', id)`, `agency`(멤버없음/카카오)→`('agency', agencyId)`, admin/seller/supplier→`(type, id)`. **같은 회사의 다른 직원/멤버는 각자 시트 → 동시 로그인 보존**, 같은 시트의 다른 기기만 단일 세션. 미들웨어 3경로(Bearer/쿠키/SSR)·seller refresh 모두 seat 기반으로 전환(subAccount 옵션 제거).
@@ -44,7 +56,8 @@
 - **회귀 테스트**: `auth-utils.test.ts` 에 hasConsumerSession 8케이스(듀얼 로그인 user_type=admin/seller 에도 true, seller/admin 토큰 단독은 false). 검증: tsc 0 · 단위 55/55 · `npm run build`(client+ssr+prerender+worker+prepare) exit 0.
 - **후속(완전 이상적化 — 같은 클래스 2곳 추가 마감, 사용자 "이어서 진행")**: ① `auth.ts getUserId()`(async) 의 `user_type==='user'` 게이트 제거 — user_id 는 항상 소비자 id 라 user_type 무관하게 우선 반환(듀얼유저가 Firebase 로 빠져 소비자 id 를 못 받던 버그; getUserIdSync 와 일관). ② `ReelCard` 셀러 본인 방송 소유권 판정을 `user_type==='seller'` → `seller_token` 존재로(듀얼 셀러가 소비자로 마지막 로그인 시 본인 방송 컨트롤 상실 해소; id 비교 의미 보존 → non-셀러 false-positive 0). **의도적 유지**: `getUserNameSync`/`getUserEmail` role-dispatch(seller_name/admin_name)는 대시보드 표시에 필요 — 미변경(소비자 표시 nuance만, 세션 무관). BottomNav 는 이미 토큰/active_role 기반(무변경). 검증: tsc 0 · 인증 단위 90/90 · build exit 0.
 - **죽은 코드 제거(사용자 "제거하자")**: `src/client/lib/api.ts` 삭제 — 401 시 무조건 `clearAuth()` 호출하는 별도 fetch 클라이언트였으나 **import 0건(완전 미사용)**. 미래에 소비자 호출에 쓰이면 메인 `lib/api.ts` 의 세션-헬스 보호를 우회하는 공격적 로그아웃이 될 footgun → 선제 제거. `ApiError` export 도 외부 사용 0(다른 ApiError 들은 별개 정의), 배럴 재export 없음 확인. 검증: tsc 0 · build exit 0. (라이브 채팅 표시명 항목은 **라이브 서비스 영구 중단으로 폐기**.)
-- **공급사(제조사) 403 부당 로그아웃 수정(사용자 "진행하자")**: `src/lib/supplier-api.ts` 가 `401 || 403` 둘 다 `clearSupplierSession()`+/supplier/login 리다이렉트 → 제조사가 권한 없음/일시적 403 에도 세션 멀쩡한데 로그아웃되던 버그(소비자/대시보드와 같은 클래스 — 401 외 상태로 세션 파괴). **401 에서만 로그아웃**, 403 은 throw 만(페이지가 권한 없음 처리)로 수정. 메인 `lib/api.ts`(403=console.warn, 로그아웃 X)와 정합. supplierApi 는 제조사 입점 대시보드 전반에서 실사용(죽은 코드 아님). **미해결(낮은 우선순위)**: 공급사 토큰은 refresh 메커니즘 부재(30일 access 후 재로그인) — 타 역할은 90일 refresh+자동갱신. 사용자 결정 대기. 검증: tsc 0 · build exit 0.
+- **공급사(제조사) 403 부당 로그아웃 수정(사용자 "진행하자")**: `src/lib/supplier-api.ts` 가 `401 || 403` 둘 다 `clearSupplierSession()`+/supplier/login 리다이렉트 → 제조사가 권한 없음/일시적 403 에도 세션 멀쩡한데 로그아웃되던 버그(소비자/대시보드와 같은 클래스 — 401 외 상태로 세션 파괴). **401 에서만 로그아웃**, 403 은 throw 만(페이지가 권한 없음 처리)로 수정. 메인 `lib/api.ts`(403=console.warn, 로그아웃 X)와 정합. supplierApi 는 제조사 입점 대시보드 전반에서 실사용(죽은 코드 아님). 검증: tsc 0 · build exit 0.
+- **공급사(제조사) refresh 토큰 + 자동갱신 추가(사용자 "마저 진행")**: 기존엔 supplier access(30일) 만료 시 무조건 재로그인이었음(refresh 부재 — 타 역할만 90일 refresh+자동갱신). 셀러/어드민 패턴 그대로 미러링: ① 서버 `supplier-auth.routes.ts` — `issueSupplierTokens()`(access 30일 + refresh 90일, `auth_refresh_tokens` user_type='supplier' 해시 저장) 헬퍼로 `/login`·`/become(승인)` 이 access+refresh 동시 발급 + 신규 `POST /api/supplier/refresh`(JWT 검증→계정 approved 확인→저장 해시 rotation+reuse 감지→신규 발급; **레거시(저장 해시 0)는 JWT 서명/만료만으로 허용=자연 마이그레이션**). ② 클라 `supplier-api.ts` — refresh 토큰 저장(`supplier_refresh_token`), 401 시 inflight 락으로 1회 자동 갱신 후 재시도→실패할 때만 로그아웃(403 은 여전히 로그아웃 X). ③ `SupplierLoginPage` 가 응답 refreshToken 저장. 레거시 사용자는 access 만료 시 1회 재로그인 후부터 자동유지. 검증: tsc 0 · 단위 101/101 · `npm run build` exit 0.
 
 ## ✅ 2026-06-17 — A) 동네딜 상품 일괄 등록 도구 + B) 도매몰 머니로직 검증 (대표 "모두 진행, 순서대로")
 **A. 동네딜 채우기 도구** (`admin-products.routes.ts` + `AdminDongnedealImportPage`): "총 0개"를 채울 수단. `/api/admin/dongnedeal/{stats,seed-demo(POST/DELETE),bulk-import}` — 동네딜 피드 형태(category meal/beauty/etc/general + is_active=1 + group_buy_status='active')로 products INSERT → 즉시 노출. CSV 한글 헤더(상품명/카테고리/판매가/정가/매장명/주소/이미지URL/설명) 행단위 검증·리포트, 카테고리 별칭 매핑, **숙소는 거부**(product_stay_info 필요 — 숙소 전용 등록). 데모 10종(slug `demo-deal-`, 멱등) + 정리. UI = 어드민 '🏪 오프라인 공구 › 동네딜 상품 등록'(/admin/dongnedeal-import), 현황카드(전체/노출/데모/카테고리별)+CSV. adminApp 글로벌 requireAdmin+RBAC. ⚠️ **실상품 데이터는 대표 준비 필요**(도구는 빠른 입력 수단).

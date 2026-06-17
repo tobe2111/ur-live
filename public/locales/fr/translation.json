@@ -1192,7 +1192,10 @@
       "follow": "+ 팔로우",
       "shop": "Boutique",
       "noShopProductsOwner": "Pas encore de produits. Ajoutez-en depuis le tableau de bord vendeur.",
-      "noShopProducts": "Pas encore de produits."
+      "noShopProducts": "Pas encore de produits.",
+      "previewVisitor": "👀 Aperçu",
+      "previewBanner": "Aperçu visiteur — voici ce que voient les autres",
+      "backToEdit": "Retour à l'édition"
     },
     "storeIntro": "Presentation de la boutique",
     "shippingInfo": "Info livraison",
@@ -4354,7 +4357,9 @@
     "groupUnused": "Disponible",
     "groupUsed": "Utilisé",
     "groupExpired": "Expiré",
-    "groupRefunded": "Remboursé"
+    "groupRefunded": "Remboursé",
+    "ktShowBarcode": "Présentez le code-barres ci-dessous en magasin",
+    "ktCheckMms": "Vérifiez le coupon dans les messages de votre téléphone. Liaison KakaoTalk possible."
   },
   "sellerWaiting": {
     "title": "Approbation Vendeur en Attente",

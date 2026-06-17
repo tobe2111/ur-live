@@ -1867,7 +1867,10 @@
       "follow": "+ 팔로우",
       "shop": "商品",
       "noShopProductsOwner": "还没有商品。请从卖家后台添加。",
-      "noShopProducts": "还没有商品。"
+      "noShopProducts": "还没有商品。",
+      "previewVisitor": "👀 预览",
+      "previewBanner": "访客预览 — 这是别人看到的页面",
+      "backToEdit": "返回编辑"
     },
     "storeIntro": "店铺介绍",
     "shippingInfo": "配送信息",
@@ -4354,7 +4357,9 @@
     "groupUnused": "可使用",
     "groupUsed": "已使用",
     "groupExpired": "已过期",
-    "groupRefunded": "已退款"
+    "groupRefunded": "已退款",
+    "ktShowBarcode": "请在门店出示下方条形码",
+    "ktCheckMms": "请在手机短信中查看优惠券。可自动关联KakaoTalk礼物盒。"
   },
   "sellerWaiting": {
     "title": "卖家审核等待",
