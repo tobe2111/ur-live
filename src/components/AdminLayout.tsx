@@ -95,6 +95,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: '🏪 오프라인 공구',
     items: [
       { path: '/admin/group-buy',        label: '공동구매',      icon: Ticket },
+      { path: '/admin/dongnedeal-import', label: '동네딜 상품 등록', icon: Upload },
       { path: '/admin/stays',            label: '숙소 운영',     icon: Building2 },
       { path: '/admin/pending-sellers',  label: '매장 검수',     icon: UserCheck },
       { path: '/admin/coupons',          label: '쿠폰 관리',     icon: Ticket },

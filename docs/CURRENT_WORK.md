@@ -1,5 +1,10 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — A) 동네딜 상품 일괄 등록 도구 + B) 도매몰 머니로직 검증 (대표 "모두 진행, 순서대로")
+**A. 동네딜 채우기 도구** (`admin-products.routes.ts` + `AdminDongnedealImportPage`): "총 0개"를 채울 수단. `/api/admin/dongnedeal/{stats,seed-demo(POST/DELETE),bulk-import}` — 동네딜 피드 형태(category meal/beauty/etc/general + is_active=1 + group_buy_status='active')로 products INSERT → 즉시 노출. CSV 한글 헤더(상품명/카테고리/판매가/정가/매장명/주소/이미지URL/설명) 행단위 검증·리포트, 카테고리 별칭 매핑, **숙소는 거부**(product_stay_info 필요 — 숙소 전용 등록). 데모 10종(slug `demo-deal-`, 멱등) + 정리. UI = 어드민 '🏪 오프라인 공구 › 동네딜 상품 등록'(/admin/dongnedeal-import), 현황카드(전체/노출/데모/카테고리별)+CSV. adminApp 글로벌 requireAdmin+RBAC. ⚠️ **실상품 데이터는 대표 준비 필요**(도구는 빠른 입력 수단).
+**B. 도매몰 머니 검증**(병렬 에이전트 read-only 감사): **수식·테스트 전부 정상** — `splitWholesaleUnit`(제조사=max(원가,round(공급가×(1−수수료%))), 플랫폼=공급가−제조사, 합보존)·`distributorPriceFromRetail` 확인, **unit 130 tests pass**, **표시가=청구가=정산액 동일 보장**(단일 SSOT 동기계산), **환불 역전 멱등**(admin full + supplier line, productIds-scoped, margin_total 비례역전). 기본 수수료 10%(=제조사 90%). `WHOLESALE_SETTLEMENT_E2E.md` §4 보강(예치금 환원 명시·margin_total 감소 체크·부분환불 행). ⚠️ **남은 건 2가지 — (1) "플랫폼=공급가 10%" 모델이 대표 의도인지 1줄 확인, (2) staging 실결제 1회**(코드는 검증 완료, 외부망 차단이라 실결제는 권한자 실행).
+- 검증: tsc 0 · client+worker build 0 · 테마·sql-bind·not-null·api-auth(경고는 기존 집계) 통과.
+
 ## ✅ 2026-06-17 — 숙소 인라인 회귀 자체수정 (사용자 "다른 문제 없을까?" → 감사로 발견)
 **발견**: 직전에 숙소를 동네딜 그리드에 인라인 필터로 옮겼는데, **숙소 상품은 `products.price=0`(실가격은 객실 테이블 별도) + 위치·평점이 `product_stay_info` 별도 테이블**이라 그리드 카드론 **₩0·정보누락으로 깨짐**(seller-stays INSERT 확인). group_buy_status 기본값 'active'라 stays 가 피드에 들어와 '전체' 탭에도 ₩0 카드로 샐 수 있었음(잠재 선재버그 포함).
 - **수정(올바른 방향)**: 숙소는 전용 `/stays`(=`/api/group-buy/stays/search`, product_stay_info join)에서만 표시. ① 숙소 탭/사이드바 → `/stays` 환원 ② `GroupBuyListPage` 클라 필터에 `stay_voucher` **그리드 전역 제외**(전체 포함 — ₩0 카드 누수 차단) ③ 인라인용 stay 카드 라우팅/뱃지/CTA·Calendar import 정리(clean revert) ④ **`/stays` 헤더에 동네딜 카테고리 칩 추가**(전체/맛집식사권/미용/숙소(active)/기타/일반상품) — 숙소가 "다른 카테고리처럼" 보이길 원한 최초 요구를 예약 흐름 깨지 않고 충족(내비 일관성).
