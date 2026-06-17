@@ -111,6 +111,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🔐 2026-06-16: agency 자동정산(agency-auto-settle cron) 멱등 마커 — 없으면 SELECT 부터
     //   'no such column' 으로 터져 자동정산이 영구 미작동(매 agency try-catch 로 silent skip). check-sql-column-exists 도 차단.
     { desc: 'orders.agency_settled', sql: "ALTER TABLE orders ADD COLUMN agency_settled INTEGER NOT NULL DEFAULT 0" },
+    // 💸 2026-06-17: 혼합결제(Toss+딜) 의 '딜 사용분' — 결제 성공(/confirm) 시 이 값만큼 잔액 차감, 환불 시 복원.
+    { desc: 'orders.deal_used', sql: "ALTER TABLE orders ADD COLUMN deal_used INTEGER NOT NULL DEFAULT 0" },
     // 🛡️ 2026-05-25 (migration 0280): 셀러 승급 트래킹
     { desc: 'users.curator_total_lifetime_earnings', sql: "ALTER TABLE users ADD COLUMN curator_total_lifetime_earnings INTEGER NOT NULL DEFAULT 0" },
     { desc: 'users.seller_upgrade_offered_at', sql: "ALTER TABLE users ADD COLUMN seller_upgrade_offered_at DATETIME" },

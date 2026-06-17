@@ -14,6 +14,8 @@ import type { Env } from '../types/env';
 import { OrderRepository } from '../repositories/order.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { QueryBuilder } from '../repositories/query-builder';
+import { computeCouponDiscount } from '../../features/coupons/coupon-discount';
+import { ensureOrdersDealUsed } from '../utils/ensure-order-columns';
 import { swallow } from '../utils/swallow';
 import { requireAuth, type AuthUser } from '../middleware/auth';
 import { calculateShippingFee, generateId } from '../../shared/utils';
@@ -75,6 +77,14 @@ const createOrderSchema = z.object({
   shipping_phone: z.string(),
   shipping_memo: z.string().optional(),
   idempotency_key: z.string().min(1),
+  // 💸 2026-06-17: 할인 입력 — 서버가 재계산/검증하는 '입력값'일 뿐, 신뢰하지 않음.
+  //   coupon_id → 서버가 쿠폰 규칙으로 재계산 + 1회 소비. deal_used → 잔액 검증 후 적용.
+  //   discount_amount/coupon_discount → 공구할인 portion(= 총할인 − 쿠폰 − 딜) 분리용 입력(클램프).
+  //   (구버전 zod 가 이 필드를 strip 해 total_amount 에서 할인 누락 → confirm 금액불일치 400.)
+  coupon_id: z.union([z.number().int().positive(), z.string().min(1)]).nullish(),
+  deal_used: z.number().int().nonnegative().max(1_000_000_000).nullish(),
+  discount_amount: z.number().int().nonnegative().max(1_000_000_000).nullish(),
+  coupon_discount: z.number().int().nonnegative().max(1_000_000_000).nullish(),
 });
 
 // POST /api/orders
@@ -292,12 +302,87 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
       }, 409);
     }
 
+    // ── 💸 2026-06-17 서버 권위 할인 (validate-by-cap) ──────────────────────
+    //   클라가 보낸 할인액을 '서버 권위 최대치(cap)' 이하로만 인정 + 실제 소비/차감.
+    //   설계: 정직한 클라(쿠폰=실값·딜≤잔액)는 서버 total 이 클라 totalAmount 와 정확히 일치
+    //         → confirm 통과. 악의적 클라는 각 항목이 권위 상한에 클램프 → 머니 구멍 차단.
+    //   ① 쿠폰: 클라 coupon_discount 를 computeCouponDiscount(권위 상한) 이하로 인정 + coupon_uses
+    //          UNIQUE 1회 소비(멀티셀러 동일쿠폰은 첫 그룹만). order_id 는 생성 후 링크.
+    //   ② 딜: 클라 deal_used 를 잔액·잔여로 클램프. 실제 잔액 차감은 결제 성공(/confirm) claim 에서 멱등.
+    //   ③ 공구할인 portion(=총할인−쿠폰−딜): 회귀 이전과 동일한 클라-신뢰(클램프) — 신규 구멍 X.
+    //   total = 소계+배송 − (couponDiscount + dealUsed + groupBuyPortion).
+    stage = 'compute-discount';
+    const discountBase = subtotal + shippingFee;
+    const clientDiscount = Math.max(0, Math.floor(Number((request as { discount_amount?: number | null }).discount_amount) || 0));
+    const clientCoupon = Math.max(0, Math.floor(Number((request as { coupon_discount?: number | null }).coupon_discount) || 0));
+    const reqDeal = Math.max(0, Math.floor(Number((request as { deal_used?: number | null }).deal_used) || 0));
+
+    // ① 쿠폰 — 클라 coupon_discount 를 권위 cap 이하로 인정 + 1회 소비.
+    const couponIdRaw = (request as { coupon_id?: number | string | null }).coupon_id;
+    const couponIdNum = couponIdRaw != null ? Number(couponIdRaw) : NaN;
+    let couponDiscount = 0;
+    let couponConsumed = false;
+    if (Number.isFinite(couponIdNum) && couponIdNum > 0 && clientCoupon > 0) {
+      try {
+        const coupon = await c.env.DB.prepare(
+          'SELECT type, value, max_discount, min_order_amount, total_count, used_count, expires_at, starts_at FROM coupons WHERE id = ? AND is_active = 1'
+        ).bind(couponIdNum).first<{ type: string; value: number; max_discount: number | null; min_order_amount: number | null; total_count: number | null; used_count: number | null; expires_at: string | null; starts_at: string | null }>();
+        if (coupon) {
+          const now = Date.now();
+          const expired = coupon.expires_at ? new Date(coupon.expires_at).getTime() < now : false;
+          const notStarted = coupon.starts_at ? new Date(coupon.starts_at).getTime() > now : false;
+          const soldOut = (coupon.total_count ?? 0) > 0 && (coupon.used_count ?? 0) >= (coupon.total_count ?? 0);
+          const belowMin = discountBase < Number(coupon.min_order_amount ?? 0);
+          if (!expired && !notStarted && !soldOut && !belowMin) {
+            // 권위 상한 — 클라가 이보다 더 주장해도 cap 으로 잘림(과다할인 차단).
+            const cap = computeCouponDiscount(coupon, discountBase);
+            const claimed = Math.min(clientCoupon, cap);
+            if (claimed > 0) {
+              // 원자 소비 — UNIQUE(coupon_id,user_id). order_id 는 생성 후 링크(아래 best-effort).
+              try {
+                const ins = await c.env.DB.prepare(
+                  'INSERT INTO coupon_uses (coupon_id, user_id, order_id, discount_amount) VALUES (?, ?, NULL, ?)'
+                ).bind(couponIdNum, userId, claimed).run();
+                if ((ins.meta?.changes ?? 0) > 0) {
+                  couponDiscount = claimed;
+                  couponConsumed = true;
+                  await c.env.DB.prepare(
+                    'UPDATE coupons SET used_count = used_count + 1 WHERE id = ? AND (total_count = 0 OR used_count < total_count)'
+                  ).bind(couponIdNum).run().catch(() => {});
+                }
+              } catch { /* UNIQUE 위반 = 이미 사용 → couponDiscount 0 (할인 없음) */ }
+            }
+          }
+        }
+      } catch { /* 쿠폰 조회 실패 → 할인 없이 진행 (주문 차단 안 함) */ }
+    }
+
+    // ② 딜 포인트 — 클라 deal_used 를 잔액·잔여로 클램프 (실제 잔액 차감은 /confirm 성공 시).
+    let dealUsed = 0;
+    if (reqDeal > 0) {
+      try {
+        const bal = await c.env.DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
+          .bind(userId).first<{ balance: number }>();
+        const balance = Math.max(0, Number(bal?.balance ?? 0));
+        const remaining = Math.max(0, discountBase - couponDiscount);
+        dealUsed = Math.min(reqDeal, balance, remaining);
+      } catch { dealUsed = 0; }
+    }
+
+    // ③ 공구할인 portion = 총할인 − 클라쿠폰 − 클라딜 (클램프). 잔액/쿠폰 차감 후 남은 한도 내.
+    const groupBuyPortion = Math.min(
+      Math.max(0, clientDiscount - clientCoupon - reqDeal),
+      Math.max(0, discountBase - couponDiscount - dealUsed),
+    );
+
+    const serverDiscount = Math.min(discountBase, couponDiscount + dealUsed + groupBuyPortion);
+
     // Create order (재고 차감 완료 후 주문 생성)
     // Note: repository 내부에서 seller_id 빈 문자열 → null 변환 처리
     stage = 'create-order';
     let order;
     try {
-      order = await orderRepo.createOrder(userId, request, orderItems, subtotal, shippingFee);
+      order = await orderRepo.createOrder(userId, request, orderItems, subtotal, shippingFee, { discountAmount: serverDiscount });
       // 🛡️ 2026-05-25 (migration 0279): region_code + extra_shipping_fee 부착 (best-effort).
       //   createOrder 시그니처는 V1 호환 유지. 후속 UPDATE 로 신규 컬럼만 채움.
       if (order?.id && (regionCode !== 'normal' || extraShippingFee > 0)) {
@@ -305,7 +390,21 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
           `UPDATE orders SET region_code = ?, extra_shipping_fee = ? WHERE id = ?`,
         ).bind(regionCode, extraShippingFee, order.id).run().catch(() => {})
       }
+      // 💸 딜 사용분 저장(/confirm 성공 시 이 값만큼 잔액 차감) + 쿠폰 사용행을 주문에 링크(환불 역전용).
+      if (order?.id && dealUsed > 0) {
+        await ensureOrdersDealUsed(c.env.DB);
+        await c.env.DB.prepare('UPDATE orders SET deal_used = ? WHERE id = ?').bind(dealUsed, order.id).run().catch(() => {})
+      }
+      if (order?.id && couponConsumed) {
+        await c.env.DB.prepare('UPDATE coupon_uses SET order_id = ? WHERE coupon_id = ? AND user_id = ? AND order_id IS NULL')
+          .bind(order.id, couponIdNum, userId).run().catch(() => {})
+      }
     } catch (createErr) {
+      // 💸 쿠폰 소비 롤백 (주문 실패 → 쿠폰 미사용 복원). 딜은 아직 미차감(/confirm)이라 복원 불필요.
+      if (couponConsumed) {
+        await c.env.DB.prepare('DELETE FROM coupon_uses WHERE coupon_id = ? AND user_id = ? AND order_id IS NULL').bind(couponIdNum, userId).run().catch(() => {})
+        await c.env.DB.prepare('UPDATE coupons SET used_count = MAX(0, used_count - 1) WHERE id = ?').bind(couponIdNum).run().catch(() => {})
+      }
       // 주문 생성 실패 시 이미 차감한 재고를 복구 (보상 트랜잭션)
       console.error('[ORDERS] createOrder failed, restoring stock:', createErr);
       const restoreStmts = orderItems.map(item => ({

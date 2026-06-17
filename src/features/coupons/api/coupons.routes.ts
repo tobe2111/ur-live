@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
+import { computeCouponDiscount } from '../coupon-discount'
 import type { Env } from '@/worker/types/env'
 const couponRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -79,22 +80,9 @@ couponRoutes.post('/use', rateLimit({ action: 'coupon_use', max: 5, windowSec: 6
   if (!coupon) return c.json({ success: false, error: '유효하지 않은 쿠폰입니다' }, 404)
 
   // ✅ Use authoritative order.total_amount (ignore any client-supplied order_amount)
+  // ✅ 2026-06-17: 계산 로직을 순수 SSOT(computeCouponDiscount)로 위임 — /api/orders 주문생성과 동일 규칙.
   const amountBase = Number(order.total_amount) || 0
-  let computed = coupon.type === 'percent'
-    ? Math.round(amountBase * coupon.value / 100)
-    : coupon.value
-
-  // ✅ Percent coupons MUST have a max_discount cap; fall back to order amount
-  //    to prevent excessive discounts on manipulated / large orders.
-  if (coupon.type === 'percent') {
-    const cap = coupon.max_discount ?? amountBase
-    if (computed > cap) computed = cap
-  } else if (coupon.max_discount && computed > coupon.max_discount) {
-    computed = coupon.max_discount
-  }
-  // Never exceed the order total
-  if (computed > amountBase) computed = amountBase
-  if (computed < 0) computed = 0
+  const computed = computeCouponDiscount(coupon, amountBase)
 
   // ✅ CONCURRENCY: UNIQUE(coupon_id, user_id) guarantees single-use.
   //    If two concurrent requests both pass the earlier SELECT check,
