@@ -786,7 +786,7 @@ export default function GroupBuyListPage() {
             )}
 
             {loading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {[...Array(4)].map((_, i) => (
                   <div key={i}>
                     <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-xl" />
@@ -841,7 +841,7 @@ export default function GroupBuyListPage() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5">
                 {filtered.slice(0, visibleCount).map((p, idx) => (
                   <GroupBuyGridCard
                     key={p.id}

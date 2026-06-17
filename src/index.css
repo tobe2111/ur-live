@@ -723,6 +723,16 @@ html.dark .gbd {
   html.dark .mobile-app-container.app-framed {
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 50px rgba(0, 0, 0, 0.5);
   }
+  /* 📐 고정 바(sticky/fixed footer·header) 프레임 정렬 — 페이지마다 className 에 `app-frame-bar` 추가만 하면
+     lg+ 에서 프레임 폭(var(--app-frame))에 맞춰 가운데. 모바일(<lg)은 페이지 기존 left-0 right-0 유지.
+     !important 로 Tailwind xl:left-56 / inset-x-0 / left-0 right-0 오버라이드. */
+  .app-frame-bar {
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: 100% !important;
+    max-width: var(--app-frame, 430px) !important;
+  }
 }
 
 /* PC 콘텐츠 폭 토큰 — 페이지별 max-width 가이드.

@@ -36,20 +36,22 @@ const HIDE_SIDEBAR_PREFIXES = [
 ]
 
 // 📐 2026-06-16: PC 컨슈머 프레임 적용 경로 (단계적 롤아웃).
-//   1단계: 리디자인 대상 group-buy 상세에서 미관(폭/배경) 확정 → 이후 컨슈머 전체로 확장.
-//   ⚠️ 확장 시 각 페이지의 fixed 하단/상단 바를 프레임 폭(var(--app-frame))에 맞춰야 함
-//      (xl:left-56 / left-0 right-0 / lg:max-w-[720px] → lg:left-1/2 -translate-x-1/2 max-w-[var(--app-frame)]).
-const FRAME_PREFIXES = [
-  '/group-buy/',   // 공구 상세 (리스트 '/group-buy' 는 그리드 — 후속 단계, 별도 폭)
-]
+//   전체 컨슈머 롤아웃 (2026-06-17): 대시보드/도매몰/비디오 제외 모든 컨슈머 페이지에 프레임.
+//   각 페이지의 fixed 하단/상단 바는 `.app-frame-bar` 클래스로 프레임 폭에 정렬 (index.css).
+// 📐 그리드/피드/리스트 페이지 — 넓은 프레임(720, 2-3열). 그 외 컨슈머는 430(모바일 폭).
+const GRID_FRAME_PATHS = new Set([
+  '/', '/group-buy', '/vouchers', '/browse', '/meal-vouchers', '/stays',
+  '/wishlist', '/mypage/wishlist', '/interest-list', '/following', '/my/follows',
+])
 
 export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   const location = useLocation()
   const mobileOnly = MOBILE_ONLY_PREFIXES.some(p => location.pathname.startsWith(p))
   const hideSidebar = HIDE_SIDEBAR_PREFIXES.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
   const showSidebar = !hideSidebar
-  // 컨슈머 프레임 — 대시보드/도매몰/비디오는 제외.
-  const framed = !mobileOnly && !hideSidebar && FRAME_PREFIXES.some(p => location.pathname.startsWith(p))
+  // 컨슈머 프레임 — 대시보드/도매몰/비디오는 제외 (전 컨슈머 적용).
+  const framed = !mobileOnly && !hideSidebar
+  const frameWidth = GRID_FRAME_PATHS.has(location.pathname) ? '720px' : '430px'
   return (
     <>
       {/* PC (xl+) 좌측 사이드바 — 일반 페이지 + 라이브/쇼츠 (fixed). */}
@@ -60,7 +62,7 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
       <div
         className={`mobile-app-container ${framed ? 'app-framed' : (showSidebar && !mobileOnly ? 'md:pl-[60px] xl:pl-56' : '')}`}
         data-mobile-only={mobileOnly ? 'true' : 'false'}
-        style={framed ? ({ '--app-frame': '430px' } as CSSProperties) : undefined}
+        style={framed ? ({ '--app-frame': frameWidth } as CSSProperties) : undefined}
       >
         {children}
       </div>
