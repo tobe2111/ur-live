@@ -134,6 +134,16 @@
 - **수정(올바른 방향)**: 숙소는 전용 `/stays`(=`/api/group-buy/stays/search`, product_stay_info join)에서만 표시. ① 숙소 탭/사이드바 → `/stays` 환원 ② `GroupBuyListPage` 클라 필터에 `stay_voucher` **그리드 전역 제외**(전체 포함 — ₩0 카드 누수 차단) ③ 인라인용 stay 카드 라우팅/뱃지/CTA·Calendar import 정리(clean revert) ④ **`/stays` 헤더에 동네딜 카테고리 칩 추가**(전체/맛집식사권/미용/숙소(active)/기타/일반상품) — 숙소가 "다른 카테고리처럼" 보이길 원한 최초 요구를 예약 흐름 깨지 않고 충족(내비 일관성).
 - 일반 상품 피드 수정([UNLOCK_LOADING])·i18n·PC 바탕 다크는 그대로 유효. 검증: tsc 0 · build 0 · 테마·머니패턴 통과 · i18n 키 타 사용처 0(이모지 부작용 없음).
 
+## ✅ 2026-06-17 — 크리에이터→판매자 통합 + 링크샵 flip-flop 수정 (사용자 "모두 진행")
+**배경**: 사용자가 링크샵(`/u/{handle}`)이 새로고침마다 셀러↔핀 "왔다갔다" 신고 + "사업자 등록한 유저가 자기 상품도 올리게" 요청. AskUserQuestion 으로 (어드민 승인 후 판매 / 인라인+제한 대시보드) 확정 후 4건 진행.
+- **#0 발견 가능성 (commit 54a7dd0)**: 카카오 유저는 마이페이지 셀러전환 버튼이 숨겨져(`SellerSwitchInline` is_kakao_user && !has_seller→null) 사업자 등록해도 판매 입구가 안 보였음. CuratorEarningsPage 에 `SellOwnProductsCTA`(셀러 상태별: 없음→등록 / pending / approved→등록·대시보드 / rejected) 추가.
+- **#2 flip-flop 근본수정 (commit 05f4eed, [UNLOCK_LOADING])**: `/api/curator/:handle` `publicCache(300)+cacheControl(60,900)` → `edgeCache(300)`. 원인: publicCache(bypassIfAuthed:false)가 URL-key 캐시를 소유자에게도 서빙 + cacheControl 이 핸들러의 owner `no-store`(curator.routes:178)를 덮어씀 → `linked_seller`(셀러 inline vs 핀)가 stale↔fresh 튐. edgeCache 는 인증요청 우회 → 소유자 항상 fresh. 익명/SSR self-fetch/cron 은 caches.default 캐싱 → SSR 0-RTT/CDN분리/useKv:false 불변. audit log 기록됨.
+- **#1 사업자정보 이중입력 제거 (commit b4f62b7)**: 현행 모델(SERVICE_MODEL v2 "셀러=매장")에서 판매=매장(store_owner) 등록. CTA 타깃을 비활성 `/seller/register/business` → 현행 `/seller/register/supplier`(register-from-user store_owner). SellerRegisterSupplierPage 가 `?from=curator` 진입 시 `/api/curator/me/business` 의 상호/사업자번호로 폼 자동채움(빈 필드만, representative/start_date 는 큐레이터측 미저장).
+- **#3a 인라인 빠른 상품등록 (commit c4be6f8)**: 승인 판매자는 콘솔에서 `QuickProductModal`(상품명/가격/재고/카테고리)로 대시보드 안 나가고 등록. 기존 POST /api/seller/products 재활용, 셀러토큰 transient(switch-to-seller accessToken 헤더만, localStorage 미저장). 이미지/상세는 대시보드에서.
+- **#3b 제한 대시보드**: SellerLayout 의 mode/hideFor/seller_type 스코핑으로 **이미 충족**(store_owner=라이브·큐레이터·영입·prospects 숨김) → 무변경(튜닝된 공용 nav 회귀방지).
+- 검증: tsc 0 · `npm run build`(client+worker) 0 · 테마검사 통과. 잠금 파일: edge-cache.ts/curator 핸들러 무수정(미들웨어 1줄만).
+- ⚠️ **미검증(실환경 권장)**: ① flip-flop 실제 해소 prod 확인(승인직후 ≤900s 익명캐시 transition 은 cron/TTL self-heal) ② 매장 가입→어드민 승인→인라인 등록 E2E 1회 ③ QuickProductModal 의 transient 토큰 상품등록 실결제전 1회.
+
 ## ✅ 2026-06-17 — 동네딜 카테고리 마감재 4종 (사용자 "모두 다 이상적으로")
 **배경**: 숙소 인라인화·일반상품 추가 후 "더 이상적으로?" → 4건 전부 진행.
 - **#1 일반 상품 구조적 빈 카테고리 근본수정** (`group-buy-public.routes.ts`, [UNLOCK_LOADING]): general 이 `VOUCHER_CATEGORIES` 에 없어 항상 voucher 폴백 → 클라 필터에서 0개로 사라지던 버그. `category=general` 요청 시에만 `categories=['general']`. **기본 피드/캐시/SSR/Cache-Control 전부 불변**(general 전용 캐시키 신규). ※ "총 0개"의 나머지(맛집/미용/숙소)는 **실데이터 없음**(코드 정상) — 활성 group_buy 상품 등록 필요.
