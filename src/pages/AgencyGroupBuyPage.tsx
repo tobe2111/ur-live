@@ -327,16 +327,12 @@ export default function AgencyGroupBuyPage() {
   const loading = listQ.isLoading
   const fetchData = (_tab?: TabKey) => { listQ.refetch(); statsQ.refetch() }
 
-  // 🏁 2026-06-17 (공구 집중): 에이전시 실제 수수료율(profile.commission_rate) 사용 — 기존 하드코딩 3% 제거.
-  //   주석에 명시돼 있던 '미구현 fallback' 을 완성. platform 기본 2.0% (대시보드와 동일 default).
-  const agencyCommissionPct = useApiQuery<number>(['agency', 'gb-commission'], '/api/agency/profile', {
-    select: (r: any) => (r?.success && typeof r.data?.commission_rate === 'number' ? r.data.commission_rate : 2.0),
-  }).data ?? 2.0
-
-  // 에이전시 예상 수익 = 확정가 × 참여자 × 수수료율 (추정치).
-  function estimateAgencyRevenue(g: GroupBuy): number {
+  // 🏪 2026-06-17 (정합성): 동네 공구 확정에는 에이전시 직접 적립 코드가 없음(확인). 기존 '예상 수익'(확정가×참여자×
+  //   수수료율)은 실제 정산 없는 오해 소지 라벨이라 **예상 거래액(GMV = 확정가 × 참여자)** 으로 정정.
+  //   에이전시 실수익은 이 공구가 영입 매장으로 전환될 때 store-intro commission 에서 발생.
+  function estimateDealGmv(g: GroupBuy): number {
     if (!g.confirmed_price || !g.participant_count) return 0
-    return Math.round(g.confirmed_price * g.participant_count * (agencyCommissionPct / 100))
+    return Math.round(g.confirmed_price * g.participant_count)
   }
 
   useEffect(() => {
@@ -415,7 +411,7 @@ export default function AgencyGroupBuyPage() {
           ) : groupBuys.length === 0 ? (
             <p className="px-4 py-8 text-center text-gray-400">{t('agency.groupBuy.empty', { defaultValue: '해당하는 공구가 없습니다.' })}</p>
           ) : groupBuys.map(g => {
-            const revenue = estimateAgencyRevenue(g)
+            const gmv = estimateDealGmv(g)
             return (
               <div key={g.id} className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
@@ -439,9 +435,9 @@ export default function AgencyGroupBuyPage() {
                     <p className="font-bold text-gray-900">{formatNumber(g.total_deposit_deals || 0)}</p>
                   </div>
                   <div>
-                    <p className="text-gray-400">예상 수익</p>
+                    <p className="text-gray-400">{t('agency.groupBuy.dealGmv', { defaultValue: '예상 거래액' })}</p>
                     <p className="font-bold text-emerald-600">
-                      {revenue > 0 ? `₩${formatNumber(revenue)}` : '-'}
+                      {gmv > 0 ? `₩${formatNumber(gmv)}` : '-'}
                     </p>
                   </div>
                 </div>
@@ -485,7 +481,7 @@ export default function AgencyGroupBuyPage() {
                   t('agency.groupBuy.colAddress', { defaultValue: '주소' }),
                   t('agency.groupBuy.colParticipants', { defaultValue: '참여자' }),
                   t('agency.groupBuy.colTotalDeposit', { defaultValue: '총 예치 딜' }),
-                  t('agency.groupBuy.colRevenue', { defaultValue: '예상 수익' }),
+                  t('agency.groupBuy.colGmv', { defaultValue: '예상 거래액' }),
                   t('common.status', { defaultValue: '상태' }),
                   t('agency.groupBuy.colExpiry', { defaultValue: '만료일' }),
                   t('common.action', { defaultValue: '액션' }),
@@ -510,10 +506,10 @@ export default function AgencyGroupBuyPage() {
                   <td className="px-4 py-3 font-semibold text-gray-900">{formatNumber(g.total_deposit_deals || 0)} {t('common.deal', { defaultValue: '딜' })}</td>
                   <td className="px-4 py-3">
                     {(() => {
-                      const r = estimateAgencyRevenue(g)
-                      return r > 0
-                        ? <span className="font-bold text-emerald-600">₩{formatNumber(r)}</span>
-                        : <span className="text-gray-400 text-xs">미확정</span>
+                      const gmv = estimateDealGmv(g)
+                      return gmv > 0
+                        ? <span className="font-bold text-emerald-600">₩{formatNumber(gmv)}</span>
+                        : <span className="text-gray-400 text-xs">{t('agency.groupBuy.pending', { defaultValue: '미확정' })}</span>
                     })()}
                   </td>
                   <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_CLS_GB[g.status] || 'bg-gray-100 text-gray-600'}`}>{t(`agency.groupBuy.status.${g.status}`, { defaultValue: g.status })}</span></td>
