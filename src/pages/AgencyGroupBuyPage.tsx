@@ -50,6 +50,18 @@ function StatCard({ label, value, icon: Icon, color, sub }: {
   )
 }
 
+// 🏁 2026-06-17 (전수조사): 백엔드 community_group_buys 컬럼명(current_count/target_count/total_deposited)을
+//   이 페이지가 쓰는 필드명(participant_count/target_participants/total_deposit_deals)으로 정규화.
+//   이전엔 매핑이 없어 참여자/예치/예상수익이 전부 undefined·0 으로 표시됐음(피드 백엔드는 소비자 공유라 미변경).
+function normalizeGroupBuy(raw: any): GroupBuy {
+  return {
+    ...raw,
+    participant_count: raw?.participant_count ?? raw?.current_count ?? 0,
+    target_participants: raw?.target_participants ?? raw?.target_count ?? 0,
+    total_deposit_deals: raw?.total_deposit_deals ?? raw?.total_deposited ?? 0,
+  }
+}
+
 const STATUS_CLS_GB: Record<string, string> = {
   proposed:    'bg-blue-100 text-blue-700',
   negotiating: 'bg-amber-100 text-amber-700',
@@ -298,10 +310,10 @@ export default function AgencyGroupBuyPage() {
   const statsUrl = '/api/community-group-buy/list?sort=popular'
 
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 fetchData → useApiQuery 2개(tab 리스트 + stats용 전체).
-  const listQ = useApiQuery<GroupBuy[]>(['agency', 'gb-list', tab], listUrl, { select: (r: any) => (r?.data || []) })
+  const listQ = useApiQuery<GroupBuy[]>(['agency', 'gb-list', tab], listUrl, { select: (r: any) => (r?.data || []).map(normalizeGroupBuy) })
   const statsQ = useApiQuery<Stats>(['agency', 'gb-stats'], statsUrl, {
     select: (r: any) => {
-      const all: GroupBuy[] = r?.data || []
+      const all: GroupBuy[] = (r?.data || []).map(normalizeGroupBuy)
       return {
         active: all.filter(g => ['proposed', 'negotiating'].includes(g.status)).length,
         total_participants: all.reduce((sum, g) => sum + (g.participant_count || 0), 0),

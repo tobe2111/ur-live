@@ -39,9 +39,18 @@ export default function AgencyStreamsPage() {
   const [filter, setFilter] = useState<'all' | 'live' | 'ended'>('all')
   const token = localStorage.getItem('agency_token')
   // 🛡️ 2026-06-01 Tier2(대시보드): 수동 페칭 → useApiQuery.
+  // 🏁 2026-06-17 (전수조사): 백엔드 /streams 는 current_viewers/scheduled_at 를 반환하는데
+  //   이 페이지는 viewer_count/started_at 로 읽어 시청자수가 항상 0, 시간 라벨 미표시였음. 정규화로 매핑.
   const { data: streams = [], isLoading: loading } = useApiQuery<Stream[]>(
     ['agency', 'streams'], '/api/agency/streams',
-    { select: (r: any) => r?.data || [], enabled: !!token },
+    {
+      select: (r: any) => (r?.data || []).map((s: any) => ({
+        ...s,
+        viewer_count: s?.viewer_count ?? s?.current_viewers ?? 0,
+        started_at: s?.started_at ?? s?.scheduled_at ?? s?.created_at ?? null,
+      })),
+      enabled: !!token,
+    },
   )
 
   useEffect(() => {

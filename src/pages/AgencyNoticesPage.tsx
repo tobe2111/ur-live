@@ -27,8 +27,8 @@ export default function AgencyNoticesPage() {
   }, [token, navigate])
 
   const handleSend = async () => {
-    if (!title.trim() || !message.trim()) { toast.error('제목과 내용을 입력해주세요'); return }
-    if (!(await confirmDialog('소속 셀러 전원에게 공지를 발송하시겠습니까?'))) return
+    if (!title.trim() || !message.trim()) { toast.error(t('agency.notices.inputRequired', { defaultValue: '제목과 내용을 입력해주세요' })); return }
+    if (!(await confirmDialog(t('agency.notices.confirmSend', { defaultValue: '소속 셀러 전원에게 공지를 발송하시겠습니까?' })))) return
     setSending(true)
     try {
       const res = await api.post('/api/agency/notices', { title: title.trim(), message: message.trim() })
@@ -37,7 +37,7 @@ export default function AgencyNoticesPage() {
         setTitle(''); setMessage('')
         refetch()
       }
-    } catch { toast.error('발송 실패') }
+    } catch { toast.error(t('agency.notices.sendFailed', { defaultValue: '발송 실패' })) }
     finally { setSending(false) }
   }
 
@@ -52,33 +52,33 @@ export default function AgencyNoticesPage() {
         />
 
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-          <h2 className="text-sm font-bold text-gray-900 mb-3">새 공지 작성</h2>
+          <h2 className="text-sm font-bold text-gray-900 mb-3">{t('agency.notices.newNotice', { defaultValue: '새 공지 작성' })}</h2>
           <input
             value={title} onChange={e => setTitle(e.target.value)}
-            placeholder="공지 제목" maxLength={100}
+            placeholder={t('agency.notices.titlePlaceholder', { defaultValue: '공지 제목' })} maxLength={100}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 mb-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <textarea
             value={message} onChange={e => setMessage(e.target.value)}
-            placeholder="공지 내용을 입력하세요" rows={4} maxLength={500}
+            placeholder={t('agency.notices.messagePlaceholder', { defaultValue: '공지 내용을 입력하세요' })} rows={4} maxLength={500}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 mb-3 resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <button onClick={handleSend} disabled={sending}
             className="px-6 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            전체 셀러에게 발송
+            {t('agency.notices.sendToAll', { defaultValue: '전체 셀러에게 발송' })}
           </button>
         </div>
 
-        <h2 className="text-sm font-bold text-gray-900 mb-3">발송 이력</h2>
+        <h2 className="text-sm font-bold text-gray-900 mb-3">{t('agency.notices.sendHistory', { defaultValue: '발송 이력' })}</h2>
         {loading ? (
           <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>
         ) : notices.length === 0 ? (
-          <p className="text-center py-8 text-gray-500 text-sm">발송된 공지가 없습니다</p>
+          <p className="text-center py-8 text-gray-500 text-sm">{t('agency.notices.empty', { defaultValue: '발송된 공지가 없습니다' })}</p>
         ) : (
           <div className="space-y-3">
             {notices.map((n, i) => (
-              <div key={i} className="bg-white rounded-xl border border-gray-200 p-4">
+              <div key={n.id ?? i} className="bg-white rounded-xl border border-gray-200 p-4">
                 <div className="flex items-center gap-2 mb-1">
                   <Bell className="w-4 h-4 text-blue-500" />
                   <span className="text-sm font-bold text-gray-900">{n.title}</span>

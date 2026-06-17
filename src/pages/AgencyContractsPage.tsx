@@ -31,24 +31,24 @@ export default function AgencyContractsPage() {
   }, [token, navigate])
 
   const handleCreate = async () => {
-    if (!form.seller_id || !form.start_date || !form.end_date) { toast.error('필수 항목을 입력해주세요'); return }
+    if (!form.seller_id || !form.start_date || !form.end_date) { toast.error(t('agency.contracts.requiredFields', { defaultValue: '필수 항목을 입력해주세요' })); return }
     try {
       await api.post('/api/agency/contracts', { ...form, seller_id: Number(form.seller_id) }, { headers })
-      toast.success('계약 등록 완료'); setShowForm(false); setForm({ seller_id: '', start_date: '', end_date: '', terms: '' }); load()
+      toast.success(t('agency.contracts.createDone', { defaultValue: '계약 등록 완료' })); setShowForm(false); setForm({ seller_id: '', start_date: '', end_date: '', terms: '' }); load()
     } catch (e: any) {
       const code = e?.response?.data?.code
       if (code === 'PIN_REQUIRED') { setPinPrompt('create'); return }
       if (code === 'PIN_NOT_SET') {
-        toast.error('보안 PIN이 설정되지 않았어요. 프로필에서 먼저 설정해주세요.')
+        toast.error(t('agency.contracts.pinNotSet', { defaultValue: '보안 PIN이 설정되지 않았어요. 프로필에서 먼저 설정해주세요.' }))
         navigate('/agency/profile')
         return
       }
-      toast.error(e?.response?.data?.error || '등록 실패')
+      toast.error(e?.response?.data?.error || t('agency.contracts.createFailed', { defaultValue: '등록 실패' }))
     }
   }
 
   const terminate = async (id: number) => {
-    if (!(await confirmDialog('계약을 종료하시겠습니까?'))) return
+    if (!(await confirmDialog(t('agency.contracts.confirmTerminate', { defaultValue: '계약을 종료하시겠습니까?' })))) return
     try {
       await api.put(`/api/agency/contracts/${id}`, { status: 'terminated' }, { headers })
       load()
@@ -56,11 +56,11 @@ export default function AgencyContractsPage() {
       const code = e?.response?.data?.code
       if (code === 'PIN_REQUIRED') { setPinPrompt({ id, status: 'terminated' }); return }
       if (code === 'PIN_NOT_SET') {
-        toast.error('보안 PIN이 설정되지 않았어요. 프로필에서 먼저 설정해주세요.')
+        toast.error(t('agency.contracts.pinNotSet', { defaultValue: '보안 PIN이 설정되지 않았어요. 프로필에서 먼저 설정해주세요.' }))
         navigate('/agency/profile')
         return
       }
-      toast.error(e?.response?.data?.error || '계약 종료에 실패했습니다.')
+      toast.error(e?.response?.data?.error || t('agency.contracts.terminateFailed', { defaultValue: '계약 종료에 실패했습니다.' }))
     }
   }
 
@@ -77,7 +77,7 @@ export default function AgencyContractsPage() {
           actions={
             <button onClick={() => setShowForm(!showForm)}
               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">
-              <Plus className="h-3.5 w-3.5" /> 계약 등록
+              <Plus className="h-3.5 w-3.5" /> {t('agency.contracts.createContract', { defaultValue: '계약 등록' })}
             </button>
           }
         />
@@ -86,30 +86,30 @@ export default function AgencyContractsPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
             <select value={form.seller_id} onChange={e => setForm(f => ({ ...f, seller_id: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900">
-              <option value="">셀러 선택</option>
+              <option value="">{t('agency.contracts.selectSeller', { defaultValue: '셀러 선택' })}</option>
               {sellers.map((s: { id: number; name: string; email: string }) => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>)}
             </select>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-gray-500">계약 시작일</label>
+                <label className="text-xs text-gray-500">{t('agency.contracts.startDate', { defaultValue: '계약 시작일' })}</label>
                 <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               </div>
               <div>
-                <label className="text-xs text-gray-500">계약 종료일</label>
+                <label className="text-xs text-gray-500">{t('agency.contracts.endDate', { defaultValue: '계약 종료일' })}</label>
                 <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               </div>
             </div>
             <textarea value={form.terms} onChange={e => setForm(f => ({ ...f, terms: e.target.value }))}
-              placeholder="계약 조건 (선택)" rows={3}
+              placeholder={t('agency.contracts.termsPlaceholder', { defaultValue: '계약 조건 (선택)' })} rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 resize-none" />
-            <button onClick={handleCreate} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold">등록</button>
+            <button onClick={handleCreate} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold">{t('agency.contracts.submit', { defaultValue: '등록' })}</button>
           </div>
         )}
 
         {loading ? <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div> : contracts.length === 0 ? (
-          <p className="text-center py-12 text-gray-500">등록된 계약이 없습니다</p>
+          <p className="text-center py-12 text-gray-500">{t('agency.contracts.empty', { defaultValue: '등록된 계약이 없습니다' })}</p>
         ) : (
           <div className="space-y-3">
             {contracts.map((c: { id: number; seller_name: string; seller_email?: string; start_date: string; end_date: string; terms?: string; status?: string }) => {
@@ -127,17 +127,17 @@ export default function AgencyContractsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {isExpiring && <span className="flex items-center gap-1 text-xs text-amber-600 font-medium"><AlertTriangle className="w-3 h-3" /> 만료 {daysLeft}일 전</span>}
-                      {isExpired && <span className="text-xs text-red-600 font-medium">만료됨</span>}
-                      {c.status === 'terminated' && <span className="text-xs text-gray-500">종료</span>}
+                      {isExpiring && <span className="flex items-center gap-1 text-xs text-amber-600 font-medium"><AlertTriangle className="w-3 h-3" /> {t('agency.contracts.expiringInDays', { defaultValue: '만료 {{days}}일 전', days: daysLeft })}</span>}
+                      {isExpired && <span className="text-xs text-red-600 font-medium">{t('agency.contracts.expired', { defaultValue: '만료됨' })}</span>}
+                      {c.status === 'terminated' && <span className="text-xs text-gray-500">{t('agency.contracts.terminated', { defaultValue: '종료' })}</span>}
                       {c.status === 'active' && !isExpired && (
-                        <button onClick={() => terminate(c.id)} className="text-xs text-red-500 font-medium">종료</button>
+                        <button onClick={() => terminate(c.id)} className="text-xs text-red-500 font-medium">{t('agency.contracts.terminate', { defaultValue: '종료' })}</button>
                       )}
                     </div>
                   </div>
                   <div className="flex gap-4 mt-2 text-xs text-gray-500">
-                    <span>시작: {c.start_date}</span>
-                    <span>종료: {c.end_date}</span>
+                    <span>{t('agency.contracts.startLabel', { defaultValue: '시작' })}: {c.start_date}</span>
+                    <span>{t('agency.contracts.endLabel', { defaultValue: '종료' })}: {c.end_date}</span>
                   </div>
                   {c.terms && <p className="mt-2 text-xs text-gray-600 bg-gray-50 rounded-lg p-2">{c.terms}</p>}
                 </div>

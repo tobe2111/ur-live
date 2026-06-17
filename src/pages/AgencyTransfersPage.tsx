@@ -41,8 +41,10 @@ export default function AgencyTransfersPage() {
     ['agency', 'transfers'], '/api/agency/transfers',
     { select: (r: any) => (r?.success ? r.data || [] : []) },
   )
+  // 🏁 2026-06-17 (전수조사): /api/agency/me 는 존재하지 않아 항상 404 → myAgencyId=null →
+  //   받은/보낸 이전 분류가 깨짐(받은 이전 영구 0, 보낸 이전에 전부 노출). /api/agency/profile 이 data.id 반환.
   const meQ = useApiQuery<number | null>(
-    ['agency', 'me-id'], '/api/agency/me',
+    ['agency', 'me-id'], '/api/agency/profile',
     { select: (r: any) => (r?.data?.id ? Number(r.data.id) : null) },
   )
   const myAgencyId = meQ.data ?? null
