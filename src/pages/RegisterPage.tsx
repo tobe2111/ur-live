@@ -6,6 +6,7 @@ import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/config/region'
 import { toast } from '@/hooks/useToast'
+import { hasConsumerSession } from '@/utils/auth'
 import { Eye, EyeOff } from 'lucide-react'
 
 export default function RegisterPage() {
@@ -23,7 +24,7 @@ export default function RegisterPage() {
   const isAuthReady = isKR ? krIsAuthReady : worldIsAuthReady
   const signupWithEmailAction = krSignupWithEmail
 
-  const isLoggedIn = !!user || (localStorage.getItem('user_type') === 'user' && !!localStorage.getItem('user_id'))
+  const isLoggedIn = !!user || hasConsumerSession()
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
