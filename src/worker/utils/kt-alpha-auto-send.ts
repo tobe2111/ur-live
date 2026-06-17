@@ -184,8 +184,13 @@ export async function autoSendKtAlphaVouchersForOrders(
           errors.push(`voucher_orders INSERT 실패 (order ${oid}, code ${item.kt_alpha_gift_code}): ${voInsertErr}`)
         }
 
+        // 🔢 2026-06-17 (#4 인앱 바코드): KT_ALPHA_PIN_MODE='1' 이면 PIN 모드(gubun:'Y')로 pinNo 수신 →
+        //   voucher_orders.coupon_code 에 저장(카드가 CODE128 바코드 렌더). PIN 모드 실패(계약 미허용 등) 시
+        //   MMS('N') 로 안전 폴백 → 발송 누락 0. 플래그 OFF(기본)면 기존 MMS 그대로(바코드 없음).
+        //   ⚠️ PIN 모드는 자체발송(giftishow 자동 MMS 안 감) — 켜기 전 giftishow 계약/발송채널 확인 필수.
+        const usePin = (env as { KT_ALPHA_PIN_MODE?: string }).KT_ALPHA_PIN_MODE === '1'
         try {
-          const res = await sendCoupon(env, {
+          const baseArgs = {
             goodsCode: item.kt_alpha_gift_code,
             phoneNo: phone,
             callbackNo,
@@ -195,14 +200,23 @@ export async function autoSendKtAlphaVouchersForOrders(
             trId,
             userId: ktUserId,
             orderNo: `c-${oid}-${i + 1}`,
-            gubun: 'N',
             templateId,
             bannerId,
-          })
+          }
+          let res: { code: string; message: string; orderNo?: string; pinNo?: string }
+          if (usePin) {
+            try { res = await sendCoupon(env, { ...baseArgs, gubun: 'Y' }) }
+            catch (pinErr) {
+              if (import.meta.env?.DEV) console.warn('[kt-alpha] PIN 모드 실패 → MMS 폴백:', String(pinErr))
+              res = await sendCoupon(env, { ...baseArgs, gubun: 'N' })
+            }
+          } else {
+            res = await sendCoupon(env, { ...baseArgs, gubun: 'N' })
+          }
           if (voId) {
             await env.DB.prepare(
-              `UPDATE voucher_orders SET status = 'sent', external_order_id = ?, sent_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
-            ).bind(res.orderNo || trId, voId).run().catch(() => { /* noop */ })
+              `UPDATE voucher_orders SET status = 'sent', external_order_id = ?, coupon_code = COALESCE(?, coupon_code), sent_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+            ).bind(res.orderNo || trId, res.pinNo || null, voId).run().catch(() => { /* noop */ })
           }
           totalSent++
         } catch (sendErr) {
