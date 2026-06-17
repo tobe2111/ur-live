@@ -35,6 +35,8 @@ export function useGroupBuyProduct(id: number | string | undefined) {
     queryKey: queryKeys.groupBuyProduct(productId || 'none'),
     queryFn: () => fetchGroupBuyProduct(productId).catch(() => readCache<GroupBuyProduct | null>(`gb:${productId}`, null)),
     initialData: () => readCache<GroupBuyProduct | null>(`gb:${productId}`, null),
+    // 🛠️ 2026-06-17 (근본수정): 캐시 seed 즉시 stale → cold mount 1회 서버 보정(SSR 0-RTT paint 무관).
+    initialDataUpdatedAt: 0,
     placeholderData: () => {
       if (!productId) return undefined
       const lists = qc.getQueriesData<GroupBuyProduct[]>({ queryKey: queryKeys.groupBuy() })

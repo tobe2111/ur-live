@@ -24,6 +24,9 @@ export function useUnreadCount() {
         return safe
       }).catch(() => readCache<number>(CACHE_KEY, 0)),
     initialData: () => readCache<number>(CACHE_KEY, 0),
+    // 🛠️ 2026-06-17 (근본수정): 캐시 seed 즉시 stale → cold mount 즉시 보정. 없으면 첫 60초 동안
+    //   refetchInterval 첫 발동 전까지 잘못된 0 안읽음 뱃지.
+    initialDataUpdatedAt: 0,
     enabled: isLoggedInSync(),
     staleTime: 60_000,
     gcTime: 30 * 60 * 1000,
