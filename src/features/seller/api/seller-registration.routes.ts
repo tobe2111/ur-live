@@ -369,6 +369,14 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     const user = await db.prepare('SELECT name, email FROM users WHERE id = ?').bind(userId).first<Record<string, any>>();
     const userName = user?.name || sessionUser.name || '셀러';
     const userEmail = user?.email || sessionUser.email || '';
+    // 🏁 2026-06-17 (#2 정체성 연속성): 유저가 사업자 유저가 돼도 /u/{handle} 링크샵 정체성(배너/소개/
+    //   사진/SNS)이 유지되도록, 큐레이터 프로필을 신규 셀러로 1회 복사할 준비. 컬럼 없는 env 대비 별도 try.
+    let curatorProfile: Record<string, any> | null = null;
+    try {
+      curatorProfile = await db.prepare(
+        'SELECT profile_image, bio, banner_url, instagram_url, youtube_url FROM users WHERE id = ?'
+      ).bind(userId).first<Record<string, any>>();
+    } catch { /* 프로필 컬럼 없는 env — 복사 생략 */ }
 
     // 유저명 기반 username 생성 (중복 방지)
     let username = `user_${userId}`;
@@ -470,6 +478,25 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
 
     if (!result.success) {
       throw new Error('Failed to create seller account');
+    }
+
+    // 🏁 2026-06-17 (#2 정체성 연속성): 큐레이터 프로필 → 신규 셀러 1회 복사(빈 값 skip). best-effort —
+    //   컬럼 없는 env / 실패해도 가입은 성공. 승인되면 /u/{handle} 가 빈 셀러프로필 대신 큐레이터 브랜딩 유지.
+    const newSellerId = result?.meta?.last_row_id;
+    if (newSellerId && curatorProfile) {
+      const sets: string[] = [];
+      const vals: any[] = [];
+      for (const [col, srcKey] of [
+        ['profile_image', 'profile_image'], ['bio', 'bio'], ['banner_url', 'banner_url'],
+        ['sns_instagram', 'instagram_url'], ['sns_youtube', 'youtube_url'],
+      ] as const) {
+        const v = curatorProfile[srcKey];
+        if (v != null && String(v).trim() !== '') { sets.push(`${col} = ?`); vals.push(v); }
+      }
+      if (sets.length) {
+        await db.prepare(`UPDATE sellers SET ${sets.join(', ')} WHERE id = ?`)
+          .bind(...vals, newSellerId).run().catch(() => { /* 컬럼 없는 env — skip */ });
+      }
     }
 
     const { createDashboardNotification: notify } = await import('../../notifications/api/dashboard-notifications.routes');
