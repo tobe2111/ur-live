@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 도매 어드민 페이지 정리 1차 (대표 확정: 데모 중복 제거 + 무결성 강등)
+**배경**: 도매 어드민 18개 페이지 전수 감사(에이전트 병렬) — 빈 스텁/삭제 대상은 0(전부 실동작). 비이상 4건 중 대표가 저위험 2건 선택(등급 페이지 분할은 머니 크리티컬이라 별도 보류).
+- **① 데모 시딩 중복 제거**: `seed-demo-products`가 '상품 일괄 등록'(`AdminWholesaleImportPage`, 현황통계·정리·경고 완비)과 '유통사 등급'(`AdminDistributorGradesPage`) 양쪽에 중복 → **Import 로 일원화**. 등급 페이지에서 데모 섹션 JSX·함수(`seedDemoProducts`/`clearDemoProducts`)·`demoBusy` 상태 제거(등급/마진 전용으로 정리). `confirmDialog` 등 잔여 import 는 타 사용처 있어 유지.
+- **② 무결성 페이지 강등**: `도매 무결성`(진단 전용 — 고아 데이터 표시)을 `AdminLayout` 상단 nav('도매몰·정산' 그룹)에서 제거 → `AdminWholesaleOverviewPage` Totals strip 아래 '데이터 무결성 점검' 링크로 접근. **라우트(`admin.routes.tsx:324`)·페이지·API 전부 유지** — nav 노출만 강등(가역). `Shield`는 타 nav 사용 중이라 import 보존.
+- 검증: tsc 0 · `npm run build` 0 · 대시보드 테마(변경 3파일 위반 0). 머니 로직 무변경.
+- **보류(대표 미선택)**: 등급 페이지(1,207줄, 12기능) 분할 — 마진·신용·정산 얽힘으로 staging E2E 필수, 별도 신중 진행. 프리미엄관↔등급 가격 겹침도 분할 시 함께 정리.
+
 ## 🔐 2026-06-17 — 대시보드 토큰 httpOnly 쿠키 전환 (XSS 하드닝, 옵션 C) — 설계 박제 / 단계 구현 대기
 **배경**: 사용자 "모두 가장 이상적으로 진행". 대시보드 토큰(seller/admin/agency/supplier + refresh)이 localStorage 라 XSS 시 탈취·30일 takeover 가능 — 외부 파트너(도매 admin·제조사) 증가로 노출↑. 목표 = JS 못 읽는 httpOnly 쿠키 의존(방어심화).
 - **설계 문서**: `docs/design/dashboard-cookie-auth.md` (현황 해부 + 단계 + 리스크/E2E 체크리스트 + 롤백).
