@@ -46,6 +46,25 @@ interface VoucherProduct {
   seller_name?: string | null
 }
 
+/**
+ * 🧹 2026-06-17 (사용자 반복 요청): 소비자 교환권 화면에서 공급사(KT Alpha) 내부 정책 표기 제거.
+ *
+ * 배경: KT Alpha 카탈로그 sync 가 과거 description 에 "(KT Alpha B2B 정책)" 괄호를 붙여 저장 →
+ *   sync 코드는 commit addbc2b 에서 고쳤지만 **이미 prod DB 에 저장된 description 행은 그대로** 라
+ *   같은 상품을 다시 봐도 계속 노출됨. DB 재동기화 없이도 즉시 사라지도록 렌더 시점에서 strip.
+ *   (공급사명 노출 방지 — 환불/사용 안내 같은 정상 문구는 보존.)
+ */
+function stripSupplierPolicy(desc: string): string {
+  return desc
+    // 괄호 표기: "(KT Alpha B2B 정책)", "(KT Alpha B2B 쿠폰 정책)" 등
+    .replace(/\s*\([^)]*KT\s*Alpha[^)]*정책[^)]*\)/gi, '')
+    // 괄호 없이 들어온 잔여 표기
+    .replace(/\s*KT\s*Alpha\s*B2B\s*(?:쿠폰\s*)?정책/gi, '')
+    .split('\n').map(l => l.replace(/[ \t]+$/g, '')).join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 export default function VoucherDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -207,10 +226,12 @@ export default function VoucherDetailPage() {
   // 🎨 2026-06-17 (리디자인): 로그인 시에만 잔액 박스 노출. 교환 후 = 보유 − 결제 딜.
   const loggedIn = isLoggedInSync()
   const afterBalance = balance - total
+  // 🧹 공급사(KT Alpha) 내부 정책 표기 제거 후 표시 (prod DB 잔존 행도 즉시 정리).
+  const cleanDescription = product.description ? stripSupplierPolicy(product.description) : ''
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-52 lg:pb-40">
-      <SEO title={`${product.name} 교환권 - 유어딜`} description={product.description || ''} url={`/vouchers/${product.id}`} noindex />
+      <SEO title={`${product.name} 교환권 - 유어딜`} description={cleanDescription} url={`/vouchers/${product.id}`} noindex />
 
       {/* 🛡️ 2026-06-16 (사용자 요청): 상단 '바우처' 타이틀 바 제거. 🎨 2026-06-17 리디자인: 헤더 바 + 뒤로가기. */}
       <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur">
@@ -282,9 +303,9 @@ export default function VoucherDetailPage() {
           </div>
 
           {/* 🎨 2026-06-17 (사용자 요청): 상품 상세 내용은 '매장에서 바코드 제시 후 사용 가능' 아래에. */}
-          {product.description && (
+          {cleanDescription && (
             <div className="mt-5 pt-5 border-t border-[#EEF0F3] dark:border-[#1A1A1A]">
-              <p className="text-[13px] text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">{product.description}</p>
+              <p className="text-[13px] text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">{cleanDescription}</p>
             </div>
           )}
         </div>
