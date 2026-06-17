@@ -169,6 +169,50 @@ guideRoutes.delete('/:type/:sectionKey', async (c) => {
   }
 })
 
+// ── POST /api/guides/:type/reseed — 관리자 전용 강제 재시드 (해당 type 전체 교체) ──
+// 🏁 2026-06-17: guide-seed-*.ts 내용 변경을 기존 DB 에 반영하는 운영 도구.
+//   ensureSeeded 는 '0행일 때만 INSERT OR IGNORE' 라 코드(시드) 변경이 자동 반영 안 됨 →
+//   이 엔드포인트로 해당 guide_type 전체 DELETE 후 시드에서 재삽입.
+//   ⚠️ 관리자 수동 편집분도 덮어씀 → body { confirm: true } 필수(footgun 가드).
+guideRoutes.post('/:type/reseed', async (c) => {
+  const type = c.req.param('type') as GuideType
+  if (!VALID_GUIDE_TYPES.includes(type)) {
+    return c.json({ success: false, error: 'Invalid guide type' }, 400)
+  }
+  const user = await requireRole(c, ['admin'])
+  if (!user) return c.json({ success: false, error: '관리자만 재시드 가능합니다' }, 403)
+
+  try {
+    const body = await c.req.json<{ confirm?: boolean }>().catch(() => ({} as { confirm?: boolean }))
+    if (!body?.confirm) {
+      return c.json({ success: false, error: '재시드는 기존 가이드 내용을 전부 교체합니다. { "confirm": true } 로 다시 요청하세요.' }, 400)
+    }
+
+    const { GUIDE_SEEDS } = await import('./guide-seed')
+    const seed = GUIDE_SEEDS[type] || []
+    if (seed.length === 0) {
+      return c.json({ success: false, error: '해당 type 의 시드가 없습니다' }, 400)
+    }
+
+    await c.env.DB.prepare('DELETE FROM operation_guides WHERE guide_type = ?').bind(type).run()
+    let inserted = 0
+    for (const s of seed) {
+      try {
+        await c.env.DB.prepare(
+          `INSERT INTO operation_guides
+           (guide_type, section_key, section_icon, section_title, section_order, content_md, updated_by, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+        ).bind(type, s.key, s.icon, s.title, s.order, s.content, user.id).run()
+        inserted++
+      } catch { /* skip bad section */ }
+    }
+    _done_ensureSeeded.delete(c.env.DB)
+    return c.json({ success: true, message: `${type} 가이드 ${inserted}개 섹션 재시드 완료`, inserted })
+  } catch (err) {
+    return safeError(c, err, '재시드 중 오류가 발생했습니다', '[guide]')
+  }
+})
+
 export default guideRoutes
 
 

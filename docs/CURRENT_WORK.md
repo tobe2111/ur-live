@@ -8,6 +8,12 @@
 - **남은 운영 액션(이 환경 불가)**: ②에이전시↔셀러 3중 연결(agency_sellers/agency_id/introduced_by) 전역 SSOT 통일은 다수 쿼리 영향이라 위험 — #1 로 가장 가시적 증상은 해소, 전역 통일은 별도 신중 작업. ④자동정산 staging 실결제 E2E 1회. ⑫운영 가이드 prod 재시드.
 - 검증: 전 batch client+worker build exit 0 · 테마 clean.
 
+### ➕ 잔여 3건 — 코드/런북으로 최대치 처리 (대표 "남은 작업도 다")
+- **② 스코프 정합(추가 코드)**: `disputes/agency-overview`(공구 alert 소스)의 active_groups/at_risk/churn 을 `sellers.agency_id` → **`introduced_by_agency_id` OR `agency_sellers`** 로 변경(KPI #1 과 동일 스코프) → 대시보드 "진행중 공구" KPI 와 alert 배지가 **같은 숫자**. 컬럼 collapse 는 의미 상이(영입≠관리)+머니 위험이라 **금지** 결정, SSOT 문서화. drift 가능성은 향후 과제로 명시.
+- **⑫ 재시드(신규 엔드포인트)**: `POST /api/guides/:type/reseed`(admin, `{confirm:true}`) — 해당 type 전체 DELETE 후 시드 재삽입. 운영자가 raw SQL 없이 변경된 가이드를 prod 반영. footgun 가드(confirm 필수).
+- **④ E2E 런북**: `docs/AGENCY_SETTLEMENT_E2E.md` 신설 — store-intro commission + auto-settle 2경로 검증 단계·SQL·통과기준. (실결제는 여전히 권한자 staging 실행.)
+- 검증: worker+client build exit 0.
+
 ## ✅ 2026-06-17 — 에이전시 대시보드 '매장 영입' 중심 전면 재편 (대표 AskUserQuestion="메인+사이드바 전면 재편")
 **배경**: 대표 통찰 — 공구 모델에서 에이전시의 본질은 **매장 영입**(오프라인 가게를 입점→공구 운영)이고 '소속 셀러 매니징'은 라이브 시대 유산. 매장 영입 **엔진**(결제확정 시 `creditAgencyStoreIntroCommission` 실호출=가입 ₩30,000+매출 2%·멱등, 월 ₩50,000 cron, 환불역전, introduced-stores/prospects 페이지)은 이미 잘 배선됨 — **대시보드 IA가 여전히 소속 셀러 중심**이던 갭을 해소(소속 셀러 기능은 전부 코드/경로 보존, 노출만 강등).
 - **사이드바**(`AgencyLayout`): '매장 영입' 그룹을 대시보드 바로 아래 **최상단**으로 신설(내 입점 가게·매장 영입 현황·공동구매·숙소). 소속 셀러(담당 셀러·랭킹·비교·셀러영입·이전 + 라이브현황·방송캘린더)는 **'셀러 관리' 보조 그룹**으로 강등. 하단 CTA '셀러 초대'→**'가게 영입'**(/introduced-stores), 미니통계 '담당 N셀러'→**'영입 N가게'**(summary fetch).
