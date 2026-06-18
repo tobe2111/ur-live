@@ -407,6 +407,15 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     `).bind(orderNumber, userId, product.seller_id, totalAmount, totalAmount, payment_method === 'deal' ? 'deal_points' : 'toss', idempotency_key || null).first<{ id: number }>()
     const newOrderId = orderInsert?.id ?? null
 
+    // 🧹 2026-06-18: orders.commission_rate/amount/seller_amount 를 실제 계산값으로 채움(컬럼 청소 —
+    //   미설정 시 DB 기본값 10%/0 stale 잔존). 공구 정산은 이 컬럼을 안 읽음(표시 정합용, 돈 무관).
+    //   commission_rate 컬럼은 퍼센트 단위(기본 10.0)라 fraction×100 저장. best-effort(실패해도 결제 불막음).
+    if (newOrderId) {
+      await DB.prepare('UPDATE orders SET commission_rate = ?, commission_amount = ?, seller_amount = ? WHERE id = ?')
+        .bind(Math.round(commissionRate * 10000) / 100, commissionAmount, sellerAmount, newOrderId)
+        .run().catch(swallow('group-buy:join:commission-cols'))
+    }
+
     // 🛡️ 2026-05-15: Double-entry ledger 기록 (정합성 검증 가능)
     try {
       await recordLedger(DB, {
@@ -1155,6 +1164,13 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
       productReferralDisabled: Number(product.referral_disabled) === 1,
     })
     const sellerAmount = expectedAmount - commissionAmount - influencerAmount - userBonusAmount
+    // 🧹 2026-06-18: orders.commission_rate/amount/seller_amount 실제값 채움(컬럼 청소 — stale 10%/0 방지).
+    //   퍼센트 단위라 fraction×100. 정산 미사용(표시 정합용). best-effort.
+    if (newOrderId) {
+      await DB.prepare('UPDATE orders SET commission_rate = ?, commission_amount = ?, seller_amount = ? WHERE id = ?')
+        .bind(Math.round(commissionRate * 10000) / 100, commissionAmount, sellerAmount, newOrderId)
+        .run().catch(swallow('group-buy:confirm-toss:commission-cols'))
+    }
     try {
       await recordLedger(DB, {
         event_type: 'group_buy_join',
