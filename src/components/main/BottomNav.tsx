@@ -129,7 +129,7 @@ export default function BottomNav() {
   //   - linked_seller_username 캐시 있으면 /profile/{username} 직행 (셀러 공개페이지)
   //   - user_handle 캐시 있으면 /u/{handle} 직행 (큐레이터 공개페이지)
   //   - 캐시 없으면 /u/me (UMeRedirectPage 가 1회 API 호출 후 캐시 저장)
-  //   - 미로그인이면 /host/new (카탈로그 — 첫 핀 시 자동 handle 생성)
+  //   - 미로그인이면 /u/me (로그인 후 UMeRedirect 가 본인 핸들 해석 → /u/{handle}, 신규만 /host/new 폴백)
   // 🛡️ 2026-05-27 (영구 fix): seller_token JWT payload 에서 username 추출.
   //   문제: seller_username localStorage cache 가 없을 때 (KakaoCallback fix 이전 로그인 등)
   //   /u/me 로 fallback → curator dashboard API → linked_user_id 매핑 없으면 /host/new fall through.
@@ -137,10 +137,13 @@ export default function BottomNav() {
   //   localStorage 도 update → 다음부터 직접 cache 사용.
   // 🛡️ 2026-05-28 [UNLOCK_LOADING] (SSR Phase 2 잔여): linkshopPath → useState + useEffect.
   //   render 함수 안 localStorage 직접 호출 제거 (SSR-safe). 동작 동일.
-  const [linkshopPath, setLinkshopPath] = useState('/host/new')
+  const [linkshopPath, setLinkshopPath] = useState('/u/me')
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (!isLoggedIn) { setLinkshopPath('/host/new'); return }
+    // 🔗 2026-06-17 [UNLOCK_LOADING] (사용자 "가장 이상적으로"): 로그아웃 시 /host/new(만들기) → /u/me.
+    //   /u/me 도 로그인을 요구하지만 로그인 후 본인 핸들을 해석 → 기존 유저는 /u/{handle}(자기 링크샵),
+    //   핸들 없는 신규만 UMeRedirect 가 /host/new 로 폴백. 기존: 이미 링크샵 있는 사람도 만들기 페이지에 떨궈짐.
+    if (!isLoggedIn) { setLinkshopPath('/u/me'); return }
     try {
       // 🏭 2026-06-05: stale/예약 핸들 가드 (옛 'user' generic 핸들 등 → /u/user 400 차단).
       const RESERVED = new Set(['user', 'me', 'admin', 'seller', 'api', 'host', 'new'])
