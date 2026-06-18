@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 const CuratorPinsSection = lazy(() => import('./seller-public/CuratorPinsSection'))
+// 🏁 2026-06-18 (사용자 결정 — 승인 사업자 상점 바로등록): 오너가 대시보드 안 가고 링크샵에서 바로 상품 등록.
+const QuickProductModal = lazy(() => import('./curator-page/QuickProductModal'))
 import { lazy, Suspense } from 'react'
 import EditorialProductCard from '@/components/linkshop/EditorialProductCard'
 import { useTranslation } from 'react-i18next'
@@ -47,6 +49,14 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
   const [tab, setTab] = useState<Tab>('home')
   // 🔍 2026-06-16 링크샵 시안: 상품 탭 검색 (이름 필터).
   const [shopQuery, setShopQuery] = useState('')
+  // 🏁 2026-06-18 (승인 사업자 상점 바로등록): 오너 빠른 상품 등록 모달 + 성공 시 상품목록 갱신.
+  const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const refreshProducts = () => {
+    if (!seller?.id) return
+    api.get(`/api/products?seller_id=${seller.id}&limit=20`)
+      .then(r => setProducts(r.data.data || []))
+      .catch(() => { /* graceful */ })
+  }
 
   // 셀러 본인인지 확인 (편집 버튼 표시용) — seller 로드 후 id/username 비교
   // 🛡️ 2026-04-30: 듀얼 세션 (user_type='user' + seller_token 동시 보유) 도 owner 인정.
@@ -306,6 +316,14 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
         <div className="sticky top-0 z-30 bg-[#141A2E] text-white px-3.5 py-2.5 text-[12.5px] font-semibold flex items-center justify-between gap-2">
           <span className="flex items-center gap-2 min-w-0"><span className="text-[#FF5634] text-[14px] leading-none shrink-0">✎</span><span className="truncate">{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 사진·이름·소개를 눌러 바로 수정하세요' })}</span></span>
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* 🏁 2026-06-18 (사용자 결정): 링크샵에서 바로 내 상품 등록 (대시보드 안 나감). */}
+            <button
+              type="button"
+              onClick={() => setShowQuickAdd(true)}
+              className="px-2.5 py-1 bg-[#FF5634] hover:bg-[#e84a2b] rounded-lg text-[11px] font-bold whitespace-nowrap"
+            >
+              + 상품 등록
+            </button>
             <button
               type="button"
               onClick={() => setPreviewAsVisitor(true)}
@@ -322,6 +340,15 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
             </button>
           </div>
         </div>
+      )}
+      {/* 🏁 2026-06-18 (사용자 결정): 오너 빠른 상품 등록 모달 — 성공 시 상품 목록 즉시 갱신. */}
+      {ownerView && showQuickAdd && (
+        <Suspense fallback={null}>
+          <QuickProductModal
+            onClose={() => setShowQuickAdd(false)}
+            onSuccess={() => { setShowQuickAdd(false); refreshProducts() }}
+          />
+        </Suspense>
       )}
       {/* 🎨 2026-06-17 (#6 통일): 방문자 미리보기 중 — 큐레이터 링크샵과 동일 패턴. theme-dual: 의도적 네이비 */}
       {isOwner && previewAsVisitor && (
