@@ -21,7 +21,8 @@ export default function LinkshopMobileQR() {
     // xl+ 에서만 (프레임 우측 gutter 확보) · fixed 우하단.
     <div className="hidden xl:flex fixed bottom-6 right-6 z-30 flex-col items-center gap-2 rounded-2xl bg-white dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] shadow-lg p-3">
       <Suspense fallback={<div className="w-[104px] h-[104px] rounded-lg bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />}>
-        <div className="rounded-lg bg-white p-1.5">
+        {/* QR 은 스캔성 위해 다크에서도 흰 배경 유지 (의도적 양모드 흰색). */}
+        <div className="rounded-lg bg-white dark:bg-white p-1.5">
           <QRCodeSVG value={url} size={104} level="M" />
         </div>
       </Suspense>
