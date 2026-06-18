@@ -32,6 +32,9 @@ import LinkshopOnboardModal from './curator-page/LinkshopOnboardModal'
 // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있으면 같은 페이지에서 SellerPublicPage 직접 render.
 //   redirect 없음 — URL 그대로 (/u/:handle 유지). lazy chunk — 일반 user 진입 시 chunk fetch 안 함.
 const SellerPublicPage = lazy(() => import('./SellerPublicPage'))
+// 🏁 2026-06-18 (사용자 결정 — 사업자 진입 "상태별 직접 노출"): 링크샵 오너뷰에 판매 진입 CTA.
+//   owner-only 렌더라 lazy — 방문자/익명 첫 paint 청크 불변.
+const SellOwnProductsCTA = lazy(() => import('./curator-page/SellOwnProductsCTA'))
 
 // 🧭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — 링크샵 로딩 김): 모듈 메모리 캐시 + 진입 전 워밍.
 //   SPA 탭 진입은 SSR 미주입 → 매 마운트 cold fetch. 동네딜(warmGroupBuyList)과 동일 패턴:
@@ -309,6 +312,13 @@ export default function CuratorPage() {
         {/* 🛠️ 2026-06-16: 핀이 있을 때만 적립 — 갓 가입(온보딩)·빈 링크샵엔 0/0/0 노이즈 숨김.
             2026-06-17 (C): 큰 네이비 카드 → 한 줄 compact (상세는 콘솔). */}
         {ownerView && pins.length > 0 && !reorderMode && <OwnerEarningsStrip />}
+        {/* 🏁 2026-06-18 (사용자 결정 — 사업자 진입 "상태별 직접 노출"): 오너 화면에 판매 진입 CTA
+            (미등록=사업자 등록 / 승인=빠른 상품등록+셀러 대시보드 / 심사·반려=상태). reorder 중엔 숨김. */}
+        {ownerView && !reorderMode && (
+          <div className="max-w-3xl mx-auto px-4 pt-3">
+            <Suspense fallback={null}><SellOwnProductsCTA /></Suspense>
+          </div>
+        )}
         {/* 🎨 2026-06-17 (사용자 요청 — 오너 화면 불일치 해소): 오너도 방문자와 동일한 그라데이션 카드 그리드를
             기본으로 보고, 카드마다 삭제(✕) + '순서 바꾸기'(드래그 모드)만 추가. 빈 링크샵은 온보딩 빈 상태. */}
         {ownerView && pins.length === 0 ? (
