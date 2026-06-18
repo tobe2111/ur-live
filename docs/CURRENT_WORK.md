@@ -1,5 +1,8 @@
 # 🚧 진행 중 작업
 
+## 🎯 2026-06-18 — 사업자 유저 타겟 포지셔닝 메모 (대표 방향, 코드 미변경)
+대표 방향: **사업자 유저의 메인 타겟 = "자신의 쇼핑몰을 갖고 싶은 유저"**. `/u/{handle}` = 본인 쇼핑몰, **본인 상품이 주인공**, 공구권은 부가 채널. AskUserQuestion 결과 "지금은 방향만 메모" → 코드 변경 없이 SSOT 문서(CLAUDE.md 명칭 SSOT · SERVICE_MODEL.md)에 기록만. **다음 구현 시 적용 후보**: ① 진입 문구 "사업자 등록"→"내 쇼핑몰 열기"(등록은 그 안 1단계) ② 승인 사업자 상점(SellerPublicPage) 기본/첫화면 상품 우선·공구권 보조탭 ③ 빈 상점 문구 "내 쇼핑몰에 첫 상품을 올려보세요".
+
 ## 🏬 2026-06-18 — 멀티-몰 "몰=도메인=계정" 확정 + `resolveMallId` host-first 전환 (대표 결정: 유통사/제조사 몰별 별도 로그인)
 **결정**: flip-flop 의 뿌리가 멀티-몰 모델 애매함. 대표가 "유통사/제조사는 몰별 별도 로그인 = `1 몰=1 도메인=그 도메인 계정·카탈로그`" 확정. 설계 박제: `docs/design/multi-mall-auth.md`.
 - **Step 1 완료(이번 커밋)**: `wholesale-malls.ts resolveMallId` **account-first → host-first**. 우선순위 `?mall=slug > host > 1` (계정 토큰은 mall 결정에서 제외, `accountMallId()` 제거). 게스트/로그인 카탈로그 **일관성 확보 → flip-flop 종류 버그 제거**. **단일 몰(1)+단일 호스트 = byte-identical(모두 1) → INVARIANT 유지**. 머니(예치금/주문/정산)는 seller_id/supplier_id 격리라 무영향. 신규 유닛테스트 3개(토큰 있어도 host 우선·게스트=로그인 동일·supplier 동일) → 33 pass.
