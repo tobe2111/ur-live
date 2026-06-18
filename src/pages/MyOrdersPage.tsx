@@ -25,6 +25,39 @@ import CancelOrderModal from './my-orders/CancelOrderModal'
 //   미사용 import (Badge, X, Truck, ChevronRight, formatKST, formatNumber,
 //   getTrackingUrl, OrderItem) 정리.
 
+// 🛡️ 2026-06-18: 첫 페인트 스켈레톤 — 검색바 + 탭 + 카드 3개 형태 (스피너-온리 금지).
+function OrdersSkeleton() {
+  return (
+    <div className="space-y-4 animate-pulse" aria-hidden="true">
+      <div className="h-11 rounded-xl bg-gray-100 dark:bg-[#161616]" />
+      <div className="flex gap-5 border-b border-gray-100 dark:border-[#1A1A1A] pb-2.5">
+        {[40, 32, 44, 32].map((w, i) => (
+          <div key={i} className="h-4 rounded bg-gray-100 dark:bg-[#161616]" style={{ width: w }} />
+        ))}
+      </div>
+      <div className="space-y-3">
+        {[0, 1, 2].map(i => (
+          <div key={i} className="rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-4">
+            <div className="h-3 w-16 rounded bg-gray-100 dark:bg-[#161616] mb-3" />
+            <div className="flex gap-3">
+              <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#161616] shrink-0" />
+              <div className="flex-1 space-y-2 py-0.5">
+                <div className="h-3.5 w-3/4 rounded bg-gray-100 dark:bg-[#161616]" />
+                <div className="h-3 w-1/3 rounded bg-gray-100 dark:bg-[#161616]" />
+                <div className="h-3.5 w-1/4 rounded bg-gray-100 dark:bg-[#161616]" />
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-[#1A1A1A] flex justify-between">
+              <div className="h-5 w-20 rounded bg-gray-100 dark:bg-[#161616]" />
+              <div className="h-5 w-24 rounded bg-gray-100 dark:bg-[#161616]" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function MyOrdersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -146,26 +179,21 @@ export default function MyOrdersPage() {
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-safe-nav md:pb-20">
       <SEO title={t('myOrders.docTitle')} description={t('myOrders.seoDesc')} url="/my-orders" noindex />
 
-      {/* 헤더 — /cart 와 동일 패턴 (스티키 화이트 + 뒤로가기 + 가운데 제목) */}
+      {/* 헤더 — 무신사 스타일: 뒤로가기 + 좌측 large title */}
       <div className="sticky top-0 z-10 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
-        <div className="ur-content-medium flex items-center justify-between px-4 py-3">
-          <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back', { defaultValue: '뒤로' })} className="w-9 h-9 flex items-center justify-center">
+        <div className="ur-content-medium flex items-center gap-1 px-4 py-3">
+          <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back', { defaultValue: '뒤로' })} className="w-9 h-9 -ml-2 flex items-center justify-center">
             <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
           </button>
-          <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">{t('myOrders.title')}</h1>
-          <div className="w-9" />
+          <h1 className="text-[18px] font-extrabold text-gray-900 dark:text-white">{t('myOrders.title')}</h1>
         </div>
       </div>
 
       {/* Content */}
       <main className="ur-content-medium px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-              <p className="text-[17px] text-gray-500 dark:text-gray-400">{t('common.loading', { defaultValue: '로딩 중...' })}</p>
-            </div>
-          </div>
+          /* 🛡️ 2026-06-18: 스피너 → 스켈레톤 카드 (CLAUDE.md 첫 페인트 표준) */
+          <OrdersSkeleton />
         ) : error ? (
           /* ✅ UX C5 FIX: 에러 상태 + 재시도 버튼 (리다이렉트 루프 방지) */
           <div className="flex items-center justify-center py-20">
