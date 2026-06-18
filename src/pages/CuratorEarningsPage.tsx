@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { HOSTING_HIDDEN } from '@/shared/feature-flags'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { curatorApi, type DashboardStats } from '@/features/curator/api/curator-api'
@@ -92,18 +93,20 @@ export default function CuratorEarningsPage() {
         </header>
 
         <div className="max-w-3xl mx-auto px-4 py-6">
-          {/* 🏁 2026-06-15 (옵션 1 콘솔): 크리에이터 핵심 동선 빠른 진입 — 링크샵/공구 호스팅 */}
-          <div className="grid grid-cols-2 gap-2 mb-5">
+          {/* 🏁 2026-06-15 (옵션 1 콘솔): 크리에이터 핵심 동선 빠른 진입 — 링크샵. 🏁 2026-06-17: 공구 호스팅 숨김(HOSTING_HIDDEN) */}
+          <div className={`grid ${HOSTING_HIDDEN ? 'grid-cols-1' : 'grid-cols-2'} gap-2 mb-5`}>
             <Link to={handle ? `/u/${handle}` : '/u/me'}
               className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] active:bg-gray-200 dark:active:bg-white/[0.08] p-4 transition-colors">
               <p className="text-[13px] font-bold text-gray-900 dark:text-white">🔗 내 링크샵</p>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">상품 핀 추가·정렬·공유</p>
             </Link>
-            <Link to="/host"
-              className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] active:bg-gray-200 dark:active:bg-white/[0.08] p-4 transition-colors">
-              <p className="text-[13px] font-bold text-gray-900 dark:text-white">✨ 공구 호스팅</p>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">동네 공구 직접 제안</p>
-            </Link>
+            {!HOSTING_HIDDEN && (
+              <Link to="/host"
+                className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] active:bg-gray-200 dark:active:bg-white/[0.08] p-4 transition-colors">
+                <p className="text-[13px] font-bold text-gray-900 dark:text-white">✨ 공구 호스팅</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">동네 공구 직접 제안</p>
+              </Link>
+            )}
           </div>
           {loading ? (
             <p className="text-center text-gray-500 dark:text-gray-400 py-12">{t('common.loading')}</p>

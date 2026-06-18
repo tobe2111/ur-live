@@ -231,11 +231,27 @@ export class OrderRepository {
     const ids = orderIds.filter(id => id != null);
     if (ids.length === 0) return grouped;
     const ph = ids.map(() => '?').join(',');
-    const items = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT id, order_id, product_id, product_name, quantity, unit_price, subtotal, options
-       FROM order_items WHERE order_id IN (${ph}) ORDER BY order_id, id`,
-      ids
-    );
+    // 🛡️ 2026-06-18: 주문내역 썸네일(product_image 스냅샷) + 종류 분류(상품/교환권/공구)용
+    //   products JOIN(category/deal_only/group_buy_status). products 컬럼 누락 환경은
+    //   catch 로 최소 쿼리 fallback(종류='상품' 폴백, 썸네일은 order_items 스냅샷 유지).
+    let items: Record<string, unknown>[];
+    try {
+      items = await this.qb.queryMany<Record<string, unknown>>(
+        `SELECT oi.id, oi.order_id, oi.product_id, oi.product_name, oi.product_image,
+                oi.quantity, oi.unit_price, oi.subtotal, oi.options,
+                p.category AS product_category, p.deal_only AS deal_only, p.group_buy_status AS group_buy_status
+         FROM order_items oi
+         LEFT JOIN products p ON oi.product_id = p.id
+         WHERE oi.order_id IN (${ph}) ORDER BY oi.order_id, oi.id`,
+        ids
+      );
+    } catch {
+      items = await this.qb.queryMany<Record<string, unknown>>(
+        `SELECT id, order_id, product_id, product_name, product_image, quantity, unit_price, subtotal, options
+         FROM order_items WHERE order_id IN (${ph}) ORDER BY order_id, id`,
+        ids
+      );
+    }
     for (const it of items) {
       const k = String(it['order_id']);
       if (!grouped.has(k)) grouped.set(k, []);
@@ -711,6 +727,10 @@ export class OrderRepository {
         options: safeJsonParse(String(item['options'] ?? '{}'), {}),
         status: String(item['status'] ?? 'PENDING'),
         created_at: String(item['created_at'] ?? ''),
+        // 🛡️ 2026-06-18: 주문내역 종류 분류 신호 (products JOIN, 없으면 undefined → '상품' 폴백)
+        category: item['product_category'] != null ? String(item['product_category']) : undefined,
+        deal_only: item['deal_only'] != null ? Number(item['deal_only']) : undefined,
+        group_buy_status: item['group_buy_status'] != null ? String(item['group_buy_status']) : undefined,
       } satisfies OrderItem)),
     };
   }

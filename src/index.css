@@ -572,8 +572,8 @@ html {
    - `html.dark body` : 0,1,2 특이도 → `body.app-frame-host`(0,1,1)·`@media body{#111}`(0,0,1)
      를 결정적으로 이김. 라이트 모드(html.dark 부재)는 전부 불변 — 다크에서만 검정 추가.
    ⚠️ 라이트 그레이 gutter(#e9ebef)·프레임 box-shadow·프레임 폭 토큰은 건드리지 않음. */
-html.dark { background-color: #000000; }
-html.dark body { background-color: #000000; }
+html.dark { background-color: #0C0D10; }
+html.dark body { background-color: #0C0D10; }
 
 /* Hide scrollbar for horizontal scroll */
 .scrollbar-hide {
@@ -761,9 +761,9 @@ html.dark .gbd {
      (각 규칙이 독립적으로 평가되도록). `body.app-frame-host[.app-frame-dark]` 는 MobileAppLayout 이
      테마 store 의 applied 값으로 직접 토글 → 결정적으로 적용. */
   body.app-frame-host { background-color: #e9ebef; }
-  body.app-frame-host.app-frame-dark { background-color: #000000; }
+  body.app-frame-host.app-frame-dark { background-color: #0C0D10; }
   body:has(.mobile-app-container.app-framed) { background-color: #e9ebef; }
-  html.dark body:has(.mobile-app-container.app-framed) { background-color: #000000; }
+  html.dark body:has(.mobile-app-container.app-framed) { background-color: #0C0D10; }
   html.dark .mobile-app-container.app-framed {
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 50px rgba(0, 0, 0, 0.5);
   }
@@ -782,6 +782,15 @@ html.dark .gbd {
   body:has(.mobile-app-container.app-framed) .desktop-topnav {
     display: none !important;
   }
+  /* 📐 2026-06-17 (사용자 요청 — 액자 폭 430 단일화): 프레임은 폰 폭(430)인데 Tailwind 반응형
+     (sm/md/lg:)은 viewport(PC) 기준이라 좁은 액자 안에서 다열 그리드 / 2단 상세가 짓눌렸다.
+     프레임 안에선 '폰처럼' 모바일 기본 레이아웃으로 되돌린다.
+     이 규칙은 unlayered → Tailwind `@layer utilities` 보다 우선(특이도 무관)하므로 sm:/lg: 를 이김.
+     ⚠️ 정확한 클래스 조합만 타깃 — 프레임 밖(대시보드/도매몰)·무관 그리드엔 영향 0. */
+  .mobile-app-container.app-framed .grid-cols-2.sm\:grid-cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* 상품·핀 카드 → 2열(폰) */
+  .mobile-app-container.app-framed .grid-cols-4.sm\:grid-cols-5 { grid-template-columns: repeat(4, minmax(0, 1fr)); } /* 브랜드 칩 → 4열 */
+  .mobile-app-container.app-framed .lg\:grid-cols-5 { grid-template-columns: minmax(0, 1fr); }                       /* 상품상세 2단 → 단일 컬럼 */
+  .mobile-app-container.app-framed .lg\:sticky { position: static; }                                                 /* 상세 구매패널 sticky 해제(폰 흐름) */
 }
 
 /* PC 콘텐츠 폭 토큰 — 페이지별 max-width 가이드.

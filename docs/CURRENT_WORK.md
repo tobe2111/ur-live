@@ -10,6 +10,14 @@
 - **남은 액션(택1, 환경 제약으로 미완)**: ① 도매몰에서 F12→Network→`catalog` 응답헤더 `X-WS-*` 캡처 ② `/admin/wholesale-import` 🩺 진단패널 실행+캡처 ③ `live.ur-team.com` egress 허용 → 내가 직접 확정+1커밋 수정. **소비자 자동로그아웃 fail-safe(2026-06-17)로 flip-flop 트리거는 이미 완화.**
 - 검증: tsc 0 · build 0 · sql-bind 0 · schema 0.
 
+## ✅ 2026-06-18 — 주문내역(/my-orders) 무신사 스타일 리디자인 (대표 시안 2장 + "A로 진행")
+- **결정 A**: 종류 탭(전체/상품/교환권/공구) + 종류별 카드. 한 `orders` 테이블에 상품/교환권/공구가 섞여 있고(group-buy.routes 가 교환권·공구도 INSERT INTO orders) 카드 레이아웃이 달라야 해서 선택.
+- 분류 SSOT 신규 `src/shared/order-type.ts` `getOrderKind()` (product-flow.ts 정합: deal_only→교환권 / group_buy_status→공구 / else→상품).
+- **Phase0 데이터 버그 3건 동반수정**: ①상품별 "0원"(price_snapshot 직접곱) → `orderItemLineTotal()` ②썸네일 누락 → `order.repository.ts findItemsGrouped` 에 `product_image`+products JOIN ③배송비 하드코딩 3,000원 → `order.shipping_fee` 실값.
+- UI: `OrdersTab.tsx` 전면개편(검색+종류탭+날짜그룹+썸네일+종류별카드), `MyOrdersPage.tsx`(large title+스켈레톤), `OrderDetailModal.tsx`(결제 라인분해+썸네일+교환권/공구 배송섹션 숨김).
+- 검증: tsc 0 · build 0 · OrdersTab 단위 12 pass · guard(schema/sql-col/sql-bind/theme/col-budget/money) 전부 통과. 시안 박제: `docs/design/my-orders.md`.
+- 미구현(추후 결정): 프로모 배너 / 받은 혜택 섹션 / 구매내역 삭제(결정 #2~#4). ⚠️ worker 조회쿼리 변경 → staging 에서 상품/교환권/공구 각 1건 표시 확인 권장.
+
 ## ✅ 2026-06-18 — 도매몰 예치금 입금계좌 3곳 반영 (대표 제공: 우체국 014084-02-129530 송유미/사람과고리)
 유통사가 예치금(선불 충전)을 송금할 도매몰 입금계좌를 세 군데에 노출. 외부망(egress) 차단으로 prod API set 불가 → 코드/DB fallback 으로 배포 즉시 반영.
 - **① 어드민 설정칸**(`AdminWholesaleDepositsPage`): `/admin/wholesale-deposits` 상단 '예치금 입금 안내 계좌' 입력칸 신규(기존 GET/PUT `/api/admin/wholesale-deposit-account` 연결). 어드민이 수정 가능.
@@ -41,6 +49,14 @@
 - **원인**: `GET /voucher-orders` 가 **시간창 필터**(기본 24h, 최대 7일)로 row 를 거름 → **7일보다 오래되거나 24h 밖의 실패 건이 숨겨짐**. 대시보드 failed 카운트(admin-stats:151)는 **기간 무관 전체**라 "실패 N"은 뜨는데 목록 0건 → 불일치. (모든 voucher 는 source='kt_alpha' 라 출처 필터는 무관.)
 - **수정**: ① 백엔드 — `status=failed` 필터 시 `created_at` 시간 조건 **제거**(모든 실패 항상 표시·재발송 가능). stats 에 `failed_all`(기간 무관 전체 실패) 추가. ② 프론트 — `failed_all>0` 이면 **상단 빨강 배너** "발송 실패 N건(기간 무관)" + '모두 보기' 버튼(failed 필터). failed 필터 시 "기간 무관 전체" 주석. 시간창 통계(processing/sent/failed)는 기존대로 윈도우 유지.
 - 검증: tsc 0 · build 0 · 대시보드 테마 0 · sql-bind 0(시간조건은 sanitized number 인터폴레이션, bind 무변경).
+
+## ✅ 2026-06-18 — 하이퍼로컬 토대: 매장 행정동(洞) 자동 태깅 (대표 "쓰자" — 콜드스타트 밀도전략)
+**배경**: 콜드스타트는 "한 동네 밀도" 전략인데, 매장이 좌표(lat/lng)만 있고 "무슨 동"인지 모름 → "내 동네 딜"·동별 밀도 집계 불가. 카카오 `coord2regioncode`(좌표→행정동, 안 쓰던 기능)로 자동 태깅.
+- **1단계(이번 — 매장 태깅)**: `restaurant-geocode` cron 확장. Pass A(주소→좌표) 직후 `coord2regioncode`로 동 태깅, Pass B(좌표 있으나 미태깅 기존 매장 백필). 행정동(H) 우선·법정동(B) 폴백.
+- **저장**: 신규 테이블 `product_regions`(product_id PK, region_si/gu/dong/dong_code, lat/lng) — **products 컬럼 예산제 회피**(별도 테이블이라 budget check 신규 0). `region_dong_code` 인덱스(동별 집계/향후 피드 조인). repair-schema + cron ensure(멱등) 등록.
+- **카카오라 저렴**(무료 한도 30만/일, batch 수백) + 결제·잠긴 피드쿼리 무수정. 실패 row 는 다음 cron 자연 재시도(region_dong NULL → Pass B 재처리).
+- **검증**: tsc 0 · worker build 0 · sql-bind/sql-column(tables 279 인식)/products-budget(신규 0)/schema-refs clean.
+- **다음 단계(미착수)**: 2단계 유저 동 태깅(위치/주소) → 3단계 피드 "내 동네 딜" 필터 + "우리 동네 N개" 카피 + 어드민 동별 밀도 집계(영입 타겟). 네이버 DataLab 수요신호를 소비자 머천다이징 캘린더에 재사용(코드 재활용).
 
 ## ✅ 2026-06-17 — 에이전시 매장 영입 개선점 12종 일괄 (대표 "모두 진행, 가장 이상적으로")
 전면 재편 후 발견된 개선점 12개를 우선순위로 처리(🔴 정합성 → 🟡 완결성 → 🟢/검증).
