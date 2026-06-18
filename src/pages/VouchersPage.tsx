@@ -592,23 +592,26 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       )}
       </div>{/* /reveal 그룹 */}
 
-      {/* 🛡️ 2026-05-21: 정렬 옵션 (사용자 요청 — 가격순/인기순 등). */}
-      <div className="ur-content-wide px-4 lg:px-8 pt-3 flex items-center justify-between">
-        <span className="text-[12px] text-gray-500 dark:text-gray-400">
-          {loading ? '불러오는 중...' : `${products.length}개 교환권`}
-        </span>
-        {/* 🏭 2026-06-05 (사용자 신고 — 정렬 버튼 깨짐): 네이티브 select → 통일 스타일 드롭다운. */}
-        <SortMenu value={sort} options={SORT_OPTIONS} onChange={(v) => setSort(v)} />
-      </div>
+      {/* 🧭 2026-06-17 (대표 요청): 'N개 교환권' 카운트 제거 + 정렬을 인기 브랜드 헤더 우측으로 이동.
+          브랜드가 없는 카테고리(예: 일부 /vouchers 카테고리)에선 정렬 접근성 유지 위해 단독 행으로 노출. */}
+      {currentBrands.length === 0 && (
+        <div className="ur-content-wide px-4 lg:px-8 pt-3 flex items-center justify-end">
+          <SortMenu value={sort} options={SORT_OPTIONS} onChange={(v) => setSort(v)} />
+        </div>
+      )}
 
       {/* 🛡️ 2026-05-19: 카테고리별 인기 브랜드 그리드.
           🏭 2026-06-04 (사용자 요청): 브랜드를 클릭(필터)해도 그리드 그대로 유지 + 선택 브랜드 강조. */}
       {currentBrands.length > 0 && (
         <div className="ur-content-wide px-4 lg:px-8 py-4">
-          <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-1.5">
-            <span>{getCategoryIcon(category)}</span>
-            {category} 인기 브랜드
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-[13px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+              <span>{getCategoryIcon(category)}</span>
+              {category} 인기 브랜드
+            </h2>
+            {/* 🧭 2026-06-17 (대표 요청): 낮은 가격순 등 정렬 — 인기 브랜드 줄 맨 오른쪽 */}
+            <SortMenu value={sort} options={SORT_OPTIONS} onChange={(v) => setSort(v)} />
+          </div>
           {/* 🧭 2026-06-10 (UI 100점 패스): 홈(embedded)은 1행 가로 스크롤 — 도구단이 상품을 fold 아래로 밀던 것 압축.
               /vouchers 전체 페이지는 기존 그리드 유지. 클릭 유지/ring 강조 동작 불변. */}
           <div className={embedded

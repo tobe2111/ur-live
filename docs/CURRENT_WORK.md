@@ -211,6 +211,26 @@
 - **카카오** (`kakao.routes` `issueLinkedRoleTokens`, [UNLOCK_LOADING] additive): 카카오 로그인 셀러→seller 시트 갱신. 에이전시→소유 멤버 id 조회 후 토큰에 `member_id` additive 추가 + 멤버 시트 갱신(이메일 로그인과 **동일 시트 키**로 완전 통일 — 두 방식 상호 무효화). **응답 shape/redirect/CSRF/seller.username 불변**.
 - **문구**(③): 미들웨어/리프레시가 `SESSION_SUPERSEDED` 401 → `api.ts` 가 감지해 refresh 시도 생략 + `?error=session_superseded` 로 로그아웃. 3 로그인 페이지(admin/seller/agency)가 "다른 기기/브라우저에서 로그인되어 자동 로그아웃" 토스트.
 - 검증: tsc 0 · `npm run build` 0 · 단위 88(deriveDashboardSeat+per-seat 시트 독립성 신규) · schema/sql-bind/theme 0. ⚠️ staging 권장: 같은 에이전시 멤버 2명 동시 로그인 유지 + 같은 멤버 2기기 단일화 확인.
+## 🙋 대표님(운영자) 직접 할 일 — 코드로 불가 (Cloudflare/외부/검증)
+> 사용자가 "내가 할 일 뭐 있어?" 물으면 이 목록을 안내할 것. 코드로 못 하는 것만 모음. (2026-06-17 갱신)
+
+**🔴 지금 (안 하면 자동화가 침묵 / 데이터 위험)**
+- [ ] Cloudflare env **`DISCORD_WEBHOOK_URL`** 설정 — 모든 운영 경보(백업/정산/이상탐지 실패)의 통로. 1인의 눈·귀.
+- [ ] Cloudflare **`BACKUP_BUCKET`** R2 바인딩 — 주간 D1 백업(없으면 백업 0건).
+- [ ] **백업 복구 드릴 1회** — R2 덤프 → 새 D1 복원 테스트 (복구 안 해본 백업은 없는 것).
+
+**🟡 검증 (운영/확대 전 권장 — 머니)**
+- [ ] **도매 마진 모델 staging 실결제 E2E 1회** (머니 크리티컬, 다른 세션 작업). 코드/테스트는 통과, 실결제만 미검증.
+- [ ] **딜 적립 "사용 시 확정" staging 검증 1회** — 링크샵 구매→"적립 예정"→가게 QR 사용→추천인 잔액+"✅ 적립 확정" 알림.
+
+**🟢 설정/외부 (선택)**
+- [ ] 어드민 `/admin/platform-settings` → **`affiliate_commission_rate`** 최종 숫자 결정 (코드 기본 2%로 깔아둠 / 치킨게임이면 1~2% or 0).
+- [ ] 동네딜 실제 매장 데이터 입력 (또는 어드민 "동네딜 상품 등록 → 데모 생성" 버튼).
+- [ ] (선택) 기프티쇼 이미지 최적화 = 기프티쇼 측에 Cloudflare IP 화이트리스트 요청 (현재 raw URL 무료 동작 중).
+- [ ] (선택) KT 인앱 바코드/PIN = KT Alpha PIN 발급 계약 확인 후 Cloudflare env **`KT_ALPHA_PIN_MODE=1`**.
+
+---
+
 
 ## 🔴 2026-06-17 — 도매몰 마진 모델 전면 전환 (대표 확정, 머니 크리티컬) — ⚠️ staging E2E 필수
 **대표 확정 모델(cost-plus)**: 제조사가 받을 금액(공급원가) **위에** 플랫폼 마진%를 *붙여* 공급가 산출. (구: 판매가−등급보장마진 / 정산 공급가×90% → 정반대)

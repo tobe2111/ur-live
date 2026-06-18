@@ -85,11 +85,6 @@ export default function MainHomePage() {
         </div>
       </div>
 
-      {/* 🧭 2026-06-10 (UI 100점 패스): 첫 화면 가치 제안 — '이게 무슨 서비스인지' 한 줄 */}
-      <p className="ur-content-wide px-4 lg:px-8 pt-1 pb-2 text-[13px] text-gray-400">
-        {t('home.tagline', { defaultValue: '우리 동네 맛집·교환권, 같이 사면 더 싸다 🍽️' })}
-      </p>
-
       {/* ═══ 🎟️ 교환권 (홈 메인 콘텐츠) ═══
           🛡️ 2026-06-01 [UNLOCK_LOADING]: 홈 = 교환권 + 딜모으는법 (사용자 승인).
           VouchersPage 를 embedded 로 재사용 — SSR 는 worker MAIN 슬롯(deal_only) 에서 0-RTT 로 읽음.
