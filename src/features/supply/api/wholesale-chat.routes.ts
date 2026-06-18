@@ -79,6 +79,8 @@ async function ensureChatSchema(DB: D1Database): Promise<void> {
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_dist ON wholesale_chat_threads(distributor_seller_id, last_message_at DESC)').run().catch(swallow('wholesale-chat:ensure:idx-dist'))
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_sup ON wholesale_chat_threads(supplier_id, last_message_at DESC)').run().catch(swallow('wholesale-chat:ensure:idx-sup'))
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_chat_messages_thread ON wholesale_chat_messages(thread_id, id)').run().catch(swallow('wholesale-chat:ensure:idx-msg'))
+  // 🛡️ 2026-06-18 직거래 시도 탐지 — 스레드별 마스킹(연락처 차단) 누적 횟수. 임계 도달 시 어드민 알림.
+  await DB.prepare('ALTER TABLE wholesale_chat_threads ADD COLUMN redact_count INTEGER DEFAULT 0').run().catch(swallow('wholesale-chat:ensure:redact-count'))
 }
 
 // 역할별 컬럼 매핑 — 내 unread 컬럼 / 상대 unread 컬럼.
@@ -408,6 +410,24 @@ app.post('/threads/:id/messages', rateLimit({ action: 'wholesale-chat-send', max
         DB, counterRole, String(counterId), 'wholesale_chat_message', '새 메시지',
         preview, link,
       ).catch(swallow('wholesale-chat:notify'))
+    }
+
+    // 🛡️ 2026-06-18 직거래 시도 탐지 — 연락처 마스킹이 발생하면 스레드 누적 카운트 +1, 임계(1회·이후 5의 배수)
+    //   도달 시 어드민 알림. 직거래 반복 시도 계정 제재 근거. 응답 차단 안 하도록 waitUntil(없으면 fire-and-forget).
+    if (redacted) {
+      const detect = async () => {
+        await DB.prepare('UPDATE wholesale_chat_threads SET redact_count = COALESCE(redact_count,0) + 1 WHERE id = ?').bind(threadId).run().catch(swallow('wholesale-chat:redact-inc'))
+        const rc = await DB.prepare('SELECT COALESCE(redact_count,0) AS c FROM wholesale_chat_threads WHERE id = ?').bind(threadId).first<{ c: number }>().catch(() => null)
+        const count = Number(rc?.c || 0)
+        if (count === 1 || count % 5 === 0) {
+          await createDashboardNotification(
+            DB, 'admin', null, 'wholesale_chat_disintermediation', '직거래 시도 감지',
+            `대화방 #${threadId} (유통사 #${thread.distributor_seller_id} ↔ 제조사 #${thread.supplier_id})에서 연락처/외부결제 정보 ${count}회 차단됨 — 검토 필요`,
+            '/admin/wholesale-activity',
+          ).catch(swallow('wholesale-chat:disinter-notify'))
+        }
+      }
+      if (c.executionCtx) c.executionCtx.waitUntil(detect()); else await detect()
     }
 
     // created_at 읽어 응답(서버 시각 일관성).
