@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+## 🩺 2026-06-17 — 도매몰 카탈로그 "상품 안 뜸" 전수조사 + 영구수정 (대표 반복 신고, prod 직접확인 불가)
+**증상 변화**: ①스켈레톤 영구 → (self-heal 후) ②"해당 조건의 도매 상품이 없어요"(0개) + 느림. admin `/admin/wholesale-import` 엔 상품 보임 = 데이터는 존재, 카탈로그 WHERE 가 전부 걸러냄.
+- **근본구조**: admin 목록 WHERE(`is_supply_product=1 AND source NULL/0`) < 카탈로그 WHERE(`+is_active=1 +supply_source_id IS NULL(엄격) +supply_price>0 +mall_id=요청몰 +visibility`). 한 조건만 어긋나도 admin엔 보이고 카탈로그엔 0개.
+- **수정1 (89893f5) 스키마 self-heal**: 카탈로그 SELECT 가 참조하나 인라인 ensure 엔 없던 컬럼(`mall_id/brand_name/brand_logo_url/is_premium/sold_count/pack_size/order_multiple/dominant_color`)을 `ensureSupplyVisibilitySchema` 에 추가 → repair-schema 미실행 prod 의 'no such column→메인쿼리 throw(.catch없음)→500→스켈레톤 영구' 차단.
+- **수정2 (0c744ea) source 0→NULL 자가정규화**: 같은 ensure 에 `UPDATE products SET supply_source_id=NULL WHERE is_supply_product=1 AND supply_source_id=0`(멱등). admin 쿼리 작성자가 3곳에 `=0` 명시처리 = 실데이터에 0 존재 정황. ensure 가 메인쿼리보다 먼저 await(1165<1259)라 배포 후 첫 요청에서 정규화→조회 순서로 즉시 치유. **9개 IS NULL 쿼리 일괄 + SSR/캐시 복원으로 속도도 개선**(빈결과 no-store라 매 로드 풀쿼리였음).
+- **진단도구 (0755cd5)**: `GET /api/admin/distributor/catalog-diagnostic`(노출/숨김 사유별 + 숨은샘플 + 몰/가시성 분포) + `POST /catalog-repair`(안전정규화+옵션) + AdminWholesaleImportPage '🩺' 패널. prod 직접접근(egress) 불가라 대표가 한 번 실행→캡처하면 잔여원인(is_active/visibility/multi-mall) 확정.
+- **전수조사로 배제**: 카탈로그 쿼리 바인딩/WHERE 정상 · bulk-import·demo 시드 모두 is_active=1·visibility=ALL·source NULL 로 생성(통과해야 정상) · 클라 기본필터 비제한(inStock=false/cat=all/premium은 premium탭만) · 단일운영자 몰=1 수렴(가입 mall_id=host기반 utongstart→1, 상품 supplier mall_id→1) → 몰 불일치 배제. **남은 유력원인 = source=0(수정2로 처리)**.
+- ⚠️ **미확정**: 수정2 후에도 0개면 is_active=0 / supply_price=0 / visibility≠ALL 중 하나 — 진단도구 또는 egress(`live.ur-team.com`) 허용 시 확정 가능. 슬로우는 개인화(등급별가=공유캐시불가=라이브쿼리)라 구조적이나 상품 채워지면 등급캐시(60s)로 개선.
+- **대표 보고**: 제조사-유통사 채팅 기능 플로우 **완성**(별도 작업 — 본 세션 미관여, 차후 리뷰/문서화 대상).
+
 ## ✅ 2026-06-17 — 어드민 주문 페이지: 종류 구별(교환권/상품) + 체크박스 일괄 처리 (대표 요청)
 **요청**: `/admin/orders` 에서 교환권/상품/도매몰 구별 + 체크박스 선택.
 - **종류 구별**: GET `/api/admin/orders` SELECT 에 `first_item_category`(첫 주문상품 category) 추가 → 프론트 `orderKind()` 가 `isVoucherCategory` 면 **교환권**(+식사/미용/숙소/기타 서브), 아니면 **상품**. 신규 '종류' 컬럼(amber 교환권 / sky 상품 배지). bind param 무변경(정적 서브쿼리).
