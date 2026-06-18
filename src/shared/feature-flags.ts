@@ -26,3 +26,13 @@ export const SHOPPING_TAB_HIDDEN = true
  */
 export const REFERRAL_GROUP_DISCOUNT_DISABLED = true
 
+/**
+ * HOSTING_HIDDEN — '공구 호스팅' 카탈로그(/host, /host/new) 진입 숨김 (2026-06-17 사용자 결정).
+ *   배경: 링크샵 콘텐츠의 핵심은 '추천 핀'(addPin — 상품 상세/검색에서 1탭 핀). /host/new("공구 열기"
+ *         어드민 큐레이션 공구권 호스팅)는 별개 시스템이고, 링크샵 버튼 폴백으로 떠서 혼란 + 동네공구
+ *         (community-group-buy)와 중복.
+ *   true: 큐레이터 콘솔의 '공구 호스팅' 카드 + 셀러 대시보드 '호스팅' nav + UMeRedirect 폴백을 숨김/우회.
+ *         라우트(/host·/host/new)와 hosting API/코드는 보존 — false 로 바꾸면 즉시 복원. 직접 URL 진입은 가능.
+ */
+export const HOSTING_HIDDEN = true
+
