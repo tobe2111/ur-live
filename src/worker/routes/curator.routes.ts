@@ -24,6 +24,7 @@ import {
   isValidHandleFormat,
 } from '../utils/handle-generator'
 import { CURATOR_DEFAULTS, WITHDRAWAL_DEFAULTS, TAX_POLICY, COMMISSION_DEFAULTS } from '../../shared/constants/policy'
+import { isVoucherCategory } from '../../shared/constants/voucher-categories'
 import { getPolicy } from '../utils/dynamic-policy'
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
@@ -307,7 +308,11 @@ curatorRoutes.get('/:handle/p/:productId/redirect', async (c) => {
       const prod = await DB.prepare(
         "SELECT deal_only, category, group_buy_status FROM products WHERE id = ? LIMIT 1"
       ).bind(productId).first<{ deal_only: number | null; category: string | null; group_buy_status: string | null }>()
-      const isVoucherFlow = !!prod && (Number(prod.deal_only) === 1 || /voucher/i.test(prod.category || '') || prod.group_buy_status === 'active')
+      // 🛡️ 2026-06-18 (대표 신고 — 쇼핑 상품이 /group-buy 로 가 교환권으로 오표시): 분류 SSOT 정합.
+      //   기존 `group_buy_status === 'active'` 는 migration 0146 에서 모든 상품 DEFAULT 'active' 라
+      //   일반 쇼핑 상품까지 voucher 흐름으로 오분류 → /group-buy 교환권 chrome 으로 떨어짐.
+      //   order-type.ts SSOT 와 동일하게 deal_only=1(교환권) 또는 voucher 카테고리(오프라인 공구)만 voucher 흐름.
+      const isVoucherFlow = !!prod && (Number(prod.deal_only) === 1 || isVoucherCategory(prod.category))
       if (isVoucherFlow) return c.redirect(`/group-buy/${productId}?aff=${pin.user_id}`, 302)
     } catch { /* 판별 실패 — 기존 경로 */ }
     // 물리상품 — ProductDetailPage 가 localStorage.affiliate_ref 저장 (기존 시스템 재활용)
