@@ -21,6 +21,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatWon, formatNumber } from '@/utils/format'
 import { cfImage } from '@/utils/cf-image'
 import BrowseProductCard from './browse/BrowseProductCard'
+import { seededColor } from '@/utils/card-gradient'
 import type { Product as BrowseProduct } from './browse/types'
 import { Search, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
@@ -483,9 +484,14 @@ function PinCard({ pin, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorP
     deal_only: pin.deal_only,
   }
 
+  // 🎨 2026-06-18 (사용자 신고 — 방문자 모바일 핀 카드 그라데이션 없음): 핀 상품은 외부호스트(교환권 등)
+  //   이미지가 많아 dominant_color null + canvas 추출이 CORS taint 로 실패 → 회색 단색으로 보이던 것.
+  //   카테고리/상품 시드 폴백색을 줘 항상 컬러 그라데이션 (추출 성공 시 실제 대표색이 덮어씀).
+  const fallbackColor = seededColor(pin.category || pin.product_id)
+
   return (
     <div className="relative group">
-      <BrowseProductCard product={product} aboveFold={aboveFold} to={`/u/${handle}/p/${pin.product_id}`} />
+      <BrowseProductCard product={product} aboveFold={aboveFold} to={`/u/${handle}/p/${pin.product_id}`} fallbackColor={fallbackColor} />
       {isOwner && (
         // 🎨 2026-06-17: 모바일엔 hover 가 없어 항상 보이게(이전 opacity-0 group-hover 는 터치에서 숨김).
         <button
