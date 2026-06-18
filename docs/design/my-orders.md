@@ -190,8 +190,16 @@
 - `tsc --noEmit` 0 · `npm run build`(client+worker+prerender) 0 · OrdersTab 단위테스트 12 pass
 - guard: schema-refs / sql-column-exists / sql-bind-params / theme-consistency / products-column-budget / money-patterns 전부 통과
 
-### 미구현 (결정 #2~#4 — 추후 사용자 결정 시)
-- 프로모 배너 슬롯(#2) / 받은 혜택 섹션(#3) / 구매 내역 삭제·숨김(#4) — 데이터/정책 확정 후 별도 작업.
+### 구매 내역 삭제(숨김) — #4 구현 완료 (2026-06-18, 사용자 "구매 내역 삭제/숨김 기능만 필요")
+- **실제 DELETE 금지** (재무/감사 레코드 보존) → side table `hidden_orders` 에 등재해 **사용자 뷰에서만 숨김**.
+- `src/worker/utils/hidden-orders.ts` (신규): `ensureHiddenOrdersTable`(WeakSet 메모이즈, CREATE IF NOT EXISTS self-healing) + `hideOrder`(INSERT OR IGNORE 멱등). product-supply-meta.ts 패턴.
+- `POST /api/orders/:id/hide` (order.routes.ts): requireAuth + **본인 주문 검증(IDOR)** + **종료 상태(DELIVERED/DONE/CANCELLED/REFUNDED)만 허용**(진행 중 주문 숨김 차단 → 배송/결제 추적 손실 방지).
+- `order.repository.ts findByUserId`: `ensureHiddenOrdersTable` 후 COUNT/목록 쿼리에 `NOT EXISTS (hidden_orders)` 필터 (페이지네이션 카운트도 정합).
+- UI: `OrderDetailModal` 하단 "구매 내역 삭제" 버튼(종료 상태만, 은은한 회색) → `MyOrdersPage.handleHideOrder` (confirmDialog "목록에서만 안 보임" 안내 → API → refetch).
+- 복구: unhide UI 없음(무신사 동일). 필요 시 `hidden_orders` 에서 행 삭제로 복원 가능(데이터 보존).
+
+### 미구현 (결정 #2~#3 — 추후 사용자 결정 시)
+- 프로모 배너 슬롯(#2) / 받은 혜택 섹션(#3) — 데이터/정책 확정 후 별도 작업.
 
 ### ⚠️ 운영 검증 권장
 - 쇼핑탭 숨김 상태(`SHOPPING_TAB_HIDDEN`)라 라이브 영향 낮으나, worker 조회 쿼리(`findItemsGrouped`) 변경 → **staging 에서 상품/교환권/공구 각 1건 주문으로 종류 분류·썸네일·가격·배송비 표시 확인 권장**.

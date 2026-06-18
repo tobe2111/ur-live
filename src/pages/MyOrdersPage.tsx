@@ -129,6 +129,29 @@ export default function MyOrdersPage() {
     }
   }
 
+  // 🛡️ 2026-06-18: 구매 내역 삭제(숨김) — 실제 삭제 X, 내 목록에서만 숨김.
+  async function handleHideOrder(orderId: number | string, orderNumber: string) {
+    if (!(await confirmDialog({
+      message: t('myOrders.hidePrompt', { orderNumber, defaultValue: '이 구매 내역을 삭제하시겠습니까?\n주문 자체는 취소되지 않으며, 목록에서만 보이지 않게 됩니다.' }),
+      danger: true,
+    }))) return
+    setProcessing(true)
+    try {
+      const response = await api.post(`/api/orders/${orderId}/hide`)
+      if (response.data?.success) {
+        toast.success(t('myOrders.hideSuccess', { defaultValue: '구매 내역에서 삭제되었습니다' }))
+        loadData()
+      } else {
+        toast.error(response.data?.error || t('myOrders.hideFail', { defaultValue: '삭제하지 못했습니다' }))
+      }
+    } catch (error: unknown) {
+      const error_ = error as { response?: { data?: { error?: string } } }
+      toast.error(error_.response?.data?.error || t('myOrders.hideFail', { defaultValue: '삭제하지 못했습니다' }))
+    } finally {
+      setProcessing(false)
+    }
+  }
+
   async function handleCancelOrder(orderId: number | string, orderNumber: string) {
     setCancelModal({ isOpen: true, orderId, orderNumber })
     setCancelReason('')
@@ -227,6 +250,7 @@ export default function MyOrdersPage() {
             order={selectedOrder}
             onClose={() => setSelectedOrder(null)}
             onCancel={handleCancelOrder}
+            onHide={handleHideOrder}
           />
         </Suspense>
       )}
