@@ -163,6 +163,10 @@ fi
 echo "==> Pre-commit: 운영 가이드 동기화 (warn-only)..."
 bash scripts/check-guide-sync.sh || true
 
+# 🛡️ 마이그레이션 ↔ repair-schema drift (warn-only) — prod D1 은 .sql 자동적용 X, repair-schema 가 SSOT.
+echo "==> Pre-commit: 마이그레이션/repair-schema drift (warn-only)..."
+node scripts/check-migration-repair-drift.mjs || true
+
 # 📑 소개서(docs/proposals/) 동기화 권고 (warn-only — 절대 차단 X).
 echo "==> Pre-commit: 소개서 동기화 권고 (warn-only)..."
 bash scripts/check-proposal-sync.sh || true
