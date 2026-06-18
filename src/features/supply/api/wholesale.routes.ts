@@ -584,6 +584,35 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
 //   카카오 로그인=유저 세션. 유통회원=sellers(is_distributor=1) 행. 이 엔드포인트가 유저↔셀러
 //   (distributor) 행을 생성/연결(linked_user_id) 후 seller_token 발급 → 도매몰 즉시 이용.
 //   ⚠️ 한 유저당 셀러 1행(idx_sellers_linked_user_id). 이미 셀러면 is_distributor 승급만.
+// 🛡️ 2026-06-18 (인증 audit): 유통회원 셀러 컬럼 self-heal — 기존엔 핸들러 안 매 호출 16 ALTER 루프였음
+//   (그들 룰 "핸들러 inline ALTER 금지 → ensureXxx + WeakSet" 위반). isolate 당 1회로 메모이즈.
+//   ⚠️ 신규 컬럼 추가가 아니라 미마이그레이션 환경 self-heal(멱등) — sellers 컬럼 예산 무영향.
+const _distSellerEnsured = new WeakSet<object>()
+async function ensureDistributorSellerSchema(DB: D1Database) {
+  if (_distSellerEnsured.has(DB)) return
+  _distSellerEnsured.add(DB)
+  for (const sql of [
+    "ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'",
+    'ALTER TABLE sellers ADD COLUMN commission_rate REAL DEFAULT 5.00',
+    'ALTER TABLE sellers ADD COLUMN business_name TEXT',
+    'ALTER TABLE sellers ADD COLUMN business_number TEXT',
+    'ALTER TABLE sellers ADD COLUMN representative_name TEXT',
+    'ALTER TABLE sellers ADD COLUMN business_registration_image_url TEXT',
+    "ALTER TABLE sellers ADD COLUMN business_registration_status TEXT DEFAULT 'pending'",
+    'ALTER TABLE sellers ADD COLUMN phone TEXT',
+    'ALTER TABLE sellers ADD COLUMN distributor_grade TEXT',
+    'ALTER TABLE sellers ADD COLUMN is_distributor INTEGER DEFAULT 0',
+    'ALTER TABLE sellers ADD COLUMN representative_phone TEXT',
+    'ALTER TABLE sellers ADD COLUMN manager_name TEXT',
+    'ALTER TABLE sellers ADD COLUMN manager_phone TEXT',
+    'ALTER TABLE sellers ADD COLUMN manager_email TEXT',
+    'ALTER TABLE sellers ADD COLUMN linked_user_id INTEGER',
+    'ALTER TABLE sellers ADD COLUMN mall_id INTEGER DEFAULT 1', // 🏬 멀티-몰: 가입 시 어느 몰에 가입했는지
+    'ALTER TABLE sellers ADD COLUMN nts_status TEXT', // 국세청 상태(참고 표시용)
+    'ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0', // verified-게이트 자동연결용
+  ]) { await DB.prepare(sql).run().catch(swallow('wholesale:become:ensure-schema')) }
+}
+
 app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-become-distributor', max: 10, windowSec: 600 }), async (c) => {
   const { DB, JWT_SECRET } = c.env
   if (!JWT_SECRET) return c.json({ success: false, error: '서버 설정 오류' }, 500)
@@ -605,27 +634,7 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
     const manager_phone = String(body.manager_phone || '').trim().slice(0, 40)
     const manager_email = String(body.manager_email || '').trim().slice(0, 160)
 
-    for (const sql of [
-      "ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'",
-      'ALTER TABLE sellers ADD COLUMN commission_rate REAL DEFAULT 5.00',
-      'ALTER TABLE sellers ADD COLUMN business_name TEXT',
-      'ALTER TABLE sellers ADD COLUMN business_number TEXT',
-      'ALTER TABLE sellers ADD COLUMN representative_name TEXT',
-      'ALTER TABLE sellers ADD COLUMN business_registration_image_url TEXT',
-      "ALTER TABLE sellers ADD COLUMN business_registration_status TEXT DEFAULT 'pending'",
-      'ALTER TABLE sellers ADD COLUMN phone TEXT',
-      'ALTER TABLE sellers ADD COLUMN distributor_grade TEXT',
-      'ALTER TABLE sellers ADD COLUMN is_distributor INTEGER DEFAULT 0',
-      'ALTER TABLE sellers ADD COLUMN representative_phone TEXT',
-      'ALTER TABLE sellers ADD COLUMN manager_name TEXT',
-      'ALTER TABLE sellers ADD COLUMN manager_phone TEXT',
-      'ALTER TABLE sellers ADD COLUMN manager_email TEXT',
-      'ALTER TABLE sellers ADD COLUMN linked_user_id INTEGER',
-      'ALTER TABLE sellers ADD COLUMN mall_id INTEGER DEFAULT 1', // 🏬 멀티-몰: 가입 시 어느 몰에 가입했는지
-    ]) { await DB.prepare(sql).run().catch(swallow('wholesale:become:alter')) }
-
-    // best-effort: email_verified 컬럼 ensure (become 첫 호출 환경 self-heal).
-    await DB.prepare('ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0').run().catch(swallow('wholesale:become:add-verified'))
+    await ensureDistributorSellerSchema(DB) // 🛡️ 셀러/유저 컬럼 self-heal(멱등, isolate당 1회 — 기존 inline 16 ALTER 대체)
     const u = await DB.prepare('SELECT id, email, name, email_verified FROM users WHERE id = ?').bind(userId)
       .first<{ id: number; email: string | null; name: string | null; email_verified: number | null }>().catch(() => null)
     const email = (authed.email || u?.email || '').trim().toLowerCase()
@@ -711,7 +720,6 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       ntsStatus = rows[0]?.b_stt || null
     } catch { /* fail-soft */ }
 
-    await DB.prepare('ALTER TABLE sellers ADD COLUMN nts_status TEXT').run().catch(() => { /* exists */ })
     const ins = await DB.prepare(`
       INSERT INTO sellers (username, email, password_hash, name, business_name, business_number, representative_name, phone,
         representative_phone, manager_name, manager_phone, manager_email,
