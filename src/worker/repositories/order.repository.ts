@@ -18,14 +18,17 @@ import { getDb, orders as ordersTable, order_items as order_items_table, type Db
 import type { Order, OrderItem, OrderStatus, CreateOrderRequest } from '../../shared/types';
 import { safeJsonParse } from '../../shared/utils';
 import { statusesThatCanReach } from '../utils/state-machine';
+import { ensureHiddenOrdersTable } from '../utils/hidden-orders';
 
 export class OrderRepository {
   protected qb: QueryBuilder;
   protected db: Db;
+  protected d1: D1Database;
 
   constructor(d1: D1Database) {
     this.qb = new QueryBuilder(d1);
     this.db = getDb(d1);
+    this.d1 = d1;
   }
 
   /**
@@ -270,8 +273,13 @@ export class OrderRepository {
   ): Promise<{ orders: Order[]; total: number }> {
     const offset = (page - 1) * limit;
 
+    // 🛡️ 2026-06-18: '구매 내역 삭제(숨김)' — hidden_orders 의 주문은 목록/카운트에서 제외.
+    //   side table 을 먼저 보장(self-healing) → NOT EXISTS 서브쿼리가 항상 안전.
+    await ensureHiddenOrdersTable(this.d1);
+    const HIDE_FILTER = 'AND NOT EXISTS (SELECT 1 FROM hidden_orders h WHERE h.order_id = o.id)';
+
     const countRow = await this.qb.queryOne<{ count: number }>(
-      'SELECT COUNT(*) as count FROM orders WHERE user_id = ?',
+      `SELECT COUNT(*) as count FROM orders o WHERE o.user_id = ? ${HIDE_FILTER}`,
       [userId]
     );
     const total = countRow?.count ?? 0;
@@ -284,7 +292,7 @@ export class OrderRepository {
         `SELECT o.*, s.name as seller_name, s.phone as seller_phone, s.kakao_chat_url as seller_kakao_chat_url
          FROM orders o
          LEFT JOIN sellers s ON o.seller_id = s.id
-         WHERE o.user_id = ?
+         WHERE o.user_id = ? ${HIDE_FILTER}
          ORDER BY o.created_at DESC
          LIMIT ? OFFSET ?`,
         [userId, limit, offset]
@@ -297,7 +305,7 @@ export class OrderRepository {
           `SELECT o.*, s.name as seller_name
            FROM orders o
            LEFT JOIN sellers s ON o.seller_id = s.id
-           WHERE o.user_id = ?
+           WHERE o.user_id = ? ${HIDE_FILTER}
            ORDER BY o.created_at DESC
            LIMIT ? OFFSET ?`,
           [userId, limit, offset]

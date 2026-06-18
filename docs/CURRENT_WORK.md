@@ -24,7 +24,8 @@
 - **Phase0 데이터 버그 3건 동반수정**: ①상품별 "0원"(price_snapshot 직접곱) → `orderItemLineTotal()` ②썸네일 누락 → `order.repository.ts findItemsGrouped` 에 `product_image`+products JOIN ③배송비 하드코딩 3,000원 → `order.shipping_fee` 실값.
 - UI: `OrdersTab.tsx` 전면개편(검색+종류탭+날짜그룹+썸네일+종류별카드), `MyOrdersPage.tsx`(large title+스켈레톤), `OrderDetailModal.tsx`(결제 라인분해+썸네일+교환권/공구 배송섹션 숨김).
 - 검증: tsc 0 · build 0 · OrdersTab 단위 12 pass · guard(schema/sql-col/sql-bind/theme/col-budget/money) 전부 통과. 시안 박제: `docs/design/my-orders.md`.
-- 미구현(추후 결정): 프로모 배너 / 받은 혜택 섹션 / 구매내역 삭제(결정 #2~#4). ⚠️ worker 조회쿼리 변경 → staging 에서 상품/교환권/공구 각 1건 표시 확인 권장.
+- **구매 내역 삭제(숨김) 추가** (2026-06-18, "삭제/숨김 기능만 필요"): 실제 DELETE X → side table `hidden_orders`(self-healing ensureXxx). `POST /api/orders/:id/hide`(requireAuth+IDOR+종료상태만), `findByUserId` 가 `NOT EXISTS(hidden_orders)` 로 목록/카운트 제외. OrderDetailModal 하단 "구매 내역 삭제" 버튼.
+- 미구현(추후 결정): 프로모 배너 / 받은 혜택 섹션(결정 #2~#3). ⚠️ worker 조회쿼리 변경 → staging 에서 상품/교환권/공구 각 1건 표시 + 숨김 후 목록 제외 확인 권장.
 
 ## ✅ 2026-06-18 — 도매몰 예치금 입금계좌 3곳 반영 (대표 제공: 우체국 014084-02-129530 송유미/사람과고리)
 유통사가 예치금(선불 충전)을 송금할 도매몰 입금계좌를 세 군데에 노출. 외부망(egress) 차단으로 prod API set 불가 → 코드/DB fallback 으로 배포 즉시 반영.

@@ -21,9 +21,11 @@ interface Props {
   order: Order
   onClose: () => void
   onCancel: (id: string | number, orderNumber: string) => void
+  // 🛡️ 2026-06-18: 구매 내역 삭제(숨김) — 종료 상태 주문만.
+  onHide?: (id: string | number, orderNumber: string) => void
 }
 
-export default function OrderDetailModal({ order, onClose, onCancel }: Props) {
+export default function OrderDetailModal({ order, onClose, onCancel, onHide }: Props) {
   const { t } = useTranslation()
   const [showTracking, setShowTracking] = useState(false)
   const navigate = useNavigate()
@@ -311,6 +313,19 @@ export default function OrderDetailModal({ order, onClose, onCancel }: Props) {
               className="w-full py-3 text-[15px] font-medium text-red-500 border border-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-colors"
             >
               {t('orderDetail.cancelOrder', { defaultValue: '주문 취소' })}
+            </button>
+          )}
+
+          {/* 🛡️ 2026-06-18: 구매 내역 삭제(숨김) — 종료 상태 주문만 (진행 중은 추적 손실 방지) */}
+          {onHide && ['delivered', 'done', 'cancelled', 'refunded'].includes(order.status.toLowerCase()) && (
+            <button
+              onClick={() => {
+                onClose()
+                onHide(order.id, order.order_number ?? String(order.id))
+              }}
+              className="w-full py-3 text-[14px] font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            >
+              {t('orderDetail.hideOrder', { defaultValue: '구매 내역 삭제' })}
             </button>
           )}
         </div>
