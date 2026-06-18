@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## 🏬 2026-06-18 — 멀티-몰 "몰=도메인=계정" 확정 + `resolveMallId` host-first 전환 (대표 결정: 유통사/제조사 몰별 별도 로그인)
+**결정**: flip-flop 의 뿌리가 멀티-몰 모델 애매함. 대표가 "유통사/제조사는 몰별 별도 로그인 = `1 몰=1 도메인=그 도메인 계정·카탈로그`" 확정. 설계 박제: `docs/design/multi-mall-auth.md`.
+- **Step 1 완료(이번 커밋)**: `wholesale-malls.ts resolveMallId` **account-first → host-first**. 우선순위 `?mall=slug > host > 1` (계정 토큰은 mall 결정에서 제외, `accountMallId()` 제거). 게스트/로그인 카탈로그 **일관성 확보 → flip-flop 종류 버그 제거**. **단일 몰(1)+단일 호스트 = byte-identical(모두 1) → INVARIANT 유지**. 머니(예치금/주문/정산)는 seller_id/supplier_id 격리라 무영향. 신규 유닛테스트 3개(토큰 있어도 host 우선·게스트=로그인 동일·supplier 동일) → 33 pass.
+- **Step 2 (몰 2개째 만들 때, 미완)**: 로그인 도메인 몰 스코핑 + 전역 UNIQUE(email/kakao_id)→(몰,email) 재설계(데이터 마이그레이션 동반, 별도 PR). 현재 활성 몰 1개라 불필요.
+- ⚠️ **단, host-first 는 "몰 불일치" 종류만 고침.** 현재 0개가 `is_active`/`visibility`/`supply_price` **데이터** 때문이면 별개 — 아래 진단 1회 필요(egress 또는 🩺 패널).
+
 ## 🩺 2026-06-18 — 도매몰 카탈로그 "0개 + 느림 + 들쭉날쭉" 전수조사 + 관측 계측 (대표 "더이상 일어나선 안돼") — ⚠️ 데이터 원인 ground-truth 필요
 **증상**: ①상품 0개("해당 조건 상품 없어요") ②거기까지도 2초+ 느림 ③때때로 떴다 안 떴다(flip-flop). admin엔 보임=데이터 존재.
 - **전수조사 결론 — 코드 버그 없음**: 카탈로그 WHERE(`is_supply_product=1 AND is_active=1 AND supply_source_id IS NULL AND supply_price>0 AND mall_id=? AND visibilityWhere`)·`visibilityWhere`·source=0→NULL 정규화 UPDATE·SELECT 컬럼 vs ensure 커버리지(전 컬럼 ensure가 ALTER ADD — 누락 0) **전부 정상**. → 0개는 순수 **데이터 상태**.

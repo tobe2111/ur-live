@@ -140,7 +140,7 @@ pub.get('/banners', async (c) => {
   const { DB } = c.env
   try {
     await ensureBannerSchema(DB)
-    // 🏬 멀티-몰: 요청 몰의 배너만(기본 1 → 기존 데이터 전 행 1 → byte-identical). guest=host 몰 / 로그인=계정 몰.
+    // 🏬 멀티-몰: 요청 몰의 배너만(기본 1 → 기존 데이터 전 행 1 → byte-identical). 몰=도메인(host-first, 2026-06-18) — 게스트/로그인 동일.
     const mallId = await resolveMallId(c)
     const { results } = await DB.prepare(
       `SELECT id, image_url, link, title, sort
@@ -182,7 +182,7 @@ pub.post('/proposal-tickets', rateLimit({ action: 'wholesale-proposal-create', m
     if (!subject) return c.json({ success: false, error: '제목을 입력해주세요' }, 400)
     if (!text) return c.json({ success: false, error: '내용을 입력해주세요' }, 400)
 
-    // 🏬 멀티-몰: 작성자(유통사) 계정 몰을 스탬프(기본 1). 로그인 토큰 → 계정 mall_id.
+    // 🏬 멀티-몰: 작성자가 글 쓰는 도메인의 몰을 스탬프(기본 1). 몰=도메인(host-first, 2026-06-18).
     const mallId = await resolveMallId(c)
     const ins = await DB.prepare(
       "INSERT INTO wholesale_proposal_tickets (seller_id, type, category, target, subject, body, status, mall_id) VALUES (?, ?, ?, ?, ?, ?, 'open', ?)"
