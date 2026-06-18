@@ -6,6 +6,7 @@ import {
   Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
+import { HOSTING_HIDDEN } from '@/shared/feature-flags'
 import { getRoleShortLabel, isStoreOwner } from '@/shared/seller-roles'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { toast } from '@/hooks/useToast'
@@ -200,6 +201,8 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         } else if (itemMode !== 'common' && itemMode !== activeMode) {
           return false
         }
+        // 🏁 2026-06-17 (HOSTING_HIDDEN): 공구 호스팅 카탈로그 진입 숨김
+        if (item.path === '/host' && HOSTING_HIDDEN) return false
         // 크리에이터 user-세션 의존 항목 — user_id 없으면 숨김(바운스 방지)
         if ((item.path === '/host' || item.path === '/u/me/earnings') && !hasUserSession) return false
         return true
