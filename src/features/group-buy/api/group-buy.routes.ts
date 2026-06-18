@@ -1072,7 +1072,8 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   //    C2: applied_price + expires_at 저장 (이전: 누락 → 무한 만료 안 됨 + 정산 fallback 불일치).
   //    C3 (2026-05-31): 딜 경로와 동일하게 order_items + ledger + donations(정산기록) 기록 →
   //          ledger 정합성 검증 + commission 집계에 카드 결제건도 잡힘.
-  //          (인플루언서 attribution 은 카드 경로 referral edge-case — 후속 부채로 잔존.)
+  //          (인플루언서 attribution 도 아래 applyGroupBuyReferral 공유 헬퍼로 딜 경로와 동일 처리됨
+  //           — 2026-05-31 구현 완료. influencer_attributions INSERT + influencer_balances 적립.)
   const orderNumber = `GB-${userId}-${Date.now()}`
   const expiresAt = product.voucher_expiry || new Date(Date.now() + 90 * 86400000).toISOString()
   try {
