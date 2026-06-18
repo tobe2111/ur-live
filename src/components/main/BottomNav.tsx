@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { cfImage } from '@/utils/cf-image'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
+import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin } from 'lucide-react'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
@@ -350,8 +350,9 @@ export default function BottomNav() {
                     </button>
                   </div>
 
-                  {/* 🧲 2026-06-10: 동네 공구 제안 — 수요 신호 수집 (모든 사용자에게 최상단 노출).
-                       제안 → 어드민/에이전시 검토 → 매장 영입 → 공구 오픈 시 제안자에게 알림(루프). */}
+                  {/* 🧲 2026-06-10: 동네 공구 제안 — 수요 신호 수집. 🚫 2026-06-18 COMMUNITY_PROPOSAL_HIDDEN
+                       으로 숨김(셸브). 숨김 시 시트가 비지 않도록 '동네딜 둘러보기'로 폴백. */}
+                  {!COMMUNITY_PROPOSAL_HIDDEN ? (
                   <button
                     onClick={() => { setSheetOpen(false); navigate('/community-group-buy/new') }}
                     className="w-full mb-3 flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl active:scale-[0.98] transition-transform"
@@ -364,6 +365,20 @@ export default function BottomNav() {
                       <p className="text-[12px] text-white/80 mt-0.5">{t('bottomNav.proposeDealDesc', { defaultValue: '원하는 가게를 제안하면 모아서 열어드려요' })}</p>
                     </div>
                   </button>
+                  ) : (!isSeller && !hasSellerToken) ? (
+                  <button
+                    onClick={() => { setSheetOpen(false); navigate('/group-buy') }}
+                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl active:scale-[0.98] transition-transform"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                      <MapPin className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-left flex-1">
+                      <p className="text-[15px] font-bold text-white">{t('bottomNav.browseDongneDeal', { defaultValue: '동네딜 둘러보기' })}</p>
+                      <p className="text-[12px] text-white/80 mt-0.5">{t('bottomNav.browseDongneDealDesc', { defaultValue: '내 주변 동네 공구 딜을 확인해요' })}</p>
+                    </div>
+                  </button>
+                  ) : null}
 
                   {/* Seller: live + 식사권 + dashboard (+ agency 겸직이면 아래 블록도)
                        🏁 2026-06-11 (사용자 요청 — 겸직 유저 1탭 등록): 유저 모드(active_role='user')여도

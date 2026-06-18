@@ -9,7 +9,7 @@
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Home, Radio, Compass, MapPin, Utensils, Sparkles, Bed, Tag, Package, User, PackageSearch, Heart, BookOpen, Store, Plus } from 'lucide-react'
-import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
+import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
@@ -111,7 +111,8 @@ export default function DesktopLiveSidebar() {
           {/* 🛡️ 2026-06-10 [UNLOCK_LOADING]: 쇼핑(/browse) 잠정 숨김 — SHOPPING_TAB_HIDDEN 플래그 가역 */}
           {MENU_ITEMS.filter(item =>
             !(LIVE_COMMERCE_SUSPENDED && item.path === '/live') &&
-            !(SHOPPING_TAB_HIDDEN && item.path === '/browse')
+            !(SHOPPING_TAB_HIDDEN && item.path === '/browse') &&
+            !(COMMUNITY_PROPOSAL_HIDDEN && item.path === '/community-group-buy/new')
           ).map(item => (
             <NavBtn
               key={item.path}

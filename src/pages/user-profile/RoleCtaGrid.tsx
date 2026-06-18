@@ -16,6 +16,7 @@
 import { Link } from 'react-router-dom'
 import { useMemo } from 'react'
 import { ChevronRight } from 'lucide-react'
+import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 
 interface Cta {
   icon: string
@@ -39,7 +40,7 @@ export default function RoleCtaGrid() {
     const signup: Cta[] = [
       // 🧭 2026-06-10 (전략 정합 — 라이브 영구 중단·동네딜 집중): 라이브 셀러 CTA 제거,
       //   동네 공구 제안 + 링크샵(교환권 추천 수익) 중심으로 재구성.
-      { icon: '🤝', title: '동네 공구 제안', desc: '원하는 가게 제안하면 모아서 열어드려요', to: '/community-group-buy/new', show: () => true },
+      { icon: '🤝', title: '동네 공구 제안', desc: '원하는 가게 제안하면 모아서 열어드려요', to: '/community-group-buy/new', show: () => !COMMUNITY_PROPOSAL_HIDDEN },
       { icon: '🔗', title: '내 링크샵', desc: '교환권·공구 추천하고 적립 받기', to: '/u/me', show: () => true },
       { icon: '🏪', title: '사장님 입점', desc: '내 가게 공구권 발행하기',     to: '/seller/register/supplier', show: () => !hasSellerToken },
       { icon: '🤵', title: '에이전시 사업', desc: '가게 영업 → 2% 영구 수익',  to: '/agency/register/business', show: () => !hasAgencyToken },
