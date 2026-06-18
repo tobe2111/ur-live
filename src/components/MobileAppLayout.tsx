@@ -42,6 +42,28 @@ const HIDE_SIDEBAR_PREFIXES = [
 //   /u(링크샵), /profile/(레거시 링크샵), /s/(셀러 공개) 모두 링크샵 서피스.
 const LINKSHOP_PREFIXES = ['/u/', '/u', '/profile/', '/s/']
 
+// 🛡️ 2026-06-18 (사용자 정정 — "링크샵 주인은 왼쪽 카테고리가 보여야지"): 사이드바 숨김/QR 은
+//   "공유 링크로 들어온 방문자"에게만. 주인이 자기 링크샵을 보면 평소 앱(사이드바) 그대로.
+//   주인 판별 = URL 핸들 ↔ localStorage 핸들(useLinkshopPath 우선순위: seller_username →
+//   linked_seller_username → user_handle, /u/me·/u 는 항상 주인). SSR(window 없음)=방문자로 간주
+//   → 익명 액자 우선, 주인 하드로드 시 첫 client 렌더에서 사이드바 자기치유(createRoot 비-hydrate).
+function isOwnLinkshopPath(pathname: string): boolean {
+  if (typeof window === 'undefined') return false
+  if (pathname === '/u' || pathname === '/u/me') return true
+  const m = pathname.match(/^\/(?:u|profile|s)\/([^/]+)/)
+  if (!m) return false
+  const handle = decodeURIComponent(m[1] || '').toLowerCase().replace(/^@/, '')
+  if (!handle) return false
+  if (handle === 'me') return true
+  try {
+    return [
+      localStorage.getItem('seller_username'),
+      localStorage.getItem('linked_seller_username'),
+      localStorage.getItem('user_handle'),
+    ].some((v) => v && v.toLowerCase().replace(/^@/, '') === handle)
+  } catch { return false }
+}
+
 // 📐 2026-06-16: PC 컨슈머 프레임 적용 경로 (단계적 롤아웃).
 //   전체 컨슈머 롤아웃 (2026-06-17): 대시보드/도매몰/비디오 제외 모든 컨슈머 페이지에 프레임.
 //   각 페이지의 fixed 하단/상단 바는 `.app-frame-bar` 클래스로 프레임 폭에 정렬 (index.css).
@@ -55,8 +77,10 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   const mobileOnly = MOBILE_ONLY_PREFIXES.some(p => location.pathname.startsWith(p))
   const hideSidebar = HIDE_SIDEBAR_PREFIXES.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
   // 🎨 2026-06-18 링크샵 서피스 — 좌측바 숨김 + 우하단 QR (프레임은 유지).
+  //   단, 주인이 자기 링크샵을 볼 땐 평소 앱(사이드바 표시) — 방문자(공유링크 진입)에게만 액자+QR.
   const isLinkshop = location.pathname === '/u' || LINKSHOP_PREFIXES.some(p => location.pathname.startsWith(p))
-  const showSidebar = !hideSidebar && !isLinkshop
+  const linkshopVisitor = isLinkshop && !isOwnLinkshopPath(location.pathname)
+  const showSidebar = !hideSidebar && !linkshopVisitor
   // 컨슈머 프레임 — 대시보드/도매몰/비디오는 제외 (전 컨슈머 적용). 링크샵은 프레임 유지.
   const framed = !mobileOnly && !hideSidebar
   // 📐 2026-06-17: 단일 폰 폭(430) — 페이지별 폭 분기 제거(액자가 페이지마다 안 튐).
@@ -85,8 +109,8 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
       {/* PC (xl+) 라이브 좌/우 패널 — /live/:id 에서만 (fixed). */}
       {mobileOnly && <Suspense fallback={null}><DesktopLiveLeftPanel /></Suspense>}
       {mobileOnly && <Suspense fallback={null}><DesktopLiveRightPanel /></Suspense>}
-      {/* 🎨 2026-06-18 링크샵 PC 우하단 "모바일로 보기" QR (xl+ gutter, 컴포넌트 내부 xl:flex). */}
-      {isLinkshop && <Suspense fallback={null}><LinkshopMobileQR /></Suspense>}
+      {/* 🎨 2026-06-18 링크샵 PC 우하단 "모바일로 보기" QR — 방문자에게만(주인은 평소 앱 뷰). */}
+      {linkshopVisitor && <Suspense fallback={null}><LinkshopMobileQR /></Suspense>}
       <div
         className={`mobile-app-container ${framed ? 'app-framed' : (showSidebar && !mobileOnly ? 'md:pl-[60px] xl:pl-56' : '')}`}
         data-mobile-only={mobileOnly ? 'true' : 'false'}
