@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-18 — 하이퍼로컬 토대: 매장 행정동(洞) 자동 태깅 (대표 "쓰자" — 콜드스타트 밀도전략)
+**배경**: 콜드스타트는 "한 동네 밀도" 전략인데, 매장이 좌표(lat/lng)만 있고 "무슨 동"인지 모름 → "내 동네 딜"·동별 밀도 집계 불가. 카카오 `coord2regioncode`(좌표→행정동, 안 쓰던 기능)로 자동 태깅.
+- **1단계(이번 — 매장 태깅)**: `restaurant-geocode` cron 확장. Pass A(주소→좌표) 직후 `coord2regioncode`로 동 태깅, Pass B(좌표 있으나 미태깅 기존 매장 백필). 행정동(H) 우선·법정동(B) 폴백.
+- **저장**: 신규 테이블 `product_regions`(product_id PK, region_si/gu/dong/dong_code, lat/lng) — **products 컬럼 예산제 회피**(별도 테이블이라 budget check 신규 0). `region_dong_code` 인덱스(동별 집계/향후 피드 조인). repair-schema + cron ensure(멱등) 등록.
+- **카카오라 저렴**(무료 한도 30만/일, batch 수백) + 결제·잠긴 피드쿼리 무수정. 실패 row 는 다음 cron 자연 재시도(region_dong NULL → Pass B 재처리).
+- **검증**: tsc 0 · worker build 0 · sql-bind/sql-column(tables 279 인식)/products-budget(신규 0)/schema-refs clean.
+- **다음 단계(미착수)**: 2단계 유저 동 태깅(위치/주소) → 3단계 피드 "내 동네 딜" 필터 + "우리 동네 N개" 카피 + 어드민 동별 밀도 집계(영입 타겟). 네이버 DataLab 수요신호를 소비자 머천다이징 캘린더에 재사용(코드 재활용).
+
 ## ✅ 2026-06-17 — 에이전시 매장 영입 개선점 12종 일괄 (대표 "모두 진행, 가장 이상적으로")
 전면 재편 후 발견된 개선점 12개를 우선순위로 처리(🔴 정합성 → 🟡 완결성 → 🟢/검증).
 - **🔴 정합성**: ①'진행중 공구' KPI 스코프를 `agency_sellers` OR `introduced_by_agency_id` 둘 다로(영입 매장 공구가 KPI 에 잡히도록 — 재편의 모순 해소) ③동네공구 '예상 수익'→**'예상 거래액'(GMV)**: 동네공구 확정엔 에이전시 직접 적립 코드 없음(확인) → 오해 라벨 정정, commission_rate fetch 제거. ⑩`AgencyGroupBuyAlert` 미사용 `active_groups`를 헤더 배지로 노출.

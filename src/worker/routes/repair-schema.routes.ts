@@ -256,6 +256,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'idx_ad_slots_seller_active', sql: "CREATE INDEX IF NOT EXISTS idx_ad_slots_seller_active ON ad_slots(current_seller_id, is_active, expires_at)" },
     // 🛡️ 2026-05-16: 공구 목록 (지도/리스트) hot query — category + is_active + group_buy_status
     { desc: 'idx_products_voucher_active', sql: "CREATE INDEX IF NOT EXISTS idx_products_voucher_active ON products(category, is_active, group_buy_status)" },
+    // 🗺️ 2026-06-18: 매장 행정동(洞) 태깅 — restaurant-geocode cron 이 채움 (하이퍼로컬 "내 동네 딜" 토대).
+    //   products 컬럼 예산제 회피 위해 별도 테이블. region_dong_code 인덱스로 동별 집계/조인.
+    { desc: 'product_regions table', sql: "CREATE TABLE IF NOT EXISTS product_regions (product_id INTEGER PRIMARY KEY, region_si TEXT, region_gu TEXT, region_dong TEXT, region_dong_code TEXT, lat REAL, lng REAL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)" },
+    { desc: 'idx_product_regions_dong_code', sql: "CREATE INDEX IF NOT EXISTS idx_product_regions_dong_code ON product_regions(region_dong_code)" },
     // 🛡️ 2026-05-16: 인플루언서 정산 인프라 (migration 0247)
     { desc: 'sellers.marketing_enabled', sql: "ALTER TABLE sellers ADD COLUMN marketing_enabled INTEGER DEFAULT 1" },
     { desc: 'products.referral_disabled', sql: "ALTER TABLE products ADD COLUMN referral_disabled INTEGER DEFAULT 0" },
