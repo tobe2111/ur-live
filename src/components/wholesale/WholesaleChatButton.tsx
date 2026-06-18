@@ -31,7 +31,8 @@ interface Props {
 
 export default function WholesaleChatButton({ initialCounterpartId = null, initialProductId = null, initialThreadId = null, autoOpen = false, onClose }: Props) {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(autoOpen)
+  // 💬 채팅 알림 딥링크(/wholesale/chat) 진입 시 위젯 자동 오픈.
+  const [open, setOpen] = useState(autoOpen || (typeof window !== 'undefined' && window.location.pathname === '/wholesale/chat'))
   const [unread, setUnread] = useState(0)
 
   const loggedIn = hasChatToken()
