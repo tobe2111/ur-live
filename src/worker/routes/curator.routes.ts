@@ -73,6 +73,8 @@ async function ensureUserProfileCols(DB: D1Database): Promise<void> {
     'ALTER TABLE users ADD COLUMN youtube_url TEXT',
     'ALTER TABLE users ADD COLUMN instagram_url TEXT',
     'ALTER TABLE users ADD COLUMN tiktok_url TEXT',
+    // 🎨 2026-06-17 링크샵 랜딩 리디자인: 상단 마퀴(흐르는 헤드라인) 텍스트.
+    'ALTER TABLE users ADD COLUMN linkshop_headline TEXT',
   ]) {
     await DB.prepare(sql).run().catch(() => { /* 이미 존재 → 정상 */ })
   }
@@ -187,6 +189,15 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     ])
     const pins = pinsResult.results
 
+    // 🎨 2026-06-17 (링크샵 랜딩 리디자인): 마퀴 헤드라인 — 별도 best-effort 조회(컬럼 없는 env 에서
+    //   메인 SELECT 의 banner/sns 가 폴백으로 사라지지 않도록 분리). 컬럼 없으면 null.
+    let headline: string | null = null
+    try {
+      const h = await DB.prepare('SELECT linkshop_headline FROM users WHERE id = ? LIMIT 1')
+        .bind(userId).first<{ linkshop_headline: string | null }>()
+      headline = h?.linkshop_headline ?? null
+    } catch { /* 컬럼 미존재 — null */ }
+
     // 🛡️ 2026-05-31 (링크샵 로딩): group-buy-public 과 동일 edge 캐시 — 이전엔 캐시 헤더가 없어
     //   (1) 매 요청 D1 3쿼리 cold, (2) worker SSR inject 가 caches.default 에서 못 찾아 매번 self-fetch cold
     //   → /u/:handle 첫 paint 200-500ms+ 지연. 공개 데이터(본인 dashboard 는 /me/* 별도)라 공개 캐시 안전.
@@ -221,6 +232,8 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         youtube_url: user.youtube_url ?? null,
         instagram_url: user.instagram_url ?? null,
         tiktok_url: user.tiktok_url ?? null,
+        // 🎨 2026-06-17 링크샵 랜딩 리디자인: 상단 마퀴 헤드라인.
+        headline,
       },
       pins: pins ?? [],
       // 🛡️ 2026-05-25 신모델: linked seller 있으면 셀러 공개페이지로 자연 흡수.
@@ -591,7 +604,7 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
-    type ProfileBody = { name?: string; bio?: string; profile_image?: string; banner_url?: string; youtube_url?: string; instagram_url?: string; tiktok_url?: string }
+    type ProfileBody = { name?: string; bio?: string; profile_image?: string; banner_url?: string; youtube_url?: string; instagram_url?: string; tiktok_url?: string; headline?: string }
     const body = await c.req.json<ProfileBody>().catch(() => ({} as ProfileBody))
 
     const updates: string[] = []
@@ -634,6 +647,11 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
         updates.push(`${key} = ?`)
         binds.push(v)
       }
+    }
+    // 🎨 2026-06-17 (링크샵 랜딩 리디자인): 상단 마퀴 헤드라인 (빈 문자열=해제).
+    if (typeof body.headline === 'string') {
+      updates.push('linkshop_headline = ?')
+      binds.push(body.headline.trim().slice(0, 80))
     }
     if (updates.length === 0) return c.json({ success: false, error: '변경할 필드 없음' }, 400)
 
