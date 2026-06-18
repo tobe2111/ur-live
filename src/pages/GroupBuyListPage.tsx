@@ -27,7 +27,7 @@ import type { GroupBuyProduct, CommunityGroupBuy, MainTab, CategoryFilter, SortO
 import LiveTicker from '@/components/group-buy/LiveTicker'
 import RegionPickerModal from '@/components/RegionPickerModal'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
-import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
+import { SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types/constants/utils 를 ./group-buy-list/ 로 추출.
 
@@ -710,8 +710,8 @@ export default function GroupBuyListPage() {
           md+)가 normal flow 로 상단을 차지하므로 아래 배너가 자연히 그 밑에 위치 — 별도 top offset 불필요.
           모바일은 배너의 pt-4 로 상단 여백 확보. */}
 
-      {/* 배너 — 클릭 시 동네 공구 제안. 🧭 2026-06-17: 즉시판매 단일가 모델 — '모일수록 싸진다/목표
-          달성 시 특가' 처럼 인원에 따라 가격이 변하는 듯한 문구(기만 소지)를 정직한 단일가로 교체. */}
+      {/* 배너 — 동네 공구 제안 CTA. 🚫 2026-06-18 COMMUNITY_PROPOSAL_HIDDEN 으로 숨김(셸브). */}
+      {!COMMUNITY_PROPOSAL_HIDDEN && (
       <div className="ur-content-wide px-4 lg:px-8 pt-4">
         <div className="bg-gray-900 rounded-2xl px-5 py-4 flex items-center gap-3">
           <div className="flex-1 min-w-0">
@@ -732,8 +732,11 @@ export default function GroupBuyListPage() {
           </button>
         </div>
       </div>
+      )}
 
-      {/* 메인 탭: 셀러 공구 | 유저 공구 */}
+      {/* 메인 탭: 셀러 공구 | 유저 공구. 🚫 2026-06-18 제안 숨김 시 '같이 모으기' 탭 제거 →
+          탭 1개뿐이라 스위처 자체 숨김(기본 mainTab='seller' 그대로 동네딜 그리드 렌더). */}
+      {!COMMUNITY_PROPOSAL_HIDDEN && (
       <div className="ur-content-wide px-4 lg:px-8 mt-4">
         <div className="flex border-b border-gray-200 dark:border-[#1A1A1A]">
           <button
@@ -758,6 +761,7 @@ export default function GroupBuyListPage() {
           </button>
         </div>
       </div>
+      )}
 
       {/* 카테고리 탭 (셀러 공구 전용) */}
       {mainTab === 'seller' && (
