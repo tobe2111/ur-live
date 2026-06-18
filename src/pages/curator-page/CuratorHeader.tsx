@@ -12,9 +12,9 @@
 
 import { useRef, useState, useEffect } from 'react'
 import { snsUrl } from '@/utils/sns-url'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Share2, Pencil, Check, X, Camera, Settings } from 'lucide-react'
+import { Share2, Pencil, Check, X, Camera } from 'lucide-react'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import { cfImage } from '@/utils/cf-image'
 import api from '@/lib/api'
@@ -415,21 +415,8 @@ export default function CuratorHeader({
                 </>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setEditingField('name')}
-                className="py-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
-              >
-                <Pencil className="w-3.5 h-3.5" /> 프로필 수정
-              </button>
-              <Link
-                to="/u/me/earnings"
-                className="py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
-              >
-                <Settings className="w-3.5 h-3.5" /> 수익 대시보드
-              </Link>
-            </div>
+            {/* 🎨 2026-06-17 (사용자 — 버튼 통합): 헤더 하단 [프로필 수정][수익 대시보드] 2버튼 제거.
+                프로필 수정=이름/사진/소개 탭 인라인 편집으로 충분(중복), 수익 대시보드=상단 편집 툴바(⚙)로 이동. */}
           </div>
         ) : (
           // 🔗 2026-06-17 (사용자 요청 — 방문자 공유 손봄): 아이콘만이던 복사 버튼을 라벨 단 균등 2버튼으로
