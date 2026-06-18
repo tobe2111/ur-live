@@ -271,10 +271,10 @@ export default function CuratorHeader({
         ) : null}
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 pt-4 pb-4">
-        {/* ② 풀블리드 배너 히어로 (동그라미 아바타 대신 정체성) */}
+      {/* ② 풀블리드 배너 히어로 — 화면 가득(좌우 여백 0) + 하단 그라데이션으로 페이지에 녹아듦 */}
+      <div className="max-w-3xl mx-auto">
         <div
-          className={`relative w-full aspect-[16/9] rounded-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/10 ${isOwner ? 'cursor-pointer' : ''}`}
+          className={`relative w-full aspect-[4/3] overflow-hidden ${isOwner ? 'cursor-pointer' : ''}`}
           style={showBanner ? undefined : { background: bannerGradient }}
           onClick={() => isOwner && bannerInputRef.current?.click()}
         >
@@ -292,21 +292,23 @@ export default function CuratorHeader({
               }}
             />
           )}
+          {/* 하단 그라데이션 페이드 — 배너가 페이지 배경으로 자연스럽게 melt (좌우 풀블리드 + 부드러운 전환) */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-white dark:to-[#020202]" />
           {/* 공유 (방문자/소유자 공통) — 우상단 오버레이 */}
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onCopyLink() }}
             aria-label="공유"
-            className="absolute top-2.5 right-2.5 z-10 w-9 h-9 rounded-full bg-black/35 backdrop-blur flex items-center justify-center active:scale-90"
+            className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-black/35 backdrop-blur flex items-center justify-center active:scale-90"
           >
             <Share2 className="w-4 h-4 text-white" />
           </button>
-          {/* 소유자: 배너 변경 — 좌하단 오버레이 */}
+          {/* 소유자: 배너 변경 — 좌상단 오버레이 (하단 페이드 영역 피해서 위로) */}
           {isOwner && (
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); bannerInputRef.current?.click() }}
-              className="absolute bottom-2.5 left-2.5 z-10 flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-full bg-black/45 backdrop-blur text-white text-[11.5px] font-bold active:scale-95"
+              className="absolute top-3 left-3 z-10 flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-full bg-black/45 backdrop-blur text-white text-[11.5px] font-bold active:scale-95"
             >
               {uploadingBanner ? <Camera className="w-3.5 h-3.5 animate-pulse" /> : <ImagePlus className="w-3.5 h-3.5" />}
               {uploadingBanner ? '업로드 중…' : (showBanner ? '배너 변경' : '배너 추가')}
@@ -322,9 +324,12 @@ export default function CuratorHeader({
             />
           )}
         </div>
+      </div>
 
-        {/* ③ 이름 / 핸들 / 태그라인 / SNS — 중앙 정렬 */}
-        <div className="mt-4 text-center">
+      <div className="max-w-3xl mx-auto px-4 pb-4">
+        {/* ③ 이름 / 핸들 / 태그라인 / SNS — 중앙 정렬 (배너 하단 페이드 위로 살짝 올림) */}
+        <div className="-mt-6 relative z-10 text-center">
+
           {editingField === 'name' ? (
             <div className="flex items-center justify-center gap-2">
               <input
