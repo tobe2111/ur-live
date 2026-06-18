@@ -8,6 +8,7 @@
  */
 import { Hono } from 'hono'
 import { requireAuth, requireAdmin, getCurrentUser } from '../middleware/auth'
+import { rateLimit } from '../middleware/rate-limit'
 import type { Env } from '../types/env'
 import { fetchRegion, guCodeOf } from '../utils/kakao-region'
 
@@ -87,6 +88,22 @@ meRegionRoutes.post('/region', requireAuth(), async (c) => {
   ).bind(String(user.id), si, gu, dong, dongCode, guCode, source).run()
 
   return c.json({ success: true, data: { region_si: si, region_gu: gu, region_dong: dong, region_dong_code: dongCode, gu_code: guCode, source } })
+})
+
+// 🗺️ 공개 — 좌표 → 동네 해석(미저장). 비로그인 "내 동네 자동 감지"용. rate-limit 으로 카카오 한도 보호.
+export const publicRegionRoutes = new Hono<{ Bindings: Env }>()
+
+publicRegionRoutes.get('/resolve', rateLimit({ action: 'region_resolve', max: 20, windowSec: 60 }), async (c) => {
+  const lat = Number(c.req.query('lat'))
+  const lng = Number(c.req.query('lng'))
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return c.json({ success: false, error: '좌표(lat/lng)가 필요해요' }, 400)
+  }
+  const key = (c.env as { KAKAO_REST_API_KEY?: string }).KAKAO_REST_API_KEY
+  if (!key) return c.json({ success: false, error: '위치 서비스가 설정되지 않았어요' }, 503)
+  const r = await fetchRegion(lng, lat, key)
+  if (!r) return c.json({ success: false, error: '동네를 찾지 못했어요' }, 422)
+  return c.json({ success: true, data: { region_si: r.si, region_gu: r.gu, region_dong: r.dong, region_dong_code: r.dongCode, gu_code: guCodeOf(r.dongCode) } })
 })
 
 export const adminRegionRoutes = new Hono<{ Bindings: Env }>()

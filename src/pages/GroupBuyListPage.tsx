@@ -26,7 +26,7 @@ import { formatTimeLeft, calcDiscountRate } from './group-buy-list/utils'
 import type { GroupBuyProduct, CommunityGroupBuy, MainTab, CategoryFilter, SortOption } from './group-buy-list/types'
 import LiveTicker from '@/components/group-buy/LiveTicker'
 import RegionPickerModal from '@/components/RegionPickerModal'
-import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
+import { matchAddress, findRegionByKey, findDistrictGroup, resolveRegionByAddress } from '@/shared/constants/korea-regions'
 import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types/constants/utils 를 ./group-buy-list/ 로 추출.
@@ -281,6 +281,49 @@ export default function GroupBuyListPage() {
     if (r) next.set('region', r); else next.delete('region')
     if (d) next.set('district', d); else next.delete('district')
     setSearchParams(next, { replace: true })
+  }
+
+  // 🗺️ 2026-06-18: GPS "내 동네 자동 감지" — 좌표 → /api/region/resolve(카카오 행정동) →
+  //   resolveRegionByAddress 로 기존 택소노미 {region,district} 에 매핑 → 기존 필터 그대로 적용.
+  //   로그인 상태면 '내 동네'를 user_regions 에 저장(fire-and-forget). 기존 picker/필터 로직 불변(additive).
+  const [detectingRegion, setDetectingRegion] = useState(false)
+  const detectMyRegion = () => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      toast.error(t('groupBuy.geoUnsupported', { defaultValue: '위치를 지원하지 않는 브라우저예요' }))
+      return
+    }
+    setDetectingRegion(true)
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords
+          const res = await api.get('/api/region/resolve', { params: { lat: latitude, lng: longitude } })
+          if (res.data?.success) {
+            const d = res.data.data as { region_si?: string; region_gu?: string; region_dong?: string }
+            const addr = `${d.region_si || ''} ${d.region_gu || ''} ${d.region_dong || ''}`.trim()
+            const resolved = resolveRegionByAddress(addr)
+            if (resolved) {
+              applyRegion(resolved.regionKey, resolved.districtKey)
+              toast.success(t('groupBuy.regionDetected', { defaultValue: '{{name}} 동네딜만 봐요', name: d.region_gu || d.region_si || '내 동네' }))
+              api.post('/api/me/region', { lat: latitude, lng: longitude }).catch(() => { /* 비로그인/실패 무시 */ })
+            } else {
+              toast.info(t('groupBuy.regionUnsupported', { defaultValue: '{{name}} 는 아직 동네딜 준비 전이에요', name: d.region_gu || '이 지역' }))
+            }
+          } else {
+            toast.error(t('groupBuy.regionDetectFail', { defaultValue: '동네를 찾지 못했어요' }))
+          }
+        } catch {
+          toast.error(t('groupBuy.regionDetectFail', { defaultValue: '동네를 찾지 못했어요' }))
+        } finally {
+          setDetectingRegion(false)
+        }
+      },
+      () => {
+        setDetectingRegion(false)
+        toast.error(t('groupBuy.geoPermission', { defaultValue: '위치 권한이 필요해요' }))
+      },
+      { timeout: 8000, maximumAge: 300000 },
+    )
   }
 
   const activeRegion = findRegionByKey(regionKey)
@@ -736,6 +779,17 @@ export default function GroupBuyListPage() {
           <MapPin className="w-3.5 h-3.5" />
           <span className="max-w-[150px] truncate">{regionButtonLabel}</span>
           <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+        </button>
+        {/* 🗺️ GPS 내 동네 자동 감지 */}
+        <button
+          onClick={detectMyRegion}
+          disabled={detectingRegion}
+          className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-full text-[13px] font-semibold border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 disabled:opacity-50"
+          aria-label={t('groupBuy.detectMyRegion', { defaultValue: '내 동네 자동 감지' })}
+        >
+          {detectingRegion
+            ? t('groupBuy.detecting', { defaultValue: '감지 중…' })
+            : `📍 ${t('groupBuy.myNeighborhood', { defaultValue: '내 동네' })}`}
         </button>
         {regionKey && (
           <button
