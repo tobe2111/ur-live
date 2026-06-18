@@ -213,7 +213,7 @@ export default function MyOrdersPage() {
       </div>
 
       {/* Content */}
-      <main className="ur-content-medium px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+      <main className="ur-content-medium px-4 sm:px-6 lg:px-8 pt-3 pb-6 sm:pt-5 sm:pb-10">
         {loading ? (
           /* 🛡️ 2026-06-18: 스피너 → 스켈레톤 카드 (CLAUDE.md 첫 페인트 표준) */
           <OrdersSkeleton />
