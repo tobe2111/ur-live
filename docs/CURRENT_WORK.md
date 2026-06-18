@@ -1,5 +1,8 @@
 # 🚧 진행 중 작업
 
+## 🎯 2026-06-18 — 사업자 유저 타겟 포지셔닝 메모 (대표 방향, 코드 미변경)
+대표 방향: **사업자 유저의 메인 타겟 = "자신의 쇼핑몰을 갖고 싶은 유저"**. `/u/{handle}` = 본인 쇼핑몰, **본인 상품이 주인공**, 공구권은 부가 채널. AskUserQuestion 결과 "지금은 방향만 메모" → 코드 변경 없이 SSOT 문서(CLAUDE.md 명칭 SSOT · SERVICE_MODEL.md)에 기록만. **다음 구현 시 적용 후보**: ① 진입 문구 "사업자 등록"→"내 쇼핑몰 열기"(등록은 그 안 1단계) ② 승인 사업자 상점(SellerPublicPage) 기본/첫화면 상품 우선·공구권 보조탭 ③ 빈 상점 문구 "내 쇼핑몰에 첫 상품을 올려보세요".
+
 ## ✅ 2026-06-18 — 링크샵 랜딩 리디자인 (나브랜딩 시안, 대표 "응 다 해줘 가장 이상적으로")
 **배경**: `/u/{handle}`(CuratorPage/CuratorHeader)를 "독립 브랜드 랜딩"으로. 시안 박제: `docs/design/linkshop-landing-redesign.md`. 3단계 구현(branch `claude/charming-sagan-y9hx6m`).
 - **Stage 1 (backend, commit 636df2e7f)**: `users.linkshop_headline` 컬럼(마퀴) — `curator.routes.ts` ensureUserProfileCols + repair-schema 등록. GET `/api/curator/:handle` 응답에 `headline`(별도 best-effort 쿼리 — 컬럼 누락 env 에서도 메인 SELECT 안 깨짐, null 폴백). PATCH `/me/profile` 에서 `headline`(80자) 수용. `banner_url` 은 기존 수용/반환 재사용.
