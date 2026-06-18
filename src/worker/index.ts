@@ -36,6 +36,7 @@ import { adminTaxRoutes } from '../features/admin/api/admin-tax.routes';
 import { ledgerRoutes } from '../features/ledger/api/ledger.routes';
 import { streamsRouter } from './routes/streams.routes';  // ✅ 공개 스트림 라우트
 import { usersRouter } from './routes/users.routes';      // ✅ /api/users/role, /api/users/init
+import { meRegionRoutes, adminRegionRoutes } from './routes/region.routes'; // 🗺️ 내 동네 + 동별 밀도
 import { i18nMiddleware } from './middleware/i18n.middleware';
 import { rateLimitMiddleware as rateLimiterMiddleware } from './middleware/rate-limiter';
 import { globalErrorHandler as errorHandler } from './middleware/error-handler';
@@ -1002,6 +1003,8 @@ app.route('/api/auth/google', googleRoutes);
 // 프론트엔드에서 /api/users/* 로 직접 호출
 // ============================================================
 app.route('/api/users', usersRouter);
+app.route('/api/me', meRegionRoutes);              // 🗺️ 내 동네 설정/조회
+app.route('/api/admin/region', adminRegionRoutes); // 🗺️ 동별 딜 밀도 (영입 타겟)
 
 // ============================================================
 // Cache Control — read-heavy public endpoints

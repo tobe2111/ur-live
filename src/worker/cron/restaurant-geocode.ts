@@ -14,6 +14,8 @@
  *     - 카카오 무료 한도(일 300,000) 대비 1회 batch 수백 건 → 안전 마진.
  *     - 실패 row 는 다음 cron 자연 재시도 (status 컬럼 없이, region_dong NULL 이면 Pass B 재처리).
  */
+import { fetchRegion, type RegionInfo } from '../utils/kakao-region'
+
 type Env = {
   DB: D1Database
   KAKAO_REST_API_KEY?: string
@@ -42,33 +44,6 @@ async function ensureProductRegions(DB: D1Database): Promise<void> {
       'CREATE INDEX IF NOT EXISTS idx_product_regions_dong_code ON product_regions(region_dong_code)',
     ).run()
   } catch { /* 이미 존재 */ }
-}
-
-interface RegionInfo { si: string; gu: string; dong: string; dongCode: string }
-
-/** 좌표 → 행정동(H). 실패 시 null (다음 cron Pass B 가 자연 재시도). */
-async function fetchRegion(lng: number, lat: number, key: string): Promise<RegionInfo | null> {
-  try {
-    const url = `https://dapi.kakao.com/v2/local/geo/coord2regioncode.json?x=${lng}&y=${lat}`
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } })
-    if (!res.ok) return null
-    const data = await res.json() as {
-      documents?: Array<{ region_type?: string; code?: string; region_1depth_name?: string; region_2depth_name?: string; region_3depth_name?: string }>
-    }
-    const docs = data.documents || []
-    // 행정동(H) 우선, 없으면 법정동(B) 폴백.
-    const doc = docs.find((d) => d.region_type === 'H') || docs.find((d) => d.region_type === 'B') || docs[0]
-    const dong = (doc?.region_3depth_name || '').trim()
-    if (!doc || !dong) return null
-    return {
-      si: (doc.region_1depth_name || '').trim(),
-      gu: (doc.region_2depth_name || '').trim(),
-      dong,
-      dongCode: (doc.code || '').trim(),
-    }
-  } catch {
-    return null
-  }
 }
 
 async function upsertRegion(DB: D1Database, productId: number, lat: number, lng: number, r: RegionInfo): Promise<boolean> {
