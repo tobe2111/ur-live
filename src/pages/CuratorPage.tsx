@@ -430,7 +430,7 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted }: { pins: CuratorPin[]; 
   return (
     <div className="max-w-3xl mx-auto p-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
       {pins.map((pin, idx) => (
-        <PinCard key={pin.id} pin={pin} handle={handle} isOwner={isOwner} aboveFold={idx < 4} onDeleted={onPinDeleted} />
+        <PinCard key={pin.id} pin={pin} handle={handle} isOwner={isOwner} aboveFold={idx < 4} index={idx} onDeleted={onPinDeleted} />
       ))}
       {/* 🏁 2026-06-16 링크샵 개선안: 본인이 핀 채워진 화면에서도 항상 추가 동선 — 그리드 끝 점선 카드. */}
       {isOwner && (
@@ -450,7 +450,7 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted }: { pins: CuratorPin[]; 
 //   커스텀 카드(EditorialProductCard) 그만 만들고 영구 고정"): 표준 카드 BrowseProductCard 를 그대로 재사용
 //   → 쇼핑 카드 디자인과 영구 동기화(2개씩/그라데이션). 클릭만 핀 redirect(/u/:handle/p/:id, to override)로
 //   보내 클릭집계+추천적립 루프 유지(잠금 불변).
-function PinCard({ pin, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorPin; handle: string; isOwner: boolean; aboveFold: boolean; onDeleted: (id: number) => void }) {
+function PinCard({ pin, handle, isOwner, aboveFold, index, onDeleted }: { pin: CuratorPin; handle: string; isOwner: boolean; aboveFold: boolean; index: number; onDeleted: (id: number) => void }) {
   const [deleting, setDeleting] = useState(false)
 
   async function handleDelete(e: React.MouseEvent) {
@@ -492,6 +492,11 @@ function PinCard({ pin, handle, isOwner, aboveFold, onDeleted }: { pin: CuratorP
   return (
     <div className="relative group">
       <BrowseProductCard product={product} aboveFold={aboveFold} to={`/u/${handle}/p/${pin.product_id}`} fallbackColor={fallbackColor} />
+      {/* 🔢 2026-06-18 (사용자 요청 — 링크샵에서만 카드 번호): 핀 순서 번호 배지. 다른 곳(홈/쇼핑) 미적용
+          — PinCard(링크샵 전용)에만 오버레이라 BrowseProductCard 공용 동작 불변. */}
+      <span className="absolute top-2 left-2 z-10 min-w-[22px] h-[22px] px-1.5 rounded-full bg-black/65 backdrop-blur text-white text-[12px] font-extrabold flex items-center justify-center shadow-sm pointer-events-none">
+        {index + 1}
+      </span>
       {isOwner && (
         // 🎨 2026-06-17: 모바일엔 hover 가 없어 항상 보이게(이전 opacity-0 group-hover 는 터치에서 숨김).
         <button

@@ -465,29 +465,11 @@ export default function CuratorHeader({
                   </div>
                 </div>
               ) : (
-                <>
-                  <div className="flex items-center px-3 py-2.5 rounded-xl bg-white dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A]">
-                    <span className="truncate text-[13px] font-mono text-gray-700 dark:text-gray-300">{shareHost}/u/{curator.handle}</span>
-                  </div>
-                  <div className="flex gap-2 mt-2">
-                    <button
-                      onClick={onCopyLink}
-                      className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
-                    >
-                      <Share2 className="w-3.5 h-3.5" /> 링크 복사
-                    </button>
-                    <div className="flex-1">
-                      <KakaoShareButton
-                        title={`${curator.name} 의 링크샵`}
-                        description={curator.bio || `${pinCount}개 추천 중`}
-                        imageUrl={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
-                        link={`/u/${curator.handle}`}
-                        className="w-full py-2.5 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[13px] font-bold transition-colors"
-                        buttonText="카카오 공유"
-                      />
-                    </div>
-                  </div>
-                </>
+                // 🔗 2026-06-18 (사용자 요청 — 배너 우상단 공유 버튼과 중복): 주소 카드의 링크복사/카카오공유 제거.
+                //   주소 표시 + '주소 변경'만 유지. 공유는 배너 히어로 우상단 공유 아이콘으로 일원화.
+                <div className="flex items-center px-3 py-2.5 rounded-xl bg-white dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A]">
+                  <span className="truncate text-[13px] font-mono text-gray-700 dark:text-gray-300">{shareHost}/u/{curator.handle}</span>
+                </div>
               )}
             </div>
           </div>
