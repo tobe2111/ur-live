@@ -34,6 +34,7 @@ export interface CuratorProfile {
   bio: string | null
   profile_image: string | null
   banner_url?: string | null
+  headline?: string | null // 🎨 2026-06-18 마퀴(흐르는 헤드라인)
   theme: 'dark' | 'light' | string
   // 🎨 2026-06-16 링크샵 시안: 크리에이터 SNS 링크.
   youtube_url?: string | null

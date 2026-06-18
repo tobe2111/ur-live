@@ -5,6 +5,7 @@ import { useTheme } from '@/shared/stores/useTheme'
 
 const DesktopLiveLeftPanel = lazy(() => import('./DesktopLiveLeftPanel'))
 const DesktopLiveRightPanel = lazy(() => import('./DesktopLiveRightPanel'))
+const LinkshopMobileQR = lazy(() => import('./LinkshopMobileQR'))
 
 interface MobileAppLayoutProps {
   children: ReactNode
@@ -36,6 +37,11 @@ const HIDE_SIDEBAR_PREFIXES = [
   '/seller', '/admin', '/agency', '/supplier', '/wholesale', '/embed', '/checkout/return', '/introduce',
 ]
 
+// 🎨 2026-06-18 (사용자 시안): 링크샵 진입 시 PC 좌측 카테고리 사이드바 숨김 → 깔끔한 액자.
+//   프레임(중앙 정렬)은 유지(HIDE_SIDEBAR_PREFIXES 와 달리 풀너비로 안 만듦) + 우하단 QR 표시.
+//   /u(링크샵), /profile/(레거시 링크샵), /s/(셀러 공개) 모두 링크샵 서피스.
+const LINKSHOP_PREFIXES = ['/u/', '/u', '/profile/', '/s/']
+
 // 📐 2026-06-16: PC 컨슈머 프레임 적용 경로 (단계적 롤아웃).
 //   전체 컨슈머 롤아웃 (2026-06-17): 대시보드/도매몰/비디오 제외 모든 컨슈머 페이지에 프레임.
 //   각 페이지의 fixed 하단/상단 바는 `.app-frame-bar` 클래스로 프레임 폭에 정렬 (index.css).
@@ -50,8 +56,10 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   const applied = useTheme(s => s.applied)
   const mobileOnly = MOBILE_ONLY_PREFIXES.some(p => location.pathname.startsWith(p))
   const hideSidebar = HIDE_SIDEBAR_PREFIXES.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
-  const showSidebar = !hideSidebar
-  // 컨슈머 프레임 — 대시보드/도매몰/비디오는 제외 (전 컨슈머 적용).
+  // 🎨 2026-06-18 링크샵 서피스 — 좌측바 숨김 + 우하단 QR (프레임은 유지).
+  const isLinkshop = location.pathname === '/u' || LINKSHOP_PREFIXES.some(p => location.pathname.startsWith(p))
+  const showSidebar = !hideSidebar && !isLinkshop
+  // 컨슈머 프레임 — 대시보드/도매몰/비디오는 제외 (전 컨슈머 적용). 링크샵은 프레임 유지.
   const framed = !mobileOnly && !hideSidebar
   // 📐 상품 상세(/products/:id)는 lg+ 2단(이미지|구매) 레이아웃이라 넓은 프레임(720) — 430 에 욱여넣어
   //   2단이 짜부되던 것 방지. 그 외 상세(공구/교환권)는 단일 컬럼이라 430 유지.
@@ -81,6 +89,8 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
       {/* PC (xl+) 라이브 좌/우 패널 — /live/:id 에서만 (fixed). */}
       {mobileOnly && <Suspense fallback={null}><DesktopLiveLeftPanel /></Suspense>}
       {mobileOnly && <Suspense fallback={null}><DesktopLiveRightPanel /></Suspense>}
+      {/* 🎨 2026-06-18 링크샵 PC 우하단 "모바일로 보기" QR (xl+ gutter, 컴포넌트 내부 xl:flex). */}
+      {isLinkshop && <Suspense fallback={null}><LinkshopMobileQR /></Suspense>}
       <div
         className={`mobile-app-container ${framed ? 'app-framed' : (showSidebar && !mobileOnly ? 'md:pl-[60px] xl:pl-56' : '')}`}
         data-mobile-only={mobileOnly ? 'true' : 'false'}

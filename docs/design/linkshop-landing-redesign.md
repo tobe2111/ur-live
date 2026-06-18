@@ -34,12 +34,12 @@
 - name / bio(태그라인) / sns_* / profile_image — 기존.
 
 ## 구현 todo
-- [ ] `banner_url` 히어로 렌더 (풀블리드, 라운드, 공유/벨 오버레이) + 소유자 배너 업로드
-- [ ] 동그라미 아바타 제거 (배너 없을 때 그라데이션 폴백)
-- [ ] 이름/태그라인/SNS 중앙 정렬 레이아웃
-- [ ] 마퀴 바 (CSS animation, `linkshop_headline`, 소유자 편집) + users 컬럼 + repair-schema
-- [ ] PC 프레임 우하단 QR ("모바일로 보기", qrcode.react)
-- [ ] `/u/{handle}` PC 좌측 사이드바 숨김 (MobileAppLayout/HIDE_SIDEBAR)
+- [x] `banner_url` 히어로 렌더 (풀블리드 16:9, 라운드, 공유 오버레이) + 소유자 배너 업로드 (1440px/0.4MB)
+- [x] 동그라미 아바타 제거 (배너 없을 때 앰버→잉크 그라데이션 폴백)
+- [x] 이름/태그라인/SNS 중앙 정렬 레이아웃
+- [x] 마퀴 바 (CSS `@keyframes marquee` seamless, `linkshop_headline`, 소유자 인라인 편집) + users 컬럼 + repair-schema
+- [x] PC 프레임 우하단 QR ("모바일로 보기", qrcode.react lazy, xl+ only)
+- [x] `/u`·`/profile/`·`/s/` PC 좌측 사이드바 숨김 (MobileAppLayout `LINKSHOP_PREFIXES`, 프레임은 유지)
 - [ ] (보류) 비즈니스 제안 버튼 — 사용자 추가 요청 시
 
 ## 메모
@@ -47,4 +47,10 @@
 - 방문자 화면 우선(공유 대상). 소유자 편집 chrome 은 최소.
 
 ## ✅ 구현 완료
-(미구현 — 구현 시 commit hash 추가)
+
+2026-06-18 — 3단계로 구현 (branch `claude/charming-sagan-y9hx6m`):
+- **Stage 1 (backend)**: `linkshop_headline` 컬럼 (`curator.routes.ts` ensureUserProfileCols + repair-schema) — GET `/api/curator/:handle` 응답에 `headline` 포함(별도 best-effort 쿼리, 컬럼 누락 env 에서 메인 SELECT 안 깨짐), PATCH `/me/profile` 에서 `headline`(80자) 수용. `banner_url` 은 기존 수용/반환 그대로 재사용.
+- **Stage 2 (CuratorHeader)**: 마퀴 바(seamless `@keyframes marquee`, index.css) + 풀블리드 16:9 배너 히어로(공유 오버레이/소유자 배너 업로드/그라데이션 폴백) + 동그라미 아바타 제거 + 이름/태그라인/SNS 중앙 정렬. 소유자 편집(이름/소개/SNS/핸들/헤드라인)·방문자 공유 전부 보존. `CuratorProfile` 타입에 `headline` 추가.
+- **Stage 3 (PC 표현)**: `LinkshopMobileQR.tsx`(qrcode.react lazy, xl+ 우하단 gutter) + `MobileAppLayout` `LINKSHOP_PREFIXES` 로 `/u`·`/profile/`·`/s/` 좌측 사이드바 숨김(프레임은 유지).
+
+> ⚠️ 운영 반영 전: prod 에서 `/api/_internal/repair-schema` 1회 실행 필요 (`users.linkshop_headline` 컬럼 생성). 미실행이어도 GET 의 headline 은 best-effort try-catch 라 안전(null 폴백 → 마퀴만 숨김).

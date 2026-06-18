@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-18 — 링크샵 랜딩 리디자인 (나브랜딩 시안, 대표 "응 다 해줘 가장 이상적으로")
+**배경**: `/u/{handle}`(CuratorPage/CuratorHeader)를 "독립 브랜드 랜딩"으로. 시안 박제: `docs/design/linkshop-landing-redesign.md`. 3단계 구현(branch `claude/charming-sagan-y9hx6m`).
+- **Stage 1 (backend, commit 636df2e7f)**: `users.linkshop_headline` 컬럼(마퀴) — `curator.routes.ts` ensureUserProfileCols + repair-schema 등록. GET `/api/curator/:handle` 응답에 `headline`(별도 best-effort 쿼리 — 컬럼 누락 env 에서도 메인 SELECT 안 깨짐, null 폴백). PATCH `/me/profile` 에서 `headline`(80자) 수용. `banner_url` 은 기존 수용/반환 재사용.
+- **Stage 2 (CuratorHeader 리디자인)**: ① 최상단 **마퀴 바**(seamless `@keyframes marquee` in index.css, `linkshop_headline`, 소유자 인라인 편집, prefers-reduced-motion 존중) ② **풀블리드 16:9 배너 히어로**(banner_url, 공유 오버레이/소유자 배너 업로드 1440px·0.4MB/그라데이션 폴백) ③ **동그라미 아바타 제거** — 배너가 정체성(profile_image 데이터는 OG/핀용으로 유지, 헤더 렌더만 제거) ④ 이름/태그라인/SNS **중앙 정렬**. 소유자 편집(이름/소개/SNS/핸들/헤드라인)·방문자 공유 전부 보존. `CuratorProfile` 타입 `headline` 추가.
+- **Stage 3 (PC 표현)**: `LinkshopMobileQR.tsx`(qrcode.react **lazy**, xl+ 우하단 gutter "모바일로 보기") + `MobileAppLayout` `LINKSHOP_PREFIXES`(`/u`·`/profile/`·`/s/`) 로 **PC 좌측 사이드바 숨김**(프레임 중앙정렬은 유지 — HIDE_SIDEBAR 와 달리 풀너비 안 만듦).
+- 검증: tsc 0 · `npm run build`(client+ssr+worker+prepare) exit 0 · 테마검사 통과.
+- ⚠️ **운영 반영 전**: prod `/api/_internal/repair-schema` 1회 실행(`users.linkshop_headline` 생성). 미실행이어도 GET headline 은 try-catch null 폴백이라 안전(마퀴만 숨김).
+
 ## ✅ 2026-06-17 — 소비자(유저) 자동 로그아웃 근본수정: 401 핸들러 fail-safe (대표 신고 "계속 유저 로그아웃")
 **신고**: "뭔가 계속 자동 로그아웃, 특히 유저(소비자)." 전수조사 결과 **`lib/api.ts` 소비자 401 핸들러가 fail-OPEN-to-logout** 이었음.
 - **결함**: 401 시 `/api/auth/session/health` 로 세션 확인하는데, **헬스 요청이 네트워크/타임아웃/5xx 로 실패하면 `catch {}` 가 삼키고 그대로 `clearAuthData('user')`** → 로그아웃. 즉 "세션이 죽었다"가 아니라 "확인을 못 했다"인데도 소비자 세션을 지움. 헬스 일시오류·느린 응답·듀얼유저(대시보드 토큰이 `/api/notifications` 등 비-`_isDashboardUrl` 호출에 붙어 401 SESSION_SUPERSEDED → 소비자 흐름 fall-through) 에서 부당 로그아웃.
