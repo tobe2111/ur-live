@@ -55,3 +55,26 @@ export function cardGradient(dominant?: string | null): CardGradient {
   if (!rgb) return FALLBACK
   return build(rgb[0], rgb[1], rgb[2])
 }
+
+// 🎨 2026-06-18 (사용자 신고 — 방문자 모바일 링크샵 핀 카드 그라데이션 없음): 서버 dominant_color 가
+//   null 이고 외부호스트 이미지는 canvas 추출이 CORS taint 로 실패 → cardGradient(null) 단색 회색으로 보임.
+//   시드(카테고리/상품id) 기반 결정적 hex 를 폴백색으로 줘 항상 "컬러 그라데이션" 보장(추출 성공 시 실색이 덮어씀).
+function hslToHex(h: number, s: number, l: number): string {
+  s /= 100; l /= 100
+  const k = (n: number) => (n + h / 30) % 12
+  const a = s * Math.min(l, 1 - l)
+  const f = (n: number) => {
+    const c = l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))
+    return Math.round(255 * c).toString(16).padStart(2, '0')
+  }
+  return `#${f(0)}${f(8)}${f(4)}`
+}
+
+export function seededColor(seed: string | number): string {
+  const str = String(seed ?? '')
+  let h = 2166136261
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) }
+  const hue = (h >>> 0) % 360
+  // 채도/명도 고정 — 너무 튀지 않으면서 카드별로 구분되는 차분한 컬러.
+  return hslToHex(hue, 50, 42)
+}
