@@ -14,9 +14,9 @@ export const BUSINESS_INFO = {
   tel: '02-2038-0996',
   fax: '0303-3443-4424',
   address: '서울 중구 동호로33길 24(오장동, 센트마 4093호)',
-  // 🏦 입금 은행 — 우체국 (계좌번호는 사용자 추후 제공). bankNo 채우면 무통장입금 안내가 자동 노출.
+  // 🏦 입금 은행 — 우체국 (2026-06-18 사용자 제공). bankNo 채우면 무통장입금 안내가 자동 노출.
   bankName: '우체국',
-  bankNo: '',
+  bankNo: '014084-02-129530',
   bankHolder: '사람과고리(송유미)',
   csEmail: 'jiwon@ur-team.com',
 } as const

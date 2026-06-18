@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-18 — 도매몰 예치금 입금계좌 3곳 반영 (대표 제공: 우체국 014084-02-129530 송유미/사람과고리)
+유통사가 예치금(선불 충전)을 송금할 도매몰 입금계좌를 세 군데에 노출. 외부망(egress) 차단으로 prod API set 불가 → 코드/DB fallback 으로 배포 즉시 반영.
+- **① 어드민 설정칸**(`AdminWholesaleDepositsPage`): `/admin/wholesale-deposits` 상단 '예치금 입금 안내 계좌' 입력칸 신규(기존 GET/PUT `/api/admin/wholesale-deposit-account` 연결). 어드민이 수정 가능.
+- **② 유통사 입금 페이지**(`WholesaleDepositPage`): 기존 `depositAccount` 표시 블록(복사 버튼)에 자동 노출 — `useWholesaleDeposit` → `wholesale-deposit.routes` 가 `loadWholesaleDepositAccount` fallback 사용.
+- **③ 하단 회사정보란**(`WholesaleFooter.BUSINESS_INFO.bankNo`): 이전 세션 TODO('계좌번호 추후 제공')였던 `bankNo` 채움 → '무통장 입금 우체국 014084-02-129530 예금주 사람과고리(송유미)' 자동 노출.
+- **반영 방식**: `wholesale-main.routes.ts` 에 `DEFAULT_WHOLESALE_DEPOSIT_ACCOUNT` fallback(admin GET + `loadWholesaleDepositAccount` — DB 미설정 시 기본값, 어드민 저장값 우선) + `repair-schema` platform_settings INSERT OR IGNORE 시드. 공개 표시 목적이라 코드 포함 OK(대표 명시 지시).
+- 검증: tsc 0 · build 0 · schema-refs/테마 clean.
+
 ## ✅ 2026-06-17 — 소비자(유저) 자동 로그아웃 근본수정: 401 핸들러 fail-safe (대표 신고 "계속 유저 로그아웃")
 **신고**: "뭔가 계속 자동 로그아웃, 특히 유저(소비자)." 전수조사 결과 **`lib/api.ts` 소비자 401 핸들러가 fail-OPEN-to-logout** 이었음.
 - **결함**: 401 시 `/api/auth/session/health` 로 세션 확인하는데, **헬스 요청이 네트워크/타임아웃/5xx 로 실패하면 `catch {}` 가 삼키고 그대로 `clearAuthData('user')`** → 로그아웃. 즉 "세션이 죽었다"가 아니라 "확인을 못 했다"인데도 소비자 세션을 지움. 헬스 일시오류·느린 응답·듀얼유저(대시보드 토큰이 `/api/notifications` 등 비-`_isDashboardUrl` 호출에 붙어 401 SESSION_SUPERSEDED → 소비자 흐름 fall-through) 에서 부당 로그아웃.
