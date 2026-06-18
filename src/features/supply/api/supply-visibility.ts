@@ -107,6 +107,12 @@ async function _ensureSupplyVisibilitySchema(DB: D1Database): Promise<void> {
   //   0 은 유효 product id 가 아니므로 '원본'(NULL)으로 정규화 → 9개 쿼리 일괄 치유. 멱등(이후 0행 매칭).
   await DB.prepare("UPDATE products SET supply_source_id = NULL WHERE is_supply_product = 1 AND supply_source_id = 0")
     .run().catch(swallow('supply-vis:normalize-source-zero'))
+  // 🚑 2026-06-18 (멀티-몰 host-first 후속): mall_id = 0 → 1(기본 몰) 정규화. host-first 카탈로그는
+  //   `COALESCE(mall_id,1) = ?` 로 스코핑 → NULL 은 COALESCE 로 1 취급되지만 **0 은 1 과 불일치라 제외**됨
+  //   (일부 등록 경로가 0 을 남길 수 있음). 0 은 유효 몰 id 가 아니므로 기본 몰(1)로 정규화 → 자동 노출 치유.
+  //   catalog-repair 의 "항상 안전" 티어와 동일(상품을 잘못 노출시키지 않음 — 0/누락만 기본 몰로). 멱등.
+  await DB.prepare("UPDATE products SET mall_id = 1 WHERE is_supply_product = 1 AND mall_id = 0")
+    .run().catch(swallow('supply-vis:normalize-mall-zero'))
   if (!have.has('min_order_qty')) {
     // 🏭 2026-06-04 최소 주문 수량(MOQ) — 도매 박스 단위. 공급자 설정, 기본 1(낱개).
     //   카드/상세/카트 박스·개당 단가 병기 + 주문 서버 검증(qty >= moq).
