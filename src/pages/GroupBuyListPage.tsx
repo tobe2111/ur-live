@@ -26,7 +26,7 @@ import { formatTimeLeft, calcDiscountRate } from './group-buy-list/utils'
 import type { GroupBuyProduct, CommunityGroupBuy, MainTab, CategoryFilter, SortOption } from './group-buy-list/types'
 import LiveTicker from '@/components/group-buy/LiveTicker'
 import RegionPickerModal from '@/components/RegionPickerModal'
-import { matchAddress, findRegionByKey, findDistrictGroup, resolveRegionByAddress } from '@/shared/constants/korea-regions'
+import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
 import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types/constants/utils 를 ./group-buy-list/ 로 추출.
@@ -62,6 +62,14 @@ function fetchGroupBuyList(): Promise<GroupBuyProduct[] | null> {
 export function warmGroupBuyList(): void {
   if (_gbListCache && Date.now() - _gbListCache.at < GB_CACHE_TTL) return
   void fetchGroupBuyList()
+}
+
+// 🗺️ 2026-06-18: GPS '내 동네'(정확한 시군구 코드) 서버 필터. 모듈 캐시 미오염(기본 피드와 분리).
+function fetchGroupBuyByRegion(guCode: string): Promise<GroupBuyProduct[] | null> {
+  return api
+    .get(`${GB_LIST_URL}&region=${encodeURIComponent(guCode)}`)
+    .then((r) => (r.data?.success ? ((r.data.data || []) as GroupBuyProduct[]) : null))
+    .catch(() => null)
 }
 
 // 🛡️ 2026-06-04 [LOADING_ADDITIVE]: 동네딜 SSR 주입(__SSR_INITIAL_GROUPBUY__) 즉시 소비 → 마운트 fetch 워터폴 제거.
@@ -268,24 +276,41 @@ export default function GroupBuyListPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showSortDropdown, setShowSortDropdown] = useState(false)
   const [interestedIds, setInterestedIds] = useState<Set<number>>(new Set())
-  // 🛡️ 2026-05-17: 지역 필터 상태 + 모달
+  // 🛡️ 2026-05-17: 지역 필터 상태 + 모달 (큐레이션 택소노미 — 수동 선택용)
   const [regionKey, setRegionKey] = useState<string | null>(urlRegion)
   const [districtKey, setDistrictKey] = useState<string | null>(urlDistrict)
   const [regionPickerOpen, setRegionPickerOpen] = useState(false)
+  // 🗺️ 2026-06-18: GPS '내 동네' — 정확한 시군구 코드(전국 커버, 큐레이션 목록 의존 X).
+  //   regionKey(큐레이션)와 상호배타 — 하나 켜면 다른 거 해제. URL ?gucode=&guname= 로 공유/뒤로가기.
+  const [gpsRegion, setGpsRegion] = useState<{ guCode: string; name: string } | null>(
+    searchParams.get('gucode') ? { guCode: searchParams.get('gucode')!, name: searchParams.get('guname') || '내 동네' } : null,
+  )
 
-  // 지역 변경 시 URL 동기화 (browser back/share 지원)
+  // 큐레이션 지역 변경 시 URL 동기화 + GPS 모드 해제 (상호배타).
   function applyRegion(r: string | null, d: string | null) {
     setRegionKey(r)
     setDistrictKey(d)
+    setGpsRegion(null)
     const next = new URLSearchParams(searchParams)
     if (r) next.set('region', r); else next.delete('region')
     if (d) next.set('district', d); else next.delete('district')
+    next.delete('gucode'); next.delete('guname')
     setSearchParams(next, { replace: true })
   }
 
-  // 🗺️ 2026-06-18: GPS "내 동네 자동 감지" — 좌표 → /api/region/resolve(카카오 행정동) →
-  //   resolveRegionByAddress 로 기존 택소노미 {region,district} 에 매핑 → 기존 필터 그대로 적용.
-  //   로그인 상태면 '내 동네'를 user_regions 에 저장(fire-and-forget). 기존 picker/필터 로직 불변(additive).
+  // GPS '내 동네'(정확한 코드) 적용 + URL 동기화 + 큐레이션 필터 해제.
+  function applyGpsRegion(g: { guCode: string; name: string } | null) {
+    setGpsRegion(g)
+    setRegionKey(null)
+    setDistrictKey(null)
+    const next = new URLSearchParams(searchParams)
+    if (g) { next.set('gucode', g.guCode); next.set('guname', g.name) } else { next.delete('gucode'); next.delete('guname') }
+    next.delete('region'); next.delete('district')
+    setSearchParams(next, { replace: true })
+  }
+
+  // 🗺️ 2026-06-18: GPS "내 동네 자동 감지" — 좌표 → /api/region/resolve(카카오 행정동) → 정확한 시군구
+  //   코드로 서버 필터(전국 커버, "준비 전" 없음). 로그인 시 user_regions 저장(fire-and-forget).
   const [detectingRegion, setDetectingRegion] = useState(false)
   const detectMyRegion = () => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -298,17 +323,12 @@ export default function GroupBuyListPage() {
         try {
           const { latitude, longitude } = pos.coords
           const res = await api.get('/api/region/resolve', { params: { lat: latitude, lng: longitude } })
-          if (res.data?.success) {
-            const d = res.data.data as { region_si?: string; region_gu?: string; region_dong?: string }
-            const addr = `${d.region_si || ''} ${d.region_gu || ''} ${d.region_dong || ''}`.trim()
-            const resolved = resolveRegionByAddress(addr)
-            if (resolved) {
-              applyRegion(resolved.regionKey, resolved.districtKey)
-              toast.success(t('groupBuy.regionDetected', { defaultValue: '{{name}} 동네딜만 봐요', name: d.region_gu || d.region_si || '내 동네' }))
-              api.post('/api/me/region', { lat: latitude, lng: longitude }).catch(() => { /* 비로그인/실패 무시 */ })
-            } else {
-              toast.info(t('groupBuy.regionUnsupported', { defaultValue: '{{name}} 는 아직 동네딜 준비 전이에요', name: d.region_gu || '이 지역' }))
-            }
+          const d = res.data?.success ? (res.data.data as { region_gu?: string; region_si?: string; gu_code?: string }) : null
+          if (d?.gu_code) {
+            const name = d.region_gu || d.region_si || '내 동네'
+            applyGpsRegion({ guCode: d.gu_code, name })
+            toast.success(t('groupBuy.regionDetected', { defaultValue: '{{name}} 동네딜만 봐요', name }))
+            api.post('/api/me/region', { lat: latitude, lng: longitude }).catch(() => { /* 비로그인/실패 무시 */ })
           } else {
             toast.error(t('groupBuy.regionDetectFail', { defaultValue: '동네를 찾지 못했어요' }))
           }
@@ -391,6 +411,21 @@ export default function GroupBuyListPage() {
       })
       .finally(() => setLoading(false))
   }, [])
+
+  // 🗺️ 2026-06-18: GPS '내 동네'(시군구 코드) 변경 시 서버 region 필터로 재조회.
+  //   기본(코드 없음)은 위 마운트 effect 가 담당 — 정상 마운트(코드 0)에선 null===null 으로 skip(중복 fetch 0).
+  //   gucode 가 켜지면 서버필터 결과로, 비우면 기본 목록으로 setItems. 모듈 캐시(_gbListCache)는 미오염.
+  const regionFetchRef = useRef<string | null>(null)
+  useEffect(() => {
+    const code = gpsRegion?.guCode || ''
+    if (regionFetchRef.current === (code || null)) return
+    regionFetchRef.current = code || null
+    setLoading(true)
+    void (code ? fetchGroupBuyByRegion(code) : fetchGroupBuyList())
+      .then((fresh) => { if (fresh) setItems(fresh) })
+      .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gpsRegion?.guCode])
 
   // 유저 공구 로딩 — 🛡️ 2026-06-04 [LOADING_ADDITIVE]: 기본탭은 '셀러 공구'라
   //   유저공구(uncached) fetch 를 마운트마다 하던 것 → '유저 공구' 탭 첫 진입 시 1회만 로드(워밍 낭비 제거).
@@ -770,14 +805,14 @@ export default function GroupBuyListPage() {
         <button
           onClick={() => setRegionPickerOpen(true)}
           className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold border transition-colors ${
-            regionKey
+            (regionKey || gpsRegion)
               ? 'bg-gray-900 dark:bg-white border-gray-900 dark:border-white text-white dark:text-gray-900'
               : 'bg-white dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-300'
           }`}
           aria-label="지역 선택"
         >
           <MapPin className="w-3.5 h-3.5" />
-          <span className="max-w-[150px] truncate">{regionButtonLabel}</span>
+          <span className="max-w-[150px] truncate">{gpsRegion ? `📍 ${gpsRegion.name}` : regionButtonLabel}</span>
           <ChevronDown className="w-3.5 h-3.5 opacity-70" />
         </button>
         {/* 🗺️ GPS 내 동네 자동 감지 */}
@@ -791,7 +826,7 @@ export default function GroupBuyListPage() {
             ? t('groupBuy.detecting', { defaultValue: '감지 중…' })
             : `📍 ${t('groupBuy.myNeighborhood', { defaultValue: '내 동네' })}`}
         </button>
-        {regionKey && (
+        {(regionKey || gpsRegion) && (
           <button
             onClick={() => applyRegion(null, null)}
             className="text-[12px] text-gray-500 dark:text-gray-400 underline underline-offset-2"
