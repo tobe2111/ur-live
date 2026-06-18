@@ -66,9 +66,10 @@ function applyToDocument(applied: AppliedTheme) {
     //   index.html(line 262)이 FOUC 방지로 <body> 에 **인라인** background 를 한 번 칠하는데,
     //   인라인 스타일은 모든 CSS 규칙(html.dark body / body.app-frame-host …)을 이긴다.
     //   그런데 토글 시 이 인라인 값이 **갱신되지 않아** 직전 테마 색(흰/검)이 그대로 남았다.
-    //   → 프레임 양옆(gutter)을 현재 테마에 직접 동기: 라이트 #e9ebef(은은한 회색·프레임 강조), 다크 #000.
-    //   이 한 줄이 두 신고의 공통 근본원인. CSS 규칙(html.dark { })은 FOUC/폴백으로 유지.
-    if (document.body) document.body.style.backgroundColor = applied === 'dark' ? '#000000' : '#e9ebef'
+    //   → 프레임 양옆(gutter)을 현재 테마에 직접 동기: 라이트 #e9ebef(은은한 회색·프레임 강조),
+    //   다크 #0C0D10(2026-06-17 사용자 선택 — 순흑 #000 은 안쪽 페이지 #020202 와 똑같아 프레임이 안 떠
+    //   보였음. 살짝 밝은 다크그레이로 라이트모드처럼 '액자' 분리감). CSS 규칙(html.dark { })은 FOUC/폴백.
+    if (document.body) document.body.style.backgroundColor = applied === 'dark' ? '#0C0D10' : '#e9ebef'
   } catch { /* SSR */ }
 }
 

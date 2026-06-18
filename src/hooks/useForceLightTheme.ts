@@ -38,7 +38,7 @@ export function useForceLightTheme(): void {
       if (wasDark) {
         root.classList.add('dark')
         root.setAttribute('data-theme', 'dark')
-        if (document.body) document.body.style.backgroundColor = '#000000'
+        if (document.body) document.body.style.backgroundColor = '#0C0D10'
       }
     }
   }, [])
