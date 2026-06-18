@@ -585,6 +585,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'users.youtube_url', sql: "ALTER TABLE users ADD COLUMN youtube_url TEXT" },
     { desc: 'users.instagram_url', sql: "ALTER TABLE users ADD COLUMN instagram_url TEXT" },
     { desc: 'users.tiktok_url', sql: "ALTER TABLE users ADD COLUMN tiktok_url TEXT" },
+    { desc: 'users.linkshop_headline', sql: "ALTER TABLE users ADD COLUMN linkshop_headline TEXT" },
     // 🛡️ 2026-05-27 (리뷰 집계 영구 fix — 사용자 보고):
     //   product_reviews INSERT 경로 7곳 (사용자/시드/admin) 마다 products UPDATE 누락 위험.
     //   D1 트리거로 모든 INSERT/UPDATE/DELETE 자동 처리 → review_count + avg_rating 영구 동기화.

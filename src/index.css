@@ -872,6 +872,22 @@ html.dark .gbd {
   100% { transform: translateX(-100%); }
 }
 
+/* 🎨 2026-06-18 링크샵 랜딩 마퀴(흐르는 헤드라인) — 끊김 없는 무한 루프.
+   콘텐츠를 2벌 나란히 두고 -50% 까지 이동 → seamless. prefers-reduced-motion 존중. */
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee 22s linear infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee { animation: none; transform: none; }
+}
+
 /* 🛡️ 2026-05-15: 공구 LiveTicker / Milestone fade-in */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
