@@ -3,7 +3,7 @@
 - **시안 받은 날**: 2026-06-18
 - **출처**: 사용자가 공유한 무신사(musinsa.com) 스크린샷 2장 — ① 주문 내역 목록 ② 주문 상세 (`musinsa.com/order/offline-detail/...`)
 - **대상 페이지**: `/my-orders` (`src/pages/MyOrdersPage.tsx` → `src/components/mypage/OrdersTab.tsx` → `src/pages/my-orders/OrderDetailModal.tsx`)
-- **상태**: ⏳ 미구현 (시안 박제 + todo)
+- **상태**: ✅ 구현 완료 (옵션 A — 종류 탭 + 종류별 카드). 상세 아래 "✅ 구현 완료" 참조.
 - **사용자 명시 제외**: **바코드는 불필요** (무신사는 오프라인 매장 픽업용 바코드. 유어딜은 온라인/라이브 커머스라 해당 없음)
 
 > ⚠️ 채팅 이미지는 세션 종료 시 사라지므로 아래에 시안을 **텍스트로 상세 박제**한다. PNG 를 보존하려면
@@ -162,3 +162,36 @@
 ## 참고: 잠금 여부
 - `MyOrdersPage.tsx` / `OrdersTab.tsx` / `OrderDetailModal.tsx` 는 **잠금 파일 아님** → 직접 작업 가능.
 - Phase 0 의 `order.repository.ts` 는 결제 SSOT 가 아니라 조회 쿼리 → 잠금 외. 단 worker 변경이라 staging 검증 권장.
+
+---
+
+## ✅ 구현 완료 (2026-06-18 — 옵션 A)
+
+사용자 결정 **옵션 A (종류 탭 + 종류별 카드)** 로 구현.
+
+### 변경 파일
+| 파일 | 변경 |
+|---|---|
+| `src/shared/order-type.ts` (신규) | 종류 분류 SSOT — `getOrderKind()` (deal_only→교환권 / group_buy_status→공구 / else→상품), `ORDER_KIND_LABELS`, `orderKindHasShipping()`. product-flow.ts 와 정합. self-contained(worker/프론트 공용). |
+| `src/shared/types/index.ts` | worker `OrderItem` 에 `category/deal_only/group_buy_status` 추가 (분류 신호). |
+| `src/worker/repositories/order.repository.ts` | **Phase0 버그수정**: `findItemsGrouped` 에 `oi.product_image`(썸네일) + products LEFT JOIN(`category/deal_only/group_buy_status`) 추가, 컬럼 누락 환경 try-catch fallback. `mapOrder` 가 새 필드 매핑. |
+| `src/types/order.ts` | 프론트 `OrderItem` 에 `product_thumbnail/unit_price/subtotal/category/deal_only/group_buy_status` + **`orderItemLineTotal()` 헬퍼**(0원 버그 수정: price_snapshot 직접곱 → subtotal>unit_price×qty>price_snapshot 폴백). `Order` 에 `subtotal/shipping_fee/discount_amount`. |
+| `src/components/mypage/OrdersTab.tsx` | **전면 개편**: 검색바 + 종류 탭(전체/상품/교환권/공구, 카운트) + 날짜 그룹(YY.MM.DD(요일)) + 썸네일 64px + 종류별 카드(상품=송장·배송조회 / 교환권·공구='내 교환권' 안내) + 은은한 상태 라벨 + 카드 전체 클릭 + 필터별 빈 상태. 기존 `getTrackingUrl` export 보존. |
+| `src/pages/MyOrdersPage.tsx` | 좌측 large title + **스켈레톤 첫 페인트**(스피너 제거). |
+| `src/pages/my-orders/OrderDetailModal.tsx` | 썸네일 + `구매 상품 N개` + **결제 라인 분해**(상품금액/할인/배송비 실값 — 하드코딩 3,000원 제거) + 교환권/공구는 배송 섹션 숨김 + 총액 잉크색. |
+| `tests/unit/components/mypage/OrdersTab.test.tsx` | 종류 탭/썸네일/날짜그룹 새 설계로 교체 (12 pass). |
+
+### Phase0 데이터 버그 — 해결됨
+1. ✅ 상품별 "0원" → `orderItemLineTotal()` (subtotal/unit_price 우선).
+2. ✅ 썸네일 누락 → `findItemsGrouped` 가 `product_image` SELECT → `product_thumbnail` → `cfImage(...,128)`.
+3. ✅ 배송비 하드코딩 3,000원 → `order.shipping_fee` 실값(상품만 표시, 0이면 "무료").
+
+### 검증
+- `tsc --noEmit` 0 · `npm run build`(client+worker+prerender) 0 · OrdersTab 단위테스트 12 pass
+- guard: schema-refs / sql-column-exists / sql-bind-params / theme-consistency / products-column-budget / money-patterns 전부 통과
+
+### 미구현 (결정 #2~#4 — 추후 사용자 결정 시)
+- 프로모 배너 슬롯(#2) / 받은 혜택 섹션(#3) / 구매 내역 삭제·숨김(#4) — 데이터/정책 확정 후 별도 작업.
+
+### ⚠️ 운영 검증 권장
+- 쇼핑탭 숨김 상태(`SHOPPING_TAB_HIDDEN`)라 라이브 영향 낮으나, worker 조회 쿼리(`findItemsGrouped`) 변경 → **staging 에서 상품/교환권/공구 각 1건 주문으로 종류 분류·썸네일·가격·배송비 표시 확인 권장**.
