@@ -158,6 +158,12 @@ node scripts/check-query-initialdata.mjs || true
 echo "==> Pre-commit: 듀얼 로그인 가드 (warn-only)..."
 node scripts/check-dual-login-guard.mjs || true
 
+# 🛡️ 2026-06-18: group_buy_status 로 상품 종류(교환권/공구 vs 쇼핑) 판별·라우팅 금지 (warn-only).
+#   group_buy_status 는 모든 상품 DEFAULT 'active' → 종류 판별에 쓰면 쇼핑 상품이 교환권으로 오분류
+#   (핀 /group-buy 오라우팅 사고). 종류는 deal_only + isVoucherCategory SSOT 만. 차단은 verify.yml CI strict.
+echo "==> Pre-commit: group_buy_status 종류판별 가드 (warn-only)..."
+node scripts/check-groupbuy-status-classify.mjs || true
+
 # 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
 staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)
 if [ -n "$staged_migrations" ]; then
