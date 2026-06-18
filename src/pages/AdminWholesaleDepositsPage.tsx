@@ -39,6 +39,26 @@ export default function AdminWholesaleDepositsPage() {
   const [filter, setFilter] = useState<'pending' | 'all'>('pending')
   const [mallId, setMallId] = useState('') // '' = 전 몰(기존 무필터 동작 불변)
   const [actingId, setActingId] = useState<number | null>(null)
+  // 🏦 2026-06-17 (대표): 도매 예치금 입금 안내 계좌(유통사 충전 화면 표시값). platform_settings 저장 — 코드/깃 미포함.
+  const [acct, setAcct] = useState('')
+  const [acctSaving, setAcctSaving] = useState(false)
+
+  useEffect(() => {
+    api.get('/api/admin/wholesale-deposit-account')
+      .then((r) => { if (r.data?.success) setAcct(String(r.data.deposit_account || '')) })
+      .catch(() => { /* 미설정/오류 — 빈 값 유지 */ })
+  }, [])
+
+  const saveAcct = async () => {
+    setAcctSaving(true)
+    try {
+      const r = await api.put('/api/admin/wholesale-deposit-account', { deposit_account: acct.trim() })
+      if (r.data?.success) { setAcct(String(r.data.deposit_account || '')); toast.success('입금 안내 계좌를 저장했어요') }
+      else toast.error(r.data?.error || '저장 실패')
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '저장 중 오류')
+    } finally { setAcctSaving(false) }
+  }
 
   useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true }) }, [navigate])
 
@@ -97,6 +117,28 @@ export default function AdminWholesaleDepositsPage() {
     <AdminLayout title="도매 예치금">
       <div className="ur-content-full px-4 lg:px-8 py-6">
         <DashboardPageHeader icon={<Wallet className="w-5 h-5" />} title="도매 예치금 입금확인" subtitle="유통사 예치금 충전 신청을 확인하고 입금 완료 시 잔액을 충전합니다." />
+
+        {/* 🏦 예치금 입금 안내 계좌 — 유통사 충전 화면에 "이 계좌로 입금하세요"로 표시. 값은 DB(platform_settings) 저장. */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 mt-4">
+          <p className="text-sm font-bold text-gray-900">예치금 입금 안내 계좌</p>
+          <p className="text-[12px] text-gray-500 mt-0.5 mb-2.5">유통사 예치금 충전 화면에 표시됩니다 — 유통사는 이 계좌로 먼저 입금 후 충전 신청합니다. 한 줄로 입력(은행/계좌번호/예금주).</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              value={acct}
+              onChange={(e) => setAcct(e.target.value)}
+              placeholder="예) OO은행 000-00-000000 예금주명"
+              maxLength={500}
+              className="flex-1 min-w-[260px] px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
+            />
+            <button
+              onClick={saveAcct}
+              disabled={acctSaving}
+              className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-900 text-white hover:bg-black disabled:opacity-50 whitespace-nowrap"
+            >
+              {acctSaving ? '저장 중…' : '저장'}
+            </button>
+          </div>
+        </div>
 
         <div className="flex flex-wrap items-center gap-2 my-4">
           {([['pending', '입금 대기'], ['all', '전체']] as const).map(([f, label]) => (
