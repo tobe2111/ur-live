@@ -23,6 +23,7 @@ import { swallow } from '@/worker/utils/swallow'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { visibilityWhere } from './supply-visibility'
+import { redactContactInfo } from '@/worker/utils/redact-contact'
 
 // ── 신원 해석: supplier 토큰 우선 → distributor JWT ─────────────────────────────
 //   supplier: JWT payload { type:'supplier', supplier_id } (supplier-auth.routes/login).
@@ -341,12 +342,15 @@ app.get('/threads/:id/messages', async (c) => {
       messages = (results ?? []).reverse()
     }
 
+    // 🛡️ disintermediation — 조회 시에도 마스킹(신규 메시지는 저장 시 이미 redact, 레거시 raw 메시지 방어).
+    const safeMessages = messages.map((m) => ({ ...m, body: redactContactInfo(m.body).text }))
+
     // side-effect: 내 unread 리셋(0). 멱등.
     const col = myUnreadCol(me.role)
     await DB.prepare(`UPDATE wholesale_chat_threads SET ${col} = 0 WHERE id = ?`).bind(threadId).run().catch(swallow('wholesale-chat:mark-read'))
 
     const name = await counterpartName(DB, me, thread)
-    return c.json({ success: true, messages, thread: { counterpart_name: name, counterpart_masked: me.role === 'distributor' } })
+    return c.json({ success: true, messages: safeMessages, thread: { counterpart_name: name, counterpart_masked: me.role === 'distributor' } })
   } catch (err) {
     return safeError(c, err, '메시지 조회 중 오류가 발생했습니다', '[wholesale-chat]')
   }
@@ -364,12 +368,16 @@ app.post('/threads/:id/messages', rateLimit({ action: 'wholesale-chat-send', max
   try {
     await ensureChatSchema(DB)
     const reqBody = await c.req.json().catch(() => ({} as Record<string, unknown>))
-    const text = String(reqBody.body ?? '').trim()
-    if (!text) return c.json({ success: false, error: '메시지를 입력해주세요' }, 400)
-    if (text.length > 2000) return c.json({ success: false, error: '메시지는 2000자 이하여야 합니다' }, 400)
+    const rawText = String(reqBody.body ?? '').trim()
+    if (!rawText) return c.json({ success: false, error: '메시지를 입력해주세요' }, 400)
+    if (rawText.length > 2000) return c.json({ success: false, error: '메시지는 2000자 이하여야 합니다' }, 400)
 
     const thread = await loadOwnThread(DB, me, threadId)
     if (!thread) return c.json({ success: false, error: '대화방을 찾을 수 없습니다' }, 404)
+
+    // 🛡️ disintermediation 방지 — 연락처/계좌/메신저/URL 마스킹 후 저장(DB 에 연락처 미보존 + 상대도 가려짐).
+    //   직거래 시도(수수료 우회) 차단. 텍스트 전용(이미지 첨부 없음)이라 사진 우회도 불가.
+    const { text, redacted } = redactContactInfo(rawText)
 
     // insert.
     const ins = await DB.prepare(
@@ -406,6 +414,7 @@ app.post('/threads/:id/messages', rateLimit({ action: 'wholesale-chat-send', max
     const saved = await DB.prepare('SELECT created_at FROM wholesale_chat_messages WHERE id = ?').bind(messageId).first<{ created_at: string }>().catch(() => null)
     return c.json({
       success: true,
+      redacted, // 🛡️ true 면 클라가 '연락처는 안전거래를 위해 가려졌습니다' 안내
       message: { id: messageId, sender_role: me.role, body: text, created_at: saved?.created_at || new Date().toISOString() },
     })
   } catch (err) {
