@@ -21,6 +21,7 @@ import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund, DEFAULT_PLATFORM_COMMISSION_PCT } from './wholesale-settlement'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn, hasDepositRefundTxn } from './wholesale-deposit-core'
 import { ensureSupplyVisibilitySchema, normalizeVisibility } from './supply-visibility'
+import { getSupplyMeta, setSupplyMeta } from '@/worker/utils/product-supply-meta'
 import { ensureMallSchema } from './wholesale-malls'
 import { parseCsv, buildCsv, csvResponse } from './supply-csv'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
@@ -600,6 +601,34 @@ app.patch('/products/:id/visibility', async (c) => {
   }
 })
 
+// PATCH /products/:id/visible-grades — 🏷️ 2026-06-18 상품별 '노출 등급' 설정.
+//   visible_grades = 이 상품을 노출할 유통사 등급 집합(CSV). **빈 배열 = 전체 노출(제한 해제, 현행)**.
+//   product_supply_meta(K-V) 에 저장 → 카탈로그/홈/상세/주문/내보내기/미리보기 9개 경로가 gradeExposureWhere 로 강제.
+app.patch('/products/:id/visible-grades', async (c) => {
+  try {
+    await ensureSupplyVisibilitySchema(c.env.DB)
+    await ensureGrades(c.env.DB)
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 상품 ID' }, 400)
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const raw: unknown[] = Array.isArray(body.visible_grades) ? body.visible_grades : String(body.visible_grades ?? '').split(',')
+    const requested = raw.map((g: unknown) => String(g).trim().toUpperCase()).filter(Boolean)
+    // 존재하는 활성 등급만 허용(오타/주입 방지). 빈 집합이면 제한 해제(전체 노출).
+    const { results: gradeRows } = await c.env.DB.prepare('SELECT grade FROM distributor_grades WHERE active = 1')
+      .all<{ grade: string }>().catch(() => ({ results: [] as { grade: string }[] }))
+    const valid = new Set((gradeRows || []).map((r) => r.grade.toUpperCase()))
+    const grades = [...new Set(requested.filter((g) => valid.has(g)))]
+    const prod = await c.env.DB.prepare(
+      'SELECT 1 FROM products WHERE id = ? AND is_supply_product = 1 AND supply_source_id IS NULL'
+    ).bind(id).first()
+    if (!prod) return c.json({ success: false, error: '도매 상품을 찾을 수 없습니다' }, 404)
+    await setSupplyMeta(c.env.DB, id, { visible_grades: grades.join(',') })
+    return c.json({ success: true, visible_grades: grades })
+  } catch (err) {
+    return safeError(c, err, '노출 등급 설정 중 오류가 발생했습니다', '[distributor-admin]')
+  }
+})
+
 // GET /product-access?product_id= — 해당 상품에 선정된 유통회원 목록 + 상품 가시성
 app.get('/product-access', async (c) => {
   try {
@@ -616,7 +645,14 @@ app.get('/product-access', async (c) => {
       FROM product_distributor_access pda LEFT JOIN sellers s ON s.id = pda.distributor_seller_id
       WHERE pda.product_id = ? ORDER BY pda.created_at DESC
     `).bind(productId).all()
-    return c.json({ success: true, product: prod, distributors: results ?? [] })
+    // 🏷️ 2026-06-18 등급별 노출 — 현재 visible_grades(상품 메타) + 선택 가능한 전체 등급 목록(체크박스용).
+    await ensureGrades(c.env.DB)
+    const meta = (await getSupplyMeta(c.env.DB, [productId]).catch(() => undefined))?.get(productId)
+    const visibleGrades = String(meta?.visible_grades || '').split(',').map((s) => s.trim()).filter(Boolean)
+    const { results: allGrades } = await c.env.DB.prepare(
+      'SELECT grade, label FROM distributor_grades WHERE active = 1 ORDER BY sort_order ASC'
+    ).all<{ grade: string; label: string | null }>().catch(() => ({ results: [] as { grade: string; label: string | null }[] }))
+    return c.json({ success: true, product: prod, visible_grades: visibleGrades, all_grades: allGrades ?? [], distributors: results ?? [] })
   } catch (err) {
     return safeError(c, err, '선정 유통회원 조회 중 오류가 발생했습니다', '[distributor-admin]')
   }
