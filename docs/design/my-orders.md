@@ -172,7 +172,7 @@
 ### 변경 파일
 | 파일 | 변경 |
 |---|---|
-| `src/shared/order-type.ts` (신규) | 종류 분류 SSOT — `getOrderKind()` (deal_only→교환권 / group_buy_status→공구 / else→상품), `ORDER_KIND_LABELS`, `orderKindHasShipping()`. product-flow.ts 와 정합. self-contained(worker/프론트 공용). |
+| `src/shared/order-type.ts` (신규) | 종류 분류 SSOT — `getOrderKind()` (deal_only→교환권 / **isVoucherCategory(category)→공구** / else→상품), `ORDER_KIND_LABELS`, `orderKindHasShipping()`. ⚠️ **group_buy_status 사용 금지**(migration 0146 `DEFAULT 'active'` 라 모든 상품이 기본 active → 오분류) — voucher-categories.ts SSOT(category)로 판정(2026-06-18 정정). |
 | `src/shared/types/index.ts` | worker `OrderItem` 에 `category/deal_only/group_buy_status` 추가 (분류 신호). |
 | `src/worker/repositories/order.repository.ts` | **Phase0 버그수정**: `findItemsGrouped` 에 `oi.product_image`(썸네일) + products LEFT JOIN(`category/deal_only/group_buy_status`) 추가, 컬럼 누락 환경 try-catch fallback. `mapOrder` 가 새 필드 매핑. |
 | `src/types/order.ts` | 프론트 `OrderItem` 에 `product_thumbnail/unit_price/subtotal/category/deal_only/group_buy_status` + **`orderItemLineTotal()` 헬퍼**(0원 버그 수정: price_snapshot 직접곱 → subtotal>unit_price×qty>price_snapshot 폴백). `Order` 에 `subtotal/shipping_fee/discount_amount`. |

@@ -69,6 +69,32 @@ describe('OrdersTab', () => {
     expect(screen.queryByText('커피 교환권')).toBeNull()
   })
 
+  it('classifies voucher-category (non deal_only) order as 공구, not 상품', () => {
+    // 🛡️ 2026-06-18: group_buy_status 가 아니라 category(교환권 카테고리)로 공구 판정.
+    //   일반 상품은 group_buy_status='active' 기본값이라 그 신호로는 오분류됨.
+    const groupbuy = {
+      id: 9, order_number: 'ORDER-009', user_id: 1, seller_id: 1,
+      status: 'done' as const, total_amount: 5000,
+      created_at: '2024-03-07T09:00:00Z',
+      // category=meal_voucher, deal_only 없음, group_buy_status='active'(기본값 모사)
+      items: [{ product_id: 9, product_name: '동네 김밥 세트', quantity: 1, price_snapshot: 5000, category: 'meal_voucher', group_buy_status: 'active' }],
+    }
+    // 일반 상품도 group_buy_status='active' 기본값을 가짐 → 그래도 상품으로 분류돼야 함
+    const plain = {
+      id: 10, order_number: 'ORDER-010', user_id: 1, seller_id: 1,
+      status: 'done' as const, total_amount: 9000,
+      created_at: '2024-03-07T10:00:00Z',
+      items: [{ product_id: 10, product_name: '일반 티셔츠', quantity: 1, price_snapshot: 9000, category: 'general', group_buy_status: 'active' }],
+    }
+    wrap(<OrdersTab orders={[groupbuy, plain]} onCancelOrder={onCancel} onSelectOrder={onSelect} />)
+    fireEvent.click(tab('공구'))
+    expect(screen.getByText('동네 김밥 세트')).toBeDefined()
+    expect(screen.queryByText('일반 티셔츠')).toBeNull()      // 공구 탭엔 안 보임
+    fireEvent.click(tab('상품'))
+    expect(screen.getByText('일반 티셔츠')).toBeDefined()       // 상품 탭엔 보임 (group_buy_status 무시)
+    expect(screen.queryByText('동네 김밥 세트')).toBeNull()
+  })
+
   it('displays empty state when no orders', () => {
     wrap(<OrdersTab orders={[]} onCancelOrder={onCancel} onSelectOrder={onSelect} />)
     expect(screen.getByText('주문 내역이 없습니다')).toBeDefined()

@@ -5,17 +5,20 @@
  *   (group-buy.routes.ts 가 교환권·공구 결제도 INSERT INTO orders).
  *   `/my-orders` 는 종류 필터 없이 전부 노출 → 종류별 탭/카드 분기가 필요.
  *
- * product-flow.ts(결제흐름 SSOT)와 정합한 신호 사용:
- *   - deal_only=1            → 교환권 (voucher_deal)
- *   - group_buy_status 존재  → 공구   (group_buy_toss — 완료/만료 후에도 마커 유지)
- *   - 그 외                  → 상품   (standard_checkout)
+ * ⚠️ 분류 신호 (2026-06-18 정정 — group_buy_status 사용 금지):
+ *   `group_buy_status` 는 migration 0146 에서 `DEFAULT 'active'` 로 추가됨 → **모든 상품
+ *   (일반 쇼핑 포함)이 기본 'active'** 라 종류 구분에 못 씀(쓰면 거의 다 공구로 오분류).
+ *   서비스 전체가 쓰는 SSOT 신호로 통일:
+ *     - deal_only=1                  → 교환권 (voucher_deal — 즉시 딜 결제)
+ *     - isVoucherCategory(category)  → 공구   (오프라인 동네 공구 — voucher 카테고리)
+ *     - 그 외(온라인 일반 상품)        → 상품   (standard_checkout)
+ *   근거: group-buy 피드는 `category IN voucher_categories`, 교환권은 `deal_only=1`,
+ *   쇼핑은 online(non-voucher) 으로 거름. voucher-categories.ts 가 SSOT.
  *
- * ⚠️ product-flow 의 getProductFlow() 는 group_buy_status==='active' 만 보지만,
- *    그건 "지금 결제 가능한가" 판단용. 주문내역은 과거 주문(완료/만료 공구)도
- *    공구로 분류해야 하므로 여기선 값이 있으면(비어있지 않으면) 공구로 본다.
- *
- * 의존성 없음(self-contained) — worker(상대 import) / 프론트(@/ alias) 양쪽에서 사용.
+ * 의존성: voucher-categories.ts(상수 SSOT) — worker(상대 import) / 프론트(@/) 양쪽 사용.
  */
+
+import { isVoucherCategory } from './constants/voucher-categories'
 
 export type OrderKind = 'product' | 'voucher' | 'groupbuy'
 
@@ -33,10 +36,7 @@ interface OrderLike {
 export function getOrderKind(order: OrderLike): OrderKind {
   const items = Array.isArray(order?.items) ? order.items : []
   if (items.some(it => Number(it?.deal_only) === 1)) return 'voucher'
-  if (items.some(it => {
-    const s = it?.group_buy_status
-    return s != null && String(s).trim() !== ''
-  })) return 'groupbuy'
+  if (items.some(it => isVoucherCategory(it?.category))) return 'groupbuy'
   return 'product'
 }
 
