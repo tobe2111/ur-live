@@ -37,8 +37,11 @@
 - **1단계(이번 — 매장 태깅)**: `restaurant-geocode` cron 확장. Pass A(주소→좌표) 직후 `coord2regioncode`로 동 태깅, Pass B(좌표 있으나 미태깅 기존 매장 백필). 행정동(H) 우선·법정동(B) 폴백.
 - **저장**: 신규 테이블 `product_regions`(product_id PK, region_si/gu/dong/dong_code, lat/lng) — **products 컬럼 예산제 회피**(별도 테이블이라 budget check 신규 0). `region_dong_code` 인덱스(동별 집계/향후 피드 조인). repair-schema + cron ensure(멱등) 등록.
 - **카카오라 저렴**(무료 한도 30만/일, batch 수백) + 결제·잠긴 피드쿼리 무수정. 실패 row 는 다음 cron 자연 재시도(region_dong NULL → Pass B 재처리).
-- **검증**: tsc 0 · worker build 0 · sql-bind/sql-column(tables 279 인식)/products-budget(신규 0)/schema-refs clean.
-- **다음 단계(미착수)**: 2단계 유저 동 태깅(위치/주소) → 3단계 피드 "내 동네 딜" 필터 + "우리 동네 N개" 카피 + 어드민 동별 밀도 집계(영입 타겟). 네이버 DataLab 수요신호를 소비자 머천다이징 캘린더에 재사용(코드 재활용).
+- **2단계(이번 — 유저 동 태깅 백엔드)**: `region.routes.ts` 신규 — `GET/POST /api/me/region`(GPS 좌표→`fetchRegion` 또는 수동 동코드 → `user_regions` UPSERT). 카카오 helper 를 `kakao-region.ts`(SSOT)로 추출해 cron·라우트 공유. `user_regions` 테이블 + repair-schema 등록.
+- **3단계(이번 — 서버 피드 필터)**: `group-buy-public.routes.ts` GET /products 에 `?region=` additive([UNLOCK_LOADING] audit log). 기본 요청 byte-동일, region 붙은 요청만 새 캐시키 + `product_regions` JOIN + 코드 prefix. **현재 클라(GroupBuyListPage)는 자체 주소-텍스트 region 필터 사용 중이라 이 서버 param 휴면** — 중복 토글 안 붙임(충돌 방지). 향후 GPS 자동 '내 동네'로 업그레이드용 토대.
+- **A단계(이번 — 어드민 동별 밀도 보드)**: `AdminRegionDensityPage` + `/admin/region-density` 라우트 + 사이드바 nav. `GET /api/admin/region/density`(구별/동별 활성 딜 count) — "어디 깔렸나/어디 비었나" 영입 타겟. 유저 0이어도 작동(대표님 발품 조준경).
+- **검증**: tsc 0 · full build 0 · sql-bind/sql-column(tables 281)/schema-refs/dashboard-theme/theme-consistency clean.
+- **다음(선택)**: GroupBuyListPage 의 기존 주소-텍스트 region 필터를 GPS 자동감지(`/api/me/region`)+서버 param 으로 업그레이드(기존 동작이라 enhancement). 네이버 DataLab 수요신호 → 소비자 머천다이징 캘린더 재사용.
 
 ## ✅ 2026-06-17 — 에이전시 매장 영입 개선점 12종 일괄 (대표 "모두 진행, 가장 이상적으로")
 전면 재편 후 발견된 개선점 12개를 우선순위로 처리(🔴 정합성 → 🟡 완결성 → 🟢/검증).
