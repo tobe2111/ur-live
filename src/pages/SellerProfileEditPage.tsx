@@ -21,7 +21,8 @@ import {
   Globe,
   CheckCircle2,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  Truck
 } from 'lucide-react'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types 를 ./seller-profile-edit/types 로 추출.
@@ -61,6 +62,13 @@ export default function SellerProfileEditPage() {
     name: '',
     email: '',
     phone: ''
+  })
+
+  // 🚚 2026-06-18 (셀러 배송비 설정): 기본 배송비 + 무료배송 기준액. 주문 시 서버(order.routes)가
+  //   sellers.base_shipping_fee / free_shipping_threshold 로 배송비를 재계산(SSOT)하므로 여기서 설정.
+  const [shippingData, setShippingData] = useState({
+    base_shipping_fee: '',
+    free_shipping_threshold: ''
   })
   
   const [passwordData, setPasswordData] = useState({
@@ -124,8 +132,39 @@ export default function SellerProfileEditPage() {
     })
     setBusinessData({ business_name: seller.business_name || '', business_number: seller.business_number || '', company_name: seller.company_name || '' })
     setPersonalData({ name: seller.name || '', email: seller.email || '', phone: seller.phone || '' })
+    setShippingData({
+      base_shipping_fee: seller.base_shipping_fee != null ? String(seller.base_shipping_fee) : '',
+      free_shipping_threshold: seller.free_shipping_threshold != null ? String(seller.free_shipping_threshold) : '',
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileQ.data])
+
+  async function handleSaveShipping() {
+    setSaving(true); setSuccessMessage(''); setErrorMessage('')
+    const baseStr = shippingData.base_shipping_fee.trim()
+    const thrStr = shippingData.free_shipping_threshold.trim()
+    const base = baseStr === '' ? 0 : Number(baseStr)
+    const thr = thrStr === '' ? null : Number(thrStr)
+    if (!Number.isFinite(base) || base < 0 || base > 10_000_000) {
+      setErrorMessage(t('seller.shippingFeeInvalid', { defaultValue: '배송비는 0 이상으로 입력해주세요' })); setSaving(false); return
+    }
+    if (thr !== null && (!Number.isFinite(thr) || thr < 0 || thr > 10_000_000)) {
+      setErrorMessage(t('seller.shippingThresholdInvalid', { defaultValue: '무료배송 기준액을 올바르게 입력해주세요' })); setSaving(false); return
+    }
+    try {
+      const response = await api.patch('/api/seller/profile', { base_shipping_fee: base, free_shipping_threshold: thr })
+      if (response.data.success) {
+        setSuccessMessage(t('seller.shippingSaveSuccess', { defaultValue: '배송 설정이 저장됐어요' }))
+        if (successTimerRef.current) clearTimeout(successTimerRef.current); successTimerRef.current = setTimeout(() => setSuccessMessage(''), 3000)
+      }
+    } catch (error: unknown) {
+      if (import.meta.env.DEV) console.error('Failed to update shipping:', error)
+      const axiosErr = error as { response?: { data?: { error?: string } } }
+      setErrorMessage(axiosErr.response?.data?.error || t('seller.shippingSaveFailed', { defaultValue: '배송 설정 저장에 실패했습니다' }))
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function handleSaveProfile() {
     setSaving(true)
@@ -596,6 +635,64 @@ export default function SellerProfileEditPage() {
                 className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
               />
             </div>
+          </div>
+
+          {/* 🚚 2026-06-18 배송 설정 — 내 쇼핑몰 배송비 (주문 시 서버가 이 값으로 재계산) */}
+          <div className="apple-card p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-[#ff9500]/10 rounded-full flex items-center justify-center">
+                <Truck className="h-5 w-5 text-[#ff9500]" />
+              </div>
+              <div>
+                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">{t('seller.shippingSettings', { defaultValue: '배송 설정' })}</h2>
+                <p className="text-[13px] text-[#6e6e73]">{t('seller.shippingSettingsDesc', { defaultValue: '내 쇼핑몰 상품의 기본 배송비와 무료배송 기준을 설정하세요' })}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[13px] font-medium text-[#1d1d1f] mb-2">
+                  {t('seller.baseShippingFee', { defaultValue: '기본 배송비 (원)' })}
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={shippingData.base_shipping_fee}
+                  onChange={(e) => setShippingData({ ...shippingData, base_shipping_fee: e.target.value.replace(/[^\d]/g, '') })}
+                  placeholder="3000"
+                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
+                />
+                <p className="mt-2 text-[11px] text-[#6e6e73]">{t('seller.baseShippingFeeHint', { defaultValue: '비워두면 무료배송(0원)' })}</p>
+              </div>
+              <div>
+                <label className="block text-[13px] font-medium text-[#1d1d1f] mb-2">
+                  {t('seller.freeShippingThreshold', { defaultValue: '무료배송 기준액 (원)' })}
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={shippingData.free_shipping_threshold}
+                  onChange={(e) => setShippingData({ ...shippingData, free_shipping_threshold: e.target.value.replace(/[^\d]/g, '') })}
+                  placeholder="50000"
+                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-[#007aff] focus:border-transparent"
+                />
+                <p className="mt-2 text-[11px] text-[#6e6e73]">{t('seller.freeShippingThresholdHint', { defaultValue: '이 금액 이상 주문 시 무료배송. 비우면 미적용' })}</p>
+              </div>
+            </div>
+
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex gap-2 text-[11px] text-blue-800">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <p>{t('seller.shippingServerNote', { defaultValue: '교환권(딜 결제)은 배송비가 부과되지 않으며, 실제 결제 배송비는 주문 시 서버에서 이 설정으로 계산됩니다.' })}</p>
+            </div>
+
+            <button
+              onClick={handleSaveShipping}
+              disabled={saving}
+              className="mt-4 w-full py-3 px-6 bg-[#ff9500] text-white rounded-xl hover:bg-[#e6850e] transition-colors text-[14px] font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <Save className="h-4 w-4" />
+              {t('seller.saveShipping', { defaultValue: '배송 설정 저장' })}
+            </button>
           </div>
 
           {/* Save Button */}
