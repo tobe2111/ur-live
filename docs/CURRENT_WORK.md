@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## 🏬 2026-06-18 — 멀티-몰 "몰=도메인=계정" 확정 + `resolveMallId` host-first 전환 (대표 결정: 유통사/제조사 몰별 별도 로그인)
+**결정**: flip-flop 의 뿌리가 멀티-몰 모델 애매함. 대표가 "유통사/제조사는 몰별 별도 로그인 = `1 몰=1 도메인=그 도메인 계정·카탈로그`" 확정. 설계 박제: `docs/design/multi-mall-auth.md`.
+- **Step 1 완료(이번 커밋)**: `wholesale-malls.ts resolveMallId` **account-first → host-first**. 우선순위 `?mall=slug > host > 1` (계정 토큰은 mall 결정에서 제외, `accountMallId()` 제거). 게스트/로그인 카탈로그 **일관성 확보 → flip-flop 종류 버그 제거**. **단일 몰(1)+단일 호스트 = byte-identical(모두 1) → INVARIANT 유지**. 머니(예치금/주문/정산)는 seller_id/supplier_id 격리라 무영향. 신규 유닛테스트 3개(토큰 있어도 host 우선·게스트=로그인 동일·supplier 동일) → 33 pass.
+- **Step 2 (몰 2개째 만들 때, 미완)**: 로그인 도메인 몰 스코핑 + 전역 UNIQUE(email/kakao_id)→(몰,email) 재설계(데이터 마이그레이션 동반, 별도 PR). 현재 활성 몰 1개라 불필요.
+- ⚠️ **단, host-first 는 "몰 불일치" 종류만 고침.** 현재 0개가 `is_active`/`visibility`/`supply_price` **데이터** 때문이면 별개 — 아래 진단 1회 필요(egress 또는 🩺 패널).
+
 ## ✅ 2026-06-18 — 링크샵 랜딩 리디자인 (나브랜딩 시안, 대표 "응 다 해줘 가장 이상적으로")
 **배경**: `/u/{handle}`(CuratorPage/CuratorHeader)를 "독립 브랜드 랜딩"으로. 시안 박제: `docs/design/linkshop-landing-redesign.md`. 3단계 구현(branch `claude/charming-sagan-y9hx6m`).
 - **Stage 1 (backend, commit 636df2e7f)**: `users.linkshop_headline` 컬럼(마퀴) — `curator.routes.ts` ensureUserProfileCols + repair-schema 등록. GET `/api/curator/:handle` 응답에 `headline`(별도 best-effort 쿼리 — 컬럼 누락 env 에서도 메인 SELECT 안 깨짐, null 폴백). PATCH `/me/profile` 에서 `headline`(80자) 수용. `banner_url` 은 기존 수용/반환 재사용.
