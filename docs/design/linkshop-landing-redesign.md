@@ -54,3 +54,10 @@
 - **Stage 3 (PC 표현)**: `LinkshopMobileQR.tsx`(qrcode.react lazy, xl+ 우하단 gutter) + `MobileAppLayout` `LINKSHOP_PREFIXES` 로 `/u`·`/profile/`·`/s/` 좌측 사이드바 숨김(프레임은 유지).
 
 > ⚠️ 운영 반영 전: prod 에서 `/api/_internal/repair-schema` 1회 실행 필요 (`users.linkshop_headline` 컬럼 생성). 미실행이어도 GET 의 headline 은 best-effort try-catch 라 안전(null 폴백 → 마퀴만 숨김).
+
+## 🔧 후속 조정 (2026-06-18, 사용자 피드백)
+- **배너**: 카드형(여백+라운드) → **풀블리드 + 하단 그라데이션 melt**(페이지 배경으로 자연스럽게). aspect-4/3.
+- **방문자 모바일 핀 카드 회색**: dominant_color null + 외부호스트 canvas 추출 CORS 실패 → 회색 단색. `seededColor`(카테고리/상품 시드) 폴백을 `BrowseProductCard`(additive prop)에 전달 → 항상 컬러 그라데이션(추출 성공 시 실색 우선). 홈/쇼핑 미지정이라 불변.
+- **주소 카드 공유버튼 제거**: 배너 우상단 공유 아이콘과 중복 → '내 링크샵 주소' 카드의 링크복사/카카오공유 제거, 주소+주소변경만 유지.
+- **핀 카드 순서 번호**: 링크샵 PinCard 좌상단 번호 배지(다른 곳 미적용 — PinCard 전용 오버레이).
+- **사업자 진입 상태별 직접 노출** (사용자 결정 "상태별 직접 노출"): `SellOwnProductsCTA`+`QuickProductModal` 을 `curator-page/SellOwnProductsCTA.tsx` 공유 컴포넌트로 추출(CuratorEarningsPage 와 공용) → 링크샵 오너뷰(ownerView, !reorder)에 lazy 렌더. 미등록=사업자 등록 / 승인=빠른 상품등록+셀러 대시보드 / 심사·반려=상태 안내.
