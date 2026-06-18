@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+## 🩺 2026-06-18 — 도매몰 카탈로그 "0개 + 느림 + 들쭉날쭉" 전수조사 + 관측 계측 (대표 "더이상 일어나선 안돼") — ⚠️ 데이터 원인 ground-truth 필요
+**증상**: ①상품 0개("해당 조건 상품 없어요") ②거기까지도 2초+ 느림 ③때때로 떴다 안 떴다(flip-flop). admin엔 보임=데이터 존재.
+- **전수조사 결론 — 코드 버그 없음**: 카탈로그 WHERE(`is_supply_product=1 AND is_active=1 AND supply_source_id IS NULL AND supply_price>0 AND mall_id=? AND visibilityWhere`)·`visibilityWhere`·source=0→NULL 정규화 UPDATE·SELECT 컬럼 vs ensure 커버리지(전 컬럼 ensure가 ALTER ADD — 누락 0) **전부 정상**. → 0개는 순수 **데이터 상태**.
+- **0개 유력 원인(코드로는 판별 불가, 우선순위)**: ①**mall_id 불일치** — `resolveMallId` 1순위가 `accountMallId`(로그인 계정 `sellers.mall_id`). 계정 몰 ≠ 상품 몰(기본1)이면 **로그인 시 0개**, 로그아웃(게스트)=host/기본1 → 상품 노출 → **flip-flop이 간헐 자동로그아웃과 맞물림**. ②visibility(게스트는 ALL만, 로그인은 +허용목록). ③is_active=0 / supply_price=0.
+- **느림 = 0개의 결과**: 빈 결과는 `no-store`(빈그리드 고착 방지 incident rule) → 캐시 0 → 매 요청 풀경로(콜드 isolate+ensure+조회×2). 게다가 **SSR이 빈 카탈로그를 최대 1500ms 블로킹**(worker/index.ts:564 self-fetch) 후 클라가 또 fetch(`retry:2`, 1s+2s 백오프) → 체감 2초+. **0개를 풀면 캐시 살아 SSR edge-hit(~5ms)+클라 refetch 소멸 → 빨라짐.**
+- **계측 추가(이번 커밋, additive·safe)**: `wholesale.routes /catalog` 응답에 **진단 헤더** — `X-WS-Mall`(해석된 몰)·`X-WS-Total`(WHERE 통과수)·`X-WS-Guest`·`X-WS-Vis-Restricted`. **total===0일 때만** 추가 COUNT 2개로 `X-WS-Total-NoMallVis`(mall/vis 무시)·`X-WS-Supply-Raw`(전 공급상품). **정상 경로 추가쿼리 0**. 조기 빈 분기엔 `X-WS-Reason`(schema-missing/premium-guest).
+  - **판별표**: Supply-Raw>0 & NoMallVis=0 → 원인=is_active/source/supply_price · NoMallVis>0 & Total=0 → 원인=**mall 또는 visibility** · X-WS-Mall 값으로 몰 확정.
+- **남은 액션(택1, 환경 제약으로 미완)**: ① 도매몰에서 F12→Network→`catalog` 응답헤더 `X-WS-*` 캡처 ② `/admin/wholesale-import` 🩺 진단패널 실행+캡처 ③ `live.ur-team.com` egress 허용 → 내가 직접 확정+1커밋 수정. **소비자 자동로그아웃 fail-safe(2026-06-17)로 flip-flop 트리거는 이미 완화.**
+- 검증: tsc 0 · build 0 · sql-bind 0 · schema 0.
+
 ## ✅ 2026-06-18 — 도매몰 예치금 입금계좌 3곳 반영 (대표 제공: 우체국 014084-02-129530 송유미/사람과고리)
 유통사가 예치금(선불 충전)을 송금할 도매몰 입금계좌를 세 군데에 노출. 외부망(egress) 차단으로 prod API set 불가 → 코드/DB fallback 으로 배포 즉시 반영.
 - **① 어드민 설정칸**(`AdminWholesaleDepositsPage`): `/admin/wholesale-deposits` 상단 '예치금 입금 안내 계좌' 입력칸 신규(기존 GET/PUT `/api/admin/wholesale-deposit-account` 연결). 어드민이 수정 가능.

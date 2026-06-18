@@ -1085,6 +1085,7 @@ app.get('/catalog', async (c) => {
   //   클라(nav 버튼 숨김)와 이중 게이트 — URL 파라미터 직접 조작으로도 미노출.
   if (premiumOnly && guest) {
     c.header('Cache-Control', 'private, no-store')
+    c.header('X-WS-Reason', 'premium-guest-locked')
     return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: null, requires_login: true, premium_locked: true })
   }
   // 🏷️ 2026-06-09 브랜드 전시관 — ?brand=<name> 이면 brand_name 정확 일치 + is_brand_product=1 만(additive WHERE).
@@ -1156,6 +1157,8 @@ app.get('/catalog', async (c) => {
       if (!hasCol || hasCol.c === 0) {
         // 컬럼 실제 부재(repair-schema 실행 전) — 빈 응답이지만 절대 캐시 금지(빈 그리드 고착 방지).
         c.header('Cache-Control', 'private, no-store')
+        c.header('X-WS-Total', '0')
+        c.header('X-WS-Reason', 'schema-missing-is_supply_product')
         return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: 'C' })
       }
       _supplyCatalogReady.add(DB)
@@ -1281,7 +1284,28 @@ app.get('/catalog', async (c) => {
     ])
     const total = totalRow?.c ?? 0
 
-    // ⚠️ supply_price/supplier_id 비노출 — 등급가 + 권장소비자가(마진 산출용)만 반환.
+    // 🔭 2026-06-18 (대표 신고 — "0개 + 거기까지도 느림", 전수조사): 카탈로그 0개 '원인'을 응답 헤더로 즉시 판별.
+    //   브라우저 Network 탭(F12) → /api/wholesale/catalog 응답 헤더만 보면 mall 불일치 vs 데이터필터 구분 가능.
+    //   X-WS-Mall(해석된 몰) · X-WS-Total(WHERE 통과 수) · X-WS-Guest · X-WS-Vis-Restricted.
+    //   추가 COUNT 2개는 total===0(이미 깨진 경로)일 때만 실행 → 상품이 보이는 정상 경로엔 추가쿼리 0(perf 무영향).
+    c.header('X-WS-Mall', String(mallId))
+    c.header('X-WS-Total', String(total))
+    c.header('X-WS-Guest', guest ? '1' : '0')
+    c.header('X-WS-Vis-Restricted', visRestricted ? '1' : '0')
+    if (total === 0) {
+      try {
+        const [anyMallVis, rawSupply] = await Promise.all([
+          // mall/visibility 무시 — is_active+source+supply_price 만. 이게 >0 인데 X-WS-Total=0 → 원인=mall 또는 visibility.
+          DB.prepare("SELECT COUNT(*) c FROM products p WHERE p.is_supply_product=1 AND p.is_active=1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0)>0").first<{ c: number }>().catch(() => ({ c: -1 })),
+          // 모든 공급상품(필터 0). 이게 >0 인데 위(NoMallVis)=0 → 원인=is_active/supply_source_id/supply_price.
+          DB.prepare("SELECT COUNT(*) c FROM products p WHERE p.is_supply_product=1").first<{ c: number }>().catch(() => ({ c: -1 })),
+        ])
+        c.header('X-WS-Total-NoMallVis', String(anyMallVis?.c ?? -1))
+        c.header('X-WS-Supply-Raw', String(rawSupply?.c ?? -1))
+      } catch { /* 진단 COUNT 실패 — 본 응답엔 영향 없음 */ }
+    }
+
+
     //   비로그인(guest) → 도매가/권장가/마진 전부 가림(null) + requires_login. (옵션 A: 도매가 숨김)
     const items = (rows.results || []).map(r => {
       const price = guest ? null : resolveDistributorPrice({
