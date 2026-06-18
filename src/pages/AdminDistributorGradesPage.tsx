@@ -113,11 +113,27 @@ export default function AdminDistributorGradesPage() {
   // 유통채널 선정(product-access)
   const [accessProductId, setAccessProductId] = useState('')
   const [accessProductQuery, setAccessProductQuery] = useState('')
-  const accessQ = useApiQuery<{ product: any; distributors: Array<Record<string, any>> } | null>(
+  const accessQ = useApiQuery<{ product: any; distributors: Array<Record<string, any>>; visible_grades: string[]; all_grades: Array<{ grade: string; label: string | null }> } | null>(
     ['admin', 'dist-access', accessProductQuery], '/api/admin/distributor/product-access',
-    { params: accessProductQuery ? { product_id: accessProductQuery } : {}, enabled: !!accessProductQuery && tab === 'supply', headers: h.headers, select: (r: any) => (r?.success ? { product: r.product, distributors: r.distributors || [] } : null) },
+    { params: accessProductQuery ? { product_id: accessProductQuery } : {}, enabled: !!accessProductQuery && tab === 'supply', headers: h.headers, select: (r: any) => (r?.success ? { product: r.product, distributors: r.distributors || [], visible_grades: r.visible_grades || [], all_grades: r.all_grades || [] } : null) },
   )
   const [accessSeller, setAccessSeller] = useState('')
+  // 🏷️ 2026-06-18 상품별 노출 등급 — 조회 결과 visible_grades 를 편집 후 저장(빈 = 전체 노출).
+  const [editGrades, setEditGrades] = useState<string[] | null>(null)
+  const effGrades = editGrades ?? accessQ.data?.visible_grades ?? []
+  const toggleGrade = (g: string) => setEditGrades(prev => {
+    const base = prev ?? accessQ.data?.visible_grades ?? []
+    return base.includes(g) ? base.filter(x => x !== g) : [...base, g]
+  })
+  const saveVisibleGrades = async () => {
+    const pid = Number(accessQ.data?.product?.id || accessProductQuery)
+    if (!Number.isFinite(pid) || pid <= 0) return
+    try {
+      const r = await api.patch(`/api/admin/distributor/products/${pid}/visible-grades`, { visible_grades: effGrades }, h)
+      if (r.data?.success) { toast.success(effGrades.length ? `노출 등급: ${effGrades.join(', ')}` : '전체 노출로 변경'); setEditGrades(null); accessQ.refetch() }
+      else toast.error('노출 등급 저장 실패')
+    } catch { toast.error('노출 등급 저장 실패') }
+  }
   // 🏭 2026-06-04 상품별 등급마진 override(특가) — 설정 시 등급 무관 동일가.
   const [marginProductId, setMarginProductId] = useState('')
   const [marginPct, setMarginPct] = useState('')
@@ -968,13 +984,32 @@ export default function AdminDistributorGradesPage() {
           <p className="text-sm text-gray-500 mb-4">'승인한 유통채널 / 유통스타트 유통채널' 공급 상품은 여기서 선정한 유통회원에게만 노출·주문됩니다. (전체공급 상품은 선정 불필요)</p>
           <div className="flex flex-wrap items-end gap-2 mb-3">
             <input type="number" value={accessProductId} onChange={e => setAccessProductId(e.target.value)} placeholder="상품 ID" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
-            <button onClick={() => setAccessProductQuery(accessProductId)} className="px-3 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium">조회</button>
+            <button onClick={() => { setEditGrades(null); setAccessProductQuery(accessProductId) }} className="px-3 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium">조회</button>
             <input type="number" value={accessSeller} onChange={e => setAccessSeller(e.target.value)} placeholder="유통사 ID 선정" className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
             <button onClick={grantAccess} className="inline-flex items-center gap-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"><Plus className="w-4 h-4" /> 선정</button>
           </div>
           {accessQ.data && (
             <div>
               <p className="text-xs text-gray-600 mb-2">상품 <b>{accessQ.data.product?.name}</b> · 공급범위 <b>{accessQ.data.product?.supply_visibility}</b> · 선정 {accessQ.data.distributors.length}곳</p>
+              {/* 🏷️ 2026-06-18 등급별 노출 — 체크한 등급의 유통사에게만 이 상품 노출(주문/내보내기 포함). 아무것도 안 체크 = 전체 노출. */}
+              <div className="mb-3 p-3 rounded-lg bg-gray-50 border border-gray-100">
+                <p className="text-xs font-medium text-gray-700 mb-2">노출 등급 <span className="text-gray-400 font-normal">— 체크한 등급의 유통사에게만 노출 (전부 해제 = 전체 노출)</span></p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {(accessQ.data.all_grades || []).map((g) => {
+                    const on = effGrades.includes(g.grade)
+                    return (
+                      <button key={g.grade} type="button" onClick={() => toggleGrade(g.grade)}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border ${on ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                        {g.grade}{g.label ? ` ${g.label}` : ''}
+                      </button>
+                    )
+                  })}
+                  {editGrades !== null && (
+                    <button type="button" onClick={saveVisibleGrades} className="ml-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-600 text-white">저장</button>
+                  )}
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1.5">현재: {effGrades.length ? effGrades.join(', ') : '전체 노출(제한 없음)'}</p>
+              </div>
               {accessQ.data.distributors.length === 0 ? (
                 <p className="text-sm text-gray-400">선정된 유통회원이 없습니다.</p>
               ) : (

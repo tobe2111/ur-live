@@ -21,14 +21,14 @@ import {
 } from '@/lib/distributor-pricing'
 import { confirmTossPayment, cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { swallow } from '@/worker/utils/swallow'
-import { getSupplyMeta } from '@/worker/utils/product-supply-meta'
+import { getSupplyMeta, ensureSupplyMetaTable } from '@/worker/utils/product-supply-meta'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAuth } from '@/worker/middleware/auth'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { creditSupplierOnWholesaleOrder, loadPlatformCommissionPct, splitWholesaleUnit } from './wholesale-settlement'
 import { generateWholesaleSalesInvoice, generateWholesalePurchaseInvoices, listDistributorSalesInvoices } from './wholesale-tax-invoices'
-import { ensureSupplyVisibilitySchema, visibilityWhere } from './supply-visibility'
+import { ensureSupplyVisibilitySchema, visibilityWhere, gradeExposureWhere } from './supply-visibility'
 import { ensureDepositSchema, deductDeposit, recordDepositTxn, compensateDepositOrderOnce } from './wholesale-deposit-core'
 import { resolveMallId, registrationMallId, loadMallByHost } from './wholesale-malls'
 
@@ -973,12 +973,14 @@ app.get('/home', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const { DB } = c.env
   try {
-    await ensureSupplyVisibilitySchema(DB)
+    await Promise.all([ensureSupplyVisibilitySchema(DB), ensureSupplyMetaTable(DB)])
     const [sg, table, homeMallId] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), resolveMallId(c)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
     const grade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
     // 🏁 2026-06-12 (전 플로우 감사 🟡): /home 만 mall_id 스코프 누락 — 멀티몰 2개+ 가동 시
     //   베스트/신상에 타 몰 상품 노출(주문은 차단되나 혼선). 카탈로그(:1090)와 동일 조건으로 정합.
-    const baseWhere = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND COALESCE(p.mall_id,1) = ${Number(homeMallId) || 1} AND ${visibilityWhere('p')}`
+    // 🏷️ 2026-06-18 등급별 노출 — baseWhere 끝에 gradeExposureWhere AND. bind 순서: ... visibility(?) → grade(?).
+    //   각 쿼리의 .bind() 끝에 grade 1개 추가. 미설정 상품은 불변(현행 동일). home 은 로그인 전용이라 grade 항상 유효.
+    const baseWhere = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND COALESCE(p.mall_id,1) = ${Number(homeMallId) || 1} AND ${visibilityWhere('p')} AND ${gradeExposureWhere('p')}`
     const cols = `p.id, p.name, p.image_url, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, COALESCE(p.min_order_qty,1) AS moq, EXISTS(SELECT 1 FROM product_qty_tiers t WHERE t.product_id = p.id) AS has_tiers, p.supply_margin_override_pct AS margin_override, p.dominant_color, COALESCE(p.sold_count,0) AS sold_count`
     const enrich = (rows: HomeRow[]) => (rows || []).map(r => {
       const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
@@ -987,13 +989,13 @@ app.get('/home', async (c) => {
     })
 
     const [best, fresh, cats, proposalsRes] = await Promise.all([
-      DB.prepare(`SELECT ${cols} FROM products p WHERE ${baseWhere} ORDER BY COALESCE(p.sold_count,0) DESC, p.created_at DESC LIMIT 12`).bind(sellerId).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
-      DB.prepare(`SELECT ${cols} FROM products p WHERE ${baseWhere} ORDER BY p.created_at DESC LIMIT 12`).bind(sellerId).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
-      DB.prepare(`SELECT p.category AS category, COUNT(*) AS cnt FROM products p WHERE ${baseWhere} AND p.category IS NOT NULL GROUP BY p.category ORDER BY cnt DESC LIMIT 12`).bind(sellerId).all<{ category: string; cnt: number }>().catch(() => ({ results: [] as { category: string; cnt: number }[] })),
+      DB.prepare(`SELECT ${cols} FROM products p WHERE ${baseWhere} ORDER BY COALESCE(p.sold_count,0) DESC, p.created_at DESC LIMIT 12`).bind(sellerId, grade).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
+      DB.prepare(`SELECT ${cols} FROM products p WHERE ${baseWhere} ORDER BY p.created_at DESC LIMIT 12`).bind(sellerId, grade).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
+      DB.prepare(`SELECT p.category AS category, COUNT(*) AS cnt FROM products p WHERE ${baseWhere} AND p.category IS NOT NULL GROUP BY p.category ORDER BY cnt DESC LIMIT 12`).bind(sellerId, grade).all<{ category: string; cnt: number }>().catch(() => ({ results: [] as { category: string; cnt: number }[] })),
       DB.prepare(`
         SELECT ${cols} FROM wholesale_proposals wp JOIN products p ON p.id = wp.product_id
         WHERE wp.status = 'active' AND wp.distributor_seller_id = ? AND ${baseWhere} ORDER BY wp.created_at DESC LIMIT 12
-      `).bind(sellerId, sellerId).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
+      `).bind(sellerId, sellerId, grade).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
     ])
 
     return c.json({
@@ -1039,7 +1041,8 @@ app.get('/recent-items', async (c) => {
       FROM products p
       WHERE p.id IN (${ph}) AND p.is_supply_product = 1 AND p.is_active = 1
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
-    `).bind(...ids, sellerId).all<{ id: number; name: string; image_url: string | null; stock: number; supply_price: number; retail_price: number; moq: number; margin_override: number | null }>()
+        AND ${gradeExposureWhere('p')}
+    `).bind(...ids, sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; image_url: string | null; stock: number; supply_price: number; retail_price: number; moq: number; margin_override: number | null }>()
     const byId = new Map((prods.results || []).map(p => [p.id, p]))
     const items = ids.map(id => {
       const p = byId.get(id); const meta = seen.get(id)
@@ -1165,7 +1168,7 @@ app.get('/catalog', async (c) => {
     }
 
     // ensure 류는 WeakSet 메모이즈(첫 요청 후 no-op) — 병렬 실행으로 첫 요청 RTT 도 단축.
-    await Promise.all([ensureSupplyVisibilitySchema(DB), ensureQtyConstraintSchema(DB), ensureSupplierPolicySchema(DB)])
+    await Promise.all([ensureSupplyVisibilitySchema(DB), ensureQtyConstraintSchema(DB), ensureSupplierPolicySchema(DB), ensureSupplyMetaTable(DB)])
     // 🏭 등급/등급표/몰/가시성제한 — 상호 독립 쿼리 4개 순차 await → 병렬(1 RTT).
     const [sg, table, mallId, visRestricted] = await Promise.all([
       guest ? Promise.resolve({ distributor_grade: null, special_discount_until: null } as Awaited<ReturnType<typeof loadSellerGrade>>) : loadSellerGrade(DB, sellerId!),
@@ -1203,6 +1206,11 @@ app.get('/catalog', async (c) => {
     // + 몰 스코핑: p.mall_id = 요청 몰(기본 1 → 기존 데이터 전 행 1 → byte-identical).
     let where = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND COALESCE(p.mall_id,1) = ? AND ${visibilityWhere('p')}`
     const params: (string | number)[] = [mallId, visBind]
+    // 🏷️ 2026-06-18 등급별 노출 — visible_grades 제한 상품은 해당 등급 유통사에게만(게스트 '' → 제한상품 전부 제외).
+    //   미설정 상품은 절(NOT EXISTS)이 항상 참이라 byte-identical(현행 불변). bind 1개 = viewer 등급(effective).
+    //   ⚠️ 등급캐시 키(__g=grade)가 노출 차원을 이미 분할 → guest 공유캐시/등급캐시 모두 정합.
+    where += ` AND ${gradeExposureWhere('p')}`
+    params.push(guest ? '' : grade)
     // ── 검색: FTS5(products_fts) 가용 시 name/description/category 전문검색, 아니면 LIKE 다컬럼 fallback.
     //   visibilityWhere 는 항상 AND-ed (FROM products p 구조 불변 — FTS 는 rowid subquery 로 합류).
     //   ⚠️ products 스키마에 brand_name/barcode 컬럼이 없어 그 두 컬럼 검색은 생략(있는 컬럼만).
@@ -1398,8 +1406,15 @@ app.get('/catalog/:id', async (c) => {
   try {
     await ensureSupplyVisibilitySchema(DB)
     await ensureQtyConstraintSchema(DB) // BIZ-8: pack_size / order_multiple 컬럼 보장(SELECT 전). (+ products.mall_id 보장)
+    await ensureSupplyMetaTable(DB) // 🏷️ 등급별 노출 서브쿼리(visible_grades) 대상 테이블 보장(SELECT 전)
     // 🏬 멀티-몰: 요청 몰 스코핑(기본 1 → 기존 데이터 전 행 1 → byte-identical).
     const mallId = await resolveMallId(c)
+    // 🏷️ 2026-06-18 등급별 노출 게이트 — 직접 URL 접근(ID 추측)으로도 제한상품 못 보게 SELECT WHERE 에 포함.
+    //   게스트는 ''(제한상품 제외), 로그인은 effective 등급. sg 는 아래 가격계산(1461)에서 재사용(중복 로드 X).
+    const sg = guest
+      ? ({ distributor_grade: null, special_discount_until: null } as Awaited<ReturnType<typeof loadSellerGrade>>)
+      : await loadSellerGrade(DB, sellerId!)
+    const viewerGrade = guest ? '' : effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
     const r = await DB.prepare(`
       SELECT p.id, p.name, p.description, p.image_url, p.detail_images, p.category, p.stock, p.supplier_id,
              COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
@@ -1411,7 +1426,8 @@ app.get('/catalog/:id', async (c) => {
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
         AND COALESCE(p.mall_id,1) = ?
         AND ${visibilityWhere('p')}
-    `).bind(id, mallId, sellerId ?? -1).first<{
+        AND ${gradeExposureWhere('p')}
+    `).bind(id, mallId, sellerId ?? -1, viewerGrade).first<{
       id: number; name: string; description: string | null; image_url: string | null; detail_images: string | null;
       category: string | null; stock: number; supplier_id: number | null; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; sold_count: number; margin_override: number | null
     }>()
@@ -1458,12 +1474,11 @@ app.get('/catalog/:id', async (c) => {
 
     // 🛡️ PRC-1: 최소 플랫폼 마진율(%) — DISPLAY 와 CHARGE 가 동일 floor 를 쓰도록 요청당 1회 읽음(기본 0=현행 불변).
     //   네 쿼리 모두 독립 → 병렬(3 RTT 절약, 카탈로그 리스트와 동일 패턴).
-    const [sg, table, minMarginPct, tierMap] = await Promise.all([
-      loadSellerGrade(DB, sellerId!),
+    const [table, minMarginPct, tierMap] = await Promise.all([
       loadGradeTable(DB),
       loadMinPlatformMarginPct(DB),
       loadQtyTiers(DB, [id]),
-    ])
+    ]) // sg 는 SELECT 전 등급게이트에서 이미 로드됨(재사용 — 중복 쿼리 제거)
     const { price, grade } = resolveDistributorPrice({
       baseSupplyPrice: r.supply_price, retailPrice: r.retail_price, grade: sg.distributor_grade,
       specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override,
@@ -1583,9 +1598,12 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
 
     await ensureSupplyVisibilitySchema(DB)
     await ensureQtyConstraintSchema(DB) // BIZ-8: pack_size / order_multiple 컬럼 보장(SELECT 전).
+    await ensureSupplyMetaTable(DB) // 🏷️ 등급별 노출 게이트(visible_grades) 서브쿼리 대상 보장
     // 🛡️ PRC-1: 최소 플랫폼 마진율(%) 요청당 1회 — CHARGE 가 DISPLAY(카탈로그)와 동일 floor 를 쓰도록(기본 0=현행 불변).
     // 🆕 2026-06-16 commPct: 정산 분배(제조사 vs 플랫폼). 정산 호출(creditSupplier…)이 같은 요청에서 동기 실행 → drift 없음.
     const [sg, table, minMarginPct, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB), loadPlatformCommissionPct(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
+    // 🏷️ 2026-06-18 등급별 노출 게이트 — 카탈로그에서 안 보이는(등급 제한) 상품은 ID 직접 주문도 차단.
+    const orderViewerGrade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
     const ids = [...reqMap.keys()]
     const placeholders = ids.map(() => '?').join(',')
     // 가시성 가드 — 유통사가 볼 수 없는(선정 안 된) 공급상품은 주문 불가.
@@ -1597,7 +1615,8 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
       WHERE p.id IN (${placeholders}) AND p.is_supply_product = 1 AND p.is_active = 1
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
         AND COALESCE(p.mall_id,1) = ? AND ${visibilityWhere('p')}
-    `).bind(...ids, orderMallId, sellerId).all<{ id: number; name: string; supplier_id: number | null; stock: number | null; supply_price: number; retail_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
+        AND ${gradeExposureWhere('p')}
+    `).bind(...ids, orderMallId, sellerId, orderViewerGrade).all<{ id: number; name: string; supplier_id: number | null; stock: number | null; supply_price: number; retail_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const found = prods.results || []
     if (found.length !== ids.length) {
       // 어떤 상품이 주문 불가인지 이름으로 안내(카트 부분 불가 UX) — 비노출 정보 없이 name 만.
@@ -2123,8 +2142,9 @@ app.get('/catalog-export', async (c) => {
       FROM products p
       WHERE p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL
         AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
+        AND ${gradeExposureWhere('p')}
       ORDER BY p.name LIMIT 10000
-    `).bind(sellerId).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; margin_override: number | null }>()
+    `).bind(sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; margin_override: number | null }>()
     const out = (rows.results || []).map(r => {
       const { price, grade } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
       return [r.id, r.name, r.category || '', r.stock, price, grade]
@@ -2155,8 +2175,9 @@ app.get('/catalog/export', async (c) => {
       FROM products p
       WHERE p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL
         AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
+        AND ${gradeExposureWhere('p')}
       ORDER BY p.category, p.name LIMIT 10000
-    `).bind(sellerId).all<{ id: number; name: string; barcode: string | null; category: string | null; stock: number; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
+    `).bind(sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; barcode: string | null; category: string | null; stock: number; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const header = ['상품명', '바코드', '공급가(내등급)', 'MOQ', '박스단위', '재고']
     const out = (rows.results || []).map(r => {
       // ⚠️ 내 등급 단가만 계산 — 타 등급가 누출 없음(카탈로그/주문과 동일 SSOT).
@@ -2191,8 +2212,9 @@ app.get('/order-template', async (c) => {
       FROM products p
       WHERE p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL
         AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
+        AND ${gradeExposureWhere('p')}
       ORDER BY p.category, p.name LIMIT 10000
-    `).bind(sellerId).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
+    `).bind(sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const out = (rows.results || []).map(r => {
       const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
       return [r.id, r.name, r.category || '', r.stock, price, Math.max(1, r.moq || 1), Math.max(1, r.order_multiple || 1), ''] // 주문수량은 빈칸 — 유통사가 입력
@@ -2266,7 +2288,8 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
       WHERE p.id IN (${placeholders}) AND p.is_supply_product = 1 AND p.is_active = 1
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
         AND COALESCE(p.mall_id,1) = ? AND ${visibilityWhere('p')}
-    `).bind(...ids, previewMallId, sellerId).all<{ id: number; name: string; image_url: string | null; supplier_id: number | null; stock: number | null; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
+        AND ${gradeExposureWhere('p')}
+    `).bind(...ids, previewMallId, sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; image_url: string | null; supplier_id: number | null; stock: number | null; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const found = new Map((prods.results || []).map(p => [p.id, p]))
     const tierMap = await loadQtyTiers(DB, ids)
 

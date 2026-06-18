@@ -35,10 +35,19 @@
 
 ## 조치 (이 세션)
 - `[done]` `supply-visibility.ts` ensure에 `mall_id=0→1` 멱등 정규화 추가 (원인5 자가치유) — commit dc0c290.
-- `[done]` `cache-prewarm.ts` — 도매 path를 `utongstart.com` origin으로도 데움 (원인1) — 이 커밋.
+- `[done]` `cache-prewarm.ts` — 도매 path를 `utongstart.com` origin으로도 데움 (원인1) — commit 67caadd.
+- `[done]` **등급별 노출(visible_grades) 구현** (대표 결정: "등급별 노출 구현") — 아래.
+
+## ✅ 등급별 노출 구현 (2026-06-18)
+모델: `product_supply_meta.visible_grades`(CSV) — **비어있으면 전체 노출(현행 동일, additive)**. 설정 시 그 등급의 유통사에게만 노출.
+랭킹 모호성(OEM/SPECIAL이 sort_order tier 밖) 회피 위해 **명시 집합** 채택 — bind 1개(viewer 등급), CSV 멤버십은 콤마-패딩 `instr`.
+- 헬퍼: `supply-visibility.ts` `gradeExposureWhere(alias)` + 공통 ensure에 `product_supply_meta` 테이블 보장.
+- 게이트 적용 **9개 경로**: `/catalog`(+COUNT/brands) · `/home`(4쿼리) · `/catalog/:id`(직접URL 차단) · 주문검증 · bulk-preview · catalog-export · catalog/export · order-template · recent-items.
+- 캐시 정합: guest는 ''(제한상품 제외)·공유캐시 동일 / 로그인 등급캐시는 `__g=grade` 키라 노출 차원 이미 분할 → 무손상.
+- 관리자: `PATCH /api/admin/distributor/products/:id/visible-grades` + `GET /product-access` enrich(visible_grades/all_grades) + `AdminDistributorGradesPage` 노출등급 체크박스 UI.
+- 검증: tsc 0 · sql-bind 정합 · build 0. ⚠️ **라이브 실측 불가(egress 차단)** — 스테이징에서 한 상품에 visible_grades 설정 후 등급별 계정으로 노출/주문/내보내기 확인 권장.
 
 ## 남은 권장 (승인/실측 대기)
-- **(설계)** 등급 기반 노출을 원하면 신규 구현 — products에 `min_grade`(또는 등급셋) + visibilityWhere에 `OR (등급 >= p.min_grade)` 추가, admin UI. **대표 결정 필요.**
 - **(perf 근본)** 저트래픽 도매 카탈로그를 전 지역 즉시화하려면 게스트 카탈로그를 **글로벌 KV 캐시**(cron write + SSR/엔드포인트 KV-first read)로. `caches.default`는 colo별이라 저트래픽은 상시 cold. KV write량은 미미(<무료한도). **라이브 검증 불가 상태라 승인 후 진행 권장.**
 - **(index)** mall_id 정규화 완료를 전제로 `COALESCE` 제거 + 부분 복합 인덱스 — 단 WHERE 변경은 결과 영향 가능, 실측 후 진행.
 - **(SSR)** WHOLESALE self-fetch timeout 1500→2000ms 검토(밴드에이드).
