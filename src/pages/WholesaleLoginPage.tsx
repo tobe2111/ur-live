@@ -13,6 +13,28 @@ import { Loader2, Factory, ArrowRight, Users } from 'lucide-react'
 import { useWholesaleMall } from '@/hooks/queries/useWholesale'
 import { WholesaleWordmark } from './wholesale-catalog/WholesaleLogo'
 
+type SellerSessionData = {
+  accessToken: string
+  refreshToken?: string
+  seller: { id: number; name?: string; email?: string; username?: string; seller_type?: string; is_distributor?: number | boolean }
+}
+// 셀러(유통사) 세션 localStorage 반영 — 일반 로그인 + 카카오 probe 공용(중복 제거).
+function applySellerSession(d: SellerSessionData) {
+  const s = d.seller
+  localStorage.setItem('seller_token', d.accessToken)
+  localStorage.setItem('access_token', d.accessToken)
+  localStorage.setItem('seller_refresh_token', d.refreshToken || '')
+  localStorage.setItem('user_type', 'seller')
+  localStorage.setItem('active_role', 'seller')
+  localStorage.setItem('seller_id', String(s.id))
+  localStorage.setItem('seller_name', s.name || '')
+  localStorage.setItem('seller_email', s.email || '')
+  localStorage.setItem('seller_username', s.username || '')
+  localStorage.setItem('seller_type', s.seller_type || 'influencer')
+  if (s.is_distributor) localStorage.setItem('is_distributor', '1')
+  else localStorage.removeItem('is_distributor')
+}
+
 export default function WholesaleLoginPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -34,6 +56,32 @@ export default function WholesaleLoginPage() {
   const alreadyIn = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
   const isDistributor = typeof window !== 'undefined' && localStorage.getItem('is_distributor') === '1'
   useEffect(() => { if (alreadyIn) navigate(isDistributor ? '/wholesale/dashboard' : '/wholesale', { replace: true }) }, [alreadyIn, isDistributor, navigate])
+
+  // 🛡️ 2026-06-18 (인증 audit 대칭화): 카카오로 돌아온 기존 유통사면 become-distributor 빈-body probe 로
+  //   seller_token 자동 교환 (SupplierLoginPage 의 /supplier/become 자동 probe 와 대칭 — 카카오 콜백 토큰
+  //   누락 엣지 보강). 신규/미승인은 조용히 폼 유지. requireAuth 는 세션 쿠키(credentials:include)로 인증.
+  useEffect(() => {
+    if (alreadyIn || typeof window === 'undefined' || !localStorage.getItem('user_id')) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/wholesale/become-distributor', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+        const data = await res.json().catch(() => ({})) as { success?: boolean; status?: string; message?: string; data?: SellerSessionData }
+        if (cancelled) return
+        if (data.success && data.status === 'approved' && data.data?.accessToken) {
+          applySellerSession(data.data)
+          toast.success('유통회원으로 로그인되었습니다')
+          window.location.assign('/wholesale/dashboard')
+        } else if (data.success && (data.status === 'pending' || data.status === 'needs_business_info')) {
+          toast.info(data.message || '유통회원 승인 대기 중입니다 — 승인 후 이용할 수 있어요')
+        }
+        // needs_registration → 조용히(로그인 폼 유지; 가입은 사용자가 선택)
+      } catch { /* silent — 로그인 폼 유지 */ }
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   if (alreadyIn) return null // 리다이렉트 중 로그인폼 깜빡임 방지
 
   async function submit(e: React.FormEvent) {
@@ -49,18 +97,7 @@ export default function WholesaleLoginPage() {
       if (rememberMe) localStorage.setItem('wholesale_remember_email', email.trim())
       else localStorage.removeItem('wholesale_remember_email')
       const s = d.seller
-      localStorage.setItem('seller_token', d.accessToken)
-      localStorage.setItem('access_token', d.accessToken)
-      localStorage.setItem('seller_refresh_token', d.refreshToken || '')
-      localStorage.setItem('user_type', 'seller')
-      localStorage.setItem('active_role', 'seller')
-      localStorage.setItem('seller_id', String(s.id))
-      localStorage.setItem('seller_name', s.name || '')
-      localStorage.setItem('seller_email', s.email || '')
-      localStorage.setItem('seller_username', s.username || '')
-      localStorage.setItem('seller_type', s.seller_type || 'influencer')
-      if (s.is_distributor) localStorage.setItem('is_distributor', '1')
-      else localStorage.removeItem('is_distributor')
+      applySellerSession(d)
       // 유통사면 대시보드로, 아직 유통사 아닌 셀러면 카탈로그(전환 CTA)로. full reload → 토큰/세션 반영.
       window.location.assign(s.is_distributor ? '/wholesale/dashboard' : '/wholesale')
     } catch (err) {
