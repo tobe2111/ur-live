@@ -782,6 +782,15 @@ html.dark .gbd {
   body:has(.mobile-app-container.app-framed) .desktop-topnav {
     display: none !important;
   }
+  /* 📐 2026-06-17 (사용자 요청 — 액자 폭 430 단일화): 프레임은 폰 폭(430)인데 Tailwind 반응형
+     (sm/md/lg:)은 viewport(PC) 기준이라 좁은 액자 안에서 다열 그리드 / 2단 상세가 짓눌렸다.
+     프레임 안에선 '폰처럼' 모바일 기본 레이아웃으로 되돌린다.
+     이 규칙은 unlayered → Tailwind `@layer utilities` 보다 우선(특이도 무관)하므로 sm:/lg: 를 이김.
+     ⚠️ 정확한 클래스 조합만 타깃 — 프레임 밖(대시보드/도매몰)·무관 그리드엔 영향 0. */
+  .mobile-app-container.app-framed .grid-cols-2.sm\:grid-cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* 상품·핀 카드 → 2열(폰) */
+  .mobile-app-container.app-framed .grid-cols-4.sm\:grid-cols-5 { grid-template-columns: repeat(4, minmax(0, 1fr)); } /* 브랜드 칩 → 4열 */
+  .mobile-app-container.app-framed .lg\:grid-cols-5 { grid-template-columns: minmax(0, 1fr); }                       /* 상품상세 2단 → 단일 컬럼 */
+  .mobile-app-container.app-framed .lg\:sticky { position: static; }                                                 /* 상세 구매패널 sticky 해제(폰 흐름) */
 }
 
 /* PC 콘텐츠 폭 토큰 — 페이지별 max-width 가이드.
