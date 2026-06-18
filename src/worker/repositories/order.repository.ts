@@ -240,7 +240,8 @@ export class OrderRepository {
     let items: Record<string, unknown>[];
     try {
       items = await this.qb.queryMany<Record<string, unknown>>(
-        `SELECT oi.id, oi.order_id, oi.product_id, oi.product_name, oi.product_image,
+        `SELECT oi.id, oi.order_id, oi.product_id, oi.product_name,
+                COALESCE(oi.product_image, p.image_url) AS product_image,
                 oi.quantity, oi.unit_price, oi.subtotal, oi.options,
                 p.category AS product_category, p.deal_only AS deal_only, p.group_buy_status AS group_buy_status
          FROM order_items oi
