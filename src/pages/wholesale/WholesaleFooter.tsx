@@ -33,7 +33,7 @@ const FOOTER_LINKS: { label: string; href: string }[] = [
 const TRUST_BADGES: string[] = [
   'KCP 결제',
   '구매안전(에스크로)',
-  '국민은행 안심거래',
+  '우체국 안심거래',
   '대한통운 택배',
   '공정위 표준약관',
   'COMODO SSL',
