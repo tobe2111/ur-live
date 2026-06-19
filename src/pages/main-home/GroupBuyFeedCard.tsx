@@ -5,10 +5,11 @@
  * 공구 핵심 정보 (현재/목표 인원 + 마감 시간) 한눈에.
  */
 
-import { memo, useEffect, useRef } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import type { Product } from './types'
@@ -119,6 +120,10 @@ function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveF
   const soldCount = p.sold_count ?? 0
   const remaining = timeRemaining(p.expires_at)
   const isUrgent = remaining && (remaining.includes('시간') || remaining.includes('분'))
+  // 🎨 2026-06-18 (대표 신고 — 홈 공구 카드 그라데이션 사라짐): /group-buy 와 동일한 cardGradient 룩 복원.
+  //   대표색 단색 카드 + 사진 하단 같은색 번짐 + 대비 글자색. (GroupBuyGridCard 와 정합)
+  const [cardColor, setCardColor] = useState<string | null>(p.dominant_color || null)
+  const grad = cardGradient(cardColor)
 
   return (
     <Link
@@ -127,16 +132,13 @@ function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveF
       onMouseEnter={() => prefetch(p.id)}
       onTouchStart={() => prefetch(p.id)}
       onFocus={() => prefetch(p.id)}
-      className="block group active:opacity-90 transition-opacity"
+      className="block group active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col"
+      style={{ backgroundColor: grad.base }}
     >
-      {/* 🛡️ 2026-05-21: 사용자 요청 — 첨부 이미지 (참외 카드) 스타일.
-            구조: [이미지] [원가 strike] [제목] [할인% + 가격] [⭐평점 + 구매수] */}
+      {/* 🎨 대표색 카드 + 사진 하단 같은색 번짐(그라데이션) — /group-buy GroupBuyGridCard 와 동일 룩 */}
       <div
-        className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-[#121212]"
-        // 🛡️ 2026-05-28 (사용자 보고 — 베이지 깜빡임): 카테고리 색 tint 제거.
-        //   dominant_color(이미지 실제 색) 있으면 그 색, 없으면 className 의 중성 회색(bg-gray-100)
-        //   → backfill 전에도 옅은 회색이라 깜빡임 거의 안 보임. 교환권/브라우즈 카드와 동일 패턴.
-        style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}
+        className="relative aspect-square w-full overflow-hidden"
+        style={{ backgroundColor: grad.base }}
       >
         {p.image_url ? (
           <img
@@ -156,19 +158,23 @@ function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveF
             onLoad={(e) => {
               const el = e.currentTarget as HTMLImageElement
               el.style.opacity = '1'
-              if (!p.dominant_color) {
-                const color = extractDominantColor(el)
-                if (color) reportDominantColor(p.id, color)
+              const color = extractDominantColor(el)
+              if (color) {
+                if (!cardColor) setCardColor(color)
+                if (!p.dominant_color) reportDominantColor(p.id, color)
               }
             }}
             style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-100 dark:from-[#1A1A1A] dark:to-[#0A0A0A] flex items-center justify-center">
+          <div className="w-full h-full flex items-center justify-center">
             <span className="text-3xl opacity-40">{cat.emoji}</span>
           </div>
         )}
+
+        {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거) */}
+        <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
 
         {/* 마감 임박 배지 (시간/분 단위면 좌상단 빨강) */}
         {isUrgent && (
@@ -178,10 +184,10 @@ function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveF
         )}
       </div>
 
-      <div className="pt-2 px-0.5">
-        {/* 🛡️ 2026-05-21: 브랜드 표시 (gift_catalog) — 있을 때만 작은 줄 */}
+      <div className="px-2.5 pb-2.5 pt-1.5">
+        {/* 브랜드 (gift_catalog) — 있을 때만 */}
         {brandName && (
-          <p className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400 leading-none mb-0.5">
+          <p className="flex items-center gap-1 text-[10px] leading-none mb-0.5" style={{ color: grad.sub }}>
             {brandIcon && <img src={brandIcon} alt="" className="w-3 h-3 rounded-full object-contain" loading="lazy" />}
             <span className="truncate">{brandName}</span>
           </p>
@@ -189,33 +195,33 @@ function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveF
 
         {/* 원가 strikethrough (있을 때만) */}
         {originalPrice > price && originalPrice > 0 && (
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 line-through leading-tight">
+          <p className="text-[11px] line-through leading-tight" style={{ color: grad.sub }}>
             {formatNumber(originalPrice)}원
           </p>
         )}
 
         {/* 제목 — 2줄 max */}
-        <p className="text-[13px] font-semibold text-gray-900 dark:text-white line-clamp-2 leading-tight mt-0.5">
+        <p className="text-[13px] font-semibold line-clamp-2 leading-tight mt-0.5" style={{ color: grad.text }}>
           {p.name}
         </p>
 
         {/* 할인% + 최종가 — 핵심 강조 */}
         <p className="flex items-baseline gap-1 mt-1">
           {discount > 0 && (
-            <span className="text-[15px] font-extrabold text-red-500">{discount}%</span>
+            <span className="text-[15px] font-extrabold" style={{ color: grad.accent }}>{discount}%</span>
           )}
-          <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">
+          <span className="text-[15px] font-extrabold" style={{ color: grad.text }}>
             {formatNumber(price)}원
           </span>
         </p>
 
         {/* ⭐ 평점 + 구매수 */}
         {(rating > 0 || soldCount > 0) && (
-          <p className="flex items-center gap-1.5 mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+          <p className="flex items-center gap-1.5 mt-0.5 text-[11px]" style={{ color: grad.sub }}>
             {rating > 0 && (
               <span className="flex items-center gap-0.5">
                 <span className="text-yellow-500">★</span>
-                <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
+                <span className="font-bold" style={{ color: grad.text }}>{rating.toFixed(1)}</span>
               </span>
             )}
             {soldCount > 0 && (
