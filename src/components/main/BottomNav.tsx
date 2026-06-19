@@ -3,7 +3,7 @@ import { cfImage } from '@/utils/cf-image'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
-import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin } from 'lucide-react'
+import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin, Ticket } from 'lucide-react'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
 function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
@@ -195,9 +195,9 @@ export default function BottomNav() {
     { icon: Home,        label: t('nav.home',  { defaultValue: '홈' }),    path: '/' },
     // 🏭 2026-06-10: 동네딜은 청크 + 데이터 동시 워밍 — 누르는 순간 카드 데이터 선요청 (클릭→마운트 ~200ms 선점).
     { icon: MapPin,      label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/group-buy', prefetch: () => import('@/pages/GroupBuyListPage').then((m) => { m.warmGroupBuyList?.() }) },
-    ...(SHOPPING_TAB_HIDDEN
-      ? [{ icon: Plus, label: t('nav.create', { defaultValue: '만들기' }), path: '__create__' as const, prefetch: () => import('@/pages/UserGroupBuyCreatePage') }]
-      : [{ icon: ShoppingBag, label: t('nav.shop',  { defaultValue: '쇼핑' }),  path: '/browse', prefetch: () => import('@/pages/BrowsePage') }]),
+    // 🎟️ 2026-06-18 (대표 결정): 가운데 ➕(만들기) → '공구권'. 교환권(기프티콘)은 MMS 발송이라 앱에서 볼 일이 없고,
+    //   공구권(동네딜 식사권 등)은 매장에서 QR/PIN 으로 '앱에서 꺼내 쓰는' 핵심 surface라 상시 탭 가치가 높음.
+    { icon: Ticket,      label: t('nav.myGbVouchers', { defaultValue: '공구권' }), path: '/my-vouchers', prefetch: () => import('@/pages/MyVouchersPage') },
     // 🧭 2026-06-10: 링크샵도 청크+데이터 동시 워밍 (동네딜과 동일) — 누르는 순간 선요청.
     { icon: Sparkles,    label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath, prefetch: () => {
       if (linkshopPath.startsWith('/u/') && !linkshopPath.startsWith('/u/me')) {
@@ -214,7 +214,9 @@ export default function BottomNav() {
     if (cur === path) return true
     if (path !== '/' && cur.startsWith(path)) return true
     // v37 FIX: 마이페이지 범주에 /my-* 및 관련 계정/주문 경로 포함
-    if (path === '/user/profile' && /^\/(my-orders|my-coupons|my-reviews|my-vouchers|my-group-buys|wishlist|interest-list|account|mypage|my-returns)(\/|$)/.test(cur)) {
+    if (path === '/my-vouchers' && cur.startsWith('/my-vouchers')) return true
+    // 🎟️ 2026-06-18: /my-vouchers 는 '공구권' 탭 전용 활성 → 마이 탭 정규식에서 제외(이중 활성 방지).
+    if (path === '/user/profile' && /^\/(my-orders|my-coupons|my-reviews|my-group-buys|wishlist|interest-list|account|mypage|my-returns)(\/|$)/.test(cur)) {
       return true
     }
     // 🛡️ 2026-05-25: 링크샵 탭 active — /u/, /host/, /g/, /profile/ 모두 포함

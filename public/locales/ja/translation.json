@@ -4103,7 +4103,8 @@
     "vouchers": "クーポン",
     "dongnedeal": "ご近所ディール",
     "create": "作成",
-    "offlineGroupBuy": "オフライン共同購入"
+    "offlineGroupBuy": "オフライン共同購入",
+    "myGbVouchers": "クーポン"
   },
   "bulkUpload": {
     "title": "商品一括登録",
