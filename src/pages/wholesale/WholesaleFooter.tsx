@@ -29,27 +29,10 @@ const FOOTER_LINKS: { label: string; href: string }[] = [
   { label: '입점안내', href: '/wholesale/start' },
 ]
 
-// PG/에스크로/배송/신뢰 배지 (시안 그대로 — 텍스트 칩)
-const TRUST_BADGES: string[] = [
-  'KCP 결제',
-  '구매안전(에스크로)',
-  '우체국 안심거래',
-  '대한통운 택배',
-  '공정위 표준약관',
-  'COMODO SSL',
-]
-
 export default function WholesaleFooter() {
   return (
     <footer className="mt-6" style={{ background: '#fff', borderTop: '1px solid ' + WT.line }}>
       <div className="ur-content-wide px-5 lg:px-8 py-7">
-        {/* 신뢰 배지 행 */}
-        <div className="flex flex-wrap gap-2 mb-5">
-          {TRUST_BADGES.map((b) => (
-            <span key={b} className="text-[11px] font-medium rounded-md px-2.5 py-1.5" style={{ color: WT.ink2, border: '1px solid ' + WT.line2 }}>{b}</span>
-          ))}
-        </div>
-
         {/* 본문 — 좌 사업자정보 / 우 고객센터 */}
         <div className="flex flex-col sm:flex-row sm:justify-between gap-6 sm:gap-8 pt-5" style={{ borderTop: '1px solid ' + WT.line }}>
           {/* 좌 — 로고 + 사업자정보 + 정책 링크 */}
