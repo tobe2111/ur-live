@@ -28,7 +28,7 @@ import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import DealEarnStrip from '@/components/main/DealEarnStrip'
 import HomeProductsRail from '@/components/main/HomeProductsRail'
-import VouchersPage from './VouchersPage'
+import GroupBuyFeed from './main-home/GroupBuyFeed'
 
 export default function MainHomePage() {
   const navigate = useNavigate()
@@ -85,19 +85,33 @@ export default function MainHomePage() {
         </div>
       </div>
 
-      {/* ═══ 🎟️ 교환권 (홈 메인 콘텐츠) ═══
-          🛡️ 2026-06-01 [UNLOCK_LOADING]: 홈 = 교환권 + 딜모으는법 (사용자 승인).
-          VouchersPage 를 embedded 로 재사용 — SSR 는 worker MAIN 슬롯(deal_only) 에서 0-RTT 로 읽음.
-          오프라인 공구는 동네딜(/group-buy) 탭이 전담. */}
-      <VouchersPage embedded />
+      {/* ═══ 🏘️ 동네딜 (홈 메인 콘텐츠) ═══
+          🛡️ 2026-06-18 [UNLOCK_LOADING] (대표 결정 — 홈 = 동네딜 중심): 교환권 blend → 동네딜 피드.
+          GroupBuyFeed(category='all') 가 worker MAIN 슬롯(group-buy active)을 0-RTT 로 consume.
+          교환권은 아래 entry 로 강등 → /vouchers. */}
+      <GroupBuyFeed />
 
-      {/* 🧭 2026-06-10 (사용자 결정): '우리 동네딜' 섹션 홈에서 제거 — 위치 맥락 없는 전국 상위
-          노출은 의미 약하고, 하단바 동네딜 탭이 전담. 컴포넌트는 보존(HomeDongneDealSection) — 복원 1줄. */}
-
-      {/* ═══ 🛍️ 일반 상품 레일 — 2026-06-10 사용자 결정: 교환권 아래 실제 상품 미리보기 */}
+      {/* ═══ 🛍️ 일반 상품 레일 — 실제 상품 미리보기 */}
       <HomeProductsRail />
 
-      {/* ═══ 💰 딜 모으는 법 — 🧭 2026-06-10: 신규 방문자 첫 콘텐츠로 부적합(기존 사용자용) → 하단 이동 */}
+      {/* ═══ 📱 교환권(기프티콘) — 홈에서 강등: 딜 소진 옵션 entry → /vouchers ═══ */}
+      <div className="ur-content-wide px-4 lg:px-8 mt-5">
+        <button
+          onClick={() => navigate('/vouchers')}
+          className="w-full flex items-center justify-between gap-3 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] px-4 py-3.5 active:scale-[0.99] transition-transform"
+        >
+          <span className="flex items-center gap-2.5 min-w-0">
+            <span className="text-[20px]">📱</span>
+            <span className="text-left min-w-0">
+              <span className="block text-[14px] font-bold text-gray-900 dark:text-white">{t('home.gifticonEntry', { defaultValue: '기프티콘 교환권' })}</span>
+              <span className="block text-[12px] text-gray-500 dark:text-gray-400 truncate">{t('home.gifticonEntrySub', { defaultValue: '딜로 편의점·카페 기프티콘 구매' })}</span>
+            </span>
+          </span>
+          <span className="text-gray-400 shrink-0 text-[18px]">›</span>
+        </button>
+      </div>
+
+      {/* ═══ 💰 딜 모으는 법 — 하단 */}
       <DealEarnStrip />
 
 
