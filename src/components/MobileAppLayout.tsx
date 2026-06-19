@@ -47,6 +47,10 @@ const LINKSHOP_PREFIXES = ['/u/', '/u', '/profile/', '/s/']
 //   주인 판별 = URL 핸들 ↔ localStorage 핸들(useLinkshopPath 우선순위: seller_username →
 //   linked_seller_username → user_handle, /u/me·/u 는 항상 주인). SSR(window 없음)=방문자로 간주
 //   → 익명 액자 우선, 주인 하드로드 시 첫 client 렌더에서 사이드바 자기치유(createRoot 비-hydrate).
+// 🖥️ 2026-06-18 (대표 결정 — PC 전면 반응형 단계적 롤아웃): 풀너비 데스크탑 레이아웃을 쓸 경로.
+//   여기 등재된 경로만 프레임(430 액자) 해제 + 상단 네비 + 풀너비. 단계별로 확장(홈부터).
+const DESKTOP_RESPONSIVE_PATHS = new Set<string>(['/'])
+
 function isOwnLinkshopPath(pathname: string): boolean {
   if (typeof window === 'undefined') return false
   if (pathname === '/u' || pathname === '/u/me') return true
@@ -80,9 +84,13 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   //   단, 주인이 자기 링크샵을 볼 땐 평소 앱(사이드바 표시) — 방문자(공유링크 진입)에게만 액자+QR.
   const isLinkshop = location.pathname === '/u' || LINKSHOP_PREFIXES.some(p => location.pathname.startsWith(p))
   const linkshopVisitor = isLinkshop && !isOwnLinkshopPath(location.pathname)
-  const showSidebar = !hideSidebar && !linkshopVisitor
-  // 컨슈머 프레임 — 대시보드/도매몰/비디오는 제외 (전 컨슈머 적용). 링크샵은 프레임 유지.
-  const framed = !mobileOnly && !hideSidebar
+  // 🖥️ 2026-06-18 (대표 결정 — PC 전면 반응형): 데스크탑 풀너비 페이지(단계적 롤아웃).
+  //   프레임(430 액자) 대신 상단 네비 + 풀너비 반응형. 좌측 카테고리 사이드바는 숨김(사용자 "사이드바 위주 X").
+  //   페이지의 기존 lg: 레이아웃이 그대로 살아남(프레임 CSS 덮기 미적용). 모바일(<lg)은 영향 0.
+  const isDesktopResponsive = !mobileOnly && DESKTOP_RESPONSIVE_PATHS.has(location.pathname)
+  const showSidebar = !hideSidebar && !linkshopVisitor && !isDesktopResponsive
+  // 컨슈머 프레임 — 대시보드/도매몰/비디오 + 데스크탑 반응형 페이지는 제외.
+  const framed = !mobileOnly && !hideSidebar && !isDesktopResponsive
   // 📐 2026-06-17: 단일 폰 폭(430) — 페이지별 폭 분기 제거(액자가 페이지마다 안 튐).
   const frameWidth = '430px'
 
@@ -99,8 +107,10 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
     } else {
       body.classList.remove('app-frame-host', 'app-frame-dark')
     }
-    return () => { body.classList.remove('app-frame-host', 'app-frame-dark') }
-  }, [framed, applied])
+    // 🖥️ 2026-06-18: 데스크탑 풀너비 페이지 → 상단 네비를 사이드바 없는 폭으로 보정(CSS: body.app-fullwidth).
+    body.classList.toggle('app-fullwidth', isDesktopResponsive)
+    return () => { body.classList.remove('app-frame-host', 'app-frame-dark', 'app-fullwidth') }
+  }, [framed, applied, isDesktopResponsive])
 
   return (
     <>
