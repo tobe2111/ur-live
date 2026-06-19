@@ -3428,7 +3428,8 @@
     "vouchers": "Bons",
     "dongnedeal": "Offres locales",
     "create": "Créer",
-    "offlineGroupBuy": "Achat groupé local"
+    "offlineGroupBuy": "Achat groupé local",
+    "myGbVouchers": "Coupons"
   },
   "bulkUpload": {
     "title": "Import de produits en masse",

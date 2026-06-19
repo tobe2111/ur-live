@@ -8,7 +8,7 @@
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, Radio, Compass, MapPin, User, PackageSearch, Heart, BookOpen, Store, Plus } from 'lucide-react'
+import { Home, Radio, Compass, MapPin, User, Store, Plus, Ticket } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -38,11 +38,11 @@ const MENU_ITEMS: NavItem[] = [
 //   맛집/미용/숙소/기타/일반은 동네딜(/group-buy) 페이지의 탭으로 이미 접근 가능 → 사이드바 중복 제거(단순화).
 //   사이드바는 '주요 목적지'만(홈/동네딜/공구제안/링크샵/마이) — 모바일 하단바와 정합.
 
+// 🎟️ 2026-06-18 (대표 결정 — 5탭 통일: 홈/동네딜/공구권/링크샵/마이): 주문/찜/식사권은 마이페이지 안 탭으로
+//   접근 → 사이드바는 핵심만. '내 식사권' → '공구권'(QR 매장사용)으로 명칭/아이콘 통일(모바일 하단바와 동일).
 const MY_ITEMS: NavItem[] = [
-  { labelKey: 'my.profile',  labelDefault: '마이페이지', icon: User,        path: '/user/profile', active: (p) => p.startsWith('/user/profile') || p === '/mypage' },
-  { labelKey: 'my.orders',   labelDefault: '주문내역',   icon: PackageSearch, path: '/my-orders',  active: (p) => p.startsWith('/my-orders') },
-  { labelKey: 'my.wishlist', labelDefault: '찜',         icon: Heart,       path: '/wishlist',     active: (p) => p.startsWith('/wishlist') },
-  { labelKey: 'my.vouchers', labelDefault: '내 식사권',  icon: BookOpen,    path: '/my-vouchers',  active: (p) => p.startsWith('/my-vouchers') },
+  { labelKey: 'nav.myGbVouchers', labelDefault: '공구권', icon: Ticket, path: '/my-vouchers', active: (p) => p.startsWith('/my-vouchers') },
+  { labelKey: 'my.profile',       labelDefault: '마이페이지', icon: User, path: '/user/profile', active: (p) => p.startsWith('/user/profile') || p === '/mypage' },
 ]
 
 function NavBtn({ item, isActive, onClick }: { item: NavItem; isActive: boolean; onClick: () => void }) {
@@ -116,20 +116,23 @@ export default function DesktopLiveSidebar() {
           <p className="hidden xl:block text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
             {t('nav.sectionMy', { defaultValue: 'My' })}
           </p>
-          {/* 🔗 링크샵 — 본인 공개페이지(모바일 BottomNav 와 동일 경로). PC 진입 버튼 누락 수정. */}
+          {/* 순서 통일(모바일 하단바와 동일): 공구권 → 링크샵 → 마이 */}
+          <NavBtn
+            item={MY_ITEMS[0]}
+            isActive={MY_ITEMS[0].active?.(pathname, search) ?? false}
+            onClick={() => navigate(MY_ITEMS[0].path)}
+          />
+          {/* 🔗 링크샵 — 본인 공개페이지(모바일 BottomNav 와 동일 경로) */}
           <NavBtn
             item={linkshopItem}
             isActive={linkshopItem.active?.(pathname, search) ?? false}
             onClick={() => navigate(linkshopPath)}
           />
-          {MY_ITEMS.map(item => (
-            <NavBtn
-              key={item.path}
-              item={item}
-              isActive={item.active?.(pathname, search) ?? false}
-              onClick={() => navigate(item.path)}
-            />
-          ))}
+          <NavBtn
+            item={MY_ITEMS[1]}
+            isActive={MY_ITEMS[1].active?.(pathname, search) ?? false}
+            onClick={() => navigate(MY_ITEMS[1].path)}
+          />
         </section>
       </div>
 

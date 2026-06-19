@@ -4103,7 +4103,8 @@
     "vouchers": "Vouchers",
     "dongnedeal": "Local Deals",
     "create": "Create",
-    "offlineGroupBuy": "Local Group Buy"
+    "offlineGroupBuy": "Local Group Buy",
+    "myGbVouchers": "Vouchers"
   },
   "bulkUpload": {
     "title": "Bulk Product Upload",

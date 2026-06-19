@@ -4103,7 +4103,8 @@
     "groupBuy": "공구",
     "dongnedeal": "동네딜",
     "create": "만들기",
-    "offlineGroupBuy": "오프라인 공동구매"
+    "offlineGroupBuy": "오프라인 공동구매",
+    "myGbVouchers": "공구권"
   },
   "bulkUpload": {
     "title": "상품 대량등록",
