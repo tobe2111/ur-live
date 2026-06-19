@@ -562,7 +562,14 @@ app.use('*', async (c, next) => {
         //   이전: MAIN 150ms / DETAIL 250ms — cold 시 self-fetch-timeout → 클라가 직접 fetch → 10초+ timeout
         //   변경: MAIN 1500ms / DETAIL/SELLER 2000ms — wait 후 fresh data inject 보장.
         //   trade-off: cold 첫 사용자 1-2초 wait. warm 사용자 (99%+) 영향 0 (edge-hit 가 먼저 응답).
-        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT') ? 2000 : 1500;
+        // 🏭 2026-06-19 [UNLOCK_LOADING] (대표 신고 — 도매 카탈로그 스켈레톤 고착, HTML 증거: __SSR_INITIAL_WHOLESALE__
+        //   미주입): 저트래픽 도매몰은 colo 캐시가 대부분 cold → self-fetch 가 콜드 D1(isolate 콜드스타트+ensure+조회)을
+        //   1.5초 안에 못 끝내 timeout → 빈 ssrPayload → 주입 스킵 → 클라가 또 콜드 fetch(스켈레톤 장기화).
+        //   WHOLESALE 만 3000ms 로 상향 → 콜드여도 데이터 주입 완료(첫 사용자만 ~2-3초 문서 wait, 이후 colo 캐시 300s).
+        //   warm(edge-hit) 경로·타 슬롯·소비자 페이지 전부 불변. 근본 해결은 CACHE_KV 전역 워밍(self-fetch=KV-HIT).
+        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT') ? 2000
+          : ssrTarget.slot === 'WHOLESALE' ? 3000
+          : 1500;
         const ctlr = new AbortController();
         const timer = setTimeout(() => ctlr.abort(), timeoutMs);
         const selfStart = Date.now();
