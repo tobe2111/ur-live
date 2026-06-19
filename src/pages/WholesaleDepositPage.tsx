@@ -44,12 +44,14 @@ export default function WholesaleDepositPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
-  const isDistributor = typeof window !== 'undefined' && localStorage.getItem('is_distributor') === '1'
 
   useEffect(() => {
+    // 🛡️ 2026-06-19 (#5 근본수정): is_distributor localStorage 가드 제거 — Dashboard(충전하기 버튼)는
+    //   seller_token 기준으로 노출되는데(WholesaleCatalogPage:277 `loggedIn = !!token`) deposits 만
+    //   is_distributor 를 요구해, 카카오 로그인(플래그 미설정) 시 /wholesale 로 silent 튕김("새로고침 느낌").
+    //   진입은 token 기준으로 Dashboard 와 일치 + 실제 충전은 서버(useWholesaleMe/charge 엔드포인트)가 검증.
     if (!token) { navigate('/wholesale/login', { replace: true }); return }
-    if (!isDistributor) { navigate('/wholesale', { replace: true }); return }
-  }, [token, isDistributor, navigate])
+  }, [token, navigate])
 
   const meQ = useWholesaleMe()
   const depositQ = useWholesaleDeposit()
