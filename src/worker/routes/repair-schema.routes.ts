@@ -588,6 +588,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'users.instagram_url', sql: "ALTER TABLE users ADD COLUMN instagram_url TEXT" },
     { desc: 'users.tiktok_url', sql: "ALTER TABLE users ADD COLUMN tiktok_url TEXT" },
     { desc: 'users.linkshop_headline', sql: "ALTER TABLE users ADD COLUMN linkshop_headline TEXT" },
+    { desc: 'users.linkshop_accent', sql: "ALTER TABLE users ADD COLUMN linkshop_accent TEXT" },
     // 🛡️ 2026-05-27 (리뷰 집계 영구 fix — 사용자 보고):
     //   product_reviews INSERT 경로 7곳 (사용자/시드/admin) 마다 products UPDATE 누락 위험.
     //   D1 트리거로 모든 INSERT/UPDATE/DELETE 자동 처리 → review_count + avg_rating 영구 동기화.
@@ -2036,6 +2037,7 @@ repairSchemaRoutes.get('/api/_internal/repair-schema-quick', requireAdmin(), asy
   // 진단 — 기능이 의존하는 컬럼이 실제로 있는지 (ground truth).
   const present = {
     'users.linkshop_headline': userCols.has('linkshop_headline'),
+    'users.linkshop_accent': userCols.has('linkshop_accent'),
     'sellers.base_shipping_fee': sellerCols.has('base_shipping_fee'),
     'sellers.free_shipping_threshold': sellerCols.has('free_shipping_threshold'),
     'sellers.shipping_fee': sellerCols.has('shipping_fee'),
@@ -2049,8 +2051,9 @@ repairSchemaRoutes.get('/api/_internal/repair-schema-quick', requireAdmin(), asy
       else errors.push({ step, error: m.slice(0, 160) });
     }
   };
-  // users 는 컬럼 한도 여유 — 마퀴 헤드라인 안전 추가.
+  // users 는 컬럼 한도 여유 — 마퀴 헤드라인/액센트 안전 추가.
   if (!present['users.linkshop_headline']) await run('users.linkshop_headline', 'ALTER TABLE users ADD COLUMN linkshop_headline TEXT');
+  if (!present['users.linkshop_accent']) await run('users.linkshop_accent', 'ALTER TABLE users ADD COLUMN linkshop_accent TEXT');
   // 핸들 변경 alias (리다이렉트) + user2→jiwon 1회 백필.
   await run('user_handle_aliases', `CREATE TABLE IF NOT EXISTS user_handle_aliases (
     alias TEXT PRIMARY KEY, user_id INTEGER NOT NULL, created_at TEXT DEFAULT (datetime('now')))`);

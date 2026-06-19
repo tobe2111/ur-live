@@ -35,6 +35,7 @@ interface CuratorHeaderProps {
     profile_image: string | null
     banner_url?: string | null // 🎨 2026-06-18 히어로 배너로 재도입 (소유자 전용 업로드)
     headline?: string | null // 🎨 2026-06-18 마퀴(흐르는 헤드라인)
+    accent?: string | null // 🎨 2026-06-19 마퀴 액센트 색 (#RRGGBB)
     youtube_url?: string | null
     instagram_url?: string | null
     tiktok_url?: string | null
@@ -99,6 +100,25 @@ export default function CuratorHeader({
   // 🎨 2026-06-18 마퀴 헤드라인 편집(소유자).
   const [editingHeadline, setEditingHeadline] = useState(false)
   const [headlineVal, setHeadlineVal] = useState(curator.headline || '')
+  // 🎨 2026-06-19 마퀴 액센트 색 (소유자 조정). 비면 기본 주황.
+  const ACCENT_DEFAULT = '#FF6A00'
+  const ACCENT_PRESETS = ['#FF6A00', '#E11D48', '#7C3AED', '#2563EB', '#0E9F6E', '#111827']
+  const accentColor = (curator.accent && /^#[0-9A-Fa-f]{6}$/.test(curator.accent)) ? curator.accent : ACCENT_DEFAULT
+  // 액센트 밝기로 글자색 자동 대비 (밝으면 잉크, 어두우면 흰색).
+  const accentText = (() => {
+    const h = accentColor.replace('#', '')
+    const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16)
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62 ? '#1a1a1a' : '#ffffff'
+  })()
+  async function saveAccent(hex: string) {
+    const prev = curator.accent || ''
+    if (hex === prev) return
+    onCuratorUpdate?.({ accent: hex })
+    try {
+      const res = await api.patch('/api/curator/me/profile', { accent: hex })
+      if (!res.data?.success) { onCuratorUpdate?.({ accent: prev }); toast.error(res.data?.error || '저장 실패') }
+    } catch { onCuratorUpdate?.({ accent: prev }); toast.error('저장 실패') }
+  }
   // 🎨 2026-06-16 링크샵 시안: SNS 링크 편집(소유자).
   const [editingSns, setEditingSns] = useState(false)
   const [snsForm, setSnsForm] = useState({
@@ -224,28 +244,46 @@ export default function CuratorHeader({
       {/* ① 흐르는 마퀴(헤드라인) — 최상단, 풀블리드 */}
       <div className="max-w-3xl mx-auto">
         {editingHeadline ? (
-          <div className="flex items-center gap-2 bg-[#FF6A00] px-3 py-2">
-            <input
-              autoFocus
-              value={headlineVal}
-              onChange={(e) => setHeadlineVal(e.target.value.slice(0, 80))}
-              onKeyDown={(e) => e.key === 'Enter' && saveHeadline()}
-              placeholder="흐르는 한 줄 공지 (예: 인플루언서 양성 프로젝트)"
-              maxLength={80}
-              className="flex-1 min-w-0 bg-white/20 text-white placeholder:text-white/70 text-[12.5px] font-bold px-2.5 py-1.5 rounded-lg outline-none"
-            />
-            <button onClick={saveHeadline} aria-label="저장" className="shrink-0 p-1.5 bg-white rounded-lg text-[#FF6A00] active:scale-95"><Check className="w-4 h-4" /></button>
-            <button onClick={() => { setEditingHeadline(false); setHeadlineVal(curator.headline || '') }} aria-label="취소" className="shrink-0 p-1.5 bg-white/20 rounded-lg text-white active:scale-95"><X className="w-4 h-4" /></button>
+          <div className="px-3 py-2 space-y-2" style={{ background: accentColor }}>
+            <div className="flex items-center gap-2">
+              <input
+                autoFocus
+                value={headlineVal}
+                onChange={(e) => setHeadlineVal(e.target.value.slice(0, 80))}
+                onKeyDown={(e) => e.key === 'Enter' && saveHeadline()}
+                placeholder="흐르는 한 줄 공지 (예: 신상 입고 · 무료배송 이벤트)"
+                maxLength={80}
+                className="flex-1 min-w-0 bg-white/20 text-white placeholder:text-white/70 text-[12.5px] font-bold px-2.5 py-1.5 rounded-lg outline-none"
+              />
+              <button onClick={saveHeadline} aria-label="저장" className="shrink-0 p-1.5 bg-white rounded-lg active:scale-95" style={{ color: accentColor }}><Check className="w-4 h-4" /></button>
+              <button onClick={() => { setEditingHeadline(false); setHeadlineVal(curator.headline || '') }} aria-label="취소" className="shrink-0 p-1.5 bg-white/20 rounded-lg text-white active:scale-95"><X className="w-4 h-4" /></button>
+            </div>
+            {/* 색상 조정 — 프리셋 스와치 + 커스텀 컬러 */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10.5px] font-bold text-white/80 mr-0.5">색상</span>
+              {ACCENT_PRESETS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => saveAccent(c)}
+                  aria-label={`색상 ${c}`}
+                  className={`w-5 h-5 rounded-full border-2 ${accentColor.toLowerCase() === c.toLowerCase() ? 'border-white' : 'border-white/40'} active:scale-90`}
+                  style={{ background: c }}
+                />
+              ))}
+              <label className="w-5 h-5 rounded-full border-2 border-white/40 overflow-hidden cursor-pointer relative ml-0.5" title="직접 선택" style={{ background: 'conic-gradient(red,orange,yellow,green,blue,violet,red)' }}>
+                <input type="color" value={accentColor} onChange={(e) => saveAccent(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" />
+              </label>
+            </div>
           </div>
         ) : curator.headline ? (
-          <div className="relative overflow-hidden bg-[#FF6A00] text-white">
+          <div className="relative overflow-hidden" style={{ background: accentColor, color: accentText }}>
             <div className="animate-marquee py-1.5">
               {[0, 1].map((copy) => (
                 <div key={copy} className="flex shrink-0" aria-hidden={copy === 1}>
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <span key={i} className="px-6 text-[12px] font-bold tracking-wide whitespace-nowrap">
+                    <span key={i} className="px-7 text-[12px] font-bold tracking-wide whitespace-nowrap">
                       {curator.headline}
-                      <span className="px-3 opacity-60">✦</span>
                     </span>
                   ))}
                 </div>
@@ -264,7 +302,8 @@ export default function CuratorHeader({
         ) : isOwner ? (
           <button
             onClick={() => { setEditingHeadline(true); setHeadlineVal('') }}
-            className="w-full bg-[#FF6A00]/10 text-[#FF6A00] text-[11px] font-bold py-1.5 active:bg-[#FF6A00]/20"
+            className="w-full text-[11px] font-bold py-1.5 active:opacity-80"
+            style={{ background: `${accentColor}1A`, color: accentColor }}
           >
             + 흐르는 헤드라인 추가
           </button>
