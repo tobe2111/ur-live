@@ -61,9 +61,9 @@ export default function SellOwnProductsCTA() {
     }
     return (
       <section className="mb-6 bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800 rounded-xl p-4">
-        <p className="text-sm font-bold text-pink-800 dark:text-pink-200">✅ 사업자 유저 — 판매·현금 정산 활성</p>
+        <p className="text-sm font-bold text-pink-800 dark:text-pink-200">🛍️ 내 쇼핑몰 운영 중 — 판매·현금 정산 활성</p>
         <p className="text-xs text-pink-700 dark:text-pink-300 mt-1 mb-3">
-          여기서 바로 상품을 등록하거나, 셀러 대시보드에서 주문·정산을 관리하세요. 등록한 상품은 내 링크샵에 함께 표시됩니다.
+          여기서 바로 상품을 올리거나, 셀러 대시보드에서 주문·정산을 관리하세요. 등록한 상품은 내 쇼핑몰에 표시됩니다.
         </p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -94,7 +94,7 @@ export default function SellOwnProductsCTA() {
   if (hasSeller && st === 'pending') {
     return (
       <section className="mb-6 bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
-        <p className="text-sm font-bold text-gray-900 dark:text-white">🧾 사업자 등록 신청 접수됨</p>
+        <p className="text-sm font-bold text-gray-900 dark:text-white">🛍️ 내 쇼핑몰 개설 신청 접수됨</p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           관리자 승인 후 판매·현금 정산이 활성화됩니다.
         </p>
@@ -112,18 +112,18 @@ export default function SellOwnProductsCTA() {
     )
   }
 
-  // 셀러 아님 → 판매 시작 안내 (현행 모델: 판매=매장 등록 → /seller/register/supplier, register-from-user store_owner)
+  // 셀러 아님 → 내 쇼핑몰 개설 안내 (현행 모델: 판매=매장 등록 → /seller/register/supplier, register-from-user store_owner)
   return (
     <section className="mb-6 bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
-      <p className="text-sm font-bold text-gray-900 dark:text-white">🧾 사업자 등록하고 판매 시작하기</p>
+      <p className="text-sm font-bold text-gray-900 dark:text-white">🛍️ 내 쇼핑몰 열기</p>
       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
-        사업자 등록하면 내 상품·공구권 판매 + 추천 수익 현금 정산이 함께 열려요. 관리자 승인 후 활성화되며, 승인되면 내 링크샵에 추천 핀과 함께 표시됩니다.
+        내 상품을 직접 파는 쇼핑몰을 가질 수 있어요. 사업자 등록 → 관리자 승인 후 활성화되며, 추천 수익도 현금으로 정산받아요. (공구권 판매도 함께)
       </p>
       <button
         onClick={() => navigate('/seller/register/supplier?from=curator')}
         className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-lg"
       >
-        사업자 등록하기 →
+        내 쇼핑몰 만들기 →
       </button>
     </section>
   )

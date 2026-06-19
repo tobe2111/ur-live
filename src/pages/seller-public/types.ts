@@ -22,6 +22,7 @@ export interface LiveStream {
 export interface Product {
   id: number; name: string; price: number; original_price?: number; discount_rate?: number
   image_url?: string; sold_count?: number; category?: string
+  avg_rating?: number; review_count?: number
   dominant_color?: string | null
   restaurant_name?: string; restaurant_address?: string
   group_buy_target?: number; group_buy_current?: number; group_buy_deadline?: string
