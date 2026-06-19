@@ -2006,6 +2006,35 @@ repairSchemaRoutes.get('/api/_internal/reset-pin', requireAdmin(), async (c) => 
   }
 });
 
+// 🚚 2026-06-18 (대표 신고 — 전체 repair-schema 524 타임아웃): 최근 additive 스키마만 빠르게 적용.
+//   전체 runSchemaRepair 는 수백 마이그레이션이라 HTTP 524 → 마퀴/배송비 등 최신 컬럼만 즉시 반영하는
+//   경량 엔드포인트. 전부 idempotent(중복/존재 시 무해). 데일리 cron 이 어차피 자동 적용하지만 즉시용.
+repairSchemaRoutes.get('/api/_internal/repair-schema-quick', requireAdmin(), async (c) => {
+  const DB = (c.env as { DB?: D1Database }).DB;
+  if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
+  const ran: string[] = [];
+  const errors: { step: string; error: string }[] = [];
+  const run = async (step: string, sql: string) => {
+    try { await DB.prepare(sql).run(); ran.push(step); }
+    catch (e) {
+      const m = String((e as Error)?.message || '');
+      if (/duplicate column|already exists/i.test(m)) ran.push(`${step} (exists)`);
+      else errors.push({ step, error: m.slice(0, 160) });
+    }
+  };
+  // 링크샵 마퀴 헤드라인
+  await run('users.linkshop_headline', 'ALTER TABLE users ADD COLUMN linkshop_headline TEXT');
+  // 핸들 변경 alias (리다이렉트) + user2→jiwon 1회 백필
+  await run('user_handle_aliases', `CREATE TABLE IF NOT EXISTS user_handle_aliases (
+    alias TEXT PRIMARY KEY, user_id INTEGER NOT NULL, created_at TEXT DEFAULT (datetime('now')))`);
+  await run('backfill user2->jiwon', `INSERT OR IGNORE INTO user_handle_aliases (alias, user_id)
+    SELECT 'user2', id FROM users WHERE handle = 'jiwon' LIMIT 1`);
+  // 셀러 배송비 설정 (baseline 이지만 구스키마 안전망)
+  await run('sellers.base_shipping_fee', 'ALTER TABLE sellers ADD COLUMN base_shipping_fee INTEGER DEFAULT 0');
+  await run('sellers.free_shipping_threshold', 'ALTER TABLE sellers ADD COLUMN free_shipping_threshold INTEGER');
+  return c.json({ success: errors.length === 0, ran, errors });
+});
+
 // HTTP wrapper — admin auth + JSON response.
 repairSchemaRoutes.get('/api/_internal/repair-schema', requireAdmin(), async (c) => {
   const env = c.env as any;
