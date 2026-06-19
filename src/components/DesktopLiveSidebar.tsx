@@ -8,7 +8,7 @@
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, Radio, Compass, MapPin, User, Store, Plus, Ticket } from 'lucide-react'
+import { Home, Radio, Compass, User, Store, Plus, Ticket, Gift } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -24,12 +24,13 @@ interface NavItem {
 // 🧭 2026-06-17 (사용자 요청): '공구'·'식사권'(둘 다 /group-buy 계열) → 단일 '오프라인 공동구매'(동네딜) 로 통합.
 //   /live·/browse 는 플래그로 숨김 상태이나 가역 위해 항목 보존(아래 filter).
 const MENU_ITEMS: NavItem[] = [
-  { labelKey: 'nav.home',            labelDefault: '홈',             icon: Home,    path: '/',          active: (p) => p === '/' },
+  // 🎟️ 2026-06-19 (대표 5탭 확정): 홈 = 동네딜 피드 → 홈 탭이 /group-buy·/stays·/meal-vouchers surface 도 활성(모바일 하단바와 정합).
+  { labelKey: 'nav.home',            labelDefault: '홈',             icon: Home,    path: '/',
+    active: (p) => p === '/' || p.startsWith('/group-buy') || p.startsWith('/stays') || p.startsWith('/meal-vouchers') },
   { labelKey: 'nav.live',            labelDefault: '라이브',         icon: Radio,   path: '/live',      active: (p) => p.startsWith('/live') },
   { labelKey: 'nav.browse',          labelDefault: '둘러보기',       icon: Compass, path: '/browse',    active: (p, s) => p === '/browse' && !s.includes('category=') },
-  { labelKey: 'nav.offlineGroupBuy', labelDefault: '오프라인 공동구매', icon: MapPin, path: '/group-buy',
-    // 동네딜 허브(전체) — 특정 카테고리 필터일 땐 아래 CATEGORY 항목이 활성, 여기선 비활성(이중 강조 방지).
-    active: (p, s) => p.startsWith('/group-buy') && !/category=(meal_voucher|beauty_voucher|stay_voucher|etc_voucher|general)/.test(s) },
+  // 🎟️ 2026-06-19 (대표 5탭 확정 — 홈=동네딜이라 동네딜 메뉴는 홈과 중복): 동네딜 → 교환권(기프티콘 카탈로그).
+  { labelKey: 'nav.vouchers',        labelDefault: '교환권',          icon: Gift,    path: '/vouchers',  active: (p) => p.startsWith('/vouchers') },
   // 🆕 2026-06-17 (대표 신고 — PC 진입 버튼 누락): 공구 제안/만들기 (모바일 하단바 ➕ 와 동일 목적지).
   { labelKey: 'nav.create',          labelDefault: '공구 제안',       icon: Plus,    path: '/community-group-buy/new', active: (p) => p.startsWith('/community-group-buy/new') },
 ]
