@@ -15,17 +15,23 @@ export function useLinkshopPath(): string {
   useEffect(() => {
     if (typeof window === 'undefined') return
     const hasSellerToken = !!localStorage.getItem('seller_token')
-    const isLoggedIn = !!(localStorage.getItem('user_id') || localStorage.getItem('session_login') || hasSellerToken)
+    const hasConsumer = !!(localStorage.getItem('user_id') || localStorage.getItem('session_login'))
+    const isLoggedIn = hasConsumer || hasSellerToken
     // 🔗 2026-06-17 [UNLOCK_LOADING] (사용자 "가장 이상적으로"): 로그아웃 → /host/new(만들기) 대신 /u/me.
     //   로그인 후 본인 핸들 해석 → 기존 유저 /u/{handle}, 신규만 UMeRedirect 가 /host/new 폴백.
     if (!isLoggedIn) { setPath('/u/me'); return }
     try {
+      // 🔗 2026-06-19 [UNLOCK_LOADING] (사용자 신고 — PC 링크샵이 /profile 로 열림): BottomNav 와 동일
+      //   우선순위로 통일. user_handle → /u/{handle} 우선(셀러여도 CuratorPage 가 linked_seller 면
+      //   storefront inline → 콘텐츠 손실 0, URL 만 /u 통일). 셀러-only(소비자 계정 없음)만 /profile 유지.
+      const cachedHandle = localStorage.getItem('user_handle')
+      if (cachedHandle && !badHandle(cachedHandle)) { setPath(`/u/${cachedHandle}`); return }
+      if (hasConsumer) { setPath('/u/me'); return } // 핸들 캐시 없음 → UMeRedirect 가 본인 핸들 해석
+      // 셀러-only fallback (소비자 계정 없음) — 셀러 공개페이지가 유일한 링크샵.
       const sellerUsername = localStorage.getItem('seller_username')
       if (sellerUsername && !badHandle(sellerUsername)) { setPath(`/profile/${sellerUsername}`); return }
       const cachedSeller = localStorage.getItem('linked_seller_username')
       if (cachedSeller && !badHandle(cachedSeller)) { setPath(`/profile/${cachedSeller}`); return }
-      const cachedHandle = localStorage.getItem('user_handle')
-      if (cachedHandle && !badHandle(cachedHandle)) { setPath(`/u/${cachedHandle}`); return }
     } catch { /* ignore */ }
     setPath('/u/me')
   }, [])
