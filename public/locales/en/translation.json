@@ -4360,7 +4360,9 @@
     "groupExpired": "Expired",
     "groupRefunded": "Refunded",
     "ktShowBarcode": "Show the barcode below at the store",
-    "ktCheckMms": "Check the coupon in your phone messages. KakaoTalk gift box linking available."
+    "ktCheckMms": "Check the coupon in your phone messages. KakaoTalk gift box linking available.",
+    "tabGroupBuy": "Group",
+    "tabGifticon": "Gifticon"
   },
   "sellerWaiting": {
     "title": "Seller Approval Pending",

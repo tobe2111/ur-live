@@ -4360,7 +4360,9 @@
     "groupExpired": "已过期",
     "groupRefunded": "已退款",
     "ktShowBarcode": "请在门店出示下方条形码",
-    "ktCheckMms": "请在手机短信中查看优惠券。可自动关联KakaoTalk礼物盒。"
+    "ktCheckMms": "请在手机短信中查看优惠券。可自动关联KakaoTalk礼物盒。",
+    "tabGroupBuy": "团购券",
+    "tabGifticon": "礼品券"
   },
   "sellerWaiting": {
     "title": "卖家审核等待",

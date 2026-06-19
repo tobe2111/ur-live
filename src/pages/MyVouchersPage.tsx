@@ -391,11 +391,19 @@ export default function MyVouchersPage() {
   // 상태별 그룹핑
   // 🏁 2026-06-12: 만료/환불 그룹 접기 상태 (기본 접힘)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  // 🎟️ 2026-06-18 (대표 신고 — 공구권 탭에 교환권 섞임): source 분리.
+  //   공구권(internal, 매장 QR/PIN) 기본 / 교환권(kt_alpha, MMS 발송)은 별도 세그먼트. 교환권 보유 시에만 토글 노출.
+  const [sourceTab, setSourceTab] = useState<'gb' | 'gift'>('gb')
+  const gbCount = vouchers.filter(v => v.source !== 'kt_alpha').length
+  const giftCount = vouchers.filter(v => v.source === 'kt_alpha').length
+  const shownVouchers = giftCount > 0
+    ? vouchers.filter(v => (sourceTab === 'gift' ? v.source === 'kt_alpha' : v.source !== 'kt_alpha'))
+    : vouchers
   const groups = [
-    { key: 'unused',   label: t('voucher.groupUnused'),   items: vouchers.filter(v => v.status === 'unused') },
-    { key: 'used',     label: t('voucher.groupUsed'),     items: vouchers.filter(v => v.status === 'used') },
-    { key: 'expired',  label: t('voucher.groupExpired'),  items: vouchers.filter(v => v.status === 'expired') },
-    { key: 'refunded', label: t('voucher.groupRefunded'), items: vouchers.filter(v => v.status === 'refunded') },
+    { key: 'unused',   label: t('voucher.groupUnused'),   items: shownVouchers.filter(v => v.status === 'unused') },
+    { key: 'used',     label: t('voucher.groupUsed'),     items: shownVouchers.filter(v => v.status === 'used') },
+    { key: 'expired',  label: t('voucher.groupExpired'),  items: shownVouchers.filter(v => v.status === 'expired') },
+    { key: 'refunded', label: t('voucher.groupRefunded'), items: shownVouchers.filter(v => v.status === 'refunded') },
   ].filter(g => g.items.length > 0)
 
   // 가까운 만료일 (unused 식사권 중 가장 가까운)
@@ -456,11 +464,29 @@ export default function MyVouchersPage() {
         </div>
       )}
 
+      {/* 🎟️ 2026-06-18: 공구권/교환권 세그먼트 — 교환권(기프티콘) 보유 시에만. 기본 공구권. */}
+      {giftCount > 0 && (
+        <div className="ur-content-narrow px-4 lg:px-8 mb-3 flex gap-1.5">
+          <button
+            onClick={() => setSourceTab('gb')}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${sourceTab === 'gb' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300'}`}
+          >
+            🎟️ {t('voucher.tabGroupBuy', { defaultValue: '공구권' })} {gbCount > 0 && `(${gbCount})`}
+          </button>
+          <button
+            onClick={() => setSourceTab('gift')}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${sourceTab === 'gift' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300'}`}
+          >
+            📱 {t('voucher.tabGifticon', { defaultValue: '교환권' })} ({giftCount})
+          </button>
+        </div>
+      )}
+
       {vouchers.length > 0 && (
         <div className="ur-content-narrow px-4 lg:px-8 -mt-2 mb-4 flex items-center gap-2 flex-wrap"
           style={{ fontSize: 12, color: tk.secondary, letterSpacing: '-0.01em' }}>
           <span style={{ fontWeight: 600, color: tk.label }}>
-            {vouchers.filter(v => v.status === 'unused').length}{t('voucher.activeCountSuffix', { defaultValue: '장 사용 가능' })}
+            {shownVouchers.filter(v => v.status === 'unused').length}{t('voucher.activeCountSuffix', { defaultValue: '장 사용 가능' })}
           </span>
           {nearestExpiry !== null && (
             <>
@@ -505,13 +531,13 @@ export default function MyVouchersPage() {
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: tk.accent, borderTopColor: 'transparent' }} />
           </div>
-        ) : vouchers.length === 0 ? (
+        ) : shownVouchers.length === 0 ? (
           <div className="text-center py-20">
             <Ticket className="w-12 h-12 mx-auto mb-3" style={{ color: tk.tertiary }} />
             <p className="font-bold mb-1" style={{ color: tk.label }}>{t('voucher.empty')}</p>
             <p className="text-sm mb-4" style={{ color: tk.secondary }}>{t('voucher.emptyHint')}</p>
             <button
-              onClick={() => navigate('/browse?category=meal_voucher')}
+              onClick={() => navigate('/group-buy')}
               className="px-5 py-2.5 rounded-full text-sm font-bold text-white active:opacity-90"
               style={{ background: tk.accentGradient }}
             >
