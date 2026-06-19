@@ -57,34 +57,35 @@ describe('distributor-pricing — 유통스타트 등급별 공급가', () => {
     expect(distributorPriceFromRetail(0, 5000, 30)).toBe(5000);     // 판매가 미설정 → 원가
   });
 
-  it('resolveDistributorPrice: 🆕 cost-plus(제조사가 + 플랫폼 마진, 등급 배수 인하)', () => {
+  it('resolveDistributorPrice: 🆕 cost-plus 단일가(제조사가 + 플랫폼 마진, 등급 무관 동일가)', () => {
+    // 🆕 2026-06-17 (대표 확정): 등급은 노출 큐레이션 전용 — 가격 차등 X. 모든 등급 동일 마진(기본 10%).
     const future = new Date(Date.now() + 86400000).toISOString();
-    // 기본 마진 10% × 등급배수(B=70) = 7% → 5000 × 1.07 = 5350
+    // 기본 마진 10% → 5000 × 1.10 = 5500 (등급 무관)
     const b = resolveDistributorPrice({ baseSupplyPrice: 5000, retailPrice: 10000, grade: 'B' });
     expect(b.grade).toBe('B');
-    expect(b.marginPct).toBe(7);   // 10 × 70/100
-    expect(b.price).toBe(5350);    // round(5000 × 1.07)
-    expect(b.margin).toBe(350);    // 공급가 − 제조사가 = 플랫폼
-    // 고등급일수록 마진 인하 → 공급가 ↓ (A < B < C)
+    expect(b.marginPct).toBe(10);  // 등급 배수 없음 — 기본 마진 그대로
+    expect(b.price).toBe(5500);    // round(5000 × 1.10)
+    expect(b.margin).toBe(500);    // 공급가 − 제조사가 = 플랫폼
+    // 모든 등급 동일가 (가격 차등 없음)
     const a = resolveDistributorPrice({ baseSupplyPrice: 5000, retailPrice: 10000, grade: 'A' });
     const c = resolveDistributorPrice({ baseSupplyPrice: 5000, retailPrice: 10000, grade: 'C' });
-    expect(a.price).toBeLessThan(b.price);
-    expect(b.price).toBeLessThan(c.price);
-    // 특별할인 기간 → SPECIAL(배수 50) 으로 덮임 → 10×0.5=5% → 5250
+    expect(a.price).toBe(b.price);
+    expect(b.price).toBe(c.price);
+    // 특별할인 기간 → grade 는 SPECIAL 로 덮이지만 가격은 동일(마진 차등 없음).
     const s = resolveDistributorPrice({ baseSupplyPrice: 5000, retailPrice: 10000, grade: 'B', specialUntil: future });
     expect(s.grade).toBe('SPECIAL');
-    expect(s.price).toBe(5250);
+    expect(s.price).toBe(5500);
   });
 
-  it('제품별 플랫폼 마진 override + 등급 배수 적용 (고등급일수록 저렴)', () => {
+  it('제품별 플랫폼 마진 override (등급 무관 동일가)', () => {
     const a = resolveDistributorPrice({ baseSupplyPrice: 3000, retailPrice: 10000, grade: 'A', marginOverridePct: 40 });
     const d = resolveDistributorPrice({ baseSupplyPrice: 3000, retailPrice: 10000, grade: 'D', marginOverridePct: 40 });
     expect(a.overridden).toBe(true);
-    expect(a.marginPct).toBe(20);  // 40 × 50/100 (A=프리미엄 배수 50)
-    expect(a.price).toBe(3600);    // round(3000 × 1.20)
-    expect(d.marginPct).toBe(40);  // 40 × 100/100 (D 배수 100)
-    expect(d.price).toBe(4200);    // round(3000 × 1.40)
-    expect(a.price).toBeLessThan(d.price); // 고등급(A) 더 저렴
+    expect(a.marginPct).toBe(40);  // override 40% 그대로 (등급 배수 없음)
+    expect(a.price).toBe(4200);    // round(3000 × 1.40)
+    expect(d.marginPct).toBe(40);
+    expect(d.price).toBe(4200);
+    expect(a.price).toBe(d.price); // 등급 무관 동일가
   });
 
   it('override 미설정/잘못된 값 → 전역 기본(10%)·defaultPlatformMarginPct fallback', () => {

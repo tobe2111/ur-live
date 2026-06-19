@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-19 — 어드민 제품별 플랫폼 마진 설정 UI: 미끼/마진 전략 (대표 "응 이렇게 정확하게 진행해줘")
+**요청**: 제조사가 등록한 상품을 검수할 때 **공급가·판매가·시중 최저가**를 보면서 **제품별로 우리 마진%를 정해 승인**(미끼상품=수익 하 / 마진상품=수익 상 — 항공권식 전략). 모든 가격 부가세 포함, 공급가 위에 우리 10%(조율 가능).
+- **모델 확정(불변)**: `distributor-pricing.resolveDistributorPrice` 가 이미 cost-plus(`유통사가 = round(공급가 × (1+마진%))`, 판매가 상한·공급가 하한) + 단일가(등급은 노출 큐레이션 전용). **가격/정산 엔진 무변경** — 어드민 마진 설정 컨트롤만 추가.
+- **백엔드** (`admin-products.routes.ts`): ① GET `/supplier-products` SELECT 에 `supply_margin_override_pct` 추가 + 응답에 `default_margin_pct`(전역 기본=`wholesale_platform_commission_pct`). ② PATCH `/supplier-products/:id` approve 가 `margin_override_pct` 동시 수용(같은 CAS UPDATE, undefined=미변경/null=전역기본/0~90=설정). ③ 신규 `PATCH /supplier-products/:id/margin` — 승인 무관 단독 조정(승인된 상품도) + 산출 공급가·우리 마진 응답 + audit. `normalizeMarginOverride` 헬퍼로 검증 일원화.
+- **프론트** (`SupplierProductsTab` + `AdminProductsPage`): `공급자 등록 상품` 탭 각 카드에 **MarginEditor**(공급원가·판매가·네이버 최저가 옆) — 프리셋 칩(미끼 3% / 기본 N% / 30% / 50%) + 마진% 입력 + **실시간 유통사 공급가·우리 마진** 미리보기(판매가 상한 도달 경고) + `마진 저장`. **승인 클릭 시 입력 마진 함께 반영**. `distributorPriceFromCost` 클라 재사용(SSOT 동일 공식).
+- **가이드**: `guide-seed-wholesale.ts` "제품별 플랫폼 마진 설정 — 미끼/마진 전략" 섹션 갱신(위치·산출식·정산·API). 검증: tsc 0 · 정산 단위 4/4 · `npm run build` 0(client+worker+prepare).
+
 ## ✅ 2026-06-17 — 어드민 주문 페이지: 종류 구별(교환권/상품) + 체크박스 일괄 처리 (대표 요청)
 **요청**: `/admin/orders` 에서 교환권/상품/도매몰 구별 + 체크박스 선택.
 - **종류 구별**: GET `/api/admin/orders` SELECT 에 `first_item_category`(첫 주문상품 category) 추가 → 프론트 `orderKind()` 가 `isVoucherCategory` 면 **교환권**(+식사/미용/숙소/기타 서브), 아니면 **상품**. 신규 '종류' 컬럼(amber 교환권 / sky 상품 배지). bind param 무변경(정적 서브쿼리).

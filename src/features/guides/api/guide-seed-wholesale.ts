@@ -106,10 +106,13 @@ export const WHOLESALE_SEED: SeedSection[] = [
 ### 특별할인 등급 (SPECIAL)
 - 기간 한정(\`special_discount_until\` 까지). **덤핑/유통기한 임박 제품** 위주. 기간 내 최저 마진가 적용.
 
-### 상품별 마진 override (특가/전략상품)
-- \`products.supply_margin_override_pct\` 설정 시 **등급(A/B/C/D) 무관 모든 유통사가 동일 공급가** — 전략·특가·임박품용.
-- 설정: \`PATCH /api/admin/distributor/products/:id/margin-override\`, \`/admin/distributor-grades\` "상품별 마진(특가)" 섹션. NULL 이면 기존 등급마진으로 복귀.
-- 상품ID는 \`상품정보 엑셀\`(product_id 컬럼)에서 확인.
+### 🆕 제품별 플랫폼 마진 설정 — 미끼/마진 전략 (2026-06-19 대표 확정)
+- **모델**: 제조사가 등록한 **공급가(부가세 포함)** 위에 **우리 마진%** 를 붙여 유통사 공급가 산출. 모든 등급 동일가(등급은 노출 큐레이션 전용, 가격 차등 X). 기본 10%(\`/admin/distributor-grades\` 또는 \`wholesale_platform_commission_pct\` 로 전역 조정).
+- **전략**: 상품마다 마진을 다르게 — **미끼 상품**(집객용)은 낮게(2~5%), **고수익 상품**은 높게(30~50%). 항공권처럼 일부는 깔고, 일부에서 남기는 구조.
+- **설정 위치**: \`/admin/products\` → **공급자 등록 상품** 탭. 각 상품 카드에 **공급가·판매가·네이버 최저가**를 나란히 보면서 마진%를 정함 → 실시간으로 산출되는 **유통사 공급가 + 우리 마진**을 확인. **승인 시 함께 반영**되며, 승인된 상품도 언제든 마진만 조정 가능(\`마진 저장\`).
+- 산출식: \`유통사 공급가 = round(공급가 × (1 + 마진%))\`, **판매가(권장소비자가)를 상한**, **공급가를 하한**으로 클램프(역마진 차단).
+- 정산: **제조사 = 공급가 전액**, **플랫폼 = 유통사 공급가 − 공급가**(= 우리 마진). 제조사 원가·신원은 유통사에 **비노출**.
+- API: 승인 \`PATCH /api/admin/supplier-products/:id\` (\`margin_override_pct\` 포함) / 단독 조정 \`PATCH /api/admin/supplier-products/:id/margin\`. \`null\` 이면 전역 기본 마진으로 복귀. \`products.supply_margin_override_pct\` 컬럼에 저장.
 
 ### 수량 구간 할인 (volume tier)
 - 상품별 \`수량:할인%\` 쌍(예 \`100:5, 500:10\` = 100개↑ 5%, 500개↑ 10%). 등급가 위에 **구매 수량별 추가 할인**.
