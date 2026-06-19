@@ -861,7 +861,12 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
         results.push({ desc, status: 'added' });
       } catch (e: any) {
         const msg = String(e?.message || e);
-        if (/duplicate column|already exists/i.test(msg)) {
+        // 🛡️ 2026-06-18 (대표 신고 — 67 오류): 둘 다 비-실패(non-actionable) → 'exists' 로.
+        //   · duplicate column / already exists = 이미 있음.
+        //   · too many columns on sqlite_altertab_X = 그 테이블(예: sellers)이 SQLite 컬럼 한도 도달 →
+        //     ALTER ADD 자체가 불가. 한도 도달 전 추가된 컬럼은 이미 존재(commission_rate 등도 같은 에러),
+        //     아직 없는 컬럼은 ALTER 로는 못 넣음(한도) → 어느 쪽이든 이 루프에서 할 수 있는 게 없음.
+        if (/duplicate column|already exists|too many columns/i.test(msg)) {
           results.push({ desc, status: 'exists' });
         } else {
           results.push({ desc, status: 'error', error: msg.slice(0, 200) });
@@ -1833,7 +1838,13 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       await DB.prepare(sql).run();
       tableResults.push({ name, status: 'ok' });
     } catch (e: any) {
-      tableResults.push({ name, status: 'error', error: String(e?.message || e).slice(0, 200) });
+      const msg = String(e?.message || e);
+      // 🛡️ 2026-06-18: 이미 있는 컬럼(duplicate)·한도 도달(too many columns)은 비-실패(이 단계 무동작 가능).
+      if (/duplicate column|already exists|too many columns/i.test(msg)) {
+        tableResults.push({ name, status: 'ok' });
+      } else {
+        tableResults.push({ name, status: 'error', error: msg.slice(0, 200) });
+      }
     }
   }
 
@@ -2006,33 +2017,49 @@ repairSchemaRoutes.get('/api/_internal/reset-pin', requireAdmin(), async (c) => 
   }
 });
 
-// 🚚 2026-06-18 (대표 신고 — 전체 repair-schema 524 타임아웃): 최근 additive 스키마만 빠르게 적용.
-//   전체 runSchemaRepair 는 수백 마이그레이션이라 HTTP 524 → 마퀴/배송비 등 최신 컬럼만 즉시 반영하는
-//   경량 엔드포인트. 전부 idempotent(중복/존재 시 무해). 데일리 cron 이 어차피 자동 적용하지만 즉시용.
+// 🚚 2026-06-18 (대표 신고 — 전체 repair-schema 524/67오류): 진단 + 최근 additive 스키마만 빠르게.
+//   ① PRAGMA 로 핵심 컬럼 실제 존재 여부 진단(ground truth) ② users 테이블(한도 여유)에 마퀴 컬럼/alias
+//   안전 추가 ③ sellers(컬럼 한도 도달)는 ALTER 불가라 '존재 여부만' 보고. 전부 idempotent.
 repairSchemaRoutes.get('/api/_internal/repair-schema-quick', requireAdmin(), async (c) => {
   const DB = (c.env as { DB?: D1Database }).DB;
   if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
   const ran: string[] = [];
   const errors: { step: string; error: string }[] = [];
+  const colsOf = async (table: string): Promise<Set<string>> => {
+    try {
+      const r = await DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
+      return new Set((r.results || []).map((x) => x.name));
+    } catch { return new Set(); }
+  };
+  const userCols = await colsOf('users');
+  const sellerCols = await colsOf('sellers');
+  // 진단 — 기능이 의존하는 컬럼이 실제로 있는지 (ground truth).
+  const present = {
+    'users.linkshop_headline': userCols.has('linkshop_headline'),
+    'sellers.base_shipping_fee': sellerCols.has('base_shipping_fee'),
+    'sellers.free_shipping_threshold': sellerCols.has('free_shipping_threshold'),
+    'sellers.shipping_fee': sellerCols.has('shipping_fee'),
+    'sellers.banner_url': sellerCols.has('banner_url'),
+  };
   const run = async (step: string, sql: string) => {
     try { await DB.prepare(sql).run(); ran.push(step); }
     catch (e) {
       const m = String((e as Error)?.message || '');
-      if (/duplicate column|already exists/i.test(m)) ran.push(`${step} (exists)`);
+      if (/duplicate column|already exists|too many columns/i.test(m)) ran.push(`${step} (skip: ${/too many/i.test(m) ? 'table maxed' : 'exists'})`);
       else errors.push({ step, error: m.slice(0, 160) });
     }
   };
-  // 링크샵 마퀴 헤드라인
-  await run('users.linkshop_headline', 'ALTER TABLE users ADD COLUMN linkshop_headline TEXT');
-  // 핸들 변경 alias (리다이렉트) + user2→jiwon 1회 백필
+  // users 는 컬럼 한도 여유 — 마퀴 헤드라인 안전 추가.
+  if (!present['users.linkshop_headline']) await run('users.linkshop_headline', 'ALTER TABLE users ADD COLUMN linkshop_headline TEXT');
+  // 핸들 변경 alias (리다이렉트) + user2→jiwon 1회 백필.
   await run('user_handle_aliases', `CREATE TABLE IF NOT EXISTS user_handle_aliases (
     alias TEXT PRIMARY KEY, user_id INTEGER NOT NULL, created_at TEXT DEFAULT (datetime('now')))`);
   await run('backfill user2->jiwon', `INSERT OR IGNORE INTO user_handle_aliases (alias, user_id)
     SELECT 'user2', id FROM users WHERE handle = 'jiwon' LIMIT 1`);
-  // 셀러 배송비 설정 (baseline 이지만 구스키마 안전망)
-  await run('sellers.base_shipping_fee', 'ALTER TABLE sellers ADD COLUMN base_shipping_fee INTEGER DEFAULT 0');
-  await run('sellers.free_shipping_threshold', 'ALTER TABLE sellers ADD COLUMN free_shipping_threshold INTEGER');
-  return c.json({ success: errors.length === 0, ran, errors });
+  // sellers 는 한도 도달 가능 — 없을 때만 추가 시도(실패해도 무해, 배송비는 shipping_fee 폴백으로 동작).
+  if (!present['sellers.base_shipping_fee']) await run('sellers.base_shipping_fee', 'ALTER TABLE sellers ADD COLUMN base_shipping_fee INTEGER DEFAULT 0');
+  if (!present['sellers.free_shipping_threshold']) await run('sellers.free_shipping_threshold', 'ALTER TABLE sellers ADD COLUMN free_shipping_threshold INTEGER');
+  return c.json({ success: errors.length === 0, present, ran, errors });
 });
 
 // HTTP wrapper — admin auth + JSON response.
