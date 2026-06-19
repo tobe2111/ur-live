@@ -6120,7 +6120,9 @@
     "tagline": "우리 동네 맛집·교환권, 같이 사면 더 싸다 🍽️",
     "moreVouchers": "교환권 더보기",
     "shopRailTitle": "일반 상품",
-    "shopRailMore": "쇼핑 전체보기"
+    "shopRailMore": "쇼핑 전체보기",
+    "gifticonEntry": "기프티콘 교환권",
+    "gifticonEntrySub": "딜로 편의점·카페 기프티콘 구매"
   },
   "groupBuy": {
     "tabSeller": "동네 공구",

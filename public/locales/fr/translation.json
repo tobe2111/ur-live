@@ -6132,7 +6132,9 @@
     "tagline": "Restos et bons du quartier — moins cher ensemble 🍽️",
     "moreVouchers": "Plus de bons",
     "shopRailTitle": "Produits",
-    "shopRailMore": "Boutique"
+    "shopRailMore": "Boutique",
+    "gifticonEntry": "Gifticons",
+    "gifticonEntrySub": "Achetez des gifticons (épicerie/café) avec des deals"
   },
   "my": {
     "earningsGroupTitle": "Mes gains",
