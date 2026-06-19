@@ -94,7 +94,17 @@ sellerProfileRoutes.get('/profile', async (c) => {
         base_shipping_fee = ship.base_shipping_fee ?? 3000;
         free_shipping_threshold = ship.free_shipping_threshold ?? null;
       }
-    } catch { /* 구 스키마 — 기본값 유지 */ }
+    } catch {
+      // base_shipping_fee 컬럼이 없는 구 스키마(한도 도달) — shipping_fee 폴백(order.routes 와 동일).
+      try {
+        const ship = await db.prepare('SELECT shipping_fee, free_shipping_threshold FROM sellers WHERE id = ? LIMIT 1')
+          .bind(sellerId).first<{ shipping_fee: number | null; free_shipping_threshold: number | null }>();
+        if (ship) {
+          base_shipping_fee = ship.shipping_fee ?? 3000;
+          free_shipping_threshold = ship.free_shipping_threshold ?? null;
+        }
+      } catch { /* 둘 다 없음 — 기본값 유지 */ }
+    }
 
     return c.json({
       success: true,
@@ -140,9 +150,8 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
       sns_instagram: 'sns_instagram', sns_youtube: 'sns_youtube',
       sns_facebook: 'sns_facebook', sns_twitter: 'sns_twitter',
       website_url: 'website_url', kakao_chat_link: 'kakao_chat_url',
-      // 🚚 2026-06-18 (셀러 배송비 설정): 주문 시 order.routes 가 이 값으로 배송비 서버 재계산(SSOT).
-      base_shipping_fee: 'base_shipping_fee',
-      free_shipping_threshold: 'free_shipping_threshold',
+      // 🚚 2026-06-18 (셀러 배송비): fieldMap 미포함 — sellers 컬럼 한도 도달 가능성 때문에
+      //   아래에서 base_shipping_fee→shipping_fee 폴백으로 별도 robust 기록(메인 UPDATE 와 분리).
       // 🛡️ 2026-05-15 (PRISM 따라잡기): 셀러 미니샵 커스터마이징
       banner_url: 'banner_url',           // 셀러 페이지 상단 헤더 이미지 (1280x320 권장)
       brand_color: 'brand_color',         // 메인 컬러 (#RRGGBB)
@@ -232,15 +241,30 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
       } catch {}
     }
 
-    if (updates.length === 0) {
+    // 🚚 2026-06-18 (배송비 robust): sellers 컬럼 한도 도달 가능 → 존재하는 컬럼에만 별도 기록.
+    //   base_shipping_fee 우선(없으면 구스키마 shipping_fee). order.routes 읽기 우선순위와 동일 → 정합.
+    const db = c.env.DB;
+    const shipWrites: Array<{ cands: string[]; value: number | null }> = [];
+    if (bk.base_shipping_fee !== undefined) shipWrites.push({ cands: ['base_shipping_fee', 'shipping_fee'], value: bk.base_shipping_fee as number });
+    if (bk.free_shipping_threshold !== undefined) shipWrites.push({ cands: ['free_shipping_threshold'], value: (bk.free_shipping_threshold as number | null) });
+
+    if (updates.length === 0 && shipWrites.length === 0) {
       return c.json({ success: false, error: 'No fields to update' }, 400);
     }
 
-    updates.push("updated_at = datetime('now')");
-    values.push(sellerId);
+    if (updates.length > 0) {
+      updates.push("updated_at = datetime('now')");
+      values.push(sellerId);
+      await db.prepare(`UPDATE sellers SET ${updates.join(', ')} WHERE id = ?`).bind(...values).run();
+    }
 
-    const db = c.env.DB;
-    await db.prepare(`UPDATE sellers SET ${updates.join(', ')} WHERE id = ?`).bind(...values).run();
+    // 배송비 — 후보 컬럼 순서대로 시도, 첫 성공 시 중단(컬럼 없음/한도면 다음 후보).
+    for (const w of shipWrites) {
+      for (const col of w.cands) {
+        try { await db.prepare(`UPDATE sellers SET ${col} = ? WHERE id = ?`).bind(w.value, sellerId).run(); break; }
+        catch { /* 컬럼 없음/한도 — 다음 후보 */ }
+      }
+    }
 
     const updatedSeller = await db.prepare(`
       SELECT
