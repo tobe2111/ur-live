@@ -112,6 +112,13 @@ export function processAuthCallbackParams(): void {
       const sellerToken = readCookie('ur_pending_seller_token')
       if (sellerToken) {
         localStorage.setItem('seller_token', sellerToken)
+        // 🛡️ 2026-06-19 (#4·#5 근본수정): 토큰 페이로드의 is_distributor → localStorage (도매 가드용).
+        //   리다이렉트(transfer-cookie) 경로도 JSON 콜백 경로와 대칭 — 없으면 카카오 유통사가 상품페이지
+        //   게스트 UI + 충전→deposits 튕김. 토큰은 서버 서명이라 클레임 읽기는 안전.
+        try {
+          const claim = JSON.parse(atob(sellerToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+          if (claim?.is_distributor) localStorage.setItem('is_distributor', '1')
+        } catch { /* 토큰 파싱 실패 — 무시 */ }
         const sellerInfoRaw = readCookie('ur_pending_seller_info')
         if (sellerInfoRaw) {
           try {
