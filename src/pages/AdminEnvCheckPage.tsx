@@ -32,10 +32,16 @@ export default function AdminEnvCheckPage() {
   const [healthy, setHealthy] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // 🆕 2026-06-18 (운영 인프라 점검): 1인 운영 핵심 바인딩/env ✅·❌. /api/debug/bindings (admin).
+  const [bindings, setBindings] = useState<{
+    hasDB: boolean; hasBackupBucket: boolean; hasDiscordWebhook: boolean; hasRateLimitKV: boolean; ktAlphaPinMode: boolean
+  } | null>(null)
 
   async function check() {
     setLoading(true)
     setError('')
+    // 운영 인프라 점검 — 결제 헬스체크와 독립 (503 나도 인프라 상태는 보이게).
+    api.get('/api/debug/bindings').then(r => setBindings(r.data)).catch(() => setBindings(null))
     try {
       // VITE 키를 헤더로 전달 → server 가 비교 가능
       const viteKey = getTossClientKey()
@@ -94,6 +100,37 @@ export default function AdminEnvCheckPage() {
         {error && (
           <div className="bg-red-50 border border-red-200 rounded p-3 mb-4 text-sm text-red-800">
             ⚠️ API 호출 실패: {error}
+          </div>
+        )}
+
+        {/* 🆕 운영 인프라 점검 — 1인 운영 필수 env/바인딩 ✅·❌ (설정 후 재검증으로 확인) */}
+        {bindings && (
+          <div className="bg-white rounded-lg shadow overflow-hidden mb-4">
+            <h2 className="text-sm font-bold text-gray-900 px-4 py-3 border-b border-gray-100">🛠️ 운영 인프라 (1인 운영 필수)</h2>
+            <table className="w-full text-sm">
+              <tbody>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-3 font-medium text-gray-700 w-2/3">DB (D1)</td>
+                  <td className="px-4 py-3"><StatusBadge ok={bindings.hasDB} /></td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-3 font-medium text-gray-700">디스코드 경보 <span className="text-xs text-gray-500">DISCORD_WEBHOOK_URL</span></td>
+                  <td className="px-4 py-3"><StatusBadge ok={bindings.hasDiscordWebhook} label={bindings.hasDiscordWebhook ? '연결됨' : '미설정 — 경보 안 옴'} /></td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-3 font-medium text-gray-700">주간 백업 버킷 <span className="text-xs text-gray-500">BACKUP_BUCKET (R2)</span></td>
+                  <td className="px-4 py-3"><StatusBadge ok={bindings.hasBackupBucket} label={bindings.hasBackupBucket ? '연결됨' : '미설정 — 백업 안 됨'} /></td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-3 font-medium text-gray-700">Rate Limit KV <span className="text-xs text-gray-500">RATE_LIMIT_KV</span></td>
+                  <td className="px-4 py-3"><StatusBadge ok={bindings.hasRateLimitKV} label={bindings.hasRateLimitKV ? '연결됨' : '미설정 — rate limit 무효(fail-open)'} /></td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium text-gray-700">KT 인앱 바코드(PIN) 모드 <span className="text-xs text-gray-500">KT_ALPHA_PIN_MODE</span></td>
+                  <td className="px-4 py-3 text-gray-600">{bindings.ktAlphaPinMode ? '✅ ON (인앱 바코드)' : '— OFF (문자 발송, 정상)'}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         )}
 

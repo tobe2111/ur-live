@@ -41,6 +41,9 @@ debugRoutes.get('/bindings', requireAdmin(), (c) => {
     hasSessionKV: !!(env as any).SESSION_KV,
     hasRateLimitKV: !!(env as any).RATE_LIMIT_KV,
     hasBackupBucket: !!(env as any).BACKUP_BUCKET,
+    // 🆕 2026-06-18 (운영 인프라 점검): 1인 운영 핵심 env 가시화 — env-check 페이지가 ✅/❌ 로 표시.
+    hasDiscordWebhook: !!(env as any).DISCORD_WEBHOOK_URL,
+    ktAlphaPinMode: (env as any).KT_ALPHA_PIN_MODE === '1',
     environment: env.ENVIRONMENT,
     frontendUrl: env.FRONTEND_URL,
     region: env.REGION,
