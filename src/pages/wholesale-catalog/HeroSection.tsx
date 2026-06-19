@@ -60,7 +60,7 @@ export default function HeroSection({ loggedIn, userSession, grade, me, monthSpe
     <div className="pt-4 pb-1">
       {/* 🧹 2026-06-17 (시안): 단일 배너(제품/플랫폼 공지용) — 2단 그리드·우측 마감임박 카드 삭제 */}
       <div className="relative rounded-2xl overflow-hidden min-h-[244px] lg:min-h-[290px] flex" style={{ background: '#0C2454' }}>
-        <img src={WHOLESALE_HERO_IMG} alt="" aria-hidden onError={(e) => { e.currentTarget.style.display = 'none' }} className="absolute inset-0 w-full h-full object-cover" />
+        <img src={WHOLESALE_HERO_IMG} alt="" aria-hidden fetchPriority="high" decoding="async" onError={(e) => { e.currentTarget.style.display = 'none' }} className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(100deg, rgba(21,23,28,0.92) 0%, rgba(21,23,28,0.72) 48%, rgba(21,23,28,0.20) 100%)' }} />
         <div className="relative p-6 lg:p-9 flex flex-col justify-center text-white lg:max-w-[560px]">
           <div className="inline-flex self-start items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold mb-4" style={{ background: 'rgba(255,255,255,0.14)' }}>
