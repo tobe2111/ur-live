@@ -4360,7 +4360,9 @@
     "groupExpired": "期限切れ",
     "groupRefunded": "返金済み",
     "ktShowBarcode": "店舗で下のバーコードを提示してください",
-    "ktCheckMms": "携帯のメッセージでクーポンをご確認ください。カカオトークのギフトボックス連携も可能です。"
+    "ktCheckMms": "携帯のメッセージでクーポンをご確認ください。カカオトークのギフトボックス連携も可能です。",
+    "tabGroupBuy": "共同購入",
+    "tabGifticon": "ギフト券"
   },
   "sellerWaiting": {
     "title": "セラー承認待機",

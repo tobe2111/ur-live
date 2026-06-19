@@ -4360,7 +4360,9 @@
     "groupExpired": "만료",
     "groupRefunded": "환불",
     "ktShowBarcode": "매장에서 아래 바코드를 제시하세요",
-    "ktCheckMms": "휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능."
+    "ktCheckMms": "휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.",
+    "tabGroupBuy": "공구권",
+    "tabGifticon": "교환권"
   },
   "sellerWaiting": {
     "title": "셀러 승인 대기",

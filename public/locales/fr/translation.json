@@ -4360,7 +4360,9 @@
     "groupExpired": "Expiré",
     "groupRefunded": "Remboursé",
     "ktShowBarcode": "Présentez le code-barres ci-dessous en magasin",
-    "ktCheckMms": "Vérifiez le coupon dans les messages de votre téléphone. Liaison KakaoTalk possible."
+    "ktCheckMms": "Vérifiez le coupon dans les messages de votre téléphone. Liaison KakaoTalk possible.",
+    "tabGroupBuy": "Groupé",
+    "tabGifticon": "Gifticon"
   },
   "sellerWaiting": {
     "title": "Approbation Vendeur en Attente",

@@ -4360,7 +4360,9 @@
     "groupExpired": "Caducado",
     "groupRefunded": "Reembolsado",
     "ktShowBarcode": "Muestra el código de barras de abajo en la tienda",
-    "ktCheckMms": "Revisa el cupón en los mensajes de tu teléfono. Vinculación con KakaoTalk disponible."
+    "ktCheckMms": "Revisa el cupón en los mensajes de tu teléfono. Vinculación con KakaoTalk disponible.",
+    "tabGroupBuy": "Grupal",
+    "tabGifticon": "Gifticon"
   },
   "sellerWaiting": {
     "title": "Aprobación de Vendedor Pendiente",
