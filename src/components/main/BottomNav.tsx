@@ -3,7 +3,7 @@ import { cfImage } from '@/utils/cf-image'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
-import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin, Ticket } from 'lucide-react'
+import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin, Ticket, Gift } from 'lucide-react'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
 function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
@@ -193,10 +193,12 @@ export default function BottomNav() {
   //   ➕ 는 시트를 열어 (유저) 동네 공구 제안 / (셀러) 공구권 등록으로 분기 — 수요 신호 수집기.
   const navItems = [
     { icon: Home,        label: t('nav.home',  { defaultValue: '홈' }),    path: '/' },
-    // 🏭 2026-06-10: 동네딜은 청크 + 데이터 동시 워밍 — 누르는 순간 카드 데이터 선요청 (클릭→마운트 ~200ms 선점).
-    { icon: MapPin,      label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/group-buy', prefetch: () => import('@/pages/GroupBuyListPage').then((m) => { m.warmGroupBuyList?.() }) },
-    // 🎟️ 2026-06-18 (대표 결정): 가운데 ➕(만들기) → '공구권'. 교환권(기프티콘)은 MMS 발송이라 앱에서 볼 일이 없고,
-    //   공구권(동네딜 식사권 등)은 매장에서 QR/PIN 으로 '앱에서 꺼내 쓰는' 핵심 surface라 상시 탭 가치가 높음.
+    // 🎟️ 2026-06-19 [UNLOCK_LOADING] (대표 5탭 확정 — 홈=동네딜이라 동네딜 탭은 홈과 중복): 동네딜 탭 → 교환권(기프티콘).
+    //   홈이 이미 동네딜 피드라 별도 동네딜 탭은 중복 → 두 상품축(동네딜=홈 / 교환권=탭2)을 모두 노출.
+    //   전체 동네딜(지역/검색)은 홈 '전체 동네딜 보기' 링크로 진입. isActivePath 는 홈(/) 이 /group-buy 에서도 활성.
+    { icon: Gift,        label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers', prefetch: () => import('@/pages/VouchersPage') },
+    // 🎟️ 2026-06-18 (대표 결정): 가운데 → '공구권'. 교환권(기프티콘)은 MMS 발송 카탈로그(탭2)이고,
+    //   공구권(동네딜 식사권 등)은 매장에서 QR/PIN 으로 '앱에서 꺼내 쓰는' 지갑이라 상시 탭 가치가 높음.
     { icon: Ticket,      label: t('nav.myGbVouchers', { defaultValue: '공구권' }), path: '/my-vouchers', prefetch: () => import('@/pages/MyVouchersPage') },
     // 🧭 2026-06-10: 링크샵도 청크+데이터 동시 워밍 (동네딜과 동일) — 누르는 순간 선요청.
     { icon: Sparkles,    label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath, prefetch: () => {
@@ -212,6 +214,9 @@ export default function BottomNav() {
   const isActivePath = (path: string) => {
     const cur = location.pathname
     if (cur === path) return true
+    // 🎟️ 2026-06-19 [UNLOCK_LOADING]: 홈 = 동네딜 피드 → 홈 탭은 /group-buy·/stays·/meal-vouchers 에서도 활성.
+    //   (동네딜 전용 탭을 교환권으로 교체했으므로 동네딜 surface 활성표시는 홈 탭이 담당.)
+    if (path === '/' && (cur.startsWith('/group-buy') || cur.startsWith('/stays') || cur.startsWith('/meal-vouchers'))) return true
     if (path !== '/' && cur.startsWith(path)) return true
     // v37 FIX: 마이페이지 범주에 /my-* 및 관련 계정/주문 경로 포함
     if (path === '/my-vouchers' && cur.startsWith('/my-vouchers')) return true
@@ -227,8 +232,6 @@ export default function BottomNav() {
       if (cur.startsWith('/u/') || cur.startsWith('/host') || cur.startsWith('/g/') ||
           cur.startsWith('/profile/') || cur.startsWith('/s/')) return true
     }
-    // 🛡️ 2026-06-01: 동네딜 탭(오프라인 공구) — /group-buy 외 /stays·/meal-vouchers 도 활성.
-    if (path === '/group-buy' && (cur.startsWith('/stays') || cur.startsWith('/meal-vouchers'))) return true
     return false
   }
 

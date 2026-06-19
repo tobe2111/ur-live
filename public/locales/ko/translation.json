@@ -6135,6 +6135,8 @@
   "my": {
     "earningsGroupTitle": "내 수익·추천",
     "earningsGroupSub": "추천 적립 · 링크샵 수익 · 친구 초대",
+    "settingsGroupTitle": "설정",
+    "settingsGroupSub": "알림 · 화면 테마 · 언어 · 앱 정보",
     "affiliateLinkTitle": "상품 추천 링크",
     "affiliateLinkSub": "내 링크로 구매하면 딜 적립 — 실적 보기"
   },

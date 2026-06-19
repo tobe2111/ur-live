@@ -6139,6 +6139,8 @@
   "my": {
     "earningsGroupTitle": "Mis ganancias",
     "earningsGroupSub": "Recompensas · Linkshop · Invitaciones",
+    "settingsGroupTitle": "Ajustes",
+    "settingsGroupSub": "Notificaciones · Tema · Idioma · Info de la app",
     "affiliateLinkTitle": "Enlaces de recomendación",
     "affiliateLinkSub": "Gana deals cuando compran con tu enlace — ver resultados"
   },
