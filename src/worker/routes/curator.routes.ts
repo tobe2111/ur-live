@@ -76,6 +76,8 @@ async function ensureUserProfileCols(DB: D1Database): Promise<void> {
     'ALTER TABLE users ADD COLUMN tiktok_url TEXT',
     // 🎨 2026-06-17 링크샵 랜딩 리디자인: 상단 마퀴(흐르는 헤드라인) 텍스트.
     'ALTER TABLE users ADD COLUMN linkshop_headline TEXT',
+    // 🎨 2026-06-19 마퀴 액센트 색(#RRGGBB) — 소유자 조정. 비면 기본 주황.
+    'ALTER TABLE users ADD COLUMN linkshop_accent TEXT',
   ]) {
     await DB.prepare(sql).run().catch(() => { /* 이미 존재 → 정상 */ })
   }
@@ -193,11 +195,20 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     // 🎨 2026-06-17 (링크샵 랜딩 리디자인): 마퀴 헤드라인 — 별도 best-effort 조회(컬럼 없는 env 에서
     //   메인 SELECT 의 banner/sns 가 폴백으로 사라지지 않도록 분리). 컬럼 없으면 null.
     let headline: string | null = null
+    let accent: string | null = null
     try {
-      const h = await DB.prepare('SELECT linkshop_headline FROM users WHERE id = ? LIMIT 1')
-        .bind(userId).first<{ linkshop_headline: string | null }>()
+      const h = await DB.prepare('SELECT linkshop_headline, linkshop_accent FROM users WHERE id = ? LIMIT 1')
+        .bind(userId).first<{ linkshop_headline: string | null; linkshop_accent: string | null }>()
       headline = h?.linkshop_headline ?? null
-    } catch { /* 컬럼 미존재 — null */ }
+      accent = h?.linkshop_accent ?? null
+    } catch {
+      // linkshop_accent 컬럼 없는 env — headline 만이라도.
+      try {
+        const h = await DB.prepare('SELECT linkshop_headline FROM users WHERE id = ? LIMIT 1')
+          .bind(userId).first<{ linkshop_headline: string | null }>()
+        headline = h?.linkshop_headline ?? null
+      } catch { /* 둘 다 없음 — null */ }
+    }
 
     // 🛡️ 2026-05-31 (링크샵 로딩): group-buy-public 과 동일 edge 캐시 — 이전엔 캐시 헤더가 없어
     //   (1) 매 요청 D1 3쿼리 cold, (2) worker SSR inject 가 caches.default 에서 못 찾아 매번 self-fetch cold
@@ -233,8 +244,9 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         youtube_url: user.youtube_url ?? null,
         instagram_url: user.instagram_url ?? null,
         tiktok_url: user.tiktok_url ?? null,
-        // 🎨 2026-06-17 링크샵 랜딩 리디자인: 상단 마퀴 헤드라인.
+        // 🎨 2026-06-17 링크샵 랜딩 리디자인: 상단 마퀴 헤드라인 + 액센트 색.
         headline,
+        accent,
       },
       pins: pins ?? [],
       // 🛡️ 2026-05-25 신모델: linked seller 있으면 셀러 공개페이지로 자연 흡수.
@@ -609,7 +621,7 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
-    type ProfileBody = { name?: string; bio?: string; profile_image?: string; banner_url?: string; youtube_url?: string; instagram_url?: string; tiktok_url?: string; headline?: string }
+    type ProfileBody = { name?: string; bio?: string; profile_image?: string; banner_url?: string; youtube_url?: string; instagram_url?: string; tiktok_url?: string; headline?: string; accent?: string }
     const body = await c.req.json<ProfileBody>().catch(() => ({} as ProfileBody))
 
     const updates: string[] = []
@@ -657,6 +669,13 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
     if (typeof body.headline === 'string') {
       updates.push('linkshop_headline = ?')
       binds.push(body.headline.trim().slice(0, 80))
+    }
+    // 🎨 2026-06-19 마퀴 액센트 색 — #RRGGBB 만 허용, 빈 문자열=기본색(해제).
+    if (typeof body.accent === 'string') {
+      const v = body.accent.trim()
+      if (v && !/^#[0-9A-Fa-f]{6}$/.test(v)) return c.json({ success: false, error: '색상은 #RRGGBB 형식' }, 400)
+      updates.push('linkshop_accent = ?')
+      binds.push(v)
     }
     if (updates.length === 0) return c.json({ success: false, error: '변경할 필드 없음' }, 400)
 
