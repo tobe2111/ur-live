@@ -88,7 +88,8 @@ export default function WholesaleDepositPage() {
 
   // 👥 2026-06-12 (감사 부채): viewer 직원 — 충전 신청 서버 403 전 UI 사전 안내.
   const isViewer = useIsWholesaleViewer()
-  const submitDisabled = chargeMut.isPending || !Number.isFinite(amount) || amount < 1 || !depositorName.trim() || isViewer
+  // 🛡️ 2026-06-19: 클라 최소금액을 서버(≥1,000원)와 일치 — 기존 `amount < 1` 은 1~999 입력 시 통과시켜 400 유발.
+  const submitDisabled = chargeMut.isPending || !Number.isFinite(amount) || amount < 1000 || amount > 100_000_000 || !depositorName.trim() || isViewer
 
   async function submitCharge() {
     if (submitDisabled) return
@@ -99,10 +100,12 @@ export default function WholesaleDepositPage() {
         setShowGuide(true)
         setAmount(0)
       } else {
-        toast.error(t('wholesale.deposit.chargeFailed', { defaultValue: '충전 신청에 실패했습니다' }))
+        toast.error((res as { error?: string })?.error || t('wholesale.deposit.chargeFailed', { defaultValue: '충전 신청에 실패했습니다' }))
       }
-    } catch {
-      toast.error(t('wholesale.deposit.chargeFailed', { defaultValue: '충전 신청에 실패했습니다' }))
+    } catch (err) {
+      // 🛡️ 2026-06-19: 서버 에러 메시지 노출(기존엔 generic 으로 가려 원인 불명 — 예: "1,000원 이상").
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      toast.error(msg || t('wholesale.deposit.chargeFailed', { defaultValue: '충전 신청에 실패했습니다' }))
     }
   }
 
@@ -212,10 +215,10 @@ export default function WholesaleDepositPage() {
               <input
                 type="number"
                 inputMode="numeric"
-                min={1}
+                min={1000}
                 value={amount > 0 ? String(amount) : ''}
                 onChange={(e) => setAmount(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
-                placeholder={t('wholesale.deposit.amountPlaceholder', { defaultValue: '직접 입력' })}
+                placeholder={t('wholesale.deposit.amountPlaceholder', { defaultValue: '직접 입력 (최소 1,000원)' })}
                 className="w-full h-12 px-3.5 rounded-xl text-[15px] font-bold text-gray-900 tabular-nums mb-4"
                 style={{ border: '1.5px solid ' + WT.line, background: WT.fill2 }}
               />
