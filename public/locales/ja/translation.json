@@ -6139,6 +6139,8 @@
   "my": {
     "earningsGroupTitle": "収益・紹介",
     "earningsGroupSub": "紹介報酬 · リンクショップ収益 · 招待",
+    "settingsGroupTitle": "設定",
+    "settingsGroupSub": "通知 · テーマ · 言語 · アプリ情報",
     "affiliateLinkTitle": "商品紹介リンク",
     "affiliateLinkSub": "リンク経由の購入でディール獲得 — 実績を見る"
   },

@@ -6139,6 +6139,8 @@
   "my": {
     "earningsGroupTitle": "我的收益·推荐",
     "earningsGroupSub": "推荐奖励 · 链接小店收益 · 邀请",
+    "settingsGroupTitle": "设置",
+    "settingsGroupSub": "通知 · 主题 · 语言 · 应用信息",
     "affiliateLinkTitle": "商品推荐链接",
     "affiliateLinkSub": "好友通过链接购买即可获得积分 — 查看业绩"
   },
