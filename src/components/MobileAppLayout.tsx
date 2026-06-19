@@ -88,8 +88,11 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   //   프레임(430 액자) 대신 상단 네비 + 풀너비 반응형. 좌측 카테고리 사이드바는 숨김(사용자 "사이드바 위주 X").
   //   페이지의 기존 lg: 레이아웃이 그대로 살아남(프레임 CSS 덮기 미적용). 모바일(<lg)은 영향 0.
   const isDesktopResponsive = !mobileOnly && DESKTOP_RESPONSIVE_PATHS.has(location.pathname)
-  const showSidebar = !hideSidebar && !linkshopVisitor && !isDesktopResponsive
-  // 컨슈머 프레임 — 대시보드/도매몰/비디오 + 데스크탑 반응형 페이지는 제외.
+  // 🖥️ 2026-06-18 (대표 피드백 — "사이드바 없애니 다른 페이지로 못 감"): 좌측 사이드바는 '내비게이션'으로
+  //   유지하되, 콘텐츠는 풀너비(액자 해제). 사이드바가 주인공이던 게 아니라 액자에 갇힌 콘텐츠가 문제였음
+  //   → 풀너비면 사이드바=내비/콘텐츠=주인공(표준 앱 레이아웃). 상단 네비도 함께 표시(원래 pre-frame 레이아웃).
+  const showSidebar = !hideSidebar && !linkshopVisitor
+  // 컨슈머 프레임 — 대시보드/도매몰/비디오 + 데스크탑 반응형 페이지는 제외(풀너비).
   const framed = !mobileOnly && !hideSidebar && !isDesktopResponsive
   // 📐 2026-06-17: 단일 폰 폭(430) — 페이지별 폭 분기 제거(액자가 페이지마다 안 튐).
   const frameWidth = '430px'
@@ -107,10 +110,8 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
     } else {
       body.classList.remove('app-frame-host', 'app-frame-dark')
     }
-    // 🖥️ 2026-06-18: 데스크탑 풀너비 페이지 → 상단 네비를 사이드바 없는 폭으로 보정(CSS: body.app-fullwidth).
-    body.classList.toggle('app-fullwidth', isDesktopResponsive)
-    return () => { body.classList.remove('app-frame-host', 'app-frame-dark', 'app-fullwidth') }
-  }, [framed, applied, isDesktopResponsive])
+    return () => { body.classList.remove('app-frame-host', 'app-frame-dark') }
+  }, [framed, applied])
 
   return (
     <>

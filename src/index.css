@@ -791,17 +791,6 @@ html.dark .gbd {
   .mobile-app-container.app-framed .grid-cols-4.sm\:grid-cols-5 { grid-template-columns: repeat(4, minmax(0, 1fr)); } /* 브랜드 칩 → 4열 */
   .mobile-app-container.app-framed .lg\:grid-cols-5 { grid-template-columns: minmax(0, 1fr); }                       /* 상품상세 2단 → 단일 컬럼 */
   .mobile-app-container.app-framed .lg\:sticky { position: static; }                                                 /* 상세 구매패널 sticky 해제(폰 흐름) */
-
-  /* 🖥️ 2026-06-18 (대표 결정 — PC 전면 반응형): 데스크탑 풀너비 페이지(body.app-fullwidth).
-     좌측 사이드바 없이 상단 네비만 → 사이드바 비우는 좌측 패딩 제거 + 콘텐츠처럼 가운데(1280) 정렬.
-     상단 네비는 .app-framed 가 아니므로 자동 표시(위 숨김 규칙 미적용). */
-  body.app-fullwidth .desktop-topnav > div {
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
-    max-width: 1280px;
-    margin-left: auto;
-    margin-right: auto;
-  }
 }
 
 /* PC 콘텐츠 폭 토큰 — 페이지별 max-width 가이드.
