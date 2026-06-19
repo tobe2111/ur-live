@@ -1115,6 +1115,18 @@ app.get('/catalog', async (c) => {
       const isDefaultGuestReqEarly = guest && page === 1 && !search && !category && !sortKey
         && minPrice == null && maxPrice == null && !inStock && !premiumOnly && !brand && !brandsMode
       if (isDefaultGuestReqEarly) {
+        // 🏎️ 2026-06-19 (B: 글로벌 KV 캐시) — caches.default 는 colo별이라 저트래픽 도매몰은 대부분 colo가 cold
+        //   → 매번 무거운 cold D1(행 13~26s). KV(CACHE_KV)는 전 지역 복제 → 어느 colo든 즉시 HIT.
+        //   cron self-fetch(guest)가 아래 put 으로 전 지역 KV를 채움. CACHE_KV 미바인딩 시 폴백(아래 caches.default).
+        //   키는 host 별(멀티-몰 분리) — cron 이 live + utongstart 양 origin self-fetch 하므로 둘 다 워밍됨.
+        try {
+          const kv = (c.env as { CACHE_KV?: { get: (k: string) => Promise<string | null>; put: (k: string, v: string, o?: { expirationTtl?: number }) => Promise<void> } }).CACHE_KV
+          if (kv) {
+            const host = new URL(c.req.url).hostname
+            const kvBody = await kv.get(`ws:cat:g:${host}`).catch(() => null)
+            if (kvBody) return c.body(kvBody, 200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60', 'CDN-Cache-Control': 'public, max-age=300', 'X-WS-Cache': 'KV-HIT' })
+          }
+        } catch { /* KV 미지원/오류 — caches.default 로 진행 */ }
         try {
           // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts 동일 패턴)
           const early = (await caches.default.match(new Request(c.req.url, { method: 'GET' })).catch(() => null)) as Response | null
@@ -1374,11 +1386,16 @@ app.get('/catalog', async (c) => {
         if (isDefaultGuestReq && c.executionCtx) {
           const origin = new URL(c.req.url).origin
           const mkRes = () => new Response(payload, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300' } })
+          // 🏎️ 2026-06-19 (B): 글로벌 KV write — cron self-fetch(guest)가 이걸 트리거해 전 지역 KV를 채움.
+          //   host 별 키(early KV read 와 1:1). TTL 600s(>cron 5분 주기 → 항상 신선 유지). CACHE_KV 없으면 skip.
+          const kv = (c.env as { CACHE_KV?: { put: (k: string, v: string, o?: { expirationTtl?: number }) => Promise<void> } }).CACHE_KV
+          const host = new URL(c.req.url).hostname
           c.executionCtx.waitUntil(Promise.all([
             // @ts-expect-error — Cloudflare Workers 전역 caches
             caches.default.put(new Request(`${origin}/api/wholesale/catalog`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
             // @ts-expect-error — Cloudflare Workers 전역 caches
             caches.default.put(new Request(`${origin}/api/wholesale/catalog?`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
+            kv ? kv.put(`ws:cat:g:${host}`, payload, { expirationTtl: 600 }).catch(swallow('wholesale:guest-catalog-kv')) : Promise.resolve(),
           ]))
         }
       }
