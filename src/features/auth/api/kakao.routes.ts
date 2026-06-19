@@ -28,13 +28,13 @@ async function issueLinkedRoleTokens(
   DB: D1Database,
   jwtSecret: string,
   userId: number
-): Promise<{ seller_token?: string; agency_token?: string; agency_refresh_token?: string; seller?: { id: number; username?: string; status: string; business_name?: string }; agency?: { id: number; status: string; name?: string } }> {
+): Promise<{ seller_token?: string; agency_token?: string; agency_refresh_token?: string; seller?: { id: number; username?: string; status: string; business_name?: string; is_distributor?: number }; agency?: { id: number; status: string; name?: string } }> {
   const out: { seller_token?: string; agency_token?: string; agency_refresh_token?: string; seller?: any; agency?: any } = {}
   try {
     // 🛡️ 2026-05-27: username 도 SELECT — KakaoCallback 이 seller_username localStorage 저장 → BottomNav 직접 /profile/{username} navigate.
     const seller = await DB.prepare(
-      'SELECT id, username, status, business_name, email, name, seller_type FROM sellers WHERE linked_user_id = ?'
-    ).bind(userId).first<{ id: number; username: string; status: string; business_name: string; email: string; name: string; seller_type: string }>()
+      'SELECT id, username, status, business_name, email, name, seller_type, is_distributor FROM sellers WHERE linked_user_id = ?'
+    ).bind(userId).first<{ id: number; username: string; status: string; business_name: string; email: string; name: string; seller_type: string; is_distributor: number }>()
     if (seller) {
       // 🛡️ 2026-05-27: 시드 default 이름 ('메인 판매자', '셀러') 면 카카오 nickname 으로 1회 sync.
       //   idempotent — 사용자가 직접 이름 변경한 후엔 sync 안 함 (placeholder 매칭 X).
@@ -47,7 +47,9 @@ async function issueLinkedRoleTokens(
           seller.name = u.name.trim()
         }
       }
-      out.seller = { id: seller.id, username: seller.username, status: seller.status, business_name: seller.business_name }
+      // 🛡️ 2026-06-19 (#4·#5 근본수정): is_distributor 추가 — 카카오 로그인 유통사가 localStorage.is_distributor
+      //   미설정으로 상품페이지 게스트 UI/충전 deposits 튕김(가드) 겪던 것 치유. additive(seller.username 등 불변).
+      out.seller = { id: seller.id, username: seller.username, status: seller.status, business_name: seller.business_name, is_distributor: seller.is_distributor ? 1 : 0 }
       // 레거시 호환: 'approved' 도 active 와 동등하게 취급 (구 승인 데이터)
       if (seller.status === 'active' || seller.status === 'approved') {
         const payload = {
@@ -57,6 +59,7 @@ async function issueLinkedRoleTokens(
           name: seller.name,
           type: 'seller',
           seller_type: seller.seller_type || 'influencer',
+          is_distributor: seller.is_distributor ? 1 : 0, // 🛡️ 도매 가드(deposits/상세)용 — 토큰에도 동봉
           iat: Math.floor(Date.now() / 1000),
           exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 🛡️ 2026-04-30: 7일 → 30일
         }

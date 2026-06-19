@@ -85,6 +85,9 @@ export default function KakaoCallbackPage() {
           if (seller?.business_name) localStorage.setItem('seller_name', seller.business_name)
           // 🛡️ 2026-05-27: seller_username 저장 → BottomNav 가 즉시 /profile/{username} navigate.
           if (seller?.username) localStorage.setItem('seller_username', seller.username)
+          // 🛡️ 2026-06-19 (#4·#5 근본수정): 유통사면 is_distributor 저장 — 없으면 상품페이지 게스트 UI +
+          //   충전→/wholesale/deposits 가드가 /wholesale 로 튕김("새로고침 느낌"). 일반 로그인과 대칭.
+          if ((seller as { is_distributor?: number })?.is_distributor) localStorage.setItem('is_distributor', '1')
         }
         if (agency_token) {
           localStorage.setItem('agency_token', agency_token)
