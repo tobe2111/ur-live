@@ -453,11 +453,12 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
                 // 🎨 2026-06-16 링크샵 통일: 공유 에디토리얼 카드 (docs/design/linkshop-unification.md 2단계)
                 <EditorialProductCard
                   key={p.id}
-                  product={{ id: p.id, name: p.name, price: p.price, original_price: p.original_price, image: p.image_url, dominant_color: p.dominant_color }}
+                  product={{ id: p.id, name: p.name, price: p.price, original_price: p.original_price, image: p.image_url, dominant_color: p.dominant_color, avg_rating: p.avg_rating, review_count: p.review_count, sold_count: p.sold_count }}
                   onClick={() => navigate(`/products/${p.id}`)}
                   aspect="square"
                   textClass={T.text}
                   discountPct={p.discount_rate || undefined}
+                  showStats
                 />
               ))}
             </div>
