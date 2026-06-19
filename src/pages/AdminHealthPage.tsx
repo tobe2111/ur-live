@@ -189,6 +189,35 @@ interface SchemaRepairResult {
 function SchemaRepairSection() {
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<SchemaRepairResult | null>(null)
+  // 🚚 2026-06-18: 빠른 진단/복구 (sellers 컬럼 한도로 전체 repair 가 67 오류·524 → 핵심 컬럼만/진단)
+  const [quickRunning, setQuickRunning] = useState(false)
+  const [quick, setQuick] = useState<{ present?: Record<string, boolean>; ran?: string[]; errors?: { step: string; error: string }[]; _err?: string } | null>(null)
+
+  const runQuick = async () => {
+    if (quickRunning) return
+    setQuickRunning(true)
+    setQuick(null)
+    try {
+      const token = localStorage.getItem('admin_token')
+      const res = await fetch('/api/_internal/repair-schema-quick', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
+      })
+      const data = await res.json().catch(() => ({})) as { present?: Record<string, boolean>; ran?: string[]; errors?: { step: string; error: string }[]; error?: string }
+      if (!res.ok) {
+        setQuick({ _err: (res.status === 401 || res.status === 403) ? '관리자 인증 필요 (다시 로그인 후 시도)' : `HTTP ${res.status}` })
+        toast.error('빠른 복구 실패')
+        return
+      }
+      setQuick({ present: data.present, ran: data.ran, errors: data.errors })
+      toast.success('빠른 진단/복구 완료')
+    } catch {
+      setQuick({ _err: '네트워크 오류' })
+      toast.error('빠른 복구 요청 실패')
+    } finally {
+      setQuickRunning(false)
+    }
+  }
 
   const run = async () => {
     if (running) return
@@ -246,15 +275,55 @@ function SchemaRepairSection() {
             </p>
           </div>
         </div>
-        <button
-          onClick={run}
-          disabled={running}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
-        >
-          {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Database className="h-3.5 w-3.5" />}
-          {running ? '실행 중...' : '지금 스키마 복구'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={runQuick}
+            disabled={quickRunning}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
+            title="핵심 컬럼만 빠르게 적용 + 존재 진단 (전체 복구가 524/오류일 때)"
+          >
+            {quickRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Database className="h-3.5 w-3.5" />}
+            {quickRunning ? '진단 중...' : '빠른 진단/복구'}
+          </button>
+          <button
+            onClick={run}
+            disabled={running}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
+          >
+            {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Database className="h-3.5 w-3.5" />}
+            {running ? '실행 중...' : '지금 스키마 복구 (전체)'}
+          </button>
+        </div>
       </div>
+
+      {quick && (
+        <div className="mt-4 space-y-2 text-xs">
+          {quick._err ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700">⚠️ {quick._err}</div>
+          ) : (
+            <>
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
+                🔎 컬럼 존재 진단 (기능 의존)
+                <ul className="mt-1 space-y-0.5">
+                  {Object.entries(quick.present ?? {}).map(([k, v]) => (
+                    <li key={k} className="font-mono">{v ? '✅' : '❌'} {k}</li>
+                  ))}
+                </ul>
+              </div>
+              {(quick.ran?.length ?? 0) > 0 && (
+                <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-green-700">
+                  실행: {quick.ran!.join(' · ')}
+                </div>
+              )}
+              {(quick.errors?.length ?? 0) > 0 && (
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700">
+                  오류: {quick.errors!.map((e) => `${e.step} (${e.error})`).join(' · ')}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {result && (
         <div className="mt-4 space-y-2 text-xs">
