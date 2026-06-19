@@ -8,7 +8,7 @@
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, Radio, Compass, MapPin, Utensils, Sparkles, Bed, Tag, Package, User, PackageSearch, Heart, BookOpen, Store, Plus } from 'lucide-react'
+import { Home, Radio, Compass, MapPin, User, PackageSearch, Heart, BookOpen, Store, Plus } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -34,21 +34,9 @@ const MENU_ITEMS: NavItem[] = [
   { labelKey: 'nav.create',          labelDefault: '공구 제안',       icon: Plus,    path: '/community-group-buy/new', active: (p) => p.startsWith('/community-group-buy/new') },
 ]
 
-// 🧭 2026-06-17 (사용자 요청): 오프라인 공동구매(동네딜) 카테고리 — GroupBuyListPage 탭과 1:1.
-//   맛집 식사권 / 미용 / 숙소 / 기타 / 일반 상품. 모두 /group-buy?category= 로 동일 그리드 안에서 필터(일관성).
-//   숙소는 그리드에 인라인 노출하되 카드 클릭만 /stays/:id(객실·날짜 예약)로 — GroupBuyListPage 참조.
-const CATEGORY_ITEMS: NavItem[] = [
-  { labelKey: 'category.mealVoucher', labelDefault: '맛집 식사권', icon: Utensils, path: '/group-buy?category=meal_voucher',
-    active: (p, s) => (p.startsWith('/group-buy') && s.includes('category=meal_voucher')) || p.startsWith('/meal-vouchers') },
-  { labelKey: 'category.beauty',      labelDefault: '미용',        icon: Sparkles, path: '/group-buy?category=beauty_voucher',
-    active: (p, s) => p.startsWith('/group-buy') && s.includes('category=beauty_voucher') },
-  { labelKey: 'category.stay',        labelDefault: '숙소',        icon: Bed,      path: '/stays',
-    active: (p) => p.startsWith('/stays') },
-  { labelKey: 'category.etc',         labelDefault: '기타',        icon: Tag,      path: '/group-buy?category=etc_voucher',
-    active: (p, s) => p.startsWith('/group-buy') && s.includes('category=etc_voucher') },
-  { labelKey: 'category.general',     labelDefault: '일반 상품',   icon: Package,  path: '/group-buy?category=general',
-    active: (p, s) => p.startsWith('/group-buy') && s.includes('category=general') },
-]
+// 🧭 2026-06-18 (대표 피드백 — "좌측 카테고리바 복잡"): CATEGORY 섹션 제거.
+//   맛집/미용/숙소/기타/일반은 동네딜(/group-buy) 페이지의 탭으로 이미 접근 가능 → 사이드바 중복 제거(단순화).
+//   사이드바는 '주요 목적지'만(홈/동네딜/공구제안/링크샵/마이) — 모바일 하단바와 정합.
 
 const MY_ITEMS: NavItem[] = [
   { labelKey: 'my.profile',  labelDefault: '마이페이지', icon: User,        path: '/user/profile', active: (p) => p.startsWith('/user/profile') || p === '/mypage' },
@@ -114,21 +102,6 @@ export default function DesktopLiveSidebar() {
             !(SHOPPING_TAB_HIDDEN && item.path === '/browse') &&
             !(COMMUNITY_PROPOSAL_HIDDEN && item.path === '/community-group-buy/new')
           ).map(item => (
-            <NavBtn
-              key={item.path}
-              item={item}
-              isActive={item.active?.(pathname, search) ?? false}
-              onClick={() => navigate(item.path)}
-            />
-          ))}
-        </section>
-
-        {/* CATEGORY — 오프라인 공동구매(동네딜) 카테고리: 맛집 식사권 / 미용 / 숙소 / 기타 */}
-        <section>
-          <p className="hidden xl:block text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
-            {t('nav.sectionCategory', { defaultValue: 'Category' })}
-          </p>
-          {CATEGORY_ITEMS.map(item => (
             <NavBtn
               key={item.path}
               item={item}
