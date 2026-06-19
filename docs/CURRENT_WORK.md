@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-19 — 어드민 제품별 플랫폼 마진 설정 UI: 미끼/마진 전략 (대표 "응 이렇게 정확하게 진행해줘")
+**요청**: 제조사가 등록한 상품을 검수할 때 **공급가·판매가·시중 최저가**를 보면서 **제품별로 우리 마진%를 정해 승인**(미끼상품=수익 하 / 마진상품=수익 상 — 항공권식 전략). 모든 가격 부가세 포함, 공급가 위에 우리 10%(조율 가능).
+- **모델 확정(불변)**: `distributor-pricing.resolveDistributorPrice` 가 이미 cost-plus(`유통사가 = round(공급가 × (1+마진%))`, 판매가 상한·공급가 하한) + 단일가(등급은 노출 큐레이션 전용). **가격/정산 엔진 무변경** — 어드민 마진 설정 컨트롤만 추가.
+- **백엔드** (`admin-products.routes.ts`): ① GET `/supplier-products` SELECT 에 `supply_margin_override_pct` 추가 + 응답에 `default_margin_pct`(전역 기본=`wholesale_platform_commission_pct`). ② PATCH `/supplier-products/:id` approve 가 `margin_override_pct` 동시 수용(같은 CAS UPDATE, undefined=미변경/null=전역기본/0~90=설정). ③ 신규 `PATCH /supplier-products/:id/margin` — 승인 무관 단독 조정(승인된 상품도) + 산출 공급가·우리 마진 응답 + audit. `normalizeMarginOverride` 헬퍼로 검증 일원화.
+- **프론트** (`SupplierProductsTab` + `AdminProductsPage`): `공급자 등록 상품` 탭 각 카드에 **MarginEditor**(공급원가·판매가·네이버 최저가 옆) — 프리셋 칩(미끼 3% / 기본 N% / 30% / 50%) + 마진% 입력 + **실시간 유통사 공급가·우리 마진** 미리보기(판매가 상한 도달 경고) + `마진 저장`. **승인 클릭 시 입력 마진 함께 반영**. `distributorPriceFromCost` 클라 재사용(SSOT 동일 공식).
+- **가이드**: `guide-seed-wholesale.ts` "제품별 플랫폼 마진 설정 — 미끼/마진 전략" 섹션 갱신(위치·산출식·정산·API). 검증: tsc 0 · 정산 단위 4/4 · `npm run build` 0(client+worker+prepare).
+
 ## 🎯 2026-06-18 — 사업자 유저 타겟 포지셔닝 메모 (대표 방향, 코드 미변경)
 대표 방향: **사업자 유저의 메인 타겟 = "자신의 쇼핑몰을 갖고 싶은 유저"**. `/u/{handle}` = 본인 쇼핑몰, **본인 상품이 주인공**, 공구권은 부가 채널. AskUserQuestion 결과 "지금은 방향만 메모" → 코드 변경 없이 SSOT 문서(CLAUDE.md 명칭 SSOT · SERVICE_MODEL.md)에 기록만. **다음 구현 시 적용 후보**: ① 진입 문구 "사업자 등록"→"내 쇼핑몰 열기"(등록은 그 안 1단계) ② 승인 사업자 상점(SellerPublicPage) 기본/첫화면 상품 우선·공구권 보조탭 ③ 빈 상점 문구 "내 쇼핑몰에 첫 상품을 올려보세요".
 
