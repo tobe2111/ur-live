@@ -23,6 +23,7 @@
  */
 
 import { logInfo, logError } from '../utils/logger';
+import { normalizeSupplyProductData } from '../../features/supply/api/supply-visibility';
 
 interface PrewarmEnv {
   FRONTEND_URL?: string;
@@ -96,6 +97,12 @@ const HOT_PATHS: readonly string[] = [
  */
 export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
   const baseUrl = env.FRONTEND_URL || 'https://live.ur-team.com';
+
+  // 🏎️ 2026-06-19 (A: 카탈로그 행 근본수정): products 정규화를 읽기 경로에서 빼 cron 으로 이전.
+  //   self-fetch(아래 HOT_PATHS) 보다 먼저 실행 → 정규화된 데이터로 캐시/ KV 워밍. 멱등·실패 무시.
+  if (env.DB) {
+    await normalizeSupplyProductData(env.DB).catch(() => { /* best-effort */ });
+  }
 
   let success = 0;
   let failed = 0;

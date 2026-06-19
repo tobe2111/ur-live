@@ -17,6 +17,19 @@ import { ensureSupplyMetaTable } from '@/worker/utils/product-supply-meta'
 export const SUPPLY_VISIBILITY_VALUES = ['ALL', 'APPROVED_CHANNEL', 'UTONGSTART_ONLY'] as const
 export type SupplyVisibility = (typeof SUPPLY_VISIBILITY_VALUES)[number]
 
+/**
+ * 🏎️ 2026-06-19 products 정규화 — 읽기 경로(ensure)에서 분리해 cron 에서만 실행(쓰기 락 경합 제거).
+ *   ① supply_source_id 0 → NULL (일부 등록 경로가 0 을 남김 → 카탈로그 `IS NULL` 에서 제외되던 것 치유)
+ *   ② mall_id 0 → 1 (host-first 카탈로그 `COALESCE(mall_id,1)=?` 에서 0 이 제외되던 것 치유)
+ *   둘 다 멱등(이후 0행 매칭) · "항상 안전"(0/누락만 기본값으로 — 잘못된 노출 없음).
+ */
+export async function normalizeSupplyProductData(DB: D1Database): Promise<void> {
+  await DB.prepare("UPDATE products SET supply_source_id = NULL WHERE is_supply_product = 1 AND supply_source_id = 0")
+    .run().catch(swallow('supply-vis:normalize-source-zero'))
+  await DB.prepare("UPDATE products SET mall_id = 1 WHERE is_supply_product = 1 AND mall_id = 0")
+    .run().catch(swallow('supply-vis:normalize-mall-zero'))
+}
+
 // 🛡️ 완료된 ensure 만 캐시(promise 기반) — add 를 await 전에 하면 동시 cold 요청이
 //   컬럼 생성 전에 쿼리해 500. in-flight promise 를 공유해 동시 호출이 같은 완료를 기다림.
 const _ensuring = new WeakMap<object, Promise<void>>()
@@ -102,18 +115,9 @@ async function _ensureSupplyVisibilitySchema(DB: D1Database): Promise<void> {
   if (!have.has('dominant_color')) {
     await DB.prepare('ALTER TABLE products ADD COLUMN dominant_color TEXT').run().catch(swallow('supply-vis:add-dominant-color'))
   }
-  // 🚑 2026-06-17 (대표 신고 — "admin엔 있는데 도매몰 '해당 조건 상품 없어요'"): supply_source_id 0 → NULL 정규화.
-  //   일부 등록 경로가 '소스없음'을 NULL 대신 0 으로 남김. admin 목록은 (IS NULL OR =0) 둘 다 노출하지만
-  //   카탈로그/홈/리스트 9개 쿼리는 엄격히 `supply_source_id IS NULL` → 0 인 공급원본이 전부 제외돼 "0개"로 보임.
-  //   0 은 유효 product id 가 아니므로 '원본'(NULL)으로 정규화 → 9개 쿼리 일괄 치유. 멱등(이후 0행 매칭).
-  await DB.prepare("UPDATE products SET supply_source_id = NULL WHERE is_supply_product = 1 AND supply_source_id = 0")
-    .run().catch(swallow('supply-vis:normalize-source-zero'))
-  // 🚑 2026-06-18 (멀티-몰 host-first 후속): mall_id = 0 → 1(기본 몰) 정규화. host-first 카탈로그는
-  //   `COALESCE(mall_id,1) = ?` 로 스코핑 → NULL 은 COALESCE 로 1 취급되지만 **0 은 1 과 불일치라 제외**됨
-  //   (일부 등록 경로가 0 을 남길 수 있음). 0 은 유효 몰 id 가 아니므로 기본 몰(1)로 정규화 → 자동 노출 치유.
-  //   catalog-repair 의 "항상 안전" 티어와 동일(상품을 잘못 노출시키지 않음 — 0/누락만 기본 몰로). 멱등.
-  await DB.prepare("UPDATE products SET mall_id = 1 WHERE is_supply_product = 1 AND mall_id = 0")
-    .run().catch(swallow('supply-vis:normalize-mall-zero'))
+  // 🏎️ 2026-06-19 (Lighthouse — 카탈로그 13~26s 행 근본수정): products 정규화 UPDATE 2개를
+  //   읽기 경로(ensure)에서 제거 → cron(normalizeSupplyProductData)으로 이전. 동시 cold 요청들이
+  //   같은 products 테이블에 매번 쓰기락을 거는 게 행의 유력 원인 → 읽기 경로는 이제 쓰기 0.
   // 🏷️ 2026-06-18 등급별 노출(visible_grades)은 product_supply_meta K-V 사이드테이블 사용 →
   //   모든 supply 경로가 호출하는 본 공통 ensure 에서 테이블 보장(gradeExposureWhere 서브쿼리 대상).
   //   export/preview/recent 등 catalog 핸들러를 안 거치는 cold-first 요청도 안전(no such table 방지).
