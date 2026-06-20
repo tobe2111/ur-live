@@ -24,7 +24,7 @@ const ROLE_META: Record<WholesaleSubRole, { label: string; desc: string; icon: t
   viewer: { label: '뷰어',   desc: '조회만 가능 (주문 불가)',     icon: Eye, color: WT.ink2, bg: WT.fill },
 }
 
-export default function WholesaleStaffPage() {
+export default function WholesaleStaffPage({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
   const location = useLocation()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
@@ -38,15 +38,15 @@ export default function WholesaleStaffPage() {
   // 🛡️ 2026-06-19 (대표 신고 동일 패턴): is_distributor localStorage 가드 제거 — token 기준 일치.
   //   직원 관리 권한은 서버 me.can_manage_staff(canManage)가 검증하므로 클라 가드 완화 안전.
   useEffect(() => {
-    if (!token) { navigate('/wholesale/login', { replace: true }); return }
-  }, [token, navigate])
+    if (!embedded && !token) { navigate('/wholesale/login', { replace: true }); return }
+  }, [embedded, token, navigate])
 
   useEffect(() => {
-    if (meQ.isSuccess && !canManage) {
+    if (!embedded && meQ.isSuccess && !canManage) {
       toast.error('직원 계정을 관리할 권한이 없습니다')
       navigate('/wholesale/dashboard', { replace: true })
     }
-  }, [meQ.isSuccess, canManage, navigate])
+  }, [embedded, meQ.isSuccess, canManage, navigate])
 
   const listQ = useWholesaleSubAccounts(canManage)
   const createM = useCreateWholesaleSubAccount()
@@ -91,10 +91,8 @@ export default function WholesaleStaffPage() {
 
   const inputCls = 'w-full h-11 px-3 rounded-lg border text-[14px] outline-none focus:border-[#0C2454] transition-colors text-gray-900'
 
-  return (
-    <WholesaleDashboardShell brand="유통사 센터" roleIcon={Store} navItems={navItems} title="직원 계정 관리">
-      <SEO title="직원 계정 관리 — 유통사" description="유통사 직원 서브계정 초대/권한 관리" url="/wholesale/staff" noindex />
-
+  // 콘텐츠(직원 계정 본문) — embedded/standalone 공유.
+  const content = (
       <div className="space-y-6">
         {/* 역할 안내 */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -186,6 +184,16 @@ export default function WholesaleStaffPage() {
           )}
         </div>
       </div>
+  )
+
+  // 대시보드 탭 임베드 — 셸/SEO/사이드바/헤더 생략, 본문만.
+  if (embedded) return content
+
+  return (
+    <WholesaleDashboardShell brand="유통사 센터" roleIcon={Store} navItems={navItems} title="직원 계정 관리">
+      <SEO title="직원 계정 관리 — 유통사" description="유통사 직원 서브계정 초대/권한 관리" url="/wholesale/staff" noindex />
+
+      {content}
     </WholesaleDashboardShell>
   )
 }
