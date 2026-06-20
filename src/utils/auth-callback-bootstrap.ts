@@ -98,14 +98,14 @@ export function processAuthCallbackParams(): void {
       if (userEmail) localStorage.setItem('user_email', userEmail)
       if (profileImage) localStorage.setItem('user_profile_image', profileImage.replace(/^http:\/\//, 'https://'))
 
-      // 🛡️ 2026-06-20 (iOS 로그인 근본수정): 서버가 URL fragment(#ut=)로 보낸 user_token(Bearer) 저장.
-      //   fragment 는 서버/Referer 로 전송 안 됨 → 안전. 저장 후 api.ts 가 Authorization: Bearer 로 전송 →
-      //   iOS Safari/WebKit 에서 ur_session 쿠키가 유지 안 돼도 인증 동작(쿠키 미유지 = 진단으로 확인된 원인).
-      //   wipe 직후(같은 user.id 도 wipe) 재설정이므로 신원 1개로 정합. 아래 URL 정리에서 hash 제거됨.
+      // 🛡️ 2026-06-20 (A 방식): 서버가 fragment(#st=)로 넘긴 단명(120초) 세션 티켓을 window 에 stash →
+      //   main.tsx bootApp 이 렌더 전 same-origin POST /api/auth/session/establish 로 교환해 httpOnly
+      //   ur_session 을 first-party 200 응답에서 발급(iOS 영속). **토큰을 localStorage 에 두지 않음**.
+      //   아래 URL 정리에서 hash(#st) 제거됨(서버/Referer 로도 안 나감).
       try {
         const h = window.location.hash || ''
-        const m = h.match(/[#&]ut=([^&]+)/)
-        if (m && m[1]) localStorage.setItem('user_token', decodeURIComponent(m[1]))
+        const m = h.match(/[#&]st=([^&]+)/)
+        if (m && m[1]) (window as unknown as { __urEstablishTicket?: string }).__urEstablishTicket = decodeURIComponent(m[1])
       } catch { /* ignore */ }
 
       // 🛡️ 2026-05-01: 로그인 직후 어떤 카카오 계정으로 로그인됐는지 명확히 표시.
@@ -126,14 +126,8 @@ export function processAuthCallbackParams(): void {
       const clearCookie = (name: string) => {
         document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax; Secure`
       }
-      // 🛡️ 2026-06-20 (iOS 로그인 안정화 — 근본수정): 소비자 Bearer 토큰 → localStorage.
-      //   iOS WebKit(사파리 ITP / 카톡 WKWebView)가 httpOnly 세션 쿠키를 유실해도 user_token
-      //   Bearer 로 API 인증·세션 health 가 지속 → "로그인 잠시 됐다 풀림" 자동 wipe 방지.
-      const pendingUserToken = readCookie('ur_pending_user_token')
-      if (pendingUserToken) {
-        localStorage.setItem('user_token', pendingUserToken)
-        clearCookie('ur_pending_user_token')
-      }
+      // 🛡️ 2026-06-20 (A 방식): localStorage Bearer 토큰 경로 제거 — 세션은 establish 가 발급한
+      //   httpOnly ur_session 쿠키로만 인증(아래 셀러/에이전시 대시보드 transfer 는 별개로 유지).
       const sellerToken = readCookie('ur_pending_seller_token')
       if (sellerToken) {
         localStorage.setItem('seller_token', sellerToken)
@@ -199,10 +193,6 @@ export function processAuthCallbackParams(): void {
     // 🛡️ 2026-06-20 (A2): 방금 로그인한 로드면 health-wipe 스킵 — 쿠키 propagation race / Safari 드롭
     //   순간의 오탐 로그아웃 방지. 세션이 실제로 없으면 다음 로드나 첫 API 401 에서 정리된다.
     if (didFreshLogin) return
-    // 🛡️ 2026-06-20 (iOS 근본수정): Bearer(user_token) 인증 유저는 쿠키 유무와 무관하게 인증됨 →
-    //   쿠키-only health 가 session:false 라도 wipe 금지(iOS 에서 ur_session 미유지 시 오탐 로그아웃 차단).
-    //   토큰이 실제 만료면 api.ts 의 401 경로가 정리한다(여기서 성급히 안 지움).
-    if (localStorage.getItem('user_token')) return
     const userType = localStorage.getItem('user_type')
     const userId = localStorage.getItem('user_id')
     if (userType === 'user' && userId) {
