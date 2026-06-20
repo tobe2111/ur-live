@@ -12,6 +12,7 @@ import { sign as jwtSign, verify as jwtVerify } from 'hono/jwt';
 import { KakaoAuthService } from '../services/KakaoAuthService';
 // 🛡️ 2026-05-01: FirebaseAuthService import 제거 — KR Kakao 흐름은 Firebase 0.
 import { createSessionCookie, clearSessionCookie } from '@/worker/utils/session';
+import { recordKakaoLoginDiag } from '@/worker/utils/kakao-login-diag';
 import { startDashboardSession } from '@/worker/utils/dashboard-session';
 import { encryptAtRest } from '@/worker/utils/data-crypto';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
@@ -389,6 +390,20 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
     return c.redirect(`/?error=env_missing&detail=KAKAO_REST_API_KEY`);
   }
 
+  // 🩺 2026-06-20: 카카오 로그인 진단 — iOS(Safari/WebKit) 수정 효과 확인 + 회귀 감지.
+  //   fail-soft fire-and-forget. 결과/브라우저/플래그만 기록(PII 미저장).
+  const diagUa = c.req.header('User-Agent');
+  let signedFallbackUsed = false;
+  const fireDiag = (outcome: 'success' | 'error', reason: string, isNew?: boolean) => {
+    try {
+      const p = recordKakaoLoginDiag(DB, {
+        outcome, reason, ua: diagUa,
+        hadStateCookie: !!stateCookie, signedFallback: signedFallbackUsed, isNew,
+      });
+      if (c.executionCtx) c.executionCtx.waitUntil(p); else void p;
+    } catch { /* 진단은 로그인에 영향 없음 */ }
+  };
+
   // Extract & verify OAuth state (CSRF protection) ─────────────
   const receivedState = c.req.query('state') || '';
   const cookieHeader = c.req.header('Cookie') || '';
@@ -413,10 +428,12 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       redirectTarget = signed.redirect;
       intent = signed.intent;
       stateMatched = true; // 서명 검증 = CSRF 통과 (JWT_SECRET 없이 위조 불가 + 30분 만료)
+      signedFallbackUsed = true; // 🩺 쿠키 유실 → 서명 fallback 으로 복구 (진단 플래그)
     } else if (receivedState) {
       // 🛡️ 2026-05-01: 쿠키도 없고 서명도 무효(레거시 opaque/만료) → 명시 에러.
       //   이전: receivedState (random UUID) 를 safeRedirect 통과시켜 silent '/' 로.
       c.header('Set-Cookie', clearStateCookieHeader());
+      fireDiag('error', 'oauth_state_expired');
       return c.redirect(`/?error=oauth_state_expired`);
     } else {
       redirectTarget = safeRedirect(receivedState);
@@ -443,6 +460,7 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
     if (stateCookie && !stateMatched) {
       if (import.meta.env.DEV) console.error('[Kakao Sync] OAuth state mismatch');
       c.header('Set-Cookie', clearStateCookieHeader());
+      fireDiag('error', 'oauth_state_mismatch');
       return c.redirect(`${redirectTarget}?error=oauth_state_mismatch`);
     }
     
@@ -528,6 +546,7 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       } catch (e) {
         if (import.meta.env.DEV) console.error('[Kakao Sync] Session cookie creation failed:', e);
         // 🛡️ 2026-06-01 하드닝: 원시 에러를 redirect URL 에 노출 금지 — 정적 코드만.
+        fireDiag('error', 'session_cookie_failed');
         return c.redirect(`${redirectTarget}?error=session_cookie_failed`, 302);
       }
 
@@ -641,6 +660,8 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       }
 
       const redirectUrl = stateUrl.pathname + stateUrl.search;
+      // 🩺 로그인 성공 기록 — 브라우저 종류 + (쿠키 경로 vs 서명 fallback) 가시화.
+      fireDiag('success', 'ok', !!userWithFlag.isNewUser);
       // 302 명시: Set-Cookie 헤더가 일부 브라우저에서 303에 무시되는 문제 회피
       return c.redirect(redirectUrl, 302);
 
@@ -648,6 +669,7 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       if (import.meta.env.DEV) console.error('[Kakao Sync] Service error:', serviceError);
       const errorMsg = (serviceError as Error).message || 'Unknown error';
       c.header('Set-Cookie', clearStateCookieHeader());
+      fireDiag('error', errorMsg.includes('Database') ? 'database_error' : 'kakao_auth_failed');
 
       // 🛡️ 2026-05-01: Firebase 분기 제거 (KR 미사용). Database 만 별도 처리.
       // 🛡️ 2026-06-01 하드닝: 원시 에러를 redirect URL 에 노출 금지 — 정적 코드만.
