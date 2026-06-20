@@ -114,7 +114,7 @@ export const cartPageTheme = {
 export const homePageTheme = {
   // 히어로 섹션
   hero: {
-    container: 'relative overflow-hidden bg-gradient-to-br from-purple-50 via-white to-yellow-50',
+    container: 'relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-50',
     title: tokens.typography.fontSizeResponsive.display + ' font-extrabold text-gray-900',
     subtitle: tokens.typography.fontSizeResponsive.heading + ' text-gray-600',
     cta: tokens.cn(
@@ -155,7 +155,7 @@ export const commonTheme = {
   header: {
     container: tokens.presets.header,
     logo: 'flex items-center space-x-3',
-    logoIcon: 'flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#FFD700] to-[#FFA500] shadow-lg',
+    logoIcon: 'flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#d1d5db] to-[#9ca3af] shadow-lg',
     navigation: 'hidden md:flex items-center space-x-8',
     navLink: tokens.typography.fontSize.base + ' font-medium text-gray-600 hover:text-gray-900 transition-colors',
   },
@@ -183,7 +183,7 @@ export const commonTheme = {
   // 로딩
   loading: {
     container: 'flex items-center justify-center py-8',
-    spinner: 'animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-[#FFD700]',
+    spinner: 'animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-[#d1d5db]',
     text: tokens.typography.fontSize.base + ' text-gray-600 mt-4',
   },
 

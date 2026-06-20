@@ -5,7 +5,7 @@
 /* 접근성: 키보드 포커스 스타일 */
 @layer utilities {
   *:focus-visible {
-    outline: 2px solid #3b82f6;
+    outline: 2px solid #6b7280;
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -921,7 +921,7 @@ html.dark .gbd {
 .animate-orderProofIn { animation: orderProofIn 300ms ease-out; }
 
 /* 🛡️ 2026-05-20: 사이드바 active gradient — Seller/Admin/Agency Layout 의 inline style 대체. */
-.ur-seller-nav-active { background: linear-gradient(to right, rgba(255, 0, 51, 0.15), transparent); }
+.ur-seller-nav-active { background: linear-gradient(to right, rgba(255, 255, 255, 0.10), transparent); }
 .ur-admin-nav-active  { background: linear-gradient(to right, rgba(252, 211, 77, 0.12), transparent); }
 .ur-agency-nav-active { background: linear-gradient(to right, rgba(139, 92, 246, 0.18), transparent); }
 

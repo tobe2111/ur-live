@@ -96,7 +96,7 @@ export default function UserProfilePage() {
     return (
       <div className="min-h-screen bg-white dark:bg-[#020202] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6b7280] mx-auto mb-4"></div>
           <p className="text-gray-500 dark:text-gray-400">{t('common.loading', { defaultValue: '로딩 중...' })}</p>
         </div>
       </div>
@@ -132,7 +132,7 @@ export default function UserProfilePage() {
 
       {/* v4 Hero Profile — 프로필 + 알림/설정 버튼 (상단 Large Title 바 제거) */}
       {/* 🏭 2026-06-05 (사용자 요청): 헤더 배경 은은한 그라데이션(라이트/다크 모두 자연스럽게). */}
-      <div className="bg-gradient-to-b from-pink-50 via-white to-white dark:from-[#171026] dark:via-[#0a0712] dark:to-[#020202]">
+      <div className="bg-gradient-to-b from-gray-50 via-white to-white dark:from-[#171026] dark:via-[#0a0712] dark:to-[#020202]">
       <div className="ur-content-medium px-4 lg:px-8 pt-5 pb-5">
         <div className="flex items-center gap-3">
           <img

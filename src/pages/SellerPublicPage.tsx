@@ -314,13 +314,13 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
       {/* 🎨 2026-06-17 링크샵 개선안(시안) 통일: 큐레이터 링크샵과 동일한 네이비 '✎ 편집 모드' 배너. theme-dual: 의도적 네이비 */}
       {ownerView && (
         <div className="sticky top-0 z-30 bg-[#141A2E] text-white px-3.5 py-2.5 text-[12.5px] font-semibold flex items-center justify-between gap-2">
-          <span className="flex items-center gap-2 min-w-0"><span className="text-[#FF5634] text-[14px] leading-none shrink-0">✎</span><span className="truncate">{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 사진·이름·소개를 눌러 바로 수정하세요' })}</span></span>
+          <span className="flex items-center gap-2 min-w-0"><span className="text-[#6b7280] text-[14px] leading-none shrink-0">✎</span><span className="truncate">{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 사진·이름·소개를 눌러 바로 수정하세요' })}</span></span>
           <div className="flex items-center gap-1.5 shrink-0">
             {/* 🏁 2026-06-18 (사용자 결정): 링크샵에서 바로 내 상품 등록 (대시보드 안 나감). */}
             <button
               type="button"
               onClick={() => setShowQuickAdd(true)}
-              className="px-2.5 py-1 bg-[#FF5634] hover:bg-[#e84a2b] rounded-lg text-[11px] font-bold whitespace-nowrap"
+              className="px-2.5 py-1 bg-[#6b7280] hover:bg-[#e84a2b] rounded-lg text-[11px] font-bold whitespace-nowrap"
             >
               + 상품 등록
             </button>

@@ -44,6 +44,15 @@ describe('Kakao signed OAuth state (쿠키 유실 fallback)', () => {
     expect(await verifySignedState(token, 'a-totally-different-secret')).toBeNull()
   })
 
+  // 🛡️ 2026-06-20 (하드닝): 콜백의 쿠키-불일치 분기도 이 verify 결과로 통과 여부 결정.
+  //   사파리 로그인 2번 탭/뒤로가기/동시 로그인 시 쿠키 stale(불일치)여도 서명 유효하면 통과.
+  it('쿠키 불일치 fallback 계약: 유효 서명은 쿠키 상태와 무관하게 복구', async () => {
+    const token = await signOauthState('/checkout', 'user', 'fresh-nonce', SECRET)
+    // 콜백은 stale 쿠키(다른 nonce)일 때도 이 verify 가 truthy 면 stateMatched=true 로 진행
+    const out = await verifySignedState(token, SECRET)
+    expect(out).toEqual({ redirect: '/checkout', intent: 'user' })
+  })
+
   it('변조된 토큰 → null', async () => {
     const token = await signOauthState('/', 'user', 'n', SECRET)
     const tampered = token.slice(0, -3) + 'xyz'

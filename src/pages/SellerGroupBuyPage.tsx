@@ -136,7 +136,7 @@ export default function SellerGroupBuyPage() {
           const totalCommission = Math.round(totalGross * safeNum(commissionRate))
           const totalNet = totalGross - totalCommission
           return (
-            <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl p-5 text-white">
+            <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-5 text-white">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-wider opacity-80">예상 정산</p>

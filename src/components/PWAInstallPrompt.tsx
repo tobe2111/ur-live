@@ -206,7 +206,7 @@ export default function PWAInstallPrompt() {
               <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
           </div>
-          <div className="bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-100 rounded-xl p-3 text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">
+          <div className="bg-gradient-to-br from-gray-50 to-gray-50 border border-pink-100 rounded-xl p-3 text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">
             {isIOSDevice ? (
               <>
                 <div className="flex items-center gap-1.5 mb-1.5">

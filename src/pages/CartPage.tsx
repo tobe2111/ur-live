@@ -511,7 +511,7 @@ function CartPageContent() {
 
                   {/* v4 Free shipping progress bar (pink) */}
                   {freeShipThreshold > 0 && remaining > 0 && (
-                    <div className="mx-4 mt-3 px-3 py-2.5 bg-[#FDF2F8] rounded-lg">
+                    <div className="mx-4 mt-3 px-3 py-2.5 bg-[#f9fafb] rounded-lg">
                       <p className="text-[12px] text-pink-600 font-medium mb-1.5">
                         {formatNumber(remaining)}원 더 담으면 무료배송!
                       </p>
@@ -524,7 +524,7 @@ function CartPageContent() {
                     </div>
                   )}
                   {freeShipThreshold > 0 && remaining <= 0 && (
-                    <div className="mx-4 mt-3 px-3 py-2 bg-[#FDF2F8] rounded-lg">
+                    <div className="mx-4 mt-3 px-3 py-2 bg-[#f9fafb] rounded-lg">
                       <p className="text-[12px] text-pink-600 font-semibold">{t('cart.freeShipping')}</p>
                     </div>
                   )}

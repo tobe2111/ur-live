@@ -92,7 +92,7 @@ export default function PaymentSection({
       {dealOnly && insufficientDeal && (
         <a
           href={`/points/charge?return=${encodeURIComponent('/checkout')}&amount=${Math.max(0, totalBeforeDeal - dealBalance)}`}
-          className="block w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold text-center mb-3"
+          className="block w-full py-3.5 rounded-2xl bg-gradient-to-r from-gray-800 to-gray-800 text-white text-sm font-bold text-center mb-3"
         >
           딜 잔액 부족 — {(totalBeforeDeal - dealBalance).toLocaleString()}딜 충전하기 →
         </a>
@@ -103,7 +103,7 @@ export default function PaymentSection({
         <button
           onClick={onPayWithDeals}
           disabled={payingWithDeals || !selectedAddressOk}
-          className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-red-500 text-white text-base font-bold disabled:opacity-40"
+          className="w-full py-4 rounded-2xl bg-gradient-to-r from-gray-800 to-gray-800 text-white text-base font-bold disabled:opacity-40"
         >
           {payingWithDeals ? t('payment.section.processing', { defaultValue: '처리 중...' }) : t('payment.section.payWithDeals', { defaultValue: '{{amount}}딜로 결제', amount: formatNumber(totalAmount) })}
         </button>

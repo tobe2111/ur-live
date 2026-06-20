@@ -30,9 +30,9 @@ export default function ReferralEarnedCard() {
   return (
     <Link
       to="/influencer"
-      className="block bg-gradient-to-br from-pink-500/[0.18] to-violet-500/[0.18] dark:from-pink-500/[0.15] dark:to-violet-500/[0.15]
+      className="block bg-gradient-to-br from-gray-800/[0.18] to-gray-800/[0.18] dark:from-gray-800/[0.15] dark:to-gray-800/[0.15]
                  border border-pink-300/40 dark:border-pink-500/30 rounded-2xl p-4 mb-3
-                 hover:from-pink-500/[0.25] hover:to-violet-500/[0.25] transition-all active:scale-[0.98]"
+                 hover:from-gray-800/[0.25] hover:to-gray-800/[0.25] transition-all active:scale-[0.98]"
     >
       <div className="flex items-center gap-3">
         <div className="w-11 h-11 rounded-full bg-pink-500/30 flex items-center justify-center text-2xl shrink-0">

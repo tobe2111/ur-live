@@ -48,7 +48,7 @@ describe('glass tokens', () => {
     expect(boutiqueCard.background).toContain('rgba(255,255,255')
     expect(boutiqueLabel.background).toContain('linear-gradient')
     expect(boutiqueCTA.background).toContain('#EF4444')
-    expect(boutiqueCTA.background).toContain('#EC4899')
+    expect(boutiqueCTA.background).toContain('#6b7280')
   })
 
   it('actionRail dark glass 명세', () => {

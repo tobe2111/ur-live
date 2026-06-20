@@ -50,7 +50,7 @@ export default function InfluencerRankingsPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-[#121212] pb-20">
       <SEO title="인플루언서 랭킹 - 유어딜" description="지역별 매출 Top 인플루언서 — 실시간 ranking" url="/influencer/rankings" />
 
-      <header className="sticky top-0 z-30 bg-gradient-to-r from-amber-400 to-orange-500 text-white px-4 py-4">
+      <header className="sticky top-0 z-30 bg-gradient-to-r from-gray-700 to-gray-800 text-white px-4 py-4">
         <div className="flex items-center gap-2">
           <Trophy className="w-6 h-6" />
           <h1 className="text-lg font-extrabold">인플루언서 랭킹</h1>

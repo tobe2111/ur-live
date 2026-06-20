@@ -1,12 +1,26 @@
 # 🚧 진행 중 작업
 
 ## ✅ 2026-06-20 — 내 지갑(/my-vouchers) 흑백 iOS-클린 리디자인 (Claude Design handoff, 대표 결정: 단일 페이지 톤 리파인 + 지갑 4페이지 잉크 통일)
-**배경**: 2026-06-20 대표 신고 "공구권 페이지 디자인이 심각해 … 너무 성의없어"의 후속으로 직접 모킹한 정식 리디자인 handoff(`478b54e2`). 시안 6화면(메인 공구권/지도/사용 모달/메인 교환권/빈 상태/설정). AskUserQuestion 결과 **스코프=단일 페이지(`MyVouchersPage`) 톤 리파인** + **액센트=지갑 4페이지 잉크 통일**. 지도/설정 전용 화면은 보류(현 토글·모달 유지). 시안 박제: `docs/design/my-vouchers-wallet-bw.md`(+`.dc.html`×2, 스크린샷).
+**배경**: 2026-06-20 대표 신고 "공구권 페이지 디자인이 심각해 … 너무 성의없어"의 후속으로 직접 모킹한 정식 리디자인 handoff(`478b54e2`). 시안 6화면(메인 공구권/지도/사용 모달/메인 교환권/빈 상태/설정). AskUserQuestion 결과 **스코프=단일 페이지(`MyVouchersPage`) 톤 리파인** + **액센트=지갑 4페이지 잉크 통일**. 지도/설정 전용 화면은 보류(현 토글·모달 유지). 시안 박제: `docs/design/my-vouchers-wallet-bw.md`(+`.dc.html`×2, 스크린샷). **병렬 세션의 main 흑백 전환(블랙앤화이트 #6b7280, 빨강만 유지)과 수렴 — 머지 시 지갑 토큰은 ink(#0A0A0A)+onAccent 채택(handoff 정합), 상태 점은 green(#16A34A, handoff 명시) 유지.**
 - **`walletTokens.ts`**: `accent` 핑크(#EC4899)→잉크(라이트 #0A0A0A / 다크 #FFFFFF), `accentSoft`/`accentGradient` 동반, **`onAccent` 신설**(필 위 텍스트색 — 다크 invert). blast radius = WishlistPage CTA 2개·스피너 + MyVouchersPage 스피너 (ListRow 등 atoms 는 dead/미사용).
 - **`WishlistPage.tsx`**: accentGradient CTA 2개 `text-white`→`tk.onAccent`(다크모드 흰 글자 안 보임 방지).
-- **`MyVouchersPage.tsx`**: 상태줄 🟢점+빨강 D-N("가장 가까운 만료") / 식사권 카드 코드 회색칩+복사아이콘 / **QR 모달**(🟢 pulse 실시간시계 + 🟢 체크 "이미 결제 완료" 안내 + "매장 안내" 칩 + 공유/구매취소 2버튼 그리드 + 7일 환불 안내) / 교환권(KtAlpha) amber→뉴트럴 / 전화 배너·등록모달 잉크 / 빈상태 1·2·3 원형 잉크 스텝+블랙 CTA.
+- **`MyVouchersPage.tsx`**: 상태줄 🟢점+빨강 D-N("가장 가까운 만료") / 식사권 카드 코드 회색칩+복사아이콘 / **QR 모달**(🟢 pulse 실시간시계 + 🟢 체크 "이미 결제 완료" 안내 + "매장 안내" 칩 + 공유/구매취소 2버튼 그리드 + 7일 환불 안내) / 교환권(KtAlpha) amber→뉴트럴 / 전화 배너·등록모달 잉크 / 빈상태 1·2·3 원형 잉크 스텝+블랙 CTA. (refunded 배지는 main 흑백 #6b7280 채택.)
 - **결제/환불/취소/폴링 로직 byte-identical** — `handleSelfCancel`·status 조건·api 호출 불변, 시각만. 🔒 잠금 보존: VoucherMap lazy / qrcode.react lazy / useMyVouchers / useInvalidateMyVouchers.
 - 검증: `npm run type-check`(0) · `check-theme-consistency.mjs`(0) · `npm run build`(client+ssr+worker+prepare, exit 0). i18n 신규키는 defaultValue 폴백(소비자 페이지 패턴, 기존 동일) — 추가 debt 0. 드래프트 PR #397.
+
+## ✅ 2026-06-20 (2차) — 카카오 로그인 "잠시 됐다 풀림" 근본수정: 소비자 user_token Bearer (대표 신고 "잠시 되다 안돼 / 둘 다 불안정")
+**증상(1차 수정 후)**: signed-state 로 OAuth *완료*는 됐는데(로그인 "잠시" 됨), iOS(사파리·카톡 인앱)에서 **곧 다시 로그아웃**. 크롬은 정상.
+- **근본 원인(아키텍처로 확정)**: 카카오 로그인은 `ur_session`(httpOnly·Lax) **쿠키 1개에만** 의존. iOS WebKit(사파리 ITP / 카톡 WKWebView)은 cross-site OAuth 왕복 후 이 쿠키를 **유실/비영속** 처리 → `/api/auth/session/health` 가 `session:false` → 클라(auth-callback-bootstrap + api.ts 401핸들러)가 로그인을 **wipe**. **이메일 로그인은 이미 `user_token`(localStorage Bearer)을 써서 이 문제가 없음** — 카카오만 미발급이 차이. (단일세션 enforcement 는 `deriveDashboardSeat`가 user→null 이라 무관함을 확인.)
+- **수정(기존 인프라 재사용 — 이메일 로그인과 동일 패턴)**: 카카오도 `user_token` 발급 → Bearer 인증으로 쿠키 유실과 무관하게 지속. 4부:
+  1. `kakao.routes.ts /sync/callback`: 소비자 `user_token`(JWT type=user, 30일) 발급 → `ur_pending_user_token` transfer 쿠키(JS-readable 60s, 셀러/에이전시 패턴과 동일).
+  2. `auth-callback-bootstrap.ts`: transfer 쿠키 → `localStorage.user_token` 이동 + health 핑에 `Authorization: Bearer` 동봉.
+  3. `auth.routes.ts /session/health`: 쿠키 없으면 **Bearer(user_token)도 세션 유효로 인정**(requireAuth 와 동일 우선순위) → 부당한 wipe 차단.
+  4. `auth.ts clearAuthData('user')`: `user_token`/`user_refresh_token` 정리 추가(로그아웃 후 Bearer 잔존 버그 동시수정 — 이메일 로그인에도 있던 잠재버그).
+- **효과**: iOS 가 `ur_session` 쿠키를 떨궈도 api.ts 인터셉터(line 322, 기존)가 `user_token` Bearer 자동 첨부 → requireAuth Bearer 우선 인증 → 401 없음 → wipe 없음. **쿠키는 그대로 유지(defense-in-depth), Bearer 는 ITP-immune 폴백.** 크롬/이메일 경로 불변(additive).
+- **보안**: 소비자 토큰은 저권한 + CSP(nonce/strict-dynamic) XSS 완화 + 대시보드도 이미 localStorage 토큰 사용(허용된 모델). 30일 만료 = 세션 쿠키와 동일.
+- 검증: tsc 0 · `npm run build`(client+worker+prepare) 0 · 전체 유닛 2170 pass · sql-bind/not-null 0.
+- ⚠️ **실기기 검증 권장**: iOS 사파리 + 카톡 인앱 로그인 → 새로고침/탭이동/앱 재진입에도 **로그인 유지** 확인. `/api/_internal/kakao-login-diag` 로 ios success 지속 확인.
+- **🔁 보강(PR #396, 같은 진단 기반 — 병렬 세션 수렴)**: 동일 진단(`had_state_cookie:1`·`signed_fallback:0`·iOS success 14/16·2~3분 16회 재시도)으로 같은 결론에 독립 도달. transfer 쿠키(`ur_pending_user_token`)는 **그 쿠키 자체도 cross-site 콜백 302 에서 set 되어 iOS 미유지 위험**이 있어, **URL fragment(`#ut=`) 전달을 추가**(fragment 는 어떤 쿠키 정책에도 안 걸려 항상 생존 — belt-and-suspenders). 또 `auth-callback-bootstrap` 의 **health-wipe 를 `user_token` 있으면 스킵**(health-Bearer 인정과 이중 방어) + `kakao-user-token` 단위테스트 + POST 콜백 응답에도 `user_token` 동봉. 클라는 fragment·transfer쿠키 **둘 중 먼저 오는 것**으로 localStorage.user_token 설정(중복 무해).
 
 ## ✅ 2026-06-20 — 카카오 로그인 iOS(Safari/WebKit) 실패 근본수정: signed-state fallback (대표 신고 "사파리/아이폰 안돼, 크롬은 돼")
 **증상**: 카카오 "3초 시작하기" 가 iOS(사파리 + 카카오톡 인앱 webview, 둘 다 WebKit)에서 실패, **크롬(Blink)은 정상**. → 서버/설정 문제 아님(그럼 크롬도 깨짐) = **WebKit 특유의 OAuth 왕복 쿠키 처리** 문제로 확정.

@@ -38,7 +38,7 @@ function buildReportHTML(opts: {
     ? ((opts.prevMonthRevenue - opts.prevPrevMonthRevenue) / opts.prevPrevMonthRevenue) * 100
     : 0;
   const growthSign = growth >= 0 ? '+' : '';
-  const growthColor = growth >= 0 ? '#10b981' : '#ef4444';
+  const growthColor = growth >= 0 ? '#6b7280' : '#ef4444';
 
   const tierLabel = opts.tier === 'senior' ? '골드' : opts.tier === 'junior' ? '실버' : '브론즈';
 
@@ -50,7 +50,7 @@ function buildReportHTML(opts: {
 </head>
 <body style="font-family: -apple-system, sans-serif; background: #f9fafb; padding: 24px; color: #111827;">
   <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%); padding: 32px; color: white;">
+    <div style="background: linear-gradient(135deg, #4b5563 0%, #6b7280 100%); padding: 32px; color: white;">
       <h1 style="margin: 0; font-size: 24px; font-weight: bold;">📊 ${opts.monthStr} 월간 리포트</h1>
       <p style="margin: 8px 0 0; opacity: 0.9;">${opts.agencyName} · 등급 ${tierLabel}</p>
     </div>
@@ -66,12 +66,12 @@ function buildReportHTML(opts: {
       <h2 style="font-size: 14px; color: #6b7280; margin: 24px 0 12px;">👥 셀러</h2>
       <table style="width: 100%; border-collapse: collapse;">
         <tr><td style="padding: 8px; color: #6b7280;">총 소속 셀러</td><td style="padding: 8px; text-align: right; font-weight: bold;">${opts.totalSellers}명</td></tr>
-        <tr><td style="padding: 8px; color: #6b7280;">활성 셀러 (1+ 라이브)</td><td style="padding: 8px; text-align: right; font-weight: bold; color: #10b981;">${opts.activeSellers}명</td></tr>
-        <tr><td style="padding: 8px; color: #6b7280;">신규 가입</td><td style="padding: 8px; text-align: right; font-weight: bold; color: #3b82f6;">+${opts.newSellers}명</td></tr>
-        <tr><td style="padding: 8px; color: #6b7280;">부진 셀러 (7일+ 미활동)</td><td style="padding: 8px; text-align: right; font-weight: bold; color: #f59e0b;">${opts.inactiveSellers}명</td></tr>
+        <tr><td style="padding: 8px; color: #6b7280;">활성 셀러 (1+ 라이브)</td><td style="padding: 8px; text-align: right; font-weight: bold; color: #6b7280;">${opts.activeSellers}명</td></tr>
+        <tr><td style="padding: 8px; color: #6b7280;">신규 가입</td><td style="padding: 8px; text-align: right; font-weight: bold; color: #374151;">+${opts.newSellers}명</td></tr>
+        <tr><td style="padding: 8px; color: #6b7280;">부진 셀러 (7일+ 미활동)</td><td style="padding: 8px; text-align: right; font-weight: bold; color: #9ca3af;">${opts.inactiveSellers}명</td></tr>
       </table>
 
-      <div style="margin-top: 24px; padding: 16px; background: #fef3c7; border-radius: 12px; font-size: 13px; color: #92400e;">
+      <div style="margin-top: 24px; padding: 16px; background: #f3f4f6; border-radius: 12px; font-size: 13px; color: #92400e;">
         💡 <strong>이번 달 추천 액션</strong><br>
         ${opts.inactiveSellers > 0 ? `· 부진 셀러 ${opts.inactiveSellers}명에게 메시지 발송 권장<br>` : ''}
         ${growth < 0 ? '· 매출 감소 — 캠페인 또는 부스터 이벤트 검토<br>' : ''}
@@ -80,7 +80,7 @@ function buildReportHTML(opts: {
       </div>
 
       <div style="margin-top: 24px; text-align: center;">
-        <a href="https://live.ur-team.com/agency" style="display: inline-block; padding: 12px 24px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">대시보드 열기 →</a>
+        <a href="https://live.ur-team.com/agency" style="display: inline-block; padding: 12px 24px; background: #4b5563; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">대시보드 열기 →</a>
       </div>
     </div>
     <div style="padding: 16px; background: #f9fafb; text-align: center; font-size: 11px; color: #9ca3af;">

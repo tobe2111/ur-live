@@ -115,7 +115,7 @@ export default function GiftClaimPage() {
   const canClaim = gift.status === 'paid'
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <SEO
         title={`${gift.sender_name}님이 선물을 보냈어요 - 유어딜`}
         description={`${gift.product_name} 선물을 확인해보세요`}

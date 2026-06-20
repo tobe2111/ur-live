@@ -99,7 +99,7 @@ export default function MyFollowsPage() {
                     {f.seller_avatar ? (
                       <img src={f.seller_avatar} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" loading="lazy" />
                     ) : (
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-300 to-rose-400 shrink-0" />
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-300 to-gray-700 shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{f.seller_name}</p>

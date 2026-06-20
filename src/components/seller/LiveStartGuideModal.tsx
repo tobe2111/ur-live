@@ -128,7 +128,7 @@ export default function LiveStartGuideModal({ open, onClose, onContinue }: Props
           </button>
           <button
             onClick={handleContinue}
-            className="flex-1 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-bold rounded-lg"
+            className="flex-1 px-4 py-2.5 bg-gradient-to-r from-gray-800 to-gray-800 hover:from-gray-900 hover:to-gray-900 text-white text-sm font-bold rounded-lg"
           >
             {t('seller.liveGuideStart', { defaultValue: '라이브 시작 →' })}
           </button>

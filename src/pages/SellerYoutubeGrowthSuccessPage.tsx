@@ -85,7 +85,7 @@ export default function SellerYoutubeGrowthSuccessPage() {
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('seller.paymentCompleted')}</h1>
         <p className="text-sm text-gray-500 mb-6">{t('seller.subscriberGrowthAfterReview')}</p>
-        <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-5 my-6">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-50 rounded-xl p-5 my-6">
           <div className="flex items-center justify-center gap-2 mb-2">
             <Youtube className="w-5 h-5 text-red-500" />
             <span className="text-sm text-gray-600">{t('seller.youtubeGrowth')}</span>

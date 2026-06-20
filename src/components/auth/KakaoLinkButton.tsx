@@ -155,7 +155,7 @@ export function KakaoLinkButton({ role }: Props) {
 
   // 미연동 상태
   return (
-    <div className="bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl p-4 space-y-3">
+    <div className="bg-gradient-to-br from-gray-50 to-gray-50 border border-yellow-200 rounded-xl p-4 space-y-3">
       <div className="flex items-start gap-2">
         <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-lg shrink-0">💬</div>
         <div className="flex-1 min-w-0">

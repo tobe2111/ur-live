@@ -64,7 +64,7 @@ export function FloatingActionBar({
         <button
           /* 🏭 2026-06-05 (사용자 요청): 주요 CTA 그라데이션 — 딜은 앰버, 일반은 브랜드 핑크→레드. */
           className="flex flex-col items-center justify-center h-12 flex-1 rounded-xl transition-all active:scale-[0.98] disabled:opacity-40"
-          style={{ background: dealOnly ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 'linear-gradient(135deg, #ec4899, #f43f5e)' }}
+          style={{ background: dealOnly ? 'linear-gradient(135deg, #9ca3af, #6b7280)' : 'linear-gradient(135deg, #6b7280, #6b7280)' }}
           onClick={onBuyNow}
           disabled={disabled}
         >

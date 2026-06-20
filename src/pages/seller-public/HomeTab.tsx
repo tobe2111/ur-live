@@ -59,7 +59,7 @@ export default function HomeTab({
                         className="w-full h-full object-cover"
                       />
                     )}
-                    {disc > 0 && <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md bg-[#141A2E]/90 text-[#FF7A5C] text-[11px] font-extrabold backdrop-blur">{disc}%</span>}
+                    {disc > 0 && <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md bg-[#141A2E]/90 text-[#9ca3af] text-[11px] font-extrabold backdrop-blur">{disc}%</span>}
                     {isAchieved && <span className="absolute top-1.5 right-1.5 bg-[#0E9F6E] text-white text-[9px] font-bold px-1.5 py-0.5 rounded">{t('seller.publicPage.achieved')}</span>}
                   </div>
                   <div className="mt-2">
@@ -76,10 +76,10 @@ export default function HomeTab({
                     </div>
                     {(p.group_buy_target ?? 0) > 0 && (
                       <div className="mt-1.5">
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5"><div className="h-full bg-[#FF5634] rounded-full transition-all" style={{ width: `${progress}%` }} /></div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5"><div className="h-full bg-[#6b7280] rounded-full transition-all" style={{ width: `${progress}%` }} /></div>
                         <div className="flex items-center justify-between mt-0.5">
                           <p className="text-[9px] text-gray-400">{p.group_buy_current || 0}/{p.group_buy_target}명</p>
-                          {!isAchieved && <p className="text-[9px] text-[#FF5634] font-medium">{t('seller.publicPage.joinGroupBuy')}</p>}
+                          {!isAchieved && <p className="text-[9px] text-[#6b7280] font-medium">{t('seller.publicPage.joinGroupBuy')}</p>}
                         </div>
                       </div>
                     )}

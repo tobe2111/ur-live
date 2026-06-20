@@ -103,7 +103,7 @@ export default function SEO({
       <meta name="twitter:image:alt" content={isWholesale ? `${siteName} B2B 도매몰` : `${siteName} 라이브 커머스`} />
 
       {/* Theme color (모바일 status bar) */}
-      <meta name="theme-color" content={isWholesale ? '#FF0033' : '#020202'} />
+      <meta name="theme-color" content={isWholesale ? '#0A0A0A' : '#020202'} />
       <meta name="apple-mobile-web-app-capable" content="yes" />
       <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       <meta name="apple-mobile-web-app-title" content={siteName} />

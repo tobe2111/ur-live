@@ -110,7 +110,7 @@ export default function VoucherVerifyPage() {
       <div className="w-full max-w-sm lg:max-w-md">
         {/* 로고 */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center">
+          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
             <Ticket className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-xl font-extrabold text-gray-900 dark:text-white">{t('voucher.verify.title')}</h1>
@@ -148,7 +148,7 @@ export default function VoucherVerifyPage() {
             <button
               onClick={lookupVoucher}
               disabled={!code.trim() || loading}
-              className="w-full mt-4 py-3.5 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold rounded-xl disabled:opacity-40 active:scale-[0.98]"
+              className="w-full mt-4 py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white font-bold rounded-xl disabled:opacity-40 active:scale-[0.98]"
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('voucher.verify.lookup')}
             </button>
@@ -188,7 +188,7 @@ export default function VoucherVerifyPage() {
                 <button
                   onClick={useVoucherAsSeller}
                   disabled={verifying}
-                  className="w-full py-4 bg-gradient-to-r from-emerald-500 to-green-500 text-white font-extrabold rounded-xl text-base disabled:opacity-40"
+                  className="w-full py-4 bg-gradient-to-r from-gray-800 to-gray-800 text-white font-extrabold rounded-xl text-base disabled:opacity-40"
                 >
                   {verifying ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `✅ "${voucher.product_name}" 제공 (사용 처리)`}
                 </button>
@@ -211,7 +211,7 @@ export default function VoucherVerifyPage() {
             <button
               onClick={useVoucher}
               disabled={!pin.trim() || verifying}
-              className="w-full mt-4 py-3.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl disabled:opacity-40 active:scale-[0.98]"
+              className="w-full mt-4 py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white font-bold rounded-xl disabled:opacity-40 active:scale-[0.98]"
             >
               {verifying ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('voucher.verify.confirm')}
             </button>

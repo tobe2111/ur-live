@@ -8,7 +8,7 @@
  */
 import { useEffect, useState } from 'react'
 
-const COLORS = ['#EC4899', '#F43F5E', '#F59E0B', '#10B981', '#3B82F6', '#A855F7']
+const COLORS = ['#6b7280', '#6b7280', '#9ca3af', '#6b7280', '#374151', '#4b5563']
 const PIECES = 60
 
 export default function Confetti({ onDone }: { onDone?: () => void }) {

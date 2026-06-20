@@ -68,7 +68,7 @@ export default function RevenueTrendChart() {
                 style={{
                   height: '100%',
                   background: b.revenue > 0
-                    ? 'linear-gradient(180deg, #8B5CF6 0%, #6D28D9 100%)'
+                    ? 'linear-gradient(180deg, #4b5563 0%, #1f2937 100%)'
                     : '#E5E7EB',
                 }}
               />

@@ -833,7 +833,7 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
     <span className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide"
       style={{
         background: v.status === 'used' ? 'rgba(0,0,0,0.06)' : v.status === 'expired' ? 'rgba(239,68,68,0.10)' : 'rgba(245,158,11,0.12)',
-        color: v.status === 'used' ? '#6B7280' : v.status === 'expired' ? '#DC2626' : '#D97706',
+        color: v.status === 'used' ? '#6B7280' : v.status === 'expired' ? '#DC2626' : '#6b7280',
       }}>
       {t(`voucher.status.${v.status}`)}
     </span>
@@ -948,7 +948,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
     <span className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide"
       style={{
         background: v.status === 'used' ? 'rgba(0,0,0,0.06)' : v.status === 'expired' ? 'rgba(239,68,68,0.10)' : 'rgba(245,158,11,0.12)',
-        color: v.status === 'used' ? '#6B7280' : v.status === 'expired' ? '#DC2626' : '#D97706',
+        color: v.status === 'used' ? '#6B7280' : v.status === 'expired' ? '#DC2626' : '#6b7280',
       }}>
       {t(`voucher.status.${v.status}`)}
     </span>

@@ -47,7 +47,7 @@ export default function KakaoCallbackPage() {
 
         if (!res.data.success) throw new Error(res.data.error || '로그인 실패')
 
-        const { user, seller_token, agency_token, agency_refresh_token, seller, agency } = res.data.data
+        const { user, user_token, seller_token, agency_token, agency_refresh_token, seller, agency } = res.data.data
 
         // 🏭 2026-06-05 [UNLOCK_LOADING] (사용자 신고 — 마이=정지원 / 링크샵=디스크프리 계정 중첩 영구수정):
         //   다른 카카오 계정(user.id 변경)으로 로그인하면, 이전 계정의 seller/agency/링크샵 캐시 키가
@@ -80,6 +80,9 @@ export default function KakaoCallbackPage() {
         localStorage.setItem('session_login', 'true')
         if (user.email) localStorage.setItem('user_email', user.email)
         if (user.profile_image) localStorage.setItem('user_profile_image', user.profile_image)
+        // 🛡️ 2026-06-20 (iOS 근본수정): user_token(Bearer) 저장 → api.ts 가 Authorization: Bearer 전송 →
+        //   iOS Safari/WebKit 에서 ur_session 쿠키 미유지 시에도 인증 동작(쿠키와 병행).
+        if (user_token) localStorage.setItem('user_token', user_token)
 
         // ── 카카오 계정에 연결된 셀러/에이전시 권한 자동 복원 ──
         // (백엔드가 linked_user_id 기반으로 JWT 를 이미 발급해서 보내줌)

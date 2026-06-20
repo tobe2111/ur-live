@@ -57,7 +57,7 @@ function NavBtn({ item, isActive, onClick }: { item: NavItem; isActive: boolean;
       className={`flex items-center xl:gap-2.5 w-full xl:px-3 py-2 xl:rounded-lg text-left transition-colors text-[13px] font-medium
         md:justify-center md:h-12 md:rounded-none md:border-l-2 xl:justify-start xl:h-auto xl:border-l-0 xl:rounded-lg
         ${isActive
-          ? 'md:border-l-red-500 md:bg-red-500/[0.08] xl:border-l-transparent xl:bg-pink-50 xl:dark:bg-pink-500/10 text-pink-600 dark:text-pink-400'
+          ? 'md:border-l-gray-500 md:bg-gray-100 dark:md:bg-white/10 xl:border-l-transparent xl:bg-gray-100 dark:xl:bg-white/10 text-gray-900 dark:text-white'
           : 'border-l-transparent text-gray-600 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-white'
         }`}
     >
@@ -87,7 +87,7 @@ export default function DesktopLiveSidebar() {
     >
       {/* 로고 — xl: 풀 로고, md~xl: 'U' 아이콘. sticky 로 사이드바 스크롤 시 항상 표시 */}
       <Link to="/" className="sticky top-0 z-10 bg-white dark:bg-[#0A0A0A] flex items-center justify-center xl:justify-start xl:px-4 h-14 shrink-0">
-        <span className="xl:hidden text-[18px] font-black text-red-500 select-none">U</span>
+        <span className="xl:hidden text-[18px] font-black text-gray-900 dark:text-white select-none">U</span>
         <span className="hidden xl:block"><UrDealLogo size={20} /></span>
       </Link>
 

@@ -77,7 +77,7 @@ export default function RegularBadge({ sellerId, className = '', variant = 'pill
         className={`w-full py-3 rounded-xl text-sm font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
           isRegular
             ? 'bg-pink-50 text-pink-600 border border-pink-200'
-            : 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md'
+            : 'bg-gradient-to-r from-gray-800 to-gray-800 text-white shadow-md'
         } ${className}`}
       >
         {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> :

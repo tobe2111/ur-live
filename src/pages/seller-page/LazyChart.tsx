@@ -16,8 +16,8 @@ const LazyChart = lazy(() => import('recharts').then(m => ({
           <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} stroke="#9ca3af" />
           <Tooltip />
           <Legend />
-          <Line yAxisId="left" type="monotone" dataKey="sales" name={salesLabel || 'Sales'} stroke="#3b82f6" strokeWidth={2} dot={false} />
-          <Line yAxisId="right" type="monotone" dataKey="orders" name={ordersLabel || 'Orders'} stroke="#f97316" strokeWidth={2} dot={false} />
+          <Line yAxisId="left" type="monotone" dataKey="sales" name={salesLabel || 'Sales'} stroke="#374151" strokeWidth={2} dot={false} />
+          <Line yAxisId="right" type="monotone" dataKey="orders" name={ordersLabel || 'Orders'} stroke="#6b7280" strokeWidth={2} dot={false} />
         </LineChart>
       </ResponsiveContainer>
     )

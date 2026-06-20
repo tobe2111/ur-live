@@ -168,7 +168,7 @@ export default function BlogDetailPage() {
         </div>
 
         {/* CTA */}
-        <div className="mt-12 bg-gradient-to-r from-pink-50 to-orange-50 dark:from-pink-900/20 dark:to-orange-900/20 rounded-2xl p-6 text-center">
+        <div className="mt-12 bg-gradient-to-r from-gray-50 to-gray-50 dark:from-gray-900/20 dark:to-gray-900/20 rounded-2xl p-6 text-center">
           <p className="text-lg font-bold text-gray-900 dark:text-white mb-2">유어딜에서 시작하세요</p>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">라이브 커머스의 새로운 기준, 수수료 5%</p>
           <div className="flex gap-3 justify-center">

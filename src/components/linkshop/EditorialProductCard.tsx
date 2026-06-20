@@ -85,7 +85,7 @@ export default function EditorialProductCard({
       style={{ backgroundColor: grad.base }}
     >
       {rank != null && (
-        <span className={`absolute top-0 left-0 z-10 px-1.5 bg-[#FF5634] text-white font-extrabold flex items-center justify-center rounded-br-[11px] ${hero ? 'min-w-[2rem] h-8 text-[17px]' : 'min-w-[1.5rem] h-6 text-[13px]'}`}>
+        <span className={`absolute top-0 left-0 z-10 px-1.5 bg-[#6b7280] text-white font-extrabold flex items-center justify-center rounded-br-[11px] ${hero ? 'min-w-[2rem] h-8 text-[17px]' : 'min-w-[1.5rem] h-6 text-[13px]'}`}>
           {rank}
         </span>
       )}
@@ -115,13 +115,13 @@ export default function EditorialProductCard({
       )}
       {hero ? (
         <div className="absolute bottom-2.5 left-2.5 z-10 flex items-baseline gap-1.5 px-2.5 py-1 rounded-[10px] bg-[#141A2E]/92 backdrop-blur">
-          {discountPct > 0 && <span className="text-[17px] font-extrabold text-[#FF7A5C]">{discountPct}%</span>}
+          {discountPct > 0 && <span className="text-[17px] font-extrabold text-[#9ca3af]">{discountPct}%</span>}
           {hasDeal && <span className="text-[11px] line-through text-white/50">{(product.original_price as number).toLocaleString('ko-KR')}</span>}
           <span className="text-[14px] font-extrabold text-white">{won(product.price)}</span>
         </div>
       ) : (
         discountPct > 0 && (
-          <span className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-md bg-[#141A2E]/90 text-[#FF7A5C] text-[12px] font-extrabold backdrop-blur">
+          <span className="absolute bottom-2 left-2 z-10 px-2 py-0.5 rounded-md bg-[#141A2E]/90 text-[#9ca3af] text-[12px] font-extrabold backdrop-blur">
             {discountPct}%
           </span>
         )
@@ -131,7 +131,7 @@ export default function EditorialProductCard({
 
   const body = hero ? (
     <div className="p-3.5">
-      <span className="text-[11px] font-extrabold tracking-[0.14em] text-[#FF5634]">강력 추천 · {heroCatLabel || '상품'}</span>
+      <span className="text-[11px] font-extrabold tracking-[0.14em] text-[#6b7280]">강력 추천 · {heroCatLabel || '상품'}</span>
       <div className="mt-1.5 flex items-start justify-between gap-2.5">
         <p className={`text-[16px] font-bold leading-snug line-clamp-2 ${txt}`}>{product.name}</p>
         {savings > 0 && (
@@ -139,7 +139,7 @@ export default function EditorialProductCard({
         )}
       </div>
       {note && (
-        <div className="mt-3 pl-3 border-l-[2.5px] border-[#FF5634]">
+        <div className="mt-3 pl-3 border-l-[2.5px] border-[#6b7280]">
           <p className="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300">“{note}”</p>
           {(curatorName || curatorAvatar) && (
             <div className="mt-2 flex items-center gap-1.5">
@@ -167,7 +167,7 @@ export default function EditorialProductCard({
       {showStats && (
         <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
           <span className="inline-flex items-center gap-0.5">
-            <span style={{ color: '#facc15' }}>★</span>
+            <span style={{ color: '#d1d5db' }}>★</span>
             {Number(product.avg_rating) > 0
               ? <span className="font-bold">{Number(product.avg_rating).toFixed(1)}</span>
               : <span className="font-semibold">신규</span>}
@@ -177,7 +177,7 @@ export default function EditorialProductCard({
         </div>
       )}
       {note && (
-        <div className="mt-2 pl-2 border-l-2 border-[#FF5634]">
+        <div className="mt-2 pl-2 border-l-2 border-[#6b7280]">
           <p className="text-[11.5px] leading-snug line-clamp-2 text-gray-700 dark:text-gray-300">{note}</p>
         </div>
       )}

@@ -287,7 +287,7 @@ export default function CuratorPage() {
           <div className="max-w-3xl mx-auto px-4 pt-3">
             <div className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-[#1F1F1F] bg-gray-50 dark:bg-[#0E0E0E] px-2.5 py-1.5">
               <span className="flex items-center gap-1.5 mr-auto pl-1 text-[12px] font-bold text-gray-500 dark:text-gray-400">
-                <span className="text-[#FF5634] text-[13px] leading-none">✎</span>
+                <span className="text-[#6b7280] text-[13px] leading-none">✎</span>
                 편집 모드
                 <span className="hidden sm:inline font-medium text-gray-400 dark:text-gray-500">· 눌러서 바로 수정</span>
               </span>
@@ -446,7 +446,7 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted }: { pins: CuratorPin[]; 
       {isOwner && (
         <Link
           to="/browse"
-          className="col-span-2 sm:col-span-3 flex items-center justify-center gap-2 h-[52px] rounded-xl border-[1.5px] border-dashed border-[#FFB59E] bg-[#FFF6F3] dark:bg-[#1A1410] text-[#FF5634] text-sm font-bold active:scale-[0.99] transition-transform"
+          className="col-span-2 sm:col-span-3 flex items-center justify-center gap-2 h-[52px] rounded-xl border-[1.5px] border-dashed border-[#FFB59E] bg-[#f9fafb] dark:bg-[#1A1410] text-[#6b7280] text-sm font-bold active:scale-[0.99] transition-transform"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
           핀 추가하기
@@ -598,7 +598,7 @@ function PinManageList({ pins, onReorder, onDeleted }: { pins: CuratorPin[]; onR
             <div
               key={pin.id}
               data-pinrow
-              className={`flex items-center gap-3 rounded-2xl border p-2.5 bg-white dark:bg-[#121212] ${dragging ? 'border-[#FF5634] shadow-lg' : 'border-gray-200 dark:border-[#2A2A2A]'}`}
+              className={`flex items-center gap-3 rounded-2xl border p-2.5 bg-white dark:bg-[#121212] ${dragging ? 'border-[#6b7280] shadow-lg' : 'border-gray-200 dark:border-[#2A2A2A]'}`}
               style={{ opacity: dragging ? 0.92 : 1 }}
             >
               <span
@@ -613,11 +613,11 @@ function PinManageList({ pins, onReorder, onDeleted }: { pins: CuratorPin[]; onR
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[13px] font-bold text-gray-900 dark:text-white truncate">{pin.product_name}</span>
-                  {idx === 0 && <span className="shrink-0 text-[9.5px] font-extrabold text-[#FF5634] bg-[#FFEDE8] dark:bg-[#2a1812] px-1.5 py-0.5 rounded">강추</span>}
+                  {idx === 0 && <span className="shrink-0 text-[9.5px] font-extrabold text-[#6b7280] bg-[#FFEDE8] dark:bg-[#2a1812] px-1.5 py-0.5 rounded">강추</span>}
                 </div>
                 {pin.note
                   ? <div className="text-[11.5px] text-gray-500 dark:text-gray-400 mt-1">조회 {fmtK(pin.click_count || 0)}{est > 0 ? ` · 적립 ₩${est.toLocaleString('ko-KR')}/건` : ''}</div>
-                  : <div className="text-[11.5px] font-semibold text-[#C2491F] dark:text-[#FF9576] mt-1">추천 코멘트 없음 · 추가하면 전환 ↑</div>}
+                  : <div className="text-[11.5px] font-semibold text-[#C2491F] dark:text-[#9ca3af] mt-1">추천 코멘트 없음 · 추가하면 전환 ↑</div>}
               </div>
               <button onClick={() => del(pin.id)} aria-label="삭제" className="shrink-0 w-[30px] h-[30px] rounded-lg bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors text-sm font-bold">✕</button>
             </div>
@@ -652,13 +652,13 @@ function EmptyLinkshop({ handle, isOwner, emptyType, curatorName }: { handle: st
   return (
     <div className="max-w-3xl mx-auto px-4 pt-4">
       {/* 온보딩 진행 카드 (시안) */}
-      <div className="mb-3 rounded-2xl border border-[#FFE0D6] dark:border-[#3a2218] bg-[#FFF6F3] dark:bg-[#1A1410] px-4 py-3.5">
+      <div className="mb-3 rounded-2xl border border-[#FFE0D6] dark:border-[#3a2218] bg-[#f9fafb] dark:bg-[#1A1410] px-4 py-3.5">
         <div className="flex items-center justify-between">
-          <span className="text-[13px] font-extrabold text-[#B4422A] dark:text-[#FF9576]">링크샵 완성까지 {3 - doneCount}단계</span>
-          <span className="text-[12px] font-bold text-[#B4422A] dark:text-[#FF9576]">{doneCount}/3</span>
+          <span className="text-[13px] font-extrabold text-[#B4422A] dark:text-[#9ca3af]">링크샵 완성까지 {3 - doneCount}단계</span>
+          <span className="text-[12px] font-bold text-[#B4422A] dark:text-[#9ca3af]">{doneCount}/3</span>
         </div>
         <div className="mt-2.5 h-[7px] rounded-full bg-[#FFE0D6] dark:bg-[#3a2218] overflow-hidden">
-          <div className="h-full rounded-full bg-[#FF5634] transition-all" style={{ width: `${Math.round((doneCount / 3) * 100)}%` }} />
+          <div className="h-full rounded-full bg-[#6b7280] transition-all" style={{ width: `${Math.round((doneCount / 3) * 100)}%` }} />
         </div>
         <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-[#7A4232] dark:text-[#c79a87]">
           <span className={nameDone ? '' : 'font-bold text-[#141A2E] dark:text-white'}>{nameDone ? '✓' : '○'} 이름 설정</span>
@@ -675,18 +675,18 @@ function EmptyLinkshop({ handle, isOwner, emptyType, curatorName }: { handle: st
           {[1, 2, 3, 4].map((n) => (
             <div key={n} className="rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212]">
               <div className="aspect-[3/2] relative bg-gray-200 dark:bg-[#1A1A1A]">
-                <span className="absolute top-0 left-0 min-w-[1.5rem] h-6 px-1.5 bg-[#FF5634] text-white text-[13px] font-extrabold flex items-center justify-center rounded-br-[11px]">{n}</span>
+                <span className="absolute top-0 left-0 min-w-[1.5rem] h-6 px-1.5 bg-[#6b7280] text-white text-[13px] font-extrabold flex items-center justify-center rounded-br-[11px]">{n}</span>
               </div>
               <div className="p-2.5">
                 <div className="h-3 w-4/5 rounded bg-gray-200 dark:bg-[#1A1A1A]" />
                 <div className="h-3.5 w-1/2 rounded bg-gray-200 dark:bg-[#1A1A1A] mt-2" />
-                <div className="mt-2 pl-2 border-l-2 border-[#FF5634]"><div className="h-2.5 w-11/12 rounded bg-gray-100 dark:bg-[#161616]" /></div>
+                <div className="mt-2 pl-2 border-l-2 border-[#6b7280]"><div className="h-2.5 w-11/12 rounded bg-gray-100 dark:bg-[#161616]" /></div>
               </div>
             </div>
           ))}
         </div>
         <div className="absolute inset-x-0 bottom-0 flex flex-col items-center text-center px-6 pb-1">
-          <div className="w-14 h-14 rounded-2xl bg-[#FF5634] flex items-center justify-center text-white" style={{ boxShadow: '0 10px 24px -8px rgba(255,86,52,.6)' }}>
+          <div className="w-14 h-14 rounded-2xl bg-[#6b7280] flex items-center justify-center text-white" style={{ boxShadow: '0 10px 24px -8px rgba(255,86,52,.6)' }}>
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4h12v16l-6-4-6 4V4Z" /></svg>
           </div>
           <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white mt-3">{t('curator.emptyOwnerTitle', { defaultValue: '첫 핀을 추가해 보세요' })}</h2>

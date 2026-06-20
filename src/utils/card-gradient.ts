@@ -42,7 +42,7 @@ function build(r: number, g: number, b: number): CardGradient {
     imageFade: `linear-gradient(to bottom, rgba(${r}, ${g}, ${b}, 0) 0%, rgba(${r}, ${g}, ${b}, 0.6) 55%, rgb(${r}, ${g}, ${b}) 100%)`,
     text: isLight ? '#1a1a1a' : '#ffffff',
     sub: isLight ? 'rgba(0,0,0,0.58)' : 'rgba(255,255,255,0.70)',
-    accent: isLight ? '#e11d48' : '#ff6b6b',
+    accent: isLight ? '#4b5563' : '#ff6b6b',
     isLight,
   }
 }

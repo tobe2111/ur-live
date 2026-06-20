@@ -64,7 +64,7 @@ export default function ProfileHeader({
   const showBanner = !!(bannerPreview || normBanner)
   const bannerBg = seller.brand_color
     ? `linear-gradient(160deg, ${seller.brand_color}, #111)`
-    : 'linear-gradient(135deg, #FF6A00 0%, #FF8A3D 42%, #1A1A1A 130%)'
+    : 'linear-gradient(135deg, #6b7280 0%, #FF8A3D 42%, #1A1A1A 130%)'
   const pageBg = isDark ? '#020202' : '#ffffff'
 
   async function handleBannerUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -157,7 +157,7 @@ export default function ProfileHeader({
               {seller.profile_image ? (
                 <img src={cfImage(seller.profile_image, { width: 160, format: 'auto' }) || seller.profile_image} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
+                <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-700 flex items-center justify-center">
                   <span className="text-2xl font-bold text-white">{(seller.name || '?').charAt(0)}</span>
                 </div>
               )}

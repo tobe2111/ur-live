@@ -67,7 +67,7 @@ export function ShareBanner({ title, description, link, buttonText, className }:
   if (dismissed) return null
 
   return (
-    <div className={`bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200 dark:border-yellow-800/40 rounded-xl p-4 ${className || ''}`}>
+    <div className={`bg-gradient-to-r from-gray-50 to-gray-50 dark:from-gray-900/20 dark:to-gray-900/20 border border-yellow-200 dark:border-yellow-800/40 rounded-xl p-4 ${className || ''}`}>
       <div className="flex items-center justify-between mb-2">
         <p className="text-sm font-bold text-gray-900 dark:text-white">{title}</p>
         <button onClick={() => setDismissed(true)} aria-label={t('common.close')} className="text-gray-400 dark:text-gray-500"><X className="w-4 h-4" /></button>

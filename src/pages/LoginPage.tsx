@@ -264,8 +264,8 @@ export default function LoginPage() {
 
       {/* 은은한 에메랄드→틸 그라데이션 포인트 (장식 — 본문 가독성 영향 없음) */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-28 -left-28 w-[380px] h-[380px] rounded-full bg-gradient-to-br from-emerald-400/15 to-teal-400/5 dark:from-emerald-500/10 dark:to-teal-500/[0.04] blur-3xl" />
-        <div className="absolute -bottom-32 -right-28 w-[420px] h-[420px] rounded-full bg-gradient-to-tr from-teal-400/10 to-emerald-300/5 dark:from-teal-500/[0.08] dark:to-emerald-400/[0.03] blur-3xl" />
+        <div className="absolute -top-28 -left-28 w-[380px] h-[380px] rounded-full bg-gradient-to-br from-gray-700/15 to-gray-700/5 dark:from-gray-800/10 dark:to-gray-800/[0.04] blur-3xl" />
+        <div className="absolute -bottom-32 -right-28 w-[420px] h-[420px] rounded-full bg-gradient-to-tr from-gray-700/10 to-gray-300/5 dark:from-gray-800/[0.08] dark:to-gray-700/[0.03] blur-3xl" />
       </div>
 
       {/* 🛡️ 2026-05-14: 태블릿/PC 에서 form 너비 자연스럽게 — 모바일 360px / 태블릿+ 420px */}

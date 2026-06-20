@@ -44,8 +44,8 @@ export function CombinedTimelineChart({
         <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} width={40} />
         <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        <Line type="monotone" dataKey="chat" stroke="#F97316" strokeWidth={2} name={chatName} dot={false} />
-        <Line type="monotone" dataKey="orders" stroke="#10B981" strokeWidth={2} name={ordersName} dot={false} />
+        <Line type="monotone" dataKey="chat" stroke="#6b7280" strokeWidth={2} name={chatName} dot={false} />
+        <Line type="monotone" dataKey="orders" stroke="#6b7280" strokeWidth={2} name={ordersName} dot={false} />
       </LineChart>
     </ResponsiveContainer>
   )
@@ -65,7 +65,7 @@ export function ChatBarChart({
         <XAxis dataKey="minute" tick={{ fontSize: 10, fill: '#9CA3AF' }} />
         <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} width={35} />
         <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }} />
-        <Bar dataKey="count" fill="#F97316" radius={[4, 4, 0, 0]} name={chatCountLabel} />
+        <Bar dataKey="count" fill="#6b7280" radius={[4, 4, 0, 0]} name={chatCountLabel} />
       </BarChart>
     </ResponsiveContainer>
   )
@@ -89,8 +89,8 @@ export function OrderRevenueChart({
         <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: '#9CA3AF' }} width={60} />
         <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #E5E7EB' }} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        <Bar yAxisId="left" dataKey="order_count" fill="#10B981" radius={[4, 4, 0, 0]} name={orderCountLabel} />
-        <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#2563EB" strokeWidth={2} name={salesLabel} dot={false} />
+        <Bar yAxisId="left" dataKey="order_count" fill="#6b7280" radius={[4, 4, 0, 0]} name={orderCountLabel} />
+        <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#1f2937" strokeWidth={2} name={salesLabel} dot={false} />
       </BarChart>
     </ResponsiveContainer>
   )

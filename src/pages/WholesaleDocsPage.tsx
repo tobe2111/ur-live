@@ -10,7 +10,7 @@ import { useWholesaleBack } from '@/hooks/useWholesaleBack'
 // 🏭 Wave 3c: 거래단위 자동 전자세금계산서(매출) 상태 라벨.
 const TAX_STATUS_LABEL: Record<string, { t: string; c: string; bg: string }> = {
   issued: { t: '발행완료', c: '#11875A', bg: '#EAF6EF' },
-  draft: { t: '발행대기', c: '#9A6B00', bg: '#FFF6E6' },
+  draft: { t: '발행대기', c: '#9A6B00', bg: '#f9fafb' },
   failed: { t: '발행실패', c: '#D63A4E', bg: '#FDECEF' },
 }
 
@@ -20,7 +20,7 @@ const TAX_STATUS_LABEL: Record<string, { t: string; c: string; bg: string }> = {
 const DOC_LABEL: Record<string, string> = { tax_invoice: '세금계산서', transaction_statement: '거래명세서' }
 const STATUS_LABEL: Record<string, { t: string; c: string; bg: string }> = {
   issued: { t: '발행완료', c: '#11875A', bg: '#EAF6EF' },
-  draft: { t: '임시', c: '#9A6B00', bg: '#FFF6E6' },
+  draft: { t: '임시', c: '#9A6B00', bg: '#f9fafb' },
   void: { t: '취소', c: '#D63A4E', bg: '#FDECEF' },
 }
 

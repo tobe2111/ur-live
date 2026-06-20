@@ -48,7 +48,7 @@ export function TopNav({ viewers, sellerLinks }: {
             <a
               href={sellerLinks.instagram}
               target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/80 to-pink-500/80 backdrop-blur-sm hover:from-purple-500 hover:to-pink-500 transition-all active:scale-95"
+              className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-gray-800/80 to-gray-800/80 backdrop-blur-sm hover:from-gray-800 hover:to-gray-800 transition-all active:scale-95"
               aria-label="Instagram"
             >
               <InstagramIcon className="h-4 w-4 text-white" />

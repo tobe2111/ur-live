@@ -640,8 +640,8 @@ export default function SellerProfileEditPage() {
           {/* 🚚 2026-06-18 배송 설정 — 내 쇼핑몰 배송비 (주문 시 서버가 이 값으로 재계산) */}
           <div className="apple-card p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-[#ff9500]/10 rounded-full flex items-center justify-center">
-                <Truck className="h-5 w-5 text-[#ff9500]" />
+              <div className="w-10 h-10 bg-[#9ca3af]/10 rounded-full flex items-center justify-center">
+                <Truck className="h-5 w-5 text-[#9ca3af]" />
               </div>
               <div>
                 <h2 className="text-[17px] font-semibold text-[#1d1d1f]">{t('seller.shippingSettings', { defaultValue: '배송 설정' })}</h2>
@@ -688,7 +688,7 @@ export default function SellerProfileEditPage() {
             <button
               onClick={handleSaveShipping}
               disabled={saving}
-              className="mt-4 w-full py-3 px-6 bg-[#ff9500] text-white rounded-xl hover:bg-[#e6850e] transition-colors text-[14px] font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+              className="mt-4 w-full py-3 px-6 bg-[#9ca3af] text-white rounded-xl hover:bg-[#e6850e] transition-colors text-[14px] font-medium flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <Save className="h-4 w-4" />
               {t('seller.saveShipping', { defaultValue: '배송 설정 저장' })}
