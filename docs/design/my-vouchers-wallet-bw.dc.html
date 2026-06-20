@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  body{margin:0;background:#ECEDF0;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  *{box-sizing:border-box;}
+  @keyframes pulseDot{0%{box-shadow:0 0 0 0 rgba(22,163,74,.45)}70%{box-shadow:0 0 0 6px rgba(22,163,74,0)}100%{box-shadow:0 0 0 0 rgba(22,163,74,0)}}
+</style>
+<script src="image-slot.js"></script>
+</helmet>
+
+<div style="width:max-content;min-width:100%;min-height:100vh;background:#ECEDF0;padding:54px;box-sizing:border-box;font-family:'Pretendard',sans-serif">
+  <div style="display:flex;flex-direction:column;gap:36px;width:max-content">
+
+    <div style="max-width:840px;display:flex;flex-direction:column;gap:6px">
+      <div style="font:800 26px 'Pretendard';letter-spacing:-0.03em;color:#0A0A0A">선결제 지갑 · 흑백 (iOS 클린)</div>
+      <div style="font:500 14px 'Pretendard';color:#6B7280">순수 흑백 + 최소 기능색(상태 점·배지). 넉넉한 여백, 큰 타이틀, 헤어라인 구분선, 블랙 필 CTA.</div>
+    </div>
+
+    <div style="display:flex;gap:34px;align-items:flex-start">
+
+      <div style="display:flex;flex-direction:column;gap:11px;flex:none">
+        <div style="font:600 12px 'Pretendard';color:#8A8F98">메인 · 공구권</div>
+        <div style="width:392px;background:#fff;border-radius:46px;border:1px solid rgba(0,0,0,0.07);box-shadow:0 16px 44px rgba(0,0,0,.12);overflow:hidden">
+          <div style="background:#fff">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:15px 26px 2px;font:600 15px 'Pretendard';color:#0A0A0A"><span>9:41</span><span style="display:flex;gap:6px;align-items:center;color:#0A0A0A">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+            <div style="padding:0 20px 18px">
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:16px 0 6px">
+                <div style="font:800 30px 'Pretendard';letter-spacing:-0.03em;color:#0A0A0A">내 지갑</div>
+                <span style="color:#0A0A0A;display:flex;margin-bottom:7px">{{ share }}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:7px;margin-bottom:18px">
+                <span style="width:7px;height:7px;border-radius:4px;background:#16A34A"></span>
+                <span style="font:600 14px 'Pretendard';color:#6B7280">8장 사용 가능</span>
+                <span style="width:3px;height:3px;border-radius:2px;background:#C7C7CC"></span>
+                <span style="font:600 14px 'Pretendard';color:#6B7280">가장 가까운 만료 <b style="color:#DC2626;font-weight:700">D-2</b></span>
+              </div>
+              <div style="display:flex;background:#F5F6F8;border-radius:11px;padding:3px;margin-bottom:20px">
+                <div style="flex:1;text-align:center;background:#fff;border-radius:8px;padding:9px;font:600 14px 'Pretendard';color:#0A0A0A;box-shadow:0 1px 3px rgba(0,0,0,.10)">공구권 <span style="color:#6B7280">5</span></div>
+                <div style="flex:1;text-align:center;padding:9px;font:600 14px 'Pretendard';color:#9CA3AF">교환권 <span style="color:#C7C7CC">4</span></div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <span style="font:600 13px 'Pretendard';color:#6B7280">사용 가능 3</span>
+                <span style="display:flex;align-items:center;gap:4px;font:600 13px 'Pretendard';color:#0A0A0A">{{ map }}지도</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:11px">
+                <div style="background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:13px;display:flex;gap:13px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+                  <image-slot id="bw-g1" shape="rounded" radius="12" placeholder="사진" style="width:60px;height:60px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:3px;background:#16A34A"></span><span style="font:600 12px 'Pretendard';color:#6B7280">사용 가능</span><span style="font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#DC2626;margin-left:1px">D-2</span></div>
+                    <div style="font:700 16px 'Pretendard';letter-spacing:-0.01em;color:#0A0A0A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">마라탕 2인 세트</div>
+                    <div style="display:flex;align-items:center;gap:3px;color:#9CA3AF;min-width:0"><span style="display:flex">{{ pin }}</span><span style="font:500 12px 'Pretendard';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">탕화쿵푸 양꼬치거리점</span></div>
+                    <span style="font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:#6B7280;background:#F5F6F8;padding:3px 7px;border-radius:7px;align-self:flex-start;display:inline-flex;gap:5px;align-items:center;margin-top:2px">TXG-4471<span style="display:flex;color:#9CA3AF">{{ copy }}</span></span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:700 15px ui-monospace,SFMono-Regular,Menlo,monospace;color:#0A0A0A;white-space:nowrap">24,000<span style="font-family:'Pretendard';font-size:11px;font-weight:600;color:#9CA3AF">원</span></div>
+                    <button style="border:none;cursor:pointer;background:#0A0A0A;color:#fff;border-radius:11px;padding:9px 15px;font:600 13px 'Pretendard';white-space:nowrap;display:flex;align-items:center;gap:5px">{{ qrSmall }}사용</button>
+                  </div>
+                </div>
+                <div style="background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:13px;display:flex;gap:13px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+                  <image-slot id="bw-g2" shape="rounded" radius="12" placeholder="사진" style="width:60px;height:60px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:3px;background:#16A34A"></span><span style="font:600 12px 'Pretendard';color:#6B7280">사용 가능</span><span style="font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9CA3AF;margin-left:1px">D-5</span></div>
+                    <div style="font:700 16px 'Pretendard';letter-spacing:-0.01em;color:#0A0A0A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">평양냉면 식사권</div>
+                    <div style="display:flex;align-items:center;gap:3px;color:#9CA3AF;min-width:0"><span style="display:flex">{{ pin }}</span><span style="font:500 12px 'Pretendard';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">을지면옥 을지로3가</span></div>
+                    <span style="font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:#6B7280;background:#F5F6F8;padding:3px 7px;border-radius:7px;align-self:flex-start;display:inline-flex;gap:5px;align-items:center;margin-top:2px">EUL-2093<span style="display:flex;color:#9CA3AF">{{ copy }}</span></span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:700 15px ui-monospace,SFMono-Regular,Menlo,monospace;color:#0A0A0A;white-space:nowrap">13,000<span style="font-family:'Pretendard';font-size:11px;font-weight:600;color:#9CA3AF">원</span></div>
+                    <button style="border:none;cursor:pointer;background:#0A0A0A;color:#fff;border-radius:11px;padding:9px 15px;font:600 13px 'Pretendard';white-space:nowrap;display:flex;align-items:center;gap:5px">{{ qrSmall }}사용</button>
+                  </div>
+                </div>
+                <div style="background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:13px;display:flex;gap:13px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+                  <image-slot id="bw-g3" shape="rounded" radius="12" placeholder="사진" style="width:60px;height:60px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:3px;background:#16A34A"></span><span style="font:600 12px 'Pretendard';color:#6B7280">사용 가능</span><span style="font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9CA3AF;margin-left:1px">D-8</span></div>
+                    <div style="font:700 16px 'Pretendard';letter-spacing:-0.01em;color:#0A0A0A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">브런치 식사권</div>
+                    <div style="display:flex;align-items:center;gap:3px;color:#9CA3AF;min-width:0"><span style="display:flex">{{ pin }}</span><span style="font:500 12px 'Pretendard';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">오월의종 한남동</span></div>
+                    <span style="font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace;color:#6B7280;background:#F5F6F8;padding:3px 7px;border-radius:7px;align-self:flex-start;display:inline-flex;gap:5px;align-items:center;margin-top:2px">MAY-7782<span style="display:flex;color:#9CA3AF">{{ copy }}</span></span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:700 15px ui-monospace,SFMono-Regular,Menlo,monospace;color:#0A0A0A;white-space:nowrap">12,000<span style="font-family:'Pretendard';font-size:11px;font-weight:600;color:#9CA3AF">원</span></div>
+                    <button style="border:none;cursor:pointer;background:#0A0A0A;color:#fff;border-radius:11px;padding:9px 15px;font:600 13px 'Pretendard';white-space:nowrap;display:flex;align-items:center;gap:5px">{{ qrSmall }}사용</button>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top:16px;border:1px solid rgba(0,0,0,0.08);border-radius:14px;overflow:hidden">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 15px"><span style="font:600 14px 'Pretendard';color:#0A0A0A">사용 완료 <span style="color:#9CA3AF;font-weight:500">1</span></span><span style="display:flex;color:#C7C7CC">{{ chevR }}</span></div>
+                <div style="height:1px;background:rgba(0,0,0,0.07);margin:0 15px"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 15px"><span style="font:600 14px 'Pretendard';color:#0A0A0A">만료 · 환불 <span style="color:#9CA3AF;font-weight:500">2</span></span><span style="display:flex;color:#C7C7CC">{{ chevR }}</span></div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:center;padding:4px 0 10px"><div style="width:134px;height:5px;border-radius:3px;background:#0A0A0A"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:11px;flex:none">
+        <div style="font:600 12px 'Pretendard';color:#8A8F98">지도 · 미사용 식사권 찾아가기</div>
+        <div style="width:392px;background:#fff;border-radius:46px;border:1px solid rgba(0,0,0,0.07);box-shadow:0 16px 44px rgba(0,0,0,.12);overflow:hidden">
+          <div style="background:#fff;position:relative">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:15px 26px 2px;font:600 15px 'Pretendard';color:#0A0A0A;position:relative;z-index:3"><span>9:41</span><span style="display:flex;gap:6px;align-items:center;color:#0A0A0A">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 20px 14px;position:relative;z-index:3"><span style="display:flex;color:#0A0A0A">{{ back }}</span><div style="font:700 19px 'Pretendard';letter-spacing:-0.02em;color:#0A0A0A">지도에서 보기</div></div>
+            <div style="position:relative;height:452px;background:#EAEBEE;overflow:hidden">
+              <div style="position:absolute;left:-10%;top:24%;width:120%;height:13px;background:#fff;transform:rotate(-8deg)"></div>
+              <div style="position:absolute;left:-10%;top:62%;width:120%;height:18px;background:#fff;transform:rotate(5deg)"></div>
+              <div style="position:absolute;left:30%;top:-10%;width:12px;height:120%;background:#fff;transform:rotate(6deg)"></div>
+              <div style="position:absolute;left:68%;top:-10%;width:9px;height:120%;background:#fff;transform:rotate(-4deg)"></div>
+              <div style="position:absolute;left:46px;top:120px;width:64px;height:48px;background:#fff;border-radius:4px"></div>
+              <div style="position:absolute;left:250px;top:190px;width:80px;height:56px;background:#fff;border-radius:4px"></div>
+              <div style="position:absolute;left:120px;top:300px;width:70px;height:46px;background:#fff;border-radius:4px"></div>
+              <div style="position:absolute;left:88px;top:96px;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center">
+                <div style="background:#0A0A0A;color:#fff;font:600 11px 'Pretendard';padding:5px 9px;border-radius:9px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2)">을지면옥 · D-5</div>
+                <span style="display:flex;color:#0A0A0A;margin-top:-1px">{{ pinFill }}</span>
+              </div>
+              <span style="position:absolute;left:286px;top:150px;display:flex;color:#0A0A0A;transform:translate(-50%,-100%);opacity:.85">{{ pinFill }}</span>
+              <span style="position:absolute;left:172px;top:268px;display:flex;color:#0A0A0A;transform:translate(-50%,-100%);opacity:.85">{{ pinFill }}</span>
+              <div style="position:absolute;right:16px;top:14px;width:38px;height:38px;background:#fff;border-radius:11px;box-shadow:0 1px 4px rgba(0,0,0,.14);display:flex;align-items:center;justify-content:center;color:#0A0A0A">{{ locate }}</div>
+              <div style="position:absolute;left:16px;right:16px;bottom:16px;background:#fff;border-radius:18px;padding:13px;display:flex;gap:12px;align-items:center;box-shadow:0 6px 22px rgba(0,0,0,.14)">
+                <image-slot id="bw-map" shape="rounded" radius="11" placeholder="사진" style="width:52px;height:52px;flex:none"></image-slot>
+                <div style="flex:1;min-width:0">
+                  <div style="font:700 15px 'Pretendard';letter-spacing:-0.01em;color:#0A0A0A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">평양냉면 식사권</div>
+                  <div style="font:500 12px 'Pretendard';color:#9CA3AF;margin-top:2px">을지면옥 · 320m · 도보 4분</div>
+                </div>
+                <button style="border:none;cursor:pointer;background:#0A0A0A;color:#fff;border-radius:11px;padding:10px 16px;font:600 13px 'Pretendard';white-space:nowrap;display:flex;align-items:center;gap:5px;flex:none">{{ qrSmall }}사용</button>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:center;padding:8px 0 10px"><div style="width:134px;height:5px;border-radius:3px;background:#0A0A0A"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:11px;flex:none">
+        <div style="font:600 12px 'Pretendard';color:#8A8F98">사용 모달 · 매장에서 꺼내기</div>
+        <div style="width:392px;background:#fff;border-radius:46px;border:1px solid rgba(0,0,0,0.07);box-shadow:0 16px 44px rgba(0,0,0,.12);overflow:hidden">
+          <div style="background:#2A2A2E">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:15px 26px 2px;font:600 15px 'Pretendard';color:#fff"><span>9:41</span><span style="display:flex;gap:6px;align-items:center;color:#fff">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+            <div style="height:46px"></div>
+            <div style="background:#fff;border-radius:30px 30px 0 0;padding:9px 22px 0">
+              <div style="display:flex;justify-content:center;padding:0 0 6px"><div style="width:38px;height:5px;border-radius:3px;background:#E5E5EA"></div></div>
+              <div style="display:flex;justify-content:flex-end"><span style="display:flex;color:#C7C7CC">{{ close }}</span></div>
+              <div style="text-align:center;margin-top:-8px">
+                <div style="font:800 21px 'Pretendard';letter-spacing:-0.02em;color:#0A0A0A">마라탕 2인 세트</div>
+                <div style="display:flex;gap:4px;justify-content:center;align-items:center;margin-top:4px"><span style="display:flex;color:#9CA3AF">{{ pin }}</span><span style="font:500 13px 'Pretendard';color:#9CA3AF">탕화쿵푸 양꼬치거리점</span></div>
+              </div>
+              <div style="display:flex;justify-content:center;margin-top:18px"><div style="background:#fff;border:1px solid rgba(0,0,0,0.10);border-radius:18px;padding:16px">{{ qr }}</div></div>
+              <button style="display:flex;gap:9px;align-items:center;margin:14px auto 0;background:#F5F6F8;border:none;border-radius:11px;padding:10px 16px;cursor:pointer"><span style="font:700 16px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:1px;color:#0A0A0A">TXG-4471</span><span style="display:flex;color:#0A0A0A">{{ copy }}</span><span style="font:600 12px 'Pretendard';color:#6B7280">복사</span></button>
+              <div style="display:flex;justify-content:center;align-items:center;gap:6px;margin-top:13px"><span style="width:7px;height:7px;border-radius:4px;background:#16A34A;animation:pulseDot 1.6s infinite"></span><span style="font:600 12px 'Pretendard';color:#9CA3AF">실시간 · {{ clock }}</span></div>
+              <div style="display:flex;gap:9px;background:#F5F6F8;border-radius:13px;padding:12px 13px;margin-top:16px;align-items:flex-start"><span style="display:flex;color:#16A34A;margin-top:1px">{{ check }}</span><div><div style="font:600 13px 'Pretendard';color:#0A0A0A">이미 결제 완료된 식사권이에요</div><div style="font:500 12px 'Pretendard';color:#9CA3AF;margin-top:2px;line-height:1.5">매장에서 추가 결제 없이 이 화면만 보여주세요</div></div></div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:11px;padding:0 2px"><span style="font:600 11px 'Pretendard';color:#0A0A0A;border:1px solid rgba(0,0,0,0.12);padding:2px 8px;border-radius:7px">매장 안내</span><span style="font:500 12px 'Pretendard';color:#9CA3AF">평일 점심(11:30~14:00)만 사용 가능</span></div>
+              <div style="display:flex;gap:9px;margin-top:18px">
+                <button style="flex:1;display:flex;gap:6px;justify-content:center;align-items:center;background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:13px;padding:13px;font:600 14px 'Pretendard';color:#0A0A0A;cursor:pointer">{{ share }}공유</button>
+                <button style="flex:1;display:flex;gap:6px;justify-content:center;align-items:center;background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:13px;padding:13px;font:600 14px 'Pretendard';color:#6B7280;cursor:pointer">구매 취소·환불</button>
+              </div>
+              <div style="font:500 11px 'Pretendard';color:#C7C7CC;text-align:center;margin-top:9px">미사용 · 결제 후 7일 이내에만 환불할 수 있어요</div>
+              <div style="display:flex;justify-content:center;padding:12px 0 10px"><div style="width:134px;height:5px;border-radius:3px;background:#0A0A0A"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:11px;flex:none">
+        <div style="font:600 12px 'Pretendard';color:#8A8F98">메인 · 교환권 (브랜드 바코드)</div>
+        <div style="width:392px;background:#fff;border-radius:46px;border:1px solid rgba(0,0,0,0.07);box-shadow:0 16px 44px rgba(0,0,0,.12);overflow:hidden">
+          <div style="background:#fff">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:15px 26px 2px;font:600 15px 'Pretendard';color:#0A0A0A"><span>9:41</span><span style="display:flex;gap:6px;align-items:center;color:#0A0A0A">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+            <div style="padding:0 20px 18px">
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:16px 0 16px"><div style="font:800 30px 'Pretendard';letter-spacing:-0.03em;color:#0A0A0A">내 지갑</div><span style="color:#0A0A0A;display:flex;margin-bottom:7px">{{ share }}</span></div>
+              <div style="display:flex;background:#F5F6F8;border-radius:11px;padding:3px;margin-bottom:18px">
+                <div style="flex:1;text-align:center;padding:9px;font:600 14px 'Pretendard';color:#9CA3AF">공구권 <span style="color:#C7C7CC">5</span></div>
+                <div style="flex:1;text-align:center;background:#fff;border-radius:8px;padding:9px;font:600 14px 'Pretendard';color:#0A0A0A;box-shadow:0 1px 3px rgba(0,0,0,.10)">교환권 <span style="color:#6B7280">4</span></div>
+              </div>
+              <div style="display:flex;gap:11px;align-items:center;background:#F5F6F8;border-radius:14px;padding:13px 14px;margin-bottom:16px">
+                <span style="display:flex;color:#0A0A0A">{{ phone }}</span>
+                <div style="flex:1"><div style="font:600 13px 'Pretendard';color:#0A0A0A">전화번호를 등록하세요</div><div style="font:500 11px 'Pretendard';color:#9CA3AF;margin-top:1px">교환권을 문자(MMS)로 자동 발송해 드려요</div></div>
+                <button style="background:#0A0A0A;color:#fff;border:none;border-radius:10px;padding:8px 14px;font:600 13px 'Pretendard';cursor:pointer;white-space:nowrap">등록</button>
+              </div>
+              <span style="font:600 13px 'Pretendard';color:#6B7280;display:block;margin-bottom:12px">사용 가능 3</span>
+              <div style="display:flex;flex-direction:column;gap:11px">
+                <div style="background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:13px;display:flex;gap:13px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+                  <image-slot id="bw-x1" shape="rounded" radius="12" placeholder="로고" style="width:60px;height:60px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:3px;background:#16A34A"></span><span style="font:600 12px 'Pretendard';color:#6B7280">사용 가능</span><span style="font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9CA3AF;margin-left:1px">D-30</span></div>
+                    <div style="font:700 15px 'Pretendard';letter-spacing:-0.01em;color:#0A0A0A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">아이스 카페 아메리카노 T</div>
+                    <div style="font:500 12px 'Pretendard';color:#9CA3AF">스타벅스</div>
+                    <div style="height:22px;border-radius:3px;margin-top:3px;background:repeating-linear-gradient(90deg,#0A0A0A 0 1px,transparent 1px 3px,#0A0A0A 3px 4px,transparent 4px 7px,#0A0A0A 7px 9px,transparent 9px 11px)"></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:700 15px ui-monospace,SFMono-Regular,Menlo,monospace;color:#0A0A0A;white-space:nowrap">4,500<span style="font-family:'Pretendard';font-size:11px;font-weight:600;color:#9CA3AF">원</span></div>
+                    <button style="border:none;cursor:pointer;background:#0A0A0A;color:#fff;border-radius:11px;padding:9px 13px;font:600 12px 'Pretendard';white-space:nowrap;display:flex;align-items:center;gap:5px">{{ barIcon }}바코드</button>
+                  </div>
+                </div>
+                <div style="background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:13px;display:flex;gap:13px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+                  <image-slot id="bw-x2" shape="rounded" radius="12" placeholder="로고" style="width:60px;height:60px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:3px;background:#16A34A"></span><span style="font:600 12px 'Pretendard';color:#6B7280">사용 가능</span><span style="font:700 12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9CA3AF;margin-left:1px">D-12</span></div>
+                    <div style="font:700 15px 'Pretendard';letter-spacing:-0.01em;color:#0A0A0A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">모바일 금액권 5,000원</div>
+                    <div style="font:500 12px 'Pretendard';color:#9CA3AF">GS25 편의점</div>
+                    <div style="height:22px;border-radius:3px;margin-top:3px;background:repeating-linear-gradient(90deg,#0A0A0A 0 2px,transparent 2px 4px,#0A0A0A 4px 5px,transparent 5px 8px,#0A0A0A 8px 9px,transparent 9px 11px)"></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:700 15px ui-monospace,SFMono-Regular,Menlo,monospace;color:#0A0A0A;white-space:nowrap">5,000<span style="font-family:'Pretendard';font-size:11px;font-weight:600;color:#9CA3AF">원</span></div>
+                    <button style="border:none;cursor:pointer;background:#0A0A0A;color:#fff;border-radius:11px;padding:9px 13px;font:600 12px 'Pretendard';white-space:nowrap;display:flex;align-items:center;gap:5px">{{ barIcon }}바코드</button>
+                  </div>
+                </div>
+                <div style="background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:13px;display:flex;gap:13px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+                  <image-slot id="bw-x3" shape="rounded" radius="12" placeholder="로고" style="width:60px;height:60px;flex:none"></image-slot>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;border-radius:3px;background:#DC2626"></span><span style="font:600 12px 'Pretendard';color:#DC2626">발송 실패</span></div>
+                    <div style="font:700 15px 'Pretendard';letter-spacing:-0.01em;color:#0A0A0A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">파인트 아이스크림</div>
+                    <div style="font:500 12px 'Pretendard';color:#9CA3AF">배스킨라빈스</div>
+                    <div style="font:500 12px 'Pretendard';color:#DC2626;margin-top:2px">전화번호 확인 후 재발송하세요</div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;flex:none">
+                    <div style="font:700 15px ui-monospace,SFMono-Regular,Menlo,monospace;color:#0A0A0A;white-space:nowrap">8,200<span style="font-family:'Pretendard';font-size:11px;font-weight:600;color:#9CA3AF">원</span></div>
+                    <button style="border:1px solid rgba(0,0,0,0.14);cursor:pointer;background:#fff;color:#0A0A0A;border-radius:11px;padding:9px 13px;font:600 12px 'Pretendard';white-space:nowrap;display:flex;align-items:center;gap:5px">{{ refresh }}재발송</button>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top:16px;border:1px solid rgba(0,0,0,0.08);border-radius:14px;overflow:hidden">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 15px"><span style="font:600 14px 'Pretendard';color:#0A0A0A">사용 완료 <span style="color:#9CA3AF;font-weight:500">1</span></span><span style="display:flex;color:#C7C7CC">{{ chevR }}</span></div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:center;padding:4px 0 10px"><div style="width:134px;height:5px;border-radius:3px;background:#0A0A0A"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:11px;flex:none">
+        <div style="font:600 12px 'Pretendard';color:#8A8F98">빈 상태 · 공구권</div>
+        <div style="width:392px;background:#fff;border-radius:46px;border:1px solid rgba(0,0,0,0.07);box-shadow:0 16px 44px rgba(0,0,0,.12);overflow:hidden">
+          <div style="background:#fff">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:15px 26px 2px;font:600 15px 'Pretendard';color:#0A0A0A"><span>9:41</span><span style="display:flex;gap:6px;align-items:center;color:#0A0A0A">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+            <div style="padding:0 20px">
+              <div style="font:800 30px 'Pretendard';letter-spacing:-0.03em;color:#0A0A0A;padding:16px 0 14px">내 지갑</div>
+              <div style="display:flex;background:#F5F6F8;border-radius:11px;padding:3px">
+                <div style="flex:1;text-align:center;background:#fff;border-radius:8px;padding:9px;font:600 14px 'Pretendard';color:#0A0A0A;box-shadow:0 1px 3px rgba(0,0,0,.10)">공구권</div>
+                <div style="flex:1;text-align:center;padding:9px;font:600 14px 'Pretendard';color:#9CA3AF">교환권</div>
+              </div>
+              <div style="padding:40px 14px 30px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:18px">
+                <image-slot id="bw-empty" shape="rounded" radius="22" placeholder="일러스트" style="width:124px;height:124px"></image-slot>
+                <div>
+                  <div style="font:800 19px 'Pretendard';letter-spacing:-0.02em;color:#0A0A0A">받아둔 식사권이 없어요</div>
+                  <div style="font:500 14px 'Pretendard';color:#9CA3AF;margin-top:8px;line-height:1.65">동네 맛집 공동구매에 참여하면<br>선결제 식사권이 여기에 쌓여요</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;width:100%;margin-top:2px">
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px"><div style="width:30px;height:30px;border-radius:15px;background:#0A0A0A;color:#fff;display:flex;align-items:center;justify-content:center;font:700 13px ui-monospace,monospace">1</div><span style="font:500 11px 'Pretendard';color:#6B7280;line-height:1.4">공구<br>참여</span></div>
+                  <span style="display:flex;color:#C7C7CC;margin-bottom:18px">{{ chevR }}</span>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px"><div style="width:30px;height:30px;border-radius:15px;background:#0A0A0A;color:#fff;display:flex;align-items:center;justify-content:center;font:700 13px ui-monospace,monospace">2</div><span style="font:500 11px 'Pretendard';color:#6B7280;line-height:1.4">지갑에<br>식사권</span></div>
+                  <span style="display:flex;color:#C7C7CC;margin-bottom:18px">{{ chevR }}</span>
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px"><div style="width:30px;height:30px;border-radius:15px;background:#0A0A0A;color:#fff;display:flex;align-items:center;justify-content:center;font:700 13px ui-monospace,monospace">3</div><span style="font:500 11px 'Pretendard';color:#6B7280;line-height:1.4">매장에서<br>QR 제시</span></div>
+                </div>
+                <button style="width:100%;border:none;cursor:pointer;background:#0A0A0A;color:#fff;border-radius:14px;padding:15px;font:700 15px 'Pretendard';letter-spacing:-0.01em;margin-top:6px">공구 보러가기</button>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:center;padding:6px 0 10px"><div style="width:134px;height:5px;border-radius:3px;background:#0A0A0A"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:11px;flex:none">
+        <div style="font:600 12px 'Pretendard';color:#8A8F98">설정 · 교환권 받을 번호</div>
+        <div style="width:392px;background:#fff;border-radius:46px;border:1px solid rgba(0,0,0,0.07);box-shadow:0 16px 44px rgba(0,0,0,.12);overflow:hidden">
+          <div style="background:#fff">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:15px 26px 2px;font:600 15px 'Pretendard';color:#0A0A0A"><span>9:41</span><span style="display:flex;gap:6px;align-items:center;color:#0A0A0A">{{ signal }}{{ wifi }}{{ batt }}</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 20px 18px"><span style="display:flex;color:#0A0A0A">{{ back }}</span><div style="font:700 19px 'Pretendard';letter-spacing:-0.02em;color:#0A0A0A">교환권 받을 번호</div></div>
+            <div style="padding:0 20px 26px">
+              <div style="display:flex;gap:10px;background:#F5F6F8;border-radius:14px;padding:14px;align-items:flex-start"><span style="display:flex;color:#16A34A;margin-top:1px">{{ check }}</span><div style="font:500 13px 'Pretendard';color:#6B7280;line-height:1.6">교환권(기프티콘)은 등록한 번호로 <b style="color:#0A0A0A;font-weight:700">문자(MMS)로 자동 발송</b>돼요. 공구권은 번호 없이 앱에서 바로 사용해요.</div></div>
+              <div style="font:600 13px 'Pretendard';color:#6B7280;margin:24px 0 9px">휴대폰 번호</div>
+              <div style="display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid #0A0A0A;border-radius:14px;padding:15px 15px"><span style="display:flex;color:#0A0A0A">{{ phone }}</span><span style="font:600 17px ui-monospace,SFMono-Regular,Menlo,monospace;color:#0A0A0A;letter-spacing:.5px">010-1234-5678</span><span style="margin-left:auto;width:2px;height:20px;background:#0A0A0A;border-radius:1px"></span></div>
+              <div style="font:500 12px 'Pretendard';color:#9CA3AF;margin-top:10px;line-height:1.6">이 번호는 교환권 발송에만 사용돼요. 발송 실패 시 여기서 번호를 바꿔 재발송할 수 있어요.</div>
+              <button style="width:100%;border:none;cursor:pointer;background:#0A0A0A;color:#fff;border-radius:14px;padding:16px;font:700 15px 'Pretendard';letter-spacing:-0.01em;margin-top:24px">이 번호로 등록</button>
+            </div>
+            <div style="display:flex;justify-content:center;padding:54px 0 10px"><div style="width:134px;height:5px;border-radius:3px;background:#0A0A0A"></div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  constructor(props){ super(props); this.state = { clock: this.fmt(new Date()) }; }
+  componentDidMount(){ this._t = setInterval(()=>this.setState({clock:this.fmt(new Date())}), 1000); }
+  componentWillUnmount(){ clearInterval(this._t); }
+  fmt(d){ const p=n=>String(n).padStart(2,'0'); let h=d.getHours(); const ap=h<12?'오전':'오후'; h=h%12||12; return ap+' '+p(h)+':'+p(d.getMinutes())+':'+p(d.getSeconds()); }
+
+  svg(s, kids, opts){ opts=opts||{}; return React.createElement('svg',{width:s,height:s,viewBox:'0 0 24 24',fill:opts.fill||'none',stroke:opts.fill?'none':'currentColor',strokeWidth:opts.sw||1.9,strokeLinecap:'round',strokeLinejoin:'round',style:{display:'block',flex:'none'}}, kids); }
+  P(d,k){ return React.createElement('path',{key:k||d.slice(0,5),d:d}); }
+  C(cx,cy,r,k){ return React.createElement('circle',{key:k||'c'+cx+'_'+cy,cx:cx,cy:cy,r:r}); }
+  L(a,b,c,d,k){ return React.createElement('line',{key:k||'l'+a+'_'+b,x1:a,y1:b,x2:c,y2:d}); }
+  R(x,y,w,h,k,extra){ return React.createElement('rect', Object.assign({key:k||'r'+x+'_'+y,x:x,y:y,width:w,height:h}, extra||{})); }
+
+  qr(seed,fg,px){ const N=25,c=8; let r=seed*9301+49297;
+    const rnd=()=>{ r=(r*9301+49297)%233280; return r/233280; };
+    const fin=(x,y)=>{ const t=(ox,oy)=>{ const xx=x-ox,yy=y-oy; if(xx<0||yy<0||xx>6||yy>6) return null; if(xx===0||xx===6||yy===0||yy===6) return true; if(xx>=2&&xx<=4&&yy>=2&&yy<=4) return true; return false; }; let v=t(0,0); if(v!==null)return v; v=t(N-7,0); if(v!==null)return v; v=t(0,N-7); if(v!==null)return v; return null; };
+    const rects=[]; for(let y=0;y<N;y++){ for(let x=0;x<N;x++){ let v=fin(x,y); if(v===null){ const near=(x<8&&y<8)||(x>=N-7&&y<8)||(x<8&&y>=N-7); v= near?false:(rnd()>0.55); } if(v) rects.push(React.createElement('rect',{key:x+'_'+y,x:x*c,y:y*c,width:c,height:c})); } }
+    return React.createElement('svg',{width:px,height:px,viewBox:'0 0 '+(N*c)+' '+(N*c),fill:fg,style:{display:'block'}}, rects);
+  }
+
+  renderVals(){
+    const S=this.svg.bind(this), P=this.P.bind(this), C=this.C.bind(this), L=this.L.bind(this), R=this.R.bind(this);
+    const back = S(23,[P('M15 5l-7 7 7 7')],{sw:2});
+    const chevR = S(18,[P('M9 5l7 7-7 7')],{sw:2});
+    const share = S(17,[P('M12 15V4'),P('M8.5 7.5L12 4l3.5 3.5'),P('M6 11v7a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 18 18v-7')]);
+    const pin = S(13,[P('M12 21s6-5.2 6-10A6 6 0 0 0 6 11c0 4.8 6 10 6 10z'),C(12,11,2.1,'p')]);
+    const pinFill = S(26,[React.createElement('path',{key:'f',d:'M12 22s7-6 7-11A7 7 0 0 0 5 11c0 5 7 11 7 11z',fill:'currentColor'}),React.createElement('circle',{key:'d',cx:12,cy:10.5,r:2.6,fill:'#fff'})]);
+    const copy = S(13,[R(8,8,11,11,'r',{rx:2}),P('M5 15.4V6a1 1 0 0 1 1-1h9.4')]);
+    const map = S(16,[P('M9 4 3 6.5v13L9 17l6 2.5 6-2.5v-13L15 6.5 9 4z'),L(9,4,9,17,'a'),L(15,6.5,15,19.5,'b')]);
+    const locate = S(19,[C(12,12,4.2,'a'),L(12,2,12,5,'b'),L(12,19,12,22,'c'),L(2,12,5,12,'d'),L(19,12,22,12,'e')]);
+    const phone = S(17,[P('M5 4h3.4l1.7 4.2-2.3 1.6a12 12 0 0 0 5.3 5.3l1.6-2.3 4.2 1.7V18a2 2 0 0 1-2 2A14 14 0 0 1 4 6a2 2 0 0 1 1-2z')]);
+    const check = S(15,[P('M5 12.5l4.4 4.4L19 7')]);
+    const close = S(21,[C(12,12,9.4,'r'),P('M9 9l6 6'),P('M15 9l-6 6')],{sw:1.7});
+    const refresh = S(14,[P('M21 12a9 9 0 1 1-2.6-6.4'),P('M21 4v5h-5')]);
+    const qrSmall = S(17,[R(3,3,7,7,'a',{rx:1}),R(14,3,7,7,'b',{rx:1}),R(3,14,7,7,'c',{rx:1}),R(14,14,3,3,'d'),R(18,14,3,3,'e'),R(14,18,3,3,'f'),R(18,18,3,3,'g')],{fill:true});
+    const barIcon = S(17,[L(4,6,4,18,'a'),L(7,6,7,18,'b'),L(10,6,10,18,'c'),L(13.5,6,13.5,18,'d'),L(17,6,17,18,'e'),L(20,6,20,18,'f')],{sw:1.4});
+    const signal = React.createElement('svg',{width:17,height:11,viewBox:'0 0 17 11',fill:'currentColor',style:{display:'block'}},[R(0,7,3,4,'a',{rx:.5}),R(4.5,5,3,6,'b',{rx:.5}),R(9,2.5,3,8.5,'c',{rx:.5}),R(13.5,0,3,11,'d',{rx:.5})]);
+    const wifi = S(15,[P('M4.5 8.5a11 11 0 0 1 15 0'),P('M7.5 11.7a6.5 6.5 0 0 1 9 0'),C(12,15,1.1,'d')],{sw:1.5});
+    const batt = React.createElement('svg',{width:25,height:12,viewBox:'0 0 25 12',fill:'none',style:{display:'block'}},[R(1,1,20,10,'o',{rx:3,stroke:'currentColor','strokeWidth':1,opacity:.4}),R(2.5,2.5,17,7,'f',{rx:1.6,fill:'currentColor'}),React.createElement('path',{key:'t',d:'M23 4.2v3.6',stroke:'currentColor','strokeWidth':1.6,strokeLinecap:'round',opacity:.5})]);
+    return {
+      clock:this.state.clock,
+      qr:this.qr(7,'#0A0A0A',176),
+      back, chevR, share, pin, pinFill, copy, map, locate, phone, check, close, refresh, qrSmall, barIcon, signal, wifi, batt
+    };
+  }
+}
+</script>
+</body>
+</html>

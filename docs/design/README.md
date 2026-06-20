@@ -36,3 +36,4 @@
 | **🔐 대시보드 토큰 httpOnly 쿠키 전환 (XSS 하드닝)** | 2026-06-17 | 🟡 설계 (단계 구현 대기 — Phase0 CSRF→admin→supplier/agency→seller) | [dashboard-cookie-auth.md](./dashboard-cookie-auth.md) |
 | **🔗 링크샵 랜딩 리디자인 — 마퀴 + 배너 히어로 + QR + 사이드바 숨김 (나브랜딩 시안)** | 2026-06-17 | ⏳ 구현 대기 (사용자 확인 후) | [linkshop-landing-redesign.md](./linkshop-landing-redesign.md) |
 | **📦 주문 내역/상세 — 무신사 스타일(썸네일·날짜그룹·검색)** | 2026-06-18 | ✅ 구현 완료 (옵션 A — 종류 탭 + 종류별 카드 + 데이터버그 3건 수정) | [my-orders.md](./my-orders.md) |
+| **🎟️ 내 지갑 `/my-vouchers` — 흑백 iOS-클린 리디자인 (식사권/교환권 6화면)** | 2026-06-20 | ⏳ 구현 대기 (사용자 스코프 확인 후) | [my-vouchers-wallet-bw.md](./my-vouchers-wallet-bw.md) |
