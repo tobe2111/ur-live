@@ -51,7 +51,7 @@ export default function AgencyResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7] text-gray-900 flex items-center justify-center p-6">
+    <div className="force-light-theme min-h-screen bg-[#F4F5F7] text-gray-900 flex items-center justify-center p-6">
       <SEO
         title="비밀번호 재설정 (에이전시)"
         description="유어딜 에이전시 새 비밀번호를 설정하세요."

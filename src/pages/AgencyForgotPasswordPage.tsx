@@ -36,7 +36,7 @@ export default function AgencyForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7] text-gray-900 flex items-center justify-center p-6">
+    <div className="force-light-theme min-h-screen bg-[#F4F5F7] text-gray-900 flex items-center justify-center p-6">
       <SEO
         title="비밀번호 찾기 (에이전시)"
         description="유어딜 에이전시 비밀번호 재설정 링크를 이메일로 받아보세요."

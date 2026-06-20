@@ -94,7 +94,7 @@ export default function SellerLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7] text-gray-900 flex">
+    <div className="force-light-theme min-h-screen bg-[#F4F5F7] text-gray-900 flex">
       {/* Left branding panel (desktop only) */}
       <div className="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col bg-[#0A0A0B]">
         <div className="px-10 pt-10">

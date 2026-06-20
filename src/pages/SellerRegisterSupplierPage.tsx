@@ -167,7 +167,7 @@ export default function SellerRegisterSupplierPage() {
 
   if (!statusChecked) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="force-light-theme min-h-screen flex items-center justify-center bg-gray-50">
         <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
       </div>
     )

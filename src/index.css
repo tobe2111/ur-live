@@ -186,30 +186,47 @@
   --ring: 211 100% 50%;
 }
 
-/* 🛡️ 2026-06-17 (사용자 신고 — 새 관리자 추가 입력칸 글자 흰색): 어드민/셀러는 라이트 고정인데 OS/앱 다크모드에서
-   상속된 -webkit-text-fill-color:white 가 글자색을 덮어쓰고 폼 컨트롤이 다크 UA 로 렌더돼 안 보임.
-   → 입력칸 글자색/fill 을 직접 다크로 강제 + color-scheme:light + autofill 색 고정. placeholder 는 회색 유지. */
+/* 🛡️ 2026-06-17 (사용자 신고 — 로그인/대시보드 입력 글자 흰색으로 안 보임): 어드민/셀러/에이전시/도매는 라이트 고정.
+   ──────────────────────────────────────────────────────────────────────────────────────────
+   왜 발생했나 (근본 원인):
+     아래 전역 규칙 `.dark input:not(...)` (CSS 특이도 0,5,1)이 OS/앱 다크모드(html.dark)에서 **모든** 입력 글자색을
+     gray-100(거의 흰색)으로 덮어씀. 페이지에 붙은 `text-gray-900` 유틸(특이도 0,1,0)은 특이도가 낮아 짐 → 흰 배경에
+     흰 글자. 대시보드는 `.admin-light-theme`/`.seller-light-theme` 래퍼로 보호됐지만 (1) `.agency-light-theme` 는
+     CSS 규칙이 누락됐고 (2) **로그인/가입/비번재설정 페이지는 레이아웃 밖(standalone)이라 래퍼가 없어 무방비**였음.
+   영구 해결 (이 규칙):
+     라이트 고정 컨테이너(.{admin,seller,agency}-light-theme + 범용 .force-light-theme) 안의 입력 글자/캐럿/autofill 을
+     `!important` 로 다크 강제 → 전역 `.dark` 규칙을 **특이도/소스순서/브라우저(webkit·firefox) 무관**하게 확실히 이김.
+     순수 CSS(클래스 스코프)라 ThemeProvider 의 MutationObserver(<html> class 복구)와도 충돌 없음.
+   ⚠️ 신규 standalone 라이트 페이지(로그인/가입/대시보드 외부)는 루트 div 에 `force-light-theme` 클래스 추가할 것. */
 .admin-light-theme,
-.seller-light-theme {
+.seller-light-theme,
+.agency-light-theme,
+.force-light-theme {
   color-scheme: light;
 }
 .admin-light-theme input, .admin-light-theme textarea, .admin-light-theme select,
-.seller-light-theme input, .seller-light-theme textarea, .seller-light-theme select {
+.seller-light-theme input, .seller-light-theme textarea, .seller-light-theme select,
+.agency-light-theme input, .agency-light-theme textarea, .agency-light-theme select,
+.force-light-theme input, .force-light-theme textarea, .force-light-theme select {
   color-scheme: light;
-  color: #16181b;
-  -webkit-text-fill-color: #16181b;
+  color: #16181b !important;
+  -webkit-text-fill-color: #16181b !important;
   caret-color: #16181b;
 }
 .admin-light-theme input::placeholder, .admin-light-theme textarea::placeholder,
-.seller-light-theme input::placeholder, .seller-light-theme textarea::placeholder {
-  color: #9aa0a6;
-  -webkit-text-fill-color: #9aa0a6;
+.seller-light-theme input::placeholder, .seller-light-theme textarea::placeholder,
+.agency-light-theme input::placeholder, .agency-light-theme textarea::placeholder,
+.force-light-theme input::placeholder, .force-light-theme textarea::placeholder {
+  color: #9aa0a6 !important;
+  -webkit-text-fill-color: #9aa0a6 !important;
 }
 .admin-light-theme input:-webkit-autofill,
 .admin-light-theme input:-webkit-autofill:hover,
 .admin-light-theme input:-webkit-autofill:focus,
-.seller-light-theme input:-webkit-autofill {
-  -webkit-text-fill-color: #16181b;
+.seller-light-theme input:-webkit-autofill,
+.agency-light-theme input:-webkit-autofill,
+.force-light-theme input:-webkit-autofill {
+  -webkit-text-fill-color: #16181b !important;
   -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
   caret-color: #16181b;
 }
