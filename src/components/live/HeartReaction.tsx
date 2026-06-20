@@ -42,8 +42,8 @@ export default function HeartReaction() {
         style={{ width: 40, height: 40, ...glass.actionRail }}
         aria-label="Like"
       >
-        {/* 🛡️ 2026-04-29 v4 Boutique 톤: Heart 18x18 + Pink fill (#F472B6) */}
-        <Heart className="fill-current" style={{ width: 18, height: 18, color: '#F472B6' }} />
+        {/* 🛡️ 2026-04-29 v4 Boutique 톤: Heart 18x18 + Pink fill (#9ca3af) */}
+        <Heart className="fill-current" style={{ width: 18, height: 18, color: '#9ca3af' }} />
       </button>
     </div>
   )

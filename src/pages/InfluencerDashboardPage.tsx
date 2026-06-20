@@ -160,7 +160,7 @@ export default function InfluencerDashboardPage() {
         ) : (
           <>
             {/* 적립 누계 */}
-            <div className="bg-gradient-to-br from-pink-500/[0.15] to-violet-500/[0.15] border border-pink-500/30 rounded-2xl p-5">
+            <div className="bg-gradient-to-br from-gray-800/[0.15] to-gray-800/[0.15] border border-pink-500/30 rounded-2xl p-5">
               <p className="text-[10px] font-bold text-pink-200/70 tracking-[0.14em]">{t('influencer.earned', { defaultValue: '누적 적립' })}</p>
               <p className="text-3xl font-black text-pink-300 mt-1">
                 ₩{formatNumber(stats?.total_earned || 0)}

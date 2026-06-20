@@ -238,7 +238,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
         <div className="flex items-center gap-2.5">
           <div
             className="w-9 h-9 rounded-lg flex items-center justify-center text-[11px] font-extrabold text-white flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #8B5CF6, #EC4899)' }}
+            style={{ background: 'linear-gradient(135deg, #8B5CF6, #6b7280)' }}
           >
             {initials}
           </div>
@@ -420,7 +420,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
         <button
           onClick={() => navigate(LIVE_COMMERCE_SUSPENDED ? '/agency/group-buy' : '/agency/schedule')}
           className="flex items-center gap-2 px-5 py-3 rounded-full text-white font-bold text-sm shadow-lg active:scale-95 transition-transform"
-          style={{ background: 'linear-gradient(90deg, #8B5CF6, #EC4899)', boxShadow: '0 8px 24px rgba(139,92,246,0.3)' }}
+          style={{ background: 'linear-gradient(90deg, #8B5CF6, #6b7280)', boxShadow: '0 8px 24px rgba(139,92,246,0.3)' }}
         >
           {LIVE_COMMERCE_SUSPENDED ? <Utensils className="w-4 h-4" /> : <Calendar className="w-4 h-4" />}
           {LIVE_COMMERCE_SUSPENDED

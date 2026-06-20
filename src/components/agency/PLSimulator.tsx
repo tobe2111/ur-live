@@ -57,7 +57,7 @@ export default function PLSimulator() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="w-full bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between hover:from-emerald-100 hover:to-teal-100 transition-colors"
+        className="w-full bg-gradient-to-r from-gray-50 to-gray-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between hover:from-gray-100 hover:to-gray-100 transition-colors"
       >
         <div className="flex items-center gap-3">
           <Calculator className="w-5 h-5 text-emerald-600" />
@@ -102,7 +102,7 @@ export default function PLSimulator() {
         </div>
 
         {/* 결과 섹션 */}
-        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-lg p-4">
+        <div className="bg-gradient-to-br from-gray-50 to-gray-50 rounded-lg p-4">
           <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">📤 추정 결과</h4>
 
           <ResultRow label="총 매출" value={calc.totalRevenue} unit="딜" highlight={false} />

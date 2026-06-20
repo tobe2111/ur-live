@@ -69,7 +69,7 @@ export default function AgencyLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7] text-gray-900 flex">
+    <div className="force-light-theme min-h-screen bg-[#F4F5F7] text-gray-900 flex">
       {/* Left branding panel (desktop) */}
       <div className="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col bg-[#0A0A0B]">
         <div className="px-10 pt-10">
@@ -199,7 +199,7 @@ export default function AgencyLoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:opacity-90 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-all"
+                className="w-full py-3 bg-gradient-to-r from-[#8B5CF6] to-[#6b7280] hover:opacity-90 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-all"
               >
                 {loading ? t('admin.login.loggingIn') : t('common.login')}
               </button>

@@ -28,7 +28,7 @@ export default function OnboardingChecklist({ stats, hasBank }: { stats: Dashboa
   const progress = Math.round((doneCount / steps.length) * 100)
 
   return (
-    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 space-y-3">
+    <div className="bg-gradient-to-r from-gray-50 to-gray-50 border border-blue-200 rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-gray-900">{t('seller.onboarding.title', '🚀 시작 가이드')}</h3>

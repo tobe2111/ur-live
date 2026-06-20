@@ -113,7 +113,7 @@ export default function DesktopLiveLeftPanel() {
           <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-3.5">
             <p className="text-[10px] font-bold text-gray-500 tracking-widest mb-2.5">진행자</p>
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full shrink-0 bg-gradient-to-br from-[#EF4444] to-[#EC4899]" />
+              <div className="w-8 h-8 rounded-full shrink-0 bg-gradient-to-br from-[#EF4444] to-[#6b7280]" />
               <div className="min-w-0">
                 <p className="text-[13px] font-bold text-white leading-tight truncate">{sellerName}</p>
                 {title && (

@@ -17,7 +17,7 @@ export const REGION_COORDS: Array<{ name: string; lat: number; lng: number }> = 
 ]
 
 export const CATEGORIES = [
-  { k: 'fashion', l: '패션', i: '👗', bg: '#FCE7F3' },
+  { k: 'fashion', l: '패션', i: '👗', bg: '#f3f4f6' },
   { k: 'beauty', l: '뷰티', i: '💄', bg: '#FEF3C7' },
   { k: 'food', l: '식품', i: '🍜', bg: '#FEE2E2' },
   { k: 'living', l: '리빙', i: '🏠', bg: '#DBEAFE' },

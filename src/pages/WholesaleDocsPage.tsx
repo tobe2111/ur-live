@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, FileText, Printer } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { useWholesaleDocuments, useWholesaleTaxInvoices, type WholesaleDocRow } from '@/hooks/queries/useWholesale'
 import { WT, won, comma } from './wholesale/wholesale-theme'
+import { useWholesaleBack } from '@/hooks/useWholesaleBack'
 
 // 🏭 Wave 3c: 거래단위 자동 전자세금계산서(매출) 상태 라벨.
 const TAX_STATUS_LABEL: Record<string, { t: string; c: string; bg: string }> = {
@@ -23,14 +24,15 @@ const STATUS_LABEL: Record<string, { t: string; c: string; bg: string }> = {
   void: { t: '취소', c: '#D63A4E', bg: '#FDECEF' },
 }
 
-export default function WholesaleDocsPage() {
+export default function WholesaleDocsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
+  const goBack = useWholesaleBack()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const { data: docs = [], isLoading: loading } = useWholesaleDocuments()
   const { data: taxInvoices = [] } = useWholesaleTaxInvoices()
   const [tab, setTab] = useState<'all' | 'tax_invoice' | 'transaction_statement'>('all')
 
-  if (!token) return <Navigate to="/wholesale/intro" replace />
+  if (!embedded && !token) return <Navigate to="/wholesale/intro" replace />
 
   const list = docs.filter((d) => tab === 'all' || d.doc_type === tab)
 
@@ -44,17 +46,9 @@ export default function WholesaleDocsPage() {
 
   const TABS: [typeof tab, string][] = [['all', '전체'], ['transaction_statement', '거래명세서'], ['tax_invoice', '세금계산서']]
 
-  return (
-    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
-      <SEO title="발행 자료 - 유통스타트" description="유통사 거래명세서·세금계산서" url="/wholesale/documents" noindex />
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
-        <div className="ur-content-medium flex items-center gap-3 px-5 lg:px-8 h-[52px]">
-          <button onClick={() => navigate('/wholesale')} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
-          <h1 className="text-[15px] font-bold" style={{ color: WT.ink }}>발행 자료</h1>
-        </div>
-      </header>
-
-      <main className="ur-content-medium px-5 lg:px-8 py-6">
+  // 콘텐츠(발행 자료 본문) — embedded/standalone 공유.
+  const content = (
+    <>
         <p className="text-[13px] mb-4" style={{ color: WT.ink3 }}>유통스타트가 발행한 회원님의 거래명세서·세금계산서예요. 공급사 정보는 표기되지 않습니다.</p>
 
         <div className="flex gap-1.5 mb-4">
@@ -146,6 +140,24 @@ export default function WholesaleDocsPage() {
             </div>
           </section>
         )}
+    </>
+  )
+
+  // 대시보드 탭 임베드 — 외곽 래퍼/SEO/헤더 생략, 본문만.
+  if (embedded) return <div>{content}</div>
+
+  return (
+    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
+      <SEO title="발행 자료 - 유통스타트" description="유통사 거래명세서·세금계산서" url="/wholesale/documents" noindex />
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
+        <div className="ur-content-medium flex items-center gap-3 px-5 lg:px-8 h-[52px]">
+          <button onClick={goBack} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
+          <h1 className="text-[15px] font-bold" style={{ color: WT.ink }}>발행 자료</h1>
+        </div>
+      </header>
+
+      <main className="ur-content-medium px-5 lg:px-8 py-6">
+        {content}
       </main>
     </div>
   )

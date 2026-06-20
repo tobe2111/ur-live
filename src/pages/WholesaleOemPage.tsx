@@ -38,7 +38,7 @@ async function downloadCsv(path: string, filename: string) {
   URL.revokeObjectURL(url)
 }
 
-export default function WholesaleOemPage() {
+export default function WholesaleOemPage({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
   const [form, setForm] = useState({ kind: 'OEM', product_name: '', category: '', target_qty: '', target_price: '', note: '' })
   const [saving, setSaving] = useState(false)
@@ -51,7 +51,7 @@ export default function WholesaleOemPage() {
     refetchOnWindowFocus: false,
   })
 
-  if (!sellerToken()) {
+  if (!embedded && !sellerToken()) {
     return (
       <div className="min-h-screen bg-[#F4F5F7] flex flex-col items-center justify-center px-6 text-center">
         {/* 🏭 2026-06-08 SEO: 비로그인 OEM 랜딩은 공개 인덱스 타깃("OEM/ODM 상품제휴") — 공급가/거래정보 없음. */}
@@ -110,30 +110,9 @@ export default function WholesaleOemPage() {
   const requests = listQ.data ?? []
   const inputCls = 'w-full px-3 py-2.5 border border-[#D1D6DB] rounded-lg text-sm text-[#0C2454] focus:ring-2 focus:ring-[#0C2454]/15 outline-none'
 
-  return (
-    <div className="min-h-screen bg-[#F4F5F7]">
-      <SEO domain="wholesale" title="OEM/ODM 신청 — 유통스타트" description="유통사 OEM/ODM 제작 신청" url="/wholesale/oem" noindex />
-      <header className="bg-white border-b border-[#ECEEF1]">
-        <div className="ur-content-medium px-4 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Factory className="w-6 h-6 text-[#0C2454]" />
-            <span className="text-lg font-bold text-[#0C2454]">OEM / ODM 신청</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => downloadCsv('/api/wholesale/catalog-export', 'wholesale-catalog.xlsx')}
-              className="inline-flex items-center gap-1 px-3 py-2 text-sm border border-[#D1D6DB] rounded-lg text-[#4E5560] hover:bg-[#F4F5F7]">
-              <Download className="w-4 h-4" /> 카탈로그(등급가)
-            </button>
-            <button onClick={() => downloadCsv('/api/wholesale/order-template', 'wholesale-order-template.csv')}
-              className="inline-flex items-center gap-1 px-3 py-2 text-sm border border-[#D1D6DB] rounded-lg text-[#4E5560] hover:bg-[#F4F5F7]">
-              <Download className="w-4 h-4" /> 주문양식
-            </button>
-            <button onClick={() => navigate('/wholesale')} className="text-sm text-[#4E5560] hover:text-[#0C2454]">← 도매몰</button>
-          </div>
-        </div>
-      </header>
-
-      <main className="ur-content-medium px-4 lg:px-8 py-6 space-y-6">
+  // 콘텐츠(OEM/ODM 본문) — embedded/standalone 공유.
+  const content = (
+    <>
         <section className="bg-white rounded-2xl border border-[#ECEEF1] p-6">
           <h2 className="text-base font-bold text-[#0C2454] mb-1">자사 브랜드 제품 제작 신청</h2>
           <p className="text-xs text-[#4E5560] mb-4">원하는 제품을 신청하면 유통스타트가 제조사를 찾아 연결하고 생산까지 지원합니다.</p>
@@ -208,6 +187,37 @@ export default function WholesaleOemPage() {
             </div>
           )}
         </section>
+    </>
+  )
+
+  // 대시보드 탭 임베드 — 외곽 래퍼/SEO/헤더 생략, 본문만.
+  if (embedded) return <div className="space-y-6">{content}</div>
+
+  return (
+    <div className="min-h-screen bg-[#F4F5F7]">
+      <SEO domain="wholesale" title="OEM/ODM 신청 — 유통스타트" description="유통사 OEM/ODM 제작 신청" url="/wholesale/oem" noindex />
+      <header className="bg-white border-b border-[#ECEEF1]">
+        <div className="ur-content-medium px-4 lg:px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Factory className="w-6 h-6 text-[#0C2454]" />
+            <span className="text-lg font-bold text-[#0C2454]">OEM / ODM 신청</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => downloadCsv('/api/wholesale/catalog-export', 'wholesale-catalog.xlsx')}
+              className="inline-flex items-center gap-1 px-3 py-2 text-sm border border-[#D1D6DB] rounded-lg text-[#4E5560] hover:bg-[#F4F5F7]">
+              <Download className="w-4 h-4" /> 카탈로그(등급가)
+            </button>
+            <button onClick={() => downloadCsv('/api/wholesale/order-template', 'wholesale-order-template.csv')}
+              className="inline-flex items-center gap-1 px-3 py-2 text-sm border border-[#D1D6DB] rounded-lg text-[#4E5560] hover:bg-[#F4F5F7]">
+              <Download className="w-4 h-4" /> 주문양식
+            </button>
+            <button onClick={() => navigate('/wholesale')} className="text-sm text-[#4E5560] hover:text-[#0C2454]">← 도매몰</button>
+          </div>
+        </div>
+      </header>
+
+      <main className="ur-content-medium px-4 lg:px-8 py-6 space-y-6">
+        {content}
       </main>
     </div>
   )

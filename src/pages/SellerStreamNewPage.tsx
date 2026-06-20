@@ -500,8 +500,8 @@ export default function SellerStreamNewPage() {
                     disabled={loading}
                     className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                       mode === 'youtube-auto'
-                        ? 'bg-gradient-to-r from-red-600 to-pink-600 text-white hover:from-red-700 hover:to-pink-700'
-                        : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700'
+                        ? 'bg-gradient-to-r from-gray-900 to-gray-900 text-white hover:from-gray-900 hover:to-gray-900'
+                        : 'bg-gradient-to-r from-gray-900 to-gray-900 text-white hover:from-gray-900 hover:to-gray-900'
                     }`}
                   >
                     {loading

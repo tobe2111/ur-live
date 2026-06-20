@@ -34,7 +34,7 @@ export default function ReferralIndexPage() {
       <main className="ur-content-narrow px-4 lg:px-8 pb-20">
         {/* Hero */}
         <section className="pt-6 pb-8 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-gray-800 to-gray-800 mb-4">
             <Users className="h-8 w-8 text-white" strokeWidth={2} />
           </div>
           <h2 className="text-[22px] font-extrabold text-gray-900 dark:text-white leading-tight">

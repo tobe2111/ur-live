@@ -66,7 +66,7 @@ export default function AgencyRegisterBusinessPage() {
 
   if (!statusChecked) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="force-light-theme min-h-screen flex items-center justify-center bg-gray-50">
         <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
       </div>
     )
@@ -128,7 +128,7 @@ export default function AgencyRegisterBusinessPage() {
           </div>
         )}
 
-        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl p-5 text-center">
+        <div className="bg-gradient-to-br from-gray-50 to-gray-50 rounded-2xl p-5 text-center">
           <div className="w-14 h-14 mx-auto mb-3 bg-white rounded-full flex items-center justify-center">
             <Briefcase className="w-7 h-7 text-purple-500" />
           </div>
@@ -166,7 +166,7 @@ export default function AgencyRegisterBusinessPage() {
         </p>
 
         <button onClick={submit} disabled={loading}
-          className="w-full py-3.5 bg-gradient-to-r from-purple-500 to-indigo-500 disabled:opacity-50 text-white font-bold rounded-2xl flex items-center justify-center gap-2">
+          className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 disabled:opacity-50 text-white font-bold rounded-2xl flex items-center justify-center gap-2">
           {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
           {loading ? t('agency.registerBusiness.submitting', { defaultValue: '신청 중...' }) : t('agency.registerBusiness.submitBtn', { defaultValue: '에이전시 신청하기' })}
         </button>

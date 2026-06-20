@@ -56,7 +56,7 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
   // 경매 종료 → 낙찰자에게 구매 버튼 표시
   if (auction.status === 'ended' && auction.winner_name) {
     return (
-      <div className="bg-gradient-to-br from-green-500/90 to-emerald-600/90 backdrop-blur-md rounded-2xl p-4 text-white shadow-lg">
+      <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-md rounded-2xl p-4 text-white shadow-lg">
         <div className="text-center">
           <p className="text-sm font-bold mb-1">{t('live.auction.ended', { defaultValue: '경매 종료!' })}</p>
           <p className="text-xs opacity-80">{t('live.auction.winner', { defaultValue: '👑 {{name}}님 낙찰', name: auction.winner_name })}</p>
@@ -104,7 +104,7 @@ export default function AuctionPanel({ streamId }: { streamId: string | number }
   const ss = timeLeft % 60
 
   return (
-    <div className="bg-gradient-to-br from-amber-500/90 to-orange-600/90 backdrop-blur-md rounded-2xl p-4 text-white shadow-lg animate-in slide-in-from-bottom">
+    <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-md rounded-2xl p-4 text-white shadow-lg animate-in slide-in-from-bottom">
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">

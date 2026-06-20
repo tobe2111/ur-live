@@ -65,7 +65,7 @@ export default function SupporterRanking({ sellerId, compact = false }: Props) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 dark:border-[#1A1A1A] overflow-hidden">
       {/* 헤더 */}
-      <div className="bg-gradient-to-r from-pink-50 to-purple-50 px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A]">
+      <div className="bg-gradient-to-r from-gray-50 to-gray-50 px-4 py-3 border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Heart className="w-5 h-5 text-pink-500 fill-pink-500" />

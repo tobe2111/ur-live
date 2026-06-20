@@ -278,7 +278,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
   return (
     <section className="mb-6">
       {isCash ? (
-        <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl p-5 text-white">
+        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-5 text-white">
           <p className="text-xs opacity-80 mb-1">💰 출금 가능 잔액 (현금)</p>
           <p className="text-3xl font-bold mb-3">{formatWon(info.available)}</p>
           <div className="flex justify-between text-xs opacity-90 mb-4">
@@ -296,7 +296,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
           </button>
         </div>
       ) : (
-        <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl p-5 text-white">
+        <div className="bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl p-5 text-white">
           <p className="text-xs opacity-80 mb-1">🟡 내 딜 잔액</p>
           <p className="text-3xl font-bold mb-3">{formatNumber(info.deal_balance)}딜</p>
           <p className="text-xs opacity-90 mb-3">

@@ -975,7 +975,7 @@ function ReelCardImpl({
       {/* LIVE Badge - 셀러가 자신의 스트림을 보고 있고, 현재 소개 중인 상품일 때만 표시 */}
       {/* 🛡️ 2026-05-13 (#6): live-top-3 — iPhone 노치/Dynamic Island 자동 회피 */}
       {isCurrentProduct && isSeller && (
-        <div className="absolute live-top-3 left-4 z-[101] flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 rounded-full shadow-2xl">
+        <div className="absolute live-top-3 left-4 z-[101] flex items-center gap-2 bg-gradient-to-r from-gray-900 to-gray-900 px-3 py-1.5 rounded-full shadow-2xl">
           <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
           <span className="text-white font-bold text-[11px] tracking-wide">{t('live.intro')}</span>
         </div>
@@ -1247,7 +1247,7 @@ function ReelCardImpl({
         {/* 플래시세일 배너 — WebSocket activeFlashSale 이벤트 시 표시 */}
         {activeFlashSale && flashSaleSecondsLeft !== null && flashSaleSecondsLeft > 0 && (
           <div className="pointer-events-auto absolute live-top-2 left-4 right-4 z-20">
-            <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-3 py-2 shadow-lg shadow-orange-500/30 animate-fade-in">
+            <div className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-gray-800 to-gray-800 px-3 py-2 shadow-lg shadow-orange-500/30 animate-fade-in">
               <span className="text-lg">⚡</span>
               <div className="flex-1 min-w-0">
                 <p className="text-white text-xs font-bold truncate">

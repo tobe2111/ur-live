@@ -33,8 +33,8 @@ interface Form {
 }
 
 const PRESET_COLORS = [
-  '#EC4899', // 핑크 (기본)
-  '#F43F5E', // 로즈
+  '#6b7280', // 핑크 (기본)
+  '#6b7280', // 로즈
   '#F59E0B', // 앰버
   '#10B981', // 에메랄드
   '#3B82F6', // 블루
@@ -126,7 +126,7 @@ export default function SellerMiniShopPage() {
       }
     }
     if (form.brand_color && !/^#[0-9A-Fa-f]{6}$/.test(form.brand_color)) {
-      toast.error('브랜드 컬러는 #RRGGBB 형식 (예: #EC4899)')
+      toast.error('브랜드 컬러는 #RRGGBB 형식 (예: #6b7280)')
       return
     }
 
@@ -247,12 +247,12 @@ export default function SellerMiniShopPage() {
               type="text"
               value={form.brand_color}
               onChange={e => update('brand_color', e.target.value)}
-              placeholder="#EC4899"
+              placeholder="#6b7280"
               className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono focus:border-pink-500 focus:outline-none"
             />
             <input
               type="color"
-              value={form.brand_color || '#EC4899'}
+              value={form.brand_color || '#6b7280'}
               onChange={e => update('brand_color', e.target.value.toUpperCase())}
               className="w-12 h-11 rounded-lg border border-gray-300 cursor-pointer"
               aria-label="컬러 피커"
@@ -295,7 +295,7 @@ export default function SellerMiniShopPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-500 hover:opacity-95 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg"
+          className="w-full py-4 bg-gradient-to-r from-gray-800 to-gray-800 hover:opacity-95 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {saving ? '저장 중…' : '저장'}

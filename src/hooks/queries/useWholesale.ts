@@ -16,6 +16,18 @@ function hasSellerToken(): boolean {
   return typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
 }
 
+/**
+ * 🏭 2026-06-19 (대표 전수조사 — 로그인/비로그인 UI 섞임 근본수정) 인증 상태 캐시-키 접미사.
+ *
+ * 게스트/로그인 응답이 **다른**(가격 노출 여부가 다른) 쿼리는 반드시 이 접미사로 캐시 키를 분리해야 함.
+ * 안 그러면 게스트로 본 응답(가격 null)이 로그인 후에도 staleTime 동안 남아 '비로그인 UI 고착'.
+ * `enabled: hasSellerToken()` 인 쿼리(로그인 전용)는 게스트로 절대 안 돌아 안전 — 이 접미사 불필요.
+ * 가격/등급이 응답에 포함되는 dual-mode 쿼리(카탈로그/프리미엄/검색/상세)에만 적용.
+ */
+export function wholesaleAuthSeg(): 'in' | 'out' {
+  return hasSellerToken() ? 'in' : 'out'
+}
+
 export interface WholesaleOrderRow {
   id: number
   toss_order_id?: string
@@ -123,7 +135,8 @@ export function useWholesaleStatement(from: string, to: string, opts?: { enabled
 
 export function useWholesaleCatalog(search: string) {
   return useQuery<WholesaleCatalogItem[]>({
-    queryKey: queryKeys.wholesale('catalog', search),
+    // 🏭 2026-06-19: 인증별 캐시 분리(게스트 가격 null 이 로그인 후 잔존 방지).
+    queryKey: queryKeys.wholesale('catalog', `${search}:${wholesaleAuthSeg()}`),
     queryFn: () => {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
@@ -149,8 +162,12 @@ export interface WholesaleProductData {
 }
 
 export function useWholesaleProduct(id: string | undefined) {
+  // 🏭 2026-06-19 (대표 신고 — 로그인했는데 상세에 비로그인 UI): 게스트/로그인 응답은 가격이 다르므로
+  //   캐시 키를 인증 상태로 분리. 기존엔 한 키를 공유 + staleTime 60s + 로그인 시 무효화 없음 →
+  //   게스트로 본 응답(distributor_price=null)이 로그인 후에도 남아 비로그인 UI 고착. 카탈로그 훅은
+  //   로그인 시 항상 fresh fetch 하는데 이 훅만 누락된 비대칭이 원인. 키 분리 → 로그인은 'in' 키로 항상 fresh.
   return useQuery<WholesaleProductData>({
-    queryKey: queryKeys.wholesale('product', id ?? ''),
+    queryKey: queryKeys.wholesale('product', `${id ?? ''}:${wholesaleAuthSeg()}`),
     queryFn: () =>
       api
         .get(`/api/wholesale/catalog/${id}`, sellerAuth())
@@ -404,7 +421,8 @@ export function useWholesaleBanners() {
 /** 프리미엄 전용관 카탈로그 — is_premium=1 필터. catalog 와 동일 응답 shape. */
 export function useWholesalePremiumCatalog(enabled = true) {
   return useQuery<WholesaleCatalogItem[]>({
-    queryKey: queryKeys.wholesale('catalog', 'premium'),
+    // 🏭 2026-06-19: 인증별 캐시 분리(게스트 가격 null 이 로그인 후 잔존 방지).
+    queryKey: queryKeys.wholesale('catalog', `premium:${wholesaleAuthSeg()}`),
     queryFn: () =>
       api
         .get('/api/wholesale/catalog?premium=1', sellerAuth())

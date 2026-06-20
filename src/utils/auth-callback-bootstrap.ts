@@ -30,8 +30,15 @@ export function processAuthCallbackParams(): void {
     return
   }
 
+  // 🛡️ 2026-06-20 (A2): 방금 login=success 로 진입한 로드인지 — 이 로드에선 health-wipe 를 건너뛴다.
+  //   세션 쿠키가 막 발급돼 propagation race 가 있거나, Safari/ITP 가 redirect 의 Set-Cookie 를 드롭한
+  //   순간에 health 핑이 session:false 를 보고 localStorage 를 wipe → "로그인 직후 자동 로그아웃" 발생.
+  //   이 로드만 grace 부여(다음 로드/실제 API 401 에서 자연 정리).
+  let didFreshLogin = false
+
   // ── 카카오 로그인 성공 ──
   if (urlParams.get('login') === 'success' && urlParams.get('userId')) {
+    didFreshLogin = true
     // 🛡️ 2026-05-01: 새 사용자 로그인 시 이전 사용자 데이터 wipe — cross-user leak 차단.
     //   사용자 신고: "다른 사람 폰에서 내 계정 로그인했는데 그 사람 이름으로 됨".
     //
@@ -179,6 +186,9 @@ export function processAuthCallbackParams(): void {
   //
   //   호출 X 인 경우: localStorage 인증 흔적 자체가 없을 때 (이미 비로그인).
   try {
+    // 🛡️ 2026-06-20 (A2): 방금 로그인한 로드면 health-wipe 스킵 — 쿠키 propagation race / Safari 드롭
+    //   순간의 오탐 로그아웃 방지. 세션이 실제로 없으면 다음 로드나 첫 API 401 에서 정리된다.
+    if (didFreshLogin) return
     const userType = localStorage.getItem('user_type')
     const userId = localStorage.getItem('user_id')
     if (userType === 'user' && userId) {

@@ -50,7 +50,7 @@ export default function AgencyRegisterPage() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-[#F4F5F7] flex items-center justify-center p-6">
+      <div className="force-light-theme min-h-screen bg-[#F4F5F7] flex items-center justify-center p-6">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-10 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-5">
             <CheckCircle className="w-8 h-8 text-blue-600" />

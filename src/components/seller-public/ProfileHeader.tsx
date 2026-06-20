@@ -22,7 +22,7 @@ export function ProfileHeader({ seller }: ProfileHeaderProps) {
             alt={displayName}
             className="w-20 h-20 rounded-full object-cover ring-2 ring-gray-100 shadow-sm" loading="lazy" decoding="async" />
         ) : (
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-sm">
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center text-white text-2xl font-bold shadow-sm">
             {initials}
           </div>
         )}

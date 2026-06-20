@@ -331,7 +331,8 @@
 
           // OS 별 자동 호출 스킴 (1회 시도)
           var url = window.location.href;
-          var isIOS = /iPhone|iPad|iPod/i.test(ua);
+          // 🛡️ 2026-06-20 (A3): iPadOS 13+ 사파리 데스크톱 UA(Macintosh+touch)도 iOS 로 판별 — in-app-browser.ts 와 일치.
+          var isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && typeof navigator.maxTouchPoints === 'number' && navigator.maxTouchPoints > 1);
           var isAndroid = /Android/i.test(ua);
           var scheme = '';
           if (isKakao && isIOS) {
@@ -339,7 +340,12 @@
           } else if (isLine && (isIOS || isAndroid)) {
             scheme = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'openExternalBrowser=1';
           } else if (isAndroid) {
-            scheme = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;end';
+            // 🛡️ 2026-06-20 (C1): S.browser_fallback_url 추가 — Chrome 미설치(삼성인터넷 기본 등,
+            //   한국 점유율 높음) 단말에서 intent 미해결 시 현재 브라우저가 원 URL 로 폴백 → 빈 화면 방지.
+            //   sessionStorage 가드(REDIRECT_KEY)가 재이동을 막아 그 로드에서 React 정상 마운트.
+            //   ⚠️ src/lib/in-app-browser.ts (autoRedirectKakaoToExternal/openInExternalBrowser) 와
+            //   동일 형식 유지(SSOT) — 한쪽 변경 시 양쪽 같이 갱신. 가드 키도 공유.
+            scheme = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(url) + ';end';
           }
 
           // 🛡️ 2026-04-29: sessionStorage 가드 — 무한 redirect 루프 방어.

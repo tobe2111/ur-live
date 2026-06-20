@@ -29,7 +29,7 @@ export default function SellerStreamingGuidePage() {
         />
 
         {/* 빠른 시작 카드 */}
-        <div className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl p-5 text-white">
+        <div className="bg-gradient-to-br from-gray-800 to-gray-800 rounded-2xl p-5 text-white">
           <p className="text-xs font-bold opacity-80 mb-2">⚡ 30초 요약</p>
           <ol className="text-sm space-y-1.5 list-decimal pl-5">
             <li>PRISM 다운로드 (무료, 네이버)</li>

@@ -23,6 +23,15 @@
 - 🩺 **진단 로깅 추가(대표 승인 "네, 추가해주세요")**: `kakao-login-diag.ts`(신규 `kakao_login_diag` 테이블, ensureXxx WeakSet 메모이즈, ~2% 확률 prune→최근 3000개, PII 미저장) + `/sync/callback` 4개 결과지점에 fire-and-forget 기록(성공/oauth_state_expired/mismatch/session_cookie_failed — 브라우저종류·ios·쿠키유무·signed_fallback 플래그). 조회: `GET /api/_internal/kakao-login-diag`(requireAdmin) — ios_summary(성공/실패) + `signed_fallback_successes_7d`(쿠키유실을 서명 state 가 구제한 건수) + browser별 aggregate + recent 100. **수정 효과 수치 확인 + 재발 즉시 감지.** fail-soft(진단 실패가 로그인 불막음).
 - ⚠️ **실기기 검증 권장**: iOS Safari + 카카오톡 인앱에서 "3초 시작하기" → 로그인 성공 확인. 그 후 `/api/_internal/kakao-login-diag` 로 ios_summary success↑ + signed_fallback_successes_7d>0 확인.
 
+## ✅ 2026-06-20 — 카카오 로그인 전수조사 후속: 인앱/세션/콜백 5종 (대표 "전수조사 → 전체 수정", A1 중복 제거 재정렬)
+**배경**: 위 A1(signed-state)은 **다른 세션이 먼저 main 에 머지**(중복). 본 항목은 같은 전수조사에서 발견된 **A1 외 고유 이슈 5종**만 정리(PR #396 rebase 시 중복 A1·`kakao-oauth-state.test.ts` 제거, kakao.routes.ts 는 main 의 signed-state 채택). **검증**: 전체 단위 pass · tsc(client) 0 · `npm run build` 0. ⚠️ 실기기 staging 검증: `docs/KAKAO_LOGIN_STAGING_CHECKLIST.md`.
+- **A2** `auth-callback-bootstrap.ts`: `?login=success` 로 막 진입한 로드에선 **health-wipe 1회 grace**. 세션 쿠키 propagation race 또는 Safari 가 redirect Set-Cookie 드롭한 순간 health 핑이 `session:false`→localStorage wipe→**"로그인 직후 자동 로그아웃"** 발생하던 것 차단(다음 로드/첫 API 401 에서 자연 정리).
+- **A3** `in-app-browser.ts`+`index.html`: `isIOS()` 에 iPadOS 13+ 데스크톱 UA(Macintosh+`maxTouchPoints>1`) 추가 — iPad 인앱 외부열기 경로 정상화.
+- **C1 (카톡 안드로이드 빈 화면)** `index.html` 인라인: Android intent 에 `S.browser_fallback_url` 누락 → Chrome 미설치(삼성인터넷 기본) 단말 빈 화면. `in-app-browser.ts`는 2026-06-17 에 고쳤지만 **인라인이 먼저 실행돼 공유 가드 키 선점→고친 버전 dead**였음. 인라인도 fallback 추가(형식 일치).
+- **C2** index.html 인라인 ↔ `in-app-browser.ts` SSOT 일치 + 교차참조 주석(가드 키 공유 계약 명시). **스코프(카톡=자동, 그외=배너) 변경 없음** — intent 형식만 통일.
+- **C3** `KakaoCallbackPage.tsx`: 토큰교환 `redirect_uri` 를 페이지 실제 경로(`/auth/kakao/callback`)와 일치(기존 `/sync/callback` 불일치=KOE006 지뢰). 주 흐름은 서버 `/sync/callback`이라 휴면 버그였지만 SPA 경로로 code 오면 실패하던 것 제거.
+- **봇/지역 오해 배제**: 카톡 인앱 UA(`KAKAOTALK`)는 SSR 봇경로(`BOT_UA_REGEX`=`KakaoTalk-Scrap`만)·`botProtection`(legit 통과) 영향 없음. 지역은 hostname 기반이라 사파리 무관 — 전수조사로 확인.
+
 ## ✅ 2026-06-19 — 어드민 제품별 플랫폼 마진 설정 UI: 미끼/마진 전략 (대표 "응 이렇게 정확하게 진행해줘")
 **요청**: 제조사가 등록한 상품을 검수할 때 **공급가·판매가·시중 최저가**를 보면서 **제품별로 우리 마진%를 정해 승인**(미끼상품=수익 하 / 마진상품=수익 상 — 항공권식 전략). 모든 가격 부가세 포함, 공급가 위에 우리 10%(조율 가능).
 - **모델 확정(불변)**: `distributor-pricing.resolveDistributorPrice` 가 이미 cost-plus(`유통사가 = round(공급가 × (1+마진%))`, 판매가 상한·공급가 하한) + 단일가(등급은 노출 큐레이션 전용). **가격/정산 엔진 무변경** — 어드민 마진 설정 컨트롤만 추가.
@@ -80,6 +89,12 @@
 - **수정(fail-safe)**: **세션이 죽었다는 확정 증거(`health.data.data.session === false`) 가 있을 때만 로그아웃.** 헬스 실패(catch)·확정 불가 시 → 세션 유지(이 API 자체 권한/일시 문제로 간주, reject만). 진짜 만료(session:false)는 그대로 로그아웃(정상). `parseSessionCookie` 가 'user' 쿠키 우선이라 멀티쿠키는 무관 확인.
 - **참고**: `auth-callback-bootstrap` 자가점검은 이미 fail-safe(명시 session===false + r.ok 일 때만 wipe). api.ts 핸들러만 결함이었음.
 - 검증: tsc 0 · `npm run build` exit 0. ⚠️ 실 로그인 모니터링 권장(Sentry breadcrumb `Buyer 401: session unconfirmed — keep` 추가로 추적 가능).
+## ✅ 2026-06-17 — 로그인/가입 입력 글자 흰색으로 안 보이던 문제 영구수정 (대표 신고 "왜 이런 문제, 영구적으로 이상적으로")
+**신고**: `/admin/login` 등에서 타이핑하는 글자가 흰색이라 안 보임. "로그인 쪽 모두 그런 것 같아."
+- **근본 원인**: 전역 CSS `.dark input:not([type=...])` (index.css:492, 특이도 **0,5,1**)가 OS/앱 다크모드(`html.dark`)에서 **모든** 입력 글자색을 gray-100(거의 흰색)으로 덮어씀. 페이지의 `text-gray-900` 유틸(특이도 0,1,0)은 특이도가 낮아 짐 → 흰 배경에 흰 글자. 대시보드는 `.admin/.seller-light-theme` 래퍼로 보호됐으나 ① **`.agency-light-theme` 는 CSS 규칙 자체가 누락**(에이전시 대시보드 잠복 동일버그) ② **로그인/가입/비번재설정 페이지는 레이아웃 밖 standalone 이라 래퍼 없음** → 무방비. (소비자 다크토글은 정상이고, 라이트 고정 표면만 영향.)
+- **영구 해결(이상적)**: ① index.css — 라이트 고정 컨테이너(`.{admin,seller,agency}-light-theme` + **범용 `.force-light-theme` 신설**) 안의 입력 글자/캐럿/autofill 을 `color:#16181b !important` + `-webkit-text-fill-color !important` 로 강제 → 전역 `.dark` 규칙을 **특이도/소스순서/브라우저(webkit·firefox) 무관** 확실히 이김. 순수 CSS 라 ThemeProvider MutationObserver(`<html>` class 복구)와도 무충돌. `.agency-light-theme` 규칙 추가(누락 메움). ② standalone 라이트 auth 페이지 **17곳** 루트 div 에 `force-light-theme` 클래스 추가 — 로그인 6(admin/seller/supplier/wholesale/agency/wholesale-staff) + 비번찾기·재설정 4(seller/agency) + 가입 6(seller/agency/supplier×register·business·supplier) + wholesale-join 1. (AdminPinSetup 은 AdminLayout 내부라 자동 보호 / JoinChoice·소비자 Login 은 의도적 다크라 제외.)
+- **재발방지**: 신규 standalone 라이트 페이지는 루트에 `force-light-theme` 추가하면 끝(주석 명시). CSS `!important` 가 어떤 다크 전역규칙도 이김 → 클래스만 있으면 영구 안전.
+- **검증**: tsc 0 · `npm run build`(client+ssr+worker) exit 0 · 대시보드 테마 검사(내 수정 파일 dark: 0, 기존 플래그 5건은 무관 파일). 17파일 force-light-theme 정확히 1회씩 루트에만 주입 확인.
 
 ## ✅ 2026-06-17 — 교환권 발송 실패 "이상적 해결": 자동 복구 + 끼임 surface (대표 "가장 이상적으로 해결해줘. 어떻게 해야 문제가 없는지")
 **배경**: 위 가시성 fix 후속 — 실패가 보이는 것에서 **문제 없게(자가치유)** 로. 기존엔 실패 시 알림(유저/Discord/dashboard)만 있고 **자동 재시도 0**(운영자가 매번 수동 '재발송' 클릭) + **'processing' 끼임 영구 잔존**(sendCoupon 직후 UPDATE 전 크래시) + 실패 사유 집계 없음.

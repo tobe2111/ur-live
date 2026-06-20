@@ -705,7 +705,7 @@ export default function ProductDetailPage() {
                       'success'
                     )
                   }}
-                  className="w-full py-3.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98]"
+                  className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98]"
                 >
                   <span className="text-[15px] font-bold">📌 내 링크샵에 담기 + 추천 링크 복사</span>
                   <span className="text-[11px] opacity-90">1판매당 {amountStr} 적립 — 친구 공유 가능</span>
@@ -888,7 +888,7 @@ export default function ProductDetailPage() {
               </button>
               <button onClick={runVoucherDealPurchase} disabled={dealBuying}
                 className="flex-1 h-12 rounded-xl text-[14px] font-extrabold text-white active:scale-[0.98] transition-transform disabled:opacity-60"
-                style={{ background: 'linear-gradient(135deg, #ec4899, #f43f5e)' }}>
+                style={{ background: 'linear-gradient(135deg, #6b7280, #6b7280)' }}>
                 {dealBuying ? '처리 중…' : `${formatNumber(dealConfirm.total)}딜로 교환`}
               </button>
             </div>

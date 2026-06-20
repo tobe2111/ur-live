@@ -231,7 +231,7 @@ export default function StepInfo({ title, setTitle, description, setDescription,
           )}
           {canQuickStart && (
             <button onClick={handleQuickStart}
-              className="text-xs bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 text-white px-3 py-1.5 rounded-full font-semibold flex items-center gap-1">
+              className="text-xs bg-gradient-to-r from-gray-800 to-gray-800 hover:from-gray-900 hover:to-gray-900 text-white px-3 py-1.5 rounded-full font-semibold flex items-center gap-1">
               <Zap className="w-3 h-3" />
               {t('seller.liveBroadcast.quickStart')}
             </button>

@@ -49,7 +49,7 @@ const STATUS_BADGE: Record<string, { label: string; bg: string; color: string }>
 }
 const badgeOf = (s: string) => STATUS_BADGE[s] || { label: s, bg: WT.fill, color: WT.ink3 }
 
-export default function WholesaleQuotesPage() {
+export default function WholesaleQuotesPage({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
   const [form, setForm] = useState({ title: '', product_id: '', requested_qty: '', target_unit_price: '', request_text: '' })
   const [saving, setSaving] = useState(false)
@@ -86,7 +86,7 @@ export default function WholesaleQuotesPage() {
     return true
   }), [quotes, tab])
 
-  if (!sellerToken()) {
+  if (!embedded && !sellerToken()) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: WT.fill }}>
         <SEO title="견적함 — 유통스타트" description="유통사 대량/협상 견적요청" url="/wholesale/quotes" noindex />
@@ -137,22 +137,9 @@ export default function WholesaleQuotesPage() {
     { id: 'done', label: '완료', n: counts.done },
   ]
 
-  return (
-    <div className="min-h-screen pb-20" style={{ background: WT.fill }}>
-      <SEO title="견적함 — 유통스타트" description="카탈로그 단가 대신 협의 단가로 대량 발주" url="/wholesale/quotes" noindex />
-
-      {/* 로고 브레드크럼 헤더 */}
-      <header className="sticky top-0 z-30" style={{ background: '#fff', borderBottom: '1px solid ' + WT.line }}>
-        <div className="ur-content-wide px-5 lg:px-8 flex items-center gap-3 h-14">
-          <button onClick={() => navigate('/wholesale')} aria-label="도매몰 홈" className="shrink-0">
-            <WholesaleWordmark height={26} />
-          </button>
-          <ChevronRight className="w-4 h-4 shrink-0" style={{ color: WT.ink4 }} />
-          <span className="text-[14px] font-bold" style={{ color: WT.ink }}>견적함</span>
-        </div>
-      </header>
-
-      <main className="ur-content-wide px-5 lg:px-8 pt-6 space-y-5">
+  // 콘텐츠(견적함 본문) — embedded/standalone 공유.
+  const content = (
+    <>
         {/* 제목 + CTA */}
         <div className="flex items-end justify-between gap-3 flex-wrap">
           <div>
@@ -259,9 +246,12 @@ export default function WholesaleQuotesPage() {
             </ul>
           )}
         </div>
-      </main>
+    </>
+  )
 
-      {/* 새 견적 요청 모달 */}
+  // 새 견적 요청 모달 — embedded/standalone 공유.
+  const formModal = (
+    <>
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={() => setShowForm(false)}>
           <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -303,6 +293,39 @@ export default function WholesaleQuotesPage() {
           </div>
         </div>
       )}
+    </>
+  )
+
+  // 대시보드 탭 임베드 — 외곽 래퍼/SEO/헤더 생략, 본문만(+모달).
+  if (embedded) {
+    return (
+      <div className="space-y-5">
+        {content}
+        {formModal}
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen pb-20" style={{ background: WT.fill }}>
+      <SEO title="견적함 — 유통스타트" description="카탈로그 단가 대신 협의 단가로 대량 발주" url="/wholesale/quotes" noindex />
+
+      {/* 로고 브레드크럼 헤더 */}
+      <header className="sticky top-0 z-30" style={{ background: '#fff', borderBottom: '1px solid ' + WT.line }}>
+        <div className="ur-content-wide px-5 lg:px-8 flex items-center gap-3 h-14">
+          <button onClick={() => navigate('/wholesale')} aria-label="도매몰 홈" className="shrink-0">
+            <WholesaleWordmark height={26} />
+          </button>
+          <ChevronRight className="w-4 h-4 shrink-0" style={{ color: WT.ink4 }} />
+          <span className="text-[14px] font-bold" style={{ color: WT.ink }}>견적함</span>
+        </div>
+      </header>
+
+      <main className="ur-content-wide px-5 lg:px-8 pt-6 space-y-5">
+        {content}
+      </main>
+
+      {formModal}
     </div>
   )
 }

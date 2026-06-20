@@ -206,7 +206,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
             <button
               onClick={handlePay}
               disabled={!clientKey}
-              className="w-full py-3.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[15px] font-bold rounded-full shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
+              className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white text-[15px] font-bold rounded-full shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
             >
               {formatNumber(order.total_amount)}원 결제하기
             </button>

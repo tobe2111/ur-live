@@ -125,7 +125,7 @@ export default function DesktopLiveRightPanel() {
                 onClick={handleSend}
                 disabled={!inputText.trim() || sending || !sendMessage}
                 className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 disabled:opacity-40 transition-opacity"
-                style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)' }}
+                style={{ background: 'linear-gradient(135deg, #EF4444, #6b7280)' }}
               >
                 <Send className="w-4 h-4 text-white" />
               </button>

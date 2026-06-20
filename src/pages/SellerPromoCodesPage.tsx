@@ -172,7 +172,7 @@ export default function SellerPromoCodesPage() {
         {!showCreate ? (
           <button
             onClick={() => setShowCreate(true)}
-            className="w-full py-3.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-md"
+            className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-md"
           >
             <Plus className="w-4 h-4" /> 새 할인 코드 발급
           </button>
