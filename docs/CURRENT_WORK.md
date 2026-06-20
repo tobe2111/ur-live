@@ -8,6 +8,17 @@
 - **결제/환불/취소/폴링 로직 byte-identical** — `handleSelfCancel`·status 조건·api 호출 불변, 시각만. 🔒 잠금 보존: VoucherMap lazy / qrcode.react lazy / useMyVouchers / useInvalidateMyVouchers.
 - 검증: `npm run type-check`(0) · `check-theme-consistency.mjs`(0) · `npm run build`(client+ssr+worker+prepare, exit 0). i18n 신규키는 defaultValue 폴백(소비자 페이지 패턴, 기존 동일) — 추가 debt 0. 드래프트 PR #397.
 
+## ✅ 2026-06-20 (3차 — 교과서 A 방식) — iOS 세션을 same-origin httpOnly 발급으로 전환 (대표 "a 방식으로 해줘")
+**배경**: 2차(user_token Bearer)는 효과는 있으나 토큰을 **localStorage**에 둬 XSS 노출(OWASP 비권장). 대표가 **A 방식(httpOnly 유지)** 선택.
+- **원인 재확인**: httpOnly `ur_session` 쿠키가 **cross-site OAuth 콜백 302 응답**에서 set 되면 iOS Safari/WebKit 이 미영속. (Chrome 정상.)
+- **A 방식(교과서)**: 세션을 **same-origin 200 응답**에서 발급(first-party 쿠키라 iOS 영속). 흐름:
+  1. `kakao.routes.ts /sync/callback`: 인증 결과를 담은 **단명(120초)·서명(HS256/JWT_SECRET)·purpose-scoped 세션 티켓**을 fragment(`#st=`)로만 전달(서버/Referer/로그 미전송). localStorage Bearer·`ur_pending_user_token` 발급 **제거**. POST `/api/auth/kakao/callback` 응답의 `user_token`도 제거(그 흐름은 이미 same-origin 200 set).
+  2. `auth.routes.ts` 신규 **`POST /api/auth/session/establish`**: 티켓 verify(서명+120초 만료+purpose+uid) → `createSessionCookie()` 로 **httpOnly ur_session 을 200 응답에 Set-Cookie**(first-party → iOS 영속). 비인증 엔드포인트지만 **서명 티켓 자체가 CSRF/위조 방어**(별도 저장 불필요).
+  3. `main.tsx bootApp`: `processAuthCallbackParams` 가 fragment 티켓을 `window.__urEstablishTicket` 에 stash → **렌더 전 await** 로 establish 교환(4초 타임아웃, 실패해도 렌더). 이후 모든 API 가 쿠키로 인증.
+  4. `auth-callback-bootstrap.ts`: `#st` stash + localStorage 토큰 경로 제거(`#ut`/`ur_pending_user_token` 삭제). `didFreshLogin` health-wipe grace 유지(establish 전 ping 오탐 차단). 셀러/에이전시 대시보드 transfer 쿠키는 별개로 유지.
+- **보안**: 세션 토큰이 **localStorage 에 없음**(httpOnly 쿠키만) → XSS 면역. 티켓은 120초 단명. **이게 이 문제의 정석**.
+- 검증: 단위 43 pass(`kakao-user-token`→establish 티켓 검증으로 교체) · tsc(client) 0 · `npm run build` 0. ⚠️ **실기기 필수**: iOS 사파리 로그인 → 새로고침/탭이동 유지 + `/api/_internal/kakao-login-diag` 재시도 폭주 사라짐.
+
 ## ✅ 2026-06-20 (2차) — 카카오 로그인 "잠시 됐다 풀림" 근본수정: 소비자 user_token Bearer (대표 신고 "잠시 되다 안돼 / 둘 다 불안정")
 **증상(1차 수정 후)**: signed-state 로 OAuth *완료*는 됐는데(로그인 "잠시" 됨), iOS(사파리·카톡 인앱)에서 **곧 다시 로그아웃**. 크롬은 정상.
 - **근본 원인(아키텍처로 확정)**: 카카오 로그인은 `ur_session`(httpOnly·Lax) **쿠키 1개에만** 의존. iOS WebKit(사파리 ITP / 카톡 WKWebView)은 cross-site OAuth 왕복 후 이 쿠키를 **유실/비영속** 처리 → `/api/auth/session/health` 가 `session:false` → 클라(auth-callback-bootstrap + api.ts 401핸들러)가 로그인을 **wipe**. **이메일 로그인은 이미 `user_token`(localStorage Bearer)을 써서 이 문제가 없음** — 카카오만 미발급이 차이. (단일세션 enforcement 는 `deriveDashboardSeat`가 user→null 이라 무관함을 확인.)

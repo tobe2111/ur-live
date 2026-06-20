@@ -13,7 +13,6 @@ import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
 import ScrollToTop from './components/ScrollToTop'
 import OfflineBanner from './components/OfflineBanner'
-import InAppBrowserBanner from './components/InAppBrowserBanner'
 import BottomNav from '@/components/main/BottomNav'
 import DesktopTopNav from '@/components/main/DesktopTopNav'
 import { swallow } from '@/shared/utils/swallow'
@@ -498,7 +497,10 @@ function AppContent() {
           {/* 📐 2026-05-03: PC 상단 네비게이션 — 모바일 BottomNav 의 PC 대응. lg+ 에서만 표시. */}
           {!hideBottomNav && <DesktopTopNav />}
           <div className="flex-1">
-          <InAppBrowserBanner />
+          {/* 🗑️ 2026-06-20 (대표 요청): 인앱 브라우저 경고 배너(InAppBrowserBanner) 제거 —
+              "카카오톡 인앱 브라우저에서는 일부 기능이 제한될 수 있어요" 노이즈. 카카오 로그인은
+              이제 정상 동작 + 카톡 인앱은 main.tsx 가 외부 브라우저로 자동 redirect. 복원하려면
+              `import InAppBrowserBanner from './components/InAppBrowserBanner'` 후 여기 다시 렌더. */}
           {/* 🗑️ 2026-06-17 (사용자 요청): 앱 설치 팝업(PWAInstallPrompt) 제거 */}
           <Suspense fallback={null}><OnboardingTrigger /></Suspense>
           <Suspense fallback={null}><RestoreAccountModal /></Suspense>

@@ -20,7 +20,7 @@ import { generateId } from '../../shared/utils';
 import { JWT_ACCESS_TOKEN_EXPIRY, JWT_REFRESH_TOKEN_EXPIRY } from '../../shared/constants';
 // PBKDF2 password hashing — Cloudflare Workers compatible (100k iterations, SHA-256)
 import { hashPassword, verifyPassword, validatePasswordComplexity } from '../../lib/password';
-import { parseSessionCookie, clearSessionCookie } from '../utils/session';
+import { parseSessionCookie, clearSessionCookie, createSessionCookie } from '../utils/session';
 import { verify as jwtVerify } from 'hono/jwt';
 import { checkLockout, recordFailure, clearFailures } from '../utils/account-lockout';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
@@ -366,6 +366,48 @@ authRouter.post('/change-password', rateLimit({ action: 'change_password', max: 
 authRouter.get('/validate', requireAuth(), async (c) => {
   const user = c.get('user');
   return c.json({ success: true, data: { valid: true, user } });
+});
+
+// POST /api/auth/session/establish — 🛡️ 2026-06-20 (A 방식: iOS 로그인 근본수정)
+//   카카오 OAuth 콜백(/auth/kakao/sync/callback)이 cross-site 302 응답에서 set 한 httpOnly
+//   ur_session 쿠키는 iOS Safari/WebKit 에서 미영속(진단으로 확정). 그래서 콜백은 단명(120초)·서명
+//   세션 티켓을 fragment(#st=)로만 넘기고, 착지 클라가 이 엔드포인트로 **same-origin POST** 교환 →
+//   여기서 httpOnly ur_session 을 first-party 200 응답에 발급(iOS 영속). 토큰을 localStorage 에 두지 않음.
+//   보안: 티켓은 HS256/JWT_SECRET 서명(위조 불가) + 120초 만료 → 재생/CSRF 안전(별도 저장 불필요).
+authRouter.post('/session/establish', rateLimit({ action: 'session_establish', max: 30, windowSec: 60 }), async (c) => {
+  if (!c.env.JWT_SECRET) return c.json({ success: false, error: 'not_configured' }, 500);
+  let ticket: string | undefined;
+  try {
+    const body = await c.req.json<{ ticket?: string }>().catch(() => ({} as { ticket?: string }));
+    ticket = body?.ticket;
+  } catch { /* invalid body */ }
+  if (!ticket || typeof ticket !== 'string') {
+    return c.json({ success: false, error: 'ticket_required' }, 400);
+  }
+  let payload: Record<string, unknown>;
+  try {
+    payload = (await jwtVerify(ticket, c.env.JWT_SECRET, 'HS256')) as Record<string, unknown>;
+  } catch {
+    // 서명 무효 / 만료(120초 초과) → 거부. 클라는 재로그인 유도.
+    return c.json({ success: false, error: 'invalid_or_expired_ticket' }, 401);
+  }
+  if (payload.p !== 'session_establish' || !payload.uid) {
+    return c.json({ success: false, error: 'invalid_ticket' }, 401);
+  }
+  try {
+    const cookie = await createSessionCookie(
+      String(payload.uid),
+      String(payload.name || ''),
+      String(payload.email || ''),
+      (payload.img as string) || undefined,
+      c.env.JWT_SECRET,
+    );
+    c.header('Set-Cookie', cookie); // same-origin 200 → iOS WebKit 영속
+    return c.json({ success: true, data: { userId: String(payload.uid) } });
+  } catch (e) {
+    if (import.meta.env.DEV) console.error('[session/establish] cookie creation failed:', e);
+    return c.json({ success: false, error: 'establish_failed' }, 500);
+  }
 });
 
 // GET /api/auth/session/health — 세션+카카오 토큰 상태 통합 체크
