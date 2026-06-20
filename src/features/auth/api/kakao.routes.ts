@@ -8,7 +8,7 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { sign as jwtSign } from 'hono/jwt';
+import { sign as jwtSign, verify as jwtVerify } from 'hono/jwt';
 import { KakaoAuthService } from '../services/KakaoAuthService';
 // 🛡️ 2026-05-01: FirebaseAuthService import 제거 — KR Kakao 흐름은 Firebase 0.
 import { createSessionCookie, clearSessionCookie } from '@/worker/utils/session';
@@ -215,6 +215,57 @@ function clearStateCookieHeader(): string {
   return `${OAUTH_STATE_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`;
 }
 
+const STATE_TOKEN_PURPOSE = 'kakao_oauth_state';
+
+/**
+ * 🛡️ 2026-06-20: self-contained(서명) OAuth state — 쿠키 유실 대비 fallback.
+ *
+ * Why: iOS Safari/WebKit 는 OAuth 왕복(특히 카카오톡 앱 핸드오프 → Safari 복귀,
+ *   ITP cross-site 쿠키 처리) 에서 `kakao_oauth_state` Lax 쿠키를 콜백에 안 돌려주는
+ *   케이스가 있음 → 기존엔 `oauth_state_expired` 로 로그인 실패. Chrome(Blink)은 정상.
+ *   → state 파라미터 자체를 JWT_SECRET 으로 서명해 redirect/intent/nonce/만료를 담으면
+ *     쿠키가 없어도 서명 검증으로 CSRF·라우팅을 복구할 수 있음 (표준 signed-state 패턴).
+ *
+ * 보안: 서명(HS256)이라 공격자는 JWT_SECRET 없이 위조 불가. 30분 만료 + nonce.
+ *   쿠키가 있을 때(대다수 브라우저)는 기존 쿠키↔URL state 바인딩을 그대로 유지(더 강함).
+ */
+async function signOauthState(
+  redirect: string,
+  intent: 'user' | 'seller' | 'agency',
+  nonce: string,
+  secret: string,
+): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  return jwtSign(
+    { p: STATE_TOKEN_PURPOSE, n: nonce, r: redirect, i: intent, iat: now, exp: now + 1800 },
+    secret,
+  );
+}
+
+/** Verify a signed state token. Returns redirect/intent on success, null otherwise. */
+async function verifySignedState(
+  state: string | null | undefined,
+  secret: string,
+): Promise<{ redirect: string; intent: 'user' | 'seller' | 'agency' } | null> {
+  if (!state || !secret) return null;
+  // JWT(점 2개)만 시도 — 레거시 opaque UUID state 는 검증 대상 아님.
+  if (state.split('.').length !== 3) return null;
+  try {
+    const payload = await jwtVerify(state, secret, 'HS256') as Record<string, unknown>;
+    if (!payload || payload.p !== STATE_TOKEN_PURPOSE) return null;
+    const redirect = safeRedirect(typeof payload.r === 'string' ? payload.r : '/');
+    const intentRaw = payload.i;
+    const intent = (intentRaw === 'seller' || intentRaw === 'agency') ? intentRaw : 'user';
+    return { redirect, intent };
+  } catch {
+    // 만료/서명 불일치 — hono/jwt verify 가 throw.
+    return null;
+  }
+}
+
+// 🧪 단위 테스트용 export — signed-state 왕복(CSRF/쿠키유실 복구) 회귀 검증
+export { signOauthState as __signOauthStateForTest, verifySignedState as __verifySignedStateForTest };
+
 /**
  * GET /auth/kakao/start?redirect=/path
  * Initiates OAuth: generates random state, stores signed short-lived cookie,
@@ -235,10 +286,17 @@ kakaoRoutes.get('/start', rateLimit({ action: 'kakao_start', max: 30, windowSec:
     return c.json({ success: false, error: 'Kakao not configured' }, 500);
   }
 
-  const state = crypto.randomUUID();
+  const nonce = crypto.randomUUID();
+  // 🛡️ 2026-06-20: state = 서명된 self-contained 토큰 (redirect/intent/nonce/만료 동봉).
+  //   iOS Safari/WebKit 가 OAuth 왕복에서 state 쿠키를 유실해도 콜백이 서명 검증으로 복구.
+  //   JWT_SECRET 없거나 서명 실패 시 nonce(opaque UUID) 로 폴백 → 기존 쿠키-only 동작 유지.
+  let state: string = nonce;
+  try {
+    if (c.env.JWT_SECRET) state = await signOauthState(redirect, intent, nonce, c.env.JWT_SECRET);
+  } catch { /* 서명 실패 — opaque nonce 로 폴백 (쿠키 경로는 그대로 동작) */ }
   const b64Redirect = btoa(encodeURIComponent(redirect))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  // state|redirect|intent
+  // state|redirect|intent  (state 부분은 이제 서명 JWT — '|' 미포함이라 split 안전)
   const cookieValue = `${state}|${b64Redirect}|${intent}`;
 
   c.header(
@@ -347,15 +405,22 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
     intent = stateCookie.intent;
     stateMatched = !!receivedState && receivedState === stateCookie.state;
   } else {
-    // 🛡️ 2026-05-01: state 쿠키 만료 (30분 초과) 또는 미발급 케이스 명시 에러.
-    //   이전: receivedState (random UUID) 를 safeRedirect 통과시켜 silent '/' 로.
-    //   사용자는 왜 로그인 안 됐는지 모름. 에러 명시.
-    if (receivedState) {
-      // 카카오에서 state 는 받았는데 쿠키가 없으면 만료/세션 이슈.
+    // 🛡️ 2026-06-20: state 쿠키 유실 fallback (iOS Safari/WebKit OAuth 왕복·카카오톡 앱 핸드오프).
+    //   서명된 self-contained state 면 쿠키 없이도 CSRF·redirect·intent 복구 → 로그인 성공.
+    //   Chrome 등 쿠키 정상 브라우저는 위 stateCookie 분기로 가므로 이 경로 미진입(동작 불변).
+    const signed = await verifySignedState(receivedState, c.env.JWT_SECRET);
+    if (signed) {
+      redirectTarget = signed.redirect;
+      intent = signed.intent;
+      stateMatched = true; // 서명 검증 = CSRF 통과 (JWT_SECRET 없이 위조 불가 + 30분 만료)
+    } else if (receivedState) {
+      // 🛡️ 2026-05-01: 쿠키도 없고 서명도 무효(레거시 opaque/만료) → 명시 에러.
+      //   이전: receivedState (random UUID) 를 safeRedirect 통과시켜 silent '/' 로.
       c.header('Set-Cookie', clearStateCookieHeader());
       return c.redirect(`/?error=oauth_state_expired`);
+    } else {
+      redirectTarget = safeRedirect(receivedState);
     }
-    redirectTarget = safeRedirect(receivedState);
   }
 
   try {
