@@ -36,3 +36,5 @@
 | **🔐 대시보드 토큰 httpOnly 쿠키 전환 (XSS 하드닝)** | 2026-06-17 | 🟡 설계 (단계 구현 대기 — Phase0 CSRF→admin→supplier/agency→seller) | [dashboard-cookie-auth.md](./dashboard-cookie-auth.md) |
 | **🔗 링크샵 랜딩 리디자인 — 마퀴 + 배너 히어로 + QR + 사이드바 숨김 (나브랜딩 시안)** | 2026-06-17 | ⏳ 구현 대기 (사용자 확인 후) | [linkshop-landing-redesign.md](./linkshop-landing-redesign.md) |
 | **📦 주문 내역/상세 — 무신사 스타일(썸네일·날짜그룹·검색)** | 2026-06-18 | ✅ 구현 완료 (옵션 A — 종류 탭 + 종류별 카드 + 데이터버그 3건 수정) | [my-orders.md](./my-orders.md) |
+| **🗺️ 동네딜 = 지도 + 바텀시트 (에버랜드 파크맵)** | 2026-06-20 | ⏳ 방향 확인 대기 (RestaurantMapPage ~90% 재활용) | [dongnedeal-map-bottomsheet.md](./dongnedeal-map-bottomsheet.md) |
+| **🖥️ PC = 중앙 모바일 액자 + 데코 사이드레일 + 하단 네비** | 2026-06-20 | ⏳ 방향 확인 대기 (현 app-framed 구조 재구성) | [pc-app-frame-decorated-rails.md](./pc-app-frame-decorated-rails.md) |
