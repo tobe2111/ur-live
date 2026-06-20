@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-20 (4차 — 전 역할 iOS 카카오 로그인 + 미래대비) — 역할 토큰 fragment 채널 (대표 "셀러/에이전시/도매 + 앞으로 추가될 서비스까지")
+**배경**: 소비자(establish)는 고쳤으나, **셀러/에이전시/유통사가 카카오로 *돌아와* 대시보드 로그인** 시 역할 토큰을 `ur_pending_*` **transfer 쿠키**(cross-site 302 set)로 받아 → iOS WebKit 미영속 → 대시보드 로그인 실패(잠복).
+- **전수조사 결과**: 깨지는 건 **`/sync/callback` 리다이렉트의 transfer 쿠키**뿐. **공급자(제조사) `create-from-kakao`·유통사 `become-distributor`/`login` 은 XHR(JSON 응답)이라 이미 iOS-safe**(same-origin 200) — 무변경.
+- **근본수정(generic·미래대비)**: 역할 토큰을 **fragment(`#auth=<b64url(JSON)>`)** 로 전달(모든 브라우저 생존, 서버/Referer 미전송). 신규 SSOT `worker/utils/pending-auth.ts` `encodePendingAuth()`. `kakao.routes.ts /sync/callback` 이 `pendingLs` 맵 구성(seller_token/id/name/username/is_distributor, agency_token/refresh/id/name) → `#st`(소비자 establish 티켓)와 같은 fragment 에 합침. 클라 `auth-callback-bootstrap` 이 decode → **허용목록(`seller_`/`agency_`/`supplier_` 네임스페이스 + 명시 키)만** localStorage 이전. `ur_pending_*` Set-Cookie/read **전부 제거**. ud_* httpOnly(SSR GET 읽기)는 별개로 유지.
+- **미래대비(핵심)**: 새 역할 로그인이 `/sync/callback` 에서 토큰 발급 시 **pendingLs 맵에 한 줄 추가**만 하면 자동 iOS-safe. 같은 네임스페이스면 클라 변경도 불필요. **CLAUDE.md 카카오 OAuth 룰에 영구 규칙 박제**(iOS 쿠키 영속 룰 — transfer 쿠키 금지, fragment/establish 필수). 토큰 값은 서명 JWT라 서버 검증 → fragment 위변조해도 가짜 토큰 통과 불가(envelope 비신뢰 OK).
+- 검증: 신규 단위 `pending-auth`(round-trip·UTF-8 한글·허용목록 차단) + 기존 pass · tsc(client) 0 · `npm run build` 0. ⚠️ 실기기: iOS 사파리에서 카카오 로그인 후 셀러/에이전시/유통사 대시보드 진입 유지 확인.
+
 ## ✅ 2026-06-20 — 내 지갑(/my-vouchers) 흑백 iOS-클린 리디자인 (Claude Design handoff, 대표 결정: 단일 페이지 톤 리파인 + 지갑 4페이지 잉크 통일)
 **배경**: 2026-06-20 대표 신고 "공구권 페이지 디자인이 심각해 … 너무 성의없어"의 후속으로 직접 모킹한 정식 리디자인 handoff(`478b54e2`). 시안 6화면(메인 공구권/지도/사용 모달/메인 교환권/빈 상태/설정). AskUserQuestion 결과 **스코프=단일 페이지(`MyVouchersPage`) 톤 리파인** + **액센트=지갑 4페이지 잉크 통일**. 지도/설정 전용 화면은 보류(현 토글·모달 유지). 시안 박제: `docs/design/my-vouchers-wallet-bw.md`(+`.dc.html`×2, 스크린샷). **병렬 세션의 main 흑백 전환(블랙앤화이트 #6b7280, 빨강만 유지)과 수렴 — 머지 시 지갑 토큰은 ink(#0A0A0A)+onAccent 채택(handoff 정합), 상태 점은 green(#16A34A, handoff 명시) 유지.**
 - **`walletTokens.ts`**: `accent` 핑크(#EC4899)→잉크(라이트 #0A0A0A / 다크 #FFFFFF), `accentSoft`/`accentGradient` 동반, **`onAccent` 신설**(필 위 텍스트색 — 다크 invert). blast radius = WishlistPage CTA 2개·스피너 + MyVouchersPage 스피너 (ListRow 등 atoms 는 dead/미사용).

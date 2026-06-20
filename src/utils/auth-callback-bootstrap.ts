@@ -116,60 +116,31 @@ export function processAuthCallbackParams(): void {
       }
     } catch { /* localStorage blocked (incognito etc.) — ignore */ }
 
-    // linked seller/agency token transfer (cookie → localStorage).
-    //   wipe 후 새로 받은 cookie 만 적용. 이전 사용자가 seller 였더라도 새 사용자에 영향 없음.
+    // 🛡️ 2026-06-20 (iOS 대시보드 로그인 — A 방식 자매수정): 링크 역할 토큰(seller/agency/유통사 등)을
+    //   transfer 쿠키(cross-site 302 set → iOS WebKit 미영속)가 아니라 **fragment(#auth=)** 로 받아
+    //   localStorage 로 이전. fragment 는 모든 브라우저(특히 iOS)에서 생존 → 대시보드 로그인 iOS-safe.
+    //   - 허용목록(seller_*/agency_*/supplier_* 네임스페이스 + 명시 키)만 적용 → **미래 역할도 같은
+    //     네임스페이스면 클라 변경 없이 자동 동작**(서버 pendingLs 맵에 한 줄 추가만). SSOT: worker/utils/pending-auth.ts.
+    //   - 토큰 값은 서명 JWT → 서버가 검증. fragment(envelope)는 비신뢰지만 위변조해도 가짜 토큰 통과 불가.
+    //   - 아래 URL 정리(replaceState pathname+search)에서 hash(#st/#auth) 제거됨(서버/Referer 미전송).
     try {
-      const readCookie = (name: string): string | null => {
-        const match = new RegExp(`(?:^|;\\s*)${name}=([^;]+)`).exec(document.cookie)
-        return match ? decodeURIComponent(match[1]) : null
-      }
-      const clearCookie = (name: string) => {
-        document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax; Secure`
-      }
-      // 🛡️ 2026-06-20 (A 방식): localStorage Bearer 토큰 경로 제거 — 세션은 establish 가 발급한
-      //   httpOnly ur_session 쿠키로만 인증(아래 셀러/에이전시 대시보드 transfer 는 별개로 유지).
-      const sellerToken = readCookie('ur_pending_seller_token')
-      if (sellerToken) {
-        localStorage.setItem('seller_token', sellerToken)
-        // 🛡️ 2026-06-19 (#4·#5 근본수정): 토큰 페이로드의 is_distributor → localStorage (도매 가드용).
-        //   리다이렉트(transfer-cookie) 경로도 JSON 콜백 경로와 대칭 — 없으면 카카오 유통사가 상품페이지
-        //   게스트 UI + 충전→deposits 튕김. 토큰은 서버 서명이라 클레임 읽기는 안전.
-        try {
-          const claim = JSON.parse(atob(sellerToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
-          if (claim?.is_distributor) localStorage.setItem('is_distributor', '1')
-        } catch { /* 토큰 파싱 실패 — 무시 */ }
-        const sellerInfoRaw = readCookie('ur_pending_seller_info')
-        if (sellerInfoRaw) {
-          try {
-            const info = JSON.parse(sellerInfoRaw)
-            if (info.id) localStorage.setItem('seller_id', String(info.id))
-            if (info.business_name) localStorage.setItem('seller_name', info.business_name)
-          } catch { /* ignore */ }
+      const h = window.location.hash || ''
+      const m = h.match(/[#&]auth=([^&]+)/)
+      if (m && m[1]) {
+        const b64 = decodeURIComponent(m[1]).replace(/-/g, '+').replace(/_/g, '/')
+        const padded = b64.padEnd(b64.length + (4 - (b64.length % 4)) % 4, '=')
+        const bin = atob(padded)
+        const bytes = new Uint8Array(bin.length)
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+        const obj = JSON.parse(new TextDecoder().decode(bytes)) as Record<string, unknown>
+        const ALLOW = /^(seller_|agency_|supplier_|is_distributor$|user_handle$|linked_seller_username$)/
+        for (const [k, v] of Object.entries(obj)) {
+          if (typeof v === 'string' && ALLOW.test(k)) {
+            try { localStorage.setItem(k, v) } catch { /* quota */ }
+          }
         }
-        clearCookie('ur_pending_seller_token')
-        clearCookie('ur_pending_seller_info')
       }
-      const agencyToken = readCookie('ur_pending_agency_token')
-      if (agencyToken) {
-        localStorage.setItem('agency_token', agencyToken)
-        // 🏁 2026-06-13: refresh token transfer → localStorage (자동 로그아웃 방지)
-        const agencyRefresh = readCookie('ur_pending_agency_refresh_token')
-        if (agencyRefresh) {
-          localStorage.setItem('agency_refresh_token', agencyRefresh)
-          clearCookie('ur_pending_agency_refresh_token')
-        }
-        const agencyInfoRaw = readCookie('ur_pending_agency_info')
-        if (agencyInfoRaw) {
-          try {
-            const info = JSON.parse(agencyInfoRaw)
-            if (info.id) localStorage.setItem('agency_id', String(info.id))
-            if (info.name) localStorage.setItem('agency_name', info.name)
-          } catch { /* ignore */ }
-        }
-        clearCookie('ur_pending_agency_token')
-        clearCookie('ur_pending_agency_info')
-      }
-    } catch { /* ignore */ }
+    } catch { /* fragment 파싱 실패 — 무시(로그인 자체엔 영향 없음) */ }
 
     // URL 정리 — 인증용 파라미터만 제거.
     //   new=1 (onboarding), restorable=1 (Option B 복원), originalName, userName 유지
