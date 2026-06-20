@@ -149,8 +149,13 @@ export interface WholesaleProductData {
 }
 
 export function useWholesaleProduct(id: string | undefined) {
+  // 🏭 2026-06-19 (대표 신고 — 로그인했는데 상세에 비로그인 UI): 게스트/로그인 응답은 가격이 다르므로
+  //   캐시 키를 인증 상태로 분리. 기존엔 한 키를 공유 + staleTime 60s + 로그인 시 무효화 없음 →
+  //   게스트로 본 응답(distributor_price=null)이 로그인 후에도 남아 비로그인 UI 고착. 카탈로그 훅은
+  //   로그인 시 항상 fresh fetch 하는데 이 훅만 누락된 비대칭이 원인. 키 분리 → 로그인은 'in' 키로 항상 fresh.
+  const authed = hasSellerToken()
   return useQuery<WholesaleProductData>({
-    queryKey: queryKeys.wholesale('product', id ?? ''),
+    queryKey: queryKeys.wholesale('product', `${id ?? ''}:${authed ? 'in' : 'out'}`),
     queryFn: () =>
       api
         .get(`/api/wholesale/catalog/${id}`, sellerAuth())
