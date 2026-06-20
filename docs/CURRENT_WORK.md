@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-20 — 내 지갑(/my-vouchers) 흑백 iOS-클린 리디자인 (Claude Design handoff, 대표 결정: 단일 페이지 톤 리파인 + 지갑 4페이지 잉크 통일)
+**배경**: 2026-06-20 대표 신고 "공구권 페이지 디자인이 심각해 … 너무 성의없어"의 후속으로 직접 모킹한 정식 리디자인 handoff(`478b54e2`). 시안 6화면(메인 공구권/지도/사용 모달/메인 교환권/빈 상태/설정). AskUserQuestion 결과 **스코프=단일 페이지(`MyVouchersPage`) 톤 리파인** + **액센트=지갑 4페이지 잉크 통일**. 지도/설정 전용 화면은 보류(현 토글·모달 유지). 시안 박제: `docs/design/my-vouchers-wallet-bw.md`(+`.dc.html`×2, 스크린샷).
+- **`walletTokens.ts`**: `accent` 핑크(#EC4899)→잉크(라이트 #0A0A0A / 다크 #FFFFFF), `accentSoft`/`accentGradient` 동반, **`onAccent` 신설**(필 위 텍스트색 — 다크 invert). blast radius = WishlistPage CTA 2개·스피너 + MyVouchersPage 스피너 (ListRow 등 atoms 는 dead/미사용).
+- **`WishlistPage.tsx`**: accentGradient CTA 2개 `text-white`→`tk.onAccent`(다크모드 흰 글자 안 보임 방지).
+- **`MyVouchersPage.tsx`**: 상태줄 🟢점+빨강 D-N("가장 가까운 만료") / 식사권 카드 코드 회색칩+복사아이콘 / **QR 모달**(🟢 pulse 실시간시계 + 🟢 체크 "이미 결제 완료" 안내 + "매장 안내" 칩 + 공유/구매취소 2버튼 그리드 + 7일 환불 안내) / 교환권(KtAlpha) amber→뉴트럴 / 전화 배너·등록모달 잉크 / 빈상태 1·2·3 원형 잉크 스텝+블랙 CTA.
+- **결제/환불/취소/폴링 로직 byte-identical** — `handleSelfCancel`·status 조건·api 호출 불변, 시각만. 🔒 잠금 보존: VoucherMap lazy / qrcode.react lazy / useMyVouchers / useInvalidateMyVouchers.
+- 검증: `npm run type-check`(0) · `check-theme-consistency.mjs`(0) · `npm run build`(client+ssr+worker+prepare, exit 0). i18n 신규키는 defaultValue 폴백(소비자 페이지 패턴, 기존 동일) — 추가 debt 0. 드래프트 PR #397.
+
 ## ✅ 2026-06-20 — 카카오 로그인 iOS(Safari/WebKit) 실패 근본수정: signed-state fallback (대표 신고 "사파리/아이폰 안돼, 크롬은 돼")
 **증상**: 카카오 "3초 시작하기" 가 iOS(사파리 + 카카오톡 인앱 webview, 둘 다 WebKit)에서 실패, **크롬(Blink)은 정상**. → 서버/설정 문제 아님(그럼 크롬도 깨짐) = **WebKit 특유의 OAuth 왕복 쿠키 처리** 문제로 확정.
 - **근본 원인**: OAuth CSRF 가 `kakao_oauth_state`(HttpOnly·Secure·**SameSite=Lax**) 쿠키 1개에만 의존. iOS WebKit 은 cross-site OAuth 왕복(특히 **카카오톡 앱 핸드오프 → Safari 복귀**, ITP cross-site 쿠키 처리)에서 이 Lax 쿠키를 콜백에 안 돌려주는 케이스 → `/sync/callback` 이 `?error=oauth_state_expired` 로 로그인 실패. 크롬은 Lax 관대 처리라 정상.

@@ -201,8 +201,8 @@ const WishlistPage: React.FC = () => {
           <p className="mb-4" style={{ color: tk.danger }}>{error}</p>
           <button
             onClick={() => refetch()}
-            className="px-6 py-2 rounded-xl text-white active:opacity-90"
-            style={{ background: tk.accentGradient }}
+            className="px-6 py-2 rounded-xl active:opacity-90"
+            style={{ background: tk.accentGradient, color: tk.onAccent }}
           >
             {t('wishlist.retry')}
           </button>
@@ -238,8 +238,8 @@ const WishlistPage: React.FC = () => {
             <p className="mb-6" style={{ fontSize: 13, color: tk.secondary }}>{t('wishlist.emptyHint')}</p>
             <button
               onClick={() => navigate('/')}
-              className="px-6 py-3 rounded-xl text-white active:opacity-90"
-              style={{ background: tk.accentGradient, fontSize: 14, fontWeight: 700 }}
+              className="px-6 py-3 rounded-xl active:opacity-90"
+              style={{ background: tk.accentGradient, color: tk.onAccent, fontSize: 14, fontWeight: 700 }}
             >
               {t('wishlist.continueShopping')}
             </button>

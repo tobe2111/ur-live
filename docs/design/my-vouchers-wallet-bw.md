@@ -3,7 +3,7 @@
 - **대상 페이지**: `/my-vouchers` (`src/pages/MyVouchersPage.tsx`)
 - **시안 받은 날**: 2026-06-20
 - **출처**: Claude Design (claude.ai/design) handoff bundle (`478b54e2-…handoff.zip`)
-- **상태**: ⏳ 구현 대기 (사용자 스코프 확인 후)
+- **상태**: ✅ 구현 완료 (단일 페이지 톤 리파인 — 지도/설정 전용 화면은 보류)
 - **프로토타입(SSOT)**: [`my-vouchers-wallet-bw.dc.html`](./my-vouchers-wallet-bw.dc.html) — 픽셀/색상/간격은 이 파일이 진실원천
 - **톤 탐색본(참고)**: [`my-vouchers-wallet-tone-explore.dc.html`](./my-vouchers-wallet-tone-explore.dc.html) — 따뜻한 크라프트 톤 3종(장날/동네 한바퀴/단골). **채택 안 됨** — 사용자는 흑백본을 최종으로 선택.
 - **스크린샷**: ![all](./assets/my-vouchers-wallet-bw.png)
@@ -86,20 +86,30 @@
 
 ---
 
-## 구현 todo (스코프 확정 후 체크)
+## 구현 todo
 
-- [ ] 색 토큰: 빈상태/CTA 핑크 그라데이션 → 잉크 블랙(다크 매핑 동반)
-- [ ] 상태줄에 🟢 점 + 임박(≤2~3일) 빨강 D-N
-- [ ] 식사권 카드: 코드 F5F6F8 칩 + 복사 아이콘, 블랙 필 사용 버튼 톤
-- [ ] 사용완료/만료·환불 헤어라인 박스(2행)
-- [ ] QR 모달 → 바텀시트 + "매장 안내" 칩 + 공유/구매취소 2버튼 그리드
-- [ ] 교환권 카드 amber → 흑백 톤
-- [ ] 빈 상태 1·2·3 원형 스텝 + 블랙 CTA
-- [ ] (선택) 지도 전용 화면 vs 현 토글 유지
-- [ ] (선택) 교환권 받을 번호 전용 페이지 vs 현 모달 유지
-- [ ] `npx tsc --noEmit` + `node scripts/check-theme-consistency.mjs` + `npm run build`
+- [x] 색 토큰: `walletTokens.accent`/`accentSoft`/`accentGradient` 핑크 → 잉크(라이트 #0A0A0A / 다크 #FFFFFF) + `onAccent` 신설(필 위 텍스트 색)
+- [x] 상태줄에 🟢 점 + 임박(≤2일) 빨강 D-N ("가장 가까운 만료 D-N")
+- [x] 식사권 카드: 코드 회색 칩 + 복사 아이콘(Copy)
+- [x] QR 모달 톤 리파인: 🟢 pulse 실시간 시계 + 🟢 체크 "이미 결제 완료" 안내 + "매장 안내" 칩 + 공유/구매취소 2버튼 그리드 + 7일 환불 안내
+- [x] 교환권(KtAlpha) 카드 amber → 뉴트럴(썸네일/칩/폴백 아이콘) + 후기보너스 버튼 잉크
+- [x] 전화번호 배너 + 등록 모달 amber → 잉크
+- [x] 빈 상태 1·2·3 원형 잉크 스텝(셰브론) + 블랙 필 CTA
+- [x] `npm run type-check`(0) + `check-theme-consistency.mjs`(0) + `npm run build`(0)
+- [ ] (보류 — 스코프 외) 지도 전용 화면 — 현 `VoucherMap` 토글 유지(lazy 잠금 보존)
+- [ ] (보류 — 스코프 외) 교환권 받을 번호 전용 페이지 — 현 `PhoneRegisterModal` 유지
+- [ ] (보류) 사용완료/만료·환불 → 디자인의 헤어라인 박스 행 — 현 접힘 그룹(인라인 펼침) 유지(UX 동등)
 
 ---
 
 ## ✅ 구현 완료
-(미구현 — 구현 시 commit hash 기록)
+
+- **2026-06-20** 단일 페이지 톤 리파인 (사용자 결정: 스코프=단일 페이지 / 액센트=지갑 4페이지 잉크 통일).
+  - `walletTokens.ts`: accent 핑크(#EC4899) → 잉크(라이트 #0A0A0A / 다크 #FFFFFF), `onAccent` 신설.
+    blast radius = WishlistPage CTA 2개·스피너 + MyVouchersPage 스피너 (ListRow 등 atoms 는 미사용/dead).
+  - `WishlistPage.tsx`: accentGradient CTA 2개 `text-white` → `tk.onAccent`(다크 invert).
+  - `MyVouchersPage.tsx`: 상태줄 🟢점+빨강 D-N / 카드 코드칩+복사아이콘 / QR모달(pulse·체크안내·매장칩·2버튼) /
+    교환권 amber→뉴트럴 / 전화 배너·모달 잉크 / 빈상태 1·2·3 원형스텝+블랙CTA.
+  - **결제/환불/취소/폴링 로직 byte-identical** — 시각만 변경(handleSelfCancel·status·api 호출 불변).
+  - 🔒 잠금 보존: VoucherMap lazy / qrcode.react lazy / useMyVouchers / useInvalidateMyVouchers.
+  - commit hash: (아래 커밋 참조)

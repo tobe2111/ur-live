@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect, useRef } from 'react'
+import { lazy, Suspense, useState, useEffect, useRef, Fragment } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useNavigate } from 'react-router-dom'
 
@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom'
 const VoucherMap = lazy(() => import('./my-vouchers/VoucherMap'))
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Ticket, MapPin, Clock, CheckCircle, XCircle, QrCode, X, Share2, Smartphone } from 'lucide-react'
+import { ArrowLeft, Ticket, MapPin, CheckCircle, XCircle, QrCode, X, Share2, Smartphone, ChevronRight, Copy } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { useMyVouchers, useInvalidateMyVouchers } from '@/hooks/queries'
@@ -107,7 +107,7 @@ function ReviewBonusButton({ voucherCode }: { voucherCode: string }) {
   return (
     <>
       <button onClick={() => setOpen(true)}
-        className="mt-4 w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center gap-1">
+        className="mt-4 w-full py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold flex items-center justify-center gap-1">
         ⭐ 카카오맵 후기 작성하고 보너스 받기
       </button>
       {open && (
@@ -285,48 +285,57 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
         <div className="bg-gray-100 dark:bg-[#1A1A1A] rounded-lg px-3 py-2 text-center">
           <code className={`text-sm font-mono font-bold ${isUsed || isExpired ? 'text-gray-400 line-through' : 'text-gray-900 dark:text-white'}`}>{voucher.code}</code>
         </div>
-        {/* 🛡️ 2026-05-16: 캡쳐 도용 방지 — 실시간 시간 표시 (사용 가능 상태만) */}
+        {/* 🛡️ 캡쳐 도용 방지 — 실시간 시간 + 🟢 pulse (흑백 리디자인 화면3) */}
         {!isUsed && !isExpired && (
-          <p className="text-[10px] text-gray-400 text-center mt-1 font-mono">
-            {new Date(now).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          </p>
-        )}
-
-        {/* 🛡️ 2026-05-16: 선물하기 모델 — voucher = "이 메뉴 사놓음" (할인권 X) */}
-        {voucher.status === 'unused' && (
-          <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5 text-center">
-            <p className="text-[11px] text-emerald-700 font-medium">🎁 이미 결제 완료</p>
-            <p className="text-base font-extrabold text-emerald-800 mt-0.5">
-              {voucher.product_name}
-            </p>
-            <p className="text-[10px] text-emerald-600 mt-0.5">매장에서 추가 결제 없이 받으세요</p>
+          <div className="flex items-center justify-center gap-1.5 mt-2.5">
+            <span className="w-[7px] h-[7px] rounded-full bg-[#16A34A] animate-pulse" aria-hidden />
+            <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 font-mono">
+              {t('voucher.realtime', { defaultValue: '실시간' })} · {new Date(now).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
           </div>
         )}
+
+        {/* 🛡️ 선결제 안내 — "이미 결제 완료" 🟢 체크 (선물 X, 추가결제 X) */}
+        {voucher.status === 'unused' && (
+          <div className="mt-4 flex items-start gap-2.5 bg-gray-50 dark:bg-[#141414] rounded-xl px-3.5 py-3">
+            <CheckCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#16A34A]" strokeWidth={2.2} />
+            <div className="text-left">
+              <p className="text-[13px] font-bold text-gray-900 dark:text-white">{t('voucher.alreadyPaidTitle', { defaultValue: '이미 결제 완료된 식사권이에요' })}</p>
+              <p className="text-[11.5px] leading-relaxed text-gray-500 dark:text-gray-400 mt-0.5">{t('voucher.alreadyPaidDesc', { defaultValue: '매장에서 추가 결제 없이 이 화면만 보여주세요' })}</p>
+            </div>
+          </div>
+        )}
+
+        {/* 매장 안내 (usage_guide) — 칩 + 텍스트 */}
         {voucher.usage_guide && voucher.status === 'unused' && (
-          <p className="text-[11px] text-gray-600 dark:text-gray-300 text-center mt-2 whitespace-pre-wrap">
-            ℹ️ {voucher.usage_guide}
-          </p>
-        )}
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center mt-2">{t('voucher.showQrAtStore')}</p>
-
-        {/* 🏁 2026-06-12 (P6 사용자 결정 — 선물 기능 불필요): '선물하기' 라벨 제거.
-            실동작은 QR 링크 공유일 뿐 소유권 이전이 아니며, 보낸 사람이 7일 내 셀프취소하면
-            받은 QR 이 무효화될 수 있어 '선물' 표기가 오해를 만들었음 — 정직한 '공유' 단일 버튼으로. */}
-        {voucher.status === 'unused' && (
-          <div className="mt-4">
-            <button onClick={shareVoucher}
-              className="w-full py-2.5 rounded-xl bg-gray-900 dark:bg-white hover:bg-black text-white dark:text-gray-900 text-xs font-bold flex items-center justify-center gap-1">
-              <Share2 className="w-3.5 h-3.5" /> {t('voucher.share')}
-            </button>
+          <div className="mt-2.5 flex items-center gap-2 px-0.5">
+            <span className="shrink-0 text-[11px] font-semibold text-gray-900 dark:text-white border border-gray-200 dark:border-[#2A2A2A] rounded-md px-2 py-0.5">{t('voucher.storeGuide', { defaultValue: '매장 안내' })}</span>
+            <span className="text-[11.5px] text-gray-500 dark:text-gray-400 whitespace-pre-wrap">{voucher.usage_guide}</span>
           </div>
         )}
 
-        {/* 🛡️ 2026-05-30: 셀프 구매취소 (미사용 + 7일 이내) */}
-        {canSelfCancel && (
-          <button onClick={handleSelfCancel} disabled={cancelling}
-            className="mt-2 w-full py-2.5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] text-gray-500 dark:text-gray-400 text-xs font-bold disabled:opacity-50">
-            {cancelling ? t('voucher.cancelling', { defaultValue: '취소 처리 중…' }) : t('voucher.selfCancel', { defaultValue: '구매 취소 (7일 이내 환불)' })}
-          </button>
+        {/* 🏁 액션: 공유 / 구매 취소·환불 (흑백 리디자인 화면3 — 2버튼 그리드).
+            '선물하기'는 제거됨(2026-06-12): QR 링크 공유일 뿐 소유권 이전 아님 + 셀프취소 시 무효화 오해. */}
+        {voucher.status === 'unused' && (
+          <>
+            <div className={`mt-4 grid gap-2 ${canSelfCancel ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              <button onClick={shareVoucher}
+                className="py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform">
+                <Share2 className="w-4 h-4" /> {t('voucher.share')}
+              </button>
+              {canSelfCancel && (
+                <button onClick={handleSelfCancel} disabled={cancelling}
+                  className="py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] text-gray-500 dark:text-gray-400 text-[13px] font-bold disabled:opacity-50 active:scale-[0.98] transition-transform">
+                  {cancelling ? t('voucher.cancelling', { defaultValue: '취소 처리 중…' }) : t('voucher.cancelRefund', { defaultValue: '구매 취소·환불' })}
+                </button>
+              )}
+            </div>
+            {canSelfCancel && (
+              <p className="text-[10.5px] text-gray-400 dark:text-gray-500 text-center mt-2.5">
+                {t('voucher.refundWindowNote', { defaultValue: '미사용 · 결제 후 7일 이내에만 환불할 수 있어요' })}
+              </p>
+            )}
+          </>
         )}
 
         {/* 🛡️ 2026-05-16: 사용한 voucher 에 후기 보너스 안내 */}
@@ -442,21 +451,21 @@ export default function MyVouchersPage() {
       {/* 🛡️ 2026-05-24: phone 미등록 안내 — KT Alpha 자동 발송 받으려면 phone 필수 */}
       {showPhoneBanner && (
         <div className="ur-content-narrow px-4 lg:px-8 mb-3">
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
-            <span className="text-xl">📱</span>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-amber-900">전화번호를 등록하세요</p>
-              <p className="text-xs text-amber-700 mt-0.5">
-                기프티쇼 교환권은 휴대폰 MMS 로 발송됩니다. 등록하면 다음 교환권부터 자동 발송돼요.
+          <div className="bg-gray-50 dark:bg-[#141414] border border-gray-100 dark:border-[#1F1F1F] rounded-2xl p-3.5 flex items-start gap-3">
+            <Smartphone className="w-5 h-5 mt-0.5 shrink-0 text-gray-900 dark:text-white" strokeWidth={1.8} />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-gray-900 dark:text-white">전화번호를 등록하세요</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+                교환권(기프티콘)을 문자(MMS)로 자동 발송해 드려요.
               </p>
-              <div className="mt-2 flex gap-2">
+              <div className="mt-2.5 flex items-center gap-3">
                 <button onClick={() => setShowPhoneModal(true)}
-                  className="px-3 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg">
-                  등록하러 가기
+                  className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-xl active:scale-95 transition-transform">
+                  등록
                 </button>
                 <button onClick={dismissPhoneBanner}
-                  className="px-3 py-1.5 text-amber-700 text-xs font-medium">
-                  나중에 (7일)
+                  className="text-gray-400 dark:text-gray-500 text-xs font-medium">
+                  나중에
                 </button>
               </div>
             </div>
@@ -490,19 +499,23 @@ export default function MyVouchersPage() {
         </div>
       )}
 
+      {/* 🎨 2026-06-20 (흑백 리디자인): 🟢 사용가능 점 + '가장 가까운 만료 D-N'(임박 시 빨강).
+          docs/design/my-vouchers-wallet-bw.md 화면1 상태줄. */}
       {shownVouchers.length > 0 && (
         <div className="ur-content-narrow px-4 lg:px-8 -mt-2 mb-4 flex items-center gap-2 flex-wrap"
-          style={{ fontSize: 12, color: tk.secondary, letterSpacing: '-0.01em' }}>
-          <span style={{ fontWeight: 600, color: tk.label }}>
+          style={{ fontSize: 13, letterSpacing: '-0.01em' }}>
+          <span className="inline-flex items-center gap-1.5" style={{ fontWeight: 600, color: tk.secondary }}>
+            <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ background: '#16A34A' }} aria-hidden />
             {shownVouchers.filter(v => v.status === 'unused').length}{t('voucher.activeCountSuffix', { defaultValue: '장 사용 가능' })}
           </span>
           {nearestExpiry !== null && (
             <>
-              <span style={{ color: tk.tertiary }}>·</span>
-              <span>
-                {nearestExpiry === 0
-                  ? t('voucher.expiresToday', { defaultValue: '오늘 만료' })
-                  : t('voucher.expiresInDays', { count: nearestExpiry, defaultValue: `${nearestExpiry}일 뒤 만료` })}
+              <span className="w-[3px] h-[3px] rounded-full shrink-0" style={{ background: tk.tertiary }} aria-hidden />
+              <span style={{ color: tk.secondary, fontWeight: 600 }}>
+                {t('voucher.nearestExpiry', { defaultValue: '가장 가까운 만료' })}{' '}
+                <b style={{ color: nearestExpiry <= 2 ? '#DC2626' : tk.label, fontWeight: 700 }}>
+                  {nearestExpiry === 0 ? 'D-DAY' : `D-${nearestExpiry}`}
+                </b>
               </span>
             </>
           )}
@@ -596,9 +609,9 @@ export default function MyVouchersPage() {
 }
 
 /**
- * 🎨 2026-06-20 (사용자 신고 — "공구권 페이지 디자인이 심각해 … 너무 성의없어"):
- *   기존 빈 화면은 얇은 회색 티켓 아이콘 + 2줄 텍스트 + 버튼이 빈 여백에 떠 있어 무성의해 보였음.
- *   → 탭별(공구권/교환권) 맥락에 맞는 일러스트 + 카피 + 사용 흐름 3스텝 안내로 교체.
+ * 🎨 2026-06-20 흑백 iOS-클린 리디자인 (docs/design/my-vouchers-wallet-bw.md 화면5):
+ *   기존(핑크 그라데이션 일러스트 + CTA + 카드형 3스텝) → 잉크 톤 통일.
+ *   뉴트럴 라운드 일러스트 + 1·2·3 원형 잉크 번호(셰브론) + 블랙 필 CTA.
  *   화이트 테마(다크 토글 지원) — 모든 라이트 토큰에 dark: variant 동반.
  */
 function EmptyVouchers({ mode, onExplore, t }: {
@@ -609,67 +622,59 @@ function EmptyVouchers({ mode, onExplore, t }: {
   const isGift = mode === 'gift'
   const Icon = isGift ? Smartphone : Ticket
   const title = isGift
-    ? t('voucher.emptyGiftTitle', { defaultValue: '아직 교환권이 없어요' })
-    : t('voucher.emptyGbTitle', { defaultValue: '아직 공구권이 없어요' })
+    ? t('voucher.emptyGiftTitle', { defaultValue: '받아둔 교환권이 없어요' })
+    : t('voucher.emptyGbTitle', { defaultValue: '받아둔 식사권이 없어요' })
   const desc = isGift
-    ? t('voucher.emptyGiftDesc', { defaultValue: '기프티콘 교환권을 구매하면 휴대폰으로 발송되고, 여기에서도 모아볼 수 있어요.' })
-    : t('voucher.emptyGbDesc', { defaultValue: '동네 맛집 공동구매에 참여하면 식사권이 여기 담겨요. 매장에서 QR 한 번으로 사용하세요.' })
+    ? t('voucher.emptyGiftDesc', { defaultValue: '교환권을 구매하면 휴대폰으로 발송되고\n여기에서도 모아볼 수 있어요' })
+    : t('voucher.emptyGbDesc', { defaultValue: '동네 맛집 공동구매에 참여하면\n선결제 식사권이 여기에 쌓여요' })
   const cta = isGift
-    ? t('voucher.emptyGiftCta', { defaultValue: '교환권 둘러보기' })
-    : t('voucher.exploreRestaurants', { defaultValue: '맛집 둘러보기' })
+    ? t('voucher.emptyGiftCta', { defaultValue: '교환권 보러가기' })
+    : t('voucher.emptyGbCta', { defaultValue: '공구 보러가기' })
 
-  const steps: { emoji: string; title: string; desc: string }[] = isGift
+  // 🎨 흑백 리디자인 화면5 — 1·2·3 원형 스텝(2줄 라벨)
+  const steps: string[] = isGift
     ? [
-        { emoji: '🛍️', title: t('voucher.stepGift1Title', { defaultValue: '교환권 구매' }), desc: t('voucher.stepGift1Desc', { defaultValue: '카페·편의점 등 인기 브랜드 기프티콘' }) },
-        { emoji: '📲', title: t('voucher.stepGift2Title', { defaultValue: 'MMS 자동 발송' }), desc: t('voucher.stepGift2Desc', { defaultValue: '등록한 휴대폰으로 즉시 전송돼요' }) },
-        { emoji: '🏪', title: t('voucher.stepGift3Title', { defaultValue: '매장에서 제시' }), desc: t('voucher.stepGift3Desc', { defaultValue: '바코드 한 번으로 간편하게 사용' }) },
+        t('voucher.stepGift1', { defaultValue: '교환권\n구매' }),
+        t('voucher.stepGift2', { defaultValue: 'MMS\n발송' }),
+        t('voucher.stepGift3', { defaultValue: '매장에서\n제시' }),
       ]
     : [
-        { emoji: '🍽️', title: t('voucher.stepGb1Title', { defaultValue: '맛집 공구 참여' }), desc: t('voucher.stepGb1Desc', { defaultValue: '원하는 메뉴를 할인가에 미리 결제' }) },
-        { emoji: '🎟️', title: t('voucher.stepGb2Title', { defaultValue: '공구권 자동 발급' }), desc: t('voucher.stepGb2Desc', { defaultValue: '결제 즉시 이 지갑에 안전 보관' }) },
-        { emoji: '📱', title: t('voucher.stepGb3Title', { defaultValue: '매장에서 QR 제시' }), desc: t('voucher.stepGb3Desc', { defaultValue: '추가 결제 없이 바로 식사' }) },
+        t('voucher.stepGb1', { defaultValue: '공구\n참여' }),
+        t('voucher.stepGb2', { defaultValue: '지갑에\n식사권' }),
+        t('voucher.stepGb3', { defaultValue: '매장에서\nQR 제시' }),
       ]
 
   return (
-    <div className="py-10 flex flex-col items-center text-center">
-      {/* 일러스트 — 부드러운 그라데이션 라운드 + 브랜드 핑크 아이콘 */}
-      <div className="relative mb-5">
-        <div
-          className="w-[88px] h-[88px] rounded-[26px] flex items-center justify-center"
-          style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.12), rgba(236,72,153,0.14))' }}
-        >
-          <Icon className="w-10 h-10" style={{ color: '#EC4899' }} strokeWidth={1.6} />
-        </div>
-        <span className="absolute -top-1.5 -right-1.5 text-lg" aria-hidden>✨</span>
+    <div className="py-12 flex flex-col items-center text-center">
+      {/* 일러스트 — 뉴트럴 라운드 + 잉크 아이콘 (흑백 톤) */}
+      <div className="w-[112px] h-[112px] rounded-[28px] flex items-center justify-center mb-6 bg-gray-50 dark:bg-[#141414] border border-gray-100 dark:border-[#1F1F1F]">
+        <Icon className="w-12 h-12 text-gray-900 dark:text-white" strokeWidth={1.3} />
       </div>
 
-      <h2 className="text-[18px] font-extrabold tracking-tight text-gray-900 dark:text-white">{title}</h2>
-      <p className="mt-2 max-w-[270px] text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">{desc}</p>
+      <h2 className="text-[19px] font-extrabold tracking-tight text-gray-900 dark:text-white">{title}</h2>
+      <p className="mt-2 max-w-[260px] text-[13.5px] leading-relaxed text-gray-500 dark:text-gray-400 whitespace-pre-line">{desc}</p>
+
+      {/* 사용 흐름 1·2·3 — 잉크 원형 번호 + 셰브론 */}
+      <div className="mt-9 w-full max-w-[300px] flex items-start justify-between">
+        {steps.map((label, i) => (
+          <Fragment key={i}>
+            {i > 0 && (
+              <ChevronRight className="w-4 h-4 mt-2 shrink-0 text-gray-300 dark:text-gray-600" strokeWidth={2.2} aria-hidden />
+            )}
+            <div className="flex-1 flex flex-col items-center gap-2">
+              <div className="w-[30px] h-[30px] rounded-full flex items-center justify-center text-[13px] font-bold font-mono bg-gray-900 dark:bg-white text-white dark:text-gray-900">{i + 1}</div>
+              <span className="text-[11px] font-medium leading-tight text-gray-600 dark:text-gray-300 whitespace-pre-line">{label}</span>
+            </div>
+          </Fragment>
+        ))}
+      </div>
 
       <button
         onClick={onExplore}
-        className="mt-6 px-7 py-3 rounded-full text-sm font-extrabold text-white active:scale-95 transition-transform"
-        style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)', boxShadow: '0 8px 20px rgba(236,72,153,0.28)' }}
+        className="mt-9 w-full max-w-[300px] py-3.5 rounded-2xl text-[15px] font-extrabold bg-gray-900 dark:bg-white text-white dark:text-gray-900 active:scale-[0.98] transition-transform"
       >
         {cta}
       </button>
-
-      {/* 사용 흐름 3스텝 — 빈 공간을 정보로 채워 '어떻게 받는지' 안내 */}
-      <div className="mt-9 w-full max-w-[300px] flex flex-col gap-2.5">
-        {steps.map((s, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-3 rounded-2xl bg-white dark:bg-[#141414] border border-gray-100 dark:border-[#1F1F1F] px-3.5 py-3 text-left"
-          >
-            <div className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center text-lg bg-gray-50 dark:bg-[#1A1A1A]" aria-hidden>{s.emoji}</div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-bold leading-tight text-gray-900 dark:text-white">{s.title}</p>
-              <p className="mt-0.5 text-[11.5px] leading-snug text-gray-500 dark:text-gray-400">{s.desc}</p>
-            </div>
-            <span className="ml-auto text-[11px] font-extrabold text-gray-300 dark:text-gray-600">{i + 1}</span>
-          </div>
-        ))}
-      </div>
     </div>
   )
 }
@@ -773,7 +778,7 @@ function PhoneRegisterModal({ onClose, onSaved }: { onClose: () => void; onSaved
           autoFocus
         />
         <label className="flex items-start gap-2 mb-4 cursor-pointer">
-          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 w-4 h-4 accent-amber-500" />
+          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 w-4 h-4 accent-gray-900 dark:accent-white" />
           <span className="text-[11px] text-gray-700 dark:text-gray-200 leading-relaxed">
             <b>휴대폰 번호 수집·이용에 동의</b>합니다 (필수)
             <br />
@@ -783,9 +788,9 @@ function PhoneRegisterModal({ onClose, onSaved }: { onClose: () => void; onSaved
         <button
           onClick={save}
           disabled={!phone || !consent || saving}
-          className="w-full py-3 bg-amber-500 text-white rounded-2xl text-sm font-extrabold disabled:opacity-40 active:scale-[0.99] transition-transform"
+          className="w-full py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl text-sm font-extrabold disabled:opacity-40 active:scale-[0.99] transition-transform"
         >
-          {saving ? '저장 중…' : '저장하기'}
+          {saving ? '저장 중…' : '이 번호로 등록'}
         </button>
       </div>
     </div>
@@ -869,9 +874,10 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
               navigator.clipboard?.writeText(v.code)
               toast.success(t('voucher.copied', { defaultValue: '복사됨' }))
             }}
-            className={`font-mono text-[11px] font-bold tracking-wide text-gray-700 dark:text-gray-200 bg-black/[0.04] dark:bg-white/10 rounded px-1.5 py-0.5 ${v.status === 'unused' ? 'cursor-pointer active:opacity-70' : ''}`}
+            className={`inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold tracking-wide text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-white/10 rounded-md px-2 py-0.5 ${v.status === 'unused' ? 'cursor-pointer active:opacity-70' : ''}`}
           >
             {v.code}
+            {v.status === 'unused' && <Copy className="w-3 h-3 text-gray-400 dark:text-gray-500" strokeWidth={2} aria-hidden />}
           </code>
           {v.status === 'unused' && daysLeft !== null && (
             <span className={`text-[11px] font-extrabold rounded-md px-1.5 py-0.5 ${urgent ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300'}`}>
@@ -936,8 +942,8 @@ function KtAlphaVoucherCard({ v, muted, t }: {
   // 🔔 2026-06-17 (사용자 요청): 발송 실패(잔액부족/API오류 등) 명시 — '결제됐는데 안 옴' 깜깜이 해소.
   const sendFailed = v.kt_status === 'failed'
 
-  // 🎨 2026-06-17 (사용자 요청 — 카드 톤 통일): amber 그라데이션 카드 → 식사권과 동일한 클린
-  //   화이트 카드 + 84px 썸네일 + 잉크 타이포. 기프티쇼 정체성은 작은 amber 칩으로만 구분.
+  // 🎨 2026-06-20 흑백 리디자인: 식사권과 동일한 클린 화이트 카드 + 84px 썸네일 + 잉크 타이포.
+  //   기프티쇼 정체성은 작은 뉴트럴(회색) 칩으로만 구분 (이전 amber → 잉크 통일).
   const statusBadge = v.status !== 'unused' ? (
     <span className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide"
       style={{
@@ -955,18 +961,18 @@ function KtAlphaVoucherCard({ v, muted, t }: {
     >
       <div className="flex items-stretch gap-3">
         {/* 상품 이미지 (식사권 카드와 동일 규격) */}
-        <div className="w-[84px] h-[84px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#FFF7E6] to-[#FFF0F0] dark:from-[#1A1A1A] dark:to-[#0F0F0F]">
+        <div className="w-[84px] h-[84px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F]">
           {v.product_image ? (
             <img src={v.product_image} alt={v.product_name} loading="lazy" className="w-full h-full object-cover" />
           ) : (
-            <Ticket className="w-7 h-7 text-amber-300 dark:text-amber-700/60" strokeWidth={1.5} />
+            <Ticket className="w-7 h-7 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
           )}
         </div>
 
         {/* 본문 */}
         <div className="flex-1 min-w-0 flex flex-col">
           <div className="flex items-center gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400">
+            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300">
               📱 기프티쇼
             </span>
             {sendFailed ? (
