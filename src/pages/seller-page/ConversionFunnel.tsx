@@ -37,7 +37,7 @@ export default function ConversionFunnel({ totalViewers, totalOrders }: Props) {
                 </span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-gray-100">
-                <div className="h-full rounded-full" style={{ width: '100%', background: '#FF0033' }} />
+                <div className="h-full rounded-full" style={{ width: '100%', background: '#111827' }} />
               </div>
             </div>
           )}
@@ -56,7 +56,7 @@ export default function ConversionFunnel({ totalViewers, totalOrders }: Props) {
                 className="h-full rounded-full"
                 style={{
                   width: `${hasViewerData ? Math.min(orderPct, 100) : 100}%`,
-                  background: '#10B981'
+                  background: '#6b7280'
                 }}
               />
             </div>

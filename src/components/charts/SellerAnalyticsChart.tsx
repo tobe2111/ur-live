@@ -53,8 +53,8 @@ export default function SellerAnalyticsChart({ data }: SellerAnalyticsChartProps
         <Legend
           formatter={(value: string) => value === 'revenue' ? t('seller.revenueLabel') : t('seller.totalOrdersLabel')}
         />
-        <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} dot={false} />
-        <Line type="monotone" dataKey="orders" stroke="#10b981" strokeWidth={1.5} dot={false} yAxisId={0} />
+        <Line type="monotone" dataKey="revenue" stroke="#374151" strokeWidth={2} dot={false} />
+        <Line type="monotone" dataKey="orders" stroke="#6b7280" strokeWidth={1.5} dot={false} yAxisId={0} />
       </LineChart>
     </ResponsiveContainer>
   )

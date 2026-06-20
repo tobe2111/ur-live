@@ -105,7 +105,7 @@ function generateSVG(p: ProductForOG): string {
 
   <!-- 진행 바 -->
   <rect x="110" y="450" width="980" height="20" rx="10" fill="#F3F4F6"/>
-  <rect x="110" y="450" width="${Math.max(20, 980 * progress / 100)}" height="20" rx="10" fill="${isAchieved ? '#10B981' : 'url(#accent)'}"/>
+  <rect x="110" y="450" width="${Math.max(20, 980 * progress / 100)}" height="20" rx="10" fill="${isAchieved ? '#6b7280' : 'url(#accent)'}"/>
 
   <!-- 목표 텍스트 -->
   <text x="110" y="510" font-size="18" font-family="-apple-system,system-ui,sans-serif" fill="#9CA3AF">목표 ${p.group_buy_target}명</text>

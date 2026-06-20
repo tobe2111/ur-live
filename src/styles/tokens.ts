@@ -9,20 +9,20 @@
 export const colors = {
   // 브랜드 색상
   brand: {
-    primary: '#FFD700',      // 골드
+    primary: '#d1d5db',      // 골드
     primaryDark: '#FFC700',
-    secondary: '#FFA500',    // 오렌지
-    secondaryDark: '#FF9500',
+    secondary: '#9ca3af',    // 오렌지
+    secondaryDark: '#9ca3af',
     purple: '#6A5ACD',       // 퍼플
     purpleDark: '#5A4ABD',
   },
 
   // 상태 색상
   status: {
-    success: '#22C55E',
-    warning: '#F97316',
+    success: '#6b7280',
+    warning: '#6b7280',
     error: '#EF4444',
-    info: '#3B82F6',
+    info: '#374151',
   },
 
   // 그레이스케일
@@ -43,7 +43,7 @@ export const colors = {
   special: {
     live: '#EF4444',         // 라이브 뱃지
     soldOut: '#EF4444',      // 품절
-    stockWarning: '#F97316', // 재고 경고
+    stockWarning: '#6b7280', // 재고 경고
   },
 }
 
@@ -138,7 +138,7 @@ export const buttons = {
 
   // 스타일 변형
   variant: {
-    primary: 'bg-gradient-to-r from-[#FFD700] to-[#FFA500] hover:from-[#FFC700] hover:to-[#FF9500] text-gray-900 font-bold shadow-lg hover:shadow-xl transition-all',
+    primary: 'bg-gradient-to-r from-[#d1d5db] to-[#9ca3af] hover:from-[#FFC700] hover:to-[#9ca3af] text-gray-900 font-bold shadow-lg hover:shadow-xl transition-all',
     secondary: 'bg-gradient-to-r from-[#6A5ACD] to-[#9370DB] hover:from-[#5A4ABD] hover:to-[#8360CB] text-white font-bold shadow-lg hover:shadow-xl transition-all',
     outline: 'bg-white hover:bg-gray-50 text-gray-900 border-2 border-gray-200 font-medium transition-all',
     ghost: 'bg-transparent hover:bg-gray-100 text-gray-700 font-medium transition-all',

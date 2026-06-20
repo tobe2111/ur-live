@@ -62,7 +62,7 @@ const PERIOD_OPTIONS: { value: Period; label: string }[] = [
   { value: '1y', label: '1년' },
 ]
 
-const PIE_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#6b7280', '#06B6D4', '#84CC16', '#F97316', '#6366F1']
+const PIE_COLORS = ['#374151', '#6b7280', '#9ca3af', '#EF4444', '#4b5563', '#6b7280', '#6b7280', '#6b7280', '#6b7280', '#4b5563']
 
 function fmt(n: number | null | undefined): string {
   return formatNumber(n ?? 0)

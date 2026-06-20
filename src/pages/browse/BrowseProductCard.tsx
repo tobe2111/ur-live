@@ -113,7 +113,7 @@ const BrowseProductCard = memo(function BrowseProductCard({
         </div>
         <div className="flex items-center gap-2 mt-1 text-[11px]" style={{ color: grad.sub }}>
           <span className="inline-flex items-center gap-0.5">
-            <span style={{ color: '#facc15' }}>★</span>
+            <span style={{ color: '#d1d5db' }}>★</span>
             {rating > 0 ? (
               <span className="font-bold" style={{ color: grad.text }}>{rating.toFixed(1)}</span>
             ) : (

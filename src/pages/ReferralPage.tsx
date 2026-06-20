@@ -367,7 +367,7 @@ export default function ReferralPage() {
           {group.members.length > 0 && (
             <div className="flex items-center flex-wrap -space-x-2 mb-3">
               {group.members.slice(0, 12).map((m, i) => {
-                const colors = ['#FEE2E2','#f3f4f6','#DBEAFE','#D1FAE5','#FEF3C7','#EDE9FE'];
+                const colors = ['#FEE2E2','#f3f4f6','#DBEAFE','#D1FAE5','#f3f4f6','#EDE9FE'];
                 return (
                   <div key={i} className="rounded-full border-2 border-white flex items-center justify-center relative"
                     style={{

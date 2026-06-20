@@ -72,7 +72,7 @@ async function ensureMallSchema(DB: D1Database): Promise<void> {
   if (!any) {
     await DB.prepare(
       `INSERT OR IGNORE INTO wholesale_malls (id, slug, name, host, brand_name, brand_color, active, created_at)
-       VALUES (1, 'default', '유통스타트', 'utongstart.com', '유통스타트', '#2563EB', 1, datetime('now'))`
+       VALUES (1, 'default', '유통스타트', 'utongstart.com', '유통스타트', '#1f2937', 1, datetime('now'))`
     ).run().catch(swallow('wholesale-malls:seed-default'))
   }
 }

@@ -65,7 +65,7 @@ export const GRADE_NAME: Record<string, string> = {
  *   상태값은 wholesale_orders.status (docs/SCHEMA.md — 대문자).
  */
 export const WHOLESALE_ORDER_STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING: { label: '결제대기', color: '#9A6B00', bg: '#FFF6E6' },
+  PENDING: { label: '결제대기', color: '#9A6B00', bg: '#f9fafb' },
   PAID: { label: '결제완료', color: '#11875A', bg: '#EAF6EF' },
   ON_CREDIT: { label: '여신(외상)', color: '#0E8A6E', bg: '#E6F6F1' },
   SHIPPED: { label: '배송중', color: '#1B64DA', bg: '#EAF1FE' },

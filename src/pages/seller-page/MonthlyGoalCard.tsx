@@ -55,7 +55,7 @@ export default function MonthlyGoalCard({
             </p>
           )}
         </div>
-        <p className="text-[13px] font-extrabold shrink-0" style={{ color: '#FF0033' }}>
+        <p className="text-[13px] font-extrabold shrink-0" style={{ color: '#374151' }}>
           {Math.round(goalProgress)}%
         </p>
       </div>
@@ -64,7 +64,7 @@ export default function MonthlyGoalCard({
           className="h-full rounded-full transition-all"
           style={{
             width: `${Math.min(goalProgress, 100)}%`,
-            background: 'linear-gradient(90deg, #FF0033, #6b7280)'
+            background: 'linear-gradient(90deg, #374151, #6b7280)'
           }}
         />
       </div>

@@ -169,7 +169,7 @@ export async function sendLiveStreamCreatedEmail(params: {
     }
     .badge-scheduled {
       background: #dbeafe;
-      color: #2563eb;
+      color: #1f2937;
     }
   </style>
 </head>

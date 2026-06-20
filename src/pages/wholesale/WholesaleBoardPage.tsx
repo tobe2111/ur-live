@@ -45,9 +45,9 @@ const isAdminUser = () => (typeof window !== 'undefined' && !!localStorage.getIt
 const auth = () => { const t = sellerToken(); return { headers: t ? { Authorization: `Bearer ${t}` } : {} } }
 
 const TICKET_STATUS: Record<string, { label: string; color: string }> = {
-  open: { label: '접수됨', color: '#2563eb' },
-  in_progress: { label: '처리 중', color: '#d97706' },
-  resolved: { label: '처리 완료', color: '#059669' },
+  open: { label: '접수됨', color: '#1f2937' },
+  in_progress: { label: '처리 중', color: '#6b7280' },
+  resolved: { label: '처리 완료', color: '#4b5563' },
   rejected: { label: '반려', color: '#dc2626' },
 }
 

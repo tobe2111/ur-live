@@ -57,7 +57,7 @@ function NavBtn({ item, isActive, onClick }: { item: NavItem; isActive: boolean;
       className={`flex items-center xl:gap-2.5 w-full xl:px-3 py-2 xl:rounded-lg text-left transition-colors text-[13px] font-medium
         md:justify-center md:h-12 md:rounded-none md:border-l-2 xl:justify-start xl:h-auto xl:border-l-0 xl:rounded-lg
         ${isActive
-          ? 'md:border-l-gray-500 md:bg-gray-100 md:dark:bg-white/[0.06] xl:border-l-transparent xl:bg-gray-100 xl:dark:bg-white/[0.06] text-gray-900 dark:text-white'
+          ? 'md:border-l-gray-500 md:bg-gray-100 dark:md:bg-white/10 xl:border-l-transparent xl:bg-gray-100 dark:xl:bg-white/10 text-gray-900 dark:text-white'
           : 'border-l-transparent text-gray-600 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-white'
         }`}
     >

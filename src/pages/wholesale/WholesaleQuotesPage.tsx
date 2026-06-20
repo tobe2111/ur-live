@@ -40,7 +40,7 @@ const auth = () => { const t = sellerToken(); return { headers: t ? { Authorizat
 
 // 상태 배지 — WT 라이트 팔레트(주문 배지와 톤 일치).
 const STATUS_BADGE: Record<string, { label: string; bg: string; color: string }> = {
-  requested: { label: '요청접수', bg: '#E7F0FF', color: '#2563EB' },
+  requested: { label: '요청접수', bg: '#E7F0FF', color: '#1f2937' },
   quoted:    { label: '회신완료', bg: WT.brandSoft, color: WT.brand },
   accepted:  { label: '수락됨', bg: '#E3F6EC', color: WT.pos },
   rejected:  { label: '반려', bg: '#FDE8E8', color: '#D14343' },

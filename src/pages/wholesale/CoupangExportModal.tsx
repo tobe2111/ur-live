@@ -158,7 +158,7 @@ export default function CoupangExportModal({ product, onClose }: {
         {phase === 'form' && (
           <div className="space-y-3">
             {placesError && (
-              <div className="rounded-xl px-3.5 py-2.5 text-[12.5px] font-semibold" style={{ background: '#FFF6E6', color: '#9A6B00', border: '1px solid #F5E1B8' }}>
+              <div className="rounded-xl px-3.5 py-2.5 text-[12.5px] font-semibold" style={{ background: '#f9fafb', color: '#9A6B00', border: '1px solid #F5E1B8' }}>
                 ⚠️ {placesError}
               </div>
             )}

@@ -37,7 +37,7 @@ function buildReportHTML(opts: {
 <head><meta charset="UTF-8"><title>${opts.sellerName} 일일 리포트</title></head>
 <body style="font-family: -apple-system, sans-serif; background: #f9fafb; padding: 24px; color: #111827;">
   <div style="max-width: 560px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden;">
-    <div style="background: linear-gradient(135deg, #3b82f6, #06b6d4); padding: 24px; color: white;">
+    <div style="background: linear-gradient(135deg, #374151, #6b7280); padding: 24px; color: white;">
       <h1 style="margin: 0; font-size: 20px;">📊 ${opts.yesterdayDate} 일일 리포트</h1>
       <p style="margin: 4px 0 0; opacity: 0.9;">${opts.sellerName}</p>
     </div>
@@ -50,14 +50,14 @@ function buildReportHTML(opts: {
         ${stat('⭐ 새 리뷰', `${opts.newReviews}건`)}
         ${stat('★ 평균 별점', opts.avgRating.toFixed(1))}
       </div>
-      <div style="margin-top: 20px; padding: 14px; background: #fef3c7; border-radius: 10px; font-size: 12px; color: #92400e;">
+      <div style="margin-top: 20px; padding: 14px; background: #f3f4f6; border-radius: 10px; font-size: 12px; color: #92400e;">
         💡 <strong>오늘의 추천</strong>:
         ${opts.liveCount === 0 ? '어제 라이브가 없었어요. 오늘 짧게라도 시작해보세요!' :
           opts.revenue === 0 ? '시청자가 있는데 매출 0건. 가격/혜택 점검 권장.' :
           '꾸준한 활동 감사합니다 🎉'}
       </div>
       <div style="margin-top: 20px; text-align: center;">
-        <a href="https://live.ur-team.com/seller" style="display: inline-block; padding: 10px 20px; background: #3b82f6; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">대시보드 →</a>
+        <a href="https://live.ur-team.com/seller" style="display: inline-block; padding: 10px 20px; background: #374151; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">대시보드 →</a>
       </div>
     </div>
     <div style="padding: 12px; background: #f9fafb; text-align: center; font-size: 10px; color: #9ca3af;">

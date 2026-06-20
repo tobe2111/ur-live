@@ -45,7 +45,7 @@ interface MallForm {
 }
 
 const EMPTY: MallForm = {
-  slug: '', name: '', host: '', brand_name: '', brand_color: '#FF0033',
+  slug: '', name: '', host: '', brand_name: '', brand_color: '#111827',
   logo_url: '', deposit_account: '', commission_rate: '', categories_json: '', active: true,
 }
 
@@ -85,7 +85,7 @@ export default function AdminWholesaleMallsPage() {
       name: m.name || '',
       host: m.host || '',
       brand_name: m.brand_name || '',
-      brand_color: m.brand_color || '#FF0033',
+      brand_color: m.brand_color || '#111827',
       logo_url: m.logo_url || '',
       deposit_account: m.deposit_account || '',
       commission_rate: m.commission_rate != null ? String(m.commission_rate) : '',
@@ -168,7 +168,7 @@ export default function AdminWholesaleMallsPage() {
             {list.map((m) => (
               <div key={m.id} className="flex items-center gap-4 bg-white rounded-xl border border-gray-200 p-3">
                 {/* 브랜드 색 + 로고 미리보기 */}
-                <div className="w-12 h-12 shrink-0 rounded-lg overflow-hidden flex items-center justify-center text-white font-extrabold text-sm" style={{ background: m.brand_color || '#FF0033' }}>
+                <div className="w-12 h-12 shrink-0 rounded-lg overflow-hidden flex items-center justify-center text-white font-extrabold text-sm" style={{ background: m.brand_color || '#111827' }}>
                   {m.logo_url ? <img src={m.logo_url} alt={m.name} className="w-full h-full object-cover" /> : (m.name || '?').slice(0, 1)}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -236,10 +236,10 @@ export default function AdminWholesaleMallsPage() {
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">{t('admin.mall.brandColor', { defaultValue: '브랜드 색' })}</label>
                   <div className="flex items-center gap-2">
-                    <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(form.brand_color) ? form.brand_color : '#FF0033'} onChange={(e) => setForm((f) => ({ ...f, brand_color: e.target.value }))}
+                    <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(form.brand_color) ? form.brand_color : '#111827'} onChange={(e) => setForm((f) => ({ ...f, brand_color: e.target.value }))}
                       className="h-10 w-12 rounded-lg border border-gray-200 p-1 cursor-pointer" aria-label={t('admin.mall.brandColor', { defaultValue: '브랜드 색' })} />
                     <input value={form.brand_color} onChange={(e) => setForm((f) => ({ ...f, brand_color: e.target.value }))} maxLength={20}
-                      className="flex-1 h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400 font-mono" placeholder="#FF0033" />
+                      className="flex-1 h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400 font-mono" placeholder="#111827" />
                   </div>
                 </div>
               </div>

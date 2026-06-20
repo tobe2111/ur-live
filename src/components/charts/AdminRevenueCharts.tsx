@@ -47,7 +47,7 @@ export function RevenueBarChart({ chartData }: { chartData: RevenueDataPoint[] }
           contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }}
           formatter={(value) => [`${fmt(Number(value ?? 0))}원`, '매출']}
         />
-        <Bar dataKey="revenue" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="revenue" fill="#374151" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   )
@@ -64,7 +64,7 @@ export function OrderCountLineChart({ chartData }: { chartData: RevenueDataPoint
           contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }}
           formatter={(value) => [`${fmt(Number(value ?? 0))}건`, '주문']}
         />
-        <Line type="monotone" dataKey="order_count" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3 }} />
+        <Line type="monotone" dataKey="order_count" stroke="#4b5563" strokeWidth={2} dot={{ r: 3 }} />
       </LineChart>
     </ResponsiveContainer>
   )

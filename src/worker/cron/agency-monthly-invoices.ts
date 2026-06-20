@@ -206,8 +206,8 @@ function renderInvoiceHTML(a: RenderArgs): string {
 <title>정산 명세서 ${a.invoiceNumber}</title>
 <style>
   body { font-family: 'Malgun Gothic', sans-serif; max-width: 800px; margin: 40px auto; color: #222; padding: 20px; }
-  .hdr { display: flex; justify-content: space-between; border-bottom: 3px solid #2563eb; padding-bottom: 16px; margin-bottom: 24px; }
-  .logo { font-size: 28px; font-weight: 800; color: #2563eb; }
+  .hdr { display: flex; justify-content: space-between; border-bottom: 3px solid #1f2937; padding-bottom: 16px; margin-bottom: 24px; }
+  .logo { font-size: 28px; font-weight: 800; color: #1f2937; }
   .meta { text-align: right; color: #666; font-size: 13px; }
   h1 { font-size: 22px; margin: 24px 0 12px; }
   table { width: 100%; border-collapse: collapse; margin: 16px 0; }
@@ -215,7 +215,7 @@ function renderInvoiceHTML(a: RenderArgs): string {
   th { background: #f3f4f6; font-weight: 700; }
   .right { text-align: right; }
   .total { background: #eff6ff; font-weight: 800; }
-  .net { background: #d1fae5; font-size: 16px; font-weight: 800; color: #047857; }
+  .net { background: #d1fae5; font-size: 16px; font-weight: 800; color: #374151; }
   .small { color: #888; font-size: 11px; line-height: 1.6; margin-top: 24px; }
   .bank { background: #f9fafb; padding: 12px; border-radius: 8px; margin: 16px 0; font-size: 13px; }
 </style>

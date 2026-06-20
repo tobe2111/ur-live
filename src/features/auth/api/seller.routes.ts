@@ -113,14 +113,14 @@ function getPasswordResetEmailHTML(resetUrl: string): string {
         아래 링크를 클릭하여 새 비밀번호를 설정하세요. (1시간 유효)
       </p>
       <p style="margin:24px 0;">
-        <a href="${resetUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">
+        <a href="${resetUrl}" style="display:inline-block;background:#1f2937;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">
           비밀번호 재설정하기
         </a>
       </p>
       <p style="font-size:13px;color:#666;line-height:1.6;margin-top:24px;">
         요청하지 않았다면 이 이메일을 무시하세요.<br>
         링크가 동작하지 않을 경우 아래 URL을 복사해 주소창에 붙여넣으세요:<br>
-        <span style="word-break:break-all;color:#2563eb;">${resetUrl}</span>
+        <span style="word-break:break-all;color:#1f2937;">${resetUrl}</span>
       </p>
       <hr style="border:none;border-top:1px solid #e5e5e7;margin:32px 0 16px;">
       <p style="font-size:11px;color:#999;line-height:1.5;text-align:center;">
