@@ -114,6 +114,34 @@ async function issueLinkedRoleTokens(
   return out
 }
 
+/**
+ * 🛡️ 2026-06-20 (iOS 로그인 근본수정 — 진단 데이터 기반): 카카오 유저용 Bearer 토큰(user_token).
+ *
+ * 배경: 진단(`kakao_login_diag`)에서 iOS(사파리/카톡인앱)는 OAuth 서버단은 대부분 success 인데도
+ *   사용자가 로그인 안 됨(2~3분 16회 재시도 관측). 원인은 httpOnly 세션 쿠키(`ur_session`)가
+ *   **cross-site OAuth 콜백 응답에서 set 된 뒤 iOS WebKit 에서 유지되지 않아** 이후 모든 API 가 401.
+ *   (state 쿠키는 had_state_cookie=1 로 정상 — 세션 쿠키 단계 문제). Chrome(Blink)은 유지돼 정상.
+ *
+ * 해결: 이메일 로그인과 동일하게 **user_token(Bearer)** 을 발급 → 클라가 localStorage 에 보관하고
+ *   `Authorization: Bearer` 로 전송(api.ts 기존 분기) → `requireAuth` Bearer 경로(type 기본 'user')가
+ *   인증 → **쿠키 유무와 무관하게 API 동작**. HS256/JWT_SECRET, 세션 쿠키와 동일 30일.
+ */
+async function signUserBearerToken(secret: string, userId: number | string, name: string, email: string): Promise<string> {
+  const now = Math.floor(Date.now() / 1000)
+  return jwtSign({
+    sub: String(userId),
+    email: email || '',
+    name: name || '',
+    type: 'user',
+    isDbId: true,
+    iat: now,
+    exp: now + 30 * 24 * 60 * 60,
+  }, secret)
+}
+
+// 🧪 단위 테스트용 export — user_token 클레임/검증 회귀 가드
+export { signUserBearerToken as __signUserBearerTokenForTest };
+
 type Bindings = {
   DB: D1Database;
   KAKAO_REST_API_KEY: string;
@@ -696,10 +724,19 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       }
 
       const redirectUrl = stateUrl.pathname + stateUrl.search;
+      // 🛡️ 2026-06-20 (iOS 근본수정): user_token(Bearer)을 URL **fragment(#)** 로 전달.
+      //   fragment 는 서버/Referer/로그로 전송되지 않음(쿼리·쿠키보다 안전) → 클라가 즉시
+      //   localStorage.user_token 으로 옮기고 history.replaceState 로 제거. 이후 api.ts 가 Bearer 로
+      //   전송 → iOS 에서 ur_session 쿠키가 유지 안 돼도 인증 동작. (degrade: 서명 실패해도 쿠키 경로 유지)
+      let userTokenFrag = '';
+      try {
+        const ut = await signUserBearerToken(c.env.JWT_SECRET, user.id, user.name, user.email || '');
+        userTokenFrag = '#ut=' + encodeURIComponent(ut);
+      } catch { /* 토큰 서명 실패 — 쿠키 경로로 degrade */ }
       // 🩺 로그인 성공 기록 — 브라우저 종류 + (쿠키 경로 vs 서명 fallback) 가시화.
       fireDiag('success', 'ok', !!userWithFlag.isNewUser);
       // 302 명시: Set-Cookie 헤더가 일부 브라우저에서 303에 무시되는 문제 회피
-      return c.redirect(redirectUrl, 302);
+      return c.redirect(redirectUrl + userTokenFrag, 302);
 
     } catch (serviceError) {
       if (import.meta.env.DEV) console.error('[Kakao Sync] Service error:', serviceError);
@@ -795,6 +832,11 @@ kakaoRoutes.post('/callback', cors(), rateLimit({ action: 'kakao_callback', max:
     // 🛡️ linked seller / agency 자동 JWT 발급
     const linkedRoles = await issueLinkedRoleTokens(DB, c.env.JWT_SECRET, user.id);
 
+    // 🛡️ 2026-06-20 (iOS 근본수정): user_token(Bearer) 동봉 — 클라가 localStorage 보관 후 Bearer 전송.
+    //   iOS Safari/WebKit 에서 ur_session 쿠키 미유지 시에도 인증 동작(쿠키와 병행, 동일 30일).
+    let userBearer = '';
+    try { userBearer = await signUserBearerToken(c.env.JWT_SECRET, user.id, user.name, user.email || ''); } catch { /* degrade */ }
+
     // 🔐 2026-06-11 [UNLOCK] SSR Phase 2 D단계 (사용자 승인 "모두 진행" — docs/SSR_PHASE2_AUTH.md §3.2-2):
     //   beta(SSR) 개인화용 httpOnly ud_* 쿠키 **추가 발급만** — 기존 transfer cookie/localStorage
     //   이전 흐름·OAuth state/safeRedirect 로직 전부 불변 (additive Set-Cookie).
@@ -817,6 +859,8 @@ kakaoRoutes.post('/callback', cors(), rateLimit({ action: 'kakao_callback', max:
           profile_image: user.profile_image,
           firebaseUID: ''  // 🛡️ legacy field — Firebase 미사용
         },
+        // 🛡️ 2026-06-20: user_token — 클라가 localStorage.user_token 으로 저장 → Bearer 인증(iOS 쿠키 우회)
+        ...(userBearer ? { user_token: userBearer } : {}),
         // 카카오 계정에 연결된 셀러/에이전시 권한이 있으면 같이 전달
         ...(linkedRoles.seller_token ? { seller_token: linkedRoles.seller_token } : {}),
         ...(linkedRoles.agency_token ? { agency_token: linkedRoles.agency_token } : {}),

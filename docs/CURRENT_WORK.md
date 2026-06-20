@@ -12,6 +12,7 @@
 - **보안**: 소비자 토큰은 저권한 + CSP(nonce/strict-dynamic) XSS 완화 + 대시보드도 이미 localStorage 토큰 사용(허용된 모델). 30일 만료 = 세션 쿠키와 동일.
 - 검증: tsc 0 · `npm run build`(client+worker+prepare) 0 · 전체 유닛 2170 pass · sql-bind/not-null 0.
 - ⚠️ **실기기 검증 권장**: iOS 사파리 + 카톡 인앱 로그인 → 새로고침/탭이동/앱 재진입에도 **로그인 유지** 확인. `/api/_internal/kakao-login-diag` 로 ios success 지속 확인.
+- **🔁 보강(PR #396, 같은 진단 기반 — 병렬 세션 수렴)**: 동일 진단(`had_state_cookie:1`·`signed_fallback:0`·iOS success 14/16·2~3분 16회 재시도)으로 같은 결론에 독립 도달. transfer 쿠키(`ur_pending_user_token`)는 **그 쿠키 자체도 cross-site 콜백 302 에서 set 되어 iOS 미유지 위험**이 있어, **URL fragment(`#ut=`) 전달을 추가**(fragment 는 어떤 쿠키 정책에도 안 걸려 항상 생존 — belt-and-suspenders). 또 `auth-callback-bootstrap` 의 **health-wipe 를 `user_token` 있으면 스킵**(health-Bearer 인정과 이중 방어) + `kakao-user-token` 단위테스트 + POST 콜백 응답에도 `user_token` 동봉. 클라는 fragment·transfer쿠키 **둘 중 먼저 오는 것**으로 localStorage.user_token 설정(중복 무해).
 
 ## ✅ 2026-06-20 — 카카오 로그인 iOS(Safari/WebKit) 실패 근본수정: signed-state fallback (대표 신고 "사파리/아이폰 안돼, 크롬은 돼")
 **증상**: 카카오 "3초 시작하기" 가 iOS(사파리 + 카카오톡 인앱 webview, 둘 다 WebKit)에서 실패, **크롬(Blink)은 정상**. → 서버/설정 문제 아님(그럼 크롬도 깨짐) = **WebKit 특유의 OAuth 왕복 쿠키 처리** 문제로 확정.

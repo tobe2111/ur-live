@@ -111,8 +111,8 @@ export function clearAuthData(type: 'seller' | 'admin' | 'user') {
       'user_email',
       'user_profile_image',
       'user_session_token',  // 레거시 세션 토큰
-      // 🛡️ 2026-06-20: 소비자 Bearer 토큰도 정리 — 안 지우면 로그아웃 후에도 Bearer 로 인증 지속(버그).
-      //   (이메일 로그인이 이미 user_token 을 쓰는데 누락돼 있던 잠재 버그도 함께 수정.)
+      // 🛡️ 2026-06-20: 소비자 Bearer 토큰(user_token) + refresh 제거 — 안 지우면 로그아웃 후에도
+      //   Bearer 로 인증 지속(버그). 이메일·카카오 로그인 공통(둘 다 localStorage.user_token 사용).
       'user_token',
       'user_refresh_token',
       'hasCartItems',

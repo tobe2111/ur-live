@@ -98,6 +98,16 @@ export function processAuthCallbackParams(): void {
       if (userEmail) localStorage.setItem('user_email', userEmail)
       if (profileImage) localStorage.setItem('user_profile_image', profileImage.replace(/^http:\/\//, 'https://'))
 
+      // 🛡️ 2026-06-20 (iOS 로그인 근본수정): 서버가 URL fragment(#ut=)로 보낸 user_token(Bearer) 저장.
+      //   fragment 는 서버/Referer 로 전송 안 됨 → 안전. 저장 후 api.ts 가 Authorization: Bearer 로 전송 →
+      //   iOS Safari/WebKit 에서 ur_session 쿠키가 유지 안 돼도 인증 동작(쿠키 미유지 = 진단으로 확인된 원인).
+      //   wipe 직후(같은 user.id 도 wipe) 재설정이므로 신원 1개로 정합. 아래 URL 정리에서 hash 제거됨.
+      try {
+        const h = window.location.hash || ''
+        const m = h.match(/[#&]ut=([^&]+)/)
+        if (m && m[1]) localStorage.setItem('user_token', decodeURIComponent(m[1]))
+      } catch { /* ignore */ }
+
       // 🛡️ 2026-05-01: 로그인 직후 어떤 카카오 계정으로 로그인됐는지 명확히 표시.
       //   사용자 신고: "다른 사람 폰에서 로그인했더니 그 사람 이름으로 됨".
       //   sessionStorage 에 이름 저장 → React mount 후 toast 가 읽어서 표시.
@@ -189,6 +199,10 @@ export function processAuthCallbackParams(): void {
     // 🛡️ 2026-06-20 (A2): 방금 로그인한 로드면 health-wipe 스킵 — 쿠키 propagation race / Safari 드롭
     //   순간의 오탐 로그아웃 방지. 세션이 실제로 없으면 다음 로드나 첫 API 401 에서 정리된다.
     if (didFreshLogin) return
+    // 🛡️ 2026-06-20 (iOS 근본수정): Bearer(user_token) 인증 유저는 쿠키 유무와 무관하게 인증됨 →
+    //   쿠키-only health 가 session:false 라도 wipe 금지(iOS 에서 ur_session 미유지 시 오탐 로그아웃 차단).
+    //   토큰이 실제 만료면 api.ts 의 401 경로가 정리한다(여기서 성급히 안 지움).
+    if (localStorage.getItem('user_token')) return
     const userType = localStorage.getItem('user_type')
     const userId = localStorage.getItem('user_id')
     if (userType === 'user' && userId) {
