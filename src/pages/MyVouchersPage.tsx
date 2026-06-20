@@ -7,13 +7,13 @@ import { useNavigate } from 'react-router-dom'
 const VoucherMap = lazy(() => import('./my-vouchers/VoucherMap'))
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Ticket, MapPin, CheckCircle, XCircle, QrCode, X, Share2, Smartphone, ChevronRight, Copy } from 'lucide-react'
+import { ArrowLeft, Ticket, MapPin, CheckCircle, XCircle, QrCode, X, Share2, Smartphone, ChevronRight, Copy, Map } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { useMyVouchers, useInvalidateMyVouchers } from '@/hooks/queries'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
-import { walletTokens } from '@/components/wallet/walletTokens'
+import { walletTokens, type WalletTheme } from '@/components/wallet/walletTokens'
 import { formatNumber } from '@/utils/format'
 import { formatPhone } from '@/utils/format-phone'
 
@@ -356,12 +356,13 @@ export default function MyVouchersPage() {
   const vouchers = (vouchersRaw ?? []) as unknown as Voucher[]
   const [qrVoucher, setQrVoucher] = useState<Voucher | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
+  // 🎨 2026-06-20 흑백 리디자인 화면2(지도 전용)·화면6(번호 설정 전용) — 인-페이지 뷰(새 라우트 X)
+  const [mapSelected, setMapSelected] = useState<Voucher | null>(null)
+  const [phoneSettingsOpen, setPhoneSettingsOpen] = useState(false)
   // 🛡️ 2026-05-15: 참여 후 share prompt — GroupBuyDetailPage.handleJoin 이 localStorage 기록
   const [justJoined, setJustJoined] = useState<{ product_id: number; name: string; image_url?: string } | null>(null)
   // 🛡️ 2026-05-24: phone 미등록 사용자 안내 배너 (한 번 dismiss 하면 7일 숨김).
   const [showPhoneBanner, setShowPhoneBanner] = useState(false)
-  // 🛠️ 2026-06-17 (사용자 신고 — '등록하러 가기' 가 마이페이지로만 이동): 인라인 등록 모달.
-  const [showPhoneModal, setShowPhoneModal] = useState(false)
   useEffect(() => {
     const dismissedAt = Number(localStorage.getItem('phone_banner_dismissed_at') || 0)
     if (Date.now() - dismissedAt < 7 * 86400000) return
@@ -408,12 +409,12 @@ export default function MyVouchersPage() {
   const shownVouchers = giftCount > 0
     ? vouchers.filter(v => (sourceTab === 'gift' ? v.source === 'kt_alpha' : v.source !== 'kt_alpha'))
     : vouchers
-  const groups = [
-    { key: 'unused',   label: t('voucher.groupUnused'),   items: shownVouchers.filter(v => v.status === 'unused') },
-    { key: 'used',     label: t('voucher.groupUsed'),     items: shownVouchers.filter(v => v.status === 'used') },
-    { key: 'expired',  label: t('voucher.groupExpired'),  items: shownVouchers.filter(v => v.status === 'expired') },
-    { key: 'refunded', label: t('voucher.groupRefunded'), items: shownVouchers.filter(v => v.status === 'refunded') },
-  ].filter(g => g.items.length > 0)
+  // 🎨 2026-06-20 흑백 리디자인 화면1: 사용가능 카드 + (사용완료 / 만료·환불) 헤어라인 박스
+  const unusedItems = shownVouchers.filter(v => v.status === 'unused')
+  const usedItems = shownVouchers.filter(v => v.status === 'used')
+  const archivedItems = shownVouchers.filter(v => v.status === 'expired' || v.status === 'refunded')
+  // 지도에 표시 가능한 미사용 식사권 (좌표 보유)
+  const mapVouchers = vouchers.filter(v => v.status === 'unused' && v.restaurant_lat && v.restaurant_lng)
 
   // 가까운 만료일 (unused 식사권 중 가장 가까운)
   const nearestExpiry = (() => {
@@ -427,6 +428,61 @@ export default function MyVouchersPage() {
     const days = Math.max(0, Math.ceil((candidates[0] - now) / (1000 * 60 * 60 * 24)))
     return days
   })()
+
+  // 🎨 화면6 — 교환권 받을 번호 (전용 인-페이지 화면)
+  if (phoneSettingsOpen) {
+    return (
+      <PhoneSettingsScreen
+        theme={theme}
+        onBack={() => setPhoneSettingsOpen(false)}
+        onSaved={() => { setPhoneSettingsOpen(false); setShowPhoneBanner(false) }}
+      />
+    )
+  }
+
+  // 🎨 화면2 — 지도에서 보기 (전용 인-페이지 화면)
+  if (viewMode === 'map') {
+    return (
+      <WalletPageWrapper theme={theme}>
+        <SEO title={t('voucher.seoTitle')} description={t('voucher.seoDescription')} url="/my-vouchers" noindex />
+        <div className="sticky top-0 md:top-14 z-30 flex items-center gap-2.5 px-3 pt-3 pb-2.5"
+          style={{ background: tk.chrome, borderBottom: `0.5px solid ${tk.separator}` }}>
+          <button onClick={() => { setViewMode('list'); setMapSelected(null) }}
+            className="w-9 h-9 flex items-center justify-center rounded-full" style={{ background: tk.fillSoft, color: tk.label }}
+            aria-label={t('common.back', { defaultValue: '뒤로가기' })}>
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-[19px] font-bold tracking-tight text-gray-900 dark:text-white">{t('voucher.mapTitle', { defaultValue: '지도에서 보기' })}</h1>
+        </div>
+        <div className="relative">
+          <Suspense fallback={<div className="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400" style={{ height: 460 }}>{t('voucher.mapLoading', { defaultValue: '지도 불러오는 중...' })}</div>}>
+            <div className="[&>div]:rounded-none [&>div]:border-0" style={{ height: 460 }}>
+              <VoucherMap vouchers={mapVouchers} onMarkerClick={(v) => setMapSelected(vouchers.find(x => x.id === v.id) ?? null)} />
+            </div>
+          </Suspense>
+          {/* 선택 카드 (하단) */}
+          {mapSelected && (
+            <div className="absolute left-3 right-3 bottom-3 flex items-center gap-3 rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#2A2A2A] p-3" style={{ boxShadow: '0 6px 22px rgba(0,0,0,0.14)' }}>
+              <div className="w-[52px] h-[52px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F]">
+                {mapSelected.product_image
+                  ? <img src={mapSelected.product_image} alt="" loading="lazy" className="w-full h-full object-cover" />
+                  : <Ticket className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{mapSelected.product_name}</p>
+                {mapSelected.restaurant_name && <p className="text-[12px] text-gray-400 dark:text-gray-500 truncate mt-0.5">{mapSelected.restaurant_name}</p>}
+              </div>
+              <button onClick={() => { setQrVoucher(mapSelected) }}
+                className="shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2.5 bg-gray-900 text-white dark:bg-white dark:text-gray-900 text-[13px] font-bold active:scale-95 transition-transform">
+                <QrCode className="w-4 h-4" strokeWidth={1.8} />{t('voucher.use', { defaultValue: '사용' })}
+              </button>
+            </div>
+          )}
+        </div>
+        {qrVoucher && <QRModal voucher={qrVoucher} onClose={() => setQrVoucher(null)} />}
+      </WalletPageWrapper>
+    )
+  }
 
   return (
     <WalletPageWrapper theme={theme}>
@@ -459,7 +515,7 @@ export default function MyVouchersPage() {
                 교환권(기프티콘)을 문자(MMS)로 자동 발송해 드려요.
               </p>
               <div className="mt-2.5 flex items-center gap-3">
-                <button onClick={() => setShowPhoneModal(true)}
+                <button onClick={() => setPhoneSettingsOpen(true)}
                   className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-xl active:scale-95 transition-transform">
                   등록
                 </button>
@@ -522,33 +578,8 @@ export default function MyVouchersPage() {
         </div>
       )}
 
-      {/* 🛡️ 2026-05-15: 리스트 / 지도 토글 */}
-      {!loading && vouchers.filter(v => v.status === 'unused' && v.restaurant_lat && v.restaurant_lng).length > 0 && (
-        <div className="ur-content-narrow px-4 lg:px-8 mb-3 flex gap-1.5">
-          <button
-            onClick={() => setViewMode('list')}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${viewMode === 'list' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300'}`}
-          >
-            📋 리스트
-          </button>
-          <button
-            onClick={() => setViewMode('map')}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${viewMode === 'map' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300'}`}
-          >
-            🗺️ 지도로 보기
-          </button>
-        </div>
-      )}
-
       <div className="ur-content-narrow px-4 lg:px-8 pb-2">
-        {viewMode === 'map' && !loading ? (
-          <Suspense fallback={<div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] flex items-center justify-center text-sm text-gray-500 dark:text-gray-400" style={{ height: 400 }}>지도 불러오는 중...</div>}>
-            <VoucherMap
-              vouchers={vouchers.filter(v => v.status === 'unused' && v.restaurant_lat && v.restaurant_lng)}
-              onMarkerClick={(v) => setQrVoucher(vouchers.find(x => x.id === v.id) ?? null)}
-            />
-          </Suspense>
-        ) : loading ? (
+        {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: tk.accent, borderTopColor: 'transparent' }} />
           </div>
@@ -560,47 +591,61 @@ export default function MyVouchersPage() {
           />
         ) : (
           <>
-            {groups.map(group => {
-              // 🏁 2026-06-12 (감사 🟢 — 만료분 영구 누적): 만료/환불 그룹은 기본 접힘 (탭하면 펼침).
-              const collapsible = group.key === 'expired' || group.key === 'refunded'
-              const collapsed = collapsible && !expandedGroups.has(group.key)
-              return (
-              <div key={group.key} className="mb-6">
-                <button
-                  type="button"
-                  disabled={!collapsible}
-                  onClick={() => collapsible && setExpandedGroups(prev => {
-                    const n = new Set(prev); if (n.has(group.key)) n.delete(group.key); else n.add(group.key); return n
-                  })}
-                  className="w-full text-left px-1 mb-2 uppercase flex items-center justify-between"
-                  style={{ fontSize: 11, color: tk.secondary, fontWeight: 700, letterSpacing: '0.06em' }}>
-                  <span>{group.label} <span style={{ color: tk.tertiary }}>· {group.items.length}</span></span>
-                  {collapsible && <span style={{ color: tk.tertiary }}>{collapsed ? '펼치기 ▾' : '접기 ▴'}</span>}
+            {/* 사용 가능 N + 🗺 지도 토글 (화면1) */}
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">
+                {t('voucher.groupUnused', { defaultValue: '사용 가능' })} <span className="text-gray-400 dark:text-gray-500">{unusedItems.length}</span>
+              </span>
+              {mapVouchers.length > 0 && (
+                <button onClick={() => setViewMode('map')}
+                  className="flex items-center gap-1 text-[13px] font-semibold text-gray-900 dark:text-white active:opacity-60">
+                  <Map className="w-4 h-4" strokeWidth={1.8} />{t('voucher.mapView', { defaultValue: '지도' })}
                 </button>
-                {!collapsed && (
-                <div className="space-y-3">
-                  {group.items.map(v => {
-                    const muted = v.status !== 'unused'
-                    return <VoucherTicket key={v.id} v={v} muted={muted} locale={locale} t={t} onShowQr={() => setQrVoucher(v)} />
-                  })}
-                </div>
-                )}
+              )}
+            </div>
+
+            {/* 사용 가능 카드 */}
+            {unusedItems.length > 0 ? (
+              <div className="space-y-3">
+                {unusedItems.map(v => <VoucherTicket key={v.id} v={v} muted={false} locale={locale} t={t} onShowQr={() => setQrVoucher(v)} />)}
               </div>
-            )})}
+            ) : (
+              <p className="py-8 text-center text-[13px] text-gray-400 dark:text-gray-500">{t('voucher.noUnused', { defaultValue: '사용 가능한 식사권이 없어요' })}</p>
+            )}
+
+            {/* 사용 완료 / 만료·환불 — 헤어라인 박스 (탭하면 인라인 펼침) */}
+            {(usedItems.length > 0 || archivedItems.length > 0) && (
+              <div className="mt-4 rounded-2xl border border-gray-200 dark:border-[#1F1F1F] overflow-hidden">
+                {([
+                  { key: 'used', label: t('voucher.groupUsed', { defaultValue: '사용 완료' }), items: usedItems },
+                  { key: 'archived', label: t('voucher.groupArchived', { defaultValue: '만료 · 환불' }), items: archivedItems },
+                ] as const).filter(g => g.items.length > 0).map((g, idx) => {
+                  const open = expandedGroups.has(g.key)
+                  return (
+                    <Fragment key={g.key}>
+                      {idx > 0 && <div className="h-px bg-gray-100 dark:bg-[#1F1F1F] mx-[15px]" />}
+                      <button type="button"
+                        onClick={() => setExpandedGroups(prev => { const n = new Set(prev); if (n.has(g.key)) n.delete(g.key); else n.add(g.key); return n })}
+                        className="w-full flex items-center justify-between px-[15px] py-3.5 text-left">
+                        <span className="text-[14px] font-semibold text-gray-900 dark:text-white">{g.label} <span className="text-gray-400 dark:text-gray-500 font-medium">{g.items.length}</span></span>
+                        <ChevronRight className={`w-4 h-4 shrink-0 text-gray-300 dark:text-gray-600 transition-transform ${open ? 'rotate-90' : ''}`} />
+                      </button>
+                      {open && (
+                        <div className="px-[13px] pb-3 space-y-3">
+                          {g.items.map(v => <VoucherTicket key={v.id} v={v} muted locale={locale} t={t} onShowQr={() => setQrVoucher(v)} />)}
+                        </div>
+                      )}
+                    </Fragment>
+                  )
+                })}
+              </div>
+            )}
           </>
         )}
       </div>
 
       {/* QR Code Modal */}
       {qrVoucher && <QRModal voucher={qrVoucher} onClose={() => setQrVoucher(null)} />}
-
-      {/* 🛠️ 2026-06-17: 전화번호 인라인 등록 (마이페이지 이동 X) */}
-      {showPhoneModal && (
-        <PhoneRegisterModal
-          onClose={() => setShowPhoneModal(false)}
-          onSaved={() => { setShowPhoneModal(false); setShowPhoneBanner(false) }}
-        />
-      )}
 
       {/* 🛡️ 2026-05-15: 참여 직후 share prompt (3 AI 합의: post-purchase share boost) */}
       {justJoined && <PostJoinShareModal data={justJoined} onClose={() => setJustJoined(null)} />}
@@ -733,15 +778,17 @@ function PostJoinShareModal({ data, onClose }: { data: { product_id: number; nam
 }
 
 /**
- * 🛠️ 2026-06-17 (사용자 신고): '등록하러 가기' 가 마이페이지로만 이동하던 것 → 인라인 전화번호 등록 모달.
- *   저장은 PATCH /api/auth/profile (VoucherDetailPage 와 동일 검증된 엔드포인트 — phone 정상 저장됨).
+ * 🎨 2026-06-20 흑백 리디자인 화면6 — 교환권 받을 번호 (전용 인-페이지 화면, 모달 X).
+ *   저장은 PATCH /api/auth/profile (VoucherDetailPage 와 동일 검증된 엔드포인트).
  *   개인정보보호법: 수집·이용 동의 체크박스 필수.
  */
-function PhoneRegisterModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+function PhoneSettingsScreen({ theme, onBack, onSaved }: { theme: WalletTheme; onBack: () => void; onSaved: () => void }) {
+  const { t } = useTranslation()
+  const tk = walletTokens[theme]
   const [phone, setPhone] = useState('')
   const [consent, setConsent] = useState(false)
   const [saving, setSaving] = useState(false)
-  useEscapeKey(onClose)
+  useEscapeKey(onBack)
 
   async function save() {
     if (!consent) { toast.error('개인정보 수집·이용 동의 후 진행 가능합니다'); return }
@@ -759,25 +806,43 @@ function PhoneRegisterModal({ onClose, onSaved }: { onClose: () => void; onSaved
   }
 
   return (
-    <div className="fixed inset-0 z-[10100] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={onClose} role="presentation">
-      <div className="bg-white dark:bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-5 animate-slideUp" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-base font-extrabold text-gray-900 dark:text-white">📱 휴대폰 번호 등록</h3>
-          <button onClick={onClose} aria-label="닫기" className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-white"><X className="w-5 h-5" /></button>
+    <WalletPageWrapper theme={theme}>
+      <SEO title={t('voucher.phoneSettingsTitle', { defaultValue: '교환권 받을 번호 - 유어딜' })} description="교환권 받을 휴대폰 번호" url="/my-vouchers" noindex />
+      {/* 헤더 */}
+      <div className="sticky top-0 md:top-14 z-30 flex items-center gap-2.5 px-3 pt-3 pb-2.5" style={{ background: tk.chrome, borderBottom: `0.5px solid ${tk.separator}` }}>
+        <button onClick={onBack} className="w-9 h-9 flex items-center justify-center rounded-full" style={{ background: tk.fillSoft, color: tk.label }} aria-label={t('common.back', { defaultValue: '뒤로가기' })}>
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <h1 className="text-[19px] font-bold tracking-tight text-gray-900 dark:text-white">{t('voucher.phoneSettingsHeading', { defaultValue: '교환권 받을 번호' })}</h1>
+      </div>
+
+      <div className="ur-content-narrow px-5 lg:px-8 pt-1 pb-8">
+        {/* 안내 박스 (🟢 체크) */}
+        <div className="flex items-start gap-2.5 bg-gray-50 dark:bg-[#141414] rounded-2xl p-3.5">
+          <CheckCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#16A34A]" strokeWidth={2.2} />
+          <p className="text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">
+            교환권(기프티콘)은 등록한 번호로 <b className="text-gray-900 dark:text-white font-bold">문자(MMS)로 자동 발송</b>돼요. 공구권은 번호 없이 앱에서 바로 사용해요.
+          </p>
         </div>
-        <p className="text-xs text-gray-600 dark:text-gray-300 mb-4 leading-relaxed">
-          기프티쇼 교환권은 휴대폰 MMS 로 발송됩니다.<br />등록하면 다음 교환권부터 자동 발송돼요.
-        </p>
-        <input
-          type="tel" inputMode="numeric" maxLength={13}
-          value={phone}
-          onChange={(e) => setPhone(formatPhone(e.target.value))}
-          onKeyDown={(e) => { if (e.key === 'Enter') save() }}
-          placeholder="010-1234-5678"
-          className="w-full px-3 py-2.5 border border-gray-300 dark:border-[#2A2A2A] dark:bg-[#141414] rounded-xl text-base text-gray-900 dark:text-white mb-3"
-          autoFocus
-        />
-        <label className="flex items-start gap-2 mb-4 cursor-pointer">
+
+        {/* 입력 */}
+        <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 mt-6 mb-2">휴대폰 번호</p>
+        <div className="flex items-center gap-2.5 rounded-2xl border-[1.5px] border-gray-900 dark:border-white bg-white dark:bg-[#141414] px-4 py-3.5">
+          <Smartphone className="w-[18px] h-[18px] shrink-0 text-gray-900 dark:text-white" strokeWidth={1.8} />
+          <input
+            type="tel" inputMode="numeric" maxLength={13}
+            value={phone}
+            onChange={(e) => setPhone(formatPhone(e.target.value))}
+            onKeyDown={(e) => { if (e.key === 'Enter') save() }}
+            placeholder="010-1234-5678"
+            className="flex-1 bg-transparent outline-none text-[17px] font-mono tracking-wide text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600"
+            autoFocus
+          />
+        </div>
+        <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-2.5 leading-relaxed">이 번호는 교환권 발송에만 사용돼요. 발송 실패 시 여기서 번호를 바꿔 재발송할 수 있어요.</p>
+
+        {/* 동의 */}
+        <label className="flex items-start gap-2 mt-5 cursor-pointer">
           <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 w-4 h-4 accent-gray-900 dark:accent-white" />
           <span className="text-[11px] text-gray-700 dark:text-gray-200 leading-relaxed">
             <b>휴대폰 번호 수집·이용에 동의</b>합니다 (필수)
@@ -785,15 +850,16 @@ function PhoneRegisterModal({ onClose, onSaved }: { onClose: () => void; onSaved
             <span className="text-gray-500 dark:text-gray-400">· 이용 목적: 교환권 MMS / 알림톡 발송 · 보유 기간: 회원 탈퇴 시까지</span>
           </span>
         </label>
+
         <button
           onClick={save}
           disabled={!phone || !consent || saving}
-          className="w-full py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl text-sm font-extrabold disabled:opacity-40 active:scale-[0.99] transition-transform"
+          className="w-full mt-6 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl text-[15px] font-extrabold disabled:opacity-40 active:scale-[0.99] transition-transform"
         >
           {saving ? '저장 중…' : '이 번호로 등록'}
         </button>
       </div>
-    </div>
+    </WalletPageWrapper>
   )
 }
 
@@ -826,87 +892,94 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
     return <KtAlphaVoucherCard v={v} muted={muted} t={t} />
   }
 
-  // 🎨 2026-06-17 (사용자 신고 — UI 별로): 텍스트-only 절취선 티켓 + 영문 휴리스틱 라벨 폐기.
-  //   → 음식 사진(식사권 핵심) 노출 + 클린 카드 톤(교환권 상세/목록과 정합).
-  const urgent = v.status === 'unused' && daysLeft !== null && daysLeft <= 3
-  const statusBadge = v.status !== 'unused' ? (
-    <span className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide"
-      style={{
-        background: v.status === 'used' ? 'rgba(0,0,0,0.06)' : v.status === 'expired' ? 'rgba(239,68,68,0.10)' : 'rgba(245,158,11,0.12)',
-        color: v.status === 'used' ? '#6B7280' : v.status === 'expired' ? '#DC2626' : '#6b7280',
-      }}>
-      {t(`voucher.status.${v.status}`)}
-    </span>
-  ) : null
+  // 🎨 2026-06-20 흑백 iOS-클린 (docs/design/my-vouchers-wallet-bw.md 화면1 카드):
+  //   60px 썸네일 · 🟢 상태점+사용가능+D-N · 제목 · 📍가게 · 코드칩 / 우측: 가격 + 컴팩트 사용 pill.
+  const urgent = v.status === 'unused' && daysLeft !== null && daysLeft <= 2
+  const price = v.applied_price ?? v.product_price ?? null
 
   return (
     <div
-      className="relative flex items-stretch gap-3 rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F] p-3"
+      className="relative flex items-stretch gap-3 rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F] p-[13px]"
       style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 3px rgba(0,0,0,0.04)' }}
     >
-      {/* 🎨 음식 사진 — 기존 식사권 카드엔 사진이 없어 밋밋했음(상세/목록 톤과 정합). */}
-      <div className="w-[84px] h-[84px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F]">
+      {/* 썸네일 60px */}
+      <div className="w-[60px] h-[60px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F]">
         {v.product_image ? (
           <img src={v.product_image} alt={v.product_name} loading="lazy" className="w-full h-full object-cover" />
         ) : (
-          <Ticket className="w-7 h-7 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
+          <Ticket className="w-6 h-6 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
         )}
       </div>
 
       {/* 본문 */}
-      <div className="flex-1 min-w-0 flex flex-col">
-        <div className="flex items-start gap-2">
-          <p className="flex-1 line-clamp-2 text-gray-900 dark:text-white font-bold text-[14px] leading-snug tracking-tight">
-            {v.product_name}
-          </p>
-          {statusBadge}
+      <div className="flex-1 min-w-0 flex flex-col gap-1">
+        {/* 상태 줄 */}
+        <div className="flex items-center gap-1.5">
+          {v.status === 'unused' ? (
+            <>
+              <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: '#16A34A' }} aria-hidden />
+              <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">{t('voucher.status.unused', { defaultValue: '사용 가능' })}</span>
+              {daysLeft !== null && (
+                <span className={`text-[12px] font-bold font-mono ${urgent ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                  {daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`}
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="text-[12px] font-semibold" style={{ color: v.status === 'expired' ? '#DC2626' : '#6B7280' }}>
+              {t(`voucher.status.${v.status}`)}
+              {v.status === 'used' && usedAt && <span className="ml-1 text-gray-400 dark:text-gray-500 font-normal">· {usedAt.toLocaleDateString(locale)}</span>}
+            </span>
+          )}
         </div>
+
+        {/* 제목 */}
+        <p className="text-gray-900 dark:text-white font-bold text-[16px] leading-tight tracking-tight truncate">{v.product_name}</p>
+
+        {/* 가게 */}
         {v.restaurant_name && (
-          <p className="flex items-center gap-1 mt-1 text-[11.5px] text-gray-500 dark:text-gray-400">
+          <p className="flex items-center gap-1 text-[12px] text-gray-400 dark:text-gray-500 min-w-0">
             <MapPin className="w-3 h-3 shrink-0" /><span className="truncate">{v.restaurant_name}</span>
           </p>
         )}
-        <div className="mt-auto pt-2 flex items-center gap-2 flex-wrap">
-          <code
-            onClick={(e) => {
-              e.stopPropagation()
-              if (v.status !== 'unused') return
-              navigator.clipboard?.writeText(v.code)
-              toast.success(t('voucher.copied', { defaultValue: '복사됨' }))
-            }}
-            className={`inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold tracking-wide text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-white/10 rounded-md px-2 py-0.5 ${v.status === 'unused' ? 'cursor-pointer active:opacity-70' : ''}`}
-          >
-            {v.code}
-            {v.status === 'unused' && <Copy className="w-3 h-3 text-gray-400 dark:text-gray-500" strokeWidth={2} aria-hidden />}
-          </code>
-          {v.status === 'unused' && daysLeft !== null && (
-            <span className={`text-[11px] font-extrabold rounded-md px-1.5 py-0.5 ${urgent ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300'}`}>
-              {daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`}
-            </span>
-          )}
-          {v.status === 'used' && usedAt && (
-            <span className="text-[10px] text-gray-400 dark:text-gray-500">
-              {t('voucher.usedAt')} · {usedAt.toLocaleDateString(locale)}
-            </span>
-          )}
-        </div>
+
+        {/* 코드 칩 */}
+        <code
+          onClick={(e) => {
+            e.stopPropagation()
+            if (v.status !== 'unused') return
+            navigator.clipboard?.writeText(v.code)
+            toast.success(t('voucher.copied', { defaultValue: '복사됨' }))
+          }}
+          className={`mt-0.5 self-start inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold tracking-wide text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-white/10 rounded-md px-2 py-[3px] ${v.status === 'unused' ? 'cursor-pointer active:opacity-70' : ''}`}
+        >
+          {v.code}
+          {v.status === 'unused' && <Copy className="w-3 h-3 text-gray-400 dark:text-gray-500" strokeWidth={2} aria-hidden />}
+        </code>
       </div>
 
-      {/* 액션 — 사용 가능 시 QR/사용, 그 외 상태 아이콘 */}
-      {v.status === 'unused' ? (
-        <button
-          onClick={onShowQr}
-          aria-label={t('voucher.scan')}
-          className="shrink-0 self-center flex flex-col items-center justify-center gap-1 w-[62px] h-[70px] rounded-xl bg-gray-900 text-white dark:bg-white dark:text-gray-900 active:scale-95 transition-transform"
-        >
-          <QrCode className="w-6 h-6" strokeWidth={1.6} />
-          <span className="text-[10px] font-extrabold">{t('voucher.use', { defaultValue: '사용' })}</span>
-        </button>
-      ) : (
-        <div className="shrink-0 self-center w-[62px] flex items-center justify-center opacity-50">
-          <Ticket className="w-6 h-6 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
-        </div>
-      )}
+      {/* 우측: 가격 + 사용 pill */}
+      <div className="shrink-0 flex flex-col items-end justify-between">
+        {price !== null ? (
+          <div className="text-[15px] font-bold font-mono text-gray-900 dark:text-white whitespace-nowrap">
+            {formatNumber(price)}<span className="font-sans text-[11px] font-semibold text-gray-400 dark:text-gray-500">원</span>
+          </div>
+        ) : <span />}
+        {v.status === 'unused' ? (
+          <button
+            onClick={onShowQr}
+            aria-label={t('voucher.scan', { defaultValue: '사용' })}
+            className="flex items-center gap-1.5 rounded-xl px-[15px] py-[9px] bg-gray-900 text-white dark:bg-white dark:text-gray-900 text-[13px] font-bold active:scale-95 transition-transform"
+          >
+            <QrCode className="w-4 h-4" strokeWidth={1.8} />
+            {t('voucher.use', { defaultValue: '사용' })}
+          </button>
+        ) : (
+          <div className="w-7 h-7 flex items-center justify-center opacity-50">
+            <Ticket className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

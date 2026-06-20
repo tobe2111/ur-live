@@ -96,9 +96,10 @@
 - [x] 전화번호 배너 + 등록 모달 amber → 잉크
 - [x] 빈 상태 1·2·3 원형 잉크 스텝(셰브론) + 블랙 필 CTA
 - [x] `npm run type-check`(0) + `check-theme-consistency.mjs`(0) + `npm run build`(0)
-- [ ] (보류 — 스코프 외) 지도 전용 화면 — 현 `VoucherMap` 토글 유지(lazy 잠금 보존)
-- [ ] (보류 — 스코프 외) 교환권 받을 번호 전용 페이지 — 현 `PhoneRegisterModal` 유지
-- [ ] (보류) 사용완료/만료·환불 → 디자인의 헤어라인 박스 행 — 현 접힘 그룹(인라인 펼침) 유지(UX 동등)
+- [x] 화면1 레이아웃 정합 (2차): "사용 가능 N" + 🗺 지도 인라인 토글, 카드 우측 가격+컴팩트 사용 pill, 60px 썸네일
+- [x] 사용완료/만료·환불 → 헤어라인 박스 행(>, 탭하면 인라인 펼침)
+- [x] 화면2 지도 전용 인-페이지 화면(back 헤더 + VoucherMap + 하단 선택카드) — lazy 잠금 보존
+- [x] 화면6 교환권 받을 번호 전용 인-페이지 화면(모달 → 전용 화면)
 
 ---
 
@@ -113,3 +114,9 @@
   - **결제/환불/취소/폴링 로직 byte-identical** — 시각만 변경(handleSelfCancel·status·api 호출 불변).
   - 🔒 잠금 보존: VoucherMap lazy / qrcode.react lazy / useMyVouchers / useInvalidateMyVouchers.
   - commit hash: (아래 커밋 참조)
+
+- **2026-06-20 (2차 — 레이아웃 정합)** 대표 신고 "구현이 다 안된 것 같은데?" — 1차는 톤만 입히고 구조를 옛 것으로 남겨 시안과 불일치. 시안 레이아웃까지 충실 구현:
+  - 화면1: "사용 가능 N" + 🗺 지도 인라인 토글(큰 버튼 2개 제거), `VoucherTicket` 카드 재구성(60px 썸네일 · 🟢 상태점+사용가능+D-N · 제목 · 📍가게 · 코드칩 / 우측 가격+컴팩트 사용 pill), 사용완료/만료·환불을 헤어라인 박스 행(탭→인라인 펼침)으로.
+  - 화면2: `viewMode==='map'` 전용 인-페이지 화면(back 헤더 "지도에서 보기" + VoucherMap + 하단 선택 카드의 사용 버튼).
+  - 화면6: `PhoneRegisterModal`(모달) → `PhoneSettingsScreen`(전용 인-페이지 "교환권 받을 번호", 🟢 안내박스 + 잉크 보더 입력 + "이 번호로 등록"). 배너 "등록" → 이 화면.
+  - 새 라우트 없음(state 기반 인-페이지 뷰). 결제/취소/저장 로직 불변. 검증: type-check 0 · theme 0 · build 0.
