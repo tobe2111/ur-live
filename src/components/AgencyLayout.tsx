@@ -226,7 +226,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
           <UrDealLogo size={14} forceDark />
           <span
             className="font-bold uppercase"
-            style={{ fontSize: '9px', letterSpacing: '0.08em', color: '#8B5CF6' }}
+            style={{ fontSize: '9px', letterSpacing: '0.08em', color: '#4b5563' }}
           >
             AGENCY PARTNER
           </span>
@@ -238,7 +238,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
         <div className="flex items-center gap-2.5">
           <div
             className="w-9 h-9 rounded-lg flex items-center justify-center text-[11px] font-extrabold text-white flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #8B5CF6, #6b7280)' }}
+            style={{ background: 'linear-gradient(135deg, #4b5563, #6b7280)' }}
           >
             {initials}
           </div>
@@ -266,7 +266,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
             {revenue30d == null ? (
               <p className="text-[13px] font-extrabold text-white/50">—</p>
             ) : hasActiveGrowth ? (
-              <p className="text-[13px] font-extrabold" style={{ color: '#10B981' }}>
+              <p className="text-[13px] font-extrabold" style={{ color: '#6b7280' }}>
                 <TrendingUp size={10} className="inline mr-0.5" style={{ verticalAlign: 'middle' }} />
                 활성
               </p>
@@ -358,7 +358,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
         <button
           onClick={() => navigate('/agency/introduced-stores')}
           className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[12px] font-extrabold text-white transition-all hover:opacity-90"
-          style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}
+          style={{ background: 'linear-gradient(135deg, #4b5563, #374151)' }}
         >
           <Store size={14} strokeWidth={2} />
           {t('agency.inviteStore', { defaultValue: '가게 영입' })}
@@ -420,7 +420,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
         <button
           onClick={() => navigate(LIVE_COMMERCE_SUSPENDED ? '/agency/group-buy' : '/agency/schedule')}
           className="flex items-center gap-2 px-5 py-3 rounded-full text-white font-bold text-sm shadow-lg active:scale-95 transition-transform"
-          style={{ background: 'linear-gradient(90deg, #8B5CF6, #6b7280)', boxShadow: '0 8px 24px rgba(139,92,246,0.3)' }}
+          style={{ background: 'linear-gradient(90deg, #4b5563, #6b7280)', boxShadow: '0 8px 24px rgba(139,92,246,0.3)' }}
         >
           {LIVE_COMMERCE_SUSPENDED ? <Utensils className="w-4 h-4" /> : <Calendar className="w-4 h-4" />}
           {LIVE_COMMERCE_SUSPENDED

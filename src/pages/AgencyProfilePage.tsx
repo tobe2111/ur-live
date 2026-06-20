@@ -197,11 +197,11 @@ export default function AgencyProfilePage() {
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">{t('agency.agencyProfile.brandColor', { defaultValue: '브랜드 색상 (HEX)' })}</label>
             <div className="flex items-center gap-2">
-              <input type="color" value={brand.brand_color || '#3b82f6'}
+              <input type="color" value={brand.brand_color || '#374151'}
                 onChange={e => setBrand(b => ({ ...b, brand_color: e.target.value }))}
                 className="w-12 h-10 border border-gray-300 rounded cursor-pointer" />
               <input value={brand.brand_color} onChange={e => setBrand(b => ({ ...b, brand_color: e.target.value }))}
-                placeholder="#3b82f6" maxLength={7}
+                placeholder="#374151" maxLength={7}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono" />
               {brand.brand_color && (
                 <button onClick={() => setBrand(b => ({ ...b, brand_color: '' }))}

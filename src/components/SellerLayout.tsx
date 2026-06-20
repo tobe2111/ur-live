@@ -273,7 +273,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           <UrDealLogo size={14} forceDark />
           <span
             className="font-bold uppercase"
-            style={{ fontSize: '9px', letterSpacing: '0.08em', color: '#FF0033' }}
+            style={{ fontSize: '9px', letterSpacing: '0.08em', color: '#9ca3af' }}
           >
             SELLER STUDIO
           </span>
@@ -282,7 +282,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         <div className="flex items-center gap-2.5 mt-3">
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-extrabold text-white flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #FF0033, #FF6B35)' }}
+            style={{ background: 'linear-gradient(135deg, #4b5563, #6b7280)' }}
           >
             {sellerName.charAt(0).toUpperCase()}
           </div>
@@ -357,7 +357,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
                   //   active gradient 는 index.css 의 .ur-seller-nav-active 유틸. hover 는 hover:text-white.
                   className={`flex items-center gap-2.5 px-4 py-[7px] text-[12px] font-semibold transition-colors border-l-[2.5px] ${
                     active
-                      ? 'text-white border-[#FF0033] ur-seller-nav-active'
+                      ? 'text-white border-[#9ca3af] ur-seller-nav-active'
                       : highlight
                       ? 'bg-red-500/20 border-red-500'
                       : 'text-white/55 hover:text-white border-transparent'

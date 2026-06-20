@@ -8,12 +8,12 @@ import { ShoppingBag, RefreshCw, ArrowUpRight, Clock, CheckCircle2, Package, Tru
 import type { Order } from './types'
 
 const STATUS_CONFIG_BASE: Record<string, { labelKey: string; color: string; bg: string; icon: React.ReactNode }> = {
-  PENDING:   { labelKey: 'seller.statusPending',   color: '#D97706', bg: '#FEF3C7', icon: <Clock className="w-3 h-3" /> },
-  DONE:      { labelKey: 'seller.statusDone',      color: '#2563EB', bg: '#DBEAFE', icon: <CheckCircle2 className="w-3 h-3" /> },
-  PAID:      { labelKey: 'seller.statusDone',      color: '#2563EB', bg: '#DBEAFE', icon: <CheckCircle2 className="w-3 h-3" /> },
-  PREPARING: { labelKey: 'seller.statusPreparing', color: '#7C3AED', bg: '#EDE9FE', icon: <Package className="w-3 h-3" /> },
-  SHIPPING:  { labelKey: 'seller.statusShipping',  color: '#0891B2', bg: '#CFFAFE', icon: <Truck className="w-3 h-3" /> },
-  DELIVERED: { labelKey: 'seller.statusDelivered', color: '#059669', bg: '#D1FAE5', icon: <CheckCircle2 className="w-3 h-3" /> },
+  PENDING:   { labelKey: 'seller.statusPending',   color: '#6b7280', bg: '#f3f4f6', icon: <Clock className="w-3 h-3" /> },
+  DONE:      { labelKey: 'seller.statusDone',      color: '#1f2937', bg: '#DBEAFE', icon: <CheckCircle2 className="w-3 h-3" /> },
+  PAID:      { labelKey: 'seller.statusDone',      color: '#1f2937', bg: '#DBEAFE', icon: <CheckCircle2 className="w-3 h-3" /> },
+  PREPARING: { labelKey: 'seller.statusPreparing', color: '#374151', bg: '#EDE9FE', icon: <Package className="w-3 h-3" /> },
+  SHIPPING:  { labelKey: 'seller.statusShipping',  color: '#4b5563', bg: '#CFFAFE', icon: <Truck className="w-3 h-3" /> },
+  DELIVERED: { labelKey: 'seller.statusDelivered', color: '#4b5563', bg: '#D1FAE5', icon: <CheckCircle2 className="w-3 h-3" /> },
   CANCELLED: { labelKey: 'seller.statusCancelled', color: '#DC2626', bg: '#FEE2E2', icon: <XCircle className="w-3 h-3" /> },
 }
 

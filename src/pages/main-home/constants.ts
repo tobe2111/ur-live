@@ -18,12 +18,12 @@ export const REGION_COORDS: Array<{ name: string; lat: number; lng: number }> = 
 
 export const CATEGORIES = [
   { k: 'fashion', l: '패션', i: '👗', bg: '#f3f4f6' },
-  { k: 'beauty', l: '뷰티', i: '💄', bg: '#FEF3C7' },
+  { k: 'beauty', l: '뷰티', i: '💄', bg: '#f3f4f6' },
   { k: 'food', l: '식품', i: '🍜', bg: '#FEE2E2' },
   { k: 'living', l: '리빙', i: '🏠', bg: '#DBEAFE' },
   { k: 'digital', l: '디지털', i: '📱', bg: '#E0E7FF' },
   { k: 'kids', l: '키즈', i: '🧸', bg: '#D1FAE5' },
-  { k: 'sports', l: '스포츠', i: '⚽', bg: '#FEF3C7' },
+  { k: 'sports', l: '스포츠', i: '⚽', bg: '#f3f4f6' },
   { k: 'culture', l: '문화', i: '🎫', bg: '#F3E8FF' },
   { k: 'travel', l: '여행', i: '✈️', bg: '#CFFAFE' },
   { k: 'pet', l: '반려', i: '🐕', bg: '#FED7AA' },

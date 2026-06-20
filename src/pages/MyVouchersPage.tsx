@@ -638,7 +638,7 @@ function EmptyVouchers({ mode, onExplore, t }: {
           className="w-[88px] h-[88px] rounded-[26px] flex items-center justify-center"
           style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.12), rgba(236,72,153,0.14))' }}
         >
-          <Icon className="w-10 h-10" style={{ color: '#EC4899' }} strokeWidth={1.6} />
+          <Icon className="w-10 h-10" style={{ color: '#6b7280' }} strokeWidth={1.6} />
         </div>
         <span className="absolute -top-1.5 -right-1.5 text-lg" aria-hidden>✨</span>
       </div>
@@ -649,7 +649,7 @@ function EmptyVouchers({ mode, onExplore, t }: {
       <button
         onClick={onExplore}
         className="mt-6 px-7 py-3 rounded-full text-sm font-extrabold text-white active:scale-95 transition-transform"
-        style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)', boxShadow: '0 8px 20px rgba(236,72,153,0.28)' }}
+        style={{ background: 'linear-gradient(135deg, #4b5563, #6b7280)', boxShadow: '0 8px 20px rgba(0,0,0,0.22)' }}
       >
         {cta}
       </button>
@@ -828,7 +828,7 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
     <span className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide"
       style={{
         background: v.status === 'used' ? 'rgba(0,0,0,0.06)' : v.status === 'expired' ? 'rgba(239,68,68,0.10)' : 'rgba(245,158,11,0.12)',
-        color: v.status === 'used' ? '#6B7280' : v.status === 'expired' ? '#DC2626' : '#D97706',
+        color: v.status === 'used' ? '#6B7280' : v.status === 'expired' ? '#DC2626' : '#6b7280',
       }}>
       {t(`voucher.status.${v.status}`)}
     </span>
@@ -942,7 +942,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
     <span className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide"
       style={{
         background: v.status === 'used' ? 'rgba(0,0,0,0.06)' : v.status === 'expired' ? 'rgba(239,68,68,0.10)' : 'rgba(245,158,11,0.12)',
-        color: v.status === 'used' ? '#6B7280' : v.status === 'expired' ? '#DC2626' : '#D97706',
+        color: v.status === 'used' ? '#6B7280' : v.status === 'expired' ? '#DC2626' : '#6b7280',
       }}>
       {t(`voucher.status.${v.status}`)}
     </span>

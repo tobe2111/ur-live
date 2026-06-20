@@ -83,8 +83,8 @@ export default function IntroducePage() {
   const features = [
     { icon: ShoppingBag, color: '#EF4444', title: '동네 공구 단일 특가', desc: '대량 단가를 미리 떼와 처음부터 모두에게 같은 그룹 특가. 인원에 따라 가격이 오르내리지 않아요.' },
     { icon: Ticket, color: '#6b7280', title: '교환권 즉시 발급', desc: '결제하면 교환권이 바로 발급돼요. 목표 인원과 무관하게 즉시 확정 — 매장에서 바로 사용하세요.' },
-    { icon: MapPin, color: '#F59E0B', title: '우리 동네 기반', desc: '맛집·뷰티·숙소·헬스까지. 내 지역에서 진행 중인 공구를 카테고리·지역별로 골라보세요.' },
-    { icon: Gift, color: '#10B981', title: '친구 초대 보너스', desc: '친구를 초대해 함께 구매하면 두 분 모두에게 보너스 딜이 적립돼요.' },
+    { icon: MapPin, color: '#9ca3af', title: '우리 동네 기반', desc: '맛집·뷰티·숙소·헬스까지. 내 지역에서 진행 중인 공구를 카테고리·지역별로 골라보세요.' },
+    { icon: Gift, color: '#6b7280', title: '친구 초대 보너스', desc: '친구를 초대해 함께 구매하면 두 분 모두에게 보너스 딜이 적립돼요.' },
   ]
 
   return (

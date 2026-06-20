@@ -353,7 +353,7 @@ export default function AgencyPage() {
               </p>
             )}
           </div>
-          <p className="text-[13px] font-extrabold shrink-0" style={{ color: '#FF0033' }}>
+          <p className="text-[13px] font-extrabold shrink-0" style={{ color: '#374151' }}>
             {Math.round(goalProgress)}%
           </p>
         </div>
@@ -362,7 +362,7 @@ export default function AgencyPage() {
             className="h-full rounded-full transition-all"
             style={{
               width: `${Math.min(goalProgress, 100)}%`,
-              background: 'linear-gradient(90deg, #FF0033, #6b7280)'
+              background: 'linear-gradient(90deg, #374151, #6b7280)'
             }}
           />
         </div>
@@ -505,7 +505,7 @@ export default function AgencyPage() {
                 </span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-gray-100">
-                <div className="h-full rounded-full" style={{ width: '100%', background: '#10B981' }} />
+                <div className="h-full rounded-full" style={{ width: '100%', background: '#6b7280' }} />
               </div>
             </div>
           </div>
@@ -531,7 +531,7 @@ export default function AgencyPage() {
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-bold text-gray-900">{t('agency.revenueTrend7days')}</h2>
             <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full" style={{ background: '#8B5CF6' }} />
+              <span className="w-2 h-2 rounded-full" style={{ background: '#4b5563' }} />
               <span className="text-[10px] text-gray-500">{t('agency.dailyRevenue')}</span>
             </div>
           </div>

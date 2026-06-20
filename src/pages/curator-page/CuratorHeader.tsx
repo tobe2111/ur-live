@@ -101,8 +101,8 @@ export default function CuratorHeader({
   const [editingHeadline, setEditingHeadline] = useState(false)
   const [headlineVal, setHeadlineVal] = useState(curator.headline || '')
   // 🎨 2026-06-19 마퀴 액센트 색 (소유자 조정). 비면 기본 주황.
-  const ACCENT_DEFAULT = '#FF6A00'
-  const ACCENT_PRESETS = ['#FF6A00', '#E11D48', '#7C3AED', '#2563EB', '#0E9F6E', '#111827']
+  const ACCENT_DEFAULT = '#6b7280'
+  const ACCENT_PRESETS = ['#6b7280', '#4b5563', '#374151', '#1f2937', '#0E9F6E', '#111827']
   const accentColor = (curator.accent && /^#[0-9A-Fa-f]{6}$/.test(curator.accent)) ? curator.accent : ACCENT_DEFAULT
   // 액센트 밝기로 글자색 자동 대비 (밝으면 잉크, 어두우면 흰색).
   const accentText = (() => {
@@ -235,7 +235,7 @@ export default function CuratorHeader({
   useEffect(() => { setBannerBroken(false) }, [normalizedBanner])
   const showBanner = (bannerPreview || normalizedBanner) && !bannerBroken
   // 폴백 그라데이션 — 배너 없을 때도 완성된 히어로 (브랜드 앰버 + 잉크).
-  const bannerGradient = 'linear-gradient(135deg, #FF6A00 0%, #FF8A3D 42%, #1A1A1A 130%)'
+  const bannerGradient = 'linear-gradient(135deg, #6b7280 0%, #FF8A3D 42%, #1A1A1A 130%)'
 
   const hasSns = !!(curator.youtube_url || curator.instagram_url || curator.tiktok_url)
 

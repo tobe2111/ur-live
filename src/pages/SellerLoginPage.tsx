@@ -100,7 +100,7 @@ export default function SellerLoginPage() {
         <div className="px-10 pt-10">
           <div className="flex items-center gap-2">
             <UrDealLogo size={14} forceDark />
-            <span className="text-[9px] font-bold tracking-wider text-[#FF0033]">
+            <span className="text-[9px] font-bold tracking-wider text-[#111827]">
               SELLER STUDIO
             </span>
           </div>
@@ -143,7 +143,7 @@ export default function SellerLoginPage() {
         {/* Mobile logo */}
         <div className="lg:hidden mb-8 flex items-center gap-2">
           <UrDealLogo size={14} forceLight />
-          <span className="text-[9px] font-bold tracking-wider text-[#FF0033]">
+          <span className="text-[9px] font-bold tracking-wider text-[#111827]">
             SELLER STUDIO
           </span>
         </div>
@@ -178,7 +178,7 @@ export default function SellerLoginPage() {
                     disabled={loading}
                     placeholder="seller@example.com"
                     aria-label={t('common.email')}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none transition-all disabled:bg-gray-50"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#111827]/30 focus:border-[#111827] outline-none transition-all disabled:bg-gray-50"
                   />
                 </div>
               </div>
@@ -199,7 +199,7 @@ export default function SellerLoginPage() {
                     disabled={loading}
                     placeholder={t('seller.passwordPlaceholder')}
                     aria-label={t('auth.password')}
-                    className="w-full pl-10 pr-11 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#FF0033]/30 focus:border-[#FF0033] outline-none transition-all disabled:bg-gray-50"
+                    className="w-full pl-10 pr-11 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:ring-2 focus:ring-[#111827]/30 focus:border-[#111827] outline-none transition-all disabled:bg-gray-50"
                   />
                   <button
                     type="button"
@@ -219,7 +219,7 @@ export default function SellerLoginPage() {
                     type="button"
                     onClick={() => setRememberMe(v => !v)}
                     className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
-                      rememberMe ? 'bg-[#FF0033] border-[#FF0033]' : 'border-gray-300 bg-white'
+                      rememberMe ? 'bg-[#111827] border-[#111827]' : 'border-gray-300 bg-white'
                     }`}
                   >
                     {rememberMe && (
@@ -237,7 +237,7 @@ export default function SellerLoginPage() {
                 </div>
                 <Link
                   to="/seller/forgot-password"
-                  className="text-sm text-[#FF0033] hover:text-[#cc0029] font-medium"
+                  className="text-sm text-[#111827] hover:text-[#cc0029] font-medium"
                 >
                   {t('auth.forgotPassword')}
                 </Link>
@@ -250,7 +250,7 @@ export default function SellerLoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-3 mt-2 bg-gradient-to-r from-[#FF0033] to-[#6b7280] text-white text-sm font-semibold rounded-2xl hover:opacity-90 active:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 py-3 mt-2 bg-gradient-to-r from-[#111827] to-[#6b7280] text-white text-sm font-semibold rounded-2xl hover:opacity-90 active:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <>
@@ -286,7 +286,7 @@ export default function SellerLoginPage() {
             <div className="mt-6 pt-6 border-t border-gray-100 text-center">
               <p className="text-sm text-gray-500">
                 {t('auth.noAccount')}{' '}
-                <Link to="/seller/signup" className="text-[#FF0033] font-medium hover:text-[#cc0029] transition-colors">
+                <Link to="/seller/signup" className="text-[#111827] font-medium hover:text-[#cc0029] transition-colors">
                   {t('seller.sellerRegister')}
                 </Link>
               </p>

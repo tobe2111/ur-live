@@ -160,8 +160,8 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
   }
   useEffect(() => { loadClaims() }, [])
   const CLAIM_STATUS: Record<string, { t: string; c: string; bg: string }> = {
-    open: { t: '접수됨 · 심사 중', c: '#B45309', bg: '#FEF3C7' },
-    approved: { t: '승인 — 환불 처리', c: '#047857', bg: '#D1FAE5' },
+    open: { t: '접수됨 · 심사 중', c: '#4b5563', bg: '#f3f4f6' },
+    approved: { t: '승인 — 환불 처리', c: '#374151', bg: '#D1FAE5' },
     rejected: { t: '반려', c: '#B91C1C', bg: '#FEE2E2' },
   }
 
@@ -179,7 +179,7 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
             <button onClick={() => setClaimsOpen(v => !v)} className="w-full flex items-center justify-between px-4 h-12">
               <span className="text-[13px] font-bold" style={{ color: WT.ink }}>
                 내 클레임 {claims.length}건
-                {claims.some(cl => cl.status === 'open') && <span className="ml-1.5 text-[11px] font-semibold" style={{ color: '#B45309' }}>· 심사 중 {claims.filter(cl => cl.status === 'open').length}</span>}
+                {claims.some(cl => cl.status === 'open') && <span className="ml-1.5 text-[11px] font-semibold" style={{ color: '#4b5563' }}>· 심사 중 {claims.filter(cl => cl.status === 'open').length}</span>}
               </span>
               <span className="text-[12px]" style={{ color: WT.ink4 }}>{claimsOpen ? '접기' : '펼치기'}</span>
             </button>

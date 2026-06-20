@@ -141,7 +141,7 @@ export default function AdminLoginPage() {
         <div className="px-10 pt-10">
           <div className="flex items-center gap-3">
             <UrDealLogo size={22} forceDark />
-            <span className="text-xs font-bold tracking-widest text-[#FCD34D] uppercase">Admin Console</span>
+            <span className="text-xs font-bold tracking-widest text-[#e5e7eb] uppercase">Admin Console</span>
           </div>
         </div>
 
@@ -160,8 +160,8 @@ export default function AdminLoginPage() {
               { icon: Settings, title: t('admin.login.feature3Title'), desc: t('admin.login.feature3Desc') },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-[#FCD34D]/10 flex items-center justify-center flex-shrink-0">
-                  <Icon className="w-5 h-5 text-[#FCD34D]" />
+                <div className="w-10 h-10 rounded-xl bg-[#e5e7eb]/10 flex items-center justify-center flex-shrink-0">
+                  <Icon className="w-5 h-5 text-[#e5e7eb]" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-white">{title}</p>
@@ -183,7 +183,7 @@ export default function AdminLoginPage() {
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <UrDealLogo size={22} forceLight />
-            <span className="text-xs font-bold tracking-widest text-[#F59E0B] uppercase">Admin</span>
+            <span className="text-xs font-bold tracking-widest text-[#9ca3af] uppercase">Admin</span>
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
@@ -210,7 +210,7 @@ export default function AdminLoginPage() {
                     autoComplete="email"
                     placeholder={t('admin.login.emailPlaceholder')}
                     aria-label={t('auth.email')}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent transition-all"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#9ca3af] focus:border-transparent transition-all"
                   />
                 </div>
               </div>
@@ -228,7 +228,7 @@ export default function AdminLoginPage() {
                     required
                     placeholder={t('auth.passwordPlaceholder')}
                     aria-label={t('auth.password')}
-                    className="w-full pl-10 pr-11 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent transition-all"
+                    className="w-full pl-10 pr-11 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#9ca3af] focus:border-transparent transition-all"
                   />
                   <button
                     type="button"
@@ -256,7 +256,7 @@ export default function AdminLoginPage() {
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="••••••"
                   aria-label="보안 PIN"
-                  className={`w-full px-4 py-3 border rounded-xl text-center text-lg tracking-[0.4em] font-mono text-gray-900 bg-white [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent ${needPin ? 'border-[#F59E0B]' : 'border-gray-200'}`}
+                  className={`w-full px-4 py-3 border rounded-xl text-center text-lg tracking-[0.4em] font-mono text-gray-900 bg-white [color-scheme:light] focus:outline-none focus:ring-2 focus:ring-[#9ca3af] focus:border-transparent ${needPin ? 'border-[#9ca3af]' : 'border-gray-200'}`}
                 />
                 <p className="text-[11px] text-gray-400 mt-1">
                   {needPin ? '이 계정은 보안 PIN이 필요합니다. 6자리 PIN을 입력하세요.' : 'PIN을 설정한 계정만 입력하세요. 미설정 계정은 비워두면 됩니다.'}
@@ -270,7 +270,7 @@ export default function AdminLoginPage() {
                   id="adminRememberMe"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 border-gray-300 text-[#F59E0B] focus:ring-[#F59E0B] cursor-pointer rounded"
+                  className="w-4 h-4 border-gray-300 text-[#9ca3af] focus:ring-[#9ca3af] cursor-pointer rounded"
                 />
                 <label
                   htmlFor="adminRememberMe"
@@ -286,7 +286,7 @@ export default function AdminLoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-gradient-to-r from-[#FCD34D] to-[#F59E0B] hover:opacity-90 disabled:opacity-50 text-[#0A0A0B] font-semibold rounded-xl text-sm transition-all"
+                className="w-full py-3 bg-gradient-to-r from-[#e5e7eb] to-[#9ca3af] hover:opacity-90 disabled:opacity-50 text-[#0A0A0B] font-semibold rounded-xl text-sm transition-all"
               >
                 {loading ? t('admin.login.loggingIn') : t('common.login')}
               </button>

@@ -29,7 +29,7 @@ export default function BusinessCertUpload({ value, onChange, required }: { valu
   return (
     <div>
       <label className="block text-[13px] font-semibold mb-1.5">
-        사업자등록증 {required ? <span className="text-[#FF0033]">*</span> : <span className="text-[#B6BCC4] font-normal">(선택)</span>}
+        사업자등록증 {required ? <span className="text-[#111827]">*</span> : <span className="text-[#B6BCC4] font-normal">(선택)</span>}
       </label>
       <input ref={inputRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
       {value ? (

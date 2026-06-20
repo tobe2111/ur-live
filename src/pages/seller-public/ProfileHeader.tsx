@@ -64,7 +64,7 @@ export default function ProfileHeader({
   const showBanner = !!(bannerPreview || normBanner)
   const bannerBg = seller.brand_color
     ? `linear-gradient(160deg, ${seller.brand_color}, #111)`
-    : 'linear-gradient(135deg, #FF6A00 0%, #FF8A3D 42%, #1A1A1A 130%)'
+    : 'linear-gradient(135deg, #6b7280 0%, #FF8A3D 42%, #1A1A1A 130%)'
   const pageBg = isDark ? '#020202' : '#ffffff'
 
   async function handleBannerUpload(e: React.ChangeEvent<HTMLInputElement>) {

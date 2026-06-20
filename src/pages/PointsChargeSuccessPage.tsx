@@ -95,7 +95,7 @@ export default function PointsChargeSuccessPage() {
         {/* 🎨 2026-06-17: 분홍 그라데이션 → 프리미엄 다크 카드(교환권/잔액 카드 톤) + 브랜드 옐로우 액센트 */}
         <div className="rounded-2xl p-5 my-6" style={{ background: 'linear-gradient(135deg,#211d3a 0%,#15131f 45%,#050505 100%)' }}>
           <div className="flex items-center justify-center gap-1.5 mb-1.5">
-            <Zap className="w-4 h-4 text-[#FFCE00]" />
+            <Zap className="w-4 h-4 text-[#d1d5db]" />
             <span className="text-[12px] text-white/55">{t('pointsCharge.chargedDeals', { defaultValue: '충전된 딜' })}</span>
           </div>
           <p className="text-[34px] font-extrabold text-white leading-none tracking-tight">+{formatNumber(result?.points_added)}<span className="text-[20px] font-bold ml-0.5">딜</span></p>

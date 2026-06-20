@@ -53,7 +53,7 @@ export default function WholesaleShippingGuide() {
 
       {/* 당일배송 체크포인트 */}
       <div className="rounded-xl p-4 flex items-start gap-2.5" style={{ background: WT.fill2, border: '1px solid ' + WT.line }}>
-        <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#f59e0b' }} />
+        <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#9ca3af' }} />
         <p className="text-[13px] leading-relaxed" style={{ color: WT.ink2 }}>
           당일배송은 오후 2시 59분 주문건을 기준으로 마감합니다.<br />
           3시 이후의 주문건은 다음날 배송으로 넘어갑니다.
