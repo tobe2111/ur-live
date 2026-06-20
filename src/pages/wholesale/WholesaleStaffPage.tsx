@@ -28,7 +28,6 @@ export default function WholesaleStaffPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
-  const isDistributor = typeof window !== 'undefined' && localStorage.getItem('is_distributor') === '1'
   const { displayName: mallName } = useWholesaleMall()
 
   const meQ = useWholesaleMe()
@@ -36,10 +35,11 @@ export default function WholesaleStaffPage() {
   // owner(sub_role 없음) 또는 admin 만 직원 관리 가능. 그 외엔 대시보드로.
   const canManage = me ? me.can_manage_staff !== false : true
 
+  // 🛡️ 2026-06-19 (대표 신고 동일 패턴): is_distributor localStorage 가드 제거 — token 기준 일치.
+  //   직원 관리 권한은 서버 me.can_manage_staff(canManage)가 검증하므로 클라 가드 완화 안전.
   useEffect(() => {
     if (!token) { navigate('/wholesale/login', { replace: true }); return }
-    if (!isDistributor) { navigate('/wholesale', { replace: true }); return }
-  }, [token, isDistributor, navigate])
+  }, [token, navigate])
 
   useEffect(() => {
     if (meQ.isSuccess && !canManage) {
