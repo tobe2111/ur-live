@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-20 — 카카오 로그인 iOS(Safari/WebKit) 실패 근본수정: signed-state fallback (대표 신고 "사파리/아이폰 안돼, 크롬은 돼")
+**증상**: 카카오 "3초 시작하기" 가 iOS(사파리 + 카카오톡 인앱 webview, 둘 다 WebKit)에서 실패, **크롬(Blink)은 정상**. → 서버/설정 문제 아님(그럼 크롬도 깨짐) = **WebKit 특유의 OAuth 왕복 쿠키 처리** 문제로 확정.
+- **근본 원인**: OAuth CSRF 가 `kakao_oauth_state`(HttpOnly·Secure·**SameSite=Lax**) 쿠키 1개에만 의존. iOS WebKit 은 cross-site OAuth 왕복(특히 **카카오톡 앱 핸드오프 → Safari 복귀**, ITP cross-site 쿠키 처리)에서 이 Lax 쿠키를 콜백에 안 돌려주는 케이스 → `/sync/callback` 이 `?error=oauth_state_expired` 로 로그인 실패. 크롬은 Lax 관대 처리라 정상.
+- **수정 (`kakao.routes.ts`, 표준 signed-state 패턴)**: OAuth `state` 파라미터를 **JWT_SECRET 서명 self-contained 토큰**으로 발급(redirect/intent/nonce/30분 만료 동봉). 콜백의 **쿠키-부재 분기에만** `verifySignedState()` fallback 추가 — 쿠키 없이도 **서명 검증으로 CSRF·redirect·intent 복구** → 로그인 성공.
+  - **Chrome 등 쿠키 정상 브라우저는 기존 쿠키↔URL state 바인딩 분기로 진입 → byte-identical(불변, 더 강한 CSRF 유지)**. 쿠키 형식 `state|b64redirect|intent` 유지(state 부분만 UUID→서명 JWT, '|' 미포함이라 split 안전).
+  - **보안**: 서명(HS256)이라 JWT_SECRET 없이 위조 불가 + 30분 만료 + nonce. 쿠키-부재 fallback 은 표준 signed-state CSRF 모델(쿠키 바인딩보다 약간 약하나, iOS 전체 로그인 불가보다 훨씬 나음). JWT_SECRET 없으면 opaque UUID 폴백(기존 쿠키-only 동작).
+- 검증: tsc 0 · `npm run build`(client+worker+prepare) 0 · 신규 단위 10(서명 왕복/위조차단/변조/만료/purpose불일치/레거시UUID/open-redirect clamp) + 기존 safeRedirect 32 = 42 pass · 전체 유닛 2170 pass. CLAUDE.md OAuth 룰("쿠키+URL state 검증") 준수 — 쿠키 유지 + 서명 강화.
+- ⚠️ **실기기 검증 권장**: iOS Safari + 카카오톡 인앱에서 "3초 시작하기" → 로그인 성공 확인. (배포 후 1회)
+
 ## ✅ 2026-06-19 — 어드민 제품별 플랫폼 마진 설정 UI: 미끼/마진 전략 (대표 "응 이렇게 정확하게 진행해줘")
 **요청**: 제조사가 등록한 상품을 검수할 때 **공급가·판매가·시중 최저가**를 보면서 **제품별로 우리 마진%를 정해 승인**(미끼상품=수익 하 / 마진상품=수익 상 — 항공권식 전략). 모든 가격 부가세 포함, 공급가 위에 우리 10%(조율 가능).
 - **모델 확정(불변)**: `distributor-pricing.resolveDistributorPrice` 가 이미 cost-plus(`유통사가 = round(공급가 × (1+마진%))`, 판매가 상한·공급가 하한) + 단일가(등급은 노출 큐레이션 전용). **가격/정산 엔진 무변경** — 어드민 마진 설정 컨트롤만 추가.
