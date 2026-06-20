@@ -165,6 +165,13 @@ jobs:
         run: STRICT_DUAL_LOGIN=1 node scripts/check-dual-login-guard.mjs
         continue-on-error: false
 
+      # 🛡️ 2026-06-20: 로그인/가입 입력 글자 흰색(다크모드) 재발 방지 — 현재 위반 0 → strict.
+      #   standalone 라이트 auth 페이지가 force-light-theme/레이아웃 없이 input 렌더 시 다크모드 글자
+      #   안 보임 사고(전역 .dark input 규칙이 text-gray-900 을 특이도로 이김) 신규 추가 차단.
+      - name: Light-input visibility guard (strict)
+        run: STRICT_LIGHT_INPUT=1 node scripts/check-light-input-guard.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-05-17: CHECK 제약 위반 — admin live-monitor delete 500 사고 재발 방지.
       #   리터럴 'UPDATE <t> SET <c> = ...' 패턴이 마이그레이션의 CHECK(IN (...)) 허용값과
       #   불일치하면 보고. SQL 실행 시 SqlError → 500. strict 모드.

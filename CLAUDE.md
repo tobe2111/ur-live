@@ -545,6 +545,7 @@ navigate(returnUrl)
 1. **SEO**: `<SEO title="제목 - 유어딜" description="설명" url="/경로" />` 필수 (관리자/콜백 제외)
 2. **테마**: 위 테마 규칙
 3. **text-gray-900**: 화이트 테마 input/select/textarea 에 명시
+   - 🛡️ **라이트 고정 standalone 페이지(로그인/가입/비번 — 레이아웃 밖)는 루트 div 에 `force-light-theme` 필수**: 전역 `.dark input` 규칙(특이도 0,5,1)이 다크모드에서 input 글자를 흰색으로 덮어써 `text-gray-900`(0,1,0)이 짐 → 안 보임. `force-light-theme`(또는 `admin/seller/agency-light-theme`)가 CSS `!important` 로 무력화. 어드민/셀러/에이전시 **대시보드 페이지는 레이아웃이 자동 적용**(직접 추가 불필요). `check-light-input-guard.mjs` 가 자동 감지.
 4. **App.tsx**: lazy import + Route 추가
 5. **console.log 금지**: `import.meta.env.DEV` 게이트 필수
 6. **숫자 포매팅** (대시보드 ₩NaN 사고 — 2026-05-17): `value.toLocaleString()` 직접 호출 금지.
@@ -656,6 +657,7 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 | products/sellers 새 컬럼 (예산제) | - | `verify.yml` (strict) | 같은 사고 구조적 후속 — 새 메타는 K-V 사이드테이블(`product_supply_meta`), products/sellers ALTER 는 baseline 등록 필수. **sellers 는 이미 100컬럼(D1 한도 도달)** — `check-products-column-budget.mjs` 가 두 테이블 모두 감시 (`scripts/{products,sellers}-column-baseline.json`) |
 | PRODUCT_DETAIL_FIELDS 복구 가능성 | - | `verify.yml` (strict) | 2026-06-10 상품 상세 500 전수조사 — 명시 목록 컬럼은 base CREATE ∪ repair-schema 로 반드시 복구 가능해야 함 (`check-product-detail-fields-repairable.mjs`). 소비자 products SELECT 는 `productDetailColsHealed`+`withColumnPruning` 자가치유 필수 |
 | RQ initialData 신선도 | `check-query-initialdata.mjs` (warn) | `verify.yml` (strict) | 2026-06-17 잔액 '딜 부족' 오표시 — useQuery/useApiQuery 의 `initialData`(localStorage/SSR seed)가 `initialDataUpdatedAt`/`refetchOnMount:'always'` 없이 fresh 로 간주돼 cold mount refetch 누락 → 잘못된 0/null/옛값 노출. 둘 중 하나 필수(보통 `initialDataUpdatedAt: 0`). 의도적 예외는 옵션 객체에 `initialdata-check-ok` 주석 |
+| 로그인 입력 글자 흰색(다크) | `check-light-input-guard.mjs` (warn) | `verify.yml` (strict) | 2026-06-20 `/admin/login` 등 타이핑 글자 흰색으로 안 보임 — 전역 `.dark input:not(...)`(특이도 0,5,1)가 다크모드에서 input 글자를 흰색으로 덮어씀(text-gray-900=0,1,0 짐). standalone 라이트 로그인/가입 페이지는 레이아웃 밖이라 `*-light-theme` 래퍼 없어 무방비. **신규 standalone 라이트 auth 페이지(로그인/가입/비번)는 루트 div 에 `force-light-theme` 클래스 추가**(CSS `!important` 가 다크 전역규칙 무력화). 의도적 예외는 `light-input-ok` 주석 |
 
 **Bypass (정당 사유만):**
 - commit message 에 `[SKIP_ROUTER_CHECK]` / `[SKIP_BUILD_CHECK]` / `[SKIP_SECRET_CHECK]` / `[STRICT_SILENT]` 등 명시
