@@ -220,6 +220,106 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
   )
 })
 
+// 🎨 2026-06-20 (사용자 요청): /vouchers 전체 페이지 = 1줄 리스트 행(이미지 왼쪽 + 이름/가격 오른쪽 + 구분선).
+//   레퍼런스(매장주문 메뉴)는 "행 포맷"만 참고 — 내용(상품명/브랜드/딜 가격/할인/평점)은 기존 카드와 동일.
+//   이미지 속성(width/height/srcSet/lazy/fetchPriority/dominant_color)·React.memo·onLoad 색추출 전부 보존(잠금).
+//   홈(embedded)은 계속 그리드(VoucherCard) — 이 행은 비embedded /vouchers 전용.
+const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: VoucherProduct; aboveFold: boolean }) {
+  const navigate = useNavigate()
+  const prefetchProduct = usePrefetchProduct()
+  const hasStrike = !!p.original_price && p.original_price > p.price
+  const discountRate = hasStrike
+    ? Math.round(((p.original_price! - p.price) / p.original_price!) * 100)
+    : (p.discount_rate || 0)
+  const rating = Number(p.avg_rating || 0)
+  const reviewCount = Number(p.review_count || 0)
+  const soldCount = Number(p.sold_count || 0)
+  const soldLabel = soldCount >= 10000
+    ? `${(soldCount / 10000).toFixed(1).replace(/\.0$/, '')}만`
+    : soldCount >= 1000
+    ? `${(soldCount / 1000).toFixed(1).replace(/\.0$/, '')}천`
+    : String(soldCount)
+  const [cardColor, setCardColor] = useState<string | null>(p.dominant_color || null)
+  const [imgError, setImgError] = useState(false)
+  return (
+    <button
+      type="button"
+      onClick={() => navigate(`/vouchers/${p.id}`)}
+      onMouseEnter={() => prefetchProduct(p.id)}
+      onTouchStart={() => prefetchProduct(p.id)}
+      onFocus={() => prefetchProduct(p.id)}
+      className="w-full flex items-center gap-3.5 text-left py-3.5 border-b border-gray-100 dark:border-[#1A1A1A] active:opacity-60 transition-opacity"
+    >
+      {/* 🎨 이미지 — 좌측 정사각 타일. dominant_color 있으면 로딩 플레이스홀더(잠금). */}
+      <div
+        className="relative w-[88px] h-[88px] sm:w-24 sm:h-24 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] dark:from-[#15171C] dark:to-[#0F1115]"
+        style={cardColor ? { backgroundColor: cardColor } : undefined}
+      >
+        {p.image_url && !imgError ? (
+          <img
+            src={cfImage(p.image_url, { width: 240, format: 'auto' }) || p.image_url}
+            srcSet={cfSrcSet(p.image_url, 240) || undefined}
+            sizes="120px"
+            alt={p.name}
+            width={240}
+            height={240}
+            loading={aboveFold ? 'eager' : 'lazy'}
+            fetchPriority={aboveFold ? 'high' : 'auto'}
+            decoding="async"
+            onLoad={(e) => {
+              const el = e.currentTarget as HTMLImageElement
+              el.style.opacity = '1'
+              const color = extractDominantColor(el)
+              if (color) {
+                if (!cardColor) setCardColor(color)
+                if (!p.dominant_color) reportDominantColor(p.id, color)
+              }
+            }}
+            onError={() => setImgError(true)}
+            style={{ opacity: aboveFold ? 1 : 0, transition: 'opacity 200ms ease-out' }}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-gray-300 dark:text-gray-600">
+            <Gift className="w-8 h-8" />
+            {p.brand_name && <span className="text-[10px] font-bold px-1 text-center line-clamp-1">{p.brand_name}</span>}
+          </div>
+        )}
+        {/* 🎨 할인 배지 — 브랜드 옐로우(카드와 동일 톤) */}
+        {discountRate > 0 && (
+          <span className="absolute top-1.5 left-1.5 text-[10px] font-extrabold text-[#171B24] bg-[#FFCE00] rounded px-1 py-0.5">{discountRate}%</span>
+        )}
+      </div>
+      {/* 🎨 본문 — 우측. 브랜드/상품명/가격/메타 (내용은 카드와 동일, 배치만 1줄 행). */}
+      <div className="flex-1 min-w-0">
+        {p.brand_name && (
+          <p className="text-[12px] font-semibold leading-none mb-1 text-gray-400 dark:text-gray-500 truncate">{p.brand_name}</p>
+        )}
+        <p className="text-[15px] leading-snug line-clamp-2 font-bold text-gray-900 dark:text-white">{p.name}</p>
+        {hasStrike && (
+          <p className="text-[12px] mt-1.5 leading-none line-through text-gray-300 dark:text-gray-600">{formatNumber(p.original_price!)}딜</p>
+        )}
+        <div className="flex items-baseline gap-0.5 mt-1">
+          <span className="text-[19px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
+          <span className="text-[13px] font-bold text-[#171B24] dark:text-white">딜</span>
+        </div>
+        <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+          <span className="inline-flex items-center gap-0.5">
+            <span className="text-amber-400">★</span>
+            {rating > 0 ? (
+              <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
+            ) : (
+              <span className="font-semibold">신규</span>
+            )}
+            {reviewCount > 0 && <span>({reviewCount})</span>}
+          </span>
+          {soldCount > 0 && <span>구매 {soldLabel}</span>}
+        </div>
+      </div>
+    </button>
+  )
+})
+
 // 🛡️ 2026-06-01: embedded — 홈(/)에서 교환권 본문을 재사용. SEO/자체헤더 skip + SSR 는 MAIN 슬롯에서 읽음.
 export default function VouchersPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation()
@@ -662,31 +762,58 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* 금액권 그리드 */}
       <div className="ur-content-wide px-4 lg:px-8 py-4">
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5">
-
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212]">
-                <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A]" />
-                <div className="px-2.5 pt-2 pb-2.5">
-                  <div className="h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded w-3/4" />
-                  <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1A1A1A] rounded w-1/2" />
+          embedded ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212]">
+                  <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A]" />
+                  <div className="px-2.5 pt-2 pb-2.5">
+                    <div className="h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded w-3/4" />
+                    <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1A1A1A] rounded w-1/2" />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            // 🎨 2026-06-20: /vouchers 1줄 리스트 스켈레톤 (이미지 좌측 + 텍스트 우측).
+            <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-8">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="animate-pulse flex items-center gap-3.5 py-3.5 border-b border-gray-100 dark:border-[#1A1A1A]">
+                  <div className="w-[88px] h-[88px] sm:w-24 sm:h-24 shrink-0 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A]" />
+                  <div className="flex-1">
+                    <div className="h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded w-1/3" />
+                    <div className="h-4 mt-2 bg-gray-100 dark:bg-[#1A1A1A] rounded w-3/4" />
+                    <div className="h-4 mt-2 bg-gray-100 dark:bg-[#1A1A1A] rounded w-1/4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         ) : products.length === 0 ? (
           <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-sm">
             {brand ? `${brand} 교환권이 없습니다` : '교환권이 없습니다'}
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5">
-              {(embedded ? displayProducts.slice(0, embedVisible) : displayProducts).map((p, idx) => (
-                <Fragment key={p.id}>
-                  <VoucherCard p={p} aboveFold={idx < 4} />
-                </Fragment>
-              ))}
-            </div>
+            {embedded ? (
+              // 🏠 홈 — 2/3열 그리드 카드 (기존 유지).
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5">
+                {displayProducts.slice(0, embedVisible).map((p, idx) => (
+                  <Fragment key={p.id}>
+                    <VoucherCard p={p} aboveFold={idx < 4} />
+                  </Fragment>
+                ))}
+              </div>
+            ) : (
+              // 🎨 2026-06-20 /vouchers — 1줄 리스트 (모바일 1열 / PC 2열). 내용 동일, 배치만 행.
+              <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-8">
+                {displayProducts.map((p, idx) => (
+                  <Fragment key={p.id}>
+                    <VoucherRow p={p} aboveFold={idx < 4} />
+                  </Fragment>
+                ))}
+              </div>
+            )}
             {/* 🧭 홈: '교환권 더보기' 단일 버튼 (2026-06-10 사용자 — '전체보기'와 역할 중복 → 통일) */}
             {embedded && (embedVisible < displayProducts.length || hasMore) && (
               <div className="mt-4">

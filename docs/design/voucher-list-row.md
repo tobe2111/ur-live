@@ -1,0 +1,40 @@
+# 교환권 `/vouchers` 1줄 리스트 배치 (2026-06-20)
+
+## 사용자 요청
+- URL: `https://live.ur-team.com/vouchers?category=커피/음료`
+- 레퍼런스: 매장주문 메뉴식 1줄 리스트(이미지 왼쪽 + 이름/가격 오른쪽 + 행 사이 구분선)
+- 사용자 명확화: **"이렇게 1줄로 되게끔. 그냥 내가 1줄짜리를 보여주는거지 내용은 다르면 안돼"**
+  → 레퍼런스는 **행 포맷만** 참고. 내용(상품명/브랜드/딜 가격/할인/평점)은 기존 교환권 데이터 그대로.
+
+## 결정 (AskUserQuestion)
+| 질문 | 선택 |
+|---|---|
+| 적용 범위 | **/vouchers 전체 페이지만** (홈 `/` 임베디드 피드는 2열 그리드 유지) |
+| PC/태블릿 열 수 | **2열 리스트** (모바일 1열) |
+
+## 레퍼런스 (매장주문 — 우지커피)
+```
+[ img ]  디카페인 HOT 아메리카노
+         Decaffein HOT Americano   ← (참고용, 우리는 브랜드명 줄)
+         2,800원                    ← (우리는 N딜)
+──────────────────────────────────
+[ img ]  디카페인 ICE 아메리카노
+         ...
+```
+
+## 구현 (commit 참조)
+- `src/pages/VouchersPage.tsx`
+  - 신규 `VoucherRow` memo 컴포넌트 — 좌측 정사각 이미지(`w-[88px] h-[88px] sm:w-24`, rounded-2xl, 그라데이션 placeholder) + 우측 브랜드/상품명/딜 가격/할인 취소선/평점·구매수.
+  - 비-embedded 렌더: `grid grid-cols-1 lg:grid-cols-2` 리스트 + 행별 `border-b` 구분선.
+  - 로딩 스켈레톤도 embedded(그리드) / 비-embedded(리스트) 분기.
+  - 기존 `VoucherCard`(그리드 카드)는 홈 embedded 전용으로 유지.
+
+### 잠금 항목 보존 (로딩 최적화 락)
+- 이미지 속성: `width/height` + `cfImage`/`cfSrcSet` + `loading`(aboveFold eager) + `fetchPriority` + `decoding`
+- `dominant_color` placeholder + `onLoad` 색추출 + `reportDominantColor` 백필
+- `React.memo` 래퍼 (VoucherCard 유지 + VoucherRow 신규 — 약화/제거 0)
+- `__SSR_INITIAL_VOUCHERS__` 즉시 소비 + default sort `price_low` 불변
+
+## ✅ 구현 완료
+- 검증: tsc 0 · build 0 · check-theme-consistency 0 (라이트/다크 토큰 정합)
+- commit: (아래 push 해시)
