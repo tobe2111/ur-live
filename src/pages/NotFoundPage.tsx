@@ -26,11 +26,11 @@ export default function NotFoundPage() {
         {/* Decorative floating orbs */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-24 -left-24 h-[360px] w-[360px] rounded-full bg-gradient-to-br from-[#FF0033]/20 to-[#EC4899]/10 blur-3xl animate-pulse"
+          className="pointer-events-none absolute -top-24 -left-24 h-[360px] w-[360px] rounded-full bg-gradient-to-br from-[#FF0033]/20 to-[#6b7280]/10 blur-3xl animate-pulse"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -bottom-32 -right-24 h-[420px] w-[420px] rounded-full bg-gradient-to-br from-[#EC4899]/15 to-[#FF0033]/10 blur-3xl animate-pulse"
+          className="pointer-events-none absolute -bottom-32 -right-24 h-[420px] w-[420px] rounded-full bg-gradient-to-br from-[#6b7280]/15 to-[#FF0033]/10 blur-3xl animate-pulse"
           style={{ animationDelay: '1.2s' }}
         />
 
@@ -53,7 +53,7 @@ export default function NotFoundPage() {
         <div className="relative z-10 max-w-xl w-full text-center px-4 lg:px-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* 404 Large Gradient */}
           <h1
-            className="font-black leading-none tracking-tight text-[140px] md:text-[200px] bg-gradient-to-r from-[#FF0033] to-[#EC4899] bg-clip-text text-transparent select-none"
+            className="font-black leading-none tracking-tight text-[140px] md:text-[200px] bg-gradient-to-r from-[#FF0033] to-[#6b7280] bg-clip-text text-transparent select-none"
             aria-label="404"
           >
             404

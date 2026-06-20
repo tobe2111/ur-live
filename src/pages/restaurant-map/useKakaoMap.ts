@@ -124,7 +124,7 @@ export function useKakaoMap({
         const cContent = document.createElement('div')
         cContent.innerHTML = `
           <div style="
-            background: linear-gradient(135deg,#ec4899,#f43f5e);
+            background: linear-gradient(135deg,#6b7280,#6b7280);
             color: #fff;
             border: 3px solid #fff;
             border-radius: 999px;
@@ -205,8 +205,8 @@ export function useKakaoMap({
         ? `<span style="position:absolute;top:-4px;right:-6px;background:#3b82f6;color:#fff;border-radius:9px;padding:0 4px;font-size:9px;font-weight:800;line-height:1.4;">+${groupSize - 1}</span>`
         : ''
 
-      const bg = isSelected ? '#ec4899' : isLive ? '#fff5f5' : '#ffffff'
-      const borderColor = isSelected ? '#ec4899' : isLive ? '#ef4444' : '#e5e7eb'
+      const bg = isSelected ? '#6b7280' : isLive ? '#fff5f5' : '#ffffff'
+      const borderColor = isSelected ? '#6b7280' : isLive ? '#ef4444' : '#e5e7eb'
       const size = isSelected ? 36 : 32
 
       const content = document.createElement('div')

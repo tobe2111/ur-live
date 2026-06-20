@@ -129,7 +129,7 @@ export default function MyDigitalLibraryPage() {
                     {it.image_url ? (
                       <img src={it.image_url} alt="" loading="lazy" className="w-16 h-16 rounded-lg object-cover shrink-0 bg-gray-100 dark:bg-[#1A1A1A]" />
                     ) : (
-                      <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center shrink-0">
+                      <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center shrink-0">
                         <Icon className="w-7 h-7 text-white" />
                       </div>
                     )}

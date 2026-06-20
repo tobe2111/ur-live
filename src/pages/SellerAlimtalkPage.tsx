@@ -185,7 +185,7 @@ export default function SellerAlimtalkPage() {
       <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6 lg:p-8">
         {/* 🛡️ 2026-04-22 배치 129: 리디자인 */}
         {/* Balance Card — 모던 그라데이션 */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 p-6 text-white shadow-lg">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 text-white shadow-lg">
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10" />
           <div className="absolute -bottom-8 -right-2 h-16 w-16 rounded-full bg-white/10" />
           <div className="relative">

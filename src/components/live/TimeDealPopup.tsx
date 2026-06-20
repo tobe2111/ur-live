@@ -111,8 +111,8 @@ export default function TimeDealPopup({ streamId }: { streamId: string | number 
   const bonusDiscount = deal.bonus_discount_percent ?? 0
 
   const containerGradient = isGroupBuy
-    ? 'bg-gradient-to-r from-pink-500 to-pink-600'
-    : 'bg-gradient-to-r from-red-500 to-pink-600'
+    ? 'bg-gradient-to-r from-gray-800 to-gray-900'
+    : 'bg-gradient-to-r from-gray-800 to-gray-900'
 
   const ctaLabel = claimed
     ? t('live.timeDealClaimedLabel', { defaultValue: '✓ 획득 완료' })

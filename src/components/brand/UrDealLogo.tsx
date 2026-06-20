@@ -20,12 +20,13 @@ interface UrDealLogoProps {
 }
 
 export default function UrDealLogo({ size = 20, forceDark = false, forceLight = false, className = '' }: UrDealLogoProps) {
-  // Three modes: forceDark (always red+white), forceLight (always black), auto (theme-driven).
+  // Three modes: forceDark (always white), forceLight (always black), auto (theme-driven).
+  // 🖤 2026-06-19 (대표 — 블랙앤화이트): UR 도 빨강 폐기 → 다크 표면=흰색, 라이트 표면=검정 (완전 모노크롬).
   const urClass = forceDark
-    ? 'text-[#EF4444]'
+    ? 'text-white'
     : forceLight
     ? 'text-[#0A0A0A]'
-    : 'text-[#0A0A0A] dark:text-[#EF4444]'
+    : 'text-[#0A0A0A] dark:text-white'
 
   const dealClass = forceDark
     ? 'text-white'

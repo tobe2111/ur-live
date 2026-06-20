@@ -162,7 +162,7 @@ export default function SellerApplyModal({ onClose, onSuccess }: { onClose: () =
         <button
           onClick={handleSubmit}
           disabled={submitting}
-          className="w-full mt-6 py-3.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold rounded-xl text-sm active:scale-[0.97] transition-all disabled:opacity-50"
+          className="w-full mt-6 py-3.5 bg-gradient-to-r from-gray-800 to-gray-900 text-white font-bold rounded-xl text-sm active:scale-[0.97] transition-all disabled:opacity-50"
         >
           {submitting ? t('sellerApply.submitting', { defaultValue: '신청 중...' }) : t('sellerApply.submit', { defaultValue: '셀러 전환 신청하기' })}
         </button>

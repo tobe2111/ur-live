@@ -204,7 +204,7 @@ export function ShareLiveLink({ streamId }: { streamId: number }) {
   }
 
   return (
-    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl px-4 py-3">
+    <div className="bg-gradient-to-r from-gray-50 to-gray-50 border border-blue-100 rounded-xl px-4 py-3">
       <p className="text-xs font-semibold text-blue-800 mb-2">
         {t('seller.liveBroadcast.shareLinkTitle')}
         <span className="ml-1 font-normal text-blue-600">— {t('seller.liveBroadcast.shareLinkDesc')}</span>
@@ -281,7 +281,7 @@ export function StreamList({ streams, onManage }: StreamListProps) {
           {upcoming.map((s: LiveStreamLite) => (
             <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
               <div className="flex items-start gap-3">
-                <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-orange-100 to-pink-100 flex items-center justify-center shrink-0">
+                <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-gray-100 to-gray-100 flex items-center justify-center shrink-0">
                   <span className="text-2xl">📅</span>
                 </div>
                 <div className="flex-1 min-w-0">

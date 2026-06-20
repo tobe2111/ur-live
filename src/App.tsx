@@ -221,7 +221,7 @@ const PageLoader = () => (
       className="w-8 h-8 rounded-full animate-spin"
       style={{
         border: '3px solid rgba(255,255,255,0.08)',
-        borderTopColor: '#EC4899',
+        borderTopColor: '#6b7280',
         animationDelay: '200ms',
       }}
     />

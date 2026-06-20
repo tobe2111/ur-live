@@ -58,7 +58,7 @@ export default function SellerTierPage() {
       label: t('tierBadge.tierDiamond', { defaultValue: '다이아몬드' }),
       emoji: '💎',
       color: 'text-blue-700',
-      bg: 'bg-gradient-to-br from-blue-100 to-cyan-50',
+      bg: 'bg-gradient-to-br from-gray-100 to-gray-50',
       border: 'border-blue-300',
       benefits: ['수수료 3% (최저)', '노출 가중치 4×', 'TimeDeal 무제한', '메인 hero 우선', '알림톡 1만건/월 무료'],
     },
@@ -66,7 +66,7 @@ export default function SellerTierPage() {
       label: t('tierBadge.tierGold', { defaultValue: '골드' }),
       emoji: '⭐',
       color: 'text-amber-700',
-      bg: 'bg-gradient-to-br from-amber-100 to-yellow-50',
+      bg: 'bg-gradient-to-br from-gray-100 to-gray-50',
       border: 'border-amber-300',
       benefits: ['수수료 4%', '노출 가중치 2.5×', 'TimeDeal 일 5회', '카테고리 상위'],
     },
@@ -82,7 +82,7 @@ export default function SellerTierPage() {
       label: t('tierBadge.tierBronze', { defaultValue: '브론즈' }),
       emoji: '🥉',
       color: 'text-orange-700',
-      bg: 'bg-gradient-to-br from-orange-50 to-amber-50',
+      bg: 'bg-gradient-to-br from-gray-50 to-gray-50',
       border: 'border-orange-200',
       benefits: ['수수료 5%', '노출 가중치 1×', 'TimeDeal 주 3회'],
     },
@@ -90,7 +90,7 @@ export default function SellerTierPage() {
       label: t('tierBadge.tierNew', { defaultValue: '신규' }),
       emoji: '🌱',
       color: 'text-purple-700',
-      bg: 'bg-gradient-to-br from-purple-50 to-pink-50',
+      bg: 'bg-gradient-to-br from-gray-50 to-gray-50',
       border: 'border-purple-200',
       benefits: ['가입 30일 보호', '온보딩 가이드', 'TimeDeal 주 1회'],
     },
@@ -162,7 +162,7 @@ export default function SellerTierPage() {
                 </div>
                 <div className="h-2 bg-white/60 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-pink-400 to-orange-400 rounded-full transition-all"
+                    className="h-full bg-gradient-to-r from-gray-700 to-gray-700 rounded-full transition-all"
                     style={{ width: `${progress}%` }}
                   />
                 </div>

@@ -100,7 +100,7 @@ export default function MyCouponsPage() {
                 >
                   <div className="flex">
                     {/* 할인 금액 */}
-                    <div className="flex flex-col items-center justify-center px-5 py-4 bg-gradient-to-br from-pink-500 to-rose-500 text-white min-w-[100px]">
+                    <div className="flex flex-col items-center justify-center px-5 py-4 bg-gradient-to-br from-gray-800 to-gray-800 text-white min-w-[100px]">
                       <p className="text-[10px] font-bold tracking-wide opacity-90">
                         {c.type === 'percent' ? t('myCoupons.labelDiscountRate') : t('myCoupons.labelDiscount')}
                       </p>

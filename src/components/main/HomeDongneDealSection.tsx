@@ -64,7 +64,7 @@ export default function HomeDongneDealSection() {
       ) : items.length === 0 ? (
         <Link
           to={COMMUNITY_PROPOSAL_HIDDEN ? '/group-buy' : '/community-group-buy/new'}
-          className="flex items-center justify-between rounded-2xl px-5 py-4 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 border border-emerald-500/20"
+          className="flex items-center justify-between rounded-2xl px-5 py-4 bg-gradient-to-r from-gray-900/20 to-gray-900/20 border border-emerald-500/20"
         >
           <div>
             <p className="text-[13px] font-bold text-gray-900 dark:text-white">{t('home.dongneEmptyTitle', { defaultValue: '아직 우리 동네 공구가 없어요' })}</p>

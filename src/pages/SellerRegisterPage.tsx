@@ -120,7 +120,7 @@ export default function SellerRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center px-4 py-12">
       <div className="max-w-2xl w-full">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -336,7 +336,7 @@ export default function SellerRegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-gray-900 to-gray-900 text-white py-4 rounded-lg font-semibold hover:from-gray-900 hover:to-gray-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? t('seller.registrationInProgress') : t('seller.registerAsSeller')}
             </button>

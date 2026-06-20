@@ -107,7 +107,7 @@ export default function SellerPromoteBoostsPage() {
                     <button
                       onClick={() => activate(b)}
                       disabled={!activeLive}
-                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-300 disabled:to-gray-400 text-white text-xs font-bold rounded-lg"
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-gray-800 to-gray-800 hover:from-gray-900 hover:to-gray-900 disabled:from-gray-300 disabled:to-gray-400 text-white text-xs font-bold rounded-lg"
                     >
                       <Zap className="w-3.5 h-3.5" />
                       {activeLive ? t('seller.boosts.activateNow', { defaultValue: '지금 활성화' }) : t('seller.boosts.liveRequired', { defaultValue: '라이브 필요' })}

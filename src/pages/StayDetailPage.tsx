@@ -181,7 +181,7 @@ export default function StayDetailPage() {
 
         {/* 🛡️ 2026-05-18: 인플 referral 배너 — ref 진입 시 표시. */}
         {referrerId && stay.referral_enabled === 1 && (stay.influencer_discount_pct || 0) > 0 && (
-          <div className="bg-gradient-to-r from-pink-500/[0.15] to-violet-500/[0.15] border border-pink-500/30 rounded-xl p-3 mb-3 flex items-center gap-2.5">
+          <div className="bg-gradient-to-r from-gray-800/[0.15] to-gray-800/[0.15] border border-pink-500/30 rounded-xl p-3 mb-3 flex items-center gap-2.5">
             <span className="text-xl">💸</span>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-pink-300">인플루언서 추천 — {stay.influencer_discount_pct}% 할인 적용</p>

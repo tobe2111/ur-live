@@ -94,5 +94,5 @@ export const boutiqueLabel: CSSProperties = {
 
 /** Boutique 바로구매 CTA — 빨→핑크 gradient */
 export const boutiqueCTA: CSSProperties = {
-  background: 'linear-gradient(135deg, #EF4444, #EC4899)',
+  background: 'linear-gradient(135deg, #EF4444, #6b7280)',
 }

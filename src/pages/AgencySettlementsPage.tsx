@@ -36,7 +36,7 @@ export default function AgencySettlementsPage() {
         />
 
         {/* 정산 신청 CTA */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 mb-6 text-white">
+        <div className="bg-gradient-to-r from-gray-900 to-gray-900 rounded-2xl p-6 mb-6 text-white">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm opacity-80">{t('agency.settlements.payableAmount', { defaultValue: '정산 가능 금액' })}</p>

@@ -107,7 +107,7 @@ function ReviewBonusButton({ voucherCode }: { voucherCode: string }) {
   return (
     <>
       <button onClick={() => setOpen(true)}
-        className="mt-4 w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold flex items-center justify-center gap-1">
+        className="mt-4 w-full py-2.5 rounded-xl bg-gradient-to-r from-gray-700 to-gray-800 text-white text-xs font-bold flex items-center justify-center gap-1">
         ⭐ 카카오맵 후기 작성하고 보너스 받기
       </button>
       {open && (

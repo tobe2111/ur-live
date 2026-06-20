@@ -23,8 +23,8 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
     return (
       <div className="space-y-4">
         <div className="text-center py-2">
-          <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-red-100 to-pink-100 flex items-center justify-center">
-            <Radio className="w-7 h-7 text-red-500" />
+          <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-gray-100 to-gray-100 flex items-center justify-center">
+            <Radio className="w-7 h-7 text-gray-700 dark:text-gray-300" />
           </div>
           <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
             {t('bottomNav.sellerHasToken', { defaultValue: '등록된 셀러 계정이 있습니다' })}<br />
@@ -37,7 +37,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
             onDone()
             window.location.href = '/seller'
           }}
-          className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+          className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
         >
           <Radio className="w-5 h-5" />
           {t('bottomNav.goToSellerDashboard', { defaultValue: '셀러 대시보드로 전환' })}
@@ -60,7 +60,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
     <div className="space-y-3">
       <button
         onClick={() => { onDone(); navigate('/seller/register/business?from=kakao') }}
-        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl active:scale-[0.98] transition-transform"
+        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
       >
         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
           <UserPlus className="w-6 h-6 text-white" />
@@ -360,7 +360,7 @@ export default function BottomNav() {
                   {!COMMUNITY_PROPOSAL_HIDDEN ? (
                   <button
                     onClick={() => { setSheetOpen(false); navigate('/community-group-buy/new') }}
-                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl active:scale-[0.98] transition-transform"
+                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                   >
                     <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                       <MapPin className="w-6 h-6 text-white" />
@@ -373,7 +373,7 @@ export default function BottomNav() {
                   ) : (!isSeller && !hasSellerToken) ? (
                   <button
                     onClick={() => { setSheetOpen(false); navigate('/group-buy') }}
-                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl active:scale-[0.98] transition-transform"
+                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                   >
                     <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                       <MapPin className="w-6 h-6 text-white" />
@@ -396,7 +396,7 @@ export default function BottomNav() {
                       {!LIVE_COMMERCE_SUSPENDED && (
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller/live-broadcast') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                           <Radio className="w-6 h-6 text-white" />
@@ -410,7 +410,7 @@ export default function BottomNav() {
 
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller/meal-voucher/new') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                           <Utensils className="w-6 h-6 text-white" />
@@ -457,7 +457,7 @@ export default function BottomNav() {
                     <div className="space-y-3">
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/agency') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                           <span className="text-xl">💼</span>
@@ -486,7 +486,7 @@ export default function BottomNav() {
 
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller/login') }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <LogIn className="w-5 h-5" />
                         {t('bottomNav.sellerLogin', { defaultValue: '셀러 로그인' })}

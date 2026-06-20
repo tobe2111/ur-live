@@ -84,7 +84,7 @@ export default function ProfileHeader({
                 {seller.profile_image ? (
                   <img src={seller.profile_image} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
+                  <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-700 flex items-center justify-center">
                     <span className="text-2xl font-bold text-white">{(seller.name || '?').charAt(0)}</span>
                   </div>
                 )}

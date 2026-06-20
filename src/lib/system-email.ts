@@ -84,7 +84,7 @@ export function buildSystemEmailHtml(opts: {
 }): string {
   const button = opts.actionLabel && opts.actionUrl
     ? `<p style="margin:24px 0;">
-         <a href="${opts.actionUrl}" style="display:inline-block;background:#ec4899;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">
+         <a href="${opts.actionUrl}" style="display:inline-block;background:#6b7280;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">
            ${opts.actionLabel}
          </a>
        </p>`
@@ -92,7 +92,7 @@ export function buildSystemEmailHtml(opts: {
 
   return `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1d1d1f;">
-      <h1 style="font-size:22px;margin:0 0 16px;background:linear-gradient(135deg,#ff6b6b,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">유어딜</h1>
+      <h1 style="font-size:22px;margin:0 0 16px;background:linear-gradient(135deg,#ff6b6b,#6b7280);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">유어딜</h1>
       <h2 style="font-size:18px;margin:0 0 16px;">${opts.title}</h2>
       <p style="font-size:15px;line-height:1.6;margin:0 0 12px;">${opts.greeting}</p>
       <p style="font-size:15px;line-height:1.6;margin:0 0 16px;white-space:pre-line;">${opts.body}</p>

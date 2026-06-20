@@ -63,7 +63,7 @@ export default function RecentlyViewedStrip() {
               {item.image_url ? (
                 <img src={item.image_url} alt={item.name} loading="lazy" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-pink-100 to-rose-200" />
+                <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200" />
               )}
             </div>
             <p className="text-[11px] font-medium text-gray-900 dark:text-white truncate mt-1.5">{item.name}</p>

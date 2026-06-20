@@ -13,7 +13,7 @@ interface SnsLinksProps {
 }
 
 const LINK_CONFIG = [
-  { key: 'sns_instagram' as const, icon: Instagram, name: 'Instagram', color: 'bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400', textColor: 'text-white' },
+  { key: 'sns_instagram' as const, icon: Instagram, name: 'Instagram', color: 'bg-gradient-to-br from-gray-800 via-gray-800 to-gray-700', textColor: 'text-white' },
   { key: 'sns_youtube' as const, icon: Youtube, name: 'YouTube', color: 'bg-red-600', textColor: 'text-white' },
   { key: 'sns_facebook' as const, icon: Facebook, name: 'Facebook', color: 'bg-blue-600', textColor: 'text-white' },
   { key: 'sns_twitter' as const, icon: Twitter, name: 'Twitter', color: 'bg-sky-500', textColor: 'text-white' },

@@ -153,7 +153,7 @@ export function RecapModal({ stream, stats, onClose }: {
         </div>
 
         {/* 핵심 매출 카드 — 가장 크게 */}
-        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white">
+        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-5 text-white">
           <p className="text-[11px] uppercase tracking-wider opacity-80">{t('seller.liveBroadcast.statsRevenue', { defaultValue: '매출' })}</p>
           <p className="text-3xl font-extrabold mt-1">₩{formatNumber(stats.revenue)}</p>
           <p className="text-xs opacity-90 mt-1">

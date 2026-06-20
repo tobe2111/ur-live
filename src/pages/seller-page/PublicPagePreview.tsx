@@ -42,9 +42,9 @@ export default function PublicPagePreview() {
       <div className="flex justify-center">
         <a
           href={`/profile/${username}`}
-          className="block w-full max-w-[280px] p-4 bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl border border-pink-100 text-center hover:shadow-md transition-shadow"
+          className="block w-full max-w-[280px] p-4 bg-gradient-to-br from-gray-50 to-gray-50 rounded-2xl border border-pink-100 text-center hover:shadow-md transition-shadow"
         >
-          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
+          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-gray-700 to-gray-700 flex items-center justify-center">
             <span className="text-2xl">🏪</span>
           </div>
           <p className="text-sm font-bold text-gray-900">{t('seller.myPublicPage')}</p>

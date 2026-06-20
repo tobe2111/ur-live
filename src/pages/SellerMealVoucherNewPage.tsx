@@ -264,7 +264,7 @@ export default function SellerMealVoucherNewPage() {
           icon={<Utensils className="h-5 w-5" />}
         />
         {/* 🛡️ 2026-05-15: OCR Quick Start — 메뉴판 사진 1장으로 30초 등록 */}
-        <div className="bg-gradient-to-br from-pink-50 to-rose-50 border-2 border-dashed border-pink-300 rounded-2xl p-5">
+        <div className="bg-gradient-to-br from-gray-50 to-gray-50 border-2 border-dashed border-pink-300 rounded-2xl p-5">
           <div className="flex items-start gap-3">
             <div className="w-12 h-12 rounded-xl bg-pink-500 text-white flex items-center justify-center shrink-0">
               <Sparkles className="w-6 h-6" />

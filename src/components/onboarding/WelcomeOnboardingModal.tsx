@@ -159,7 +159,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
         <div className="flex-1 overflow-y-auto px-5 pt-2 pb-4">
           {step === 1 && (
             <div className="text-center">
-              <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center mb-4">
+              <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center mb-4">
                 <Sparkles className="w-9 h-9 text-white" />
               </div>
               <h2 id="welcome-title" className="text-[22px] font-extrabold text-gray-900 dark:text-white mb-1.5">
@@ -172,9 +172,9 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
 
               {/* 🛡️ 2026-05-20: 신규 가입 보너스 3000딜 — 자동 적립 완료 카드 (bonusAmount > 0 일 때만). */}
               {bonusAmount > 0 && (
-                <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl p-5 mt-6 text-left">
+                <div className="bg-gradient-to-br from-gray-50 to-gray-50 border border-amber-200 rounded-2xl p-5 mt-6 text-left">
                   <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shrink-0 shadow-md">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center shrink-0 shadow-md">
                       <Sparkles className="w-6 h-6 text-white" />
                     </div>
                     <div className="flex-1">
@@ -190,7 +190,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                 </div>
               )}
 
-              <div className="bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-200 rounded-2xl p-5 mt-6 text-left">
+              <div className="bg-gradient-to-br from-gray-50 to-gray-50 border border-pink-200 rounded-2xl p-5 mt-6 text-left">
                 <div className="flex items-start gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-pink-500 flex items-center justify-center shrink-0 shadow-md">
                     <Gift className="w-6 h-6 text-white" />

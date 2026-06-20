@@ -541,7 +541,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 <span className="text-[18px] font-bold text-gray-500">딜</span>
               </div>
             </div>
-            <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold mt-1 px-2.5 py-1 rounded-full text-white" style={{ background: 'linear-gradient(135deg, #ec4899, #f43f5e)' }}>
+            <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold mt-1 px-2.5 py-1 rounded-full text-white" style={{ background: 'linear-gradient(135deg, #6b7280, #6b7280)' }}>
               충전 <ArrowRight className="w-3.5 h-3.5" />
             </span>
           </div>

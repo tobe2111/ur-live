@@ -152,7 +152,7 @@ function buildBulkHtml(subject: string, body: string): string {
 <body style="margin:0;padding:24px;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1d1d1f;">
   <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
     <div style="padding:20px 28px;border-bottom:1px solid #eee;">
-      <span style="font-size:18px;font-weight:700;background:linear-gradient(135deg,#ff6b6b,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">유어딜</span>
+      <span style="font-size:18px;font-weight:700;background:linear-gradient(135deg,#ff6b6b,#6b7280);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">유어딜</span>
     </div>
     <div style="padding:28px;">
       ${content}

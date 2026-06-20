@@ -217,7 +217,7 @@ export default function StoreStatsPage() {
           <button
             onClick={() => authenticate()}
             disabled={!pin.trim() || loading}
-            className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold rounded-xl disabled:opacity-40"
+            className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white font-bold rounded-xl disabled:opacity-40"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('storeStats.confirm')}
           </button>
@@ -311,7 +311,7 @@ export default function StoreStatsPage() {
             <button
               onClick={handleUseVoucher}
               disabled={usingVoucher || !voucherCode.trim()}
-              className="px-5 py-3 bg-gradient-to-r from-pink-500 to-orange-500 text-white font-bold rounded-xl disabled:opacity-40 whitespace-nowrap"
+              className="px-5 py-3 bg-gradient-to-r from-gray-800 to-gray-800 text-white font-bold rounded-xl disabled:opacity-40 whitespace-nowrap"
             >
               {usingVoucher ? <Loader2 className="w-4 h-4 animate-spin" /> : '사용 처리'}
             </button>

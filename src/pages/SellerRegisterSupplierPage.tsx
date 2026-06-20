@@ -225,7 +225,7 @@ export default function SellerRegisterSupplierPage() {
           </div>
         )}
 
-        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-5 text-center">
+        <div className="bg-gradient-to-br from-gray-50 to-gray-50 rounded-2xl p-5 text-center">
           <div className="w-14 h-14 mx-auto mb-3 bg-white rounded-full flex items-center justify-center">
             <Store className="w-7 h-7 text-emerald-600" />
           </div>
@@ -343,7 +343,7 @@ export default function SellerRegisterSupplierPage() {
         </p>
 
         <button onClick={submit} disabled={loading}
-          className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 disabled:opacity-50 text-white font-bold rounded-2xl flex items-center justify-center gap-2">
+          className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 disabled:opacity-50 text-white font-bold rounded-2xl flex items-center justify-center gap-2">
           {loading && <Loader2 className="w-5 h-5 animate-spin" />}
           {loading ? '신청 중...' : '공급자 가입 신청'}
         </button>

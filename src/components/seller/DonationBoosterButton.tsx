@@ -90,7 +90,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
     const mm = Math.floor(remainingSec / 60)
     const ss = remainingSec % 60
     return (
-      <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl p-3 shadow-lg">
+      <div className="bg-gradient-to-r from-gray-800 to-gray-800 text-white rounded-xl p-3 shadow-lg">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5 text-sm font-bold">
             <Zap className="w-4 h-4 fill-white" />
@@ -136,7 +136,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
             <button
               key={opt.mul}
               onClick={() => startBooster(opt.mul, opt.dur)}
-              className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-center"
+              className="p-3 bg-gradient-to-br from-gray-800 to-gray-800 hover:from-gray-900 hover:to-gray-900 text-white rounded-lg text-center"
             >
               <div className="text-lg font-bold">{opt.label}</div>
               <div className="text-[10px] opacity-90">{opt.sub}</div>
@@ -153,7 +153,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
   return (
     <button
       onClick={() => setShowOptions(true)}
-      className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-xs font-bold rounded-lg shadow"
+      className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-gray-800 to-gray-800 hover:from-gray-900 hover:to-gray-900 text-white text-xs font-bold rounded-lg shadow"
     >
       <Zap className="w-4 h-4" />
       {t('seller.boosterActivate', { defaultValue: '후원 부스터 발동' })}

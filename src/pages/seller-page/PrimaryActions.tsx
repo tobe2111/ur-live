@@ -36,7 +36,7 @@ export default function PrimaryActions({ pendingOrders, isInfluencer, settlement
       title: t('seller.primary.startLive', { defaultValue: '라이브 시작' }),
       subtitle: t('seller.primary.startLiveDesc', { defaultValue: '바로 송출' }),
       icon: Radio,
-      bg: 'bg-gradient-to-br from-red-500 to-pink-500 text-white hover:from-red-600 hover:to-pink-600 shadow-md hover:shadow-lg',
+      bg: 'bg-gradient-to-br from-gray-800 to-gray-800 text-white hover:from-gray-900 hover:to-gray-900 shadow-md hover:shadow-lg',
       iconBg: 'bg-white/20',
       iconColor: 'text-white',
       show: isInfluencer,

@@ -58,7 +58,7 @@ export default function SellerOnboardingWidget() {
   }
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-4 mb-4">
+    <div className="bg-gradient-to-br from-gray-50 to-gray-50 border border-blue-200 rounded-xl p-4 mb-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           {data.bootcamp_completed ? (
@@ -88,7 +88,7 @@ export default function SellerOnboardingWidget() {
 
       <div className="w-full bg-white rounded-full h-2 mb-3 overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all"
+          className="h-full bg-gradient-to-r from-gray-800 to-gray-800 transition-all"
           style={{ width: `${data.progress.percent}%` }}
         />
       </div>

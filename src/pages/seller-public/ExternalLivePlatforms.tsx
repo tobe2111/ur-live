@@ -20,7 +20,7 @@ interface Props {
 
 const PLATFORMS = [
   { key: 'tiktok' as const, label: 'TikTok', icon: '🎵', bg: 'bg-black', color: 'text-white' },
-  { key: 'instagram' as const, label: 'Instagram', icon: '📷', bg: 'bg-gradient-to-br from-purple-500 via-pink-500 to-yellow-400', color: 'text-white' },
+  { key: 'instagram' as const, label: 'Instagram', icon: '📷', bg: 'bg-gradient-to-br from-gray-800 via-gray-800 to-gray-700', color: 'text-white' },
   { key: 'facebook' as const, label: 'Facebook', icon: '📘', bg: 'bg-blue-600', color: 'text-white' },
 ]
 

@@ -174,7 +174,7 @@ export default function SellerYoutubeGrowthPage() {
           icon={<Youtube className="h-5 w-5" />}
         />
         {/* 안내 */}
-        <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-5 border border-red-100">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-50 rounded-xl p-5 border border-red-100">
           <div className="flex items-start gap-3">
             <Youtube className="w-6 h-6 text-red-500 shrink-0 mt-0.5" />
             <div>

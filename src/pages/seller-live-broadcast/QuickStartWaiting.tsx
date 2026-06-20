@@ -129,7 +129,7 @@ export default function QuickStartWaiting({ stream }: Props) {
   }
 
   return (
-    <div className="bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 border border-pink-200 rounded-xl p-5 space-y-4">
+    <div className="bg-gradient-to-br from-gray-50 via-gray-50 to-gray-50 border border-pink-200 rounded-xl p-5 space-y-4">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
           <Zap className="w-5 h-5 text-pink-600" />

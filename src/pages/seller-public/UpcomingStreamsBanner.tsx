@@ -85,7 +85,7 @@ export default function UpcomingStreamsBanner({ sellerId }: Props) {
               ) : s.youtube_video_id ? (
                 <img src={`https://i.ytimg.com/vi/${s.youtube_video_id}/hqdefault.jpg`} alt={s.title} className="w-full h-full object-cover" loading="lazy" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-pink-300 to-rose-400" />
+                <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-700" />
               )}
               {s.status === 'live' ? (
                 <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-red-500 text-white text-[10px] font-extrabold flex items-center gap-1">
