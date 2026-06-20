@@ -597,41 +597,33 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       //   fragment(#st=)로 실어, 착지 클라가 same-origin POST /api/auth/session/establish 로 교환해
       //   httpOnly ur_session 을 first-party 200 응답에서 재발급(iOS 영속). 토큰을 localStorage 에 두지 않음.
 
-      // 🛡️ linked seller/agency JWT 자동 발급 → 프론트엔드 localStorage 로 이전하도록 transfer cookie
+      // 🛡️ linked seller/agency JWT 자동 발급 → fragment(#...&auth=) 로 iOS-safe 전달
       let linkedRoles: Awaited<ReturnType<typeof issueLinkedRoleTokens>> = {};
+      let pendingAuthFrag = '';
       try {
         linkedRoles = await issueLinkedRoleTokens(DB, c.env.JWT_SECRET, user.id);
-        // JS-readable cookie (HttpOnly 없음) — 프론트엔드 페이지 로드 시 즉시 읽어서 localStorage 로 이동 후 삭제
-        // 60초 만료 — 짧은 윈도우로 XSS 노출 최소화
+        // 🛡️ 2026-06-20 (A 방식 자매수정 — iOS 대시보드 로그인): transfer 쿠키(iOS 미영속) 대신
+        //   역할 토큰을 fragment 로 전달. 새 역할은 이 맵에 추가만 하면 자동 iOS-safe (pending-auth.ts SSOT).
+        const { encodePendingAuth } = await import('../../../worker/utils/pending-auth')
+        const pendingLs: Record<string, string | number | undefined | null> = {}
         if (linkedRoles.seller_token) {
-          c.header('Set-Cookie',
-            `ur_pending_seller_token=${linkedRoles.seller_token}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
-            { append: true });
-          if (linkedRoles.seller) {
-            c.header('Set-Cookie',
-              `ur_pending_seller_info=${encodeURIComponent(JSON.stringify({ id: linkedRoles.seller.id, business_name: linkedRoles.seller.business_name || '' }))}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
-              { append: true });
-          }
+          pendingLs.seller_token = linkedRoles.seller_token
+          pendingLs.seller_id = linkedRoles.seller?.id
+          pendingLs.seller_name = linkedRoles.seller?.business_name
+          pendingLs.seller_username = linkedRoles.seller?.username
+          if (linkedRoles.seller?.is_distributor) pendingLs.is_distributor = '1'
         }
         if (linkedRoles.agency_token) {
-          c.header('Set-Cookie',
-            `ur_pending_agency_token=${linkedRoles.agency_token}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
-            { append: true });
-          // 🏁 2026-06-13: refresh token 도 transfer — 자동 로그아웃 방지
-          if (linkedRoles.agency_refresh_token) {
-            c.header('Set-Cookie',
-              `ur_pending_agency_refresh_token=${linkedRoles.agency_refresh_token}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
-              { append: true });
-          }
-          if (linkedRoles.agency) {
-            c.header('Set-Cookie',
-              `ur_pending_agency_info=${encodeURIComponent(JSON.stringify({ id: linkedRoles.agency.id, name: linkedRoles.agency.name || '' }))}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
-              { append: true });
-          }
+          pendingLs.agency_token = linkedRoles.agency_token
+          pendingLs.agency_refresh_token = linkedRoles.agency_refresh_token
+          pendingLs.agency_id = linkedRoles.agency?.id
+          pendingLs.agency_name = linkedRoles.agency?.name
         }
+        const enc = encodePendingAuth(pendingLs)
+        if (enc) pendingAuthFrag = '&auth=' + enc
+
         // 🔐 2026-06-11 [UNLOCK] SSR Phase 2 D단계 (사용자 승인 "모두 진행" — docs/SSR_PHASE2_AUTH.md §3.2-2):
-        //   beta(SSR) 개인화용 httpOnly ud_* 쿠키 **추가 발급만** — 기존 transfer cookie/localStorage
-        //   이전 흐름·OAuth state/safeRedirect 로직 전부 불변 (additive Set-Cookie).
+        //   beta(SSR) 개인화용 httpOnly ud_* 쿠키 **추가 발급만** (SSR GET 읽기 전용 — 로그인 경로 아님).
         try {
           const { authTokenSetCookie } = await import('../../../worker/utils/auth-cookies')
           const hostD = new URL(c.req.url).hostname
@@ -716,10 +708,16 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
         const ticket = await signEstablishTicket(c.env.JWT_SECRET, user);
         ticketFrag = '#st=' + encodeURIComponent(ticket);
       } catch { /* 티켓 서명 실패 — 302-set 쿠키 경로로 degrade */ }
+      // 🛡️ 2026-06-20: 링크 역할 토큰(seller/agency)도 같은 fragment 로 — iOS-safe.
+      //   ticketFrag='#st=..' | '', pendingAuthFrag='&auth=..' | ''. 조합: #st=..&auth=.. / #st=.. / #auth=.. / ''
+      let frag = ticketFrag; // '' 또는 '#st=...'
+      if (pendingAuthFrag) {
+        frag += frag ? pendingAuthFrag : ('#' + pendingAuthFrag.slice(1)); // 티켓 없으면 '&auth='→'#auth='
+      }
       // 🩺 로그인 성공 기록 — 브라우저 종류 + (쿠키 경로 vs 서명 fallback) 가시화.
       fireDiag('success', 'ok', !!userWithFlag.isNewUser);
       // 302 명시: Set-Cookie 헤더가 일부 브라우저에서 303에 무시되는 문제 회피
-      return c.redirect(redirectUrl + ticketFrag, 302);
+      return c.redirect(redirectUrl + frag, 302);
 
     } catch (serviceError) {
       if (import.meta.env.DEV) console.error('[Kakao Sync] Service error:', serviceError);
