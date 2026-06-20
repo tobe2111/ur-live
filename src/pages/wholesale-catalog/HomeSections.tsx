@@ -8,7 +8,9 @@ import { WT } from '../wholesale/wholesale-theme'
 
 // 시안(유통스타트 도매몰.dc.html) 히어로/CTA 배경 사진 — 창고 직거래.
 //   CSP img-src https: 허용. 로드 실패 시 onError 로 숨겨 다크 베이스(#0C2454)로 폴백 → 절대 깨짐 0.
-export const WHOLESALE_HERO_IMG = 'https://images.unsplash.com/photo-1553413077-190dd305871c?w=1280&q=72&auto=format&fit=crop'
+// 🏎️ 2026-06-19 (Lighthouse): 장식용 히어로 배경(aria-hidden). 1280/q72(362KB) → 960/q55(~110KB) +
+//   auto=format(WebP) 유지. LCP -300KB. 표시는 object-cover라 화질 차이 무시 가능.
+export const WHOLESALE_HERO_IMG = 'https://images.unsplash.com/photo-1553413077-190dd305871c?w=960&q=55&auto=format&fit=crop'
 
 const SIGNALS = [
   { Icon: ShieldCheck, title: '사업자 인증 회원제', short: '사업자 인증제', sub: '관리자 승인 후 거래' },
@@ -44,7 +46,7 @@ export function TrustBar() {
 export function SupplierCTA({ onApply }: { onApply: () => void }) {
   return (
     <div className="relative rounded-2xl overflow-hidden" style={{ background: '#0C2454' }}>
-      <img src={WHOLESALE_HERO_IMG} alt="" aria-hidden onError={(e) => { e.currentTarget.style.display = 'none' }} className="absolute inset-0 w-full h-full object-cover" />
+      <img src={WHOLESALE_HERO_IMG} alt="" aria-hidden fetchPriority="high" decoding="async" onError={(e) => { e.currentTarget.style.display = 'none' }} className="absolute inset-0 w-full h-full object-cover" />
       <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(21,23,28,0.93) 30%, rgba(21,23,28,0.55) 100%)' }} />
       <div className="relative px-6 lg:px-9 py-6 lg:py-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-white">
         <div>

@@ -11,7 +11,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from '@/hooks/queries'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
-import GroupBuyGuideCard from './GroupBuyGuideCard'
 import type { Product } from './types'
 
 interface FeedProduct extends Product {
@@ -114,9 +113,9 @@ export default function GroupBuyFeed() {
 
   return (
     <>
-      {/* 🛡️ 2026-05-20: 공구 → 딜 적립 가이드 카드 (예전 + 버튼 시절 플로우 복원).
-          dismissible — 한 번 닫으면 영구 숨김 (localStorage). */}
-      <GroupBuyGuideCard />
+      {/* 🧹 2026-06-19 (대표 신고 — 홈 번잡): 상단 '공구로 딜 얻는 법' 가이드 카드 제거.
+          하단 DealEarnStrip('딜 모으는 법') + /help/deal-guide 가 동일 교육을 담당 → 중복.
+          상단을 비워 카테고리 칩 + 딜 카드가 즉시(첫 화면) 보이도록. */}
 
       {/* 카테고리 칩 — sticky 한 단계 아래 (헤더는 페이지에서 sticky 처리) */}
       <div className="bg-white dark:bg-[#020202] border-b border-gray-100 dark:border-[#1A1A1A] sticky top-12 z-10">
@@ -182,14 +181,16 @@ export default function GroupBuyFeed() {
         </div>
       )}
 
-      {/* 하단 — 전체 보기 링크 */}
-      {!loading && sorted.length >= 50 && (
+      {/* 하단 — 전체 동네딜(지역/검색) 페이지 링크.
+          🧭 2026-06-19: 홈은 동네딜 '피드'(카테고리+정렬)라 지역필터/검색은 /group-buy 허브에. 링크 대상 /vouchers→/group-buy 정정.
+          하단바 5탭에서 동네딜 탭이 교환권으로 바뀌므로(홈=동네딜이라 중복), 이 링크가 전체 동네딜 페이지의 상시 진입점. */}
+      {!loading && sorted.length > 0 && (
         <div className="px-4 pb-8 text-center">
           <Link
-            to="/vouchers"
+            to="/group-buy"
             className="inline-block px-5 py-3 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-full text-sm font-bold text-gray-900 dark:text-white"
           >
-            모든 공구 보기 →
+            전체 동네딜 보기 →
           </Link>
         </div>
       )}

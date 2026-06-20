@@ -3428,7 +3428,8 @@
     "vouchers": "Bons",
     "dongnedeal": "Offres locales",
     "create": "Créer",
-    "offlineGroupBuy": "Achat groupé local"
+    "offlineGroupBuy": "Achat groupé local",
+    "myGbVouchers": "Coupons"
   },
   "bulkUpload": {
     "title": "Import de produits en masse",
@@ -4359,7 +4360,9 @@
     "groupExpired": "Expiré",
     "groupRefunded": "Remboursé",
     "ktShowBarcode": "Présentez le code-barres ci-dessous en magasin",
-    "ktCheckMms": "Vérifiez le coupon dans les messages de votre téléphone. Liaison KakaoTalk possible."
+    "ktCheckMms": "Vérifiez le coupon dans les messages de votre téléphone. Liaison KakaoTalk possible.",
+    "tabGroupBuy": "Groupé",
+    "tabGifticon": "Gifticon"
   },
   "sellerWaiting": {
     "title": "Approbation Vendeur en Attente",
@@ -6129,11 +6132,15 @@
     "tagline": "Restos et bons du quartier — moins cher ensemble 🍽️",
     "moreVouchers": "Plus de bons",
     "shopRailTitle": "Produits",
-    "shopRailMore": "Boutique"
+    "shopRailMore": "Boutique",
+    "gifticonEntry": "Gifticons",
+    "gifticonEntrySub": "Achetez des gifticons (épicerie/café) avec des deals"
   },
   "my": {
     "earningsGroupTitle": "Mes gains",
     "earningsGroupSub": "Parrainage · Linkshop · Invitations",
+    "settingsGroupTitle": "Paramètres",
+    "settingsGroupSub": "Notifications · Thème · Langue · Infos appli",
     "affiliateLinkTitle": "Liens de recommandation",
     "affiliateLinkSub": "Gagnez des deals via vos liens — voir les résultats"
   },

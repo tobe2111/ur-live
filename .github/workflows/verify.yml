@@ -165,6 +165,13 @@ jobs:
         run: STRICT_DUAL_LOGIN=1 node scripts/check-dual-login-guard.mjs
         continue-on-error: false
 
+      # 🛡️ 2026-06-18: group_buy_status 로 상품 종류 판별/라우팅 금지 — 현재 위반 0 → strict.
+      #   group_buy_status 는 모든 상품 DEFAULT 'active' 라 종류 판별에 쓰면 쇼핑 상품이 교환권으로
+      #   오분류(핀 /group-buy 오라우팅 사고). 종류는 deal_only + isVoucherCategory SSOT 만.
+      - name: group_buy_status classify guard (strict)
+        run: node scripts/check-groupbuy-status-classify.mjs -s
+        continue-on-error: false
+
       # 🛡️ 2026-05-17: CHECK 제약 위반 — admin live-monitor delete 500 사고 재발 방지.
       #   리터럴 'UPDATE <t> SET <c> = ...' 패턴이 마이그레이션의 CHECK(IN (...)) 허용값과
       #   불일치하면 보고. SQL 실행 시 SqlError → 500. strict 모드.

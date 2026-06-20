@@ -116,11 +116,16 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const pageNum = Math.max(1, parseInt(c.req.query('page') || '1', 10))
     const pageLimit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50', 10)))
     const offset = (pageNum - 1) * pageLimit
+    // 🗺️ 2026-06-18 [UNLOCK_LOADING]: "내 동네 딜" 지역 필터. region = 시군구코드(5자리) 또는 행정동코드(~10자리).
+    //   기본 요청(region 없음)은 키/쿼리/materialized 전부 불변 → SSR 0-RTT 보존. region 붙은 요청만 분기.
+    const regionRaw = (c.req.query('region') || '').trim()
+    const regionParam = /^\d{5,12}$/.test(regionRaw) ? regionRaw : ''
+    const hasRegion = !!regionParam
     // hasFilters=false 인 "정확한 기본 요청"만 기존 경로(키/materialized/LIMIT 50). 그 외는 분기.
-    const hasFilters = !!ALLOWED_GB_SORT[sortParam] || pageNum > 1 || c.req.query('limit') != null
+    const hasFilters = !!ALLOWED_GB_SORT[sortParam] || pageNum > 1 || c.req.query('limit') != null || hasRegion
     const limitClause = hasFilters ? `${pageLimit} OFFSET ${offset}` : '50'
     const cacheKey = hasFilters
-      ? `group_buy_products:${status}:${categories.join(',')}:s${sortParam || 'def'}:p${pageNum}:l${pageLimit}`
+      ? `group_buy_products:${status}:${categories.join(',')}:s${sortParam || 'def'}:p${pageNum}:l${pageLimit}:r${regionParam || 'all'}`
       : `group_buy_products:${status}:${categories.join(',')}`
 
     const results = await cacheGet(
@@ -148,6 +153,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         } catch { /* 테이블 미존재 — graceful */ }
 
         const placeholders = categories.map(() => '?').join(',')
+        // 🗺️ "내 동네 딜" — product_regions INNER JOIN(태깅된 매장만) + 시군구/행정동 코드 prefix 매칭.
+        const regionJoin = hasRegion ? 'JOIN product_regions pr ON pr.product_id = p.id' : ''
+        const regionWhere = hasRegion ? 'AND pr.region_dong_code LIKE ?' : ''
+        const regionBind: string[] = hasRegion ? [`${regionParam}%`] : []
         // 🛡️ 2026-05-22 perf: SELECT p.* (30+ 컬럼, ~10KB) → 카드에서 실제 사용하는
         //   16개 컬럼만 (응답 56% 감소). description/product_detail_images/stock/reserved_stock 등 제외.
         //   결과: 페이로드 ~4-5KB, D1 row scan time 10-15ms ↓.
@@ -177,12 +186,14 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
                        gc.goods_type_detail AS gc_goods_type_detail
                 FROM products p
                 LEFT JOIN sellers s ON p.seller_id = s.id
+                ${regionJoin}
                 LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
                 WHERE p.category IN (${placeholders}) AND p.is_active = 1
                   AND (p.group_buy_status = ? OR ? = 'all')
+                  ${regionWhere}
                 ORDER BY ${orderBy}
                 LIMIT ${limitClause}
-              `).bind(...categories, status, status).all()
+              `).bind(...categories, status, status, ...regionBind).all()
               if (_giftCatalogJoinable === null) _giftCatalogJoinable = true  // 첫 성공 → 다음부터 try 우선
               return r.results ?? []
             } catch (e) {
@@ -194,11 +205,13 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
             SELECT ${buildCols()}
             FROM products p
             LEFT JOIN sellers s ON p.seller_id = s.id
+            ${regionJoin}
             WHERE p.category IN (${placeholders}) AND p.is_active = 1
               AND (p.group_buy_status = ? OR ? = 'all')
+              ${regionWhere}
             ORDER BY ${orderBy}
             LIMIT ${limitClause}
-          `).bind(...categories, status, status).all()
+          `).bind(...categories, status, status, ...regionBind).all()
           return r.results ?? []
         }
         try {

@@ -3428,7 +3428,8 @@
     "vouchers": "Cupones",
     "dongnedeal": "Ofertas locales",
     "create": "Crear",
-    "offlineGroupBuy": "Compra grupal local"
+    "offlineGroupBuy": "Compra grupal local",
+    "myGbVouchers": "Vales"
   },
   "bulkUpload": {
     "title": "Carga masiva de productos",
@@ -4359,7 +4360,9 @@
     "groupExpired": "Caducado",
     "groupRefunded": "Reembolsado",
     "ktShowBarcode": "Muestra el código de barras de abajo en la tienda",
-    "ktCheckMms": "Revisa el cupón en los mensajes de tu teléfono. Vinculación con KakaoTalk disponible."
+    "ktCheckMms": "Revisa el cupón en los mensajes de tu teléfono. Vinculación con KakaoTalk disponible.",
+    "tabGroupBuy": "Grupal",
+    "tabGifticon": "Gifticon"
   },
   "sellerWaiting": {
     "title": "Aprobación de Vendedor Pendiente",
@@ -6129,11 +6132,15 @@
     "tagline": "Locales y vales del barrio — más barato juntos 🍽️",
     "moreVouchers": "Más vales",
     "shopRailTitle": "Productos",
-    "shopRailMore": "Ver tienda"
+    "shopRailMore": "Ver tienda",
+    "gifticonEntry": "Gifticons",
+    "gifticonEntrySub": "Compra gifticons de tiendas y cafés con deals"
   },
   "my": {
     "earningsGroupTitle": "Mis ganancias",
     "earningsGroupSub": "Recompensas · Linkshop · Invitaciones",
+    "settingsGroupTitle": "Ajustes",
+    "settingsGroupSub": "Notificaciones · Tema · Idioma · Info de la app",
     "affiliateLinkTitle": "Enlaces de recomendación",
     "affiliateLinkSub": "Gana deals cuando compran con tu enlace — ver resultados"
   },

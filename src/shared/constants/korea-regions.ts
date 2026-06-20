@@ -327,3 +327,26 @@ export function matchAddress(
   if (addr.includes(region.key)) return true
   return region.districtGroups.some(dg => dg.keywords.some(k => addr.includes(k)))
 }
+
+/**
+ * 🗺️ 2026-06-18: GPS/주소 → 이 택소노미의 {regionKey, districtKey} 역검색.
+ *   matchAddress 와 동일한 키워드 매칭이라 결과 일관. district(역세권 그룹) 우선 매칭,
+ *   없으면 시/도(region.key) 단위. 어디에도 안 걸리면 null(아직 미지원 지역).
+ */
+export function resolveRegionByAddress(
+  address: string | undefined | null,
+): { regionKey: string; districtKey: string | null } | null {
+  const addr = (address || '').trim()
+  if (!addr) return null
+  for (const region of KOREA_REGIONS) {
+    for (const dg of region.districtGroups) {
+      if (dg.keywords.some(k => addr.includes(k))) {
+        return { regionKey: region.key, districtKey: dg.key }
+      }
+    }
+  }
+  for (const region of KOREA_REGIONS) {
+    if (addr.includes(region.key)) return { regionKey: region.key, districtKey: null }
+  }
+  return null
+}

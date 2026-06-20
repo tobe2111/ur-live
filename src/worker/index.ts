@@ -36,6 +36,7 @@ import { adminTaxRoutes } from '../features/admin/api/admin-tax.routes';
 import { ledgerRoutes } from '../features/ledger/api/ledger.routes';
 import { streamsRouter } from './routes/streams.routes';  // ✅ 공개 스트림 라우트
 import { usersRouter } from './routes/users.routes';      // ✅ /api/users/role, /api/users/init
+import { meRegionRoutes, adminRegionRoutes, publicRegionRoutes } from './routes/region.routes'; // 🗺️ 내 동네 + 동별 밀도 + 좌표해석
 import { i18nMiddleware } from './middleware/i18n.middleware';
 import { rateLimitMiddleware as rateLimiterMiddleware } from './middleware/rate-limiter';
 import { globalErrorHandler as errorHandler } from './middleware/error-handler';
@@ -481,12 +482,11 @@ app.use('*', async (c, next) => {
     let ssrTarget: SsrTarget | null = null;
 
     if (isMainPage) {
-      // 🛡️ 2026-06-01 [UNLOCK_LOADING]: 홈 = 교환권(deal_only) 콘텐츠로 전환 (사용자 승인).
-      // 🏭 2026-06-04 [UNLOCK_LOADING]: 홈 기본 카테고리 = '커피/음료' (사용자 요청).
-      //   MAIN 슬롯 path 에 category=커피/음료 추가 — VouchersPage(embedded) 가 같은 기본값 사용 →
-      //   __SSR_INITIAL_MAIN__ consume 해 0-RTT 유지. query 문자열은 클라(URLSearchParams) 인코딩과
-      //   1:1 일치해야 cache key 가 맞으므로 %2F/%EC.. 인코딩 그대로 유지. HOT_PATHS 에도 동일 추가.
-      ssrTarget = { slot: 'MAIN', path: '/api/products?page=1&limit=20&deal_only=1&sort=price_low&category=%EC%BB%A4%ED%94%BC%2F%EC%9D%8C%EB%A3%8C' };
+      // 🛡️ 2026-06-18 [UNLOCK_LOADING] (대표 결정 — 홈 = 동네딜 중심): 홈 SSR 슬롯을 교환권(deal_only) →
+      //   동네딜(group-buy active) 데이터로 전환. GroupBuyFeed(category='all')가 __SSR_INITIAL_MAIN__ 를
+      //   consume → 0-RTT. 이 path 는 cache-prewarm HOT_PATHS 의 '/api/group-buy/products?status=active&category=all'
+      //   와 1:1 일치(이미 prewarm 됨). 교환권은 홈에서 강등 → /vouchers(자체 __SSR_INITIAL_VOUCHERS__).
+      ssrTarget = { slot: 'MAIN', path: '/api/group-buy/products?status=active&category=all' };
     } else if (url.pathname === '/vouchers' && !url.search) {
       // 🛡️ 2026-05-27: VouchersPage first-paint inject (no query — default 페이지).
       //   클라이언트가 categoryParam/brand 변경 시 새 fetch — SSR 첫 진입만 효과.
@@ -561,7 +561,14 @@ app.use('*', async (c, next) => {
         //   이전: MAIN 150ms / DETAIL 250ms — cold 시 self-fetch-timeout → 클라가 직접 fetch → 10초+ timeout
         //   변경: MAIN 1500ms / DETAIL/SELLER 2000ms — wait 후 fresh data inject 보장.
         //   trade-off: cold 첫 사용자 1-2초 wait. warm 사용자 (99%+) 영향 0 (edge-hit 가 먼저 응답).
-        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT') ? 2000 : 1500;
+        // 🏭 2026-06-19 [UNLOCK_LOADING] (대표 신고 — 도매 카탈로그 스켈레톤 고착, HTML 증거: __SSR_INITIAL_WHOLESALE__
+        //   미주입): 저트래픽 도매몰은 colo 캐시가 대부분 cold → self-fetch 가 콜드 D1(isolate 콜드스타트+ensure+조회)을
+        //   1.5초 안에 못 끝내 timeout → 빈 ssrPayload → 주입 스킵 → 클라가 또 콜드 fetch(스켈레톤 장기화).
+        //   WHOLESALE 만 3000ms 로 상향 → 콜드여도 데이터 주입 완료(첫 사용자만 ~2-3초 문서 wait, 이후 colo 캐시 300s).
+        //   warm(edge-hit) 경로·타 슬롯·소비자 페이지 전부 불변. 근본 해결은 CACHE_KV 전역 워밍(self-fetch=KV-HIT).
+        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT') ? 2000
+          : ssrTarget.slot === 'WHOLESALE' ? 3000
+          : 1500;
         const ctlr = new AbortController();
         const timer = setTimeout(() => ctlr.abort(), timeoutMs);
         const selfStart = Date.now();
@@ -1002,6 +1009,9 @@ app.route('/api/auth/google', googleRoutes);
 // 프론트엔드에서 /api/users/* 로 직접 호출
 // ============================================================
 app.route('/api/users', usersRouter);
+app.route('/api/me', meRegionRoutes);              // 🗺️ 내 동네 설정/조회
+app.route('/api/region', publicRegionRoutes);      // 🗺️ 좌표 → 동네 해석 (공개, 비로그인 자동감지)
+app.route('/api/admin/region', adminRegionRoutes); // 🗺️ 동별 딜 밀도 (영입 타겟)
 
 // ============================================================
 // Cache Control — read-heavy public endpoints

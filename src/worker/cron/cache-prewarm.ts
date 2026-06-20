@@ -23,6 +23,7 @@
  */
 
 import { logInfo, logError } from '../utils/logger';
+import { normalizeSupplyProductData } from '../../features/supply/api/supply-visibility';
 
 interface PrewarmEnv {
   FRONTEND_URL?: string;
@@ -97,6 +98,12 @@ const HOT_PATHS: readonly string[] = [
 export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
   const baseUrl = env.FRONTEND_URL || 'https://live.ur-team.com';
 
+  // 🏎️ 2026-06-19 (A: 카탈로그 행 근본수정): products 정규화를 읽기 경로에서 빼 cron 으로 이전.
+  //   self-fetch(아래 HOT_PATHS) 보다 먼저 실행 → 정규화된 데이터로 캐시/ KV 워밍. 멱등·실패 무시.
+  if (env.DB) {
+    await normalizeSupplyProductData(env.DB).catch(() => { /* best-effort */ });
+  }
+
   let success = 0;
   let failed = 0;
 
@@ -135,6 +142,33 @@ export async function handleCachePrewarm(env: PrewarmEnv): Promise<void> {
   } else {
     logInfo(`[cron:cache-prewarm] warmed ${success}/${HOT_PATHS.length} paths`);
   }
+
+  // 🏭 2026-06-18 (전수조사 — 도매 카탈로그 cold/느림 근본원인): caches.default 는 요청 URL의 origin 으로
+  //   키가 갈린다. 위 prewarm 은 FRONTEND_URL(=live.ur-team.com) origin 만 데우는데, 실제 도매 사용자는
+  //   utongstart.com 호스트로 접속 → /catalog 핸들러의 early-match/put 키가 utongstart origin 이라
+  //   prewarm 이 채운 live origin 캐시와 영영 불일치 → utongstart 도매몰은 prewarm 혜택 0(매 요청 cold D1).
+  //   도매 전용 path 만 utongstart origin 으로도 한 번 더 데운다(additive, HOT 24+dynamic≈20+WS 5 ≈ 49 < 50).
+  //   단일 몰(mall 1)이라 응답 내용 동일 — origin 키만 추가로 채움. 실패해도 무시(저영향).
+  const WS_PREWARM_PATHS: readonly string[] = [
+    '/api/wholesale/catalog?',
+    '/api/wholesale/catalog',
+    '/api/wholesale/banners',
+    '/api/wholesale/mall',
+  ];
+  const WS_PREWARM_ORIGINS = ['https://utongstart.com'];
+  await Promise.all(
+    WS_PREWARM_ORIGINS.flatMap((origin) =>
+      WS_PREWARM_PATHS.map(async (path) => {
+        try {
+          await fetch(`${origin}${path}`, {
+            method: 'GET',
+            headers: { 'User-Agent': 'ur-live-cache-prewarm/1.0', 'x-prewarm': '1' },
+            cf: { cacheTtl: 0, cacheEverything: false },
+          } as RequestInit & { cf?: Record<string, unknown> });
+        } catch { /* prewarm best-effort */ }
+      }),
+    ),
+  );
 
   // 🛡️ 2026-05-27 (loading P0): 인기 셀러 + 인기 상품 detail dynamic prewarm.
   //   메인/카테고리 페이지에서 가장 많이 클릭되는 detail / 셀러 페이지 미리 채움.

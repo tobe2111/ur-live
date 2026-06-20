@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { cfImage } from '@/utils/cf-image'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
-import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin } from 'lucide-react'
+import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
+import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin, Ticket, Gift } from 'lucide-react'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
 function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
@@ -129,7 +129,7 @@ export default function BottomNav() {
   //   - linked_seller_username 캐시 있으면 /profile/{username} 직행 (셀러 공개페이지)
   //   - user_handle 캐시 있으면 /u/{handle} 직행 (큐레이터 공개페이지)
   //   - 캐시 없으면 /u/me (UMeRedirectPage 가 1회 API 호출 후 캐시 저장)
-  //   - 미로그인이면 /host/new (카탈로그 — 첫 핀 시 자동 handle 생성)
+  //   - 미로그인이면 /u/me (로그인 후 UMeRedirect 가 본인 핸들 해석 → /u/{handle}, 신규만 /host/new 폴백)
   // 🛡️ 2026-05-27 (영구 fix): seller_token JWT payload 에서 username 추출.
   //   문제: seller_username localStorage cache 가 없을 때 (KakaoCallback fix 이전 로그인 등)
   //   /u/me 로 fallback → curator dashboard API → linked_user_id 매핑 없으면 /host/new fall through.
@@ -137,10 +137,13 @@ export default function BottomNav() {
   //   localStorage 도 update → 다음부터 직접 cache 사용.
   // 🛡️ 2026-05-28 [UNLOCK_LOADING] (SSR Phase 2 잔여): linkshopPath → useState + useEffect.
   //   render 함수 안 localStorage 직접 호출 제거 (SSR-safe). 동작 동일.
-  const [linkshopPath, setLinkshopPath] = useState('/host/new')
+  const [linkshopPath, setLinkshopPath] = useState('/u/me')
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (!isLoggedIn) { setLinkshopPath('/host/new'); return }
+    // 🔗 2026-06-17 [UNLOCK_LOADING] (사용자 "가장 이상적으로"): 로그아웃 시 /host/new(만들기) → /u/me.
+    //   /u/me 도 로그인을 요구하지만 로그인 후 본인 핸들을 해석 → 기존 유저는 /u/{handle}(자기 링크샵),
+    //   핸들 없는 신규만 UMeRedirect 가 /host/new 로 폴백. 기존: 이미 링크샵 있는 사람도 만들기 페이지에 떨궈짐.
+    if (!isLoggedIn) { setLinkshopPath('/u/me'); return }
     try {
       // 🏭 2026-06-05: stale/예약 핸들 가드 (옛 'user' generic 핸들 등 → /u/user 400 차단).
       const RESERVED = new Set(['user', 'me', 'admin', 'seller', 'api', 'host', 'new'])
@@ -190,11 +193,13 @@ export default function BottomNav() {
   //   ➕ 는 시트를 열어 (유저) 동네 공구 제안 / (셀러) 공구권 등록으로 분기 — 수요 신호 수집기.
   const navItems = [
     { icon: Home,        label: t('nav.home',  { defaultValue: '홈' }),    path: '/' },
-    // 🏭 2026-06-10: 동네딜은 청크 + 데이터 동시 워밍 — 누르는 순간 카드 데이터 선요청 (클릭→마운트 ~200ms 선점).
-    { icon: MapPin,      label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/group-buy', prefetch: () => import('@/pages/GroupBuyListPage').then((m) => { m.warmGroupBuyList?.() }) },
-    ...(SHOPPING_TAB_HIDDEN
-      ? [{ icon: Plus, label: t('nav.create', { defaultValue: '만들기' }), path: '__create__' as const, prefetch: () => import('@/pages/UserGroupBuyCreatePage') }]
-      : [{ icon: ShoppingBag, label: t('nav.shop',  { defaultValue: '쇼핑' }),  path: '/browse', prefetch: () => import('@/pages/BrowsePage') }]),
+    // 🎟️ 2026-06-19 [UNLOCK_LOADING] (대표 5탭 확정 — 홈=동네딜이라 동네딜 탭은 홈과 중복): 동네딜 탭 → 교환권(기프티콘).
+    //   홈이 이미 동네딜 피드라 별도 동네딜 탭은 중복 → 두 상품축(동네딜=홈 / 교환권=탭2)을 모두 노출.
+    //   전체 동네딜(지역/검색)은 홈 '전체 동네딜 보기' 링크로 진입. isActivePath 는 홈(/) 이 /group-buy 에서도 활성.
+    { icon: Gift,        label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers', prefetch: () => import('@/pages/VouchersPage') },
+    // 🎟️ 2026-06-18 (대표 결정): 가운데 → '공구권'. 교환권(기프티콘)은 MMS 발송 카탈로그(탭2)이고,
+    //   공구권(동네딜 식사권 등)은 매장에서 QR/PIN 으로 '앱에서 꺼내 쓰는' 지갑이라 상시 탭 가치가 높음.
+    { icon: Ticket,      label: t('nav.myGbVouchers', { defaultValue: '공구권' }), path: '/my-vouchers', prefetch: () => import('@/pages/MyVouchersPage') },
     // 🧭 2026-06-10: 링크샵도 청크+데이터 동시 워밍 (동네딜과 동일) — 누르는 순간 선요청.
     { icon: Sparkles,    label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath, prefetch: () => {
       if (linkshopPath.startsWith('/u/') && !linkshopPath.startsWith('/u/me')) {
@@ -209,9 +214,14 @@ export default function BottomNav() {
   const isActivePath = (path: string) => {
     const cur = location.pathname
     if (cur === path) return true
+    // 🎟️ 2026-06-19 [UNLOCK_LOADING]: 홈 = 동네딜 피드 → 홈 탭은 /group-buy·/stays·/meal-vouchers 에서도 활성.
+    //   (동네딜 전용 탭을 교환권으로 교체했으므로 동네딜 surface 활성표시는 홈 탭이 담당.)
+    if (path === '/' && (cur.startsWith('/group-buy') || cur.startsWith('/stays') || cur.startsWith('/meal-vouchers'))) return true
     if (path !== '/' && cur.startsWith(path)) return true
     // v37 FIX: 마이페이지 범주에 /my-* 및 관련 계정/주문 경로 포함
-    if (path === '/user/profile' && /^\/(my-orders|my-coupons|my-reviews|my-vouchers|my-group-buys|wishlist|interest-list|account|mypage|my-returns)(\/|$)/.test(cur)) {
+    if (path === '/my-vouchers' && cur.startsWith('/my-vouchers')) return true
+    // 🎟️ 2026-06-18: /my-vouchers 는 '공구권' 탭 전용 활성 → 마이 탭 정규식에서 제외(이중 활성 방지).
+    if (path === '/user/profile' && /^\/(my-orders|my-coupons|my-reviews|my-group-buys|wishlist|interest-list|account|mypage|my-returns)(\/|$)/.test(cur)) {
       return true
     }
     // 🛡️ 2026-05-25: 링크샵 탭 active — /u/, /host/, /g/, /profile/ 모두 포함
@@ -222,8 +232,6 @@ export default function BottomNav() {
       if (cur.startsWith('/u/') || cur.startsWith('/host') || cur.startsWith('/g/') ||
           cur.startsWith('/profile/') || cur.startsWith('/s/')) return true
     }
-    // 🛡️ 2026-06-01: 동네딜 탭(오프라인 공구) — /group-buy 외 /stays·/meal-vouchers 도 활성.
-    if (path === '/group-buy' && (cur.startsWith('/stays') || cur.startsWith('/meal-vouchers'))) return true
     return false
   }
 
@@ -347,8 +355,9 @@ export default function BottomNav() {
                     </button>
                   </div>
 
-                  {/* 🧲 2026-06-10: 동네 공구 제안 — 수요 신호 수집 (모든 사용자에게 최상단 노출).
-                       제안 → 어드민/에이전시 검토 → 매장 영입 → 공구 오픈 시 제안자에게 알림(루프). */}
+                  {/* 🧲 2026-06-10: 동네 공구 제안 — 수요 신호 수집. 🚫 2026-06-18 COMMUNITY_PROPOSAL_HIDDEN
+                       으로 숨김(셸브). 숨김 시 시트가 비지 않도록 '동네딜 둘러보기'로 폴백. */}
+                  {!COMMUNITY_PROPOSAL_HIDDEN ? (
                   <button
                     onClick={() => { setSheetOpen(false); navigate('/community-group-buy/new') }}
                     className="w-full mb-3 flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl active:scale-[0.98] transition-transform"
@@ -361,6 +370,20 @@ export default function BottomNav() {
                       <p className="text-[12px] text-white/80 mt-0.5">{t('bottomNav.proposeDealDesc', { defaultValue: '원하는 가게를 제안하면 모아서 열어드려요' })}</p>
                     </div>
                   </button>
+                  ) : (!isSeller && !hasSellerToken) ? (
+                  <button
+                    onClick={() => { setSheetOpen(false); navigate('/group-buy') }}
+                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl active:scale-[0.98] transition-transform"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                      <MapPin className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-left flex-1">
+                      <p className="text-[15px] font-bold text-white">{t('bottomNav.browseDongneDeal', { defaultValue: '동네딜 둘러보기' })}</p>
+                      <p className="text-[12px] text-white/80 mt-0.5">{t('bottomNav.browseDongneDealDesc', { defaultValue: '내 주변 동네 공구 딜을 확인해요' })}</p>
+                    </div>
+                  </button>
+                  ) : null}
 
                   {/* Seller: live + 식사권 + dashboard (+ agency 겸직이면 아래 블록도)
                        🏁 2026-06-11 (사용자 요청 — 겸직 유저 1탭 등록): 유저 모드(active_role='user')여도

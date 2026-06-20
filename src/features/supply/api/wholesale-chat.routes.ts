@@ -23,6 +23,7 @@ import { swallow } from '@/worker/utils/swallow'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { visibilityWhere } from './supply-visibility'
+import { redactContactInfo } from '@/worker/utils/redact-contact'
 
 // ── 신원 해석: supplier 토큰 우선 → distributor JWT ─────────────────────────────
 //   supplier: JWT payload { type:'supplier', supplier_id } (supplier-auth.routes/login).
@@ -78,6 +79,8 @@ async function ensureChatSchema(DB: D1Database): Promise<void> {
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_dist ON wholesale_chat_threads(distributor_seller_id, last_message_at DESC)').run().catch(swallow('wholesale-chat:ensure:idx-dist'))
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_sup ON wholesale_chat_threads(supplier_id, last_message_at DESC)').run().catch(swallow('wholesale-chat:ensure:idx-sup'))
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_chat_messages_thread ON wholesale_chat_messages(thread_id, id)').run().catch(swallow('wholesale-chat:ensure:idx-msg'))
+  // 🛡️ 2026-06-18 직거래 시도 탐지 — 스레드별 마스킹(연락처 차단) 누적 횟수. 임계 도달 시 어드민 알림.
+  await DB.prepare('ALTER TABLE wholesale_chat_threads ADD COLUMN redact_count INTEGER DEFAULT 0').run().catch(swallow('wholesale-chat:ensure:redact-count'))
 }
 
 // 역할별 컬럼 매핑 — 내 unread 컬럼 / 상대 unread 컬럼.
@@ -341,12 +344,15 @@ app.get('/threads/:id/messages', async (c) => {
       messages = (results ?? []).reverse()
     }
 
+    // 🛡️ disintermediation — 조회 시에도 마스킹(신규 메시지는 저장 시 이미 redact, 레거시 raw 메시지 방어).
+    const safeMessages = messages.map((m) => ({ ...m, body: redactContactInfo(m.body).text }))
+
     // side-effect: 내 unread 리셋(0). 멱등.
     const col = myUnreadCol(me.role)
     await DB.prepare(`UPDATE wholesale_chat_threads SET ${col} = 0 WHERE id = ?`).bind(threadId).run().catch(swallow('wholesale-chat:mark-read'))
 
     const name = await counterpartName(DB, me, thread)
-    return c.json({ success: true, messages, thread: { counterpart_name: name, counterpart_masked: me.role === 'distributor' } })
+    return c.json({ success: true, messages: safeMessages, thread: { counterpart_name: name, counterpart_masked: me.role === 'distributor' } })
   } catch (err) {
     return safeError(c, err, '메시지 조회 중 오류가 발생했습니다', '[wholesale-chat]')
   }
@@ -364,12 +370,16 @@ app.post('/threads/:id/messages', rateLimit({ action: 'wholesale-chat-send', max
   try {
     await ensureChatSchema(DB)
     const reqBody = await c.req.json().catch(() => ({} as Record<string, unknown>))
-    const text = String(reqBody.body ?? '').trim()
-    if (!text) return c.json({ success: false, error: '메시지를 입력해주세요' }, 400)
-    if (text.length > 2000) return c.json({ success: false, error: '메시지는 2000자 이하여야 합니다' }, 400)
+    const rawText = String(reqBody.body ?? '').trim()
+    if (!rawText) return c.json({ success: false, error: '메시지를 입력해주세요' }, 400)
+    if (rawText.length > 2000) return c.json({ success: false, error: '메시지는 2000자 이하여야 합니다' }, 400)
 
     const thread = await loadOwnThread(DB, me, threadId)
     if (!thread) return c.json({ success: false, error: '대화방을 찾을 수 없습니다' }, 404)
+
+    // 🛡️ disintermediation 방지 — 연락처/계좌/메신저/URL 마스킹 후 저장(DB 에 연락처 미보존 + 상대도 가려짐).
+    //   직거래 시도(수수료 우회) 차단. 텍스트 전용(이미지 첨부 없음)이라 사진 우회도 불가.
+    const { text, redacted } = redactContactInfo(rawText)
 
     // insert.
     const ins = await DB.prepare(
@@ -402,10 +412,29 @@ app.post('/threads/:id/messages', rateLimit({ action: 'wholesale-chat-send', max
       ).catch(swallow('wholesale-chat:notify'))
     }
 
+    // 🛡️ 2026-06-18 직거래 시도 탐지 — 연락처 마스킹이 발생하면 스레드 누적 카운트 +1, 임계(1회·이후 5의 배수)
+    //   도달 시 어드민 알림. 직거래 반복 시도 계정 제재 근거. 응답 차단 안 하도록 waitUntil(없으면 fire-and-forget).
+    if (redacted) {
+      const detect = async () => {
+        await DB.prepare('UPDATE wholesale_chat_threads SET redact_count = COALESCE(redact_count,0) + 1 WHERE id = ?').bind(threadId).run().catch(swallow('wholesale-chat:redact-inc'))
+        const rc = await DB.prepare('SELECT COALESCE(redact_count,0) AS c FROM wholesale_chat_threads WHERE id = ?').bind(threadId).first<{ c: number }>().catch(() => null)
+        const count = Number(rc?.c || 0)
+        if (count === 1 || count % 5 === 0) {
+          await createDashboardNotification(
+            DB, 'admin', null, 'wholesale_chat_disintermediation', '직거래 시도 감지',
+            `대화방 #${threadId} (유통사 #${thread.distributor_seller_id} ↔ 제조사 #${thread.supplier_id})에서 연락처/외부결제 정보 ${count}회 차단됨 — 검토 필요`,
+            '/admin/wholesale-activity',
+          ).catch(swallow('wholesale-chat:disinter-notify'))
+        }
+      }
+      if (c.executionCtx) c.executionCtx.waitUntil(detect()); else await detect()
+    }
+
     // created_at 읽어 응답(서버 시각 일관성).
     const saved = await DB.prepare('SELECT created_at FROM wholesale_chat_messages WHERE id = ?').bind(messageId).first<{ created_at: string }>().catch(() => null)
     return c.json({
       success: true,
+      redacted, // 🛡️ true 면 클라가 '연락처는 안전거래를 위해 가려졌습니다' 안내
       message: { id: messageId, sender_role: me.role, body: text, created_at: saved?.created_at || new Date().toISOString() },
     })
   } catch (err) {

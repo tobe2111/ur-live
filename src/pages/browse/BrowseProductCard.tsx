@@ -18,7 +18,7 @@ import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
 import type { Product } from './types'
 
 const BrowseProductCard = memo(function BrowseProductCard({
-  product, aboveFold, isMealVoucher = false, interested = false, onToggleInterest, to,
+  product, aboveFold, isMealVoucher = false, interested = false, onToggleInterest, to, fallbackColor,
 }: {
   product: Product
   aboveFold: boolean
@@ -28,6 +28,9 @@ const BrowseProductCard = memo(function BrowseProductCard({
   // 🔗 2026-06-17 [LOADING_ADDITIVE] (링크샵 카드 통일): 네비 목적지 override(링크샵 핀 redirect URL 등).
   //   미지정 시 기존과 동일하게 /products/:id. memo/이미지 속성/prefetch 동작 불변(추가만).
   to?: string
+  // 🎨 2026-06-18 (방문자 핀 카드 그라데이션 누락): dominant_color 없고 추출 실패(외부호스트 CORS) 시
+  //   회색 단색 대신 쓸 폴백색. 미지정 시 기존 동작(회색 FALLBACK) 불변 — 추가만.
+  fallbackColor?: string
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -44,7 +47,8 @@ const BrowseProductCard = memo(function BrowseProductCard({
   const [cardColor, setCardColor] = useState<string | null>(product.dominant_color || null)
   // 🏭 2026-06-05 (사용자 신고 — 깨진 이미지가 빈 카드로): onError 폴백(없으면 깨진 아이콘/빈칸).
   const [imgError, setImgError] = useState(false)
-  const grad = cardGradient(cardColor)
+  // cardColor(서버색/추출색) 우선, 없으면 폴백색(시드) → 둘 다 없을 때만 회색 FALLBACK.
+  const grad = cardGradient(cardColor || fallbackColor || null)
   return (
     <button
       onClick={() => navigate(to ?? `/products/${product.id}`)}

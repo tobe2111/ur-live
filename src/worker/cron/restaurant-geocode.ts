@@ -1,31 +1,86 @@
 /**
  * 🛡️ 2026-05-19: 식사권 식당 주소 → 좌표 일괄 변환 cron.
+ * 🗺️ 2026-06-18: 좌표 → 행정동(洞) 자동 태깅 추가 — 하이퍼로컬 "내 동네 딜" 토대.
  *
  *   매일 KST 04:00 (UTC 19:00) 실행:
- *     - products.restaurant_address 있지만 lat/lng 비어있는 row 찾기
- *     - 카카오 주소 검색 API 로 좌표 획득
- *     - products UPDATE lat, lng
+ *     - Pass A: restaurant_address 있고 lat/lng 없는 매장 → 카카오 주소검색 → 좌표 저장
+ *               → 좌표 확보 직후 카카오 coord2regioncode → product_regions 에 동 태깅
+ *     - Pass B: 좌표는 있는데 아직 동 태깅 안 된 기존 매장 백필
  *
- *   효과: /restaurant-map 페이지 클라이언트에서 매번 카카오 API 호출 제거.
- *         사용자 1명당 ~10 호출 절약 → 일 트래픽 1000명 기준 10,000 호출/일 절감.
+ *   product_regions 는 별도 테이블(products 컬럼 예산제 회피 + region_dong_code 인덱스로
+ *   "동별 매장 수" 집계 / 향후 "내 동네 딜" 피드 조인). 매장당 1행(UPSERT).
  *
  *   안전:
- *     - 1회 batch 100건 한도 (Kakao 무료 한도 300,000/일 안전 마진)
- *     - 실패 row 는 다음 cron 에서 재시도 (status 컬럼 없이 자연 retry)
+ *     - 카카오 무료 한도(일 300,000) 대비 1회 batch 수백 건 → 안전 마진.
+ *     - 실패 row 는 다음 cron 자연 재시도 (status 컬럼 없이, region_dong NULL 이면 Pass B 재처리).
  */
+import { fetchRegion, type RegionInfo } from '../utils/kakao-region'
+
 type Env = {
   DB: D1Database
   KAKAO_REST_API_KEY?: string
 }
 
+const _ensuredRegions = new WeakSet<D1Database>()
+async function ensureProductRegions(DB: D1Database): Promise<void> {
+  if (_ensuredRegions.has(DB)) return
+  _ensuredRegions.add(DB)
+  try {
+    await DB.prepare(
+      `CREATE TABLE IF NOT EXISTS product_regions (
+         product_id INTEGER PRIMARY KEY,
+         region_si TEXT,
+         region_gu TEXT,
+         region_dong TEXT,
+         region_dong_code TEXT,
+         lat REAL,
+         lng REAL,
+         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+       )`,
+    ).run()
+  } catch { /* 이미 존재 */ }
+  try {
+    await DB.prepare(
+      'CREATE INDEX IF NOT EXISTS idx_product_regions_dong_code ON product_regions(region_dong_code)',
+    ).run()
+  } catch { /* 이미 존재 */ }
+}
+
+async function upsertRegion(DB: D1Database, productId: number, lat: number, lng: number, r: RegionInfo): Promise<boolean> {
+  try {
+    await DB.prepare(
+      `INSERT INTO product_regions (product_id, region_si, region_gu, region_dong, region_dong_code, lat, lng, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+       ON CONFLICT(product_id) DO UPDATE SET
+         region_si = excluded.region_si,
+         region_gu = excluded.region_gu,
+         region_dong = excluded.region_dong,
+         region_dong_code = excluded.region_dong_code,
+         lat = excluded.lat,
+         lng = excluded.lng,
+         updated_at = datetime('now')`,
+    ).bind(productId, r.si, r.gu, r.dong, r.dongCode, lat, lng).run()
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function runRestaurantGeocode(env: Env): Promise<{
-  total: number; updated: number; failed: number; skipped: number;
+  total: number; updated: number; failed: number; skipped: number; tagged: number;
 }> {
   if (!env.KAKAO_REST_API_KEY) {
-    return { total: 0, updated: 0, failed: 0, skipped: 0 }
+    return { total: 0, updated: 0, failed: 0, skipped: 0, tagged: 0 }
   }
+  const key = env.KAKAO_REST_API_KEY
+  await ensureProductRegions(env.DB)
 
-  // 좌표 없는 식사권 식당 조회.
+  let updated = 0
+  let failed = 0
+  let skipped = 0
+  let tagged = 0
+
+  // ── Pass A: 주소 → 좌표 (+ 좌표 → 동 태깅) ──────────────────────────
   const rows = await env.DB.prepare(
     `SELECT id, restaurant_address
        FROM products
@@ -33,22 +88,14 @@ export async function runRestaurantGeocode(env: Env): Promise<{
         AND restaurant_address IS NOT NULL
         AND restaurant_address != ''
         AND (restaurant_lat IS NULL OR restaurant_lng IS NULL)
-      LIMIT 100`
-  ).all<{ id: number; restaurant_address: string }>().catch(() => ({ results: [] }))
-
+      LIMIT 100`,
+  ).all<{ id: number; restaurant_address: string }>().catch(() => ({ results: [] as Array<{ id: number; restaurant_address: string }> }))
   const items = rows.results || []
-  if (items.length === 0) return { total: 0, updated: 0, failed: 0, skipped: 0 }
-
-  let updated = 0
-  let failed = 0
-  let skipped = 0
 
   for (const item of items) {
     try {
       const url = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(item.restaurant_address)}`
-      const res = await fetch(url, {
-        headers: { Authorization: `KakaoAK ${env.KAKAO_REST_API_KEY}` },
-      })
+      const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } })
       if (!res.ok) { failed++; continue }
       const data = await res.json() as { documents?: Array<{ x?: string; y?: string }> }
       const doc = data.documents?.[0]
@@ -58,13 +105,38 @@ export async function runRestaurantGeocode(env: Env): Promise<{
 
       await env.DB.prepare(
         `UPDATE products SET restaurant_lat = ?, restaurant_lng = ?, updated_at = datetime('now')
-          WHERE id = ?`
+          WHERE id = ?`,
       ).bind(lat, lng, item.id).run().catch(() => { failed++; return null })
       updated++
+
+      // 좌표 확보 직후 동 태깅 (best-effort — 실패해도 Pass B 가 재시도).
+      const region = await fetchRegion(lng, lat, key)
+      if (region && (await upsertRegion(env.DB, item.id, lat, lng, region))) tagged++
     } catch {
       failed++
     }
   }
 
-  return { total: items.length, updated, failed, skipped }
+  // ── Pass B: 좌표 있으나 동 태깅 안 된 기존 매장 백필 ────────────────
+  const backfill = await env.DB.prepare(
+    `SELECT p.id AS id, p.restaurant_lat AS lat, p.restaurant_lng AS lng
+       FROM products p
+       LEFT JOIN product_regions r ON r.product_id = p.id
+      WHERE p.is_active = 1
+        AND p.restaurant_lat IS NOT NULL
+        AND p.restaurant_lng IS NOT NULL
+        AND (r.product_id IS NULL OR r.region_dong IS NULL OR r.region_dong = '')
+      LIMIT 120`,
+  ).all<{ id: number; lat: number; lng: number }>().catch(() => ({ results: [] as Array<{ id: number; lat: number; lng: number }> }))
+  const bItems = backfill.results || []
+
+  for (const b of bItems) {
+    const lat = Number(b.lat); const lng = Number(b.lng)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) { skipped++; continue }
+    const region = await fetchRegion(lng, lat, key)
+    if (region && (await upsertRegion(env.DB, b.id, lat, lng, region))) tagged++
+    else failed++
+  }
+
+  return { total: items.length + bItems.length, updated, failed, skipped, tagged }
 }

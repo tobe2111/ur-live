@@ -72,6 +72,8 @@ export async function autoSendKtAlphaVouchersForOrders(
       external_order_id TEXT,
       coupon_code TEXT,
       failure_reason TEXT,
+      retry_count INTEGER DEFAULT 0,
+      last_retry_at DATETIME,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       sent_at DATETIME,
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP

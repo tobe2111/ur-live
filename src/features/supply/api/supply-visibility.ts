@@ -12,9 +12,23 @@
  * ⚠️ 멱등 ensure. ALTER ADD COLUMN 은 pragma 로 존재 확인 후 1회만.
  */
 import { swallow } from '@/worker/utils/swallow'
+import { ensureSupplyMetaTable } from '@/worker/utils/product-supply-meta'
 
 export const SUPPLY_VISIBILITY_VALUES = ['ALL', 'APPROVED_CHANNEL', 'UTONGSTART_ONLY'] as const
 export type SupplyVisibility = (typeof SUPPLY_VISIBILITY_VALUES)[number]
+
+/**
+ * 🏎️ 2026-06-19 products 정규화 — 읽기 경로(ensure)에서 분리해 cron 에서만 실행(쓰기 락 경합 제거).
+ *   ① supply_source_id 0 → NULL (일부 등록 경로가 0 을 남김 → 카탈로그 `IS NULL` 에서 제외되던 것 치유)
+ *   ② mall_id 0 → 1 (host-first 카탈로그 `COALESCE(mall_id,1)=?` 에서 0 이 제외되던 것 치유)
+ *   둘 다 멱등(이후 0행 매칭) · "항상 안전"(0/누락만 기본값으로 — 잘못된 노출 없음).
+ */
+export async function normalizeSupplyProductData(DB: D1Database): Promise<void> {
+  await DB.prepare("UPDATE products SET supply_source_id = NULL WHERE is_supply_product = 1 AND supply_source_id = 0")
+    .run().catch(swallow('supply-vis:normalize-source-zero'))
+  await DB.prepare("UPDATE products SET mall_id = 1 WHERE is_supply_product = 1 AND mall_id = 0")
+    .run().catch(swallow('supply-vis:normalize-mall-zero'))
+}
 
 // 🛡️ 완료된 ensure 만 캐시(promise 기반) — add 를 await 전에 하면 동시 cold 요청이
 //   컬럼 생성 전에 쿼리해 500. in-flight promise 를 공유해 동시 호출이 같은 완료를 기다림.
@@ -101,6 +115,13 @@ async function _ensureSupplyVisibilitySchema(DB: D1Database): Promise<void> {
   if (!have.has('dominant_color')) {
     await DB.prepare('ALTER TABLE products ADD COLUMN dominant_color TEXT').run().catch(swallow('supply-vis:add-dominant-color'))
   }
+  // 🏎️ 2026-06-19 (Lighthouse — 카탈로그 13~26s 행 근본수정): products 정규화 UPDATE 2개를
+  //   읽기 경로(ensure)에서 제거 → cron(normalizeSupplyProductData)으로 이전. 동시 cold 요청들이
+  //   같은 products 테이블에 매번 쓰기락을 거는 게 행의 유력 원인 → 읽기 경로는 이제 쓰기 0.
+  // 🏷️ 2026-06-18 등급별 노출(visible_grades)은 product_supply_meta K-V 사이드테이블 사용 →
+  //   모든 supply 경로가 호출하는 본 공통 ensure 에서 테이블 보장(gradeExposureWhere 서브쿼리 대상).
+  //   export/preview/recent 등 catalog 핸들러를 안 거치는 cold-first 요청도 안전(no such table 방지).
+  await ensureSupplyMetaTable(DB)
   if (!have.has('min_order_qty')) {
     // 🏭 2026-06-04 최소 주문 수량(MOQ) — 도매 박스 단위. 공급자 설정, 기본 1(낱개).
     //   카드/상세/카트 박스·개당 단가 병기 + 주문 서버 검증(qty >= moq).
@@ -178,6 +199,21 @@ export const visibilityWhere = (alias = 'p') =>
   `(${alias}.supply_visibility = 'ALL' OR ${alias}.supply_visibility IS NULL
     OR EXISTS (SELECT 1 FROM product_distributor_access pda
                WHERE pda.product_id = ${alias}.id AND pda.distributor_seller_id = ?))`
+
+/**
+ * 🏷️ 2026-06-18 등급별 상품 노출 — `product_supply_meta` 의 `visible_grades`(CSV, 예: "A,B")로
+ *   "이 상품을 어느 유통사 등급에게 노출할지" 제한. **미설정(메타 없음/'') = 전체 노출(현행 동일, additive)**.
+ *   조건: visible_grades 제한이 걸려 있고 그 CSV 에 viewer 등급이 **포함 안 되면** 제외.
+ *   - bind 1개 = viewer 등급 문자열(게스트는 '' → 제한 걸린 상품은 전부 제외).
+ *   - CSV 멤버십은 콤마-패딩 instr 로 정확 매칭(부분문자열 오매칭 방지: ',A,' in ',A,B,').
+ *   - 등급 컬럼을 products 에 추가하지 않음(예산제 룰) — K-V 사이드테이블 사용.
+ *   ⚠️ products_supply_meta 테이블이 존재해야 함 — 호출 전 ensureSupplyMetaTable(DB) 보장 필요.
+ */
+export const gradeExposureWhere = (alias = 'p') =>
+  `NOT EXISTS (SELECT 1 FROM product_supply_meta mg
+     WHERE mg.product_id = ${alias}.id AND mg.key = 'visible_grades'
+       AND COALESCE(mg.value,'') <> ''
+       AND instr(',' || mg.value || ',', ',' || ? || ',') = 0)`
 
 /** 공급가 변경 이력 기록 (변경 시에만). */
 export async function recordSupplyPriceChange(

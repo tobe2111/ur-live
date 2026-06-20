@@ -26,3 +26,23 @@ export const SHOPPING_TAB_HIDDEN = true
  */
 export const REFERRAL_GROUP_DISCOUNT_DISABLED = true
 
+/**
+ * HOSTING_HIDDEN — '공구 호스팅' 카탈로그(/host, /host/new) 진입 숨김 (2026-06-17 사용자 결정).
+ *   배경: 링크샵 콘텐츠의 핵심은 '추천 핀'(addPin — 상품 상세/검색에서 1탭 핀). /host/new("공구 열기"
+ *         어드민 큐레이션 공구권 호스팅)는 별개 시스템이고, 링크샵 버튼 폴백으로 떠서 혼란 + 동네공구
+ *         (community-group-buy)와 중복.
+ *   true: 큐레이터 콘솔의 '공구 호스팅' 카드 + 셀러 대시보드 '호스팅' nav + UMeRedirect 폴백을 숨김/우회.
+ *         라우트(/host·/host/new)와 hosting API/코드는 보존 — false 로 바꾸면 즉시 복원. 직접 URL 진입은 가능.
+ */
+export const HOSTING_HIDDEN = true
+
+/**
+ * COMMUNITY_PROPOSAL_HIDDEN — '동네 공구 제안'(community-group-buy) 진입 숨김 (2026-06-18 사용자 결정).
+ *   배경: 제안 기능은 (1) 확정 후 실제 결제·바우처 발급으로 가는 다리가 끊김(보증금 정책 미정),
+ *         (2) 보증금 = 고객에게 진 부채, (3) 거의 미사용 + 유저 0 단계. 수요 발굴은 카카오/네이버
+ *         공개데이터 + 에이전시 영입(어드민 동별 밀도 보드)이 더 싸고 확실 → 잠정 셸브.
+ *   true: 소비자 진입(하단바 ➕ · PC 사이드바 '공구 제안' · 홈 동네딜 섹션 · 동네딜 '동네 공구' 탭/배너 ·
+ *         마이 RoleCta)을 숨김. 라우트(/community-group-buy/*) · API · DB · 에이전시 뷰는 보존 — false 로 즉시 복원.
+ */
+export const COMMUNITY_PROPOSAL_HIDDEN = true
+

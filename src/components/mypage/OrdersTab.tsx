@@ -1,12 +1,15 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Package, MapPin, Truck, ChevronRight, Check, MessageCircle } from 'lucide-react'
+import { Package, Truck, ChevronRight, MessageCircle, Search, Ticket, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { safeDate } from '@/utils/safe-date'
 import { toast } from '@/hooks/useToast'
-import type { Order } from '@/types/order'
+import type { Order, OrderItem } from '@/types/order'
+import { orderItemLineTotal } from '@/types/order'
 import { formatNumber } from '@/utils/format'
+import { cfImage } from '@/utils/cf-image'
+import { getOrderKind, type OrderKind } from '@/shared/order-type'
 
 interface OrdersTabProps {
   orders: Order[]
@@ -18,44 +21,7 @@ interface OrdersTabProps {
   returnsByOrder?: Record<string, string>   // order_id → 반품 status (rejected/cancelled 제외)
 }
 
-// ─── 상태 필터 버튼 ───────────────────────────────────────────────────────────
-
-const StatusButton = ({
-  label, active, onClick,
-}: { label: string; active: boolean; onClick: () => void }) => (
-  <button
-    onClick={onClick}
-    className={`px-3.5 py-1.5 rounded-full text-[13px] font-semibold whitespace-nowrap transition-colors border ${
-      active
-        ? 'bg-gray-900 text-white border-gray-900'
-        : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2A2A2A] hover:bg-gray-50 dark:hover:bg-[#121212]'
-    }`}
-  >
-    {label}
-  </button>
-)
-
-// ─── 상태 배지 ────────────────────────────────────────────────────────────────
-
-const getStatusBadge = (status: string, t: TFunction) => {
-  const s = status.toLowerCase()
-  switch (s) {
-    case 'delivered':
-    case 'done':
-      return { cls: 'bg-emerald-50 text-emerald-700 border border-emerald-100', label: t('ordersTab.statusDelivered', { defaultValue: '배송완료' }) }
-    case 'shipping':
-      return { cls: 'bg-blue-50 text-blue-700 border border-blue-100', label: t('ordersTab.statusShipping', { defaultValue: '배송중' }) }
-    case 'cancelled':
-    case 'refunded':
-      return { cls: 'bg-rose-50 text-rose-700 border border-rose-100', label: t('ordersTab.statusCancelled', { defaultValue: '취소/환불' }) }
-    case 'preparing':
-      return { cls: 'bg-amber-50 text-amber-700 border border-amber-100', label: t('ordersTab.statusPreparing', { defaultValue: '상품준비중' }) }
-    default:
-      return { cls: 'bg-gray-50 dark:bg-[#121212] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2A2A2A]', label: t('ordersTab.statusPaid', { defaultValue: '결제완료' }) }
-  }
-}
-
-// ─── 택배사별 외부 추적 URL ───────────────────────────────────────────────────
+// ─── 택배사별 외부 추적 URL (OrderDetailModal 에서 import) ──────────────────────
 
 export function getTrackingUrl(courier?: string, trackingNumber?: string): string {
   if (!courier || !trackingNumber) return ''
@@ -73,107 +39,83 @@ export function getTrackingUrl(courier?: string, trackingNumber?: string): strin
   return urls[courier] ?? `https://tracker.delivery/#/${courier}/${n}`
 }
 
-// ─── 구매 플로우 스텝퍼 ───────────────────────────────────────────────────────
+// ─── 종류 탭 / 상태 라벨 헬퍼 ──────────────────────────────────────────────────
 
-// Note: FLOW_STEPS and REFUND_STEPS are built inside the component to access t()
+type KindFilter = 'all' | OrderKind
 
-const STATUS_ORDER: Record<string, number> = {
-  pending: 1, paid: 1, preparing: 2, shipping: 3, delivered: 4, done: 4,
+// 🛡️ 2026-06-18: 상태를 큰 컬러 배지 → 은은한 컬러 텍스트(무신사 스타일). 종류별 라벨 분기.
+function getStatusInfo(status: string, kind: OrderKind, t: TFunction): { label: string; cls: string } {
+  const s = (status || '').toLowerCase()
+  if (s === 'cancelled' || s === 'refunded') {
+    return { label: t('ordersTab.statusCancelled', { defaultValue: '취소/환불' }), cls: 'text-rose-600 dark:text-rose-400' }
+  }
+  if (kind !== 'product') {
+    // 교환권/공구: 배송 단계 없음 — 구매완료 단일 상태(취소 제외)
+    return { label: t('ordersTab.statusIssued', { defaultValue: '구매완료' }), cls: 'text-emerald-600 dark:text-emerald-400' }
+  }
+  switch (s) {
+    case 'shipping':
+      return { label: t('ordersTab.statusShipping', { defaultValue: '배송중' }), cls: 'text-blue-600 dark:text-blue-400' }
+    case 'delivered':
+    case 'done':
+      return { label: t('ordersTab.statusDelivered', { defaultValue: '배송완료' }), cls: 'text-emerald-600 dark:text-emerald-400' }
+    case 'preparing':
+      return { label: t('ordersTab.statusPreparing', { defaultValue: '상품준비중' }), cls: 'text-amber-600 dark:text-amber-500' }
+    default:
+      return { label: t('ordersTab.statusPaid', { defaultValue: '결제완료' }), cls: 'text-gray-600 dark:text-gray-300' }
+  }
 }
 
-function getRefundStepIndex(status: string, refundStatus?: string): number {
-  if (status === 'refunded' || refundStatus === 'completed') return 3
-  if (refundStatus === 'pending') return 2
-  return 1
+// 🛡️ 2026-06-18: YY.MM.DD(요일) 무신사 스타일 날짜 그룹 라벨.
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
+function dateGroupLabel(iso?: string): { key: string; label: string } {
+  const d = safeDate(iso)
+  if (!d) return { key: 'unknown', label: '-' }
+  const yy = String(d.getFullYear()).slice(2)
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return { key: `${yy}.${mm}.${dd}`, label: `${yy}.${mm}.${dd}(${WEEKDAYS[d.getDay()]})` }
 }
 
-function Stepper({
-  steps, currentIdx, activeColor,
-}: {
-  steps: { label: string }[]
-  currentIdx: number
-  activeColor: 'pink' | 'rose'
-}) {
-  const doneBg   = activeColor === 'pink' ? 'bg-pink-500'   : 'bg-rose-500'
-  const doneText = activeColor === 'pink' ? 'text-pink-500' : 'text-rose-500'
-  const doneLine = activeColor === 'pink' ? 'bg-pink-500'   : 'bg-rose-500'
+function optionText(item: OrderItem): string {
+  if (item.option_value) return String(item.option_value)
+  const o = (item as { options?: Record<string, unknown> }).options
+  if (o && typeof o === 'object') {
+    const vals = Object.values(o).filter(v => v != null && v !== '')
+    if (vals.length) return vals.join(' / ')
+  }
+  return ''
+}
 
+// ─── 상품 썸네일 ───────────────────────────────────────────────────────────────
+
+function ItemThumb({ item }: { item: OrderItem }) {
+  const src = item.product_thumbnail || item.image_url
+  if (!src) {
+    return (
+      <div className="w-16 h-16 shrink-0 rounded-lg bg-gray-100 dark:bg-[#1A1A1A] flex items-center justify-center">
+        <Package className="w-6 h-6 text-gray-300 dark:text-gray-600" strokeWidth={1.5} aria-hidden="true" />
+      </div>
+    )
+  }
   return (
-    <div className="flex items-center">
-      {steps.map((step, idx) => {
-        const stepNum = idx + 1
-        const done = stepNum <= currentIdx
-        const isLast = idx === steps.length - 1
-        return (
-          <div key={step.label} className="flex items-center flex-1 min-w-0">
-            <div className="flex flex-col items-center flex-1 min-w-0">
-              <div
-                className={`w-5 h-5 rounded-full flex items-center justify-center mb-1 ${
-                  done ? doneBg : 'bg-gray-200 dark:bg-[#2A2A2A]'
-                }`}
-                aria-hidden="true"
-              >
-                {done ? (
-                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                ) : (
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-                )}
-              </div>
-              <span
-                className={`text-[10px] font-semibold text-center leading-tight ${
-                  done ? doneText : 'text-gray-400 dark:text-gray-500'
-                }`}
-              >
-                {step.label}
-              </span>
-            </div>
-            {!isLast && (
-              <div
-                className={`h-[2px] flex-1 mx-1 rounded-full -mt-[14px] ${
-                  stepNum < currentIdx ? doneLine : 'bg-gray-200 dark:bg-[#2A2A2A]'
-                }`}
-                aria-hidden="true"
-              />
-            )}
-          </div>
-        )
-      })}
-    </div>
+    <img
+      src={cfImage(src, { width: 128, height: 128, fit: 'cover' })}
+      alt=""
+      width={64}
+      height={64}
+      loading="lazy"
+      className="w-16 h-16 shrink-0 rounded-lg object-cover bg-gray-100 dark:bg-[#1A1A1A]"
+    />
   )
-}
-
-function OrderFlowStepper({ status, t }: { status: string; t: TFunction }) {
-  const s = status.toLowerCase()
-  if (s === 'cancelled' || s === 'refunded') return null
-  const currentIdx = STATUS_ORDER[s] ?? 1
-  const FLOW_STEPS = [
-    { key: 'paid',      label: t('ordersTab.stepPaid', { defaultValue: '결제완료' }) },
-    { key: 'preparing', label: t('ordersTab.stepPreparing', { defaultValue: '상품준비중' }) },
-    { key: 'shipping',  label: t('ordersTab.stepShipping', { defaultValue: '배송중' }) },
-    { key: 'delivered', label: t('ordersTab.stepDelivered', { defaultValue: '배송완료' }) },
-  ]
-  return <Stepper steps={FLOW_STEPS} currentIdx={currentIdx} activeColor="pink" />
-}
-
-function RefundFlowStepper({ status, refundStatus, t }: { status: string; refundStatus?: string; t: TFunction }) {
-  const s = status.toLowerCase()
-  if (s !== 'cancelled' && s !== 'refunded') return null
-  const currentIdx = getRefundStepIndex(s, refundStatus)
-  const REFUND_STEPS = [
-    { key: 'requested',  label: t('ordersTab.refundStepRequested', { defaultValue: '취소요청' }) },
-    { key: 'processing', label: t('ordersTab.refundStepProcessing', { defaultValue: '처리중' }) },
-    { key: 'completed',  label: t('ordersTab.refundStepCompleted', { defaultValue: '환불완료' }) },
-  ]
-  return <Stepper steps={REFUND_STEPS} currentIdx={currentIdx} activeColor="rose" />
 }
 
 // ─── OrdersTab 메인 ───────────────────────────────────────────────────────────
 
-type StatusFilter = 'all' | 'pending' | 'preparing' | 'shipping' | 'delivered' | 'cancelled'
-
 export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder, onRequestReturn, returnsByOrder }: OrdersTabProps) {
   const { t } = useTranslation()
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [kindFilter, setKindFilter] = useState<KindFilter>('all')
+  const [search, setSearch] = useState('')
 
   function handleSellerContact(order: Order) {
     const kakao = order.seller_kakao_chat_url as string | undefined
@@ -187,194 +129,335 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
     }
   }
 
-  const FILTERS: { key: StatusFilter; label: string }[] = [
-    { key: 'all',        label: t('ordersTab.filterAll', { defaultValue: '전체' }) },
-    { key: 'pending',    label: t('ordersTab.filterPending', { defaultValue: '결제완료' }) },
-    { key: 'preparing',  label: t('ordersTab.filterPreparing', { defaultValue: '준비중' }) },
-    { key: 'shipping',   label: t('ordersTab.filterShipping', { defaultValue: '배송중' }) },
-    { key: 'delivered',  label: t('ordersTab.filterDelivered', { defaultValue: '배송완료' }) },
-    { key: 'cancelled',  label: t('ordersTab.filterCancelled', { defaultValue: '취소/환불' }) },
+  // 종류 1회 산출 + 카운트
+  const annotated = useMemo(
+    () => orders.map(o => ({ order: o, kind: getOrderKind(o as { items?: OrderItem[] }) })),
+    [orders]
+  )
+  const counts = useMemo(() => {
+    const c: Record<KindFilter, number> = { all: annotated.length, product: 0, voucher: 0, groupbuy: 0 }
+    for (const { kind } of annotated) c[kind]++
+    return c
+  }, [annotated])
+
+  const KIND_TABS: { key: KindFilter; label: string }[] = [
+    { key: 'all',      label: t('ordersTab.kindAll', { defaultValue: '전체' }) },
+    { key: 'product',  label: t('ordersTab.kindProduct', { defaultValue: '상품' }) },
+    { key: 'voucher',  label: t('ordersTab.kindVoucher', { defaultValue: '교환권' }) },
+    { key: 'groupbuy', label: t('ordersTab.kindGroupbuy', { defaultValue: '공구' }) },
   ]
 
-  const filteredOrders = orders.filter(order => {
-    if (statusFilter === 'all') return true
-    const s = order.status.toLowerCase()
-    if (statusFilter === 'pending')   return s === 'pending' || s === 'paid' || s === 'confirmed'
-    if (statusFilter === 'cancelled') return s === 'cancelled' || s === 'refunded'
-    return s === statusFilter
-  })
+  // 검색 + 종류 필터
+  const q = search.trim().toLowerCase()
+  const filtered = useMemo(() => annotated.filter(({ order, kind }) => {
+    if (kindFilter !== 'all' && kind !== kindFilter) return false
+    if (q) {
+      const hay = [
+        order.order_number,
+        order.seller_name,
+        ...(Array.isArray(order.items) ? order.items.map(i => i.product_name) : []),
+      ].filter(Boolean).join(' ').toLowerCase()
+      if (!hay.includes(q)) return false
+    }
+    return true
+  }), [annotated, kindFilter, q])
+
+  // 날짜 그룹핑 (orders 는 created_at DESC 로 옴 → 순서 유지)
+  const groups = useMemo(() => {
+    const map = new Map<string, { label: string; rows: typeof filtered }>()
+    for (const row of filtered) {
+      const { key, label } = dateGroupLabel(row.order.created_at)
+      if (!map.has(key)) map.set(key, { label, rows: [] })
+      map.get(key)!.rows.push(row)
+    }
+    return Array.from(map.values())
+  }, [filtered])
 
   return (
     <div className="space-y-4">
-      {/* 상태 필터 */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 no-scrollbar">
-        {FILTERS.map(f => (
-          <StatusButton
-            key={f.key}
-            label={f.label}
-            active={statusFilter === f.key}
-            onClick={() => setStatusFilter(f.key)}
-          />
-        ))}
+      {/* 검색 — 무신사 스타일 상단 검색바 */}
+      <div className="relative">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" aria-hidden="true" />
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t('ordersTab.searchPlaceholder', { defaultValue: '상품명 / 브랜드명으로 검색하세요.' })}
+          aria-label={t('ordersTab.searchAria', { defaultValue: '주문 검색' })}
+          className="w-full h-11 pl-10 pr-4 rounded-xl bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10"
+        />
       </div>
 
-      {/* 주문 목록 */}
-      {filteredOrders.length === 0 ? (
-        <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-12 text-center">
-          <div className="w-20 h-20 bg-gray-50 dark:bg-[#121212] rounded-full flex items-center justify-center mx-auto mb-5">
-            <Package className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
-          </div>
-          <h2 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">{t('ordersTab.emptyTitle', { defaultValue: '주문 내역이 없습니다' })}</h2>
-          <p className="text-[14px] text-gray-500 dark:text-gray-400 mb-6">{t('ordersTab.emptyDesc', { defaultValue: '라이브에서 마음에 드는 상품을 구매해보세요' })}</p>
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center px-6 py-3 bg-gray-900 text-white text-[14px] font-semibold rounded-full hover:bg-gray-800 active:bg-gray-700 transition-colors"
-          >
-            {t('ordersTab.goToLive', { defaultValue: '라이브 보러가기' })}
-          </Link>
-        </div>
+      {/* 종류 탭 — 텍스트+밑줄 (무신사 스타일) */}
+      <div className="flex gap-5 border-b border-gray-100 dark:border-[#1A1A1A] -mx-4 px-4 overflow-x-auto no-scrollbar">
+        {KIND_TABS.map(tab => {
+          const active = kindFilter === tab.key
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setKindFilter(tab.key)}
+              className={`relative whitespace-nowrap pb-2.5 text-[15px] transition-colors ${
+                active
+                  ? 'font-extrabold text-gray-900 dark:text-white'
+                  : 'font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+              }`}
+            >
+              {tab.label}
+              {counts[tab.key] > 0 && (
+                <span className={`ml-1 text-[12px] ${active ? 'text-gray-900 dark:text-white' : 'text-gray-300 dark:text-gray-600'}`}>
+                  {counts[tab.key]}
+                </span>
+              )}
+              {active && <span className="absolute left-0 -bottom-px h-0.5 w-full bg-gray-900 dark:bg-white rounded-full" />}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* 목록 */}
+      {filtered.length === 0 ? (
+        <EmptyState kindFilter={kindFilter} searching={!!q} t={t} />
       ) : (
-        <div className="space-y-3">
-          {filteredOrders.map(order => {
-            const badge = getStatusBadge(order.status, t)
-            const canCancel  = ['pending', 'paid', 'confirmed', 'done'].includes(order.status.toLowerCase())
-            const canConfirm = order.status === 'shipping' && !!onConfirmOrder
-            const orderNum = order.order_number ?? String(order.id)
-            const dateStr = safeDate(order.created_at)?.toLocaleDateString('ko-KR', {
-              year: 'numeric', month: 'long', day: 'numeric',
-            }) ?? '-'
+        <div className="space-y-6">
+          {groups.map(group => (
+            <section key={group.label}>
+              {/* 날짜 그룹 헤더 */}
+              <h2 className="text-[15px] font-extrabold text-gray-900 dark:text-white mb-2.5 px-0.5">
+                {group.label}
+              </h2>
+              <div className="space-y-3">
+                {group.rows.map(({ order, kind }) => (
+                  <OrderCard
+                    key={order.id}
+                    order={order}
+                    kind={kind}
+                    onSelectOrder={onSelectOrder}
+                    onCancelOrder={onCancelOrder}
+                    onConfirmOrder={onConfirmOrder}
+                    onRequestReturn={onRequestReturn}
+                    returnStatus={returnsByOrder?.[String(order.id)]}
+                    onSellerContact={handleSellerContact}
+                    t={t}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
+// ─── 주문 카드 ─────────────────────────────────────────────────────────────────
+
+function OrderCard({
+  order, kind, onSelectOrder, onCancelOrder, onConfirmOrder, onRequestReturn, returnStatus, onSellerContact, t,
+}: {
+  order: Order
+  kind: OrderKind
+  onSelectOrder: (o: Order) => void
+  onCancelOrder: (id: number | string, n: string) => void
+  onConfirmOrder?: (id: number | string, n: string) => void
+  onRequestReturn?: (id: number | string, n: string) => void
+  returnStatus?: string
+  onSellerContact: (o: Order) => void
+  t: TFunction
+}) {
+  const status = getStatusInfo(order.status, kind, t)
+  const s = (order.status || '').toLowerCase()
+  const canCancel  = ['pending', 'paid', 'confirmed', 'done'].includes(s)
+  const canConfirm = s === 'shipping' && !!onConfirmOrder
+  const canReturn  = kind === 'product' && ['delivered', 'done'].includes(s) && !!onRequestReturn && !returnStatus
+  const orderNum = order.order_number ?? String(order.id)
+  const items = Array.isArray(order.items) ? order.items : []
+  const hasTracking = kind === 'product' && !!order.courier && !!order.tracking_number
+
+  const openDetail = () => onSelectOrder(order)
+
+  return (
+    <article className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] overflow-hidden">
+      {/* 클릭 영역: 상태 + 판매처 + 상품 → 상세 */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={openDetail}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail() } }}
+        className="w-full text-left px-4 pt-3.5 cursor-pointer"
+      >
+        <div className="flex items-center justify-between mb-2">
+          <span className={`text-[12px] font-bold ${status.cls}`}>{status.label}</span>
+          {order.seller_name && (
+            <span className="text-[12px] font-medium text-gray-400 dark:text-gray-500 truncate max-w-[55%]">
+              {order.seller_name}
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-3 pb-1">
+          {items.slice(0, 3).map((item, idx) => {
+            const opt = optionText(item)
             return (
-              <article
-                key={order.id}
-                className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] overflow-hidden"
-              >
-                {/* 헤더: 주문일 + 상태 */}
-                <div className="flex items-center justify-between px-4 pt-4 pb-3">
-                  <div className="min-w-0">
-                    <p className="text-[12px] text-gray-500 dark:text-gray-400">{dateStr}</p>
-                    <p className="text-[13px] font-semibold text-gray-900 dark:text-white mt-0.5 truncate">
-                      #{orderNum}
-                    </p>
-                  </div>
-                  <span
-                    className={`shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold ${badge.cls}`}
-                  >
-                    {badge.label}
-                  </span>
-                </div>
-
-                {/* 플로우 스텝퍼 */}
-                <div className="px-4 pb-4">
-                  <OrderFlowStepper status={order.status} t={t} />
-                  <RefundFlowStepper status={order.status} refundStatus={order.refund_status} t={t} />
-                </div>
-
-                {/* 상품 목록 */}
-                <div className="px-4 pb-3 space-y-2">
-                  {order.items?.slice(0, 2).map((item, idx) => (
-                    <div key={idx} className="py-0.5">
-                      <p className="text-[14px] font-medium text-gray-900 dark:text-white line-clamp-1">
-                        {item.product_name}
-                      </p>
-                      <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">
-                        {item.option_value && <span>{item.option_value} · </span>}
-                        {t('ordersTab.itemQtyPrice', { qty: item.quantity, price: formatNumber(item.price_snapshot * item.quantity), defaultValue: `${item.quantity}개 · ${formatNumber(item.price_snapshot * item.quantity)}원` })}
-                      </p>
-                    </div>
-                  ))}
-                  {order.items && order.items.length > 2 && (
-                    <p className="text-[12px] text-gray-500 dark:text-gray-400">{t('ordersTab.moreItems', { count: order.items.length - 2, defaultValue: `외 ${order.items.length - 2}개` })}</p>
-                  )}
-                </div>
-
-                {/* 배송지 + 송장 */}
-                <div className="mx-4 mb-4 p-3 bg-gray-50 dark:bg-[#121212] rounded-xl">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <MapPin className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" strokeWidth={2} />
-                    <span className="text-[13px] font-semibold text-gray-900 dark:text-white">
-                      {order.shipping_name ?? '-'}
-                    </span>
-                  </div>
-                  <p className="text-[12px] text-gray-600 dark:text-gray-300 pl-5 line-clamp-2">
-                    {(() => {
-                      const addr = order.shipping_address
-                      if (typeof addr === 'object' && addr !== null) {
-                        const a = addr as { postal_code?: string; address1?: string; address2?: string }
-                        return `[${a.postal_code || ''}] ${a.address1 || ''} ${a.address2 || ''}`
-                      }
-                      return `[${order.shipping_postal_code || ''}] ${addr || ''}${order.shipping_address_detail ? ` ${order.shipping_address_detail}` : ''}`
-                    })()}
+              <div key={idx} className="flex gap-3">
+                <ItemThumb item={item} />
+                <div className="flex-1 min-w-0 py-0.5">
+                  <p className="text-[14px] font-medium text-gray-900 dark:text-white line-clamp-2 leading-snug">
+                    {item.product_name}
                   </p>
-
-                  {order.courier && order.tracking_number && (
-                    <div className="mt-2.5 pt-2.5 border-t border-gray-200 dark:border-[#2A2A2A] flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <Truck className="h-3.5 w-3.5 text-blue-500 shrink-0" strokeWidth={2} />
-                        <div className="text-[12px] min-w-0 truncate">
-                          <span className="text-gray-500 dark:text-gray-400">{order.courier} · </span>
-                          <span className="font-semibold text-gray-900 dark:text-white">{order.tracking_number}</span>
-                        </div>
-                      </div>
-                      <a
-                        href={getTrackingUrl(order.courier, order.tracking_number)}
-                        target="_blank" rel="noopener noreferrer"
-                        className="shrink-0 text-[12px] font-semibold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-0.5"
-                      >
-                        {t('ordersTab.trackingLink', { defaultValue: '배송조회' })}
-                        <ChevronRight className="h-3 w-3" />
-                      </a>
-                    </div>
-                  )}
+                  <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
+                    {opt && <span>{opt} · </span>}
+                    {t('ordersTab.itemQty', { qty: item.quantity, defaultValue: `${item.quantity}개` })}
+                  </p>
+                  <p className="text-[14px] font-bold text-gray-900 dark:text-white mt-0.5">
+                    {formatNumber(orderItemLineTotal(item))}
+                    <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 ml-0.5">{t('ordersTab.won', { defaultValue: '원' })}</span>
+                  </p>
                 </div>
-
-                {/* 하단: 금액 + 액션 */}
-                <div className="px-4 pb-4 flex items-center justify-between border-t border-gray-100 dark:border-[#1A1A1A] pt-3">
-                  <div>
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">{t('ordersTab.paymentAmount', { defaultValue: '결제금액' })}</p>
-                    <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">
-                      {formatNumber(order.total_amount ?? order.amount ?? 0)}
-                      <span className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 ml-0.5">{t('ordersTab.won', { defaultValue: '원' })}</span>
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => handleSellerContact(order)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-full hover:bg-gray-50 dark:hover:bg-[#121212] transition-colors"
-                      aria-label={t('ordersTab.inquiry', { defaultValue: '판매자 문의' })}
-                    >
-                      <MessageCircle className="h-3 w-3" strokeWidth={2} />
-                      {t('ordersTab.inquiry', { defaultValue: '문의' })}
-                    </button>
-                    {canCancel && (
-                      <button
-                        onClick={() => onCancelOrder(order.id, orderNum)}
-                        className="px-2.5 py-1.5 text-[12px] font-semibold text-red-600 bg-white dark:bg-[#0A0A0A] border border-red-100 rounded-full hover:bg-red-50 transition-colors"
-                      >
-                        {t('ordersTab.cancelOrder', { defaultValue: '취소' })}
-                      </button>
-                    )}
-                    {canConfirm && onConfirmOrder && (
-                      <button
-                        onClick={() => onConfirmOrder(order.id, orderNum)}
-                        className="px-2.5 py-1.5 text-[12px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full hover:bg-emerald-100 transition-colors"
-                      >
-                        {t('ordersTab.confirmOrder', { defaultValue: '구매확정' })}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => onSelectOrder(order)}
-                      className="flex items-center text-[13px] font-bold text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-200 transition-colors ml-0.5"
-                    >
-                      {t('ordersTab.detail', { defaultValue: '상세' })}
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </article>
+              </div>
             )
           })}
+          {items.length > 3 && (
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 pl-[76px]">
+              {t('ordersTab.moreItems', { count: items.length - 3, defaultValue: `외 ${items.length - 3}개` })}
+            </p>
+          )}
         </div>
+      </div>
+
+      {/* 배송 송장 (상품만) */}
+      {hasTracking && (
+        <div className="mx-4 mt-1 mb-3 flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 dark:bg-[#121212] rounded-xl">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Truck className="h-3.5 w-3.5 text-blue-500 shrink-0" strokeWidth={2} aria-hidden="true" />
+            <span className="text-[12px] min-w-0 truncate">
+              <span className="text-gray-500 dark:text-gray-400">{order.courier} · </span>
+              <span className="font-semibold text-gray-900 dark:text-white">{order.tracking_number}</span>
+            </span>
+          </div>
+          <a
+            href={getTrackingUrl(order.courier, order.tracking_number)}
+            target="_blank" rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="shrink-0 text-[12px] font-semibold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-0.5"
+          >
+            {t('ordersTab.trackingLink', { defaultValue: '배송조회' })}
+            <ChevronRight className="h-3 w-3" />
+          </a>
+        </div>
+      )}
+
+      {/* 교환권/공구 — '내 교환권' 사용 안내 */}
+      {kind !== 'product' && (
+        <Link
+          to="/my-vouchers"
+          onClick={(e) => e.stopPropagation()}
+          className="mx-4 mt-1 mb-3 flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-[#121212] rounded-xl"
+        >
+          <span className="text-[12px] text-gray-600 dark:text-gray-300 flex items-center gap-1.5 min-w-0">
+            {kind === 'voucher'
+              ? <Ticket className="h-3.5 w-3.5 text-emerald-500 shrink-0" strokeWidth={2} aria-hidden="true" />
+              : <Users className="h-3.5 w-3.5 text-emerald-500 shrink-0" strokeWidth={2} aria-hidden="true" />}
+            <span className="truncate">{t('ordersTab.useInMyVouchers', { defaultValue: "'내 교환권'에서 사용하세요" })}</span>
+          </span>
+          <ChevronRight className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
+        </Link>
+      )}
+
+      {/* 푸터: 결제금액 + 액션 */}
+      <div className="px-4 pb-3.5 pt-3 flex items-center justify-between border-t border-gray-100 dark:border-[#1A1A1A]">
+        <div>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">{t('ordersTab.paymentAmount', { defaultValue: '결제금액' })}</p>
+          <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">
+            {formatNumber(order.total_amount ?? order.amount ?? 0)}
+            <span className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 ml-0.5">{t('ordersTab.won', { defaultValue: '원' })}</span>
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+          <button
+            onClick={() => onSellerContact(order)}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-full hover:bg-gray-50 dark:hover:bg-[#121212] transition-colors"
+            aria-label={t('ordersTab.inquiry', { defaultValue: '판매자 문의' })}
+          >
+            <MessageCircle className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
+            {t('ordersTab.inquiry', { defaultValue: '문의' })}
+          </button>
+          {returnStatus && (
+            <span className="px-2.5 py-1.5 text-[12px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-full">
+              {t('ordersTab.returnInProgress', { defaultValue: '반품 진행중' })}
+            </span>
+          )}
+          {canReturn && (
+            <button
+              onClick={() => onRequestReturn!(order.id, orderNum)}
+              className="px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-full hover:bg-gray-50 dark:hover:bg-[#121212] transition-colors"
+            >
+              {t('ordersTab.requestReturn', { defaultValue: '반품' })}
+            </button>
+          )}
+          {canCancel && (
+            <button
+              onClick={() => onCancelOrder(order.id, orderNum)}
+              className="px-2.5 py-1.5 text-[12px] font-semibold text-red-600 bg-white dark:bg-[#0A0A0A] border border-red-100 dark:border-red-900/40 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+            >
+              {t('ordersTab.cancelOrder', { defaultValue: '취소' })}
+            </button>
+          )}
+          {canConfirm && onConfirmOrder && (
+            <button
+              onClick={() => onConfirmOrder(order.id, orderNum)}
+              className="px-2.5 py-1.5 text-[12px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full hover:bg-emerald-100 transition-colors"
+            >
+              {t('ordersTab.confirmOrder', { defaultValue: '구매확정' })}
+            </button>
+          )}
+          <button
+            onClick={openDetail}
+            className="flex items-center text-[13px] font-bold text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-200 transition-colors ml-0.5"
+          >
+            {t('ordersTab.detail', { defaultValue: '상세' })}
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+// ─── 빈 상태 (필터별 문구) ─────────────────────────────────────────────────────
+
+function EmptyState({ kindFilter, searching, t }: { kindFilter: KindFilter; searching: boolean; t: TFunction }) {
+  let title: string
+  let desc: string
+  if (searching) {
+    title = t('ordersTab.emptySearchTitle', { defaultValue: '검색 결과가 없습니다' })
+    desc = t('ordersTab.emptySearchDesc', { defaultValue: '다른 검색어로 다시 시도해보세요' })
+  } else {
+    switch (kindFilter) {
+      case 'product':
+        title = t('ordersTab.emptyProductTitle', { defaultValue: '상품 주문이 없습니다' }); break
+      case 'voucher':
+        title = t('ordersTab.emptyVoucherTitle', { defaultValue: '교환권 구매 내역이 없습니다' }); break
+      case 'groupbuy':
+        title = t('ordersTab.emptyGroupbuyTitle', { defaultValue: '공구 참여 내역이 없습니다' }); break
+      default:
+        title = t('ordersTab.emptyTitle', { defaultValue: '주문 내역이 없습니다' })
+    }
+    desc = t('ordersTab.emptyDesc', { defaultValue: '마음에 드는 상품을 둘러보세요' })
+  }
+  return (
+    <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-100 dark:border-[#1A1A1A] p-12 text-center">
+      <div className="w-20 h-20 bg-gray-50 dark:bg-[#121212] rounded-full flex items-center justify-center mx-auto mb-5">
+        <Package className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} aria-hidden="true" />
+      </div>
+      <h2 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
+      <p className="text-[14px] text-gray-500 dark:text-gray-400 mb-6">{desc}</p>
+      {!searching && (
+        <Link
+          to="/"
+          className="inline-flex items-center justify-center px-6 py-3 bg-gray-900 text-white text-[14px] font-semibold rounded-full hover:bg-gray-800 active:bg-gray-700 transition-colors"
+        >
+          {t('ordersTab.goToLive', { defaultValue: '둘러보기' })}
+        </Link>
       )}
     </div>
   )

@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 const CuratorPinsSection = lazy(() => import('./seller-public/CuratorPinsSection'))
+// 🏁 2026-06-18 (사용자 결정 — 승인 사업자 상점 바로등록): 오너가 대시보드 안 가고 링크샵에서 바로 상품 등록.
+const QuickProductModal = lazy(() => import('./curator-page/QuickProductModal'))
 import { lazy, Suspense } from 'react'
 import EditorialProductCard from '@/components/linkshop/EditorialProductCard'
 import { useTranslation } from 'react-i18next'
@@ -47,6 +49,14 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
   const [tab, setTab] = useState<Tab>('home')
   // 🔍 2026-06-16 링크샵 시안: 상품 탭 검색 (이름 필터).
   const [shopQuery, setShopQuery] = useState('')
+  // 🏁 2026-06-18 (승인 사업자 상점 바로등록): 오너 빠른 상품 등록 모달 + 성공 시 상품목록 갱신.
+  const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const refreshProducts = () => {
+    if (!seller?.id) return
+    api.get(`/api/products?seller_id=${seller.id}&limit=20`)
+      .then(r => setProducts(r.data.data || []))
+      .catch(() => { /* graceful */ })
+  }
 
   // 셀러 본인인지 확인 (편집 버튼 표시용) — seller 로드 후 id/username 비교
   // 🛡️ 2026-04-30: 듀얼 세션 (user_type='user' + seller_token 동시 보유) 도 owner 인정.
@@ -306,6 +316,14 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
         <div className="sticky top-0 z-30 bg-[#141A2E] text-white px-3.5 py-2.5 text-[12.5px] font-semibold flex items-center justify-between gap-2">
           <span className="flex items-center gap-2 min-w-0"><span className="text-[#FF5634] text-[14px] leading-none shrink-0">✎</span><span className="truncate">{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 사진·이름·소개를 눌러 바로 수정하세요' })}</span></span>
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* 🏁 2026-06-18 (사용자 결정): 링크샵에서 바로 내 상품 등록 (대시보드 안 나감). */}
+            <button
+              type="button"
+              onClick={() => setShowQuickAdd(true)}
+              className="px-2.5 py-1 bg-[#FF5634] hover:bg-[#e84a2b] rounded-lg text-[11px] font-bold whitespace-nowrap"
+            >
+              + 상품 등록
+            </button>
             <button
               type="button"
               onClick={() => setPreviewAsVisitor(true)}
@@ -322,6 +340,15 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
             </button>
           </div>
         </div>
+      )}
+      {/* 🏁 2026-06-18 (사용자 결정): 오너 빠른 상품 등록 모달 — 성공 시 상품 목록 즉시 갱신. */}
+      {ownerView && showQuickAdd && (
+        <Suspense fallback={null}>
+          <QuickProductModal
+            onClose={() => setShowQuickAdd(false)}
+            onSuccess={() => { setShowQuickAdd(false); refreshProducts() }}
+          />
+        </Suspense>
       )}
       {/* 🎨 2026-06-17 (#6 통일): 방문자 미리보기 중 — 큐레이터 링크샵과 동일 패턴. theme-dual: 의도적 네이비 */}
       {isOwner && previewAsVisitor && (
@@ -375,16 +402,25 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
       {/* 탭 콘텐츠 */}
       <div className="ur-content-wide px-4 lg:px-8 py-5">
         {tab === 'home' && (
-          <HomeTab
-            mealVouchers={mealVouchers}
-            shorts={shorts}
-            recentStreams={recentStreams}
-            streams={streams}
-            isOwner={ownerView}
-            textClass={T.text}
-            setTab={setTab}
-            sellerId={seller?.id ? Number(seller.id) : undefined}
-          />
+          <>
+            {/* 🏁 2026-06-17 (#3): 추천 핀을 홈 탭 상단으로 승격 — 기존엔 모든 탭 맨 아래 8개로 매몰됐음.
+                연결된 큐레이터(사업자 유저)의 추천이 링크샵 정체성의 핵심이라 상단 노출. */}
+            {(seller as { curator_handle?: string | null })?.curator_handle && (
+              <Suspense fallback={null}>
+                <CuratorPinsSection handle={(seller as { curator_handle?: string | null }).curator_handle} />
+              </Suspense>
+            )}
+            <HomeTab
+              mealVouchers={mealVouchers}
+              shorts={shorts}
+              recentStreams={recentStreams}
+              streams={streams}
+              isOwner={ownerView}
+              textClass={T.text}
+              setTab={setTab}
+              sellerId={seller?.id ? Number(seller.id) : undefined}
+            />
+          </>
         )}
 
         {tab === 'shop' && (
@@ -417,11 +453,12 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
                 // 🎨 2026-06-16 링크샵 통일: 공유 에디토리얼 카드 (docs/design/linkshop-unification.md 2단계)
                 <EditorialProductCard
                   key={p.id}
-                  product={{ id: p.id, name: p.name, price: p.price, original_price: p.original_price, image: p.image_url, dominant_color: p.dominant_color }}
+                  product={{ id: p.id, name: p.name, price: p.price, original_price: p.original_price, image: p.image_url, dominant_color: p.dominant_color, avg_rating: p.avg_rating, review_count: p.review_count, sold_count: p.sold_count }}
                   onClick={() => navigate(`/products/${p.id}`)}
                   aspect="square"
                   textClass={T.text}
                   discountPct={p.discount_rate || undefined}
+                  showStats
                 />
               ))}
             </div>
@@ -472,13 +509,7 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
         )}
       </div>
 
-      {/* 🏁 2026-06-12 (P5 — additive): 연결된 큐레이터의 추천 핀 — curator_handle 있을 때만 lazy 렌더.
-          SSR 슬롯/탭/편집 로직 무변경. 클릭은 /u/:handle/p/:id (적립 redirect) 경유. */}
-      {(seller as { curator_handle?: string | null })?.curator_handle && (
-        <Suspense fallback={null}>
-          <CuratorPinsSection handle={(seller as { curator_handle?: string | null }).curator_handle} />
-        </Suspense>
-      )}
+      {/* 🏁 2026-06-17 (#3): 추천 핀 섹션은 홈 탭 상단으로 이동(위) — 맨 아래 매몰 제거. */}
 
       {/* 🛡️ 2026-05-27: OwnerDashboardFab 제거 — ProfileHeader 의 grid-2 inline 버튼 (프로필 수정 | 대시보드) 으로 통합.
           기존 floating FAB 가 상품 카드 가림 → 인라인으로 변경. */}

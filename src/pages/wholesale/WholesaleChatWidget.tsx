@@ -413,6 +413,10 @@ function ThreadView({ threadId, role, counterpartName, onBack, onRead, t }: {
         )}
       </div>
 
+      {/* 🛡️ 안전거래 안내 — 연락처/외부결제 정보는 자동 차단(disintermediation 방지) */}
+      <div className="px-3 pt-2 text-[11px] leading-snug text-gray-400" style={{ background: '#fff' }}>
+        {t('wholesaleChat.safetyNotice', { defaultValue: '🛡️ 안전거래를 위해 전화번호·이메일·계좌·메신저 ID 등 연락처와 외부 결제 정보는 자동으로 가려집니다. 직거래는 정책상 제한됩니다.' })}
+      </div>
       {/* 작성창 */}
       <div className="flex items-end gap-2 p-3 border-t flex-shrink-0" style={{ borderColor: WT.line, background: '#fff' }}>
         <textarea

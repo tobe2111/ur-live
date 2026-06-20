@@ -4103,7 +4103,8 @@
     "vouchers": "券",
     "dongnedeal": "附近团购",
     "create": "创建",
-    "offlineGroupBuy": "本地团购"
+    "offlineGroupBuy": "本地团购",
+    "myGbVouchers": "团购券"
   },
   "bulkUpload": {
     "title": "批量上传商品",
@@ -4359,7 +4360,9 @@
     "groupExpired": "已过期",
     "groupRefunded": "已退款",
     "ktShowBarcode": "请在门店出示下方条形码",
-    "ktCheckMms": "请在手机短信中查看优惠券。可自动关联KakaoTalk礼物盒。"
+    "ktCheckMms": "请在手机短信中查看优惠券。可自动关联KakaoTalk礼物盒。",
+    "tabGroupBuy": "团购券",
+    "tabGifticon": "礼品券"
   },
   "sellerWaiting": {
     "title": "卖家审核等待",
@@ -6129,11 +6132,15 @@
     "tagline": "社区美食·兑换券,拼着买更便宜 🍽️",
     "moreVouchers": "更多兑换券",
     "shopRailTitle": "普通商品",
-    "shopRailMore": "全部商品"
+    "shopRailMore": "全部商品",
+    "gifticonEntry": "电子礼券",
+    "gifticonEntrySub": "用딜购买便利店·咖啡礼券"
   },
   "my": {
     "earningsGroupTitle": "我的收益·推荐",
     "earningsGroupSub": "推荐奖励 · 链接小店收益 · 邀请",
+    "settingsGroupTitle": "设置",
+    "settingsGroupSub": "通知 · 主题 · 语言 · 应用信息",
     "affiliateLinkTitle": "商品推荐链接",
     "affiliateLinkSub": "好友通过链接购买即可获得积分 — 查看业绩"
   },

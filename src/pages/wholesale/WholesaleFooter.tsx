@@ -14,9 +14,9 @@ export const BUSINESS_INFO = {
   tel: '02-2038-0996',
   fax: '0303-3443-4424',
   address: '서울 중구 동호로33길 24(오장동, 센트마 4093호)',
-  // 🏦 입금 은행 — 우체국 (계좌번호는 사용자 추후 제공). bankNo 채우면 무통장입금 안내가 자동 노출.
+  // 🏦 입금 은행 — 우체국 (2026-06-18 사용자 제공). bankNo 채우면 무통장입금 안내가 자동 노출.
   bankName: '우체국',
-  bankNo: '',
+  bankNo: '014084-02-129530',
   bankHolder: '사람과고리(송유미)',
   csEmail: 'jiwon@ur-team.com',
 } as const
@@ -29,27 +29,10 @@ const FOOTER_LINKS: { label: string; href: string }[] = [
   { label: '입점안내', href: '/wholesale/start' },
 ]
 
-// PG/에스크로/배송/신뢰 배지 (시안 그대로 — 텍스트 칩)
-const TRUST_BADGES: string[] = [
-  'KCP 결제',
-  '구매안전(에스크로)',
-  '국민은행 안심거래',
-  '대한통운 택배',
-  '공정위 표준약관',
-  'COMODO SSL',
-]
-
 export default function WholesaleFooter() {
   return (
     <footer className="mt-6" style={{ background: '#fff', borderTop: '1px solid ' + WT.line }}>
       <div className="ur-content-wide px-5 lg:px-8 py-7">
-        {/* 신뢰 배지 행 */}
-        <div className="flex flex-wrap gap-2 mb-5">
-          {TRUST_BADGES.map((b) => (
-            <span key={b} className="text-[11px] font-medium rounded-md px-2.5 py-1.5" style={{ color: WT.ink2, border: '1px solid ' + WT.line2 }}>{b}</span>
-          ))}
-        </div>
-
         {/* 본문 — 좌 사업자정보 / 우 고객센터 */}
         <div className="flex flex-col sm:flex-row sm:justify-between gap-6 sm:gap-8 pt-5" style={{ borderTop: '1px solid ' + WT.line }}>
           {/* 좌 — 로고 + 사업자정보 + 정책 링크 */}

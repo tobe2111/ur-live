@@ -9,6 +9,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { MapPin, ArrowRight } from 'lucide-react'
 import api from '@/lib/api'
+import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import HomeMiniCard from './HomeMiniCard'
 
 type GBItem = {
@@ -62,14 +63,14 @@ export default function HomeDongneDealSection() {
         </div>
       ) : items.length === 0 ? (
         <Link
-          to="/community-group-buy/new"
+          to={COMMUNITY_PROPOSAL_HIDDEN ? '/group-buy' : '/community-group-buy/new'}
           className="flex items-center justify-between rounded-2xl px-5 py-4 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 border border-emerald-500/20"
         >
           <div>
             <p className="text-[13px] font-bold text-gray-900 dark:text-white">{t('home.dongneEmptyTitle', { defaultValue: '아직 우리 동네 공구가 없어요' })}</p>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{t('home.dongneEmptyDesc', { defaultValue: '원하는 가게를 제안하면 모아서 열어드려요' })}</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{COMMUNITY_PROPOSAL_HIDDEN ? t('home.dongneEmptyBrowseDesc', { defaultValue: '내 주변 동네 공구 딜을 확인해보세요' }) : t('home.dongneEmptyDesc', { defaultValue: '원하는 가게를 제안하면 모아서 열어드려요' })}</p>
           </div>
-          <span className="text-[12px] font-bold text-emerald-400">{t('home.dongnePropose', { defaultValue: '제안하기 →' })}</span>
+          <span className="text-[12px] font-bold text-emerald-400">{COMMUNITY_PROPOSAL_HIDDEN ? t('home.dongneBrowse', { defaultValue: '둘러보기 →' }) : t('home.dongnePropose', { defaultValue: '제안하기 →' })}</span>
         </Link>
       ) : (
         <div className="grid grid-cols-3 gap-2">

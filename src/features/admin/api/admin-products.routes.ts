@@ -20,6 +20,8 @@ import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { sendAlimtalk, buildSampleApprovalMessage } from '../../alimtalk/aligo';
 import { ensureSupplyVisibilitySchema, recordSupplyPriceChange } from '../../supply/api/supply-visibility';
+import { loadPlatformCommissionPct } from '../../supply/api/wholesale-settlement';
+import { distributorPriceFromCost } from '@/lib/distributor-pricing';
 
 export const adminProductsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -27,6 +29,23 @@ function safeAdminError(err: unknown, env: Env): string {
   const isProd = (env as Env & { ENVIRONMENT?: string }).ENVIRONMENT === 'production';
   if (isProd) return 'Internal server error';
   return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * 🆕 2026-06-19 (대표 확정) 제품별 플랫폼 마진% 입력 정규화 (미끼/마진 전략).
+ *   - undefined → touch:false (컬럼 미변경, 기존 유지)
+ *   - null/''   → touch:true, value:null (override 해제 → 전역 기본 마진 사용)
+ *   - 0~90 숫자 → touch:true, value:숫자
+ *   - 범위 밖/숫자 아님 → error
+ */
+function normalizeMarginOverride(input: number | null | undefined): { touch: boolean; value: number | null; error?: string } {
+  if (input === undefined) return { touch: false, value: null };
+  if (input === null || (input as unknown) === '') return { touch: true, value: null };
+  const n = Number(input);
+  if (!Number.isFinite(n) || n < 0 || n > 90) {
+    return { touch: false, value: null, error: '마진율은 0~90 사이의 숫자여야 합니다' };
+  }
+  return { touch: true, value: Math.round(n * 10) / 10 }; // 소수 1자리 허용
 }
 
 interface ProductRow {
@@ -613,6 +632,7 @@ adminProductsRoutes.get('/supplier-products', cors(), async (c) => {
       `SELECT p.id, p.name, p.description, p.price AS retail_price, COALESCE(p.supply_price, 0) AS supply_price,
               p.stock, p.image_url, p.category, p.is_active,
               p.lowest_price_url, COALESCE(p.lowest_price_checked,0) AS lowest_price_checked,
+              p.supply_margin_override_pct AS margin_override,
               p.pending_supply_price, p.pending_retail_price, p.pending_price_url, p.pending_price_reason, p.pending_price_requested_at,
               COALESCE(p.supply_approval_status, CASE WHEN p.is_active = 1 THEN 'approved' ELSE 'pending' END) AS approval_status,
               p.supplier_id, p.admin_memo, p.created_at,
@@ -627,7 +647,11 @@ adminProductsRoutes.get('/supplier-products', cors(), async (c) => {
       `SELECT COUNT(*) AS count FROM products p WHERE ${where}`
     ).bind(...params).first<{ count: number }>();
 
-    return c.json({ success: true, data: { items: rows.results ?? [], total: total?.count ?? 0, page, limit } });
+    // 🆕 2026-06-19 (대표 확정): 제품별 마진 미설정 시 적용되는 전역 기본 플랫폼 마진%(어드민 설정).
+    //   어드민 검수 UI 가 '이 상품 마진 %' 를 결정할 때 기준값으로 표시.
+    const defaultMarginPct = await loadPlatformCommissionPct(DB).catch(() => 10);
+
+    return c.json({ success: true, data: { items: rows.results ?? [], total: total?.count ?? 0, page, limit, default_margin_pct: defaultMarginPct } });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] GET /supplier-products error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
@@ -639,11 +663,16 @@ adminProductsRoutes.patch('/supplier-products/:id', cors(), async (c) => {
     const { DB } = c.env;
     const pid = c.req.param('id');
     if (!/^\d+$/.test(String(pid))) return c.json({ success: false, error: 'Invalid ID' }, 400);
-    const body = await c.req.json<{ action: 'approve' | 'reject'; admin_memo?: string; lowest_price_checked?: boolean }>();
+    const body = await c.req.json<{ action: 'approve' | 'reject'; admin_memo?: string; lowest_price_checked?: boolean; margin_override_pct?: number | null }>();
     if (!body.action || !['approve', 'reject'].includes(body.action)) {
       return c.json({ success: false, error: 'action은 approve 또는 reject이어야 합니다' }, 400);
     }
     await ensureSupplyVisibilitySchema(DB);
+
+    // 🆕 2026-06-19 (대표 확정): 승인 시 제품별 플랫폼 마진% 동시 설정(미끼=저, 마진상품=고).
+    //   undefined → 컬럼 미변경(기존 유지) / null → 전역 기본 사용(override 해제) / 0~90 숫자 → 설정.
+    const marginField = normalizeMarginOverride(body.margin_override_pct);
+    if (marginField.error) return c.json({ success: false, error: marginField.error }, 400);
 
     const existing = await DB.prepare(
       `SELECT id, name, supplier_id, supply_approval_status, is_active, lowest_price_url
@@ -658,10 +687,12 @@ adminProductsRoutes.patch('/supplier-products/:id', cors(), async (c) => {
         return c.json({ success: false, error: '온라인 최저가 검수가 필요합니다. 최저가 확인 후 승인하세요.' }, 400);
       }
       // 최저가 검수 결과 함께 기록 (체크 시 lowest_price_checked=1).
+      // 🆕 마진 설정값이 전달되면 같은 원자 UPDATE 로 함께 반영(추가 RTT 없음).
       // CAS: pending → approved 원자 전이만 허용 (중복 승인/이중 audit·알림 방지).
+      const marginSet = marginField.touch ? ', supply_margin_override_pct = ?' : '';
       const upd = await DB.prepare(
-        "UPDATE products SET supply_approval_status = 'approved', is_active = 1, admin_memo = ?, lowest_price_checked = ?, updated_at = datetime('now') WHERE id = ? AND supply_approval_status = 'pending'"
-      ).bind(body.admin_memo || null, body.lowest_price_checked ? 1 : 0, pid).run();
+        `UPDATE products SET supply_approval_status = 'approved', is_active = 1, admin_memo = ?, lowest_price_checked = ?${marginSet}, updated_at = datetime('now') WHERE id = ? AND supply_approval_status = 'pending'`
+      ).bind(body.admin_memo || null, body.lowest_price_checked ? 1 : 0, ...(marginField.touch ? [marginField.value] : []), pid).run();
       if ((upd.meta?.changes ?? 0) === 0) {
         return c.json({ success: false, error: '이미 처리되었거나 상태가 변경된 요청입니다' }, 409);
       }
@@ -679,7 +710,7 @@ adminProductsRoutes.patch('/supplier-products/:id', cors(), async (c) => {
     await writeAuditLog(c, {
       action: body.action === 'approve' ? 'supplier_product_approve' : 'supplier_product_reject',
       targetType: 'product', targetId: String(pid),
-      after: { supplier_id: existing.supplier_id, memo: body.admin_memo || null },
+      after: { supplier_id: existing.supplier_id, memo: body.admin_memo || null, ...(marginField.touch ? { margin_override_pct: marginField.value } : {}) },
     }).catch(() => {});
 
     // 공급자 대시보드 알림.
@@ -695,6 +726,64 @@ adminProductsRoutes.patch('/supplier-products/:id', cors(), async (c) => {
     });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] PATCH /supplier-products/:id error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// ── 🆕 2026-06-19 (대표 확정) 제품별 플랫폼 마진 설정 — 미끼/마진 전략 ──────────────
+//   PATCH /supplier-products/:id/margin  body { margin_override_pct: number(0~90) | null }
+//   승인 여부와 무관하게 언제든 마진 조율(승인된 상품도 포함). null → override 해제(전역 기본).
+//   응답에 계산된 유통사 공급가(= 공급원가 × (1+마진%), 판매가 상한·공급원가 하한)를 함께 반환.
+adminProductsRoutes.patch('/supplier-products/:id/margin', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const pid = c.req.param('id');
+    if (!/^\d+$/.test(String(pid))) return c.json({ success: false, error: 'Invalid ID' }, 400);
+    const body = await c.req.json<{ margin_override_pct?: number | null }>();
+    const marginField = normalizeMarginOverride(body.margin_override_pct);
+    if (marginField.error) return c.json({ success: false, error: marginField.error }, 400);
+    if (!marginField.touch) return c.json({ success: false, error: 'margin_override_pct 값이 필요합니다' }, 400);
+    await ensureSupplyVisibilitySchema(DB);
+
+    const existing = await DB.prepare(
+      `SELECT id, name, supplier_id, COALESCE(supply_price,0) AS supply_price, COALESCE(price,0) AS retail_price
+         FROM products WHERE id = ? AND is_supply_product = 1 AND supplier_id IS NOT NULL`
+    ).bind(pid).first<{ id: number; name: string; supplier_id: number; supply_price: number; retail_price: number }>();
+    if (!existing) return c.json({ success: false, error: '공급자 등록 상품을 찾을 수 없습니다' }, 404);
+
+    const upd = await DB.prepare(
+      "UPDATE products SET supply_margin_override_pct = ?, updated_at = datetime('now') WHERE id = ?"
+    ).bind(marginField.value, pid).run();
+    if ((upd.meta?.changes ?? 0) === 0) {
+      return c.json({ success: false, error: '마진 설정에 실패했습니다' }, 409);
+    }
+
+    await writeAuditLog(c, {
+      action: 'supplier_product_set_margin',
+      targetType: 'product', targetId: String(pid),
+      after: { supplier_id: existing.supplier_id, margin_override_pct: marginField.value },
+    }).catch(() => {});
+
+    // 결과 공급가 미리보기 — 제품별 마진(없으면 전역 기본)으로 산출.
+    const defaultMarginPct = await loadPlatformCommissionPct(DB).catch(() => 10);
+    const effMarginPct = marginField.value != null ? marginField.value : defaultMarginPct;
+    const distributorPrice = distributorPriceFromCost(existing.supply_price, effMarginPct, existing.retail_price);
+
+    return c.json({
+      success: true,
+      data: {
+        id: Number(pid),
+        margin_override_pct: marginField.value,
+        effective_margin_pct: effMarginPct,
+        distributor_price: distributorPrice,
+        platform_margin: Math.max(0, distributorPrice - existing.supply_price),
+      },
+      message: marginField.value != null
+        ? `마진 ${effMarginPct}% 적용 — 유통사 공급가 ${distributorPrice.toLocaleString()}원`
+        : '제품별 마진을 해제했습니다(전역 기본 적용).',
+    });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] PATCH /supplier-products/:id/margin error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });

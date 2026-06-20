@@ -5,6 +5,7 @@ import { useTheme } from '@/shared/stores/useTheme'
 
 const DesktopLiveLeftPanel = lazy(() => import('./DesktopLiveLeftPanel'))
 const DesktopLiveRightPanel = lazy(() => import('./DesktopLiveRightPanel'))
+const LinkshopMobileQR = lazy(() => import('./LinkshopMobileQR'))
 
 interface MobileAppLayoutProps {
   children: ReactNode
@@ -36,27 +37,65 @@ const HIDE_SIDEBAR_PREFIXES = [
   '/seller', '/admin', '/agency', '/supplier', '/wholesale', '/embed', '/checkout/return', '/introduce',
 ]
 
+// 🎨 2026-06-18 (사용자 시안): 링크샵 진입 시 PC 좌측 카테고리 사이드바 숨김 → 깔끔한 액자.
+//   프레임(중앙 정렬)은 유지(HIDE_SIDEBAR_PREFIXES 와 달리 풀너비로 안 만듦) + 우하단 QR 표시.
+//   /u(링크샵), /profile/(레거시 링크샵), /s/(셀러 공개) 모두 링크샵 서피스.
+const LINKSHOP_PREFIXES = ['/u/', '/u', '/profile/', '/s/']
+
+// 🛡️ 2026-06-18 (사용자 정정 — "링크샵 주인은 왼쪽 카테고리가 보여야지"): 사이드바 숨김/QR 은
+//   "공유 링크로 들어온 방문자"에게만. 주인이 자기 링크샵을 보면 평소 앱(사이드바) 그대로.
+//   주인 판별 = URL 핸들 ↔ localStorage 핸들(useLinkshopPath 우선순위: seller_username →
+//   linked_seller_username → user_handle, /u/me·/u 는 항상 주인). SSR(window 없음)=방문자로 간주
+//   → 익명 액자 우선, 주인 하드로드 시 첫 client 렌더에서 사이드바 자기치유(createRoot 비-hydrate).
+// 🖥️ 2026-06-18 (대표 결정 — PC 전면 반응형 단계적 롤아웃): 풀너비 데스크탑 레이아웃을 쓸 경로.
+//   여기 등재된 경로만 프레임(430 액자) 해제 + 상단 네비 + 풀너비. 단계별로 확장(홈부터).
+const DESKTOP_RESPONSIVE_PATHS = new Set<string>(['/'])
+
+function isOwnLinkshopPath(pathname: string): boolean {
+  if (typeof window === 'undefined') return false
+  if (pathname === '/u' || pathname === '/u/me') return true
+  const m = pathname.match(/^\/(?:u|profile|s)\/([^/]+)/)
+  if (!m) return false
+  const handle = decodeURIComponent(m[1] || '').toLowerCase().replace(/^@/, '')
+  if (!handle) return false
+  if (handle === 'me') return true
+  try {
+    return [
+      localStorage.getItem('seller_username'),
+      localStorage.getItem('linked_seller_username'),
+      localStorage.getItem('user_handle'),
+    ].some((v) => v && v.toLowerCase().replace(/^@/, '') === handle)
+  } catch { return false }
+}
+
 // 📐 2026-06-16: PC 컨슈머 프레임 적용 경로 (단계적 롤아웃).
 //   전체 컨슈머 롤아웃 (2026-06-17): 대시보드/도매몰/비디오 제외 모든 컨슈머 페이지에 프레임.
 //   각 페이지의 fixed 하단/상단 바는 `.app-frame-bar` 클래스로 프레임 폭에 정렬 (index.css).
-// 📐 그리드/피드/리스트 페이지 — 넓은 프레임(720, 2-3열). 그 외 컨슈머는 430(모바일 폭).
-const GRID_FRAME_PATHS = new Set([
-  '/', '/group-buy', '/vouchers', '/browse', '/meal-vouchers', '/stays',
-  '/wishlist', '/mypage/wishlist', '/interest-list', '/following', '/my/follows',
-])
+// 📐 2026-06-17 (사용자 요청 — 액자 폭 통일): 모든 컨슈머 페이지를 폰 폭(430) 단일 액자로.
+//   기존엔 그리드/리스트·상품상세만 720 이라 페이지 이동 시 액자 폭이 튀었음. 그리드(2-3열)·상품상세(2단)는
+//   프레임 안에서 '폰처럼' 보이도록 index.css `.app-framed` 오버라이드(≥1024)가 모바일 레이아웃으로 되돌린다.
 
 export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   const location = useLocation()
   const applied = useTheme(s => s.applied)
   const mobileOnly = MOBILE_ONLY_PREFIXES.some(p => location.pathname.startsWith(p))
   const hideSidebar = HIDE_SIDEBAR_PREFIXES.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
-  const showSidebar = !hideSidebar
-  // 컨슈머 프레임 — 대시보드/도매몰/비디오는 제외 (전 컨슈머 적용).
-  const framed = !mobileOnly && !hideSidebar
-  // 📐 상품 상세(/products/:id)는 lg+ 2단(이미지|구매) 레이아웃이라 넓은 프레임(720) — 430 에 욱여넣어
-  //   2단이 짜부되던 것 방지. 그 외 상세(공구/교환권)는 단일 컬럼이라 430 유지.
-  const isWideDetail = location.pathname.startsWith('/products/')
-  const frameWidth = (GRID_FRAME_PATHS.has(location.pathname) || isWideDetail) ? '720px' : '430px'
+  // 🎨 2026-06-18 링크샵 서피스 — 좌측바 숨김 + 우하단 QR (프레임은 유지).
+  //   단, 주인이 자기 링크샵을 볼 땐 평소 앱(사이드바 표시) — 방문자(공유링크 진입)에게만 액자+QR.
+  const isLinkshop = location.pathname === '/u' || LINKSHOP_PREFIXES.some(p => location.pathname.startsWith(p))
+  const linkshopVisitor = isLinkshop && !isOwnLinkshopPath(location.pathname)
+  // 🖥️ 2026-06-18 (대표 결정 — PC 전면 반응형): 데스크탑 풀너비 페이지(단계적 롤아웃).
+  //   프레임(430 액자) 대신 상단 네비 + 풀너비 반응형. 좌측 카테고리 사이드바는 숨김(사용자 "사이드바 위주 X").
+  //   페이지의 기존 lg: 레이아웃이 그대로 살아남(프레임 CSS 덮기 미적용). 모바일(<lg)은 영향 0.
+  const isDesktopResponsive = !mobileOnly && DESKTOP_RESPONSIVE_PATHS.has(location.pathname)
+  // 🖥️ 2026-06-18 (대표 피드백 — "사이드바 없애니 다른 페이지로 못 감"): 좌측 사이드바는 '내비게이션'으로
+  //   유지하되, 콘텐츠는 풀너비(액자 해제). 사이드바가 주인공이던 게 아니라 액자에 갇힌 콘텐츠가 문제였음
+  //   → 풀너비면 사이드바=내비/콘텐츠=주인공(표준 앱 레이아웃). 상단 네비도 함께 표시(원래 pre-frame 레이아웃).
+  const showSidebar = !hideSidebar && !linkshopVisitor
+  // 컨슈머 프레임 — 대시보드/도매몰/비디오 + 데스크탑 반응형 페이지는 제외(풀너비).
+  const framed = !mobileOnly && !hideSidebar && !isDesktopResponsive
+  // 📐 2026-06-17: 단일 폰 폭(430) — 페이지별 폭 분기 제거(액자가 페이지마다 안 튐).
+  const frameWidth = '430px'
 
   // 📐 2026-06-17: PC 프레임 양옆 배경(바탕)을 현재 테마에 직접 연동 (사용자 신고
   //   "다크 테마인데 PC 바탕이 흰색"). 기존엔 `body:has(.app-framed)` CSS 로만 처리했는데
@@ -81,6 +120,8 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
       {/* PC (xl+) 라이브 좌/우 패널 — /live/:id 에서만 (fixed). */}
       {mobileOnly && <Suspense fallback={null}><DesktopLiveLeftPanel /></Suspense>}
       {mobileOnly && <Suspense fallback={null}><DesktopLiveRightPanel /></Suspense>}
+      {/* 🎨 2026-06-18 링크샵 PC 우하단 "모바일로 보기" QR — 방문자에게만(주인은 평소 앱 뷰). */}
+      {linkshopVisitor && <Suspense fallback={null}><LinkshopMobileQR /></Suspense>}
       <div
         className={`mobile-app-container ${framed ? 'app-framed' : (showSidebar && !mobileOnly ? 'md:pl-[60px] xl:pl-56' : '')}`}
         data-mobile-only={mobileOnly ? 'true' : 'false'}

@@ -17,7 +17,8 @@ import {
  * 핵심 불변식:
  *   1. 기본 몰(id=1) 단일 호스트 환경 → 모든 resolver 가 1 반환 (byte-identical).
  *   2. normHost — www./포트/대소문자 정규화 → lookup 정확.
- *   3. resolveMallId 우선순위: 계정 mall_id > ?mall=slug > host > fallback-1.
+ *   3. resolveMallId 우선순위(2026-06-18 host-first): ?mall=slug > host > fallback-1.
+ *      → "몰 = 도메인" — 게스트/로그인 무관하게 도메인이 몰 결정(account-first flip-flop 제거).
  *   4. 알 수 없는 호스트 → fallback DEFAULT_MALL_ID(1).
  *   5. registrationMallId — 계정 토큰 무시, ?mall=slug > host > 1.
  *
@@ -211,10 +212,9 @@ describe('loadMallBySlug', () => {
 })
 
 // ── resolveMallId 우선순위 ─────────────────────────────────────────────────────
-// resolveMallId 는 context(DB + JWT_SECRET + req.url/header/query) 를 받음.
-// JWT verify 를 실제로 호출하는 경로(계정 mall_id)는 hono/jwt ESM dependency 로
-// vitest jsdom 에서 직접 호출이 어려우므로, token 없는 경로(Priority 2/3/4)만 검증.
-// Priority 1(계정 token) 은 chatIdentityFrom 동일 패턴 — 여기서는 header 없이 null 반환 경로.
+// resolveMallId 는 context(DB + req.url/header/query) 를 받음.
+// 2026-06-18 host-first 전환 이후 Authorization 토큰은 더 이상 mall 결정에 쓰이지 않음
+// (도메인이 몰을 결정). 따라서 토큰이 있어도 host 가 우선임을 검증 — JWT mock 불필요.
 
 function makeCtx(opts: {
   db: D1Database
@@ -282,6 +282,37 @@ describe('resolveMallId — 우선순위 + fallback', () => {
   it('URL parse 실패 시 Host 헤더로 fallback', async () => {
     const db = makeDB([defaultMall])
     const id = await resolveMallId(makeCtx({ db, url: 'not-a-valid-url', hostHeader: 'utongstart.com' }))
+    expect(id).toBe(1)
+  })
+
+  // ── 🏬 2026-06-18 host-first ("몰=도메인=계정") — flip-flop 방지 계약 ──
+  it('host-first: 계정 토큰(다른 몰 소속)이 있어도 host 가 우선', async () => {
+    const foodMall: MallRow = { id: 2, slug: 'food', name: '식품몰', host: 'food.utongstart.com', active: 1 }
+    // 계정은 mall 2(식품) 소속이지만 기본몰 호스트로 요청 → host 우선 → 1 (계정 무시).
+    const db = makeDB([defaultMall, foodMall], { kind: 'seller', mallId: 2 })
+    const id = await resolveMallId(makeCtx({ db, url: 'http://utongstart.com/', authHeader: 'Bearer dummy' }))
+    expect(id).toBe(1)
+  })
+
+  it('host-first: 같은 호스트면 게스트와 로그인(계정 다른 몰)이 동일 몰 — 일관성', async () => {
+    const foodMall: MallRow = { id: 2, slug: 'food', name: '식품몰', host: 'food.utongstart.com', active: 1 }
+    const guest = await resolveMallId(makeCtx({
+      db: makeDB([defaultMall, foodMall]),
+      url: 'http://food.utongstart.com/',
+    }))
+    const loggedIn = await resolveMallId(makeCtx({
+      db: makeDB([defaultMall, foodMall], { kind: 'seller', mallId: 1 }),
+      url: 'http://food.utongstart.com/',
+      authHeader: 'Bearer dummy',
+    }))
+    expect(guest).toBe(2)
+    expect(loggedIn).toBe(2) // 계정 몰(1) 무시, host(food→2) 우선 → 게스트와 동일
+  })
+
+  it('host-first: supplier 토큰(다른 몰)도 host 우선', async () => {
+    const foodMall: MallRow = { id: 2, slug: 'food', name: '식품몰', host: 'food.utongstart.com', active: 1 }
+    const db = makeDB([defaultMall, foodMall], { kind: 'supplier', mallId: 2 })
+    const id = await resolveMallId(makeCtx({ db, url: 'http://utongstart.com/', authHeader: 'Bearer dummy' }))
     expect(id).toBe(1)
   })
 })

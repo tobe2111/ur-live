@@ -5,6 +5,7 @@ import { formatNumber } from '@/utils/format'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import StreamCard from './StreamCard'
 import UpcomingStreamsBanner from './UpcomingStreamsBanner'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import type { Product, Short, LiveStream, Tab } from './types'
 
 interface Props {
@@ -30,8 +31,8 @@ export default function HomeTab({
 
   return (
     <div className="space-y-6">
-      {/* 🛡️ 2026-05-15 (PRISM 따라잡기): 라이브 예고 + LIVE 진행 중 배너 */}
-      {sellerId && sellerId > 0 && <UpcomingStreamsBanner sellerId={sellerId} />}
+      {/* 🛡️ 2026-05-15 (PRISM): 라이브 예고 배너 — 🏁 2026-06-17 라이브 영구중단으로 게이트 */}
+      {!LIVE_COMMERCE_SUSPENDED && sellerId && sellerId > 0 && <UpcomingStreamsBanner sellerId={sellerId} />}
 
       {mealVouchers.length > 0 && (
         <section>
@@ -90,7 +91,7 @@ export default function HomeTab({
         </section>
       )}
 
-      {shorts.length > 0 && (
+      {!LIVE_COMMERCE_SUSPENDED && shorts.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className={`text-base font-bold ${textClass}`}>📹 {t('seller.publicPage.reviewVideos')}</h2>
@@ -131,7 +132,7 @@ export default function HomeTab({
         </section>
       )}
 
-      {recentStreams.length > 0 && (
+      {!LIVE_COMMERCE_SUSPENDED && recentStreams.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className={`text-base font-bold ${textClass}`}>{t('seller.tabLive')} <span className="text-pink-500">{streams.length}</span></h2>

@@ -36,7 +36,8 @@ const WholesaleChatWidget = lazy(() => import('./wholesale/WholesaleChatWidget')
 export default function SupplierDashboardPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [tab, setTab] = useState<Tab>('overview')
+  // 💬 채팅 알림 딥링크(/supplier/chat) → 채팅 탭으로 진입.
+  const [tab, setTab] = useState<Tab>(() => (typeof window !== 'undefined' && window.location.pathname.endsWith('/chat')) ? 'chat' : 'overview')
   const [me, setMe] = useState<Me | null>(null)
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
   const [settlements, setSettlements] = useState<SettlementItem[]>([])
