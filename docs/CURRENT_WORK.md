@@ -9,6 +9,15 @@
 - 검증: tsc 0 · `npm run build`(client+worker+prepare) 0 · 신규 단위 10(서명 왕복/위조차단/변조/만료/purpose불일치/레거시UUID/open-redirect clamp) + 기존 safeRedirect 32 = 42 pass · 전체 유닛 2170 pass. CLAUDE.md OAuth 룰("쿠키+URL state 검증") 준수 — 쿠키 유지 + 서명 강화.
 - ⚠️ **실기기 검증 권장**: iOS Safari + 카카오톡 인앱에서 "3초 시작하기" → 로그인 성공 확인. (배포 후 1회)
 
+## ✅ 2026-06-20 — 카카오 로그인 전수조사 후속: 인앱/세션/콜백 5종 (대표 "전수조사 → 전체 수정", A1 중복 제거 재정렬)
+**배경**: 위 A1(signed-state)은 **다른 세션이 먼저 main 에 머지**(중복). 본 항목은 같은 전수조사에서 발견된 **A1 외 고유 이슈 5종**만 정리(PR #396 rebase 시 중복 A1·`kakao-oauth-state.test.ts` 제거, kakao.routes.ts 는 main 의 signed-state 채택). **검증**: 전체 단위 pass · tsc(client) 0 · `npm run build` 0. ⚠️ 실기기 staging 검증: `docs/KAKAO_LOGIN_STAGING_CHECKLIST.md`.
+- **A2** `auth-callback-bootstrap.ts`: `?login=success` 로 막 진입한 로드에선 **health-wipe 1회 grace**. 세션 쿠키 propagation race 또는 Safari 가 redirect Set-Cookie 드롭한 순간 health 핑이 `session:false`→localStorage wipe→**"로그인 직후 자동 로그아웃"** 발생하던 것 차단(다음 로드/첫 API 401 에서 자연 정리).
+- **A3** `in-app-browser.ts`+`index.html`: `isIOS()` 에 iPadOS 13+ 데스크톱 UA(Macintosh+`maxTouchPoints>1`) 추가 — iPad 인앱 외부열기 경로 정상화.
+- **C1 (카톡 안드로이드 빈 화면)** `index.html` 인라인: Android intent 에 `S.browser_fallback_url` 누락 → Chrome 미설치(삼성인터넷 기본) 단말 빈 화면. `in-app-browser.ts`는 2026-06-17 에 고쳤지만 **인라인이 먼저 실행돼 공유 가드 키 선점→고친 버전 dead**였음. 인라인도 fallback 추가(형식 일치).
+- **C2** index.html 인라인 ↔ `in-app-browser.ts` SSOT 일치 + 교차참조 주석(가드 키 공유 계약 명시). **스코프(카톡=자동, 그외=배너) 변경 없음** — intent 형식만 통일.
+- **C3** `KakaoCallbackPage.tsx`: 토큰교환 `redirect_uri` 를 페이지 실제 경로(`/auth/kakao/callback`)와 일치(기존 `/sync/callback` 불일치=KOE006 지뢰). 주 흐름은 서버 `/sync/callback`이라 휴면 버그였지만 SPA 경로로 code 오면 실패하던 것 제거.
+- **봇/지역 오해 배제**: 카톡 인앱 UA(`KAKAOTALK`)는 SSR 봇경로(`BOT_UA_REGEX`=`KakaoTalk-Scrap`만)·`botProtection`(legit 통과) 영향 없음. 지역은 hostname 기반이라 사파리 무관 — 전수조사로 확인.
+
 ## ✅ 2026-06-19 — 어드민 제품별 플랫폼 마진 설정 UI: 미끼/마진 전략 (대표 "응 이렇게 정확하게 진행해줘")
 **요청**: 제조사가 등록한 상품을 검수할 때 **공급가·판매가·시중 최저가**를 보면서 **제품별로 우리 마진%를 정해 승인**(미끼상품=수익 하 / 마진상품=수익 상 — 항공권식 전략). 모든 가격 부가세 포함, 공급가 위에 우리 10%(조율 가능).
 - **모델 확정(불변)**: `distributor-pricing.resolveDistributorPrice` 가 이미 cost-plus(`유통사가 = round(공급가 × (1+마진%))`, 판매가 상한·공급가 하한) + 단일가(등급은 노출 큐레이션 전용). **가격/정산 엔진 무변경** — 어드민 마진 설정 컨트롤만 추가.
