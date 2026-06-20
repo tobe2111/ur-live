@@ -29,14 +29,14 @@ export default function WholesaleDashboardPage() {
   const location = useLocation()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const supplierToken = typeof window !== 'undefined' ? getSupplierToken() : null
-  const isDistributor = typeof window !== 'undefined' && localStorage.getItem('is_distributor') === '1'
 
-  // 🏭 2026-06-08: 유통사(seller_token + is_distributor) 전용 — 역할 엄격화(제조사 가드와 대칭).
-  //   미로그인 → 유통사 로그인. 셀러지만 유통사 아님 → 카탈로그(유통사 전환 CTA).
+  // 🛡️ 2026-06-19 (대표 신고 — '대시보드' 버튼 눌러도 무반응): is_distributor localStorage 가드 제거.
+  //   카탈로그 헤더의 대시보드 버튼은 seller_token 기준으로 노출되는데(WholesaleCatalogPage:277 loggedIn=!!token)
+  //   대시보드 페이지만 is_distributor 를 요구해, 카카오 로그인(플래그 미설정) 시 /wholesale 로 silent 튕김(무반응).
+  //   token 기준으로 일치 — 실제 데이터/권한은 서버(useWholesaleMe 등)가 검증. (deposits/staff 와 동일 정합)
   useEffect(() => {
     if (!token) { navigate('/wholesale/login', { replace: true }); return }
-    if (!isDistributor) { navigate('/wholesale', { replace: true }); return }
-  }, [token, isDistributor, navigate])
+  }, [token, navigate])
 
   const meQ = useWholesaleMe()
   const ordersQ = useWholesaleOrders()
