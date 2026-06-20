@@ -78,7 +78,7 @@ export default function BlogListPage() {
                   {post.thumbnail_url ? (
                     <img src={post.thumbnail_url} alt="" className="w-full h-48 object-cover" loading="lazy" />
                   ) : (
-                    <div className="w-full h-48 bg-gradient-to-br from-pink-100 dark:from-pink-900/20 to-orange-100 dark:to-orange-900/20 flex items-center justify-center">
+                    <div className="w-full h-48 bg-gradient-to-br from-gray-100 dark:from-gray-900/20 to-gray-100 dark:to-gray-900/20 flex items-center justify-center">
                       <span className="text-4xl">📝</span>
                     </div>
                   )}

@@ -942,7 +942,7 @@ export default function AdminKtAlphaPage() {
                   <div className="flex items-center gap-2 flex-wrap justify-end">
                     {/* 🛡️ 2026-05-21: 메가 버튼 — 카테고리/브랜드/리뷰 이름 한 번에 즉시 실행. */}
                     <button onClick={runAllBackfills}
-                      className="px-3 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-extrabold rounded-lg hover:opacity-90 shadow-md"
+                      className="px-3 py-2 bg-gradient-to-r from-gray-900 to-gray-900 text-white text-xs font-extrabold rounded-lg hover:opacity-90 shadow-md"
                       title="categorize + brand backfill + review name backfill 한 번에"
                     >
                       ⚡ 전체 즉시 실행

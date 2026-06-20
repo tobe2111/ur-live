@@ -277,7 +277,7 @@ export default function LiveCheckoutSheet({
                   <button
                     onClick={handlePayWithDeals}
                     disabled={paying || !selectedAddress}
-                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-gray-800 to-gray-800 hover:from-gray-900 hover:to-gray-900 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
                   >
                     {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
                     <span>

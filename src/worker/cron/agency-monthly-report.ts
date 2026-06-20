@@ -50,7 +50,7 @@ function buildReportHTML(opts: {
 </head>
 <body style="font-family: -apple-system, sans-serif; background: #f9fafb; padding: 24px; color: #111827;">
   <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%); padding: 32px; color: white;">
+    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6b7280 100%); padding: 32px; color: white;">
       <h1 style="margin: 0; font-size: 24px; font-weight: bold;">📊 ${opts.monthStr} 월간 리포트</h1>
       <p style="margin: 8px 0 0; opacity: 0.9;">${opts.agencyName} · 등급 ${tierLabel}</p>
     </div>

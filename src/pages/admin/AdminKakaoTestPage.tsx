@@ -242,7 +242,7 @@ export default function AdminKakaoTestPage() {
         ))}
 
         <button onClick={runAllTests} disabled={!accessToken || loading}
-          className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl font-bold text-sm mb-6 disabled:opacity-40 active:scale-[0.97]">
+          className="w-full py-3 bg-gradient-to-r from-gray-800 to-gray-800 text-white rounded-xl font-bold text-sm mb-6 disabled:opacity-40 active:scale-[0.97]">
           🚀 전체 테스트 실행
         </button>
 

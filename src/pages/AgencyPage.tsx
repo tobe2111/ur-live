@@ -362,7 +362,7 @@ export default function AgencyPage() {
             className="h-full rounded-full transition-all"
             style={{
               width: `${Math.min(goalProgress, 100)}%`,
-              background: 'linear-gradient(90deg, #FF0033, #EC4899)'
+              background: 'linear-gradient(90deg, #FF0033, #6b7280)'
             }}
           />
         </div>
@@ -455,7 +455,7 @@ export default function AgencyPage() {
       )}
 
       {/* 2. Commission Banner — 🏪 매장 영입 누적 수익(실 적립) 우선 + 소속 셀러 추정 수수료는 보조 */}
-      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl p-5 text-white">
+      <div className="bg-gradient-to-r from-gray-900 to-gray-900 rounded-2xl p-5 text-white">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm opacity-80">{t('agency.storeCommissionTitle', { defaultValue: '매장 영입 누적 수익' })}</p>

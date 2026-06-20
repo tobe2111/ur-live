@@ -63,7 +63,7 @@ export default function SellerFollowersPage() {
         />
 
         {/* 총합 카드 */}
-        <div className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl p-5 text-white">
+        <div className="bg-gradient-to-br from-gray-800 to-gray-800 rounded-2xl p-5 text-white">
           <div className="flex items-center justify-between mb-3">
             <div>
               <p className="text-xs opacity-80 font-bold">총 단골</p>
@@ -96,7 +96,7 @@ export default function SellerFollowersPage() {
                     <span className="font-bold text-gray-900">{item.value}명 ({pct(item.value)}%)</span>
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-pink-500 to-rose-500 rounded-full" style={{ width: `${pct(item.value)}%` }} />
+                    <div className="h-full bg-gradient-to-r from-gray-800 to-gray-800 rounded-full" style={{ width: `${pct(item.value)}%` }} />
                   </div>
                 </div>
               ))}
@@ -119,7 +119,7 @@ export default function SellerFollowersPage() {
                   return (
                     <div
                       key={i}
-                      className="flex-1 bg-gradient-to-t from-pink-500 to-rose-400 rounded-t hover:from-pink-600 hover:to-rose-500 transition-colors cursor-pointer"
+                      className="flex-1 bg-gradient-to-t from-gray-800 to-gray-700 rounded-t hover:from-gray-900 hover:to-gray-800 transition-colors cursor-pointer"
                       style={{ height: h }}
                       title={`${d.day}: ${d.new_count}명`}
                     />
@@ -149,7 +149,7 @@ export default function SellerFollowersPage() {
                   {f.avatar ? (
                     <img src={f.avatar} alt="" width={32} height={32} className="w-8 h-8 rounded-full object-cover" loading="lazy" />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-300 to-rose-400" />
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-300 to-gray-700" />
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold text-gray-900">{f.masked_name}</p>
@@ -165,7 +165,7 @@ export default function SellerFollowersPage() {
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => navigate('/seller/notify-followers')}
-            className="py-3.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:opacity-95 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+            className="py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 hover:opacity-95 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2"
           >
             <Megaphone className="w-4 h-4" /> 단골에게 알림
           </button>

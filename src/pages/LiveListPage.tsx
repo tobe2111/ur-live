@@ -437,7 +437,7 @@ function HeroCard({ stream, getThumb, onClick }: {
       {thumb ? (
         <img src={thumb} alt="" fetchPriority="high" decoding="async" className="w-full h-full object-cover" onError={onYoutubeThumbError} />
       ) : (
-        <div className="w-full h-full bg-gradient-to-br from-red-900/40 to-[#0A0A0A] flex items-center justify-center">
+        <div className="w-full h-full bg-gradient-to-br from-gray-900/40 to-[#0A0A0A] flex items-center justify-center">
           <Radio className="w-10 h-10 text-red-500/60" />
         </div>
       )}

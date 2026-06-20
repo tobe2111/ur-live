@@ -62,7 +62,7 @@ export default function MyReferralCard() {
   const pendingCount = rewards.filter(r => r.status !== 'granted').length
 
   return (
-    <div className="bg-gradient-to-br from-pink-50 to-rose-50 dark:from-[#1A1015] dark:to-[#150F12] border border-pink-200 dark:border-[#2A1A20] rounded-2xl p-5 mb-4">
+    <div className="bg-gradient-to-br from-gray-50 to-gray-50 dark:from-[#1A1015] dark:to-[#150F12] border border-pink-200 dark:border-[#2A1A20] rounded-2xl p-5 mb-4">
       <div className="flex items-center gap-2 mb-3">
         <Gift className="w-5 h-5 text-pink-500" />
         <h3 className="text-base font-extrabold text-gray-900 dark:text-white">친구 초대</h3>

@@ -66,12 +66,12 @@ function generateSVG(p: ProductForOG): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FCE7F3"/>
+      <stop offset="0%" stop-color="#f3f4f6"/>
       <stop offset="100%" stop-color="#FFFFFF"/>
     </linearGradient>
     <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#EC4899"/>
-      <stop offset="100%" stop-color="#F43F5E"/>
+      <stop offset="0%" stop-color="#6b7280"/>
+      <stop offset="100%" stop-color="#6b7280"/>
     </linearGradient>
   </defs>
 
@@ -83,7 +83,7 @@ function generateSVG(p: ProductForOG): string {
 
   <!-- 카테고리 emoji + 라벨 -->
   <text x="80" y="120" font-size="80" font-family="-apple-system,BlinkMacSystemFont,system-ui,sans-serif">${emoji}</text>
-  <text x="190" y="100" font-size="20" font-family="-apple-system,system-ui,sans-serif" font-weight="700" fill="#EC4899" letter-spacing="3">공동구매</text>
+  <text x="190" y="100" font-size="20" font-family="-apple-system,system-ui,sans-serif" font-weight="700" fill="#6b7280" letter-spacing="3">공동구매</text>
   ${truncatedRestaurant ? `<text x="190" y="130" font-size="22" font-family="-apple-system,system-ui,sans-serif" font-weight="500" fill="#6B7280">${escapeXml(truncatedRestaurant)}</text>` : ''}
 
   <!-- 상품명 (큰 글씨) -->
@@ -92,16 +92,16 @@ function generateSVG(p: ProductForOG): string {
   <!-- 가격 + 할인 -->
   <text x="80" y="310" font-size="56" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="url(#accent)">${p.price.toLocaleString('ko-KR')}<tspan font-size="32" font-weight="700">딜~</tspan></text>
   ${maxDiscount > 0 ? `
-  <rect x="380" y="265" width="180" height="56" rx="28" fill="#EC4899"/>
+  <rect x="380" y="265" width="180" height="56" rx="28" fill="#6b7280"/>
   <text x="470" y="304" font-size="28" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#FFFFFF" text-anchor="middle">최대 ${maxDiscount}% 할인</text>` : ''}
 
   <!-- 진행 현황 박스 -->
-  <rect x="80" y="380" width="1040" height="160" rx="20" fill="#FFFFFF" stroke="#FBCFE8" stroke-width="2"/>
+  <rect x="80" y="380" width="1040" height="160" rx="20" fill="#FFFFFF" stroke="#e5e7eb" stroke-width="2"/>
 
   <text x="110" y="425" font-size="24" font-family="-apple-system,system-ui,sans-serif" font-weight="700" fill="#374151">
     ${isAchieved ? '🎉 공구 성공!' : remaining === 1 ? '🔥 1명만 더 모이면 성공!' : `${p.group_buy_current}명 참여중 · ${remaining}명 남음`}
   </text>
-  <text x="1090" y="425" font-size="40" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#EC4899" text-anchor="end">${progress}%</text>
+  <text x="1090" y="425" font-size="40" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#6b7280" text-anchor="end">${progress}%</text>
 
   <!-- 진행 바 -->
   <rect x="110" y="450" width="980" height="20" rx="10" fill="#F3F4F6"/>
@@ -134,7 +134,7 @@ function generateCuratorSVG(curator: CuratorForOG, pinThumbs: string[]): string 
   const profile = curator.profile_image
     ? `<image href="${escapeXml(curator.profile_image)}" x="80" y="80" width="160" height="160" clip-path="url(#cprofile)" preserveAspectRatio="xMidYMid slice"/>`
     : `<circle cx="160" cy="160" r="80" fill="#1A1A1A"/>
-       <text x="160" y="180" font-size="60" font-family="sans-serif" font-weight="800" fill="#EC4899" text-anchor="middle">${escapeXml((curator.name || '?').slice(0, 1))}</text>`
+       <text x="160" y="180" font-size="60" font-family="sans-serif" font-weight="800" fill="#6b7280" text-anchor="middle">${escapeXml((curator.name || '?').slice(0, 1))}</text>`
 
   // 핀 thumbnail grid — 우측 4칸 (2x2)
   const tiles = [0, 1, 2, 3].map(i => {
@@ -163,7 +163,7 @@ function generateCuratorSVG(curator: CuratorForOG, pinThumbs: string[]): string 
 
   ${tiles}
 
-  <text x="80" y="540" font-size="20" font-family="-apple-system,system-ui,sans-serif" font-weight="700" fill="#EC4899">유어딜 링크샵</text>
+  <text x="80" y="540" font-size="20" font-family="-apple-system,system-ui,sans-serif" font-weight="700" fill="#6b7280">유어딜 링크샵</text>
   <text x="1120" y="540" font-size="18" font-family="-apple-system,system-ui,sans-serif" fill="#9CA3AF" text-anchor="end">live.ur-team.com/u/${safeHandle}</text>
 </svg>`
 }
@@ -224,7 +224,7 @@ ogRoutes.get('/group-buy/:id', async (c) => {
     if (!product) {
       // fallback: 빈 placeholder SVG
       return new Response(
-        '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><rect width="1200" height="630" fill="#FCE7F3"/><text x="600" y="315" font-size="48" font-family="sans-serif" fill="#EC4899" text-anchor="middle">유어딜 공동구매</text></svg>',
+        '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><rect width="1200" height="630" fill="#f3f4f6"/><text x="600" y="315" font-size="48" font-family="sans-serif" fill="#6b7280" text-anchor="middle">유어딜 공동구매</text></svg>',
         { status: 404, headers: { 'Content-Type': 'image/svg+xml' } }
       )
     }

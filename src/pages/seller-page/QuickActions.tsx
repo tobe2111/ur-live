@@ -76,7 +76,7 @@ export default function QuickActions({
           <Link to="/seller/live-broadcast"
             className={`flex items-center justify-between p-4 rounded-xl transition-all ${
               hasLiveHistory
-                ? 'bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 shadow-md hover:shadow-lg'
+                ? 'bg-gradient-to-r from-gray-800 to-gray-800 hover:from-gray-900 hover:to-gray-900 shadow-md hover:shadow-lg'
                 : 'bg-white border border-gray-200 hover:bg-gray-50'
             }`}>
             <div className="flex items-center gap-3">

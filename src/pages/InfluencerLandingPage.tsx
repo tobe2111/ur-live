@@ -38,7 +38,7 @@ export default function InfluencerLandingPage() {
           <span className="inline-block px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-bold mb-5">✨ 인플루언서 / 크리에이터 전용</span>
           <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight tracking-tight mb-6">
             팔로워가<br />
-            <span className="bg-gradient-to-r from-amber-500 to-pink-500 bg-clip-text text-transparent">곧 매출</span> 이 됩니다.
+            <span className="bg-gradient-to-r from-gray-800 to-gray-800 bg-clip-text text-transparent">곧 매출</span> 이 됩니다.
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed max-w-2xl mx-auto mb-8">
             매장 섭외 없이 — 우리가 검증한 공구를 인스타 / 카톡 / 틱톡으로 share 만 하세요.<br />
@@ -46,7 +46,7 @@ export default function InfluencerLandingPage() {
           </p>
           <button
             onClick={() => navigate('/register')}
-            className="px-8 py-4 bg-gradient-to-r from-pink-500 to-amber-500 text-white rounded-full font-extrabold text-lg shadow-xl"
+            className="px-8 py-4 bg-gradient-to-r from-gray-800 to-gray-800 text-white rounded-full font-extrabold text-lg shadow-xl"
           >
             지금 가입하고 share 시작 →
           </button>
@@ -95,7 +95,7 @@ export default function InfluencerLandingPage() {
         </div>
       </section>
 
-      <section className="bg-gradient-to-br from-amber-500 to-pink-500 px-6 lg:px-12 py-16 text-white text-center">
+      <section className="bg-gradient-to-br from-gray-800 to-gray-800 px-6 lg:px-12 py-16 text-white text-center">
         <h2 className="text-3xl lg:text-5xl font-extrabold mb-5">지금 share 한 번이<br />다음 달 월급이 됩니다.</h2>
         <button
           onClick={() => navigate('/register')}

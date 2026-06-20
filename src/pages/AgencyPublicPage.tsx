@@ -50,7 +50,7 @@ export default function AgencyPublicPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Cover — brand_color 우선, cover_url 다음, fallback gradient */}
       <div
-        className="h-48 sm:h-64 bg-gradient-to-br from-purple-400 via-pink-400 to-orange-400 relative"
+        className="h-48 sm:h-64 bg-gradient-to-br from-gray-700 via-gray-700 to-gray-700 relative"
         style={
           data.cover_url
             ? { backgroundImage: `url(${data.cover_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
@@ -111,7 +111,7 @@ export default function AgencyPublicPage() {
         </div>
 
         {/* 셀러 영입 CTA */}
-        <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-6 text-white mb-6">
+        <div className="bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl p-6 text-white mb-6">
           <h2 className="text-xl font-bold mb-2">🎟️ {data.name} 와 함께 성장하세요</h2>
           <p className="text-sm text-white/90 mb-4">
             셀러 가입 신청을 보내고 본 에이전시의 운영 지원과 노출 부스팅을 받아보세요.

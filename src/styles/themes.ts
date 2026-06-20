@@ -114,7 +114,7 @@ export const cartPageTheme = {
 export const homePageTheme = {
   // 히어로 섹션
   hero: {
-    container: 'relative overflow-hidden bg-gradient-to-br from-purple-50 via-white to-yellow-50',
+    container: 'relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-50',
     title: tokens.typography.fontSizeResponsive.display + ' font-extrabold text-gray-900',
     subtitle: tokens.typography.fontSizeResponsive.heading + ' text-gray-600',
     cta: tokens.cn(

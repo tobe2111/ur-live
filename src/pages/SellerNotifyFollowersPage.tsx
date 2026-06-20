@@ -170,7 +170,7 @@ export default function SellerNotifyFollowersPage() {
         </div>
 
         {/* 미리보기 */}
-        <div className="bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-200 rounded-2xl p-4">
+        <div className="bg-gradient-to-br from-gray-50 to-gray-50 border border-pink-200 rounded-2xl p-4">
           <p className="text-[11px] font-bold text-pink-700 mb-2 flex items-center gap-1">
             <Bell className="w-3 h-3" /> Push Notification 미리보기
           </p>
@@ -210,7 +210,7 @@ export default function SellerNotifyFollowersPage() {
         <button
           onClick={handleSubmit}
           disabled={submitting || title.length < 2 || message.length < 5}
-          className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-500 hover:opacity-95 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg"
+          className="w-full py-4 bg-gradient-to-r from-gray-800 to-gray-800 hover:opacity-95 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg"
         >
           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           {submitting ? '발송 중…' : '단골 전원에게 알림 발송'}

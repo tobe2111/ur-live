@@ -117,7 +117,7 @@ export function RewardAdCard() {
       <div className="bg-gray-50 dark:bg-[#121212] rounded-2xl px-5 py-4 border border-gray-200 dark:border-[#2A2A2A]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gray-800 to-gray-800 flex items-center justify-center">
               <Play className="w-5 h-5 text-gray-900 dark:text-white fill-white" />
             </div>
             <div>
@@ -148,7 +148,7 @@ export function RewardAdCard() {
         {/* 진행 바 */}
         <div className="mt-3 bg-white dark:bg-[#0A0A0A]/10 rounded-full h-1.5 overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-500"
+            className="h-full bg-gradient-to-r from-gray-800 to-gray-800 rounded-full transition-all duration-500"
             style={{ width: `${status.dailyLimit > 0 ? (status.todayCount / status.dailyLimit) * 100 : 0}%` }}
           />
         </div>

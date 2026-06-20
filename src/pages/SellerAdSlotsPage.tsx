@@ -366,7 +366,7 @@ export default function SellerAdSlotsPage() {
 
       <div className="max-w-xl mx-auto px-4 py-5">
         {/* 안내 */}
-        <div className="bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-100 rounded-2xl p-4 mb-5">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-50 border border-pink-100 rounded-2xl p-4 mb-5">
           <div className="flex items-center gap-2 mb-2">
             <Gavel className="w-4 h-4 text-pink-600" />
             <p className="text-[13px] font-bold text-gray-900">{t('seller.adSlots.whatIsAdSlot', { defaultValue: '광고 슬롯이란?' })}</p>

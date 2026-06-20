@@ -4,7 +4,7 @@
  * MyPage / Orders / Wishlist / Vouchers 4종 페이지 공유 토큰.
  * 다크 우선 적용, 라이트는 향후 테마 토글로 전환 가능.
  *
- * Accent: 핑크-레드 (#EC4899) — ur-live 브랜드 일관성 유지.
+ * Accent: 핑크-레드 (#6b7280) — ur-live 브랜드 일관성 유지.
  * (디자인 원본은 amber 였으나 사용자 결정으로 핑크 통일)
  */
 
@@ -39,9 +39,9 @@ export const walletTokens: Record<WalletTheme, WalletTokens> = {
     separator: 'rgba(60,60,67,0.12)',
     fillSoft:  'rgba(120,120,128,0.08)',
     fillSoft2: 'rgba(120,120,128,0.16)',
-    accent:    '#EC4899',
+    accent:    '#6b7280',
     accentSoft:'rgba(236,72,153,0.12)',
-    accentGradient: 'linear-gradient(135deg, #EF4444, #EC4899)',
+    accentGradient: 'linear-gradient(135deg, #EF4444, #6b7280)',
     danger:    '#FF3B30',
     success:   '#34C759',
     chrome:    '#FFFFFF',
@@ -56,9 +56,9 @@ export const walletTokens: Record<WalletTheme, WalletTokens> = {
     separator: 'rgba(84,84,88,0.34)',
     fillSoft:  'rgba(118,118,128,0.24)',
     fillSoft2: 'rgba(118,118,128,0.36)',
-    accent:    '#EC4899',
+    accent:    '#6b7280',
     accentSoft:'rgba(236,72,153,0.18)',
-    accentGradient: 'linear-gradient(135deg, #EF4444, #EC4899)',
+    accentGradient: 'linear-gradient(135deg, #EF4444, #6b7280)',
     danger:    '#FF453A',
     success:   '#30D158',
     chrome:    '#0A0A0A',

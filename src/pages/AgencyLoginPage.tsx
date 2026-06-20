@@ -199,7 +199,7 @@ export default function AgencyLoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:opacity-90 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-all"
+                className="w-full py-3 bg-gradient-to-r from-[#8B5CF6] to-[#6b7280] hover:opacity-90 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-all"
               >
                 {loading ? t('admin.login.loggingIn') : t('common.login')}
               </button>

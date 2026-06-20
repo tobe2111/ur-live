@@ -180,7 +180,7 @@ export default function PrismQRCode({ rtmpUrl, rtmpKey, streamTitle }: PrismQRCo
   return (
     <div className="space-y-6">
       {/* QR Code Section */}
-      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-6 text-center">
+      <div className="bg-gradient-to-br from-gray-50 to-gray-50 rounded-xl p-6 text-center">
         <div className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-full mb-4">
           <Smartphone className="h-4 w-4 text-indigo-600" />
           <span className="text-sm font-semibold text-gray-700">Prism 모바일 간편 설정</span>

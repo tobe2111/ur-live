@@ -297,7 +297,7 @@ export default function OBSRemoteControl({ stream, hasPersistentKey, copiedField
 
   // ── 연결됨: 원격 제어 UI ────────────────────────────────────────
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 space-y-3">
+    <div className="bg-gradient-to-br from-gray-50 to-gray-50 border border-blue-200 rounded-xl p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />

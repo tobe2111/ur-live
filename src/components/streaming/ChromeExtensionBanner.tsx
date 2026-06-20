@@ -35,7 +35,7 @@ export default function ChromeExtensionBanner() {
   if (!show) return null
 
   return (
-    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3.5 relative">
+    <div className="bg-gradient-to-r from-gray-50 to-gray-50 border border-blue-200 rounded-xl p-3.5 relative">
       <button onClick={dismiss}
         aria-label="닫기"
         className="absolute top-2 right-2 text-gray-400 hover:text-gray-600">
