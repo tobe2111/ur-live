@@ -6,6 +6,7 @@ import { useTheme } from '@/shared/stores/useTheme'
 const DesktopLiveLeftPanel = lazy(() => import('./DesktopLiveLeftPanel'))
 const DesktopLiveRightPanel = lazy(() => import('./DesktopLiveRightPanel'))
 const LinkshopMobileQR = lazy(() => import('./LinkshopMobileQR'))
+const ConsumerFrameRails = lazy(() => import('./ConsumerFrameRails'))
 
 interface MobileAppLayoutProps {
   children: ReactNode
@@ -49,7 +50,9 @@ const LINKSHOP_PREFIXES = ['/u/', '/u', '/profile/', '/s/']
 //   → 익명 액자 우선, 주인 하드로드 시 첫 client 렌더에서 사이드바 자기치유(createRoot 비-hydrate).
 // 🖥️ 2026-06-18 (대표 결정 — PC 전면 반응형 단계적 롤아웃): 풀너비 데스크탑 레이아웃을 쓸 경로.
 //   여기 등재된 경로만 프레임(430 액자) 해제 + 상단 네비 + 풀너비. 단계별로 확장(홈부터).
-const DESKTOP_RESPONSIVE_PATHS = new Set<string>(['/'])
+// 🖥️ 2026-06-20 (대표 시안 — 에버랜드 PC): 모든 컨슈머를 '중앙 모바일 액자 + 데코 거터 레일 +
+//   하단 네비' 단일 정체성으로. 홈도 액자로 되돌림(여기서 제거) → 좌측 사이드바 대신 거터 레일.
+const DESKTOP_RESPONSIVE_PATHS = new Set<string>([])
 
 function isOwnLinkshopPath(pathname: string): boolean {
   if (typeof window === 'undefined') return false
@@ -88,12 +91,13 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   //   프레임(430 액자) 대신 상단 네비 + 풀너비 반응형. 좌측 카테고리 사이드바는 숨김(사용자 "사이드바 위주 X").
   //   페이지의 기존 lg: 레이아웃이 그대로 살아남(프레임 CSS 덮기 미적용). 모바일(<lg)은 영향 0.
   const isDesktopResponsive = !mobileOnly && DESKTOP_RESPONSIVE_PATHS.has(location.pathname)
-  // 🖥️ 2026-06-18 (대표 피드백 — "사이드바 없애니 다른 페이지로 못 감"): 좌측 사이드바는 '내비게이션'으로
-  //   유지하되, 콘텐츠는 풀너비(액자 해제). 사이드바가 주인공이던 게 아니라 액자에 갇힌 콘텐츠가 문제였음
-  //   → 풀너비면 사이드바=내비/콘텐츠=주인공(표준 앱 레이아웃). 상단 네비도 함께 표시(원래 pre-frame 레이아웃).
-  const showSidebar = !hideSidebar && !linkshopVisitor
   // 컨슈머 프레임 — 대시보드/도매몰/비디오 + 데스크탑 반응형 페이지는 제외(풀너비).
   const framed = !mobileOnly && !hideSidebar && !isDesktopResponsive
+  // 🖥️ 2026-06-20 (대표 시안 — PC 단일 정체성): 액자 컨슈머 페이지는 좌측 사이드바 대신 거터 레일 +
+  //   프레임 내부 하단 네비를 쓴다 → framed 면 사이드바 숨김. live/shorts(mobileOnly)·풀너비 반응형
+  //   페이지는 종전처럼 사이드바 유지. 데코 거터 레일은 framed 이고 링크샵 방문자가 아닐 때만.
+  const showSidebar = !hideSidebar && !linkshopVisitor && !framed
+  const showFrameRails = framed && !linkshopVisitor
   // 📐 2026-06-17: 단일 폰 폭(430) — 페이지별 폭 분기 제거(액자가 페이지마다 안 튐).
   const frameWidth = '430px'
 
@@ -122,6 +126,8 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
       {mobileOnly && <Suspense fallback={null}><DesktopLiveRightPanel /></Suspense>}
       {/* 🎨 2026-06-18 링크샵 PC 우하단 "모바일로 보기" QR — 방문자에게만(주인은 평소 앱 뷰). */}
       {linkshopVisitor && <Suspense fallback={null}><LinkshopMobileQR /></Suspense>}
+      {/* 🖥️ 2026-06-20 컨슈머 PC 액자 거터 레일 (브랜드/QR/바로가기) — xl+ 에서만 보임(컴포넌트 내부 게이트). */}
+      {showFrameRails && <Suspense fallback={null}><ConsumerFrameRails /></Suspense>}
       <div
         className={`mobile-app-container ${framed ? 'app-framed' : (showSidebar && !mobileOnly ? 'md:pl-[60px] xl:pl-56' : '')}`}
         data-mobile-only={mobileOnly ? 'true' : 'false'}

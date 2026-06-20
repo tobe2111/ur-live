@@ -40,5 +40,12 @@
 - [ ] PC 에서 BottomNav 액자 내 노출 (현 `lg:hidden` 조정) + 사이드바 정책 결정
 - [ ] 4 뷰포트 확인 (≤640/768/1280/1920) — CLAUDE.md PC 룰
 
-## 구현 완료
-_(미구현)_
+## ✅ 구현 완료 (2026-06-20)
+- `MobileAppLayout.tsx`: `DESKTOP_RESPONSIVE_PATHS` 비움 → **홈도 430 액자**. `framed` 면 좌측 사이드바 숨김(`showSidebar = … && !framed`) + `ConsumerFrameRails` 렌더(`showFrameRails = framed && !linkshopVisitor`).
+- `ConsumerFrameRails.tsx` (신규): xl+ 거터 좌/우 레일 — 좌(브랜드+모바일 QR `QRCodeSVG`), 우(바로가기 5종 + 전체 동네딜 CTA). 전부 B&W, fixed calc 위치(프레임 중심 기준).
+- `index.css`: `app-frame-host` 거터에 **모노 도트 텍스처**(라이트/다크) — 컬러 일러 대신 흑백 패턴.
+- `BottomNav.tsx`: `lg:hidden` 제거 + `app-frame-bar` → **PC 액자 안 하단 네비**(430 중앙). linkshopPath/active-path 로직 무변경.
+- `App.tsx`: `main` 의 `lg:pb-0` 제거(PC 하단 네비 여백 예약).
+- 대시보드/도매몰/결제(`HIDE_SIDEBAR_PREFIXES`)·live/shorts(mobileOnly)는 불변.
+- 검증: tsc 0 · 테마 일관성 통과 · build 통과.
+- 후속(선택): 레일 콘텐츠 동적화(인기 딜), 좌측 사이드바 완전 제거 여부 확정, 1280 미만 거터 대응.
