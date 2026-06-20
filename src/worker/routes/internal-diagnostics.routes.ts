@@ -19,6 +19,52 @@ import { requireAdmin } from '../middleware/auth';
 
 const internalDiagnosticsRoutes = new Hono<{ Bindings: Env }>();
 
+// ─── 카카오 로그인 진단 (iOS WebKit 수정 효과 확인 + 회귀 감지) ───────────────
+//   기록은 kakao.routes.ts /sync/callback 가 fire-and-forget 으로 남김.
+//   판독: ios_summary 의 success/error 비율 + aggregate 의 browser별 분포.
+//   signed_fallback=1 success 가 보이면 → 쿠키 유실을 서명 fallback 이 실제로 구제 중.
+internalDiagnosticsRoutes.get('/api/_internal/kakao-login-diag', requireAdmin(), async (c) => {
+  const DB = c.env.DB;
+  const empty = { results: [] as Record<string, unknown>[] };
+  try {
+    const aggregate = await DB.prepare(
+      `SELECT browser, ios, outcome, reason, COUNT(*) as count
+         FROM kakao_login_diag
+        WHERE created_at >= datetime('now','-7 days')
+        GROUP BY browser, ios, outcome, reason
+        ORDER BY count DESC`
+    ).all().catch(() => empty);
+    const iosSummary = await DB.prepare(
+      `SELECT outcome, COUNT(*) as count
+         FROM kakao_login_diag
+        WHERE ios = 1 AND created_at >= datetime('now','-7 days')
+        GROUP BY outcome`
+    ).all().catch(() => empty);
+    const fallbackWins = await DB.prepare(
+      `SELECT COUNT(*) as count
+         FROM kakao_login_diag
+        WHERE outcome='success' AND signed_fallback=1
+          AND created_at >= datetime('now','-7 days')`
+    ).first<{ count: number }>().catch(() => ({ count: 0 }));
+    const recent = await DB.prepare(
+      `SELECT created_at, outcome, reason, browser, ios, had_state_cookie, signed_fallback, is_new
+         FROM kakao_login_diag ORDER BY id DESC LIMIT 100`
+    ).all().catch(() => empty);
+    return c.json({
+      success: true,
+      data: {
+        note: 'ios=1 은 모두 WebKit(사파리/카톡인앱). signed_fallback=1 success = 쿠키 유실을 서명 state 가 구제한 건수.',
+        ios_summary: iosSummary.results,
+        signed_fallback_successes_7d: fallbackWins?.count ?? 0,
+        aggregate: aggregate.results,
+        recent: recent.results,
+      },
+    });
+  } catch {
+    return c.json({ success: false, error: 'diag query failed' }, 500);
+  }
+});
+
 // ─── Health Dashboard ────────────────────────────────────────────────────
 internalDiagnosticsRoutes.get('/api/_internal/health-dashboard', requireAdmin(), async (c) => {
   const env = c.env;

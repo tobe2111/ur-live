@@ -7,7 +7,8 @@
   - **Chrome 등 쿠키 정상 브라우저는 기존 쿠키↔URL state 바인딩 분기로 진입 → byte-identical(불변, 더 강한 CSRF 유지)**. 쿠키 형식 `state|b64redirect|intent` 유지(state 부분만 UUID→서명 JWT, '|' 미포함이라 split 안전).
   - **보안**: 서명(HS256)이라 JWT_SECRET 없이 위조 불가 + 30분 만료 + nonce. 쿠키-부재 fallback 은 표준 signed-state CSRF 모델(쿠키 바인딩보다 약간 약하나, iOS 전체 로그인 불가보다 훨씬 나음). JWT_SECRET 없으면 opaque UUID 폴백(기존 쿠키-only 동작).
 - 검증: tsc 0 · `npm run build`(client+worker+prepare) 0 · 신규 단위 10(서명 왕복/위조차단/변조/만료/purpose불일치/레거시UUID/open-redirect clamp) + 기존 safeRedirect 32 = 42 pass · 전체 유닛 2170 pass. CLAUDE.md OAuth 룰("쿠키+URL state 검증") 준수 — 쿠키 유지 + 서명 강화.
-- ⚠️ **실기기 검증 권장**: iOS Safari + 카카오톡 인앱에서 "3초 시작하기" → 로그인 성공 확인. (배포 후 1회)
+- 🩺 **진단 로깅 추가(대표 승인 "네, 추가해주세요")**: `kakao-login-diag.ts`(신규 `kakao_login_diag` 테이블, ensureXxx WeakSet 메모이즈, ~2% 확률 prune→최근 3000개, PII 미저장) + `/sync/callback` 4개 결과지점에 fire-and-forget 기록(성공/oauth_state_expired/mismatch/session_cookie_failed — 브라우저종류·ios·쿠키유무·signed_fallback 플래그). 조회: `GET /api/_internal/kakao-login-diag`(requireAdmin) — ios_summary(성공/실패) + `signed_fallback_successes_7d`(쿠키유실을 서명 state 가 구제한 건수) + browser별 aggregate + recent 100. **수정 효과 수치 확인 + 재발 즉시 감지.** fail-soft(진단 실패가 로그인 불막음).
+- ⚠️ **실기기 검증 권장**: iOS Safari + 카카오톡 인앱에서 "3초 시작하기" → 로그인 성공 확인. 그 후 `/api/_internal/kakao-login-diag` 로 ios_summary success↑ + signed_fallback_successes_7d>0 확인.
 
 ## ✅ 2026-06-19 — 어드민 제품별 플랫폼 마진 설정 UI: 미끼/마진 전략 (대표 "응 이렇게 정확하게 진행해줘")
 **요청**: 제조사가 등록한 상품을 검수할 때 **공급가·판매가·시중 최저가**를 보면서 **제품별로 우리 마진%를 정해 승인**(미끼상품=수익 하 / 마진상품=수익 상 — 항공권식 전략). 모든 가격 부가세 포함, 공급가 위에 우리 10%(조율 가능).
