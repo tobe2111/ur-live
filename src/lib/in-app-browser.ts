@@ -67,7 +67,12 @@ export function detectInAppBrowser(): InAppBrowserName | null {
 
 export function isIOS(): boolean {
   if (typeof navigator === 'undefined') return false
-  return /iphone|ipad|ipod/i.test(navigator.userAgent)
+  const ua = navigator.userAgent
+  if (/iphone|ipad|ipod/i.test(ua)) return true
+  // 🛡️ 2026-06-20 (A3): iPadOS 13+ 사파리는 기본 '데스크톱' UA(Macintosh)라 ipad 미포함 →
+  //   touch 가능한 Mac 으로 iPad 판별(데스크톱 Mac 은 maxTouchPoints 0~1). iPad 인앱→외부열기 경로 정상화.
+  if (/Macintosh/i.test(ua) && typeof navigator.maxTouchPoints === 'number' && navigator.maxTouchPoints > 1) return true
+  return false
 }
 
 export function isAndroid(): boolean {

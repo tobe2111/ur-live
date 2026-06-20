@@ -36,9 +36,13 @@ export default function KakaoCallbackPage() {
       }
 
       try {
+        // 🛡️ 2026-06-20 (C3): redirect_uri 는 이 페이지의 실제 경로(/auth/kakao/callback)와 일치해야 함.
+        //   카카오 토큰 교환은 authorize 때 쓴 redirect_uri 와 정확히 같아야 성공(KOE006 방지).
+        //   이전엔 /auth/kakao/sync/callback 을 보내 — 이 페이지가 /auth/kakao/callback 에 마운트되므로
+        //   불일치였다(주 흐름은 서버 /sync/callback 이라 휴면 버그였지만, 이 SPA 경로로 code 가 오면 실패).
         const res = await api.post('/api/auth/kakao/callback', {
           code,
-          redirect_uri: `${window.location.origin}/auth/kakao/sync/callback`,
+          redirect_uri: `${window.location.origin}/auth/kakao/callback`,
         })
 
         if (!res.data.success) throw new Error(res.data.error || '로그인 실패')

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO, { wholesaleStoreJsonLd, itemListJsonLd } from '@/components/SEO'
 import { ChevronRight, FileSpreadsheet } from 'lucide-react'
-import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit, useWholesaleMall } from '@/hooks/queries/useWholesale'
+import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit, useWholesaleMall, wholesaleAuthSeg } from '@/hooks/queries/useWholesale'
 import WholesaleBannerCarousel from './wholesale/WholesaleBannerCarousel'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { getSupplierToken, clearSupplierSession } from '@/lib/supplier-api'
@@ -113,7 +113,8 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   // ── 서버사이드 카탈로그 쿼리(BIZ-4) — 모든 컨트롤을 `/catalog` 파라미터에 위임.
   //   기본값(검색 없음·cat all·popular·재고off·가격 미설정)은 전부 생략 → URL = `/api/wholesale/catalog?`
   //   (= 기존 useWholesaleCatalog('') 와 byte-identical 요청). 그 외엔 새 캐시키 + 새 쿼리.
-  const catalogKey = `${committedSearch}|${cat}|${sort}|${inStock ? 1 : 0}|${band?.id ?? ''}|${premiumView ? 'P' : ''}|${selectedBrand ? `B:${selectedBrand}` : ''}`
+  // 🏭 2026-06-19 (대표 전수조사): 인증별 캐시 분리 — 게스트 가격(null)이 로그인 후 잔존해 비로그인 UI 고착하는 것 방지.
+  const catalogKey = `${committedSearch}|${cat}|${sort}|${inStock ? 1 : 0}|${band?.id ?? ''}|${premiumView ? 'P' : ''}|${selectedBrand ? `B:${selectedBrand}` : ''}|${wholesaleAuthSeg()}`
   // 🏭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — "로드되자마자 상품이 안 떠"): worker SSR 주입
   //   (__SSR_INITIAL_WHOLESALE__) 즉시 소비. 기본 파라미터에서만.
   //   - guest: initialData — fetch 자체가 없음 (0-RTT 완결)
