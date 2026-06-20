@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom'
 const VoucherMap = lazy(() => import('./my-vouchers/VoucherMap'))
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Ticket, MapPin, Clock, CheckCircle, XCircle, QrCode, X, Share2 } from 'lucide-react'
+import { ArrowLeft, Ticket, MapPin, Clock, CheckCircle, XCircle, QrCode, X, Share2, Smartphone } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { useMyVouchers, useInvalidateMyVouchers } from '@/hooks/queries'
@@ -464,25 +464,33 @@ export default function MyVouchersPage() {
         </div>
       )}
 
-      {/* 🎟️ 2026-06-18: 공구권/교환권 세그먼트 — 교환권(기프티콘) 보유 시에만. 기본 공구권. */}
+      {/* 🎟️ 2026-06-18: 공구권/교환권 세그먼트 — 교환권(기프티콘) 보유 시에만. 기본 공구권.
+          🎨 2026-06-20 (사용자 신고 — '성의없어'): 두 줄짜리 plain pill → iOS 세그먼트 컨트롤(트랙+슬라이드 강조). */}
       {giftCount > 0 && (
-        <div className="ur-content-narrow px-4 lg:px-8 mb-3 flex gap-1.5">
-          <button
-            onClick={() => setSourceTab('gb')}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${sourceTab === 'gb' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300'}`}
-          >
-            🎟️ {t('voucher.tabGroupBuy', { defaultValue: '공구권' })} {gbCount > 0 && `(${gbCount})`}
-          </button>
-          <button
-            onClick={() => setSourceTab('gift')}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${sourceTab === 'gift' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300'}`}
-          >
-            📱 {t('voucher.tabGifticon', { defaultValue: '교환권' })} ({giftCount})
-          </button>
+        <div className="ur-content-narrow px-4 lg:px-8 mb-4">
+          <div className="flex p-1 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A]">
+            {([
+              ['gb', '🎟️', t('voucher.tabGroupBuy', { defaultValue: '공구권' }), gbCount],
+              ['gift', '📱', t('voucher.tabGifticon', { defaultValue: '교환권' }), giftCount],
+            ] as const).map(([key, emoji, label, count]) => {
+              const active = sourceTab === key
+              return (
+                <button
+                  key={key}
+                  onClick={() => setSourceTab(key)}
+                  className={`flex-1 py-2 rounded-xl text-[13px] font-bold flex items-center justify-center gap-1.5 transition-all ${active ? 'bg-white dark:bg-[#2C2C2E] text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
+                >
+                  <span aria-hidden>{emoji}</span>
+                  {label}
+                  <span className={`text-[11px] font-extrabold ${active ? 'text-gray-400 dark:text-gray-500' : 'text-gray-400 dark:text-gray-600'}`}>{count}</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
       )}
 
-      {vouchers.length > 0 && (
+      {shownVouchers.length > 0 && (
         <div className="ur-content-narrow px-4 lg:px-8 -mt-2 mb-4 flex items-center gap-2 flex-wrap"
           style={{ fontSize: 12, color: tk.secondary, letterSpacing: '-0.01em' }}>
           <span style={{ fontWeight: 600, color: tk.label }}>
@@ -532,18 +540,11 @@ export default function MyVouchersPage() {
             <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: tk.accent, borderTopColor: 'transparent' }} />
           </div>
         ) : shownVouchers.length === 0 ? (
-          <div className="text-center py-20">
-            <Ticket className="w-12 h-12 mx-auto mb-3" style={{ color: tk.tertiary }} />
-            <p className="font-bold mb-1" style={{ color: tk.label }}>{t('voucher.empty')}</p>
-            <p className="text-sm mb-4" style={{ color: tk.secondary }}>{t('voucher.emptyHint')}</p>
-            <button
-              onClick={() => navigate('/group-buy')}
-              className="px-5 py-2.5 rounded-full text-sm font-bold text-white active:opacity-90"
-              style={{ background: tk.accentGradient }}
-            >
-              {t('voucher.exploreRestaurants')}
-            </button>
-          </div>
+          <EmptyVouchers
+            mode={giftCount > 0 && sourceTab === 'gift' ? 'gift' : 'gb'}
+            onExplore={() => navigate(giftCount > 0 && sourceTab === 'gift' ? '/vouchers' : '/group-buy')}
+            t={t}
+          />
         ) : (
           <>
             {groups.map(group => {
@@ -591,6 +592,85 @@ export default function MyVouchersPage() {
       {/* 🛡️ 2026-05-15: 참여 직후 share prompt (3 AI 합의: post-purchase share boost) */}
       {justJoined && <PostJoinShareModal data={justJoined} onClose={() => setJustJoined(null)} />}
     </WalletPageWrapper>
+  )
+}
+
+/**
+ * 🎨 2026-06-20 (사용자 신고 — "공구권 페이지 디자인이 심각해 … 너무 성의없어"):
+ *   기존 빈 화면은 얇은 회색 티켓 아이콘 + 2줄 텍스트 + 버튼이 빈 여백에 떠 있어 무성의해 보였음.
+ *   → 탭별(공구권/교환권) 맥락에 맞는 일러스트 + 카피 + 사용 흐름 3스텝 안내로 교체.
+ *   화이트 테마(다크 토글 지원) — 모든 라이트 토큰에 dark: variant 동반.
+ */
+function EmptyVouchers({ mode, onExplore, t }: {
+  mode: 'gb' | 'gift'
+  onExplore: () => void
+  t: (key: string, opts?: any) => string
+}) {
+  const isGift = mode === 'gift'
+  const Icon = isGift ? Smartphone : Ticket
+  const title = isGift
+    ? t('voucher.emptyGiftTitle', { defaultValue: '아직 교환권이 없어요' })
+    : t('voucher.emptyGbTitle', { defaultValue: '아직 공구권이 없어요' })
+  const desc = isGift
+    ? t('voucher.emptyGiftDesc', { defaultValue: '기프티콘 교환권을 구매하면 휴대폰으로 발송되고, 여기에서도 모아볼 수 있어요.' })
+    : t('voucher.emptyGbDesc', { defaultValue: '동네 맛집 공동구매에 참여하면 식사권이 여기 담겨요. 매장에서 QR 한 번으로 사용하세요.' })
+  const cta = isGift
+    ? t('voucher.emptyGiftCta', { defaultValue: '교환권 둘러보기' })
+    : t('voucher.exploreRestaurants', { defaultValue: '맛집 둘러보기' })
+
+  const steps: { emoji: string; title: string; desc: string }[] = isGift
+    ? [
+        { emoji: '🛍️', title: t('voucher.stepGift1Title', { defaultValue: '교환권 구매' }), desc: t('voucher.stepGift1Desc', { defaultValue: '카페·편의점 등 인기 브랜드 기프티콘' }) },
+        { emoji: '📲', title: t('voucher.stepGift2Title', { defaultValue: 'MMS 자동 발송' }), desc: t('voucher.stepGift2Desc', { defaultValue: '등록한 휴대폰으로 즉시 전송돼요' }) },
+        { emoji: '🏪', title: t('voucher.stepGift3Title', { defaultValue: '매장에서 제시' }), desc: t('voucher.stepGift3Desc', { defaultValue: '바코드 한 번으로 간편하게 사용' }) },
+      ]
+    : [
+        { emoji: '🍽️', title: t('voucher.stepGb1Title', { defaultValue: '맛집 공구 참여' }), desc: t('voucher.stepGb1Desc', { defaultValue: '원하는 메뉴를 할인가에 미리 결제' }) },
+        { emoji: '🎟️', title: t('voucher.stepGb2Title', { defaultValue: '공구권 자동 발급' }), desc: t('voucher.stepGb2Desc', { defaultValue: '결제 즉시 이 지갑에 안전 보관' }) },
+        { emoji: '📱', title: t('voucher.stepGb3Title', { defaultValue: '매장에서 QR 제시' }), desc: t('voucher.stepGb3Desc', { defaultValue: '추가 결제 없이 바로 식사' }) },
+      ]
+
+  return (
+    <div className="py-10 flex flex-col items-center text-center">
+      {/* 일러스트 — 부드러운 그라데이션 라운드 + 브랜드 핑크 아이콘 */}
+      <div className="relative mb-5">
+        <div
+          className="w-[88px] h-[88px] rounded-[26px] flex items-center justify-center"
+          style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.12), rgba(236,72,153,0.14))' }}
+        >
+          <Icon className="w-10 h-10" style={{ color: '#EC4899' }} strokeWidth={1.6} />
+        </div>
+        <span className="absolute -top-1.5 -right-1.5 text-lg" aria-hidden>✨</span>
+      </div>
+
+      <h2 className="text-[18px] font-extrabold tracking-tight text-gray-900 dark:text-white">{title}</h2>
+      <p className="mt-2 max-w-[270px] text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">{desc}</p>
+
+      <button
+        onClick={onExplore}
+        className="mt-6 px-7 py-3 rounded-full text-sm font-extrabold text-white active:scale-95 transition-transform"
+        style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)', boxShadow: '0 8px 20px rgba(236,72,153,0.28)' }}
+      >
+        {cta}
+      </button>
+
+      {/* 사용 흐름 3스텝 — 빈 공간을 정보로 채워 '어떻게 받는지' 안내 */}
+      <div className="mt-9 w-full max-w-[300px] flex flex-col gap-2.5">
+        {steps.map((s, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-3 rounded-2xl bg-white dark:bg-[#141414] border border-gray-100 dark:border-[#1F1F1F] px-3.5 py-3 text-left"
+          >
+            <div className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center text-lg bg-gray-50 dark:bg-[#1A1A1A]" aria-hidden>{s.emoji}</div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-bold leading-tight text-gray-900 dark:text-white">{s.title}</p>
+              <p className="mt-0.5 text-[11.5px] leading-snug text-gray-500 dark:text-gray-400">{s.desc}</p>
+            </div>
+            <span className="ml-auto text-[11px] font-extrabold text-gray-300 dark:text-gray-600">{i + 1}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
