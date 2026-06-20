@@ -457,11 +457,22 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
     }
 
     // If a state cookie exists but doesn't match, reject (CSRF guard)
+    // 🛡️ 2026-06-20 (하드닝): 쿠키 불일치여도 URL state 가 우리 서명이면 통과.
+    //   사파리/WebKit 에서 로그인 2번 탭·뒤로가기 재시도·동시 로그인 시 쿠키가 stale 해져
+    //   불일치(중복 발급)인데, 서명된 state 는 위조 불가(JWT_SECRET)+30분 만료라 CSRF 안전.
+    //   쿠키-부재 fallback(위 verifySignedState)과 동일 신뢰 모델 — 일관 확장. 정상(쿠키 일치) 경로 불변.
     if (stateCookie && !stateMatched) {
-      if (import.meta.env.DEV) console.error('[Kakao Sync] OAuth state mismatch');
-      c.header('Set-Cookie', clearStateCookieHeader());
-      fireDiag('error', 'oauth_state_mismatch');
-      return c.redirect(`${redirectTarget}?error=oauth_state_mismatch`);
+      const signedAlt = await verifySignedState(receivedState, c.env.JWT_SECRET);
+      if (signedAlt) {
+        redirectTarget = signedAlt.redirect;
+        intent = signedAlt.intent;
+        stateMatched = true;
+      } else {
+        if (import.meta.env.DEV) console.error('[Kakao Sync] OAuth state mismatch');
+        c.header('Set-Cookie', clearStateCookieHeader());
+        fireDiag('error', 'oauth_state_mismatch');
+        return c.redirect(`${redirectTarget}?error=oauth_state_mismatch`);
+      }
     }
     
     const KAKAO_REDIRECT_URI = `${new URL(c.req.url).origin}/auth/kakao/sync/callback`;
