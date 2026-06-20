@@ -44,6 +44,22 @@ interface Voucher {
 
 type ViewMode = 'list' | 'map'
 
+// 🎨 2026-06-20 화면2 지도 — 거리/도보 시간 (Haversine, 시안 "320m · 도보 4분")
+function haversineMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371000
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(b.lat - a.lat)
+  const dLng = toRad(b.lng - a.lng)
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)))
+}
+function formatDistance(m: number): string {
+  return m < 1000 ? `${Math.round(m / 10) * 10}m` : `${(m / 1000).toFixed(1)}km`
+}
+function walkMinutes(m: number): number {
+  return Math.max(1, Math.round(m / 75)) // 약 4.5km/h (75m/분) — 시안 320m→4분
+}
+
 const STATUS_MAP = {
   unused: { labelKey: 'voucher.status.unused', color: 'bg-green-100 text-green-700', icon: Ticket },
   used: { labelKey: 'voucher.status.used', color: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400', icon: CheckCircle },
@@ -358,6 +374,7 @@ export default function MyVouchersPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   // 🎨 2026-06-20 흑백 리디자인 화면2(지도 전용)·화면6(번호 설정 전용) — 인-페이지 뷰(새 라우트 X)
   const [mapSelected, setMapSelected] = useState<Voucher | null>(null)
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
   const [phoneSettingsOpen, setPhoneSettingsOpen] = useState(false)
   // 🛡️ 2026-05-15: 참여 후 share prompt — GroupBuyDetailPage.handleJoin 이 localStorage 기록
   const [justJoined, setJustJoined] = useState<{ product_id: number; name: string; image_url?: string } | null>(null)
@@ -389,6 +406,17 @@ export default function MyVouchersPage() {
       }
     } catch { /* silent */ }
   }, [])
+
+  // 🎨 2026-06-20 화면2 지도 — 진입 시 현재 위치 1회 요청(거리/도보 시간 계산용). 거부/실패 시 거리 미표시(graceful).
+  useEffect(() => {
+    if (viewMode !== 'map' || userLoc) return
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => { /* 권한 거부/실패 — 거리 표시만 생략 */ },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
+    )
+  }, [viewMode, userLoc])
 
   // 🛡️ useMyVouchers hook 이 fetch + cache + setState 모두 처리 — 직접 useEffect 불필요.
 
@@ -442,6 +470,14 @@ export default function MyVouchersPage() {
 
   // 🎨 화면2 — 지도에서 보기 (전용 인-페이지 화면)
   if (viewMode === 'map') {
+    // 기본 선택 = 현 위치 기준 가장 가까운 식사권 (위치 없으면 첫 번째) — 시안처럼 카드 즉시 표시
+    const dist = (v: Voucher) => (userLoc && v.restaurant_lat && v.restaurant_lng)
+      ? haversineMeters(userLoc, { lat: v.restaurant_lat, lng: v.restaurant_lng }) : Infinity
+    const nearest = mapVouchers.length === 0 ? null
+      : (userLoc ? [...mapVouchers].sort((a, b) => dist(a) - dist(b))[0] : mapVouchers[0])
+    const card = mapSelected ?? nearest
+    const cardDist = (card && userLoc && card.restaurant_lat && card.restaurant_lng)
+      ? haversineMeters(userLoc, { lat: card.restaurant_lat, lng: card.restaurant_lng }) : null
     return (
       <WalletPageWrapper theme={theme}>
         <SEO title={t('voucher.seoTitle')} description={t('voucher.seoDescription')} url="/my-vouchers" noindex />
@@ -457,22 +493,31 @@ export default function MyVouchersPage() {
         <div className="relative">
           <Suspense fallback={<div className="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400" style={{ height: 460 }}>{t('voucher.mapLoading', { defaultValue: '지도 불러오는 중...' })}</div>}>
             <div className="[&>div]:rounded-none [&>div]:border-0" style={{ height: 460 }}>
-              <VoucherMap vouchers={mapVouchers} onMarkerClick={(v) => setMapSelected(vouchers.find(x => x.id === v.id) ?? null)} />
+              <VoucherMap
+                vouchers={mapVouchers}
+                userLocation={userLoc}
+                onMarkerClick={(v) => setMapSelected(vouchers.find(x => x.id === v.id) ?? null)}
+              />
             </div>
           </Suspense>
-          {/* 선택 카드 (하단) */}
-          {mapSelected && (
+          {/* 선택 카드 (하단) — 시안: 썸네일 + 상품명 + 가게 · 거리 · 도보 N분 + 사용 */}
+          {card && (
             <div className="absolute left-3 right-3 bottom-3 flex items-center gap-3 rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#2A2A2A] p-3" style={{ boxShadow: '0 6px 22px rgba(0,0,0,0.14)' }}>
               <div className="w-[52px] h-[52px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F]">
-                {mapSelected.product_image
-                  ? <img src={mapSelected.product_image} alt="" loading="lazy" className="w-full h-full object-cover" />
+                {card.product_image
+                  ? <img src={card.product_image} alt="" loading="lazy" className="w-full h-full object-cover" />
                   : <Ticket className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{mapSelected.product_name}</p>
-                {mapSelected.restaurant_name && <p className="text-[12px] text-gray-400 dark:text-gray-500 truncate mt-0.5">{mapSelected.restaurant_name}</p>}
+                <p className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{card.product_name}</p>
+                <p className="text-[12px] text-gray-400 dark:text-gray-500 truncate mt-0.5">
+                  {card.restaurant_name || ''}
+                  {cardDist !== null && (
+                    <>{card.restaurant_name ? ' · ' : ''}{formatDistance(cardDist)} · {t('voucher.walkMin', { count: walkMinutes(cardDist), defaultValue: `도보 ${walkMinutes(cardDist)}분` })}</>
+                  )}
+                </p>
               </div>
-              <button onClick={() => { setQrVoucher(mapSelected) }}
+              <button onClick={() => { setQrVoucher(card) }}
                 className="shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2.5 bg-gray-900 text-white dark:bg-white dark:text-gray-900 text-[13px] font-bold active:scale-95 transition-transform">
                 <QrCode className="w-4 h-4" strokeWidth={1.8} />{t('voucher.use', { defaultValue: '사용' })}
               </button>
