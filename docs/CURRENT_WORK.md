@@ -1,5 +1,18 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-20 (2차) — 카카오 로그인 "잠시 됐다 풀림" 근본수정: 소비자 user_token Bearer (대표 신고 "잠시 되다 안돼 / 둘 다 불안정")
+**증상(1차 수정 후)**: signed-state 로 OAuth *완료*는 됐는데(로그인 "잠시" 됨), iOS(사파리·카톡 인앱)에서 **곧 다시 로그아웃**. 크롬은 정상.
+- **근본 원인(아키텍처로 확정)**: 카카오 로그인은 `ur_session`(httpOnly·Lax) **쿠키 1개에만** 의존. iOS WebKit(사파리 ITP / 카톡 WKWebView)은 cross-site OAuth 왕복 후 이 쿠키를 **유실/비영속** 처리 → `/api/auth/session/health` 가 `session:false` → 클라(auth-callback-bootstrap + api.ts 401핸들러)가 로그인을 **wipe**. **이메일 로그인은 이미 `user_token`(localStorage Bearer)을 써서 이 문제가 없음** — 카카오만 미발급이 차이. (단일세션 enforcement 는 `deriveDashboardSeat`가 user→null 이라 무관함을 확인.)
+- **수정(기존 인프라 재사용 — 이메일 로그인과 동일 패턴)**: 카카오도 `user_token` 발급 → Bearer 인증으로 쿠키 유실과 무관하게 지속. 4부:
+  1. `kakao.routes.ts /sync/callback`: 소비자 `user_token`(JWT type=user, 30일) 발급 → `ur_pending_user_token` transfer 쿠키(JS-readable 60s, 셀러/에이전시 패턴과 동일).
+  2. `auth-callback-bootstrap.ts`: transfer 쿠키 → `localStorage.user_token` 이동 + health 핑에 `Authorization: Bearer` 동봉.
+  3. `auth.routes.ts /session/health`: 쿠키 없으면 **Bearer(user_token)도 세션 유효로 인정**(requireAuth 와 동일 우선순위) → 부당한 wipe 차단.
+  4. `auth.ts clearAuthData('user')`: `user_token`/`user_refresh_token` 정리 추가(로그아웃 후 Bearer 잔존 버그 동시수정 — 이메일 로그인에도 있던 잠재버그).
+- **효과**: iOS 가 `ur_session` 쿠키를 떨궈도 api.ts 인터셉터(line 322, 기존)가 `user_token` Bearer 자동 첨부 → requireAuth Bearer 우선 인증 → 401 없음 → wipe 없음. **쿠키는 그대로 유지(defense-in-depth), Bearer 는 ITP-immune 폴백.** 크롬/이메일 경로 불변(additive).
+- **보안**: 소비자 토큰은 저권한 + CSP(nonce/strict-dynamic) XSS 완화 + 대시보드도 이미 localStorage 토큰 사용(허용된 모델). 30일 만료 = 세션 쿠키와 동일.
+- 검증: tsc 0 · `npm run build`(client+worker+prepare) 0 · 전체 유닛 2170 pass · sql-bind/not-null 0.
+- ⚠️ **실기기 검증 권장**: iOS 사파리 + 카톡 인앱 로그인 → 새로고침/탭이동/앱 재진입에도 **로그인 유지** 확인. `/api/_internal/kakao-login-diag` 로 ios success 지속 확인.
+
 ## ✅ 2026-06-20 — 카카오 로그인 iOS(Safari/WebKit) 실패 근본수정: signed-state fallback (대표 신고 "사파리/아이폰 안돼, 크롬은 돼")
 **증상**: 카카오 "3초 시작하기" 가 iOS(사파리 + 카카오톡 인앱 webview, 둘 다 WebKit)에서 실패, **크롬(Blink)은 정상**. → 서버/설정 문제 아님(그럼 크롬도 깨짐) = **WebKit 특유의 OAuth 왕복 쿠키 처리** 문제로 확정.
 - **근본 원인**: OAuth CSRF 가 `kakao_oauth_state`(HttpOnly·Secure·**SameSite=Lax**) 쿠키 1개에만 의존. iOS WebKit 은 cross-site OAuth 왕복(특히 **카카오톡 앱 핸드오프 → Safari 복귀**, ITP cross-site 쿠키 처리)에서 이 Lax 쿠키를 콜백에 안 돌려주는 케이스 → `/sync/callback` 이 `?error=oauth_state_expired` 로 로그인 실패. 크롬은 Lax 관대 처리라 정상.

@@ -109,6 +109,14 @@ export function processAuthCallbackParams(): void {
       const clearCookie = (name: string) => {
         document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax; Secure`
       }
+      // 🛡️ 2026-06-20 (iOS 로그인 안정화 — 근본수정): 소비자 Bearer 토큰 → localStorage.
+      //   iOS WebKit(사파리 ITP / 카톡 WKWebView)가 httpOnly 세션 쿠키를 유실해도 user_token
+      //   Bearer 로 API 인증·세션 health 가 지속 → "로그인 잠시 됐다 풀림" 자동 wipe 방지.
+      const pendingUserToken = readCookie('ur_pending_user_token')
+      if (pendingUserToken) {
+        localStorage.setItem('user_token', pendingUserToken)
+        clearCookie('ur_pending_user_token')
+      }
       const sellerToken = readCookie('ur_pending_seller_token')
       if (sellerToken) {
         localStorage.setItem('seller_token', sellerToken)
@@ -176,7 +184,13 @@ export function processAuthCallbackParams(): void {
     if (userType === 'user' && userId) {
       // 백그라운드 ping (await X) — 실패 시 localStorage 정리.
       // login=success URL 거쳐온 경우엔 방금 발급된 쿠키라 healthy 정상 응답.
-      void fetch('/api/auth/session/health', { credentials: 'include' })
+      // 🛡️ 2026-06-20 (iOS 로그인 안정화): user_token Bearer 동봉 — iOS WebKit 가 세션 쿠키를
+      //   유실해도 Bearer 로 session:true 판정 → 부당한 자동 wipe 방지. (health 가 Bearer 도 인정)
+      const userToken = localStorage.getItem('user_token')
+      void fetch('/api/auth/session/health', {
+        credentials: 'include',
+        headers: userToken ? { Authorization: `Bearer ${userToken}` } : undefined,
+      })
         .then(async (r) => {
           if (!r.ok) return
           const body = await r.json().catch(() => null) as { data?: { session?: boolean } } | null
@@ -189,6 +203,8 @@ export function processAuthCallbackParams(): void {
               localStorage.removeItem('user_email')
               localStorage.removeItem('user_profile_image')
               localStorage.removeItem('session_login')
+              localStorage.removeItem('user_token')
+              localStorage.removeItem('user_refresh_token')
             } catch { /* ignore */ }
           }
         })

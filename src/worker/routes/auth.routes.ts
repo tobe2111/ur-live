@@ -21,6 +21,7 @@ import { JWT_ACCESS_TOKEN_EXPIRY, JWT_REFRESH_TOKEN_EXPIRY } from '../../shared/
 // PBKDF2 password hashing — Cloudflare Workers compatible (100k iterations, SHA-256)
 import { hashPassword, verifyPassword, validatePasswordComplexity } from '../../lib/password';
 import { parseSessionCookie, clearSessionCookie } from '../utils/session';
+import { verify as jwtVerify } from 'hono/jwt';
 import { checkLockout, recordFailure, clearFailures } from '../utils/account-lockout';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
 import { decryptAtRest } from '../utils/data-crypto';
@@ -371,7 +372,33 @@ authRouter.get('/validate', requireAuth(), async (c) => {
 // 프론트가 마운트 시 호출해서 "로그인 됐는데 API 실패" 상황을 진단
 authRouter.get('/session/health', async (c) => {
   const cookieHeader = c.req.header('Cookie');
-  const sessionUser = await parseSessionCookie(cookieHeader, c.env.JWT_SECRET);
+  let sessionUser = await parseSessionCookie(cookieHeader, c.env.JWT_SECRET);
+
+  // 🛡️ 2026-06-20 (iOS 로그인 안정화 — 근본수정): 세션 쿠키가 없으면 Bearer(user_token) 도 인정.
+  //   iOS WebKit(사파리 ITP / 카톡 WKWebView)가 httpOnly 쿠키를 유실해도 localStorage user_token
+  //   Bearer 로 session:true 판정 → 클라의 부당한 자동 로그아웃(wipe) 방지. (requireAuth 와 동일 우선순위)
+  if (!sessionUser) {
+    const authHeader = c.req.header('Authorization');
+    const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (bearer) {
+      try {
+        const p = await jwtVerify(bearer, c.env.JWT_SECRET, 'HS256') as Record<string, unknown>;
+        const sub = p?.sub;
+        const type = (typeof p?.type === 'string' ? p.type : 'user');
+        if (sub && type === 'user') {
+          sessionUser = {
+            userId: String(sub),
+            name: (p.name as string) || '',
+            email: (p.email as string) || '',
+            type: 'user',
+            role: 'user',
+            isDbId: p.isDbId !== false,
+            iat: typeof p.iat === 'number' ? p.iat : undefined,
+          };
+        }
+      } catch { /* invalid/expired bearer — 익명 처리 */ }
+    }
+  }
 
   let kakaoValid = false;
   let kakaoNeedsReauth = false;

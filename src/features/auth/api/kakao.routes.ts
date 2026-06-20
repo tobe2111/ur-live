@@ -550,6 +550,31 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
         return c.redirect(`${redirectTarget}?error=session_cookie_failed`, 302);
       }
 
+      // 🛡️ 2026-06-20 (iOS 로그인 안정화 — 근본수정): 소비자 Bearer 토큰(user_token) 발급.
+      //   배경: iOS WebKit(사파리 ITP / 카톡 WKWebView)는 cross-site OAuth 왕복 후 httpOnly
+      //   `ur_session` 쿠키를 유실/비영속 처리하는 케이스가 잦음 → 세션 health 가 session:false →
+      //   클라가 로그인을 wipe ("잠시 됐다 풀림"). 이메일 로그인은 이미 `user_token`(localStorage Bearer)
+      //   을 써서 이 문제가 없음 — 카카오도 동일하게 발급하면 쿠키 유실과 무관하게 Bearer 로 인증 지속.
+      //   transfer cookie(JS-readable, 60s)로 넘겨 auth-callback-bootstrap 이 localStorage 로 이동.
+      try {
+        const nowSec = Math.floor(Date.now() / 1000);
+        const userToken = await jwtSign({
+          sub: String(user.id),
+          type: 'user',
+          name: user.name,
+          email: user.email || '',
+          isDbId: true,
+          iat: nowSec,
+          exp: nowSec + 30 * 24 * 60 * 60, // 세션 쿠키와 동일 30일
+        }, c.env.JWT_SECRET);
+        c.header('Set-Cookie',
+          `ur_pending_user_token=${userToken}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
+          { append: true });
+      } catch (e) {
+        if (import.meta.env.DEV) console.error('[Kakao Sync] user_token issuance failed (fail-soft):', e);
+        // 발급 실패해도 쿠키 세션으로 로그인은 정상 진행.
+      }
+
       // 🛡️ linked seller/agency JWT 자동 발급 → 프론트엔드 localStorage 로 이전하도록 transfer cookie
       let linkedRoles: Awaited<ReturnType<typeof issueLinkedRoleTokens>> = {};
       try {
