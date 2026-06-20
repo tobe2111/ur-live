@@ -49,8 +49,11 @@ export default function MainHomePage() {
         jsonLd={[organizationJsonLd, webSiteJsonLd]}
       />
 
-      {/* ═══ Sticky Top Bar ═══ — 모바일 전용. md+ 는 DesktopTopNav 가 담당. */}
-      <div className="md:hidden sticky top-0 inset-x-0 z-30 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
+      {/* ═══ Sticky Top Bar ═══ — 모바일 + PC 액자(lg+). md(768~1023)만 DesktopTopNav 담당.
+          🖥️ 2026-06-20 (대표 신고 — PC 로고 사라짐): 홈이 액자화되며 DesktopTopNav(lg+ 프레임에서 숨김)+
+          사이드바가 빠져 PC 에 로고/검색/알림/장바구니가 전부 사라짐 + 카테고리 바(sticky top-12)가
+          헤더 없이 48px 떠 보임("붕 뜸"). → 이 헤더를 lg+ 에서도 노출(md 만 DesktopTopNav 와 중복 회피). */}
+      <div className="md:hidden lg:block sticky top-0 inset-x-0 z-30 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-wide px-4 lg:px-8 h-12 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <UrDealLogo size={18} />
