@@ -196,17 +196,17 @@ export function useKakaoMap({
       const groupKey = `${r.restaurant_lat.toFixed(5)}_${r.restaurant_lng.toFixed(5)}`
       const groupSize = coordGroupSize.get(groupKey) || 1
       const cornerBadge = isLive
-        ? `<span style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;border-radius:50%;width:14px;height:14px;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;animation:live-pulse 1.2s infinite;">●</span>`
+        ? `<span style="position:absolute;top:-4px;right:-4px;background:#111827;color:#fff;border-radius:50%;width:14px;height:14px;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;animation:live-pulse 1.2s infinite;">●</span>`
         : hasDiscount
-        ? `<span style="position:absolute;top:-6px;right:-8px;background:#ef4444;color:#fff;border-radius:8px;padding:1px 4px;font-size:9px;font-weight:800;line-height:1.2;">-${Math.round((1 - r.price / r.original_price) * 100)}%</span>`
+        ? `<span style="position:absolute;top:-6px;right:-8px;background:#111827;color:#fff;border-radius:8px;padding:1px 4px;font-size:9px;font-weight:800;line-height:1.2;">-${Math.round((1 - r.price / r.original_price) * 100)}%</span>`
         : isFav
-        ? `<span style="position:absolute;top:-3px;right:-3px;color:#ef4444;font-size:11px;line-height:1;">❤</span>`
+        ? `<span style="position:absolute;top:-3px;right:-3px;color:#111827;font-size:11px;line-height:1;">❤</span>`
         : groupSize > 1
         ? `<span style="position:absolute;top:-4px;right:-6px;background:#374151;color:#fff;border-radius:9px;padding:0 4px;font-size:9px;font-weight:800;line-height:1.4;">+${groupSize - 1}</span>`
         : ''
 
       const bg = isSelected ? '#6b7280' : isLive ? '#fff5f5' : '#ffffff'
-      const borderColor = isSelected ? '#6b7280' : isLive ? '#ef4444' : '#e5e7eb'
+      const borderColor = isSelected ? '#6b7280' : isLive ? '#111827' : '#e5e7eb'
       const size = isSelected ? 36 : 32
 
       const content = document.createElement('div')

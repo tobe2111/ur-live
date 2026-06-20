@@ -13,6 +13,7 @@ import {
   HandCoins,
   Bell,
   Store,
+  ChevronRight,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
@@ -704,6 +705,28 @@ export default function GroupBuyListPage() {
           }] : []),
         ]}
       />
+
+      {/* 🗺️ 2026-06-20 (대표 시안 — 에버랜드 파크맵): 동네딜 지도 진입. RestaurantMapPage(지도+드래그
+          바텀시트+카테고리 칩+내 주변)를 동네딜 메인 동선으로 승격. 좌표 있는 오프라인 딜을 지도에 핀으로. */}
+      <div className="ur-content-wide px-4 lg:px-8 pt-4">
+        <button
+          onClick={() => navigate('/restaurant-map')}
+          className="w-full flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] px-4 py-3.5 active:scale-[0.99] transition-transform"
+        >
+          <div className="w-9 h-9 rounded-xl bg-gray-900 dark:bg-white flex items-center justify-center shrink-0">
+            <MapPin className="w-5 h-5 text-white dark:text-gray-900" aria-hidden="true" />
+          </div>
+          <div className="flex-1 min-w-0 text-left">
+            <p className="text-[14px] font-extrabold text-gray-900 dark:text-white">
+              {t('groupBuy.mapEntryTitle', { defaultValue: '내 주변 동네딜 지도' })}
+            </p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+              {t('groupBuy.mapEntryDesc', { defaultValue: '지도에서 가까운 딜을 한눈에' })}
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500 shrink-0" aria-hidden="true" />
+        </button>
+      </div>
 
       {/* 🛡️ 2026-06-07 (사용자 요청): 동네딜 탭은 BottomNav/DesktopTopNav 로 직접 진입하는
           primary destination 이므로 뒤로가기 + "공동구매" 타이틀 상단바 제거. DesktopTopNav(sticky,

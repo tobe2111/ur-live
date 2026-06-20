@@ -777,10 +777,30 @@ html.dark .gbd {
      ⚠️ `:has()` 미지원 브라우저는 comma 선택자 목록 전체를 무효화하므로 반드시 규칙을 분리한다
      (각 규칙이 독립적으로 평가되도록). `body.app-frame-host[.app-frame-dark]` 는 MobileAppLayout 이
      테마 store 의 applied 값으로 직접 토글 → 결정적으로 적용. */
-  body.app-frame-host { background-color: #e9ebef; }
-  body.app-frame-host.app-frame-dark { background-color: #0C0D10; }
-  body:has(.mobile-app-container.app-framed) { background-color: #e9ebef; }
-  html.dark body:has(.mobile-app-container.app-framed) { background-color: #0C0D10; }
+  /* 🖥️ 2026-06-20 (대표 시안 — 에버랜드 PC): 거터를 비우지 않고 모노 도트 텍스처로 데코.
+     컬러 일러 대신 흑백 패턴(직전 B&W 전환 정합). 매우 낮은 대비 → 레일/프레임 가독성 방해 X. */
+  body.app-frame-host {
+    background-color: #e9ebef;
+    background-image: radial-gradient(rgba(0, 0, 0, 0.045) 1px, transparent 1.4px);
+    background-size: 22px 22px;
+    background-position: center top;
+  }
+  body.app-frame-host.app-frame-dark {
+    background-color: #0C0D10;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1.4px);
+    background-size: 22px 22px;
+    background-position: center top;
+  }
+  body:has(.mobile-app-container.app-framed) {
+    background-color: #e9ebef;
+    background-image: radial-gradient(rgba(0, 0, 0, 0.045) 1px, transparent 1.4px);
+    background-size: 22px 22px;
+  }
+  html.dark body:has(.mobile-app-container.app-framed) {
+    background-color: #0C0D10;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1.4px);
+    background-size: 22px 22px;
+  }
   html.dark .mobile-app-container.app-framed {
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 50px rgba(0, 0, 0, 0.5);
   }

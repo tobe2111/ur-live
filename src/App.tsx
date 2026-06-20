@@ -511,7 +511,8 @@ function AppContent() {
           {/* 🛡️ 2026-06-04 (사용자 신고 — 영구 수정): 모바일 BottomNav(fixed h-14 lg:hidden)가
               콘텐츠 하단을 가림. BottomNav 표시 페이지에만 하단 여백(높이+safe-area) 예약.
               hideBottomNav 페이지(결제/풀스크린/대시보드 등)는 여백 0 — 자체 레이아웃 보존. */}
-          <main id="main-content" className={hideBottomNav ? undefined : 'pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0'}>
+          {/* 🖥️ 2026-06-20: 하단 네비가 이제 PC(lg+) 액자에도 표시되므로 lg:pb-0 제거 — 모든 뷰포트에서 하단 여백 예약. */}
+          <main id="main-content" className={hideBottomNav ? undefined : 'pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]'}>
           <ErrorBoundary key={location.key}>
           {/* 🏭 2026-06-04 도매몰 도메인 SPA 가드 — utongstart.com 비-도매몰 경로 navigate() 차단.
               worker 302(src/worker/index.ts)가 주 방어, 이건 SPA 내부 이동 보강(직접 로드는 worker 가 처리). */}
