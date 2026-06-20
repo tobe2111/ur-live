@@ -1,5 +1,56 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-19 — 어드민 제품별 플랫폼 마진 설정 UI: 미끼/마진 전략 (대표 "응 이렇게 정확하게 진행해줘")
+**요청**: 제조사가 등록한 상품을 검수할 때 **공급가·판매가·시중 최저가**를 보면서 **제품별로 우리 마진%를 정해 승인**(미끼상품=수익 하 / 마진상품=수익 상 — 항공권식 전략). 모든 가격 부가세 포함, 공급가 위에 우리 10%(조율 가능).
+- **모델 확정(불변)**: `distributor-pricing.resolveDistributorPrice` 가 이미 cost-plus(`유통사가 = round(공급가 × (1+마진%))`, 판매가 상한·공급가 하한) + 단일가(등급은 노출 큐레이션 전용). **가격/정산 엔진 무변경** — 어드민 마진 설정 컨트롤만 추가.
+- **백엔드** (`admin-products.routes.ts`): ① GET `/supplier-products` SELECT 에 `supply_margin_override_pct` 추가 + 응답에 `default_margin_pct`(전역 기본=`wholesale_platform_commission_pct`). ② PATCH `/supplier-products/:id` approve 가 `margin_override_pct` 동시 수용(같은 CAS UPDATE, undefined=미변경/null=전역기본/0~90=설정). ③ 신규 `PATCH /supplier-products/:id/margin` — 승인 무관 단독 조정(승인된 상품도) + 산출 공급가·우리 마진 응답 + audit. `normalizeMarginOverride` 헬퍼로 검증 일원화.
+- **프론트** (`SupplierProductsTab` + `AdminProductsPage`): `공급자 등록 상품` 탭 각 카드에 **MarginEditor**(공급원가·판매가·네이버 최저가 옆) — 프리셋 칩(미끼 3% / 기본 N% / 30% / 50%) + 마진% 입력 + **실시간 유통사 공급가·우리 마진** 미리보기(판매가 상한 도달 경고) + `마진 저장`. **승인 클릭 시 입력 마진 함께 반영**. `distributorPriceFromCost` 클라 재사용(SSOT 동일 공식).
+- **가이드**: `guide-seed-wholesale.ts` "제품별 플랫폼 마진 설정 — 미끼/마진 전략" 섹션 갱신(위치·산출식·정산·API). 검증: tsc 0 · 정산 단위 4/4 · `npm run build` 0(client+worker+prepare).
+
+## 🎯 2026-06-18 — 사업자 유저 타겟 포지셔닝 메모 (대표 방향, 코드 미변경)
+대표 방향: **사업자 유저의 메인 타겟 = "자신의 쇼핑몰을 갖고 싶은 유저"**. `/u/{handle}` = 본인 쇼핑몰, **본인 상품이 주인공**, 공구권은 부가 채널. AskUserQuestion 결과 "지금은 방향만 메모" → 코드 변경 없이 SSOT 문서(CLAUDE.md 명칭 SSOT · SERVICE_MODEL.md)에 기록만. **다음 구현 시 적용 후보**: ① 진입 문구 "사업자 등록"→"내 쇼핑몰 열기"(등록은 그 안 1단계) ② 승인 사업자 상점(SellerPublicPage) 기본/첫화면 상품 우선·공구권 보조탭 ③ 빈 상점 문구 "내 쇼핑몰에 첫 상품을 올려보세요".
+
+## 🏬 2026-06-18 — 멀티-몰 "몰=도메인=계정" 확정 + `resolveMallId` host-first 전환 (대표 결정: 유통사/제조사 몰별 별도 로그인)
+**결정**: flip-flop 의 뿌리가 멀티-몰 모델 애매함. 대표가 "유통사/제조사는 몰별 별도 로그인 = `1 몰=1 도메인=그 도메인 계정·카탈로그`" 확정. 설계 박제: `docs/design/multi-mall-auth.md`.
+- **Step 1 완료(이번 커밋)**: `wholesale-malls.ts resolveMallId` **account-first → host-first**. 우선순위 `?mall=slug > host > 1` (계정 토큰은 mall 결정에서 제외, `accountMallId()` 제거). 게스트/로그인 카탈로그 **일관성 확보 → flip-flop 종류 버그 제거**. **단일 몰(1)+단일 호스트 = byte-identical(모두 1) → INVARIANT 유지**. 머니(예치금/주문/정산)는 seller_id/supplier_id 격리라 무영향. 신규 유닛테스트 3개(토큰 있어도 host 우선·게스트=로그인 동일·supplier 동일) → 33 pass.
+- **Step 2 (몰 2개째 만들 때, 미완)**: 로그인 도메인 몰 스코핑 + 전역 UNIQUE(email/kakao_id)→(몰,email) 재설계(데이터 마이그레이션 동반, 별도 PR). 현재 활성 몰 1개라 불필요.
+- ⚠️ **단, host-first 는 "몰 불일치" 종류만 고침.** 현재 0개가 `is_active`/`visibility`/`supply_price` **데이터** 때문이면 별개 — 아래 진단 1회 필요(egress 또는 🩺 패널).
+
+## ✅ 2026-06-18 — 링크샵 랜딩 리디자인 (나브랜딩 시안, 대표 "응 다 해줘 가장 이상적으로")
+**배경**: `/u/{handle}`(CuratorPage/CuratorHeader)를 "독립 브랜드 랜딩"으로. 시안 박제: `docs/design/linkshop-landing-redesign.md`. 3단계 구현(branch `claude/charming-sagan-y9hx6m`).
+- **Stage 1 (backend, commit 636df2e7f)**: `users.linkshop_headline` 컬럼(마퀴) — `curator.routes.ts` ensureUserProfileCols + repair-schema 등록. GET `/api/curator/:handle` 응답에 `headline`(별도 best-effort 쿼리 — 컬럼 누락 env 에서도 메인 SELECT 안 깨짐, null 폴백). PATCH `/me/profile` 에서 `headline`(80자) 수용. `banner_url` 은 기존 수용/반환 재사용.
+- **Stage 2 (CuratorHeader 리디자인)**: ① 최상단 **마퀴 바**(seamless `@keyframes marquee` in index.css, `linkshop_headline`, 소유자 인라인 편집, prefers-reduced-motion 존중) ② **풀블리드 16:9 배너 히어로**(banner_url, 공유 오버레이/소유자 배너 업로드 1440px·0.4MB/그라데이션 폴백) ③ **동그라미 아바타 제거** — 배너가 정체성(profile_image 데이터는 OG/핀용으로 유지, 헤더 렌더만 제거) ④ 이름/태그라인/SNS **중앙 정렬**. 소유자 편집(이름/소개/SNS/핸들/헤드라인)·방문자 공유 전부 보존. `CuratorProfile` 타입 `headline` 추가.
+- **Stage 3 (PC 표현)**: `LinkshopMobileQR.tsx`(qrcode.react **lazy**, xl+ 우하단 gutter "모바일로 보기") + `MobileAppLayout` `LINKSHOP_PREFIXES`(`/u`·`/profile/`·`/s/`) 로 **PC 좌측 사이드바 숨김**(프레임 중앙정렬은 유지 — HIDE_SIDEBAR 와 달리 풀너비 안 만듦).
+- 검증: tsc 0 · `npm run build`(client+ssr+worker+prepare) exit 0 · 테마검사 통과.
+- ⚠️ **운영 반영 전**: prod `/api/_internal/repair-schema` 1회 실행(`users.linkshop_headline` 생성). 미실행이어도 GET headline 은 try-catch null 폴백이라 안전(마퀴만 숨김).
+
+## 🩺 2026-06-18 — 도매몰 카탈로그 "0개 + 느림 + 들쭉날쭉" 전수조사 + 관측 계측 (대표 "더이상 일어나선 안돼") — ⚠️ 데이터 원인 ground-truth 필요
+**증상**: ①상품 0개("해당 조건 상품 없어요") ②거기까지도 2초+ 느림 ③때때로 떴다 안 떴다(flip-flop). admin엔 보임=데이터 존재.
+- **전수조사 결론 — 코드 버그 없음**: 카탈로그 WHERE(`is_supply_product=1 AND is_active=1 AND supply_source_id IS NULL AND supply_price>0 AND mall_id=? AND visibilityWhere`)·`visibilityWhere`·source=0→NULL 정규화 UPDATE·SELECT 컬럼 vs ensure 커버리지(전 컬럼 ensure가 ALTER ADD — 누락 0) **전부 정상**. → 0개는 순수 **데이터 상태**.
+- **0개 유력 원인(코드로는 판별 불가, 우선순위)**: ①**mall_id 불일치** — `resolveMallId` 1순위가 `accountMallId`(로그인 계정 `sellers.mall_id`). 계정 몰 ≠ 상품 몰(기본1)이면 **로그인 시 0개**, 로그아웃(게스트)=host/기본1 → 상품 노출 → **flip-flop이 간헐 자동로그아웃과 맞물림**. ②visibility(게스트는 ALL만, 로그인은 +허용목록). ③is_active=0 / supply_price=0.
+- **느림 = 0개의 결과**: 빈 결과는 `no-store`(빈그리드 고착 방지 incident rule) → 캐시 0 → 매 요청 풀경로(콜드 isolate+ensure+조회×2). 게다가 **SSR이 빈 카탈로그를 최대 1500ms 블로킹**(worker/index.ts:564 self-fetch) 후 클라가 또 fetch(`retry:2`, 1s+2s 백오프) → 체감 2초+. **0개를 풀면 캐시 살아 SSR edge-hit(~5ms)+클라 refetch 소멸 → 빨라짐.**
+- **계측 추가(이번 커밋, additive·safe)**: `wholesale.routes /catalog` 응답에 **진단 헤더** — `X-WS-Mall`(해석된 몰)·`X-WS-Total`(WHERE 통과수)·`X-WS-Guest`·`X-WS-Vis-Restricted`. **total===0일 때만** 추가 COUNT 2개로 `X-WS-Total-NoMallVis`(mall/vis 무시)·`X-WS-Supply-Raw`(전 공급상품). **정상 경로 추가쿼리 0**. 조기 빈 분기엔 `X-WS-Reason`(schema-missing/premium-guest).
+  - **판별표**: Supply-Raw>0 & NoMallVis=0 → 원인=is_active/source/supply_price · NoMallVis>0 & Total=0 → 원인=**mall 또는 visibility** · X-WS-Mall 값으로 몰 확정.
+- **남은 액션(택1, 환경 제약으로 미완)**: ① 도매몰에서 F12→Network→`catalog` 응답헤더 `X-WS-*` 캡처 ② `/admin/wholesale-import` 🩺 진단패널 실행+캡처 ③ `live.ur-team.com` egress 허용 → 내가 직접 확정+1커밋 수정. **소비자 자동로그아웃 fail-safe(2026-06-17)로 flip-flop 트리거는 이미 완화.**
+- 검증: tsc 0 · build 0 · sql-bind 0 · schema 0.
+
+## ✅ 2026-06-18 — 주문내역(/my-orders) 무신사 스타일 리디자인 (대표 시안 2장 + "A로 진행")
+- **결정 A**: 종류 탭(전체/상품/교환권/공구) + 종류별 카드. 한 `orders` 테이블에 상품/교환권/공구가 섞여 있고(group-buy.routes 가 교환권·공구도 INSERT INTO orders) 카드 레이아웃이 달라야 해서 선택.
+- 분류 SSOT 신규 `src/shared/order-type.ts` `getOrderKind()` (product-flow.ts 정합: deal_only→교환권 / group_buy_status→공구 / else→상품).
+- **Phase0 데이터 버그 3건 동반수정**: ①상품별 "0원"(price_snapshot 직접곱) → `orderItemLineTotal()` ②썸네일 누락 → `order.repository.ts findItemsGrouped` 에 `product_image`+products JOIN ③배송비 하드코딩 3,000원 → `order.shipping_fee` 실값.
+- UI: `OrdersTab.tsx` 전면개편(검색+종류탭+날짜그룹+썸네일+종류별카드), `MyOrdersPage.tsx`(large title+스켈레톤), `OrderDetailModal.tsx`(결제 라인분해+썸네일+교환권/공구 배송섹션 숨김).
+- 검증: tsc 0 · build 0 · OrdersTab 단위 12 pass · guard(schema/sql-col/sql-bind/theme/col-budget/money) 전부 통과. 시안 박제: `docs/design/my-orders.md`.
+- **구매 내역 삭제(숨김) 추가** (2026-06-18, "삭제/숨김 기능만 필요"): 실제 DELETE X → side table `hidden_orders`(self-healing ensureXxx). `POST /api/orders/:id/hide`(requireAuth+IDOR+종료상태만), `findByUserId` 가 `NOT EXISTS(hidden_orders)` 로 목록/카운트 제외. OrderDetailModal 하단 "구매 내역 삭제" 버튼.
+- 미구현(추후 결정): 프로모 배너 / 받은 혜택 섹션(결정 #2~#3). ⚠️ worker 조회쿼리 변경 → staging 에서 상품/교환권/공구 각 1건 표시 + 숨김 후 목록 제외 확인 권장.
+
+## ✅ 2026-06-18 — 도매몰 예치금 입금계좌 3곳 반영 (대표 제공: 우체국 014084-02-129530 송유미/사람과고리)
+유통사가 예치금(선불 충전)을 송금할 도매몰 입금계좌를 세 군데에 노출. 외부망(egress) 차단으로 prod API set 불가 → 코드/DB fallback 으로 배포 즉시 반영.
+- **① 어드민 설정칸**(`AdminWholesaleDepositsPage`): `/admin/wholesale-deposits` 상단 '예치금 입금 안내 계좌' 입력칸 신규(기존 GET/PUT `/api/admin/wholesale-deposit-account` 연결). 어드민이 수정 가능.
+- **② 유통사 입금 페이지**(`WholesaleDepositPage`): 기존 `depositAccount` 표시 블록(복사 버튼)에 자동 노출 — `useWholesaleDeposit` → `wholesale-deposit.routes` 가 `loadWholesaleDepositAccount` fallback 사용.
+- **③ 하단 회사정보란**(`WholesaleFooter.BUSINESS_INFO.bankNo`): 이전 세션 TODO('계좌번호 추후 제공')였던 `bankNo` 채움 → '무통장 입금 우체국 014084-02-129530 예금주 사람과고리(송유미)' 자동 노출.
+- **반영 방식**: `wholesale-main.routes.ts` 에 `DEFAULT_WHOLESALE_DEPOSIT_ACCOUNT` fallback(admin GET + `loadWholesaleDepositAccount` — DB 미설정 시 기본값, 어드민 저장값 우선) + `repair-schema` platform_settings INSERT OR IGNORE 시드. 공개 표시 목적이라 코드 포함 OK(대표 명시 지시).
+- 검증: tsc 0 · build 0 · schema-refs/테마 clean.
+
 ## ✅ 2026-06-17 — 소비자(유저) 자동 로그아웃 근본수정: 401 핸들러 fail-safe (대표 신고 "계속 유저 로그아웃")
 **신고**: "뭔가 계속 자동 로그아웃, 특히 유저(소비자)." 전수조사 결과 **`lib/api.ts` 소비자 401 핸들러가 fail-OPEN-to-logout** 이었음.
 - **결함**: 401 시 `/api/auth/session/health` 로 세션 확인하는데, **헬스 요청이 네트워크/타임아웃/5xx 로 실패하면 `catch {}` 가 삼키고 그대로 `clearAuthData('user')`** → 로그아웃. 즉 "세션이 죽었다"가 아니라 "확인을 못 했다"인데도 소비자 세션을 지움. 헬스 일시오류·느린 응답·듀얼유저(대시보드 토큰이 `/api/notifications` 등 비-`_isDashboardUrl` 호출에 붙어 401 SESSION_SUPERSEDED → 소비자 흐름 fall-through) 에서 부당 로그아웃.
@@ -23,6 +74,17 @@
 - **원인**: `GET /voucher-orders` 가 **시간창 필터**(기본 24h, 최대 7일)로 row 를 거름 → **7일보다 오래되거나 24h 밖의 실패 건이 숨겨짐**. 대시보드 failed 카운트(admin-stats:151)는 **기간 무관 전체**라 "실패 N"은 뜨는데 목록 0건 → 불일치. (모든 voucher 는 source='kt_alpha' 라 출처 필터는 무관.)
 - **수정**: ① 백엔드 — `status=failed` 필터 시 `created_at` 시간 조건 **제거**(모든 실패 항상 표시·재발송 가능). stats 에 `failed_all`(기간 무관 전체 실패) 추가. ② 프론트 — `failed_all>0` 이면 **상단 빨강 배너** "발송 실패 N건(기간 무관)" + '모두 보기' 버튼(failed 필터). failed 필터 시 "기간 무관 전체" 주석. 시간창 통계(processing/sent/failed)는 기존대로 윈도우 유지.
 - 검증: tsc 0 · build 0 · 대시보드 테마 0 · sql-bind 0(시간조건은 sanitized number 인터폴레이션, bind 무변경).
+
+## ✅ 2026-06-18 — 하이퍼로컬 토대: 매장 행정동(洞) 자동 태깅 (대표 "쓰자" — 콜드스타트 밀도전략)
+**배경**: 콜드스타트는 "한 동네 밀도" 전략인데, 매장이 좌표(lat/lng)만 있고 "무슨 동"인지 모름 → "내 동네 딜"·동별 밀도 집계 불가. 카카오 `coord2regioncode`(좌표→행정동, 안 쓰던 기능)로 자동 태깅.
+- **1단계(이번 — 매장 태깅)**: `restaurant-geocode` cron 확장. Pass A(주소→좌표) 직후 `coord2regioncode`로 동 태깅, Pass B(좌표 있으나 미태깅 기존 매장 백필). 행정동(H) 우선·법정동(B) 폴백.
+- **저장**: 신규 테이블 `product_regions`(product_id PK, region_si/gu/dong/dong_code, lat/lng) — **products 컬럼 예산제 회피**(별도 테이블이라 budget check 신규 0). `region_dong_code` 인덱스(동별 집계/향후 피드 조인). repair-schema + cron ensure(멱등) 등록.
+- **카카오라 저렴**(무료 한도 30만/일, batch 수백) + 결제·잠긴 피드쿼리 무수정. 실패 row 는 다음 cron 자연 재시도(region_dong NULL → Pass B 재처리).
+- **2단계(이번 — 유저 동 태깅 백엔드)**: `region.routes.ts` 신규 — `GET/POST /api/me/region`(GPS 좌표→`fetchRegion` 또는 수동 동코드 → `user_regions` UPSERT). 카카오 helper 를 `kakao-region.ts`(SSOT)로 추출해 cron·라우트 공유. `user_regions` 테이블 + repair-schema 등록.
+- **3단계(이번 — 서버 피드 필터)**: `group-buy-public.routes.ts` GET /products 에 `?region=` additive([UNLOCK_LOADING] audit log). 기본 요청 byte-동일, region 붙은 요청만 새 캐시키 + `product_regions` JOIN + 코드 prefix. **현재 클라(GroupBuyListPage)는 자체 주소-텍스트 region 필터 사용 중이라 이 서버 param 휴면** — 중복 토글 안 붙임(충돌 방지). 향후 GPS 자동 '내 동네'로 업그레이드용 토대.
+- **A단계(이번 — 어드민 동별 밀도 보드)**: `AdminRegionDensityPage` + `/admin/region-density` 라우트 + 사이드바 nav. `GET /api/admin/region/density`(구별/동별 활성 딜 count) — "어디 깔렸나/어디 비었나" 영입 타겟. 유저 0이어도 작동(대표님 발품 조준경).
+- **검증**: tsc 0 · full build 0 · sql-bind/sql-column(tables 281)/schema-refs/dashboard-theme/theme-consistency clean.
+- **다음(선택)**: GroupBuyListPage 의 기존 주소-텍스트 region 필터를 GPS 자동감지(`/api/me/region`)+서버 param 으로 업그레이드(기존 동작이라 enhancement). 네이버 DataLab 수요신호 → 소비자 머천다이징 캘린더 재사용.
 
 ## ✅ 2026-06-17 — 에이전시 매장 영입 개선점 12종 일괄 (대표 "모두 진행, 가장 이상적으로")
 전면 재편 후 발견된 개선점 12개를 우선순위로 처리(🔴 정합성 → 🟡 완결성 → 🟢/검증).
@@ -72,6 +134,16 @@
 - **검증**: tsc 0 · `npm run build`(client+ssr+worker+prepare) exit 0 · **단위 2152 pass**(coupon-discount 5 신규) · money-pattern/sql-bind/sql-column/schema-refs clean.
 - ⚠️⚠️ **쇼핑탭 재오픈 전 staging 실결제 1회 필수**(외부망 차단으로 E2E 불가): ① 쿠폰만 ② 딜만 ③ 쿠폰+딜 동시 → 각각 confirm 통과 + 잔액 정확 차감 + 환불 시 딜 복원·쿠폰 재사용가능 확인. **단일셀러 카트 기준**(멀티셀러+동일쿠폰은 첫 그룹만 적용 → 안전하나 confirm 400 가능 — 후속).
 - **후속(비긴급)**: ① 멀티셀러 카트 단일콜 주문화(서버 완전권위 + 클라 서버total 청구 — TossPaymentWidget 잠금이라 prop 경로 확인 필요) ② 공구할인 portion 서버 파생(현 클라-신뢰) ③ 부분반품 쿠폰 부분복원.
+
+## 🩺 2026-06-17 — 도매몰 카탈로그 "상품 안 뜸" 전수조사 + 영구수정 (대표 반복 신고, prod 직접확인 불가)
+**증상 변화**: ①스켈레톤 영구 → (self-heal 후) ②"해당 조건의 도매 상품이 없어요"(0개) + 느림. admin `/admin/wholesale-import` 엔 상품 보임 = 데이터는 존재, 카탈로그 WHERE 가 전부 걸러냄.
+- **근본구조**: admin 목록 WHERE(`is_supply_product=1 AND source NULL/0`) < 카탈로그 WHERE(`+is_active=1 +supply_source_id IS NULL(엄격) +supply_price>0 +mall_id=요청몰 +visibility`). 한 조건만 어긋나도 admin엔 보이고 카탈로그엔 0개.
+- **수정1 (89893f5) 스키마 self-heal**: 카탈로그 SELECT 가 참조하나 인라인 ensure 엔 없던 컬럼(`mall_id/brand_name/brand_logo_url/is_premium/sold_count/pack_size/order_multiple/dominant_color`)을 `ensureSupplyVisibilitySchema` 에 추가 → repair-schema 미실행 prod 의 'no such column→메인쿼리 throw(.catch없음)→500→스켈레톤 영구' 차단.
+- **수정2 (0c744ea) source 0→NULL 자가정규화**: 같은 ensure 에 `UPDATE products SET supply_source_id=NULL WHERE is_supply_product=1 AND supply_source_id=0`(멱등). admin 쿼리 작성자가 3곳에 `=0` 명시처리 = 실데이터에 0 존재 정황. ensure 가 메인쿼리보다 먼저 await(1165<1259)라 배포 후 첫 요청에서 정규화→조회 순서로 즉시 치유. **9개 IS NULL 쿼리 일괄 + SSR/캐시 복원으로 속도도 개선**(빈결과 no-store라 매 로드 풀쿼리였음).
+- **진단도구 (0755cd5)**: `GET /api/admin/distributor/catalog-diagnostic`(노출/숨김 사유별 + 숨은샘플 + 몰/가시성 분포) + `POST /catalog-repair`(안전정규화+옵션) + AdminWholesaleImportPage '🩺' 패널. prod 직접접근(egress) 불가라 대표가 한 번 실행→캡처하면 잔여원인(is_active/visibility/multi-mall) 확정.
+- **전수조사로 배제**: 카탈로그 쿼리 바인딩/WHERE 정상 · bulk-import·demo 시드 모두 is_active=1·visibility=ALL·source NULL 로 생성(통과해야 정상) · 클라 기본필터 비제한(inStock=false/cat=all/premium은 premium탭만) · 단일운영자 몰=1 수렴(가입 mall_id=host기반 utongstart→1, 상품 supplier mall_id→1) → 몰 불일치 배제. **남은 유력원인 = source=0(수정2로 처리)**.
+- ⚠️ **미확정**: 수정2 후에도 0개면 is_active=0 / supply_price=0 / visibility≠ALL 중 하나 — 진단도구 또는 egress(`live.ur-team.com`) 허용 시 확정 가능. 슬로우는 개인화(등급별가=공유캐시불가=라이브쿼리)라 구조적이나 상품 채워지면 등급캐시(60s)로 개선.
+- **대표 보고**: 제조사-유통사 채팅 기능 플로우 **완성**(별도 작업 — 본 세션 미관여, 차후 리뷰/문서화 대상).
 
 ## ✅ 2026-06-17 — 어드민 주문 페이지: 종류 구별(교환권/상품) + 체크박스 일괄 처리 (대표 요청)
 **요청**: `/admin/orders` 에서 교환권/상품/도매몰 구별 + 체크박스 선택.
@@ -146,6 +218,26 @@
 - **카카오** (`kakao.routes` `issueLinkedRoleTokens`, [UNLOCK_LOADING] additive): 카카오 로그인 셀러→seller 시트 갱신. 에이전시→소유 멤버 id 조회 후 토큰에 `member_id` additive 추가 + 멤버 시트 갱신(이메일 로그인과 **동일 시트 키**로 완전 통일 — 두 방식 상호 무효화). **응답 shape/redirect/CSRF/seller.username 불변**.
 - **문구**(③): 미들웨어/리프레시가 `SESSION_SUPERSEDED` 401 → `api.ts` 가 감지해 refresh 시도 생략 + `?error=session_superseded` 로 로그아웃. 3 로그인 페이지(admin/seller/agency)가 "다른 기기/브라우저에서 로그인되어 자동 로그아웃" 토스트.
 - 검증: tsc 0 · `npm run build` 0 · 단위 88(deriveDashboardSeat+per-seat 시트 독립성 신규) · schema/sql-bind/theme 0. ⚠️ staging 권장: 같은 에이전시 멤버 2명 동시 로그인 유지 + 같은 멤버 2기기 단일화 확인.
+## 🙋 대표님(운영자) 직접 할 일 — 코드로 불가 (Cloudflare/외부/검증)
+> 사용자가 "내가 할 일 뭐 있어?" 물으면 이 목록을 안내할 것. 코드로 못 하는 것만 모음. (2026-06-17 갱신)
+
+**🔴 지금 (안 하면 자동화가 침묵 / 데이터 위험)**
+- [ ] Cloudflare env **`DISCORD_WEBHOOK_URL`** 설정 — 모든 운영 경보(백업/정산/이상탐지 실패)의 통로. 1인의 눈·귀.
+- [ ] Cloudflare **`BACKUP_BUCKET`** R2 바인딩 — 주간 D1 백업(없으면 백업 0건).
+- [ ] **백업 복구 드릴 1회** — R2 덤프 → 새 D1 복원 테스트 (복구 안 해본 백업은 없는 것).
+
+**🟡 검증 (운영/확대 전 권장 — 머니)**
+- [ ] **도매 마진 모델 staging 실결제 E2E 1회** (머니 크리티컬, 다른 세션 작업). 코드/테스트는 통과, 실결제만 미검증.
+- [ ] **딜 적립 "사용 시 확정" staging 검증 1회** — 링크샵 구매→"적립 예정"→가게 QR 사용→추천인 잔액+"✅ 적립 확정" 알림.
+
+**🟢 설정/외부 (선택)**
+- [ ] 어드민 `/admin/platform-settings` → **`affiliate_commission_rate`** 최종 숫자 결정 (코드 기본 2%로 깔아둠 / 치킨게임이면 1~2% or 0).
+- [ ] 동네딜 실제 매장 데이터 입력 (또는 어드민 "동네딜 상품 등록 → 데모 생성" 버튼).
+- [ ] (선택) 기프티쇼 이미지 최적화 = 기프티쇼 측에 Cloudflare IP 화이트리스트 요청 (현재 raw URL 무료 동작 중).
+- [ ] (선택) KT 인앱 바코드/PIN = KT Alpha PIN 발급 계약 확인 후 Cloudflare env **`KT_ALPHA_PIN_MODE=1`**.
+
+---
+
 
 ## 🔴 2026-06-17 — 도매몰 마진 모델 전면 전환 (대표 확정, 머니 크리티컬) — ⚠️ staging E2E 필수
 **대표 확정 모델(cost-plus)**: 제조사가 받을 금액(공급원가) **위에** 플랫폼 마진%를 *붙여* 공급가 산출. (구: 판매가−등급보장마진 / 정산 공급가×90% → 정반대)

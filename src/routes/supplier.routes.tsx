@@ -18,6 +18,8 @@ export function SupplierRoutes() {
       <Route path="/supplier/login" element={<ErrorBoundary><SupplierLoginPage /></ErrorBoundary>} />
       <Route path="/supplier/register" element={<ErrorBoundary><SupplierRegisterPage /></ErrorBoundary>} />
       <Route path="/supplier" element={<ErrorBoundary><SupplierDashboardPage /></ErrorBoundary>} />
+      {/* 💬 채팅 알림 딥링크 — 같은 대시보드를 렌더하되 페이지가 pathname 으로 채팅 탭 자동 선택 */}
+      <Route path="/supplier/chat" element={<ErrorBoundary><SupplierDashboardPage /></ErrorBoundary>} />
       <Route path="/supplier/wholesale-orders" element={<ErrorBoundary><SupplierWholesaleOrdersPage /></ErrorBoundary>} />
     </>
   )

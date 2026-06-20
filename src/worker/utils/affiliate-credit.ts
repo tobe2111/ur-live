@@ -12,7 +12,10 @@
  */
 import { adjustUserPoints } from './point-ledger'
 
-const DEFAULT_COMMISSION_RATE = 0.05
+// 🛡️ 2026-06-17 (대표 결정 — 1인 치킨게임): 추천 적립 기본 fallback 5% → 2%.
+//   추천은 CAC(획득비)라 끄지 않고 낮춤. 어드민 platform_settings.affiliate_commission_rate 로 추가 조정/0 가능
+//   (AdminPlatformSettingsPage 기본 표기 '2' 와 일치). 상품별 referral_enabled=0 으로 개별 OFF.
+const DEFAULT_COMMISSION_RATE = 0.02
 
 /** /track 의 resolveCommissionRate 와 1:1 동일 (SSOT 이동 — routes 가 이걸 import). */
 export async function resolveCommissionRate(

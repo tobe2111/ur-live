@@ -42,6 +42,9 @@ export default function AdminProductsPage() {
   const [adminMemoMap, setAdminMemoMap] = useState<Record<number, string>>({})
   // 🏭 2026-06-07 공급상품 최저가 검수 체크 상태 (상품별).
   const [lowestCheckedMap, setLowestCheckedMap] = useState<Record<number, boolean>>({})
+  // 🆕 2026-06-19 (대표 확정) 제품별 플랫폼 마진 입력(미끼/마진 전략) + 저장중 상태.
+  const [marginMap, setMarginMap] = useState<Record<number, string>>({})
+  const [marginSaving, setMarginSaving] = useState<number | null>(null)
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
   const [showBulkUpload, setShowBulkUpload] = useState(false)
   // 🛡️ 2026-05-18: 체크박스 선택 상태 — 일괄 삭제/활성화/비활성화.
@@ -99,8 +102,9 @@ export default function AdminProductsPage() {
   const supplySummary = supplySalesQ.data?.summary ?? null
   const salesLoading = supplySalesQ.isLoading
 
-  const supplierProductsQ = useApiQuery<SupplierProductRow[]>(['admin', 'supplier-products', spStatusFilter], '/api/admin/supplier-products', { enabled: activeTab === 'supplier-products', headers: adminAuth, params: { status: spStatusFilter, limit: 100 }, select: (r: any) => (r?.success ? r.data?.items ?? [] : []) })
-  const supplierProducts = supplierProductsQ.data ?? []
+  const supplierProductsQ = useApiQuery<{ items: SupplierProductRow[]; defaultMarginPct: number }>(['admin', 'supplier-products', spStatusFilter], '/api/admin/supplier-products', { enabled: activeTab === 'supplier-products', headers: adminAuth, params: { status: spStatusFilter, limit: 100 }, select: (r: any) => (r?.success ? { items: r.data?.items ?? [], defaultMarginPct: Number(r.data?.default_margin_pct) || 10 } : { items: [], defaultMarginPct: 10 }) })
+  const supplierProducts = supplierProductsQ.data?.items ?? []
+  const supplierDefaultMarginPct = supplierProductsQ.data?.defaultMarginPct ?? 10
   const spLoading = supplierProductsQ.isLoading
   const loadSupplierProducts = () => supplierProductsQ.refetch()
 
@@ -120,14 +124,27 @@ export default function AdminProductsPage() {
     } finally { setActionLoading(null) }
   }
 
+  // 🆕 2026-06-19: 마진 입력 문자열 → API 값. '' / undefined → 미지정(undefined, 승인 시 컬럼 미변경).
+  function marginInputToPayload(productId: number): number | null | undefined {
+    const raw = marginMap[productId]
+    if (raw == null) return undefined          // 편집 안 함 → 컬럼 미변경
+    const t2 = raw.trim()
+    if (t2 === '') return null                 // 명시적 비움 → 전역 기본
+    const n = Number(t2)
+    return Number.isFinite(n) ? n : undefined
+  }
+
   async function handleSupplierProductAction(productId: number, action: 'approve' | 'reject') {
     setActionLoading(productId)
     try {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+      // 승인 시 검수 화면에서 정한 제품별 마진(미끼/마진 전략)을 함께 반영.
+      const marginPayload = action === 'approve' ? marginInputToPayload(productId) : undefined
       await api.patch(`/api/admin/supplier-products/${productId}`, {
         action,
         admin_memo: adminMemoMap[productId] || null,
         lowest_price_checked: !!lowestCheckedMap[productId],
+        ...(marginPayload !== undefined ? { margin_override_pct: marginPayload } : {}),
       }, { headers: { Authorization: `Bearer ${token}` } })
       toast.success(action === 'approve' ? t('admin.products.spApproveOk', { defaultValue: '공급상품이 승인되었습니다.' }) : t('admin.products.spRejectOk', { defaultValue: '공급상품이 거부되었습니다.' }))
       loadSupplierProducts()
@@ -135,6 +152,26 @@ export default function AdminProductsPage() {
       const axiosErr = err as { response?: { data?: { error?: string } } }
       toast.error(axiosErr.response?.data?.error || t('admin.products.k006', { defaultValue: '처리에 실패했습니다.' }))
     } finally { setActionLoading(null) }
+  }
+
+  // 🆕 2026-06-19 (대표 확정): 제품별 플랫폼 마진 저장(승인 여부 무관). 미끼/마진 전략 조율.
+  async function handleSetMargin(productId: number) {
+    const raw = marginMap[productId]
+    const value = raw == null || raw.trim() === '' ? null : Number(raw)
+    if (value !== null && (!Number.isFinite(value) || value < 0 || value > 90)) {
+      toast.error(t('admin.products.marginInvalid', { defaultValue: '0~90 사이 숫자를 입력하세요.' }))
+      return
+    }
+    setMarginSaving(productId)
+    try {
+      const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
+      const res = await api.patch(`/api/admin/supplier-products/${productId}/margin`, { margin_override_pct: value }, { headers: { Authorization: `Bearer ${token}` } })
+      toast.success(res.data?.message || t('admin.products.marginSaved', { defaultValue: '마진이 저장되었습니다.' }))
+      loadSupplierProducts()
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      toast.error(axiosErr.response?.data?.error || t('admin.products.k006', { defaultValue: '처리에 실패했습니다.' }))
+    } finally { setMarginSaving(null) }
   }
 
   // 🏭 2026-06-07 판매중 상품 공급가 변경 요청 승인/거부.
@@ -831,6 +868,11 @@ export default function AdminProductsPage() {
           setAdminMemoMap={setAdminMemoMap}
           lowestCheckedMap={lowestCheckedMap}
           setLowestCheckedMap={setLowestCheckedMap}
+          marginMap={marginMap}
+          setMarginMap={setMarginMap}
+          defaultMarginPct={supplierDefaultMarginPct}
+          marginSaving={marginSaving}
+          onSetMargin={handleSetMargin}
           actionLoading={actionLoading}
           onAction={handleSupplierProductAction}
           onPriceChangeAction={handlePriceChangeAction}

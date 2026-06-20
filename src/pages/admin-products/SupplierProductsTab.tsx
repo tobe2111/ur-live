@@ -7,9 +7,10 @@
  */
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2, Boxes, CheckCircle, XCircle, Clock, ExternalLink, ShieldCheck, TrendingUp, Search, AlertTriangle } from 'lucide-react'
+import { Loader2, Boxes, CheckCircle, XCircle, Clock, ExternalLink, ShieldCheck, TrendingUp, Search, AlertTriangle, Percent, Save } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
 import { formatWon } from '@/utils/format'
+import { distributorPriceFromCost } from '@/lib/distributor-pricing'
 import api from '@/lib/api'
 
 export interface SupplierProductRow {
@@ -26,6 +27,7 @@ export interface SupplierProductRow {
   supplier_email: string | null
   admin_memo: string | null
   created_at: string
+  margin_override?: number | null
   lowest_price_url?: string | null
   lowest_price_checked?: number
   pending_supply_price?: number | null
@@ -44,6 +46,12 @@ interface Props {
   setAdminMemoMap: (fn: (prev: Record<number, string>) => Record<number, string>) => void
   lowestCheckedMap: Record<number, boolean>
   setLowestCheckedMap: (fn: (prev: Record<number, boolean>) => Record<number, boolean>) => void
+  // 🆕 2026-06-19 (대표 확정) 제품별 플랫폼 마진 — 미끼/마진 전략. id → 입력 문자열('' = 전역 기본).
+  marginMap: Record<number, string>
+  setMarginMap: (fn: (prev: Record<number, string>) => Record<number, string>) => void
+  defaultMarginPct: number
+  marginSaving: number | null
+  onSetMargin: (id: number) => void
   actionLoading: number | null
   onAction: (id: number, action: 'approve' | 'reject') => void
   onPriceChangeAction: (id: number, action: 'approve' | 'reject') => void
@@ -208,9 +216,119 @@ function NaverPriceReferencePanel({ query }: { query: string }) {
   )
 }
 
+// ── 🆕 2026-06-19 (대표 확정) 제품별 플랫폼 마진 설정 — 미끼/마진 전략 ───────────────
+//   제조사 공급가(원가) 위에 우리 마진%를 붙여 '유통사 공급가'를 산출. 미끼=낮게, 고수익=높게.
+//   판매가(권장소비자가)를 상한, 공급원가를 하한으로 클램프(distributorPriceFromCost SSOT 동일 공식).
+function MarginEditor({
+  product, defaultMarginPct, raw, setRaw, saving, onSave,
+}: {
+  product: SupplierProductRow
+  defaultMarginPct: number
+  raw: string | undefined
+  setRaw: (v: string) => void
+  saving: boolean
+  onSave: () => void
+}) {
+  const { t } = useTranslation()
+  const cost = Math.max(0, Math.floor(product.supply_price || 0))
+  const retail = Math.max(0, Math.floor(product.retail_price || 0))
+  // 현재 입력값(undefined=아직 미수정 → 저장된 override 또는 '') 정규화.
+  const current = raw ?? (product.margin_override != null ? String(product.margin_override) : '')
+  const trimmed = current.trim()
+  const usingDefault = trimmed === ''
+  const effPct = usingDefault ? defaultMarginPct : Number(trimmed)
+  const validPct = Number.isFinite(effPct) && effPct >= 0 && effPct <= 90
+  const dist = validPct ? distributorPriceFromCost(cost, effPct, retail) : cost
+  const ourMargin = Math.max(0, dist - cost)
+  const cappedByRetail = retail > 0 && validPct && Math.round(cost * (1 + effPct / 100)) > retail
+  // 저장 변경 감지: 입력값(빈='' → null) vs 저장된 override.
+  const storedNum = product.margin_override != null ? Number(product.margin_override) : null
+  const inputNum = trimmed === '' ? null : Number(trimmed)
+  const changed = validPct && inputNum !== storedNum
+  const presets = [3, defaultMarginPct, 30, 50]
+
+  return (
+    <div className="mt-2 rounded-lg border border-indigo-200 bg-indigo-50/60 px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold text-indigo-800 flex items-center gap-1">
+          <Percent className="w-3.5 h-3.5" />
+          {t('admin.products.marginTitle', { defaultValue: '플랫폼 마진 설정 (미끼/마진 전략)' })}
+        </p>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={!changed || saving}
+          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40"
+        >
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+          {t('admin.products.marginSave', { defaultValue: '마진 저장' })}
+        </button>
+      </div>
+      <p className="text-[11px] text-indigo-600/90 mt-0.5">
+        {t('admin.products.marginHint', { defaultValue: '미끼 상품은 낮게(2~5%), 고수익 상품은 높게(30~50%) — 모든 가격은 부가세 포함.' })}
+      </p>
+
+      {/* 프리셋 칩 */}
+      <div className="flex flex-wrap items-center gap-1 mt-2">
+        {presets.map((p, i) => {
+          const isDefaultChip = i === 1
+          const active = isDefaultChip ? usingDefault : (!usingDefault && Number(trimmed) === p)
+          return (
+            <button
+              key={`${p}-${i}`}
+              type="button"
+              onClick={() => setRaw(isDefaultChip ? '' : String(p))}
+              className={`px-2 py-1 text-[11px] font-semibold rounded-md transition-colors ${active ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-700 border border-indigo-200 hover:bg-indigo-50'}`}
+            >
+              {isDefaultChip ? t('admin.products.marginDefault', { pct: defaultMarginPct, defaultValue: `기본 ${defaultMarginPct}%` }) : `${p}%`}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* 입력 + 실시간 공급가 미리보기 */}
+      <div className="flex flex-wrap items-center gap-2 mt-2">
+        <div className="relative">
+          <input
+            type="number" min={0} max={90} step={0.5}
+            value={current}
+            onChange={(e) => setRaw(e.target.value)}
+            placeholder={String(defaultMarginPct)}
+            aria-label={t('admin.products.marginTitle', { defaultValue: '플랫폼 마진 설정' })}
+            className="w-24 pl-2.5 pr-6 py-1.5 text-sm font-bold text-indigo-900 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-300 focus:outline-none"
+          />
+          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-indigo-400">%</span>
+        </div>
+        <span className="text-[11px] text-gray-500">→ {t('admin.products.marginDistPrice', { defaultValue: '유통사 공급가' })}</span>
+        <span className="text-base font-extrabold text-indigo-700">{formatWon(dist)}</span>
+        {usingDefault && (
+          <span className="text-[10px] text-gray-400">{t('admin.products.marginUsingDefault', { defaultValue: '(전역 기본)' })}</span>
+        )}
+      </div>
+
+      <p className="text-[11px] text-gray-600 mt-1">
+        {t('admin.products.marginCost', { defaultValue: '공급원가' })} <b className="text-gray-800">{formatWon(cost)}</b>
+        {' · '}
+        {t('admin.products.marginOur', { defaultValue: '우리 마진' })} <b className="text-emerald-600">{formatWon(ourMargin)}</b>
+        {retail > 0 && <> {' · '}{t('admin.products.marginRetail', { defaultValue: '판매가' })} {formatWon(retail)}</>}
+      </p>
+      {cappedByRetail && (
+        <p className="text-[11px] text-amber-600 mt-0.5 flex items-center gap-1">
+          <AlertTriangle className="w-3 h-3" />
+          {t('admin.products.marginCapped', { defaultValue: '판매가 상한에 도달 — 공급가가 판매가로 제한됩니다.' })}
+        </p>
+      )}
+      {!validPct && trimmed !== '' && (
+        <p className="text-[11px] text-red-500 mt-0.5">{t('admin.products.marginInvalid', { defaultValue: '0~90 사이 숫자를 입력하세요.' })}</p>
+      )}
+    </div>
+  )
+}
+
 export default function SupplierProductsTab({
   loading, items, statusFilter, setStatusFilter, adminMemoMap, setAdminMemoMap,
-  lowestCheckedMap, setLowestCheckedMap, actionLoading, onAction, onPriceChangeAction,
+  lowestCheckedMap, setLowestCheckedMap, marginMap, setMarginMap, defaultMarginPct,
+  marginSaving, onSetMargin, actionLoading, onAction, onPriceChangeAction,
 }: Props) {
   const { t } = useTranslation()
   const wonUnit = t('common.won', { defaultValue: '원' })
@@ -269,6 +387,18 @@ export default function SupplierProductsTab({
                   {/* 네이버쇼핑 최저가 참고값 (BIZ-5 v1) — 검수 대기/가격변경 단계에서만 노출. advisory. */}
                   {(p.approval_status !== 'approved' || hasPriceChange) && p.name && (
                     <NaverPriceReferencePanel query={p.name} />
+                  )}
+
+                  {/* 🆕 2026-06-19 제품별 플랫폼 마진 설정 (미끼/마진 전략) — 가격변경 요청 외 항상 노출(승인 후도 조율 가능). */}
+                  {!hasPriceChange && (
+                    <MarginEditor
+                      product={p}
+                      defaultMarginPct={defaultMarginPct}
+                      raw={marginMap[p.id]}
+                      setRaw={(v) => setMarginMap(prev => ({ ...prev, [p.id]: v }))}
+                      saving={marginSaving === p.id}
+                      onSave={() => onSetMargin(p.id)}
+                    />
                   )}
 
                   {/* 가격 변경 요청 상세 (현재가 → 요청가). */}

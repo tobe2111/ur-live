@@ -24,6 +24,7 @@ import {
   isValidHandleFormat,
 } from '../utils/handle-generator'
 import { CURATOR_DEFAULTS, WITHDRAWAL_DEFAULTS, TAX_POLICY, COMMISSION_DEFAULTS } from '../../shared/constants/policy'
+import { isVoucherCategory } from '../../shared/constants/voucher-categories'
 import { getPolicy } from '../utils/dynamic-policy'
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
@@ -73,6 +74,10 @@ async function ensureUserProfileCols(DB: D1Database): Promise<void> {
     'ALTER TABLE users ADD COLUMN youtube_url TEXT',
     'ALTER TABLE users ADD COLUMN instagram_url TEXT',
     'ALTER TABLE users ADD COLUMN tiktok_url TEXT',
+    // 🎨 2026-06-17 링크샵 랜딩 리디자인: 상단 마퀴(흐르는 헤드라인) 텍스트.
+    'ALTER TABLE users ADD COLUMN linkshop_headline TEXT',
+    // 🎨 2026-06-19 마퀴 액센트 색(#RRGGBB) — 소유자 조정. 비면 기본 주황.
+    'ALTER TABLE users ADD COLUMN linkshop_accent TEXT',
   ]) {
     await DB.prepare(sql).run().catch(() => { /* 이미 존재 → 정상 */ })
   }
@@ -103,6 +108,12 @@ async function ensureCuratorTables(DB: D1Database): Promise<void> {
       await DB.prepare(sql).run().catch(() => null)
     }
     await DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_handle_unique ON users(handle) WHERE handle IS NOT NULL`).run().catch(() => null)
+    // 🏁 2026-06-17 (핸들 변경 리다이렉트): 옛 핸들 → user_id 매핑. /u/{옛핸들} → /u/{현재핸들} 자동 이동.
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS user_handle_aliases (
+      alias TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`).run().catch(() => null)
     _curatorTablesReady = true  // 성공 시에만 — 실패하면 다음 요청 재시도
   } catch { /* graceful */ }
 }
@@ -141,7 +152,23 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
       ).bind(handle).first<CuratorUser>().catch(() => null) ?? null
     }
 
-    if (!user) return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)
+    if (!user) {
+      // 🏁 2026-06-17 (핸들 변경 리다이렉트): 옛 핸들이면 현재 핸들을 알려줘 클라가 /u/{현재} 로 이동.
+      //   404 가 아니라 200 + code 로 반환(axios throw 회피 → 클라가 new_handle 읽음).
+      try {
+        await ensureCuratorTables(DB)
+        const alias = await DB.prepare('SELECT user_id FROM user_handle_aliases WHERE alias = ? LIMIT 1')
+          .bind(handle).first<{ user_id: number }>()
+        if (alias?.user_id) {
+          const cur = await DB.prepare('SELECT handle FROM users WHERE id = ? AND handle IS NOT NULL AND handle != \'\' LIMIT 1')
+            .bind(alias.user_id).first<{ handle: string }>()
+          if (cur?.handle && cur.handle !== handle) {
+            return c.json({ success: false, code: 'HANDLE_MOVED', new_handle: cur.handle }, 200)
+          }
+        }
+      } catch { /* alias 테이블 없거나 조회 실패 — 일반 404 로 */ }
+      return c.json({ success: false, error: '큐레이터를 찾을 수 없습니다' }, 404)
+    }
 
     // 🛡️ 2026-05-25 (C 옵션): linked seller + pins — 둘 다 user.id 에만 의존 → 병렬(Promise.all).
     //   🏭 2026-06-04 (perf 전수조사): 기존 순차 2 round-trip → 1 round-trip 으로 단축.
@@ -164,6 +191,24 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
       ).bind(userId, CURATOR_DEFAULTS.PIN_MAX_PER_USER).all().catch(() => ({ results: [] as Record<string, unknown>[] })),
     ])
     const pins = pinsResult.results
+
+    // 🎨 2026-06-17 (링크샵 랜딩 리디자인): 마퀴 헤드라인 — 별도 best-effort 조회(컬럼 없는 env 에서
+    //   메인 SELECT 의 banner/sns 가 폴백으로 사라지지 않도록 분리). 컬럼 없으면 null.
+    let headline: string | null = null
+    let accent: string | null = null
+    try {
+      const h = await DB.prepare('SELECT linkshop_headline, linkshop_accent FROM users WHERE id = ? LIMIT 1')
+        .bind(userId).first<{ linkshop_headline: string | null; linkshop_accent: string | null }>()
+      headline = h?.linkshop_headline ?? null
+      accent = h?.linkshop_accent ?? null
+    } catch {
+      // linkshop_accent 컬럼 없는 env — headline 만이라도.
+      try {
+        const h = await DB.prepare('SELECT linkshop_headline FROM users WHERE id = ? LIMIT 1')
+          .bind(userId).first<{ linkshop_headline: string | null }>()
+        headline = h?.linkshop_headline ?? null
+      } catch { /* 둘 다 없음 — null */ }
+    }
 
     // 🛡️ 2026-05-31 (링크샵 로딩): group-buy-public 과 동일 edge 캐시 — 이전엔 캐시 헤더가 없어
     //   (1) 매 요청 D1 3쿼리 cold, (2) worker SSR inject 가 caches.default 에서 못 찾아 매번 self-fetch cold
@@ -199,6 +244,9 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         youtube_url: user.youtube_url ?? null,
         instagram_url: user.instagram_url ?? null,
         tiktok_url: user.tiktok_url ?? null,
+        // 🎨 2026-06-17 링크샵 랜딩 리디자인: 상단 마퀴 헤드라인 + 액센트 색.
+        headline,
+        accent,
       },
       pins: pins ?? [],
       // 🛡️ 2026-05-25 신모델: linked seller 있으면 셀러 공개페이지로 자연 흡수.
@@ -272,7 +320,11 @@ curatorRoutes.get('/:handle/p/:productId/redirect', async (c) => {
       const prod = await DB.prepare(
         "SELECT deal_only, category, group_buy_status FROM products WHERE id = ? LIMIT 1"
       ).bind(productId).first<{ deal_only: number | null; category: string | null; group_buy_status: string | null }>()
-      const isVoucherFlow = !!prod && (Number(prod.deal_only) === 1 || /voucher/i.test(prod.category || '') || prod.group_buy_status === 'active')
+      // 🛡️ 2026-06-18 (대표 신고 — 쇼핑 상품이 /group-buy 로 가 교환권으로 오표시): 분류 SSOT 정합.
+      //   기존 `group_buy_status === 'active'` 는 migration 0146 에서 모든 상품 DEFAULT 'active' 라
+      //   일반 쇼핑 상품까지 voucher 흐름으로 오분류 → /group-buy 교환권 chrome 으로 떨어짐.
+      //   order-type.ts SSOT 와 동일하게 deal_only=1(교환권) 또는 voucher 카테고리(오프라인 공구)만 voucher 흐름.
+      const isVoucherFlow = !!prod && (Number(prod.deal_only) === 1 || isVoucherCategory(prod.category))
       if (isVoucherFlow) return c.redirect(`/group-buy/${productId}?aff=${pin.user_id}`, 302)
     } catch { /* 판별 실패 — 기존 경로 */ }
     // 물리상품 — ProductDetailPage 가 localStorage.affiliate_ref 저장 (기존 시스템 재활용)
@@ -543,6 +595,17 @@ curatorRoutes.patch('/me/handle', requireAuth(), async (c) => {
       .bind(newHandle, userId)
       .run()
 
+    // 🏁 2026-06-17 (핸들 변경 리다이렉트): 옛 핸들 → 본인 user_id 기록 → /u/{옛핸들} 자동 이동.
+    //   + 새 핸들이 과거 누군가의 alias 였다면 제거(라이브 핸들이 우선이라 무해하지만 정리).
+    try {
+      await ensureCuratorTables(DB)
+      if (user.handle) {
+        await DB.prepare("INSERT OR REPLACE INTO user_handle_aliases (alias, user_id, created_at) VALUES (?, ?, datetime('now'))")
+          .bind(user.handle, userId).run()
+      }
+      await DB.prepare('DELETE FROM user_handle_aliases WHERE alias = ?').bind(newHandle).run()
+    } catch { /* best-effort — 리다이렉트 기록 실패해도 핸들 변경은 성공 */ }
+
     return c.json({ success: true, handle: newHandle })
   } catch (err) {
     return safeError(c, err, '핸들 변경 중 오류가 발생했습니다', '[curator:handle-patch]')
@@ -558,7 +621,7 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
-    type ProfileBody = { name?: string; bio?: string; profile_image?: string; banner_url?: string; youtube_url?: string; instagram_url?: string; tiktok_url?: string }
+    type ProfileBody = { name?: string; bio?: string; profile_image?: string; banner_url?: string; youtube_url?: string; instagram_url?: string; tiktok_url?: string; headline?: string; accent?: string }
     const body = await c.req.json<ProfileBody>().catch(() => ({} as ProfileBody))
 
     const updates: string[] = []
@@ -601,6 +664,18 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
         updates.push(`${key} = ?`)
         binds.push(v)
       }
+    }
+    // 🎨 2026-06-17 (링크샵 랜딩 리디자인): 상단 마퀴 헤드라인 (빈 문자열=해제).
+    if (typeof body.headline === 'string') {
+      updates.push('linkshop_headline = ?')
+      binds.push(body.headline.trim().slice(0, 80))
+    }
+    // 🎨 2026-06-19 마퀴 액센트 색 — #RRGGBB 만 허용, 빈 문자열=기본색(해제).
+    if (typeof body.accent === 'string') {
+      const v = body.accent.trim()
+      if (v && !/^#[0-9A-Fa-f]{6}$/.test(v)) return c.json({ success: false, error: '색상은 #RRGGBB 형식' }, 400)
+      updates.push('linkshop_accent = ?')
+      binds.push(v)
     }
     if (updates.length === 0) return c.json({ success: false, error: '변경할 필드 없음' }, 400)
 

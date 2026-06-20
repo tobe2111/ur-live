@@ -83,9 +83,32 @@ sellerProfileRoutes.get('/profile', async (c) => {
       }, 404);
     }
 
+    // 🚚 2026-06-18 (셀러 배송비 설정): base_shipping_fee 가 없는 구 스키마 env 에서도 위 메인 SELECT 가
+    //   안 깨지게 분리 best-effort 조회. 미설정/구스키마면 기본 3000원·임계 없음(order.routes 기본값과 동일).
+    let base_shipping_fee = 3000;
+    let free_shipping_threshold: number | null = null;
+    try {
+      const ship = await db.prepare('SELECT base_shipping_fee, free_shipping_threshold FROM sellers WHERE id = ? LIMIT 1')
+        .bind(sellerId).first<{ base_shipping_fee: number | null; free_shipping_threshold: number | null }>();
+      if (ship) {
+        base_shipping_fee = ship.base_shipping_fee ?? 3000;
+        free_shipping_threshold = ship.free_shipping_threshold ?? null;
+      }
+    } catch {
+      // base_shipping_fee 컬럼이 없는 구 스키마(한도 도달) — shipping_fee 폴백(order.routes 와 동일).
+      try {
+        const ship = await db.prepare('SELECT shipping_fee, free_shipping_threshold FROM sellers WHERE id = ? LIMIT 1')
+          .bind(sellerId).first<{ shipping_fee: number | null; free_shipping_threshold: number | null }>();
+        if (ship) {
+          base_shipping_fee = ship.shipping_fee ?? 3000;
+          free_shipping_threshold = ship.free_shipping_threshold ?? null;
+        }
+      } catch { /* 둘 다 없음 — 기본값 유지 */ }
+    }
+
     return c.json({
       success: true,
-      data: maskSellerRow(seller as Record<string, unknown>)
+      data: { ...maskSellerRow(seller as Record<string, unknown>), base_shipping_fee, free_shipping_threshold }
     });
 
   } catch (error: unknown) {
@@ -127,6 +150,8 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
       sns_instagram: 'sns_instagram', sns_youtube: 'sns_youtube',
       sns_facebook: 'sns_facebook', sns_twitter: 'sns_twitter',
       website_url: 'website_url', kakao_chat_link: 'kakao_chat_url',
+      // 🚚 2026-06-18 (셀러 배송비): fieldMap 미포함 — sellers 컬럼 한도 도달 가능성 때문에
+      //   아래에서 base_shipping_fee→shipping_fee 폴백으로 별도 robust 기록(메인 UPDATE 와 분리).
       // 🛡️ 2026-05-15 (PRISM 따라잡기): 셀러 미니샵 커스터마이징
       banner_url: 'banner_url',           // 셀러 페이지 상단 헤더 이미지 (1280x320 권장)
       brand_color: 'brand_color',         // 메인 컬러 (#RRGGBB)
@@ -172,6 +197,19 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
       }
     }
 
+    // 🚚 2026-06-18 (셀러 배송비 설정): 결제 금액에 직접 영향 → 음수/비정상 차단 + 정수화.
+    //   빈값/null = 배송비 0 / 무료배송 임계 해제(null). free_shipping_threshold>0 일 때만 무료배송 적용.
+    const bk = body as Record<string, unknown>;
+    for (const k of ['base_shipping_fee', 'free_shipping_threshold'] as const) {
+      if (bk[k] === undefined) continue;
+      if (bk[k] === null || bk[k] === '') { bk[k] = k === 'free_shipping_threshold' ? null : 0; continue; }
+      const n = Number(bk[k]);
+      if (!Number.isFinite(n) || n < 0 || n > 10_000_000) {
+        return c.json({ success: false, error: `${k === 'base_shipping_fee' ? '배송비' : '무료배송 기준액'}는 0 이상 1천만원 이하여야 합니다` }, 400);
+      }
+      bk[k] = Math.floor(n);
+    }
+
     // 🛡️ 2026-05-15: 신규 컬럼 자동 ALTER (마이그레이션 fallback)
     const newCols = [
       'banner_url TEXT', 'brand_color TEXT',
@@ -203,15 +241,30 @@ sellerProfileRoutes.on(['PUT', 'PATCH'], '/profile', async (c) => {
       } catch {}
     }
 
-    if (updates.length === 0) {
+    // 🚚 2026-06-18 (배송비 robust): sellers 컬럼 한도 도달 가능 → 존재하는 컬럼에만 별도 기록.
+    //   base_shipping_fee 우선(없으면 구스키마 shipping_fee). order.routes 읽기 우선순위와 동일 → 정합.
+    const db = c.env.DB;
+    const shipWrites: Array<{ cands: string[]; value: number | null }> = [];
+    if (bk.base_shipping_fee !== undefined) shipWrites.push({ cands: ['base_shipping_fee', 'shipping_fee'], value: bk.base_shipping_fee as number });
+    if (bk.free_shipping_threshold !== undefined) shipWrites.push({ cands: ['free_shipping_threshold'], value: (bk.free_shipping_threshold as number | null) });
+
+    if (updates.length === 0 && shipWrites.length === 0) {
       return c.json({ success: false, error: 'No fields to update' }, 400);
     }
 
-    updates.push("updated_at = datetime('now')");
-    values.push(sellerId);
+    if (updates.length > 0) {
+      updates.push("updated_at = datetime('now')");
+      values.push(sellerId);
+      await db.prepare(`UPDATE sellers SET ${updates.join(', ')} WHERE id = ?`).bind(...values).run();
+    }
 
-    const db = c.env.DB;
-    await db.prepare(`UPDATE sellers SET ${updates.join(', ')} WHERE id = ?`).bind(...values).run();
+    // 배송비 — 후보 컬럼 순서대로 시도, 첫 성공 시 중단(컬럼 없음/한도면 다음 후보).
+    for (const w of shipWrites) {
+      for (const col of w.cands) {
+        try { await db.prepare(`UPDATE sellers SET ${col} = ? WHERE id = ?`).bind(w.value, sellerId).run(); break; }
+        catch { /* 컬럼 없음/한도 — 다음 후보 */ }
+      }
+    }
 
     const updatedSeller = await db.prepare(`
       SELECT

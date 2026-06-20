@@ -8,8 +8,8 @@
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, Radio, Compass, MapPin, Utensils, Sparkles, Bed, Tag, Package, User, PackageSearch, Heart, BookOpen, Store, Plus } from 'lucide-react'
-import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
+import { Home, Radio, Compass, User, Store, Plus, Ticket, Gift } from 'lucide-react'
+import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
@@ -24,37 +24,26 @@ interface NavItem {
 // 🧭 2026-06-17 (사용자 요청): '공구'·'식사권'(둘 다 /group-buy 계열) → 단일 '오프라인 공동구매'(동네딜) 로 통합.
 //   /live·/browse 는 플래그로 숨김 상태이나 가역 위해 항목 보존(아래 filter).
 const MENU_ITEMS: NavItem[] = [
-  { labelKey: 'nav.home',            labelDefault: '홈',             icon: Home,    path: '/',          active: (p) => p === '/' },
+  // 🎟️ 2026-06-19 (대표 5탭 확정): 홈 = 동네딜 피드 → 홈 탭이 /group-buy·/stays·/meal-vouchers surface 도 활성(모바일 하단바와 정합).
+  { labelKey: 'nav.home',            labelDefault: '홈',             icon: Home,    path: '/',
+    active: (p) => p === '/' || p.startsWith('/group-buy') || p.startsWith('/stays') || p.startsWith('/meal-vouchers') },
   { labelKey: 'nav.live',            labelDefault: '라이브',         icon: Radio,   path: '/live',      active: (p) => p.startsWith('/live') },
   { labelKey: 'nav.browse',          labelDefault: '둘러보기',       icon: Compass, path: '/browse',    active: (p, s) => p === '/browse' && !s.includes('category=') },
-  { labelKey: 'nav.offlineGroupBuy', labelDefault: '오프라인 공동구매', icon: MapPin, path: '/group-buy',
-    // 동네딜 허브(전체) — 특정 카테고리 필터일 땐 아래 CATEGORY 항목이 활성, 여기선 비활성(이중 강조 방지).
-    active: (p, s) => p.startsWith('/group-buy') && !/category=(meal_voucher|beauty_voucher|stay_voucher|etc_voucher|general)/.test(s) },
+  // 🎟️ 2026-06-19 (대표 5탭 확정 — 홈=동네딜이라 동네딜 메뉴는 홈과 중복): 동네딜 → 교환권(기프티콘 카탈로그).
+  { labelKey: 'nav.vouchers',        labelDefault: '교환권',          icon: Gift,    path: '/vouchers',  active: (p) => p.startsWith('/vouchers') },
   // 🆕 2026-06-17 (대표 신고 — PC 진입 버튼 누락): 공구 제안/만들기 (모바일 하단바 ➕ 와 동일 목적지).
   { labelKey: 'nav.create',          labelDefault: '공구 제안',       icon: Plus,    path: '/community-group-buy/new', active: (p) => p.startsWith('/community-group-buy/new') },
 ]
 
-// 🧭 2026-06-17 (사용자 요청): 오프라인 공동구매(동네딜) 카테고리 — GroupBuyListPage 탭과 1:1.
-//   맛집 식사권 / 미용 / 숙소 / 기타 / 일반 상품. 모두 /group-buy?category= 로 동일 그리드 안에서 필터(일관성).
-//   숙소는 그리드에 인라인 노출하되 카드 클릭만 /stays/:id(객실·날짜 예약)로 — GroupBuyListPage 참조.
-const CATEGORY_ITEMS: NavItem[] = [
-  { labelKey: 'category.mealVoucher', labelDefault: '맛집 식사권', icon: Utensils, path: '/group-buy?category=meal_voucher',
-    active: (p, s) => (p.startsWith('/group-buy') && s.includes('category=meal_voucher')) || p.startsWith('/meal-vouchers') },
-  { labelKey: 'category.beauty',      labelDefault: '미용',        icon: Sparkles, path: '/group-buy?category=beauty_voucher',
-    active: (p, s) => p.startsWith('/group-buy') && s.includes('category=beauty_voucher') },
-  { labelKey: 'category.stay',        labelDefault: '숙소',        icon: Bed,      path: '/stays',
-    active: (p) => p.startsWith('/stays') },
-  { labelKey: 'category.etc',         labelDefault: '기타',        icon: Tag,      path: '/group-buy?category=etc_voucher',
-    active: (p, s) => p.startsWith('/group-buy') && s.includes('category=etc_voucher') },
-  { labelKey: 'category.general',     labelDefault: '일반 상품',   icon: Package,  path: '/group-buy?category=general',
-    active: (p, s) => p.startsWith('/group-buy') && s.includes('category=general') },
-]
+// 🧭 2026-06-18 (대표 피드백 — "좌측 카테고리바 복잡"): CATEGORY 섹션 제거.
+//   맛집/미용/숙소/기타/일반은 동네딜(/group-buy) 페이지의 탭으로 이미 접근 가능 → 사이드바 중복 제거(단순화).
+//   사이드바는 '주요 목적지'만(홈/동네딜/공구제안/링크샵/마이) — 모바일 하단바와 정합.
 
+// 🎟️ 2026-06-18 (대표 결정 — 5탭 통일: 홈/동네딜/공구권/링크샵/마이): 주문/찜/식사권은 마이페이지 안 탭으로
+//   접근 → 사이드바는 핵심만. '내 식사권' → '공구권'(QR 매장사용)으로 명칭/아이콘 통일(모바일 하단바와 동일).
 const MY_ITEMS: NavItem[] = [
-  { labelKey: 'my.profile',  labelDefault: '마이페이지', icon: User,        path: '/user/profile', active: (p) => p.startsWith('/user/profile') || p === '/mypage' },
-  { labelKey: 'my.orders',   labelDefault: '주문내역',   icon: PackageSearch, path: '/my-orders',  active: (p) => p.startsWith('/my-orders') },
-  { labelKey: 'my.wishlist', labelDefault: '찜',         icon: Heart,       path: '/wishlist',     active: (p) => p.startsWith('/wishlist') },
-  { labelKey: 'my.vouchers', labelDefault: '내 식사권',  icon: BookOpen,    path: '/my-vouchers',  active: (p) => p.startsWith('/my-vouchers') },
+  { labelKey: 'nav.myGbVouchers', labelDefault: '공구권', icon: Ticket, path: '/my-vouchers', active: (p) => p.startsWith('/my-vouchers') },
+  { labelKey: 'my.profile',       labelDefault: '마이페이지', icon: User, path: '/user/profile', active: (p) => p.startsWith('/user/profile') || p === '/mypage' },
 ]
 
 function NavBtn({ item, isActive, onClick }: { item: NavItem; isActive: boolean; onClick: () => void }) {
@@ -111,23 +100,9 @@ export default function DesktopLiveSidebar() {
           {/* 🛡️ 2026-06-10 [UNLOCK_LOADING]: 쇼핑(/browse) 잠정 숨김 — SHOPPING_TAB_HIDDEN 플래그 가역 */}
           {MENU_ITEMS.filter(item =>
             !(LIVE_COMMERCE_SUSPENDED && item.path === '/live') &&
-            !(SHOPPING_TAB_HIDDEN && item.path === '/browse')
+            !(SHOPPING_TAB_HIDDEN && item.path === '/browse') &&
+            !(COMMUNITY_PROPOSAL_HIDDEN && item.path === '/community-group-buy/new')
           ).map(item => (
-            <NavBtn
-              key={item.path}
-              item={item}
-              isActive={item.active?.(pathname, search) ?? false}
-              onClick={() => navigate(item.path)}
-            />
-          ))}
-        </section>
-
-        {/* CATEGORY — 오프라인 공동구매(동네딜) 카테고리: 맛집 식사권 / 미용 / 숙소 / 기타 */}
-        <section>
-          <p className="hidden xl:block text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
-            {t('nav.sectionCategory', { defaultValue: 'Category' })}
-          </p>
-          {CATEGORY_ITEMS.map(item => (
             <NavBtn
               key={item.path}
               item={item}
@@ -142,20 +117,23 @@ export default function DesktopLiveSidebar() {
           <p className="hidden xl:block text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
             {t('nav.sectionMy', { defaultValue: 'My' })}
           </p>
-          {/* 🔗 링크샵 — 본인 공개페이지(모바일 BottomNav 와 동일 경로). PC 진입 버튼 누락 수정. */}
+          {/* 순서 통일(모바일 하단바와 동일): 공구권 → 링크샵 → 마이 */}
+          <NavBtn
+            item={MY_ITEMS[0]}
+            isActive={MY_ITEMS[0].active?.(pathname, search) ?? false}
+            onClick={() => navigate(MY_ITEMS[0].path)}
+          />
+          {/* 🔗 링크샵 — 본인 공개페이지(모바일 BottomNav 와 동일 경로) */}
           <NavBtn
             item={linkshopItem}
             isActive={linkshopItem.active?.(pathname, search) ?? false}
             onClick={() => navigate(linkshopPath)}
           />
-          {MY_ITEMS.map(item => (
-            <NavBtn
-              key={item.path}
-              item={item}
-              isActive={item.active?.(pathname, search) ?? false}
-              onClick={() => navigate(item.path)}
-            />
-          ))}
+          <NavBtn
+            item={MY_ITEMS[1]}
+            isActive={MY_ITEMS[1].active?.(pathname, search) ?? false}
+            onClick={() => navigate(MY_ITEMS[1].path)}
+          />
         </section>
       </div>
 

@@ -267,6 +267,11 @@ export interface OrderItem {
   options?: Record<string, string>;
   status: string;
   created_at: string;
+  // 🛡️ 2026-06-18: 주문내역 종류 분류(상품/교환권/공구) 신호 — products JOIN 으로 채움.
+  //   order-type.ts getOrderKind() 가 소비. 누락(상품 삭제 등) 시 '상품' 폴백.
+  category?: string | null;
+  deal_only?: number | null;
+  group_buy_status?: string | null;
 }
 
 // ---- User ----

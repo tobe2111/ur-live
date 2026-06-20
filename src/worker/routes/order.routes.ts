@@ -17,6 +17,7 @@ import { QueryBuilder } from '../repositories/query-builder';
 import { computeCouponDiscount } from '../../features/coupons/coupon-discount';
 import { ensureOrdersDealUsed } from '../utils/ensure-order-columns';
 import { swallow } from '../utils/swallow';
+import { hideOrder } from '../utils/hidden-orders';
 import { requireAuth, type AuthUser } from '../middleware/auth';
 import { calculateShippingFee, generateId } from '../../shared/utils';
 import type { CreateOrderRequest } from '../../shared/types';
@@ -543,6 +544,36 @@ ordersRouter.get('/', async (c) => {
       data: { items: [], total: 0, page: 1, limit: 20, has_next: false },
       _internal_error: msg.slice(0, 200),
     });
+  }
+});
+
+// POST /api/orders/:id/hide — 구매 내역 삭제(숨김). 실제 DELETE 금지, 사용자 뷰에서만 숨김.
+ordersRouter.post('/:id/hide', async (c) => {
+  try {
+    const firebaseUid = String(c.get('user').id);
+    const userId = await getUserDbId(c.env.DB, firebaseUid);
+    const orderId = c.req.param('id')!;
+    if (!isValidOrderId(orderId)) {
+      return c.json({ success: false, error: 'Invalid order ID' }, 400);
+    }
+    const orderRepo = new OrderRepository(c.env.DB);
+    const order = await orderRepo.findById(orderId);
+    if (!order) {
+      return c.json({ success: false, error: 'Order not found' }, 404);
+    }
+    // IDOR: 본인 주문만 숨김
+    if (String(order.user_id) !== String(userId)) {
+      return c.json({ success: false, error: 'Forbidden' }, 403);
+    }
+    // 진행 중 주문은 숨김 불가 (배송/결제 추적 손실 방지) — 종료 상태만 허용
+    const terminal = ['DELIVERED', 'DONE', 'CANCELLED', 'REFUNDED'];
+    if (!terminal.includes(String(order.status).toUpperCase())) {
+      return c.json({ success: false, error: '진행 중인 주문은 삭제할 수 없습니다' }, 400);
+    }
+    await hideOrder(c.env.DB, orderId, userId);
+    return c.json({ success: true });
+  } catch (err) {
+    return safeError(c, err, '주문 삭제 중 오류가 발생했습니다', '[orders.hide]');
   }
 });
 

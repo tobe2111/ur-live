@@ -148,53 +148,34 @@ export async function mallIdByHost(DB: D1Database, host: string | null | undefin
   return m?.id ?? DEFAULT_MALL_ID
 }
 
-// ── seller_token / supplier_token 에서 account → mall_id 읽기 (로그인 시 우선) ──
-//   계정의 mall_id 가 host 보다 우선 → 식품 유통사는 어느 호스트로 와도 식품 몰을 봄.
-async function accountMallId(c: MallResolverContext): Promise<number | null> {
-  const auth = c.req.header('Authorization')
-  if (!auth?.startsWith('Bearer ')) return null
-  try {
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(auth.substring(7), c.env.JWT_SECRET, 'HS256') as { seller_id?: number; supplier_id?: number }
-    const DB = c.env.DB
-    if (payload.seller_id) {
-      const row = await DB.prepare('SELECT mall_id FROM sellers WHERE id = ?').bind(payload.seller_id).first<{ mall_id: number | null }>().catch(() => null)
-      const mid = Number(row?.mall_id)
-      if (Number.isFinite(mid) && mid > 0) return mid
-    } else if (payload.supplier_id) {
-      const row = await DB.prepare('SELECT mall_id FROM suppliers WHERE id = ?').bind(payload.supplier_id).first<{ mall_id: number | null }>().catch(() => null)
-      const mid = Number(row?.mall_id)
-      if (Number.isFinite(mid) && mid > 0) return mid
-    }
-  } catch { /* invalid token → null (host/default fallback) */ }
-  return null
-}
-
 /**
- * 요청 → mall_id resolver. 우선순위:
- *   1. 로그인된 계정의 mall_id (distributor/supplier 토큰) — 식품 유통사는 어느 호스트든 식품을 봄.
- *   2. ?mall=<slug> 쿼리 (dev/testing).
- *   3. host → mall (loadMallByHost).
- *   4. 기본 1 (fallback).
+ * 요청 → mall_id resolver. 우선순위 (2026-06-18 대표 확정 "몰 = 도메인 = 계정"):
+ *   1. ?mall=<slug> 쿼리 (dev/testing override).
+ *   2. host → mall (loadMallByHost) — 도메인이 몰을 결정. 게스트/로그인 동일 → flip-flop 불가.
+ *   3. 기본 1 (fallback — host 가 어떤 몰에도 매핑 안 됨).
  * 🔒 INVARIANT: 기본 몰(1) + 단일 호스트만 있으면 항상 1 반환 → 동작 불변.
+ *
+ * 변경 이력: 2026-06-09 최초엔 "계정 우선"(로그인 유통사는 어느 호스트든 자기 몰 = 모델 B). 2026-06-18
+ *   대표가 "유통사/제조사는 몰별 별도 로그인 = 몰=도메인" 으로 확정 → host 우선으로 전환. 이전 account-first
+ *   는 [계정 몰 ≠ 보는 도메인 몰] 일 때 로그인 상태에 따라 카탈로그가 들쭉날쭉(flip-flop)하던 근본 원인.
+ *   host-first 는 게스트/로그인 카탈로그를 일관되게 만들고, 단일 몰 환경에선 byte-identical(모두 1).
+ *   ⚠️ 계정 머니 작업(예치금/주문/정산)은 seller_id/supplier_id 에 직접 매달려 몰-격리되므로 무영향.
+ *   (account → mall_id 읽기 함수는 이 전환으로 호출처가 없어져 제거. 다시 필요하면 git history 참조.)
  */
 export async function resolveMallId(c: MallResolverContext): Promise<number> {
   const { DB } = c.env
   await ensureMallSchema(DB)
-  // 1) 로그인 계정 몰 우선.
-  const acct = await accountMallId(c)
-  if (acct != null) return acct
-  // 2) ?mall=<slug> (dev/testing) — 존재하는 slug 일 때만.
+  // 1) ?mall=<slug> (dev/testing) — 존재하는 slug 일 때만.
   const slugQ = String(c.req.query('mall') || '').trim()
   if (slugQ) {
     const bySlug = await loadMallBySlug(DB, slugQ)
     if (bySlug) return bySlug.id
   }
-  // 3) host → mall.
+  // 2) host → mall (도메인이 몰을 결정). 매핑 안 된 호스트 → loadMallByHost 가 기본 1 반환.
   let host: string | null = null
   try { host = new URL(c.req.url).hostname } catch { host = c.req.header('Host') || null }
   const m = await loadMallByHost(DB, host)
-  // 4) fallback 1.
+  // 3) fallback 1.
   return m?.id ?? DEFAULT_MALL_ID
 }
 

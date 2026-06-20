@@ -140,7 +140,7 @@ pub.get('/banners', async (c) => {
   const { DB } = c.env
   try {
     await ensureBannerSchema(DB)
-    // 🏬 멀티-몰: 요청 몰의 배너만(기본 1 → 기존 데이터 전 행 1 → byte-identical). guest=host 몰 / 로그인=계정 몰.
+    // 🏬 멀티-몰: 요청 몰의 배너만(기본 1 → 기존 데이터 전 행 1 → byte-identical). 몰=도메인(host-first, 2026-06-18) — 게스트/로그인 동일.
     const mallId = await resolveMallId(c)
     const { results } = await DB.prepare(
       `SELECT id, image_url, link, title, sort
@@ -182,7 +182,7 @@ pub.post('/proposal-tickets', rateLimit({ action: 'wholesale-proposal-create', m
     if (!subject) return c.json({ success: false, error: '제목을 입력해주세요' }, 400)
     if (!text) return c.json({ success: false, error: '내용을 입력해주세요' }, 400)
 
-    // 🏬 멀티-몰: 작성자(유통사) 계정 몰을 스탬프(기본 1). 로그인 토큰 → 계정 mall_id.
+    // 🏬 멀티-몰: 작성자가 글 쓰는 도메인의 몰을 스탬프(기본 1). 몰=도메인(host-first, 2026-06-18).
     const mallId = await resolveMallId(c)
     const ins = await DB.prepare(
       "INSERT INTO wholesale_proposal_tickets (seller_id, type, category, target, subject, body, status, mall_id) VALUES (?, ?, ?, ?, ?, ?, 'open', ?)"
@@ -536,13 +536,16 @@ adminProduct.post('/:id/premium', rateLimit({ action: 'admin-wholesale-premium-t
 // ════════════════════════════════════════════════════════════════════════════
 //   platform_settings['wholesale_deposit_account'] key/value 1행. 단일 문자열(은행/계좌/예금주).
 const DEPOSIT_ACCOUNT_KEY = 'wholesale_deposit_account'
+// 🏦 2026-06-18 (사용자 제공): DB 미설정 시 노출할 기본 입금계좌. 어드민이 /wholesale-deposit-account 저장 시 그 값이 우선.
+//   repair-schema seed 와 동일 값 — 배포 즉시 어드민/유통사 입금 페이지에 노출되도록 fallback(외부망 차단으로 API set 불가).
+const DEFAULT_WHOLESALE_DEPOSIT_ACCOUNT = '우체국 014084-02-129530 송유미 (사람과고리)'
 const adminDepositAccount = adminApp()
 
 adminDepositAccount.get('/', async (c) => {
   const { DB } = c.env
   try {
     const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = ?").bind(DEPOSIT_ACCOUNT_KEY).first<{ value: string }>().catch(() => null)
-    return c.json({ success: true, deposit_account: row?.value ?? '' })
+    return c.json({ success: true, deposit_account: (row?.value && row.value.trim()) ? row.value : DEFAULT_WHOLESALE_DEPOSIT_ACCOUNT })
   } catch (err) {
     return safeError(c, err, '입금계좌 조회 중 오류가 발생했습니다', '[admin-wholesale-deposit-account]')
   }
@@ -565,10 +568,10 @@ adminDepositAccount.put('/', rateLimit({ action: 'admin-wholesale-deposit-accoun
   }
 })
 
-/** 공개/유통사 read 에서 입금계좌 1줄 읽기(없으면 ''). deposit /me 안내박스 등 재사용. */
+/** 공개/유통사 read 에서 입금계좌 1줄 읽기(미설정 시 기본 계좌 fallback). deposit /me 안내박스 등 재사용. */
 export async function loadWholesaleDepositAccount(DB: D1Database): Promise<string> {
   const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = ?").bind(DEPOSIT_ACCOUNT_KEY).first<{ value: string }>().catch(() => null)
-  return row?.value ?? ''
+  return (row?.value && row.value.trim()) ? row.value : DEFAULT_WHOLESALE_DEPOSIT_ACCOUNT
 }
 
 export {

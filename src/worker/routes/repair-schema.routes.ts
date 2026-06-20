@@ -256,6 +256,12 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'idx_ad_slots_seller_active', sql: "CREATE INDEX IF NOT EXISTS idx_ad_slots_seller_active ON ad_slots(current_seller_id, is_active, expires_at)" },
     // 🛡️ 2026-05-16: 공구 목록 (지도/리스트) hot query — category + is_active + group_buy_status
     { desc: 'idx_products_voucher_active', sql: "CREATE INDEX IF NOT EXISTS idx_products_voucher_active ON products(category, is_active, group_buy_status)" },
+    // 🗺️ 2026-06-18: 매장 행정동(洞) 태깅 — restaurant-geocode cron 이 채움 (하이퍼로컬 "내 동네 딜" 토대).
+    //   products 컬럼 예산제 회피 위해 별도 테이블. region_dong_code 인덱스로 동별 집계/조인.
+    { desc: 'product_regions table', sql: "CREATE TABLE IF NOT EXISTS product_regions (product_id INTEGER PRIMARY KEY, region_si TEXT, region_gu TEXT, region_dong TEXT, region_dong_code TEXT, lat REAL, lng REAL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)" },
+    { desc: 'idx_product_regions_dong_code', sql: "CREATE INDEX IF NOT EXISTS idx_product_regions_dong_code ON product_regions(region_dong_code)" },
+    // 🗺️ 2026-06-18: 유저 "내 동네" 태깅 — region.routes 가 채움 (GPS/수동). "내 동네 딜" 필터 기준.
+    { desc: 'user_regions table', sql: "CREATE TABLE IF NOT EXISTS user_regions (user_id TEXT PRIMARY KEY, region_si TEXT, region_gu TEXT, region_dong TEXT, region_dong_code TEXT, gu_code TEXT, source TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)" },
     // 🛡️ 2026-05-16: 인플루언서 정산 인프라 (migration 0247)
     { desc: 'sellers.marketing_enabled', sql: "ALTER TABLE sellers ADD COLUMN marketing_enabled INTEGER DEFAULT 1" },
     { desc: 'products.referral_disabled', sql: "ALTER TABLE products ADD COLUMN referral_disabled INTEGER DEFAULT 0" },
@@ -538,6 +544,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'seed: influencer_payout_frequency', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_payout_frequency', 'monthly', '인플 송금 주기', datetime('now'))" },
     { desc: 'seed: influencer_payout_day_of_month', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_payout_day_of_month', '1', '월간 송금 날짜', datetime('now'))" },
     { desc: 'seed: influencer_deal_bonus_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_deal_bonus_pct', '20', '딜 선택 시 보너스 %', datetime('now'))" },
+    { desc: 'seed: wholesale_deposit_account', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('wholesale_deposit_account', '우체국 014084-02-129530 송유미 (사람과고리)', '도매몰 예치금 무통장입금 안내 계좌', datetime('now'))" },
     { desc: 'table influencer_disputes', sql: "CREATE TABLE IF NOT EXISTS influencer_disputes (id INTEGER PRIMARY KEY AUTOINCREMENT, influencer_id TEXT NOT NULL, seller_id INTEGER, type TEXT NOT NULL, description TEXT NOT NULL, status TEXT DEFAULT 'open', resolution TEXT, created_at DATETIME DEFAULT (datetime('now')), resolved_at DATETIME)" },
     { desc: 'idx_inf_disputes_status', sql: "CREATE INDEX IF NOT EXISTS idx_inf_disputes_status ON influencer_disputes(status, created_at)" },
     // 🛡️ 2026-05-16: 매장 영입 referral + 협업 제안 (migration 0249)
@@ -580,6 +587,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'users.youtube_url', sql: "ALTER TABLE users ADD COLUMN youtube_url TEXT" },
     { desc: 'users.instagram_url', sql: "ALTER TABLE users ADD COLUMN instagram_url TEXT" },
     { desc: 'users.tiktok_url', sql: "ALTER TABLE users ADD COLUMN tiktok_url TEXT" },
+    { desc: 'users.linkshop_headline', sql: "ALTER TABLE users ADD COLUMN linkshop_headline TEXT" },
+    { desc: 'users.linkshop_accent', sql: "ALTER TABLE users ADD COLUMN linkshop_accent TEXT" },
     // 🛡️ 2026-05-27 (리뷰 집계 영구 fix — 사용자 보고):
     //   product_reviews INSERT 경로 7곳 (사용자/시드/admin) 마다 products UPDATE 누락 위험.
     //   D1 트리거로 모든 INSERT/UPDATE/DELETE 자동 처리 → review_count + avg_rating 영구 동기화.
@@ -853,7 +862,12 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
         results.push({ desc, status: 'added' });
       } catch (e: any) {
         const msg = String(e?.message || e);
-        if (/duplicate column|already exists/i.test(msg)) {
+        // 🛡️ 2026-06-18 (대표 신고 — 67 오류): 둘 다 비-실패(non-actionable) → 'exists' 로.
+        //   · duplicate column / already exists = 이미 있음.
+        //   · too many columns on sqlite_altertab_X = 그 테이블(예: sellers)이 SQLite 컬럼 한도 도달 →
+        //     ALTER ADD 자체가 불가. 한도 도달 전 추가된 컬럼은 이미 존재(commission_rate 등도 같은 에러),
+        //     아직 없는 컬럼은 ALTER 로는 못 넣음(한도) → 어느 쪽이든 이 루프에서 할 수 있는 게 없음.
+        if (/duplicate column|already exists|too many columns/i.test(msg)) {
           results.push({ desc, status: 'exists' });
         } else {
           results.push({ desc, status: 'error', error: msg.slice(0, 200) });
@@ -1266,6 +1280,16 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'backfill: users.handle reserved rename', sql: `UPDATE users SET handle = 'user' || id
       WHERE handle IN ('user','admin','me','api','host','new','login','seller','shop')
         AND NOT EXISTS (SELECT 1 FROM users u2 WHERE u2.handle = 'user' || users.id AND u2.id != users.id)` },
+    // 🏁 2026-06-17 (핸들 변경 리다이렉트): 옛 핸들 → user_id 매핑. /u/{옛핸들} → /u/{현재핸들} 자동 이동.
+    { name: 'user_handle_aliases', sql: `CREATE TABLE IF NOT EXISTS user_handle_aliases (
+      alias TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    )` },
+    // 🏁 2026-06-17 (사용자 신고 — /u/user2 핸들 변경 후 깨짐): 리다이렉트 기능 도입 前 변경된
+    //   user2→jiwon 1회성 백필. alias 는 라이브 핸들 미스 시에만 사용(라이브 우선)이라 안전, INSERT OR IGNORE 멱등.
+    { name: 'backfill: handle alias user2->jiwon (pre-feature)', sql: `INSERT OR IGNORE INTO user_handle_aliases (alias, user_id)
+      SELECT 'user2', id FROM users WHERE handle = 'jiwon' LIMIT 1` },
     { name: 'product_pins', sql: `CREATE TABLE IF NOT EXISTS product_pins (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -1815,7 +1839,13 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       await DB.prepare(sql).run();
       tableResults.push({ name, status: 'ok' });
     } catch (e: any) {
-      tableResults.push({ name, status: 'error', error: String(e?.message || e).slice(0, 200) });
+      const msg = String(e?.message || e);
+      // 🛡️ 2026-06-18: 이미 있는 컬럼(duplicate)·한도 도달(too many columns)은 비-실패(이 단계 무동작 가능).
+      if (/duplicate column|already exists|too many columns/i.test(msg)) {
+        tableResults.push({ name, status: 'ok' });
+      } else {
+        tableResults.push({ name, status: 'error', error: msg.slice(0, 200) });
+      }
     }
   }
 
@@ -1986,6 +2016,53 @@ repairSchemaRoutes.get('/api/_internal/reset-pin', requireAdmin(), async (c) => 
   } catch (err) {
     return c.json({ success: false, error: 'PIN 해제 실패', _debug: String(err).slice(0, 150) }, 500);
   }
+});
+
+// 🚚 2026-06-18 (대표 신고 — 전체 repair-schema 524/67오류): 진단 + 최근 additive 스키마만 빠르게.
+//   ① PRAGMA 로 핵심 컬럼 실제 존재 여부 진단(ground truth) ② users 테이블(한도 여유)에 마퀴 컬럼/alias
+//   안전 추가 ③ sellers(컬럼 한도 도달)는 ALTER 불가라 '존재 여부만' 보고. 전부 idempotent.
+repairSchemaRoutes.get('/api/_internal/repair-schema-quick', requireAdmin(), async (c) => {
+  const DB = (c.env as { DB?: D1Database }).DB;
+  if (!DB) return c.json({ success: false, error: 'No DB binding' }, 500);
+  const ran: string[] = [];
+  const errors: { step: string; error: string }[] = [];
+  const colsOf = async (table: string): Promise<Set<string>> => {
+    try {
+      const r = await DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
+      return new Set((r.results || []).map((x) => x.name));
+    } catch { return new Set(); }
+  };
+  const userCols = await colsOf('users');
+  const sellerCols = await colsOf('sellers');
+  // 진단 — 기능이 의존하는 컬럼이 실제로 있는지 (ground truth).
+  const present = {
+    'users.linkshop_headline': userCols.has('linkshop_headline'),
+    'users.linkshop_accent': userCols.has('linkshop_accent'),
+    'sellers.base_shipping_fee': sellerCols.has('base_shipping_fee'),
+    'sellers.free_shipping_threshold': sellerCols.has('free_shipping_threshold'),
+    'sellers.shipping_fee': sellerCols.has('shipping_fee'),
+    'sellers.banner_url': sellerCols.has('banner_url'),
+  };
+  const run = async (step: string, sql: string) => {
+    try { await DB.prepare(sql).run(); ran.push(step); }
+    catch (e) {
+      const m = String((e as Error)?.message || '');
+      if (/duplicate column|already exists|too many columns/i.test(m)) ran.push(`${step} (skip: ${/too many/i.test(m) ? 'table maxed' : 'exists'})`);
+      else errors.push({ step, error: m.slice(0, 160) });
+    }
+  };
+  // users 는 컬럼 한도 여유 — 마퀴 헤드라인/액센트 안전 추가.
+  if (!present['users.linkshop_headline']) await run('users.linkshop_headline', 'ALTER TABLE users ADD COLUMN linkshop_headline TEXT');
+  if (!present['users.linkshop_accent']) await run('users.linkshop_accent', 'ALTER TABLE users ADD COLUMN linkshop_accent TEXT');
+  // 핸들 변경 alias (리다이렉트) + user2→jiwon 1회 백필.
+  await run('user_handle_aliases', `CREATE TABLE IF NOT EXISTS user_handle_aliases (
+    alias TEXT PRIMARY KEY, user_id INTEGER NOT NULL, created_at TEXT DEFAULT (datetime('now')))`);
+  await run('backfill user2->jiwon', `INSERT OR IGNORE INTO user_handle_aliases (alias, user_id)
+    SELECT 'user2', id FROM users WHERE handle = 'jiwon' LIMIT 1`);
+  // sellers 는 한도 도달 가능 — 없을 때만 추가 시도(실패해도 무해, 배송비는 shipping_fee 폴백으로 동작).
+  if (!present['sellers.base_shipping_fee']) await run('sellers.base_shipping_fee', 'ALTER TABLE sellers ADD COLUMN base_shipping_fee INTEGER DEFAULT 0');
+  if (!present['sellers.free_shipping_threshold']) await run('sellers.free_shipping_threshold', 'ALTER TABLE sellers ADD COLUMN free_shipping_threshold INTEGER');
+  return c.json({ success: errors.length === 0, present, ran, errors });
 });
 
 // HTTP wrapper — admin auth + JSON response.

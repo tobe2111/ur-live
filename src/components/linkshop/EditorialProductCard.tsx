@@ -20,6 +20,10 @@ export interface LinkshopCardProduct {
   original_price?: number | null
   image?: string | null
   dominant_color?: string | null
+  // 🌟 2026-06-18 (상점 카드 평점 노출): showStats 일 때만 렌더.
+  avg_rating?: number | null
+  review_count?: number | null
+  sold_count?: number | null
 }
 
 interface EditorialProductCardProps {
@@ -51,6 +55,8 @@ interface EditorialProductCardProps {
   textClass?: string
   /** 할인% override — 셀러는 p.discount_rate 우선. 미지정 시 original_price/price 로 계산. */
   discountPct?: number
+  /** 🌟 2026-06-18 별점·구매수 라인 노출(상점 storefront 전용). 미지정 시 기존(미노출) 불변. */
+  showStats?: boolean
 }
 
 const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`
@@ -58,7 +64,7 @@ const won = (n: number) => `${Math.round(n).toLocaleString('ko-KR')}원`
 export default function EditorialProductCard({
   product, href, onClick, variant = 'standard', aspect = '3by2', imgWidth,
   sizes, aboveFold = false, rank, note, curatorName, curatorAvatar, heroCatLabel,
-  overlay, onColor, textClass, discountPct: discountPctProp,
+  overlay, onColor, textClass, discountPct: discountPctProp, showStats = false,
 }: EditorialProductCardProps) {
   const hero = variant === 'hero'
   const img = product.image || ''
@@ -158,6 +164,18 @@ export default function EditorialProductCard({
           <span className="ml-auto text-[11px] font-extrabold text-[#0E9F6E]">{won(savings)}<span className="font-semibold opacity-70"> 절약</span></span>
         )}
       </div>
+      {showStats && (
+        <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+          <span className="inline-flex items-center gap-0.5">
+            <span style={{ color: '#facc15' }}>★</span>
+            {Number(product.avg_rating) > 0
+              ? <span className="font-bold">{Number(product.avg_rating).toFixed(1)}</span>
+              : <span className="font-semibold">신규</span>}
+            {Number(product.review_count) > 0 && <span>({product.review_count})</span>}
+          </span>
+          {Number(product.sold_count) > 0 && <span>구매 {Number(product.sold_count).toLocaleString('ko-KR')}</span>}
+        </div>
+      )}
       {note && (
         <div className="mt-2 pl-2 border-l-2 border-[#FF5634]">
           <p className="text-[11.5px] leading-snug line-clamp-2 text-gray-700 dark:text-gray-300">{note}</p>

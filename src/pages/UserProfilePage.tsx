@@ -17,11 +17,11 @@ import CuratorEarningsCard from './user-profile/CuratorEarningsCard'
 import MyReferralCard from '@/components/MyReferralCard'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 import RoleCtaGrid from './user-profile/RoleCtaGrid'
-import ChatNameSetting from './user-profile/ChatNameSetting'
 import CouponVoucherStats from './user-profile/CouponVoucherStats'
 import ShoppingGroup from './user-profile/ShoppingGroup'
 import OrderStatusBar from './user-profile/OrderStatusBar'
 import SellerSwitchInline from './user-profile/SellerSwitchInline'
+import SettingsGroup from './user-profile/SettingsGroup'
 import { useMyCounts } from './user-profile/useMyCounts'
 import ThemeToggleSection from '@/components/settings/ThemeToggleSection'
 import LanguageSection from '@/components/settings/LanguageSection'
@@ -216,15 +216,8 @@ export default function UserProfilePage() {
       {/* v4 쇼핑 InsetGroup — 시안 매칭 (4개) */}
       <ShoppingGroup counts={counts} />
 
-      {/* v4 활동 InsetGroup — 채팅 이름 (셀러 전환은 상단 이름 옆으로 이동) */}
-      <ChatNameSetting />
-
-      {/* 🛡️ 2026-05-04 (재추가): 사용자 신고 "테마 버튼 또 없어졌어".
-           마이페이지 자체는 강제 다크라 시각 변화 없지만, 토글은 다른 화이트 페이지
-           (쇼핑/결제/마이리뷰 등) 에 즉시 반영됨. 사용자 접근성 위해 마이페이지에 노출. */}
-      <ThemeToggleSection className="ur-content-medium px-4 lg:px-8 pt-5" />
-      {/* 🏁 2026-06-12: 언어 선택 — 기능 기존재, 마이 노출만 추가 */}
-      <LanguageSection className="ur-content-medium px-4 lg:px-8 pt-3" />
+      {/* 🧹 2026-06-19 (대표 신고 — 마이 번잡): 채팅 이름 설정 제거(라이브 커머스 영구중단이라 '라이브 채팅 이름' 토글은 죽은 UI).
+           테마/언어 토글은 아래 '설정' 접이식 그룹으로 이동(흩어진 설정 4종 → 1 fold). */}
 
       {/* v4 더보기 InsetGroup — 배송지 / 리뷰 / 친구초대 / 광고 보고 포인트 */}
       <div className="ur-content-medium px-4 lg:px-8 pt-5">
@@ -285,9 +278,14 @@ export default function UserProfilePage() {
         </div>
       </div>
 
-      {/* 🛡️ 2026-05-24: /account/settings 흡수 — 알림 / 앱 버전 / 탈퇴 */}
-      <NotificationToggleSection />
-      <AppVersionSection />
+      {/* 🧹 2026-06-19 (대표 신고 — 마이 번잡): 흩어진 설정(알림/테마/언어/앱정보)을 접이식 '설정' 그룹으로 합침.
+           기능/데이터 로직 불변 — 표시만 1탭 뒤로. 탈퇴는 파괴적 동작이라 그룹 밖 최하단 유지. */}
+      <SettingsGroup>
+        <NotificationToggleSection />
+        <ThemeToggleSection className="ur-content-medium px-4 lg:px-8 pt-5" />
+        <LanguageSection className="ur-content-medium px-4 lg:px-8 pt-3" />
+        <AppVersionSection />
+      </SettingsGroup>
       <DeleteAccountLink />
 
       {/* v4 로그아웃 + 계정 전환 + 버전 */}

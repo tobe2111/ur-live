@@ -18,14 +18,17 @@ import { getDb, orders as ordersTable, order_items as order_items_table, type Db
 import type { Order, OrderItem, OrderStatus, CreateOrderRequest } from '../../shared/types';
 import { safeJsonParse } from '../../shared/utils';
 import { statusesThatCanReach } from '../utils/state-machine';
+import { ensureHiddenOrdersTable } from '../utils/hidden-orders';
 
 export class OrderRepository {
   protected qb: QueryBuilder;
   protected db: Db;
+  protected d1: D1Database;
 
   constructor(d1: D1Database) {
     this.qb = new QueryBuilder(d1);
     this.db = getDb(d1);
+    this.d1 = d1;
   }
 
   /**
@@ -231,11 +234,28 @@ export class OrderRepository {
     const ids = orderIds.filter(id => id != null);
     if (ids.length === 0) return grouped;
     const ph = ids.map(() => '?').join(',');
-    const items = await this.qb.queryMany<Record<string, unknown>>(
-      `SELECT id, order_id, product_id, product_name, quantity, unit_price, subtotal, options
-       FROM order_items WHERE order_id IN (${ph}) ORDER BY order_id, id`,
-      ids
-    );
+    // 🛡️ 2026-06-18: 주문내역 썸네일(product_image 스냅샷) + 종류 분류(상품/교환권/공구)용
+    //   products JOIN(category/deal_only/group_buy_status). products 컬럼 누락 환경은
+    //   catch 로 최소 쿼리 fallback(종류='상품' 폴백, 썸네일은 order_items 스냅샷 유지).
+    let items: Record<string, unknown>[];
+    try {
+      items = await this.qb.queryMany<Record<string, unknown>>(
+        `SELECT oi.id, oi.order_id, oi.product_id, oi.product_name,
+                COALESCE(oi.product_image, p.image_url) AS product_image,
+                oi.quantity, oi.unit_price, oi.subtotal, oi.options,
+                p.category AS product_category, p.deal_only AS deal_only, p.group_buy_status AS group_buy_status
+         FROM order_items oi
+         LEFT JOIN products p ON oi.product_id = p.id
+         WHERE oi.order_id IN (${ph}) ORDER BY oi.order_id, oi.id`,
+        ids
+      );
+    } catch {
+      items = await this.qb.queryMany<Record<string, unknown>>(
+        `SELECT id, order_id, product_id, product_name, product_image, quantity, unit_price, subtotal, options
+         FROM order_items WHERE order_id IN (${ph}) ORDER BY order_id, id`,
+        ids
+      );
+    }
     for (const it of items) {
       const k = String(it['order_id']);
       if (!grouped.has(k)) grouped.set(k, []);
@@ -254,8 +274,13 @@ export class OrderRepository {
   ): Promise<{ orders: Order[]; total: number }> {
     const offset = (page - 1) * limit;
 
+    // 🛡️ 2026-06-18: '구매 내역 삭제(숨김)' — hidden_orders 의 주문은 목록/카운트에서 제외.
+    //   side table 을 먼저 보장(self-healing) → NOT EXISTS 서브쿼리가 항상 안전.
+    await ensureHiddenOrdersTable(this.d1);
+    const HIDE_FILTER = 'AND NOT EXISTS (SELECT 1 FROM hidden_orders h WHERE h.order_id = o.id)';
+
     const countRow = await this.qb.queryOne<{ count: number }>(
-      'SELECT COUNT(*) as count FROM orders WHERE user_id = ?',
+      `SELECT COUNT(*) as count FROM orders o WHERE o.user_id = ? ${HIDE_FILTER}`,
       [userId]
     );
     const total = countRow?.count ?? 0;
@@ -268,7 +293,7 @@ export class OrderRepository {
         `SELECT o.*, s.name as seller_name, s.phone as seller_phone, s.kakao_chat_url as seller_kakao_chat_url
          FROM orders o
          LEFT JOIN sellers s ON o.seller_id = s.id
-         WHERE o.user_id = ?
+         WHERE o.user_id = ? ${HIDE_FILTER}
          ORDER BY o.created_at DESC
          LIMIT ? OFFSET ?`,
         [userId, limit, offset]
@@ -281,7 +306,7 @@ export class OrderRepository {
           `SELECT o.*, s.name as seller_name
            FROM orders o
            LEFT JOIN sellers s ON o.seller_id = s.id
-           WHERE o.user_id = ?
+           WHERE o.user_id = ? ${HIDE_FILTER}
            ORDER BY o.created_at DESC
            LIMIT ? OFFSET ?`,
           [userId, limit, offset]
@@ -711,6 +736,10 @@ export class OrderRepository {
         options: safeJsonParse(String(item['options'] ?? '{}'), {}),
         status: String(item['status'] ?? 'PENDING'),
         created_at: String(item['created_at'] ?? ''),
+        // 🛡️ 2026-06-18: 주문내역 종류 분류 신호 (products JOIN, 없으면 undefined → '상품' 폴백)
+        category: item['product_category'] != null ? String(item['product_category']) : undefined,
+        deal_only: item['deal_only'] != null ? Number(item['deal_only']) : undefined,
+        group_buy_status: item['group_buy_status'] != null ? String(item['group_buy_status']) : undefined,
       } satisfies OrderItem)),
     };
   }

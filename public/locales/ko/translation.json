@@ -4103,7 +4103,8 @@
     "groupBuy": "공구",
     "dongnedeal": "동네딜",
     "create": "만들기",
-    "offlineGroupBuy": "오프라인 공동구매"
+    "offlineGroupBuy": "오프라인 공동구매",
+    "myGbVouchers": "공구권"
   },
   "bulkUpload": {
     "title": "상품 대량등록",
@@ -4359,7 +4360,26 @@
     "groupExpired": "만료",
     "groupRefunded": "환불",
     "ktShowBarcode": "매장에서 아래 바코드를 제시하세요",
-    "ktCheckMms": "휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능."
+    "ktCheckMms": "휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.",
+    "tabGroupBuy": "공구권",
+    "tabGifticon": "교환권",
+    "emptyGbTitle": "아직 공구권이 없어요",
+    "emptyGbDesc": "동네 맛집 공동구매에 참여하면 식사권이 여기 담겨요. 매장에서 QR 한 번으로 사용하세요.",
+    "emptyGiftTitle": "아직 교환권이 없어요",
+    "emptyGiftDesc": "기프티콘 교환권을 구매하면 휴대폰으로 발송되고, 여기에서도 모아볼 수 있어요.",
+    "emptyGiftCta": "교환권 둘러보기",
+    "stepGb1Title": "맛집 공구 참여",
+    "stepGb1Desc": "원하는 메뉴를 할인가에 미리 결제",
+    "stepGb2Title": "공구권 자동 발급",
+    "stepGb2Desc": "결제 즉시 이 지갑에 안전 보관",
+    "stepGb3Title": "매장에서 QR 제시",
+    "stepGb3Desc": "추가 결제 없이 바로 식사",
+    "stepGift1Title": "교환권 구매",
+    "stepGift1Desc": "카페·편의점 등 인기 브랜드 기프티콘",
+    "stepGift2Title": "MMS 자동 발송",
+    "stepGift2Desc": "등록한 휴대폰으로 즉시 전송돼요",
+    "stepGift3Title": "매장에서 제시",
+    "stepGift3Desc": "바코드 한 번으로 간편하게 사용"
   },
   "sellerWaiting": {
     "title": "셀러 승인 대기",
@@ -6117,7 +6137,9 @@
     "tagline": "우리 동네 맛집·교환권, 같이 사면 더 싸다 🍽️",
     "moreVouchers": "교환권 더보기",
     "shopRailTitle": "일반 상품",
-    "shopRailMore": "쇼핑 전체보기"
+    "shopRailMore": "쇼핑 전체보기",
+    "gifticonEntry": "기프티콘 교환권",
+    "gifticonEntrySub": "딜로 편의점·카페 기프티콘 구매"
   },
   "groupBuy": {
     "tabSeller": "동네 공구",
@@ -6130,6 +6152,8 @@
   "my": {
     "earningsGroupTitle": "내 수익·추천",
     "earningsGroupSub": "추천 적립 · 링크샵 수익 · 친구 초대",
+    "settingsGroupTitle": "설정",
+    "settingsGroupSub": "알림 · 화면 테마 · 언어 · 앱 정보",
     "affiliateLinkTitle": "상품 추천 링크",
     "affiliateLinkSub": "내 링크로 구매하면 딜 적립 — 실적 보기"
   },

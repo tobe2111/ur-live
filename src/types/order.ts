@@ -51,9 +51,26 @@ export interface OrderItem {
   product_id: number | string
   product_name: string
   image_url?: string
+  // 🛡️ 2026-06-18: worker mapOrder 가 product_image 스냅샷을 product_thumbnail 로 매핑.
+  product_thumbnail?: string
   quantity: number
-  price_snapshot: number
+  // 🛡️ 2026-06-18: 목록 API 는 unit_price/subtotal 을 내려줌(price_snapshot 아님).
+  //   기존 price_snapshot 직접곱 → 0원 표시 버그였음. lineTotal() 로 통일.
+  price_snapshot?: number
+  unit_price?: number
+  subtotal?: number
   option_value?: string
+  // 🛡️ 2026-06-18: 주문 종류 분류(상품/교환권/공구) — order-type.ts getOrderKind()
+  category?: string | null
+  deal_only?: number | null
+  group_buy_status?: string | null
+}
+
+/** 🛡️ 2026-06-18: 아이템 라인 합계 — subtotal 우선, 없으면 unit_price×qty, 마지막에 price_snapshot 폴백. */
+export function orderItemLineTotal(item: OrderItem): number {
+  if (typeof item.subtotal === 'number' && item.subtotal > 0) return item.subtotal
+  const unit = item.unit_price ?? item.price_snapshot ?? 0
+  return unit * (item.quantity ?? 1)
 }
 
 // ─── 주문 (통합) ─────────────────────────────────────────────────────────────
@@ -69,6 +86,9 @@ export interface Order {
   order_number?: string
   user_id: number | string
   seller_id?: number | string
+  subtotal?: number                    // 상품 금액 합계 (worker mapOrder)
+  shipping_fee?: number                // 실 배송비 (하드코딩 3,000 대체)
+  discount_amount?: number             // 할인 금액
   total_amount?: number
   amount?: number                      // 일부 API에서 amount로 반환
   status: OrderStatusValue | string    // DB 값이 항상 enum과 일치하지 않을 수 있음

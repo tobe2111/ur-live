@@ -29,12 +29,16 @@ export function useForceLightTheme(): void {
     if (wasDark) {
       root.classList.remove('dark')
       root.setAttribute('data-theme', 'light')
+      // 🛡️ 2026-06-17: html.dark 제거와 함께 body 인라인 배경(gutter)도 라이트로 동기.
+      //   안 그러면 다크 토글에서 진입 시 프레임 양옆이 검정으로 남음(useTheme staleness 와 동일 근본원인).
+      if (document.body) document.body.style.backgroundColor = '#e9ebef'
     }
     return () => {
       // 다른 페이지로 이동 시 원래 테마 복원.
       if (wasDark) {
         root.classList.add('dark')
         root.setAttribute('data-theme', 'dark')
+        if (document.body) document.body.style.backgroundColor = '#0C0D10'
       }
     }
   }, [])

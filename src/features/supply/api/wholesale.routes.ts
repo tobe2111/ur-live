@@ -21,14 +21,14 @@ import {
 } from '@/lib/distributor-pricing'
 import { confirmTossPayment, cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { swallow } from '@/worker/utils/swallow'
-import { getSupplyMeta } from '@/worker/utils/product-supply-meta'
+import { getSupplyMeta, ensureSupplyMetaTable } from '@/worker/utils/product-supply-meta'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAuth } from '@/worker/middleware/auth'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { creditSupplierOnWholesaleOrder, loadPlatformCommissionPct, splitWholesaleUnit } from './wholesale-settlement'
 import { generateWholesaleSalesInvoice, generateWholesalePurchaseInvoices, listDistributorSalesInvoices } from './wholesale-tax-invoices'
-import { ensureSupplyVisibilitySchema, visibilityWhere } from './supply-visibility'
+import { ensureSupplyVisibilitySchema, visibilityWhere, gradeExposureWhere } from './supply-visibility'
 import { ensureDepositSchema, deductDeposit, recordDepositTxn, compensateDepositOrderOnce } from './wholesale-deposit-core'
 import { resolveMallId, registrationMallId, loadMallByHost } from './wholesale-malls'
 
@@ -584,6 +584,35 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
 //   카카오 로그인=유저 세션. 유통회원=sellers(is_distributor=1) 행. 이 엔드포인트가 유저↔셀러
 //   (distributor) 행을 생성/연결(linked_user_id) 후 seller_token 발급 → 도매몰 즉시 이용.
 //   ⚠️ 한 유저당 셀러 1행(idx_sellers_linked_user_id). 이미 셀러면 is_distributor 승급만.
+// 🛡️ 2026-06-18 (인증 audit): 유통회원 셀러 컬럼 self-heal — 기존엔 핸들러 안 매 호출 16 ALTER 루프였음
+//   (그들 룰 "핸들러 inline ALTER 금지 → ensureXxx + WeakSet" 위반). isolate 당 1회로 메모이즈.
+//   ⚠️ 신규 컬럼 추가가 아니라 미마이그레이션 환경 self-heal(멱등) — sellers 컬럼 예산 무영향.
+const _distSellerEnsured = new WeakSet<object>()
+async function ensureDistributorSellerSchema(DB: D1Database) {
+  if (_distSellerEnsured.has(DB)) return
+  _distSellerEnsured.add(DB)
+  for (const sql of [
+    "ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'",
+    'ALTER TABLE sellers ADD COLUMN commission_rate REAL DEFAULT 5.00',
+    'ALTER TABLE sellers ADD COLUMN business_name TEXT',
+    'ALTER TABLE sellers ADD COLUMN business_number TEXT',
+    'ALTER TABLE sellers ADD COLUMN representative_name TEXT',
+    'ALTER TABLE sellers ADD COLUMN business_registration_image_url TEXT',
+    "ALTER TABLE sellers ADD COLUMN business_registration_status TEXT DEFAULT 'pending'",
+    'ALTER TABLE sellers ADD COLUMN phone TEXT',
+    'ALTER TABLE sellers ADD COLUMN distributor_grade TEXT',
+    'ALTER TABLE sellers ADD COLUMN is_distributor INTEGER DEFAULT 0',
+    'ALTER TABLE sellers ADD COLUMN representative_phone TEXT',
+    'ALTER TABLE sellers ADD COLUMN manager_name TEXT',
+    'ALTER TABLE sellers ADD COLUMN manager_phone TEXT',
+    'ALTER TABLE sellers ADD COLUMN manager_email TEXT',
+    'ALTER TABLE sellers ADD COLUMN linked_user_id INTEGER',
+    'ALTER TABLE sellers ADD COLUMN mall_id INTEGER DEFAULT 1', // 🏬 멀티-몰: 가입 시 어느 몰에 가입했는지
+    'ALTER TABLE sellers ADD COLUMN nts_status TEXT', // 국세청 상태(참고 표시용)
+    'ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0', // verified-게이트 자동연결용
+  ]) { await DB.prepare(sql).run().catch(swallow('wholesale:become:ensure-schema')) }
+}
+
 app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-become-distributor', max: 10, windowSec: 600 }), async (c) => {
   const { DB, JWT_SECRET } = c.env
   if (!JWT_SECRET) return c.json({ success: false, error: '서버 설정 오류' }, 500)
@@ -605,27 +634,7 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
     const manager_phone = String(body.manager_phone || '').trim().slice(0, 40)
     const manager_email = String(body.manager_email || '').trim().slice(0, 160)
 
-    for (const sql of [
-      "ALTER TABLE sellers ADD COLUMN seller_type TEXT DEFAULT 'influencer'",
-      'ALTER TABLE sellers ADD COLUMN commission_rate REAL DEFAULT 5.00',
-      'ALTER TABLE sellers ADD COLUMN business_name TEXT',
-      'ALTER TABLE sellers ADD COLUMN business_number TEXT',
-      'ALTER TABLE sellers ADD COLUMN representative_name TEXT',
-      'ALTER TABLE sellers ADD COLUMN business_registration_image_url TEXT',
-      "ALTER TABLE sellers ADD COLUMN business_registration_status TEXT DEFAULT 'pending'",
-      'ALTER TABLE sellers ADD COLUMN phone TEXT',
-      'ALTER TABLE sellers ADD COLUMN distributor_grade TEXT',
-      'ALTER TABLE sellers ADD COLUMN is_distributor INTEGER DEFAULT 0',
-      'ALTER TABLE sellers ADD COLUMN representative_phone TEXT',
-      'ALTER TABLE sellers ADD COLUMN manager_name TEXT',
-      'ALTER TABLE sellers ADD COLUMN manager_phone TEXT',
-      'ALTER TABLE sellers ADD COLUMN manager_email TEXT',
-      'ALTER TABLE sellers ADD COLUMN linked_user_id INTEGER',
-      'ALTER TABLE sellers ADD COLUMN mall_id INTEGER DEFAULT 1', // 🏬 멀티-몰: 가입 시 어느 몰에 가입했는지
-    ]) { await DB.prepare(sql).run().catch(swallow('wholesale:become:alter')) }
-
-    // best-effort: email_verified 컬럼 ensure (become 첫 호출 환경 self-heal).
-    await DB.prepare('ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0').run().catch(swallow('wholesale:become:add-verified'))
+    await ensureDistributorSellerSchema(DB) // 🛡️ 셀러/유저 컬럼 self-heal(멱등, isolate당 1회 — 기존 inline 16 ALTER 대체)
     const u = await DB.prepare('SELECT id, email, name, email_verified FROM users WHERE id = ?').bind(userId)
       .first<{ id: number; email: string | null; name: string | null; email_verified: number | null }>().catch(() => null)
     const email = (authed.email || u?.email || '').trim().toLowerCase()
@@ -711,7 +720,6 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       ntsStatus = rows[0]?.b_stt || null
     } catch { /* fail-soft */ }
 
-    await DB.prepare('ALTER TABLE sellers ADD COLUMN nts_status TEXT').run().catch(() => { /* exists */ })
     const ins = await DB.prepare(`
       INSERT INTO sellers (username, email, password_hash, name, business_name, business_number, representative_name, phone,
         representative_phone, manager_name, manager_phone, manager_email,
@@ -973,12 +981,14 @@ app.get('/home', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const { DB } = c.env
   try {
-    await ensureSupplyVisibilitySchema(DB)
+    await Promise.all([ensureSupplyVisibilitySchema(DB), ensureSupplyMetaTable(DB)])
     const [sg, table, homeMallId] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), resolveMallId(c)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
     const grade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
     // 🏁 2026-06-12 (전 플로우 감사 🟡): /home 만 mall_id 스코프 누락 — 멀티몰 2개+ 가동 시
     //   베스트/신상에 타 몰 상품 노출(주문은 차단되나 혼선). 카탈로그(:1090)와 동일 조건으로 정합.
-    const baseWhere = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND COALESCE(p.mall_id,1) = ${Number(homeMallId) || 1} AND ${visibilityWhere('p')}`
+    // 🏷️ 2026-06-18 등급별 노출 — baseWhere 끝에 gradeExposureWhere AND. bind 순서: ... visibility(?) → grade(?).
+    //   각 쿼리의 .bind() 끝에 grade 1개 추가. 미설정 상품은 불변(현행 동일). home 은 로그인 전용이라 grade 항상 유효.
+    const baseWhere = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND COALESCE(p.mall_id,1) = ${Number(homeMallId) || 1} AND ${visibilityWhere('p')} AND ${gradeExposureWhere('p')}`
     const cols = `p.id, p.name, p.image_url, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, COALESCE(p.min_order_qty,1) AS moq, EXISTS(SELECT 1 FROM product_qty_tiers t WHERE t.product_id = p.id) AS has_tiers, p.supply_margin_override_pct AS margin_override, p.dominant_color, COALESCE(p.sold_count,0) AS sold_count`
     const enrich = (rows: HomeRow[]) => (rows || []).map(r => {
       const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
@@ -987,13 +997,13 @@ app.get('/home', async (c) => {
     })
 
     const [best, fresh, cats, proposalsRes] = await Promise.all([
-      DB.prepare(`SELECT ${cols} FROM products p WHERE ${baseWhere} ORDER BY COALESCE(p.sold_count,0) DESC, p.created_at DESC LIMIT 12`).bind(sellerId).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
-      DB.prepare(`SELECT ${cols} FROM products p WHERE ${baseWhere} ORDER BY p.created_at DESC LIMIT 12`).bind(sellerId).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
-      DB.prepare(`SELECT p.category AS category, COUNT(*) AS cnt FROM products p WHERE ${baseWhere} AND p.category IS NOT NULL GROUP BY p.category ORDER BY cnt DESC LIMIT 12`).bind(sellerId).all<{ category: string; cnt: number }>().catch(() => ({ results: [] as { category: string; cnt: number }[] })),
+      DB.prepare(`SELECT ${cols} FROM products p WHERE ${baseWhere} ORDER BY COALESCE(p.sold_count,0) DESC, p.created_at DESC LIMIT 12`).bind(sellerId, grade).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
+      DB.prepare(`SELECT ${cols} FROM products p WHERE ${baseWhere} ORDER BY p.created_at DESC LIMIT 12`).bind(sellerId, grade).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
+      DB.prepare(`SELECT p.category AS category, COUNT(*) AS cnt FROM products p WHERE ${baseWhere} AND p.category IS NOT NULL GROUP BY p.category ORDER BY cnt DESC LIMIT 12`).bind(sellerId, grade).all<{ category: string; cnt: number }>().catch(() => ({ results: [] as { category: string; cnt: number }[] })),
       DB.prepare(`
         SELECT ${cols} FROM wholesale_proposals wp JOIN products p ON p.id = wp.product_id
         WHERE wp.status = 'active' AND wp.distributor_seller_id = ? AND ${baseWhere} ORDER BY wp.created_at DESC LIMIT 12
-      `).bind(sellerId, sellerId).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
+      `).bind(sellerId, sellerId, grade).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
     ])
 
     return c.json({
@@ -1039,7 +1049,8 @@ app.get('/recent-items', async (c) => {
       FROM products p
       WHERE p.id IN (${ph}) AND p.is_supply_product = 1 AND p.is_active = 1
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
-    `).bind(...ids, sellerId).all<{ id: number; name: string; image_url: string | null; stock: number; supply_price: number; retail_price: number; moq: number; margin_override: number | null }>()
+        AND ${gradeExposureWhere('p')}
+    `).bind(...ids, sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; image_url: string | null; stock: number; supply_price: number; retail_price: number; moq: number; margin_override: number | null }>()
     const byId = new Map((prods.results || []).map(p => [p.id, p]))
     const items = ids.map(id => {
       const p = byId.get(id); const meta = seen.get(id)
@@ -1085,6 +1096,7 @@ app.get('/catalog', async (c) => {
   //   클라(nav 버튼 숨김)와 이중 게이트 — URL 파라미터 직접 조작으로도 미노출.
   if (premiumOnly && guest) {
     c.header('Cache-Control', 'private, no-store')
+    c.header('X-WS-Reason', 'premium-guest-locked')
     return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: null, requires_login: true, premium_locked: true })
   }
   // 🏷️ 2026-06-09 브랜드 전시관 — ?brand=<name> 이면 brand_name 정확 일치 + is_brand_product=1 만(additive WHERE).
@@ -1103,6 +1115,18 @@ app.get('/catalog', async (c) => {
       const isDefaultGuestReqEarly = guest && page === 1 && !search && !category && !sortKey
         && minPrice == null && maxPrice == null && !inStock && !premiumOnly && !brand && !brandsMode
       if (isDefaultGuestReqEarly) {
+        // 🏎️ 2026-06-19 (B: 글로벌 KV 캐시) — caches.default 는 colo별이라 저트래픽 도매몰은 대부분 colo가 cold
+        //   → 매번 무거운 cold D1(행 13~26s). KV(CACHE_KV)는 전 지역 복제 → 어느 colo든 즉시 HIT.
+        //   cron self-fetch(guest)가 아래 put 으로 전 지역 KV를 채움. CACHE_KV 미바인딩 시 폴백(아래 caches.default).
+        //   키는 host 별(멀티-몰 분리) — cron 이 live + utongstart 양 origin self-fetch 하므로 둘 다 워밍됨.
+        try {
+          const kv = (c.env as { CACHE_KV?: { get: (k: string) => Promise<string | null>; put: (k: string, v: string, o?: { expirationTtl?: number }) => Promise<void> } }).CACHE_KV
+          if (kv) {
+            const host = new URL(c.req.url).hostname
+            const kvBody = await kv.get(`ws:cat:g:${host}`).catch(() => null)
+            if (kvBody) return c.body(kvBody, 200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60', 'CDN-Cache-Control': 'public, max-age=300', 'X-WS-Cache': 'KV-HIT' })
+          }
+        } catch { /* KV 미지원/오류 — caches.default 로 진행 */ }
         try {
           // @ts-expect-error — Cloudflare Workers 전역 caches (edge-cache.ts 동일 패턴)
           const early = (await caches.default.match(new Request(c.req.url, { method: 'GET' })).catch(() => null)) as Response | null
@@ -1156,13 +1180,15 @@ app.get('/catalog', async (c) => {
       if (!hasCol || hasCol.c === 0) {
         // 컬럼 실제 부재(repair-schema 실행 전) — 빈 응답이지만 절대 캐시 금지(빈 그리드 고착 방지).
         c.header('Cache-Control', 'private, no-store')
+        c.header('X-WS-Total', '0')
+        c.header('X-WS-Reason', 'schema-missing-is_supply_product')
         return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: 'C' })
       }
       _supplyCatalogReady.add(DB)
     }
 
     // ensure 류는 WeakSet 메모이즈(첫 요청 후 no-op) — 병렬 실행으로 첫 요청 RTT 도 단축.
-    await Promise.all([ensureSupplyVisibilitySchema(DB), ensureQtyConstraintSchema(DB), ensureSupplierPolicySchema(DB)])
+    await Promise.all([ensureSupplyVisibilitySchema(DB), ensureQtyConstraintSchema(DB), ensureSupplierPolicySchema(DB), ensureSupplyMetaTable(DB)])
     // 🏭 등급/등급표/몰/가시성제한 — 상호 독립 쿼리 4개 순차 await → 병렬(1 RTT).
     const [sg, table, mallId, visRestricted] = await Promise.all([
       guest ? Promise.resolve({ distributor_grade: null, special_discount_until: null } as Awaited<ReturnType<typeof loadSellerGrade>>) : loadSellerGrade(DB, sellerId!),
@@ -1200,6 +1226,11 @@ app.get('/catalog', async (c) => {
     // + 몰 스코핑: p.mall_id = 요청 몰(기본 1 → 기존 데이터 전 행 1 → byte-identical).
     let where = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND COALESCE(p.mall_id,1) = ? AND ${visibilityWhere('p')}`
     const params: (string | number)[] = [mallId, visBind]
+    // 🏷️ 2026-06-18 등급별 노출 — visible_grades 제한 상품은 해당 등급 유통사에게만(게스트 '' → 제한상품 전부 제외).
+    //   미설정 상품은 절(NOT EXISTS)이 항상 참이라 byte-identical(현행 불변). bind 1개 = viewer 등급(effective).
+    //   ⚠️ 등급캐시 키(__g=grade)가 노출 차원을 이미 분할 → guest 공유캐시/등급캐시 모두 정합.
+    where += ` AND ${gradeExposureWhere('p')}`
+    params.push(guest ? '' : grade)
     // ── 검색: FTS5(products_fts) 가용 시 name/description/category 전문검색, 아니면 LIKE 다컬럼 fallback.
     //   visibilityWhere 는 항상 AND-ed (FROM products p 구조 불변 — FTS 는 rowid subquery 로 합류).
     //   ⚠️ products 스키마에 brand_name/barcode 컬럼이 없어 그 두 컬럼 검색은 생략(있는 컬럼만).
@@ -1281,7 +1312,28 @@ app.get('/catalog', async (c) => {
     ])
     const total = totalRow?.c ?? 0
 
-    // ⚠️ supply_price/supplier_id 비노출 — 등급가 + 권장소비자가(마진 산출용)만 반환.
+    // 🔭 2026-06-18 (대표 신고 — "0개 + 거기까지도 느림", 전수조사): 카탈로그 0개 '원인'을 응답 헤더로 즉시 판별.
+    //   브라우저 Network 탭(F12) → /api/wholesale/catalog 응답 헤더만 보면 mall 불일치 vs 데이터필터 구분 가능.
+    //   X-WS-Mall(해석된 몰) · X-WS-Total(WHERE 통과 수) · X-WS-Guest · X-WS-Vis-Restricted.
+    //   추가 COUNT 2개는 total===0(이미 깨진 경로)일 때만 실행 → 상품이 보이는 정상 경로엔 추가쿼리 0(perf 무영향).
+    c.header('X-WS-Mall', String(mallId))
+    c.header('X-WS-Total', String(total))
+    c.header('X-WS-Guest', guest ? '1' : '0')
+    c.header('X-WS-Vis-Restricted', visRestricted ? '1' : '0')
+    if (total === 0) {
+      try {
+        const [anyMallVis, rawSupply] = await Promise.all([
+          // mall/visibility 무시 — is_active+source+supply_price 만. 이게 >0 인데 X-WS-Total=0 → 원인=mall 또는 visibility.
+          DB.prepare("SELECT COUNT(*) c FROM products p WHERE p.is_supply_product=1 AND p.is_active=1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0)>0").first<{ c: number }>().catch(() => ({ c: -1 })),
+          // 모든 공급상품(필터 0). 이게 >0 인데 위(NoMallVis)=0 → 원인=is_active/supply_source_id/supply_price.
+          DB.prepare("SELECT COUNT(*) c FROM products p WHERE p.is_supply_product=1").first<{ c: number }>().catch(() => ({ c: -1 })),
+        ])
+        c.header('X-WS-Total-NoMallVis', String(anyMallVis?.c ?? -1))
+        c.header('X-WS-Supply-Raw', String(rawSupply?.c ?? -1))
+      } catch { /* 진단 COUNT 실패 — 본 응답엔 영향 없음 */ }
+    }
+
+
     //   비로그인(guest) → 도매가/권장가/마진 전부 가림(null) + requires_login. (옵션 A: 도매가 숨김)
     const items = (rows.results || []).map(r => {
       const price = guest ? null : resolveDistributorPrice({
@@ -1334,11 +1386,16 @@ app.get('/catalog', async (c) => {
         if (isDefaultGuestReq && c.executionCtx) {
           const origin = new URL(c.req.url).origin
           const mkRes = () => new Response(payload, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300' } })
+          // 🏎️ 2026-06-19 (B): 글로벌 KV write — cron self-fetch(guest)가 이걸 트리거해 전 지역 KV를 채움.
+          //   host 별 키(early KV read 와 1:1). TTL 600s(>cron 5분 주기 → 항상 신선 유지). CACHE_KV 없으면 skip.
+          const kv = (c.env as { CACHE_KV?: { put: (k: string, v: string, o?: { expirationTtl?: number }) => Promise<void> } }).CACHE_KV
+          const host = new URL(c.req.url).hostname
           c.executionCtx.waitUntil(Promise.all([
             // @ts-expect-error — Cloudflare Workers 전역 caches
             caches.default.put(new Request(`${origin}/api/wholesale/catalog`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
             // @ts-expect-error — Cloudflare Workers 전역 caches
             caches.default.put(new Request(`${origin}/api/wholesale/catalog?`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
+            kv ? kv.put(`ws:cat:g:${host}`, payload, { expirationTtl: 600 }).catch(swallow('wholesale:guest-catalog-kv')) : Promise.resolve(),
           ]))
         }
       }
@@ -1374,8 +1431,15 @@ app.get('/catalog/:id', async (c) => {
   try {
     await ensureSupplyVisibilitySchema(DB)
     await ensureQtyConstraintSchema(DB) // BIZ-8: pack_size / order_multiple 컬럼 보장(SELECT 전). (+ products.mall_id 보장)
+    await ensureSupplyMetaTable(DB) // 🏷️ 등급별 노출 서브쿼리(visible_grades) 대상 테이블 보장(SELECT 전)
     // 🏬 멀티-몰: 요청 몰 스코핑(기본 1 → 기존 데이터 전 행 1 → byte-identical).
     const mallId = await resolveMallId(c)
+    // 🏷️ 2026-06-18 등급별 노출 게이트 — 직접 URL 접근(ID 추측)으로도 제한상품 못 보게 SELECT WHERE 에 포함.
+    //   게스트는 ''(제한상품 제외), 로그인은 effective 등급. sg 는 아래 가격계산(1461)에서 재사용(중복 로드 X).
+    const sg = guest
+      ? ({ distributor_grade: null, special_discount_until: null } as Awaited<ReturnType<typeof loadSellerGrade>>)
+      : await loadSellerGrade(DB, sellerId!)
+    const viewerGrade = guest ? '' : effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
     const r = await DB.prepare(`
       SELECT p.id, p.name, p.description, p.image_url, p.detail_images, p.category, p.stock, p.supplier_id,
              COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
@@ -1387,7 +1451,8 @@ app.get('/catalog/:id', async (c) => {
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
         AND COALESCE(p.mall_id,1) = ?
         AND ${visibilityWhere('p')}
-    `).bind(id, mallId, sellerId ?? -1).first<{
+        AND ${gradeExposureWhere('p')}
+    `).bind(id, mallId, sellerId ?? -1, viewerGrade).first<{
       id: number; name: string; description: string | null; image_url: string | null; detail_images: string | null;
       category: string | null; stock: number; supplier_id: number | null; supply_price: number; retail_price: number; moq: number; pack_size: number; order_multiple: number; sold_count: number; margin_override: number | null
     }>()
@@ -1434,12 +1499,11 @@ app.get('/catalog/:id', async (c) => {
 
     // 🛡️ PRC-1: 최소 플랫폼 마진율(%) — DISPLAY 와 CHARGE 가 동일 floor 를 쓰도록 요청당 1회 읽음(기본 0=현행 불변).
     //   네 쿼리 모두 독립 → 병렬(3 RTT 절약, 카탈로그 리스트와 동일 패턴).
-    const [sg, table, minMarginPct, tierMap] = await Promise.all([
-      loadSellerGrade(DB, sellerId!),
+    const [table, minMarginPct, tierMap] = await Promise.all([
       loadGradeTable(DB),
       loadMinPlatformMarginPct(DB),
       loadQtyTiers(DB, [id]),
-    ])
+    ]) // sg 는 SELECT 전 등급게이트에서 이미 로드됨(재사용 — 중복 쿼리 제거)
     const { price, grade } = resolveDistributorPrice({
       baseSupplyPrice: r.supply_price, retailPrice: r.retail_price, grade: sg.distributor_grade,
       specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override,
@@ -1559,9 +1623,12 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
 
     await ensureSupplyVisibilitySchema(DB)
     await ensureQtyConstraintSchema(DB) // BIZ-8: pack_size / order_multiple 컬럼 보장(SELECT 전).
+    await ensureSupplyMetaTable(DB) // 🏷️ 등급별 노출 게이트(visible_grades) 서브쿼리 대상 보장
     // 🛡️ PRC-1: 최소 플랫폼 마진율(%) 요청당 1회 — CHARGE 가 DISPLAY(카탈로그)와 동일 floor 를 쓰도록(기본 0=현행 불변).
     // 🆕 2026-06-16 commPct: 정산 분배(제조사 vs 플랫폼). 정산 호출(creditSupplier…)이 같은 요청에서 동기 실행 → drift 없음.
     const [sg, table, minMarginPct, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB), loadPlatformCommissionPct(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
+    // 🏷️ 2026-06-18 등급별 노출 게이트 — 카탈로그에서 안 보이는(등급 제한) 상품은 ID 직접 주문도 차단.
+    const orderViewerGrade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
     const ids = [...reqMap.keys()]
     const placeholders = ids.map(() => '?').join(',')
     // 가시성 가드 — 유통사가 볼 수 없는(선정 안 된) 공급상품은 주문 불가.
@@ -1573,7 +1640,8 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
       WHERE p.id IN (${placeholders}) AND p.is_supply_product = 1 AND p.is_active = 1
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
         AND COALESCE(p.mall_id,1) = ? AND ${visibilityWhere('p')}
-    `).bind(...ids, orderMallId, sellerId).all<{ id: number; name: string; supplier_id: number | null; stock: number | null; supply_price: number; retail_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
+        AND ${gradeExposureWhere('p')}
+    `).bind(...ids, orderMallId, sellerId, orderViewerGrade).all<{ id: number; name: string; supplier_id: number | null; stock: number | null; supply_price: number; retail_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const found = prods.results || []
     if (found.length !== ids.length) {
       // 어떤 상품이 주문 불가인지 이름으로 안내(카트 부분 불가 UX) — 비노출 정보 없이 name 만.
@@ -2099,8 +2167,9 @@ app.get('/catalog-export', async (c) => {
       FROM products p
       WHERE p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL
         AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
+        AND ${gradeExposureWhere('p')}
       ORDER BY p.name LIMIT 10000
-    `).bind(sellerId).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; margin_override: number | null }>()
+    `).bind(sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; margin_override: number | null }>()
     const out = (rows.results || []).map(r => {
       const { price, grade } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
       return [r.id, r.name, r.category || '', r.stock, price, grade]
@@ -2131,8 +2200,9 @@ app.get('/catalog/export', async (c) => {
       FROM products p
       WHERE p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL
         AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
+        AND ${gradeExposureWhere('p')}
       ORDER BY p.category, p.name LIMIT 10000
-    `).bind(sellerId).all<{ id: number; name: string; barcode: string | null; category: string | null; stock: number; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
+    `).bind(sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; barcode: string | null; category: string | null; stock: number; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const header = ['상품명', '바코드', '공급가(내등급)', 'MOQ', '박스단위', '재고']
     const out = (rows.results || []).map(r => {
       // ⚠️ 내 등급 단가만 계산 — 타 등급가 누출 없음(카탈로그/주문과 동일 SSOT).
@@ -2167,8 +2237,9 @@ app.get('/order-template', async (c) => {
       FROM products p
       WHERE p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL
         AND COALESCE(p.supply_price,0) > 0 AND ${visibilityWhere('p')}
+        AND ${gradeExposureWhere('p')}
       ORDER BY p.category, p.name LIMIT 10000
-    `).bind(sellerId).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
+    `).bind(sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const out = (rows.results || []).map(r => {
       const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
       return [r.id, r.name, r.category || '', r.stock, price, Math.max(1, r.moq || 1), Math.max(1, r.order_multiple || 1), ''] // 주문수량은 빈칸 — 유통사가 입력
@@ -2242,7 +2313,8 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
       WHERE p.id IN (${placeholders}) AND p.is_supply_product = 1 AND p.is_active = 1
         AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0
         AND COALESCE(p.mall_id,1) = ? AND ${visibilityWhere('p')}
-    `).bind(...ids, previewMallId, sellerId).all<{ id: number; name: string; image_url: string | null; supplier_id: number | null; stock: number | null; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
+        AND ${gradeExposureWhere('p')}
+    `).bind(...ids, previewMallId, sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; image_url: string | null; supplier_id: number | null; stock: number | null; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const found = new Map((prods.results || []).map(p => [p.id, p]))
     const tierMap = await loadQtyTiers(DB, ids)
 

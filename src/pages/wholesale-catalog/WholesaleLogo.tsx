@@ -21,11 +21,16 @@ export function WholesaleMark({ size = 34, color = WT.brand }: { size?: number; 
 
 /** 브랜드 워드마크 = 대표 제공 UTONG START 로고 이미지(투명 PNG). height(px)로 크기 조절. dark=어두운 배경용 흰 로고. */
 export function WholesaleWordmark({ height = 30, dark = false }: { height?: number; dark?: boolean }) {
+  // 🏎️ 2026-06-19 (Lighthouse): 로고 종횡비(900:310 ≈ 2.903)로 width 명시 → CLS 0 + 디코딩 힌트.
+  const width = Math.round(height * (900 / 310))
   return (
     <img
       src={dark ? WHOLESALE_LOGO_SRC_DARK : WHOLESALE_LOGO_SRC}
       alt="유통스타트 도매몰"
       draggable={false}
+      width={width}
+      height={height}
+      decoding="async"
       className="block w-auto shrink-0 select-none"
       style={{ height }}
     />

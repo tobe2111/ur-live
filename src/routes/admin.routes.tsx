@@ -41,6 +41,8 @@ const AdminWholesaleProductsPage = lazy(() => import('@/pages/admin/AdminWholesa
 const AdminWholesaleMallsPage = lazy(() => import('@/pages/admin/AdminWholesaleMallsPage'))
 // 🏬 Phase 2 (2026-06-09): 크로스-몰 도매 통합 현황 (운영자 랜딩).
 const AdminWholesaleOverviewPage = lazy(() => import('@/pages/admin/AdminWholesaleOverviewPage'))
+// 🗺️ 2026-06-18: 동네별 딜 밀도 (행정동 태깅 기반 영입 타겟).
+const AdminRegionDensityPage = lazy(() => import('@/pages/AdminRegionDensityPage'))
 // 🏭 BIZ-1 (2026-06-08): 도매 클레임(RMA) 검수 페이지.
 const AdminWholesaleClaimsPage = lazy(() => import('@/pages/admin/AdminWholesaleClaimsPage'))
 const AdminWholesaleTaxPage = lazy(() => import('@/pages/admin/AdminWholesaleTaxPage'))
@@ -126,6 +128,11 @@ export function AdminRoutes() {
       <Route path="/admin" element={
         <ProtectedRoute requireAdmin>
           <AdminPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/region-density" element={
+        <ProtectedRoute requireAdmin>
+          <AdminRegionDensityPage />
         </ProtectedRoute>
       } />
       {/* 🛡️ 2026-05-27 (사용자 결정): admin 매장 검수 통합 페이지 */}
