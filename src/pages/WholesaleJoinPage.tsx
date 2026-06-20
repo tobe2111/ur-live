@@ -131,7 +131,7 @@ export default function WholesaleJoinPage() {
 
   if (pendingStatus) {
     return (
-      <div className="min-h-screen bg-white text-[#0C2454] flex items-center justify-center px-4">
+      <div className="force-light-theme min-h-screen bg-white text-[#0C2454] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-5"><span className="text-2xl">⏳</span></div>
           <h1 className="text-xl font-extrabold mb-2">승인 심사 중이에요</h1>

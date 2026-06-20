@@ -38,7 +38,7 @@ export default function SellerForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7] text-gray-900 flex items-center justify-center p-6">
+    <div className="force-light-theme min-h-screen bg-[#F4F5F7] text-gray-900 flex items-center justify-center p-6">
       <SEO
         title={t('seller.forgotPassword.seoTitle')}
         description={t('seller.forgotPassword.seoDescription')}

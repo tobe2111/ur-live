@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-17 — 로그인/가입 입력 글자 흰색으로 안 보이던 문제 영구수정 (대표 신고 "왜 이런 문제, 영구적으로 이상적으로")
+**신고**: `/admin/login` 등에서 타이핑하는 글자가 흰색이라 안 보임. "로그인 쪽 모두 그런 것 같아."
+- **근본 원인**: 전역 CSS `.dark input:not([type=...])` (index.css:492, 특이도 **0,5,1**)가 OS/앱 다크모드(`html.dark`)에서 **모든** 입력 글자색을 gray-100(거의 흰색)으로 덮어씀. 페이지의 `text-gray-900` 유틸(특이도 0,1,0)은 특이도가 낮아 짐 → 흰 배경에 흰 글자. 대시보드는 `.admin/.seller-light-theme` 래퍼로 보호됐으나 ① **`.agency-light-theme` 는 CSS 규칙 자체가 누락**(에이전시 대시보드 잠복 동일버그) ② **로그인/가입/비번재설정 페이지는 레이아웃 밖 standalone 이라 래퍼 없음** → 무방비. (소비자 다크토글은 정상이고, 라이트 고정 표면만 영향.)
+- **영구 해결(이상적)**: ① index.css — 라이트 고정 컨테이너(`.{admin,seller,agency}-light-theme` + **범용 `.force-light-theme` 신설**) 안의 입력 글자/캐럿/autofill 을 `color:#16181b !important` + `-webkit-text-fill-color !important` 로 강제 → 전역 `.dark` 규칙을 **특이도/소스순서/브라우저(webkit·firefox) 무관** 확실히 이김. 순수 CSS 라 ThemeProvider MutationObserver(`<html>` class 복구)와도 무충돌. `.agency-light-theme` 규칙 추가(누락 메움). ② standalone 라이트 auth 페이지 **17곳** 루트 div 에 `force-light-theme` 클래스 추가 — 로그인 6(admin/seller/supplier/wholesale/agency/wholesale-staff) + 비번찾기·재설정 4(seller/agency) + 가입 6(seller/agency/supplier×register·business·supplier) + wholesale-join 1. (AdminPinSetup 은 AdminLayout 내부라 자동 보호 / JoinChoice·소비자 Login 은 의도적 다크라 제외.)
+- **재발방지**: 신규 standalone 라이트 페이지는 루트에 `force-light-theme` 추가하면 끝(주석 명시). CSS `!important` 가 어떤 다크 전역규칙도 이김 → 클래스만 있으면 영구 안전.
+- **검증**: tsc 0 · `npm run build`(client+ssr+worker) exit 0 · 대시보드 테마 검사(내 수정 파일 dark: 0, 기존 플래그 5건은 무관 파일). 17파일 force-light-theme 정확히 1회씩 루트에만 주입 확인.
+
 ## ✅ 2026-06-17 — 교환권 발송 실패 "이상적 해결": 자동 복구 + 끼임 surface (대표 "가장 이상적으로 해결해줘. 어떻게 해야 문제가 없는지")
 **배경**: 위 가시성 fix 후속 — 실패가 보이는 것에서 **문제 없게(자가치유)** 로. 기존엔 실패 시 알림(유저/Discord/dashboard)만 있고 **자동 재시도 0**(운영자가 매번 수동 '재발송' 클릭) + **'processing' 끼임 영구 잔존**(sendCoupon 직후 UPDATE 전 크래시) + 실패 사유 집계 없음.
 - **신규 cron `kt-alpha-voucher-retry.ts`** (`scheduled.ts` 매시간 `0 * * * *` 등록):

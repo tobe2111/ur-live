@@ -120,7 +120,7 @@ export default function SellerRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 flex items-center justify-center px-4 py-12">
+    <div className="force-light-theme min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 flex items-center justify-center px-4 py-12">
       <div className="max-w-2xl w-full">
         {/* Logo */}
         <div className="text-center mb-8">

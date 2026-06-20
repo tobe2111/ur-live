@@ -71,7 +71,7 @@ export default function WholesaleLoginPage() {
   const inputCls = 'w-full h-12 px-3.5 rounded-xl border border-[#ECEEF1] text-[15px] text-[#0C2454] outline-none focus:border-[#0C2454] transition-colors'
 
   return (
-    <div className="min-h-screen bg-white text-[#0C2454]">
+    <div className="force-light-theme min-h-screen bg-white text-[#0C2454]">
       <SEO title="유통사 로그인 — 유통스타트 B2B 도매몰" description="유통사 로그인 — 등급 공급가로 사입하세요." url="/wholesale/login" noindex />
       <header className="border-b border-[#ECEEF1]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">

@@ -139,7 +139,7 @@ export default function SupplierRegisterPage() {
 
   if (done) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-6">
+      <div className="force-light-theme min-h-screen flex items-center justify-center bg-gray-50 px-6">
         <SEO title={t('supplier.registerTitle', { defaultValue: '공급자 가입' }) + ' - 유어딜'} description="유어딜 도매 공급자 가입" url="/supplier/register" />
         <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
           <CheckCircle className="w-14 h-14 text-green-500 mx-auto mb-4" />

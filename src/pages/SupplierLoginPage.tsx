@@ -91,7 +91,7 @@ export default function SupplierLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="force-light-theme min-h-screen flex bg-gray-50">
       <SEO title={t('supplier.loginTitle', { defaultValue: '공급자 로그인' }) + ' - 유어딜'} description="유어딜 도매 공급자 대시보드 로그인" url="/supplier/login" />
 
       {/* Left branding (desktop) */}
