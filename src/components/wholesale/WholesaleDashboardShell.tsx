@@ -32,6 +32,8 @@ interface WholesaleDashboardShellProps {
   title: string
   /** 헤더 우측 슬롯 (로그아웃 / 장바구니 / 등급칩 등). */
   headerRight?: ReactNode
+  /** 헤더 로고 클릭 핸들러 (예: 카탈로그 /wholesale 로 이동). 없으면 비클릭. */
+  onLogoClick?: () => void
   children: ReactNode
 }
 
@@ -42,6 +44,7 @@ export default function WholesaleDashboardShell({
   navItems,
   title,
   headerRight,
+  onLogoClick,
   children,
 }: WholesaleDashboardShellProps) {
   const { t } = useTranslation()
@@ -112,7 +115,13 @@ export default function WholesaleDashboardShell({
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-            <WholesaleWordmark height={22} />
+            {onLogoClick ? (
+              <button type="button" onClick={onLogoClick} aria-label="도매몰 홈" className="shrink-0 rounded-md hover:opacity-80 transition-opacity">
+                <WholesaleWordmark height={22} />
+              </button>
+            ) : (
+              <WholesaleWordmark height={22} />
+            )}
             <ChevronRight className="w-4 h-4 hidden sm:block shrink-0" style={{ color: WT.ink4 }} />
             <h1 className="text-[15px] font-bold truncate hidden sm:block" style={{ color: WT.ink }}>{title}</h1>
           </div>

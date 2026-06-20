@@ -10,7 +10,7 @@ import { useWholesaleBack } from '@/hooks/useWholesaleBack'
 
 const STATUS_KO: Record<string, string> = { PAID: '결제완료', SHIPPED: '배송중', REFUNDED: '환불', PARTIAL_REFUNDED: '부분환불', DONE: '구매확정' }
 
-export default function WholesaleStatementPage() {
+export default function WholesaleStatementPage({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
   const goBack = useWholesaleBack()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
@@ -25,23 +25,14 @@ export default function WholesaleStatementPage() {
   const summary = data?.summary ?? null
   const load = () => setQ({ from, to })
 
-  useEffect(() => { if (!token) navigate('/wholesale/login') }, [token, navigate])
+  useEffect(() => { if (!embedded && !token) navigate('/wholesale/login') }, [embedded, token, navigate])
 
   const inputCls = 'ml-2 px-2.5 h-9 rounded-lg text-[14px] outline-none'
   const inputStyle = { background: WT.fill, color: WT.ink }
 
-  return (
-    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
-      <SEO title="거래내역서 - 유통스타트" description="유통사 도매 거래내역서" url="/wholesale/statement" noindex />
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur print:hidden" style={{ borderBottom: '1px solid ' + WT.line }}>
-        <div className="ur-content-medium flex items-center gap-3 px-5 lg:px-8 h-[52px]">
-          <button onClick={goBack} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
-          <h1 className="text-[15px] font-bold" style={{ color: WT.ink }}>거래내역서</h1>
-          <button onClick={() => window.print()} className="ml-auto inline-flex items-center gap-1 text-[14px] font-medium" style={{ color: WT.ink2 }}><Printer className="w-4 h-4" /> 인쇄</button>
-        </div>
-      </header>
-
-      <main className="ur-content-medium px-5 lg:px-8 py-6">
+  // 콘텐츠(거래내역 본문) — embedded/standalone 공유.
+  const content = (
+    <>
         <div className="flex flex-wrap items-end gap-3 mb-5 print:hidden">
           <label className="text-[14px]" style={{ color: WT.ink2 }}>시작<input type="date" value={from} onChange={e => setFrom(e.target.value)} className={inputCls} style={inputStyle} /></label>
           <label className="text-[14px]" style={{ color: WT.ink2 }}>종료<input type="date" value={to} onChange={e => setTo(e.target.value)} className={inputCls} style={inputStyle} /></label>
@@ -93,6 +84,25 @@ export default function WholesaleStatementPage() {
             </table>
           </div>
         )}
+    </>
+  )
+
+  // 대시보드 탭 임베드 — 외곽 래퍼/SEO/헤더 생략, 본문만.
+  if (embedded) return <div>{content}</div>
+
+  return (
+    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
+      <SEO title="거래내역서 - 유통스타트" description="유통사 도매 거래내역서" url="/wholesale/statement" noindex />
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur print:hidden" style={{ borderBottom: '1px solid ' + WT.line }}>
+        <div className="ur-content-medium flex items-center gap-3 px-5 lg:px-8 h-[52px]">
+          <button onClick={goBack} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
+          <h1 className="text-[15px] font-bold" style={{ color: WT.ink }}>거래내역서</h1>
+          <button onClick={() => window.print()} className="ml-auto inline-flex items-center gap-1 text-[14px] font-medium" style={{ color: WT.ink2 }}><Printer className="w-4 h-4" /> 인쇄</button>
+        </div>
+      </header>
+
+      <main className="ur-content-medium px-5 lg:px-8 py-6">
+        {content}
       </main>
     </div>
   )
