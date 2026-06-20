@@ -103,7 +103,10 @@ export function autoRedirectKakaoToExternal(): boolean {
     window.location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url)
   } else {
     const target = url.replace(/^https?:\/\//, '')
-    window.location.href = 'intent://' + target + '#Intent;scheme=https;package=com.android.chrome;end'
+    // 🛡️ 2026-06-17: Chrome 미설치(삼성인터넷 기본 등 — 한국 점유율 높음) 시 intent 실패 → 빈 화면 사고.
+    //   S.browser_fallback_url 추가: intent 미해결 시 현재 브라우저가 원 URL 로 폴백 → sessionStorage 가드가
+    //   재이동을 막아 그 로드에서 React 정상 마운트(인앱에서라도 앱이 뜸 + 배너로 수동 외부열기 가능).
+    window.location.href = 'intent://' + target + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(url) + ';end'
   }
   return true
 }
@@ -121,7 +124,8 @@ export function openInExternalBrowser(): boolean {
       window.location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url)
     } else {
       const target = url.replace(/^https?:\/\//, '')
-      window.location.href = 'intent://' + target + '#Intent;scheme=https;package=com.android.chrome;end'
+      // 🛡️ 2026-06-17: Chrome 미설치 폴백 (위 autoRedirect 와 동일).
+      window.location.href = 'intent://' + target + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(url) + ';end'
     }
     return true
   }
@@ -136,7 +140,7 @@ export function openInExternalBrowser(): boolean {
   if (isAndroid()) {
     // 안드로이드는 Chrome intent 로 강제 시도 (FB/IG/네이버 등)
     const target = url.replace(/^https?:\/\//, '')
-    window.location.href = 'intent://' + target + '#Intent;scheme=https;package=com.android.chrome;end'
+    window.location.href = 'intent://' + target + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(url) + ';end'
     return true
   }
 
