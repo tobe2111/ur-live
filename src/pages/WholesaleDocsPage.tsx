@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, FileText, Printer } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { useWholesaleDocuments, useWholesaleTaxInvoices, type WholesaleDocRow } from '@/hooks/queries/useWholesale'
 import { WT, won, comma } from './wholesale/wholesale-theme'
+import { useWholesaleBack } from '@/hooks/useWholesaleBack'
 
 // 🏭 Wave 3c: 거래단위 자동 전자세금계산서(매출) 상태 라벨.
 const TAX_STATUS_LABEL: Record<string, { t: string; c: string; bg: string }> = {
@@ -25,6 +26,7 @@ const STATUS_LABEL: Record<string, { t: string; c: string; bg: string }> = {
 
 export default function WholesaleDocsPage() {
   const navigate = useNavigate()
+  const goBack = useWholesaleBack()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const { data: docs = [], isLoading: loading } = useWholesaleDocuments()
   const { data: taxInvoices = [] } = useWholesaleTaxInvoices()
@@ -49,7 +51,7 @@ export default function WholesaleDocsPage() {
       <SEO title="발행 자료 - 유통스타트" description="유통사 거래명세서·세금계산서" url="/wholesale/documents" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-medium flex items-center gap-3 px-5 lg:px-8 h-[52px]">
-          <button onClick={() => navigate('/wholesale')} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
+          <button onClick={goBack} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
           <h1 className="text-[15px] font-bold" style={{ color: WT.ink }}>발행 자료</h1>
         </div>
       </header>

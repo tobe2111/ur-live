@@ -4,6 +4,7 @@ import SEO from '@/components/SEO'
 import { ArrowLeft, Loader2, Printer } from 'lucide-react'
 import { useWholesaleStatement } from '@/hooks/queries/useWholesale'
 import { WT, won, comma } from './wholesale/wholesale-theme'
+import { useWholesaleBack } from '@/hooks/useWholesaleBack'
 
 // 🏭 2026-06-04 유통스타트 거래내역서 — TDS 라이트 시안 정비. 라이트 고정 B2B (인쇄 가능).
 
@@ -11,6 +12,7 @@ const STATUS_KO: Record<string, string> = { PAID: '결제완료', SHIPPED: '배�
 
 export default function WholesaleStatementPage() {
   const navigate = useNavigate()
+  const goBack = useWholesaleBack()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const today = new Date().toISOString().slice(0, 10)
   const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
@@ -33,7 +35,7 @@ export default function WholesaleStatementPage() {
       <SEO title="거래내역서 - 유통스타트" description="유통사 도매 거래내역서" url="/wholesale/statement" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur print:hidden" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-medium flex items-center gap-3 px-5 lg:px-8 h-[52px]">
-          <button onClick={() => navigate('/wholesale')} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
+          <button onClick={goBack} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
           <h1 className="text-[15px] font-bold" style={{ color: WT.ink }}>거래내역서</h1>
           <button onClick={() => window.print()} className="ml-auto inline-flex items-center gap-1 text-[14px] font-medium" style={{ color: WT.ink2 }}><Printer className="w-4 h-4" /> 인쇄</button>
         </div>

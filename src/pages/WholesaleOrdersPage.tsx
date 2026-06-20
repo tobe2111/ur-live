@@ -8,6 +8,7 @@ import { toast } from '@/hooks/useToast'
 import { useWholesaleOrders } from '@/hooks/queries/useWholesale'
 import { WT, won, wholesaleOrderStatusBadge } from './wholesale/wholesale-theme'
 import WholesaleClaimModal from './wholesale/WholesaleClaimModal'
+import { useWholesaleBack } from '@/hooks/useWholesaleBack'
 import { courierTrackingUrl } from '@/utils/courier-tracking'
 
 // 인증 헤더로 xlsx 다운로드 → blob 저장 (anchor href 는 토큰 미첨부라 fetch 사용).
@@ -141,6 +142,7 @@ const CLAIMABLE = new Set(['PAID', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE', 'ON_CR
 
 export default function WholesaleOrdersPage() {
   const navigate = useNavigate()
+  const goBack = useWholesaleBack()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const { data: orders = [], isLoading: loading, refetch } = useWholesaleOrders()
   const [claimOrderId, setClaimOrderId] = useState<number | null>(null)
@@ -174,7 +176,7 @@ export default function WholesaleOrdersPage() {
       <SEO title="도매 주문 내역 - 유통스타트" description="유통사 도매 주문 내역" url="/wholesale/orders" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-wide flex items-center gap-3 px-5 lg:px-8 h-[52px]">
-          <button onClick={() => navigate('/wholesale')} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
+          <button onClick={goBack} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
           <h1 className="text-[15px] font-bold flex-1" style={{ color: WT.ink }}>주문 내역</h1>
           <button
             onClick={() => downloadWholesaleXlsx('/api/wholesale/orders/export', `wholesale-orders-${new Date().toISOString().slice(0, 10)}.xlsx`)}
