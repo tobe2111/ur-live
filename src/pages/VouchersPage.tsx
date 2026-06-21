@@ -696,7 +696,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
 
       {/* 🧭 2026-06-17 (대표 요청): 'N개 교환권' 카운트 제거 + 정렬을 인기 브랜드 헤더 우측으로 이동.
           브랜드가 없는 카테고리(예: 일부 /vouchers 카테고리)에선 정렬 접근성 유지 위해 단독 행으로 노출. */}
-      {currentBrands.length === 0 && (
+      {embedded && currentBrands.length === 0 && (
         <div className="ur-content-wide px-4 lg:px-8 pt-3 flex items-center justify-end">
           <SortMenu value={sort} options={SORT_OPTIONS} onChange={(v) => setSort(v)} />
         </div>
@@ -711,14 +711,12 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               <span>{getCategoryIcon(category)}</span>
               {category} 인기 브랜드
             </h2>
-            {/* 🧭 2026-06-17 (대표 요청): 낮은 가격순 등 정렬 — 인기 브랜드 줄 맨 오른쪽 */}
-            <SortMenu value={sort} options={SORT_OPTIONS} onChange={(v) => setSort(v)} />
+            {/* 🧭 정렬: 홈(embedded)은 여기 / /vouchers 는 아래 '상품' 섹션 헤더로 이동(2026-06-20) */}
+            {embedded && <SortMenu value={sort} options={SORT_OPTIONS} onChange={(v) => setSort(v)} />}
           </div>
-          {/* 🧭 2026-06-10 (UI 100점 패스): 홈(embedded)은 1행 가로 스크롤 — 도구단이 상품을 fold 아래로 밀던 것 압축.
-              /vouchers 전체 페이지는 기존 그리드 유지. 클릭 유지/ring 강조 동작 불변. */}
-          <div className={embedded
-            ? 'flex gap-3 overflow-x-auto scrollbar-hide py-1.5 -mx-1 px-1'
-            : 'grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3'}>
+          {/* 🧭 2026-06-20 (사용자: 상품이 너무 아래로 밀림): /vouchers 도 홈처럼 1행 가로 스크롤로 압축 —
+              12개 로고 그리드(3~4행)가 상품을 fold 아래로 밀던 주범. 클릭/ring 강조 동작 불변. */}
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide py-1.5 -mx-1 px-1">
             {orderedBrands.map(b => {
               const selected = b.brand_name === brand
               return (
@@ -751,8 +749,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         </div>
       )}
 
-      {/* 선택된 브랜드 표시 */}
-      {brand && (
+      {/* 선택된 브랜드 표시 — 홈(embedded)만. /vouchers 는 아래 상품 헤더에 '해제' 통합. */}
+      {embedded && brand && (
         <div className="ur-content-wide px-4 lg:px-8 pt-3 pb-1 flex items-center gap-2">
           <span className="text-[12px] text-gray-500 dark:text-gray-400">필터:</span>
           <button
@@ -764,8 +762,31 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         </div>
       )}
 
-      {/* 금액권 그리드 */}
-      <div className="ur-content-wide px-4 lg:px-8 py-4">
+      {/* 🎫 2026-06-20 (사용자: 상품 시작 지점 구별 안 됨): 브라우즈 chrome ↔ 상품 리스트 경계 명확화.
+          구분선(border-t) + '상품' 섹션 헤더(카테고리/브랜드 + 개수) + 정렬을 상품 바로 위로. /vouchers 전용. */}
+      {!embedded && (
+        <div className="ur-content-wide px-4 lg:px-8 pt-4 pb-2 mt-1 border-t border-gray-100 dark:border-[#1A1A1A] flex items-center justify-between gap-2">
+          <h2 className="text-[16px] font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5 min-w-0">
+            <Gift className="w-[18px] h-[18px] text-amber-500 shrink-0" />
+            <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
+            {!loading && (
+              <span className="text-[13px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{products.length}</span>
+            )}
+            {brand && (
+              <button
+                onClick={() => setBrand('')}
+                className="shrink-0 ml-1 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[11px] font-medium"
+              >
+                해제 ✕
+              </button>
+            )}
+          </h2>
+          <SortMenu value={sort} options={SORT_OPTIONS} onChange={(v) => setSort(v)} />
+        </div>
+      )}
+
+      {/* 금액권 리스트 */}
+      <div className="ur-content-wide px-4 lg:px-8 pt-1 pb-6">
         {loading ? (
           embedded ? (
             // 🏠 홈 — 2/3/4/5열 그리드 카드 스켈레톤 (main 의 PC 확장 lg:4 xl:5 반영).
