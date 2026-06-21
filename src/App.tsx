@@ -484,6 +484,9 @@ function AppContent() {
     || location.pathname.startsWith('/live/') // /live/123 은 풀스크린, /live 목록은 아님
   // 🏭 유통스타트 B2B(도매몰/제조사)는 소비자 BottomNav/TopNav 미표시 — 별도 도메인·업태.
   const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
+  // 🗺️ 2026-06-20 (대표 — 홈 지도에 스크롤 생김): 지도 홈(/ · /restaurant-map)은 h-screen 자체관리 풀스크린 +
+  //   바텀시트가 하단을 담당 → main 의 하단 네비 여백(pb)을 주면 100vh+56px 가 되어 페이지가 스크롤됨. 제외.
+  const mapFullScreen = location.pathname === '/' || location.pathname === '/restaurant-map'
     || location.pathname === '/wholesale' || location.pathname.startsWith('/wholesale/')
     || location.pathname === '/supplier' || location.pathname.startsWith('/supplier/')
 
@@ -513,7 +516,7 @@ function AppContent() {
               콘텐츠 하단을 가림. BottomNav 표시 페이지에만 하단 여백(높이+safe-area) 예약.
               hideBottomNav 페이지(결제/풀스크린/대시보드 등)는 여백 0 — 자체 레이아웃 보존. */}
           {/* 🖥️ 2026-06-20: 하단 네비가 이제 PC(lg+) 액자에도 표시되므로 lg:pb-0 제거 — 모든 뷰포트에서 하단 여백 예약. */}
-          <main id="main-content" className={hideBottomNav ? undefined : 'pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]'}>
+          <main id="main-content" className={(hideBottomNav || mapFullScreen) ? undefined : 'pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]'}>
           <ErrorBoundary key={location.key}>
           {/* 🏭 2026-06-04 도매몰 도메인 SPA 가드 — utongstart.com 비-도매몰 경로 navigate() 차단.
               worker 302(src/worker/index.ts)가 주 방어, 이건 SPA 내부 이동 보강(직접 로드는 worker 가 처리). */}

@@ -10,7 +10,7 @@ import { storage } from '@/shared/utils/storage'
 // 🛡️ 2026-05-02: TD-018 추가 분할 — types/utils/HeroCarousel 추출.
 // 🛡️ 2026-05-05: TD-006 추가 분할 — RestaurantList / SelectedPeekCard / SelectedDetailCard 추출.
 // 🛡️ 2026-05-06: TD-006 추가 분할 — MapSearchHeader / SheetFilterBar 추출.
-import { CATEGORIES, REGIONS } from './restaurant-map/constants'
+import { REGIONS } from './restaurant-map/constants'
 import FilterSheet from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
 import HeroCarousel from './restaurant-map/HeroCarousel'
@@ -35,7 +35,6 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
   const [mapView, setMapView] = useState(true)
   // 🛡️ 2026-04-28: Recommended Pack — 거리/카테고리/정렬
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
-  const [category, setCategory] = useState<string>('')
   // 🛡️ 2026-04-28: 공구권 카테고리 (식사/뷰티/헬스) — meal_voucher 인프라 재활용
   const [voucherType, setVoucherType] = useState<'all' | 'meal_voucher' | 'beauty_voucher' | 'health_voucher' | 'pet_voucher' | 'stay_voucher' | 'activity_voucher'>('all')
   // 🛡️ 2026-06-01 Tier2: products fetch 만 React Query(카테고리별 캐시). live-poller 는 유지.
@@ -88,7 +87,7 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
   const [liveSellerIds, setLiveSellerIds] = useState<Set<number>>(new Set())
   // 🛡️ 2026-04-30: UX 개선 — 필터 시트 (지역 + 카테고리 통합)
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
-  const activeFilterCount = (region ? 1 : 0) + (category ? 1 : 0)
+  const activeFilterCount = region ? 1 : 0
   // 🗺️ 2026-06-20 (대표 — 홈=지도 / "상품 1개일 때 공백 남음"): 기본 snap 을 peek 으로 → 지도 우선 +
   //   콘텐츠 적을 때 큰 흰 공백 제거(컴팩트). 더 보려면 시트를 위로 드래그(mid/full).
   const [sheetSnap, setSheetSnap] = useState<'peek' | 'mid' | 'full'>('peek')
@@ -240,14 +239,7 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
         const q = search.toLowerCase()
         if (!(r.restaurant_name?.toLowerCase().includes(q) || r.name?.toLowerCase().includes(q) || r.restaurant_address?.toLowerCase().includes(q))) return false
       }
-      // 카테고리 필터: name/category/address 에 키워드 포함 여부
-      if (category) {
-        const cat = CATEGORIES.find(c => c.key === category)
-        if (cat && cat.keywords.length > 0) {
-          const haystack = `${r.name || ''} ${r.category || ''} ${r.restaurant_name || ''}`.toLowerCase()
-          if (!cat.keywords.some(kw => haystack.includes(kw.toLowerCase()))) return false
-        }
-      }
+      // 🛍️ 2026-06-20: cuisine(한식/일식) 카테고리 필터 제거 — 동네딜 카테고리는 voucherType(상단 칩)이 담당.
       return true
     })
 
@@ -268,7 +260,7 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
       return 0
     })
     return items
-  }, [enrichedRestaurants, region, search, category, sortBy, userLoc, showFavoritesOnly, favorites])
+  }, [enrichedRestaurants, region, search, sortBy, userLoc, showFavoritesOnly, favorites])
 
   // 🛡️ 2026-04-30 Phase 3: hero carousel — 인기 (할인율 높은 순) 상위 5개
   const heroDeals = useMemo(() => {
@@ -528,10 +520,8 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
       {filterSheetOpen && (
         <FilterSheet
           region={region}
-          category={category}
-          onApply={(r, c) => {
+          onApply={(r) => {
             setRegion(r)
-            setCategory(c)
             setMapView(true)
             const target = REGIONS.find(x => x.key === r) || REGIONS[0]
             if (mapInstance.current && window.kakao?.maps) {
