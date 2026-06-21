@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react'
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import { escapeHtml } from '@/shared/utils/html'
 import { formatNumber } from '@/utils/format'
 import type { Restaurant, KakaoPlace } from './types'
@@ -40,6 +40,9 @@ export function useKakaoMap({
   const [sdkLoaded, setSdkLoaded] = useState(false)
   const [sdkError, setSdkError] = useState(false)
   const [mapLevel, setMapLevel] = useState<number>(7)
+  // 🛡️ 2026-06-20 (대표 — 줌 마커 churn 최적화): 클러스터 gridSize 는 줌 '구간'에서만 바뀜(레벨 3/5/7 경계).
+  //   initMap 의존성을 mapLevel(매 줌) → gridSize(구간 변화 시만)로 바꿔 마커 전량 재빌드를 줌 구간 전환 때만.
+  const gridSize = useMemo(() => (mapLevel <= 3 ? 0 : mapLevel <= 5 ? 0.001 : mapLevel <= 7 ? 0.005 : 0.02), [mapLevel])
 
   // SDK loading
   useEffect(() => {
@@ -94,7 +97,6 @@ export function useKakaoMap({
     overlaysRef.current.forEach(o => o.setMap(null))
     overlaysRef.current = []
 
-    const gridSize = mapLevel <= 3 ? 0 : mapLevel <= 5 ? 0.001 : mapLevel <= 7 ? 0.005 : 0.02
     const clusters = new Map<string, Restaurant[]>()
     if (gridSize > 0) {
       withCoords.forEach(r => {
@@ -294,7 +296,7 @@ export function useKakaoMap({
         didInitialFit.current = true
       }
     }
-  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc, liveSellerIds, favorites, coordGroupSize, mapLevel, setSelected, setSuggestionFor])
+  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc, liveSellerIds, favorites, coordGroupSize, gridSize, setSelected, setSuggestionFor])
 
   useEffect(() => { initMap() }, [initMap])
 
