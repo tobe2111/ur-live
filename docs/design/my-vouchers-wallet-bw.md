@@ -115,6 +115,14 @@
   - 🔒 잠금 보존: VoucherMap lazy / qrcode.react lazy / useMyVouchers / useInvalidateMyVouchers.
   - commit hash: (아래 커밋 참조)
 
+- **2026-06-21 (3차 — 고급 마감)** 대표 신고 "공구권 페이지 UI가 너무 투박해 보이지 않아?" (빈 상태 스크린샷). 흑백 정체성 유지 결정(AskUserQuestion "흑백 유지 + 고급 마감", 범위 "빈 상태 + 카드/상단까지") 하에 **색이 아니라 마감(craft)** 으로 끌어올림 — 미니멀이 '미완성'이 아니라 '의도된 미니멀'로 보이게:
+  - **빈 상태 히어로 일러스트** (가장 큰 변경): 기존 '회색 라운드 박스 + 얇은 lucide 아이콘'(플레이스홀더 인상) → 신규 `WalletEmptyGlyph`/`TicketShape` — 천공(perforation) 노치 + 스텁 점선 + 본문 라인 + 스텁 모티프(gb=QR 닷 3×3 / gift=바코드)가 있는 **실제 티켓 라인아트**, 뒤에 한 장 더 겹친 **스택 깊이**(회전·페이드) + 부드러운 그라운드 섀도 + drop-shadow. 순수 잉크(currentColor) — 라이트/다크 토큰 동반.
+  - **1·2·3 스텝**: 비좁은 셰브론 → **연결 헤어라인 트랙** + 34px 잉크 원형 번호(미세 섀도) + 고정폭 컬럼.
+  - **CTA**: 블랙 필에 `ArrowRight` + 프리미엄 드롭섀도(다크 시 off).
+  - **식사권 카드**(`VoucherTicket`): 평면 → **레이어드 섀도**(깊이) + 썸네일 `ring` + 🟢 사용가능 점에 **라이브 헤일로**(0 0 0 3px) + 본문/가격 사이 **티켓 스텁 점선(천공)** 구분선.
+  - **상단**: 세그먼트 카운트를 **둥근 칩**(tabular-nums)으로 + 상태줄 🟢 점 헤일로(카드와 통일).
+  - **결제/환불/취소/폴링·라우팅·`useMyVouchers`/`useInvalidateMyVouchers`/VoucherMap·qrcode.react lazy 전부 byte-identical** — 순수 프레젠테이션(JSX/스타일)만. 검증: type-check 0 · `check-theme-consistency` 0 · `build:client` 0 · Chromium 목업 렌더 확인.
+
 - **2026-06-20 (2차 — 레이아웃 정합)** 대표 신고 "구현이 다 안된 것 같은데?" — 1차는 톤만 입히고 구조를 옛 것으로 남겨 시안과 불일치. 시안 레이아웃까지 충실 구현:
   - 화면1: "사용 가능 N" + 🗺 지도 인라인 토글(큰 버튼 2개 제거), `VoucherTicket` 카드 재구성(60px 썸네일 · 🟢 상태점+사용가능+D-N · 제목 · 📍가게 · 코드칩 / 우측 가격+컴팩트 사용 pill), 사용완료/만료·환불을 헤어라인 박스 행(탭→인라인 펼침)으로.
   - 화면2: `viewMode==='map'` 전용 인-페이지 화면(back 헤더 "지도에서 보기" + VoucherMap + 하단 선택 카드의 사용 버튼).

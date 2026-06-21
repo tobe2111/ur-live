@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom'
 const VoucherMap = lazy(() => import('./my-vouchers/VoucherMap'))
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Ticket, MapPin, CheckCircle, XCircle, QrCode, X, Share2, Smartphone, ChevronRight, Copy, Map } from 'lucide-react'
+import { ArrowLeft, Ticket, MapPin, CheckCircle, XCircle, QrCode, X, Share2, ChevronRight, Copy, Map, ArrowRight } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { useMyVouchers, useInvalidateMyVouchers } from '@/hooks/queries'
@@ -531,7 +531,7 @@ export default function MyVouchersPage() {
                 >
                   <span aria-hidden>{emoji}</span>
                   {label}
-                  <span className={`text-[11px] font-extrabold ${active ? 'text-gray-400 dark:text-gray-500' : 'text-gray-400 dark:text-gray-600'}`}>{count}</span>
+                  <span className={`min-w-[17px] px-1 inline-flex items-center justify-center rounded-full text-[10px] font-extrabold tabular-nums ${active ? 'bg-black/[0.06] text-gray-500 dark:bg-white/10 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'}`}>{count}</span>
                 </button>
               )
             })}
@@ -545,7 +545,7 @@ export default function MyVouchersPage() {
         <div className="ur-content-narrow px-4 lg:px-8 -mt-2 mb-4 flex items-center gap-2 flex-wrap"
           style={{ fontSize: 13, letterSpacing: '-0.01em' }}>
           <span className="inline-flex items-center gap-1.5" style={{ fontWeight: 600, color: tk.secondary }}>
-            <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ background: '#16A34A' }} aria-hidden />
+            <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ background: '#16A34A', boxShadow: '0 0 0 3px rgba(22,163,74,0.12)' }} aria-hidden />
             {shownVouchers.filter(v => v.status === 'unused').length}{t('voucher.activeCountSuffix', { defaultValue: '장 사용 가능' })}
           </span>
           {nearestExpiry !== null && (
@@ -638,10 +638,80 @@ export default function MyVouchersPage() {
 }
 
 /**
+ * 🎨 2026-06-21 흑백 고급 마감 — 빈 상태 히어로 일러스트.
+ *   기존 '회색 박스 + 얇은 lucide 아이콘'(플레이스홀더 느낌)을 천공(perforation)·스텁·
+ *   QR/바코드 모티프가 있는 '실제 티켓' 라인아트로 교체 + 뒤에 한 장 더 겹친 스택 깊이 +
+ *   부드러운 그라운드 섀도. 순수 잉크(currentColor) — 라이트/다크 토큰 동반.
+ */
+function TicketShape({ className, strokeWidth = 2.2, variant, faded }: {
+  className?: string
+  strokeWidth?: number
+  variant: 'gb' | 'gift'
+  faded?: boolean
+}) {
+  return (
+    <svg viewBox="0 0 140 96" fill="none" className={className} aria-hidden>
+      {/* 티켓 본체: 상·하단 천공 노치 + 라운드 코너 */}
+      <path
+        d="M16 8 L87 8 A9 9 0 0 0 105 8 L124 8 A12 12 0 0 1 136 20 L136 76 A12 12 0 0 1 124 88 L105 88 A9 9 0 0 0 87 88 L16 88 A12 12 0 0 1 4 76 L4 20 A12 12 0 0 1 16 8 Z"
+        stroke="currentColor" strokeWidth={strokeWidth} strokeLinejoin="round" fill="none"
+      />
+      {/* 천공 점선 */}
+      <line x1="96" y1="16" x2="96" y2="80" stroke="currentColor" strokeWidth={strokeWidth * 0.6} strokeDasharray="2.4 5" strokeLinecap="round" opacity={0.4} />
+      {!faded && (
+        <>
+          {/* 본문 패널 — 내용 라인 */}
+          <rect x="18" y="34" width="52" height="6" rx="3" fill="currentColor" opacity="0.9" />
+          <rect x="18" y="48" width="40" height="5" rx="2.5" fill="currentColor" opacity="0.32" />
+          <rect x="18" y="60" width="28" height="5" rx="2.5" fill="currentColor" opacity="0.18" />
+          {/* 스텁 모티프 — gb: QR 닷 / gift: 바코드 */}
+          {variant === 'gift' ? (
+            <g stroke="currentColor" strokeLinecap="round">
+              <line x1="108" y1="38" x2="108" y2="58" strokeWidth="2" opacity="0.85" />
+              <line x1="113" y1="38" x2="113" y2="58" strokeWidth="1.1" opacity="0.5" />
+              <line x1="117" y1="38" x2="117" y2="58" strokeWidth="2.4" opacity="0.85" />
+              <line x1="122" y1="38" x2="122" y2="58" strokeWidth="1.1" opacity="0.5" />
+              <line x1="126" y1="38" x2="126" y2="58" strokeWidth="2" opacity="0.85" />
+            </g>
+          ) : (
+            <g fill="currentColor">
+              {[0, 1, 2].map(r => [0, 1, 2].map(cc => (
+                <rect key={`${r}-${cc}`} x={108 + cc * 7} y={41 + r * 7} width="4.5" height="4.5" rx="1" opacity={(r + cc) % 2 === 0 ? 0.85 : 0.32} />
+              )))}
+            </g>
+          )}
+        </>
+      )}
+    </svg>
+  )
+}
+
+function WalletEmptyGlyph({ variant }: { variant: 'gb' | 'gift' }) {
+  return (
+    <div className="relative mb-7" style={{ width: 176, height: 132 }} aria-hidden>
+      {/* 그라운드 섀도 */}
+      <div className="absolute left-1/2 bottom-[12px] -translate-x-1/2 rounded-[50%]"
+        style={{ width: 108, height: 16, background: 'radial-gradient(closest-side, rgba(10,10,10,0.13), rgba(10,10,10,0))' }} />
+      {/* 뒤 티켓 (스택 깊이) */}
+      <div className="absolute left-1/2 top-1/2 text-gray-200 dark:text-[#272727]"
+        style={{ transform: 'translate(calc(-50% - 17px), calc(-50% - 9px)) rotate(-11deg)', width: 122 }}>
+        <TicketShape variant={variant} strokeWidth={2.4} faded className="w-full" />
+      </div>
+      {/* 앞 티켓 */}
+      <div className="absolute left-1/2 top-1/2 text-gray-900 dark:text-white"
+        style={{ transform: 'translate(calc(-50% + 5px), -50%) rotate(3deg)', width: 134, filter: 'drop-shadow(0 8px 14px rgba(10,10,10,0.10))' }}>
+        <TicketShape variant={variant} strokeWidth={2.4} className="w-full" />
+      </div>
+    </div>
+  )
+}
+
+/**
  * 🎨 2026-06-20 흑백 iOS-클린 리디자인 (docs/design/my-vouchers-wallet-bw.md 화면5):
  *   기존(핑크 그라데이션 일러스트 + CTA + 카드형 3스텝) → 잉크 톤 통일.
  *   뉴트럴 라운드 일러스트 + 1·2·3 원형 잉크 번호(셰브론) + 블랙 필 CTA.
  *   화이트 테마(다크 토글 지원) — 모든 라이트 토큰에 dark: variant 동반.
+ *   🎨 2026-06-21 고급 마감: 일러스트 → WalletEmptyGlyph(스택 티켓), 스텝 셰브론 → 연결 트랙.
  */
 function EmptyVouchers({ mode, onExplore, t }: {
   mode: 'gb' | 'gift'
@@ -649,7 +719,6 @@ function EmptyVouchers({ mode, onExplore, t }: {
   t: (key: string, opts?: any) => string
 }) {
   const isGift = mode === 'gift'
-  const Icon = isGift ? Smartphone : Ticket
   const title = isGift
     ? t('voucher.emptyGiftTitle', { defaultValue: '받아둔 교환권이 없어요' })
     : t('voucher.emptyGbTitle', { defaultValue: '받아둔 식사권이 없어요' })
@@ -675,23 +744,21 @@ function EmptyVouchers({ mode, onExplore, t }: {
 
   return (
     <div className="py-12 flex flex-col items-center text-center">
-      {/* 일러스트 — 뉴트럴 라운드 + 잉크 아이콘 (흑백 톤) */}
-      <div className="w-[112px] h-[112px] rounded-[28px] flex items-center justify-center mb-6 bg-gray-50 dark:bg-[#141414] border border-gray-100 dark:border-[#1F1F1F]">
-        <Icon className="w-12 h-12 text-gray-900 dark:text-white" strokeWidth={1.3} />
-      </div>
+      {/* 히어로 일러스트 — 스택 티켓(천공·스텁·QR/바코드) */}
+      <WalletEmptyGlyph variant={isGift ? 'gift' : 'gb'} />
 
-      <h2 className="text-[19px] font-extrabold tracking-tight text-gray-900 dark:text-white">{title}</h2>
-      <p className="mt-2 max-w-[260px] text-[13.5px] leading-relaxed text-gray-500 dark:text-gray-400 whitespace-pre-line">{desc}</p>
+      <h2 className="text-[20px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white">{title}</h2>
+      <p className="mt-2 max-w-[264px] text-[13.5px] leading-relaxed text-gray-500 dark:text-gray-400 whitespace-pre-line">{desc}</p>
 
-      {/* 사용 흐름 1·2·3 — 잉크 원형 번호 + 셰브론 */}
-      <div className="mt-9 w-full max-w-[300px] flex items-start justify-between">
+      {/* 사용 흐름 1·2·3 — 잉크 원형 번호 + 연결 트랙(헤어라인) */}
+      <div className="mt-9 w-full max-w-[300px] flex items-start">
         {steps.map((label, i) => (
           <Fragment key={i}>
             {i > 0 && (
-              <ChevronRight className="w-4 h-4 mt-2 shrink-0 text-gray-300 dark:text-gray-600" strokeWidth={2.2} aria-hidden />
+              <div className="flex-1 mt-[16px] h-px mx-1.5 rounded-full bg-gray-200 dark:bg-[#2A2A2A]" aria-hidden />
             )}
-            <div className="flex-1 flex flex-col items-center gap-2">
-              <div className="w-[30px] h-[30px] rounded-full flex items-center justify-center text-[13px] font-bold font-mono bg-gray-900 dark:bg-white text-white dark:text-gray-900">{i + 1}</div>
+            <div className="flex flex-col items-center gap-2 w-[58px] shrink-0">
+              <div className="w-[34px] h-[34px] rounded-full flex items-center justify-center text-[14px] font-bold font-mono bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-[0_2px_6px_rgba(10,10,10,0.18)] dark:shadow-none">{i + 1}</div>
               <span className="text-[11px] font-medium leading-tight text-gray-600 dark:text-gray-300 whitespace-pre-line">{label}</span>
             </div>
           </Fragment>
@@ -700,9 +767,10 @@ function EmptyVouchers({ mode, onExplore, t }: {
 
       <button
         onClick={onExplore}
-        className="mt-9 w-full max-w-[300px] py-3.5 rounded-2xl text-[15px] font-extrabold bg-gray-900 dark:bg-white text-white dark:text-gray-900 active:scale-[0.98] transition-transform"
+        className="mt-9 w-full max-w-[300px] py-3.5 rounded-2xl text-[15px] font-extrabold bg-gray-900 dark:bg-white text-white dark:text-gray-900 active:scale-[0.98] transition-transform flex items-center justify-center gap-1.5 shadow-[0_8px_22px_rgba(10,10,10,0.20)] dark:shadow-none"
       >
         {cta}
+        <ArrowRight className="w-[17px] h-[17px]" strokeWidth={2.4} />
       </button>
     </div>
   )
@@ -798,10 +866,10 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
   return (
     <div
       className="relative flex items-stretch gap-3 rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F] p-[13px]"
-      style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 3px rgba(0,0,0,0.04)' }}
+      style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 2px rgba(10,10,10,0.05), 0 10px 22px -8px rgba(10,10,10,0.10)' }}
     >
       {/* 썸네일 60px */}
-      <div className="w-[60px] h-[60px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F]">
+      <div className="w-[60px] h-[60px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
         {v.product_image ? (
           <img src={v.product_image} alt={v.product_name} loading="lazy" className="w-full h-full object-cover" />
         ) : (
@@ -815,7 +883,7 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
         <div className="flex items-center gap-1.5">
           {v.status === 'unused' ? (
             <>
-              <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: '#16A34A' }} aria-hidden />
+              <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: '#16A34A', boxShadow: '0 0 0 3px rgba(22,163,74,0.12)' }} aria-hidden />
               <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">{t('voucher.status.unused', { defaultValue: '사용 가능' })}</span>
               {daysLeft !== null && (
                 <span className={`text-[12px] font-bold font-mono ${urgent ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
@@ -855,6 +923,9 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
           {v.status === 'unused' && <Copy className="w-3 h-3 text-gray-400 dark:text-gray-500" strokeWidth={2} aria-hidden />}
         </code>
       </div>
+
+      {/* 천공 — 티켓 스텁 구분 점선 (고급 마감) */}
+      <div className="self-stretch shrink-0 my-0.5 border-l border-dashed border-gray-200 dark:border-[#2A2A2A]" aria-hidden />
 
       {/* 우측: 가격 + 사용 pill */}
       <div className="shrink-0 flex flex-col items-end justify-between">
