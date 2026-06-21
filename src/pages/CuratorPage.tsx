@@ -92,7 +92,9 @@ export default function CuratorPage() {
   // 🔍 2026-06-16 링크샵 시안: 검색 — 상품명 + 추천 코멘트(note) 라이브 필터.
   const [query, setQuery] = useState('')
   // 🎨 2026-06-16 링크샵 시안: '방문자 미리보기' — 본인이 남이 보는 화면 그대로 확인.
-  const [previewAsVisitor, setPreviewAsVisitor] = useState(false)
+  // 🎨 2026-06-19 (대표 — "주인도 처음엔 방문자 화면으로 보이고 편집하기 버튼"): 기본 true(깔끔한 방문자뷰).
+  //   '편집하기' 누르면 false → 편집 모드(툴바·삭제·적립·판매 CTA). 매 진입 깔끔 뷰로 시작.
+  const [previewAsVisitor, setPreviewAsVisitor] = useState(true)
   // 🎨 2026-06-17 (사용자 요청): 오너 기본 화면 = 방문자와 같은 카드 그리드. 순서 바꾸기는 드래그 모드 토글로.
   const [reorderMode, setReorderMode] = useState(false)
   const currentUser = useAuthStore((s: any) => s.user)
@@ -248,11 +250,17 @@ export default function CuratorPage() {
         image={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
       />
       <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-28">
-        {/* 🎨 2026-06-16 시안: 방문자 미리보기 모드 배너 (본인 → 남이 보는 화면 그대로 확인) */}
+        {/* 🎨 2026-06-19 (대표 — 기본은 방문자 화면, 편집은 버튼으로): 주인 기본 뷰 상단의 슬림 편집 진입 바.
+            방문자에겐 안 보임(isOwner). 편집 chrome(툴바·삭제·CTA)은 '편집하기' 누른 뒤에만 노출. */}
         {isOwner && previewAsVisitor && (
-          <div className="sticky top-0 z-40 bg-[#141A2E] text-white px-4 py-2 text-[12.5px] font-bold flex items-center justify-between gap-2">
-            <span>👀 방문자 미리보기 — 다른 사람에게 보이는 화면이에요</span>
-            <button onClick={() => setPreviewAsVisitor(false)} className="shrink-0 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-[11.5px] whitespace-nowrap">편집으로 돌아가기</button>
+          <div className="sticky top-0 z-40 bg-white/85 dark:bg-[#0A0A0A]/85 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-2 flex items-center justify-between gap-2">
+            <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">👁 내 링크샵 · 방문자에게 보이는 화면</span>
+            <button
+              onClick={() => { setPreviewAsVisitor(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+              className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12px] font-bold active:scale-95 transition-transform"
+            >
+              ✎ 편집하기
+            </button>
           </div>
         )}
         {ownerView && showOnboard && (
@@ -305,7 +313,7 @@ export default function CuratorPage() {
               <button
                 onClick={() => { setPreviewAsVisitor(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
                 className="inline-flex items-center gap-1 rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1.5 text-[12px] font-bold text-white dark:text-[#020202] active:opacity-80"
-              >👁 미리보기</button>
+              >✓ 완료</button>
             </div>
           </div>
         )}
@@ -373,20 +381,8 @@ export default function CuratorPage() {
         {/* 🔗 2026-06-17 (사용자 요청): 링크샵 주소 변경 + 공유는 헤더의 '내 링크샵 주소' 카드로 통합 이동
             (CuratorHeader). 맨 아래 외딴 행 제거 — 보는 곳=고치는 곳=공유하는 곳 한 곳에. */}
 
-        {/* 🧭 2026-06-10 (UI 100점 패스 — 방문자 전환): 비소유자 성장 루프 CTA.
-            링크트리식 — 방문자가 1탭으로 자기 링크샵 시작(적립 루프 신규 큐레이터 유입). */}
-        {!ownerView && (
-          <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-4 inset-x-0 z-30 pointer-events-none">
-            <div className="max-w-3xl mx-auto px-4">
-              <Link
-                to="/u/me"
-                className="pointer-events-auto flex items-center justify-center gap-2 h-12 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[14px] font-bold shadow-lg active:scale-[0.98] transition-transform"
-              >
-                ✨ {t('curator.makeMine', { defaultValue: '나도 내 링크샵 만들기 — 추천하면 적립' })}
-              </Link>
-            </div>
-          </div>
-        )}
+        {/* 🎨 2026-06-19 (대표 — "나도 내 링크샵 만들기 버튼 별로"): 하단 고정 방문자 전환 CTA 제거.
+            (조잡함 정리 + 주인 기본 뷰=방문자 미리보기라 주인에게도 떴을 것 → 제거가 맞음.) */}
       </div>
     </>
   )
