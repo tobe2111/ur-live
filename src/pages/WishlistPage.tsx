@@ -232,7 +232,7 @@ const WishlistPage: React.FC = () => {
 
       <div className="ur-content-wide px-4 lg:px-8 pb-2">
         {wishlists.length === 0 ? (
-          <div className="rounded-2xl p-12 text-center" style={{ background: tk.card }}>
+          <div className="rounded-2xl p-12 text-center" style={{ background: tk.card, border: `0.5px solid ${tk.separator}` }}>
             <Heart className="w-16 h-16 mx-auto mb-4" style={{ color: tk.tertiary }} />
             <h2 style={{ fontSize: 18, fontWeight: 700, color: tk.label, marginBottom: 6 }}>{t('wishlist.emptyTitle')}</h2>
             <p className="mb-6" style={{ fontSize: 13, color: tk.secondary }}>{t('wishlist.emptyHint')}</p>
