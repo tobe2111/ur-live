@@ -83,10 +83,8 @@ export function useKakaoMap({
       // 🛡️ 2026-05-17: 줌 레벨 명시 — 너무 깊거나 얕은 줌 차단
       mapInstance.current.setMinLevel(1)
       mapInstance.current.setMaxLevel(14)
-      // 🛡️ 2026-05-17: ZoomControl 을 TOPRIGHT 로 — RIGHT 는 바텀시트(mid/full)에 가려짐
-      const zoomControl = new window.kakao.maps.ZoomControl()
-      // 🛡️ 2026-06-20 (대표 — "버튼과 줌 슬라이더 포개짐"): 홈 헤더의 알림/장바구니(우상단)와 겹쳐 RIGHT(세로 중앙)로 이동.
-      mapInstance.current.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT)
+      // 🛡️ 2026-06-20 (대표 — "버튼과 줌 슬라이더 계속 겹침"): Kakao ZoomControl(+/− 슬라이더) 제거.
+      //   스크롤휠·핀치·더블클릭 줌은 그대로 동작(setZoomable+scrollwheel) → 슬라이더 없어도 줌 가능 + 겹침 해소.
       window.kakao.maps.event.addListener(mapInstance.current, 'zoom_changed', () => {
         if (mapInstance.current) setMapLevel(mapInstance.current.getLevel())
       })
