@@ -19,11 +19,12 @@ interface VoucherMapItem {
 }
 
 export default function VoucherMap<T extends VoucherMapItem>({
-  vouchers, onMarkerClick, userLocation,
+  vouchers, onMarkerClick, userLocation, focus,
 }: {
   vouchers: T[]
   onMarkerClick: (v: T) => void
   userLocation?: { lat: number; lng: number } | null
+  focus?: { lat: number; lng: number } | null
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<any>(null)
@@ -105,6 +106,14 @@ export default function VoucherMap<T extends VoucherMapItem>({
     })
     return () => { cancelled = true }
   }, [vouchers, onMarkerClick, userLocation])
+
+  // 🎨 2026-06-21 (개선 #1): 하단 캐러셀에서 카드 탭 시 해당 매장으로 부드럽게 이동 (재초기화 X).
+  useEffect(() => {
+    const w = window as any
+    if (!focus || !mapRef.current || !w.kakao?.maps) return
+    mapRef.current.setCenter(new w.kakao.maps.LatLng(focus.lat, focus.lng))
+    mapRef.current.setLevel(4)
+  }, [focus?.lat, focus?.lng])
 
   function recenter() {
     const w = window as any

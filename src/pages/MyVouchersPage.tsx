@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect, useRef, Fragment } from 'react'
+import { lazy, Suspense, useState, useEffect, useRef, useMemo, useCallback, Fragment } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useNavigate } from 'react-router-dom'
 
@@ -423,7 +423,9 @@ export default function MyVouchersPage() {
   // 🛡️ 2026-05-22 P1 영구 fix: useState+useEffect+직접 fetch → useMyVouchers().
   //   localStorage initialData (즉시 0ms 표시) + 2분 stale + 페이지 전환 시 dedup.
   const { data: vouchersRaw, isLoading: loading } = useMyVouchers()
-  const vouchers = (vouchersRaw ?? []) as unknown as Voucher[]
+  // 🎨 2026-06-21 (개선 #1): vouchers/mapVouchers/onMarkerClick 메모이즈 — 지도 카드 선택 시
+  //   리렌더마다 VoucherMap effect 재실행(지도 재초기화·깜빡임)되던 것 방지.
+  const vouchers = useMemo(() => (vouchersRaw ?? []) as unknown as Voucher[], [vouchersRaw])
   const [qrVoucher, setQrVoucher] = useState<Voucher | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   // 🎨 2026-06-20 흑백 리디자인 화면2(지도 전용) — 인-페이지 뷰(새 라우트 X)
@@ -489,8 +491,15 @@ export default function MyVouchersPage() {
     })
   const usedItems = shownVouchers.filter(v => v.status === 'used')
   const archivedItems = shownVouchers.filter(v => v.status === 'expired' || v.status === 'refunded')
-  // 지도에 표시 가능한 미사용 식사권 (좌표 보유)
-  const mapVouchers = vouchers.filter(v => v.status === 'unused' && v.restaurant_lat && v.restaurant_lng)
+  // 지도에 표시 가능한 미사용 식사권 (좌표 보유) — 메모이즈(지도 재초기화 방지)
+  const mapVouchers = useMemo(
+    () => vouchers.filter(v => v.status === 'unused' && v.restaurant_lat && v.restaurant_lng),
+    [vouchers],
+  )
+  const handleMarkerClick = useCallback(
+    (mv: { id: number | string }) => setMapSelected(vouchers.find(x => x.id === mv.id) ?? null),
+    [vouchers],
+  )
 
   // 가까운 만료일 (현재 탭 unused 식사권 중 가장 가까운)
   const nearestExpiry = (() => {
@@ -512,14 +521,12 @@ export default function MyVouchersPage() {
 
   // 🎨 화면2 — 지도에서 보기 (전용 인-페이지 화면)
   if (viewMode === 'map') {
-    // 기본 선택 = 현 위치 기준 가장 가까운 식사권 (위치 없으면 첫 번째) — 시안처럼 카드 즉시 표시
+    // 거리순 정렬 캐러셀 (위치 없으면 원본 순). 기본 강조 = 가장 가까운(없으면 첫) 식사권.
     const dist = (v: Voucher) => (userLoc && v.restaurant_lat && v.restaurant_lng)
       ? haversineMeters(userLoc, { lat: v.restaurant_lat, lng: v.restaurant_lng }) : Infinity
-    const nearest = mapVouchers.length === 0 ? null
-      : (userLoc ? [...mapVouchers].sort((a, b) => dist(a) - dist(b))[0] : mapVouchers[0])
+    const mapCarousel = userLoc ? [...mapVouchers].sort((a, b) => dist(a) - dist(b)) : mapVouchers
+    const nearest = mapCarousel[0] ?? null
     const card = mapSelected ?? nearest
-    const cardDist = (card && userLoc && card.restaurant_lat && card.restaurant_lng)
-      ? haversineMeters(userLoc, { lat: card.restaurant_lat, lng: card.restaurant_lng }) : null
     return (
       <WalletPageWrapper theme={theme}>
         <SEO title={t('voucher.seoTitle')} description={t('voucher.seoDescription')} url="/my-vouchers" noindex />
@@ -538,31 +545,53 @@ export default function MyVouchersPage() {
               <VoucherMap
                 vouchers={mapVouchers}
                 userLocation={userLoc}
-                onMarkerClick={(v) => setMapSelected(vouchers.find(x => x.id === v.id) ?? null)}
+                onMarkerClick={handleMarkerClick}
+                focus={mapSelected && mapSelected.restaurant_lat && mapSelected.restaurant_lng ? { lat: mapSelected.restaurant_lat, lng: mapSelected.restaurant_lng } : null}
               />
             </div>
           </Suspense>
-          {/* 선택 카드 (하단) — 시안: 썸네일 + 상품명 + 가게 · 거리 · 도보 N분 + 사용 */}
-          {card && (
-            <div className="absolute left-3 right-3 bottom-3 flex items-center gap-3 rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#2A2A2A] p-3" style={{ boxShadow: '0 8px 28px rgba(10,10,10,0.18)' }}>
-              <div className="w-[52px] h-[52px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
-                {card.product_image
-                  ? <img src={card.product_image} alt="" loading="lazy" className="w-full h-full object-cover" />
-                  : <Ticket className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />}
+          {/* 🎨 2026-06-21 (개선 #1): 주변 식사권 캐러셀 (거리순) — 1장 카드 → 가로 스크롤 비교. */}
+          {mapVouchers.length > 0 && (
+            <div className="absolute left-0 right-0 bottom-3 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+              <div className="flex gap-3 px-3 snap-x snap-mandatory">
+                {mapCarousel.map((v) => {
+                  const d = (userLoc && v.restaurant_lat && v.restaurant_lng) ? haversineMeters(userLoc, { lat: v.restaurant_lat, lng: v.restaurant_lng }) : null
+                  const selected = card?.id === v.id
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => setMapSelected(v)}
+                      className={`snap-start shrink-0 w-[80%] max-w-[300px] flex items-center gap-3 rounded-2xl bg-white dark:bg-[#141414] border p-3 text-left transition-colors ${selected ? 'border-gray-900 dark:border-white' : 'border-gray-200 dark:border-[#2A2A2A]'}`}
+                      style={{ boxShadow: '0 8px 28px rgba(10,10,10,0.18)' }}
+                    >
+                      <div className="w-[52px] h-[52px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
+                        {v.product_image
+                          ? <img src={v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" />
+                          : <Ticket className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{v.product_name}</p>
+                        <p className="text-[12px] text-gray-400 dark:text-gray-500 truncate mt-0.5">
+                          {v.restaurant_name || ''}
+                          {d !== null && (
+                            <>{v.restaurant_name ? ' · ' : ''}{formatDistance(d)} · {t('voucher.walkMin', { count: walkMinutes(d), defaultValue: `도보 ${walkMinutes(d)}분` })}</>
+                          )}
+                        </p>
+                      </div>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => { e.stopPropagation(); setQrVoucher(v) }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setQrVoucher(v) } }}
+                        className="shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2.5 bg-gray-900 text-white dark:bg-white dark:text-gray-900 text-[13px] font-bold active:scale-95 transition-transform"
+                      >
+                        <QrCode className="w-4 h-4" strokeWidth={1.8} />{t('voucher.use', { defaultValue: '사용' })}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{card.product_name}</p>
-                <p className="text-[12px] text-gray-400 dark:text-gray-500 truncate mt-0.5">
-                  {card.restaurant_name || ''}
-                  {cardDist !== null && (
-                    <>{card.restaurant_name ? ' · ' : ''}{formatDistance(cardDist)} · {t('voucher.walkMin', { count: walkMinutes(cardDist), defaultValue: `도보 ${walkMinutes(cardDist)}분` })}</>
-                  )}
-                </p>
-              </div>
-              <button onClick={() => { setQrVoucher(card) }}
-                className="shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2.5 bg-gray-900 text-white dark:bg-white dark:text-gray-900 text-[13px] font-bold active:scale-95 transition-transform">
-                <QrCode className="w-4 h-4" strokeWidth={1.8} />{t('voucher.use', { defaultValue: '사용' })}
-              </button>
             </div>
           )}
         </div>
@@ -640,9 +669,7 @@ export default function MyVouchersPage() {
 
       <div className="ur-content-narrow px-4 lg:px-8 pb-2">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: tk.accent, borderTopColor: 'transparent' }} />
-          </div>
+          <WalletSkeleton />
         ) : shownVouchers.length === 0 ? (
           <EmptyVouchers
             mode={giftCount > 0 && sourceTab === 'gift' ? 'gift' : 'gb'}
@@ -791,6 +818,31 @@ function WalletEmptyGlyph({ variant }: { variant: 'gb' | 'gift' }) {
         style={{ transform: 'translate(calc(-50% + 5px), -50%) rotate(3deg)', width: 134, filter: 'drop-shadow(0 8px 14px rgba(10,10,10,0.10))' }}>
         <TicketShape variant={variant} strokeWidth={2.4} className="w-full" />
       </div>
+    </div>
+  )
+}
+
+// 🎨 2026-06-21 (개선 #2): 콜드 로드 스켈레톤 — 스피너 대신 패스 형태 placeholder (첫 페인트 표준).
+function WalletSkeleton() {
+  return (
+    <div className="animate-pulse" aria-hidden>
+      {/* 히어로 */}
+      <div className="rounded-[20px] bg-gray-200 dark:bg-[#1A1A1A] h-[120px] mb-4" />
+      {/* 패스 카드 2장 */}
+      {[0, 1].map(i => (
+        <div key={i} className="rounded-[18px] bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F] p-4 mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-[10px] bg-gray-200 dark:bg-[#1F1F1F]" />
+            <div className="h-3 w-28 rounded bg-gray-200 dark:bg-[#1F1F1F]" />
+            <div className="ml-auto h-5 w-12 rounded-full bg-gray-200 dark:bg-[#1F1F1F]" />
+          </div>
+          <div className="mt-3 h-5 w-3/5 rounded bg-gray-200 dark:bg-[#1F1F1F]" />
+          <div className="mt-3 flex items-center justify-between">
+            <div className="h-6 w-24 rounded bg-gray-200 dark:bg-[#1F1F1F]" />
+            <div className="h-9 w-24 rounded-[13px] bg-gray-200 dark:bg-[#1F1F1F]" />
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

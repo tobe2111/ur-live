@@ -144,6 +144,12 @@
   - **#4 막다른 길 제거**: 사용완료 카드에 **다시 구매하기**(`/group-buy/{product_id}`, API 가 product_id 반환) + **후기 보너스**(기존 `ReviewBonusButton` 을 카드로 노출 — 사용완료는 QR 모달 미진입이라 그동안 도달 불가였음). 만료 카드는 재구매만, 환불은 액션 없음. KT **발송 실패** 카드에 고객센터 `tel:0507-0177-0432` 문의 버튼(기존 텍스트-only dead-end → 액션).
   - Voucher 타입에 `product_id?` 추가, `voucher.directions/rebuy/contactSupport/wakeOn/sendFailedBadge/ktSendFailedDesc` defaultValue 키. **결제/환불/취소/폴링/CAS 무관 — 순수 UX.** 검증: type-check 0 · theme 0 · build 0 · Chromium 목업 확인.
 
+- **2026-06-21 (7차 — 잔여 UX 3종)** 대표 "모두 진행" — 6차 리뷰 때 미선택분 마저:
+  - **지도 주변 식사권 캐러셀**: 하단 단일 카드 → **거리순 가로 스크롤 캐러셀**(썸네일·가게·거리·도보분·사용). 카드 탭 시 `VoucherMap` 에 `focus` prop 추가로 **해당 매장으로 부드럽게 이동**(재초기화 X). 현위치 버튼은 VoucherMap 에 이미 존재(확인). `vouchers`/`mapVouchers`/`handleMarkerClick` 를 `useMemo`/`useCallback` 로 메모이즈 → 선택 시마다 지도 effect 재실행(깜빡임) 방지.
+  - **스켈레톤 로딩**: 콜드 로드 스피너 → `WalletSkeleton`(히어로 + 패스 2장 placeholder, animate-pulse). CLAUDE.md 첫 페인트 표준.
+  - **6개국어 번역**: 세션에서 추가/누락된 voucher 문구 **29키 × 6언어**(ko/en/ja/zh/es/fr) 채움 — 비한국어 사용자 한글 노출 해소. top-level `voucher` 블록에 surgical 삽입(파일당 +29/-0, 전체 reformat 없음).
+  - 검증: type-check 0 · theme 0 · build 0 · 6 locale JSON parse OK · Chromium 목업 확인.
+
 - **2026-06-20 (2차 — 레이아웃 정합)** 대표 신고 "구현이 다 안된 것 같은데?" — 1차는 톤만 입히고 구조를 옛 것으로 남겨 시안과 불일치. 시안 레이아웃까지 충실 구현:
   - 화면1: "사용 가능 N" + 🗺 지도 인라인 토글(큰 버튼 2개 제거), `VoucherTicket` 카드 재구성(60px 썸네일 · 🟢 상태점+사용가능+D-N · 제목 · 📍가게 · 코드칩 / 우측 가격+컴팩트 사용 pill), 사용완료/만료·환불을 헤어라인 박스 행(탭→인라인 펼침)으로.
   - 화면2: `viewMode==='map'` 전용 인-페이지 화면(back 헤더 "지도에서 보기" + VoucherMap + 하단 선택 카드의 사용 버튼).
