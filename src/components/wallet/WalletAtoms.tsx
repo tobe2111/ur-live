@@ -108,7 +108,7 @@ export function ListRow({
     >
       {icon && (
         <div className="rounded-[7px] flex items-center justify-center shrink-0"
-          style={{ width: 28, height: 28, background: iconBg || t.accent, color: iconFg || '#FFF' }}>
+          style={{ width: 28, height: 28, background: iconBg || t.accent, color: iconFg || t.onAccent }}>
           <span className="flex items-center justify-center" style={{ width: 16, height: 16 }}>{icon}</span>
         </div>
       )}

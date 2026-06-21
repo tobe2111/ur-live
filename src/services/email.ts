@@ -143,7 +143,7 @@ export function getSellerApprovalEmailHTML(sellerName: string, sellerUsername: s
         <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); padding: 40px 30px; text-align: center;">
+            <td style="background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%); padding: 40px 30px; text-align: center;">
               <h1 style="margin: 0; color: #1d1d1f; font-size: 28px; font-weight: 700;">🎉 축하합니다!</h1>
             </td>
           </tr>
@@ -159,7 +159,7 @@ export function getSellerApprovalEmailHTML(sellerName: string, sellerUsername: s
                 <strong>리스터코퍼레이션</strong> 판매자로 승인되셨습니다! 🎊
               </p>
               
-              <div style="background-color: #f9f9f9; border-left: 4px solid #FFD700; padding: 20px; margin: 30px 0; border-radius: 8px;">
+              <div style="background-color: #f9f9f9; border-left: 4px solid #d1d5db; padding: 20px; margin: 30px 0; border-radius: 8px;">
                 <p style="margin: 0 0 10px; color: #1d1d1f; font-size: 14px;">
                   <strong>판매자 정보</strong>
                 </p>
@@ -177,7 +177,7 @@ export function getSellerApprovalEmailHTML(sellerName: string, sellerUsername: s
               
               <!-- CTA Button -->
               <div style="text-align: center; margin: 40px 0;">
-                <a href="https://live.ur-team.com/seller" style="display: inline-block; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #1d1d1f; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);">
+                <a href="https://live.ur-team.com/seller" style="display: inline-block; background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%); color: #1d1d1f; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);">
                   셀러 대시보드 바로가기 →
                 </a>
               </div>
@@ -244,7 +244,7 @@ export function getSellerRejectionEmailHTML(sellerName: string, reason: string):
                 죄송하게도 현재 리스터코퍼레이션 판매자 승인이 보류되었습니다.
               </p>
               
-              <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin: 30px 0; border-radius: 8px;">
+              <div style="background-color: #fff3cd; border-left: 4px solid #d1d5db; padding: 20px; margin: 30px 0; border-radius: 8px;">
                 <p style="margin: 0 0 10px; color: #1d1d1f; font-size: 14px;">
                   <strong>거부 사유</strong>
                 </p>

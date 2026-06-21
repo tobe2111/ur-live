@@ -5,7 +5,7 @@
 /* 접근성: 키보드 포커스 스타일 */
 @layer utilities {
   *:focus-visible {
-    outline: 2px solid #3b82f6;
+    outline: 2px solid #6b7280;
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -186,30 +186,47 @@
   --ring: 211 100% 50%;
 }
 
-/* 🛡️ 2026-06-17 (사용자 신고 — 새 관리자 추가 입력칸 글자 흰색): 어드민/셀러는 라이트 고정인데 OS/앱 다크모드에서
-   상속된 -webkit-text-fill-color:white 가 글자색을 덮어쓰고 폼 컨트롤이 다크 UA 로 렌더돼 안 보임.
-   → 입력칸 글자색/fill 을 직접 다크로 강제 + color-scheme:light + autofill 색 고정. placeholder 는 회색 유지. */
+/* 🛡️ 2026-06-17 (사용자 신고 — 로그인/대시보드 입력 글자 흰색으로 안 보임): 어드민/셀러/에이전시/도매는 라이트 고정.
+   ──────────────────────────────────────────────────────────────────────────────────────────
+   왜 발생했나 (근본 원인):
+     아래 전역 규칙 `.dark input:not(...)` (CSS 특이도 0,5,1)이 OS/앱 다크모드(html.dark)에서 **모든** 입력 글자색을
+     gray-100(거의 흰색)으로 덮어씀. 페이지에 붙은 `text-gray-900` 유틸(특이도 0,1,0)은 특이도가 낮아 짐 → 흰 배경에
+     흰 글자. 대시보드는 `.admin-light-theme`/`.seller-light-theme` 래퍼로 보호됐지만 (1) `.agency-light-theme` 는
+     CSS 규칙이 누락됐고 (2) **로그인/가입/비번재설정 페이지는 레이아웃 밖(standalone)이라 래퍼가 없어 무방비**였음.
+   영구 해결 (이 규칙):
+     라이트 고정 컨테이너(.{admin,seller,agency}-light-theme + 범용 .force-light-theme) 안의 입력 글자/캐럿/autofill 을
+     `!important` 로 다크 강제 → 전역 `.dark` 규칙을 **특이도/소스순서/브라우저(webkit·firefox) 무관**하게 확실히 이김.
+     순수 CSS(클래스 스코프)라 ThemeProvider 의 MutationObserver(<html> class 복구)와도 충돌 없음.
+   ⚠️ 신규 standalone 라이트 페이지(로그인/가입/대시보드 외부)는 루트 div 에 `force-light-theme` 클래스 추가할 것. */
 .admin-light-theme,
-.seller-light-theme {
+.seller-light-theme,
+.agency-light-theme,
+.force-light-theme {
   color-scheme: light;
 }
 .admin-light-theme input, .admin-light-theme textarea, .admin-light-theme select,
-.seller-light-theme input, .seller-light-theme textarea, .seller-light-theme select {
+.seller-light-theme input, .seller-light-theme textarea, .seller-light-theme select,
+.agency-light-theme input, .agency-light-theme textarea, .agency-light-theme select,
+.force-light-theme input, .force-light-theme textarea, .force-light-theme select {
   color-scheme: light;
-  color: #16181b;
-  -webkit-text-fill-color: #16181b;
+  color: #16181b !important;
+  -webkit-text-fill-color: #16181b !important;
   caret-color: #16181b;
 }
 .admin-light-theme input::placeholder, .admin-light-theme textarea::placeholder,
-.seller-light-theme input::placeholder, .seller-light-theme textarea::placeholder {
-  color: #9aa0a6;
-  -webkit-text-fill-color: #9aa0a6;
+.seller-light-theme input::placeholder, .seller-light-theme textarea::placeholder,
+.agency-light-theme input::placeholder, .agency-light-theme textarea::placeholder,
+.force-light-theme input::placeholder, .force-light-theme textarea::placeholder {
+  color: #9aa0a6 !important;
+  -webkit-text-fill-color: #9aa0a6 !important;
 }
 .admin-light-theme input:-webkit-autofill,
 .admin-light-theme input:-webkit-autofill:hover,
 .admin-light-theme input:-webkit-autofill:focus,
-.seller-light-theme input:-webkit-autofill {
-  -webkit-text-fill-color: #16181b;
+.seller-light-theme input:-webkit-autofill,
+.agency-light-theme input:-webkit-autofill,
+.force-light-theme input:-webkit-autofill {
+  -webkit-text-fill-color: #16181b !important;
   -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
   caret-color: #16181b;
 }
@@ -760,10 +777,30 @@ html.dark .gbd {
      ⚠️ `:has()` 미지원 브라우저는 comma 선택자 목록 전체를 무효화하므로 반드시 규칙을 분리한다
      (각 규칙이 독립적으로 평가되도록). `body.app-frame-host[.app-frame-dark]` 는 MobileAppLayout 이
      테마 store 의 applied 값으로 직접 토글 → 결정적으로 적용. */
-  body.app-frame-host { background-color: #e9ebef; }
-  body.app-frame-host.app-frame-dark { background-color: #0C0D10; }
-  body:has(.mobile-app-container.app-framed) { background-color: #e9ebef; }
-  html.dark body:has(.mobile-app-container.app-framed) { background-color: #0C0D10; }
+  /* 🖥️ 2026-06-20 (대표 시안 — 에버랜드 PC): 거터를 비우지 않고 모노 도트 텍스처로 데코.
+     컬러 일러 대신 흑백 패턴(직전 B&W 전환 정합). 매우 낮은 대비 → 레일/프레임 가독성 방해 X. */
+  body.app-frame-host {
+    background-color: #e9ebef;
+    background-image: radial-gradient(rgba(0, 0, 0, 0.045) 1px, transparent 1.4px);
+    background-size: 22px 22px;
+    background-position: center top;
+  }
+  body.app-frame-host.app-frame-dark {
+    background-color: #0C0D10;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1.4px);
+    background-size: 22px 22px;
+    background-position: center top;
+  }
+  body:has(.mobile-app-container.app-framed) {
+    background-color: #e9ebef;
+    background-image: radial-gradient(rgba(0, 0, 0, 0.045) 1px, transparent 1.4px);
+    background-size: 22px 22px;
+  }
+  html.dark body:has(.mobile-app-container.app-framed) {
+    background-color: #0C0D10;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1.4px);
+    background-size: 22px 22px;
+  }
   html.dark .mobile-app-container.app-framed {
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 10px 50px rgba(0, 0, 0, 0.5);
   }
@@ -782,14 +819,22 @@ html.dark .gbd {
   body:has(.mobile-app-container.app-framed) .desktop-topnav {
     display: none !important;
   }
+  /* 🛡️ 2026-06-21 (대표 신고 "상단 바가 붕 뜨는데 다른 페이지들도"): 위 규칙이 프레임 모드(lg+)에서
+     DesktopTopNav 를 display:none 하므로, nav 높이(h-14=56px) 아래에 붙도록 `md:top-14` 로 오프셋한
+     페이지 sticky 헤더가 56px 허공에 떠(그 틈으로 스크롤된 콘텐츠/타이틀이 비쳐 보임) "붕 뜨는" 현상 발생.
+     프레임엔 nav 가 없으니 sticky 헤더를 최상단(top:0)으로 되돌린다 → 23개 컨슈머 프레임 페이지 일괄 근본 수정.
+     스코프: lg+ AND .app-framed 만 → 모바일(<lg, nav 없음)·태블릿(768~1023, 프레임 미적용·nav 표시)은 영향 0.
+     2단 스택 헤더의 둘째 바(plain `top-14`)는 미타깃 → top:0 된 첫 바(56px) 아래에 그대로 정렬. */
+  .mobile-app-container.app-framed .md\:top-14 { top: 0 !important; }
   /* 📐 2026-06-17 (사용자 요청 — 액자 폭 430 단일화): 프레임은 폰 폭(430)인데 Tailwind 반응형
      (sm/md/lg:)은 viewport(PC) 기준이라 좁은 액자 안에서 다열 그리드 / 2단 상세가 짓눌렸다.
      프레임 안에선 '폰처럼' 모바일 기본 레이아웃으로 되돌린다.
      이 규칙은 unlayered → Tailwind `@layer utilities` 보다 우선(특이도 무관)하므로 sm:/lg: 를 이김.
      ⚠️ 정확한 클래스 조합만 타깃 — 프레임 밖(대시보드/도매몰)·무관 그리드엔 영향 0. */
-  .mobile-app-container.app-framed .grid-cols-2.sm\:grid-cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* 상품·핀 카드 → 2열(폰) */
+  .mobile-app-container.app-framed .grid-cols-2.sm\:grid-cols-3 { grid-template-columns: minmax(0, 1fr); } /* 🛍️ 2026-06-20 (대표 — PC 액자 1열): 상품·교환권·핀 카드 PC 프레임에서 1열(모바일 2열은 불변, lg+ media 스코프) */
   .mobile-app-container.app-framed .grid-cols-4.sm\:grid-cols-5 { grid-template-columns: repeat(4, minmax(0, 1fr)); } /* 브랜드 칩 → 4열 */
   .mobile-app-container.app-framed .lg\:grid-cols-5 { grid-template-columns: minmax(0, 1fr); }                       /* 상품상세 2단 → 단일 컬럼 */
+  .mobile-app-container.app-framed .lg\:grid-cols-2 { grid-template-columns: minmax(0, 1fr); }                       /* 🛍️ 2026-06-20 (대표 — PC 액자 1열): 교환권 1줄 리스트·상세 2단 → 프레임에선 1열 */
   .mobile-app-container.app-framed .lg\:sticky { position: static; }                                                 /* 상세 구매패널 sticky 해제(폰 흐름) */
 }
 
@@ -904,7 +949,7 @@ html.dark .gbd {
 .animate-orderProofIn { animation: orderProofIn 300ms ease-out; }
 
 /* 🛡️ 2026-05-20: 사이드바 active gradient — Seller/Admin/Agency Layout 의 inline style 대체. */
-.ur-seller-nav-active { background: linear-gradient(to right, rgba(255, 0, 51, 0.15), transparent); }
+.ur-seller-nav-active { background: linear-gradient(to right, rgba(255, 255, 255, 0.10), transparent); }
 .ur-admin-nav-active  { background: linear-gradient(to right, rgba(252, 211, 77, 0.12), transparent); }
 .ur-agency-nav-active { background: linear-gradient(to right, rgba(139, 92, 246, 0.18), transparent); }
 

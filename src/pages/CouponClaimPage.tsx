@@ -143,7 +143,7 @@ export default function CouponClaimPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 dark:from-[#0A0A0A] to-white dark:to-[#0A0A0A] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 dark:from-[#0A0A0A] to-white dark:to-[#0A0A0A] flex items-center justify-center px-4">
       <SEO title={t('couponClaim.seoTitle')} description={t('couponClaim.seoDesc')} url={`/coupon/${code}`} />
       {status === 'success' && <ConfettiCanvas />}
 
@@ -160,7 +160,7 @@ export default function CouponClaimPage() {
 
         {status === 'success' && coupon && (
           <div className={`transition-all duration-700 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            <div className="w-24 h-24 mx-auto bg-gradient-to-br from-pink-400 to-red-400 rounded-full flex items-center justify-center mb-5 shadow-lg shadow-pink-200 animate-bounce">
+            <div className="w-24 h-24 mx-auto bg-gradient-to-br from-gray-700 to-gray-700 rounded-full flex items-center justify-center mb-5 shadow-lg shadow-pink-200 animate-bounce">
               <Gift className="w-12 h-12 text-white" />
             </div>
 
@@ -168,8 +168,8 @@ export default function CouponClaimPage() {
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t('couponClaim.issuedHint')}</p>
 
             <div className="relative bg-white dark:bg-[#1C1C1E] rounded-3xl p-6 border-2 border-dashed border-pink-300 dark:border-pink-800/50 shadow-xl overflow-hidden">
-              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-pink-50 dark:from-[#0A0A0A] to-white dark:to-[#0A0A0A] rounded-full" />
-              <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-pink-50 dark:from-[#0A0A0A] to-white dark:to-[#0A0A0A] rounded-full" />
+              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-gray-50 dark:from-[#0A0A0A] to-white dark:to-[#0A0A0A] rounded-full" />
+              <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-gray-50 dark:from-[#0A0A0A] to-white dark:to-[#0A0A0A] rounded-full" />
 
               <p className="text-xs text-pink-500 font-medium mb-1">{t('couponClaim.couponLabel')}</p>
               <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{coupon.name}</p>

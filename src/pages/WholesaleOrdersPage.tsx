@@ -8,6 +8,7 @@ import { toast } from '@/hooks/useToast'
 import { useWholesaleOrders } from '@/hooks/queries/useWholesale'
 import { WT, won, wholesaleOrderStatusBadge } from './wholesale/wholesale-theme'
 import WholesaleClaimModal from './wholesale/WholesaleClaimModal'
+import { useWholesaleBack } from '@/hooks/useWholesaleBack'
 import { courierTrackingUrl } from '@/utils/courier-tracking'
 
 // 인증 헤더로 xlsx 다운로드 → blob 저장 (anchor href 는 토큰 미첨부라 fetch 사용).
@@ -139,8 +140,9 @@ const CLAIMABLE = new Set(['PAID', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE', 'ON_CR
 
 // 🏭 2026-06-12 (감사 부채): 주문 상태 뱃지 → wholesale-theme.ts SSOT 로 통합 (대시보드와 동일 정의).
 
-export default function WholesaleOrdersPage() {
+export default function WholesaleOrdersPage({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
+  const goBack = useWholesaleBack()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const { data: orders = [], isLoading: loading, refetch } = useWholesaleOrders()
   const [claimOrderId, setClaimOrderId] = useState<number | null>(null)
@@ -158,43 +160,26 @@ export default function WholesaleOrdersPage() {
   }
   useEffect(() => { loadClaims() }, [])
   const CLAIM_STATUS: Record<string, { t: string; c: string; bg: string }> = {
-    open: { t: '접수됨 · 심사 중', c: '#B45309', bg: '#FEF3C7' },
-    approved: { t: '승인 — 환불 처리', c: '#047857', bg: '#D1FAE5' },
+    open: { t: '접수됨 · 심사 중', c: '#4b5563', bg: '#f3f4f6' },
+    approved: { t: '승인 — 환불 처리', c: '#374151', bg: '#D1FAE5' },
     rejected: { t: '반려', c: '#B91C1C', bg: '#FEE2E2' },
   }
 
-  useEffect(() => { if (!token) navigate('/wholesale/login') }, [token, navigate])
+  useEffect(() => { if (!embedded && !token) navigate('/wholesale/login') }, [embedded, token, navigate])
 
   function copyTrack(track: string) {
     navigator.clipboard?.writeText(track).then(() => toast.success('운송장 번호를 복사했어요')).catch(() => { /* noop */ })
   }
 
-  return (
-    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
-      <SEO title="도매 주문 내역 - 유통스타트" description="유통사 도매 주문 내역" url="/wholesale/orders" noindex />
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
-        <div className="ur-content-wide flex items-center gap-3 px-5 lg:px-8 h-[52px]">
-          <button onClick={() => navigate('/wholesale')} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
-          <h1 className="text-[15px] font-bold flex-1" style={{ color: WT.ink }}>주문 내역</h1>
-          <button
-            onClick={() => downloadWholesaleXlsx('/api/wholesale/orders/export', `wholesale-orders-${new Date().toISOString().slice(0, 10)}.xlsx`)}
-            className="inline-flex items-center gap-1.5 px-3 h-9 rounded-xl border text-[13px] font-medium"
-            style={{ borderColor: WT.line, color: WT.ink2, background: WT.fill }}
-            title="엑셀 다운로드"
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">엑셀 다운로드</span>
-          </button>
-        </div>
-      </header>
-
-      <main className="ur-content-narrow px-5 lg:px-8 py-6">
+  // 콘텐츠(주문 내역 본문) — embedded/standalone 공유. 데이터/핸들러는 위에서 동일.
+  const content = (
+    <>
         {claims.length > 0 && (
           <div className="mb-4 rounded-2xl bg-white" style={{ border: '1px solid ' + WT.line }}>
             <button onClick={() => setClaimsOpen(v => !v)} className="w-full flex items-center justify-between px-4 h-12">
               <span className="text-[13px] font-bold" style={{ color: WT.ink }}>
                 내 클레임 {claims.length}건
-                {claims.some(cl => cl.status === 'open') && <span className="ml-1.5 text-[11px] font-semibold" style={{ color: '#B45309' }}>· 심사 중 {claims.filter(cl => cl.status === 'open').length}</span>}
+                {claims.some(cl => cl.status === 'open') && <span className="ml-1.5 text-[11px] font-semibold" style={{ color: '#4b5563' }}>· 심사 중 {claims.filter(cl => cl.status === 'open').length}</span>}
               </span>
               <span className="text-[12px]" style={{ color: WT.ink4 }}>{claimsOpen ? '접기' : '펼치기'}</span>
             </button>
@@ -268,11 +253,38 @@ export default function WholesaleOrdersPage() {
             })}
           </div>
         )}
-      </main>
 
       {claimOrderId != null && (
         <WholesaleClaimModal orderId={claimOrderId} onClose={() => setClaimOrderId(null)} onSubmitted={() => { refetch(); loadClaims(); setClaimsOpen(true) }} />
       )}
+    </>
+  )
+
+  // 대시보드 탭 임베드 — 외곽 래퍼/SEO/헤더 생략, 본문만(standalone <main> 과 동일 흐름).
+  if (embedded) return <div>{content}</div>
+
+  return (
+    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
+      <SEO title="도매 주문 내역 - 유통스타트" description="유통사 도매 주문 내역" url="/wholesale/orders" noindex />
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
+        <div className="ur-content-wide flex items-center gap-3 px-5 lg:px-8 h-[52px]">
+          <button onClick={goBack} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
+          <h1 className="text-[15px] font-bold flex-1" style={{ color: WT.ink }}>주문 내역</h1>
+          <button
+            onClick={() => downloadWholesaleXlsx('/api/wholesale/orders/export', `wholesale-orders-${new Date().toISOString().slice(0, 10)}.xlsx`)}
+            className="inline-flex items-center gap-1.5 px-3 h-9 rounded-xl border text-[13px] font-medium"
+            style={{ borderColor: WT.line, color: WT.ink2, background: WT.fill }}
+            title="엑셀 다운로드"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">엑셀 다운로드</span>
+          </button>
+        </div>
+      </header>
+
+      <main className="ur-content-narrow px-5 lg:px-8 py-6">
+        {content}
+      </main>
     </div>
   )
 }

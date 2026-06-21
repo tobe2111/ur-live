@@ -89,7 +89,7 @@ export default function LiveTicker({ className = '' }: { className?: string }) {
       {e.avatar ? (
         <img src={e.avatar} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" loading="lazy" />
       ) : (
-        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-pink-300 to-rose-400 shrink-0 flex items-center justify-center text-[10px]">
+        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-gray-300 to-gray-700 shrink-0 flex items-center justify-center text-[10px]">
           {CATEGORY_EMOJI[e.category] || '🎫'}
         </div>
       )}

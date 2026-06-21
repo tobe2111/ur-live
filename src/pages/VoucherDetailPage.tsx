@@ -333,7 +333,7 @@ export default function VoucherDetailPage() {
         {/* 정보 */}
         <div className="pt-[18px]">
           <div className="flex items-center">
-            <span className="text-[11.5px] font-bold text-[#171B24] bg-[#FFCE00] rounded-md px-[9px] py-1 whitespace-nowrap">{label}</span>
+            <span className="text-[11.5px] font-bold text-[#171B24] bg-[#d1d5db] rounded-md px-[9px] py-1 whitespace-nowrap">{label}</span>
           </div>
           <h2 className="mt-[7px] text-[23px] font-extrabold text-[#171B24] dark:text-white leading-tight tracking-tight">{product.name}</h2>
           {product.restaurant_name && (

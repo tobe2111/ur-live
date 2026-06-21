@@ -40,7 +40,7 @@ export default function AffiliatePage() {
         <div className="ur-content-narrow px-4 lg:px-8 py-5 space-y-4">
 
           {/* 히어로 카드 */}
-          <div className="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-2xl p-5 text-white">
+          <div className="bg-gradient-to-br from-gray-900 to-gray-900 rounded-2xl p-5 text-white">
             <div className="flex items-center gap-2 mb-4">
               <Gift className="w-5 h-5" />
               <span className="text-sm font-bold opacity-90">{t('affiliate.earnHero')}</span>
@@ -189,7 +189,7 @@ function TopGroupsToShare() {
             {g.image_url ? (
               <img src={g.image_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" loading="lazy" />
             ) : (
-              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-200 to-rose-300 shrink-0" />
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-gray-200 to-gray-300 shrink-0" />
             )}
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{g.name}</p>
@@ -268,7 +268,7 @@ function FunnelStats() {
               return (
                 <div
                   key={i}
-                  className="flex-1 bg-gradient-to-t from-violet-500 to-violet-400 rounded-t transition-all"
+                  className="flex-1 bg-gradient-to-t from-gray-800 to-gray-700 rounded-t transition-all"
                   style={{ height: h }}
                   title={`${d.day}: ${d.count}회 / ${d.earned}딜`}
                 />

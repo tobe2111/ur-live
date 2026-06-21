@@ -706,7 +706,7 @@ export default function SellerLiveBroadcastPage() {
           const countdownText = ms <= 0 ? '시작 시간이 지났어요' :
             hours > 0 ? `${hours}시간 ${mins}분 뒤 시작` : `${mins}분 뒤 시작`
           return (
-            <div className="rounded-xl bg-gradient-to-r from-pink-500 to-orange-500 p-4 text-white shadow-lg">
+            <div className="rounded-xl bg-gradient-to-r from-gray-800 to-gray-800 p-4 text-white shadow-lg">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold opacity-90 mb-1">📅 예약된 방송이 있어요</p>

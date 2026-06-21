@@ -20,7 +20,9 @@ import { generateId } from '../../shared/utils';
 import { JWT_ACCESS_TOKEN_EXPIRY, JWT_REFRESH_TOKEN_EXPIRY } from '../../shared/constants';
 // PBKDF2 password hashing — Cloudflare Workers compatible (100k iterations, SHA-256)
 import { hashPassword, verifyPassword, validatePasswordComplexity } from '../../lib/password';
-import { parseSessionCookie, clearSessionCookie } from '../utils/session';
+import { parseSessionCookie, clearSessionCookie, createSessionCookie } from '../utils/session';
+import { verify as jwtVerify } from 'hono/jwt';
+import { recordKakaoLoginDiag } from '../utils/kakao-login-diag';
 import { checkLockout, recordFailure, clearFailures } from '../utils/account-lockout';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
 import { decryptAtRest } from '../utils/data-crypto';
@@ -367,11 +369,94 @@ authRouter.get('/validate', requireAuth(), async (c) => {
   return c.json({ success: true, data: { valid: true, user } });
 });
 
+// POST /api/auth/session/establish — 🛡️ 2026-06-20 (A 방식: iOS 로그인 근본수정)
+//   카카오 OAuth 콜백(/auth/kakao/sync/callback)이 cross-site 302 응답에서 set 한 httpOnly
+//   ur_session 쿠키는 iOS Safari/WebKit 에서 미영속(진단으로 확정). 그래서 콜백은 단명(120초)·서명
+//   세션 티켓을 fragment(#st=)로만 넘기고, 착지 클라가 이 엔드포인트로 **same-origin POST** 교환 →
+//   여기서 httpOnly ur_session 을 first-party 200 응답에 발급(iOS 영속). 토큰을 localStorage 에 두지 않음.
+//   보안: 티켓은 HS256/JWT_SECRET 서명(위조 불가) + 120초 만료 → 재생/CSRF 안전(별도 저장 불필요).
+authRouter.post('/session/establish', rateLimit({ action: 'session_establish', max: 30, windowSec: 60 }), async (c) => {
+  // 🩺 2026-06-20: establish 결과를 브라우저별로 진단 기록(fire-and-forget) — iOS 에서 A 방식이 실제
+  //   작동하는지 수치 확인. reason='establish_ok' success 가 iOS 에서 보이면 = 쿠키 영속 재발급 성공.
+  //   /api/_internal/kakao-login-diag 의 aggregate/recent 에 reason 으로 구분되어 나타남.
+  const diagUa = c.req.header('User-Agent');
+  const fireDiag = (outcome: 'success' | 'error', reason: string) => {
+    try {
+      const p = recordKakaoLoginDiag(c.env.DB, { outcome, reason, ua: diagUa, hadStateCookie: false, signedFallback: false });
+      if (c.executionCtx) c.executionCtx.waitUntil(p); else void p;
+    } catch { /* 진단은 로그인에 영향 없음 */ }
+  };
+
+  if (!c.env.JWT_SECRET) return c.json({ success: false, error: 'not_configured' }, 500);
+  let ticket: string | undefined;
+  try {
+    const body = await c.req.json<{ ticket?: string }>().catch(() => ({} as { ticket?: string }));
+    ticket = body?.ticket;
+  } catch { /* invalid body */ }
+  if (!ticket || typeof ticket !== 'string') {
+    return c.json({ success: false, error: 'ticket_required' }, 400);
+  }
+  let payload: Record<string, unknown>;
+  try {
+    payload = (await jwtVerify(ticket, c.env.JWT_SECRET, 'HS256')) as Record<string, unknown>;
+  } catch {
+    // 서명 무효 / 만료(120초 초과) → 거부. 클라는 재로그인 유도.
+    fireDiag('error', 'establish_bad_ticket');
+    return c.json({ success: false, error: 'invalid_or_expired_ticket' }, 401);
+  }
+  if (payload.p !== 'session_establish' || !payload.uid) {
+    fireDiag('error', 'establish_bad_ticket');
+    return c.json({ success: false, error: 'invalid_ticket' }, 401);
+  }
+  try {
+    const cookie = await createSessionCookie(
+      String(payload.uid),
+      String(payload.name || ''),
+      String(payload.email || ''),
+      (payload.img as string) || undefined,
+      c.env.JWT_SECRET,
+    );
+    c.header('Set-Cookie', cookie); // same-origin 200 → iOS WebKit 영속
+    fireDiag('success', 'establish_ok');
+    return c.json({ success: true, data: { userId: String(payload.uid) } });
+  } catch (e) {
+    if (import.meta.env.DEV) console.error('[session/establish] cookie creation failed:', e);
+    fireDiag('error', 'establish_cookie_fail');
+    return c.json({ success: false, error: 'establish_failed' }, 500);
+  }
+});
+
 // GET /api/auth/session/health — 세션+카카오 토큰 상태 통합 체크
 // 프론트가 마운트 시 호출해서 "로그인 됐는데 API 실패" 상황을 진단
 authRouter.get('/session/health', async (c) => {
   const cookieHeader = c.req.header('Cookie');
-  const sessionUser = await parseSessionCookie(cookieHeader, c.env.JWT_SECRET);
+  let sessionUser = await parseSessionCookie(cookieHeader, c.env.JWT_SECRET);
+
+  // 🛡️ 2026-06-20 (iOS 로그인 안정화 — 근본수정): 세션 쿠키가 없으면 Bearer(user_token) 도 인정.
+  //   iOS WebKit(사파리 ITP / 카톡 WKWebView)가 httpOnly 쿠키를 유실해도 localStorage user_token
+  //   Bearer 로 session:true 판정 → 클라의 부당한 자동 로그아웃(wipe) 방지. (requireAuth 와 동일 우선순위)
+  if (!sessionUser) {
+    const authHeader = c.req.header('Authorization');
+    const bearer = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (bearer) {
+      try {
+        const p = await jwtVerify(bearer, c.env.JWT_SECRET, 'HS256') as Record<string, unknown>;
+        const sub = p?.sub;
+        const type = (typeof p?.type === 'string' ? p.type : 'user');
+        if (sub && type === 'user') {
+          sessionUser = {
+            userId: String(sub),
+            name: (p.name as string) || '',
+            email: (p.email as string) || '',
+            type: 'user',
+            role: 'user',
+            isDbId: p.isDbId !== false,
+            iat: typeof p.iat === 'number' ? p.iat : undefined,
+          };
+        }
+      } catch { /* invalid/expired bearer — 익명 처리 */ }
+    }
+  }
 
   let kakaoValid = false;
   let kakaoNeedsReauth = false;

@@ -142,7 +142,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
       {/* 후원 센터 알림 애니메이션 */}
       {centerAlert && (
         <div className="fixed inset-0 z-[100] pointer-events-none">
-          <div className="animate-donation-center-alert fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-br from-pink-500/90 to-red-500/90 backdrop-blur-xl rounded-3xl px-8 py-6 shadow-2xl border border-white/20 text-center">
+          <div className="animate-donation-center-alert fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-br from-gray-800/90 to-gray-800/90 backdrop-blur-xl rounded-3xl px-8 py-6 shadow-2xl border border-white/20 text-center">
             <div className="text-5xl mb-2">{centerAlert.emoji}</div>
             <p className="text-white text-lg font-bold whitespace-nowrap">
               {t('live.donationCenterAlert', { name: centerAlert.donorName, amount: formatNumber(centerAlert.amount), defaultValue: '{{name}}님이 {{amount}}딜 후원!' })}
@@ -185,7 +185,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
               </div>
 
               {/* 잔액 표시 */}
-              <div className="bg-gradient-to-r from-pink-50 to-orange-50 rounded-xl px-4 py-3 mb-4 flex items-center justify-between">
+              <div className="bg-gradient-to-r from-gray-50 to-gray-50 rounded-xl px-4 py-3 mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Zap className="w-4 h-4 text-pink-500" />
                   <span className="text-sm font-medium text-gray-700">{t('live.donationMyDeal', { defaultValue: '내 딜' })}</span>
@@ -252,7 +252,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
               <button
                 onClick={handleDonate}
                 disabled={processing || isInsufficient}
-                className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-pink-500 to-red-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-pink-500/25 transition-all active:scale-[0.98] disabled:opacity-60"
+                className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white text-sm font-bold rounded-xl shadow-lg shadow-pink-500/25 transition-all active:scale-[0.98] disabled:opacity-60"
               >
                 {processing ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -281,7 +281,7 @@ export function DonationEffect({ donations }: { donations: DonationEffect[] }) {
       {donations.map(d => (
         <div
           key={d.id}
-          className="animate-donation-pop bg-gradient-to-r from-pink-500/90 to-red-500/90 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl border border-white/20 max-w-[85%]"
+          className="animate-donation-pop bg-gradient-to-r from-gray-800/90 to-gray-800/90 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl border border-white/20 max-w-[85%]"
         >
           <div className="flex items-center gap-2">
             <Heart className="w-5 h-5 text-yellow-300 fill-yellow-300 flex-shrink-0" />

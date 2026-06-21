@@ -248,53 +248,82 @@ try {
   }
 } catch { /* ignore */ }
 
-const rootElement = document.getElementById('root')
-if (!rootElement) {
-  console.error('[App] ❌ Root element not found!')
-  document.body.innerHTML = `
-    <div style="display: flex; align-items: center; justify-content: center; min-height: 100dvh; background: #fbfbfd;">
-      <div style="text-align: center; padding: 2rem;">
-        <h1 style="color: #dc2626; margin-bottom: 1rem;">앱 초기화 실패</h1>
-        <p style="color: #6e6e73;">Root element를 찾을 수 없습니다.</p>
-        <button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007aff; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
-      </div>
-    </div>
-  `
-} else {
+// 🛡️ 2026-06-20 (A 방식 — iOS 로그인 근본수정): 로그인 직후면 렌더 전에 same-origin 으로
+//   httpOnly 세션을 발급받는다. 카카오 콜백이 fragment(#st=)로 넘긴 단명(120초) 세션 티켓을
+//   processAuthCallbackParams 가 window.__urEstablishTicket 에 stash → 여기서
+//   POST /api/auth/session/establish 로 교환 → 서버가 first-party 200 응답에 ur_session 을 set
+//   (cross-site 302 와 달리 iOS Safari/WebKit 에서 영속) → 이후 모든 API 가 쿠키로 인증.
+//   토큰을 localStorage 에 두지 않음(OWASP — XSS 면역). 실패해도(타임아웃/네트워크) 앱은 렌더.
+async function bootApp() {
   try {
-    // ✅ Capacitor 네이티브 앱 감지 → html class 추가
-    if (isNative()) {
-      document.documentElement.classList.add('native-app')
+    const w = window as unknown as { __urEstablishTicket?: string }
+    const ticket = w.__urEstablishTicket
+    if (ticket) {
+      const ctrl = new AbortController()
+      const timer = setTimeout(() => ctrl.abort(), 4000)
+      try {
+        await fetch('/api/auth/session/establish', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ticket }),
+          signal: ctrl.signal,
+        })
+      } catch { /* establish 실패해도 앱은 뜸 — 302-set 쿠키(Chrome) 또는 재로그인 */ }
+      clearTimeout(timer)
+      try { delete w.__urEstablishTicket } catch { /* */ }
     }
-    // ✅ 네이티브 기능 초기화 (스플래시, 상태바, 푸시, 딥링크)
-    try { initNativeFeatures() } catch (e) { console.error('[main] native init failed:', e) }
+  } catch { /* establish 단계 실패 무시 — 렌더 진행 */ }
 
-    // ✅ React StrictMode 제거 (중복 마운트 방지)
-    ReactDOM.createRoot(rootElement).render(
-      <ThemeProvider>
-        <App />
-      </ThemeProvider>
-    )
-
-    // 🛡️ 2026-05-15: Web Vitals 자동 수집 (1% sampling, KV 카운터로 0원 운영)
-    import('./lib/web-vitals-report').then(m => m.reportWebVitals()).catch(() => { /* silent */ })
-
-    // 🏭 2026-06-04: 청크-실패 자동 reload 가드를 부팅 성공 후 해제 → "세션당 1회"가 아니라
-    //   "장애 1건당 1회". 5초 후에도 앱이 살아있으면 청크 정상 로드된 것 → 다음 배포에서 또 복구 가능.
-    setTimeout(() => { try { sessionStorage.removeItem('__ur_chunk_reload__') } catch { /* silent */ } }, 5000)
-  } catch (error) {
-    console.error('[App] ❌ React 렌더링 실패:', error)
-    rootElement.innerHTML = `
+  const rootElement = document.getElementById('root')
+  if (!rootElement) {
+    console.error('[App] ❌ Root element not found!')
+    document.body.innerHTML = `
       <div style="display: flex; align-items: center; justify-content: center; min-height: 100dvh; background: #fbfbfd;">
         <div style="text-align: center; padding: 2rem;">
-          <h1 style="color: #dc2626; margin-bottom: 1rem;">앱을 표시할 수 없어요</h1>
-          <p style="color: #6e6e73; font-size: 14px; margin-bottom: 12px;">브라우저 환경이 호환되지 않을 수 있습니다.</p>
-          <p style="color: #8e8e93; font-size: 12px; word-break: break-all;">${String(error)}</p>
+          <h1 style="color: #dc2626; margin-bottom: 1rem;">앱 초기화 실패</h1>
+          <p style="color: #6e6e73;">Root element를 찾을 수 없습니다.</p>
           <button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007aff; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
         </div>
       </div>
     `
+  } else {
+    try {
+      // ✅ Capacitor 네이티브 앱 감지 → html class 추가
+      if (isNative()) {
+        document.documentElement.classList.add('native-app')
+      }
+      // ✅ 네이티브 기능 초기화 (스플래시, 상태바, 푸시, 딥링크)
+      try { initNativeFeatures() } catch (e) { console.error('[main] native init failed:', e) }
+
+      // ✅ React StrictMode 제거 (중복 마운트 방지)
+      ReactDOM.createRoot(rootElement).render(
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
+      )
+
+      // 🛡️ 2026-05-15: Web Vitals 자동 수집 (1% sampling, KV 카운터로 0원 운영)
+      import('./lib/web-vitals-report').then(m => m.reportWebVitals()).catch(() => { /* silent */ })
+
+      // 🏭 2026-06-04: 청크-실패 자동 reload 가드를 부팅 성공 후 해제 → "세션당 1회"가 아니라
+      //   "장애 1건당 1회". 5초 후에도 앱이 살아있으면 청크 정상 로드된 것 → 다음 배포에서 또 복구 가능.
+      setTimeout(() => { try { sessionStorage.removeItem('__ur_chunk_reload__') } catch { /* silent */ } }, 5000)
+    } catch (error) {
+      console.error('[App] ❌ React 렌더링 실패:', error)
+      rootElement.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; min-height: 100dvh; background: #fbfbfd;">
+          <div style="text-align: center; padding: 2rem;">
+            <h1 style="color: #dc2626; margin-bottom: 1rem;">앱을 표시할 수 없어요</h1>
+            <p style="color: #6e6e73; font-size: 14px; margin-bottom: 12px;">브라우저 환경이 호환되지 않을 수 있습니다.</p>
+            <p style="color: #8e8e93; font-size: 12px; word-break: break-all;">${String(error)}</p>
+            <button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007aff; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
+          </div>
+        </div>
+      `
+    }
   }
 }
+void bootApp()
 
 } // end if (!_kakaoRedirected)

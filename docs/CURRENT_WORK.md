@@ -1,5 +1,64 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-20 (4차 — 전 역할 iOS 카카오 로그인 + 미래대비) — 역할 토큰 fragment 채널 (대표 "셀러/에이전시/도매 + 앞으로 추가될 서비스까지")
+**배경**: 소비자(establish)는 고쳤으나, **셀러/에이전시/유통사가 카카오로 *돌아와* 대시보드 로그인** 시 역할 토큰을 `ur_pending_*` **transfer 쿠키**(cross-site 302 set)로 받아 → iOS WebKit 미영속 → 대시보드 로그인 실패(잠복).
+- **전수조사 결과**: 깨지는 건 **`/sync/callback` 리다이렉트의 transfer 쿠키**뿐. **공급자(제조사) `create-from-kakao`·유통사 `become-distributor`/`login` 은 XHR(JSON 응답)이라 이미 iOS-safe**(same-origin 200) — 무변경.
+- **근본수정(generic·미래대비)**: 역할 토큰을 **fragment(`#auth=<b64url(JSON)>`)** 로 전달(모든 브라우저 생존, 서버/Referer 미전송). 신규 SSOT `worker/utils/pending-auth.ts` `encodePendingAuth()`. `kakao.routes.ts /sync/callback` 이 `pendingLs` 맵 구성(seller_token/id/name/username/is_distributor, agency_token/refresh/id/name) → `#st`(소비자 establish 티켓)와 같은 fragment 에 합침. 클라 `auth-callback-bootstrap` 이 decode → **허용목록(`seller_`/`agency_`/`supplier_` 네임스페이스 + 명시 키)만** localStorage 이전. `ur_pending_*` Set-Cookie/read **전부 제거**. ud_* httpOnly(SSR GET 읽기)는 별개로 유지.
+- **미래대비(핵심)**: 새 역할 로그인이 `/sync/callback` 에서 토큰 발급 시 **pendingLs 맵에 한 줄 추가**만 하면 자동 iOS-safe. 같은 네임스페이스면 클라 변경도 불필요. **CLAUDE.md 카카오 OAuth 룰에 영구 규칙 박제**(iOS 쿠키 영속 룰 — transfer 쿠키 금지, fragment/establish 필수). 토큰 값은 서명 JWT라 서버 검증 → fragment 위변조해도 가짜 토큰 통과 불가(envelope 비신뢰 OK).
+- 검증: 신규 단위 `pending-auth`(round-trip·UTF-8 한글·허용목록 차단) + 기존 pass · tsc(client) 0 · `npm run build` 0. ⚠️ 실기기: iOS 사파리에서 카카오 로그인 후 셀러/에이전시/유통사 대시보드 진입 유지 확인.
+
+## ✅ 2026-06-20 — 내 지갑(/my-vouchers) 흑백 iOS-클린 리디자인 (Claude Design handoff, 대표 결정: 단일 페이지 톤 리파인 + 지갑 4페이지 잉크 통일)
+**배경**: 2026-06-20 대표 신고 "공구권 페이지 디자인이 심각해 … 너무 성의없어"의 후속으로 직접 모킹한 정식 리디자인 handoff(`478b54e2`). 시안 6화면(메인 공구권/지도/사용 모달/메인 교환권/빈 상태/설정). AskUserQuestion 결과 **스코프=단일 페이지(`MyVouchersPage`) 톤 리파인** + **액센트=지갑 4페이지 잉크 통일**. 지도/설정 전용 화면은 보류(현 토글·모달 유지). 시안 박제: `docs/design/my-vouchers-wallet-bw.md`(+`.dc.html`×2, 스크린샷). **병렬 세션의 main 흑백 전환(블랙앤화이트 #6b7280, 빨강만 유지)과 수렴 — 머지 시 지갑 토큰은 ink(#0A0A0A)+onAccent 채택(handoff 정합), 상태 점은 green(#16A34A, handoff 명시) 유지.**
+- **`walletTokens.ts`**: `accent` 핑크(#EC4899)→잉크(라이트 #0A0A0A / 다크 #FFFFFF), `accentSoft`/`accentGradient` 동반, **`onAccent` 신설**(필 위 텍스트색 — 다크 invert). blast radius = WishlistPage CTA 2개·스피너 + MyVouchersPage 스피너 (ListRow 등 atoms 는 dead/미사용).
+- **`WishlistPage.tsx`**: accentGradient CTA 2개 `text-white`→`tk.onAccent`(다크모드 흰 글자 안 보임 방지).
+- **`MyVouchersPage.tsx`**: 상태줄 🟢점+빨강 D-N("가장 가까운 만료") / 식사권 카드 코드 회색칩+복사아이콘 / **QR 모달**(🟢 pulse 실시간시계 + 🟢 체크 "이미 결제 완료" 안내 + "매장 안내" 칩 + 공유/구매취소 2버튼 그리드 + 7일 환불 안내) / 교환권(KtAlpha) amber→뉴트럴 / 전화 배너·등록모달 잉크 / 빈상태 1·2·3 원형 잉크 스텝+블랙 CTA. (refunded 배지는 main 흑백 #6b7280 채택.)
+- **결제/환불/취소/폴링 로직 byte-identical** — `handleSelfCancel`·status 조건·api 호출 불변, 시각만. 🔒 잠금 보존: VoucherMap lazy / qrcode.react lazy / useMyVouchers / useInvalidateMyVouchers.
+- 검증: `npm run type-check`(0) · `check-theme-consistency.mjs`(0) · `npm run build`(client+ssr+worker+prepare, exit 0). i18n 신규키는 defaultValue 폴백(소비자 페이지 패턴, 기존 동일) — 추가 debt 0. 드래프트 PR #397.
+
+## ✅ 2026-06-20 (3차 — 교과서 A 방식) — iOS 세션을 same-origin httpOnly 발급으로 전환 (대표 "a 방식으로 해줘")
+**배경**: 2차(user_token Bearer)는 효과는 있으나 토큰을 **localStorage**에 둬 XSS 노출(OWASP 비권장). 대표가 **A 방식(httpOnly 유지)** 선택.
+- **원인 재확인**: httpOnly `ur_session` 쿠키가 **cross-site OAuth 콜백 302 응답**에서 set 되면 iOS Safari/WebKit 이 미영속. (Chrome 정상.)
+- **A 방식(교과서)**: 세션을 **same-origin 200 응답**에서 발급(first-party 쿠키라 iOS 영속). 흐름:
+  1. `kakao.routes.ts /sync/callback`: 인증 결과를 담은 **단명(120초)·서명(HS256/JWT_SECRET)·purpose-scoped 세션 티켓**을 fragment(`#st=`)로만 전달(서버/Referer/로그 미전송). localStorage Bearer·`ur_pending_user_token` 발급 **제거**. POST `/api/auth/kakao/callback` 응답의 `user_token`도 제거(그 흐름은 이미 same-origin 200 set).
+  2. `auth.routes.ts` 신규 **`POST /api/auth/session/establish`**: 티켓 verify(서명+120초 만료+purpose+uid) → `createSessionCookie()` 로 **httpOnly ur_session 을 200 응답에 Set-Cookie**(first-party → iOS 영속). 비인증 엔드포인트지만 **서명 티켓 자체가 CSRF/위조 방어**(별도 저장 불필요).
+  3. `main.tsx bootApp`: `processAuthCallbackParams` 가 fragment 티켓을 `window.__urEstablishTicket` 에 stash → **렌더 전 await** 로 establish 교환(4초 타임아웃, 실패해도 렌더). 이후 모든 API 가 쿠키로 인증.
+  4. `auth-callback-bootstrap.ts`: `#st` stash + localStorage 토큰 경로 제거(`#ut`/`ur_pending_user_token` 삭제). `didFreshLogin` health-wipe grace 유지(establish 전 ping 오탐 차단). 셀러/에이전시 대시보드 transfer 쿠키는 별개로 유지.
+- **보안**: 세션 토큰이 **localStorage 에 없음**(httpOnly 쿠키만) → XSS 면역. 티켓은 120초 단명. **이게 이 문제의 정석**.
+- 검증: 단위 43 pass(`kakao-user-token`→establish 티켓 검증으로 교체) · tsc(client) 0 · `npm run build` 0. ⚠️ **실기기 필수**: iOS 사파리 로그인 → 새로고침/탭이동 유지 + `/api/_internal/kakao-login-diag` 재시도 폭주 사라짐.
+
+## ✅ 2026-06-20 (2차) — 카카오 로그인 "잠시 됐다 풀림" 근본수정: 소비자 user_token Bearer (대표 신고 "잠시 되다 안돼 / 둘 다 불안정")
+**증상(1차 수정 후)**: signed-state 로 OAuth *완료*는 됐는데(로그인 "잠시" 됨), iOS(사파리·카톡 인앱)에서 **곧 다시 로그아웃**. 크롬은 정상.
+- **근본 원인(아키텍처로 확정)**: 카카오 로그인은 `ur_session`(httpOnly·Lax) **쿠키 1개에만** 의존. iOS WebKit(사파리 ITP / 카톡 WKWebView)은 cross-site OAuth 왕복 후 이 쿠키를 **유실/비영속** 처리 → `/api/auth/session/health` 가 `session:false` → 클라(auth-callback-bootstrap + api.ts 401핸들러)가 로그인을 **wipe**. **이메일 로그인은 이미 `user_token`(localStorage Bearer)을 써서 이 문제가 없음** — 카카오만 미발급이 차이. (단일세션 enforcement 는 `deriveDashboardSeat`가 user→null 이라 무관함을 확인.)
+- **수정(기존 인프라 재사용 — 이메일 로그인과 동일 패턴)**: 카카오도 `user_token` 발급 → Bearer 인증으로 쿠키 유실과 무관하게 지속. 4부:
+  1. `kakao.routes.ts /sync/callback`: 소비자 `user_token`(JWT type=user, 30일) 발급 → `ur_pending_user_token` transfer 쿠키(JS-readable 60s, 셀러/에이전시 패턴과 동일).
+  2. `auth-callback-bootstrap.ts`: transfer 쿠키 → `localStorage.user_token` 이동 + health 핑에 `Authorization: Bearer` 동봉.
+  3. `auth.routes.ts /session/health`: 쿠키 없으면 **Bearer(user_token)도 세션 유효로 인정**(requireAuth 와 동일 우선순위) → 부당한 wipe 차단.
+  4. `auth.ts clearAuthData('user')`: `user_token`/`user_refresh_token` 정리 추가(로그아웃 후 Bearer 잔존 버그 동시수정 — 이메일 로그인에도 있던 잠재버그).
+- **효과**: iOS 가 `ur_session` 쿠키를 떨궈도 api.ts 인터셉터(line 322, 기존)가 `user_token` Bearer 자동 첨부 → requireAuth Bearer 우선 인증 → 401 없음 → wipe 없음. **쿠키는 그대로 유지(defense-in-depth), Bearer 는 ITP-immune 폴백.** 크롬/이메일 경로 불변(additive).
+- **보안**: 소비자 토큰은 저권한 + CSP(nonce/strict-dynamic) XSS 완화 + 대시보드도 이미 localStorage 토큰 사용(허용된 모델). 30일 만료 = 세션 쿠키와 동일.
+- 검증: tsc 0 · `npm run build`(client+worker+prepare) 0 · 전체 유닛 2170 pass · sql-bind/not-null 0.
+- ⚠️ **실기기 검증 권장**: iOS 사파리 + 카톡 인앱 로그인 → 새로고침/탭이동/앱 재진입에도 **로그인 유지** 확인. `/api/_internal/kakao-login-diag` 로 ios success 지속 확인.
+- **🔁 보강(PR #396, 같은 진단 기반 — 병렬 세션 수렴)**: 동일 진단(`had_state_cookie:1`·`signed_fallback:0`·iOS success 14/16·2~3분 16회 재시도)으로 같은 결론에 독립 도달. transfer 쿠키(`ur_pending_user_token`)는 **그 쿠키 자체도 cross-site 콜백 302 에서 set 되어 iOS 미유지 위험**이 있어, **URL fragment(`#ut=`) 전달을 추가**(fragment 는 어떤 쿠키 정책에도 안 걸려 항상 생존 — belt-and-suspenders). 또 `auth-callback-bootstrap` 의 **health-wipe 를 `user_token` 있으면 스킵**(health-Bearer 인정과 이중 방어) + `kakao-user-token` 단위테스트 + POST 콜백 응답에도 `user_token` 동봉. 클라는 fragment·transfer쿠키 **둘 중 먼저 오는 것**으로 localStorage.user_token 설정(중복 무해).
+
+## ✅ 2026-06-20 — 카카오 로그인 iOS(Safari/WebKit) 실패 근본수정: signed-state fallback (대표 신고 "사파리/아이폰 안돼, 크롬은 돼")
+**증상**: 카카오 "3초 시작하기" 가 iOS(사파리 + 카카오톡 인앱 webview, 둘 다 WebKit)에서 실패, **크롬(Blink)은 정상**. → 서버/설정 문제 아님(그럼 크롬도 깨짐) = **WebKit 특유의 OAuth 왕복 쿠키 처리** 문제로 확정.
+- **근본 원인**: OAuth CSRF 가 `kakao_oauth_state`(HttpOnly·Secure·**SameSite=Lax**) 쿠키 1개에만 의존. iOS WebKit 은 cross-site OAuth 왕복(특히 **카카오톡 앱 핸드오프 → Safari 복귀**, ITP cross-site 쿠키 처리)에서 이 Lax 쿠키를 콜백에 안 돌려주는 케이스 → `/sync/callback` 이 `?error=oauth_state_expired` 로 로그인 실패. 크롬은 Lax 관대 처리라 정상.
+- **수정 (`kakao.routes.ts`, 표준 signed-state 패턴)**: OAuth `state` 파라미터를 **JWT_SECRET 서명 self-contained 토큰**으로 발급(redirect/intent/nonce/30분 만료 동봉). 콜백의 **쿠키-부재 분기에만** `verifySignedState()` fallback 추가 — 쿠키 없이도 **서명 검증으로 CSRF·redirect·intent 복구** → 로그인 성공.
+  - **Chrome 등 쿠키 정상 브라우저는 기존 쿠키↔URL state 바인딩 분기로 진입 → byte-identical(불변, 더 강한 CSRF 유지)**. 쿠키 형식 `state|b64redirect|intent` 유지(state 부분만 UUID→서명 JWT, '|' 미포함이라 split 안전).
+  - **보안**: 서명(HS256)이라 JWT_SECRET 없이 위조 불가 + 30분 만료 + nonce. 쿠키-부재 fallback 은 표준 signed-state CSRF 모델(쿠키 바인딩보다 약간 약하나, iOS 전체 로그인 불가보다 훨씬 나음). JWT_SECRET 없으면 opaque UUID 폴백(기존 쿠키-only 동작).
+- 검증: tsc 0 · `npm run build`(client+worker+prepare) 0 · 신규 단위 10(서명 왕복/위조차단/변조/만료/purpose불일치/레거시UUID/open-redirect clamp) + 기존 safeRedirect 32 = 42 pass · 전체 유닛 2170 pass. CLAUDE.md OAuth 룰("쿠키+URL state 검증") 준수 — 쿠키 유지 + 서명 강화.
+- 🩺 **진단 로깅 추가(대표 승인 "네, 추가해주세요")**: `kakao-login-diag.ts`(신규 `kakao_login_diag` 테이블, ensureXxx WeakSet 메모이즈, ~2% 확률 prune→최근 3000개, PII 미저장) + `/sync/callback` 4개 결과지점에 fire-and-forget 기록(성공/oauth_state_expired/mismatch/session_cookie_failed — 브라우저종류·ios·쿠키유무·signed_fallback 플래그). 조회: `GET /api/_internal/kakao-login-diag`(requireAdmin) — ios_summary(성공/실패) + `signed_fallback_successes_7d`(쿠키유실을 서명 state 가 구제한 건수) + browser별 aggregate + recent 100. **수정 효과 수치 확인 + 재발 즉시 감지.** fail-soft(진단 실패가 로그인 불막음).
+- ⚠️ **실기기 검증 권장**: iOS Safari + 카카오톡 인앱에서 "3초 시작하기" → 로그인 성공 확인. 그 후 `/api/_internal/kakao-login-diag` 로 ios_summary success↑ + signed_fallback_successes_7d>0 확인.
+
+## ✅ 2026-06-20 — 카카오 로그인 전수조사 후속: 인앱/세션/콜백 5종 (대표 "전수조사 → 전체 수정", A1 중복 제거 재정렬)
+**배경**: 위 A1(signed-state)은 **다른 세션이 먼저 main 에 머지**(중복). 본 항목은 같은 전수조사에서 발견된 **A1 외 고유 이슈 5종**만 정리(PR #396 rebase 시 중복 A1·`kakao-oauth-state.test.ts` 제거, kakao.routes.ts 는 main 의 signed-state 채택). **검증**: 전체 단위 pass · tsc(client) 0 · `npm run build` 0. ⚠️ 실기기 staging 검증: `docs/KAKAO_LOGIN_STAGING_CHECKLIST.md`.
+- **A2** `auth-callback-bootstrap.ts`: `?login=success` 로 막 진입한 로드에선 **health-wipe 1회 grace**. 세션 쿠키 propagation race 또는 Safari 가 redirect Set-Cookie 드롭한 순간 health 핑이 `session:false`→localStorage wipe→**"로그인 직후 자동 로그아웃"** 발생하던 것 차단(다음 로드/첫 API 401 에서 자연 정리).
+- **A3** `in-app-browser.ts`+`index.html`: `isIOS()` 에 iPadOS 13+ 데스크톱 UA(Macintosh+`maxTouchPoints>1`) 추가 — iPad 인앱 외부열기 경로 정상화.
+- **C1 (카톡 안드로이드 빈 화면)** `index.html` 인라인: Android intent 에 `S.browser_fallback_url` 누락 → Chrome 미설치(삼성인터넷 기본) 단말 빈 화면. `in-app-browser.ts`는 2026-06-17 에 고쳤지만 **인라인이 먼저 실행돼 공유 가드 키 선점→고친 버전 dead**였음. 인라인도 fallback 추가(형식 일치).
+- **C2** index.html 인라인 ↔ `in-app-browser.ts` SSOT 일치 + 교차참조 주석(가드 키 공유 계약 명시). **스코프(카톡=자동, 그외=배너) 변경 없음** — intent 형식만 통일.
+- **C3** `KakaoCallbackPage.tsx`: 토큰교환 `redirect_uri` 를 페이지 실제 경로(`/auth/kakao/callback`)와 일치(기존 `/sync/callback` 불일치=KOE006 지뢰). 주 흐름은 서버 `/sync/callback`이라 휴면 버그였지만 SPA 경로로 code 오면 실패하던 것 제거.
+- **봇/지역 오해 배제**: 카톡 인앱 UA(`KAKAOTALK`)는 SSR 봇경로(`BOT_UA_REGEX`=`KakaoTalk-Scrap`만)·`botProtection`(legit 통과) 영향 없음. 지역은 hostname 기반이라 사파리 무관 — 전수조사로 확인.
+
 ## ✅ 2026-06-19 — 어드민 제품별 플랫폼 마진 설정 UI: 미끼/마진 전략 (대표 "응 이렇게 정확하게 진행해줘")
 **요청**: 제조사가 등록한 상품을 검수할 때 **공급가·판매가·시중 최저가**를 보면서 **제품별로 우리 마진%를 정해 승인**(미끼상품=수익 하 / 마진상품=수익 상 — 항공권식 전략). 모든 가격 부가세 포함, 공급가 위에 우리 10%(조율 가능).
 - **모델 확정(불변)**: `distributor-pricing.resolveDistributorPrice` 가 이미 cost-plus(`유통사가 = round(공급가 × (1+마진%))`, 판매가 상한·공급가 하한) + 단일가(등급은 노출 큐레이션 전용). **가격/정산 엔진 무변경** — 어드민 마진 설정 컨트롤만 추가.
@@ -57,6 +116,12 @@
 - **수정(fail-safe)**: **세션이 죽었다는 확정 증거(`health.data.data.session === false`) 가 있을 때만 로그아웃.** 헬스 실패(catch)·확정 불가 시 → 세션 유지(이 API 자체 권한/일시 문제로 간주, reject만). 진짜 만료(session:false)는 그대로 로그아웃(정상). `parseSessionCookie` 가 'user' 쿠키 우선이라 멀티쿠키는 무관 확인.
 - **참고**: `auth-callback-bootstrap` 자가점검은 이미 fail-safe(명시 session===false + r.ok 일 때만 wipe). api.ts 핸들러만 결함이었음.
 - 검증: tsc 0 · `npm run build` exit 0. ⚠️ 실 로그인 모니터링 권장(Sentry breadcrumb `Buyer 401: session unconfirmed — keep` 추가로 추적 가능).
+## ✅ 2026-06-17 — 로그인/가입 입력 글자 흰색으로 안 보이던 문제 영구수정 (대표 신고 "왜 이런 문제, 영구적으로 이상적으로")
+**신고**: `/admin/login` 등에서 타이핑하는 글자가 흰색이라 안 보임. "로그인 쪽 모두 그런 것 같아."
+- **근본 원인**: 전역 CSS `.dark input:not([type=...])` (index.css:492, 특이도 **0,5,1**)가 OS/앱 다크모드(`html.dark`)에서 **모든** 입력 글자색을 gray-100(거의 흰색)으로 덮어씀. 페이지의 `text-gray-900` 유틸(특이도 0,1,0)은 특이도가 낮아 짐 → 흰 배경에 흰 글자. 대시보드는 `.admin/.seller-light-theme` 래퍼로 보호됐으나 ① **`.agency-light-theme` 는 CSS 규칙 자체가 누락**(에이전시 대시보드 잠복 동일버그) ② **로그인/가입/비번재설정 페이지는 레이아웃 밖 standalone 이라 래퍼 없음** → 무방비. (소비자 다크토글은 정상이고, 라이트 고정 표면만 영향.)
+- **영구 해결(이상적)**: ① index.css — 라이트 고정 컨테이너(`.{admin,seller,agency}-light-theme` + **범용 `.force-light-theme` 신설**) 안의 입력 글자/캐럿/autofill 을 `color:#16181b !important` + `-webkit-text-fill-color !important` 로 강제 → 전역 `.dark` 규칙을 **특이도/소스순서/브라우저(webkit·firefox) 무관** 확실히 이김. 순수 CSS 라 ThemeProvider MutationObserver(`<html>` class 복구)와도 무충돌. `.agency-light-theme` 규칙 추가(누락 메움). ② standalone 라이트 auth 페이지 **17곳** 루트 div 에 `force-light-theme` 클래스 추가 — 로그인 6(admin/seller/supplier/wholesale/agency/wholesale-staff) + 비번찾기·재설정 4(seller/agency) + 가입 6(seller/agency/supplier×register·business·supplier) + wholesale-join 1. (AdminPinSetup 은 AdminLayout 내부라 자동 보호 / JoinChoice·소비자 Login 은 의도적 다크라 제외.)
+- **재발방지**: 신규 standalone 라이트 페이지는 루트에 `force-light-theme` 추가하면 끝(주석 명시). CSS `!important` 가 어떤 다크 전역규칙도 이김 → 클래스만 있으면 영구 안전.
+- **검증**: tsc 0 · `npm run build`(client+ssr+worker) exit 0 · 대시보드 테마 검사(내 수정 파일 dark: 0, 기존 플래그 5건은 무관 파일). 17파일 force-light-theme 정확히 1회씩 루트에만 주입 확인.
 
 ## ✅ 2026-06-17 — 교환권 발송 실패 "이상적 해결": 자동 복구 + 끼임 surface (대표 "가장 이상적으로 해결해줘. 어떻게 해야 문제가 없는지")
 **배경**: 위 가시성 fix 후속 — 실패가 보이는 것에서 **문제 없게(자가치유)** 로. 기존엔 실패 시 알림(유저/Discord/dashboard)만 있고 **자동 재시도 0**(운영자가 매번 수동 '재발송' 클릭) + **'processing' 끼임 영구 잔존**(sendCoupon 직후 UPDATE 전 크래시) + 실패 사유 집계 없음.

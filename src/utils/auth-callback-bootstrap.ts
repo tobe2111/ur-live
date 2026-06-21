@@ -30,8 +30,15 @@ export function processAuthCallbackParams(): void {
     return
   }
 
+  // 🛡️ 2026-06-20 (A2): 방금 login=success 로 진입한 로드인지 — 이 로드에선 health-wipe 를 건너뛴다.
+  //   세션 쿠키가 막 발급돼 propagation race 가 있거나, Safari/ITP 가 redirect 의 Set-Cookie 를 드롭한
+  //   순간에 health 핑이 session:false 를 보고 localStorage 를 wipe → "로그인 직후 자동 로그아웃" 발생.
+  //   이 로드만 grace 부여(다음 로드/실제 API 401 에서 자연 정리).
+  let didFreshLogin = false
+
   // ── 카카오 로그인 성공 ──
   if (urlParams.get('login') === 'success' && urlParams.get('userId')) {
+    didFreshLogin = true
     // 🛡️ 2026-05-01: 새 사용자 로그인 시 이전 사용자 데이터 wipe — cross-user leak 차단.
     //   사용자 신고: "다른 사람 폰에서 내 계정 로그인했는데 그 사람 이름으로 됨".
     //
@@ -91,6 +98,16 @@ export function processAuthCallbackParams(): void {
       if (userEmail) localStorage.setItem('user_email', userEmail)
       if (profileImage) localStorage.setItem('user_profile_image', profileImage.replace(/^http:\/\//, 'https://'))
 
+      // 🛡️ 2026-06-20 (A 방식): 서버가 fragment(#st=)로 넘긴 단명(120초) 세션 티켓을 window 에 stash →
+      //   main.tsx bootApp 이 렌더 전 same-origin POST /api/auth/session/establish 로 교환해 httpOnly
+      //   ur_session 을 first-party 200 응답에서 발급(iOS 영속). **토큰을 localStorage 에 두지 않음**.
+      //   아래 URL 정리에서 hash(#st) 제거됨(서버/Referer 로도 안 나감).
+      try {
+        const h = window.location.hash || ''
+        const m = h.match(/[#&]st=([^&]+)/)
+        if (m && m[1]) (window as unknown as { __urEstablishTicket?: string }).__urEstablishTicket = decodeURIComponent(m[1])
+      } catch { /* ignore */ }
+
       // 🛡️ 2026-05-01: 로그인 직후 어떤 카카오 계정으로 로그인됐는지 명확히 표시.
       //   사용자 신고: "다른 사람 폰에서 로그인했더니 그 사람 이름으로 됨".
       //   sessionStorage 에 이름 저장 → React mount 후 toast 가 읽어서 표시.
@@ -99,58 +116,31 @@ export function processAuthCallbackParams(): void {
       }
     } catch { /* localStorage blocked (incognito etc.) — ignore */ }
 
-    // linked seller/agency token transfer (cookie → localStorage).
-    //   wipe 후 새로 받은 cookie 만 적용. 이전 사용자가 seller 였더라도 새 사용자에 영향 없음.
+    // 🛡️ 2026-06-20 (iOS 대시보드 로그인 — A 방식 자매수정): 링크 역할 토큰(seller/agency/유통사 등)을
+    //   transfer 쿠키(cross-site 302 set → iOS WebKit 미영속)가 아니라 **fragment(#auth=)** 로 받아
+    //   localStorage 로 이전. fragment 는 모든 브라우저(특히 iOS)에서 생존 → 대시보드 로그인 iOS-safe.
+    //   - 허용목록(seller_*/agency_*/supplier_* 네임스페이스 + 명시 키)만 적용 → **미래 역할도 같은
+    //     네임스페이스면 클라 변경 없이 자동 동작**(서버 pendingLs 맵에 한 줄 추가만). SSOT: worker/utils/pending-auth.ts.
+    //   - 토큰 값은 서명 JWT → 서버가 검증. fragment(envelope)는 비신뢰지만 위변조해도 가짜 토큰 통과 불가.
+    //   - 아래 URL 정리(replaceState pathname+search)에서 hash(#st/#auth) 제거됨(서버/Referer 미전송).
     try {
-      const readCookie = (name: string): string | null => {
-        const match = new RegExp(`(?:^|;\\s*)${name}=([^;]+)`).exec(document.cookie)
-        return match ? decodeURIComponent(match[1]) : null
-      }
-      const clearCookie = (name: string) => {
-        document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax; Secure`
-      }
-      const sellerToken = readCookie('ur_pending_seller_token')
-      if (sellerToken) {
-        localStorage.setItem('seller_token', sellerToken)
-        // 🛡️ 2026-06-19 (#4·#5 근본수정): 토큰 페이로드의 is_distributor → localStorage (도매 가드용).
-        //   리다이렉트(transfer-cookie) 경로도 JSON 콜백 경로와 대칭 — 없으면 카카오 유통사가 상품페이지
-        //   게스트 UI + 충전→deposits 튕김. 토큰은 서버 서명이라 클레임 읽기는 안전.
-        try {
-          const claim = JSON.parse(atob(sellerToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
-          if (claim?.is_distributor) localStorage.setItem('is_distributor', '1')
-        } catch { /* 토큰 파싱 실패 — 무시 */ }
-        const sellerInfoRaw = readCookie('ur_pending_seller_info')
-        if (sellerInfoRaw) {
-          try {
-            const info = JSON.parse(sellerInfoRaw)
-            if (info.id) localStorage.setItem('seller_id', String(info.id))
-            if (info.business_name) localStorage.setItem('seller_name', info.business_name)
-          } catch { /* ignore */ }
+      const h = window.location.hash || ''
+      const m = h.match(/[#&]auth=([^&]+)/)
+      if (m && m[1]) {
+        const b64 = decodeURIComponent(m[1]).replace(/-/g, '+').replace(/_/g, '/')
+        const padded = b64.padEnd(b64.length + (4 - (b64.length % 4)) % 4, '=')
+        const bin = atob(padded)
+        const bytes = new Uint8Array(bin.length)
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+        const obj = JSON.parse(new TextDecoder().decode(bytes)) as Record<string, unknown>
+        const ALLOW = /^(seller_|agency_|supplier_|is_distributor$|user_handle$|linked_seller_username$)/
+        for (const [k, v] of Object.entries(obj)) {
+          if (typeof v === 'string' && ALLOW.test(k)) {
+            try { localStorage.setItem(k, v) } catch { /* quota */ }
+          }
         }
-        clearCookie('ur_pending_seller_token')
-        clearCookie('ur_pending_seller_info')
       }
-      const agencyToken = readCookie('ur_pending_agency_token')
-      if (agencyToken) {
-        localStorage.setItem('agency_token', agencyToken)
-        // 🏁 2026-06-13: refresh token transfer → localStorage (자동 로그아웃 방지)
-        const agencyRefresh = readCookie('ur_pending_agency_refresh_token')
-        if (agencyRefresh) {
-          localStorage.setItem('agency_refresh_token', agencyRefresh)
-          clearCookie('ur_pending_agency_refresh_token')
-        }
-        const agencyInfoRaw = readCookie('ur_pending_agency_info')
-        if (agencyInfoRaw) {
-          try {
-            const info = JSON.parse(agencyInfoRaw)
-            if (info.id) localStorage.setItem('agency_id', String(info.id))
-            if (info.name) localStorage.setItem('agency_name', info.name)
-          } catch { /* ignore */ }
-        }
-        clearCookie('ur_pending_agency_token')
-        clearCookie('ur_pending_agency_info')
-      }
-    } catch { /* ignore */ }
+    } catch { /* fragment 파싱 실패 — 무시(로그인 자체엔 영향 없음) */ }
 
     // URL 정리 — 인증용 파라미터만 제거.
     //   new=1 (onboarding), restorable=1 (Option B 복원), originalName, userName 유지
@@ -171,12 +161,21 @@ export function processAuthCallbackParams(): void {
   //
   //   호출 X 인 경우: localStorage 인증 흔적 자체가 없을 때 (이미 비로그인).
   try {
+    // 🛡️ 2026-06-20 (A2): 방금 로그인한 로드면 health-wipe 스킵 — 쿠키 propagation race / Safari 드롭
+    //   순간의 오탐 로그아웃 방지. 세션이 실제로 없으면 다음 로드나 첫 API 401 에서 정리된다.
+    if (didFreshLogin) return
     const userType = localStorage.getItem('user_type')
     const userId = localStorage.getItem('user_id')
     if (userType === 'user' && userId) {
       // 백그라운드 ping (await X) — 실패 시 localStorage 정리.
       // login=success URL 거쳐온 경우엔 방금 발급된 쿠키라 healthy 정상 응답.
-      void fetch('/api/auth/session/health', { credentials: 'include' })
+      // 🛡️ 2026-06-20 (iOS 로그인 안정화): user_token Bearer 동봉 — iOS WebKit 가 세션 쿠키를
+      //   유실해도 Bearer 로 session:true 판정 → 부당한 자동 wipe 방지. (health 가 Bearer 도 인정)
+      const userToken = localStorage.getItem('user_token')
+      void fetch('/api/auth/session/health', {
+        credentials: 'include',
+        headers: userToken ? { Authorization: `Bearer ${userToken}` } : undefined,
+      })
         .then(async (r) => {
           if (!r.ok) return
           const body = await r.json().catch(() => null) as { data?: { session?: boolean } } | null
@@ -189,6 +188,8 @@ export function processAuthCallbackParams(): void {
               localStorage.removeItem('user_email')
               localStorage.removeItem('user_profile_image')
               localStorage.removeItem('session_login')
+              localStorage.removeItem('user_token')
+              localStorage.removeItem('user_refresh_token')
             } catch { /* ignore */ }
           }
         })

@@ -76,7 +76,7 @@ export default function MyCommissionsPage() {
 
       <main className="ur-content-narrow px-4 lg:px-8 pb-20 pt-4">
         {/* 잔액 카드 */}
-        <div className="rounded-3xl p-6 bg-gradient-to-br from-blue-600 to-indigo-700 text-white mb-4">
+        <div className="rounded-3xl p-6 bg-gradient-to-br from-gray-900 to-gray-900 text-white mb-4">
           <p className="text-[12px] opacity-80">출금 가능 commission</p>
           <p className="text-[36px] font-extrabold leading-tight mt-1">{formatWon(summary.total_granted)}</p>
           <div className="flex items-center gap-4 mt-3 text-[11px] opacity-80">

@@ -57,8 +57,8 @@ export function TeamPointsBadge({ streamId, donationGoal }: TeamPointsBadgeProps
         <div
           className={`h-full rounded-full transition-all duration-500 ${
             achieved
-              ? 'bg-gradient-to-r from-yellow-400 to-orange-400'
-              : 'bg-gradient-to-r from-pink-400 to-red-500'
+              ? 'bg-gradient-to-r from-gray-700 to-gray-700'
+              : 'bg-gradient-to-r from-gray-700 to-gray-800'
           }`}
           style={{ width: `${progress}%` }}
         />

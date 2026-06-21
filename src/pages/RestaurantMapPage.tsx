@@ -10,13 +10,11 @@ import { storage } from '@/shared/utils/storage'
 // 🛡️ 2026-05-02: TD-018 추가 분할 — types/utils/HeroCarousel 추출.
 // 🛡️ 2026-05-05: TD-006 추가 분할 — RestaurantList / SelectedPeekCard / SelectedDetailCard 추출.
 // 🛡️ 2026-05-06: TD-006 추가 분할 — MapSearchHeader / SheetFilterBar 추출.
-import { CATEGORIES, REGIONS } from './restaurant-map/constants'
-import FilterSheet from './restaurant-map/FilterSheet'
+import { REGIONS } from './restaurant-map/constants'
+import FilterSheet, { type PriceRange } from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
 import HeroCarousel from './restaurant-map/HeroCarousel'
 import RestaurantList from './restaurant-map/RestaurantList'
-import SelectedPeekCard from './restaurant-map/SelectedPeekCard'
-import SelectedDetailCard from './restaurant-map/SelectedDetailCard'
 import MapSearchHeader from './restaurant-map/MapSearchHeader'
 import SheetFilterBar from './restaurant-map/SheetFilterBar'
 import { useKakaoMap } from './restaurant-map/useKakaoMap'
@@ -29,7 +27,7 @@ export type { KakaoPlace }
 
 // Window.kakao is declared in KakaoCallbackPage.tsx or similar global declaration
 
-export default function RestaurantMapPage() {
+export default function RestaurantMapPage({ home = false }: { home?: boolean } = {}) {
   const { t } = useTranslation()
   const [selected, setSelected] = useState<Restaurant | null>(null)
   const [region, setRegion] = useState('')
@@ -37,12 +35,52 @@ export default function RestaurantMapPage() {
   const [mapView, setMapView] = useState(true)
   // 🛡️ 2026-04-28: Recommended Pack — 거리/카테고리/정렬
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
-  const [category, setCategory] = useState<string>('')
   // 🛡️ 2026-04-28: 공구권 카테고리 (식사/뷰티/헬스) — meal_voucher 인프라 재활용
   const [voucherType, setVoucherType] = useState<'all' | 'meal_voucher' | 'beauty_voucher' | 'health_voucher' | 'pet_voucher' | 'stay_voucher' | 'activity_voucher'>('all')
   // 🛡️ 2026-06-01 Tier2: products fetch 만 React Query(카테고리별 캐시). live-poller 는 유지.
   const { data: restaurants = [], isLoading: loading } = useMapProducts(voucherType === 'all' ? 'all' : voucherType)
+  // 🗺️ 2026-06-20 (대표 — 상품 클릭 시 위치 이동/핀 표시 안 됨): 좌표 없는 딜(주소만 있음)을 클라이언트에서
+  //   주소→좌표 지오코딩(/api/kakao/place/address)으로 보강. 서버 cron(restaurant-geocode)이 채우기 전/
+  //   누락분도 즉시 지도 핀 + 클릭 이동 가능. sessionStorage 캐시 + 딜당 1회 시도 + 최대 12개(레이트리밋 보호).
+  const [geoCache, setGeoCache] = useState<Record<number, { lat: number; lng: number }>>(() => {
+    try { return JSON.parse(sessionStorage.getItem('ur_geocache_v1') || '{}') } catch { return {} }
+  })
+  const geoAttempted = useRef<Set<number>>(new Set())
+  useEffect(() => {
+    const missing = restaurants.filter(r => !r.restaurant_lat && r.restaurant_address && !geoAttempted.current.has(r.id)).slice(0, 12)
+    if (missing.length === 0) return
+    missing.forEach(r => geoAttempted.current.add(r.id))
+    let cancelled = false
+    ;(async () => {
+      const next: Record<number, { lat: number; lng: number }> = {}
+      for (const r of missing) {
+        try {
+          const res = await api.get('/api/kakao/place/address', { params: { query: r.restaurant_address } })
+          const d = res.data?.data?.documents?.[0]
+          const lat = Number(d?.y), lng = Number(d?.x)
+          if (Number.isFinite(lat) && Number.isFinite(lng)) next[r.id] = { lat, lng }
+        } catch { /* skip */ }
+      }
+      if (!cancelled && Object.keys(next).length > 0) {
+        setGeoCache(prev => {
+          const merged = { ...prev, ...next }
+          try { sessionStorage.setItem('ur_geocache_v1', JSON.stringify(merged)) } catch { /* ignore */ }
+          return merged
+        })
+      }
+    })()
+    return () => { cancelled = true }
+  }, [restaurants])
+  const enrichedRestaurants = useMemo(
+    () => restaurants.map(r => (!r.restaurant_lat && geoCache[r.id])
+      ? { ...r, restaurant_lat: geoCache[r.id].lat, restaurant_lng: geoCache[r.id].lng }
+      : r),
+    [restaurants, geoCache]
+  )
   const [sortBy, setSortBy] = useState<SortBy>('discount')
+  // 🛍️ 2026-06-20 (필터 팝업 A안): 거리반경(km, 0=전체) + 가격대.
+  const [radiusKm, setRadiusKm] = useState<number>(0)
+  const [priceRange, setPriceRange] = useState<PriceRange>('all')
   // 옵션 B: 카카오 일반 맛집 + 클릭 시 수요 신호 모달
   const [kakaoPlaces, setKakaoPlaces] = useState<KakaoPlace[]>([])
   const [suggestionFor, setSuggestionFor] = useState<KakaoPlace | null>(null)
@@ -52,8 +90,10 @@ export default function RestaurantMapPage() {
   const [liveSellerIds, setLiveSellerIds] = useState<Set<number>>(new Set())
   // 🛡️ 2026-04-30: UX 개선 — 필터 시트 (지역 + 카테고리 통합)
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
-  const activeFilterCount = (region ? 1 : 0) + (category ? 1 : 0)
-  const [sheetSnap, setSheetSnap] = useState<'peek' | 'mid' | 'full'>('mid')
+  const activeFilterCount = (region ? 1 : 0) + (radiusKm > 0 ? 1 : 0) + (priceRange !== 'all' ? 1 : 0)
+  // 🗺️ 2026-06-20 (대표 — 홈=지도 / "상품 1개일 때 공백 남음"): 기본 snap 을 peek 으로 → 지도 우선 +
+  //   콘텐츠 적을 때 큰 흰 공백 제거(컴팩트). 더 보려면 시트를 위로 드래그(mid/full).
+  const [sheetSnap, setSheetSnap] = useState<'peek' | 'mid' | 'full'>('peek')
   // 🛡️ 2026-04-30 Phase 5: '내 주변' 모드 (GPS 권한 요청 + 거리순 자동)
   const [nearMeMode, setNearMeMode] = useState(false)
   // 🛡️ 2026-04-30 Phase 5: 검색 히스토리 (localStorage)
@@ -171,23 +211,25 @@ export default function RestaurantMapPage() {
     )
   }, [])
 
-  // 🛡️ 2026-04-28: 옵션 B — 사용자 위치 기반 카카오 일반 맛집 자동 로드.
-  //  식사권 적은 단계에 빈 지도 문제 해결 + 수요 신호 (영입 신청) 수집.
-  //  핀 색상으로 구분 — 식사권 (분홍) / 일반 (회색).
+  // 🛡️ 2026-06-20 (대표 — "미리 업체들 나오는거 별로"): 옵션B 카카오 일반 업체(회색 '+' 추천핀)를
+  //   기본 지도에 자동으로 깔던 것 제거 → 기본 화면엔 '실제 딜'만. 사용자가 직접 검색했을 때만 표시
+  //   (수요신호/추천 보내기 기능은 검색 결과에서 유지). 빈 검색이면 회색핀 0.
   useEffect(() => {
     if (!userLoc || !kr) return
-    const cat = CATEGORIES.find(c => c.key === category)
-    const url = cat && cat.keywords.length > 0
-      ? `/api/kakao/place/search?query=${encodeURIComponent(cat.keywords[0] + ' 맛집')}&category_group_code=FD6&size=15`
-      : `/api/kakao/place/nearby?lat=${userLoc.lat}&lng=${userLoc.lng}&radius=1500&category=FD6&size=15`
-    api.get(url)
-      .then(r => {
-        if (r.data?.success && r.data.data?.documents) {
-          setKakaoPlaces(r.data.data.documents.slice(0, 15))
-        }
-      })
-      .catch(() => { /* silent */ })
-  }, [userLoc, kr, category])
+    const q = search.trim()
+    if (!q) { setKakaoPlaces([]); return }
+    // 🛡️ 2026-06-20 (대표 — 검색 최적화): 타이핑마다 카카오 프록시 호출하던 것 → 300ms 디바운스(레이트리밋 보호).
+    const handle = setTimeout(() => {
+      api.get(`/api/kakao/place/search?query=${encodeURIComponent(q)}&category_group_code=FD6&size=15`)
+        .then(r => {
+          if (r.data?.success && r.data.data?.documents) {
+            setKakaoPlaces(r.data.data.documents.slice(0, 15))
+          }
+        })
+        .catch(() => { /* silent */ })
+    }, 300)
+    return () => clearTimeout(handle)
+  }, [userLoc, kr, search])
 
   // 🛡️ 2026-05-19: 클라이언트 geocoding loop 제거.
   //   이전: 사용자 1명당 카카오 API ~10 호출 (페이지 진입 시마다).
@@ -197,20 +239,24 @@ export default function RestaurantMapPage() {
 
 
   const filtered = useMemo(() => {
-    let items = restaurants.filter(r => {
+    let items = enrichedRestaurants.filter(r => {
       if (showFavoritesOnly && !favorites.includes(r.id)) return false
       if (region && !r.restaurant_address?.includes(region)) return false
       if (search) {
         const q = search.toLowerCase()
         if (!(r.restaurant_name?.toLowerCase().includes(q) || r.name?.toLowerCase().includes(q) || r.restaurant_address?.toLowerCase().includes(q))) return false
       }
-      // 카테고리 필터: name/category/address 에 키워드 포함 여부
-      if (category) {
-        const cat = CATEGORIES.find(c => c.key === category)
-        if (cat && cat.keywords.length > 0) {
-          const haystack = `${r.name || ''} ${r.category || ''} ${r.restaurant_name || ''}`.toLowerCase()
-          if (!cat.keywords.some(kw => haystack.includes(kw.toLowerCase()))) return false
-        }
+      // 🛍️ 2026-06-20: cuisine(한식/일식) 카테고리 필터 제거 — 동네딜 카테고리는 voucherType(상단 칩)이 담당.
+      // 🛍️ 2026-06-20 (필터 팝업 A안): 거리반경 + 가격대 필터.
+      if (radiusKm > 0 && userLoc) {
+        if (!r.restaurant_lat || !r.restaurant_lng) return false
+        if (distanceKm(userLoc.lat, userLoc.lng, r.restaurant_lat, r.restaurant_lng) > radiusKm) return false
+      }
+      if (priceRange !== 'all') {
+        const p = r.price || 0
+        if (priceRange === 'under10' && p >= 10000) return false
+        if (priceRange === '10to30' && (p < 10000 || p >= 30000)) return false
+        if (priceRange === 'over30' && p < 30000) return false
       }
       return true
     })
@@ -232,7 +278,7 @@ export default function RestaurantMapPage() {
       return 0
     })
     return items
-  }, [restaurants, region, search, category, sortBy, userLoc, showFavoritesOnly, favorites])
+  }, [enrichedRestaurants, region, search, sortBy, radiusKm, priceRange, userLoc, showFavoritesOnly, favorites])
 
   // 🛡️ 2026-04-30 Phase 3: hero carousel — 인기 (할인율 높은 순) 상위 5개
   const heroDeals = useMemo(() => {
@@ -324,6 +370,8 @@ export default function RestaurantMapPage() {
       mapInstance.current.setLevel(4)
     }
     setMapView(true)
+    // 🗺️ 2026-06-20 (대표 — 상품 클릭 시 그 위치로 지도 이동): 시트를 peek 으로 내려 이동한 지도가 보이게.
+    setSheetSnap('peek')
   }
 
   // 🛡️ 2026-04-30 v3 bottom-sheet: 시트 snap 별 transform 값
@@ -335,14 +383,16 @@ export default function RestaurantMapPage() {
   // 🛡️ 2026-05-04 (iOS Safari fix): 100vh → 100dvh. iOS 주소창 토글 시 viewport 점프 회피.
   // 🛡️ 2026-05-17 (PC wheel zoom 영역 확보): 데스크톱에서 lg+ 클래스로 더 작게 — wheel zoom 영역 확보.
   const sheetTopByState: Record<typeof sheetSnap, string> = {
-    peek: 'calc(100dvh - 28dvh)',
+    // 🗺️ 2026-06-20 (대표 — "카드 하나 정도만 보일 정도로"): peek 을 고정 px(핸들+필터+카드1개 ≈ 250px)로 →
+    //   화면 크기 무관 '딱 1카드' 컴팩트(빈 공백 없음). 위로 드래그하면 mid/full 로 확장.
+    peek: 'calc(100dvh - 250px)',
     mid: 'calc(100dvh - 60dvh)',
     full: 'calc(100dvh - 92dvh)',
   }
   // 🛡️ 2026-05-17: PC (lg+) 에서는 sheet 더 작게 (peek 16dvh, mid 40dvh, full 80dvh)
   //   → 지도 영역 60~84% 확보 → wheel zoom UX 정상.
   const sheetTopByStateLg: Record<typeof sheetSnap, string> = {
-    peek: 'calc(100dvh - 16dvh)',
+    peek: 'calc(100dvh - 250px)',
     mid: 'calc(100dvh - 40dvh)',
     full: 'calc(100dvh - 80dvh)',
   }
@@ -359,7 +409,11 @@ export default function RestaurantMapPage() {
 
   return (
     <div className="relative h-screen w-full bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden pb-16">
-      <SEO title={t('restaurantMap.seoTitle', { defaultValue: '맛집 지도' })} description={t('restaurantMap.seoDesc', { defaultValue: '유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인' })} url="/restaurant-map" />
+      <SEO
+        title={home ? t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜 지도' }) : t('restaurantMap.seoTitle', { defaultValue: '맛집 지도' })}
+        description={home ? t('seo.home.description', { defaultValue: '내 주변 동네딜을 지도에서 한눈에. 식사·숙소·뷰티 공구권을 가까운 순으로.' }) : t('restaurantMap.seoDesc', { defaultValue: '유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인' })}
+        url={home ? '/' : '/restaurant-map'}
+      />
 
       {/* ═══ 풀스크린 카카오맵 (배경) ═══
           🛡️ 2026-04-30 CLS: mapRef 컨테이너 항상 렌더 → SDK load 시 placeholder
@@ -393,16 +447,12 @@ export default function RestaurantMapPage() {
         searchHistory={searchHistory}
         setSearchHistory={setSearchHistory}
         pushSearchHistory={pushSearchHistory}
+        home={home}
       />
 
-      {/* ═══ 선택된 맛집 카드 (지도 위 floating, sheet peek 일 때만 표시) ═══ */}
-      {selected && sheetSnap === 'peek' && (
-        <SelectedPeekCard
-          selected={selected}
-          liveSellerIds={liveSellerIds}
-          onClose={() => setSelected(null)}
-        />
-      )}
+      {/* 🗺️ 2026-06-20 (대표 — "클릭하면 2개 나오는거 별로"): 선택 시 떠 있던 SelectedPeekCard/SelectedDetailCard
+          floating 중복 카드 제거. 상품 클릭 = 지도 이동(selectAndPan panTo) + 리스트/핀 하이라이트로 일원화.
+          구매 CTA 는 리스트 카드(RestaurantList)의 '구매' 버튼이 담당. */}
 
       {/* ═══ Bottom Sheet (드래그 가능, 3-snap) ═══
           🛡️ 2026-04-30 v2: 실시간 드래그 팔로잉 — translateY 로 손가락 따라가기.
@@ -456,18 +506,6 @@ export default function RestaurantMapPage() {
 
         {/* ═══ 시트 안 스크롤 가능한 결과 리스트 ═══ */}
         <div className="flex-1 overflow-y-auto px-3 pt-3 pb-24" style={{ overscrollBehavior: 'contain' }}>
-          {selected && (
-            /* 선택된 맛집 디테일 카드 (sheet mid/full 일 때 list 위에 표시) */
-            <SelectedDetailCard
-              selected={selected}
-              userLoc={userLoc}
-              liveSellerIds={liveSellerIds}
-              favorites={favorites}
-              onClose={() => setSelected(null)}
-              onToggleFavorite={toggleFavorite}
-            />
-          )}
-
           {/* 🛡️ 2026-04-30 Phase 3: hero carousel — 할인율 TOP5 (선택 카드 없을 때만) */}
           {!loading && !selected && (
             <HeroCarousel
@@ -496,14 +534,19 @@ export default function RestaurantMapPage() {
         />
       )}
 
-      {/* 🛡️ 2026-04-30: 필터 시트 — 지역 + 카테고리 (한 화면) */}
+      {/* 🛍️ 2026-06-20 필터 시트 A안 — 지역 + 정렬 + 거리반경 + 가격대 */}
       {filterSheetOpen && (
         <FilterSheet
           region={region}
-          category={category}
-          onApply={(r, c) => {
+          sortBy={sortBy}
+          radiusKm={radiusKm}
+          priceRange={priceRange}
+          hasUserLoc={!!userLoc}
+          onApply={(r, sort, radius, price) => {
             setRegion(r)
-            setCategory(c)
+            setSortBy(sort)
+            setRadiusKm(radius)
+            setPriceRange(price)
             setMapView(true)
             const target = REGIONS.find(x => x.key === r) || REGIONS[0]
             if (mapInstance.current && window.kakao?.maps) {

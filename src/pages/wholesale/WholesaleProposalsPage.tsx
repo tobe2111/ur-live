@@ -9,12 +9,14 @@ import SEO from '@/components/SEO'
 import { WT } from './wholesale-theme'
 import { WholesaleProposalForm } from './WholesaleProposalModal'
 import WholesaleFooter from './WholesaleFooter'
+import { useWholesaleBack } from '@/hooks/useWholesaleBack'
 
 const hasSellerToken = () => typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
 
 export default function WholesaleProposalsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const goBack = useWholesaleBack()
   const loggedIn = hasSellerToken()
 
   return (
@@ -27,7 +29,7 @@ export default function WholesaleProposalsPage() {
       />
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-narrow px-5 lg:px-8 h-14 flex items-center gap-3">
-          <button onClick={() => navigate('/wholesale')} aria-label={t('common.back', { defaultValue: '뒤로' })} className="p-1 -ml-1" style={{ color: WT.ink2 }}>
+          <button onClick={goBack} aria-label={t('common.back', { defaultValue: '뒤로' })} className="p-1 -ml-1" style={{ color: WT.ink2 }}>
             <ChevronLeft className="w-5 h-5" />
           </button>
           <h1 className="text-[16px] font-extrabold" style={{ color: WT.ink }}>

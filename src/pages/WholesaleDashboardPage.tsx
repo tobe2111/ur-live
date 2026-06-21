@@ -2,41 +2,71 @@
 // 🏭 2026-06-04 유통사 대시보드 허브 (사용자 요청 — 제조사 대시보드와 대칭)
 //   매입현황 · 진행중 주문 · 누적 매입 · 등급 · 빠른 진입(카탈로그/주문/거래/자료/OEM) 한 화면.
 //   서버 신규 엔드포인트 없이 기존 /me + /orders 재사용(클라 집계). WT 라이트 고정 B2B 서피스.
+// 🏭 2026-06-20 탭 기반 통합 — 서브페이지(예치금/주문/거래/자료/견적/OEM/직원)를 별도 라우트 대신
+//   대시보드 셸 안에서 콘텐츠만 교체(?tab=). 제조사 대시보드(SupplierDashboardPage) 와 동일 패턴.
+//   각 서브페이지는 embedded prop 으로 외곽 래퍼 생략. lazy + Suspense 로 번들 분리.
 // ──────────────────────────────────────────────────────────────
-import { useEffect, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useEffect, useState, lazy, Suspense } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ShoppingBag, ClipboardList, Receipt, FileText, Factory, Wallet,
   TrendingUp, Box, ChevronRight, LogOut, ShoppingCart, Sparkles, Store,
+  LayoutDashboard, Users, Loader2,
 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { WT, won, comma, GRADE_LABEL, wholesaleOrderStatusBadge } from './wholesale/wholesale-theme'
 import { useWholesaleMe, useWholesaleOrders, useWholesaleDeposit, type WholesaleOrderRow } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
-import { buildWholesaleNav } from './wholesale/wholesale-nav'
+import type { WholesaleNavItem } from '@/components/wholesale/WholesaleDashboardShell'
 import { getSupplierToken } from '@/lib/supplier-api'
 import { clearAuthData } from '@/utils/auth'
 import WholesaleDashboardShell from '@/components/wholesale/WholesaleDashboardShell'
 import PlusMembershipCard from '@/components/wholesale/PlusMembershipCard'
+
+// 서브페이지(탭 콘텐츠) — lazy 로 분리, 탭 열 때만 chunk fetch. embedded 모드로 본문만 렌더.
+const WholesaleDepositPage = lazy(() => import('./WholesaleDepositPage'))
+const WholesaleOrdersPage = lazy(() => import('./WholesaleOrdersPage'))
+const WholesaleStatementPage = lazy(() => import('./WholesaleStatementPage'))
+const WholesaleDocsPage = lazy(() => import('./WholesaleDocsPage'))
+const WholesaleQuotesPage = lazy(() => import('./wholesale/WholesaleQuotesPage'))
+const WholesaleOemPage = lazy(() => import('./WholesaleOemPage'))
+const WholesaleStaffPage = lazy(() => import('./wholesale/WholesaleStaffPage'))
 
 // 🏭 2026-06-12 (감사 부채): 주문 상태 뱃지 → wholesale-theme.ts SSOT 로 통합.
 //   기존 자체 정의(5종)는 주문내역 페이지와 라벨이 달랐음('배송준비' vs '결제완료').
 
 const PAID_STATUSES = ['PAID', 'SHIPPED']
 
+// 탭 정의 — 라벨/아이콘. staff 는 canManageStaff 일 때만 추가.
+const TAB_META: { key: string; label: string; icon: typeof Wallet }[] = [
+  { key: 'overview', label: '대시보드', icon: LayoutDashboard },
+  { key: 'deposits', label: '예치금', icon: Wallet },
+  { key: 'orders', label: '주문내역', icon: ClipboardList },
+  { key: 'statement', label: '거래내역', icon: Receipt },
+  { key: 'documents', label: '자료', icon: FileText },
+  { key: 'quotes', label: '견적', icon: ClipboardList },
+  { key: 'oem', label: 'OEM/ODM', icon: Factory },
+]
+const STAFF_TAB = { key: 'staff', label: '직원 계정', icon: Users }
+
+const TabFallback = () => (
+  <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin" style={{ color: WT.ink4 }} /></div>
+)
+
 export default function WholesaleDashboardPage() {
   const navigate = useNavigate()
-  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = searchParams.get('tab') || 'overview'
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const supplierToken = typeof window !== 'undefined' ? getSupplierToken() : null
-  const isDistributor = typeof window !== 'undefined' && localStorage.getItem('is_distributor') === '1'
 
-  // 🏭 2026-06-08: 유통사(seller_token + is_distributor) 전용 — 역할 엄격화(제조사 가드와 대칭).
-  //   미로그인 → 유통사 로그인. 셀러지만 유통사 아님 → 카탈로그(유통사 전환 CTA).
+  // 🛡️ 2026-06-19 (대표 신고 — '대시보드' 버튼 눌러도 무반응): is_distributor localStorage 가드 제거.
+  //   카탈로그 헤더의 대시보드 버튼은 seller_token 기준으로 노출되는데(WholesaleCatalogPage:277 loggedIn=!!token)
+  //   대시보드 페이지만 is_distributor 를 요구해, 카카오 로그인(플래그 미설정) 시 /wholesale 로 silent 튕김(무반응).
+  //   token 기준으로 일치 — 실제 데이터/권한은 서버(useWholesaleMe 등)가 검증. (deposits/staff 와 동일 정합)
   useEffect(() => {
     if (!token) { navigate('/wholesale/login', { replace: true }); return }
-    if (!isDistributor) { navigate('/wholesale', { replace: true }); return }
-  }, [token, isDistributor, navigate])
+  }, [token, navigate])
 
   const meQ = useWholesaleMe()
   const ordersQ = useWholesaleOrders()
@@ -68,9 +98,19 @@ export default function WholesaleDashboardPage() {
   const company = localStorage.getItem('seller_name') || '유통사'
   const depositBalance = Number(depositQ.data?.balance) || 0
 
-  // 🏭 2026-06-08: 유통사 섹션은 별도 라우트 → 사이드바 nav 가 navigate. 대시보드 항목이 활성.
-  // 🏦 2026-06-09: 예치금 항목 포함(공유 nav 단일 출처).
-  const navItems = buildWholesaleNav(location.pathname, navigate, canManageStaff)
+  // 탭 전환 — ?tab= 만 갱신(셸/사이드바 고정, 콘텐츠만 교체).
+  const goTab = (key: string) => setSearchParams({ tab: key })
+
+  // 🏭 2026-06-20: 사이드바 nav 직접 구성 — route-navigate 대신 setSearchParams(탭 전환). 카탈로그 항목 제거.
+  const tabDefs = canManageStaff ? [...TAB_META, STAFF_TAB] : TAB_META
+  const navItems: WholesaleNavItem[] = tabDefs.map(({ key, label, icon }) => ({
+    key,
+    label,
+    icon,
+    active: tab === key,
+    onClick: () => goTab(key),
+  }))
+  const activeTabLabel = tabDefs.find((tb) => tb.key === tab)?.label ?? '유통사 대시보드'
 
   const logout = () => {
     clearAuthData('seller')
@@ -121,28 +161,20 @@ export default function WholesaleDashboardPage() {
     { label: '누적 매입액', value: won(totalSpend), icon: Wallet, accent: WT.pos, sub: `${comma(paidOrders.length)}건 완료` },
   ]
 
-  const actions = [
-    { label: '예치금 충전', desc: '선불 충전 후 주문 결제', icon: Wallet, to: '/wholesale/deposits', primary: true },
+  // 빠른 메뉴 — 도매몰 내부 탭 전환(tab) 또는 외부 라우트(to).
+  const actions: { label: string; desc: string; icon: typeof Wallet; tab?: string; to?: string; primary?: boolean }[] = [
+    { label: '예치금 충전', desc: '선불 충전 후 주문 결제', icon: Wallet, tab: 'deposits', primary: true },
     { label: '카탈로그 둘러보기', desc: '내 등급 공급가로 사입', icon: ShoppingBag, to: '/wholesale' },
-    { label: '주문내역', desc: '주문·배송 추적', icon: ClipboardList, to: '/wholesale/orders' },
-    { label: '거래내역', desc: '매입 거래명세', icon: Receipt, to: '/wholesale/statement' },
-    { label: '자료', desc: '거래명세서·세금계산서', icon: FileText, to: '/wholesale/documents' },
-    { label: 'OEM/ODM', desc: '제조 의뢰', icon: Factory, to: '/wholesale/oem' },
+    { label: '주문내역', desc: '주문·배송 추적', icon: ClipboardList, tab: 'orders' },
+    { label: '거래내역', desc: '매입 거래명세', icon: Receipt, tab: 'statement' },
+    { label: '자료', desc: '거래명세서·세금계산서', icon: FileText, tab: 'documents' },
+    { label: 'OEM/ODM', desc: '제조 의뢰', icon: Factory, tab: 'oem' },
     // 🛒 2026-06-16 무재고 위탁판매 허브 — 스마트스토어/쿠팡 연동 통합(채널 연동).
     { label: '판매채널 연동', desc: '사입 상품을 내 스토어로', icon: Store, to: '/wholesale/channels' },
   ]
 
-  return (
-    <WholesaleDashboardShell
-      brand="유통사 센터"
-      roleIcon={Store}
-      brandSubtitle={company}
-      navItems={navItems}
-      title="유통사 대시보드"
-      headerRight={headerRight}
-    >
-      <SEO title="유통사 대시보드 - 유통스타트 도매몰" description="매입 현황과 주문·거래·자료를 한 화면에서 관리하세요." url="/wholesale/dashboard" noindex />
-
+  // 대시보드 홈(overview) 콘텐츠 — 기존 JSX 그대로(빠른 메뉴 onClick 만 탭 전환으로).
+  const overview = (
       <div className="space-y-5">
         {/* 인사 + 등급 칩 (시안: 라이트 마이페이지) */}
         <div className="flex items-center gap-3 flex-wrap">
@@ -187,7 +219,7 @@ export default function WholesaleDashboardPage() {
             {actions.map((a) => (
               <button
                 key={a.label}
-                onClick={() => navigate(a.to)}
+                onClick={() => (a.tab ? goTab(a.tab) : navigate(a.to!))}
                 className="rounded-2xl p-4 flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
                 style={a.primary ? { background: WT.brand, boxShadow: WT.shCard } : { background: '#fff', boxShadow: WT.shSoft }}
               >
@@ -239,7 +271,7 @@ export default function WholesaleDashboardPage() {
                   const badge = wholesaleOrderStatusBadge(o.status)
                   return (
                     <li key={o.id}>
-                      <button onClick={() => navigate('/wholesale/orders')} className="w-full flex lg:grid lg:grid-cols-[1.7fr_1fr_1fr_0.7fr] items-center gap-3 px-4 py-3.5 text-left" style={{ borderTop: '1px solid ' + WT.line }}>
+                      <button onClick={() => goTab('orders')} className="w-full flex lg:grid lg:grid-cols-[1.7fr_1fr_1fr_0.7fr] items-center gap-3 px-4 py-3.5 text-left" style={{ borderTop: '1px solid ' + WT.line }}>
                         <div className="min-w-0 flex-1 lg:flex-none">
                           <div className="text-[13px] font-bold truncate" style={{ color: WT.ink }}>주문 #{o.id}{o.toss_order_id ? ` · ${o.toss_order_id}` : ''}</div>
                           <div className="flex items-center gap-2 mt-0.5">
@@ -260,6 +292,38 @@ export default function WholesaleDashboardPage() {
         </section>
 
       </div>
+  )
+
+  // 탭별 콘텐츠 렌더 — 서브페이지는 embedded(외곽 래퍼 생략) + lazy/Suspense.
+  let tabContent = overview
+  if (tab !== 'overview') {
+    tabContent = (
+      <Suspense fallback={<TabFallback />}>
+        {tab === 'deposits' ? <WholesaleDepositPage embedded />
+          : tab === 'orders' ? <WholesaleOrdersPage embedded />
+          : tab === 'statement' ? <WholesaleStatementPage embedded />
+          : tab === 'documents' ? <WholesaleDocsPage embedded />
+          : tab === 'quotes' ? <WholesaleQuotesPage embedded />
+          : tab === 'oem' ? <WholesaleOemPage embedded />
+          : tab === 'staff' ? <WholesaleStaffPage embedded />
+          : overview}
+      </Suspense>
+    )
+  }
+
+  return (
+    <WholesaleDashboardShell
+      brand="유통사 센터"
+      roleIcon={Store}
+      brandSubtitle={company}
+      navItems={navItems}
+      title={activeTabLabel}
+      headerRight={headerRight}
+      onLogoClick={() => navigate('/wholesale')}
+    >
+      <SEO title="유통사 대시보드 - 유통스타트 도매몰" description="매입 현황과 주문·거래·자료를 한 화면에서 관리하세요." url="/wholesale/dashboard" noindex />
+
+      {tabContent}
     </WholesaleDashboardShell>
   )
 }

@@ -98,6 +98,8 @@ describe('인앱 detection — 실제 인앱은 정확히 매칭', () => {
 });
 
 describe('자동 redirect scheme 결정', () => {
+  // index.html inline + in-app-browser.ts 와 동일 형식(SSOT). 🛡️ 2026-06-20 (C1):
+  //   Android intent 에 S.browser_fallback_url 포함 — Chrome 미설치 단말 빈 화면 방지.
   function resolveScheme(ua: string, url: string): string {
     const isKakao = /KAKAOTALK/i.test(ua);
     const isLine = /\bLine\//i.test(ua);
@@ -111,7 +113,7 @@ describe('자동 redirect scheme 결정', () => {
     }
     if (isAndroid) {
       const t = url.replace(/^https?:\/\//, '');
-      return 'intent://' + t + '#Intent;scheme=https;package=com.android.chrome;end';
+      return 'intent://' + t + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(url) + ';end';
     }
     return '';
   }
@@ -123,10 +125,12 @@ describe('자동 redirect scheme 결정', () => {
     expect(s).toContain(encodeURIComponent('https://live.ur-team.com/'));
   });
 
-  it('Android 카톡 → intent:// (Chrome)', () => {
+  it('Android 카톡 → intent:// (Chrome) + S.browser_fallback_url', () => {
     const ua = 'Mozilla/5.0 (Linux; Android 14) Chrome/119.0.0.0 Mobile Safari/537.36;KAKAOTALK 10.5.5';
     const s = resolveScheme(ua, 'https://live.ur-team.com/');
-    expect(s).toMatch(/^intent:\/\/.+#Intent;scheme=https;package=com\.android\.chrome;end$/);
+    // 🛡️ 2026-06-20 (C1): Chrome 미설치 단말 빈 화면 방지 — fallback URL 필수.
+    expect(s).toMatch(/^intent:\/\/.+#Intent;scheme=https;package=com\.android\.chrome;S\.browser_fallback_url=.+;end$/);
+    expect(s).toContain('S.browser_fallback_url=' + encodeURIComponent('https://live.ur-team.com/'));
   });
 
   it('iOS 라인 → openExternalBrowser=1 쿼리', () => {
@@ -149,5 +153,29 @@ describe('자동 redirect scheme 결정', () => {
   it('일반 브라우저 → 빈 문자열', () => {
     const ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
     expect(resolveScheme(ua, 'https://live.ur-team.com/')).toBe('');
+  });
+});
+
+describe('isIOS — iPadOS 데스크톱 UA 판별 (A3)', () => {
+  // in-app-browser.ts isIOS() 와 동일 로직 미러. iPadOS 13+ 사파리는 기본 데스크톱 UA(Macintosh).
+  function isIOS(ua: string, maxTouchPoints: number): boolean {
+    if (/iphone|ipad|ipod/i.test(ua)) return true;
+    if (/Macintosh/i.test(ua) && maxTouchPoints > 1) return true;
+    return false;
+  }
+  const MAC_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
+
+  it('iPadOS 데스크톱 UA(Macintosh) + touch → iOS true', () => {
+    expect(isIOS(MAC_UA, 5)).toBe(true);
+  });
+  it('진짜 데스크톱 Mac (touch 없음) → false', () => {
+    expect(isIOS(MAC_UA, 0)).toBe(false);
+    expect(isIOS(MAC_UA, 1)).toBe(false);
+  });
+  it('iPhone UA → true (touch 무관)', () => {
+    expect(isIOS('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)', 0)).toBe(true);
+  });
+  it('iPad UA(레거시) → true', () => {
+    expect(isIOS('Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)', 0)).toBe(true);
   });
 });

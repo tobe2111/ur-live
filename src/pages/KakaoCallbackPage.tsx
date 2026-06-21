@@ -36,9 +36,13 @@ export default function KakaoCallbackPage() {
       }
 
       try {
+        // 🛡️ 2026-06-20 (C3): redirect_uri 는 이 페이지의 실제 경로(/auth/kakao/callback)와 일치해야 함.
+        //   카카오 토큰 교환은 authorize 때 쓴 redirect_uri 와 정확히 같아야 성공(KOE006 방지).
+        //   이전엔 /auth/kakao/sync/callback 을 보내 — 이 페이지가 /auth/kakao/callback 에 마운트되므로
+        //   불일치였다(주 흐름은 서버 /sync/callback 이라 휴면 버그였지만, 이 SPA 경로로 code 가 오면 실패).
         const res = await api.post('/api/auth/kakao/callback', {
           code,
-          redirect_uri: `${window.location.origin}/auth/kakao/sync/callback`,
+          redirect_uri: `${window.location.origin}/auth/kakao/callback`,
         })
 
         if (!res.data.success) throw new Error(res.data.error || '로그인 실패')
@@ -76,6 +80,8 @@ export default function KakaoCallbackPage() {
         localStorage.setItem('session_login', 'true')
         if (user.email) localStorage.setItem('user_email', user.email)
         if (user.profile_image) localStorage.setItem('user_profile_image', user.profile_image)
+        // 🛡️ 2026-06-20 (A 방식): 이 POST 흐름은 same-origin XHR 200 응답에서 ur_session 쿠키를 set →
+        //   iOS 에서도 영속(localStorage Bearer 불필요). 세션은 httpOnly 쿠키로만 인증.
 
         // ── 카카오 계정에 연결된 셀러/에이전시 권한 자동 복원 ──
         // (백엔드가 linked_user_id 기반으로 JWT 를 이미 발급해서 보내줌)

@@ -460,8 +460,8 @@ export default function ShortsPage() {
                     <div className="flex items-center justify-between px-4 py-2.5"
                       style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.10), rgba(236,72,153,0.10))' }}>
                       <div className="flex items-center gap-1.5">
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'linear-gradient(135deg,#EF4444,#EC4899)', display: 'inline-block', flexShrink: 0 }} />
-                        <span style={{ fontSize: 10, fontWeight: 800, background: 'linear-gradient(90deg,#EF4444,#EC4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '0.08em' }}>FEATURED DEAL</span>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'linear-gradient(135deg,#EF4444,#6b7280)', display: 'inline-block', flexShrink: 0 }} />
+                        <span style={{ fontSize: 10, fontWeight: 800, background: 'linear-gradient(90deg,#EF4444,#6b7280)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '0.08em' }}>FEATURED DEAL</span>
                       </div>
                       <span style={{ fontSize: 9, color: '#9CA3AF', fontWeight: 500 }}>{t('shorts.featuredProduct')}</span>
                     </div>

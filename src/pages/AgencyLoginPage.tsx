@@ -69,13 +69,13 @@ export default function AgencyLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7] text-gray-900 flex">
+    <div className="force-light-theme min-h-screen bg-[#F4F5F7] text-gray-900 flex">
       {/* Left branding panel (desktop) */}
       <div className="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col bg-[#0A0A0B]">
         <div className="px-10 pt-10">
           <div className="flex items-center gap-3">
             <UrDealLogo size={22} forceDark />
-            <span className="text-xs font-bold tracking-widest text-[#8B5CF6] uppercase">Agency Partner</span>
+            <span className="text-xs font-bold tracking-widest text-[#4b5563] uppercase">Agency Partner</span>
           </div>
         </div>
 
@@ -94,8 +94,8 @@ export default function AgencyLoginPage() {
               { icon: TrendingUp, title: t('agency.login.feature3Title'), desc: t('agency.login.feature3Desc') },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-[#8B5CF6]/10 flex items-center justify-center flex-shrink-0">
-                  <Icon className="w-5 h-5 text-[#8B5CF6]" />
+                <div className="w-10 h-10 rounded-xl bg-[#4b5563]/10 flex items-center justify-center flex-shrink-0">
+                  <Icon className="w-5 h-5 text-[#4b5563]" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-white">{title}</p>
@@ -117,7 +117,7 @@ export default function AgencyLoginPage() {
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <UrDealLogo size={22} forceLight />
-            <span className="text-xs font-bold tracking-widest text-[#8B5CF6] uppercase">Agency</span>
+            <span className="text-xs font-bold tracking-widest text-[#4b5563] uppercase">Agency</span>
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
@@ -144,7 +144,7 @@ export default function AgencyLoginPage() {
                     onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
                     placeholder="agency@example.com"
                     aria-label={t('auth.email')}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#8B5CF6] focus:border-transparent transition-all"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#4b5563] focus:border-transparent transition-all"
                   />
                 </div>
               </div>
@@ -162,7 +162,7 @@ export default function AgencyLoginPage() {
                     onChange={e => setFormData(p => ({ ...p, password: e.target.value }))}
                     placeholder={t('auth.passwordPlaceholder')}
                     aria-label={t('auth.password')}
-                    className="w-full pl-10 pr-11 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#8B5CF6] focus:border-transparent transition-all"
+                    className="w-full pl-10 pr-11 py-3 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#4b5563] focus:border-transparent transition-all"
                   />
                   <button
                     type="button"
@@ -181,13 +181,13 @@ export default function AgencyLoginPage() {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={e => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-[#8B5CF6] focus:ring-[#8B5CF6]"
+                    className="w-4 h-4 rounded border-gray-300 text-[#4b5563] focus:ring-[#4b5563]"
                   />
                   <span className="text-sm text-gray-600">{t('auth.rememberEmail', { defaultValue: '이메일 기억하기' })}</span>
                 </label>
                 <Link
                   to="/agency/forgot-password"
-                  className="text-sm text-[#8B5CF6] hover:text-[#7C3AED] font-medium"
+                  className="text-sm text-[#4b5563] hover:text-[#374151] font-medium"
                 >
                   {t('auth.forgotPassword')}
                 </Link>
@@ -199,7 +199,7 @@ export default function AgencyLoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:opacity-90 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-all"
+                className="w-full py-3 bg-gradient-to-r from-[#4b5563] to-[#6b7280] hover:opacity-90 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-all"
               >
                 {loading ? t('admin.login.loggingIn') : t('common.login')}
               </button>
@@ -228,7 +228,7 @@ export default function AgencyLoginPage() {
 
           <p className="text-center text-sm text-gray-500 mt-6">
             {t('auth.noAccount')}{' '}
-            <Link to="/agency/register" className="text-[#8B5CF6] hover:underline font-medium">
+            <Link to="/agency/register" className="text-[#4b5563] hover:underline font-medium">
               {t('agency.login.registerLink')}
             </Link>
           </p>

@@ -82,9 +82,9 @@ export default function IntroducePage() {
 
   const features = [
     { icon: ShoppingBag, color: '#EF4444', title: '동네 공구 단일 특가', desc: '대량 단가를 미리 떼와 처음부터 모두에게 같은 그룹 특가. 인원에 따라 가격이 오르내리지 않아요.' },
-    { icon: Ticket, color: '#EC4899', title: '교환권 즉시 발급', desc: '결제하면 교환권이 바로 발급돼요. 목표 인원과 무관하게 즉시 확정 — 매장에서 바로 사용하세요.' },
-    { icon: MapPin, color: '#F59E0B', title: '우리 동네 기반', desc: '맛집·뷰티·숙소·헬스까지. 내 지역에서 진행 중인 공구를 카테고리·지역별로 골라보세요.' },
-    { icon: Gift, color: '#10B981', title: '친구 초대 보너스', desc: '친구를 초대해 함께 구매하면 두 분 모두에게 보너스 딜이 적립돼요.' },
+    { icon: Ticket, color: '#6b7280', title: '교환권 즉시 발급', desc: '결제하면 교환권이 바로 발급돼요. 목표 인원과 무관하게 즉시 확정 — 매장에서 바로 사용하세요.' },
+    { icon: MapPin, color: '#9ca3af', title: '우리 동네 기반', desc: '맛집·뷰티·숙소·헬스까지. 내 지역에서 진행 중인 공구를 카테고리·지역별로 골라보세요.' },
+    { icon: Gift, color: '#6b7280', title: '친구 초대 보너스', desc: '친구를 초대해 함께 구매하면 두 분 모두에게 보너스 딜이 적립돼요.' },
   ]
 
   return (
@@ -142,7 +142,7 @@ export default function IntroducePage() {
             >
               우리 동네<br />
               맛집·뷰티·숙소,<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-pink-500 italic">함께 사서 특가.</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-800 to-gray-800 italic">함께 사서 특가.</span>
             </h1>
             <p className="text-[16px] text-gray-400 mt-6 max-w-[480px] leading-relaxed">
               대량 단가를 미리 떼와 처음부터 모두에게 같은 그룹 특가.<br />
@@ -187,7 +187,7 @@ export default function IntroducePage() {
           <div className="hidden md:flex justify-center shrink-0">
             <div className="relative">
               {/* glow */}
-              <div className="absolute inset-0 bg-gradient-to-br from-red-500/30 to-pink-500/30 blur-[60px] rounded-full scale-110" />
+              <div className="absolute inset-0 bg-gradient-to-br from-gray-800/30 to-gray-800/30 blur-[60px] rounded-full scale-110" />
               {/* phone */}
               <div className="relative w-[260px] h-[520px] bg-[#111] rounded-[44px] p-[10px] shadow-2xl border border-white/10">
                 <div className="w-full h-full rounded-[34px] bg-[#0A0A0A] relative overflow-hidden">
@@ -208,7 +208,7 @@ export default function IntroducePage() {
                       <span className="text-[10px] text-gray-500 line-through">26,900원</span>
                     </div>
                     <div className="mt-2 flex gap-2">
-                      <div className="flex-1 py-1.5 rounded-lg bg-gradient-to-r from-red-500 to-pink-500 text-center text-[10px] font-extrabold text-white">바로 구매</div>
+                      <div className="flex-1 py-1.5 rounded-lg bg-gradient-to-r from-gray-800 to-gray-800 text-center text-[10px] font-extrabold text-white">바로 구매</div>
                       <div className="flex-1 py-1.5 rounded-lg bg-white/10 text-center text-[10px] font-bold text-white">교환권 발급</div>
                     </div>
                   </div>
@@ -348,7 +348,7 @@ export default function IntroducePage() {
 
       {/* ─── APP DOWNLOAD CTA ─── */}
       <section className="max-w-[1280px] mx-auto px-6 py-20">
-        <div className="rounded-[32px] p-10 md:p-16 relative overflow-hidden bg-gradient-to-br from-[#EF4444] to-[#EC4899]">
+        <div className="rounded-[32px] p-10 md:p-16 relative overflow-hidden bg-gradient-to-br from-[#EF4444] to-[#6b7280]">
           <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-white/5 -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-1/4 w-[200px] h-[200px] rounded-full bg-white/5 translate-y-1/2" />
           <div className="relative">
@@ -399,7 +399,7 @@ export default function IntroducePage() {
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => navigate('/seller/register')}
-                className="px-6 py-3.5 rounded-2xl text-white text-[14px] font-extrabold bg-gradient-to-r from-red-500 to-pink-500 hover:opacity-90 transition-opacity"
+                className="px-6 py-3.5 rounded-2xl text-white text-[14px] font-extrabold bg-gradient-to-r from-gray-800 to-gray-800 hover:opacity-90 transition-opacity"
               >
                 입점 신청하기 →
               </button>

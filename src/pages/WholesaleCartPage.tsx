@@ -5,11 +5,13 @@ import { cfImage } from '@/utils/cf-image'
 import { WT, won, comma } from './wholesale/wholesale-theme'
 import { useWholesaleCart, groupBySupplier } from './wholesale/useWholesaleCart'
 import { WholesaleWordmark } from './wholesale-catalog/WholesaleLogo'
+import { useWholesaleBack } from '@/hooks/useWholesaleBack'
 
 // 🏭 2026-06-04 유통스타트 도매몰 — 다품목 장바구니. 2026-06-16 시안(서브페이지) 2단 레이아웃 리디자인.
 // 🏦 예치금 전용 결제 — 카트 → /wholesale/checkout (주문 확인 + 예치금 결제). 주문 생성은 체크아웃에서.
 export default function WholesaleCartPage() {
   const navigate = useNavigate()
+  const goBack = useWholesaleBack()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const { items, setQty, remove, clear, subtotal, totalQty } = useWholesaleCart()
 
@@ -62,7 +64,7 @@ export default function WholesaleCartPage() {
       <SEO title="장바구니 - 유통스타트 도매" description="도매 장바구니" url="/wholesale/cart" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-wide flex items-center gap-3 px-5 lg:px-8 h-[54px]">
-          <button onClick={() => navigate('/wholesale')} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
+          <button onClick={goBack} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
           <button onClick={() => navigate('/wholesale')} className="shrink-0"><WholesaleWordmark height={22} /></button>
         </div>
       </header>

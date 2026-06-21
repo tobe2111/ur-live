@@ -380,7 +380,7 @@ function CartCheckout() {
   // ✅ BUG #3 FIX: Auth/loading guards (all hooks called above this line)
   const isSessionUser = hasConsumerSession()
   if (!isSessionUser && (!isAuthReady || authLoading))
-    return <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b35] mx-auto mb-4" /><p className="text-gray-400 dark:text-gray-500">{t('common.loading', { defaultValue: '로딩 중...' })}</p></div></div>
+    return <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6b7280] mx-auto mb-4" /><p className="text-gray-400 dark:text-gray-500">{t('common.loading', { defaultValue: '로딩 중...' })}</p></div></div>
   if (!user && !isSessionUser) return null
   if (loading || tokenRefreshing)
     return <div className="flex items-center justify-center min-h-screen"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" /><p className="mt-4 text-gray-400 dark:text-gray-500">{tokenRefreshing ? t('payment.errors.securityAuthInProgress') : t('payment.errors.loading')}</p></div></div>

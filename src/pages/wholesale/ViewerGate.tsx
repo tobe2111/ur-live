@@ -18,7 +18,7 @@ export function useIsWholesaleViewer(): boolean {
 export function ViewerNotice({ action }: { action: string }) {
   return (
     <div className="rounded-xl px-3.5 py-2.5 text-[12.5px] font-semibold"
-      style={{ background: '#FFF6E6', color: '#9A6B00', border: '1px solid #F5E1B8' }}>
+      style={{ background: '#f9fafb', color: '#9A6B00', border: '1px solid #F5E1B8' }}>
       👀 조회 전용(뷰어) 직원 계정입니다 — {action}은(는) 관리자·직원 권한 계정만 할 수 있어요.
       <span className="block mt-0.5 font-normal" style={{ color: WT.ink3 }}>
         권한이 필요하면 대표 계정에서 직원 관리로 역할을 변경해 달라고 요청해주세요.

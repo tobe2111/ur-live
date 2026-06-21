@@ -23,8 +23,8 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
     return (
       <div className="space-y-4">
         <div className="text-center py-2">
-          <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-red-100 to-pink-100 flex items-center justify-center">
-            <Radio className="w-7 h-7 text-red-500" />
+          <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-gray-100 to-gray-100 flex items-center justify-center">
+            <Radio className="w-7 h-7 text-gray-700 dark:text-gray-300" />
           </div>
           <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
             {t('bottomNav.sellerHasToken', { defaultValue: '등록된 셀러 계정이 있습니다' })}<br />
@@ -37,7 +37,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
             onDone()
             window.location.href = '/seller'
           }}
-          className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+          className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
         >
           <Radio className="w-5 h-5" />
           {t('bottomNav.goToSellerDashboard', { defaultValue: '셀러 대시보드로 전환' })}
@@ -60,7 +60,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
     <div className="space-y-3">
       <button
         onClick={() => { onDone(); navigate('/seller/register/business?from=kakao') }}
-        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl active:scale-[0.98] transition-transform"
+        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
       >
         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
           <UserPlus className="w-6 h-6 text-white" />
@@ -196,7 +196,9 @@ export default function BottomNav() {
     // 🎟️ 2026-06-19 [UNLOCK_LOADING] (대표 5탭 확정 — 홈=동네딜이라 동네딜 탭은 홈과 중복): 동네딜 탭 → 교환권(기프티콘).
     //   홈이 이미 동네딜 피드라 별도 동네딜 탭은 중복 → 두 상품축(동네딜=홈 / 교환권=탭2)을 모두 노출.
     //   전체 동네딜(지역/검색)은 홈 '전체 동네딜 보기' 링크로 진입. isActivePath 는 홈(/) 이 /group-buy 에서도 활성.
-    { icon: Gift,        label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers', prefetch: () => import('@/pages/VouchersPage') },
+    // 🛍️ 2026-06-20 (대표 결정 — 홈=동네딜지도 / 일반상품을 교환권 탭에 통합): 탭2 = '쇼핑'(교환권 기프티콘 + 일반상품).
+    //   라벨 교환권→쇼핑, 아이콘 Gift→ShoppingBag. path 는 /vouchers 그대로(페이지가 교환권+일반상품 포괄).
+    { icon: ShoppingBag, label: t('nav.shopping', { defaultValue: '쇼핑' }), path: '/vouchers', prefetch: () => import('@/pages/VouchersPage') },
     // 🎟️ 2026-06-18 (대표 결정): 가운데 → '공구권'. 교환권(기프티콘)은 MMS 발송 카탈로그(탭2)이고,
     //   공구권(동네딜 식사권 등)은 매장에서 QR/PIN 으로 '앱에서 꺼내 쓰는' 지갑이라 상시 탭 가치가 높음.
     { icon: Ticket,      label: t('nav.myGbVouchers', { defaultValue: '공구권' }), path: '/my-vouchers', prefetch: () => import('@/pages/MyVouchersPage') },
@@ -307,7 +309,11 @@ export default function BottomNav() {
          - md (768~1024px): max-w-[640px] (작은 태블릿)
          - lg+ (≥1024px): hidden, DesktopTopNav 사용
          배경 + border 는 항상 화면 전체 폭. */}
-      <div className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none hide-on-keyboard lg:hidden">
+      {/* 🖥️ 2026-06-20 (대표 시안 — PC 단일 정체성, "1,2 모두 진행" 승인): PC(lg+)에서도 하단 네비를
+          액자 안에 노출(lg:hidden 제거). app-frame-bar 가 lg+ 에서 프레임 폭(430)으로 중앙 정렬.
+          모바일(<lg)은 app-frame-bar inert → 종전 full-width 동작 그대로. linkshopPath/isActivePath
+          로직은 무변경(표시 위치만). */}
+      <div className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none hide-on-keyboard app-frame-bar">
         {/* 🛡️ 2026-05-19: 사용자 요청 — 진한 border-t (검정색 선) 제거. 다크 모드는 그대로, 라이트는 미세 회색 (gray-100). */}
         <div className="pointer-events-auto bg-white dark:bg-[#020202] border-t border-gray-100 dark:border-[#1A1A1A]"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
@@ -360,7 +366,7 @@ export default function BottomNav() {
                   {!COMMUNITY_PROPOSAL_HIDDEN ? (
                   <button
                     onClick={() => { setSheetOpen(false); navigate('/community-group-buy/new') }}
-                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl active:scale-[0.98] transition-transform"
+                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                   >
                     <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                       <MapPin className="w-6 h-6 text-white" />
@@ -373,7 +379,7 @@ export default function BottomNav() {
                   ) : (!isSeller && !hasSellerToken) ? (
                   <button
                     onClick={() => { setSheetOpen(false); navigate('/group-buy') }}
-                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl active:scale-[0.98] transition-transform"
+                    className="w-full mb-3 flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                   >
                     <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                       <MapPin className="w-6 h-6 text-white" />
@@ -396,7 +402,7 @@ export default function BottomNav() {
                       {!LIVE_COMMERCE_SUSPENDED && (
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller/live-broadcast') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                           <Radio className="w-6 h-6 text-white" />
@@ -410,7 +416,7 @@ export default function BottomNav() {
 
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller/meal-voucher/new') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                           <Utensils className="w-6 h-6 text-white" />
@@ -457,7 +463,7 @@ export default function BottomNav() {
                     <div className="space-y-3">
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/agency') }}
-                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                           <span className="text-xl">💼</span>
@@ -486,7 +492,7 @@ export default function BottomNav() {
 
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller/login') }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <LogIn className="w-5 h-5" />
                         {t('bottomNav.sellerLogin', { defaultValue: '셀러 로그인' })}

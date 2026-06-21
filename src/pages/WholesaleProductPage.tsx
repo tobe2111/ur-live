@@ -223,7 +223,11 @@ export default function WholesaleProductPage() {
   const orderMultiple = Math.max(1, item.order_multiple || 1)
   const step = orderMultiple > 1 ? orderMultiple : moq
   const tiers = item.tiers || []
-  const locked = item.distributor_price == null // 비로그인 → 가격 가림 + 로그인 유도
+  // 🏭 2026-06-19 (대표 신고 — 로그인했는데 비로그인 UI): 로그인 유도는 '실제 비로그인'(토큰 없음)일 때만.
+  //   기존 `distributor_price == null` 만으로 판정하면, 로그인 상태인데 가격이 잠시 null(스테일 캐시/일시 누락)일 때
+  //   '로그인하세요' 가 잘못 뜸. 토큰 있으면(로그인) 절대 로그인 UI 안 띄움 — 가격은 useWholesaleProduct 의
+  //   인증별 캐시 키로 fresh 보장. (가격 null 가드는 담기/주문 액션에 별도로 남아 안전.)
+  const locked = !token // 비로그인(토큰 없음) → 가격 가림 + 로그인 유도
   // 현재 수량에 적용되는 단가 — qty 이상 만족하는 최대 min_qty tier(없으면 등급가). 서버 /orders 와 동일 규칙.
   let effUnit = item.distributor_price ?? 0, bestMin = 0
   for (const t of tiers) if (qty >= t.min_qty && t.min_qty >= bestMin) { bestMin = t.min_qty; effUnit = t.unit_price }

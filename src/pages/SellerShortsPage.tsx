@@ -134,7 +134,7 @@ export default function SellerShortsPage() {
         <div className="flex gap-2 mb-5">
           <button
             onClick={() => setShowForm(!showForm)}
-            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98]"
+            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-gray-800 to-gray-800 text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98]"
           >
             <Plus className="w-4 h-4" />
             {t('seller.newShorts')}
@@ -215,7 +215,7 @@ export default function SellerShortsPage() {
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-[2] py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm rounded-lg font-bold disabled:opacity-50"
+                className="flex-[2] py-2.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white text-sm rounded-lg font-bold disabled:opacity-50"
               >
                 {submitting ? t('seller.registering') : t('seller.registerSubmit')}
               </button>
@@ -244,7 +244,7 @@ export default function SellerShortsPage() {
                   ) : s.thumbnail_url ? (
                     <img src={s.thumbnail_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-purple-200 to-pink-200" />
+                    <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-200" />
                   )}
                   {/* 삭제 버튼 */}
                   <button

@@ -214,7 +214,7 @@ export default function TossWidgetPayPage() {
           <button
             onClick={handlePay}
             disabled={state !== 'ready'}
-            className="w-full py-3.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[15px] font-bold rounded-full shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
+            className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white text-[15px] font-bold rounded-full shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
           >
             {state === 'loading' && (
               <span className="flex items-center justify-center gap-2">

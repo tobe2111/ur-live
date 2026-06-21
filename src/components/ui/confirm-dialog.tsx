@@ -94,7 +94,7 @@ export function ConfirmHost() {
           <button
             onClick={() => close(true)}
             className="flex-1 h-12 rounded-xl text-[14px] font-extrabold text-white active:scale-[0.98] transition-transform"
-            style={{ background: current.danger ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #ec4899, #f43f5e)' }}
+            style={{ background: current.danger ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #6b7280, #6b7280)' }}
           >
             {current.confirmText || '확인'}
           </button>

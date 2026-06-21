@@ -63,7 +63,7 @@ export default function PKLiveBanner({ liveStreamId }: Props) {
     const winnerName = pk.winner_seller_id === pk.seller_a_id ? pk.seller_a_name : pk.seller_b_name
     const winnerSide = pk.winner_seller_id === pk.seller_a_id ? 'A' : 'B'
     return (
-      <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-xl px-4 py-3 shadow-lg flex items-center gap-2.5">
+      <div className="bg-gradient-to-r from-gray-700 to-gray-800 text-white rounded-xl px-4 py-3 shadow-lg flex items-center gap-2.5">
         <Trophy className="w-5 h-5 flex-shrink-0 fill-white" />
         <div className="text-sm font-bold flex-1">
           {t('live.pk.endedPrefix', { defaultValue: '🏆 PK 종료 — ' })}<span className="font-black">{t('live.pk.winnerName', { defaultValue: '{{name}} ({{side}}측)', name: winnerName, side: winnerSide })}</span>{t('live.pk.endedSuffix', { defaultValue: ' 우승!' })}
@@ -79,7 +79,7 @@ export default function PKLiveBanner({ liveStreamId }: Props) {
   const ss = remainingSec % 60
 
   return (
-    <div className="bg-gradient-to-br from-red-500 to-pink-600 text-white rounded-xl px-3 py-2.5 shadow-lg">
+    <div className="bg-gradient-to-br from-gray-800 to-gray-900 text-white rounded-xl px-3 py-2.5 shadow-lg">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5 text-sm font-bold">
           <Swords className="w-4 h-4" />
@@ -93,13 +93,13 @@ export default function PKLiveBanner({ liveStreamId }: Props) {
       {/* 매출 비율 막대 */}
       <div className="relative h-7 bg-black/30 rounded-full overflow-hidden flex">
         <div
-          className="bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-start px-2 text-xs font-bold transition-all duration-500"
+          className="bg-gradient-to-r from-gray-800 to-gray-700 flex items-center justify-start px-2 text-xs font-bold transition-all duration-500"
           style={{ width: `${aPercent}%` }}
         >
           {aPercent > 15 && <span className="truncate">{pk.seller_a_name || 'A'}</span>}
         </div>
         <div
-          className="bg-gradient-to-r from-pink-500 to-yellow-400 flex items-center justify-end px-2 text-xs font-bold transition-all duration-500"
+          className="bg-gradient-to-r from-gray-800 to-gray-700 flex items-center justify-end px-2 text-xs font-bold transition-all duration-500"
           style={{ width: `${bPercent}%` }}
         >
           {bPercent > 15 && <span className="truncate">{pk.seller_b_name || 'B'}</span>}

@@ -189,7 +189,7 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
         )}
         {/* 🎨 할인 배지 — 브랜드 옐로우(상세 페이지 칩과 동일 톤) */}
         {discountRate > 0 && (
-          <span className="absolute top-2 left-2 text-[11px] font-extrabold text-[#171B24] bg-[#FFCE00] rounded-md px-1.5 py-0.5">{discountRate}%</span>
+          <span className="absolute top-2 left-2 text-[11px] font-extrabold text-[#171B24] bg-[#d1d5db] rounded-md px-1.5 py-0.5">{discountRate}%</span>
         )}
       </div>
       {/* 🎨 본문 — 클린 화이트(다크 토글 대응). 잉크 가격 강조 + 뉴트럴 메타. */}
@@ -289,7 +289,7 @@ const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: VoucherProduc
         )}
         {/* 🎨 할인 배지 — 브랜드 옐로우(카드와 동일 톤) */}
         {discountRate > 0 && (
-          <span className="absolute top-1.5 left-1.5 text-[10px] font-extrabold text-[#171B24] bg-[#FFCE00] rounded px-1 py-0.5">{discountRate}%</span>
+          <span className="absolute top-1.5 left-1.5 text-[10px] font-extrabold text-[#171B24] bg-[#d1d5db] rounded px-1 py-0.5">{discountRate}%</span>
         )}
       </div>
       {/* 🎨 본문 — 우측. 브랜드/상품명/가격/메타 (내용은 카드와 동일, 배치만 1줄 행). */}
@@ -735,7 +735,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 <span className="text-[18px] font-bold text-gray-500">딜</span>
               </div>
             </div>
-            <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold mt-1 px-2.5 py-1 rounded-full text-white" style={{ background: 'linear-gradient(135deg, #ec4899, #f43f5e)' }}>
+            <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold mt-1 px-2.5 py-1 rounded-full text-white" style={{ background: 'linear-gradient(135deg, #6b7280, #6b7280)' }}>
               충전 <ArrowRight className="w-3.5 h-3.5" />
             </span>
           </div>

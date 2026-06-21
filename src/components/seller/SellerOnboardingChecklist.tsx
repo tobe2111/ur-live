@@ -83,7 +83,7 @@ export default function SellerOnboardingChecklist() {
   const progress = Math.round((completedRequired / totalRequired) * 100)
 
   return (
-    <div className="bg-gradient-to-br from-pink-50 to-rose-50 border-2 border-pink-200 rounded-2xl p-5 mb-5">
+    <div className="bg-gradient-to-br from-gray-50 to-gray-50 border-2 border-pink-200 rounded-2xl p-5 mb-5">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-pink-500" />
@@ -94,7 +94,7 @@ export default function SellerOnboardingChecklist() {
 
       {/* 프로그레스 바 */}
       <div className="w-full bg-white rounded-full h-2 mb-2 overflow-hidden">
-        <div className="h-full bg-gradient-to-r from-pink-500 to-rose-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
+        <div className="h-full bg-gradient-to-r from-gray-800 to-gray-800 rounded-full transition-all" style={{ width: `${progress}%` }} />
       </div>
       <p className="text-[11px] text-pink-700 mb-3 font-bold">
         {progress === 100 ? '🎉 모든 단계 완료!' : `${totalRequired - completedRequired}단계 남음 — 첫 매출까지 가이드 표시`}

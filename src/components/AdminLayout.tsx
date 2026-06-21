@@ -367,13 +367,13 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
           <UrDealLogo size={14} forceDark />
           <span
             className="font-bold uppercase text-white"
-            style={{ fontSize: '9px', letterSpacing: '0.08em', color: '#FCD34D' }}
+            style={{ fontSize: '9px', letterSpacing: '0.08em', color: '#e5e7eb' }}
           >
             ADMIN CONSOLE
           </span>
           <span
             className="ml-auto font-extrabold rounded px-1.5 py-0.5"
-            style={{ fontSize: '9px', background: '#FCD34D', color: '#0A0A0B' }}
+            style={{ fontSize: '9px', background: '#e5e7eb', color: '#0A0A0B' }}
           >
             PROD
           </span>
@@ -472,7 +472,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-extrabold flex-shrink-0"
             style={{
-              background: 'linear-gradient(135deg, #FCD34D, #F59E0B)',
+              background: 'linear-gradient(135deg, #e5e7eb, #9ca3af)',
               color: '#0A0A0B',
             }}
           >

@@ -138,7 +138,7 @@ export default function SellerDonationsPage() {
         {summary && summary.available_amount > 0 && (
           <button
             onClick={() => setSettleModal(true)}
-            className="w-full mb-5 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold text-sm shadow-md shadow-pink-200 active:scale-[0.98]"
+            className="w-full mb-5 py-3 rounded-xl bg-gradient-to-r from-gray-800 to-gray-800 text-white font-bold text-sm shadow-md shadow-pink-200 active:scale-[0.98]"
           >
             {t('seller.requestSettlement', { amount: fmt(summary.available_amount) })}
           </button>
@@ -248,7 +248,7 @@ export default function SellerDonationsPage() {
               <button
                 onClick={requestSettlement}
                 disabled={requesting}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-sm font-semibold rounded-xl disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-gray-800 to-gray-800 text-white text-sm font-semibold rounded-xl disabled:opacity-50"
               >
                 {requesting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 {t('common.submit')}

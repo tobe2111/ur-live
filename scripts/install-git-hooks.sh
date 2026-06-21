@@ -92,6 +92,11 @@ bash scripts/check-silent-errors.sh || true
 echo "==> Pre-commit: 머니 패턴 검사 (warn-only)..."
 bash scripts/check-money-patterns.sh || true
 
+# 🍎 2026-06-20: 카카오 OAuth iOS 쿠키 미영속 안티패턴 검사 (warn-only, CI 차단: STRICT_AUTH_COOKIE=1).
+#   ur_pending_* transfer 쿠키 / 콜백 302 Set-Cookie 역할토큰 → iOS 대시보드 로그인 조용히 깨짐.
+echo "==> Pre-commit: 카카오 OAuth iOS 쿠키 패턴 검사 (warn-only)..."
+bash scripts/check-auth-cookie-pattern.sh || true
+
 # 🛡️ 2026-05-17: CHECK 제약 위반 자동 탐지 (warn-only).
 #   admin live-monitor delete 사고 재발 방지 — 'status=\"deleted\"' 가 CHECK IN (...) 위반 → 500.
 echo "==> Pre-commit: CHECK 제약 위반 검사 (warn-only)..."
@@ -163,6 +168,12 @@ node scripts/check-dual-login-guard.mjs || true
 #   (핀 /group-buy 오라우팅 사고). 종류는 deal_only + isVoucherCategory SSOT 만. 차단은 verify.yml CI strict.
 echo "==> Pre-commit: group_buy_status 종류판별 가드 (warn-only)..."
 node scripts/check-groupbuy-status-classify.mjs || true
+
+# 🛡️ 2026-06-20: 라이트 고정 로그인/가입 페이지 입력 글자 흰색 재발 방지 (warn-only).
+#   standalone 라이트 auth 페이지가 force-light-theme(또는 *-light-theme/레이아웃) 없이 input 렌더 시
+#   다크모드에서 글자 안 보임 사고. 차단은 verify.yml CI strict (STRICT_LIGHT_INPUT=1).
+echo "==> Pre-commit: 로그인 입력 글자 가드 (warn-only)..."
+node scripts/check-light-input-guard.mjs || true
 
 # 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
 staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)

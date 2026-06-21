@@ -179,7 +179,7 @@ export function StripeCheckout(props: StripeCheckoutProps) {
     appearance: {
       theme: 'stripe' as const,
       variables: {
-        colorPrimary: '#2563eb'
+        colorPrimary: '#1f2937'
       }
     }
   }

@@ -120,7 +120,7 @@ export default function RestoreAccountModal() {
           >
             <X className="w-5 h-5 text-gray-400 dark:text-gray-500" />
           </button>
-          <div className="w-14 h-14 mb-4 rounded-2xl bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center">
+          <div className="w-14 h-14 mb-4 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-100 flex items-center justify-center">
             <RotateCcw className="w-7 h-7 text-pink-500" />
           </div>
           <h2 id="restore-title" className="text-[18px] font-bold text-gray-900 dark:text-white">
@@ -134,7 +134,7 @@ export default function RestoreAccountModal() {
         </div>
 
         {/* 안내 박스 */}
-        <div className="mx-6 my-3 p-3 bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-100 rounded-xl">
+        <div className="mx-6 my-3 p-3 bg-gradient-to-br from-gray-50 to-gray-50 border border-pink-100 rounded-xl">
           <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">
             <strong className="text-pink-600">{t('user.restoreWhenRestore', { defaultValue: '복원 시' })}</strong>: {t('user.restoreWhenRestoreDesc', { defaultValue: '이전 주문 내역, 쿠폰, 딜 포인트, 위시리스트 등 모든 데이터가 다시 살아나요.' })}
           </p>

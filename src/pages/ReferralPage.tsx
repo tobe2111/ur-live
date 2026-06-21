@@ -367,7 +367,7 @@ export default function ReferralPage() {
           {group.members.length > 0 && (
             <div className="flex items-center flex-wrap -space-x-2 mb-3">
               {group.members.slice(0, 12).map((m, i) => {
-                const colors = ['#FEE2E2','#FCE7F3','#DBEAFE','#D1FAE5','#FEF3C7','#EDE9FE'];
+                const colors = ['#FEE2E2','#f3f4f6','#DBEAFE','#D1FAE5','#f3f4f6','#EDE9FE'];
                 return (
                   <div key={i} className="rounded-full border-2 border-white flex items-center justify-center relative"
                     style={{
@@ -393,7 +393,7 @@ export default function ReferralPage() {
             {group.members.slice(0, 3).map((m, i) => (
               <div key={i} className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center"
-                  style={{ background: '#FCE7F3', color: '#BE185D', fontSize: 10, fontWeight: 700 }}>
+                  style={{ background: '#f3f4f6', color: '#374151', fontSize: 10, fontWeight: 700 }}>
                   {(m.user_name || '?').slice(0, 1)}
                 </div>
                 <span className="text-[12px] text-gray-900 dark:text-white font-medium">{m.user_name}</span>
@@ -421,11 +421,11 @@ export default function ReferralPage() {
               const reached = group.current_count >= t.count
               return (
                 <div key={i} className="flex items-center justify-between rounded-lg px-3 py-2"
-                  style={{ background: reached ? '#FDF2F8' : '#F9FAFB' }}>
-                  <span style={{ fontSize: 12, color: reached ? '#BE185D' : '#6B7280', fontWeight: reached ? 700 : 500 }}>
+                  style={{ background: reached ? '#f9fafb' : '#F9FAFB' }}>
+                  <span style={{ fontSize: 12, color: reached ? '#374151' : '#6B7280', fontWeight: reached ? 700 : 500 }}>
                     {t.count}명 모이면
                   </span>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: reached ? '#BE185D' : '#9CA3AF' }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: reached ? '#374151' : '#9CA3AF' }}>
                     {t.discount}% 할인{reached ? ' ✓' : ''}
                   </span>
                 </div>
@@ -521,7 +521,7 @@ function TierProgressBar({
       <div className="relative rounded-full" style={{ height: 8, background: '#F3F4F6' }}>
         <div
           className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
-          style={{ width: `${progressPct}%`, background: 'linear-gradient(90deg, #F472B6, #EC4899)' }}
+          style={{ width: `${progressPct}%`, background: 'linear-gradient(90deg, #9ca3af, #6b7280)' }}
         />
 
         {/* 티어 마커 */}

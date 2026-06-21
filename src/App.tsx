@@ -13,7 +13,6 @@ import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
 import ScrollToTop from './components/ScrollToTop'
 import OfflineBanner from './components/OfflineBanner'
-import InAppBrowserBanner from './components/InAppBrowserBanner'
 import BottomNav from '@/components/main/BottomNav'
 import DesktopTopNav from '@/components/main/DesktopTopNav'
 import { swallow } from '@/shared/utils/swallow'
@@ -37,11 +36,12 @@ import { SupplierRoutes } from './routes/supplier.routes'
 // ❌ REMOVED: Duplicate Sentry initialization (already done in main.tsx)
 
 // ✅ Public / User 페이지들 lazy loading (초기 번들 크기 최소화)
-// 🛡️ 2026-05-27 (loading P0 critical): MainHomePage eager import — default route 라 lazy 의미 없음.
-//   기존 waterfall: HTML → main chunk → MainHomePage chunk fetch (~50-100ms) → render → axios fetch
-//   변경 waterfall: HTML → main chunk (MainHomePage 포함) → render → axios fetch
-//   → 메인 페이지 첫 paint 50-100ms 단축. 다른 페이지 진입 시는 main bundle 약간 커짐 (trade-off OK — 메인 진입 70%+).
-import MainHomePage from './pages/MainHomePage'
+// 🏠 2026-06-20 (대표 결정 — 홈=동네딜 지도+바텀시트): 홈 `/` 메인 콘텐츠를 RestaurantMapPage(지도+
+//   드래그 바텀시트+카테고리 칩+내 주변)로 전환. RestaurantMapPage 는 lazy(아래 167행) — 지도는 어차피
+//   카카오 SDK async 로드라 컴포넌트 청크 페치(~50-100ms)는 SDK 준비 대비 무시 가능. 기존 MainHomePage(교환권
+//   blend)는 dead route 가 되어 import 제거(엔트리 축소). 일반상품/교환권은 '쇼핑' 탭(/vouchers)으로 이전.
+//   ⚠️ [UNLOCK_LOADING] 트레이드오프: 홈 SSR 슬롯(__SSR_INITIAL_MAIN__) 미사용 → 홈 첫 화면이 지도 로딩.
+//   worker/index.ts SSR inject 는 무수정(주입은 되나 지도 홈이 안 읽음 — 무해).
 const WholesaleCatalogPage = lazy(() => import('./pages/WholesaleCatalogPage'))
 const WholesaleDashboardPage = lazy(() => import('./pages/WholesaleDashboardPage'))
 const WholesaleDepositPage = lazy(() => import('./pages/WholesaleDepositPage'))
@@ -221,7 +221,7 @@ const PageLoader = () => (
       className="w-8 h-8 rounded-full animate-spin"
       style={{
         border: '3px solid rgba(255,255,255,0.08)',
-        borderTopColor: '#EC4899',
+        borderTopColor: '#6b7280',
         animationDelay: '200ms',
       }}
     />
@@ -484,6 +484,9 @@ function AppContent() {
     || location.pathname.startsWith('/live/') // /live/123 은 풀스크린, /live 목록은 아님
   // 🏭 유통스타트 B2B(도매몰/제조사)는 소비자 BottomNav/TopNav 미표시 — 별도 도메인·업태.
   const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
+  // 🗺️ 2026-06-20 (대표 — 홈 지도에 스크롤 생김): 지도 홈(/ · /restaurant-map)은 h-screen 자체관리 풀스크린 +
+  //   바텀시트가 하단을 담당 → main 의 하단 네비 여백(pb)을 주면 100vh+56px 가 되어 페이지가 스크롤됨. 제외.
+  const mapFullScreen = location.pathname === '/' || location.pathname === '/restaurant-map'
     || location.pathname === '/wholesale' || location.pathname.startsWith('/wholesale/')
     || location.pathname === '/supplier' || location.pathname.startsWith('/supplier/')
 
@@ -498,7 +501,10 @@ function AppContent() {
           {/* 📐 2026-05-03: PC 상단 네비게이션 — 모바일 BottomNav 의 PC 대응. lg+ 에서만 표시. */}
           {!hideBottomNav && <DesktopTopNav />}
           <div className="flex-1">
-          <InAppBrowserBanner />
+          {/* 🗑️ 2026-06-20 (대표 요청): 인앱 브라우저 경고 배너(InAppBrowserBanner) 제거 —
+              "카카오톡 인앱 브라우저에서는 일부 기능이 제한될 수 있어요" 노이즈. 카카오 로그인은
+              이제 정상 동작 + 카톡 인앱은 main.tsx 가 외부 브라우저로 자동 redirect. 복원하려면
+              `import InAppBrowserBanner from './components/InAppBrowserBanner'` 후 여기 다시 렌더. */}
           {/* 🗑️ 2026-06-17 (사용자 요청): 앱 설치 팝업(PWAInstallPrompt) 제거 */}
           <Suspense fallback={null}><OnboardingTrigger /></Suspense>
           <Suspense fallback={null}><RestoreAccountModal /></Suspense>
@@ -509,7 +515,8 @@ function AppContent() {
           {/* 🛡️ 2026-06-04 (사용자 신고 — 영구 수정): 모바일 BottomNav(fixed h-14 lg:hidden)가
               콘텐츠 하단을 가림. BottomNav 표시 페이지에만 하단 여백(높이+safe-area) 예약.
               hideBottomNav 페이지(결제/풀스크린/대시보드 등)는 여백 0 — 자체 레이아웃 보존. */}
-          <main id="main-content" className={hideBottomNav ? undefined : 'pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0'}>
+          {/* 🖥️ 2026-06-20: 하단 네비가 이제 PC(lg+) 액자에도 표시되므로 lg:pb-0 제거 — 모든 뷰포트에서 하단 여백 예약. */}
+          <main id="main-content" className={(hideBottomNav || mapFullScreen) ? undefined : 'pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]'}>
           <ErrorBoundary key={location.key}>
           {/* 🏭 2026-06-04 도매몰 도메인 SPA 가드 — utongstart.com 비-도매몰 경로 navigate() 차단.
               worker 302(src/worker/index.ts)가 주 방어, 이건 SPA 내부 이동 보강(직접 로드는 worker 가 처리). */}
@@ -519,7 +526,7 @@ function AppContent() {
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
             <Route path="/about" element={<AboutPage />} />
-            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <MainHomePage />} />
+            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <RestaurantMapPage home />} />
             <Route path="/wholesale/intro" element={<WholesaleIntroPage />} />
             <Route path="/wholesale/join" element={<WholesaleJoinPage />} />
             <Route path="/wholesale/login" element={<WholesaleLoginPage />} />

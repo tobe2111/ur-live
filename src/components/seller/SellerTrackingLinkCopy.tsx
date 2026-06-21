@@ -65,7 +65,7 @@ export default function SellerTrackingLinkCopy({ sellerId, productId, productNam
   }
 
   return (
-    <div className="rounded-xl border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50 p-3">
+    <div className="rounded-xl border-2 border-purple-300 bg-gradient-to-br from-gray-50 to-gray-50 p-3">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-base">🔗</span>
         <p className="text-xs font-bold text-purple-900">내 트래킹 링크</p>

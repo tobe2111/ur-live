@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react'
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import { escapeHtml } from '@/shared/utils/html'
 import { formatNumber } from '@/utils/format'
 import type { Restaurant, KakaoPlace } from './types'
@@ -32,10 +32,17 @@ export function useKakaoMap({
   const mapInstance = useRef<any>(null)
   const markersRef = useRef<any[]>([])
   const overlaysRef = useRef<any[]>([])
+  // 🛡️ 2026-06-20 (대표 — 줌 전수조사): 초기 fit(setBounds/setLevel)은 데이터 로드 후 '한 번만'.
+  //   기존엔 initMap 의존성에 mapLevel 이 있어 zoom_changed→setMapLevel→initMap 재실행→fit 재호출로
+  //   매 줌마다 setLevel(5)/setBounds 가 사용자 줌을 원위치시켜 "줌이 안 먹는" 근본 원인이었음.
+  const didInitialFit = useRef(false)
 
   const [sdkLoaded, setSdkLoaded] = useState(false)
   const [sdkError, setSdkError] = useState(false)
   const [mapLevel, setMapLevel] = useState<number>(7)
+  // 🛡️ 2026-06-20 (대표 — 줌 마커 churn 최적화): 클러스터 gridSize 는 줌 '구간'에서만 바뀜(레벨 3/5/7 경계).
+  //   initMap 의존성을 mapLevel(매 줌) → gridSize(구간 변화 시만)로 바꿔 마커 전량 재빌드를 줌 구간 전환 때만.
+  const gridSize = useMemo(() => (mapLevel <= 3 ? 0 : mapLevel <= 5 ? 0.001 : mapLevel <= 7 ? 0.005 : 0.02), [mapLevel])
 
   // SDK loading
   useEffect(() => {
@@ -65,6 +72,10 @@ export function useKakaoMap({
       mapInstance.current = new window.kakao.maps.Map(mapRef.current, {
         center,
         level: 7,
+        // 🛡️ 2026-06-20 (대표 신고 — 스크롤/핀치 줌 잘 안됨): Kakao 네이티브 스크롤휠 줌 명시 활성화.
+        //   기존 커스텀 wheel 핸들러(capture+stopImmediatePropagation, 1레벨/tick)가 네이티브 부드러운
+        //   커서기준 줌·트랙패드 핀치를 가로채 오히려 뻑뻑했음 → 제거하고 네이티브에 위임.
+        scrollwheel: true,
       })
       // 🛡️ 2026-05-16: 명시적 줌/팬 활성화 — 기본값이지만 명시로 안전
       mapInstance.current.setDraggable(true)
@@ -74,25 +85,12 @@ export function useKakaoMap({
       mapInstance.current.setMaxLevel(14)
       // 🛡️ 2026-05-17: ZoomControl 을 TOPRIGHT 로 — RIGHT 는 바텀시트(mid/full)에 가려짐
       const zoomControl = new window.kakao.maps.ZoomControl()
-      mapInstance.current.addControl(zoomControl, window.kakao.maps.ControlPosition.TOPRIGHT)
+      // 🛡️ 2026-06-20 (대표 — "버튼과 줌 슬라이더 포개짐"): 홈 헤더의 알림/장바구니(우상단)와 겹쳐 RIGHT(세로 중앙)로 이동.
+      mapInstance.current.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT)
       window.kakao.maps.event.addListener(mapInstance.current, 'zoom_changed', () => {
         if (mapInstance.current) setMapLevel(mapInstance.current.getLevel())
       })
-
-      // 🛡️ 2026-05-17: 커스텀 wheel zoom — Kakao native 가 sluggish/inconsistent 한 경우 보강.
-      //   capture phase + stopImmediatePropagation 으로 Kakao native 가로채 double-zoom 방지.
-      //   wheel 한 tick = 1 level 변화. passive: false 로 페이지 스크롤 차단.
-      const wheelHandler = (e: WheelEvent) => {
-        if (!mapInstance.current) return
-        e.preventDefault()
-        e.stopImmediatePropagation()
-        const cur = mapInstance.current.getLevel()
-        // deltaY < 0 (휠 위) = 줌 인 = 레벨 감소
-        const next = Math.max(1, Math.min(14, cur + (e.deltaY > 0 ? 1 : -1)))
-        if (next !== cur) mapInstance.current.setLevel(next, { animate: true })
-      }
-      mapRef.current.addEventListener('wheel', wheelHandler, { passive: false, capture: true })
-      // cleanup: mapRef DOM unmount 시 listener GC. mapInstance ref 만 useEffect 에서 null 처리.
+      // 🛡️ 2026-06-20: 커스텀 wheel 핸들러 제거 — 네이티브 scrollwheel 줌(위 옵션)에 위임(커서기준·트랙패드 핀치 부드럽게).
     }
 
     markersRef.current.forEach(m => m.setMap(null))
@@ -100,7 +98,6 @@ export function useKakaoMap({
     overlaysRef.current.forEach(o => o.setMap(null))
     overlaysRef.current = []
 
-    const gridSize = mapLevel <= 3 ? 0 : mapLevel <= 5 ? 0.001 : mapLevel <= 7 ? 0.005 : 0.02
     const clusters = new Map<string, Restaurant[]>()
     if (gridSize > 0) {
       withCoords.forEach(r => {
@@ -124,7 +121,7 @@ export function useKakaoMap({
         const cContent = document.createElement('div')
         cContent.innerHTML = `
           <div style="
-            background: linear-gradient(135deg,#ec4899,#f43f5e);
+            background: linear-gradient(135deg,#6b7280,#6b7280);
             color: #fff;
             border: 3px solid #fff;
             border-radius: 999px;
@@ -196,17 +193,17 @@ export function useKakaoMap({
       const groupKey = `${r.restaurant_lat.toFixed(5)}_${r.restaurant_lng.toFixed(5)}`
       const groupSize = coordGroupSize.get(groupKey) || 1
       const cornerBadge = isLive
-        ? `<span style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;border-radius:50%;width:14px;height:14px;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;animation:live-pulse 1.2s infinite;">●</span>`
+        ? `<span style="position:absolute;top:-4px;right:-4px;background:#111827;color:#fff;border-radius:50%;width:14px;height:14px;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;animation:live-pulse 1.2s infinite;">●</span>`
         : hasDiscount
-        ? `<span style="position:absolute;top:-6px;right:-8px;background:#ef4444;color:#fff;border-radius:8px;padding:1px 4px;font-size:9px;font-weight:800;line-height:1.2;">-${Math.round((1 - r.price / r.original_price) * 100)}%</span>`
+        ? `<span style="position:absolute;top:-6px;right:-8px;background:#111827;color:#fff;border-radius:8px;padding:1px 4px;font-size:9px;font-weight:800;line-height:1.2;">-${Math.round((1 - r.price / r.original_price) * 100)}%</span>`
         : isFav
-        ? `<span style="position:absolute;top:-3px;right:-3px;color:#ef4444;font-size:11px;line-height:1;">❤</span>`
+        ? `<span style="position:absolute;top:-3px;right:-3px;color:#111827;font-size:11px;line-height:1;">❤</span>`
         : groupSize > 1
-        ? `<span style="position:absolute;top:-4px;right:-6px;background:#3b82f6;color:#fff;border-radius:9px;padding:0 4px;font-size:9px;font-weight:800;line-height:1.4;">+${groupSize - 1}</span>`
+        ? `<span style="position:absolute;top:-4px;right:-6px;background:#374151;color:#fff;border-radius:9px;padding:0 4px;font-size:9px;font-weight:800;line-height:1.4;">+${groupSize - 1}</span>`
         : ''
 
-      const bg = isSelected ? '#ec4899' : isLive ? '#fff5f5' : '#ffffff'
-      const borderColor = isSelected ? '#ec4899' : isLive ? '#ef4444' : '#e5e7eb'
+      const bg = isSelected ? '#6b7280' : isLive ? '#fff5f5' : '#ffffff'
+      const borderColor = isSelected ? '#6b7280' : isLive ? '#111827' : '#e5e7eb'
       const size = isSelected ? 36 : 32
 
       const content = document.createElement('div')
@@ -281,18 +278,26 @@ export function useKakaoMap({
       overlaysRef.current.push(overlay)
     })
 
-    if (withCoords.length > 1) {
-      const bounds = new window.kakao.maps.LatLngBounds()
-      withCoords.forEach(r => bounds.extend(new window.kakao.maps.LatLng(r.restaurant_lat, r.restaurant_lng)))
-      mapInstance.current.setBounds(bounds)
-    } else if (withCoords.length === 1) {
-      mapInstance.current.setCenter(new window.kakao.maps.LatLng(withCoords[0].restaurant_lat, withCoords[0].restaurant_lng))
-      mapInstance.current.setLevel(5)
-    } else if (kakaoPlaces.length > 0 && userLoc) {
-      mapInstance.current.setCenter(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
-      mapInstance.current.setLevel(4)
+    // 🛡️ 2026-06-20 (대표 — 줌 전수조사): 초기 뷰 맞춤은 데이터가 처음 들어온 시점 '한 번만'.
+    //   이후(줌/마커 재빌드)엔 절대 재-fit 안 함 → 사용자 줌/이동 보존. category 변경 등으로 다시
+    //   맞추고 싶으면 didInitialFit.current=false 로 리셋하는 별도 트리거를 추가(현재는 최초 1회).
+    if (!didInitialFit.current) {
+      if (withCoords.length > 1) {
+        const bounds = new window.kakao.maps.LatLngBounds()
+        withCoords.forEach(r => bounds.extend(new window.kakao.maps.LatLng(r.restaurant_lat, r.restaurant_lng)))
+        mapInstance.current.setBounds(bounds)
+        didInitialFit.current = true
+      } else if (withCoords.length === 1) {
+        mapInstance.current.setCenter(new window.kakao.maps.LatLng(withCoords[0].restaurant_lat, withCoords[0].restaurant_lng))
+        mapInstance.current.setLevel(5)
+        didInitialFit.current = true
+      } else if (kakaoPlaces.length > 0 && userLoc) {
+        mapInstance.current.setCenter(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
+        mapInstance.current.setLevel(4)
+        didInitialFit.current = true
+      }
     }
-  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc, liveSellerIds, favorites, coordGroupSize, mapLevel, setSelected, setSuggestionFor])
+  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc, liveSellerIds, favorites, coordGroupSize, gridSize, setSelected, setSuggestionFor])
 
   useEffect(() => { initMap() }, [initMap])
 

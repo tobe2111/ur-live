@@ -23,7 +23,7 @@ import { cfImage } from '@/utils/cf-image'
 import BrowseProductCard from './browse/BrowseProductCard'
 import { seededColor } from '@/utils/card-gradient'
 import type { Product as BrowseProduct } from './browse/types'
-import { Search, X } from 'lucide-react'
+import { Search, X, Trash2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
 import CuratorTabs, { type CuratorTab } from './curator-page/CuratorTabs'
@@ -92,7 +92,9 @@ export default function CuratorPage() {
   // 🔍 2026-06-16 링크샵 시안: 검색 — 상품명 + 추천 코멘트(note) 라이브 필터.
   const [query, setQuery] = useState('')
   // 🎨 2026-06-16 링크샵 시안: '방문자 미리보기' — 본인이 남이 보는 화면 그대로 확인.
-  const [previewAsVisitor, setPreviewAsVisitor] = useState(false)
+  // 🎨 2026-06-19 (대표 — "주인도 처음엔 방문자 화면으로 보이고 편집하기 버튼"): 기본 true(깔끔한 방문자뷰).
+  //   '편집하기' 누르면 false → 편집 모드(툴바·삭제·적립·판매 CTA). 매 진입 깔끔 뷰로 시작.
+  const [previewAsVisitor, setPreviewAsVisitor] = useState(true)
   // 🎨 2026-06-17 (사용자 요청): 오너 기본 화면 = 방문자와 같은 카드 그리드. 순서 바꾸기는 드래그 모드 토글로.
   const [reorderMode, setReorderMode] = useState(false)
   const currentUser = useAuthStore((s: any) => s.user)
@@ -236,7 +238,7 @@ export default function CuratorPage() {
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">다른 키워드로 찾아보세요.</p>
       </div>
     )
-    return <PinGrid pins={f} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} />
+    return <PinGrid pins={f} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} kind={emptyType} />
   }
 
   return (
@@ -248,11 +250,17 @@ export default function CuratorPage() {
         image={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
       />
       <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-28">
-        {/* 🎨 2026-06-16 시안: 방문자 미리보기 모드 배너 (본인 → 남이 보는 화면 그대로 확인) */}
+        {/* 🎨 2026-06-19 (대표 — 기본은 방문자 화면, 편집은 버튼으로): 주인 기본 뷰 상단의 슬림 편집 진입 바.
+            방문자에겐 안 보임(isOwner). 편집 chrome(툴바·삭제·CTA)은 '편집하기' 누른 뒤에만 노출. */}
         {isOwner && previewAsVisitor && (
-          <div className="sticky top-0 z-40 bg-[#141A2E] text-white px-4 py-2 text-[12.5px] font-bold flex items-center justify-between gap-2">
-            <span>👀 방문자 미리보기 — 다른 사람에게 보이는 화면이에요</span>
-            <button onClick={() => setPreviewAsVisitor(false)} className="shrink-0 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-[11.5px] whitespace-nowrap">편집으로 돌아가기</button>
+          <div className="sticky top-0 z-40 bg-white/85 dark:bg-[#0A0A0A]/85 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-2 flex items-center justify-between gap-2">
+            <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">👁 내 링크샵 · 방문자에게 보이는 화면</span>
+            <button
+              onClick={() => { setPreviewAsVisitor(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+              className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12px] font-bold active:scale-95 transition-transform"
+            >
+              ✎ 편집하기
+            </button>
           </div>
         )}
         {ownerView && showOnboard && (
@@ -287,7 +295,7 @@ export default function CuratorPage() {
           <div className="max-w-3xl mx-auto px-4 pt-3">
             <div className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-[#1F1F1F] bg-gray-50 dark:bg-[#0E0E0E] px-2.5 py-1.5">
               <span className="flex items-center gap-1.5 mr-auto pl-1 text-[12px] font-bold text-gray-500 dark:text-gray-400">
-                <span className="text-[#FF5634] text-[13px] leading-none">✎</span>
+                <span className="text-[#6b7280] text-[13px] leading-none">✎</span>
                 편집 모드
                 <span className="hidden sm:inline font-medium text-gray-400 dark:text-gray-500">· 눌러서 바로 수정</span>
               </span>
@@ -305,7 +313,7 @@ export default function CuratorPage() {
               <button
                 onClick={() => { setPreviewAsVisitor(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
                 className="inline-flex items-center gap-1 rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1.5 text-[12px] font-bold text-white dark:text-[#020202] active:opacity-80"
-              >👁 미리보기</button>
+              >✓ 완료</button>
             </div>
           </div>
         )}
@@ -373,20 +381,8 @@ export default function CuratorPage() {
         {/* 🔗 2026-06-17 (사용자 요청): 링크샵 주소 변경 + 공유는 헤더의 '내 링크샵 주소' 카드로 통합 이동
             (CuratorHeader). 맨 아래 외딴 행 제거 — 보는 곳=고치는 곳=공유하는 곳 한 곳에. */}
 
-        {/* 🧭 2026-06-10 (UI 100점 패스 — 방문자 전환): 비소유자 성장 루프 CTA.
-            링크트리식 — 방문자가 1탭으로 자기 링크샵 시작(적립 루프 신규 큐레이터 유입). */}
-        {!ownerView && (
-          <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-4 inset-x-0 z-30 pointer-events-none">
-            <div className="max-w-3xl mx-auto px-4">
-              <Link
-                to="/u/me"
-                className="pointer-events-auto flex items-center justify-center gap-2 h-12 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[14px] font-bold shadow-lg active:scale-[0.98] transition-transform"
-              >
-                ✨ {t('curator.makeMine', { defaultValue: '나도 내 링크샵 만들기 — 추천하면 적립' })}
-              </Link>
-            </div>
-          </div>
-        )}
+        {/* 🎨 2026-06-19 (대표 — "나도 내 링크샵 만들기 버튼 별로"): 하단 고정 방문자 전환 CTA 제거.
+            (조잡함 정리 + 주인 기본 뷰=방문자 미리보기라 주인에게도 떴을 것 → 제거가 맞음.) */}
       </div>
     </>
   )
@@ -436,20 +432,26 @@ function OwnerEarningsStrip() {
   )
 }
 
-function PinGrid({ pins, handle, isOwner, onPinDeleted }: { pins: CuratorPin[]; handle: string; isOwner: boolean; onPinDeleted: (id: number) => void }) {
+function PinGrid({ pins, handle, isOwner, onPinDeleted, kind }: { pins: CuratorPin[]; handle: string; isOwner: boolean; onPinDeleted: (id: number) => void; kind?: 'shop' | 'voucher' }) {
+  // 🏷️ 2026-06-19 (대표 — "핀" 내부용어 대신 상품/동네딜): 탭에 맞춘 추가 라벨·목적지.
+  const addTo = kind === 'voucher' ? '/group-buy' : '/browse'
+  const addLabel = kind === 'voucher' ? '동네딜 추가하기' : kind === 'shop' ? '상품 추가하기' : '상품·동네딜 추가하기'
   return (
-    <div className="max-w-3xl mx-auto p-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+    // 🛍️ 2026-06-21 (대표 — "상품 2개씩"): 링크샵 핀은 항상 2열. `grid-cols-2 sm:grid-cols-3` 는 PC 액자
+    //   1열 전역 오버라이드(index.css app-framed)에 걸려 1열이 됐음 → 단순 `grid-cols-2` 로 그 매칭을 피해
+    //   모바일·PC 프레임 모두 2열 유지(타 페이지 1열 전역 결정엔 영향 없음).
+    <div className="max-w-3xl mx-auto p-4 grid grid-cols-2 gap-3">
       {pins.map((pin, idx) => (
         <PinCard key={pin.id} pin={pin} handle={handle} isOwner={isOwner} aboveFold={idx < 4} index={idx} onDeleted={onPinDeleted} />
       ))}
       {/* 🏁 2026-06-16 링크샵 개선안: 본인이 핀 채워진 화면에서도 항상 추가 동선 — 그리드 끝 점선 카드. */}
       {isOwner && (
         <Link
-          to="/browse"
-          className="col-span-2 sm:col-span-3 flex items-center justify-center gap-2 h-[52px] rounded-xl border-[1.5px] border-dashed border-[#FFB59E] bg-[#FFF6F3] dark:bg-[#1A1410] text-[#FF5634] text-sm font-bold active:scale-[0.99] transition-transform"
+          to={addTo}
+          className="col-span-2 flex items-center justify-center gap-2 h-[52px] rounded-xl border-[1.5px] border-dashed border-[#FFB59E] bg-[#f9fafb] dark:bg-[#1A1410] text-[#6b7280] text-sm font-bold active:scale-[0.99] transition-transform"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-          핀 추가하기
+          {addLabel}
         </Link>
       )}
     </div>
@@ -503,19 +505,21 @@ function PinCard({ pin, handle, isOwner, aboveFold, index, onDeleted }: { pin: C
     <div className="relative group">
       <BrowseProductCard product={product} aboveFold={aboveFold} to={`/u/${handle}/p/${pin.product_id}`} fallbackColor={fallbackColor} />
       {/* 🔢 2026-06-18 (사용자 요청 — 링크샵에서만 카드 번호): 핀 순서 번호 배지. 다른 곳(홈/쇼핑) 미적용
-          — PinCard(링크샵 전용)에만 오버레이라 BrowseProductCard 공용 동작 불변. */}
-      <span className="absolute top-2 left-2 z-10 min-w-[22px] h-[22px] px-1.5 rounded-full bg-black/65 backdrop-blur text-white text-[12px] font-extrabold flex items-center justify-center shadow-sm pointer-events-none">
+          — PinCard(링크샵 전용)에만 오버레이라 BrowseProductCard 공용 동작 불변.
+          🎨 2026-06-19 (세련화): 프로스트 글래스 원형 배지. */}
+      <span className="absolute top-2 left-2 z-10 w-6 h-6 rounded-full bg-black/45 backdrop-blur-md ring-1 ring-white/25 text-white text-[11px] font-bold flex items-center justify-center shadow-sm pointer-events-none">
         {index + 1}
       </span>
       {isOwner && (
-        // 🎨 2026-06-17: 모바일엔 hover 가 없어 항상 보이게(이전 opacity-0 group-hover 는 터치에서 숨김).
+        // 🎨 2026-06-19 (사용자 요청 — ✕ 대신 삭제 버튼 + 세련화): 휴지통 + '삭제' 글래스 pill, 누르면 빨강.
         <button
           onClick={handleDelete}
           disabled={deleting}
           aria-label="핀 삭제"
-          className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/60 hover:bg-red-500 text-white flex items-center justify-center transition-colors text-sm font-bold shadow-sm disabled:opacity-50"
+          className="absolute top-2 right-2 z-10 inline-flex items-center gap-1 h-7 pl-2 pr-2.5 rounded-full bg-black/45 backdrop-blur-md ring-1 ring-white/25 text-white text-[11px] font-semibold shadow-sm hover:bg-red-500 hover:ring-red-400/40 active:bg-red-500 transition-colors disabled:opacity-50"
         >
-          ✕
+          <Trash2 className="w-3 h-3" aria-hidden="true" />
+          삭제
         </button>
       )}
     </div>
@@ -598,7 +602,7 @@ function PinManageList({ pins, onReorder, onDeleted }: { pins: CuratorPin[]; onR
             <div
               key={pin.id}
               data-pinrow
-              className={`flex items-center gap-3 rounded-2xl border p-2.5 bg-white dark:bg-[#121212] ${dragging ? 'border-[#FF5634] shadow-lg' : 'border-gray-200 dark:border-[#2A2A2A]'}`}
+              className={`flex items-center gap-3 rounded-2xl border p-2.5 bg-white dark:bg-[#121212] ${dragging ? 'border-[#6b7280] shadow-lg' : 'border-gray-200 dark:border-[#2A2A2A]'}`}
               style={{ opacity: dragging ? 0.92 : 1 }}
             >
               <span
@@ -613,11 +617,11 @@ function PinManageList({ pins, onReorder, onDeleted }: { pins: CuratorPin[]; onR
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[13px] font-bold text-gray-900 dark:text-white truncate">{pin.product_name}</span>
-                  {idx === 0 && <span className="shrink-0 text-[9.5px] font-extrabold text-[#FF5634] bg-[#FFEDE8] dark:bg-[#2a1812] px-1.5 py-0.5 rounded">강추</span>}
+                  {idx === 0 && <span className="shrink-0 text-[9.5px] font-extrabold text-[#6b7280] bg-[#FFEDE8] dark:bg-[#2a1812] px-1.5 py-0.5 rounded">강추</span>}
                 </div>
                 {pin.note
                   ? <div className="text-[11.5px] text-gray-500 dark:text-gray-400 mt-1">조회 {fmtK(pin.click_count || 0)}{est > 0 ? ` · 적립 ₩${est.toLocaleString('ko-KR')}/건` : ''}</div>
-                  : <div className="text-[11.5px] font-semibold text-[#C2491F] dark:text-[#FF9576] mt-1">추천 코멘트 없음 · 추가하면 전환 ↑</div>}
+                  : <div className="text-[11.5px] font-semibold text-[#C2491F] dark:text-[#9ca3af] mt-1">추천 코멘트 없음 · 추가하면 전환 ↑</div>}
               </div>
               <button onClick={() => del(pin.id)} aria-label="삭제" className="shrink-0 w-[30px] h-[30px] rounded-lg bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors text-sm font-bold">✕</button>
             </div>
@@ -630,9 +634,9 @@ function PinManageList({ pins, onReorder, onDeleted }: { pins: CuratorPin[]; onR
 
 function EmptyLinkshop({ handle, isOwner, emptyType, curatorName }: { handle: string; isOwner: boolean; emptyType?: 'shop' | 'voucher'; curatorName?: string }) {
   const { t } = useTranslation()
-  const browseLink = emptyType === 'voucher' ? '/vouchers' : '/browse'
+  const browseLink = emptyType === 'voucher' ? '/group-buy' : '/browse'
   const browseLabel = emptyType === 'voucher'
-    ? t('curator.browseVouchers', { defaultValue: '교환권 둘러보기' })
+    ? t('curator.browseVouchers', { defaultValue: '동네딜 둘러보기' })
     : t('curator.browseProducts', { defaultValue: '상품 둘러보기' })
   // 방문자: 심플 메시지 (ghost 는 소유자 동기부여용).
   if (!isOwner) {
@@ -652,18 +656,18 @@ function EmptyLinkshop({ handle, isOwner, emptyType, curatorName }: { handle: st
   return (
     <div className="max-w-3xl mx-auto px-4 pt-4">
       {/* 온보딩 진행 카드 (시안) */}
-      <div className="mb-3 rounded-2xl border border-[#FFE0D6] dark:border-[#3a2218] bg-[#FFF6F3] dark:bg-[#1A1410] px-4 py-3.5">
+      <div className="mb-3 rounded-2xl border border-[#FFE0D6] dark:border-[#3a2218] bg-[#f9fafb] dark:bg-[#1A1410] px-4 py-3.5">
         <div className="flex items-center justify-between">
-          <span className="text-[13px] font-extrabold text-[#B4422A] dark:text-[#FF9576]">링크샵 완성까지 {3 - doneCount}단계</span>
-          <span className="text-[12px] font-bold text-[#B4422A] dark:text-[#FF9576]">{doneCount}/3</span>
+          <span className="text-[13px] font-extrabold text-[#B4422A] dark:text-[#9ca3af]">링크샵 완성까지 {3 - doneCount}단계</span>
+          <span className="text-[12px] font-bold text-[#B4422A] dark:text-[#9ca3af]">{doneCount}/3</span>
         </div>
         <div className="mt-2.5 h-[7px] rounded-full bg-[#FFE0D6] dark:bg-[#3a2218] overflow-hidden">
-          <div className="h-full rounded-full bg-[#FF5634] transition-all" style={{ width: `${Math.round((doneCount / 3) * 100)}%` }} />
+          <div className="h-full rounded-full bg-[#6b7280] transition-all" style={{ width: `${Math.round((doneCount / 3) * 100)}%` }} />
         </div>
         <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-[#7A4232] dark:text-[#c79a87]">
           <span className={nameDone ? '' : 'font-bold text-[#141A2E] dark:text-white'}>{nameDone ? '✓' : '○'} 이름 설정</span>
           <span className={handleDone ? '' : 'font-bold text-[#141A2E] dark:text-white'}>{handleDone ? '✓' : '○'} 주소 설정</span>
-          <span className="font-bold text-[#141A2E] dark:text-white">○ 첫 핀 추가</span>
+          <span className="font-bold text-[#141A2E] dark:text-white">○ 첫 상품 추가</span>
         </div>
       </div>
       <div className="relative overflow-hidden" style={{ height: 230 }}>
@@ -675,22 +679,22 @@ function EmptyLinkshop({ handle, isOwner, emptyType, curatorName }: { handle: st
           {[1, 2, 3, 4].map((n) => (
             <div key={n} className="rounded-xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212]">
               <div className="aspect-[3/2] relative bg-gray-200 dark:bg-[#1A1A1A]">
-                <span className="absolute top-0 left-0 min-w-[1.5rem] h-6 px-1.5 bg-[#FF5634] text-white text-[13px] font-extrabold flex items-center justify-center rounded-br-[11px]">{n}</span>
+                <span className="absolute top-0 left-0 min-w-[1.5rem] h-6 px-1.5 bg-[#6b7280] text-white text-[13px] font-extrabold flex items-center justify-center rounded-br-[11px]">{n}</span>
               </div>
               <div className="p-2.5">
                 <div className="h-3 w-4/5 rounded bg-gray-200 dark:bg-[#1A1A1A]" />
                 <div className="h-3.5 w-1/2 rounded bg-gray-200 dark:bg-[#1A1A1A] mt-2" />
-                <div className="mt-2 pl-2 border-l-2 border-[#FF5634]"><div className="h-2.5 w-11/12 rounded bg-gray-100 dark:bg-[#161616]" /></div>
+                <div className="mt-2 pl-2 border-l-2 border-[#6b7280]"><div className="h-2.5 w-11/12 rounded bg-gray-100 dark:bg-[#161616]" /></div>
               </div>
             </div>
           ))}
         </div>
         <div className="absolute inset-x-0 bottom-0 flex flex-col items-center text-center px-6 pb-1">
-          <div className="w-14 h-14 rounded-2xl bg-[#FF5634] flex items-center justify-center text-white" style={{ boxShadow: '0 10px 24px -8px rgba(255,86,52,.6)' }}>
+          <div className="w-14 h-14 rounded-2xl bg-[#6b7280] flex items-center justify-center text-white" style={{ boxShadow: '0 10px 24px -8px rgba(255,86,52,.6)' }}>
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4h12v16l-6-4-6 4V4Z" /></svg>
           </div>
-          <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white mt-3">{t('curator.emptyOwnerTitle', { defaultValue: '첫 핀을 추가해 보세요' })}</h2>
-          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5 max-w-[270px] leading-snug">{t('curator.emptyOwnerDesc', { defaultValue: '마음에 든 딜·상품을 핀하면 이렇게 나만의 스토어가 채워져요.' })}</p>
+          <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white mt-3">{t('curator.emptyOwnerTitle', { defaultValue: '첫 상품을 추가해 보세요' })}</h2>
+          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5 max-w-[270px] leading-snug">{t('curator.emptyOwnerDesc', { defaultValue: '마음에 든 상품·동네딜을 추가하면 이렇게 나만의 스토어가 채워져요.' })}</p>
           <Link to={browseLink} className="mt-4 w-full max-w-xs py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[14px] font-bold">{browseLabel}</Link>
         </div>
       </div>

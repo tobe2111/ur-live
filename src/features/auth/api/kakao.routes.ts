@@ -8,10 +8,11 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { sign as jwtSign } from 'hono/jwt';
+import { sign as jwtSign, verify as jwtVerify } from 'hono/jwt';
 import { KakaoAuthService } from '../services/KakaoAuthService';
 // 🛡️ 2026-05-01: FirebaseAuthService import 제거 — KR Kakao 흐름은 Firebase 0.
 import { createSessionCookie, clearSessionCookie } from '@/worker/utils/session';
+import { recordKakaoLoginDiag } from '@/worker/utils/kakao-login-diag';
 import { startDashboardSession } from '@/worker/utils/dashboard-session';
 import { encryptAtRest } from '@/worker/utils/data-crypto';
 import type { AuthResponse, KakaoLoginResponse } from '../types';
@@ -112,6 +113,38 @@ async function issueLinkedRoleTokens(
 
   return out
 }
+
+/**
+ * 🛡️ 2026-06-20 (iOS 로그인 — A 방식: httpOnly 유지 + same-origin 쿠키 발급): **세션 확립 티켓**.
+ *
+ * 배경(진단 `kakao_login_diag`): iOS(사파리/카톡 WebKit)는 OAuth 서버단 success 인데도 로그인 안 됨.
+ *   원인 = httpOnly `ur_session` 쿠키가 **cross-site OAuth 콜백 302 응답에서 set 된 뒤 iOS 에서 미영속**.
+ *   (Chrome 은 유지돼 정상.)
+ *
+ * 교과서 해법(A): 세션을 **same-origin 200 응답에서 set** 한다(first-party 쿠키라 iOS 영속).
+ *   콜백은 인증 결과를 담은 **단명(120초)·서명·purpose-scoped 티켓**만 fragment(#st=)로 넘기고,
+ *   착지 클라가 same-origin `POST /api/auth/session/establish` 로 교환 → 서버가 httpOnly `ur_session`
+ *   쿠키를 200 에 발급. **토큰을 localStorage 에 두지 않음**(OWASP 권장 — XSS 면역).
+ *   티켓은 서명(HS256/JWT_SECRET)이라 위조 불가 + 120초 만료 → 재생/CSRF 안전(별도 저장 불필요).
+ */
+async function signEstablishTicket(
+  secret: string,
+  user: { id: number | string; name?: string; email?: string | null; profile_image?: string | null },
+): Promise<string> {
+  const now = Math.floor(Date.now() / 1000)
+  return jwtSign({
+    p: 'session_establish',
+    uid: String(user.id),
+    name: user.name || '',
+    email: user.email || '',
+    img: user.profile_image || '',
+    iat: now,
+    exp: now + 120,
+  }, secret)
+}
+
+// 🧪 단위 테스트용 export — 티켓 클레임/만료 회귀 가드
+export { signEstablishTicket as __signEstablishTicketForTest };
 
 type Bindings = {
   DB: D1Database;
@@ -215,6 +248,57 @@ function clearStateCookieHeader(): string {
   return `${OAUTH_STATE_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`;
 }
 
+const STATE_TOKEN_PURPOSE = 'kakao_oauth_state';
+
+/**
+ * 🛡️ 2026-06-20: self-contained(서명) OAuth state — 쿠키 유실 대비 fallback.
+ *
+ * Why: iOS Safari/WebKit 는 OAuth 왕복(특히 카카오톡 앱 핸드오프 → Safari 복귀,
+ *   ITP cross-site 쿠키 처리) 에서 `kakao_oauth_state` Lax 쿠키를 콜백에 안 돌려주는
+ *   케이스가 있음 → 기존엔 `oauth_state_expired` 로 로그인 실패. Chrome(Blink)은 정상.
+ *   → state 파라미터 자체를 JWT_SECRET 으로 서명해 redirect/intent/nonce/만료를 담으면
+ *     쿠키가 없어도 서명 검증으로 CSRF·라우팅을 복구할 수 있음 (표준 signed-state 패턴).
+ *
+ * 보안: 서명(HS256)이라 공격자는 JWT_SECRET 없이 위조 불가. 30분 만료 + nonce.
+ *   쿠키가 있을 때(대다수 브라우저)는 기존 쿠키↔URL state 바인딩을 그대로 유지(더 강함).
+ */
+async function signOauthState(
+  redirect: string,
+  intent: 'user' | 'seller' | 'agency',
+  nonce: string,
+  secret: string,
+): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  return jwtSign(
+    { p: STATE_TOKEN_PURPOSE, n: nonce, r: redirect, i: intent, iat: now, exp: now + 1800 },
+    secret,
+  );
+}
+
+/** Verify a signed state token. Returns redirect/intent on success, null otherwise. */
+async function verifySignedState(
+  state: string | null | undefined,
+  secret: string,
+): Promise<{ redirect: string; intent: 'user' | 'seller' | 'agency' } | null> {
+  if (!state || !secret) return null;
+  // JWT(점 2개)만 시도 — 레거시 opaque UUID state 는 검증 대상 아님.
+  if (state.split('.').length !== 3) return null;
+  try {
+    const payload = await jwtVerify(state, secret, 'HS256') as Record<string, unknown>;
+    if (!payload || payload.p !== STATE_TOKEN_PURPOSE) return null;
+    const redirect = safeRedirect(typeof payload.r === 'string' ? payload.r : '/');
+    const intentRaw = payload.i;
+    const intent = (intentRaw === 'seller' || intentRaw === 'agency') ? intentRaw : 'user';
+    return { redirect, intent };
+  } catch {
+    // 만료/서명 불일치 — hono/jwt verify 가 throw.
+    return null;
+  }
+}
+
+// 🧪 단위 테스트용 export — signed-state 왕복(CSRF/쿠키유실 복구) 회귀 검증
+export { signOauthState as __signOauthStateForTest, verifySignedState as __verifySignedStateForTest };
+
 /**
  * GET /auth/kakao/start?redirect=/path
  * Initiates OAuth: generates random state, stores signed short-lived cookie,
@@ -235,10 +319,17 @@ kakaoRoutes.get('/start', rateLimit({ action: 'kakao_start', max: 30, windowSec:
     return c.json({ success: false, error: 'Kakao not configured' }, 500);
   }
 
-  const state = crypto.randomUUID();
+  const nonce = crypto.randomUUID();
+  // 🛡️ 2026-06-20: state = 서명된 self-contained 토큰 (redirect/intent/nonce/만료 동봉).
+  //   iOS Safari/WebKit 가 OAuth 왕복에서 state 쿠키를 유실해도 콜백이 서명 검증으로 복구.
+  //   JWT_SECRET 없거나 서명 실패 시 nonce(opaque UUID) 로 폴백 → 기존 쿠키-only 동작 유지.
+  let state: string = nonce;
+  try {
+    if (c.env.JWT_SECRET) state = await signOauthState(redirect, intent, nonce, c.env.JWT_SECRET);
+  } catch { /* 서명 실패 — opaque nonce 로 폴백 (쿠키 경로는 그대로 동작) */ }
   const b64Redirect = btoa(encodeURIComponent(redirect))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  // state|redirect|intent
+  // state|redirect|intent  (state 부분은 이제 서명 JWT — '|' 미포함이라 split 안전)
   const cookieValue = `${state}|${b64Redirect}|${intent}`;
 
   c.header(
@@ -331,6 +422,20 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
     return c.redirect(`/?error=env_missing&detail=KAKAO_REST_API_KEY`);
   }
 
+  // 🩺 2026-06-20: 카카오 로그인 진단 — iOS(Safari/WebKit) 수정 효과 확인 + 회귀 감지.
+  //   fail-soft fire-and-forget. 결과/브라우저/플래그만 기록(PII 미저장).
+  const diagUa = c.req.header('User-Agent');
+  let signedFallbackUsed = false;
+  const fireDiag = (outcome: 'success' | 'error', reason: string, isNew?: boolean) => {
+    try {
+      const p = recordKakaoLoginDiag(DB, {
+        outcome, reason, ua: diagUa,
+        hadStateCookie: !!stateCookie, signedFallback: signedFallbackUsed, isNew,
+      });
+      if (c.executionCtx) c.executionCtx.waitUntil(p); else void p;
+    } catch { /* 진단은 로그인에 영향 없음 */ }
+  };
+
   // Extract & verify OAuth state (CSRF protection) ─────────────
   const receivedState = c.req.query('state') || '';
   const cookieHeader = c.req.header('Cookie') || '';
@@ -347,15 +452,24 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
     intent = stateCookie.intent;
     stateMatched = !!receivedState && receivedState === stateCookie.state;
   } else {
-    // 🛡️ 2026-05-01: state 쿠키 만료 (30분 초과) 또는 미발급 케이스 명시 에러.
-    //   이전: receivedState (random UUID) 를 safeRedirect 통과시켜 silent '/' 로.
-    //   사용자는 왜 로그인 안 됐는지 모름. 에러 명시.
-    if (receivedState) {
-      // 카카오에서 state 는 받았는데 쿠키가 없으면 만료/세션 이슈.
+    // 🛡️ 2026-06-20: state 쿠키 유실 fallback (iOS Safari/WebKit OAuth 왕복·카카오톡 앱 핸드오프).
+    //   서명된 self-contained state 면 쿠키 없이도 CSRF·redirect·intent 복구 → 로그인 성공.
+    //   Chrome 등 쿠키 정상 브라우저는 위 stateCookie 분기로 가므로 이 경로 미진입(동작 불변).
+    const signed = await verifySignedState(receivedState, c.env.JWT_SECRET);
+    if (signed) {
+      redirectTarget = signed.redirect;
+      intent = signed.intent;
+      stateMatched = true; // 서명 검증 = CSRF 통과 (JWT_SECRET 없이 위조 불가 + 30분 만료)
+      signedFallbackUsed = true; // 🩺 쿠키 유실 → 서명 fallback 으로 복구 (진단 플래그)
+    } else if (receivedState) {
+      // 🛡️ 2026-05-01: 쿠키도 없고 서명도 무효(레거시 opaque/만료) → 명시 에러.
+      //   이전: receivedState (random UUID) 를 safeRedirect 통과시켜 silent '/' 로.
       c.header('Set-Cookie', clearStateCookieHeader());
+      fireDiag('error', 'oauth_state_expired');
       return c.redirect(`/?error=oauth_state_expired`);
+    } else {
+      redirectTarget = safeRedirect(receivedState);
     }
-    redirectTarget = safeRedirect(receivedState);
   }
 
   try {
@@ -375,10 +489,22 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
     }
 
     // If a state cookie exists but doesn't match, reject (CSRF guard)
+    // 🛡️ 2026-06-20 (하드닝): 쿠키 불일치여도 URL state 가 우리 서명이면 통과.
+    //   사파리/WebKit 에서 로그인 2번 탭·뒤로가기 재시도·동시 로그인 시 쿠키가 stale 해져
+    //   불일치(중복 발급)인데, 서명된 state 는 위조 불가(JWT_SECRET)+30분 만료라 CSRF 안전.
+    //   쿠키-부재 fallback(위 verifySignedState)과 동일 신뢰 모델 — 일관 확장. 정상(쿠키 일치) 경로 불변.
     if (stateCookie && !stateMatched) {
-      if (import.meta.env.DEV) console.error('[Kakao Sync] OAuth state mismatch');
-      c.header('Set-Cookie', clearStateCookieHeader());
-      return c.redirect(`${redirectTarget}?error=oauth_state_mismatch`);
+      const signedAlt = await verifySignedState(receivedState, c.env.JWT_SECRET);
+      if (signedAlt) {
+        redirectTarget = signedAlt.redirect;
+        intent = signedAlt.intent;
+        stateMatched = true;
+      } else {
+        if (import.meta.env.DEV) console.error('[Kakao Sync] OAuth state mismatch');
+        c.header('Set-Cookie', clearStateCookieHeader());
+        fireDiag('error', 'oauth_state_mismatch');
+        return c.redirect(`${redirectTarget}?error=oauth_state_mismatch`);
+      }
     }
     
     const KAKAO_REDIRECT_URI = `${new URL(c.req.url).origin}/auth/kakao/sync/callback`;
@@ -463,44 +589,41 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       } catch (e) {
         if (import.meta.env.DEV) console.error('[Kakao Sync] Session cookie creation failed:', e);
         // 🛡️ 2026-06-01 하드닝: 원시 에러를 redirect URL 에 노출 금지 — 정적 코드만.
+        fireDiag('error', 'session_cookie_failed');
         return c.redirect(`${redirectTarget}?error=session_cookie_failed`, 302);
       }
 
-      // 🛡️ linked seller/agency JWT 자동 발급 → 프론트엔드 localStorage 로 이전하도록 transfer cookie
+      // 🛡️ 2026-06-20 (A 방식): localStorage Bearer 토큰 미발급 — 대신 아래 redirect 에 단명 세션 티켓을
+      //   fragment(#st=)로 실어, 착지 클라가 same-origin POST /api/auth/session/establish 로 교환해
+      //   httpOnly ur_session 을 first-party 200 응답에서 재발급(iOS 영속). 토큰을 localStorage 에 두지 않음.
+
+      // 🛡️ linked seller/agency JWT 자동 발급 → fragment(#...&auth=) 로 iOS-safe 전달
       let linkedRoles: Awaited<ReturnType<typeof issueLinkedRoleTokens>> = {};
+      let pendingAuthFrag = '';
       try {
         linkedRoles = await issueLinkedRoleTokens(DB, c.env.JWT_SECRET, user.id);
-        // JS-readable cookie (HttpOnly 없음) — 프론트엔드 페이지 로드 시 즉시 읽어서 localStorage 로 이동 후 삭제
-        // 60초 만료 — 짧은 윈도우로 XSS 노출 최소화
+        // 🛡️ 2026-06-20 (A 방식 자매수정 — iOS 대시보드 로그인): transfer 쿠키(iOS 미영속) 대신
+        //   역할 토큰을 fragment 로 전달. 새 역할은 이 맵에 추가만 하면 자동 iOS-safe (pending-auth.ts SSOT).
+        const { encodePendingAuth } = await import('../../../worker/utils/pending-auth')
+        const pendingLs: Record<string, string | number | undefined | null> = {}
         if (linkedRoles.seller_token) {
-          c.header('Set-Cookie',
-            `ur_pending_seller_token=${linkedRoles.seller_token}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
-            { append: true });
-          if (linkedRoles.seller) {
-            c.header('Set-Cookie',
-              `ur_pending_seller_info=${encodeURIComponent(JSON.stringify({ id: linkedRoles.seller.id, business_name: linkedRoles.seller.business_name || '' }))}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
-              { append: true });
-          }
+          pendingLs.seller_token = linkedRoles.seller_token
+          pendingLs.seller_id = linkedRoles.seller?.id
+          pendingLs.seller_name = linkedRoles.seller?.business_name
+          pendingLs.seller_username = linkedRoles.seller?.username
+          if (linkedRoles.seller?.is_distributor) pendingLs.is_distributor = '1'
         }
         if (linkedRoles.agency_token) {
-          c.header('Set-Cookie',
-            `ur_pending_agency_token=${linkedRoles.agency_token}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
-            { append: true });
-          // 🏁 2026-06-13: refresh token 도 transfer — 자동 로그아웃 방지
-          if (linkedRoles.agency_refresh_token) {
-            c.header('Set-Cookie',
-              `ur_pending_agency_refresh_token=${linkedRoles.agency_refresh_token}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
-              { append: true });
-          }
-          if (linkedRoles.agency) {
-            c.header('Set-Cookie',
-              `ur_pending_agency_info=${encodeURIComponent(JSON.stringify({ id: linkedRoles.agency.id, name: linkedRoles.agency.name || '' }))}; Path=/; Max-Age=60; SameSite=Lax; Secure`,
-              { append: true });
-          }
+          pendingLs.agency_token = linkedRoles.agency_token
+          pendingLs.agency_refresh_token = linkedRoles.agency_refresh_token
+          pendingLs.agency_id = linkedRoles.agency?.id
+          pendingLs.agency_name = linkedRoles.agency?.name
         }
+        const enc = encodePendingAuth(pendingLs)
+        if (enc) pendingAuthFrag = '&auth=' + enc
+
         // 🔐 2026-06-11 [UNLOCK] SSR Phase 2 D단계 (사용자 승인 "모두 진행" — docs/SSR_PHASE2_AUTH.md §3.2-2):
-        //   beta(SSR) 개인화용 httpOnly ud_* 쿠키 **추가 발급만** — 기존 transfer cookie/localStorage
-        //   이전 흐름·OAuth state/safeRedirect 로직 전부 불변 (additive Set-Cookie).
+        //   beta(SSR) 개인화용 httpOnly ud_* 쿠키 **추가 발급만** (SSR GET 읽기 전용 — 로그인 경로 아님).
         try {
           const { authTokenSetCookie } = await import('../../../worker/utils/auth-cookies')
           const hostD = new URL(c.req.url).hostname
@@ -576,13 +699,31 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       }
 
       const redirectUrl = stateUrl.pathname + stateUrl.search;
+      // 🛡️ 2026-06-20 (A 방식): 단명 세션 티켓을 URL **fragment(#st=)** 로 전달.
+      //   fragment 는 서버/Referer/로그로 전송되지 않음(가장 안전한 채널) → 착지 클라가 same-origin
+      //   POST /api/auth/session/establish 로 교환 → httpOnly ur_session 을 first-party 200 에서 발급
+      //   (iOS 영속). 토큰을 localStorage 에 두지 않음. (degrade: 티켓 서명 실패해도 위 302-set 쿠키로 진행 — Chrome)
+      let ticketFrag = '';
+      try {
+        const ticket = await signEstablishTicket(c.env.JWT_SECRET, user);
+        ticketFrag = '#st=' + encodeURIComponent(ticket);
+      } catch { /* 티켓 서명 실패 — 302-set 쿠키 경로로 degrade */ }
+      // 🛡️ 2026-06-20: 링크 역할 토큰(seller/agency)도 같은 fragment 로 — iOS-safe.
+      //   ticketFrag='#st=..' | '', pendingAuthFrag='&auth=..' | ''. 조합: #st=..&auth=.. / #st=.. / #auth=.. / ''
+      let frag = ticketFrag; // '' 또는 '#st=...'
+      if (pendingAuthFrag) {
+        frag += frag ? pendingAuthFrag : ('#' + pendingAuthFrag.slice(1)); // 티켓 없으면 '&auth='→'#auth='
+      }
+      // 🩺 로그인 성공 기록 — 브라우저 종류 + (쿠키 경로 vs 서명 fallback) 가시화.
+      fireDiag('success', 'ok', !!userWithFlag.isNewUser);
       // 302 명시: Set-Cookie 헤더가 일부 브라우저에서 303에 무시되는 문제 회피
-      return c.redirect(redirectUrl, 302);
+      return c.redirect(redirectUrl + frag, 302);
 
     } catch (serviceError) {
       if (import.meta.env.DEV) console.error('[Kakao Sync] Service error:', serviceError);
       const errorMsg = (serviceError as Error).message || 'Unknown error';
       c.header('Set-Cookie', clearStateCookieHeader());
+      fireDiag('error', errorMsg.includes('Database') ? 'database_error' : 'kakao_auth_failed');
 
       // 🛡️ 2026-05-01: Firebase 분기 제거 (KR 미사용). Database 만 별도 처리.
       // 🛡️ 2026-06-01 하드닝: 원시 에러를 redirect URL 에 노출 금지 — 정적 코드만.
@@ -671,6 +812,8 @@ kakaoRoutes.post('/callback', cors(), rateLimit({ action: 'kakao_callback', max:
 
     // 🛡️ linked seller / agency 자동 JWT 발급
     const linkedRoles = await issueLinkedRoleTokens(DB, c.env.JWT_SECRET, user.id);
+    // 🛡️ 2026-06-20 (A 방식): 이 POST 흐름은 same-origin XHR 200 응답에서 ur_session 을 set 하므로
+    //   iOS 에서도 쿠키가 영속됨(localStorage Bearer 불필요). 아래 응답엔 토큰 미동봉.
 
     // 🔐 2026-06-11 [UNLOCK] SSR Phase 2 D단계 (사용자 승인 "모두 진행" — docs/SSR_PHASE2_AUTH.md §3.2-2):
     //   beta(SSR) 개인화용 httpOnly ud_* 쿠키 **추가 발급만** — 기존 transfer cookie/localStorage

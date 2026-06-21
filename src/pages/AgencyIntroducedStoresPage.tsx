@@ -154,7 +154,7 @@ export default function AgencyIntroducedStoresPage() {
             </div>
 
             {/* 추천 코드 카드 */}
-            <div className="bg-gradient-to-br from-violet-50 to-pink-50 border border-violet-200 rounded-2xl p-5">
+            <div className="bg-gradient-to-br from-gray-50 to-gray-50 border border-violet-200 rounded-2xl p-5">
               <p className="text-[11px] font-bold text-violet-700 tracking-wide mb-1">내 추천 코드</p>
               <div className="flex items-center gap-3 flex-wrap">
                 <p className="text-3xl font-extrabold font-mono text-gray-900">

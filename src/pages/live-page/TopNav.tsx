@@ -55,7 +55,7 @@ export default function TopNav({ viewers, sellerLinks, sellerName, sellerAvatar,
                 style={{ width: 24, height: 24 }} loading="lazy" decoding="async" />
             ) : (
               <div className="rounded-full flex items-center justify-center shrink-0 text-white"
-                style={{ width: 24, height: 24, background: 'linear-gradient(135deg, #EF4444, #EC4899)', fontSize: 11, fontWeight: 800 }}>
+                style={{ width: 24, height: 24, background: 'linear-gradient(135deg, #EF4444, #6b7280)', fontSize: 11, fontWeight: 800 }}>
                 {sellerName.charAt(0)}
               </div>
             )}

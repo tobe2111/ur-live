@@ -39,7 +39,7 @@ const TXN_META: Record<WholesaleDepositTxn['type'], { label: string; icon: typeo
   adjust: { label: '조정', icon: SlidersHorizontal, positive: true },
 }
 
-export default function WholesaleDepositPage() {
+export default function WholesaleDepositPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -50,8 +50,9 @@ export default function WholesaleDepositPage() {
     //   seller_token 기준으로 노출되는데(WholesaleCatalogPage:277 `loggedIn = !!token`) deposits 만
     //   is_distributor 를 요구해, 카카오 로그인(플래그 미설정) 시 /wholesale 로 silent 튕김("새로고침 느낌").
     //   진입은 token 기준으로 Dashboard 와 일치 + 실제 충전은 서버(useWholesaleMe/charge 엔드포인트)가 검증.
-    if (!token) { navigate('/wholesale/login', { replace: true }); return }
-  }, [token, navigate])
+    // embedded(대시보드 탭) 일 때는 대시보드가 이미 가드하므로 미실행.
+    if (!embedded && !token) { navigate('/wholesale/login', { replace: true }); return }
+  }, [embedded, token, navigate])
 
   const meQ = useWholesaleMe()
   const depositQ = useWholesaleDeposit()
@@ -144,17 +145,8 @@ export default function WholesaleDepositPage() {
     </>
   )
 
-  return (
-    <WholesaleDashboardShell
-      brand="유통사 센터"
-      roleIcon={Store}
-      brandSubtitle={company}
-      navItems={navItems}
-      title={t('wholesale.deposit.title', { defaultValue: '예치금' })}
-      headerRight={headerRight}
-    >
-      <SEO title="예치금 - 유통스타트 도매몰" description="예치금을 충전하고 도매 주문 결제에 사용하세요." url="/wholesale/deposits" noindex />
-
+  // 콘텐츠(예치금 본문) — embedded/standalone 공유.
+  const content = (
       <div className="space-y-5">
         {/* 충전 폼(좌) + 충전 요약(우) */}
         <div className="grid lg:grid-cols-[1fr_340px] gap-5 items-start">
@@ -394,6 +386,23 @@ export default function WholesaleDepositPage() {
           )}
         </section>
       </div>
+  )
+
+  // 대시보드 탭 임베드 — 셸/SEO/사이드바/헤더 생략, 본문만.
+  if (embedded) return content
+
+  return (
+    <WholesaleDashboardShell
+      brand="유통사 센터"
+      roleIcon={Store}
+      brandSubtitle={company}
+      navItems={navItems}
+      title={t('wholesale.deposit.title', { defaultValue: '예치금' })}
+      headerRight={headerRight}
+    >
+      <SEO title="예치금 - 유통스타트 도매몰" description="예치금을 충전하고 도매 주문 결제에 사용하세요." url="/wholesale/deposits" noindex />
+
+      {content}
     </WholesaleDashboardShell>
   )
 }
