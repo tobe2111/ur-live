@@ -40,6 +40,44 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
   const [voucherType, setVoucherType] = useState<'all' | 'meal_voucher' | 'beauty_voucher' | 'health_voucher' | 'pet_voucher' | 'stay_voucher' | 'activity_voucher'>('all')
   // 🛡️ 2026-06-01 Tier2: products fetch 만 React Query(카테고리별 캐시). live-poller 는 유지.
   const { data: restaurants = [], isLoading: loading } = useMapProducts(voucherType === 'all' ? 'all' : voucherType)
+  // 🗺️ 2026-06-20 (대표 — 상품 클릭 시 위치 이동/핀 표시 안 됨): 좌표 없는 딜(주소만 있음)을 클라이언트에서
+  //   주소→좌표 지오코딩(/api/kakao/place/address)으로 보강. 서버 cron(restaurant-geocode)이 채우기 전/
+  //   누락분도 즉시 지도 핀 + 클릭 이동 가능. sessionStorage 캐시 + 딜당 1회 시도 + 최대 12개(레이트리밋 보호).
+  const [geoCache, setGeoCache] = useState<Record<number, { lat: number; lng: number }>>(() => {
+    try { return JSON.parse(sessionStorage.getItem('ur_geocache_v1') || '{}') } catch { return {} }
+  })
+  const geoAttempted = useRef<Set<number>>(new Set())
+  useEffect(() => {
+    const missing = restaurants.filter(r => !r.restaurant_lat && r.restaurant_address && !geoAttempted.current.has(r.id)).slice(0, 12)
+    if (missing.length === 0) return
+    missing.forEach(r => geoAttempted.current.add(r.id))
+    let cancelled = false
+    ;(async () => {
+      const next: Record<number, { lat: number; lng: number }> = {}
+      for (const r of missing) {
+        try {
+          const res = await api.get('/api/kakao/place/address', { params: { query: r.restaurant_address } })
+          const d = res.data?.data?.documents?.[0]
+          const lat = Number(d?.y), lng = Number(d?.x)
+          if (Number.isFinite(lat) && Number.isFinite(lng)) next[r.id] = { lat, lng }
+        } catch { /* skip */ }
+      }
+      if (!cancelled && Object.keys(next).length > 0) {
+        setGeoCache(prev => {
+          const merged = { ...prev, ...next }
+          try { sessionStorage.setItem('ur_geocache_v1', JSON.stringify(merged)) } catch { /* ignore */ }
+          return merged
+        })
+      }
+    })()
+    return () => { cancelled = true }
+  }, [restaurants])
+  const enrichedRestaurants = useMemo(
+    () => restaurants.map(r => (!r.restaurant_lat && geoCache[r.id])
+      ? { ...r, restaurant_lat: geoCache[r.id].lat, restaurant_lng: geoCache[r.id].lng }
+      : r),
+    [restaurants, geoCache]
+  )
   const [sortBy, setSortBy] = useState<SortBy>('discount')
   // 옵션 B: 카카오 일반 맛집 + 클릭 시 수요 신호 모달
   const [kakaoPlaces, setKakaoPlaces] = useState<KakaoPlace[]>([])
@@ -195,7 +233,7 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
 
 
   const filtered = useMemo(() => {
-    let items = restaurants.filter(r => {
+    let items = enrichedRestaurants.filter(r => {
       if (showFavoritesOnly && !favorites.includes(r.id)) return false
       if (region && !r.restaurant_address?.includes(region)) return false
       if (search) {
@@ -230,7 +268,7 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
       return 0
     })
     return items
-  }, [restaurants, region, search, category, sortBy, userLoc, showFavoritesOnly, favorites])
+  }, [enrichedRestaurants, region, search, category, sortBy, userLoc, showFavoritesOnly, favorites])
 
   // 🛡️ 2026-04-30 Phase 3: hero carousel — 인기 (할인율 높은 순) 상위 5개
   const heroDeals = useMemo(() => {
@@ -335,14 +373,16 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
   // 🛡️ 2026-05-04 (iOS Safari fix): 100vh → 100dvh. iOS 주소창 토글 시 viewport 점프 회피.
   // 🛡️ 2026-05-17 (PC wheel zoom 영역 확보): 데스크톱에서 lg+ 클래스로 더 작게 — wheel zoom 영역 확보.
   const sheetTopByState: Record<typeof sheetSnap, string> = {
-    peek: 'calc(100dvh - 28dvh)',
+    // 🗺️ 2026-06-20 (대표 — "카드 하나 정도만 보일 정도로"): peek 을 고정 px(핸들+필터+카드1개 ≈ 250px)로 →
+    //   화면 크기 무관 '딱 1카드' 컴팩트(빈 공백 없음). 위로 드래그하면 mid/full 로 확장.
+    peek: 'calc(100dvh - 250px)',
     mid: 'calc(100dvh - 60dvh)',
     full: 'calc(100dvh - 92dvh)',
   }
   // 🛡️ 2026-05-17: PC (lg+) 에서는 sheet 더 작게 (peek 16dvh, mid 40dvh, full 80dvh)
   //   → 지도 영역 60~84% 확보 → wheel zoom UX 정상.
   const sheetTopByStateLg: Record<typeof sheetSnap, string> = {
-    peek: 'calc(100dvh - 16dvh)',
+    peek: 'calc(100dvh - 250px)',
     mid: 'calc(100dvh - 40dvh)',
     full: 'calc(100dvh - 80dvh)',
   }
