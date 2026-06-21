@@ -223,6 +223,7 @@ import { staysPublicRoutes } from '../features/group-buy/api/stays-public.routes
 import { uploadRoutes } from '../features/upload/api/upload.routes';
 import { sellerMarketingRoutes, influencerSettlementRoutes, adminPayoutRoutes, influencerDiscoverRoutes, influencerRankingsRoutes } from '../features/group-buy/api/marketing.routes';
 import { reviewBonusUserRoutes, reviewBonusAdminRoutes } from '../features/group-buy/api/review-bonus.routes';
+import { fcfsRoutes, fcfsAdminRoutes } from '../features/group-buy/api/fcfs.routes';
 // 🛡️ 2026-05-20: requireAdmin 은 위 (line 127) 에서 이미 import — 중복 제거.
 import { ogRoutes } from './routes/og-image.routes';
 import { curatorRoutes } from './routes/curator.routes'; // 2026-05-25 큐레이터 링크샵
@@ -1445,6 +1446,9 @@ app.route('/api/influencer-rankings', influencerRankingsRoutes);
 app.route('/api/review-bonus', reviewBonusUserRoutes);
 app.use('/api/admin-review-bonus/*', requireAdmin());
 app.route('/api/admin-review-bonus', reviewBonusAdminRoutes);
+// 🎯 2026-06-20 선착순 응모 상품 (대표) — 공개(목록/상태) + 유저(지원) + 어드민(설정/지원자/선정)
+app.route('/api/fcfs', fcfsRoutes);
+app.route('/api/admin/fcfs', fcfsAdminRoutes);
 
 // 🛡️ 2026-05-15: 동적 OG 이미지 (KakaoLink / Twitter / Meta 공유용)
 app.route('/api/og', ogRoutes);
