@@ -484,9 +484,9 @@ function AppContent() {
     || location.pathname.startsWith('/live/') // /live/123 은 풀스크린, /live 목록은 아님
   // 🏭 유통스타트 B2B(도매몰/제조사)는 소비자 BottomNav/TopNav 미표시 — 별도 도메인·업태.
   const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
-  // 🗺️ 2026-06-20 (대표 — 홈 지도에 스크롤 생김): 지도 홈(/ · /restaurant-map)은 h-screen 자체관리 풀스크린 +
-  //   바텀시트가 하단을 담당 → main 의 하단 네비 여백(pb)을 주면 100vh+56px 가 되어 페이지가 스크롤됨. 제외.
-  const mapFullScreen = location.pathname === '/' || location.pathname === '/restaurant-map'
+  // 🗺️ 2026-06-20 (대표 — 홈=리스트 / 지도는 버튼 이동): 지도 페이지(/restaurant-map)만 h-screen 자체관리
+  //   풀스크린(바텀시트가 하단 담당) → main 하단 네비 여백 제외. 홈(/)=리스트는 일반 페이지(여백 필요).
+  const mapFullScreen = location.pathname === '/restaurant-map'
     || location.pathname === '/wholesale' || location.pathname.startsWith('/wholesale/')
     || location.pathname === '/supplier' || location.pathname.startsWith('/supplier/')
 
@@ -526,7 +526,7 @@ function AppContent() {
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
             <Route path="/about" element={<AboutPage />} />
-            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <RestaurantMapPage home />} />
+            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <GroupBuyListPage />} />
             <Route path="/wholesale/intro" element={<WholesaleIntroPage />} />
             <Route path="/wholesale/join" element={<WholesaleJoinPage />} />
             <Route path="/wholesale/login" element={<WholesaleLoginPage />} />

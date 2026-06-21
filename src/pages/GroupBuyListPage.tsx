@@ -706,25 +706,25 @@ export default function GroupBuyListPage() {
         ]}
       />
 
-      {/* 🗺️ 2026-06-20 (대표 시안 — 에버랜드 파크맵): 동네딜 지도 진입. RestaurantMapPage(지도+드래그
-          바텀시트+카테고리 칩+내 주변)를 동네딜 메인 동선으로 승격. 좌표 있는 오프라인 딜을 지도에 핀으로. */}
+      {/* 🗺️ 2026-06-20 (대표 — 홈=리스트 / 지도는 강조 버튼으로): 지도(RestaurantMapPage)로 가는 강조 CTA.
+          잉크 풀폭 버튼 — 리스트 위에서 시각적으로 가장 두드러지게. */}
       <div className="ur-content-wide px-4 lg:px-8 pt-4">
         <button
           onClick={() => navigate('/restaurant-map')}
-          className="w-full flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] px-4 py-3.5 active:scale-[0.99] transition-transform"
+          className="w-full flex items-center gap-3 rounded-2xl bg-gray-900 dark:bg-white px-4 py-4 active:scale-[0.99] transition-transform shadow-sm"
         >
-          <div className="w-9 h-9 rounded-xl bg-gray-900 dark:bg-white flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-white/15 dark:bg-gray-900/10 flex items-center justify-center shrink-0">
             <MapPin className="w-5 h-5 text-white dark:text-gray-900" aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0 text-left">
-            <p className="text-[14px] font-extrabold text-gray-900 dark:text-white">
-              {t('groupBuy.mapEntryTitle', { defaultValue: '내 주변 동네딜 지도' })}
+            <p className="text-[15px] font-extrabold text-white dark:text-gray-900">
+              {t('groupBuy.mapEntryTitle', { defaultValue: '지도로 내 주변 동네딜 보기' })}
             </p>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-              {t('groupBuy.mapEntryDesc', { defaultValue: '지도에서 가까운 딜을 한눈에' })}
+            <p className="text-[12px] text-white/70 dark:text-gray-900/70 mt-0.5">
+              {t('groupBuy.mapEntryDesc', { defaultValue: '가까운 딜을 지도에서 한눈에' })}
             </p>
           </div>
-          <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500 shrink-0" aria-hidden="true" />
+          <ChevronRight className="w-5 h-5 text-white/70 dark:text-gray-900/70 shrink-0" aria-hidden="true" />
         </button>
       </div>
 

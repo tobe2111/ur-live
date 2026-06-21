@@ -8,6 +8,7 @@
  */
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Check } from 'lucide-react'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { KOREA_REGIONS } from '@/shared/constants/korea-regions'
 import type { SortBy } from './types'
@@ -92,26 +93,46 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
         </div>
 
         <div className="px-5 pb-2 overflow-y-auto flex-1 space-y-6">
-          {/* 지역 — 시/도 */}
+          {/* 지역 — 2단(좌: 시/도 / 우: 동네 리스트). 당근/배민 패턴 — pill 벽보다 깔끔·확장성. */}
           <section>
             <SectionTitle>{t('map.filter.region', { defaultValue: '지역' })}</SectionTitle>
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
-              <Pill active={!region} onClick={() => { setRegion(''); setDistrict('') }}>전국</Pill>
-              {KOREA_REGIONS.map(r => (
-                <Pill key={r.key} active={region === r.key} onClick={() => { setRegion(r.key); setDistrict('') }}>
-                  {r.label.replace('\n', '·')}
-                </Pill>
-              ))}
-            </div>
-            {/* 세부 지역 (선택된 시/도) */}
-            {activeRegion && activeRegion.districtGroups.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2.5 pt-2.5 border-t border-gray-100 dark:border-[#1A1A1A]">
-                <Pill active={!district} onClick={() => setDistrict('')}>{activeRegion.label.replace('\n', '·')} 전체</Pill>
-                {activeRegion.districtGroups.map(g => (
-                  <Pill key={g.key} active={district === g.key} onClick={() => setDistrict(g.key)}>{g.label}</Pill>
+            <div className="flex rounded-2xl border border-gray-100 dark:border-[#1A1A1A] overflow-hidden h-[248px]">
+              {/* 시/도 좌측 레일 */}
+              <div className="w-[86px] shrink-0 overflow-y-auto no-scrollbar bg-gray-50 dark:bg-[#121212] border-r border-gray-100 dark:border-[#1A1A1A]">
+                <button
+                  onClick={() => { setRegion(''); setDistrict('') }}
+                  className={`w-full text-left px-3 py-2.5 text-[12.5px] transition-colors ${!region ? 'bg-white dark:bg-[#0A0A0A] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+                >전국</button>
+                {KOREA_REGIONS.map(r => (
+                  <button
+                    key={r.key}
+                    onClick={() => { setRegion(r.key); setDistrict('') }}
+                    className={`w-full text-left px-3 py-2.5 text-[12.5px] whitespace-pre-line leading-tight transition-colors ${region === r.key ? 'bg-white dark:bg-[#0A0A0A] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+                  >{r.label}</button>
                 ))}
               </div>
-            )}
+              {/* 동네 우측 리스트 */}
+              <div className="flex-1 overflow-y-auto">
+                {!activeRegion ? (
+                  <div className="h-full flex items-center justify-center px-4">
+                    <p className="text-[12px] text-gray-400 dark:text-gray-500 text-center">왼쪽에서 시/도를<br />먼저 선택하세요</p>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={() => setDistrict('')} className="w-full flex items-center justify-between px-4 py-3 text-[13px] border-b border-gray-50 dark:border-[#141414]">
+                      <span className={!district ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300'}>{activeRegion.label.replace('\n', ' ')} 전체</span>
+                      {!district && <Check className="w-4 h-4 text-gray-900 dark:text-white" />}
+                    </button>
+                    {activeRegion.districtGroups.map(g => (
+                      <button key={g.key} onClick={() => setDistrict(g.key)} className="w-full flex items-center justify-between px-4 py-3 text-[13px] border-b border-gray-50 dark:border-[#141414] last:border-0">
+                        <span className={district === g.key ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300'}>{g.label}</span>
+                        {district === g.key && <Check className="w-4 h-4 text-gray-900 dark:text-white shrink-0" />}
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
+            </div>
           </section>
 
           {/* 정렬 */}
