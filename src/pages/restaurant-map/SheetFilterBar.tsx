@@ -26,7 +26,7 @@ const VOUCHER_TYPE_DEFS: Array<{ key: VoucherType; labelKey: string; defaultLabe
   { key: 'beauty_voucher', labelKey: 'map.voucher.beauty', defaultLabel: '뷰티', emoji: '💇' },
   { key: 'health_voucher', labelKey: 'map.voucher.health', defaultLabel: '헬스', emoji: '💪' },
   { key: 'pet_voucher', labelKey: 'map.voucher.pet', defaultLabel: '반려', emoji: '🐶' },
-  { key: 'stay_voucher', labelKey: 'map.voucher.stay', defaultLabel: '숙박', emoji: '🏨' },
+  { key: 'stay_voucher', labelKey: 'map.voucher.stay', defaultLabel: '숙소', emoji: '🏨' },
   { key: 'activity_voucher', labelKey: 'map.voucher.activity', defaultLabel: '액티비티', emoji: '🎯' },
 ]
 
