@@ -1,7 +1,8 @@
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Search, X } from 'lucide-react'
+import { ArrowLeft, Search, X, Bell, ShoppingCart } from 'lucide-react'
 import { storage } from '@/shared/utils/storage'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 
 interface Props {
   search: string
@@ -11,6 +12,8 @@ interface Props {
   searchHistory: string[]
   setSearchHistory: (v: string[]) => void
   pushSearchHistory: (q: string) => void
+  // 🏠 2026-06-20 (대표 — 홈=지도): 홈으로 쓰일 때 뒤로가기 대신 로고 + 알림/장바구니.
+  home?: boolean
 }
 
 /**
@@ -25,6 +28,7 @@ export default function MapSearchHeader({
   searchHistory,
   setSearchHistory,
   pushSearchHistory,
+  home = false,
 }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -32,13 +36,23 @@ export default function MapSearchHeader({
   return (
     <div className="absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none">
       <div className="flex items-center gap-2 pointer-events-auto">
-        <button
-          onClick={() => navigate(-1)}
-          aria-label={t('map.search.back', { defaultValue: '뒤로가기' })}
-          className="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-[#0A0A0A]/95 backdrop-blur-md shadow-md shrink-0"
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
-        </button>
+        {home ? (
+          <Link
+            to="/"
+            aria-label={t('nav.home', { defaultValue: '홈' })}
+            className="h-10 px-3 flex items-center justify-center rounded-full bg-white dark:bg-[#0A0A0A]/95 backdrop-blur-md shadow-md shrink-0"
+          >
+            <UrDealLogo size={18} />
+          </Link>
+        ) : (
+          <button
+            onClick={() => navigate(-1)}
+            aria-label={t('map.search.back', { defaultValue: '뒤로가기' })}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-[#0A0A0A]/95 backdrop-blur-md shadow-md shrink-0"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
+          </button>
+        )}
         <div className="flex-1 relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
           <input
@@ -83,6 +97,24 @@ export default function MapSearchHeader({
             </div>
           )}
         </div>
+        {home && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => navigate('/notifications')}
+              aria-label={t('mainHome.ariaNotifications', { defaultValue: '알림' })}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-[#0A0A0A]/95 backdrop-blur-md shadow-md"
+            >
+              <Bell className="w-5 h-5 text-gray-700 dark:text-gray-200" />
+            </button>
+            <button
+              onClick={() => navigate('/cart')}
+              aria-label={t('mainHome.ariaCart', { defaultValue: '장바구니' })}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-[#0A0A0A]/95 backdrop-blur-md shadow-md"
+            >
+              <ShoppingCart className="w-5 h-5 text-gray-700 dark:text-gray-200" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
