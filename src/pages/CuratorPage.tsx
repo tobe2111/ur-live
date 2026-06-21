@@ -437,7 +437,10 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted, kind }: { pins: CuratorP
   const addTo = kind === 'voucher' ? '/group-buy' : '/browse'
   const addLabel = kind === 'voucher' ? '동네딜 추가하기' : kind === 'shop' ? '상품 추가하기' : '상품·동네딜 추가하기'
   return (
-    <div className="max-w-3xl mx-auto p-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+    // 🛍️ 2026-06-21 (대표 — "상품 2개씩"): 링크샵 핀은 항상 2열. `grid-cols-2 sm:grid-cols-3` 는 PC 액자
+    //   1열 전역 오버라이드(index.css app-framed)에 걸려 1열이 됐음 → 단순 `grid-cols-2` 로 그 매칭을 피해
+    //   모바일·PC 프레임 모두 2열 유지(타 페이지 1열 전역 결정엔 영향 없음).
+    <div className="max-w-3xl mx-auto p-4 grid grid-cols-2 gap-3">
       {pins.map((pin, idx) => (
         <PinCard key={pin.id} pin={pin} handle={handle} isOwner={isOwner} aboveFold={idx < 4} index={idx} onDeleted={onPinDeleted} />
       ))}
@@ -445,7 +448,7 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted, kind }: { pins: CuratorP
       {isOwner && (
         <Link
           to={addTo}
-          className="col-span-2 sm:col-span-3 flex items-center justify-center gap-2 h-[52px] rounded-xl border-[1.5px] border-dashed border-[#FFB59E] bg-[#f9fafb] dark:bg-[#1A1410] text-[#6b7280] text-sm font-bold active:scale-[0.99] transition-transform"
+          className="col-span-2 flex items-center justify-center gap-2 h-[52px] rounded-xl border-[1.5px] border-dashed border-[#FFB59E] bg-[#f9fafb] dark:bg-[#1A1410] text-[#6b7280] text-sm font-bold active:scale-[0.99] transition-transform"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
           {addLabel}
