@@ -493,10 +493,13 @@ export default function MyVouchersPage() {
   const usedItems = shownVouchers.filter(v => v.status === 'used')
   const archivedItems = shownVouchers.filter(v => v.status === 'expired' || v.status === 'refunded')
   // 지도에 표시 가능한 미사용 식사권 (좌표 보유) — 메모이즈(지도 재초기화 방지)
-  const mapVouchers = useMemo(
-    () => vouchers.filter(v => v.status === 'unused' && v.restaurant_lat && v.restaurant_lng),
-    [vouchers],
-  )
+  // 🐛 2026-06-21: 현재 탭(공구권/교환권) 스코프로 제한 — 교환권 탭에서 공구권 핀/지도버튼 새던 것 차단.
+  const mapVouchers = useMemo(() => {
+    const scoped = giftCount > 0
+      ? vouchers.filter(v => (sourceTab === 'gift' ? v.source === 'kt_alpha' : v.source !== 'kt_alpha'))
+      : vouchers
+    return scoped.filter(v => v.status === 'unused' && v.restaurant_lat && v.restaurant_lng)
+  }, [vouchers, sourceTab, giftCount])
   const handleMarkerClick = useCallback(
     (mv: { id: number | string }) => setMapSelected(vouchers.find(x => x.id === mv.id) ?? null),
     [vouchers],
@@ -1104,8 +1107,10 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
               type="button"
               onClick={(e) => {
                 e.stopPropagation()
-                navigator.clipboard?.writeText(v.code)
-                toast.success(t('voucher.copied', { defaultValue: '복사됨' }))
+                // 🐛 2026-06-21: 실제 복사 성공 시에만 토스트 (비보안 컨텍스트 등 미지원 시 거짓 '복사됨' 방지)
+                const cb = navigator.clipboard
+                if (!cb?.writeText) return
+                cb.writeText(v.code).then(() => toast.success(t('voucher.copied', { defaultValue: '복사됨' }))).catch(() => { /* 권한 거부 */ })
               }}
               className="w-full flex items-center gap-3 px-4 py-3 text-left active:opacity-70"
             >
@@ -1115,7 +1120,7 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
                   <span className="truncate">{v.code}</span>
                   <Copy className="w-3 h-3 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={2} aria-hidden />
                 </span>
-                <span className="block text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t('voucher.tapForQr', { defaultValue: '탭하면 코드 복사 · 사용하기로 QR 제시' })}</span>
+                <span className="block text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{t('voucher.tapForQr', { defaultValue: '탭하면 코드 복사 · 사용하기로 QR 제시' })}</span>
               </div>
             </button>
           ) : (
