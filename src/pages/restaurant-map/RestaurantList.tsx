@@ -10,9 +10,12 @@ interface Props {
   selected: Restaurant | null
   userLoc: { lat: number; lng: number } | null
   onSelect: (r: Restaurant) => void
+  /** 🎯 선착순: id→{spots,appliedDisplay}. 있으면 배지 + '지원' 버튼. */
+  fcfsMap?: Map<number, { spots: number; appliedDisplay: number }>
+  onApplyFcfs?: (productId: number) => void
 }
 
-export default function RestaurantList({ loading, filtered, selected, userLoc, onSelect }: Props) {
+export default function RestaurantList({ loading, filtered, selected, userLoc, onSelect, fcfsMap, onApplyFcfs }: Props) {
   const navigate = useNavigate()
 
   if (loading) {
@@ -48,6 +51,7 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
     <div className="space-y-3 pb-8">
       {filtered.map(r => {
         const discount = r.original_price > r.price ? Math.round((1 - r.price / r.original_price) * 100) : 0
+        const fcfs = fcfsMap?.get(r.id)
         return (
           <button
             key={r.id}
@@ -74,6 +78,11 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
                   </span>
                 )}
               </div>
+              {fcfs && (
+                <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-extrabold text-gray-900 dark:text-white bg-gray-900/10 dark:bg-white/15 px-2 py-0.5 rounded-full">
+                  ⚡ 선착순 {formatNumber(fcfs.appliedDisplay)}/{formatNumber(fcfs.spots)}명
+                </span>
+              )}
               <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 truncate flex items-center gap-0.5">
                 <MapPin className="w-3 h-3 shrink-0" />
                 {r.restaurant_address || '주소 미등록'}
@@ -91,12 +100,21 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
                 )}
               </div>
             </div>
-            <button
-              onClick={(e) => { e.stopPropagation(); navigate(`/products/${r.id}`) }}
-              className="self-center px-3.5 py-2 bg-pink-500 text-white text-xs font-bold rounded-xl shrink-0 active:scale-95 transition-transform"
-            >
-              구매
-            </button>
+            {fcfs && onApplyFcfs ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); onApplyFcfs(r.id) }}
+                className="self-center px-3.5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-xl shrink-0 active:scale-95 transition-transform"
+              >
+                지원
+              </button>
+            ) : (
+              <button
+                onClick={(e) => { e.stopPropagation(); navigate(`/products/${r.id}`) }}
+                className="self-center px-3.5 py-2 bg-pink-500 text-white text-xs font-bold rounded-xl shrink-0 active:scale-95 transition-transform"
+              >
+                구매
+              </button>
+            )}
           </button>
         )
       })}
