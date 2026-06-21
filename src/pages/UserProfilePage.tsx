@@ -15,9 +15,7 @@ import EarningsGroup from './user-profile/EarningsGroup'
 import ReferralEarnedCard from './user-profile/ReferralEarnedCard'
 import CuratorEarningsCard from './user-profile/CuratorEarningsCard'
 import MyReferralCard from '@/components/MyReferralCard'
-import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 import RoleCtaGrid from './user-profile/RoleCtaGrid'
-import CouponVoucherStats from './user-profile/CouponVoucherStats'
 import ShoppingGroup from './user-profile/ShoppingGroup'
 import OrderStatusBar from './user-profile/OrderStatusBar'
 import SellerSwitchInline from './user-profile/SellerSwitchInline'
@@ -153,13 +151,10 @@ export default function UserProfilePage() {
               프로필 편집 <ChevronRight className="w-2.5 h-2.5" aria-hidden="true" />
             </button>
           </div>
-          {/* 알림 / 설정 버튼 — 프로필 우측 */}
+          {/* 알림 버튼 — 프로필 우측 (설정 톱니는 '프로필 편집' 알약과 중복이라 제거, 설정은 하단 '설정' 그룹) */}
           <div className="flex items-center gap-1 flex-shrink-0 self-start pt-1">
             <button onClick={() => navigate('/notifications')} aria-label={t('userProfile.ariaNotifications')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-gray-100 dark:bg-white/[0.06] hover:bg-gray-200 dark:hover:bg-white/[0.12] transition-colors">
               <svg className="w-4 h-4 text-gray-700 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-            </button>
-            <button onClick={() => setEditOpen(true)} aria-label={t('userProfile.ariaSettings')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-gray-100 dark:bg-white/[0.06] hover:bg-gray-200 dark:hover:bg-white/[0.12] transition-colors">
-              <svg className="w-4 h-4 text-gray-700 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             </button>
           </div>
         </div>
@@ -199,6 +194,25 @@ export default function UserProfilePage() {
         </span>
         <ChevronRight className="w-3.5 h-3.5 text-gray-400 dark:text-white/30" aria-hidden="true" />
       </button>
+
+      {/* 🧹 2026-06-21 (대표 — 마이 정리): 더보기에 흩어져 있던 '인플루언서 활동(추천/정산)' 진입을
+            '내 수익·추천' 그룹 안으로 흡수 → 수익 진입점을 한 곳으로 통합. 라우트/정산 로직 불변. */}
+      <button
+        type="button"
+        onClick={() => navigate('/influencer/settlement')}
+        className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 mt-2 bg-gray-100 dark:bg-white/[0.04] active:bg-gray-200 dark:active:bg-white/[0.06] text-left"
+      >
+        <span className="text-lg" aria-hidden="true">🧾</span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
+            {t('my.settlementTitle', { defaultValue: '추천 수익 정산' })}
+          </span>
+          <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
+            {t('my.settlementSub', { defaultValue: '추천·영입 적립 출금 및 내역' })}
+          </span>
+        </span>
+        <ChevronRight className="w-3.5 h-3.5 text-gray-400 dark:text-white/30" aria-hidden="true" />
+      </button>
       </EarningsGroup>
 
       {/* 🛡️ 2026-05-21: 역할 진입 CTA 2x2 grid — 공구개최 / 사장님 / 셀러 / 에이전시.
@@ -207,8 +221,8 @@ export default function UserProfilePage() {
         <RoleCtaGrid />
       </div>
 
-      {/* v4 쿠폰 / 바우처 카운트 2분할 */}
-      <CouponVoucherStats counts={counts} />
+      {/* 🧹 2026-06-21: 쿠폰/바우처 스탯카드 제거 — '쇼핑·이용내역' 그룹의 쿠폰함/내 교환권 행과
+           같은 곳(/my-coupons · /my-vouchers)으로 가던 중복 진입점이라 통합(카운트는 그 행에 그대로 표시). */}
 
       {/* v4 주문 현황 */}
       <OrderStatusBar />
@@ -216,34 +230,9 @@ export default function UserProfilePage() {
       {/* v4 쇼핑 InsetGroup — 시안 매칭 (4개) */}
       <ShoppingGroup counts={counts} />
 
-      {/* 🧹 2026-06-19 (대표 신고 — 마이 번잡): 채팅 이름 설정 제거(라이브 커머스 영구중단이라 '라이브 채팅 이름' 토글은 죽은 UI).
-           테마/언어 토글은 아래 '설정' 접이식 그룹으로 이동(흩어진 설정 4종 → 1 fold). */}
-
-      {/* v4 더보기 InsetGroup — 배송지 / 리뷰 / 친구초대 / 광고 보고 포인트 */}
-      <div className="ur-content-medium px-4 lg:px-8 pt-5">
-        <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('userProfile.moreSection')}</p>
-        <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04]">
-          {[
-            { icon: '📍', label: t('userProfile.addressManage'), path: '/mypage/addresses' },
-            { icon: '📝', label: t('userProfile.myReviews'), path: '/my-reviews' },
-            // 🧭 2026-06-17: 그룹 referral(/referral) 숨김 — 초대보너스는 위 MyReferralCard 가 같은 페이지에 이미 노출(중복 메뉴 제거, 플래그 false 면 복원).
-            ...(REFERRAL_GROUP_DISCOUNT_DISABLED ? [] : [{ icon: '👥', label: t('userProfile.inviteFriends'), path: '/referral' }]),
-            // 🛡️ 2026-05-16: 인플루언서 활동 진입점 (누구나 가능 — 추천 링크 생성 + 정산)
-            { icon: '🎤', label: t('userProfile.influencerActivity', { defaultValue: '인플루언서 활동 (추천/정산)' }), path: '/influencer/settlement' },
-          ].map((item, i) => (
-            <button
-              key={item.label}
-              onClick={() => navigate(item.path)}
-              className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-gray-200 dark:active:bg-white/[0.06]"
-              style={{ borderTop: i ? '1px solid' : 'none', borderColor: 'rgba(0,0,0,0.06)' }}
-            >
-              <span className="text-base" aria-hidden="true">{item.icon}</span>
-              <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{item.label}</span>
-              <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30" aria-hidden="true" />
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* 🧹 2026-06-21 (대표 — 마이 정리): '더보기'(배송지/리뷰) 섹션 제거 → 배송지·리뷰는
+           '쇼핑·이용내역' 그룹으로 흡수, '인플루언서 활동'은 '내 수익·추천' 그룹으로 흡수.
+           채팅 이름 설정은 라이브 영구중단으로 이미 제거. 흩어진 미니 섹션을 한 곳으로 통합. */}
 
       {/* v4 광고 리워드 카드 */}
       <RewardAdCard />
@@ -253,9 +242,7 @@ export default function UserProfilePage() {
         <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('userProfile.helpSection')}</p>
         <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04]">
           {[
-            { label: t('userProfile.customerCenter'), sub: '0507-0177-0432', action: () => window.open('tel:0507-0177-0432') },
-            // 🛡️ 2026-05-24 (사용자 명령): 우하단 카카오 FAB 잠시 숨김 → 도움말 섹션에 별도 항목으로 이관.
-            //   언제든 복원 가능 (featureFlags.kakaoFab=true 로). 둘 다 켜도 충돌 없음.
+            // 🧹 2026-06-21 (대표 — 고객센터 전화번호 전체 비노출): 고객센터 전화 항목 제거. 문의는 카카오톡 상담으로 일원화.
             { label: t('userProfile.kakaoConsult', { defaultValue: '카카오톡 상담' }), sub: t('userProfile.kakaoConsultSub', { defaultValue: '평일 10:00~18:00 응대' }), action: () => window.open('http://pf.kakao.com/_AITdn/chat', '_blank', 'noopener,noreferrer') },
             { label: t('userProfile.faq'), path: '/faq' },
             { label: t('userProfile.terms'), path: '/terms' },

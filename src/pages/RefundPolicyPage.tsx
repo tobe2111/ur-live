@@ -32,7 +32,6 @@ export default function RefundPolicyPage() {
           <div className="bg-gray-50 dark:bg-[#121212] rounded-lg p-4 space-y-1.5">
             <p className="text-[13px] text-gray-600 dark:text-gray-300"><span className="font-semibold text-gray-900 dark:text-white">상호명:</span> 리스터코퍼레이션 (LISTER Corporation)</p>
             <p className="text-[13px] text-gray-600 dark:text-gray-300"><span className="font-semibold text-gray-900 dark:text-white">대표:</span> 정지원</p>
-            <p className="text-[13px] text-gray-600 dark:text-gray-300"><span className="font-semibold text-gray-900 dark:text-white">고객센터:</span> 0507-0177-0432</p>
             <p className="text-[13px] text-gray-600 dark:text-gray-300"><span className="font-semibold text-gray-900 dark:text-white">이메일:</span> jiwon@ur-team.com</p>
             <p className="text-[13px] text-gray-600 dark:text-gray-300"><span className="font-semibold text-gray-900 dark:text-white">운영시간:</span> 평일 09:00 - 18:00 (주말 및 공휴일 휴무)</p>
           </div>
@@ -291,9 +290,6 @@ export default function RefundPolicyPage() {
         <section className="border-t border-gray-100 dark:border-[#1A1A1A] pt-6 mt-6">
           <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">고객센터 문의</h2>
           <div className="bg-gray-50 dark:bg-[#121212] rounded-lg p-4 space-y-2">
-            <p className="text-[13px] text-gray-600 dark:text-gray-300">
-              <span className="font-semibold text-gray-900 dark:text-white">고객센터:</span> 0507-0177-0432
-            </p>
             <p className="text-[13px] text-gray-600 dark:text-gray-300">
               <span className="font-semibold text-gray-900 dark:text-white">운영시간:</span> 평일 09:00 - 18:00 (주말 및 공휴일 휴무)
             </p>

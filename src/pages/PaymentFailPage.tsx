@@ -163,7 +163,7 @@ export default function PaymentFailPage() {
               {t('paymentFail.helpHeader')}
             </p>
             <p className="text-sm font-semibold text-[#1d1d1f] dark:text-white mb-1">
-              {t('paymentFail.csTitle')}: 0507-0177-0432
+              {t('paymentFail.csTitle')}: {t('paymentFail.csChannel', { defaultValue: '카카오톡 채널 문의' })}
             </p>
             <p className="text-xs text-[#86868b] dark:text-gray-500">
               {t('paymentFail.csHours')}

@@ -563,7 +563,7 @@ export default function PaymentSuccessPage() {
               궁금한 점이 있으신가요?
             </p>
             <p className="text-sm sm:text-base lg:text-lg font-semibold text-[#1d1d1f] dark:text-white mb-1.5">
-              📞 고객센터: 0507-0177-0432
+              💬 고객센터: 카카오톡 채널 문의
             </p>
             <p className="text-xs sm:text-sm text-[#86868b] dark:text-gray-500">
               평일 09:00 - 18:00

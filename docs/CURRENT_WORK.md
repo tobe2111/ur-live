@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-21 — 마이페이지 정리(중복·통합) + 고객센터 전화번호 전체 비노출 + 약관 비즈니스모델 정합 (대표 지시)
+**대표 지시**: ① `/user/profile` 마이페이지 너무 복잡 — 모을 건 모으고 없앨 건 없애기(AskUserQuestion: "중복·통합만(기능 유지)" + "흩어진 수익/추천 6곳 → 하나의 '내 수익·추천'"). ② 도움말 고객센터(전화) 비노출. ③ `/terms` 를 현재 비즈니스 모델과 정합. ④ `/privacy` 변경점 반영. ⑤ `/refund` + **전체**에서 고객센터 전화번호(0507-0177-0432) 비노출.
+- **마이페이지 declutter** (`UserProfilePage.tsx` + sub): (a) 상단 ⚙️ 톱니 제거(옆 '프로필 편집' 알약과 중복, 설정은 하단 '설정' 그룹). (b) `CouponVoucherStats`(쿠폰/바우처 스탯카드) **삭제** — `ShoppingGroup` 의 쿠폰함/내 교환권 행과 같은 곳(/my-coupons·/my-vouchers)으로 가던 중복(카운트는 행에 유지). (c) **수익/추천 진입점 통합** — '더보기'에 있던 '인플루언서 활동(추천/정산, /influencer/settlement)'을 `EarningsGroup`('내 수익·추천' fold) 안으로 흡수 → 수익 surface 진입을 한 fold 로. (d) '더보기' 섹션 제거 → 배송지 관리/내 리뷰는 `ShoppingGroup`(쇼핑·이용내역)으로 흡수. (e) 도움말에서 고객센터(tel) 항목 제거 → 문의는 카카오톡 상담으로 일원화. **데이터/라우트/`useMyCounts`(useMyVouchers 재사용) 로직 전부 불변 — 표시 위계/중복만 정리.**
+- **고객센터 전화번호 전체 비노출**: footer 3종(`SiteFooter`/`MobileFooter`/`GripFrameLayout`)·`SEO.tsx`(JSON-LD telephone→email)·`FAQPage`(전화 행 제거)·`PaymentFailPage`/`PaymentSuccessPage`(카카오톡 채널 안내로 — PaymentSuccess 는 Toss-lock 의 '비-결제 UI 문자열' 예외)·`RefundPolicyPage`(2곳)·`TermsOfServicePage`/`PrivacyPolicyPage` 사업자정보·`BusinessLandingPage`(tel→mailto)·`AgencyPartnerLandingPage`·`IntroducePage`·`email.ts`(이메일 풋터)·locale 6종(footerAddress/supportPhoneValue/externalTradeWarningDesc)·`terms-static.html`·`shipping-policy.html`. 연락은 **이메일(jiwon@ur-team.com)·카카오톡 채널**로 일원화. (정부 분쟁기관 hotline·택배사 번호는 보존.)
+- **`/terms` 비즈니스모델 정합**(KR+EN): "라이브 커머스" 프레이밍 제거 → **공동구매(동네딜)·모바일 교환권/이용권·온라인 쇼핑·추천 링크샵·딜 포인트** 플랫폼으로. 정의(서비스/회원/사업자회원/구매자/딜)·제5조 서비스목록 갱신. **KT Alpha 교환권 B2B 정산 compliance 문구(제2조의2)는 substance 보존**(라이브 단어만 '서비스'로). `/privacy` 는 EN의 live-stream/broadcast 표현을 group-buy 로 정정 + 사업자정보 전화 제거.
+- ⚠️ **법무 주의(대표 확인 요망)**: 전자상거래법상 사업자 정보의 '전화번호' 표시 의무가 있음 — 풋터/약관에서 전화번호를 빼면 형식 요건 미충족 소지(현재 이메일+카톡으로 대체). 추후 대표번호 재등록 또는 카톡채널을 공식 CS 채널로 명문화 권장. 또한 사업장주소가 약관/개인정보(서울 강남 도곡동) ↔ 통신판매업신고(부산 금정)·풋터 locale(부산 금정) **불일치** — 별도 확인 필요(이번 작업범위 외, 미변경).
+- 검증: `npm run type-check` 0 · `check-theme-consistency.mjs` 0 · `npm run build`(client+ssr+prerender+worker+prepare) exit 0 · phone grep 0(테스트 negative assertion 제외).
+
 ## ✅ 2026-06-20 (4차 — 전 역할 iOS 카카오 로그인 + 미래대비) — 역할 토큰 fragment 채널 (대표 "셀러/에이전시/도매 + 앞으로 추가될 서비스까지")
 **배경**: 소비자(establish)는 고쳤으나, **셀러/에이전시/유통사가 카카오로 *돌아와* 대시보드 로그인** 시 역할 토큰을 `ur_pending_*` **transfer 쿠키**(cross-site 302 set)로 받아 → iOS WebKit 미영속 → 대시보드 로그인 실패(잠복).
 - **전수조사 결과**: 깨지는 건 **`/sync/callback` 리다이렉트의 transfer 쿠키**뿐. **공급자(제조사) `create-from-kakao`·유통사 `become-distributor`/`login` 은 XHR(JSON 응답)이라 이미 iOS-safe**(same-origin 200) — 무변경.
