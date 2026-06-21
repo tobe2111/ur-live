@@ -32,7 +32,7 @@ export default function WholesaleStartPage() {
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-[16px] font-extrabold" style={{ color: WT.ink }}>판매사(유통사)로 가입</p>
-              <p className="text-[12.5px] mt-0.5" style={{ color: WT.ink2 }}>상품을 등급 도매가로 사입해 판매해요 — 스마트스토어 연동 지원</p>
+              <p className="text-[12.5px] mt-0.5" style={{ color: WT.ink2 }}>상품을 등급 도매가로 사입해 판매해요</p>
             </div>
             <ArrowRight className="w-5 h-5 shrink-0" style={{ color: WT.brand }} />
           </div>
@@ -50,7 +50,7 @@ export default function WholesaleStartPage() {
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-[16px] font-extrabold" style={{ color: WT.ink }}>제조사(공급사)로 가입</p>
-              <p className="text-[12.5px] mt-0.5" style={{ color: WT.ink2 }}>상품을 공급하고 전국 유통사에게 판매해요 — 신원·원가 비공개</p>
+              <p className="text-[12.5px] mt-0.5" style={{ color: WT.ink2 }}>상품을 공급하고 전국 유통사에게 판매해요</p>
             </div>
             <ArrowRight className="w-5 h-5 shrink-0" style={{ color: WT.ink3 }} />
           </div>

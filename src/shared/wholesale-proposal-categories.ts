@@ -32,3 +32,18 @@ export function categoryLabel(key: string | null | undefined): string {
 export function categoryToType(key: string): 'proposal' | 'report' {
   return PROPOSAL_CATEGORIES.find(c => c.key === key)?.type || 'proposal'
 }
+
+/**
+ * 🏬 2026-06-21 (필터 탭 3개 축소: 전체/제안/신고): kind('proposal'|'report') 별 카테고리 key 목록.
+ *   클라(탭 fetch)·서버(WHERE category IN (...)) 공용 SSOT. 하드코딩 금지 — 이 배열에서 파생.
+ */
+export function categoryKeysByType(type: 'proposal' | 'report'): string[] {
+  return PROPOSAL_CATEGORIES.filter(c => c.type === type).map(c => c.key)
+}
+
+/** 게시판 필터 kind 화이트리스트 (그 외는 전체). */
+export const PROPOSAL_KINDS = ['proposal', 'report'] as const
+export type ProposalKind = (typeof PROPOSAL_KINDS)[number]
+export function isProposalKind(v: unknown): v is ProposalKind {
+  return v === 'proposal' || v === 'report'
+}
