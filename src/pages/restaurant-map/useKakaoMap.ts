@@ -85,7 +85,8 @@ export function useKakaoMap({
       mapInstance.current.setMaxLevel(14)
       // 🛡️ 2026-05-17: ZoomControl 을 TOPRIGHT 로 — RIGHT 는 바텀시트(mid/full)에 가려짐
       const zoomControl = new window.kakao.maps.ZoomControl()
-      mapInstance.current.addControl(zoomControl, window.kakao.maps.ControlPosition.TOPRIGHT)
+      // 🛡️ 2026-06-20 (대표 — "버튼과 줌 슬라이더 포개짐"): 홈 헤더의 알림/장바구니(우상단)와 겹쳐 RIGHT(세로 중앙)로 이동.
+      mapInstance.current.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT)
       window.kakao.maps.event.addListener(mapInstance.current, 'zoom_changed', () => {
         if (mapInstance.current) setMapLevel(mapInstance.current.getLevel())
       })
