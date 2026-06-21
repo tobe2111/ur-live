@@ -13,9 +13,8 @@ import api from '@/lib/api'
 import { useMyVouchers, useInvalidateMyVouchers } from '@/hooks/queries'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
-import { walletTokens, type WalletTheme } from '@/components/wallet/walletTokens'
+import { walletTokens } from '@/components/wallet/walletTokens'
 import { formatNumber } from '@/utils/format'
-import { formatPhone } from '@/utils/format-phone'
 
 interface Voucher {
   id: number | string  // KT Alpha 는 'kt-{voId}' 형식
@@ -372,26 +371,13 @@ export default function MyVouchersPage() {
   const vouchers = (vouchersRaw ?? []) as unknown as Voucher[]
   const [qrVoucher, setQrVoucher] = useState<Voucher | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
-  // 🎨 2026-06-20 흑백 리디자인 화면2(지도 전용)·화면6(번호 설정 전용) — 인-페이지 뷰(새 라우트 X)
+  // 🎨 2026-06-20 흑백 리디자인 화면2(지도 전용) — 인-페이지 뷰(새 라우트 X)
   const [mapSelected, setMapSelected] = useState<Voucher | null>(null)
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
-  const [phoneSettingsOpen, setPhoneSettingsOpen] = useState(false)
   // 🛡️ 2026-05-15: 참여 후 share prompt — GroupBuyDetailPage.handleJoin 이 localStorage 기록
   const [justJoined, setJustJoined] = useState<{ product_id: number; name: string; image_url?: string } | null>(null)
-  // 🛡️ 2026-05-24: phone 미등록 사용자 안내 배너 (한 번 dismiss 하면 7일 숨김).
-  const [showPhoneBanner, setShowPhoneBanner] = useState(false)
-  useEffect(() => {
-    const dismissedAt = Number(localStorage.getItem('phone_banner_dismissed_at') || 0)
-    if (Date.now() - dismissedAt < 7 * 86400000) return
-    api.get('/api/auth/me').then(r => {
-      const phone = r.data?.data?.phone || r.data?.user?.phone
-      if (!phone) setShowPhoneBanner(true)
-    }).catch(() => null)
-  }, [])
-  function dismissPhoneBanner() {
-    localStorage.setItem('phone_banner_dismissed_at', String(Date.now()))
-    setShowPhoneBanner(false)
-  }
+  // 🗑️ 2026-06-20 (대표 신고): '전화번호 등록' 배너 제거 — 교환권 구매 시 서버가 PHONE_REQUIRED 로
+  //   번호를 강제 수집(users.phone)하므로, 교환권 보유 유저는 이미 번호가 있음 → 배너는 중복/노이즈.
 
   useEffect(() => {
     try {
@@ -456,17 +442,6 @@ export default function MyVouchersPage() {
     const days = Math.max(0, Math.ceil((candidates[0] - now) / (1000 * 60 * 60 * 24)))
     return days
   })()
-
-  // 🎨 화면6 — 교환권 받을 번호 (전용 인-페이지 화면)
-  if (phoneSettingsOpen) {
-    return (
-      <PhoneSettingsScreen
-        theme={theme}
-        onBack={() => setPhoneSettingsOpen(false)}
-        onSaved={() => { setPhoneSettingsOpen(false); setShowPhoneBanner(false) }}
-      />
-    )
-  }
 
   // 🎨 화면2 — 지도에서 보기 (전용 인-페이지 화면)
   if (viewMode === 'map') {
@@ -533,46 +508,10 @@ export default function MyVouchersPage() {
     <WalletPageWrapper theme={theme}>
       <SEO title={t('voucher.seoTitle')} description={t('voucher.seoDescription')} url="/my-vouchers" />
 
-      {/* 상단 chrome — 뒤로가기 + 알림 영역 */}
-      <div className="sticky top-0 md:top-14 z-30 px-2 pt-3 pb-2 flex items-center"
-        style={{ background: tk.chrome, borderBottom: `0.5px solid ${tk.separator}` }}>
-        <button
-          onClick={() => navigate(-1)}
-          className="w-9 h-9 flex items-center justify-center rounded-full"
-          style={{ background: tk.fillSoft, color: tk.label }}
-          aria-label={t('common.back', { defaultValue: '뒤로가기' })}
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-      </div>
+      {/* 🎨 2026-06-20: back-only 빈 상단 바 제거 (최상위 탭 화면 — 시안엔 없음). LargeTitle 이 최상단. */}
 
       {/* Large Title + 메타 */}
       <LargeTitle theme={theme} title={t('voucher.myVouchers')} />
-
-      {/* 🛡️ 2026-05-24: phone 미등록 안내 — KT Alpha 자동 발송 받으려면 phone 필수 */}
-      {showPhoneBanner && (
-        <div className="ur-content-narrow px-4 lg:px-8 mb-3">
-          <div className="bg-gray-50 dark:bg-[#141414] border border-gray-100 dark:border-[#1F1F1F] rounded-2xl p-3.5 flex items-start gap-3">
-            <Smartphone className="w-5 h-5 mt-0.5 shrink-0 text-gray-900 dark:text-white" strokeWidth={1.8} />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900 dark:text-white">전화번호를 등록하세요</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
-                교환권(기프티콘)을 문자(MMS)로 자동 발송해 드려요.
-              </p>
-              <div className="mt-2.5 flex items-center gap-3">
-                <button onClick={() => setPhoneSettingsOpen(true)}
-                  className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-xl active:scale-95 transition-transform">
-                  등록
-                </button>
-                <button onClick={dismissPhoneBanner}
-                  className="text-gray-400 dark:text-gray-500 text-xs font-medium">
-                  나중에
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 🎟️ 2026-06-18: 공구권/교환권 세그먼트 — 교환권(기프티콘) 보유 시에만. 기본 공구권.
           🎨 2026-06-20 (사용자 신고 — '성의없어'): 두 줄짜리 plain pill → iOS 세그먼트 컨트롤(트랙+슬라이드 강조). */}
@@ -819,92 +758,6 @@ function PostJoinShareModal({ data, onClose }: { data: { product_id: number; nam
         </button>
       </div>
     </div>
-  )
-}
-
-/**
- * 🎨 2026-06-20 흑백 리디자인 화면6 — 교환권 받을 번호 (전용 인-페이지 화면, 모달 X).
- *   저장은 PATCH /api/auth/profile (VoucherDetailPage 와 동일 검증된 엔드포인트).
- *   개인정보보호법: 수집·이용 동의 체크박스 필수.
- */
-function PhoneSettingsScreen({ theme, onBack, onSaved }: { theme: WalletTheme; onBack: () => void; onSaved: () => void }) {
-  const { t } = useTranslation()
-  const tk = walletTokens[theme]
-  const [phone, setPhone] = useState('')
-  const [consent, setConsent] = useState(false)
-  const [saving, setSaving] = useState(false)
-  useEscapeKey(onBack)
-
-  async function save() {
-    if (!consent) { toast.error('개인정보 수집·이용 동의 후 진행 가능합니다'); return }
-    const clean = phone.replace(/[-\s]/g, '')
-    if (!/^01\d{8,9}$/.test(clean)) { toast.error('010 으로 시작하는 휴대폰 번호를 입력하세요'); return }
-    setSaving(true)
-    try {
-      const res = await api.patch('/api/auth/profile', { phone: clean })
-      if (res.data?.success) { toast.success('전화번호 저장 완료'); onSaved() }
-      else toast.error(res.data?.error || '전화번호 저장 실패')
-    } catch (err) {
-      const e = err as { response?: { data?: { error?: string } } }
-      toast.error(e?.response?.data?.error || '전화번호 저장 실패')
-    } finally { setSaving(false) }
-  }
-
-  return (
-    <WalletPageWrapper theme={theme}>
-      <SEO title={t('voucher.phoneSettingsTitle', { defaultValue: '교환권 받을 번호 - 유어딜' })} description="교환권 받을 휴대폰 번호" url="/my-vouchers" noindex />
-      {/* 헤더 */}
-      <div className="sticky top-0 md:top-14 z-30 flex items-center gap-2.5 px-3 pt-3 pb-2.5" style={{ background: tk.chrome, borderBottom: `0.5px solid ${tk.separator}` }}>
-        <button onClick={onBack} className="w-9 h-9 flex items-center justify-center rounded-full" style={{ background: tk.fillSoft, color: tk.label }} aria-label={t('common.back', { defaultValue: '뒤로가기' })}>
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-[19px] font-bold tracking-tight text-gray-900 dark:text-white">{t('voucher.phoneSettingsHeading', { defaultValue: '교환권 받을 번호' })}</h1>
-      </div>
-
-      <div className="ur-content-narrow px-5 lg:px-8 pt-1 pb-8">
-        {/* 안내 박스 (🟢 체크) */}
-        <div className="flex items-start gap-2.5 bg-gray-50 dark:bg-[#141414] rounded-2xl p-3.5">
-          <CheckCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#16A34A]" strokeWidth={2.2} />
-          <p className="text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">
-            교환권(기프티콘)은 등록한 번호로 <b className="text-gray-900 dark:text-white font-bold">문자(MMS)로 자동 발송</b>돼요. 공구권은 번호 없이 앱에서 바로 사용해요.
-          </p>
-        </div>
-
-        {/* 입력 */}
-        <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 mt-6 mb-2">휴대폰 번호</p>
-        <div className="flex items-center gap-2.5 rounded-2xl border-[1.5px] border-gray-900 dark:border-white bg-white dark:bg-[#141414] px-4 py-3.5">
-          <Smartphone className="w-[18px] h-[18px] shrink-0 text-gray-900 dark:text-white" strokeWidth={1.8} />
-          <input
-            type="tel" inputMode="numeric" maxLength={13}
-            value={phone}
-            onChange={(e) => setPhone(formatPhone(e.target.value))}
-            onKeyDown={(e) => { if (e.key === 'Enter') save() }}
-            placeholder="010-1234-5678"
-            className="flex-1 bg-transparent outline-none text-[17px] font-mono tracking-wide text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600"
-            autoFocus
-          />
-        </div>
-        <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-2.5 leading-relaxed">이 번호는 교환권 발송에만 사용돼요. 발송 실패 시 여기서 번호를 바꿔 재발송할 수 있어요.</p>
-
-        {/* 동의 */}
-        <label className="flex items-start gap-2 mt-5 cursor-pointer">
-          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 w-4 h-4 accent-gray-900 dark:accent-white" />
-          <span className="text-[11px] text-gray-700 dark:text-gray-200 leading-relaxed">
-            <b>휴대폰 번호 수집·이용에 동의</b>합니다 (필수)
-            <br />
-            <span className="text-gray-500 dark:text-gray-400">· 이용 목적: 교환권 MMS / 알림톡 발송 · 보유 기간: 회원 탈퇴 시까지</span>
-          </span>
-        </label>
-
-        <button
-          onClick={save}
-          disabled={!phone || !consent || saving}
-          className="w-full mt-6 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl text-[15px] font-extrabold disabled:opacity-40 active:scale-[0.99] transition-transform"
-        >
-          {saving ? '저장 중…' : '이 번호로 등록'}
-        </button>
-      </div>
-    </WalletPageWrapper>
   )
 }
 
