@@ -151,6 +151,16 @@ jobs:
           STRICT_THEME: '1'
         continue-on-error: false
 
+      # 🍎 2026-06-20: 카카오 OAuth iOS 쿠키 미영속 안티패턴 (strict). iOS Safari/WebKit 은
+      #   cross-site 콜백 302 Set-Cookie 미영속 → 역할토큰 transfer 쿠키(ur_pending_*)/세션 302 의존 시
+      #   iOS 만 조용히 깨짐(Chrome 정상). 역할토큰=fragment(pending-auth.ts), 세션=establish.
+      #   우회: 커밋 메시지 [SKIP_AUTH_COOKIE_CHECK]. 규칙: CLAUDE.md '🍎 iOS 쿠키 영속 룰'.
+      - name: Kakao OAuth iOS cookie pattern (strict)
+        run: bash scripts/check-auth-cookie-pattern.sh
+        env:
+          STRICT_AUTH_COOKIE: '1'
+        continue-on-error: false
+
       # 🛡️ 2026-06-17: React Query "stale initialData" 버그 클래스 방어.
       #   useQuery/useApiQuery 의 initialData(localStorage/SSR seed)가 initialDataUpdatedAt 또는
       #   refetchOnMount:'always' 없이 fresh 로 간주돼 cold mount 에서 refetch 안 되던 사고

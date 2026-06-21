@@ -92,6 +92,11 @@ bash scripts/check-silent-errors.sh || true
 echo "==> Pre-commit: 머니 패턴 검사 (warn-only)..."
 bash scripts/check-money-patterns.sh || true
 
+# 🍎 2026-06-20: 카카오 OAuth iOS 쿠키 미영속 안티패턴 검사 (warn-only, CI 차단: STRICT_AUTH_COOKIE=1).
+#   ur_pending_* transfer 쿠키 / 콜백 302 Set-Cookie 역할토큰 → iOS 대시보드 로그인 조용히 깨짐.
+echo "==> Pre-commit: 카카오 OAuth iOS 쿠키 패턴 검사 (warn-only)..."
+bash scripts/check-auth-cookie-pattern.sh || true
+
 # 🛡️ 2026-05-17: CHECK 제약 위반 자동 탐지 (warn-only).
 #   admin live-monitor delete 사고 재발 방지 — 'status=\"deleted\"' 가 CHECK IN (...) 위반 → 500.
 echo "==> Pre-commit: CHECK 제약 위반 검사 (warn-only)..."
