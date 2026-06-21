@@ -23,7 +23,7 @@ import { cfImage } from '@/utils/cf-image'
 import BrowseProductCard from './browse/BrowseProductCard'
 import { seededColor } from '@/utils/card-gradient'
 import type { Product as BrowseProduct } from './browse/types'
-import { Search, X } from 'lucide-react'
+import { Search, X, Trash2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
 import CuratorTabs, { type CuratorTab } from './curator-page/CuratorTabs'
@@ -503,19 +503,21 @@ function PinCard({ pin, handle, isOwner, aboveFold, index, onDeleted }: { pin: C
     <div className="relative group">
       <BrowseProductCard product={product} aboveFold={aboveFold} to={`/u/${handle}/p/${pin.product_id}`} fallbackColor={fallbackColor} />
       {/* 🔢 2026-06-18 (사용자 요청 — 링크샵에서만 카드 번호): 핀 순서 번호 배지. 다른 곳(홈/쇼핑) 미적용
-          — PinCard(링크샵 전용)에만 오버레이라 BrowseProductCard 공용 동작 불변. */}
-      <span className="absolute top-2 left-2 z-10 min-w-[22px] h-[22px] px-1.5 rounded-full bg-black/65 backdrop-blur text-white text-[12px] font-extrabold flex items-center justify-center shadow-sm pointer-events-none">
+          — PinCard(링크샵 전용)에만 오버레이라 BrowseProductCard 공용 동작 불변.
+          🎨 2026-06-19 (세련화): 프로스트 글래스 원형 배지. */}
+      <span className="absolute top-2 left-2 z-10 w-6 h-6 rounded-full bg-black/45 backdrop-blur-md ring-1 ring-white/25 text-white text-[11px] font-bold flex items-center justify-center shadow-sm pointer-events-none">
         {index + 1}
       </span>
       {isOwner && (
-        // 🎨 2026-06-17: 모바일엔 hover 가 없어 항상 보이게(이전 opacity-0 group-hover 는 터치에서 숨김).
+        // 🎨 2026-06-19 (사용자 요청 — ✕ 대신 삭제 버튼 + 세련화): 휴지통 + '삭제' 글래스 pill, 누르면 빨강.
         <button
           onClick={handleDelete}
           disabled={deleting}
           aria-label="핀 삭제"
-          className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-black/60 hover:bg-red-500 text-white flex items-center justify-center transition-colors text-sm font-bold shadow-sm disabled:opacity-50"
+          className="absolute top-2 right-2 z-10 inline-flex items-center gap-1 h-7 pl-2 pr-2.5 rounded-full bg-black/45 backdrop-blur-md ring-1 ring-white/25 text-white text-[11px] font-semibold shadow-sm hover:bg-red-500 hover:ring-red-400/40 active:bg-red-500 transition-colors disabled:opacity-50"
         >
-          ✕
+          <Trash2 className="w-3 h-3" aria-hidden="true" />
+          삭제
         </button>
       )}
     </div>
