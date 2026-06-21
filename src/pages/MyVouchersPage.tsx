@@ -39,6 +39,7 @@ interface Voucher {
   kt_status?: string  // 'sent' | 'processing'
   kt_pin?: string | null  // 🔢 #4: PIN 모드 발급분의 쿠폰 PIN/바코드 (인앱 표시용)
   order_id?: number
+  product_id?: number  // 🛡️ /api/vouchers/my 가 v.product_id 반환 — 재구매 딥링크용
 }
 
 type ViewMode = 'list' | 'map'
@@ -188,6 +189,7 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
   useEscapeKey(onClose)
   const [voucher, setVoucher] = useState(initialVoucher)
   const [now, setNow] = useState(Date.now())
+  const [wakeActive, setWakeActive] = useState(false)  // 🎨 개선 #3: 화면 꺼짐 방지 활성 표시
   const qrUrl = `https://live.ur-team.com/v/${voucher.code}`
 
   // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 사용자 셀프 구매취소(청약철회). 미사용 + 구매 7일 이내만.
@@ -241,8 +243,34 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
     return () => clearInterval(t)
   }, [voucher.status])
 
+  // 🎨 2026-06-21 (개선 #3): 매장 스캔 중 화면 꺼짐/디밍 방지 — Screen Wake Lock(웹 표준, iOS 16.4+/안드).
+  //   네이티브 밝기 API 는 미보유 → wakeLock 으로 dim/sleep 차단(스캔 끊김 방지). 전부 fail-soft.
+  useEffect(() => {
+    if (voucher.status !== 'unused') return
+    let lock: { release: () => Promise<void> } | null = null
+    let released = false
+    const wl = (typeof navigator !== 'undefined' ? (navigator as unknown as { wakeLock?: { request: (t: string) => Promise<{ release: () => Promise<void> }> } }).wakeLock : undefined)
+    const request = async () => { try { if (wl && !released) { lock = await wl.request('screen'); setWakeActive(true) } } catch { /* unsupported/denied */ } }
+    request()
+    const onVis = () => { if (typeof document !== 'undefined' && document.visibilityState === 'visible') request() }
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVis)
+    return () => {
+      released = true
+      setWakeActive(false)
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis)
+      try { lock?.release() } catch { /* ignore */ }
+    }
+  }, [voucher.status])
+
   const isUsed = voucher.status === 'used'
   const isExpired = voucher.status === 'expired' || voucher.status === 'refunded'
+
+  // 🎨 2026-06-21 (개선 #3): 매장 길찾기 (카카오맵). 좌표 우선, 없으면 주소 검색.
+  const mapUrl = (voucher.restaurant_lat && voucher.restaurant_lng)
+    ? `https://map.kakao.com/link/to/${encodeURIComponent(voucher.restaurant_name || '매장')},${voucher.restaurant_lat},${voucher.restaurant_lng}`
+    : voucher.restaurant_address
+      ? `https://map.kakao.com/link/search/${encodeURIComponent(voucher.restaurant_address)}`
+      : null
 
   async function shareVoucher() {
     const shareData = {
@@ -270,7 +298,15 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
         </button>
         <p className="text-center text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white mb-1">{voucher.product_name}</p>
         {voucher.restaurant_name && (
-          <p className="flex items-center justify-center gap-1 text-center text-xs text-gray-500 dark:text-gray-400 mb-4"><MapPin className="w-3 h-3 shrink-0" />{voucher.restaurant_name}</p>
+          <p className="flex items-center justify-center gap-1 text-center text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <MapPin className="w-3 h-3 shrink-0" />{voucher.restaurant_name}
+            {mapUrl && (
+              <a href={mapUrl} target="_blank" rel="noopener noreferrer"
+                className="ml-1 inline-flex items-center gap-0.5 font-semibold text-gray-900 dark:text-white underline underline-offset-2 active:opacity-60">
+                {t('voucher.directions', { defaultValue: '길찾기' })}
+              </a>
+            )}
+          </p>
         )}
         <div className="flex justify-center mb-4">
           <div className="relative p-4 rounded-2xl bg-white dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1F1F1F]" style={{ boxShadow: '0 2px 12px rgba(10,10,10,0.06)' }}>
@@ -321,6 +357,12 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
               {t('voucher.realtime', { defaultValue: '실시간' })} · {new Date(now).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </span>
           </div>
+        )}
+        {/* 🎨 개선 #3: 화면 꺼짐 방지 활성 안내 (스캔 중 디밍 차단) */}
+        {!isUsed && !isExpired && wakeActive && (
+          <p className="text-center text-[10.5px] text-gray-400 dark:text-gray-500 mt-1.5">
+            {t('voucher.wakeOn', { defaultValue: '🔆 화면 꺼짐 방지 중 — 스캔하기 좋게' })}
+          </p>
         )}
 
         {/* 🛡️ 선결제 안내 — "이미 결제 완료" 🟢 체크 (선물 X, 추가결제 X) */}
@@ -437,7 +479,14 @@ export default function MyVouchersPage() {
     ? vouchers.filter(v => (sourceTab === 'gift' ? v.source === 'kt_alpha' : v.source !== 'kt_alpha'))
     : vouchers
   // 🎨 2026-06-20 흑백 리디자인 화면1: 사용가능 카드 + (사용완료 / 만료·환불) 헤어라인 박스
+  // 🎨 2026-06-21 (개선 #1): 만료 임박순 정렬 — API 는 created_at DESC 만 → 히어로 'D-N'과 목록 최상단 불일치.
+  //   곧 사라질 식사권이 위로 오도록 만료 가까운 순(만료일 없는 건 뒤로). filter 가 새 배열이라 원본 불변.
   const unusedItems = shownVouchers.filter(v => v.status === 'unused')
+    .sort((a, b) => {
+      const ta = a.expires_at ? new Date(a.expires_at).getTime() : Number.POSITIVE_INFINITY
+      const tb = b.expires_at ? new Date(b.expires_at).getTime() : Number.POSITIVE_INFINITY
+      return ta - tb
+    })
   const usedItems = shownVouchers.filter(v => v.status === 'used')
   const archivedItems = shownVouchers.filter(v => v.status === 'expired' || v.status === 'refunded')
   // 지도에 표시 가능한 미사용 식사권 (좌표 보유)
@@ -901,6 +950,7 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
   t: (key: string, opts?: any) => string
   onShowQr: () => void
 }) {
+  const navigate = useNavigate()  // 🎨 2026-06-21 (개선 #4): 사용완료/만료 카드 '재구매' 딥링크
   const expiresAt = v.expires_at ? new Date(v.expires_at) : null
   const usedAt = v.used_at ? new Date(v.used_at) : null
   const daysLeft = expiresAt ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : null
@@ -979,33 +1029,53 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
         ) : <span />}
       </div>
 
-      {/* 천공 — 점선 + 양옆 노치 (실물 티켓 메타포) */}
-      <div className="relative" aria-hidden>
-        <div className="mx-3.5 border-t border-dashed border-gray-200 dark:border-[#2A2A2A]" />
-        <span className="absolute top-0 -translate-y-1/2 left-0 -translate-x-1/2 w-3.5 h-3.5 rounded-full" style={notchStyle} />
-        <span className="absolute top-0 -translate-y-1/2 right-0 translate-x-1/2 w-3.5 h-3.5 rounded-full" style={notchStyle} />
-      </div>
+      {/* 천공 + 풋 — refunded 는 액션 없음(천공/풋 생략) */}
+      {v.status !== 'refunded' && (
+        <>
+          {/* 천공 — 점선 + 양옆 노치 (실물 티켓 메타포) */}
+          <div className="relative" aria-hidden>
+            <div className="mx-3.5 border-t border-dashed border-gray-200 dark:border-[#2A2A2A]" />
+            <span className="absolute top-0 -translate-y-1/2 left-0 -translate-x-1/2 w-3.5 h-3.5 rounded-full" style={notchStyle} />
+            <span className="absolute top-0 -translate-y-1/2 right-0 translate-x-1/2 w-3.5 h-3.5 rounded-full" style={notchStyle} />
+          </div>
 
-      {/* 풋: QR 힌트 + 코드 (탭하면 복사) */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation()
-          if (v.status !== 'unused') return
-          navigator.clipboard?.writeText(v.code)
-          toast.success(t('voucher.copied', { defaultValue: '복사됨' }))
-        }}
-        className={`w-full flex items-center gap-3 px-4 py-3 text-left ${v.status === 'unused' ? 'active:opacity-70' : ''}`}
-      >
-        <MiniQrHint muted={v.status !== 'unused'} />
-        <div className="min-w-0">
-          <span className="flex items-center gap-1.5 font-mono text-[12px] font-bold tracking-wide text-gray-700 dark:text-gray-200">
-            <span className="truncate">{v.code}</span>
-            {v.status === 'unused' && <Copy className="w-3 h-3 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={2} aria-hidden />}
-          </span>
-          <span className="block text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t('voucher.tapForQr', { defaultValue: '탭하면 코드 복사 · 사용하기로 QR 제시' })}</span>
-        </div>
-      </button>
+          {v.status === 'unused' ? (
+            /* 풋: QR 힌트 + 코드 (탭하면 복사) */
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                navigator.clipboard?.writeText(v.code)
+                toast.success(t('voucher.copied', { defaultValue: '복사됨' }))
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left active:opacity-70"
+            >
+              <MiniQrHint />
+              <div className="min-w-0">
+                <span className="flex items-center gap-1.5 font-mono text-[12px] font-bold tracking-wide text-gray-700 dark:text-gray-200">
+                  <span className="truncate">{v.code}</span>
+                  <Copy className="w-3 h-3 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={2} aria-hidden />
+                </span>
+                <span className="block text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{t('voucher.tapForQr', { defaultValue: '탭하면 코드 복사 · 사용하기로 QR 제시' })}</span>
+              </div>
+            </button>
+          ) : (
+            /* 🎨 2026-06-21 (개선 #4): 사용완료/만료 동선 — 재구매 + (사용완료만) 후기 보너스 */
+            <div className="px-4 pt-3 pb-3.5">
+              {v.product_id != null && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/group-buy/${v.product_id}`)}
+                  className="w-full py-2.5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white text-[13px] font-bold active:scale-[0.98] transition-transform"
+                >
+                  {t('voucher.rebuy', { defaultValue: '다시 구매하기' })}
+                </button>
+              )}
+              {v.status === 'used' && <ReviewBonusButton voucherCode={v.code} />}
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }
@@ -1041,74 +1111,85 @@ function KtAlphaVoucherCard({ v, muted, t }: {
   // 🔔 2026-06-17 (사용자 요청): 발송 실패(잔액부족/API오류 등) 명시 — '결제됐는데 안 옴' 깜깜이 해소.
   const sendFailed = v.kt_status === 'failed'
 
-  // 🎨 2026-06-20 흑백 리디자인: 식사권과 동일한 클린 화이트 카드 + 84px 썸네일 + 잉크 타이포.
-  //   기프티쇼 정체성은 작은 뉴트럴(회색) 칩으로만 구분 (이전 amber → 잉크 통일).
-  const statusBadge = v.status !== 'unused' ? (
-    <span className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide"
-      style={{
-        background: v.status === 'used' ? 'rgba(0,0,0,0.06)' : v.status === 'expired' ? 'rgba(239,68,68,0.10)' : 'rgba(245,158,11,0.12)',
-        color: v.status === 'used' ? '#6B7280' : v.status === 'expired' ? '#DC2626' : '#6b7280',
-      }}>
-      {t(`voucher.status.${v.status}`)}
-    </span>
-  ) : null
+  // 🎨 2026-06-21 (개선 #2): 교환권 카드도 공구권과 동일한 세로 '패스' 구조로 통일.
+  //   기프티쇼 칩 + 우측 상태/발송실패 배지 · 큰 제목 · 큰 금액 · 천공 · 풋(바코드/문의/MMS).
+  const notchStyle = { background: '#F2F2F7', border: '1px solid #ECECEF' } as const
+  const price = v.applied_price ?? null
 
   return (
     <div
-      className="relative rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F] p-3"
-      style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 2px rgba(10,10,10,0.05), 0 10px 22px -8px rgba(10,10,10,0.10)' }}
+      className="relative rounded-[18px] bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F]"
+      style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 2px rgba(10,10,10,0.05), 0 14px 30px -12px rgba(10,10,10,0.16)' }}
     >
-      <div className="flex items-stretch gap-3">
-        {/* 상품 이미지 (식사권 카드와 동일 규격) */}
-        <div className="w-[84px] h-[84px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
+      {/* 헤더: 썸네일 + 기프티쇼 칩 + 상태/발송실패 배지 */}
+      <div className="flex items-center gap-2.5 px-4 pt-3.5">
+        <div className="w-9 h-9 shrink-0 rounded-[10px] overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
           {v.product_image ? (
-            <img src={v.product_image} alt={v.product_name} loading="lazy" className="w-full h-full object-cover" />
+            <img src={v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" />
           ) : (
-            <Ticket className="w-7 h-7 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
+            <Ticket className="w-4 h-4 text-gray-300 dark:text-gray-600" strokeWidth={1.6} />
           )}
         </div>
-
-        {/* 본문 */}
-        <div className="flex-1 min-w-0 flex flex-col">
-          <div className="flex items-center gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300">
-              📱 기프티쇼
-            </span>
-            {sendFailed ? (
-              <span className="ml-auto shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wide bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400">발송 실패</span>
-            ) : statusBadge ? <span className="ml-auto">{statusBadge}</span> : null}
-          </div>
-          <p className="line-clamp-2 mt-1 text-gray-900 dark:text-white font-bold text-[14px] leading-snug tracking-tight">{v.product_name}</p>
-          {v.applied_price && (
-            <p className="mt-0.5 text-[13px] font-extrabold text-gray-900 dark:text-white">{formatNumber(v.applied_price)}원</p>
-          )}
-          <div className="mt-auto pt-1.5">
-            {sendFailed ? (
-              <>
-                <p className="text-[11px] font-bold text-red-600 dark:text-red-400">발송에 실패했어요</p>
-                <p className="mt-0.5 text-[10.5px] leading-relaxed text-gray-500 dark:text-gray-400">결제는 완료됐어요. 고객센터로 재발송을 요청해 주세요.</p>
-              </>
-            ) : (
-              <>
-                {maskedPhone && !hasBarcode && (
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">📞 {maskedPhone} 로 발송됨</p>
-                )}
-                <p className="mt-0.5 text-[10.5px] leading-relaxed text-gray-400 dark:text-gray-500">
-                  {hasBarcode
-                    ? t('voucher.ktShowBarcode', { defaultValue: '매장에서 아래 바코드를 제시하세요' })
-                    : t('voucher.ktCheckMms', { defaultValue: '휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.' })}
-                </p>
-              </>
-            )}
-          </div>
-        </div>
+        <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300">📱 기프티쇼</span>
+        {sendFailed ? (
+          <span className="ml-auto shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400">{t('voucher.sendFailedBadge', { defaultValue: '발송 실패' })}</span>
+        ) : v.status !== 'unused' ? (
+          <span className="ml-auto shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full"
+            style={{ background: v.status === 'used' ? 'rgba(0,0,0,0.06)' : v.status === 'expired' ? 'rgba(220,38,38,0.10)' : 'rgba(245,158,11,0.12)', color: v.status === 'expired' ? '#DC2626' : '#6B7280' }}>
+            {t(`voucher.status.${v.status}`)}
+          </span>
+        ) : (
+          <span className="ml-auto shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-gray-500 dark:text-gray-400">
+            <span className="w-[6px] h-[6px] rounded-full" style={{ background: '#16A34A', boxShadow: '0 0 0 3px rgba(22,163,74,0.12)' }} aria-hidden />
+            {t('voucher.status.unused', { defaultValue: '사용 가능' })}
+          </span>
+        )}
       </div>
 
-      {/* 🔢 #4: 인앱 바코드 (PIN 모드 발급분) */}
-      {hasBarcode && (
-        <div className="mt-3 px-3 py-3 rounded-xl bg-gray-50 dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1F1F1F] flex flex-col items-center gap-1.5">
-          <Barcode value={v.kt_pin as string} />
-          <span className="text-[12px] font-mono font-bold tracking-[0.15em] text-gray-900 dark:text-white">{v.kt_pin}</span>
+      {/* 제목 */}
+      <p className="px-4 pt-2 text-[18px] font-extrabold tracking-tight text-gray-900 dark:text-white line-clamp-2 leading-snug">{v.product_name}</p>
+
+      {/* 금액 + 발송처 힌트 */}
+      <div className="flex items-end justify-between gap-3 px-4 pt-1.5 pb-4">
+        {price !== null ? (
+          <div className="text-[24px] font-extrabold font-mono tracking-tight text-gray-900 dark:text-white leading-none">
+            {formatNumber(price)}<span className="font-sans text-[14px] font-bold text-gray-400 dark:text-gray-500 ml-0.5">{t('voucher.won', { defaultValue: '원' })}</span>
+          </div>
+        ) : <span />}
+        {!sendFailed && !hasBarcode && maskedPhone && (
+          <span className="text-[11px] text-gray-400 dark:text-gray-500 text-right shrink-0">📞 {maskedPhone}</span>
+        )}
+      </div>
+
+      {/* 천공 */}
+      <div className="relative" aria-hidden>
+        <div className="mx-3.5 border-t border-dashed border-gray-200 dark:border-[#2A2A2A]" />
+        <span className="absolute top-0 -translate-y-1/2 left-0 -translate-x-1/2 w-3.5 h-3.5 rounded-full" style={notchStyle} />
+        <span className="absolute top-0 -translate-y-1/2 right-0 translate-x-1/2 w-3.5 h-3.5 rounded-full" style={notchStyle} />
+      </div>
+
+      {/* 풋: 인앱 바코드 / 발송실패 고객센터 / MMS 안내 */}
+      {hasBarcode ? (
+        <div className="px-4 py-3">
+          <div className="px-3 py-3 rounded-xl bg-gray-50 dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1F1F1F] flex flex-col items-center gap-1.5">
+            <Barcode value={v.kt_pin as string} />
+            <span className="text-[12px] font-mono font-bold tracking-[0.15em] text-gray-900 dark:text-white">{v.kt_pin}</span>
+          </div>
+          <p className="mt-1.5 text-center text-[10.5px] text-gray-400 dark:text-gray-500">{t('voucher.ktShowBarcode', { defaultValue: '매장에서 아래 바코드를 제시하세요' })}</p>
+        </div>
+      ) : sendFailed ? (
+        /* 🎨 2026-06-21 (개선 #4): 막다른 길 제거 — 고객센터 문의 링크 */
+        <div className="px-4 py-3">
+          <p className="text-[11.5px] leading-relaxed text-gray-500 dark:text-gray-400">{t('voucher.ktSendFailedDesc', { defaultValue: '결제는 완료됐어요. 재발송이 필요하면 고객센터로 문의해 주세요.' })}</p>
+          <a href="tel:0507-0177-0432"
+            className="mt-2 w-full py-2.5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform">
+            {t('voucher.contactSupport', { defaultValue: '고객센터 문의 (0507-0177-0432)' })}
+          </a>
+        </div>
+      ) : (
+        <div className="px-4 py-3 flex items-center gap-3">
+          <MiniQrHint muted={v.status !== 'unused'} />
+          <p className="text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">{t('voucher.ktCheckMms', { defaultValue: '휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.' })}</p>
         </div>
       )}
     </div>
