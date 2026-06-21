@@ -799,6 +799,13 @@ html.dark .gbd {
   body:has(.mobile-app-container.app-framed) .desktop-topnav {
     display: none !important;
   }
+  /* 🛡️ 2026-06-21 (대표 신고 "상단 바가 붕 뜨는데 다른 페이지들도"): 위 규칙이 프레임 모드(lg+)에서
+     DesktopTopNav 를 display:none 하므로, nav 높이(h-14=56px) 아래에 붙도록 `md:top-14` 로 오프셋한
+     페이지 sticky 헤더가 56px 허공에 떠(그 틈으로 스크롤된 콘텐츠/타이틀이 비쳐 보임) "붕 뜨는" 현상 발생.
+     프레임엔 nav 가 없으니 sticky 헤더를 최상단(top:0)으로 되돌린다 → 23개 컨슈머 프레임 페이지 일괄 근본 수정.
+     스코프: lg+ AND .app-framed 만 → 모바일(<lg, nav 없음)·태블릿(768~1023, 프레임 미적용·nav 표시)은 영향 0.
+     2단 스택 헤더의 둘째 바(plain `top-14`)는 미타깃 → top:0 된 첫 바(56px) 아래에 그대로 정렬. */
+  .mobile-app-container.app-framed .md\:top-14 { top: 0 !important; }
   /* 📐 2026-06-17 (사용자 요청 — 액자 폭 430 단일화): 프레임은 폰 폭(430)인데 Tailwind 반응형
      (sm/md/lg:)은 viewport(PC) 기준이라 좁은 액자 안에서 다열 그리드 / 2단 상세가 짓눌렸다.
      프레임 안에선 '폰처럼' 모바일 기본 레이아웃으로 되돌린다.
