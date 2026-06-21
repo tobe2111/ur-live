@@ -137,6 +137,13 @@
   - 교환권(KtAlpha) 카드는 그대로(다른 탭). 빈 상태/지도/QR모달은 3·4차 그대로.
   - **결제/환불/취소/폴링/라우팅/`useMyVouchers`/lazy 전부 byte-identical** — onShowQr/코드복사/금액계산(클라 표시용, 서버 권위 아님) 외 로직 무변경. 검증: type-check 0 · `check-theme-consistency` 0(히어로 theme-dual 면제) · `build:client` 0 · Chromium 목업(보유/빈) 렌더 확인.
 
+- **2026-06-21 (6차 — UX 개선 4종)** 대표 "페이지에 속한 화면들 개선점 알려줘" → 리뷰 후 4종 선택 구현:
+  - **#1 만료 임박순 정렬**: `/api/vouchers/my` 는 `created_at DESC` 만 → 히어로 'D-N'과 목록 최상단 불일치. `unusedItems` 를 만료 가까운 순(만료일 없으면 뒤)으로 클라 정렬. (filter 새 배열 → 원본 불변)
+  - **#2 교환권(KT) 카드 = 패스 통일**: `KtAlphaVoucherCard` 를 공구권과 동일한 세로 패스(헤더 칩/배지 · 큰 제목 · 큰 금액 · 천공 · 풋[바코드/문의/MMS])로. amber 잔재 제거, 지갑 톤 일관.
+  - **#3 QR 사용 모달 — 스캔 경험**: ① **Screen Wake Lock**(웹 표준, iOS 16.4+/안드) 으로 스캔 중 화면 꺼짐/디밍 차단 + 활성 표시("🔆 화면 꺼짐 방지 중"). 네이티브 밝기 API 미보유라 wakeLock 채택, 전부 fail-soft. ② **카카오맵 길찾기** 링크(가게명 옆, 좌표 우선·없으면 주소 검색).
+  - **#4 막다른 길 제거**: 사용완료 카드에 **다시 구매하기**(`/group-buy/{product_id}`, API 가 product_id 반환) + **후기 보너스**(기존 `ReviewBonusButton` 을 카드로 노출 — 사용완료는 QR 모달 미진입이라 그동안 도달 불가였음). 만료 카드는 재구매만, 환불은 액션 없음. KT **발송 실패** 카드에 고객센터 `tel:0507-0177-0432` 문의 버튼(기존 텍스트-only dead-end → 액션).
+  - Voucher 타입에 `product_id?` 추가, `voucher.directions/rebuy/contactSupport/wakeOn/sendFailedBadge/ktSendFailedDesc` defaultValue 키. **결제/환불/취소/폴링/CAS 무관 — 순수 UX.** 검증: type-check 0 · theme 0 · build 0 · Chromium 목업 확인.
+
 - **2026-06-20 (2차 — 레이아웃 정합)** 대표 신고 "구현이 다 안된 것 같은데?" — 1차는 톤만 입히고 구조를 옛 것으로 남겨 시안과 불일치. 시안 레이아웃까지 충실 구현:
   - 화면1: "사용 가능 N" + 🗺 지도 인라인 토글(큰 버튼 2개 제거), `VoucherTicket` 카드 재구성(60px 썸네일 · 🟢 상태점+사용가능+D-N · 제목 · 📍가게 · 코드칩 / 우측 가격+컴팩트 사용 pill), 사용완료/만료·환불을 헤어라인 박스 행(탭→인라인 펼침)으로.
   - 화면2: `viewMode==='map'` 전용 인-페이지 화면(back 헤더 "지도에서 보기" + VoucherMap + 하단 선택 카드의 사용 버튼).
