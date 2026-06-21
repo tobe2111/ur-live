@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MapPin } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { MapPin, Map as MapIcon, ChevronDown, Search, Bell, ShoppingCart } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 import { isKorea } from '@/shared/config/region'
 import { storage } from '@/shared/utils/storage'
 
@@ -22,7 +24,7 @@ import { useKakaoMap } from './restaurant-map/useKakaoMap'
 import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
 import { useMapProducts } from '@/hooks/queries/useMapProducts'
-import { matchAddress } from '@/shared/constants/korea-regions'
+import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
 
 // re-export so that any callers importing KakaoPlace from RestaurantMapPage 가 깨지지 않음
 export type { KakaoPlace }
@@ -31,6 +33,7 @@ export type { KakaoPlace }
 
 export default function RestaurantMapPage({ home = false, mode = 'map' }: { home?: boolean; mode?: 'map' | 'list' } = {}) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [selected, setSelected] = useState<Restaurant | null>(null)
   const [region, setRegion] = useState('')
   // 🛍️ 2026-06-20 (대표 — 세부 지역): KOREA_REGIONS 계층 — 시/도(region) + 세부 지역그룹(district, 해운대/경성대…).
@@ -332,6 +335,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
 
   const { mapRef, mapInstance, sdkLoaded, sdkError } = useKakaoMap({
     kr,
+    enabled: mode === 'map',
     withCoords,
     coordGroupSize,
     selected,
@@ -418,6 +422,83 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     return () => mq.removeEventListener('change', onChange)
   }, [])
   const currentSheetTop = (isLgViewport ? sheetTopByStateLg : sheetTopByState)[sheetSnap]
+
+  // 🏠 2026-06-20 (대표 — 홈=당근식 1줄 리스트 + 지도 강조버튼): 리스트 모드. 데이터/지오코딩/정렬/필터는
+  //   동일(위 hooks 공유), 지도 대신 1줄 리스트(RestaurantList) 풀페이지 + 상단 지역선택 + 하단 플로팅 '지도' 버튼.
+  if (mode === 'list') {
+    const regionLabel = district
+      ? (findDistrictGroup(region, district)?.label.split('/')[0] || '지역')
+      : region
+      ? (findRegionByKey(region)?.label.replace('\n', ' ') || '지역')
+      : '전국'
+    return (
+      <div className="bg-white dark:bg-[#020202] min-h-screen">
+        <SEO title={t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜' })} description={t('seo.home.description', { defaultValue: '내 주변 동네딜을 한눈에. 식사·뷰티·헬스·숙소·반려·액티비티 공구권.' })} url="/" />
+        {/* 상단: 로고 + 지역선택 + 알림/장바구니 */}
+        <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
+          <div className="ur-content-wide px-4 lg:px-8 h-12 flex items-center justify-between gap-2">
+            <button onClick={() => setFilterSheetOpen(true)} className="flex items-center gap-1 min-w-0 text-left">
+              <MapPin className="w-4 h-4 text-gray-900 dark:text-white shrink-0" />
+              <span className="text-[16px] font-extrabold text-gray-900 dark:text-white truncate">{regionLabel}</span>
+              <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
+            </button>
+            <div className="flex items-center gap-1 text-gray-700 dark:text-gray-200 shrink-0">
+              <Link to="/" aria-label="홈" className="px-1"><UrDealLogo size={16} /></Link>
+              <button onClick={() => navigate('/search')} aria-label="검색" className="p-1.5"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
+              <button onClick={() => navigate('/notifications')} aria-label="알림" className="p-1.5"><Bell className="h-5 w-5" strokeWidth={1.5} /></button>
+              <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-1.5"><ShoppingCart className="h-5 w-5" strokeWidth={1.5} /></button>
+            </div>
+          </div>
+          {/* 카테고리 칩 + 필터/정렬 */}
+          <SheetFilterBar
+            activeFilterCount={activeFilterCount}
+            onOpenFilter={() => setFilterSheetOpen(true)}
+            nearMeMode={nearMeMode}
+            requestNearMe={requestNearMe}
+            voucherType={voucherType}
+            setVoucherType={setVoucherType}
+            filteredCount={filtered.length}
+            userLoc={userLoc}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            favorites={favorites}
+            showFavoritesOnly={showFavoritesOnly}
+            setShowFavoritesOnly={setShowFavoritesOnly}
+          />
+        </div>
+        {/* 1줄 리스트 */}
+        <div className="ur-content-wide px-3 lg:px-8 pt-3 pb-28">
+          <RestaurantList
+            loading={loading}
+            filtered={filtered}
+            selected={null}
+            userLoc={userLoc}
+            onSelect={(r) => navigate(`/products/${r.id}`)}
+          />
+        </div>
+        {/* 플로팅 '지도' 버튼 — 하단 네비 위 중앙 */}
+        <button
+          onClick={() => navigate('/restaurant-map')}
+          className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full pl-4 pr-5 py-3 shadow-xl active:scale-95 transition-transform"
+          style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom,0px) + 16px)' }}
+          aria-label={t('map.viewMap', { defaultValue: '지도로 보기' })}
+        >
+          <MapIcon className="w-4 h-4" />
+          <span className="text-[14px] font-bold">{t('map.viewMap', { defaultValue: '지도' })}</span>
+        </button>
+        {filterSheetOpen && (
+          <FilterSheet
+            region={region} district={district} sortBy={sortBy} radiusKm={radiusKm} priceRange={priceRange}
+            hasUserLoc={!!userLoc} countFor={countFor}
+            onApply={(rg, dist, sort, radius, price) => {
+              setRegion(rg); setDistrict(dist); setSortBy(sort); setRadiusKm(radius); setPriceRange(price); setFilterSheetOpen(false)
+            }}
+            onClose={() => setFilterSheetOpen(false)}
+          />
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="relative h-screen w-full bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden pb-16">
