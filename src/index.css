@@ -831,7 +831,7 @@ html.dark .gbd {
      프레임 안에선 '폰처럼' 모바일 기본 레이아웃으로 되돌린다.
      이 규칙은 unlayered → Tailwind `@layer utilities` 보다 우선(특이도 무관)하므로 sm:/lg: 를 이김.
      ⚠️ 정확한 클래스 조합만 타깃 — 프레임 밖(대시보드/도매몰)·무관 그리드엔 영향 0. */
-  .mobile-app-container.app-framed .grid-cols-2.sm\:grid-cols-3 { grid-template-columns: minmax(0, 1fr); } /* 🛍️ 2026-06-20 (대표 — PC 액자 1열): 상품·교환권·핀 카드 PC 프레임에서 1열(모바일 2열은 불변, lg+ media 스코프) */
+  .mobile-app-container.app-framed .grid-cols-2.sm\:grid-cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* 상품·핀 카드 → 2열(폰). 🛍️ 2026-06-20: /browse·동네딜 그리드는 PC 액자에서도 2열 유지(대표 — browse 2개씩). */
   .mobile-app-container.app-framed .grid-cols-4.sm\:grid-cols-5 { grid-template-columns: repeat(4, minmax(0, 1fr)); } /* 브랜드 칩 → 4열 */
   .mobile-app-container.app-framed .lg\:grid-cols-5 { grid-template-columns: minmax(0, 1fr); }                       /* 상품상세 2단 → 단일 컬럼 */
   .mobile-app-container.app-framed .lg\:grid-cols-2 { grid-template-columns: minmax(0, 1fr); }                       /* 🛍️ 2026-06-20 (대표 — PC 액자 1열): 교환권 1줄 리스트·상세 2단 → 프레임에선 1열 */
