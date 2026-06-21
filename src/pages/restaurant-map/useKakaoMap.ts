@@ -32,6 +32,10 @@ export function useKakaoMap({
   const mapInstance = useRef<any>(null)
   const markersRef = useRef<any[]>([])
   const overlaysRef = useRef<any[]>([])
+  // 🛡️ 2026-06-20 (대표 — 줌 전수조사): 초기 fit(setBounds/setLevel)은 데이터 로드 후 '한 번만'.
+  //   기존엔 initMap 의존성에 mapLevel 이 있어 zoom_changed→setMapLevel→initMap 재실행→fit 재호출로
+  //   매 줌마다 setLevel(5)/setBounds 가 사용자 줌을 원위치시켜 "줌이 안 먹는" 근본 원인이었음.
+  const didInitialFit = useRef(false)
 
   const [sdkLoaded, setSdkLoaded] = useState(false)
   const [sdkError, setSdkError] = useState(false)
@@ -271,16 +275,24 @@ export function useKakaoMap({
       overlaysRef.current.push(overlay)
     })
 
-    if (withCoords.length > 1) {
-      const bounds = new window.kakao.maps.LatLngBounds()
-      withCoords.forEach(r => bounds.extend(new window.kakao.maps.LatLng(r.restaurant_lat, r.restaurant_lng)))
-      mapInstance.current.setBounds(bounds)
-    } else if (withCoords.length === 1) {
-      mapInstance.current.setCenter(new window.kakao.maps.LatLng(withCoords[0].restaurant_lat, withCoords[0].restaurant_lng))
-      mapInstance.current.setLevel(5)
-    } else if (kakaoPlaces.length > 0 && userLoc) {
-      mapInstance.current.setCenter(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
-      mapInstance.current.setLevel(4)
+    // 🛡️ 2026-06-20 (대표 — 줌 전수조사): 초기 뷰 맞춤은 데이터가 처음 들어온 시점 '한 번만'.
+    //   이후(줌/마커 재빌드)엔 절대 재-fit 안 함 → 사용자 줌/이동 보존. category 변경 등으로 다시
+    //   맞추고 싶으면 didInitialFit.current=false 로 리셋하는 별도 트리거를 추가(현재는 최초 1회).
+    if (!didInitialFit.current) {
+      if (withCoords.length > 1) {
+        const bounds = new window.kakao.maps.LatLngBounds()
+        withCoords.forEach(r => bounds.extend(new window.kakao.maps.LatLng(r.restaurant_lat, r.restaurant_lng)))
+        mapInstance.current.setBounds(bounds)
+        didInitialFit.current = true
+      } else if (withCoords.length === 1) {
+        mapInstance.current.setCenter(new window.kakao.maps.LatLng(withCoords[0].restaurant_lat, withCoords[0].restaurant_lng))
+        mapInstance.current.setLevel(5)
+        didInitialFit.current = true
+      } else if (kakaoPlaces.length > 0 && userLoc) {
+        mapInstance.current.setCenter(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
+        mapInstance.current.setLevel(4)
+        didInitialFit.current = true
+      }
     }
   }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc, liveSellerIds, favorites, coordGroupSize, mapLevel, setSelected, setSuggestionFor])
 
