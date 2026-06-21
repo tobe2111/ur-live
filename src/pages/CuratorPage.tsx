@@ -238,7 +238,7 @@ export default function CuratorPage() {
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">다른 키워드로 찾아보세요.</p>
       </div>
     )
-    return <PinGrid pins={f} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} />
+    return <PinGrid pins={f} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} kind={emptyType} />
   }
 
   return (
@@ -432,7 +432,10 @@ function OwnerEarningsStrip() {
   )
 }
 
-function PinGrid({ pins, handle, isOwner, onPinDeleted }: { pins: CuratorPin[]; handle: string; isOwner: boolean; onPinDeleted: (id: number) => void }) {
+function PinGrid({ pins, handle, isOwner, onPinDeleted, kind }: { pins: CuratorPin[]; handle: string; isOwner: boolean; onPinDeleted: (id: number) => void; kind?: 'shop' | 'voucher' }) {
+  // 🏷️ 2026-06-19 (대표 — "핀" 내부용어 대신 상품/동네딜): 탭에 맞춘 추가 라벨·목적지.
+  const addTo = kind === 'voucher' ? '/group-buy' : '/browse'
+  const addLabel = kind === 'voucher' ? '동네딜 추가하기' : kind === 'shop' ? '상품 추가하기' : '상품·동네딜 추가하기'
   return (
     <div className="max-w-3xl mx-auto p-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
       {pins.map((pin, idx) => (
@@ -441,11 +444,11 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted }: { pins: CuratorPin[]; 
       {/* 🏁 2026-06-16 링크샵 개선안: 본인이 핀 채워진 화면에서도 항상 추가 동선 — 그리드 끝 점선 카드. */}
       {isOwner && (
         <Link
-          to="/browse"
+          to={addTo}
           className="col-span-2 sm:col-span-3 flex items-center justify-center gap-2 h-[52px] rounded-xl border-[1.5px] border-dashed border-[#FFB59E] bg-[#FFF6F3] dark:bg-[#1A1410] text-[#FF5634] text-sm font-bold active:scale-[0.99] transition-transform"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-          핀 추가하기
+          {addLabel}
         </Link>
       )}
     </div>
@@ -628,9 +631,9 @@ function PinManageList({ pins, onReorder, onDeleted }: { pins: CuratorPin[]; onR
 
 function EmptyLinkshop({ handle, isOwner, emptyType, curatorName }: { handle: string; isOwner: boolean; emptyType?: 'shop' | 'voucher'; curatorName?: string }) {
   const { t } = useTranslation()
-  const browseLink = emptyType === 'voucher' ? '/vouchers' : '/browse'
+  const browseLink = emptyType === 'voucher' ? '/group-buy' : '/browse'
   const browseLabel = emptyType === 'voucher'
-    ? t('curator.browseVouchers', { defaultValue: '교환권 둘러보기' })
+    ? t('curator.browseVouchers', { defaultValue: '동네딜 둘러보기' })
     : t('curator.browseProducts', { defaultValue: '상품 둘러보기' })
   // 방문자: 심플 메시지 (ghost 는 소유자 동기부여용).
   if (!isOwner) {
@@ -661,7 +664,7 @@ function EmptyLinkshop({ handle, isOwner, emptyType, curatorName }: { handle: st
         <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-[#7A4232] dark:text-[#c79a87]">
           <span className={nameDone ? '' : 'font-bold text-[#141A2E] dark:text-white'}>{nameDone ? '✓' : '○'} 이름 설정</span>
           <span className={handleDone ? '' : 'font-bold text-[#141A2E] dark:text-white'}>{handleDone ? '✓' : '○'} 주소 설정</span>
-          <span className="font-bold text-[#141A2E] dark:text-white">○ 첫 핀 추가</span>
+          <span className="font-bold text-[#141A2E] dark:text-white">○ 첫 상품 추가</span>
         </div>
       </div>
       <div className="relative overflow-hidden" style={{ height: 230 }}>
@@ -687,8 +690,8 @@ function EmptyLinkshop({ handle, isOwner, emptyType, curatorName }: { handle: st
           <div className="w-14 h-14 rounded-2xl bg-[#FF5634] flex items-center justify-center text-white" style={{ boxShadow: '0 10px 24px -8px rgba(255,86,52,.6)' }}>
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4h12v16l-6-4-6 4V4Z" /></svg>
           </div>
-          <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white mt-3">{t('curator.emptyOwnerTitle', { defaultValue: '첫 핀을 추가해 보세요' })}</h2>
-          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5 max-w-[270px] leading-snug">{t('curator.emptyOwnerDesc', { defaultValue: '마음에 든 딜·상품을 핀하면 이렇게 나만의 스토어가 채워져요.' })}</p>
+          <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white mt-3">{t('curator.emptyOwnerTitle', { defaultValue: '첫 상품을 추가해 보세요' })}</h2>
+          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5 max-w-[270px] leading-snug">{t('curator.emptyOwnerDesc', { defaultValue: '마음에 든 상품·동네딜을 추가하면 이렇게 나만의 스토어가 채워져요.' })}</p>
           <Link to={browseLink} className="mt-4 w-full max-w-xs py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[14px] font-bold">{browseLabel}</Link>
         </div>
       </div>
