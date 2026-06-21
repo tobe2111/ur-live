@@ -65,6 +65,10 @@ export function useKakaoMap({
       mapInstance.current = new window.kakao.maps.Map(mapRef.current, {
         center,
         level: 7,
+        // 🛡️ 2026-06-20 (대표 신고 — 스크롤/핀치 줌 잘 안됨): Kakao 네이티브 스크롤휠 줌 명시 활성화.
+        //   기존 커스텀 wheel 핸들러(capture+stopImmediatePropagation, 1레벨/tick)가 네이티브 부드러운
+        //   커서기준 줌·트랙패드 핀치를 가로채 오히려 뻑뻑했음 → 제거하고 네이티브에 위임.
+        scrollwheel: true,
       })
       // 🛡️ 2026-05-16: 명시적 줌/팬 활성화 — 기본값이지만 명시로 안전
       mapInstance.current.setDraggable(true)
@@ -78,23 +82,7 @@ export function useKakaoMap({
       window.kakao.maps.event.addListener(mapInstance.current, 'zoom_changed', () => {
         if (mapInstance.current) setMapLevel(mapInstance.current.getLevel())
       })
-
-      // 🛡️ 2026-05-17: 커스텀 wheel zoom — Kakao native 가 sluggish/inconsistent 한 경우 보강.
-      //   capture phase + stopImmediatePropagation 으로 Kakao native 가로채 double-zoom 방지.
-      //   wheel 한 tick = 1 level 변화. passive: false 로 페이지 스크롤 차단.
-      const wheelHandler = (e: WheelEvent) => {
-        if (!mapInstance.current) return
-        e.preventDefault()
-        e.stopImmediatePropagation()
-        const cur = mapInstance.current.getLevel()
-        // deltaY < 0 (휠 위) = 줌 인 = 레벨 감소
-        const next = Math.max(1, Math.min(14, cur + (e.deltaY > 0 ? 1 : -1)))
-        // 🛡️ 2026-06-20 (대표 신고 — 축소/확대 잘 안됨): animate:true 가 휠 tick 마다 ~300ms 애니메이션을
-        //   큐잉해 연속 휠이 밀려 sluggish 했음. 즉시 setLevel(애니메이션 제거)로 스냅 반응.
-        if (next !== cur) mapInstance.current.setLevel(next)
-      }
-      mapRef.current.addEventListener('wheel', wheelHandler, { passive: false, capture: true })
-      // cleanup: mapRef DOM unmount 시 listener GC. mapInstance ref 만 useEffect 에서 null 처리.
+      // 🛡️ 2026-06-20: 커스텀 wheel 핸들러 제거 — 네이티브 scrollwheel 줌(위 옵션)에 위임(커서기준·트랙패드 핀치 부드럽게).
     }
 
     markersRef.current.forEach(m => m.setMap(null))

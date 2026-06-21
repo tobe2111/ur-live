@@ -15,8 +15,6 @@ import FilterSheet from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
 import HeroCarousel from './restaurant-map/HeroCarousel'
 import RestaurantList from './restaurant-map/RestaurantList'
-import SelectedPeekCard from './restaurant-map/SelectedPeekCard'
-import SelectedDetailCard from './restaurant-map/SelectedDetailCard'
 import MapSearchHeader from './restaurant-map/MapSearchHeader'
 import SheetFilterBar from './restaurant-map/SheetFilterBar'
 import { useKakaoMap } from './restaurant-map/useKakaoMap'
@@ -53,7 +51,9 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
   // 🛡️ 2026-04-30: UX 개선 — 필터 시트 (지역 + 카테고리 통합)
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const activeFilterCount = (region ? 1 : 0) + (category ? 1 : 0)
-  const [sheetSnap, setSheetSnap] = useState<'peek' | 'mid' | 'full'>('mid')
+  // 🗺️ 2026-06-20 (대표 — 홈=지도 / "상품 1개일 때 공백 남음"): 기본 snap 을 peek 으로 → 지도 우선 +
+  //   콘텐츠 적을 때 큰 흰 공백 제거(컴팩트). 더 보려면 시트를 위로 드래그(mid/full).
+  const [sheetSnap, setSheetSnap] = useState<'peek' | 'mid' | 'full'>('peek')
   // 🛡️ 2026-04-30 Phase 5: '내 주변' 모드 (GPS 권한 요청 + 거리순 자동)
   const [nearMeMode, setNearMeMode] = useState(false)
   // 🛡️ 2026-04-30 Phase 5: 검색 히스토리 (localStorage)
@@ -324,6 +324,8 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
       mapInstance.current.setLevel(4)
     }
     setMapView(true)
+    // 🗺️ 2026-06-20 (대표 — 상품 클릭 시 그 위치로 지도 이동): 시트를 peek 으로 내려 이동한 지도가 보이게.
+    setSheetSnap('peek')
   }
 
   // 🛡️ 2026-04-30 v3 bottom-sheet: 시트 snap 별 transform 값
@@ -400,14 +402,9 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
         home={home}
       />
 
-      {/* ═══ 선택된 맛집 카드 (지도 위 floating, sheet peek 일 때만 표시) ═══ */}
-      {selected && sheetSnap === 'peek' && (
-        <SelectedPeekCard
-          selected={selected}
-          liveSellerIds={liveSellerIds}
-          onClose={() => setSelected(null)}
-        />
-      )}
+      {/* 🗺️ 2026-06-20 (대표 — "클릭하면 2개 나오는거 별로"): 선택 시 떠 있던 SelectedPeekCard/SelectedDetailCard
+          floating 중복 카드 제거. 상품 클릭 = 지도 이동(selectAndPan panTo) + 리스트/핀 하이라이트로 일원화.
+          구매 CTA 는 리스트 카드(RestaurantList)의 '구매' 버튼이 담당. */}
 
       {/* ═══ Bottom Sheet (드래그 가능, 3-snap) ═══
           🛡️ 2026-04-30 v2: 실시간 드래그 팔로잉 — translateY 로 손가락 따라가기.
@@ -461,18 +458,6 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
 
         {/* ═══ 시트 안 스크롤 가능한 결과 리스트 ═══ */}
         <div className="flex-1 overflow-y-auto px-3 pt-3 pb-24" style={{ overscrollBehavior: 'contain' }}>
-          {selected && (
-            /* 선택된 맛집 디테일 카드 (sheet mid/full 일 때 list 위에 표시) */
-            <SelectedDetailCard
-              selected={selected}
-              userLoc={userLoc}
-              liveSellerIds={liveSellerIds}
-              favorites={favorites}
-              onClose={() => setSelected(null)}
-              onToggleFavorite={toggleFavorite}
-            />
-          )}
-
           {/* 🛡️ 2026-04-30 Phase 3: hero carousel — 할인율 TOP5 (선택 카드 없을 때만) */}
           {!loading && !selected && (
             <HeroCarousel

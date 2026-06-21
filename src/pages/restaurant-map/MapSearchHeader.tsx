@@ -40,9 +40,12 @@ export default function MapSearchHeader({
           <Link
             to="/"
             aria-label={t('nav.home', { defaultValue: '홈' })}
-            className="h-10 px-3 flex items-center justify-center rounded-full bg-white dark:bg-[#0A0A0A]/95 backdrop-blur-md shadow-md shrink-0"
+            className="h-10 flex items-center justify-center shrink-0"
           >
-            <UrDealLogo size={18} />
+            {/* 🖤 2026-06-20 (대표 — 로고 뒤 투명): 흰 알약 배경 제거. 지도 위 가독성 위해 로고에 옅은 흰/검 드롭섀도. */}
+            <span className="drop-shadow-[0_1px_3px_rgba(255,255,255,0.95)] dark:drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]">
+              <UrDealLogo size={20} />
+            </span>
           </Link>
         ) : (
           <button
