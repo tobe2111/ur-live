@@ -24,6 +24,8 @@ import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { SortMenu } from '@/components/ui/sort-menu'
+import BrowseProductCard from './browse/BrowseProductCard'
+import type { Product } from './browse/types'
 
 // 🛡️ 2026-05-21: 교환권 정렬 옵션 (사용자 요청).
 type SortKey = 'popular' | 'newest' | 'price_low' | 'price_high' | 'discount' | 'rating'
@@ -320,6 +322,73 @@ const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: VoucherProduc
   )
 })
 
+// 🛒 2026-06-20 (사용자 결정 — 교환권/쇼핑 상단 탭 분리): 쇼핑 탭 = 일반 상품(exclude_deal_only=1) 2열 그리드.
+//   /browse 와 동일 데이터·카드(BrowseProductCard 재사용). 교환권(1열 무한)과 독립 컴포넌트라 탭 전환 시
+//   서로 스크롤/데이터 안 묻힘. 활성 탭일 때만 마운트(불필요 fetch 0).
+function ShoppingGrid() {
+  const [items, setItems] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const load = useCallback((pageNum: number, reset: boolean) => {
+    if (reset) setLoading(true); else setLoadingMore(true)
+    const params = new URLSearchParams({ page: String(pageNum), limit: '20', exclude_deal_only: '1', sort: 'popular' })
+    api.get(`/api/products?${params.toString()}`)
+      .then(r => {
+        if (r.data?.success) {
+          const ni: Product[] = r.data.data || []
+          setItems(prev => reset ? ni : [...prev, ...ni])
+          setHasMore(ni.length === 20)
+          if (reset) setPage(1)
+        }
+      })
+      .catch(() => { /* graceful */ })
+      .finally(() => { setLoading(false); setLoadingMore(false) })
+  }, [])
+  useEffect(() => { load(1, true) }, [load])
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore || loadingMore || loading) return
+    const ob = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) { const n = page + 1; setPage(n); load(n, false) }
+    }, { threshold: 0.1 })
+    ob.observe(sentinelRef.current)
+    return () => ob.disconnect()
+  }, [hasMore, loadingMore, loading, page, load])
+  return (
+    <div className="ur-content-wide px-4 lg:px-8 py-4">
+      {loading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212]">
+              <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A]" />
+              <div className="px-2.5 pt-2 pb-2.5">
+                <div className="h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded w-3/4" />
+                <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1A1A1A] rounded w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-sm">쇼핑 상품이 없습니다</div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5 items-stretch">
+            {items.map((p, idx) => (
+              <BrowseProductCard key={p.id} product={p} aboveFold={idx < 4} />
+            ))}
+          </div>
+          <div ref={sentinelRef} className="h-10 flex items-center justify-center mt-4">
+            {loadingMore && <div className="text-[11px] text-gray-400 dark:text-gray-500">로드 중...</div>}
+            {!hasMore && items.length > 0 && <div className="text-[11px] text-gray-400 dark:text-gray-500">— 마지막 —</div>}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // 🛡️ 2026-06-01: embedded — 홈(/)에서 교환권 본문을 재사용. SEO/자체헤더 skip + SSR 는 MAIN 슬롯에서 읽음.
 export default function VouchersPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation()
@@ -331,6 +400,18 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   // 🏭 2026-06-04 (사용자 요청): 홈(embedded)은 기본 카테고리를 '커피/음료' 로 — 첫 진입 시 커피 브랜드 먼저.
   //   MAIN SSR 슬롯도 같은 커피 카테고리로 warm → 0-RTT 유지 (worker/index.ts + cache-prewarm).
   const category = searchParams.get('category') || (embedded ? EMBEDDED_DEFAULT_CATEGORY : '')
+
+  // 🎫 2026-06-20 (사용자 결정 — '상단 탭으로 분리, 교환권부터'): 비embedded /vouchers 에 [교환권][쇼핑] 탭.
+  //   기본 'vouchers'(교환권 먼저). 쇼핑 탭은 일반 상품(exclude_deal_only) 2열 — 교환권 무한스크롤과 분리돼 서로 안 묻힘.
+  //   홈(embedded)은 탭 없음(showVouchers 항상 true) → 기존 동작 불변.
+  const tab: 'vouchers' | 'shopping' = (!embedded && searchParams.get('tab') === 'shopping') ? 'shopping' : 'vouchers'
+  const showShopping = !embedded && tab === 'shopping'
+  const showVouchers = !showShopping
+  const setTab = (next: 'vouchers' | 'shopping') => {
+    const p = new URLSearchParams(searchParams)
+    if (next === 'shopping') p.set('tab', 'shopping'); else p.delete('tab')
+    setSearchParams(p, { replace: true })
+  }
 
   // 🛡️ 2026-05-19: 카테고리 + 브랜드 2단 구조 — 사용자 요청.
   //   sections = 카테고리별 (편의점/카페/외식 등) + 각 카테고리 내 인기 브랜드 12개.
@@ -594,14 +675,25 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* Header — 🛡️ 2026-05-25: 뒤로가기 버튼 제거 (사용자 요청).
           BottomNav 의 메인 탭이라 의미 없는 navigation. 검색 + 타이틀만 유지.
           🛡️ 2026-06-01: embedded(홈) 모드면 홈의 sticky 헤더가 담당 → 자체 헤더 skip. */}
+      {/* 🎫 2026-06-20 (사용자 결정): 헤더에 [교환권][쇼핑] 탭. 교환권 먼저(기본). 탭 = 다른 레이아웃 + 독립 스크롤. */}
       {!embedded && (
         <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
-          <div className="flex items-center gap-2 px-3 py-2.5">
-            <div className="flex-1 flex items-center gap-1.5">
-              <Gift className="w-5 h-5 text-amber-500" />
-              <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">
-                {brand ? brand : '교환권'}
-              </h1>
+          <div className="flex items-center gap-1 px-2 pr-3">
+            <div className="flex-1 flex items-center">
+              {([['vouchers', '교환권'], ['shopping', '쇼핑']] as const).map(([key, label]) => {
+                const active = tab === key
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setTab(key)}
+                    className={`relative px-3 py-2.5 text-[15px] font-extrabold transition-colors ${active ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}
+                  >
+                    {label}
+                    {active && <span className="absolute left-3 right-3 bottom-0 h-[2.5px] rounded-full bg-gray-900 dark:bg-white" />}
+                  </button>
+                )
+              })}
             </div>
             <button onClick={() => navigate('/search')} className="shrink-0 p-1">
               <Search className="w-5 h-5 text-gray-900 dark:text-white" />
@@ -610,6 +702,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         </div>
       )}
 
+      {/* 🎫 2026-06-20: 교환권 본문(잔액/카테고리/브랜드/1열 리스트)은 '교환권' 탭에서만. 홈(embedded)은 항상 표시. */}
+      {showVouchers && (<>
       {/* 🛡️ 2026-05-28 (사용자 요청): 잔액 카드 + 카테고리 = scroll-up reveal 그룹 (headroom).
             아래로 스크롤 시 숨김(콘텐츠 공간 최대화), 살짝 위로 올리면 둘 다 다시 내려옴.
             sticky top-[45px] (헤더 바로 아래) + revealTop 따라 translateY. bg 는 페이지 배경과 동일 (콘텐츠 비침 방지). */}
@@ -871,6 +965,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           </>
         )}
       </div>
+      </>
+      )}
+      {/* 🛒 2026-06-20 (사용자 결정): 쇼핑 탭 — 일반 상품 2열 그리드(교환권 1열과 분리, 서로 안 묻힘). 활성 시만 마운트. */}
+      {showShopping && <ShoppingGrid />}
     </div>
   )
 }
