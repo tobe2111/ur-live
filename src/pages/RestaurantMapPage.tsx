@@ -171,23 +171,21 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
     )
   }, [])
 
-  // 🛡️ 2026-04-28: 옵션 B — 사용자 위치 기반 카카오 일반 맛집 자동 로드.
-  //  식사권 적은 단계에 빈 지도 문제 해결 + 수요 신호 (영입 신청) 수집.
-  //  핀 색상으로 구분 — 식사권 (분홍) / 일반 (회색).
+  // 🛡️ 2026-06-20 (대표 — "미리 업체들 나오는거 별로"): 옵션B 카카오 일반 업체(회색 '+' 추천핀)를
+  //   기본 지도에 자동으로 깔던 것 제거 → 기본 화면엔 '실제 딜'만. 사용자가 직접 검색했을 때만 표시
+  //   (수요신호/추천 보내기 기능은 검색 결과에서 유지). 빈 검색이면 회색핀 0.
   useEffect(() => {
     if (!userLoc || !kr) return
-    const cat = CATEGORIES.find(c => c.key === category)
-    const url = cat && cat.keywords.length > 0
-      ? `/api/kakao/place/search?query=${encodeURIComponent(cat.keywords[0] + ' 맛집')}&category_group_code=FD6&size=15`
-      : `/api/kakao/place/nearby?lat=${userLoc.lat}&lng=${userLoc.lng}&radius=1500&category=FD6&size=15`
-    api.get(url)
+    const q = search.trim()
+    if (!q) { setKakaoPlaces([]); return }
+    api.get(`/api/kakao/place/search?query=${encodeURIComponent(q)}&category_group_code=FD6&size=15`)
       .then(r => {
         if (r.data?.success && r.data.data?.documents) {
           setKakaoPlaces(r.data.data.documents.slice(0, 15))
         }
       })
       .catch(() => { /* silent */ })
-  }, [userLoc, kr, category])
+  }, [userLoc, kr, search])
 
   // 🛡️ 2026-05-19: 클라이언트 geocoding loop 제거.
   //   이전: 사용자 1명당 카카오 API ~10 호출 (페이지 진입 시마다).
