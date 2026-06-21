@@ -97,7 +97,7 @@ describe('SiteFooter', () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByText(/부산광역시 금정구 놀이마당로26 1402/)).toBeInTheDocument();
+    expect(screen.getByText(/서울특별시 강남구 남부순환로359길 14, 3층\(도곡동\)/)).toBeInTheDocument();
   });
 
   it('renders phone number', () => {
