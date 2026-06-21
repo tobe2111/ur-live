@@ -779,8 +779,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               ))}
             </div>
           ) : (
-            // 🎨 2026-06-20: /vouchers 1줄 리스트 스켈레톤 (이미지 좌측 + 텍스트 우측).
-            <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-8">
+            // 🎨 2026-06-20: /vouchers 1줄 리스트 스켈레톤 (이미지 좌측 + 텍스트 우측). PC 도 1열(사용자 요청).
+            <div className="grid grid-cols-1">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="animate-pulse flex items-center gap-3.5 py-3.5 border-b border-gray-100 dark:border-[#1A1A1A]">
                   <div className="w-[88px] h-[88px] sm:w-24 sm:h-24 shrink-0 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A]" />
@@ -809,8 +809,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 ))}
               </div>
             ) : (
-              // 🎨 2026-06-20 /vouchers — 1줄 리스트 (모바일 1열 / PC 2열). 내용 동일, 배치만 행.
-              <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-8">
+              // 🎨 2026-06-20 /vouchers — 1줄 리스트 (모바일·PC 모두 1열, 사용자 요청 "PC 도 1줄에 1개"). 내용 동일, 배치만 행.
+              <div className="grid grid-cols-1">
                 {displayProducts.map((p, idx) => (
                   <Fragment key={p.id}>
                     <VoucherRow p={p} aboveFold={idx < 4} />
