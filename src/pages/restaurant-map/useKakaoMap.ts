@@ -89,7 +89,9 @@ export function useKakaoMap({
         const cur = mapInstance.current.getLevel()
         // deltaY < 0 (휠 위) = 줌 인 = 레벨 감소
         const next = Math.max(1, Math.min(14, cur + (e.deltaY > 0 ? 1 : -1)))
-        if (next !== cur) mapInstance.current.setLevel(next, { animate: true })
+        // 🛡️ 2026-06-20 (대표 신고 — 축소/확대 잘 안됨): animate:true 가 휠 tick 마다 ~300ms 애니메이션을
+        //   큐잉해 연속 휠이 밀려 sluggish 했음. 즉시 setLevel(애니메이션 제거)로 스냅 반응.
+        if (next !== cur) mapInstance.current.setLevel(next)
       }
       mapRef.current.addEventListener('wheel', wheelHandler, { passive: false, capture: true })
       // cleanup: mapRef DOM unmount 시 listener GC. mapInstance ref 만 useEffect 에서 null 처리.

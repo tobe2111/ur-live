@@ -29,7 +29,7 @@ export type { KakaoPlace }
 
 // Window.kakao is declared in KakaoCallbackPage.tsx or similar global declaration
 
-export default function RestaurantMapPage() {
+export default function RestaurantMapPage({ home = false }: { home?: boolean } = {}) {
   const { t } = useTranslation()
   const [selected, setSelected] = useState<Restaurant | null>(null)
   const [region, setRegion] = useState('')
@@ -359,7 +359,11 @@ export default function RestaurantMapPage() {
 
   return (
     <div className="relative h-screen w-full bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden pb-16">
-      <SEO title={t('restaurantMap.seoTitle', { defaultValue: '맛집 지도' })} description={t('restaurantMap.seoDesc', { defaultValue: '유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인' })} url="/restaurant-map" />
+      <SEO
+        title={home ? t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜 지도' }) : t('restaurantMap.seoTitle', { defaultValue: '맛집 지도' })}
+        description={home ? t('seo.home.description', { defaultValue: '내 주변 동네딜을 지도에서 한눈에. 식사·숙소·뷰티 공구권을 가까운 순으로.' }) : t('restaurantMap.seoDesc', { defaultValue: '유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인' })}
+        url={home ? '/' : '/restaurant-map'}
+      />
 
       {/* ═══ 풀스크린 카카오맵 (배경) ═══
           🛡️ 2026-04-30 CLS: mapRef 컨테이너 항상 렌더 → SDK load 시 placeholder
@@ -393,6 +397,7 @@ export default function RestaurantMapPage() {
         searchHistory={searchHistory}
         setSearchHistory={setSearchHistory}
         pushSearchHistory={pushSearchHistory}
+        home={home}
       />
 
       {/* ═══ 선택된 맛집 카드 (지도 위 floating, sheet peek 일 때만 표시) ═══ */}

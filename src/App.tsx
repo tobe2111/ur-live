@@ -36,11 +36,12 @@ import { SupplierRoutes } from './routes/supplier.routes'
 // ❌ REMOVED: Duplicate Sentry initialization (already done in main.tsx)
 
 // ✅ Public / User 페이지들 lazy loading (초기 번들 크기 최소화)
-// 🛡️ 2026-05-27 (loading P0 critical): MainHomePage eager import — default route 라 lazy 의미 없음.
-//   기존 waterfall: HTML → main chunk → MainHomePage chunk fetch (~50-100ms) → render → axios fetch
-//   변경 waterfall: HTML → main chunk (MainHomePage 포함) → render → axios fetch
-//   → 메인 페이지 첫 paint 50-100ms 단축. 다른 페이지 진입 시는 main bundle 약간 커짐 (trade-off OK — 메인 진입 70%+).
-import MainHomePage from './pages/MainHomePage'
+// 🏠 2026-06-20 (대표 결정 — 홈=동네딜 지도+바텀시트): 홈 `/` 메인 콘텐츠를 RestaurantMapPage(지도+
+//   드래그 바텀시트+카테고리 칩+내 주변)로 전환. RestaurantMapPage 는 lazy(아래 167행) — 지도는 어차피
+//   카카오 SDK async 로드라 컴포넌트 청크 페치(~50-100ms)는 SDK 준비 대비 무시 가능. 기존 MainHomePage(교환권
+//   blend)는 dead route 가 되어 import 제거(엔트리 축소). 일반상품/교환권은 '쇼핑' 탭(/vouchers)으로 이전.
+//   ⚠️ [UNLOCK_LOADING] 트레이드오프: 홈 SSR 슬롯(__SSR_INITIAL_MAIN__) 미사용 → 홈 첫 화면이 지도 로딩.
+//   worker/index.ts SSR inject 는 무수정(주입은 되나 지도 홈이 안 읽음 — 무해).
 const WholesaleCatalogPage = lazy(() => import('./pages/WholesaleCatalogPage'))
 const WholesaleDashboardPage = lazy(() => import('./pages/WholesaleDashboardPage'))
 const WholesaleDepositPage = lazy(() => import('./pages/WholesaleDepositPage'))
@@ -522,7 +523,7 @@ function AppContent() {
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
             <Route path="/about" element={<AboutPage />} />
-            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <MainHomePage />} />
+            <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <RestaurantMapPage home />} />
             <Route path="/wholesale/intro" element={<WholesaleIntroPage />} />
             <Route path="/wholesale/join" element={<WholesaleJoinPage />} />
             <Route path="/wholesale/login" element={<WholesaleLoginPage />} />

@@ -24,6 +24,8 @@ import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { SortMenu } from '@/components/ui/sort-menu'
+// 🛍️ 2026-06-20 (대표 — 일반상품을 '쇼핑' 탭으로 통합): 홈에서 빠진 일반상품 레일을 교환권 페이지 하단에.
+import HomeProductsRail from '@/components/main/HomeProductsRail'
 
 // 🛡️ 2026-05-21: 교환권 정렬 옵션 (사용자 요청).
 type SortKey = 'popular' | 'newest' | 'price_low' | 'price_high' | 'discount' | 'rating'
@@ -848,6 +850,12 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               )}
             </div>
           </>
+        )}
+        {/* 🛍️ 2026-06-20 (대표 — '쇼핑' 탭 = 교환권 + 일반상품): 교환권 목록 아래에 일반상품 레일. */}
+        {!embedded && (
+          <div className="mt-8 -mx-4 px-4 lg:mx-0 lg:px-0">
+            <HomeProductsRail />
+          </div>
         )}
       </div>
     </div>
