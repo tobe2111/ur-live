@@ -21,6 +21,7 @@ import { useKakaoMap } from './restaurant-map/useKakaoMap'
 import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
 import { useMapProducts } from '@/hooks/queries/useMapProducts'
+import { matchAddress } from '@/shared/constants/korea-regions'
 
 // re-export so that any callers importing KakaoPlace from RestaurantMapPage 가 깨지지 않음
 export type { KakaoPlace }
@@ -31,6 +32,8 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
   const { t } = useTranslation()
   const [selected, setSelected] = useState<Restaurant | null>(null)
   const [region, setRegion] = useState('')
+  // 🛍️ 2026-06-20 (대표 — 세부 지역): KOREA_REGIONS 계층 — 시/도(region) + 세부 지역그룹(district, 해운대/경성대…).
+  const [district, setDistrict] = useState('')
   const [search, setSearch] = useState('')
   const [mapView, setMapView] = useState(true)
   // 🛡️ 2026-04-28: Recommended Pack — 거리/카테고리/정렬
@@ -90,7 +93,7 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
   const [liveSellerIds, setLiveSellerIds] = useState<Set<number>>(new Set())
   // 🛡️ 2026-04-30: UX 개선 — 필터 시트 (지역 + 카테고리 통합)
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
-  const activeFilterCount = (region ? 1 : 0) + (radiusKm > 0 ? 1 : 0) + (priceRange !== 'all' ? 1 : 0)
+  const activeFilterCount = ((region || district) ? 1 : 0) + (radiusKm > 0 ? 1 : 0) + (priceRange !== 'all' ? 1 : 0)
   // 🗺️ 2026-06-20 (대표 — 홈=지도 / "상품 1개일 때 공백 남음"): 기본 snap 을 peek 으로 → 지도 우선 +
   //   콘텐츠 적을 때 큰 흰 공백 제거(컴팩트). 더 보려면 시트를 위로 드래그(mid/full).
   const [sheetSnap, setSheetSnap] = useState<'peek' | 'mid' | 'full'>('peek')
@@ -238,26 +241,34 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
   //         /api/kakao/place/* 호출은 0 — 페이지 로딩 속도 ~1-3초 개선.
 
 
+  // 🛍️ 2026-06-20: 지역(계층)/반경/가격 공통 필터 술어 — filtered + 팝업 실시간 카운트가 공유(검색/즐겨찾기 제외).
+  const matchesFilter = useCallback((r: Restaurant, rg: string, dist: string, rad: number, price: PriceRange): boolean => {
+    if (!matchAddress(r.restaurant_address, rg, dist)) return false
+    if (rad > 0 && userLoc) {
+      if (!r.restaurant_lat || !r.restaurant_lng) return false
+      if (distanceKm(userLoc.lat, userLoc.lng, r.restaurant_lat, r.restaurant_lng) > rad) return false
+    }
+    if (price !== 'all') {
+      const p = r.price || 0
+      if (price === 'under10' && p >= 10000) return false
+      if (price === '10to30' && (p < 10000 || p >= 30000)) return false
+      if (price === 'over30' && p < 30000) return false
+    }
+    return true
+  }, [userLoc])
+  // 팝업 적용 전 실시간 결과 수 (검색/즐겨찾기 제외).
+  const countFor = useCallback((rg: string, dist: string, rad: number, price: PriceRange) =>
+    enrichedRestaurants.reduce((n, r) => n + (matchesFilter(r, rg, dist, rad, price) ? 1 : 0), 0),
+    [enrichedRestaurants, matchesFilter])
+
   const filtered = useMemo(() => {
     let items = enrichedRestaurants.filter(r => {
       if (showFavoritesOnly && !favorites.includes(r.id)) return false
-      if (region && !r.restaurant_address?.includes(region)) return false
       if (search) {
         const q = search.toLowerCase()
         if (!(r.restaurant_name?.toLowerCase().includes(q) || r.name?.toLowerCase().includes(q) || r.restaurant_address?.toLowerCase().includes(q))) return false
       }
-      // 🛍️ 2026-06-20: cuisine(한식/일식) 카테고리 필터 제거 — 동네딜 카테고리는 voucherType(상단 칩)이 담당.
-      // 🛍️ 2026-06-20 (필터 팝업 A안): 거리반경 + 가격대 필터.
-      if (radiusKm > 0 && userLoc) {
-        if (!r.restaurant_lat || !r.restaurant_lng) return false
-        if (distanceKm(userLoc.lat, userLoc.lng, r.restaurant_lat, r.restaurant_lng) > radiusKm) return false
-      }
-      if (priceRange !== 'all') {
-        const p = r.price || 0
-        if (priceRange === 'under10' && p >= 10000) return false
-        if (priceRange === '10to30' && (p < 10000 || p >= 30000)) return false
-        if (priceRange === 'over30' && p < 30000) return false
-      }
+      if (!matchesFilter(r, region, district, radiusKm, priceRange)) return false
       return true
     })
 
@@ -278,7 +289,7 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
       return 0
     })
     return items
-  }, [enrichedRestaurants, region, search, sortBy, radiusKm, priceRange, userLoc, showFavoritesOnly, favorites])
+  }, [enrichedRestaurants, region, district, search, sortBy, radiusKm, priceRange, matchesFilter, showFavoritesOnly, favorites])
 
   // 🛡️ 2026-04-30 Phase 3: hero carousel — 인기 (할인율 높은 순) 상위 5개
   const heroDeals = useMemo(() => {
@@ -538,18 +549,22 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
       {filterSheetOpen && (
         <FilterSheet
           region={region}
+          district={district}
           sortBy={sortBy}
           radiusKm={radiusKm}
           priceRange={priceRange}
           hasUserLoc={!!userLoc}
-          onApply={(r, sort, radius, price) => {
-            setRegion(r)
+          countFor={countFor}
+          onApply={(rg, dist, sort, radius, price) => {
+            setRegion(rg)
+            setDistrict(dist)
             setSortBy(sort)
             setRadiusKm(radius)
             setPriceRange(price)
             setMapView(true)
-            const target = REGIONS.find(x => x.key === r) || REGIONS[0]
-            if (mapInstance.current && window.kakao?.maps) {
+            // 시/도 중심으로 지도 이동(좌표 있는 주요 시/도만). 세부지역/미좌표 시/도는 리스트·핀 필터로 반영.
+            const target = REGIONS.find(x => x.key === rg)
+            if (target && mapInstance.current && window.kakao?.maps) {
               mapInstance.current.panTo(new window.kakao.maps.LatLng(target.lat, target.lng))
               mapInstance.current.setLevel(target.level)
             }
