@@ -9,6 +9,7 @@ import { Home, ShoppingCart, User, Radio, Gift, Search, Bell, Zap, Sparkles } fr
 import { useState, useRef } from 'react'
 import { useUnreadCount, useCartCount } from '@/hooks/queries'
 import { isLoggedInSync } from '@/utils/auth'
+import { isWholesaleSurface } from '@/utils/domain'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -50,6 +51,11 @@ export default function DesktopTopNav() {
     const q = searchQuery.trim()
     if (q) navigate(`/search?q=${encodeURIComponent(q)}`)
   }
+
+  // 🏭 이중 방어선: 도매몰(B2B) surface 에서는 소비자 DesktopTopNav(검색바) 절대 미표시.
+  //   1차 가드는 App.tsx hideBottomNav(마운트 차단). allowlist 회귀해도 자기-차단.
+  //   (모든 hook 호출 이후의 early-return — rules-of-hooks 안전.)
+  if (isWholesaleSurface(location.pathname)) return null
 
   return (
     <header className="desktop-topnav hidden md:block sticky top-0 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
