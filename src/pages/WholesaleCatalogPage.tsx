@@ -254,17 +254,22 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
     return m
   }, [home?.categories, allItems])
 
-  // 카테고리 칩/사이드바 = 실제 상품에 존재하는 카테고리만(데이터 기반). 알려진 id 는 한글 라벨,
-  // 모르는 값은 원본 문자열 그대로 — 공급자가 자유 입력해도 필터가 항상 동작.
+  // 카테고리 칩/사이드바/메가메뉴 = 고정 전체 분류(taxonomy) 항상 노출 + 데이터에만 있는 추가 분류 합집합.
+  //   2026-06-21 (사용자 요청 — 전체 카테고리 클릭 시 "모든" 카테고리 노출): 기존엔 present.has(c.id) 로
+  //   상품 있는 분류만 보여서 "전체/goods" 둘만 노출됐음 → WHOLESALE_CATEGORIES 전체를 항상 포함.
+  //   알려진 id 는 한글 라벨, 모르는 값(공급자 자유 입력)은 원본 문자열 그대로 — 필터/카운트는 불변
+  //   (catCounts[id] ?? '' 라 0개 분류는 빈값/0 표시).
   const cats = useMemo<CatOpt[]>(() => {
     const present = new Set<string>()
     if (home?.categories?.length) { for (const c2 of home.categories) if (c2.key) present.add(c2.key) }
     else { for (const p of allItems) if (p.category) present.add(p.category) }
     const labelOf = new Map(WHOLESALE_CATEGORIES.map(c => [c.id, c.label]))
+    // 고정 분류 전체(상품 0개여도 노출). 'all' 은 아래 맨 앞에 별도 추가.
     const known = WHOLESALE_CATEGORIES
-      .filter(c => c.id !== 'all' && present.has(c.id))
+      .filter(c => c.id !== 'all')
       .map(c => ({ id: c.id, label: c.label }))
     const knownIds = new Set(known.map(k => k.id))
+    // 데이터에만 존재하는 비표준 분류 — 카운트순 정렬 후 표준 분류 뒤에 추가.
     const unknown = [...present]
       .filter(id => !knownIds.has(id))
       .sort((a, b) => (catCounts[b] || 0) - (catCounts[a] || 0))

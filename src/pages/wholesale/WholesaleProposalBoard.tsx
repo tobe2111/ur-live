@@ -11,7 +11,7 @@ import { X, Lock, CheckCircle2, PenLine, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { WT } from './wholesale-theme'
-import { PROPOSAL_CATEGORIES, categoryLabel } from '@/shared/wholesale-proposal-categories'
+import { PROPOSAL_CATEGORIES, categoryLabel, categoryToType, type ProposalKind } from '@/shared/wholesale-proposal-categories'
 
 interface BoardRow { id: number; category: string; subject: string; author: string; answered: boolean; created_at: string }
 const sellerToken = () => (typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null)
@@ -21,7 +21,7 @@ const fmtDate = (s: string) => (s || '').replace('T', ' ').slice(0, 16)
 export default function WholesaleProposalBoard() {
   const navigate = useNavigate()
   const loggedIn = !!sellerToken()
-  const [cat, setCat] = useState('')      // '' = 전체
+  const [kind, setKind] = useState<'' | ProposalKind>('')  // '' = 전체 | 'proposal' = 제안 | 'report' = 신고
   const [page, setPage] = useState(1)
   const [rows, setRows] = useState<BoardRow[] | null>(null)
   const [total, setTotal] = useState(0)
@@ -31,7 +31,7 @@ export default function WholesaleProposalBoard() {
   const load = useCallback(() => {
     setRows(null)
     const q = new URLSearchParams()
-    if (cat) q.set('category', cat)
+    if (kind) q.set('kind', kind)
     q.set('page', String(page))
     api.get(`/api/wholesale/proposal-tickets/board?${q.toString()}`)
       .then(r => {
@@ -39,7 +39,7 @@ export default function WholesaleProposalBoard() {
         else setRows([])
       })
       .catch(() => setRows([]))
-  }, [cat, page])
+  }, [kind, page])
   useEffect(() => { load() }, [load])
 
   const totalPages = Math.max(1, Math.ceil(total / per))
@@ -56,27 +56,28 @@ export default function WholesaleProposalBoard() {
         </p>
       </div>
 
-      {/* 6개 아이콘 카드 */}
+      {/* 6개 아이콘 카드 (시각 불변 — 클릭 시 해당 카테고리의 kind 로 필터) */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-8">
-        {PROPOSAL_CATEGORIES.map(c => (
-          <button key={c.key} onClick={() => { setCat(c.key); setPage(1) }} className="flex flex-col items-center gap-2 group">
-            <span className="flex h-16 w-16 lg:h-20 lg:w-20 items-center justify-center rounded-full text-[28px] lg:text-[34px] transition-transform group-hover:scale-105"
-              style={{ background: cat === c.key ? WT.brandSoft : '#EAF2FB' }}>{c.emoji}</span>
-            <span className="text-[11px] lg:text-[12px] font-bold text-center leading-tight whitespace-pre-line" style={{ color: cat === c.key ? WT.brand : WT.ink2 }}>{c.desc}</span>
-          </button>
-        ))}
+        {PROPOSAL_CATEGORIES.map(c => {
+          const cardKind = categoryToType(c.key)
+          const cardActive = kind === cardKind
+          return (
+            <button key={c.key} onClick={() => { setKind(cardKind); setPage(1) }} className="flex flex-col items-center gap-2 group">
+              <span className="flex h-16 w-16 lg:h-20 lg:w-20 items-center justify-center rounded-full text-[28px] lg:text-[34px] transition-transform group-hover:scale-105"
+                style={{ background: cardActive ? WT.brandSoft : '#EAF2FB' }}>{c.emoji}</span>
+              <span className="text-[11px] lg:text-[12px] font-bold text-center leading-tight whitespace-pre-line" style={{ color: cardActive ? WT.brand : WT.ink2 }}>{c.desc}</span>
+            </button>
+          )
+        })}
       </div>
 
-      {/* 카테고리 탭 + 글쓰기 */}
+      {/* 필터 탭 3개(전체/제안/신고) + 글쓰기 */}
       <div className="flex items-center justify-between gap-2 border-b mb-0" style={{ borderColor: WT.line }}>
         <div className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <button onClick={() => { setCat(''); setPage(1) }}
-            className="shrink-0 px-3.5 h-11 text-[13.5px] font-bold whitespace-nowrap border-b-2"
-            style={cat === '' ? { color: WT.brand, borderColor: WT.brand } : { color: WT.ink3, borderColor: 'transparent' }}>전체</button>
-          {PROPOSAL_CATEGORIES.map(c => (
-            <button key={c.key} onClick={() => { setCat(c.key); setPage(1) }}
+          {([['', '전체'], ['proposal', '제안'], ['report', '신고']] as const).map(([k, label]) => (
+            <button key={k || 'all'} onClick={() => { setKind(k); setPage(1) }}
               className="shrink-0 px-3.5 h-11 text-[13.5px] font-bold whitespace-nowrap border-b-2"
-              style={cat === c.key ? { color: WT.brand, borderColor: WT.brand } : { color: WT.ink3, borderColor: 'transparent' }}>{c.label}</button>
+              style={kind === k ? { color: WT.brand, borderColor: WT.brand } : { color: WT.ink3, borderColor: 'transparent' }}>{label}</button>
           ))}
         </div>
         {loggedIn && (

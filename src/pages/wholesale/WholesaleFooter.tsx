@@ -18,14 +18,14 @@ export const BUSINESS_INFO = {
   bankName: '우체국',
   bankNo: '014084-02-129530',
   bankHolder: '사람과고리(송유미)',
-  csEmail: 'jiwon@ur-team.com',
+  csEmail: 'utongstart@naver.com',
 } as const
 
 // 정책/안내 링크 (시안: 회사소개 · 이용약관 · 개인정보처리방침 · 입점안내)
 const FOOTER_LINKS: { label: string; href: string }[] = [
   { label: '회사소개', href: '/wholesale/intro' },
   { label: '이용약관', href: '/wholesale/terms' },
-  { label: '개인정보처리방침', href: '/privacy' },
+  { label: '개인정보처리방침', href: '/wholesale/privacy' },
   { label: '입점안내', href: '/wholesale/start' },
 ]
 

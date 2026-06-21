@@ -1,7 +1,7 @@
 /**
  * 🏭 2026-06-10 (사용자 요청 — Sellpie 형 통합 게시판): /wholesale/board
- *   탭: 공지사항 / 상품 자료실(이미지 다운로드) / 배송 안내 / 신고·제안(최저가 미준수 등).
- *   공지·자료실 = 공개 읽기(어드민 작성: /admin/wholesale-board), 신고·제안 = 유통회원 전용
+ *   탭: 공지사항 / 상품 자료실(이미지 다운로드) / 배송 안내 / 제안·신고(최저가 미준수 등).
+ *   공지·자료실 = 공개 읽기(어드민 작성: /admin/wholesale-board), 제안·신고 = 유통회원 전용
  *   (기존 wholesale_proposal_tickets 재사용 — 어드민 큐 /admin/wholesale-proposals 그대로).
  *   라이트 고정(WT) — dark: 없음.
  */
@@ -22,7 +22,7 @@ const TABS: { key: Tab; label: string; icon: typeof Megaphone }[] = [
   { key: 'notice', label: '공지사항', icon: Megaphone },
   { key: 'archive', label: '상품 자료실', icon: FolderDown },
   { key: 'shipping', label: '배송 안내', icon: Truck },
-  { key: 'report', label: '신고·제안', icon: MessageSquareWarning },
+  { key: 'report', label: '제안·신고', icon: MessageSquareWarning },
 ]
 
 interface BoardPost {
@@ -86,7 +86,7 @@ export default function WholesaleBoardPage() {
   const openPost = (id: number) => setSp(prev => { const n = new URLSearchParams(prev); n.set('post', String(id)); return n })
   const closePost = () => setSp(prev => { const n = new URLSearchParams(prev); n.delete('post'); return n })
 
-  // ── 신고·제안 ──
+  // ── 제안·신고 ──
   const loggedIn = !!sellerToken()
   const isAdmin = isAdminUser()
   const [tickets, setTickets] = useState<Ticket[] | null>(null)
@@ -102,7 +102,7 @@ export default function WholesaleBoardPage() {
 
   return (
     <div className="min-h-screen pb-24" style={{ background: WT.fill }}>
-      <SEO title="게시판 - 유통스타트" description="공지사항, 상품 자료실, 배송 안내, 신고·제안" url="/wholesale/board" noindex />
+      <SEO title="게시판 - 유통스타트" description="공지사항, 상품 자료실, 배송 안내, 제안·신고" url="/wholesale/board" noindex />
 
       {/* 헤더 */}
       <header className="sticky top-0 z-30" style={{ background: '#fff', borderBottom: '1px solid ' + WT.line }}>
@@ -249,7 +249,7 @@ export default function WholesaleBoardPage() {
           )
         )}
 
-        {/* ── 신고·제안 (sellpie형 공개 게시판) ── */}
+        {/* ── 제안·신고 (sellpie형 공개 게시판) ── */}
         {tab === 'report' && (
           <div className="space-y-5">
             <WholesaleProposalBoard />

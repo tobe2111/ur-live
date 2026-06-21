@@ -1,7 +1,7 @@
 /**
  * 🏭 2026-06-16 (서브페이지 시안 05 고객센터): /wholesale/support
  *   네이비 히어로(검색) + FAQ(카테고리 탭·아코디언) + 우측 1:1 문의/연락처 카드.
- *   1:1 문의는 기존 신고·제안 게시판(/wholesale/board?tab=report) 재사용 — 새 백엔드 없음.
+ *   1:1 문의는 기존 제안·신고 게시판(/wholesale/board?tab=report) 재사용 — 새 백엔드 없음.
  *   라이트 고정(WT) — dark: 없음.
  */
 import { useMemo, useState } from 'react'

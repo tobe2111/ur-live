@@ -33,7 +33,7 @@ import { requireAdmin } from '@/worker/middleware/auth'
 import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admin-security'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { resolveMallId, DEFAULT_MALL_ID } from './wholesale-malls'
-import { PROPOSAL_CATEGORY_KEYS, categoryToType } from '@/shared/wholesale-proposal-categories'
+import { PROPOSAL_CATEGORY_KEYS, categoryToType, categoryKeysByType, isProposalKind } from '@/shared/wholesale-proposal-categories'
 
 // ── 멱등 ensure (repair-schema 와 동일 DDL — cold isolate self-heal) ────────────
 const _bannerEnsured = new WeakSet<object>()
@@ -232,11 +232,22 @@ pub.get('/proposal-tickets/board', async (c) => {
     await ensureProposalSchema(DB)
     const mallId = await resolveMallId(c)
     const cat = String(c.req.query('category') || '').trim()
+    // 🏬 2026-06-21 필터 탭 3개(전체/제안/신고): kind 우선 — proposal/report 면 해당 type 의 카테고리 key 전부 IN.
+    //   화이트리스트('proposal'|'report')만 허용, 그 외는 무시(전체). 기존 category(세부) 파라미터도 하위호환.
+    const kind = String(c.req.query('kind') || '').trim()
     const page = Math.max(1, Math.floor(Number(c.req.query('page')) || 1))
     const PER = 15
     const conds = ['COALESCE(wp.mall_id, 1) = ?']
     const binds: (string | number)[] = [Number(mallId) || DEFAULT_MALL_ID]
-    if (PROPOSAL_CATEGORY_KEYS.has(cat)) { conds.push('wp.category = ?'); binds.push(cat) }
+    if (isProposalKind(kind)) {
+      const keys = categoryKeysByType(kind)
+      if (keys.length) {
+        conds.push(`wp.category IN (${keys.map(() => '?').join(',')})`)
+        binds.push(...keys)
+      }
+    } else if (PROPOSAL_CATEGORY_KEYS.has(cat)) {
+      conds.push('wp.category = ?'); binds.push(cat)
+    }
     const where = conds.join(' AND ')
     const totalRow = await DB.prepare(`SELECT COUNT(*) AS n FROM wholesale_proposal_tickets wp WHERE ${where}`)
       .bind(...binds).first<{ n: number }>().catch(() => null)

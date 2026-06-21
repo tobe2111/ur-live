@@ -63,11 +63,11 @@ export default function CatalogHeader({
       <div style={{ background: WT.ink, color: '#C2C6CC' }}>
         <div className="ur-content-wide px-5 lg:px-8 h-9 flex items-center justify-between text-[12px]">
           <div className="flex items-center gap-3 lg:gap-4 min-w-0">
-            {/* 🧹 2026-06-17 (시안): 제조사 입점 삭제 · 순서 공지사항/고객센터/문의·신고 */}
+            {/* 🧹 2026-06-17 (시안): 제조사 입점 삭제 · 순서 공지사항/고객센터/제안·신고 */}
             <button onClick={() => navigate('/wholesale/board')} className="font-semibold text-white whitespace-nowrap">{t('wholesale.util.notice', { defaultValue: '공지사항' })}</button>
             <span className="opacity-30 hidden sm:inline">|</span>
             <button onClick={() => navigate('/wholesale/support')} className="hidden sm:inline whitespace-nowrap">{t('wholesale.util.cs', { defaultValue: '고객센터' })}</button>
-            <button onClick={() => navigate('/wholesale/board?tab=report')} className="hidden sm:inline whitespace-nowrap">{t('wholesale.util.report', { defaultValue: '문의·신고' })}</button>
+            <button onClick={() => navigate('/wholesale/board?tab=report')} className="hidden sm:inline whitespace-nowrap">{t('wholesale.util.report', { defaultValue: '제안·신고' })}</button>
           </div>
           <div className="flex items-center gap-2.5 lg:gap-3.5 shrink-0">
             {loggedIn ? (
