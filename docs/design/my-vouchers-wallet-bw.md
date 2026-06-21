@@ -123,6 +123,13 @@
   - **상단**: 세그먼트 카운트를 **둥근 칩**(tabular-nums)으로 + 상태줄 🟢 점 헤일로(카드와 통일).
   - **결제/환불/취소/폴링·라우팅·`useMyVouchers`/`useInvalidateMyVouchers`/VoucherMap·qrcode.react lazy 전부 byte-identical** — 순수 프레젠테이션(JSX/스타일)만. 검증: type-check 0 · `check-theme-consistency` 0 · `build:client` 0 · Chromium 목업 렌더 확인.
 
+- **2026-06-21 (4차 — 나머지 화면까지 "모두" 고급 마감)** 대표 "모두 다 해줘 / 모두 진행". 3차에서 남긴 QR모달·지도·교환권카드·식사권 캐릭터까지 동일 톤으로 마감 (화면3·화면2 + 일러스트 캐릭터):
+  - **QR/사용 모달 (화면3)**: 중앙 모달 → **모바일 바텀시트**(`items-end sm:items-center`, `rounded-t-3xl`, `animate-slideUp`, 그래버 핸들) + **백드롭 블러**. QR을 **스캔 프레임**(라운드 카드 + 4코너 브래킷 + 미세 섀도)으로 감싸 '스캔 가능' 프리미엄감. 상품명 17px 800 + 가게 핀 아이콘. 코드칩 라운드+letter-spacing. **폴링/셀프취소(`handleSelfCancel`)/공유/실시간시계/오버레이 로직 전부 불변** — 컨테이너·프레임·타이포만.
+  - **지도 화면 (화면2)**: 하단 선택 카드 섀도 강화 + 썸네일 ring. (VoucherMap lazy·onMarkerClick·거리/도보 계산 불변.)
+  - **교환권(KtAlpha) 카드**: 식사권 카드와 동일한 레이어드 섀도 + 썸네일 ring (바코드/발송실패/MMS 안내 로직 불변).
+  - **빈 상태 일러스트 캐릭터**: gb(식사권) variant 본문 패널에 **포크 + 스푼** 라인아트(식사권 정체성), 스텁 QR 닷 유지. gift(교환권) variant 는 내용 라인 + 바코드 유지.
+  - 검증: type-check 0 · `check-theme-consistency` 0 · `build:client` 0 · Chromium 3-panel 목업 렌더 확인.
+
 - **2026-06-20 (2차 — 레이아웃 정합)** 대표 신고 "구현이 다 안된 것 같은데?" — 1차는 톤만 입히고 구조를 옛 것으로 남겨 시안과 불일치. 시안 레이아웃까지 충실 구현:
   - 화면1: "사용 가능 N" + 🗺 지도 인라인 토글(큰 버튼 2개 제거), `VoucherTicket` 카드 재구성(60px 썸네일 · 🟢 상태점+사용가능+D-N · 제목 · 📍가게 · 코드칩 / 우측 가격+컴팩트 사용 pill), 사용완료/만료·환불을 헤어라인 박스 행(탭→인라인 펼침)으로.
   - 화면2: `viewMode==='map'` 전용 인-페이지 화면(back 헤더 "지도에서 보기" + VoucherMap + 하단 선택 카드의 사용 버튼).

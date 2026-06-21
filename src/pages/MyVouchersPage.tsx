@@ -261,44 +261,57 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" onClick={onClose} role="presentation">
-      <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-6 mx-4 max-w-xs w-full relative" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-[2px]" onClick={onClose} role="presentation">
+      <div className="bg-white dark:bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl p-6 pt-3 sm:pt-6 w-full sm:max-w-xs sm:mx-4 relative animate-slideUp" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
+        {/* 그래버 (모바일 바텀시트) */}
+        <div className="sm:hidden mx-auto mb-4 h-1 w-9 rounded-full bg-gray-200 dark:bg-[#2A2A2A]" aria-hidden />
         <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A] dark:bg-[#1A1A1A]">
           <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
         </button>
-        <p className="text-center text-sm font-bold text-gray-900 dark:text-white mb-1">{voucher.product_name}</p>
+        <p className="text-center text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white mb-1">{voucher.product_name}</p>
         {voucher.restaurant_name && (
-          <p className="text-center text-xs text-gray-500 dark:text-gray-400 mb-4">{voucher.restaurant_name}</p>
+          <p className="flex items-center justify-center gap-1 text-center text-xs text-gray-500 dark:text-gray-400 mb-4"><MapPin className="w-3 h-3 shrink-0" />{voucher.restaurant_name}</p>
         )}
-        <div className="flex justify-center mb-4 relative">
-          <div className={isUsed || isExpired ? 'opacity-20 grayscale' : ''}>
-            <VoucherQRCode value={qrUrl} size={160} />
+        <div className="flex justify-center mb-4">
+          <div className="relative p-4 rounded-2xl bg-white dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1F1F1F]" style={{ boxShadow: '0 2px 12px rgba(10,10,10,0.06)' }}>
+            {/* 스캔 프레임 코너 브래킷 (사용 가능 시) */}
+            {!isUsed && !isExpired && (
+              <>
+                <span className="absolute top-2 left-2 w-3.5 h-3.5 border-t-2 border-l-2 rounded-tl-[3px] border-gray-900 dark:border-white" aria-hidden />
+                <span className="absolute top-2 right-2 w-3.5 h-3.5 border-t-2 border-r-2 rounded-tr-[3px] border-gray-900 dark:border-white" aria-hidden />
+                <span className="absolute bottom-2 left-2 w-3.5 h-3.5 border-b-2 border-l-2 rounded-bl-[3px] border-gray-900 dark:border-white" aria-hidden />
+                <span className="absolute bottom-2 right-2 w-3.5 h-3.5 border-b-2 border-r-2 rounded-br-[3px] border-gray-900 dark:border-white" aria-hidden />
+              </>
+            )}
+            <div className={isUsed || isExpired ? 'opacity-20 grayscale' : ''}>
+              <VoucherQRCode value={qrUrl} size={160} />
+            </div>
+            {/* 🛡️ 2026-05-16: 사용 완료 / 만료 시 큰 오버레이 (재사용 방지) */}
+            {isUsed && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-emerald-500/10 rounded-2xl">
+                <div className="w-20 h-20 rounded-full bg-emerald-500 flex items-center justify-center">
+                  <CheckCircle className="w-12 h-12 text-white" strokeWidth={3} />
+                </div>
+                <p className="mt-2 text-base font-extrabold text-emerald-700">사용 완료</p>
+                {voucher.used_at && (
+                  <p className="text-[10px] text-emerald-600">{new Date(voucher.used_at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })}</p>
+                )}
+              </div>
+            )}
+            {isExpired && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-500/10 rounded-2xl">
+                <div className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center">
+                  <XCircle className="w-12 h-12 text-white" strokeWidth={3} />
+                </div>
+                <p className="mt-2 text-base font-extrabold text-red-700">
+                  {voucher.status === 'expired' ? '만료됨' : '환불됨'}
+                </p>
+              </div>
+            )}
           </div>
-          {/* 🛡️ 2026-05-16: 사용 완료 / 만료 시 큰 오버레이 (재사용 방지) */}
-          {isUsed && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-emerald-500/10 rounded-xl">
-              <div className="w-20 h-20 rounded-full bg-emerald-500 flex items-center justify-center">
-                <CheckCircle className="w-12 h-12 text-white" strokeWidth={3} />
-              </div>
-              <p className="mt-2 text-base font-extrabold text-emerald-700">사용 완료</p>
-              {voucher.used_at && (
-                <p className="text-[10px] text-emerald-600">{new Date(voucher.used_at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })}</p>
-              )}
-            </div>
-          )}
-          {isExpired && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-500/10 rounded-xl">
-              <div className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center">
-                <XCircle className="w-12 h-12 text-white" strokeWidth={3} />
-              </div>
-              <p className="mt-2 text-base font-extrabold text-red-700">
-                {voucher.status === 'expired' ? '만료됨' : '환불됨'}
-              </p>
-            </div>
-          )}
         </div>
-        <div className="bg-gray-100 dark:bg-[#1A1A1A] rounded-lg px-3 py-2 text-center">
-          <code className={`text-sm font-mono font-bold ${isUsed || isExpired ? 'text-gray-400 line-through' : 'text-gray-900 dark:text-white'}`}>{voucher.code}</code>
+        <div className="bg-gray-100 dark:bg-[#1A1A1A] rounded-xl px-3 py-2.5 text-center">
+          <code className={`text-[15px] font-mono font-bold tracking-[0.08em] ${isUsed || isExpired ? 'text-gray-400 line-through' : 'text-gray-900 dark:text-white'}`}>{voucher.code}</code>
         </div>
         {/* 🛡️ 캡쳐 도용 방지 — 실시간 시간 + 🟢 pulse (흑백 리디자인 화면3) */}
         {!isUsed && !isExpired && (
@@ -477,8 +490,8 @@ export default function MyVouchersPage() {
           </Suspense>
           {/* 선택 카드 (하단) — 시안: 썸네일 + 상품명 + 가게 · 거리 · 도보 N분 + 사용 */}
           {card && (
-            <div className="absolute left-3 right-3 bottom-3 flex items-center gap-3 rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#2A2A2A] p-3" style={{ boxShadow: '0 6px 22px rgba(0,0,0,0.14)' }}>
-              <div className="w-[52px] h-[52px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F]">
+            <div className="absolute left-3 right-3 bottom-3 flex items-center gap-3 rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#2A2A2A] p-3" style={{ boxShadow: '0 8px 28px rgba(10,10,10,0.18)' }}>
+              <div className="w-[52px] h-[52px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
                 {card.product_image
                   ? <img src={card.product_image} alt="" loading="lazy" className="w-full h-full object-cover" />
                   : <Ticket className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />}
@@ -659,13 +672,13 @@ function TicketShape({ className, strokeWidth = 2.2, variant, faded }: {
       {/* 천공 점선 */}
       <line x1="96" y1="16" x2="96" y2="80" stroke="currentColor" strokeWidth={strokeWidth * 0.6} strokeDasharray="2.4 5" strokeLinecap="round" opacity={0.4} />
       {!faded && (
-        <>
-          {/* 본문 패널 — 내용 라인 */}
-          <rect x="18" y="34" width="52" height="6" rx="3" fill="currentColor" opacity="0.9" />
-          <rect x="18" y="48" width="40" height="5" rx="2.5" fill="currentColor" opacity="0.32" />
-          <rect x="18" y="60" width="28" height="5" rx="2.5" fill="currentColor" opacity="0.18" />
-          {/* 스텁 모티프 — gb: QR 닷 / gift: 바코드 */}
-          {variant === 'gift' ? (
+        variant === 'gift' ? (
+          <>
+            {/* 본문 패널 — 내용 라인 */}
+            <rect x="18" y="34" width="52" height="6" rx="3" fill="currentColor" opacity="0.9" />
+            <rect x="18" y="48" width="40" height="5" rx="2.5" fill="currentColor" opacity="0.32" />
+            <rect x="18" y="60" width="28" height="5" rx="2.5" fill="currentColor" opacity="0.18" />
+            {/* 스텁 — 바코드 */}
             <g stroke="currentColor" strokeLinecap="round">
               <line x1="108" y1="38" x2="108" y2="58" strokeWidth="2" opacity="0.85" />
               <line x1="113" y1="38" x2="113" y2="58" strokeWidth="1.1" opacity="0.5" />
@@ -673,14 +686,27 @@ function TicketShape({ className, strokeWidth = 2.2, variant, faded }: {
               <line x1="122" y1="38" x2="122" y2="58" strokeWidth="1.1" opacity="0.5" />
               <line x1="126" y1="38" x2="126" y2="58" strokeWidth="2" opacity="0.85" />
             </g>
-          ) : (
+          </>
+        ) : (
+          <>
+            {/* 본문 패널 — 식사권 모티프 (포크 + 스푼) */}
+            <g stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.9">
+              {/* 포크: 3갈래 + 수렴 + 손잡이 */}
+              <path d="M34 30 V38 M38 30 V38 M42 30 V38" />
+              <path d="M34 38 Q38 44 38 48 Q38 44 42 38" />
+              <path d="M38 48 V66" />
+              {/* 스푼 */}
+              <ellipse cx="56" cy="37" rx="5.5" ry="7.5" />
+              <path d="M56 44 V66" />
+            </g>
+            {/* 스텁 — QR 닷 3×3 */}
             <g fill="currentColor">
               {[0, 1, 2].map(r => [0, 1, 2].map(cc => (
                 <rect key={`${r}-${cc}`} x={108 + cc * 7} y={41 + r * 7} width="4.5" height="4.5" rx="1" opacity={(r + cc) % 2 === 0 ? 0.85 : 0.32} />
               )))}
             </g>
-          )}
-        </>
+          </>
+        )
       )}
     </svg>
   )
@@ -999,11 +1025,11 @@ function KtAlphaVoucherCard({ v, muted, t }: {
   return (
     <div
       className="relative rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F] p-3"
-      style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 3px rgba(0,0,0,0.04)' }}
+      style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 2px rgba(10,10,10,0.05), 0 10px 22px -8px rgba(10,10,10,0.10)' }}
     >
       <div className="flex items-stretch gap-3">
         {/* 상품 이미지 (식사권 카드와 동일 규격) */}
-        <div className="w-[84px] h-[84px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F]">
+        <div className="w-[84px] h-[84px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
           {v.product_image ? (
             <img src={v.product_image} alt={v.product_name} loading="lazy" className="w-full h-full object-cover" />
           ) : (
