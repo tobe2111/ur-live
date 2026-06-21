@@ -33,7 +33,7 @@ export interface WalletTokens {
 
 export const walletTokens: Record<WalletTheme, WalletTokens> = {
   light: {
-    bg:        '#F2F2F7',
+    bg:        '#FFFFFF',
     card:      '#FFFFFF',
     cardSub:   '#FFFFFF',
     label:     '#000000',
