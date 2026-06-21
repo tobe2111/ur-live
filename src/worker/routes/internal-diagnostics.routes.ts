@@ -46,6 +46,16 @@ internalDiagnosticsRoutes.get('/api/_internal/kakao-login-diag', requireAdmin(),
         WHERE outcome='success' AND signed_fallback=1
           AND created_at >= datetime('now','-7 days')`
     ).first<{ count: number }>().catch(() => ({ count: 0 }));
+    // 🩺 2026-06-20 (A 방식 확인): establish 결과를 브라우저별로 — iOS 에서 establish_ok success 가
+    //   보이면 = same-origin httpOnly 세션 재발급 성공(쿠키 영속 = A 방식 작동). establish_bad_ticket/
+    //   establish_cookie_fail 가 iOS 에 쌓이면 = A 방식 문제 신호.
+    const establish = await DB.prepare(
+      `SELECT browser, ios, outcome, reason, COUNT(*) as count
+         FROM kakao_login_diag
+        WHERE reason LIKE 'establish%' AND created_at >= datetime('now','-7 days')
+        GROUP BY browser, ios, outcome, reason
+        ORDER BY count DESC`
+    ).all().catch(() => empty);
     const recent = await DB.prepare(
       `SELECT created_at, outcome, reason, browser, ios, had_state_cookie, signed_fallback, is_new
          FROM kakao_login_diag ORDER BY id DESC LIMIT 100`
@@ -53,9 +63,10 @@ internalDiagnosticsRoutes.get('/api/_internal/kakao-login-diag', requireAdmin(),
     return c.json({
       success: true,
       data: {
-        note: 'ios=1 은 모두 WebKit(사파리/카톡인앱). signed_fallback=1 success = 쿠키 유실을 서명 state 가 구제한 건수.',
+        note: 'ios=1 은 모두 WebKit(사파리/카톡인앱). signed_fallback=1 success = 쿠키 유실을 서명 state 가 구제한 건수. establish_7d: A 방식 same-origin 세션발급 결과(iOS establish_ok = 쿠키 영속 성공).',
         ios_summary: iosSummary.results,
         signed_fallback_successes_7d: fallbackWins?.count ?? 0,
+        establish_7d: establish.results,
         aggregate: aggregate.results,
         recent: recent.results,
       },

@@ -22,6 +22,7 @@ import { JWT_ACCESS_TOKEN_EXPIRY, JWT_REFRESH_TOKEN_EXPIRY } from '../../shared/
 import { hashPassword, verifyPassword, validatePasswordComplexity } from '../../lib/password';
 import { parseSessionCookie, clearSessionCookie, createSessionCookie } from '../utils/session';
 import { verify as jwtVerify } from 'hono/jwt';
+import { recordKakaoLoginDiag } from '../utils/kakao-login-diag';
 import { checkLockout, recordFailure, clearFailures } from '../utils/account-lockout';
 import { withCircuitBreaker } from '../utils/circuit-breaker';
 import { decryptAtRest } from '../utils/data-crypto';
@@ -375,6 +376,17 @@ authRouter.get('/validate', requireAuth(), async (c) => {
 //   여기서 httpOnly ur_session 을 first-party 200 응답에 발급(iOS 영속). 토큰을 localStorage 에 두지 않음.
 //   보안: 티켓은 HS256/JWT_SECRET 서명(위조 불가) + 120초 만료 → 재생/CSRF 안전(별도 저장 불필요).
 authRouter.post('/session/establish', rateLimit({ action: 'session_establish', max: 30, windowSec: 60 }), async (c) => {
+  // 🩺 2026-06-20: establish 결과를 브라우저별로 진단 기록(fire-and-forget) — iOS 에서 A 방식이 실제
+  //   작동하는지 수치 확인. reason='establish_ok' success 가 iOS 에서 보이면 = 쿠키 영속 재발급 성공.
+  //   /api/_internal/kakao-login-diag 의 aggregate/recent 에 reason 으로 구분되어 나타남.
+  const diagUa = c.req.header('User-Agent');
+  const fireDiag = (outcome: 'success' | 'error', reason: string) => {
+    try {
+      const p = recordKakaoLoginDiag(c.env.DB, { outcome, reason, ua: diagUa, hadStateCookie: false, signedFallback: false });
+      if (c.executionCtx) c.executionCtx.waitUntil(p); else void p;
+    } catch { /* 진단은 로그인에 영향 없음 */ }
+  };
+
   if (!c.env.JWT_SECRET) return c.json({ success: false, error: 'not_configured' }, 500);
   let ticket: string | undefined;
   try {
@@ -389,9 +401,11 @@ authRouter.post('/session/establish', rateLimit({ action: 'session_establish', m
     payload = (await jwtVerify(ticket, c.env.JWT_SECRET, 'HS256')) as Record<string, unknown>;
   } catch {
     // 서명 무효 / 만료(120초 초과) → 거부. 클라는 재로그인 유도.
+    fireDiag('error', 'establish_bad_ticket');
     return c.json({ success: false, error: 'invalid_or_expired_ticket' }, 401);
   }
   if (payload.p !== 'session_establish' || !payload.uid) {
+    fireDiag('error', 'establish_bad_ticket');
     return c.json({ success: false, error: 'invalid_ticket' }, 401);
   }
   try {
@@ -403,9 +417,11 @@ authRouter.post('/session/establish', rateLimit({ action: 'session_establish', m
       c.env.JWT_SECRET,
     );
     c.header('Set-Cookie', cookie); // same-origin 200 → iOS WebKit 영속
+    fireDiag('success', 'establish_ok');
     return c.json({ success: true, data: { userId: String(payload.uid) } });
   } catch (e) {
     if (import.meta.env.DEV) console.error('[session/establish] cookie creation failed:', e);
+    fireDiag('error', 'establish_cookie_fail');
     return c.json({ success: false, error: 'establish_failed' }, 500);
   }
 });
