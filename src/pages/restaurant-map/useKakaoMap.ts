@@ -5,6 +5,8 @@ import type { Restaurant, KakaoPlace } from './types'
 
 interface UseKakaoMapParams {
   kr: boolean
+  /** 리스트 모드 등 지도를 안 쓰는 화면에선 false → Kakao SDK 미로드(홈 피드 perf). */
+  enabled?: boolean
   withCoords: Restaurant[]
   coordGroupSize: Map<string, number>
   selected: Restaurant | null
@@ -18,6 +20,7 @@ interface UseKakaoMapParams {
 
 export function useKakaoMap({
   kr,
+  enabled = true,
   withCoords,
   coordGroupSize,
   selected,
@@ -46,7 +49,7 @@ export function useKakaoMap({
 
   // SDK loading
   useEffect(() => {
-    if (!kr) {
+    if (!kr || !enabled) {
       setSdkLoaded(false)
       return
     }

@@ -29,7 +29,7 @@ export type { KakaoPlace }
 
 // Window.kakao is declared in KakaoCallbackPage.tsx or similar global declaration
 
-export default function RestaurantMapPage({ home = false }: { home?: boolean } = {}) {
+export default function RestaurantMapPage({ home = false, mode = 'map' }: { home?: boolean; mode?: 'map' | 'list' } = {}) {
   const { t } = useTranslation()
   const [selected, setSelected] = useState<Restaurant | null>(null)
   const [region, setRegion] = useState('')
