@@ -40,6 +40,7 @@ interface Voucher {
   kt_pin?: string | null  // 🔢 #4: PIN 모드 발급분의 쿠폰 PIN/바코드 (인앱 표시용)
   order_id?: number
   product_id?: number  // 🛡️ /api/vouchers/my 가 v.product_id 반환 — 재구매 딥링크용
+  applied_discount_pct?: number  // 🛡️ 할인율(%) — '아낀 돈' 계산용 (product_price 미반환이므로 이걸로)
 }
 
 type ViewMode = 'list' | 'map'
@@ -515,9 +516,15 @@ export default function MyVouchersPage() {
   })()
 
   // 🎨 2026-06-21 (대표 "페이지가 투박 — UX/UI 재설계", 시안 A '프리미엄 패스'):
-  //   지갑 = 자산. 상단 '보유 식사권 금액' 히어로 — 보유 금액(사용 가능분 합) + 아낀 돈(원가 대비).
+  //   지갑 = 자산. 상단 '보유 식사권 금액' 히어로 — 보유 금액(사용 가능분 합) + 아낀 돈.
+  // 🐛 2026-06-21 fix: /vouchers/my 는 product_price 를 안 줘서 (원가-액면)=항상 0 → '아낀 돈' 영구 미표시였음.
+  //   applied_price 는 '결제한(할인된) 단가', applied_discount_pct 는 할인율 → 원가 대비 절약 = 액면 * pct/(100-pct).
   const heroTotal = unusedItems.reduce((s, v) => s + (v.applied_price ?? v.product_price ?? 0), 0)
-  const heroSaved = unusedItems.reduce((s, v) => s + Math.max(0, (v.product_price ?? 0) - (v.applied_price ?? 0)), 0)
+  const heroSaved = unusedItems.reduce((s, v) => {
+    const pct = v.applied_discount_pct ?? 0
+    const paid = v.applied_price ?? 0
+    return (pct > 0 && pct < 100 && paid > 0) ? s + Math.round((paid * pct) / (100 - pct)) : s
+  }, 0)
 
   // 🎨 화면2 — 지도에서 보기 (전용 인-페이지 화면)
   if (viewMode === 'map') {
