@@ -27,7 +27,7 @@ export default function TermsOfServicePage() {
       {/* Content */}
       <div className="ur-content-medium px-5 pt-6">
         <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-6">
-          {isKR ? '최종 수정일: 2024년 1월 15일' : 'Last updated: January 15, 2024'}
+          {isKR ? '최종 수정일: 2026년 6월 21일' : 'Last updated: June 21, 2026'}
         </p>
 
         {isKR ? (
@@ -36,7 +36,8 @@ export default function TermsOfServicePage() {
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">제1조 (목적)</h2>
               <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
                 본 약관은 리스터코퍼레이션(상호명: 리스터코퍼레이션, 대표자: 정지원, 이하 "회사")이 제공하는
-                라이브 커머스 서비스(이하 "서비스")의 이용과 관련하여
+                공동구매(동네딜), 모바일 교환권·이용권, 온라인 쇼핑, 추천 링크샵 및 딜 포인트 등
+                커머스 플랫폼 서비스(이하 "서비스")의 이용과 관련하여
                 회사와 회원 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을 목적으로 합니다.
               </p>
               <div className="bg-gray-50 dark:bg-[#121212] rounded-lg p-4 space-y-1">
@@ -46,7 +47,6 @@ export default function TermsOfServicePage() {
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 사업자등록번호: 479-09-02930</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 통신판매업신고번호: 2025-부산금정-0540</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 사업장주소: 서울특별시 강남구 남부순환로359길 14, 3층(도곡동)</p>
-                <p className="text-[13px] text-gray-600 dark:text-gray-300">• 대표전화: 0507-0177-0432</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 대표이메일: jiwon@ur-team.com</p>
               </div>
             </section>
@@ -56,10 +56,11 @@ export default function TermsOfServicePage() {
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>본 약관에서 사용하는 용어의 정의는 다음과 같습니다:</p>
                 <ol className="list-decimal list-inside space-y-2 ml-2">
-                  <li>"서비스"란 회사가 제공하는 라이브 스트리밍을 통한 상품 판매 및 구매 플랫폼을 의미합니다.</li>
-                  <li>"회원"이란 본 약관에 동의하고 회사와 서비스 이용계약을 체결한 자를 의미합니다.</li>
-                  <li>"판매자"란 서비스를 통해 상품을 판매하는 회원을 의미합니다.</li>
-                  <li>"구매자"란 서비스를 통해 상품을 구매하는 회원을 의미합니다.</li>
+                  <li>"서비스"란 회사가 제공하는 공동구매(동네딜), 모바일 교환권·이용권, 온라인 쇼핑, 추천 링크샵 및 딜 포인트 등 커머스 플랫폼을 의미합니다.</li>
+                  <li>"회원"이란 본 약관에 동의하고 회사와 서비스 이용계약을 체결한 자를 의미하며, 회원가입 시 누구나 개인 추천 링크샵 페이지가 생성됩니다.</li>
+                  <li>"사업자회원(판매자)"이란 사업자등록 및 회사의 판매 승인을 거쳐 자신의 상품·공구권을 판매하고 현금 정산을 받는 회원을 의미합니다.</li>
+                  <li>"구매자"란 서비스를 통해 상품 또는 이용권을 구매하는 회원을 의미합니다.</li>
+                  <li>"딜 포인트(딜)"란 회원이 충전하거나 적립받아 상품·공구 결제에 사용할 수 있는 서비스 내 적립금을 의미합니다(1원 = 1딜).</li>
                 </ol>
               </div>
             </section>
@@ -76,8 +77,8 @@ export default function TermsOfServicePage() {
                   B2B 정산 용도로만 이루어지며, 셀러 본인 명의 휴대폰으로만 발송됩니다.
                 </p>
                 <p className="text-[12px] text-gray-600 dark:text-gray-400 leading-relaxed">
-                  구매자가 라이브 커머스에서 구매하는 상품은 셀러가 제공하는 실물 상품 / 음식 / 숙박 등이며,
-                  결제 대금은 토스페이먼츠 등 정식 PG사를 통해 처리됩니다.
+                  구매자가 서비스(공동구매·쇼핑 등)에서 구매하는 상품은 사업자회원(판매자)이 제공하는
+                  실물 상품 / 음식 / 숙박 / 이용권 등이며, 결제 대금은 토스페이먼츠 등 정식 PG사를 통해 처리됩니다.
                 </p>
               </div>
             </section>
@@ -111,8 +112,10 @@ export default function TermsOfServicePage() {
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>① 회사는 다음과 같은 서비스를 제공합니다:</p>
                 <ol className="list-decimal list-inside space-y-2 ml-2">
-                  <li>라이브 스트리밍을 통한 상품 소개 및 판매</li>
-                  <li>상품 검색 및 구매</li>
+                  <li>공동구매(동네딜)의 등록·참여 및 QR 사용 확인</li>
+                  <li>모바일 교환권·식사권 등 이용권의 구매 및 사용</li>
+                  <li>상품 검색·구매 및 온라인 쇼핑</li>
+                  <li>추천 링크샵을 통한 상품·공구 추천 및 딜 포인트 적립·사용</li>
                   <li>결제 및 배송 서비스</li>
                   <li>기타 회사가 추가 개발하거나 다른 회사와의 제휴계약 등을 통해 회원에게 제공하는 일체의 서비스</li>
                 </ol>
@@ -224,7 +227,8 @@ export default function TermsOfServicePage() {
             <section>
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">1. Purpose</h2>
               <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-                These Terms of Service ("Terms") govern your use of the YourDeal live commerce platform ("Service")
+                These Terms of Service ("Terms") govern your use of the YourDeal commerce platform ("Service") —
+                a group-buying, mobile voucher, online shopping, and referral storefront service —
                 operated by Lister Corporation ("Company"). By accessing or using the Service, you agree to be bound by these Terms.
               </p>
               <div className="bg-gray-50 dark:bg-[#121212] rounded-lg p-4 space-y-1">
@@ -232,7 +236,6 @@ export default function TermsOfServicePage() {
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• Company: Lister Corporation</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• CEO: Jiwon Jung</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• Email: jiwon@ur-team.com</p>
-                <p className="text-[13px] text-gray-600 dark:text-gray-300">• Phone: +82-507-0177-0432</p>
               </div>
             </section>
 
@@ -240,10 +243,10 @@ export default function TermsOfServicePage() {
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">2. Definitions</h2>
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <ol className="list-decimal list-inside space-y-2 ml-2">
-                  <li>"Service" refers to the live streaming commerce platform provided by the Company.</li>
-                  <li>"User" refers to any person who agrees to these Terms and enters into a service agreement.</li>
-                  <li>"Seller" refers to a User who sells products through the Service.</li>
-                  <li>"Buyer" refers to a User who purchases products through the Service.</li>
+                  <li>"Service" refers to the commerce platform (group-buying, mobile vouchers, online shopping, referral storefronts, and deal points) provided by the Company.</li>
+                  <li>"User" refers to any person who agrees to these Terms and enters into a service agreement; every User receives a personal referral storefront upon sign-up.</li>
+                  <li>"Seller" refers to a User who, after business registration and approval, sells their own products or vouchers and receives cash settlement.</li>
+                  <li>"Buyer" refers to a User who purchases products or vouchers through the Service.</li>
                 </ol>
               </div>
             </section>
@@ -261,11 +264,11 @@ export default function TermsOfServicePage() {
               <div className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                 <p>The Company provides the following services:</p>
                 <ol className="list-decimal list-inside space-y-2 ml-2">
-                  <li>Live streaming product showcase and sales</li>
-                  <li>Product search and purchase</li>
+                  <li>Group-buying (local deals) registration, participation, and QR redemption</li>
+                  <li>Purchase and use of mobile vouchers and meal passes</li>
+                  <li>Product search, purchase, and online shopping</li>
+                  <li>Referral storefronts and deal-point rewards</li>
                   <li>Payment processing and delivery</li>
-                  <li>Meal voucher group buying</li>
-                  <li>Real-time auction and time deals during live broadcasts</li>
                 </ol>
               </div>
             </section>

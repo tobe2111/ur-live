@@ -172,7 +172,7 @@ export const organizationJsonLd = {
   sameAs: [],
   contactPoint: {
     '@type': 'ContactPoint',
-    telephone: '0507-0177-0432',
+    email: 'jiwon@ur-team.com',
     contactType: 'customer service',
     availableLanguage: ['Korean'],
   },

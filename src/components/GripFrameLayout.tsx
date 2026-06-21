@@ -242,7 +242,7 @@ export default function GripFrameLayout({ children }: GripFrameLayoutProps) {
                   사업장주소: 서울특별시 강남구 남부순환로359길 14, 3층(도곡동)
                 </p>
                 <p className="text-white/20">
-                  대표전화: 0507-0177-0432 | 대표이메일: jiwon@ur-team.com
+                  대표이메일: jiwon@ur-team.com
                 </p>
                 <p className="text-white/20">
                   서비스 제공 기간: 상품 구매 후 평균 7일 이내 배송 완료

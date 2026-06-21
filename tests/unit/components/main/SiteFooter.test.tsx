@@ -107,7 +107,8 @@ describe('SiteFooter', () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByText(/대표전화: 0507-0177-0432/)).toBeInTheDocument();
+    expect(screen.getByText(/대표이메일: jiwon@ur-team.com/)).toBeInTheDocument();
+    expect(screen.queryByText(/0507-0177-0432/)).not.toBeInTheDocument();
   });
 
   it('renders representative email', () => {

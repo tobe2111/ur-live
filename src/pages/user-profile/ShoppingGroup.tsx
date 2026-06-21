@@ -21,6 +21,9 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
     { icon: '🔔', label: t('shopping.interestList', { defaultValue: '관심 맛집' }), sub: t('shopping.interestListSub', { defaultValue: '공구 오픈 알림 신청 목록' }), path: '/interest-list' },
     { icon: '❤️', label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), count: counts.wish, path: '/wishlist' },
     { icon: '📦', label: t('shopping.orders', { defaultValue: '주문 내역' }), sub: t('shopping.ordersSub', { defaultValue: '최근 3개월' }), path: '/my-orders' },
+    // 🧹 2026-06-21 (대표 — 마이 정리): '더보기' 섹션의 배송지/리뷰를 쇼핑·이용내역 그룹으로 흡수(흩어진 미니 섹션 통합).
+    { icon: '📍', label: t('userProfile.addressManage', { defaultValue: '배송지 관리' }), path: '/mypage/addresses' },
+    { icon: '📝', label: t('userProfile.myReviews', { defaultValue: '내 리뷰' }), path: '/my-reviews' },
     { icon: '📚', label: t('shopping.digitalLibrary', { defaultValue: '디지털 보관함' }), sub: t('shopping.digitalLibrarySub', { defaultValue: '전자책·강의·가이드' }), path: '/my/digital' },
   ]
 

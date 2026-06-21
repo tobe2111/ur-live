@@ -38,7 +38,7 @@ export default function PrivacyPolicyPage() {
               <ul className="list-disc ml-5 mt-2 space-y-1 text-[13px] text-gray-600 dark:text-gray-300">
                 <li>Account information: name, email, profile image (from Kakao/Google login)</li>
                 <li>Purchase information: shipping address, phone number, payment details</li>
-                <li>Usage data: browsing history, search queries, live stream viewing history</li>
+                <li>Usage data: browsing history, search queries, group-buy and content viewing history</li>
                 <li>Device information: IP address, browser type, operating system</li>
               </ul>
             </section>
@@ -48,7 +48,7 @@ export default function PrivacyPolicyPage() {
               <ul className="list-disc ml-5 space-y-1 text-[13px] text-gray-600 dark:text-gray-300">
                 <li>To provide, maintain, and improve the Service</li>
                 <li>To process orders and payments</li>
-                <li>To send notifications about orders, broadcasts, and promotions</li>
+                <li>To send notifications about orders, group-buys, and promotions</li>
                 <li>To prevent fraud and ensure security</li>
                 <li>To comply with legal obligations</li>
               </ul>
@@ -110,7 +110,6 @@ export default function PrivacyPolicyPage() {
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 사업자등록번호: 479-09-02930</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 통신판매업신고번호: 2025-부산금정-0540</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 사업장주소: 서울특별시 강남구 남부순환로359길 14, 3층(도곡동)</p>
-                <p className="text-[13px] text-gray-600 dark:text-gray-300">• 대표전화: 0507-0177-0432</p>
                 <p className="text-[13px] text-gray-600 dark:text-gray-300">• 대표이메일: jiwon@ur-team.com</p>
               </div>
             </section>

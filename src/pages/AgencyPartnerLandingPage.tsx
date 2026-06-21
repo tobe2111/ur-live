@@ -134,7 +134,7 @@ export default function AgencyPartnerLandingPage() {
         <a href="mailto:jiwon@ur-team.com?subject=에이전시%20파트너%20문의" className="inline-flex items-center gap-2 px-8 py-4 bg-white text-gray-900 rounded-full font-extrabold text-lg shadow-xl hover:scale-105 transition-transform">
           <Phone className="w-5 h-5" /> 제휴 문의
         </a>
-        <p className="text-xs opacity-70 mt-6">jiwon@ur-team.com · 0507-0177-0432</p>
+        <p className="text-xs opacity-70 mt-6">jiwon@ur-team.com</p>
       </section>
 
       <footer className="px-6 lg:px-12 py-8 text-center text-xs text-gray-400 border-t border-gray-100">

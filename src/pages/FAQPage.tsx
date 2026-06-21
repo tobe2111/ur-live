@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronDown, Search, HelpCircle, Phone, Mail, Clock } from 'lucide-react'
+import { ChevronLeft, ChevronDown, Search, HelpCircle, Mail, Clock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -139,11 +139,7 @@ export default function FAQPage() {
           <h2 className="text-[14px] font-bold text-gray-900 dark:text-white mb-1">{t('faq.supportTitle', { defaultValue: '도움이 더 필요하신가요?' })}</h2>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">{t('faq.supportDesc', { defaultValue: '궁금한 사항이 해결되지 않았다면 연락주세요.' })}</p>
           <div className="space-y-2.5">
-            <div className="flex items-center gap-2.5 text-[13px] text-gray-700 dark:text-gray-200">
-              <Phone className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
-              <span className="text-gray-500 dark:text-gray-400 w-16">{t('faq.supportPhone', { defaultValue: '고객센터' })}</span>
-              <span className="font-medium text-gray-900 dark:text-white">{t('faq.supportPhoneValue', { defaultValue: '0507-0177-0432' })}</span>
-            </div>
+            {/* 🧹 2026-06-21 (대표 — 고객센터 전화번호 전체 비노출): 전화 행 제거, 이메일/운영시간만 안내. */}
             <div className="flex items-center gap-2.5 text-[13px] text-gray-700 dark:text-gray-200">
               <Clock className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
               <span className="text-gray-500 dark:text-gray-400 w-16">{t('faq.supportHours', { defaultValue: '운영시간' })}</span>
