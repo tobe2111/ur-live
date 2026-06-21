@@ -3,6 +3,7 @@ import { cfImage } from '@/utils/cf-image'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
+import { isWholesaleSurface } from '@/utils/domain'
 import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin, Ticket, Gift } from 'lucide-react'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
@@ -297,6 +298,12 @@ export default function BottomNav() {
       </button>
     )
   }
+
+  // 🏭 이중 방어선: 도매몰(B2B) surface 에서는 소비자 BottomNav 절대 미표시.
+  //   1차 가드는 App.tsx hideBottomNav(마운트 자체 차단)이지만, allowlist 가 깨지거나
+  //   회귀해도 컴포넌트가 자기-차단해 도매몰에 소비자 UI 누출을 구조적으로 막음.
+  //   (모든 hook 호출 이후의 early-return — rules-of-hooks 안전.)
+  if (isWholesaleSurface(location.pathname)) return null
 
   return (
     <>

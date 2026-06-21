@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from '
 import { HelmetProvider } from 'react-helmet-async'
 import { QueryProvider } from './lib/react-query'
 import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
-import { isUtongstart, isWholesaleAllowedPath } from './utils/domain'
+import { isUtongstart, isWholesaleAllowedPath, isWholesaleSurface } from './utils/domain'
 import ToastContainer from './components/ToastContainer'
 import { ConfirmHost } from './components/ui/confirm-dialog'
 import NewVersionBanner from './components/main/NewVersionBanner'
@@ -483,9 +483,10 @@ function AppContent() {
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
     || location.pathname.startsWith('/live/') // /live/123 은 풀스크린, /live 목록은 아님
   // 🏭 유통스타트 B2B(도매몰/제조사)는 소비자 BottomNav/TopNav 미표시 — 별도 도메인·업태.
+  //   isWholesaleSurface = SSOT (`/wholesale*`·`/supplier*`). 같은 헬퍼를 BottomNav·DesktopTopNav
+  //   컴포넌트가 자기-차단에도 사용 → 1차(여기서 마운트 차단) + 2차(컴포넌트 self-guard) 이중 방어.
   const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
-    || location.pathname === '/wholesale' || location.pathname.startsWith('/wholesale/')
-    || location.pathname === '/supplier' || location.pathname.startsWith('/supplier/')
+    || isWholesaleSurface(location.pathname)
 
   return (
     <>

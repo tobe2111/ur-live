@@ -38,3 +38,18 @@ export function isWholesaleAllowedPath(pathname: string): boolean {
   }
   return false
 }
+
+/**
+ * 🏭 도매몰(B2B) surface 판별 SSOT — `/wholesale*`·`/supplier*`.
+ *
+ * "소비자 chrome(BottomNav·DesktopTopNav·검색바)이 절대 렌더되면 안 되는 경로"의
+ * 단일 진실원천. worker(`src/worker/index.ts:isWholesaleSurface` `/^\/(wholesale|supplier)(\/|$)/`)
+ * 와 **동일 규칙** — 한쪽 변경 시 같이 갱신.
+ *
+ * 도메인 무관(live.ur-team.com / utongstart.com 양쪽 동일). 소비자 nav 컴포넌트가
+ * 직접 호출해 자기-차단(이중 방어). App.tsx 의 hideBottomNav allowlist 가 깨져도
+ * 컴포넌트 단에서 한 번 더 막아 도매몰에 소비자 UI 누출을 구조적으로 차단.
+ */
+export function isWholesaleSurface(pathname: string): boolean {
+  return /^\/(wholesale|supplier)(\/|$)/.test(pathname)
+}
