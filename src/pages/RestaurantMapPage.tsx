@@ -15,6 +15,7 @@ import FilterSheet, { type PriceRange } from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
 import HeroCarousel from './restaurant-map/HeroCarousel'
 import RestaurantList from './restaurant-map/RestaurantList'
+import SelectedFocusCard from './restaurant-map/SelectedFocusCard'
 import MapSearchHeader from './restaurant-map/MapSearchHeader'
 import SheetFilterBar from './restaurant-map/SheetFilterBar'
 import { useKakaoMap } from './restaurant-map/useKakaoMap'
@@ -517,23 +518,29 @@ export default function RestaurantMapPage({ home = false }: { home?: boolean } =
 
         {/* ═══ 시트 안 스크롤 가능한 결과 리스트 ═══ */}
         <div className="flex-1 overflow-y-auto px-3 pt-3 pb-24" style={{ overscrollBehavior: 'contain' }}>
-          {/* 🛡️ 2026-04-30 Phase 3: hero carousel — 할인율 TOP5 (선택 카드 없을 때만) */}
-          {!loading && !selected && (
-            <HeroCarousel
-              heroDeals={heroDeals}
-              userLoc={userLoc}
-              liveSellerIds={liveSellerIds}
-              onSelect={selectAndPan}
-            />
+          {/* 🗺️ 2026-06-20 (대표 — 카드 선택 = 단일 포커스): 선택 시 리스트 대신 '선택된 1개'만(배타). 닫으면 리스트 복귀. */}
+          {selected ? (
+            <SelectedFocusCard selected={selected} userLoc={userLoc} onClose={() => setSelected(null)} />
+          ) : (
+            <>
+              {/* 🛡️ 2026-04-30 Phase 3: hero carousel — 할인율 TOP5 */}
+              {!loading && (
+                <HeroCarousel
+                  heroDeals={heroDeals}
+                  userLoc={userLoc}
+                  liveSellerIds={liveSellerIds}
+                  onSelect={selectAndPan}
+                />
+              )}
+              <RestaurantList
+                loading={loading}
+                filtered={filtered}
+                selected={selected}
+                userLoc={userLoc}
+                onSelect={selectAndPan}
+              />
+            </>
           )}
-
-          <RestaurantList
-            loading={loading}
-            filtered={filtered}
-            selected={selected}
-            userLoc={userLoc}
-            onSelect={selectAndPan}
-          />
           </div>
         </div>
 
