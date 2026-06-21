@@ -84,6 +84,27 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       : r),
     [restaurants, geoCache]
   )
+  // 🎯 2026-06-20 선착순: 활성 선착순 상품 config(상위노출·배지·지원용). id→{spots,appliedDisplay}.
+  const [fcfsMap, setFcfsMap] = useState<Map<number, { spots: number; appliedDisplay: number }>>(new Map())
+  useEffect(() => {
+    api.get('/api/fcfs/active')
+      .then(r => {
+        const m = new Map<number, { spots: number; appliedDisplay: number }>()
+        for (const p of (r.data?.data || [])) {
+          if (p?.fcfs?.enabled) m.set(p.id, { spots: p.fcfs.spots || 0, appliedDisplay: p.fcfs.appliedDisplay || 0 })
+        }
+        setFcfsMap(m)
+      })
+      .catch(() => { /* silent */ })
+  }, [])
+  const applyFcfs = useCallback(async (productId: number) => {
+    try {
+      const res = await api.post(`/api/fcfs/${productId}/apply`)
+      toast.success(res.data?.data?.already ? '이미 지원했어요' : '🎉 지원 완료! 선정 시 알림으로 안내드려요')
+    } catch {
+      toast.error('지원하려면 로그인이 필요해요')
+    }
+  }, [])
   const [sortBy, setSortBy] = useState<SortBy>('discount')
   // 🛍️ 2026-06-20 (필터 팝업 A안): 거리반경(km, 0=전체) + 가격대.
   const [radiusKm, setRadiusKm] = useState<number>(0)
@@ -295,6 +316,12 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     return items
   }, [enrichedRestaurants, region, district, search, sortBy, radiusKm, priceRange, matchesFilter, showFavoritesOnly, favorites])
 
+  // 🎯 2026-06-20 선착순 상위노출 — 선착순 상품을 리스트 최상단으로(나머지 순서 보존).
+  const displayList = useMemo(() => {
+    if (fcfsMap.size === 0) return filtered
+    return [...filtered].sort((a, b) => (fcfsMap.has(b.id) ? 1 : 0) - (fcfsMap.has(a.id) ? 1 : 0))
+  }, [filtered, fcfsMap])
+
   // 🛡️ 2026-04-30 Phase 3: hero carousel — 인기 (할인율 높은 순) 상위 5개
   const heroDeals = useMemo(() => {
     return [...filtered]
@@ -470,10 +497,12 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         <div className="ur-content-wide px-3 lg:px-8 pt-3 pb-28">
           <RestaurantList
             loading={loading}
-            filtered={filtered}
+            filtered={displayList}
             selected={null}
             userLoc={userLoc}
             onSelect={(r) => navigate(`/products/${r.id}`)}
+            fcfsMap={fcfsMap}
+            onApplyFcfs={applyFcfs}
           />
         </div>
         {/* 플로팅 '지도' 버튼 — 하단 네비 위 중앙 */}
@@ -615,10 +644,12 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
               )}
               <RestaurantList
                 loading={loading}
-                filtered={filtered}
+                filtered={displayList}
                 selected={selected}
                 userLoc={userLoc}
                 onSelect={selectAndPan}
+                fcfsMap={fcfsMap}
+                onApplyFcfs={applyFcfs}
               />
             </>
           )}
