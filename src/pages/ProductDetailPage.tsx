@@ -1,10 +1,11 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Gift, ChevronRight, ChevronLeft, Bookmark } from 'lucide-react'
+import { Gift, ChevronRight, ChevronLeft } from 'lucide-react'
 import api from '@/lib/api'
 import { getUserId, hasConsumerSession } from '@/utils/auth'
-import { resolveProductFlow } from '@/shared/product-flow'
+import { resolveProductFlow, FLOW_CONFIG } from '@/shared/product-flow'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
@@ -73,6 +74,8 @@ export default function ProductDetailPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   // 🛡️ 2026-05-24: 리뷰 전체보기 토글 — 기본 5개, 클릭 시 100 (사실상 전체).
   const [showAllReviews, setShowAllReviews] = useState(false)
+  // 🧭 2026-06-22: 상세 정보 전체 펼치기 (이전엔 토글 버튼이 dead — 첫 이미지/200자만 노출되고 나머지 도달 불가).
+  const [detailExpanded, setDetailExpanded] = useState(false)
   const [isWishlisted, setIsWishlisted] = useState(false)
   const [giftModalOpen, setGiftModalOpen] = useState(false)  // 🛡️ 2026-04-28: 선물하기 모달
   // 🏭 2026-06-05 (사용자 요청): 딜 교환 확인 — 네이티브 confirm → 서비스 내 모달.
@@ -108,15 +111,20 @@ export default function ProductDetailPage() {
     }
   }, [product])
 
-  // 🛡️ 2026-05-23: voucher 만 자동 redirect (/vouchers/:id). 사용자 정의:
-  //   - /browse 카드 → /product/:id 그대로 (Toss 결제)
-  //   - / 홈 공구 카드 → 홈 페이지가 직접 /group-buy/:id 링크 생성 (redirect 불요)
-  //   - voucher → /vouchers/:id 강제 (UI 완전 분리)
+  // 🧭 2026-06-22: 상품 종류별 정규(canonical) 상세 페이지로 정렬 — /products 는 온라인 일반 상품 전용.
+  //   - 교환권(deal_only=1)        → /vouchers/:id (딜 결제 전용 UI)
+  //   - 공구(voucher 카테고리)       → /group-buy/:id (공구 전용 UI — 홈 피드/동네딜 리스트가 모두 링크하는 정규 페이지)
+  //   - 그 외(온라인 일반 상품)       → /products/:id 유지 (이 페이지)
+  //   ⚠️ group_buy_status 로 분류 금지(migration 0146 에서 모든 상품 DEFAULT 'active') —
+  //      deal_only + isVoucherCategory SSOT 만 사용 (order-type.ts / voucher-categories.ts).
+  //   ?ref= 는 위 useEffect 가 이미 localStorage/cookie 에 저장하지만, query 도 보존해 목적지 페이지가 URL 에서도 읽도록.
   useEffect(() => {
     if (!product) return
-    const { flow, config } = resolveProductFlow(product)
-    if (flow === 'voucher_deal') {
-      navigate(config.detailPath(product.id), { replace: true })
+    const search = window.location.search
+    if (Number(product.deal_only) === 1) {
+      navigate(`${FLOW_CONFIG.voucher_deal.detailPath(product.id)}${search}`, { replace: true })
+    } else if (isVoucherCategory(product.category)) {
+      navigate(`${FLOW_CONFIG.group_buy_toss.detailPath(product.id)}${search}`, { replace: true })
     }
   }, [product, navigate])
 
@@ -587,15 +595,26 @@ export default function ProductDetailPage() {
         <section className="px-5 py-5">
           <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">{t('productDetail.detailInfo')}</p>
           {detailImages.length > 0 && (
-            <div className="rounded-xl overflow-hidden mb-3 bg-gray-50 dark:bg-[#121212]">
-              <img src={detailImages[0]} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority="high" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
-            </div>
+            detailExpanded ? (
+              <div className="space-y-2 mb-3">
+                {detailImages.map((img, i) => (
+                  <img key={i} src={img} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority={i === 0 ? 'high' : 'auto'} className="w-full rounded-xl" />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl overflow-hidden mb-3 bg-gray-50 dark:bg-[#121212]">
+                <img src={detailImages[0]} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority="high" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
+              </div>
+            )
           )}
           {product.long_description && (
-            <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">{product.long_description.slice(0, 200)}</p>
+            <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-line">
+              {detailExpanded ? product.long_description : product.long_description.slice(0, 200)}
+              {!detailExpanded && product.long_description.length > 200 ? '…' : ''}
+            </p>
           )}
-          {(detailImages.length > 1 || (product.long_description && product.long_description.length > 200)) && (
-            <button className="w-full mt-4 py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] text-[12px] font-semibold text-gray-700 dark:text-gray-200 active:bg-gray-50 dark:active:bg-[#121212]">
+          {!detailExpanded && (detailImages.length > 1 || (product.long_description && product.long_description.length > 200)) && (
+            <button onClick={() => setDetailExpanded(true)} className="w-full mt-4 py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] text-[12px] font-semibold text-gray-700 dark:text-gray-200 active:bg-gray-50 dark:active:bg-[#121212]">
               {t('productDetail.expandDetails', { defaultValue: '상세정보 펼쳐보기' })}
             </button>
           )}
@@ -811,29 +830,8 @@ export default function ProductDetailPage() {
         style={{ bottom: 'calc(env(safe-area-inset-bottom) + 96px)' }}
       >
         <div className="ur-content-wide mx-auto flex flex-col items-end gap-2.5">
-          {isLoggedIn && (
-            <button
-              onClick={async () => {
-                try {
-                  const res = await api.post('/api/curator/me/pins', { product_id: product.id })
-                  if (res.data?.success) {
-                    showToast('내 링크샵에 담겼어요', 'success')
-                  }
-                } catch (err: any) {
-                  if (err?.response?.data?.code === 'ALREADY_PINNED') {
-                    showToast('이미 내 링크샵에 있어요', 'success')
-                  } else {
-                    showToast('담기 실패', 'error')
-                  }
-                }
-              }}
-              className="pointer-events-auto inline-flex items-center gap-1.5 h-10 pl-3 pr-3.5 rounded-full bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] shadow-lg active:scale-95 transition-transform"
-              aria-label="내 링크샵에 담기"
-            >
-              <Bookmark className="w-4 h-4 text-violet-500" />
-              <span className="text-[12px] font-bold text-gray-900 dark:text-white">담기</span>
-            </button>
-          )}
+          {/* 🧭 2026-06-22: 중복 '담기' floating pill 제거 — 본문의 '📌 내 링크샵에 담기 + 추천 링크 복사'
+               CTA(적립액 표시 + 링크 복사 포함)가 정규 담기 진입점. floating 은 보조 액션(선물)만 유지. */}
           <button
             onClick={() => setGiftModalOpen(true)}
             className="pointer-events-auto inline-flex items-center gap-1.5 h-10 pl-3 pr-3.5 rounded-full bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] shadow-lg active:scale-95 transition-transform"

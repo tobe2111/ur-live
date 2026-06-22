@@ -62,9 +62,10 @@ export function FloatingActionBar({
         )}
 
         <button
-          /* 🏭 2026-06-05 (사용자 요청): 주요 CTA 그라데이션 — 딜은 앰버, 일반은 브랜드 핑크→레드. */
+          /* 🧭 2026-06-22: 주요 CTA — 일반 상품은 잉크 그라데이션(B&W 컨슈머 톤, 본문 담기 CTA 와 동톤),
+             딜은 앰버. 이전엔 같은 색 2번(#6b7280)이라 사실상 평평한 회색 → 위계 약함. */
           className="flex flex-col items-center justify-center h-12 flex-1 rounded-xl transition-all active:scale-[0.98] disabled:opacity-40"
-          style={{ background: dealOnly ? 'linear-gradient(135deg, #9ca3af, #6b7280)' : 'linear-gradient(135deg, #6b7280, #6b7280)' }}
+          style={{ background: dealOnly ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : 'linear-gradient(135deg, #1f2937, #111827)' }}
           onClick={onBuyNow}
           disabled={disabled}
         >
@@ -74,10 +75,7 @@ export function FloatingActionBar({
               <span className="text-[13px] font-extrabold text-white">🎁 딜로 교환</span>
             </>
           ) : (
-            <>
-              <span className="text-[8px] font-bold text-white/70">공구 참여</span>
-              <span className="text-[13px] font-extrabold text-white">바로 구매</span>
-            </>
+            <span className="text-[14px] font-extrabold text-white">바로 구매</span>
           )}
         </button>
       </div>
