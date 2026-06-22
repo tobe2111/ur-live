@@ -203,11 +203,16 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
     const isSeller = userAsAny.type === 'seller' || userAsAny.role === 'seller'
     if (!isSeller) return c.json({ success: false, error: '셀러만 접근 가능' }, 403)
     try {
+      // 🎟️ 정산 상태는 기존 auto-settlement(used 7일 후 정산) 의 vouchers.settlement_id 로 판별.
+      //   pending_settlement = 사용됨인데 아직 정산 전(정산 대기) / settled = 정산 완료.
       const summary = await c.env.DB.prepare(`
         SELECT COUNT(*) as total,
           SUM(CASE WHEN v.status = 'unused' THEN 1 ELSE 0 END) as unused,
           SUM(CASE WHEN v.status = 'used' THEN 1 ELSE 0 END) as used,
           SUM(CASE WHEN v.status = 'used' THEN v.applied_price ELSE 0 END) as used_amount,
+          SUM(CASE WHEN v.status = 'used' AND v.settlement_id IS NULL THEN 1 ELSE 0 END) as pending_settlement,
+          SUM(CASE WHEN v.status = 'used' AND v.settlement_id IS NULL THEN v.applied_price ELSE 0 END) as pending_amount,
+          SUM(CASE WHEN v.settlement_id IS NOT NULL THEN 1 ELSE 0 END) as settled,
           SUM(CASE WHEN v.status = 'refunded' THEN 1 ELSE 0 END) as refunded
         FROM vouchers v JOIN products p ON p.id = v.product_id
         WHERE p.seller_id = ?

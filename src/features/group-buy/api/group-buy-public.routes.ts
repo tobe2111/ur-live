@@ -690,9 +690,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const code = c.req.param('code')
     if (!code) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
     try {
-      // CAS: 본인 + used + used_at 60초 이내 일 때만 되돌림. (Phase 2: settled 면 거부 가드 추가 예정)
+      // CAS: 본인 + used + used_at 60초 이내 + 아직 정산 전(settlement_id IS NULL) 일 때만 되돌림.
+      //   기존 auto-settlement(used 7일 후 정산)와 정합 — 정산된 건 절대 취소 불가(60초 ≪ 7일이라 안전, 명시 가드).
       const res = await DB.prepare(
-        "UPDATE vouchers SET status='unused', used_at=NULL WHERE code=? AND user_id=? AND status='used' AND used_at >= datetime('now','-60 seconds')"
+        "UPDATE vouchers SET status='unused', used_at=NULL WHERE code=? AND user_id=? AND status='used' AND used_at >= datetime('now','-60 seconds') AND settlement_id IS NULL"
       ).bind(code, user.id).run()
       if ((res.meta?.changes || 0) !== 1) {
         return c.json({ success: false, error: '취소 가능 시간(60초)이 지났습니다' }, 409)
