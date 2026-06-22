@@ -175,6 +175,11 @@ node scripts/check-groupbuy-status-classify.mjs || true
 echo "==> Pre-commit: 로그인 입력 글자 가드 (warn-only)..."
 node scripts/check-light-input-guard.mjs || true
 
+# 🛡️ 2026-06-22: 모바일 뷰포트/스크롤 함정 래칫 — 신규 라인의 h-screen(100vh)/min-h-0 누락 차단.
+#   동네딜 지도 하단 잘림 사건 재발 방지. staged diff 추가라인만 검사(레거시 무시). warn-only.
+echo "==> Pre-commit: 모바일 뷰포트 함정 가드 (warn-only)..."
+node scripts/check-mobile-viewport.mjs || true
+
 # 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
 staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)
 if [ -n "$staged_migrations" ]; then
