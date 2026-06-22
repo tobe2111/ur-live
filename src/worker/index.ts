@@ -77,6 +77,7 @@ import { bannerRoutes } from '../features/banners/api/banners.routes';
 import { cartRoutes } from '../features/cart/api/cart.routes';
 import { notificationsRoutes } from '../features/notifications/api/notifications.routes';
 import { resendWebhookRoutes } from '../features/notifications/api/resend-webhook.routes';
+import { modusignWebhookRoutes } from '../features/contracts/api/modusign-webhook.routes';
 import { ordersRoutes as featureOrdersRoutes } from '../features/orders/api/orders.routes';
 import { productsRoutes as featureProductsRoutes } from '../features/products/api/products.routes';
 import { pushRoutes } from '../features/push/api/push.routes';
@@ -1256,6 +1257,9 @@ app.route('/api/notifications', notificationsRoutes);
 
 // Resend email webhook (bounce / complaint → suppression list)
 app.route('/api/webhooks/resend', resendWebhookRoutes);
+
+// 모두싸인 전자계약 webhook (문서 상태변경 → contract_signatures 갱신)
+app.route('/api/webhooks/modusign', modusignWebhookRoutes);
 
 // Shipping addresses
 app.route('/api/shipping-addresses', shippingAddressRoutes);
