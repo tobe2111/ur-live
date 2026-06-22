@@ -72,7 +72,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
   ]
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] flex items-end justify-center" onClick={onClose} role="presentation">
+    <div className="fixed inset-0 z-[10000] bg-black/50 backdrop-blur-[2px] flex items-end justify-center" onClick={onClose} role="presentation">
       <div
         className="bg-white dark:bg-[#0A0A0A] rounded-t-[28px] w-full max-w-[430px] max-h-[88dvh] flex flex-col sm:rounded-[28px] sm:my-auto shadow-2xl"
         onClick={e => e.stopPropagation()}
