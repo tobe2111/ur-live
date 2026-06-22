@@ -4,8 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Gift, ChevronRight, ChevronLeft } from 'lucide-react'
 import api from '@/lib/api'
 import { getUserId, hasConsumerSession } from '@/utils/auth'
-import { resolveProductFlow, FLOW_CONFIG } from '@/shared/product-flow'
-import { isVoucherCategory } from '@/shared/constants/voucher-categories'
+import { resolveProductFlow, canonicalDetailPath } from '@/shared/product-flow'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { useAuthWorld } from '@/shared/stores/useAuthWorld'
@@ -25,6 +24,7 @@ import { ProductNoticeSection } from '@/components/product/ProductNoticeSection'
 import { ReturnPolicySection } from '@/components/product/ReturnPolicySection'
 import { ProductDetailSkeleton } from '@/components/ui/skeleton'
 import { formatNumber } from '@/utils/format'
+import { resolveDetailDisplay } from './product-detail/detail-display'
 import AccordionSection from './product-detail/AccordionSection'
 import GroupBuyCountdown from './product-detail/GroupBuyCountdown'
 import ProductReviews from './product-detail/ProductReviews'
@@ -112,20 +112,12 @@ export default function ProductDetailPage() {
   }, [product])
 
   // 🧭 2026-06-22: 상품 종류별 정규(canonical) 상세 페이지로 정렬 — /products 는 온라인 일반 상품 전용.
-  //   - 교환권(deal_only=1)        → /vouchers/:id (딜 결제 전용 UI)
-  //   - 공구(voucher 카테고리)       → /group-buy/:id (공구 전용 UI — 홈 피드/동네딜 리스트가 모두 링크하는 정규 페이지)
-  //   - 그 외(온라인 일반 상품)       → /products/:id 유지 (이 페이지)
-  //   ⚠️ group_buy_status 로 분류 금지(migration 0146 에서 모든 상품 DEFAULT 'active') —
-  //      deal_only + isVoucherCategory SSOT 만 사용 (order-type.ts / voucher-categories.ts).
+  //   교환권 → /vouchers, 공구(voucher 카테고리) → /group-buy. 분류/경로는 canonicalDetailPath SSOT.
   //   ?ref= 는 위 useEffect 가 이미 localStorage/cookie 에 저장하지만, query 도 보존해 목적지 페이지가 URL 에서도 읽도록.
   useEffect(() => {
     if (!product) return
-    const search = window.location.search
-    if (Number(product.deal_only) === 1) {
-      navigate(`${FLOW_CONFIG.voucher_deal.detailPath(product.id)}${search}`, { replace: true })
-    } else if (isVoucherCategory(product.category)) {
-      navigate(`${FLOW_CONFIG.group_buy_toss.detailPath(product.id)}${search}`, { replace: true })
-    }
+    const dest = canonicalDetailPath(product)
+    if (dest) navigate(`${dest}${window.location.search}`, { replace: true })
   }, [product, navigate])
 
   useEffect(() => {
@@ -383,6 +375,9 @@ export default function ProductDetailPage() {
   // All product images for carousel (main image + detail images)
   const allImages = [product.image_url, ...detailImages].filter(Boolean)
 
+  // 🧭 2026-06-22: 상세 정보 노출 결정 (펼쳐보기 토글) — pure helper SSOT.
+  const detail = resolveDetailDisplay(detailImages, product.long_description, detailExpanded)
+
   // 🛡️ 2026-05-19: deal_only (KT Alpha 교환권) 상품은 간단한 전용 디자인 (카카오/캐시비 스타일).
   if (Number(product.deal_only) === 1) {
     const brandName = (product as unknown as { brand_name?: string }).brand_name || product.category || ''
@@ -594,26 +589,25 @@ export default function ProductDetailPage() {
         <div className="h-2 bg-gray-50 dark:bg-[#161616]" />
         <section className="px-5 py-5">
           <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">{t('productDetail.detailInfo')}</p>
-          {detailImages.length > 0 && (
+          {detail.images.length > 0 && (
             detailExpanded ? (
               <div className="space-y-2 mb-3">
-                {detailImages.map((img, i) => (
+                {detail.images.map((img, i) => (
                   <img key={i} src={img} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority={i === 0 ? 'high' : 'auto'} className="w-full rounded-xl" />
                 ))}
               </div>
             ) : (
               <div className="rounded-xl overflow-hidden mb-3 bg-gray-50 dark:bg-[#121212]">
-                <img src={detailImages[0]} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority="high" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
+                <img src={detail.images[0]} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority="high" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
               </div>
             )
           )}
-          {product.long_description && (
+          {detail.text && (
             <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-line">
-              {detailExpanded ? product.long_description : product.long_description.slice(0, 200)}
-              {!detailExpanded && product.long_description.length > 200 ? '…' : ''}
+              {detail.text}{detail.truncated ? '…' : ''}
             </p>
           )}
-          {!detailExpanded && (detailImages.length > 1 || (product.long_description && product.long_description.length > 200)) && (
+          {!detailExpanded && detail.canExpand && (
             <button onClick={() => setDetailExpanded(true)} className="w-full mt-4 py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] text-[12px] font-semibold text-gray-700 dark:text-gray-200 active:bg-gray-50 dark:active:bg-[#121212]">
               {t('productDetail.expandDetails', { defaultValue: '상세정보 펼쳐보기' })}
             </button>

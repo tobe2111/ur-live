@@ -13,6 +13,8 @@
  * 모든 caller 가 이 helper 만 호출 → 새 카테고리 / flow 추가 시 본 파일 1곳 수정.
  */
 
+import { isVoucherCategory } from './constants/voucher-categories'
+
 export type ProductFlow =
   | 'voucher_deal'         // 교환권 — 딜 결제, 즉시 발급, /my-vouchers 이동
   | 'group_buy_toss'       // 공동구매 (일반 상품) — Toss 결제, 배송, voucher 발급
@@ -92,4 +94,23 @@ export const FLOW_CONFIG: Record<ProductFlow, {
 export function resolveProductFlow(product: ProductFlowInput) {
   const flow = getProductFlow(product)
   return { flow, config: FLOW_CONFIG[flow] }
+}
+
+/**
+ * 🧭 2026-06-22: 상품의 정규(canonical) 상세 페이지 경로.
+ *   /products/:id 직접 진입 시 종류에 맞는 페이지로 정렬하기 위한 라우팅 SSOT.
+ *     - 교환권(deal_only=1)        → /vouchers/:id (딜 결제 전용 UI)
+ *     - 공구(voucher 카테고리)       → /group-buy/:id (홈 피드/동네딜 리스트가 링크하는 정규 페이지)
+ *     - 온라인 일반 상품             → null (/products/:id 가 이미 정규 → redirect 불요)
+ *   ⚠️ group_buy_status 로 분류 금지(migration 0146 에서 모든 상품 DEFAULT 'active') —
+ *      deal_only + isVoucherCategory SSOT 만 사용 (order-type.ts / voucher-categories.ts 와 동일 기준).
+ */
+export function canonicalDetailPath(p: {
+  id: string | number
+  deal_only?: number | string | null
+  category?: string | null
+}): string | null {
+  if (Number(p.deal_only) === 1) return FLOW_CONFIG.voucher_deal.detailPath(p.id)
+  if (isVoucherCategory(p.category)) return FLOW_CONFIG.group_buy_toss.detailPath(p.id)
+  return null
 }
