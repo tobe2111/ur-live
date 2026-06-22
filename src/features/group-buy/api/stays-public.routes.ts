@@ -1330,7 +1330,8 @@ staysPublicRoutes.get('/stays/:productId/reviews', cors(), async (c) => {
               r.rating_service, r.rating_facility, r.rating_value,
               r.seller_reply, r.seller_replied_at,
               r.helpful_count, r.created_at,
-              u.name as user_name,
+              CASE WHEN u.name IS NULL OR u.name = '' THEN NULL
+                   ELSE SUBSTR(u.name, 1, 1) || '**' END AS user_name,
               b.check_in_date, b.nights
          FROM stay_booking_reviews r
          LEFT JOIN users u ON u.id = r.user_id

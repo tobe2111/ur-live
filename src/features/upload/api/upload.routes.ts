@@ -52,10 +52,15 @@ function detectMime(bytes: Uint8Array): string | null {
   return null
 }
 
-function randomKey(): string {
+// 🔒 2026-06-22 (보안 감사): CSPRNG 키 — R2 버킷이 공개라 키 자체가 접근통제(특히 사업자등록증).
+//   Math.random()은 암호학적 안전성 X(예측 가능) → crypto.getRandomValues 로 교체. len 글자(62진).
+function randomKey(len = 16): string {
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  const buf = new Uint8Array(len)
+  crypto.getRandomValues(buf)
   let s = ''
-  for (let i = 0; i < 16; i++) s += chars[Math.floor(Math.random() * chars.length)]
+  // rejection-free: 256 % 62 편향은 미미하나, 키 길이로 충분한 엔트로피 확보(16자≈95bit / 32자≈190bit).
+  for (let i = 0; i < len; i++) s += chars[buf[i] % chars.length]
   return s
 }
 
@@ -184,7 +189,8 @@ uploadRoutes.post('/upload/business-cert', cors(), rateLimit({ action: 'biz-cert
     if (!detected) return c.json({ success: false, error: '이미지 파일 형식이 올바르지 않습니다 (위변조 의심)' }, 400)
     const ext = detected === 'image/jpeg' ? 'jpg' : detected === 'image/png' ? 'png' : detected === 'image/webp' ? 'webp' : detected === 'image/gif' ? 'gif' : 'bin'
     const yyyymm = new Date().toISOString().slice(0, 7)
-    const key = `uploads/biz-cert/${yyyymm}/${randomKey()}.${ext}`
+    // 🔒 사업자등록증은 민감 문서 — 32자 CSPRNG 키(≈190bit, 추측 불가). 공개 버킷이라 키=접근통제.
+    const key = `uploads/biz-cert/${yyyymm}/${randomKey(32)}.${ext}`
     await c.env.MEDIA_BUCKET.put(key, buffer, {
       httpMetadata: { contentType: detected, cacheControl: 'public, max-age=31536000, immutable' },
       customMetadata: { kind: 'business-cert', uploaded_at: new Date().toISOString() },

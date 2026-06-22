@@ -34,9 +34,11 @@ selftestRoutes.get('/api/_selftest', async (c) => {
   const auth = c.req.header('Authorization') || ''
   const token = auth.replace(/^Bearer\s+/i, '')
   if (!token) return c.json({ success: false, error: 'auth required' }, 401)
+  // 🔒 2026-06-22 (보안 감사): JWT_SECRET 미설정 시 빈 문자열 fallback 제거 — 빈 키 서명 admin JWT 위조 방지(fail-closed).
+  if (!c.env.JWT_SECRET) return c.json({ success: false, error: 'not configured' }, 503)
   try {
     const { verify } = await import('hono/jwt')
-    const payload = await verify(token, c.env.JWT_SECRET || '', 'HS256') as { role?: string; user_type?: string }
+    const payload = await verify(token, c.env.JWT_SECRET, 'HS256') as { role?: string; user_type?: string }
     if (payload.role !== 'admin' && payload.user_type !== 'admin') {
       return c.json({ success: false, error: 'admin only' }, 403)
     }

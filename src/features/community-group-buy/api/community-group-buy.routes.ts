@@ -511,10 +511,11 @@ communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'group_buy_join'
     if (!_deferred) await _bg();
   }
 
-  // 멤버 목록 조회
+  // 멤버 목록 조회 — 🔐 SECURITY(2026-06-22): 참여자 실명 마스킹(공동참여자 풀네임 수집 방지).
   const members = await executeQuery<any>(
     DB,
-    'SELECT user_name, deposit_amount, status, joined_at FROM community_group_buy_members WHERE group_buy_id = ? ORDER BY joined_at',
+    `SELECT CASE WHEN user_name IS NULL OR user_name = '' THEN NULL ELSE SUBSTR(user_name, 1, 1) || '**' END AS user_name,
+            deposit_amount, status, joined_at FROM community_group_buy_members WHERE group_buy_id = ? ORDER BY joined_at`,
     [group.id],
   );
 
@@ -543,17 +544,31 @@ communityGroupBuyRoutes.get('/detail/:code', async (c) => {
     return c.json({ success: false, error: '잘못된 초대 코드입니다' }, 400);
   }
 
+  // 🔐 SECURITY: 공개(무인증) 엔드포인트 — PII 최소화.
+  //   생성자 실명 마스킹(SUBSTR 1글자 + **), 매장 전화/내부 식별자(creator_user_id/seller_id) 제외.
+  //   매장 주소는 위치 안내에 필요해 유지(/popular 와 동일 원칙).
   const group = await queryFirst<any>(
     DB,
-    'SELECT * FROM community_group_buys WHERE invite_code = ?',
+    `SELECT id, invite_code, restaurant_name, restaurant_address,
+            restaurant_lat, restaurant_lng,
+            proposed_price, confirmed_price, confirmed_discount_percent,
+            deposit_per_person, target_count, current_count, total_deposited,
+            status, description, expires_at, created_at, updated_at,
+            CASE WHEN creator_name IS NULL OR creator_name = '' THEN NULL
+                 ELSE SUBSTR(creator_name, 1, 1) || '**' END AS creator_name
+     FROM community_group_buys WHERE invite_code = ?`,
     [code],
   );
 
   if (!group) return c.json({ success: false, error: '공동구매를 찾을 수 없습니다' }, 404);
 
+  // 참여자 실명 마스킹 — 공개 응답에 풀네임 노출 금지.
   const members = await executeQuery<any>(
     DB,
-    'SELECT user_name, deposit_amount, status, joined_at FROM community_group_buy_members WHERE group_buy_id = ? ORDER BY joined_at',
+    `SELECT CASE WHEN user_name IS NULL OR user_name = '' THEN NULL
+                 ELSE SUBSTR(user_name, 1, 1) || '**' END AS user_name,
+            deposit_amount, status, joined_at
+       FROM community_group_buy_members WHERE group_buy_id = ? ORDER BY joined_at`,
     [group.id],
   );
 
@@ -596,9 +611,19 @@ communityGroupBuyRoutes.get('/list', async (c) => {
     [status],
   );
 
+  // 🔐 SECURITY: 공개 목록 — PII 화이트리스트(대량 스크랩 방지).
+  //   생성자 실명 마스킹, 매장 전화/내부 식별자(creator_user_id/restaurant_seller_id) 제외.
+  //   매장 주소는 카드 위치 표시에 사용되어 유지(/popular·detail 과 동일 원칙).
   const groups = await executeQuery<any>(
     DB,
-    `SELECT * FROM community_group_buys
+    `SELECT id, invite_code, restaurant_name, restaurant_address,
+            restaurant_lat, restaurant_lng,
+            proposed_price, confirmed_price, confirmed_discount_percent,
+            deposit_per_person, target_count, current_count, total_deposited,
+            status, description, expires_at, created_at,
+            CASE WHEN creator_name IS NULL OR creator_name = '' THEN NULL
+                 ELSE SUBSTR(creator_name, 1, 1) || '**' END AS creator_name
+     FROM community_group_buys
      WHERE status = ?
      ORDER BY ${orderBy}
      LIMIT ? OFFSET ?`,
