@@ -247,10 +247,9 @@ export default function UserProfilePage() {
         <LanguageSection className="ur-content-medium px-4 lg:px-8 pt-3" />
         <AppVersionSection />
       </SettingsGroup>
-      <DeleteAccountLink />
 
-      {/* v4 로그아웃 + 계정 전환 + 버전 */}
-      <div className="ur-content-medium px-4 lg:px-8 py-6 space-y-2">
+      {/* v4 로그아웃 + 계정 전환 + 회원 탈퇴 — 한 묶음, 동일 간격(space-y-2) */}
+      <div className="ur-content-medium px-4 lg:px-8 pt-6 space-y-2">
         {/* 🛡️ 2026-05-01: linked seller 가 있으면 셀러 대시보드 전환 버튼 표시.
             이전: BottomNav 가 seller_token 만 보고 자동으로 셀러 UI 표시 → 사용자 혼란.
             이번: 명시 전환만 셀러 모드로. */}
@@ -289,11 +288,13 @@ export default function UserProfilePage() {
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
           {t('userProfile.logout')}
         </button>
+        {/* 🛡️ 회원 탈퇴 — 파괴적 동작이라 로그아웃 바로 아래, 빨강 아웃라인으로 구분(동일 간격) */}
+        <DeleteAccountLink />
       </div>
 
       {/* 🧹 2026-06-22 (대표 — 도움말 비중 축소): 도움말/약관을 최하단 footer 로.
             볼드 헤더+카드 InsetGroup → 점 구분 muted 텍스트 링크(항목/경로 불변). */}
-      <div className="ur-content-medium px-4 lg:px-8 pb-10 pt-1">
+      <div className="ur-content-medium px-4 lg:px-8 pb-10 pt-4">
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
           {[
             { label: t('userProfile.kakaoConsult', { defaultValue: '카카오톡 상담' }), emphasize: true, action: () => window.open('http://pf.kakao.com/_AITdn/chat', '_blank', 'noopener,noreferrer') },

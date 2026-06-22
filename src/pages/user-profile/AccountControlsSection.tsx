@@ -202,17 +202,17 @@ export function AppVersionSection() {
 }
 
 // ─── 계정 탈퇴 링크 ──────────────────────────────
+// 🧹 2026-06-22 (대표 — 로그아웃↔탈퇴 간격 정합): 자체 mt-8/mb-6 래퍼 제거 →
+//   부모(로그아웃 블록)의 space-y 흐름에 들어가 로그아웃과 동일 간격으로 정렬.
 export function DeleteAccountLink() {
   const { t } = useTranslation()
   return (
-    <div className="ur-content-medium px-4 lg:px-8 mt-8 mb-6">
-      <Link
-        to="/account/delete-warning"
-        className="block w-full py-3 px-4 text-center text-[13px] text-red-400 hover:text-red-500 border border-red-500/20 hover:border-red-500/40 rounded-xl transition-colors"
-      >
-        {t('accountSettings.deleteAccount', { defaultValue: '회원 탈퇴' })}
-      </Link>
-    </div>
+    <Link
+      to="/account/delete-warning"
+      className="block w-full py-3 px-4 text-center text-[13px] text-red-400 hover:text-red-500 border border-red-500/20 hover:border-red-500/40 rounded-xl transition-colors"
+    >
+      {t('accountSettings.deleteAccount', { defaultValue: '회원 탈퇴' })}
+    </Link>
   )
 }
 
