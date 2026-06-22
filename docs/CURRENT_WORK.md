@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-22 — 링크샵 '상품·동네딜 추가' 전용 picker (대표 "상품/공구권 모두 선택하는 페이지가 나와야")
+**배경**: 링크샵(`/u/{handle}`) 의 '상품·동네딜 추가하기' 가 `/browse`(상품) / `/group-buy`(동네딜) 로 흩어져 나가 핀 추가 동선이 이상적이지 않았음(대표: "/browse 페이지가 나오고 있는데 이상적이지가 않아"). → 한 화면에서 상품 + 공구권·동네딜을 탭으로 둘러보며 1탭 토글로 추가/제거하는 전용 picker.
+- **신규 페이지** `src/pages/curator-page/LinkshopPinPicker.tsx` (route `/u/me/add`, ProtectedRoute requireUser — 본인만):
+  - 탭 2개: **상품**(`/api/products?exclude_deal_only=1`) / **공구권·동네딜**(교환권 `?deal_only=1` + 동네딜 `/api/group-buy/products?status=active` id-dedupe 병합). 링크샵 핀 분류(`deal_only===1 || /voucher/i`)와 일치하게 상품 탭은 voucher 항목 클라 제외(탭 중복 노출 방지).
+  - 현재 핀은 `curatorApi.getPinStats()` 로 `product_id→pin_id` 맵 로드 → 카드에 '추가됨'/'추가' 표시. 토글은 `curatorApi.addPin`/`removePin` 직접 호출(usePinAction 의 로그인 redirect·클립보드 흐름 불필요 — 이미 오너). 핀 상한(200) 토스트 가드.
+  - 카드: cardGradient(대표색/seededColor 폴백) + cfImage + 핀 토글 배지(체크/플러스/스피너). 검색(상품명) + 상품 탭 '더 보기' page 누적. 다크 기본 + 라이트 토글(테마 일관성 0).
+- **진입점 전환**: `CuratorPage.tsx` PinGrid 의 추가 CTA + EmptyLinkshop browseLink → `/browse`·`/group-buy` → `/u/me/add?tab=shop|voucher`. (잠긴 SSR/로딩 동작 무관 — 클라 라우팅 목적지 문자열만 변경.)
+- 검증: tsc 0 · `npm run build`(client+ssr+worker+prepare) exit 0 · check-theme-consistency 0.
+
 ## ✅ 2026-06-20 (4차 — 전 역할 iOS 카카오 로그인 + 미래대비) — 역할 토큰 fragment 채널 (대표 "셀러/에이전시/도매 + 앞으로 추가될 서비스까지")
 **배경**: 소비자(establish)는 고쳤으나, **셀러/에이전시/유통사가 카카오로 *돌아와* 대시보드 로그인** 시 역할 토큰을 `ur_pending_*` **transfer 쿠키**(cross-site 302 set)로 받아 → iOS WebKit 미영속 → 대시보드 로그인 실패(잠복).
 - **전수조사 결과**: 깨지는 건 **`/sync/callback` 리다이렉트의 transfer 쿠키**뿐. **공급자(제조사) `create-from-kakao`·유통사 `become-distributor`/`login` 은 XHR(JSON 응답)이라 이미 iOS-safe**(same-origin 200) — 무변경.

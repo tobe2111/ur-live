@@ -433,8 +433,10 @@ function OwnerEarningsStrip() {
 }
 
 function PinGrid({ pins, handle, isOwner, onPinDeleted, kind }: { pins: CuratorPin[]; handle: string; isOwner: boolean; onPinDeleted: (id: number) => void; kind?: 'shop' | 'voucher' }) {
-  // 🏷️ 2026-06-19 (대표 — "핀" 내부용어 대신 상품/동네딜): 탭에 맞춘 추가 라벨·목적지.
-  const addTo = kind === 'voucher' ? '/group-buy' : '/browse'
+  // 🏷️ 2026-06-19 (대표 — "핀" 내부용어 대신 상품/동네딜): 탭에 맞춘 추가 라벨.
+  // 🏁 2026-06-22 (대표 — "상품/공구권 모두 선택하는 전용 페이지"): /browse·/group-buy 로 흩어지던 동선을
+  //   전용 picker(/u/me/add)로 통합. 탭(상품/공구권)은 ?tab= 으로 초기 선택.
+  const addTo = kind === 'voucher' ? '/u/me/add?tab=voucher' : kind === 'shop' ? '/u/me/add?tab=shop' : '/u/me/add'
   const addLabel = kind === 'voucher' ? '동네딜 추가하기' : kind === 'shop' ? '상품 추가하기' : '상품·동네딜 추가하기'
   return (
     // 🛍️ 2026-06-21 (대표 — "상품 2개씩"): 링크샵 핀은 항상 2열. `grid-cols-2 sm:grid-cols-3` 는 PC 액자
@@ -634,10 +636,11 @@ function PinManageList({ pins, onReorder, onDeleted }: { pins: CuratorPin[]; onR
 
 function EmptyLinkshop({ handle, isOwner, emptyType, curatorName }: { handle: string; isOwner: boolean; emptyType?: 'shop' | 'voucher'; curatorName?: string }) {
   const { t } = useTranslation()
-  const browseLink = emptyType === 'voucher' ? '/group-buy' : '/browse'
+  // 🏁 2026-06-22 (대표 — 전용 추가 페이지): 빈 상태 CTA 도 전용 picker(/u/me/add)로 (browse/group-buy 흩어짐 통합).
+  const browseLink = emptyType === 'voucher' ? '/u/me/add?tab=voucher' : '/u/me/add?tab=shop'
   const browseLabel = emptyType === 'voucher'
-    ? t('curator.browseVouchers', { defaultValue: '동네딜 둘러보기' })
-    : t('curator.browseProducts', { defaultValue: '상품 둘러보기' })
+    ? t('curator.browseVouchers', { defaultValue: '동네딜 추가하기' })
+    : t('curator.browseProducts', { defaultValue: '상품 추가하기' })
   // 방문자: 심플 메시지 (ghost 는 소유자 동기부여용).
   if (!isOwner) {
     return (
