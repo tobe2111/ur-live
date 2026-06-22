@@ -16,12 +16,14 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Search, X, Check, Plus, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import { curatorApi } from '@/features/curator/api/curator-api'
-import { cfImage } from '@/utils/cf-image'
-import { seededColor, cardGradient } from '@/utils/card-gradient'
-import { formatWon } from '@/utils/format'
+import { seededColor } from '@/utils/card-gradient'
 import { toast } from '@/hooks/useToast'
 import { CURATOR_DEFAULTS } from '@/shared/constants/policy'
 import SEO from '@/components/SEO'
+// 🎨 2026-06-22 (대표 — "커스텀 카드 그만, 표준 카드 재사용"): picker 도 홈/쇼핑/동네딜과 같은
+//   표준 카드(BrowseProductCard)를 그대로 써 디자인 영구 동기화. 카드 위에 핀 토글 버튼만 오버레이.
+import BrowseProductCard from '@/pages/browse/BrowseProductCard'
+import type { Product as BrowseProduct } from '@/pages/browse/types'
 
 type PickerTab = 'shop' | 'voucher'
 
@@ -34,6 +36,8 @@ interface PickItem {
   category?: string | null
   deal_only?: number
   dominant_color?: string | null
+  /** 동네딜(group-buy) 출처 — 카드 본문 미리보기 목적지를 /group-buy/:id 로 (그 외는 /products/:id). */
+  gb?: boolean
 }
 
 const PAGE_SIZE = 30
@@ -109,7 +113,9 @@ export default function LinkshopPinPicker() {
         const merged = new Map<number, PickItem>()
         const push = (arr: PickItem[]) => { for (const it of arr) if (it?.id && !merged.has(it.id)) merged.set(it.id, it) }
         if (vouchersRes.status === 'fulfilled' && vouchersRes.value.data?.success) push(vouchersRes.value.data.data || [])
-        if (groupBuyRes.status === 'fulfilled' && groupBuyRes.value.data?.success) push(groupBuyRes.value.data.data || [])
+        if (groupBuyRes.status === 'fulfilled' && groupBuyRes.value.data?.success) {
+          push(((groupBuyRes.value.data.data || []) as PickItem[]).map((it) => ({ ...it, gb: true })))
+        }
         setVoucherItems(Array.from(merged.values()))
       })
       .finally(() => setLoading(false))
@@ -283,65 +289,51 @@ export default function LinkshopPinPicker() {
   )
 }
 
+// 🎨 2026-06-22 (대표 — A안): 표준 BrowseProductCard 재사용(디자인 영구 동기화) + 핀 토글 버튼 오버레이.
+//   카드 본문 클릭 = 상품/동네딜 상세 미리보기, 우상단 버튼 = 추가/제거 토글(stopPropagation).
+//   PinCard(링크샵 핀) 의 래핑 패턴과 동일.
 function PickCard({ item, pinned, busy, onToggle }: { item: PickItem; pinned: boolean; busy: boolean; onToggle: () => void }) {
-  const img = item.image_url || ''
-  const fallback = item.dominant_color || seededColor(item.category || item.id)
-  const grad = cardGradient(fallback)
-  const discount = item.original_price && item.original_price > item.price
-    ? Math.round(((item.original_price - item.price) / item.original_price) * 100)
-    : 0
+  const product: BrowseProduct = {
+    id: item.id,
+    name: item.name,
+    price: item.price,
+    current_price: item.price,
+    original_price: item.original_price ?? undefined,
+    discount_rate: 0, // BrowseProductCard 가 original_price 로 자동 계산
+    image_url: item.image_url || '',
+    stock: 0,
+    dominant_color: item.dominant_color,
+    deal_only: item.deal_only,
+  }
+  // dominant_color 없고 외부호스트 CORS 로 추출 실패 시 회색 단색 방지(PinCard 와 동일 폴백).
+  const fallbackColor = item.dominant_color || seededColor(item.category || item.id)
+  const to = item.gb ? `/group-buy/${item.id}` : `/products/${item.id}`
+
+  function handleToggle(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    onToggle()
+  }
 
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      disabled={busy}
-      aria-pressed={pinned}
-      className={`relative text-left rounded-2xl overflow-hidden border transition-all active:scale-[0.98] ${
-        pinned
-          ? 'border-gray-900 dark:border-white ring-2 ring-gray-900 dark:ring-white'
-          : 'border-gray-200 dark:border-[#2A2A2A]'
-      } ${busy ? 'opacity-60' : ''}`}
-    >
-      <div className="aspect-[3/4] relative" style={{ background: grad.base }}>
-        {img && (
-          <img
-            src={cfImage(img, { width: 360, format: 'auto' }) || img}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-        )}
-        {/* 같은 색 번짐 — 사진 하단이 카드색으로 자연스럽게 녹아듦 (토스/네이버 룩) */}
-        <div className="absolute inset-0 pointer-events-none" style={{ background: grad.imageFade }} />
-        {/* 핀 토글 배지 */}
-        <span
-          className={`absolute top-2 right-2 z-10 w-8 h-8 rounded-full flex items-center justify-center shadow-sm backdrop-blur-md ring-1 transition-colors ${
-            pinned
-              ? 'bg-gray-900 dark:bg-white text-white dark:text-[#020202] ring-white/30'
-              : 'bg-black/45 text-white ring-white/25'
-          }`}
-        >
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : pinned ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-        </span>
-        {discount > 0 && (
-          <span className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded-md bg-red-500 text-white text-[11px] font-extrabold">
-            {discount}%
-          </span>
-        )}
-        {/* 하단 텍스트 */}
-        <div className="absolute inset-x-0 bottom-0 p-2.5 z-10">
-          <p className="text-[12.5px] font-bold line-clamp-2 leading-snug" style={{ color: grad.text }}>{item.name}</p>
-          <p className="text-[14px] font-extrabold mt-0.5" style={{ color: grad.text }}>{formatWon(item.price)}</p>
-        </div>
-      </div>
-      {/* 상태 라벨 */}
-      <div className={`py-2 text-center text-[12px] font-bold ${
-        pinned ? 'bg-gray-900 dark:bg-white text-white dark:text-[#020202]' : 'bg-white dark:bg-[#121212] text-gray-500 dark:text-gray-400'
-      }`}>
-        {pinned ? '✓ 추가됨 · 눌러서 제거' : '+ 링크샵에 추가'}
-      </div>
-    </button>
+    <div className={`relative group rounded-2xl ${pinned ? 'ring-2 ring-gray-900 dark:ring-white ring-offset-2 ring-offset-white dark:ring-offset-[#020202]' : ''}`}>
+      <BrowseProductCard product={product} aboveFold={false} to={to} fallbackColor={fallbackColor} />
+      {/* 핀 토글 버튼 — 추가됨(잉크 필) / 추가(글래스) */}
+      <button
+        type="button"
+        onClick={handleToggle}
+        disabled={busy}
+        aria-pressed={pinned}
+        aria-label={pinned ? '링크샵에서 제거' : '링크샵에 추가'}
+        className={`absolute top-2 right-2 z-10 inline-flex items-center gap-1 h-8 pl-2 pr-2.5 rounded-full text-[12px] font-bold shadow-sm backdrop-blur-md ring-1 transition-colors active:scale-95 disabled:opacity-50 ${
+          pinned
+            ? 'bg-gray-900 dark:bg-white text-white dark:text-[#020202] ring-white/30'
+            : 'bg-white/90 dark:bg-black/55 text-gray-900 dark:text-white ring-black/10 dark:ring-white/25'
+        }`}
+      >
+        {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : pinned ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+        {pinned ? '추가됨' : '추가'}
+      </button>
+    </div>
   )
 }

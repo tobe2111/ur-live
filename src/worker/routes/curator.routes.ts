@@ -472,9 +472,16 @@ curatorRoutes.delete('/me/pins/:id', requireAuth(), async (c) => {
     const pinId = Number(c.req.param('id'))
     if (!Number.isFinite(pinId)) return c.json({ success: false, error: 'invalid' }, 400)
 
-    const result = await c.env.DB.prepare('DELETE FROM product_pins WHERE id = ? AND user_id = ?')
-      .bind(pinId, userId)
-      .run()
+    // 🐛 2026-06-22 (대표 신고 — 핀 삭제 500): pin_click_logs.pin_id 가 product_pins(id) 를
+    //   ON DELETE CASCADE 없이 FK 참조 → 클릭된 적 있는 핀(자식 로그 존재)을 바로 DELETE 하면
+    //   D1 가 FOREIGN KEY constraint 로 throw → 500. (클릭 0 인 새 핀만 삭제되던 이유.)
+    //   자식 로그(본인 것만)를 먼저 지우고 핀을 지우는 batch(단일 트랜잭션·순서보장)로 FK 충족.
+    //   click 분석만 사라지고 적립(affiliate_earnings: referrer_id+product_id 키)은 무관하게 보존.
+    const batch = await c.env.DB.batch([
+      c.env.DB.prepare('DELETE FROM pin_click_logs WHERE pin_id = ? AND curator_user_id = ?').bind(pinId, userId),
+      c.env.DB.prepare('DELETE FROM product_pins WHERE id = ? AND user_id = ?').bind(pinId, userId),
+    ])
+    const result = batch[1]
 
     if (!result.meta.changes) return c.json({ success: false, error: '핀을 찾을 수 없습니다' }, 404)
     // 🛡️ 2026-06-12 (감사 1단계): 본인 공개 링크샵 colo 캐시 purge (me/profile :572 패턴 복제, best-effort).

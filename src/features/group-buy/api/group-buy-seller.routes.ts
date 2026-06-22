@@ -219,7 +219,7 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
       `).bind(user.id).first().catch(() => null)
       // 최근 목록(마스킹 — 개인정보 미노출). created_at 불확실 → id 내림차순(시간순 근사).
       const { results: recent } = await c.env.DB.prepare(`
-        SELECT v.id, v.status, v.applied_price, v.product_id, p.name as product_name, p.restaurant_name
+        SELECT v.id, v.status, v.applied_price, v.product_id, v.settlement_id, p.name as product_name, p.restaurant_name
         FROM vouchers v JOIN products p ON p.id = v.product_id
         WHERE p.seller_id = ?
         ORDER BY v.id DESC LIMIT 50

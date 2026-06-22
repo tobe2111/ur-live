@@ -62,22 +62,22 @@ export default function MyReferralCard() {
   const pendingCount = rewards.filter(r => r.status !== 'granted').length
 
   return (
-    <div className="bg-gradient-to-br from-gray-50 to-gray-50 dark:from-[#1A1015] dark:to-[#150F12] border border-pink-200 dark:border-[#2A1A20] rounded-2xl p-5 mb-4">
+    <div className="rounded-2xl p-5 mt-3 bg-gray-100 dark:bg-white/[0.04] border border-gray-200 dark:border-[#2A2A2A]">
       <div className="flex items-center gap-2 mb-3">
-        <Gift className="w-5 h-5 text-pink-500" />
+        <Gift className="w-5 h-5 text-gray-700 dark:text-white" />
         <h3 className="text-base font-extrabold text-gray-900 dark:text-white">친구 초대</h3>
       </div>
 
       <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-3">
-        친구가 내 링크로 가입하고 <strong className="text-pink-600">첫 구매</strong> 하면
-        <strong className="text-pink-600"> {formatNumber(rewardAmount)}딜</strong> 적립!
+        친구가 내 링크로 가입하고 <strong className="text-gray-900 dark:text-white">첫 구매</strong> 하면
+        <strong className="text-gray-900 dark:text-white"> {formatNumber(rewardAmount)}딜</strong> 적립!
       </p>
 
       {/* 통계 */}
       <div className="grid grid-cols-3 gap-2 mb-3">
         <div className="bg-white dark:bg-[#0A0A0A] rounded-xl px-3 py-2 text-center">
           <p className="text-[10px] text-gray-500 dark:text-gray-400">획득 딜</p>
-          <p className="text-base font-extrabold text-pink-600">{formatNumber(total)}</p>
+          <p className="text-base font-extrabold text-gray-900 dark:text-white">{formatNumber(total)}</p>
         </div>
         <div className="bg-white dark:bg-[#0A0A0A] rounded-xl px-3 py-2 text-center">
           <p className="text-[10px] text-gray-500 dark:text-gray-400">완료</p>
@@ -96,14 +96,14 @@ export default function MyReferralCard() {
         </div>
         <button
           onClick={copyLink}
-          className="px-4 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-xl text-sm font-bold flex items-center gap-1.5 active:scale-95"
+          className="px-4 py-2.5 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-xl text-sm font-bold flex items-center gap-1.5 active:scale-95"
         >
           <Copy className="w-4 h-4" /> 복사
         </button>
       </div>
 
       {rewards.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-pink-100 dark:border-[#2A1A20]">
+        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-[#2A2A2A]">
           <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1 mb-1">
             <Users className="w-3 h-3" /> 최근 초대 ({rewards.length})
           </p>
@@ -111,7 +111,7 @@ export default function MyReferralCard() {
             {rewards.slice(0, 3).map(r => (
               <div key={r.id} className="flex items-center justify-between text-[11px]">
                 <span className="text-gray-600 dark:text-gray-300">친구 #{r.invited_user_id.slice(-4)}</span>
-                <span className={r.status === 'granted' ? 'text-pink-600 font-bold' : 'text-gray-400'}>
+                <span className={r.status === 'granted' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-400'}>
                   {r.status === 'granted' ? `+${formatNumber(r.reward_amount)}딜` : '구매 대기'}
                 </span>
               </div>

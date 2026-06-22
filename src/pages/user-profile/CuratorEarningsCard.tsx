@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Sparkles, TrendingUp, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { curatorApi } from '@/features/curator/api/curator-api'
 import { formatWon, formatNumber } from '@/utils/format'
 
@@ -55,31 +55,19 @@ export default function CuratorEarningsCard() {
   return (
     <Link
       to="/creator"
-      className="block mx-4 lg:mx-8 mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212] overflow-hidden hover:border-gray-300 dark:hover:border-[#2A2A2A] transition-colors"
+      className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-gray-200 dark:active:bg-white/[0.06]"
     >
-      <div className="p-4 bg-gray-50 dark:bg-white/[0.04]">
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-            내 추천 수익
-          </p>
-          <ChevronRight className="w-4 h-4 text-gray-400" />
-        </div>
-        <div className="flex items-baseline gap-2 mt-2">
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">
-            {isCash ? formatWon(info.available) : `${formatNumber(info.lifetime_earnings)}딜`}
-          </p>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400">
-            {isCash ? '출금 가능' : '누적 적립'}
-          </p>
-        </div>
-        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
-          <TrendingUp className="w-3 h-3" />
-          {isCash
-            ? `누적 ${formatWon(info.lifetime_earnings)} · 현금 정산`
-            : '1딜=1원, 쇼핑/공구에 사용 가능'}
-        </p>
-      </div>
+      <span className="text-lg" aria-hidden="true">🛍️</span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-[13px] font-medium text-gray-900 dark:text-white">링크샵 수익</span>
+        <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
+          {isCash ? '현금 정산 · 출금 가능' : '누적 적립 · 1딜=1원'}
+        </span>
+      </span>
+      <span className="text-[12px] font-semibold text-gray-900 dark:text-white shrink-0">
+        {isCash ? formatWon(info.available) : `${formatNumber(info.lifetime_earnings)}딜`}
+      </span>
+      <ChevronRight className="w-3.5 h-3.5 text-gray-400 dark:text-white/30 shrink-0" aria-hidden="true" />
     </Link>
   )
 }

@@ -20,6 +20,7 @@ const AdminBulkTrackingPage = lazy(() => import('@/pages/AdminBulkTrackingPage')
 const AdminReturnsPage = lazy(() => import('@/pages/AdminReturnsPage'))
 const AdminProductsPage = lazy(() => import('@/pages/AdminProductsPage'))
 const AdminFcfsPage = lazy(() => import('@/pages/AdminFcfsPage'))
+const AdminVoucherDisputesPage = lazy(() => import('@/pages/AdminVoucherDisputesPage'))
 const AdminSuppliersPage = lazy(() => import('@/pages/AdminSuppliersPage'))
 const AdminDistributorGradesPage = lazy(() => import('@/pages/AdminDistributorGradesPage'))
 const AdminWholesaleImportPage = lazy(() => import('@/pages/AdminWholesaleImportPage'))
@@ -226,6 +227,11 @@ export function AdminRoutes() {
       <Route path="/admin/fcfs" element={
         <ProtectedRoute requireAdmin>
           <AdminFcfsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/voucher-disputes" element={
+        <ProtectedRoute requireAdmin>
+          <AdminVoucherDisputesPage />
         </ProtectedRoute>
       } />
       <Route path="/admin/suppliers" element={

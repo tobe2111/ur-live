@@ -187,8 +187,17 @@ try {
   if (typeof window !== 'undefined' && 'visualViewport' in window) {
     const vv = window.visualViewport!
     let isOpen = false
-    const handler = () => {
-      const opened = vv.height < window.innerHeight - 100
+    // 🛡️ 2026-06-22 (대표 신고 — 모바일 하단 네비 사라짐, 영구 수정): '키보드 열림' 판정을
+    //   ① 실제 편집요소(input/textarea/contenteditable) 포커스 + ② 뷰포트 120px↑ 축소 둘 다일 때로 한정.
+    //   기존엔 뷰포트 100px 축소만으로 켜져(주소창 토글·줌·데스크톱 창 변화에도 오작동) +
+    //   키보드 닫힘 resize 이벤트 누락 시 `keyboard-open` 이 stuck → `.hide-on-keyboard`(BottomNav)가
+    //   영구 display:none 으로 사라짐. focusout 에서 즉시 재평가 → 블러하면 무조건 해제(stuck 불가).
+    const isEditableFocused = () => {
+      const el = document.activeElement as HTMLElement | null
+      return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
+    }
+    const update = () => {
+      const opened = isEditableFocused() && vv.height < window.innerHeight - 120
       if (opened !== isOpen) {
         isOpen = opened
         document.body.classList.toggle('keyboard-open', opened)
@@ -198,8 +207,11 @@ try {
         )
       }
     }
-    vv.addEventListener('resize', handler)
-    vv.addEventListener('scroll', handler)
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    window.addEventListener('focusin', update)
+    // 블러 직후 activeElement 갱신을 기다렸다 재평가 → 키보드 닫힘 누락에도 네비 복구.
+    window.addEventListener('focusout', () => setTimeout(update, 0))
   }
 } catch { /* noop */ }
 

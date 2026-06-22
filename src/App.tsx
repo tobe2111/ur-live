@@ -113,6 +113,7 @@ const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const FollowingPage = lazy(() => import('./pages/FollowingPage'))
 const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
+const MyStorePage = lazy(() => import('./pages/MyStorePage'))
 const InfluencerSettlementPage = lazy(() => import('./pages/InfluencerSettlementPage'))
 const InfluencerDiscoverPage = lazy(() => import('./pages/InfluencerDiscoverPage'))
 const InfluencerAnalyticsPage = lazy(() => import('./pages/InfluencerAnalyticsPage'))
@@ -740,6 +741,12 @@ function AppContent() {
             <Route path="/my-vouchers" element={
               <ProtectedRoute requireUser>
                 <MyVouchersPage />
+              </ProtectedRoute>
+            } />
+            {/* 🏪 2026-06-22 사업자 유저 경량 '내 매장'(원장+분쟁) — 풀 셀러 대시보드 대신 앱 내. */}
+            <Route path="/my-store" element={
+              <ProtectedRoute requireUser>
+                <MyStorePage />
               </ProtectedRoute>
             } />
             <Route path="/influencer/settlement" element={
