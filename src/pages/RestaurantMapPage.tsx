@@ -468,21 +468,24 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       ? (findRegionByKey(region)?.label.replace('\n', ' ') || '지역')
       : '전국'
     return (
-      <div className="bg-white dark:bg-[#020202] min-h-screen">
+      <div className="bg-white dark:bg-[#020202] min-h-[100dvh]">
         <SEO title={t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜' })} description={t('seo.home.description', { defaultValue: '내 주변 동네딜을 한눈에. 식사·뷰티·헬스·숙소·반려·액티비티 공구권.' })} url="/" />
         {/* 상단: 로고 + 지역선택 + 알림/장바구니 */}
         <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
           <div className="ur-content-wide px-4 lg:px-8 h-12 flex items-center justify-between gap-2">
-            <button onClick={() => setFilterSheetOpen(true)} className="flex items-center gap-1 min-w-0 text-left">
-              <MapPin className="w-4 h-4 text-gray-900 dark:text-white shrink-0" />
-              <span className="text-[16px] font-extrabold text-gray-900 dark:text-white truncate">{regionLabel}</span>
-              <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
-            </button>
-            <div className="flex items-center gap-1 text-gray-700 dark:text-gray-200 shrink-0">
-              <Link to="/" aria-label="홈" className="px-1"><UrDealLogo size={16} /></Link>
-              <button onClick={() => navigate('/search')} aria-label="검색" className="p-1.5"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
-              <button onClick={() => navigate('/notifications')} aria-label="알림" className="p-1.5"><Bell className="h-5 w-5" strokeWidth={1.5} /></button>
-              <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-1.5"><ShoppingCart className="h-5 w-5" strokeWidth={1.5} /></button>
+            {/* 🗺️ 2026-06-22 (대표 — 위치 교체): 로고를 좌측으로, 지역선택(전국)을 우측 그룹으로. */}
+            <Link to="/" aria-label="홈" className="shrink-0 flex items-center">
+              <UrDealLogo size={18} />
+            </Link>
+            <div className="flex items-center gap-1 text-gray-700 dark:text-gray-200 min-w-0">
+              <button onClick={() => setFilterSheetOpen(true)} className="flex items-center gap-0.5 min-w-0 text-left mr-1">
+                <MapPin className="w-4 h-4 text-gray-900 dark:text-white shrink-0" />
+                <span className="text-[15px] font-extrabold text-gray-900 dark:text-white truncate">{regionLabel}</span>
+                <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
+              </button>
+              <button onClick={() => navigate('/search')} aria-label="검색" className="p-1.5 shrink-0"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
+              <button onClick={() => navigate('/notifications')} aria-label="알림" className="p-1.5 shrink-0"><Bell className="h-5 w-5" strokeWidth={1.5} /></button>
+              <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-1.5 shrink-0"><ShoppingCart className="h-5 w-5" strokeWidth={1.5} /></button>
             </div>
           </div>
           {/* 카테고리 칩 + 필터/정렬 */}
@@ -539,7 +542,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   }
 
   return (
-    <div className="relative h-screen w-full bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden pb-16">
+    <div className="relative h-[100dvh] w-full bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden pb-16">
       <SEO
         title={home ? t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜 지도' }) : t('restaurantMap.seoTitle', { defaultValue: '맛집 지도' })}
         description={home ? t('seo.home.description', { defaultValue: '내 주변 동네딜을 지도에서 한눈에. 식사·숙소·뷰티 공구권을 가까운 순으로.' }) : t('restaurantMap.seoDesc', { defaultValue: '유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인' })}
@@ -652,7 +655,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           />
 
           {/* ═══ 시트 안 스크롤 가능한 결과 리스트 ═══ */}
-          <div className="flex-1 overflow-y-auto px-3 pt-3 pb-24" style={{ overscrollBehavior: 'contain' }}>
+          {/* 🗺️ 2026-06-22 (대표 — 모바일 하단 안 보임): flex-1 스크롤 영역은 min-h-0 필수
+              (없으면 flex 자식이 안 줄어들어 하단이 화면 밖으로 밀림). */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-3 pt-3 pb-24" style={{ overscrollBehavior: 'contain' }}>
             {/* 🛡️ 2026-04-30 Phase 3: hero carousel — 할인율 TOP5 */}
             {!loading && (
               <HeroCarousel
