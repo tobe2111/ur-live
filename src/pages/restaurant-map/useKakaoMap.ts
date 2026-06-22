@@ -1,7 +1,19 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import { escapeHtml } from '@/shared/utils/html'
 import { formatNumber } from '@/utils/format'
+import { cfImage } from '@/utils/cf-image'
 import type { Restaurant, KakaoPlace } from './types'
+
+// 🗺️ 2026-06-22 (대표 — 핀 아이콘 변경, "흑백일 필요 없음"): 카테고리별 핀 링 색상.
+//   상품 사진 핀의 컬러 테두리로 카테고리를 직관적으로 구분.
+function categoryColor(cat: string): string {
+  return cat.includes('beauty') ? '#ec4899'    // 뷰티 — 핑크
+    : cat.includes('health') ? '#10b981'        // 헬스 — 에메랄드
+    : cat.includes('pet') ? '#8b5cf6'           // 반려 — 바이올렛
+    : cat.includes('stay') ? '#3b82f6'          // 숙소 — 블루
+    : cat.includes('activity') ? '#ef4444'      // 액티비티 — 레드
+    : '#f59e0b'                                 // 식사/기본 — 앰버
+}
 
 // 🗺️ 2026-06-22 (대표 — "중앙 기준이 하단 시트 크기에 따라 달라진다"): 선택 핀을 *보이는 지도 영역*
 //   (상단 검색바 아래 ~ 하단 시트 위)의 중앙으로 끌어올릴 px 오프셋을 시트 snap 별로 동적 계산.
@@ -249,33 +261,53 @@ export function useKakaoMap({
         ? `<span style="position:absolute;top:-4px;right:-6px;background:#374151;color:#fff;border-radius:9px;padding:0 4px;font-size:9px;font-weight:800;line-height:1.4;">+${groupSize - 1}</span>`
         : ''
 
-      const bg = isSelected ? '#6b7280' : isLive ? '#fff5f5' : '#ffffff'
-      const borderColor = isSelected ? '#6b7280' : isLive ? '#111827' : '#e5e7eb'
-      const size = isSelected ? 36 : 32
+      // 🗺️ 2026-06-22 (대표 — 핀 아이콘 = 상품 사진): 흰 원+이모지 → 상품 썸네일(cfImage 96px) 원형 핀
+      //   + 카테고리 컬러 링 + 기존 모서리 배지. 사진 없음/로드 실패 시 이모지 폴백(뒤에 깔린 span).
+      //   라이브는 링을 잉크색으로 강조 유지. 선택 시 확대 + 잉크 외곽 링.
+      const ring = isLive ? '#111827' : categoryColor(cat)
+      const photoSize = isSelected ? 50 : 42
+      const thumb = cfImage(r.image_url, { width: 96, height: 96, fit: 'cover', format: 'auto' })
 
       const content = document.createElement('div')
       content.innerHTML = `
         <div style="
-          background: ${bg};
-          border: 2px solid ${borderColor};
-          border-radius: 50%;
-          width: ${size}px;
-          height: ${size}px;
-          font-size: ${isSelected ? 18 : 16}px;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.18);
-          cursor: pointer;
-          transform: translate(-50%, -50%) scale(${isSelected ? 1.05 : 1});
-          transition: transform 0.15s, background 0.15s;
           position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          line-height: 1;
+          width: ${photoSize}px;
+          height: ${photoSize}px;
+          border-radius: 50%;
+          background: ${ring};
+          padding: 3px;
+          box-sizing: border-box;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.30)${isSelected ? ', 0 0 0 3px rgba(17,24,39,0.85)' : ''};
+          cursor: pointer;
+          transform: translate(-50%, -50%) scale(${isSelected ? 1.08 : 1});
+          transition: transform 0.15s;
         ">
-          <span style="filter:${isSelected ? 'brightness(0) invert(1)' : 'none'};">${emoji}</span>
+          <div style="
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #fff;
+            box-sizing: border-box;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            font-size: ${isSelected ? 20 : 17}px;
+          ">
+            <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">${emoji}</span>
+            ${thumb ? `<img class="ur-pin-photo" src="${escapeHtml(thumb)}" alt="" loading="lazy" style="position:relative;z-index:1;width:100%;height:100%;object-fit:cover;" />` : ''}
+          </div>
           ${cornerBadge}
         </div>
       `
+      // 사진 로드 실패 시 img 제거 → 뒤의 이모지 폴백 노출 (CSP 때문에 inline onerror 불가 → addEventListener).
+      const pinImg = content.querySelector('img.ur-pin-photo')
+      if (pinImg) pinImg.addEventListener('error', () => pinImg.remove())
+
       content.addEventListener('click', () => {
         setSelected(r)
         // 🗺️ 2026-06-22: 핀 클릭도 보이는 영역 중앙으로(하단 시트 보정). 현재 줌은 유지.
