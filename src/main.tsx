@@ -73,6 +73,7 @@ import { logRegionInfo, isKorea } from '@/shared/config/region'
 //   이전: eager import → validation chunk preload (52KB).
 //   변경: idle 시점 비동기 검증. production 에서 env 정상이면 사용자 영향 0.
 import { initNativeFeatures, isNative } from '@/lib/native'
+import { isKeyboardOpen, isEditableElementFocused } from '@/lib/keyboard-viewport'
 import { swallow } from '@/shared/utils/swallow'
 import { processAuthCallbackParams } from '@/utils/auth-callback-bootstrap'
 
@@ -187,17 +188,11 @@ try {
   if (typeof window !== 'undefined' && 'visualViewport' in window) {
     const vv = window.visualViewport!
     let isOpen = false
-    // 🛡️ 2026-06-22 (대표 신고 — 모바일 하단 네비 사라짐, 영구 수정): '키보드 열림' 판정을
-    //   ① 실제 편집요소(input/textarea/contenteditable) 포커스 + ② 뷰포트 120px↑ 축소 둘 다일 때로 한정.
-    //   기존엔 뷰포트 100px 축소만으로 켜져(주소창 토글·줌·데스크톱 창 변화에도 오작동) +
-    //   키보드 닫힘 resize 이벤트 누락 시 `keyboard-open` 이 stuck → `.hide-on-keyboard`(BottomNav)가
-    //   영구 display:none 으로 사라짐. focusout 에서 즉시 재평가 → 블러하면 무조건 해제(stuck 불가).
-    const isEditableFocused = () => {
-      const el = document.activeElement as HTMLElement | null
-      return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
-    }
+    let watchdog: ReturnType<typeof setInterval> | null = null
+    // 🛡️ 2026-06-22 (대표 신고 — 모바일 하단 네비 사라짐, 영구 방어): 판정은 keyboard-viewport.ts
+    //   순수함수(불변식: 편집요소 포커스 없으면 절대 열림 아님) + 워치독으로 stuck 구조적 차단.
     const update = () => {
-      const opened = isEditableFocused() && vv.height < window.innerHeight - 120
+      const opened = isKeyboardOpen(vv.height, window.innerHeight, isEditableElementFocused())
       if (opened !== isOpen) {
         isOpen = opened
         document.body.classList.toggle('keyboard-open', opened)
@@ -205,6 +200,9 @@ try {
           '--keyboard-height',
           opened ? `${window.innerHeight - vv.height}px` : '0px'
         )
+        // 워치독: 열린 동안만 1s 주기 재평가 → resize/blur 이벤트가 누락돼도 닫히면 즉시 해제(stuck 불가).
+        if (opened && watchdog == null) watchdog = setInterval(update, 1000)
+        if (!opened && watchdog != null) { clearInterval(watchdog); watchdog = null }
       }
     }
     vv.addEventListener('resize', update)
@@ -212,6 +210,7 @@ try {
     window.addEventListener('focusin', update)
     // 블러 직후 activeElement 갱신을 기다렸다 재평가 → 키보드 닫힘 누락에도 네비 복구.
     window.addEventListener('focusout', () => setTimeout(update, 0))
+    window.addEventListener('pageshow', update)
   }
 } catch { /* noop */ }
 
