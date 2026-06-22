@@ -64,6 +64,26 @@ export function useKakaoMap({
     })
   }, [kr])
 
+  // 🗺️ 2026-06-22 (대표 — "공구 상품을 누르면 지도 한가운데로"): 선택 상품이 *보이는 지도 영역*의
+  //   중앙에 오도록 pan. 하단 바텀시트(peek ≈ 320px)가 화면 아래를 가리므로 단순 panTo(기하학적 중앙)만
+  //   하면 핀이 시트 근처(아래쪽)에 박힘. projection 으로 중심좌표를 시트 절반만큼 남쪽으로 옮겨 핀을
+  //   위로 SHEET_OFFSET_Y 만큼 끌어올림 → 시각적 중앙 배치. projection 미지원/실패 시 plain panTo 폴백.
+  const panToProduct = useCallback((lat: number, lng: number, level?: number) => {
+    const map = mapInstance.current
+    if (!map || !window.kakao?.maps || !Number.isFinite(lat) || !Number.isFinite(lng)) return
+    if (typeof level === 'number') map.setLevel(level)
+    const latlng = new window.kakao.maps.LatLng(lat, lng)
+    const SHEET_OFFSET_Y = 150 // 보이는 영역 중앙으로 끌어올릴 px (peek 시트 ~320px 의 절반 ≈ 시각 중앙)
+    try {
+      const proj = map.getProjection()
+      const pt = proj.pointFromCoords(latlng)
+      const offsetCenter = proj.coordsFromPoint(new window.kakao.maps.Point(pt.x, pt.y + SHEET_OFFSET_Y))
+      map.panTo(offsetCenter)
+    } catch {
+      map.panTo(latlng)
+    }
+  }, [])
+
   const initMap = useCallback(() => {
     if (!sdkLoaded || !mapRef.current || !window.kakao?.maps) return
 
@@ -232,7 +252,8 @@ export function useKakaoMap({
       `
       content.addEventListener('click', () => {
         setSelected(r)
-        mapInstance.current.panTo(pos)
+        // 🗺️ 2026-06-22: 핀 클릭도 보이는 영역 중앙으로(하단 시트 보정). 현재 줌은 유지.
+        panToProduct(r.restaurant_lat, r.restaurant_lng)
       })
 
       const overlay = new window.kakao.maps.CustomOverlay({
@@ -298,7 +319,7 @@ export function useKakaoMap({
         didInitialFit.current = true
       }
     }
-  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc, liveSellerIds, favorites, coordGroupSize, gridSize, setSelected, setSuggestionFor])
+  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc, liveSellerIds, favorites, coordGroupSize, gridSize, setSelected, setSuggestionFor, panToProduct])
 
   useEffect(() => { initMap() }, [initMap])
 
@@ -314,5 +335,5 @@ export function useKakaoMap({
     }
   }, [])
 
-  return { mapRef, mapInstance, sdkLoaded, sdkError, mapLevel }
+  return { mapRef, mapInstance, sdkLoaded, sdkError, mapLevel, panToProduct }
 }

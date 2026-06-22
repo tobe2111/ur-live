@@ -360,7 +360,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     return map
   }, [filtered])
 
-  const { mapRef, mapInstance, sdkLoaded, sdkError } = useKakaoMap({
+  const { mapRef, mapInstance, sdkLoaded, sdkError, panToProduct } = useKakaoMap({
     kr,
     enabled: mode === 'map',
     withCoords,
@@ -408,13 +408,14 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
 
   const selectAndPan = (r: Restaurant) => {
     setSelected(r)
-    if (mapInstance.current && window.kakao?.maps && r.restaurant_lat && r.restaurant_lng) {
-      mapInstance.current.panTo(new window.kakao.maps.LatLng(r.restaurant_lat, r.restaurant_lng))
-      mapInstance.current.setLevel(4)
-    }
+    // 🗺️ 2026-06-22 (대표 — "공구 상품을 누르면 지도 한가운데로"): 시트를 peek 으로 먼저 내려
+    //   보이는 지도 영역을 확보한 뒤, panToProduct 가 시트 가림 보정(SHEET_OFFSET_Y)으로 선택 상품을
+    //   시각적 중앙에 배치. 줌은 level 4 로 확대.
     setMapView(true)
-    // 🗺️ 2026-06-20 (대표 — 상품 클릭 시 그 위치로 지도 이동): 시트를 peek 으로 내려 이동한 지도가 보이게.
     setSheetSnap('peek')
+    if (r.restaurant_lat && r.restaurant_lng) {
+      panToProduct(r.restaurant_lat, r.restaurant_lng, 4)
+    }
   }
 
   // 🛡️ 2026-04-30 v3 bottom-sheet: 시트 snap 별 transform 값
