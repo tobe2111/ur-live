@@ -168,7 +168,8 @@ smokeTestRoutes.get('/api/_internal/smoke-test', requireAdmin(), async (c) => {
   });
 });
 
-smokeTestRoutes.get('/api/_internal/smoke-test-auth', async (c) => {
+// 🔒 2026-06-22 (보안 감사): 무인증이던 유일한 _internal 라우트 — requireAdmin() 추가(형제 smoke-test 와 동일).
+smokeTestRoutes.get('/api/_internal/smoke-test-auth', requireAdmin(), async (c) => {
   const { sign } = await import('hono/jwt');
   const origin = new URL(c.req.url).origin;
   const jwtSecret = (c.env as any).JWT_SECRET;

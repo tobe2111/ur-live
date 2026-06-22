@@ -427,7 +427,9 @@ referralRoutes.get('/product/:productId', async (c) => {
   const productId = c.req.param('productId');
   const rows = await executeQuery<any>(
     DB,
-    `SELECT id, invite_code, target_count, current_count, discount_percent, discount_per_person, tiers, expires_at, creator_name
+    // 🔐 SECURITY(2026-06-22): 공개 응답 — 생성자 실명 마스킹(풀네임 노출 금지).
+    `SELECT id, invite_code, target_count, current_count, discount_percent, discount_per_person, tiers, expires_at,
+            CASE WHEN creator_name IS NULL OR creator_name = '' THEN NULL ELSE SUBSTR(creator_name, 1, 1) || '**' END AS creator_name
      FROM referral_groups
      WHERE product_id = ? AND status = 'open' AND expires_at > datetime('now')
      ORDER BY created_at DESC LIMIT 10`,
@@ -452,9 +454,14 @@ referralRoutes.get('/:code', optionalAuth(), async (c) => {
   await ensureTables(DB);
 
   const code = c.req.param('code');
+  // 🔐 SECURITY(2026-06-22): 공개(optionalAuth) 응답 — SELECT * 제거(내부 creator_user_id 노출 차단),
+  //   생성자 실명 마스킹. 핸들러는 product_id/id/tiers/current_count 만 사용해 creator_user_id 불필요.
   const group = await queryFirst<any>(
     DB,
-    'SELECT * FROM referral_groups WHERE invite_code = ?',
+    `SELECT id, product_id, invite_code, target_count, current_count, discount_per_person, discount_percent,
+            tiers, status, expires_at, created_at,
+            CASE WHEN creator_name IS NULL OR creator_name = '' THEN NULL ELSE SUBSTR(creator_name, 1, 1) || '**' END AS creator_name
+     FROM referral_groups WHERE invite_code = ?`,
     [code],
   );
   if (!group) return c.json({ success: false, error: '그룹을 찾을 수 없습니다' }, 404);
@@ -464,9 +471,11 @@ referralRoutes.get('/:code', optionalAuth(), async (c) => {
     'SELECT id, name, price, image_url FROM products WHERE id = ?',
     [group.product_id],
   );
+  // 🔐 SECURITY(2026-06-22): 멤버 실명 마스킹 — 공개 응답에 풀네임 노출 금지.
   const members = await executeQuery(
     DB,
-    'SELECT user_name, joined_at FROM referral_members WHERE group_id = ? ORDER BY joined_at',
+    `SELECT CASE WHEN user_name IS NULL OR user_name = '' THEN NULL ELSE SUBSTR(user_name, 1, 1) || '**' END AS user_name,
+            joined_at FROM referral_members WHERE group_id = ? ORDER BY joined_at`,
     [group.id],
   );
 

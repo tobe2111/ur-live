@@ -758,6 +758,10 @@ sellerRoutes.post('/reset-password', cors(), rateLimit({ action: 'seller_reset_p
       "DELETE FROM auth_refresh_tokens WHERE user_type = 'seller' AND user_id = ?"
     ).bind(row.user_id).run().catch(swallow('auth:api:seller'));
 
+    // 🔒 2026-06-22 (보안 감사 H2): refresh 만 지우면 탈취된 access 토큰(최대 30일 TTL)이 비번 재설정 후에도
+    //   만료까지 유효. min_valid_iat 를 현재로 올려 이전 발급 seller access 토큰 전부 무효화(단일세션 경계).
+    await startDashboardSession(DB, 'seller', row.user_id, Math.floor(Date.now() / 1000)).catch(swallow('auth:api:seller'));
+
     return c.json({
       success: true,
       message: '비밀번호가 성공적으로 변경되었습니다. 새 비밀번호로 로그인해주세요.'
