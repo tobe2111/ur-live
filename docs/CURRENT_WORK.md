@@ -1,5 +1,16 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-20 (5차) — 카카오 로그인 OIDC fast path: getUserInfo 왕복 1회 제거 (대표 "모두 진행" — 보안 손해 없는 속도카드)
+**목표**: 콜백의 카카오 왕복 2회(토큰교환+사용자정보) → **1회**. OIDC `id_token`(토큰교환 응답에 동봉)을
+디코드해 sub/nickname/picture/email 획득 → 별도 `getUserInfo` 왕복 생략. **기대 절감 ≈ `avg_userinfo_ms`(~100~300ms)**, `getServiceTerms` 제거와 합치면 원래 3왕복→1왕복.
+- **하이브리드(보안 보존)**: `KakaoAuthService.parseIdToken()` 가 필수 claim(sub·nickname) 없으면 null →
+  콜백이 `getUserInfo` 로 폴백. id_token 미포함 필드(`is_email_verified`/phone)는 보수적 처리
+  (email_verified claim 없으면 false → same-email 자동연결 게이트 안전하게 skip). 한글 닉네임 UTF-8 디코딩.
+- **안전 롤아웃(env 게이트)**: `/start` 는 `KAKAO_OIDC_ENABLED` 켜질 때만 `scope=openid,account_email,profile_nickname,profile_image` 요청. **미설정이면 기존 동작 100% 동일(scope 미전송, getUserInfo 경로)**. 콘솔 OIDC 미활성 상태에서 openid 요청 시 카카오가 거부하므로 **반드시 콘솔 ON → env 플래그 ON 순서**.
+- **신뢰성 무영향**: signed-state/establish/user_token/linked-role 코드 미접촉. id_token 은 TLS 직수신이라 서명검증 생략 가능(confidential client). 계측 신호: id_token 경로 시 `ms_userinfo=0`.
+- **운영 활성화 절차(대표)**: ① developers.kakao.com → 카카오 로그인 → **OpenID Connect 활성화** ② 동의항목(닉네임/프로필/이메일) 확인 ③ Cloudflare Pages 환경변수 `KAKAO_OIDC_ENABLED=1`. → 다음 로그인부터 `ms_userinfo=0` 확인.
+- 검증: tsc 0 · build 0 · parseIdToken 단위 9 pass. 코드: `KakaoAuthService.parseIdToken` / `kakao.routes.ts /start scope` + 콜백 폴백 / types `id_token`.
+
 ## ✅ 2026-06-22 — 링크샵 '상품·동네딜 추가' 전용 picker (대표 "상품/공구권 모두 선택하는 페이지가 나와야")
 **배경**: 링크샵(`/u/{handle}`) 의 '상품·동네딜 추가하기' 가 `/browse`(상품) / `/group-buy`(동네딜) 로 흩어져 나가 핀 추가 동선이 이상적이지 않았음(대표: "/browse 페이지가 나오고 있는데 이상적이지가 않아"). → 한 화면에서 상품 + 공구권·동네딜을 탭으로 둘러보며 1탭 토글로 추가/제거하는 전용 picker.
 - **신규 페이지** `src/pages/curator-page/LinkshopPinPicker.tsx` (route `/u/me/add`, ProtectedRoute requireUser — 본인만):
