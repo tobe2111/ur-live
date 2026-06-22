@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { Check } from 'lucide-react'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { KOREA_REGIONS } from '@/shared/constants/korea-regions'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import type { SortBy } from './types'
 
 export type PriceRange = 'all' | 'under10' | '10to30' | 'over30'
@@ -92,7 +93,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
           </button>
         </div>
 
-        <div className="px-5 pb-2 overflow-y-auto flex-1 min-h-0 space-y-6">
+        <ScrollArea className="px-5 pb-2 space-y-6">
           {/* 지역 — 2단(좌: 시/도 / 우: 동네 리스트). 당근/배민 패턴 — pill 벽보다 깔끔·확장성. */}
           <section>
             <SectionTitle>{t('map.filter.region', { defaultValue: '지역' })}</SectionTitle>
@@ -163,7 +164,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
               {PRICE_OPTS.map(o => <Pill key={o.v} active={price === o.v} onClick={() => setPrice(o.v)}>{o.label}</Pill>)}
             </div>
           </section>
-        </div>
+        </ScrollArea>
 
         {/* apply with live count */}
         <div className="px-5 py-4 border-t border-gray-100 dark:border-[#1A1A1A] shrink-0" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>

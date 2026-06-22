@@ -611,9 +611,10 @@ navigate(returnUrl)
    formatNumber(safeNum(a) * safeNum(b))    // 산술 후 포매팅 — NaN 방지
    ```
 7. **첫 페인트 표준**: 리스트/상세 등 데이터 페이지는 `docs/LOADING_ARCHITECTURE.md` 의 "첫 페인트 표준" 표 적용 (SSR 슬롯 or prewarm or placeholder — 스피너-온리 첫 화면 금지)
-8. **📱 모바일 뷰포트 높이/스크롤 (2026-06-22 — 동네딜 지도 하단 잘림 사고)**: 풀스크린/고정바 페이지는 아래 2가지 영구 룰 준수. 위반 시 모바일에서 **하단(네비/적용버튼/리스트 끝)이 화면 밖으로 잘림**.
-   - ❌ **`h-screen`/`min-h-screen`(=100vh) 금지** → ✅ **`h-[100dvh]`/`min-h-[100dvh]`**. 모바일 브라우저는 100vh 가 주소창 포함 = 실제 보이는 영역보다 큼 → `bottom-0` 콘텐츠가 화면 밖. `calc(100dvh - …)` 와 컨테이너 단위도 반드시 일치(dvh끼리).
-   - ❌ **`flex-1 overflow-y-auto` 에 `min-h-0` 빠뜨리기 금지** → ✅ **`flex-1 min-h-0 overflow-y-auto`**. flex 자식 기본 `min-height:auto` 라 콘텐츠보다 안 줄어듦 → 스크롤 안 되고 형제(footer/적용버튼)가 밀려 안 보임. 바텀시트/모달 스크롤 영역 필수.
+8. **📱 모바일 뷰포트 높이/스크롤 (2026-06-22 — 동네딜 지도 하단 잘림 사고)**: 풀스크린/고정바 페이지는 아래 룰 준수. 위반 시 모바일에서 **하단(네비/적용버튼/리스트 끝)이 화면 밖으로 잘림**. **권장: 함정 제거 프리미티브 사용 — 풀높이 컨테이너 `<Screen>`/`<Screen fixed>`(`@/components/ui/screen`), flex 스크롤 영역 `<ScrollArea>`(`@/components/ui/scroll-area`)**. 직접 클래스 작성 시:
+   - ❌ **`h-screen`/`min-h-screen`(=100vh) 금지** → ✅ **`h-[100dvh]`/`min-h-[100dvh]`**(또는 `<Screen>`). 모바일 100vh 는 주소창 포함 = 실제 보이는 영역보다 큼 → `bottom-0` 콘텐츠가 화면 밖. `calc(100dvh - …)` 와 컨테이너 단위도 dvh끼리 일치.
+   - ❌ **`flex-1 overflow-y-auto` 에 `min-h-0` 빠뜨리기 금지** → ✅ **`flex-1 min-h-0 overflow-y-auto`**(또는 `<ScrollArea>`). flex 자식 기본 `min-height:auto` 라 콘텐츠보다 안 줄어듦 → 스크롤 안 되고 형제(footer/적용버튼)가 밀려 안 보임. 바텀시트/모달 스크롤 영역 필수.
+   - 🛡️ 신규 라인은 `check-mobile-viewport.mjs`(pre-commit 래칫)가 자동 경고.
 9. **검증**: `bash scripts/quality-check.sh`
 
 ## 🚀 배포 아키텍처
