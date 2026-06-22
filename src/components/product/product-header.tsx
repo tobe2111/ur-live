@@ -36,9 +36,12 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
               <p className="text-[10px] text-gray-400 dark:text-gray-500">브랜드</p>
             </div>
           </div>
-          <button className="rounded-full px-3 py-1.5 border border-gray-900 text-[11px] font-bold text-gray-900 dark:text-white active:scale-95 transition-transform">
-            팔로우
-          </button>
+          {/* 🧭 2026-06-22: dead '팔로우' 버튼 제거(onClick·팔로우 API 없음) — 셀러명 링크로 스토어 진입. */}
+          {sellerId && (
+            <Link to={`/s/${sellerId}`} className="rounded-full px-3 py-1.5 border border-gray-300 dark:border-[#2A2A2A] text-[11px] font-bold text-gray-700 dark:text-gray-200 active:scale-95 transition-transform">
+              스토어
+            </Link>
+          )}
         </div>
       )}
 
