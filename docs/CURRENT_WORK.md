@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-22 — 링크샵 '상품·동네딜 추가' 전용 picker (대표 "상품/공구권 모두 선택하는 페이지가 나와야")
+**배경**: 링크샵(`/u/{handle}`) 의 '상품·동네딜 추가하기' 가 `/browse`(상품) / `/group-buy`(동네딜) 로 흩어져 나가 핀 추가 동선이 이상적이지 않았음(대표: "/browse 페이지가 나오고 있는데 이상적이지가 않아"). → 한 화면에서 상품 + 공구권·동네딜을 탭으로 둘러보며 1탭 토글로 추가/제거하는 전용 picker.
+- **신규 페이지** `src/pages/curator-page/LinkshopPinPicker.tsx` (route `/u/me/add`, ProtectedRoute requireUser — 본인만):
+  - 탭 2개: **상품**(`/api/products?exclude_deal_only=1`) / **공구권·동네딜**(교환권 `?deal_only=1` + 동네딜 `/api/group-buy/products?status=active` id-dedupe 병합). 링크샵 핀 분류(`deal_only===1 || /voucher/i`)와 일치하게 상품 탭은 voucher 항목 클라 제외(탭 중복 노출 방지).
+  - 현재 핀은 `curatorApi.getPinStats()` 로 `product_id→pin_id` 맵 로드 → 카드에 '추가됨'/'추가' 표시. 토글은 `curatorApi.addPin`/`removePin` 직접 호출(usePinAction 의 로그인 redirect·클립보드 흐름 불필요 — 이미 오너). 핀 상한(200) 토스트 가드.
+  - 카드: cardGradient(대표색/seededColor 폴백) + cfImage + 핀 토글 배지(체크/플러스/스피너). 검색(상품명) + 상품 탭 '더 보기' page 누적. 다크 기본 + 라이트 토글(테마 일관성 0).
+- **진입점 전환**: `CuratorPage.tsx` PinGrid 의 추가 CTA + EmptyLinkshop browseLink → `/browse`·`/group-buy` → `/u/me/add?tab=shop|voucher`. (잠긴 SSR/로딩 동작 무관 — 클라 라우팅 목적지 문자열만 변경.)
+- 검증: tsc 0 · `npm run build`(client+ssr+worker+prepare) exit 0 · check-theme-consistency 0.
+
 ## ✅ 2026-06-21 — 마이페이지 정리(중복·통합) + 고객센터 전화번호 전체 비노출 + 약관 비즈니스모델 정합 (대표 지시)
 **대표 지시**: ① `/user/profile` 마이페이지 너무 복잡 — 모을 건 모으고 없앨 건 없애기(AskUserQuestion: "중복·통합만(기능 유지)" + "흩어진 수익/추천 6곳 → 하나의 '내 수익·추천'"). ② 도움말 고객센터(전화) 비노출. ③ `/terms` 를 현재 비즈니스 모델과 정합. ④ `/privacy` 변경점 반영. ⑤ `/refund` + **전체**에서 고객센터 전화번호(0507-0177-0432) 비노출.
 - **마이페이지 declutter** (`UserProfilePage.tsx` + sub): (a) 상단 ⚙️ 톱니 제거(옆 '프로필 편집' 알약과 중복, 설정은 하단 '설정' 그룹). (b) `CouponVoucherStats`(쿠폰/바우처 스탯카드) **삭제** — `ShoppingGroup` 의 쿠폰함/내 교환권 행과 같은 곳(/my-coupons·/my-vouchers)으로 가던 중복(카운트는 행에 유지). (c) **수익/추천 진입점 통합** — '더보기'에 있던 '인플루언서 활동(추천/정산, /influencer/settlement)'을 `EarningsGroup`('내 수익·추천' fold) 안으로 흡수 → 수익 surface 진입을 한 fold 로. (d) '더보기' 섹션 제거 → 배송지 관리/내 리뷰는 `ShoppingGroup`(쇼핑·이용내역)으로 흡수. (e) 도움말에서 고객센터(tel) 항목 제거 → 문의는 카카오톡 상담으로 일원화. **데이터/라우트/`useMyCounts`(useMyVouchers 재사용) 로직 전부 불변 — 표시 위계/중복만 정리.**
