@@ -289,6 +289,14 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   // 🏭 2026-06-04 도매몰 허브 — 제조사(공급사=브랜드사) / 셀러 본인 대시보드로 가는 진입.
   //   제조사는 supplier_token, 셀러는 seller_token(단, 순수 유통사 is_distributor 는 제외).
   const supplierToken = typeof window !== 'undefined' ? getSupplierToken() : null
+  // 🏭 2026-06-22 (대표 — 양면형 플랫폼): 제조사(supplier-only)에게 /wholesale 은 본인 surface 가 아님.
+  //   /wholesale 카탈로그는 등급가·제조사 신원 비공개의 "유통사(구매자) 전용" 구조라, 제조사가 여기 있으면
+  //   상단에 '제조사 대시보드'가 떠 어색. 제조사 홈(/supplier)으로 자동 이동(각 역할이 자기 홈).
+  //   유통사 토큰(seller_token)이 있으면 구매자로서 정상 열람 → 리다이렉트 X(겸업 유통사 보호).
+  const supplierOnly = !!supplierToken && !loggedIn
+  useEffect(() => {
+    if (supplierOnly) navigate('/supplier', { replace: true })
+  }, [supplierOnly, navigate])
   // 🏭 2026-06-04 카카오 통합: 카카오 유저로 로그인됐지만 아직 유통회원(seller_token)이 아닌 상태.
   //   사업자 정보 + 관리자 승인 필요라 1탭 X → 입점 폼(/wholesale/join)으로 유도.
   const userSession = !loggedIn && typeof window !== 'undefined' && !!localStorage.getItem('user_id')
@@ -415,6 +423,9 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const monthSpend = stmtQ.data?.summary?.total_paid ?? 0
   const orderCount = stmtQ.data?.summary?.count ?? 0
   const grade = me?.grade || home?.grade || 'C'
+
+  // 🏭 제조사-only 는 /supplier 로 리다이렉트 중 — 유통사 카탈로그(+'제조사 대시보드' 헤더) 깜빡임 방지.
+  if (supplierOnly) return null
 
   return (
     // 🏬 --ud-brand: 몰 브랜드 색(기본 몰 → #FC5424 → 현 디자인과 동일). 주요 브랜드 요소가 var() 로 참조.
