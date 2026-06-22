@@ -9,7 +9,7 @@ import { cfImage } from '@/utils/cf-image'
 import { logout } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Store } from 'lucide-react'
 import TeamPointsCard from './user-profile/TeamPointsCard'
 import EarningsGroup from './user-profile/EarningsGroup'
 import ReferralEarnedCard from './user-profile/ReferralEarnedCard'
@@ -280,6 +280,17 @@ export default function UserProfilePage() {
         {/* 🛡️ 2026-05-01: linked seller 가 있으면 셀러 대시보드 전환 버튼 표시.
             이전: BottomNav 가 seller_token 만 보고 자동으로 셀러 UI 표시 → 사용자 혼란.
             이번: 명시 전환만 셀러 모드로. */}
+        {/* 🏪 2026-06-22 (대표 — 소상공인은 풀 대시보드 대신 앱에서 바로): 사업자 유저 경량 '내 매장'. */}
+        {!!localStorage.getItem('seller_token') && (
+          <button
+            type="button"
+            onClick={() => navigate('/my-store')}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gray-100 dark:bg-white/[0.06] text-[13px] font-bold text-gray-900 dark:text-white active:opacity-80 transition-opacity"
+          >
+            <Store className="w-4 h-4" aria-hidden="true" />
+            {t('userProfile.myStore', { defaultValue: '내 매장 · 공구권·정산' })}
+          </button>
+        )}
         {!!localStorage.getItem('seller_token') && (
           <button
             type="button"
