@@ -237,33 +237,7 @@ export default function UserProfilePage() {
       {/* v4 광고 리워드 카드 */}
       <RewardAdCard />
 
-      {/* v4 도움말 InsetGroup */}
-      <div className="ur-content-medium px-4 lg:px-8 pt-5">
-        <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('userProfile.helpSection')}</p>
-        <div className="rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04]">
-          {[
-            // 🧹 2026-06-21 (대표 — 고객센터 전화번호 전체 비노출): 고객센터 전화 항목 제거. 문의는 카카오톡 상담으로 일원화.
-            { label: t('userProfile.kakaoConsult', { defaultValue: '카카오톡 상담' }), sub: t('userProfile.kakaoConsultSub', { defaultValue: '평일 10:00~18:00 응대' }), action: () => window.open('http://pf.kakao.com/_AITdn/chat', '_blank', 'noopener,noreferrer') },
-            { label: t('userProfile.faq'), path: '/faq' },
-            { label: t('userProfile.terms'), path: '/terms' },
-            { label: t('userProfile.privacy'), path: '/privacy' },
-            { label: t('userProfile.shippingPolicy'), path: '/shipping-policy' },
-          ].map((item, i) => (
-            <button
-              key={item.label}
-              onClick={() => (item as any).action ? (item as any).action() : item.path && navigate(item.path)}
-              className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-gray-200 dark:active:bg-white/[0.06]"
-              style={{ borderTop: i ? '1px solid' : 'none', borderColor: 'rgba(0,0,0,0.06)' }}
-            >
-              <div className="flex-1">
-                <p className="text-[13px] text-gray-900 dark:text-white">{item.label}</p>
-                {item.sub && <p className="text-[10px] text-gray-900 dark:text-white/45 mt-0.5">{item.sub}</p>}
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30" aria-hidden="true" />
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* 🧹 2026-06-22 (대표 — 도움말 비중 축소): 도움말/약관 InsetGroup 을 최하단 footer 로 이동(아래 로그아웃 다음). */}
 
       {/* 🧹 2026-06-19 (대표 신고 — 마이 번잡): 흩어진 설정(알림/테마/언어/앱정보)을 접이식 '설정' 그룹으로 합침.
            기능/데이터 로직 불변 — 표시만 1탭 뒤로. 탈퇴는 파괴적 동작이라 그룹 밖 최하단 유지. */}
@@ -304,6 +278,32 @@ export default function UserProfilePage() {
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
           {t('userProfile.logout')}
         </button>
+      </div>
+
+      {/* 🧹 2026-06-22 (대표 — 도움말 비중 축소): 도움말/약관을 최하단 footer 로.
+            볼드 헤더+카드 InsetGroup → 점 구분 muted 텍스트 링크(항목/경로 불변). */}
+      <div className="ur-content-medium px-4 lg:px-8 pb-10 pt-1">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+          {[
+            { label: t('userProfile.kakaoConsult', { defaultValue: '카카오톡 상담' }), emphasize: true, action: () => window.open('http://pf.kakao.com/_AITdn/chat', '_blank', 'noopener,noreferrer') },
+            { label: t('userProfile.faq'), path: '/faq' },
+            { label: t('userProfile.terms'), path: '/terms' },
+            { label: t('userProfile.privacy'), path: '/privacy' },
+            { label: t('userProfile.shippingPolicy'), path: '/shipping-policy' },
+          ].map((item, i) => (
+            <span key={item.label} className="flex items-center gap-2.5">
+              {i > 0 && <span className="text-[10px] text-gray-300 dark:text-white/15" aria-hidden="true">·</span>}
+              <button
+                type="button"
+                onClick={() => (item as any).action ? (item as any).action() : item.path && navigate(item.path)}
+                className={`text-[11px] ${(item as any).emphasize ? 'font-medium text-gray-600 dark:text-white/55' : 'text-gray-500 dark:text-white/40'} active:text-gray-800 dark:active:text-white/75`}
+              >
+                {item.label}
+              </button>
+            </span>
+          ))}
+        </div>
+        <p className="text-[10px] text-gray-400 dark:text-white/30 mt-2">{t('userProfile.kakaoConsultSub', { defaultValue: '평일 10:00~18:00 응대' })}</p>
       </div>
 
       {/* 🛡️ 2026-05-24: 프로필 편집 모달 (/account/settings 에서 흡수). */}
