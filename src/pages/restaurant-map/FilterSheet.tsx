@@ -92,7 +92,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
           </button>
         </div>
 
-        <div className="px-5 pb-2 overflow-y-auto flex-1 space-y-6">
+        <div className="px-5 pb-2 overflow-y-auto flex-1 min-h-0 space-y-6">
           {/* 지역 — 2단(좌: 시/도 / 우: 동네 리스트). 당근/배민 패턴 — pill 벽보다 깔끔·확장성. */}
           <section>
             <SectionTitle>{t('map.filter.region', { defaultValue: '지역' })}</SectionTitle>

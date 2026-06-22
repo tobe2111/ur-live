@@ -349,7 +349,7 @@ export default function SupplierProductsTab({
       ) : items.length === 0 ? (
         <div className="py-20 text-center">
           <Boxes className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-          <p className="text-sm text-gray-400">{t('admin.products.spEmpty', { defaultValue: '공급자 등록 상품이 없습니다.' })}</p>
+          <p className="text-sm text-gray-400">{t('admin.products.spEmpty', { defaultValue: '제조사 등록 상품이 없습니다.' })}</p>
         </div>
       ) : (
         <div className="divide-y divide-gray-50">
@@ -369,7 +369,7 @@ export default function SupplierProductsTab({
                   </div>
                   <p className="text-sm font-semibold text-gray-900">{p.name}</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {t('admin.products.spSupplier', { defaultValue: '공급자' })}: <span className="font-medium">{p.supplier_name || p.supplier_email || `#${p.supplier_id}`}</span>
+                    {t('admin.products.spSupplier', { defaultValue: '제조사' })}: <span className="font-medium">{p.supplier_name || p.supplier_email || `#${p.supplier_id}`}</span>
                     &nbsp;·&nbsp; {t('admin.products.sampleSupplyPrice', { defaultValue: '공급가' })} <span className="text-purple-600 font-medium">{won(p.supply_price, wonUnit)}</span>
                     &nbsp;·&nbsp; {t('admin.products.spRetail', { defaultValue: '권장가' })} {won(p.retail_price, wonUnit)}
                     &nbsp;·&nbsp; {t('admin.products.spStock', { defaultValue: '재고' })} {p.stock}

@@ -99,6 +99,8 @@ const SearchPage = lazy(() => import('./pages/SearchPage'))
 // 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵
 const CuratorPage = lazy(() => import('./pages/CuratorPage'))
 const CuratorEarningsPage = lazy(() => import('./pages/CuratorEarningsPage'))
+// 🏁 2026-06-22 (대표 — 상품/공구권 전용 추가 페이지): 링크샵 핀 picker.
+const LinkshopPinPicker = lazy(() => import('./pages/curator-page/LinkshopPinPicker'))
 // 🛡️ 2026-05-25 (migration 0280): 호스팅 (Phase 3)
 const HostingPage = lazy(() => import('./pages/HostingPage'))
 const HostingNewPage = lazy(() => import('./pages/HostingNewPage'))
@@ -614,6 +616,12 @@ function AppContent() {
             <Route path="/u/me/earnings" element={
               <ProtectedRoute requireUser>
                 <ErrorBoundary><CuratorEarningsPage /></ErrorBoundary>
+              </ProtectedRoute>
+            } />
+            {/* 🏁 2026-06-22 (대표 — 상품/공구권 전용 추가 페이지): 링크샵에 상품·공구권 핀 picker. */}
+            <Route path="/u/me/add" element={
+              <ProtectedRoute requireUser>
+                <ErrorBoundary><LinkshopPinPicker /></ErrorBoundary>
               </ProtectedRoute>
             } />
             {/* 🛡️ 2026-05-25: /u/me → 본인 공개페이지 자동 redirect */}
