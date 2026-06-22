@@ -413,7 +413,7 @@ function AppContent() {
   // 네이티브 앱 + 모바일 브라우저: 페이지에 따라 상태바 스타일 / theme-color 변경
   useEffect(() => {
     // 화이트 테마 페이지 (CLAUDE.md 정책)
-    const lightPages = ['/browse', '/vouchers', '/meal-vouchers', '/checkout', '/my-orders', '/account/', '/cart',
+    const lightPages = ['/browse', '/vouchers', '/meal-vouchers', '/checkout', '/my-orders', '/my-stays', '/my-appointments', '/account/', '/cart',
       '/referral/', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search', '/group-buy', '/community-group-buy']
     const isLight = lightPages.some(p => location.pathname === p || location.pathname.startsWith(p))
 
