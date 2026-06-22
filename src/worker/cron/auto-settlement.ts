@@ -31,6 +31,12 @@ export async function handleAutoSettlement(env: Env) {
       }
     } catch { /* platform_settings may not exist — use default 5% */ }
 
+    // 🎟️ 2026-06-22 (대표 — 사용처리 분쟁): open 분쟁 voucher 는 정산 보류. 분쟁 테이블 미존재 가능 → 먼저 보장.
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS voucher_disputes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, voucher_id INTEGER NOT NULL, product_id INTEGER, seller_id INTEGER,
+      reason TEXT, status TEXT DEFAULT 'open', created_at DATETIME DEFAULT (datetime('now')), resolved_at DATETIME,
+      resolution TEXT, admin_note TEXT, UNIQUE(voucher_id))`).run().catch(() => {});
+
     // Find used vouchers not yet in any settlement, used 7+ days ago
     // 🛡️ 2026-05-30: 정산 매출 = 실제 결제가(applied_price). 미존재 시 정가(price) fallback.
     //   환불(applied_price)과 동일 기준 → 결제·정산·환불 폐루프 정합. 티어 할인 deal 과다정산(플랫폼 손실) 제거.
@@ -42,6 +48,7 @@ export async function handleAutoSettlement(env: Env) {
       WHERE v.status = 'used'
         AND v.used_at <= datetime('now', '-7 days')
         AND v.settlement_id IS NULL
+        AND v.id NOT IN (SELECT voucher_id FROM voucher_disputes WHERE status = 'open')
     `).bind(platformRate).all();
 
     if (!usedVouchers.results?.length) return;
