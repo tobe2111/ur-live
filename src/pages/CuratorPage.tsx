@@ -249,7 +249,7 @@ export default function CuratorPage() {
         url={`/u/${curator.handle}`}
         image={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
       />
-      <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-28">
+      <div className="min-h-[100dvh] bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-28">
         {/* 🎨 2026-06-19 (대표 — 기본은 방문자 화면, 편집은 버튼으로): 주인 기본 뷰 상단의 슬림 편집 진입 바.
             방문자에겐 안 보임(isOwner). 편집 chrome(툴바·삭제·CTA)은 '편집하기' 누른 뒤에만 노출. */}
         {isOwner && previewAsVisitor && (
