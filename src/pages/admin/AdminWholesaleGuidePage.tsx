@@ -17,7 +17,7 @@ export default function AdminWholesaleGuidePage() {
       <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title="🏭 도매몰(유통스타트) 운영 가이드"
-          subtitle="제조사·유통사 온보딩부터 등급/마진·상품 검수·주문/배송·정산·세금까지 — 여기서 수정하면 즉시 반영됩니다"
+          subtitle="제조사·판매사 온보딩부터 등급/마진·상품 검수·주문/배송·정산·세금까지 — 여기서 수정하면 즉시 반영됩니다"
           icon={<Factory className="h-5 w-5" />}
         />
 
@@ -27,7 +27,7 @@ export default function AdminWholesaleGuidePage() {
           <ul className="text-xs space-y-0.5 list-disc pl-4">
             <li>각 섹션의 <strong>연필 아이콘</strong>을 클릭하면 바로 편집 가능합니다</li>
             <li>Markdown 문법 사용 가능: <code className="bg-amber-100 px-1 rounded">**bold**</code>, <code className="bg-amber-100 px-1 rounded">### 제목</code>, 리스트, 표 등</li>
-            <li>맨 아래 <strong>코드 자동 참조</strong> 섹션은 도매 코드(제조사/유통사/공급 API) 변경 시 자동 갱신됩니다 (<code className="bg-amber-100 px-1 rounded">npm run generate:guide-refs</code>)</li>
+            <li>맨 아래 <strong>코드 자동 참조</strong> 섹션은 도매 코드(제조사/판매사/공급 API) 변경 시 자동 갱신됩니다 (<code className="bg-amber-100 px-1 rounded">npm run generate:guide-refs</code>)</li>
           </ul>
         </div>
 

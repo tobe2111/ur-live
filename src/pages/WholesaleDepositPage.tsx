@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────
-// 🏦 2026-06-09 유통사 예치금(선불 충전) — Toss 대체 결제수단.
+// 🏦 2026-06-09 판매사 예치금(선불 충전) — Toss 대체 결제수단.
 //   잔액 + 충전 신청(입금 안내) + 충전 신청 내역 + 거래 내역.
 //   송금 → 관리자 확인 → 충전. WT 라이트 고정 B2B 서피스.
 // ──────────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ export default function WholesaleDepositPage({ embedded = false }: { embedded?: 
 
   const me = (meQ.data ?? null) as { grade: string } | null
   const grade = me?.grade || 'C'
-  const company = (typeof window !== 'undefined' && localStorage.getItem('seller_name')) || '유통사'
+  const company = (typeof window !== 'undefined' && localStorage.getItem('seller_name')) || '판매사'
 
   const balance = Number(depositQ.data?.balance) || 0
   const depositAccount = depositQ.data?.deposit_account || ''
@@ -393,7 +393,7 @@ export default function WholesaleDepositPage({ embedded = false }: { embedded?: 
 
   return (
     <WholesaleDashboardShell
-      brand="유통사 센터"
+      brand="판매사 센터"
       roleIcon={Store}
       brandSubtitle={company}
       navItems={navItems}

@@ -1,7 +1,7 @@
 // ──────────────────────────────────────────────────────────────
-// 🏭 2026-06-09 Wave 4b — 유통사↔제조사 채팅 (D1 폴링 기반).
+// 🏭 2026-06-09 Wave 4b — 판매사↔제조사 채팅 (D1 폴링 기반).
 //   양방향 호출자:
-//     • 유통사(distributor) = seller_token + is_distributor → @/lib/api (seller_token)
+//     • 판매사(distributor) = seller_token + is_distributor → @/lib/api (seller_token)
 //     • 제조사(supplier)     = supplier_token → @/lib/supplier-api
 //   백엔드가 토큰으로 role 을 auto-resolve. 같은 엔드포인트, 다른 토큰.
 //
@@ -17,7 +17,7 @@ import { getSupplierToken } from '@/lib/supplier-api'
 import { queryKeys } from './queryKeys'
 
 // ── 호출자(역할) 판별 ───────────────────────────────────────────
-//   제조사면 supplier_token, 유통사면 seller_token(+is_distributor).
+//   제조사면 supplier_token, 판매사면 seller_token(+is_distributor).
 //   둘 다 있으면 supplier_token 우선(제조사 대시보드 컨텍스트).
 export type ChatRole = 'distributor' | 'supplier'
 
@@ -26,7 +26,7 @@ function readToken(): { token: string | null; role: ChatRole | null } {
   const sup = getSupplierToken()
   if (sup) return { token: sup, role: 'supplier' }
   try {
-    // 🛡️ 2026-06-15: 유통사 채팅은 is_distributor 인 셀러만 — 일반 셀러가 /wholesale 둘러볼 때
+    // 🛡️ 2026-06-15: 판매사 채팅은 is_distributor 인 셀러만 — 일반 셀러가 /wholesale 둘러볼 때
     //   seller_token 만 보고 unread 폴링 → 서버 401(is_distributor 가드) 콘솔/Sentry 노이즈 방지.
     const seller = localStorage.getItem('seller_token')
     if (seller && localStorage.getItem('is_distributor') === '1') return { token: seller, role: 'distributor' }
@@ -102,7 +102,7 @@ export const wholesaleChatApi = {
     return { role: (d.role as ChatRole) ?? null, threads }
   },
 
-  /** get-or-create 스레드 → thread_id. (유통사가 특정 제조사에게 문의 시) */
+  /** get-or-create 스레드 → thread_id. (판매사가 특정 제조사에게 문의 시) */
   async openThread(counterpartId: number): Promise<number | null> {
     const r = await api.post('/api/wholesale/chat/threads', { counterpart_id: counterpartId }, { headers: authHeaders() })
     const d = r.data
@@ -110,7 +110,7 @@ export const wholesaleChatApi = {
   },
 
   /**
-   * 상품 기준 get-or-create → thread_id. (유통사가 상품 상세에서 "제조사에 문의")
+   * 상품 기준 get-or-create → thread_id. (판매사가 상품 상세에서 "제조사에 문의")
    * 🛡️ 서버가 product_id → supplier_id 를 서버사이드로 해석. 클라는 제조사 신원/ID 를 모름.
    */
   // 🛡️ 2026-06-13 (채팅 버그 fix): 실패 사유를 반환 — 위젯이 빈 목록으로 조용히 끝내지 않고 안내.

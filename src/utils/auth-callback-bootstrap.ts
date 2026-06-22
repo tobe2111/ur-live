@@ -116,7 +116,7 @@ export function processAuthCallbackParams(): void {
       }
     } catch { /* localStorage blocked (incognito etc.) — ignore */ }
 
-    // 🛡️ 2026-06-20 (iOS 대시보드 로그인 — A 방식 자매수정): 링크 역할 토큰(seller/agency/유통사 등)을
+    // 🛡️ 2026-06-20 (iOS 대시보드 로그인 — A 방식 자매수정): 링크 역할 토큰(seller/agency/판매사 등)을
     //   transfer 쿠키(cross-site 302 set → iOS WebKit 미영속)가 아니라 **fragment(#auth=)** 로 받아
     //   localStorage 로 이전. fragment 는 모든 브라우저(특히 iOS)에서 생존 → 대시보드 로그인 iOS-safe.
     //   - 허용목록(seller_*/agency_*/supplier_* 네임스페이스 + 명시 키)만 적용 → **미래 역할도 같은

@@ -114,7 +114,7 @@ export default function AdminWholesaleOverviewPage() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                 {([
-                  [queue.distributors_pending, '유통사 승인', '/admin/seller-approval'],
+                  [queue.distributors_pending, '판매사 승인', '/admin/seller-approval'],
                   [queue.suppliers_pending, '제조사 승인', '/admin/suppliers'],
                   [queue.products_pending, '상품 승인', '/admin/products'],
                   [queue.price_changes_pending, '가격변경', '/admin/products'],
@@ -143,7 +143,7 @@ export default function AdminWholesaleOverviewPage() {
                 label={t('admin.wsOverview.totalLiability', { defaultValue: '예치금 부채 합' })}
                 value={formatWon(totals.deposit_liability)}
                 icon={<Wallet className="w-4 h-4" />}
-                hint={t('admin.wsOverview.liabilityHint', { defaultValue: '유통사에 갚을 잔액' })}
+                hint={t('admin.wsOverview.liabilityHint', { defaultValue: '판매사에 갚을 잔액' })}
                 accent="rose"
               />
               <DashboardStatCard
@@ -154,7 +154,7 @@ export default function AdminWholesaleOverviewPage() {
                 accent={totals.pending_charge_requests > 0 ? 'amber' : 'gray'}
               />
               <DashboardStatCard
-                label={t('admin.wsOverview.totalParticipants', { defaultValue: '유통사 · 제조사 · 상품' })}
+                label={t('admin.wsOverview.totalParticipants', { defaultValue: '판매사 · 제조사 · 상품' })}
                 value={`${formatNumber(totals.distributors)} · ${formatNumber(totals.suppliers)} · ${formatNumber(totals.products)}`}
                 icon={<Users className="w-4 h-4" />}
                 hint={t('admin.wsOverview.mallCount', { defaultValue: '몰 {{n}}개', n: formatNumber(totals.malls) })}
@@ -216,7 +216,7 @@ export default function AdminWholesaleOverviewPage() {
                           </div>
                           <p className="mt-0.5 text-sm font-bold text-rose-600">{formatWon(m.deposit_liability)}</p>
                         </div>
-                        <Metric icon={<Users className="w-3.5 h-3.5" />} label={t('admin.wsOverview.distributors', { defaultValue: '유통사' })} value={`${formatNumber(m.distributors)}`} />
+                        <Metric icon={<Users className="w-3.5 h-3.5" />} label={t('admin.wsOverview.distributors', { defaultValue: '판매사' })} value={`${formatNumber(m.distributors)}`} />
                         <Metric icon={<Store className="w-3.5 h-3.5" />} label={t('admin.wsOverview.suppliers', { defaultValue: '제조사' })} value={`${formatNumber(m.suppliers)}`} />
                         <Metric icon={<Package className="w-3.5 h-3.5" />} label={t('admin.wsOverview.products', { defaultValue: '상품' })} value={`${formatNumber(m.products)}`} />
                       </div>
@@ -252,7 +252,7 @@ export default function AdminWholesaleOverviewPage() {
             )}
 
             <p className="mt-5 text-xs text-gray-400">
-              {t('admin.wsOverview.footnote', { defaultValue: '거래액·주문은 이번달 PAID 기준. 예치금 부채는 플랫폼이 유통사에 갚아야 할 잔액 총합입니다. 입금확인/제안 처리는 모든 몰 공통 큐에서 이뤄집니다.' })}
+              {t('admin.wsOverview.footnote', { defaultValue: '거래액·주문은 이번달 PAID 기준. 예치금 부채는 플랫폼이 판매사에 갚아야 할 잔액 총합입니다. 입금확인/제안 처리는 모든 몰 공통 큐에서 이뤄집니다.' })}
             </p>
           </>
         )}

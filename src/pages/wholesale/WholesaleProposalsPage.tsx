@@ -50,7 +50,7 @@ export default function WholesaleProposalsPage() {
               {t('wholesale.proposal.loginNeeded', { defaultValue: '로그인하면 제안/신고를 보낼 수 있어요' })}
             </p>
             <button onClick={() => navigate('/wholesale/login')} className="rounded-xl px-5 py-3 text-[14px] font-bold text-white" style={{ background: WT.brand }}>
-              {t('wholesale.login', { defaultValue: '유통사 로그인' })}
+              {t('wholesale.login', { defaultValue: '판매사 로그인' })}
             </button>
           </div>
         )}

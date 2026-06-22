@@ -14,7 +14,7 @@ const TAX_STATUS_LABEL: Record<string, { t: string; c: string; bg: string }> = {
   failed: { t: '발행실패', c: '#D63A4E', bg: '#FDECEF' },
 }
 
-// 🏭 2026-06-04 유통스타트 도매몰 — 유통사 자료(거래명세서/세금계산서) 조회·인쇄. 라이트 고정 B2B.
+// 🏭 2026-06-04 유통스타트 도매몰 — 판매사 자료(거래명세서/세금계산서) 조회·인쇄. 라이트 고정 B2B.
 //   관리자가 발행(distributor-admin)한 sales 방향 문서를 본인 것만 조회. HTML 은 서버 IDOR 가드.
 
 const DOC_LABEL: Record<string, string> = { tax_invoice: '세금계산서', transaction_statement: '거래명세서' }
@@ -148,7 +148,7 @@ export default function WholesaleDocsPage({ embedded = false }: { embedded?: boo
 
   return (
     <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
-      <SEO title="발행 자료 - 유통스타트" description="유통사 거래명세서·세금계산서" url="/wholesale/documents" noindex />
+      <SEO title="발행 자료 - 유통스타트" description="판매사 거래명세서·세금계산서" url="/wholesale/documents" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-medium flex items-center gap-3 px-5 lg:px-8 h-[52px]">
           <button onClick={goBack} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>

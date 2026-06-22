@@ -3,11 +3,11 @@
  * (스펙: "전체공급 / 승인한 유통채널 공급 / 유통스타트 유통채널 공급" + 선정된 유통회원에게만 공개)
  *
  * products.supply_visibility:
- *   - 'ALL'              : 전체공급 — 모든 유통사에 노출 (기본)
- *   - 'APPROVED_CHANNEL' : 승인한 유통채널 공급 — 허용목록(product_distributor_access) 유통사만
- *   - 'UTONGSTART_ONLY'  : 유통스타트 유통채널 공급 — 관리자가 선정한 유통사만 (허용목록 동일 사용)
+ *   - 'ALL'              : 전체공급 — 모든 판매사에 노출 (기본)
+ *   - 'APPROVED_CHANNEL' : 승인한 유통채널 공급 — 허용목록(product_distributor_access) 판매사만
+ *   - 'UTONGSTART_ONLY'  : 유통스타트 유통채널 공급 — 관리자가 선정한 판매사만 (허용목록 동일 사용)
  *
- * 카탈로그/주문에서 유통사 가시성 = ALL 이거나, 허용목록에 해당 유통사 row 존재.
+ * 카탈로그/주문에서 판매사 가시성 = ALL 이거나, 허용목록에 해당 판매사 row 존재.
  *
  * ⚠️ 멱등 ensure. ALTER ADD COLUMN 은 pragma 로 존재 확인 후 1회만.
  */
@@ -82,7 +82,7 @@ async function _ensureSupplyVisibilitySchema(DB: D1Database): Promise<void> {
   }
   if (!have.has('supply_margin_override_pct')) {
     // 🏭 2026-06-04 상품별 등급마진 override (사용자 확정) — 설정 시 등급 무관 이 마진을
-    //   전 유통사에 동일 적용(전략/특가 상품). NULL = 기존 등급별 마진. 관리자만 설정.
+    //   전 판매사에 동일 적용(전략/특가 상품). NULL = 기존 등급별 마진. 관리자만 설정.
     await DB.prepare('ALTER TABLE products ADD COLUMN supply_margin_override_pct REAL').run().catch(swallow('supply-vis:add-margin-override'))
   }
   // 🚑 2026-06-17 (대표 신고 — "admin엔 있는데 도매몰엔 안 떠 / 스켈레톤만 계속"): 카탈로그 메인 쿼리
@@ -192,7 +192,7 @@ async function _ensureSupplyVisibilitySchema(DB: D1Database): Promise<void> {
 }
 
 /**
- * 유통사 가시성 SQL 조건 (products alias `p`). bind 에 sellerId 1개 push 필요.
+ * 판매사 가시성 SQL 조건 (products alias `p`). bind 에 sellerId 1개 push 필요.
  * supply_visibility 가 ALL/NULL 이거나, 허용목록에 (product, seller) row 가 있으면 노출.
  */
 export const visibilityWhere = (alias = 'p') =>
@@ -202,7 +202,7 @@ export const visibilityWhere = (alias = 'p') =>
 
 /**
  * 🏷️ 2026-06-18 등급별 상품 노출 — `product_supply_meta` 의 `visible_grades`(CSV, 예: "A,B")로
- *   "이 상품을 어느 유통사 등급에게 노출할지" 제한. **미설정(메타 없음/'') = 전체 노출(현행 동일, additive)**.
+ *   "이 상품을 어느 판매사 등급에게 노출할지" 제한. **미설정(메타 없음/'') = 전체 노출(현행 동일, additive)**.
  *   조건: visible_grades 제한이 걸려 있고 그 CSV 에 viewer 등급이 **포함 안 되면** 제외.
  *   - bind 1개 = viewer 등급 문자열(게스트는 '' → 제한 걸린 상품은 전부 제외).
  *   - CSV 멤버십은 콤마-패딩 instr 로 정확 매칭(부분문자열 오매칭 방지: ',A,' in ',A,B,').

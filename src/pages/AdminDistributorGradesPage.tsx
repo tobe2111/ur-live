@@ -14,7 +14,7 @@ import { GRADE_NAME } from '@/pages/wholesale/wholesale-theme'
 // 🏅 등급 코드(A/B/C…) + 친화 라벨(프리미엄/프로/일반) 동시 표기 — 운영자 혼동 방지.
 const gradeLabel = (g: string) => { const n = GRADE_NAME[g]; return n && n !== g ? `${g} · ${n}` : g }
 
-// 🏭 2026-06-01 유통스타트 도매몰 — 유통사 등급/마진 설정 (Phase 1b).
+// 🏭 2026-06-01 유통스타트 도매몰 — 판매사 등급/마진 설정 (Phase 1b).
 // 도매몰 한정: distributor_grade 는 도매 카탈로그 가격 계산에서만 쓰임.
 
 interface GradeRow {
@@ -145,7 +145,7 @@ export default function AdminDistributorGradesPage() {
   const [company, setCompany] = useState<Record<string, string>>({})
   const [companyBusy, setCompanyBusy] = useState(false)
 
-  // 🏭 BIZ-2 v1 여신/외상 관리 — 유통사 한도/미수금/동결 + 상환.
+  // 🏭 BIZ-2 v1 여신/외상 관리 — 판매사 한도/미수금/동결 + 상환.
   const [creditSellerId, setCreditSellerId] = useState('')
   const [creditData, setCreditData] = useState<{ credit: CreditDetail; ledger: LedgerRow[] } | null>(null)
   const [creditBusy, setCreditBusy] = useState(false)
@@ -157,7 +157,7 @@ export default function AdminDistributorGradesPage() {
   const [agEnabled, setAgEnabled] = useState(false)
   const [agThresholds, setAgThresholds] = useState<AutoGradeThreshold[]>([])
   const [agWindowDays, setAgWindowDays] = useState(90)
-  // 🏅 프로 멤버십 연 구독료(원) — 유통사가 예치금에서 결제(PG 미사용).
+  // 🏅 프로 멤버십 연 구독료(원) — 판매사가 예치금에서 결제(PG 미사용).
   const [agPlusFee, setAgPlusFee] = useState(1000000)
   // 🆕 2026-06-16 플랫폼 수수료율(%) — 공급가에 포함된 플랫폼 마진. 제조사=공급가×(1−이값)(원가 하한).
   const [agCommPct, setAgCommPct] = useState(10)
@@ -185,7 +185,7 @@ export default function AdminDistributorGradesPage() {
 
   const loadCredit = useCallback((id: string) => {
     const sid = Number(id)
-    if (!Number.isFinite(sid) || sid <= 0) { toast.error('유통사 ID를 입력하세요'); return }
+    if (!Number.isFinite(sid) || sid <= 0) { toast.error('판매사 ID를 입력하세요'); return }
     setCreditBusy(true)
     api.get(`/api/admin/distributor/distributors/${sid}/credit`, h)
       .then(r => {
@@ -201,7 +201,7 @@ export default function AdminDistributorGradesPage() {
   async function saveCreditLimit() {
     const sid = Number(creditSellerId)
     const lim = Number(creditLimitInput)
-    if (!Number.isFinite(sid) || sid <= 0) { toast.error('유통사 ID를 입력하세요'); return }
+    if (!Number.isFinite(sid) || sid <= 0) { toast.error('판매사 ID를 입력하세요'); return }
     if (!Number.isFinite(lim) || lim < 0) { toast.error('여신 한도는 0 이상이어야 합니다'); return }
     setCreditBusy(true)
     try {
@@ -223,7 +223,7 @@ export default function AdminDistributorGradesPage() {
   async function recordRepayment() {
     const sid = Number(creditSellerId)
     const amt = Number(repayInput)
-    if (!Number.isFinite(sid) || sid <= 0) { toast.error('유통사 ID를 입력하세요'); return }
+    if (!Number.isFinite(sid) || sid <= 0) { toast.error('판매사 ID를 입력하세요'); return }
     if (!Number.isFinite(amt) || amt <= 0) { toast.error('상환 금액을 입력하세요'); return }
     setCreditBusy(true)
     try {
@@ -293,7 +293,7 @@ export default function AdminDistributorGradesPage() {
   }
 
   async function runAutoGradeNow() {
-    if (!(await confirmDialog({ message: '지금 전체 유통사 등급을 평가하시겠습니까? (승급만 적용 — 강등 없음)' }))) return
+    if (!(await confirmDialog({ message: '지금 전체 판매사 등급을 평가하시겠습니까? (승급만 적용 — 강등 없음)' }))) return
     setAgRunning(true)
     try {
       const r = await api.post('/api/admin/distributor/auto-grade/run', {}, h)
@@ -353,7 +353,7 @@ export default function AdminDistributorGradesPage() {
         distributor_grade: grade, special_discount_until: special,
       }, h)
       if (r.data.success) {
-        toast.success('유통사 등급 저장됨')
+        toast.success('판매사 등급 저장됨')
         setDistributors(prev => prev.map(x => x.id === d.id ? { ...x, distributor_grade: grade, special_discount_until: special } : x))
       } else toast.error(r.data.error || '저장 실패')
     } catch { toast.error('저장 중 오류') } finally { setSavingDist(null) }
@@ -363,7 +363,7 @@ export default function AdminDistributorGradesPage() {
 
   async function createProposal() {
     const sid = Number(propSeller), pid = Number(propProduct)
-    if (!Number.isFinite(sid) || sid <= 0 || !Number.isFinite(pid) || pid <= 0) { toast.error('유통사 ID와 상품 ID를 입력하세요'); return }
+    if (!Number.isFinite(sid) || sid <= 0 || !Number.isFinite(pid) || pid <= 0) { toast.error('판매사 ID와 상품 ID를 입력하세요'); return }
     setPropBusy(true)
     try {
       const r = await api.post('/api/admin/distributor/proposals', { distributor_seller_id: sid, product_id: pid, note: propNote }, h)
@@ -414,10 +414,10 @@ export default function AdminDistributorGradesPage() {
   }
   async function grantAccess() {
     const pid = Number(accessProductId), sid = Number(accessSeller)
-    if (!Number.isFinite(pid) || pid <= 0 || !Number.isFinite(sid) || sid <= 0) { toast.error('상품 ID와 유통사 ID를 입력하세요'); return }
+    if (!Number.isFinite(pid) || pid <= 0 || !Number.isFinite(sid) || sid <= 0) { toast.error('상품 ID와 판매사 ID를 입력하세요'); return }
     try {
       await api.post('/api/admin/distributor/product-access', { product_id: pid, distributor_seller_id: sid }, h)
-      toast.success('유통사 선정됨'); setAccessProductQuery(String(pid)); setAccessSeller(''); accessQ.refetch()
+      toast.success('판매사 선정됨'); setAccessProductQuery(String(pid)); setAccessSeller(''); accessQ.refetch()
     } catch (e: unknown) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '선정 실패') }
   }
   async function revokeAccess(id: number) {
@@ -467,14 +467,14 @@ export default function AdminDistributorGradesPage() {
 
   // 🗂️ 2026-06-17: 데모 상품 시딩 함수는 '상품 일괄 등록'(AdminWholesaleImportPage)으로 일원화 — 여기서 제거(중복).
 
-  if (loading) return <AdminLayout title="유통사 등급"><DashboardLoading /></AdminLayout>
+  if (loading) return <AdminLayout title="판매사 등급"><DashboardLoading /></AdminLayout>
 
   return (
-    <AdminLayout title="유통사 등급">
+    <AdminLayout title="판매사 등급">
       <div className="ur-content-full px-4 lg:px-8 py-6 space-y-8">
         <DashboardPageHeader
           icon={<Layers className="w-5 h-5" />}
-          title={`유통사 · ${DIST_TABS.find(t => t.key === tab)?.label ?? '등급·마진'}`}
+          title={`판매사 · ${DIST_TABS.find(t => t.key === tab)?.label ?? '등급·마진'}`}
           subtitle="유통스타트 도매몰 — 등급/여신/세금/공급가를 탭으로 나눠 관리합니다. (도매 카탈로그 가격에만 적용)"
         />
 
@@ -497,7 +497,7 @@ export default function AdminDistributorGradesPage() {
             <Percent className="w-4 h-4 text-gray-500" /> 등급별 마진율
           </h2>
           <p className="text-sm text-gray-500 mb-4">
-            유통사 공급가 = max(제조사 원가, 판매가 × (1 − 보장마진율)). 마진율 = <b>판매가 대비</b> 보장마진(고등급일수록 큼 = 더 낮은 공급가). 원가가 하한, 특별할인은 기간 한정 최고마진.
+            판매사 공급가 = max(제조사 원가, 판매가 × (1 − 보장마진율)). 마진율 = <b>판매가 대비</b> 보장마진(고등급일수록 큼 = 더 낮은 공급가). 원가가 하한, 특별할인은 기간 한정 최고마진.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -571,8 +571,8 @@ export default function AdminDistributorGradesPage() {
             <TrendingUp className="w-4 h-4 text-indigo-600" /> 등급 자동화 (거래액 기반 자동 승급)
           </h2>
           <p className="text-sm text-gray-500 mb-4">
-            유통사의 최근 거래액(GMV)이 임계값을 넘으면 매주 자동으로 <b>상위 등급으로 승급</b>합니다.
-            안전을 위해 <b>승급만</b> 자동 적용되고, 강등은 위 &ldquo;유통사 등급 배정&rdquo;에서 수동으로만 가능합니다.
+            판매사의 최근 거래액(GMV)이 임계값을 넘으면 매주 자동으로 <b>상위 등급으로 승급</b>합니다.
+            안전을 위해 <b>승급만</b> 자동 적용되고, 강등은 위 &ldquo;판매사 등급 배정&rdquo;에서 수동으로만 가능합니다.
             (가격 산식은 변경되지 않고, 등급만 자동 설정됩니다.)
           </p>
 
@@ -624,8 +624,8 @@ export default function AdminDistributorGradesPage() {
                   </div>
                 </div>
               </div>
-              <p className="text-xs text-gray-400">프로(B)는 유통사가 연 구독료를 <b>예치금에서 결제</b>해 1년간 적용(PG 미사용). 프리미엄(A)은 위 매출 임계 자동 승급. 일반(C)은 가입 승인 기본.</p>
-              <p className="text-xs text-gray-400">💰 <b>기본 플랫폼 마진율</b>: 제조사가 받을 금액(공급원가) <b>위에</b> 붙이는 기본 마진(%). 공급가 = 공급원가 × (1 + 이 값), 제조사 정산 = 공급원가 전액, 플랫폼 = 공급가 − 공급원가. 예) 마진 10% · 공급원가 10,000 → 공급가 11,000 / 제조사 10,000 / 플랫폼 1,000. <b>상품별로</b> 다르게(스프레드 큰 상품은 더 높게) 설정 가능하며, 고등급(프로/프리미엄) 유통사는 마진을 낮춰 더 싸게 공급합니다.</p>
+              <p className="text-xs text-gray-400">프로(B)는 판매사가 연 구독료를 <b>예치금에서 결제</b>해 1년간 적용(PG 미사용). 프리미엄(A)은 위 매출 임계 자동 승급. 일반(C)은 가입 승인 기본.</p>
+              <p className="text-xs text-gray-400">💰 <b>기본 플랫폼 마진율</b>: 제조사가 받을 금액(공급원가) <b>위에</b> 붙이는 기본 마진(%). 공급가 = 공급원가 × (1 + 이 값), 제조사 정산 = 공급원가 전액, 플랫폼 = 공급가 − 공급원가. 예) 마진 10% · 공급원가 10,000 → 공급가 11,000 / 제조사 10,000 / 플랫폼 1,000. <b>상품별로</b> 다르게(스프레드 큰 상품은 더 높게) 설정 가능하며, 고등급(프로/프리미엄) 판매사는 마진을 낮춰 더 싸게 공급합니다.</p>
 
               {/* 임계값 테이블 */}
               <div>
@@ -689,13 +689,13 @@ export default function AdminDistributorGradesPage() {
           )}
         </section>
 
-        {/* ── 유통사 등급 배정 ── */}
+        {/* ── 판매사 등급 배정 ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
-            <Layers className="w-4 h-4 text-gray-500" /> 유통사 등급 배정
+            <Layers className="w-4 h-4 text-gray-500" /> 판매사 등급 배정
           </h2>
           <p className="text-sm text-gray-500 mb-4">
-            가입한 유통사(셀러)에 등급을 매기고, 필요 시 특별할인 종료일을 지정하면 그 기간엔 SPECIAL 등급가가 적용됩니다.
+            가입한 판매사(셀러)에 등급을 매기고, 필요 시 특별할인 종료일을 지정하면 그 기간엔 SPECIAL 등급가가 적용됩니다.
           </p>
           <form
             onSubmit={e => { e.preventDefault(); loadDistributors(search) }}
@@ -705,7 +705,7 @@ export default function AdminDistributorGradesPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text" value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="유통사 검색 (아이디 / 이름 / 상호 / 이메일)"
+                placeholder="판매사 검색 (아이디 / 이름 / 상호 / 이메일)"
                 className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-gray-900"
               />
             </div>
@@ -713,7 +713,7 @@ export default function AdminDistributorGradesPage() {
               {searching ? '검색중…' : '검색'}
             </button>
             <button type="button" onClick={() => { setSearch(''); loadDistributors('', true) }} className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50">
-              배정된 유통사
+              배정된 판매사
             </button>
           </form>
 
@@ -724,7 +724,7 @@ export default function AdminDistributorGradesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-gray-500 border-b border-gray-100">
-                    <th className="py-2 pr-4 font-medium">유통사</th>
+                    <th className="py-2 pr-4 font-medium">판매사</th>
                     <th className="py-2 pr-4 font-medium">등급</th>
                     <th className="py-2 pr-4 font-medium">특별할인 종료일</th>
                     <th className="py-2 font-medium"></th>
@@ -748,11 +748,11 @@ export default function AdminDistributorGradesPage() {
             <Wallet className="w-4 h-4 text-emerald-600" /> 여신 · 외상 관리
           </h2>
           <p className="text-sm text-gray-500 mb-4">
-            유통사에 <b>여신 한도</b>를 부여하면 도매 주문 시 선결제 대신 <b>외상(ON_CREDIT)</b>으로 주문할 수 있습니다.
+            판매사에 <b>여신 한도</b>를 부여하면 도매 주문 시 선결제 대신 <b>외상(ON_CREDIT)</b>으로 주문할 수 있습니다.
             (가용 한도 = 한도 − 미수금. 연체 시 동결.) 한도 0 = 외상 불가(선결제 전용).
           </p>
           <div className="flex flex-wrap items-end gap-2 mb-4">
-            <input type="number" value={creditSellerId} onChange={e => setCreditSellerId(e.target.value)} placeholder="유통사 ID" className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
+            <input type="number" value={creditSellerId} onChange={e => setCreditSellerId(e.target.value)} placeholder="판매사 ID" className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
             <button onClick={() => loadCredit(creditSellerId)} disabled={creditBusy} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">{creditBusy ? '처리중…' : '여신 조회'}</button>
           </div>
 
@@ -760,7 +760,7 @@ export default function AdminDistributorGradesPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                  <div className="text-xs text-gray-500">유통사</div>
+                  <div className="text-xs text-gray-500">판매사</div>
                   <div className="text-sm font-semibold text-gray-900 truncate">{creditData.credit.business_name || creditData.credit.name || `#${creditData.credit.id}`}</div>
                   <div className="text-[11px] text-gray-400">{creditData.credit.status || '-'}</div>
                 </div>
@@ -839,14 +839,14 @@ export default function AdminDistributorGradesPage() {
         </>)}
 
         {tab === 'tax' && (<>
-        {/* ── 상품 제안 (어드민 → 유통사) ── */}
+        {/* ── 상품 제안 (어드민 → 판매사) ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
             <Sparkles className="w-4 h-4 text-amber-500" /> 상품 제안
           </h2>
-          <p className="text-sm text-gray-500 mb-4">유통사에게 도매 상품을 추천합니다. 유통사 카탈로그 상단 &ldquo;추천 상품 제안&rdquo;에 노출됩니다.</p>
+          <p className="text-sm text-gray-500 mb-4">판매사에게 도매 상품을 추천합니다. 판매사 카탈로그 상단 &ldquo;추천 상품 제안&rdquo;에 노출됩니다.</p>
           <div className="flex flex-wrap items-end gap-2 mb-4">
-            <input type="number" value={propSeller} onChange={e => setPropSeller(e.target.value)} placeholder="유통사 ID" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
+            <input type="number" value={propSeller} onChange={e => setPropSeller(e.target.value)} placeholder="판매사 ID" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
             <input type="number" value={propProduct} onChange={e => setPropProduct(e.target.value)} placeholder="상품 ID" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
             <input type="text" value={propNote} onChange={e => setPropNote(e.target.value)} placeholder="메모(선택)" maxLength={200} className="flex-1 min-w-[160px] px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
             <button onClick={createProposal} disabled={propBusy} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">
@@ -859,7 +859,7 @@ export default function AdminDistributorGradesPage() {
             <ul className="divide-y divide-gray-50">
               {proposals.map(p => (
                 <li key={p.id} className="flex items-center justify-between py-2 text-sm">
-                  <span className="text-gray-700">유통사 #{p.distributor_seller_id} → <b className="text-gray-900">{p.product_name}</b> (상품#{p.product_id}){p.note ? ` · ${p.note}` : ''}</span>
+                  <span className="text-gray-700">판매사 #{p.distributor_seller_id} → <b className="text-gray-900">{p.product_name}</b> (상품#{p.product_id}){p.note ? ` · ${p.note}` : ''}</span>
                   <button onClick={() => withdrawProposal(p.id)} className="text-gray-400 hover:text-rose-500"><X className="w-4 h-4" /></button>
                 </li>
               ))}
@@ -872,7 +872,7 @@ export default function AdminDistributorGradesPage() {
           <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
             <Receipt className="w-4 h-4 text-gray-500" /> 세금계산서 집계
           </h2>
-          <p className="text-sm text-gray-500 mb-4">월별 거래액 집계. 유통스타트→유통사(매출) / 제조사→유통스타트(매입) 세금계산서를 수동 발행할 때 참고합니다.</p>
+          <p className="text-sm text-gray-500 mb-4">월별 거래액 집계. 유통스타트→판매사(매출) / 제조사→유통스타트(매입) 세금계산서를 수동 발행할 때 참고합니다.</p>
           <div className="flex items-end gap-2 mb-4">
             <input type="month" value={taxMonth} onChange={e => setTaxMonth(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
             <button onClick={loadTax} disabled={taxLoading} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">{taxLoading ? '조회중…' : '조회'}</button>
@@ -880,7 +880,7 @@ export default function AdminDistributorGradesPage() {
           {taxData && (
             <div className="grid lg:grid-cols-2 gap-4">
               <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">유통사별 매출 (→ 유통사 발행)</h3>
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">판매사별 매출 (→ 판매사 발행)</h3>
                 <table className="w-full text-sm">
                   <tbody>
                     {taxData.by_distributor.length === 0 ? <tr><td className="text-gray-400 py-2">없음</td></tr> : taxData.by_distributor.map((d, i) => (
@@ -951,7 +951,7 @@ export default function AdminDistributorGradesPage() {
                   <tbody>
                     {(taxDocsQ.data || []).map((d) => (
                       <tr key={d.id} className="border-b border-gray-50">
-                        <td className="py-1.5">{d.direction === 'sales' ? '매출(→유통사)' : '매입(←제조사)'}</td>
+                        <td className="py-1.5">{d.direction === 'sales' ? '매출(→판매사)' : '매입(←제조사)'}</td>
                         <td className="text-gray-600">{d.doc_type === 'tax_invoice' ? '세금계산서' : '거래명세서'}</td>
                         <td className="text-gray-900">{d.party_name}</td>
                         <td className="text-right">{Number(d.supply_amount || 0).toLocaleString('ko-KR')}</td>
@@ -976,24 +976,24 @@ export default function AdminDistributorGradesPage() {
         </>)}
 
         {tab === 'supply' && (<>
-        {/* ── 유통채널 선정 (유통스타트 유통채널 공급 상품 → 선정 유통사) ── */}
+        {/* ── 유통채널 선정 (유통스타트 유통채널 공급 상품 → 선정 판매사) ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
-            <Layers className="w-4 h-4 text-gray-500" /> 유통채널 선정 (선정 유통사 관리)
+            <Layers className="w-4 h-4 text-gray-500" /> 유통채널 선정 (선정 판매사 관리)
           </h2>
-          <p className="text-sm text-gray-500 mb-4">'승인한 유통채널 / 유통스타트 유통채널' 공급 상품은 여기서 선정한 유통사에게만 노출·주문됩니다. (전체공급 상품은 선정 불필요)</p>
+          <p className="text-sm text-gray-500 mb-4">'승인한 유통채널 / 유통스타트 유통채널' 공급 상품은 여기서 선정한 판매사에게만 노출·주문됩니다. (전체공급 상품은 선정 불필요)</p>
           <div className="flex flex-wrap items-end gap-2 mb-3">
             <input type="number" value={accessProductId} onChange={e => setAccessProductId(e.target.value)} placeholder="상품 ID" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
             <button onClick={() => { setEditGrades(null); setAccessProductQuery(accessProductId) }} className="px-3 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium">조회</button>
-            <input type="number" value={accessSeller} onChange={e => setAccessSeller(e.target.value)} placeholder="유통사 ID 선정" className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
+            <input type="number" value={accessSeller} onChange={e => setAccessSeller(e.target.value)} placeholder="판매사 ID 선정" className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
             <button onClick={grantAccess} className="inline-flex items-center gap-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium"><Plus className="w-4 h-4" /> 선정</button>
           </div>
           {accessQ.data && (
             <div>
               <p className="text-xs text-gray-600 mb-2">상품 <b>{accessQ.data.product?.name}</b> · 공급범위 <b>{accessQ.data.product?.supply_visibility}</b> · 선정 {accessQ.data.distributors.length}곳</p>
-              {/* 🏷️ 2026-06-18 등급별 노출 — 체크한 등급의 유통사에게만 이 상품 노출(주문/내보내기 포함). 아무것도 안 체크 = 전체 노출. */}
+              {/* 🏷️ 2026-06-18 등급별 노출 — 체크한 등급의 판매사에게만 이 상품 노출(주문/내보내기 포함). 아무것도 안 체크 = 전체 노출. */}
               <div className="mb-3 p-3 rounded-lg bg-gray-50 border border-gray-100">
-                <p className="text-xs font-medium text-gray-700 mb-2">노출 등급 <span className="text-gray-400 font-normal">— 체크한 등급의 유통사에게만 노출 (전부 해제 = 전체 노출)</span></p>
+                <p className="text-xs font-medium text-gray-700 mb-2">노출 등급 <span className="text-gray-400 font-normal">— 체크한 등급의 판매사에게만 노출 (전부 해제 = 전체 노출)</span></p>
                 <div className="flex flex-wrap items-center gap-2">
                   {(accessQ.data.all_grades || []).map((g) => {
                     const on = effGrades.includes(g.grade)
@@ -1011,7 +1011,7 @@ export default function AdminDistributorGradesPage() {
                 <p className="text-[11px] text-gray-400 mt-1.5">현재: {effGrades.length ? effGrades.join(', ') : '전체 노출(제한 없음)'}</p>
               </div>
               {accessQ.data.distributors.length === 0 ? (
-                <p className="text-sm text-gray-400">선정된 유통사가 없습니다.</p>
+                <p className="text-sm text-gray-400">선정된 판매사가 없습니다.</p>
               ) : (
                 <ul className="divide-y divide-gray-50">
                   {accessQ.data.distributors.map((d) => (
@@ -1032,7 +1032,7 @@ export default function AdminDistributorGradesPage() {
             <Percent className="w-4 h-4 text-rose-500" /> 상품별 마진 (특가/전략상품)
           </h2>
           <p className="text-sm text-gray-500 mb-4">
-            특정 상품에 마진율을 고정하면 <b>등급(A/B/C/D) 무관 모든 유통사가 같은 공급가</b>로 구매합니다. 전략·특가 상품용. 비워서 해제하면 등급별 마진으로 복귀합니다.
+            특정 상품에 마진율을 고정하면 <b>등급(A/B/C/D) 무관 모든 판매사가 같은 공급가</b>로 구매합니다. 전략·특가 상품용. 비워서 해제하면 등급별 마진으로 복귀합니다.
           </p>
           <div className="flex flex-wrap items-end gap-2">
             <input type="number" value={marginProductId} onChange={e => setMarginProductId(e.target.value)} placeholder="상품 ID" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
@@ -1089,7 +1089,7 @@ export default function AdminDistributorGradesPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-900 text-white">{r.kind}</span>
                       <span className="font-semibold text-gray-900 text-sm">{r.product_name}</span>
-                      <span className="text-xs text-gray-500">{r.distributor_business_name || r.distributor_name || `유통사#${r.distributor_seller_id}`}</span>
+                      <span className="text-xs text-gray-500">{r.distributor_business_name || r.distributor_name || `판매사#${r.distributor_seller_id}`}</span>
                     </div>
                     <select value={r.status} onChange={e => updateOem(r.id, { status: e.target.value })} className="px-2 py-1 border border-gray-200 rounded text-xs text-gray-900">
                       {['open', 'matching', 'matched', 'closed', 'rejected'].map(s => <option key={s} value={s}>{s}</option>)}

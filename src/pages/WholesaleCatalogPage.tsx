@@ -66,7 +66,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   }, [])
   const toggleWish = useCallback((p: CatalogItem) => {
     const tk = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
-    if (!tk) { toast.error('찜은 유통사 전용이에요 — 로그인해주세요'); navigate('/wholesale/login'); return }
+    if (!tk) { toast.error('찜은 판매사 전용이에요 — 로그인해주세요'); navigate('/wholesale/login'); return }
     setWishedIds(prev => { const n = new Set(prev); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n })
     api.post(`/api/wholesale/wishlist/${p.id}/toggle`, {}, { headers: { Authorization: `Bearer ${tk}` } })
       .catch(() => {
@@ -281,18 +281,18 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const recent = (recentQ.data ?? []) as ReorderItem[]
   const cart = useWholesaleCart()
   const loggedIn = !!token
-  // 로그인한 유통사의 /me 실패(네트워크 오류 등) — 조용히 C등급 표시하지 않도록 에러 구분.
+  // 로그인한 판매사의 /me 실패(네트워크 오류 등) — 조용히 C등급 표시하지 않도록 에러 구분.
   const meLoadFailed = !!(loggedIn && meQ.isFetched && meQ.isError && !me)
   useEffect(() => {
     if (meLoadFailed) toast.error('등급 정보를 가져오지 못했어요 — 새로고침해 주세요', { duration: 5000 })
   }, [meLoadFailed])
   // 🏭 2026-06-04 도매몰 허브 — 제조사(공급사=브랜드사) / 셀러 본인 대시보드로 가는 진입.
-  //   제조사는 supplier_token, 셀러는 seller_token(단, 순수 유통사 is_distributor 는 제외).
+  //   제조사는 supplier_token, 셀러는 seller_token(단, 순수 판매사 is_distributor 는 제외).
   const supplierToken = typeof window !== 'undefined' ? getSupplierToken() : null
   // 🏭 2026-06-22 (대표 — 양면형 플랫폼): 제조사(supplier-only)에게 /wholesale 은 본인 surface 가 아님.
-  //   /wholesale 카탈로그는 등급가·제조사 신원 비공개의 "유통사(구매자) 전용" 구조라, 제조사가 여기 있으면
+  //   /wholesale 카탈로그는 등급가·제조사 신원 비공개의 "판매사(구매자) 전용" 구조라, 제조사가 여기 있으면
   //   상단에 '제조사 대시보드'가 떠 어색. 제조사 홈(/supplier)으로 자동 이동(각 역할이 자기 홈).
-  //   유통사 토큰(seller_token)이 있으면 구매자로서 정상 열람 → 리다이렉트 X(겸업 유통사 보호).
+  //   판매사 토큰(seller_token)이 있으면 구매자로서 정상 열람 → 리다이렉트 X(겸업 판매사 보호).
   const supplierOnly = !!supplierToken && !loggedIn
   useEffect(() => {
     if (supplierOnly) navigate('/supplier', { replace: true })
@@ -326,7 +326,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
           localStorage.setItem('seller_username', s.username || '')
           localStorage.setItem('seller_type', s.seller_type || 'influencer')
           localStorage.setItem('is_distributor', '1')
-          toast.success('유통사로 로그인되었어요')
+          toast.success('판매사로 로그인되었어요')
           window.location.assign('/wholesale')
         }
         // status==='pending' 또는 신규(400)면 그대로 신청 배너 유지 — 추가 toast 없음(조용).
@@ -338,7 +338,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   }, [userSession])
   const goLogin = () => navigate('/wholesale/login')
   const logout = () => {
-    // 🏭 2026-06-08: 도매몰 로그아웃 — 유통사(seller) + 제조사(supplier) 세션 모두 정리(유저/어드민 세션 보존).
+    // 🏭 2026-06-08: 도매몰 로그아웃 — 판매사(seller) + 제조사(supplier) 세션 모두 정리(유저/어드민 세션 보존).
     //   둘 중 어느 역할로 들어왔든 한 버튼으로 로그아웃. full reload 로 토큰/RQ 캐시 깨끗이.
     clearAuthData('seller')
     try { localStorage.removeItem('is_distributor') } catch { /* noop */ }
@@ -424,7 +424,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const orderCount = stmtQ.data?.summary?.count ?? 0
   const grade = me?.grade || home?.grade || 'C'
 
-  // 🏭 제조사-only 는 /supplier 로 리다이렉트 중 — 유통사 카탈로그(+'제조사 대시보드' 헤더) 깜빡임 방지.
+  // 🏭 제조사-only 는 /supplier 로 리다이렉트 중 — 판매사 카탈로그(+'제조사 대시보드' 헤더) 깜빡임 방지.
   if (supplierOnly) return null
 
   return (
@@ -615,7 +615,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
 
       <WholesaleFooter />
 
-      {/* 🏭 Wave 4b: 로그인 유통사에게만 채팅 floating 버튼 — lazy chunk(비로그인은 청크 fetch 안 함). */}
+      {/* 🏭 Wave 4b: 로그인 판매사에게만 채팅 floating 버튼 — lazy chunk(비로그인은 청크 fetch 안 함). */}
       {loggedIn && (
         <Suspense fallback={null}>
           <WholesaleChatButton />

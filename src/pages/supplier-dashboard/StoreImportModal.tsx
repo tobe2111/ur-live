@@ -198,7 +198,7 @@ export default function StoreImportModal({ t, onClose, onImported }: {
                     ? <span className="inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> 가져오는 중...</span>
                     : t('supplier.storeImportBtn', { defaultValue: '{{n}}개 공급상품으로 등록', n: selected.size }).replace('{{n}}', String(selected.size))}
                 </button>
-                <p className="text-[10.5px] text-gray-400">{t('supplier.storeImportNote', { defaultValue: '등록 후 카탈로그 탭에서 공급가·상세를 수정할 수 있어요. 관리자 승인 후 유통사에게 노출됩니다.' })}</p>
+                <p className="text-[10.5px] text-gray-400">{t('supplier.storeImportNote', { defaultValue: '등록 후 카탈로그 탭에서 공급가·상세를 수정할 수 있어요. 관리자 승인 후 판매사에게 노출됩니다.' })}</p>
               </>
             )}
           </div>

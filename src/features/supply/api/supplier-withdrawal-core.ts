@@ -2,7 +2,7 @@
  * 🏦 2026-06-09 유통스타트 제조사(공급자) 정산금 출금 — 공유 코어(스키마 ensure + 원자적 예약/복원).
  *
  * 💰 머니-크리티컬 (예치금 충전 흐름의 *역방향* 미러):
- *   - 입금(deposit): 유통사 무통장 → 충전요청(pending) → 어드민 입금확인 → 잔액 += (적립)
+ *   - 입금(deposit): 판매사 무통장 → 충전요청(pending) → 어드민 입금확인 → 잔액 += (적립)
  *   - 출금(withdrawal): 제조사 정산 available → 출금신청(requested) → 어드민 송금확인 → available -= (인출)
  *
  * 출금 가능 잔액의 권위 출처 = supplier_balances.available_amount

@@ -27,7 +27,7 @@ export function registerProductsRoutes(app: Hono<{ Bindings: Env }>) {
   })
 
   // PATCH /products/:id/visible-grades — 🏷️ 2026-06-18 상품별 '노출 등급' 설정.
-  //   visible_grades = 이 상품을 노출할 유통사 등급 집합(CSV). **빈 배열 = 전체 노출(제한 해제, 현행)**.
+  //   visible_grades = 이 상품을 노출할 판매사 등급 집합(CSV). **빈 배열 = 전체 노출(제한 해제, 현행)**.
   //   product_supply_meta(K-V) 에 저장 → 카탈로그/홈/상세/주문/내보내기/미리보기 9개 경로가 gradeExposureWhere 로 강제.
   app.patch('/products/:id/visible-grades', async (c) => {
     try {
@@ -79,7 +79,7 @@ export function registerProductsRoutes(app: Hono<{ Bindings: Env }>) {
       ).all<{ grade: string; label: string | null }>().catch(() => ({ results: [] as { grade: string; label: string | null }[] }))
       return c.json({ success: true, product: prod, visible_grades: visibleGrades, all_grades: allGrades ?? [], distributors: results ?? [] })
     } catch (err) {
-      return safeError(c, err, '선정 유통사 조회 중 오류가 발생했습니다', '[distributor-admin]')
+      return safeError(c, err, '선정 판매사 조회 중 오류가 발생했습니다', '[distributor-admin]')
     }
   })
 
@@ -91,21 +91,21 @@ export function registerProductsRoutes(app: Hono<{ Bindings: Env }>) {
       const productId = Number(body.product_id)
       const sellerId = Number(body.distributor_seller_id)
       if (!Number.isFinite(productId) || productId <= 0 || !Number.isFinite(sellerId) || sellerId <= 0) {
-        return c.json({ success: false, error: '상품과 유통사를 선택해주세요' }, 400)
+        return c.json({ success: false, error: '상품과 판매사를 선택해주세요' }, 400)
       }
       const prod = await c.env.DB.prepare(
         "SELECT 1 FROM products WHERE id = ? AND is_supply_product = 1 AND supply_source_id IS NULL"
       ).bind(productId).first()
       if (!prod) return c.json({ success: false, error: '도매 상품이 아닙니다' }, 400)
       const seller = await c.env.DB.prepare('SELECT 1 FROM sellers WHERE id = ?').bind(sellerId).first()
-      if (!seller) return c.json({ success: false, error: '존재하지 않는 유통사입니다' }, 400)
+      if (!seller) return c.json({ success: false, error: '존재하지 않는 판매사입니다' }, 400)
       const adminId = Number(((c.get as (k: string) => unknown)('user') as { id?: number } | undefined)?.id) || null
       await c.env.DB.prepare(
         'INSERT OR IGNORE INTO product_distributor_access (product_id, distributor_seller_id, granted_by) VALUES (?, ?, ?)'
       ).bind(productId, sellerId, adminId).run()
       return c.json({ success: true })
     } catch (err) {
-      return safeError(c, err, '유통사 선정 중 오류가 발생했습니다', '[distributor-admin]')
+      return safeError(c, err, '판매사 선정 중 오류가 발생했습니다', '[distributor-admin]')
     }
   })
 

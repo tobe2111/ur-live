@@ -76,7 +76,7 @@ export async function ensureCreditSchemaAdmin(DB: D1Database) {
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_credit_ledger_seller ON wholesale_credit_ledger(distributor_seller_id, created_at DESC)`).run().catch(swallow('distributor-admin:credit:idx'))
 }
 
-// ── 상품제안 (어드민 → 유통사) ────────────────────────────────────────────────
+// ── 상품제안 (어드민 → 판매사) ────────────────────────────────────────────────
 export async function ensureProposals(db: D1Database) {
   await db.prepare(`CREATE TABLE IF NOT EXISTS wholesale_proposals (
     id INTEGER PRIMARY KEY AUTOINCREMENT, distributor_seller_id INTEGER NOT NULL, product_id INTEGER NOT NULL,

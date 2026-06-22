@@ -246,7 +246,7 @@ export interface WholesaleDocRow {
   status: string; issued_at: string | null; nts_confirm_num: string | null
 }
 
-/** 유통사 본인 발행 자료(거래명세서/세금계산서, sales 방향). */
+/** 판매사 본인 발행 자료(거래명세서/세금계산서, sales 방향). */
 export function useWholesaleDocuments() {
   return useQuery<WholesaleDocRow[]>({
     queryKey: queryKeys.wholesale('documents'),
@@ -259,7 +259,7 @@ export function useWholesaleDocuments() {
   })
 }
 
-// 🏭 2026-06-09 Wave 3c: 거래단위 자동 전자세금계산서(매출 — 플랫폼→유통사).
+// 🏭 2026-06-09 Wave 3c: 거래단위 자동 전자세금계산서(매출 — 플랫폼→판매사).
 export interface WholesaleTaxInvoiceRow {
   id: number
   order_id: number
@@ -273,7 +273,7 @@ export interface WholesaleTaxInvoiceRow {
   created_at: string
 }
 
-/** 유통사 본인 매출 세금계산서(주문 결제완료 시 자동발행). */
+/** 판매사 본인 매출 세금계산서(주문 결제완료 시 자동발행). */
 export function useWholesaleTaxInvoices() {
   return useQuery<WholesaleTaxInvoiceRow[]>({
     queryKey: queryKeys.wholesale('tax-invoices'),
@@ -392,7 +392,7 @@ export function useWholesaleProposals() {
 
 // ──────────────────────────────────────────────────────────────
 // 🏭 2026-06-09 Wave 2 도매몰 메인 리디자인 — 배너 캐러셀 / 프리미엄 전용관 / 제안·신고.
-//   배너: 공개 GET. 프리미엄: catalog?premium=1. 제안·신고: 유통사 본인 작성/조회.
+//   배너: 공개 GET. 프리미엄: catalog?premium=1. 제안·신고: 판매사 본인 작성/조회.
 // ──────────────────────────────────────────────────────────────
 
 export interface WholesaleBanner {
@@ -449,7 +449,7 @@ export interface WholesaleFeedback {
   resolved_at: string | null
 }
 
-/** 내 제안/신고 내역 — 유통사 본인 작성분만. */
+/** 내 제안/신고 내역 — 판매사 본인 작성분만. */
 export function useWholesaleFeedbacks() {
   return useQuery<WholesaleFeedback[]>({
     queryKey: queryKeys.wholesale('feedbacks'),

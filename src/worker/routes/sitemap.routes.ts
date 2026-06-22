@@ -31,7 +31,7 @@ sitemapRoutes.get('/sitemap.xml', async (c) => {
     const wholesaleUrls: Array<{ loc: string; priority: number; changefreq: string }> = [
       { loc: '/wholesale', priority: 1.0, changefreq: 'daily' },        // 카탈로그(도매 인덱스 루트)
       { loc: '/wholesale/intro', priority: 0.9, changefreq: 'weekly' }, // 마케팅 랜딩
-      { loc: '/wholesale/join', priority: 0.8, changefreq: 'monthly' }, // 유통사 입점/도매 회원가입
+      { loc: '/wholesale/join', priority: 0.8, changefreq: 'monthly' }, // 판매사 입점/도매 회원가입
       { loc: '/wholesale/oem', priority: 0.7, changefreq: 'monthly' },  // OEM/ODM 상품제휴
     ];
     const wxml = `<?xml version="1.0" encoding="UTF-8"?>

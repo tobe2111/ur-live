@@ -54,7 +54,7 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
       ) : (
         <div className="px-4 py-3.5 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3">
           <ShieldCheck className="w-5 h-5 text-green-600 shrink-0" />
-          <p className="text-sm font-semibold text-green-800">{t('supplier.approvedDesc', { defaultValue: '승인 완료 — 등록한 상품은 검수 후 전국 유통사에게 노출됩니다.' })}</p>
+          <p className="text-sm font-semibold text-green-800">{t('supplier.approvedDesc', { defaultValue: '승인 완료 — 등록한 상품은 검수 후 전국 판매사에게 노출됩니다.' })}</p>
         </div>
       )}
 
@@ -62,7 +62,7 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
       {approved && noProducts ? (
         <div className="rounded-2xl p-6 text-white" style={{ background: 'linear-gradient(135deg,#FC5424,#FF4D77)' }}>
           <h3 className="text-lg font-bold">{t('supplier.emptyHeroTitle', { defaultValue: '첫 공급상품을 등록하세요' })}</h3>
-          <p className="text-sm text-white/85 mt-1 mb-4">{t('supplier.emptyHeroDesc', { defaultValue: '등록 → 관리자 검수 → 도매몰 노출. 전국 유통사가 내 등급 공급가로 사입합니다.' })}</p>
+          <p className="text-sm text-white/85 mt-1 mb-4">{t('supplier.emptyHeroDesc', { defaultValue: '등록 → 관리자 검수 → 도매몰 노출. 전국 판매사가 내 등급 공급가로 사입합니다.' })}</p>
           <button onClick={onAdd} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-[#FC5424] font-bold text-sm">
             <Plus className="w-4 h-4" /> {t('supplier.addProductBtn', { defaultValue: '상품 등록하기' })}
           </button>
@@ -80,8 +80,8 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
         const steps: Array<{ label: string; done: boolean; hint: string }> = [
           { label: t('supplier.msApproved', { defaultValue: '가입 승인' }), done: true, hint: '' },
           { label: t('supplier.msFirstProduct', { defaultValue: '첫 상품 등록' }), done: me.product_counts.total > 0, hint: t('supplier.msFirstProductHint', { defaultValue: '위 버튼으로 1분 — 엑셀로 여러 개도 OK' }) },
-          { label: t('supplier.msFirstApproved', { defaultValue: '첫 상품 승인' }), done: me.product_counts.approved > 0, hint: t('supplier.msFirstApprovedHint', { defaultValue: '검수 통과 시 전국 유통사에게 노출' }) },
-          { label: t('supplier.msFirstOrder', { defaultValue: '첫 주문' }), done: (ms?.orders ?? 0) > 0, hint: t('supplier.msFirstOrderHint', { defaultValue: '유통사가 사입하면 벨 알림으로 알려드려요' }) },
+          { label: t('supplier.msFirstApproved', { defaultValue: '첫 상품 승인' }), done: me.product_counts.approved > 0, hint: t('supplier.msFirstApprovedHint', { defaultValue: '검수 통과 시 전국 판매사에게 노출' }) },
+          { label: t('supplier.msFirstOrder', { defaultValue: '첫 주문' }), done: (ms?.orders ?? 0) > 0, hint: t('supplier.msFirstOrderHint', { defaultValue: '판매사가 사입하면 벨 알림으로 알려드려요' }) },
           { label: t('supplier.msFirstSettle', { defaultValue: '첫 정산 적립' }), done: (ms?.settlements ?? 0) > 0, hint: t('supplier.msFirstSettleHint', { defaultValue: '결제 즉시 적립 — 정산 탭에서 출금 신청' }) },
         ]
         const remaining = steps.filter(s => !s.done)
@@ -186,7 +186,7 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
 
 // ── 🚚 2026-06-09 배송/주문 정책 설정 카드 (self-contained 로드/저장) ──────────────
 //   min_order_amount(최소주문금액) / shipping_fee(배송비) / free_ship_threshold(무료배송 기준).
-//   유통사 장바구니에서 이 제조사 라인 합이 최소주문금액 미만이면 주문 불가 + 배송비 자동 합산.
+//   판매사 장바구니에서 이 제조사 라인 합이 최소주문금액 미만이면 주문 불가 + 배송비 자동 합산.
 function ShippingPolicyCard({ t }: { t: (k: string, o?: Record<string, unknown>) => string }) {
   const [minOrder, setMinOrder] = useState('')
   const [shipFee, setShipFee] = useState('')
@@ -231,7 +231,7 @@ function ShippingPolicyCard({ t }: { t: (k: string, o?: Record<string, unknown>)
         <Truck className="w-4 h-4 text-[#FC5424]" />
         <p className="text-sm font-semibold text-gray-900">{t('supplier.shipPolicyTitle', { defaultValue: '배송/주문 정책' })}</p>
       </div>
-      <p className="text-xs text-gray-500 mb-4">{t('supplier.shipPolicyDesc', { defaultValue: '유통사 장바구니에서 우리 상품 합계가 최소주문금액 미만이면 주문할 수 없어요. 배송비는 주문 시 자동 합산됩니다. (0 = 제한/배송비/무료배송 없음)' })}</p>
+      <p className="text-xs text-gray-500 mb-4">{t('supplier.shipPolicyDesc', { defaultValue: '판매사 장바구니에서 우리 상품 합계가 최소주문금액 미만이면 주문할 수 없어요. 배송비는 주문 시 자동 합산됩니다. (0 = 제한/배송비/무료배송 없음)' })}</p>
       {loading ? (
         <div className="py-6 text-center text-gray-400 text-sm">{t('common.loading', { defaultValue: '불러오는 중...' })}</div>
       ) : (

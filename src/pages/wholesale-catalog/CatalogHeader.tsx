@@ -77,7 +77,7 @@ export default function CatalogHeader({
                 <span className="whitespace-nowrap">{t('wholesale.icon.deposit', { defaultValue: '예치금' })} <b className="text-white tabular-nums">{won(depositBalance)}</b></span>
                 <button onClick={() => navigate('/wholesale/deposits')} className="font-bold text-white rounded-md px-2.5 py-1 whitespace-nowrap" style={{ background: WT.brand }}>{t('wholesale.charge', { defaultValue: '충전' })}</button>
                 <span className="opacity-30">|</span>
-                {/* 🛡️ 2026-06-19 (대표 신고 — 대시보드 유입경로 없음): '마이'(유통사 대시보드) 모바일에서도 노출
+                {/* 🛡️ 2026-06-19 (대표 신고 — 대시보드 유입경로 없음): '마이'(판매사 대시보드) 모바일에서도 노출
                     (기존 hidden sm:inline → 모바일에서 진입 불가였음). 대시보드 라벨로 명확화. */}
                 <button onClick={() => navigate('/wholesale/dashboard')} className="font-semibold whitespace-nowrap">{t('wholesale.util.my', { defaultValue: '대시보드' })}</button>
                 <button onClick={logout} className="inline-flex items-center gap-1 whitespace-nowrap"><LogOut className="w-3 h-3" /> {t('wholesale.util.logout', { defaultValue: '로그아웃' })}</button>

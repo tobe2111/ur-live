@@ -92,7 +92,7 @@ export default function WholesaleStatementPage({ embedded = false }: { embedded?
 
   return (
     <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
-      <SEO title="거래내역서 - 유통스타트" description="유통사 도매 거래내역서" url="/wholesale/statement" noindex />
+      <SEO title="거래내역서 - 유통스타트" description="판매사 도매 거래내역서" url="/wholesale/statement" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur print:hidden" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-medium flex items-center gap-3 px-5 lg:px-8 h-[52px]">
           <button onClick={goBack} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────
-// 🏭 2026-06-09 Wave 4b — 유통사↔제조사 채팅 위젯 (lazy chunk).
+// 🏭 2026-06-09 Wave 4b — 판매사↔제조사 채팅 위젯 (lazy chunk).
 //   ⚡ 이 파일 + 의존성은 별도 chunk — 위젯을 "열" 때만 fetch.
 //      (WholesaleChatButton / SupplierDashboardPage 가 React.lazy 로 import)
 //   슬라이드인 패널: 스레드 목록 → 스레드 열기 → 메시지 + 작성창.
@@ -158,7 +158,7 @@ export default function WholesaleChatWidget({ onClose, initialCounterpartId = nu
     )
   }
 
-  // ── slide-in 패널(유통사 floating) ──
+  // ── slide-in 패널(판매사 floating) ──
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label={t('wholesaleChat.title', { defaultValue: '문의 채팅' })}>
       <div className="absolute inset-0" style={{ background: 'rgba(20,22,28,0.4)' }} onClick={onClose} />
@@ -196,7 +196,7 @@ function ThreadList({ threads, loading, role, onOpen, t }: {
   t: (k: string, o?: Record<string, unknown>) => string
 }) {
   const cpLabel = role === 'supplier'
-    ? t('wholesaleChat.distributorLabel', { defaultValue: '유통사' })
+    ? t('wholesaleChat.distributorLabel', { defaultValue: '판매사' })
     : t('wholesaleChat.supplierLabel', { defaultValue: '제조사' })
 
   if (loading) {
@@ -209,7 +209,7 @@ function ThreadList({ threads, loading, role, onOpen, t }: {
         <p className="text-sm font-semibold" style={{ color: WT.ink2 }}>{t('wholesaleChat.empty', { defaultValue: '아직 대화가 없어요' })}</p>
         <p className="text-xs mt-1" style={{ color: WT.ink3 }}>
           {role === 'supplier'
-            ? t('wholesaleChat.emptySupplier', { defaultValue: '유통사가 문의하면 여기에 표시됩니다.' })
+            ? t('wholesaleChat.emptySupplier', { defaultValue: '판매사가 문의하면 여기에 표시됩니다.' })
             : t('wholesaleChat.emptyDistributor', { defaultValue: '상품 상세에서 제조사에게 문의해보세요.' })}
         </p>
       </div>
@@ -376,7 +376,7 @@ function ThreadView({ threadId, role, counterpartName, onBack, onRead, t }: {
           <Factory className="w-4 h-4" style={{ color: WT.ink3 }} />
         </div>
         <span className="text-sm font-bold truncate" style={{ color: WT.ink }}>
-          {name || (role === 'supplier' ? t('wholesaleChat.distributorLabel', { defaultValue: '유통사' }) : t('wholesaleChat.supplierLabel', { defaultValue: '제조사' }))}
+          {name || (role === 'supplier' ? t('wholesaleChat.distributorLabel', { defaultValue: '판매사' }) : t('wholesaleChat.supplierLabel', { defaultValue: '제조사' }))}
         </span>
       </div>
 

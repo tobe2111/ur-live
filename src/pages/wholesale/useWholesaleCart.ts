@@ -1,7 +1,7 @@
 // ──────────────────────────────────────────────────────────────
 // 🏭 2026-06-04 유통스타트 도매몰 — 다품목 장바구니 (localStorage 스토어).
 //   주문 API(/api/wholesale/orders)가 items[] 배열을 받으므로 카트→단일 주문으로 매핑.
-//   유통사별 분리 키(seller_token 해시 불필요 — origin+token 로컬이라 단순 키 사용).
+//   판매사별 분리 키(seller_token 해시 불필요 — origin+token 로컬이라 단순 키 사용).
 // ──────────────────────────────────────────────────────────────
 import { useSyncExternalStore, useCallback } from 'react'
 

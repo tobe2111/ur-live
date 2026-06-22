@@ -11,7 +11,7 @@ import type { Env } from './helpers'
 
 export function registerOrdersRoutes(app: Hono<{ Bindings: Env }>) {
   // ── GET /tax-summary?month=YYYY-MM — 세금계산서 집계 (1차 수동 발행 참고) ───────
-  //   유통스타트→유통사 매출(유통사별 매입합) + 제조사→유통스타트 매입(제조사별 정산합).
+  //   유통스타트→판매사 매출(판매사별 매입합) + 제조사→유통스타트 매입(제조사별 정산합).
   app.get('/tax-summary', async (c) => {
     try {
       const month = (c.req.query('month') || '').slice(0, 7)

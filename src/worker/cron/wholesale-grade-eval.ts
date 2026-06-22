@@ -1,8 +1,8 @@
 /**
- * 🏭 BIZ-7 (2026-06-08) — 유통사 등급 자동화 (GMV 기반 auto-grade).
+ * 🏭 BIZ-7 (2026-06-08) — 판매사 등급 자동화 (GMV 기반 auto-grade).
  *
- * 현재 도매몰 유통사 등급(sellers.distributor_grade)은 100% 수동 배정.
- * 이 cron 은 유통사별 최근 N일(기본 90일) 도매 GMV 를 집계해
+ * 현재 도매몰 판매사 등급(sellers.distributor_grade)은 100% 수동 배정.
+ * 이 cron 은 판매사별 최근 N일(기본 90일) 도매 GMV 를 집계해
  * 설정된 임계값(threshold)에 따라 목표 등급으로 **승급(promote)만** 자동 적용한다.
  *
  * ⚠️ 가격 산식 불변(ADDITIVE): 이 cron 은 distributor_grade 컬럼만 바꾼다.
@@ -11,16 +11,16 @@
  *
  * 설계 결정:
  *   - **승급 전용(promote-only)**: v1 은 자동 강등(demote)을 하지 않는다.
- *     매출이 일시적으로 떨어졌다고 자동 강등하면 (가격이 올라) 유통사 신뢰/매출에 직접 타격 →
+ *     매출이 일시적으로 떨어졌다고 자동 강등하면 (가격이 올라) 판매사 신뢰/매출에 직접 타격 →
  *     강등은 어드민 수동(PATCH /distributors/:id)으로만. (자동 강등은 향후 follow-up — 유예기간/통지 설계 필요)
  *   - **마스터 enable 플래그**: platform_settings.wholesale_auto_grade_enabled ('1'=on, default '0'=off).
  *     off 면 cron 은 no-op (GMV 집계조차 안 함) → 안전 기본값.
  *   - **임계값 설정**: platform_settings.wholesale_auto_grade_thresholds (JSON).
  *     [{ "grade": "A", "min_gmv": 50000000 }, { "grade": "B", "min_gmv": 20000000 }, ...]
  *     min_gmv 가 높은 순(좋은 등급)으로 평가 — GMV 가 임계값 이상이면 그 등급이 목표.
- *   - **per-seller fail-soft**: 한 유통사 처리 실패가 배치 전체를 중단시키지 않는다.
+ *   - **per-seller fail-soft**: 한 판매사 처리 실패가 배치 전체를 중단시키지 않는다.
  *   - **CAS UPDATE**: WHERE distributor_grade != target → 멱등(이미 목표 등급이면 no-op).
- *   - 변경 시: writeAuditLog(wholesale_grade_auto_promote) + dashboard_notification(유통사).
+ *   - 변경 시: writeAuditLog(wholesale_grade_auto_promote) + dashboard_notification(판매사).
  *
  * 호출:
  *   - cron (worker/scheduled.ts, 주 1회 월요일 배치)
@@ -143,8 +143,8 @@ export async function evaluateWholesaleGrades(env: Env, force = false): Promise<
   out.windowDays = windowDays;
   const since = new Date(Date.now() - windowDays * 86400_000).toISOString();
 
-  // 도매 유통사 = distributor_grade 가 이미 있거나 도매 주문을 한 셀러.
-  //   대상: 등급이 배정됐거나(현 등급 기준 승급 후보) 또는 최근 윈도우 내 도매 주문이 있는 유통사.
+  // 도매 판매사 = distributor_grade 가 이미 있거나 도매 주문을 한 셀러.
+  //   대상: 등급이 배정됐거나(현 등급 기준 승급 후보) 또는 최근 윈도우 내 도매 주문이 있는 판매사.
   const sellers = await DB.prepare(`
     SELECT DISTINCT s.id, s.distributor_grade
     FROM sellers s
@@ -201,7 +201,7 @@ export async function evaluateWholesaleGrades(env: Env, force = false): Promise<
         JSON.stringify({ grade: target, gmv, window_days: windowDays }),
       ).run().catch(swallow('wholesale-grade-eval:audit'));
 
-      // 유통사 대시보드 알림.
+      // 판매사 대시보드 알림.
       await DB.prepare(`
         INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link, created_at)
         VALUES ('seller', ?, 'wholesale_grade_up', ?, ?, '/wholesale', datetime('now'))

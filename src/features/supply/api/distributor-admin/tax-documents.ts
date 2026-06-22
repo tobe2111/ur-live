@@ -20,7 +20,7 @@ export function registerTaxDocumentsRoutes(app: Hono<{ Bindings: Env }>) {
       if (!/^\d{4}-\d{2}$/.test(month)) return c.json({ success: false, error: '월 형식 오류 (YYYY-MM)' }, 400)
       const docType = body.doc_type === 'transaction_statement' ? 'transaction_statement' : 'tax_invoice'
 
-      // 매출(유통스타트→유통사): 유통사별 순매출(subtotal − 환불액) 합. 부분/전액 환불분 차감.
+      // 매출(유통스타트→판매사): 판매사별 순매출(subtotal − 환불액) 합. 부분/전액 환불분 차감.
       const byDist = await c.env.DB.prepare(`
         SELECT o.distributor_seller_id AS seller_id, s.business_name, s.name,
                COUNT(*) AS order_count, COALESCE(SUM(MAX(0, o.subtotal - COALESCE(o.refunded_amount,0))),0) AS total
@@ -50,7 +50,7 @@ export function registerTaxDocumentsRoutes(app: Hono<{ Bindings: Env }>) {
           VALUES (?, 'sales', ?, ?, 0, ?, ?, ?, ?, ?, 'issued', datetime('now'))
           ON CONFLICT(doc_type, direction, period_month, distributor_seller_id, supplier_id)
           DO UPDATE SET supply_amount=excluded.supply_amount, vat_amount=excluded.vat_amount, total_amount=excluded.total_amount, order_count=excluded.order_count, status='issued', issued_at=datetime('now')
-        `).bind(docType, month, r.seller_id, r.business_name || r.name || `유통사#${r.seller_id}`, supply, vat, total, r.order_count).run().catch(() => null)
+        `).bind(docType, month, r.seller_id, r.business_name || r.name || `판매사#${r.seller_id}`, supply, vat, total, r.order_count).run().catch(() => null)
         if (res) issued++
       }
       for (const r of bySup.results || []) {
@@ -107,7 +107,7 @@ export function registerTaxDocumentsRoutes(app: Hono<{ Bindings: Env }>) {
   })
 
   // POST /tax-documents/:id/issue-nts — 바로빌 전자세금계산서 발행 (국세청)
-  //   매출(sales=유통스타트→유통사) 방향만. 발행자=유통스타트(바로빌 계정), 공급받는자=유통사.
+  //   매출(sales=유통스타트→판매사) 방향만. 발행자=유통스타트(바로빌 계정), 공급받는자=판매사.
   //   매입(제조사→유통스타트)은 제조사가 발행하는 것이라 플랫폼 계정으로 발행 불가(역발행 별도).
   //   자격증명(BAROBILL_*) 또는 플랫폼 사업자정보 미설정 시 actionable 에러(fail-soft).
   app.post('/tax-documents/:id/issue-nts', rateLimit({ action: 'admin-nts-issue', max: 30, windowSec: 60 }), async (c) => {
@@ -137,11 +137,11 @@ export function registerTaxDocumentsRoutes(app: Hono<{ Bindings: Env }>) {
         return c.json({ success: false, error: '플랫폼 사업자정보 미설정 — platform_settings(company_business_number/company_name/company_ceo/company_address) 등록 필요', needs_config: true }, 503)
       }
 
-      // 공급받는자(유통사).
+      // 공급받는자(판매사).
       const seller = await c.env.DB.prepare(
         'SELECT business_number, business_name, name, email, phone FROM sellers WHERE id = ?'
       ).bind(doc.distributor_seller_id).first<{ business_number: string | null; business_name: string | null; name: string | null; email: string | null; phone: string | null }>()
-      if (!seller) return c.json({ success: false, error: '유통사 정보를 찾을 수 없습니다' }, 404)
+      if (!seller) return c.json({ success: false, error: '판매사 정보를 찾을 수 없습니다' }, 404)
 
       let result: { success: boolean; ntsConfirmNumber?: string; invoiceKey?: string; message?: string }
       try {
@@ -155,7 +155,7 @@ export function registerTaxDocumentsRoutes(app: Hono<{ Bindings: Env }>) {
           supplierEmail: ps_map.company_email,
           supplierTel: ps_map.company_tel,
           buyerBusinessNumber: seller.business_number || undefined,
-          buyerBusinessName: seller.business_name || seller.name || `유통사#${doc.distributor_seller_id}`,
+          buyerBusinessName: seller.business_name || seller.name || `판매사#${doc.distributor_seller_id}`,
           buyerEmail: seller.email || undefined,
           buyerTel: seller.phone || undefined,
           writeDate: `${doc.period_month}-01`,

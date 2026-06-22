@@ -2,7 +2,7 @@
  * 🏬 2026-06-09 도매몰 멀티-몰(multi-mall) 테넌시 — BACKEND foundation (v1, 검토 필요).
  *
  * 한 운영자(유통스타트)가 카테고리별로 분리된 여러 도매몰(식품/패션 등)을 운영. 모델 B = 몰별 회원가입
- * (각 유통사/제조사가 몰마다 따로 등록 → sellers.id / suppliers.id 가 이미 몰-고유). 따라서 예치금/세금계산서/
+ * (각 판매사/제조사가 몰마다 따로 등록 → sellers.id / suppliers.id 가 이미 몰-고유). 따라서 예치금/세금계산서/
  * 채팅/주문/정산은 이미 그 id 에 매달려 몰-격리 → mall_id 를 그 테이블에 추가하지 않음. 테넌시는
  * products / sellers / suppliers / wholesale_banners / wholesale_proposal_tickets + 카탈로그/가입 스코핑에만.
  *
@@ -155,8 +155,8 @@ export async function mallIdByHost(DB: D1Database, host: string | null | undefin
  *   3. 기본 1 (fallback — host 가 어떤 몰에도 매핑 안 됨).
  * 🔒 INVARIANT: 기본 몰(1) + 단일 호스트만 있으면 항상 1 반환 → 동작 불변.
  *
- * 변경 이력: 2026-06-09 최초엔 "계정 우선"(로그인 유통사는 어느 호스트든 자기 몰 = 모델 B). 2026-06-18
- *   대표가 "유통사/제조사는 몰별 별도 로그인 = 몰=도메인" 으로 확정 → host 우선으로 전환. 이전 account-first
+ * 변경 이력: 2026-06-09 최초엔 "계정 우선"(로그인 판매사는 어느 호스트든 자기 몰 = 모델 B). 2026-06-18
+ *   대표가 "판매사/제조사는 몰별 별도 로그인 = 몰=도메인" 으로 확정 → host 우선으로 전환. 이전 account-first
  *   는 [계정 몰 ≠ 보는 도메인 몰] 일 때 로그인 상태에 따라 카탈로그가 들쭉날쭉(flip-flop)하던 근본 원인.
  *   host-first 는 게스트/로그인 카탈로그를 일관되게 만들고, 단일 몰 환경에선 byte-identical(모두 1).
  *   ⚠️ 계정 머니 작업(예치금/주문/정산)은 seller_id/supplier_id 에 직접 매달려 몰-격리되므로 무영향.

@@ -170,7 +170,7 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('auto-seed-reviews-hourly', () => handleAutoSeedReviews(env)));
     // 🏭 2026-06-08 TAX-1: 공급사 정산 성숙 매시간 tick (기존 maturity helper 호출, idempotent).
     ctx.waitUntil(safeCron('wholesale-settle-tick', () => handleWholesaleSettleTick(env)));
-    // 🏭 2026-06-08 NOTI-1: 재입고 알림 — 구독 상품 재입고(stock>0) 시 유통사 알림.
+    // 🏭 2026-06-08 NOTI-1: 재입고 알림 — 구독 상품 재입고(stock>0) 시 판매사 알림.
     ctx.waitUntil(safeCron('wholesale-restock-notify', () => handleWholesaleRestockNotify(env)));
     // 🔁 2026-06-12 (4차 감사 D4 — 1단계): FAILED 웹훅(retry<3) 백로그 감시 — Discord 요약.
     //   실제 자동 재처리는 webhook.routes 잠금 해제 승인 후 2단계 (파일 헤더 참조).
@@ -373,7 +373,7 @@ export async function handleCronScheduled(
       if (dayOfMonth <= 7) {
         await handleSellerTierEval(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/seller-tier-eval', e));
       }
-      // 🏭 BIZ-7 (2026-06-08): 유통사 도매 등급 자동 평가 (GMV 기반 승급 전용).
+      // 🏭 BIZ-7 (2026-06-08): 판매사 도매 등급 자동 평가 (GMV 기반 승급 전용).
       //   매주 월요일 — platform_settings.wholesale_auto_grade_enabled='1' 일 때만 동작(off=no-op).
       await handleWholesaleGradeEval(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/wholesale-grade-eval', e));
       if (flags.enable_agency_monthly_invoices && dayOfMonth <= 7) {

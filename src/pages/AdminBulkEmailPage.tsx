@@ -212,7 +212,7 @@ export default function AdminBulkEmailPage() {
                 </label>
                 <select className={inputCls} value={role} onChange={(e) => setRole(e.target.value as Role)}>
                   <option value="seller">{t('admin.bulkEmail.roleSeller', { defaultValue: '셀러' })}</option>
-                  <option value="distributor">{t('admin.bulkEmail.roleDistributor', { defaultValue: '유통사' })}</option>
+                  <option value="distributor">{t('admin.bulkEmail.roleDistributor', { defaultValue: '판매사' })}</option>
                   <option value="supplier">{t('admin.bulkEmail.roleSupplier', { defaultValue: '제조사' })}</option>
                 </select>
               </div>
@@ -228,7 +228,7 @@ export default function AdminBulkEmailPage() {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-gray-600">
-                  {t('admin.bulkEmail.grade', { defaultValue: '등급 (유통사)' })}
+                  {t('admin.bulkEmail.grade', { defaultValue: '등급 (판매사)' })}
                 </label>
                 <select
                   className={inputCls}

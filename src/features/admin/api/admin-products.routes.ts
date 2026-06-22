@@ -733,7 +733,7 @@ adminProductsRoutes.patch('/supplier-products/:id', cors(), async (c) => {
 // ── 🆕 2026-06-19 (대표 확정) 제품별 플랫폼 마진 설정 — 미끼/마진 전략 ──────────────
 //   PATCH /supplier-products/:id/margin  body { margin_override_pct: number(0~90) | null }
 //   승인 여부와 무관하게 언제든 마진 조율(승인된 상품도 포함). null → override 해제(전역 기본).
-//   응답에 계산된 유통사 공급가(= 공급원가 × (1+마진%), 판매가 상한·공급원가 하한)를 함께 반환.
+//   응답에 계산된 판매사 공급가(= 공급원가 × (1+마진%), 판매가 상한·공급원가 하한)를 함께 반환.
 adminProductsRoutes.patch('/supplier-products/:id/margin', cors(), async (c) => {
   try {
     const { DB } = c.env;
@@ -779,7 +779,7 @@ adminProductsRoutes.patch('/supplier-products/:id/margin', cors(), async (c) => 
         platform_margin: Math.max(0, distributorPrice - existing.supply_price),
       },
       message: marginField.value != null
-        ? `마진 ${effMarginPct}% 적용 — 유통사 공급가 ${distributorPrice.toLocaleString()}원`
+        ? `마진 ${effMarginPct}% 적용 — 판매사 공급가 ${distributorPrice.toLocaleString()}원`
         : '제품별 마진을 해제했습니다(전역 기본 적용).',
     });
   } catch (err) {

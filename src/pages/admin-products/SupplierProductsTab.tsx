@@ -217,7 +217,7 @@ function NaverPriceReferencePanel({ query }: { query: string }) {
 }
 
 // ── 🆕 2026-06-19 (대표 확정) 제품별 플랫폼 마진 설정 — 미끼/마진 전략 ───────────────
-//   제조사 공급가(원가) 위에 우리 마진%를 붙여 '유통사 공급가'를 산출. 미끼=낮게, 고수익=높게.
+//   제조사 공급가(원가) 위에 우리 마진%를 붙여 '판매사 공급가'를 산출. 미끼=낮게, 고수익=높게.
 //   판매가(권장소비자가)를 상한, 공급원가를 하한으로 클램프(distributorPriceFromCost SSOT 동일 공식).
 function MarginEditor({
   product, defaultMarginPct, raw, setRaw, saving, onSave,
@@ -299,7 +299,7 @@ function MarginEditor({
           />
           <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-indigo-400">%</span>
         </div>
-        <span className="text-[11px] text-gray-500">→ {t('admin.products.marginDistPrice', { defaultValue: '유통사 공급가' })}</span>
+        <span className="text-[11px] text-gray-500">→ {t('admin.products.marginDistPrice', { defaultValue: '판매사 공급가' })}</span>
         <span className="text-base font-extrabold text-indigo-700">{formatWon(dist)}</span>
         {usingDefault && (
           <span className="text-[10px] text-gray-400">{t('admin.products.marginUsingDefault', { defaultValue: '(전역 기본)' })}</span>

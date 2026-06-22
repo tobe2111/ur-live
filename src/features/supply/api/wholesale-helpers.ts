@@ -81,7 +81,7 @@ export async function ensureSupplierPolicySchema(DB: D1Database) {
 }
 
 // 제조사별 배송/주문 정책 일괄 로드 — supplier_id → { min_order_amount, shipping_fee, free_ship_threshold }.
-//   ⚠️ supplier_id(제조사 신원)는 유통사 응답에 절대 노출 X — 정책 숫자만 그룹 계산에 사용.
+//   ⚠️ supplier_id(제조사 신원)는 판매사 응답에 절대 노출 X — 정책 숫자만 그룹 계산에 사용.
 export type SupplierPolicy = { min_order_amount: number; shipping_fee: number; free_ship_threshold: number }
 export async function loadSupplierPolicies(DB: D1Database, supplierIds: number[]): Promise<Map<number, SupplierPolicy>> {
   const out = new Map<number, SupplierPolicy>()
@@ -227,7 +227,7 @@ export async function ensureCreditSchema(DB: D1Database) {
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_credit_ledger_seller ON wholesale_credit_ledger(distributor_seller_id, created_at DESC)`).run().catch(swallow('wholesale:credit:idx'))
 }
 
-/** 유통사 여신 상태 로드(미배정/컬럼 없는 환경은 0). */
+/** 판매사 여신 상태 로드(미배정/컬럼 없는 환경은 0). */
 interface SellerCreditRow { distributor_credit_limit: number | null; outstanding_balance: number | null; credit_frozen: number | null; status: string | null }
 export async function loadSellerCredit(DB: D1Database, sellerId: number): Promise<{ limit: number; outstanding: number; frozen: boolean; available: number; status: string | null }> {
   const row = await DB.prepare(
@@ -239,7 +239,7 @@ export async function loadSellerCredit(DB: D1Database, sellerId: number): Promis
   return { limit, outstanding, frozen, available: Math.max(0, limit - outstanding), status: row?.status ?? null }
 }
 
-// ── 셀러(유통사) JWT → seller_id ──────────────────────────────────────────────
+// ── 셀러(판매사) JWT → seller_id ──────────────────────────────────────────────
 export async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
   if (!authorization?.startsWith('Bearer ')) return null
   try {
@@ -266,11 +266,11 @@ export async function sellerIdFromCookieGet(
   return sellerIdFrom('Bearer ' + decodeURIComponent(m[1]), jwtSecret)
 }
 
-// ── 👥 2026-06-09 유통사 직원 서브계정 ────────────────────────────────────────
-//   회사(유통사 owner) 1계정에 여러 직원 로그인. 서브계정 토큰의 seller_id = PARENT(회사) seller_id →
+// ── 👥 2026-06-09 판매사 직원 서브계정 ────────────────────────────────────────
+//   회사(판매사 owner) 1계정에 여러 직원 로그인. 서브계정 토큰의 seller_id = PARENT(회사) seller_id →
 //   기존 예치금/주문/카탈로그/정산 코드는 회사 계정 위에서 byte-identical 동작(전혀 인지 못함).
 //   토큰에 sub_account_id / sub_role 추가 클레임만 얹어 (a) 직원 식별 (b) 권한 게이트에 사용.
-//   ⚠️ 서브계정 없는 기존 유통사는 토큰/로그인/동작 전부 불변 — 이 코드 경로를 절대 타지 않음.
+//   ⚠️ 서브계정 없는 기존 판매사는 토큰/로그인/동작 전부 불변 — 이 코드 경로를 절대 타지 않음.
 export type SubRole = 'admin' | 'staff' | 'viewer'
 export const SUB_ROLES: readonly SubRole[] = ['admin', 'staff', 'viewer'] as const
 

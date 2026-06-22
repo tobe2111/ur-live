@@ -3,7 +3,7 @@
  *
  * 마운트 (worker/index.ts):
  *   app.route('/api/wholesale/board', wholesaleBoardPublicRoutes)      — 공지/자료실 목록·상세 (공개 읽기)
- *   app.route('/api/wholesale/wishlist', wholesaleWishlistRoutes)      — 찜 (유통사 로그인 전용)
+ *   app.route('/api/wholesale/wishlist', wholesaleWishlistRoutes)      — 찜 (판매사 로그인 전용)
  *   app.route('/api/admin/wholesale-board', adminWholesaleBoardRoutes) — 게시글 CRUD (어드민)
  *
  * 테이블 (lazy DDL — D1 migration CI 부재, repair-schema 에도 동일 등록):
@@ -134,7 +134,7 @@ pub.get('/posts/:id', async (c) => {
 })
 
 // ════════════════════════════════════════════════════════════════════════════
-// 찜리스트 — 유통사 로그인 전용  /api/wholesale/wishlist/*
+// 찜리스트 — 판매사 로그인 전용  /api/wholesale/wishlist/*
 // ════════════════════════════════════════════════════════════════════════════
 const wish = new Hono<{ Bindings: Env }>()
 

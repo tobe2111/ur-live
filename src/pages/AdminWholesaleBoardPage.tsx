@@ -1,6 +1,6 @@
 /**
  * 🏭 2026-06-10 (사용자 요청 — 도매 통합 게시판): 어드민 게시글 CRUD.
- *   공지사항(notice) + 상품 자료실(archive — 상품 ID 연결, 유통사가 이미지 다운로드).
+ *   공지사항(notice) + 상품 자료실(archive — 상품 ID 연결, 판매사가 이미지 다운로드).
  *   공개 페이지: /wholesale/board. 라이트 테마 (대시보드 — dark: 금지).
  */
 import { useState, useEffect } from 'react'

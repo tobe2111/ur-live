@@ -1,8 +1,8 @@
 // ──────────────────────────────────────────────────────────────
-// 🏭 2026-06-09 Wave 4b — 유통사 floating 채팅 버튼 (항상 present, 가벼움).
+// 🏭 2026-06-09 Wave 4b — 판매사 floating 채팅 버튼 (항상 present, 가벼움).
 //   ⚡ 이 컴포넌트만 초기 번들에 — unread 배지 폴링 + 클릭 시 무거운 위젯 lazy 로드.
 //   위젯(WholesaleChatWidget) 은 React.lazy → 열기 전엔 채팅 코드 0 byte.
-//   유통사 카탈로그(/wholesale)에서만 사용 — seller_token 컨텍스트.
+//   판매사 카탈로그(/wholesale)에서만 사용 — seller_token 컨텍스트.
 // ──────────────────────────────────────────────────────────────
 import { lazy, Suspense, useState, useEffect } from 'react'
 import { MessageCircle } from 'lucide-react'

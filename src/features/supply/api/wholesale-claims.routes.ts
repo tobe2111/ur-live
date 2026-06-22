@@ -1,8 +1,8 @@
 /**
- * 🏭 BIZ-1 (2026-06-08) 유통스타트 도매몰 — 유통사(바이어) 발의 CLAIM / RMA(반품·하자신고).
+ * 🏭 BIZ-1 (2026-06-08) 유통스타트 도매몰 — 판매사(바이어) 발의 CLAIM / RMA(반품·하자신고).
  *
- * 배경: 기존엔 공급자/어드민만 환불 가능 → 유통사(도매 바이어)는 하자/오배송/수량부족을
- *   신고할 창구가 없었음. 이 라우터가 유통사 발의 클레임 접수 + 어드민 검수 워크플로를 제공.
+ * 배경: 기존엔 공급자/어드민만 환불 가능 → 판매사(도매 바이어)는 하자/오배송/수량부족을
+ *   신고할 창구가 없었음. 이 라우터가 판매사 발의 클레임 접수 + 어드민 검수 워크플로를 제공.
  *
  * 실제 환불 집행은 *중복 구현하지 않고* 기존 어드민 환불 엔드포인트
  *   POST /api/admin/distributor/orders/:id/refund 를 그대로 사용한다(approve 결정만 기록).
@@ -14,8 +14,8 @@
  *
  * 마운트: app.route('/api/wholesale', wholesaleClaimsRoutes)  ← 오케스트레이터가 처리.
  *   ⚠️ 경로는 wholesale.routes.ts 와 동일 prefix(/api/wholesale) 에 합쳐지므로 충돌 없는 path 사용:
- *      - POST  /api/wholesale/claims               (유통사 발의)
- *      - GET   /api/wholesale/claims               (유통사 본인 목록)
+ *      - POST  /api/wholesale/claims               (판매사 발의)
+ *      - GET   /api/wholesale/claims               (판매사 본인 목록)
  *      - GET   /api/wholesale/admin/claims         (어드민 목록 + status 필터)
  *      - PATCH /api/wholesale/admin/claims/:id     (어드민 검수)
  */
@@ -90,7 +90,7 @@ async function _doEnsure(DB: D1Database): Promise<void> {
   await DB.prepare("ALTER TABLE supplier_settlements ADD COLUMN held_at DATETIME").run().catch(() => { /* 이미 존재 — 무시 */ })
 }
 
-// ── 유통사(셀러) JWT → seller_id ──────────────────────────────────────────────
+// ── 판매사(셀러) JWT → seller_id ──────────────────────────────────────────────
 //   wholesale.routes.ts 와 동일하게 seller_token Bearer JWT 의 seller_id 를 신뢰.
 async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
   if (!authorization?.startsWith('Bearer ')) return null
@@ -120,7 +120,7 @@ async function releaseHold(DB: D1Database, wholesaleOrderId: number): Promise<nu
   return r?.meta?.changes ?? 0
 }
 
-// ── POST /claims — 유통사 발의 ─────────────────────────────────────────────────
+// ── POST /claims — 판매사 발의 ─────────────────────────────────────────────────
 app.post('/claims', rateLimit({ action: 'wholesale-claim', max: 20, windowSec: 600 }), async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -154,7 +154,7 @@ app.post('/claims', rateLimit({ action: 'wholesale-claim', max: 20, windowSec: 6
       return c.json({ success: false, error: '증빙 URL 형식이 올바르지 않습니다' }, 400)
     }
 
-    // 소유권 검증 — 이 주문이 인증된 유통사 본인 것인지(IDOR 방지).
+    // 소유권 검증 — 이 주문이 인증된 판매사 본인 것인지(IDOR 방지).
     const order = await DB.prepare(
       'SELECT id, status FROM wholesale_orders WHERE id = ? AND distributor_seller_id = ?'
     ).bind(wholesaleOrderId, sellerId).first<{ id: number; status: string }>().catch(() => null)
@@ -204,7 +204,7 @@ app.post('/claims', rateLimit({ action: 'wholesale-claim', max: 20, windowSec: 6
   }
 })
 
-// ── GET /claims — 유통사 본인 클레임 목록 ──────────────────────────────────────
+// ── GET /claims — 판매사 본인 클레임 목록 ──────────────────────────────────────
 app.get('/claims', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -231,7 +231,7 @@ app.get('/admin/claims', requireAdmin(), async (c) => {
     const status = c.req.query('status') || ''
     const where = status && (CLAIM_STATUSES as readonly string[]).includes(status) ? 'WHERE wc.status = ?' : ''
     const binds = where ? [status] : []
-    // 유통사/공급자 식별 정보를 조인(라이트 표기용). 공급자 신원은 어드민에만 노출(OK).
+    // 판매사/공급자 식별 정보를 조인(라이트 표기용). 공급자 신원은 어드민에만 노출(OK).
     const { results } = await DB.prepare(`
       SELECT wc.id, wc.wholesale_order_id, wc.wholesale_order_item_id, wc.distributor_seller_id, wc.supplier_id,
              wc.reason_code, wc.reason_text, wc.evidence_url, wc.status, wc.admin_memo,
@@ -302,7 +302,7 @@ app.patch('/admin/claims/:id', requireAdmin(), rateLimit({ action: 'admin-wholes
       })
     } catch { /* audit best-effort */ }
 
-    // 알림 — 유통사(seller) 에 결과 통지. approve 면 공급자에도 환불 예정 통지.
+    // 알림 — 판매사(seller) 에 결과 통지. approve 면 공급자에도 환불 예정 통지.
     const REASON_LABEL: Record<ClaimStatus, string> = {
       open: '접수', reviewing: '검토 중', approved: '승인(환불 예정)', rejected: '반려', resolved: '해결',
     }

@@ -24,7 +24,7 @@ describe('distributor-pricing — 유통스타트 등급별 공급가', () => {
     expect(distributorPrice(10000, NaN)).toBe(10000);
   });
 
-  it('platformMargin = 유통사공급가 − 제조사공급가', () => {
+  it('platformMargin = 판매사공급가 − 제조사공급가', () => {
     expect(platformMargin(10000, 10)).toBe(1000);
     expect(platformMargin(10000, 0)).toBe(0);
   });

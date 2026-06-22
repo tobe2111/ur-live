@@ -87,7 +87,7 @@ async function _ensureWholesaleQuotesSchema(DB: D1Database): Promise<void> {
     .run().catch(swallow('wq:idx-status'))
 }
 
-// ── 셀러(유통사) JWT → seller_id (wholesale.routes.ts 패턴) ─────────────────────
+// ── 셀러(판매사) JWT → seller_id (wholesale.routes.ts 패턴) ─────────────────────
 async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
   if (!authorization?.startsWith('Bearer ')) return null
   try {

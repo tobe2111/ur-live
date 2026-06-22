@@ -292,13 +292,13 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.intro_code', sql: "ALTER TABLE sellers ADD COLUMN intro_code TEXT" },
     // 🛡️ 2026-05-21 정정: 사업소득 (3.3%) default — 기타소득 (8.8%) 은 단발성 협업만.
     { desc: 'sellers.tax_type', sql: "ALTER TABLE sellers ADD COLUMN tax_type TEXT DEFAULT 'business_income'" },
-    // 🏭 2026-06-01 유통스타트 도매몰: 유통사(=셀러) 등급 + 특별할인 기간. (docs/design/wholesale-utongstart.md)
+    // 🏭 2026-06-01 유통스타트 도매몰: 판매사(=셀러) 등급 + 특별할인 기간. (docs/design/wholesale-utongstart.md)
     //   distributor_grade: A/B/C/D/OEM (NULL=미배정→기본 D). special_discount_until: 이 시각 전까지 SPECIAL 등급가 적용.
     { desc: 'sellers.distributor_grade', sql: "ALTER TABLE sellers ADD COLUMN distributor_grade TEXT" },
     { desc: 'sellers.special_discount_until', sql: "ALTER TABLE sellers ADD COLUMN special_discount_until DATETIME" },
     // 🏅 2026-06-16 프로 멤버십(연 구독) 만료일 — 구독만 이 컬럼을 씀(만료 시 cron 이 B→C 강등).
     { desc: 'sellers.plus_until', sql: "ALTER TABLE sellers ADD COLUMN plus_until TEXT" },
-    // 🏭 2026-06-09 도매몰 가입 — 대표자 연락처 + 담당자(성명/연락처/이메일) 분리 수집. (유통사=sellers, 제조사=suppliers 양쪽)
+    // 🏭 2026-06-09 도매몰 가입 — 대표자 연락처 + 담당자(성명/연락처/이메일) 분리 수집. (판매사=sellers, 제조사=suppliers 양쪽)
     { desc: 'sellers.representative_phone', sql: "ALTER TABLE sellers ADD COLUMN representative_phone TEXT" },
     { desc: 'sellers.manager_name', sql: "ALTER TABLE sellers ADD COLUMN manager_name TEXT" },
     { desc: 'sellers.manager_phone', sql: "ALTER TABLE sellers ADD COLUMN manager_phone TEXT" },
@@ -338,7 +338,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       created_at DATETIME DEFAULT (datetime('now'))
     )` },
     { desc: 'idx_wholesale_credit_ledger_seller', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_credit_ledger_seller ON wholesale_credit_ledger(distributor_seller_id, created_at DESC)" },
-    // 👥 2026-06-09 유통사 직원 서브계정 — 회사(parent_seller_id) 1계정 아래 직원 로그인.
+    // 👥 2026-06-09 판매사 직원 서브계정 — 회사(parent_seller_id) 1계정 아래 직원 로그인.
     //   서브계정 토큰의 seller_id = parent_seller_id → 예치금/주문/카탈로그 byte-identical. role: admin/staff/viewer.
     //   (wholesale.routes ensureSubAccountSchema 가 런타임 CREATE — repair 일관성 위해 동일 정의 보강.)
     { desc: 'wholesale_sub_accounts', sql: `CREATE TABLE IF NOT EXISTS wholesale_sub_accounts (
@@ -366,7 +366,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       PRIMARY KEY (account_type, account_id)
     )` },
     // 🏦 2026-06-09 예치금(선불 deposit) 결제 — 도매 Toss 대체. (wholesale-deposit-core ensureDepositSchema 가 런타임 CREATE — 여기선 best-effort 보강.)
-    //   wholesale_deposits: 유통사별 잔액(seller_id PK). txns: 거래원장. requests: 무통장입금 충전요청(어드민 확인 대상).
+    //   wholesale_deposits: 판매사별 잔액(seller_id PK). txns: 거래원장. requests: 무통장입금 충전요청(어드민 확인 대상).
     { desc: 'wholesale_deposits', sql: `CREATE TABLE IF NOT EXISTS wholesale_deposits (
       seller_id INTEGER PRIMARY KEY,
       balance INTEGER NOT NULL DEFAULT 0,
@@ -411,7 +411,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'idx_wholesale_settlement_withdrawals_supplier', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_settlement_withdrawals_supplier ON wholesale_settlement_withdrawals(supplier_id, id DESC)" },
     { desc: 'idx_wholesale_settlement_withdrawals_status', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_settlement_withdrawals_status ON wholesale_settlement_withdrawals(status, id DESC)" },
     { desc: 'supplier_balances.reserved_amount', sql: "ALTER TABLE supplier_balances ADD COLUMN reserved_amount INTEGER NOT NULL DEFAULT 0" },
-    // ── 💬 Wave 4a: 유통사↔제조사 채팅 (D1 polling, websocket/DO 없음) ──────────
+    // ── 💬 Wave 4a: 판매사↔제조사 채팅 (D1 polling, websocket/DO 없음) ──────────
     { desc: 'wholesale_chat_threads', sql: `CREATE TABLE IF NOT EXISTS wholesale_chat_threads (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       distributor_seller_id INTEGER NOT NULL,
@@ -1444,7 +1444,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'idx_suppliers_email', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_suppliers_email ON suppliers(email) WHERE email IS NOT NULL` },
     { name: 'idx_suppliers_status', sql: `CREATE INDEX IF NOT EXISTS idx_suppliers_status ON suppliers(status, created_at DESC)` },
 
-    // 🏭 2026-06-16 유통스타트 도매몰: 유통사 등급별 보장마진율(어드민 편집). 유통사공급가 = max(제조사원가, 판매가 × (1−margin_pct/100)).
+    // 🏭 2026-06-16 유통스타트 도매몰: 판매사 등급별 보장마진율(어드민 편집). 판매사공급가 = max(제조사원가, 판매가 × (1−margin_pct/100)).
     //   margin_pct = 판매가 대비 보장마진(%). 값 마이그레이션은 distributor-admin ensureGrades(flag) 가 담당.
     { name: 'distributor_grades', sql: `CREATE TABLE IF NOT EXISTS distributor_grades (
       grade TEXT PRIMARY KEY,
@@ -1494,7 +1494,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'idx_admin_audit_action', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_action ON admin_audit_logs(action, created_at)` },
     { name: 'idx_admin_audit_created', sql: `CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit_logs(created_at DESC)` },
 
-    // 🏭 2026-06-01 유통스타트: B2B 선결제 도매 주문 (유통사→유통스타트).
+    // 🏭 2026-06-01 유통스타트: B2B 선결제 도매 주문 (판매사→유통스타트).
     { name: 'wholesale_orders', sql: `CREATE TABLE IF NOT EXISTS wholesale_orders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       distributor_seller_id INTEGER NOT NULL,
@@ -1534,7 +1534,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'idx_wholesale_orders_seller', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_orders_seller ON wholesale_orders(distributor_seller_id, created_at DESC)` },
     { name: 'idx_wholesale_items_order', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_items_order ON wholesale_order_items(wholesale_order_id)` },
     { name: 'idx_wholesale_items_supplier', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_items_supplier ON wholesale_order_items(supplier_id)` },
-    // 🏭 2026-06-01 유통스타트: 상품제안 (어드민 → 유통사). Phase 4.
+    // 🏭 2026-06-01 유통스타트: 상품제안 (어드민 → 판매사). Phase 4.
     { name: 'wholesale_proposals', sql: `CREATE TABLE IF NOT EXISTS wholesale_proposals (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       distributor_seller_id INTEGER NOT NULL,
@@ -1584,7 +1584,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { name: 'idx_wholesale_purchase_inv_period', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_purchase_inv_period ON wholesale_purchase_invoices(period, supplier_id)` },
     // 🏭 2026-06-09 Wave 3c: 도매 거래별(per-order) 전자세금계산서 자동발행 레코드.
-    //   매출(sales: 플랫폼→유통사) = 주문당 1행 / 매입(purchase: 제조사→플랫폼 역발행) = (주문,제조사)당 1행.
+    //   매출(sales: 플랫폼→판매사) = 주문당 1행 / 매입(purchase: 제조사→플랫폼 역발행) = (주문,제조사)당 1행.
     //   VAT 포함 공급대가에서 공급가액/세액 분리. provider 발행은 env-gated(TAX_INVOICE_API_KEY) — 미설정 시 'draft'.
     //   ⚠️ 기존 period 집계용 wholesale_purchase_invoices(수동·멱등) 와 별개 — 이건 거래단위 자동 레코드.
     { name: 'wholesale_tax_invoices', sql: `CREATE TABLE IF NOT EXISTS wholesale_tax_invoices (
@@ -1786,7 +1786,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     )` },
     { name: 'idx_wholesale_banners_active', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_banners_active ON wholesale_banners(active, sort, id)` },
 
-    // 🏭 2026-06-09 도매몰 제안/신고 티켓(유통사→어드민). ⚠️ 기존 wholesale_proposals(어드민→유통사 상품제안)
+    // 🏭 2026-06-09 도매몰 제안/신고 티켓(판매사→어드민). ⚠️ 기존 wholesale_proposals(어드민→판매사 상품제안)
     //   와 용도/스키마가 달라 별도 테이블명(wholesale_proposal_tickets) 사용 — 충돌 회피.
     { name: 'wholesale_proposal_tickets', sql: `CREATE TABLE IF NOT EXISTS wholesale_proposal_tickets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

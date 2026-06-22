@@ -48,7 +48,7 @@ async function issueLinkedRoleTokens(
           seller.name = u.name.trim()
         }
       }
-      // 🛡️ 2026-06-19 (#4·#5 근본수정): is_distributor 추가 — 카카오 로그인 유통사가 localStorage.is_distributor
+      // 🛡️ 2026-06-19 (#4·#5 근본수정): is_distributor 추가 — 카카오 로그인 판매사가 localStorage.is_distributor
       //   미설정으로 상품페이지 게스트 UI/충전 deposits 튕김(가드) 겪던 것 치유. additive(seller.username 등 불변).
       out.seller = { id: seller.id, username: seller.username, status: seller.status, business_name: seller.business_name, is_distributor: seller.is_distributor ? 1 : 0 }
       // 레거시 호환: 'approved' 도 active 와 동등하게 취급 (구 승인 데이터)

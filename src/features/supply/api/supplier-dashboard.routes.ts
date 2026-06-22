@@ -274,7 +274,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
     const name = (body.name || '').trim();
     const supplyPrice = Number(body.supply_price);
     // 🆕 2026-06-16 신모델(판매가 대비 보장마진): 권장 소비자가(판매가) 필수 + 공급가보다 높아야 함.
-    //   유통사/플랫폼 마진이 전부 (판매가−공급가) 에서 나옴 — 미입력/동일가면 마진 0(팔 수 없는 상품)이라 차단.
+    //   판매사/플랫폼 마진이 전부 (판매가−공급가) 에서 나옴 — 미입력/동일가면 마진 0(팔 수 없는 상품)이라 차단.
     const suggestedRetail = Number(body.suggested_retail_price);
     const stock = Number.isFinite(Number(body.stock)) ? Math.max(0, Math.floor(Number(body.stock))) : 0;
     // MOQ — 최소 주문 수량(박스 단위). 1~100000, 기본 1.
@@ -375,7 +375,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
 const BULK_TEMPLATE_HEADERS = ['상품명', '공급가', '권장소비자가', '재고', '카테고리', '바코드', '공급범위', '브랜드제품', '브랜드명', '최소주문수량', '박스입수', '주문배수', '썸네일 이미지URL', '상세 이미지URL(쉼표로 여러 장)', '설명']
 const BULK_TEMPLATE_ROWS = [
   ['예시상품A', '5000', '9900', '100', 'lifestyle', '8801234567890', 'ALL', 'N', '', '1', '1', '1', 'https://example.com/a.jpg', 'https://example.com/a-detail1.jpg,https://example.com/a-detail2.jpg', '상품 설명'],
-  ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'beauty', '', 'UTONGSTART_ONLY', 'Y', '브랜드A', '20', '20', '20', '', '', '브랜드제품(브랜드명 입력)·선정 유통사만 노출(20개 단위)'],
+  ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'beauty', '', 'UTONGSTART_ONLY', 'Y', '브랜드A', '20', '20', '20', '', '', '브랜드제품(브랜드명 입력)·선정 판매사만 노출(20개 단위)'],
 ]
 supplierDashboardRoutes.get('/products/bulk-template', (c) => {
   return csvResponse(buildCsv(BULK_TEMPLATE_HEADERS, BULK_TEMPLATE_ROWS), 'supply-products-template.csv')
@@ -489,7 +489,7 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
   }
 });
 
-// ── 제조사 자가관리: '승인한 유통채널' 상품의 허용 유통사 관리 (UTONGSTART_ONLY 는 관리자 전용) ──
+// ── 제조사 자가관리: '승인한 유통채널' 상품의 허용 판매사 관리 (UTONGSTART_ONLY 는 관리자 전용) ──
 //   소유 검증: supplier_id = sid + supply_source_id IS NULL. visibility='APPROVED_CHANNEL' 인 경우만.
 async function ownApprovedChannelProduct(DB: D1Database, pid: number, sid: number) {
   return DB.prepare(
@@ -534,13 +534,13 @@ supplierDashboardRoutes.post('/products/:id/channel-access', async (c) => {
     }
     const body = await c.req.json<{ distributor_seller_id?: number }>().catch(() => ({} as { distributor_seller_id?: number }));
     const dsid = Number(body.distributor_seller_id);
-    if (!Number.isFinite(dsid) || dsid <= 0) return c.json({ success: false, error: '유통사 ID를 입력하세요' }, 400);
+    if (!Number.isFinite(dsid) || dsid <= 0) return c.json({ success: false, error: '판매사 ID를 입력하세요' }, 400);
     const seller = await DB.prepare('SELECT 1 FROM sellers WHERE id = ?').bind(dsid).first();
-    if (!seller) return c.json({ success: false, error: '존재하지 않는 유통사입니다' }, 400);
+    if (!seller) return c.json({ success: false, error: '존재하지 않는 판매사입니다' }, 400);
     await DB.prepare('INSERT OR IGNORE INTO product_distributor_access (product_id, distributor_seller_id) VALUES (?, ?)').bind(pid, dsid).run();
     return c.json({ success: true });
   } catch (err) {
-    return safeError(c, err, '유통사 승인 중 오류가 발생했습니다', '[supplier-dashboard]');
+    return safeError(c, err, '판매사 승인 중 오류가 발생했습니다', '[supplier-dashboard]');
   }
 });
 
@@ -1122,7 +1122,7 @@ supplierDashboardRoutes.post('/notifications/read-all', async (c) => {
 //   공급가 = 스토어 판매가 × 공급률(%) 일괄 적용(폼에서 조정). 이미지는 R2 미러(핫링크 깨짐 방지).
 // ═══════════════════════════════════════════════════════════════════════════
 
-// ── 네이버 연결 (owner_type='supplier' — 유통사 연결과 별도 행) ───────────────
+// ── 네이버 연결 (owner_type='supplier' — 판매사 연결과 별도 행) ───────────────
 supplierDashboardRoutes.post('/store/naver/connect', rateLimit({ action: 'sup-naver-connect', max: 10, windowSec: 600 }), async (c) => {
   const sid = supplierId(c);
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);

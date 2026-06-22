@@ -8,10 +8,10 @@ import {
  * 🛡️ 2026-06-09 도매 채팅 신원 마스킹 + IDOR 소유권 술어 — 보안 불변식 고정.
  *
  * 핵심 불변식:
- *   1. distributor(유통사) 뷰는 절대 제조사(supplier) 이름을 못 봄 — '제조사' 고정 라벨.
- *   2. supplier(제조사) 뷰는 유통사 이름을 정상 노출 (or fallback `유통사 #<id>`).
+ *   1. distributor(판매사) 뷰는 절대 제조사(supplier) 이름을 못 봄 — '제조사' 고정 라벨.
+ *   2. supplier(제조사) 뷰는 판매사 이름을 정상 노출 (or fallback `판매사 #<id>`).
  *   3. threadBelongsToMe — 내 id 와 역할에 맞는 컬럼 검사 (IDOR 소유권 술어).
- *      - 다른 유통사·제조사의 스레드 id 로 접근 → false (권한 없음).
+ *      - 다른 판매사·제조사의 스레드 id 로 접근 → false (권한 없음).
  *      - 역할 전환 공격(같은 id 로 다른 role 가장) → false.
  *
  * 순수 함수만 테스트(DB 불필요). maskCounterpartName / threadBelongsToMe 는
@@ -22,7 +22,7 @@ import {
 // maskCounterpartName — 역할별 상대방 이름 마스킹
 // ────────────────────────────────────────────────────────────────────────────
 describe('maskCounterpartName — 상대방 이름 마스킹', () => {
-  // ── distributor(유통사) 뷰: 항상 '제조사' 고정 ──────────────────────────────
+  // ── distributor(판매사) 뷰: 항상 '제조사' 고정 ──────────────────────────────
   describe('distributor 뷰 (신원 비공개 모델)', () => {
     it('supplier business_name 이 있어도 제조사 고정 라벨 반환', () => {
       expect(maskCounterpartName('distributor', '삼성전자 식품부', 99)).toBe('제조사')
@@ -51,31 +51,31 @@ describe('maskCounterpartName — 상대방 이름 마스킹', () => {
     })
   })
 
-  // ── supplier(제조사) 뷰: 유통사 이름 실제 노출 ─────────────────────────────
-  describe('supplier 뷰 (유통사 이름 노출)', () => {
-    it('유통사 이름 있음 → 실제 이름 반환', () => {
+  // ── supplier(제조사) 뷰: 판매사 이름 실제 노출 ─────────────────────────────
+  describe('supplier 뷰 (판매사 이름 노출)', () => {
+    it('판매사 이름 있음 → 실제 이름 반환', () => {
       expect(maskCounterpartName('supplier', '유통스타트 식품팀', 7)).toBe('유통스타트 식품팀')
     })
 
-    it('유통사 이름 null → 유통사 #<id> fallback', () => {
-      expect(maskCounterpartName('supplier', null, 7)).toBe('유통사 #7')
+    it('판매사 이름 null → 판매사 #<id> fallback', () => {
+      expect(maskCounterpartName('supplier', null, 7)).toBe('판매사 #7')
     })
 
-    it('유통사 이름 undefined → 유통사 #<id> fallback', () => {
-      expect(maskCounterpartName('supplier', undefined, 7)).toBe('유통사 #7')
+    it('판매사 이름 undefined → 판매사 #<id> fallback', () => {
+      expect(maskCounterpartName('supplier', undefined, 7)).toBe('판매사 #7')
     })
 
-    it('유통사 이름 빈 문자열 → 유통사 #<id> fallback', () => {
-      expect(maskCounterpartName('supplier', '', 7)).toBe('유통사 #7')
+    it('판매사 이름 빈 문자열 → 판매사 #<id> fallback', () => {
+      expect(maskCounterpartName('supplier', '', 7)).toBe('판매사 #7')
     })
 
     it('fallback id 가 counterpartId 값과 일치', () => {
-      expect(maskCounterpartName('supplier', null, 123)).toBe('유통사 #123')
-      expect(maskCounterpartName('supplier', '', 999)).toBe('유통사 #999')
+      expect(maskCounterpartName('supplier', null, 123)).toBe('판매사 #123')
+      expect(maskCounterpartName('supplier', '', 999)).toBe('판매사 #999')
     })
 
     it('supplier 뷰 결과는 결코 제조사 고정 라벨 아님', () => {
-      const result = maskCounterpartName('supplier', '실제유통사', 5)
+      const result = maskCounterpartName('supplier', '실제판매사', 5)
       expect(result).not.toBe('제조사')
     })
   })
@@ -107,7 +107,7 @@ describe('threadBelongsToMe — 소유권/IDOR 술어', () => {
       )).toBe(true)
     })
 
-    it('distributor_seller_id 가 다른 유통사 → false (IDOR 차단)', () => {
+    it('distributor_seller_id 가 다른 판매사 → false (IDOR 차단)', () => {
       expect(threadBelongsToMe(
         { distributor_seller_id: 99, supplier_id: 20 },
         { role: 'distributor', id: 10 },

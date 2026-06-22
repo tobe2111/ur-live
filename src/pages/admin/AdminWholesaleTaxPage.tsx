@@ -164,7 +164,7 @@ export default function AdminWholesaleTaxPage() {
         <DashboardPageHeader
           icon={<Receipt className="w-5 h-5" />}
           title={t('admin.wsTax.heading', { defaultValue: '도매 미수/미지급 + 매입 세금계산서' })}
-          subtitle={t('admin.wsTax.subtitle', { defaultValue: '공급사 미지급·유통사 미수 aging + 제조사→유통스타트 매입(역발행) 세금계산서' })}
+          subtitle={t('admin.wsTax.subtitle', { defaultValue: '공급사 미지급·판매사 미수 aging + 제조사→유통스타트 매입(역발행) 세금계산서' })}
         />
 
         <div className="flex items-center gap-2 my-4">
@@ -193,9 +193,9 @@ export default function AdminWholesaleTaxPage() {
                   <div className="text-xs text-gray-400 mt-1">{payableSum?.count || 0}건 미정산</div>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
-                  <div className="text-sm font-semibold text-gray-500 mb-1">{t('admin.wsTax.receivableTotal', { defaultValue: '미수 합계 (유통사 외상)' })}</div>
+                  <div className="text-sm font-semibold text-gray-500 mb-1">{t('admin.wsTax.receivableTotal', { defaultValue: '미수 합계 (판매사 외상)' })}</div>
                   <div className="text-2xl font-bold text-gray-900">{formatWon(receivableSum?.total || 0)}</div>
-                  <div className="text-xs text-gray-400 mt-1">{receivableSum?.count || 0}개 유통사</div>
+                  <div className="text-xs text-gray-400 mt-1">{receivableSum?.count || 0}개 판매사</div>
                 </div>
               </div>
 
@@ -232,14 +232,14 @@ export default function AdminWholesaleTaxPage() {
                 </div>
               </section>
 
-              {/* 미수 (유통사) */}
+              {/* 미수 (판매사) */}
               <section>
-                <h3 className="text-base font-bold text-gray-900 mb-2">{t('admin.wsTax.receivable', { defaultValue: '미수 — 유통사 외상 잔액' })}</h3>
+                <h3 className="text-base font-bold text-gray-900 mb-2">{t('admin.wsTax.receivable', { defaultValue: '미수 — 판매사 외상 잔액' })}</h3>
                 <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-gray-500 border-b border-gray-100">
-                        <th className="py-2.5 px-4 font-medium">유통사</th>
+                        <th className="py-2.5 px-4 font-medium">판매사</th>
                         {BUCKET_LABELS.map((l, i) => <th key={i} className={`py-2.5 px-4 font-medium text-right ${BUCKET_STYLE[i]}`}>{l}</th>)}
                         <th className="py-2.5 px-4 font-medium text-right">합계</th>
                       </tr>
@@ -355,7 +355,7 @@ export default function AdminWholesaleTaxPage() {
             <div className="flex flex-wrap items-center gap-2 mb-4">
               <select value={autoType} onChange={e => setAutoType(e.target.value as typeof autoType)} className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900">
                 <option value="">{t('admin.wsTax.allTypes', { defaultValue: '전체 유형' })}</option>
-                <option value="sales">{t('admin.wsTax.typeSales', { defaultValue: '매출(플랫폼→유통사)' })}</option>
+                <option value="sales">{t('admin.wsTax.typeSales', { defaultValue: '매출(플랫폼→판매사)' })}</option>
                 <option value="purchase">{t('admin.wsTax.typePurchase', { defaultValue: '매입(제조사→플랫폼)' })}</option>
               </select>
               <select value={autoStatus} onChange={e => setAutoStatus(e.target.value as typeof autoStatus)} className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900">

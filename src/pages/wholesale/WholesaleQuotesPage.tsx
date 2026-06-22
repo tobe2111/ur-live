@@ -89,10 +89,10 @@ export default function WholesaleQuotesPage({ embedded = false }: { embedded?: b
   if (!embedded && !sellerToken()) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: WT.fill }}>
-        <SEO title="견적함 — 유통스타트" description="유통사 대량/협상 견적요청" url="/wholesale/quotes" noindex />
+        <SEO title="견적함 — 유통스타트" description="판매사 대량/협상 견적요청" url="/wholesale/quotes" noindex />
         <FileText className="w-12 h-12 mb-4" style={{ color: WT.ink4 }} />
-        <p className="mb-6" style={{ color: WT.ink2 }}>유통사 로그인 후 이용할 수 있습니다.</p>
-        <button onClick={() => navigate('/wholesale/login')} className="px-6 py-3 text-white rounded-lg font-semibold" style={{ background: WT.ink }}>유통사 로그인</button>
+        <p className="mb-6" style={{ color: WT.ink2 }}>판매사 로그인 후 이용할 수 있습니다.</p>
+        <button onClick={() => navigate('/wholesale/login')} className="px-6 py-3 text-white rounded-lg font-semibold" style={{ background: WT.ink }}>판매사 로그인</button>
       </div>
     )
   }

@@ -9,7 +9,7 @@ import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
-// 🏭 BIZ-1 (2026-06-08) 어드민 도매 클레임(RMA) 검수 — 유통사 발의 하자/오배송 신고 처리.
+// 🏭 BIZ-1 (2026-06-08) 어드민 도매 클레임(RMA) 검수 — 판매사 발의 하자/오배송 신고 처리.
 //   approve(승인) 시 실제 환불은 기존 강제환불 엔드포인트(/api/admin/distributor/orders/:id/refund)로 집행.
 //   reject/resolve 는 정산 HOLD 해제(성숙 재개). 라이트 고정 테마.
 
@@ -95,7 +95,7 @@ export default function AdminWholesaleClaimsPage() {
   return (
     <AdminLayout title="도매 클레임">
       <div className="ur-content-full px-4 lg:px-8 py-6">
-        <DashboardPageHeader icon={<AlertTriangle className="w-5 h-5" />} title="도매 클레임(RMA) 검수" subtitle="유통사 발의 하자/오배송/수량부족 신고 처리 + 정산 보류 관리" />
+        <DashboardPageHeader icon={<AlertTriangle className="w-5 h-5" />} title="도매 클레임(RMA) 검수" subtitle="판매사 발의 하자/오배송/수량부족 신고 처리 + 정산 보류 관리" />
 
         <div className="flex flex-wrap items-center gap-2 my-4">
           {FILTERS.map(f => (
@@ -116,7 +116,7 @@ export default function AdminWholesaleClaimsPage() {
                 <tr className="text-left text-gray-500 border-b border-gray-100">
                   <th className="py-2.5 px-4 font-medium">클레임</th>
                   <th className="py-2.5 px-4 font-medium">주문</th>
-                  <th className="py-2.5 px-4 font-medium">유통사</th>
+                  <th className="py-2.5 px-4 font-medium">판매사</th>
                   <th className="py-2.5 px-4 font-medium">공급자</th>
                   <th className="py-2.5 px-4 font-medium">사유</th>
                   <th className="py-2.5 px-4 font-medium">상태</th>
@@ -152,7 +152,7 @@ export default function AdminWholesaleClaimsPage() {
 
             <div className="text-sm text-gray-600 space-y-1.5 mb-4">
               <div>주문 <b className="text-gray-900">#{detail.wholesale_order_id}</b> · 주문상태 {detail.order_status || '-'} · 결제 {formatWon(Number(detail.order_subtotal) || 0)} · 환불 {formatWon(Number(detail.order_refunded) || 0)}</div>
-              <div>유통사 <b className="text-gray-900">{detail.distributor_name || detail.distributor_username || `#${detail.distributor_seller_id}`}</b></div>
+              <div>판매사 <b className="text-gray-900">{detail.distributor_name || detail.distributor_username || `#${detail.distributor_seller_id}`}</b></div>
               <div>공급자 {detail.supplier_name || (detail.supplier_id ? `#${detail.supplier_id}` : '혼합/미지정')}</div>
               <div>사유 <b className="text-gray-900">{REASON[detail.reason_code] || detail.reason_code}</b>{detail.wholesale_order_item_id ? ` · 항목 #${detail.wholesale_order_item_id}` : ' · 주문 전체'}</div>
             </div>

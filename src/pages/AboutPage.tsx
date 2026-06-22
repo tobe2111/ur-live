@@ -330,7 +330,7 @@ export default function AboutPage() {
               { icon: <Sparkles className="w-5 h-5" />, title: '크리에이터 링크샵', desc: '공구·교환권을 핀해 공유. 친구 초대 보너스 + 매장 영입 수익.' },
               { icon: <Trophy className="w-5 h-5" />, title: '셀러 등급 / 수수료', desc: '신규→브론즈→실버→골드→플래티넘. 진급 시 수수료 차감 + 노출 가중.' },
               { icon: <Users className="w-5 h-5" />, title: '에이전시 통합 관리', desc: '담당 셀러·매장의 공구/주문/정산 한 화면. 정산 자동 일괄.' },
-              { icon: <ShoppingBag className="w-5 h-5" />, title: '도매몰 (B2B)', desc: '제조사·유통사 도매 거래. 상품 일괄 등록·내보내기.' },
+              { icon: <ShoppingBag className="w-5 h-5" />, title: '도매몰 (B2B)', desc: '제조사·판매사 도매 거래. 상품 일괄 등록·내보내기.' },
               { icon: <MapPin className="w-5 h-5" />, title: '지역 기반', desc: '내 동네 지역·카테고리별 공구 탐색. 당근 스타일 지역 필터.' },
               { icon: <Bot className="w-5 h-5" />, title: 'AI 추천', desc: '셀러↔에이전시 매칭, 사용자↔공구 추천 피드.' },
             ].map((f, i) => (
@@ -383,7 +383,7 @@ export default function AboutPage() {
               icon={<Globe className="w-5 h-5" />}
               items={[
                 '글로벌 진출 (일본/동남아) — Firebase Auth 베이스',
-                '도매몰 (B2B) 확대 — 제조사·유통사 연동',
+                '도매몰 (B2B) 확대 — 제조사·판매사 연동',
                 '공구 추천 알고리즘 고도화',
               ]}
             />

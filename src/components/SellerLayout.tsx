@@ -147,7 +147,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   // 🛡️ 2026-04-30: 만료 5분 전 자동 refresh + 탭 복귀 시 검증
   useTokenAutoRefresh('seller')
 
-  // 🏭 2026-06-04 유통사 분리 — 유통사(도매 바이어) 전용 계정은 셀러 대시보드 대신 도매몰로.
+  // 🏭 2026-06-04 판매사 분리 — 판매사(도매 바이어) 전용 계정은 셀러 대시보드 대신 도매몰로.
   //   (is_distributor=1 = /wholesale 에서 가입한 순수 바이어. 라이브셀러/겸업 계정은 영향 없음.)
   useEffect(() => {
     if (typeof window !== 'undefined' && localStorage.getItem('is_distributor') === '1') {
@@ -433,7 +433,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
     </aside>
   )
 
-  // 🏭 유통사(is_distributor) → /wholesale 리다이렉트 중에는 셀러 대시보드 렌더 X (깜빡임 방지).
+  // 🏭 판매사(is_distributor) → /wholesale 리다이렉트 중에는 셀러 대시보드 렌더 X (깜빡임 방지).
   if (typeof window !== 'undefined' && localStorage.getItem('is_distributor') === '1') return null
 
   return (

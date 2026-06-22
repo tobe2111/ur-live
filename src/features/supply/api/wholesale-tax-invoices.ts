@@ -2,7 +2,7 @@
  * 🏭 2026-06-09 Wave 3c — 도매 전자세금계산서 자동발행/정산 (per-order).
  *
  * 플랫폼(유통스타트)은 B2B 중개 사업자 → 두 방향 전자세금계산서가 발생한다:
- *   1) 매출(sales)   : 플랫폼 → 유통사   — 주문 결제완료(PAID) 시 1건. (order_id 멱등)
+ *   1) 매출(sales)   : 플랫폼 → 판매사   — 주문 결제완료(PAID) 시 1건. (order_id 멱등)
  *   2) 매입(purchase): 제조사 → 플랫폼   — 제조사 정산 적립 시 제조사별 1건. (order_id+supplier_id 멱등)
  *                       = 역발행(제조사가 플랫폼에 발행). 기존 수동 TAX-1(월 집계)를 거래단위로 자동 보완.
  *
@@ -154,7 +154,7 @@ async function upsertAndFile(
 }
 
 /**
- * 1) 매출 세금계산서 (플랫폼 → 유통사) — 주문 PAID 시 1건. order_id 멱등.
+ * 1) 매출 세금계산서 (플랫폼 → 판매사) — 주문 PAID 시 1건. order_id 멱등.
  *    subtotal 을 VAT 포함 공급대가로 보고 공급가액/세액 분리.
  *    ⚠️ fail-soft — 절대 throw 하지 않음(호출측이 try/catch 로 한 번 더 감싸도 안전).
  */
@@ -170,7 +170,7 @@ export async function generateWholesaleSalesInvoice(DB: D1Database, env: unknown
     const split = splitWholesaleVat((Number(order.subtotal) || 0) + (Number(order.shipping_total) || 0))
     if (split.total <= 0) return
 
-    // 유통사(공급받는 자) 사업자번호 — 표기/발행 payee 용.
+    // 판매사(공급받는 자) 사업자번호 — 표기/발행 payee 용.
     const dist = await DB.prepare('SELECT business_number, business_name FROM sellers WHERE id = ?')
       .bind(order.distributor_seller_id).first<{ business_number: string | null; business_name: string | null }>().catch(() => null)
 
@@ -180,7 +180,7 @@ export async function generateWholesaleSalesInvoice(DB: D1Database, env: unknown
       supplierId: SALES_SUPPLIER_SENTINEL,
       distributorSellerId: order.distributor_seller_id ?? null,
       split,
-      note: '도매 주문 매출(플랫폼→유통사)',
+      note: '도매 주문 매출(플랫폼→판매사)',
       payeeType: 'seller',
       payeeId: String(order.distributor_seller_id),
       businessNumber: dist?.business_number ?? null,
@@ -218,7 +218,7 @@ export async function generateWholesalePurchaseInvoices(DB: D1Database, env: unk
       const sup = await DB.prepare('SELECT business_number, business_name FROM suppliers WHERE id = ?')
         .bind(supplierId).first<{ business_number: string | null; business_name: string | null }>().catch(() => null)
 
-      // 주문의 유통사(참고 표기) — 한 주문엔 단일 유통사.
+      // 주문의 판매사(참고 표기) — 한 주문엔 단일 판매사.
       const order = await DB.prepare('SELECT distributor_seller_id FROM wholesale_orders WHERE id = ?')
         .bind(orderId).first<{ distributor_seller_id: number }>().catch(() => null)
 
@@ -258,7 +258,7 @@ export interface TaxInvoiceRow {
   created_at: string
 }
 
-/** 유통사 본인이 받은 매출(sales) 세금계산서 목록. */
+/** 판매사 본인이 받은 매출(sales) 세금계산서 목록. */
 export async function listDistributorSalesInvoices(DB: D1Database, distributorSellerId: number, limit = 200): Promise<TaxInvoiceRow[]> {
   await ensureSchema(DB)
   const res = await DB.prepare(
@@ -285,7 +285,7 @@ export async function listSupplierPurchaseInvoices(DB: D1Database, supplierId: n
 /**
  * 어드민 전체 목록 (status/type 필터).
  * 🏬 멀티-몰: opts.mallId 가 주어지면 각 행이 속한 몰로 필터(미지정=전 몰, 기존 동작 byte-identical).
- *   몰 귀속 = 매출(sales)→유통사(distributor_seller_id→sellers.mall_id) / 매입(purchase)→제조사(supplier_id→suppliers.mall_id).
+ *   몰 귀속 = 매출(sales)→판매사(distributor_seller_id→sellers.mall_id) / 매입(purchase)→제조사(supplier_id→suppliers.mall_id).
  *   COALESCE(...,1) 로 기본 몰 fallback(기존 데이터 전 행 1 → 단일 몰 환경 동작 불변).
  *   각 행에 mall_id(귀속 몰) 도 함께 반환(UI 표기용).
  */

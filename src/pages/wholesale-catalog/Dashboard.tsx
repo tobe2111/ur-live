@@ -28,7 +28,7 @@ export default function Dashboard({ grade, marginPct, company, monthSpend, order
           </div>
         ))}
       </div>
-      {/* 🏦 예치금 잔액 — 도매 결제는 예치금 차감. 로그인 유통사에게 카탈로그에서 바로 노출. */}
+      {/* 🏦 예치금 잔액 — 도매 결제는 예치금 차감. 로그인 판매사에게 카탈로그에서 바로 노출. */}
       <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid ' + WT.line }}>
         <div className="flex items-baseline gap-1.5 min-w-0">
           <span className="text-[12px] shrink-0" style={{ color: WT.ink3 }}>예치금 잔액</span>

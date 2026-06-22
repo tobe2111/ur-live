@@ -1,5 +1,5 @@
 /**
- * 🛒 2026-06-12 네이버 커머스API — 유통사 스마트스토어 연동 라우트 (Phase A).
+ * 🛒 2026-06-12 네이버 커머스API — 판매사 스마트스토어 연동 라우트 (Phase A).
  *   마운트: app.route('/api/wholesale/naver', naverCommerceRoutes)
  *
  *   - POST   /connect      — 스토어 앱(client_id/secret) 연결 (토큰 발급으로 즉시 검증)
@@ -44,8 +44,8 @@ async function requireDistributor(c: { req: { header: (k: string) => string | un
   if (!sellerId) return { error: '로그인이 필요합니다', status: 401 }
   const row = await c.env.DB.prepare("SELECT is_distributor, status FROM sellers WHERE id = ?")
     .bind(sellerId).first<{ is_distributor: number | null; status: string | null }>().catch(() => null)
-  if (!row || Number(row.is_distributor) !== 1) return { error: '유통사 전용 기능입니다', status: 403 }
-  if (row.status !== 'approved' && row.status !== 'active') return { error: '유통사 승인 후 이용할 수 있습니다', status: 403 }
+  if (!row || Number(row.is_distributor) !== 1) return { error: '판매사 전용 기능입니다', status: 403 }
+  if (row.status !== 'approved' && row.status !== 'active') return { error: '판매사 승인 후 이용할 수 있습니다', status: 403 }
   return { sellerId }
 }
 
@@ -157,7 +157,7 @@ app.post('/export', rateLimit({ action: 'naver-export', max: 30, windowSec: 600 
     if (!/^\d{1,12}$/.test(leafCategoryId)) return c.json({ success: false, error: '네이버 카테고리를 선택해주세요' }, 400)
     if (!/^[\d-]{8,20}$/.test(asTelephone)) return c.json({ success: false, error: 'A/S 연락처(전화번호)를 입력해주세요' }, 400)
 
-    // 공급상품 확인 — 유통사가 카탈로그에서 볼 수 있는 활성 공급상품만 내보내기 가능.
+    // 공급상품 확인 — 판매사가 카탈로그에서 볼 수 있는 활성 공급상품만 내보내기 가능.
     const prod = await c.env.DB.prepare(`
       SELECT id, name, description, image_url, COALESCE(supply_price,0) AS supply_price
       FROM products WHERE id = ? AND is_supply_product = 1 AND is_active = 1 AND COALESCE(supply_price,0) > 0

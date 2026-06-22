@@ -206,11 +206,11 @@ export async function runWholesaleOrphanSweep(env: Env): Promise<OrphanSweepResu
       WHERE wi.supplier_id IS NOT NULL AND wi.supplier_id > 0 AND s.id IS NULL`,
   ));
 
-  // 10) wholesale_orders 의 distributor_seller_id 가 sellers 에 없음 (유통사 셀러 삭제됨).
+  // 10) wholesale_orders 의 distributor_seller_id 가 sellers 에 없음 (판매사 셀러 삭제됨).
   checks.push(await runCheck(
     DB,
     'wholesale_order_dangling_seller',
-    'wholesale_orders: 참조 유통사(sellers) 없음',
+    'wholesale_orders: 참조 판매사(sellers) 없음',
     `SELECT wo.id AS oid
        FROM wholesale_orders wo
        LEFT JOIN sellers se ON se.id = wo.distributor_seller_id

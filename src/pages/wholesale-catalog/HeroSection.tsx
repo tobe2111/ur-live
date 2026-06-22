@@ -55,7 +55,7 @@ export default function HeroSection({ loggedIn, userSession, grade, me, monthSpe
   }
 
   // ── 비로그인/카카오 — 2단 트러스트 히어로 (시안) ──
-  const joinCta = userSession ? '카카오 계정으로 신청' : '유통사 신청'
+  const joinCta = userSession ? '카카오 계정으로 신청' : '판매사 신청'
   return (
     <div className="pt-4 pb-1">
       {/* 🧹 2026-06-17 (시안): 단일 배너(제품/플랫폼 공지용) — 2단 그리드·우측 마감임박 카드 삭제 */}

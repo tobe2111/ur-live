@@ -283,7 +283,7 @@ export const wholesaleStoreJsonLd = {
   alternateName: ['유통스타트', 'UtongStart', 'utongstart'],
   url: WHOLESALE_BASE_URL,
   logo: `${WHOLESALE_BASE_URL}/logo.png`,
-  description: '제조사와 유통사를 직접 잇는 B2B 도매 플랫폼 — 도매가 사입·OEM/ODM 제작·무재고 위탁판매.',
+  description: '제조사와 판매사를 직접 잇는 B2B 도매 플랫폼 — 도매가 사입·OEM/ODM 제작·무재고 위탁판매.',
   areaServed: 'KR',
   sameAs: [],
 }
