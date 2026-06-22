@@ -812,7 +812,18 @@ PR #286 머지 후 후속 작업 (이번 commit). 새 브랜치/PR 으로 진행
 
 **증상**: PR #286 의 `Workers Builds: ur-live-global` 빌드 매번 failure. `wrangler.toml` 변경 0건이라 PR 책임 아님.
 
-**원인 추정**:
+**📌 2026-06-22 재확인 (PR #398)** — 동일 증상 지속. 확인된 사실:
+- `ur-live-global` 은 글로벌 버전(`world.ur-team.com` / `live-global.ur-team.com`)용 **별도 Cloudflare 프로젝트**(설정: `wrangler.global.toml`, `pages_build_output_dir=./dist`). 실제 한국 운영(`ur-live` Pages, `live.ur-team.com`)과 무관.
+- 이 프로젝트의 **Git 자동빌드 통합**이 모든 push 마다 빌드 시도 → **0초 만에 실패**(started_at==completed_at) = 빌드 스텝 진입 전 config/통합 레벨 거부. `npm run build` 자체는 정상(GitHub Actions `Verify` 통과).
+- 유력 원인: 자동빌드가 **루트 `wrangler.toml`(name=`ur-live`)** 을 읽는데 프로젝트명 `ur-live-global` 과 **이름 불일치** → 즉시 실패. 루트 config 의 name 을 바꾸면 진짜 운영(`ur-live`) 배포가 깨지므로 **레포에서 수정 불가**.
+- 글로벌 버전은 자동빌드가 아니라 **수동 배포**(`scripts/deploy-global.sh` → `wrangler pages deploy dist --project-name ur-live-global`)로 올림 → 이 자동빌드는 **불필요한 잔재**.
+- **결론: 레포 코드로는 고칠 수 없음. Cloudflare 대시보드 액션만 유효.**
+
+**🧭 2026-06-22 대표 결정**: **"그냥 두기 (노이즈만 차단)"** — 대시보드 미변경. 빨간 ❌ 는 GitHub 에 남지만 라이브/머지 무해. 향후 정리할 때 아래 '권장 조치' 따를 것. (에이전트는 PR 구독에서 `ur-live-global` 실패 이벤트를 조용히 무시.)
+
+**권장 조치 (나중에 정리 시)**: Cloudflare Dashboard → Workers & Pages → `ur-live-global` → Settings → Builds 에서 **Git 연결 Disconnect(또는 자동 배포 끄기)**. 글로벌 사이트가 있어도 마지막 수동배포 그대로 살아있고 자동빌드만 멈춤(가역). 글로벌 버전을 완전 폐기할 거면 프로젝트 자체 삭제.
+
+**원인 추정 (초기)**:
 - `ur-live-global` 이라는 별도 Workers 프로젝트가 GitHub integration 으로 모든 push 마다 빌드 시도
 - `wrangler.toml [env.production] name = "global-marketplace"` 와 이름 미일치 → 빌드 환경 변수/secret 누락 가능성
 - CLAUDE.md "Pages 단일 배포" 정책 (2026-04-22 정리) 의 잔재 — Workers 프로젝트 자체는 삭제 안 됐을 것
@@ -821,7 +832,7 @@ PR #286 머지 후 후속 작업 (이번 commit). 새 브랜치/PR 으로 진행
 
 **사용자 액션 필요**:
 1. Cloudflare Dashboard → Workers & Pages → `ur-live-global` 확인
-2. 옵션 A: GitHub integration 해제 (해당 Worker 비활성화)
+2. 옵션 A: GitHub integration 해제 (해당 Worker 비활성화) ← **권장**
 3. 옵션 B: 프로젝트 자체 삭제 (이미 사용 안 하는 경우)
 4. 옵션 C: 환경 변수/secret 정정해 빌드 통과시키기 (사용 중이면)
 
