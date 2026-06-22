@@ -520,7 +520,9 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       const accessToken = tokenData.access_token;
       const kakaoRefreshToken = tokenData.refresh_token || null;
       const kakaoUser = await kakaoService.getUserInfo(accessToken);
-      const serviceTerms = await kakaoService.getServiceTerms(accessToken);
+      // 🛡️ 2026-06-20 (속도 최적화): getServiceTerms 호출 제거 — 받아온 결과(serviceTerms)를
+      //   어디서도 사용하지 않는 dead 카카오 API 왕복이었음(매 로그인 임계경로에 불필요한 1 round-trip,
+      //   ~수백 ms). 약관 동의는 카카오싱크 동의화면에서 이미 처리됨.
 
       // 🛡️ 2026-05-01 진단 로깅 — DEV 만 (production noise 방지).
       if (import.meta.env.DEV) {
@@ -556,14 +558,23 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       //    의미 없음. production 에 컬럼 없을 수도 있어 제거가 더 안전.)
 
       // 카카오 access_token + refresh_token 저장 (메시지/캘린더 API용)
-      // ✅ FIX (H5): One-time schema check (not per-request)
-      // 🛡️ 2026-04-22: at-rest 암호화 (Cafe24 와 동일 패턴) — DB 탈취 시 Kakao 세션 즉시 악용 방어
-      await ensureKakaoColumns(DB);
-      const kek = (c.env as any).DATA_ENCRYPTION_KEY as string | undefined;
-      const encAccess = await encryptAtRest(accessToken, kek);
-      const encRefresh = kakaoRefreshToken ? await encryptAtRest(kakaoRefreshToken, kek) : null;
-      await DB.prepare("UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?")
-        .bind(encAccess, encRefresh, user.id).run();
+      // 🛡️ 2026-06-20 (속도 최적화): 암호화 2회 + D1 write 를 응답 후(waitUntil)로 이동 —
+      //   이 토큰은 카카오 메시지/캘린더 API + 세션 health 의 kakao 유효성(informational)에만 쓰여
+      //   리다이렉트 전 필수가 아님. 임계경로에서 제거 → 로그인 체감 속도 ↑. executionCtx 없으면 동기
+      //   fallback(동작 동일). at-rest 암호화(DB 탈취 시 Kakao 세션 악용 방어 — Cafe24 동일 패턴) 유지.
+      const persistKakaoTokens = (async () => {
+        try {
+          await ensureKakaoColumns(DB);
+          const kek = (c.env as any).DATA_ENCRYPTION_KEY as string | undefined;
+          const encAccess = await encryptAtRest(accessToken, kek);
+          const encRefresh = kakaoRefreshToken ? await encryptAtRest(kakaoRefreshToken, kek) : null;
+          await DB.prepare("UPDATE users SET kakao_access_token = ?, kakao_refresh_token = COALESCE(?, kakao_refresh_token) WHERE id = ?")
+            .bind(encAccess, encRefresh, user.id).run();
+        } catch (e) {
+          if (import.meta.env.DEV) console.warn('[Kakao Sync] 카카오 토큰 저장 실패 (비치명적, 응답 후 실행):', e);
+        }
+      })();
+      if (c.executionCtx) c.executionCtx.waitUntil(persistKakaoTokens); else await persistKakaoTokens;
 
       // 🛡️ 순서 중요: clear-state 먼저, session 은 append 로 추가.
       // 원래 c.header('Set-Cookie', ...) 를 두 번 호출해서 두 번째가 첫 번째를 덮어써
