@@ -701,7 +701,7 @@ export default function MyVouchersPage() {
         ) : shownVouchers.length === 0 ? (
           <EmptyVouchers
             mode={giftCount > 0 && sourceTab === 'gift' ? 'gift' : 'gb'}
-            onExplore={() => navigate(giftCount > 0 && sourceTab === 'gift' ? '/vouchers' : '/group-buy')}
+            onExplore={() => navigate(giftCount > 0 && sourceTab === 'gift' ? '/vouchers' : '/')}
             t={t}
           />
         ) : (
