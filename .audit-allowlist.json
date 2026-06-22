@@ -1,4 +1,45 @@
 {
   "_doc": "npm audit high/critical 허용 목록. scripts/check-npm-audit.sh 가 읽음. 여기 등재된 GHSA advisory 만 차단에서 제외 — 그 외 새 high/critical 은 그대로 차단. 등재 시 반드시 reason/accepted_by/date/review 명시. 도달 불가/오탐만 등재할 것 (실제 production 위험은 패키지 업그레이드로 해결).",
-  "allow": []
+  "allow": [
+    {
+      "ghsa": "GHSA-vmh5-mc38-953g",
+      "pkg": "undici",
+      "reason": "dev/빌드툴 전용(wrangler/miniflare 경유). production Workers 번들에 미포함 → 런타임 도달 불가. `npm ls undici --omit=dev` 비어있음으로 확인.",
+      "accepted_by": "대표(urteam.corp) 승인 — 기술부채 점검 2026-06-22",
+      "date": "2026-06-22",
+      "review": "wrangler major 업그레이드 시 undici 갱신되면 재확인 후 제거."
+    },
+    {
+      "ghsa": "GHSA-vxpw-j846-p89q",
+      "pkg": "undici",
+      "reason": "dev/빌드툴 전용(WebSocket 클라이언트 DoS). production 트리 미포함 → 도달 불가.",
+      "accepted_by": "대표(urteam.corp) 승인 — 기술부채 점검 2026-06-22",
+      "date": "2026-06-22",
+      "review": "wrangler 업그레이드 시 재확인."
+    },
+    {
+      "ghsa": "GHSA-hm92-r4w5-c3mj",
+      "pkg": "undici",
+      "reason": "dev/빌드툴 전용(SOCKS5 proxy pool 라우팅). production 트리 미포함 → 도달 불가.",
+      "accepted_by": "대표(urteam.corp) 승인 — 기술부채 점검 2026-06-22",
+      "date": "2026-06-22",
+      "review": "wrangler 업그레이드 시 재확인."
+    },
+    {
+      "ghsa": "GHSA-fx2h-pf6j-xcff",
+      "pkg": "vite",
+      "reason": "vite dev server `server.fs.deny` 우회(Windows). 빌드 도구 전용 — production 런타임/배포 산출물 무관. (TECHNICAL_DEBT: vite 5→6 major 체인 회피 정책.)",
+      "accepted_by": "대표(urteam.corp) 승인 — 기술부채 점검 2026-06-22",
+      "date": "2026-06-22",
+      "review": "vite 6 호환 확인 시 업그레이드 후 제거."
+    },
+    {
+      "ghsa": "GHSA-96hv-2xvq-fx4p",
+      "pkg": "ws",
+      "reason": "dev/빌드툴 전용(ws 메모리 DoS, wrangler/vite 경유). production Workers 런타임은 자체 WebSocket API 사용 → 도달 불가.",
+      "accepted_by": "대표(urteam.corp) 승인 — 기술부채 점검 2026-06-22",
+      "date": "2026-06-22",
+      "review": "transitive 갱신 시 제거."
+    }
+  ]
 }

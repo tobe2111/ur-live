@@ -4391,7 +4391,19 @@
     "ktShowBarcode": "Muestra el código de barras de abajo en la tienda",
     "ktCheckMms": "Revisa el cupón en los mensajes de tu teléfono. Vinculación con KakaoTalk disponible.",
     "tabGroupBuy": "Grupal",
-    "tabGifticon": "Gifticon"
+    "tabGifticon": "Gifticon",
+    "emptyGbTitle": "Aún no tienes vales de comida",
+    "emptyGbDesc": "Únete a una compra grupal de restaurantes locales\ny tus vales de comida prepagados se acumularán aquí",
+    "emptyGbCta": "Ver compras grupales",
+    "emptyGiftTitle": "Aún no tienes vales de regalo",
+    "emptyGiftDesc": "Cuando compras un vale, se envía a tu móvil\ny también se guarda aquí",
+    "emptyGiftCta": "Ver vales de regalo",
+    "stepGb1": "Unirse a\nla compra",
+    "stepGb2": "Vale en\nla cartera",
+    "stepGb3": "Mostrar QR\nen tienda",
+    "stepGift1": "Comprar\nvale",
+    "stepGift2": "Enviado\npor MMS",
+    "stepGift3": "Mostrar\nen tienda"
   },
   "sellerWaiting": {
     "title": "Aprobación de Vendedor Pendiente",
