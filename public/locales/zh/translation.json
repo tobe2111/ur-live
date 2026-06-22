@@ -4391,7 +4391,19 @@
     "ktShowBarcode": "请在门店出示下方条形码",
     "ktCheckMms": "请在手机短信中查看优惠券。可自动关联KakaoTalk礼物盒。",
     "tabGroupBuy": "团购券",
-    "tabGifticon": "礼品券"
+    "tabGifticon": "礼品券",
+    "emptyGbTitle": "还没有领取的餐券",
+    "emptyGbDesc": "参与社区美食拼团\n预付餐券就会收集到这里",
+    "emptyGbCta": "去看拼团",
+    "emptyGiftTitle": "还没有领取的兑换券",
+    "emptyGiftDesc": "购买兑换券后会发送到手机\n也可以在这里集中查看",
+    "emptyGiftCta": "去看兑换券",
+    "stepGb1": "参与\n拼团",
+    "stepGb2": "餐券\n入钱包",
+    "stepGb3": "门店\n出示二维码",
+    "stepGift1": "购买\n兑换券",
+    "stepGift2": "MMS\n发送",
+    "stepGift3": "门店\n出示"
   },
   "sellerWaiting": {
     "title": "卖家审核等待",

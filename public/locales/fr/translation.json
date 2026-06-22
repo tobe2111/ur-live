@@ -4391,7 +4391,19 @@
     "ktShowBarcode": "Présentez le code-barres ci-dessous en magasin",
     "ktCheckMms": "Vérifiez le coupon dans les messages de votre téléphone. Liaison KakaoTalk possible.",
     "tabGroupBuy": "Groupé",
-    "tabGifticon": "Gifticon"
+    "tabGifticon": "Gifticon",
+    "emptyGbTitle": "Aucun bon repas pour le moment",
+    "emptyGbDesc": "Participez à un achat groupé de restaurants du quartier\net vos bons repas prépayés s'accumuleront ici",
+    "emptyGbCta": "Voir les achats groupés",
+    "emptyGiftTitle": "Aucun bon cadeau pour le moment",
+    "emptyGiftDesc": "Lorsque vous achetez un bon, il est envoyé sur votre téléphone\net rassemblé ici aussi",
+    "emptyGiftCta": "Voir les bons cadeaux",
+    "stepGb1": "Rejoindre\nl'achat",
+    "stepGb2": "Bon dans\nle portefeuille",
+    "stepGb3": "Montrer le QR\nen magasin",
+    "stepGift1": "Acheter\nle bon",
+    "stepGift2": "Envoyé\npar MMS",
+    "stepGift3": "Montrer\nen magasin"
   },
   "sellerWaiting": {
     "title": "Approbation Vendeur en Attente",

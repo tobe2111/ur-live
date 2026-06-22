@@ -2,6 +2,15 @@
 
 2026-04-22 대장애 복구 이후 남은 기술 부채를 추적하는 문서.
 
+## 📊 2026-06-22 — 기술부채 전수 점검 + 보안/i18n 정리 (대표 "모두 가장 이상적으로")
+대표 "전체적으로 기술부채 확인" → 진단 도구 전수 실행 후 처리.
+- ✅ **npm audit production HIGH 2건 해소** — `form-data`(axios 경유, CRLF) `4.0.5→4.0.6`, `@grpc/grpc-js`(firebase-admin 경유, crash) `1.14.3→1.14.4`. **overrides** 로 transitive 강제 패치(fixAvailable=true, non-breaking). `npm audit --omit=dev` high/critical **0** 확인.
+- ✅ **npm-audit 게이트를 verify.yml CI 에 추가** — 기존엔 pre-commit 에만 있어 high 2건이 슬립(CI 부재)했던 근본원인. 이제 미허용 high/critical 유입 시 CI 차단.
+- ✅ **dev/빌드툴 전용 high 5건 → `.audit-allowlist.json` 문서화 등재** — undici(3)·vite(1)·ws(1). `npm ls --omit=dev` 로 production 트리 미포함(도달 불가) 확인. 각 GHSA 사유/승인/날짜/review 명시. 신규 advisory 는 계속 차단.
+- ✅ **i18n 누락 60건(12키×5언어) 실번역 주입** — `voucher.*`(교환권/식사권 빈상태·단계 안내) 소비자 키라 `[TODO:]` placeholder 대신 en/ja/zh/es/fr 실제 번역. `check-i18n-sync` 0 missing/0 extra (6언어 sync).
+- 검증: tsc 0 · build 0(client+worker) · audit 게이트 RC=0 · locale diff 추가만(reformat noise 0).
+- 🟢 **잔여(별도 작업 권장)**: God 파일 분해(`wholesale.routes.ts` 2436 / `distributor-admin.routes.ts` 1811 / `repair-schema.routes.ts` 2081 — byte-identical 추출 전용 PR), `sellers` 97/100 컬럼(사이드테이블 강제 중), 바로빌 전자세금계산서 실발행 미연결(staging 후속), bundle critical path 280/300KB(모니터). admin 도매 화면 공급자/공급사 잔여 명칭(후속 패스).
+
 ## 📊 2026-06-11 (2차) — 도매 God 파일 2개 분해 (동작 변화 0)
 - ✅ `SupplierDashboardPage` 1582→286줄 (`supplier-dashboard/` 15파일: 탭 7 + 모달 6 + types/csv) — `eff2a18a`
 - ✅ `WholesaleCatalogPage` 1493→550줄 (`wholesale-catalog/` 16파일: 카드/섹션/SSR/CSV 유틸) — `19fe20e4`

@@ -4391,7 +4391,19 @@
     "ktShowBarcode": "Show the barcode below at the store",
     "ktCheckMms": "Check the coupon in your phone messages. KakaoTalk gift box linking available.",
     "tabGroupBuy": "Group",
-    "tabGifticon": "Gifticon"
+    "tabGifticon": "Gifticon",
+    "emptyGbTitle": "No meal vouchers yet",
+    "emptyGbDesc": "Join a neighborhood restaurant group buy\nand your prepaid meal vouchers collect here",
+    "emptyGbCta": "Browse group buys",
+    "emptyGiftTitle": "No gift vouchers yet",
+    "emptyGiftDesc": "When you buy a gift voucher, it's sent to your phone\nand also collected here",
+    "emptyGiftCta": "Browse gift vouchers",
+    "stepGb1": "Join\ngroup buy",
+    "stepGb2": "Voucher\nin wallet",
+    "stepGb3": "Show QR\nat store",
+    "stepGift1": "Buy\nvoucher",
+    "stepGift2": "Sent by\nMMS",
+    "stepGift3": "Show\nat store"
   },
   "sellerWaiting": {
     "title": "Seller Approval Pending",
