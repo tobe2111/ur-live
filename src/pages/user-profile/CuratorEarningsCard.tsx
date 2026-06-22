@@ -61,7 +61,7 @@ export default function CuratorEarningsCard() {
         <div className="flex items-center justify-between mb-1">
           <p className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-            크리에이터 콘솔
+            내 추천 수익
           </p>
           <ChevronRight className="w-4 h-4 text-gray-400" />
         </div>

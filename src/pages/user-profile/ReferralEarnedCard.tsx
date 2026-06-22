@@ -42,7 +42,7 @@ export default function ReferralEarnedCard() {
           {hasEarned ? (
             <>
               <p className="text-[10px] font-bold text-pink-600 dark:text-pink-300/80 tracking-wide">
-                referral 누적 적립
+                추천 누적 적립
               </p>
               <p className="text-lg font-extrabold text-gray-900 dark:text-white mt-0.5">
                 ₩{stats.total_earned.toLocaleString()}
@@ -54,7 +54,7 @@ export default function ReferralEarnedCard() {
           ) : (
             <>
               <p className="text-[12px] font-bold text-pink-600 dark:text-pink-300">
-                인플루언서 referral 시작하기
+                상품 추천하고 적립받기
               </p>
               <p className="text-[10px] text-gray-600 dark:text-gray-300/80 mt-0.5">
                 내 SNS 에 공유 → 친구 결제 시 자동 적립
