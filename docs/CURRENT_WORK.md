@@ -7,6 +7,7 @@
 - **`/terms` 비즈니스모델 정합**(KR+EN): "라이브 커머스" 프레이밍 제거 → **공동구매(동네딜)·모바일 교환권/이용권·온라인 쇼핑·추천 링크샵·딜 포인트** 플랫폼으로. 정의(서비스/회원/사업자회원/구매자/딜)·제5조 서비스목록 갱신. **KT Alpha 교환권 B2B 정산 compliance 문구(제2조의2)는 substance 보존**(라이브 단어만 '서비스'로). `/privacy` 는 EN의 live-stream/broadcast 표현을 group-buy 로 정정 + 사업자정보 전화 제거.
 - ⚠️ **법무 주의(대표 확인 요망)**: 전자상거래법상 사업자 정보의 '전화번호' 표시 의무가 있음 — 풋터/약관에서 전화번호를 빼면 형식 요건 미충족 소지(현재 이메일+카톡으로 대체). 추후 대표번호 재등록 또는 카톡채널을 공식 CS 채널로 명문화 권장. 또한 사업장주소가 약관/개인정보(서울 강남 도곡동) ↔ 통신판매업신고(부산 금정)·풋터 locale(부산 금정) **불일치** — 별도 확인 필요(이번 작업범위 외, 미변경).
 - 검증: `npm run type-check` 0 · `check-theme-consistency.mjs` 0 · `npm run build`(client+ssr+prerender+worker+prepare) exit 0 · phone grep 0(테스트 negative assertion 제외).
+- **추가 정리(대표 "더 이상적으로", AskUserQuestion: 명칭 SSOT + 쇼핑 소그룹화)**: ① 명칭 SSOT 위반 라벨 정정 — `CuratorEarningsCard` "크리에이터 콘솔"→"내 추천 수익", `ReferralEarnedCard` "referral 누적 적립"→"추천 누적 적립" / "인플루언서 referral 시작하기"→"상품 추천하고 적립받기", `ShoppingGroup` "내 단골 셀러/셀러별 알림"→"내 단골 가게/가게별 알림"(사람 지칭 '셀러' 제거, '셀러 대시보드'는 도구명이라 유지). ② `ShoppingGroup` 10개 평면 리스트 → **이용권·자산 / 관심 / 주문·배송 3 소그룹**(한 카드 안 sub-label+구분선, 데이터/라우트/카운트 불변). type-check 0·theme 0·build 0.
 
 ## ✅ 2026-06-20 (4차 — 전 역할 iOS 카카오 로그인 + 미래대비) — 역할 토큰 fragment 채널 (대표 "셀러/에이전시/도매 + 앞으로 추가될 서비스까지")
 **배경**: 소비자(establish)는 고쳤으나, **셀러/에이전시/유통사가 카카오로 *돌아와* 대시보드 로그인** 시 역할 토큰을 `ur_pending_*` **transfer 쿠키**(cross-site 302 set)로 받아 → iOS WebKit 미영속 → 대시보드 로그인 실패(잠복).
