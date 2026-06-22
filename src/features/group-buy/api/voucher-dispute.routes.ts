@@ -58,15 +58,17 @@ sellerApp.post('/report', async (c) => {
     const DB = c.env.DB
     const user = getCurrentUser(c) as Vars['user']
     if (!user || !isSeller(user)) return c.json({ success: false, error: '셀러만 신고할 수 있습니다' }, 403)
-    const body = await c.req.json<{ code?: string; reason?: string }>().catch(() => ({} as { code?: string; reason?: string }))
-    if (!body.code) return c.json({ success: false, error: '공구권 코드가 필요합니다' }, 400)
+    const body = await c.req.json<{ code?: string; voucherId?: number; reason?: string }>().catch(() => ({} as { code?: string; voucherId?: number; reason?: string }))
+    const vid = Number(body.voucherId)
+    if (!body.code && !Number.isFinite(vid)) return c.json({ success: false, error: '공구권 식별자가 필요합니다' }, 400)
 
-    // 본인 매장 + 사용됨 + 미정산 voucher 조회
+    // 본인 매장 + 사용됨 + 미정산 voucher 조회 (voucherId 우선 — 코드 노출 없이 원장에서 신고).
+    const where = Number.isFinite(vid) ? 'v.id = ?' : 'v.code = ?'
     const v = await DB.prepare(`
       SELECT v.id, v.product_id, p.seller_id
       FROM vouchers v JOIN products p ON p.id = v.product_id
-      WHERE v.code = ? AND p.seller_id = ? AND v.status = 'used' AND v.settlement_id IS NULL
-    `).bind(body.code, user.id).first<{ id: number; product_id: number; seller_id: number }>().catch(() => null)
+      WHERE ${where} AND p.seller_id = ? AND v.status = 'used' AND v.settlement_id IS NULL
+    `).bind(Number.isFinite(vid) ? vid : body.code, user.id).first<{ id: number; product_id: number; seller_id: number }>().catch(() => null)
     if (!v) return c.json({ success: false, error: '신고 대상이 아닙니다 (사용 완료 + 정산 전 + 본인 매장만 가능)' }, 409)
 
     await ensureDisputeTable(DB)
