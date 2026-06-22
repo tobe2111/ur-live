@@ -94,7 +94,7 @@ export default function AdminSuppliersPage() {
   ]
 
   return (
-    <AdminLayout title={t('admin.suppliers.title', { defaultValue: '제조사(공급사) 관리' })}>
+    <AdminLayout title={t('admin.suppliers.title', { defaultValue: '제조사 관리' })}>
       <div className="flex items-center gap-2 mb-4">
         {filters.map(f => (
           <button key={f.key} onClick={() => setStatusFilter(f.key)}
@@ -110,7 +110,7 @@ export default function AdminSuppliersPage() {
       ) : items.length === 0 ? (
         <div className="bg-white rounded-xl py-20 text-center">
           <Store className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-          <p className="text-sm text-gray-400">{t('admin.suppliers.empty', { defaultValue: '공급자가 없습니다.' })}</p>
+          <p className="text-sm text-gray-400">{t('admin.suppliers.empty', { defaultValue: '제조사가 없습니다.' })}</p>
         </div>
       ) : (
         <div className="space-y-3">

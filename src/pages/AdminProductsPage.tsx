@@ -417,7 +417,7 @@ export default function AdminProductsPage() {
           onClick={() => setActiveTab('supplier-products')}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'supplier-products' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
         >
-          <span className="flex items-center gap-1.5"><Boxes className="w-4 h-4" /> {t('admin.products.supplierProductsTab', { defaultValue: '공급자 등록 상품' })}</span>
+          <span className="flex items-center gap-1.5"><Boxes className="w-4 h-4" /> {t('admin.products.supplierProductsTab', { defaultValue: '제조사 등록 상품' })}</span>
         </button>
         <button
           onClick={() => setActiveTab('supply-sales')}
