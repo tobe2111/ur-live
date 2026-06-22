@@ -5,7 +5,7 @@
  * 본 파일이 담는 것:
  *   1. 메인 배너 캐러셀 — 공개 GET(캐시) + 어드민 CRUD.
  *   2. 프리미엄 전용관 — 어드민 상품 목록(GET) + 토글(POST). (카탈로그 필터/응답은 wholesale.routes 카탈로그에 이미 배선.)
- *   3. 제안/신고(proposals/reports) — 유통사 POST/GET + 어드민 큐/처리.
+ *   3. 제안/신고(proposals/reports) — 판매사 POST/GET + 어드민 큐/처리.
  *   4. 예치금 입금계좌(admin-settable) — 어드민 GET/PUT (platform_settings key/value).
  *
  * ⚠️ 모든 어드민 엔드포인트는 `/api/admin/...` 로 마운트(admin_token 인터셉터).
@@ -18,7 +18,7 @@
  *   - platform_settings['wholesale_deposit_account']  (예치금 안내 계좌)
  *
  * 마운트(worker/index.ts):
- *   app.route('/api/wholesale', wholesaleMainPublicRoutes)        — 공개 배너(GET /banners) + 유통사 제안/신고(POST·GET /proposal-tickets)
+ *   app.route('/api/wholesale', wholesaleMainPublicRoutes)        — 공개 배너(GET /banners) + 판매사 제안/신고(POST·GET /proposal-tickets)
  *   app.route('/api/admin/wholesale-banners', adminWholesaleBannerRoutes)
  *   app.route('/api/admin/wholesale-proposals', adminWholesaleProposalRoutes)
  *   app.route('/api/admin/wholesale-products', adminWholesaleProductRoutes)
@@ -66,7 +66,7 @@ function ensureProposalSchema(DB: D1Database): Promise<void> {
   let p = _proposalEnsuring.get(DB)
   if (p) return p
   p = (async () => {
-    // ⚠️ 기존 wholesale_proposals(어드민→유통사 상품제안) 와 별개 — wholesale_proposal_tickets 사용.
+    // ⚠️ 기존 wholesale_proposals(어드민→판매사 상품제안) 와 별개 — wholesale_proposal_tickets 사용.
     await DB.prepare(`CREATE TABLE IF NOT EXISTS wholesale_proposal_tickets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       seller_id INTEGER NOT NULL,
@@ -98,7 +98,7 @@ async function ensurePremiumColumn(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE products ADD COLUMN is_premium INTEGER DEFAULT 0').run().catch(swallow('wholesale-premium:alter'))
 }
 
-// ── 셀러(유통사) JWT → seller_id (wholesale-deposit.routes distributorFrom 미러) ──
+// ── 셀러(판매사) JWT → seller_id (wholesale-deposit.routes distributorFrom 미러) ──
 async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
   if (!authorization?.startsWith('Bearer ')) return null
   try {
@@ -129,7 +129,7 @@ function adminMallIdFromQuery(raw: unknown): number {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 공개(+유통사) — /api/wholesale/*
+// 공개(+판매사) — /api/wholesale/*
 // ════════════════════════════════════════════════════════════════════════════
 const pub = new Hono<{ Bindings: Env }>()
 
@@ -161,8 +161,8 @@ pub.get('/banners', async (c) => {
   }
 })
 
-// ── POST /proposal-tickets — 유통사 제안/신고 등록 ───────────────────────────
-//   ⚠️ path 주의: 기존 GET /api/wholesale/proposals(어드민→유통사 상품제안)와 충돌 회피 위해
+// ── POST /proposal-tickets — 판매사 제안/신고 등록 ───────────────────────────
+//   ⚠️ path 주의: 기존 GET /api/wholesale/proposals(어드민→판매사 상품제안)와 충돌 회피 위해
 //      제안/신고 티켓은 `/proposal-tickets` 경로 사용(wholesaleRoutes 가 먼저 마운트되어 /proposals 선점).
 pub.post('/proposal-tickets', rateLimit({ action: 'wholesale-proposal-create', max: 10, windowSec: 300 }), async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
@@ -192,7 +192,7 @@ pub.post('/proposal-tickets', rateLimit({ action: 'wholesale-proposal-create', m
 
     // 상호명 — 어드민 알림 가독성.
     const biz = await DB.prepare('SELECT COALESCE(business_name, name) AS nm FROM sellers WHERE id = ?').bind(sellerId).first<{ nm: string | null }>().catch(() => null)
-    const bizName = biz?.nm || `유통사 #${sellerId}`
+    const bizName = biz?.nm || `판매사 #${sellerId}`
     const typeLabel = type === 'report' ? '신고' : '제안'
     createDashboardNotification(
       DB, 'admin', null, 'wholesale_proposal', '새 제안/신고',
@@ -548,7 +548,7 @@ adminProduct.post('/:id/premium', rateLimit({ action: 'admin-wholesale-premium-t
 //   platform_settings['wholesale_deposit_account'] key/value 1행. 단일 문자열(은행/계좌/예금주).
 const DEPOSIT_ACCOUNT_KEY = 'wholesale_deposit_account'
 // 🏦 2026-06-18 (사용자 제공): DB 미설정 시 노출할 기본 입금계좌. 어드민이 /wholesale-deposit-account 저장 시 그 값이 우선.
-//   repair-schema seed 와 동일 값 — 배포 즉시 어드민/유통사 입금 페이지에 노출되도록 fallback(외부망 차단으로 API set 불가).
+//   repair-schema seed 와 동일 값 — 배포 즉시 어드민/판매사 입금 페이지에 노출되도록 fallback(외부망 차단으로 API set 불가).
 const DEFAULT_WHOLESALE_DEPOSIT_ACCOUNT = '우체국 014084-02-129530 송유미 (사람과고리)'
 const adminDepositAccount = adminApp()
 
@@ -579,7 +579,7 @@ adminDepositAccount.put('/', rateLimit({ action: 'admin-wholesale-deposit-accoun
   }
 })
 
-/** 공개/유통사 read 에서 입금계좌 1줄 읽기(미설정 시 기본 계좌 fallback). deposit /me 안내박스 등 재사용. */
+/** 공개/판매사 read 에서 입금계좌 1줄 읽기(미설정 시 기본 계좌 fallback). deposit /me 안내박스 등 재사용. */
 export async function loadWholesaleDepositAccount(DB: D1Database): Promise<string> {
   const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = ?").bind(DEPOSIT_ACCOUNT_KEY).first<{ value: string }>().catch(() => null)
   return (row?.value && row.value.trim()) ? row.value : DEFAULT_WHOLESALE_DEPOSIT_ACCOUNT

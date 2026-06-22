@@ -1,5 +1,5 @@
 /**
- * 🏭 2026-06-04 유통스타트 도매몰 — 유통회원(유통사) 경량 전용 가입.
+ * 🏭 2026-06-04 유통스타트 도매몰 — 유통회원(판매사) 경량 전용 가입.
  *   라이브커머스 셀러 온보딩과 분리 — 담당자·상호·이메일·비번(+선택: 연락처/사업자번호)만.
  *   POST /api/wholesale/register → seller 계정(distributor_grade='C', is_distributor=1) 생성 +
  *   즉시 로그인(seller_token) → /wholesale 완결. /seller 대시보드는 안 거침.
@@ -76,7 +76,7 @@ export default function WholesaleJoinPage() {
     if (on) setForm(f => ({ ...f, manager_name: f.representative, manager_phone: f.representative_phone }))
   }
 
-  // 이미 유통사(셀러) 로그인 상태면 카탈로그로 바로.
+  // 이미 판매사(셀러) 로그인 상태면 카탈로그로 바로.
   useEffect(() => { if (hasSeller) navigate('/wholesale', { replace: true }) }, [hasSeller, navigate])
   if (hasSeller) return null // 리다이렉트 중 가입폼 깜빡임 방지
 
@@ -118,7 +118,7 @@ export default function WholesaleJoinPage() {
         localStorage.setItem('seller_username', s.username || '')
         localStorage.setItem('seller_type', s.seller_type || 'influencer')
         localStorage.setItem('is_distributor', '1')
-        toast.success('유통사로 시작합니다')
+        toast.success('판매사로 시작합니다')
         window.location.assign('/wholesale')
         return
       }
@@ -154,7 +154,7 @@ export default function WholesaleJoinPage() {
       <div className="min-h-screen bg-white text-[#0C2454] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 rounded-2xl bg-[#11875A]/10 flex items-center justify-center mx-auto mb-5"><CheckCircle2 className="w-7 h-7 text-[#11875A]" /></div>
-          <h1 className="text-xl font-extrabold mb-2">유통사 신청이 완료됐어요</h1>
+          <h1 className="text-xl font-extrabold mb-2">판매사 신청이 완료됐어요</h1>
           <p className="text-[#4E5560] text-[14px] leading-relaxed">제출하신 <b>사업자 정보</b>를 확인한 뒤 관리자 승인되면 도매몰을 이용할 수 있어요. (영업일 기준 1~2일)<br/>승인되면 등급 공급가가 열립니다.</p>
           <p className="text-[#8A929E] text-[12.5px] mt-3">
             급하신가요? <a href="mailto:utongstart@naver.com?subject=%5B%EC%9C%A0%ED%86%B5%ED%9A%8C%EC%9B%90%20%EC%8A%B9%EC%9D%B8%20%EB%AC%B8%EC%9D%98%5D" className="underline font-semibold text-[#4E5560]">utongstart@naver.com</a> 으로 상호·사업자번호와 함께 문의해주세요.
@@ -169,7 +169,7 @@ export default function WholesaleJoinPage() {
 
   return (
     <div className="min-h-screen bg-white text-[#0C2454]">
-      <SEO domain="wholesale" title="유통사 입점·도매 회원가입 — 유통스타트 B2B 도매몰" description="유통사로 도매 회원가입하고 검증된 제조사 상품을 등급별 도매가(공급가)로 사입하세요. 가입 즉시 C등급, 가입비·월 고정비 0원 — 무재고 위탁판매·대량 사입까지." url="/wholesale/join" jsonLd={[wholesaleStoreJsonLd, breadcrumbJsonLd([{ name: '유통스타트', url: 'https://utongstart.com/wholesale' }, { name: '유통사 도매 회원가입', url: 'https://utongstart.com/wholesale/join' }])]} />
+      <SEO domain="wholesale" title="판매사 입점·도매 회원가입 — 유통스타트 B2B 도매몰" description="판매사로 도매 회원가입하고 검증된 제조사 상품을 등급별 도매가(공급가)로 사입하세요. 가입 즉시 C등급, 가입비·월 고정비 0원 — 무재고 위탁판매·대량 사입까지." url="/wholesale/join" jsonLd={[wholesaleStoreJsonLd, breadcrumbJsonLd([{ name: '유통스타트', url: 'https://utongstart.com/wholesale' }, { name: '판매사 도매 회원가입', url: 'https://utongstart.com/wholesale/join' }])]} />
       <header className="border-b border-[#ECEEF1]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">
           <button onClick={() => navigate('/wholesale')} className="flex items-center gap-2">
@@ -188,7 +188,7 @@ export default function WholesaleJoinPage() {
           <div className="w-14 h-14 rounded-2xl bg-[#FC5424]/10 flex items-center justify-center mx-auto mb-5">
             <Store className="w-7 h-7 text-[#FC5424]" />
           </div>
-          <h1 className="text-2xl lg:text-3xl font-extrabold mb-2">유통사로 가입하기</h1>
+          <h1 className="text-2xl lg:text-3xl font-extrabold mb-2">판매사로 가입하기</h1>
           <p className="text-[#4E5560] text-[15px]">검증된 제조사 상품을 등급 공급가로 사입하세요.</p>
         </div>
 
@@ -288,7 +288,7 @@ export default function WholesaleJoinPage() {
 
           <button type="submit" disabled={loading || !agreeTerms}
             className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-[#FC5424] text-white font-bold text-[15px] hover:bg-[#E0461C] transition-colors disabled:opacity-60 mt-1">
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>유통사 가입 신청 <ArrowRight className="w-5 h-5" /></>}
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>판매사 가입 신청 <ArrowRight className="w-5 h-5" /></>}
           </button>
         </form>
 

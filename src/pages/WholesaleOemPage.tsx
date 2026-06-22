@@ -58,7 +58,7 @@ export default function WholesaleOemPage({ embedded = false }: { embedded?: bool
         <SEO
           domain="wholesale"
           title="OEM·ODM 상품제휴 — 유통스타트 도매몰 자사 브랜드 제작"
-          description="유통스타트가 검증된 제조사를 매칭해 자사 브랜드 OEM/ODM 상품을 제작·생산까지 지원합니다. 도매 유통사 상품제휴, 소량부터 대량 생산, 사입·위탁판매 연계."
+          description="유통스타트가 검증된 제조사를 매칭해 자사 브랜드 OEM/ODM 상품을 제작·생산까지 지원합니다. 도매 판매사 상품제휴, 소량부터 대량 생산, 사입·위탁판매 연계."
           url="/wholesale/oem"
           jsonLd={[
             wholesaleStoreJsonLd,
@@ -67,7 +67,7 @@ export default function WholesaleOemPage({ embedded = false }: { embedded?: bool
               '@type': 'Service',
               name: '유통스타트 OEM/ODM 상품제휴',
               serviceType: 'OEM/ODM 제조 매칭 및 상품제휴',
-              description: '유통사의 자사 브랜드 제품 제작을 위해 검증된 제조사를 매칭하고 생산까지 지원하는 도매 상품제휴 서비스.',
+              description: '판매사의 자사 브랜드 제품 제작을 위해 검증된 제조사를 매칭하고 생산까지 지원하는 도매 상품제휴 서비스.',
               areaServed: 'KR',
               provider: { '@type': 'Organization', name: '유통스타트', url: 'https://utongstart.com' },
             },
@@ -76,14 +76,14 @@ export default function WholesaleOemPage({ embedded = false }: { embedded?: bool
               { name: 'OEM/ODM 상품제휴', url: 'https://utongstart.com/wholesale/oem' },
             ]),
             faqJsonLd([
-              { q: 'OEM/ODM 상품제휴는 어떻게 진행되나요?', a: '유통사가 원하는 제품·수량·목표가를 신청하면 유통스타트가 적합한 제조사를 매칭하고 견적·생산·납품까지 연결해 드립니다.' },
+              { q: 'OEM/ODM 상품제휴는 어떻게 진행되나요?', a: '판매사가 원하는 제품·수량·목표가를 신청하면 유통스타트가 적합한 제조사를 매칭하고 견적·생산·납품까지 연결해 드립니다.' },
               { q: '소량도 제작이 가능한가요?', a: '제품군에 따라 소량부터 대량까지 가능합니다. 신청 내용을 검토해 가능한 제조사를 매칭해 안내드려요.' },
             ]),
           ]}
         />
         <Factory className="w-12 h-12 text-[#D1D6DB] mb-4" />
-        <p className="text-[#4E5560] mb-6">유통사 로그인 후 이용할 수 있습니다.</p>
-        <button onClick={() => navigate('/wholesale/login')} className="px-6 py-3 bg-[#0C2454] text-white rounded-lg font-semibold">유통사 로그인</button>
+        <p className="text-[#4E5560] mb-6">판매사 로그인 후 이용할 수 있습니다.</p>
+        <button onClick={() => navigate('/wholesale/login')} className="px-6 py-3 bg-[#0C2454] text-white rounded-lg font-semibold">판매사 로그인</button>
       </div>
     )
   }
@@ -195,7 +195,7 @@ export default function WholesaleOemPage({ embedded = false }: { embedded?: bool
 
   return (
     <div className="min-h-screen bg-[#F4F5F7]">
-      <SEO domain="wholesale" title="OEM/ODM 신청 — 유통스타트" description="유통사 OEM/ODM 제작 신청" url="/wholesale/oem" noindex />
+      <SEO domain="wholesale" title="OEM/ODM 신청 — 유통스타트" description="판매사 OEM/ODM 제작 신청" url="/wholesale/oem" noindex />
       <header className="bg-white border-b border-[#ECEEF1]">
         <div className="ur-content-medium px-4 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">

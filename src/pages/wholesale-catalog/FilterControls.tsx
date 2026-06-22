@@ -30,7 +30,7 @@ export default function FilterControls({ sort, setSort, loggedIn, inStock, setIn
                 aria-label={t('wholesale.sortLabel', { defaultValue: '정렬' })}
                 className="appearance-none h-9 pl-8 pr-7 rounded-full text-[13px] font-bold outline-none cursor-pointer"
                 style={{ background: WT.fill, color: WT.ink }}>
-                {/* 🏭 가격/할인율 정렬은 공급가가 보이는 로그인 유통사에게만 (비로그인엔 무의미) */}
+                {/* 🏭 가격/할인율 정렬은 공급가가 보이는 로그인 판매사에게만 (비로그인엔 무의미) */}
                 {CATALOG_SORTS.filter(s => loggedIn || !['price_low', 'price_high', 'discount'].includes(s.id)).map(s => (
                   <option key={s.id} value={s.id}>{t(s.label, { defaultValue: s.defaultLabel })}</option>
                 ))}

@@ -1,8 +1,8 @@
 /**
- * 🏭 2026-06-04 유통스타트 도매몰 — 유통사 전용 로그인.
+ * 🏭 2026-06-04 유통스타트 도매몰 — 판매사 전용 로그인.
  *   제조사(/supplier/login)·라이브셀러(/seller/login)와 대칭으로 분리된 도매몰 로그인.
  *   같은 /api/seller/login 백엔드 사용하되, 로그인 후 항상 /wholesale 로 완결.
- *   (셀러 로그인 페이지를 유통사에게 노출하지 않음 — 3주체 완전 분리.)
+ *   (셀러 로그인 페이지를 판매사에게 노출하지 않음 — 3주체 완전 분리.)
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -18,7 +18,7 @@ type SellerSessionData = {
   refreshToken?: string
   seller: { id: number; name?: string; email?: string; username?: string; seller_type?: string; is_distributor?: number | boolean }
 }
-// 셀러(유통사) 세션 localStorage 반영 — 일반 로그인 + 카카오 probe 공용(중복 제거).
+// 셀러(판매사) 세션 localStorage 반영 — 일반 로그인 + 카카오 probe 공용(중복 제거).
 function applySellerSession(d: SellerSessionData) {
   const s = d.seller
   localStorage.setItem('seller_token', d.accessToken)
@@ -40,7 +40,7 @@ export default function WholesaleLoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  // 🏭 2026-06-16 (사용자 요청): 로그인 진입 시 유통사/제조사 먼저 선택. 'choose' → 유통사 폼('distributor') 또는 /supplier/login.
+  // 🏭 2026-06-16 (사용자 요청): 로그인 진입 시 판매사/제조사 먼저 선택. 'choose' → 판매사 폼('distributor') 또는 /supplier/login.
   const [mode, setMode] = useState<'choose' | 'distributor'>('choose')
   // 🏬 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FC5424 → byte-identical). 조기 return 전에 호출.
   const { displayName: mallName, logoUrl: mallLogo } = useWholesaleMall()
@@ -52,11 +52,11 @@ export default function WholesaleLoginPage() {
     if (saved) { setEmail(saved); setRememberMe(true) }
   }, [])
 
-  // 🛡️ 2026-06-19 (대표 결정 B): 유통사는 구매자 → 로그인 후 카탈로그(/wholesale)가 홈. 대시보드는 헤더 버튼으로 진입.
+  // 🛡️ 2026-06-19 (대표 결정 B): 판매사는 구매자 → 로그인 후 카탈로그(/wholesale)가 홈. 대시보드는 헤더 버튼으로 진입.
   const alreadyIn = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
   useEffect(() => { if (alreadyIn) navigate('/wholesale', { replace: true }) }, [alreadyIn, navigate])
 
-  // 🛡️ 2026-06-18 (인증 audit 대칭화): 카카오로 돌아온 기존 유통사면 become-distributor 빈-body probe 로
+  // 🛡️ 2026-06-18 (인증 audit 대칭화): 카카오로 돌아온 기존 판매사면 become-distributor 빈-body probe 로
   //   seller_token 자동 교환 (SupplierLoginPage 의 /supplier/become 자동 probe 와 대칭 — 카카오 콜백 토큰
   //   누락 엣지 보강). 신규/미승인은 조용히 폼 유지. requireAuth 는 세션 쿠키(credentials:include)로 인증.
   useEffect(() => {
@@ -69,10 +69,10 @@ export default function WholesaleLoginPage() {
         if (cancelled) return
         if (data.success && data.status === 'approved' && data.data?.accessToken) {
           applySellerSession(data.data)
-          toast.success('유통사로 로그인되었습니다')
+          toast.success('판매사로 로그인되었습니다')
           window.location.assign('/wholesale') // B: 구매자 → 카탈로그 홈
         } else if (data.success && (data.status === 'pending' || data.status === 'needs_business_info')) {
-          toast.info(data.message || '유통사 승인 대기 중입니다 — 승인 후 이용할 수 있어요')
+          toast.info(data.message || '판매사 승인 대기 중입니다 — 승인 후 이용할 수 있어요')
         }
         // needs_registration → 조용히(로그인 폼 유지; 가입은 사용자가 선택)
       } catch { /* silent — 로그인 폼 유지 */ }
@@ -96,7 +96,7 @@ export default function WholesaleLoginPage() {
       if (rememberMe) localStorage.setItem('wholesale_remember_email', email.trim())
       else localStorage.removeItem('wholesale_remember_email')
       applySellerSession(d)
-      // 🛡️ 2026-06-19 (대표 결정 B): 유통사는 구매자 → 항상 카탈로그(/wholesale) 홈. 대시보드는 헤더 버튼.
+      // 🛡️ 2026-06-19 (대표 결정 B): 판매사는 구매자 → 항상 카탈로그(/wholesale) 홈. 대시보드는 헤더 버튼.
       //   full reload → 토큰/세션 반영. (도착지는 역할 무관 /wholesale)
       window.location.assign('/wholesale')
     } catch (err) {
@@ -108,7 +108,7 @@ export default function WholesaleLoginPage() {
 
   return (
     <div className="force-light-theme min-h-screen bg-white text-[#0C2454]">
-      <SEO title="유통사 로그인 — 유통스타트 B2B 도매몰" description="유통사 로그인 — 등급 공급가로 사입하세요." url="/wholesale/login" noindex />
+      <SEO title="판매사 로그인 — 유통스타트 B2B 도매몰" description="판매사 로그인 — 등급 공급가로 사입하세요." url="/wholesale/login" noindex />
       <header className="border-b border-[#ECEEF1]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">
           <button onClick={() => navigate('/wholesale')} className="flex items-center gap-2">
@@ -118,7 +118,7 @@ export default function WholesaleLoginPage() {
               <WholesaleWordmark height={28} />
             )}
           </button>
-          {/* 🧹 2026-06-17 (시안): 우상단 '유통사 가입' 버튼 삭제 */}
+          {/* 🧹 2026-06-17 (시안): 우상단 '판매사 가입' 버튼 삭제 */}
         </div>
       </header>
 
@@ -134,8 +134,8 @@ export default function WholesaleLoginPage() {
                 className="w-full flex items-center gap-4 p-4 rounded-2xl border border-[#ECEEF1] hover:border-[#0C2454] transition-colors text-left">
                 <span className="flex h-12 w-12 items-center justify-center rounded-xl shrink-0" style={{ background: '#F4F5F7' }}><Users className="w-6 h-6" style={{ color: '#0C2454' }} /></span>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-[16px] font-extrabold text-[#0C2454]">유통사 로그인</span>
-                  <span className="block text-[13px] text-[#8A929E] mt-0.5">등급 공급가로 사입하는 유통사</span>
+                  <span className="block text-[16px] font-extrabold text-[#0C2454]">판매사 로그인</span>
+                  <span className="block text-[13px] text-[#8A929E] mt-0.5">등급 공급가로 사입하는 판매사</span>
                 </span>
                 <ArrowRight className="w-5 h-5 text-[#B6BCC4] shrink-0" />
               </button>
@@ -160,7 +160,7 @@ export default function WholesaleLoginPage() {
           <ArrowRight className="w-4 h-4 rotate-180" /> 로그인 유형 다시 선택
         </button>
         <div className="text-center mb-8">
-          <h1 className="text-2xl lg:text-3xl font-extrabold mb-2">유통사 로그인</h1>
+          <h1 className="text-2xl lg:text-3xl font-extrabold mb-2">판매사 로그인</h1>
           <p className="text-[#4E5560] text-[15px]">검증된 제조사 상품을 등급 공급가로 사입하세요.</p>
         </div>
 
@@ -185,7 +185,7 @@ export default function WholesaleLoginPage() {
         </form>
 
         {/* 🏭 2026-06-04 카카오 통합 로그인 — 카카오 계정으로 유통회원 로그인/시작.
-            기존 유통사(이메일 연결)면 자동 로그인, 신규면 /wholesale 에서 1탭 전환. */}
+            기존 판매사(이메일 연결)면 자동 로그인, 신규면 /wholesale 에서 1탭 전환. */}
         <div className="relative my-4 flex items-center gap-3">
           <div className="flex-1 h-px" style={{ background: '#ECEEF1' }} />
           <span className="text-[12px]" style={{ color: '#8A929E' }}>또는</span>
@@ -203,8 +203,8 @@ export default function WholesaleLoginPage() {
         </div>
 
         <div className="mt-6 text-center text-sm text-[#8A929E]">
-          아직 유통사가 아니신가요?{' '}
-          <button onClick={() => navigate('/wholesale/join')} className="text-[#FC5424] font-semibold">유통사 가입 →</button>
+          아직 판매사가 아니신가요?{' '}
+          <button onClick={() => navigate('/wholesale/join')} className="text-[#FC5424] font-semibold">판매사 가입 →</button>
         </div>
         <div className="mt-3 pt-5 border-t border-[#ECEEF1] text-center text-sm text-[#8A929E]">
           제조사이신가요?{' '}

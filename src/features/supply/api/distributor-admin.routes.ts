@@ -1,11 +1,11 @@
 /**
- * 🏭 2026-06-01 유통스타트 도매몰 — 어드민 유통사 등급/마진 설정 API.
+ * 🏭 2026-06-01 유통스타트 도매몰 — 어드민 판매사 등급/마진 설정 API.
  * (docs/design/wholesale-utongstart.md, Phase 1b)
  *
  * - GET   /api/admin/distributor/grades              — 등급별 마진율 목록
  * - PUT   /api/admin/distributor/grades/:grade       — 등급 마진율/라벨/활성 수정
- * - GET   /api/admin/distributor/distributors?search= — 유통사(셀러) 검색 + 배정현황
- * - PATCH /api/admin/distributor/distributors/:id     — 유통사 등급 배정 + 특별할인 기간
+ * - GET   /api/admin/distributor/distributors?search= — 판매사(셀러) 검색 + 배정현황
+ * - PATCH /api/admin/distributor/distributors/:id     — 판매사 등급 배정 + 특별할인 기간
  *
  * ⚠️ 도매몰 한정: distributor_grade 는 도매 카탈로그 가격 계산에서만 읽힘 — 일반 셀러 동작 불변.
  * 마운트: app.route('/api/admin/distributor', distributorAdminRoutes)

@@ -49,8 +49,8 @@ export default function SupplierLoginPage() {
             toast.info(data.message || '제조사 승인 대기 중입니다 — 승인 후 이용할 수 있어요')
           } else if (data.success && data.status === 'needs_registration') {
             // 🏭 2026-06-08 (#2 수정): 이 카카오 계정에 제조회원 계정이 없음.
-            //   기존: /supplier/register 로 강제 이동 → 유통사/일반 유저가 '제조회원 로그인'만 눌러도
-            //   폼도 못 보고 입점신청 폼으로 튕김. 변경: 강제이동 제거 + 선택지 배너 노출(유통사면 유통사 로그인으로).
+            //   기존: /supplier/register 로 강제 이동 → 판매사/일반 유저가 '제조회원 로그인'만 눌러도
+            //   폼도 못 보고 입점신청 폼으로 튕김. 변경: 강제이동 제거 + 선택지 배너 노출(판매사면 판매사 로그인으로).
             setKakaoNoSupplier(true)
           }
         } catch { /* silent — 일반 로그인 폼 유지 */ }
@@ -154,12 +154,12 @@ export default function SupplierLoginPage() {
             {kakaoNoSupplier && (
               <div className="mb-5 px-4 py-3.5 bg-amber-50 border border-amber-200 rounded-xl">
                 <p className="text-sm font-semibold text-amber-900">이 카카오 계정은 아직 제조사가 아니에요</p>
-                <p className="text-xs text-amber-700 mt-1">제조사라면 입점 신청을, 유통사(사입)라면 유통사 로그인으로 이동하세요.</p>
+                <p className="text-xs text-amber-700 mt-1">제조사라면 입점 신청을, 판매사(사입)라면 판매사 로그인으로 이동하세요.</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button type="button" onClick={() => navigate('/supplier/register')}
                     className="px-3 py-2 rounded-lg bg-[#FC5424] text-white text-xs font-bold">제조사 입점 신청</button>
                   <button type="button" onClick={() => navigate('/wholesale/login')}
-                    className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 text-xs font-bold">유통사 로그인 →</button>
+                    className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 text-xs font-bold">판매사 로그인 →</button>
                 </div>
               </div>
             )}

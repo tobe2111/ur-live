@@ -1,7 +1,7 @@
 /**
  * 🏭 2026-06-01 유통스타트 도매몰 — 제조사(공급자) 정산 배선 (Phase 2 후속).
  *
- * B2B 선결제 주문(유통사→유통스타트) 결제완료 시, 각 라인의 제조사 공급가(base × qty)를
+ * B2B 선결제 주문(판매사→유통스타트) 결제완료 시, 각 라인의 제조사 공급가(base × qty)를
  * 제조사(supplier)에게 적립 → 기존 공급자 지급 파이프라인(matureSupplierSettlements →
  * payoutSupplier)이 7일 환불창 성숙 후 자동 지급.
  *
@@ -104,11 +104,11 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
   const brandAvailableAt = new Date(Date.now() + BRAND_REFUND_WINDOW_DAYS * 86400_000).toISOString()
   for (const r of rows.results || []) {
     const qty = Math.max(1, Math.floor(Number(r.qty) || 1))
-    const distUnit = Math.floor(Number(r.distributor_unit_price) || 0) // 유통사 지불 단가(공급가, tier할인 반영)
+    const distUnit = Math.floor(Number(r.distributor_unit_price) || 0) // 판매사 지불 단가(공급가, tier할인 반영)
     const { manufacturerUnit } = splitWholesaleUnit(distUnit, Number(r.base_supply_price) || 0, commPct)
     const supplyAmount = manufacturerUnit * qty // 제조사 정산액(원가 하한)
     if (supplyAmount <= 0) continue
-    const retailAmount = distUnit * qty // 유통사 지불액(공급가 — retail−supply = 플랫폼 수수료)
+    const retailAmount = distUnit * qty // 판매사 지불액(공급가 — retail−supply = 플랫폼 수수료)
     const isBrand = Number(r.is_brand_product) === 1
     const availableAt = isBrand ? brandAvailableAt : generalAvailableAt
     const noteText = isBrand ? 'B2B 도매주문(브랜드 — 익일정산/1일보호창)' : 'B2B 도매주문(일반 — 7일성숙)'

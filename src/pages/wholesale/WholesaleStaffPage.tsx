@@ -1,6 +1,6 @@
 // ──────────────────────────────────────────────────────────────
-// 👥 2026-06-09 유통사 직원 계정 관리 (owner/admin 전용).
-//   회사(유통사 owner) 1계정 아래 직원 서브계정 초대/역할변경/활성토글/삭제.
+// 👥 2026-06-09 판매사 직원 계정 관리 (owner/admin 전용).
+//   회사(판매사 owner) 1계정 아래 직원 서브계정 초대/역할변경/활성토글/삭제.
 //   서브계정 로그인 토큰의 seller_id = 회사(parent) seller_id → 예치금/주문/카탈로그 공유.
 //   라이트 고정 B2B 서피스(WholesaleDashboardShell). i18n defaultValue.
 // ──────────────────────────────────────────────────────────────
@@ -190,8 +190,8 @@ export default function WholesaleStaffPage({ embedded = false }: { embedded?: bo
   if (embedded) return content
 
   return (
-    <WholesaleDashboardShell brand="유통사 센터" roleIcon={Store} navItems={navItems} title="직원 계정 관리">
-      <SEO title="직원 계정 관리 — 유통사" description="유통사 직원 서브계정 초대/권한 관리" url="/wholesale/staff" noindex />
+    <WholesaleDashboardShell brand="판매사 센터" roleIcon={Store} navItems={navItems} title="직원 계정 관리">
+      <SEO title="직원 계정 관리 — 판매사" description="판매사 직원 서브계정 초대/권한 관리" url="/wholesale/staff" noindex />
 
       {content}
     </WholesaleDashboardShell>

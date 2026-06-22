@@ -26,7 +26,7 @@ export function isUtongstart(): boolean {
 //   ⚠️ 추가만 OK — 제거 시 도매몰에 소비자몰 페이지가 노출됨.
 const WHOLESALE_ALLOWED_PATHS = [
   '/wholesale', '/supplier',            // 도매몰 + 제조사 surface
-  '/seller/login', '/seller/register',  // 유통사 = 셀러 계정 인증
+  '/seller/login', '/seller/register',  // 판매사 = 셀러 계정 인증
   '/auth/', '/login',                   // 카카오 OAuth 콜백 / 로그인
 ]
 

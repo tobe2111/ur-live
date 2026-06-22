@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────
-// 🏭 2026-06-04 유통사 대시보드 허브 (사용자 요청 — 제조사 대시보드와 대칭)
+// 🏭 2026-06-04 판매사 대시보드 허브 (사용자 요청 — 제조사 대시보드와 대칭)
 //   매입현황 · 진행중 주문 · 누적 매입 · 등급 · 빠른 진입(카탈로그/주문/거래/자료/OEM) 한 화면.
 //   서버 신규 엔드포인트 없이 기존 /me + /orders 재사용(클라 집계). WT 라이트 고정 B2B 서피스.
 // 🏭 2026-06-20 탭 기반 통합 — 서브페이지(예치금/주문/거래/자료/견적/OEM/직원)를 별도 라우트 대신
@@ -95,7 +95,7 @@ export default function WholesaleDashboardPage() {
   const ORDER_TABS = [{ id: 'all', label: '전체' }, { id: 'PAID', label: '결제완료' }, { id: 'SHIPPED', label: '배송중' }, { id: 'DONE', label: '구매확정' }]
   const filteredOrders = (orderTab === 'all' ? orders : orders.filter((o) => o.status === orderTab)).slice(0, 12)
 
-  const company = localStorage.getItem('seller_name') || '유통사'
+  const company = localStorage.getItem('seller_name') || '판매사'
   const depositBalance = Number(depositQ.data?.balance) || 0
 
   // 탭 전환 — ?tab= 만 갱신(셸/사이드바 고정, 콘텐츠만 교체).
@@ -110,7 +110,7 @@ export default function WholesaleDashboardPage() {
     active: tab === key,
     onClick: () => goTab(key),
   }))
-  const activeTabLabel = tabDefs.find((tb) => tb.key === tab)?.label ?? '유통사 대시보드'
+  const activeTabLabel = tabDefs.find((tb) => tb.key === tab)?.label ?? '판매사 대시보드'
 
   const logout = () => {
     clearAuthData('seller')
@@ -313,7 +313,7 @@ export default function WholesaleDashboardPage() {
 
   return (
     <WholesaleDashboardShell
-      brand="유통사 센터"
+      brand="판매사 센터"
       roleIcon={Store}
       brandSubtitle={company}
       navItems={navItems}
@@ -321,7 +321,7 @@ export default function WholesaleDashboardPage() {
       headerRight={headerRight}
       onLogoClick={() => navigate('/wholesale')}
     >
-      <SEO title="유통사 대시보드 - 유통스타트 도매몰" description="매입 현황과 주문·거래·자료를 한 화면에서 관리하세요." url="/wholesale/dashboard" noindex />
+      <SEO title="판매사 대시보드 - 유통스타트 도매몰" description="매입 현황과 주문·거래·자료를 한 화면에서 관리하세요." url="/wholesale/dashboard" noindex />
 
       {tabContent}
     </WholesaleDashboardShell>

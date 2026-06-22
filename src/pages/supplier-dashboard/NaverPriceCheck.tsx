@@ -1,7 +1,7 @@
 /**
  * 🛒 2026-06-12 (사용자 요청): 네이버쇼핑 최저가 대조 — 상품 등록/가격수정 폼.
  *   상품명 입력(800ms 디바운스) → 시중 최저가 top3 표시 + 공급가/권장가 비교 경고:
- *     · 공급가 ≥ 최저가 → 빨강 (유통사가 마진을 낼 수 없음 — 핵심 견제 신호)
+ *     · 공급가 ≥ 최저가 → 빨강 (판매사가 마진을 낼 수 없음 — 핵심 견제 신호)
  *     · 권장가 > 최저가 → 주의 (권장 소비자가가 시장가보다 높음)
  *     · 공급가 < 최저가 → 초록 (경쟁력 있는 공급가)
  *   서버 키 미설정(configured:false)이면 통째로 숨김 — 폼 소음 0. 검색 결과는 동일 상품이
@@ -70,7 +70,7 @@ export default function NaverPriceCheck({ name, supplyPrice, retailPrice, t }: {
           {/* 비교 신호 — 공급가 기준이 핵심 */}
           {supply > 0 && supply >= lowest && (
             <p className="text-[11.5px] font-bold text-red-600 mt-1">
-              {t('supplier.naverPriceSupplyHigh', { defaultValue: '⚠️ 공급가가 시중 최저가보다 높거나 같아요 — 유통사가 마진을 낼 수 없어 제안이 어려워요.' })}
+              {t('supplier.naverPriceSupplyHigh', { defaultValue: '⚠️ 공급가가 시중 최저가보다 높거나 같아요 — 판매사가 마진을 낼 수 없어 제안이 어려워요.' })}
             </p>
           )}
           {supply > 0 && supply < lowest && (

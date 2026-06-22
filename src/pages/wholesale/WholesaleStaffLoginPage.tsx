@@ -1,5 +1,5 @@
 /**
- * 👥 2026-06-09 유통사 직원(서브계정) 로그인.
+ * 👥 2026-06-09 판매사 직원(서브계정) 로그인.
  *   /api/wholesale/sub-login 호출 → PARENT(회사) seller_id 토큰 발급. 일반 셀러 로그인과
  *   동일 shape 으로 localStorage 저장 → /wholesale 진입. (회사 owner 로그인과 분리된 입구.)
  */
@@ -63,7 +63,7 @@ export default function WholesaleStaffLoginPage() {
 
   return (
     <div className="force-light-theme min-h-screen bg-white text-[#0C2454]">
-      <SEO title="직원 로그인 — 유통사 도매몰" description="유통사 직원 로그인 — 회사 계정으로 사입을 도와드립니다." url="/wholesale/staff-login" noindex />
+      <SEO title="직원 로그인 — 판매사 도매몰" description="판매사 직원 로그인 — 회사 계정으로 사입을 도와드립니다." url="/wholesale/staff-login" noindex />
       <header className="border-b border-[#ECEEF1]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">
           <button onClick={() => navigate('/wholesale')} className="flex items-center gap-2">

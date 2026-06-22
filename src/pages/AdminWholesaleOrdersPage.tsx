@@ -45,7 +45,7 @@ const FILTERS = ['', 'PAID', 'SHIPPED', 'PARTIAL_REFUNDED', 'REFUNDED']
 // 🧱 2026-06-10: 공통 AdminDataTable 레퍼런스 적용 — 기존 셀 마크업/클래스 그대로 컬럼 정의로 이동.
 const ORDER_COLUMNS: Array<AdminDataTableColumn<OrderRow>> = [
   { key: 'order', label: '주문', render: o => <>#{o.id} <span className="text-gray-400">({o.item_count})</span></> },
-  { key: 'distributor', label: '유통사', render: o => <span className="text-gray-900">{o.business_name || o.seller_name || o.username || `#${o.distributor_seller_id}`}</span> },
+  { key: 'distributor', label: '판매사', render: o => <span className="text-gray-900">{o.business_name || o.seller_name || o.username || `#${o.distributor_seller_id}`}</span> },
   { key: 'grade', label: '등급', render: o => <span className="text-gray-600">{o.grade || '-'}</span> },
   { key: 'status', label: '상태', render: o => <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS[o.status]?.c || 'bg-gray-100 text-gray-600'}`}>{STATUS[o.status]?.t || o.status}</span> },
   { key: 'subtotal', label: '결제액', className: 'text-right', render: o => <span className="font-medium text-gray-900">{formatWon(o.subtotal)}</span> },
@@ -100,7 +100,7 @@ export default function AdminWholesaleOrdersPage() {
           ))}
           <form onSubmit={e => { e.preventDefault(); load(status, search) }} className="relative ml-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="유통사 검색" className="pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="판매사 검색" className="pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm" />
           </form>
         </div>
 

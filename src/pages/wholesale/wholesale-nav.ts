@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────
-// 🏭 2026-06-09 유통사 대시보드 셸 nav 정의 (단일 출처).
+// 🏭 2026-06-09 판매사 대시보드 셸 nav 정의 (단일 출처).
 //   WholesaleDashboardPage / WholesaleDepositPage 가 공유 — 항목/순서 1:1 일치.
 //   예치금(선불 충전) 항목 포함.
 // ──────────────────────────────────────────────────────────────
@@ -9,7 +9,7 @@ import {
 import type { WholesaleNavItem } from '@/components/wholesale/WholesaleDashboardShell'
 
 /**
- * 유통사 라우트-기반 사이드바 nav. navigate 주입.
+ * 판매사 라우트-기반 사이드바 nav. navigate 주입.
  * @param canManageStaff owner/admin 만 직원관리 메뉴 노출(기본 false → 기존 항목 byte-identical).
  */
 export function buildWholesaleNav(

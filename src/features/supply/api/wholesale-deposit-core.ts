@@ -2,7 +2,7 @@
  * 🏦 2026-06-09 유통스타트 예치금 결제 — 공유 코어(스키마 ensure + 잔액/원장 + 차감/복원).
  *
  * 💰 머니-크리티컬: 모든 적립/차감은 CAS(원자적 UPDATE … WHERE) 로만. 음수 잔액 불가.
- *    이 모듈을 wholesale-deposit.routes(어드민/유통사) + wholesale.routes(주문 차감/환불) 가 공유.
+ *    이 모듈을 wholesale-deposit.routes(어드민/판매사) + wholesale.routes(주문 차감/환불) 가 공유.
  *
  * 원장(txn) type: 'charge'(+입금확인) | 'order'(-주문) | 'refund'(+환불) | 'adjust'(±보정).
  *   amount 는 signed: +적립 / -차감. balance_after 는 적용 직후 잔액 스냅샷.
@@ -16,7 +16,7 @@ const _depositEnsured = new WeakSet<object>()
 export async function ensureDepositSchema(DB: D1Database): Promise<void> {
   if (_depositEnsured.has(DB)) return
   _depositEnsured.add(DB)
-  // 유통사별 잔액(seller_id PK — 1행/유통사).
+  // 판매사별 잔액(seller_id PK — 1행/판매사).
   await DB.prepare(`CREATE TABLE IF NOT EXISTS wholesale_deposits (
     seller_id INTEGER PRIMARY KEY,
     balance INTEGER NOT NULL DEFAULT 0,
@@ -103,7 +103,7 @@ export async function refundDeposit(DB: D1Database, sellerId: number, amount: nu
   const amt = Math.floor(amount)
   if (!Number.isFinite(amt) || amt <= 0) return loadDepositBalance(DB, sellerId)
   await DB.prepare('INSERT OR IGNORE INTO wholesale_deposits (seller_id, balance) VALUES (?, 0)').bind(sellerId).run().catch(swallow('deposit:refund-ensure-row'))
-  // 💰 복원 UPDATE 실패 = 환불 누락(유통사 손실) — 무음 금지, 로그로 추적(reconcile/어드민 보정 근거).
+  // 💰 복원 UPDATE 실패 = 환불 누락(판매사 손실) — 무음 금지, 로그로 추적(reconcile/어드민 보정 근거).
   await DB.prepare(
     "UPDATE wholesale_deposits SET balance = balance + ?, updated_at = datetime('now') WHERE seller_id = ?"
   ).bind(amt, sellerId).run().catch(swallow('deposit:refund-credit'))

@@ -12,11 +12,11 @@ import { useWholesaleCart } from './wholesale/useWholesaleCart'
 // 💬 채팅 위젯은 lazy — 상품 상세 초기 청크에 채팅 코드 0 byte(버튼 클릭 시에만 fetch).
 //   (floating FAB 없이 위젯만 직접 mount — 상품 상세는 인라인 "제조사에 문의" 버튼이 트리거)
 const WholesaleChatWidget = lazy(() => import('@/pages/wholesale/WholesaleChatWidget'))
-// 🛒 스마트스토어 내보내기 모달 — lazy (연동 안 쓰는 유통사는 chunk 비용 0).
+// 🛒 스마트스토어 내보내기 모달 — lazy (연동 안 쓰는 판매사는 chunk 비용 0).
 const NaverExportModal = lazy(() => import('@/pages/wholesale/NaverExportModal'))
 // 🛒 쿠팡 내보내기 모달 — lazy (연결 폼 내장).
 const CoupangExportModal = lazy(() => import('@/pages/wholesale/CoupangExportModal'))
-// 📊 시장 신호 카드 — lazy (로그인 유통사만 마운트, 키 미설정이면 자체 숨김).
+// 📊 시장 신호 카드 — lazy (로그인 판매사만 마운트, 키 미설정이면 자체 숨김).
 const MarketSignalCard = lazy(() => import('@/pages/wholesale/MarketSignalCard'))
 
 // 🏭 2026-06-04 유통스타트 도매 상품 상세 — Claude Design 시안(TDS/Toss 라이트) 구현.
@@ -97,7 +97,7 @@ export default function WholesaleProductPage() {
   const [tab, setTab] = useState<'desc' | 'ship' | 'settle' | 'return'>('desc')
   const cart = useWholesaleCart()
 
-  // 💬 "제조사에 문의" — 로그인 유통사만. 서버가 상품→제조사를 서버사이드 해석(신원 비공개).
+  // 💬 "제조사에 문의" — 로그인 판매사만. 서버가 상품→제조사를 서버사이드 해석(신원 비공개).
   //   버튼 클릭 시에만 lazy 위젯 mount + 상품 기준 스레드 자동 진입.
   const [chatOpen, setChatOpen] = useState(false)
   // 🛒 2026-06-12: 스마트스토어/쿠팡 내보내기 모달.
@@ -242,7 +242,7 @@ export default function WholesaleProductPage() {
     <div className="min-h-screen pb-28" style={{ background: '#fff', color: WT.ink }}>
       {/* 🏭 2026-06-08 도매 상품 상세 — canonical=utongstart 이되 noindex 유지(공급가/거래정보 비노출 룰).
           description 에도 공급가 절대 미포함. */}
-      <SEO domain="wholesale" title={`${item.name} - 유통스타트 도매`} description="유통사 전용 도매 상품 상세 — 도매가는 로그인 후 확인" url={`/wholesale/product/${item.id}`} noindex />
+      <SEO domain="wholesale" title={`${item.name} - 유통스타트 도매`} description="판매사 전용 도매 상품 상세 — 도매가는 로그인 후 확인" url={`/wholesale/product/${item.id}`} noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-wide flex items-center gap-3 px-5 lg:px-8 h-[52px]">
           <button onClick={() => navigate(-1)} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
@@ -269,10 +269,10 @@ export default function WholesaleProductPage() {
               <div className="flex items-center gap-2 text-[14px] font-bold" style={{ color: WT.ink }}>
                 <Lock className="w-4 h-4" style={{ color: WT.brand }} /> 등급 공급가는 로그인 후 확인할 수 있어요
               </div>
-              <p className="mt-1 text-[13px]" style={{ color: WT.ink3 }}>유통사 가입 즉시 C등급 공급가로 사입 시작 · 실적 쌓이면 A·B 상향</p>
+              <p className="mt-1 text-[13px]" style={{ color: WT.ink3 }}>판매사 가입 즉시 C등급 공급가로 사입 시작 · 실적 쌓이면 A·B 상향</p>
               <div className="mt-3 flex gap-2.5">
                 <button onClick={goLogin} className="flex-1 h-12 rounded-xl text-[15px] font-bold" style={{ background: WT.fill2, color: WT.ink, border: '1px solid ' + WT.line }}>로그인</button>
-                <button onClick={() => navigate('/wholesale/join')} className="flex-1 h-12 rounded-xl text-[15px] font-bold text-white" style={{ background: WT.brand }}>유통사 가입</button>
+                <button onClick={() => navigate('/wholesale/join')} className="flex-1 h-12 rounded-xl text-[15px] font-bold text-white" style={{ background: WT.brand }}>판매사 가입</button>
               </div>
             </div>
           ) : (
@@ -338,7 +338,7 @@ export default function WholesaleProductPage() {
             </Suspense>
           )}
 
-          {/* 💬 제조사에 문의 — 로그인 유통사 + 연결된 제조사 있는 상품만(데모/관리자 상품은 숨김). */}
+          {/* 💬 제조사에 문의 — 로그인 판매사 + 연결된 제조사 있는 상품만(데모/관리자 상품은 숨김). */}
           {!locked && token && item.inquirable !== false && (
             <button
               type="button"
@@ -351,7 +351,7 @@ export default function WholesaleProductPage() {
             </button>
           )}
 
-          {/* 🛒 2026-06-12 — 스마트스토어/쿠팡 내보내기 (로그인 유통사만). 사입 즉시 양대 채널 등록. */}
+          {/* 🛒 2026-06-12 — 스마트스토어/쿠팡 내보내기 (로그인 판매사만). 사입 즉시 양대 채널 등록. */}
           {!locked && token && (
             <div className="mt-2 grid grid-cols-2 gap-2">
               <button

@@ -1,4 +1,4 @@
-/** 🏭 distributor-admin: 상품제안 (어드민 → 유통사) (byte-identical 분해). */
+/** 🏭 distributor-admin: 상품제안 (어드민 → 판매사) (byte-identical 분해). */
 import type { Hono } from 'hono'
 import { safeError } from '@/worker/utils/safe-error'
 import { ensureProposals, type Env } from './helpers'
@@ -13,7 +13,7 @@ export function registerProposalsRoutes(app: Hono<{ Bindings: Env }>) {
       const productId = Number(body.product_id)
       const note = typeof body.note === 'string' ? body.note.slice(0, 200) : null
       if (!Number.isFinite(sellerId) || sellerId <= 0 || !Number.isFinite(productId) || productId <= 0) {
-        return c.json({ success: false, error: '유통사와 상품을 선택해주세요' }, 400)
+        return c.json({ success: false, error: '판매사와 상품을 선택해주세요' }, 400)
       }
       // 상품이 도매 상품인지 확인.
       const prod = await c.env.DB.prepare(

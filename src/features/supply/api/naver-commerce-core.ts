@@ -1,7 +1,7 @@
 /**
  * 🛒 2026-06-12 네이버 커머스API 연동 — Phase A 코어 (사용자 요청).
  *
- *   모델: 유통사가 커머스API센터(apicenter.commerce.naver.com)에서 **자기 스토어 애플리케이션**
+ *   모델: 판매사가 커머스API센터(apicenter.commerce.naver.com)에서 **자기 스토어 애플리케이션**
  *   (스토어당 1개)을 발급해 client_id/secret 을 우리 플랫폼에 연결 → 플랫폼이 대신 호출.
  *   (솔루션/개발업체 계정 모델은 네이버 심사가 필요해 Phase B 검토 — 현재 모델이 즉시 가동.)
  *
@@ -34,7 +34,7 @@ export async function ensureNaverConnectionSchema(DB: D1Database): Promise<void>
     UNIQUE(owner_type, seller_id)
   )`).run().catch(swallow('naver:schema'))
   // 🔁 2026-06-12 (제조사 임포트 지원): 초기 버전(UNIQUE(seller_id), owner_type 없음) 테이블 재구축.
-  //   제조사 id 와 유통사 id 는 별개 시퀀스라 UNIQUE(seller_id) 만으로는 충돌 — (owner_type, id) 복합으로.
+  //   제조사 id 와 판매사 id 는 별개 시퀀스라 UNIQUE(seller_id) 만으로는 충돌 — (owner_type, id) 복합으로.
   //   생성 직후의 신생 테이블(행 ~0)이라 self-heal 재구축 안전. 멱등 — owner_type 있으면 no-op.
   try {
     const meta = await DB.prepare(
@@ -60,7 +60,7 @@ export async function ensureNaverConnectionSchema(DB: D1Database): Promise<void>
         FROM naver_commerce_connections_old`).run()
       await DB.prepare('DROP TABLE naver_commerce_connections_old').run()
     }
-  } catch { /* 재구축 실패 — 기존 테이블 유지(유통사 기능은 동작) */ }
+  } catch { /* 재구축 실패 — 기존 테이블 유지(판매사 기능은 동작) */ }
   // 내보내기 이력 — 중복 등록 방지 + 추적 (product_id = 우리 도매 상품).
   await DB.prepare(`CREATE TABLE IF NOT EXISTS naver_product_exports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -121,7 +121,7 @@ export async function issueNaverToken(clientId: string, clientSecret: string): P
 
 // ── 연결 CRUD ────────────────────────────────────────────────────────────
 export interface NaverConnection { client_id: string; client_secret: string; store_name: string | null }
-/** 연결 소유자 — distributor(유통사, 내보내기) / supplier(제조사, 내 상품 가져오기). */
+/** 연결 소유자 — distributor(판매사, 내보내기) / supplier(제조사, 내 상품 가져오기). */
 export type ChannelOwner = 'distributor' | 'supplier'
 
 export async function loadNaverConnection(DB: D1Database, ownerId: number, kek: string | undefined, ownerType: ChannelOwner = 'distributor'): Promise<NaverConnection | null> {

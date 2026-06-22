@@ -184,7 +184,7 @@ export default function SupplierRegisterPage() {
           {/* 🚪 2026-06-12 (사용자 결정 — 역할 선택 우선): 역방향 안내 — 유통 가입의 '제조사이신가요?' 와 대칭. */}
           <p className="text-[12.5px] text-gray-400 mb-6">
             {t('supplier.areYouDistributor', { defaultValue: '상품을 사입해 판매하실 건가요?' })}{' '}
-            <Link to="/wholesale/join" className="font-semibold underline text-gray-600">{t('supplier.goDistributorJoin', { defaultValue: '유통사 가입 →' })}</Link>
+            <Link to="/wholesale/join" className="font-semibold underline text-gray-600">{t('supplier.goDistributorJoin', { defaultValue: '판매사 가입 →' })}</Link>
           </p>
 
           {/* 🏭 2026-06-08 카카오 통합 (WholesaleJoinPage 와 대칭): 카카오로 로그인된 유저는 사업자 정보만 입력. */}

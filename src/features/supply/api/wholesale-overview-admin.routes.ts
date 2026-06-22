@@ -6,7 +6,7 @@
  *
  * 모델 B: 회원가입이 몰별이라 sellers.id / suppliers.id 가 몰-고유. 주문/예치금/입금요청은
  *   sellers.id 에 매달려 있으므로 mall 은 sellers JOIN 으로 해석(distributor_seller_id → sellers.mall_id).
- *   상품/유통사/제조사/제안은 자체 mall_id 컬럼(DEFAULT 1) 으로 직접 GROUP BY.
+ *   상품/판매사/제조사/제안은 자체 mall_id 컬럼(DEFAULT 1) 으로 직접 GROUP BY.
  *
  * ⚠️ adminApp(IP whitelist + requireAdmin + audit) 체인. 순수 read — 쓰기 없음. additive only.
  *   효율: 몰당 N쿼리 금지 → mall_id 로 GROUP BY 하는 소수 쿼리 후 클라이언트에서 머지.
@@ -87,7 +87,7 @@ app.get('/', async (c) => {
       return r
     }
 
-    // 2) 유통사 수 — sellers.is_distributor=1, GROUP BY mall.
+    // 2) 판매사 수 — sellers.is_distributor=1, GROUP BY mall.
     const distRes = await DB.prepare(
       `SELECT COALESCE(mall_id, 1) AS m, COUNT(*) AS cnt
        FROM sellers WHERE is_distributor = 1 GROUP BY COALESCE(mall_id, 1)`
@@ -122,7 +122,7 @@ app.get('/', async (c) => {
     ).bind(monthStart).all<{ m: number; gmv: number; cnt: number }>().catch(() => ({ results: [] as { m: number; gmv: number; cnt: number }[] }))
     for (const r of gmvRes.results ?? []) { const rr = row(r.m); rr.gmv_month = num(r.gmv); rr.orders_month = num(r.cnt) }
 
-    // 6) 예치금 부채 — SUM(wholesale_deposits.balance) JOIN sellers 로 mall 해석(플랫폼이 유통사에 진 빚).
+    // 6) 예치금 부채 — SUM(wholesale_deposits.balance) JOIN sellers 로 mall 해석(플랫폼이 판매사에 진 빚).
     const depRes = await DB.prepare(
       `SELECT COALESCE(s.mall_id, 1) AS m, COALESCE(SUM(d.balance), 0) AS liability
        FROM wholesale_deposits d

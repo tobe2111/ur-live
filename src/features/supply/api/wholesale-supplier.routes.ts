@@ -227,7 +227,7 @@ app.post('/orders/:id/ship-all', async (c) => {
         .bind(orderId).run()
     }
 
-    // 🔔 2026-06-17 (알림 루프 보강): 유통사(바이어)에게 배송 시작 알림 — 기존엔 제조사만 신규주문 알림을 받고
+    // 🔔 2026-06-17 (알림 루프 보강): 판매사(바이어)에게 배송 시작 알림 — 기존엔 제조사만 신규주문 알림을 받고
     //   발송 시 바이어 통지가 없었음. fail-soft(알림 실패가 발송 처리를 막지 않음).
     if (order.distributor_seller_id) {
       createDashboardNotification(
@@ -292,7 +292,7 @@ app.post('/orders/:id/refund', async (c) => {
     if (claimed === 0) return c.json({ success: true, already: true })
 
     if (isDeposit) {
-      // 💰 예치금 주문 — Toss 미경유. 유통사 잔액에 내 라인 합계 복원.
+      // 💰 예치금 주문 — Toss 미경유. 판매사 잔액에 내 라인 합계 복원.
       //   라인-status CAS(위)가 이미 멱등 — claimed>0 인 이 thread 만 복원하므로 이중복원 없음.
       //   ref_id 는 주문-제조사-claim 단위로 기록(부분환불 추적). 실패해도 자금은 복원되도록 best-effort.
       await ensureDepositSchema(DB)
@@ -341,7 +341,7 @@ app.post('/orders/:id/refund', async (c) => {
     const newStatus = (remain?.c ?? 0) === 0 ? 'REFUNDED' : 'PARTIAL_REFUNDED'
     await DB.prepare("UPDATE wholesale_orders SET status = ? WHERE id = ?").bind(newStatus, orderId).run()
 
-    // 🔔 2026-06-17 (알림 완성도): 유통사(바이어)에게 환불 처리 알림 — 입금확인/발송/출금/클레임엔 알림이
+    // 🔔 2026-06-17 (알림 완성도): 판매사(바이어)에게 환불 처리 알림 — 입금확인/발송/출금/클레임엔 알림이
     //   있었으나 제조사 직접 환불(반품 승인)만 바이어 통지가 없던 누락 보강. fail-soft.
     if (order.distributor_seller_id) {
       createDashboardNotification(

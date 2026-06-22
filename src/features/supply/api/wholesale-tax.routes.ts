@@ -2,7 +2,7 @@
  * 🏭 TAX-1 (2026-06-08) 유통스타트 도매몰 — 세무/정산 어드민 라우터.
  *
  * 3개 영역 (모두 requireAdmin):
- *   (a) GET  /tax/aging                      — 미지급(공급사 미정산) + 미수(유통사 외상) aging 버킷 리포트
+ *   (a) GET  /tax/aging                      — 미지급(공급사 미정산) + 미수(판매사 외상) aging 버킷 리포트
  *   (b) GET  /tax/purchase-invoices?period=  — 매입(제조사→유통스타트) 세금계산서 candidates (월 paid 정산 SUM)
  *   (c) POST /tax/purchase-invoices/issue    — **수동(MANUAL)** 1 공급사+기간 역발행 기록(멱등). 자동 발사 금지.
  *
@@ -78,12 +78,12 @@ function splitVat(grossInclusive: number): { supply: number; vat: number; total:
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// (a) GET /tax/aging — 미지급(공급사) + 미수(유통사 외상) aging
+// (a) GET /tax/aging — 미지급(공급사) + 미수(판매사 외상) aging
 // ─────────────────────────────────────────────────────────────────────────────
 // 버킷: 0-7d / 8-30d / 31-60d / 60d+. 기준일:
 //   - 미지급(공급사): 아직 미지급(pending/available, 양수 supply_amount)인 정산을 기준일(available_at,
 //     없으면 created_at)의 경과일로 버킷팅. status='paid'/'cancelled' 및 클로백 음수 row 제외.
-//   - 미수(유통사 외상): sellers.outstanding_balance(양수) — 미상환 외상 총액. ledger 가 있으면
+//   - 미수(판매사 외상): sellers.outstanding_balance(양수) — 미상환 외상 총액. ledger 가 있으면
 //     마지막 외상 발생일(type='charge')을 기준일로 경과 버킷팅(없으면 'unknown' 버킷에 합산).
 function bucketIndex(days: number): 0 | 1 | 2 | 3 {
   if (days <= 7) return 0
@@ -136,7 +136,7 @@ app.get('/tax/aging', async (c) => {
       addToBucket(payableBySupplier[sid], days, r.amt)
     }
 
-    // ── 미수(유통사 외상 outstanding) ──────────────────────────────────────
+    // ── 미수(판매사 외상 outstanding) ──────────────────────────────────────
     const receivable = EMPTY_BUCKETS()
     const receivableByDistributor: Record<number, { seller_id: number; name: string | null; username: string | null } & Buckets> = {}
     // sellers.outstanding_balance — 미상환 외상(플랫폼 채권). 컬럼/테이블 미존재 시 graceful 빈 결과.
@@ -146,7 +146,7 @@ app.get('/tax/aging', async (c) => {
     ).all<{ seller_id: number; name: string | null; username: string | null; owed: number }>()
       .catch(() => ({ results: [] as { seller_id: number; name: string | null; username: string | null; owed: number }[] }))
 
-    // ledger(wholesale_credit_ledger)가 있으면 유통사별 마지막 외상발생일을 aging 기준으로 사용.
+    // ledger(wholesale_credit_ledger)가 있으면 판매사별 마지막 외상발생일을 aging 기준으로 사용.
     //   type='charge' 의 최근 created_at. 미존재(테이블 없음/행 없음)면 0일(0-7d) 버킷으로 안전 합산.
     const lastChargeRows = await DB.prepare(
       `SELECT distributor_seller_id AS seller_id, MAX(created_at) AS last_charge
@@ -352,7 +352,7 @@ app.post('/tax/purchase-invoices/issue', rateLimit({ action: 'wholesale-purchase
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 🏭 Wave 3c — 거래단위(per-order) 자동 전자세금계산서 어드민 뷰 + 재발행.
-//   매출(sales: 플랫폼→유통사) / 매입(purchase: 제조사→플랫폼 역발행). status: draft|issued|failed.
+//   매출(sales: 플랫폼→판매사) / 매입(purchase: 제조사→플랫폼 역발행). status: draft|issued|failed.
 //   provider 발행은 env-gated(TAX_INVOICE_API_KEY) — 미설정 시 'draft' 로 남아 재발행 대기.
 //   경로: GET  /api/admin/wholesale/wholesale-tax-invoices?status=&type=
 //         POST /api/admin/wholesale/wholesale-tax-invoices/:id/reissue

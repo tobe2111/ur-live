@@ -1,5 +1,5 @@
 /**
- * 💬 2026-06-09 Wave 4a: 유통사(distributor) ↔ 제조사(supplier) 채팅 — D1 polling.
+ * 💬 2026-06-09 Wave 4a: 판매사(distributor) ↔ 제조사(supplier) 채팅 — D1 polling.
  *
  *   websocket / Durable Object 없음 (zero extra server cost). 클라가 polling:
  *   - GET /unread       — 안 읽음 합계 1개 인덱스 쿼리(자주 폴링, CHEAP)
@@ -102,7 +102,7 @@ export function maskCounterpartName(
   counterpartId: number,
 ): string {
   if (role === 'distributor') return '제조사'
-  return rawName || `유통사 #${counterpartId}`
+  return rawName || `판매사 #${counterpartId}`
 }
 
 /** @internal exported for unit-testing only — ownership/IDOR predicate. */
@@ -151,7 +151,7 @@ app.get('/threads', async (c) => {
     const col = myUnreadCol(me.role)
     const filter = myThreadCol(me.role)
     // 상대 이름:
-    //   • supplier 뷰 — 상대=유통사(셀러). business_name/name 정상 노출.
+    //   • supplier 뷰 — 상대=판매사(셀러). business_name/name 정상 노출.
     //   • distributor 뷰 — 🛡️ 제조사 신원 비공개 모델: suppliers.business_name 절대 노출 X.
     //       중립 라벨('제조사')만 반환(아래 매핑). DB 에서 이름 join 안 함(누출 차단).
     const counterIdCol = me.role === 'distributor' ? 't.supplier_id' : 't.distributor_seller_id'
@@ -174,11 +174,11 @@ app.get('/threads', async (c) => {
     const threads = (results ?? []).map((r) => ({
       id: r.id,
       // 🛡️ distributor 는 상대(제조사) 신원을 일절 못 봄 — 이름 중립 라벨 + 숫자 supplier_id 도 미노출(감사 🟡#4).
-      //   유통사는 스레드를 thread.id 로만 열므로 counterpart_id 불필요. supplier 뷰는 distributor_id 노출 OK(비공개 아님).
+      //   판매사는 스레드를 thread.id 로만 열므로 counterpart_id 불필요. supplier 뷰는 distributor_id 노출 OK(비공개 아님).
       counterpart_id: masked ? null : r.counterpart_id,
       counterpart_name: masked
         ? '제조사'
-        : (r.counterpart_name || `유통사 #${r.counterpart_id}`),
+        : (r.counterpart_name || `판매사 #${r.counterpart_id}`),
       counterpart_masked: masked,
       last_preview: r.last_preview || '',
       last_message_at: r.last_message_at,
@@ -215,9 +215,9 @@ app.post('/threads', rateLimit({ action: 'wholesale-chat-thread', max: 30, windo
       const sup = await DB.prepare("SELECT id FROM suppliers WHERE id = ? AND status = 'approved' LIMIT 1").bind(supplierId).first<{ id: number }>().catch(() => null)
       if (!sup) return c.json({ success: false, error: '승인된 제조사를 찾을 수 없습니다' }, 404)
     } else {
-      // 상대가 유통사(셀러 + is_distributor=1).
+      // 상대가 판매사(셀러 + is_distributor=1).
       const sel = await DB.prepare('SELECT id FROM sellers WHERE id = ? AND is_distributor = 1 LIMIT 1').bind(distributorId).first<{ id: number }>().catch(() => null)
-      if (!sel) return c.json({ success: false, error: '유통사를 찾을 수 없습니다' }, 404)
+      if (!sel) return c.json({ success: false, error: '판매사를 찾을 수 없습니다' }, 404)
     }
 
     // get-or-create (UNIQUE(distributor_seller_id, supplier_id)).
@@ -236,16 +236,16 @@ app.post('/threads', rateLimit({ action: 'wholesale-chat-thread', max: 30, windo
 })
 
 // ════════════════════════════════════════════════════════════════════════════
-// POST /threads/by-product — 상품 기준 스레드 get-or-create (유통사 전용)
+// POST /threads/by-product — 상품 기준 스레드 get-or-create (판매사 전용)
 //   body { product_id } — 서버가 상품 → supplier_id 를 서버사이드로 해석.
 //   🛡️ 제조사 신원 비공개 모델: supplier_id/이름 을 절대 응답에 넣지 않음(thread_id 만).
-//   IDOR-safe: 상품이 (1) 도매 공급상품이고 (2) 이 유통사에게 가시(visibilityWhere)할 때만.
+//   IDOR-safe: 상품이 (1) 도매 공급상품이고 (2) 이 판매사에게 가시(visibilityWhere)할 때만.
 // ════════════════════════════════════════════════════════════════════════════
 app.post('/threads/by-product', rateLimit({ action: 'wholesale-chat-by-product', max: 30, windowSec: 60 }), async (c) => {
   const me = await chatIdentityFrom(c)
   if (!me) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  // 유통사만 상품 기준으로 문의를 시작할 수 있음(제조사는 상대 유통사를 상품으로 특정 못 함).
-  if (me.role !== 'distributor') return c.json({ success: false, error: '유통사만 제조사에 문의할 수 있습니다' }, 403)
+  // 판매사만 상품 기준으로 문의를 시작할 수 있음(제조사는 상대 판매사를 상품으로 특정 못 함).
+  if (me.role !== 'distributor') return c.json({ success: false, error: '판매사만 제조사에 문의할 수 있습니다' }, 403)
   const { DB } = c.env
   try {
     await ensureChatSchema(DB)
@@ -255,7 +255,7 @@ app.post('/threads/by-product', rateLimit({ action: 'wholesale-chat-by-product',
       return c.json({ success: false, error: '상품 ID가 올바르지 않습니다' }, 400)
     }
 
-    // 🛡️ 서버사이드 supplier 해석 — 상품이 이 유통사에게 가시한 도매 공급상품일 때만.
+    // 🛡️ 서버사이드 supplier 해석 — 상품이 이 판매사에게 가시한 도매 공급상품일 때만.
     //   visibilityWhere('p') 는 sellerId 1개 bind 필요(catalog 가시성과 동일 규칙).
     //   supplier_id 는 서버 내부에서만 사용 — 응답/클라에 노출 X.
     const prod = await DB.prepare(
@@ -303,13 +303,13 @@ async function loadOwnThread(DB: D1Database, me: ChatIdentity, threadId: number)
 
 // 상대 이름 helper.
 //   🛡️ distributor 뷰는 제조사 신원 비공개 모델 — suppliers.business_name 을 절대 조회/노출하지 않고
-//      중립 라벨('제조사')만 반환(스레드 헤더). supplier 뷰는 유통사(셀러) 이름 정상 노출.
+//      중립 라벨('제조사')만 반환(스레드 헤더). supplier 뷰는 판매사(셀러) 이름 정상 노출.
 async function counterpartName(DB: D1Database, me: ChatIdentity, thread: { distributor_seller_id: number; supplier_id: number }): Promise<string> {
   if (me.role === 'distributor') {
     return '제조사'
   }
   const r = await DB.prepare('SELECT COALESCE(business_name, name) AS nm FROM sellers WHERE id = ?').bind(thread.distributor_seller_id).first<{ nm: string | null }>().catch(() => null)
-  return r?.nm || `유통사 #${thread.distributor_seller_id}`
+  return r?.nm || `판매사 #${thread.distributor_seller_id}`
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -422,7 +422,7 @@ app.post('/threads/:id/messages', rateLimit({ action: 'wholesale-chat-send', max
         if (count === 1 || count % 5 === 0) {
           await createDashboardNotification(
             DB, 'admin', null, 'wholesale_chat_disintermediation', '직거래 시도 감지',
-            `대화방 #${threadId} (유통사 #${thread.distributor_seller_id} ↔ 제조사 #${thread.supplier_id})에서 연락처/외부결제 정보 ${count}회 차단됨 — 검토 필요`,
+            `대화방 #${threadId} (판매사 #${thread.distributor_seller_id} ↔ 제조사 #${thread.supplier_id})에서 연락처/외부결제 정보 ${count}회 차단됨 — 검토 필요`,
             '/admin/wholesale-activity',
           ).catch(swallow('wholesale-chat:disinter-notify'))
         }

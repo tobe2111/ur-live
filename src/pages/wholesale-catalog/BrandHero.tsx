@@ -8,7 +8,7 @@ export default function BrandHero({ loggedIn }: { loggedIn: boolean }) {
     <div className="rounded-2xl overflow-hidden p-5 lg:p-7" style={{ background: WT.ink, color: '#fff' }}>
       <div className="flex items-center gap-1.5 mb-2.5">
         <span className="h-1.5 w-1.5 rounded-full" style={{ background: WT.brand }} />
-        <span className="text-[12px] font-bold" style={{ color: '#C2C7CE' }}>유통스타트 도매몰 · 제조사–유통사 B2B 플랫폼</span>
+        <span className="text-[12px] font-bold" style={{ color: '#C2C7CE' }}>유통스타트 도매몰 · 제조사–판매사 B2B 플랫폼</span>
       </div>
       <h2 className="font-extrabold tracking-[-0.02em] leading-[1.28] text-[21px] lg:text-[28px]">
         검증된 제조사 상품을<br />

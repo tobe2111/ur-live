@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────
-// 🏭 2026-06-09 Wave 2 — 도매몰 제안/신고 (유통사 → 운영팀).
+// 🏭 2026-06-09 Wave 2 — 도매몰 제안/신고 (판매사 → 운영팀).
 //   헤더 아이콘에서 모달로, 또는 /wholesale/proposals 페이지로 동일 컨텐츠 노출.
 //   라이트 고정 B2B 서피스 (WT 토큰) — dark: variant 없음.
 // ──────────────────────────────────────────────────────────────
@@ -184,7 +184,7 @@ export default function WholesaleProposalModal({ onClose }: { onClose: () => voi
               {t('wholesale.proposal.loginNeeded', { defaultValue: '로그인하면 제안/신고를 보낼 수 있어요' })}
             </p>
             <button onClick={() => { onClose(); navigate('/wholesale/login') }} className="rounded-xl px-5 py-3 text-[14px] font-bold text-white" style={{ background: WT.brand }}>
-              {t('wholesale.login', { defaultValue: '유통사 로그인' })}
+              {t('wholesale.login', { defaultValue: '판매사 로그인' })}
             </button>
           </div>
         )}

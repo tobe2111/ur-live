@@ -135,7 +135,7 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
             <div>
               <label className={labelCls}>{t('supplier.fieldCategory', { defaultValue: '카테고리' })}</label>
               {/* 🏭 2026-06-04 카테고리 표준화 — 자유 입력 → 도매몰 표준 카테고리 select.
-                  카탈로그 필터(WHOLESALE_CATEGORIES)와 값 일치 → 유통사 카테고리 필터가 항상 동작. */}
+                  카탈로그 필터(WHOLESALE_CATEGORIES)와 값 일치 → 판매사 카테고리 필터가 항상 동작. */}
               <select disabled={saving} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className={inputCls}>
                 {WHOLESALE_CATEGORIES.filter(c => c.id !== 'all').map(c => (
                   <option key={c.id} value={c.id}>{c.label}</option>
@@ -197,9 +197,9 @@ export default function AddProductModal({ t, onClose, onCreated }: { t: (k: stri
             <div>
               <label className={labelCls}>{t('supplier.fieldVisibility', { defaultValue: '공급 범위' })}</label>
               <select disabled={saving} value={form.supply_visibility} onChange={e => setForm(f => ({ ...f, supply_visibility: e.target.value }))} className={inputCls}>
-                <option value="ALL">{t('supplier.visAll', { defaultValue: '전체공급 (모든 유통사)' })}</option>
+                <option value="ALL">{t('supplier.visAll', { defaultValue: '전체공급 (모든 판매사)' })}</option>
                 <option value="APPROVED_CHANNEL">{t('supplier.visApproved', { defaultValue: '승인한 유통채널만' })}</option>
-                <option value="UTONGSTART_ONLY">{t('supplier.visUtong', { defaultValue: '유통스타트 유통채널 (선정 유통사)' })}</option>
+                <option value="UTONGSTART_ONLY">{t('supplier.visUtong', { defaultValue: '유통스타트 유통채널 (선정 판매사)' })}</option>
               </select>
             </div>
           </div>

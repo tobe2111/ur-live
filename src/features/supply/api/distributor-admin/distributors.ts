@@ -1,4 +1,4 @@
-/** 🏭 distributor-admin: 유통사 등급 배정 + 여신/미수금 (byte-identical 분해). */
+/** 🏭 distributor-admin: 판매사 등급 배정 + 여신/미수금 (byte-identical 분해). */
 import type { Hono } from 'hono'
 import { safeError } from '@/worker/utils/safe-error'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
@@ -40,7 +40,7 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
       ).bind(...binds).all()
       return c.json({ success: true, distributors: results ?? [] })
     } catch (err) {
-      return safeError(c, err, '유통사 조회 중 오류가 발생했습니다', '[distributor-admin]')
+      return safeError(c, err, '판매사 조회 중 오류가 발생했습니다', '[distributor-admin]')
     }
   })
 
@@ -48,7 +48,7 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
   app.patch('/distributors/:id', async (c) => {
     try {
       const id = Number(c.req.param('id'))
-      if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 유통사 ID' }, 400)
+      if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 판매사 ID' }, 400)
       const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
 
       // 등급: A/B/C/D/OEM 또는 해제(null/'')
@@ -76,7 +76,7 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
       const res = await c.env.DB.prepare(
         `UPDATE sellers SET distributor_grade=?, special_discount_until=?, updated_at=datetime('now') WHERE id=?`
       ).bind(grade, special, id).run()
-      if (!res.meta.changes) return c.json({ success: false, error: '존재하지 않는 유통사입니다' }, 404)
+      if (!res.meta.changes) return c.json({ success: false, error: '존재하지 않는 판매사입니다' }, 404)
       await writeAuditLog(c, {
         action: 'wholesale_distributor_grade_change',
         targetType: 'seller',
@@ -86,7 +86,7 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
       }).catch(() => { /* audit 실패해도 성공 처리 */ })
       return c.json({ success: true })
     } catch (err) {
-      return safeError(c, err, '유통사 등급 설정 중 오류가 발생했습니다', '[distributor-admin]')
+      return safeError(c, err, '판매사 등급 설정 중 오류가 발생했습니다', '[distributor-admin]')
     }
   })
 
@@ -95,11 +95,11 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
     try {
       await ensureCreditSchemaAdmin(c.env.DB)
       const id = Number(c.req.param('id'))
-      if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 유통사 ID' }, 400)
+      if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 판매사 ID' }, 400)
       const seller = await c.env.DB.prepare(
         'SELECT id, business_name, name, username, status, COALESCE(distributor_credit_limit,0) AS limit, COALESCE(outstanding_balance,0) AS outstanding, COALESCE(credit_frozen,0) AS frozen FROM sellers WHERE id = ?'
       ).bind(id).first<{ id: number; business_name: string | null; name: string | null; username: string | null; status: string | null; limit: number; outstanding: number; frozen: number }>()
-      if (!seller) return c.json({ success: false, error: '존재하지 않는 유통사입니다' }, 404)
+      if (!seller) return c.json({ success: false, error: '존재하지 않는 판매사입니다' }, 404)
       const { results } = await c.env.DB.prepare(
         'SELECT id, order_id, type, amount, balance_after, memo, created_at FROM wholesale_credit_ledger WHERE distributor_seller_id = ? ORDER BY created_at DESC, id DESC LIMIT 100'
       ).bind(id).all().catch(() => ({ results: [] }))
@@ -115,7 +115,7 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
     try {
       await ensureCreditSchemaAdmin(c.env.DB)
       const id = Number(c.req.param('id'))
-      if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 유통사 ID' }, 400)
+      if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 판매사 ID' }, 400)
       const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
       const sets: string[] = []
       const params: (string | number)[] = []
@@ -140,7 +140,7 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
       ).bind(id).first<{ limit: number; frozen: number }>().catch(() => null)
       sets.push("updated_at = datetime('now')")
       const res = await c.env.DB.prepare(`UPDATE sellers SET ${sets.join(', ')} WHERE id = ?`).bind(...params, id).run()
-      if (!res.meta.changes) return c.json({ success: false, error: '존재하지 않는 유통사입니다' }, 404)
+      if (!res.meta.changes) return c.json({ success: false, error: '존재하지 않는 판매사입니다' }, 404)
       await writeAuditLog(c, {
         action: 'wholesale_credit_terms_change',
         targetType: 'seller',
@@ -160,7 +160,7 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
     try {
       await ensureCreditSchemaAdmin(c.env.DB)
       const id = Number(c.req.param('id'))
-      if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 유통사 ID' }, 400)
+      if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 판매사 ID' }, 400)
       const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
       const amount = Math.floor(Number(body.amount))
       if (!Number.isFinite(amount) || amount <= 0) return c.json({ success: false, error: '상환 금액이 올바르지 않습니다' }, 400)
@@ -169,7 +169,7 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
       const seller = await c.env.DB.prepare(
         'SELECT COALESCE(outstanding_balance,0) AS outstanding FROM sellers WHERE id = ?'
       ).bind(id).first<{ outstanding: number }>()
-      if (!seller) return c.json({ success: false, error: '존재하지 않는 유통사입니다' }, 404)
+      if (!seller) return c.json({ success: false, error: '존재하지 않는 판매사입니다' }, 404)
       const prevOut = Math.max(0, seller.outstanding || 0)
       // 미수금 초과 상환은 잔액까지만(clamp ≥0). 실제 차감액 = min(amount, prevOut).
       const applied = Math.min(amount, prevOut)

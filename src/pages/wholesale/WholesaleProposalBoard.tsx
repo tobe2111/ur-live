@@ -147,7 +147,7 @@ export default function WholesaleProposalBoard() {
 
       {!loggedIn && (
         <div className="mt-6 rounded-2xl py-8 text-center" style={{ background: WT.fill }}>
-          <p className="text-[13.5px] font-bold" style={{ color: WT.ink }}>글 작성은 유통사 전용이에요</p>
+          <p className="text-[13.5px] font-bold" style={{ color: WT.ink }}>글 작성은 판매사 전용이에요</p>
           <button onClick={() => navigate('/wholesale/login')} className="mt-3 px-6 h-10 rounded-xl text-[13px] font-bold text-white" style={{ background: WT.brand }}>로그인하기</button>
         </div>
       )}

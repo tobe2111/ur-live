@@ -2,14 +2,14 @@
  * 🏦 2026-06-09 유통스타트 도매몰 — 예치금(선불 deposit) 결제 모델.
  * (Toss 선결제/여신을 대체하는 B2B 충전식 결제)
  *
- * 흐름: 유통사가 무통장입금 → 충전 요청(pending) → 어드민이 입금확인(confirm) → 잔액 적립
+ * 흐름: 판매사가 무통장입금 → 충전 요청(pending) → 어드민이 입금확인(confirm) → 잔액 적립
  *       → 도매 주문 시 잔액에서 차감(Toss 미경유). 환불 시 잔액 복원.
  *
  * 💰 머니-크리티컬: 모든 적립/차감은 CAS 또는 D1.batch 로 원자적·멱등. 서버계산 금액만.
  *    절대 음수 잔액·재시도 시 이중적립 금지. 여신(credit) CAS 패턴(wholesale.routes ON_CREDIT) 미러.
  *
  * 마운트(worker/index.ts):
- *   app.route('/api/wholesale', wholesaleDepositRoutes)        — 유통사 (GET/POST deposits/*)
+ *   app.route('/api/wholesale', wholesaleDepositRoutes)        — 판매사 (GET/POST deposits/*)
  *   app.route('/api/admin/wholesale-deposits', adminWholesaleDepositRoutes) — 어드민
  */
 import { Hono } from 'hono'
@@ -28,7 +28,7 @@ import {
 import { loadWholesaleDepositAccount } from './wholesale-main.routes'
 import { isViewerToken } from './sub-account-gate'
 
-// ── 셀러(유통사) JWT → { sellerId, isDistributor } ───────────────────────────
+// ── 셀러(판매사) JWT → { sellerId, isDistributor } ───────────────────────────
 //   wholesale.routes sellerIdFrom 미러 + is_distributor 플래그 추가(예치금 게이트).
 async function distributorFrom(authorization: string | undefined, jwtSecret: string): Promise<{ sellerId: number; isDistributor: boolean } | null> {
   if (!authorization?.startsWith('Bearer ')) return null
@@ -43,7 +43,7 @@ async function distributorFrom(authorization: string | undefined, jwtSecret: str
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 유통사(distributor) 엔드포인트 — /api/wholesale/deposits/*
+// 판매사(distributor) 엔드포인트 — /api/wholesale/deposits/*
 // ════════════════════════════════════════════════════════════════════════════
 const dist = new Hono<{ Bindings: Env }>()
 
@@ -56,7 +56,7 @@ dist.get('/deposits/me', async (c) => {
     await ensureDepositSchema(DB)
     const balance = await loadDepositBalance(DB, auth.sellerId)
     const recent = await recentDepositTxns(DB, auth.sellerId, 20)
-    // 🏬 멀티몰: 이 유통사 계정이 속한 몰의 입금계좌 우선(없으면 글로벌 platform_settings fallback).
+    // 🏬 멀티몰: 이 판매사 계정이 속한 몰의 입금계좌 우선(없으면 글로벌 platform_settings fallback).
     //   기본몰(mall_id=1)에 몰 계좌 미설정이면 글로벌로 폴백 → 단일몰 기존 동작 byte-identical.
     let deposit_account = ''
     try {
@@ -100,7 +100,7 @@ dist.post('/deposits/charge-request', rateLimit({ action: 'wholesale-deposit-req
 
     // 상호명(있으면) — 어드민 알림 가독성.
     const biz = await DB.prepare('SELECT name FROM sellers WHERE id = ?').bind(auth.sellerId).first<{ name: string | null }>().catch(() => null)
-    const bizName = biz?.name || `유통사 #${auth.sellerId}`
+    const bizName = biz?.name || `판매사 #${auth.sellerId}`
 
     createDashboardNotification(
       DB, 'admin', null, 'wholesale_deposit_request', '예치금 충전 입금확인 요청',
@@ -141,7 +141,7 @@ admin.use('*', requireAdmin())
 admin.use('*', adminAuditMiddleware())
 
 // ── GET / — 충전 요청 목록(상호명 join) ──────────────────────────────────────
-//   🏬 멀티-몰: ?mall_id= 가 주어진 경우에만 해당 몰(요청 유통사 계정의 sellers.mall_id)로 필터.
+//   🏬 멀티-몰: ?mall_id= 가 주어진 경우에만 해당 몰(요청 판매사 계정의 sellers.mall_id)로 필터.
 //   미지정 = 전 몰(기존 무필터 뷰 보존 — byte-identical). 각 행에 mall_id(+몰 이름)도 반환.
 admin.get('/', async (c) => {
   const { DB } = c.env
@@ -179,7 +179,7 @@ admin.post('/:id/confirm', rateLimit({ action: 'admin-wholesale-deposit-confirm'
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청 ID' }, 400)
   try {
     await ensureDepositSchema(DB)
-    // 요청 로드(금액·유통사 확보) — 금액은 요청 row 가 SSOT(클라 입력 신뢰 X).
+    // 요청 로드(금액·판매사 확보) — 금액은 요청 row 가 SSOT(클라 입력 신뢰 X).
     const reqRow = await DB.prepare(
       'SELECT id, seller_id, amount, status FROM wholesale_deposit_requests WHERE id = ?'
     ).bind(id).first<{ id: number; seller_id: number; amount: number; status: string }>()
@@ -219,7 +219,7 @@ admin.post('/:id/confirm', rateLimit({ action: 'admin-wholesale-deposit-confirm'
       "INSERT INTO wholesale_deposit_txns (seller_id, type, amount, balance_after, ref_id, memo) VALUES (?, 'charge', ?, ?, ?, ?)"
     ).bind(sellerId, amount, balanceAfter, String(id), `예치금 충전 입금확인 #${id}`).run().catch(swallow('deposit:confirm-txn'))
 
-    // STEP 3 — 유통사 알림.
+    // STEP 3 — 판매사 알림.
     createDashboardNotification(
       DB, 'seller', String(sellerId), 'wholesale_deposit_confirmed', '예치금 충전 완료',
       `${amount.toLocaleString('ko-KR')}원이 충전되었습니다 (잔액 ${balanceAfter.toLocaleString('ko-KR')}원)`,
@@ -272,7 +272,7 @@ admin.post('/adjust', rateLimit({ action: 'admin-wholesale-deposit-adjust', max:
     const sellerId = Math.floor(Number(body.seller_id))
     const amount = Math.floor(Number(body.amount)) // signed: +적립 / -차감
     const memo = String(body.memo || '관리자 보정').slice(0, 200)
-    if (!Number.isFinite(sellerId) || sellerId <= 0) return c.json({ success: false, error: '유통사 ID가 올바르지 않습니다' }, 400)
+    if (!Number.isFinite(sellerId) || sellerId <= 0) return c.json({ success: false, error: '판매사 ID가 올바르지 않습니다' }, 400)
     if (!Number.isFinite(amount) || amount === 0 || Math.abs(amount) > 100_000_000) {
       return c.json({ success: false, error: '보정 금액이 올바르지 않습니다' }, 400)
     }

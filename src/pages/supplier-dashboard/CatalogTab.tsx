@@ -94,7 +94,7 @@ export default function CatalogTab({ items, t, onAdd, onBulkDone, onManageChanne
         /* 🧭 2026-06-10 (생애주기 감사 갭#5): 첫 상품 온보딩 — 빈 문구 한 줄 → 3단계 시작 카드 (NewSellerSteps 패턴) */
         <div className="bg-white rounded-2xl border border-gray-200 p-5">
           <h3 className="text-sm font-extrabold text-gray-900">👋 {t('supplier.onboardTitle', { defaultValue: '첫 상품을 올려볼까요?' })}</h3>
-          <p className="text-xs text-gray-500 mt-0.5 mb-4">{t('supplier.onboardSub', { defaultValue: '상품이 승인되면 전국 유통사에게 등급 공급가로 노출됩니다' })}</p>
+          <p className="text-xs text-gray-500 mt-0.5 mb-4">{t('supplier.onboardSub', { defaultValue: '상품이 승인되면 전국 판매사에게 등급 공급가로 노출됩니다' })}</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button onClick={onAdd} className="text-left rounded-xl border border-gray-200 p-3 hover:bg-gray-50 transition-colors">
               <p className="text-[13px] font-bold text-gray-900">1. {t('supplier.onboardStep1', { defaultValue: '상품 직접 등록' })}</p>
@@ -165,7 +165,7 @@ export default function CatalogTab({ items, t, onAdd, onBulkDone, onManageChanne
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     {item.supply_visibility === 'APPROVED_CHANNEL' && (
                       <button onClick={() => onManageChannel(item)} className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-700 border border-gray-300 rounded-lg px-2 py-1 hover:bg-gray-50">
-                        <Package className="w-3 h-3" /> {t('supplier.manageChannel', { defaultValue: '승인 유통사 관리' })}
+                        <Package className="w-3 h-3" /> {t('supplier.manageChannel', { defaultValue: '승인 판매사 관리' })}
                       </button>
                     )}
                     {item.approval_status === 'approved' && item.pending_supply_price == null && (

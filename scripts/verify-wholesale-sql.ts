@@ -64,7 +64,7 @@ async function main() {
   ok('가시성 가드 EXISTS — 제한상품 숨김/허용목록 노출')
 
   // 3) 세금 순매출(부분환불 차감) + VAT 추출 + upsert 멱등
-  await DB.prepare("INSERT INTO sellers (id, business_name, name) VALUES (10,'유통사A','A')").run()
+  await DB.prepare("INSERT INTO sellers (id, business_name, name) VALUES (10,'판매사A','A')").run()
   await DB.prepare("INSERT INTO wholesale_orders (id, distributor_seller_id, status, subtotal, refunded_amount, paid_at) VALUES (100,10,'PARTIAL_REFUNDED',11000,1100,'2026-06-10 00:00:00')").run()
   const agg = await DB.prepare(`
     SELECT COALESCE(SUM(MAX(0, o.subtotal - COALESCE(o.refunded_amount,0))),0) AS total
@@ -75,7 +75,7 @@ async function main() {
   const { supply, vat } = splitVat(Number(agg?.total))
   assert(supply === 9000 && vat === 900, `VAT 추출 오류 supply=${supply} vat=${vat}`)
   const upsert = `INSERT INTO tax_documents (doc_type,direction,period_month,distributor_seller_id,supplier_id,party_name,supply_amount,vat_amount,total_amount,order_count,status,issued_at)
-    VALUES ('tax_invoice','sales','2026-06',10,0,'유통사A',?,?,?,1,'issued',datetime('now'))
+    VALUES ('tax_invoice','sales','2026-06',10,0,'판매사A',?,?,?,1,'issued',datetime('now'))
     ON CONFLICT(doc_type,direction,period_month,distributor_seller_id,supplier_id)
     DO UPDATE SET supply_amount=excluded.supply_amount`
   await DB.prepare(upsert).bind(supply, vat, 9900).run()
@@ -163,20 +163,20 @@ async function main() {
   assert.ok(20 >= moq && 40 >= moq, 'MOQ 이상 주문은 허용')
   ok('MOQ — 컬럼 기본값 1 + 저장 + 주문 하한(qty>=moq) 판정')
 
-  // 10) 자료(tax_documents) 유통사 스코프 — 본인 sales 문서만 노출(매입/타인 제외)
-  // case 3 에서 distributor 10 의 sales 세금계산서 1건 발행됨. 추가로 매입 + 타 유통사 sales 삽입.
+  // 10) 자료(tax_documents) 판매사 스코프 — 본인 sales 문서만 노출(매입/타인 제외)
+  // case 3 에서 distributor 10 의 sales 세금계산서 1건 발행됨. 추가로 매입 + 타 판매사 sales 삽입.
   await DB.prepare("INSERT INTO tax_documents (doc_type,direction,period_month,distributor_seller_id,supplier_id,party_name,supply_amount,vat_amount,total_amount,order_count,status,issued_at) VALUES ('tax_invoice','purchase','2026-06',NULL,7,'제조사X',9000,900,9900,1,'issued',datetime('now'))").run()
-  await DB.prepare("INSERT INTO tax_documents (doc_type,direction,period_month,distributor_seller_id,supplier_id,party_name,supply_amount,vat_amount,total_amount,order_count,status,issued_at) VALUES ('transaction_statement','sales','2026-06',99,0,'유통사B',5000,500,5500,1,'issued',datetime('now'))").run()
+  await DB.prepare("INSERT INTO tax_documents (doc_type,direction,period_month,distributor_seller_id,supplier_id,party_name,supply_amount,vat_amount,total_amount,order_count,status,issued_at) VALUES ('transaction_statement','sales','2026-06',99,0,'판매사B',5000,500,5500,1,'issued',datetime('now'))").run()
   const mine = await DB.prepare(
     "SELECT id, direction, distributor_seller_id FROM tax_documents WHERE distributor_seller_id = ? AND direction = 'sales' ORDER BY id"
   ).bind(10).all<{ id: number; direction: string; distributor_seller_id: number }>()
   const mineRows = mine.results || []
   assert.ok(mineRows.length >= 1, '본인 sales 문서가 조회되어야 함')
-  assert.ok(mineRows.every(r => r.direction === 'sales' && Number(r.distributor_seller_id) === 10), '매입/타 유통사 문서가 섞이면 안 됨(IDOR)')
-  // IDOR: 타 유통사(99) 문서를 distributor 10 으로 조회 시 0건
+  assert.ok(mineRows.every(r => r.direction === 'sales' && Number(r.distributor_seller_id) === 10), '매입/타 판매사 문서가 섞이면 안 됨(IDOR)')
+  // IDOR: 타 판매사(99) 문서를 distributor 10 으로 조회 시 0건
   const stolen = await DB.prepare("SELECT COUNT(*) AS n FROM tax_documents WHERE id IN (SELECT id FROM tax_documents WHERE distributor_seller_id=99) AND distributor_seller_id=10").first<{ n: number }>()
-  assert.strictEqual(Number(stolen?.n), 0, '타 유통사 문서가 본인 조회에 노출되면 안 됨')
-  ok('자료 유통사 스코프 — 본인 sales 만(매입/타인 제외, IDOR 가드)')
+  assert.strictEqual(Number(stolen?.n), 0, '타 판매사 문서가 본인 조회에 노출되면 안 됨')
+  ok('자료 판매사 스코프 — 본인 sales 만(매입/타인 제외, IDOR 가드)')
 
   // 11) 수량 구간 할인(volume tier) — 테이블 + 주문 authoritative 단가 재계산
   const tcols = await DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='product_qty_tiers'").all<{ name: string }>()

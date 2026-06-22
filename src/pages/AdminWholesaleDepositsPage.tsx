@@ -12,8 +12,8 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import AdminMallSelect from '@/components/admin/AdminMallSelect'
 
 // 🏦 2026-06-09 유통스타트 — 어드민 도매 예치금 입금확인.
-//   유통사 충전 신청(은행 송금 대기) → 관리자 입금 확인 시 잔액 충전 / 반려. 라이트 테마.
-//   🏬 멀티-몰: 몰 선택 시 ?mall_id= 로 해당 몰 유통사 신청만 필터(미선택=전 몰, 기존 동작 불변).
+//   판매사 충전 신청(은행 송금 대기) → 관리자 입금 확인 시 잔액 충전 / 반려. 라이트 테마.
+//   🏬 멀티-몰: 몰 선택 시 ?mall_id= 로 해당 몰 판매사 신청만 필터(미선택=전 몰, 기존 동작 불변).
 
 interface DepositRequest {
   id: number
@@ -39,7 +39,7 @@ export default function AdminWholesaleDepositsPage() {
   const [filter, setFilter] = useState<'pending' | 'all'>('pending')
   const [mallId, setMallId] = useState('') // '' = 전 몰(기존 무필터 동작 불변)
   const [actingId, setActingId] = useState<number | null>(null)
-  // 🏦 2026-06-17 (대표): 도매 예치금 입금 안내 계좌(유통사 충전 화면 표시값). platform_settings 저장 — 코드/깃 미포함.
+  // 🏦 2026-06-17 (대표): 도매 예치금 입금 안내 계좌(판매사 충전 화면 표시값). platform_settings 저장 — 코드/깃 미포함.
   const [acct, setAcct] = useState('')
   const [acctSaving, setAcctSaving] = useState(false)
 
@@ -116,12 +116,12 @@ export default function AdminWholesaleDepositsPage() {
   return (
     <AdminLayout title="도매 예치금">
       <div className="ur-content-full px-4 lg:px-8 py-6">
-        <DashboardPageHeader icon={<Wallet className="w-5 h-5" />} title="도매 예치금 입금확인" subtitle="유통사 예치금 충전 신청을 확인하고 입금 완료 시 잔액을 충전합니다." />
+        <DashboardPageHeader icon={<Wallet className="w-5 h-5" />} title="도매 예치금 입금확인" subtitle="판매사 예치금 충전 신청을 확인하고 입금 완료 시 잔액을 충전합니다." />
 
-        {/* 🏦 예치금 입금 안내 계좌 — 유통사 충전 화면에 "이 계좌로 입금하세요"로 표시. 값은 DB(platform_settings) 저장. */}
+        {/* 🏦 예치금 입금 안내 계좌 — 판매사 충전 화면에 "이 계좌로 입금하세요"로 표시. 값은 DB(platform_settings) 저장. */}
         <div className="bg-white rounded-xl border border-gray-200 p-4 mt-4">
           <p className="text-sm font-bold text-gray-900">예치금 입금 안내 계좌</p>
-          <p className="text-[12px] text-gray-500 mt-0.5 mb-2.5">유통사 예치금 충전 화면에 표시됩니다 — 유통사는 이 계좌로 먼저 입금 후 충전 신청합니다. 한 줄로 입력(은행/계좌번호/예금주).</p>
+          <p className="text-[12px] text-gray-500 mt-0.5 mb-2.5">판매사 예치금 충전 화면에 표시됩니다 — 판매사는 이 계좌로 먼저 입금 후 충전 신청합니다. 한 줄로 입력(은행/계좌번호/예금주).</p>
           <div className="flex flex-wrap items-center gap-2">
             <input
               value={acct}

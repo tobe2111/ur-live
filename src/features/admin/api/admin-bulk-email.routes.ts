@@ -103,7 +103,7 @@ async function resolveRecipients(DB: D1Database, filter: BulkEmailFilter): Promi
            WHERE email IS NOT NULL AND email <> ''${st.sql}
            LIMIT ${HARD_RECIPIENT_CAP}`;
   } else {
-    // 셀러 / 유통사 — sellers 테이블
+    // 셀러 / 판매사 — sellers 테이블
     const st = statusClause(filter.status ?? 'all');
     let extra = '';
     if (filter.role === 'distributor') {

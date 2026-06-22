@@ -2,18 +2,18 @@
  * 🏭 NOTI-1 (2026-06-08) 유통스타트 도매몰 — (a) 품절/재입고 알림 + (b) 주문별 메모 스레드.
  *
  * 배경:
- *  (a) 품절 상품을 사입하려던 유통사가 "재입고되면 알려주세요" 를 신청할 창구가 없었음.
- *      → wholesale_restock_subscriptions 에 (유통사, 상품) 구독을 기록. 실제 재입고 감지/통지는
+ *  (a) 품절 상품을 사입하려던 판매사가 "재입고되면 알려주세요" 를 신청할 창구가 없었음.
+ *      → wholesale_restock_subscriptions 에 (판매사, 상품) 구독을 기록. 실제 재입고 감지/통지는
  *        cron(`wholesale-restock-notify.ts`)이 담당(재고 갱신 site 를 hooking 하지 않음 — 결합도 ↓).
- *  (b) 도매주문에 대해 유통사 ↔ 공급자 ↔ 어드민이 소통할 스레드가 없었음(클레임은 RMA 전용).
- *      → wholesale_order_notes 에 주문별 메모를 누적. 작성/조회 시 주문 당사자(유통사 owner OR
+ *  (b) 도매주문에 대해 판매사 ↔ 공급자 ↔ 어드민이 소통할 스레드가 없었음(클레임은 RMA 전용).
+ *      → wholesale_order_notes 에 주문별 메모를 누적. 작성/조회 시 주문 당사자(판매사 owner OR
  *        해당 주문에 라인이 있는 공급자)만 허용(IDOR 방지). 작성 시 상대 당사자에 대시보드 알림.
  *
  * 마운트: app.route('/api/wholesale', wholesaleNotificationsRoutes)  ← 오케스트레이터(worker/index.ts)가 처리.
  *   ⚠️ 경로는 wholesale.routes.ts / wholesale-claims.routes.ts 와 동일 prefix(/api/wholesale)에 합쳐지므로
  *      충돌 없는 path 사용:
- *      - POST   /api/wholesale/restock/subscribe          (유통사: 품절 상품 재입고 구독)
- *      - GET    /api/wholesale/restock/subscriptions      (유통사 본인 구독 목록)
+ *      - POST   /api/wholesale/restock/subscribe          (판매사: 품절 상품 재입고 구독)
+ *      - GET    /api/wholesale/restock/subscriptions      (판매사 본인 구독 목록)
  *      - DELETE /api/wholesale/restock/subscribe/:productId (구독 해제)
  *      - GET    /api/wholesale/orders/:id/notes            (주문 당사자: 메모 스레드 조회)
  *      - POST   /api/wholesale/orders/:id/notes            (주문 당사자: 메모 작성)
@@ -47,7 +47,7 @@ export async function ensureWholesaleNotificationsSchema(DB: D1Database): Promis
 }
 
 async function _doEnsure(DB: D1Database): Promise<void> {
-  // (a) 재입고 구독 — (유통사, 상품) 1:1. notified_at 채워지면 cron 이 통지 완료 처리.
+  // (a) 재입고 구독 — (판매사, 상품) 1:1. notified_at 채워지면 cron 이 통지 완료 처리.
   await DB.prepare(`CREATE TABLE IF NOT EXISTS wholesale_restock_subscriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     distributor_seller_id INTEGER NOT NULL,
@@ -72,9 +72,9 @@ async function _doEnsure(DB: D1Database): Promise<void> {
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wh_order_notes_order ON wholesale_order_notes(wholesale_order_id, created_at)').run().catch(swallow('wh-noti:idx-notes-order'))
 }
 
-// ── 유통사/공급자(셀러 계열) JWT → seller_id ───────────────────────────────────
+// ── 판매사/공급자(셀러 계열) JWT → seller_id ───────────────────────────────────
 //   wholesale.routes.ts / wholesale-claims.routes.ts 와 동일하게 Bearer JWT 의 seller_id 신뢰.
-//   (유통사·공급자 모두 seller_token 계열 — author_type 은 주문 당사자 판정으로 도출.)
+//   (판매사·공급자 모두 seller_token 계열 — author_type 은 주문 당사자 판정으로 도출.)
 async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
   if (!authorization?.startsWith('Bearer ')) return null
   try {
@@ -169,7 +169,7 @@ app.delete('/restock/subscribe/:productId', rateLimit({ action: 'wholesale-resto
 //  (b) 주문별 메모 스레드
 // ════════════════════════════════════════════════════════════════════════════
 
-// 주문 당사자 판정 — 인증된 seller_id 가 이 주문의 유통사 owner 인지, 또는 라인을 가진 공급자인지.
+// 주문 당사자 판정 — 인증된 seller_id 가 이 주문의 판매사 owner 인지, 또는 라인을 가진 공급자인지.
 //   반환: { type: 'distributor'|'supplier', supplierId?, distributorId } | null(당사자 아님).
 async function resolveParty(
   DB: D1Database, wholesaleOrderId: number, sellerId: number,
@@ -236,8 +236,8 @@ app.post('/orders/:id/notes', rateLimit({ action: 'wholesale-order-note', max: 6
     const noteId = Number(ins.meta?.last_row_id)
     if (!noteId) return c.json({ success: false, error: '메모 등록 중 오류가 발생했습니다' }, 500)
 
-    // 상대 당사자에 대시보드 알림(fail-soft). 작성자가 유통사면 공급자(들)에, 공급자면 유통사에.
-    const authorLabel = party.type === 'distributor' ? '유통사' : '제조사'
+    // 상대 당사자에 대시보드 알림(fail-soft). 작성자가 판매사면 공급자(들)에, 공급자면 판매사에.
+    const authorLabel = party.type === 'distributor' ? '판매사' : '제조사'
     const preview = bodyText.length > 60 ? bodyText.slice(0, 60) + '…' : bodyText
     if (party.type === 'distributor') {
       // 주문에 라인을 가진 모든 공급자에 통지(중복 제거).
@@ -251,7 +251,7 @@ app.post('/orders/:id/notes', rateLimit({ action: 'wholesale-order-note', max: 6
         ).catch(swallow('wh-noti:notify-supplier'))
       }
     } else {
-      // 공급자 작성 → 유통사(주문 owner)에 통지.
+      // 공급자 작성 → 판매사(주문 owner)에 통지.
       createDashboardNotification(
         DB, 'seller', String(party.distributorId), 'wholesale_order_note',
         `도매 주문 #${orderId} 새 메모 (${authorLabel})`, preview, '/wholesale/orders',

@@ -334,7 +334,7 @@ export default function AdminWholesaleImportPage() {
 
                 {(diag.malls || []).length > 1 && (
                   <div className="text-[12px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                    ⚠️ 몰이 {diag.malls.length}개 있습니다. 유통사 계정이 속한 몰과 상품의 몰이 다르면 상품이 안 보입니다 — 위 '몰별 분포'와 대조하세요.
+                    ⚠️ 몰이 {diag.malls.length}개 있습니다. 판매사 계정이 속한 몰과 상품의 몰이 다르면 상품이 안 보입니다 — 위 '몰별 분포'와 대조하세요.
                     <div className="mt-1 space-y-0.5">{diag.malls.map(m => <div key={m.id}>· 몰 #{m.id} {m.name || ''} {m.host ? `(${m.host})` : ''} {m.active ? '' : '[비활성]'}</div>)}</div>
                   </div>
                 )}

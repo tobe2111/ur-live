@@ -1,16 +1,16 @@
 /**
  * 🏭 NOTI-1 (2026-06-08) 유통스타트 도매몰 — 재입고 알림 통지 cron.
  *
- * 배경: 유통사가 품절 상품에 `wholesale_restock_subscriptions` 로 "재입고되면 알려주세요" 구독을
+ * 배경: 판매사가 품절 상품에 `wholesale_restock_subscriptions` 로 "재입고되면 알려주세요" 구독을
  *   남긴다(wholesale-notifications.routes.ts). 실제 재고 갱신 site(공급자/어드민 재고 수정·주문 차감 등)는
  *   여러 곳에 흩어져 있어 hooking 하면 결합도가 높아진다. 대신 이 cron 이 **주기적으로 재고가 회복된
  *   구독을 스캔**해서 통지 → 재고 갱신 코드를 전혀 건드리지 않는다(낮은 결합도, 단일 통지 경로).
  *
  * 동작(멱등·fail-soft):
  *   미통지(notified_at IS NULL) 구독 중 상품 재고가 stock>0 으로 회복된 것을 조인 →
- *   각 유통사에 대시보드 알림('재입고 알림: <상품명>', /wholesale/product/<id> 링크) →
+ *   각 판매사에 대시보드 알림('재입고 알림: <상품명>', /wholesale/product/<id> 링크) →
  *   notified_at 을 찍어 재통지 차단(다음 스캔에서 제외). 배치 cap 으로 한 주기 부하 제한.
- *   유통사가 다시 품절 후 재구독하면 라우터의 upsert 가 notified_at 을 NULL 로 리셋 → 다시 통지 대상.
+ *   판매사가 다시 품절 후 재구독하면 라우터의 upsert 가 notified_at 을 NULL 로 리셋 → 다시 통지 대상.
  *
  * 권장 주기(cadence): **15~30분(또는 hourly)**. 재입고는 즉시성이 어느 정도 중요하지만(놓치면
  *   재고 다시 소진), 분 단위까지 필요하진 않음. 일배치로도 동작(멱등). 부하 매우 낮음.

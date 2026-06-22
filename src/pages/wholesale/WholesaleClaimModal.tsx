@@ -5,7 +5,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { WT } from './wholesale-theme'
 
-// 🏭 BIZ-1 (2026-06-08) 유통사 발의 도매 클레임(RMA) 제기 모달.
+// 🏭 BIZ-1 (2026-06-08) 판매사 발의 도매 클레임(RMA) 제기 모달.
 //   하자/오배송/파손/수량부족/기타 사유 + 설명 + 증빙 URL → POST /api/wholesale/claims.
 //   라이트 고정 B2B 서피스(WT 토큰). i18n defaultValue.
 

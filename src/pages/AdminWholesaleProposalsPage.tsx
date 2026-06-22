@@ -10,7 +10,7 @@ import { toast } from '@/hooks/useToast'
 import AdminMallSelect from '@/components/admin/AdminMallSelect'
 
 // 🏭 2026-06-09 Wave 2 — 어드민 도매 제안/신고 처리 큐.
-//   유통사 제안(상품 요청)·신고(문제) 접수 → 검토/처리/반려 + 메모. 라이트 테마.
+//   판매사 제안(상품 요청)·신고(문제) 접수 → 검토/처리/반려 + 메모. 라이트 테마.
 
 type FeedbackType = 'proposal' | 'report'
 type FeedbackStatus = 'open' | 'in_review' | 'resolved' | 'rejected'
@@ -76,7 +76,7 @@ export default function AdminWholesaleProposalsPage() {
     queryClient.setQueryData<FeedbackRow[]>(queryKey, (prev) => updater(prev ?? []))
 
   async function resolve(row: FeedbackRow, status: FeedbackStatus) {
-    const memo = window.prompt(status === 'rejected' ? '반려 사유(선택)' : '처리 메모(선택, 유통사에게 표시)', row.admin_memo || '')
+    const memo = window.prompt(status === 'rejected' ? '반려 사유(선택)' : '처리 메모(선택, 판매사에게 표시)', row.admin_memo || '')
     if (memo === null) return
     setActingId(row.id)
     try {
@@ -94,7 +94,7 @@ export default function AdminWholesaleProposalsPage() {
   return (
     <AdminLayout title="도매 제안/신고">
       <div className="ur-content-full px-4 lg:px-8 py-6">
-        <DashboardPageHeader icon={<MessageSquareWarning className="w-5 h-5" />} title="도매 제안 / 신고" subtitle="유통사가 보낸 상품 제안과 문제 신고를 검토하고 처리합니다." />
+        <DashboardPageHeader icon={<MessageSquareWarning className="w-5 h-5" />} title="도매 제안 / 신고" subtitle="판매사가 보낸 상품 제안과 문제 신고를 검토하고 처리합니다." />
 
         <div className="flex items-center gap-2 my-4 flex-wrap">
           {FILTERS.map((f) => (
@@ -123,7 +123,7 @@ export default function AdminWholesaleProposalsPage() {
                   <span className="text-xs text-gray-400 ml-auto">{row.created_at ? new Date(row.created_at).toLocaleString('ko-KR') : ''}</span>
                 </div>
                 <div className="text-sm font-bold text-gray-900">{row.subject}</div>
-                <div className="text-xs text-gray-500 mt-0.5">{row.business_name || `유통사 #${row.seller_id}`}{row.target ? ` · 대상: ${row.target}` : ''}</div>
+                <div className="text-xs text-gray-500 mt-0.5">{row.business_name || `판매사 #${row.seller_id}`}{row.target ? ` · 대상: ${row.target}` : ''}</div>
                 <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{row.body}</p>
                 {row.admin_memo && (
                   <div className="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">

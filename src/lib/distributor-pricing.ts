@@ -1,12 +1,12 @@
 /**
- * 🏭 2026-06-01 유통스타트 도매몰 — 유통사 등급별 공급가 산출.
+ * 🏭 2026-06-01 유통스타트 도매몰 — 판매사 등급별 공급가 산출.
  *
  * 모델 (2026-06-16 대표 확정 — 판매가 기준 보장마진):
  *   - 판매가(retail) = 제조사가 등록한 권장소비자가 (= products.price). 전 등급 동일.
- *   - 등급마진율 = 유통사에게 **보장**되는 판매가 대비 마진 (일반 15% / 프로 30% / 프리미엄 38%).
- *   - 유통사 공급가 = max(제조사원가, 판매가 × (1 − 등급마진율/100)).  ← 원가를 하한(플랫폼 손실 차단).
+ *   - 등급마진율 = 판매사에게 **보장**되는 판매가 대비 마진 (일반 15% / 프로 30% / 프리미엄 38%).
+ *   - 판매사 공급가 = max(제조사원가, 판매가 × (1 − 등급마진율/100)).  ← 원가를 하한(플랫폼 손실 차단).
  *       예) 판매가 10,000 → 일반 8,500 / 프로 7,000 / 프리미엄 6,200 (원가가 그보다 낮을 때).
- *   - 유통스타트 마진(수익) = 유통사 공급가 − 제조사원가.  ← 제조사에는 원가(supply_price)만 정산(불변).
+ *   - 유통스타트 마진(수익) = 판매사 공급가 − 제조사원가.  ← 제조사에는 원가(supply_price)만 정산(불변).
  *   - 등급: A/B/C/D/OEM + SPECIAL. 고등급(A)일수록 마진율 ↑(= 공급가 ↓, 더 저렴).
  *
  * ⚠️ 2026-06-16 공식 전환: (구) 원가×(1+마크업) → (신) 판매가×(1−보장마진), 원가 하한.
@@ -33,7 +33,7 @@ export const DEFAULT_GRADE_MARGINS: Record<DistributorGrade, number> = {
   SPECIAL: 45,
 };
 
-/** 미배정 유통사 기본 등급 — 스펙: "유통회원 가입 시 자동 C등급". 어드민이 A/B 상향 또는 D 하향 배정. */
+/** 미배정 판매사 기본 등급 — 스펙: "유통회원 가입 시 자동 C등급". 어드민이 A/B 상향 또는 D 하향 배정. */
 export const DEFAULT_UNGRADED: DistributorGrade = 'C';
 
 // ── 🆕 2026-06-17 대표 확정 모델: "제조사가+플랫폼 마진" (cost-plus) ──────────────────────────
@@ -76,7 +76,7 @@ export function distributorPriceFromCost(cost: number, platformMarginPct: number
 }
 
 /**
- * 🆕 2026-06-16 유통사 공급가(원 단위 반올림) — 신모델: 판매가 × (1 − 보장마진%), 단 제조사 원가를 하한.
+ * 🆕 2026-06-16 판매사 공급가(원 단위 반올림) — 신모델: 판매가 × (1 − 보장마진%), 단 제조사 원가를 하한.
  * @param retailPrice 판매가(권장소비자가, products.price)
  * @param supplyFloor 제조사 원가(products.supply_price) — 이 값 아래로는 절대 안 내려감(플랫폼 손실 차단)
  * @param marginPct 등급 보장마진율 (%) — 0~95 클램프
@@ -92,7 +92,7 @@ export function distributorPriceFromRetail(retailPrice: number, supplyFloor: num
 }
 
 /**
- * (구 모델 — 원가 위 마크업) 유통사 공급가. 신모델 전환(2026-06-16) 후 직접 사용 X — 하위호환/테스트용 유지.
+ * (구 모델 — 원가 위 마크업) 판매사 공급가. 신모델 전환(2026-06-16) 후 직접 사용 X — 하위호환/테스트용 유지.
  * @deprecated 신모델은 distributorPriceFromRetail. resolveDistributorPrice 가 신공식 사용.
  */
 export function distributorPrice(baseSupplyPrice: number, marginPct: number): number {
@@ -101,14 +101,14 @@ export function distributorPrice(baseSupplyPrice: number, marginPct: number): nu
   return Math.round(base * (1 + m / 100));
 }
 
-/** 유통스타트가 가져가는 마진액 = 유통사공급가 − 제조사공급가 (>= 0). */
+/** 유통스타트가 가져가는 마진액 = 판매사공급가 − 제조사공급가 (>= 0). */
 export function platformMargin(baseSupplyPrice: number, marginPct: number): number {
   const base = Math.max(0, Math.floor(baseSupplyPrice || 0));
   return Math.max(0, distributorPrice(baseSupplyPrice, marginPct) - base);
 }
 
 /**
- * 유통사의 유효 등급 결정.
+ * 판매사의 유효 등급 결정.
  * 특별할인 기간(special_discount_until) 안이면 SPECIAL, 아니면 배정 등급, 미배정이면 기본.
  */
 export function effectiveGrade(opts: {
@@ -203,7 +203,7 @@ export function tierUnitPrice(gradePrice: number, qty: number, tiers?: QtyTier[]
   return Math.max(lo, discounted)
 }
 
-/** 한 번에: 유통사가 볼 공급가 + 플랫폼 마진 + 적용 등급. (🆕 2026-06-17 cost-plus — 대표 확정)
+/** 한 번에: 판매사가 볼 공급가 + 플랫폼 마진 + 적용 등급. (🆕 2026-06-17 cost-plus — 대표 확정)
  *  - baseSupplyPrice = 제조사가 받을 금액(supply_price). 제조사 정산 = 이 값 전액(splitWholesaleUnit).
  *  - marginOverridePct(제품별 플랫폼 마진%, supply_margin_override_pct): 설정(>=0)되면 그 제품의 기본 플랫폼 마진%.
  *      미설정(null)이면 defaultPlatformMarginPct(어드민 전역값) → 없으면 DEFAULT_PLATFORM_MARGIN_PCT(10).

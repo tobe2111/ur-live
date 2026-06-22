@@ -63,7 +63,7 @@ async function _ensureTaxDocSchema(DB: D1Database): Promise<void> {
 }
 
 /**
- * 부가세 분리 — 입력은 유통사가 실제 결제한 **VAT 포함 총액**(wholesale_orders.subtotal = Toss 청구액).
+ * 부가세 분리 — 입력은 판매사가 실제 결제한 **VAT 포함 총액**(wholesale_orders.subtotal = Toss 청구액).
  * 공급가액 = round(총액 / 1.1), 부가세 = 총액 − 공급가액. (VAT 를 더하지 않고 추출 — 실거래액 보존)
  */
 export function splitVat(grossInclusive: number): { supply: number; vat: number; total: number } {
@@ -97,7 +97,7 @@ export function renderTaxDocHtml(doc: TaxDocRow): string {
   const title = isInvoice ? '세금계산서' : '거래명세서'
   const isSales = doc.direction === 'sales'
   const supplier = isSales ? '유통스타트' : esc(doc.party_name || '제조사')
-  const buyer = isSales ? esc(doc.party_name || '유통사') : '유통스타트'
+  const buyer = isSales ? esc(doc.party_name || '판매사') : '유통스타트'
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title} — ${esc(doc.period_month)}</title>

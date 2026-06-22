@@ -92,7 +92,7 @@ plus.get('/info', async (c) => {
 plus.post('/subscribe', rateLimit({ action: 'wholesale-plus-subscribe', max: 6, windowSec: 60 }), async (c) => {
   const auth = await distributorFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!auth) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  if (!auth.isDistributor) return c.json({ success: false, error: '유통사 전용 기능입니다' }, 403)
+  if (!auth.isDistributor) return c.json({ success: false, error: '판매사 전용 기능입니다' }, 403)
   // 조회 전용(viewer) 직원은 결제성 행위 불가(예치금 충전 게이트와 동일 계약).
   if (await isViewerToken(c.req.header('Authorization'), c.env.JWT_SECRET)) {
     return c.json({ success: false, error: '조회 전용 직원 계정은 구독할 수 없습니다' }, 403)

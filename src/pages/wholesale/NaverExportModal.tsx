@@ -2,7 +2,7 @@
  * 🛒 2026-06-12 네이버 커머스API Phase A — "스마트스토어로 내보내기" 모달.
  *   판매가(기본=권장가)·재고·배송비·A/S 연락처·네이버 카테고리(검색 select) 입력 →
  *   POST /api/wholesale/naver/export. 미연결(NOT_CONNECTED)이면 연동 페이지로 안내.
- *   WT 라이트 고정. 모달은 상품 상세에서 lazy 로드(연동 안 쓴 유통사는 chunk 비용 0).
+ *   WT 라이트 고정. 모달은 상품 상세에서 lazy 로드(연동 안 쓴 판매사는 chunk 비용 0).
  */
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'

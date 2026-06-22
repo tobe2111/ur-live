@@ -238,7 +238,7 @@ export function AdminRoutes() {
           <AdminDistributorGradesPage />
         </ProtectedRoute>
       } />
-      {/* 🗂️ 2026-06-17: 유통사 등급 페이지 탭 분리 — 같은 컴포넌트가 경로로 탭 결정(딥링크). */}
+      {/* 🗂️ 2026-06-17: 판매사 등급 페이지 탭 분리 — 같은 컴포넌트가 경로로 탭 결정(딥링크). */}
       <Route path="/admin/distributor-credit" element={
         <ProtectedRoute requireAdmin>
           <AdminDistributorGradesPage />

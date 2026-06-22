@@ -62,7 +62,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/wholesale-products', label: '도매 프리미엄관', icon: Crown },
       { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
       { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
-      // 🗂️ 2026-06-17: '판매사(유통사) 등급·수수료'(1,170줄) → 4개 탭 페이지로 분리(딥링크 라우트).
+      // 🗂️ 2026-06-17: '판매사(판매사) 등급·수수료'(1,170줄) → 4개 탭 페이지로 분리(딥링크 라우트).
       { path: '/admin/distributor-grades', label: '판매사 등급·마진', icon: Layers },
       { path: '/admin/distributor-credit', label: '판매사 여신·외상', icon: CreditCard },
       { path: '/admin/distributor-tax',    label: '판매사 제안·세금', icon: DollarSign },

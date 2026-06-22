@@ -1,8 +1,8 @@
 // ──────────────────────────────────────────────────────────────
-// 🏭 도매몰 대시보드 셸 — 제조사(/supplier) + 유통사(/wholesale/dashboard) 공통 chrome.
+// 🏭 도매몰 대시보드 셸 — 제조사(/supplier) + 판매사(/wholesale/dashboard) 공통 chrome.
 //   2026-06-16 (사용자 지적): 기존 셀러/어드민 다크 사이드바 복제 → UTONG START 라이트 대시보드로 재구성.
 //   상단 헤더(로고 + 브레드크럼) + 흰색 좌측 메뉴(오렌지 활성/배지) + 라이트 본문(#F4F5F7).
-//   • tab 기반(제조사) 과 route 기반(유통사) 둘 다 NavItem.onClick 으로 구동. 자체 모바일 drawer.
+//   • tab 기반(제조사) 과 route 기반(판매사) 둘 다 NavItem.onClick 으로 구동. 자체 모바일 drawer.
 //   • 라이트 고정(B2B 대시보드) — dark: variant 없음. 이 셸 한 곳만 바꾸면 전 대시보드 페이지 반영.
 // ──────────────────────────────────────────────────────────────
 import { useState, type ReactNode } from 'react'
@@ -21,9 +21,9 @@ export interface WholesaleNavItem {
 }
 
 interface WholesaleDashboardShellProps {
-  /** 사이드바 상단 역할명 (예: '제조사 센터', '유통사 센터'). */
+  /** 사이드바 상단 역할명 (예: '제조사 센터', '판매사 센터'). */
   brand: string
-  /** 역할 아이콘 (제조사=Factory, 유통사=Store 등) — 한눈에 역할 구분. */
+  /** 역할 아이콘 (제조사=Factory, 판매사=Store 등) — 한눈에 역할 구분. */
   roleIcon?: LucideIcon
   /** 사이드바 상단 부제 (예: 사업자명/등급). */
   brandSubtitle?: string
@@ -53,7 +53,7 @@ export default function WholesaleDashboardShell({
   // 흰색 좌측 메뉴 (데스크톱 + 모바일 drawer 공용).
   const sidebar = (
     <aside className="w-[214px] flex-shrink-0 flex flex-col h-full bg-white" style={{ borderRight: '1px solid ' + WT.line }}>
-      {/* 역할 헤더 — 아이콘 + 역할명(제조사/유통사 센터) + 사업자명 */}
+      {/* 역할 헤더 — 아이콘 + 역할명(제조사/판매사 센터) + 사업자명 */}
       <div className="px-4 pt-4 pb-4" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="flex items-center gap-2">
           {RoleIcon && (

@@ -24,7 +24,7 @@ const SEG_LABELS: Record<string, string> = {
   'wholesale-products': '프리미엄관', 'wholesale-malls': '도매 몰', 'wholesale-banners': '도매 배너',
   'wholesale-board': '도매 게시판', 'wholesale-proposals': '제안/신고', 'wholesale-claims': '클레임',
   'wholesale-quotes': '견적', 'wholesale-tax': '세무/정산', 'wholesale-integrity': '무결성',
-  'wholesale-import': '상품 일괄등록', 'wholesale': '도매 세무·무결성', 'distributor': '유통사·등급',
+  'wholesale-import': '상품 일괄등록', 'wholesale': '도매 세무·무결성', 'distributor': '판매사·등급',
   'suppliers': '제조사', 'supplier': '제조사', 'partnership-inquiries': '제휴 문의', 'partnership': '제휴',
 }
 const TAIL_LABELS: Record<string, string> = {
