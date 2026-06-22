@@ -182,6 +182,47 @@ export class KakaoAuthService {
   }
   
   /**
+   * 🛡️ 2026-06-20 (OIDC 속도 최적화): 토큰교환 응답의 id_token(JWT)을 디코드해 사용자 식별정보 추출.
+   *   → 별도 getUserInfo 카카오 왕복 1회 절약. id_token 은 우리가 TLS 로 카카오 토큰 엔드포인트에서
+   *     *직접* 받은 것이라 신뢰 가능(브라우저 경유 X) → 서명검증 생략 가능(confidential client).
+   *   필수 claim(sub, nickname) 누락 시 null 반환 → 호출자가 getUserInfo 로 폴백.
+   *   id_token 미포함 필드(phone, 일부 email_verified)는 호출자가 보수적으로 처리.
+   */
+  parseIdToken(idToken: string | undefined | null): KakaoUser | null {
+    if (!idToken || typeof idToken !== 'string') return null;
+    try {
+      const parts = idToken.split('.');
+      if (parts.length !== 3) return null;
+      const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padded = b64.padEnd(b64.length + (4 - (b64.length % 4)) % 4, '=');
+      const bin = atob(padded);
+      // UTF-8 안전 디코드 (한글 닉네임 깨짐 방지 — atob 단독은 latin1)
+      const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
+      const payload = JSON.parse(new TextDecoder().decode(bytes)) as Record<string, unknown>;
+
+      const sub = payload.sub;
+      const nickname = payload.nickname;
+      // sub(=kakaoId)·nickname 둘 다 있어야 fast path. 없으면 getUserInfo 폴백.
+      if (!sub || typeof nickname !== 'string' || !nickname) return null;
+
+      const picture = typeof payload.picture === 'string' ? payload.picture : '';
+      return {
+        kakaoId: String(sub),
+        name: nickname,
+        email: typeof payload.email === 'string' ? payload.email : undefined,
+        // 카카오 OIDC 는 보통 인증된 이메일만 공유 + email_verified claim 동봉.
+        //   claim 없으면 보수적으로 false → same-email 자동연결 게이트는 안전하게 skip.
+        emailVerified: payload.email_verified === true,
+        profileImage: picture.replace(/^http:\/\//, 'https://'),
+        // id_token 엔 전화번호 없음 — undefined → upsert 의 COALESCE 가 기존 phone 보존.
+        phoneNumber: undefined,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * 서비스 약관 동의 내역 조회 (카카오싱크 전용)
    */
   async getServiceTerms(accessToken: string): Promise<string[]> {

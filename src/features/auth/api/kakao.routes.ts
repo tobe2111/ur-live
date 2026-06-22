@@ -151,6 +151,9 @@ type Bindings = {
   KAKAO_REST_API_KEY: string;
   JWT_SECRET: string;
   FRONTEND_URL?: string;
+  // 🛡️ 2026-06-20 (OIDC): '1' 이면 openid scope 요청 + id_token fast path 사용.
+  //   콘솔 OpenID Connect 활성화와 짝. 미설정 시 기존 getUserInfo 경로(동작 동일).
+  KAKAO_OIDC_ENABLED?: string;
   // 🛡️ 2026-05-01: FIREBASE_* env vars 제거 — KR Kakao 흐름에서 미사용.
 };
 
@@ -344,6 +347,13 @@ kakaoRoutes.get('/start', rateLimit({ action: 'kakao_start', max: 30, windowSec:
   authUrl.searchParams.set('redirect_uri', redirectUri);
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('state', state);
+  // 🛡️ 2026-06-20 (OIDC 속도 최적화 — env 플래그 게이트): KAKAO_OIDC_ENABLED 켜진 경우에만
+  //   openid scope 요청 → 토큰 응답에 id_token 동봉 → 콜백이 getUserInfo 왕복 1회 생략.
+  //   profile/email 도 명시 요청해 getUserInfo 폴백도 동의 유지(콘솔 OIDC 미활성 시 카카오가
+  //   openid 거부하므로 반드시 콘솔 ON 후 플래그 ON). 미설정이면 기존 동작 100% 동일(scope 미전송).
+  if (c.env.KAKAO_OIDC_ENABLED) {
+    authUrl.searchParams.set('scope', 'openid,account_email,profile_nickname,profile_image');
+  }
   // 🛡️ 2026-05-01 (REVISED v2): prompt=login 강제 OFF — 일상 사용자 UX 우선.
   //   대신 토스트 + 전환 버튼으로 잘못된 로그인 즉시 인지 가능.
   //   force_account=1 query 일 때만 prompt=login 활성 (마이페이지 '다른 계정으로 로그인' 버튼).
@@ -525,9 +535,16 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       diagTimings.token = Date.now() - tStart;            // 카카오 토큰교환 왕복(필수)
       const accessToken = tokenData.access_token;
       const kakaoRefreshToken = tokenData.refresh_token || null;
-      const tUi = Date.now();
-      const kakaoUser = await kakaoService.getUserInfo(accessToken);
-      diagTimings.userinfo = Date.now() - tUi;            // 카카오 사용자정보 왕복(필수)
+      // 🛡️ 2026-06-20 (OIDC fast path): OIDC 활성 + 토큰 응답에 id_token 있으면 그걸 디코드해
+      //   사용자 식별정보 획득 → getUserInfo 카카오 왕복 1회 생략. 필수 claim 없으면 null → 폴백.
+      let kakaoUser = c.env.KAKAO_OIDC_ENABLED ? kakaoService.parseIdToken(tokenData.id_token) : null;
+      if (kakaoUser) {
+        diagTimings.userinfo = 0;                          // id_token fast path — 왕복 0 (계측 신호)
+      } else {
+        const tUi = Date.now();
+        kakaoUser = await kakaoService.getUserInfo(accessToken);   // 폴백(또는 OIDC 미사용 시 기본 경로)
+        diagTimings.userinfo = Date.now() - tUi;
+      }
       // 🛡️ 2026-06-20 (속도 최적화): getServiceTerms 호출 제거 — 받아온 결과(serviceTerms)를
       //   어디서도 사용하지 않는 dead 카카오 API 왕복이었음(매 로그인 임계경로에 불필요한 1 round-trip,
       //   ~수백 ms). 약관 동의는 카카오싱크 동의화면에서 이미 처리됨. (제거 전엔 userinfo 와 비슷한 비용)

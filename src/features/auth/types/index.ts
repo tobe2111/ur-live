@@ -20,6 +20,9 @@ export interface KakaoTokenResponse {
   refresh_token?: string;
   expires_in: number;
   scope?: string;
+  // 🛡️ 2026-06-20 (OIDC): openid scope 요청 + 콘솔 OIDC 활성화 시 토큰 응답에 동봉.
+  //   디코드해 sub/nickname/picture/email 을 얻으면 getUserInfo 왕복 1회 절약.
+  id_token?: string;
 }
 
 export interface KakaoUserInfoResponse {
