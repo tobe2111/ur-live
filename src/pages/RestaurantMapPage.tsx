@@ -434,16 +434,17 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 🛡️ 2026-05-04 (iOS Safari fix): 100vh → 100dvh. iOS 주소창 토글 시 viewport 점프 회피.
   // 🛡️ 2026-05-17 (PC wheel zoom 영역 확보): 데스크톱에서 lg+ 클래스로 더 작게 — wheel zoom 영역 확보.
   const sheetTopByState: Record<typeof sheetSnap, string> = {
-    // 🗺️ 2026-06-20 (대표 — 카드 잘림): 시트 하단 56px 가 하단 네비에 가려 카드가 잘림 → peek 을 네비(56)+
-    //   핸들/필터 chrome + 카드 1개가 온전히 보이도록 ~320px 로(네비 위로 1카드 완전 노출).
-    peek: 'calc(100dvh - 320px)',
+    // 🗺️ 2026-06-22 (대표 — "하단 상품 섹션 높이 줄이기"): 칩이 상단(MapTopBar)으로 빠져 시트엔
+    //   드래그핸들+카운트/정렬+리스트만 → peek 을 320→240px 로 낮춰 지도 영역 확대. 네비(56) 위로
+    //   카운트/정렬 + 카드 1개가 보이고, 더 보려면 위로 드래그(mid/full).
+    peek: 'calc(100dvh - 240px)',
     mid: 'calc(100dvh - 60dvh)',
     full: 'calc(100dvh - 92dvh)',
   }
   // 🛡️ 2026-05-17: PC (lg+) 에서는 sheet 더 작게 (peek 16dvh, mid 40dvh, full 80dvh)
   //   → 지도 영역 60~84% 확보 → wheel zoom UX 정상.
   const sheetTopByStateLg: Record<typeof sheetSnap, string> = {
-    peek: 'calc(100dvh - 320px)',
+    peek: 'calc(100dvh - 240px)',
     mid: 'calc(100dvh - 40dvh)',
     full: 'calc(100dvh - 80dvh)',
   }

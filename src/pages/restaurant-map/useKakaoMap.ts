@@ -27,7 +27,8 @@ function centerOffsetForSheet(snap: 'peek' | 'mid' | 'full' | 'card'): number {
   // 시트 top(px) = 시트가 가리기 시작하는 y. 이 위가 보이는 지도 영역.
   const sheetTop =
     snap === 'card' ? H - 210 // 야놀자식 납작한 선택 카드(~132px + 하단 네비 + 여백)
-    : snap === 'peek' ? H - 320 // calc(100dvh - 320px)
+    : snap === 'peek' ? H - 240 // calc(100dvh - 240px) — 2026-06-22 하단 섹션 축소
+
     : snap === 'mid' ? (isLg ? H * 0.6 : H * 0.4) // calc(100dvh - 40dvh/60dvh)
     : (isLg ? H * 0.2 : H * 0.08) // full: calc(100dvh - 80dvh/92dvh)
   const visibleCenter = (SHEET_TOP_SEARCH_INSET + sheetTop) / 2
