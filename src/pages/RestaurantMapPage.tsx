@@ -17,8 +17,8 @@ import FilterSheet, { type PriceRange } from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
 import HeroCarousel from './restaurant-map/HeroCarousel'
 import RestaurantList from './restaurant-map/RestaurantList'
-import SelectedFocusCard from './restaurant-map/SelectedFocusCard'
-import MapSearchHeader from './restaurant-map/MapSearchHeader'
+import SelectedDealCard from './restaurant-map/SelectedDealCard'
+import MapTopBar from './restaurant-map/MapTopBar'
 import SheetFilterBar from './restaurant-map/SheetFilterBar'
 import { useKakaoMap } from './restaurant-map/useKakaoMap'
 import { distanceKm } from './restaurant-map/utils'
@@ -407,17 +407,22 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     )
   }, [userLoc])
 
+  // 🗺️ 2026-06-22 (대표 시안 — 야놀자식): 상품 선택 시 하단은 납작한 가로 카드(SelectedDealCard)로
+  //   바뀌고 지도가 넓어짐. 그 넓은 지도의 중앙('card' 오프셋)에 핀을 배치 + level 4 확대.
   const selectAndPan = (r: Restaurant) => {
     setSelected(r)
-    // 🗺️ 2026-06-22 (대표 — "공구 상품을 누르면 지도 한가운데로"): 시트를 peek 으로 먼저 내려
-    //   보이는 지도 영역을 확보한 뒤, panToProduct 가 시트 가림 보정(SHEET_OFFSET_Y)으로 선택 상품을
-    //   시각적 중앙에 배치. 줌은 level 4 로 확대.
     setMapView(true)
-    setSheetSnap('peek')
-    // 시트를 peek 으로 내리므로 'peek' 기준 오프셋으로 보이는 영역 중앙에 배치(setState 비동기라 명시 전달).
     if (r.restaurant_lat && r.restaurant_lng) {
-      panToProduct(r.restaurant_lat, r.restaurant_lng, 4, 'peek')
+      panToProduct(r.restaurant_lat, r.restaurant_lng, 4, 'card')
     }
+  }
+
+  // 선택 카드 좌우 스와이프/버튼 → 인접 딜로 이동 + 지도 recenter.
+  const selectedIndex = selected ? displayList.findIndex(r => r.id === selected.id) : -1
+  const goAdjacent = (dir: 1 | -1) => {
+    if (selectedIndex < 0) return
+    const next = displayList[selectedIndex + dir]
+    if (next) selectAndPan(next)
   }
 
   // 🛡️ 2026-04-30 v3 bottom-sheet: 시트 snap 별 transform 값
@@ -563,8 +568,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         </div>
       )}
 
-      {/* ═══ 상단 floating glass 검색바 ═══ */}
-      <MapSearchHeader
+      {/* ═══ 상단 floating 바 — 카테고리 칩(상단 이동) + 검색 아이콘 버튼 ═══ */}
+      <MapTopBar
         search={search}
         setSearch={setSearch}
         searchFocused={searchFocused}
@@ -572,92 +577,102 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         searchHistory={searchHistory}
         setSearchHistory={setSearchHistory}
         pushSearchHistory={pushSearchHistory}
+        voucherType={voucherType}
+        setVoucherType={setVoucherType}
+        nearMeMode={nearMeMode}
+        requestNearMe={requestNearMe}
+        activeFilterCount={activeFilterCount}
+        onOpenFilter={() => setFilterSheetOpen(true)}
         home={home}
       />
 
-      {/* 🗺️ 2026-06-20 (대표 — "클릭하면 2개 나오는거 별로"): 선택 시 떠 있던 SelectedPeekCard/SelectedDetailCard
-          floating 중복 카드 제거. 상품 클릭 = 지도 이동(selectAndPan panTo) + 리스트/핀 하이라이트로 일원화.
-          구매 CTA 는 리스트 카드(RestaurantList)의 '구매' 버튼이 담당. */}
-
-      {/* ═══ Bottom Sheet (드래그 가능, 3-snap) ═══
-          🛡️ 2026-04-30 v2: 실시간 드래그 팔로잉 — translateY 로 손가락 따라가기.
-          dragDeltaY 가 양수면 아래로 (시트 축소), 음수면 위로 (시트 확장). */}
-      <div
-        className="absolute left-0 right-0 bottom-0 z-30 bg-white dark:bg-[#0A0A0A] rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col"
-        style={{
-          top: currentSheetTop,
-          transform: dragStartY.current != null ? `translateY(${Math.max(-200, Math.min(400, dragDeltaY))}px)` : 'none',
-          transition: dragStartY.current == null ? 'top 0.3s cubic-bezier(0.32, 0.72, 0, 1), transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
-        }}
-        role="dialog"
-        aria-label={t('restaurantMap.listAria', { defaultValue: '맛집 목록' })}
-      >
-        {/* Drag handle — 실시간 추적 + snap */}
-        <div
-          className="flex justify-center py-3 cursor-grab active:cursor-grabbing select-none touch-none"
-          onTouchStart={(e) => handleSheetDragStart(e.touches[0].clientY)}
-          onTouchMove={(e) => handleSheetDragMove(e.touches[0].clientY)}
-          onTouchEnd={(e) => handleSheetDragEnd(e.changedTouches[0].clientY)}
-          onMouseDown={(e) => handleSheetDragStart(e.clientY)}
-          onMouseMove={(e) => { if (dragStartY.current != null) handleSheetDragMove(e.clientY) }}
-          onMouseUp={(e) => handleSheetDragEnd(e.clientY)}
-          onMouseLeave={(e) => { if (dragStartY.current != null) handleSheetDragEnd(e.clientY) }}
-          role="slider"
-          aria-label={t('restaurantMap.sheetResizeAria', { defaultValue: '시트 크기 조절' })}
-          aria-valuemin={0}
-          aria-valuemax={2}
-          aria-valuenow={sheetSnap === 'peek' ? 0 : sheetSnap === 'mid' ? 1 : 2}
-          tabIndex={0}
-        >
-          <div className="w-10 h-1 rounded-full bg-gray-300" />
-        </div>
-
-        {/* Sticky filter row + count + sort */}
-        <SheetFilterBar
-          activeFilterCount={activeFilterCount}
-          onOpenFilter={() => setFilterSheetOpen(true)}
-          nearMeMode={nearMeMode}
-          requestNearMe={requestNearMe}
-          voucherType={voucherType}
-          setVoucherType={setVoucherType}
-          filteredCount={filtered.length}
+      {/* 🗺️ 2026-06-22 (대표 시안 — 야놀자식): 선택 시 하단은 납작한 가로 카드(SelectedDealCard) →
+          지도 넓게 + 좌우 스와이프 캐러셀. 미선택 시에만 드래그 리스트 시트. (둘은 배타) */}
+      {selected ? (
+        <SelectedDealCard
+          selected={selected}
           userLoc={userLoc}
-          sortBy={sortBy}
-          setSortBy={setSortBy}
-          favorites={favorites}
-          showFavoritesOnly={showFavoritesOnly}
-          setShowFavoritesOnly={setShowFavoritesOnly}
+          onClose={() => setSelected(null)}
+          onPrev={() => goAdjacent(-1)}
+          onNext={() => goAdjacent(1)}
+          hasPrev={selectedIndex > 0}
+          hasNext={selectedIndex >= 0 && selectedIndex < displayList.length - 1}
+          position={selectedIndex + 1}
+          total={displayList.length}
         />
+      ) : (
+        /* ═══ Bottom Sheet (드래그 가능, 3-snap) — 칩은 상단 MapTopBar 로 이동, 시트는 리스트만 ═══ */
+        <div
+          className="absolute left-0 right-0 bottom-0 z-30 bg-white dark:bg-[#0A0A0A] rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col"
+          style={{
+            top: currentSheetTop,
+            transform: dragStartY.current != null ? `translateY(${Math.max(-200, Math.min(400, dragDeltaY))}px)` : 'none',
+            transition: dragStartY.current == null ? 'top 0.3s cubic-bezier(0.32, 0.72, 0, 1), transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)' : 'none',
+          }}
+          role="dialog"
+          aria-label={t('restaurantMap.listAria', { defaultValue: '맛집 목록' })}
+        >
+          {/* Drag handle — 실시간 추적 + snap */}
+          <div
+            className="flex justify-center py-3 cursor-grab active:cursor-grabbing select-none touch-none"
+            onTouchStart={(e) => handleSheetDragStart(e.touches[0].clientY)}
+            onTouchMove={(e) => handleSheetDragMove(e.touches[0].clientY)}
+            onTouchEnd={(e) => handleSheetDragEnd(e.changedTouches[0].clientY)}
+            onMouseDown={(e) => handleSheetDragStart(e.clientY)}
+            onMouseMove={(e) => { if (dragStartY.current != null) handleSheetDragMove(e.clientY) }}
+            onMouseUp={(e) => handleSheetDragEnd(e.clientY)}
+            onMouseLeave={(e) => { if (dragStartY.current != null) handleSheetDragEnd(e.clientY) }}
+            role="slider"
+            aria-label={t('restaurantMap.sheetResizeAria', { defaultValue: '시트 크기 조절' })}
+            aria-valuemin={0}
+            aria-valuemax={2}
+            aria-valuenow={sheetSnap === 'peek' ? 0 : sheetSnap === 'mid' ? 1 : 2}
+            tabIndex={0}
+          >
+            <div className="w-10 h-1 rounded-full bg-gray-300" />
+          </div>
 
-        {/* ═══ 시트 안 스크롤 가능한 결과 리스트 ═══ */}
-        <div className="flex-1 overflow-y-auto px-3 pt-3 pb-24" style={{ overscrollBehavior: 'contain' }}>
-          {/* 🗺️ 2026-06-20 (대표 — 카드 선택 = 단일 포커스): 선택 시 리스트 대신 '선택된 1개'만(배타). 닫으면 리스트 복귀. */}
-          {selected ? (
-            <SelectedFocusCard selected={selected} userLoc={userLoc} onClose={() => setSelected(null)} />
-          ) : (
-            <>
-              {/* 🛡️ 2026-04-30 Phase 3: hero carousel — 할인율 TOP5 */}
-              {!loading && (
-                <HeroCarousel
-                  heroDeals={heroDeals}
-                  userLoc={userLoc}
-                  liveSellerIds={liveSellerIds}
-                  onSelect={selectAndPan}
-                />
-              )}
-              <RestaurantList
-                loading={loading}
-                filtered={displayList}
-                selected={selected}
+          {/* count + sort (칩은 상단으로 — hideChips) */}
+          <SheetFilterBar
+            activeFilterCount={activeFilterCount}
+            onOpenFilter={() => setFilterSheetOpen(true)}
+            nearMeMode={nearMeMode}
+            requestNearMe={requestNearMe}
+            voucherType={voucherType}
+            setVoucherType={setVoucherType}
+            filteredCount={filtered.length}
+            userLoc={userLoc}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            favorites={favorites}
+            showFavoritesOnly={showFavoritesOnly}
+            setShowFavoritesOnly={setShowFavoritesOnly}
+            hideChips
+          />
+
+          {/* ═══ 시트 안 스크롤 가능한 결과 리스트 ═══ */}
+          <div className="flex-1 overflow-y-auto px-3 pt-3 pb-24" style={{ overscrollBehavior: 'contain' }}>
+            {/* 🛡️ 2026-04-30 Phase 3: hero carousel — 할인율 TOP5 */}
+            {!loading && (
+              <HeroCarousel
+                heroDeals={heroDeals}
                 userLoc={userLoc}
+                liveSellerIds={liveSellerIds}
                 onSelect={selectAndPan}
-                fcfsMap={fcfsMap}
-                onApplyFcfs={applyFcfs}
               />
-            </>
-          )}
+            )}
+            <RestaurantList
+              loading={loading}
+              filtered={displayList}
+              selected={selected}
+              userLoc={userLoc}
+              onSelect={selectAndPan}
+              fcfsMap={fcfsMap}
+              onApplyFcfs={applyFcfs}
+            />
           </div>
         </div>
+      )}
 
       {/* 🛡️ 옵션 B — 회색 핀 (일반 맛집) 클릭 모달 */}
       {suggestionFor && (

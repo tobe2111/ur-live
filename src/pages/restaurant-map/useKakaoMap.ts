@@ -20,13 +20,14 @@ function categoryColor(cat: string): string {
 //   ⚠️ 시트 높이는 RestaurantMapPage 의 sheetTopByState / sheetTopByStateLg 와 동일하게 미러링 —
 //      그쪽 값 변경 시 이 함수도 함께 갱신할 것.
 const SHEET_TOP_SEARCH_INSET = 76 // 상단 floating glass 검색바 대략 높이(px)
-function centerOffsetForSheet(snap: 'peek' | 'mid' | 'full'): number {
+function centerOffsetForSheet(snap: 'peek' | 'mid' | 'full' | 'card'): number {
   if (typeof window === 'undefined') return 150
   const H = window.innerHeight
   const isLg = !!window.matchMedia?.('(min-width: 1024px)').matches
   // 시트 top(px) = 시트가 가리기 시작하는 y. 이 위가 보이는 지도 영역.
   const sheetTop =
-    snap === 'peek' ? H - 320 // calc(100dvh - 320px)
+    snap === 'card' ? H - 210 // 야놀자식 납작한 선택 카드(~132px + 하단 네비 + 여백)
+    : snap === 'peek' ? H - 320 // calc(100dvh - 320px)
     : snap === 'mid' ? (isLg ? H * 0.6 : H * 0.4) // calc(100dvh - 40dvh/60dvh)
     : (isLg ? H * 0.2 : H * 0.08) // full: calc(100dvh - 80dvh/92dvh)
   const visibleCenter = (SHEET_TOP_SEARCH_INSET + sheetTop) / 2
@@ -106,7 +107,7 @@ export function useKakaoMap({
   //   panTo(기하학적 중앙)만 하면 핀이 시트 근처(아래쪽)에 박힘. projection 으로 중심좌표를 남쪽으로 옮겨
   //   핀을 위로 끌어올림 → 시각적 중앙 배치. 오프셋은 시트 snap(현재 또는 호출자 지정)에 따라 동적 계산.
   //   projection 미지원/실패 시 plain panTo 폴백.
-  const panToProduct = useCallback((lat: number, lng: number, level?: number, snap?: 'peek' | 'mid' | 'full') => {
+  const panToProduct = useCallback((lat: number, lng: number, level?: number, snap?: 'peek' | 'mid' | 'full' | 'card') => {
     const map = mapInstance.current
     if (!map || !window.kakao?.maps || !Number.isFinite(lat) || !Number.isFinite(lng)) return
     if (typeof level === 'number') map.setLevel(level)
@@ -310,8 +311,8 @@ export function useKakaoMap({
 
       content.addEventListener('click', () => {
         setSelected(r)
-        // 🗺️ 2026-06-22: 핀 클릭도 보이는 영역 중앙으로(하단 시트 보정). 현재 줌은 유지.
-        panToProduct(r.restaurant_lat, r.restaurant_lng)
+        // 🗺️ 2026-06-22: 핀 클릭 시 납작한 선택 카드가 뜨므로 'card' 기준으로 넓은 지도 중앙에 배치. 줌 유지.
+        panToProduct(r.restaurant_lat, r.restaurant_lng, undefined, 'card')
       })
 
       const overlay = new window.kakao.maps.CustomOverlay({
