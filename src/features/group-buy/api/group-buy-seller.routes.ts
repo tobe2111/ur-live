@@ -193,6 +193,39 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
     }
   })
 
+  // ── GET /store-voucher-ledger — 🎟️ 2026-06-20 매장 공구권 원장 (대표 — "사장님 지갑") ──
+  //   사장님이 자기 매장의 공구권을 미사용/사용/정산 상태로 한눈에. 읽기 전용·집계 — 돈 이동 X(Phase 1).
+  //   알림톡 실시간 감시 대체: 항상 있는 원장. 정산 검토의 토대.
+  router.get('/store-voucher-ledger', requireAuth(), async (c) => {
+    const user = getCurrentUser(c)
+    if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
+    const userAsAny = user as unknown as { id: number | string; type?: string; role?: string }
+    const isSeller = userAsAny.type === 'seller' || userAsAny.role === 'seller'
+    if (!isSeller) return c.json({ success: false, error: '셀러만 접근 가능' }, 403)
+    try {
+      const summary = await c.env.DB.prepare(`
+        SELECT COUNT(*) as total,
+          SUM(CASE WHEN v.status = 'unused' THEN 1 ELSE 0 END) as unused,
+          SUM(CASE WHEN v.status = 'used' THEN 1 ELSE 0 END) as used,
+          SUM(CASE WHEN v.status = 'used' THEN v.applied_price ELSE 0 END) as used_amount,
+          SUM(CASE WHEN v.status = 'refunded' THEN 1 ELSE 0 END) as refunded
+        FROM vouchers v JOIN products p ON p.id = v.product_id
+        WHERE p.seller_id = ?
+      `).bind(user.id).first().catch(() => null)
+      // 최근 목록(마스킹 — 개인정보 미노출). created_at 불확실 → id 내림차순(시간순 근사).
+      const { results: recent } = await c.env.DB.prepare(`
+        SELECT v.id, v.status, v.applied_price, v.product_id, p.name as product_name, p.restaurant_name
+        FROM vouchers v JOIN products p ON p.id = v.product_id
+        WHERE p.seller_id = ?
+        ORDER BY v.id DESC LIMIT 50
+      `).bind(user.id).all().catch(() => ({ results: [] }))
+      return c.json({ success: true, data: { summary, recent: recent ?? [] } })
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('[store-voucher-ledger]', err)
+      return c.json({ success: true, data: { summary: null, recent: [] } })
+    }
+  })
+
   // ── GET /voucher-logs — 본인 가게 voucher 사용 시도 로그 ──
   // 🛡️ 2026-05-13 (운영 안정성 #3): 셀러가 PIN 오류 / 만료 / 사용 빈도 확인 → 가게 문제 자가 진단.
   router.get('/voucher-logs', requireAuth(), async (c) => {
