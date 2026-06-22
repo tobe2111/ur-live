@@ -3,6 +3,25 @@ import { escapeHtml } from '@/shared/utils/html'
 import { formatNumber } from '@/utils/format'
 import type { Restaurant, KakaoPlace } from './types'
 
+// 🗺️ 2026-06-22 (대표 — "중앙 기준이 하단 시트 크기에 따라 달라진다"): 선택 핀을 *보이는 지도 영역*
+//   (상단 검색바 아래 ~ 하단 시트 위)의 중앙으로 끌어올릴 px 오프셋을 시트 snap 별로 동적 계산.
+//   ⚠️ 시트 높이는 RestaurantMapPage 의 sheetTopByState / sheetTopByStateLg 와 동일하게 미러링 —
+//      그쪽 값 변경 시 이 함수도 함께 갱신할 것.
+const SHEET_TOP_SEARCH_INSET = 76 // 상단 floating glass 검색바 대략 높이(px)
+function centerOffsetForSheet(snap: 'peek' | 'mid' | 'full'): number {
+  if (typeof window === 'undefined') return 150
+  const H = window.innerHeight
+  const isLg = !!window.matchMedia?.('(min-width: 1024px)').matches
+  // 시트 top(px) = 시트가 가리기 시작하는 y. 이 위가 보이는 지도 영역.
+  const sheetTop =
+    snap === 'peek' ? H - 320 // calc(100dvh - 320px)
+    : snap === 'mid' ? (isLg ? H * 0.6 : H * 0.4) // calc(100dvh - 40dvh/60dvh)
+    : (isLg ? H * 0.2 : H * 0.08) // full: calc(100dvh - 80dvh/92dvh)
+  const visibleCenter = (SHEET_TOP_SEARCH_INSET + sheetTop) / 2
+  // 양수 = 핀을 기하학적 중앙(H/2)에서 이만큼 위로 끌어올림 → 보이는 영역 중앙에 위치.
+  return Math.max(0, H / 2 - visibleCenter)
+}
+
 interface UseKakaoMapParams {
   kr: boolean
   /** 리스트 모드 등 지도를 안 쓰는 화면에선 false → Kakao SDK 미로드(홈 피드 perf). */
@@ -16,6 +35,8 @@ interface UseKakaoMapParams {
   userLoc: { lat: number; lng: number } | null
   liveSellerIds: Set<number>
   favorites: number[]
+  /** 현재 바텀시트 snap — 핀 클릭 시 보이는 영역 중앙 오프셋 계산에 사용. */
+  sheetSnap?: 'peek' | 'mid' | 'full'
 }
 
 export function useKakaoMap({
@@ -30,9 +51,13 @@ export function useKakaoMap({
   userLoc,
   liveSellerIds,
   favorites,
+  sheetSnap = 'peek',
 }: UseKakaoMapParams) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<any>(null)
+  // panToProduct 가 stale 없이 현재 snap 을 읽도록 ref 동기화(의존성 churn 방지 — panToProduct 는 stable).
+  const sheetSnapRef = useRef(sheetSnap)
+  sheetSnapRef.current = sheetSnap
   const markersRef = useRef<any[]>([])
   const overlaysRef = useRef<any[]>([])
   // 🛡️ 2026-06-20 (대표 — 줌 전수조사): 초기 fit(setBounds/setLevel)은 데이터 로드 후 '한 번만'.
@@ -64,20 +89,21 @@ export function useKakaoMap({
     })
   }, [kr])
 
-  // 🗺️ 2026-06-22 (대표 — "공구 상품을 누르면 지도 한가운데로"): 선택 상품이 *보이는 지도 영역*의
-  //   중앙에 오도록 pan. 하단 바텀시트(peek ≈ 320px)가 화면 아래를 가리므로 단순 panTo(기하학적 중앙)만
-  //   하면 핀이 시트 근처(아래쪽)에 박힘. projection 으로 중심좌표를 시트 절반만큼 남쪽으로 옮겨 핀을
-  //   위로 SHEET_OFFSET_Y 만큼 끌어올림 → 시각적 중앙 배치. projection 미지원/실패 시 plain panTo 폴백.
-  const panToProduct = useCallback((lat: number, lng: number, level?: number) => {
+  // 🗺️ 2026-06-22 (대표 — "공구 상품을 누르면 지도 한가운데로" + "중앙 기준이 시트 크기 따라 달라짐"):
+  //   선택 상품이 *보이는 지도 영역*의 중앙에 오도록 pan. 하단 바텀시트가 화면 아래를 가리므로 단순
+  //   panTo(기하학적 중앙)만 하면 핀이 시트 근처(아래쪽)에 박힘. projection 으로 중심좌표를 남쪽으로 옮겨
+  //   핀을 위로 끌어올림 → 시각적 중앙 배치. 오프셋은 시트 snap(현재 또는 호출자 지정)에 따라 동적 계산.
+  //   projection 미지원/실패 시 plain panTo 폴백.
+  const panToProduct = useCallback((lat: number, lng: number, level?: number, snap?: 'peek' | 'mid' | 'full') => {
     const map = mapInstance.current
     if (!map || !window.kakao?.maps || !Number.isFinite(lat) || !Number.isFinite(lng)) return
     if (typeof level === 'number') map.setLevel(level)
     const latlng = new window.kakao.maps.LatLng(lat, lng)
-    const SHEET_OFFSET_Y = 150 // 보이는 영역 중앙으로 끌어올릴 px (peek 시트 ~320px 의 절반 ≈ 시각 중앙)
+    const offsetY = centerOffsetForSheet(snap ?? sheetSnapRef.current)
     try {
       const proj = map.getProjection()
       const pt = proj.pointFromCoords(latlng)
-      const offsetCenter = proj.coordsFromPoint(new window.kakao.maps.Point(pt.x, pt.y + SHEET_OFFSET_Y))
+      const offsetCenter = proj.coordsFromPoint(new window.kakao.maps.Point(pt.x, pt.y + offsetY))
       map.panTo(offsetCenter)
     } catch {
       map.panTo(latlng)

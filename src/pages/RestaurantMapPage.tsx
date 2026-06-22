@@ -372,6 +372,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     userLoc,
     liveSellerIds,
     favorites,
+    sheetSnap,
   })
 
   // 🛡️ 2026-04-30 Phase 5: '내 주변' 클릭 — GPS 요청 + 거리순 + 위치로 pan
@@ -413,8 +414,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     //   시각적 중앙에 배치. 줌은 level 4 로 확대.
     setMapView(true)
     setSheetSnap('peek')
+    // 시트를 peek 으로 내리므로 'peek' 기준 오프셋으로 보이는 영역 중앙에 배치(setState 비동기라 명시 전달).
     if (r.restaurant_lat && r.restaurant_lng) {
-      panToProduct(r.restaurant_lat, r.restaurant_lng, 4)
+      panToProduct(r.restaurant_lat, r.restaurant_lng, 4, 'peek')
     }
   }
 
