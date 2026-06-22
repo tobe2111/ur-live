@@ -44,8 +44,8 @@ async function requireDistributor(c: { req: { header: (k: string) => string | un
   if (!sellerId) return { error: '로그인이 필요합니다', status: 401 }
   const row = await c.env.DB.prepare("SELECT is_distributor, status FROM sellers WHERE id = ?")
     .bind(sellerId).first<{ is_distributor: number | null; status: string | null }>().catch(() => null)
-  if (!row || Number(row.is_distributor) !== 1) return { error: '유통회원 전용 기능입니다', status: 403 }
-  if (row.status !== 'approved' && row.status !== 'active') return { error: '유통회원 승인 후 이용할 수 있습니다', status: 403 }
+  if (!row || Number(row.is_distributor) !== 1) return { error: '유통사 전용 기능입니다', status: 403 }
+  if (row.status !== 'approved' && row.status !== 'active') return { error: '유통사 승인 후 이용할 수 있습니다', status: 403 }
   return { sellerId }
 }
 

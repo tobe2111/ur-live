@@ -242,7 +242,7 @@ export default function WholesaleProductPage() {
     <div className="min-h-screen pb-28" style={{ background: '#fff', color: WT.ink }}>
       {/* 🏭 2026-06-08 도매 상품 상세 — canonical=utongstart 이되 noindex 유지(공급가/거래정보 비노출 룰).
           description 에도 공급가 절대 미포함. */}
-      <SEO domain="wholesale" title={`${item.name} - 유통스타트 도매`} description="유통회원 전용 도매 상품 상세 — 도매가는 로그인 후 확인" url={`/wholesale/product/${item.id}`} noindex />
+      <SEO domain="wholesale" title={`${item.name} - 유통스타트 도매`} description="유통사 전용 도매 상품 상세 — 도매가는 로그인 후 확인" url={`/wholesale/product/${item.id}`} noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-wide flex items-center gap-3 px-5 lg:px-8 h-[52px]">
           <button onClick={() => navigate(-1)} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
@@ -326,7 +326,7 @@ export default function WholesaleProductPage() {
                 <div style={{ borderTop: '1px solid ' + WT.line }} />
                 <KV label="누적 사입" value={comma(item.sold_count || 0) + '건'} />
                 <div style={{ borderTop: '1px solid ' + WT.line }} />
-                <KV label="공급사" value="검증 제조사 (신원 비공개)" />
+                <KV label="제조사" value="검증 제조사 (신원 비공개)" />
               </div>
             )
           })()}

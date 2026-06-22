@@ -80,7 +80,7 @@ export function WholesaleProposalForm({ onClose }: { onClose?: () => void }) {
             {t('wholesale.proposal.target', { defaultValue: '대상 (선택)' })}
           </label>
           <input value={target} onChange={(e) => setTarget(e.target.value)} maxLength={120}
-            placeholder={t('wholesale.proposal.targetPh', { defaultValue: '상품명·공급사·주문번호 등' })}
+            placeholder={t('wholesale.proposal.targetPh', { defaultValue: '상품명·제조사·주문번호 등' })}
             className="w-full h-11 px-3.5 rounded-xl text-[14px] outline-none" style={{ background: WT.fill, color: WT.ink }} />
         </div>
         <div>
@@ -184,7 +184,7 @@ export default function WholesaleProposalModal({ onClose }: { onClose: () => voi
               {t('wholesale.proposal.loginNeeded', { defaultValue: '로그인하면 제안/신고를 보낼 수 있어요' })}
             </p>
             <button onClick={() => { onClose(); navigate('/wholesale/login') }} className="rounded-xl px-5 py-3 text-[14px] font-bold text-white" style={{ background: WT.brand }}>
-              {t('wholesale.login', { defaultValue: '유통회원 로그인' })}
+              {t('wholesale.login', { defaultValue: '유통사 로그인' })}
             </button>
           </div>
         )}

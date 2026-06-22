@@ -66,7 +66,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   }, [])
   const toggleWish = useCallback((p: CatalogItem) => {
     const tk = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
-    if (!tk) { toast.error('찜은 유통회원 전용이에요 — 로그인해주세요'); navigate('/wholesale/login'); return }
+    if (!tk) { toast.error('찜은 유통사 전용이에요 — 로그인해주세요'); navigate('/wholesale/login'); return }
     setWishedIds(prev => { const n = new Set(prev); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n })
     api.post(`/api/wholesale/wishlist/${p.id}/toggle`, {}, { headers: { Authorization: `Bearer ${tk}` } })
       .catch(() => {
@@ -318,7 +318,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
           localStorage.setItem('seller_username', s.username || '')
           localStorage.setItem('seller_type', s.seller_type || 'influencer')
           localStorage.setItem('is_distributor', '1')
-          toast.success('유통회원으로 로그인되었어요')
+          toast.success('유통사로 로그인되었어요')
           window.location.assign('/wholesale')
         }
         // status==='pending' 또는 신규(400)면 그대로 신청 배너 유지 — 추가 toast 없음(조용).

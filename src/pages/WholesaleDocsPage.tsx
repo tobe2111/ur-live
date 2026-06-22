@@ -49,7 +49,7 @@ export default function WholesaleDocsPage({ embedded = false }: { embedded?: boo
   // 콘텐츠(발행 자료 본문) — embedded/standalone 공유.
   const content = (
     <>
-        <p className="text-[13px] mb-4" style={{ color: WT.ink3 }}>유통스타트가 발행한 회원님의 거래명세서·세금계산서예요. 공급사 정보는 표기되지 않습니다.</p>
+        <p className="text-[13px] mb-4" style={{ color: WT.ink3 }}>유통스타트가 발행한 회원님의 거래명세서·세금계산서예요. 제조사 정보는 표기되지 않습니다.</p>
 
         <div className="flex gap-1.5 mb-4">
           {TABS.map(([k, l]) => (

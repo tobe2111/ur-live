@@ -237,7 +237,7 @@ app.post('/orders/:id/notes', rateLimit({ action: 'wholesale-order-note', max: 6
     if (!noteId) return c.json({ success: false, error: '메모 등록 중 오류가 발생했습니다' }, 500)
 
     // 상대 당사자에 대시보드 알림(fail-soft). 작성자가 유통사면 공급자(들)에, 공급자면 유통사에.
-    const authorLabel = party.type === 'distributor' ? '유통사' : '공급자'
+    const authorLabel = party.type === 'distributor' ? '유통사' : '제조사'
     const preview = bodyText.length > 60 ? bodyText.slice(0, 60) + '…' : bodyText
     if (party.type === 'distributor') {
       // 주문에 라인을 가진 모든 공급자에 통지(중복 제거).

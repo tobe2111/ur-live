@@ -55,7 +55,7 @@ export default function HeroSection({ loggedIn, userSession, grade, me, monthSpe
   }
 
   // ── 비로그인/카카오 — 2단 트러스트 히어로 (시안) ──
-  const joinCta = userSession ? '카카오 계정으로 신청' : '유통회원 신청'
+  const joinCta = userSession ? '카카오 계정으로 신청' : '유통사 신청'
   return (
     <div className="pt-4 pb-1">
       {/* 🧹 2026-06-17 (시안): 단일 배너(제품/플랫폼 공지용) — 2단 그리드·우측 마감임박 카드 삭제 */}
@@ -69,7 +69,7 @@ export default function HeroSection({ loggedIn, userSession, grade, me, monthSpe
           <h2 className="font-extrabold leading-[1.22]" style={{ fontSize: 'clamp(22px,3.2vw,33px)', letterSpacing: '-0.03em' }}>
             검증된 제조사 상품을<br /><span style={{ color: WT.inkPink }}>도매 공급가</span>로 사입하세요
           </h2>
-          <p className="mt-3 text-[13.5px] lg:text-[14.5px] leading-relaxed" style={{ color: '#D4D7DC' }}>공급사는 가리고 가격은 투명하게. 재고·자금 0원으로 시작하는 무재고 B2B 사입.</p>
+          <p className="mt-3 text-[13.5px] lg:text-[14.5px] leading-relaxed" style={{ color: '#D4D7DC' }}>제조사는 가리고 가격은 투명하게. 재고·자금 0원으로 시작하는 무재고 B2B 사입.</p>
           {/* 🧹 2026-06-17 (시안): 히어로 CTA 버튼 삭제 — 배너는 제품/플랫폼 공지 용도 */}
         </div>
       </div>

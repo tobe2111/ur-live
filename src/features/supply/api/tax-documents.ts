@@ -97,7 +97,7 @@ export function renderTaxDocHtml(doc: TaxDocRow): string {
   const title = isInvoice ? '세금계산서' : '거래명세서'
   const isSales = doc.direction === 'sales'
   const supplier = isSales ? '유통스타트' : esc(doc.party_name || '제조사')
-  const buyer = isSales ? esc(doc.party_name || '유통회원') : '유통스타트'
+  const buyer = isSales ? esc(doc.party_name || '유통사') : '유통스타트'
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title} — ${esc(doc.period_month)}</title>

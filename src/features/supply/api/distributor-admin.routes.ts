@@ -654,7 +654,7 @@ app.get('/product-access', async (c) => {
     ).all<{ grade: string; label: string | null }>().catch(() => ({ results: [] as { grade: string; label: string | null }[] }))
     return c.json({ success: true, product: prod, visible_grades: visibleGrades, all_grades: allGrades ?? [], distributors: results ?? [] })
   } catch (err) {
-    return safeError(c, err, '선정 유통회원 조회 중 오류가 발생했습니다', '[distributor-admin]')
+    return safeError(c, err, '선정 유통사 조회 중 오류가 발생했습니다', '[distributor-admin]')
   }
 })
 
@@ -666,21 +666,21 @@ app.post('/product-access', async (c) => {
     const productId = Number(body.product_id)
     const sellerId = Number(body.distributor_seller_id)
     if (!Number.isFinite(productId) || productId <= 0 || !Number.isFinite(sellerId) || sellerId <= 0) {
-      return c.json({ success: false, error: '상품과 유통회원을 선택해주세요' }, 400)
+      return c.json({ success: false, error: '상품과 유통사를 선택해주세요' }, 400)
     }
     const prod = await c.env.DB.prepare(
       "SELECT 1 FROM products WHERE id = ? AND is_supply_product = 1 AND supply_source_id IS NULL"
     ).bind(productId).first()
     if (!prod) return c.json({ success: false, error: '도매 상품이 아닙니다' }, 400)
     const seller = await c.env.DB.prepare('SELECT 1 FROM sellers WHERE id = ?').bind(sellerId).first()
-    if (!seller) return c.json({ success: false, error: '존재하지 않는 유통회원입니다' }, 400)
+    if (!seller) return c.json({ success: false, error: '존재하지 않는 유통사입니다' }, 400)
     const adminId = Number(((c.get as (k: string) => unknown)('user') as { id?: number } | undefined)?.id) || null
     await c.env.DB.prepare(
       'INSERT OR IGNORE INTO product_distributor_access (product_id, distributor_seller_id, granted_by) VALUES (?, ?, ?)'
     ).bind(productId, sellerId, adminId).run()
     return c.json({ success: true })
   } catch (err) {
-    return safeError(c, err, '유통회원 선정 중 오류가 발생했습니다', '[distributor-admin]')
+    return safeError(c, err, '유통사 선정 중 오류가 발생했습니다', '[distributor-admin]')
   }
 })
 

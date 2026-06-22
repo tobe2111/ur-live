@@ -137,7 +137,7 @@ export default function SupplierWholesaleOrdersPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F5F7]">
-      <SEO title="도매 주문 처리 - 공급자" description="공급자 도매 주문 송장/반품" url="/supplier/wholesale-orders" noindex />
+      <SEO title="도매 주문 처리 - 제조사" description="제조사 도매 주문 송장/반품" url="/supplier/wholesale-orders" noindex />
       <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto flex items-center gap-3 px-4 h-[52px]">
           <button onClick={() => navigate('/supplier')} aria-label="뒤로"><ArrowLeft className="w-5 h-5 text-gray-900" /></button>

@@ -230,8 +230,8 @@ export async function reverseSupplierOnRefund(
       try {
         await createDashboardNotification(
           DB, 'admin', null, 'supplier_clawback_shortfall',
-          '공급자 클로백 잔고 부족',
-          `공급자 #${sid} 의 지급 후 환불 클로백을 향후 정산으로 상계하지 못했습니다(부족 ₩${Math.abs(avail).toLocaleString()}). 직접 회수가 필요합니다. (주문 #${orderId})`,
+          '제조사 클로백 잔고 부족',
+          `제조사 #${sid} 의 지급 후 환불 클로백을 향후 정산으로 상계하지 못했습니다(부족 ₩${Math.abs(avail).toLocaleString()}). 직접 회수가 필요합니다. (주문 #${orderId})`,
           `/admin/suppliers`,
         );
       } catch { /* 알림 best-effort */ }

@@ -140,7 +140,7 @@ export default function SupplierRegisterPage() {
   if (done) {
     return (
       <div className="force-light-theme min-h-screen flex items-center justify-center bg-gray-50 px-6">
-        <SEO title={t('supplier.registerTitle', { defaultValue: '공급자 가입' }) + ' - 유어딜'} description="유어딜 도매 공급자 가입" url="/supplier/register" />
+        <SEO title={t('supplier.registerTitle', { defaultValue: '제조사 가입' }) + ' - 유어딜'} description="유어딜 도매 제조사 가입" url="/supplier/register" />
         <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
           <CheckCircle className="w-14 h-14 text-green-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-900 mb-2">{t('supplier.registerSubmitted', { defaultValue: '가입 신청이 완료되었습니다' })}</h2>
@@ -163,7 +163,7 @@ export default function SupplierRegisterPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-6">
-      <SEO title={t('supplier.registerTitle', { defaultValue: '공급자 가입' }) + ' - 유어딜'} description="유어딜 도매 공급자 가입" url="/supplier/register" />
+      <SEO title={t('supplier.registerTitle', { defaultValue: '제조사 가입' }) + ' - 유어딜'} description="유어딜 도매 제조사 가입" url="/supplier/register" />
       <div className="max-w-lg mx-auto">
         <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-6">
           <ArrowLeft className="w-4 h-4" /> {t('common.back', { defaultValue: '뒤로' })}
@@ -179,12 +179,12 @@ export default function SupplierRegisterPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('supplier.registerTitle', { defaultValue: '공급자 가입' })}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('supplier.registerTitle', { defaultValue: '제조사 가입' })}</h1>
           <p className="text-sm text-gray-500 mb-2">{t('supplier.registerSubtitle', { defaultValue: '도매 공급상품을 등록하고 정산받으세요. 관리자 승인 후 이용 가능합니다.' })}</p>
           {/* 🚪 2026-06-12 (사용자 결정 — 역할 선택 우선): 역방향 안내 — 유통 가입의 '제조사이신가요?' 와 대칭. */}
           <p className="text-[12.5px] text-gray-400 mb-6">
             {t('supplier.areYouDistributor', { defaultValue: '상품을 사입해 판매하실 건가요?' })}{' '}
-            <Link to="/wholesale/join" className="font-semibold underline text-gray-600">{t('supplier.goDistributorJoin', { defaultValue: '판매사(유통회원) 가입 →' })}</Link>
+            <Link to="/wholesale/join" className="font-semibold underline text-gray-600">{t('supplier.goDistributorJoin', { defaultValue: '유통사 가입 →' })}</Link>
           </p>
 
           {/* 🏭 2026-06-08 카카오 통합 (WholesaleJoinPage 와 대칭): 카카오로 로그인된 유저는 사업자 정보만 입력. */}

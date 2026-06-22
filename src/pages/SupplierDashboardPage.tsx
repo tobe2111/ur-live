@@ -172,7 +172,7 @@ export default function SupplierDashboardPage() {
     badge: key === 'orders' ? pendingShipCount : key === 'chat' ? chatUnread : undefined,
   }))
 
-  const activeTabLabel = tabs.find(tb => tb.key === tab)?.label ?? t('supplier.dashTitle', { defaultValue: '공급자 대시보드' })
+  const activeTabLabel = tabs.find(tb => tb.key === tab)?.label ?? t('supplier.dashTitle', { defaultValue: '제조사 대시보드' })
 
   const headerRight = (
     <>
@@ -197,7 +197,7 @@ export default function SupplierDashboardPage() {
       title={activeTabLabel}
       headerRight={headerRight}
     >
-      <SEO title={t('supplier.dashTitle', { defaultValue: '공급자 대시보드' }) + ' - 유어딜'} description="유어딜 도매 공급자 대시보드" url="/supplier" />
+      <SEO title={t('supplier.dashTitle', { defaultValue: '제조사 대시보드' }) + ' - 유어딜'} description="유어딜 도매 제조사 대시보드" url="/supplier" />
 
       {loading ? (
         <div className="py-20 text-center text-gray-400 text-sm">{t('common.loading', { defaultValue: '불러오는 중...' })}</div>

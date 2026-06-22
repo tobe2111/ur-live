@@ -116,7 +116,7 @@ export default function WholesaleWishlistPage() {
             <span className="inline-flex h-11 w-11 items-center justify-center rounded-full mb-3" style={{ background: WT.brandSoft }}>
               <Lock className="w-5 h-5" style={{ color: WT.brand }} />
             </span>
-            <p className="text-[14px] font-bold" style={{ color: WT.ink }}>관심상품은 유통회원 전용이에요</p>
+            <p className="text-[14px] font-bold" style={{ color: WT.ink }}>관심상품은 유통사 전용이에요</p>
             <button onClick={() => navigate('/wholesale/login')}
               className="mt-4 px-6 h-11 rounded-xl text-[14px] font-bold text-white" style={{ background: WT.brand }}>
               로그인하기

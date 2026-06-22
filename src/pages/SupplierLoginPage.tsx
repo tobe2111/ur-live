@@ -43,10 +43,10 @@ export default function SupplierLoginPage() {
           const data = await res.json().catch(() => ({})) as { success?: boolean; status?: string; message?: string; data?: { token: string; refreshToken?: string; supplier: { id: number; business_name: string; email: string } } }
           if (data.success && data.status === 'approved' && data.data) {
             setSupplierSession(data.data.token, data.data.supplier, data.data.refreshToken)
-            toast.success('제조회원으로 로그인되었습니다')
+            toast.success('제조사로 로그인되었습니다')
             navigate('/supplier', { replace: true })
           } else if (data.success && data.status === 'pending') {
-            toast.info(data.message || '제조회원 승인 대기 중입니다 — 승인 후 이용할 수 있어요')
+            toast.info(data.message || '제조사 승인 대기 중입니다 — 승인 후 이용할 수 있어요')
           } else if (data.success && data.status === 'needs_registration') {
             // 🏭 2026-06-08 (#2 수정): 이 카카오 계정에 제조회원 계정이 없음.
             //   기존: /supplier/register 로 강제 이동 → 유통사/일반 유저가 '제조회원 로그인'만 눌러도
@@ -92,7 +92,7 @@ export default function SupplierLoginPage() {
 
   return (
     <div className="force-light-theme min-h-screen flex bg-gray-50">
-      <SEO title={t('supplier.loginTitle', { defaultValue: '공급자 로그인' }) + ' - 유어딜'} description="유어딜 도매 공급자 대시보드 로그인" url="/supplier/login" />
+      <SEO title={t('supplier.loginTitle', { defaultValue: '제조사 로그인' }) + ' - 유어딜'} description="유어딜 도매 제조사 대시보드 로그인" url="/supplier/login" />
 
       {/* Left branding (desktop) */}
       <div className="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col bg-[#0A0A0B]">
@@ -124,7 +124,7 @@ export default function SupplierLoginPage() {
           </div>
         </div>
         <div className="px-10 pb-8">
-          <p className="text-xs text-gray-600">&copy; 2026 {mallName} — {t('supplier.copyright', { defaultValue: '도매 공급자 서비스' })}</p>
+          <p className="text-xs text-gray-600">&copy; 2026 {mallName} — {t('supplier.copyright', { defaultValue: '도매 제조사 서비스' })}</p>
         </div>
       </div>
 
@@ -140,8 +140,8 @@ export default function SupplierLoginPage() {
         <div className="w-full max-w-sm md:max-w-md">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
             <div className="mb-7">
-              <h2 className="text-2xl font-bold text-gray-900">{t('supplier.loginTitle', { defaultValue: '공급자 로그인' })}</h2>
-              <p className="text-sm text-gray-500 mt-1">{t('supplier.loginSubtitle', { defaultValue: '도매 공급자 계정으로 로그인하세요' })}</p>
+              <h2 className="text-2xl font-bold text-gray-900">{t('supplier.loginTitle', { defaultValue: '제조사 로그인' })}</h2>
+              <p className="text-sm text-gray-500 mt-1">{t('supplier.loginSubtitle', { defaultValue: '도매 제조사 계정으로 로그인하세요' })}</p>
             </div>
 
             {error && (
@@ -153,11 +153,11 @@ export default function SupplierLoginPage() {
             {/* 🏭 2026-06-08 (#2): 카카오 계정에 제조회원 계정 없음 — 강제이동 대신 선택지 안내 */}
             {kakaoNoSupplier && (
               <div className="mb-5 px-4 py-3.5 bg-amber-50 border border-amber-200 rounded-xl">
-                <p className="text-sm font-semibold text-amber-900">이 카카오 계정은 아직 제조(브랜드)회원이 아니에요</p>
+                <p className="text-sm font-semibold text-amber-900">이 카카오 계정은 아직 제조사가 아니에요</p>
                 <p className="text-xs text-amber-700 mt-1">제조사라면 입점 신청을, 유통사(사입)라면 유통사 로그인으로 이동하세요.</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button type="button" onClick={() => navigate('/supplier/register')}
-                    className="px-3 py-2 rounded-lg bg-[#FC5424] text-white text-xs font-bold">제조회원 입점 신청</button>
+                    className="px-3 py-2 rounded-lg bg-[#FC5424] text-white text-xs font-bold">제조사 입점 신청</button>
                   <button type="button" onClick={() => navigate('/wholesale/login')}
                     className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 text-xs font-bold">유통사 로그인 →</button>
                 </div>
@@ -218,13 +218,13 @@ export default function SupplierLoginPage() {
             </div>
             <button type="button" onClick={() => { window.location.href = '/auth/kakao/start?redirect=/supplier/login&intent=user' }}
               className="w-full h-12 rounded-xl font-bold text-sm" style={{ background: '#FEE500', color: '#3C1E1E' }}>
-              카카오로 제조(브랜드)회원 입점·로그인
+              카카오로 제조사 입점·로그인
             </button>
 
             <p className="mt-6 text-center text-sm text-gray-600">
               {t('supplier.noAccount', { defaultValue: '계정이 없으신가요?' })}{' '}
               <Link to="/supplier/register" className="font-bold text-[#FC5424] hover:underline">
-                {t('supplier.registerLink', { defaultValue: '공급자 가입' })}
+                {t('supplier.registerLink', { defaultValue: '제조사 가입' })}
               </Link>
             </p>
             {/* 🛡️ 2026-06-01 도매몰 크로스링크: 셀러 진입 */}

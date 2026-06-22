@@ -65,7 +65,7 @@ supplierDashboardRoutes.get('/me', async (c) => {
               bank_name, bank_account, account_holder, commission_rate, status, created_at
          FROM suppliers WHERE id = ?`
     ).bind(sid).first();
-    if (!profile) return c.json({ success: false, error: '공급자를 찾을 수 없습니다' }, 404);
+    if (!profile) return c.json({ success: false, error: '제조사를 찾을 수 없습니다' }, 404);
 
     const balance = await DB.prepare(
       `SELECT pending_amount, available_amount, paid_amount FROM supplier_balances WHERE supplier_id = ?`
@@ -293,7 +293,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
     // 승인된 공급자만 등록 가능 (정지/대기 차단).
     const sup = await DB.prepare('SELECT status FROM suppliers WHERE id = ?').bind(sid).first<{ status: string }>();
     if (!sup || sup.status !== 'approved') {
-      return c.json({ success: false, error: '승인된 공급자만 상품을 등록할 수 있습니다' }, 403);
+      return c.json({ success: false, error: '승인된 제조사만 상품을 등록할 수 있습니다' }, 403);
     }
 
     const slug = `sup-${sid}-${name.toLowerCase().replace(/[^a-z0-9가-힣]/g, '-').substring(0, 40)}-${Date.now()}`;
@@ -357,7 +357,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
 
     // 어드민 승인 큐 알림.
     createDashboardNotification(DB, 'admin', null, 'supply_product_submitted', '공급상품 승인 요청',
-      `공급자 #${sid}: ${name}`, '/admin/products').catch(swallow('supplier-dashboard'));
+      `제조사 #${sid}: ${name}`, '/admin/products').catch(swallow('supplier-dashboard'));
 
     return c.json({
       success: true,
@@ -418,7 +418,7 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
     await ensureQtyConstraintSchema(DB); // 🏷️ brand_name 컬럼 보장(bulk INSERT 전).
     const sup = await DB.prepare('SELECT status FROM suppliers WHERE id = ?').bind(sid).first<{ status: string }>();
     if (!sup || sup.status !== 'approved') {
-      return c.json({ success: false, error: '승인된 공급자만 상품을 등록할 수 있습니다' }, 403);
+      return c.json({ success: false, error: '승인된 제조사만 상품을 등록할 수 있습니다' }, 403);
     }
     const body = await c.req.json<{ csv?: string }>().catch(() => ({} as { csv?: string }));
     if (!body.csv || typeof body.csv !== 'string') return c.json({ success: false, error: 'CSV 데이터가 없습니다' }, 400);
@@ -481,7 +481,7 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
     }
     if (created > 0) {
       createDashboardNotification(DB, 'admin', null, 'supply_product_submitted', '공급상품 대량 등록',
-        `공급자 #${sid}: ${created}건 승인 요청`, '/admin/products').catch(swallow('supplier-dashboard'));
+        `제조사 #${sid}: ${created}건 승인 요청`, '/admin/products').catch(swallow('supplier-dashboard'));
     }
     return c.json({ success: true, summary: { total: rows.length, created, failed: rows.length - created }, results });
   } catch (err) {
@@ -721,7 +721,7 @@ supplierDashboardRoutes.post('/products/:id/price-change-request', async (c) => 
 
     // 어드민 승인 큐 알림.
     createDashboardNotification(DB, 'admin', null, 'supply_price_change_requested', '공급가 변경 승인 요청',
-      `공급자 #${sid}: ${existing.name} ${existing.supply_price.toLocaleString()}→${newSupply.toLocaleString()}원`, '/admin/products')
+      `제조사 #${sid}: ${existing.name} ${existing.supply_price.toLocaleString()}→${newSupply.toLocaleString()}원`, '/admin/products')
       .catch(swallow('supplier-dashboard'));
 
     return c.json({
@@ -1012,7 +1012,7 @@ supplierDashboardRoutes.put('/orders/:orderId/shipping', async (c) => {
     // 배송 추적 이벤트 audit (셀러 흐름과 동일 — 테이블 없으면 무시).
     await DB.prepare(
       `INSERT INTO shipping_tracking_events (order_id, carrier_code, tracking_number, status, status_text, source, created_at)
-       VALUES (?, ?, ?, 'shipped', '공급자 발송 등록', 'supplier', datetime('now'))`
+       VALUES (?, ?, ?, 'shipped', '제조사 발송 등록', 'supplier', datetime('now'))`
     ).bind(orderId, carrierKey || null, tracking).run().catch(() => { /* table optional */ });
 
     return c.json({ success: true, message: '운송장이 등록되었습니다.' });
@@ -1222,7 +1222,7 @@ supplierDashboardRoutes.post('/store/import', rateLimit({ action: 'sup-store-imp
     await ensureSupplyVisibilitySchema(DB);
     await ensureQtyConstraintSchema(DB);
     const sup = await DB.prepare('SELECT status FROM suppliers WHERE id = ?').bind(sid).first<{ status: string }>();
-    if (!sup || sup.status !== 'approved') return c.json({ success: false, error: '승인된 공급자만 상품을 등록할 수 있습니다' }, 403);
+    if (!sup || sup.status !== 'approved') return c.json({ success: false, error: '승인된 제조사만 상품을 등록할 수 있습니다' }, 403);
 
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>));
     const channel = String(body.channel || 'naver');
@@ -1286,7 +1286,7 @@ supplierDashboardRoutes.post('/store/import', rateLimit({ action: 'sup-store-imp
     }
     if (created > 0) {
       createDashboardNotification(DB, 'admin', null, 'supply_product_submitted', '공급상품 스토어 가져오기',
-        `공급자 #${sid}: ${channel} 에서 ${created}건 승인 요청`, '/admin/products').catch(swallow('supplier-dashboard'));
+        `제조사 #${sid}: ${channel} 에서 ${created}건 승인 요청`, '/admin/products').catch(swallow('supplier-dashboard'));
     }
     return c.json({ success: true, summary: { total: items.length, created, failed: items.length - created }, results });
   } catch (err) {

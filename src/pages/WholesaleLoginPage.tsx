@@ -69,10 +69,10 @@ export default function WholesaleLoginPage() {
         if (cancelled) return
         if (data.success && data.status === 'approved' && data.data?.accessToken) {
           applySellerSession(data.data)
-          toast.success('유통회원으로 로그인되었습니다')
+          toast.success('유통사로 로그인되었습니다')
           window.location.assign('/wholesale') // B: 구매자 → 카탈로그 홈
         } else if (data.success && (data.status === 'pending' || data.status === 'needs_business_info')) {
-          toast.info(data.message || '유통회원 승인 대기 중입니다 — 승인 후 이용할 수 있어요')
+          toast.info(data.message || '유통사 승인 대기 중입니다 — 승인 후 이용할 수 있어요')
         }
         // needs_registration → 조용히(로그인 폼 유지; 가입은 사용자가 선택)
       } catch { /* silent — 로그인 폼 유지 */ }
@@ -134,8 +134,8 @@ export default function WholesaleLoginPage() {
                 className="w-full flex items-center gap-4 p-4 rounded-2xl border border-[#ECEEF1] hover:border-[#0C2454] transition-colors text-left">
                 <span className="flex h-12 w-12 items-center justify-center rounded-xl shrink-0" style={{ background: '#F4F5F7' }}><Users className="w-6 h-6" style={{ color: '#0C2454' }} /></span>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-[16px] font-extrabold text-[#0C2454]">판매사(유통사) 로그인</span>
-                  <span className="block text-[13px] text-[#8A929E] mt-0.5">등급 공급가로 사입하는 판매사</span>
+                  <span className="block text-[16px] font-extrabold text-[#0C2454]">유통사 로그인</span>
+                  <span className="block text-[13px] text-[#8A929E] mt-0.5">등급 공급가로 사입하는 유통사</span>
                 </span>
                 <ArrowRight className="w-5 h-5 text-[#B6BCC4] shrink-0" />
               </button>
@@ -143,8 +143,8 @@ export default function WholesaleLoginPage() {
                 className="w-full flex items-center gap-4 p-4 rounded-2xl border border-[#ECEEF1] hover:border-[#0C2454] transition-colors text-left">
                 <span className="flex h-12 w-12 items-center justify-center rounded-xl shrink-0" style={{ background: '#F4F5F7' }}><Factory className="w-6 h-6" style={{ color: '#0C2454' }} /></span>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-[16px] font-extrabold text-[#0C2454]">제조사(공급사) 로그인</span>
-                  <span className="block text-[13px] text-[#8A929E] mt-0.5">상품을 공급하는 제조사(공급사)</span>
+                  <span className="block text-[16px] font-extrabold text-[#0C2454]">제조사 로그인</span>
+                  <span className="block text-[13px] text-[#8A929E] mt-0.5">상품을 공급하는 제조사</span>
                 </span>
                 <ArrowRight className="w-5 h-5 text-[#B6BCC4] shrink-0" />
               </button>
@@ -160,7 +160,7 @@ export default function WholesaleLoginPage() {
           <ArrowRight className="w-4 h-4 rotate-180" /> 로그인 유형 다시 선택
         </button>
         <div className="text-center mb-8">
-          <h1 className="text-2xl lg:text-3xl font-extrabold mb-2">판매사(유통사) 로그인</h1>
+          <h1 className="text-2xl lg:text-3xl font-extrabold mb-2">유통사 로그인</h1>
           <p className="text-[#4E5560] text-[15px]">검증된 제조사 상품을 등급 공급가로 사입하세요.</p>
         </div>
 
@@ -207,8 +207,8 @@ export default function WholesaleLoginPage() {
           <button onClick={() => navigate('/wholesale/join')} className="text-[#FC5424] font-semibold">유통사 가입 →</button>
         </div>
         <div className="mt-3 pt-5 border-t border-[#ECEEF1] text-center text-sm text-[#8A929E]">
-          제조사(공급사)이신가요?{' '}
-          <button onClick={() => navigate('/supplier/login')} className="text-[#FC5424] font-semibold inline-flex items-center gap-1"><Factory className="w-4 h-4" /> 제조(브랜드)회원 로그인 →</button>
+          제조사이신가요?{' '}
+          <button onClick={() => navigate('/supplier/login')} className="text-[#FC5424] font-semibold inline-flex items-center gap-1"><Factory className="w-4 h-4" /> 제조사 로그인 →</button>
         </div>
           </>
         )}

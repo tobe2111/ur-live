@@ -15,7 +15,7 @@ export default function BrandHero({ loggedIn }: { loggedIn: boolean }) {
         <span style={{ color: '#FF4D66' }}>{loggedIn ? '내 등급 공급가' : '도매 공급가'}</span>로 사입하세요
       </h2>
       <p className="mt-2.5 leading-relaxed text-[13px] lg:text-[14px]" style={{ color: '#A7AEB6' }}>
-        공급사는 숨기고 가격은 투명하게 — 대량 사입에 최적화된 도매 전용 가격.
+        제조사는 숨기고 가격은 투명하게 — 대량 사입에 최적화된 도매 전용 가격.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         {props.map((t) => (

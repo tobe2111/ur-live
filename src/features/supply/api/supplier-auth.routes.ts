@@ -225,7 +225,7 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
     const u = await DB.prepare('SELECT id, email, name, email_verified FROM users WHERE id = ?').bind(userId)
       .first<{ id: number; email: string | null; name: string | null; email_verified: number | null }>().catch(() => null);
     const email = (authed.email || u?.email || '').trim().toLowerCase();
-    const name = (authed.name || u?.name || '제조회원').trim();
+    const name = (authed.name || u?.name || '제조사').trim();
     const emailVerified = u?.email_verified === 1;
 
     type SupRow = { id: number; business_name: string; email: string | null; status: string };
@@ -250,7 +250,7 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
     //   사업자 정보가 하나라도 들어온 실제 신청만 아래 필드 검증으로 400 처리. (유통회원 /become-distributor 와 대칭)
     if (!sup) {
       if (!business_name && !business_number && !business_license_url) {
-        return c.json({ success: true, status: 'needs_registration', message: '제조회원 입점 신청(사업자 정보)이 필요합니다' });
+        return c.json({ success: true, status: 'needs_registration', message: '제조사 입점 신청(사업자 정보)이 필요합니다' });
       }
       if (!email) return c.json({ success: false, error: '이메일 정보가 필요합니다. 카카오 이메일 제공에 동의해주세요' }, 400);
       if (!business_name) return c.json({ success: false, error: '상호(사업자명)를 입력해주세요' }, 400);
@@ -279,13 +279,13 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
         userId, mallId, nts2,
       ).run();
       const sid = Number(ins.meta?.last_row_id);
-      if (!sid) return c.json({ success: false, error: '제조회원 신청 중 오류가 발생했습니다' }, 500);
+      if (!sid) return c.json({ success: false, error: '제조사 신청 중 오류가 발생했습니다' }, 500);
 
       // 어드민 승인 큐 알림 (/admin/suppliers 에서 처리). fail-soft.
-      createDashboardNotification(DB, 'admin', null, 'supplier_pending', '제조회원 승인 요청',
+      createDashboardNotification(DB, 'admin', null, 'supplier_pending', '제조사 승인 요청',
         `${business_name} (${business_number})${nts2 ? ` — 국세청: ${nts2}` : ' — 국세청: 조회 안 됨'}`, '/admin/suppliers').catch(swallowNotify('become:notify'));
 
-      return c.json({ success: true, status: 'pending', message: '제조회원 가입 신청이 완료되었습니다. 사업자 정보 확인 후 관리자 승인되면 이용할 수 있습니다.' });
+      return c.json({ success: true, status: 'pending', message: '제조사 가입 신청이 완료되었습니다. 사업자 정보 확인 후 관리자 승인되면 이용할 수 있습니다.' });
     }
     // 승인 전이면 토큰 없이 대기 안내.
     if (sup.status !== 'approved') {
@@ -302,7 +302,7 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
     } catch { /* dual-write 실패해도 로그인 정상 */ }
     return c.json({ success: true, status: 'approved', data: { token, refreshToken, supplier: { id: sup.id, business_name: sup.business_name, email: sup.email } } });
   } catch (err) {
-    return safeError(c, err, '제조회원 전환 중 오류가 발생했습니다', '[supplier-auth]');
+    return safeError(c, err, '제조사 전환 중 오류가 발생했습니다', '[supplier-auth]');
   }
 });
 

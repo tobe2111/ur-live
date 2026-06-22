@@ -76,7 +76,7 @@ export default function WholesaleOemPage({ embedded = false }: { embedded?: bool
               { name: 'OEM/ODM 상품제휴', url: 'https://utongstart.com/wholesale/oem' },
             ]),
             faqJsonLd([
-              { q: 'OEM/ODM 상품제휴는 어떻게 진행되나요?', a: '유통회원이 원하는 제품·수량·목표가를 신청하면 유통스타트가 적합한 제조사를 매칭하고 견적·생산·납품까지 연결해 드립니다.' },
+              { q: 'OEM/ODM 상품제휴는 어떻게 진행되나요?', a: '유통사가 원하는 제품·수량·목표가를 신청하면 유통스타트가 적합한 제조사를 매칭하고 견적·생산·납품까지 연결해 드립니다.' },
               { q: '소량도 제작이 가능한가요?', a: '제품군에 따라 소량부터 대량까지 가능합니다. 신청 내용을 검토해 가능한 제조사를 매칭해 안내드려요.' },
             ]),
           ]}

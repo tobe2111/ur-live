@@ -25,7 +25,7 @@ async function downloadWholesaleXlsx(path: string, filename: string) {
 // 🏭 NOTI-1 (2026-06-08): 주문별 메모/문의 스레드 — 유통사 ↔ 공급자 ↔ 어드민 소통.
 //   서버: GET/POST /api/wholesale/orders/:id/notes (당사자 검증 + 작성 시 상대 통지).
 interface OrderNote { id: number; author_type: string; author_id: number | null; body: string; created_at: string }
-const AUTHOR_LABEL: Record<string, string> = { distributor: '유통사', supplier: '공급자', admin: '관리자' }
+const AUTHOR_LABEL: Record<string, string> = { distributor: '유통사', supplier: '제조사', admin: '관리자' }
 
 function OrderNotesThread({ orderId }: { orderId: number }) {
   const { t } = useTranslation()
@@ -117,7 +117,7 @@ function OrderNotesThread({ orderId }: { orderId: number }) {
               onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit() } }}
               rows={1}
               maxLength={1000}
-              placeholder={t('wholesale.notePlaceholder', { defaultValue: '메모를 입력하세요 (공급자·관리자에게 전달돼요)' })}
+              placeholder={t('wholesale.notePlaceholder', { defaultValue: '메모를 입력하세요 (제조사·관리자에게 전달돼요)' })}
               className="flex-1 resize-none rounded-xl px-3 py-2.5 text-[13px] outline-none"
               style={{ background: WT.fill, color: WT.ink, minHeight: 42, maxHeight: 120 }}
             />

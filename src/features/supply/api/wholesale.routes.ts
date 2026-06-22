@@ -566,14 +566,14 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
     if (!sellerId) return c.json({ success: false, error: '가입 처리 중 오류가 발생했습니다' }, 500)
 
     // 어드민 승인 큐 알림 (셀러 승인 페이지에서 처리 — 유통회원도 동일 큐).
-    createDashboardNotification(DB, 'admin', null, 'distributor_pending', '유통회원 승인 요청',
+    createDashboardNotification(DB, 'admin', null, 'distributor_pending', '유통사 승인 요청',
       `${business_name} (${business_number})${ntsStatus2 ? ` — 국세청: ${ntsStatus2}` : ' — 국세청: 조회 안 됨'}`,
       '/admin/seller-approval').catch(swallow('wholesale:register:notify'))
 
     return c.json({
       success: true,
       status: 'pending',
-      message: '유통회원 가입 신청이 완료되었습니다. 사업자 정보 확인 후 관리자 승인되면 이용할 수 있습니다.',
+      message: '유통사 가입 신청이 완료되었습니다. 사업자 정보 확인 후 관리자 승인되면 이용할 수 있습니다.',
     })
   } catch (err) {
     return safeError(c, err, '가입 처리 중 오류가 발생했습니다', '[wholesale:register]')
@@ -638,7 +638,7 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
     const u = await DB.prepare('SELECT id, email, name, email_verified FROM users WHERE id = ?').bind(userId)
       .first<{ id: number; email: string | null; name: string | null; email_verified: number | null }>().catch(() => null)
     const email = (authed.email || u?.email || '').trim().toLowerCase()
-    const name = (authed.name || u?.name || '유통회원').trim()
+    const name = (authed.name || u?.name || '유통사').trim()
     const emailVerified = u?.email_verified === 1
 
     type SellerRow = { id: number; username: string; email: string | null; name: string | null; status: string; seller_type: string | null; is_distributor: number | null }
@@ -666,7 +666,7 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
         seller.is_distributor = 1
       }
       if (seller.status !== 'approved' && seller.status !== 'active') {
-        return c.json({ success: true, status: seller.status || 'pending', message: '유통회원 승인 대기 중입니다. 관리자 승인 후 이용할 수 있습니다.' })
+        return c.json({ success: true, status: seller.status || 'pending', message: '유통사 승인 대기 중입니다. 관리자 승인 후 이용할 수 있습니다.' })
       }
       // 🏁 2026-06-12 (전 플로우 감사 🟡): 기존 승인 셀러 즉시 승급은 '검증된 사업자' 전제였는데
       //   인플루언서 승인 기준 ≠ 도매(사업자) 기준 — business_number 없는 셀러는 즉시 토큰 대신
@@ -691,7 +691,7 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
     //   '가입 필요' 상태 — 신규 유저에게 400(콘솔 에러·"가입 안됨" 오해) 대신 needs_registration(200) 반환.
     //   사업자 정보가 하나라도 들어온 실제 신청만 아래 필드 검증으로 400 처리.
     if (!business_name && !business_number && !business_license_url) {
-      return c.json({ success: true, status: 'needs_registration', message: '유통회원 가입(사업자 정보 입력)이 필요합니다.' })
+      return c.json({ success: true, status: 'needs_registration', message: '유통사 가입(사업자 정보 입력)이 필요합니다.' })
     }
     if (!email) return c.json({ success: false, error: '이메일 정보가 필요합니다. 카카오 이메일 제공에 동의해주세요' }, 400)
     if (!business_name) return c.json({ success: false, error: '상호(사업자명)를 입력해주세요' }, 400)
@@ -730,13 +730,13 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       representative_phone || null, manager_name || null, manager_phone || null, manager_email || null,
       business_license_url || null, 'pending', DEFAULT_COMMISSION_RATE, userId, mallId, ntsStatus).run()
     const sid = Number(ins.meta?.last_row_id)
-    if (!sid) return c.json({ success: false, error: '유통회원 신청 중 오류가 발생했습니다' }, 500)
-    createDashboardNotification(DB, 'admin', null, 'distributor_pending', '유통회원 승인 요청',
+    if (!sid) return c.json({ success: false, error: '유통사 신청 중 오류가 발생했습니다' }, 500)
+    createDashboardNotification(DB, 'admin', null, 'distributor_pending', '유통사 승인 요청',
       `${business_name} (${business_number})${ntsStatus ? ` — 국세청: ${ntsStatus}` : ' — 국세청: 조회 안 됨'}`,
       '/admin/seller-approval').catch(swallow('wholesale:become:notify'))
-    return c.json({ success: true, status: 'pending', message: '유통회원 가입 신청이 완료되었습니다. 사업자 정보 확인 후 관리자 승인되면 이용할 수 있습니다.' })
+    return c.json({ success: true, status: 'pending', message: '유통사 가입 신청이 완료되었습니다. 사업자 정보 확인 후 관리자 승인되면 이용할 수 있습니다.' })
   } catch (err) {
-    return safeError(c, err, '유통회원 전환 중 오류가 발생했습니다', '[wholesale:become]')
+    return safeError(c, err, '유통사 전환 중 오류가 발생했습니다', '[wholesale:become]')
   }
 })
 
