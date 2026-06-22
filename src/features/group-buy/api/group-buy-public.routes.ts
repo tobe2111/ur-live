@@ -638,6 +638,71 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     return c.json({ success: true, data: merged })
   })
 
+  // ── POST /vouchers/:code/self-redeem — 🎟️ 2026-06-20 소비자 셀프 사용처리 (대표 — 카운터 느슨/정산 검문) ──
+  //   본인 미사용 공구권을 현장에서 직접 사용. CAS(claim-before-credit) 일회성 — 동시/중복 차단.
+  //   라이브 '사용완료' 화면 데이터 반환(매장명·used_at). 60초 내 cancel 가능(아래). 돈 이동 X(에스크로는 Phase 2).
+  router.post('/vouchers/:code/self-redeem', requireAuth(), async (c) => {
+    const { DB } = c.env
+    const user = getCurrentUser(c)
+    if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    const code = c.req.param('code')
+    if (!code) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
+    try {
+      // 🛡️ 머니룰: claim-before-credit — 미사용+본인 일 때만 원자적 used 선점.
+      const res = await DB.prepare(
+        "UPDATE vouchers SET status='used', used_at=datetime('now') WHERE code=? AND user_id=? AND status='unused'"
+      ).bind(code, user.id).run()
+      const claimed = (res.meta?.changes || 0) === 1
+
+      const row = await DB.prepare(`
+        SELECT v.id, v.code, v.status, v.used_at, v.product_id, p.name as product_name, p.restaurant_name
+        FROM vouchers v JOIN products p ON p.id = v.product_id
+        WHERE v.code=? AND v.user_id=?
+      `).bind(code, user.id).first<{ id: number; code: string; status: string; used_at: string; product_name?: string; restaurant_name?: string }>().catch(() => null)
+
+      if (!row) return c.json({ success: false, error: '공구권을 찾을 수 없습니다' }, 404)
+      if (!claimed && row.status !== 'used') {
+        return c.json({ success: false, error: row.status === 'refunded' ? '환불된 공구권입니다' : '이미 처리되었거나 사용할 수 없는 공구권입니다' }, 409)
+      }
+      // claimed === true (방금 사용) 또는 이미 used(멱등 반환)
+      const usedAtMs = row.used_at ? Date.parse(row.used_at.replace(' ', 'T') + 'Z') : Date.now()
+      const cancelableUntil = usedAtMs + 60_000
+      return c.json({
+        success: true,
+        data: {
+          code: row.code,
+          storeName: row.restaurant_name || row.product_name || '매장',
+          usedAt: row.used_at,
+          justRedeemed: claimed,
+          cancelableUntil, // 이 시각(ms) 이전엔 취소 가능
+        },
+      })
+    } catch (err) {
+      return safeError(c, err, '사용 처리 중 오류가 발생했습니다', '[self-redeem]')
+    }
+  })
+
+  // ── POST /vouchers/:code/cancel-redeem — 60초 내 실수 취소 (used → unused) ──
+  router.post('/vouchers/:code/cancel-redeem', requireAuth(), async (c) => {
+    const { DB } = c.env
+    const user = getCurrentUser(c)
+    if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    const code = c.req.param('code')
+    if (!code) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
+    try {
+      // CAS: 본인 + used + used_at 60초 이내 일 때만 되돌림. (Phase 2: settled 면 거부 가드 추가 예정)
+      const res = await DB.prepare(
+        "UPDATE vouchers SET status='unused', used_at=NULL WHERE code=? AND user_id=? AND status='used' AND used_at >= datetime('now','-60 seconds')"
+      ).bind(code, user.id).run()
+      if ((res.meta?.changes || 0) !== 1) {
+        return c.json({ success: false, error: '취소 가능 시간(60초)이 지났습니다' }, 409)
+      }
+      return c.json({ success: true, data: { code, status: 'unused' } })
+    } catch (err) {
+      return safeError(c, err, '취소 중 오류가 발생했습니다', '[cancel-redeem]')
+    }
+  })
+
   // ── GET /verify/:code — voucher 정보 조회 (PIN 입력 전, 마스킹) ──
   router.get('/verify/:code', async (c) => {
     const { DB } = c.env
