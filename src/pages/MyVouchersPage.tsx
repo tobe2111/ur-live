@@ -15,6 +15,7 @@ import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import { walletTokens } from '@/components/wallet/walletTokens'
 import { formatNumber } from '@/utils/format'
+import VoucherRedeemModal from '@/components/voucher/VoucherRedeemModal'
 
 interface Voucher {
   id: number | string  // KT Alpha 는 'kt-{voId}' 형식
@@ -196,6 +197,8 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
   // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 사용자 셀프 구매취소(청약철회). 미사용 + 구매 7일 이내만.
   const invalidateVouchers = useInvalidateMyVouchers()
   const [cancelling, setCancelling] = useState(false)
+  // 🎟️ 2026-06-20 현장 셀프 사용처리 모달
+  const [showRedeem, setShowRedeem] = useState(false)
   const canSelfCancel = voucher.status === 'unused' && !!voucher.created_at &&
     (Date.now() - new Date(voucher.created_at).getTime()) < 7 * 86400000
   async function handleSelfCancel() {
@@ -389,7 +392,14 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
             '선물하기'는 제거됨(2026-06-12): QR 링크 공유일 뿐 소유권 이전 아님 + 셀프취소 시 무효화 오해. */}
         {voucher.status === 'unused' && (
           <>
-            <div className={`mt-4 grid gap-2 ${canSelfCancel ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {/* 🎟️ 2026-06-20 현장 사용 — 가장 강조(잉크 풀폭). 매장에서 이걸 눌러 사용처리. */}
+            <button
+              onClick={() => setShowRedeem(true)}
+              className="mt-4 w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[15px] font-extrabold active:scale-[0.98] transition-transform"
+            >
+              {t('voucher.useNow', { defaultValue: '현장에서 사용하기' })}
+            </button>
+            <div className={`mt-2 grid gap-2 ${canSelfCancel ? 'grid-cols-2' : 'grid-cols-1'}`}>
               <button onClick={shareVoucher}
                 className="py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform">
                 <Share2 className="w-4 h-4" /> {t('voucher.share')}
@@ -414,6 +424,14 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
           <ReviewBonusButton voucherCode={voucher.code} />
         )}
       </div>
+      {showRedeem && (
+        <VoucherRedeemModal
+          code={voucher.code}
+          storeName={voucher.restaurant_name}
+          onClose={() => setShowRedeem(false)}
+          onRedeemed={() => { setVoucher(v => ({ ...v, status: 'used' })); invalidateVouchers() }}
+        />
+      )}
     </div>
   )
 }
