@@ -39,3 +39,4 @@
 | **🎟️ 내 지갑 `/my-vouchers` — 흑백 iOS-클린 리디자인 (식사권/교환권 6화면)** | 2026-06-20 | ✅ 구현 완료 (단일 페이지 톤 리파인 + 지갑 4페이지 잉크 통일 / 지도·설정 전용화면 보류) | [my-vouchers-wallet-bw.md](./my-vouchers-wallet-bw.md) |
 | **🗺️ 동네딜 = 지도 + 바텀시트 (에버랜드 파크맵)** | 2026-06-20 | ⏳ 방향 확인 대기 (RestaurantMapPage ~90% 재활용) | [dongnedeal-map-bottomsheet.md](./dongnedeal-map-bottomsheet.md) |
 | **🖥️ PC = 중앙 모바일 액자 + 데코 사이드레일 + 하단 네비** | 2026-06-20 | ⏳ 방향 확인 대기 (현 app-framed 구조 재구성) | [pc-app-frame-decorated-rails.md](./pc-app-frame-decorated-rails.md) |
+| **🎟️ 동네딜 공구권 사용처리 — 매장원장+느슨카운터+정산검문 (SSOT 확정)** | 2026-06-20 | 🟢 Phase 1 착수 (매장원장 읽기 API ✅ / 셀프사용·에스크로 다음) | [dongnedeal-redemption.md](./dongnedeal-redemption.md) |
