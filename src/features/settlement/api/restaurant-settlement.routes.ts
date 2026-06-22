@@ -72,8 +72,14 @@ restaurantSettlementRoutes.post('/calculate', async (c) => {
     const periodStart = typeof bodyRaw.period_start === 'string' ? bodyRaw.period_start : null;
     const periodEnd = typeof bodyRaw.period_end === 'string' ? bodyRaw.period_end : null;
 
+    // 🎟️ 2026-06-22 (대표 — 사용처리 분쟁): open 분쟁 voucher 는 정산 보류. 테이블 미존재 가능 → 먼저 보장.
+    await executeRun(DB, `CREATE TABLE IF NOT EXISTS voucher_disputes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, voucher_id INTEGER NOT NULL, product_id INTEGER, seller_id INTEGER,
+      reason TEXT, status TEXT DEFAULT 'open', created_at DATETIME DEFAULT (datetime('now')), resolved_at DATETIME,
+      resolution TEXT, admin_note TEXT, UNIQUE(voucher_id))`).catch(() => {});
+
     // Find all used vouchers that have NOT been assigned to a settlement yet.
-    // Group by seller_id + product_id.
+    // Group by seller_id + product_id. (open 분쟁 제외 = 보류)
     const groups = await executeQuery<{
       seller_id: number;
       product_id: number;
@@ -91,6 +97,7 @@ restaurantSettlementRoutes.post('/calculate', async (c) => {
       JOIN products p ON v.product_id = p.id
       WHERE v.status = 'used'
         AND v.settlement_id IS NULL
+        AND v.id NOT IN (SELECT voucher_id FROM voucher_disputes WHERE status = 'open')
       GROUP BY p.seller_id, v.product_id
     `);
 
