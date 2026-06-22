@@ -426,11 +426,14 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
   //   fail-soft fire-and-forget. 결과/브라우저/플래그만 기록(PII 미저장).
   const diagUa = c.req.header('User-Agent');
   let signedFallbackUsed = false;
+  // 🩺 2026-06-20: 콜백 단계별 실측 타이밍(ms) — 진행하며 채워 fireDiag 가 함께 기록.
+  const diagTimings: { total?: number; token?: number; userinfo?: number; db?: number } = {};
   const fireDiag = (outcome: 'success' | 'error', reason: string, isNew?: boolean) => {
     try {
       const p = recordKakaoLoginDiag(DB, {
         outcome, reason, ua: diagUa,
         hadStateCookie: !!stateCookie, signedFallback: signedFallbackUsed, isNew,
+        timings: diagTimings,
       });
       if (c.executionCtx) c.executionCtx.waitUntil(p); else void p;
     } catch { /* 진단은 로그인에 영향 없음 */ }
@@ -515,14 +518,19 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
     //   한국·글로벌 모두 customToken 생성 안 함. firebase_token URL 부착 안 함.
     //   글로벌 사용자도 카카오 로그인은 세션 쿠키 / Bearer 토큰만 사용.
 
+    // 🩺 2026-06-20: 단계별 실측 타이밍 — "우리 서버가 실제로 몇 ms 쓰는지" 측정용.
+    const tStart = Date.now();
     try {
       const tokenData = await kakaoService.exchangeCodeFull(code, KAKAO_REDIRECT_URI);
+      diagTimings.token = Date.now() - tStart;            // 카카오 토큰교환 왕복(필수)
       const accessToken = tokenData.access_token;
       const kakaoRefreshToken = tokenData.refresh_token || null;
+      const tUi = Date.now();
       const kakaoUser = await kakaoService.getUserInfo(accessToken);
+      diagTimings.userinfo = Date.now() - tUi;            // 카카오 사용자정보 왕복(필수)
       // 🛡️ 2026-06-20 (속도 최적화): getServiceTerms 호출 제거 — 받아온 결과(serviceTerms)를
       //   어디서도 사용하지 않는 dead 카카오 API 왕복이었음(매 로그인 임계경로에 불필요한 1 round-trip,
-      //   ~수백 ms). 약관 동의는 카카오싱크 동의화면에서 이미 처리됨.
+      //   ~수백 ms). 약관 동의는 카카오싱크 동의화면에서 이미 처리됨. (제거 전엔 userinfo 와 비슷한 비용)
 
       // 🛡️ 2026-05-01 진단 로깅 — DEV 만 (production noise 방지).
       if (import.meta.env.DEV) {
@@ -534,7 +542,9 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
         });
       }
 
+      const tDb = Date.now();
       const user = await kakaoService.upsertUser(kakaoUser);
+      diagTimings.db = Date.now() - tDb;                  // upsertUser(D1)
 
       if (import.meta.env.DEV) {
         console.log('[Kakao Sync DIAGNOSTIC] upserted user:', {
@@ -725,7 +735,8 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       if (pendingAuthFrag) {
         frag += frag ? pendingAuthFrag : ('#' + pendingAuthFrag.slice(1)); // 티켓 없으면 '&auth='→'#auth='
       }
-      // 🩺 로그인 성공 기록 — 브라우저 종류 + (쿠키 경로 vs 서명 fallback) 가시화.
+      // 🩺 로그인 성공 기록 — 브라우저 종류 + (쿠키 경로 vs 서명 fallback) + 단계별 실측 ms.
+      diagTimings.total = Date.now() - tStart;            // 콜백 전체(토큰교환~리다이렉트 직전)
       fireDiag('success', 'ok', !!userWithFlag.isNewUser);
       // 302 명시: Set-Cookie 헤더가 일부 브라우저에서 303에 무시되는 문제 회피
       return c.redirect(redirectUrl + frag, 302);

@@ -56,17 +56,38 @@ internalDiagnosticsRoutes.get('/api/_internal/kakao-login-diag', requireAdmin(),
         GROUP BY browser, ios, outcome, reason
         ORDER BY count DESC`
     ).all().catch(() => empty);
+    // 🩺 2026-06-20: 콜백 단계별 실측 타이밍(ms) 요약 — "우리 서버가 실제로 몇 ms 쓰는지".
+    //   ms_total=콜백 전체 / ms_token=카카오 토큰교환 / ms_userinfo=카카오 사용자정보(제거된
+    //   getServiceTerms 의 비용도 이와 비슷했음) / ms_db=upsertUser. p95 는 정렬 OFFSET 근사.
+    const timing = await DB.prepare(
+      `SELECT COUNT(ms_total) as samples,
+              ROUND(AVG(ms_total))    as avg_total_ms,
+              MIN(ms_total)           as min_total_ms,
+              MAX(ms_total)           as max_total_ms,
+              ROUND(AVG(ms_token))    as avg_token_ms,
+              ROUND(AVG(ms_userinfo)) as avg_userinfo_ms,
+              ROUND(AVG(ms_db))       as avg_db_ms
+         FROM kakao_login_diag
+        WHERE ms_total IS NOT NULL AND created_at >= datetime('now','-7 days')`
+    ).first().catch(() => null);
+    const p95 = await DB.prepare(
+      `SELECT ms_total FROM kakao_login_diag
+        WHERE ms_total IS NOT NULL AND created_at >= datetime('now','-7 days')
+        ORDER BY ms_total DESC
+        LIMIT 1 OFFSET (SELECT COUNT(*)/20 FROM kakao_login_diag WHERE ms_total IS NOT NULL AND created_at >= datetime('now','-7 days'))`
+    ).first<{ ms_total: number }>().catch(() => null);
     const recent = await DB.prepare(
-      `SELECT created_at, outcome, reason, browser, ios, had_state_cookie, signed_fallback, is_new
+      `SELECT created_at, outcome, reason, browser, ios, had_state_cookie, signed_fallback, is_new, ms_total, ms_token, ms_userinfo, ms_db
          FROM kakao_login_diag ORDER BY id DESC LIMIT 100`
     ).all().catch(() => empty);
     return c.json({
       success: true,
       data: {
-        note: 'ios=1 은 모두 WebKit(사파리/카톡인앱). signed_fallback=1 success = 쿠키 유실을 서명 state 가 구제한 건수. establish_7d: A 방식 same-origin 세션발급 결과(iOS establish_ok = 쿠키 영속 성공).',
+        note: 'ios=1 은 모두 WebKit(사파리/카톡인앱). signed_fallback=1 success = 쿠키 유실을 서명 state 가 구제한 건수. establish_7d: A 방식 same-origin 세션발급 결과(iOS establish_ok = 쿠키 영속 성공). server_timing_ms_7d: 콜백이 실제로 쓰는 서버 시간(ms) — ms_token+ms_userinfo+ms_db 가 대부분, 제거된 getServiceTerms 는 ms_userinfo 와 비슷한 비용이었음.',
         ios_summary: iosSummary.results,
         signed_fallback_successes_7d: fallbackWins?.count ?? 0,
         establish_7d: establish.results,
+        server_timing_ms_7d: { ...(timing || {}), p95_total_ms: p95?.ms_total ?? null },
         aggregate: aggregate.results,
         recent: recent.results,
       },

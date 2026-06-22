@@ -33,6 +33,13 @@ async function ensureDiagTable(DB: D1Database): Promise<void> {
       )`
     ).run();
   } catch { /* fail-soft — 진단 테이블 생성 실패해도 로그인 정상 */ }
+  // 🩺 2026-06-20: 콜백 단계별 타이밍(ms) 컬럼 — 기존 테이블엔 ALTER 로 추가(멱등, 이미 있으면 throw→무시).
+  //   ms_total: 콜백 전체(토큰교환~리다이렉트 직전) / ms_token: 카카오 토큰교환 / ms_userinfo: 카카오
+  //   사용자정보 / ms_db: upsertUser(DB). "우리 서버가 실제로 몇 ms 쓰는지" 실측용.
+  for (const col of ['ms_total', 'ms_token', 'ms_userinfo', 'ms_db']) {
+    try { await DB.prepare(`ALTER TABLE kakao_login_diag ADD COLUMN ${col} INTEGER`).run(); }
+    catch { /* 컬럼 이미 존재 — 무시 */ }
+  }
 }
 
 /**
@@ -59,7 +66,12 @@ export interface KakaoDiagFields {
   hadStateCookie: boolean;
   signedFallback: boolean;
   isNew?: boolean;
+  /** 🩺 콜백 단계별 실측 타이밍(ms) — 성공 기록에만 보통 채워짐. */
+  timings?: { total?: number; token?: number; userinfo?: number; db?: number };
 }
+
+const _i = (v: number | undefined): number | null =>
+  typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : null;
 
 /**
  * 카카오 콜백 결과 1건 기록. fail-soft (절대 throw 안 함).
@@ -68,9 +80,10 @@ export async function recordKakaoLoginDiag(DB: D1Database, f: KakaoDiagFields): 
   try {
     await ensureDiagTable(DB);
     const { browser, ios } = classifyBrowser(f.ua);
+    const t = f.timings || {};
     await DB.prepare(
-      `INSERT INTO kakao_login_diag (outcome, reason, browser, ios, had_state_cookie, signed_fallback, is_new)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO kakao_login_diag (outcome, reason, browser, ios, had_state_cookie, signed_fallback, is_new, ms_total, ms_token, ms_userinfo, ms_db)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       f.outcome,
       f.reason,
@@ -79,6 +92,10 @@ export async function recordKakaoLoginDiag(DB: D1Database, f: KakaoDiagFields): 
       f.hadStateCookie ? 1 : 0,
       f.signedFallback ? 1 : 0,
       f.isNew ? 1 : 0,
+      _i(t.total),
+      _i(t.token),
+      _i(t.userinfo),
+      _i(t.db),
     ).run();
     // 약 2% 확률로 오래된 행 정리 — 최근 3000개만 유지(write 부담 최소).
     if (Math.random() < 0.02) {
