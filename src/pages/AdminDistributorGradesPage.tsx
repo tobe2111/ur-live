@@ -417,7 +417,7 @@ export default function AdminDistributorGradesPage() {
     if (!Number.isFinite(pid) || pid <= 0 || !Number.isFinite(sid) || sid <= 0) { toast.error('상품 ID와 유통사 ID를 입력하세요'); return }
     try {
       await api.post('/api/admin/distributor/product-access', { product_id: pid, distributor_seller_id: sid }, h)
-      toast.success('판매사(유통사) 선정됨'); setAccessProductQuery(String(pid)); setAccessSeller(''); accessQ.refetch()
+      toast.success('유통사 선정됨'); setAccessProductQuery(String(pid)); setAccessSeller(''); accessQ.refetch()
     } catch (e: unknown) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '선정 실패') }
   }
   async function revokeAccess(id: number) {
@@ -467,14 +467,14 @@ export default function AdminDistributorGradesPage() {
 
   // 🗂️ 2026-06-17: 데모 상품 시딩 함수는 '상품 일괄 등록'(AdminWholesaleImportPage)으로 일원화 — 여기서 제거(중복).
 
-  if (loading) return <AdminLayout title="판매사(유통사) 등급"><DashboardLoading /></AdminLayout>
+  if (loading) return <AdminLayout title="유통사 등급"><DashboardLoading /></AdminLayout>
 
   return (
-    <AdminLayout title="판매사(유통사) 등급">
+    <AdminLayout title="유통사 등급">
       <div className="ur-content-full px-4 lg:px-8 py-6 space-y-8">
         <DashboardPageHeader
           icon={<Layers className="w-5 h-5" />}
-          title={`판매사 · ${DIST_TABS.find(t => t.key === tab)?.label ?? '등급·마진'}`}
+          title={`유통사 · ${DIST_TABS.find(t => t.key === tab)?.label ?? '등급·마진'}`}
           subtitle="유통스타트 도매몰 — 등급/여신/세금/공급가를 탭으로 나눠 관리합니다. (도매 카탈로그 가격에만 적용)"
         />
 
@@ -625,7 +625,7 @@ export default function AdminDistributorGradesPage() {
                 </div>
               </div>
               <p className="text-xs text-gray-400">프로(B)는 유통사가 연 구독료를 <b>예치금에서 결제</b>해 1년간 적용(PG 미사용). 프리미엄(A)은 위 매출 임계 자동 승급. 일반(C)은 가입 승인 기본.</p>
-              <p className="text-xs text-gray-400">💰 <b>기본 플랫폼 마진율</b>: 제조사가 받을 금액(공급원가) <b>위에</b> 붙이는 기본 마진(%). 공급가 = 공급원가 × (1 + 이 값), 제조사 정산 = 공급원가 전액, 플랫폼 = 공급가 − 공급원가. 예) 마진 10% · 공급원가 10,000 → 공급가 11,000 / 제조사 10,000 / 플랫폼 1,000. <b>상품별로</b> 다르게(스프레드 큰 상품은 더 높게) 설정 가능하며, 고등급(프로/프리미엄) 판매사는 마진을 낮춰 더 싸게 공급합니다.</p>
+              <p className="text-xs text-gray-400">💰 <b>기본 플랫폼 마진율</b>: 제조사가 받을 금액(공급원가) <b>위에</b> 붙이는 기본 마진(%). 공급가 = 공급원가 × (1 + 이 값), 제조사 정산 = 공급원가 전액, 플랫폼 = 공급가 − 공급원가. 예) 마진 10% · 공급원가 10,000 → 공급가 11,000 / 제조사 10,000 / 플랫폼 1,000. <b>상품별로</b> 다르게(스프레드 큰 상품은 더 높게) 설정 가능하며, 고등급(프로/프리미엄) 유통사는 마진을 낮춰 더 싸게 공급합니다.</p>
 
               {/* 임계값 테이블 */}
               <div>
@@ -976,12 +976,12 @@ export default function AdminDistributorGradesPage() {
         </>)}
 
         {tab === 'supply' && (<>
-        {/* ── 유통채널 선정 (유통스타트 유통채널 공급 상품 → 선정 유통회원) ── */}
+        {/* ── 유통채널 선정 (유통스타트 유통채널 공급 상품 → 선정 유통사) ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
-            <Layers className="w-4 h-4 text-gray-500" /> 유통채널 선정 (선정 유통회원 관리)
+            <Layers className="w-4 h-4 text-gray-500" /> 유통채널 선정 (선정 유통사 관리)
           </h2>
-          <p className="text-sm text-gray-500 mb-4">'승인한 유통채널 / 유통스타트 유통채널' 공급 상품은 여기서 선정한 유통회원에게만 노출·주문됩니다. (전체공급 상품은 선정 불필요)</p>
+          <p className="text-sm text-gray-500 mb-4">'승인한 유통채널 / 유통스타트 유통채널' 공급 상품은 여기서 선정한 유통사에게만 노출·주문됩니다. (전체공급 상품은 선정 불필요)</p>
           <div className="flex flex-wrap items-end gap-2 mb-3">
             <input type="number" value={accessProductId} onChange={e => setAccessProductId(e.target.value)} placeholder="상품 ID" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
             <button onClick={() => { setEditGrades(null); setAccessProductQuery(accessProductId) }} className="px-3 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium">조회</button>
@@ -1011,7 +1011,7 @@ export default function AdminDistributorGradesPage() {
                 <p className="text-[11px] text-gray-400 mt-1.5">현재: {effGrades.length ? effGrades.join(', ') : '전체 노출(제한 없음)'}</p>
               </div>
               {accessQ.data.distributors.length === 0 ? (
-                <p className="text-sm text-gray-400">선정된 유통회원이 없습니다.</p>
+                <p className="text-sm text-gray-400">선정된 유통사가 없습니다.</p>
               ) : (
                 <ul className="divide-y divide-gray-50">
                   {accessQ.data.distributors.map((d) => (

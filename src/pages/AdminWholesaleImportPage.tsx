@@ -484,7 +484,7 @@ export default function AdminWholesaleImportPage() {
         <div className={card}>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className={label}>제조사 (공급자)</label>
+              <label className={label}>제조사</label>
               <select value={supplierId} onChange={e => setSupplierId(e.target.value)} className={input}>
                 <option value="">+ 직매입 제조사 자동 생성</option>
                 {suppliers.map(s => <option key={s.id} value={s.id}>{s.business_name} (#{s.id})</option>)}

@@ -491,7 +491,7 @@ export default function AdminPage() {
             { label: '미발송 주문', value: dashboardStats.unshippedOrders ?? 0, icon: <Truck className="w-4 h-4" />, link: '/admin/orders?status=PAID', color: 'text-indigo-600', bg: 'bg-indigo-50' },
             { label: '반품 신청', value: dashboardStats.pendingReturns ?? 0, icon: <RotateCcw className="w-4 h-4" />, link: '/admin/returns', color: 'text-rose-600', bg: 'bg-rose-50' },
             { label: '정산 대기', value: dashboardStats.pendingPayouts ?? 0, icon: <Banknote className="w-4 h-4" />, link: '/admin/payout-center', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-            { label: '공급사 승인', value: dashboardStats.pendingSuppliers ?? 0, icon: <Boxes className="w-4 h-4" />, link: '/admin/suppliers', color: 'text-purple-600', bg: 'bg-purple-50' },
+            { label: '제조사 승인', value: dashboardStats.pendingSuppliers ?? 0, icon: <Boxes className="w-4 h-4" />, link: '/admin/suppliers', color: 'text-purple-600', bg: 'bg-purple-50' },
             { label: '교환권 발송실패', value: dashboardStats.failedVouchers ?? 0, icon: <Ticket className="w-4 h-4" />, link: '/admin/voucher-orders', color: 'text-amber-600', bg: 'bg-amber-50' },
           ].map(task => (
             <button

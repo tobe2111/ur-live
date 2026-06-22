@@ -117,7 +117,7 @@ adminSuppliersRoutes.patch('/suppliers/:id', cors(), async (c) => {
     // 🔔 2026-06-12 (감사 개선): 승인/거부 알림톡용 연락처 — 담당자 > 대표자 > 가입 phone 우선.
     const existing = await DB.prepare('SELECT id, business_name, status, phone, representative_phone, manager_phone FROM suppliers WHERE id = ?')
       .bind(id).first<{ id: number; business_name: string; status: string; phone: string | null; representative_phone: string | null; manager_phone: string | null }>();
-    if (!existing) return c.json({ success: false, error: '공급자를 찾을 수 없습니다' }, 404);
+    if (!existing) return c.json({ success: false, error: '제조사를 찾을 수 없습니다' }, 404);
 
     const sets: string[] = [];
     const params: (string | number)[] = [];
@@ -141,9 +141,9 @@ adminSuppliersRoutes.patch('/suppliers/:id', cors(), async (c) => {
 
     if (body.status && body.status !== existing.status) {
       const map: Record<string, { type: string; title: string }> = {
-        approved: { type: 'supplier_account_approved', title: '공급자 계정 승인됨' },
-        suspended: { type: 'supplier_account_suspended', title: '공급자 계정 정지됨' },
-        rejected: { type: 'supplier_account_rejected', title: '공급자 가입 거부됨' },
+        approved: { type: 'supplier_account_approved', title: '제조사 계정 승인됨' },
+        suspended: { type: 'supplier_account_suspended', title: '제조사 계정 정지됨' },
+        rejected: { type: 'supplier_account_rejected', title: '제조사 가입 거부됨' },
       };
       const n = map[body.status];
       if (n) createDashboardNotification(DB, 'supplier', String(id), n.type, n.title, existing.business_name, '/supplier').catch(() => {});
@@ -153,15 +153,15 @@ adminSuppliersRoutes.patch('/suppliers/:id', cors(), async (c) => {
       const phone = existing.manager_phone || existing.representative_phone || existing.phone;
       if (phone && (body.status === 'approved' || body.status === 'rejected')) {
         const msg = body.status === 'approved'
-          ? `[유통스타트] 제조회원 승인 완료\n\n· 상호: ${existing.business_name}\n\n이제 로그인해 공급상품을 등록할 수 있습니다.\nhttps://utongstart.com/supplier/login`
-          : `[유통스타트] 제조회원 가입이 반려되었습니다\n\n· 상호: ${existing.business_name}\n\n자세한 내용은 jiwon@ur-team.com 으로 문의해주세요.`;
+          ? `[유통스타트] 제조사 승인 완료\n\n· 상호: ${existing.business_name}\n\n이제 로그인해 공급상품을 등록할 수 있습니다.\nhttps://utongstart.com/supplier/login`
+          : `[유통스타트] 제조사 가입이 반려되었습니다\n\n· 상호: ${existing.business_name}\n\n자세한 내용은 jiwon@ur-team.com 으로 문의해주세요.`;
         import('../../../lib/system-alimtalk')
           .then(({ sendSystemAlimtalk }) => sendSystemAlimtalk(c.env, phone, body.status === 'approved' ? 'supplier_approved' : 'supplier_rejected', msg))
           .catch(() => { /* fail-soft — 알림 실패가 승인을 막지 않음 */ });
       }
     }
 
-    return c.json({ success: true, data: { id: Number(id), status: body.status ?? existing.status }, message: '공급자 정보가 업데이트되었습니다.' });
+    return c.json({ success: true, data: { id: Number(id), status: body.status ?? existing.status }, message: '제조사 정보가 업데이트되었습니다.' });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] PATCH /suppliers/:id error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
@@ -178,7 +178,7 @@ adminSuppliersRoutes.post('/suppliers/:id/payout', cors(), requireAdminRole('fin
 
     const sup = await DB.prepare('SELECT id, business_name, status FROM suppliers WHERE id = ?')
       .bind(id).first<{ id: number; business_name: string; status: string }>();
-    if (!sup) return c.json({ success: false, error: '공급자를 찾을 수 없습니다' }, 404);
+    if (!sup) return c.json({ success: false, error: '제조사를 찾을 수 없습니다' }, 404);
 
     const user = (c as unknown as { get: (k: string) => { id?: string | number } | undefined }).get('user');
     const result = await payoutSupplier(DB, Number(id), { adminId: String(user?.id ?? 'admin'), note: body.note });
