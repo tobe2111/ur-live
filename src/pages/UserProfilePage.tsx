@@ -49,7 +49,7 @@ export default function UserProfilePage() {
   const { user, isAuthReady } = authStore()
 
   const [userName, setUserName] = useState('')
-  const [profileImage, setProfileImage] = useState<string | undefined>(undefined)
+  const [profileImage, setProfileImage] = useState<string | undefined>(() => getUserProfileImage() || undefined)
   const hasProcessedToken = useRef(false)
   // 🛡️ 2026-05-24: 프로필 편집 모달 — /account/settings 에서 흡수.
   const [editOpen, setEditOpen] = useState(false)
@@ -134,7 +134,7 @@ export default function UserProfilePage() {
       <div className="ur-content-medium px-4 lg:px-8 pt-5 pb-5">
         <div className="flex items-center gap-3">
           <img
-            src={profileImage ? cfImage(profileImage, { width: 128 }) : `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=64`}
+            src={profileImage ? cfImage(profileImage, { width: 128 }) : `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=111827&color=ffffff&size=128`}
             alt={`${userName} 프로필 이미지`}
             loading="lazy"
             decoding="async"
@@ -167,52 +167,52 @@ export default function UserProfilePage() {
       {/* 🧭 2026-06-10 (UI 100점 패스 — 마이 최하점 원인): 수익·추천 3카드 도배 → 접이식 그룹.
           첫 화면은 자산(딜 잔액·이용 내역) 중심, 수익 탐색은 1탭 뒤로. 카드 로직/데이터 불변. */}
       <EarningsGroup>
-      {/* 🛡️ 2026-05-18: referral 적립 카드 (인플 대시보드 entry point) */}
-      <ReferralEarnedCard />
+      {/* 🧹 2026-06-22 (대표 — 수익·추천 폴드 압축): 큰 카드 도배 → 컴팩트 행 한 묶음(B&W).
+            ReferralEarnedCard/CuratorEarningsCard 는 행으로(데이터/라우트 불변, 빈값이면 null →
+            divide-y 가 자동 정렬). 각 행 라우트는 단일 진입점이라 제거 없이 한 카드로 통합만. */}
+      <div className="mt-1 rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04] divide-y divide-black/[0.05] dark:divide-white/[0.05]">
+        {/* referral 적립 현황 → /influencer (entry point) */}
+        <ReferralEarnedCard />
+        {/* 링크샵(큐레이터) 수익 → /creator. 누적 0 이면 null. 사업자=현금 / user=딜 */}
+        <CuratorEarningsCard />
+        {/* /user/affiliate 고아 라우트 진입점 — 추천 링크 실적 */}
+        <button
+          type="button"
+          onClick={() => navigate('/user/affiliate')}
+          className="w-full flex items-center gap-3 px-3.5 py-3 active:bg-gray-200 dark:active:bg-white/[0.06] text-left"
+        >
+          <span className="text-lg" aria-hidden="true">🔗</span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
+              {t('my.affiliateLinkTitle', { defaultValue: '상품 추천 링크' })}
+            </span>
+            <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
+              {t('my.affiliateLinkSub', { defaultValue: '내 링크로 구매하면 딜 적립 — 실적 보기' })}
+            </span>
+          </span>
+          <ChevronRight className="w-3.5 h-3.5 text-gray-400 dark:text-white/30 shrink-0" aria-hidden="true" />
+        </button>
+        {/* 추천 수익 정산(출금) → /influencer/settlement */}
+        <button
+          type="button"
+          onClick={() => navigate('/influencer/settlement')}
+          className="w-full flex items-center gap-3 px-3.5 py-3 active:bg-gray-200 dark:active:bg-white/[0.06] text-left"
+        >
+          <span className="text-lg" aria-hidden="true">🧾</span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
+              {t('my.settlementTitle', { defaultValue: '추천 수익 정산' })}
+            </span>
+            <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
+              {t('my.settlementSub', { defaultValue: '추천·영입 적립 출금 및 내역' })}
+            </span>
+          </span>
+          <ChevronRight className="w-3.5 h-3.5 text-gray-400 dark:text-white/30 shrink-0" aria-hidden="true" />
+        </button>
+      </div>
 
-      {/* 🛡️ 2026-05-25 (신모델): 큐레이터 수익 — 누적 적립 있을 때만 표시.
-            클릭 시 /u/me/earnings 상세 페이지. 사업자 셀러는 현금, user 는 딜. */}
-      <CuratorEarningsCard />
-
-      {/* 🛡️ 2026-05-27 (P2 referral 완성): 친구 가입 초대 카드 (invite_rewards — 상품 추천과 별개) */}
+      {/* 🛡️ 2026-05-27 (P2 referral): 친구 초대 카드 — 초대링크 복사가 핵심이라 행 압축 대신 카드 유지(B&W) */}
       <MyReferralCard />
-
-      {/* 🏁 2026-06-12 (4차 감사 D5): /user/affiliate 고아 라우트 진입점 — 추천 링크 실적 대시보드 */}
-      <button
-        type="button"
-        onClick={() => navigate('/user/affiliate')}
-        className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 mt-2 bg-gray-100 dark:bg-white/[0.04] active:bg-gray-200 dark:active:bg-white/[0.06] text-left"
-      >
-        <span className="text-lg" aria-hidden="true">🔗</span>
-        <span className="flex-1 min-w-0">
-          <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
-            {t('my.affiliateLinkTitle', { defaultValue: '상품 추천 링크' })}
-          </span>
-          <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
-            {t('my.affiliateLinkSub', { defaultValue: '내 링크로 구매하면 딜 적립 — 실적 보기' })}
-          </span>
-        </span>
-        <ChevronRight className="w-3.5 h-3.5 text-gray-400 dark:text-white/30" aria-hidden="true" />
-      </button>
-
-      {/* 🧹 2026-06-21 (대표 — 마이 정리): 더보기에 흩어져 있던 '인플루언서 활동(추천/정산)' 진입을
-            '내 수익·추천' 그룹 안으로 흡수 → 수익 진입점을 한 곳으로 통합. 라우트/정산 로직 불변. */}
-      <button
-        type="button"
-        onClick={() => navigate('/influencer/settlement')}
-        className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 mt-2 bg-gray-100 dark:bg-white/[0.04] active:bg-gray-200 dark:active:bg-white/[0.06] text-left"
-      >
-        <span className="text-lg" aria-hidden="true">🧾</span>
-        <span className="flex-1 min-w-0">
-          <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
-            {t('my.settlementTitle', { defaultValue: '추천 수익 정산' })}
-          </span>
-          <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
-            {t('my.settlementSub', { defaultValue: '추천·영입 적립 출금 및 내역' })}
-          </span>
-        </span>
-        <ChevronRight className="w-3.5 h-3.5 text-gray-400 dark:text-white/30" aria-hidden="true" />
-      </button>
       </EarningsGroup>
 
       {/* 🛡️ 2026-05-21: 역할 진입 CTA 2x2 grid — 공구개최 / 사장님 / 셀러 / 에이전시.
