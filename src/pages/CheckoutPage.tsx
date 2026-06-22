@@ -30,6 +30,7 @@ import { useBeforePayment } from './checkout/useBeforePayment'
 import { getTossClientKey } from '@/lib/toss-preload'
 // 🛡️ 2026-06-12 (전수조사 4차 B-1): 숙소 예약 결제 분기 — /checkout?order_id=N&stay=1.
 import StayCheckout from './checkout/StayCheckout'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 
 const clientKey = getTossClientKey()
 
@@ -195,7 +196,11 @@ function CartCheckout() {
     // 🛡️ 2026-05-19 (사용자 신고: 교환권 배송비 치명적 버그):
     //   KT Alpha 교환권 (deal_only=1) 은 휴대폰 MMS 발송이라 배송비 불요.
     //   그룹의 모든 item 이 deal_only=1 이면 shipping_fee 무시.
-    const allVoucher = group.items.length > 0 && group.items.every(i => Number((i as { deal_only?: number }).deal_only) === 1)
+    // 🛡️ 2026-06-22: 비배송(교환권 deal_only OR 동네딜 공구 카테고리)이면 배송비 0.
+    const allVoucher = group.items.length > 0 && group.items.every(i => {
+      const it = i as { deal_only?: number; category?: string }
+      return Number(it.deal_only) === 1 || isVoucherCategory(it.category)
+    })
     if (allVoucher) return total
     if (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold) return total
     return total + group.shipping_fee
@@ -204,6 +209,15 @@ function CartCheckout() {
   // 🛡️ 2026-05-21: 교환권만 담긴 주문 — 토스 결제 옵션 자체 숨김 + 'deal' 강제 + dealToUse 자동 채움.
   const isAllDealOnly = cartItems.length > 0
     && cartItems.every(i => Number((i as { deal_only?: number }).deal_only) === 1)
+  // 🛡️ 2026-06-22 (대표 — 공구 상품은 배송 주소 불요): "배송 필요 여부" SSOT (order-type 와 동일 신호).
+  //   deal_only=1(기프티콘 교환권) OR isVoucherCategory(동네딜 공구 — 매장 사용) = 비배송. 결제수단(deal/Toss)과
+  //   무관 — 주소/배송 UI 에만 영향(동네딜 공구는 Toss 결제이되 주소는 불요). 일반 온라인 상품만 배송지 필요.
+  const noShipping = cartItems.length > 0
+    && cartItems.every(i => {
+      const it = i as { deal_only?: number; category?: string }
+      return Number(it.deal_only) === 1 || isVoucherCategory(it.category)
+    })
+  const needsShipping = !noShipping
 
   // 공동구매 할인 계산
   const totalGroupBuyDiscount = cartItems.reduce((sum, item) => {
@@ -323,12 +337,14 @@ function CartCheckout() {
     loadData()
   }, [navigate, urlParamsProcessed])
 
-  // 식사권 여부 확인
+  // 식사권 여부 확인 (참고용 — 비배송 판별은 noShipping SSOT 사용).
   const isMealVoucher = cartItems.some(item => (item as CartItem & { category?: string }).category === 'meal_voucher')
 
   // 결제 전 주문 생성 훅 (TD-018 final pass 분리)
+  // 🛡️ 2026-06-22 (대표 — 공구 주소 불요): Toss 경로의 주소 가드/플레이스홀더를 noShipping(교환권+동네딜 공구
+  //   전부)로 — 기존 isMealVoucher(meal_voucher .some)는 다른 공구 카테고리(뷰티/숙소 등)를 놓쳐 주소 강요했음.
   const { handleBeforePayment, isSubmittingRef } = useBeforePayment({
-    isMealVoucher,
+    isMealVoucher: noShipping,
     isDirectPurchase,
     selectedAddress,
     sellerGroups,
@@ -342,13 +358,13 @@ function CartCheckout() {
   const handlePayWithDeals = async () => {
     // 🛡️ 2026-05-21: 교환권만 담긴 주문은 휴대폰 MMS 발송 — 배송지 불필요.
     //   백엔드 KT Alpha 자동 발송이 users.phone 으로 직접 발송. 클라이언트 주소 입력 skip.
-    if (!isAllDealOnly && !selectedAddress) { toast.error(t('common.addressRequired')); return }
+    if (needsShipping && !selectedAddress) { toast.error(t('common.addressRequired')); return }
     setPayingWithDeals(true)
     try {
       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
       if (isDirectPurchase) sessionStorage.setItem('directPurchase', 'true')
-      const shippingPayload = isAllDealOnly
-        ? { name: '', phone: '', postal_code: '', address1: '교환권 — 휴대폰 MMS 발송', address2: '' }
+      const shippingPayload = noShipping
+        ? { name: '', phone: '', postal_code: '', address1: isAllDealOnly ? '교환권 — 휴대폰 MMS 발송' : '동네딜 공구권 — 매장에서 사용', address2: '' }
         : {
             name: selectedAddress!.recipient_name, phone: selectedAddress!.phone,
             postal_code: selectedAddress!.postal_code, address1: selectedAddress!.address,
@@ -423,7 +439,8 @@ function CartCheckout() {
               {/* 🛡️ 2026-05-21: 교환권만 담긴 주문 — 배송지/쿠폰 섹션 숨김.
                     KT Alpha 자동 발송이 users.phone 으로 직접 처리 → 사용자 주소 입력 불요.
                     쿠폰도 deal_only 상품엔 적용 안 됨 (백엔드 차단). */}
-              {!isAllDealOnly && (
+              {/* 🛡️ 2026-06-22 (대표 — 공구 상품 주소 불요): 배송 필요(일반 온라인 상품)일 때만 배송지 입력. */}
+              {needsShipping && (
                 <>
                   <CheckoutAddressSection
                     userId={userId}
@@ -435,15 +452,30 @@ function CartCheckout() {
                 </>
               )}
 
+              {/* 비배송 안내 — 기프티콘 교환권(MMS) vs 동네딜 공구(매장 사용) 구분. */}
               {isAllDealOnly && (
                 <section className="bg-white dark:bg-[#0A0A0A] px-5 py-4">
                   <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">발송 방법</h2>
-                  <div className="rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-900/10 p-3 flex items-start gap-3">
+                  <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
                     <span className="text-2xl shrink-0">📱</span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-bold text-emerald-700 dark:text-emerald-300">휴대폰 MMS 즉시 발송</p>
-                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 leading-relaxed">
+                      <p className="text-[13px] font-bold text-gray-900 dark:text-white">휴대폰 MMS 즉시 발송</p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
                         결제 완료 즉시 가입하신 휴대폰 번호로 교환권이 발송됩니다. 배송지 입력은 필요 없습니다.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              )}
+              {noShipping && !isAllDealOnly && (
+                <section className="bg-white dark:bg-[#0A0A0A] px-5 py-4">
+                  <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">사용 방법</h2>
+                  <div className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
+                    <span className="text-2xl shrink-0">🎟️</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13px] font-bold text-gray-900 dark:text-white">매장에서 바로 사용</p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                        결제 후 내 지갑에 공구권이 발급돼요. 매장에서 “현장에서 사용하기”로 쓰면 됩니다. 배송지 입력이 필요 없어요.
                       </p>
                     </div>
                   </div>
@@ -495,7 +527,7 @@ function CartCheckout() {
                 customerEmail={localStorage.getItem('user_email') || undefined}
                 customerName={selectedAddress?.recipient_name || localStorage.getItem('user_name') || undefined}
                 customerMobilePhone={selectedAddress?.phone || undefined}
-                selectedAddressOk={isAllDealOnly || !!selectedAddress}
+                selectedAddressOk={noShipping || !!selectedAddress}
                 onBeforePayment={handleBeforePayment}
                 onTossPaymentSuccess={(orderId, paymentKey, amount) => {
                   navigate(`/payment/success?orderId=${orderId}&paymentKey=${paymentKey}&amount=${amount}`)
@@ -513,7 +545,7 @@ function CartCheckout() {
         {cartItems.length > 0 && (
           <CheckoutOrderSummary
             subtotal={subtotal}
-            totalShippingFee={isAllDealOnly ? 0 : totalShippingFee}
+            totalShippingFee={noShipping ? 0 : totalShippingFee}
             couponDiscount={isAllDealOnly ? 0 : couponDiscount}
             totalGroupBuyDiscount={totalGroupBuyDiscount}
             dealToUse={dealToUse}
