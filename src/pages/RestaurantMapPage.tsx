@@ -20,6 +20,8 @@ import RestaurantList from './restaurant-map/RestaurantList'
 import SelectedDealCard from './restaurant-map/SelectedDealCard'
 import MapTopBar from './restaurant-map/MapTopBar'
 import SheetFilterBar from './restaurant-map/SheetFilterBar'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Screen } from '@/components/ui/screen'
 import { useKakaoMap } from './restaurant-map/useKakaoMap'
 import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
@@ -542,7 +544,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   }
 
   return (
-    <div className="relative h-[100dvh] w-full bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden pb-16">
+    <Screen fixed className="relative w-full bg-gray-100 dark:bg-[#1A1A1A] overflow-hidden pb-16">
       <SEO
         title={home ? t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜 지도' }) : t('restaurantMap.seoTitle', { defaultValue: '맛집 지도' })}
         description={home ? t('seo.home.description', { defaultValue: '내 주변 동네딜을 지도에서 한눈에. 식사·숙소·뷰티 공구권을 가까운 순으로.' }) : t('restaurantMap.seoDesc', { defaultValue: '유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인' })}
@@ -654,10 +656,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             hideChips
           />
 
-          {/* ═══ 시트 안 스크롤 가능한 결과 리스트 ═══ */}
-          {/* 🗺️ 2026-06-22 (대표 — 모바일 하단 안 보임): flex-1 스크롤 영역은 min-h-0 필수
-              (없으면 flex 자식이 안 줄어들어 하단이 화면 밖으로 밀림). */}
-          <div className="flex-1 min-h-0 overflow-y-auto px-3 pt-3 pb-24" style={{ overscrollBehavior: 'contain' }}>
+          {/* ═══ 시트 안 스크롤 결과 리스트 (ScrollArea = flex-1 min-h-0 overflow 내장 → 하단 잘림 함정 제거) ═══ */}
+          <ScrollArea className="px-3 pt-3 pb-24" style={{ overscrollBehavior: 'contain' }}>
             {/* 🛡️ 2026-04-30 Phase 3: hero carousel — 할인율 TOP5 */}
             {!loading && (
               <HeroCarousel
@@ -676,7 +676,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
               fcfsMap={fcfsMap}
               onApplyFcfs={applyFcfs}
             />
-          </div>
+          </ScrollArea>
         </div>
       )}
 
@@ -716,7 +716,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           onClose={() => setFilterSheetOpen(false)}
         />
       )}
-    </div>
+    </Screen>
   )
 }
 

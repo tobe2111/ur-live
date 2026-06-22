@@ -28,7 +28,12 @@ try {
 }
 
 const TARGET = /^src\/(pages|components)\/.*\.tsx$/
-const isTarget = (f) => TARGET.test(f) && !/\.test\.tsx$/.test(f)
+// 함정 제거 프리미티브 정의 파일은 제외 — 올바른 100dvh/min-h-0 을 *구현*하고 주석으로 금지패턴을 설명함.
+const EXCLUDE = new Set([
+  'src/components/ui/screen.tsx',
+  'src/components/ui/scroll-area.tsx',
+])
+const isTarget = (f) => TARGET.test(f) && !/\.test\.tsx$/.test(f) && !EXCLUDE.has(f)
 
 // 100vh 계열 (dvh 권장)
 const VH_PATTERNS = [
@@ -74,7 +79,10 @@ for (const o of offenders) {
   console.log(`     › ${o.snippet}`)
 }
 console.log('')
-console.log('   고치는 법: 100vh → 100dvh / 스크롤 영역엔 `min-h-0` 추가. 의도적이면 라인에 `mobile-viewport-ok` 주석.')
+console.log('   고치는 법(권장 — 함정 제거 프리미티브):')
+console.log('     • 풀높이 컨테이너: <Screen> / <Screen fixed>  (@/components/ui/screen — 100dvh 내장)')
+console.log('     • flex 스크롤 영역: <ScrollArea>             (@/components/ui/scroll-area — flex-1 min-h-0 overflow 내장)')
+console.log('   직접 클래스로 쓸 거면: 100vh → 100dvh / 스크롤 영역엔 `min-h-0`. 의도적이면 라인에 `mobile-viewport-ok` 주석.')
 
 if (STRICT) {
   console.log('\n❌ STRICT_MOBILE_VIEWPORT — 차단.')
