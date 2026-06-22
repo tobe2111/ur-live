@@ -30,40 +30,23 @@ export default function ReferralEarnedCard() {
   return (
     <Link
       to="/influencer"
-      className="block bg-gradient-to-br from-gray-800/[0.18] to-gray-800/[0.18] dark:from-gray-800/[0.15] dark:to-gray-800/[0.15]
-                 border border-pink-300/40 dark:border-pink-500/30 rounded-2xl p-4 mb-3
-                 hover:from-gray-800/[0.25] hover:to-gray-800/[0.25] transition-all active:scale-[0.98]"
+      className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-gray-200 dark:active:bg-white/[0.06]"
     >
-      <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-full bg-pink-500/30 flex items-center justify-center text-2xl shrink-0">
-          💸
-        </div>
-        <div className="flex-1 min-w-0">
-          {hasEarned ? (
-            <>
-              <p className="text-[10px] font-bold text-pink-600 dark:text-pink-300/80 tracking-wide">
-                추천 누적 적립
-              </p>
-              <p className="text-lg font-extrabold text-gray-900 dark:text-white mt-0.5">
-                ₩{stats.total_earned.toLocaleString()}
-                <span className="text-[11px] text-gray-500 dark:text-gray-400 font-normal ml-2">
-                  · {stats.total_referrals}건
-                </span>
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-[12px] font-bold text-pink-600 dark:text-pink-300">
-                상품 추천하고 적립받기
-              </p>
-              <p className="text-[10px] text-gray-600 dark:text-gray-300/80 mt-0.5">
-                내 SNS 에 공유 → 친구 결제 시 자동 적립
-              </p>
-            </>
-          )}
-        </div>
-        <ChevronRight className="w-4 h-4 text-pink-500 shrink-0" />
-      </div>
+      <span className="text-lg" aria-hidden="true">💸</span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
+          {hasEarned ? '추천 적립 현황' : '상품 추천하고 적립받기'}
+        </span>
+        <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
+          {hasEarned ? `추천 ${stats.total_referrals}건` : '내 SNS 공유 → 친구 결제 시 자동 적립'}
+        </span>
+      </span>
+      {hasEarned && (
+        <span className="text-[12px] font-semibold text-gray-900 dark:text-white shrink-0">
+          ₩{stats.total_earned.toLocaleString()}
+        </span>
+      )}
+      <ChevronRight className="w-3.5 h-3.5 text-gray-400 dark:text-white/30 shrink-0" aria-hidden="true" />
     </Link>
   )
 }
