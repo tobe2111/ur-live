@@ -18,6 +18,8 @@ interface Props {
   favorites: number[]
   showFavoritesOnly: boolean
   setShowFavoritesOnly: (fn: (v: boolean) => boolean) => void
+  // 🗺️ 2026-06-22 (대표 시안): 칩을 상단(MapTopBar)으로 올린 지도 모드에선 칩 줄 숨기고 count/정렬만.
+  hideChips?: boolean
 }
 
 const VOUCHER_TYPE_DEFS: Array<{ key: VoucherType; labelKey: string; defaultLabel: string; emoji: string }> = [
@@ -48,11 +50,13 @@ export default function SheetFilterBar({
   favorites,
   showFavoritesOnly,
   setShowFavoritesOnly,
+  hideChips = false,
 }: Props) {
   const { t } = useTranslation()
 
   return (
     <div className="px-3 pb-2 border-b border-gray-100 dark:border-[#1A1A1A] shrink-0">
+      {!hideChips && (
       <div className="flex items-center gap-2">
         <button
           onClick={onOpenFilter}
@@ -100,6 +104,7 @@ export default function SheetFilterBar({
           ))}
         </div>
       </div>
+      )}
 
       <div className="flex items-center justify-between mt-2 px-1">
         <div className="flex items-center gap-2">

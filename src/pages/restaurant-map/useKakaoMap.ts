@@ -1,7 +1,39 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import { escapeHtml } from '@/shared/utils/html'
 import { formatNumber } from '@/utils/format'
+import { cfImage } from '@/utils/cf-image'
 import type { Restaurant, KakaoPlace } from './types'
+
+// 🗺️ 2026-06-22 (대표 — 핀 아이콘 변경, "흑백일 필요 없음"): 카테고리별 핀 링 색상.
+//   상품 사진 핀의 컬러 테두리로 카테고리를 직관적으로 구분.
+function categoryColor(cat: string): string {
+  return cat.includes('beauty') ? '#ec4899'    // 뷰티 — 핑크
+    : cat.includes('health') ? '#10b981'        // 헬스 — 에메랄드
+    : cat.includes('pet') ? '#8b5cf6'           // 반려 — 바이올렛
+    : cat.includes('stay') ? '#3b82f6'          // 숙소 — 블루
+    : cat.includes('activity') ? '#ef4444'      // 액티비티 — 레드
+    : '#f59e0b'                                 // 식사/기본 — 앰버
+}
+
+// 🗺️ 2026-06-22 (대표 — "중앙 기준이 하단 시트 크기에 따라 달라진다"): 선택 핀을 *보이는 지도 영역*
+//   (상단 검색바 아래 ~ 하단 시트 위)의 중앙으로 끌어올릴 px 오프셋을 시트 snap 별로 동적 계산.
+//   ⚠️ 시트 높이는 RestaurantMapPage 의 sheetTopByState / sheetTopByStateLg 와 동일하게 미러링 —
+//      그쪽 값 변경 시 이 함수도 함께 갱신할 것.
+const SHEET_TOP_SEARCH_INSET = 76 // 상단 floating glass 검색바 대략 높이(px)
+function centerOffsetForSheet(snap: 'peek' | 'mid' | 'full' | 'card'): number {
+  if (typeof window === 'undefined') return 150
+  const H = window.innerHeight
+  const isLg = !!window.matchMedia?.('(min-width: 1024px)').matches
+  // 시트 top(px) = 시트가 가리기 시작하는 y. 이 위가 보이는 지도 영역.
+  const sheetTop =
+    snap === 'card' ? H - 210 // 야놀자식 납작한 선택 카드(~132px + 하단 네비 + 여백)
+    : snap === 'peek' ? H - 320 // calc(100dvh - 320px)
+    : snap === 'mid' ? (isLg ? H * 0.6 : H * 0.4) // calc(100dvh - 40dvh/60dvh)
+    : (isLg ? H * 0.2 : H * 0.08) // full: calc(100dvh - 80dvh/92dvh)
+  const visibleCenter = (SHEET_TOP_SEARCH_INSET + sheetTop) / 2
+  // 양수 = 핀을 기하학적 중앙(H/2)에서 이만큼 위로 끌어올림 → 보이는 영역 중앙에 위치.
+  return Math.max(0, H / 2 - visibleCenter)
+}
 
 interface UseKakaoMapParams {
   kr: boolean
@@ -16,6 +48,8 @@ interface UseKakaoMapParams {
   userLoc: { lat: number; lng: number } | null
   liveSellerIds: Set<number>
   favorites: number[]
+  /** 현재 바텀시트 snap — 핀 클릭 시 보이는 영역 중앙 오프셋 계산에 사용. */
+  sheetSnap?: 'peek' | 'mid' | 'full'
 }
 
 export function useKakaoMap({
@@ -30,9 +64,13 @@ export function useKakaoMap({
   userLoc,
   liveSellerIds,
   favorites,
+  sheetSnap = 'peek',
 }: UseKakaoMapParams) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<any>(null)
+  // panToProduct 가 stale 없이 현재 snap 을 읽도록 ref 동기화(의존성 churn 방지 — panToProduct 는 stable).
+  const sheetSnapRef = useRef(sheetSnap)
+  sheetSnapRef.current = sheetSnap
   const markersRef = useRef<any[]>([])
   const overlaysRef = useRef<any[]>([])
   // 🛡️ 2026-06-20 (대표 — 줌 전수조사): 초기 fit(setBounds/setLevel)은 데이터 로드 후 '한 번만'.
@@ -63,6 +101,27 @@ export function useKakaoMap({
         })
     })
   }, [kr])
+
+  // 🗺️ 2026-06-22 (대표 — "공구 상품을 누르면 지도 한가운데로" + "중앙 기준이 시트 크기 따라 달라짐"):
+  //   선택 상품이 *보이는 지도 영역*의 중앙에 오도록 pan. 하단 바텀시트가 화면 아래를 가리므로 단순
+  //   panTo(기하학적 중앙)만 하면 핀이 시트 근처(아래쪽)에 박힘. projection 으로 중심좌표를 남쪽으로 옮겨
+  //   핀을 위로 끌어올림 → 시각적 중앙 배치. 오프셋은 시트 snap(현재 또는 호출자 지정)에 따라 동적 계산.
+  //   projection 미지원/실패 시 plain panTo 폴백.
+  const panToProduct = useCallback((lat: number, lng: number, level?: number, snap?: 'peek' | 'mid' | 'full' | 'card') => {
+    const map = mapInstance.current
+    if (!map || !window.kakao?.maps || !Number.isFinite(lat) || !Number.isFinite(lng)) return
+    if (typeof level === 'number') map.setLevel(level)
+    const latlng = new window.kakao.maps.LatLng(lat, lng)
+    const offsetY = centerOffsetForSheet(snap ?? sheetSnapRef.current)
+    try {
+      const proj = map.getProjection()
+      const pt = proj.pointFromCoords(latlng)
+      const offsetCenter = proj.coordsFromPoint(new window.kakao.maps.Point(pt.x, pt.y + offsetY))
+      map.panTo(offsetCenter)
+    } catch {
+      map.panTo(latlng)
+    }
+  }, [])
 
   const initMap = useCallback(() => {
     if (!sdkLoaded || !mapRef.current || !window.kakao?.maps) return
@@ -203,36 +262,57 @@ export function useKakaoMap({
         ? `<span style="position:absolute;top:-4px;right:-6px;background:#374151;color:#fff;border-radius:9px;padding:0 4px;font-size:9px;font-weight:800;line-height:1.4;">+${groupSize - 1}</span>`
         : ''
 
-      const bg = isSelected ? '#6b7280' : isLive ? '#fff5f5' : '#ffffff'
-      const borderColor = isSelected ? '#6b7280' : isLive ? '#111827' : '#e5e7eb'
-      const size = isSelected ? 36 : 32
+      // 🗺️ 2026-06-22 (대표 — 핀 아이콘 = 상품 사진): 흰 원+이모지 → 상품 썸네일(cfImage 96px) 원형 핀
+      //   + 카테고리 컬러 링 + 기존 모서리 배지. 사진 없음/로드 실패 시 이모지 폴백(뒤에 깔린 span).
+      //   라이브는 링을 잉크색으로 강조 유지. 선택 시 확대 + 잉크 외곽 링.
+      const ring = isLive ? '#111827' : categoryColor(cat)
+      const photoSize = isSelected ? 50 : 42
+      const thumb = cfImage(r.image_url, { width: 96, height: 96, fit: 'cover', format: 'auto' })
 
       const content = document.createElement('div')
       content.innerHTML = `
         <div style="
-          background: ${bg};
-          border: 2px solid ${borderColor};
-          border-radius: 50%;
-          width: ${size}px;
-          height: ${size}px;
-          font-size: ${isSelected ? 18 : 16}px;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.18);
-          cursor: pointer;
-          transform: translate(-50%, -50%) scale(${isSelected ? 1.05 : 1});
-          transition: transform 0.15s, background 0.15s;
           position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          line-height: 1;
+          width: ${photoSize}px;
+          height: ${photoSize}px;
+          border-radius: 50%;
+          background: ${ring};
+          padding: 3px;
+          box-sizing: border-box;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.30)${isSelected ? ', 0 0 0 3px rgba(17,24,39,0.85)' : ''};
+          cursor: pointer;
+          transform: translate(-50%, -50%) scale(${isSelected ? 1.08 : 1});
+          transition: transform 0.15s;
         ">
-          <span style="filter:${isSelected ? 'brightness(0) invert(1)' : 'none'};">${emoji}</span>
+          <div style="
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #fff;
+            box-sizing: border-box;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            font-size: ${isSelected ? 20 : 17}px;
+          ">
+            <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">${emoji}</span>
+            ${thumb ? `<img class="ur-pin-photo" src="${escapeHtml(thumb)}" alt="" loading="lazy" style="position:relative;z-index:1;width:100%;height:100%;object-fit:cover;" />` : ''}
+          </div>
           ${cornerBadge}
         </div>
       `
+      // 사진 로드 실패 시 img 제거 → 뒤의 이모지 폴백 노출 (CSP 때문에 inline onerror 불가 → addEventListener).
+      const pinImg = content.querySelector('img.ur-pin-photo')
+      if (pinImg) pinImg.addEventListener('error', () => pinImg.remove())
+
       content.addEventListener('click', () => {
         setSelected(r)
-        mapInstance.current.panTo(pos)
+        // 🗺️ 2026-06-22: 핀 클릭 시 납작한 선택 카드가 뜨므로 'card' 기준으로 넓은 지도 중앙에 배치. 줌 유지.
+        panToProduct(r.restaurant_lat, r.restaurant_lng, undefined, 'card')
       })
 
       const overlay = new window.kakao.maps.CustomOverlay({
@@ -298,7 +378,7 @@ export function useKakaoMap({
         didInitialFit.current = true
       }
     }
-  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc, liveSellerIds, favorites, coordGroupSize, gridSize, setSelected, setSuggestionFor])
+  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc, liveSellerIds, favorites, coordGroupSize, gridSize, setSelected, setSuggestionFor, panToProduct])
 
   useEffect(() => { initMap() }, [initMap])
 
@@ -314,5 +394,5 @@ export function useKakaoMap({
     }
   }, [])
 
-  return { mapRef, mapInstance, sdkLoaded, sdkError, mapLevel }
+  return { mapRef, mapInstance, sdkLoaded, sdkError, mapLevel, panToProduct }
 }
