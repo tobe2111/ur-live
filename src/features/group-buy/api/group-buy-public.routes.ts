@@ -605,8 +605,15 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     //   사용자가 한 화면에서 모든 쿠폰 확인.
     let ktAlphaItems: any[] = []
     try {
-      const ktRes = await DB.prepare(`
-        SELECT vo.id, vo.goods_code, vo.goods_name, vo.goods_image_url,
+      // 🖼️ 2026-06-21 (대표 신고 — 교환권 카드 썸네일 미표시): voucher_orders.goods_image_url 는 발송 INSERT
+      //   (kt-alpha-auto-send)가 저장하지 않아 항상 NULL → 카드가 플레이스홀더만 렌더. gift_catalog(동기화된
+      //   기프티쇼 카탈로그, key gift_code = vo.goods_code)에서 이미지를 COALESCE 로 치유 → 기존/신규 전부 해결.
+      //   gift_catalog 미존재 환경은 catalog 없이 폴백(기프티콘 카드는 그대로 노출, 이미지만 생략 — 회귀 0).
+      const ktSelect = (withCatalog: boolean) => `
+        SELECT vo.id, vo.goods_code, vo.goods_name,
+               ${withCatalog
+                 ? `COALESCE(NULLIF(vo.goods_image_url, ''), (SELECT COALESCE(NULLIF(gc.image_url_large, ''), NULLIF(gc.image_url_small, '')) FROM gift_catalog gc WHERE gc.gift_code = vo.goods_code LIMIT 1))`
+                 : `vo.goods_image_url`} AS goods_image_url,
                vo.recipient_phone, vo.unit_price, vo.coupon_code, vo.external_order_id,
                vo.status, vo.sent_at, vo.created_at,
                o.id AS order_id, o.order_number, o.user_id AS order_user_id
@@ -617,9 +624,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         )
         WHERE o.user_id = ? AND vo.status IN ('sent', 'processing', 'failed')
         ORDER BY vo.created_at DESC
-        LIMIT 100
-      `).bind(Number(user.id)).all().catch(() => ({ results: [] as any[] }))
-      ktAlphaItems = (ktRes.results || []).map((vo: any) => ({
+        LIMIT 100`
+      let ktRes: { results?: any[] } | null = await DB.prepare(ktSelect(true)).bind(Number(user.id)).all<any>().catch(() => null)
+      if (!ktRes) ktRes = await DB.prepare(ktSelect(false)).bind(Number(user.id)).all<any>().catch(() => ({ results: [] as any[] }))
+      ktAlphaItems = (ktRes?.results || []).map((vo: any) => ({
         source: 'kt_alpha',
         id: `kt-${vo.id}`,
         kt_alpha_voucher_order_id: vo.id,
