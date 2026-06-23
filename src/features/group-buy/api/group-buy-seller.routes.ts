@@ -231,6 +231,53 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
     }
   })
 
+  // ── GET /store-fcfs — 🎯 2026-06-23 내 매장 선착순 현황 (대표 — 사장님 한 화면) ──
+  //   사장님 본인 매장(p.seller_id=user.id) 의 선착순 활성 상품 + 표시 지원수/모집정원(읽기 전용).
+  //   설정·선정은 어드민 전용 — IDOR 방지로 어드민 엔드포인트 미사용. fcfs config 는 product_supply_meta(K-V).
+  router.get('/store-fcfs', requireAuth(), async (c) => {
+    const user = getCurrentUser(c)
+    if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
+    const u = user as unknown as { id: number | string; type?: string; role?: string }
+    if (!(u.type === 'seller' || u.role === 'seller')) return c.json({ success: false, error: '셀러만 접근 가능' }, 403)
+    try {
+      const DB = c.env.DB
+      // 본인 매장 상품의 fcfs_* 메타 → 상품별 config 조립
+      const { results: metaRows } = await DB.prepare(`
+        SELECT m.product_id, m.key, m.value, p.name AS product_name, p.restaurant_name
+        FROM product_supply_meta m JOIN products p ON p.id = m.product_id
+        WHERE p.seller_id = ? AND m.key LIKE 'fcfs_%'
+      `).bind(user.id).all<{ product_id: number; key: string; value: string | null; product_name?: string; restaurant_name?: string }>()
+        .catch(() => ({ results: [] as { product_id: number; key: string; value: string | null; product_name?: string; restaurant_name?: string }[] }))
+      const byId = new Map<number, { name: string; rec: Record<string, string> }>()
+      for (const m of metaRows || []) {
+        const cur = byId.get(m.product_id) || { name: m.restaurant_name || m.product_name || `상품 #${m.product_id}`, rec: {} }
+        cur.rec[m.key] = m.value ?? ''
+        byId.set(m.product_id, cur)
+      }
+      const enabled = [...byId.entries()].filter(([, v]) => v.rec.fcfs_enabled === '1')
+      if (enabled.length === 0) return c.json({ success: true, data: [] })
+      // 실제 지원수 (fcfs_applications 없으면 0)
+      const ids = enabled.map(([id]) => id)
+      const ph = ids.map(() => '?').join(',')
+      const realMap = new Map<number, number>()
+      const { results: counts } = await DB.prepare(
+        `SELECT product_id, COUNT(*) AS n FROM fcfs_applications WHERE product_id IN (${ph}) AND status IN ('applied','selected') GROUP BY product_id`
+      ).bind(...ids).all<{ product_id: number; n: number }>()
+        .catch(() => ({ results: [] as { product_id: number; n: number }[] }))
+      for (const r of counts || []) realMap.set(r.product_id, r.n || 0)
+      const out = enabled.map(([id, v]) => {
+        const spots = Math.max(0, parseInt(v.rec.fcfs_spots || '0', 10) || 0)
+        const seed = Math.max(0, parseInt(v.rec.fcfs_applied_seed || '0', 10) || 0)
+        const real = realMap.get(id) || 0
+        return { product_id: id, name: v.name, spots, realApplied: real, appliedDisplay: seed + real, deadline: v.rec.fcfs_deadline || null }
+      })
+      return c.json({ success: true, data: out })
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('[store-fcfs]', err)
+      return c.json({ success: true, data: [] })
+    }
+  })
+
   // ── GET /voucher-logs — 본인 가게 voucher 사용 시도 로그 ──
   // 🛡️ 2026-05-13 (운영 안정성 #3): 셀러가 PIN 오류 / 만료 / 사용 빈도 확인 → 가게 문제 자가 진단.
   router.get('/voucher-logs', requireAuth(), async (c) => {

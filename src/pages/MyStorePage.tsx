@@ -1,12 +1,12 @@
 /**
  * 🏪 2026-06-22 (대표 — "셀러 대시보드는 무거움, 앱에서 바로"): 사업자 유저용 경량 "내 매장" 화면.
  *   매장 공구권 원장(사용/정산 대기·완료) + "안 왔어요" 분쟁 신고. 풀 셀러 대시보드(/seller) 대신 앱 내.
- *   API: GET /api/group-buy/store-voucher-ledger · GET /api/voucher-dispute/mine · POST /api/voucher-dispute/report
+ *   API: GET /api/group-buy/store-voucher-ledger · GET /api/group-buy/store-fcfs · GET /api/voucher-dispute/mine · POST /api/voucher-dispute/report
  *   소비자 앱 테마(화이트/다크 토글) — dark: variant 필수.
  */
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Store, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Store, AlertCircle, CheckCircle2, Zap } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
@@ -21,6 +21,9 @@ interface LedgerItem {
   id: number; status: string; applied_price: number; settlement_id: number | null
   product_name?: string; restaurant_name?: string
 }
+interface FcfsItem {
+  product_id: number; name: string; spots: number; realApplied: number; appliedDisplay: number; deadline: string | null
+}
 
 const STAT = (label: string, value: string, sub?: string) => ({ label, value, sub })
 
@@ -28,6 +31,7 @@ export default function MyStorePage() {
   const navigate = useNavigate()
   const [summary, setSummary] = useState<Summary | null>(null)
   const [recent, setRecent] = useState<LedgerItem[]>([])
+  const [fcfs, setFcfs] = useState<FcfsItem[]>([])
   const [disputedIds, setDisputedIds] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(true)
   const [forbidden, setForbidden] = useState(false)
@@ -36,13 +40,15 @@ export default function MyStorePage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [ledger, mine] = await Promise.all([
+      const [ledger, mine, fcfsRes] = await Promise.all([
         api.get('/api/group-buy/store-voucher-ledger'),
         api.get('/api/voucher-dispute/mine').catch(() => ({ data: { data: [] } })),
+        api.get('/api/group-buy/store-fcfs').catch(() => ({ data: { data: [] } })),
       ])
       if (ledger.data?.success === false) { setForbidden(true); return }
       setSummary(ledger.data?.data?.summary || null)
       setRecent(ledger.data?.data?.recent || [])
+      setFcfs(fcfsRes.data?.data || [])
       const open = new Set<number>((mine.data?.data || []).filter((d: { status: string }) => d.status === 'open').map((d: { voucher_id: number }) => d.voucher_id))
       setDisputedIds(open)
     } catch (e) {
@@ -108,6 +114,34 @@ export default function MyStorePage() {
               ))}
             </div>
             <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2 px-1">정산은 사용 후 7일 뒤 자동 진행돼요. 고객이 방문하지 않은 건은 아래에서 신고하면 정산이 보류됩니다.</p>
+
+            {/* 🎯 선착순 응모 현황 — 운영자가 내 매장 상품을 선착순으로 걸었을 때만 노출(읽기 전용) */}
+            {fcfs.length > 0 && (
+              <div className="mt-6">
+                <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-2 px-1 flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5" /> 선착순 응모 현황
+                </p>
+                <div className="space-y-2">
+                  {fcfs.map(f => {
+                    const closed = !!(f.deadline && new Date(f.deadline).getTime() < Date.now())
+                    return (
+                      <div key={f.product_id} className="rounded-xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212] px-3.5 py-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[13px] font-bold text-gray-900 dark:text-white truncate">{f.name}</p>
+                          <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${closed ? 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-400 dark:text-gray-500' : 'bg-gray-900/10 dark:bg-white/15 text-gray-900 dark:text-white'}`}>
+                            {closed ? '마감' : '모집중'}
+                          </span>
+                        </div>
+                        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
+                          지원 <b className="text-gray-900 dark:text-white">{formatNumber(f.appliedDisplay)}</b>명 · 모집 {formatNumber(f.spots)}명
+                        </p>
+                        <p className="text-[10.5px] text-gray-400 dark:text-gray-500 mt-0.5">선정은 운영자가 진행해요</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* 최근 공구권 */}
             <p className="text-[13px] font-bold text-gray-900 dark:text-white mt-6 mb-2 px-1">최근 공구권</p>
