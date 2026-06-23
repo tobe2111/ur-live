@@ -300,7 +300,7 @@ export default function AboutPage() {
               points={[
                 '구매 즉시 앱에 디지털 교환권 발급',
                 '매장 가서 앱 보여주기 → 점원 "사용 완료" 버튼',
-                '사용 가능 매장 지도 (/restaurant-map) 한눈에',
+                '사용 가능 매장 지도 (/map) 한눈에',
                 '쓰지 못하면 환불',
               ]}
             />

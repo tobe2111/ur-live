@@ -4,6 +4,19 @@ import { formatNumber } from '@/utils/format'
 import { distanceKm } from './utils'
 import type { Restaurant } from './types'
 
+type VoucherType = 'all' | 'meal_voucher' | 'beauty_voucher' | 'health_voucher' | 'pet_voucher' | 'stay_voucher' | 'activity_voucher'
+
+// 🗺️ 2026-06-23 (대표 — 카테고리별 빈 상태 문구): 카테고리마다 '~를 찾지 못했어요' 맞춤.
+const EMPTY_MSG: Record<VoucherType, string> = {
+  all: '딜을 찾지 못했어요',
+  meal_voucher: '맛집을 찾지 못했어요',
+  beauty_voucher: '뷰티샵을 찾지 못했어요',
+  health_voucher: '운동·헬스장을 찾지 못했어요',
+  pet_voucher: '반려동물 가게를 찾지 못했어요',
+  stay_voucher: '숙소를 찾지 못했어요',
+  activity_voucher: '액티비티를 찾지 못했어요',
+}
+
 interface Props {
   loading: boolean
   filtered: Restaurant[]
@@ -13,9 +26,11 @@ interface Props {
   /** 🎯 선착순: id→{spots,appliedDisplay}. 있으면 배지 + '지원' 버튼. */
   fcfsMap?: Map<number, { spots: number; appliedDisplay: number }>
   onApplyFcfs?: (productId: number) => void
+  /** 빈 상태 문구를 카테고리에 맞게 표시 (기본 all). */
+  voucherType?: VoucherType
 }
 
-export default function RestaurantList({ loading, filtered, selected, userLoc, onSelect, fcfsMap, onApplyFcfs }: Props) {
+export default function RestaurantList({ loading, filtered, selected, userLoc, onSelect, fcfsMap, onApplyFcfs, voucherType = 'all' }: Props) {
   const navigate = useNavigate()
 
   if (loading) {
@@ -41,7 +56,7 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
     return (
       <div className="text-center py-16">
         <MapPin className="w-14 h-14 text-gray-200 dark:text-gray-700 mx-auto mb-4" />
-        <p className="text-gray-900 dark:text-white font-bold">맛집을 찾지 못했어요</p>
+        <p className="text-gray-900 dark:text-white font-bold">{EMPTY_MSG[voucherType] || EMPTY_MSG.all}</p>
         <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">다른 지역이나 검색어를 시도해보세요</p>
       </div>
     )

@@ -710,7 +710,7 @@ export default function GroupBuyListPage() {
           잉크 풀폭 버튼 — 리스트 위에서 시각적으로 가장 두드러지게. */}
       <div className="ur-content-wide px-4 lg:px-8 pt-4">
         <button
-          onClick={() => navigate('/restaurant-map')}
+          onClick={() => navigate('/map')}
           className="w-full flex items-center gap-3 rounded-2xl bg-gray-900 dark:bg-white px-4 py-4 active:scale-[0.99] transition-transform shadow-sm"
         >
           <div className="w-10 h-10 rounded-xl bg-white/15 dark:bg-gray-900/10 flex items-center justify-center shrink-0">
