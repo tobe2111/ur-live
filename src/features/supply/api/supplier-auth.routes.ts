@@ -169,7 +169,7 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
 
     const passwordHash = await hashPassword(password);
     // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
-    const mallId = await registrationMallId(c);
+    const mallId = await registrationMallId(c).catch(() => 1); // 🛡️ 2026-06-23 fail-soft: 몰 해석 실패가 가입 500 안 내게(기본 몰 1)
     const nts1 = await ntsStatusOf(c.env, DB, bizNum)
     const result = await DB.prepare(`
       INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
@@ -196,7 +196,9 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
       data: { id: result.meta.last_row_id, status: 'pending' },
     }, 201);
   } catch (err) {
-    return safeError(c, err, '가입 처리 중 오류가 발생했습니다', '[supplier-auth]');
+    // ⏳ 2026-06-23 임시 진단: prod 에서 실제 에러를 _diag 로 노출(원인 확인 후 제거 예정).
+    console.error('[supplier-auth:register] 500:', (err as Error)?.message || String(err));
+    return c.json({ success: false, error: '가입 처리 중 오류가 발생했습니다', _diag: String((err as Error)?.message || err).slice(0, 250) }, 500);
   }
 });
 
@@ -275,7 +277,7 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
       if (dupe) return c.json({ success: false, error: '이미 가입된 이메일입니다. 로그인해주세요' }, 409);
 
       // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
-      const mallId = await registrationMallId(c);
+      const mallId = await registrationMallId(c).catch(() => 1); // 🛡️ 2026-06-23 fail-soft: 몰 해석 실패가 가입 500 안 내게(기본 몰 1)
       // password_hash='' — 카카오 인증(비밀번호 미사용). linked_user_id 로 세션 연결.
       const nts2 = await ntsStatusOf(c.env, DB, business_number)
       const ins = await DB.prepare(`

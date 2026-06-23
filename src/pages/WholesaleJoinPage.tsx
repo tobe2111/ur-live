@@ -113,7 +113,7 @@ export default function WholesaleJoinPage() {
         ? await api.post('/api/wholesale/become-distributor', payload)
         : await api.post('/api/wholesale/register', { ...payload, email: form.email.trim(), password: form.password })
       const data = res.data
-      if (!data?.success) throw new Error(data?.error || '신청에 실패했어요')
+      if (!data?.success) throw new Error((data?.error || '신청에 실패했어요') + ((data as { _diag?: string })?._diag ? ` · ${(data as { _diag?: string })._diag}` : '')) // ⏳ _diag 임시 표시(원인 확인용)
       // 이미 승인된 셀러(겸업)가 카카오로 유통회원 승급한 경우 → 즉시 로그인.
       if (data.status === 'approved' && data.data?.accessToken) {
         const s = data.data.seller
