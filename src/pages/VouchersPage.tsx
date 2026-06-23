@@ -322,15 +322,16 @@ const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: VoucherProduc
   )
 })
 
-// 🛒 2026-06-23 (대표 — '쇼핑도 카테고리 전에 짜뒀잖아'): /browse 와 동일한 쇼핑 카테고리.
-//   key 는 products.category 서버 필터값(전체='all' → 필터 없음). 라벨/이모지도 BrowsePage 와 1:1.
+// 🛒 2026-06-23 (대표 — '쇼핑도 카테고리 전에 짜뒀잖아' / '카테고리별로 잘 나뉘어졌어?'): /browse 와 동일한 쇼핑 카테고리.
+//   ⚠️ key 는 products.category 의 **실제 저장값**(셀러/어드민/CSV 폼 SSOT) — alias 없는 정확일치 필터라 키가 어긋나면 0개.
+//   실제 저장값: fashion/beauty/food/electronics/lifestyle. (라벨 '리빙'='lifestyle', '디지털'='electronics'.)
 const SHOP_CATEGORIES: Array<{ key: string; label: string; emoji: string }> = [
-  { key: 'all',     label: '전체',   emoji: '🛍️' },
-  { key: 'food',    label: '식품',   emoji: '🍱' },
-  { key: 'fashion', label: '패션',   emoji: '👗' },
-  { key: 'beauty',  label: '뷰티',   emoji: '💄' },
-  { key: 'living',  label: '리빙',   emoji: '🛋️' },
-  { key: 'digital', label: '디지털', emoji: '📱' },
+  { key: 'all',         label: '전체',   emoji: '🛍️' },
+  { key: 'food',        label: '식품',   emoji: '🍱' },
+  { key: 'fashion',     label: '패션',   emoji: '👗' },
+  { key: 'beauty',      label: '뷰티',   emoji: '💄' },
+  { key: 'lifestyle',   label: '리빙',   emoji: '🛋️' },
+  { key: 'electronics', label: '디지털', emoji: '📱' },
 ]
 
 // 🛒 2026-06-20 (사용자 결정 — 교환권/쇼핑 상단 탭 분리) → 2026-06-23 연속 스크롤로 전환: 쇼핑 섹션 =

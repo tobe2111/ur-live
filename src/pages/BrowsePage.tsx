@@ -380,8 +380,10 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
             { key: 'food',         label: t('browse.categoryFood', { defaultValue: '식품' }),      emoji: '🍱' },
             { key: 'fashion',      label: t('browse.categoryFashion', { defaultValue: '패션' }),   emoji: '👗' },
             { key: 'beauty',       label: t('browse.categoryBeauty', { defaultValue: '뷰티' }),    emoji: '💄' },
-            { key: 'living',       label: t('browse.categoryLiving', { defaultValue: '리빙' }),    emoji: '🛋️' },
-            { key: 'digital',      label: t('browse.categoryDigital', { defaultValue: '디지털' }), emoji: '📱' },
+            // 🛒 2026-06-23 (대표 '카테고리별로 잘 나뉘어졌어?'): key 는 products.category 실제 저장값.
+            //   '리빙'='lifestyle' / '디지털'='electronics' (이전 'living'/'digital' 은 저장값과 불일치 → 0개였음).
+            { key: 'lifestyle',    label: t('browse.categoryLiving', { defaultValue: '리빙' }),    emoji: '🛋️' },
+            { key: 'electronics',  label: t('browse.categoryDigital', { defaultValue: '디지털' }), emoji: '📱' },
           ].map(c => {
             const active = category === c.key || (c.key === 'all' && category === 'all')
             return (
@@ -412,7 +414,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         {/* 섹션 헤더 — 🏭 2026-06-04: 기본('전체')에선 '오늘의 핫딜' 타이틀 숨김(핫딜 섹션 제거). 카테고리 선택 시엔 라벨 표시. */}
         {category !== 'all' && (
           <div className="flex items-center justify-between mb-3">
-            <h1 className="text-xl lg:text-3xl font-extrabold text-gray-900 dark:text-white">{(({'fashion':t('browse.categoryFashion'),'beauty':t('browse.categoryBeauty'),'food':t('browse.categoryFood'),'living':t('browse.categoryLiving'),'digital':t('browse.categoryDigital'),'meal_voucher':'식사권','beauty_voucher':'뷰티 교환권','health_voucher':'건강 교환권','pet_voucher':'반려 교환권','stay_voucher':'숙박 교환권','activity_voucher':'액티비티 교환권','etc_voucher':'기타 교환권'} as Record<string, string>)[category] || category)}</h1>
+            <h1 className="text-xl lg:text-3xl font-extrabold text-gray-900 dark:text-white">{(({'fashion':t('browse.categoryFashion'),'beauty':t('browse.categoryBeauty'),'food':t('browse.categoryFood'),'lifestyle':t('browse.categoryLiving'),'electronics':t('browse.categoryDigital'),'living':t('browse.categoryLiving'),'digital':t('browse.categoryDigital'),'meal_voucher':'식사권','beauty_voucher':'뷰티 교환권','health_voucher':'건강 교환권','pet_voucher':'반려 교환권','stay_voucher':'숙박 교환권','activity_voucher':'액티비티 교환권','etc_voucher':'기타 교환권'} as Record<string, string>)[category] || category)}</h1>
           </div>
         )}
 
