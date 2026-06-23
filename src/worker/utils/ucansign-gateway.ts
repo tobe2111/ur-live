@@ -16,7 +16,9 @@ import { withCircuitBreaker } from '@/worker/utils/circuit-breaker'
 /** 게이트웨이가 읽는 최소 env(좁은 로컬 Bindings 도 수용). */
 export interface UcansignEnv {
   UCANSIGN_API_KEY?: string
-  UCANSIGN_TEMPLATE_ID?: string
+  UCANSIGN_TEMPLATE_ID?: string            // 공용 폴백(유형별 미설정 시)
+  UCANSIGN_TEMPLATE_ID_SUPPLIER?: string   // 제조사 향 계약서 템플릿
+  UCANSIGN_TEMPLATE_ID_DISTRIBUTOR?: string // 판매사 향 계약서 템플릿
   UCANSIGN_TEST_MODE?: string
 }
 

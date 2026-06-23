@@ -46,7 +46,9 @@ export interface Env {
   //   가입 시 계약서 자동발송. app.ucansign.com 개발자메뉴 → API KEY 발급 + 계약서 템플릿 등록(templateId).
   //   전부 선택 — 미설정 시 sendContractFromTemplate() 가 fail-soft(가입 안 막고 미발송).
   UCANSIGN_API_KEY?: string;
-  UCANSIGN_TEMPLATE_ID?: string;      // 기본 계약서 템플릿 (플로우별 복수면 호출 시 templateId 지정)
+  UCANSIGN_TEMPLATE_ID?: string;            // 공용 폴백 템플릿(유형별 미설정 시)
+  UCANSIGN_TEMPLATE_ID_SUPPLIER?: string;   // 🏭 제조사 가입 → 제조사 향 계약서 템플릿
+  UCANSIGN_TEMPLATE_ID_DISTRIBUTOR?: string; // 🏪 판매사 가입 → 판매사 향 계약서 템플릿
   UCANSIGN_WEBHOOK_SECRET?: string;   // customValue5 에 심어 webhook 에코값으로 검증
   UCANSIGN_TEST_MODE?: string;        // 'true' 면 테스트발송(포인트 차감 X, 효력 미보장)
 
