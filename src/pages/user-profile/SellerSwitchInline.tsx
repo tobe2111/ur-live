@@ -89,7 +89,7 @@ export default function SellerSwitchInline() {
         onClick={handleSwitch}
         disabled={switching}
         aria-label={t('sellerSwitch.dashboardAria', { defaultValue: '셀러 대시보드로 전환' })}
-        className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 bg-pink-500/15 border border-pink-500/40 text-[10px] text-pink-300 font-semibold active:scale-95 transition-all disabled:opacity-50"
+        className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 bg-gray-100 dark:bg-white/[0.08] border border-gray-300 dark:border-white/20 text-[10px] text-gray-900 dark:text-white font-semibold active:scale-95 transition-all disabled:opacity-50"
       >
         <Store className="w-2.5 h-2.5" aria-hidden="true" />
         {switching ? t('sellerSwitch.switching', { defaultValue: '전환 중...' }) : t('sellerSwitch.sellerMode', { defaultValue: '셀러 모드' })}

@@ -34,7 +34,7 @@ export default function RoleCtaGrid() {
     // 보유한 role 의 대시보드 단축 (위로 강조)
     const dash: Cta[] = [
       { icon: '📊', title: '셀러 대시보드',   desc: '내 상품·공구·정산 관리', to: '/seller',  show: () => hasSellerToken,  accent: true },
-      { icon: '📊', title: '에이전시 대시보드', desc: '소속 셀러·소개 가게 commission', to: '/agency', show: () => hasAgencyToken, accent: true },
+      { icon: '📊', title: '에이전시 대시보드', desc: '소속 사업자·소개 가게 수익', to: '/agency', show: () => hasAgencyToken, accent: true },
     ]
     // 신규 가입 CTA (보유 안 한 role 만)
     const signup: Cta[] = [
@@ -42,7 +42,7 @@ export default function RoleCtaGrid() {
       //   동네 공구 제안 + 링크샵(교환권 추천 수익) 중심으로 재구성.
       { icon: '🤝', title: '동네 공구 제안', desc: '원하는 가게 제안하면 모아서 열어드려요', to: '/community-group-buy/new', show: () => !COMMUNITY_PROPOSAL_HIDDEN },
       { icon: '🔗', title: '내 링크샵', desc: '교환권·공구 추천하고 적립 받기', to: '/u/me', show: () => true },
-      { icon: '🏪', title: '사장님 입점', desc: '내 가게 공구권 발행하기',     to: '/seller/register/supplier', show: () => !hasSellerToken },
+      { icon: '🏪', title: '내 쇼핑몰 열기', desc: '사업자 등록 → 내 상품·공구권 판매', to: '/seller/register/supplier', show: () => !hasSellerToken },
       { icon: '🤵', title: '에이전시 사업', desc: '가게 영업 → 2% 영구 수익',  to: '/agency/register/business', show: () => !hasAgencyToken },
     ]
     return {
@@ -63,7 +63,7 @@ export default function RoleCtaGrid() {
     >
       <span className="text-xl shrink-0" aria-hidden="true">{c.icon}</span>
       <div className="flex-1 min-w-0">
-        <p className={`text-[13px] font-bold truncate ${c.accent ? 'text-blue-700 dark:text-blue-400' : 'text-gray-900 dark:text-white'}`}>
+        <p className="text-[13px] font-bold truncate text-gray-900 dark:text-white">
           {c.title}
         </p>
         <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
@@ -81,7 +81,7 @@ export default function RoleCtaGrid() {
           <p className="text-[12px] font-bold text-gray-600 dark:text-gray-400 mb-2 px-1">
             내 역할 바로가기
           </p>
-          <div className="rounded-2xl bg-blue-50/40 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 overflow-hidden">
+          <div className="rounded-2xl bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-[#2A2A2A] overflow-hidden">
             {dashboardItems.map((c, i) => Row(c, i, dashboardItems.length))}
           </div>
         </div>

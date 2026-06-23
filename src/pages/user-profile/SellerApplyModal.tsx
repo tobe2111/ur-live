@@ -108,7 +108,7 @@ export default function SellerApplyModal({ onClose, onSuccess }: { onClose: () =
             <input
               value={form.business_name}
               onChange={e => setForm(f => ({ ...f, business_name: e.target.value }))}
-              className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none"
+              className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-gray-400 dark:focus:border-white/40 focus:outline-none"
               placeholder={t('sellerApply.businessNamePlaceholder', { defaultValue: '예: 유어딜 스튜디오' })}
             />
           </div>
@@ -120,7 +120,7 @@ export default function SellerApplyModal({ onClose, onSuccess }: { onClose: () =
               onChange={e => setForm(f => ({ ...f, business_number: formatBusinessNumber(e.target.value) }))}
               inputMode="numeric"
               maxLength={12}
-              className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none"
+              className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-gray-400 dark:focus:border-white/40 focus:outline-none"
               placeholder="000-00-00000"
             />
           </div>
@@ -132,7 +132,7 @@ export default function SellerApplyModal({ onClose, onSuccess }: { onClose: () =
               onChange={e => setForm(f => ({ ...f, phone: formatPhone(e.target.value) }))}
               inputMode="numeric"
               maxLength={13}
-              className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none"
+              className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-gray-400 dark:focus:border-white/40 focus:outline-none"
               placeholder="010-1234-5678"
             />
           </div>
@@ -142,7 +142,7 @@ export default function SellerApplyModal({ onClose, onSuccess }: { onClose: () =
             <input
               value={form.youtube_email}
               onChange={e => setForm(f => ({ ...f, youtube_email: e.target.value }))}
-              className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none"
+              className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-gray-400 dark:focus:border-white/40 focus:outline-none"
               placeholder={t('sellerApply.youtubeEmailPlaceholder', { defaultValue: '라이브 방송에 사용할 구글 계정' })}
             />
           </div>
@@ -153,7 +153,7 @@ export default function SellerApplyModal({ onClose, onSuccess }: { onClose: () =
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               rows={2}
-              className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-pink-500/50 focus:outline-none resize-none"
+              className="w-full px-3.5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-600 focus:border-gray-400 dark:focus:border-white/40 focus:outline-none resize-none"
               placeholder={t('sellerApply.descriptionPlaceholder', { defaultValue: '채널 소개나 매장 설명을 간단히 적어주세요' })}
             />
           </div>

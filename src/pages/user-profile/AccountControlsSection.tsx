@@ -76,7 +76,7 @@ export function NotificationToggleSection() {
         onClick={onChange}
         aria-pressed={value}
         aria-label={value ? `${label} 끄기` : `${label} 켜기`}
-        className={`relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-pink-500' : 'bg-gray-100 dark:bg-white/[0.15]'}`}
+        className={`relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-gray-900 dark:bg-white' : 'bg-gray-200 dark:bg-white/[0.15]'}`}
       >
         <span className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] bg-white dark:bg-[#0A0A0A] rounded-full shadow-sm transition-transform duration-200 ${value ? 'translate-x-[20px]' : 'translate-x-0'}`} />
       </button>
@@ -184,7 +184,7 @@ export function AppVersionSection() {
               <CheckCircle2 className="w-3.5 h-3.5" /> 최신 버전
             </span>
           ) : hasUpdate ? (
-            <button type="button" onClick={handleUpdate} className="flex items-center gap-1 px-3 py-1 rounded-full bg-pink-500 text-white text-xs font-bold hover:bg-pink-600 transition-colors">
+            <button type="button" onClick={handleUpdate} className="flex items-center gap-1 px-3 py-1 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors">
               <RefreshCw className="w-3 h-3" /> 업데이트
             </button>
           ) : (
@@ -195,7 +195,7 @@ export function AppVersionSection() {
         </div>
       </div>
       {hasUpdate && (
-        <p className="mt-2 text-[11px] text-pink-400 px-2 text-center">새 버전이 준비되었습니다. 업데이트 버튼을 눌러 적용하세요.</p>
+        <p className="mt-2 text-[11px] text-gray-600 dark:text-gray-300 px-2 text-center">새 버전이 준비되었습니다. 업데이트 버튼을 눌러 적용하세요.</p>
       )}
     </div>
   )
@@ -270,7 +270,7 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
             <input
               id="account-name" required value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className="w-full px-4 py-3 bg-white dark:bg-[#1A1A1A] border border-gray-300 dark:border-[#2A2A2A] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1A1A1A] border border-gray-300 dark:border-[#2A2A2A] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
               placeholder={t('accountSettings.editNamePlaceholder', { defaultValue: '홍길동' })}
             />
           </div>
@@ -282,7 +282,7 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
               id="account-phone" type="tel" inputMode="numeric" value={form.phone}
               onChange={e => setForm(f => ({ ...f, phone: formatPhone(e.target.value) }))}
               maxLength={13}
-              className="w-full px-4 py-3 bg-white dark:bg-[#1A1A1A] border border-gray-300 dark:border-[#2A2A2A] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-3 bg-white dark:bg-[#1A1A1A] border border-gray-300 dark:border-[#2A2A2A] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
               placeholder="010-0000-0000"
             />
             <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
@@ -294,7 +294,7 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
           <button onClick={onClose} className="flex-1 py-3 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-[#2A2A2A] transition-colors">
             {t('accountSettings.editCancel', { defaultValue: '취소' })}
           </button>
-          <button onClick={save} disabled={loading} className="flex-1 py-3 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-50">
+          <button onClick={save} disabled={loading} className="flex-1 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-medium rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50">
             {loading ? t('accountSettings.saving', { defaultValue: '저장 중...' }) : t('accountSettings.save', { defaultValue: '저장' })}
           </button>
         </div>

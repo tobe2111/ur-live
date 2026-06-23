@@ -45,7 +45,7 @@ export default function TeamPointsCard() {
           <button
             type="button"
             onClick={() => navigate('/points/charge')}
-            className="py-2 text-xs font-bold text-pink-500 bg-pink-500/10 hover:bg-pink-500/20 rounded-lg border border-pink-500/30 active:scale-[0.98] transition-all"
+            className="py-2 text-xs font-bold text-white dark:text-gray-900 bg-gray-900 dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-100 rounded-lg active:scale-[0.98] transition-all"
           >
             충전하기
           </button>

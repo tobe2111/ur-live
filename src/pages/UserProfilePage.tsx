@@ -271,7 +271,7 @@ export default function UserProfilePage() {
               localStorage.setItem('active_role', 'seller')
               window.location.href = '/seller'
             }}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-pink-500/[0.15] border border-pink-500/30 text-[13px] font-semibold text-pink-300 active:bg-pink-500/[0.25] transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-[13px] font-semibold text-white dark:text-gray-900 active:bg-gray-800 dark:active:bg-gray-100 transition-colors"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h18v4H3zM3 9h18v12H3zM9 13h6" />
