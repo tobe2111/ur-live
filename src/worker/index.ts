@@ -622,6 +622,11 @@ app.use('*', async (c, next) => {
     //   "비워서"(empty) body 테마 bg(인라인 스크립트가 이미 설정)만 잠깐 노출 → 곧 CuratorPage/SellerPublicPage
     //   가 SSR 주입데이터(__SSR_INITIAL_CURATOR/SELLER__)로 즉시 렌더. SSR inject/0-RTT·createRoot 비-hydrate 불변.
     const isLinkshopSurface = /^\/(u|profile|s)(\/|$)/.test(url.pathname);
+    // 🧭 2026-06-22 [LOADING_ADDITIVE] (대표 신고 — "잠시 다른 페이지(홈) 갔다 오는 느낌"): 공구/교환권 상세
+    //   (/group-buy/:id · /vouchers/:id — 같은 DETAIL slot)도 prerender 된 #root 의 소비자 홈 shell(다크·라이브 nav)이
+    //   React 마운트 전 잠깐 보임. linkshop 과 동일하게 #root 비움 — 이 페이지들은 __SSR_INITIAL_DETAIL__ 주입데이터로
+    //   즉시 렌더(테마 가변이라 색 placeholder 대신 body 테마 bg 노출). SSR inject/0-RTT·createRoot 비-hydrate 불변(additive).
+    const isDetailSurface = /^\/(?:group-buy|vouchers)\/\d+(?:[/?#]|$)/.test(url.pathname);
     let rb = new HTMLRewriter()
       .on('script', {
         element(el) { el.setAttribute('nonce', nonce); },
@@ -668,8 +673,8 @@ app.use('*', async (c, next) => {
           el.setInnerContent('<div style="position:fixed;inset:0;background:#F4F5F7"></div>', { html: true });
         },
       });
-    } else if (isLinkshopSurface) {
-      // 링크샵: 홈 shell 잔상 제거 — #root 비움(테마 가변이라 색 placeholder 대신 body 테마 bg 노출).
+    } else if (isLinkshopSurface || isDetailSurface) {
+      // 링크샵·공구/교환권 상세: 홈 shell 잔상 제거 — #root 비움(테마 가변이라 색 placeholder 대신 body 테마 bg 노출).
       rb = rb.on('#root', {
         element(el) { el.setInnerContent('', { html: true }); },
       });

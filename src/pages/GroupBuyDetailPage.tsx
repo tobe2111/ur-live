@@ -17,6 +17,10 @@ import { cfImage } from '@/utils/cf-image'
 import { reportFunnel } from '@/lib/web-vitals-report'
 import { recordRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip'
 import { useInvalidateMyVouchers } from '@/hooks/queries'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/hooks/queries/queryKeys'
+import { readCache } from '@/hooks/queries/localCache'
+import { pickSeedDetail } from './group-buy/seed-detail'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -113,9 +117,19 @@ export default function GroupBuyDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const isInfluencerLanding = !!refUserId
-  const [detail, setDetail] = useState<GroupBuyDetail | null>(null)
+  const qc = useQueryClient()
+  // 🧭 2026-06-22 (전수조사): 첫 paint 시드 — 홈 카드 prefetch(RQ) / SSR inject / localCache 를 즉시 소비.
+  //   시드가 있으면 skeleton 을 건너뛰고 바로 content (axios fetch 는 freshness 보정으로 background 수행).
+  //   없으면 seedDetail=null → 기존 skeleton + fetch fallback (안전).
+  const seedDetail = useMemo<GroupBuyDetail | null>(() => pickSeedDetail<GroupBuyDetail>(Number(id), {
+    rqCached: qc.getQueryData(queryKeys.groupBuyProduct(Number(id))),
+    ssrText: typeof document !== 'undefined' ? document.getElementById('__SSR_INITIAL_DETAIL__')?.textContent : null,
+    localCached: readCache<GroupBuyDetail | null>(`gb:${Number(id)}`, null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [id, qc])
+  const [detail, setDetail] = useState<GroupBuyDetail | null>(seedDetail)
   const [participants, setParticipants] = useState<Participant[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState<boolean>(seedDetail == null)
   const [joining, setJoining] = useState(false)
   const [quantity, setQuantity] = useState(1)
   // 🎨 2026-06-16 리디자인: 스와이프 갤러리 활성 인덱스 + 이 셀러의 다른 공구
@@ -162,21 +176,8 @@ export default function GroupBuyDetailPage() {
     }
     let cancelled = false
 
-    // 🛡️ 2026-05-27 (loading P0): SSR inject 즉시 사용 — worker HTMLRewriter 가 head 에 inject.
-    //   효과: 첫 paint 부터 상세 표시 (axios fetch waterfall ~200-500ms 제거).
-    //   miss 시 useEffect 가 정상 axios fetch (fallback 안전).
-    try {
-      if (typeof document !== 'undefined') {
-        const el = document.getElementById('__SSR_INITIAL_DETAIL__')
-        if (el?.textContent) {
-          const parsed = JSON.parse(el.textContent)
-          if (parsed?.success && parsed?.data?.id === productId) {
-            setDetail(parsed.data)
-          }
-        }
-      }
-    } catch { /* SSR inject 누락 / 손상 — fallback */ }
-
+    // 🧭 2026-06-22 (전수조사): 첫 paint SSR/prefetch 시드는 위 seedDetail(useState 초기값)이 담당.
+    //   여기서는 freshness 보정 fetch 만 — 시드가 있으면 skeleton 없이 background 갱신, 없으면 skeleton 후 채움.
     Promise.all([
       api.get(`/api/group-buy/products/${productId}`),
       api.get(`/api/group-buy/products/${productId}/participants`).catch(() => ({ data: { data: [] } })),
@@ -189,6 +190,8 @@ export default function GroupBuyDetailPage() {
         //   해결: GroupBuyDetailPage 는 받은 상품 그대로 렌더. 새 링크는 SSOT 가 정확한
         //   detail URL 로 생성 (홈 공구 → /group-buy, /vouchers 목록 → /vouchers).
         setDetail(detailRes.data.data)
+        // 🧭 2026-06-22: 권위 데이터를 RQ 캐시에 write-back → back-nav/재진입 시 prefetch 와 일관 + 시드 재사용.
+        qc.setQueryData(queryKeys.groupBuyProduct(productId), detailRes.data.data)
         reportFunnel('view', productId)  // funnel: page view
         // 🛡️ 2026-05-15: 최근 본 공구 기록 (localStorage 12개 제한)
         try {
@@ -205,7 +208,7 @@ export default function GroupBuyDetailPage() {
     }).catch(() => toast.error('네트워크 오류'))
       .finally(() => !cancelled && setLoading(false))
     return () => { cancelled = true }
-  }, [productId, navigate])
+  }, [productId, navigate, qc])
 
   // 🎨 2026-06-16 리디자인: 이 셀러의 다른 공구 — active 목록에서 같은 seller 필터(현재 상품 제외).
   useEffect(() => {
@@ -238,7 +241,10 @@ export default function GroupBuyDetailPage() {
       if (document.hidden) return
       try {
         const d = await api.get(`/api/group-buy/products/${productId}`)
-        if (d.data?.success) setDetail(d.data.data)
+        if (d.data?.success) {
+          setDetail(d.data.data)
+          qc.setQueryData(queryKeys.groupBuyProduct(productId), d.data.data)
+        }
       } catch { /* silent */ }
     }
     // 🛡️ 2026-05-15 (TD-G07): jitter — 동시 사용자 많을 때 D1 thundering herd 방어
@@ -257,7 +263,7 @@ export default function GroupBuyDetailPage() {
     }
     scheduleNext()
     return () => { cancelled = true; if (timer) clearTimeout(timer) }
-  }, [detail?.group_buy_status, productId])
+  }, [detail?.group_buy_status, productId, qc])
 
   // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 단계별 tier 사다리 UI 제거 (design/groupbuy-instant-sale.md).
   //   공구가는 인원 무관 고정(최대 할인 적용)이라 group_buy_tiers 렌더링 불필요.
