@@ -15,6 +15,8 @@ import { hashPassword, validatePasswordComplexity, verifyPassword } from '@/lib/
 import { DEFAULT_COMMISSION_RATE } from '@/shared/constants'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
+import { dispatchSignupContract } from '@/worker/utils/signup-contract'
+import { hasUnsignedContract } from '@/worker/utils/contract-signatures'
 import {
   resolveDistributorPrice, marginForGrade, effectiveGrade, tierUnitPrice, effectiveTierFloor, qtyTierDiscount,
   type GradeMargin, type DistributorGrade, type QtyTier,
@@ -194,6 +196,9 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
     createDashboardNotification(DB, 'admin', null, 'distributor_pending', '판매사 승인 요청',
       `${business_name} (${business_number})${ntsStatus2 ? ` — 국세청: ${ntsStatus2}` : ' — 국세청: 조회 안 됨'}`,
       '/admin/seller-approval').catch(swallow('wholesale:register:notify'))
+
+    // 🖋️ 2026-06-22: 가입 시 전자계약서 자동발송(모두싸인 카카오). fail-soft — 미설정/실패가 가입 안 막음.
+    dispatchSignupContract(c, { accountType: 'distributor', accountId: sellerId, signerName: representative || name, signerPhone: phone || manager_phone || representative_phone, businessName: business_name })
 
     return c.json({
       success: true,
@@ -1174,6 +1179,11 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
   const { subRole: orderSubRole } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (orderSubRole === 'viewer') return c.json({ success: false, error: '주문 권한이 없는 계정(뷰어)입니다' }, 403)
   const { DB } = c.env
+  // 🖋️ 2026-06-22 (전자계약 차단): 미서명 계약이 있으면 발주 차단 — 카카오 서명 완료 후 거래.
+  //   contract_signatures 행이 없으면(미설정·기존/자격증명 전 계정) 통과 → 락아웃 방지(grandfather).
+  if (await hasUnsignedContract(DB, 'distributor', sellerId)) {
+    return c.json({ success: false, error: '전자계약서 서명 완료 후 발주할 수 있습니다. 카카오로 받은 계약서에 서명해주세요.', code: 'CONTRACT_REQUIRED' }, 403)
+  }
   try {
     await ensureOrderTables(DB)
     // 만료 정리(best-effort): 이 판매사의 1시간 경과 미결제(PENDING) 주문 = 체크아웃 이탈 → EXPIRED.

@@ -82,3 +82,16 @@ export async function updateContractStatusByDocumentId(
   ).bind(status, rawEvent.slice(0, 2000), documentId).run().catch(() => null)
   return res?.meta?.changes ?? 0
 }
+
+/**
+ * 차단(hard) enforcement — 미서명 계약이 있으면 true(거래/승인 차단).
+ *   행이 없으면(자격증명 전·기존 계정·발송 skip) false → 차단 안 함(락아웃 방지, grandfather).
+ *   서명 완료(signed) 행만 있으면 false → 통과.
+ */
+export async function hasUnsignedContract(DB: D1Database, accountType: string, accountId: number): Promise<boolean> {
+  await ensureContractSignaturesTable(DB)
+  const row = await DB.prepare(
+    "SELECT 1 AS x FROM contract_signatures WHERE account_type = ? AND account_id = ? AND status != 'signed' LIMIT 1",
+  ).bind(accountType, Number(accountId)).first<{ x: number }>().catch(() => null)
+  return !!row
+}
