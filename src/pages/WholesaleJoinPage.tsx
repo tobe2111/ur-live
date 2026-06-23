@@ -11,6 +11,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { Store, ArrowRight, CheckCircle2, Loader2, Factory } from 'lucide-react'
 import BusinessCertUpload from '@/components/BusinessCertUpload'
+import { formatBizNo, formatPhoneKr } from '@/utils/format-kr'
 import { useWholesaleMall } from '@/hooks/queries/useWholesale'
 import { WholesaleWordmark } from './wholesale-catalog/WholesaleLogo'
 
@@ -52,6 +53,7 @@ export default function WholesaleJoinPage() {
     manager_email: loginEmail,
   })
   const [loading, setLoading] = useState(false)
+  const [passwordConfirm, setPasswordConfirm] = useState('')
   // 🏭 2026-06-10: 이용약관 동의 (필수) — /wholesale/terms
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -59,9 +61,12 @@ export default function WholesaleJoinPage() {
   // 담당자가 대표자와 동일 — 체크 시 대표자(성명/연락처)를 담당자에 즉시 복사.
   const [sameAsRep, setSameAsRep] = useState(false)
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [k]: e.target.value }))
+  // 🔢 2026-06-23 하이픈 자동 삽입 — 사업자번호/휴대폰(직접 안 쳐도 정규화).
+  const setBiz = (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, business_number: formatBizNo(e.target.value) }))
+  const setPhone = (k: 'manager_phone') => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [k]: formatPhoneKr(e.target.value) }))
   // 대표자 → 담당자 복사(성명+연락처). 토글 ON 이면 대표자 입력이 담당자에 실시간 반영.
   const setRep = (k: 'representative' | 'representative_phone') => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value
+    const v = k === 'representative_phone' ? formatPhoneKr(e.target.value) : e.target.value
     setForm(f => {
       const next = { ...f, [k]: v }
       if (sameAsRep) {
@@ -84,11 +89,13 @@ export default function WholesaleJoinPage() {
     e.preventDefault()
     if (loading) return
     if (!form.business_name.trim()) { toast.error('상호(회사명)를 입력해주세요'); return }
-    if (!/^\d{3}-\d{2}-\d{5}$/.test(form.business_number.trim())) { toast.error('사업자등록번호를 정확히 입력해주세요 (000-00-00000)'); return }
+    if (!/^\d{10}$/.test(form.business_number.replace(/[^0-9]/g, ''))) { toast.error('사업자등록번호 10자리를 정확히 입력해주세요'); return }
     if (!licenseUrl) { toast.error('사업자등록증 이미지를 업로드해주세요'); return }
     if (!form.representative.trim() || !form.representative_phone.trim()) { toast.error('대표자 성명·연락처를 입력해주세요'); return }
     if (!form.manager_name.trim() || !form.manager_phone.trim()) { toast.error('담당자 성명·연락처를 입력해주세요'); return }
     if (!kakaoUser && (!form.email.trim() || !form.password)) { toast.error('로그인 이메일·비밀번호를 입력해주세요'); return }
+    if (!kakaoUser && form.password.length < 8) { toast.error('비밀번호는 8자 이상이어야 합니다'); return }
+    if (!kakaoUser && form.password !== passwordConfirm) { toast.error('비밀번호가 일치하지 않습니다'); return }
     setLoading(true)
     try {
       // 담당자 이메일 — 미입력 시 로그인 이메일을 비즈니스 연락 이메일로 사용.
@@ -218,7 +225,7 @@ export default function WholesaleJoinPage() {
           </div>
           <div>
             <label className="block text-[13px] font-semibold mb-1.5">사업자등록번호 <span className="text-[#FC5424]">*</span></label>
-            <input value={form.business_number} onChange={set('business_number')} disabled={loading} className={inputCls} placeholder="000-00-00000" />
+            <input value={form.business_number} onChange={setBiz} disabled={loading} inputMode="numeric" className={inputCls} placeholder="000-00-00000 (숫자만 입력해도 자동 하이픈)" />
           </div>
 
           {/* 대표자 정보 */}
@@ -252,7 +259,7 @@ export default function WholesaleJoinPage() {
               </div>
               <div>
                 <label className="block text-[13px] font-semibold mb-1.5">담당자 연락처 <span className="text-[#FC5424]">*</span></label>
-                <input value={form.manager_phone} onChange={set('manager_phone')} disabled={loading || sameAsRep} className={`${inputCls} ${sameAsRep ? 'bg-[#F4F5F7] text-[#8A929E]' : ''}`} placeholder="010-0000-0000" />
+                <input value={form.manager_phone} onChange={setPhone('manager_phone')} disabled={loading || sameAsRep} inputMode="numeric" className={`${inputCls} ${sameAsRep ? 'bg-[#F4F5F7] text-[#8A929E]' : ''}`} placeholder="010-0000-0000" />
               </div>
             </div>
             <div className="mt-3">
@@ -270,7 +277,12 @@ export default function WholesaleJoinPage() {
               </div>
               <div>
                 <label className="block text-[13px] font-semibold mb-1.5">비밀번호 <span className="text-[#FC5424]">*</span></label>
-                <input type="password" value={form.password} onChange={set('password')} disabled={loading} className={inputCls} placeholder="10자 이상, 대/소문자+숫자" autoComplete="new-password" />
+                <input type="password" value={form.password} onChange={set('password')} disabled={loading} className={inputCls} placeholder="8자 이상 (영문+숫자)" autoComplete="new-password" />
+              </div>
+              <div>
+                <label className="block text-[13px] font-semibold mb-1.5">비밀번호 확인 <span className="text-[#FC5424]">*</span></label>
+                <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} disabled={loading} className={inputCls} placeholder="비밀번호 재입력" autoComplete="new-password" />
+                {passwordConfirm && form.password !== passwordConfirm && <p className="text-[12px] text-[#FC5424] mt-1">비밀번호가 일치하지 않습니다</p>}
               </div>
             </div>
           )}
