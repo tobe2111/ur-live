@@ -108,42 +108,29 @@ export default function AccountDeleteWarningPage() {
     <div className="min-h-screen bg-white dark:bg-[#020202] pb-32">
       <SEO title={t('accountDeleteWarning.seoTitle')} description={t('accountDeleteWarning.seoDesc')} url="/account/delete-warning" noindex />
 
-      {/* 헤더 — AccountSettings 와 동일 스타일 */}
-      <div
-        className="sticky top-0 md:top-14 z-40 flex items-center px-2 py-3 gap-1"
-        style={{
-          background: 'rgba(10,10,10,0.85)',
-          backdropFilter: 'blur(20px) saturate(140%)',
-          WebkitBackdropFilter: 'blur(20px) saturate(140%)',
-          borderBottom: '0.5px solid rgba(84,84,88,0.34)',
-        }}
-      >
+      {/* 헤더 — 라이트/다크 양쪽 대응 (이전: 인라인 고정 검정 → 라이트에서 본문과 불일치) */}
+      <div className="sticky top-0 md:top-14 z-40 flex items-center px-2 py-3 gap-1 bg-white/85 dark:bg-[#0a0a0a]/85 backdrop-blur-xl backdrop-saturate-150 border-b border-gray-200 dark:border-white/10">
         <button
           type="button"
           onClick={() => navigate(-1)}
           aria-label={t('accountDeleteWarning.back')}
           className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-gray-100 dark:bg-white/[0.06]"
         >
-          <ChevronLeft className="w-5 h-5 text-gray-900 dark:text-white/80" />
+          <ChevronLeft className="w-5 h-5 text-gray-700 dark:text-white/80" />
         </button>
         <h1 className="ml-2 text-[15px] font-semibold text-gray-900 dark:text-white">{t('accountDeleteWarning.title')}</h1>
       </div>
 
       <main className="px-4 pt-5">
-        {/* 경고 헤드라인 */}
-        <div
-          className="rounded-2xl p-5 mb-5"
-          style={{
-            background: 'radial-gradient(ellipse at top, rgba(239,68,68,0.18), transparent 70%), rgba(255,255,255,0.04)',
-          }}
-        >
+        {/* 경고 헤드라인 — 라이트: soft red 카드 / 다크: subtle (이전: 인라인 흰색 오버레이 → 라이트에서 안 보임) */}
+        <div className="rounded-2xl p-5 mb-5 bg-red-50 border border-red-100 dark:bg-white/[0.04] dark:border-transparent">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
-              <AlertTriangle className="w-5 h-5 text-red-400" />
+              <AlertTriangle className="w-5 h-5 text-red-500 dark:text-red-400" />
             </div>
             <div className="flex-1">
               <h2 className="text-[16px] font-bold text-gray-900 dark:text-white mb-1">정말 탈퇴하시겠어요?</h2>
-              <p className="text-[13px] text-gray-900 dark:text-white/60 leading-relaxed">
+              <p className="text-[13px] text-gray-600 dark:text-white/60 leading-relaxed">
                 30일 내에 같은 카카오 계정으로 재로그인하면 복원할 수 있어요.
                 <br />
                 30일이 지나면 모든 데이터가 영구 삭제됩니다.
@@ -160,7 +147,7 @@ export default function AccountDeleteWarningPage() {
             </div>
             <div className="flex-1">
               <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white mb-1">30일 복원 가능 기간</h3>
-              <p className="text-[12.5px] text-gray-900 dark:text-white/55 leading-relaxed">
+              <p className="text-[12.5px] text-gray-600 dark:text-white/55 leading-relaxed">
                 탈퇴 후 30일 내에 같은 카카오 계정으로 다시 로그인하면 모든 데이터를 복원할 수 있어요.
                 30일 후엔 영구 삭제되며 복구 불가합니다.
               </p>
@@ -176,10 +163,10 @@ export default function AccountDeleteWarningPage() {
             </div>
             <div className="flex-1">
               <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white">삭제되는 정보</h3>
-              <p className="text-[12.5px] text-gray-900 dark:text-white/45 mt-0.5">30일 후 영구 삭제됩니다</p>
+              <p className="text-[12.5px] text-gray-500 dark:text-white/45 mt-0.5">30일 후 영구 삭제됩니다</p>
             </div>
           </div>
-          <ul className="space-y-1.5 text-[12.5px] text-gray-900 dark:text-white/55 ml-12">
+          <ul className="space-y-1.5 text-[12.5px] text-gray-600 dark:text-white/55 ml-12">
             <li>• 모든 주문 내역 및 배송 정보</li>
             <li>• 찜한 상품, 장바구니, 최근 본 상품</li>
             <li>• 적립 포인트 및 사용 가능한 쿠폰</li>
@@ -197,7 +184,7 @@ export default function AccountDeleteWarningPage() {
             </div>
             <div className="flex-1">
               <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white mb-1">환불 / 취소 불가</h3>
-              <p className="text-[12.5px] text-gray-900 dark:text-white/55 leading-relaxed">
+              <p className="text-[12.5px] text-gray-600 dark:text-white/55 leading-relaxed">
                 탈퇴 후엔 진행 중인 주문의 취소 및 환불이 불가능합니다.
                 배송 중이거나 완료된 상품의 반품/교환도 어려울 수 있어요.
               </p>
@@ -213,7 +200,7 @@ export default function AccountDeleteWarningPage() {
             </div>
             <div className="flex-1">
               <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white mb-1">혜택 / 등급 손실</h3>
-              <p className="text-[12.5px] text-gray-900 dark:text-white/55 leading-relaxed">
+              <p className="text-[12.5px] text-gray-600 dark:text-white/55 leading-relaxed">
                 30일 내 복원 시 모든 혜택이 회복됩니다.
                 30일이 지나면 포인트, 쿠폰, 등급, 누적 혜택 모두 복구되지 않아요.
               </p>
@@ -232,7 +219,7 @@ export default function AccountDeleteWarningPage() {
                 onChange={(e) => setAgreedSoftDelete(e.target.checked)}
                 className="w-[18px] h-[18px] mt-0.5 rounded accent-pink-500 shrink-0"
               />
-              <span className="text-[12.5px] text-gray-900 dark:text-white/70 leading-relaxed">
+              <span className="text-[12.5px] text-gray-700 dark:text-white/70 leading-relaxed">
                 탈퇴 후 <strong className="text-gray-900 dark:text-white">30일이 지나면 모든 데이터가 영구 삭제</strong>됨을 이해했습니다.
               </span>
             </label>
@@ -243,7 +230,7 @@ export default function AccountDeleteWarningPage() {
                 onChange={(e) => setAgreedLoseBenefits(e.target.checked)}
                 className="w-[18px] h-[18px] mt-0.5 rounded accent-pink-500 shrink-0"
               />
-              <span className="text-[12.5px] text-gray-900 dark:text-white/70 leading-relaxed">
+              <span className="text-[12.5px] text-gray-700 dark:text-white/70 leading-relaxed">
                 30일 이후엔 <strong className="text-gray-900 dark:text-white">포인트, 쿠폰, 등급 등 모든 혜택이 복구되지 않음</strong>을 이해했습니다.
               </span>
             </label>
@@ -254,7 +241,7 @@ export default function AccountDeleteWarningPage() {
                 onChange={(e) => setAgreedNoRefund(e.target.checked)}
                 className="w-[18px] h-[18px] mt-0.5 rounded accent-pink-500 shrink-0"
               />
-              <span className="text-[12.5px] text-gray-900 dark:text-white/70 leading-relaxed">
+              <span className="text-[12.5px] text-gray-700 dark:text-white/70 leading-relaxed">
                 탈퇴 후엔 <strong className="text-gray-900 dark:text-white">진행 중인 주문의 취소/환불이 어려울 수 있음</strong>을 이해했습니다.
               </span>
             </label>
@@ -264,7 +251,7 @@ export default function AccountDeleteWarningPage() {
         {/* 최종 확인 입력 */}
         <div className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] p-5 mb-5">
           <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white mb-2">최종 확인</h3>
-          <p className="text-[12.5px] text-gray-900 dark:text-white/55 mb-3 leading-relaxed">
+          <p className="text-[12.5px] text-gray-600 dark:text-white/55 mb-3 leading-relaxed">
             <Trans
               i18nKey="accountDeleteWarning.confirmInputLabel"
               components={[<strong key="0" className="text-red-400" />]}
@@ -275,7 +262,7 @@ export default function AccountDeleteWarningPage() {
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             placeholder={t('accountDeleteWarning.confirmPlaceholder')}
-            className="w-full px-3.5 py-3 rounded-xl bg-gray-100 dark:bg-white/[0.06] border border-white/10 text-[14px] text-gray-900 dark:text-white placeholder:text-white/30 focus:outline-none focus:border-pink-500/50 focus:bg-white/[0.08]"
+            className="w-full px-3.5 py-3 rounded-xl bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/10 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:border-pink-500/50 focus:bg-white dark:focus:bg-white/[0.08]"
           />
           {confirmText && confirmText !== t('accountDeleteWarning.confirmText') && (
             <p className="text-[12px] text-red-400 mt-2 flex items-center gap-1">
@@ -293,22 +280,15 @@ export default function AccountDeleteWarningPage() {
 
         {/* 머무름 안내 */}
         <div className="text-center mb-2">
-          <p className="text-[12px] text-gray-900 dark:text-white/40 leading-relaxed flex items-center justify-center gap-1.5">
+          <p className="text-[12px] text-gray-500 dark:text-white/40 leading-relaxed flex items-center justify-center gap-1.5">
             <Heart className="w-3.5 h-3.5 text-pink-500/60" />
             언제든지 돌아올 수 있어요
           </p>
         </div>
       </main>
 
-      {/* 하단 고정 버튼 — AccountSettings 와 일관 / PC xl+ 사이드바 우측부터 */}
-      <div
-        className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-40 px-4 py-4"
-        style={{
-          background: 'linear-gradient(to top, rgba(2,2,2,1) 60%, rgba(2,2,2,0.6))',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-        }}
-      >
+      {/* 하단 고정 버튼 — 라이트/다크 양쪽 대응 (이전: 인라인 고정 검정 그라데이션 → 라이트 본문과 불일치) */}
+      <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-40 px-4 py-4 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-xl border-t border-gray-200 dark:border-white/10">
         <div className="ur-content-narrow space-y-2">
           <button
             type="button"
@@ -331,7 +311,7 @@ export default function AccountDeleteWarningPage() {
           </button>
           <Link
             to="/user/profile"
-            className="w-full h-[44px] flex items-center justify-center rounded-2xl bg-gray-100 dark:bg-white/[0.06] text-gray-900 dark:text-white/70 text-[13px] font-medium hover:bg-gray-200 dark:hover:bg-white/[0.08] transition-colors"
+            className="w-full h-[44px] flex items-center justify-center rounded-2xl bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-white/70 text-[13px] font-medium hover:bg-gray-200 dark:hover:bg-white/[0.08] transition-colors"
           >
             {t('accountDeleteWarning.cancel')}
           </Link>

@@ -47,6 +47,8 @@ export default function LoginPage() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const hasRedirected = useRef(false)
+  // 🛡️ 2026-06-23: 카카오 로그인 진행 가드 — 반복 클릭 방지 (ref = re-render 없음 → iOS freeze 회피)
+  const kakaoNavRef = useRef(false)
 
   // ✅ Region-based auth store 선택 (hooks 규칙 준수)
   const isKR = isKorea()
@@ -127,7 +129,35 @@ export default function LoginPage() {
   //   navigation 즉시 실행. 이전: setLoading/setError → React re-render → iOS Safari 가
   //   navigation 을 큐잉하고 freeze. 카카오 로그인은 server-side OAuth redirect 만 사용 →
   //   Kakao JS SDK 불필요. 동기 navigation 으로 단순화.
+  // 🛡️ 2026-06-23 (대표 신고 — 로딩 장면 없어 반복 클릭): 클릭 즉시 풀스크린 로딩 오버레이.
+  //   ⚠️ React setState 금지 (2026-05-04 사고: 카카오 클릭 시 re-render → iOS Safari navigation 큐잉 freeze).
+  //   → 순수 DOM 으로 주입(렌더 사이클 무관) 후 즉시 navigation. 페이지가 떠나기 전까지 오버레이 노출 → 재클릭 차단 + 체감속도.
+  function showKakaoLoadingOverlay() {
+    try {
+      if (typeof document === 'undefined' || document.getElementById('ur-kakao-loading')) return
+      const o = document.createElement('div')
+      o.id = 'ur-kakao-loading'
+      o.setAttribute('role', 'alert')
+      o.setAttribute('aria-live', 'assertive')
+      o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(0,0,0,0.55);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)'
+      const sp = document.createElement('div')
+      sp.style.cssText = 'width:38px;height:38px;border:3px solid rgba(255,255,255,0.25);border-top-color:#fff;border-radius:50%;animation:ur-kakao-spin 0.7s linear infinite'
+      const tx = document.createElement('div')
+      tx.style.cssText = 'color:#fff;font-size:14px;font-weight:600;letter-spacing:-0.01em'
+      tx.textContent = '카카오 로그인 중…'
+      o.appendChild(sp); o.appendChild(tx)
+      if (!document.getElementById('ur-kakao-spin-kf')) {
+        const st = document.createElement('style'); st.id = 'ur-kakao-spin-kf'
+        st.textContent = '@keyframes ur-kakao-spin{to{transform:rotate(360deg)}}'
+        document.head.appendChild(st)
+      }
+      document.body.appendChild(o)
+    } catch { /* 오버레이 실패가 navigation 막지 않음 */ }
+  }
+
   function handleKakaoLogin() {
+    if (kakaoNavRef.current) return // 이미 진행 중 — 반복 클릭 무시
+    kakaoNavRef.current = true
     try {
       const rawReturnUrl = searchParams.get('returnUrl')
         || sessionStorage.getItem('returnUrl')
@@ -137,8 +167,11 @@ export default function LoginPage() {
       if (wantsSwitch) {
         params.set('force_account', '1')
       }
+      showKakaoLoadingOverlay() // 순수 DOM — iOS freeze 없음
       window.location.href = `/auth/kakao/start?${params.toString()}`
     } catch (err: unknown) {
+      kakaoNavRef.current = false // 실패 시 재시도 허용
+      try { document.getElementById('ur-kakao-loading')?.remove() } catch { /* */ }
       if (import.meta.env.DEV) console.error('[Kakao Login] ❌ 오류 발생:', err)
       toast.error(t('auth.kakaoLoginError'))
     }
