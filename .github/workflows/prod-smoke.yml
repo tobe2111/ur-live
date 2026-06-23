@@ -76,6 +76,20 @@ jobs:
             echo "⚠️  WARN  게스트 requires_login 플래그 미확인 (상품 0개거나 응답형식 변경) — 실패 처리 안 함"
           fi
 
+          echo "##### 5) 소비자 핵심 경로 (교환권/동네딜/홈 SSR) #####"
+          check "교환권 카탈로그 API"        "/api/products?page=1&limit=20&deal_only=1&sort=price_low" '"success"'
+          # 응답 형식 불확실한 건 HTTP 200 만 단언(가짜 빨강 방지).
+          check "동네딜(공구) API"           "/api/group-buy/products?status=active"                    ''
+          check "교환권 카테고리"            "/api/vouchers/categories"                                 ''
+          # 소비자 홈 SSR — index.html #root 에 데이터 슬롯이 주입돼야 함(없으면 홈 스켈레톤/콜드 회귀).
+          HOME=$(curl -s --max-time 25 "$BASE/" 2>/dev/null || true)
+          if printf '%s' "$HOME" | grep -q "__SSR_INITIAL_MAIN__"; then
+            echo "✅ PASS  소비자 홈 SSR 슬롯 주입됨"
+          else
+            echo "❌ FAIL  소비자 홈 SSR 슬롯 없음 — 홈 콜드 스켈레톤 회귀 가능"
+            FAIL=1
+          fi
+
           echo
           if [ "$FAIL" = "1" ]; then
             echo "::error::PROD SMOKE 실패 — 위 ❌ 항목 확인. 도매몰 핵심 플로우 회귀 가능."

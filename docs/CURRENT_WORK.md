@@ -1,5 +1,27 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-23 — 도매몰(유통스타트) 전수 QA 스윕 + 자동 QA 2층 구축 (대표 "사람이 QA 안 해도 되게 / 빠짐없이")
+**배경**: 대표가 도매몰 로딩·로그인 불안정 신고 → 반응형 패치를 넘어 **선제적 전수감사 + 자동 QA**로 전환. 감사 에이전트는 일관되게 과대보고 → **모든 발견을 코드로 재검증해 진짜만(라운드당 ~1건) 수정**(불필요한 머니/주문 코드 변경 방지).
+
+**고친 진짜 버그/개선 (전부 배포):**
+- **카탈로그 로딩**: `worker/index.ts` WHOLESALE SSR self-fetch 타임아웃 1.5→3s(콜드 스켈레톤 고착). 근본 enabler=**CACHE_KV 대시보드 바인딩**(대표가 연결 — prod-diag로 `x-ws-cache: KV-HIT` 확인).
+- **상품상세 로그인 UI**: `useWholesaleProduct` 인증별 캐시키 분리(`wholesaleAuthSeg`) + `WholesaleProductPage` `locked=!token` — 로그인했는데 비로그인 UI 뜨던 것. 전 dual-mode 가격쿼리(catalog/premium/inline) 동일 적용.
+- **뒤로가기**: `useWholesaleBack`(navigate(-1)+폴백) — 5개 페이지 하드코딩 `navigate('/wholesale')` 통일.
+- **머니쿼리 에러삼킴**: `useWholesale.ts` 머니/트러스트 5훅 `.catch(()=>빈값)` 제거(잔액 ₩0 오표시·retry 무력화 해소). `useWholesaleMall` 폴백은 의도적 유지.
+- **제조사 정산 라인 멱등화**: `wholesale-settlement.ts` 정산 INSERT `ON CONFLICT(order_id,product_id,source) DO NOTHING` + 라인별 changes 게이트(동시 같은-주문 under-credit 방지). UNIQUE 인덱스 self-heal(ensureSourceColumn+ensureOrderTables). 이중적립은 원래 UNIQUE로 차단됨(에이전트 "인덱스 부재" 오류).
+- **가입/로그인 폴리시**: SupplierLoginPage 카카오 pending 안내 배너 + StaffLoginPage is_distributor 방어. 단일세션은 대표 요청 보안정책이라 유지.
+
+**감사했으나 깨끗(과대보고 배제, 코드 재검증):** 가입/로그인 핵심·예치금 CAS·역전 대칭·멱등 환불·대시보드 refetch(의도된 로직)·채팅(IDOR/신원비공개)·게시판(XSS/마스킹)·세금계산서(멱등/fail-soft)·OEM(검증/null-safe). **마진 UI 신규**(미끼/마진 전략).
+
+**자동 QA 2층 (사람 QA 대체):**
+- **배포 전(CI verify.yml)**: 신규 단위테스트 — `use-wholesale-back`·`wholesale-invariants`(authSeg 분리·머니훅 에러삼킴 정적검사). 기존 머니/인증 40+ 테스트 + 18 정적게이트.
+- **배포 후(prod)**: `.github/workflows/prod-smoke.yml` — 3시간 스케줄+`smoke-trigger` bump. 도매 카탈로그/SSR슬롯/게스트가격가림/소비자 핵심 불변식 **단언**(깨지면 빨강). prod에서 green 확인.
+- **prod 실측 수단**: `.github/diag-trigger` bump → `prod-diag.yml`(read-only 측정, egress 우회).
+
+**한계(정직)**: 실결제 E2E는 staging 없이 자동화 불가(결제/정산 로직은 단위테스트로 커버). 
+
+**미뤄둔(대표 결정/자료 대기)**: 전자계약 **모두싸인→유캔싸인 전환**(다른 세션 결정 — 수정 계약서+UCanSign API 대기), 제조사 정산 **요일** 확정(주단위 방향, 요일 미정). 계약서 초안: `docs/legal/{판매사,제조사}-*.md`(법률검토 권장).
+
 ## ✅ 2026-06-23 — `/vouchers` 연속 스크롤 + 중앙 스크롤스파이 탭 (대표 AskUserQuestion 승인)
 **대표 지시**: `/vouchers` 상단 `[교환권][쇼핑]` 탭을 **중앙 배치**하고, "교환권 어느정도 내리면 쇼핑 상품들이 뜨길" — 한 페이지 연속 스크롤. AskUserQuestion 답: "연속 스크롤(추천)" + "교환권 20개씩 + 더보기 버튼, 그 아래 쇼핑".
 - **변경** (`VouchersPage.tsx`, `[UNLOCK_LOADING]`): ① 탭바 **중앙 정렬**(검색 아이콘 우측 absolute), 탭 클릭 = **섹션 점프**(scrollTo/scrollIntoView), 활성 탭 = **스크롤스파이**(쇼핑 섹션 top≤100 감지). 콘텐츠 교체/URL `?tab` 전환 제거. ② 교환권 무한스크롤 → **20개 cap + '교환권 더보기'**(+20). ③ 더보기 **아래로 항상** 쇼핑 `<section>`(🛍️ 헤더 + 기존 `ShoppingGrid` 무한스크롤) 렌더.
