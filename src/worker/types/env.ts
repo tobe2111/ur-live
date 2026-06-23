@@ -42,12 +42,13 @@ export interface Env {
   NAVER_SEARCH_CLIENT_ID?: string;
   NAVER_SEARCH_CLIENT_SECRET?: string;
 
-  // ---- 모두싸인(Modusign) 전자계약 (2026-06-22) ----
-  //   가입 시 계약서 자동발송. Dashboard → 모두싸인 API KEY 발급 + 계약서 템플릿 등록(templateId).
-  //   전부 선택 — 미설정 시 sendContractFromTemplate() 가 fail-soft(가입 안 막고 미발송 로그).
-  MODUSIGN_API_KEY?: string;
-  MODUSIGN_TEMPLATE_ID?: string;      // 기본 계약서 템플릿 (플로우별 복수면 호출 시 templateId 지정)
-  MODUSIGN_WEBHOOK_SECRET?: string;   // webhook 공유 시크릿(상태변경 수신 검증)
+  // ---- 유캔싸인(UCanSign) 전자계약 (2026-06-22) ----
+  //   가입 시 계약서 자동발송. app.ucansign.com 개발자메뉴 → API KEY 발급 + 계약서 템플릿 등록(templateId).
+  //   전부 선택 — 미설정 시 sendContractFromTemplate() 가 fail-soft(가입 안 막고 미발송).
+  UCANSIGN_API_KEY?: string;
+  UCANSIGN_TEMPLATE_ID?: string;      // 기본 계약서 템플릿 (플로우별 복수면 호출 시 templateId 지정)
+  UCANSIGN_WEBHOOK_SECRET?: string;   // customValue5 에 심어 webhook 에코값으로 검증
+  UCANSIGN_TEST_MODE?: string;        // 'true' 면 테스트발송(포인트 차감 X, 효력 미보장)
 
   // ---- Firebase ----
   FIREBASE_PROJECT_ID?: string;
