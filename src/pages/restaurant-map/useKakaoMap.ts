@@ -360,6 +360,28 @@ export function useKakaoMap({
       overlaysRef.current.push(overlay)
     })
 
+    // 🗺️ 2026-06-23 (대표 — 현위치): 내 위치 파란 점(GPS). userLoc 있을 때만.
+    if (userLoc && Number.isFinite(userLoc.lat) && Number.isFinite(userLoc.lng)) {
+      const meContent = document.createElement('div')
+      meContent.innerHTML = `
+        <div style="
+          width: 18px; height: 18px; border-radius: 50%;
+          background: #2563eb; border: 3px solid #fff;
+          box-shadow: 0 0 0 4px rgba(37,99,235,0.25), 0 1px 4px rgba(0,0,0,0.3);
+          transform: translate(-50%, -50%);
+        "></div>
+      `
+      const meOverlay = new window.kakao.maps.CustomOverlay({
+        position: new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng),
+        content: meContent,
+        yAnchor: 0.5,
+        xAnchor: 0.5,
+        zIndex: 2,
+        map: mapInstance.current,
+      })
+      overlaysRef.current.push(meOverlay)
+    }
+
     // 🛡️ 2026-06-20 (대표 — 줌 전수조사): 초기 뷰 맞춤은 데이터가 처음 들어온 시점 '한 번만'.
     //   이후(줌/마커 재빌드)엔 절대 재-fit 안 함 → 사용자 줌/이동 보존. category 변경 등으로 다시
     //   맞추고 싶으면 didInitialFit.current=false 로 리셋하는 별도 트리거를 추가(현재는 최초 1회).

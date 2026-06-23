@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
-import { MapPin, Map as MapIcon, ChevronDown, Search, Bell, ShoppingCart } from 'lucide-react'
+import { MapPin, Map as MapIcon, ChevronDown, Search, Bell, ShoppingCart, LocateFixed, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
@@ -126,6 +126,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const [sheetSnap, setSheetSnap] = useState<'peek' | 'mid' | 'full'>('peek')
   // 🛡️ 2026-04-30 Phase 5: '내 주변' 모드 (GPS 권한 요청 + 거리순 자동)
   const [nearMeMode, setNearMeMode] = useState(false)
+  // 🗺️ 2026-06-23 (대표 — 현위치 버튼): GPS 조회 중 로딩 표시.
+  const [locating, setLocating] = useState(false)
   // 🛡️ 2026-04-30 Phase 5: 검색 히스토리 (localStorage)
   const [searchHistory, setSearchHistory] = useState<string[]>(() =>
     storage.getJSON<string[]>('restaurant_search_history', [])
@@ -393,8 +395,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       }
       return
     }
+    setLocating(true)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        setLocating(false)
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
         setUserLoc(loc)
         setNearMeMode(true)
@@ -404,7 +408,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           mapInstance.current.setLevel(5)
         }
       },
-      () => toast.error(t('restaurantMap.geoPermissionDenied')),
+      () => { setLocating(false); toast.error(t('restaurantMap.geoPermissionDenied')) },
       { timeout: 8000, enableHighAccuracy: true, maximumAge: 60000 }
     )
   }, [userLoc])
@@ -591,6 +595,20 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         onOpenFilter={() => setFilterSheetOpen(true)}
         home={home}
       />
+
+      {/* 🗺️ 2026-06-23 (대표 — 현위치 버튼): 누르면 GPS 현위치로 지도 이동(+파란 점 표시).
+          peek 시트(240px) 위로 떠 있게 배치. nearMe 활성 시 강조, 조회 중 스피너. */}
+      <button
+        onClick={requestNearMe}
+        disabled={locating}
+        aria-label={t('restaurantMap.myLocation', { defaultValue: '현위치로 이동' })}
+        className={`absolute right-3 z-20 w-11 h-11 flex items-center justify-center rounded-full shadow-lg border border-gray-100 dark:border-[#1A1A1A] active:scale-95 transition-all disabled:opacity-70 ${
+          nearMeMode ? 'bg-pink-500 text-white border-pink-500' : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200'
+        }`}
+        style={{ bottom: 'calc(240px + 16px)' }}
+      >
+        {locating ? <Loader2 className="w-5 h-5 animate-spin" /> : <LocateFixed className="w-5 h-5" />}
+      </button>
 
       {/* 🗺️ 2026-06-22 (대표 시안 — 야놀자식): 선택 시 하단은 납작한 가로 카드(SelectedDealCard) →
           지도 넓게 + 좌우 스와이프 캐러셀. 미선택 시에만 드래그 리스트 시트. (둘은 배타) */}
