@@ -5309,7 +5309,8 @@
       "health": "Salud",
       "pet": "Mascota",
       "stay": "Alojamiento",
-      "activity": "Actividad"
+      "activity": "Actividad",
+      "etc": "Otros"
     },
     "picker": {
       "placeholder": "Nombre de tienda o dirección"

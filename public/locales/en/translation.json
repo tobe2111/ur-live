@@ -5362,7 +5362,8 @@
       "health": "Health",
       "pet": "Pet",
       "stay": "Stay",
-      "activity": "Activity"
+      "activity": "Activity",
+      "etc": "Other"
     },
     "picker": {
       "placeholder": "Store name or address"

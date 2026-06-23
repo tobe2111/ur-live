@@ -5309,7 +5309,8 @@
       "health": "ヘルス",
       "pet": "ペット",
       "stay": "宿泊",
-      "activity": "アクティビティ"
+      "activity": "アクティビティ",
+      "etc": "その他"
     },
     "picker": {
       "placeholder": "店名または住所を入力"

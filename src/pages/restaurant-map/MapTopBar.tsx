@@ -3,8 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Search, X, Bell, ShoppingCart, Navigation, SlidersHorizontal } from 'lucide-react'
 import { storage } from '@/shared/utils/storage'
 import UrDealLogo from '@/components/brand/UrDealLogo'
-
-type VoucherType = 'all' | 'meal_voucher' | 'beauty_voucher' | 'health_voucher' | 'pet_voucher' | 'stay_voucher' | 'activity_voucher'
+import { type MapVoucherType, MAP_VOUCHER_DEFS } from './voucher-types'
 
 interface Props {
   search: string
@@ -14,24 +13,14 @@ interface Props {
   searchHistory: string[]
   setSearchHistory: (v: string[]) => void
   pushSearchHistory: (q: string) => void
-  voucherType: VoucherType
-  setVoucherType: (v: VoucherType) => void
+  voucherType: MapVoucherType
+  setVoucherType: (v: MapVoucherType) => void
   nearMeMode: boolean
   requestNearMe: () => void
   activeFilterCount: number
   onOpenFilter: () => void
   home?: boolean
 }
-
-const VOUCHER_TYPE_DEFS: Array<{ key: VoucherType; labelKey: string; defaultLabel: string; emoji: string }> = [
-  { key: 'all', labelKey: 'map.voucher.all', defaultLabel: '전체', emoji: '✨' },
-  { key: 'meal_voucher', labelKey: 'map.voucher.meal', defaultLabel: '식사', emoji: '🍽️' },
-  { key: 'beauty_voucher', labelKey: 'map.voucher.beauty', defaultLabel: '뷰티', emoji: '💇' },
-  { key: 'health_voucher', labelKey: 'map.voucher.health', defaultLabel: '헬스', emoji: '💪' },
-  { key: 'pet_voucher', labelKey: 'map.voucher.pet', defaultLabel: '반려', emoji: '🐶' },
-  { key: 'stay_voucher', labelKey: 'map.voucher.stay', defaultLabel: '숙소', emoji: '🏨' },
-  { key: 'activity_voucher', labelKey: 'map.voucher.activity', defaultLabel: '액티비티', emoji: '🎯' },
-]
 
 /**
  * 🗺️ 2026-06-22 (대표 시안 — 야놀자식): 지도 위 상단 플로팅 바.
@@ -176,7 +165,7 @@ export default function MapTopBar({
             <span>{t('restaurantMap.nearMe')}</span>
           </button>
           {/* 카테고리 칩 */}
-          {VOUCHER_TYPE_DEFS.map(v => (
+          {MAP_VOUCHER_DEFS.map(v => (
             <button
               key={v.key}
               onClick={() => setVoucherType(v.key)}
