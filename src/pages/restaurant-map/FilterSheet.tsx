@@ -169,6 +169,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
         {/* apply with live count */}
         <div className="px-5 py-4 border-t border-gray-100 dark:border-[#1A1A1A] shrink-0" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
           <button
+            data-testid="filter-apply"
             onClick={() => onApply(region, district, sort, radius, price)}
             className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[15px] font-extrabold rounded-2xl active:scale-[0.98] transition-transform"
           >

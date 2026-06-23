@@ -320,7 +320,7 @@ export default function BottomNav() {
           액자 안에 노출(lg:hidden 제거). app-frame-bar 가 lg+ 에서 프레임 폭(430)으로 중앙 정렬.
           모바일(<lg)은 app-frame-bar inert → 종전 full-width 동작 그대로. linkshopPath/isActivePath
           로직은 무변경(표시 위치만). */}
-      <div className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none hide-on-keyboard app-frame-bar">
+      <div data-testid="bottom-nav" className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none hide-on-keyboard app-frame-bar">
         {/* 🛡️ 2026-05-19: 사용자 요청 — 진한 border-t (검정색 선) 제거. 다크 모드는 그대로, 라이트는 미세 회색 (gray-100). */}
         <div className="pointer-events-auto bg-white dark:bg-[#020202] border-t border-gray-100 dark:border-[#1A1A1A]"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
