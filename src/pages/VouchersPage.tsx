@@ -322,10 +322,22 @@ const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: VoucherProduc
   )
 })
 
-// 🛒 2026-06-20 (사용자 결정 — 교환권/쇼핑 상단 탭 분리): 쇼핑 탭 = 일반 상품(exclude_deal_only=1) 2열 그리드.
-//   /browse 와 동일 데이터·카드(BrowseProductCard 재사용). 교환권(1열 무한)과 독립 컴포넌트라 탭 전환 시
-//   서로 스크롤/데이터 안 묻힘. 활성 탭일 때만 마운트(불필요 fetch 0).
+// 🛒 2026-06-23 (대표 — '쇼핑도 카테고리 전에 짜뒀잖아'): /browse 와 동일한 쇼핑 카테고리.
+//   key 는 products.category 서버 필터값(전체='all' → 필터 없음). 라벨/이모지도 BrowsePage 와 1:1.
+const SHOP_CATEGORIES: Array<{ key: string; label: string; emoji: string }> = [
+  { key: 'all',     label: '전체',   emoji: '🛍️' },
+  { key: 'food',    label: '식품',   emoji: '🍱' },
+  { key: 'fashion', label: '패션',   emoji: '👗' },
+  { key: 'beauty',  label: '뷰티',   emoji: '💄' },
+  { key: 'living',  label: '리빙',   emoji: '🛋️' },
+  { key: 'digital', label: '디지털', emoji: '📱' },
+]
+
+// 🛒 2026-06-20 (사용자 결정 — 교환권/쇼핑 상단 탭 분리) → 2026-06-23 연속 스크롤로 전환: 쇼핑 섹션 =
+//   일반 상품(exclude_deal_only=1) 그리드. /browse 와 동일 데이터·카드(BrowseProductCard)·카테고리.
+//   교환권 더보기 버튼 아래에 이어짐. 카테고리 칩 선택 시 해당 카테고리로 재조회(무한 스크롤 유지).
 function ShoppingGrid() {
+  const [shopCategory, setShopCategory] = useState('all')
   const [items, setItems] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -335,6 +347,7 @@ function ShoppingGrid() {
   const load = useCallback((pageNum: number, reset: boolean) => {
     if (reset) setLoading(true); else setLoadingMore(true)
     const params = new URLSearchParams({ page: String(pageNum), limit: '20', exclude_deal_only: '1', sort: 'popular' })
+    if (shopCategory !== 'all') params.set('category', shopCategory)
     api.get(`/api/products?${params.toString()}`)
       .then(r => {
         if (r.data?.success) {
@@ -346,7 +359,8 @@ function ShoppingGrid() {
       })
       .catch(() => { /* graceful */ })
       .finally(() => { setLoading(false); setLoadingMore(false) })
-  }, [])
+  }, [shopCategory])
+  // 카테고리 변경(load identity 변경) 시 1페이지부터 리셋 로드.
   useEffect(() => { load(1, true) }, [load])
   useEffect(() => {
     if (!sentinelRef.current || !hasMore || loadingMore || loading) return
@@ -357,7 +371,28 @@ function ShoppingGrid() {
     return () => ob.disconnect()
   }, [hasMore, loadingMore, loading, page, load])
   return (
-    <div className="ur-content-wide px-4 lg:px-8 py-4">
+    <div className="ur-content-wide px-4 lg:px-8 pt-1 pb-4">
+      {/* 🛒 2026-06-23: 쇼핑 카테고리 칩 (가로 스크롤). 선택 = 잉크 filled(B&W), /browse active 와 동일 톤. */}
+      <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-3">
+        {SHOP_CATEGORIES.map(c => {
+          const active = shopCategory === c.key
+          return (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => setShopCategory(c.key)}
+              className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
+                active
+                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-sm'
+                  : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2A2A2A]'
+              }`}
+            >
+              <span>{c.emoji}</span>
+              {c.label}
+            </button>
+          )
+        })}
+      </div>
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
           {Array.from({ length: 6 }).map((_, i) => (
