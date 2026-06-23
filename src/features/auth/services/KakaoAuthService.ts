@@ -170,8 +170,11 @@ export class KakaoAuthService {
             'Kakao User',
       email: data.kakao_account?.email,
       emailVerified: data.kakao_account?.is_email_verified === true,
-      profileImage: (data.properties?.profile_image ||
-                    data.kakao_account?.profile?.profile_image_url || '')
+      // 🛡️ 2026-06-23 (대표 신고 — 우리 프로필이 옛 카카오 사진/배경으로 박힘): 카카오 공식 권장
+      //   현행 필드 `kakao_account.profile.profile_image_url` 를 **우선**. `properties.profile_image` 는
+      //   레거시라 사용자가 사진 변경해도 stale 하게 남는 케이스가 있어 후순위 폴백으로만 사용.
+      profileImage: (data.kakao_account?.profile?.profile_image_url ||
+                    data.properties?.profile_image || '')
                     .replace(/^http:\/\//, 'https://'),
       // 🛡️ 2026-05-24: 카카오 phone_number — scope 동의 시만 받음 (비즈 인증 앱).
       //   미동의 시 undefined → users.phone 변경 없이 NULL 유지 (기존 데이터 안 덮어씀).
