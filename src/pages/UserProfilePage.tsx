@@ -164,8 +164,11 @@ export default function UserProfilePage() {
       {/* v4 딜 잔액 + 충전 (큰 박스) */}
       <TeamPointsCard />
 
+      {/* v4 광고 리워드 카드 — 딜 버는 수단이라 딜 잔액 바로 아래(웹은 null 렌더·네이티브 전용) */}
+      <RewardAdCard />
+
       {/* 🧹 2026-06-22 (대표 — '내 자산 먼저' IA 재배치): 소비자 본인 자산(주문현황+나의 이용내역)을
-          역할 진입/수익 CTA 보다 위로. 순서: 딜 잔액 → 나의 이용내역 → 수익·추천(접힘) → 역할 진입 → 광고. */}
+          역할 진입/수익 CTA 보다 위로. 순서: 딜 잔액(딜 벌기) → 나의 이용내역 → 수익·추천(접힘) → 역할 진입. */}
 
       {/* v4 주문 현황 */}
       <OrderStatusBar />
@@ -228,9 +231,6 @@ export default function UserProfilePage() {
       <div className="ur-content-medium px-4 lg:px-8 pt-5">
         <RoleCtaGrid />
       </div>
-
-      {/* v4 광고 리워드 카드 */}
-      <RewardAdCard />
 
       {/* 🧹 2026-06-22 (대표 — 도움말 비중 축소): 도움말/약관 InsetGroup 을 최하단 footer 로 이동(아래 로그아웃 다음). */}
 

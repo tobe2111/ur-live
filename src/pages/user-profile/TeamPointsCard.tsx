@@ -27,7 +27,7 @@ export default function TeamPointsCard() {
   }, [])
 
   return (
-    <div className="ur-content-medium px-5 lg:px-8 py-3">
+    <div className="ur-content-medium px-4 lg:px-8 py-3">
       <div className="bg-gray-50 dark:bg-[#121212] rounded-2xl px-5 py-4 border border-gray-200 dark:border-[#2A2A2A]">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
