@@ -23,6 +23,7 @@
     "verify:sql": "vite-node scripts/verify-wholesale-sql.ts",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
+    "test:e2e:mobile": "playwright test mobile-viewport-smoke --project=chromium",
     "db:migrate": "wrangler d1 execute toss-live-commerce-db --local --file=migrations/001_initial.sql",
     "db:migrate:all": "node scripts/migrate-all.js",
     "db:migrate:all:prod": "node scripts/migrate-all.js --prod",

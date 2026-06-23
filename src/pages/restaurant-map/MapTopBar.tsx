@@ -148,6 +148,7 @@ export default function MapTopBar({
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar items-center">
           {/* 필터 */}
           <button
+            data-testid="open-filter"
             onClick={onOpenFilter}
             aria-label={t('map.sheet.filterAria', { defaultValue: '지역·카테고리 필터 열기' })}
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[12px] font-semibold shrink-0 shadow-sm border transition-all ${
