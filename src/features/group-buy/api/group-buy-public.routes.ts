@@ -676,6 +676,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const code = c.req.param('code')
     if (!code) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
     try {
+      // 🛰️ 2026-06-23 사용 위치(소프트 증거, 게이트 X) — body 에 있으면만 기록.
+      const body = await c.req.json<{ lat?: number; lng?: number }>().catch(() => ({} as { lat?: number; lng?: number }))
       // 🛡️ 머니룰: claim-before-credit — 미사용+본인 일 때만 원자적 used 선점.
       const res = await DB.prepare(
         "UPDATE vouchers SET status='used', used_at=datetime('now') WHERE code=? AND user_id=? AND status='unused'"
@@ -691,6 +693,13 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       if (!row) return c.json({ success: false, error: '공구권을 찾을 수 없습니다' }, 404)
       if (!claimed && row.status !== 'used') {
         return c.json({ success: false, error: row.status === 'refunded' ? '환불된 공구권입니다' : '이미 처리되었거나 사용할 수 없는 공구권입니다' }, 409)
+      }
+      // 🛰️ 사용 위치 소프트 기록(증거용) — 방금 사용한 건만(멱등 재사용엔 덮지 않음).
+      if (claimed && row.id != null) {
+        try {
+          const { recordVoucherRedemptionLocation } = await import('../../../worker/utils/voucher-redemption')
+          await recordVoucherRedemptionLocation(DB, Number(row.id), body.lat, body.lng)
+        } catch { /* best-effort */ }
       }
       // claimed === true (방금 사용) 또는 이미 used(멱등 반환)
       const usedAtMs = row.used_at ? Date.parse(row.used_at.replace(' ', 'T') + 'Z') : Date.now()
