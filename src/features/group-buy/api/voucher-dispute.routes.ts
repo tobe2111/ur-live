@@ -20,6 +20,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/auth'
 import { safeError } from '@/worker/utils/safe-error'
+import { ensureVoucherRedemptionsTable } from '@/worker/utils/voucher-redemption'
 
 type Vars = { user?: { id: string | number; type?: string; role?: string } }
 
@@ -174,12 +175,16 @@ adminApp.get('/', async (c) => {
   try {
     const DB = c.env.DB
     await ensureDisputeTable(DB)
+    await ensureVoucherRedemptionsTable(DB)
     const { results } = await DB.prepare(`
       SELECT d.id, d.voucher_id, d.product_id, d.seller_id, d.reason, d.status, d.customer_response, d.created_at,
-             v.code, v.status as voucher_status, p.name as product_name, p.restaurant_name
+             v.code, v.status as voucher_status, p.name as product_name, p.restaurant_name,
+             p.restaurant_lat AS store_lat, p.restaurant_lng AS store_lng,
+             vr.used_lat, vr.used_lng
       FROM voucher_disputes d
       LEFT JOIN vouchers v ON v.id = d.voucher_id
       LEFT JOIN products p ON p.id = d.product_id
+      LEFT JOIN voucher_redemptions vr ON vr.voucher_id = d.voucher_id
       WHERE d.status = 'open' ORDER BY d.id DESC LIMIT 200
     `).all().catch(() => ({ results: [] }))
     return c.json({ success: true, data: results ?? [] })

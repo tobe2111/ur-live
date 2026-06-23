@@ -8,14 +8,33 @@ import { toast } from '@/hooks/useToast'
  *   확인 → POST self-redeem(CAS) → 라이브 화면(실시간 시계·매장명·움직임 = 캡처 위조 방지) + 60초 취소.
  *   풀스크린 모달 규칙: z-[10000](하단 네비 z-[9999] 위).
  */
+/** 🛰️ 사용 위치 소프트 증거: 권한 있으면만 best-effort 수집(게이트 X). 실패/거부/타임아웃 → null. */
+function getGeo(timeoutMs = 3000): Promise<{ lat: number; lng: number } | null> {
+  return new Promise((resolve) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return resolve(null)
+    let done = false
+    const finish = (v: { lat: number; lng: number } | null) => { if (!done) { done = true; resolve(v) } }
+    const t = setTimeout(() => finish(null), timeoutMs)
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => { clearTimeout(t); finish({ lat: pos.coords.latitude, lng: pos.coords.longitude }) },
+        () => { clearTimeout(t); finish(null) },
+        { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 60_000 },
+      )
+    } catch { clearTimeout(t); finish(null) }
+  })
+}
+
 export default function VoucherRedeemModal({
   code,
   storeName,
+  storeAddress,
   onClose,
   onRedeemed,
 }: {
   code: string
   storeName?: string
+  storeAddress?: string
   onClose: () => void
   onRedeemed?: () => void
 }) {
@@ -38,7 +57,8 @@ export default function VoucherRedeemModal({
   async function redeem() {
     setPhase('loading')
     try {
-      const res = await api.post(`/api/group-buy/vouchers/${encodeURIComponent(code)}/self-redeem`)
+      const geo = await getGeo() // 소프트 — 없어도 진행(게이트 X)
+      const res = await api.post(`/api/group-buy/vouchers/${encodeURIComponent(code)}/self-redeem`, geo ? { lat: geo.lat, lng: geo.lng } : {})
       const d = res.data?.data
       if (!res.data?.success) throw new Error(res.data?.error || 'fail')
       setStore(d?.storeName || store)
@@ -114,6 +134,16 @@ export default function VoucherRedeemModal({
             ) : (
               <button onClick={onClose} className="mt-5 w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-extrabold">완료</button>
             )}
+
+            {/* 🗺️ 2026-06-23 카카오맵 후기 유도(아웃링크) — 리뷰는 가져올 수 없으니 작성을 유도(가게 평판↑). */}
+            <a
+              href={`https://map.kakao.com/?q=${encodeURIComponent(storeAddress ? `${store} ${storeAddress}` : store)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 w-full inline-flex items-center justify-center gap-1.5 py-3 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] text-gray-600 dark:text-gray-300 text-[13px] font-bold active:scale-[0.98] transition-transform"
+            >
+              🗺️ 카카오맵에 후기 남기기
+            </a>
           </div>
         )}
 

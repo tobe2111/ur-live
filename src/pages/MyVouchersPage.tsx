@@ -429,6 +429,7 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
         <VoucherRedeemModal
           code={voucher.code}
           storeName={voucher.restaurant_name}
+          storeAddress={voucher.restaurant_address}
           onClose={() => setShowRedeem(false)}
           onRedeemed={() => { setVoucher(v => ({ ...v, status: 'used' })); invalidateVouchers() }}
         />
