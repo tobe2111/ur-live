@@ -4312,7 +4312,9 @@
     "close": "닫기"
   },
   "voucher": {
+    "deal": "딜",
     "heroBalanceLabel": "보유 식사권 금액",
+    "heroBalanceLabelGift": "보유 교환권 금액",
     "heroUsable": "사용 가능",
     "heroCountUnit": "장",
     "heroExpiry": "만료 임박",
