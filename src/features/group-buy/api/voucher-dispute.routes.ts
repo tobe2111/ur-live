@@ -39,9 +39,15 @@ async function ensureDisputeTable(DB: D1Database) {
       resolved_at DATETIME,
       resolution TEXT,
       admin_note TEXT,
+      customer_response TEXT,
+      customer_response_at DATETIME,
       UNIQUE(voucher_id)
     )`).run()
     await DB.prepare("CREATE INDEX IF NOT EXISTS idx_voucher_disputes_status ON voucher_disputes(status, created_at)").run()
+    // 🔁 2026-06-23 양방향 분쟁: 기존 테이블에 손님 응답 컬럼 보강(fail-soft, 이미 있으면 무시).
+    for (const col of ['customer_response TEXT', 'customer_response_at DATETIME']) {
+      await DB.prepare(`ALTER TABLE voucher_disputes ADD COLUMN ${col}`).run().catch(() => {})
+    }
   } catch { /* ignore */ }
 }
 
@@ -65,10 +71,10 @@ sellerApp.post('/report', async (c) => {
     // 본인 매장 + 사용됨 + 미정산 voucher 조회 (voucherId 우선 — 코드 노출 없이 원장에서 신고).
     const where = Number.isFinite(vid) ? 'v.id = ?' : 'v.code = ?'
     const v = await DB.prepare(`
-      SELECT v.id, v.product_id, p.seller_id
+      SELECT v.id, v.user_id, v.product_id, p.seller_id, p.name AS product_name, p.restaurant_name
       FROM vouchers v JOIN products p ON p.id = v.product_id
       WHERE ${where} AND p.seller_id = ? AND v.status = 'used' AND v.settlement_id IS NULL
-    `).bind(Number.isFinite(vid) ? vid : body.code, user.id).first<{ id: number; product_id: number; seller_id: number }>().catch(() => null)
+    `).bind(Number.isFinite(vid) ? vid : body.code, user.id).first<{ id: number; user_id: string | null; product_id: number; seller_id: number; product_name?: string; restaurant_name?: string }>().catch(() => null)
     if (!v) return c.json({ success: false, error: '신고 대상이 아닙니다 (사용 완료 + 정산 전 + 본인 매장만 가능)' }, 409)
 
     await ensureDisputeTable(DB)
@@ -78,6 +84,13 @@ sellerApp.post('/report', async (c) => {
       "INSERT OR IGNORE INTO voucher_disputes (voucher_id, product_id, seller_id, reason, status) VALUES (?, ?, ?, ?, 'open')"
     ).bind(v.id, v.product_id, v.seller_id, (body.reason || '미방문 신고').slice(0, 300)).run()
     const already = (ins.meta?.changes || 0) === 0
+    // 🔁 양방향 분쟁: 새 신고일 때만 손님에게 확인 요청 알림(fail-soft). 손님은 앱에서 항변/인정 가능.
+    if (!already && v.user_id) {
+      const storeName = v.restaurant_name || v.product_name || '매장'
+      await DB.prepare(
+        "INSERT INTO notifications (user_id, type, title, message, created_at) VALUES (?, 'voucher_dispute', ?, ?, datetime('now'))"
+      ).bind(v.user_id, '공구권 사용 확인 요청', `[${storeName}] 방문이 확인되지 않아 매장이 확인을 요청했어요. 실제로 이용하셨다면 '내 공구권'에서 알려주세요.`).run().catch(() => {})
+    }
     return c.json({ success: true, data: { voucherId: v.id, status: 'disputed', already } })
   } catch (err) { return safeError(c, err, '신고 처리 실패', '[voucher-dispute]') }
 })
@@ -95,6 +108,64 @@ sellerApp.get('/mine', async (c) => {
   } catch (err) { return safeError(c, err, '신고 내역 조회 실패', '[voucher-dispute]') }
 })
 
+// ─────────────────────────────── 손님(항변) ───────────────────────────────
+// 🔁 2026-06-23 양방향 분쟁: 같은 라우터(requireAuth '*' 공유) — isSeller 체크 없이 voucher 소유 검증.
+//   GET /against-me: 내 공구권에 걸린 open 분쟁 / POST /:id/respond: 이용했어요(contest) / 취소(concede).
+sellerApp.get('/against-me', async (c) => {
+  try {
+    const DB = c.env.DB
+    const user = getCurrentUser(c) as Vars['user']
+    if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    await ensureDisputeTable(DB)
+    const { results } = await DB.prepare(`
+      SELECT d.id, d.voucher_id, d.reason, d.status, d.customer_response, d.created_at,
+             p.name AS product_name, p.restaurant_name
+      FROM voucher_disputes d
+      JOIN vouchers v ON v.id = d.voucher_id
+      LEFT JOIN products p ON p.id = d.product_id
+      WHERE v.user_id = ? AND d.status = 'open'
+      ORDER BY d.id DESC LIMIT 50
+    `).bind(user.id).all().catch(() => ({ results: [] }))
+    return c.json({ success: true, data: results ?? [] })
+  } catch (err) { return safeError(c, err, '이의 대상 조회 실패', '[voucher-dispute]') }
+})
+
+sellerApp.post('/:id/respond', async (c) => {
+  try {
+    const DB = c.env.DB
+    const user = getCurrentUser(c) as Vars['user']
+    if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    const id = parseInt(c.req.param('id'), 10)
+    if (!Number.isFinite(id)) return c.json({ success: false, error: 'bad id' }, 400)
+    const body = await c.req.json<{ action?: 'contest' | 'concede' }>().catch(() => ({} as { action?: string }))
+    if (body.action !== 'contest' && body.action !== 'concede') return c.json({ success: false, error: "action 은 contest 또는 concede" }, 400)
+    await ensureDisputeTable(DB)
+    // 본인 voucher 의 open 분쟁만 (소유 검증).
+    const d = await DB.prepare(`
+      SELECT d.id, d.voucher_id, d.status
+      FROM voucher_disputes d JOIN vouchers v ON v.id = d.voucher_id
+      WHERE d.id = ? AND v.user_id = ?
+    `).bind(id, user.id).first<{ id: number; voucher_id: number; status: string }>().catch(() => null)
+    if (!d || d.status !== 'open') return c.json({ success: false, error: '응답할 분쟁이 없습니다' }, 409)
+
+    if (body.action === 'concede') {
+      // 손님이 "안 갔다" 인정 → voucher 재사용 복원(used→unused, 미정산만) + 분쟁 종료. 머니룰: 돈 이동 없음.
+      await DB.prepare(
+        "UPDATE vouchers SET status='unused', used_at=NULL WHERE id=? AND status='used' AND settlement_id IS NULL"
+      ).bind(d.voucher_id).run().catch(() => {})
+      await DB.prepare(
+        "UPDATE voucher_disputes SET status='resolved', resolution='reactivate', customer_response='conceded', customer_response_at=datetime('now'), resolved_at=datetime('now') WHERE id=? AND status='open'"
+      ).bind(id).run()
+      return c.json({ success: true, data: { id, customer_response: 'conceded', resolved: true } })
+    }
+    // contest → 손님 항변 기록, open 유지(어드민이 양쪽 보고 판단).
+    await DB.prepare(
+      "UPDATE voucher_disputes SET customer_response='contested', customer_response_at=datetime('now') WHERE id=? AND status='open'"
+    ).bind(id).run()
+    return c.json({ success: true, data: { id, customer_response: 'contested', resolved: false } })
+  } catch (err) { return safeError(c, err, '응답 처리 실패', '[voucher-dispute]') }
+})
+
 // ─────────────────────────────── 어드민 ───────────────────────────────
 const adminApp = new Hono<{ Bindings: Env; Variables: Vars }>()
 adminApp.use('*', requireAdmin())
@@ -104,7 +175,7 @@ adminApp.get('/', async (c) => {
     const DB = c.env.DB
     await ensureDisputeTable(DB)
     const { results } = await DB.prepare(`
-      SELECT d.id, d.voucher_id, d.product_id, d.seller_id, d.reason, d.status, d.created_at,
+      SELECT d.id, d.voucher_id, d.product_id, d.seller_id, d.reason, d.status, d.customer_response, d.created_at,
              v.code, v.status as voucher_status, p.name as product_name, p.restaurant_name
       FROM voucher_disputes d
       LEFT JOIN vouchers v ON v.id = d.voucher_id

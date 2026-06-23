@@ -16,6 +16,7 @@ import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import { walletTokens } from '@/components/wallet/walletTokens'
 import { formatNumber } from '@/utils/format'
 import VoucherRedeemModal from '@/components/voucher/VoucherRedeemModal'
+import VoucherDisputeBanner from '@/components/voucher/VoucherDisputeBanner'
 
 interface Voucher {
   id: number | string  // KT Alpha 는 'kt-{voId}' 형식
@@ -636,6 +637,9 @@ export default function MyVouchersPage() {
 
       {/* Large Title + 메타 */}
       <LargeTitle theme={theme} title={t('voucher.myVouchers')} />
+
+      {/* 🔁 2026-06-23 양방향 분쟁: 매장이 "안 왔어요" 신고한 공구권에 대한 손님 항변 배너(자가완결) */}
+      <VoucherDisputeBanner />
 
       {/* 🎨 2026-06-21 시안 A '프리미엄 패스': 보유 금액 히어로 (지갑=자산 느낌). 사용 가능분 있을 때만.
           theme-dual: 잉크 히어로 카드 — 라이트/다크 모두 항상 어두운 카드(신용카드처럼). 내부 text-white/gray 의도적. */}
