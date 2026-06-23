@@ -80,8 +80,9 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
   }
 
   // 🎨 2026-06-17 (#6 링크샵 통일): 큐레이터 링크샵과 동일한 '방문자 미리보기' — 본인이 남이 보는 화면 그대로 확인.
-  //   previewAsVisitor=false 기본이라 ownerView===isOwner → 기존 동작 불변(편집 어포던스만 ownerView 로 게이트).
-  const [previewAsVisitor, setPreviewAsVisitor] = useState(false)
+  // 🏁 2026-06-22 (대표 — 사업자 링크샵 편집 UX 통일): CuratorPage 와 동일하게 기본 true(깔끔한 방문자뷰로 시작)
+  //   → 상단 '편집하기' 누르면 편집 모드. 매 진입 깔끔 뷰로 시작(편집 chrome 은 버튼 누른 뒤에만).
+  const [previewAsVisitor, setPreviewAsVisitor] = useState(true)
   const ownerView = isOwner && !previewAsVisitor
 
   // ── 인라인 편집 상태 ──
@@ -311,34 +312,36 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
 
   return (
     <div className={`min-h-screen ${T.bg} pb-28`}>
-      {/* 🎨 2026-06-17 링크샵 개선안(시안) 통일: 큐레이터 링크샵과 동일한 네이비 '✎ 편집 모드' 배너. theme-dual: 의도적 네이비 */}
+      {/* 🏁 2026-06-22 (대표 — 사업자 링크샵 편집 UX 통일): CuratorPage 와 동일한 뉴트럴 슬림 편집 툴바
+          (네이비 → 잉크/뉴트럴). 상품등록·설정·완료. theme-dual: 라이트/다크 모두. */}
       {ownerView && (
-        <div className="sticky top-0 z-30 bg-[#141A2E] text-white px-3.5 py-2.5 text-[12.5px] font-semibold flex items-center justify-between gap-2">
-          <span className="flex items-center gap-2 min-w-0"><span className="text-[#6b7280] text-[14px] leading-none shrink-0">✎</span><span className="truncate">{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 사진·이름·소개를 눌러 바로 수정하세요' })}</span></span>
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* 🏁 2026-06-18 (사용자 결정): 링크샵에서 바로 내 상품 등록 (대시보드 안 나감). */}
-            <button
-              type="button"
-              onClick={() => setShowQuickAdd(true)}
-              className="px-2.5 py-1 bg-[#6b7280] hover:bg-[#e84a2b] rounded-lg text-[11px] font-bold whitespace-nowrap"
-            >
-              + 상품 등록
-            </button>
-            <button
-              type="button"
-              onClick={() => setPreviewAsVisitor(true)}
-              className="px-2.5 py-1 bg-white/15 hover:bg-white/25 rounded-lg text-[11px] font-bold whitespace-nowrap"
-            >
-              {t('seller.publicPage.previewVisitor', { defaultValue: '👀 미리보기' })}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/seller/profile?tab=business')}
-              className="px-2.5 py-1 bg-white/15 hover:bg-white/25 rounded-lg text-[11px] font-bold whitespace-nowrap"
-            >
-              {t('seller.publicPage.fullSettings', { defaultValue: '전체 설정' })}
-            </button>
-          </div>
+        <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-3 py-2 flex items-center gap-2">
+          <span className="flex items-center gap-1.5 mr-auto pl-1 text-[12px] font-bold text-gray-500 dark:text-gray-400 min-w-0">
+            <span className="text-[#6b7280] text-[13px] leading-none shrink-0">✎</span>
+            <span className="truncate">{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 눌러서 바로 수정' })}</span>
+          </span>
+          {/* 🏁 2026-06-18 (사용자 결정): 링크샵에서 바로 내 상품 등록 (대시보드 안 나감). */}
+          <button
+            type="button"
+            onClick={() => setShowQuickAdd(true)}
+            className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-gray-200 dark:border-transparent bg-white dark:bg-white/[0.06] px-2.5 py-1.5 text-[12px] font-bold text-gray-700 dark:text-gray-200 active:opacity-70"
+          >
+            + 상품 등록
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/seller/profile?tab=business')}
+            className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-gray-200 dark:border-transparent bg-white dark:bg-white/[0.06] px-2.5 py-1.5 text-[12px] font-bold text-gray-700 dark:text-gray-200 active:opacity-70"
+          >
+            {t('seller.publicPage.fullSettings', { defaultValue: '⚙ 설정' })}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setPreviewAsVisitor(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+            className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1.5 text-[12px] font-bold text-white dark:text-[#020202] active:opacity-80"
+          >
+            ✓ {t('seller.publicPage.doneEditing', { defaultValue: '완료' })}
+          </button>
         </div>
       )}
       {/* 🏁 2026-06-18 (사용자 결정): 오너 빠른 상품 등록 모달 — 성공 시 상품 목록 즉시 갱신. */}
@@ -350,11 +353,17 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
           />
         </Suspense>
       )}
-      {/* 🎨 2026-06-17 (#6 통일): 방문자 미리보기 중 — 큐레이터 링크샵과 동일 패턴. theme-dual: 의도적 네이비 */}
+      {/* 🏁 2026-06-22 (대표 — 사업자 링크샵 편집 UX 통일): CuratorPage 와 동일한 뉴트럴 슬림 진입 바.
+          주인 기본 화면(방문자 공개뷰) 상단에서 '편집하기' 로 편집 모드 진입. 방문자에겐 안 보임. theme-dual. */}
       {isOwner && previewAsVisitor && (
-        <div className="sticky top-0 z-40 bg-[#141A2E] text-white px-4 py-2 text-[12.5px] font-bold flex items-center justify-between gap-2">
-          <span className="truncate">👀 {t('seller.publicPage.previewBanner', { defaultValue: '방문자 미리보기 — 다른 사람에게 보이는 화면이에요' })}</span>
-          <button onClick={() => setPreviewAsVisitor(false)} className="shrink-0 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-[11.5px] whitespace-nowrap">{t('seller.publicPage.backToEdit', { defaultValue: '편집으로 돌아가기' })}</button>
+        <div className="sticky top-0 z-40 bg-white/85 dark:bg-[#0A0A0A]/85 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-2 flex items-center justify-between gap-2">
+          <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 truncate">👁 {t('seller.publicPage.previewBanner', { defaultValue: '내 링크샵 · 방문자에게 보이는 화면' })}</span>
+          <button
+            onClick={() => { setPreviewAsVisitor(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+            className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12px] font-bold active:scale-95 transition-transform"
+          >
+            ✎ {t('seller.publicPage.editLinkshop', { defaultValue: '편집하기' })}
+          </button>
         </div>
       )}
       <SEO

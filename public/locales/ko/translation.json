@@ -1901,7 +1901,9 @@
       "noShopProducts": "등록된 상품이 없습니다.",
       "previewVisitor": "👀 미리보기",
       "previewBanner": "방문자 미리보기 — 다른 사람에게 보이는 화면이에요",
-      "backToEdit": "편집으로 돌아가기"
+      "backToEdit": "편집으로 돌아가기",
+      "doneEditing": "완료",
+      "editLinkshop": "편집하기"
     },
     "storeIntro": "스토어 소개",
     "shippingInfo": "배송 정보",

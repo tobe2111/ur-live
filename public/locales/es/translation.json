@@ -1195,7 +1195,9 @@
       "noShopProducts": "No hay productos aún.",
       "previewVisitor": "👀 Vista previa",
       "previewBanner": "Vista de visitante: así lo ven los demás",
-      "backToEdit": "Volver a editar"
+      "backToEdit": "Volver a editar",
+      "doneEditing": "Hecho",
+      "editLinkshop": "Editar"
     },
     "storeIntro": "Introduccion de la tienda",
     "shippingInfo": "Info de envio",
