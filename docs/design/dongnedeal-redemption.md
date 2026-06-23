@@ -56,9 +56,28 @@
 응모형(결제·사용처리 없음), 상위노출, 어드민 선정+알림. 위 redemption 안 거침. (이미 구현됨: fcfs.routes + AdminFcfsPage + 소비자 배지/지원)
 
 ## 구현 단계
-- **Phase 1**: 매장 원장(읽기) + 소비자 셀프 사용처리(used·라이브 화면·CAS·60s 취소) — 정산은 status만(돈 이동 X).
-- **Phase 2**: 에스크로 홀드 + 매장 정산 검토/신고 + 분쟁 중재 + 차지백 클로백.
-- **Phase 3**: 동적 신뢰 정산 + 리뷰 플라이휠 + 이상탐지/Sybil.
+- **Phase 1**: 매장 원장(읽기) + 소비자 셀프 사용처리(used·라이브 화면·CAS·60s 취소) — 정산은 status만(돈 이동 X). ✅
+- **Phase 2**: 에스크로 홀드 + 매장 정산 검토/신고 + 분쟁 중재 + 차지백 클로백. ✅(차지백 클로백 제외)
+- **Phase 3**: 동적 신뢰 정산 + 리뷰 플라이휠 + 이상탐지/Sybil. ⏳ 미착수
 
 ## 구현 완료
-_(미구현 — Phase 1 부터)_
+**2026-06-22~23 (대표 — "가장 이상적·안전하게")**
+
+- **Phase 1 ✅**
+  - 소비자 셀프 사용처리: `POST /api/group-buy/vouchers/:code/self-redeem` (CAS `unused→used`, 멱등) — `group-buy-public.routes.ts` (`f2d3239`).
+  - 60초 취소: `POST .../cancel-redeem` (CAS `used→unused`, 60초 이내 + `settlement_id IS NULL` 가드).
+  - 라이브 "사용완료" 화면: `VoucherRedeemModal.tsx` (실시간 시계·매장명·애니메이션 체크·60s 취소) + `MyVouchersPage` "현장에서 사용하기" 진입.
+  - 매장 원장(읽기): `GET /api/group-buy/store-voucher-ledger` (요약 + 최근 50건, `vouchers JOIN products WHERE seller_id=?`).
+- **Phase 2 ✅ (차지백 클로백 제외)**
+  - 에스크로: **신규 테이블 없이** 기존 `auto-settlement` cron(used 7일 후 정산) 재사용 — `vouchers.settlement_id` 가 SSOT (`1a173ff`).
+  - 분쟁 "안 왔어요": `voucher-dispute.routes.ts` — 셀러 `POST /report`·`GET /mine`, 어드민 `GET /`·`POST /:id/resolve(settle|reactivate)` (`29a14c4`).
+    - ⚠️ `vouchers.status` CHECK 제약상 'disputed' 불가 → voucher.status 는 'used' 유지, **별도 `voucher_disputes` open 건을 정산 cron 에서 제외**(보류). `auto-settlement.ts` + `restaurant-settlement /calculate` 양쪽 `NOT IN (open disputes)`.
+  - 경량 "내 매장"(`/my-store`): 셀러 대시보드 대신 앱 내 — 원장 요약 + 최근 공구권 + "안 왔어요" 신고 (`1832388`).
+  - 어드민 분쟁 중재 화면(`/admin/voucher-disputes`) + 진입 동선(마이 '내 매장' 카드 / 어드민 공구 메뉴) (`5244289`).
+  - 내 매장에 선착순 지원 현황 합치기: `GET /api/group-buy/store-fcfs`(셀러 스코프) (`6b96bd3`).
+- **선착순(별도 트랙) ✅**: `fcfs.routes.ts` + `AdminFcfsPage`(`/admin/fcfs`) + 소비자 배지/지원 + 내 매장 현황.
+
+**남은 것(후속 결정 필요)**
+- Phase 2 잔여: **차지백 클로백**(PG 차지백 시 매장 정산 회수) — 미구현.
+- Phase 3 전체: 동적 신뢰 정산(가변 T+N)·리뷰 플라이휠·이상탐지/Sybil — 미착수.
+- ⚠️ **운영 검증(대표/staging)**: 실결제 E2E 1회 — 공구권 구매 → 현장 셀프 사용 → 7일 정산 진입 / "안 왔어요" 신고 → 정산 보류 → 어드민 해소. (현재 쇼핑/도매 외 동네딜 사용처리는 라이브 노출 전이라 영향 0)
