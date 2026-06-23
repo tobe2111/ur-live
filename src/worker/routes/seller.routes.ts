@@ -157,7 +157,10 @@ sellersRouter.get('/:id/public', async (c) => {
       const sid = (seller as { id?: number }).id
       if (sid) {
         const linked = await c.env.DB.prepare(
-          `SELECT u.handle FROM sellers s JOIN users u ON u.id = s.linked_user_id
+          `SELECT u.handle FROM sellers s JOIN users u ON (
+                 u.id = s.linked_user_id
+              OR (s.linked_user_id IS NULL AND s.email IS NOT NULL AND s.email != '' AND u.email = s.email)
+           )
             WHERE s.id = ? AND u.handle IS NOT NULL AND u.handle != '' LIMIT 1`
         ).bind(sid).first<{ handle: string }>()
         if (linked?.handle) (seller as Record<string, unknown>).curator_handle = linked.handle
