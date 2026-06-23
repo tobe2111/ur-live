@@ -59,6 +59,10 @@ export async function ensureOrderTables(DB: D1Database) {
   // 🛡️ 2026-06-09 perf: 결제확인(confirm)의 toss_order_id 조회 + 정산 멱등확인(order_id,source) — 주문 누적 시 풀스캔 방지.
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_orders_toss ON wholesale_orders(toss_order_id)`).run().catch(swallow('wholesale:idx4'))
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_supplier_settlements_order_source ON supplier_settlements(order_id, source)`).run().catch(swallow('wholesale:idx5'))
+  // 🛡️ 2026-06-19 (머니 감사): 정산 멱등의 근간 — UNIQUE(order_id, product_id, source). 도매 적립/클로백의
+  //   ON CONFLICT 타겟. repair-schema(idx_supplier_settle_unique)에도 있지만 self-heal 로 ensure 에도 보장
+  //   (미실행 env 에서 ON CONFLICT 타겟 부재로 throw 되는 것 방지). 기존 중복행 있으면 생성 실패→swallow(정리 후 재생성).
+  await DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_supplier_settle_unique ON supplier_settlements(order_id, product_id, source)`).run().catch(swallow('wholesale:idx-settle-unique'))
   // 🚚 2026-06-09 배송정책: wholesale_orders.shipping_total — 주문에 합산된 (제조사별) 배송비 총액.
   //   grand total = subtotal + shipping_total. 보상환불은 (subtotal+shipping_total) 전액 환불.
   await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN shipping_total INTEGER NOT NULL DEFAULT 0').run().catch(swallow('wholesale:alter-shipping-total'))

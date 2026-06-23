@@ -63,6 +63,11 @@ async function _doEnsureSourceColumn(DB: D1Database): Promise<void> {
   // CREATE/ALTER 문은 기존과 동일 — 이미 존재하면 무시(컬럼 추가는 1회).
   await DB.prepare("ALTER TABLE supplier_settlements ADD COLUMN source TEXT DEFAULT 'consumer'")
     .run().catch(() => { /* 이미 존재 — 무시 */ })
+  // 🛡️ 2026-06-19 (머니 감사): 적립/클로백의 ON CONFLICT(order_id, product_id, source) 타겟 보장.
+  //   creditSupplier 가 항상 호출하는 ensure 라 여기서 보장하면, 인덱스 부재로 ON CONFLICT 가 throw→미적립 되는
+  //   경로를 원천 차단. source 컬럼 추가 직후라 안전. 기존 중복행 있으면 생성 실패→swallow(repair-schema 가 정리).
+  await DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_supplier_settle_unique ON supplier_settlements(order_id, product_id, source)")
+    .run().catch(() => { /* 이미 존재 / 중복행 — 무시(repair-schema 보강) */ })
 }
 
 interface WholesaleLine {
@@ -113,10 +118,17 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
     const availableAt = isBrand ? brandAvailableAt : generalAvailableAt
     const noteText = isBrand ? 'B2B 도매주문(브랜드 — 익일정산/1일보호창)' : 'B2B 도매주문(일반 — 7일성숙)'
 
-    await DB.prepare(`
+    // 🛡️ 2026-06-19 (머니 감사): 라인별 멱등 — idx_supplier_settle_unique(order_id, product_id, source) 로
+    //   ON CONFLICT DO NOTHING. 기존 plain INSERT 는 중복 시 throw 라, 동시 같은-주문 경쟁의 부분 인터리브에서
+    //   한 라인 throw → 루프 중단 → 나머지 라인 미적립(under-credit) 여지가 있었음. 이제 이미 적립된 라인은
+    //   조용히 skip + 그 라인의 잔액증가·원장·카운트도 함께 skip(아래 changes 게이트) → 이중적립·잔액과다·미적립 0.
+    //   정상(중복 없음) 경로는 동작 byte-identical.
+    const insSettle = await DB.prepare(`
       INSERT INTO supplier_settlements (supplier_id, order_id, product_id, seller_id, retail_amount, supply_amount, status, available_at, source, note)
       VALUES (?, ?, ?, NULL, ?, ?, 'pending', ?, 'wholesale', ?)
+      ON CONFLICT(order_id, product_id, source) DO NOTHING
     `).bind(r.supplier_id, wholesaleOrderId, r.product_id, retailAmount, supplyAmount, availableAt, noteText).run()
+    if ((insSettle.meta?.changes ?? 0) === 0) continue // 이미 적립된 라인 → 잔액·원장·카운트 skip
 
     await DB.prepare(`
       INSERT INTO supplier_balances (supplier_id, pending_amount, updated_at)
