@@ -5550,11 +5550,12 @@
     "voucher": {
       "all": "전체",
       "meal": "식사",
-      "beauty": "뷰티",
+      "beauty": "뷰티·헬스",
       "health": "헬스",
       "pet": "반려",
-      "stay": "숙박",
-      "activity": "액티비티"
+      "stay": "숙소",
+      "activity": "액티비티",
+      "etc": "기타"
     },
     "picker": {
       "placeholder": "매장 이름 또는 주소 (예: 광화문 김밥천국)"
