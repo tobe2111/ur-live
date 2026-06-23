@@ -33,6 +33,17 @@
 - **진입점 전환**: `CuratorPage.tsx` PinGrid 의 추가 CTA + EmptyLinkshop browseLink → `/browse`·`/group-buy` → `/u/me/add?tab=shop|voucher`. (잠긴 SSR/로딩 동작 무관 — 클라 라우팅 목적지 문자열만 변경.)
 - 검증: tsc 0 · `npm run build`(client+ssr+worker+prepare) exit 0 · check-theme-consistency 0.
 
+## ✅ 2026-06-22~23 — 동네딜 사용처리(redemption) + 선착순 + 흑백/PC 액자 (대표 다회 검증, "가장 이상적·안전하게")
+**한 세션 다중 아크.** 설계 SSOT: `docs/design/dongnedeal-redemption.md`(북극성: "카운터는 신뢰로 통과, 돈은 정산에서 검문").
+- **사용처리 Phase 1 ✅** — 소비자 셀프 사용: `POST /api/group-buy/vouchers/:code/self-redeem`(CAS `unused→used` 멱등) + `/cancel-redeem`(60초 + `settlement_id IS NULL` 가드) / 라이브 "사용완료" 화면 `VoucherRedeemModal`(실시간 시계·매장명·체크·60s 취소) / `MyVouchersPage` "현장에서 사용하기" / 매장 원장 읽기 `GET /store-voucher-ledger`. (`f2d3239`, `1a173ff`)
+- **사용처리 Phase 2 ✅(차지백 클로백 제외)** — 에스크로는 **기존 `auto-settlement`(used 7일) 재사용**(신규 테이블 0, `settlement_id` SSOT). 분쟁 "안 왔어요" `voucher-dispute.routes.ts`(셀러 report/mine, 어드민 list/resolve settle|reactivate). ⚠️ `vouchers.status` CHECK 상 'disputed' 불가 → status='used' 유지 + **open 분쟁을 정산 cron 에서 제외**(`auto-settlement.ts` + `restaurant-settlement /calculate` 양쪽 `NOT IN (open disputes)`). 경량 "내 매장"(`/my-store`) — 셀러 대시보드 대신 앱 내(원장 요약+최근 공구권+신고). 어드민 `/admin/voucher-disputes`. (`29a14c4`, `1832388`, `5244289`)
+- **선착순(FCFS) ✅** — 콜드스타트 시드 응모형(결제·사용처리 X). `fcfs.routes.ts`(공개/유저 apply/어드민 config·applicants·select+알림) + `AdminFcfsPage`(`/admin/fcfs`) + 소비자 배지/지원 + 내 매장 현황(`GET /store-fcfs` 셀러 스코프, `6b96bd3`). 설정 = `product_supply_meta` K-V, 지원 = `fcfs_applications`(1인 1회 UNIQUE).
+- **checkout 종류 분기 ✅** — `noShipping = 모든 항목 deal_only=1 또는 isVoucherCategory(category)`(order-type SSOT) → 공구/교환권은 주소 불요(공구='매장 바로사용'·교환권='MMS'), 일반 쇼핑만 주소/배송비. (`b5d561c`)
+- **흑백(B&W) + PC 액자** — tailwind config 색상 remap(브랜드 핑크/레드 → MONO, 기능 빨강만 유지) / PC = 중앙 모바일 액자 + 데코 거터 레일(`ConsumerFrameRails`) + 액자 안 하단 네비. 동네딜 홈 = 당근식 1줄 리스트 + 플로팅 "지도" 버튼(`RestaurantMapPage` list/map 모드), 지도 줌 근본수정(`didInitialFit` ref — 매 줌 re-fit 제거), 필터 리디자인(`FilterSheet` 2단 계층 지역 + 실시간 카운트, z-[10000]).
+- **⚠️ 도매몰 어드민 라벨 — 명칭 충돌(대표 확인 요망)**: `ec3cf17` 이 '판매사'→'유통사'(당시 CLAUDE.md 2026-06-21 명칭 SSOT)로 바꿨으나, 직후 병렬 세션 `632f020`("도매몰 구매자측 명칭 유통사→**판매사** 전면 역전 — 대표 지시")로 **되돌려짐 → 현재 코드 = '판매사'**. CLAUDE.md(유통사 단독) ↔ 최신 대표 지시(판매사) **충돌** — 명칭 SSOT 갱신 필요. (제조사 라벨의 '(공급사)' 괄호 제거는 양립 — 유지)
+- **남은 것(후속 결정)**: ① Phase 2 차지백 클로백 ② Phase 3(동적 신뢰 정산·리뷰 플라이휠·이상탐지/Sybil) ③ ⚠️ **대표/staging 실결제 E2E 1회**(구매→셀프 사용→7일 정산 / "안 왔어요"→보류→해소). 현재 동네딜 사용처리는 라이브 노출 전이라 영향 0.
+- 검증: tsc 0 · 테마 일관성 0 · sql-bind 0 · `npm run build`(worker 포함) 0.
+
 ## ✅ 2026-06-21 — 마이페이지 정리(중복·통합) + 고객센터 전화번호 전체 비노출 + 약관 비즈니스모델 정합 (대표 지시)
 **대표 지시**: ① `/user/profile` 마이페이지 너무 복잡 — 모을 건 모으고 없앨 건 없애기(AskUserQuestion: "중복·통합만(기능 유지)" + "흩어진 수익/추천 6곳 → 하나의 '내 수익·추천'"). ② 도움말 고객센터(전화) 비노출. ③ `/terms` 를 현재 비즈니스 모델과 정합. ④ `/privacy` 변경점 반영. ⑤ `/refund` + **전체**에서 고객센터 전화번호(0507-0177-0432) 비노출.
 - **마이페이지 declutter** (`UserProfilePage.tsx` + sub): (a) 상단 ⚙️ 톱니 제거(옆 '프로필 편집' 알약과 중복, 설정은 하단 '설정' 그룹). (b) `CouponVoucherStats`(쿠폰/바우처 스탯카드) **삭제** — `ShoppingGroup` 의 쿠폰함/내 교환권 행과 같은 곳(/my-coupons·/my-vouchers)으로 가던 중복(카운트는 행에 유지). (c) **수익/추천 진입점 통합** — '더보기'에 있던 '인플루언서 활동(추천/정산, /influencer/settlement)'을 `EarningsGroup`('내 수익·추천' fold) 안으로 흡수 → 수익 surface 진입을 한 fold 로. (d) '더보기' 섹션 제거 → 배송지 관리/내 리뷰는 `ShoppingGroup`(쇼핑·이용내역)으로 흡수. (e) 도움말에서 고객센터(tel) 항목 제거 → 문의는 카카오톡 상담으로 일원화. **데이터/라우트/`useMyCounts`(useMyVouchers 재사용) 로직 전부 불변 — 표시 위계/중복만 정리.**
