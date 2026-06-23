@@ -47,6 +47,20 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
   const [shorts, setShorts] = useState<Short[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('home')
+
+  // 🔗 2026-06-21 (대표 승인 "그렇게 하자"): 레거시 셀러 공개 URL(/profile·/s) standalone 진입을
+  //   연결된 유저 링크샵(/u/{handle})으로 통일. CuratorPage 임베드(sellerIdOverride)면 이미 /u/ 라 skip,
+  //   연결 핸들 없는 셀러-only 계정은 그대로 이 페이지 렌더(폴백 유지). 하드로드는 worker/index.ts:2090 이
+  //   301 처리하므로 이건 SPA 내부 클릭(그 301 을 우회하던 케이스)을 중앙에서 한 번에 커버 → /profile 더이상 목적지 X.
+  const curatorHandle = (seller as { curator_handle?: string | null } | null)?.curator_handle || null
+  useEffect(() => {
+    if (sellerIdOverride) return                 // CuratorPage 임베드 — 이미 /u/{handle}
+    if (!curatorHandle) return                   // 셀러-only(핸들 없음) — 기존 페이지 유지(폴백)
+    const h = curatorHandle.toLowerCase()
+    if (h === 'me') return
+    if (rawParam && rawParam.toLowerCase().replace(/^@/, '') === h) return  // 이미 핸들 = 루프 방지
+    navigate(`/u/${encodeURIComponent(curatorHandle)}`, { replace: true })
+  }, [curatorHandle, sellerIdOverride, rawParam, navigate])
   // 🔍 2026-06-16 링크샵 시안: 상품 탭 검색 (이름 필터).
   const [shopQuery, setShopQuery] = useState('')
   // 🏁 2026-06-18 (승인 사업자 상점 바로등록): 오너 빠른 상품 등록 모달 + 성공 시 상품목록 갱신.
