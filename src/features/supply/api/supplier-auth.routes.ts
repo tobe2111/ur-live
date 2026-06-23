@@ -62,6 +62,7 @@ async function ensureSupplierSchema(DB: D1Database): Promise<void> {
     'representative_phone TEXT', // 🏭 2026-06-09 대표자 연락처
     'manager_name TEXT', 'manager_phone TEXT', 'manager_email TEXT', // 🏭 2026-06-09 담당자(성명/연락처/이메일)
     'mall_id INTEGER DEFAULT 1', // 🏬 2026-06-09 멀티-몰 테넌시 — 가입 시 어느 몰에 가입했는지(기본 1)
+    'nts_status TEXT', // 🛡️ 2026-06-23 가입 500 fix — INSERT 가 nts_status 쓰는데 ntsStatusOf 실패 시 컬럼 부재 throw. 무조건 보장.
   ]) {
     await DB.prepare(`ALTER TABLE suppliers ADD COLUMN ${col}`).run().catch(() => { /* 이미 존재 */ });
   }
@@ -151,8 +152,10 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
     if (!EMAIL_RE.test(email)) return c.json({ success: false, error: '올바른 이메일을 입력해주세요' }, 400);
     if (!businessName) return c.json({ success: false, error: '상호(사업자명)는 필수입니다' }, 400);
     // 🏭 2026-06-04 (사용자 결정): 제조회원도 사업자등록번호 필수(승인 심사용).
-    const bizNum = (body.business_number || '').trim();
-    if (!/^\d{3}-\d{2}-\d{5}$/.test(bizNum)) return c.json({ success: false, error: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' }, 400);
+    // 🔢 2026-06-23: 하이픈 유무 무관 수용 — 숫자만 추출해 10자리 검증 후 하이픈 정규화 저장.
+    const bizDigits = String(body.business_number || '').replace(/[^0-9]/g, '');
+    if (!/^\d{10}$/.test(bizDigits)) return c.json({ success: false, error: '사업자등록번호 10자리를 정확히 입력해주세요' }, 400);
+    const bizNum = `${bizDigits.slice(0, 3)}-${bizDigits.slice(3, 5)}-${bizDigits.slice(5)}`;
     if (!bizLicenseUrl) return c.json({ success: false, error: '사업자등록증 이미지를 업로드해주세요' }, 400);
     const pw = validateSupplierPassword(password);
     if (!pw.ok) return c.json({ success: false, error: pw.error || '비밀번호 형식이 올바르지 않습니다' }, 400);
@@ -261,7 +264,7 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
       }
       if (!email) return c.json({ success: false, error: '이메일 정보가 필요합니다. 카카오 이메일 제공에 동의해주세요' }, 400);
       if (!business_name) return c.json({ success: false, error: '상호(사업자명)를 입력해주세요' }, 400);
-      if (!/^\d{3}-\d{2}-\d{5}$/.test(business_number)) return c.json({ success: false, error: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' }, 400);
+      if (!/^\d{10}$/.test(business_number.replace(/[^0-9]/g, ''))) return c.json({ success: false, error: '사업자등록번호 10자리를 정확히 입력해주세요' }, 400);
       if (!business_license_url) return c.json({ success: false, error: '사업자등록증 이미지를 업로드해주세요' }, 400);
       // 🛡️ 2026-06-10 (인적사항 게이트 보강): 대표자/담당자 서버 필수 — 유통 become-distributor 와 대칭.
       if (!representative || !representative_phone) return c.json({ success: false, error: '대표자 성명·연락처를 입력해주세요' }, 400);

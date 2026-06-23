@@ -115,7 +115,7 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
     const email = String(body.email || '').trim().toLowerCase()
     const password = String(body.password || '')
     const phone = String(body.phone || '').trim()
-    const business_number = String(body.business_number || '').trim() // 🏭 사업자등록번호 — 필수(승인 심사용)
+    const business_number_raw = String(body.business_number || '').replace(/[^0-9]/g, '') // 🏭 사업자등록번호 숫자만(하이픈 무관)
     const representative = String(body.representative || '').trim()    // 대표자명
     const business_license_url = String(body.business_license_url || '').trim().slice(0, 500) // 사업자등록증 이미지
     // 🏭 2026-06-09 대표자 연락처 + 담당자(성명/연락처/이메일) — additive 수집. 길이 cap.
@@ -128,12 +128,15 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
       return c.json({ success: false, error: '담당자명·상호·이메일·비밀번호를 모두 입력해주세요' }, 400)
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ success: false, error: '이메일 형식이 올바르지 않습니다' }, 400)
-    const pw = validatePasswordComplexity(password)
+    // 🔓 2026-06-23 (대표 요청 "358533aa 강도로도 가입"): relaxed — 8자 이상 + 영문·숫자·특수 중 2종.
+    const pw = validatePasswordComplexity(password, { relaxed: true })
     if (!pw.ok) return c.json({ success: false, error: pw.error }, 400)
     // 🏭 2026-06-04 (사용자 결정): 유통회원도 사업자 정보 필수 + 관리자 승인. 사업자번호 필수.
-    if (!/^\d{3}-\d{2}-\d{5}$/.test(business_number)) {
-      return c.json({ success: false, error: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' }, 400)
+    // 🔢 2026-06-23: 하이픈 유무 무관 — 숫자 10자리 검증 후 하이픈 정규화 저장.
+    if (!/^\d{10}$/.test(business_number_raw)) {
+      return c.json({ success: false, error: '사업자등록번호 10자리를 정확히 입력해주세요' }, 400)
     }
+    const business_number = `${business_number_raw.slice(0, 3)}-${business_number_raw.slice(3, 5)}-${business_number_raw.slice(5)}`
     if (!business_license_url) return c.json({ success: false, error: '사업자등록증 이미지를 업로드해주세요' }, 400)
 
     // 누락 가능 컬럼 보장 (idempotent)
@@ -298,7 +301,7 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
     }
     if (!email) return c.json({ success: false, error: '이메일 정보가 필요합니다. 카카오 이메일 제공에 동의해주세요' }, 400)
     if (!business_name) return c.json({ success: false, error: '상호(사업자명)를 입력해주세요' }, 400)
-    if (!/^\d{3}-\d{2}-\d{5}$/.test(business_number)) return c.json({ success: false, error: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' }, 400)
+    if (!/^\d{10}$/.test(business_number.replace(/[^0-9]/g, ''))) return c.json({ success: false, error: '사업자등록번호 10자리를 정확히 입력해주세요' }, 400)
     if (!business_license_url) return c.json({ success: false, error: '사업자등록증 이미지를 업로드해주세요' }, 400)
     // 🛡️ 2026-06-10 (인적사항 게이트 보강): 대표자/담당자는 클라 폼만 필수였음 — API 직접 호출 우회 차단.
     if (!representative || !representative_phone) return c.json({ success: false, error: '대표자 성명·연락처를 입력해주세요' }, 400)

@@ -11,6 +11,7 @@ import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { toast } from '@/hooks/useToast'
 import BusinessCertUpload from '@/components/BusinessCertUpload'
+import { formatPhoneKr } from '@/utils/format-kr'
 import { isSupplierLoggedIn } from '@/lib/supplier-api'
 import { useWholesaleMall } from '@/hooks/queries/useWholesale'
 
@@ -20,6 +21,7 @@ export default function SupplierRegisterPage() {
   // 🏬 2026-06-09 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FC5424 → byte-identical).
   const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo } = useWholesaleMall()
   const [loading, setLoading] = useState(false)
+  const [passwordConfirm, setPasswordConfirm] = useState('')
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
   const [licenseUrl, setLicenseUrl] = useState('')
@@ -44,8 +46,10 @@ export default function SupplierRegisterPage() {
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
   // 대표자 → 담당자 복사(성명+연락처). 토글 ON 이면 대표자 입력이 담당자에 실시간 반영.
+  // 🔢 2026-06-23 휴대폰 하이픈 자동 — 직접 안 쳐도 정규화.
+  const setPhone = (k: 'manager_phone' | 'phone') => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [k]: formatPhoneKr(e.target.value) }))
   const setRep = (k: 'representative' | 'representative_phone') => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value
+    const v = k === 'representative_phone' ? formatPhoneKr(e.target.value) : e.target.value
     setForm(f => {
       const next = { ...f, [k]: v }
       if (sameAsRep) {
@@ -73,7 +77,7 @@ export default function SupplierRegisterPage() {
     e.preventDefault()
     setError('')
     if (!form.business_name.trim()) { fail(t('supplier.errBizName', { defaultValue: '상호(사업자명)를 입력해주세요' })); return }
-    if (!/^\d{3}-\d{2}-\d{5}$/.test(form.business_number.trim())) { fail(t('supplier.errBizNum', { defaultValue: '사업자등록번호를 정확히 입력해주세요 (000-00-00000)' })); return }
+    if (!/^\d{10}$/.test(form.business_number.replace(/[^0-9]/g, ''))) { fail(t('supplier.errBizNum', { defaultValue: '사업자등록번호 10자리를 정확히 입력해주세요' })); return }
     if (!licenseUrl) { fail(t('supplier.errBizLicense', { defaultValue: '사업자등록증 이미지를 업로드해주세요' })); return }
     // 🏭 2026-06-09 대표자/담당자 필수 검증 (연락처 양식은 lenient).
     if (!form.representative.trim() || !form.representative_phone.trim()) { fail(t('supplier.errRep', { defaultValue: '대표자 성명·연락처를 입력해주세요' })); return }
@@ -82,6 +86,7 @@ export default function SupplierRegisterPage() {
     if (!kakaoUser) {
       if (form.password.length < 8) { fail(t('supplier.errPwLen', { defaultValue: '비밀번호는 8자 이상이어야 합니다' })); return }
       if (!/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { fail(t('supplier.errPwClass', { defaultValue: '비밀번호는 영문과 숫자를 포함해야 합니다' })); return }
+      if (form.password !== passwordConfirm) { fail(t('supplier.errPwMismatch', { defaultValue: '비밀번호가 일치하지 않습니다' })); return }
     }
     setLoading(true)
     try {
@@ -243,7 +248,7 @@ export default function SupplierRegisterPage() {
                 </div>
                 <div>
                   <label className={labelCls}>{t('supplier.fieldManagerPhone', { defaultValue: '담당자 연락처' })} <span className="text-red-500">*</span></label>
-                  <input disabled={loading || sameAsRep} value={form.manager_phone} onChange={set('manager_phone')} className={`${inputCls} ${sameAsRep ? 'bg-gray-100 text-gray-400' : ''}`} placeholder="010-0000-0000" />
+                  <input disabled={loading || sameAsRep} value={form.manager_phone} onChange={setPhone('manager_phone')} inputMode="numeric" className={`${inputCls} ${sameAsRep ? 'bg-gray-100 text-gray-400' : ''}`} placeholder="010-0000-0000" />
                 </div>
               </div>
               <div className="mt-3">
@@ -260,7 +265,12 @@ export default function SupplierRegisterPage() {
                 </div>
                 <div>
                   <label className={labelCls}>{t('common.password', { defaultValue: '비밀번호' })} <span className="text-red-500">*</span></label>
-                  <input required type="password" disabled={loading} value={form.password} onChange={set('password')} className={inputCls} placeholder={t('supplier.phPw', { defaultValue: '영문+숫자 8자 이상' })} />
+                  <input required type="password" disabled={loading} value={form.password} onChange={set('password')} className={inputCls} placeholder={t('supplier.phPw', { defaultValue: '영문+숫자 8자 이상' })} autoComplete="new-password" />
+                </div>
+                <div>
+                  <label className={labelCls}>{t('supplier.fieldPwConfirm', { defaultValue: '비밀번호 확인' })} <span className="text-red-500">*</span></label>
+                  <input required type="password" disabled={loading} value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} className={inputCls} placeholder={t('supplier.phPwConfirm', { defaultValue: '비밀번호 재입력' })} autoComplete="new-password" />
+                  {passwordConfirm && form.password !== passwordConfirm && <p className="text-xs text-red-500 mt-1">{t('supplier.errPwMismatch', { defaultValue: '비밀번호가 일치하지 않습니다' })}</p>}
                 </div>
 
                 <div className="pt-2 border-t border-gray-100">
