@@ -372,28 +372,34 @@ function ShoppingGrid() {
     return () => ob.disconnect()
   }, [hasMore, loadingMore, loading, page, load])
   return (
-    <div className="ur-content-wide px-4 lg:px-8 pt-1 pb-4">
-      {/* 🛒 2026-06-23: 쇼핑 카테고리 칩 (가로 스크롤). 선택 = 잉크 filled(B&W), /browse active 와 동일 톤. */}
-      <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-3">
-        {SHOP_CATEGORIES.map(c => {
-          const active = shopCategory === c.key
-          return (
-            <button
-              key={c.key}
-              type="button"
-              onClick={() => setShopCategory(c.key)}
-              className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
-                active
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-sm'
-                  : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2A2A2A]'
-              }`}
-            >
-              <span>{c.emoji}</span>
-              {c.label}
-            </button>
-          )
-        })}
+    <div className="pb-4">
+      {/* 🛒 2026-06-23 (대표 '가장 이상적으로'): 쇼핑 카테고리 = sticky 바(top-[45px], 탭 바로 아래) —
+          쇼핑 섹션에 있는 동안 상단에 따라붙어 어디서든 카테고리 전환 가능. 교환권 reveal 그룹은 이때 숨김(슬롯 공유). */}
+      <div className="sticky top-[45px] z-20 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
+        <div className="ur-content-wide px-4 lg:px-8 py-2.5">
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+            {SHOP_CATEGORIES.map(c => {
+              const active = shopCategory === c.key
+              return (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => setShopCategory(c.key)}
+                  className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
+                    active
+                      ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-sm'
+                      : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2A2A2A]'
+                  }`}
+                >
+                  <span>{c.emoji}</span>
+                  {c.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </div>
+      <div className="ur-content-wide px-4 lg:px-8 pt-3">
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -421,6 +427,7 @@ function ShoppingGrid() {
           </div>
         </>
       )}
+      </div>
     </div>
   )
 }
@@ -744,11 +751,13 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* 🎫 2026-06-23: 교환권 본문(잔액/카테고리/브랜드/리스트) — 항상 표시. 아래 쇼핑 섹션과 한 스크롤로 이어짐. */}
       {/* 🛡️ 2026-05-28 (사용자 요청): 잔액 카드 + 카테고리 = scroll-up reveal 그룹 (headroom).
             아래로 스크롤 시 숨김(콘텐츠 공간 최대화), 살짝 위로 올리면 둘 다 다시 내려옴.
-            sticky top-[45px] (헤더 바로 아래) + revealTop 따라 translateY. bg 는 페이지 배경과 동일 (콘텐츠 비침 방지). */}
+            sticky top-[45px] (헤더 바로 아래) + revealTop 따라 translateY. bg 는 페이지 배경과 동일 (콘텐츠 비침 방지).
+            🎫 2026-06-23 (대표 '가장 이상적으로'): 쇼핑 섹션에 있을 땐(activeTab==='shopping') 강제 숨김 —
+            쇼핑의 sticky 카테고리 바(top-[45px] 동일 슬롯)와 겹치지 않게 '한 번에 한 카테고리 바'만 상단에. */}
       <div
         className="sticky top-[45px] z-20 bg-white dark:bg-[#0A0A0A]"
         style={{
-          transform: revealTop ? 'translateY(0)' : 'translateY(-110%)',
+          transform: (revealTop && activeTab !== 'shopping') ? 'translateY(0)' : 'translateY(-110%)',
           transition: 'transform 0.25s ease',
           willChange: 'transform',
         }}
