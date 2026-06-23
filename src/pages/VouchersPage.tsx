@@ -344,6 +344,9 @@ function ShoppingGrid() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+  // 🛒 2026-06-23 (대표 '적응형 카테고리'): 실제 상품이 있는 카테고리만 칩 노출. null=로딩(전체만), []=조회완료.
+  //   /api/products/count(카테고리별, edge 15분 캐시) 병렬 조회 → 0개 카테고리 자동 숨김(인벤토리 적든 많든 깔끔).
+  const [availableShopCats, setAvailableShopCats] = useState<string[] | null>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const load = useCallback((pageNum: number, reset: boolean) => {
     if (reset) setLoading(true); else setLoadingMore(true)
@@ -371,6 +374,32 @@ function ShoppingGrid() {
     ob.observe(sentinelRef.current)
     return () => ob.disconnect()
   }, [hasMore, loadingMore, loading, page, load])
+  // 🛒 2026-06-23: 카테고리별 상품 수 조회 → 비어있는 카테고리 칩 제거. 마운트 1회(전역 카탈로그 기준).
+  //   localStorage 캐시(1h) 우선 → 재진입 0-RTT + '전체→확장' 플래시 방지(교환권 카테고리와 동일 패턴).
+  useEffect(() => {
+    let cancelled = false
+    try {
+      const raw = localStorage.getItem('shop_cats_v1')
+      if (raw) {
+        const cached = JSON.parse(raw) as { ts: number; data: string[] }
+        if (Date.now() - cached.ts < 60 * 60_000 && Array.isArray(cached.data)) setAvailableShopCats(cached.data)
+      }
+    } catch { /* localStorage 손상 — 무시 */ }
+    const cats = SHOP_CATEGORIES.filter(c => c.key !== 'all')
+    Promise.all(cats.map(c =>
+      api.get(`/api/products/count?exclude_deal_only=1&category=${encodeURIComponent(c.key)}`)
+        .then(r => (r.data?.success && Number(r.data.total) > 0) ? c.key : null)
+        .catch(() => null)
+    )).then(results => {
+      if (cancelled) return
+      const avail = results.filter((k): k is string => !!k)
+      setAvailableShopCats(avail)
+      try { localStorage.setItem('shop_cats_v1', JSON.stringify({ ts: Date.now(), data: avail })) } catch { /* quota */ }
+    })
+    return () => { cancelled = true }
+  }, [])
+  // 노출 칩: 로딩 중(null)엔 '전체'만 → 조회되면 '전체' + 상품 있는 카테고리.
+  const visibleShopCats = SHOP_CATEGORIES.filter(c => c.key === 'all' || (availableShopCats?.includes(c.key) ?? false))
   return (
     <div className="pb-4">
       {/* 🛒 2026-06-23 (대표 '가장 이상적으로'): 쇼핑 카테고리 = sticky 바(top-[45px], 탭 바로 아래) —
@@ -378,7 +407,7 @@ function ShoppingGrid() {
       <div className="sticky top-[45px] z-20 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-wide px-4 lg:px-8 py-2.5">
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-            {SHOP_CATEGORIES.map(c => {
+            {visibleShopCats.map(c => {
               const active = shopCategory === c.key
               return (
                 <button
