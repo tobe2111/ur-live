@@ -1,5 +1,18 @@
 # 🚧 진행 중 작업
 
+## 🚑 2026-06-23 — 도매몰 가입(`/api/wholesale/register`) 500 근본수정: 자가치유 INSERT (대표 "더는 절대로 이 에러가 떠선 안돼")
+**증상(대표 콘솔)**: `/api/wholesale/register` → 400(검증) + 409(중복) + **500**. 500은 가입 자체를 막음.
+- **원인**: `sellers` 는 D1 한도(100) 근접 **97컬럼** + prod 스키마 드리프트로 일부 컬럼이 prod 에 누락 →
+  핸들러의 inline `ALTER TABLE sellers ADD COLUMN`(swallow)이 (한도/transient) 실패 → 풀 INSERT 가
+  '없는 컬럼' 참조로 **500**. (바인딩 17=17 정확, dispatchSignupContract fail-soft 확인 — 둘 다 무관.)
+  `business_name` 은 NOT NULL(no-default)이라 최소 INSERT 에도 포함.
+- **해법(KakaoAuthService.upsertUser 동일 자가치유)**: 풀 INSERT 실패 시 ① 이메일 UNIQUE→409 명확화
+  ② 그 외 → **원본(0003) base 컬럼만 최소 INSERT**(username/email/password_hash/name/business_name/status) →
+  나머지는 컬럼별 **fail-soft UPDATE**(누락 컬럼 무시). `registrationMallId.catch(()=>1)`. last_row_id falsy 면
+  email 로 복구. → **스키마 무관 계정 반드시 생성 + 500 0.** 풀 INSERT 실패 사유 `console.error`(CF 로그)로 진단.
+- 검증: tsc 0 · build 0 · sql-bind 17=17 · NOT NULL 가드 통과.
+- ⚠️ **후속**: prod `/api/_internal/repair-schema` 1회로 누락 컬럼 영구 보강 권장. supplier `/api/supplier/register` 도 동일 패턴 점검 권장.
+
 ## ✅ 2026-06-20 (5차) — 카카오 로그인 OIDC fast path: getUserInfo 왕복 1회 제거 (대표 "모두 진행" — 보안 손해 없는 속도카드)
 **목표**: 콜백의 카카오 왕복 2회(토큰교환+사용자정보) → **1회**. OIDC `id_token`(토큰교환 응답에 동봉)을
 디코드해 sub/nickname/picture/email 획득 → 별도 `getUserInfo` 왕복 생략. **기대 절감 ≈ `avg_userinfo_ms`(~100~300ms)**, `getServiceTerms` 제거와 합치면 원래 3왕복→1왕복.

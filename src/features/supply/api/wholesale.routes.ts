@@ -170,7 +170,7 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
 
     const passwordHash = await hashPassword(password)
     // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
-    const mallId = await registrationMallId(c)
+    const mallId = await registrationMallId(c).catch(() => 1) // fail-soft: 몰 해석 실패해도 기본몰(1)로 가입 진행
     // 🏁 2026-06-12 (P4 정책 확정 — "둘 다 수동 승인"): 국세청 결과는 참고 표시용 저장만. fail-soft.
     let ntsStatus2: string | null = null
     try {
@@ -180,16 +180,70 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
     } catch { /* fail-soft */ }
     await DB.prepare('ALTER TABLE sellers ADD COLUMN nts_status TEXT').run().catch(() => { /* exists */ })
 
-    const ins = await DB.prepare(`
-      INSERT INTO sellers (username, email, password_hash, name, business_name, business_number, representative_name, phone,
-        representative_phone, manager_name, manager_phone, manager_email,
-        business_registration_image_url, business_registration_status,
-        status, commission_rate, seller_type, distributor_grade, is_distributor, mall_id, nts_status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, 'influencer', 'C', 1, ?, ?, datetime('now'), datetime('now'))
-    `).bind(username, email, passwordHash, name, business_name, business_number, representative || null, phone || null,
-      representative_phone || null, manager_name || null, manager_phone || null, manager_email || null,
-      business_license_url || null, 'pending', DEFAULT_COMMISSION_RATE, mallId, ntsStatus2).run()
-    const sellerId = Number(ins.meta?.last_row_id)
+    // 🛡️ 2026-06-23 (대표 "더는 절대로 이 에러가 떠선 안돼"): 가입 INSERT 자가치유.
+    //   원인 분석: sellers 는 D1 한도(100) 근접 97컬럼 + prod 스키마 드리프트로 일부 컬럼이 prod 에
+    //   누락 → inline ALTER 가 (한도/transient) 실패해 swallow → 풀 INSERT 가 '없는 컬럼' 참조로 500
+    //   (계정은 INSERT 실패라 미생성, 단 별도 시도의 중복은 409). 바인딩(17=17)·dispatchSignupContract
+    //   (fail-soft)는 정상 확인.
+    //   해법(KakaoAuthService.upsertUser 동일 패턴): 풀 INSERT 실패 시 ① 이메일 UNIQUE → 409 명확화
+    //   ② 그 외 → **수년째 존재하는 base 컬럼만으로 최소 INSERT**(절대 성공) 후 나머지는 컬럼별
+    //   fail-soft UPDATE(누락 컬럼은 무시). → 스키마가 어떻든 **계정 반드시 생성 + 500 0**.
+    const isEmailDupErr = (m: string) => /unique|constraint|already exists/i.test(m) && /email/i.test(m)
+    // 선택(비-base) 컬럼 — 풀 INSERT 실패 시 개별 UPDATE 로 best-effort 적용(누락돼도 무시).
+    const optionalCols: Array<[string, unknown]> = [
+      ['business_number', business_number || null], // business_name 은 최소 INSERT 에 포함(NOT NULL)
+      ['representative_name', representative || null], ['phone', phone || null],
+      ['representative_phone', representative_phone || null], ['manager_name', manager_name || null],
+      ['manager_phone', manager_phone || null], ['manager_email', manager_email || null],
+      ['business_registration_image_url', business_license_url || null],
+      ['business_registration_status', 'pending'], ['commission_rate', DEFAULT_COMMISSION_RATE],
+      ['seller_type', 'influencer'], ['distributor_grade', 'C'], ['is_distributor', 1],
+      ['mall_id', mallId], ['nts_status', ntsStatus2],
+    ]
+    let sellerId = 0
+    try {
+      const ins = await DB.prepare(`
+        INSERT INTO sellers (username, email, password_hash, name, business_name, business_number, representative_name, phone,
+          representative_phone, manager_name, manager_phone, manager_email,
+          business_registration_image_url, business_registration_status,
+          status, commission_rate, seller_type, distributor_grade, is_distributor, mall_id, nts_status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, 'influencer', 'C', 1, ?, ?, datetime('now'), datetime('now'))
+      `).bind(username, email, passwordHash, name, business_name, business_number, representative || null, phone || null,
+        representative_phone || null, manager_name || null, manager_phone || null, manager_email || null,
+        business_license_url || null, 'pending', DEFAULT_COMMISSION_RATE, mallId, ntsStatus2).run()
+      sellerId = Number(ins.meta?.last_row_id)
+    } catch (insErr) {
+      const msg = String((insErr as Error)?.message || '')
+      // 진단(prod 로그) — 어느 컬럼/제약인지 가시화. self-heal 로 가입은 계속 진행.
+      console.error('[wholesale:register] 풀 INSERT 실패 → 자가치유 진입:', msg)
+      if (isEmailDupErr(msg)) return c.json({ success: false, error: '이미 가입된 이메일입니다. 로그인해주세요' }, 409)
+      // 원본(0003) base 컬럼만 — 수년째 존재 + NOT NULL(no-default) 전부 포함(특히 business_name).
+      //   나머지 NOT NULL 컬럼(seller_type/is_active/commission_rate/base_shipping_fee 등)은 DB DEFAULT 보유
+      //   (풀 INSERT 도 일부 생략하는데 동작했으므로 default 확정) → 생략 안전.
+      try {
+        const insMin = await DB.prepare(
+          `INSERT INTO sellers (username, email, password_hash, name, business_name, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))`
+        ).bind(username, email, passwordHash, name, business_name).run()
+        sellerId = Number(insMin.meta?.last_row_id)
+      } catch (minErr) {
+        const m2 = String((minErr as Error)?.message || '')
+        if (isEmailDupErr(m2)) return c.json({ success: false, error: '이미 가입된 이메일입니다. 로그인해주세요' }, 409)
+        throw minErr // 최소 INSERT 마저 실패 = 진짜 DB 장애 → 외부 catch(safeError). 극히 드묾.
+      }
+      // 나머지 필드 best-effort — 컬럼별 개별 UPDATE(누락 컬럼은 fail-soft 무시).
+      if (sellerId) {
+        for (const [col, val] of optionalCols) {
+          await DB.prepare(`UPDATE sellers SET ${col} = ? WHERE id = ?`).bind(val as string | number | null, sellerId)
+            .run().catch(swallow('wholesale:register:opt-col'))
+        }
+      }
+    }
+    // last_row_id 가 falsy 여도 방금 만든 행을 email 로 복구(절대 500 미연발).
+    if (!sellerId) {
+      const row = await DB.prepare('SELECT id FROM sellers WHERE email = ?').bind(email).first<{ id: number }>().catch(() => null)
+      sellerId = Number(row?.id) || 0
+    }
     if (!sellerId) return c.json({ success: false, error: '가입 처리 중 오류가 발생했습니다' }, 500)
 
     // 어드민 승인 큐 알림 (셀러 승인 페이지에서 처리 — 유통회원도 동일 큐).
