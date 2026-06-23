@@ -12,8 +12,13 @@
  *   ⚠️ 응답/Webhook 의 일부 필드명은 모두싸인 docs 가 봇차단(403)이라 실호출 1회로 최종검증 필요(추측금지 룰).
  *      그래서 응답 파싱은 방어적(여러 후보 키) + raw 저장.
  */
-import type { Env } from '@/worker/types/env'
 import { withCircuitBreaker } from '@/worker/utils/circuit-breaker'
+
+/** 게이트웨이가 읽는 최소 env(좁은 로컬 Bindings 도 수용). */
+export interface ModusignEnv {
+  MODUSIGN_API_KEY?: string
+  MODUSIGN_TEMPLATE_ID?: string
+}
 
 const MODUSIGN_BASE = 'https://api.modusign.co.kr'
 const REQUEST_TIMEOUT_MS = 10_000
@@ -59,7 +64,7 @@ function pickDocumentId(body: unknown): string | null {
  * fail-soft: API key 미설정이면 {ok:false, skipped:true} (호출자는 가입을 막지 말 것).
  * 절대 throw 하지 않음 — 항상 result 객체 반환.
  */
-export async function sendContractFromTemplate(env: Env, input: SendContractInput): Promise<SendContractResult> {
+export async function sendContractFromTemplate(env: ModusignEnv, input: SendContractInput): Promise<SendContractResult> {
   const apiKey = env.MODUSIGN_API_KEY
   const templateId = input.templateId || env.MODUSIGN_TEMPLATE_ID
   if (!apiKey || !templateId) {
