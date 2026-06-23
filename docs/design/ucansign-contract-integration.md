@@ -52,12 +52,18 @@
 
 ## 운영 준비 체크리스트 (대표/운영)
 1. app.ucansign.com 개발자 등록 → **API KEY 발급** → `UCANSIGN_API_KEY` 시크릿 등록
-2. 관리자 > 템플릿에서 **계약서 템플릿 생성**(판매사/제조사 — 참여자 1명, 카카오) → templateId → `UCANSIGN_TEMPLATE_ID`
+2. 관리자 > 템플릿에서 **계약서 템플릿 2개 생성**(각 참여자 1명, 카카오):
+   - **제조사 향 계약서** → templateId → `UCANSIGN_TEMPLATE_ID_SUPPLIER`
+   - **판매사 향 계약서** → templateId → `UCANSIGN_TEMPLATE_ID_DISTRIBUTOR`
+   - (둘 중 하나만 쓰거나 공용이면 `UCANSIGN_TEMPLATE_ID` 폴백 가능)
+   - ✅ 코드는 가입 유형(supplier/distributor)별 자동 선택 — **배선 완료**(2026-06-23).
 3. 임의 시크릿 1개 → `UCANSIGN_WEBHOOK_SECRET`(코드가 customValue5 에 심음)
 4. 개발자 > Webhook 에 URL `https://live.ur-team.com/api/webhooks/ucansign` 등록 + `signing_completed_all`(+원하면 canceled/creating) 구독
 5. **포인트 충전**(또는 자동충전) — 발송 1건=1포인트
 6. (초기) `UCANSIGN_TEST_MODE=true` 로 실호출 1회 검증(포인트 0) → 정상 확인 후 해제
-7. 플로우별 템플릿 다르면 발송부에 templateId 분기(현재는 단일 기본 템플릿)
+
+> 💡 대표님 작업: 유캔싸인 관리자에서 **계약서 2개를 템플릿으로 등록**(서명란/입력칸 포함) → 각 templateId 를 전달.
+>    계약서 *내용 업로드*는 유캔싸인 관리자 UI 에서만 가능(API 업로드 X). 코드는 templateId 만 참조.
 
 ## 후속 (자원 준비 후)
 - become 전환 플로우(카카오 유저→판매사/제조사)·제조사측 enforcement·어드민 계약상태 뱃지/재발송

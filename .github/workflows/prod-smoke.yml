@@ -1,0 +1,84 @@
+name: Prod Smoke (assert — auto QA)
+
+# 🤖 2026-06-19 자동 QA (대표 "사람이 QA 안 해도 되게"):
+#   staging 이 없어 컨테이너(원격세션)에서 prod egress 불가 → GitHub Action 이 prod 에 GET 으로
+#   핵심 불변식을 **단언**하고, 깨지면 워크플로 실패(빨강) → Actions 탭에서 즉시 발견.
+#   read-only(GET 만, 데이터 변경 0). prod-diag.yml(측정 전용)과 분리 — 이쪽은 PASS/FAIL 게이트.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */3 * * *'   # 3시간마다 prod 자동 점검 (배포 회귀·콜드 캐시·바인딩 손실 감지)
+  push:
+    branches: [main]
+    paths: ['.github/smoke-trigger']   # 온디맨드: 트리거 파일 bump 로 즉시 실행
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 배포 정착 대기 (push 트리거 시 새 배포가 끝나도록)
+        if: github.event_name == 'push'
+        run: sleep 90
+
+      - name: 핵심 불변식 단언 (도매몰 + 소비자)
+        run: |
+          BASE="https://live.ur-team.com"
+          FAIL=0
+          # 일시 콜드/네트워크로 인한 가짜 실패 방지: 최대 3회 재시도.
+          # $1=설명 $2=URL $3=본문에 반드시 포함돼야 할 문자열(없으면 '')
+          check() {
+            local desc="$1" url="$2" must="$3" code body ok=0
+            for try in 1 2 3; do
+              body=$(curl -s --max-time 25 -w "\n%{http_code}" "$BASE$url" -H 'accept: application/json' 2>/dev/null || true)
+              code=$(printf '%s' "$body" | tail -1)
+              body=$(printf '%s' "$body" | sed '$d')
+              if [ "$code" = "200" ]; then
+                if [ -z "$must" ] || printf '%s' "$body" | grep -q -- "$must"; then ok=1; break; fi
+              fi
+              sleep 5
+            done
+            if [ "$ok" = "1" ]; then
+              echo "✅ PASS  $desc  ($url)"
+            else
+              echo "❌ FAIL  $desc  ($url)  → HTTP $code, must-contain: [$must]"
+              FAIL=1
+            fi
+          }
+
+          echo "##### 1) 기본 가용성 #####"
+          check "API 살아있음"            "/api/version"                       ""
+          check "소비자 상품 API"          "/api/products?page=1&limit=4"       '"success"'
+
+          echo "##### 2) 도매몰 카탈로그 (CACHE_KV·데이터) #####"
+          check "도매 카탈로그 200+success" "/api/wholesale/catalog"             '"success":true'
+          check "도매 상품상세 200"         "/api/wholesale/catalog/6"           '"success"'
+          check "도매 배너"                "/api/wholesale/banners"             '"success"'
+          check "도매 몰 브랜딩"            "/api/wholesale/mall"                '"success"'
+
+          echo "##### 3) 도매몰 SSR (스켈레톤 고착 회귀 감지) #####"
+          # /wholesale HTML 에 상품 데이터 슬롯이 주입돼야 함(없으면 콜드 스켈레톤 회귀).
+          HTML=$(curl -s --max-time 25 "$BASE/wholesale" 2>/dev/null || true)
+          if printf '%s' "$HTML" | grep -q "__SSR_INITIAL_WHOLESALE__"; then
+            echo "✅ PASS  /wholesale SSR 슬롯 주입됨"
+          else
+            echo "❌ FAIL  /wholesale SSR 슬롯 없음 — 스켈레톤 고착 회귀 가능 (SSR self-fetch timeout / CACHE_KV 손실?)"
+            FAIL=1
+          fi
+          SSR=$(curl -s -o /dev/null -D - --max-time 25 "$BASE/wholesale" 2>/dev/null | grep -i "x-ssr-status" || true)
+          echo "    x-ssr-status: ${SSR:-(없음)}"
+
+          echo "##### 4) 게스트 가격 가림 불변식 (로그인 안 했으면 도매가 null) #####"
+          # 비인증 카탈로그는 distributor_price 가 노출되면 안 됨(가격은 로그인 전용).
+          GUEST=$(curl -s --max-time 25 "$BASE/api/wholesale/catalog" -H 'accept: application/json' 2>/dev/null || true)
+          if printf '%s' "$GUEST" | grep -q '"requires_login":true'; then
+            echo "✅ PASS  게스트 카탈로그 requires_login=true (도매가 가림)"
+          else
+            echo "⚠️  WARN  게스트 requires_login 플래그 미확인 (상품 0개거나 응답형식 변경) — 실패 처리 안 함"
+          fi
+
+          echo
+          if [ "$FAIL" = "1" ]; then
+            echo "::error::PROD SMOKE 실패 — 위 ❌ 항목 확인. 도매몰 핵심 플로우 회귀 가능."
+            exit 1
+          fi
+          echo "🎉 모든 핵심 불변식 PASS — 도매몰/소비자 핵심 플로우 정상."

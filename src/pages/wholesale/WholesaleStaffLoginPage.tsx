@@ -52,7 +52,8 @@ export default function WholesaleStaffLoginPage() {
       localStorage.setItem('seller_email', s.email || '')
       localStorage.setItem('seller_username', s.username || '')
       localStorage.setItem('seller_type', s.seller_type || 'influencer')
-      localStorage.setItem('is_distributor', '1')
+      // 🛡️ 2026-06-19 (감사 #4): 도매 직원은 부모(회사)가 도매사라 보통 1. 단, 응답에 명시적 0 이면 존중(방어).
+      localStorage.setItem('is_distributor', (s as { is_distributor?: number }).is_distributor === 0 ? '0' : '1')
       window.location.assign('/wholesale/dashboard')
     } catch (err) {
       toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || (err as Error)?.message || '로그인 중 오류가 발생했어요')

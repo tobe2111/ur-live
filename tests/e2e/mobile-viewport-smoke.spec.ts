@@ -29,8 +29,8 @@ test.describe('모바일 뷰포트 스모크', () => {
     await expectWithinViewport(page.getByTestId('bottom-nav'), MOBILE.height)
   })
 
-  test('동네딜 지도(/restaurant-map): 하단 네비 + 필터 적용 버튼이 화면 안에 도달한다', async ({ page }) => {
-    await page.goto('/restaurant-map')
+  test('동네딜 지도(/map): 하단 네비 + 필터 적용 버튼이 화면 안에 도달한다', async ({ page }) => {
+    await page.goto('/map')
 
     // 1) 하단 네비 보임
     await expectWithinViewport(page.getByTestId('bottom-nav'), MOBILE.height)

@@ -103,8 +103,10 @@ export function useWholesaleMall() {
 export function useWholesaleOrders() {
   return useQuery<WholesaleOrderRow[]>({
     queryKey: queryKeys.wholesale('orders'),
+    // 🛡️ 2026-06-19 (감사): .catch 로 에러를 빈배열로 삼키지 않음 — 전역 retry:1 로 일시 실패 자동 복구.
+    //   삼키면 네트워크/5xx 가 '주문 없음'으로 오표시 + staleTime 동안 재시도 0. 소비처는 `data: orders=[]` 안전.
     queryFn: () =>
-      api.get('/api/wholesale/orders', sellerAuth()).then((r) => (r.data?.success ? (r.data.orders || []) : [])).catch(() => []),
+      api.get('/api/wholesale/orders', sellerAuth()).then((r) => (r.data?.success ? (r.data.orders || []) : [])),
     enabled: hasSellerToken(),
     staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -123,8 +125,8 @@ export function useWholesaleStatement(from: string, to: string, opts?: { enabled
     queryFn: () =>
       api
         .get(`/api/wholesale/statement?from=${from}&to=${to}`, sellerAuth())
-        .then((r) => (r.data?.success ? { orders: r.data.orders || [], summary: r.data.summary ?? null } : { orders: [], summary: null }))
-        .catch(() => ({ orders: [], summary: null })),
+        // 🛡️ 2026-06-19 (감사): 에러 삼킴 제거 — retry:1 복구. 소비처 `data?.orders ?? []` 안전.
+        .then((r) => (r.data?.success ? { orders: r.data.orders || [], summary: r.data.summary ?? null } : { orders: [], summary: null })),
     // 🏭 2026-06-10 (카탈로그 최속화): idle 이후 지연 가능 — 기본 true(기존 동작 불변).
     enabled: hasSellerToken() && (opts?.enabled ?? true),
     staleTime: 60 * 1000,
@@ -171,8 +173,8 @@ export function useWholesaleProduct(id: string | undefined) {
     queryFn: () =>
       api
         .get(`/api/wholesale/catalog/${id}`, sellerAuth())
-        .then((r) => (r.data?.success ? { item: r.data.item, grade: r.data.grade } : { item: null, grade: '' }))
-        .catch(() => ({ item: null, grade: '' })),
+        // 🛡️ 2026-06-19 (감사): 에러 삼킴 제거 — retry:1 로 콜드 상세(실측 콜드 1s) 일시 실패 복구. 소비처 `data?.item ?? null` 안전.
+        .then((r) => (r.data?.success ? { item: r.data.item, grade: r.data.grade } : { item: null, grade: '' })),
     // 🏭 2026-06-04 몰-first: 비로그인도 상품 상세 열람 가능(가격 null).
     enabled: !!id,
     staleTime: 60 * 1000,
@@ -319,8 +321,9 @@ export function useWholesaleDeposit() {
                 recent_txns: (r.data.recent_txns || []) as WholesaleDepositTxn[],
               }
             : { balance: 0, deposit_account: null, recent_txns: [] },
-        )
-        .catch(() => ({ balance: 0, deposit_account: null, recent_txns: [] })),
+        ),
+    // 🛡️ 2026-06-19 (감사·머니 중요): 잔액 에러를 ₩0 으로 삼키지 않음 — retry:1 복구. 충전 직후 일시 조회실패가
+    //   '잔액 없음'으로 오표시되어 사용자 자산 혼동 + 결제 차단되던 위험 제거. 소비처 `data?.balance` 안전.
     enabled: hasSellerToken(),
     staleTime: 30 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -345,8 +348,8 @@ export function useWholesaleChargeRequests() {
     queryFn: () =>
       api
         .get('/api/wholesale/deposits/requests', sellerAuth())
-        .then((r) => (r.data?.success ? (r.data.requests || []) : []))
-        .catch(() => []),
+        // 🛡️ 2026-06-19 (감사): 에러 삼킴 제거 — retry:1 복구. 소비처 `requestsQ.data ?? []` 안전.
+        .then((r) => (r.data?.success ? (r.data.requests || []) : [])),
     enabled: hasSellerToken(),
     staleTime: 30 * 1000,
     gcTime: 30 * 60 * 1000,

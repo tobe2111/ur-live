@@ -403,13 +403,32 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       }
     } catch { /* invalid JSON — null */ }
 
-    // 🍽️ 2026-06-17 (#5 대표 메뉴): product_supply_meta 'menu' (JSON 배열) enrich. 없으면 undefined → 상세 섹션 숨김.
+    // 🍽️ 2026-06-17 (#5 대표 메뉴) + 🔗 2026-06-21 (셀러 링크샵 handle): 병렬 조회.
+    //   기존 순차 await 2개(supply meta → seller handle)를 Promise.all 로 묶어 라운드트립 1회 제거
+    //   → 상세 콜드 로딩 단축(대표 신고 "로딩 좀 김") + SSR self-fetch 2000ms 타임아웃 여유 확보.
+    // 🔗 셀러 프로필 → 유저 링크샵(/u/{handle}) 연결: sellers.linked_user_id, 미백필 시 같은 email 의 user 로 폴백
+    //   (curator.routes 의 email 매칭 backfill 과 동일 패턴 — 읽기전용 네비 결정이라 저위험). handle 있으면 클라가
+    //   /u/{handle} 로(CuratorPage 가 linked_seller 면 셀러 storefront inline 렌더 — 콘텐츠 동일, URL 통일).
+    //   없으면 클라가 /profile 폴백. worker/index.ts:2090 의 /profile→/u 301 과 정합(인앱 클릭이 301 우회하던 불일치 해소).
+    const [metaMap, handleRow] = await Promise.all([
+      getSupplyMeta(DB, [Number(id)]).catch(() => null),
+      DB.prepare(
+        `SELECT u.handle AS handle
+           FROM products p
+           JOIN sellers s ON s.id = p.seller_id
+           JOIN users u ON (
+                 u.id = s.linked_user_id
+              OR (s.linked_user_id IS NULL AND s.email IS NOT NULL AND s.email != '' AND u.email = s.email)
+           )
+          WHERE p.id = ? AND u.handle IS NOT NULL AND u.handle != '' LIMIT 1`
+      ).bind(id).first<{ handle: string }>().catch(() => null),
+    ])
     let menu: Array<{ name: string; desc?: string; price?: string; image?: string; hot?: boolean }> | undefined
     try {
-      const metaMap = await getSupplyMeta(DB, [Number(id)])
-      const raw = metaMap.get(Number(id))?.menu
+      const raw = metaMap?.get(Number(id))?.menu
       if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr) && arr.length) menu = arr }
-    } catch { /* meta 테이블/데이터 없음 — 메뉴 없음 */ }
+    } catch { /* meta 데이터 invalid — 메뉴 없음 */ }
+    const seller_handle = (handleRow?.handle && handleRow.handle.toLowerCase() !== 'me') ? handleRow.handle : null
 
     return c.json({
       success: true,
@@ -419,6 +438,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         current_discount_pct: fixedDiscountPct,  // 🛡️ 2026-05-30: 단일가 — 인원 무관 고정
         next_tier: null,                          // 🛡️ 2026-05-30: 동적 인하 제거 (즉시판매)
         next_tier_remaining: null,
+        ...(seller_handle ? { seller_handle } : {}),  // 🔗 셀러 링크샵 handle (있을 때만)
         ...(menu ? { menu } : {}),                // 🍽️ #5: 대표 메뉴 (있을 때만)
       },
     })

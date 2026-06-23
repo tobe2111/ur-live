@@ -9,7 +9,7 @@ export default function NotFoundPage() {
 
   const popularLinks = [
     { to: '/', label: t('notFound.linkLive'), Icon: Radio },
-    { to: '/restaurant-map', label: t('notFound.linkRestaurant'), Icon: Utensils },
+    { to: '/map', label: t('notFound.linkRestaurant'), Icon: Utensils },
     { to: '/referral', label: t('notFound.linkGroupBuy'), Icon: Users },
   ]
 

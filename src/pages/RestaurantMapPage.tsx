@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
-import { MapPin, Map as MapIcon, ChevronDown, Search, Bell, ShoppingCart } from 'lucide-react'
+import { MapPin, Map as MapIcon, ChevronDown, Search, Bell, ShoppingCart, LocateFixed, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
@@ -126,6 +126,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const [sheetSnap, setSheetSnap] = useState<'peek' | 'mid' | 'full'>('peek')
   // 🛡️ 2026-04-30 Phase 5: '내 주변' 모드 (GPS 권한 요청 + 거리순 자동)
   const [nearMeMode, setNearMeMode] = useState(false)
+  // 🗺️ 2026-06-23 (대표 — 현위치 버튼): GPS 조회 중 로딩 표시.
+  const [locating, setLocating] = useState(false)
   // 🛡️ 2026-04-30 Phase 5: 검색 히스토리 (localStorage)
   const [searchHistory, setSearchHistory] = useState<string[]>(() =>
     storage.getJSON<string[]>('restaurant_search_history', [])
@@ -393,8 +395,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       }
       return
     }
+    setLocating(true)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        setLocating(false)
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
         setUserLoc(loc)
         setNearMeMode(true)
@@ -404,7 +408,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           mapInstance.current.setLevel(5)
         }
       },
-      () => toast.error(t('restaurantMap.geoPermissionDenied')),
+      () => { setLocating(false); toast.error(t('restaurantMap.geoPermissionDenied')) },
       { timeout: 8000, enableHighAccuracy: true, maximumAge: 60000 }
     )
   }, [userLoc])
@@ -441,7 +445,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     //   카운트/정렬 + 카드 1개가 보이고, 더 보려면 위로 드래그(mid/full).
     peek: 'calc(100dvh - 240px)',
     mid: 'calc(100dvh - 60dvh)',
-    full: 'calc(100dvh - 92dvh)',
+    // 🗺️ 2026-06-23 (대표 — 스크롤 시 상단 버튼과 겹침): full 을 상단 플로팅바(검색+칩 ~100px) 아래로
+    //   제한(8dvh→고정 104px+노치). 시트가 상단바를 덮어 겹쳐 보이던 것 차단.
+    full: 'calc(env(safe-area-inset-top, 0px) + 104px)',
   }
   // 🛡️ 2026-05-17: PC (lg+) 에서는 sheet 더 작게 (peek 16dvh, mid 40dvh, full 80dvh)
   //   → 지도 영역 60~84% 확보 → wheel zoom UX 정상.
@@ -517,11 +523,12 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             onSelect={(r) => navigate(`/products/${r.id}`)}
             fcfsMap={fcfsMap}
             onApplyFcfs={applyFcfs}
+            voucherType={voucherType}
           />
         </div>
         {/* 플로팅 '지도' 버튼 — 하단 네비 위 중앙 */}
         <button
-          onClick={() => navigate('/restaurant-map')}
+          onClick={() => navigate('/map')}
           className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full pl-4 pr-5 py-3 shadow-xl active:scale-95 transition-transform"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom,0px) + 16px)' }}
           aria-label={t('map.viewMap', { defaultValue: '지도로 보기' })}
@@ -548,7 +555,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       <SEO
         title={home ? t('seo.home.title', { defaultValue: '유어딜 — 내 주변 동네딜 지도' }) : t('restaurantMap.seoTitle', { defaultValue: '맛집 지도' })}
         description={home ? t('seo.home.description', { defaultValue: '내 주변 동네딜을 지도에서 한눈에. 식사·숙소·뷰티 공구권을 가까운 순으로.' }) : t('restaurantMap.seoDesc', { defaultValue: '유어딜 바우처 사용 가능 맛집을 지도에서 찾아보세요. 인플루언서 추천 맛집 최대 70% 할인' })}
-        url={home ? '/' : '/restaurant-map'}
+        url={home ? '/' : '/map'}
       />
 
       {/* ═══ 풀스크린 카카오맵 (배경) ═══
@@ -591,6 +598,20 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         onOpenFilter={() => setFilterSheetOpen(true)}
         home={home}
       />
+
+      {/* 🗺️ 2026-06-23 (대표 — 현위치 버튼): 누르면 GPS 현위치로 지도 이동(+파란 점 표시).
+          peek 시트(240px) 위로 떠 있게 배치. nearMe 활성 시 강조, 조회 중 스피너. */}
+      <button
+        onClick={requestNearMe}
+        disabled={locating}
+        aria-label={t('restaurantMap.myLocation', { defaultValue: '현위치로 이동' })}
+        className={`absolute right-3 z-20 w-10 h-10 flex items-center justify-center rounded-full shadow-lg border active:scale-95 transition-all disabled:opacity-70 ${
+          nearMeMode ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-[#0A0A0A] text-blue-600 dark:text-blue-400 border-gray-100 dark:border-[#1A1A1A]'
+        }`}
+        style={{ bottom: 'calc(240px + 16px)' }}
+      >
+        {locating ? <Loader2 className="w-[18px] h-[18px] animate-spin" /> : <LocateFixed className="w-[18px] h-[18px]" />}
+      </button>
 
       {/* 🗺️ 2026-06-22 (대표 시안 — 야놀자식): 선택 시 하단은 납작한 가로 카드(SelectedDealCard) →
           지도 넓게 + 좌우 스와이프 캐러셀. 미선택 시에만 드래그 리스트 시트. (둘은 배타) */}
@@ -675,6 +696,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
               onSelect={selectAndPan}
               fcfsMap={fcfsMap}
               onApplyFcfs={applyFcfs}
+              voucherType={voucherType}
             />
           </ScrollArea>
         </div>

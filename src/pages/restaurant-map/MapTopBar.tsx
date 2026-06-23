@@ -168,8 +168,8 @@ export default function MapTopBar({
             aria-pressed={nearMeMode}
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[12px] font-semibold shrink-0 shadow-sm border transition-all ${
               nearMeMode
-                ? 'bg-pink-500 text-white border-pink-500'
-                : 'bg-white dark:bg-[#0A0A0A] text-pink-600 dark:text-pink-400 border-gray-200 dark:border-[#2A2A2A]'
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white dark:bg-[#0A0A0A] text-blue-600 dark:text-blue-400 border-gray-200 dark:border-[#2A2A2A]'
             }`}
           >
             <Navigation className="w-3 h-3" />

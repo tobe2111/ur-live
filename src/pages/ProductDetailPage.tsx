@@ -664,7 +664,7 @@ export default function ProductDetailPage() {
               {product.restaurant_address && (
                 <div className="grid grid-cols-3 gap-2 pt-2">
                   <button type="button"
-                    onClick={() => navigate(`/restaurant-map?q=${encodeURIComponent(product.restaurant_address || '')}`)}
+                    onClick={() => navigate(`/map?q=${encodeURIComponent(product.restaurant_address || '')}`)}
                     className="py-2 bg-gray-100 dark:bg-[#1A1A1A] hover:bg-gray-200 dark:hover:bg-[#2A2A2A] text-gray-700 dark:text-gray-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
                     {t('productDetail.mapLink', { defaultValue: '🗺 지도' })}
                   </button>
