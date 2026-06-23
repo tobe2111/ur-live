@@ -55,6 +55,8 @@ interface GroupBuyDetail {
   seller_id?: number
   seller_name?: string
   seller_username?: string
+  // 🔗 2026-06-21 (대표 제안): 셀러의 유저 링크샵 handle. 있으면 /u/{handle}(통합 링크샵)로, 없으면 /profile 폴백.
+  seller_handle?: string
   seller_avatar?: string
   // 🛡️ 2026-05-27: 셀러 SNS 버튼 — 채팅/매너온도 X, SNS 만.
   seller_instagram?: string | null
@@ -657,7 +659,7 @@ export default function GroupBuyDetailPage() {
                   </div>
                   {detail.seller_username && <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', marginTop: 2 }}>@{detail.seller_username}</div>}
                 </div>
-                <button onClick={() => { const t = detail.seller_username || detail.seller_id; if (t) navigate(`/profile/${t}`) }} style={{ display: 'inline-flex', alignItems: 'center', gap: 1, padding: '8px 12px', border: '1px solid var(--gbd-line2)', borderRadius: 10, background: 'var(--gbd-card)', color: 'var(--gbd-ink2)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+                <button onClick={() => { if (detail.seller_handle) { navigate(`/u/${detail.seller_handle}`); return } const t = detail.seller_username || detail.seller_id; if (t) navigate(`/profile/${t}`) }} style={{ display: 'inline-flex', alignItems: 'center', gap: 1, padding: '8px 12px', border: '1px solid var(--gbd-line2)', borderRadius: 10, background: 'var(--gbd-card)', color: 'var(--gbd-ink2)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
                   프로필<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
                 </button>
               </div>
@@ -826,7 +828,7 @@ export default function GroupBuyDetailPage() {
             <div style={{ padding: '22px 0' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px' }}>
                 <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>이 셀러의 다른 공구</div>
-                {detail.seller_username && <a href={`/profile/${detail.seller_username}`} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>전체보기</a>}
+                {(detail.seller_handle || detail.seller_username) && <a href={detail.seller_handle ? `/u/${detail.seller_handle}` : `/profile/${detail.seller_username}`} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>전체보기</a>}
               </div>
               <div className="noscroll" style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '14px 18px 2px', scrollSnapType: 'x proximity' }}>
                 {otherDeals.map((o) => {
