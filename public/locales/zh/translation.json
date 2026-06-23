@@ -5309,7 +5309,8 @@
       "health": "健身",
       "pet": "宠物",
       "stay": "住宿",
-      "activity": "活动"
+      "activity": "活动",
+      "etc": "其他"
     },
     "picker": {
       "placeholder": "输入店名或地址"

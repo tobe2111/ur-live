@@ -22,6 +22,7 @@ import MapTopBar from './restaurant-map/MapTopBar'
 import SheetFilterBar from './restaurant-map/SheetFilterBar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Screen } from '@/components/ui/screen'
+import { type MapVoucherType } from './restaurant-map/voucher-types'
 import { useKakaoMap } from './restaurant-map/useKakaoMap'
 import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
@@ -45,7 +46,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 🛡️ 2026-04-28: Recommended Pack — 거리/카테고리/정렬
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
   // 🛡️ 2026-04-28: 공구권 카테고리 (식사/뷰티/헬스) — meal_voucher 인프라 재활용
-  const [voucherType, setVoucherType] = useState<'all' | 'meal_voucher' | 'beauty_voucher' | 'health_voucher' | 'pet_voucher' | 'stay_voucher' | 'activity_voucher'>('all')
+  const [voucherType, setVoucherType] = useState<MapVoucherType>('all')
   // 🛡️ 2026-06-01 Tier2: products fetch 만 React Query(카테고리별 캐시). live-poller 는 유지.
   const { data: restaurants = [], isLoading: loading } = useMapProducts(voucherType === 'all' ? 'all' : voucherType)
   // 🗺️ 2026-06-20 (대표 — 상품 클릭 시 위치 이동/핀 표시 안 됨): 좌표 없는 딜(주소만 있음)을 클라이언트에서

@@ -55,6 +55,9 @@ function expandSynonyms(token: string): string[] {
  *   null = 미탐지(컬럼 포함 시도), false = 없음(영구 제외), true = 있음.
  */
 let _dominantColorCol: boolean | null = null
+// 🏁 2026-06-22 (대표 — 링크샵 picker 적립률 표시): referral_commission_rate(migration 0271) 를 목록
+//   응답에 포함(추가만). dominant_color 와 동일한 optional-column 가드 — 미적용 DB 면 영구 제외(재시도 0).
+let _referralCommissionCol: boolean | null = null
 
 export class ProductRepository {
   constructor(private db: D1Database) {}
@@ -95,6 +98,8 @@ export class ProductRepository {
     ];
     // dominant_color: 미적용 DB 면 제외(영구 캐시) → 매 요청 실패-재시도 제거.
     if (_dominantColorCol !== false) baseCols.push('dominant_color');
+    // referral_commission_rate: 동일 가드(미적용 DB 영구 제외). 링크샵 picker 적립률 배지용.
+    if (_referralCommissionCol !== false) baseCols.push('referral_commission_rate');
     const LIST_COLUMNS = baseCols.join(', ');
     let query = `SELECT ${LIST_COLUMNS} FROM products WHERE is_active = 1
       AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)`;
@@ -185,6 +190,7 @@ export class ProductRepository {
     try {
       const result = await this.db.prepare(query).bind(...params).all<Product>();
       if (_dominantColorCol === null) _dominantColorCol = true; // 1차 성공 → 컬럼 존재 확정(이후 항상 포함)
+      if (_referralCommissionCol === null) _referralCommissionCol = true;
       return result.results || [];
     } catch (err) {
       // 🏭 2026-06-05 (근본수정 — 정렬 무시 + 느린 로딩):
@@ -196,6 +202,10 @@ export class ProductRepository {
       if (/no such column/i.test(errMsg)) {
         if (/dominant_color/i.test(errMsg) && _dominantColorCol !== false) {
           _dominantColorCol = false;
+          return this.findAll(filter, offset, limit);
+        }
+        if (/referral_commission_rate/i.test(errMsg) && _referralCommissionCol !== false) {
+          _referralCommissionCol = false;
           return this.findAll(filter, offset, limit);
         }
         // 🛡️ 2026-06-10: SELECT * 는 products 컬럼 한도 초과(D1 too many columns)로 그 자체가 실패 →

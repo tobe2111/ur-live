@@ -1,16 +1,15 @@
 import { useTranslation } from 'react-i18next'
 import { Navigation, ArrowUpDown, Heart, SlidersHorizontal } from 'lucide-react'
 import type { SortBy } from './types'
-
-type VoucherType = 'all' | 'meal_voucher' | 'beauty_voucher' | 'health_voucher' | 'pet_voucher' | 'stay_voucher' | 'activity_voucher'
+import { type MapVoucherType, MAP_VOUCHER_DEFS } from './voucher-types'
 
 interface Props {
   activeFilterCount: number
   onOpenFilter: () => void
   nearMeMode: boolean
   requestNearMe: () => void
-  voucherType: VoucherType
-  setVoucherType: (v: VoucherType) => void
+  voucherType: MapVoucherType
+  setVoucherType: (v: MapVoucherType) => void
   filteredCount: number
   userLoc: { lat: number; lng: number } | null
   sortBy: SortBy
@@ -21,16 +20,6 @@ interface Props {
   // 🗺️ 2026-06-22 (대표 시안): 칩을 상단(MapTopBar)으로 올린 지도 모드에선 칩 줄 숨기고 count/정렬만.
   hideChips?: boolean
 }
-
-const VOUCHER_TYPE_DEFS: Array<{ key: VoucherType; labelKey: string; defaultLabel: string; emoji: string }> = [
-  { key: 'all', labelKey: 'map.voucher.all', defaultLabel: '전체', emoji: '✨' },
-  { key: 'meal_voucher', labelKey: 'map.voucher.meal', defaultLabel: '식사', emoji: '🍽️' },
-  { key: 'beauty_voucher', labelKey: 'map.voucher.beauty', defaultLabel: '뷰티', emoji: '💇' },
-  { key: 'health_voucher', labelKey: 'map.voucher.health', defaultLabel: '헬스', emoji: '💪' },
-  { key: 'pet_voucher', labelKey: 'map.voucher.pet', defaultLabel: '반려', emoji: '🐶' },
-  { key: 'stay_voucher', labelKey: 'map.voucher.stay', defaultLabel: '숙소', emoji: '🏨' },
-  { key: 'activity_voucher', labelKey: 'map.voucher.activity', defaultLabel: '액티비티', emoji: '🎯' },
-]
 
 /**
  * 바텀 시트 상단 sticky 필터 행 + 결과 카운트 + 정렬 select.
@@ -88,7 +77,7 @@ export default function SheetFilterBar({
             <Navigation className="w-3 h-3" />
             <span>{t('restaurantMap.nearMe')}</span>
           </button>
-          {VOUCHER_TYPE_DEFS.map(v => (
+          {MAP_VOUCHER_DEFS.map(v => (
             <button
               key={v.key}
               onClick={() => setVoucherType(v.key)}
