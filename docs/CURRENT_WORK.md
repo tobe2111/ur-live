@@ -40,7 +40,7 @@
 - **선착순(FCFS) ✅** — 콜드스타트 시드 응모형(결제·사용처리 X). `fcfs.routes.ts`(공개/유저 apply/어드민 config·applicants·select+알림) + `AdminFcfsPage`(`/admin/fcfs`) + 소비자 배지/지원 + 내 매장 현황(`GET /store-fcfs` 셀러 스코프, `6b96bd3`). 설정 = `product_supply_meta` K-V, 지원 = `fcfs_applications`(1인 1회 UNIQUE).
 - **checkout 종류 분기 ✅** — `noShipping = 모든 항목 deal_only=1 또는 isVoucherCategory(category)`(order-type SSOT) → 공구/교환권은 주소 불요(공구='매장 바로사용'·교환권='MMS'), 일반 쇼핑만 주소/배송비. (`b5d561c`)
 - **흑백(B&W) + PC 액자** — tailwind config 색상 remap(브랜드 핑크/레드 → MONO, 기능 빨강만 유지) / PC = 중앙 모바일 액자 + 데코 거터 레일(`ConsumerFrameRails`) + 액자 안 하단 네비. 동네딜 홈 = 당근식 1줄 리스트 + 플로팅 "지도" 버튼(`RestaurantMapPage` list/map 모드), 지도 줌 근본수정(`didInitialFit` ref — 매 줌 re-fit 제거), 필터 리디자인(`FilterSheet` 2단 계층 지역 + 실시간 카운트, z-[10000]).
-- **⚠️ 도매몰 어드민 라벨 — 명칭 충돌(대표 확인 요망)**: `ec3cf17` 이 '판매사'→'유통사'(당시 CLAUDE.md 2026-06-21 명칭 SSOT)로 바꿨으나, 직후 병렬 세션 `632f020`("도매몰 구매자측 명칭 유통사→**판매사** 전면 역전 — 대표 지시")로 **되돌려짐 → 현재 코드 = '판매사'**. CLAUDE.md(유통사 단독) ↔ 최신 대표 지시(판매사) **충돌** — 명칭 SSOT 갱신 필요. (제조사 라벨의 '(공급사)' 괄호 제거는 양립 — 유지)
+- **도매몰 어드민 라벨 — 명칭 역전 반영 완료 ✅**: `ec3cf17` 이 '판매사'→'유통사'(당시 CLAUDE.md 2026-06-21 규칙)로 바꿨으나, 직후 병렬 세션 `632f020`(대표 지시 "유통사→**판매사** 전면 역전")이 **코드 + CLAUDE.md 규칙 둘 다 되돌림** → 확정 명칭 = **'판매사 / 제조사'**(CLAUDE.md 2026-06-22, line 413~426; '유통사' 사용 금지). 내 ec3cf17 의 '판매사→유통사' 라벨은 무효화(현재 코드 = 판매사 — 대표 최신 지시 일치). 단 '제조사(공급사)'→'제조사' 괄호 제거는 새 규칙(괄호 병기 금지)과도 양립 → 유지.
 - **남은 것(후속 결정)**: ① Phase 2 차지백 클로백 ② Phase 3(동적 신뢰 정산·리뷰 플라이휠·이상탐지/Sybil) ③ ⚠️ **대표/staging 실결제 E2E 1회**(구매→셀프 사용→7일 정산 / "안 왔어요"→보류→해소). 현재 동네딜 사용처리는 라이브 노출 전이라 영향 0.
 - 검증: tsc 0 · 테마 일관성 0 · sql-bind 0 · `npm run build`(worker 포함) 0.
 
