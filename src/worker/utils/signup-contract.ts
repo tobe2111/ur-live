@@ -27,7 +27,10 @@ export interface SignupContractInput {
 }
 
 async function run(env: ContractContext['env'], input: SignupContractInput): Promise<void> {
-  const templateId = env.UCANSIGN_TEMPLATE_ID
+  // 🖋️ 가입 유형별 계약서 템플릿 선택 — 제조사 향 / 판매사 향. 유형별 미설정 시 공용 폴백.
+  const templateId = (input.accountType === 'supplier'
+    ? env.UCANSIGN_TEMPLATE_ID_SUPPLIER
+    : env.UCANSIGN_TEMPLATE_ID_DISTRIBUTOR) || env.UCANSIGN_TEMPLATE_ID
   if (!env.UCANSIGN_API_KEY || !templateId) return // 미설정 → no-op(행 없음 = 미차단)
   const phone = (input.signerPhone || '').replace(/[^0-9]/g, '')
   if (!phone) return // 카카오 서명은 휴대폰 필요 — 없으면 skip(차단 안 함)
