@@ -24,6 +24,8 @@ export default function SupplierLoginPage() {
   const [error, setError] = useState('')
   // 🏭 2026-06-08: 카카오 계정에 제조회원 계정이 없을 때 — register 강제이동 대신 선택지 안내(#2 수정).
   const [kakaoNoSupplier, setKakaoNoSupplier] = useState(false)
+  // 🆕 2026-06-19 (감사 #3): 카카오로 들어온 제조회원이 '승인 대기'면 토스트만 띄우지 말고 명확한 안내 배너.
+  const [kakaoPending, setKakaoPending] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
 
   // 🛡️ 2026-06-17: 이메일 기억하기 — 저장된 이메일 자동 채움 (admin/seller 와 동형).
@@ -46,6 +48,7 @@ export default function SupplierLoginPage() {
             toast.success('제조사로 로그인되었습니다')
             navigate('/supplier', { replace: true })
           } else if (data.success && data.status === 'pending') {
+            setKakaoPending(true)
             toast.info(data.message || '제조사 승인 대기 중입니다 — 승인 후 이용할 수 있어요')
           } else if (data.success && data.status === 'needs_registration') {
             // 🏭 2026-06-08 (#2 수정): 이 카카오 계정에 제조회원 계정이 없음.
@@ -160,6 +163,17 @@ export default function SupplierLoginPage() {
                     className="px-3 py-2 rounded-lg bg-[#FC5424] text-white text-xs font-bold">제조사 입점 신청</button>
                   <button type="button" onClick={() => navigate('/wholesale/login')}
                     className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 text-xs font-bold">판매사 로그인 →</button>
+                </div>
+              </div>
+            )}
+
+            {kakaoPending && (
+              <div className="mb-5 px-4 py-3.5 bg-blue-50 border border-blue-200 rounded-xl">
+                <p className="text-sm font-semibold text-blue-900">제조(브랜드)회원 승인 대기 중이에요</p>
+                <p className="text-xs text-blue-700 mt-1">사업자 정보 확인 후 관리자 승인되면 바로 로그인할 수 있어요. 보통 영업일 기준 1–2일 소요됩니다.</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => navigate('/wholesale')}
+                    className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 text-xs font-bold">도매몰 둘러보기</button>
                 </div>
               </div>
             )}
