@@ -164,8 +164,16 @@ export default function UserProfilePage() {
       {/* v4 딜 잔액 + 충전 (큰 박스) */}
       <TeamPointsCard />
 
-      {/* 🧭 2026-06-10 (UI 100점 패스 — 마이 최하점 원인): 수익·추천 3카드 도배 → 접이식 그룹.
-          첫 화면은 자산(딜 잔액·이용 내역) 중심, 수익 탐색은 1탭 뒤로. 카드 로직/데이터 불변. */}
+      {/* 🧹 2026-06-22 (대표 — '내 자산 먼저' IA 재배치): 소비자 본인 자산(주문현황+나의 이용내역)을
+          역할 진입/수익 CTA 보다 위로. 순서: 딜 잔액 → 나의 이용내역 → 수익·추천(접힘) → 역할 진입 → 광고. */}
+
+      {/* v4 주문 현황 */}
+      <OrderStatusBar />
+
+      {/* v4 쇼핑 InsetGroup — 나의 이용 내역 (이용권·자산 / 관심 / 주문·배송) */}
+      <ShoppingGroup counts={counts} />
+
+      {/* 🧭 2026-06-10 (UI 100점 패스): 수익·추천 3카드 도배 → 접이식 그룹(자산 다음으로 1탭 뒤). */}
       <EarningsGroup>
       {/* 🧹 2026-06-22 (대표 — 수익·추천 폴드 압축): 큰 카드 도배 → 컴팩트 행 한 묶음(B&W).
             ReferralEarnedCard/CuratorEarningsCard 는 행으로(데이터/라우트 불변, 빈값이면 null →
@@ -220,19 +228,6 @@ export default function UserProfilePage() {
       <div className="ur-content-medium px-4 lg:px-8 pt-5">
         <RoleCtaGrid />
       </div>
-
-      {/* 🧹 2026-06-21: 쿠폰/바우처 스탯카드 제거 — '쇼핑·이용내역' 그룹의 쿠폰함/내 교환권 행과
-           같은 곳(/my-coupons · /my-vouchers)으로 가던 중복 진입점이라 통합(카운트는 그 행에 그대로 표시). */}
-
-      {/* v4 주문 현황 */}
-      <OrderStatusBar />
-
-      {/* v4 쇼핑 InsetGroup — 시안 매칭 (4개) */}
-      <ShoppingGroup counts={counts} />
-
-      {/* 🧹 2026-06-21 (대표 — 마이 정리): '더보기'(배송지/리뷰) 섹션 제거 → 배송지·리뷰는
-           '쇼핑·이용내역' 그룹으로 흡수, '인플루언서 활동'은 '내 수익·추천' 그룹으로 흡수.
-           채팅 이름 설정은 라이브 영구중단으로 이미 제거. 흩어진 미니 섹션을 한 곳으로 통합. */}
 
       {/* v4 광고 리워드 카드 */}
       <RewardAdCard />
