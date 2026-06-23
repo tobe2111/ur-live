@@ -16,6 +16,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { curatorApi, type CuratorPageResponse, type CuratorPin, type DashboardStats } from '@/features/curator/api/curator-api'
+import { fetchCuratorPage, getCuratorCache } from '@/features/curator/curator-page-cache'
 import { useAuthStore } from '@/client/stores/auth.store'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { formatWon, formatNumber } from '@/utils/format'
@@ -37,33 +38,10 @@ const SellerPublicPage = lazy(() => import('./SellerPublicPage'))
 const SellOwnProductsCTA = lazy(() => import('./curator-page/SellOwnProductsCTA'))
 
 // 🧭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — 링크샵 로딩 김): 모듈 메모리 캐시 + 진입 전 워밍.
-//   SPA 탭 진입은 SSR 미주입 → 매 마운트 cold fetch. 동네딜(warmGroupBuyList)과 동일 패턴:
-//   재진입 0ms 페인트(+60s 초과는 백그라운드 갱신), 하단바 pointerdown 이 데이터 선요청.
-const CURATOR_CACHE_TTL = 60_000
-const _curatorCache = new Map<string, { data: CuratorPageResponse; at: number }>()
-const _curatorInflight = new Map<string, Promise<CuratorPageResponse | null>>()
-
-function fetchCuratorPage(handle: string): Promise<CuratorPageResponse | null> {
-  const inflight = _curatorInflight.get(handle)
-  if (inflight) return inflight
-  const p = curatorApi.getPage(handle)
-    .then((res) => {
-      if (res?.success) { _curatorCache.set(handle, { data: res, at: Date.now() }); return res }
-      return res ?? null
-    })
-    .catch(() => null)
-    .finally(() => { _curatorInflight.delete(handle) })
-  _curatorInflight.set(handle, p)
-  return p
-}
-
-/** 하단바 pointerdown 워밍 — 누르는 순간 데이터 선요청 (신선하면 no-op). */
-export function warmCurator(handle: string): void {
-  if (!handle || handle === 'me') return
-  const hit = _curatorCache.get(handle)
-  if (hit && Date.now() - hit.at < CURATOR_CACHE_TTL) return
-  void fetchCuratorPage(handle)
-}
+//   SPA 탭 진입은 SSR 미주입 → 매 마운트 cold fetch. 재진입 0ms 페인트(+60s 초과는 백그라운드 갱신).
+//   🧭 2026-06-22: 캐시 구현은 curator-page-cache 로 추출(picker 등이 무거운 이 청크 없이 무효화만 import).
+//   warmCurator 는 BottomNav 가 `import('@/pages/CuratorPage').then(m => m.warmCurator)` 로 쓰므로 re-export 유지.
+export { warmCurator } from '@/features/curator/curator-page-cache'
 
 export default function CuratorPage() {
   const { handle = '' } = useParams<{ handle: string }>()
@@ -82,9 +60,7 @@ export default function CuratorPage() {
       }
     } catch { /* SSR 누락 — fallback */ }
     // 메모리 캐시(워밍/재진입) — 신선하면 즉시 페인트, stale 이어도 화면 먼저 + 백그라운드 갱신
-    const hit = _curatorCache.get(handle)
-    if (hit) return hit.data
-    return null
+    return getCuratorCache(handle)
   })
   const [loading, setLoading] = useState(!data)
   const [error, setError] = useState<string | null>(null)
