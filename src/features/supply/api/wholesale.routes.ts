@@ -105,7 +105,7 @@ async function ensureSubAccountSchema(DB: D1Database) {
 //   라이브커머스 셀러 온보딩(유튜브·NTS·seller_type)과 분리. seller 계정을 재사용하되
 //   distributor_grade='C' + is_distributor=1 로 표시 → /seller 대시보드 대신 /wholesale 에서 완결.
 //   ⚠️ 사업자번호는 세금계산서용 선택값. 가입 즉시 사용 가능(status='approved').
-app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSec: 3600 }), async (c) => {
+app.post('/register', rateLimit({ action: 'wholesale_register', max: 20, windowSec: 3600 }), async (c) => {
   const { DB, JWT_SECRET } = c.env
   if (!JWT_SECRET) return c.json({ success: false, error: '서버 설정 오류' }, 500)
   try {
@@ -173,7 +173,7 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
 
     const passwordHash = await hashPassword(password)
     // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
-    const mallId = await registrationMallId(c).catch(() => 1) // fail-soft: 몰 해석 실패해도 기본몰(1)로 가입 진행
+    const mallId = await registrationMallId(c).catch(() => 1) // 🛡️ 2026-06-23 fail-soft: 몰 해석 실패가 가입 500 안 내게(기본 몰 1)
     // 🏁 2026-06-12 (P4 정책 확정 — "둘 다 수동 승인"): 국세청 결과는 참고 표시용 저장만. fail-soft.
     let ntsStatus2: string | null = null
     try {
@@ -263,7 +263,9 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 5, windowSe
       message: '판매사 가입 신청이 완료되었습니다. 사업자 정보 확인 후 관리자 승인되면 이용할 수 있습니다.',
     })
   } catch (err) {
-    return safeError(c, err, '가입 처리 중 오류가 발생했습니다', '[wholesale:register]')
+    // ⏳ 2026-06-23 임시 진단: prod 에서 실제 에러를 _diag 로 노출(원인 확인 후 제거 예정). console+Sentry 도 기록.
+    console.error('[wholesale:register] 500:', (err as Error)?.message || String(err))
+    return c.json({ success: false, error: '가입 처리 중 오류가 발생했습니다', _diag: String((err as Error)?.message || err).slice(0, 250) }, 500)
   }
 })
 
@@ -369,7 +371,7 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
     }
     if (!username) username = `dist${Date.now().toString().slice(-8)}`
     // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
-    const mallId = await registrationMallId(c)
+    const mallId = await registrationMallId(c).catch(() => 1) // 🛡️ 2026-06-23 fail-soft: 몰 해석 실패가 가입 500 안 내게(기본 몰 1)
 
     // 🏁 2026-06-12 (P4 정책 확정 — 사용자: "둘 다 수동 승인"): 국세청 상태조회는 **참고 표시용**으로만
     //   저장·알림 표기 — 자동 승인 없음. 승인은 항상 어드민 수동. fail-soft.
