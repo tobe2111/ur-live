@@ -31,7 +31,7 @@ jobs:
             for i in 1 2; do
               echo "===== [$i] $u ====="
               curl -s -o /tmp/b -D /tmp/hh -w "HTTP %{http_code} | total %{time_total}s | ttfb %{time_starttransfer}s | size %{size_download}\n" --max-time 30 "https://live.ur-team.com$u" -H 'accept: application/json' || true
-              grep -i "cf-cache-status\|x-grade-cache\|^cache-control\|cdn-cache-control\|server-timing" /tmp/hh || true
+              grep -i "cf-cache-status\|x-grade-cache\|x-ws-cache\|x-ws-total\|x-ws-mall\|x-ws-guest\|^cache-control\|cdn-cache-control\|server-timing" /tmp/hh || true
             done
           done
           echo
