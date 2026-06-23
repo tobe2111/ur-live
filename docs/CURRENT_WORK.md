@@ -61,6 +61,11 @@
   - 카드: cardGradient(대표색/seededColor 폴백) + cfImage + 핀 토글 배지(체크/플러스/스피너). 검색(상품명) + 상품 탭 '더 보기' page 누적. 다크 기본 + 라이트 토글(테마 일관성 0).
 - **진입점 전환**: `CuratorPage.tsx` PinGrid 의 추가 CTA + EmptyLinkshop browseLink → `/browse`·`/group-buy` → `/u/me/add?tab=shop|voucher`. (잠긴 SSR/로딩 동작 무관 — 클라 라우팅 목적지 문자열만 변경.)
 - 검증: tsc 0 · `npm run build`(client+ssr+worker+prepare) exit 0 · check-theme-consistency 0.
+- **후속 1 — 삭제 500 버그 수정**: `pin_click_logs.pin_id` 가 `product_pins(id)` 를 ON DELETE CASCADE 없이 FK 참조 → 클릭된 적 있는 핀 DELETE 시 D1 FK constraint throw → 500. `curator.routes.ts` DELETE 핸들러를 자식로그 먼저→핀 batch(단일 트랜잭션)로 수정. 공유 엔드포인트라 PinCard·순서편집 삭제 모두 함께 수정. 적립(affiliate_earnings)은 무관 보존.
+- **후속 2 — 카드 표준화(A안)**: picker 커스텀 PickCard → 표준 `BrowseProductCard` 재사용 + 핀 토글 오버레이("커스텀 카드 그만, 표준 카드 영구 고정" 규칙 준수, 디자인 영구 동기화). 카드 본문=상세 미리보기.
+- **후속 3 — 토스트 리디자인**: 전역 `ToastContainer` 파스텔 색박스 → 단일 잉크 카드 + 컬러 아이콘(대표 "팝업 촌스러워"). 앱 전역 모든 알림 적용.
+- **후속 4 — 즉시반영+코멘트+적립률+워밍**: ① 핀 추가/삭제 후 모듈캐시 무효화(`curator-page-cache.ts` 추출, picker 가 무거운 CuratorPage 청크 없이 import) → 링크샵 재진입 즉시 반영. ② 담은 직후 추천 코멘트(선택) 바텀시트(`updatePinNote`). ③ `ProductRepository` 목록에 `referral_commission_rate` 추가(dominant_color 가드 패턴) → picker '적립 N%' 배지. ④ picker 세션 모듈캐시(60s) 재진입 instant.
+- **후속 5 — 사업자 링크샵 편집 UX 통일**: `SellerPublicPage` 기본 previewAsVisitor=true(방문자뷰 시작→'편집하기') + 네이비 배너 2종→뉴트럴/잉크 슬림 바(CuratorPage 동일, theme-dual). i18n 6개 언어. SSR/소유권 판정 불변.
 
 ## ✅ 2026-06-22~23 — 동네딜 사용처리(redemption) + 선착순 + 흑백/PC 액자 (대표 다회 검증, "가장 이상적·안전하게")
 **한 세션 다중 아크.** 설계 SSOT: `docs/design/dongnedeal-redemption.md`(북극성: "카운터는 신뢰로 통과, 돈은 정산에서 검문").
