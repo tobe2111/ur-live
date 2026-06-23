@@ -48,7 +48,7 @@ export default function OrderStatusBar() {
       <div className="flex items-center justify-between rounded-2xl px-2 py-4 bg-gray-100 dark:bg-white/[0.04]">
         {items.map(o => (
           <button key={o.label} onClick={() => navigate(o.path)} className="flex-1 text-center">
-            <p className={`text-[18px] font-extrabold ${counts[o.key] ? 'text-pink-400' : 'text-gray-900 dark:text-white/20'}`} style={{ letterSpacing: '-0.02em' }}>
+            <p className={`text-[18px] font-extrabold ${counts[o.key] ? 'text-gray-900 dark:text-white' : 'text-gray-300 dark:text-white/20'}`} style={{ letterSpacing: '-0.02em' }}>
               {counts[o.key] || 0}
             </p>
             <p className="text-[9px] text-gray-900 dark:text-white/55 mt-0.5">{o.label}</p>
