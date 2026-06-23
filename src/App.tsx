@@ -414,7 +414,7 @@ function AppContent() {
   useEffect(() => {
     // 화이트 테마 페이지 (CLAUDE.md 정책)
     const lightPages = ['/browse', '/vouchers', '/meal-vouchers', '/checkout', '/my-orders', '/account/', '/cart',
-      '/referral/', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search', '/group-buy', '/community-group-buy']
+      '/referral/', '/map', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search', '/group-buy', '/community-group-buy']
     const isLight = lightPages.some(p => location.pathname === p || location.pathname.startsWith(p))
 
     // 1. Capacitor 네이티브 앱 — StatusBar 플러그인
@@ -494,7 +494,7 @@ function AppContent() {
   // 🗺️ 2026-06-20 (대표 — 홈=리스트 / 지도는 버튼 이동): 지도 페이지(/restaurant-map)만 h-screen 자체관리
   //   풀스크린(바텀시트가 하단 담당) → main 하단 네비 여백 제외. 홈(/)=리스트는 일반 페이지(여백 필요).
   //   ⚠️ 도매/제조사(isWholesaleSurface)는 위 hideBottomNav 가 이미 커버(여백 0) — 여기 중복 불필요.
-  const mapFullScreen = location.pathname === '/restaurant-map'
+  const mapFullScreen = location.pathname === '/map' || location.pathname === '/restaurant-map'
 
   return (
     <>
@@ -848,9 +848,9 @@ function AppContent() {
             <Route path="/referral/:code" element={<ReferralPage />} />
 
             {/* 맛집 지도 */}
-            {/* 🛡️ 2026-04-22: dead route 활성화 — RestaurantMapPage 컴포넌트가 import/lazy load 됐으나
-                redirect 만 되어 사용 안 되던 것을 실제 렌더링하도록 수정. 사용자는 지도 또는 /browse 카테고리 둘 다 사용 가능. */}
-            <Route path="/restaurant-map" element={<RestaurantMapPage />} />
+            {/* 🗺️ 2026-06-23 (대표 — 주소 간소화): 지도 페이지 canonical = /map. 옛 /restaurant-map 은 리다이렉트(북마크/외부링크 보존). */}
+            <Route path="/map" element={<RestaurantMapPage />} />
+            <Route path="/restaurant-map" element={<Navigate to="/map" replace />} />
 
             {/* 블로그 */}
             <Route path="/blog" element={<BlogListPage />} />
