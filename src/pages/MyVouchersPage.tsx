@@ -547,6 +547,11 @@ export default function MyVouchersPage() {
     const paid = v.applied_price ?? 0
     return (pct > 0 && pct < 100 && paid > 0) ? s + Math.round((paid * pct) / (100 - pct)) : s
   }, 0)
+  // 🪙 2026-06-23 (대표 신고 "교환권은 1800딜로 떠야"): 교환권(kt_alpha)은 딜로만 결제 → 단위 '딜'
+  //   (식사권 face value 는 '원' 유지 — utils/format.ts formatProductPrice 의 deal_only 규칙과 동일).
+  //   히어로는 탭별(unusedItems=shownVouchers) 동질 집합이라 sourceTab 으로 단위 판정.
+  const heroIsDeal = sourceTab === 'gift'
+  const heroUnit = heroIsDeal ? t('voucher.deal', { defaultValue: '딜' }) : t('voucher.won', { defaultValue: '원' })
 
   // 🎨 화면2 — 지도에서 보기 (전용 인-페이지 화면)
   if (viewMode === 'map') {
@@ -647,9 +652,9 @@ export default function MyVouchersPage() {
         <div className="ur-content-narrow px-4 lg:px-8 mb-4">
           <div className="rounded-[20px] px-[18px] pt-[18px] pb-4 bg-gray-900 dark:bg-[#141414] text-white"
             style={{ boxShadow: '0 14px 32px -10px rgba(10,10,10,0.45)' }}>
-            <p className="text-[12px] font-semibold text-gray-400">{t('voucher.heroBalanceLabel', { defaultValue: '보유 식사권 금액' })}</p>
+            <p className="text-[12px] font-semibold text-gray-400">{heroIsDeal ? t('voucher.heroBalanceLabelGift', { defaultValue: '보유 교환권 금액' }) : t('voucher.heroBalanceLabel', { defaultValue: '보유 식사권 금액' })}</p>
             <p className="mt-1 text-[32px] font-extrabold font-mono tracking-tight leading-none">
-              {formatNumber(heroTotal)}<span className="font-sans text-[16px] font-bold text-gray-300 ml-0.5">{t('voucher.won', { defaultValue: '원' })}</span>
+              {formatNumber(heroTotal)}<span className="font-sans text-[16px] font-bold text-gray-300 ml-0.5">{heroUnit}</span>
             </p>
             <div className="mt-3.5 pt-3 flex items-center gap-6 border-t border-white/10">
               <div>
@@ -665,7 +670,7 @@ export default function MyVouchersPage() {
               {heroSaved > 0 && (
                 <div>
                   <p className="text-[11px] text-gray-400">{t('voucher.heroSaved', { defaultValue: '아낀 돈' })}</p>
-                  <p className="mt-0.5 text-[15px] font-extrabold font-mono text-[#34C759]">{formatNumber(heroSaved)}{t('voucher.won', { defaultValue: '원' })}</p>
+                  <p className="mt-0.5 text-[15px] font-extrabold font-mono text-[#34C759]">{formatNumber(heroSaved)}{heroUnit}</p>
                 </div>
               )}
             </div>
@@ -1258,7 +1263,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
         <div className="shrink-0 flex flex-col items-end justify-between">
           {price !== null ? (
             <div className="text-[15px] font-bold font-mono text-gray-900 dark:text-white whitespace-nowrap">
-              {formatNumber(price)}<span className="font-sans text-[11px] font-semibold text-gray-400 dark:text-gray-500">{t('voucher.won', { defaultValue: '원' })}</span>
+              {formatNumber(price)}<span className="font-sans text-[11px] font-semibold text-gray-400 dark:text-gray-500">{t('voucher.deal', { defaultValue: '딜' })}</span>
             </div>
           ) : <span />}
           {sendFailed ? (
