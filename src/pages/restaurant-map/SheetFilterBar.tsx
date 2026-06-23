@@ -79,10 +79,10 @@ export default function SheetFilterBar({
           <button
             onClick={requestNearMe}
             aria-pressed={nearMeMode}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all ${
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-semibold shrink-0 transition-all border ${
               nearMeMode
-                ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
-                : 'bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400 border border-pink-200 dark:border-pink-900/40'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/30'
+                : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/40'
             }`}
           >
             <Navigation className="w-3 h-3" />

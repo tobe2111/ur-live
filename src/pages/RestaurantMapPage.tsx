@@ -605,12 +605,12 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         onClick={requestNearMe}
         disabled={locating}
         aria-label={t('restaurantMap.myLocation', { defaultValue: '현위치로 이동' })}
-        className={`absolute right-3 z-20 w-11 h-11 flex items-center justify-center rounded-full shadow-lg border border-gray-100 dark:border-[#1A1A1A] active:scale-95 transition-all disabled:opacity-70 ${
-          nearMeMode ? 'bg-pink-500 text-white border-pink-500' : 'bg-white dark:bg-[#0A0A0A] text-gray-700 dark:text-gray-200'
+        className={`absolute right-3 z-20 w-10 h-10 flex items-center justify-center rounded-full shadow-lg border active:scale-95 transition-all disabled:opacity-70 ${
+          nearMeMode ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-[#0A0A0A] text-blue-600 dark:text-blue-400 border-gray-100 dark:border-[#1A1A1A]'
         }`}
         style={{ bottom: 'calc(240px + 16px)' }}
       >
-        {locating ? <Loader2 className="w-5 h-5 animate-spin" /> : <LocateFixed className="w-5 h-5" />}
+        {locating ? <Loader2 className="w-[18px] h-[18px] animate-spin" /> : <LocateFixed className="w-[18px] h-[18px]" />}
       </button>
 
       {/* 🗺️ 2026-06-22 (대표 시안 — 야놀자식): 선택 시 하단은 납작한 가로 카드(SelectedDealCard) →
