@@ -380,7 +380,13 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   })
 
   // 🛡️ 2026-04-30 Phase 5: '내 주변' 클릭 — GPS 요청 + 거리순 + 위치로 pan
+  // 🗺️ 2026-06-23 (대표 — 취소 가능): 이미 활성이면 다시 누르면 토글 off(거리순 → 기본 정렬 복귀).
   const requestNearMe = useCallback(() => {
+    if (nearMeMode) {
+      setNearMeMode(false)
+      setSortBy('discount')
+      return
+    }
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       toast.error(t('restaurantMap.geoNotSupported'))
       return
@@ -411,7 +417,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       () => { setLocating(false); toast.error(t('restaurantMap.geoPermissionDenied')) },
       { timeout: 8000, enableHighAccuracy: true, maximumAge: 60000 }
     )
-  }, [userLoc])
+  }, [userLoc, nearMeMode])
 
   // 🗺️ 2026-06-22 (대표 시안 — 야놀자식): 상품 선택 시 하단은 납작한 가로 카드(SelectedDealCard)로
   //   바뀌고 지도가 넓어짐. 그 넓은 지도의 중앙('card' 오프셋)에 핀을 배치 + level 4 확대.
@@ -604,11 +610,12 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       <button
         onClick={requestNearMe}
         disabled={locating}
-        aria-label={t('restaurantMap.myLocation', { defaultValue: '현위치로 이동' })}
-        className={`absolute right-3 z-20 w-10 h-10 flex items-center justify-center rounded-full shadow-lg border active:scale-95 transition-all disabled:opacity-70 ${
-          nearMeMode ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-[#0A0A0A] text-blue-600 dark:text-blue-400 border-gray-100 dark:border-[#1A1A1A]'
+        aria-label={nearMeMode ? t('restaurantMap.myLocationOff', { defaultValue: '내 위치 해제' }) : t('restaurantMap.myLocation', { defaultValue: '현위치로 이동' })}
+        aria-pressed={nearMeMode}
+        className={`absolute right-3 z-20 w-10 h-10 flex items-center justify-center rounded-full shadow-lg border active:scale-95 transition-all ${
+          (nearMeMode || locating) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-[#0A0A0A] text-blue-600 dark:text-blue-400 border-gray-100 dark:border-[#1A1A1A]'
         }`}
-        style={{ bottom: 'calc(240px + 16px)' }}
+        style={{ bottom: selected ? 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 150px)' : 'calc(240px + 16px)' }}
       >
         {locating ? <Loader2 className="w-[18px] h-[18px] animate-spin" /> : <LocateFixed className="w-[18px] h-[18px]" />}
       </button>
