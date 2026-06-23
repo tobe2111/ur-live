@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-23 — `/vouchers` 연속 스크롤 + 중앙 스크롤스파이 탭 (대표 AskUserQuestion 승인)
+**대표 지시**: `/vouchers` 상단 `[교환권][쇼핑]` 탭을 **중앙 배치**하고, "교환권 어느정도 내리면 쇼핑 상품들이 뜨길" — 한 페이지 연속 스크롤. AskUserQuestion 답: "연속 스크롤(추천)" + "교환권 20개씩 + 더보기 버튼, 그 아래 쇼핑".
+- **변경** (`VouchersPage.tsx`, `[UNLOCK_LOADING]`): ① 탭바 **중앙 정렬**(검색 아이콘 우측 absolute), 탭 클릭 = **섹션 점프**(scrollTo/scrollIntoView), 활성 탭 = **스크롤스파이**(쇼핑 섹션 top≤100 감지). 콘텐츠 교체/URL `?tab` 전환 제거. ② 교환권 무한스크롤 → **20개 cap + '교환권 더보기'**(+20). ③ 더보기 **아래로 항상** 쇼핑 `<section>`(🛍️ 헤더 + 기존 `ShoppingGrid` 무한스크롤) 렌더.
+- **불변(잠금 보존)**: `__SSR_INITIAL_VOUCHERS__` 첫 페인트·default sort `price_low`·VoucherRow/Card 이미지 속성·카테고리/브랜드 chrome. 홈(embedded)은 `!embedded` 게이트라 byte-동일.
+- 검증: tsc 0 · theme-consistency 0 · mobile-viewport 0 · vite build 통과. CLAUDE.md audit log 기록.
+- **후속(선택)**: 교환권 cap 개수(20)·쇼핑 섹션 lazy-mount(현재 항상 마운트, /api/products edge-cache 라 비용 미미) 조정 여지.
+
 ## 🚑 2026-06-23 — 도매몰 가입(`/api/wholesale/register`) 500 근본수정: 자가치유 INSERT (대표 "더는 절대로 이 에러가 떠선 안돼")
 **증상(대표 콘솔)**: `/api/wholesale/register` → 400(검증) + 409(중복) + **500**. 500은 가입 자체를 막음.
 - **원인**: `sellers` 는 D1 한도(100) 근접 **97컬럼** + prod 스키마 드리프트로 일부 컬럼이 prod 에 누락 →

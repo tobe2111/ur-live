@@ -15,7 +15,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo, memo, Fragment } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, Gift, Heart, Wallet, Sparkles, Users, ArrowRight, ChevronDown } from 'lucide-react'
+import { Search, Gift, Heart, Wallet, Sparkles, Users, ArrowRight, ChevronDown, ShoppingBag } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
@@ -401,17 +401,13 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   MAIN SSR 슬롯도 같은 커피 카테고리로 warm → 0-RTT 유지 (worker/index.ts + cache-prewarm).
   const category = searchParams.get('category') || (embedded ? EMBEDDED_DEFAULT_CATEGORY : '')
 
-  // 🎫 2026-06-20 (사용자 결정 — '상단 탭으로 분리, 교환권부터'): 비embedded /vouchers 에 [교환권][쇼핑] 탭.
-  //   기본 'vouchers'(교환권 먼저). 쇼핑 탭은 일반 상품(exclude_deal_only) 2열 — 교환권 무한스크롤과 분리돼 서로 안 묻힘.
-  //   홈(embedded)은 탭 없음(showVouchers 항상 true) → 기존 동작 불변.
-  const tab: 'vouchers' | 'shopping' = (!embedded && searchParams.get('tab') === 'shopping') ? 'shopping' : 'vouchers'
-  const showShopping = !embedded && tab === 'shopping'
-  const showVouchers = !showShopping
-  const setTab = (next: 'vouchers' | 'shopping') => {
-    const p = new URLSearchParams(searchParams)
-    if (next === 'shopping') p.set('tab', 'shopping'); else p.delete('tab')
-    setSearchParams(p, { replace: true })
-  }
+  // 🎫 2026-06-23 (대표 결정 — '연속 스크롤 + 중앙 스크롤스파이 탭'): 비embedded /vouchers 는 한 페이지에
+  //   교환권(상단, ~20개 + 더보기) → 쇼핑(하단 무한)이 이어짐. 상단 [교환권][쇼핑] 탭은 중앙 정렬 +
+  //   스크롤 위치 따라 활성 + 클릭 시 해당 섹션으로 점프(콘텐츠 교체/URL 전환 아님). 홈(embedded)은 탭 없음 → 불변.
+  const shoppingRef = useRef<HTMLDivElement>(null)
+  const [activeTab, setActiveTab] = useState<'vouchers' | 'shopping'>('vouchers')
+  const goToVouchers = () => { try { window.scrollTo({ top: 0, behavior: 'smooth' }) } catch { window.scrollTo(0, 0) } }
+  const goToShopping = () => shoppingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   // 🛡️ 2026-05-19: 카테고리 + 브랜드 2단 구조 — 사용자 요청.
   //   sections = 카테고리별 (편의점/카페/외식 등) + 각 카테고리 내 인기 브랜드 12개.
@@ -422,7 +418,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   const [loadingMore, setLoadingMore] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
-  useEffect(() => { if (embedded) setEmbedVisible(12) }, [embedded, category, brand])
+  // 🎫 2026-06-23: 교환권 노출 cap 리셋 — 홈 12개 / /vouchers 20개(대표 결정). 카테고리·브랜드 변경 시 초기화.
+  useEffect(() => { setEmbedVisible(embedded ? 12 : 20) }, [embedded, category, brand])
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
   // 🛡️ 2026-05-28 (사용자 요청): 잔액 카드 + 카테고리 scroll-up reveal (headroom).
@@ -440,6 +437,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         if (y < 120) setRevealTop(true)            // 상단 근처는 항상 표시
         else if (y > last + 6) setRevealTop(false) // 아래로 스크롤 → 숨김
         else if (y < last - 6) setRevealTop(true)  // 위로 스크롤 → 표시
+        // 🎫 2026-06-23: 스크롤스파이 — 쇼핑 섹션이 상단 sticky 탭 아래로 올라오면 '쇼핑' 탭 활성.
+        const sec = shoppingRef.current
+        if (sec) setActiveTab(sec.getBoundingClientRect().top <= 100 ? 'shopping' : 'vouchers')
         lastScrollYRef.current = y
         ticking = false
       })
@@ -618,9 +618,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
 
   // 🧭 2026-06-10 v2 (사용자 결정): 홈은 12개 + '더보기' 버튼 확장(+20) — 무한 IO 완전 비활성.
   //   홈 하단(동네딜/일반상품/푸터)이 항상 한 호흡에 닿고, 원하는 사람만 버튼으로 확장.
-  const EMBED_INITIAL = 12
+  // 🎫 2026-06-23 (대표 결정): 교환권은 홈 12 / /vouchers 20개 노출 후 '더보기'. 둘 다 무한스크롤 대신 cap+버튼
+  //   (비embedded 도 cap → 더보기 아래로 쇼핑 섹션이 이어지게). 교환권 무한관찰 비활성, 무한스크롤은 하단 쇼핑 섹션이 담당.
+  const EMBED_INITIAL = embedded ? 12 : 20
   const [embedVisible, setEmbedVisible] = useState(EMBED_INITIAL)
-  const embeddedCapped = embedded
+  const embeddedCapped = true
   // 🧭 2026-06-10 (사용자 요청): '교환권 더보기 (1/14)' 단계 표시 — 전용 /count (엣지 캐시).
   //   list 응답 total 은 추정치(COUNT 제거 최적화)라 사용 불가. 실패 시 표시 생략(graceful).
   const [dealTotal, setDealTotal] = useState<number | null>(null)
@@ -675,35 +677,35 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* Header — 🛡️ 2026-05-25: 뒤로가기 버튼 제거 (사용자 요청).
           BottomNav 의 메인 탭이라 의미 없는 navigation. 검색 + 타이틀만 유지.
           🛡️ 2026-06-01: embedded(홈) 모드면 홈의 sticky 헤더가 담당 → 자체 헤더 skip. */}
-      {/* 🎫 2026-06-20 (사용자 결정): 헤더에 [교환권][쇼핑] 탭. 교환권 먼저(기본). 탭 = 다른 레이아웃 + 독립 스크롤. */}
+      {/* 🎫 2026-06-23 (대표 결정): 중앙 정렬 스크롤스파이 탭 — 클릭 시 해당 섹션으로 점프, 스크롤 위치 따라 활성.
+          콘텐츠를 교체하지 않고 한 페이지 안에서 교환권↔쇼핑 사이를 이동. 검색 아이콘은 우측에 absolute 고정. */}
       {!embedded && (
         <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
-          <div className="flex items-center gap-1 px-2 pr-3">
-            <div className="flex-1 flex items-center">
+          <div className="relative flex items-center justify-center px-2 py-1.5">
+            <div className="flex items-center gap-1">
               {([['vouchers', '교환권'], ['shopping', '쇼핑']] as const).map(([key, label]) => {
-                const active = tab === key
+                const active = activeTab === key
                 return (
                   <button
                     key={key}
                     type="button"
-                    onClick={() => setTab(key)}
-                    className={`relative px-3 py-2.5 text-[15px] font-extrabold transition-colors ${active ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}
+                    onClick={() => (key === 'shopping' ? goToShopping() : goToVouchers())}
+                    className={`relative px-4 py-2 text-[15px] font-extrabold transition-colors ${active ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}
                   >
                     {label}
-                    {active && <span className="absolute left-3 right-3 bottom-0 h-[2.5px] rounded-full bg-gray-900 dark:bg-white" />}
+                    {active && <span className="absolute left-4 right-4 bottom-0 h-[2.5px] rounded-full bg-gray-900 dark:bg-white" />}
                   </button>
                 )
               })}
             </div>
-            <button onClick={() => navigate('/search')} className="shrink-0 p-1">
+            <button onClick={() => navigate('/search')} aria-label="검색" className="absolute right-3 top-1/2 -translate-y-1/2 p-1">
               <Search className="w-5 h-5 text-gray-900 dark:text-white" />
             </button>
           </div>
         </div>
       )}
 
-      {/* 🎫 2026-06-20: 교환권 본문(잔액/카테고리/브랜드/1열 리스트)은 '교환권' 탭에서만. 홈(embedded)은 항상 표시. */}
-      {showVouchers && (<>
+      {/* 🎫 2026-06-23: 교환권 본문(잔액/카테고리/브랜드/리스트) — 항상 표시. 아래 쇼핑 섹션과 한 스크롤로 이어짐. */}
       {/* 🛡️ 2026-05-28 (사용자 요청): 잔액 카드 + 카테고리 = scroll-up reveal 그룹 (headroom).
             아래로 스크롤 시 숨김(콘텐츠 공간 최대화), 살짝 위로 올리면 둘 다 다시 내려옴.
             sticky top-[45px] (헤더 바로 아래) + revealTop 따라 translateY. bg 는 페이지 배경과 동일 (콘텐츠 비침 방지). */}
@@ -924,17 +926,18 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 ))}
               </div>
             ) : (
-              // 🎨 2026-06-20 /vouchers — 1줄 리스트 (모바일·PC 모두 1열, 사용자 요청 "PC 도 1줄에 1개"). 내용 동일, 배치만 행.
+              // 🎨 2026-06-23 /vouchers — 1줄 리스트, embedVisible(기본 20)개까지만 노출 후 '더보기'(대표 결정).
+              //   내용 동일, 배치만 행. 더보기 아래로 쇼핑 섹션이 이어짐.
               <div className="grid grid-cols-1">
-                {displayProducts.map((p, idx) => (
+                {displayProducts.slice(0, embedVisible).map((p, idx) => (
                   <Fragment key={p.id}>
                     <VoucherRow p={p} aboveFold={idx < 4} />
                   </Fragment>
                 ))}
               </div>
             )}
-            {/* 🧭 홈: '교환권 더보기' 단일 버튼 (2026-06-10 사용자 — '전체보기'와 역할 중복 → 통일) */}
-            {embedded && (embedVisible < displayProducts.length || hasMore) && (
+            {/* 🧭 2026-06-23: '교환권 더보기' 버튼 — 홈/vouchers 공통. /vouchers 는 이 버튼 아래로 쇼핑 섹션이 이어짐. */}
+            {(embedVisible < displayProducts.length || hasMore) && (
               <div className="mt-4">
                 <button
                   type="button"
@@ -955,20 +958,28 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 </button>
               </div>
             )}
-            {/* 무한 스크롤 sentinel */}
+            {/* 더보기 로딩 표시 (sentinel — 교환권 무한관찰은 비활성, 더보기 버튼이 로드 담당).
+                '마지막' 표시는 홈(embedded)만 — /vouchers 는 이 아래로 쇼핑 섹션이 이어져 '마지막'이 아님. */}
             <div ref={loadMoreRef} className="h-10 flex items-center justify-center mt-4">
               {loadingMore && <div className="text-[11px] text-gray-400 dark:text-gray-500">로드 중...</div>}
-              {!hasMore && products.length > 0 && (
+              {embedded && !hasMore && products.length > 0 && (
                 <div className="text-[11px] text-gray-400 dark:text-gray-500">— 마지막 —</div>
               )}
             </div>
           </>
         )}
       </div>
-      </>
+      {/* 🛒 2026-06-23 (대표 결정): 쇼핑 섹션 — 교환권 더보기 버튼 아래로 이어지는 일반 상품 그리드(무한 스크롤).
+          상단 '쇼핑' 탭이 이 섹션으로 점프(scroll-mt 로 sticky 탭 높이만큼 여백 확보). 홈(embedded)엔 없음. */}
+      {!embedded && (
+        <section ref={shoppingRef} className="scroll-mt-14 mt-2 border-t-8 border-gray-50 dark:border-[#121212]">
+          <div className="ur-content-wide px-4 lg:px-8 pt-5 pb-1 flex items-center gap-1.5">
+            <ShoppingBag className="w-[18px] h-[18px] text-gray-900 dark:text-white" />
+            <h2 className="text-[16px] font-extrabold text-gray-900 dark:text-white">쇼핑</h2>
+          </div>
+          <ShoppingGrid />
+        </section>
       )}
-      {/* 🛒 2026-06-20 (사용자 결정): 쇼핑 탭 — 일반 상품 2열 그리드(교환권 1열과 분리, 서로 안 묻힘). 활성 시만 마운트. */}
-      {showShopping && <ShoppingGrid />}
     </div>
   )
 }
