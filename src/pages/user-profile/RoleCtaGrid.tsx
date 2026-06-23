@@ -31,17 +31,17 @@ export default function RoleCtaGrid() {
   const { dashboardItems, signupItems } = useMemo(() => {
     const hasSellerToken = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
     const hasAgencyToken = typeof window !== 'undefined' && !!localStorage.getItem('agency_token')
-    // 보유한 role 의 대시보드 단축 (위로 강조)
+    // 내 바로가기 (모든 유저가 가진 링크샵 + 보유 role 의 대시보드 단축)
     const dash: Cta[] = [
+      { icon: '🔗', title: '내 링크샵', desc: '교환권·공구 추천하고 적립 받기', to: '/u/me', show: () => true, accent: true },
       { icon: '📊', title: '셀러 대시보드',   desc: '내 상품·공구·정산 관리', to: '/seller',  show: () => hasSellerToken,  accent: true },
       { icon: '📊', title: '에이전시 대시보드', desc: '소속 사업자·소개 가게 수익', to: '/agency', show: () => hasAgencyToken, accent: true },
     ]
     // 신규 가입 CTA (보유 안 한 role 만)
     const signup: Cta[] = [
       // 🧭 2026-06-10 (전략 정합 — 라이브 영구 중단·동네딜 집중): 라이브 셀러 CTA 제거,
-      //   동네 공구 제안 + 링크샵(교환권 추천 수익) 중심으로 재구성.
+      //   동네 공구 제안 + 역할 전환(사업자/에이전시) 중심으로 재구성.
       { icon: '🤝', title: '동네 공구 제안', desc: '원하는 가게 제안하면 모아서 열어드려요', to: '/community-group-buy/new', show: () => !COMMUNITY_PROPOSAL_HIDDEN },
-      { icon: '🔗', title: '내 링크샵', desc: '교환권·공구 추천하고 적립 받기', to: '/u/me', show: () => true },
       { icon: '🏪', title: '내 쇼핑몰 열기', desc: '사업자 등록 → 내 상품·공구권 판매', to: '/seller/register/supplier', show: () => !hasSellerToken },
       { icon: '🤵', title: '에이전시 사업', desc: '가게 영업 → 2% 영구 수익',  to: '/agency/register/business', show: () => !hasAgencyToken },
     ]
@@ -79,7 +79,7 @@ export default function RoleCtaGrid() {
       {dashboardItems.length > 0 && (
         <div>
           <p className="text-[12px] font-bold text-gray-600 dark:text-gray-400 mb-2 px-1">
-            내 역할 바로가기
+            내 바로가기
           </p>
           <div className="rounded-2xl bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-[#2A2A2A] overflow-hidden">
             {dashboardItems.map((c, i) => Row(c, i, dashboardItems.length))}

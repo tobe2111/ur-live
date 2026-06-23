@@ -113,7 +113,7 @@ export function RewardAdCard() {
   const isMaxed = remaining <= 0
 
   return (
-    <div className="ur-content-medium px-5 lg:px-8 py-1">
+    <div className="ur-content-medium px-4 lg:px-8 py-1">
       <div className="bg-gray-50 dark:bg-[#121212] rounded-2xl px-5 py-4 border border-gray-200 dark:border-[#2A2A2A]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -135,10 +135,10 @@ export function RewardAdCard() {
             disabled={isMaxed || loading}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
               isMaxed
-                ? 'bg-gray-200 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                ? 'bg-gray-200 dark:bg-white/[0.12] text-gray-500 dark:text-gray-400 cursor-not-allowed'
                 : loading
-                ? 'bg-indigo-300 text-white cursor-wait'
-                : 'bg-indigo-500 text-white shadow-md shadow-indigo-500/30'
+                ? 'bg-gray-400 dark:bg-white/50 text-white dark:text-gray-900 cursor-wait'
+                : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-md'
             }`}
           >
             {loading ? t('rewardAd.watching', { defaultValue: '시청 중...' }) : isMaxed ? t('rewardAd.maxed', { defaultValue: '완료' }) : t('rewardAd.watch', { defaultValue: '시청하기' })}
