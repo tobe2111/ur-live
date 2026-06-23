@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom'
 const VoucherMap = lazy(() => import('./my-vouchers/VoucherMap'))
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Ticket, MapPin, CheckCircle, XCircle, QrCode, X, Share2, ChevronRight, Copy, Map, ArrowRight } from 'lucide-react'
+import { ArrowLeft, Ticket, MapPin, CheckCircle, XCircle, QrCode, X, Share2, ChevronRight, Copy, Map, ArrowRight, Gift, Smartphone } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import { useMyVouchers, useInvalidateMyVouchers } from '@/hooks/queries'
@@ -1197,85 +1197,88 @@ function KtAlphaVoucherCard({ v, muted, t }: {
   // 🔔 2026-06-17 (사용자 요청): 발송 실패(잔액부족/API오류 등) 명시 — '결제됐는데 안 옴' 깜깜이 해소.
   const sendFailed = v.kt_status === 'failed'
 
-  // 🎨 2026-06-21 (개선 #2): 교환권 카드도 공구권과 동일한 세로 '패스' 구조로 통일.
-  //   기프티쇼 칩 + 우측 상태/발송실패 배지 · 큰 제목 · 큰 금액 · 천공 · 풋(바코드/문의/MMS).
-  const notchStyle = { background: '#F2F2F7', border: '1px solid #ECECEF' } as const
+  // 🎨 2026-06-21 (대표 신고 "투박") — 식사권(VoucherTicket)과 동일한 클린 가로 레이아웃으로 통일.
+  //   60px 썸네일(gift_catalog 이미지) · 상태 점 + 기프티쇼 칩 · 제목 · 발송/실패/바코드 안내 ·
+  //   우측 가격 + 컴팩트 액션. PIN 모드만 하단에 인앱 바코드. 천공/큰 버튼/세로 패스 구조 제거.
   const price = v.applied_price ?? null
 
   return (
     <div
-      className="relative rounded-[18px] bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F]"
-      style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 2px rgba(10,10,10,0.05), 0 14px 30px -12px rgba(10,10,10,0.16)' }}
+      className="relative rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F] p-[13px]"
+      style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 3px rgba(0,0,0,0.04)' }}
     >
-      {/* 헤더: 썸네일 + 기프티쇼 칩 + 상태/발송실패 배지 */}
-      <div className="flex items-center gap-2.5 px-4 pt-3.5">
-        <div className="w-9 h-9 shrink-0 rounded-[10px] overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
+      <div className="flex items-stretch gap-3">
+        {/* 썸네일 60px */}
+        <div className="w-[60px] h-[60px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1A1A1A] dark:to-[#0F0F0F]">
           {v.product_image ? (
-            <img src={v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" />
+            <img src={v.product_image} alt={v.product_name} loading="lazy" className="w-full h-full object-cover" />
           ) : (
-            <Ticket className="w-4 h-4 text-gray-300 dark:text-gray-600" strokeWidth={1.6} />
+            <Gift className="w-6 h-6 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
           )}
         </div>
-        <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300">📱 기프티쇼</span>
-        {sendFailed ? (
-          <span className="ml-auto shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400">{t('voucher.sendFailedBadge', { defaultValue: '발송 실패' })}</span>
-        ) : v.status !== 'unused' ? (
-          <span className="ml-auto shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full"
-            style={{ background: v.status === 'used' ? 'rgba(0,0,0,0.06)' : v.status === 'expired' ? 'rgba(220,38,38,0.10)' : 'rgba(245,158,11,0.12)', color: v.status === 'expired' ? '#DC2626' : '#6B7280' }}>
-            {t(`voucher.status.${v.status}`)}
-          </span>
-        ) : (
-          <span className="ml-auto shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-gray-500 dark:text-gray-400">
-            <span className="w-[6px] h-[6px] rounded-full" style={{ background: '#16A34A', boxShadow: '0 0 0 3px rgba(22,163,74,0.12)' }} aria-hidden />
-            {t('voucher.status.unused', { defaultValue: '사용 가능' })}
-          </span>
-        )}
-      </div>
 
-      {/* 제목 */}
-      <p className="px-4 pt-2 text-[18px] font-extrabold tracking-tight text-gray-900 dark:text-white line-clamp-2 leading-snug">{v.product_name}</p>
-
-      {/* 금액 + 발송처 힌트 */}
-      <div className="flex items-end justify-between gap-3 px-4 pt-1.5 pb-4">
-        {price !== null ? (
-          <div className="text-[24px] font-extrabold font-mono tracking-tight text-gray-900 dark:text-white leading-none">
-            {formatNumber(price)}<span className="font-sans text-[14px] font-bold text-gray-400 dark:text-gray-500 ml-0.5">{t('voucher.won', { defaultValue: '원' })}</span>
+        {/* 본문 */}
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
+          {/* 상태 줄 + 기프티쇼 칩 */}
+          <div className="flex items-center gap-1.5">
+            {sendFailed ? (
+              <>
+                <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: '#DC2626' }} aria-hidden />
+                <span className="text-[12px] font-semibold text-red-600 dark:text-red-400">{t('voucher.sendFailedBadge', { defaultValue: '발송 실패' })}</span>
+              </>
+            ) : v.status === 'unused' ? (
+              <>
+                <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: '#16A34A' }} aria-hidden />
+                <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">{t('voucher.status.unused', { defaultValue: '사용 가능' })}</span>
+              </>
+            ) : (
+              <span className="text-[12px] font-semibold" style={{ color: v.status === 'expired' ? '#DC2626' : '#6B7280' }}>{t(`voucher.status.${v.status}`)}</span>
+            )}
+            <span className="ml-auto shrink-0 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300">📱 기프티쇼</span>
           </div>
-        ) : <span />}
-        {!sendFailed && !hasBarcode && maskedPhone && (
-          <span className="text-[11px] text-gray-400 dark:text-gray-500 text-right shrink-0">📞 {maskedPhone}</span>
-        )}
+
+          {/* 제목 */}
+          <p className="text-gray-900 dark:text-white font-bold text-[16px] leading-tight tracking-tight truncate">{v.product_name}</p>
+
+          {/* 서브: 발송/실패/바코드 안내 */}
+          {sendFailed ? (
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 leading-snug">{t('voucher.ktSendFailedShort', { defaultValue: '결제 완료 · 재발송은 고객센터로 문의' })}</p>
+          ) : hasBarcode ? (
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 leading-snug">{t('voucher.ktShowBarcode', { defaultValue: '매장에서 아래 바코드를 제시하세요' })}</p>
+          ) : maskedPhone ? (
+            <p className="flex items-center gap-1 text-[12px] text-gray-400 dark:text-gray-500 min-w-0">
+              <Smartphone className="w-3 h-3 shrink-0" strokeWidth={2} aria-hidden /><span className="truncate">{maskedPhone} {t('voucher.ktSentSuffix', { defaultValue: '문자 발송' })}</span>
+            </p>
+          ) : (
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 leading-snug">{t('voucher.ktCheckMmsShort', { defaultValue: '휴대폰 메시지함에서 확인' })}</p>
+          )}
+        </div>
+
+        {/* 우측: 가격 + 액션 */}
+        <div className="shrink-0 flex flex-col items-end justify-between">
+          {price !== null ? (
+            <div className="text-[15px] font-bold font-mono text-gray-900 dark:text-white whitespace-nowrap">
+              {formatNumber(price)}<span className="font-sans text-[11px] font-semibold text-gray-400 dark:text-gray-500">{t('voucher.won', { defaultValue: '원' })}</span>
+            </div>
+          ) : <span />}
+          {sendFailed ? (
+            <a href="tel:0507-0177-0432" aria-label={t('voucher.contactSupport', { defaultValue: '고객센터 문의 (0507-0177-0432)' })}
+              className="flex items-center gap-1 rounded-xl px-3 py-[9px] border border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-200 text-[12px] font-bold active:scale-95 transition-transform whitespace-nowrap">
+              {t('voucher.contactSupportShort', { defaultValue: '고객센터' })}
+            </a>
+          ) : (
+            <div className="w-7 h-7 flex items-center justify-center opacity-60" aria-hidden>
+              <Smartphone className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.6} />
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* 천공 */}
-      <div className="relative" aria-hidden>
-        <div className="mx-3.5 border-t border-dashed border-gray-200 dark:border-[#2A2A2A]" />
-        <span className="absolute top-0 -translate-y-1/2 left-0 -translate-x-1/2 w-3.5 h-3.5 rounded-full" style={notchStyle} />
-        <span className="absolute top-0 -translate-y-1/2 right-0 translate-x-1/2 w-3.5 h-3.5 rounded-full" style={notchStyle} />
-      </div>
-
-      {/* 풋: 인앱 바코드 / 발송실패 고객센터 / MMS 안내 */}
-      {hasBarcode ? (
-        <div className="px-4 py-3">
-          <div className="px-3 py-3 rounded-xl bg-gray-50 dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1F1F1F] flex flex-col items-center gap-1.5">
-            <Barcode value={v.kt_pin as string} />
-            <span className="text-[12px] font-mono font-bold tracking-[0.15em] text-gray-900 dark:text-white">{v.kt_pin}</span>
-          </div>
-          <p className="mt-1.5 text-center text-[10.5px] text-gray-400 dark:text-gray-500">{t('voucher.ktShowBarcode', { defaultValue: '매장에서 아래 바코드를 제시하세요' })}</p>
-        </div>
-      ) : sendFailed ? (
-        /* 🎨 2026-06-21 (개선 #4): 막다른 길 제거 — 고객센터 문의 링크 */
-        <div className="px-4 py-3">
-          <p className="text-[11.5px] leading-relaxed text-gray-500 dark:text-gray-400">{t('voucher.ktSendFailedDesc', { defaultValue: '결제는 완료됐어요. 재발송이 필요하면 고객센터로 문의해 주세요.' })}</p>
-          <a href="tel:0507-0177-0432"
-            className="mt-2 w-full py-2.5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform">
-            {t('voucher.contactSupport', { defaultValue: '고객센터 문의 (0507-0177-0432)' })}
-          </a>
-        </div>
-      ) : (
-        <div className="px-4 py-3 flex items-center gap-3">
-          <MiniQrHint muted={v.status !== 'unused'} />
-          <p className="text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">{t('voucher.ktCheckMms', { defaultValue: '휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.' })}</p>
+      {/* PIN 모드 인앱 바코드 — 하단 (매장 제시용) */}
+      {hasBarcode && (
+        <div className="mt-3 px-3 py-3 rounded-xl bg-gray-50 dark:bg-[#0A0A0A] border border-gray-100 dark:border-[#1F1F1F] flex flex-col items-center gap-1.5">
+          <Barcode value={v.kt_pin as string} />
+          <span className="text-[12px] font-mono font-bold tracking-[0.15em] text-gray-900 dark:text-white">{v.kt_pin}</span>
         </div>
       )}
     </div>
