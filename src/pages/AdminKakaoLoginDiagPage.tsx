@@ -45,7 +45,12 @@ export default function AdminKakaoLoginDiagPage() {
   async function load() {
     setLoading(true); setError('')
     try {
-      const res = await api.get('/api/_internal/kakao-login-diag')
+      // ⚠️ /api/_internal/* 는 api.ts 인터셉터의 admin_token 자동부착 경로(/api/admin/* ·
+      //   /api/<feature>/admin/*)에 안 걸림 → 토큰 미부착 → 서버가 소비자 세션쿠키로 폴백 →
+      //   requireAdmin 403. 그래서 admin Bearer 를 명시 첨부(인터셉터가 수동 헤더는 그대로 사용).
+      const adminToken = localStorage.getItem('admin_token')
+      const res = await api.get('/api/_internal/kakao-login-diag',
+        adminToken ? { headers: { Authorization: `Bearer ${adminToken}` } } : undefined)
       setData((res.data?.data as DiagData) || null)
     } catch (e: unknown) {
       const er = (e as { response?: { data?: { error?: unknown } }; message?: string })
