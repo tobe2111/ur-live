@@ -135,17 +135,24 @@ export default function LoginPage() {
   function showKakaoLoadingOverlay() {
     try {
       if (typeof document === 'undefined' || document.getElementById('ur-kakao-loading')) return
+      const isDark = document.documentElement.classList.contains('dark')
+      const bg = isDark ? '#020202' : '#ffffff'
+      const ring = isDark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.10)'
+      const sub = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.5)'
       const o = document.createElement('div')
       o.id = 'ur-kakao-loading'
       o.setAttribute('role', 'alert')
       o.setAttribute('aria-live', 'assertive')
-      o.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(0,0,0,0.55);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)'
+      o.style.cssText = `position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:${bg}`
+      const logo = document.createElement('div')
+      logo.textContent = '유어딜'
+      logo.style.cssText = 'font-size:30px;font-weight:800;letter-spacing:-0.04em;color:#ec4899;background:linear-gradient(135deg,#ff6b6b,#ec4899);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent'
       const sp = document.createElement('div')
-      sp.style.cssText = 'width:38px;height:38px;border:3px solid rgba(255,255,255,0.25);border-top-color:#fff;border-radius:50%;animation:ur-kakao-spin 0.7s linear infinite'
+      sp.style.cssText = `width:34px;height:34px;border:3px solid ${ring};border-top-color:#ec4899;border-radius:50%;animation:ur-kakao-spin 0.7s linear infinite`
       const tx = document.createElement('div')
-      tx.style.cssText = 'color:#fff;font-size:14px;font-weight:600;letter-spacing:-0.01em'
-      tx.textContent = '카카오 로그인 중…'
-      o.appendChild(sp); o.appendChild(tx)
+      tx.style.cssText = `color:${sub};font-size:14px;font-weight:600;letter-spacing:-0.01em`
+      tx.textContent = '로그인 중…'
+      o.appendChild(logo); o.appendChild(sp); o.appendChild(tx)
       if (!document.getElementById('ur-kakao-spin-kf')) {
         const st = document.createElement('style'); st.id = 'ur-kakao-spin-kf'
         st.textContent = '@keyframes ur-kakao-spin{to{transform:rotate(360deg)}}'
