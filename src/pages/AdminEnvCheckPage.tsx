@@ -27,6 +27,18 @@ interface HealthData {
   checked_at: string
 }
 
+interface UcansignHealth {
+  config: {
+    api_key: boolean; template_supplier: boolean; template_distributor: boolean
+    template_fallback: boolean; webhook_secret: boolean; test_mode: boolean
+  }
+  api_key_valid: boolean | null
+  ready: { supplier: boolean; distributor: boolean }
+  webhook_url: string
+  overall_ready: boolean
+  hints: string[]
+}
+
 export default function AdminEnvCheckPage() {
   const [data, setData] = useState<HealthData | null>(null)
   const [healthy, setHealthy] = useState<boolean | null>(null)
@@ -36,12 +48,16 @@ export default function AdminEnvCheckPage() {
   const [bindings, setBindings] = useState<{
     hasDB: boolean; hasBackupBucket: boolean; hasDiscordWebhook: boolean; hasRateLimitKV: boolean; ktAlphaPinMode: boolean
   } | null>(null)
+  // 🖋️ 2026-06-24 전자계약(유캔싸인) 설정 진단 — API키 유효성 + 템플릿/웹훅 준비완료 + 부족항목 힌트.
+  const [ucansign, setUcansign] = useState<UcansignHealth | null>(null)
 
   async function check() {
     setLoading(true)
     setError('')
     // 운영 인프라 점검 — 결제 헬스체크와 독립 (503 나도 인프라 상태는 보이게).
     api.get('/api/debug/bindings').then(r => setBindings(r.data)).catch(() => setBindings(null))
+    // 전자계약 설정 점검 — 독립 (도매 가입 자동 계약발송 준비완료 여부).
+    api.get('/api/admin/ucansign/health').then(r => setUcansign(r.data)).catch(() => setUcansign(null))
     try {
       // VITE 키를 헤더로 전달 → server 가 비교 가능
       const viteKey = getTossClientKey()
@@ -131,6 +147,58 @@ export default function AdminEnvCheckPage() {
                 </tr>
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* 🖋️ 전자계약(유캔싸인) — 도매 가입 시 자동 계약발송 준비완료 점검 */}
+        {ucansign && (
+          <div className="bg-white rounded-lg shadow overflow-hidden mb-4">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <h2 className="text-sm font-bold text-gray-900">🖋️ 전자계약 (유캔싸인) — 도매 가입 자동 발송</h2>
+              <StatusBadge ok={ucansign.overall_ready} label={ucansign.overall_ready ? '발송 준비 완료' : '설정 미완'} />
+            </div>
+            <table className="w-full text-sm">
+              <tbody>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-3 font-medium text-gray-700 w-2/3">API 키 <span className="text-xs text-gray-500">UCANSIGN_API_KEY</span></td>
+                  <td className="px-4 py-3">
+                    {!ucansign.config.api_key
+                      ? <StatusBadge ok={false} label="미설정" />
+                      : <StatusBadge ok={ucansign.api_key_valid === true} label={ucansign.api_key_valid === true ? '유효 (실제 인증 성공)' : '인증 실패 — 키/포인트 확인'} />}
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-3 font-medium text-gray-700">제조사 계약서 템플릿 <span className="text-xs text-gray-500">_TEMPLATE_ID_SUPPLIER</span></td>
+                  <td className="px-4 py-3"><StatusBadge ok={ucansign.config.template_supplier || ucansign.config.template_fallback} label={ucansign.config.template_supplier ? '설정됨' : ucansign.config.template_fallback ? '공용 폴백 사용' : '미설정'} /></td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-3 font-medium text-gray-700">판매사 계약서 템플릿 <span className="text-xs text-gray-500">_TEMPLATE_ID_DISTRIBUTOR</span></td>
+                  <td className="px-4 py-3"><StatusBadge ok={ucansign.config.template_distributor || ucansign.config.template_fallback} label={ucansign.config.template_distributor ? '설정됨' : ucansign.config.template_fallback ? '공용 폴백 사용' : '미설정'} /></td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-3 font-medium text-gray-700">웹훅 위조방지 시크릿 <span className="text-xs text-gray-500">_WEBHOOK_SECRET</span></td>
+                  <td className="px-4 py-3"><StatusBadge ok={ucansign.config.webhook_secret} label={ucansign.config.webhook_secret ? '설정됨' : '미설정 (권장)'} /></td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-4 py-3 font-medium text-gray-700">테스트 모드 <span className="text-xs text-gray-500">_TEST_MODE</span></td>
+                  <td className="px-4 py-3 text-gray-600">{ucansign.config.test_mode ? '⚠️ ON — 테스트 발송(효력 미보장). 운영 전 해제' : '— OFF (실발송, 정상)'}</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 font-medium text-gray-700">웹훅 등록 URL <span className="text-xs text-gray-500">(유캔싸인 개발자 메뉴에 직접 등록)</span></td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-900 break-all">{ucansign.webhook_url}</td>
+                </tr>
+              </tbody>
+            </table>
+            {ucansign.hints.length > 0 && (
+              <div className="px-4 py-3 border-t border-gray-100 bg-amber-50">
+                <p className="text-xs font-bold text-amber-900 mb-1">남은 설정 / 확인사항</p>
+                <ul className="space-y-0.5">
+                  {ucansign.hints.map((h, idx) => (
+                    <li key={idx} className="text-xs text-amber-800">• {h}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 
