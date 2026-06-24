@@ -2,8 +2,9 @@ import { logInfo, logError } from '../utils/logger'
 /**
  * Auto-Settlement Cron Handler
  *
- * Calculates settlements for used vouchers that are 7+ days old
- * and have not yet been assigned to a settlement record.
+ * 🗓️ 2026-06-23 주간 정산 정책: 월~일(KST) 사용분 → 차주 목요일(KST) 정산.
+ *   (weeklySettlementCutoffUtc — settlement-schedule.ts. 이전 'used 7일 롤링' 대체.)
+ *   used 상태 + 아직 settlement 미배정 + open 분쟁 아님 + used_at < 주간 cutoff 인 voucher 만.
  *
  * Groups vouchers by seller, creates a pending settlement per seller,
  * and marks the vouchers as settled.
@@ -14,6 +15,7 @@ import { sendDiscordAlert } from '../utils/discord-alert';
 import { adjustUserPoints } from '../utils/point-ledger';
 import { reportCronFailure } from '../utils/cron-reporter';
 import { clawbackVoucherCommission } from '../../features/group-buy/api/helpers';
+import { weeklySettlementCutoffUtc } from '../utils/settlement-schedule';
 export async function handleAutoSettlement(env: Env) {
   const DB = env.DB;
 
@@ -37,7 +39,10 @@ export async function handleAutoSettlement(env: Env) {
       reason TEXT, status TEXT DEFAULT 'open', created_at DATETIME DEFAULT (datetime('now')), resolved_at DATETIME,
       resolution TEXT, admin_note TEXT, UNIQUE(voucher_id))`).run().catch(() => {});
 
-    // Find used vouchers not yet in any settlement, used 7+ days ago
+    // 🗓️ 2026-06-23 (대표 결정): 주간 정산 — 월~일(KST) 사용분 → 차주 목요일(KST) 정산.
+    //   (이전 'used 7일 롤링' 대체.) cutoff = 정산 도래한 가장 최근 주 일요일까지의 상한(UTC).
+    //   used_at < cutoff 만 정산. cron 이 매일 03:00 KST 돌므로 각 주는 그 차주 목요일 첫 실행에 정산(멱등).
+    const settlementCutoff = weeklySettlementCutoffUtc(Date.now());
     // 🛡️ 2026-05-30: 정산 매출 = 실제 결제가(applied_price). 미존재 시 정가(price) fallback.
     //   환불(applied_price)과 동일 기준 → 결제·정산·환불 폐루프 정합. 티어 할인 deal 과다정산(플랫폼 손실) 제거.
     const usedVouchers = await DB.prepare(`
@@ -46,10 +51,10 @@ export async function handleAutoSettlement(env: Env) {
       FROM vouchers v
       JOIN products p ON v.product_id = p.id
       WHERE v.status = 'used'
-        AND v.used_at <= datetime('now', '-7 days')
+        AND v.used_at < ?
         AND v.settlement_id IS NULL
         AND v.id NOT IN (SELECT voucher_id FROM voucher_disputes WHERE status = 'open')
-    `).bind(platformRate).all();
+    `).bind(platformRate, settlementCutoff).all();
 
     if (!usedVouchers.results?.length) return;
 
