@@ -113,7 +113,7 @@ export default function MyStorePage() {
                 </div>
               ))}
             </div>
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2 px-1">정산은 사용 후 7일 뒤 자동 진행돼요. 고객이 방문하지 않은 건은 아래에서 신고하면 정산이 보류됩니다.</p>
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2 px-1">월~일 사용분은 <b className="text-gray-600 dark:text-gray-300">차주 목요일</b>에 정산돼요. 고객이 방문하지 않은 건은 아래에서 신고하면 정산이 보류됩니다.</p>
 
             {/* 🎯 선착순 응모 현황 — 운영자가 내 매장 상품을 선착순으로 걸었을 때만 노출(읽기 전용) */}
             {fcfs.length > 0 && (

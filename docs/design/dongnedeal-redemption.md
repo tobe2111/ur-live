@@ -69,7 +69,7 @@
   - 라이브 "사용완료" 화면: `VoucherRedeemModal.tsx` (실시간 시계·매장명·애니메이션 체크·60s 취소) + `MyVouchersPage` "현장에서 사용하기" 진입.
   - 매장 원장(읽기): `GET /api/group-buy/store-voucher-ledger` (요약 + 최근 50건, `vouchers JOIN products WHERE seller_id=?`).
 - **Phase 2 ✅ (차지백 클로백 제외)**
-  - 에스크로: **신규 테이블 없이** 기존 `auto-settlement` cron(used 7일 후 정산) 재사용 — `vouchers.settlement_id` 가 SSOT (`1a173ff`).
+  - 에스크로: **신규 테이블 없이** 기존 `auto-settlement` cron 재사용 — `vouchers.settlement_id` 가 SSOT (`1a173ff`). **정산 주기 = 주간(2026-06-23 대표 결정, 아래 4️⃣): 월~일(KST) 사용분 → 차주 목요일.**
   - 분쟁 "안 왔어요": `voucher-dispute.routes.ts` — 셀러 `POST /report`·`GET /mine`, 어드민 `GET /`·`POST /:id/resolve(settle|reactivate)` (`29a14c4`).
     - ⚠️ `vouchers.status` CHECK 제약상 'disputed' 불가 → voucher.status 는 'used' 유지, **별도 `voucher_disputes` open 건을 정산 cron 에서 제외**(보류). `auto-settlement.ts` + `restaurant-settlement /calculate` 양쪽 `NOT IN (open disputes)`.
   - 경량 "내 매장"(`/my-store`): 셀러 대시보드 대신 앱 내 — 원장 요약 + 최근 공구권 + "안 왔어요" 신고 (`1832388`).
@@ -80,7 +80,7 @@
 **남은 것(후속 결정 필요)**
 - Phase 2 잔여: **차지백 클로백**(PG 차지백 시 매장 정산 회수) — 미구현.
 - Phase 3 전체: 동적 신뢰 정산(가변 T+N)·리뷰 플라이휠·이상탐지/Sybil — 미착수.
-- ⚠️ **운영 검증(대표/staging)**: 실결제 E2E 1회 — 공구권 구매 → 현장 셀프 사용 → 7일 정산 진입 / "안 왔어요" 신고 → 정산 보류 → 어드민 해소. (현재 쇼핑/도매 외 동네딜 사용처리는 라이브 노출 전이라 영향 0)
+- ⚠️ **운영 검증(대표/staging)**: 실결제 E2E 1회 — 공구권 구매 → 현장 셀프 사용 → 주간 정산 진입(월~일→차주 목요일) / "안 왔어요" 신고 → 정산 보류 → 어드민 해소. (현재 쇼핑/도매 외 동네딜 사용처리는 라이브 노출 전이라 영향 0)
 
 ## 🧭 최종 이상형 로드맵 (2026-06-23 — 대표 검토 후 우선순위 합의)
 v1(위)은 "콜드스타트 최적 안전 v1". 아래를 채우면 최종 이상형. (대표: "이게 최종 이상형이냐?" → 아래 6개가 남은 격차)
@@ -91,7 +91,7 @@ v1(위)은 "콜드스타트 최적 안전 v1". 아래를 채우면 최종 이상
 - 3️⃣ **사용 위치 증거(소프트, 게이트 X)** + 가게측 선택 확인 — self-redeem 시 GPS *기록만* → 분쟁 시 "사용 위치↔가게 거리" 증거. 하드 게이트 금지(스푸핑/실내오차). + 사용완료 화면에 "카카오맵 후기 남기기" 유도(아웃링크). ⏳ 다음.
 
 **대표 결정 대기 — 보류 (⏰ 다시 안내할 것)**
-- 4️⃣ **정산일**: 고정 7일 → 신뢰도 기반 가변 T+N(우량 즉시·신규 길게) + 신규 누적 한도. → **대표 검토 중(2026-06-23). 결정 오면 진행.** 도매 distributor_grade(GMV 임계 승급) 패턴 재활용.
+- 4️⃣ **정산일 ✅** — **주간 배치(대표 결정 2026-06-23): 월~일(KST) 사용분 → 차주 목요일(KST) 정산.** `weeklySettlementCutoffUtc()`(`settlement-schedule.ts`, KST 주 경계 + 단위테스트 6) → `auto-settlement` cron(매일 03:00 KST) 의 cutoff. **절대 차주 목요일 이전 정산 X**(멱등 settlement_id). 이전 '7일 롤링' 대체. ※ 신뢰도 기반 가변 T+N(우량 즉시·신규 길게)은 라이브 데이터 후 별도 검토(보류).
 - 6️⃣ **공동구매 동력**: (약)소셜 증거 "N명 구매중" / (중)친구초대 추가할인=딜포인트(상품가 고정, 정산 무영향, referral 재사용) / (강)동적가격=정산 재설계라 비권장. → **대표 검토 중(2026-06-23).**
 
 **라이브 데이터 쌓인 후**
