@@ -56,6 +56,8 @@ const KVMonitoringPage = lazy(() => import('@/pages/admin/KVMonitoringPage'))
 const AdminSystemMonitoringPage = lazy(() => import('@/pages/AdminSystemMonitoringPage'))
 const AdminErrorsPage = lazy(() => import('@/pages/AdminErrorsPage'))
 const AdminEnvCheckPage = lazy(() => import('@/pages/AdminEnvCheckPage'))
+// 🩺 2026-06-24: 카카오 로그인 진단 (서버 ms / iOS 성공률 / OIDC 작동여부) — 어드민 Bearer 로 조회
+const AdminKakaoLoginDiagPage = lazy(() => import('@/pages/AdminKakaoLoginDiagPage'))
 const AdminVoucherOrdersPage = lazy(() => import('@/pages/AdminVoucherOrdersPage'))
 // 🛡️ 2026-05-24 Q1: 교환권 거래 분리 표시 (누가 / 언제 / 어떤 교환권)
 const AdminVoucherTransactionsPage = lazy(() => import('@/pages/AdminVoucherTransactionsPage'))
@@ -158,6 +160,12 @@ export function AdminRoutes() {
       <Route path="/admin/env-check" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminEnvCheckPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🩺 2026-06-24: 카카오 로그인 진단 (서버 ms / iOS 성공률 / OIDC 작동여부) */}
+      <Route path="/admin/kakao-login-diag" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminKakaoLoginDiagPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🛡️ 2026-05-23: KT Alpha 기프티쇼 발송 추적 페이지 */}
