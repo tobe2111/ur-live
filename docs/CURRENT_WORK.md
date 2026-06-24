@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-24 — 도매 정산 지급일 확정: "금주(월~일) 발주 → 차주 목요일 00:00 KST" (대표 확정, 도매몰 전용 통일)
+**대표 지시**: "금주 월-일 / 차주 목 정산으로 결정났어" + (AskUserQuestion 답) "도매몰에만 해당. 유어딜은 전혀 상관없어. **차주 목요일 통일** — 브랜드/일반 구분 없음."
+- **변경** (`src/features/supply/api/wholesale-settlement.ts`, 비잠금 머니파일):
+  - 신규 순수함수 `wholesaleSettlementAvailableAt(nowMs)` — 발주 epoch → **그 주(월~일 KST)의 다음 주 목요일 00:00 KST** 를 UTC ISO 로. KST(UTC+9) 주 경계 계산: `daysSinceMonday=(getUTCDay()+6)%7` → 이번 주 월 00:00 KST → **+10일**(=차주 목). 한 주 7개 발주일 전부 동일 목요일로 묶임.
+  - `creditSupplierOnWholesaleOrder`: 기존 건별 **+7일(일반)/+1일(브랜드)** 롤링(`REFUND_WINDOW_DAYS`/`BRAND_REFUND_WINDOW_DAYS`) 제거 → 전 라인 `settlementAvailableAt = wholesaleSettlementAvailableAt(Date.now())` **통일**(isBrand 분기 폐지). note = "B2B 도매주문 — 차주 목요일 정산(금주 월~일 발주분)".
+- **불변(미접촉)**: 성숙 cron `matureSupplierSettlements`(매일 18:00 UTC, available_at 경과 시 pending→available)·출금기반 지급(어드민 승인)·정산 라인 멱등(ON CONFLICT)·`available_at` 컬럼만 의미 변경. **소비자 정산(`supply-settlement.ts`) 완전 무관**(대표 지시대로 유어딜 제외).
+- **회귀방지**: `src/tests/unit/wholesale-settlement-schedule.test.ts`(6 tests) — 월~일 7일 동일 목요일 묶임·차주 목 10일 오프셋·KST·결과 항상 목 00:00 KST. CI(verify.yml)에서 주 경계/요일/KST 깨지면 빨강.
+- 검증: tsc 0 · vitest 28 pass(4파일) · build 0 · money-pattern 0 · sql-bind 0.
+
 ## ✅ 2026-06-23 — 도매몰(유통스타트) 전수 QA 스윕 + 자동 QA 2층 구축 (대표 "사람이 QA 안 해도 되게 / 빠짐없이")
 **배경**: 대표가 도매몰 로딩·로그인 불안정 신고 → 반응형 패치를 넘어 **선제적 전수감사 + 자동 QA**로 전환. 감사 에이전트는 일관되게 과대보고 → **모든 발견을 코드로 재검증해 진짜만(라운드당 ~1건) 수정**(불필요한 머니/주문 코드 변경 방지).
 
@@ -20,7 +29,7 @@
 
 **한계(정직)**: 실결제 E2E는 staging 없이 자동화 불가(결제/정산 로직은 단위테스트로 커버). 
 
-**미뤄둔(대표 결정/자료 대기)**: 전자계약 **모두싸인→유캔싸인 전환**(다른 세션 결정 — 수정 계약서+UCanSign API 대기), 제조사 정산 **요일** 확정(주단위 방향, 요일 미정). 계약서 초안: `docs/legal/{판매사,제조사}-*.md`(법률검토 권장).
+**미뤄둔(대표 결정/자료 대기)**: 전자계약 **모두싸인→유캔싸인 전환**(다른 세션 결정 — 수정 계약서+UCanSign API 대기). 계약서 초안: `docs/legal/{판매사,제조사}-*.md`(법률검토 권장). ~~제조사 정산 요일~~ → **2026-06-24 확정: 차주 목요일**(위 항목).
 
 ## ✅ 2026-06-23 — `/vouchers` 연속 스크롤 + 중앙 스크롤스파이 탭 (대표 AskUserQuestion 승인)
 **대표 지시**: `/vouchers` 상단 `[교환권][쇼핑]` 탭을 **중앙 배치**하고, "교환권 어느정도 내리면 쇼핑 상품들이 뜨길" — 한 페이지 연속 스크롤. AskUserQuestion 답: "연속 스크롤(추천)" + "교환권 20개씩 + 더보기 버튼, 그 아래 쇼핑".

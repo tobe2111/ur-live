@@ -13,9 +13,22 @@
 import { recordLedger } from '@/worker/utils/ledger'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 
-const REFUND_WINDOW_DAYS = 7
-// 🛡️ 브랜드제품: '거의 당일' 정산이되 최소 환불 클로백 안전창(1일) 확보 — 지급 후 환불로 인한 미회수 방지.
-const BRAND_REFUND_WINDOW_DAYS = 1
+// 🗓️ 2026-06-23 (대표 확정): 도매 정산 지급일 = "금주(월~일 KST) 발주 → 차주 목요일 00:00 KST".
+//   기존 건별 +7일/+1일(브랜드) 롤링을 **주단위 고정 지급일**로 통일. 도매몰 전용(소비자 정산 무관).
+const KST_OFFSET_MS = 9 * 3600_000
+/**
+ * 발주 시각이 속한 KST 주(월~일)의 **다음 주 목요일 00:00 KST** 를 정산 가용 시각(UTC ISO)으로 반환.
+ *   매일 18:00 UTC `matureSupplierSettlements` cron 이 available_at 경과 시 pending→available 로 성숙.
+ *   예) 월요일 발주 → 차주 목(10일 뒤) / 일요일 발주 → 같은 차주 목(4일 뒤). 한 주 전체가 동일 목요일로 묶임.
+ * @param nowMs 발주(결제) epoch ms
+ */
+export function wholesaleSettlementAvailableAt(nowMs: number): string {
+  const kst = new Date(nowMs + KST_OFFSET_MS)         // UTC 필드가 KST 벽시계를 표현
+  const daysSinceMonday = (kst.getUTCDay() + 6) % 7   // 월=0, 화=1, …, 일=6
+  // 이번 주 월요일 00:00 KST 의 UTC epoch (Date.UTC 는 음수 date 정규화)
+  const mondayKstMidnightUtc = Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate() - daysSinceMonday) - KST_OFFSET_MS
+  return new Date(mondayKstMidnightUtc + 10 * 86400_000).toISOString() // 차주 목요일 = 이번 주 월 + 10일
+}
 
 /**
  * 🆕 2026-06-17 대표 확정 모델 (cost-plus): 제조사가 받을 금액(공급원가) *위에* 플랫폼 마진%를 붙여 공급가 산출.
@@ -92,8 +105,8 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
   ).bind(wholesaleOrderId).first().catch(() => null)
   if (existing) return 0
 
-  // 🛡️ 스펙 정산 분기: 브랜드제품(is_brand_product=1) = 판매 후 당일(즉시 available) / 일반제품 = 7일 환불창 성숙.
-  //   products.is_brand_product 없을 수 있어 LEFT JOIN + COALESCE(0).
+  // 🗓️ 2026-06-23 (대표 확정): 정산 지급일 = 차주 목요일 통일(브랜드/일반 구분 폐지 — 위 wholesaleSettlementAvailableAt).
+  //   is_brand_product 컬럼은 더는 분기에 안 쓰지만 SELECT 유지(타입/하위호환, 무해).
   const rows = await DB.prepare(`
     SELECT i.product_id, i.supplier_id, i.qty, i.base_supply_price, i.distributor_unit_price,
            COALESCE(p.is_brand_product, 0) AS is_brand_product
@@ -105,8 +118,9 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
   const notifySuppliers = new Set<number>()
   // 🆕 2026-06-16 정산 분배: 제조사 = max(원가, 공급가×(1−수수료%)), 플랫폼 = 공급가 − 제조사(= 수수료).
   const commPct = await loadPlatformCommissionPct(DB)
-  const generalAvailableAt = new Date(Date.now() + REFUND_WINDOW_DAYS * 86400_000).toISOString()
-  const brandAvailableAt = new Date(Date.now() + BRAND_REFUND_WINDOW_DAYS * 86400_000).toISOString()
+  // 🗓️ 2026-06-23 (대표 확정): 도매 정산 = "금주(월~일) 발주 → 차주 목요일 00:00 KST" 통일(브랜드/일반 구분 없음).
+  //   기존 건별 +7일/+1일 롤링 → 주단위 고정 지급일. 도매몰 전용(소비자 supply-settlement.ts 무관).
+  const settlementAvailableAt = wholesaleSettlementAvailableAt(Date.now())
   for (const r of rows.results || []) {
     const qty = Math.max(1, Math.floor(Number(r.qty) || 1))
     const distUnit = Math.floor(Number(r.distributor_unit_price) || 0) // 판매사 지불 단가(공급가, tier할인 반영)
@@ -114,9 +128,8 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
     const supplyAmount = manufacturerUnit * qty // 제조사 정산액(원가 하한)
     if (supplyAmount <= 0) continue
     const retailAmount = distUnit * qty // 판매사 지불액(공급가 — retail−supply = 플랫폼 수수료)
-    const isBrand = Number(r.is_brand_product) === 1
-    const availableAt = isBrand ? brandAvailableAt : generalAvailableAt
-    const noteText = isBrand ? 'B2B 도매주문(브랜드 — 익일정산/1일보호창)' : 'B2B 도매주문(일반 — 7일성숙)'
+    const availableAt = settlementAvailableAt // 브랜드/일반 통일 — 차주 목요일
+    const noteText = 'B2B 도매주문 — 차주 목요일 정산(금주 월~일 발주분)'
 
     // 🛡️ 2026-06-19 (머니 감사): 라인별 멱등 — idx_supplier_settle_unique(order_id, product_id, source) 로
     //   ON CONFLICT DO NOTHING. 기존 plain INSERT 는 중복 시 throw 라, 동시 같은-주문 경쟁의 부분 인터리브에서
