@@ -201,6 +201,27 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
       } catch { /* graceful */ }
     }
 
+    // 🔗 2026-06-23 (대표 결정 — 1단계 이상화): 로그인한 유저가 셀러 가입하면 가입 시점에 linked_user_id
+    //   즉시 연결. 기존엔 미연결로 태어나 "같은 이메일 사후 매칭"에 의존 → 이메일 다르면 영영 미연결
+    //   (tobe2111 사건의 근본 원인). 이제 카카오 user 세션이 있으면 이메일 무관하게 가입 즉시 연결.
+    //   비로그인(순수 이메일/비번) 가입은 기존대로 미연결(추후 same-email 자동/수동 연결).
+    //   idx_sellers_linked_user_unique(한 유저=한 셀러) 충돌 시 skip. 전 과정 fail-soft.
+    if (result.meta.last_row_id) {
+      try {
+        const { parseSessionCookie } = await import('../../../worker/utils/session')
+        const sessionUser = await parseSessionCookie(c.req.header('Cookie'), c.env.JWT_SECRET, ['user']).catch(() => null)
+        const uid = sessionUser?.userId
+        if (uid) {
+          const already = await db.prepare('SELECT id FROM sellers WHERE linked_user_id = ? LIMIT 1').bind(uid).first()
+          if (!already) {
+            await db.prepare(
+              `UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ? AND (linked_user_id IS NULL OR linked_user_id = 0)`
+            ).bind(uid, Number(result.meta.last_row_id)).run().catch(() => null)
+          }
+        }
+      } catch { /* 비로그인/세션 없음 — 미연결 유지 */ }
+    }
+
     // 🛡️ 2026-05-27 v2 (UX 영구 fix): NTS 진위확인 비동기 — 가입 응답 즉시, 검증은 background.
     // 🛡️ 2026-06-12 (사용자 결정 — "자동승인 말고 수동 승인"): NTS 일치여도 status 자동
     //   'approved' 전환 제거 — 모든 사업자 가입은 어드민 수동 승인. 검증 결과(nts_verify_result/
