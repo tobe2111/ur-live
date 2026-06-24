@@ -9,6 +9,7 @@
  * 기존 분산된 admin 페이지 통합 → 어드민 검수 부담 ↓.
  */
 
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -84,6 +85,31 @@ export default function AdminPendingSellersPage() {
     }
   }
 
+  // 🔗 2026-06-23 (대표 요청): 셀러 ↔ 유저(링크샵 handle) 수동 연결. 이메일이 달라 자동연결이 안 되는
+  //   셀러를, 운영자가 셀러 ID + 유저 핸들로 직접 묶음 → /u/{handle} 가 셀러 storefront 표시 + 프로필 링크 /u/ 통일.
+  const [linkSellerId, setLinkSellerId] = useState('')
+  const [linkHandle, setLinkHandle] = useState('')
+  const [linking, setLinking] = useState(false)
+  async function linkSellerToUser() {
+    const id = linkSellerId.trim()
+    const handle = linkHandle.trim().replace(/^@/, '')
+    if (!/^\d+$/.test(id)) { toast.error('셀러 ID(숫자)를 입력하세요'); return }
+    if (!handle) { toast.error('유저 핸들을 입력하세요'); return }
+    setLinking(true)
+    try {
+      const r = await api.patch(`/api/admin/sellers/${id}/link-user`, { handle })
+      if (r.data?.success) {
+        toast.success(`셀러 #${id} ↔ @${handle} 연결 완료 — /u/${handle} 로 통일됩니다`)
+        setLinkSellerId(''); setLinkHandle('')
+      } else {
+        toast.error(r.data?.error || '연결 실패')
+      }
+    } catch (e) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+      toast.error(msg || '연결 실패')
+    } finally { setLinking(false) }
+  }
+
   return (
     <>
       <SEO title="매장 검수 - admin" description="pending 셀러 통합 검수" url="/admin/pending-sellers" />
@@ -96,6 +122,32 @@ export default function AdminPendingSellersPage() {
         </header>
 
         <div className="max-w-5xl mx-auto px-4 py-4 space-y-3">
+          {/* 🔗 셀러 ↔ 유저(링크샵) 수동 연결 도구 */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4">
+            <p className="text-sm font-bold text-gray-900">🔗 셀러 ↔ 유저(링크샵) 연결</p>
+            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+              이메일이 달라 자동 연결이 안 된 셀러를 유저 링크샵에 직접 묶습니다. 연결하면 셀러 프로필/공구가 <b>/u/&#123;핸들&#125;</b> 로 통일돼요.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input
+                value={linkSellerId} onChange={(e) => setLinkSellerId(e.target.value)}
+                inputMode="numeric" placeholder="셀러 ID (예: 5)"
+                className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
+              />
+              <span className="text-gray-400 text-sm">↔ @</span>
+              <input
+                value={linkHandle} onChange={(e) => setLinkHandle(e.target.value)}
+                placeholder="유저 핸들 (예: jiwon1228)"
+                className="flex-1 min-w-[160px] px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
+              />
+              <button
+                onClick={linkSellerToUser} disabled={linking}
+                className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-bold disabled:opacity-40"
+              >
+                {linking ? '연결 중…' : '연결'}
+              </button>
+            </div>
+          </div>
           {loading ? (
             <div className="text-center py-12 text-gray-400 text-sm">로딩 중...</div>
           ) : sellers.length === 0 ? (
