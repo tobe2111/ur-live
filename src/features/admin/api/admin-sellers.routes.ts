@@ -409,6 +409,40 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
   }
 });
 
+// 🔗 2026-06-23 (대표 요청): 셀러 ↔ 유저(링크샵 handle) 수동 연결.
+//   same-email 자동연결이 안 되는(이메일 다른) 계정을 운영자가 직접 묶음 → /u/{handle} 가 셀러
+//   storefront 를 표시 + 공구/상품의 셀러 프로필 링크가 /profile 대신 /u/{handle} 로 통일됨.
+adminSellersRoutes.patch('/sellers/:id/link-user', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const sellerId = c.req.param('id');
+    if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
+    let body: { handle?: string } = {};
+    try { body = await c.req.json(); } catch { /* empty */ }
+    const handle = String(body.handle || '').trim().replace(/^@/, '').toLowerCase();
+    if (!handle) return c.json({ success: false, error: '유저 handle 을 입력하세요' }, 400);
+
+    const seller = await executeQuery<IdRow>(DB, 'SELECT id, status FROM sellers WHERE id = ?', [sellerId]);
+    if (seller.length === 0) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404);
+
+    const users = await executeQuery<{ id: number; handle: string }>(DB,
+      `SELECT id, handle FROM users WHERE LOWER(handle) = ? LIMIT 1`, [handle]);
+    if (users.length === 0) return c.json({ success: false, error: `핸들 '@${handle}' 유저를 찾을 수 없습니다` }, 404);
+    const userId = users[0].id;
+
+    // idx_sellers_linked_user_unique: 한 유저 = 한 셀러. 다른 셀러가 이미 이 유저에 묶여 있으면 차단.
+    const conflict = await executeQuery<IdRow>(DB,
+      `SELECT id FROM sellers WHERE linked_user_id = ? AND id != ? LIMIT 1`, [userId, sellerId]);
+    if (conflict.length > 0) return c.json({ success: false, error: `이 유저는 이미 다른 셀러(#${conflict[0].id})에 연결돼 있습니다` }, 409);
+
+    await executeRun(DB, `UPDATE sellers SET linked_user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [userId, sellerId]);
+    await writeAuditLog(c, { action: 'link_seller_user', targetType: 'seller', targetId: sellerId, after: { linked_user_id: userId, handle } });
+    return c.json({ success: true, data: { seller_id: Number(sellerId), linked_user_id: userId, handle } });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 adminSellersRoutes.patch('/sellers/:id/reject', cors(), async (c) => {
   try {
     const { DB } = c.env;
