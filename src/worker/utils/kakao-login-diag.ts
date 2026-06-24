@@ -29,16 +29,23 @@ async function ensureDiagTable(DB: D1Database): Promise<void> {
         ios INTEGER,              -- 1 = iOS WebKit 계열
         had_state_cookie INTEGER, -- 1 = state 쿠키 존재(쿠키 경로) / 0 = 쿠키 유실
         signed_fallback INTEGER,  -- 1 = 서명 state fallback 으로 복구(쿠키 없이 성공)
-        is_new INTEGER            -- 1 = 신규 가입
+        is_new INTEGER,           -- 1 = 신규 가입
+        ms_total INTEGER,         -- 콜백 전체 소요(ms)
+        ms_token INTEGER,         -- 카카오 토큰교환(ms)
+        ms_userinfo INTEGER,      -- 카카오 사용자정보(ms)
+        ms_db INTEGER             -- upsertUser DB 쓰기(ms)
       )`
     ).run();
   } catch { /* fail-soft — 진단 테이블 생성 실패해도 로그인 정상 */ }
-  // 🩺 2026-06-20: 콜백 단계별 타이밍(ms) 컬럼 — 기존 테이블엔 ALTER 로 추가(멱등, 이미 있으면 throw→무시).
-  //   ms_total: 콜백 전체(토큰교환~리다이렉트 직전) / ms_token: 카카오 토큰교환 / ms_userinfo: 카카오
-  //   사용자정보 / ms_db: upsertUser(DB). "우리 서버가 실제로 몇 ms 쓰는지" 실측용.
-  for (const col of ['ms_total', 'ms_token', 'ms_userinfo', 'ms_db']) {
-    try { await DB.prepare(`ALTER TABLE kakao_login_diag ADD COLUMN ${col} INTEGER`).run(); }
-    catch { /* 컬럼 이미 존재 — 무시 */ }
+  // 기존 테이블(타이밍 컬럼 도입 전 생성분)에 컬럼 추가 — 멱등(이미 있으면 throw→무시).
+  // 정적 리터럴 문자열: CI check-sql-column-exists.mjs 가 ALTER TABLE ADD COLUMN 정규식으로 감지 가능.
+  for (const stmt of [
+    'ALTER TABLE kakao_login_diag ADD COLUMN ms_total INTEGER',
+    'ALTER TABLE kakao_login_diag ADD COLUMN ms_token INTEGER',
+    'ALTER TABLE kakao_login_diag ADD COLUMN ms_userinfo INTEGER',
+    'ALTER TABLE kakao_login_diag ADD COLUMN ms_db INTEGER',
+  ]) {
+    try { await DB.prepare(stmt).run(); } catch { /* already exists */ }
   }
 }
 
