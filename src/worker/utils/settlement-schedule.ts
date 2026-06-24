@@ -16,10 +16,19 @@
 const KST_MS = 9 * 60 * 60 * 1000
 const DAY_MS = 24 * 60 * 60 * 1000
 
+/**
+ * 🔧 정산 일정 정책 (⚠️ 가변 — 대표가 바꿀 수 있음. 변경 시 **이 상수 + 테스트만** 수정).
+ *   주(월~일, KST)의 그 주 일요일로부터 '며칠 뒤'에 정산하는가:
+ *     화=2 · 수=3 · 목=4(현행) · 금=5 · 토=6 · 차주 일=7 · 차주 월=8 …
+ *   대표 결정(2026-06-23): 월~일 사용분 → **차주 목요일** = 4.
+ *   (런타임에 바꾸려면 platform_settings 로 빼는 옵션 — 현재는 코드 상수, 변경=배포 1회.)
+ */
+export const SETTLE_DAYS_AFTER_WEEK_SUNDAY = 4
+
 export function weeklySettlementCutoffUtc(nowMs: number): string {
   // KST 벽시계 컴포넌트를 getUTC* 로 읽기 위해 +9h 시프트.
   const kst = new Date(nowMs + KST_MS)
-  const base = new Date(kst.getTime() - 4 * DAY_MS) // now − 4일 (일→목)
+  const base = new Date(kst.getTime() - SETTLE_DAYS_AFTER_WEEK_SUNDAY * DAY_MS) // now − 정산오프셋 (일→정산일)
   const dow = base.getUTCDay() // 0=일 .. 6=토 (KST 기준 요일)
   // base 날짜 이하의 가장 최근 일요일(자정). Date.UTC 가 음수 일자도 정규화(월 경계 안전).
   const sundayMid = Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate() - dow)
