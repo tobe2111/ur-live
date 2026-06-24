@@ -77,6 +77,17 @@ async function fetchAccessToken(apiKey: string): Promise<string | null> {
   }
 }
 
+/**
+ * 🔎 설정 진단용 — API 키 유효성만 확인(토큰 발급 1회, **계약 발송·포인트 차감 없음**).
+ *   토큰 값은 절대 반환하지 않음(boolean 만). 키 미설정이면 {ok:false, reason:'not_configured'}.
+ */
+export async function verifyUcansignAuth(env: UcansignEnv): Promise<{ ok: boolean; reason?: 'not_configured' | 'auth_failed' }> {
+  const apiKey = env.UCANSIGN_API_KEY
+  if (!apiKey) return { ok: false, reason: 'not_configured' }
+  const token = await fetchAccessToken(apiKey).catch(() => null)
+  return token ? { ok: true } : { ok: false, reason: 'auth_failed' }
+}
+
 const CUSTOM_VALUE_KEYS = new Set(['customValue', 'customValue1', 'customValue2', 'customValue3', 'customValue4', 'customValue5'])
 
 /**
