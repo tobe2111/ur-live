@@ -51,6 +51,7 @@ const STATUS_OPTIONS = [
 const STATUS_BADGE: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
   active: 'bg-green-100 text-green-700 border-green-200',
+  approved: 'bg-green-100 text-green-700 border-green-200', // 🛡️ 2026-06-25: 승인 액션이 status='approved' 로 세팅 → '활성'과 동일 취급
   suspended: 'bg-gray-200 text-gray-600 border-gray-300',
   rejected: 'bg-red-100 text-red-700 border-red-200',
 }
@@ -58,9 +59,14 @@ const STATUS_BADGE: Record<string, string> = {
 const STATUS_LABEL: Record<string, string> = {
   pending: '승인 대기',
   active: '활성',
+  approved: '활성',
   suspended: '정지',
   rejected: '거부',
 }
+
+// 🛡️ 2026-06-25: 승인은 status 를 'approved' 로 만드는데 UI 탭/카운트는 'active' 기준 → 정규화로 통일.
+//   (승인했는데 '활성' 탭에서 사라지고 raw 'approved' 배지 + 재승인 시 400 나던 불일치 수정)
+const normStatus = (s: string) => (s === 'approved' ? 'active' : s)
 
 export default function AdminSellerApprovalPage() {
   const { t } = useTranslation()
@@ -90,7 +96,7 @@ export default function AdminSellerApprovalPage() {
   // 필터 + 검색 적용
   const filtered = useMemo(() => {
     return sellers.filter(s => {
-      if (filter !== 'all' && s.status !== filter) return false
+      if (filter !== 'all' && normStatus(s.status) !== filter) return false
       if (search.trim()) {
         const q = search.toLowerCase().trim()
         const text = `${s.name || ''} ${s.email || ''} ${s.business_name || ''} ${s.business_number || ''} ${s.phone || ''}`.toLowerCase()
@@ -219,7 +225,7 @@ export default function AdminSellerApprovalPage() {
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: sellers.length }
-    for (const s of sellers) c[s.status] = (c[s.status] || 0) + 1
+    for (const s of sellers) { const k = normStatus(s.status); c[k] = (c[k] || 0) + 1 }
     return c
   }, [sellers])
 
@@ -280,10 +286,15 @@ export default function AdminSellerApprovalPage() {
              서버 오류/세션만료 시 명시 안내 + 재시도 + 재로그인 경로. (HTTP 상태 노출 = 진단용) */
           <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
             <p className="text-sm font-bold text-red-700">셀러 목록을 불러오지 못했습니다</p>
-            <p className="mt-1 text-xs text-red-600">
-              서버 오류 또는 로그인 세션 만료일 수 있어요
-              {(() => { const s = (error as { response?: { status?: number } } | undefined)?.response?.status; return s ? ` (HTTP ${s})` : '' })()}
-            </p>
+            {(() => {
+              const st = (error as { response?: { status?: number } } | undefined)?.response?.status
+              // 🛡️ 2026-06-25: 상태별 정확 안내 — 403(IP 화이트리스트/권한)이 가장 흔한 원인. '세션만료'는 401 에만.
+              const msg = st === 403 ? '관리자 허용 IP 또는 권한이 아닙니다 — 운영자에게 ADMIN_IP_WHITELIST(허용 IP) 확인을 요청하세요'
+                : st === 401 ? '로그인 세션이 만료되었습니다 — 다시 로그인해주세요'
+                : st === 500 ? '서버 오류가 발생했습니다 — 잠시 후 다시 시도해주세요'
+                : '목록을 불러오지 못했습니다 — 네트워크/서버 상태를 확인해주세요'
+              return <p className="mt-1 text-xs text-red-600">{msg}{st ? ` (HTTP ${st})` : ''}</p>
+            })()}
             <div className="mt-4 flex items-center justify-center gap-2">
               <button onClick={() => load()} className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-900 text-white hover:bg-gray-800">다시 시도</button>
               <button onClick={() => navigate('/admin/login', { replace: true })} className="px-4 py-2 rounded-lg text-sm font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">다시 로그인</button>

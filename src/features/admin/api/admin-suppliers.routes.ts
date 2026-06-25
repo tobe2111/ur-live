@@ -25,10 +25,28 @@ function safeAdminError(err: unknown, env: Env): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+// 🛡️ 2026-06-25: supplier_balances 테이블 ensure(멱등, WeakSet 메모) — 목록 쿼리가 LEFT JOIN
+//   supplier_balances 를 쓰는데, 이 테이블은 첫 정산 or repair-schema 때만 생성됨. 정산 0건 + repair 미실행
+//   fresh DB(=신규 도매몰)에선 'no such table' → GET /suppliers 500 → 제조사 목록 안 뜸 → 승인 자체 불가.
+//   per-request DDL 금지 룰 준수(ensureXxx + WeakSet). 스키마는 repair-schema.routes.ts:1548 와 동일.
+const _balancesEnsured = new WeakSet<object>();
+async function ensureSupplierBalances(DB: D1Database): Promise<void> {
+  if (_balancesEnsured.has(DB)) return;
+  _balancesEnsured.add(DB);
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS supplier_balances (
+    supplier_id INTEGER PRIMARY KEY,
+    pending_amount INTEGER NOT NULL DEFAULT 0,
+    available_amount INTEGER NOT NULL DEFAULT 0,
+    paid_amount INTEGER NOT NULL DEFAULT 0,
+    updated_at DATETIME DEFAULT (datetime('now'))
+  )`).run().catch(() => { /* 이미 존재 */ });
+}
+
 // ── GET /suppliers — 목록 + 잔고 ──────────────────────────────────────────────
 adminSuppliersRoutes.get('/suppliers', cors(), async (c) => {
   try {
     const { DB } = c.env;
+    await ensureSupplierBalances(DB); // 🛡️ fresh DB 500 방지 (위 주석)
     // 조회 시 성숙(환불창 지난 pending → available) 먼저 반영 — best-effort.
     await matureSupplierSettlements(DB).catch(() => 0);
 

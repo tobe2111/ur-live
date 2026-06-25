@@ -99,6 +99,8 @@ export default function WholesaleJoinPage() {
     if (!kakaoUser && [/[a-zA-Z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter((re) => re.test(form.password)).length < 2) {
       toast.error('비밀번호는 영문·숫자·특수문자 중 2종류 이상을 포함해야 합니다'); return
     }
+    // 🛡️ 2026-06-25: 서버(relaxed)의 '같은 문자 4회 반복 금지'와 일치 — 옛 클라는 미검사라 "aaaa1234" 통과 후 서버 400 혼선.
+    if (!kakaoUser && /(.)\1{3,}/.test(form.password)) { toast.error('비밀번호에 같은 문자를 4번 이상 연속 사용할 수 없습니다'); return }
     if (!kakaoUser && form.password !== passwordConfirm) { toast.error('비밀번호가 일치하지 않습니다'); return }
     setLoading(true)
     try {
