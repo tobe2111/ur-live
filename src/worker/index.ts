@@ -678,6 +678,13 @@ app.use('*', async (c, next) => {
     }
     const rewritten = rb.transform(c.res);
     c.res = new Response(rewritten.body, rewritten);
+    // 🛡️ 2026-06-25 [UNLOCK_LOADING] (대표 승인 "가장 이상적으로 모두"): SPA HTML 셸은 항상 재검증.
+    //   옛 HTML(옛 청크 해시)이 브라우저/bfcache 에 잔존 → 새 배포 후 그 청크 404 → 흰화면/안넘어감을
+    //   *근본* 차단(서버가 매 하드로드마다 fresh HTML → fresh 청크 해시 보장). 클라 캐시버스트 복구와 이중 방어.
+    //   ⚠️ SSR 0-RTT 무영향: 0-RTT 는 API 페이로드를 caches.default 에 캐시(line 553 .match)하는 것이고,
+    //   HTML 셸 자체는 edge 캐시 안 함(caches.default.put / cacheEverything 없음 — 워커가 매요청 생성).
+    //   no-cache 는 "저장하되 사용 전 재검증" — bfcache 는 유지(no-store 아님)되 stale 사용은 차단.
+    c.res.headers.set('Cache-Control', 'no-cache');
   }
 });
 
