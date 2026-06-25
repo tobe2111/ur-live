@@ -1870,9 +1870,7 @@
       "noShopProducts": "登録された商品がありません。",
       "previewVisitor": "👀 プレビュー",
       "previewBanner": "訪問者プレビュー — 他の人に見える画面です",
-      "backToEdit": "編集に戻る",
-      "doneEditing": "完了",
-      "editLinkshop": "編集する"
+      "backToEdit": "編集に戻る"
     },
     "storeIntro": "ストア紹介",
     "shippingInfo": "配送情報",
