@@ -65,7 +65,7 @@ export default function SellerStreamingSetupPage() {
       const e = err as { response?: { data?: { error_code?: string; error?: string } } }
       if (e.response?.data?.error_code === 'YOUTUBE_AUTH_REQUIRED') {
         toast.error('YouTube 연동이 필요합니다')
-        navigate('/seller/youtube')
+        navigate('/seller/youtube-growth')
       } else {
         toast.error(e.response?.data?.error || '발급 실패')
       }
@@ -131,7 +131,7 @@ export default function SellerStreamingSetupPage() {
                 <p className="text-xs text-amber-700 mt-0.5">송출 키는 YouTube 가 발급해요. 먼저 채널을 연결해주세요.</p>
               </div>
             </div>
-            <Button onClick={() => navigate('/seller/youtube')} className="bg-amber-600 hover:bg-amber-700 text-white">
+            <Button onClick={() => navigate('/seller/youtube-growth')} className="bg-amber-600 hover:bg-amber-700 text-white">
               <Youtube className="w-4 h-4 mr-1.5" /> YouTube 채널 연결
             </Button>
           </div>

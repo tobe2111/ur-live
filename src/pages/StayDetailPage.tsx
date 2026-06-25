@@ -390,11 +390,6 @@ export default function StayDetailPage() {
           )}
         </div>
 
-        <div className="mt-6 pt-4 border-t border-[#1A1A1A]">
-          <Link to={`/stays/${stay.id}/reviews`} className="text-xs text-blue-400 hover:underline">
-            전체 리뷰 보기 →
-          </Link>
-        </div>
       </div>
 
       {bookingOpen && selectedRoom && (

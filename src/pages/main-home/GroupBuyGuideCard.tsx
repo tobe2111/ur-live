@@ -77,10 +77,6 @@ export default function GroupBuyGuideCard() {
         <Link to="/influencer" className="font-bold text-gray-900 dark:text-white hover:underline">
           내 추천 링크 →
         </Link>
-        <span className="text-gray-300 dark:text-gray-600">·</span>
-        <Link to="/help/deal-guide" className="font-medium text-gray-600 dark:text-gray-400 hover:underline">
-          딜 가이드 자세히 보기
-        </Link>
       </div>
     </div>
   )

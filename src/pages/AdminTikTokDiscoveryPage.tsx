@@ -78,7 +78,7 @@ export default function AdminTikTokDiscoveryPage() {
                       {item.seller_name || t('admin.tiktokDiscovery.sellerNo', { defaultValue: '셀러 #{{id}}', id: item.seller_id })}
                     </h4>
                     <a
-                      href={`/admin/sellers?id=${item.seller_id}`}
+                      href={`/admin/seller-approval?status=all&q=${encodeURIComponent(item.seller_name || '')}`}
                       target="_blank" rel="noreferrer"
                       className="text-[10px] text-blue-600 hover:underline inline-flex items-center gap-0.5"
                     >

@@ -59,7 +59,7 @@ export default function MyDealHistoryPage() {
 
   function onItemClick(tx: Transaction) {
     if (tx.type === 'charge') navigate('/points/charge')
-    else if (tx.order_id) navigate(`/my-orders/${tx.order_id}`)
+    else if (tx.order_id) navigate('/my-orders')
     // 🧭 2026-06-17: 그룹 referral 숨김 — 초대보너스는 /user/profile 의 MyReferralCard 로.
     else if (tx.type === 'referral_bonus') navigate(REFERRAL_GROUP_DISCOUNT_DISABLED ? '/user/profile' : '/referral')
     else if (tx.type === 'ad_reward') return  // no-op
