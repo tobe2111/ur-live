@@ -203,6 +203,13 @@ jobs:
         run: STRICT_LINKS=1 node scripts/check-internal-links.mjs
         continue-on-error: false
 
+      # 🔐 2026-06-24: 도매 어드민이 도달하는 화면이 호출하는 /api/admin 경로가 wholesale RBAC 스코프
+      #   안인지 단언. 카운트는 in-scope 로 세는데 목적지 데이터는 out-of-scope(403)면 "대시보드엔 N명,
+      #   클릭하면 0명" 미스매치(대표 신고). 슈퍼 어드민엔 안 보임. 현재 위반 0.
+      - name: Wholesale admin API scope (strict)
+        run: STRICT_API_SCOPE=1 node scripts/check-wholesale-admin-api-scope.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-06-20: 로그인/가입 입력 글자 흰색(다크모드) 재발 방지 — 현재 위반 0 → strict.
       #   standalone 라이트 auth 페이지가 force-light-theme/레이아웃 없이 input 렌더 시 다크모드 글자
       #   안 보임 사고(전역 .dark input 규칙이 text-gray-900 을 특이도로 이김) 신규 추가 차단.

@@ -114,7 +114,7 @@ export default function AdminWholesaleOverviewPage() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                 {([
-                  [queue.distributors_pending, '판매사 승인', '/admin/seller-approval'],
+                  [queue.distributors_pending, '판매사 승인', '/admin/distributor-approval'],
                   [queue.suppliers_pending, '제조사 승인', '/admin/suppliers'],
                   [queue.products_pending, '상품 승인', '/admin/products?tab=supplier-products'],
                   [queue.price_changes_pending, '가격변경', '/admin/products?tab=supplier-products'],

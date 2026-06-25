@@ -44,6 +44,70 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
     }
   })
 
+  // ── GET /distributors/pending-approvals ──────────────────────────────────────
+  //   🆕 2026-06-24 (대표 신고: 대시보드 '판매사 승인 N' 클릭 시 빈 목록): 가입 대기(is_distributor=1,
+  //   status='pending') 판매사 목록. 도매(wholesale)-스코프 엔드포인트(segment=distributor) — 도매 권한
+  //   어드민이 403 없이 조회·승인 가능(소비자 /api/admin/sellers 는 스코프 밖이라 403 → 빈 목록이었음).
+  //   카운트(wholesale-overview-admin: is_distributor=1 AND status='pending')와 동일 조건.
+  app.get('/distributors/pending-approvals', async (c) => {
+    try {
+      const { results } = await c.env.DB.prepare(
+        `SELECT s.id, s.username, s.name, s.business_name, s.business_number, s.email, s.phone,
+                s.representative_name, s.representative_phone, s.manager_name, s.manager_phone,
+                s.business_registration_image_url, s.business_registration_status,
+                s.status, s.created_at, COALESCE(s.mall_id,1) AS mall_id
+         FROM sellers s
+         WHERE s.is_distributor = 1 AND s.status = 'pending'
+         ORDER BY s.created_at ASC, s.id ASC LIMIT 200`
+      ).all().catch(() => ({ results: [] }))
+      return c.json({ success: true, distributors: results ?? [] })
+    } catch (err) {
+      return safeError(c, err, '판매사 승인 대기 조회 중 오류가 발생했습니다', '[distributor-admin]')
+    }
+  })
+
+  // ── PATCH /distributors/:id/approval ─────────────────────────────────────────
+  //   승인(approved) / 거부(rejected). CAS(status='pending' 일 때만) → 동시요청·중복 처리 멱등.
+  app.patch('/distributors/:id/approval', async (c) => {
+    try {
+      const id = Number(c.req.param('id'))
+      if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 판매사 ID' }, 400)
+      const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+      const action = String(body.action) === 'reject' ? 'reject' : 'approve'
+      const newStatus = action === 'approve' ? 'approved' : 'rejected'
+      const reason = typeof body.reason === 'string' ? body.reason.slice(0, 300) : null
+
+      // CAS: 대기(pending) + 판매사(is_distributor=1) 일 때만 1회 전이.
+      const res = await c.env.DB.prepare(
+        "UPDATE sellers SET status = ?, updated_at = datetime('now') WHERE id = ? AND is_distributor = 1 AND status = 'pending'"
+      ).bind(newStatus, id).run()
+      if (!res.meta.changes) {
+        return c.json({ success: false, error: '승인 대기 중인 판매사가 아닙니다 (이미 처리되었거나 존재하지 않음)' }, 409)
+      }
+      await writeAuditLog(c, {
+        action: action === 'approve' ? 'wholesale_distributor_approve' : 'wholesale_distributor_reject',
+        targetType: 'seller',
+        targetId: String(id),
+        before: { status: 'pending' },
+        after: { status: newStatus, reason },
+      }).catch(() => { /* audit 실패해도 성공 처리 */ })
+      // 판매사 대시보드 알림(fail-soft).
+      try {
+        const { createDashboardNotification } = await import('@/features/notifications/api/dashboard-notifications.routes')
+        await createDashboardNotification(
+          c.env.DB, 'seller', String(id),
+          action === 'approve' ? 'distributor_approved' : 'distributor_rejected',
+          action === 'approve' ? '판매사 가입 승인' : '판매사 가입 거부',
+          action === 'approve' ? '도매몰 이용이 승인되었습니다.' : (reason || '가입이 거부되었습니다.'),
+          '/wholesale',
+        )
+      } catch { /* 알림 실패 무시 */ }
+      return c.json({ success: true, status: newStatus })
+    } catch (err) {
+      return safeError(c, err, '판매사 승인 처리 중 오류가 발생했습니다', '[distributor-admin]')
+    }
+  })
+
   // ── PATCH /distributors/:id ──────────────────────────────────────────────────
   app.patch('/distributors/:id', async (c) => {
     try {
