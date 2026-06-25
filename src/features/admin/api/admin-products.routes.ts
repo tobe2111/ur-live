@@ -558,12 +558,17 @@ adminProductsRoutes.patch('/sample-requests/:id', cors(), async (c) => {
     `).bind(reqId).first<{ seller_id: number; seller_phone: string | null; seller_name: string; product_name: string }>()
       .catch(() => null);
 
-    await DB.prepare(`
+    // 🛡️ 2026-06-25: claim-before-credit CAS — 사전 SELECT 만으론 동시 승인 못 막음(둘 다 통과 → 알림톡 2회).
+    //   PENDING 원자 선점 후 changes===0 이면 멱등 409 (side-effect 미실행).
+    const upd = await DB.prepare(`
       UPDATE sample_requests
       SET status = ?, admin_memo = ?, updated_at = datetime('now'),
           approved_at = ${approvedAt}
-      WHERE id = ?
+      WHERE id = ? AND status = 'PENDING'
     `).bind(newStatus, body.admin_memo || null, reqId).run();
+    if ((upd.meta?.changes ?? 0) === 0) {
+      return c.json({ success: false, error: '이미 처리된 신청입니다' }, 409);
+    }
 
     if (reqInfo?.seller_phone && c.env.ALIGO_API_KEY && c.env.ALIGO_USER_ID && c.env.ALIGO_SENDER_PHONE) {
       const { subject, message } = buildSampleApprovalMessage({
@@ -941,7 +946,8 @@ adminProductsRoutes.get('/dongnedeal/stats', cors(), async (c) => {
     ).bind(...cats).all<{ category: string; c: number }>().catch(() => ({ results: [] as { category: string; c: number }[] }));
     return c.json({ success: true, total: row?.total ?? 0, active: row?.active ?? 0, demo: demo?.c ?? 0, by_category: byCat.results ?? [] });
   } catch (err) {
-    return c.json({ success: false, error: safeAdminError(err, c.env), total: 0, active: 0, demo: 0, by_category: [] }, 200);
+    // 🛡️ 2026-06-25: 실패를 200(success:false)로 주면 클라가 "동네딜 0건"으로 오인 → 500 으로 명시.
+    return c.json({ success: false, error: safeAdminError(err, c.env), total: 0, active: 0, demo: 0, by_category: [] }, 500);
   }
 });
 
