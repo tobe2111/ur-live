@@ -171,21 +171,49 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
     // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
     const mallId = await registrationMallId(c).catch(() => 1); // 🛡️ 2026-06-23 fail-soft: 몰 해석 실패가 가입 500 안 내게(기본 몰 1)
     const nts1 = await ntsStatusOf(c.env, DB, bizNum)
-    const result = await DB.prepare(`
-      INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
-        bank_name, bank_account, account_holder, business_license_url,
-        representative_phone, manager_name, manager_phone, manager_email,
-        mall_id, nts_status, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
-    `).bind(
-      businessName, bizNum, body.representative || null, email, body.phone || null, passwordHash,
-      body.bank_name || null, body.bank_account || null, body.account_holder || null, bizLicenseUrl || null,
-      representativePhone || null, managerName || null, managerPhone || null, managerEmail || null,
-      mallId, nts1,
-    ).run();
+    // 🛡️ 2026-06-25: 판매사(wholesale.routes)와 동일한 self-heal — 풀 INSERT 가 컬럼 누락/드리프트로 실패해도
+    //   base 컬럼(business_name/email/password_hash NOT NULL)만 최소 INSERT 후 optional best-effort UPDATE → 가입 500 방지.
+    let supplierId = 0
+    try {
+      const result = await DB.prepare(`
+        INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
+          bank_name, bank_account, account_holder, business_license_url,
+          representative_phone, manager_name, manager_phone, manager_email,
+          mall_id, nts_status, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+      `).bind(
+        businessName, bizNum, body.representative || null, email, body.phone || null, passwordHash,
+        body.bank_name || null, body.bank_account || null, body.account_holder || null, bizLicenseUrl || null,
+        representativePhone || null, managerName || null, managerPhone || null, managerEmail || null,
+        mallId, nts1,
+      ).run();
+      supplierId = Number(result.meta.last_row_id)
+    } catch (insErr) {
+      const msg = String((insErr as Error)?.message || '')
+      console.error('[supplier-auth:register] 풀 INSERT 실패 → 자가치유 진입:', msg)
+      if (/UNIQUE|already exists|constraint failed: suppliers\.email/i.test(msg)) return c.json({ success: false, error: '이미 가입된 이메일입니다' }, 409);
+      // base 컬럼만 — business_name(NOT NULL) + 가입 식별 핵심. 나머지는 best-effort UPDATE.
+      const insMin = await DB.prepare(
+        `INSERT INTO suppliers (business_name, business_number, email, password_hash, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))`
+      ).bind(businessName, bizNum, email, passwordHash).run();
+      supplierId = Number(insMin.meta.last_row_id)
+      if (supplierId) {
+        const optionalCols: Array<[string, string | number | null]> = [
+          ['representative', body.representative || null], ['phone', body.phone || null],
+          ['bank_name', body.bank_name || null], ['bank_account', body.bank_account || null],
+          ['account_holder', body.account_holder || null], ['business_license_url', bizLicenseUrl || null],
+          ['representative_phone', representativePhone || null], ['manager_name', managerName || null],
+          ['manager_phone', managerPhone || null], ['manager_email', managerEmail || null],
+          ['mall_id', mallId], ['nts_status', nts1],
+        ]
+        for (const [col, val] of optionalCols) {
+          await DB.prepare(`UPDATE suppliers SET ${col} = ? WHERE id = ?`).bind(val, supplierId).run().catch(swallow('supplier-auth:register:opt-col'))
+        }
+      }
+    }
 
     // 🖋️ 2026-06-22: 가입 시 전자계약서 자동발송(모두싸인 카카오). fail-soft — 미설정/실패가 가입 안 막음.
-    const supplierId = Number(result.meta.last_row_id)
     if (supplierId) {
       dispatchSignupContract(c, { accountType: 'supplier', accountId: supplierId, signerName: body.representative || managerName, signerPhone: body.phone || managerPhone || representativePhone, businessName })
     }
@@ -193,12 +221,11 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
     return c.json({
       success: true,
       message: '가입 신청이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다.',
-      data: { id: result.meta.last_row_id, status: 'pending' },
+      data: { id: supplierId, status: 'pending' },
     }, 201);
   } catch (err) {
-    // ⏳ 2026-06-23 임시 진단: prod 에서 실제 에러를 _diag 로 노출(원인 확인 후 제거 예정).
-    console.error('[supplier-auth:register] 500:', (err as Error)?.message || String(err));
-    return c.json({ success: false, error: '가입 처리 중 오류가 발생했습니다', _diag: String((err as Error)?.message || err).slice(0, 250) }, 500);
+    // 🛡️ 2026-06-25: 임시 _diag 노출 제거(보안 — raw DB 에러 클라 반환 금지 룰). safeError 가 Sentry/DEV 로깅 담당.
+    return safeError(c, err, '가입 처리 중 오류가 발생했습니다', '[supplier-auth:register]');
   }
 });
 

@@ -263,9 +263,8 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 20, windowS
       message: '판매사 가입 신청이 완료되었습니다. 사업자 정보 확인 후 관리자 승인되면 이용할 수 있습니다.',
     })
   } catch (err) {
-    // ⏳ 2026-06-23 임시 진단: prod 에서 실제 에러를 _diag 로 노출(원인 확인 후 제거 예정). console+Sentry 도 기록.
-    console.error('[wholesale:register] 500:', (err as Error)?.message || String(err))
-    return c.json({ success: false, error: '가입 처리 중 오류가 발생했습니다', _diag: String((err as Error)?.message || err).slice(0, 250) }, 500)
+    // 🛡️ 2026-06-25: 임시 _diag 노출 제거(보안 — raw DB 에러 클라 반환 금지 룰). safeError 가 Sentry/DEV 로깅 담당.
+    return safeError(c, err, '가입 처리 중 오류가 발생했습니다', '[wholesale:register]')
   }
 })
 

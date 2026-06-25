@@ -111,7 +111,7 @@ export default function WholesaleCheckoutPage() {
                   <div className="text-[13px] font-medium line-clamp-1" style={{ color: WT.ink }}>{it.name || `상품 #${it.id}`}</div>
                   <div className="text-[12px] tabular-nums" style={{ color: WT.ink3 }}>{won(it.price || 0)} × {comma(it.qty)}</div>
                 </div>
-                <span className="text-[13px] font-bold tabular-nums shrink-0" style={{ color: WT.ink }}>{won((it.price || 0) * it.qty)}</span>
+                <span className="text-[13px] font-bold tabular-nums shrink-0" style={{ color: WT.ink }}>{won((it.price || 0) * (it.qty || 0))}</span>
               </li>
             ))}
           </ul>
