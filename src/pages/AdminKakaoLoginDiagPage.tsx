@@ -17,13 +17,17 @@ interface Timing {
   samples?: number; avg_total_ms?: number; min_total_ms?: number; max_total_ms?: number
   avg_token_ms?: number; avg_userinfo_ms?: number; avg_db_ms?: number; p95_total_ms?: number
 }
+interface RecentRow {
+  created_at?: string; outcome?: string; reason?: string; browser?: string
+  ios?: number; ms_total?: number | null; ms_userinfo?: number | null; ms_db?: number | null
+}
 interface DiagData {
   note?: string
   ios_summary?: Array<{ outcome: string; count: number }>
   signed_fallback_successes_7d?: number
   server_timing_ms_7d?: Timing
   aggregate?: Array<Record<string, unknown>>
-  recent?: Array<Record<string, unknown>>
+  recent?: RecentRow[]
 }
 
 function Stat({ label, value, unit, big }: { label: string; value?: number | null; unit: string; big?: boolean }) {
@@ -64,6 +68,13 @@ export default function AdminKakaoLoginDiagPage() {
   const oidcActive = t && typeof t.avg_userinfo_ms === 'number' ? t.avg_userinfo_ms <= 5 : null
   const iosTotal = (data?.ios_summary || []).reduce((s, r) => s + (r.count || 0), 0)
   const iosSuccess = (data?.ios_summary || []).find((r) => r.outcome === 'success')?.count || 0
+
+  // 🩺 최근 성공 로그인만 추려 OIDC 작동여부를 "로그인별"로 확인 — 7일 평균은 OIDC 켜기 전
+  //   옛 로그인이 섞여 왜곡될 수 있으므로, 최신 로그인이 0ms(OIDC) 인지 직접 본다.
+  const recentLogins = (data?.recent || [])
+    .filter((r) => r.outcome === 'success' && r.ms_total != null)
+    .slice(0, 12)
+  const recentOidcCount = recentLogins.filter((r) => (r.ms_userinfo ?? 99) <= 5).length
 
   return (
     <div className="min-h-screen bg-[#F4F5F7] p-4 md:p-8">
@@ -110,6 +121,47 @@ export default function AdminKakaoLoginDiagPage() {
             {iosTotal > 0 && <span className="text-gray-500"> ({Math.round((iosSuccess / iosTotal) * 100)}%)</span>}
             <span className="ml-3 text-gray-500">쿠키유실 서명복구 {data?.signed_fallback_successes_7d ?? 0}건</span>
           </div>
+        </div>
+
+        {/* 최근 로그인별 OIDC 상태 — 7일 평균 왜곡 보정용 ground truth */}
+        <div className="rounded-2xl bg-white border border-gray-200 p-5 mb-4">
+          <h2 className="text-sm font-semibold text-gray-500 mb-1">최근 로그인별 (최신 {recentLogins.length}건)</h2>
+          <p className="text-xs text-gray-400 mb-3">
+            사용자정보 0ms = OIDC 지름길 작동. 7일 평균은 OIDC 켜기 전 옛 로그인이 섞여 높게 보일 수 있어,
+            <strong className="text-gray-600"> 최신 로그인이 0인지</strong>로 실제 작동을 확인합니다.
+            {recentLogins.length > 0 && (
+              <span className="ml-1">최근 {recentLogins.length}건 중 <strong className="text-gray-700">{recentOidcCount}건 OIDC</strong>.</span>
+            )}
+          </p>
+          {recentLogins.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-gray-400 text-left border-b border-gray-100">
+                    <th className="py-1.5 pr-3 font-medium">시각</th>
+                    <th className="py-1.5 pr-3 font-medium">총</th>
+                    <th className="py-1.5 pr-3 font-medium">사용자정보</th>
+                    <th className="py-1.5 pr-3 font-medium">DB</th>
+                    <th className="py-1.5 font-medium">OIDC</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentLogins.map((r, i) => {
+                    const oidc = (r.ms_userinfo ?? 99) <= 5
+                    return (
+                      <tr key={i} className="border-b border-gray-50">
+                        <td className="py-1.5 pr-3 text-gray-500 whitespace-nowrap">{(r.created_at || '').replace('T', ' ').slice(5, 16)}</td>
+                        <td className="py-1.5 pr-3 text-gray-900 font-medium">{r.ms_total ?? '–'}<span className="text-gray-400">ms</span></td>
+                        <td className={`py-1.5 pr-3 font-medium ${oidc ? 'text-green-700' : 'text-amber-700'}`}>{r.ms_userinfo ?? '–'}<span className="text-gray-400">ms</span></td>
+                        <td className="py-1.5 pr-3 text-gray-600">{r.ms_db ?? '–'}<span className="text-gray-400">ms</span></td>
+                        <td className="py-1.5">{oidc ? <span className="text-green-700">✅</span> : <span className="text-amber-600">폴백</span>}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : <div className="text-sm text-gray-400">최근 성공 로그인 기록이 없습니다.</div>}
         </div>
 
         {/* 원본 */}

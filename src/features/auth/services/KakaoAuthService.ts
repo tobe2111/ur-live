@@ -325,6 +325,11 @@ export class KakaoAuthService {
           //   이미지(r2 업로드 '/api/media/...' 등)가 다음 로그인 때 증발했음.
           //   → 현재 값이 비었거나 카카오 CDN 출처일 때만 갱신(카카오 아바타 변경은 계속 동기화),
           //   커스텀 업로드는 보존. phone 의 COALESCE 보존 패턴과 동일 사상.
+          // 🛡️ 2026-06-24 (속도 최적화): email_verified 를 이 UPDATE 에 합침 — 기존엔
+          //   아래에서 별도 UPDATE 1회를 더 날려 로그인마다 D1 왕복이 1번 더 들었음.
+          //   기존 유저는 여기서 한 번에 갱신, 신규 유저만 INSERT 후 별도 UPDATE(아래 isNewUser 분기).
+          //   email_verified 컬럼은 2026-06-06 부터 prod 존재 — 없던 레거시면 이 UPDATE 가 throw →
+          //   catch 의 최소 UPDATE 로 degrade(기존에도 별도 UPDATE 가 동일하게 실패했음, 무회귀).
           await this.db.prepare(`
             UPDATE users
             SET name = ?,
@@ -334,6 +339,7 @@ export class KakaoAuthService {
                        OR profile_image LIKE '%kakaocdn.net%' OR profile_image LIKE '%kakao.com%'
                   THEN ? ELSE profile_image END,
                 phone = COALESCE(phone, ?),
+                email_verified = ?,
                 updated_at = datetime('now'),
                 last_login_at = datetime('now')
             WHERE id = ?
@@ -342,6 +348,7 @@ export class KakaoAuthService {
             kakaoUser.email || null,
             kakaoUser.profileImage || null,
             validPhone,
+            kakaoUser.emailVerified === true ? 1 : 0,
             userId
           ).run();
         } catch (e) {
@@ -447,10 +454,14 @@ export class KakaoAuthService {
       //   도매(become-distributor)·제조(become) 자동 same-email 연결 게이트의 SSOT.
       //   미verified email 로 사전등록된(관리자 시드) 승인 계정 takeover 차단용. best-effort
       //   (컬럼 없으면 repair-schema 후 다음 로그인에 채워짐 — login 자체는 비차단).
-      try {
-        await this.db.prepare(`UPDATE users SET email_verified = ? WHERE id = ?`)
-          .bind(kakaoUser.emailVerified === true ? 1 : 0, userId).run();
-      } catch { /* 컬럼 미존재 — 비치명적, repair-schema 가 컬럼 추가 */ }
+      // 🛡️ 2026-06-24 (속도 최적화): 기존 유저는 위 프로필 UPDATE 에 email_verified 를 합쳐
+      //   이미 갱신함 → 여기선 신규 유저(INSERT 직후)만 별도 1회. 로그인당 D1 왕복 -1.
+      if (isNewUser) {
+        try {
+          await this.db.prepare(`UPDATE users SET email_verified = ? WHERE id = ?`)
+            .bind(kakaoUser.emailVerified === true ? 1 : 0, userId).run();
+        } catch { /* 컬럼 미존재 — 비치명적, repair-schema 가 컬럼 추가 */ }
+      }
 
       // 사용자 정보 다시 조회하여 반환.
       // 🛡️ 2026-05-06: profile_image 컬럼 production 에 없을 수도 있어 fallback 추가.
@@ -488,15 +499,14 @@ export class KakaoAuthService {
         //   users.email 에 UNIQUE 제약이 없어, 두 카카오 계정이 같은 email 을 공유하면(또는 시드 중복)
         //   이 자동연결이 '다른 사람의 미연결 셀러'를 이 유저에 붙여 링크샵이 옛 계정으로 뜰 수 있음.
         //   → email 이 정확히 이 유저 1명에게만 속할 때(모호하지 않을 때)만 연결. 모호하면 연결 보류(안전).
-        const dupe = await this.db.prepare(
-          `SELECT COUNT(*) AS c FROM users WHERE email = ? AND email IS NOT NULL AND email != ''`
-        ).bind(user.email).first<{ c: number }>().catch(() => ({ c: 0 }));
-        if ((dupe?.c ?? 0) <= 1) {
-          await this.db.prepare(
-            `UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now')
-             WHERE email = ? AND (linked_user_id IS NULL OR linked_user_id = 0)`
-          ).bind(user.id, user.email).run().catch(() => null);
-        }
+        // 🛡️ 2026-06-24 (속도 최적화): dupe COUNT 를 별도 SELECT → UPDATE 의 WHERE 서브쿼리로
+        //   합침. 로그인당 D1 왕복 -1. 의미 동일(이 email 이 정확히 1명에게만 속할 때만 연결) +
+        //   원자적이라 기존의 COUNT→UPDATE 사이 race(TOCTOU)도 제거 — 더 안전해짐.
+        await this.db.prepare(
+          `UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now')
+           WHERE email = ? AND (linked_user_id IS NULL OR linked_user_id = 0)
+             AND (SELECT COUNT(*) FROM users WHERE email = ? AND email IS NOT NULL AND email != '') <= 1`
+        ).bind(user.id, user.email, user.email).run().catch(() => null);
       }
 
       return { ...user, isNewUser };
