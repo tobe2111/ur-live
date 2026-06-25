@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-25 — 비운영자 사용자 에러 전수조사 + 수정 14종 (대표 "운영자가 아닌 다른 사람들이 이용했을 때 나올 에러 전수조사")
+**배경**: 역할-한정 버그(슈퍼/운영자에겐 안 보이고 좁은 권한 사용자에게만 터짐) 런타임 전수조사. 5개 역할 finder(유저/사업자유저/B2B/RBAC/크로스커팅) + 정적 가드 직접 실행 → **과대보고 방지(코드 검증된 것만)** + **현재 main 재검증으로 batch1-5 에서 이미 고친 것 제거**.
+- **P1 5종(2c7b647)**: S1 셀러 상품수정 시 식당연락처/PIN/공구목표 유실(PUT 화이트리스트→fail-soft per-field) · S3 식사권 등록 정가/좌표/지역 유실 · S2 셀러 정산표 전부 ₩0+날짜'오늘'(SELECT 실컬럼 매핑+healing) · B1 판매사 배송비 미표시→예치금 증발오인(3 SELECT+명세서+UI grand_total) · B2 에이전시 '매장 영입 현황' 토큰누락 401(인터셉터 분기).
+- **P2 9종(ec913ba)**: B3 가입폼 5종 다크모드 입력 안 보임(force-light-theme) · S4 셀러 대시보드 dark:누수 37개 제거 · S5 딜환급 8.8% 하드코딩 제거 · S6 매출 캘린더 daily_revenue 추가 · B5 에이전시 배지 휴면 오표시(revenue_30d 영입매장 포함) · B6 제조사 발송대기 100상한 · M1/M2 크래시가드 · I1 선물 토스트 원시키.
+- **부수(7e85b7c)**: 06-24 retarget 로 stale 된 `admin-wholesale-queue-nav.test.ts` sanity 2건 갱신(main 빨강 해소).
+- **보류(대표 확인 필요)**: B4 prospect introducer_id=user.id vs 대시보드 agencies.id(커미션 귀속+데이터 마이그레이션) · R2 계정전환 admin_token wipe(의도적 보안 vs SPA 비대칭). 둘 다 결정 사안.
+- **이미 수정됨/오탐**: R1(타일 dead-end → 06-24 distributor-approval retarget) · C1(EditorialProductCard null→"0원", NaN 아님).
+- 검증: tsc 0 · vitest 2301 pass · sql-bind/column 0 · money-pattern 0 · light-input/theme ✅. 결제 잠금파일 무관. 미배선 fee-resolver 와 별개.
+
 ## ✅ 2026-06-25 — 수수료 정책 단일 리졸버(SSOT) 구현 (미배선) — 대표 "구현부터 / 가장 이상적이고 영구적으로"
 **배경**: 대표와 수수료 정책 4종 확정(`docs/design/product-ownership-model.md`) 후 "구현부터, 영구적으로". 기존 수수료 로직이 산재(`orders.commission_rate`~10%, `agency_commission_pct`=2%+₩30k, affiliate 5%, supplier margin)되고 **값도 확정정책과 불일치** → 정책을 **단 하나의 순수 리졸버에 박제** + **불변식 테스트로 영구잠금**.
 - **신규(전부 비잠금 새 파일 — 결제 잠금파일 무접촉):**
