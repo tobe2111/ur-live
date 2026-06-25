@@ -1371,3 +1371,21 @@ src/features/group-buy/api/
 
 ### 운영 설정 (코드 아님)
 - `TOSS_WEBHOOK_IP_ALLOWLIST` 미설정 시 위조 webhook 여지(금액 DB 재검증되나 가짜 PAID 가능) → Cloudflare Dashboard → ur-live → Variables 설정 권장.
+
+## 🟡 2026-06-25 도매 차단게이트 audit 잔여 (latent/edge — live 흐름 무영향, 추적용)
+
+> 배경: 대표 신고 "AB테스트 오류 투성이" → 도매 write 핸들러의 "정당한 동작을 부당하게 막는 게이트" 전수조사.
+> **live 블로커는 1건뿐(상품 승인 최저가 게이트 — `61e92a9` 로 fix 완료)**. 아래 4건은 dead/edge/policy 라 미적용(추측성 변경 회피).
+
+### 1. `/orders/confirm` (wholesale Toss path) 금액검증이 배송비 누락 (latent/DEAD)
+- `wholesale.routes.ts:1526` `if (Number(order.subtotal) !== Math.round(amount))` — 실제 청구는 `subtotal + shipping_total`(line 1363 `chargeTotal`). 배송비 있는 주문은 Toss confirm path 에서 항상 400.
+- **dead**: 라이브 도매 주문은 예치금 전용 `/orders`(즉시 PAID) — `/orders/confirm`(Toss) 호출 클라 0건(검증함). 부활 시 fix: SELECT 에 `shipping_total` 추가 + `subtotal + COALESCE(shipping_total,0)` 비교.
+
+### 2. `become-distributor` 가 사업자번호 없는 승인셀러 차단 (policy)
+- `wholesale.routes.ts:337` — 라이브커머스로 승인된 인플루언서/매장셀러(사업자번호 미보유)가 카카오로 도매 진입 시 `BUSINESS_INFO_REQUIRED`. 의도된 정책(2026-06-12: 인플루언서 승인 ≠ 도매 승인). 프론트가 가입폼으로 유도하므로 dead-end 아님. 정책 유지.
+
+### 3. 멱등키가 FAILED 주문에 묶여 동일키 재시도 차단 (edge)
+- `wholesale.routes.ts:1407-1414` + `wholesale-deposit-core.ts:148` — transient OVERSOLD/에러로 `status='FAILED'` 된 주문의 `idempotency_key` 가 남아, **같은** 키 재시도가 `already:true`(재청구 0)로 막힘. 클라는 시도마다 새 키 생성이라 edge. money-path 라 신중 — 부활 시 fix: FAILED 시 `idempotency_key` null 또는 "새 키로 재시도" 시그널 반환.
+
+### 4. 합배송 SHIPPED 승격이 `PARTIAL_REFUNDED` 누락 (cosmetic)
+- `wholesale-supplier.routes.ts:182,226` — 발송은 허용(PAID/SHIPPED/PARTIAL_REFUNDED)인데 주문헤더 SHIPPED 승격은 `WHERE status='PAID'` 만 → 부분환불 주문의 잔여라인 발송 시 라인은 SHIPPED 되나 헤더는 PARTIAL_REFUNDED 유지. **에러 아님**(발송 성공). PARTIAL_REFUNDED→SHIPPED 승격은 환불상태 시그널 손실 우려라 미적용.
