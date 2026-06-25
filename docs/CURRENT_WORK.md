@@ -38,6 +38,14 @@
 - 검증: tsc 0 · theme-consistency 0 · mobile-viewport 0 · vite build 통과. CLAUDE.md audit log 기록.
 - **후속(선택)**: 교환권 cap 개수(20)·쇼핑 섹션 lazy-mount(현재 항상 마운트, /api/products edge-cache 라 비용 미미) 조정 여지.
 
+## ✅ 2026-06-24 — 로그인 속도 진단 + 잠금 + DB 최적화 (대표 "가장 이상적으로 해결")
+**배경**: 카카오 로그인 느림 신고 → `/admin/kakao-login-diag` 진단페이지로 실측 확보(서버 4036ms = 토큰교환 661 + 사용자정보 269 + **DB 1642** + 나머지 ~1464).
+- **진단페이지 접근(403/FORBIDDEN) 해결**: `/api/_internal/kakao-login-diag`(requireAdmin)는 브라우저 직접 진입 시 소비자 세션쿠키가 먼저 인식돼 403. → 어드민 대시보드 내 페이지 `AdminKakaoLoginDiagPage`(`/admin/kakao-login-diag`)가 `localStorage admin_token` 을 **Bearer 명시 첨부**(인터셉터 자동부착은 `/api/admin/*`·`/api/*/admin/*` 만이라 `_internal` 미해당)로 조회. auth 미들웨어가 Bearer 를 쿠키보다 먼저 검사 → 통과.
+- **로그인 IP rate-limit '본인 잠금' 해결**: `rateLimit()` 미들웨어가 핸들러보다 먼저 돌아 성공/실패 구분 못 하고 모든 시도 카운트 → 관리자(5/5분)·셀러·에이전시(10/5분) 본인이 반복 로그인하면 전부 성공이어도 "요청이 너무 많습니다" 잠김. → `resetRateLimit(c, action)` 추가, 핸들러 **진짜 성공 지점**(비번/PIN 통과 후)에서 해당 IP 카운터 비움(waitUntil). 실패는 성공 지점 전 반환 → 누적 유지 → **brute-force 방어 불변**. admin/seller/agency 3곳 적용.
+- **DB 왕복 6→4 (upsertUser, 대표 승인 — 동작 100% 보존)**: 기존 유저 로그인의 D1 왕복 축소. (1) `email_verified` UPDATE 를 프로필 UPDATE 에 병합(신규 유저만 별도). (2) same-email 셀러 자동연결의 dupe COUNT 를 별도 SELECT → **UPDATE WHERE 서브쿼리**로 합침(원자적 → TOCTOU race 제거). **프로필사진 CASE 보존·이메일 takeover 방어·자동연결 게이트(email 1명일 때만) 전부 byte-identical.** kakao unit 56 pass.
+- **OIDC 작동여부 = 측정으로 확인**: 7일 평균 사용자정보 269ms 는 OIDC 켜기 전 옛 로그인이 섞여 왜곡 가능 → 진단페이지에 **'최근 로그인별' 표** 추가(기존 recent 데이터, 백엔드 무변경). 최신 로그인의 사용자정보 0ms(=OIDC ✅) vs 269(폴백) 를 로그인별로 직접 확인. **다음 단계**: 최신 로그인이 폴백이면 `parseIdToken`(id_token 에 `nickname` claim 없으면 null) / 카카오 콘솔 OIDC claim 설정 점검.
+- 검증: tsc 0 · build 0 · kakao unit 56 pass. 커밋: 진단페이지 d352795 / 403fix 1637f53 / ratelimit b36ac6f / DB+OIDC진단 d652710.
+
 ## 🚑 2026-06-23 — 도매몰 가입(`/api/wholesale/register`) 500 근본수정: 자가치유 INSERT (대표 "더는 절대로 이 에러가 떠선 안돼")
 **증상(대표 콘솔)**: `/api/wholesale/register` → 400(검증) + 409(중복) + **500**. 500은 가입 자체를 막음.
 - **원인**: `sellers` 는 D1 한도(100) 근접 **97컬럼** + prod 스키마 드리프트로 일부 컬럼이 prod 에 누락 →
