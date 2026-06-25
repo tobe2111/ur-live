@@ -16,6 +16,7 @@
 - **🟢 LOW ×3**: ① 제조사 이미지 업로드가 `role:'user'`로 오귀속(upload.routes `getRoleAndId` supplier_id 분기 부재 → uploads/user 네임스페이스 충돌·삭제 소유권 불일치) → supplier 분기 추가 ② AdminWholesaleQuotesPage `requested_qty.toLocaleString()` 무가드 → `Number(||0)` ③ '제조사 승인' 카드 `?status=pending` 딥링크 + AdminSuppliersPage URL status 소비(카운트↔목록 정합).
 - **감사 클린 확인**: 제조사 대시보드(빈/대기/NaN/cross-role 전부 안전, /me·analytics·settlements 널세이프) · 판매사 storefront(pending=무토큰→락카드 정상, 빈카트/0예치금/빈명세 가드, wholesaleAuthSeg 가격분리) · 도매 어드민 23p(스코프·empty·dead-click 클린). 기존 3 정적가드 전부 0.
 - 검증: tsc 0 · api-scope/nav/links 0 · theme 0 · sql-bind 0 · build 0. ⚠️ 정지 가드는 staging 없어 실거래 1회 확인 권장(정지 판매사 발주 403 / 정상 판매사 영향 0).
+- **후속(대표 "전역?")**: ① 교차-역할 클래스를 **전역 결정론 가드**로 승격 — `check-dashboard-api-crossrole.mjs`(제조사/에이전시/판매사/어드민 668파일, 다른 역할 전용 `/api/*` 호출=403 차단) verify.yml strict, **위반 0**(에이전시 포함 전 대시보드 cross-role 깨끗 *증명*). ② 정지 가드 누락 1건 추가 발견·수정: `wholesale-plus.routes /subscribe`(Plus 구독=예치금 차감)도 status 미검사 → `isSellerBlocked` 배선(이제 발주·confirm·충전·Plus 4개 예치금-차감 엔드포인트 전부 가드). 정직: cross-role/dead-link/wholesale-admin-scope/nav 은 전역 결정론 잠금이나, **빈상태 크래시·count↔list 의미 불일치·money-status 패턴은 도매 표면 에이전트 샘플링(에이전시 빈상태는 미점검)** — 결정론 불가 영역은 샘플링 한계 명시.
 
 ## ✅ 2026-06-25 — 수수료 정책 단일 리졸버(SSOT) 구현 (미배선) — 대표 "구현부터 / 가장 이상적이고 영구적으로"
 **배경**: 대표와 수수료 정책 4종 확정(`docs/design/product-ownership-model.md`) 후 "구현부터, 영구적으로". 기존 수수료 로직이 산재(`orders.commission_rate`~10%, `agency_commission_pct`=2%+₩30k, affiliate 5%, supplier margin)되고 **값도 확정정책과 불일치** → 정책을 **단 하나의 순수 리졸버에 박제** + **불변식 테스트로 영구잠금**.

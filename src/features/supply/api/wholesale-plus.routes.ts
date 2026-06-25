@@ -19,6 +19,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { ensureDepositSchema, loadDepositBalance, deductDeposit, recordDepositTxn } from './wholesale-deposit-core'
 import { isViewerToken } from './sub-account-gate'
+import { isSellerBlocked } from './wholesale-helpers'
 
 type D1Database = Env['DB']
 
@@ -98,6 +99,10 @@ plus.post('/subscribe', rateLimit({ action: 'wholesale-plus-subscribe', max: 6, 
     return c.json({ success: false, error: '조회 전용 직원 계정은 구독할 수 없습니다' }, 403)
   }
   const { DB } = c.env
+  // 🔐 2026-06-24 (전수조사): 정지·거부 판매사의 Plus 구독(예치금 차감) 차단 — /orders·충전과 동일 가드.
+  if (await isSellerBlocked(DB, auth.sellerId)) {
+    return c.json({ success: false, error: '계정이 정지·승인대기 상태입니다. 관리자에게 문의해주세요.', code: 'ACCOUNT_NOT_ACTIVE' }, 403)
+  }
   try {
     await ensurePlusSchema(DB)
     await ensureDepositSchema(DB)
