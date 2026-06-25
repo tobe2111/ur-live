@@ -222,6 +222,11 @@ const VISIBLE_NAV_GROUPS: NavGroup[] = LIVE_COMMERCE_SUSPENDED
 //   (/admin/set-pin)와 충돌하면 /admin/set-pin ⟷ /admin/wholesale-overview 무한 루프 →
 //   AdminLayout remount 반복 → 화면 깜빡 + dashboard-notifications 폭주(429). 이 경로들은 RBAC 리다이렉트에서 면제.
 const ALWAYS_ALLOWED_ADMIN_PATHS = ['/admin/set-pin', '/admin/2fa']
+// 🆕 2026-06-24: '도매 통합 현황'의 승인 큐 카드가 가리키는 비-도매-nav 경로 — 도매 파트너도 도달 허용.
+//   (상품 승인/가격변경 = /admin/products 의 '제조사 등록 상품' 탭 / 판매사 승인 = /admin/seller-approval)
+//   nav 에는 노출 안 하되(소비자 어드민 메뉴는 계속 숨김), 큐 클릭 시 wholesale-overview 로 바운스되던 것 차단.
+//   /admin/products 진입 시 AdminProductsPage 가 도매 파트너에게는 '제조사 등록 상품' 탭만 노출(소비자 상품관리 차단).
+const WHOLESALE_EXTRA_ALLOWED_PATHS = ['/admin/products', '/admin/seller-approval']
 
 interface AdminLayoutProps {
   title: string
@@ -333,7 +338,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   //   서버 RBAC 가 데이터는 이미 403 차단 — 이건 깨진 화면 대신 안전한 랜딩을 위한 UX 가드.
   useEffect(() => {
     if (adminRole !== 'wholesale') return
-    const allowed = [...roleNavGroups.flatMap((g) => g.items.map((it) => it.path)), ...ALWAYS_ALLOWED_ADMIN_PATHS]
+    const allowed = [...roleNavGroups.flatMap((g) => g.items.map((it) => it.path)), ...ALWAYS_ALLOWED_ADMIN_PATHS, ...WHOLESALE_EXTRA_ALLOWED_PATHS]
     const ok = allowed.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))
     if (!ok) navigate('/admin/wholesale-overview', { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps

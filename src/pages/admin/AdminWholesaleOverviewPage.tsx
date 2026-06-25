@@ -116,8 +116,8 @@ export default function AdminWholesaleOverviewPage() {
                 {([
                   [queue.distributors_pending, '판매사 승인', '/admin/seller-approval'],
                   [queue.suppliers_pending, '제조사 승인', '/admin/suppliers'],
-                  [queue.products_pending, '상품 승인', '/admin/products'],
-                  [queue.price_changes_pending, '가격변경', '/admin/products'],
+                  [queue.products_pending, '상품 승인', '/admin/products?tab=supplier-products'],
+                  [queue.price_changes_pending, '가격변경', '/admin/products?tab=supplier-products'],
                   [queue.charge_requests_pending, '입금확인', '/admin/wholesale-deposits'],
                   [queue.quotes_pending, '견적 회신', '/admin/wholesale-quotes'],
                 ] as Array<[number, string, string]>).map(([n, label, to]) => (
