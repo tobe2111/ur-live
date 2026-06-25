@@ -53,14 +53,18 @@ export default function KakaoCallbackPage() {
         //   다른 카카오 계정(user.id 변경)으로 로그인하면, 이전 계정의 seller/agency/링크샵 캐시 키가
         //   localStorage 에 잔존 → BottomNav 링크샵 탭이 옛 계정(디스크프리)을 가리키고, 잔존 seller_token 은
         //   보안상으로도 위험. 계정 전환 시 이 키들을 먼저 제거하고, 아래에서 응답에 있는 것만 재설정 → 신원 1개로 정합.
-        //   (잠긴 동작 불변·추가만: seller_username 저장 로직과 admin/agency 'user_type 보존'(아래 51줄)은 그대로.
-        //    admin_token 은 별도 로그인 컨텍스트라 건드리지 않음.)
+        //   (잠긴 동작 불변·추가만: seller_username 저장 로직과 admin/agency 'user_type 보존'(아래 51줄)은 그대로.)
+        // 🛡️ 2026-06-25 (대표 결정 — 보안 통일): 다른 user.id 로그인(계정 전환) 시 admin_* 토큰도 wipe.
+        //   기존엔 admin 토큰을 보존했으나, 서버-redirect 경로(auth-callback-bootstrap)는 이미 wipe 라 *경로별 비대칭*
+        //   이었음. 공용/공유 기기에서 다음 사용자가 관리자 콘솔을 이어받는 누출을 차단하기 위해 양 경로 모두 '삭제'로 통일.
+        //   (같은 user.id 재로그인이면 prevUserId === user.id 라 이 블록 미진입 → 관리자 세션 유지.)
         const prevUserId = localStorage.getItem('user_id')
         if (prevUserId && prevUserId !== String(user.id)) {
           for (const k of [
             'seller_token', 'seller_refresh_token', 'seller_id', 'seller_name', 'seller_username',
             'linked_seller_username', 'user_handle',
             'agency_token', 'agency_refresh_token', 'agency_id', 'agency_name',
+            'admin_token', 'admin_refresh_token', 'admin_id', 'admin_name', 'admin_email',
             'is_distributor',
           ]) {
             try { localStorage.removeItem(k) } catch { /* ignore */ }

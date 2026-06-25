@@ -54,6 +54,21 @@ prospectsRoutes.post('/', requireAuth(), async (c) => {
   }
   const introducerType = body.introducer_type === 'agency' ? 'agency' : 'influencer'
 
+  // 🛡️ 2026-06-25 (대표 승인 — B4): 에이전시 영입은 대시보드/커미션이 agencies.id 로 조회하므로
+  //   introducer_id 를 canonical agencies.id 로 저장. 기존엔 user.id 를 그대로 써서, 카카오 로그인
+  //   에이전시(user.id = users.id ≠ agencies.id)의 영입 매장/커미션이 대시보드에 영영 안 잡혔음.
+  //   해소: user.id 가 곧 agencies.id(이메일 로그인) 이거나 agencies.linked_user_id(카카오)면 매핑.
+  //   `id = ?` 매치 우선(ORDER BY)으로 collision(어떤 users.id == 타 에이전시 id) 시에도 본인 우선.
+  let introducerId = String(user.id)
+  if (introducerType === 'agency') {
+    try {
+      const a = await c.env.DB.prepare(
+        'SELECT id FROM agencies WHERE id = ? OR linked_user_id = ? ORDER BY (id = ?) DESC LIMIT 1'
+      ).bind(user.id, user.id, user.id).first<{ id: number }>()
+      if (a?.id) introducerId = String(a.id)
+    } catch { /* best-effort — 해소 실패 시 user.id 폴백(기존 동작) */ }
+  }
+
   // 중복 등록 차단 — 같은 영업자가 같은 매장 재등록 시 기존 row 재사용
   const dup = await c.env.DB.prepare(
     `SELECT id FROM seller_prospects
@@ -63,7 +78,7 @@ prospectsRoutes.post('/', requireAuth(), async (c) => {
           (contact_email IS NOT NULL AND contact_email = ?)
         )
         AND status = 'visiting' LIMIT 1`
-  ).bind(introducerType, String(user.id), phone, email).first<{ id: number }>().catch(() => null)
+  ).bind(introducerType, introducerId, phone, email).first<{ id: number }>().catch(() => null)
   if (dup) {
     return c.json({ success: true, prospect_id: dup.id, message: '이미 등록된 prospect — 그대로 유지' })
   }
@@ -78,7 +93,7 @@ prospectsRoutes.post('/', requireAuth(), async (c) => {
       AND status = 'visiting'
       AND (introducer_type != ? OR introducer_id != ?)
       LIMIT 1`
-  ).bind(phone, email, introducerType, String(user.id)).first<{ id: number; introducer_type: string }>().catch(() => null)
+  ).bind(phone, email, introducerType, introducerId).first<{ id: number; introducer_type: string }>().catch(() => null)
   if (conflict) {
     return c.json({
       success: false,
@@ -97,7 +112,7 @@ prospectsRoutes.post('/', requireAuth(), async (c) => {
       status, expires_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'visiting', ?)`
   ).bind(
-    introducerType, String(user.id),
+    introducerType, introducerId,
     body.store_name?.trim().slice(0, 100) || null,
     body.contact_name?.trim().slice(0, 50) || null,
     phone,
