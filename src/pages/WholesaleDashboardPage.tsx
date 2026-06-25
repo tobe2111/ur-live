@@ -86,10 +86,11 @@ export default function WholesaleDashboardPage() {
   const now = new Date()
   const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   const paidOrders = orders.filter((o) => PAID_STATUSES.includes(o.status))
+  // 💰 2026-06-25: 예치금은 subtotal+배송비(grand_total)로 차감 → 매입 집계도 grand_total 기준(배송비 누락 표시 수정).
   const thisMonthSpend = paidOrders
     .filter((o) => (o.paid_at || o.created_at || '').slice(0, 7) === ym)
-    .reduce((s, o) => s + (o.subtotal || 0), 0)
-  const totalSpend = paidOrders.reduce((s, o) => s + (o.subtotal || 0), 0)
+    .reduce((s, o) => s + (o.grand_total ?? o.subtotal ?? 0), 0)
+  const totalSpend = paidOrders.reduce((s, o) => s + (o.grand_total ?? o.subtotal ?? 0), 0)
   const activeCount = orders.filter((o) => o.status === 'PAID').length
   // 🧾 주문 내역 — 상태 탭 필터 (시안: 마이페이지 주문관리 테이블)
   const ORDER_TABS = [{ id: 'all', label: '전체' }, { id: 'PAID', label: '결제완료' }, { id: 'SHIPPED', label: '배송중' }, { id: 'DONE', label: '구매확정' }]
@@ -279,7 +280,7 @@ export default function WholesaleDashboardPage() {
                             <span className="lg:hidden rounded-full px-2 py-0.5 text-[10.5px] font-bold whitespace-nowrap" style={{ color: badge.color, background: badge.bg }}>{badge.label}</span>
                           </div>
                         </div>
-                        <span className="text-[14px] lg:text-[13px] font-extrabold tabular-nums shrink-0 lg:text-right" style={{ color: WT.ink }}>{won(o.subtotal)}</span>
+                        <span className="text-[14px] lg:text-[13px] font-extrabold tabular-nums shrink-0 lg:text-right" style={{ color: WT.ink }}>{won(o.grand_total ?? o.subtotal)}</span>
                         <span className="hidden lg:flex justify-center"><span className="rounded-full px-2 py-0.5 text-[11px] font-bold whitespace-nowrap" style={{ color: badge.color, background: badge.bg }}>{badge.label}</span></span>
                         <span className="hidden lg:flex justify-center"><ChevronRight className="w-4 h-4" style={{ color: WT.ink4 }} /></span>
                       </button>

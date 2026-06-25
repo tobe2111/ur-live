@@ -51,11 +51,33 @@ sellerSettlementsRoutes.get('/settlements', async (c) => {
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
     const limit = Math.max(1, Math.min(200, parseInt(c.req.query('limit') || '20') || 20));
     const offset = Math.max(0, parseInt(c.req.query('offset') || '0') || 0);
-    const rows = await db.prepare(
-      `SELECT id, seller_id, amount, bank_name, account_number, account_holder,
-              status, admin_memo, created_at, updated_at
-       FROM settlements WHERE seller_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`
-    ).bind(sellerId, limit, offset).all().catch(() => ({ results: [] }));
+    // 🩹 2026-06-25: 정산 테이블이 전부 ₩0 + 날짜 '오늘' 로 뜨던 버그 — 기존 SELECT 가 amount 만 반환해
+    //   클라(SettlementsTable)가 읽는 settlement_amount/total_sales/commission_*/period_*/requested_at 가 전부 undefined →
+    //   formatNumber(undefined)=0, formatKSTDate(undefined)=오늘. 실제 컬럼으로 매핑.
+    //   스키마 드리프트(자동집계 컬럼 미존재 DB) 대비 healing: rich 실패 시 basic 폴백(최소 금액/요청일은 살림).
+    const settleSelect = (cols: string) =>
+      `SELECT ${cols} FROM settlements WHERE seller_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    const richCols = `id, seller_id,
+              COALESCE(total_sales, 0) AS total_sales,
+              COALESCE(total_platform_fee, 0) AS commission_amount,
+              CASE WHEN COALESCE(total_sales, 0) > 0
+                   THEN ROUND(COALESCE(total_platform_fee, 0) * 100.0 / total_sales, 1) ELSE 0 END AS commission_rate,
+              COALESCE(total_settlement, amount, 0) AS settlement_amount,
+              amount, bank_name, account_number, account_holder,
+              period_start, period_end,
+              status, admin_memo, created_at AS requested_at, created_at, updated_at`;
+    const basicCols = `id, seller_id,
+              0 AS total_sales, 0 AS commission_amount, 0 AS commission_rate,
+              COALESCE(amount, 0) AS settlement_amount,
+              amount, bank_name, account_number, account_holder,
+              status, admin_memo, created_at AS requested_at, created_at, updated_at`;
+    let rows: { results: unknown[] } = { results: [] };
+    try {
+      rows = await db.prepare(settleSelect(richCols)).bind(sellerId, limit, offset).all();
+    } catch {
+      // 드리프트(자동집계 컬럼 미존재) → basic 폴백(최소 settlement_amount/requested_at 은 살림)
+      rows = await db.prepare(settleSelect(basicCols)).bind(sellerId, limit, offset).all().catch(() => ({ results: [] }));
+    }
     const count = await db.prepare('SELECT COUNT(*) as total FROM settlements WHERE seller_id = ?')
       .bind(sellerId).first<{ total: number }>().catch(() => ({ total: 0 }));
     return c.json({ success: true, data: rows.results, total: count?.total ?? 0 });

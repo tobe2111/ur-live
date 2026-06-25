@@ -690,6 +690,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
       name: string;
       description?: string;
       price: number;
+      original_price?: number;
       stock?: number;
       image_url?: string;
       category?: string;
@@ -703,6 +704,12 @@ sellerOrdersRoutes.post('/products', async (c) => {
       group_buy_target?: number;
       group_buy_deadline?: string;
       store_verify_pin?: string;
+      // 🗺️ 2026-06-25: 좌표/외부예약/지역 — 식사권 지도·예약·하이퍼로컬 (등록 시 누락 수정)
+      restaurant_lat?: number | null;
+      restaurant_lng?: number | null;
+      external_booking_url?: string | null;
+      region_si?: string | null;
+      region_gu?: string | null;
       // 🛡️ 2026-05-15: 티어 할인 — JSON 문자열로 받음
       group_buy_tiers?: string | null;
       // 🛡️ 2026-05-05: 디지털 상품 필드
@@ -769,6 +776,12 @@ sellerOrdersRoutes.post('/products', async (c) => {
     // 식사권/공동구매 필드 저장 (별도 UPDATE — INSERT fallback 구조 유지)
     const productId = result.meta.last_row_id;
 
+    // 💰 2026-06-25: 정가(original_price) — 할인율 표시용. 별도 fail-soft UPDATE(컬럼 부재 대비).
+    //   기존 INSERT 누락으로 식사권 등록 시 정가가 저장 안 돼 할인율이 안 떴음.
+    if (body.original_price !== undefined && body.original_price !== null && Number.isFinite(body.original_price)) {
+      try { await db.prepare(`UPDATE products SET original_price = ? WHERE id = ?`).bind(body.original_price, productId).run() } catch { /* column may not exist */ }
+    }
+
     // 🍽️ 2026-06-17 (#5 대표 메뉴): 메뉴(OCR/수동)를 product_supply_meta 사이드테이블에 저장 → 공구 상세가 표시.
     if (Array.isArray(body.menu) && body.menu.length > 0) {
       try {
@@ -797,7 +810,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
     }
 
     if (category === 'meal_voucher' || category === 'beauty_voucher' || category === 'health_voucher' || category === 'pet_voucher' || category === 'stay_voucher' || category === 'activity_voucher') {
-      const mealFields = ['restaurant_name', 'restaurant_address', 'restaurant_phone', 'voucher_terms', 'voucher_expiry', 'group_buy_target', 'group_buy_deadline', 'store_verify_pin', 'group_buy_tiers'] as const;
+      const mealFields = ['restaurant_name', 'restaurant_address', 'restaurant_phone', 'voucher_terms', 'voucher_expiry', 'group_buy_target', 'group_buy_deadline', 'store_verify_pin', 'group_buy_tiers', 'restaurant_lat', 'restaurant_lng', 'external_booking_url', 'region_si', 'region_gu'] as const;
       for (const field of mealFields) {
         const val = body[field];
         if (val !== undefined && val !== null && val !== '') {
@@ -881,6 +894,16 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       live_price_enabled?: boolean;
       status?: string;
       is_active?: boolean | number;
+      // 🍽️ 2026-06-25: 식사권/공구 메타 — 수정 시에도 저장(기존 PUT 화이트리스트 누락으로 식당연락처·이용조건·PIN 등이 조용히 버려져 알림톡 영구 불가였음)
+      restaurant_name?: string;
+      restaurant_address?: string;
+      restaurant_phone?: string;
+      voucher_terms?: string;
+      voucher_expiry?: string;
+      group_buy_target?: number;
+      group_buy_deadline?: string;
+      store_verify_pin?: string;
+      group_buy_tiers?: string | null;
     }>();
 
     const db = c.env.DB;
@@ -947,6 +970,17 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
     await db.prepare(
       `UPDATE products SET ${fields.join(', ')} WHERE id = ? AND seller_id = ?`
     ).bind(...values).run();
+
+    // 🍽️ 2026-06-25: 식사권/공구 메타 필드 — 단일 UPDATE 에 합치면 컬럼 부재 시 *전체* 실패라
+    //   POST 와 동일하게 별도 fail-soft per-field UPDATE. 보내온 필드만(빈 문자열은 NULL 해제 허용).
+    //   소유권은 `AND seller_id = ?` 로 매 쿼리 재확인.
+    const mealEditFields = ['restaurant_name', 'restaurant_address', 'restaurant_phone', 'voucher_terms', 'voucher_expiry', 'group_buy_target', 'group_buy_deadline', 'store_verify_pin', 'group_buy_tiers'] as const;
+    for (const field of mealEditFields) {
+      const val = body[field];
+      if (val !== undefined) {
+        try { await db.prepare(`UPDATE products SET ${field} = ? WHERE id = ? AND seller_id = ?`).bind(val === '' ? null : val, productId, sellerId).run() } catch { /* column may not exist */ }
+      }
+    }
 
     const updated = await db.prepare(
       `SELECT id, name, description, price, original_price,

@@ -265,6 +265,20 @@ api.interceptors.request.use(
       }
     }
 
+    // ── Prospects (매장 영입 사전등록) — 영업자 인증 ────────────────────────
+    // 🛡️ 2026-06-25: /api/prospects 는 requireAuth() 인데 /api/agency/* prefix 가 아니라
+    //   토큰이 안 붙어 이메일 로그인 에이전시가 401 → '매장 영입 현황' 목록 영구 빈값 + 제안 제출 실패였음.
+    //   영업자 토큰(agency > admin > seller=influencer) 우선순위로 부착. requireAuth 가 셋 다 수용.
+    if (url.startsWith('/api/prospects')) {
+      const agencyToken = localStorage.getItem('agency_token');
+      const adminToken = localStorage.getItem('admin_token');
+      const sellerToken = localStorage.getItem('seller_token');
+      if (agencyToken) { config.headers['Authorization'] = `Bearer ${agencyToken}`; return config; }
+      if (adminToken) { config.headers['Authorization'] = `Bearer ${adminToken}`; return config; }
+      if (sellerToken) { config.headers['Authorization'] = `Bearer ${sellerToken}`; return config; }
+      // fallthrough → user token / cookie
+    }
+
     // ── Admin API (/api/admin/*) ───────────────────────────────────────────
     // 🛡️ 2026-04-22 Phase 2A: localStorage 없어도 cookie 로 인증 가능 (Phase 1 cookie 발급).
     // throw 제거 — cookie 만으로도 서버에서 인증 통과.

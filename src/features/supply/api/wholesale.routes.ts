@@ -1652,7 +1652,11 @@ app.get('/orders', async (c) => {
   try {
     await ensureOrderTables(DB)
     const { results } = await DB.prepare(`
-      SELECT id, toss_order_id, status, grade, subtotal, courier, tracking_number, created_at, paid_at, shipped_at
+      SELECT id, toss_order_id, status, grade,
+             COALESCE(subtotal, 0) AS subtotal,
+             COALESCE(shipping_total, 0) AS shipping_total,
+             (COALESCE(subtotal, 0) + COALESCE(shipping_total, 0)) AS grand_total,
+             courier, tracking_number, created_at, paid_at, shipped_at
       FROM wholesale_orders WHERE distributor_seller_id = ?
       ORDER BY created_at DESC LIMIT 100
     `).bind(sellerId).all()
@@ -1685,7 +1689,12 @@ app.get('/orders/:id', async (c) => {
   try {
     await ensureOrderTables(DB)
     const order = await DB.prepare(
-      'SELECT id, toss_order_id, status, grade, subtotal, courier, tracking_number, created_at, paid_at, shipped_at FROM wholesale_orders WHERE id = ? AND distributor_seller_id = ?'
+      `SELECT id, toss_order_id, status, grade,
+              COALESCE(subtotal, 0) AS subtotal,
+              COALESCE(shipping_total, 0) AS shipping_total,
+              (COALESCE(subtotal, 0) + COALESCE(shipping_total, 0)) AS grand_total,
+              courier, tracking_number, created_at, paid_at, shipped_at
+       FROM wholesale_orders WHERE id = ? AND distributor_seller_id = ?`
     ).bind(id, sellerId).first()
     if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
     const { results } = await DB.prepare(
@@ -1742,12 +1751,18 @@ app.get('/statement', async (c) => {
     if (/^\d{4}-\d{2}-\d{2}$/.test(from)) { where += ' AND date(COALESCE(paid_at, created_at)) >= ?'; binds.push(from) }
     if (/^\d{4}-\d{2}-\d{2}$/.test(to)) { where += ' AND date(COALESCE(paid_at, created_at)) <= ?'; binds.push(to) }
     const { results } = await DB.prepare(`
-      SELECT id, status, subtotal, grade, paid_at, created_at
+      SELECT id, status,
+             COALESCE(subtotal, 0) AS subtotal,
+             COALESCE(shipping_total, 0) AS shipping_total,
+             (COALESCE(subtotal, 0) + COALESCE(shipping_total, 0)) AS grand_total,
+             grade, paid_at, created_at
       FROM wholesale_orders WHERE ${where} ORDER BY COALESCE(paid_at, created_at) DESC LIMIT 500
-    `).bind(...binds).all<{ id: number; status: string; subtotal: number; grade: string | null; paid_at: string | null; created_at: string }>()
+    `).bind(...binds).all<{ id: number; status: string; subtotal: number; shipping_total: number; grand_total: number; grade: string | null; paid_at: string | null; created_at: string }>()
     const rows = results || []
-    const totalPaid = rows.filter(r => r.status !== 'REFUNDED').reduce((s, r) => s + (r.subtotal || 0), 0)
-    const totalRefunded = rows.filter(r => r.status === 'REFUNDED').reduce((s, r) => s + (r.subtotal || 0), 0)
+    // 💰 2026-06-25: 예치금은 subtotal+배송비(grand_total) 로 차감되는데 합계가 subtotal 만 더해
+    //   '예치금이 이유없이 새는' 것처럼 보였음 → 배송비 포함 grand_total 로 집계.
+    const totalPaid = rows.filter(r => r.status !== 'REFUNDED').reduce((s, r) => s + (r.grand_total || 0), 0)
+    const totalRefunded = rows.filter(r => r.status === 'REFUNDED').reduce((s, r) => s + (r.grand_total || 0), 0)
     return c.json({ success: true, orders: rows, summary: { count: rows.length, total_paid: totalPaid, total_refunded: totalRefunded, net: totalPaid - totalRefunded } })
   } catch (err) {
     return safeError(c, err, '거래내역 조회 중 오류가 발생했습니다', '[wholesale]')
