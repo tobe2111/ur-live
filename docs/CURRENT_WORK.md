@@ -141,7 +141,8 @@
 - **후속 2 — 카드 표준화(A안)**: picker 커스텀 PickCard → 표준 `BrowseProductCard` 재사용 + 핀 토글 오버레이("커스텀 카드 그만, 표준 카드 영구 고정" 규칙 준수, 디자인 영구 동기화). 카드 본문=상세 미리보기.
 - **후속 3 — 토스트 리디자인**: 전역 `ToastContainer` 파스텔 색박스 → 단일 잉크 카드 + 컬러 아이콘(대표 "팝업 촌스러워"). 앱 전역 모든 알림 적용.
 - **후속 4 — 즉시반영+코멘트+적립률+워밍**: ① 핀 추가/삭제 후 모듈캐시 무효화(`curator-page-cache.ts` 추출, picker 가 무거운 CuratorPage 청크 없이 import) → 링크샵 재진입 즉시 반영. ② 담은 직후 추천 코멘트(선택) 바텀시트(`updatePinNote`). ③ `ProductRepository` 목록에 `referral_commission_rate` 추가(dominant_color 가드 패턴) → picker '적립 N%' 배지. ④ picker 세션 모듈캐시(60s) 재진입 instant.
-- **후속 5 — 사업자 링크샵 편집 UX 통일**: `SellerPublicPage` 기본 previewAsVisitor=true(방문자뷰 시작→'편집하기') + 네이비 배너 2종→뉴트럴/잉크 슬림 바(CuratorPage 동일, theme-dual). i18n 6개 언어. SSR/소유권 판정 불변.
+- **후속 5 — 사업자 링크샵 편집 UX 통일**: `SellerPublicPage` 기본 previewAsVisitor=true(방문자뷰 시작→'편집하기') + 네이비 배너 2종→뉴트럴/잉크 슬림 바(CuratorPage 동일, theme-dual). i18n 6개 언어. SSR/소유권 판정 불변. **→ 후속 6에서 previewAsVisitor 부분은 revert(대표 "원래 형태 아님")**.
+- **후속 6 — 사업자 링크샵 헤더 '원래 형태' 복원 (대표 신고 `/u/jiwon1228`)**: 사업자(연결셀러) 링크샵은 CuratorHeader 가 아니라 `ProfileHeader` 를 렌더하는데, 큐레이터 헤더 형태(맨 위 흐르는 마퀴 + 풀블리드 배너+그라데이션 + **동그라미 아바타 없음**)와 통일이 덜 돼 있었음(아바타 남음 + 마퀴 없음). 수정: ① ProfileHeader 동그라미 프로필 사진 제거(profile_image 데이터는 OG/썸네일 유지, 헤더 렌더만 제거 — CuratorHeader 와 동일) ② 맨 위 흐르는 마퀴 추가(CuratorHeader 마크업 재사용, 소유자 인라인 편집→`/api/curator/me/profile`) ③ 마퀴 데이터(linkshop_headline/accent)는 `users` 에 있으므로 CuratorPage→SellerPublicPage→ProfileHeader 로 props 전달(`curatorHeadline`/`curatorAccent`). 비-/u/ 진입(/profile·/s)은 데이터 없어 마퀴 미표시(graceful). 같은 세션 후속5의 previewAsVisitor=true 는 별도 revert(commit `bd8fe33b1`).
 
 ## ✅ 2026-06-22~23 — 동네딜 사용처리(redemption) + 선착순 + 흑백/PC 액자 (대표 다회 검증, "가장 이상적·안전하게")
 **한 세션 다중 아크.** 설계 SSOT: `docs/design/dongnedeal-redemption.md`(북극성: "카운터는 신뢰로 통과, 돈은 정산에서 검문").

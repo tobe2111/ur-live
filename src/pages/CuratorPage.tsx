@@ -192,7 +192,7 @@ export default function CuratorPage() {
           <div className="text-gray-500 dark:text-gray-400">{t('common.loading')}</div>
         </div>
       }>
-        <SellerPublicPage sellerIdOverride={linked_seller.username} />
+        <SellerPublicPage sellerIdOverride={linked_seller.username} curatorHeadline={curator.headline} curatorAccent={curator.accent} />
       </Suspense>
     )
   }

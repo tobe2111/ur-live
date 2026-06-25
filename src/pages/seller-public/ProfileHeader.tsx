@@ -32,6 +32,10 @@ interface Props {
   liveNow: LiveStream | undefined
   products: Product[]
   streams: LiveStream[]
+  // 🏁 2026-06-25 (대표 — 원래 형태 복원): 큐레이터 헤더와 동일한 맨 위 흐르는 마퀴. 데이터는
+  //   users.linkshop_headline/accent (CuratorPage 가 curator 객체에서 내려줌). 비-/u/ 진입은 undefined → 미표시.
+  headline?: string | null
+  accent?: string | null
   // 인라인 편집
   editingField: string | null
   setEditingField: (v: string | null) => void
@@ -50,10 +54,34 @@ interface Props {
 export default function ProfileHeader({
   seller, sellerId, isOwner, isDark, T, liveNow,
   editingField, setEditingField, editName, setEditName, editBio, setEditBio,
-  saving, startEdit, saveEdit, fileInputRef, handleProfileImageUpload,
+  saving, startEdit, saveEdit, headline, accent,
 }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+
+  // 🏁 2026-06-25 (대표 — 원래 형태 복원): 맨 위 흐르는 마퀴(헤드라인). CuratorHeader 와 동일 마크업.
+  //   데이터는 props(큐레이터 linkshop_headline/accent). 소유자는 인라인 편집 → /api/curator/me/profile.
+  const ACCENT_DEFAULT = '#111827'
+  const [headlineVal, setHeadlineVal] = useState(headline || '')
+  const [editingHeadline, setEditingHeadline] = useState(false)
+  const [headlineDraft, setHeadlineDraft] = useState('')
+  const accentColor = (accent && /^#[0-9A-Fa-f]{6}$/.test(accent)) ? accent : ACCENT_DEFAULT
+  const accentText = (() => {
+    const h = accentColor.replace('#', '')
+    const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16)
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62 ? '#1a1a1a' : '#ffffff'
+  })()
+  async function saveHeadline() {
+    const next = headlineDraft.trim().slice(0, 80)
+    const prev = headlineVal
+    if (next === prev) { setEditingHeadline(false); return }
+    setHeadlineVal(next)
+    setEditingHeadline(false)
+    try {
+      const res = await api.patch('/api/curator/me/profile', { headline: next })
+      if (!res.data?.success) { setHeadlineVal(prev); toast.error(res.data?.error || t('seller.uploadFailedGeneric', { defaultValue: '저장 실패' })) }
+    } catch { setHeadlineVal(prev); toast.error(t('seller.uploadFailedGeneric', { defaultValue: '저장 실패' })) }
+  }
 
   // 🎨 2026-06-18 배너 히어로 — banner_url(소유자 업로드) + brand_color/그라데이션 폴백.
   const [bannerUrl, setBannerUrl] = useState(seller.banner_url || '')
@@ -98,6 +126,43 @@ export default function ProfileHeader({
 
   return (
     <div className={`border-b ${isDark ? 'border-[#1A1A1A]' : 'border-gray-100'}`}>
+      {/* ⓪ 맨 위 흐르는 마퀴 — 큐레이터 헤더와 동일 형태 (대표 "원래 형태" 복원) */}
+      {editingHeadline ? (
+        <div className="px-3 py-2 flex items-center gap-2" style={{ background: accentColor }}>
+          <input
+            autoFocus
+            value={headlineDraft}
+            onChange={(e) => setHeadlineDraft(e.target.value.slice(0, 80))}
+            onKeyDown={(e) => e.key === 'Enter' && saveHeadline()}
+            placeholder={t('seller.headlinePlaceholder', { defaultValue: '흐르는 한 줄 공지 (예: 신상 입고 · 무료배송)' })}
+            maxLength={80}
+            className="flex-1 min-w-0 bg-white/20 text-white placeholder:text-white/70 text-[12.5px] font-bold px-2.5 py-1.5 rounded-lg outline-none"
+          />
+          <button onClick={saveHeadline} aria-label={t('common.save')} className="shrink-0 p-1.5 bg-white rounded-lg active:scale-95" style={{ color: accentColor }}><Check className="w-4 h-4" /></button>
+          <button onClick={() => setEditingHeadline(false)} aria-label={t('common.cancel')} className="shrink-0 p-1.5 bg-white/20 rounded-lg text-white active:scale-95"><X className="w-4 h-4" /></button>
+        </div>
+      ) : headlineVal ? (
+        <div className="relative overflow-hidden" style={{ background: accentColor, color: accentText }}>
+          <div className="animate-marquee py-1.5">
+            {[0, 1].map((copy) => (
+              <div key={copy} className="flex shrink-0" aria-hidden={copy === 1}>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <span key={i} className="px-7 text-[12px] font-bold tracking-wide whitespace-nowrap">{headlineVal}</span>
+                ))}
+              </div>
+            ))}
+          </div>
+          {isOwner && (
+            <button onClick={() => { setEditingHeadline(true); setHeadlineDraft(headlineVal) }} aria-label={t('common.edit')} className="absolute top-1/2 right-2 -translate-y-1/2 z-10 w-6 h-6 rounded-full bg-black/25 backdrop-blur flex items-center justify-center active:scale-90">
+              <Pencil className="w-3 h-3 text-white" />
+            </button>
+          )}
+        </div>
+      ) : isOwner ? (
+        <button onClick={() => { setEditingHeadline(true); setHeadlineDraft('') }} className="w-full text-[11px] font-bold py-1.5 active:opacity-80" style={{ background: `${accentColor}1A`, color: accentColor }}>
+          + {t('seller.addHeadline', { defaultValue: '흐르는 헤드라인 추가' })}
+        </button>
+      ) : null}
       {/* ① 풀블리드 배너 히어로 */}
       <div
         className={`relative w-full aspect-[16/9] overflow-hidden ${isOwner ? 'cursor-pointer' : ''}`}
@@ -147,34 +212,10 @@ export default function ProfileHeader({
       </div>
 
       <div className="px-5 pb-4">
-        {/* ② 아바타 (배너 위 오버랩, 중앙) + 프로필 업로드 + LIVE */}
-        <div className="flex flex-col items-center -mt-10 relative z-10">
-          <div className="relative">
-            <div
-              className={`w-[80px] h-[80px] rounded-full ring-4 overflow-hidden bg-gray-700 shadow-md ${isDark ? 'ring-[#020202]' : 'ring-white'} ${isOwner ? 'cursor-pointer' : ''}`}
-              onClick={() => isOwner && fileInputRef.current?.click()}
-            >
-              {seller.profile_image ? (
-                <img src={cfImage(seller.profile_image, { width: 160, format: 'auto' }) || seller.profile_image} alt="" className="w-full h-full object-cover" loading="eager" decoding="async" />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-700 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-white">{(seller.name || '?').charAt(0)}</span>
-                </div>
-              )}
-              {isOwner && (
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                  <Camera className="w-5 h-5 text-white" />
-                </div>
-              )}
-            </div>
-            {isOwner && <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleProfileImageUpload} />}
-            {liveNow && (
-              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">LIVE</span>
-            )}
-          </div>
-
-          {/* ③ 이름 / 매장 / 소개 — 중앙 정렬 */}
-          <div className="w-full mt-3 text-center">
+        {/* ② 이름 / 매장 / 소개 — 중앙 정렬 (동그라미 아바타 제거: 배너가 정체성 — 큐레이터 헤더와 동일).
+            profile_image 데이터는 OG/썸네일에서 계속 사용하되 헤더 동그라미 렌더만 제거. */}
+        <div className="flex flex-col items-center -mt-6 relative z-10">
+          <div className="w-full text-center">
             {editingField === 'name' ? (
               <div className="flex items-center justify-center gap-2">
                 <input
