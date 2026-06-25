@@ -9,6 +9,7 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { useTranslation } from 'react-i18next'
 import AdminDataTable, { type AdminDataTableColumn } from '@/components/admin/AdminDataTable'
+import { safeDate } from '@/utils/safe-date'
 
 // 🏭 DATA-1 (2026-06-08) 어드민 도매몰 무결성(고아행) 리포트.
 //   cron `wholesale-orphan-sweep` 이 매일 LEFT JOIN/NOT EXISTS 로 dangling 행을 집계 → 이 페이지는 그 결과만 표시.
@@ -145,7 +146,7 @@ export default function AdminWholesaleIntegrityPage() {
             <span className="text-gray-500">
               {t('admin.integrity.lastRun', { defaultValue: '마지막 점검' })}:{' '}
               <span className="text-gray-900 font-medium">
-                {report?.run_at ? new Date(report.run_at).toLocaleString('ko-KR') : t('admin.integrity.never', { defaultValue: '없음' })}
+                {safeDate(report?.run_at)?.toLocaleString('ko-KR') ?? t('admin.integrity.never', { defaultValue: '없음' })}
               </span>
             </span>
             <span className={`font-semibold ${totalOrphans > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>

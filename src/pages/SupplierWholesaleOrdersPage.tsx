@@ -7,6 +7,7 @@ import { formatWon } from '@/utils/format'
 import { supplierApi, isSupplierLoggedIn, getSupplierToken } from '@/lib/supplier-api'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { readTableFileAsCsv } from '@/lib/read-table-file'
+import { safeDate } from '@/utils/safe-date'
 
 // 🏭 2026-06-01 유통스타트 — 제조사(공급자) 도매 주문 처리 (Phase 3). 송장 입력 + 반품 승인.
 // 라이트 테마 (대시보드 계열).
@@ -169,7 +170,7 @@ export default function SupplierWholesaleOrdersPage() {
                 <div key={g.orderId} className="bg-white rounded-xl border border-gray-200 p-4">
                   {/* 주문 헤더 + 배송지 (주문당 1회) */}
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-gray-400">주문 #{g.orderId} · {new Date(first.created_at).toLocaleString('ko-KR')}</span>
+                    <span className="text-xs text-gray-400">주문 #{g.orderId} · {safeDate(first.created_at)?.toLocaleString('ko-KR') ?? '-'}</span>
                     {g.pendingCount > 0
                       ? <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">발송대기 {g.pendingCount}건</span>
                       : <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">발송완료</span>}

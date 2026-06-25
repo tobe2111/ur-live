@@ -3,6 +3,7 @@ import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { History, RefreshCw, User } from 'lucide-react'
+import { safeDate } from '@/utils/safe-date'
 
 // 🕵️ 2026-06-17 (대표 요청 "누가 처리했는지"): 도매 처리 이력.
 //   백엔드 GET /api/admin/distributor/activity-log — admin_audit_logs(자동기록) 도매 액션 + 처리자 이름.
@@ -49,7 +50,7 @@ function humanize(action: string): { domain: string; verb: string; method: strin
 }
 
 function fmtTime(s: string): string {
-  try { const d = new Date(s.includes('T') ? s : s.replace(' ', 'T') + 'Z'); return d.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) } catch { return s }
+  return safeDate(s)?.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) ?? s
 }
 
 export default function AdminWholesaleActivityPage() {

@@ -8,6 +8,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { MessageSquareWarning, Loader2, Check, X, Lightbulb, Flag } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import AdminMallSelect from '@/components/admin/AdminMallSelect'
+import { safeDate } from '@/utils/safe-date'
 
 // 🏭 2026-06-09 Wave 2 — 어드민 도매 제안/신고 처리 큐.
 //   판매사 제안(상품 요청)·신고(문제) 접수 → 검토/처리/반려 + 메모. 라이트 테마.
@@ -120,7 +121,7 @@ export default function AdminWholesaleProposalsPage() {
                     {row.type === 'report' ? '신고' : '제안'}
                   </span>
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS[row.status]?.c || 'bg-gray-100 text-gray-600'}`}>{STATUS[row.status]?.t || row.status}</span>
-                  <span className="text-xs text-gray-400 ml-auto">{row.created_at ? new Date(row.created_at).toLocaleString('ko-KR') : ''}</span>
+                  <span className="text-xs text-gray-400 ml-auto">{safeDate(row.created_at)?.toLocaleString('ko-KR') ?? ''}</span>
                 </div>
                 <div className="text-sm font-bold text-gray-900">{row.subject}</div>
                 <div className="text-xs text-gray-500 mt-0.5">{row.business_name || `판매사 #${row.seller_id}`}{row.target ? ` · 대상: ${row.target}` : ''}</div>

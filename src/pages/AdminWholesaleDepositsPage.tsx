@@ -10,6 +10,7 @@ import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import AdminMallSelect from '@/components/admin/AdminMallSelect'
+import { safeDate } from '@/utils/safe-date'
 
 // 🏦 2026-06-09 유통스타트 — 어드민 도매 예치금 입금확인.
 //   판매사 충전 신청(은행 송금 대기) → 관리자 입금 확인 시 잔액 충전 / 반려. 라이트 테마.
@@ -180,7 +181,7 @@ export default function AdminWholesaleDepositsPage() {
                     </td>
                     <td className="py-2.5 px-4 text-right font-bold text-gray-900">{formatWon(req.amount)}</td>
                     <td className="py-2.5 px-4 text-gray-700">{req.depositor_name}</td>
-                    <td className="py-2.5 px-4 text-gray-500">{req.created_at ? new Date(req.created_at).toLocaleDateString('ko-KR') : '-'}</td>
+                    <td className="py-2.5 px-4 text-gray-500">{safeDate(req.created_at)?.toLocaleDateString('ko-KR') ?? '-'}</td>
                     <td className="py-2.5 px-4"><span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS[req.status]?.c || 'bg-gray-100 text-gray-600'}`}>{STATUS[req.status]?.t || req.status}</span></td>
                     <td className="py-2.5 px-4">
                       {req.status === 'pending' ? (
@@ -201,7 +202,7 @@ export default function AdminWholesaleDepositsPage() {
                           </button>
                         </div>
                       ) : (
-                        <span className="block text-right text-gray-400 text-xs">{req.confirmed_at ? new Date(req.confirmed_at).toLocaleDateString('ko-KR') : '—'}</span>
+                        <span className="block text-right text-gray-400 text-xs">{safeDate(req.confirmed_at)?.toLocaleDateString('ko-KR') ?? '—'}</span>
                       )}
                     </td>
                   </tr>

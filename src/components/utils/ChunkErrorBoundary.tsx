@@ -1,5 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
-import { isChunkLoadError } from '@/utils/chunk-error';
+import { isChunkLoadError, reloadWithCacheBust } from '@/utils/chunk-error';
 
 interface Props {
   children: ReactNode;
@@ -84,8 +84,10 @@ export class ChunkErrorBoundary extends Component<Props, State> {
       localStorage.removeItem(ChunkErrorBoundary.RETRY_KEY);
     }, ChunkErrorBoundary.RETRY_TIMEOUT);
 
-    // 페이지 새로고침 (캐시 무시)
-    window.location.reload();
+    // 🛡️ 2026-06-25: 캐시버스트 reload (SSOT) — plain reload 는 bfcache/heuristic/edge 가 옛 HTML 을
+    //   재서빙하면 같은 옛 청크 → 또 404 → retryCount>0 으로 에러UI 고착(클릭해도 페이지 안 넘어감).
+    //   `__cb` + location.replace 로 항상 새 문서 fetch → 새 청크 해시 참조.
+    reloadWithCacheBust();
   };
 
   /**
@@ -93,7 +95,7 @@ export class ChunkErrorBoundary extends Component<Props, State> {
    */
   private handleManualRetry = () => {
     localStorage.removeItem(ChunkErrorBoundary.RETRY_KEY);
-    window.location.reload();
+    reloadWithCacheBust();
   };
 
   render() {

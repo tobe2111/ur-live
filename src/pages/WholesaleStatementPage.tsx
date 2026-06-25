@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, Printer } from 'lucide-react'
 import { useWholesaleStatement } from '@/hooks/queries/useWholesale'
 import { WT, won, comma } from './wholesale/wholesale-theme'
 import { useWholesaleBack } from '@/hooks/useWholesaleBack'
+import { safeDate } from '@/utils/safe-date'
 
 // 🏭 2026-06-04 유통스타트 거래내역서 — TDS 라이트 시안 정비. 라이트 고정 B2B (인쇄 가능).
 
@@ -73,7 +74,7 @@ export default function WholesaleStatementPage({ embedded = false }: { embedded?
               <tbody>
                 {orders.map(o => (
                   <tr key={o.id} style={{ borderTop: '1px solid ' + WT.line }}>
-                    <td className="py-2.5 px-4 tabular-nums" style={{ color: WT.ink2 }}>{new Date(o.paid_at || o.created_at).toLocaleDateString('ko-KR')}</td>
+                    <td className="py-2.5 px-4 tabular-nums" style={{ color: WT.ink2 }}>{safeDate(o.paid_at || o.created_at)?.toLocaleDateString('ko-KR') ?? '-'}</td>
                     <td className="py-2.5 px-4 tabular-nums" style={{ color: WT.ink2 }}>#{o.id}</td>
                     <td className="py-2.5 px-4" style={{ color: WT.ink2 }}>{o.grade || '-'}</td>
                     <td className="py-2.5 px-4" style={{ color: WT.ink2 }}>{STATUS_KO[o.status] || o.status}</td>

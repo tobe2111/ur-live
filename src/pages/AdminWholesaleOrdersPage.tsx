@@ -9,6 +9,7 @@ import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import AdminDataTable, { type AdminDataTableColumn } from '@/components/admin/AdminDataTable'
+import { safeDate } from '@/utils/safe-date'
 
 // 🏭 2026-06-01 유통스타트 — 어드민 도매주문 모니터 (오버사이트 + 강제환불). 라이트 테마.
 
@@ -50,7 +51,7 @@ const ORDER_COLUMNS: Array<AdminDataTableColumn<OrderRow>> = [
   { key: 'status', label: '상태', render: o => <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS[o.status]?.c || 'bg-gray-100 text-gray-600'}`}>{STATUS[o.status]?.t || o.status}</span> },
   { key: 'subtotal', label: '결제액', className: 'text-right', render: o => <span className="font-medium text-gray-900">{formatWon(o.subtotal)}</span> },
   { key: 'margin_total', label: '마진', className: 'text-right', render: o => <span className="text-gray-600">{formatWon(o.margin_total)}</span> },
-  { key: 'created_at', label: '일자', render: o => <span className="text-gray-500">{new Date(o.created_at).toLocaleDateString('ko-KR')}</span> },
+  { key: 'created_at', label: '일자', render: o => <span className="text-gray-500">{safeDate(o.created_at)?.toLocaleDateString('ko-KR') ?? '-'}</span> },
 ]
 
 export default function AdminWholesaleOrdersPage() {
