@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-25 — 수수료 정책 단일 리졸버(SSOT) 구현 (미배선) — 대표 "구현부터 / 가장 이상적이고 영구적으로"
+**배경**: 대표와 수수료 정책 4종 확정(`docs/design/product-ownership-model.md`) 후 "구현부터, 영구적으로". 기존 수수료 로직이 산재(`orders.commission_rate`~10%, `agency_commission_pct`=2%+₩30k, affiliate 5%, supplier margin)되고 **값도 확정정책과 불일치** → 정책을 **단 하나의 순수 리졸버에 박제** + **불변식 테스트로 영구잠금**.
+- **신규(전부 비잠금 새 파일 — 결제 잠금파일 무접촉):**
+  - `src/worker/utils/fee-resolver.ts` — `resolveOrderFees(ctx, rates)` **순수함수**(DB/시간 의존 0). 주문 1건 → {platform, agency, platformNet, promo, supply, ownerNet}. 4규칙 박제: ①3P=5%/1P=0% ②소개비=주인 자율(음수 가드) ③에이전시 GMV 1%(플랫폼에서, 실판매+시한, ≤플랫폼, per-agency override) ④제조가=별도 슬라이스. ownerNet 이 반올림 잔차 흡수 → **합 항등식 정확(±0)**. `assertFeeInvariants`/`negateBreakdown`(환불 역전 대칭)/`loadFeeRates(DB)`(settings 폴백).
+  - `src/tests/unit/fee-resolver.test.ts` — **26 케이스**: 문서 예시(10,000원) 3종 정확 재현 + 4규칙 + 불변식 5종(전 조합 항등식) + 결정성/역전 + 입력방어.
+  - `migrations/0283_fee_resolver_settings.sql` — 전용 네임스페이스 `fee_platform_pct_3p`=5 / `fee_agency_pct`=1 / `fee_agency_term_months`=24 (INSERT OR IGNORE 멱등, 산재 키와 충돌0).
+- **불변(미접촉)**: `payment.routes.ts`/`toss-gateway.ts` 등 결제 잠금파일 전부, 기존 `creditOrderCommissions`/affiliate/supplier 산재 로직. **리졸버 미배선 = 라이브 영향 0.**
+- 검증: tsc 0 · vitest 2296 pass(신규 26 포함) · money-pattern 0 · sql-bind 0 · schema-refs 0.
+- ⏳ **다음(gated, 대표 승인 필요)**: 리졸버를 locked `payment.routes.ts /confirm` 에 배선 + 산재 커미션 통합. ⚠️ **경제 변화**(3P 10%→5%, 에이전시 2%→1%+24mo) 동반 → 스테이징 실결제 검증 필수.
+
 ## ✅ 2026-06-24 — 도매 정산 지급일 확정: "금주(월~일) 발주 → 차주 목요일 00:00 KST" (대표 확정, 도매몰 전용 통일)
 **대표 지시**: "금주 월-일 / 차주 목 정산으로 결정났어" + (AskUserQuestion 답) "도매몰에만 해당. 유어딜은 전혀 상관없어. **차주 목요일 통일** — 브랜드/일반 구분 없음."
 - **변경** (`src/features/supply/api/wholesale-settlement.ts`, 비잠금 머니파일):
