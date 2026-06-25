@@ -9,7 +9,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
-import { rateLimit } from '@/worker/middleware/rate-limit';
+import { rateLimit, resetRateLimit } from '@/worker/middleware/rate-limit';
 import { verifyTurnstile } from '@/worker/utils/turnstile';
 import { verifyPassword, hashPassword, validatePasswordComplexity } from '@/lib/password';
 import { sendEmail } from '@/services/email';
@@ -272,7 +272,12 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
 
     // 🛡️ 성공 시 실패 카운터 초기화
     await clearFailures(DB, 'seller', String(seller.id));
-    
+    // 🛡️ 2026-06-24: 성공 로그인 → 이 IP 의 seller_login rate-limit 카운터 비움
+    //   (본인이 5분에 10번 로그인하면 전부 성공이어도 잠기던 문제 방지). 실패는 위에서
+    //   반환되어 누적 유지 → brute-force 방어 불변. 응답 후 실행(waitUntil).
+    if (c.executionCtx) c.executionCtx.waitUntil(resetRateLimit(c, 'seller_login'));
+    else await resetRateLimit(c, 'seller_login');
+
     // 4. JWT 생성
     const payload = {
       sub: seller.id.toString(),

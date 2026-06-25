@@ -20,7 +20,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { sign, verify } from 'hono/jwt'
-import { rateLimit } from '@/worker/middleware/rate-limit'
+import { rateLimit, resetRateLimit } from '@/worker/middleware/rate-limit'
 import { verifyTurnstile } from '@/worker/utils/turnstile'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import type { Context, Next } from 'hono'
@@ -428,6 +428,10 @@ app.post('/login', cors(), rateLimit({ action: 'agency_login', max: 10, windowSe
   }
 
   await clearFailures(c.env.DB, 'agency', String(agency.id))
+  // 🛡️ 2026-06-24: 성공 로그인 → 이 IP 의 agency_login rate-limit 카운터 비움
+  //   (본인 반복 로그인 잠금 방지). 실패는 위에서 반환되어 누적 → brute-force 방어 불변.
+  if (c.executionCtx) c.executionCtx.waitUntil(resetRateLimit(c, 'agency_login'))
+  else await resetRateLimit(c, 'agency_login')
 
   // 🛡️ 2026-04-26 R1: 멤버 role 조회 → JWT 페이로드에 포함
   // agency.email = owner email (기존 가정 유지). agency_members 미적용 시 'owner' fallback.

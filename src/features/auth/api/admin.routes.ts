@@ -16,7 +16,7 @@ import { startDashboardSession, isDashboardSessionCurrent } from '@/worker/utils
 import { maskEmail } from '@/lib/mask';
 import { verifyTurnstile } from '@/worker/utils/turnstile';
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout';
-import { rateLimit } from '@/worker/middleware/rate-limit';
+import { rateLimit, resetRateLimit } from '@/worker/middleware/rate-limit';
 
 /**
  * refresh_tokens 보조 테이블 (admin/seller용) 생성.
@@ -178,6 +178,13 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
         mustSetPin = true;
       }
     }
+
+    // 🛡️ 2026-06-24: 성공 로그인 → 이 IP 의 admin_login rate-limit 카운터 비움.
+    //   "본인이 5분에 5번 로그인하면 전부 성공이어도 잠기는" 문제 방지. 실패 시도는
+    //   위(잘못된 비번/PIN)에서 이미 반환되어 카운터에 남으므로 brute-force 방어 불변.
+    //   응답 후 실행(waitUntil) — 로그인 임계경로에 DB write 추가 안 함.
+    if (c.executionCtx) c.executionCtx.waitUntil(resetRateLimit(c, 'admin_login'));
+    else await resetRateLimit(c, 'admin_login');
 
     // 🆕 로그인 이력(IP) 기록 — fail-soft (로그인 차단 안 함).
     try {
