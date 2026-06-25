@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Receipt, Loader2, FileText, AlertCircle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
@@ -109,17 +109,17 @@ export default function AdminWholesaleTaxPage() {
 
   useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true }) }, [navigate])
 
-  const { data: aging, isLoading: agingLoading } = useApiQuery<AgingResp | null>(
+  const { data: aging, isLoading: agingLoading, isError: agingIsError, error: agingError, refetch: refetchAging } = useApiQuery<AgingResp | null>(
     ['admin', 'wholesale-aging'], '/api/admin/wholesale/tax/aging',
     { headers: h.headers, select: (r: any) => (r?.success ? r : null), enabled: tab === 'aging' },
   )
 
-  const { data: candidates = [], isLoading: invLoading, refetch: refetchInv } = useApiQuery<InvoiceCandidate[]>(
+  const { data: candidates = [], isLoading: invLoading, isError: invIsError, error: invError, refetch: refetchInv } = useApiQuery<InvoiceCandidate[]>(
     ['admin', 'wholesale-purchase-invoices', period], '/api/admin/wholesale/tax/purchase-invoices',
     { params: { period }, headers: h.headers, select: (r: any) => (r?.success ? r.candidates || [] : []), enabled: tab === 'invoices' && /^\d{4}-\d{2}$/.test(period) },
   )
 
-  const { data: autoInvoices = [], isLoading: autoLoading, refetch: refetchAuto } = useApiQuery<AutoInvoiceRow[]>(
+  const { data: autoInvoices = [], isLoading: autoLoading, isError: autoIsError, error: autoError, refetch: refetchAuto } = useApiQuery<AutoInvoiceRow[]>(
     ['admin', 'wholesale-tax-invoices', autoStatus, autoType, autoMallId], '/api/admin/wholesale/wholesale-tax-invoices',
     { params: { status: autoStatus, type: autoType, ...(autoMallId ? { mall_id: autoMallId } : {}) }, headers: h.headers, select: (r: any) => (r?.success ? r.invoices || [] : []), enabled: tab === 'auto' },
   )
@@ -184,6 +184,8 @@ export default function AdminWholesaleTaxPage() {
         {tab === 'aging' && (
           agingLoading ? (
             <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+          ) : agingIsError ? (
+            <DashboardLoadError error={agingError} onRetry={() => refetchAging()} loginPath="/admin/login" label="채권 현황" />
           ) : (
             <div className="space-y-8">
               {/* 요약 카드 */}
@@ -294,6 +296,8 @@ export default function AdminWholesaleTaxPage() {
 
             {invLoading ? (
               <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+            ) : invIsError ? (
+              <DashboardLoadError error={invError} onRetry={() => refetchInv()} loginPath="/admin/login" label="매입 내역" />
             ) : candidates.length === 0 ? (
               <p className="text-center text-gray-400 py-20">{t('admin.wsTax.noCandidates', { defaultValue: '해당 기간에 매입(지급된 정산) 내역이 없습니다.' })}</p>
             ) : (
@@ -376,6 +380,8 @@ export default function AdminWholesaleTaxPage() {
 
             {autoLoading ? (
               <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+            ) : autoIsError ? (
+              <DashboardLoadError error={autoError} onRetry={() => refetchAuto()} loginPath="/admin/login" label="세금계산서" />
             ) : autoInvoices.length === 0 ? (
               <p className="text-center text-gray-400 py-20">{t('admin.wsTax.noAuto', { defaultValue: '자동 발행된 세금계산서가 없습니다.' })}</p>
             ) : (
