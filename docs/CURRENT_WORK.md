@@ -1,5 +1,18 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-24 — 보이지 않는(역할-한정) 네비 버그 근절: 2층 정적 가드 + 발견 버그 전부 수정 (대표 "애초에 없도록 / 다른 사람이 썼을 때도")
+**문제 인식(대표)**: '상품 승인' 안 넘어감 → "왜 이런 보이지 않는 문제가 남아있나? 애초에 없도록 못 하나? 나 말고 다른 사람이 썼을 때도." **근본 원인**: 역할-한정 버그는 슈퍼/소유자(전체 권한)로 테스트하면 안 보이고, 권한 좁은 계정에서만 드러남 → 일회성 수정으론 클래스 못 막음.
+**해결 = 기계가 모든 역할·화면을 검사(사람 QA 불필요), 2개 영구 가드 신설 + verify.yml strict:**
+1. **`check-wholesale-admin-nav-reachability.mjs`**: wholesale-role 어드민 도달 26화면의 모든 `/admin` 링크가 그 역할 RBAC 로 열리는지 단언(못 열면 클릭 시 wholesale-overview 바운스). **이게 신고 안 된 버그 1건 추가 발견** → '도매 통합 현황 > 무결성 리포트' 카드(`/admin/wholesale-integrity`) 바운스 → `WHOLESALE_EXTRA_ALLOWED_PATHS` 에 추가.
+2. **`check-internal-links.mjs`**: 전 앱(.tsx 680개)의 `to=`/`navigate(`/`href` 내부링크(타깃 833개)가 정의된 라우트(356개 매처, catch-all 제외)와 매칭되는지 단언. `:param`/`${}` 와일드카드, 서버경로(/api…)·정적파일 제외. **죽은 링크 7종(9곳) 발견 → 전부 수정**:
+   - `/admin/sellers?id=` ×2(AdminUsers·TikTokDiscovery) → `/admin/seller-approval?status=all&q=<name>` (실재 라우트, 이름검색)
+   - `/help/deal-guide`(GroupBuyGuideCard) → 죽은 링크 제거(해당 페이지 없음, 동작하는 '내 추천 링크' 유지)
+   - `/my-orders/:id`(MyDealHistory) → `/my-orders`(주문상세 라우트 없음, 목록이 정답)
+   - `/seller/youtube` ×2(StreamingSetup) → `/seller/youtube-growth`(실재 유튜브 허브)
+   - `/stays/:id/reviews`(StayDetail) → 죽은 '전체 리뷰 보기' 제거(리뷰 전용 페이지 없음)
+   - `/products`(미사용 레거시 `src/client` Layout) → `/browse`
+**검증**: 두 검사 strict exit 0 · tsc 0 · build 0. **앞으로 죽은 링크/역할 바운스는 출시 불가(CI 빨강).** 감사 에이전트로 제조사 대시보드·도매 storefront 도 별도 정밀감사 → **검증 결과 0건(클린)**.
+
 ## ✅ 2026-06-24 — 도매 정산 지급일 확정: "금주(월~일) 발주 → 차주 목요일 00:00 KST" (대표 확정, 도매몰 전용 통일)
 **대표 지시**: "금주 월-일 / 차주 목 정산으로 결정났어" + (AskUserQuestion 답) "도매몰에만 해당. 유어딜은 전혀 상관없어. **차주 목요일 통일** — 브랜드/일반 구분 없음."
 - **변경** (`src/features/supply/api/wholesale-settlement.ts`, 비잠금 머니파일):
