@@ -122,3 +122,28 @@ export async function cleanupRateLimits(db: D1Database, olderThanSec = 3600): Pr
   const cutoff = Math.floor(Date.now() / 1000) - olderThanSec;
   await db.prepare('DELETE FROM rate_limit_attempts WHERE window_start < ?').bind(cutoff).run();
 }
+
+/**
+ * 🛡️ 2026-06-24: 인증 성공 후 해당 IP 의 rate-limit 카운터를 비움.
+ *
+ * 왜 필요한가: rateLimit() 미들웨어는 핸들러보다 먼저 돌아 성공/실패를 구분 못 하고
+ *   "모든" 로그인 시도를 카운트한다. 그래서 본인(관리자)이 5분 안에 5번 로그인하면
+ *   전부 성공이어도 IP 한도(admin_login max:5)에 걸려 "요청이 너무 많습니다" 로 잠긴다.
+ *   → 핸들러가 진짜 성공한 지점에서 이 함수를 호출해 카운터를 비우면, 정상 사용자는
+ *   자기 성공 로그인으로는 절대 안 잠긴다. 실패 시도는 성공 지점 도달 전 반환되어
+ *   카운터에 그대로 남으므로 brute-force(연속 실패) 방어는 불변.
+ *
+ * defaultKey 와 동일한 키 규칙(action:CF-Connecting-IP). best-effort — 실패해도 로그인 무영향.
+ * 임계경로 지연을 피하려면 호출부에서 c.executionCtx.waitUntil() 로 fire-and-forget 권장.
+ */
+export async function resetRateLimit(c: Context, action: string): Promise<void> {
+  const db: D1Database | undefined = (c.env as Record<string, unknown>).DB as D1Database | undefined;
+  if (!db) return;
+  const key = defaultKey(c, action);
+  try {
+    await db.prepare('DELETE FROM rate_limit_attempts WHERE key = ? AND action = ?')
+      .bind(key, action).run();
+  } catch (err) {
+    if (typeof console !== 'undefined') console.warn('[rate-limit] reset failed (non-fatal)', { action, err });
+  }
+}
