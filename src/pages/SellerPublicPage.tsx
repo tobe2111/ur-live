@@ -32,9 +32,13 @@ interface SellerPublicPageProps {
    *  CuratorPage 가 /u/:handle 진입 후 linked_seller 매칭되면 본 페이지를 직접 render
    *  (redirect 없이) → URL 통합. 미지정 시 useParams 사용 (legacy /profile/:sellerId 호환). */
   sellerIdOverride?: string
+  /** 🏁 2026-06-25 (대표 — 원래 형태 복원): /u/{handle}(CuratorPage) 진입 시 큐레이터의 마퀴 헤드라인/액센트.
+   *  사업자 헤더(ProfileHeader)를 큐레이터 헤더와 동일 형태로 통일하기 위해 내려받음. 비-/u/ 진입은 undefined. */
+  curatorHeadline?: string | null
+  curatorAccent?: string | null
 }
 
-export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageProps = {}) {
+export default function SellerPublicPage({ sellerIdOverride, curatorHeadline, curatorAccent }: SellerPublicPageProps = {}) {
   const { t } = useTranslation()
   const params = useParams<{ sellerId: string }>()
   const rawParam = sellerIdOverride ?? params.sellerId
@@ -383,6 +387,8 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
         liveNow={liveNow}
         products={products}
         streams={streams}
+        headline={curatorHeadline}
+        accent={curatorAccent}
         editingField={editingField}
         setEditingField={setEditingField}
         editName={editName}
