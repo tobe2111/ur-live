@@ -29,13 +29,16 @@ async function ensureDiagTable(DB: D1Database): Promise<void> {
         ios INTEGER,              -- 1 = iOS WebKit 계열
         had_state_cookie INTEGER, -- 1 = state 쿠키 존재(쿠키 경로) / 0 = 쿠키 유실
         signed_fallback INTEGER,  -- 1 = 서명 state fallback 으로 복구(쿠키 없이 성공)
-        is_new INTEGER            -- 1 = 신규 가입
+        is_new INTEGER,           -- 1 = 신규 가입
+        ms_total INTEGER,         -- 🩺 콜백 전체(토큰교환~리다이렉트 직전) ms
+        ms_token INTEGER,         -- 🩺 카카오 토큰교환 ms
+        ms_userinfo INTEGER,      -- 🩺 카카오 사용자정보 ms
+        ms_db INTEGER             -- 🩺 upsertUser(DB) ms
       )`
     ).run();
   } catch { /* fail-soft — 진단 테이블 생성 실패해도 로그인 정상 */ }
-  // 🩺 2026-06-20: 콜백 단계별 타이밍(ms) 컬럼 — 기존 테이블엔 ALTER 로 추가(멱등, 이미 있으면 throw→무시).
-  //   ms_total: 콜백 전체(토큰교환~리다이렉트 직전) / ms_token: 카카오 토큰교환 / ms_userinfo: 카카오
-  //   사용자정보 / ms_db: upsertUser(DB). "우리 서버가 실제로 몇 ms 쓰는지" 실측용.
+  // 🩺 2026-06-20: 콜백 단계별 타이밍(ms) 컬럼 — 위 CREATE 에 포함(SSOT). 단,
+  //   ms_* 컬럼 도입 *이전*에 만들어진 기존 prod 테이블에는 ALTER 로 보강(멱등, 이미 있으면 throw→무시).
   for (const col of ['ms_total', 'ms_token', 'ms_userinfo', 'ms_db']) {
     try { await DB.prepare(`ALTER TABLE kakao_login_diag ADD COLUMN ${col} INTEGER`).run(); }
     catch { /* 컬럼 이미 존재 — 무시 */ }
