@@ -31,6 +31,11 @@ async function issueLinkedRoleTokens(
   userId: number
 ): Promise<{ seller_token?: string; agency_token?: string; agency_refresh_token?: string; seller?: { id: number; username?: string; status: string; business_name?: string; is_distributor?: number }; agency?: { id: number; status: string; name?: string } }> {
   const out: { seller_token?: string; agency_token?: string; agency_refresh_token?: string; seller?: any; agency?: any } = {}
+  // 🛡️ 2026-06-25 (속도 최적화): 셀러 조회와 에이전시 조회는 서로 독립인데 순차로 2왕복을
+  //   돌고 있었음(일반 유저는 둘 다 null 인데도 2왕복). 병렬(Promise.all)로 → 1왕복.
+  //   각 블록의 try/catch·세션·토큰 발급·seller.username 포함 전부 byte-identical, 실행만 동시.
+  await Promise.all([
+    (async () => {
   try {
     // 🛡️ 2026-05-27: username 도 SELECT — KakaoCallback 이 seller_username localStorage 저장 → BottomNav 직접 /profile/{username} navigate.
     const seller = await DB.prepare(
@@ -70,7 +75,8 @@ async function issueLinkedRoleTokens(
       }
     }
   } catch { /* sellers 테이블 없거나 linked_user_id 컬럼 없음 — skip */ }
-
+    })(),
+    (async () => {
   try {
     const agency = await DB.prepare(
       'SELECT id, status, name, email, contact_name FROM agencies WHERE linked_user_id = ?'
@@ -110,6 +116,8 @@ async function issueLinkedRoleTokens(
       }
     }
   } catch { /* agencies 테이블 없거나 linked_user_id 컬럼 없음 — skip */ }
+    })(),
+  ])
 
   return out
 }
