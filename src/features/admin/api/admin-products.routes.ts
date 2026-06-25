@@ -700,9 +700,11 @@ adminProductsRoutes.patch('/supplier-products/:id', cors(), async (c) => {
         return c.json({ success: false, error: '이미 처리되었거나 상태가 변경된 요청입니다' }, 409);
       }
     } else {
-      // CAS: pending/rejected 상태에서만 거부 (이미 승인된 건 거부로 되돌리지 않음 + 이중 audit 방지).
+      // CAS: pending 상태에서만 거부 (이미 거부/승인된 건 재처리 X — 중복 audit·공급자 알림 방지).
+      // 🔧 2026-06-24 (전수조사 B): 기존 IN('pending','rejected')는 이미 rejected 인 행 재거부 시 updated_at 변경으로
+      //   changes=1 → '거부됨' 알림·audit 가 매번 재발생했음. 'rejected' 는 종단상태(재거부=409). 재제출은 공급자 PATCH 로 pending 복귀.
       const upd = await DB.prepare(
-        "UPDATE products SET supply_approval_status = 'rejected', is_active = 0, admin_memo = ?, updated_at = datetime('now') WHERE id = ? AND supply_approval_status IN ('pending','rejected')"
+        "UPDATE products SET supply_approval_status = 'rejected', is_active = 0, admin_memo = ?, updated_at = datetime('now') WHERE id = ? AND supply_approval_status = 'pending'"
       ).bind(body.admin_memo || null, pid).run();
       if ((upd.meta?.changes ?? 0) === 0) {
         return c.json({ success: false, error: '이미 처리되었거나 상태가 변경된 요청입니다' }, 409);

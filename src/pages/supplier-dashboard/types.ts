@@ -17,6 +17,9 @@ export interface CatalogItem {
   lowest_price_url?: string | null; lowest_price_checked?: number
   pending_supply_price?: number | null; pending_retail_price?: number | null
   pending_price_reason?: string | null
+  // 🔧 2026-06-24: GET /products 가 이미 반환하는 편집용 필드(수정 모달 prefill — 데이터 유실 방지).
+  description?: string | null; image_url?: string | null; brand_logo_url?: string | null
+  min_order_qty?: number; pack_size?: number; order_multiple?: number
 }
 export interface SettlementItem {
   id: number; order_id: number | null; product_id: number | null; product_name: string | null

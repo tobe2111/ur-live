@@ -38,7 +38,8 @@ export default function BulkPriceModal({ t, items, onClose, onDone }: {
       const retailNum = Number(e.retail)
       const item: { product_id: number; supply_price: number; retail_price?: number; reason?: string } = { product_id: it.id, supply_price: supply }
       if (e.retail !== '' && Number.isFinite(retailNum)) {
-        if (retailNum < supply) { setError(t('supplier.bulkErrRetail', { defaultValue: '권장 소비자가는 공급가 이상이어야 합니다' })); return }
+        // 🔧 2026-06-24 (전수조사 M2): 단건과 동일 — 공급가보다 높아야(동일가=마진0 차단).
+        if (retailNum <= supply) { setError(t('supplier.bulkErrRetail', { defaultValue: '권장 소비자가는 공급가보다 높아야 합니다' })); return }
         item.retail_price = retailNum
       }
       if (reason.trim()) item.reason = reason.trim()
