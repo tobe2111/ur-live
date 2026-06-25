@@ -684,6 +684,20 @@ api.interceptors.response.use(
 
     // 403 Forbidden
     if (error.response?.status === 403) {
+      // 🛡️ 2026-06-25: 관리자 미인증(세션 만료) 403 → raw 콘솔에러 대신 깔끔한 재로그인 유도.
+      //   code='ADMIN_AUTH_REQUIRED'(requireAdmin 의 !user 분기)만 처리 — role 부족/2FA/IP화이트리스트
+      //   (code 다름)은 제외해 오리다이렉트 방지. 이미 로그인 페이지면 루프 방지로 skip.
+      // code 위치 2형식 대응: flat({code}) + nested({error:{code}}, errorResponse 헬퍼).
+      const _d = error.response?.data as { code?: string; error?: { code?: string } } | undefined;
+      const _code = _d?.code || _d?.error?.code;
+      if (_code === 'ADMIN_AUTH_REQUIRED' && typeof window !== 'undefined') {
+        const _p = window.location.pathname;
+        if (!_p.startsWith('/admin/login')) {
+          try { localStorage.removeItem('admin_token'); localStorage.removeItem('admin_refresh_token'); } catch { /* noop */ }
+          window.location.href = '/admin/login?error=session_expired';
+          return Promise.reject(error);
+        }
+      }
       console.warn('[API] 접근 권한 없음:', url);
     }
 

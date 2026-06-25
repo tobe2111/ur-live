@@ -496,7 +496,9 @@ export function requireAdminRole(...allowed: AdminRole[]) {
     if (blocked) return c.res;
 
     const user = (c as Context & { get: (k: string) => unknown }).get('user') as { id?: string | number } | undefined;
-    if (!user?.id) return c.json(forbiddenResponse('관리자 인증 필요'), 403);
+    // 🛡️ 2026-06-25: 미인증(토큰 없음/무효) 403 에 전용 code — 클라가 '권한부족(role)' 과 구분해
+    //   세션만료 재로그인 유도. (role 부족은 아래 별도 메시지·code 'FORBIDDEN' 유지.)
+    if (!user?.id) return c.json(forbiddenResponse('관리자 인증이 필요합니다 (세션 만료)', 'ADMIN_AUTH_REQUIRED'), 403);
 
     try {
       const row = await (c.env as { DB: D1Database }).DB
