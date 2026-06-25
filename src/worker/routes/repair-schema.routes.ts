@@ -724,6 +724,13 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🛡️ 2026-05-28: 영입 커미션 무기한(NULL) 일몰제 강제 — 레거시 영입 매장에 +12개월 캡 (LTV 보호).
     //   introduced_at 기준 (없으면 created_at). 이미 referral_bonus_until 설정된 매장은 불변.
     { desc: 'backfill: sellers.referral_bonus_until cap (introduced, NULL→+12mo)', sql: `UPDATE sellers SET referral_bonus_until = datetime(COALESCE(introduced_at, created_at, datetime('now')), '+12 months'), updated_at = datetime('now') WHERE referral_bonus_until IS NULL AND (introduced_by_agency_id IS NOT NULL OR introduced_by_influencer_id IS NOT NULL)` },
+    // 🛡️ 2026-06-25 (대표 승인 — B4 기존 데이터 복구): 카카오 로그인 에이전시가 영입한 매장의 귀속을
+    //   user.id(users.id) → canonical agencies.id 로 정정. 기존 prospect/registration 이 user.id 를 저장해
+    //   대시보드(agencies.id 조회)에서 영입 매장·커미션이 안 보였음(forward fix 는 seller-prospects.routes).
+    //   가드: '이미 유효한 agencies.id 가 아니면서(NOT IN agencies.id) 유효한 linked_user_id 인(IN …) 값만'
+    //   매핑 → 정상 행 불변·멱등(재실행 시 값이 이미 agency id 라 제외)·collision 회피.
+    { desc: 'backfill: seller_prospects.introducer_id (agency user.id→agencies.id)', sql: `UPDATE seller_prospects SET introducer_id = (SELECT a.id FROM agencies a WHERE a.linked_user_id = CAST(seller_prospects.introducer_id AS INTEGER) LIMIT 1) WHERE introducer_type = 'agency' AND CAST(introducer_id AS INTEGER) IN (SELECT linked_user_id FROM agencies WHERE linked_user_id IS NOT NULL) AND CAST(introducer_id AS INTEGER) NOT IN (SELECT id FROM agencies)` },
+    { desc: 'backfill: sellers.introduced_by_agency_id (user.id→agencies.id)', sql: `UPDATE sellers SET introduced_by_agency_id = (SELECT a.id FROM agencies a WHERE a.linked_user_id = sellers.introduced_by_agency_id LIMIT 1), updated_at = datetime('now') WHERE introduced_by_agency_id IS NOT NULL AND introduced_by_agency_id IN (SELECT linked_user_id FROM agencies WHERE linked_user_id IS NOT NULL) AND introduced_by_agency_id NOT IN (SELECT id FROM agencies)` },
     // 🛡️ 2026-05-22 카카오 P0: kakao_id UNIQUE 보강 (이미 KakaoAuthService 에서 시도하지만 다중 진입점 안전).
     { desc: 'idx_users_kakao_id_unique', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_kakao_id_unique ON users(kakao_id) WHERE kakao_id IS NOT NULL" },
     // 🛡️ 2026-05-22 P1: 교환권 페이지 로딩 perf — 사용자별 voucher 목록 조회.
