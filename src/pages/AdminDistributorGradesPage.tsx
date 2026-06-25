@@ -186,6 +186,7 @@ export default function AdminDistributorGradesPage() {
   const loadCredit = useCallback((id: string) => {
     const sid = Number(id)
     if (!Number.isFinite(sid) || sid <= 0) { toast.error('판매사 ID를 입력하세요'); return }
+    setCreditData(null) // 🛡️ 2026-06-25: 새 ID 재조회 전 이전 판매사 데이터 초기화 — 조회 실패 시 잔존(ID 불일치) 방지.
     setCreditBusy(true)
     api.get(`/api/admin/distributor/distributors/${sid}/credit`, h)
       .then(r => {
