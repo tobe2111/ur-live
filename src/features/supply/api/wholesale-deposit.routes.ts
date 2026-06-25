@@ -27,6 +27,7 @@ import {
 } from './wholesale-deposit-core'
 import { loadWholesaleDepositAccount } from './wholesale-main.routes'
 import { isViewerToken } from './sub-account-gate'
+import { isSellerBlocked } from './wholesale-helpers'
 
 // ── 셀러(판매사) JWT → { sellerId, isDistributor } ───────────────────────────
 //   wholesale.routes sellerIdFrom 미러 + is_distributor 플래그 추가(예치금 게이트).
@@ -82,6 +83,10 @@ dist.post('/deposits/charge-request', rateLimit({ action: 'wholesale-deposit-req
     return c.json({ success: false, error: '조회 전용 직원 계정은 충전 신청을 할 수 없습니다' }, 403)
   }
   const { DB } = c.env
+  // 🔐 2026-06-24 (전수조사): 정지·거부 판매사가 충전요청을 어드민 큐에 계속 넣던 갭 차단.
+  if (await isSellerBlocked(DB, auth.sellerId)) {
+    return c.json({ success: false, error: '계정이 정지·승인대기 상태입니다. 관리자에게 문의해주세요.', code: 'ACCOUNT_NOT_ACTIVE' }, 403)
+  }
   try {
     await ensureDepositSchema(DB)
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))

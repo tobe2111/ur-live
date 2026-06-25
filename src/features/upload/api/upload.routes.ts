@@ -74,6 +74,9 @@ async function getRoleAndId(c: { env: Bindings; req: { header: (k: string) => st
       if (p.seller_id) return { role: 'seller', id: Number(p.seller_id) }
       if (p.admin_id) return { role: 'admin', id: Number(p.admin_id) }
       if (p.agency_id) return { role: 'agency', id: Number(p.agency_id) }
+      // 🏭 2026-06-24 (전수조사): 제조사(supplier) 토큰은 supplier_id + sub(=id) 를 가짐 — sub 폴백 전에
+      //   supplier 분기 먼저 둬야 'user' 네임스페이스(uploads/user/{id})로 오귀속 + 삭제 소유권 불일치를 방지.
+      if (p.supplier_id) return { role: 'supplier', id: Number(p.supplier_id) }
       if (p.user_id || p.sub) return { role: 'user', id: Number(p.user_id || p.sub) }
     } catch { /* Bearer 실패 시 세션 쿠키로 폴백 */ }
   }

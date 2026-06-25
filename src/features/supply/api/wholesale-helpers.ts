@@ -255,6 +255,17 @@ export async function sellerIdFrom(authorization: string | undefined, jwtSecret:
   }
 }
 
+// 🔐 2026-06-24 (전수조사): 판매사 토큰은 30일 유효 + status 를 발급시점에 박제 → sellerIdFrom 은 서명만 검증.
+//   승인 후 정지/거부된 판매사가 만료 전까지 발주·충전(예치금 차감/충전요청)을 계속할 수 있던 갭을 닫기 위한
+//   **요청시점 status 재검사**. reject-list(정지/거부/대기/차단)만 차단 → approved/active(정상 happy-path)는 불변.
+//   fail-open: status 조회 실패 시 차단 안 함(정상 발주를 transient DB 오류로 막지 않음).
+const BLOCKED_SELLER_STATUSES = new Set(['suspended', 'rejected', 'banned', 'deleted', 'pending'])
+export async function isSellerBlocked(DB: D1Database, sellerId: number): Promise<boolean> {
+  const row = await DB.prepare('SELECT status FROM sellers WHERE id = ?').bind(sellerId)
+    .first<{ status: string | null }>().catch(() => null)
+  return BLOCKED_SELLER_STATUSES.has(String(row?.status || '').toLowerCase())
+}
+
 // 🔐 2026-06-11 SSR Phase 2-F (docs/SSR_PHASE2_AUTH.md §3.3): beta(SSR) loader 가 forward 한
 //   httpOnly ud_seller_token 쿠키 fallback. 이 파일 라우트들은 requireAuth 미들웨어를 안 거쳐
 //   auth.ts 의 쿠키 fallback 이 적용되지 않음 → 자체 보강. **GET/HEAD 에서만** 동작(CSRF 표면 0)

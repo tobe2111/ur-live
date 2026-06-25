@@ -4,6 +4,7 @@
  *   라이트 테마 (어드민 대시보드).
  */
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Loader2, CheckCircle, XCircle, Wallet, Ban, Store } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
@@ -46,7 +47,12 @@ const STATUS = {
 
 export default function AdminSuppliersPage() {
   const { t } = useTranslation()
-  const [statusFilter, setStatusFilter] = useState('all')
+  // 🔧 2026-06-24 (전수조사 LOW-3): 대시보드 '제조사 승인' 카운트 카드가 ?status=pending 로 딥링크 → 클릭 시 바로 대기목록.
+  const [searchParams] = useSearchParams()
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const s = searchParams.get('status')
+    return s && ['all', 'pending', 'approved', 'active', 'suspended', 'rejected'].includes(s) ? s : 'all'
+  })
   const [actionId, setActionId] = useState<number | null>(null)
 
   const token = () => localStorage.getItem('admin_token') || localStorage.getItem('access_token')

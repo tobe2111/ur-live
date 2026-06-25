@@ -137,7 +137,7 @@ export default function AdminWholesaleQuotesPage() {
                     <p className="text-xs text-gray-500">
                       {distLabel}
                       {q.product_name ? ` · ${q.product_name}` : (q.product_id ? ` · 상품#${q.product_id}` : '')}
-                      {` · 수량 ${q.requested_qty.toLocaleString('ko-KR')}`}
+                      {` · 수량 ${Number(q.requested_qty || 0).toLocaleString('ko-KR')}`}
                       {q.target_unit_price ? ` · 희망 ${won(q.target_unit_price)}` : ''}
                     </p>
                     {q.request_text ? <p className="text-xs text-gray-600 mt-1 bg-gray-50 rounded p-2 whitespace-pre-wrap">{q.request_text}</p> : null}
