@@ -45,7 +45,7 @@ export default function WholesaleOemPage({ embedded = false }: { embedded?: bool
 
   const listQ = useQuery<OemRequest[]>({
     queryKey: ['wholesale', 'oem-requests'],
-    queryFn: () => api.get('/api/wholesale/oem-requests', auth()).then(r => (r.data?.success ? r.data.requests || [] : [])).catch(() => []),
+    queryFn: () => api.get('/api/wholesale/oem-requests', auth()).then(r => (r.data?.success ? r.data.requests || [] : [])), // 🛡️ 2026-06-25: .catch 제거 — 로드실패가 '신청 없음' 위장 방지(isError 분기)
     enabled: !!sellerToken(),
     staleTime: 30_000,
     refetchOnWindowFocus: false,
@@ -158,6 +158,8 @@ export default function WholesaleOemPage({ embedded = false }: { embedded?: bool
           <h2 className="text-sm font-bold text-[#0C2454] mb-3">내 신청 내역</h2>
           {listQ.isLoading ? (
             <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#B6BCC4]" /></div>
+          ) : listQ.isError ? (
+            <p className="text-center text-red-500 py-10 text-sm bg-white rounded-2xl border border-red-100">신청 내역을 불러오지 못했습니다 — 새로고침 후 다시 시도해주세요.</p>
           ) : requests.length === 0 ? (
             <p className="text-center text-[#B6BCC4] py-10 text-sm bg-white rounded-2xl border border-[#ECEEF1]">신청 내역이 없습니다.</p>
           ) : (

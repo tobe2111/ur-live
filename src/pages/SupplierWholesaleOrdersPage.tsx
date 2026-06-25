@@ -76,7 +76,9 @@ export default function SupplierWholesaleOrdersPage() {
       const csv = await readTableFileAsCsv(file) // 📥 2026-06-12: 엑셀(.xlsx)/CP949 CSV 대응
       const r = await supplierApi.post<{ summary?: { ok: number; failed: number; skipped: number } }>('/api/supplier/wholesale/tracking/bulk', { csv })
       const s = r.summary
-      toast.success(`송장 ${s?.ok ?? 0}건 등록 (실패 ${s?.failed ?? 0}, 건너뜀 ${s?.skipped ?? 0})`)
+      // 🛡️ 2026-06-25: 0건 등록(전부 실패/skip)에 success 토스트는 오인 — ok>0 일 때만 success.
+      const msg = `송장 ${s?.ok ?? 0}건 등록 (실패 ${s?.failed ?? 0}, 건너뜀 ${s?.skipped ?? 0})`
+      if ((s?.ok ?? 0) > 0) toast.success(msg); else toast.error(msg)
       load()
     } catch (err) { toast.error(err instanceof Error ? err.message : '일괄 업로드 실패') } finally { setUploading(false) }
   }

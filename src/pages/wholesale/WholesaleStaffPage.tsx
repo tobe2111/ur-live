@@ -33,7 +33,7 @@ export default function WholesaleStaffPage({ embedded = false }: { embedded?: bo
   const meQ = useWholesaleMe()
   const me = (meQ.data ?? null) as { can_manage_staff?: boolean; sub_role?: string | null } | null
   // owner(sub_role 없음) 또는 admin 만 직원 관리 가능. 그 외엔 대시보드로.
-  const canManage = me ? me.can_manage_staff !== false : true
+  const canManage = me ? me.can_manage_staff !== false : false // 🛡️ 2026-06-25: /me 미해석 동안 기본 false(관리 UI 플래시 방지)
 
   // 🛡️ 2026-06-19 (대표 신고 동일 패턴): is_distributor localStorage 가드 제거 — token 기준 일치.
   //   직원 관리 권한은 서버 me.can_manage_staff(canManage)가 검증하므로 클라 가드 완화 안전.
