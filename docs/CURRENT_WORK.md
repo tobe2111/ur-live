@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-24 — 제조사 상품 등록 플로우 전수조사 + 발견 버그 수정 (대표 "제조사 상품 등록하는 부분 모든 플로우 전수조사")
+**방식**: 3개 감사 에이전트(등록 UI/엔드포인트 · 어드민 승인 · 카탈로그/가격/정산) 병렬 → **모든 발견을 코드로 재검증**(과대보고 배제). 등록(POST/bulk/edit/price-change) · 어드민 승인(CAS/마진) · 카탈로그 노출(필터/가격/게스트가림/등급) · 정산(공급가 스냅샷·역전 대칭) 전 구간.
+**감사 결론**: 가격산식·게스트 가격가림·정산(주문시점 스냅샷, drift 없음, 환불 역전 대칭)·노출필터·권한스코프(supplier-products=도매 스코프 in)·소유권 검사 전부 **검증 클린**. 발견·수정한 진짜 버그 3종:
+- **H1(높음) — 거부/대기 상품 수정·재제출 UI 부재(막다른 길)**: 백엔드 `PATCH /api/supplier/products/:id`(수정 시 pending 재제출)는 완비됐는데 **호출하는 버튼이 없어**, 거부된 제조사 상품은 사유만 보고 고칠 길이 없었음. → `CatalogTab` 에 대기·거부 상품 '수정/수정 후 재제출' 버튼 + `AddProductModal` 수정 모드(editItem prefill · PATCH · 대량/상세이미지 입력 숨김 — detail_images 는 GET 미반환·PATCH 미처리라 유실 방지). `CatalogItem` 타입에 GET 이 이미 반환하던 편집필드 추가.
+- **M2(중간) — 대량 경로가 마진0(권장가=공급가) 상품 통과**: 단건 폼은 권장가>공급가 강제인데 ① bulk CSV(`supplier-dashboard.routes.ts:445`)는 누락/동일가를 공급가로 폴백 ② bulk-price-change(`supplier-analytics:203` `<`) ③ `BulkPriceModal:41`(`<`)이 동일가 허용 → 팔 수 없는 마진0 상품 생성. **세 곳 모두 `>` 강제로 통일**(누락/동일가 행은 에러).
+- **LOW — 이미 거부된 상품 재거부 시 '거부됨' 알림·audit 중복**: reject CAS `IN('pending','rejected')` → 이미 rejected 행도 매번 changes=1 → 알림 재발. `= 'pending'` 으로 제한(rejected=종단, 재제출은 공급자 PATCH 로). (`admin-products.routes.ts`)
+- 보류(정직): 카탈로그 WHERE 가 승인 게이트를 `is_active`에만 의존(현재 정확 — approve CAS 가 둘 동시 set). Agent C 가 방어심화로 `supply_approval_status='approved'` 추가 제안(COALESCE로 byte-동일) — 핫쿼리라 별도 검토.
+- 검증: tsc 0 · theme 0 · sql-bind 0 · build 0. ⚠️ staging 없어 거부→수정→재승인 E2E 1회 운영 확인 권장.
+
 ## ✅ 2026-06-24 — '판매사 승인 N명' 클릭 시 빈 목록(역할 데이터-스코프 미스매치) 근절 + 3번째 정적 가드 (대표 신고 + "이런 유관한 에러들 모두 전수조사")
 **증상(대표 스샷)**: 도매 메인 대시보드 '판매사 승인 2명' → 클릭(셀러 관리)하면 "승인 대기 없음"(전체 0).
 **근본원인**: 카운트는 in-scope `/api/admin/wholesale-overview`(is_distributor=1·status='pending')로 셌는데, 목적지 `/admin/seller-approval` 의 데이터 호출 `/api/admin/sellers`(segment=`sellers`)는 **wholesale 역할 RBAC 스코프 밖**(admin-rbac.ts:68 `scopedRoleCanAccess` → prefixes=[wholesale,partnership,distributor,supplier]·exact=[suppliers], `sellers` 불포함) → **403 → 빈 배열 → "없음"**. 슈퍼 어드민엔 안 보임(전권이라 목록 정상). 나-bounce 와 같은 역할-한정 클래스의 **데이터 레이어** 버전.

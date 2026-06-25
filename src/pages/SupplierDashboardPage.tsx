@@ -57,6 +57,8 @@ export default function SupplierDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [meError, setMeError] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
+  // 🔧 2026-06-24 (전수조사 H1): 대기·거부 상품 수정·재제출 모달.
+  const [editItem, setEditItem] = useState<CatalogItem | null>(null)
   const [channelItem, setChannelItem] = useState<CatalogItem | null>(null)
   const [priceChangeItem, setPriceChangeItem] = useState<CatalogItem | null>(null)
   const [bulkPriceOpen, setBulkPriceOpen] = useState(false)
@@ -206,7 +208,7 @@ export default function SupplierDashboardPage() {
       ) : tab === 'orders' ? (
         <OrdersTab items={orders} t={t} status={orderStatus} setStatus={setOrderStatus} onShip={setShipModal} />
       ) : tab === 'catalog' ? (
-        <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} onBulkDone={() => { loadMe(); loadCatalog() }} onManageChannel={setChannelItem} onRequestPriceChange={setPriceChangeItem} onBulkPrice={() => setBulkPriceOpen(true)} />
+        <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} onEdit={setEditItem} onBulkDone={() => { loadMe(); loadCatalog() }} onManageChannel={setChannelItem} onRequestPriceChange={setPriceChangeItem} onBulkPrice={() => setBulkPriceOpen(true)} />
       ) : tab === 'chat' ? (
         <Suspense fallback={<div className="py-20 text-center"><Loader2 className="w-5 h-5 animate-spin text-gray-300 mx-auto" /></div>}>
           {/* embedded — slide-in 없이 콘텐츠 채움. onClose 는 임베드에선 미사용. */}
@@ -267,6 +269,14 @@ export default function SupplierDashboardPage() {
           t={t}
           onClose={() => setShowAdd(false)}
           onCreated={() => { setShowAdd(false); loadMe(); if (tab === 'catalog') loadCatalog() }}
+        />
+      )}
+      {editItem && (
+        <AddProductModal
+          t={t}
+          editItem={editItem}
+          onClose={() => setEditItem(null)}
+          onCreated={() => { setEditItem(null); loadMe(); if (tab === 'catalog') loadCatalog() }}
         />
       )}
       {bulkPriceOpen && (

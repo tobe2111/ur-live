@@ -442,7 +442,10 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
       const stock = Math.max(0, Math.floor(Number(String(r['재고'] || r.stock || '0').replace(/[,\s]/g, '')) || 0));
       if (!name) { results.push({ row: i + 2, status: 'error', reason: '상품명 누락' }); continue; }
       if (!Number.isFinite(supplyPrice) || supplyPrice <= 0) { results.push({ row: i + 2, name, status: 'error', reason: '공급가 오류' }); continue; }
-      const retailFinal = Number.isFinite(retail) && retail >= supplyPrice ? retail : supplyPrice;
+      // 🔧 2026-06-24 (전수조사 M2): 단건 폼과 동일 규칙 — 권장소비자가 > 공급가 강제(유통 마진).
+      //   기존엔 누락/동일가를 공급가로 폴백 → 마진 0(팔 수 없는 상품)이 조용히 생성됐음.
+      if (!Number.isFinite(retail) || retail <= supplyPrice) { results.push({ row: i + 2, name, status: 'error', reason: '권장소비자가는 공급가보다 높아야 합니다(유통 마진)' }); continue; }
+      const retailFinal = retail;
       const visibility = normalizeVisibility(r['공급범위'] || r.supply_visibility, true);
       const barcode = String(r['바코드'] || r.barcode || '').trim().slice(0, 64) || null;
       const brandRaw = String(r['브랜드제품'] || r.is_brand_product || '').trim().toUpperCase();

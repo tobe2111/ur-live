@@ -196,12 +196,13 @@ supplierAnalyticsRoutes.post('/products/bulk-price-change', async (c) => {
         continue;
       }
 
-      // 권장 소비자가 선택 — 입력 시 새 공급가 이상이어야 함. 미입력 시 기존 유지(NULL).
+      // 권장 소비자가 선택 — 입력 시 새 공급가보다 높아야 함(유통 마진). 미입력 시 기존 유지(NULL).
+      // 🔧 2026-06-24 (전수조사 M2): 단건과 동일 규칙 — `<` → `<=`(동일가=마진0 차단).
       let newRetail: number | null = null;
       if (it.retail_price != null && String(it.retail_price) !== '') {
         const r = Math.floor(Number(it.retail_price));
-        if (!Number.isFinite(r) || r < newSupply) {
-          results.push({ product_id: pid, status: 'skip', reason: '권장 소비자가는 공급가 이상이어야 합니다' });
+        if (!Number.isFinite(r) || r <= newSupply) {
+          results.push({ product_id: pid, status: 'skip', reason: '권장 소비자가는 공급가보다 높아야 합니다' });
           continue;
         }
         newRetail = r;

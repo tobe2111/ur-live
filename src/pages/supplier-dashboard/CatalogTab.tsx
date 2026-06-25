@@ -1,5 +1,5 @@
 import { useState, useRef, lazy, Suspense } from 'react'
-import { Package, Plus, Clock, CheckCircle, XCircle, Tag, ShieldCheck, Upload, Download } from 'lucide-react'
+import { Package, Plus, Clock, CheckCircle, XCircle, Tag, ShieldCheck, Upload, Download, Pencil } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { supplierApi } from '@/lib/supplier-api'
@@ -17,7 +17,7 @@ const STATUS_BADGE: Record<string, { label: string; cls: string; Icon: typeof Cl
   rejected: { label: '거부됨', cls: 'bg-red-50 text-red-700 border-red-200', Icon: XCircle },
 }
 
-export default function CatalogTab({ items, t, onAdd, onBulkDone, onManageChannel, onRequestPriceChange, onBulkPrice }: { items: CatalogItem[]; t: (k: string, o?: Record<string, unknown>) => string; onAdd: () => void; onBulkDone: () => void; onManageChannel: (item: CatalogItem) => void; onRequestPriceChange: (item: CatalogItem) => void; onBulkPrice: () => void }) {
+export default function CatalogTab({ items, t, onAdd, onEdit, onBulkDone, onManageChannel, onRequestPriceChange, onBulkPrice }: { items: CatalogItem[]; t: (k: string, o?: Record<string, unknown>) => string; onAdd: () => void; onEdit: (item: CatalogItem) => void; onBulkDone: () => void; onManageChannel: (item: CatalogItem) => void; onRequestPriceChange: (item: CatalogItem) => void; onBulkPrice: () => void }) {
   const [uploading, setUploading] = useState(false)
   const [stockImporting, setStockImporting] = useState(false)
   const [storeImportOpen, setStoreImportOpen] = useState(false)
@@ -163,6 +163,12 @@ export default function CatalogTab({ items, t, onAdd, onBulkDone, onManageChanne
                     <p className="text-xs text-red-500 mt-1">{t('supplier.rejectReason', { defaultValue: '거부 사유' })}: {item.admin_memo}</p>
                   )}
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    {/* 🔧 2026-06-24 (전수조사 H1): 대기·거부 상품은 수정 후 재제출 가능(거부 막다른 길 해소). 승인 상품은 가격수정요청만. */}
+                    {item.approval_status !== 'approved' && (
+                      <button onClick={() => onEdit(item)} className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#FC5424] border border-[#FC5424]/30 rounded-lg px-2 py-1 hover:bg-[#FC5424]/5">
+                        <Pencil className="w-3 h-3" /> {item.approval_status === 'rejected' ? t('supplier.fixAndResubmit', { defaultValue: '수정 후 재제출' }) : t('supplier.editProductBtn', { defaultValue: '수정' })}
+                      </button>
+                    )}
                     {item.supply_visibility === 'APPROVED_CHANNEL' && (
                       <button onClick={() => onManageChannel(item)} className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-700 border border-gray-300 rounded-lg px-2 py-1 hover:bg-gray-50">
                         <Package className="w-3 h-3" /> {t('supplier.manageChannel', { defaultValue: '승인 판매사 관리' })}
