@@ -390,6 +390,9 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
 
       {/* 🛡️ 2026-04-28: Global search bar — 실제 동작.
            숫자만: 주문 / @포함: 유저 / 일반: 유저 검색 */}
+      {/* 🔧 2026-06-24 (전수조사 MED-1): 전역 검색은 주문/유저(소비자 스코프)로 이동 → 도매 파트너(wholesale)는
+          RBAC 바운스 → 검색이 안 먹히는 것처럼 보임. 도매 역할에는 숨김(스코프 밖 목적지 제거). */}
+      {adminRole !== 'wholesale' && (
       <form onSubmit={handleSearch} className="px-4 py-3">
         <div
           className="flex items-center gap-2 px-3 py-2 rounded-lg focus-within:ring-1 focus-within:ring-white/20"
@@ -414,6 +417,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
           )}
         </div>
       </form>
+      )}
 
       {/* Grouped navigation — 그룹 헤더 클릭으로 접기/펼치기 (활성 그룹은 강제 펼침) */}
       <nav ref={navScrollRef} className="flex-1 overflow-y-auto scrollbar-hide pb-2">

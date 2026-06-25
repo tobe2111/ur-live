@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-24 — 도매 어드민·제조사·판매사 대시보드 전 영역 전수조사 (대표 "나 말고 다른 사람들이 썼을 때도 에러 없어야")
+**방식**: 3개 대시보드 병렬 감사(도매 어드민 / 제조사 / 판매사+storefront), **"소유자(슈퍼·시드데이터)에겐 안 보이고 신규·대기·좁은권한 사용자에게만 터지는" 클래스** 집중 → 모든 발견 코드 재검증. 제조사·판매사 frontend 는 빈상태/대기/NaN 대비가 이미 견고(클린). 발견·수정:
+- **🔴 CRITICAL(보안/머니) — 정지된 판매사가 만료 전 토큰으로 발주·충전 지속**: `/orders`·`/orders/confirm`·`/deposits/charge-request` 가 `sellerIdFrom`(서명만, status 미검사) 사용 + `requireAuth` 미경유 → 승인 후 정지/거부된 판매사가 30일 토큰으로 예치금 차감 발주·충전요청 가능(소유자는 도달 못 하는 상태). → 공유 가드 `isSellerBlocked(DB,id)`(reject-list: suspended/rejected/pending/banned/deleted, **approved/active 불변**, fail-open) 신설 + 세 엔드포인트 배선(confirm 은 Toss 캡처 *전* 차단 → 무단결제 방지).
+- **🟡 MED — 전역검색이 도매 파트너를 바운스**: AdminLayout 검색이 `/admin/orders`·`/admin/users`(소비자 스코프)로 이동 → 도매 역할 RBAC 바운스(검색 먹통). 도매 역할엔 검색폼 숨김.
+- **🟢 LOW ×3**: ① 제조사 이미지 업로드가 `role:'user'`로 오귀속(upload.routes `getRoleAndId` supplier_id 분기 부재 → uploads/user 네임스페이스 충돌·삭제 소유권 불일치) → supplier 분기 추가 ② AdminWholesaleQuotesPage `requested_qty.toLocaleString()` 무가드 → `Number(||0)` ③ '제조사 승인' 카드 `?status=pending` 딥링크 + AdminSuppliersPage URL status 소비(카운트↔목록 정합).
+- **감사 클린 확인**: 제조사 대시보드(빈/대기/NaN/cross-role 전부 안전, /me·analytics·settlements 널세이프) · 판매사 storefront(pending=무토큰→락카드 정상, 빈카트/0예치금/빈명세 가드, wholesaleAuthSeg 가격분리) · 도매 어드민 23p(스코프·empty·dead-click 클린). 기존 3 정적가드 전부 0.
+- 검증: tsc 0 · api-scope/nav/links 0 · theme 0 · sql-bind 0 · build 0. ⚠️ 정지 가드는 staging 없어 실거래 1회 확인 권장(정지 판매사 발주 403 / 정상 판매사 영향 0).
+
 ## ✅ 2026-06-25 — 수수료 정책 단일 리졸버(SSOT) 구현 (미배선) — 대표 "구현부터 / 가장 이상적이고 영구적으로"
 **배경**: 대표와 수수료 정책 4종 확정(`docs/design/product-ownership-model.md`) 후 "구현부터, 영구적으로". 기존 수수료 로직이 산재(`orders.commission_rate`~10%, `agency_commission_pct`=2%+₩30k, affiliate 5%, supplier margin)되고 **값도 확정정책과 불일치** → 정책을 **단 하나의 순수 리졸버에 박제** + **불변식 테스트로 영구잠금**.
 - **신규(전부 비잠금 새 파일 — 결제 잠금파일 무접촉):**
