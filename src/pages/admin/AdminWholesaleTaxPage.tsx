@@ -10,6 +10,7 @@ import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import AdminMallSelect, { useAdminMalls } from '@/components/admin/AdminMallSelect'
+import { safeDate } from '@/utils/safe-date'
 
 // 🏭 TAX-1 (2026-06-08) 어드민 도매 세무 — 미수/미지급 aging 리포트 + 매입(역발행) 세금계산서.
 //   라이트 고정 대시보드 테마(dark: 미사용). 역발행은 수동 1회 기록(자동 발사 X).
@@ -266,7 +267,7 @@ export default function AdminWholesaleTaxPage() {
               </section>
 
               {aging?.as_of && (
-                <p className="text-[11px] text-gray-400">{t('admin.wsTax.asOf', { defaultValue: '기준' })}: {new Date(aging.as_of).toLocaleString('ko-KR')}</p>
+                <p className="text-[11px] text-gray-400">{t('admin.wsTax.asOf', { defaultValue: '기준' })}: {safeDate(aging.as_of)?.toLocaleString('ko-KR') ?? '-'}</p>
               )}
             </div>
           )

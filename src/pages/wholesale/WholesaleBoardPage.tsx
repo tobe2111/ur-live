@@ -12,6 +12,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { cfImage } from '@/utils/cf-image'
+import { safeDate } from '@/utils/safe-date'
 import { WT } from './wholesale-theme'
 import { WholesaleWordmark } from '@/pages/wholesale-catalog/WholesaleLogo'
 import WholesaleShippingGuide from './WholesaleShippingGuide'
@@ -52,7 +53,7 @@ const TICKET_STATUS: Record<string, { label: string; color: string }> = {
 }
 
 function fmtDate(iso: string): string {
-  try { return new Date(iso.includes('T') ? iso : iso + 'Z').toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' }) } catch { return iso }
+  return safeDate(iso)?.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' }) ?? iso
 }
 
 export default function WholesaleBoardPage() {

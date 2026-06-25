@@ -9,6 +9,7 @@ import { Banknote, Loader2, Check, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { safeDate } from '@/utils/safe-date'
 
 // 🏦 2026-06-09 유통스타트 — 어드민 제조사 정산금 출금 신청 처리 (예치금 입금확인의 역방향).
 //   제조사 출금 신청(잔액 예약됨) → 어드민이 등록 계좌로 송금 후 승인 / 또는 반려(예약 복원). 라이트 테마.
@@ -139,7 +140,7 @@ export default function AdminWholesaleWithdrawalsPage() {
                       {req.bank_name || '-'} {req.bank_account || ''}
                       {req.account_holder && <span className="block text-[11px] text-gray-400">{req.account_holder}</span>}
                     </td>
-                    <td className="py-2.5 px-4 text-gray-500">{req.requested_at ? new Date(req.requested_at).toLocaleDateString('ko-KR') : '-'}</td>
+                    <td className="py-2.5 px-4 text-gray-500">{safeDate(req.requested_at)?.toLocaleDateString('ko-KR') ?? '-'}</td>
                     <td className="py-2.5 px-4">
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS[req.status]?.c || 'bg-gray-100 text-gray-600'}`}>{STATUS[req.status]?.t || req.status}</span>
                       {req.admin_memo && <span className="block text-[11px] text-gray-400 mt-0.5">{req.admin_memo}</span>}
@@ -163,7 +164,7 @@ export default function AdminWholesaleWithdrawalsPage() {
                           </button>
                         </div>
                       ) : (
-                        <span className="block text-right text-gray-400 text-xs">{req.processed_at ? new Date(req.processed_at).toLocaleDateString('ko-KR') : '—'}</span>
+                        <span className="block text-right text-gray-400 text-xs">{safeDate(req.processed_at)?.toLocaleDateString('ko-KR') ?? '—'}</span>
                       )}
                     </td>
                   </tr>

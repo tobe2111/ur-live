@@ -10,6 +10,7 @@ import { WT, won, wholesaleOrderStatusBadge } from './wholesale/wholesale-theme'
 import WholesaleClaimModal from './wholesale/WholesaleClaimModal'
 import { useWholesaleBack } from '@/hooks/useWholesaleBack'
 import { courierTrackingUrl } from '@/utils/courier-tracking'
+import { safeDate } from '@/utils/safe-date'
 
 // 인증 헤더로 xlsx 다운로드 → blob 저장 (anchor href 는 토큰 미첨부라 fetch 사용).
 async function downloadWholesaleXlsx(path: string, filename: string) {
@@ -103,7 +104,7 @@ function OrderNotesThread({ orderId }: { orderId: number }) {
                       <span className="block text-[13px] leading-[1.45] whitespace-pre-wrap break-words">{n.body}</span>
                     </div>
                     <span className="mt-1 text-[11px] tabular-nums" style={{ color: WT.ink4 }}>
-                      {AUTHOR_LABEL[n.author_type] || n.author_type} · {new Date(n.created_at).toLocaleString('ko-KR')}
+                      {AUTHOR_LABEL[n.author_type] || n.author_type} · {safeDate(n.created_at)?.toLocaleString('ko-KR') ?? '-'}
                     </span>
                   </li>
                 )
@@ -194,7 +195,7 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
                         <span className="text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ color: cs.c, background: cs.bg }}>{cs.t}</span>
                       </div>
                       {cl.admin_memo && <p className="text-[11px] mt-1" style={{ color: WT.ink3 }}>운영자: {cl.admin_memo}</p>}
-                      <p className="text-[10px] mt-0.5 tabular-nums" style={{ color: WT.ink4 }}>{new Date(cl.created_at).toLocaleString('ko-KR')}</p>
+                      <p className="text-[10px] mt-0.5 tabular-nums" style={{ color: WT.ink4 }}>{safeDate(cl.created_at)?.toLocaleString('ko-KR') ?? '-'}</p>
                     </div>
                   )
                 })}
@@ -218,7 +219,7 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
               return (
                 <div key={o.id} className="rounded-2xl bg-white p-4" style={{ border: '1px solid ' + WT.line }}>
                   <div className="flex items-center justify-between mb-2.5">
-                    <span className="text-[12px] tabular-nums" style={{ color: WT.ink4 }}>{new Date(o.created_at).toLocaleString('ko-KR')}</span>
+                    <span className="text-[12px] tabular-nums" style={{ color: WT.ink4 }}>{safeDate(o.created_at)?.toLocaleString('ko-KR') ?? '-'}</span>
                     <span className="text-[12px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ color: st.c, background: st.bg }}>{st.t}</span>
                   </div>
                   <div className="flex items-center justify-between">

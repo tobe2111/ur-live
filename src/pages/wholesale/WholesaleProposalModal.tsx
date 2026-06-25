@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { X, Lightbulb, Flag, Loader2, Send } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { safeDate } from '@/utils/safe-date'
 import {
   useWholesaleFeedbacks,
   useWholesaleFeedbackMutation,
@@ -133,7 +134,7 @@ export function WholesaleProposalForm({ onClose }: { onClose?: () => void }) {
                         : t('wholesale.proposal.type.proposal', { defaultValue: '제안' })}
                     </span>
                     <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: st.bg, color: st.fg }}>{st.label}</span>
-                    <span className="ml-auto text-[11px]" style={{ color: WT.ink4 }}>{f.created_at ? new Date(f.created_at).toLocaleDateString('ko-KR') : ''}</span>
+                    <span className="ml-auto text-[11px]" style={{ color: WT.ink4 }}>{safeDate(f.created_at)?.toLocaleDateString('ko-KR') ?? ''}</span>
                   </div>
                   <div className="text-[13px] font-bold" style={{ color: WT.ink }}>{f.subject}</div>
                   {f.target && <div className="text-[12px] mt-0.5" style={{ color: WT.ink3 }}>대상: {f.target}</div>}

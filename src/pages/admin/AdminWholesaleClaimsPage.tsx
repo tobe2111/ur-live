@@ -8,6 +8,7 @@ import { AlertTriangle, Loader2, X, RotateCcw, ExternalLink } from 'lucide-react
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { safeDate } from '@/utils/safe-date'
 
 // 🏭 BIZ-1 (2026-06-08) 어드민 도매 클레임(RMA) 검수 — 판매사 발의 하자/오배송 신고 처리.
 //   approve(승인) 시 실제 환불은 기존 강제환불 엔드포인트(/api/admin/distributor/orders/:id/refund)로 집행.
@@ -132,7 +133,7 @@ export default function AdminWholesaleClaimsPage() {
                     <td className="py-2.5 px-4 text-gray-600">{cl.supplier_name || (cl.supplier_id ? `#${cl.supplier_id}` : '혼합/미지정')}</td>
                     <td className="py-2.5 px-4 text-gray-600">{REASON[cl.reason_code] || cl.reason_code}</td>
                     <td className="py-2.5 px-4"><span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS[cl.status]?.c || 'bg-gray-100 text-gray-600'}`}>{STATUS[cl.status]?.t || cl.status}</span></td>
-                    <td className="py-2.5 px-4 text-gray-500">{new Date(cl.created_at).toLocaleDateString('ko-KR')}</td>
+                    <td className="py-2.5 px-4 text-gray-500">{safeDate(cl.created_at)?.toLocaleDateString('ko-KR') ?? '-'}</td>
                   </tr>
                 ))}
               </tbody>

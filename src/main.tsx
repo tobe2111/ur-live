@@ -1,7 +1,7 @@
 // 🛡️ 2026-04-28: 카카오톡 인앱 강제 외부 브라우저 redirect (흰화면 + 무한 reload 회피)
 //   *반드시* React/i18n/sentry 등 import 보다 먼저 실행 (모듈 로딩 자체 차단 위해).
 import { autoRedirectKakaoToExternal, detectInAppBrowser } from '@/lib/in-app-browser'
-import { isChunkLoadError, isAppChunkUrl } from '@/utils/chunk-error'
+import { isChunkLoadError, isAppChunkUrl, reloadWithCacheBust } from '@/utils/chunk-error'
 const _kakaoRedirected = autoRedirectKakaoToExternal()
 
 // 🛡️ 2026-05-07: Safari Date 파싱 글로벌 정상화.
@@ -95,6 +95,16 @@ try {
 // 다른 인앱(네이버/페북/IG/라인 등) 감지 → App 단 배너로 안내 (강제 redirect 안 함)
 ;(window as { __urInAppBrowser?: string | null }).__urInAppBrowser = detectInAppBrowser()
 
+// 🛡️ 2026-06-25: 청크-에러 복구용 캐시버스트 파라미터(`__cb`) 정리 — 복구 성공 후 주소창/공유 URL 오염 방지.
+//   reloadOnceForChunk 가 붙인 1회성 토큰. 라우팅엔 영향 없으나 깔끔하게 제거(replaceState — 네비게이션 X).
+try {
+  const _u = new URL(window.location.href)
+  if (_u.searchParams.has('__cb')) {
+    _u.searchParams.delete('__cb')
+    window.history.replaceState(window.history.state, '', _u.pathname + _u.search + _u.hash)
+  }
+} catch { /* URL/history 차단 환경 — silent */ }
+
 // 🛡️ 2026-05-07: dynamic import (lazy chunk) 로드 실패 자동 복구.
 //   원인: 새 배포 후 사용자 브라우저는 옛 HTML 가지고 있음 → 옛 HTML 이 참조하는 옛 chunk
 //   해시 (e.g. SellerPage-Dnxck7Qn.js) 가 새 빌드에 없어 404 → SPA HTML 폴백(text/html) →
@@ -102,13 +112,26 @@ try {
 //   처리: 같은 세션에서 1회만 자동 reload (무한 reload 차단 sessionStorage 가드).
 //   🛡️ 2026-06-16 (사용자 신고 — VoucherDetailPage MIME 에러): isChunkLoadError SSOT 로 변종 전부 감지
 //     (Chrome MIME "Expected a JavaScript-or-Wasm module script ..." 포함) + modulepreload 리소스 실패도 capture.
+//   🛡️ 2026-06-25 (사용자 신고 — /admin/wholesale-overview 일부 사용자 흰화면 영구 고착):
+//     기존 plain reload() 는 (1) bfcache/heuristic/edge 가 옛 HTML 을 그대로 재서빙하면 같은 옛 청크 → 또 404,
+//     (2) 가드가 "세션당 1회 영구" 라 그 1회가 stale 재서빙을 만나면 더 이상 재시도 안 함 → 영구 흰화면.
+//     수정: ① `__cb` 캐시버스트 파라미터 + location.replace 로 옛 문서 재서빙 우회(항상 새 HTML→새 청크 해시),
+//           ② 가드를 60초 윈도 내 2회로 — 그 안에서 못 고치면 진짜 에러로 보고 멈춤(무한 reload 차단),
+//              60초 지나면 카운트 리셋(나중에 또 배포되면 다음 stale 도 재시도 허용).
 const reloadOnceForChunk = () => {
   try {
-    const k = '__ur_chunk_reload__'
-    if (sessionStorage.getItem(k)) return // 이미 1회 시도 — 무한 reload 차단
-    sessionStorage.setItem(k, '1')
-    window.location.reload()
-  } catch { /* sessionStorage 차단 환경 — silent */ }
+    const KEY = '__ur_chunk_reload__'
+    const now = Date.now()
+    let st = { n: 0, t: 0 }
+    try { const raw = sessionStorage.getItem(KEY); if (raw) st = JSON.parse(raw) } catch { /* 옛 '1' 포맷 — 무시하고 리셋 */ }
+    const within = now - st.t < 60_000
+    if (within && st.n >= 2) return // 60초 내 2회 시도 — 더는 stale 아닌 진짜 에러 → 무한 reload 차단
+    sessionStorage.setItem(KEY, JSON.stringify({ n: within ? st.n + 1 : 1, t: now }))
+    // 캐시 우회: 옛 HTML(옛 청크 해시) 재서빙 방지 — bfcache/브라우저/edge 모두 새 문서 강제 fetch (SSOT).
+    reloadWithCacheBust()
+  } catch {
+    try { window.location.reload() } catch { /* sessionStorage 차단 환경 — silent */ }
+  }
 }
 window.addEventListener('error', (e) => {
   if (isChunkLoadError(e.message)) { reloadOnceForChunk(); return }
