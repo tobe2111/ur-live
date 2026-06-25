@@ -77,7 +77,7 @@ export default function AdminSellerApprovalPage() {
     headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` }
   }), [])
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (필터/검색은 클라 적용).
-  const { data: sellers = [], isLoading: loading, refetch } = useApiQuery<Seller[]>(
+  const { data: sellers = [], isLoading: loading, isError, error, refetch } = useApiQuery<Seller[]>(
     ['admin', 'sellers-approval'], '/api/admin/sellers',
     { params: { limit: 200 }, select: (r: any) => (r?.success ? r.data || [] : []) },
   )
@@ -275,7 +275,21 @@ export default function AdminSellerApprovalPage() {
         </div>
 
         {/* 목록 */}
-        {loading ? <DashboardLoading /> : filtered.length === 0 ? (
+        {loading ? <DashboardLoading /> : isError ? (
+          /* 🛡️ 2026-06-25: 로드 실패를 '셀러 없음'과 구분 — 기존엔 401/500 도 빈 목록으로 보여 데이터 0 처럼 오인.
+             서버 오류/세션만료 시 명시 안내 + 재시도 + 재로그인 경로. (HTTP 상태 노출 = 진단용) */
+          <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+            <p className="text-sm font-bold text-red-700">셀러 목록을 불러오지 못했습니다</p>
+            <p className="mt-1 text-xs text-red-600">
+              서버 오류 또는 로그인 세션 만료일 수 있어요
+              {(() => { const s = (error as { response?: { status?: number } } | undefined)?.response?.status; return s ? ` (HTTP ${s})` : '' })()}
+            </p>
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <button onClick={() => load()} className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-900 text-white hover:bg-gray-800">다시 시도</button>
+              <button onClick={() => navigate('/admin/login', { replace: true })} className="px-4 py-2 rounded-lg text-sm font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">다시 로그인</button>
+            </div>
+          </div>
+        ) : filtered.length === 0 ? (
           <DashboardEmptyState
             icon={<UserCheck className="h-7 w-7" />}
             title={search ? `'${search}' 검색 결과 없음` : `${STATUS_LABEL[filter] || '해당'} 셀러 없음`}
