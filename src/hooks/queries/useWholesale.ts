@@ -439,7 +439,7 @@ export function useWholesalePremiumCatalog(enabled = true) {
 }
 
 export type WholesaleFeedbackType = 'proposal' | 'report'
-export type WholesaleFeedbackStatus = 'open' | 'in_review' | 'resolved' | 'rejected'
+export type WholesaleFeedbackStatus = 'open' | 'in_progress' | 'resolved' | 'rejected'
 export interface WholesaleFeedback {
   id: number
   type: WholesaleFeedbackType

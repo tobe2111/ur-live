@@ -14,7 +14,7 @@ import { safeDate } from '@/utils/safe-date'
 //   판매사 제안(상품 요청)·신고(문제) 접수 → 검토/처리/반려 + 메모. 라이트 테마.
 
 type FeedbackType = 'proposal' | 'report'
-type FeedbackStatus = 'open' | 'in_review' | 'resolved' | 'rejected'
+type FeedbackStatus = 'open' | 'in_progress' | 'resolved' | 'rejected'
 
 interface FeedbackRow {
   id: number
@@ -32,14 +32,14 @@ interface FeedbackRow {
 
 const STATUS: Record<FeedbackStatus, { t: string; c: string }> = {
   open: { t: '접수', c: 'bg-amber-50 text-amber-700' },
-  in_review: { t: '검토중', c: 'bg-blue-50 text-blue-700' },
+  in_progress: { t: '검토중', c: 'bg-blue-50 text-blue-700' },
   resolved: { t: '처리완료', c: 'bg-emerald-50 text-emerald-700' },
   rejected: { t: '반려', c: 'bg-rose-50 text-rose-700' },
 }
 
 const FILTERS: { id: string; label: string }[] = [
   { id: 'open', label: '접수' },
-  { id: 'in_review', label: '검토중' },
+  { id: 'in_progress', label: '검토중' },
   { id: 'resolved', label: '처리완료' },
   { id: 'rejected', label: '반려' },
   { id: 'all', label: '전체' },
@@ -131,10 +131,10 @@ export default function AdminWholesaleProposalsPage() {
                     <span className="font-bold text-gray-800">운영팀 메모: </span>{row.admin_memo}
                   </div>
                 )}
-                {(row.status === 'open' || row.status === 'in_review') && (
+                {(row.status === 'open' || row.status === 'in_progress') && (
                   <div className="flex items-center gap-2 mt-3 flex-wrap">
                     {row.status === 'open' && (
-                      <button onClick={() => resolve(row, 'in_review')} disabled={actingId === row.id}
+                      <button onClick={() => resolve(row, 'in_progress')} disabled={actingId === row.id}
                         className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium disabled:opacity-50">
                         검토 시작
                       </button>

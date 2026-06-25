@@ -19,7 +19,7 @@ import { WT } from './wholesale-theme'
 
 const STATUS_LABEL: Record<WholesaleFeedbackStatus, { label: string; bg: string; fg: string }> = {
   open: { label: '접수', bg: '#FFF6E5', fg: '#B7791F' },
-  in_review: { label: '검토중', bg: '#EAF1FF', fg: '#2B5CE6' },
+  in_progress: { label: '검토중', bg: '#EAF1FF', fg: '#2B5CE6' },
   resolved: { label: '처리완료', bg: '#EAF6EF', fg: '#11875A' },
   rejected: { label: '반려', bg: '#FDECEC', fg: '#CC2929' },
 }

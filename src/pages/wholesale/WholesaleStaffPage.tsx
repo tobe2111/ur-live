@@ -59,32 +59,44 @@ export default function WholesaleStaffPage({ embedded = false }: { embedded?: bo
   const [name, setName] = useState('')
   const [role, setRole] = useState<WholesaleSubRole>('staff')
 
+  // 🛡️ 2026-06-25: axios 는 4xx/5xx 를 reject — mutateAsync 가 throw 하면 아래 success 체크에 도달 못 함.
+  //   try/catch 로 감싸 서버 에러메시지(409 중복이메일/400 비번/403 권한)를 토스트로 표시(옛 코드는 무음).
+  const errMsg = (e: unknown, fallback: string) => (e as { response?: { data?: { error?: string } } })?.response?.data?.error || fallback
+
   async function submitInvite(e: React.FormEvent) {
     e.preventDefault()
     if (createM.isPending) return
     if (!email.trim() || !password) { toast.error('이메일과 비밀번호를 입력해주세요'); return }
-    const r = await createM.mutateAsync({ email: email.trim(), password, name: name.trim(), role })
-    if (r?.success) {
-      toast.success('직원 계정을 추가했어요')
-      setEmail(''); setPassword(''); setName(''); setRole('staff')
-    } else {
-      toast.error(r?.error || '추가에 실패했어요')
-    }
+    try {
+      const r = await createM.mutateAsync({ email: email.trim(), password, name: name.trim(), role })
+      if (r?.success) {
+        toast.success('직원 계정을 추가했어요')
+        setEmail(''); setPassword(''); setName(''); setRole('staff')
+      } else {
+        toast.error(r?.error || '추가에 실패했어요')
+      }
+    } catch (err) { toast.error(errMsg(err, '추가에 실패했어요')) }
   }
 
   async function changeRole(id: number, nextRole: WholesaleSubRole) {
-    const r = await updateM.mutateAsync({ id, role: nextRole })
-    if (!r?.success) toast.error(r?.error || '변경에 실패했어요')
+    try {
+      const r = await updateM.mutateAsync({ id, role: nextRole })
+      if (!r?.success) toast.error(r?.error || '변경에 실패했어요')
+    } catch (err) { toast.error(errMsg(err, '변경에 실패했어요')) }
   }
   async function toggleActive(id: number, active: number) {
-    const r = await updateM.mutateAsync({ id, active: active ? 0 : 1 })
-    if (!r?.success) toast.error(r?.error || '변경에 실패했어요')
+    try {
+      const r = await updateM.mutateAsync({ id, active: active ? 0 : 1 })
+      if (!r?.success) toast.error(r?.error || '변경에 실패했어요')
+    } catch (err) { toast.error(errMsg(err, '변경에 실패했어요')) }
   }
   async function remove(id: number) {
     if (!window.confirm('이 직원 계정을 삭제할까요? 되돌릴 수 없습니다.')) return
-    const r = await deleteM.mutateAsync(id)
-    if (r?.success) toast.success('삭제했어요')
-    else toast.error(r?.error || '삭제에 실패했어요')
+    try {
+      const r = await deleteM.mutateAsync(id)
+      if (r?.success) toast.success('삭제했어요')
+      else toast.error(r?.error || '삭제에 실패했어요')
+    } catch (err) { toast.error(errMsg(err, '삭제에 실패했어요')) }
   }
 
   const navItems = buildWholesaleNav(location.pathname, navigate, canManage)

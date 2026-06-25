@@ -20,10 +20,10 @@ interface WholesaleBannerRow {
   link: string | null
   title: string | null
   sort: number
-  is_active: boolean
+  active: number // 🛡️ 2026-06-25: 서버 컬럼명은 'active'(0/1) — 옛 'is_active'(boolean)는 서버가 무시해 토글 먹통이었음.
 }
 
-const EMPTY = { image_url: '', link: '', title: '', sort: 0, is_active: true }
+const EMPTY = { image_url: '', link: '', title: '', sort: 0, active: 1 }
 
 export default function AdminWholesaleBannersPage() {
   const navigate = useNavigate()
@@ -62,7 +62,7 @@ export default function AdminWholesaleBannersPage() {
   }
   function openEdit(b: WholesaleBannerRow) {
     setEditing(b)
-    setForm({ image_url: b.image_url, link: b.link || '', title: b.title || '', sort: b.sort, is_active: b.is_active })
+    setForm({ image_url: b.image_url, link: b.link || '', title: b.title || '', sort: b.sort, active: b.active })
     setShowForm(true)
   }
 
@@ -76,7 +76,7 @@ export default function AdminWholesaleBannersPage() {
         link: form.link.trim() || null,
         title: form.title.trim() || null,
         sort: Number(form.sort) || 0,
-        is_active: form.is_active,
+        active: form.active,
       }
       if (editing) {
         await api.patch(`/api/admin/wholesale-banners/${editing.id}`, body)
@@ -95,8 +95,8 @@ export default function AdminWholesaleBannersPage() {
 
   async function toggleActive(b: WholesaleBannerRow) {
     try {
-      await api.patch(`/api/admin/wholesale-banners/${b.id}`, { is_active: !b.is_active })
-      setBanners((prev) => prev.map((x) => x.id === b.id ? { ...x, is_active: !x.is_active } : x))
+      await api.patch(`/api/admin/wholesale-banners/${b.id}`, { active: b.active ? 0 : 1 })
+      setBanners((prev) => prev.map((x) => x.id === b.id ? { ...x, active: x.active ? 0 : 1 } : x))
     } catch {
       toast.error('상태 변경에 실패했습니다')
     }
@@ -150,7 +150,7 @@ export default function AdminWholesaleBannersPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-gray-900 truncate">{b.title || '(제목 없음)'}</span>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${b.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{b.is_active ? '노출중' : '숨김'}</span>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${b.active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{b.active ? '노출중' : '숨김'}</span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1 truncate">{b.link || '링크 없음'}</div>
                   <div className="text-xs text-gray-400 mt-0.5">순서 {b.sort}</div>
@@ -158,7 +158,7 @@ export default function AdminWholesaleBannersPage() {
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => move(b, -1)} title="위로" className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg"><ArrowUp className="w-4 h-4" /></button>
                   <button onClick={() => move(b, 1)} title="아래로" className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg"><ArrowDown className="w-4 h-4" /></button>
-                  <button onClick={() => toggleActive(b)} title={b.is_active ? '숨기기' : '노출'} className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg">{b.is_active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}</button>
+                  <button onClick={() => toggleActive(b)} title={b.active ? '숨기기' : '노출'} className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg">{b.active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}</button>
                   <button onClick={() => openEdit(b)} title="수정" className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg"><Edit className="w-4 h-4" /></button>
                   <button onClick={() => remove(b)} title="삭제" className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                 </div>
@@ -192,7 +192,7 @@ export default function AdminWholesaleBannersPage() {
                   <input type="number" value={form.sort} onChange={(e) => setForm((f) => ({ ...f, sort: Number(e.target.value) }))} className="w-24 h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none" />
                 </div>
                 <label className="flex items-center gap-2 mt-6 text-sm text-gray-700">
-                  <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} className="w-4 h-4" />
+                  <input type="checkbox" checked={!!form.active} onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked ? 1 : 0 }))} className="w-4 h-4" />
                   노출
                 </label>
               </div>
