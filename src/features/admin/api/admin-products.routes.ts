@@ -682,8 +682,11 @@ adminProductsRoutes.patch('/supplier-products/:id', cors(), async (c) => {
 
     if (body.action === 'approve') {
       // GATE: 온라인 최저가 검수를 게시 차단 게이트로 강제 (사용자 확인 2026-06-07).
-      //   최저가 확인(lowest_price_checked) + 최저가 URL(lowest_price_url) 둘 다 있어야 승인/게시 가능.
-      if (!body.lowest_price_checked || !existing.lowest_price_url) {
+      //   🛡️ 2026-06-25 (대표 신고 "최저가 확인함 체크했는데 계속 뜸"): 사람-검수 게이트 = 어드민의
+      //   'lowest_price_checked' 체크. 기존엔 supplier 제출 lowest_price_url 도 필수였으나, 그 URL 은
+      //   AddProductModal 에서 '선택값'(required 아님)이라 미제출 상품은 체크해도 영구 승인불가였음.
+      //   → URL 은 검수 보조 참고자료로만 두고, 승인 게이트는 어드민 체크(lowest_price_checked)만 요구.
+      if (!body.lowest_price_checked) {
         return c.json({ success: false, error: '온라인 최저가 검수가 필요합니다. 최저가 확인 후 승인하세요.' }, 400);
       }
       // 최저가 검수 결과 함께 기록 (체크 시 lowest_price_checked=1).
