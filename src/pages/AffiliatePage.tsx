@@ -250,7 +250,7 @@ function FunnelStats() {
                 <span className="text-gray-700 dark:text-gray-300">{CATEGORY_LABEL[c.category] || c.category}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-gray-500">{c.count}회</span>
-                  <span className="font-bold text-violet-600 w-16 text-right">{c.earned.toLocaleString()}딜</span>
+                  <span className="font-bold text-violet-600 w-16 text-right">{formatNumber(c.earned)}딜</span>
                 </div>
               </div>
             ))}

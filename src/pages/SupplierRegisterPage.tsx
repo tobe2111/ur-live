@@ -167,7 +167,7 @@ export default function SupplierRegisterPage() {
   const labelCls = "block text-sm font-medium text-gray-700 mb-1.5"
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-6">
+    <div className="force-light-theme min-h-screen bg-gray-50 py-10 px-6">
       <SEO title={t('supplier.registerTitle', { defaultValue: '제조사 가입' }) + ' - 유어딜'} description="유어딜 도매 제조사 가입" url="/supplier/register" />
       <div className="max-w-lg mx-auto">
         <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-6">

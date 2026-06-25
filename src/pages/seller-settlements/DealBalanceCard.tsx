@@ -176,9 +176,13 @@ export default function DealBalanceCard() {
               />
               {withdrawAmount && Number(withdrawAmount) >= 10000 && (
                 <div className="mt-2 p-2 bg-gray-50 rounded text-xs space-y-0.5">
-                  <p className="flex justify-between"><span className="text-gray-500">총 지급</span><span className="font-bold">₩{Number(withdrawAmount).toLocaleString()}</span></p>
-                  <p className="flex justify-between"><span className="text-gray-500">원천징수 (8.8%)</span><span className="font-bold text-red-600">-₩{Math.floor(Number(withdrawAmount) * 0.088).toLocaleString()}</span></p>
-                  <p className="flex justify-between pt-1 border-t border-gray-200"><span className="text-gray-700 font-bold">실 수령</span><span className="font-extrabold text-emerald-600">₩{(Number(withdrawAmount) - Math.floor(Number(withdrawAmount) * 0.088)).toLocaleString()}</span></p>
+                  <p className="flex justify-between"><span className="text-gray-500">총 지급 신청</span><span className="font-bold">₩{Number(withdrawAmount).toLocaleString()}</span></p>
+                  {/* 🛡️ 2026-06-25: 원천징수율 hardcode 금지(CLAUDE.md) — 8.8% 고정은 사업소득(기본 3.3%) 셀러에게
+                      실수령을 과소표시. 실 세율은 셀러 소득유형(business_income 3.3% / other_income 8.8%)에 따라
+                      서버(withholdAndLog)가 적용하므로, 클라는 잘못된 숫자를 만들지 않고 안내만. */}
+                  <p className="text-gray-500 pt-1 border-t border-gray-200 leading-relaxed">
+                    실 지급액은 소득 유형에 따라 원천징수(사업소득 3.3% / 기타소득 8.8%) 후 입금됩니다.
+                  </p>
                 </div>
               )}
             </div>

@@ -206,7 +206,7 @@ export default function SellerRegisterSupplierPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="force-light-theme min-h-screen bg-gray-50 pb-20">
       <SEO title="공급자 가입 - 유어딜" description="가게 사장님 자체 가입 — 공동구매 제휴" url="/seller/register/supplier" noindex />
 
       <div className="sticky top-0 z-20 bg-white border-b border-gray-100">

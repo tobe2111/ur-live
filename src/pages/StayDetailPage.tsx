@@ -136,7 +136,7 @@ export default function StayDetailPage() {
   const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000))
   const amenitiesArr: string[] = (() => {
     if (!stay?.amenities) return []
-    try { return JSON.parse(stay.amenities) } catch { return [] }
+    try { const v = JSON.parse(stay.amenities); return Array.isArray(v) ? v : [] } catch { return [] }
   })()
 
   if (loading) return <div className="min-h-screen bg-[#020202] text-white flex items-center justify-center">로딩 중...</div>

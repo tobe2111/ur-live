@@ -105,7 +105,7 @@ export default function AgencyRegisterBusinessPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="force-light-theme min-h-screen bg-gray-50 pb-20">
       <SEO title="에이전시 가입 - 유어딜" description="카카오 계정으로 에이전시 권한 신청" url="/agency/register/business" noindex />
 
       <div className="sticky top-0 z-20 bg-white border-b border-gray-100">

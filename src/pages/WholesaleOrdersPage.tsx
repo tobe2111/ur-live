@@ -224,7 +224,7 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-[13px] font-medium tabular-nums" style={{ color: WT.ink2 }}>주문 #{o.id}{o.grade ? ` · ${o.grade}등급가` : ''}</span>
-                    <span className="text-[17px] font-extrabold tabular-nums tracking-[-0.01em]" style={{ color: WT.ink }}>{won(o.subtotal)}</span>
+                    <span className="text-[17px] font-extrabold tabular-nums tracking-[-0.01em]" style={{ color: WT.ink }}>{won(o.grand_total ?? o.subtotal)}</span>
                   </div>
                   {o.tracking_number && (
                     <div className="mt-3 flex items-stretch gap-2">

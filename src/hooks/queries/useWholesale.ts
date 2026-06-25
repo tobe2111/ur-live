@@ -34,6 +34,8 @@ export interface WholesaleOrderRow {
   status: string
   grade: string | null
   subtotal: number
+  shipping_total?: number
+  grand_total?: number  // subtotal + 배송비 — 예치금 실제 차감액(표시 기준)
   courier?: string | null
   tracking_number?: string | null
   created_at: string

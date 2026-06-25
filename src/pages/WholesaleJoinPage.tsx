@@ -181,7 +181,7 @@ export default function WholesaleJoinPage() {
   const inputCls = 'w-full h-12 px-3.5 rounded-xl border border-[#ECEEF1] text-[15px] text-[#0C2454] outline-none focus:border-[#0C2454] transition-colors'
 
   return (
-    <div className="min-h-screen bg-white text-[#0C2454]">
+    <div className="force-light-theme min-h-screen bg-white text-[#0C2454]">
       <SEO domain="wholesale" title="판매사 입점·도매 회원가입 — 유통스타트 B2B 도매몰" description="판매사로 도매 회원가입하고 검증된 제조사 상품을 등급별 도매가(공급가)로 사입하세요. 가입 즉시 C등급, 가입비·월 고정비 0원 — 무재고 위탁판매·대량 사입까지." url="/wholesale/join" jsonLd={[wholesaleStoreJsonLd, breadcrumbJsonLd([{ name: '유통스타트', url: 'https://utongstart.com/wholesale' }, { name: '판매사 도매 회원가입', url: 'https://utongstart.com/wholesale/join' }])]} />
       <header className="border-b border-[#ECEEF1]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">
