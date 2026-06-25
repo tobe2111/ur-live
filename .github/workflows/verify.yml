@@ -210,6 +210,13 @@ jobs:
         run: STRICT_API_SCOPE=1 node scripts/check-wholesale-admin-api-scope.mjs
         continue-on-error: false
 
+      # 🔀 2026-06-24: 교차-역할 API 호출 차단 — 한 대시보드(제조사/에이전시/판매사/어드민)가 다른 역할
+      #   전용 토큰-게이트 네임스페이스를 부르면 그 역할 사용자에겐 403 → 먹통(소유자=슈퍼는 안 보임).
+      #   대표 "다른 사람들이 썼을 때도/전역". 현재 위반 0.
+      - name: Dashboard cross-role API (strict)
+        run: STRICT_CROSSROLE=1 node scripts/check-dashboard-api-crossrole.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-06-20: 로그인/가입 입력 글자 흰색(다크모드) 재발 방지 — 현재 위반 0 → strict.
       #   standalone 라이트 auth 페이지가 force-light-theme/레이아웃 없이 input 렌더 시 다크모드 글자
       #   안 보임 사고(전역 .dark input 규칙이 text-gray-900 을 특이도로 이김) 신규 추가 차단.
