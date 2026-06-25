@@ -130,8 +130,8 @@ export default function SupplierRegisterPage() {
         if (tok) headers.Authorization = `Bearer ${tok}`
       }
       const res = await fetch(url, { method: 'POST', headers, credentials: 'include', body: JSON.stringify(payload) })
-      const data = await res.json().catch(() => ({})) as { success?: boolean; error?: string; status?: string; _diag?: string }
-      if (!res.ok || !data.success) throw new Error((data.error || t('supplier.registerFailed', { defaultValue: '가입에 실패했습니다' })) + (data._diag ? ` · ${data._diag}` : '')) // ⏳ _diag 임시
+      const data = await res.json().catch(() => ({})) as { success?: boolean; error?: string; status?: string }
+      if (!res.ok || !data.success) throw new Error(data.error || t('supplier.registerFailed', { defaultValue: '가입에 실패했습니다' }))
       // 카카오 가입(/become) 신규 신청 → status==='pending'. (needs_registration 은 빈 body probe 응답이라 여기 안 옴.)
       setDone(true)
       toast.success(t('supplier.registerSubmitted', { defaultValue: '가입 신청이 완료되었습니다' }))

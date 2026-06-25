@@ -95,6 +95,10 @@ export default function WholesaleJoinPage() {
     if (!form.manager_name.trim() || !form.manager_phone.trim()) { toast.error('담당자 성명·연락처를 입력해주세요'); return }
     if (!kakaoUser && (!form.email.trim() || !form.password)) { toast.error('로그인 이메일·비밀번호를 입력해주세요'); return }
     if (!kakaoUser && form.password.length < 8) { toast.error('비밀번호는 8자 이상이어야 합니다'); return }
+    // 🛡️ 2026-06-25: 서버(relaxed)와 동일 — 영문·숫자·특수 중 2종 이상. (옛 클라는 길이만 검사 → "12345678" 통과 후 서버 400 혼선)
+    if (!kakaoUser && [/[a-zA-Z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter((re) => re.test(form.password)).length < 2) {
+      toast.error('비밀번호는 영문·숫자·특수문자 중 2종류 이상을 포함해야 합니다'); return
+    }
     if (!kakaoUser && form.password !== passwordConfirm) { toast.error('비밀번호가 일치하지 않습니다'); return }
     setLoading(true)
     try {
@@ -113,7 +117,7 @@ export default function WholesaleJoinPage() {
         ? await api.post('/api/wholesale/become-distributor', payload)
         : await api.post('/api/wholesale/register', { ...payload, email: form.email.trim(), password: form.password })
       const data = res.data
-      if (!data?.success) throw new Error((data?.error || '신청에 실패했어요') + ((data as { _diag?: string })?._diag ? ` · ${(data as { _diag?: string })._diag}` : '')) // ⏳ _diag 임시 표시(원인 확인용)
+      if (!data?.success) throw new Error(data?.error || '신청에 실패했어요')
       // 이미 승인된 셀러(겸업)가 카카오로 유통회원 승급한 경우 → 즉시 로그인.
       if (data.status === 'approved' && data.data?.accessToken) {
         const s = data.data.seller

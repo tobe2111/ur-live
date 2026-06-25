@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Factory, ChevronRight, Lock } from 'lucide-react'
 import { WT, won, discountRate } from '../wholesale/wholesale-theme'
 import { cfImage } from '@/utils/cf-image'
+import { safeDate } from '@/utils/safe-date'
 import { WHOLESALE_HERO_IMG } from './HomeSections'
 import Dashboard from './Dashboard'
 import type { CatalogItem } from './types'
@@ -39,7 +40,7 @@ export default function HeroSection({ loggedIn, userSession, grade, me, monthSpe
         <Dashboard grade={grade} marginPct={me?.margin_pct ?? 0} company="회원님" monthSpend={monthSpend} orderCount={orderCount} depositBalance={depositBalance} onGrade={() => setGradeOpen(true)} onCharge={() => navigate('/wholesale/deposits')} />
         {me?.special_active && me.special_discount_until && (
           <div className="px-4 py-3 rounded-2xl text-[13px] font-semibold" style={{ background: WT.brandSoft, color: WT.brand }}>
-            특별가 적용 중 — {new Date(me.special_discount_until).toLocaleDateString('ko-KR')}까지 최저 공급가로 구매할 수 있어요
+            특별가 적용 중 — {safeDate(me.special_discount_until)?.toLocaleDateString('ko-KR') ?? '-'}까지 최저 공급가로 구매할 수 있어요
           </div>
         )}
         <button onClick={() => navigate('/wholesale/oem')} className="w-full flex items-center gap-3.5 rounded-2xl p-4 text-left" style={{ border: '1px solid ' + WT.line2, background: '#fff' }}>
