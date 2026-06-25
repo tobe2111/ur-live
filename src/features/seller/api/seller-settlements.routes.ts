@@ -899,7 +899,7 @@ sellerSettlementsRoutes.get('/dashboard/stats', async (c) => {
 
   try {
     const today = new Date().toISOString().slice(0, 10);
-    const [orderStats, productStats, streamStats] = await Promise.all([
+    const [orderStats, productStats, streamStats, dailyRevenue] = await Promise.all([
       DB.prepare(`
         SELECT COUNT(*) as total_orders,
                COALESCE(SUM(total_amount), 0) as total_revenue
@@ -915,6 +915,15 @@ sellerSettlementsRoutes.get('/dashboard/stats', async (c) => {
                SUM(CASE WHEN status = 'live' THEN 1 ELSE 0 END) as live_streams
         FROM live_streams WHERE seller_id = ?
       `).bind(sellerId).first<{ total_streams: number; live_streams: number }>(),
+      // 📅 2026-06-25: 매출 캘린더(SellerSettlementsPage dailyQ)가 daily_revenue 를 읽는데
+      //   핸들러가 안 줘서 항상 빈값이었음. 최근 30일 일별 매출(PAID/DONE) 집계 추가.
+      DB.prepare(`
+        SELECT DATE(created_at) AS date, COALESCE(SUM(total_amount), 0) AS revenue
+        FROM orders
+        WHERE seller_id = ? AND status IN ('PAID','DONE')
+          AND created_at >= date('now', '-30 days')
+        GROUP BY DATE(created_at) ORDER BY date ASC
+      `).bind(sellerId).all<{ date: string; revenue: number }>().catch(() => ({ results: [] })),
     ]);
 
     return c.json({
@@ -926,6 +935,7 @@ sellerSettlementsRoutes.get('/dashboard/stats', async (c) => {
         active_products: productStats?.active_products ?? 0,
         total_streams: streamStats?.total_streams ?? 0,
         live_streams: streamStats?.live_streams ?? 0,
+        daily_revenue: dailyRevenue?.results ?? [],
       },
     });
   } catch (err: unknown) {

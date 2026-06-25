@@ -131,8 +131,9 @@ export default function SupplierDashboardPage() {
   // 발송 대기(to_ship) 건수만 별도 집계 — OrdersTab 가 to_ship 상태에서 onShip(운송장 입력) 을 노출하는 것과 동일 기준.
   const loadPendingShipCount = useCallback(async () => {
     try {
-      const res = await supplierApi.get<{ data: { items: OrderItem[] } }>('/api/supplier/orders?status=to_ship&limit=100')
-      setPendingShipCount((res.data.items ?? []).length)
+      const res = await supplierApi.get<{ data: { items: OrderItem[]; total?: number } }>('/api/supplier/orders?status=to_ship&limit=100')
+      // 🔢 2026-06-25: items.length 는 limit=100 에 갇혀 발송대기 >100 시 카운트가 100 에 고정 → 응답의 total 사용(폴백 length).
+      setPendingShipCount(res.data.total ?? (res.data.items ?? []).length)
     } catch (err) { if (import.meta.env.DEV) console.error(err) }
   }, [])
 
