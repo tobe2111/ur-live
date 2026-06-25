@@ -1,6 +1,6 @@
 # 🏷️ 상품 소유 모델 — "주인(원청)은 한 명, 홍보(핀)는 여러 명"
 
-**작성일**: 2026-06-23 · **수수료 정책 확정 반영 2026-06-25** · 코드 미구현(방향 SSOT)
+**작성일**: 2026-06-23 · **수수료 정책 확정 반영 2026-06-25** · **리졸버 SSOT 구현(미배선) 2026-06-25**
 
 > 대표 논의: 링크샵 입점형vs쇼핑몰형 / 원청vs홍보 / 어드민vs셀러 업로드 / 에이전시 — 하나의 모델로.
 
@@ -116,11 +116,16 @@
 - `products.seller_id`(원청), KT Alpha(1P 후보), 커미션 스택(`creditOrderCommissions`=에이전시/영입자/공급자 3종 + affiliate), 큐레이터 핀(`addPin`/`removePin`), checkout `noShipping` 분기, 에이전시 매장영입(`creditAgencyStoreIntroCommission` + 환불 역전).
 
 ## 구현 todo (확정 후)
-- [ ] **단일 수수료 리졸버** — 주문 1건 → {플랫폼, 에이전시, 홍보, 제조가, 주인 순수익} 분배를 한 곳에서 계산(SSOT). 위 4개 규칙(3P=5%/1P=0%, 소개비=주인자율, 에이전시 1%/시한부/어드민조절, 제조가 별도)을 이 함수에만 박제.
-- [ ] **불변식 테스트**: ① 슬라이스 합 = 결제액(겹침/누락 0) ② 주인 순수익 ≥ 0(소개비 음수가드) ③ 에이전시 ≤ 플랫폼 수수료 ④ 1P는 플랫폼 수수료 0 ⑤ 환불 시 전 슬라이스 대칭 역전.
-- [ ] 어드민 업로드 상품 = 1P(유어딜 원청) 표식 / 셀러 업로드 = 3P
-- [ ] 상품 카드/상세 "제공: 원청 · 추천: 프로모터" 표시
+- [x] **단일 수수료 리졸버** — `src/worker/utils/fee-resolver.ts` `resolveOrderFees()`. 주문 1건 → {platform, agency, platformNet, promo, supply, ownerNet} 분배를 한 곳에서 계산. 4규칙(3P=5%/1P=0%, 소개비=주인자율+음수가드, 에이전시 1%/실판매+시한/≤플랫폼/어드민조절, 제조가 별도) 이 함수에만 박제. **순수 함수**(DB/시간 의존 0) — 요율은 인자 주입. (2026-06-25)
+- [x] **불변식 테스트** — `src/tests/unit/fee-resolver.test.ts` 26 케이스, `assertFeeInvariants()`: ① 슬라이스 합=결제액(반올림 잔차 ownerNet 흡수 → 정확히 ±0) ② ownerNet≥0 ③ agency≤platform ④ 1P platform=0 ⑤ 전 슬라이스≥0. + 결정성/환불역전(`negateBreakdown`) 대칭. (2026-06-25)
+- [x] `platform_settings` 기본값 등록 — migration `0283_fee_resolver_settings.sql` (`fee_platform_pct_3p`=5 / `fee_agency_pct`=1 / `fee_agency_term_months`=24, 전용 네임스페이스 충돌0, INSERT OR IGNORE 멱등) + `loadFeeRates(DB)` 리더(미설정 시 DEFAULT_FEE_RATES 폴백, hardcode 금지). (2026-06-25)
+- [ ] **🔒 배선(gated)** — 리졸버를 `payment.routes.ts /confirm`(잠금 파일)에 연결해 실제 분배. ⚠️ **경제 변화 동반**: 현 라이브는 3P~10%(`orders.commission_rate`)·에이전시 2%(+₩30k 보너스)·시한 없음 → 확정정책(5%/1%/24mo)으로 *내려감*. 잠금 파일 수정 + 스테이징 실결제 검증 필수 → 대표 명시 승인 후. (현재 리졸버 **미배선** = 라이브 영향 0)
+- [ ] 1P/3P 판별 정합 — `products.seller_id IS NULL`=1P(어드민)/non-null=3P(셀러) 이미 존재. 리졸버 입력 ownership 으로 매핑 + 카드/상세 "제공: 원청 · 추천: 프로모터" 표시
 - [ ] 홍보 소개비 = 원청이 자율 책정하는 UI (3P=셀러, 1P=어드민) + 음수 방지 가드
-- [ ] 에이전시 per-agency 설정 UI(어드민): 율·기간(개월)·활성화 보너스. 기본 1%/24개월. 실판매 시에만 적립 + 24개월 백스톱 + 환불 역전.
-- [ ] `platform_settings` 에 기본값(플랫폼 5%, 에이전시 1%, 에이전시 기간 24mo) 등록 — hardcode 금지
+- [ ] 에이전시 per-agency 설정 UI(어드민): 율·기간(개월)·활성화 보너스. 기존 `creditAgencyStoreIntroCommission`(2% 고정+₩30k, 시한없음)을 리졸버 정책(1%/실판매/24mo)으로 정합 + 환불 역전 대칭 유지
+- [ ] 미세: 홍보 귀속 규칙(last-click + 유효기간) · 활성화 보너스 금액 기본값
+
+## 구현 현황(코드)
+- ✅ **정책 SSOT 완성·미배선**: `fee-resolver.ts`(순수 리졸버) + `fee-resolver.test.ts`(26 케이스, 불변식 영구잠금) + `0283`(요율 settings). 라이브 영향 0(아직 결제 경로에 안 붙음).
+- ⏳ **배선 대기(gated)**: locked `payment.routes.ts /confirm` 연결 + 기존 산재 커미션(agency 2%/affiliate/supplier)을 리졸버 정책으로 통합 + 스테이징 검증 → 대표 승인 후.
 
