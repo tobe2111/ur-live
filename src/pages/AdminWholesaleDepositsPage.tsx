@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Wallet, Loader2, Check, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
@@ -67,7 +67,7 @@ export default function AdminWholesaleDepositsPage() {
   //   인증=api 인터셉터 자동(admin_token). filter/mallId 변경 시 queryKey 로 자동 재조회.
   const queryClient = useQueryClient()
   const queryKey = ['admin', 'wholesale-deposits', filter, mallId] as const
-  const { data: requests = [], isLoading: loading, refetch } = useApiQuery<DepositRequest[]>(
+  const { data: requests = [], isLoading: loading, isError, error, refetch } = useApiQuery<DepositRequest[]>(
     queryKey,
     '/api/admin/wholesale-deposits',
     {
@@ -157,6 +157,8 @@ export default function AdminWholesaleDepositsPage() {
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+        ) : isError ? (
+          <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="충전 신청" />
         ) : requests.length === 0 ? (
           <p className="text-center text-gray-400 py-20">충전 신청이 없습니다.</p>
         ) : (

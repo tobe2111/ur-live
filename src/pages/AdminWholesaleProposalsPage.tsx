@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { MessageSquareWarning, Loader2, Check, X, Lightbulb, Flag } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import AdminMallSelect from '@/components/admin/AdminMallSelect'
@@ -58,7 +58,7 @@ export default function AdminWholesaleProposalsPage() {
   //   인증=api 인터셉터 자동(admin_token). filter/mallId 변경 시 queryKey 로 자동 재조회.
   const queryClient = useQueryClient()
   const queryKey = ['admin', 'wholesale-proposals', filter, mallId] as const
-  const { data: rows = [], isLoading: loading, refetch } = useApiQuery<FeedbackRow[]>(
+  const { data: rows = [], isLoading: loading, isError, error, refetch } = useApiQuery<FeedbackRow[]>(
     queryKey,
     '/api/admin/wholesale-proposals',
     {
@@ -109,6 +109,8 @@ export default function AdminWholesaleProposalsPage() {
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+        ) : isError ? (
+          <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="제안/신고" />
         ) : rows.length === 0 ? (
           <p className="text-center text-gray-400 py-20">해당 상태의 제안/신고가 없습니다.</p>
         ) : (

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { AlertTriangle, Loader2, X, RotateCcw, ExternalLink } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
@@ -56,7 +56,7 @@ export default function AdminWholesaleClaimsPage() {
   const [memo, setMemo] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const { data: claims = [], isLoading: loading, refetch } = useApiQuery<ClaimRow[]>(
+  const { data: claims = [], isLoading: loading, isError, error, refetch } = useApiQuery<ClaimRow[]>(
     ['admin', 'wholesale-claims', status], '/api/wholesale/admin/claims',
     { params: status ? { status } : {}, headers: h.headers, select: (r: any) => (r?.success ? r.claims || [] : []) },
   )
@@ -108,6 +108,8 @@ export default function AdminWholesaleClaimsPage() {
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+        ) : isError ? (
+          <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="클레임" />
         ) : claims.length === 0 ? (
           <p className="text-center text-gray-400 py-20">클레임이 없습니다.</p>
         ) : (

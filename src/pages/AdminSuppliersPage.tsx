@@ -9,6 +9,7 @@ import { Loader2, CheckCircle, XCircle, Wallet, Ban, Store } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { DashboardLoadError } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -52,7 +53,7 @@ export default function AdminSuppliersPage() {
   const token = () => localStorage.getItem('admin_token') || localStorage.getItem('access_token')
 
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (statusFilter별 캐시).
-  const { data: supData, isLoading: loading, refetch } = useApiQuery<{ items: SupplierRow[]; pending_count: number }>(
+  const { data: supData, isLoading: loading, isError, error, refetch } = useApiQuery<{ items: SupplierRow[]; pending_count: number }>(
     ['admin', 'suppliers', statusFilter], '/api/admin/suppliers',
     { params: { status: statusFilter, limit: 200 }, select: (r: any) => (r?.success ? { items: r.data?.items ?? [], pending_count: r.data?.pending_count ?? 0 } : { items: [], pending_count: 0 }) },
   )
@@ -107,6 +108,8 @@ export default function AdminSuppliersPage() {
 
       {loading ? (
         <div className="py-20 text-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" /></div>
+      ) : isError ? (
+        <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="제조사 목록" />
       ) : items.length === 0 ? (
         <div className="bg-white rounded-xl py-20 text-center">
           <Store className="w-12 h-12 text-gray-200 mx-auto mb-3" />
