@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-24 — '판매사 승인 N명' 클릭 시 빈 목록(역할 데이터-스코프 미스매치) 근절 + 3번째 정적 가드 (대표 신고 + "이런 유관한 에러들 모두 전수조사")
+**증상(대표 스샷)**: 도매 메인 대시보드 '판매사 승인 2명' → 클릭(셀러 관리)하면 "승인 대기 없음"(전체 0).
+**근본원인**: 카운트는 in-scope `/api/admin/wholesale-overview`(is_distributor=1·status='pending')로 셌는데, 목적지 `/admin/seller-approval` 의 데이터 호출 `/api/admin/sellers`(segment=`sellers`)는 **wholesale 역할 RBAC 스코프 밖**(admin-rbac.ts:68 `scopedRoleCanAccess` → prefixes=[wholesale,partnership,distributor,supplier]·exact=[suppliers], `sellers` 불포함) → **403 → 빈 배열 → "없음"**. 슈퍼 어드민엔 안 보임(전권이라 목록 정상). 나-bounce 와 같은 역할-한정 클래스의 **데이터 레이어** 버전.
+**전수조사(신규 정적 가드)**: `check-wholesale-admin-api-scope.mjs` — 도매 도달 24화면이 호출하는 모든 `/api/admin/*` 가 wholesale 스코프 안인지 단언. **위반 7건 전부 `/admin/seller-approval` 한 페이지**(목록/승인/거부/매장영입/사업자검증)였고 나머지 화면은 전부 in-scope.
+**해결(스코프 격리 보존 — sellers 를 스코프에 넣지 않음)**:
+- in-scope 엔드포인트 신설 `GET /api/admin/distributor/distributors/pending-approvals` + `PATCH …/:id/approval`(approve/reject, CAS pending-only 멱등, 감사로그, 판매사 알림) — segment=`distributor` → 도매 스코프 ✅.
+- 신규 페이지 `AdminDistributorApprovalPage`(`/admin/distributor-approval`) — 도매 nav '🏭 도매몰·운영' 에 '판매사 승인' 등재 + 대시보드 '판매사 승인' 카드 retarget(`/admin/seller-approval`→`/admin/distributor-approval`). `WHOLESALE_EXTRA_ALLOWED_PATHS` 에서 `/admin/seller-approval` 제거(이제 도매가 안 감 — 소비자 셀러 페이지는 슈퍼/admin 전용).
+- verify.yml strict 게이트 추가(STRICT_API_SCOPE) → 이 클래스 영구 차단.
+**검증**: 3 정적가드(api-scope/nav-reach/links) 전부 strict 0 · tsc 0 · build 0 · sql-bind 0. ⚠️ staging 없어 실 승인 1회는 운영 확인 권장(승인 시 status pending→approved, 대시보드 카운트 2→0).
+
 ## ✅ 2026-06-24 — 보이지 않는(역할-한정) 네비 버그 근절: 2층 정적 가드 + 발견 버그 전부 수정 (대표 "애초에 없도록 / 다른 사람이 썼을 때도")
 **문제 인식(대표)**: '상품 승인' 안 넘어감 → "왜 이런 보이지 않는 문제가 남아있나? 애초에 없도록 못 하나? 나 말고 다른 사람이 썼을 때도." **근본 원인**: 역할-한정 버그는 슈퍼/소유자(전체 권한)로 테스트하면 안 보이고, 권한 좁은 계정에서만 드러남 → 일회성 수정으론 클래스 못 막음.
 **해결 = 기계가 모든 역할·화면을 검사(사람 QA 불필요), 2개 영구 가드 신설 + verify.yml strict:**

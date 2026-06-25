@@ -57,6 +57,7 @@ const NAV_GROUPS: NavGroup[] = [
     domain: 'wholesale',
     items: [
       { path: '/admin/wholesale-overview', label: '도매 통합 현황', icon: LayoutDashboard },
+      { path: '/admin/distributor-approval', label: '판매사 승인', icon: UserCheck },
       { path: '/admin/suppliers',          label: '제조사 관리', icon: Store },
       { path: '/admin/wholesale-import',   label: '상품 일괄 등록', icon: Upload },
       { path: '/admin/wholesale-products', label: '도매 프리미엄관', icon: Crown },
@@ -226,7 +227,7 @@ const ALWAYS_ALLOWED_ADMIN_PATHS = ['/admin/set-pin', '/admin/2fa']
 //   (상품 승인/가격변경 = /admin/products 의 '제조사 등록 상품' 탭 / 판매사 승인 = /admin/seller-approval)
 //   nav 에는 노출 안 하되(소비자 어드민 메뉴는 계속 숨김), 큐 클릭 시 wholesale-overview 로 바운스되던 것 차단.
 //   /admin/products 진입 시 AdminProductsPage 가 도매 파트너에게는 '제조사 등록 상품' 탭만 노출(소비자 상품관리 차단).
-const WHOLESALE_EXTRA_ALLOWED_PATHS = ['/admin/products', '/admin/seller-approval', '/admin/wholesale-integrity']
+const WHOLESALE_EXTRA_ALLOWED_PATHS = ['/admin/products', '/admin/wholesale-integrity']
 
 interface AdminLayoutProps {
   title: string
