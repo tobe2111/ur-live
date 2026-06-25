@@ -65,7 +65,12 @@ export default function AdminKakaoLoginDiagPage() {
   useEffect(() => { void load() }, [])
 
   const t = data?.server_timing_ms_7d
-  const oidcActive = t && typeof t.avg_userinfo_ms === 'number' ? t.avg_userinfo_ms <= 5 : null
+  // 🩺 OIDC 작동 판정은 "최신 로그인" 기준 — 7일 평균은 OIDC 켜기 전 옛 로그인이 섞여
+  //   왜곡됨(예: [0,0,807] 평균 269 → 미작동처럼 보임). 최신 timing 있으면 그걸로 판정.
+  const latestTiming = (data?.recent || []).find((r) => r.outcome === 'success' && r.ms_total != null && r.ms_userinfo != null)
+  const oidcActive = latestTiming && typeof latestTiming.ms_userinfo === 'number'
+    ? (latestTiming.ms_userinfo as number) <= 5
+    : (t && typeof t.avg_userinfo_ms === 'number' ? t.avg_userinfo_ms <= 5 : null)
   const iosTotal = (data?.ios_summary || []).reduce((s, r) => s + (r.count || 0), 0)
   const iosSuccess = (data?.ios_summary || []).find((r) => r.outcome === 'success')?.count || 0
 
@@ -105,8 +110,8 @@ export default function AdminKakaoLoginDiagPage() {
               {oidcActive !== null && (
                 <div className={`mt-3 rounded-lg p-3 text-sm ${oidcActive ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-800'}`}>
                   {oidcActive
-                    ? '✅ OIDC fast path 작동 중 — getUserInfo 왕복 제거됨(사용자정보 ms ≈ 0).'
-                    : `⚠️ OIDC 미작동(폴백 중) — 사용자정보 왕복이 여전히 ${t.avg_userinfo_ms}ms. parseIdToken/scope 점검 필요.`}
+                    ? `✅ OIDC fast path 작동 중 — 최신 로그인 사용자정보 ${latestTiming ? `${latestTiming.ms_userinfo}ms` : '≈0'}(왕복 제거됨). 위 7일 평균(${t.avg_userinfo_ms}ms)은 OIDC 켜기 전 옛 로그인이 섞여 높게 보이는 것이니 무시하세요.`
+                    : `⚠️ OIDC 미작동(폴백 중) — 최신 로그인 사용자정보 왕복이 ${latestTiming?.ms_userinfo ?? t.avg_userinfo_ms}ms. parseIdToken/scope 점검 필요.`}
                 </div>
               )}
             </>
