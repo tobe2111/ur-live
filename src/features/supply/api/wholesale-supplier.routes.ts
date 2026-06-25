@@ -254,8 +254,8 @@ app.post('/orders/:id/refund', async (c) => {
     const reason = String(body.reason || '판매자 반품 승인').slice(0, 100)
 
     const order = await DB.prepare(
-      'SELECT id, distributor_seller_id, status, payment_key, subtotal, refunded_amount FROM wholesale_orders WHERE id = ?'
-    ).bind(orderId).first<{ id: number; distributor_seller_id: number; status: string; payment_key: string | null; subtotal: number; refunded_amount: number }>()
+      'SELECT id, distributor_seller_id, status, payment_key, subtotal, COALESCE(shipping_total,0) AS shipping_total, refunded_amount FROM wholesale_orders WHERE id = ?'
+    ).bind(orderId).first<{ id: number; distributor_seller_id: number; status: string; payment_key: string | null; subtotal: number; shipping_total: number; refunded_amount: number }>()
     if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
     if (!['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(order.status) || !order.payment_key) {
       return c.json({ success: false, error: '환불할 수 없는 주문 상태입니다' }, 400)
@@ -340,6 +340,25 @@ app.post('/orders/:id/refund', async (c) => {
     ).bind(orderId).first<{ c: number }>()
     const newStatus = (remain?.c ?? 0) === 0 ? 'REFUNDED' : 'PARTIAL_REFUNDED'
     await DB.prepare("UPDATE wholesale_orders SET status = ? WHERE id = ?").bind(newStatus, orderId).run()
+
+    // 🛡️ 2026-06-25 (전수조사 머니버그): 바이어는 chargeTotal = subtotal + shipping_total 을 결제했는데,
+    //   라인 환불은 line_total(상품 소계)만 복원 → 전량환불(REFUNDED)에도 배송비 미환불 = 바이어 손해.
+    //   전량환불 도달 시 미회수 잔액(=배송비)을 1회 추가 환불. gap 계산이라 절대 과다환불 없음.
+    //   라인-status CAS 로 remain===0 은 단 한 thread 만 도달 → 멱등(이중 shipping 환불 불가).
+    if (newStatus === 'REFUNDED') {
+      const totalCharge = (order.subtotal || 0) + (order.shipping_total || 0)
+      const refundedSoFar = (order.refunded_amount || 0) + refundAmount
+      const shippingRefund = Math.max(0, totalCharge - refundedSoFar)
+      if (shippingRefund > 0) {
+        if (isDeposit) {
+          const bal2 = await refundDeposit(DB, order.distributor_seller_id, shippingRefund)
+          await recordDepositTxn(DB, order.distributor_seller_id, 'refund', shippingRefund, bal2, `${orderId}-ship`.slice(0, 120), `배송비 환불 #${orderId} (전량환불)`).catch(swallow('wholesale-supplier:refund-ship-txn'))
+        } else if (order.payment_key && order.payment_key !== 'deposit') {
+          await cancelTossPayment({ env: c.env, paymentKey: order.payment_key, cancelReason: '배송비 환불(전량환불)', cancelAmount: shippingRefund, idempotencyKey: `whs-refund-ship-${orderId}`.slice(0, 100) }).catch(() => null)
+        }
+        await DB.prepare("UPDATE wholesale_orders SET refunded_amount = refunded_amount + ? WHERE id = ?").bind(shippingRefund, orderId).run().catch(swallow('wholesale-supplier:refund-ship-acc'))
+      }
+    }
 
     // 🔔 2026-06-17 (알림 완성도): 판매사(바이어)에게 환불 처리 알림 — 입금확인/발송/출금/클레임엔 알림이
     //   있었으나 제조사 직접 환불(반품 승인)만 바이어 통지가 없던 누락 보강. fail-soft.

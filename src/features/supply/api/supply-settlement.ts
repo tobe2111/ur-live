@@ -330,6 +330,15 @@ export async function payoutSupplier(
   const count = Number(agg?.cnt) || 0;
   if (amount <= 0 || count <= 0) return { ok: false, amount: 0, settlement_count: 0, error: 'no_available_balance' };
 
+  // 🛡️ 2026-06-25 (전수조사 머니버그 — 이중지급 차단): 출금신청 예약분(reserved_amount)을 무시하고
+  //   available 전액을 직접 지급하면, 이후 출금승인(settleWithdrawalLedger)이 또 지급 → 이중지급.
+  //   두 지급 레일(출금승인 / 직접지급)은 reserved 를 공유해야 함 → 예약분이 있으면 직접지급을 차단하고
+  //   출금 플로우(/admin/wholesale-withdrawals)로 처리하도록 유도. (테이블 미존재 시 reserved=0 → 무차단.)
+  const resRow = await DB.prepare("SELECT COALESCE(reserved_amount,0) AS r FROM supplier_balances WHERE supplier_id = ?")
+    .bind(supplierId).first<{ r: number }>().catch(() => null);
+  const reserved = Math.max(0, Math.floor(Number(resRow?.r) || 0));
+  if (reserved > 0) return { ok: false, amount: 0, settlement_count: 0, error: 'reserved_for_withdrawal' };
+
   // 🛡️ 플랫폼 1일 정산 한도(기본 1억). platform_settings.supplier_daily_payout_cap 로 조정 가능, 0/미설정이면 기본.
   const DEFAULT_DAILY_CAP = 100_000_000;
   const capRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'supplier_daily_payout_cap'")

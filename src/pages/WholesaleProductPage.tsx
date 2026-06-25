@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect } from 'react'
+import { lazy, Suspense, useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -94,6 +94,8 @@ export default function WholesaleProductPage() {
   const grade = data?.grade ?? ''
   const [qty, setQty] = useState(1)
   const [ordering, setOrdering] = useState(false)
+  // 🛡️ 2026-06-25: '바로 주문' 멱등키 — 더블클릭/재시도 시 예치금 이중차감 방지(checkout 과 동일 패턴). 성공 후 재발급.
+  const idemKeyRef = useRef<string>(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`)
   const [tab, setTab] = useState<'desc' | 'ship' | 'settle' | 'return'>('desc')
   const cart = useWholesaleCart()
 
@@ -178,10 +180,13 @@ export default function WholesaleProductPage() {
     if (!validateQty()) return
     setOrdering(true)
     try {
-      const r = await api.post('/api/wholesale/orders', { items: [{ product_id: item.id, qty }] }, h)
-      if (r.data.success) {
-        navigate(`/wholesale/checkout?order=${r.data.order_id}`, { state: { orderId: r.data.toss_order_id, amount: r.data.amount, orderName: r.data.order_name } })
-      } else { toast.error(r.data.error || '주문 생성 실패') }
+      // 🛡️ 2026-06-25: /orders 는 예치금 즉시차감 PAID 모델 — 멱등키 필수(미전송 시 더블클릭=이중차감) +
+      //   응답은 status:'PAID'/order_id (옛 toss_order_id/amount 아님) → 성공 시 /success 로(옛 /checkout 은 재결제 유도).
+      const r = await api.post('/api/wholesale/orders', { items: [{ product_id: item.id, qty }], idempotency_key: idemKeyRef.current }, h)
+      if (r.data?.success && r.data?.status === 'PAID') {
+        idemKeyRef.current = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+        navigate(`/wholesale/success?credit=0&order=${r.data.order_id}`)
+      } else { toast.error(r.data?.error || '주문 생성 실패') }
     } catch (e: unknown) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '주문 생성 중 오류')
     } finally { setOrdering(false) }
