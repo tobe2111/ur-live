@@ -38,7 +38,7 @@ export default function BulkPriceModal({ t, items, onClose, onDone }: {
       const retailNum = Number(e.retail)
       const item: { product_id: number; supply_price: number; retail_price?: number; reason?: string } = { product_id: it.id, supply_price: supply }
       if (e.retail !== '' && Number.isFinite(retailNum)) {
-        if (retailNum < supply) { setError(t('supplier.bulkErrRetail', { defaultValue: '권장 소비자가는 공급가 이상이어야 합니다' })); return }
+        if (retailNum <= supply) { setError(t('supplier.bulkErrRetail', { defaultValue: '권장 소비자가는 공급가보다 높아야 합니다' })); return }
         item.retail_price = retailNum
       }
       if (reason.trim()) item.reason = reason.trim()

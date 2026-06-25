@@ -200,8 +200,9 @@ supplierAnalyticsRoutes.post('/products/bulk-price-change', async (c) => {
       let newRetail: number | null = null;
       if (it.retail_price != null && String(it.retail_price) !== '') {
         const r = Math.floor(Number(it.retail_price));
-        if (!Number.isFinite(r) || r < newSupply) {
-          results.push({ product_id: pid, status: 'skip', reason: '권장 소비자가는 공급가 이상이어야 합니다' });
+        // 🛡️ 2026-06-25: 단건 경로와 동일하게 마진 0(retail===supply) 금지 — 일괄만 허용해 "못 파는 상품" 적재 방지.
+        if (!Number.isFinite(r) || r <= newSupply) {
+          results.push({ product_id: pid, status: 'skip', reason: '권장 소비자가는 공급가보다 높아야 합니다' });
           continue;
         }
         newRetail = r;

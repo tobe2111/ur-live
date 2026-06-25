@@ -81,8 +81,9 @@ app.get('/status', async (c) => {
     if ('error' in auth) return c.json({ success: false, error: auth.error }, auth.status)
     await ensureNaverConnectionSchema(c.env.DB)
     const row = await c.env.DB.prepare(
-      'SELECT client_id, connected_at, last_verified_at, last_export_at FROM naver_commerce_connections WHERE seller_id = ?'
-    ).bind(auth.sellerId).first<{ client_id: string; connected_at: string; last_verified_at: string | null; last_export_at: string | null }>().catch(() => null)
+      // 🛡️ 2026-06-25: owner_type 누락 시 같은 id 의 supplier 연결을 distributor 에게 노출(UNIQUE(owner_type,seller_id)). 스코프 명시.
+      'SELECT client_id, connected_at, last_verified_at, last_export_at FROM naver_commerce_connections WHERE owner_type = ? AND seller_id = ?'
+    ).bind('distributor', auth.sellerId).first<{ client_id: string; connected_at: string; last_verified_at: string | null; last_export_at: string | null }>().catch(() => null)
     const exports = await c.env.DB.prepare(
       'SELECT COUNT(*) AS n FROM naver_product_exports WHERE seller_id = ?'
     ).bind(auth.sellerId).first<{ n: number }>().catch(() => null)

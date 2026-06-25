@@ -188,6 +188,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'order_items.product_thumbnail', sql: "ALTER TABLE order_items ADD COLUMN product_thumbnail TEXT" },
     { desc: 'order_items.product_sku', sql: "ALTER TABLE order_items ADD COLUMN product_sku TEXT" },
     { desc: 'order_items.price', sql: "ALTER TABLE order_items ADD COLUMN price INTEGER" },
+    // 🛡️ 2026-06-25: 제조사 드랍쉽 발송 쿼리(supplier-dashboard.routes:988)가 oi.status 참조 — migration 0118 컬럼, 미적용 환경 500 방지.
+    { desc: 'order_items.status', sql: "ALTER TABLE order_items ADD COLUMN status TEXT DEFAULT 'PENDING'" },
 
     // ── shipping_addresses ─────────────────────────
     { desc: 'shipping_addresses.label', sql: "ALTER TABLE shipping_addresses ADD COLUMN label TEXT" },

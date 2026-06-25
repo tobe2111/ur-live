@@ -332,12 +332,13 @@ admin.patch('/quotes/:id/respond', async (c) => {
     }
 
     const res = await c.env.DB.prepare(
+      // 🛡️ 2026-06-25: status CAS — 동시 회신/수락 시 accepted/converted 견적 덮어쓰기 방지.
       `UPDATE wholesale_quotes
          SET quoted_unit_price = ?, quoted_moq = ?, quote_memo = ?, valid_until = ?,
              status = 'quoted', updated_at = datetime('now')
-       WHERE id = ?`
+       WHERE id = ? AND status IN ('requested','quoted','expired')`
     ).bind(quotedUnitPrice, quotedMoq, quoteMemo, validUntil, id).run()
-    if (!res.meta.changes) return c.json({ success: false, error: '견적을 찾을 수 없습니다' }, 404)
+    if (!res.meta.changes) return c.json({ success: false, error: '이미 처리되었거나 회신할 수 없는 견적입니다' }, 409)
 
     // 유통회원에게 견적 회신 알림.
     await createDashboardNotification(

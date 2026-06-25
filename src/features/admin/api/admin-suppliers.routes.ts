@@ -114,9 +114,11 @@ adminSuppliersRoutes.get('/suppliers/:id/payouts', cors(), async (c) => {
     const { DB } = c.env;
     const id = c.req.param('id');
     if (!/^\d+$/.test(String(id))) return c.json({ success: false, error: 'Invalid ID' }, 400);
+    // 🛡️ 2026-06-25: supplier_payouts 는 첫 지급/repair-schema 때만 생성 → 미생성 신규몰에서 'no such table' 500.
+    //   읽기전용 이력이라 미존재 = "지급 0건"으로 graceful degrade(.catch).
     const rows = await DB.prepare(
       'SELECT id, amount, settlement_count, status, bank_name, account_holder, note, created_at FROM supplier_payouts WHERE supplier_id = ? ORDER BY created_at DESC LIMIT 100'
-    ).bind(id).all();
+    ).bind(id).all().catch(() => ({ results: [] as unknown[] }));
     return c.json({ success: true, data: { items: rows.results ?? [] } });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
@@ -153,7 +155,13 @@ adminSuppliersRoutes.patch('/suppliers/:id', cors(), async (c) => {
     if (sets.length === 0) return c.json({ success: false, error: '변경할 내용이 없습니다' }, 400);
 
     sets.push("updated_at = datetime('now')");
-    await DB.prepare(`UPDATE suppliers SET ${sets.join(', ')} WHERE id = ?`).bind(...params, id).run();
+    // 🛡️ 2026-06-25: status 변경 시 CAS — 사전 SELECT 만으론 동시 승인 못 막아 알림톡 2회. 기존 status 선점.
+    const statusGuard = body.status ? ' AND status = ?' : '';
+    const guardParams = body.status ? [existing.status] : [];
+    const upd = await DB.prepare(`UPDATE suppliers SET ${sets.join(', ')} WHERE id = ?${statusGuard}`).bind(...params, id, ...guardParams).run();
+    if (body.status && (upd.meta?.changes ?? 0) === 0) {
+      return c.json({ success: false, error: '이미 처리되었거나 상태가 변경된 요청입니다' }, 409);
+    }
 
     await writeAuditLog(c, { action: 'supplier_account_update', targetType: 'supplier', targetId: String(id), after: { status: body.status, commission_rate: body.commission_rate } }).catch(() => {});
 
