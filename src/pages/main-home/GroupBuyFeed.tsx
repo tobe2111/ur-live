@@ -72,7 +72,7 @@ export default function GroupBuyFeed() {
 
   // 🛡️ 2026-05-24 (loading P0): staleTime/gcTime override 제거 → global default (30분/1h) 적용.
   //   refetchOnWindowFocus 는 유지 false (홈 피드는 잦은 변경 안 함 — 카테고리 칩 클릭 시 새 카테고리 fetch).
-  const { data: items = [], isLoading: loading } = useQuery<FeedProduct[]>({
+  const { data: items = [], isLoading: loading, isError, refetch } = useQuery<FeedProduct[]>({
     queryKey: queryKeys.groupBuyList('active', category),
     queryFn: async () => {
       const res = await api.get(`/api/group-buy/products?status=active&category=${category}`)
@@ -166,6 +166,14 @@ export default function GroupBuyFeed() {
               <div className="h-2.5 w-1/3 rounded skeleton-shimmer" />
             </div>
           ))}
+        </div>
+      ) : isError && sorted.length === 0 ? (
+        // 🛡️ 2026-06-26 (소비자 감사 P0): fetch 실패를 '공구 없음'(죽은 마켓)으로 위장하지 않음 — 재시도 노출.
+        <div className="px-4 py-16 text-center">
+          <p className="text-4xl mb-3">📡</p>
+          <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">공구를 불러오지 못했어요</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인해주세요.</p>
+          <button onClick={() => refetch()} className="inline-block px-5 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">다시 시도</button>
         </div>
       ) : sorted.length === 0 ? (
         // 🛡️ 2026-05-20: 사용자 요청 — 빈 상태에서 인접 지역 공구 자동 노출.

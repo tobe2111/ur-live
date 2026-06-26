@@ -20,7 +20,16 @@ export default function UMeRedirectPage() {
         // 🛡️ 2026-05-25 (loading P0): getDashboard 응답에 handle + linked_seller 동봉.
         //   linked_seller 있으면 바로 /profile/{username} (셀러 공개페이지) 직행.
         //   → 이전 3-step 직렬 (/u/me → /u/{handle} → /profile/...) 1-step 단축.
-        const res = await curatorApi.getDashboard() as any
+        // 🛡️ 2026-06-26 (소비자 감사 P1): 일시 5xx/콜드 D1 을 '핸들 없음'으로 오인해 기존 유저를 /creator
+        //   콘솔로 떨구지 않도록, 비-401 실패면 1회 재시도 후에만 폴백 진입.
+        let res: any
+        try {
+          res = await curatorApi.getDashboard() as any
+        } catch (e1: any) {
+          if (e1?.response?.status === 401) throw e1
+          await new Promise((r) => setTimeout(r, 800))
+          res = await curatorApi.getDashboard() as any
+        }
         if (!alive) return
         const handle: string | null = res?.handle ?? null
         const linkedSeller = res?.linked_seller as { id: number; username: string } | null | undefined

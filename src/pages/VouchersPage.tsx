@@ -545,7 +545,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           setDealBalance(r.data.data?.balance ?? 0)
         }
       })
-      .catch(() => setDealBalance(0))
+      // 🛡️ 2026-06-26 (소비자 감사 P1): 일시 오류를 잔액 0(='즉시 충전' 부족 UI)으로 위장하지 않음 —
+      //   기존값 유지(잔액 있는 유저에게 '충전하세요' 오표시 방지). 서버는 결제 시 잔액 재검증.
+      .catch(() => { /* keep prior balance — do not clobber to 0 on transient error */ })
   }, [userId])
 
   // 🛡️ 2026-05-19: 카테고리 + 브랜드 sections 로드 (전용 endpoint, deal_only=1 만).

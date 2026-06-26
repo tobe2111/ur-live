@@ -25,11 +25,12 @@ export interface StaySearchItem {
 export function useStaysSearch(qs: string) {
   return useQuery<StaySearchItem[]>({
     queryKey: queryKeys.staysSearch(qs),
+    // 🛡️ 2026-06-26 (소비자 감사 P0): 기존 `.catch(() => [])` 가 5xx/네트워크 실패를 '검색결과 없음'(재고
+    //   없음)으로 위장 → 예약 이탈. catch 제거 → 에러는 isError 로 노출(페이지가 재시도 분기 렌더).
     queryFn: () =>
       api
         .get(`/api/group-buy/stays/search?${qs}`)
-        .then((r) => (r.data?.success ? (r.data.data || []) : []) as StaySearchItem[])
-        .catch(() => [] as StaySearchItem[]),
+        .then((r) => (r.data?.success ? (r.data.data || []) : []) as StaySearchItem[]),
     staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useEffect, useRef, useMemo, useCallback, Fragment } from 'react'
+import { safeDate } from '@/utils/safe-date'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useNavigate } from 'react-router-dom'
 
@@ -200,8 +201,11 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
   const [cancelling, setCancelling] = useState(false)
   // 🎟️ 2026-06-20 현장 셀프 사용처리 모달
   const [showRedeem, setShowRedeem] = useState(false)
-  const canSelfCancel = voucher.status === 'unused' && !!voucher.created_at &&
-    (Date.now() - new Date(voucher.created_at).getTime()) < 7 * 86400000
+  // 🛡️ 2026-06-26 (소비자 감사): safeDate — D1 'YYYY-MM-DD HH:MM:SS' 를 사파리가 Invalid Date 로 파싱하면
+  //   NaN < window 가 false → 미사용 7일내인데도 환불 버튼이 사라지던 것(기능 차단). safeDate 가 파싱 보정.
+  const createdMs = safeDate(voucher.created_at)?.getTime() ?? NaN
+  const canSelfCancel = voucher.status === 'unused' && Number.isFinite(createdMs) &&
+    (Date.now() - createdMs) < 7 * 86400000
   async function handleSelfCancel() {
     if (cancelling) return
     if (!(await confirmDialog({ message: t('voucher.cancelConfirm', { defaultValue: '이 교환권 구매를 취소하고 환불받으시겠어요?\n(미사용 + 구매 7일 이내만 가능)' }), danger: true }))) return
