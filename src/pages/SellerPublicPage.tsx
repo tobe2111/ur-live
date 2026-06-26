@@ -16,7 +16,7 @@ import VideosTab from './seller-public/VideosTab'
 import VouchersTab from './seller-public/VouchersTab'
 // 🏁 2026-06-25 (대표 "통일"): 사업자 링크샵 헤더를 canonical CuratorHeader 로 — ProfileHeader 폐기(헤더 1개).
 import CuratorHeader from './curator-page/CuratorHeader'
-import type { CuratorProfile } from '@/features/curator/api/curator-api'
+import type { CuratorProfile, CuratorPin } from '@/features/curator/api/curator-api'
 // 🏁 2026-06-25 (대표 "카드 1종"): 내 상품도 표준 BrowseProductCard(★평점·판매수 내장) — EditorialProductCard 폐기.
 import BrowseProductCard from '@/pages/browse/BrowseProductCard'
 import type { Product as BrowseProduct } from '@/pages/browse/types'
@@ -39,9 +39,12 @@ interface SellerPublicPageProps {
    *  사업자 링크샵도 canonical CuratorHeader 를 렌더 → 헤더 컴포넌트 1개로 통일(ProfileHeader 폐기).
    *  배너/이름 등은 curator 우선·seller 폴백으로 병합(저장 위치 분산 흡수). 비-/u/ 진입은 undefined. */
   curator?: CuratorProfile | null
+  /** 🏁 2026-06-26 (대표 — 진입 불필요 로딩 감사): CuratorPage 가 이미 받은 추천 핀.
+   *  내려주면 CuratorPinsSection 이 같은 /api/curator/{handle} 를 재호출하지 않음(SPA 중복요청 제거). */
+  pins?: CuratorPin[] | null
 }
 
-export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPublicPageProps = {}) {
+export default function SellerPublicPage({ sellerIdOverride, curator, pins: initialPins }: SellerPublicPageProps = {}) {
   const { t } = useTranslation()
   const params = useParams<{ sellerId: string }>()
   const rawParam = sellerIdOverride ?? params.sellerId
@@ -436,7 +439,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
         {/* ① 추천 — 연결된 큐레이터(본인) 추천 핀 (자체 헤더 보유) */}
         {(seller as { curator_handle?: string | null })?.curator_handle && (
           <Suspense fallback={null}>
-            <CuratorPinsSection handle={(seller as { curator_handle?: string | null }).curator_handle} />
+            <CuratorPinsSection handle={(seller as { curator_handle?: string | null }).curator_handle} initialPins={initialPins} />
           </Suspense>
         )}
 
