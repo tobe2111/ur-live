@@ -20,6 +20,7 @@
  *      - PATCH /api/wholesale/admin/claims/:id     (어드민 검수)
  */
 import { Hono } from 'hono'
+import { sanitizeString } from '@/worker/utils/validation'
 import { isViewerToken } from './sub-account-gate'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
@@ -135,7 +136,7 @@ app.post('/claims', rateLimit({ action: 'wholesale-claim', max: 20, windowSec: 6
 
     const wholesaleOrderId = Number(body.wholesale_order_id)
     const reasonCode = String(body.reason_code || '').trim()
-    const reasonText = String(body.reason_text || '').trim().slice(0, 1000)
+    const reasonText = sanitizeString(String(body.reason_text || '')).trim().slice(0, 1000)
     const evidenceUrl = String(body.evidence_url || '').trim().slice(0, 500)
     const rawItemId = body.wholesale_order_item_id
     const itemId = rawItemId == null || rawItemId === '' ? null : Number(rawItemId)

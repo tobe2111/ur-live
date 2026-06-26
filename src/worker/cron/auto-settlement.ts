@@ -101,13 +101,16 @@ export async function handleAutoSettlement(env: Env) {
           settlementAmount
         ).run();
 
-        // Mark vouchers as settled
+        // Mark vouchers as settled.
+        // 🛡️ 2026-06-26 [머니] claim CAS — `AND settlement_id IS NULL` 가드 추가. 가드 없으면
+        //   두 정산 run 이 겹칠 때(현재는 일 1회 cron 만 트리거 → 사실상 없음) 같은 voucher 가
+        //   두 정산행에 동시 귀속될 수 있었음. 이제 voucher 는 한 정산행에만 한 번 claim.
         if (result.meta?.last_row_id && vouchers.length > 0) {
           const voucherIds = vouchers.map((v: any) => Number(v.id)).filter(Number.isFinite);
           if (voucherIds.length > 0) {
             const placeholders = voucherIds.map(() => '?').join(',');
             await DB.prepare(
-              `UPDATE vouchers SET settlement_id = ? WHERE id IN (${placeholders})`
+              `UPDATE vouchers SET settlement_id = ? WHERE id IN (${placeholders}) AND settlement_id IS NULL`
             ).bind(result.meta.last_row_id, ...voucherIds).run();
           }
         }

@@ -18,6 +18,7 @@
  *   → 유통회원: /api/wholesale/quotes*, 어드민: /api/wholesale/admin/quotes*
  */
 import { Hono } from 'hono'
+import { sanitizeString } from '@/worker/utils/validation'
 import { isViewerToken } from './sub-account-gate'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
@@ -121,9 +122,9 @@ app.post('/quotes', rateLimit({ action: 'wholesale-quote', max: 30, windowSec: 3
   try {
     await ensureWholesaleQuotesSchema(DB)
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
-    const title = String(body.title || '').trim().slice(0, 200)
+    const title = sanitizeString(String(body.title || '')).trim().slice(0, 200)
     if (!title) return c.json({ success: false, error: '견적 제목을 입력해주세요' }, 400)
-    const requestText = body.request_text ? String(body.request_text).slice(0, 2000) : null
+    const requestText = body.request_text ? sanitizeString(String(body.request_text)).slice(0, 2000) : null
     const requestedQtyRaw = intOrNull(body.requested_qty, 1)
     const requestedQty = requestedQtyRaw && requestedQtyRaw > 0 ? requestedQtyRaw : 1
     const targetUnitPrice = intOrNull(body.target_unit_price, 0)
