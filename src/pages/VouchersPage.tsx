@@ -403,7 +403,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   const [loadingMore, setLoadingMore] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
-  useEffect(() => { if (embedded) setEmbedVisible(12) }, [embedded, category, brand])
+  useEffect(() => { setEmbedVisible(12); setRowVisible(8) }, [embedded, category, brand])
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
   // 🛡️ 2026-05-28 (사용자 요청): 잔액 카드 + 카테고리 scroll-up reveal (headroom).
@@ -601,7 +601,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   홈 하단(동네딜/일반상품/푸터)이 항상 한 호흡에 닿고, 원하는 사람만 버튼으로 확장.
   const EMBED_INITIAL = 12
   const [embedVisible, setEmbedVisible] = useState(EMBED_INITIAL)
-  const embeddedCapped = embedded
+  // 🎫 2026-06-21 (대표 요청): /vouchers 카탈로그도 8개 먼저 + '더보기'(무한스크롤 → 버튼 확장).
+  const ROW_INITIAL = 8
+  const [rowVisible, setRowVisible] = useState(ROW_INITIAL)
+  const embeddedCapped = true  // 홈·카탈로그 모두 '더보기' 방식 → 무한 IO 비활성 (둘 다 visibleCount 슬라이스)
   // 🧭 2026-06-10 (사용자 요청): '교환권 더보기 (1/14)' 단계 표시 — 전용 /count (엣지 캐시).
   //   list 응답 total 은 추정치(COUNT 제거 최적화)라 사용 불가. 실패 시 표시 생략(graceful).
   const [dealTotal, setDealTotal] = useState<number | null>(null)
@@ -907,7 +910,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             ) : (
               // 🎨 2026-06-20 /vouchers — 1줄 리스트 (모바일·PC 모두 1열, 사용자 요청 "PC 도 1줄에 1개"). 내용 동일, 배치만 행.
               <div className="grid grid-cols-1">
-                {displayProducts.map((p, idx) => (
+                {displayProducts.slice(0, rowVisible).map((p, idx) => (
                   <Fragment key={p.id}>
                     <VoucherRow p={p} aboveFold={idx < 4} />
                   </Fragment>
@@ -932,6 +935,25 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                   {embedTotalSteps && embedTotalSteps > 1 && (
                     <span className="text-gray-400 dark:text-gray-500 font-semibold">({embedStep}/{embedTotalSteps})</span>
                   )}
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            {/* 🎫 2026-06-21 /vouchers 카탈로그 — 8개 먼저 + '더보기'(+8). 무한 IO off, 버튼 확장. */}
+            {!embedded && (rowVisible < displayProducts.length || hasMore) && (
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = rowVisible + 8
+                    setRowVisible(next)
+                    if (next >= products.length && hasMore && !loadingMore) {
+                      const np = page + 1; setPage(np); loadProducts(np, false)
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-1.5 h-12 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
+                >
+                  {t('home.moreVouchers', { defaultValue: '교환권 더보기' })}
                   <ChevronDown className="w-4 h-4" />
                 </button>
               </div>
