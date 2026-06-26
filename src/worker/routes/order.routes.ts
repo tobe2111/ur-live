@@ -861,11 +861,38 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
     // PAID / DONE 상태: 실제 결제가 이루어졌으므로 Toss Cancel API 호출
     const paymentMadeStatuses = ['PAID', 'DONE'];
     if (paymentMadeStatuses.includes(order.status)) {
-      // 🛡️ 2026-06-26 (소비자 감사 P1): 딜결제(전액 딜) 주문은 toss_payment_key 가 없어 아래 paymentKey
-      //   가드(422)에서 셀프취소가 영구 차단됐음(MyOrdersPage 는 취소버튼 노출). Toss 미경유 — 딜 환급 +
-      //   재고복구 + 커미션 회수 + CANCELLED. refunded_amount CAS 로 동시/중복 취소 차단(이중환급 0).
+      // 💸 2026-06-26 셀프취소 머니버그 근본수정 — 전액취소는 refundOrderFully SSOT 경유.
+      //   기존 인라인 경로 버그(머니룰 #2 대칭·CAS 멱등): ① 딜 전액결제(toss_key 없음) 422 차단 + 딜환급 dead
+      //   ② 혼합결제(카드+딜) deal_used 미복원 ③ 쿠폰·referral_bonus·affiliate/공급/에이전시/영입자 미역전.
+      //   refundOrderFully: 카드 Toss취소(또는 딜 환급) + 딜 사용분 복원 + 쿠폰복원 + 전 적립 역전 + CAS 멱등.
+      const remaining = Number(order.total_amount ?? 0) - Number(order.refunded_amount ?? 0);
+      const isFullCancel = cancelAmount === undefined || cancelAmount >= remaining;
+      if (isFullCancel) {
+        const { refundOrderFully } = await import('../utils/order-refund');
+        const r = await refundOrderFully(c.env.DB, c.env, orderId, { reason });
+        if (!r.ok) {
+          return c.json({ success: false, error: r.error || '환불 처리에 실패했습니다', code: r.code }, r.status as 400 | 402 | 404 | 422);
+        }
+        createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(swallow('order:notify-admin-cancel-full'));
+        if (order.seller_id) {
+          createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(swallow('order:notify-seller-cancel-full'));
+        }
+        try {
+          const { notifyUser } = await import('../../lib/notifications');
+          await notifyUser(c.env.DB, String(order.user_id), 'order_status', '❌ 주문이 취소되었습니다.', `주문번호: ${order.order_number}`, '/my-orders');
+        } catch {} // fire and forget
+        return c.json({
+          success: true,
+          message: '주문 및 결제가 취소되었습니다',
+          data: { order_id: orderId, cancel_amount: remaining > 0 ? remaining : Number(order.total_amount ?? 0), cancelled_at: new Date().toISOString() },
+        });
+      }
+
+      // ── 부분취소(cancel_amount < 잔여) ──
+      // 부분취소 + 딜 전액결제: refundOrderFully 는 전액전용이라 부분 딜 환급만 인라인 처리.
+      //   refunded_amount CAS 로 이중환급 0. 부분이라 상태(CANCELLED)·커미션은 유지(미회수).
       if (((order as any).payment_method) === 'deal_points') {
-        const refundPoints = Math.max(0, Math.round(cancelAmount ?? Number(order.total_amount ?? 0)));
+        const refundPoints = Math.max(0, Math.round(cancelAmount ?? 0));
         if (refundPoints <= 0) return c.json({ success: false, error: '취소 가능 금액이 없습니다' }, 400);
         const reserve = await c.env.DB.prepare(
           "UPDATE orders SET refunded_amount = COALESCE(refunded_amount,0) + ? WHERE id = ? AND COALESCE(refunded_amount,0) + ? <= total_amount"
@@ -873,36 +900,15 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
         if (!reserve || (reserve.meta?.changes ?? 0) === 0) {
           return c.json({ success: false, error: '취소 가능 금액을 초과하거나 이미 처리 중입니다' }, 409);
         }
-        // 딜 환급 + audit (reserve CAS 통과한 1회만 도달 → 이중환급 없음).
         try {
           await c.env.DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?').bind(refundPoints, String(order.user_id)).run();
-          await c.env.DB.prepare("INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)").bind(String(order.user_id), refundPoints, refundPoints, `[환불] 주문 취소 (order:${order.order_number})`).run().catch(swallow('order:point-tx-deal-cancel'));
-        } catch (e) { console.error('[ORDERS] deal refund (cancel) error:', e); }
-        // 전액 취소면 상태 CANCELLED + 재고 복구 (부분 딜취소는 금액만 환급).
-        const fullCancel = refundPoints >= Number(order.total_amount ?? 0);
-        if (fullCancel) {
-          await orderRepo.updateStatusById(orderId, 'CANCELLED', { cancelled_at: new Date().toISOString(), cancel_reason: reason });
-          await orderRepo.restoreStock(orderId);
-        }
-        // 추천 커미션 회수 (Toss 경로와 동일 CAS) — 딜주문도 커미션 발생 가능.
-        try {
-          const toRevoke = await c.env.DB.prepare(
-            "SELECT id, beneficiary_id, commission_amount FROM referral_commissions WHERE order_id = ? AND status = 'granted'"
-          ).bind(orderId).all<{ id: number; beneficiary_id: string; commission_amount: number }>().catch(() => ({ results: [] as Array<{ id: number; beneficiary_id: string; commission_amount: number }> }));
-          for (const co of (toRevoke.results || [])) {
-            const cas = await c.env.DB.prepare("UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE id = ? AND status = 'granted'").bind(co.id).run().catch(() => null);
-            if (cas && (cas.meta?.changes ?? 0) > 0) {
-              await c.env.DB.prepare('UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?').bind(co.commission_amount, co.beneficiary_id).run().catch(swallow('order:commission-revoke-deal-cancel'));
-            }
-          }
-          await c.env.DB.prepare("UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE order_id = ? AND status = 'pending'").bind(orderId).run().catch(swallow('order:commission-pending-close-deal-cancel'));
-        } catch (e) { console.error('[ORDERS] Commission reversal (deal cancel) error:', e); }
-        createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(swallow('order:notify-admin-deal-cancel'));
-        if (order.seller_id) createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(swallow('order:notify-seller-deal-cancel'));
-        try { const { notifyUser } = await import('../../lib/notifications'); await notifyUser(c.env.DB, String(order.user_id), 'order_status', '❌ 주문이 취소되었습니다.', `주문번호: ${order.order_number}`, '/my-orders'); } catch { /* fire-and-forget */ }
-        return c.json({ success: true, message: '주문이 취소되고 딜이 환급되었습니다', data: { order_id: orderId, cancel_amount: refundPoints, cancelled_at: new Date().toISOString() } });
+          await c.env.DB.prepare("INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)").bind(String(order.user_id), refundPoints, refundPoints, `[환불] 주문 부분취소 (order:${order.order_number})`).run().catch(swallow('order:point-tx-deal-partial'));
+        } catch (e) { console.error('[ORDERS] deal partial refund error:', e); }
+        createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '부분 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(swallow('order:notify-admin-deal-partial'));
+        return c.json({ success: true, message: '부분 취소되어 딜이 환급되었습니다', data: { order_id: orderId, cancel_amount: refundPoints, cancelled_at: new Date().toISOString() } });
       }
 
+      // 부분취소 + 카드: 기존 Toss 부분취소 경로.
       // toss_payment_key가 있어야 취소 가능
       const payInfo = await orderRepo.getPaymentInfo(orderId);
       const paymentKey = payInfo?.toss_payment_key;
