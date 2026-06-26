@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { isValidKrPhone, isValidEmail } from '@/utils/form-validators'
 import { Mail, Lock, Eye, EyeOff, User, Phone, Building2, CheckCircle } from 'lucide-react'
 
 export default function AgencyRegisterPage() {
@@ -14,6 +15,10 @@ export default function AgencyRegisterPage() {
   const [error, setError] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [done, setDone] = useState(false)
+  // 🔢 2026-06-26 (대표 가입폼 UX): 첫 문제 필드 포커스 + 이메일/전화 완성형 검증.
+  const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const reg = (k: string) => (el: HTMLInputElement | null) => { fieldRefs.current[k] = el }
+  const focusField = (k: string) => { const el = fieldRefs.current[k]; if (el) { el.focus(); el.scrollIntoView({ block: 'center', behavior: 'smooth' }) } }
 
   function update(key: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [key]: e.target.value }))
@@ -22,14 +27,15 @@ export default function AgencyRegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (form.password.length < 8) {
-      setError('비밀번호는 8자 이상이어야 합니다.')
-      return
-    }
-    if (form.password !== form.password_confirm) {
-      setError('비밀번호가 일치하지 않습니다.')
-      return
-    }
+    // 🔢 2026-06-26 (대표 가입폼 UX): 화면 순서대로 검증 + 첫 문제 필드로 포커스(이메일/전화 미완성 통과 차단).
+    const failAt = (k: string, m: string) => { setError(m); focusField(k) }
+    if (!form.name.trim()) { failAt('name', t('agency.agencyRegister.errName', { defaultValue: '에이전시명을 입력해주세요' })); return }
+    if (!form.contact_name.trim()) { failAt('contact_name', t('agency.agencyRegister.errContact', { defaultValue: '담당자명을 입력해주세요' })); return }
+    if (!isValidEmail(form.email)) { failAt('email', t('agency.agencyRegister.errEmail', { defaultValue: '이메일을 정확히 입력해주세요 (예: name@company.com)' })); return }
+    // 전화번호는 선택 — 입력했을 때만 완성형 검증.
+    if (form.phone.trim() && !isValidKrPhone(form.phone)) { failAt('phone', t('agency.agencyRegister.errPhone', { defaultValue: '전화번호를 정확히 입력해주세요 (예: 010-1234-5678)' })); return }
+    if (form.password.length < 8) { failAt('password', t('agency.agencyRegister.errPwLen', { defaultValue: '비밀번호는 8자 이상이어야 합니다.' })); return }
+    if (form.password !== form.password_confirm) { failAt('password_confirm', t('agency.agencyRegister.passwordMismatch', { defaultValue: '비밀번호가 일치하지 않습니다.' })); return }
     setLoading(true)
     try {
       await api.post('/api/agency/register', {
@@ -128,14 +134,14 @@ export default function AgencyRegisterPage() {
               <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
               {/* 에이전시명 */}
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('agency.agencyRegister.labelAgencyName', { defaultValue: '에이전시명' })} <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text" required value={form.name} onChange={update('name')}
+                  <input ref={reg('name')}
+                    type="text" value={form.name} onChange={update('name')}
                     placeholder="(주)베스트에이전시"
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -147,8 +153,8 @@ export default function AgencyRegisterPage() {
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('agency.agencyRegister.labelContactName', { defaultValue: '담당자명' })} <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text" required value={form.contact_name} onChange={update('contact_name')}
+                  <input ref={reg('contact_name')}
+                    type="text" value={form.contact_name} onChange={update('contact_name')}
                     placeholder="홍길동"
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -160,8 +166,8 @@ export default function AgencyRegisterPage() {
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('agency.agencyRegister.labelEmail', { defaultValue: '이메일' })} <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="email" required value={form.email} onChange={update('email')}
+                  <input ref={reg('email')}
+                    type="email" inputMode="email" value={form.email} onChange={update('email')}
                     placeholder="agency@example.com"
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -173,8 +179,8 @@ export default function AgencyRegisterPage() {
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('agency.agencyRegister.labelPhone', { defaultValue: '전화번호' })}</label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="tel" value={form.phone} onChange={update('phone')}
+                  <input ref={reg('phone')}
+                    type="tel" inputMode="numeric" value={form.phone} onChange={update('phone')}
                     placeholder="010-1234-5678"
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -186,8 +192,8 @@ export default function AgencyRegisterPage() {
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('agency.agencyRegister.labelPassword', { defaultValue: '비밀번호' })} <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type={showPw ? 'text' : 'password'} required value={form.password} onChange={update('password')}
+                  <input ref={reg('password')}
+                    type={showPw ? 'text' : 'password'} value={form.password} onChange={update('password')}
                     placeholder="8자 이상"
                     className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -202,8 +208,8 @@ export default function AgencyRegisterPage() {
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('agency.agencyRegister.labelPasswordConfirm', { defaultValue: '비밀번호 확인' })} <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type={showPw ? 'text' : 'password'} required value={form.password_confirm} onChange={update('password_confirm')}
+                  <input ref={reg('password_confirm')}
+                    type={showPw ? 'text' : 'password'} value={form.password_confirm} onChange={update('password_confirm')}
                     placeholder="비밀번호 재입력"
                     className={`w-full pl-10 pr-4 py-2.5 border rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                       form.password_confirm && form.password !== form.password_confirm
