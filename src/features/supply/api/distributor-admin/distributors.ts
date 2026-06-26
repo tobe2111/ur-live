@@ -102,6 +102,22 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
           '/wholesale',
         )
       } catch { /* 알림 실패 무시 */ }
+      // 🔔 2026-06-26 (알림 보강): 승인/거부를 접속 전 채널(알림톡)로도 — 벨은 접속해야 보임(제조사 패턴과 동일).
+      //   판매사 phone 조회 후 fail-soft 발송. 알림톡 템플릿 미등록 시 silent skip(승인 자체는 막지 않음).
+      try {
+        const seller = await c.env.DB.prepare(
+          'SELECT business_name, name, manager_phone, representative_phone, phone FROM sellers WHERE id = ?'
+        ).bind(id).first<{ business_name: string | null; name: string | null; manager_phone: string | null; representative_phone: string | null; phone: string | null }>()
+        const phone = seller?.manager_phone || seller?.representative_phone || seller?.phone
+        if (phone) {
+          const bn = seller?.business_name || seller?.name || '판매사'
+          const msg = action === 'approve'
+            ? `[유통스타트] 판매사 승인 완료\n\n· 상호: ${bn}\n\n이제 로그인해 도매가로 사입할 수 있습니다.\nhttps://utongstart.com/wholesale/login`
+            : `[유통스타트] 판매사 가입이 반려되었습니다\n\n· 상호: ${bn}\n\n${reason || '자세한 내용은 고객센터로 문의해주세요.'}`
+          const { sendSystemAlimtalk } = await import('../../../../lib/system-alimtalk')
+          await sendSystemAlimtalk(c.env, phone, action === 'approve' ? 'distributor_approved' : 'distributor_rejected', msg)
+        }
+      } catch { /* fail-soft — 알림 실패가 승인을 막지 않음 */ }
       return c.json({ success: true, status: newStatus })
     } catch (err) {
       return safeError(c, err, '판매사 승인 처리 중 오류가 발생했습니다', '[distributor-admin]')
@@ -148,6 +164,19 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
         before: { grade: prevSeller?.distributor_grade ?? null, special_discount_until: prevSeller?.special_discount_until ?? null },
         after: { grade, special_discount_until: special },
       }).catch(() => { /* audit 실패해도 성공 처리 */ })
+      // 🔔 2026-06-26 (알림 보강): 등급은 향후 모든 주문 단가를 좌우하는데 그간 통지가 전무했음.
+      //   실제로 바뀐 경우에만 판매사 대시보드 알림(fail-soft).
+      if ((prevSeller?.distributor_grade ?? null) !== grade) {
+        try {
+          const { createDashboardNotification } = await import('../../../notifications/api/dashboard-notifications.routes')
+          await createDashboardNotification(
+            c.env.DB, 'seller', String(id), 'distributor_grade_changed',
+            '회원 등급이 변경되었습니다',
+            grade ? `회원 등급이 ${grade} 등급으로 변경되었습니다. 공급가에 반영됩니다.` : '회원 등급이 해제되었습니다.',
+            '/wholesale',
+          )
+        } catch { /* 알림 실패 무시 */ }
+      }
       return c.json({ success: true })
     } catch (err) {
       return safeError(c, err, '판매사 등급 설정 중 오류가 발생했습니다', '[distributor-admin]')
