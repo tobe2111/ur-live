@@ -16,7 +16,9 @@ import StreamCard from './seller-public/StreamCard'
 import VideosTab from './seller-public/VideosTab'
 import VouchersTab from './seller-public/VouchersTab'
 import HomeTab from './seller-public/HomeTab'
-import ProfileHeader from './seller-public/ProfileHeader'
+// 🏁 2026-06-25 (대표 "통일"): 사업자 링크샵 헤더를 canonical CuratorHeader 로 — ProfileHeader 폐기(헤더 1개).
+import CuratorHeader from './curator-page/CuratorHeader'
+import type { CuratorProfile } from '@/features/curator/api/curator-api'
 import InfoTab from './seller-public/InfoTab'
 import TabsNav from './seller-public/TabsNav'
 import { getThemeTokens } from './seller-public/theme'
@@ -32,13 +34,13 @@ interface SellerPublicPageProps {
    *  CuratorPage 가 /u/:handle 진입 후 linked_seller 매칭되면 본 페이지를 직접 render
    *  (redirect 없이) → URL 통합. 미지정 시 useParams 사용 (legacy /profile/:sellerId 호환). */
   sellerIdOverride?: string
-  /** 🏁 2026-06-25 (대표 — 원래 형태 복원): /u/{handle}(CuratorPage) 진입 시 큐레이터의 마퀴 헤드라인/액센트.
-   *  사업자 헤더(ProfileHeader)를 큐레이터 헤더와 동일 형태로 통일하기 위해 내려받음. 비-/u/ 진입은 undefined. */
-  curatorHeadline?: string | null
-  curatorAccent?: string | null
+  /** 🏁 2026-06-25 (대표 "통일"): CuratorPage(/u/{handle})가 내려주는 큐레이터 정체성.
+   *  사업자 링크샵도 canonical CuratorHeader 를 렌더 → 헤더 컴포넌트 1개로 통일(ProfileHeader 폐기).
+   *  배너/이름 등은 curator 우선·seller 폴백으로 병합(저장 위치 분산 흡수). 비-/u/ 진입은 undefined. */
+  curator?: CuratorProfile | null
 }
 
-export default function SellerPublicPage({ sellerIdOverride, curatorHeadline, curatorAccent }: SellerPublicPageProps = {}) {
+export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPublicPageProps = {}) {
   const { t } = useTranslation()
   const params = useParams<{ sellerId: string }>()
   const rawParam = sellerIdOverride ?? params.sellerId
@@ -55,6 +57,11 @@ export default function SellerPublicPage({ sellerIdOverride, curatorHeadline, cu
   const [shopQuery, setShopQuery] = useState('')
   // 🏁 2026-06-18 (승인 사업자 상점 바로등록): 오너 빠른 상품 등록 모달 + 성공 시 상품목록 갱신.
   const [showQuickAdd, setShowQuickAdd] = useState(false)
+  // 🏁 2026-06-25 (대표 "통일"): canonical CuratorHeader 의 인라인 편집 반영(낙관적). curator 우선·seller 폴백.
+  const [curatorEdits, setCuratorEdits] = useState<Partial<CuratorProfile>>({})
+  const copyLink = async () => {
+    try { await navigator.clipboard.writeText(window.location.href); toast.success(t('seller.linkCopiedToast', { defaultValue: '링크가 복사되었어요' })) } catch { /* ignore */ }
+  }
   const refreshProducts = () => {
     if (!seller?.id) return
     api.get(`/api/products?seller_id=${seller.id}&limit=20`)
@@ -378,28 +385,27 @@ export default function SellerPublicPage({ sellerIdOverride, curatorHeadline, cu
         }}
       />
 
-      <ProfileHeader
-        seller={seller}
-        sellerId={sellerId!}
+      {/* 🏁 2026-06-25 (대표 "통일"): 사업자 링크샵도 canonical CuratorHeader (마퀴+배너 히어로+중앙 이름).
+          정체성은 curator(users) 우선 · seller(sellers) 폴백으로 병합 → 어디 저장됐든 배너/이름 복구.
+          소유자 인라인 편집은 CuratorHeader 가 /api/curator/me/profile 로 처리(낙관적 반영=curatorEdits). */}
+      <CuratorHeader
+        curator={{
+          id: curator?.id ?? seller.id,
+          handle: curator?.handle ?? seller.username ?? String(seller.id),
+          name: (curatorEdits.name ?? curator?.name) || seller.name || '',
+          bio: curatorEdits.bio ?? curator?.bio ?? seller.bio ?? null,
+          profile_image: curatorEdits.profile_image ?? curator?.profile_image ?? seller.profile_image ?? null,
+          banner_url: (curatorEdits.banner_url ?? curator?.banner_url) || seller.banner_url || null,
+          headline: curatorEdits.headline ?? curator?.headline ?? null,
+          accent: curatorEdits.accent ?? curator?.accent ?? null,
+          youtube_url: curatorEdits.youtube_url ?? curator?.youtube_url ?? seller.sns_youtube ?? null,
+          instagram_url: curatorEdits.instagram_url ?? curator?.instagram_url ?? seller.sns_instagram ?? null,
+          tiktok_url: curatorEdits.tiktok_url ?? curator?.tiktok_url ?? null,
+        }}
+        pinCount={products.length}
         isOwner={ownerView}
-        isDark={isDark}
-        T={T}
-        liveNow={liveNow}
-        products={products}
-        streams={streams}
-        headline={curatorHeadline}
-        accent={curatorAccent}
-        editingField={editingField}
-        setEditingField={setEditingField}
-        editName={editName}
-        setEditName={setEditName}
-        editBio={editBio}
-        setEditBio={setEditBio}
-        saving={saving}
-        startEdit={startEdit}
-        saveEdit={saveEdit}
-        fileInputRef={fileInputRef}
-        handleProfileImageUpload={handleProfileImageUpload}
+        onCopyLink={copyLink}
+        onCuratorUpdate={(next) => setCuratorEdits((s) => ({ ...s, ...next }))}
       />
 
       {/* 탭 — 🛡️ 2026-04-30 v4 sticky chrome 톤 */}
