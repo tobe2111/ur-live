@@ -342,17 +342,31 @@ export default function CuratorPage() {
                 </div>
               </div>
             )}
-            <CuratorTabs
-              tab={tab}
-              onChange={setTab}
-              pinCount={pins.length}
-              shopCount={shopPins.length}
-              voucherCount={voucherPins.length}
-            />
-
-            {tab === 'home' && renderPinTab(homePins)}
-            {tab === 'shop' && renderPinTab(shopPins, 'shop')}
-            {tab === 'vouchers' && renderPinTab(voucherPins, 'voucher')}
+            {/* 🏁 2026-06-25 (대표 "한 페이지·능력별 섹션"): 탭 제거 → 추천템/교환권 한 스크롤 섹션. 빈 섹션 숨김.
+                (사업자 SellerPublicPage 와 동일 구조 — 두 링크샵이 더는 갈리지 않음) */}
+            {pins.length === 0 ? (
+              <EmptyLinkshop handle={curator.handle} isOwner={ownerView} curatorName={curator.name} />
+            ) : (applyQ(shopPins).length === 0 && applyQ(voucherPins).length === 0) ? (
+              <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+                <p className="text-sm font-bold text-gray-900 dark:text-white">검색 결과가 없어요</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">다른 키워드로 찾아보세요.</p>
+              </div>
+            ) : (
+              <>
+                {applyQ(shopPins).length > 0 && (
+                  <>
+                    <div className="max-w-3xl mx-auto px-4 pt-4 pb-1"><h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white">추천템 {shopPins.length}</h3></div>
+                    <PinGrid pins={applyQ(shopPins)} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} kind="shop" />
+                  </>
+                )}
+                {applyQ(voucherPins).length > 0 && (
+                  <>
+                    <div className="max-w-3xl mx-auto px-4 pt-7 pb-1"><h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white">교환권 · 동네딜 {voucherPins.length}</h3></div>
+                    <PinGrid pins={applyQ(voucherPins)} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} kind="voucher" />
+                  </>
+                )}
+              </>
+            )}
           </>
         )}
         {/* 🔗 2026-06-17 (사용자 요청): 링크샵 주소 변경 + 공유는 헤더의 '내 링크샵 주소' 카드로 통합 이동
