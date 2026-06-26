@@ -13,6 +13,7 @@
  *   app.route('/api/admin/wholesale-deposits', adminWholesaleDepositRoutes) — 어드민
  */
 import { Hono } from 'hono'
+import { sanitizeString } from '@/worker/utils/validation'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
 import { swallow } from '@/worker/utils/swallow'
@@ -95,7 +96,7 @@ dist.post('/deposits/charge-request', rateLimit({ action: 'wholesale-deposit-req
     if (!Number.isFinite(amount) || amount < 1000 || amount > 100_000_000) {
       return c.json({ success: false, error: '충전 금액은 1,000원 이상 1억원 이하여야 합니다' }, 400)
     }
-    const depositorName = String(body.depositor_name || '').trim().slice(0, 40) || null
+    const depositorName = sanitizeString(String(body.depositor_name || '')).trim().slice(0, 40) || null
 
     const ins = await DB.prepare(
       "INSERT INTO wholesale_deposit_requests (seller_id, amount, depositor_name, status) VALUES (?, ?, ?, 'pending')"
@@ -245,7 +246,7 @@ admin.post('/:id/reject', rateLimit({ action: 'admin-wholesale-deposit-reject', 
   try {
     await ensureDepositSchema(DB)
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
-    const memo = String(body.memo || '').slice(0, 200) || null
+    const memo = sanitizeString(String(body.memo || '')).slice(0, 200) || null
     const reqRow = await DB.prepare('SELECT seller_id, amount FROM wholesale_deposit_requests WHERE id = ?')
       .bind(id).first<{ seller_id: number; amount: number }>()
     if (!reqRow) return c.json({ success: false, error: '충전 요청을 찾을 수 없습니다' }, 404)
@@ -276,7 +277,7 @@ admin.post('/adjust', rateLimit({ action: 'admin-wholesale-deposit-adjust', max:
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
     const sellerId = Math.floor(Number(body.seller_id))
     const amount = Math.floor(Number(body.amount)) // signed: +적립 / -차감
-    const memo = String(body.memo || '관리자 보정').slice(0, 200)
+    const memo = sanitizeString(String(body.memo || '관리자 보정')).slice(0, 200)
     if (!Number.isFinite(sellerId) || sellerId <= 0) return c.json({ success: false, error: '판매사 ID가 올바르지 않습니다' }, 400)
     if (!Number.isFinite(amount) || amount === 0 || Math.abs(amount) > 100_000_000) {
       return c.json({ success: false, error: '보정 금액이 올바르지 않습니다' }, 400)

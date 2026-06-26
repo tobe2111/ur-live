@@ -60,6 +60,8 @@ const plus = new Hono<{ Bindings: Env }>()
 plus.get('/info', async (c) => {
   const auth = await distributorFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!auth) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  // 🛡️ 2026-06-26 [보안] /subscribe 와 동일하게 is_distributor 게이트 — 비-판매사 셀러에게 예치금 잔액·등급 노출 차단.
+  if (!auth.isDistributor) return c.json({ success: false, error: '판매사 전용 기능입니다' }, 403)
   const { DB } = c.env
   try {
     await ensurePlusSchema(DB)

@@ -12,6 +12,7 @@
  *   adminApp.route('/wholesale-withdrawals', adminWholesaleWithdrawalRoutes) — 어드민 (requireAdmin 체인)
  */
 import { Hono } from 'hono'
+import { sanitizeString } from '@/worker/utils/validation'
 import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
 import { requireSupplier, requireAdminRole } from '@/worker/middleware/auth'
@@ -197,7 +198,7 @@ admin.post('/wholesale-withdrawals/:id/reject', requireAdminRole('finance'), rat
   try {
     await ensureWithdrawalSchema(DB)
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
-    const memo = String(body.memo || '').slice(0, 200) || null
+    const memo = sanitizeString(String(body.memo || '')).slice(0, 200) || null
     const row = await DB.prepare('SELECT supplier_id, amount, status FROM wholesale_settlement_withdrawals WHERE id = ?')
       .bind(id).first<{ supplier_id: number; amount: number; status: string }>()
     if (!row) return c.json({ success: false, error: '출금 신청을 찾을 수 없습니다' }, 404)

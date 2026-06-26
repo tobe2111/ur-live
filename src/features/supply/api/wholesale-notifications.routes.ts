@@ -22,6 +22,7 @@
  * 스키마는 self-ensure(멱등) — repair-schema 등록은 리포트에 명시(후속 PR).
  */
 import { Hono } from 'hono'
+import { sanitizeString } from '@/worker/utils/validation'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
@@ -81,6 +82,24 @@ async function sellerIdFrom(authorization: string | undefined, jwtSecret: string
     const { verify } = await import('hono/jwt')
     const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { seller_id?: number }
     return payload.seller_id ?? null
+  } catch {
+    return null
+  }
+}
+
+// 🛡️ 2026-06-26 [보안] 메모 스레드 신원 해석 — supplier(type:'supplier',supplier_id) 또는 distributor(seller_id).
+//   기존 메모 핸들러는 sellerIdFrom 으로 seller_id 만 읽고 그 값을 wholesale_order_items.supplier_id 와도
+//   비교(resolveParty)해, seller_id 와 숫자가 겹치는 supplier 의 라인이 든 *남의 주문* 메모를 열람/작성할 수
+//   있는 cross-tenant 구멍이 있었음(두 ID 공간은 별개 시퀀스). 채팅(chatIdentityFrom)과 동일하게 토큰 type 으로 분기.
+type MemoIdentity = { role: 'distributor' | 'supplier'; id: number }
+async function memoIdentityFrom(authorization: string | undefined, jwtSecret: string): Promise<MemoIdentity | null> {
+  if (!authorization?.startsWith('Bearer ')) return null
+  try {
+    const { verify } = await import('hono/jwt')
+    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { type?: string; supplier_id?: number; seller_id?: number }
+    if (payload.type === 'supplier' && Number(payload.supplier_id) > 0) return { role: 'supplier', id: Number(payload.supplier_id) }
+    if (payload.seller_id && Number(payload.seller_id) > 0) return { role: 'distributor', id: Number(payload.seller_id) }
+    return null
   } catch {
     return null
   }
@@ -172,34 +191,36 @@ app.delete('/restock/subscribe/:productId', rateLimit({ action: 'wholesale-resto
 // 주문 당사자 판정 — 인증된 seller_id 가 이 주문의 판매사 owner 인지, 또는 라인을 가진 공급자인지.
 //   반환: { type: 'distributor'|'supplier', supplierId?, distributorId } | null(당사자 아님).
 async function resolveParty(
-  DB: D1Database, wholesaleOrderId: number, sellerId: number,
+  DB: D1Database, wholesaleOrderId: number, identity: MemoIdentity,
 ): Promise<{ type: 'distributor' | 'supplier'; distributorId: number; supplierId?: number } | null> {
   const order = await DB.prepare('SELECT id, distributor_seller_id FROM wholesale_orders WHERE id = ?')
     .bind(wholesaleOrderId).first<{ id: number; distributor_seller_id: number }>().catch(() => null)
   if (!order) return null
-  if (Number(order.distributor_seller_id) === sellerId) {
-    return { type: 'distributor', distributorId: Number(order.distributor_seller_id) }
+  // distributor 토큰: 이 주문의 owner(판매사) 인지 — distributor_seller_id 만 비교(supplier_id 와 절대 교차 안 함).
+  if (identity.role === 'distributor') {
+    return Number(order.distributor_seller_id) === identity.id
+      ? { type: 'distributor', distributorId: Number(order.distributor_seller_id) }
+      : null
   }
-  // 공급자 당사자 — 이 주문에 sellerId 의 공급 라인이 있는지(supplier_id 매칭).
+  // supplier 토큰: 이 주문에 내 공급 라인이 있는지 — 진짜 supplier_id(공급자 시퀀스) 매칭.
   const line = await DB.prepare(
     'SELECT 1 AS ok FROM wholesale_order_items WHERE wholesale_order_id = ? AND supplier_id = ? LIMIT 1'
-  ).bind(wholesaleOrderId, sellerId).first<{ ok: number }>().catch(() => null)
-  if (line) {
-    return { type: 'supplier', distributorId: Number(order.distributor_seller_id), supplierId: sellerId }
-  }
-  return null
+  ).bind(wholesaleOrderId, identity.id).first<{ ok: number }>().catch(() => null)
+  return line
+    ? { type: 'supplier', distributorId: Number(order.distributor_seller_id), supplierId: identity.id }
+    : null
 }
 
 // ── GET /orders/:id/notes — 주문 메모 스레드 조회 ──────────────────────────────
 app.get('/orders/:id/notes', async (c) => {
-  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
-  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const identity = await memoIdentityFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!identity) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const { DB } = c.env
   const orderId = Number(c.req.param('id'))
   if (!Number.isFinite(orderId) || orderId <= 0) return c.json({ success: false, error: '잘못된 주문 ID' }, 400)
   try {
     await ensureWholesaleNotificationsSchema(DB)
-    const party = await resolveParty(DB, orderId, sellerId)
+    const party = await resolveParty(DB, orderId, identity)
     if (!party) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
 
     const { results } = await DB.prepare(`
@@ -215,24 +236,24 @@ app.get('/orders/:id/notes', async (c) => {
 
 // ── POST /orders/:id/notes — 주문 메모 작성 ────────────────────────────────────
 app.post('/orders/:id/notes', rateLimit({ action: 'wholesale-order-note', max: 60, windowSec: 600 }), async (c) => {
-  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
-  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const identity = await memoIdentityFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!identity) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const { DB } = c.env
   const orderId = Number(c.req.param('id'))
   if (!Number.isFinite(orderId) || orderId <= 0) return c.json({ success: false, error: '잘못된 주문 ID' }, 400)
   try {
     await ensureWholesaleNotificationsSchema(DB)
-    const party = await resolveParty(DB, orderId, sellerId)
+    const party = await resolveParty(DB, orderId, identity)
     if (!party) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
 
     const raw = await c.req.json().catch(() => ({} as Record<string, unknown>))
-    const bodyText = String(raw.body || '').trim().slice(0, MAX_NOTE_LEN)
+    const bodyText = sanitizeString(String(raw.body || '')).trim().slice(0, MAX_NOTE_LEN)
     if (!bodyText) return c.json({ success: false, error: '내용을 입력해주세요' }, 400)
 
     const ins = await DB.prepare(`
       INSERT INTO wholesale_order_notes (wholesale_order_id, author_type, author_id, body)
       VALUES (?, ?, ?, ?)
-    `).bind(orderId, party.type, sellerId, bodyText).run()
+    `).bind(orderId, party.type, identity.id, bodyText).run()
     const noteId = Number(ins.meta?.last_row_id)
     if (!noteId) return c.json({ success: false, error: '메모 등록 중 오류가 발생했습니다' }, 500)
 
@@ -260,7 +281,7 @@ app.post('/orders/:id/notes', rateLimit({ action: 'wholesale-order-note', max: 6
 
     return c.json({
       success: true,
-      note: { id: noteId, author_type: party.type, author_id: sellerId, body: bodyText, created_at: new Date().toISOString() },
+      note: { id: noteId, author_type: party.type, author_id: identity.id, body: bodyText, created_at: new Date().toISOString() },
     })
   } catch (err) {
     return safeError(c, err, '메모 등록 중 오류가 발생했습니다', '[wholesale-noti]')
