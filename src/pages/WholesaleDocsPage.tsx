@@ -28,7 +28,7 @@ export default function WholesaleDocsPage({ embedded = false }: { embedded?: boo
   const navigate = useNavigate()
   const goBack = useWholesaleBack()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
-  const { data: docs = [], isLoading: loading } = useWholesaleDocuments()
+  const { data: docs = [], isLoading: loading, isError, refetch } = useWholesaleDocuments()
   const { data: taxInvoices = [] } = useWholesaleTaxInvoices()
   const [tab, setTab] = useState<'all' | 'tax_invoice' | 'transaction_statement'>('all')
 
@@ -60,6 +60,13 @@ export default function WholesaleDocsPage({ embedded = false }: { embedded?: boo
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin" style={{ color: WT.ink4 }} /></div>
+        ) : isError ? (
+          <div className="flex flex-col items-center py-24 text-center">
+            <FileText className="w-12 h-12 mb-4" style={{ color: WT.ink4 }} />
+            <p className="text-[15px] font-medium mb-1" style={{ color: WT.ink2 }}>자료를 불러오지 못했어요</p>
+            <p className="text-[13px] mb-4" style={{ color: WT.ink3 }}>네트워크 상태를 확인해주세요.</p>
+            <button onClick={() => refetch()} className="px-5 h-11 rounded-xl font-bold text-white" style={{ background: WT.ink }}>다시 시도</button>
+          </div>
         ) : list.length === 0 ? (
           <div className="flex flex-col items-center py-24 text-center">
             <FileText className="w-12 h-12 mb-4" style={{ color: WT.ink4 }} />
