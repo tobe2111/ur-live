@@ -13,6 +13,7 @@ import KakaoShareButton from '@/components/KakaoShareButton'
 import PinButton from '@/components/curator/PinButton'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { safeDate, safeTime } from '@/utils/safe-date'
 import { cfImage } from '@/utils/cf-image'
 import { reportFunnel } from '@/lib/web-vitals-report'
 import { recordRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip'
@@ -269,7 +270,7 @@ export default function GroupBuyDetailPage() {
     // 🛡️ 2026-05-15 (TD-G07): jitter — 동시 사용자 많을 때 D1 thundering herd 방어
     //   2026-05-27: 마감까지 거리 기반 adaptive — 멀면 길게, 가까우면 짧게 (서버 부하 ↓, UX 유지).
     const jitter = () => {
-      const deadlineMs = detail.group_buy_deadline ? new Date(detail.group_buy_deadline).getTime() - Date.now() : Infinity
+      const deadlineMs = detail.group_buy_deadline ? safeTime(detail.group_buy_deadline) - Date.now() : Infinity
       const base = deadlineMs > 86400000 ? 20000 : deadlineMs > 3600000 ? 10000 : 5000
       return base + Math.floor((Math.random() - 0.5) * base * 0.4)
     }
@@ -724,7 +725,7 @@ export default function GroupBuyDetailPage() {
         <div style={{ padding: '22px 18px' }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>상품 안내</div>
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 13 }}>
-            {['즉시 교환권 발급', '전 지점 사용', detail.voucher_expiry ? `${new Date(detail.voucher_expiry).toLocaleDateString('ko-KR')}까지` : '결제 즉시 사용'].map((chip) => (
+            {['즉시 교환권 발급', '전 지점 사용', detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''}까지` : '결제 즉시 사용'].map((chip) => (
               <span key={chip} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 99, border: '1px solid var(--gbd-line2)', fontSize: 12.5, fontWeight: 600, color: 'var(--gbd-ink2)', whiteSpace: 'nowrap' }}>
                 <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gbd-accent)' }} />{chip}
               </span>
@@ -815,7 +816,7 @@ export default function GroupBuyDetailPage() {
           <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>이용 안내</div>
           <div style={{ marginTop: 15 }}>
             {[
-              { k: '사용기한', v: detail.voucher_expiry ? `${new Date(detail.voucher_expiry).toLocaleDateString('ko-KR')} 까지` : '발급 후 사용 기간 적용' },
+              { k: '사용기한', v: detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''} 까지` : '발급 후 사용 기간 적용' },
               { k: '사용처', v: detail.restaurant_name || '전 지점' },
               { k: '사용 방법', v: '매장에서 교환권 제시' },
             ].map((row, i, arr) => (
