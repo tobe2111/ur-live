@@ -40,11 +40,11 @@
 
 | P1 | 위치(비잠금) | 증상 | 최소수정안 |
 |---|---|---|---|
-| 가. KT-Alpha per-order 멱등 가드 부재 | `kt-alpha-auto-send.ts` | confirm+webhook 둘 다 배선되면 교환권 2배 발송 | 발송 전 `voucher_orders` 존재 체크 또는 `(order_id,item)` UNIQUE+INSERT OR IGNORE |
-| 나. 혼합결제 취소/환불 딜 미복원 | `order.routes.ts:942/760` | 카드+딜 주문 취소 시 카드만 환불, 딜 영구 미복원 | `payment_method` 조건 대신 `orders.deal_used>0` 읽어 비례 복원 |
-| 다. 소비자 취소/환불이 `refundOrderFully` 우회 | `order.routes.ts`, `returns.routes.ts` | 쿠폰 un-use·공구권·공급/에이전시/영입자 커미션 역전 누락 | 인라인 경로를 `refundOrderFully` 로 통일 |
-| 라. 딜결제 주문 취소 422 차단 | `order.routes.ts:858/664` | 딜로 산 주문(toss_payment_key NULL)이 PAYMENT_KEY_MISSING 422 → 셀프취소 불가 | paymentKey 검사 전 `payment_method==='deal_points'` 분기 → 딜환급 경로로 |
-| 마. confirm-toss 동시요청 공구권 이중발급 | `group-buy.routes.ts:1052`, `repair-schema` | UNIQUE index 부재 + read-then-write → 더블클릭/재시도 시 교환권 2장·재고 2배 | `orders(payment_key)` partial UNIQUE + INSERT OR IGNORE. **단 payment_key 가 타 경로와 공유되는지 사전 확인 필수**(공유 시 다른 결제 깨짐) |
+| 가. KT-Alpha per-order 멱등 가드 부재 | `kt-alpha-auto-send.ts` | confirm+webhook 둘 다 배선되면 교환권 2배 발송 | ✅ **완료**(`faa9f73`) — `external_order_id LIKE 'u{oid}-%'` per-order 가드 |
+| 나. 혼합결제 취소/환불 딜 미복원 | `order.routes.ts` | 카드+딜 주문 취소 시 카드만 환불, 딜 영구 미복원 | ✅ **완료** — `/:id/cancel`·`/refund` 양쪽에 `deal_used` 비례 환급(현금 취소비율만큼). reserve-CAS/Toss 단일실행. ⚠️ staging 검증 권장 |
+| 라. 딜결제 주문 취소 422 차단 | `order.routes.ts` | 딜로 산 주문(toss_payment_key NULL)이 PAYMENT_KEY_MISSING 422 → 셀프취소 불가 | ✅ **완료** — `/:id/cancel` 에 `deal_points` 전용 분기(Toss 미경유 딜환급+재고+커미션회수+CANCELLED, refunded_amount CAS). ⚠️ staging 검증 권장 |
+| 다. 소비자 취소/환불이 `refundOrderFully` 우회 | `order.routes.ts`, `returns.routes.ts` | 쿠폰 un-use·공구권·공급/에이전시/영입자 커미션 역전 누락 | ⏳ **미적용** — 인라인 경로를 `refundOrderFully` 로 통일하는 큰 리팩토링. 환불 머니패스 광범위 변경이라 staging 검증 전제. (referral 커미션 회수는 인라인에 이미 있음 — 누락은 쿠폰/공구권/비-referral 커미션.) |
+| 마. confirm-toss 동시요청 공구권 이중발급 | `group-buy.routes.ts`, `repair-schema` | UNIQUE index 부재 + read-then-write | ⏳ **미적용(위험)** — `toss_payment_key` 가 **멀티셀러 주문에서 여러 order 행에 공유**됨(grep 확인) → 그 컬럼 UNIQUE index 는 멀티셀러 결제를 깨뜨림. group-buy 는 `idempotency_key` 로 1차 dedup 중이나 그 컬럼의 멀티행 공유 여부 확인 후 partial UNIQUE 적용 필요. |
 
 ## 🟡 잔여 사파리 Invalid Date (비-money, 안전 — 후속 safeDate sweep)
 `MyVouchersPage`(338/509-510/533/1044-1118 나머지), `MyStaysPage`(234-258), `ProductDetailPage:660`, `GroupBuyDetailPage`(255/710/799), `GroupBuyListPage`(529/588/612 정렬) — `new Date()` 직접 → 사파리 표시 깨짐/정렬 불안정. safeDate 로 일괄 교체(기능 영향 낮음, 표시/정렬만).

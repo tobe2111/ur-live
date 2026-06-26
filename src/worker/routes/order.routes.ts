@@ -756,16 +756,26 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       console.warn('[ORDERS] Commission reversal (refund) skipped:', e);
     }
 
-    // 🛡️ 2026-04-22: 딜 포인트로 결제한 주문은 환불 금액만큼 포인트 환급
+    // 🛡️ 2026-06-26 (소비자 감사 P1): 딜 환급 — 전액 딜결제(deal_points) 또는 혼합결제(deal_used)의 딜분.
+    //   (전액 딜결제 주문은 toss_payment_key 가 없어 위 422 에서 막히므로 실질적으로 여기 도달하는 건
+    //    혼합결제이나, 양쪽 모두 안전하게 처리.) reserve-CAS(refunded_amount) 가 단일실행 보장.
     try {
       const payMethod = (order as any).payment_method;
-      if (payMethod === 'deal_points' && refundAmount > 0) {
+      const dealUsedTotal = Math.max(0, Math.round(Number((order as any).deal_used ?? 0)));
+      const totalAmt = Number(order.total_amount ?? 0);
+      let dealRefund = 0;
+      if (payMethod === 'deal_points') {
+        dealRefund = Math.max(0, Math.round(refundAmount)); // 전액 딜결제 — 환불액이 곧 딜
+      } else if (dealUsedTotal > 0 && totalAmt > 0) {
+        dealRefund = Math.min(dealUsedTotal, Math.round(dealUsedTotal * (refundAmount / totalAmt))); // 혼합 — 현금 환불비율만큼 딜 비례
+      }
+      if (dealRefund > 0) {
         await c.env.DB.prepare(
           'UPDATE user_points SET balance = balance + ? WHERE user_id = ?'
-        ).bind(refundAmount, String(order.user_id)).run();
+        ).bind(dealRefund, String(order.user_id)).run();
         await c.env.DB.prepare(
           "INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)"
-        ).bind(String(order.user_id), refundAmount, refundAmount, `[환불] 주문 환불 (order:${(order as any).order_number || body.order_id})`).run().catch(swallow('order:point-tx-refund-audit'));
+        ).bind(String(order.user_id), dealRefund, dealRefund, `[환불] 주문 환불 딜분 (order:${(order as any).order_number || body.order_id})`).run().catch(swallow('order:point-tx-refund-audit'));
       }
     } catch (e) {
       console.error('[ORDERS] Points refund error:', e);
@@ -851,6 +861,48 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
     // PAID / DONE 상태: 실제 결제가 이루어졌으므로 Toss Cancel API 호출
     const paymentMadeStatuses = ['PAID', 'DONE'];
     if (paymentMadeStatuses.includes(order.status)) {
+      // 🛡️ 2026-06-26 (소비자 감사 P1): 딜결제(전액 딜) 주문은 toss_payment_key 가 없어 아래 paymentKey
+      //   가드(422)에서 셀프취소가 영구 차단됐음(MyOrdersPage 는 취소버튼 노출). Toss 미경유 — 딜 환급 +
+      //   재고복구 + 커미션 회수 + CANCELLED. refunded_amount CAS 로 동시/중복 취소 차단(이중환급 0).
+      if (((order as any).payment_method) === 'deal_points') {
+        const refundPoints = Math.max(0, Math.round(cancelAmount ?? Number(order.total_amount ?? 0)));
+        if (refundPoints <= 0) return c.json({ success: false, error: '취소 가능 금액이 없습니다' }, 400);
+        const reserve = await c.env.DB.prepare(
+          "UPDATE orders SET refunded_amount = COALESCE(refunded_amount,0) + ? WHERE id = ? AND COALESCE(refunded_amount,0) + ? <= total_amount"
+        ).bind(refundPoints, orderId, refundPoints).run().catch(() => null);
+        if (!reserve || (reserve.meta?.changes ?? 0) === 0) {
+          return c.json({ success: false, error: '취소 가능 금액을 초과하거나 이미 처리 중입니다' }, 409);
+        }
+        // 딜 환급 + audit (reserve CAS 통과한 1회만 도달 → 이중환급 없음).
+        try {
+          await c.env.DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?').bind(refundPoints, String(order.user_id)).run();
+          await c.env.DB.prepare("INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)").bind(String(order.user_id), refundPoints, refundPoints, `[환불] 주문 취소 (order:${order.order_number})`).run().catch(swallow('order:point-tx-deal-cancel'));
+        } catch (e) { console.error('[ORDERS] deal refund (cancel) error:', e); }
+        // 전액 취소면 상태 CANCELLED + 재고 복구 (부분 딜취소는 금액만 환급).
+        const fullCancel = refundPoints >= Number(order.total_amount ?? 0);
+        if (fullCancel) {
+          await orderRepo.updateStatusById(orderId, 'CANCELLED', { cancelled_at: new Date().toISOString(), cancel_reason: reason });
+          await orderRepo.restoreStock(orderId);
+        }
+        // 추천 커미션 회수 (Toss 경로와 동일 CAS) — 딜주문도 커미션 발생 가능.
+        try {
+          const toRevoke = await c.env.DB.prepare(
+            "SELECT id, beneficiary_id, commission_amount FROM referral_commissions WHERE order_id = ? AND status = 'granted'"
+          ).bind(orderId).all<{ id: number; beneficiary_id: string; commission_amount: number }>().catch(() => ({ results: [] as Array<{ id: number; beneficiary_id: string; commission_amount: number }> }));
+          for (const co of (toRevoke.results || [])) {
+            const cas = await c.env.DB.prepare("UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE id = ? AND status = 'granted'").bind(co.id).run().catch(() => null);
+            if (cas && (cas.meta?.changes ?? 0) > 0) {
+              await c.env.DB.prepare('UPDATE user_points SET balance = MAX(0, balance - ?) WHERE user_id = ?').bind(co.commission_amount, co.beneficiary_id).run().catch(swallow('order:commission-revoke-deal-cancel'));
+            }
+          }
+          await c.env.DB.prepare("UPDATE referral_commissions SET status = 'withdrawn', withdrawn_at = datetime('now') WHERE order_id = ? AND status = 'pending'").bind(orderId).run().catch(swallow('order:commission-pending-close-deal-cancel'));
+        } catch (e) { console.error('[ORDERS] Commission reversal (deal cancel) error:', e); }
+        createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(swallow('order:notify-admin-deal-cancel'));
+        if (order.seller_id) createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(swallow('order:notify-seller-deal-cancel'));
+        try { const { notifyUser } = await import('../../lib/notifications'); await notifyUser(c.env.DB, String(order.user_id), 'order_status', '❌ 주문이 취소되었습니다.', `주문번호: ${order.order_number}`, '/my-orders'); } catch { /* fire-and-forget */ }
+        return c.json({ success: true, message: '주문이 취소되고 딜이 환급되었습니다', data: { order_id: orderId, cancel_amount: refundPoints, cancelled_at: new Date().toISOString() } });
+      }
+
       // toss_payment_key가 있어야 취소 가능
       const payInfo = await orderRepo.getPaymentInfo(orderId);
       const paymentKey = payInfo?.toss_payment_key;
@@ -939,22 +991,25 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
         console.error('[ORDERS] Commission reversal (cancel paid) error:', e);
       }
 
-      // 🛡️ 2026-04-22: 딜 포인트로 결제한 주문은 포인트 환급 (payment_method='deal_points')
+      // 🛡️ 2026-06-26 (소비자 감사 P1): 혼합결제(Toss 카드 + 딜)의 '딜 사용분' 환급.
+      //   전액 딜결제(deal_points)는 위 분기에서 early-return 되므로 여기는 toss(카드/혼합)만 도달.
+      //   기존엔 deal_points 만 환급해 혼합주문의 딜분이 영구 미복원이었음. cancelAmount(현금 취소비율)만큼
+      //   deal_used 를 비례 환급(전액 취소면 deal_used 전부). Toss 취소 성공 후라 단일실행.
       try {
-        const payMethod = (order as any).payment_method;
-        if (payMethod === 'deal_points') {
-          const refundPoints = cancelAmount ?? Number(order.total_amount ?? 0);
-          if (refundPoints > 0) {
-            await c.env.DB.prepare(
-              'UPDATE user_points SET balance = balance + ? WHERE user_id = ?'
-            ).bind(refundPoints, String(order.user_id)).run();
+        const dealUsedTotal = Math.max(0, Math.round(Number((order as any).deal_used ?? 0)));
+        const totalAmt = Number(order.total_amount ?? 0);
+        if (dealUsedTotal > 0 && totalAmt > 0) {
+          const cashRefund = Math.max(0, Math.round(cancelAmount ?? totalAmt));
+          const dealRefund = Math.min(dealUsedTotal, Math.round(dealUsedTotal * (cashRefund / totalAmt)));
+          if (dealRefund > 0) {
+            await c.env.DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?').bind(dealRefund, String(order.user_id)).run();
             await c.env.DB.prepare(
               "INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)"
-            ).bind(String(order.user_id), refundPoints, refundPoints, `[환불] 주문 취소 (order:${order.order_number})`).run().catch(swallow('order:point-tx-cancel-audit'));
+            ).bind(String(order.user_id), dealRefund, dealRefund, `[환불] 혼합결제 딜분 환급 (order:${order.order_number})`).run().catch(swallow('order:point-tx-mixed-cancel'));
           }
         }
       } catch (e) {
-        console.error('[ORDERS] Points refund (cancel paid) error:', e);
+        console.error('[ORDERS] Mixed-pay deal refund (cancel paid) error:', e);
       }
 
       // 주문 취소 알림
