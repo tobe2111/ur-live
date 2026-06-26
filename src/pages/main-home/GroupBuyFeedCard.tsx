@@ -140,9 +140,9 @@ function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveF
     <Link
       ref={linkRef}
       to={`/group-buy/${p.id}`}
-      onMouseEnter={() => prefetch(p.id)}
-      onTouchStart={() => prefetch(p.id)}
-      onFocus={() => prefetch(p.id)}
+      onMouseEnter={() => { prefetch(p.id); prefetchDetailChunk() }}
+      onTouchStart={() => { prefetch(p.id); prefetchDetailChunk() }}
+      onFocus={() => { prefetch(p.id); prefetchDetailChunk() }}
       className="block group active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col"
       style={{ backgroundColor: grad.base }}
     >
