@@ -73,6 +73,9 @@ export default function SellerPublicPage({ sellerIdOverride, curator, pins: init
   const [shopQuery, setShopQuery] = useState('')
   // 🏁 2026-06-18 (승인 사업자 상점 바로등록): 오너 빠른 상품 등록 모달 + 성공 시 상품목록 갱신.
   const [showQuickAdd, setShowQuickAdd] = useState(false)
+  // 🏁 2026-06-26 (대표 결정 — "링크샵에도 공구권 등록 추가"): 등록 종류 선택 시트(상품/공구권).
+  //   상품=인앱 빠른등록(QuickProductModal), 공구권=맵·목표인원 등 상세가 필요해 전용 페이지로 연결.
+  const [showAddSheet, setShowAddSheet] = useState(false)
   // 🏁 2026-06-25 (대표 "통일"): canonical CuratorHeader 의 인라인 편집 반영(낙관적). curator 우선·seller 폴백.
   const [curatorEdits, setCuratorEdits] = useState<Partial<CuratorProfile>>({})
   const copyLink = async () => {
@@ -363,13 +366,14 @@ export default function SellerPublicPage({ sellerIdOverride, curator, pins: init
         <div className="sticky top-0 z-30 bg-[#141A2E] text-white px-3.5 py-2.5 text-[12.5px] font-semibold flex items-center justify-between gap-2">
           <span className="flex items-center gap-2 min-w-0"><span className="text-[#6b7280] text-[14px] leading-none shrink-0">✎</span><span className="truncate">{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 사진·이름·소개를 눌러 바로 수정하세요' })}</span></span>
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* 🏁 2026-06-18 (사용자 결정): 링크샵에서 바로 내 상품 등록 (대시보드 안 나감). */}
+            {/* 🏁 2026-06-18 (사용자 결정): 링크샵에서 바로 등록 (대시보드 안 나감).
+                🏁 2026-06-26 (대표 — "공구권 등록도 추가"): 단일 '+ 등록' → 상품/공구권 선택 시트. */}
             <button
               type="button"
-              onClick={() => setShowQuickAdd(true)}
+              onClick={() => setShowAddSheet(true)}
               className="px-2.5 py-1 bg-[#6b7280] hover:bg-[#e84a2b] rounded-lg text-[11px] font-bold whitespace-nowrap"
             >
-              + 상품 등록
+              {t('seller.publicPage.addEntry', { defaultValue: '+ 등록' })}
             </button>
             <button
               type="button"
@@ -378,13 +382,53 @@ export default function SellerPublicPage({ sellerIdOverride, curator, pins: init
             >
               {t('seller.publicPage.previewVisitor', { defaultValue: '👀 미리보기' })}
             </button>
+            {/* 🏁 2026-06-26 (대표 결정 — '전체 설정'→'셀러 대시보드'): 라벨/목적지 정정.
+                좁은 사업자정보 탭(?tab=business) 대신 대시보드 홈(/seller — 주문·정산·상품·공구권). */}
             <button
               type="button"
-              onClick={() => navigate('/seller/profile?tab=business')}
+              onClick={() => navigate('/seller')}
               className="px-2.5 py-1 bg-white/15 hover:bg-white/25 rounded-lg text-[11px] font-bold whitespace-nowrap"
             >
-              {t('seller.publicPage.fullSettings', { defaultValue: '전체 설정' })}
+              {t('seller.publicPage.sellerDashboard', { defaultValue: '셀러 대시보드' })}
             </button>
+          </div>
+        </div>
+      )}
+      {/* 🏁 2026-06-26 (대표 — "공구권 등록 추가"): 등록 종류 선택 시트.
+          상품 = 인앱 빠른등록 / 공구권 = 맵·목표인원 등 상세 필요 → 전용 페이지(/seller/meal-voucher/new). */}
+      {ownerView && showAddSheet && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60" onClick={() => setShowAddSheet(false)} role="presentation">
+          <div
+            className="w-full max-w-[430px] bg-white dark:bg-[#121212] rounded-t-3xl px-5 pt-5 pb-8"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog" aria-modal="true" aria-label={t('seller.publicPage.addSheetTitle', { defaultValue: '무엇을 등록할까요?' })}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t('seller.publicPage.addSheetTitle', { defaultValue: '무엇을 등록할까요?' })}</h2>
+              <button onClick={() => setShowAddSheet(false)} aria-label={t('common.close', { defaultValue: '닫기' })} className="p-1 rounded-full text-gray-500 dark:text-gray-400 text-lg leading-none">✕</button>
+            </div>
+            <div className="space-y-2.5">
+              <button
+                onClick={() => { setShowAddSheet(false); setShowQuickAdd(true) }}
+                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A] active:scale-[0.99] transition-transform text-left"
+              >
+                <span className="w-11 h-11 rounded-xl bg-white dark:bg-[#222] flex items-center justify-center text-xl shrink-0">🛍️</span>
+                <span className="min-w-0">
+                  <span className="block text-[14px] font-bold text-gray-900 dark:text-white">{t('seller.publicPage.addProduct', { defaultValue: '상품 등록' })}</span>
+                  <span className="block text-[12px] text-gray-500 dark:text-gray-400">{t('seller.publicPage.addProductDesc', { defaultValue: '배송 상품 — 바로 등록' })}</span>
+                </span>
+              </button>
+              <button
+                onClick={() => { setShowAddSheet(false); navigate('/seller/meal-voucher/new') }}
+                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A] active:scale-[0.99] transition-transform text-left"
+              >
+                <span className="w-11 h-11 rounded-xl bg-white dark:bg-[#222] flex items-center justify-center text-xl shrink-0">🎟️</span>
+                <span className="min-w-0">
+                  <span className="block text-[14px] font-bold text-gray-900 dark:text-white">{t('seller.publicPage.addVoucher', { defaultValue: '공구권 등록' })}</span>
+                  <span className="block text-[12px] text-gray-500 dark:text-gray-400">{t('seller.publicPage.addVoucherDesc', { defaultValue: '동네 공구·교환권 — 위치·목표인원 설정' })}</span>
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       )}
