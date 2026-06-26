@@ -1,5 +1,29 @@
 # CLAUDE.md — 유어딜 프로젝트 개발 규칙
 
+## 🧱 두 서비스 철저 분리 — 도매몰(유통스타트 B2B) ↔ 유어딜 공구(소비자) (2026-06-26 대표 명령, 어떤 세션에서도 준수)
+
+**대표 지시**: "도매몰과 유어딜 공구 서비스를 철저히 분리해서 작업해야 해. 어떠한 세션에서도."
+
+이 레포는 **별개의 두 서비스**를 한 코드베이스에 담고 있다. **한쪽 작업이 다른 쪽에 새지 않게** 하는 것이 최우선 룰. 작업 전 "이건 어느 서비스인가?"를 먼저 판별하고, **그 서비스 경계 안에서만** 변경한다.
+
+| 축 | 🏭 **도매몰 (유통스타트, B2B)** | 🎟️ **유어딜 공구 (소비자)** |
+|---|---|---|
+| 정체성 | 제조사→판매사 B2B 도매 (도매가/예치금/정산) | 소비자 공동구매·교환권·쇼핑 (딜포인트/결제) |
+| 행위자 | 제조사(supplier) · 판매사(distributor=`sellers.is_distributor=1`) · 도매 어드민(`admin role='wholesale'`) | 유저(소비자) · 사업자유저(셀러) · 일반 어드민 |
+| 라우트(페이지) | `/wholesale/*` · `/supplier/*` · `/admin/wholesale-*` · `/admin/distributor*` · `/admin/suppliers` · `/admin/distributor-approval` | `/` · `/group-buy` · `/community-group-buy` · `/vouchers` · `/products` · `/browse` · `/u/*` · `/seller/*`(소비자 셀러) |
+| API 네임스페이스 | `/api/wholesale/*` · `/api/supplier/*` · `/api/admin/wholesale-*` · `/api/admin/distributor*` · `/api/admin/suppliers` · `/api/admin/supplier-products` | `/api/group-buy/*` · `/api/community-group-buy/*` · `/api/products` · `/api/vouchers` · `/api/orders`(소비자) |
+| 코드 | `src/features/supply/**` · `src/pages/wholesale*/**` · `src/pages/supplier-dashboard/**` · `src/components/wholesale/**` | `src/features/group-buy/**` · `src/features/community-group-buy/**` · `src/pages/main-home/**` · `src/pages/GroupBuy*.tsx` · `src/pages/Vouchers*.tsx` |
+| 브랜드/도메인 | 유통스타트 · `utongstart.com` | 유어딜 · `live.ur-team.com` |
+
+**룰**:
+1. **한 서비스 작업 시 다른 서비스 파일/라우트/네임스페이스를 건드리지 말 것.** 예: 도매 정산 수정이 소비자 정산을, 도매 상품등록이 소비자 카탈로그를 바꾸면 안 됨.
+2. **공유 테이블은 구분 플래그로 격리** — `products.is_supply_product`(도매=1) · `sellers.is_distributor`(판매사=1). 한쪽 쿼리/변경이 반대쪽 행을 건드리지 않게 WHERE 에 항상 플래그 포함. 새 공유 컬럼 추가 금지(예산제 — `product_supply_meta` 사이드테이블).
+3. **"공구"는 둘 다 존재** — 도매에 B2B 발주가 있고 소비자엔 공동구매가 있음. 맥락(행위자/라우트/네임스페이스)으로 어느 쪽인지 먼저 확정. `community-group-buy`=소비자, `wholesale/orders`=도매.
+4. **크로스-서비스 변경이 정말 필요하면** 먼저 `AskUserQuestion` 으로 의도 확인 + 분리 위반 여부 명시.
+5. 자동 가드: `scripts/check-dashboard-api-crossrole.mjs`(역할별 API 네임스페이스 격리) — 이 분리의 일부를 결정론으로 강제.
+
+> ⚠️ 이 룰 위반 시: 한 서비스 버그픽스가 다른 서비스를 망가뜨림 + 대표가 "왜 도매 고쳤는데 공구가 깨졌어?" 반복.
+
 ## 🔒 Toss V2 docs audit 잠금 (2026-05-24 — 사용자 명령)
 
 **배경**: 2026-05-24 사용자가 토스페이먼츠 V2 공식 docs 9개를 직접 공유하여 SDK / 결제승인 응답 / 에러코드 (~100) / 결제위젯 어드민 / Webhook / 결제취소 / 간편결제 응답 / 세금처리 / 결제결과안내 / 지급대행 / Status Page / WebView 전 영역 audit + 정합 작업 완료.
