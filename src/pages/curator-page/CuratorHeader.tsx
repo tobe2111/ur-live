@@ -393,25 +393,20 @@ export default function CuratorHeader({
               >
                 {curator.name}
               </h1>
+              {/* 🏁 2026-06-25 (대표 — 인스타 인증딱지 스타일): 인증 유저(사업자)는 이름 옆 파란 U 씰.
+                  일반 유저는 미표시(인증=특별 유지). 회색 씰 원하면 user 분기 추가. */}
+              {accountType === 'business' && (
+                <span title="인증 유저" aria-label="인증 유저" className="inline-flex shrink-0">
+                  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#1d9bf0" />
+                    <text x="12" y="12" textAnchor="middle" dominantBaseline="central" fontSize="11" fontWeight="900" fill="#ffffff" fontFamily="-apple-system, system-ui, sans-serif">U</text>
+                  </svg>
+                </span>
+              )}
               {isOwner && <Pencil className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 cursor-pointer" onClick={() => setEditingField('name')} />}
             </div>
           )}
           <p className="text-[12.5px] text-gray-400 dark:text-gray-500 font-medium mt-0.5">@{curator.handle}</p>
-          {/* 🏁 2026-06-25 (대표 — 일반/사업자 작게 구분): 사업자=잉크 배지(✓ 트러스트), 일반=뉴트럴 칩. */}
-          {accountType && (
-            <div className="mt-2 flex justify-center">
-              {accountType === 'business' ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-900 text-white dark:bg-white dark:text-[#020202]">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-                  사업자 유저
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-100 text-gray-500 dark:bg-[#1A1A1A] dark:text-gray-400">
-                  유저
-                </span>
-              )}
-            </div>
-          )}
 
           {editingField === 'bio' ? (
             <div className="mt-2.5 max-w-md mx-auto">
