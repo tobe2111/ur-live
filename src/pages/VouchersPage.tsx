@@ -471,8 +471,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   const [loadingMore, setLoadingMore] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
-  // 🎫 2026-06-23: 교환권 노출 cap 리셋 — 홈 12개 / /vouchers 20개(대표 결정). 카테고리·브랜드 변경 시 초기화.
-  useEffect(() => { setEmbedVisible(embedded ? 12 : 20) }, [embedded, category, brand])
+  // 🎫 2026-06-26 (대표 결정): 교환권 노출 cap 리셋 — 홈 12개 / /vouchers 8개. 카테고리·브랜드 변경 시 초기화.
+  useEffect(() => { setEmbedVisible(embedded ? 12 : 8) }, [embedded, category, brand])
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
   // 🛡️ 2026-05-28 (사용자 요청): 잔액 카드 + 카테고리 scroll-up reveal (headroom).
@@ -675,7 +675,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   홈 하단(동네딜/일반상품/푸터)이 항상 한 호흡에 닿고, 원하는 사람만 버튼으로 확장.
   // 🎫 2026-06-23 (대표 결정): 교환권은 홈 12 / /vouchers 20개 노출 후 '더보기'. 둘 다 무한스크롤 대신 cap+버튼
   //   (비embedded 도 cap → 더보기 아래로 쇼핑 섹션이 이어지게). 교환권 무한관찰 비활성, 무한스크롤은 하단 쇼핑 섹션이 담당.
-  const EMBED_INITIAL = embedded ? 12 : 20
+  // 🎫 2026-06-26 (대표 결정): 홈 12개 / /vouchers 8개 먼저 노출 후 '더보기'.
+  const EMBED_INITIAL = embedded ? 12 : 8
   const [embedVisible, setEmbedVisible] = useState(EMBED_INITIAL)
   const embeddedCapped = true
   // 🧭 2026-06-10 (사용자 요청): '교환권 더보기 (1/14)' 단계 표시 — 전용 /count (엣지 캐시).
