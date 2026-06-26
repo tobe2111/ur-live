@@ -25,6 +25,11 @@ export interface CuratorPin {
   is_active: number
   commission_rate: number
   dominant_color?: string | null
+  // 🏁 2026-06-26 (대표 — 링크샵 카드를 쇼핑 카드와 동일하게): 할인/평점/구매수.
+  discount_rate?: number | null
+  avg_rating?: number | null
+  review_count?: number | null
+  sold_count?: number | null
 }
 
 export interface CuratorProfile {

@@ -25,6 +25,13 @@ interface CuratorPin {
   product_name?: string | null
   image_url?: string | null
   price?: number | null
+  // 🏁 2026-06-26 (대표 — 링크샵 카드를 쇼핑 카드와 동일하게): 할인/평점/구매수/대표색.
+  original_price?: number | null
+  discount_rate?: number | null
+  dominant_color?: string | null
+  avg_rating?: number | null
+  review_count?: number | null
+  sold_count?: number | null
 }
 
 export default function CuratorPinsSection({ handle }: { handle?: string | null }) {
@@ -79,15 +86,21 @@ export default function CuratorPinsSection({ handle }: { handle?: string | null 
       <div className="grid grid-cols-2 gap-3">
         {pins.map(pin => {
           const name = pin.title || pin.product_name || ''
-          const product: BrowseProduct = {
+          // 🏁 2026-06-26 (대표 — 쇼핑 카드와 동일): 할인/평점/구매수/대표색까지 전달.
+          const product = {
             id: pin.product_id,
             name,
             price: pin.price ?? 0,
             current_price: pin.price ?? 0,
-            discount_rate: 0,
+            original_price: pin.original_price ?? undefined,
+            discount_rate: pin.discount_rate ?? 0,
             image_url: pin.image_url || '',
             stock: 0,
-          }
+            dominant_color: pin.dominant_color,
+            avg_rating: pin.avg_rating ?? undefined,
+            review_count: pin.review_count ?? undefined,
+            sold_count: pin.sold_count ?? undefined,
+          } as BrowseProduct
           // 클릭은 반드시 /u/:handle/p/:productId (서버 attribution redirect — 큐레이터 적립 작동 경로) 유지.
           return (
             <BrowseProductCard
