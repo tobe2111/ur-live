@@ -9,7 +9,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Megaphone, FolderDown, Plus, Edit, Trash2, Pin, X, Loader2, ExternalLink, Truck } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -41,7 +41,7 @@ export default function AdminWholesaleBoardPage() {
 
   const queryClient = useQueryClient()
   const queryKey = ['admin', 'wholesale-board', typeFilter] as const
-  const { data: posts = [], isLoading: loading } = useApiQuery<BoardRow[]>(
+  const { data: posts = [], isLoading: loading, isError, error, refetch } = useApiQuery<BoardRow[]>(
     queryKey,
     '/api/admin/wholesale-board',
     {
@@ -125,6 +125,8 @@ export default function AdminWholesaleBoardPage() {
 
       {loading ? (
         <div className="py-16 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" /></div>
+      ) : isError ? (
+        <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="게시판" />
       ) : posts.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-200 py-16 text-center text-sm text-gray-400">게시글이 없어요 — 새 게시글로 시작하세요</div>
       ) : (

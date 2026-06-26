@@ -11,6 +11,7 @@ import { safeHttpHref } from '@/utils/safe-external-url'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { useQueryClient } from '@tanstack/react-query'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardLoadError } from '@/components/dashboard'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -41,7 +42,7 @@ export default function AdminDistributorApprovalPage() {
   const adminAuth = { Authorization: `Bearer ${localStorage.getItem('admin_token') || localStorage.getItem('access_token')}` }
   const [acting, setActing] = useState<number | null>(null)
 
-  const { data: list = [], isLoading, refetch } = useApiQuery<PendingDistributor[]>(
+  const { data: list = [], isLoading, isError, error, refetch } = useApiQuery<PendingDistributor[]>(
     QKEY, '/api/admin/distributor/distributors/pending-approvals',
     {
       headers: adminAuth,
@@ -87,6 +88,8 @@ export default function AdminDistributorApprovalPage() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-20 text-gray-400"><Loader2 className="w-6 h-6 animate-spin" /></div>
+        ) : isError ? (
+          <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="승인 대기 판매사" />
         ) : list.length === 0 ? (
           <div className="border border-dashed border-gray-300 rounded-2xl py-20 text-center">
             <UserCheck className="w-10 h-10 text-gray-300 mx-auto mb-3" />
