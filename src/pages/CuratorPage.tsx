@@ -190,8 +190,9 @@ export default function CuratorPage() {
           <div className="text-gray-500 dark:text-gray-400">{t('common.loading')}</div>
         </div>
       }>
-        {/* 🏁 2026-06-25 (대표 "통일") — 사업자 링크샵도 canonical CuratorHeader 형태로. curator 객체 전달. */}
-        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} />
+        {/* 🏁 2026-06-25 (대표 "통일") — 사업자 링크샵도 canonical CuratorHeader 형태로. curator 객체 전달.
+            🏁 2026-06-26 (불필요 로딩 감사): 이미 받은 pins 도 전달 → CuratorPinsSection 중복 fetch 제거. */}
+        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} pins={pins} />
       </Suspense>
     )
   }

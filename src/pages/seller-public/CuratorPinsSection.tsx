@@ -34,11 +34,15 @@ interface CuratorPin {
   sold_count?: number | null
 }
 
-export default function CuratorPinsSection({ handle }: { handle?: string | null }) {
-  const [pins, setPins] = useState<CuratorPin[] | null>(null)
+export default function CuratorPinsSection({ handle, initialPins }: { handle?: string | null; initialPins?: CuratorPin[] | null }) {
+  const [pins, setPins] = useState<CuratorPin[] | null>(initialPins && initialPins.length ? initialPins.slice(0, 12) : null)
 
   useEffect(() => {
     if (!handle) return
+    // 🏁 2026-06-26 (대표 — 진입 불필요 로딩 감사): 부모(CuratorPage)가 이미 받은 핀을 내려주면 재fetch 0.
+    //   SPA 진입 시 CuratorPage 의 GET /api/curator/{handle} 와 본 컴포넌트가 같은 endpoint 를 중복 호출하던
+    //   것을 제거(SSR 하드로드는 기존처럼 inject 사용 → 동작 동일, SPA 만 1요청 절감).
+    if (initialPins) { setPins(initialPins.slice(0, 12)); return }
     let alive = true
     // 🏁 2026-06-17 (#4): SSR 주입(__SSR_INITIAL_CURATOR__)에 같은 handle 핀이 있으면 재fetch 생략.
     //   (/u/{handle} 에선 CuratorPage 가 이미 같은 endpoint 를 불러 → 중복 호출이었음.)
@@ -60,7 +64,7 @@ export default function CuratorPinsSection({ handle }: { handle?: string | null 
       })
       .catch(() => { if (alive) setPins([]) })
     return () => { alive = false }
-  }, [handle])
+  }, [handle, initialPins])
 
   if (!handle || !pins || pins.length === 0) return null
 
