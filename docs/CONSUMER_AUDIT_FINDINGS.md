@@ -49,8 +49,20 @@
 ## ✅ 잔여 사파리 Invalid Date sweep — 완료 (비-money, 표시/정렬만)
 `MyVouchersPage`(used_at 표시·만료임박 정렬·nearestExpiry·카드 expiresAt/usedAt), `MyStaysPage`(voucher_used_at·voucher_expires_at + null 폴백), `ProductDetailPage`(voucher_expiry), `GroupBuyDetailPage`(deadline jitter·voucher_expiry chip 2곳), `GroupBuyListPage`(deadline/expires_at/created_at 정렬 5곳) — DB 공백형식 타임스탬프 직접 `new Date()` → 사파리 `Invalid Date`/`NaN`. **표시는 `safeDate()?.`, 정렬/계산은 `safeTime()`(0 폴백)로 교체.** 각 폴백(Infinity/MAX_SAFE_INTEGER/0) 보존. 현재시각(`new Date(now)`, now=`Date.now()`)·인자없는 `new Date()`는 사파리-safe라 무수정. **부가효과**: GroupBuyDetailPage deadline jitter 가 사파리에서 NaN→항상 5s 폴링이던 것도 정상화(D1 부하↓). tsc 0·build 0·theme 0.
 
-## ⚠️ boot/auth — staging 검증 필요 (단독)
-`main.tsx:296-310` iOS establish 티켓: 4초 타임아웃/비-2xx 응답에도 티켓을 삭제 → 사파리/카톡 신규 로그인이 실패 시 **재로그인밖에 답 없음**. 부팅·인증 최고 blast-radius라 blind 수정 금지 — establish 응답 확인 + 실패 시 티켓 보존/재시도 설계를 staging 에서 검증 후 적용.
+## ⚠️ boot/auth — staging 검증 필요 (단독, blind 수정 금지)
+
+**증상**: iOS 사파리/카톡 신규 로그인이 일시 실패 시 **재로그인밖에 답 없음**.
+
+**코드로 확인한 정확한 버그 2개** (`main.tsx:291-310` `bootApp`):
+1. **line 299-305**: `fetch('/api/auth/session/establish')` 가 `response.ok` 를 **검사 안 함** → 서버가 5xx/4xx 반환해도 "성공"으로 간주.
+2. **line 308**: `delete w.__urEstablishTicket` 가 fetch 성공/실패/타임아웃 **무관하게 항상 실행** → 타임아웃(4s)·네트워크 블립·5xx 한 번이면 단명(120s) 티켓이 영구 소진 → 그 페이지 세션에서 재시도 불가.
+
+**왜 blind 수정 금지(최고 blast-radius)**: 이 블록은 렌더 전에 `await` 로 막힘 → ① 동기 재시도를 넣으면 흰 화면 시간↑ ② 4s 타임아웃 예산을 쪼개 재시도하면 "느리지만 성공(3s)" 케이스를 거꾸로 실패로 바꿈. 카카오가 주 로그인 경로라 happy-path 가 깨지면 **전 유저 로그인 장애**.
+
+**권장 수정 설계 (staging 검증 후 적용)**:
+- happy-path 불변: establish 가 `response.ok` 면 기존대로 티켓 삭제 + 렌더.
+- **실패 분기만 보강**: ① `response.ok` 검사 추가 ② 실패 시 티켓을 **삭제하지 말고** 렌더 진행 후 **non-blocking 백그라운드 재시도 1회**(예: 1.5s 후), 성공하면 `sessionStorage` 가드(`ur_establish_retried`)로 1회만 `window.location.reload()` → 늦게 도착한 세션 쿠키 픽업. 재시도도 실패면 조용히 포기(기존과 동일하게 재로그인).
+- **staging 필수 검증**: iOS 사파리에서 ⓐ 백그라운드 재시도 응답의 `ur_session` 쿠키가 실제 영속되는지 ⓑ reload 후 로그인 상태로 복귀하는지 ⓒ reload 루프 안 도는지(가드 동작). 관리자 `/api/_internal/kakao-login-diag` 로 브라우저별 성공/실패 카운트 확인.
 
 ---
 ## 변경 이력
