@@ -743,7 +743,7 @@ export default function GroupBuyDetailPage() {
               <div style={{ padding: '22px 18px' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
                   <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>대표 메뉴</div>
-                  <span style={{ fontSize: 12, color: 'var(--gbd-sub)' }}>식사권으로 주문 가능</span>
+                  <span style={{ fontSize: 12, color: 'var(--gbd-sub)' }}>교환권으로 주문 가능</span>
                 </div>
                 <div style={{ marginTop: 8, borderBottom: '1px solid var(--gbd-line2)' }}>
                   {menuItems.map((m, i) => (
