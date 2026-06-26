@@ -102,7 +102,8 @@ export class ProductRepository {
     if (_referralCommissionCol !== false) baseCols.push('referral_commission_rate');
     const LIST_COLUMNS = baseCols.join(', ');
     let query = `SELECT ${LIST_COLUMNS} FROM products WHERE is_active = 1
-      AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)`;
+      AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)
+      AND NOT (COALESCE(is_supply_product,0) = 1 AND supply_source_id IS NULL)`;
     const params: any[] = [];
     
     if (filter.sellerId) {
@@ -230,9 +231,10 @@ export class ProductRepository {
    */
   async count(filter: ProductFilter): Promise<number> {
     let query = `SELECT COUNT(*) as count FROM products WHERE is_active = 1
-      AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)`;
+      AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)
+      AND NOT (COALESCE(is_supply_product,0) = 1 AND supply_source_id IS NULL)`;
     const params: any[] = [];
-    
+
     if (filter.sellerId) {
       query += ` AND seller_id = ?`;
       params.push(filter.sellerId);
@@ -423,6 +425,7 @@ export class ProductRepository {
       JOIN products p ON p.id = fts.rowid
       WHERE products_fts MATCH ?
       AND p.is_active = 1
+      AND NOT (COALESCE(p.is_supply_product,0) = 1 AND p.supply_source_id IS NULL)
     `;
 
     const params: any[] = [sanitizedQuery];

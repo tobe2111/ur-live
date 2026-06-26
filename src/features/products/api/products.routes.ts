@@ -129,7 +129,7 @@ productsRoutes.get('/search/suggestions', cors(), async (c) => {
       `SELECT keyword FROM popular_searches WHERE keyword LIKE ? ORDER BY search_count DESC LIMIT 6`
     ).bind(`${q}%`).all<{ keyword: string }>().catch(() => ({ results: [] }))
     const productNames = await DB.prepare(
-      `SELECT DISTINCT name FROM products WHERE name LIKE ? AND is_active = 1 ORDER BY sold_count DESC, name ASC LIMIT 10`
+      `SELECT DISTINCT name FROM products WHERE name LIKE ? AND is_active = 1 AND NOT (COALESCE(is_supply_product,0) = 1 AND supply_source_id IS NULL) ORDER BY sold_count DESC, name ASC LIMIT 10`
     ).bind(`%${q}%`).all<{ name: string }>().catch(() => ({ results: [] }))
 
     const seen = new Set<string>()
@@ -162,6 +162,7 @@ productsRoutes.get('/suggestions', cors(), async (c) => {
     const result = await DB.prepare(
       `SELECT DISTINCT name as suggestion FROM products
        WHERE name LIKE ? AND is_active = 1
+       AND NOT (COALESCE(is_supply_product,0) = 1 AND supply_source_id IS NULL)
        ORDER BY name ASC LIMIT 10`
     ).bind(`%${q}%`).all().catch(() => ({ results: [] }));
     return c.json({ success: true, data: (result.results || []).map((r: any) => r.suggestion) });
@@ -325,8 +326,8 @@ productsRoutes.get('/', cors(), async (c) => {
 productsRoutes.get('/count', cors(), async (c) => {
   const { DB } = c.env;
   try {
-    // list(findAll)와 동일 가시성 기준: is_active=1 + 정지 셀러 상품 제외.
-    const conds = ['is_active = 1', 'NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)'];
+    // list(findAll)와 동일 가시성 기준: is_active=1 + 정지 셀러 상품 제외 + 도매 원본상품 제외(서비스 분리).
+    const conds = ['is_active = 1', 'NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)', 'NOT (COALESCE(is_supply_product,0) = 1 AND supply_source_id IS NULL)'];
     const binds: unknown[] = [];
     if (c.req.query('deal_only') === '1') conds.push('deal_only = 1');
     if (c.req.query('exclude_deal_only') === '1') conds.push('COALESCE(deal_only, 0) = 0');
