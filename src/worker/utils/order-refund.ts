@@ -36,6 +36,81 @@ interface OrderRow {
 const CANCELLABLE = ['PAID', 'DONE', 'PREPARING', 'SHIPPING', 'DELIVERED']
 
 /**
+ * 🛡️ 2026-06-26 전액 환불/취소 시 **부가 적립·쿠폰·공구권 역전** (order_id 멱등, 전부 best-effort).
+ *
+ * 디지털 access revoke · affiliate 적립 역전 · 공급자/영입자/에이전시 매장영입 역전 · 구매자
+ * referral_bonus 회수 · 쿠폰 un-use · 공구권 정산 clawback. 전부 order_id/order_number 기준이라
+ * 멱등(2회차엔 대상 0). **Toss 취소/상태전이/재고/딜/referral_commissions 는 미포함** — 호출자가 처리.
+ *
+ * `refundOrderFully` 와 인라인 취소/환불 경로(order.routes.ts)가 같은 대칭 역전을 공유해
+ * 한쪽만 고치는 drift 를 막는다(머니 룰 #2).
+ */
+export async function reverseOrderAncillaryOnRefund(
+  DB: D1Database,
+  orderId: number,
+  orderNumber: string | null,
+  reason: string,
+): Promise<void> {
+  // 디지털 access revoke (물리 재고복원은 호출자 — 여기선 디지털만).
+  await DB.prepare("UPDATE digital_product_access SET status = 'revoked' WHERE order_id = ? AND status = 'active'")
+    .bind(orderId).run().catch(swallow('order-refund:digital'))
+
+  // affiliate 적립 역전.
+  try {
+    const aff = await DB.prepare(
+      "SELECT referrer_id, commission FROM affiliate_earnings WHERE order_id = ? AND COALESCE(status,'pending') IN ('granted','pending')"
+    ).bind(orderId).all<{ referrer_id: string; commission: number }>()
+    if (aff.results && aff.results.length > 0) {
+      await DB.batch(aff.results.map(r =>
+        DB.prepare("UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?")
+          .bind(r.commission, r.referrer_id)
+      )).catch(swallow('order-refund:affiliate-points'))
+      await DB.prepare("UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status,'pending') IN ('granted','pending')")
+        .bind(orderId).run().catch(swallow('order-refund:affiliate-status'))
+    }
+    await DB.prepare("UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status,'pending') = 'holding'")
+      .bind(orderId).run().catch(swallow('order-refund:affiliate-holding'))
+  } catch { /* table may not exist */ }
+
+  // 공급자(B2B) + 영입자 + 에이전시 매장영입 적립 역전.
+  try {
+    const { reverseSupplierOnRefund } = await import('../../features/supply/api/supply-settlement')
+    await reverseSupplierOnRefund(DB, orderId, 'order_refund')
+  } catch { /* 비공급 주문 — best-effort */ }
+  try {
+    const { reverseInfluencerStoreIntroOnRefund } = await import('./influencer-store-intro-commission')
+    await reverseInfluencerStoreIntroOnRefund(DB, orderId, 'order_refund')
+  } catch { /* best-effort */ }
+  try {
+    const { reverseAgencyStoreIntroOnRefund } = await import('./agency-store-intro-commission')
+    await reverseAgencyStoreIntroOnRefund(DB, orderId, 'order_refund')
+  } catch { /* best-effort */ }
+  // 구매자 referral_bonus 포인트 회수.
+  try {
+    const { reverseReferralBonusOnRefund } = await import('../../features/group-buy/api/helpers')
+    if (orderNumber) await reverseReferralBonusOnRefund(DB, String(orderNumber))
+  } catch { /* best-effort */ }
+
+  // 쿠폰 사용 복원 — coupon_uses 삭제 + used_count 감소(재사용 가능).
+  try {
+    const cu = await DB.prepare('SELECT coupon_id FROM coupon_uses WHERE order_id = ?')
+      .bind(orderId).all<{ coupon_id: number }>().catch(() => ({ results: [] as Array<{ coupon_id: number }> }))
+    for (const row of (cu?.results ?? [])) {
+      await DB.prepare('UPDATE coupons SET used_count = MAX(0, used_count - 1) WHERE id = ?')
+        .bind(row.coupon_id).run().catch(swallow('order-refund:coupon-count'))
+    }
+    await DB.prepare('DELETE FROM coupon_uses WHERE order_id = ?')
+      .bind(orderId).run().catch(swallow('order-refund:coupon-uses'))
+  } catch { /* best-effort — coupon_uses 부재 등 */ }
+
+  // 공구권 정산 clawback (무효화 + 매장 정산 회수).
+  try {
+    const { clawbackVoucherSettlementOnRefund } = await import('./voucher-settlement-clawback')
+    await clawbackVoucherSettlementOnRefund(DB, orderId, `order_refund:${reason}`)
+  } catch { /* best-effort — 공구권 없는 주문 등 */ }
+}
+
+/**
  * 주문을 전액 환불한다. 멱등(이미 REFUNDED 면 already:true).
  * @param expectSellerId 지정 시 order.seller_id 와 일치해야 함(IDOR 방지). 미지정 시 호출자가 이미 검증.
  */
@@ -118,7 +193,7 @@ export async function refundOrderFully(
     } catch { /* best-effort — deal_used 컬럼 부재 등 */ }
   }
 
-  // 4. 재고 복원(물리상품) + 디지털 revoke.
+  // 4. 재고 복원(물리상품) + order_items CANCELLED. (디지털 revoke 는 아래 부가역전 헬퍼.)
   try {
     const items = await DB.prepare(`
       SELECT oi.product_id, oi.quantity, p.product_kind
@@ -129,8 +204,6 @@ export async function refundOrderFully(
     if (phys.length > 0) {
       await DB.batch(phys.map(it => DB.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').bind(it.quantity, it.product_id)))
     }
-    await DB.prepare("UPDATE digital_product_access SET status = 'revoked' WHERE order_id = ? AND status = 'active'")
-      .bind(Number(order.id)).run().catch(swallow('order-refund:digital'))
     await DB.prepare("UPDATE order_items SET status = 'CANCELLED' WHERE order_id = ?")
       .bind(Number(order.id)).run().catch(swallow('order-refund:items'))
   } catch { /* best-effort */ }
@@ -154,65 +227,10 @@ export async function refundOrderFully(
       .bind(Number(order.id)).run().catch(swallow('order-refund:referral-pending'))
   } catch { /* table may not exist */ }
 
-  // 6. affiliate 적립 역전.
-  try {
-    const aff = await DB.prepare(
-      "SELECT referrer_id, commission FROM affiliate_earnings WHERE order_id = ? AND COALESCE(status,'pending') IN ('granted','pending')"
-    ).bind(Number(order.id)).all<{ referrer_id: string; commission: number }>()
-    if (aff.results && aff.results.length > 0) {
-      await DB.batch(aff.results.map(r =>
-        DB.prepare("UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?")
-          .bind(r.commission, r.referrer_id)
-      )).catch(swallow('order-refund:affiliate-points'))
-      await DB.prepare("UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status,'pending') IN ('granted','pending')")
-        .bind(Number(order.id)).run().catch(swallow('order-refund:affiliate-status'))
-    }
-    // ⏳ holding(미성숙·미적립) 적립: 잔액 회수 없이 상태만 refunded — 성숙 cron 이 확정 안 함.
-    await DB.prepare("UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status,'pending') = 'holding'")
-      .bind(Number(order.id)).run().catch(swallow('order-refund:affiliate-holding'))
-  } catch { /* table may not exist */ }
-
-  // 7. 공급자(B2B) + 영입자 매장영입 적립 역전.
-  try {
-    const { reverseSupplierOnRefund } = await import('../../features/supply/api/supply-settlement')
-    await reverseSupplierOnRefund(DB, Number(order.id), 'order_refund')
-  } catch { /* 비공급 주문 — best-effort */ }
-  try {
-    const { reverseInfluencerStoreIntroOnRefund } = await import('./influencer-store-intro-commission')
-    await reverseInfluencerStoreIntroOnRefund(DB, Number(order.id), 'order_refund')
-  } catch { /* best-effort */ }
-  // 🔐 2026-06-11 (머니 감사 High#2): 에이전시 매장영입 커미션 역전 (적립 있는데 역전 없던 누수).
-  try {
-    const { reverseAgencyStoreIntroOnRefund } = await import('./agency-store-intro-commission')
-    await reverseAgencyStoreIntroOnRefund(DB, Number(order.id), 'order_refund')
-  } catch { /* best-effort */ }
-  // 🔐 2026-06-11 (머니 감사 High#3): 구매자 referral_bonus 포인트 회수.
-  try {
-    const { reverseReferralBonusOnRefund } = await import('../../features/group-buy/api/helpers')
-    if (order.order_number) await reverseReferralBonusOnRefund(DB, String(order.order_number))
-  } catch { /* best-effort */ }
-
-  // 9. 💸 2026-06-17 쿠폰 사용 복원 — 이 주문에 묶인 coupon_uses 삭제 + used_count 감소(재사용 가능).
-  //   CAS 전이 후라 멱등(2회차엔 DELETE 대상 0 → 이중복원 없음).
-  try {
-    const cu = await DB.prepare('SELECT coupon_id FROM coupon_uses WHERE order_id = ?')
-      .bind(Number(order.id)).all<{ coupon_id: number }>().catch(() => ({ results: [] as Array<{ coupon_id: number }> }))
-    for (const row of (cu?.results ?? [])) {
-      await DB.prepare('UPDATE coupons SET used_count = MAX(0, used_count - 1) WHERE id = ?')
-        .bind(row.coupon_id).run().catch(swallow('order-refund:coupon-count'))
-    }
-    await DB.prepare('DELETE FROM coupon_uses WHERE order_id = ?')
-      .bind(Number(order.id)).run().catch(swallow('order-refund:coupon-uses'))
-  } catch { /* best-effort — coupon_uses 부재 등 */ }
-
-  // 9b. 🔁 2026-06-23 차지백 클로백 (최종 이상형 #1): 공구권 무효화 + 매장 정산 회수.
-  //   미사용/미정산 used → refunded(돈 이동 0, cron 미지급) / 미지급 정산 → 차감+detach /
-  //   지급완료 정산 → settlement_clawbacks 회수의무 기록. CAS 전이 후라 멱등.
-  //   (확정주문 차지백은 webhook 이 거부하고 환불 API=이 함수로 강제하므로 모든 회수가 여기로 수렴.)
-  try {
-    const { clawbackVoucherSettlementOnRefund } = await import('./voucher-settlement-clawback')
-    await clawbackVoucherSettlementOnRefund(DB, Number(order.id), `order_refund:${opts.reason}`)
-  } catch { /* best-effort — 공구권 없는 주문 등 */ }
+  // 6~9b. 부가 적립·쿠폰·공구권·디지털 역전 (공유 헬퍼 — 인라인 취소/환불 경로와 대칭 공유).
+  //   affiliate · 공급자/영입자/에이전시 매장영입 · referral_bonus · 쿠폰 un-use · 공구권 clawback ·
+  //   디지털 access revoke. 전부 order_id 멱등(CAS 전이 후라 1회만). (referral_commissions 는 step5 인라인.)
+  await reverseOrderAncillaryOnRefund(DB, Number(order.id), order.order_number, opts.reason)
 
   // 8. 누적 환불액 기록.
   await DB.prepare('UPDATE orders SET refunded_amount = COALESCE(refunded_amount, 0) + ? WHERE id = ?')

@@ -22,6 +22,7 @@ import { requireAuth, type AuthUser } from '../middleware/auth';
 import { calculateShippingFee, generateId } from '../../shared/utils';
 import type { CreateOrderRequest } from '../../shared/types';
 import { tossCancelPayment } from '../utils/toss-payments';
+import { reverseOrderAncillaryOnRefund } from '../utils/order-refund';
 import { safeError } from '../utils/safe-error';
 import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
 // AuthVariables compatible with auth.ts AuthUser
@@ -781,6 +782,15 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       console.error('[ORDERS] Points refund error:', e);
     }
 
+    // 🛡️ 2026-06-26 (소비자 감사 다): 전액 환불 시 부가 적립·쿠폰·공구권 역전 — refundOrderFully 와
+    //   대칭 공유(쿠폰 un-use, affiliate/공급자/영입자/에이전시 커미션, referral_bonus, 공구권 clawback,
+    //   디지털 revoke). 인라인 referral_commissions 회수는 위에서 이미 처리. 부분 환불은 전체역전이 틀리므로 제외.
+    if ((Number((order as any).refunded_amount ?? 0) + refundAmount) >= Number(order.total_amount ?? 0)) {
+      try {
+        await reverseOrderAncillaryOnRefund(c.env.DB, Number((order as any).id ?? body.order_id), String((order as any).order_number || body.order_id), `[환불요청] ${body.reason}`);
+      } catch (e) { console.error('[ORDERS] Ancillary reversal (refund) error:', e); }
+    }
+
     // 유저에게 인앱 알림 (환불/주문 취소)
     try {
       const { notifyUser } = await import('../../lib/notifications');
@@ -883,6 +893,8 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
         if (fullCancel) {
           await orderRepo.updateStatusById(orderId, 'CANCELLED', { cancelled_at: new Date().toISOString(), cancel_reason: reason });
           await orderRepo.restoreStock(orderId);
+          // 🛡️ 2026-06-26 (소비자 감사 다): 전액 취소 시 부가 적립·쿠폰·공구권 역전 (refundOrderFully 대칭).
+          try { await reverseOrderAncillaryOnRefund(c.env.DB, Number(order.id), String(order.order_number), reason); } catch (e) { console.error('[ORDERS] Ancillary reversal (deal cancel) error:', e); }
         }
         // 추천 커미션 회수 (Toss 경로와 동일 CAS) — 딜주문도 커미션 발생 가능.
         try {
@@ -1010,6 +1022,12 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
         }
       } catch (e) {
         console.error('[ORDERS] Mixed-pay deal refund (cancel paid) error:', e);
+      }
+
+      // 🛡️ 2026-06-26 (소비자 감사 다): 전액 취소 시 부가 적립·쿠폰·공구권 역전 (refundOrderFully 대칭).
+      //   cancelAmount 미지정(전체) 또는 누적 취소가 total 도달 시만 — 부분 취소는 전체역전이 틀리므로 제외.
+      if (cancelAmount === undefined || (Number(order.refunded_amount ?? 0) + cancelAmount) >= Number(order.total_amount ?? 0)) {
+        try { await reverseOrderAncillaryOnRefund(c.env.DB, Number(order.id), String(order.order_number), reason); } catch (e) { console.error('[ORDERS] Ancillary reversal (cancel paid) error:', e); }
       }
 
       // 주문 취소 알림
