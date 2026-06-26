@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { Loader2, CheckCircle, XCircle, Wallet, Ban, Store } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import api from '@/lib/api'
+import { safeHttpHref } from '@/utils/safe-external-url'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { DashboardLoadError } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
@@ -141,9 +142,9 @@ export default function AdminSuppliersPage() {
                       </p>
                     )}
                     {/* 🏭 2026-06-04 사업자등록증 — 승인 심사용 (클릭 시 원본 확인) */}
-                    {s.business_license_url && (
-                      <a href={s.business_license_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 mt-1.5">
-                        <img src={s.business_license_url} alt="사업자등록증" className="w-12 h-12 rounded border border-gray-200 object-cover" />
+                    {safeHttpHref(s.business_license_url) && (
+                      <a href={safeHttpHref(s.business_license_url)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 mt-1.5">
+                        <img src={safeHttpHref(s.business_license_url)} alt="사업자등록증" className="w-12 h-12 rounded border border-gray-200 object-cover" />
                         <span className="text-[11px] text-blue-600 font-medium">사업자등록증 보기</span>
                       </a>
                     )}

@@ -1997,26 +1997,38 @@ app.get('*', async (c) => {
     }
   } catch {}
 
+  // 🛡️ 2026-06-26 [보안] OG/메타 HTML 인젝션 차단 — og.title/desc/image/canonical 은
+  //   products.name / users.bio / live_streams.title 등 사용자-제어 DB 값에서 옴.
+  //   봇 UA 로 위장한 요청이 셀러가 심은 `"><script>...` 상품명을 받으면 속성/태그 탈출 →
+  //   서빙 문서에 HTML 주입 + 모든 소셜/카톡 링크프리뷰 변조. 모든 보간값을 escape.
+  const esc = (v: unknown): string =>
+    String(v ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
   // 메타 태그가 포함된 최소 HTML 반환
   const html = `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>${og.title}</title>
-<meta name="description" content="${og.desc}" />
-<link rel="canonical" href="${canonical}" />
+<title>${esc(og.title)}</title>
+<meta name="description" content="${esc(og.desc)}" />
+<link rel="canonical" href="${esc(canonical)}" />
 <meta property="og:type" content="website" />
-<meta property="og:title" content="${og.title}" />
-<meta property="og:description" content="${og.desc}" />
-<meta property="og:image" content="${og.image}" />
-<meta property="og:url" content="${canonical}" />
+<meta property="og:title" content="${esc(og.title)}" />
+<meta property="og:description" content="${esc(og.desc)}" />
+<meta property="og:image" content="${esc(og.image)}" />
+<meta property="og:url" content="${esc(canonical)}" />
 <meta property="og:site_name" content="유어딜" />
 <meta property="og:locale" content="ko_KR" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="${og.title}" />
-<meta name="twitter:description" content="${og.desc}" />
-<meta name="twitter:image" content="${og.image}" />
+<meta name="twitter:title" content="${esc(og.title)}" />
+<meta name="twitter:description" content="${esc(og.desc)}" />
+<meta name="twitter:image" content="${esc(og.image)}" />
 <meta name="robots" content="index, follow" />
 <meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
 </head>

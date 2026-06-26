@@ -317,6 +317,11 @@ supplierDashboardRoutes.post('/products', async (c) => {
       : String(body.detail_images || '').split(/[,\n|]/);
     const detailList = detailListRaw.map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 10);
     const detailImages = detailList.length ? JSON.stringify(detailList) : null;
+    // 🛡️ 2026-06-26 [보안] image_url scheme 검증 — 형제 필드(brand_logo/lowest_price/detail)는
+    //   전부 http(s)·상대경로 가드인데 primary image_url 만 raw 였음. javascript:/data: 차단 +
+    //   업로드 상대경로(/api/media/...)는 허용. (SSRF 는 fetch 지점에서 추가 차단 — naver-commerce-core)
+    const imageRaw = (body.image_url || '').trim().slice(0, 1000);
+    const imageUrlSafe = (/^https?:\/\//i.test(imageRaw) || /^\//.test(imageRaw)) ? imageRaw : '';
 
     const result = await DB.prepare(
       `INSERT INTO products (
@@ -330,7 +335,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
       Math.floor(suggestedRetail),
       Math.floor(supplyPrice),
       stock,
-      (body.image_url || '').slice(0, 1000),
+      imageUrlSafe,
       detailImages,
       (body.category || 'lifestyle').slice(0, 60),
       sid,
@@ -609,7 +614,12 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       const u = body.lowest_price_url.trim().slice(0, 500);
       sets.push('lowest_price_url = ?'); params.push(/^https?:\/\//i.test(u) ? u : '');
     }
-    if (typeof body.image_url === 'string') { sets.push('image_url = ?'); params.push(body.image_url.slice(0, 1000)); }
+    // 🛡️ 2026-06-26 [보안] image_url scheme 검증(CREATE 와 동일) — javascript:/data: 차단, 상대경로 허용.
+    if (typeof body.image_url === 'string') {
+      const raw = body.image_url.trim().slice(0, 1000);
+      const safe = (/^https?:\/\//i.test(raw) || /^\//.test(raw)) ? raw : '';
+      sets.push('image_url = ?'); params.push(safe);
+    }
     if (typeof body.category === 'string' && body.category.trim()) { sets.push('category = ?'); params.push(body.category.trim().slice(0, 60)); }
     if (body.stock != null && Number.isFinite(Number(body.stock))) { sets.push('stock = ?'); params.push(Math.max(0, Math.floor(Number(body.stock)))); }
     if (typeof body.supply_visibility === 'string') { sets.push('supply_visibility = ?'); params.push(normalizeVisibility(body.supply_visibility, true)); }
