@@ -14,7 +14,6 @@ import SEO from '@/components/SEO'
 import StreamCard from './seller-public/StreamCard'
 import VideosTab from './seller-public/VideosTab'
 import VouchersTab from './seller-public/VouchersTab'
-import HomeTab from './seller-public/HomeTab'
 // 🏁 2026-06-25 (대표 "통일"): 사업자 링크샵 헤더를 canonical CuratorHeader 로 — ProfileHeader 폐기(헤더 1개).
 import CuratorHeader from './curator-page/CuratorHeader'
 import type { CuratorProfile } from '@/features/curator/api/curator-api'
@@ -22,10 +21,9 @@ import type { CuratorProfile } from '@/features/curator/api/curator-api'
 import BrowseProductCard from '@/pages/browse/BrowseProductCard'
 import type { Product as BrowseProduct } from '@/pages/browse/types'
 import InfoTab from './seller-public/InfoTab'
-import TabsNav from './seller-public/TabsNav'
 import { getThemeTokens } from './seller-public/theme'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
-import type { Seller, LiveStream, Product, Short, Tab } from './seller-public/types'
+import type { Seller, LiveStream, Product, Short } from './seller-public/types'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / FollowButton / StreamCard 를
 //   ./seller-public/ 디렉토리로 추출.
@@ -54,12 +52,10 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
   const [streams, setStreams] = useState<LiveStream[]>([])
   const [shorts, setShorts] = useState<Short[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<Tab>('home')
 
-  // 🔗 2026-06-21 (대표 승인 "그렇게 하자"): 레거시 셀러 공개 URL(/profile·/s) standalone 진입을
-  //   연결된 유저 링크샵(/u/{handle})으로 통일. CuratorPage 임베드(sellerIdOverride)면 이미 /u/ 라 skip,
-  //   연결 핸들 없는 셀러-only 계정은 그대로 이 페이지 렌더(폴백 유지). 하드로드는 worker/index.ts:2090 이
-  //   301 처리하므로 이건 SPA 내부 클릭(그 301 을 우회하던 케이스)을 중앙에서 한 번에 커버 → /profile 더이상 목적지 X.
+  // 🔗 2026-06-21 (대표 승인): 레거시 셀러 공개 URL(/profile·/s) standalone 진입을 연결된 유저 링크샵
+  //   (/u/{handle})으로 통일. CuratorPage 임베드(sellerIdOverride)면 이미 /u/ 라 skip, 연결 핸들 없는
+  //   셀러-only 계정은 그대로 이 페이지 렌더(폴백). (탭 state 는 2026-06-25 탭→섹션 전환으로 제거)
   const curatorHandle = (seller as { curator_handle?: string | null } | null)?.curator_handle || null
   useEffect(() => {
     if (sellerIdOverride) return                 // CuratorPage 임베드 — 이미 /u/{handle}
@@ -325,17 +321,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
   // 🏁 2026-06-17 (사용자 "라이브 커머스 안 해" 영구 결정): 라이브/쇼츠(동영상) 탭 숨김.
   //   LIVE_COMMERCE_SUSPENDED SSOT 가 라이브·쇼츠를 함께 묶음 → 셀러 공개 링크샵에서도 일관 적용.
   //   default tab='home' 이라 선택 깨짐 없음. 복원: 플래그 false (사용자 허가 필요).
-  const TABS: { key: Tab; label: string }[] = [
-    { key: 'home', label: t('seller.tabHome') },
-    { key: 'shop', label: `${t('seller.publicPage.shop', { defaultValue: '상품' })} ${shopProducts.length}` },
-    { key: 'vouchers', label: `${t('seller.publicPage.vouchers')} ${mealVouchers.length}` },
-    ...(LIVE_COMMERCE_SUSPENDED ? [] : [
-      { key: 'shorts' as Tab, label: `${t('seller.publicPage.videos')} ${shorts.length}` },
-      { key: 'live' as Tab, label: `${t('seller.tabLive')} ${streams.length}` },
-    ]),
-    { key: 'info', label: t('seller.tabInfo') },
-  ]
-
   return (
     <div className={`min-h-screen ${T.bg} pb-28`}>
       {/* 🎨 2026-06-17 링크샵 개선안(시안) 통일: 큐레이터 링크샵과 동일한 네이비 '✎ 편집 모드' 배너. theme-dual: 의도적 네이비 */}
