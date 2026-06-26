@@ -47,9 +47,10 @@ export default function WholesaleWishlistPage() {
   }, [loggedIn])
 
   async function remove(productId: number) {
+    const snapshot = items // 🛡️ 2026-06-25: optimistic 실패 시 복원 — 옛 코드는 rollback 없어 잘못된 상태 고착.
     setItems(prev => (prev || []).filter(i => i.product_id !== productId))
     try { await api.post(`/api/wholesale/wishlist/${productId}/toggle`, {}, auth()) }
-    catch { toast.error('해제 실패 — 새로고침 후 다시 시도해주세요') }
+    catch { setItems(snapshot); toast.error('해제 실패 — 다시 시도해주세요') }
   }
 
   function isAvailable(it: WishItem) { return it.is_active !== 0 && (it.stock ?? 0) > 0 }

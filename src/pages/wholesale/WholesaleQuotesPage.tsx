@@ -8,7 +8,8 @@
  */
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/hooks/queries/queryKeys'
 import SEO from '@/components/SEO'
 import { FileText, Loader2, Check, X, Plus, ChevronRight, ChevronDown } from 'lucide-react'
 import api from '@/lib/api'
@@ -51,6 +52,7 @@ const badgeOf = (s: string) => STATUS_BADGE[s] || { label: s, bg: WT.fill, color
 
 export default function WholesaleQuotesPage({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const [form, setForm] = useState({ title: '', product_id: '', requested_qty: '', target_unit_price: '', request_text: '' })
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -124,6 +126,11 @@ export default function WholesaleQuotesPage({ embedded = false }: { embedded?: b
       await api.post(`/api/wholesale/quotes/${id}/${action}`, {}, auth())
       toast.success(action === 'accept' ? '견적을 수락했습니다. 운영자가 발주를 진행합니다.' : '견적을 반려했습니다.')
       listQ.refetch()
+      // 🛡️ 2026-06-25: 수락 시 견적→발주 전환 → 주문목록/예치금도 무효화(옛값 방지).
+      if (action === 'accept') {
+        qc.invalidateQueries({ queryKey: queryKeys.wholesale('orders') })
+        qc.invalidateQueries({ queryKey: queryKeys.wholesale('deposit-me') })
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '처리 실패')
     } finally { setBusyId(null) }

@@ -170,9 +170,12 @@ app.post('/items/:id/ship', async (c) => {
     ).bind(itemId, sid).first<{ id: number; wholesale_order_id: number }>()
     if (!line) return c.json({ success: false, error: '항목을 찾을 수 없습니다' }, 404)
 
-    await DB.prepare(
-      "UPDATE wholesale_order_items SET courier=?, tracking_number=?, shipped_at=datetime('now'), line_status='SHIPPED' WHERE id=?"
-    ).bind(courier, tracking, itemId).run()
+    // 🛡️ 2026-06-25 (전수조사): line_status='PENDING' CAS — 가드 없으면 REFUNDED 라인이 SHIPPED 로 되살아나거나
+    //   동시 발송이 서로의 송장 덮어씀. ship-all(아래)은 이미 PENDING 가드 — 이 단건만 누락이었음.
+    const shipUpd = await DB.prepare(
+      "UPDATE wholesale_order_items SET courier=?, tracking_number=?, shipped_at=datetime('now'), line_status='SHIPPED' WHERE id=? AND supplier_id=? AND line_status='PENDING'"
+    ).bind(courier, tracking, itemId, sid).run()
+    if ((shipUpd.meta?.changes ?? 0) === 0) return c.json({ success: true, already: true })
 
     // 주문의 모든 라인이 발송완료면 주문 상태도 SHIPPED.
     const pending = await DB.prepare(
@@ -350,13 +353,20 @@ app.post('/orders/:id/refund', async (c) => {
       const refundedSoFar = (order.refunded_amount || 0) + refundAmount
       const shippingRefund = Math.max(0, totalCharge - refundedSoFar)
       if (shippingRefund > 0) {
+        // 🛡️ 2026-06-25 (전수조사 보강): Toss 취소 실패 시 refunded_amount 를 올리면 안 됨(돈 안 갔는데 '전액환불'
+        //   기록) → 라인환불과 동일하게 성공 시에만 누적. deposit 은 로컬write라 항상 적용.
+        let shipApplied = false
         if (isDeposit) {
           const bal2 = await refundDeposit(DB, order.distributor_seller_id, shippingRefund)
           await recordDepositTxn(DB, order.distributor_seller_id, 'refund', shippingRefund, bal2, `${orderId}-ship`.slice(0, 120), `배송비 환불 #${orderId} (전량환불)`).catch(swallow('wholesale-supplier:refund-ship-txn'))
+          shipApplied = true
         } else if (order.payment_key && order.payment_key !== 'deposit') {
-          await cancelTossPayment({ env: c.env, paymentKey: order.payment_key, cancelReason: '배송비 환불(전량환불)', cancelAmount: shippingRefund, idempotencyKey: `whs-refund-ship-${orderId}`.slice(0, 100) }).catch(() => null)
+          const shipRes = await cancelTossPayment({ env: c.env, paymentKey: order.payment_key, cancelReason: '배송비 환불(전량환불)', cancelAmount: shippingRefund, idempotencyKey: `whs-refund-ship-${orderId}`.slice(0, 100) }).catch(() => null)
+          shipApplied = !!(shipRes && shipRes.ok) // 실패 시 미누적 → reconcile/재시도 여지
         }
-        await DB.prepare("UPDATE wholesale_orders SET refunded_amount = refunded_amount + ? WHERE id = ?").bind(shippingRefund, orderId).run().catch(swallow('wholesale-supplier:refund-ship-acc'))
+        if (shipApplied) {
+          await DB.prepare("UPDATE wholesale_orders SET refunded_amount = refunded_amount + ? WHERE id = ?").bind(shippingRefund, orderId).run().catch(swallow('wholesale-supplier:refund-ship-acc'))
+        }
       }
     }
 
