@@ -136,26 +136,35 @@ export default function LoginPage() {
     try {
       if (typeof document === 'undefined' || document.getElementById('ur-kakao-loading')) return
       const isDark = document.documentElement.classList.contains('dark')
-      const bg = isDark ? '#020202' : '#ffffff'
-      const ring = isDark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.10)'
-      const sub = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.5)'
+      const reduce = typeof window !== 'undefined' && window.matchMedia
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      // 모노톤(잉크) 미니멀 — 핑크 그라데이션 제거. 솔리드 워드마크 + 슬림 인디터미닛 바.
+      const bg = isDark ? '#0a0a0a' : '#ffffff'
+      const ink = isDark ? '#ffffff' : '#111827'
+      const track = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(17,24,39,0.08)'
+      const sub = isDark ? 'rgba(255,255,255,0.42)' : 'rgba(17,24,39,0.40)'
       const o = document.createElement('div')
       o.id = 'ur-kakao-loading'
       o.setAttribute('role', 'alert')
       o.setAttribute('aria-live', 'assertive')
-      o.style.cssText = `position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:${bg}`
+      o.style.cssText = `position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:${bg};${reduce ? '' : 'animation:ur-kakao-fade 0.28s ease both'}`
       const logo = document.createElement('div')
       logo.textContent = '유어딜'
-      logo.style.cssText = 'font-size:30px;font-weight:800;letter-spacing:-0.04em;color:#ec4899;background:linear-gradient(135deg,#ff6b6b,#ec4899);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent'
-      const sp = document.createElement('div')
-      sp.style.cssText = `width:34px;height:34px;border:3px solid ${ring};border-top-color:#ec4899;border-radius:50%;animation:ur-kakao-spin 0.7s linear infinite`
+      logo.style.cssText = `font-size:27px;font-weight:700;letter-spacing:-0.035em;color:${ink}`
+      const bar = document.createElement('div')
+      bar.style.cssText = `position:relative;width:128px;height:3px;border-radius:999px;background:${track};overflow:hidden`
+      const seg = document.createElement('div')
+      seg.style.cssText = reduce
+        ? `position:absolute;top:0;left:0;height:100%;width:100%;border-radius:999px;background:${ink};opacity:0.55`
+        : `position:absolute;top:0;left:0;height:100%;width:40%;border-radius:999px;background:${ink};animation:ur-kakao-bar 1.15s cubic-bezier(0.4,0,0.2,1) infinite`
+      bar.appendChild(seg)
       const tx = document.createElement('div')
-      tx.style.cssText = `color:${sub};font-size:14px;font-weight:600;letter-spacing:-0.01em`
-      tx.textContent = '로그인 중…'
-      o.appendChild(logo); o.appendChild(sp); o.appendChild(tx)
+      tx.style.cssText = `color:${sub};font-size:12.5px;font-weight:500;letter-spacing:0.01em`
+      tx.textContent = '로그인 중이에요'
+      o.appendChild(logo); o.appendChild(bar); o.appendChild(tx)
       if (!document.getElementById('ur-kakao-spin-kf')) {
         const st = document.createElement('style'); st.id = 'ur-kakao-spin-kf'
-        st.textContent = '@keyframes ur-kakao-spin{to{transform:rotate(360deg)}}'
+        st.textContent = '@keyframes ur-kakao-bar{0%{transform:translateX(-120%)}100%{transform:translateX(320%)}}@keyframes ur-kakao-fade{from{opacity:0}to{opacity:1}}'
         document.head.appendChild(st)
       }
       document.body.appendChild(o)
