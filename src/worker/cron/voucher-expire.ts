@@ -65,9 +65,11 @@ export async function runMealVoucherExpireCron(env: Env): Promise<{ d7: number; 
   for (const r of (rows.results || [])) {
     const daysLeft = Number(r.days_left)
     if (![7, 3, 1].includes(daysLeft)) continue
-    const notifType = `voucher_expire_${daysLeft}d`
+    // 멱등 키는 voucher 별(코드 포함) — 한 유저가 같은 날 여러 식사권 만료 시 각각 알림(돈이라 누락 금지).
+    //   stay 버전은 (user,임계) 1회라 동일-일자 다건이 누락될 수 있음 → 식사권은 코드 스코프로 강화.
+    const notifType = `voucher_expire_${daysLeft}d_${r.code}`
 
-    // 중복 발송 방지 — 같은 임계로 최근 2일 내 이미 보냈으면 skip.
+    // 중복 발송 방지 — 같은 voucher·임계로 최근 2일 내 이미 보냈으면 skip.
     const dup = await env.DB.prepare(
       `SELECT id FROM notifications WHERE user_id = ? AND type = ? AND created_at > datetime('now', '-2 days') LIMIT 1`
     ).bind(r.user_id, notifType).first().catch(() => null)
