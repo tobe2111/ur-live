@@ -46,8 +46,8 @@
 | 다. 소비자 취소/환불이 `refundOrderFully` 우회 | `order.routes.ts`, `returns.routes.ts` | 쿠폰 un-use·공구권·공급/에이전시/영입자 커미션 역전 누락 | ✅ **완료** — 공유 헬퍼 `reverseOrderAncillaryOnRefund(order-refund.ts)` 추출(affiliate·공급자/영입자/에이전시 매장영입·referral_bonus·쿠폰 un-use·공구권 clawback·디지털 revoke, order_id 멱등). `refundOrderFully` 가 인라인 6~9b 단계를 이 헬퍼로 대체 + `order.routes.ts` `/refund`·`/:id/cancel`(딜·Toss 양쪽)이 **전액** 취소/환불일 때만 호출(부분취소는 전체역전이 틀려 제외). referral_commissions 회수는 기존 인라인 유지(중복 없음). `returns.routes.ts`(부분반품)는 이미 공급/영입자/에이전시/referral_bonus 역전 보유 → 부분 반품 의미 보존 위해 무수정(쿠폰/공구권 전체역전은 full-vs-partial 판별 필요 — 별도 deferral). ⚠️ staging 검증 권장. |
 | 마. confirm-toss 동시요청 공구권 이중발급 | `group-buy.routes.ts`, `repair-schema` | UNIQUE index 부재 + read-then-write | ⏳ **미적용(위험)** — `toss_payment_key` 가 **멀티셀러 주문에서 여러 order 행에 공유**됨(grep 확인) → 그 컬럼 UNIQUE index 는 멀티셀러 결제를 깨뜨림. group-buy 는 `idempotency_key` 로 1차 dedup 중이나 그 컬럼의 멀티행 공유 여부 확인 후 partial UNIQUE 적용 필요. |
 
-## 🟡 잔여 사파리 Invalid Date (비-money, 안전 — 후속 safeDate sweep)
-`MyVouchersPage`(338/509-510/533/1044-1118 나머지), `MyStaysPage`(234-258), `ProductDetailPage:660`, `GroupBuyDetailPage`(255/710/799), `GroupBuyListPage`(529/588/612 정렬) — `new Date()` 직접 → 사파리 표시 깨짐/정렬 불안정. safeDate 로 일괄 교체(기능 영향 낮음, 표시/정렬만).
+## ✅ 잔여 사파리 Invalid Date sweep — 완료 (비-money, 표시/정렬만)
+`MyVouchersPage`(used_at 표시·만료임박 정렬·nearestExpiry·카드 expiresAt/usedAt), `MyStaysPage`(voucher_used_at·voucher_expires_at + null 폴백), `ProductDetailPage`(voucher_expiry), `GroupBuyDetailPage`(deadline jitter·voucher_expiry chip 2곳), `GroupBuyListPage`(deadline/expires_at/created_at 정렬 5곳) — DB 공백형식 타임스탬프 직접 `new Date()` → 사파리 `Invalid Date`/`NaN`. **표시는 `safeDate()?.`, 정렬/계산은 `safeTime()`(0 폴백)로 교체.** 각 폴백(Infinity/MAX_SAFE_INTEGER/0) 보존. 현재시각(`new Date(now)`, now=`Date.now()`)·인자없는 `new Date()`는 사파리-safe라 무수정. **부가효과**: GroupBuyDetailPage deadline jitter 가 사파리에서 NaN→항상 5s 폴링이던 것도 정상화(D1 부하↓). tsc 0·build 0·theme 0.
 
 ## ⚠️ boot/auth — staging 검증 필요 (단독)
 `main.tsx:296-310` iOS establish 티켓: 4초 타임아웃/비-2xx 응답에도 티켓을 삭제 → 사파리/카톡 신규 로그인이 실패 시 **재로그인밖에 답 없음**. 부팅·인증 최고 blast-radius라 blind 수정 금지 — establish 응답 확인 + 실패 시 티켓 보존/재시도 설계를 staging 에서 검증 후 적용.

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import api from '@/lib/api'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
+import { safeTime } from '@/utils/safe-date'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { cardGradient } from '@/utils/card-gradient'
 import SEO from '@/components/SEO'
@@ -526,7 +527,7 @@ export default function GroupBuyListPage() {
       case 'deadline': {
         const getTs = (p: GroupBuyProduct) =>
           p.group_buy_deadline
-            ? new Date(p.group_buy_deadline).getTime()
+            ? safeTime(p.group_buy_deadline)
             : Number.MAX_SAFE_INTEGER
         result.sort((a, b) => getTs(a) - getTs(b))
         break
@@ -546,8 +547,8 @@ export default function GroupBuyListPage() {
       }
       case 'newest':
         result.sort((a, b) => {
-          const aTs = a.created_at ? new Date(a.created_at).getTime() : 0
-          const bTs = b.created_at ? new Date(b.created_at).getTime() : 0
+          const aTs = a.created_at ? safeTime(a.created_at) : 0
+          const bTs = b.created_at ? safeTime(b.created_at) : 0
           return bTs - aTs
         })
         break
@@ -585,7 +586,7 @@ export default function GroupBuyListPage() {
       .slice(0, 4)
     const closingToday = filtered.filter(p => {
       if (!p.group_buy_deadline) return false
-      const ms = new Date(p.group_buy_deadline).getTime() - Date.now()
+      const ms = safeTime(p.group_buy_deadline) - Date.now()
       return ms > 0 && ms < 24 * 3600 * 1000
     }).slice(0, 4)
     const goalReached = filtered.filter(p => (p.group_buy_target ?? 0) > 0 && (p.group_buy_current ?? 0) >= (p.group_buy_target ?? 0)).slice(0, 4)
@@ -609,7 +610,7 @@ export default function GroupBuyListPage() {
       case 'deadline': {
         const getTs = (p: CommunityGroupBuy) =>
           p.expires_at
-            ? new Date(p.expires_at).getTime()
+            ? safeTime(p.expires_at)
             : Number.MAX_SAFE_INTEGER
         result.sort((a, b) => getTs(a) - getTs(b))
         break
@@ -629,8 +630,8 @@ export default function GroupBuyListPage() {
       }
       case 'newest':
         result.sort((a, b) => {
-          const aTs = a.created_at ? new Date(a.created_at).getTime() : 0
-          const bTs = b.created_at ? new Date(b.created_at).getTime() : 0
+          const aTs = a.created_at ? safeTime(a.created_at) : 0
+          const bTs = b.created_at ? safeTime(b.created_at) : 0
           return bTs - aTs
         })
         break

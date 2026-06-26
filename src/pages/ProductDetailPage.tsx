@@ -24,6 +24,7 @@ import { ProductNoticeSection } from '@/components/product/ProductNoticeSection'
 import { ReturnPolicySection } from '@/components/product/ReturnPolicySection'
 import { ProductDetailSkeleton } from '@/components/ui/skeleton'
 import { formatNumber } from '@/utils/format'
+import { safeDate } from '@/utils/safe-date'
 import { resolveDetailDisplay } from './product-detail/detail-display'
 import AccordionSection from './product-detail/AccordionSection'
 import GroupBuyCountdown from './product-detail/GroupBuyCountdown'
@@ -657,7 +658,7 @@ export default function ProductDetailPage() {
                 <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">{t('productDetail.voucherTerms')}</span><span>{product.voucher_terms}</span></div>
               )}
               {product.voucher_expiry && (
-                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">{t('productDetail.voucherExpiry')}</span><span>{new Date(product.voucher_expiry).toLocaleDateString('ko-KR')}까지</span></div>
+                <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">{t('productDetail.voucherExpiry')}</span><span>{safeDate(product.voucher_expiry)?.toLocaleDateString('ko-KR')}까지</span></div>
               )}
 
               {/* 지도 + 외부 연결 버튼 */}
