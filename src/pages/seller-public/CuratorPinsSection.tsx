@@ -66,7 +66,7 @@ export default function CuratorPinsSection({ handle }: { handle?: string | null 
     <section className="px-4 lg:px-8 py-6">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-[15px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-          <Pin className="w-4 h-4 text-gray-400 dark:text-gray-500" /> 추천 핀
+          <Pin className="w-4 h-4 text-gray-400 dark:text-gray-500" /> 추천템
         </h2>
         {!onOwnLinkshop && (
           <a href={`/u/${handle}`} className="text-[12px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">

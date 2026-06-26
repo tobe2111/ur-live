@@ -3,7 +3,6 @@ const CuratorPinsSection = lazy(() => import('./seller-public/CuratorPinsSection
 // 🏁 2026-06-18 (사용자 결정 — 승인 사업자 상점 바로등록): 오너가 대시보드 안 가고 링크샵에서 바로 상품 등록.
 const QuickProductModal = lazy(() => import('./curator-page/QuickProductModal'))
 import { lazy, Suspense } from 'react'
-import EditorialProductCard from '@/components/linkshop/EditorialProductCard'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
@@ -19,6 +18,9 @@ import HomeTab from './seller-public/HomeTab'
 // 🏁 2026-06-25 (대표 "통일"): 사업자 링크샵 헤더를 canonical CuratorHeader 로 — ProfileHeader 폐기(헤더 1개).
 import CuratorHeader from './curator-page/CuratorHeader'
 import type { CuratorProfile } from '@/features/curator/api/curator-api'
+// 🏁 2026-06-25 (대표 "카드 1종"): 내 상품도 표준 BrowseProductCard(★평점·판매수 내장) — EditorialProductCard 폐기.
+import BrowseProductCard from '@/pages/browse/BrowseProductCard'
+import type { Product as BrowseProduct } from '@/pages/browse/types'
 import InfoTab from './seller-public/InfoTab'
 import TabsNav from './seller-public/TabsNav'
 import { getThemeTokens } from './seller-public/theme'
@@ -447,15 +449,12 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8">
               {shopProducts.filter(p => !shopQuery.trim() || p.name.toLowerCase().includes(shopQuery.trim().toLowerCase())).map(p => (
-                // 🎨 2026-06-16 링크샵 통일: 공유 에디토리얼 카드 (docs/design/linkshop-unification.md 2단계)
-                <EditorialProductCard
+                // 🏁 2026-06-25 (대표 "카드 1종"): 추천핀과 동일한 표준 BrowseProductCard 로 통일.
+                <BrowseProductCard
                   key={p.id}
-                  product={{ id: p.id, name: p.name, price: p.price, original_price: p.original_price, image: p.image_url, dominant_color: p.dominant_color, avg_rating: p.avg_rating, review_count: p.review_count, sold_count: p.sold_count }}
-                  onClick={() => navigate(`/products/${p.id}`)}
-                  aspect="square"
-                  textClass={T.text}
-                  discountPct={p.discount_rate || undefined}
-                  showStats
+                  product={{ id: p.id, name: p.name, price: p.price, current_price: p.price, original_price: p.original_price ?? undefined, discount_rate: p.discount_rate ?? 0, image_url: p.image_url || '', stock: 0, dominant_color: p.dominant_color, avg_rating: p.avg_rating, review_count: p.review_count, sold_count: p.sold_count } as BrowseProduct}
+                  aboveFold={false}
+                  to={`/products/${p.id}`}
                 />
               ))}
             </div>
