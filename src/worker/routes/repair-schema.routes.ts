@@ -1419,6 +1419,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'idx_dpa_product', sql: `CREATE INDEX IF NOT EXISTS idx_dpa_product ON digital_product_access(product_id)` },
     { name: 'idx_dpa_order', sql: `CREATE INDEX IF NOT EXISTS idx_dpa_order ON digital_product_access(order_id)` },
     { name: 'idx_dpa_token', sql: `CREATE INDEX IF NOT EXISTS idx_dpa_token ON digital_product_access(access_token)` },
+    // 🎫 2026-06-26: order_item 당 access 1행 — INSERT OR IGNORE 가 confirm+webhook 양 경로에서 진짜 멱등이 되도록
+    //   UNIQUE. (best-effort — 기존 중복행 있으면 생성 실패하나 타 repair 안 깨뜨림; 그 경우 status CAS 가 단일실행 보장.)
+    { name: 'idx_dpa_order_item_unique', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_dpa_order_item_unique ON digital_product_access(order_item_id)` },
     { name: 'digital_download_logs', sql: `CREATE TABLE IF NOT EXISTS digital_download_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       access_id INTEGER NOT NULL,

@@ -395,6 +395,47 @@ paymentsRouter.post('/confirm', async (c) => {
       captureException(dealErr as Error, { tags: { area: 'payment', kind: 'deal_deduct' } }).catch(swallow('payment:deal-deduct'));
     }
 
+    // 🎫 2026-06-26 [UNLOCK] (대표 승인 "3건 다 고쳐" — 소비자 감사): 디지털 상품 access_token 발급을
+    //   /confirm 에도 추가. 기존엔 webhook 에만 있어 정상 경로(브라우저→/confirm)로 결제 완료 시 보관함
+    //   미발급 → webhook 지연/실패면 영구 미수령이었음. INSERT OR IGNORE + UNIQUE(order_item_id) 로
+    //   webhook 과 둘 다 와도 멱등(이중발급 X). ⚠️ Toss confirm/금액검증/confirmClaim 무수정 — 발급 배선만.
+    try {
+      const digitalItems = await c.env.DB.prepare(`
+        SELECT oi.id AS order_item_id, oi.order_id, oi.product_id, o.user_id,
+               p.product_kind, p.access_duration_days
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        JOIN products p ON p.id = oi.product_id
+        WHERE o.order_number = ?
+          AND p.product_kind IS NOT NULL
+          AND p.product_kind != 'physical'
+      `).bind(orderNumber).all<{
+        order_item_id: number; order_id: string; product_id: number;
+        user_id: string; product_kind: string; access_duration_days: number | null;
+      }>();
+      if (digitalItems.results && digitalItems.results.length > 0) {
+        const stmts = digitalItems.results.map(item => {
+          const token = crypto.randomUUID();
+          const expiresAt = item.access_duration_days
+            ? `datetime('now', '+${Number(item.access_duration_days)} days')`
+            : 'NULL';
+          return c.env.DB.prepare(`
+            INSERT OR IGNORE INTO digital_product_access
+            (user_id, product_id, order_id, order_item_id, access_token, expires_at, status)
+            VALUES (?, ?, ?, ?, ?, ${expiresAt}, 'active')
+          `).bind(item.user_id, item.product_id, item.order_id, item.order_item_id, token);
+        });
+        await c.env.DB.batch(stmts);
+        const digUserId = digitalItems.results[0].user_id;
+        await c.env.DB.prepare(`
+          INSERT INTO notifications (user_id, user_type, type, title, message, link)
+          VALUES (?, 'user', 'digital_purchase', ?, ?, '/my/digital')
+        `).bind(digUserId, '디지털 상품 구매 완료', '마이페이지 → 디지털 보관함에서 다운로드/시청 가능합니다').run().catch(swallow('payment:digital-notification'));
+      }
+    } catch (digErr) {
+      captureException(digErr as Error, { tags: { area: 'payment', kind: 'digital_access' } }).catch(swallow('payment:digital-access'));
+    }
+
     // 🏁 2026-06-12 [UNLOCK] (사용자 승인 "나머지 다 이상적으로 진행" — 전 플로우 감사 배선 3종):
     //   결제 확정 직후 side-effect 를 응답 후(waitUntil)로 — Toss confirm/금액검증/CAS 무변경.
     //   ① 큐레이터/추천 적립 소비: 주문 생성 시 저장된 order_referrer_intents → creditAffiliateFromIntent
