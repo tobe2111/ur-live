@@ -18,7 +18,7 @@ export default function GradeSheet({ current, onClose }: { current: string; onCl
   const go = () => { onClose(); navigate(loggedIn ? '/wholesale/dashboard' : '/wholesale/login') }
   return (
     <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center" style={{ background: 'rgba(20,22,28,0.4)' }} onClick={onClose}>
-      <div className="w-full lg:max-w-md bg-white rounded-t-3xl lg:rounded-3xl p-5 pb-7" onClick={e => e.stopPropagation()}>
+      <div className="w-full lg:max-w-md bg-white rounded-t-3xl lg:rounded-3xl p-5 max-h-[88dvh] overflow-y-auto pb-[max(1.75rem,env(safe-area-inset-bottom))]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[18px] font-extrabold" style={{ color: WT.ink }}>회원 등급별 공급가 안내</h3>
           <button onClick={onClose} aria-label="닫기"><X className="w-5 h-5" style={{ color: WT.ink3 }} /></button>

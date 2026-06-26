@@ -12,7 +12,7 @@ export default function WholesaleIntroPage() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-white text-[#0C2454]">
+    <div className="min-h-[100dvh] bg-white text-[#0C2454]">
       <SEO
         domain="wholesale"
         title="도매사이트 유통스타트 — 제조사 직거래 B2B 도매가 사입·무재고 위탁판매"

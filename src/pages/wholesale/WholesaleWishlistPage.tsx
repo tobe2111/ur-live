@@ -75,7 +75,7 @@ export default function WholesaleWishlistPage() {
   }, [items, filter])
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: WT.fill }}>
+    <div className="min-h-[100dvh] pb-24" style={{ background: WT.fill }}>
       <SEO title="관심상품 - 유통스타트" description="찜한 도매 상품을 모아보고 재입고·가격변동을 확인하세요" url="/wholesale/wishlist" noindex />
 
       {/* 로고 브레드크럼 헤더 */}

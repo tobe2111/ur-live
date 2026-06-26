@@ -31,7 +31,7 @@ export default function WholesaleSuccessPage() {
   }, [qc])
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: '#fff', color: WT.ink }}>
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center px-6 text-center" style={{ background: '#fff', color: WT.ink }}>
       <SEO title="도매 결제 완료 - 유통스타트" description="도매 주문 결제 결과" url="/wholesale/success" noindex />
       <CheckCircle2 className="w-14 h-14 mb-4" style={{ color: WT.pos }} />
       <h1 className="text-xl font-bold mb-1" style={{ color: WT.ink }}>

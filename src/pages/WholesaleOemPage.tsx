@@ -53,7 +53,7 @@ export default function WholesaleOemPage({ embedded = false }: { embedded?: bool
 
   if (!embedded && !sellerToken()) {
     return (
-      <div className="min-h-screen bg-[#F4F5F7] flex flex-col items-center justify-center px-6 text-center">
+      <div className="min-h-[100dvh] bg-[#F4F5F7] flex flex-col items-center justify-center px-6 text-center">
         {/* 🏭 2026-06-08 SEO: 비로그인 OEM 랜딩은 공개 인덱스 타깃("OEM/ODM 상품제휴") — 공급가/거래정보 없음. */}
         <SEO
           domain="wholesale"
@@ -196,7 +196,7 @@ export default function WholesaleOemPage({ embedded = false }: { embedded?: bool
   if (embedded) return <div className="space-y-6">{content}</div>
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7]">
+    <div className="min-h-[100dvh] bg-[#F4F5F7]">
       <SEO domain="wholesale" title="OEM/ODM 신청 — 유통스타트" description="판매사 OEM/ODM 제작 신청" url="/wholesale/oem" noindex />
       <header className="bg-white border-b border-[#ECEEF1]">
         <div className="ur-content-medium px-4 lg:px-8 py-4 flex items-center justify-between">

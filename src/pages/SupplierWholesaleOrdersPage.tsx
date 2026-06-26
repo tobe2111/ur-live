@@ -139,7 +139,7 @@ export default function SupplierWholesaleOrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7]">
+    <div className="min-h-[100dvh] bg-[#F4F5F7]">
       <SEO title="도매 주문 처리 - 제조사" description="제조사 도매 주문 송장/반품" url="/supplier/wholesale-orders" noindex />
       <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto flex items-center gap-3 px-4 h-[52px]">

@@ -132,7 +132,8 @@ export default function AdminWholesaleOrdersPage() {
               배송지: {String(detail.order.ship_to_name || '-')} {String(detail.order.ship_to_phone || '')}<br />
               {String(detail.order.ship_to_address || '-')}
             </div>
-            <table className="w-full text-sm mb-4">
+            <div className="overflow-x-auto mb-4">
+            <table className="w-full min-w-[480px] text-sm">
               <thead><tr className="text-left text-gray-500 border-b border-gray-100">
                 <th className="py-2 font-medium">상품</th><th className="py-2 font-medium">제조사</th>
                 <th className="py-2 font-medium text-right">수량</th><th className="py-2 font-medium text-right">금액</th><th className="py-2 font-medium">상태</th>
@@ -149,6 +150,7 @@ export default function AdminWholesaleOrdersPage() {
                 ))}
               </tbody>
             </table>
+            </div>
             {['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(detail.order.status as string) && (
               <button onClick={() => forceRefund(detail.order.id)} disabled={refunding} className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
                 {refunding ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} 관리자 강제 전액환불

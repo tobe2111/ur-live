@@ -147,7 +147,7 @@ export default function WholesaleDocsPage({ embedded = false }: { embedded?: boo
   if (embedded) return <div>{content}</div>
 
   return (
-    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
+    <div className="min-h-[100dvh]" style={{ background: '#fff', color: WT.ink }}>
       <SEO title="발행 자료 - 유통스타트" description="판매사 거래명세서·세금계산서" url="/wholesale/documents" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-medium flex items-center gap-3 px-5 lg:px-8 h-[52px]">
