@@ -487,23 +487,19 @@ export default function SellerPublicPage({ sellerIdOverride, curator, pins: init
           </Suspense>
         )}
 
-        {/* ② 내 상품 — 방문자에게 0개면 섹션 숨김, 소유자에겐 등록 CTA */}
+        {/* ② 내 상품 — 방문자에게 0개면 섹션 숨김(외부 조건), 소유자 0개는 컴팩트 제목 행 + 인라인 추가 */}
         {(shopProducts.length > 0 || ownerView) && (
           shopProducts.length === 0 ? (
-            // 🎨 2026-06-17 링크샵 통일: 평면 텍스트 → ghost/CTA 빈 상태 (큐레이터 링크샵과 톤 맞춤)
-            <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] flex items-center justify-center text-2xl">🛍️</div>
-              <p className="text-[15px] font-bold text-gray-900 dark:text-white">
-                {ownerView ? t('seller.publicPage.noShopOwnerTitle', { defaultValue: '아직 등록한 상품이 없어요' }) : t('seller.publicPage.noShopTitle', { defaultValue: '등록된 상품이 없어요' })}
-              </p>
-              <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
-                {ownerView ? t('seller.publicPage.noShopOwnerDesc', { defaultValue: '셀러 대시보드에서 상품을 추가해 보세요' }) : t('seller.publicPage.noShopDesc', { defaultValue: '곧 새로운 상품이 올라와요' })}
-              </p>
-              {ownerView && (
-                <button onClick={() => navigate('/seller')} className="mt-4 inline-flex items-center h-10 px-4 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[13px] font-bold active:scale-95">
-                  {t('seller.publicPage.goAddProduct', { defaultValue: '대시보드에서 등록하기 →' })}
-                </button>
-              )}
+            // 🏁 2026-06-26 (대표 — "빈 상태가 너무 큼"): py-16 빈 블록 → 제목 행 옆 인라인 '+ 상품 등록'.
+            //   대시보드로 보내지 않고 인앱 빠른등록(QuickProductModal)으로 바로 → 간결 + 발견성 ↑.
+            <div className="mt-7 flex items-center justify-between gap-3">
+              <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white">{t('seller.publicPage.shop', { defaultValue: '내 상품' })} 0</h3>
+              <button
+                onClick={() => setShowQuickAdd(true)}
+                className="shrink-0 inline-flex items-center gap-1 px-3.5 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12.5px] font-bold active:scale-95"
+              >
+                + {t('seller.publicPage.addProduct', { defaultValue: '상품 등록' })}
+              </button>
             </div>
           ) : (
             <>

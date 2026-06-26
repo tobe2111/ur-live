@@ -53,14 +53,18 @@ export default function AdminLoginPage() {
     setLoading(true)
 
     try {
-      // User 세션 정리 (동기) + Firebase signOut (비동기, 타임아웃 3초)
-      clearAuthData('user')
+      // 🛡️ 2026-06-26 (대표 신고 — 유저↔어드민 상호 로그아웃 근본수정):
+      //   기존엔 어드민 로그인 시작 시 무조건 clearAuthData('user') 로 소비자 세션을 파괴했음.
+      //   KR 에선 clearAuthData 가 /api/auth/logout-cookies 까지 호출해 httpOnly ur_session 쿠키를
+      //   없애므로 "어드민 로그인 = 유저 강제 로그아웃". 코드베이스의 이중 로그인 '공존' 설계
+      //   (RouteGuards 토큰존재 기반 + 아래 line 'User 세션 보호' 주석)와 정면 모순이었다.
+      //   KR 소비자 세션(쿠키)은 어드민 Bearer 와 독립이라 공존 가능 → 파괴하지 않는다.
+      //   글로벌(Firebase)만 기존대로 정리 + signOut (Bearer 공간/토큰 일관성 유지).
       clearFirebaseTokenCache()
-      // 🛡️ 2026-05-01: KR Firebase 100% 미사용 — signOut 호출 안 함.
-      //   글로벌만 Firebase signOut 시도 (3초 타임아웃 hang 방지).
       try {
         const { isKorea } = await import('@/config/region')
         if (!isKorea()) {
+          clearAuthData('user')
           const signOutPromise = import('@/lib/firebase-auth').then(m => m.signOut())
           await Promise.race([
             signOutPromise,
