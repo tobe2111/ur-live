@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-26 — 제조사 가입폼(도매몰) 검증/포커스 UX 전면 수정 (대표 시안 7건) — 서비스 분리 준수
+**근본원인**: `<form>` 이 일부 필드(상호·사업자번호·이메일·비번)에만 native `required` → 가입신청 클릭 시 브라우저 native 검증이 **required 없는 대표자/담당자 필드를 건너뛰고 첫 빈 required(=이메일)로 무조건 점프**. 커스텀 JS 순차검증은 native 가 submit 을 막아 **실행 자체가 안 됨**.
+**수정**(`SupplierRegisterPage.tsx`, 도매몰 전용):
+- `form noValidate` + 필드 ref 맵 → **화면 순서대로 JS 검증 + 첫 문제 필드로 포커스/스크롤**(이메일 점프 제거).
+- 대표자/담당자 **성명·연락처 각각** 검증으로 분리(기존 묶음). 연락처는 `isValidKrPhone`(완성형 010-XXXX-XXXX만) → "010"·"010-9135" 미완성 차단(#1~5).
+- 이메일 `isValidEmail`(TLD 필수) → "utonggori@naver" 통과 차단.
+- #6 로그인 이메일 라벨 "이메일 (로그인 아이디)" + 힌트(위 담당자 이메일과 구분) / 담당자 이메일 라벨 "선택·연락용".
+- #7 비밀번호 기준 상시 표시(입력 상태별 회색→amber→green: "영문+숫자 8자 이상").
+- 검증: tsc 0 · theme/light-input guard 0 · build 0. 카카오 가입 모드(이메일/비번 스킵)·`/api/supplier/register` 페이로드·`sameAsRep` 복사 로직 불변.
+
 ## ✅ 2026-06-26 — 소비자(유어딜) 쇼핑 동선 전수조사 (대표 "일단 그래도 해줘") — 서비스 분리 준수
 **범위(유어딜 공구 서비스만 — 도매몰 무관)**: 홈/교환권/공구/체크아웃/링크샵/마이/충전/알림 신규·빈·비로그인 계정 관점. 2개 에이전트 병렬 + 코드 재검증.
 - **🔴 HIGH(크래시) 수정 — `UserGroupBuyCreatePage`(`/community-group-buy/new`) Rules of Hooks 위반 흰화면**: 자격(셀러/인플) 확인 전 `eligibleAsInfluencer===null` 1차 렌더가 훅 2개 호출 후 early-return → 자격 `true` 재렌더에서 useState 7+useEffect 호출 → React "Rendered more hooks" 크래시. **모든 훅을 early-return 위로 이동**. (현재 `COMMERCE_PROPOSAL_HIDDEN`로 진입 배너 숨김이나 직접 URL·언셸브 시 라이브.)
