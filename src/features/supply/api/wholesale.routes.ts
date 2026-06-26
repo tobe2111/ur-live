@@ -1236,6 +1236,14 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
   //   ⚠️ JWT 클레임만 읽는 추가 검사 — money-CAS/reserve-before-charge/결제 로직은 절대 미변경.
   const { subRole: orderSubRole } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (orderSubRole === 'viewer') return c.json({ success: false, error: '주문 권한이 없는 계정(뷰어)입니다' }, 403)
+  // 🛡️ 2026-06-26 (A2 분리 감사): 도매 주문은 판매사(is_distributor) 전용 — 승인된 일반 셀러의 도매가 구매 차단.
+  //   wholesale-plus/deposit 와 동일한 토큰 클레임 게이트. 진입(주문 생성)에서 차단 → /orders/confirm(캡처)엔
+  //   추가 게이트 불필요(미생성 주문은 confirm 불가, 결제경로 무변경).
+  try {
+    const { verify: _verifyDist } = await import('hono/jwt')
+    const _distClaims = await _verifyDist((c.req.header('Authorization') || '').substring(7), c.env.JWT_SECRET, 'HS256') as { is_distributor?: number | boolean }
+    if (!_distClaims.is_distributor) return c.json({ success: false, error: '판매사 전용 기능입니다' }, 403)
+  } catch { return c.json({ success: false, error: '판매사 전용 기능입니다' }, 403) }
   const { DB } = c.env
   // 🖋️ 2026-06-22 (전자계약 차단): 미서명 계약이 있으면 발주 차단 — 카카오 서명 완료 후 거래.
   //   contract_signatures 행이 없으면(미설정·기존/자격증명 전 계정) 통과 → 락아웃 방지(grandfather).

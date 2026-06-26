@@ -77,6 +77,8 @@ dist.get('/deposits/me', async (c) => {
 dist.post('/deposits/charge-request', rateLimit({ action: 'wholesale-deposit-request', max: 10, windowSec: 60 }), async (c) => {
   const auth = await distributorFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!auth) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  // 🛡️ 2026-06-26 (A2 분리 감사): 예치금 충전은 판매사(is_distributor) 전용 — 일반 셀러 차단.
+  if (!auth.isDistributor) return c.json({ success: false, error: '판매사 전용 기능입니다' }, 403)
   // 🛡️ 감사 🟡#5: 조회 전용(viewer) 직원 계정은 충전 신청 불가(read-only 계약).
   if (await isViewerToken(c.req.header('Authorization'), c.env.JWT_SECRET)) {
     return c.json({ success: false, error: '조회 전용 직원 계정은 충전 신청을 할 수 없습니다' }, 403)
