@@ -92,6 +92,8 @@ export default function AdminWholesaleDepositsPage() {
         setRequests((prev) => prev.map((x) => x.id === req.id ? { ...x, status: 'confirmed', confirmed_at: new Date().toISOString() } : x))
         // pending 필터면 목록에서 빠지도록 재조회.
         if (filter === 'pending') load()
+        // 🛡️ 2026-06-26: 통합 현황의 '대기 입금확인' 카운트도 갱신(승인 후에도 1 잔존 신고).
+        void queryClient.invalidateQueries({ queryKey: ['admin', 'wholesale-overview'] })
       } else { toast.error(r.data?.error || '입금 확인 실패') }
     } catch (e: unknown) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '오류가 발생했습니다')
@@ -108,6 +110,7 @@ export default function AdminWholesaleDepositsPage() {
         toast.success('충전 신청을 반려했습니다')
         setRequests((prev) => prev.map((x) => x.id === req.id ? { ...x, status: 'rejected' } : x))
         if (filter === 'pending') load()
+        void queryClient.invalidateQueries({ queryKey: ['admin', 'wholesale-overview'] })
       } else { toast.error(r.data?.error || '반려 실패') }
     } catch (e: unknown) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '오류가 발생했습니다')
