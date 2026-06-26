@@ -1,10 +1,10 @@
 /**
- * 🛡️ 2026-05-07: TD-018 분할 — SellerPublicPage 의 정보 탭
- * (소개 / SNS 링크 / 사업자 정보 / 서포터 랭킹 / 식사권 안내).
+ * 🛡️ 2026-05-07: TD-018 분할 — SellerPublicPage 의 정보 탭 (소개 / SNS 링크 / 사업자 정보).
+ * 🏁 2026-06-26 (대표): 서포터 랭킹 제거 + 공구권 '이용안내'는 링크샵에서 제거(공구권 상세페이지 전담).
+ *   '식사권' 단정 표현도 제거 — 공구권은 식당 외 카테고리(뷰티/숙박 등)도 있음.
  */
 import { useTranslation } from 'react-i18next'
 import { Pencil, Plus, Check, X, MessageCircle, Phone } from 'lucide-react'
-import SupporterRanking from '@/components/live/SupporterRanking'
 import type { Seller } from './types'
 import type { ThemeTokens } from './theme'
 
@@ -150,20 +150,7 @@ export default function InfoTab({
         </div>
       </section>
 
-      {/* 서포터 랭킹 */}
-      <section>
-        <SupporterRanking sellerId={sellerId} />
-      </section>
-
-      <section>
-        <h3 className={`text-base font-bold ${T.text} mb-2`}>{t('seller.publicPage.voucherGuide')}</h3>
-        <div className="text-sm text-gray-400 space-y-2">
-          <div className="flex"><span className="w-20 text-gray-500 shrink-0">{t('seller.publicPage.howToUse')}</span><span>{t('seller.publicPage.howToUseDesc')}</span></div>
-          <div className="flex"><span className="w-20 text-gray-500 shrink-0">{t('seller.publicPage.validity')}</span><span>{t('seller.publicPage.validityDesc')}</span></div>
-          <div className="flex"><span className="w-20 text-gray-500 shrink-0">{t('seller.publicPage.refund')}</span><span>{t('seller.publicPage.refundDesc')}</span></div>
-          <div className="flex"><span className="w-20 text-gray-500 shrink-0">{t('seller.publicPage.contact')}</span><span>{t('seller.publicPage.contactDesc')}</span></div>
-        </div>
-      </section>
+      {/* 🏁 2026-06-26 (대표): 서포터 랭킹 + 공구권 이용안내 섹션 제거 — 이용안내는 공구권 상세페이지 전담. */}
     </div>
   )
 }
