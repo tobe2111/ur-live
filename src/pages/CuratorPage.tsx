@@ -192,7 +192,8 @@ export default function CuratorPage() {
           <div className="text-gray-500 dark:text-gray-400">{t('common.loading')}</div>
         </div>
       }>
-        <SellerPublicPage sellerIdOverride={linked_seller.username} curatorHeadline={curator.headline} curatorAccent={curator.accent} />
+        {/* 🏁 2026-06-25 (대표 "통일") — 사업자 링크샵도 canonical CuratorHeader 형태로. curator 객체 전달. */}
+        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} />
       </Suspense>
     )
   }
