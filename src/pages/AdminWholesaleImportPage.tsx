@@ -255,11 +255,11 @@ export default function AdminWholesaleImportPage() {
           <div className={card}>
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-5 flex-wrap">
-                <div><p className="text-[11px] text-gray-400">전체 공급상품</p><p className="text-xl font-bold text-gray-900">{stats.total.toLocaleString()}</p></div>
-                <div><p className="text-[11px] text-gray-400">실상품</p><p className="text-xl font-bold text-emerald-600">{stats.real.toLocaleString()}</p></div>
-                <div><p className="text-[11px] text-gray-400">데모</p><p className="text-xl font-bold text-amber-500">{stats.demo.toLocaleString()}</p></div>
-                <div><p className="text-[11px] text-gray-400">노출중</p><p className="text-xl font-bold text-gray-700">{stats.active.toLocaleString()}</p></div>
-                <div><p className="text-[11px] text-gray-400">승인 제조사</p><p className="text-xl font-bold text-gray-700">{stats.suppliers.toLocaleString()}</p></div>
+                <div><p className="text-[11px] text-gray-400">전체 공급상품</p><p className="text-xl font-bold text-gray-900">{(stats.total || 0).toLocaleString()}</p></div>
+                <div><p className="text-[11px] text-gray-400">실상품</p><p className="text-xl font-bold text-emerald-600">{(stats.real || 0).toLocaleString()}</p></div>
+                <div><p className="text-[11px] text-gray-400">데모</p><p className="text-xl font-bold text-amber-500">{(stats.demo || 0).toLocaleString()}</p></div>
+                <div><p className="text-[11px] text-gray-400">노출중</p><p className="text-xl font-bold text-gray-700">{(stats.active || 0).toLocaleString()}</p></div>
+                <div><p className="text-[11px] text-gray-400">승인 제조사</p><p className="text-xl font-bold text-gray-700">{(stats.suppliers || 0).toLocaleString()}</p></div>
               </div>
               <div className="flex items-center gap-2">
                 {stats.demo > 0 && (

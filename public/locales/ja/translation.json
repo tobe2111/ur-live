@@ -1824,7 +1824,7 @@
     "settlementAutomation": "精算自動化",
     "settlementAutomationDesc": "手数料計算と精算履歴の自動処理",
     "publicPage": {
-      "vouchers": "食事券",
+      "vouchers": "共同購入券",
       "videos": "動画",
       "noName": "名前なし",
       "mailOrderNumber": "通信販売業申告番号",
@@ -1869,10 +1869,15 @@
       "noShopProductsOwner": "登録された商品がありません。セラーダッシュボードから追加してください。",
       "noShopProducts": "登録された商品がありません。",
       "previewVisitor": "👀 プレビュー",
+      "addEntry": "+ 登録",
+      "sellerDashboard": "セラーダッシュボード",
+      "addSheetTitle": "何を登録しますか？",
+      "addProduct": "商品登録",
+      "addProductDesc": "配送商品 — すぐ登録",
+      "addVoucher": "共同購入券の登録",
+      "addVoucherDesc": "地域共同購入・引換券 — 位置・目標人数を設定",
       "previewBanner": "訪問者プレビュー — 他の人に見える画面です",
-      "backToEdit": "編集に戻る",
-      "doneEditing": "完了",
-      "editLinkshop": "編集する"
+      "backToEdit": "編集に戻る"
     },
     "storeIntro": "ストア紹介",
     "shippingInfo": "配送情報",

@@ -172,11 +172,13 @@ export default function KakaoCallbackPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#020202] flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white mx-auto mb-3" />
-        <p className="text-gray-500 dark:text-gray-400 text-sm">로그인 처리 중...</p>
+    <div role="status" aria-live="polite" className="min-h-[100dvh] bg-white dark:bg-[#0a0a0a] flex flex-col items-center justify-center gap-[22px]">
+      <div className="text-[27px] font-bold tracking-[-0.035em] text-gray-900 dark:text-white">유어딜</div>
+      <div className="relative w-32 h-[3px] rounded-full overflow-hidden bg-gray-900/[0.08] dark:bg-white/10">
+        <div className="ur-splash-seg absolute inset-y-0 left-0 w-2/5 rounded-full bg-gray-900 dark:bg-white" />
       </div>
+      <p className="text-[12.5px] font-medium text-gray-900/40 dark:text-white/40">로그인 처리 중이에요</p>
+      <style>{`@keyframes ur-splash-bar{0%{transform:translateX(-120%)}100%{transform:translateX(320%)}}.ur-splash-seg{animation:ur-splash-bar 1.15s cubic-bezier(0.4,0,0.2,1) infinite}@media(prefers-reduced-motion:reduce){.ur-splash-seg{animation:none;width:100%;opacity:0.55}}`}</style>
     </div>
   )
 }

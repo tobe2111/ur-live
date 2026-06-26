@@ -510,7 +510,10 @@ adminSettlementsRoutes.get('/tax-withholding/summary', cors(), async (c) => {
 
 function csvEscape(v: string): string {
   if (v == null) return '';
-  const s = String(v);
+  let s = String(v);
+  // 🛡️ 2026-06-26 [보안] CSV 수식 인젝션 차단 — 셀러 회사명/이메일 등 사용자-제어 값이
+  //   = + - @ 탭/CR 로 시작하면 선행 작은따옴표로 무력화 후 quote-escape.
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
   if (s.includes(',') || s.includes('"') || s.includes('\n')) {
     return `"${s.replace(/"/g, '""')}"`;
   }

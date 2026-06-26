@@ -138,7 +138,10 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
       representative_phone?: string; manager_name?: string; manager_phone?: string; manager_email?: string;
     };
     const body = await c.req.json<RegBody>().catch(() => ({} as RegBody));
-    const bizLicenseUrl = (body.business_license_url || '').trim().slice(0, 500);
+    const bizLicenseRaw = (body.business_license_url || '').trim().slice(0, 500);
+    // 🛡️ 2026-06-26 [보안] 사업자등록증 URL scheme 검증 — 어드민 승인화면 <a href> 로 렌더되므로
+    //   javascript:/data: 면 admin 세션 XSS. http(s)·업로드 상대경로만 허용, 그 외는 빈값(아래 필수검사에서 거부).
+    const bizLicenseUrl = (/^https?:\/\//i.test(bizLicenseRaw) || /^\//.test(bizLicenseRaw)) ? bizLicenseRaw : '';
     // 🏭 2026-06-09 대표자 연락처 + 담당자(성명/연락처/이메일) — additive 수집. 길이 cap.
     const representativePhone = (body.representative_phone || '').trim().slice(0, 40);
     const managerName = (body.manager_name || '').trim().slice(0, 80);
@@ -147,7 +150,7 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
 
     const email = (body.email || '').trim().toLowerCase();
     const password = body.password || '';
-    const businessName = (body.business_name || '').trim();
+    const businessName = (body.business_name || '').trim().slice(0, 200);
 
     if (!EMAIL_RE.test(email)) return c.json({ success: false, error: '올바른 이메일을 입력해주세요' }, 400);
     if (!businessName) return c.json({ success: false, error: '상호(사업자명)는 필수입니다' }, 400);
@@ -247,11 +250,13 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
       phone?: string; business_license_url?: string;
       representative_phone?: string; manager_name?: string; manager_phone?: string; manager_email?: string;
     }>().catch(() => ({} as Record<string, never>));
-    const business_name = String(body.business_name || '').trim();
-    const business_number = String(body.business_number || '').trim();
-    const representative = String(body.representative || '').trim();
-    const phone = String(body.phone || '').trim();
-    const business_license_url = String(body.business_license_url || '').trim().slice(0, 500);
+    const business_name = String(body.business_name || '').trim().slice(0, 200);
+    const business_number = String(body.business_number || '').trim().slice(0, 40);
+    const representative = String(body.representative || '').trim().slice(0, 80);
+    const phone = String(body.phone || '').trim().slice(0, 40);
+    // 🛡️ 2026-06-26 [보안] 사업자등록증 URL scheme 검증 — admin <a href> XSS 차단(위 /register 와 동일).
+    const business_license_rawb = String(body.business_license_url || '').trim().slice(0, 500);
+    const business_license_url = (/^https?:\/\//i.test(business_license_rawb) || /^\//.test(business_license_rawb)) ? business_license_rawb : '';
     // 🏭 2026-06-09 대표자 연락처 + 담당자(성명/연락처/이메일) — additive 수집. 길이 cap.
     const representative_phone = String(body.representative_phone || '').trim().slice(0, 40);
     const manager_name = String(body.manager_name || '').trim().slice(0, 80);
@@ -307,17 +312,27 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
       const mallId = await registrationMallId(c).catch(() => 1); // 🛡️ 2026-06-23 fail-soft: 몰 해석 실패가 가입 500 안 내게(기본 몰 1)
       // password_hash='' — 카카오 인증(비밀번호 미사용). linked_user_id 로 세션 연결.
       const nts2 = await ntsStatusOf(c.env, DB, business_number)
-      const ins = await DB.prepare(`
-        INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
-          business_license_url, representative_phone, manager_name, manager_phone, manager_email,
-          linked_user_id, mall_id, nts_status, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
-      `).bind(
-        business_name, business_number, representative || null, email, phone || null,
-        business_license_url || null, representative_phone || null, manager_name || null, manager_phone || null, manager_email || null,
-        userId, mallId, nts2,
-      ).run();
-      const sid = Number(ins.meta?.last_row_id);
+      // 🛡️ 2026-06-25 (전수조사): 사전 dupe SELECT~INSERT 사이 동시 /become 경합 → UNIQUE throw 시 generic 500 +
+      //   중복 알림. /register 와 동일하게 try/catch 로 409 정규화(승인큐 알림은 성공 후에만).
+      let sid: number;
+      try {
+        const ins = await DB.prepare(`
+          INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
+            business_license_url, representative_phone, manager_name, manager_phone, manager_email,
+            linked_user_id, mall_id, nts_status, status, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+        `).bind(
+          business_name, business_number, representative || null, email, phone || null,
+          business_license_url || null, representative_phone || null, manager_name || null, manager_phone || null, manager_email || null,
+          userId, mallId, nts2,
+        ).run();
+        sid = Number(ins.meta?.last_row_id);
+      } catch (e) {
+        if (/UNIQUE|already exists|constraint failed: suppliers\.(email|linked_user)/i.test(String((e as Error)?.message || ''))) {
+          return c.json({ success: false, error: '이미 가입된 이메일입니다. 로그인해주세요' }, 409);
+        }
+        throw e;
+      }
       if (!sid) return c.json({ success: false, error: '제조사 신청 중 오류가 발생했습니다' }, 500);
 
       // 어드민 승인 큐 알림 (/admin/suppliers 에서 처리). fail-soft.

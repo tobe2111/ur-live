@@ -489,8 +489,20 @@ function AppContent() {
   // 🏭 유통스타트 B2B(도매몰/제조사)는 소비자 BottomNav/TopNav 미표시 — 별도 도메인·업태.
   //   isWholesaleSurface = SSOT (`/wholesale*`·`/supplier*`). 같은 헬퍼를 BottomNav·DesktopTopNav
   //   컴포넌트가 자기-차단에도 사용 → 1차(여기서 마운트 차단) + 2차(컴포넌트 self-guard) 이중 방어.
+  // 🏁 2026-06-26 [UNLOCK_LOADING] (대표 결정 — "특정 링크로 들어온 방문자는 네비 숨김"):
+  //   /u/{handle}?embed=1 로 진입하면 standalone 매장처럼 상/하단 네비를 숨긴다. 한 번 본 플래그는
+  //   sessionStorage 로 세션 유지(상품 클릭→뒤로 등 인앱 이동에도 깨끗) + 링크샵 표면(/u·/profile·/s)에서만
+  //   적용 → 방문자가 홈 등으로 나가면 네비 복귀(갇힘 방지). 기존 hideBottomNav 조건은 불변(additive).
+  const embedFlag = (() => {
+    try {
+      const sp = new URLSearchParams(location.search)
+      if (sp.get('embed') === '1') { sessionStorage.setItem('ur_linkshop_embed', '1'); return true }
+      return sessionStorage.getItem('ur_linkshop_embed') === '1'
+    } catch { return new URLSearchParams(location.search).get('embed') === '1' }
+  })()
+  const embedHideNav = embedFlag && /^\/(u|profile|s)(\/|$)/.test(location.pathname)
   const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
-    || isWholesaleSurface(location.pathname)
+    || isWholesaleSurface(location.pathname) || embedHideNav
   // 🗺️ 2026-06-20 (대표 — 홈=리스트 / 지도는 버튼 이동): 지도 페이지(/restaurant-map)만 h-screen 자체관리
   //   풀스크린(바텀시트가 하단 담당) → main 하단 네비 여백 제외. 홈(/)=리스트는 일반 페이지(여백 필요).
   //   ⚠️ 도매/제조사(isWholesaleSurface)는 위 hideBottomNav 가 이미 커버(여백 0) — 여기 중복 불필요.

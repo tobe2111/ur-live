@@ -1855,7 +1855,7 @@
     "settlementAutomation": "정산 자동화",
     "settlementAutomationDesc": "수수료 계산 및 정산 내역 자동 처리",
     "publicPage": {
-      "vouchers": "식사권",
+      "vouchers": "공구권",
       "videos": "영상",
       "noName": "이름 없음",
       "mailOrderNumber": "통신판매업신고번호",
@@ -1900,10 +1900,15 @@
       "noShopProductsOwner": "등록한 상품이 없습니다. 셀러 대시보드 → 상품 등록에서 추가하세요.",
       "noShopProducts": "등록된 상품이 없습니다.",
       "previewVisitor": "👀 미리보기",
+      "addEntry": "+ 등록",
+      "sellerDashboard": "셀러 대시보드",
+      "addSheetTitle": "무엇을 등록할까요?",
+      "addProduct": "상품 등록",
+      "addProductDesc": "배송 상품 — 바로 등록",
+      "addVoucher": "공구권 등록",
+      "addVoucherDesc": "동네 공구·교환권 — 위치·목표인원 설정",
       "previewBanner": "방문자 미리보기 — 다른 사람에게 보이는 화면이에요",
-      "backToEdit": "편집으로 돌아가기",
-      "doneEditing": "완료",
-      "editLinkshop": "편집하기"
+      "backToEdit": "편집으로 돌아가기"
     },
     "storeIntro": "스토어 소개",
     "shippingInfo": "배송 정보",

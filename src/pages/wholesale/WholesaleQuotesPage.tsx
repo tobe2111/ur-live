@@ -8,7 +8,8 @@
  */
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/hooks/queries/queryKeys'
 import SEO from '@/components/SEO'
 import { FileText, Loader2, Check, X, Plus, ChevronRight, ChevronDown } from 'lucide-react'
 import api from '@/lib/api'
@@ -51,6 +52,7 @@ const badgeOf = (s: string) => STATUS_BADGE[s] || { label: s, bg: WT.fill, color
 
 export default function WholesaleQuotesPage({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const [form, setForm] = useState({ title: '', product_id: '', requested_qty: '', target_unit_price: '', request_text: '' })
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -88,7 +90,7 @@ export default function WholesaleQuotesPage({ embedded = false }: { embedded?: b
 
   if (!embedded && !sellerToken()) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: WT.fill }}>
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center px-6 text-center" style={{ background: WT.fill }}>
         <SEO title="견적함 — 유통스타트" description="판매사 대량/협상 견적요청" url="/wholesale/quotes" noindex />
         <FileText className="w-12 h-12 mb-4" style={{ color: WT.ink4 }} />
         <p className="mb-6" style={{ color: WT.ink2 }}>판매사 로그인 후 이용할 수 있습니다.</p>
@@ -124,6 +126,11 @@ export default function WholesaleQuotesPage({ embedded = false }: { embedded?: b
       await api.post(`/api/wholesale/quotes/${id}/${action}`, {}, auth())
       toast.success(action === 'accept' ? '견적을 수락했습니다. 운영자가 발주를 진행합니다.' : '견적을 반려했습니다.')
       listQ.refetch()
+      // 🛡️ 2026-06-25: 수락 시 견적→발주 전환 → 주문목록/예치금도 무효화(옛값 방지).
+      if (action === 'accept') {
+        qc.invalidateQueries({ queryKey: queryKeys.wholesale('orders') })
+        qc.invalidateQueries({ queryKey: queryKeys.wholesale('deposit-me') })
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '처리 실패')
     } finally { setBusyId(null) }
@@ -254,7 +261,7 @@ export default function WholesaleQuotesPage({ embedded = false }: { embedded?: b
     <>
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={() => setShowForm(false)}>
-          <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="sticky top-0 bg-white px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid ' + WT.line }}>
               <h2 className="text-[16px] font-extrabold" style={{ color: WT.ink }}>새 견적 요청</h2>
               <button onClick={() => setShowForm(false)} aria-label="닫기" className="p-1.5 rounded-lg hover:bg-gray-100"><X className="w-5 h-5" style={{ color: WT.ink2 }} /></button>
@@ -307,7 +314,7 @@ export default function WholesaleQuotesPage({ embedded = false }: { embedded?: b
   }
 
   return (
-    <div className="min-h-screen pb-20" style={{ background: WT.fill }}>
+    <div className="min-h-[100dvh] pb-20" style={{ background: WT.fill }}>
       <SEO title="견적함 — 유통스타트" description="카탈로그 단가 대신 협의 단가로 대량 발주" url="/wholesale/quotes" noindex />
 
       {/* 로고 브레드크럼 헤더 */}

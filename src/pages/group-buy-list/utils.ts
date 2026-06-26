@@ -2,11 +2,15 @@
  * 🛡️ 2026-05-02: TD-018 분할 — GroupBuyListPage 시간/할인율 헬퍼.
  */
 import type { GroupBuyProduct } from './types'
+import { safeDate } from '@/utils/safe-date'
 
 // 남은 시간 포맷
 export function formatTimeLeft(deadline?: string): string {
   if (!deadline) return ''
-  const diff = new Date(deadline).getTime() - Date.now()
+  // 🛡️ 2026-06-26 (소비자 감사): safeDate — 사파리가 D1 datetime 을 NaN 으로 파싱하면 'NaN분 남음'. 파싱 보정.
+  const t = safeDate(deadline)?.getTime()
+  if (t == null) return ''
+  const diff = t - Date.now()
   if (diff <= 0) return '마감'
   const days = Math.floor(diff / 86_400_000)
   const hours = Math.floor((diff % 86_400_000) / 3_600_000)

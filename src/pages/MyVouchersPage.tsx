@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useEffect, useRef, useMemo, useCallback, Fragment } from 'react'
+import { safeDate, safeTime } from '@/utils/safe-date'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useNavigate } from 'react-router-dom'
 
@@ -200,8 +201,11 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
   const [cancelling, setCancelling] = useState(false)
   // 🎟️ 2026-06-20 현장 셀프 사용처리 모달
   const [showRedeem, setShowRedeem] = useState(false)
-  const canSelfCancel = voucher.status === 'unused' && !!voucher.created_at &&
-    (Date.now() - new Date(voucher.created_at).getTime()) < 7 * 86400000
+  // 🛡️ 2026-06-26 (소비자 감사): safeDate — D1 'YYYY-MM-DD HH:MM:SS' 를 사파리가 Invalid Date 로 파싱하면
+  //   NaN < window 가 false → 미사용 7일내인데도 환불 버튼이 사라지던 것(기능 차단). safeDate 가 파싱 보정.
+  const createdMs = safeDate(voucher.created_at)?.getTime() ?? NaN
+  const canSelfCancel = voucher.status === 'unused' && Number.isFinite(createdMs) &&
+    (Date.now() - createdMs) < 7 * 86400000
   async function handleSelfCancel() {
     if (cancelling) return
     if (!(await confirmDialog({ message: t('voucher.cancelConfirm', { defaultValue: '이 교환권 구매를 취소하고 환불받으시겠어요?\n(미사용 + 구매 7일 이내만 가능)' }), danger: true }))) return
@@ -335,7 +339,7 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
                 </div>
                 <p className="mt-2 text-base font-extrabold text-emerald-700">사용 완료</p>
                 {voucher.used_at && (
-                  <p className="text-[10px] text-emerald-600">{new Date(voucher.used_at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })}</p>
+                  <p className="text-[10px] text-emerald-600">{safeDate(voucher.used_at)?.toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })}</p>
                 )}
               </div>
             )}
@@ -506,8 +510,8 @@ export default function MyVouchersPage() {
   //   곧 사라질 식사권이 위로 오도록 만료 가까운 순(만료일 없는 건 뒤로). filter 가 새 배열이라 원본 불변.
   const unusedItems = shownVouchers.filter(v => v.status === 'unused')
     .sort((a, b) => {
-      const ta = a.expires_at ? new Date(a.expires_at).getTime() : Number.POSITIVE_INFINITY
-      const tb = b.expires_at ? new Date(b.expires_at).getTime() : Number.POSITIVE_INFINITY
+      const ta = a.expires_at ? safeTime(a.expires_at) : Number.POSITIVE_INFINITY
+      const tb = b.expires_at ? safeTime(b.expires_at) : Number.POSITIVE_INFINITY
       return ta - tb
     })
   const usedItems = shownVouchers.filter(v => v.status === 'used')
@@ -530,7 +534,7 @@ export default function MyVouchersPage() {
     const now = Date.now()
     const candidates = unusedItems
       .filter(v => v.expires_at)
-      .map(v => new Date(v.expires_at!).getTime())
+      .map(v => safeTime(v.expires_at!))
       .filter(t => t > now)
       .sort((a, b) => a - b)
     if (!candidates[0]) return null
@@ -1041,8 +1045,8 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
   onShowQr: () => void
 }) {
   const navigate = useNavigate()  // 🎨 2026-06-21 (개선 #4): 사용완료/만료 카드 '재구매' 딥링크
-  const expiresAt = v.expires_at ? new Date(v.expires_at) : null
-  const usedAt = v.used_at ? new Date(v.used_at) : null
+  const expiresAt = safeDate(v.expires_at)
+  const usedAt = safeDate(v.used_at)
   const daysLeft = expiresAt ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : null
 
   // 🛡️ 2026-05-25 (A 옵션): KT Alpha 쿠폰은 별도 카드 형식 (재발송 버튼 포함)

@@ -3,7 +3,7 @@
  *   POST /api/supplier/register → status='pending' (어드민 승인 후 로그인 가능).
  *   라이트 테마.
  */
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, CheckCircle } from 'lucide-react'
@@ -12,12 +12,18 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import { toast } from '@/hooks/useToast'
 import BusinessCertUpload from '@/components/BusinessCertUpload'
 import { formatPhoneKr } from '@/utils/format-kr'
+import { digitsOnly, isValidKrPhone, isValidEmail } from '@/utils/form-validators'
 import { isSupplierLoggedIn } from '@/lib/supplier-api'
 import { useWholesaleMall } from '@/hooks/queries/useWholesale'
 
 export default function SupplierRegisterPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  // 🔢 2026-06-26: 가입신청 클릭 시 *순서대로* 검증 + 첫 문제 필드로 포커스 이동(기존엔 native required 가
+  //   대표자/담당자(required 없음)를 건너뛰고 무조건 이메일로 점프 — 대표 신고). form noValidate + 이 ref 맵으로 해결.
+  const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const reg = (k: string) => (el: HTMLInputElement | null) => { fieldRefs.current[k] = el }
+  const focusField = (k: string) => { const el = fieldRefs.current[k]; if (el) { el.focus(); el.scrollIntoView({ block: 'center', behavior: 'smooth' }) } }
   // 🏬 2026-06-09 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FC5424 → byte-identical).
   const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo } = useWholesaleMall()
   const [loading, setLoading] = useState(false)
@@ -76,17 +82,25 @@ export default function SupplierRegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    if (!form.business_name.trim()) { fail(t('supplier.errBizName', { defaultValue: '상호(사업자명)를 입력해주세요' })); return }
-    if (!/^\d{10}$/.test(form.business_number.replace(/[^0-9]/g, ''))) { fail(t('supplier.errBizNum', { defaultValue: '사업자등록번호 10자리를 정확히 입력해주세요' })); return }
+    // 🔢 2026-06-26 (대표 신고): 화면 표시 순서대로 검증 + 첫 문제 필드로 포커스 이동.
+    const failAt = (k: string, m: string) => { setError(m); toast.error(m); focusField(k) }
+    if (!form.business_name.trim()) { failAt('business_name', t('supplier.errBizName', { defaultValue: '상호(사업자명)를 입력해주세요' })); return }
+    if (!/^\d{10}$/.test(digitsOnly(form.business_number))) { failAt('business_number', t('supplier.errBizNum', { defaultValue: '사업자등록번호 10자리를 정확히 입력해주세요' })); return }
     if (!licenseUrl) { fail(t('supplier.errBizLicense', { defaultValue: '사업자등록증 이미지를 업로드해주세요' })); return }
-    // 🏭 2026-06-09 대표자/담당자 필수 검증 (연락처 양식은 lenient).
-    if (!form.representative.trim() || !form.representative_phone.trim()) { fail(t('supplier.errRep', { defaultValue: '대표자 성명·연락처를 입력해주세요' })); return }
-    if (!form.manager_name.trim() || !form.manager_phone.trim()) { fail(t('supplier.errManager', { defaultValue: '담당자 성명·연락처를 입력해주세요' })); return }
-    // 카카오 가입은 이메일/비번 불필요 — 일반(이메일) 가입만 비번 검증.
+    // 🏭 대표자 — 성명/연락처 각각 검증(연락처는 완성형 휴대폰만). "010"·"010-9135" 미완성 차단.
+    if (!form.representative.trim()) { failAt('representative', t('supplier.errRepName', { defaultValue: '대표자 성명을 입력해주세요' })); return }
+    if (!isValidKrPhone(form.representative_phone)) { failAt('representative_phone', t('supplier.errRepPhone', { defaultValue: '대표자 연락처를 정확히 입력해주세요 (예: 010-1234-5678)' })); return }
+    // 🏭 담당자 — '대표자와 동일' 체크 시 대표자 값 복사(검증 통과)라 스킵, 아니면 각각 검증.
+    if (!sameAsRep) {
+      if (!form.manager_name.trim()) { failAt('manager_name', t('supplier.errManagerName', { defaultValue: '담당자 성명을 입력해주세요' })); return }
+      if (!isValidKrPhone(form.manager_phone)) { failAt('manager_phone', t('supplier.errManagerPhone', { defaultValue: '담당자 연락처를 정확히 입력해주세요 (예: 010-1234-5678)' })); return }
+    }
+    // 카카오 가입은 이메일/비번 불필요 — 일반(이메일) 가입만 검증.
     if (!kakaoUser) {
-      if (form.password.length < 8) { fail(t('supplier.errPwLen', { defaultValue: '비밀번호는 8자 이상이어야 합니다' })); return }
-      if (!/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { fail(t('supplier.errPwClass', { defaultValue: '비밀번호는 영문과 숫자를 포함해야 합니다' })); return }
-      if (form.password !== passwordConfirm) { fail(t('supplier.errPwMismatch', { defaultValue: '비밀번호가 일치하지 않습니다' })); return }
+      if (!isValidEmail(form.email)) { failAt('email', t('supplier.errEmail', { defaultValue: '로그인에 사용할 이메일을 정확히 입력해주세요 (예: name@company.com)' })); return }
+      if (form.password.length < 8) { failAt('password', t('supplier.errPwLen', { defaultValue: '비밀번호는 영문+숫자 포함 8자 이상이어야 합니다' })); return }
+      if (!/[a-zA-Z]/.test(form.password) || !/[0-9]/.test(form.password)) { failAt('password', t('supplier.errPwClass', { defaultValue: '비밀번호는 영문과 숫자를 모두 포함해야 합니다' })); return }
+      if (form.password !== passwordConfirm) { failAt('passwordConfirm', t('supplier.errPwMismatch', { defaultValue: '비밀번호가 일치하지 않습니다' })); return }
     }
     setLoading(true)
     try {
@@ -144,7 +158,7 @@ export default function SupplierRegisterPage() {
 
   if (done) {
     return (
-      <div className="force-light-theme min-h-screen flex items-center justify-center bg-gray-50 px-6">
+      <div className="force-light-theme min-h-[100dvh] flex items-center justify-center bg-gray-50 px-6">
         <SEO title={t('supplier.registerTitle', { defaultValue: '제조사 가입' }) + ' - 유어딜'} description="유어딜 도매 제조사 가입" url="/supplier/register" />
         <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
           <CheckCircle className="w-14 h-14 text-green-500 mx-auto mb-4" />
@@ -167,7 +181,7 @@ export default function SupplierRegisterPage() {
   const labelCls = "block text-sm font-medium text-gray-700 mb-1.5"
 
   return (
-    <div className="force-light-theme min-h-screen bg-gray-50 py-10 px-6">
+    <div className="force-light-theme min-h-[100dvh] bg-gray-50 py-10 px-6">
       <SEO title={t('supplier.registerTitle', { defaultValue: '제조사 가입' }) + ' - 유어딜'} description="유어딜 도매 제조사 가입" url="/supplier/register" />
       <div className="max-w-lg mx-auto">
         <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-6">
@@ -205,14 +219,15 @@ export default function SupplierRegisterPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* 🔢 noValidate: native required 가 대표자/담당자(required 없음)를 건너뛰고 이메일로 점프하던 것 차단 → JS 순차검증 사용 */}
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div>
               <label className={labelCls}>{t('supplier.fieldBizName', { defaultValue: '상호(사업자명)' })} <span className="text-red-500">*</span></label>
-              <input required disabled={loading} value={form.business_name} onChange={set('business_name')} className={inputCls} placeholder={t('supplier.phBizName', { defaultValue: '예: (주)유어딜무역' })} />
+              <input ref={reg('business_name')} disabled={loading} value={form.business_name} onChange={set('business_name')} className={inputCls} placeholder={t('supplier.phBizName', { defaultValue: '예: (주)유어딜무역' })} />
             </div>
             <div>
               <label className={labelCls}>{t('supplier.fieldBizNumber', { defaultValue: '사업자등록번호' })} <span className="text-[#FC5424]">*</span></label>
-              <input required disabled={loading} value={form.business_number} onChange={onBizNum} inputMode="numeric" maxLength={12} className={inputCls} placeholder="000-00-00000" />
+              <input ref={reg('business_number')} disabled={loading} value={form.business_number} onChange={onBizNum} inputMode="numeric" maxLength={12} className={inputCls} placeholder="000-00-00000" />
             </div>
             {/* 🏭 2026-06-04 사업자등록증 이미지 (승인 심사용) */}
             <BusinessCertUpload value={licenseUrl} onChange={setLicenseUrl} required />
@@ -223,11 +238,11 @@ export default function SupplierRegisterPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>{t('supplier.fieldRepName', { defaultValue: '대표자 성명' })} <span className="text-red-500">*</span></label>
-                  <input disabled={loading} value={form.representative} onChange={setRep('representative')} className={inputCls} placeholder={t('supplier.phName', { defaultValue: '예: 홍길동' })} />
+                  <input ref={reg('representative')} disabled={loading} value={form.representative} onChange={setRep('representative')} className={inputCls} placeholder={t('supplier.phName', { defaultValue: '예: 홍길동' })} />
                 </div>
                 <div>
                   <label className={labelCls}>{t('supplier.fieldRepPhone', { defaultValue: '대표자 연락처' })} <span className="text-red-500">*</span></label>
-                  <input disabled={loading} value={form.representative_phone} onChange={setRep('representative_phone')} className={inputCls} placeholder="010-0000-0000" />
+                  <input ref={reg('representative_phone')} disabled={loading} value={form.representative_phone} onChange={setRep('representative_phone')} inputMode="numeric" className={inputCls} placeholder="010-0000-0000" />
                 </div>
               </div>
             </div>
@@ -244,32 +259,38 @@ export default function SupplierRegisterPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>{t('supplier.fieldManagerName', { defaultValue: '담당자 성명' })} <span className="text-red-500">*</span></label>
-                  <input disabled={loading || sameAsRep} value={form.manager_name} onChange={set('manager_name')} className={`${inputCls} ${sameAsRep ? 'bg-gray-100 text-gray-400' : ''}`} placeholder={t('supplier.phManagerName', { defaultValue: '예: 김담당' })} />
+                  <input ref={reg('manager_name')} disabled={loading || sameAsRep} value={form.manager_name} onChange={set('manager_name')} className={`${inputCls} ${sameAsRep ? 'bg-gray-100 text-gray-400' : ''}`} placeholder={t('supplier.phManagerName', { defaultValue: '예: 김담당' })} />
                 </div>
                 <div>
                   <label className={labelCls}>{t('supplier.fieldManagerPhone', { defaultValue: '담당자 연락처' })} <span className="text-red-500">*</span></label>
-                  <input disabled={loading || sameAsRep} value={form.manager_phone} onChange={setPhone('manager_phone')} inputMode="numeric" className={`${inputCls} ${sameAsRep ? 'bg-gray-100 text-gray-400' : ''}`} placeholder="010-0000-0000" />
+                  <input ref={reg('manager_phone')} disabled={loading || sameAsRep} value={form.manager_phone} onChange={setPhone('manager_phone')} inputMode="numeric" className={`${inputCls} ${sameAsRep ? 'bg-gray-100 text-gray-400' : ''}`} placeholder="010-0000-0000" />
                 </div>
               </div>
               <div className="mt-3">
-                <label className={labelCls}>{t('supplier.fieldManagerEmail', { defaultValue: '담당자 이메일' })} <span className="text-gray-400 font-normal">({t('common.optional', { defaultValue: '선택' })})</span></label>
-                <input type="email" disabled={loading} value={form.manager_email} onChange={set('manager_email')} className={inputCls} placeholder={kakaoUser ? t('supplier.phManagerEmailKakao', { defaultValue: '연락용 이메일' }) : t('supplier.phManagerEmail', { defaultValue: '미입력 시 로그인 이메일' })} autoComplete="off" />
+                <label className={labelCls}>{t('supplier.fieldManagerEmail', { defaultValue: '담당자 이메일' })} <span className="text-gray-400 font-normal">({t('supplier.managerEmailOptional', { defaultValue: '선택 · 연락용' })})</span></label>
+                <input type="email" disabled={loading} value={form.manager_email} onChange={set('manager_email')} className={inputCls} placeholder={kakaoUser ? t('supplier.phManagerEmailKakao', { defaultValue: '연락용 이메일' }) : t('supplier.phManagerEmail', { defaultValue: '미입력 시 아래 로그인 이메일 사용' })} autoComplete="off" />
               </div>
             </div>
             {/* 카카오 유저는 이메일/비번/정산계좌 불필요 (세션 인증 + 나중 등록). 일반 가입만 노출. */}
             {!kakaoUser && (
               <>
                 <div>
-                  <label className={labelCls}>{t('common.email', { defaultValue: '이메일' })} <span className="text-red-500">*</span></label>
-                  <input required type="email" disabled={loading} value={form.email} onChange={set('email')} className={inputCls} placeholder="supplier@example.com" />
+                  {/* 🔢 2026-06-26 (대표 신고 #6): 위 '담당자 이메일'(선택)과 혼동 → 로그인 아이디임을 라벨에 명시. */}
+                  <label className={labelCls}>{t('supplier.fieldLoginEmail', { defaultValue: '이메일 (로그인 아이디)' })} <span className="text-red-500">*</span></label>
+                  <input ref={reg('email')} type="email" inputMode="email" disabled={loading} value={form.email} onChange={set('email')} className={inputCls} placeholder="supplier@example.com" autoComplete="username" />
+                  <p className="text-xs text-gray-400 mt-1">{t('supplier.loginEmailHint', { defaultValue: '이 이메일로 로그인합니다. 위 담당자 이메일과 달라도 됩니다.' })}</p>
                 </div>
                 <div>
                   <label className={labelCls}>{t('common.password', { defaultValue: '비밀번호' })} <span className="text-red-500">*</span></label>
-                  <input required type="password" disabled={loading} value={form.password} onChange={set('password')} className={inputCls} placeholder={t('supplier.phPw', { defaultValue: '영문+숫자 8자 이상' })} autoComplete="new-password" />
+                  <input ref={reg('password')} type="password" disabled={loading} value={form.password} onChange={set('password')} className={inputCls} placeholder={t('supplier.phPw', { defaultValue: '영문+숫자 8자 이상' })} autoComplete="new-password" />
+                  {/* 🔢 2026-06-26 (대표 신고 #7): 비밀번호 기준 상시 표시. */}
+                  <p className={`text-xs mt-1 ${form.password.length === 0 ? 'text-gray-400' : (form.password.length >= 8 && /[a-zA-Z]/.test(form.password) && /[0-9]/.test(form.password)) ? 'text-green-600' : 'text-amber-600'}`}>
+                    {t('supplier.pwRule', { defaultValue: '영문과 숫자를 모두 포함해 8자 이상' })}
+                  </p>
                 </div>
                 <div>
                   <label className={labelCls}>{t('supplier.fieldPwConfirm', { defaultValue: '비밀번호 확인' })} <span className="text-red-500">*</span></label>
-                  <input required type="password" disabled={loading} value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} className={inputCls} placeholder={t('supplier.phPwConfirm', { defaultValue: '비밀번호 재입력' })} autoComplete="new-password" />
+                  <input ref={reg('passwordConfirm')} type="password" disabled={loading} value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} className={inputCls} placeholder={t('supplier.phPwConfirm', { defaultValue: '비밀번호 재입력' })} autoComplete="new-password" />
                   {passwordConfirm && form.password !== passwordConfirm && <p className="text-xs text-red-500 mt-1">{t('supplier.errPwMismatch', { defaultValue: '비밀번호가 일치하지 않습니다' })}</p>}
                 </div>
 

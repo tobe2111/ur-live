@@ -14,7 +14,7 @@ import { WT } from './wholesale-theme'
 export default function WholesaleStartPage() {
   const navigate = useNavigate()
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ background: WT.fill }}>
+    <div className="min-h-[100dvh] flex items-center justify-center px-4 py-10" style={{ background: WT.fill }}>
       <SEO domain="wholesale" title="회원가입 — 유통스타트 B2B 도매몰" description="판매사(사입·판매) 또는 제조사(상품 공급)로 가입하세요. 가입비·월 고정비 0원." url="/wholesale/start" noindex />
       <div className="w-full max-w-md">
         <h1 className="text-[22px] font-extrabold text-center mb-1" style={{ color: WT.ink }}>어떤 회원으로 시작하시나요?</h1>

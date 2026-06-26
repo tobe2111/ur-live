@@ -4,10 +4,12 @@
  *   라이트 테마 (어드민 대시보드).
  */
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Loader2, CheckCircle, XCircle, Wallet, Ban, Store } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import api from '@/lib/api'
+import { safeHttpHref } from '@/utils/safe-external-url'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { DashboardLoadError } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
@@ -47,7 +49,12 @@ const STATUS = {
 
 export default function AdminSuppliersPage() {
   const { t } = useTranslation()
-  const [statusFilter, setStatusFilter] = useState('all')
+  // 🔧 2026-06-24 (전수조사 LOW-3): 대시보드 '제조사 승인' 카운트 카드가 ?status=pending 로 딥링크 → 클릭 시 바로 대기목록.
+  const [searchParams] = useSearchParams()
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const s = searchParams.get('status')
+    return s && ['all', 'pending', 'approved', 'active', 'suspended', 'rejected'].includes(s) ? s : 'all'
+  })
   const [actionId, setActionId] = useState<number | null>(null)
 
   const token = () => localStorage.getItem('admin_token') || localStorage.getItem('access_token')
@@ -141,9 +148,9 @@ export default function AdminSuppliersPage() {
                       </p>
                     )}
                     {/* 🏭 2026-06-04 사업자등록증 — 승인 심사용 (클릭 시 원본 확인) */}
-                    {s.business_license_url && (
-                      <a href={s.business_license_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 mt-1.5">
-                        <img src={s.business_license_url} alt="사업자등록증" className="w-12 h-12 rounded border border-gray-200 object-cover" />
+                    {safeHttpHref(s.business_license_url) && (
+                      <a href={safeHttpHref(s.business_license_url)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 mt-1.5">
+                        <img src={safeHttpHref(s.business_license_url)} alt="사업자등록증" className="w-12 h-12 rounded border border-gray-200 object-cover" />
                         <span className="text-[11px] text-blue-600 font-medium">사업자등록증 보기</span>
                       </a>
                     )}

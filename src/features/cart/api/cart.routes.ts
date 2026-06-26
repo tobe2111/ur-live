@@ -84,9 +84,11 @@ async function getProduct(
   image_url: string | null;
   seller_id: number;
 } | null> {
+  // 🧱 2026-06-26 서비스 분리(도매↔유어딜): 소비자 장바구니엔 도매 원본상품(is_supply_product=1 AND
+  //   supply_source_id 없음) 담기 차단 — 판매사 복제본·플랫폼·일반상품은 통과(리스트 fix 와 동일 필터).
   return db
     .prepare(
-      'SELECT id, name, price, stock, image_url, seller_id FROM products WHERE id = ? LIMIT 1'
+      'SELECT id, name, price, stock, image_url, seller_id FROM products WHERE id = ? AND NOT (COALESCE(is_supply_product, 0) = 1 AND COALESCE(supply_source_id, 0) = 0) LIMIT 1'
     )
     .bind(productId)
     .first();

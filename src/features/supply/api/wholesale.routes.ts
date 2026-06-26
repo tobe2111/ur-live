@@ -36,7 +36,7 @@ import { resolveMallId, registrationMallId, loadMallByHost } from './wholesale-m
 import {
   ensureOrderTables, ensureSupplierPolicySchema, loadSupplierPolicies, computeSupplierShipping,
   parseProductShipFee, hasRestrictedVisibility, _supplyCatalogReady, ensureQtyConstraintSchema,
-  ensureCreditSchema, loadSellerCredit, sellerIdFrom, sellerIdFromCookieGet,
+  ensureCreditSchema, loadSellerCredit, sellerIdFrom, sellerIdFromCookieGet, isSellerBlocked,
   type SubRole, SUB_ROLES, subClaimsFrom, SUB_EMAIL_RE, requireSubAdmin,
   loadGradeTable, loadMinPlatformMarginPct, loadSellerGrade, loadQtyTiers,
   ftsAvailable, buildFtsMatch, CATALOG_SORT_ORDER, ensureDistributorSellerSchema,
@@ -117,7 +117,9 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 20, windowS
     const phone = String(body.phone || '').trim()
     const business_number_raw = String(body.business_number || '').replace(/[^0-9]/g, '') // 🏭 사업자등록번호 숫자만(하이픈 무관)
     const representative = String(body.representative || '').trim()    // 대표자명
-    const business_license_url = String(body.business_license_url || '').trim().slice(0, 500) // 사업자등록증 이미지
+    // 🛡️ 2026-06-26 [보안] 사업자등록증 URL scheme 검증 — 어드민 승인화면 <a href> XSS 차단. http(s)·상대경로만.
+    const business_license_raw = String(body.business_license_url || '').trim().slice(0, 500) // 사업자등록증 이미지
+    const business_license_url = (/^https?:\/\//i.test(business_license_raw) || /^\//.test(business_license_raw)) ? business_license_raw : ''
     // 🏭 2026-06-09 대표자 연락처 + 담당자(성명/연락처/이메일) — additive 수집. 길이 cap.
     const representative_phone = String(body.representative_phone || '').trim().slice(0, 40)
     const manager_name = String(body.manager_name || '').trim().slice(0, 80)
@@ -288,7 +290,9 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
     const business_number = String(body.business_number || '').trim()
     const representative = String(body.representative || '').trim()
     const phone = String(body.phone || '').trim()
-    const business_license_url = String(body.business_license_url || '').trim().slice(0, 500)
+    // 🛡️ 2026-06-26 [보안] 사업자등록증 URL scheme 검증 — admin <a href> XSS 차단(위 가입경로와 동일).
+    const business_license_rawc = String(body.business_license_url || '').trim().slice(0, 500)
+    const business_license_url = (/^https?:\/\//i.test(business_license_rawc) || /^\//.test(business_license_rawc)) ? business_license_rawc : ''
     // 🏭 2026-06-09 대표자 연락처 + 담당자(성명/연락처/이메일) — additive 수집. 길이 cap.
     const representative_phone = String(body.representative_phone || '').trim().slice(0, 40)
     const manager_name = String(body.manager_name || '').trim().slice(0, 80)
@@ -1250,6 +1254,10 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
   if (await hasUnsignedContract(DB, 'distributor', sellerId)) {
     return c.json({ success: false, error: '전자계약서 서명 완료 후 발주할 수 있습니다. 카카오로 받은 계약서에 서명해주세요.', code: 'CONTRACT_REQUIRED' }, 403)
   }
+  // 🔐 2026-06-24 (전수조사): 승인 후 정지·거부된 판매사가 만료 전 토큰으로 발주(예치금 차감)하던 갭 차단.
+  if (await isSellerBlocked(DB, sellerId)) {
+    return c.json({ success: false, error: '계정이 정지·승인대기 상태입니다. 관리자에게 문의해주세요.', code: 'ACCOUNT_NOT_ACTIVE' }, 403)
+  }
   try {
     await ensureOrderTables(DB)
     // 만료 정리(best-effort): 이 판매사의 1시간 경과 미결제(PENDING) 주문 = 체크아웃 이탈 → EXPIRED.
@@ -1513,6 +1521,10 @@ app.post('/orders/confirm', rateLimit({ action: 'wholesale-confirm', max: 30, wi
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const { DB } = c.env
+  // 🔐 2026-06-24 (전수조사): 정지·거부 판매사 차단 — Toss 캡처(confirmTossPayment) 전에 차단해 무단결제 방지.
+  if (await isSellerBlocked(DB, sellerId)) {
+    return c.json({ success: false, error: '계정이 정지·승인대기 상태입니다. 관리자에게 문의해주세요.', code: 'ACCOUNT_NOT_ACTIVE' }, 403)
+  }
   try {
     await ensureOrderTables(DB)
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))

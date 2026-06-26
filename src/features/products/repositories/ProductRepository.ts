@@ -237,7 +237,7 @@ export class ProductRepository {
       AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)
       AND NOT (COALESCE(is_supply_product, 0) = 1 AND COALESCE(supply_source_id, 0) = 0)`;
     const params: any[] = [];
-    
+
     if (filter.sellerId) {
       query += ` AND seller_id = ?`;
       params.push(filter.sellerId);

@@ -47,9 +47,10 @@ export default function WholesaleWishlistPage() {
   }, [loggedIn])
 
   async function remove(productId: number) {
+    const snapshot = items // 🛡️ 2026-06-25: optimistic 실패 시 복원 — 옛 코드는 rollback 없어 잘못된 상태 고착.
     setItems(prev => (prev || []).filter(i => i.product_id !== productId))
     try { await api.post(`/api/wholesale/wishlist/${productId}/toggle`, {}, auth()) }
-    catch { toast.error('해제 실패 — 새로고침 후 다시 시도해주세요') }
+    catch { setItems(snapshot); toast.error('해제 실패 — 다시 시도해주세요') }
   }
 
   function isAvailable(it: WishItem) { return it.is_active !== 0 && (it.stock ?? 0) > 0 }
@@ -74,7 +75,7 @@ export default function WholesaleWishlistPage() {
   }, [items, filter])
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: WT.fill }}>
+    <div className="min-h-[100dvh] pb-24" style={{ background: WT.fill }}>
       <SEO title="관심상품 - 유통스타트" description="찜한 도매 상품을 모아보고 재입고·가격변동을 확인하세요" url="/wholesale/wishlist" noindex />
 
       {/* 로고 브레드크럼 헤더 */}

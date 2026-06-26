@@ -47,7 +47,7 @@ export default function StaysSearchPage() {
   // 🛡️ 2026-06-01 Tier2: 수동 load → React Query. queryQs 가 바뀔 때만 재요청.
   //   자동검색은 4개 필터(체크인/아웃/인원/정렬), 나머지는 '적용' 버튼에서 commit (기존 동작 유지).
   const [queryQs, setQueryQs] = useState(() => buildQs(filters))
-  const { data: items = [], isLoading: loading } = useStaysSearch(queryQs)
+  const { data: items = [], isLoading: loading, isError, refetch } = useStaysSearch(queryQs)
 
   useEffect(() => {
     setQueryQs(buildQs(filters))
@@ -133,6 +133,14 @@ export default function StaysSearchPage() {
       <div className="ur-content-wide px-4 lg:px-8 py-4">
         {loading ? (
           <div className="text-center py-20 text-gray-400 text-sm">검색 중...</div>
+        ) : isError ? (
+          // 🛡️ 2026-06-26 (소비자 감사 P0): fetch 실패를 '검색결과 없음'(재고 없음)으로 위장하지 않음 — 재시도.
+          <div className="text-center py-20">
+            <Search className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+            <p className="text-sm text-gray-300 mb-1">검색을 불러오지 못했어요</p>
+            <p className="text-xs text-gray-500 mb-4">네트워크 상태를 확인해주세요.</p>
+            <button onClick={() => refetch()} className="px-5 h-10 rounded-lg text-sm font-bold bg-white text-gray-900">다시 시도</button>
+          </div>
         ) : items.length === 0 ? (
           <div className="text-center py-20">
             <Search className="w-10 h-10 text-gray-600 mx-auto mb-3" />

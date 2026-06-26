@@ -163,6 +163,17 @@ node scripts/check-query-initialdata.mjs || true
 echo "==> Pre-commit: 듀얼 로그인 가드 (warn-only)..."
 node scripts/check-dual-login-guard.mjs || true
 
+# 🔐 2026-06-26: 유저↔어드민/셀러 상호 로그아웃 재발 방지 (warn-only).
+#   대시보드 로그인이 무조건 clearAuthData('user') 하면 KR httpOnly ur_session 쿠키까지 날아가
+#   소비자 강제 로그아웃. user 정리는 !isKorea() 게이트 안에서만. 차단은 verify.yml CI strict.
+echo "==> Pre-commit: 로그인 세션 공존 가드 (warn-only)..."
+node scripts/check-dashboard-login-session-coexist.mjs || true
+
+# 🧱 2026-06-26: 서비스 분리 — 소비자 단건 상품 조회의 도매 원본 격리 회귀 잠금 (warn-only).
+#   누수 닫은 사이트(상세/카트/공구확정)가 필터를 잃으면 도매 B2B 원본이 소비자에 노출. 차단은 verify.yml CI strict.
+echo "==> Pre-commit: 소비자 상품 도매 격리 가드 (warn-only)..."
+node scripts/check-consumer-product-supply-isolation.mjs || true
+
 # 🛡️ 2026-06-18: group_buy_status 로 상품 종류(교환권/공구 vs 쇼핑) 판별·라우팅 금지 (warn-only).
 #   group_buy_status 는 모든 상품 DEFAULT 'active' → 종류 판별에 쓰면 쇼핑 상품이 교환권으로 오분류
 #   (핀 /group-buy 오라우팅 사고). 종류는 deal_only + isVoucherCategory SSOT 만. 차단은 verify.yml CI strict.
@@ -179,6 +190,15 @@ node scripts/check-light-input-guard.mjs || true
 #   동네딜 지도 하단 잘림 사건 재발 방지. staged diff 추가라인만 검사(레거시 무시). warn-only.
 echo "==> Pre-commit: 모바일 뷰포트 함정 가드 (warn-only)..."
 node scripts/check-mobile-viewport.mjs || true
+
+# 🛡️ 2026-06-26: CSV 수식 인젝션 가드 (warn-only) — csvEscape 류 함수에 = + - @ 탭/CR 선행 가드 강제.
+echo "==> Pre-commit: CSV 수식 인젝션 가드 (warn-only)..."
+node scripts/check-csv-injection.mjs || true
+
+# 🛡️ 2026-06-26: 쿼리 isError 소비 가드 (warn-only) — 도매/제조사 surface 의 data 페이지가 isError 분기
+#   없이 렌더하면 fetch 실패가 빈화면/₩0 으로 위장됨. 신규 추가 차단.
+echo "==> Pre-commit: 쿼리 isError 소비 가드 (warn-only)..."
+node scripts/check-query-iserror.mjs || true
 
 # 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
 staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)

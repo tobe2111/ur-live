@@ -21,7 +21,7 @@ export default function WholesaleStatementPage({ embedded = false }: { embedded?
   const [from, setFrom] = useState(monthAgo)
   const [to, setTo] = useState(today)
   const [q, setQ] = useState({ from: monthAgo, to: today })
-  const { data, isLoading: loading } = useWholesaleStatement(q.from, q.to)
+  const { data, isLoading: loading, isError, refetch } = useWholesaleStatement(q.from, q.to)
   const orders = data?.orders ?? []
   const summary = data?.summary ?? null
   const load = () => setQ({ from, to })
@@ -57,11 +57,16 @@ export default function WholesaleStatementPage({ embedded = false }: { embedded?
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin" style={{ color: WT.ink4 }} /></div>
+        ) : isError ? (
+          <div className="text-center py-16">
+            <p className="text-[14px] mb-3" style={{ color: WT.ink3 }}>거래내역을 불러오지 못했어요. 네트워크 상태를 확인해주세요.</p>
+            <button onClick={() => refetch()} className="px-5 h-10 rounded-lg text-[14px] font-bold text-white" style={{ background: WT.ink }}>다시 시도</button>
+          </div>
         ) : orders.length === 0 ? (
           <p className="text-center py-16 text-[14px]" style={{ color: WT.ink4 }}>해당 기간 거래내역이 없어요.</p>
         ) : (
-          <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid ' + WT.line }}>
-            <table className="w-full text-[14px]">
+          <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid ' + WT.line }}>
+            <table className="w-full min-w-[560px] text-[14px]">
               <thead>
                 <tr className="text-left" style={{ color: WT.ink3, background: WT.fill2, borderBottom: '1px solid ' + WT.line }}>
                   <th className="py-2.5 px-4 font-semibold">일자</th>
@@ -92,7 +97,7 @@ export default function WholesaleStatementPage({ embedded = false }: { embedded?
   if (embedded) return <div>{content}</div>
 
   return (
-    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
+    <div className="min-h-[100dvh]" style={{ background: '#fff', color: WT.ink }}>
       <SEO title="거래내역서 - 유통스타트" description="판매사 도매 거래내역서" url="/wholesale/statement" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur print:hidden" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-medium flex items-center gap-3 px-5 lg:px-8 h-[52px]">

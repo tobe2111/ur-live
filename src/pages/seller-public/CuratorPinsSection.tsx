@@ -11,8 +11,12 @@
  */
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
-import { cfImage } from '@/utils/cf-image'
 import { Pin } from 'lucide-react'
+// 🏁 2026-06-25 (대표 신고 — "상품쪽이 깨졌다"): 다크 전용 하드코딩 카드(bg-[#121212]/text-white)가
+//   라이트 페이지에서 까맣게 깨져 보임 → 큐레이터 페이지·picker 와 동일한 표준 BrowseProductCard(테마 자동) 로 통일.
+import BrowseProductCard from '@/pages/browse/BrowseProductCard'
+import { seededColor } from '@/utils/card-gradient'
+import type { Product as BrowseProduct } from '@/pages/browse/types'
 
 interface CuratorPin {
   id: number
@@ -21,13 +25,24 @@ interface CuratorPin {
   product_name?: string | null
   image_url?: string | null
   price?: number | null
+  // 🏁 2026-06-26 (대표 — 링크샵 카드를 쇼핑 카드와 동일하게): 할인/평점/구매수/대표색.
+  original_price?: number | null
+  discount_rate?: number | null
+  dominant_color?: string | null
+  avg_rating?: number | null
+  review_count?: number | null
+  sold_count?: number | null
 }
 
-export default function CuratorPinsSection({ handle }: { handle?: string | null }) {
-  const [pins, setPins] = useState<CuratorPin[] | null>(null)
+export default function CuratorPinsSection({ handle, initialPins }: { handle?: string | null; initialPins?: CuratorPin[] | null }) {
+  const [pins, setPins] = useState<CuratorPin[] | null>(initialPins && initialPins.length ? initialPins.slice(0, 12) : null)
 
   useEffect(() => {
     if (!handle) return
+    // 🏁 2026-06-26 (대표 — 진입 불필요 로딩 감사): 부모(CuratorPage)가 이미 받은 핀을 내려주면 재fetch 0.
+    //   SPA 진입 시 CuratorPage 의 GET /api/curator/{handle} 와 본 컴포넌트가 같은 endpoint 를 중복 호출하던
+    //   것을 제거(SSR 하드로드는 기존처럼 inject 사용 → 동작 동일, SPA 만 1요청 절감).
+    if (initialPins) { setPins(initialPins.slice(0, 12)); return }
     let alive = true
     // 🏁 2026-06-17 (#4): SSR 주입(__SSR_INITIAL_CURATOR__)에 같은 handle 핀이 있으면 재fetch 생략.
     //   (/u/{handle} 에선 CuratorPage 가 이미 같은 endpoint 를 불러 → 중복 호출이었음.)
@@ -49,7 +64,7 @@ export default function CuratorPinsSection({ handle }: { handle?: string | null 
       })
       .catch(() => { if (alive) setPins([]) })
     return () => { alive = false }
-  }, [handle])
+  }, [handle, initialPins])
 
   if (!handle || !pins || pins.length === 0) return null
 
@@ -61,41 +76,44 @@ export default function CuratorPinsSection({ handle }: { handle?: string | null 
   return (
     <section className="px-4 lg:px-8 py-6">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-[15px] font-bold text-white flex items-center gap-1.5">
-          <Pin className="w-4 h-4 text-pink-400" /> 추천 핀
+        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+          <Pin className="w-4 h-4 text-gray-400 dark:text-gray-500" /> 추천템
         </h2>
         {!onOwnLinkshop && (
-          <a href={`/u/${handle}`} className="text-[12px] text-gray-400 hover:text-gray-300">
+          <a href={`/u/${handle}`} className="text-[12px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             링크샵 전체보기 →
           </a>
         )}
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* 🏁 2026-06-25 (대표 신고 — 카드 가로폭 좁음): 링크샵은 PC 에서도 430 액자라 viewport 기반
+          `sm:grid-cols-4` 가 액자 안에서 4열→카드 협소 + 우측 공백. PinGrid 와 동일하게 항상 2열. */}
+      <div className="grid grid-cols-2 gap-3">
         {pins.map(pin => {
           const name = pin.title || pin.product_name || ''
+          // 🏁 2026-06-26 (대표 — 쇼핑 카드와 동일): 할인/평점/구매수/대표색까지 전달.
+          const product = {
+            id: pin.product_id,
+            name,
+            price: pin.price ?? 0,
+            current_price: pin.price ?? 0,
+            original_price: pin.original_price ?? undefined,
+            discount_rate: pin.discount_rate ?? 0,
+            image_url: pin.image_url || '',
+            stock: 0,
+            dominant_color: pin.dominant_color,
+            avg_rating: pin.avg_rating ?? undefined,
+            review_count: pin.review_count ?? undefined,
+            sold_count: pin.sold_count ?? undefined,
+          } as BrowseProduct
+          // 클릭은 반드시 /u/:handle/p/:productId (서버 attribution redirect — 큐레이터 적립 작동 경로) 유지.
           return (
-            <a
+            <BrowseProductCard
               key={pin.id}
-              href={`/u/${handle}/p/${pin.product_id}`}
-              className="block rounded-2xl overflow-hidden bg-[#121212] border border-[#1A1A1A] active:scale-[0.98] transition-transform"
-            >
-              <div className="aspect-square bg-[#1A1A1A]">
-                {pin.image_url && (
-                  <img
-                    src={cfImage(pin.image_url, { width: 300 })}
-                    alt={name}
-                    loading="lazy"
-                    className="w-full h-full object-cover"
-                  />
-                )}
-              </div>
-              <div className="p-2.5">
-                <p className="text-[12px] text-gray-300 line-clamp-2 leading-snug">{name}</p>
-                {pin.price != null && pin.price > 0 && (
-                  <p className="text-[13px] font-bold text-white mt-1">{Number(pin.price).toLocaleString('ko-KR')}원</p>
-                )}
-              </div>
-            </a>
+              product={product}
+              aboveFold={false}
+              to={`/u/${handle}/p/${pin.product_id}`}
+              fallbackColor={seededColor(pin.product_id)}
+            />
           )
         })}
       </div>

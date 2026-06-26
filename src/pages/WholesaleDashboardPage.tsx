@@ -324,6 +324,19 @@ export default function WholesaleDashboardPage() {
     >
       <SEO title="판매사 대시보드 - 유통스타트 도매몰" description="매입 현황과 주문·거래·자료를 한 화면에서 관리하세요." url="/wholesale/dashboard" noindex />
 
+      {/* 🛡️ 2026-06-26: 주문/예치금 로드 실패를 "데이터 0(₩0)"로 위장하지 않도록 명시적 에러 배너 + 재시도.
+          (useWholesale 훅이 에러를 빈배열로 삼키지 않게 바뀐 뒤, 소비처가 isError 를 읽어야 함.) */}
+      {(ordersQ.isError || depositQ.isError) && (
+        <div className="mb-4 rounded-xl px-4 py-3 flex items-center justify-between gap-3" style={{ background: '#FFF4F4', border: '1px solid #F3C9C9' }}>
+          <p className="text-[13px] font-medium" style={{ color: '#B3253B' }}>매입 현황·예치금 정보를 불러오지 못했어요. 네트워크 상태를 확인해주세요.</p>
+          <button
+            onClick={() => { ordersQ.refetch(); depositQ.refetch() }}
+            className="shrink-0 px-3 h-8 rounded-lg text-[13px] font-bold text-white"
+            style={{ background: '#B3253B' }}
+          >다시 시도</button>
+        </div>
+      )}
+
       {tabContent}
     </WholesaleDashboardShell>
   )

@@ -17,6 +17,7 @@ import { requireSupplier } from '@/worker/middleware/auth'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn } from './wholesale-deposit-core'
+import { refundWholesaleSupplierLines } from './wholesale-refund'
 import { parseCsv } from './supply-csv'
 import { buildXlsx, xlsxResponse } from './xlsx'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
@@ -144,6 +145,21 @@ app.post('/tracking/bulk', async (c) => {
            AND NOT EXISTS (SELECT 1 FROM wholesale_order_items wi WHERE wi.wholesale_order_id = wholesale_orders.id AND wi.line_status != 'SHIPPED')`
       ).bind(...chunk).run().catch(swallow('supplier:ship-all-order-status'))
     }
+
+    // 🔔 2026-06-26 (알림 누락 보강): CSV 일괄 송장 업로드도 영향 주문별로 판매사(바이어)에게 발송 알림.
+    //   기존엔 ship-all 단일 엔드포인트만 통지 → CSV 경로로 발송하면 바이어가 영영 몰랐음. fail-soft.
+    if (oids.length > 0) {
+      const buyers = await DB.prepare(
+        `SELECT id, distributor_seller_id FROM wholesale_orders WHERE id IN (${oids.map(() => '?').join(',')})`
+      ).bind(...oids).all<{ id: number; distributor_seller_id: number | null }>().catch(() => ({ results: [] as Array<{ id: number; distributor_seller_id: number | null }> }))
+      for (const b of buyers.results || []) {
+        if (!b.distributor_seller_id) continue
+        createDashboardNotification(
+          DB, 'seller', String(b.distributor_seller_id), 'wholesale_shipped',
+          '도매 주문 발송 시작', `주문 #${b.id} 상품이 발송되었습니다.`, '/wholesale/dashboard',
+        ).catch(swallow('wholesale-supplier:notify-ship-bulk'))
+      }
+    }
     const ok = results.filter(r => r.status === 'ok').length
     return c.json({ success: true, summary: { total: results.length, ok, skipped: results.filter(r => r.status === 'skip').length, failed: results.filter(r => r.status === 'error').length }, results })
   } catch (err) {
@@ -164,15 +180,21 @@ app.post('/items/:id/ship', async (c) => {
     const tracking = String(body.tracking_number || '').trim().slice(0, 60)
     if (!courier || !tracking) return c.json({ success: false, error: '택배사와 운송장 번호를 입력해주세요' }, 400)
 
-    // 소유권: 내 supplier_id 라인만.
+    // 소유권: 내 supplier_id 라인만. (distributor_seller_id 는 발송 알림용.)
     const line = await DB.prepare(
-      'SELECT id, wholesale_order_id FROM wholesale_order_items WHERE id = ? AND supplier_id = ?'
-    ).bind(itemId, sid).first<{ id: number; wholesale_order_id: number }>()
+      `SELECT wi.id, wi.wholesale_order_id, wo.distributor_seller_id
+         FROM wholesale_order_items wi
+         JOIN wholesale_orders wo ON wo.id = wi.wholesale_order_id
+        WHERE wi.id = ? AND wi.supplier_id = ?`
+    ).bind(itemId, sid).first<{ id: number; wholesale_order_id: number; distributor_seller_id: number | null }>()
     if (!line) return c.json({ success: false, error: '항목을 찾을 수 없습니다' }, 404)
 
-    await DB.prepare(
-      "UPDATE wholesale_order_items SET courier=?, tracking_number=?, shipped_at=datetime('now'), line_status='SHIPPED' WHERE id=?"
-    ).bind(courier, tracking, itemId).run()
+    // 🛡️ 2026-06-25 (전수조사): line_status='PENDING' CAS — 가드 없으면 REFUNDED 라인이 SHIPPED 로 되살아나거나
+    //   동시 발송이 서로의 송장 덮어씀. ship-all(아래)은 이미 PENDING 가드 — 이 단건만 누락이었음.
+    const shipUpd = await DB.prepare(
+      "UPDATE wholesale_order_items SET courier=?, tracking_number=?, shipped_at=datetime('now'), line_status='SHIPPED' WHERE id=? AND supplier_id=? AND line_status='PENDING'"
+    ).bind(courier, tracking, itemId, sid).run()
+    if ((shipUpd.meta?.changes ?? 0) === 0) return c.json({ success: true, already: true })
 
     // 주문의 모든 라인이 발송완료면 주문 상태도 SHIPPED.
     const pending = await DB.prepare(
@@ -181,6 +203,13 @@ app.post('/items/:id/ship', async (c) => {
     if ((pending?.c ?? 0) === 0) {
       await DB.prepare("UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now') WHERE id=? AND status='PAID'")
         .bind(line.wholesale_order_id).run()
+    }
+    // 🔔 2026-06-26 (알림 누락 보강): 단건 송장 입력도 판매사(바이어)에게 발송 알림 — 기존엔 ship-all 만 통지했음.
+    if (line.distributor_seller_id) {
+      createDashboardNotification(
+        DB, 'seller', String(line.distributor_seller_id), 'wholesale_shipped',
+        '도매 주문 발송 시작', `주문 #${line.wholesale_order_id} 상품이 발송되었습니다. (${courier} ${tracking})`, '/wholesale/dashboard',
+      ).catch(swallow('wholesale-supplier:notify-ship-single'))
     }
     return c.json({ success: true })
   } catch (err) {
@@ -252,123 +281,13 @@ app.post('/orders/:id/refund', async (c) => {
   try {
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
     const reason = String(body.reason || '판매자 반품 승인').slice(0, 100)
-
-    const order = await DB.prepare(
-      'SELECT id, distributor_seller_id, status, payment_key, subtotal, COALESCE(shipping_total,0) AS shipping_total, refunded_amount FROM wholesale_orders WHERE id = ?'
-    ).bind(orderId).first<{ id: number; distributor_seller_id: number; status: string; payment_key: string | null; subtotal: number; shipping_total: number; refunded_amount: number }>()
-    if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
-    if (!['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(order.status) || !order.payment_key) {
-      return c.json({ success: false, error: '환불할 수 없는 주문 상태입니다' }, 400)
-    }
-    const isDeposit = order.payment_key === 'deposit'
-
-    // 내 라인 중 아직 환불 안 된 것. (line_status 도 조회 — Toss 실패 시 정확 롤백용)
-    const myLines = await DB.prepare(
-      "SELECT id, product_id, qty, line_total, line_status FROM wholesale_order_items WHERE wholesale_order_id = ? AND supplier_id = ? AND line_status != 'REFUNDED'"
-    ).bind(orderId, sid).all<{ id: number; product_id: number; qty: number; line_total: number; line_status: string }>()
-    let lines = myLines.results || []
-    if (lines.length === 0) return c.json({ success: false, error: '환불할 내 주문 라인이 없습니다' }, 400)
-
-    // 🛡️ 2026-06-12 (라인 선택 환불 — UI 개선): body.item_ids 지정 시 그 라인만 환불.
-    //   소유권은 위 supplier_id=sid 쿼리가 보장 — item_ids 는 내 라인의 부분집합으로만 좁힘(타인 라인 지정 불가).
-    //   미지정 시 기존 동작(내 전체 라인) 그대로 — additive, 하위호환.
-    const rawItemIds = Array.isArray(body.item_ids) ? (body.item_ids as unknown[]).map(Number).filter((n: number) => Number.isFinite(n) && n > 0) : []
-    if (rawItemIds.length > 0) {
-      const allow = new Set(rawItemIds)
-      lines = lines.filter(l => allow.has(l.id))
-      if (lines.length === 0) return c.json({ success: false, error: '선택한 라인이 환불 가능한 내 주문 라인이 아닙니다' }, 400)
-    }
-
-    const refundAmount = lines.reduce((s, l) => s + (l.line_total || 0), 0)
-    if (refundAmount <= 0) return c.json({ success: false, error: '환불 금액이 올바르지 않습니다' }, 400)
-
-    // CAS claim — 내 라인을 REFUNDED 로 원자 전환(동시/중복 환불 차단).
-    const lineIds = lines.map(l => l.id)
-    const ph = lineIds.map(() => '?').join(',')
-    const claim = await DB.prepare(
-      `UPDATE wholesale_order_items SET line_status='REFUNDED' WHERE id IN (${ph}) AND line_status != 'REFUNDED'`
-    ).bind(...lineIds).run()
-    const claimed = claim.meta?.changes ?? 0
-    if (claimed === 0) return c.json({ success: true, already: true })
-
-    if (isDeposit) {
-      // 💰 예치금 주문 — Toss 미경유. 판매사 잔액에 내 라인 합계 복원.
-      //   라인-status CAS(위)가 이미 멱등 — claimed>0 인 이 thread 만 복원하므로 이중복원 없음.
-      //   ref_id 는 주문-제조사-claim 단위로 기록(부분환불 추적). 실패해도 자금은 복원되도록 best-effort.
-      await ensureDepositSchema(DB)
-      const bal = await refundDeposit(DB, order.distributor_seller_id, refundAmount)
-      // ref 에 라인 집합 포함 — 같은 주문의 연속 부분환불(라인 선택)이 원장에서 구분되도록.
-      await recordDepositTxn(DB, order.distributor_seller_id, 'refund', refundAmount, bal, `${orderId}-sup${sid}-L${lineIds.slice().sort((a, b) => a - b).join('_')}`.slice(0, 120), `제조사 환불 #${orderId} (${reason})`)
-    } else {
-      // 레거시 Toss 주문 — 부분 취소(잠긴 SSOT helper). 제조사별 stable idempotency-key.
-      // 🛡️ 2026-06-12: 멱등키에 라인 집합 포함 — 라인 선택 환불 도입으로 같은 주문에서
-      //   부분환불이 2회+ 발생 가능. 키가 주문 고정이면 2번째 취소가 Toss dedupe 로 무시됨(미환불 사고).
-      //   같은 라인 집합 재시도는 같은 키(정렬) → 기존 retry-dedupe 의미는 보존.
-      const res = await cancelTossPayment({
-        env: c.env, paymentKey: order.payment_key, cancelReason: reason,
-        cancelAmount: refundAmount,
-        idempotencyKey: `whs-refund-${orderId}-sup${sid}-L${lineIds.slice().sort((a, b) => a - b).join('_')}`.slice(0, 100),
-      })
-      if (!res.ok) {
-        // 롤백 — 각 라인을 환불 전 상태(PENDING/SHIPPED)로 정확히 복구. PENDING 라인이 SHIPPED 로 둔갑하던 버그 fix.
-        const pendingIds = lines.filter(l => l.line_status === 'PENDING').map(l => l.id)
-        const shippedIds = lines.filter(l => l.line_status === 'SHIPPED').map(l => l.id)
-        if (pendingIds.length) {
-          await DB.prepare(`UPDATE wholesale_order_items SET line_status='PENDING' WHERE id IN (${pendingIds.map(() => '?').join(',')}) AND line_status='REFUNDED'`).bind(...pendingIds).run().catch(swallow('wholesale-supplier:refund-rollback-pending'))
-        }
-        if (shippedIds.length) {
-          await DB.prepare(`UPDATE wholesale_order_items SET line_status='SHIPPED' WHERE id IN (${shippedIds.map(() => '?').join(',')}) AND line_status='REFUNDED'`).bind(...shippedIds).run().catch(swallow('wholesale-supplier:refund-rollback-shipped'))
-        }
-        return c.json({ success: false, error: res.message || '환불 처리에 실패했습니다', code: res.code }, 402)
-      }
-    }
-
-    // 제조사 정산 역전 (환불한 라인의 상품만 — 일부 라인 환불 시 과다 클로백 방지, fail-soft).
-    try { await reverseSupplierOnWholesaleRefund(DB, orderId, reason, sid, lines.map(l => l.product_id)) } catch { /* best-effort */ }
-
-    // 재고 복원 (내 라인만).
-    for (const l of lines) {
-      await DB.prepare(
-        "UPDATE products SET stock = COALESCE(stock,0) + ?, sold_count = MAX(0, COALESCE(sold_count,0) - ?), updated_at = datetime('now') WHERE id = ?"
-      ).bind(l.qty, l.qty, l.product_id).run().catch(swallow('wholesale-supplier:refund-stock-restore'))
-    }
-
-    // 누적 환불액 + 주문 상태(전체 환불 시 REFUNDED, 아니면 PARTIAL_REFUNDED).
-    await DB.prepare("UPDATE wholesale_orders SET refunded_amount = refunded_amount + ? WHERE id = ?").bind(refundAmount, orderId).run()
-    const remain = await DB.prepare(
-      "SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status != 'REFUNDED'"
-    ).bind(orderId).first<{ c: number }>()
-    const newStatus = (remain?.c ?? 0) === 0 ? 'REFUNDED' : 'PARTIAL_REFUNDED'
-    await DB.prepare("UPDATE wholesale_orders SET status = ? WHERE id = ?").bind(newStatus, orderId).run()
-
-    // 🛡️ 2026-06-25 (전수조사 머니버그): 바이어는 chargeTotal = subtotal + shipping_total 을 결제했는데,
-    //   라인 환불은 line_total(상품 소계)만 복원 → 전량환불(REFUNDED)에도 배송비 미환불 = 바이어 손해.
-    //   전량환불 도달 시 미회수 잔액(=배송비)을 1회 추가 환불. gap 계산이라 절대 과다환불 없음.
-    //   라인-status CAS 로 remain===0 은 단 한 thread 만 도달 → 멱등(이중 shipping 환불 불가).
-    if (newStatus === 'REFUNDED') {
-      const totalCharge = (order.subtotal || 0) + (order.shipping_total || 0)
-      const refundedSoFar = (order.refunded_amount || 0) + refundAmount
-      const shippingRefund = Math.max(0, totalCharge - refundedSoFar)
-      if (shippingRefund > 0) {
-        if (isDeposit) {
-          const bal2 = await refundDeposit(DB, order.distributor_seller_id, shippingRefund)
-          await recordDepositTxn(DB, order.distributor_seller_id, 'refund', shippingRefund, bal2, `${orderId}-ship`.slice(0, 120), `배송비 환불 #${orderId} (전량환불)`).catch(swallow('wholesale-supplier:refund-ship-txn'))
-        } else if (order.payment_key && order.payment_key !== 'deposit') {
-          await cancelTossPayment({ env: c.env, paymentKey: order.payment_key, cancelReason: '배송비 환불(전량환불)', cancelAmount: shippingRefund, idempotencyKey: `whs-refund-ship-${orderId}`.slice(0, 100) }).catch(() => null)
-        }
-        await DB.prepare("UPDATE wholesale_orders SET refunded_amount = refunded_amount + ? WHERE id = ?").bind(shippingRefund, orderId).run().catch(swallow('wholesale-supplier:refund-ship-acc'))
-      }
-    }
-
-    // 🔔 2026-06-17 (알림 완성도): 판매사(바이어)에게 환불 처리 알림 — 입금확인/발송/출금/클레임엔 알림이
-    //   있었으나 제조사 직접 환불(반품 승인)만 바이어 통지가 없던 누락 보강. fail-soft.
-    if (order.distributor_seller_id) {
-      createDashboardNotification(
-        DB, 'seller', String(order.distributor_seller_id), 'wholesale_refunded',
-        '도매 주문 환불 처리', `주문 #${orderId} ${refundAmount.toLocaleString('ko-KR')}원이 환불되었습니다 (${newStatus === 'REFUNDED' ? '전체' : '부분'} 환불).`, '/wholesale/dashboard',
-      ).catch(swallow('wholesale-supplier:notify-refund'))
-    }
-    return c.json({ success: true, refunded_amount: refundAmount, order_status: newStatus })
+    // 🏭 2026-06-26: 라인 스코프 환불 로직은 공유 헬퍼(wholesale-refund.ts)로 추출 — 클레임 승인 경로와
+    //   단일 구현 공유(상태머신 P1: 클레임 전액환불·과다 클로백 수정). 동작 byte-동일(behavior-preserving).
+    const itemIds = Array.isArray(body.item_ids) ? (body.item_ids as unknown[]).map(Number).filter((n: number) => Number.isFinite(n) && n > 0) : undefined
+    const r = await refundWholesaleSupplierLines(c.env, { orderId, supplierId: sid, itemIds, reason })
+    if (!r.ok) return c.json({ success: false, error: r.error, code: r.code }, (r.httpStatus as 400 | 402 | 404) || 400)
+    if (r.already) return c.json({ success: true, already: true })
+    return c.json({ success: true, refunded_amount: r.refundAmount, order_status: r.orderStatus })
   } catch (err) {
     return safeError(c, err, '환불 처리 중 오류가 발생했습니다', '[wholesale-supplier]')
   }

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { digitsOnly, isValidKrPhone, isValidEmail } from '@/utils/form-validators'
 
 export default function SellerRegisterPage() {
   const { t } = useTranslation()
@@ -54,38 +55,21 @@ export default function SellerRegisterPage() {
     e.preventDefault()
     setError('')
 
-    // 유효성 검증
-    if (formData.password !== formData.passwordConfirm) {
-      setError(t('seller.passwordMismatch'))
-      return
-    }
+    // 🔢 2026-06-26 (대표 가입폼 UX): 화면 순서대로 검증 + 첫 문제 필드로 포커스(전화/이메일 미완성 통과 차단).
+    //   기존엔 native required 가 순서를 무시하고 점프 + email.includes('@') 라 'a@b'·'@naver' 통과했음.
+    const focusById = (id: string) => { const el = document.getElementById(id) as HTMLInputElement | null; if (el) { el.focus(); el.scrollIntoView({ block: 'center', behavior: 'smooth' }) } }
+    const failAt = (id: string, m: string) => { setError(m); toast.error(m); focusById(id) }
 
-    if (formData.password.length < 8) {
-      setError(t('seller.passwordMin8'))
-      return
-    }
-
-    if (!formData.email.includes('@')) {
-      setError(t('seller.invalidEmail'))
-      return
-    }
-
-    if (formData.sellerType !== 'store_owner' && !formData.youtubeEmail.includes('@')) {
-      setError(t('seller.invalidYoutubeEmail'))
-      return
-    }
-
-    if (formData.username.length < 3) {
-      setError(t('seller.usernameMin3'))
-      return
-    }
-
-    // 사업자번호 형식 검증 (XXX-XX-XXXXX)
-    const businessNumberRegex = /^\d{3}-\d{2}-\d{5}$/
-    if (!businessNumberRegex.test(formData.businessNumber)) {
-      setError(t('seller.invalidBusinessNumber'))
-      return
-    }
+    if (formData.username.trim().length < 3) { failAt('username', t('seller.usernameMin3')); return }
+    if (!isValidEmail(formData.email)) { failAt('email', t('seller.invalidEmail')); return }
+    if (formData.sellerType !== 'store_owner' && !isValidEmail(formData.youtubeEmail)) { failAt('youtubeEmail', t('seller.invalidYoutubeEmail')); return }
+    if (formData.password.length < 8) { failAt('password', t('seller.passwordMin8')); return }
+    if (formData.password !== formData.passwordConfirm) { failAt('passwordConfirm', t('seller.passwordMismatch')); return }
+    if (!formData.name.trim()) { failAt('name', t('seller.errName', { defaultValue: '대표자 성명을 입력해주세요' })); return }
+    if (!isValidKrPhone(formData.phone)) { failAt('phone', t('seller.errPhone', { defaultValue: '연락처를 정확히 입력해주세요 (예: 010-1234-5678)' })); return }
+    if (!formData.businessName.trim()) { failAt('businessName', t('seller.errBizName', { defaultValue: '상호(사업자명)를 입력해주세요' })); return }
+    // 사업자번호 — 하이픈 유무 무관 10자리.
+    if (!/^\d{10}$/.test(digitsOnly(formData.businessNumber))) { failAt('businessNumber', t('seller.invalidBusinessNumber')); return }
 
     setLoading(true)
 
@@ -141,7 +125,8 @@ export default function SellerRegisterPage() {
 
         {/* Registration Form */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          {/* 🔢 noValidate: native required 가 순서 무시하고 점프하던 것 차단 → JS 순차검증 사용 */}
+          <form onSubmit={handleSubmit} noValidate className="space-y-6">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                 {error}

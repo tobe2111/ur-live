@@ -145,7 +145,7 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
   const navigate = useNavigate()
   const goBack = useWholesaleBack()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
-  const { data: orders = [], isLoading: loading, refetch } = useWholesaleOrders()
+  const { data: orders = [], isLoading: loading, isError, refetch } = useWholesaleOrders()
   const [claimOrderId, setClaimOrderId] = useState<number | null>(null)
 
   // 🧭 2026-06-10 (생애주기 감사 갭#2): 내가 제기한 클레임 상태 추적 — 제기만 되고 볼 곳이 없던 갭.
@@ -205,6 +205,13 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
         )}
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin" style={{ color: WT.ink4 }} /></div>
+        ) : isError ? (
+          <div className="flex flex-col items-center py-24 text-center">
+            <Package className="w-12 h-12 mb-4" style={{ color: WT.ink4 }} />
+            <p className="text-[15px] font-medium mb-1" style={{ color: WT.ink2 }}>주문 내역을 불러오지 못했어요</p>
+            <p className="text-[13px] mb-4" style={{ color: WT.ink4 }}>네트워크 상태를 확인해주세요.</p>
+            <button onClick={() => refetch()} className="px-6 h-11 rounded-xl font-bold text-white" style={{ background: WT.ink }}>다시 시도</button>
+          </div>
         ) : orders.length === 0 ? (
           <div className="flex flex-col items-center py-24 text-center">
             <Package className="w-12 h-12 mb-4" style={{ color: WT.ink4 }} />
@@ -265,7 +272,7 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
   if (embedded) return <div>{content}</div>
 
   return (
-    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
+    <div className="min-h-[100dvh]" style={{ background: '#fff', color: WT.ink }}>
       <SEO title="도매 주문 내역 - 유통스타트" description="판매사 도매 주문 내역" url="/wholesale/orders" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-wide flex items-center gap-3 px-5 lg:px-8 h-[52px]">

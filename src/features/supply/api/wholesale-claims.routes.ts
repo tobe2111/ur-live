@@ -20,6 +20,8 @@
  *      - PATCH /api/wholesale/admin/claims/:id     (어드민 검수)
  */
 import { Hono } from 'hono'
+import { sanitizeString } from '@/worker/utils/validation'
+import { refundWholesaleSupplierLines, type WholesaleRefundResult } from './wholesale-refund'
 import { isViewerToken } from './sub-account-gate'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
@@ -135,7 +137,7 @@ app.post('/claims', rateLimit({ action: 'wholesale-claim', max: 20, windowSec: 6
 
     const wholesaleOrderId = Number(body.wholesale_order_id)
     const reasonCode = String(body.reason_code || '').trim()
-    const reasonText = String(body.reason_text || '').trim().slice(0, 1000)
+    const reasonText = sanitizeString(String(body.reason_text || '')).trim().slice(0, 1000)
     const evidenceUrl = String(body.evidence_url || '').trim().slice(0, 500)
     const rawItemId = body.wholesale_order_item_id
     const itemId = rawItemId == null || rawItemId === '' ? null : Number(rawItemId)
@@ -179,6 +181,14 @@ app.post('/claims', rateLimit({ action: 'wholesale-claim', max: 20, windowSec: 6
       ).bind(wholesaleOrderId).first<{ supplier_id: number | null; cnt: number }>().catch(() => null)
       if (sup && Number(sup.cnt) === 1) supplierId = sup.supplier_id ?? null
     }
+
+    // 🛡️ 2026-06-25 (전수조사): 같은 주문(+라인)에 이미 처리중(open/reviewing) 클레임이 있으면 중복접수 차단 —
+    //   기존엔 존재검사 0 이라 재제출마다 새 open 클레임 + holdSettlements + 어드민 알림 반복(큐 스팸·반복 보류).
+    //   (완전 race-proof 는 partial UNIQUE 필요 — TECHNICAL_DEBT 기록. 이 체크가 재제출=지배적 케이스 차단.)
+    const activeClaim = await DB.prepare(
+      "SELECT id FROM wholesale_claims WHERE wholesale_order_id = ? AND COALESCE(wholesale_order_item_id, 0) = COALESCE(?, 0) AND distributor_seller_id = ? AND status IN ('open','reviewing') LIMIT 1"
+    ).bind(wholesaleOrderId, itemId, sellerId).first<{ id: number }>().catch(() => null)
+    if (activeClaim) return c.json({ success: true, claim_id: activeClaim.id, already: true })
 
     const ins = await DB.prepare(`
       INSERT INTO wholesale_claims
@@ -267,8 +277,8 @@ app.patch('/admin/claims/:id', requireAdmin(), rateLimit({ action: 'admin-wholes
     if (!map) return c.json({ success: false, error: '잘못된 처리 동작입니다' }, 400)
 
     const claim = await DB.prepare(
-      'SELECT id, wholesale_order_id, distributor_seller_id, supplier_id, status FROM wholesale_claims WHERE id = ?'
-    ).bind(id).first<{ id: number; wholesale_order_id: number; distributor_seller_id: number; supplier_id: number | null; status: string }>().catch(() => null)
+      'SELECT id, wholesale_order_id, wholesale_order_item_id, distributor_seller_id, supplier_id, status FROM wholesale_claims WHERE id = ?'
+    ).bind(id).first<{ id: number; wholesale_order_id: number; wholesale_order_item_id: number | null; distributor_seller_id: number; supplier_id: number | null; status: string }>().catch(() => null)
     if (!claim) return c.json({ success: false, error: '클레임을 찾을 수 없습니다' }, 404)
     // 종결 상태(approved/rejected/resolved)에서는 재전이 금지.
     if (['approved', 'rejected', 'resolved'].includes(claim.status)) {
@@ -278,6 +288,26 @@ app.patch('/admin/claims/:id', requireAdmin(), rateLimit({ action: 'admin-wholes
     if (action === 'reviewing' && claim.status === 'reviewing') {
       return c.json({ success: true, claim_id: id, status: 'reviewing', already: true })
     }
+
+    // 🏭 2026-06-26 (상태머신 P1 수정): approve 는 status 전이 '전에' 환불을 라인 스코프로 서버 집행한다.
+    //   기존엔 어드민의 2차 클라이언트 클릭(전액 환불 엔드포인트)에 의존 → 누락 시 바이어 미환불 + 제조사
+    //   정산 영구 HOLD, 그리고 다제조사 주문에서 전액환불/무관 제조사 과다 클로백 문제가 있었음.
+    //   claim.supplier_id 가 있으면(항목/단일 제조사 클레임) 그 제조사 라인만(항목 지정 시 그 라인만) 환불하고,
+    //   환불 실패 시 status 를 안 바꿔(open/reviewing 유지) 어드민이 재시도할 수 있게 한다.
+    //   supplier_id 가 없으면(다제조사 order-level 클레임) 자동 환불 불가 → 기존처럼 어드민 수동 환불 힌트.
+    let refundResult: WholesaleRefundResult | null = null
+    if (action === 'approve' && claim.supplier_id) {
+      refundResult = await refundWholesaleSupplierLines(c.env, {
+        orderId: claim.wholesale_order_id,
+        supplierId: claim.supplier_id,
+        itemIds: claim.wholesale_order_item_id ? [claim.wholesale_order_item_id] : undefined,
+        reason: (adminMemo || '클레임 승인 환불').slice(0, 100),
+      })
+      if (refundResult && !refundResult.ok && !refundResult.already) {
+        return c.json({ success: false, error: refundResult.error || '환불 처리에 실패했습니다', code: refundResult.code }, (refundResult.httpStatus as 400 | 402 | 404) || 402)
+      }
+    }
+    const refundDone = !!(refundResult && (refundResult.ok || refundResult.already))
 
     // CAS — 현재 status 가 기대값일 때만 전환(동시 검수 중복 차단). open|reviewing 에서만 전환.
     const setResolvedAt = map.terminal ? ", resolved_at = datetime('now')" : ''
@@ -289,9 +319,10 @@ app.patch('/admin/claims/:id', requireAdmin(), rateLimit({ action: 'admin-wholes
       return c.json({ success: false, error: '클레임 상태를 변경할 수 없습니다' }, 409)
     }
 
-    // HOLD 정책 — reject/resolve(무환불) 시 해제, approve 시 유지(환불 집행이 정산 정리).
+    // HOLD 정책 — reject/resolve(무환불) 시 해제. approve 는 환불을 집행했으면(refundDone) 해제(스코프 역전 완료 →
+    //   나머지 제조사 정산은 정상 성숙 재개, 환불 라인은 음수 클로백으로 net-out). 미집행이면 유지(어드민 수동 집행).
     let released = 0
-    if (map.clearHold) released = await releaseHold(DB, claim.wholesale_order_id)
+    if (map.clearHold || refundDone) released = await releaseHold(DB, claim.wholesale_order_id)
 
     // 감사 로그 (admin_audit_logs) — admin-security writeAuditLog 직접 호출.
     try {
@@ -322,9 +353,12 @@ app.patch('/admin/claims/:id', requireAdmin(), rateLimit({ action: 'admin-wholes
 
     return c.json({
       success: true, claim_id: id, status: map.status, released_hold: released,
-      // approve 는 별도 환불 집행 필요 — 어드민 UI 가 환불 엔드포인트를 호출하도록 힌트.
-      requires_refund: map.status === 'approved',
-      refund_endpoint: map.status === 'approved' ? `/api/admin/distributor/orders/${claim.wholesale_order_id}/refund` : undefined,
+      // approve 환불을 서버에서 집행했으면 refunded — UI 가 2차 환불 호출을 하지 않게 한다.
+      refunded: refundDone || undefined,
+      refunded_amount: refundResult?.refundAmount,
+      // 서버 환불을 못 한 경우(다제조사 order-level 클레임)만 어드민 수동 환불 힌트 유지.
+      requires_refund: map.status === 'approved' && !refundDone,
+      refund_endpoint: (map.status === 'approved' && !refundDone) ? `/api/admin/distributor/orders/${claim.wholesale_order_id}/refund` : undefined,
     })
   } catch (err) {
     return safeError(c, err, '클레임 처리 중 오류가 발생했습니다', '[wholesale-claims]')

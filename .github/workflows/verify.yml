@@ -210,6 +210,28 @@ jobs:
         run: STRICT_API_SCOPE=1 node scripts/check-wholesale-admin-api-scope.mjs
         continue-on-error: false
 
+      # 🔀 2026-06-24: 교차-역할 API 호출 차단 — 한 대시보드(제조사/에이전시/판매사/어드민)가 다른 역할
+      #   전용 토큰-게이트 네임스페이스를 부르면 그 역할 사용자에겐 403 → 먹통(소유자=슈퍼는 안 보임).
+      #   대표 "다른 사람들이 썼을 때도/전역". 현재 위반 0.
+      - name: Dashboard cross-role API (strict)
+        run: STRICT_CROSSROLE=1 node scripts/check-dashboard-api-crossrole.mjs
+        continue-on-error: false
+
+      # 🔐 2026-06-26: 유저↔어드민/셀러 상호 로그아웃 재발 방지 — 대시보드 로그인이 무조건
+      #   clearAuthData('user') 하면 KR httpOnly ur_session 쿠키까지 날아가 소비자 강제 로그아웃
+      #   (대표 신고). KR 소비자=쿠키 세션, 대시보드=Bearer 라 공존 가능 → user 정리는 !isKorea()
+      #   게이트 안에서만. 현재 위반 0 → strict.
+      - name: Dashboard login session coexist (strict)
+        run: STRICT_LOGIN_COEXIST=1 node scripts/check-dashboard-login-session-coexist.mjs
+        continue-on-error: false
+
+      # 🧱 2026-06-26: 서비스 분리(도매↔유어딜) — 소비자 단건 상품 조회가 도매 원본(is_supply_product=1·
+      #   supply_source_id 없음)을 격리하는지 회귀 잠금. 리스트는 기존 격리, 단건 ID 경로(상세/카트/공구확정)
+      #   누수를 닫고 영구 가드. 현재 위반 0 → strict.
+      - name: Consumer product supply isolation (strict)
+        run: STRICT_SUPPLY_ISOLATION=1 node scripts/check-consumer-product-supply-isolation.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-06-20: 로그인/가입 입력 글자 흰색(다크모드) 재발 방지 — 현재 위반 0 → strict.
       #   standalone 라이트 auth 페이지가 force-light-theme/레이아웃 없이 input 렌더 시 다크모드 글자
       #   안 보임 사고(전역 .dark input 규칙이 text-gray-900 을 특이도로 이김) 신규 추가 차단.
@@ -241,6 +263,19 @@ jobs:
       #   새 SQL 컬럼 mismatch commit 자체 차단 → "no such column" 500 사고 영구 차단.
       - name: Column existence (strict)
         run: node scripts/check-sql-column-exists.mjs -s
+
+      # 🛡️ 2026-06-26: CSV/엑셀 수식 인젝션 재발 방지 — csvEscape 류 함수가 = + - @ 탭/CR 선행 셀을
+      #   무력화 안 하면 셀러 free-text(상품명/회사명)가 =cmd.../=HYPERLINK 로 실행되던 사고. 현재 위반 0 → strict.
+      - name: CSV formula-injection guard (strict)
+        run: node scripts/check-csv-injection.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-06-26: "fetch 실패가 빈화면/₩0 으로 위장" 재발 방지 — 도매/제조사/도매-어드민 surface 의
+      #   data 소비 페이지가 isError 분기 없이 렌더하면 일시 5xx 가 '데이터 0건'·'예치금 ₩0'·'승인 없음'
+      #   으로 오표시(판매사 재무 오인·승인큐 self-undo). 현재 위반 0 → strict.
+      - name: Query isError consumption guard (strict)
+        run: node scripts/check-query-iserror.mjs -s
+        continue-on-error: false
 
       # ── 2. 스키마 일관성 (TS interface ↔ migrations) ──
       - name: Schema verification (drift detection)

@@ -164,7 +164,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
 export default function WholesaleTermsPage() {
   const navigate = useNavigate()
   return (
-    <div className="min-h-screen pb-24" style={{ background: WT.fill }}>
+    <div className="min-h-[100dvh] pb-24" style={{ background: WT.fill }}>
       <SEO title="이용약관 - 유통스타트" description="유통스타트 B2B 도매몰 이용약관(물품 공급 약관)" url="/wholesale/terms" noindex />
       <header className="sticky top-0 z-30" style={{ background: '#fff', borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-medium px-5 lg:px-8 flex items-center h-14">

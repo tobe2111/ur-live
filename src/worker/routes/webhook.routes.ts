@@ -368,7 +368,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
       case 'PAYMENT_STATUS_CHANGED':
         // status 로 세분화 분기.
         if (status === 'DONE') {
-          await handlePaymentConfirmed(orderRepo, data, tossOrderId, paymentKey, c.env.DB);
+          await handlePaymentConfirmed(orderRepo, data, tossOrderId, paymentKey, c.env.DB, c.env);
         } else if (status === 'CANCELED' || status === 'PARTIAL_CANCELED') {
           await handlePaymentCancelled(orderRepo, data, tossOrderId, c.env, c.env.DB);
         } else if (status === 'ABORTED' || status === 'EXPIRED') {
@@ -414,7 +414,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
 
       // ─── Legacy 이벤트 (옛 등록 webhook 호환 — 점진 deprecated) ─
       case 'payment.confirmed':
-        await handlePaymentConfirmed(orderRepo, data, tossOrderId, paymentKey, c.env.DB);
+        await handlePaymentConfirmed(orderRepo, data, tossOrderId, paymentKey, c.env.DB, c.env);
         break;
       case 'payment.cancelled':
       case 'payment.partial_canceled':
@@ -504,7 +504,8 @@ async function handlePaymentConfirmed(
   data: TossWebhookPayload['data'],
   orderNumber: string,
   paymentKey: string,
-  DB?: D1Database
+  DB?: D1Database,
+  env?: Env,
 ): Promise<void> {
   if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] PAYMENT_CONFIRMED', {
     orderNumber,
@@ -624,6 +625,60 @@ async function handlePaymentConfirmed(
       await creditOrderCommissions(DB, wOrders.results || [])
     } catch (e) {
       console.error('[WEBHOOK] commission credit failed:', String(e).slice(0, 200))
+    }
+  }
+
+  // 💸 2026-06-26 [UNLOCK] (대표 승인 "3건 다 고쳐" — 소비자 감사): webhook 확정 경로 side-effect 누락 보강.
+  //   /confirm 에만 있던 ① 혼합결제 딜 차감 ② KT-Alpha 교환권 발송 을 webhook 에도 추가 — 브라우저가
+  //   confirm 못 보내고 webhook 만 도착해도 딜 미차감/교환권 미발송이 없게. confirmPaymentAtomic CAS
+  //   (result.confirmed>0)가 confirm↔webhook 단일실행을 보장 → 이중차감/이중발송 없음(KT 는 per-order 멱등도).
+  //   ⚠️ Toss 시그니처/금액검증/confirmPaymentAtomic 무수정 — side-effect 배선만.
+  if (DB && result.confirmed > 0) {
+    // ① 혼합결제(Toss+딜) 딜 사용분 차감 — payment.routes `/confirm` 과 동일 로직(adjustUserPoints CAS guardBalance).
+    try {
+      const { adjustUserPoints } = await import('../utils/point-ledger')
+      const dealRows = await DB.prepare(
+        'SELECT id, user_id, deal_used FROM orders WHERE order_number = ?'
+      ).bind(orderNumber).all<{ id: string | number; user_id: string | number | null; deal_used: number | null }>().catch(() => ({ results: [] as Array<{ id: string | number; user_id: string | number | null; deal_used: number | null }> }))
+      for (const r of (dealRows?.results ?? [])) {
+        const used = Math.max(0, Math.round(Number(r.deal_used ?? 0)))
+        if (used > 0 && r.user_id != null) {
+          const res = await adjustUserPoints(DB, {
+            userId: r.user_id, delta: -used, type: 'order_payment',
+            description: `주문 결제 딜 사용 (#${r.id})`, orderId: r.id, guardBalance: true,
+          })
+          if (!res.ok && res.reason === 'insufficient') {
+            const balRow = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(String(r.user_id)).first<{ balance: number }>().catch(() => null)
+            const avail = Math.max(0, Number(balRow?.balance ?? 0))
+            if (avail > 0) {
+              await adjustUserPoints(DB, { userId: r.user_id, delta: -avail, type: 'order_payment', description: `주문 결제 딜 사용(부분 — 잔액부족) (#${r.id})`, orderId: r.id, guardBalance: true }).catch(() => {})
+            }
+          }
+        }
+      }
+    } catch (e) {
+      captureException(e as Error, { tags: { area: 'webhook', kind: 'deal_deduct' } }).catch(swallow('webhook:deal-deduct'))
+    }
+
+    // ② KT-Alpha 교환권 자동 발송 — auto_voucher_send=1 상품. autoSendKtAlpha 는 per-order 멱등(이미 발송 시 skip).
+    if (env) {
+      try {
+        const ktOrders = await DB.prepare(
+          'SELECT id, user_id, shipping_phone FROM orders WHERE order_number = ?'
+        ).bind(orderNumber).all<{ id: number; user_id: string | number | null; shipping_phone: string | null }>().catch(() => ({ results: [] as Array<{ id: number; user_id: string | number | null; shipping_phone: string | null }> }))
+        const ktList = ktOrders?.results ?? []
+        if (ktList.length > 0) {
+          const firstUser = ktList.find(o => o.user_id != null)?.user_id ?? ''
+          const { autoSendKtAlphaVouchersForOrders } = await import('../utils/kt-alpha-auto-send')
+          await autoSendKtAlphaVouchersForOrders(
+            env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
+            ktList.map(o => ({ id: Number(o.id), shipping_phone: o.shipping_phone ?? undefined, user_id: o.user_id })),
+            String(firstUser),
+          )
+        }
+      } catch (e) {
+        console.error('[WEBHOOK] KT-Alpha send failed:', String(e).slice(0, 200))
+      }
     }
   }
 

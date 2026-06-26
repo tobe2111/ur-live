@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from 'react'
-const CuratorPinsSection = lazy(() => import('./seller-public/CuratorPinsSection'))
+// 🏁 2026-06-26 (대표 결정 — "추천템은 사업자 링크샵에선 숨김"): 사업자 = 본인 상품이 주인공.
+//   추천 핀(CuratorPinsSection) 섹션 제거 → 추천 적립 동선은 크리에이터 콘솔(/creator)에서 유지.
+//   (일반 유저 링크샵(CuratorPage)은 추천템이 메인이라 그대로.)
 // 🏁 2026-06-18 (사용자 결정 — 승인 사업자 상점 바로등록): 오너가 대시보드 안 가고 링크샵에서 바로 상품 등록.
 const QuickProductModal = lazy(() => import('./curator-page/QuickProductModal'))
 import { lazy, Suspense } from 'react'
-import EditorialProductCard from '@/components/linkshop/EditorialProductCard'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
@@ -15,13 +16,17 @@ import SEO from '@/components/SEO'
 import StreamCard from './seller-public/StreamCard'
 import VideosTab from './seller-public/VideosTab'
 import VouchersTab from './seller-public/VouchersTab'
-import HomeTab from './seller-public/HomeTab'
-import ProfileHeader from './seller-public/ProfileHeader'
+// 🏁 2026-06-25 (대표 "통일"): 사업자 링크샵 헤더를 canonical CuratorHeader 로 — ProfileHeader 폐기(헤더 1개).
+import CuratorHeader from './curator-page/CuratorHeader'
+import type { CuratorProfile } from '@/features/curator/api/curator-api'
+// 🏁 2026-06-25 (대표 "카드 1종"): 내 상품도 표준 BrowseProductCard(★평점·판매수 내장) — EditorialProductCard 폐기.
+import BrowseProductCard from '@/pages/browse/BrowseProductCard'
+import type { Product as BrowseProduct } from '@/pages/browse/types'
+import { seededColor } from '@/utils/card-gradient'
 import InfoTab from './seller-public/InfoTab'
-import TabsNav from './seller-public/TabsNav'
 import { getThemeTokens } from './seller-public/theme'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
-import type { Seller, LiveStream, Product, Short, Tab } from './seller-public/types'
+import type { Seller, LiveStream, Product, Short } from './seller-public/types'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / FollowButton / StreamCard 를
 //   ./seller-public/ 디렉토리로 추출.
@@ -32,9 +37,13 @@ interface SellerPublicPageProps {
    *  CuratorPage 가 /u/:handle 진입 후 linked_seller 매칭되면 본 페이지를 직접 render
    *  (redirect 없이) → URL 통합. 미지정 시 useParams 사용 (legacy /profile/:sellerId 호환). */
   sellerIdOverride?: string
+  /** 🏁 2026-06-25 (대표 "통일"): CuratorPage(/u/{handle})가 내려주는 큐레이터 정체성.
+   *  사업자 링크샵도 canonical CuratorHeader 를 렌더 → 헤더 컴포넌트 1개로 통일(ProfileHeader 폐기).
+   *  배너/이름 등은 curator 우선·seller 폴백으로 병합(저장 위치 분산 흡수). 비-/u/ 진입은 undefined. */
+  curator?: CuratorProfile | null
 }
 
-export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageProps = {}) {
+export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPublicPageProps = {}) {
   const { t } = useTranslation()
   const params = useParams<{ sellerId: string }>()
   const rawParam = sellerIdOverride ?? params.sellerId
@@ -46,12 +55,10 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
   const [streams, setStreams] = useState<LiveStream[]>([])
   const [shorts, setShorts] = useState<Short[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<Tab>('home')
 
-  // 🔗 2026-06-21 (대표 승인 "그렇게 하자"): 레거시 셀러 공개 URL(/profile·/s) standalone 진입을
-  //   연결된 유저 링크샵(/u/{handle})으로 통일. CuratorPage 임베드(sellerIdOverride)면 이미 /u/ 라 skip,
-  //   연결 핸들 없는 셀러-only 계정은 그대로 이 페이지 렌더(폴백 유지). 하드로드는 worker/index.ts:2090 이
-  //   301 처리하므로 이건 SPA 내부 클릭(그 301 을 우회하던 케이스)을 중앙에서 한 번에 커버 → /profile 더이상 목적지 X.
+  // 🔗 2026-06-21 (대표 승인): 레거시 셀러 공개 URL(/profile·/s) standalone 진입을 연결된 유저 링크샵
+  //   (/u/{handle})으로 통일. CuratorPage 임베드(sellerIdOverride)면 이미 /u/ 라 skip, 연결 핸들 없는
+  //   셀러-only 계정은 그대로 이 페이지 렌더(폴백). (탭 state 는 2026-06-25 탭→섹션 전환으로 제거)
   const curatorHandle = (seller as { curator_handle?: string | null } | null)?.curator_handle || null
   useEffect(() => {
     if (sellerIdOverride) return                 // CuratorPage 임베드 — 이미 /u/{handle}
@@ -65,6 +72,14 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
   const [shopQuery, setShopQuery] = useState('')
   // 🏁 2026-06-18 (승인 사업자 상점 바로등록): 오너 빠른 상품 등록 모달 + 성공 시 상품목록 갱신.
   const [showQuickAdd, setShowQuickAdd] = useState(false)
+  // 🏁 2026-06-26 (대표 결정 — "링크샵에도 공구권 등록 추가"): 등록 종류 선택 시트(상품/공구권).
+  //   상품=인앱 빠른등록(QuickProductModal), 공구권=맵·목표인원 등 상세가 필요해 전용 페이지로 연결.
+  const [showAddSheet, setShowAddSheet] = useState(false)
+  // 🏁 2026-06-25 (대표 "통일"): canonical CuratorHeader 의 인라인 편집 반영(낙관적). curator 우선·seller 폴백.
+  const [curatorEdits, setCuratorEdits] = useState<Partial<CuratorProfile>>({})
+  const copyLink = async () => {
+    try { await navigator.clipboard.writeText(window.location.href); toast.success(t('seller.linkCopiedToast', { defaultValue: '링크가 복사되었어요' })) } catch { /* ignore */ }
+  }
   const refreshProducts = () => {
     if (!seller?.id) return
     api.get(`/api/products?seller_id=${seller.id}&limit=20`)
@@ -94,9 +109,8 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
   }
 
   // 🎨 2026-06-17 (#6 링크샵 통일): 큐레이터 링크샵과 동일한 '방문자 미리보기' — 본인이 남이 보는 화면 그대로 확인.
-  // 🏁 2026-06-22 (대표 — 사업자 링크샵 편집 UX 통일): CuratorPage 와 동일하게 기본 true(깔끔한 방문자뷰로 시작)
-  //   → 상단 '편집하기' 누르면 편집 모드. 매 진입 깔끔 뷰로 시작(편집 chrome 은 버튼 누른 뒤에만).
-  const [previewAsVisitor, setPreviewAsVisitor] = useState(true)
+  //   previewAsVisitor=false 기본이라 ownerView===isOwner → 기존 동작 불변(편집 어포던스만 ownerView 로 게이트).
+  const [previewAsVisitor, setPreviewAsVisitor] = useState(false)
   const ownerView = isOwner && !previewAsVisitor
 
   // ── 인라인 편집 상태 ──
@@ -227,6 +241,9 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
       api.get(`/api/products?seller_id=${numericId}&limit=20`)
         .then(r => setProducts(r.data.data || []))
         .catch(() => { /* graceful */ })
+      // 🏁 2026-06-25 (대표 신고 — 로딩 김): 라이브 영구중단이면 영상/라이브 섹션 미렌더라
+      //   streams/shorts fetch 는 순수 낭비 → 스킵 (요청 2개 + 30초 폴링 제거).
+      if (LIVE_COMMERCE_SUSPENDED) return
       api.get(`/api/streams?seller_id=${numericId}&limit=20`)
         .then(r => setStreams(r.data.data || []))
         .catch(() => { /* graceful */ })
@@ -258,6 +275,7 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
   // 30초마다 streams 만 재조회 (가벼운 쿼리)
   useEffect(() => {
     if (!seller) return
+    if (LIVE_COMMERCE_SUSPENDED) return  // 🏁 2026-06-25 라이브 영구중단 — 30초 streams 폴링 낭비 제거
     const numericId = seller.id
     let prevLiveCount = streams.filter(s => s.status === 'live').length
 
@@ -290,9 +308,36 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seller?.id])
 
-  if (loading) return (
+  // 🏁 2026-06-25 (대표 신고 — 로딩 김): 헤더 정체성(curator 우선·seller 폴백) 객체. seller 로드 전에도
+  //   curator 만으로 헤더를 즉시 렌더 → /u/ 사업자 진입 시 콜드 seller fetch 동안 빈 스피너 대신 헤더 표시.
+  const headerCurator = {
+    id: curator?.id ?? seller?.id ?? 0,
+    handle: curator?.handle ?? seller?.username ?? String(seller?.id ?? ''),
+    name: (curatorEdits.name ?? curator?.name) || seller?.name || '',
+    bio: curatorEdits.bio ?? curator?.bio ?? seller?.bio ?? null,
+    profile_image: curatorEdits.profile_image ?? curator?.profile_image ?? seller?.profile_image ?? null,
+    banner_url: (curatorEdits.banner_url ?? curator?.banner_url) || seller?.banner_url || null,
+    headline: curatorEdits.headline ?? curator?.headline ?? null,
+    accent: curatorEdits.accent ?? curator?.accent ?? null,
+    youtube_url: curatorEdits.youtube_url ?? curator?.youtube_url ?? seller?.sns_youtube ?? null,
+    instagram_url: curatorEdits.instagram_url ?? curator?.instagram_url ?? seller?.sns_instagram ?? null,
+    tiktok_url: curatorEdits.tiktok_url ?? curator?.tiktok_url ?? null,
+  }
+
+  // 로딩 중: curator 가 있으면(=/u/ 진입) 헤더 즉시 + 본문 스켈레톤. 없으면(직접 /profile) 스피너.
+  if (loading) return curator ? (
+    <div className={`min-h-screen ${T.bg} pb-28`}>
+      <CuratorHeader curator={headerCurator} pinCount={0} isOwner={false} accountType="business" onCopyLink={copyLink} onCuratorUpdate={() => {}} />
+      <div className="ur-content-wide px-4 lg:px-8 py-8">
+        <div className="h-5 w-28 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse mb-4" />
+        <div className="grid grid-cols-2 gap-3">
+          {[0, 1].map(i => <div key={i} className="aspect-[3/4] rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />)}
+        </div>
+      </div>
+    </div>
+  ) : (
     <div className={`min-h-screen ${T.bg} flex items-center justify-center`}>
-      <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+      <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
     </div>
   )
 
@@ -313,49 +358,77 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
   // 🏁 2026-06-17 (사용자 "라이브 커머스 안 해" 영구 결정): 라이브/쇼츠(동영상) 탭 숨김.
   //   LIVE_COMMERCE_SUSPENDED SSOT 가 라이브·쇼츠를 함께 묶음 → 셀러 공개 링크샵에서도 일관 적용.
   //   default tab='home' 이라 선택 깨짐 없음. 복원: 플래그 false (사용자 허가 필요).
-  const TABS: { key: Tab; label: string }[] = [
-    { key: 'home', label: t('seller.tabHome') },
-    { key: 'shop', label: `${t('seller.publicPage.shop', { defaultValue: '상품' })} ${shopProducts.length}` },
-    { key: 'vouchers', label: `${t('seller.publicPage.vouchers')} ${mealVouchers.length}` },
-    ...(LIVE_COMMERCE_SUSPENDED ? [] : [
-      { key: 'shorts' as Tab, label: `${t('seller.publicPage.videos')} ${shorts.length}` },
-      { key: 'live' as Tab, label: `${t('seller.tabLive')} ${streams.length}` },
-    ]),
-    { key: 'info', label: t('seller.tabInfo') },
-  ]
-
   return (
     <div className={`min-h-screen ${T.bg} pb-28`}>
-      {/* 🏁 2026-06-22 (대표 — 사업자 링크샵 편집 UX 통일): CuratorPage 와 동일한 뉴트럴 슬림 편집 툴바
-          (네이비 → 잉크/뉴트럴). 상품등록·설정·완료. theme-dual: 라이트/다크 모두. */}
+      {/* 🎨 2026-06-17 링크샵 개선안(시안) 통일: 큐레이터 링크샵과 동일한 네이비 '✎ 편집 모드' 배너. theme-dual: 의도적 네이비 */}
       {ownerView && (
-        <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-3 py-2 flex items-center gap-2">
-          <span className="flex items-center gap-1.5 mr-auto pl-1 text-[12px] font-bold text-gray-500 dark:text-gray-400 min-w-0">
-            <span className="text-[#6b7280] text-[13px] leading-none shrink-0">✎</span>
-            <span className="truncate">{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 눌러서 바로 수정' })}</span>
-          </span>
-          {/* 🏁 2026-06-18 (사용자 결정): 링크샵에서 바로 내 상품 등록 (대시보드 안 나감). */}
-          <button
-            type="button"
-            onClick={() => setShowQuickAdd(true)}
-            className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-gray-200 dark:border-transparent bg-white dark:bg-white/[0.06] px-2.5 py-1.5 text-[12px] font-bold text-gray-700 dark:text-gray-200 active:opacity-70"
+        <div className="sticky top-0 z-30 bg-[#141A2E] text-white px-3.5 py-2.5 text-[12.5px] font-semibold flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2 min-w-0"><span className="text-[#6b7280] text-[14px] leading-none shrink-0">✎</span><span className="truncate">{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 사진·이름·소개를 눌러 바로 수정하세요' })}</span></span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* 🏁 2026-06-18 (사용자 결정): 링크샵에서 바로 등록 (대시보드 안 나감).
+                🏁 2026-06-26 (대표 — "공구권 등록도 추가"): 단일 '+ 등록' → 상품/공구권 선택 시트. */}
+            <button
+              type="button"
+              onClick={() => setShowAddSheet(true)}
+              className="px-2.5 py-1 bg-[#6b7280] hover:bg-[#e84a2b] rounded-lg text-[11px] font-bold whitespace-nowrap"
+            >
+              {t('seller.publicPage.addEntry', { defaultValue: '+ 등록' })}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewAsVisitor(true)}
+              className="px-2.5 py-1 bg-white/15 hover:bg-white/25 rounded-lg text-[11px] font-bold whitespace-nowrap"
+            >
+              {t('seller.publicPage.previewVisitor', { defaultValue: '👀 미리보기' })}
+            </button>
+            {/* 🏁 2026-06-26 (대표 결정 — '전체 설정'→'셀러 대시보드'): 라벨/목적지 정정.
+                좁은 사업자정보 탭(?tab=business) 대신 대시보드 홈(/seller — 주문·정산·상품·공구권). */}
+            <button
+              type="button"
+              onClick={() => navigate('/seller')}
+              className="px-2.5 py-1 bg-white/15 hover:bg-white/25 rounded-lg text-[11px] font-bold whitespace-nowrap"
+            >
+              {t('seller.publicPage.sellerDashboard', { defaultValue: '셀러 대시보드' })}
+            </button>
+          </div>
+        </div>
+      )}
+      {/* 🏁 2026-06-26 (대표 — "공구권 등록 추가"): 등록 종류 선택 시트.
+          상품 = 인앱 빠른등록 / 공구권 = 맵·목표인원 등 상세 필요 → 전용 페이지(/seller/meal-voucher/new). */}
+      {ownerView && showAddSheet && (
+        <div className="fixed inset-0 z-[10600] flex items-end justify-center bg-black/60" onClick={() => setShowAddSheet(false)} role="presentation">
+          <div
+            className="w-full max-w-[430px] bg-white dark:bg-[#121212] rounded-t-3xl px-5 pt-5 pb-8"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog" aria-modal="true" aria-label={t('seller.publicPage.addSheetTitle', { defaultValue: '무엇을 등록할까요?' })}
           >
-            + 상품 등록
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/seller/profile?tab=business')}
-            className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-gray-200 dark:border-transparent bg-white dark:bg-white/[0.06] px-2.5 py-1.5 text-[12px] font-bold text-gray-700 dark:text-gray-200 active:opacity-70"
-          >
-            {t('seller.publicPage.fullSettings', { defaultValue: '⚙ 설정' })}
-          </button>
-          <button
-            type="button"
-            onClick={() => { setPreviewAsVisitor(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-            className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1.5 text-[12px] font-bold text-white dark:text-[#020202] active:opacity-80"
-          >
-            ✓ {t('seller.publicPage.doneEditing', { defaultValue: '완료' })}
-          </button>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t('seller.publicPage.addSheetTitle', { defaultValue: '무엇을 등록할까요?' })}</h2>
+              <button onClick={() => setShowAddSheet(false)} aria-label={t('common.close', { defaultValue: '닫기' })} className="p-1 rounded-full text-gray-500 dark:text-gray-400 text-lg leading-none">✕</button>
+            </div>
+            <div className="space-y-2.5">
+              <button
+                onClick={() => { setShowAddSheet(false); setShowQuickAdd(true) }}
+                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A] active:scale-[0.99] transition-transform text-left"
+              >
+                <span className="w-11 h-11 rounded-xl bg-white dark:bg-[#222] flex items-center justify-center text-xl shrink-0">🛍️</span>
+                <span className="min-w-0">
+                  <span className="block text-[14px] font-bold text-gray-900 dark:text-white">{t('seller.publicPage.addProduct', { defaultValue: '상품 등록' })}</span>
+                  <span className="block text-[12px] text-gray-500 dark:text-gray-400">{t('seller.publicPage.addProductDesc', { defaultValue: '배송 상품 — 바로 등록' })}</span>
+                </span>
+              </button>
+              <button
+                onClick={() => { setShowAddSheet(false); navigate('/seller/meal-voucher/new') }}
+                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A] active:scale-[0.99] transition-transform text-left"
+              >
+                <span className="w-11 h-11 rounded-xl bg-white dark:bg-[#222] flex items-center justify-center text-xl shrink-0">🎟️</span>
+                <span className="min-w-0">
+                  <span className="block text-[14px] font-bold text-gray-900 dark:text-white">{t('seller.publicPage.addVoucher', { defaultValue: '공구권 등록' })}</span>
+                  <span className="block text-[12px] text-gray-500 dark:text-gray-400">{t('seller.publicPage.addVoucherDesc', { defaultValue: '동네 공구·교환권 — 위치·목표인원 설정' })}</span>
+                </span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {/* 🏁 2026-06-18 (사용자 결정): 오너 빠른 상품 등록 모달 — 성공 시 상품 목록 즉시 갱신. */}
@@ -367,17 +440,11 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
           />
         </Suspense>
       )}
-      {/* 🏁 2026-06-22 (대표 — 사업자 링크샵 편집 UX 통일): CuratorPage 와 동일한 뉴트럴 슬림 진입 바.
-          주인 기본 화면(방문자 공개뷰) 상단에서 '편집하기' 로 편집 모드 진입. 방문자에겐 안 보임. theme-dual. */}
+      {/* 🎨 2026-06-17 (#6 통일): 방문자 미리보기 중 — 큐레이터 링크샵과 동일 패턴. theme-dual: 의도적 네이비 */}
       {isOwner && previewAsVisitor && (
-        <div className="sticky top-0 z-40 bg-white/85 dark:bg-[#0A0A0A]/85 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-2 flex items-center justify-between gap-2">
-          <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 truncate">👁 {t('seller.publicPage.previewBanner', { defaultValue: '내 링크샵 · 방문자에게 보이는 화면' })}</span>
-          <button
-            onClick={() => { setPreviewAsVisitor(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-            className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12px] font-bold active:scale-95 transition-transform"
-          >
-            ✎ {t('seller.publicPage.editLinkshop', { defaultValue: '편집하기' })}
-          </button>
+        <div className="sticky top-0 z-40 bg-[#141A2E] text-white px-4 py-2 text-[12.5px] font-bold flex items-center justify-between gap-2">
+          <span className="truncate">👀 {t('seller.publicPage.previewBanner', { defaultValue: '방문자 미리보기 — 다른 사람에게 보이는 화면이에요' })}</span>
+          <button onClick={() => setPreviewAsVisitor(false)} className="shrink-0 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-[11.5px] whitespace-nowrap">{t('seller.publicPage.backToEdit', { defaultValue: '편집으로 돌아가기' })}</button>
         </div>
       )}
       <SEO
@@ -397,74 +464,38 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
         }}
       />
 
-      <ProfileHeader
-        seller={seller}
-        sellerId={sellerId!}
+      {/* 🏁 2026-06-25 (대표 "통일"): 사업자 링크샵도 canonical CuratorHeader (마퀴+배너 히어로+중앙 이름).
+          정체성은 curator(users) 우선 · seller(sellers) 폴백으로 병합 → 어디 저장됐든 배너/이름 복구.
+          소유자 인라인 편집은 CuratorHeader 가 /api/curator/me/profile 로 처리(낙관적 반영=curatorEdits). */}
+      <CuratorHeader
+        curator={headerCurator}
+        pinCount={products.length}
         isOwner={ownerView}
-        isDark={isDark}
-        T={T}
-        liveNow={liveNow}
-        products={products}
-        streams={streams}
-        editingField={editingField}
-        setEditingField={setEditingField}
-        editName={editName}
-        setEditName={setEditName}
-        editBio={editBio}
-        setEditBio={setEditBio}
-        saving={saving}
-        startEdit={startEdit}
-        saveEdit={saveEdit}
-        fileInputRef={fileInputRef}
-        handleProfileImageUpload={handleProfileImageUpload}
+        accountType="business"
+        onCopyLink={copyLink}
+        onCuratorUpdate={(next) => setCuratorEdits((s) => ({ ...s, ...next }))}
       />
 
-      {/* 탭 — 🛡️ 2026-04-30 v4 sticky chrome 톤 */}
-      <TabsNav tabs={TABS} current={tab} onChange={setTab} isDark={isDark} T={T} />
-
-      {/* 탭 콘텐츠 */}
+      {/* 🏁 2026-06-26 (대표 "추천템 숨김"): 사업자 링크샵 = 본인 상품 주인공 → 한 스크롤 섹션.
+          순서: 내 상품 → 교환권 → 영상/라이브 → 정보. (추천 핀 섹션 제거 — 일반 유저 링크샵은 유지) */}
       <div className="ur-content-wide px-4 lg:px-8 py-5">
-        {tab === 'home' && (
-          <>
-            {/* 🏁 2026-06-17 (#3): 추천 핀을 홈 탭 상단으로 승격 — 기존엔 모든 탭 맨 아래 8개로 매몰됐음.
-                연결된 큐레이터(사업자 유저)의 추천이 링크샵 정체성의 핵심이라 상단 노출. */}
-            {(seller as { curator_handle?: string | null })?.curator_handle && (
-              <Suspense fallback={null}>
-                <CuratorPinsSection handle={(seller as { curator_handle?: string | null }).curator_handle} />
-              </Suspense>
-            )}
-            <HomeTab
-              mealVouchers={mealVouchers}
-              shorts={shorts}
-              recentStreams={recentStreams}
-              streams={streams}
-              isOwner={ownerView}
-              textClass={T.text}
-              setTab={setTab}
-              sellerId={seller?.id ? Number(seller.id) : undefined}
-            />
-          </>
-        )}
-
-        {tab === 'shop' && (
+        {/* ① 내 상품 — 방문자에게 0개면 섹션 숨김(외부 조건), 소유자 0개는 컴팩트 제목 행 + 인라인 추가 */}
+        {(shopProducts.length > 0 || ownerView) && (
           shopProducts.length === 0 ? (
-            // 🎨 2026-06-17 링크샵 통일: 평면 텍스트 → ghost/CTA 빈 상태 (큐레이터 링크샵과 톤 맞춤)
-            <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] flex items-center justify-center text-2xl">🛍️</div>
-              <p className="text-[15px] font-bold text-gray-900 dark:text-white">
-                {ownerView ? t('seller.publicPage.noShopOwnerTitle', { defaultValue: '아직 등록한 상품이 없어요' }) : t('seller.publicPage.noShopTitle', { defaultValue: '등록된 상품이 없어요' })}
-              </p>
-              <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
-                {ownerView ? t('seller.publicPage.noShopOwnerDesc', { defaultValue: '셀러 대시보드에서 상품을 추가해 보세요' }) : t('seller.publicPage.noShopDesc', { defaultValue: '곧 새로운 상품이 올라와요' })}
-              </p>
-              {ownerView && (
-                <button onClick={() => navigate('/seller')} className="mt-4 inline-flex items-center h-10 px-4 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[13px] font-bold active:scale-95">
-                  {t('seller.publicPage.goAddProduct', { defaultValue: '대시보드에서 등록하기 →' })}
-                </button>
-              )}
+            // 🏁 2026-06-26 (대표 — "빈 상태가 너무 큼"): py-16 빈 블록 → 제목 행 옆 인라인 '+ 상품 등록'.
+            //   대시보드로 보내지 않고 인앱 빠른등록(QuickProductModal)으로 바로 → 간결 + 발견성 ↑.
+            <div className="mt-7 flex items-center justify-between gap-3">
+              <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white">{t('seller.publicPage.shop', { defaultValue: '내 상품' })} 0</h3>
+              <button
+                onClick={() => setShowQuickAdd(true)}
+                className="shrink-0 inline-flex items-center gap-1 px-3.5 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12.5px] font-bold active:scale-95"
+              >
+                + {t('seller.publicPage.addProduct', { defaultValue: '상품 등록' })}
+              </button>
             </div>
           ) : (
             <>
+            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mt-7 mb-3">{t('seller.publicPage.shop', { defaultValue: '내 상품' })} {shopProducts.length}</h3>
             {/* 🔍 2026-06-16 링크샵 시안: 상품 검색 (이름 필터) */}
             <div className="flex items-center gap-2 h-11 px-3.5 mb-4 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212]">
               <Search className="w-4 h-4 text-gray-400 shrink-0" />
@@ -473,15 +504,13 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8">
               {shopProducts.filter(p => !shopQuery.trim() || p.name.toLowerCase().includes(shopQuery.trim().toLowerCase())).map(p => (
-                // 🎨 2026-06-16 링크샵 통일: 공유 에디토리얼 카드 (docs/design/linkshop-unification.md 2단계)
-                <EditorialProductCard
+                // 🏁 2026-06-25 (대표 "카드 1종"): 추천핀과 동일한 표준 BrowseProductCard 로 통일.
+                <BrowseProductCard
                   key={p.id}
-                  product={{ id: p.id, name: p.name, price: p.price, original_price: p.original_price, image: p.image_url, dominant_color: p.dominant_color, avg_rating: p.avg_rating, review_count: p.review_count, sold_count: p.sold_count }}
-                  onClick={() => navigate(`/products/${p.id}`)}
-                  aspect="square"
-                  textClass={T.text}
-                  discountPct={p.discount_rate || undefined}
-                  showStats
+                  product={{ id: p.id, name: p.name, price: p.price, current_price: p.price, original_price: p.original_price ?? undefined, discount_rate: p.discount_rate ?? 0, image_url: p.image_url || '', stock: 0, dominant_color: p.dominant_color, avg_rating: p.avg_rating, review_count: p.review_count, sold_count: p.sold_count } as BrowseProduct}
+                  aboveFold={false}
+                  to={`/products/${p.id}`}
+                  fallbackColor={seededColor(p.id)}
                 />
               ))}
             </div>
@@ -489,27 +518,37 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
           )
         )}
 
-        {tab === 'vouchers' && (
-          <VouchersTab mealVouchers={mealVouchers} isOwner={ownerView} textClass={T.text} />
+        {/* ③ 교환권 */}
+        {mealVouchers.length > 0 && (
+          <section className="pt-7">
+            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '공구권' })} {mealVouchers.length}</h3>
+            <VouchersTab mealVouchers={mealVouchers} isOwner={ownerView} textClass={T.text} />
+          </section>
         )}
 
-        {tab === 'shorts' && (
-          <VideosTab shorts={shorts} isOwner={ownerView} textClass={T.text} />
+        {/* ④ 영상 (있을 때만) */}
+        {!LIVE_COMMERCE_SUSPENDED && shorts.length > 0 && (
+          <section className="pt-7">
+            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.videos', { defaultValue: '영상' })} {shorts.length}</h3>
+            <VideosTab shorts={shorts} isOwner={ownerView} textClass={T.text} />
+          </section>
         )}
 
-        {tab === 'live' && (
-          streams.length === 0 ? (
-            <div className="text-center py-16 text-gray-400 text-sm">{t('seller.publicPage.noLiveRecords')}</div>
-          ) : (
+        {/* ⑤ 라이브 (있을 때만) */}
+        {!LIVE_COMMERCE_SUSPENDED && streams.length > 0 && (
+          <section className="pt-7">
+            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.tabLive', { defaultValue: '라이브' })} {streams.length}</h3>
             <div className="grid grid-cols-2 gap-3">
               {streams.map(s => (
                 <StreamCard key={s.id} stream={s} onClick={() => navigate(`/live/${s.id}`)} />
               ))}
             </div>
-          )
+          </section>
         )}
 
-        {tab === 'info' && (
+        {/* ⑥ 정보 */}
+        <section className="pt-7">
+          <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.tabInfo', { defaultValue: '정보' })}</h3>
           <InfoTab
             seller={seller}
             sellerId={sellerId!}
@@ -529,7 +568,7 @@ export default function SellerPublicPage({ sellerIdOverride }: SellerPublicPageP
             startEdit={startEdit}
             saveEdit={saveEdit}
           />
-        )}
+        </section>
       </div>
 
       {/* 🏁 2026-06-17 (#3): 추천 핀 섹션은 홈 탭 상단으로 이동(위) — 맨 아래 매몰 제거. */}

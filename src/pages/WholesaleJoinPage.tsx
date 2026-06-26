@@ -4,7 +4,7 @@
  *   POST /api/wholesale/register → seller 계정(distributor_grade='C', is_distributor=1) 생성 +
  *   즉시 로그인(seller_token) → /wholesale 완결. /seller 대시보드는 안 거침.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SEO, { wholesaleStoreJsonLd, breadcrumbJsonLd } from '@/components/SEO'
 import api from '@/lib/api'
@@ -12,6 +12,7 @@ import { toast } from '@/hooks/useToast'
 import { Store, ArrowRight, CheckCircle2, Loader2, Factory } from 'lucide-react'
 import BusinessCertUpload from '@/components/BusinessCertUpload'
 import { formatBizNo, formatPhoneKr } from '@/utils/format-kr'
+import { digitsOnly, isValidKrPhone, isValidEmail } from '@/utils/form-validators'
 import { useWholesaleMall } from '@/hooks/queries/useWholesale'
 import { WholesaleWordmark } from './wholesale-catalog/WholesaleLogo'
 
@@ -20,6 +21,10 @@ export default function WholesaleJoinPage() {
   // 🏬 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FC5424 → byte-identical).
   const { displayName: mallName, logoUrl: mallLogo } = useWholesaleMall()
   const hasSeller = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
+  // 🔢 2026-06-26 (대표 가입폼 UX): 가입 클릭 시 첫 문제 필드로 포커스 이동 + 전화/이메일 완성형 검증.
+  const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const reg = (k: string) => (el: HTMLInputElement | null) => { fieldRefs.current[k] = el }
+  const focusField = (k: string) => { const el = fieldRefs.current[k]; if (el) { el.focus(); el.scrollIntoView({ block: 'center', behavior: 'smooth' }) } }
   // 카카오로 로그인된 유저(아직 유통회원 아님) — 이메일/비번 없이 사업자 정보만 입력.
   const kakaoUser = !hasSeller && typeof window !== 'undefined' && !!localStorage.getItem('user_id')
   // 🧭 2026-06-10 (생애주기 감사 갭#3): 신청 후 재방문 시 '승인 대기 중' 상태 화면 — 폼 재노출 대신 현황 안내.
@@ -88,20 +93,27 @@ export default function WholesaleJoinPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (loading) return
-    if (!form.business_name.trim()) { toast.error('상호(회사명)를 입력해주세요'); return }
-    if (!/^\d{10}$/.test(form.business_number.replace(/[^0-9]/g, ''))) { toast.error('사업자등록번호 10자리를 정확히 입력해주세요'); return }
+    // 🔢 2026-06-26 (대표 신고): 화면 순서대로 검증 + 첫 문제 필드로 포커스(전화/이메일 미완성 통과 차단).
+    const failAt = (k: string, m: string) => { toast.error(m); focusField(k) }
+    if (!form.business_name.trim()) { failAt('business_name', '상호(회사명)를 입력해주세요'); return }
+    if (!/^\d{10}$/.test(digitsOnly(form.business_number))) { failAt('business_number', '사업자등록번호 10자리를 정확히 입력해주세요'); return }
     if (!licenseUrl) { toast.error('사업자등록증 이미지를 업로드해주세요'); return }
-    if (!form.representative.trim() || !form.representative_phone.trim()) { toast.error('대표자 성명·연락처를 입력해주세요'); return }
-    if (!form.manager_name.trim() || !form.manager_phone.trim()) { toast.error('담당자 성명·연락처를 입력해주세요'); return }
-    if (!kakaoUser && (!form.email.trim() || !form.password)) { toast.error('로그인 이메일·비밀번호를 입력해주세요'); return }
-    if (!kakaoUser && form.password.length < 8) { toast.error('비밀번호는 8자 이상이어야 합니다'); return }
+    if (!form.representative.trim()) { failAt('representative', '대표자 성명을 입력해주세요'); return }
+    if (!isValidKrPhone(form.representative_phone)) { failAt('representative_phone', '대표자 연락처를 정확히 입력해주세요 (예: 010-1234-5678)'); return }
+    if (!sameAsRep) {
+      if (!form.manager_name.trim()) { failAt('manager_name', '담당자 성명을 입력해주세요'); return }
+      if (!isValidKrPhone(form.manager_phone)) { failAt('manager_phone', '담당자 연락처를 정확히 입력해주세요 (예: 010-1234-5678)'); return }
+    }
+    if (!kakaoUser && !isValidEmail(form.email)) { failAt('email', '로그인에 사용할 이메일을 정확히 입력해주세요 (예: name@company.com)'); return }
+    if (!kakaoUser && !form.password) { failAt('password', '비밀번호를 입력해주세요'); return }
+    if (!kakaoUser && form.password.length < 8) { failAt('password', '비밀번호는 8자 이상이어야 합니다'); return }
     // 🛡️ 2026-06-25: 서버(relaxed)와 동일 — 영문·숫자·특수 중 2종 이상. (옛 클라는 길이만 검사 → "12345678" 통과 후 서버 400 혼선)
     if (!kakaoUser && [/[a-zA-Z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter((re) => re.test(form.password)).length < 2) {
-      toast.error('비밀번호는 영문·숫자·특수문자 중 2종류 이상을 포함해야 합니다'); return
+      failAt('password', '비밀번호는 영문·숫자·특수문자 중 2종류 이상을 포함해야 합니다'); return
     }
     // 🛡️ 2026-06-25: 서버(relaxed)의 '같은 문자 4회 반복 금지'와 일치 — 옛 클라는 미검사라 "aaaa1234" 통과 후 서버 400 혼선.
-    if (!kakaoUser && /(.)\1{3,}/.test(form.password)) { toast.error('비밀번호에 같은 문자를 4번 이상 연속 사용할 수 없습니다'); return }
-    if (!kakaoUser && form.password !== passwordConfirm) { toast.error('비밀번호가 일치하지 않습니다'); return }
+    if (!kakaoUser && /(.)\1{3,}/.test(form.password)) { failAt('password', '비밀번호에 같은 문자를 4번 이상 연속 사용할 수 없습니다'); return }
+    if (!kakaoUser && form.password !== passwordConfirm) { failAt('passwordConfirm', '비밀번호가 일치하지 않습니다'); return }
     setLoading(true)
     try {
       // 담당자 이메일 — 미입력 시 로그인 이메일을 비즈니스 연락 이메일로 사용.
@@ -144,7 +156,7 @@ export default function WholesaleJoinPage() {
 
   if (pendingStatus) {
     return (
-      <div className="force-light-theme min-h-screen bg-white text-[#0C2454] flex items-center justify-center px-4">
+      <div className="force-light-theme min-h-[100dvh] bg-white text-[#0C2454] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-5"><span className="text-2xl">⏳</span></div>
           <h1 className="text-xl font-extrabold mb-2">승인 심사 중이에요</h1>
@@ -164,7 +176,7 @@ export default function WholesaleJoinPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-white text-[#0C2454] flex items-center justify-center px-4">
+      <div className="min-h-[100dvh] bg-white text-[#0C2454] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 rounded-2xl bg-[#11875A]/10 flex items-center justify-center mx-auto mb-5"><CheckCircle2 className="w-7 h-7 text-[#11875A]" /></div>
           <h1 className="text-xl font-extrabold mb-2">판매사 신청이 완료됐어요</h1>
@@ -181,7 +193,7 @@ export default function WholesaleJoinPage() {
   const inputCls = 'w-full h-12 px-3.5 rounded-xl border border-[#ECEEF1] text-[15px] text-[#0C2454] outline-none focus:border-[#0C2454] transition-colors'
 
   return (
-    <div className="force-light-theme min-h-screen bg-white text-[#0C2454]">
+    <div className="force-light-theme min-h-[100dvh] bg-white text-[#0C2454]">
       <SEO domain="wholesale" title="판매사 입점·도매 회원가입 — 유통스타트 B2B 도매몰" description="판매사로 도매 회원가입하고 검증된 제조사 상품을 등급별 도매가(공급가)로 사입하세요. 가입 즉시 C등급, 가입비·월 고정비 0원 — 무재고 위탁판매·대량 사입까지." url="/wholesale/join" jsonLd={[wholesaleStoreJsonLd, breadcrumbJsonLd([{ name: '유통스타트', url: 'https://utongstart.com/wholesale' }, { name: '판매사 도매 회원가입', url: 'https://utongstart.com/wholesale/join' }])]} />
       <header className="border-b border-[#ECEEF1]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 h-14 flex items-center justify-between">
@@ -223,15 +235,15 @@ export default function WholesaleJoinPage() {
             카카오 계정으로 진행 중이에요. <b>사업자 정보</b>만 입력하면 승인 심사로 넘어갑니다.
           </div>
         )}
-        <form onSubmit={submit} className="space-y-3">
+        <form onSubmit={submit} noValidate className="space-y-3">
           {/* 사업자 정보 */}
           <div>
             <label className="block text-[13px] font-semibold mb-1.5">상호(회사명) <span className="text-[#FC5424]">*</span></label>
-            <input value={form.business_name} onChange={set('business_name')} disabled={loading} className={inputCls} placeholder="예: (주)유통상사" />
+            <input ref={reg('business_name')} value={form.business_name} onChange={set('business_name')} disabled={loading} className={inputCls} placeholder="예: (주)유통상사" />
           </div>
           <div>
             <label className="block text-[13px] font-semibold mb-1.5">사업자등록번호 <span className="text-[#FC5424]">*</span></label>
-            <input value={form.business_number} onChange={setBiz} disabled={loading} inputMode="numeric" className={inputCls} placeholder="000-00-00000 (숫자만 입력해도 자동 하이픈)" />
+            <input ref={reg('business_number')} value={form.business_number} onChange={setBiz} disabled={loading} inputMode="numeric" className={inputCls} placeholder="000-00-00000 (숫자만 입력해도 자동 하이픈)" />
           </div>
 
           {/* 대표자 정보 */}
@@ -240,11 +252,11 @@ export default function WholesaleJoinPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[13px] font-semibold mb-1.5">대표자 성명 <span className="text-[#FC5424]">*</span></label>
-                <input value={form.representative} onChange={setRep('representative')} disabled={loading} className={inputCls} placeholder="예: 홍길동" />
+                <input ref={reg('representative')} value={form.representative} onChange={setRep('representative')} disabled={loading} className={inputCls} placeholder="예: 홍길동" />
               </div>
               <div>
                 <label className="block text-[13px] font-semibold mb-1.5">대표자 연락처 <span className="text-[#FC5424]">*</span></label>
-                <input value={form.representative_phone} onChange={setRep('representative_phone')} disabled={loading} className={inputCls} placeholder="010-0000-0000" />
+                <input ref={reg('representative_phone')} value={form.representative_phone} onChange={setRep('representative_phone')} disabled={loading} inputMode="numeric" className={inputCls} placeholder="010-0000-0000" />
               </div>
             </div>
           </div>
@@ -261,11 +273,11 @@ export default function WholesaleJoinPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[13px] font-semibold mb-1.5">담당자 성명 <span className="text-[#FC5424]">*</span></label>
-                <input value={form.manager_name} onChange={set('manager_name')} disabled={loading || sameAsRep} className={`${inputCls} ${sameAsRep ? 'bg-[#F4F5F7] text-[#8A929E]' : ''}`} placeholder="예: 김담당" />
+                <input ref={reg('manager_name')} value={form.manager_name} onChange={set('manager_name')} disabled={loading || sameAsRep} className={`${inputCls} ${sameAsRep ? 'bg-[#F4F5F7] text-[#8A929E]' : ''}`} placeholder="예: 김담당" />
               </div>
               <div>
                 <label className="block text-[13px] font-semibold mb-1.5">담당자 연락처 <span className="text-[#FC5424]">*</span></label>
-                <input value={form.manager_phone} onChange={setPhone('manager_phone')} disabled={loading || sameAsRep} inputMode="numeric" className={`${inputCls} ${sameAsRep ? 'bg-[#F4F5F7] text-[#8A929E]' : ''}`} placeholder="010-0000-0000" />
+                <input ref={reg('manager_phone')} value={form.manager_phone} onChange={setPhone('manager_phone')} disabled={loading || sameAsRep} inputMode="numeric" className={`${inputCls} ${sameAsRep ? 'bg-[#F4F5F7] text-[#8A929E]' : ''}`} placeholder="010-0000-0000" />
               </div>
             </div>
             <div className="mt-3">
@@ -279,15 +291,15 @@ export default function WholesaleJoinPage() {
               <p className="text-[13px] font-bold text-[#0C2454]">로그인 계정</p>
               <div>
                 <label className="block text-[13px] font-semibold mb-1.5">이메일 <span className="text-[#FC5424]">*</span></label>
-                <input type="email" value={form.email} onChange={set('email')} disabled={loading} className={inputCls} placeholder="login@email.com" autoComplete="email" />
+                <input ref={reg('email')} type="email" inputMode="email" value={form.email} onChange={set('email')} disabled={loading} className={inputCls} placeholder="login@email.com" autoComplete="username" />
               </div>
               <div>
                 <label className="block text-[13px] font-semibold mb-1.5">비밀번호 <span className="text-[#FC5424]">*</span></label>
-                <input type="password" value={form.password} onChange={set('password')} disabled={loading} className={inputCls} placeholder="8자 이상 (영문+숫자)" autoComplete="new-password" />
+                <input ref={reg('password')} type="password" value={form.password} onChange={set('password')} disabled={loading} className={inputCls} placeholder="8자 이상 (영문+숫자)" autoComplete="new-password" />
               </div>
               <div>
                 <label className="block text-[13px] font-semibold mb-1.5">비밀번호 확인 <span className="text-[#FC5424]">*</span></label>
-                <input type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} disabled={loading} className={inputCls} placeholder="비밀번호 재입력" autoComplete="new-password" />
+                <input ref={reg('passwordConfirm')} type="password" value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} disabled={loading} className={inputCls} placeholder="비밀번호 재입력" autoComplete="new-password" />
                 {passwordConfirm && form.password !== passwordConfirm && <p className="text-[12px] text-[#FC5424] mt-1">비밀번호가 일치하지 않습니다</p>}
               </div>
             </div>

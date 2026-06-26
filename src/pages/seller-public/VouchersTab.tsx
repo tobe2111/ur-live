@@ -32,7 +32,6 @@ export default function VouchersTab({ mealVouchers, isOwner, textClass }: Props)
     <div className="space-y-3">
       {mealVouchers.map(p => {
         const disc = p.original_price && p.original_price > 0 ? Math.round((1 - (p.price || 0) / p.original_price) * 100) : 0
-        const progress = (p.group_buy_target ?? 0) > 0 ? Math.min(100, ((p.group_buy_current || 0) / (p.group_buy_target || 1)) * 100) : 0
         return (
           <button key={p.id} onClick={() => navigate(`/products/${p.id}`)} className="w-full flex gap-3 p-3 bg-gray-50 dark:bg-[#121212] rounded-xl text-left active:scale-[0.98]">
             <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-200 shrink-0" style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}>
@@ -52,23 +51,13 @@ export default function VouchersTab({ mealVouchers, isOwner, textClass }: Props)
               <p className={`text-sm font-bold ${textClass} line-clamp-1`}>{p.name}</p>
               {p.restaurant_name && <p className="text-xs text-gray-500 flex items-center gap-0.5 mt-0.5"><MapPin className="w-3 h-3" />{p.restaurant_name}</p>}
               {p.restaurant_address && <p className="text-[10px] text-gray-400 mt-0.5">{p.restaurant_address}</p>}
+              {/* 🏁 2026-06-26 (대표 — "이건 모여서 사는 공동구매가 아니라 그냥 판매"): 즉시판매 단일가 모델
+                  (2026-05-30 결정)에 맞춰 모집 UI(진행바·N/M명·공구 참여하기) 제거 → 가격만. */}
               <div className="flex items-baseline gap-1.5 mt-1.5">
                 {disc > 0 && <span className="text-sm font-extrabold text-red-500">{disc}%</span>}
                 <span className={`text-sm font-extrabold ${textClass}`}>{formatNumber(p.price || 0)}원</span>
                 {p.original_price && <span className="text-xs text-gray-400 line-through">{formatNumber(p.original_price || 0)}원</span>}
               </div>
-              {(p.group_buy_target ?? 0) > 0 && (
-                <div className="mt-1.5">
-                  <div className="w-full bg-gray-700 rounded-full h-1.5"><div className="h-full bg-pink-500 rounded-full transition-all" style={{ width: `${progress}%` }} /></div>
-                  <div className="flex items-center justify-between mt-0.5">
-                    <p className="text-[10px] text-gray-500">{p.group_buy_current || 0}/{p.group_buy_target}{t('common.person')}</p>
-                    {p.group_buy_current && p.group_buy_target && p.group_buy_current >= p.group_buy_target
-                      ? <span className="text-[10px] text-green-400 font-bold">{t('seller.publicPage.achieved')}</span>
-                      : <span className="text-[10px] text-pink-400 font-medium">{t('seller.publicPage.joinGroupBuy')}</span>
-                    }
-                  </div>
-                </div>
-              )}
             </div>
           </button>
         )

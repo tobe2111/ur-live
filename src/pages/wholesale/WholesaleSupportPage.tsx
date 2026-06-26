@@ -49,7 +49,7 @@ export default function WholesaleSupportPage() {
   const goInquiry = () => navigate('/wholesale/board?tab=report')
 
   return (
-    <div className="min-h-screen pb-20" style={{ background: WT.fill }}>
+    <div className="min-h-[100dvh] pb-20" style={{ background: WT.fill }}>
       <SEO title="고객센터 — 유통스타트" description="자주 묻는 질문, 1:1 문의, 고객센터 연락처" url="/wholesale/support" noindex />
 
       {/* 로고 브레드크럼 헤더 */}

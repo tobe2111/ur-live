@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
+import { safeHttpHref } from '@/utils/safe-external-url'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
@@ -102,7 +103,7 @@ export default function AdminBusinessVerificationPage() {
                   {/* 좌측: 이미지 */}
                   <div className="bg-gray-50 p-4 flex items-center justify-center min-h-[300px]">
                     {s.business_registration_image_url ? (
-                      <a href={s.business_registration_image_url} target="_blank" rel="noopener noreferrer"
+                      <a href={safeHttpHref(s.business_registration_image_url)} target="_blank" rel="noopener noreferrer"
                         className="block max-w-full max-h-[400px]">
                         <img
                           src={s.business_registration_image_url}

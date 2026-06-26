@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Package, Loader2, Search, RotateCcw, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
@@ -63,7 +63,7 @@ export default function AdminWholesaleOrdersPage() {
   const [detail, setDetail] = useState<{ order: OrderRow & Record<string, unknown>; items: DetailItem[] } | null>(null)
   const [refunding, setRefunding] = useState(false)
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (status별 캐시, search 는 refetch 로 commit).
-  const { data: orders = [], isLoading: loading, refetch } = useApiQuery<OrderRow[]>(
+  const { data: orders = [], isLoading: loading, isError, error, refetch } = useApiQuery<OrderRow[]>(
     ['admin', 'distributor-orders', status], '/api/admin/distributor/orders',
     { params: { ...(status ? { status } : {}), ...(search ? { search } : {}) }, select: (r: any) => (r?.success ? r.orders || [] : []) },
   )
@@ -105,6 +105,9 @@ export default function AdminWholesaleOrdersPage() {
           </form>
         </div>
 
+        {isError ? (
+          <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="도매 주문" />
+        ) : (
         <AdminDataTable<OrderRow>
           columns={ORDER_COLUMNS}
           rows={orders}
@@ -113,6 +116,7 @@ export default function AdminWholesaleOrdersPage() {
           rowKey={o => o.id}
           onRowClick={o => openDetail(o.id)}
         />
+        )}
       </div>
 
       {/* 상세 모달 */}
@@ -132,7 +136,8 @@ export default function AdminWholesaleOrdersPage() {
               배송지: {String(detail.order.ship_to_name || '-')} {String(detail.order.ship_to_phone || '')}<br />
               {String(detail.order.ship_to_address || '-')}
             </div>
-            <table className="w-full text-sm mb-4">
+            <div className="overflow-x-auto mb-4">
+            <table className="w-full min-w-[480px] text-sm">
               <thead><tr className="text-left text-gray-500 border-b border-gray-100">
                 <th className="py-2 font-medium">상품</th><th className="py-2 font-medium">제조사</th>
                 <th className="py-2 font-medium text-right">수량</th><th className="py-2 font-medium text-right">금액</th><th className="py-2 font-medium">상태</th>
@@ -149,6 +154,7 @@ export default function AdminWholesaleOrdersPage() {
                 ))}
               </tbody>
             </table>
+            </div>
             {['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(detail.order.status as string) && (
               <button onClick={() => forceRefund(detail.order.id)} disabled={refunding} className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
                 {refunding ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} 관리자 강제 전액환불

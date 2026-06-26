@@ -27,7 +27,6 @@ import type { Product as BrowseProduct } from './browse/types'
 import { Search, X, Trash2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
-import CuratorTabs, { type CuratorTab } from './curator-page/CuratorTabs'
 import LinkshopOnboardModal from './curator-page/LinkshopOnboardModal'
 
 // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있으면 같은 페이지에서 SellerPublicPage 직접 render.
@@ -64,7 +63,6 @@ export default function CuratorPage() {
   })
   const [loading, setLoading] = useState(!data)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<CuratorTab>('home')
   // 🔍 2026-06-16 링크샵 시안: 검색 — 상품명 + 추천 코멘트(note) 라이브 필터.
   const [query, setQuery] = useState('')
   // 🎨 2026-06-16 링크샵 시안: '방문자 미리보기' — 본인이 남이 보는 화면 그대로 확인.
@@ -192,7 +190,9 @@ export default function CuratorPage() {
           <div className="text-gray-500 dark:text-gray-400">{t('common.loading')}</div>
         </div>
       }>
-        <SellerPublicPage sellerIdOverride={linked_seller.username} />
+        {/* 🏁 2026-06-25 (대표 "통일") — 사업자 링크샵도 canonical CuratorHeader 형태로. curator 객체 전달.
+            🏁 2026-06-26 (대표 "추천템 숨김") — 사업자 링크샵은 추천 핀 섹션을 안 그리므로 pins 미전달. */}
+        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} />
       </Suspense>
     )
   }
@@ -205,18 +205,6 @@ export default function CuratorPage() {
   const onPinDeleted = (pinId: number) => setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== pinId) } : prev)
   // 🎨 2026-06-16 시안: 본인이 '전체 미리보기' 누르면 방문자 화면 그대로(편집/관리 숨김) 렌더. 실제 소유권(isOwner)은 보존.
   const ownerView = isOwner && !previewAsVisitor
-  const renderPinTab = (arr: CuratorPin[], emptyType?: 'shop' | 'voucher') => {
-    if (arr.length === 0) return <EmptyLinkshop handle={curator.handle} isOwner={ownerView} emptyType={emptyType} curatorName={curator.name} />
-    const f = applyQ(arr)
-    if (f.length === 0) return (
-      <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-        <p className="text-sm font-bold text-gray-900 dark:text-white">검색 결과가 없어요</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">다른 키워드로 찾아보세요.</p>
-      </div>
-    )
-    return <PinGrid pins={f} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} kind={emptyType} />
-  }
-
   return (
     <>
       <SEO
@@ -261,6 +249,7 @@ export default function CuratorPage() {
           curator={curator}
           pinCount={pins.length}
           isOwner={ownerView}
+          accountType="user"
           onCopyLink={copyLink}
           onCuratorUpdate={(next) => setData(prev => prev ? { ...prev, curator: { ...prev.curator, ...next } } : prev)}
         />
@@ -341,17 +330,31 @@ export default function CuratorPage() {
                 </div>
               </div>
             )}
-            <CuratorTabs
-              tab={tab}
-              onChange={setTab}
-              pinCount={pins.length}
-              shopCount={shopPins.length}
-              voucherCount={voucherPins.length}
-            />
-
-            {tab === 'home' && renderPinTab(homePins)}
-            {tab === 'shop' && renderPinTab(shopPins, 'shop')}
-            {tab === 'vouchers' && renderPinTab(voucherPins, 'voucher')}
+            {/* 🏁 2026-06-25 (대표 "한 페이지·능력별 섹션"): 탭 제거 → 추천템/교환권 한 스크롤 섹션. 빈 섹션 숨김.
+                (사업자 SellerPublicPage 와 동일 구조 — 두 링크샵이 더는 갈리지 않음) */}
+            {pins.length === 0 ? (
+              <EmptyLinkshop handle={curator.handle} isOwner={ownerView} curatorName={curator.name} />
+            ) : (applyQ(shopPins).length === 0 && applyQ(voucherPins).length === 0) ? (
+              <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+                <p className="text-sm font-bold text-gray-900 dark:text-white">검색 결과가 없어요</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">다른 키워드로 찾아보세요.</p>
+              </div>
+            ) : (
+              <>
+                {applyQ(shopPins).length > 0 && (
+                  <>
+                    <div className="max-w-3xl mx-auto px-4 pt-4 pb-1"><h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white">추천템 {shopPins.length}</h3></div>
+                    <PinGrid pins={applyQ(shopPins)} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} kind="shop" />
+                  </>
+                )}
+                {applyQ(voucherPins).length > 0 && (
+                  <>
+                    <div className="max-w-3xl mx-auto px-4 pt-7 pb-1"><h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white">교환권 · 동네딜 {voucherPins.length}</h3></div>
+                    <PinGrid pins={applyQ(voucherPins)} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} kind="voucher" />
+                  </>
+                )}
+              </>
+            )}
           </>
         )}
         {/* 🔗 2026-06-17 (사용자 요청): 링크샵 주소 변경 + 공유는 헤더의 '내 링크샵 주소' 카드로 통합 이동
@@ -461,18 +464,22 @@ function PinCard({ pin, handle, isOwner, aboveFold, index, onDeleted }: { pin: C
     }
   }
 
-  const product: BrowseProduct = {
+  // 🏁 2026-06-26 (대표 — 링크샵 카드를 쇼핑 카드와 동일하게): 할인/평점/구매수까지 전달.
+  const product = {
     id: pin.product_id,
     name: pin.product_name,
     price: pin.price,
     current_price: pin.price,
     original_price: pin.original_price ?? undefined,
-    discount_rate: 0, // BrowseProductCard 가 original_price 로 자동 계산
+    discount_rate: pin.discount_rate ?? 0,
     image_url: pin.thumbnail || pin.image_url || '',
     stock: 0,
     dominant_color: pin.dominant_color,
     deal_only: pin.deal_only,
-  }
+    avg_rating: pin.avg_rating ?? undefined,
+    review_count: pin.review_count ?? undefined,
+    sold_count: pin.sold_count ?? undefined,
+  } as BrowseProduct
 
   // 🎨 2026-06-18 (사용자 신고 — 방문자 모바일 핀 카드 그라데이션 없음): 핀 상품은 외부호스트(교환권 등)
   //   이미지가 많아 dominant_color null + canvas 추출이 CORS taint 로 실패 → 회색 단색으로 보이던 것.

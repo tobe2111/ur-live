@@ -65,6 +65,9 @@ export function processAuthCallbackParams(): void {
         const prevUserId = localStorage.getItem('user_id')
         if (incomingUserId && prevUserId && String(incomingUserId) === String(prevUserId)) {
           for (const k of ['admin_token', 'admin_refresh_token', 'admin_id', 'admin_name', 'admin_email']) KEEP_KEYS.add(k)
+          // 🛡️ 2026-06-26 (소비자 감사 P1): 같은 user.id 재로그인이면 링크샵 핸들 캐시도 보존 —
+          //   로그인 직후 첫 링크샵 클릭이 느리거나 /creator 로 fall-through 하던 것 방지(누출 위험 없음, 동일인).
+          for (const k of ['user_handle', 'linked_seller_username', 'seller_username']) KEEP_KEYS.add(k)
         }
       } catch { /* ignore */ }
       const isKeeper = (k: string) =>

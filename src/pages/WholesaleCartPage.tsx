@@ -60,7 +60,7 @@ export default function WholesaleCartPage() {
   )
 
   return (
-    <div className="min-h-screen pb-24 lg:pb-10" style={{ background: '#fff', color: WT.ink }}>
+    <div className="min-h-[100dvh] pb-24 lg:pb-10" style={{ background: '#fff', color: WT.ink }}>
       <SEO title="장바구니 - 유통스타트 도매" description="도매 장바구니" url="/wholesale/cart" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-wide flex items-center gap-3 px-5 lg:px-8 h-[54px]">

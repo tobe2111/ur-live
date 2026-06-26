@@ -7,7 +7,12 @@
 
 export function csvEscape(v: unknown): string {
   if (v == null) return ''
-  const s = String(v)
+  let s = String(v)
+  // 🛡️ 2026-06-26 [보안] CSV/엑셀 수식 인젝션 차단 — 셀이 = + - @ 또는 탭/CR 로 시작하면
+  //   Excel/Sheets 가 수식으로 실행(=cmd|'/c calc'!A1, =HYPERLINK(...)). 셀러-제어 free-text
+  //   (상품명/카테고리/바코드/회사명)가 도매 CSV 로 나가므로, 선행 작은따옴표로 무력화한 뒤
+  //   기존 quote-escape 적용. (값 자체는 보존 — Excel 이 ' 를 텍스트 표식으로만 사용.)
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 

@@ -317,6 +317,11 @@ supplierDashboardRoutes.post('/products', async (c) => {
       : String(body.detail_images || '').split(/[,\n|]/);
     const detailList = detailListRaw.map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 10);
     const detailImages = detailList.length ? JSON.stringify(detailList) : null;
+    // 🛡️ 2026-06-26 [보안] image_url scheme 검증 — 형제 필드(brand_logo/lowest_price/detail)는
+    //   전부 http(s)·상대경로 가드인데 primary image_url 만 raw 였음. javascript:/data: 차단 +
+    //   업로드 상대경로(/api/media/...)는 허용. (SSRF 는 fetch 지점에서 추가 차단 — naver-commerce-core)
+    const imageRaw = (body.image_url || '').trim().slice(0, 1000);
+    const imageUrlSafe = (/^https?:\/\//i.test(imageRaw) || /^\//.test(imageRaw)) ? imageRaw : '';
 
     const result = await DB.prepare(
       `INSERT INTO products (
@@ -330,7 +335,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
       Math.floor(suggestedRetail),
       Math.floor(supplyPrice),
       stock,
-      (body.image_url || '').slice(0, 1000),
+      imageUrlSafe,
       detailImages,
       (body.category || 'lifestyle').slice(0, 60),
       sid,
@@ -609,7 +614,12 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       const u = body.lowest_price_url.trim().slice(0, 500);
       sets.push('lowest_price_url = ?'); params.push(/^https?:\/\//i.test(u) ? u : '');
     }
-    if (typeof body.image_url === 'string') { sets.push('image_url = ?'); params.push(body.image_url.slice(0, 1000)); }
+    // 🛡️ 2026-06-26 [보안] image_url scheme 검증(CREATE 와 동일) — javascript:/data: 차단, 상대경로 허용.
+    if (typeof body.image_url === 'string') {
+      const raw = body.image_url.trim().slice(0, 1000);
+      const safe = (/^https?:\/\//i.test(raw) || /^\//.test(raw)) ? raw : '';
+      sets.push('image_url = ?'); params.push(safe);
+    }
     if (typeof body.category === 'string' && body.category.trim()) { sets.push('category = ?'); params.push(body.category.trim().slice(0, 60)); }
     if (body.stock != null && Number.isFinite(Number(body.stock))) { sets.push('stock = ?'); params.push(Math.max(0, Math.floor(Number(body.stock)))); }
     if (typeof body.supply_visibility === 'string') { sets.push('supply_visibility = ?'); params.push(normalizeVisibility(body.supply_visibility, true)); }
@@ -648,7 +658,8 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
 
     // 거부 상태였으면 재제출 → 다시 pending.
     sets.push("supply_approval_status = 'pending'", 'is_active = 0', "updated_at = datetime('now')");
-    await DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`).bind(...params, pid).run();
+    // 🛡️ 2026-06-25 (전수조사 IDOR 방어심화): UPDATE 에도 supplier_id 재스코프 — peer 핸들러(price-change/bulk)와 통일, TOCTOU 차단.
+    await DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ? AND supplier_id = ?`).bind(...params, pid, sid).run();
 
     // 🚚 상품별 배송비(meta) — 컬럼이 아니라 product_supply_meta. 제공 시에만 갱신(fail-soft).
     if (shipFee !== undefined) {
@@ -706,6 +717,10 @@ supplierDashboardRoutes.post('/products/:id/price-change-request', async (c) => 
         return c.json({ success: false, error: '권장 소비자가(판매가)는 공급가보다 높아야 합니다', code: 'RETAIL_TOO_LOW' }, 400);
       }
       newRetail = r;
+    }
+    // 🛡️ 2026-06-25 (전수조사): 판매가 미입력 시 새 공급가가 기존 판매가 이상이면 승인 후 마진 0/음수 → 차단(입력 시와 동일 불변식).
+    if (newRetail == null && existing.price != null && newSupply >= existing.price) {
+      return c.json({ success: false, error: '공급가가 기존 판매가 이상입니다. 판매가도 함께 올려주세요', code: 'RETAIL_TOO_LOW' }, 400);
     }
     if (newSupply === existing.supply_price && (newRetail == null || newRetail === existing.price)) {
       return c.json({ success: false, error: '기존 가격과 동일합니다' }, 400);

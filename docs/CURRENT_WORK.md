@@ -1,5 +1,60 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-26 — 결제 셀프취소 머니버그 3종 fix (대표 "지금 진행")
+감사에서 나온 latent 3건을 `refundOrderFully` SSOT 라우팅으로 근본수정 (`src/worker/routes/order.routes.ts` PAID/DONE 전액취소).
+- **B(HIGH)**: 딜 전액결제(toss_key 없음) 셀프취소 422 차단 → refundOrderFully isDeal skip + 딜 환급 → 취소 가능. **C(HIGH)**: 혼합결제 deal_used 미복원 → step 3b 복원. **D(MED)**: 쿠폰/referral_bonus/affiliate/공급/에이전시/영입자 미역전 → 전부 대칭 역전. + CAS 멱등(동시 이중취소 1회만).
+- 부분취소(`cancel_amount<잔여`)는 기존 카드 Toss 경로 유지. order.routes.ts 비잠금. 검증: tsc 0·build 0·refund 27 tests·money-pattern 0. ⚠️ 쇼핑 재오픈 전 staging 실결제 권장.
+
+## ✅ 2026-06-26 — 전 영역 5도메인 병렬 전수감사 + 감사 게이트 환경구축 (대표 "모두 봐줘 / 이상적이면 이후 감사 스킵하게 환경설정")
+**5개 병렬 에이전트(결제·정산·분리·인증RBAC·크래시) + 코드 재검증.** 결과: 인증RBAC·크래시 2도메인 **clean**(가드 GREEN). 확인 버그 수정 + 가드로 영구 박음.
+- **🔴 서비스 분리 단건 누수 fix (HIGH)**: 리스트/검색은 이미 격리됐으나 **단건 ID 경로**(공구 상세 `group-buy-public.routes` baseWhere ×2, 소비자 상품 상세 `products.routes` GET /:id 라우트가드, 장바구니 `cart.routes` getProduct, 공구확정 `group-buy.routes` confirm-toss)가 도매 원본(`is_supply_product=1 AND supply_source_id 없음`, group_buy_status DEFAULT 'active' 상속)을 미격리 → 소비자 표면+SSR 누수. 5사이트에 `AND NOT (COALESCE(is_supply_product,0)=1 AND COALESCE(supply_source_id,0)=0)` additive(findById 는 create/update 공유라 라우트 가드). **판매사 복제본·플랫폼·일반상품 보존.**
+- **🟢 인플 원천징수 SSOT fix**: `influencer-payout.ts` cron 의 3.3/8.8 literal → `WITHHOLDING_RATES` SSOT(CLAUDE.md 하드코딩 금지 룰).
+- **🛡️ 감사 게이트 환경구축(대표 "뒤가 중요")**: `scripts/audit-gate.sh`(29 불변식 한방 점검, GREEN=재감사 스킵) + `docs/AUDIT_INVARIANTS.md`(도메인별 가드 레지스트리 + 스킵 규칙) + `CLAUDE.md` 게이트 룰 + 신규 가드 `check-consumer-product-supply-isolation.mjs`(분리 회귀 잠금, pre-commit+CI strict). **현재 ALL GREEN 29건.**
+- **latent(가드 미보유 → TECHNICAL_DEBT 등록)**: 결제 셀프취소 3건(refundOrderFully 우회 — 딜 미환급/혼합 deal_used 미복원/쿠폰·referral 미역전, 쇼핑 숨김 gated) · 제조사 출금가능 표시 과대(돈손실 0) · 인플 프론트 원천징수 하드코딩(표시). 쇼핑 재오픈 전 fix + staging 검증 필수.
+- 검증: tsc 0 · sql-column/bind 0 · audit-gate ALL GREEN 29 · 신규 가드 회귀주입 catch 확인.
+
+## ✅ 2026-06-26 — 유저↔어드민/셀러 상호 로그아웃 근본수정 (대표 신고 "유저 계정이랑 어드민 계정 서로 로그아웃")
+**근본원인**: 대시보드 로그인(어드민·셀러)이 시작 시 **무조건 `clearAuthData('user')`** 호출. KR 에선 `clearAuthData` 가 `/api/auth/logout-cookies` 까지 호출해 **httpOnly `ur_session` 쿠키를 삭제** → "어드민/셀러 로그인 = 소비자 강제 로그아웃". 코드베이스의 이중 로그인 **공존** 설계(RouteGuards 토큰존재 기반 + `AdminLoginPage:97` "User 세션 보호" 주석 + KakaoCallbackPage `hasOtherRoleToken` 보존)와 정면 모순. 공존은 *소비자 로그인이 마지막*일 때만 동작했고 *대시보드 로그인이 마지막*이면 소비자가 죽었음.
+- **수정(`AdminLoginPage.tsx`·`SellerLoginPage.tsx`)**: `clearAuthData('user')` 를 **`!isKorea()`(글로벌 Firebase) 게이트 안으로** 이동. KR 소비자=httpOnly 쿠키 세션, 대시보드=Bearer 라 **독립 → 공존**(파괴 안 함). 글로벌(Firebase) 경로는 byte-불변(clearAuthData+signOut 그대로). `clearFirebaseTokenCache()`·`clearAuthData('admin')`(role-scoped)·토큰 저장 전부 불변.
+- **역방향은 이미 타겟됨(무수정)**: KakaoCallbackPage 의 admin/seller wipe 는 *다른 user.id*(계정 전환)에서만 발동(2026-06-25 보안 결정) → 소유자는 같은 계정이라 미발동. 401/403 인터셉터(api.ts)는 전부 role-scoped(교차 안 함).
+- **영구 가드 신설**: `scripts/check-dashboard-login-session-coexist.mjs` — 대시보드 로그인의 무조건 `clearAuthData('user')`(=`!isKorea()` 게이트 밖)를 정적 차단. pre-commit(warn) + verify.yml(strict). 기존 read-side `check-dual-login-guard.mjs`(`user_type==='user'` 로그인판단 금지)와 write-side 짝.
+- 검증: tsc 0 · 두 가드 0 · 회귀주입 테스트로 가드 catch 확인(exit 1).
+
+## ✅ 2026-06-26 — 서비스 분리 누수 차단: 소비자 카탈로그에서 도매 원본상품 제외 (대표 "응 고치자")
+**분리 전수조사 결과**: 도매↔유어딜 분리는 대체로 양호(크로스 import 0·도매 카탈로그 격리 완벽·양쪽 쓰는 비즈니스 컴포넌트 0·4대시보드 cross-role 0)였으나 **진짜 누수 1건**: 소비자 `ProductRepository.findAll` 가 `is_supply_product` 미필터 → 승인된 도매 원본상품이 `/browse`·검색/자동완성에 노출.
+- **수정(`[UNLOCK_LOADING]`)**: 5개 소비자 쿼리(findAll·count·FTS·검색 자동완성 ×2)에 `AND NOT (COALESCE(is_supply_product,0)=1 AND supply_source_id IS NULL)` 추가. **도매 원본만 제외, 판매사 복제본·플랫폼상품·일반상품 보존**. `group-buy-public`은 category 격리라 무수정. Cache-Control/SSR/LIST_COLUMNS 불변. CLAUDE.md 로딩 audit log 기록.
+- 검증: tsc 0 · sql-column/bind 0 · build 0 · 단위 1805 pass.
+
+## ✅ 2026-06-26 — 유어딜 셀러·에이전시 가입폼 동일 UX 수정 (대표 "응 하자") — 4개 가입폼 전부 완료
+**범위(유어딜 서비스만 — 도매몰 무관)**: 공유 헬퍼(`form-validators.ts`) 그대로 재사용해 나머지 2개 가입폼 수정. 이로써 가입폼 4종(제조사·판매사·셀러·에이전시) 모두 동일 검증 UX.
+- **SellerRegisterPage(셀러)**: `form noValidate` + focus-by-id(인풋에 id 있음) → 화면 순서 검증·첫 문제 필드 포커스. `email.includes('@')`(=`a@b`·`@naver` 통과) → `isValidEmail`(TLD 필수). **전화 완성형 검증 신규**(기존 미검증). 사업자번호 하이픈 무관 10자리. 비번 정책(8자)·페이로드 불변.
+- **AgencyRegisterPage(에이전시)**: `form noValidate` + ref 포커스. 이메일 `isValidEmail`, 전화(선택)는 입력 시만 완성형 검증. 회사명/담당자명 빈값 검증·포커스. 비번 정책·페이로드 불변.
+- 검증: tsc 0 · light-input/theme 0 · build 0. 공유 헬퍼 단위테스트 7건이 네 폼 전부의 전화/이메일 규칙을 잠금.
+
+## ✅ 2026-06-26 — 판매사 가입폼(도매몰) 동일 UX 수정 + 검증 헬퍼 단일화 (대표 "도매몰만 해당? 다 이상적?")
+**확인 결과**: 같은 가입폼 버그 클래스가 도매몰 **판매사(WholesaleJoinPage)** + 유어딜 **셀러/에이전시** 가입폼에도 존재(제조사만 수정됐었음). 도매몰 분리 룰에 따라 **도매몰 판매사 폼만** 동일 수정(유어딜 폼은 별도 — 대표 확인 대기).
+- **공유 헬퍼** `src/utils/form-validators.ts`(`digitsOnly`/`isValidKrPhone`/`isValidEmail`) 신설 → 제조사·판매사 폼 동일 규칙. 단위테스트 7건(`form-validators.test.ts`)으로 "010"·"010-9135"·"utonggori@naver" 미통과 고정. (010=11자리, 011/016~019=10~11자리.)
+- **WholesaleJoinPage(판매사)**: `form noValidate` + ref 맵 → 화면 순서대로 검증·첫 문제 필드 포커스. 대표자/담당자 성명·연락처 각각 검증(연락처 완성형만). 이메일 TLD 필수. 비밀번호 정책(영문·숫자·특수 2종+4연속금지)·서버 페이로드·sameAsRep 복사 불변.
+- **SupplierRegisterPage(제조사)**: 인라인 검증을 공유 헬퍼로 리팩터(동작 동일).
+- 검증: tsc 0 · validators 7 pass · theme/light-input 0 · build 0.
+
+## ✅ 2026-06-26 — 제조사 가입폼(도매몰) 검증/포커스 UX 전면 수정 (대표 시안 7건) — 서비스 분리 준수
+**근본원인**: `<form>` 이 일부 필드(상호·사업자번호·이메일·비번)에만 native `required` → 가입신청 클릭 시 브라우저 native 검증이 **required 없는 대표자/담당자 필드를 건너뛰고 첫 빈 required(=이메일)로 무조건 점프**. 커스텀 JS 순차검증은 native 가 submit 을 막아 **실행 자체가 안 됨**.
+**수정**(`SupplierRegisterPage.tsx`, 도매몰 전용):
+- `form noValidate` + 필드 ref 맵 → **화면 순서대로 JS 검증 + 첫 문제 필드로 포커스/스크롤**(이메일 점프 제거).
+- 대표자/담당자 **성명·연락처 각각** 검증으로 분리(기존 묶음). 연락처는 `isValidKrPhone`(완성형 010-XXXX-XXXX만) → "010"·"010-9135" 미완성 차단(#1~5).
+- 이메일 `isValidEmail`(TLD 필수) → "utonggori@naver" 통과 차단.
+- #6 로그인 이메일 라벨 "이메일 (로그인 아이디)" + 힌트(위 담당자 이메일과 구분) / 담당자 이메일 라벨 "선택·연락용".
+- #7 비밀번호 기준 상시 표시(입력 상태별 회색→amber→green: "영문+숫자 8자 이상").
+- 검증: tsc 0 · theme/light-input guard 0 · build 0. 카카오 가입 모드(이메일/비번 스킵)·`/api/supplier/register` 페이로드·`sameAsRep` 복사 로직 불변.
+
+## ✅ 2026-06-26 — 소비자(유어딜) 쇼핑 동선 전수조사 (대표 "일단 그래도 해줘") — 서비스 분리 준수
+**범위(유어딜 공구 서비스만 — 도매몰 무관)**: 홈/교환권/공구/체크아웃/링크샵/마이/충전/알림 신규·빈·비로그인 계정 관점. 2개 에이전트 병렬 + 코드 재검증.
+- **🔴 HIGH(크래시) 수정 — `UserGroupBuyCreatePage`(`/community-group-buy/new`) Rules of Hooks 위반 흰화면**: 자격(셀러/인플) 확인 전 `eligibleAsInfluencer===null` 1차 렌더가 훅 2개 호출 후 early-return → 자격 `true` 재렌더에서 useState 7+useEffect 호출 → React "Rendered more hooks" 크래시. **모든 훅을 early-return 위로 이동**. (현재 `COMMERCE_PROPOSAL_HIDDEN`로 진입 배너 숨김이나 직접 URL·언셸브 시 라이브.)
+- **오탐 기각(코드 검증)**: `/seller/register` dead-nav 주장 → **실재 라우트**(seller.routes:85, 에이전트가 App.tsx만 봄). HomeProductsRail 카테고리 키 오류 → **죽은 코드**(MainHomePage 비라우팅 — 홈은 06-21부터 RestaurantMapPage). reward-ad-card 훅순서 → 무해(isNative 안정값). TossWidgetPayPage(잠금) → 클린, 무수정.
+- **감사 클린**: 교환권 카탈로그/상세/구매(딜잔액 0·비로그인·initialDataUpdatedAt:0 '딜부족' 가드)·공구 상세/참여/충전·마이/주문/주소·링크샵/큐레이터·알림 — 빈/신규/0데이터 전부 가드(formatNumber·?? []·division guard). ₩NaN/dead-end 0.
+- 검증: tsc 0 · dead-links/cross-role strict 0 · build 0. **소비자 쇼핑 동선 = 잠금파일 외 크래시 1건 수정·나머지 클린.**
+
 ## ✅ 2026-06-25 — 비운영자 사용자 에러 전수조사 + 수정 14종 (대표 "운영자가 아닌 다른 사람들이 이용했을 때 나올 에러 전수조사")
 **배경**: 역할-한정 버그(슈퍼/운영자에겐 안 보이고 좁은 권한 사용자에게만 터짐) 런타임 전수조사. 5개 역할 finder(유저/사업자유저/B2B/RBAC/크로스커팅) + 정적 가드 직접 실행 → **과대보고 방지(코드 검증된 것만)** + **현재 main 재검증으로 batch1-5 에서 이미 고친 것 제거**.
 - **P1 5종(2c7b647)**: S1 셀러 상품수정 시 식당연락처/PIN/공구목표 유실(PUT 화이트리스트→fail-soft per-field) · S3 식사권 등록 정가/좌표/지역 유실 · S2 셀러 정산표 전부 ₩0+날짜'오늘'(SELECT 실컬럼 매핑+healing) · B1 판매사 배송비 미표시→예치금 증발오인(3 SELECT+명세서+UI grand_total) · B2 에이전시 '매장 영입 현황' 토큰누락 401(인터셉터 분기).
@@ -8,6 +63,23 @@
 - **보류(대표 확인 필요)**: B4 prospect introducer_id=user.id vs 대시보드 agencies.id(커미션 귀속+데이터 마이그레이션) · R2 계정전환 admin_token wipe(의도적 보안 vs SPA 비대칭). 둘 다 결정 사안.
 - **이미 수정됨/오탐**: R1(타일 dead-end → 06-24 distributor-approval retarget) · C1(EditorialProductCard null→"0원", NaN 아님).
 - 검증: tsc 0 · vitest 2301 pass · sql-bind/column 0 · money-pattern 0 · light-input/theme ✅. 결제 잠금파일 무관. 미배선 fee-resolver 와 별개.
+
+## ✅ 2026-06-24 — 에이전시 + 소비자 셀러 대시보드 전수조사 (대표 "모두 이상적으로" — 전 대시보드 완주)
+**소비자 셀러 대시보드(/seller/*)**: ~70페이지 정독 → **클린**(신규 셀러 첫 렌더 dashboard→products→orders→settlements 전부 SQL COALESCE + JS `?? 0`, cross-role 0, dead-click 0; 에이전트가 자기 'high' 후보 2건도 직접 재검증 후 기각).
+**에이전시 대시보드(/agency/*, 38p)**: pending 게이트 정상(로그인서 status 차단), 빈/0데이터 클린. 발견·수정 3종:
+- **MED — 매칭추천 점수막대 영구 미표시**: cron(agency-seller-match)이 `match_reason` 을 JSON.stringify 저장 → 라우트가 문자열 그대로 반환 → 프론트가 `reason.tierScore` 읽으면 undefined → ScoreBar 안 뜸. `agency-match-suggestions.routes` 에서 JSON.parse 후 반환.
+- **HIGH(역할-한정) — 에이전시 공동구매 페이지 협상/딜확정/실패처리 버튼 항상 403**: 백엔드 `/status`·`/confirm` 은 어드민(+식당주인) 전용 + 동네공구에 **에이전시 소유 개념 없음**(아무 에이전시가 아무 딜 확정 부적절). → 에이전시 페이지를 **브라우즈 + 식당 채팅(협상)** 으로 정리: '협상 시작'=채팅 열기로 재배선, 딜확정/실패처리 버튼·ConfirmModal·핸들러 제거. (확정은 어드민. 에이전시-딜 소유모델 도입 시 재배선 가능 — 대표 결정 대기.)
+- **MED — '매장 영입 현황'(/agency/prospects)**: 처음엔 빈 화면이라 nav 제거했으나, **병행 세션(06-25 B2/B4)이 이 페이지를 에이전시 기능화 중**(401 인터셉터 + POST introducer_id→canonical agencies.id 매핑; 이메일로그인 에이전시는 동작, 카카오로그인 GET 매핑은 그들의 B4 보류) → **nav 제거 되돌림**(그들 방향 존중). 잔여 GET 매핑은 B4(대표 결정).
+- 검증: tsc 0 · cross-role/links strict 0 · build 0. **사람이 쓰는 5개 대시보드 빈상태/런타임 정독 완료.** 공구 페이지 403 정리는 유지(병행 세션 무관 영역).
+
+## ✅ 2026-06-24 — 도매 어드민·제조사·판매사 대시보드 전 영역 전수조사 (대표 "나 말고 다른 사람들이 썼을 때도 에러 없어야")
+**방식**: 3개 대시보드 병렬 감사(도매 어드민 / 제조사 / 판매사+storefront), **"소유자(슈퍼·시드데이터)에겐 안 보이고 신규·대기·좁은권한 사용자에게만 터지는" 클래스** 집중 → 모든 발견 코드 재검증. 제조사·판매사 frontend 는 빈상태/대기/NaN 대비가 이미 견고(클린). 발견·수정:
+- **🔴 CRITICAL(보안/머니) — 정지된 판매사가 만료 전 토큰으로 발주·충전 지속**: `/orders`·`/orders/confirm`·`/deposits/charge-request` 가 `sellerIdFrom`(서명만, status 미검사) 사용 + `requireAuth` 미경유 → 승인 후 정지/거부된 판매사가 30일 토큰으로 예치금 차감 발주·충전요청 가능(소유자는 도달 못 하는 상태). → 공유 가드 `isSellerBlocked(DB,id)`(reject-list: suspended/rejected/pending/banned/deleted, **approved/active 불변**, fail-open) 신설 + 세 엔드포인트 배선(confirm 은 Toss 캡처 *전* 차단 → 무단결제 방지).
+- **🟡 MED — 전역검색이 도매 파트너를 바운스**: AdminLayout 검색이 `/admin/orders`·`/admin/users`(소비자 스코프)로 이동 → 도매 역할 RBAC 바운스(검색 먹통). 도매 역할엔 검색폼 숨김.
+- **🟢 LOW ×3**: ① 제조사 이미지 업로드가 `role:'user'`로 오귀속(upload.routes `getRoleAndId` supplier_id 분기 부재 → uploads/user 네임스페이스 충돌·삭제 소유권 불일치) → supplier 분기 추가 ② AdminWholesaleQuotesPage `requested_qty.toLocaleString()` 무가드 → `Number(||0)` ③ '제조사 승인' 카드 `?status=pending` 딥링크 + AdminSuppliersPage URL status 소비(카운트↔목록 정합).
+- **감사 클린 확인**: 제조사 대시보드(빈/대기/NaN/cross-role 전부 안전, /me·analytics·settlements 널세이프) · 판매사 storefront(pending=무토큰→락카드 정상, 빈카트/0예치금/빈명세 가드, wholesaleAuthSeg 가격분리) · 도매 어드민 23p(스코프·empty·dead-click 클린). 기존 3 정적가드 전부 0.
+- 검증: tsc 0 · api-scope/nav/links 0 · theme 0 · sql-bind 0 · build 0. ⚠️ 정지 가드는 staging 없어 실거래 1회 확인 권장(정지 판매사 발주 403 / 정상 판매사 영향 0).
+- **후속(대표 "전역?")**: ① 교차-역할 클래스를 **전역 결정론 가드**로 승격 — `check-dashboard-api-crossrole.mjs`(제조사/에이전시/판매사/어드민 668파일, 다른 역할 전용 `/api/*` 호출=403 차단) verify.yml strict, **위반 0**(에이전시 포함 전 대시보드 cross-role 깨끗 *증명*). ② 정지 가드 누락 1건 추가 발견·수정: `wholesale-plus.routes /subscribe`(Plus 구독=예치금 차감)도 status 미검사 → `isSellerBlocked` 배선(이제 발주·confirm·충전·Plus 4개 예치금-차감 엔드포인트 전부 가드). 정직: cross-role/dead-link/wholesale-admin-scope/nav 은 전역 결정론 잠금이나, **빈상태 크래시·count↔list 의미 불일치·money-status 패턴은 도매 표면 에이전트 샘플링(에이전시 빈상태는 미점검)** — 결정론 불가 영역은 샘플링 한계 명시.
 
 ## ✅ 2026-06-25 — 수수료 정책 단일 리졸버(SSOT) 구현 (미배선) — 대표 "구현부터 / 가장 이상적이고 영구적으로"
 **배경**: 대표와 수수료 정책 4종 확정(`docs/design/product-ownership-model.md`) 후 "구현부터, 영구적으로". 기존 수수료 로직이 산재(`orders.commission_rate`~10%, `agency_commission_pct`=2%+₩30k, affiliate 5%, supplier margin)되고 **값도 확정정책과 불일치** → 정책을 **단 하나의 순수 리졸버에 박제** + **불변식 테스트로 영구잠금**.
@@ -132,7 +204,9 @@
 - **후속 2 — 카드 표준화(A안)**: picker 커스텀 PickCard → 표준 `BrowseProductCard` 재사용 + 핀 토글 오버레이("커스텀 카드 그만, 표준 카드 영구 고정" 규칙 준수, 디자인 영구 동기화). 카드 본문=상세 미리보기.
 - **후속 3 — 토스트 리디자인**: 전역 `ToastContainer` 파스텔 색박스 → 단일 잉크 카드 + 컬러 아이콘(대표 "팝업 촌스러워"). 앱 전역 모든 알림 적용.
 - **후속 4 — 즉시반영+코멘트+적립률+워밍**: ① 핀 추가/삭제 후 모듈캐시 무효화(`curator-page-cache.ts` 추출, picker 가 무거운 CuratorPage 청크 없이 import) → 링크샵 재진입 즉시 반영. ② 담은 직후 추천 코멘트(선택) 바텀시트(`updatePinNote`). ③ `ProductRepository` 목록에 `referral_commission_rate` 추가(dominant_color 가드 패턴) → picker '적립 N%' 배지. ④ picker 세션 모듈캐시(60s) 재진입 instant.
-- **후속 5 — 사업자 링크샵 편집 UX 통일**: `SellerPublicPage` 기본 previewAsVisitor=true(방문자뷰 시작→'편집하기') + 네이비 배너 2종→뉴트럴/잉크 슬림 바(CuratorPage 동일, theme-dual). i18n 6개 언어. SSR/소유권 판정 불변.
+- **후속 5 — 사업자 링크샵 편집 UX 통일**: `SellerPublicPage` 기본 previewAsVisitor=true(방문자뷰 시작→'편집하기') + 네이비 배너 2종→뉴트럴/잉크 슬림 바(CuratorPage 동일, theme-dual). i18n 6개 언어. SSR/소유권 판정 불변. **→ 후속 6에서 previewAsVisitor 부분은 revert(대표 "원래 형태 아님")**.
+- **후속 7 — 헤더 컴포넌트 단일화 (대표 "영구적으로 고쳐 / 이 형태로 통합")**: 근본원인 = 링크샵이 일반(CuratorPage/CuratorHeader)·사업자(SellerPublicPage/ProfileHeader) **두 페이지로 따로 자라** 매 디자인이 어긋남. 마지막 canonical 형태(`docs/design/linkshop-landing-redesign.md` "나브랜딩" 랜딩: 마퀴+풀블리드 배너+중앙 이름/태그라인/SNS+표준 BrowseProductCard)는 CuratorHeader 에만 있었음. **수정**: `SellerPublicPage` 가 `ProfileHeader` 대신 **`CuratorHeader`** 렌더 → 헤더 1개로 통일. 정체성은 **curator(users) 우선 · seller(sellers) 폴백 병합**(banner_url/name/bio/sns) → 저장 위치 분산(후속6 배너 이슈)을 흡수해 배너 복구. 소유자 인라인 편집은 CuratorHeader→`/api/curator/me/profile`(낙관적 `curatorEdits`). 본문 탭/상품등록/대시보드 chrome 보존. 카드는 잠금대로 BrowseProductCard. ⚠️ 미검증(라이브 접근 차단) — 대표 확인 필요. 남은 정리: 상품탭 EditorialProductCard→BrowseProductCard 수렴(showStats 고려), ProfileHeader.tsx 고아 파일 정리.
+- **후속 6 — 사업자 링크샵 헤더 '원래 형태' 복원 (대표 신고 `/u/jiwon1228`)**: 사업자(연결셀러) 링크샵은 CuratorHeader 가 아니라 `ProfileHeader` 를 렌더하는데, 큐레이터 헤더 형태(맨 위 흐르는 마퀴 + 풀블리드 배너+그라데이션 + **동그라미 아바타 없음**)와 통일이 덜 돼 있었음(아바타 남음 + 마퀴 없음). 수정: ① ProfileHeader 동그라미 프로필 사진 제거(profile_image 데이터는 OG/썸네일 유지, 헤더 렌더만 제거 — CuratorHeader 와 동일) ② 맨 위 흐르는 마퀴 추가(CuratorHeader 마크업 재사용, 소유자 인라인 편집→`/api/curator/me/profile`) ③ 마퀴 데이터(linkshop_headline/accent)는 `users` 에 있으므로 CuratorPage→SellerPublicPage→ProfileHeader 로 props 전달(`curatorHeadline`/`curatorAccent`). 비-/u/ 진입(/profile·/s)은 데이터 없어 마퀴 미표시(graceful). 같은 세션 후속5의 previewAsVisitor=true 는 별도 revert(commit `bd8fe33b1`).
 
 ## ✅ 2026-06-22~23 — 동네딜 사용처리(redemption) + 선착순 + 흑백/PC 액자 (대표 다회 검증, "가장 이상적·안전하게")
 **한 세션 다중 아크.** 설계 SSOT: `docs/design/dongnedeal-redemption.md`(북극성: "카운터는 신뢰로 통과, 돈은 정산에서 검문").

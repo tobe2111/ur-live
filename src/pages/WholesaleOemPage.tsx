@@ -45,7 +45,7 @@ export default function WholesaleOemPage({ embedded = false }: { embedded?: bool
 
   const listQ = useQuery<OemRequest[]>({
     queryKey: ['wholesale', 'oem-requests'],
-    queryFn: () => api.get('/api/wholesale/oem-requests', auth()).then(r => (r.data?.success ? r.data.requests || [] : [])).catch(() => []),
+    queryFn: () => api.get('/api/wholesale/oem-requests', auth()).then(r => (r.data?.success ? r.data.requests || [] : [])), // 🛡️ 2026-06-25: .catch 제거 — 로드실패가 '신청 없음' 위장 방지(isError 분기)
     enabled: !!sellerToken(),
     staleTime: 30_000,
     refetchOnWindowFocus: false,
@@ -53,7 +53,7 @@ export default function WholesaleOemPage({ embedded = false }: { embedded?: bool
 
   if (!embedded && !sellerToken()) {
     return (
-      <div className="min-h-screen bg-[#F4F5F7] flex flex-col items-center justify-center px-6 text-center">
+      <div className="min-h-[100dvh] bg-[#F4F5F7] flex flex-col items-center justify-center px-6 text-center">
         {/* 🏭 2026-06-08 SEO: 비로그인 OEM 랜딩은 공개 인덱스 타깃("OEM/ODM 상품제휴") — 공급가/거래정보 없음. */}
         <SEO
           domain="wholesale"
@@ -158,6 +158,8 @@ export default function WholesaleOemPage({ embedded = false }: { embedded?: bool
           <h2 className="text-sm font-bold text-[#0C2454] mb-3">내 신청 내역</h2>
           {listQ.isLoading ? (
             <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-[#B6BCC4]" /></div>
+          ) : listQ.isError ? (
+            <p className="text-center text-red-500 py-10 text-sm bg-white rounded-2xl border border-red-100">신청 내역을 불러오지 못했습니다 — 새로고침 후 다시 시도해주세요.</p>
           ) : requests.length === 0 ? (
             <p className="text-center text-[#B6BCC4] py-10 text-sm bg-white rounded-2xl border border-[#ECEEF1]">신청 내역이 없습니다.</p>
           ) : (
@@ -194,7 +196,7 @@ export default function WholesaleOemPage({ embedded = false }: { embedded?: bool
   if (embedded) return <div className="space-y-6">{content}</div>
 
   return (
-    <div className="min-h-screen bg-[#F4F5F7]">
+    <div className="min-h-[100dvh] bg-[#F4F5F7]">
       <SEO domain="wholesale" title="OEM/ODM 신청 — 유통스타트" description="판매사 OEM/ODM 제작 신청" url="/wholesale/oem" noindex />
       <header className="bg-white border-b border-[#ECEEF1]">
         <div className="ur-content-medium px-4 lg:px-8 py-4 flex items-center justify-between">

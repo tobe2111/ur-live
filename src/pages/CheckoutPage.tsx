@@ -113,27 +113,36 @@ function CartCheckout() {
   const [serverVariantAgreement, setServerVariantAgreement] = useState<string>('')
   const [clientKeyLoaded, setClientKeyLoaded] = useState<boolean>(false)
   useEffect(() => {
-    // 🛡️ 2026-05-24: server clientKey + variantKey 진실원천 — Cloudflare env 변경 시 즉시 반영.
-    //   build-time VITE_TOSS_CLIENT_KEY / VITE_TOSS_VARIANT_PAYMENT 는 fallback.
+    // 🛡️ 2026-06-26 늦은 로딩 fix (대표 신고 — 체크아웃 결제수단 UI 늦게 뜸):
+    //   빌드타임 VITE 키(getTossClientKey)가 있으면(정상 운영 케이스 — SDK 도 이 키로 preload 됨)
+    //   서버 client-key fetch 를 '직렬로 기다리지 않고' 즉시 마운트 → 첫 결제수단 표시 ~100~400ms 단축.
+    //   ⚠️ v2 회귀(키 prop 변경 → 위젯 재init → 무한로딩) 영구방지: 마운트 후 clientKey 를 절대
+    //     바꾸지 않음(빌드 키로 고정). 서버 fetch 는 변종키 반영 + 미스매치 telemetry 용 백그라운드.
+    //   빌드 키가 비어있을 때만(운영자 VITE 미설정) 기존처럼 서버 응답을 기다려 마운트(빈 키 init 회귀 방어).
+    if (clientKey) {
+      setServerClientKey(clientKey)
+      setClientKeyLoaded(true)
+    }
     api.get('/api/payments/client-key', { params: { _ts: Date.now() } })  // cache-bust
       .then(r => {
         const data = r.data?.data || {}
         const key = data.clientKey || r.data?.clientKey
-        if (key && typeof key === 'string') {
-          setServerClientKey(key)
-          setServerVariantPayment(typeof data.variant_payment === 'string' ? data.variant_payment : '')
-          setServerVariantAgreement(typeof data.variant_agreement === 'string' ? data.variant_agreement : '')
-          if (import.meta.env.DEV) console.log('[Checkout] server config:', { key_type: data.key_type, variant_payment: data.variant_payment, variant_agreement: data.variant_agreement })
-        } else if (clientKey) {
-          if (import.meta.env.DEV) console.warn('[Checkout] server clientKey empty, falling back to VITE_TOSS_CLIENT_KEY (build-time)')
-          setServerClientKey(clientKey)
+        // variant 는 위젯 init 을 재트리거하지 않음(TossPaymentWidget deps=[userId,clientKey]) →
+        //   이미 마운트됐어도 안전하게 반영 시도, 빌드 VITE_TOSS_VARIANT_* fallback 과 공존.
+        if (typeof data.variant_payment === 'string') setServerVariantPayment(data.variant_payment)
+        if (typeof data.variant_agreement === 'string') setServerVariantAgreement(data.variant_agreement)
+        if (import.meta.env.DEV) console.log('[Checkout] server config:', { key_type: data.key_type, variant_payment: data.variant_payment, variant_agreement: data.variant_agreement })
+        if (!clientKey) {
+          // 빌드 키 없음 — 서버 키로만 마운트(기존 fallback 동작 유지).
+          if (key && typeof key === 'string') setServerClientKey(key)
+          setClientKeyLoaded(true)
+        } else if (key && typeof key === 'string' && key !== clientKey && import.meta.env.DEV) {
+          console.warn('[Checkout] server clientKey ≠ build-time key — toss-preload 미스매치 telemetry 가 보고함')
         }
-        setClientKeyLoaded(true)
       })
       .catch((err) => {
         if (import.meta.env.DEV) console.warn('[Checkout] server clientKey 로드 실패, env fallback:', err)
-        if (clientKey) setServerClientKey(clientKey)
-        setClientKeyLoaded(true)
+        if (!clientKey) setClientKeyLoaded(true)
       })
   }, [])
 

@@ -110,7 +110,10 @@ app.delete('/connect', async (c) => {
       return c.json({ success: false, error: '조회 전용 직원 계정은 이 작업을 할 수 없습니다' }, 403)
     }
     await ensureNaverConnectionSchema(c.env.DB)
-    await c.env.DB.prepare('DELETE FROM naver_commerce_connections WHERE seller_id = ?').bind(auth.sellerId).run()
+    // 🛡️ 2026-06-26 [보안] owner_type 스코프 — GET /status·load/save 와 달리 DELETE 만 owner_type 누락이라
+    //   같은 숫자 id 의 제조사(owner_type='supplier') 네이버 연결까지 삭제 가능했음(cross-tenant). 연결 테이블은
+    //   UNIQUE(owner_type, seller_id) — distributor 스코프 명시.
+    await c.env.DB.prepare("DELETE FROM naver_commerce_connections WHERE owner_type = 'distributor' AND seller_id = ?").bind(auth.sellerId).run()
     return c.json({ success: true })
   } catch (err) {
     return safeError(c, err, '연결 해제 중 오류가 발생했습니다', '[naver-commerce]')

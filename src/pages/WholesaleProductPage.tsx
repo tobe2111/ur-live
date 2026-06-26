@@ -89,7 +89,7 @@ export default function WholesaleProductPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const h = { headers: { Authorization: `Bearer ${token}` } }
 
-  const { data, isLoading: loading } = useWholesaleProduct(id)
+  const { data, isLoading: loading, isError, refetch } = useWholesaleProduct(id)
   const item = (data?.item ?? null) as DetailItem | null
   const grade = data?.grade ?? ''
   const [qty, setQty] = useState(1)
@@ -194,7 +194,7 @@ export default function WholesaleProductPage() {
 
   // 🏭 perf: 풀스크린 스피너 대신 상세 레이아웃 스켈레톤(빈 화면 X — 체감 로딩 ↓).
   if (loading) return (
-    <div className="min-h-screen pb-28" style={{ background: '#fff' }}>
+    <div className="min-h-[100dvh] pb-28" style={{ background: '#fff' }}>
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-wide flex items-center gap-3 px-5 lg:px-8 h-[52px]">
           <ArrowLeft className="w-5 h-5" style={{ color: WT.ink4 }} />
@@ -215,8 +215,18 @@ export default function WholesaleProductPage() {
     </div>
   )
   if (!item) {
+    // 🛡️ fetch 실패(네트워크/5xx)는 '없는 상품'이 아니라 일시 오류 — 재시도 노출(빈 not-found 위장 방지).
+    if (isError) {
+      return (
+        <div className="min-h-[100dvh] flex flex-col items-center justify-center" style={{ background: '#fff' }}>
+          <p className="mb-1 text-[15px] font-medium" style={{ color: WT.ink2 }}>상품을 불러오지 못했어요</p>
+          <p className="mb-4 text-[13px]" style={{ color: WT.ink4 }}>네트워크 상태를 확인해주세요.</p>
+          <button onClick={() => refetch()} className="px-5 h-11 rounded-xl font-bold text-white" style={{ background: WT.ink }}>다시 시도</button>
+        </div>
+      )
+    }
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: '#fff' }}>
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center" style={{ background: '#fff' }}>
         <p className="mb-4 text-[14px]" style={{ color: WT.ink3 }}>상품을 찾을 수 없습니다.</p>
         <button onClick={() => navigate('/wholesale')} className="px-5 h-11 rounded-xl font-bold text-white" style={{ background: WT.ink }}>카탈로그로</button>
       </div>
@@ -244,7 +254,7 @@ export default function WholesaleProductPage() {
   const tabs: [typeof tab, string][] = [['desc', '상세설명'], ['ship', '배송'], ['settle', '정산'], ['return', '반품·교환']]
 
   return (
-    <div className="min-h-screen pb-28" style={{ background: '#fff', color: WT.ink }}>
+    <div className="min-h-[100dvh] pb-28" style={{ background: '#fff', color: WT.ink }}>
       {/* 🏭 2026-06-08 도매 상품 상세 — canonical=utongstart 이되 noindex 유지(공급가/거래정보 비노출 룰).
           description 에도 공급가 절대 미포함. */}
       <SEO domain="wholesale" title={`${item.name} - 유통스타트 도매`} description="판매사 전용 도매 상품 상세 — 도매가는 로그인 후 확인" url={`/wholesale/product/${item.id}`} noindex />

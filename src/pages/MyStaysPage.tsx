@@ -8,6 +8,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { Building2, Calendar, MapPin, Star, MessageCircle, X as XIcon, ChevronLeft } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { safeDate } from '@/utils/safe-date'
 import { useMyStays, type MyBooking } from '@/hooks/queries/useMyStays'
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -231,14 +232,17 @@ function VoucherInfo({ booking }: { booking: MyBooking }) {
   if (booking.voucher_used_at) {
     return (
       <p className="text-[11px] text-emerald-400 mt-1">
-        ✅ 사용 완료 · {new Date(booking.voucher_used_at).toLocaleDateString('ko-KR')}
+        ✅ 사용 완료 · {safeDate(booking.voucher_used_at)?.toLocaleDateString('ko-KR')}
       </p>
     )
   }
   if (!booking.voucher_expires_at) {
     return <p className="text-[11px] text-gray-400 mt-1">🎫 {booking.voucher_type === 'weekend' ? '주말권' : '평일권'} × {booking.nights}박</p>
   }
-  const expiresAt = new Date(booking.voucher_expires_at)
+  const expiresAt = safeDate(booking.voucher_expires_at)
+  if (!expiresAt) {
+    return <p className="text-[11px] text-gray-400 mt-1">🎫 {booking.voucher_type === 'weekend' ? '주말권' : '평일권'} × {booking.nights}박</p>
+  }
   const daysLeft = Math.ceil((expiresAt.getTime() - Date.now()) / 86400000)
   const expired = daysLeft < 0
   const expiringSoon = !expired && daysLeft <= 30

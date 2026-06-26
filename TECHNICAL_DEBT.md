@@ -2,6 +2,17 @@
 
 2026-04-22 대장애 복구 이후 남은 기술 부채를 추적하는 문서.
 
+## 📊 2026-06-26 — 전수감사 잔여(가드로 못 박는 latent) — 쇼핑 재오픈 전 fix 필수
+2026-06-26 5도메인 병렬 전수감사에서 나온, **결정론적 가드로 박기 어려운**(머니 흐름/문맥 의존) 확인 항목. `docs/AUDIT_INVARIANTS.md` "가드 미보유" 와 연동. **대부분 쇼핑탭 숨김(`SHOPPING_TAB_HIDDEN`) gated = 현재 라이브 영향 0, 단 재오픈 전 반드시 수정 + staging 실결제 검증.**
+
+- ✅ **[FIXED 2026-06-26 — 대표 "지금 진행"] 결제 셀프취소 `POST /api/orders/:id/cancel` refundOrderFully 우회 3건**: **전액취소를 `refundOrderFully` SSOT 경유로 라우팅** → B/C/D 동시 해소.
+  - **B (HIGH)**: 딜 전액결제(toss_key=NULL) 422 차단 → refundOrderFully 는 isDeal 시 Toss/키 체크 skip + 딜 환급 → **취소 가능**.
+  - **C (HIGH)**: 혼합결제 `deal_used` 미복원 → refundOrderFully step 3b 가 카드 Toss취소 후 deal_used 복원.
+  - **D (MED)**: 쿠폰/referral_bonus/affiliate/공급/에이전시/영입자 미역전 → refundOrderFully 가 전부 대칭 역전 + CAS 멱등(동시 이중취소도 1회만 — 기존 인라인의 무CAS 이중환급 race 도 동시 해소).
+  - **부분취소(`cancel_amount < 잔여`)**: 기존 카드 Toss 부분취소 경로 유지(refundOrderFully 는 전액전용). 딜/쿠폰 주문 부분취소는 여전히 제한적(toss_key 없으면 422) — pre-existing, 유저는 전액취소 선택 가능. 검증: tsc 0 · build 0 · refund 27 tests · money-pattern 0. ⚠️ 쇼핑 재오픈 전 staging 실결제(딜전액·혼합·쿠폰 각 1회) 권장.
+- 🟡 **제조사 "출금 가능" 표시 과대** (`src/pages/supplier-dashboard/OverviewTab.tsx:32` + `supplier-analytics.routes.ts` `settle_available`): `supplier_balances.available_amount` 를 그대로 표시, **`reserved_amount`(출금요청 보류분) 미차감**. 실제 출금 CAS(`available-reserved>=amount`)가 초과출금은 막아 **돈 손실 0**, 표시 숫자만 부풀려짐. fix: 출금 페이지의 `spendable=available-reserved` 와 동일하게 overview/analytics 도 차감(또는 API 가 reserved 반환). **Low(표시).**
+- 🟢 **인플 매출분석 프론트 원천징수 하드코딩** (`AdminInfluencerPayoutsPage.tsx:34-35` `calcWithholding` 3.3/8.8 literal): 프론트 표시 계산이라 worker SSOT(`WITHHOLDING_RATES`) 직접 import 불가. cron(서버, `influencer-payout.ts`)은 이미 SSOT 로 fix 됨. 프론트는 API 가 율을 내려주거나 shared 상수 분리 시 정리. **Low(표시 drift 위험).**
+
 ## 📊 2026-06-22 — 기술부채 전수 점검 + 보안/i18n 정리 (대표 "모두 가장 이상적으로")
 대표 "전체적으로 기술부채 확인" → 진단 도구 전수 실행 후 처리.
 - ✅ **npm audit production HIGH 2건 해소** — `form-data`(axios 경유, CRLF) `4.0.5→4.0.6`, `@grpc/grpc-js`(firebase-admin 경유, crash) `1.14.3→1.14.4`. **overrides** 로 transitive 강제 패치(fixAvailable=true, non-breaking). `npm audit --omit=dev` high/critical **0** 확인.
@@ -1413,3 +1424,34 @@ src/features/group-buy/api/
 - `WholesaleStaffPage:36` canManage 기본 true 플래시 → 기본 false.
 - `oem-requests.ts:16` ensure WeakSet 선마킹(promise-cache 패턴으로 통일 권장).
 - 등급별 마진율 탭 = 엑셀 전용(라이브 가격 무영향) — **대표 결정 대기**(엑셀전용 라벨 vs 등급차등가 부활).
+
+## 🟡 2026-06-25 신규각도 전수조사(IDOR/stale-UI/숫자/동시성) 잔여
+
+> batch7~8 로 stale-UI·머니상태·IDOR방어심화·become race·claims dup·supply_price 마진가드 fix. 아래는 UNIQUE인덱스/restructure 필요 or 영향 낮아 미적용 — 추적용.
+
+### 1. 채널 export 중복 외부상품 (P0, 채널 한정·restructure 필요)
+- `coupang-commerce.routes.ts:200`·`naver-commerce.routes.ts:192` 가 외부 상품생성(coupang/naver POST)을 **로컬 멱등 row INSERT 전**에 실행 → 동시 export 2회면 외부 스토어에 실상품 2개. 클라 in-flight 가드는 단일클릭만 막음.
+- 수정: 외부호출 전에 `INSERT OR IGNORE coupang_product_exports/naver_commerce_* (..., status='exporting')` claim → `meta.changes===1` 일 때만 외부호출. UNIQUE 이미 존재(coupang-core:59, naver-core:73).
+
+### 2. supply.routes 중복생성 (P1, UNIQUE 인덱스 필요)
+- `/register`(316): `(seller_id, supply_source_id)` partial UNIQUE + ON CONFLICT 없음 → 동시 등록 시 store product 2개.
+- `/sample-requests`(168): `(seller_id, product_id)` UNIQUE 없음 → 중복 PENDING 2개. (admin PATCH 는 이미 CAS.)
+- 수정: 각 partial UNIQUE(repair-schema 등록) + INSERT OR IGNORE/ON CONFLICT.
+
+### 3. wholesale-claims 완전 race-proof (P2)
+- batch8 에서 active-claim 존재검사로 재제출(지배 케이스) 차단. 동시 race 완전차단은 `(wholesale_order_id, COALESCE(item_id,0)) WHERE status IN('open','reviewing')` partial UNIQUE 필요(repair-schema).
+
+### 4. 숫자/단위 LOW (P2)
+- `tax-withholding.ts:133` dup-path 가 `rate/100`(decimal) 반환, fresh-path 는 percent → 100× 불일치(현 호출자 미사용, latent). `dup.withholding_rate || 0` 로.
+- `supplier-dashboard.routes /store/import`(1233): `supply_rate_pct===100` 허용 → supply==sale(마진0). `>=100` 차단.
+- `WholesaleProductPage` qty 스텝퍼: moq 가 order_multiple 배수 아니면 비배수 qty 도달 후 서버 거부(UX dead-end). floor 보정.
+- POST /products(275,278): 공급가/판매가 `Math.floor` 누락(소수 저장). edit/price-change 는 floor 함.
+- WholesaleQuotesPage 견적요청 qty/price 클라 finite/range 가드 누락(서버 검증함, 비금전).
+
+### 5. stale-UI P2
+- `AdminWholesaleProductsPage` togglePremium/bulkSetPremium: 성공 후 optimistic[id] 미삭제 → refetch 후에도 stale optimistic 우세 가능. 성공분기에서 delete.
+- 위시리스트↔카탈로그 ♥ desync(별도 상태). RQ key 통일 권장.
+
+### 6. 동시성 P2
+- 설정 UPDATE(distributor-admin distributors/grades, admin-products premium) 비-CAS → 동시편집 시 중복/stale audit row(값은 last-writer-wins, 머니무관).
+- `wholesale-chat.routes:398` last_message_id 비원자 갱신 → 동시전송 시 preview 역행 + 중복 notify(cosmetic).

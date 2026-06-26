@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { safeHttpHref } from '@/utils/safe-external-url'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
@@ -464,7 +465,7 @@ export default function AdminSellerApprovalPage() {
                     {s.business_registration_image_url ? (
                       <>
                         <a
-                          href={s.business_registration_image_url}
+                          href={safeHttpHref(s.business_registration_image_url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="block mb-2"

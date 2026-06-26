@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -13,6 +13,7 @@ import KakaoShareButton from '@/components/KakaoShareButton'
 import PinButton from '@/components/curator/PinButton'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { safeDate, safeTime } from '@/utils/safe-date'
 import { cfImage } from '@/utils/cf-image'
 import { reportFunnel } from '@/lib/web-vitals-report'
 import { recordRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip'
@@ -29,6 +30,23 @@ import { pickSeedDetail } from './group-buy/seed-detail'
 const RestaurantMiniMap = lazy(() => import('@/components/RestaurantMiniMap'))
 // 🎨 2026-06-17 (공구상세 후속 — 디자이너 제안 "후기·평점이 가장 큰 신뢰 레버"): 기존 ProductReviews 재사용(lazy, below-fold).
 const ProductReviews = lazy(() => import('./product-detail/ProductReviews'))
+
+// 🎯 2026-06-23 (대표 신고 — '불필요한 로딩들'): below-fold 섹션(지도/후기)의 lazy 청크가 첫 paint 에
+//   즉시 로드돼 회색 Suspense 블록이 화면 밖에서 깜빡였음. 뷰포트 근처(300px)에 올 때만 mount → 그전엔
+//   공간만 예약(중립, 로딩 표시 X). 스크롤해 도달하면 그때 로드(정상). RestaurantMiniMap 내부 SDK 게이트와 별개의 chunk 게이트.
+function DeferUntilVisible({ minHeight, children }: { minHeight: number; children: ReactNode }) {
+  const [visible, setVisible] = useState(false)
+  const ref = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (visible) return
+    const el = ref.current
+    if (!el || typeof IntersectionObserver === 'undefined') { setVisible(true); return }
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect() } }, { rootMargin: '300px' })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [visible])
+  return <div ref={ref} style={{ minHeight: visible ? undefined : minHeight }}>{visible ? children : null}</div>
+}
 
 // 🛡️ 2026-05-15: 전용 공구 상세 페이지 (`/group-buy/:id`)
 //   - 카운트다운 ring + 티어 진행 바 + 참여자 아바타 + 마감 timer + share CTA
@@ -252,7 +270,7 @@ export default function GroupBuyDetailPage() {
     // 🛡️ 2026-05-15 (TD-G07): jitter — 동시 사용자 많을 때 D1 thundering herd 방어
     //   2026-05-27: 마감까지 거리 기반 adaptive — 멀면 길게, 가까우면 짧게 (서버 부하 ↓, UX 유지).
     const jitter = () => {
-      const deadlineMs = detail.group_buy_deadline ? new Date(detail.group_buy_deadline).getTime() - Date.now() : Infinity
+      const deadlineMs = detail.group_buy_deadline ? safeTime(detail.group_buy_deadline) - Date.now() : Infinity
       const base = deadlineMs > 86400000 ? 20000 : deadlineMs > 3600000 ? 10000 : 5000
       return base + Math.floor((Math.random() - 0.5) * base * 0.4)
     }
@@ -707,7 +725,7 @@ export default function GroupBuyDetailPage() {
         <div style={{ padding: '22px 18px' }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>상품 안내</div>
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 13 }}>
-            {['즉시 교환권 발급', '전 지점 사용', detail.voucher_expiry ? `${new Date(detail.voucher_expiry).toLocaleDateString('ko-KR')}까지` : '결제 즉시 사용'].map((chip) => (
+            {['즉시 교환권 발급', '전 지점 사용', detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''}까지` : '결제 즉시 사용'].map((chip) => (
               <span key={chip} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 99, border: '1px solid var(--gbd-line2)', fontSize: 12.5, fontWeight: 600, color: 'var(--gbd-ink2)', whiteSpace: 'nowrap' }}>
                 <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gbd-accent)' }} />{chip}
               </span>
@@ -726,7 +744,7 @@ export default function GroupBuyDetailPage() {
               <div style={{ padding: '22px 18px' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
                   <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>대표 메뉴</div>
-                  <span style={{ fontSize: 12, color: 'var(--gbd-sub)' }}>식사권으로 주문 가능</span>
+                  <span style={{ fontSize: 12, color: 'var(--gbd-sub)' }}>교환권으로 주문 가능</span>
                 </div>
                 <div style={{ marginTop: 8, borderBottom: '1px solid var(--gbd-line2)' }}>
                   {menuItems.map((m, i) => (
@@ -755,9 +773,11 @@ export default function GroupBuyDetailPage() {
             <div style={{ padding: '22px 18px' }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em', marginBottom: 13 }}>매장 위치</div>
               <div style={{ borderRadius: '14px 14px 0 0', overflow: 'hidden', border: '1px solid var(--gbd-line2)', borderBottom: 'none' }}>
-                <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>
-                  <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} />
-                </Suspense>
+                <DeferUntilVisible minHeight={172}>
+                  <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>
+                    <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} />
+                  </Suspense>
+                </DeferUntilVisible>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '13px 14px', border: '1px solid var(--gbd-line2)', borderTop: 'none', borderRadius: '0 0 14px 14px' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -796,7 +816,7 @@ export default function GroupBuyDetailPage() {
           <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>이용 안내</div>
           <div style={{ marginTop: 15 }}>
             {[
-              { k: '사용기한', v: detail.voucher_expiry ? `${new Date(detail.voucher_expiry).toLocaleDateString('ko-KR')} 까지` : '발급 후 사용 기간 적용' },
+              { k: '사용기한', v: detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''} 까지` : '발급 후 사용 기간 적용' },
               { k: '사용처', v: detail.restaurant_name || '전 지점' },
               { k: '사용 방법', v: '매장에서 교환권 제시' },
             ].map((row, i, arr) => (
@@ -822,9 +842,11 @@ export default function GroupBuyDetailPage() {
         {/* 후기·평점 — 신뢰 레버 (디자이너 후속 제안). 기존 ProductReviews 재사용(lazy, 빈 상태/작성 폼 내장). */}
         <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
         <div style={{ padding: '22px 18px' }}>
-          <Suspense fallback={<div style={{ height: 80, background: 'var(--gbd-chip)', borderRadius: 12 }} />}>
-            <ProductReviews productId={productId} limit={5} />
-          </Suspense>
+          <DeferUntilVisible minHeight={80}>
+            <Suspense fallback={<div style={{ height: 80, background: 'var(--gbd-chip)', borderRadius: 12 }} />}>
+              <ProductReviews productId={productId} limit={5} />
+            </Suspense>
+          </DeferUntilVisible>
         </div>
 
         {/* 이 셀러의 다른 공구 — 가로 스크롤 */}

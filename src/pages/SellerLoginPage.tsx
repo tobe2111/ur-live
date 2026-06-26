@@ -57,12 +57,14 @@ export default function SellerLoginPage() {
         }
         const { seller, accessToken, refreshToken } = response.data.data
         clearFirebaseTokenCache()
-        clearAuthData('user')
-        // 🛡️ 2026-05-01: KR Firebase 100% 미사용 — signOut 호출 안 함.
-        //   KR 한정으로 Firebase SDK 로드 방지. 글로벌은 기존 동작 유지.
+        // 🛡️ 2026-06-26 (유저↔셀러 상호 로그아웃 근본수정 — 어드민 로그인과 동일):
+        //   KR 소비자 세션(httpOnly ur_session 쿠키)은 셀러 Bearer 와 독립 → 셀러 로그인이 유저를
+        //   강제 로그아웃하지 않게 파괴 금지(공존: 유저→사업자등록→사업자 유저는 같은 사람).
+        //   글로벌(Firebase)만 기존대로 정리 + signOut.
         try {
           const { isKorea } = await import('@/config/region')
           if (!isKorea()) {
+            clearAuthData('user')
             import('@/lib/firebase-auth').then(({ signOut }) => signOut()).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
           }
         } catch { /* region detect 실패 시 안전 — Firebase 호출 안 함 */ }

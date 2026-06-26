@@ -395,6 +395,47 @@ paymentsRouter.post('/confirm', async (c) => {
       captureException(dealErr as Error, { tags: { area: 'payment', kind: 'deal_deduct' } }).catch(swallow('payment:deal-deduct'));
     }
 
+    // 🎫 2026-06-26 [UNLOCK] (대표 승인 "3건 다 고쳐" — 소비자 감사): 디지털 상품 access_token 발급을
+    //   /confirm 에도 추가. 기존엔 webhook 에만 있어 정상 경로(브라우저→/confirm)로 결제 완료 시 보관함
+    //   미발급 → webhook 지연/실패면 영구 미수령이었음. INSERT OR IGNORE + UNIQUE(order_item_id) 로
+    //   webhook 과 둘 다 와도 멱등(이중발급 X). ⚠️ Toss confirm/금액검증/confirmClaim 무수정 — 발급 배선만.
+    try {
+      const digitalItems = await c.env.DB.prepare(`
+        SELECT oi.id AS order_item_id, oi.order_id, oi.product_id, o.user_id,
+               p.product_kind, p.access_duration_days
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        JOIN products p ON p.id = oi.product_id
+        WHERE o.order_number = ?
+          AND p.product_kind IS NOT NULL
+          AND p.product_kind != 'physical'
+      `).bind(orderNumber).all<{
+        order_item_id: number; order_id: string; product_id: number;
+        user_id: string; product_kind: string; access_duration_days: number | null;
+      }>();
+      if (digitalItems.results && digitalItems.results.length > 0) {
+        const stmts = digitalItems.results.map(item => {
+          const token = crypto.randomUUID();
+          const expiresAt = item.access_duration_days
+            ? `datetime('now', '+${Number(item.access_duration_days)} days')`
+            : 'NULL';
+          return c.env.DB.prepare(`
+            INSERT OR IGNORE INTO digital_product_access
+            (user_id, product_id, order_id, order_item_id, access_token, expires_at, status)
+            VALUES (?, ?, ?, ?, ?, ${expiresAt}, 'active')
+          `).bind(item.user_id, item.product_id, item.order_id, item.order_item_id, token);
+        });
+        await c.env.DB.batch(stmts);
+        const digUserId = digitalItems.results[0].user_id;
+        await c.env.DB.prepare(`
+          INSERT INTO notifications (user_id, user_type, type, title, message, link)
+          VALUES (?, 'user', 'digital_purchase', ?, ?, '/my/digital')
+        `).bind(digUserId, '디지털 상품 구매 완료', '마이페이지 → 디지털 보관함에서 다운로드/시청 가능합니다').run().catch(swallow('payment:digital-notification'));
+      }
+    } catch (digErr) {
+      captureException(digErr as Error, { tags: { area: 'payment', kind: 'digital_access' } }).catch(swallow('payment:digital-access'));
+    }
+
     // 🏁 2026-06-12 [UNLOCK] (사용자 승인 "나머지 다 이상적으로 진행" — 전 플로우 감사 배선 3종):
     //   결제 확정 직후 side-effect 를 응답 후(waitUntil)로 — Toss confirm/금액검증/CAS 무변경.
     //   ① 큐레이터/추천 적립 소비: 주문 생성 시 저장된 order_referrer_intents → creditAffiliateFromIntent
@@ -426,56 +467,49 @@ paymentsRouter.post('/confirm', async (c) => {
             ).catch(() => {})
           }
         } catch { /* fail-soft */ }
+
+        // 🏁 2026-06-26 [UNLOCK] (사용자 승인 "문제 4번 해결" — 결제완료 체감 단축):
+        //   에이전시/영입자/도매 공급자 커미션 적립 3종을 confirm 응답을 막던 동기 실행에서
+        //   이 waitUntil 블록(응답 후)으로 이동. 셋 다 이미 fail-soft + order_id 멱등이라
+        //   응답 후 실행해도 정합성 영향 0 (재시도/중복 confirm 시 이중적립 없음).
+        //   ⚠️ Toss confirm/금액검증/CAS/재고차감/딜차감은 위에서 동기 유지 — 무변경.
+        //   실행 시점만 변경(적립 로직·역전 대칭·멱등 키 전부 불변).
+        try {
+          const { creditAgencyStoreIntroCommission } = await import('../utils/agency-store-intro-commission')
+          for (const order of orders) {
+            await creditAgencyStoreIntroCommission(c.env.DB, {
+              id: Number(order.id),
+              seller_id: (order as unknown as { seller_id?: number | null }).seller_id ?? null,
+              total_amount: (order as unknown as { total_amount?: number | null }).total_amount ?? null,
+            })
+          }
+        } catch (e) {
+          logError('payment.agency_intro_commission_failed', { error: String(e).slice(0, 200) })
+        }
+        try {
+          const { creditInfluencerStoreIntroCommission } = await import('../utils/influencer-store-intro-commission')
+          for (const order of orders) {
+            await creditInfluencerStoreIntroCommission(c.env.DB, {
+              id: Number(order.id),
+              seller_id: (order as unknown as { seller_id?: number | null }).seller_id ?? null,
+              total_amount: (order as unknown as { total_amount?: number | null }).total_amount ?? null,
+            })
+          }
+        } catch (e) {
+          logError('payment.influencer_intro_commission_failed', { error: String(e).slice(0, 200) })
+        }
+        try {
+          const { creditSupplierOnOrder } = await import('../../features/supply/api/supply-settlement')
+          for (const order of orders) {
+            await creditSupplierOnOrder(c.env.DB, Number(order.id))
+          }
+        } catch (e) {
+          logError('payment.supplier_credit_failed', { error: String(e).slice(0, 200) })
+        }
       }
       let _fxDeferred = false
       try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_confirmSideFx()); _fxDeferred = true } } catch { /* no ctx */ }
       if (!_fxDeferred) await _confirmSideFx()
-    }
-
-    // 🛡️ 2026-05-20: 에이전시 입점 가게 commission 적립 (Phase 2).
-    //   가게 첫 결제 → ₩30,000 signup_bonus 1회.
-    //   매 결제 → 2% sales_commission (영구).
-    //   fail-soft — 결제 흐름 막지 않음.
-    try {
-      const { creditAgencyStoreIntroCommission } = await import('../utils/agency-store-intro-commission')
-      for (const order of orders) {
-        await creditAgencyStoreIntroCommission(c.env.DB, {
-          id: Number(order.id),
-          seller_id: (order as unknown as { seller_id?: number | null }).seller_id ?? null,
-          total_amount: (order as unknown as { total_amount?: number | null }).total_amount ?? null,
-        })
-      }
-    } catch (e) {
-      logError('payment.agency_intro_commission_failed', { error: String(e).slice(0, 200) })
-    }
-
-    // 🛡️ 2026-06-01 [UNLOCK] 영입자(크리에이터) 매장영입 commission (사용자 승인).
-    //   에이전시 버전과 동형 side-effect 적립 — Toss confirm/amount 검증 미변경.
-    //   매장 sellers.introduced_by_influencer_id 있으면 매출의 N% 를 영입자 influencer_attributions
-    //   (source='store_intro') 에 적립 → 기존 payout cron 이 사업자 3.3%/비사업자 8.8% 분기 처리.
-    try {
-      const { creditInfluencerStoreIntroCommission } = await import('../utils/influencer-store-intro-commission')
-      for (const order of orders) {
-        await creditInfluencerStoreIntroCommission(c.env.DB, {
-          id: Number(order.id),
-          seller_id: (order as unknown as { seller_id?: number | null }).seller_id ?? null,
-          total_amount: (order as unknown as { total_amount?: number | null }).total_amount ?? null,
-        })
-      }
-    } catch (e) {
-      logError('payment.influencer_intro_commission_failed', { error: String(e).slice(0, 200) })
-    }
-
-    // 🛡️ 2026-05-31 [UNLOCK] 도매몰 INC-5b (사용자 승인): 공급(B2B) 상품 판매 시 공급자에게
-    //   공급가 즉시 적립(D2). order_items 중 supply_source_id 라인만 calcSupplySplit 으로 분배.
-    //   fail-soft — 결제 흐름 막지 않음. order_id 멱등. (환불 시 returns 경로서 역전.)
-    try {
-      const { creditSupplierOnOrder } = await import('../../features/supply/api/supply-settlement')
-      for (const order of orders) {
-        await creditSupplierOnOrder(c.env.DB, Number(order.id))
-      }
-    } catch (e) {
-      logError('payment.supplier_credit_failed', { error: String(e).slice(0, 200) })
     }
 
     // 🛡️ 2026-05-18: 숙소 예약 (orders.stay_booking_id) 가 있으면 stay_bookings status='confirmed'

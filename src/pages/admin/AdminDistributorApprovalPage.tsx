@@ -7,9 +7,11 @@
  */
 import { useState } from 'react'
 import api from '@/lib/api'
+import { safeHttpHref } from '@/utils/safe-external-url'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { useQueryClient } from '@tanstack/react-query'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardLoadError } from '@/components/dashboard'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -40,7 +42,7 @@ export default function AdminDistributorApprovalPage() {
   const adminAuth = { Authorization: `Bearer ${localStorage.getItem('admin_token') || localStorage.getItem('access_token')}` }
   const [acting, setActing] = useState<number | null>(null)
 
-  const { data: list = [], isLoading, refetch } = useApiQuery<PendingDistributor[]>(
+  const { data: list = [], isLoading, isError, error, refetch } = useApiQuery<PendingDistributor[]>(
     QKEY, '/api/admin/distributor/distributors/pending-approvals',
     {
       headers: adminAuth,
@@ -86,6 +88,8 @@ export default function AdminDistributorApprovalPage() {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-20 text-gray-400"><Loader2 className="w-6 h-6 animate-spin" /></div>
+        ) : isError ? (
+          <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="승인 대기 판매사" />
         ) : list.length === 0 ? (
           <div className="border border-dashed border-gray-300 rounded-2xl py-20 text-center">
             <UserCheck className="w-10 h-10 text-gray-300 mx-auto mb-3" />
@@ -112,8 +116,8 @@ export default function AdminDistributorApprovalPage() {
                       {d.email && <span className="inline-flex items-center gap-1"><Mail className="w-3 h-3 text-gray-400" /> {d.email}</span>}
                       {d.phone && <span className="inline-flex items-center gap-1"><Phone className="w-3 h-3 text-gray-400" /> {d.phone}</span>}
                     </div>
-                    {d.business_registration_image_url && (
-                      <a href={d.business_registration_image_url} target="_blank" rel="noreferrer"
+                    {safeHttpHref(d.business_registration_image_url) && (
+                      <a href={safeHttpHref(d.business_registration_image_url)} target="_blank" rel="noreferrer"
                         className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
                         <FileText className="w-3 h-3" /> 사업자등록증 보기
                       </a>

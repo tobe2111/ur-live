@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader, DashboardStatCard } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardStatCard, DashboardLoadError } from '@/components/dashboard'
 import { formatWon, formatNumber } from '@/utils/format'
 import {
   LayoutDashboard, Loader2, Wallet, ShoppingBag, Users, Store, Package,
@@ -76,12 +76,16 @@ const EMPTY_QUEUE: ApprovalQueue = {
 export default function AdminWholesaleOverviewPage() {
   const { t } = useTranslation()
 
-  const { data, isLoading: loading } = useApiQuery<OverviewResp>(
+  const { data, isLoading: loading, isError, error, refetch } = useApiQuery<OverviewResp>(
     ['admin', 'wholesale-overview'], '/api/admin/wholesale-overview',
     {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       select: (r: any) => (r?.success ? { malls: (r.malls ?? []) as MallRow[], totals: (r.totals ?? EMPTY_TOTALS) as Totals, queue: (r.queue ?? EMPTY_QUEUE) as ApprovalQueue } : { malls: [], totals: EMPTY_TOTALS, queue: EMPTY_QUEUE }),
-      staleTime: 2 * 60 * 1000,
+      // 🛡️ 2026-06-26 (대표 신고 — 승인 후에도 '입금확인 1' 잔존): 승인 대기 카운트는 "오늘 처리할 것" 큐라
+      //   방문 시마다 최신이어야 함. staleTime 2분 + 전역 refetchOnMount:false 라 다른 페이지에서 승인 후
+      //   돌아와도 옛 카운트가 남던 문제 → 마운트마다 재조회(백엔드 병렬화로 빨라짐).
+      staleTime: 30 * 1000,
+      refetchOnMount: 'always',
     },
   )
   const malls = data?.malls ?? []
@@ -100,6 +104,8 @@ export default function AdminWholesaleOverviewPage() {
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+        ) : isError ? (
+          <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="도매 통합 현황" />
         ) : (
           <>
             {/* ── 🗂️ 통합 승인 큐 (2026-06-12 감사 개선) — 수동 승인 정책의 "오늘 처리할 것" 한 곳에. ── */}
@@ -115,7 +121,7 @@ export default function AdminWholesaleOverviewPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                 {([
                   [queue.distributors_pending, '판매사 승인', '/admin/distributor-approval'],
-                  [queue.suppliers_pending, '제조사 승인', '/admin/suppliers'],
+                  [queue.suppliers_pending, '제조사 승인', '/admin/suppliers?status=pending'],
                   [queue.products_pending, '상품 승인', '/admin/products?tab=supplier-products'],
                   [queue.price_changes_pending, '가격변경', '/admin/products?tab=supplier-products'],
                   [queue.charge_requests_pending, '입금확인', '/admin/wholesale-deposits'],
@@ -138,6 +144,7 @@ export default function AdminWholesaleOverviewPage() {
                 icon={<ShoppingBag className="w-4 h-4" />}
                 hint={t('admin.wsOverview.totalOrders', { defaultValue: '{{n}}건 결제', n: formatNumber(totals.orders_month) })}
                 accent="blue"
+                to="/admin/wholesale-orders"
               />
               <DashboardStatCard
                 label={t('admin.wsOverview.totalLiability', { defaultValue: '예치금 부채 합' })}
@@ -145,6 +152,7 @@ export default function AdminWholesaleOverviewPage() {
                 icon={<Wallet className="w-4 h-4" />}
                 hint={t('admin.wsOverview.liabilityHint', { defaultValue: '판매사에 갚을 잔액' })}
                 accent="rose"
+                to="/admin/wholesale-deposits"
               />
               <DashboardStatCard
                 label={t('admin.wsOverview.totalPendingCharge', { defaultValue: '대기 입금확인' })}
@@ -152,6 +160,7 @@ export default function AdminWholesaleOverviewPage() {
                 icon={<Inbox className="w-4 h-4" />}
                 hint={t('admin.wsOverview.pendingProposalsN', { defaultValue: '대기 제안 {{n}}건', n: formatNumber(totals.pending_proposals) })}
                 accent={totals.pending_charge_requests > 0 ? 'amber' : 'gray'}
+                to="/admin/wholesale-deposits"
               />
               <DashboardStatCard
                 label={t('admin.wsOverview.totalParticipants', { defaultValue: '판매사 · 제조사 · 상품' })}
@@ -159,6 +168,7 @@ export default function AdminWholesaleOverviewPage() {
                 icon={<Users className="w-4 h-4" />}
                 hint={t('admin.wsOverview.mallCount', { defaultValue: '몰 {{n}}개', n: formatNumber(totals.malls) })}
                 accent="violet"
+                to="/admin/suppliers"
               />
             </div>
 
