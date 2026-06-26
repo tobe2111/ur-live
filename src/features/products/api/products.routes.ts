@@ -325,8 +325,12 @@ productsRoutes.get('/', cors(), async (c) => {
 productsRoutes.get('/count', cors(), async (c) => {
   const { DB } = c.env;
   try {
-    // list(findAll)와 동일 가시성 기준: is_active=1 + 정지 셀러 상품 제외.
-    const conds = ['is_active = 1', 'NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)'];
+    // list(findAll)와 동일 가시성 기준: is_active=1 + 정지 셀러 상품 제외 + 도매 마스터 제외(소비자 비노출).
+    const conds = [
+      'is_active = 1',
+      'NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)',
+      'NOT (COALESCE(is_supply_product, 0) = 1 AND COALESCE(supply_source_id, 0) = 0)',
+    ];
     const binds: unknown[] = [];
     if (c.req.query('deal_only') === '1') conds.push('deal_only = 1');
     if (c.req.query('exclude_deal_only') === '1') conds.push('COALESCE(deal_only, 0) = 0');

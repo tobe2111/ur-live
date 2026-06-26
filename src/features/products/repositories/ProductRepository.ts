@@ -102,9 +102,13 @@ export class ProductRepository {
     if (_referralCommissionCol !== false) baseCols.push('referral_commission_rate');
     const LIST_COLUMNS = baseCols.join(', ');
     let query = `SELECT ${LIST_COLUMNS} FROM products WHERE is_active = 1
-      AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)`;
+      AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)
+      AND NOT (COALESCE(is_supply_product, 0) = 1 AND COALESCE(supply_source_id, 0) = 0)`;
+    // 🛡️ 2026-06-26 (대표 신고 — 도매상품이 유어딜 소비자 쇼핑에 누수): 도매몰(/api/wholesale/*) 전용
+    //   카탈로그 마스터(is_supply_product=1 AND supply_source_id 없음)는 소비자 목록/쇼핑/검색에서 제외.
+    //   도매몰은 별도 엔드포인트라 영향 0. 판매사 사입 재판매본(supply_source_id 있음)·일반 상품은 그대로 노출.
     const params: any[] = [];
-    
+
     if (filter.sellerId) {
       query += ` AND seller_id = ?`;
       params.push(filter.sellerId);
@@ -230,7 +234,8 @@ export class ProductRepository {
    */
   async count(filter: ProductFilter): Promise<number> {
     let query = `SELECT COUNT(*) as count FROM products WHERE is_active = 1
-      AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)`;
+      AND NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)
+      AND NOT (COALESCE(is_supply_product, 0) = 1 AND COALESCE(supply_source_id, 0) = 0)`;
     const params: any[] = [];
     
     if (filter.sellerId) {
@@ -423,6 +428,7 @@ export class ProductRepository {
       JOIN products p ON p.id = fts.rowid
       WHERE products_fts MATCH ?
       AND p.is_active = 1
+      AND NOT (COALESCE(p.is_supply_product, 0) = 1 AND COALESCE(p.supply_source_id, 0) = 0)
     `;
 
     const params: any[] = [sanitizedQuery];
