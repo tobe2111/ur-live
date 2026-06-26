@@ -248,6 +248,7 @@ export default function CuratorPage() {
           curator={curator}
           pinCount={pins.length}
           isOwner={ownerView}
+          accountType="user"
           onCopyLink={copyLink}
           onCuratorUpdate={(next) => setData(prev => prev ? { ...prev, curator: { ...prev.curator, ...next } } : prev)}
         />

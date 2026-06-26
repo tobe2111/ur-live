@@ -42,6 +42,8 @@ interface CuratorHeaderProps {
   }
   pinCount: number
   isOwner: boolean
+  // 🏁 2026-06-25 (대표 — 일반/사업자 구분 표시): 이름 옆 작은 배지. 'business'=사업자 유저(인증/판매), 'user'=일반.
+  accountType?: 'user' | 'business'
   onCopyLink: () => void
   onCuratorUpdate?: (next: Partial<CuratorHeaderProps['curator']>) => void
 }
@@ -50,6 +52,7 @@ export default function CuratorHeader({
   curator,
   pinCount,
   isOwner,
+  accountType,
   onCopyLink,
   onCuratorUpdate,
 }: CuratorHeaderProps) {
@@ -394,6 +397,21 @@ export default function CuratorHeader({
             </div>
           )}
           <p className="text-[12.5px] text-gray-400 dark:text-gray-500 font-medium mt-0.5">@{curator.handle}</p>
+          {/* 🏁 2026-06-25 (대표 — 일반/사업자 작게 구분): 사업자=잉크 배지(✓ 트러스트), 일반=뉴트럴 칩. */}
+          {accountType && (
+            <div className="mt-2 flex justify-center">
+              {accountType === 'business' ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-900 text-white dark:bg-white dark:text-[#020202]">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                  사업자 유저
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-100 text-gray-500 dark:bg-[#1A1A1A] dark:text-gray-400">
+                  유저
+                </span>
+              )}
+            </div>
+          )}
 
           {editingField === 'bio' ? (
             <div className="mt-2.5 max-w-md mx-auto">
