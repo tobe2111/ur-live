@@ -398,6 +398,14 @@ productsRoutes.get('/:id', cors(), async (c) => {
     //    short TTL 로 무효화 누락 시에도 1분 내 자연 갱신.
     const KV = (c.env as any).SESSION_KV;
     const product = await cacheGet(KV, `product_detail:${id}`, async () => {
+      // 🧱 2026-06-26 서비스 분리(도매↔유어딜): 도매 원본상품(is_supply_product=1 AND supply_source_id 없음)은
+      //   소비자 상품 상세 비노출. findById 는 create/update 와 공유라 WHERE 필터 불가 → 라우트 가드.
+      //   컬럼 미존재 env 는 fail-open(.catch null — 그 env 엔 도매 원본 자체가 없음). 404 결과도 캐시됨.
+      const sup = await DB.prepare('SELECT is_supply_product, supply_source_id FROM products WHERE id = ?')
+        .bind(id).first<{ is_supply_product: number | null; supply_source_id: number | null }>().catch(() => null);
+      if (sup && Number(sup.is_supply_product) === 1 && (sup.supply_source_id === null || Number(sup.supply_source_id) === 0)) {
+        throw new Error('Product not found');
+      }
       const service = new ProductService(DB);
       return await service.getProduct(id);
     }, { ttl: 60, staleWhileRevalidate: 30 });

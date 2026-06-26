@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-26 — 전 영역 5도메인 병렬 전수감사 + 감사 게이트 환경구축 (대표 "모두 봐줘 / 이상적이면 이후 감사 스킵하게 환경설정")
+**5개 병렬 에이전트(결제·정산·분리·인증RBAC·크래시) + 코드 재검증.** 결과: 인증RBAC·크래시 2도메인 **clean**(가드 GREEN). 확인 버그 수정 + 가드로 영구 박음.
+- **🔴 서비스 분리 단건 누수 fix (HIGH)**: 리스트/검색은 이미 격리됐으나 **단건 ID 경로**(공구 상세 `group-buy-public.routes` baseWhere ×2, 소비자 상품 상세 `products.routes` GET /:id 라우트가드, 장바구니 `cart.routes` getProduct, 공구확정 `group-buy.routes` confirm-toss)가 도매 원본(`is_supply_product=1 AND supply_source_id 없음`, group_buy_status DEFAULT 'active' 상속)을 미격리 → 소비자 표면+SSR 누수. 5사이트에 `AND NOT (COALESCE(is_supply_product,0)=1 AND COALESCE(supply_source_id,0)=0)` additive(findById 는 create/update 공유라 라우트 가드). **판매사 복제본·플랫폼·일반상품 보존.**
+- **🟢 인플 원천징수 SSOT fix**: `influencer-payout.ts` cron 의 3.3/8.8 literal → `WITHHOLDING_RATES` SSOT(CLAUDE.md 하드코딩 금지 룰).
+- **🛡️ 감사 게이트 환경구축(대표 "뒤가 중요")**: `scripts/audit-gate.sh`(29 불변식 한방 점검, GREEN=재감사 스킵) + `docs/AUDIT_INVARIANTS.md`(도메인별 가드 레지스트리 + 스킵 규칙) + `CLAUDE.md` 게이트 룰 + 신규 가드 `check-consumer-product-supply-isolation.mjs`(분리 회귀 잠금, pre-commit+CI strict). **현재 ALL GREEN 29건.**
+- **latent(가드 미보유 → TECHNICAL_DEBT 등록)**: 결제 셀프취소 3건(refundOrderFully 우회 — 딜 미환급/혼합 deal_used 미복원/쿠폰·referral 미역전, 쇼핑 숨김 gated) · 제조사 출금가능 표시 과대(돈손실 0) · 인플 프론트 원천징수 하드코딩(표시). 쇼핑 재오픈 전 fix + staging 검증 필수.
+- 검증: tsc 0 · sql-column/bind 0 · audit-gate ALL GREEN 29 · 신규 가드 회귀주입 catch 확인.
+
 ## ✅ 2026-06-26 — 유저↔어드민/셀러 상호 로그아웃 근본수정 (대표 신고 "유저 계정이랑 어드민 계정 서로 로그아웃")
 **근본원인**: 대시보드 로그인(어드민·셀러)이 시작 시 **무조건 `clearAuthData('user')`** 호출. KR 에선 `clearAuthData` 가 `/api/auth/logout-cookies` 까지 호출해 **httpOnly `ur_session` 쿠키를 삭제** → "어드민/셀러 로그인 = 소비자 강제 로그아웃". 코드베이스의 이중 로그인 **공존** 설계(RouteGuards 토큰존재 기반 + `AdminLoginPage:97` "User 세션 보호" 주석 + KakaoCallbackPage `hasOtherRoleToken` 보존)와 정면 모순. 공존은 *소비자 로그인이 마지막*일 때만 동작했고 *대시보드 로그인이 마지막*이면 소비자가 죽었음.
 - **수정(`AdminLoginPage.tsx`·`SellerLoginPage.tsx`)**: `clearAuthData('user')` 를 **`!isKorea()`(글로벌 Firebase) 게이트 안으로** 이동. KR 소비자=httpOnly 쿠키 세션, 대시보드=Bearer 라 **독립 → 공존**(파괴 안 함). 글로벌(Firebase) 경로는 byte-불변(clearAuthData+signOut 그대로). `clearFirebaseTokenCache()`·`clearAuthData('admin')`(role-scoped)·토큰 저장 전부 불변.

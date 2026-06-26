@@ -291,6 +291,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       catch (e) { out[name] = { ok: false, ms: Date.now() - t0, error: String((e as Error)?.message || e) } }
     }
     const baseWhere = `WHERE p.id = ?
+      AND NOT (COALESCE(p.is_supply_product, 0) = 1 AND COALESCE(p.supply_source_id, 0) = 0)
       AND (
         p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
         OR p.deal_only = 1
@@ -339,7 +340,12 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       seller_name?: string; seller_username?: string; seller_avatar?: string; seller_bio?: string;
       seller_instagram?: string; seller_youtube?: string; seller_tiktok?: string; seller_facebook?: string;
     }
+    // 🧱 2026-06-26 서비스 분리(도매↔유어딜): 승인된 도매 원본상품(is_supply_product=1 AND supply_source_id 없음)은
+    //   group_buy_status DEFAULT 'active' 를 상속해 아래 OR 절을 통과 → 소비자 공구 상세로 누수(리스트는 category
+    //   격리로 안전했으나 단건 ID 경로는 미격리, SSR DETAIL 슬롯까지 전파). 리스트 fix(findAll/count/FTS)와 동일
+    //   additive 필터로 차단 — 판매사 재판매 복제본(supply_source_id SET)·플랫폼상품·일반 소비자상품은 그대로 통과.
     const baseWhere = `WHERE p.id = ?
+      AND NOT (COALESCE(p.is_supply_product, 0) = 1 AND COALESCE(p.supply_source_id, 0) = 0)
       AND (
         p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
         OR p.deal_only = 1

@@ -169,6 +169,11 @@ node scripts/check-dual-login-guard.mjs || true
 echo "==> Pre-commit: 로그인 세션 공존 가드 (warn-only)..."
 node scripts/check-dashboard-login-session-coexist.mjs || true
 
+# 🧱 2026-06-26: 서비스 분리 — 소비자 단건 상품 조회의 도매 원본 격리 회귀 잠금 (warn-only).
+#   누수 닫은 사이트(상세/카트/공구확정)가 필터를 잃으면 도매 B2B 원본이 소비자에 노출. 차단은 verify.yml CI strict.
+echo "==> Pre-commit: 소비자 상품 도매 격리 가드 (warn-only)..."
+node scripts/check-consumer-product-supply-isolation.mjs || true
+
 # 🛡️ 2026-06-18: group_buy_status 로 상품 종류(교환권/공구 vs 쇼핑) 판별·라우팅 금지 (warn-only).
 #   group_buy_status 는 모든 상품 DEFAULT 'active' → 종류 판별에 쓰면 쇼핑 상품이 교환권으로 오분류
 #   (핀 /group-buy 오라우팅 사고). 종류는 deal_only + isVoucherCategory SSOT 만. 차단은 verify.yml CI strict.

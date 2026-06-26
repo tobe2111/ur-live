@@ -225,6 +225,13 @@ jobs:
         run: STRICT_LOGIN_COEXIST=1 node scripts/check-dashboard-login-session-coexist.mjs
         continue-on-error: false
 
+      # 🧱 2026-06-26: 서비스 분리(도매↔유어딜) — 소비자 단건 상품 조회가 도매 원본(is_supply_product=1·
+      #   supply_source_id 없음)을 격리하는지 회귀 잠금. 리스트는 기존 격리, 단건 ID 경로(상세/카트/공구확정)
+      #   누수를 닫고 영구 가드. 현재 위반 0 → strict.
+      - name: Consumer product supply isolation (strict)
+        run: STRICT_SUPPLY_ISOLATION=1 node scripts/check-consumer-product-supply-isolation.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-06-20: 로그인/가입 입력 글자 흰색(다크모드) 재발 방지 — 현재 위반 0 → strict.
       #   standalone 라이트 auth 페이지가 force-light-theme/레이아웃 없이 input 렌더 시 다크모드 글자
       #   안 보임 사고(전역 .dark input 규칙이 text-gray-900 을 특이도로 이김) 신규 추가 차단.
