@@ -408,34 +408,18 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
         onCuratorUpdate={(next) => setCuratorEdits((s) => ({ ...s, ...next }))}
       />
 
-      {/* 탭 — 🛡️ 2026-04-30 v4 sticky chrome 톤 */}
-      <TabsNav tabs={TABS} current={tab} onChange={setTab} isDark={isDark} T={T} />
-
-      {/* 탭 콘텐츠 */}
+      {/* 🏁 2026-06-25 (대표 "한 페이지 · 능력별 섹션"): 탭 제거 → 한 스크롤 섹션. 빈 섹션 자동 숨김.
+          순서: 추천(핀) → 내 상품 → 교환권 → 영상/라이브 → 정보. */}
       <div className="ur-content-wide px-4 lg:px-8 py-5">
-        {tab === 'home' && (
-          <>
-            {/* 🏁 2026-06-17 (#3): 추천 핀을 홈 탭 상단으로 승격 — 기존엔 모든 탭 맨 아래 8개로 매몰됐음.
-                연결된 큐레이터(사업자 유저)의 추천이 링크샵 정체성의 핵심이라 상단 노출. */}
-            {(seller as { curator_handle?: string | null })?.curator_handle && (
-              <Suspense fallback={null}>
-                <CuratorPinsSection handle={(seller as { curator_handle?: string | null }).curator_handle} />
-              </Suspense>
-            )}
-            <HomeTab
-              mealVouchers={mealVouchers}
-              shorts={shorts}
-              recentStreams={recentStreams}
-              streams={streams}
-              isOwner={ownerView}
-              textClass={T.text}
-              setTab={setTab}
-              sellerId={seller?.id ? Number(seller.id) : undefined}
-            />
-          </>
+        {/* ① 추천 — 연결된 큐레이터(본인) 추천 핀 (자체 헤더 보유) */}
+        {(seller as { curator_handle?: string | null })?.curator_handle && (
+          <Suspense fallback={null}>
+            <CuratorPinsSection handle={(seller as { curator_handle?: string | null }).curator_handle} />
+          </Suspense>
         )}
 
-        {tab === 'shop' && (
+        {/* ② 내 상품 — 방문자에게 0개면 섹션 숨김, 소유자에겐 등록 CTA */}
+        {(shopProducts.length > 0 || ownerView) && (
           shopProducts.length === 0 ? (
             // 🎨 2026-06-17 링크샵 통일: 평면 텍스트 → ghost/CTA 빈 상태 (큐레이터 링크샵과 톤 맞춤)
             <div className="max-w-3xl mx-auto px-4 py-16 text-center">
@@ -454,6 +438,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
             </div>
           ) : (
             <>
+            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mt-7 mb-3">{t('seller.publicPage.shop', { defaultValue: '내 상품' })} {shopProducts.length}</h3>
             {/* 🔍 2026-06-16 링크샵 시안: 상품 검색 (이름 필터) */}
             <div className="flex items-center gap-2 h-11 px-3.5 mb-4 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212]">
               <Search className="w-4 h-4 text-gray-400 shrink-0" />
@@ -478,27 +463,37 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
           )
         )}
 
-        {tab === 'vouchers' && (
-          <VouchersTab mealVouchers={mealVouchers} isOwner={ownerView} textClass={T.text} />
+        {/* ③ 교환권 */}
+        {mealVouchers.length > 0 && (
+          <section className="pt-7">
+            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '교환권' })} {mealVouchers.length}</h3>
+            <VouchersTab mealVouchers={mealVouchers} isOwner={ownerView} textClass={T.text} />
+          </section>
         )}
 
-        {tab === 'shorts' && (
-          <VideosTab shorts={shorts} isOwner={ownerView} textClass={T.text} />
+        {/* ④ 영상 (있을 때만) */}
+        {!LIVE_COMMERCE_SUSPENDED && shorts.length > 0 && (
+          <section className="pt-7">
+            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.videos', { defaultValue: '영상' })} {shorts.length}</h3>
+            <VideosTab shorts={shorts} isOwner={ownerView} textClass={T.text} />
+          </section>
         )}
 
-        {tab === 'live' && (
-          streams.length === 0 ? (
-            <div className="text-center py-16 text-gray-400 text-sm">{t('seller.publicPage.noLiveRecords')}</div>
-          ) : (
+        {/* ⑤ 라이브 (있을 때만) */}
+        {!LIVE_COMMERCE_SUSPENDED && streams.length > 0 && (
+          <section className="pt-7">
+            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.tabLive', { defaultValue: '라이브' })} {streams.length}</h3>
             <div className="grid grid-cols-2 gap-3">
               {streams.map(s => (
                 <StreamCard key={s.id} stream={s} onClick={() => navigate(`/live/${s.id}`)} />
               ))}
             </div>
-          )
+          </section>
         )}
 
-        {tab === 'info' && (
+        {/* ⑥ 정보 */}
+        <section className="pt-7">
+          <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.tabInfo', { defaultValue: '정보' })}</h3>
           <InfoTab
             seller={seller}
             sellerId={sellerId!}
@@ -518,7 +513,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
             startEdit={startEdit}
             saveEdit={saveEdit}
           />
-        )}
+        </section>
       </div>
 
       {/* 🏁 2026-06-17 (#3): 추천 핀 섹션은 홈 탭 상단으로 이동(위) — 맨 아래 매몰 제거. */}
