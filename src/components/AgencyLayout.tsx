@@ -55,9 +55,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: '매장 영입', i18nKey: 'agency.nav.storeRecruit',
     items: [
       { path: '/agency/introduced-stores', label: '내 입점 가게', i18nKey: 'agency.nav.introducedStores', icon: Store, mode: 'common' },
-      // 🔧 2026-06-24 (전수조사): '매장 영입 현황'(/agency/prospects) 제거 — 셀러용 SellerProspectsPage 를
-      //   렌더해 에이전시 토큰엔 항상 빈 화면(/api/prospects/mine 가 agency id 미매칭)이었음. '내 입점 가게'가
-      //   영입/입점 현황을 이미 커버. 에이전시 전용 영입 파이프라인 필요 시 별도 페이지로 신설.
+      { path: '/agency/prospects',  label: '매장 영입 현황', i18nKey: 'agency.nav.prospects', icon: UserPlus, mode: 'common' },
       { path: '/agency/group-buy', label: '공동구매',  i18nKey: 'agency.nav.groupBuy', icon: Utensils, mode: 'store' },
       // 🛡️ 2026-05-18: 숙소 공구 — PR 5/6.
       { path: '/agency/stays', label: '숙소 운영', i18nKey: 'agency.nav.stays', icon: Building2, mode: 'store' },
