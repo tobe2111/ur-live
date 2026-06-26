@@ -5,7 +5,7 @@ import api from '@/lib/api'
 import { clearAuthData } from '@/utils/auth'
 import { clearFirebaseTokenCache } from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Mail, Lock, Eye, EyeOff, Users, Package, TrendingUp, ArrowRight } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Users, Package, TrendingUp, ArrowRight, ChevronDown } from 'lucide-react'
 import TurnstileWidget from '@/components/auth/TurnstileWidget'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
@@ -20,10 +20,13 @@ export default function SellerLoginPage() {
   const [showPw, setShowPw] = useState(false)
   // 🛡️ 2026-05-03: Turnstile token (분산 봇 brute-force 방어)
   const [turnstileToken, setTurnstileToken] = useState<string>('')
+  // 🔗 2026-06-26 카카오 단일로그인 통일 (Step 2a): 카카오 우선, 이메일 폼은 기존 셀러용 fallback.
+  //   저장된 remember_email 이 있으면(=기존 이메일 셀러) 폼을 자동으로 펼쳐 회귀 0.
+  const [showEmailLogin, setShowEmailLogin] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('seller_remember_email')
-    if (saved) { setFormData(prev => ({ ...prev, email: saved })); setRememberMe(true) }
+    if (saved) { setFormData(prev => ({ ...prev, email: saved })); setRememberMe(true); setShowEmailLogin(true) }
   }, [])
 
   // 🛡️ 2026-04-29: 401 인터셉터가 ?error=session_expired 로 redirect 시 toast 표시
@@ -161,7 +164,32 @@ export default function SellerLoginPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* 🔗 카카오 로그인 = 기본(권장). 카카오 한 번으로 셀러 권한 자동 복원/신청 */}
+            <a
+              href={`/auth/kakao/start?redirect=${encodeURIComponent('/seller')}&intent=seller`}
+              className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#FEE500] hover:bg-[#FDD800] active:opacity-90 text-[#191600] text-[15px] font-bold rounded-2xl transition-colors no-underline shadow-sm"
+            >
+              <span className="text-lg">💬</span>
+              {t('seller.kakaoLoginPrimary', { defaultValue: '카카오로 로그인 / 시작하기' })}
+            </a>
+            <p className="text-[11px] text-gray-400 text-center mt-2 leading-relaxed">
+              {t('seller.kakaoLoginPrimaryHint', { defaultValue: '카카오 계정 하나로 로그인하면 셀러 권한이 자동으로 연결돼요.' })}
+            </p>
+
+            {/* 기존 이메일 셀러 로그인 (fallback) */}
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={() => setShowEmailLogin(v => !v)}
+                className="w-full flex items-center justify-center gap-1.5 text-[13px] text-gray-500 hover:text-gray-700 transition-colors"
+                aria-expanded={showEmailLogin}
+              >
+                {t('seller.emailLoginToggle', { defaultValue: '기존 이메일로 로그인' })}
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showEmailLogin ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className={`space-y-4 ${showEmailLogin ? 'mt-4' : 'hidden'}`}>
               {/* Email */}
               <div>
                 <label htmlFor="seller-email" className="block text-sm font-medium text-gray-700 mb-1.5">{t('common.email')}</label>
@@ -262,26 +290,6 @@ export default function SellerLoginPage() {
                 )}
               </button>
             </form>
-
-            {/* 카카오 로그인 — 카카오 연동된 셀러는 한 번 로그인으로 셀러 권한 자동 복원 */}
-            <div className="mt-4">
-              <div className="flex items-center gap-3 text-[11px] text-gray-400 mb-3">
-                <div className="flex-1 h-px bg-gray-200" />
-                <span>또는</span>
-                <div className="flex-1 h-px bg-gray-200" />
-              </div>
-
-              <a
-                href={`/auth/kakao/start?redirect=${encodeURIComponent('/seller')}&intent=seller`}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-[#FEE500] hover:bg-[#FDD800] text-[#3C1E1E] text-sm font-semibold rounded-2xl transition-colors no-underline"
-              >
-                <span className="text-base">💬</span>
-                카카오로 셀러 시작하기
-              </a>
-              <p className="text-[10px] text-gray-400 text-center mt-2">
-                카카오 로그인 후 안내에 따라 셀러 권한을 신청할 수 있어요
-              </p>
-            </div>
 
             <div className="mt-6 pt-6 border-t border-gray-100 text-center">
               <p className="text-sm text-gray-500">

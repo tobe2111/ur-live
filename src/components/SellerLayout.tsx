@@ -13,6 +13,7 @@ import { toast } from '@/hooks/useToast'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import DashboardNotificationBell from './DashboardNotificationBell'
+import SellerKakaoLinkBanner from './SellerKakaoLinkBanner'
 
 type SellerType = 'influencer' | 'store_owner' | 'both'
 
@@ -503,6 +504,8 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
         </header>
 
         <main className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5">
+          {/* 🔗 카카오 미연동 이메일 셀러 → 연동 권유 (dismissible, 1회 status 조회) */}
+          <SellerKakaoLinkBanner />
           {children}
         </main>
       </div>

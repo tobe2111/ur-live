@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## 🟡 2026-06-26 — 카카오 ↔ 사업자 유저(셀러) 단일 로그인 통일 2단계 (대표 "응 하자. 가장 이상적으로")
+**배경/설계**: `docs/design/kakao-seller-unification.md`. 감사 확인 — **카카오→셀러 대시보드 진입은 이미 동작**(콜백 `issueLinkedRoleTokens`→역할토큰 fragment→KakaoCallbackPage). 따라서 2단계는 **잠금파일 무수정 + additive UX/마이그레이션 유도**만으로 달성.
+- **2a ✅ 셀러 로그인 카카오 우선**: `SellerLoginPage.tsx` — 카카오 버튼을 기본(상단 prominent CTA)으로 승격, 이메일/비번 폼은 "기존 이메일로 로그인" 토글 뒤로 강등(`showEmailLogin` 기본 접힘). **`seller_remember_email` 저장된 기존 이메일 셀러는 자동 펼침 → 회귀 0.** 이메일 로그인 로직(handleSubmit/Turnstile/remember) byte-동일 보존. i18n `seller.kakaoLoginPrimary/Hint`·`emailLoginToggle` 6언어.
+- **2b ✅ 대시보드 연동 권유 배너**: 신규 `SellerKakaoLinkBanner.tsx`(SellerLayout `<main>` 상단, dismissible). dismiss 플래그/`user_id`(카카오세션) 있으면 **네트워크 0** 미노출; 이메일 셀러 후보만 1회 `GET /api/seller/kakao-link-status` → 미연동시만 노출. CTA→`/seller/profile`(기존 `KakaoLinkButton` OAuth 팝업 재사용, 중복 0). i18n `seller.kakaoBannerTitle/Desc/Cta` 6언어.
+- **2c 🔜 완전 폐지(보류)**: 미연결 이메일 셀러 lockout 방지 위해 마이그레이션 성숙까지 fallback 유지. 잠금파일(KakaoAuthService/kakao.routes/KakaoCallbackPage/pending-auth) 무수정 — 2c 진입 시에만 AskUserQuestion+audit.
+- 검증: tsc 0 · theme-consistency 0 · 6 locale JSON valid · `npm run build` 0.
+
 ## ✅ 2026-06-26 — 소비자(유어딜) 쇼핑 동선 전수조사 (대표 "일단 그래도 해줘") — 서비스 분리 준수
 **범위(유어딜 공구 서비스만 — 도매몰 무관)**: 홈/교환권/공구/체크아웃/링크샵/마이/충전/알림 신규·빈·비로그인 계정 관점. 2개 에이전트 병렬 + 코드 재검증.
 - **🔴 HIGH(크래시) 수정 — `UserGroupBuyCreatePage`(`/community-group-buy/new`) Rules of Hooks 위반 흰화면**: 자격(셀러/인플) 확인 전 `eligibleAsInfluencer===null` 1차 렌더가 훅 2개 호출 후 early-return → 자격 `true` 재렌더에서 useState 7+useEffect 호출 → React "Rendered more hooks" 크래시. **모든 훅을 early-return 위로 이동**. (현재 `COMMERCE_PROPOSAL_HIDDEN`로 진입 배너 숨김이나 직접 URL·언셸브 시 라이브.)

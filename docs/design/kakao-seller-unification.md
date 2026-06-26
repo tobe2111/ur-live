@@ -47,9 +47,25 @@
 - **수동 연결 도구**(선행): `PATCH /api/admin/sellers/:id/link-user` + AdminPendingSellersPage 폼 — 이메일 다른 기존 셀러를 운영자가 핸들로 직접 연결.
 - 기존 same-email 미연결분은 `repair-schema` 백필 + 로그인 시 자동연결이 처리.
 
-## 🔜 2단계 (설계 필요 — 보류)
-**목표**: 셀러도 카카오 단일 로그인. 별도 이메일/비번 셀러 로그인 폐지.
-- 기존 이메일/비번 셀러 → 카카오 계정 마이그레이션 (이메일 매칭 + 본인확인 + linked_user_id 백필).
-- 셀러 로그인 화면 → 카카오 로그인으로 통일 (대시보드는 역할토큰으로 진입).
-- 잠금 영향: `KakaoAuthService`(same-email auto-link), `kakao.routes`(역할토큰/iOS fragment), 로그인 화면들 — 변경 시 AskUserQuestion + audit log 필수.
-- 부가 하드닝(P1/P2): 이메일 비교 소문자 통일(대소문자 사고 방지), become-distributor COUNT≤1 게이트 추가, 에이전시-초대 셀러 승인 시 자동연결 probe.
+## 🟡 2단계 (진행 중 — 대표 승인 "응 하자. 가장 이상적으로", 2026-06-26)
+**목표**: 셀러도 카카오 단일 로그인. 별도 이메일/비번 셀러 로그인은 *기존 셀러용 fallback* 으로 강등 → 마이그레이션 완료 후 폐지.
+
+**전제 (감사 확인)**: 카카오 → 셀러 대시보드 진입은 *이미 동작*(콜백 `issueLinkedRoleTokens` → 역할토큰 fragment → KakaoCallbackPage). 따라서 2단계는 **잠금파일 무수정 + additive UX/마이그레이션 유도**만으로 달성.
+
+### ✅ 2a — 셀러 로그인 화면 카카오 우선 (완료, 2026-06-26)
+- `SellerLoginPage.tsx`: 카카오 버튼을 **기본(상단 prominent CTA)** 으로 승격. 이메일/비번 `<form>` 은 "기존 이메일로 로그인" 토글 뒤로 강등(`showEmailLogin`, 기본 접힘). **저장된 `seller_remember_email` 있으면 자동 펼침 → 기존 이메일 셀러 회귀 0.** 이메일 로그인 로직(`handleSubmit`/Turnstile/remember)은 전부 byte-동일 보존(접근만 fallback 화).
+- i18n: `seller.kakaoLoginPrimary` / `kakaoLoginPrimaryHint` / `emailLoginToggle` 6개 언어 추가.
+
+### ✅ 2b — 대시보드 카카오 연동 권유 배너 (완료, 2026-06-26)
+- 신규 `SellerKakaoLinkBanner.tsx` (SellerLayout `<main>` 상단). dismissible.
+- 비용 최소화: dismiss 플래그(localStorage) 또는 `user_id`(카카오 세션) 있으면 **네트워크 0** 으로 미노출. 이메일 셀러 후보만 1회 `GET /api/seller/kakao-link-status` → 미연동일 때만 노출(연동돼 있으면 플래그 캐시).
+- CTA → `/seller/profile` (기존 `KakaoLinkButton` 이 OAuth 팝업 + `POST /link-kakao` 처리 — 검증된 흐름 재사용, 중복 0).
+- i18n: `seller.kakaoBannerTitle/Desc/Cta` 6개 언어 추가.
+
+### 🔜 2c — 완전 폐지 (보류, 마이그레이션 성숙 후)
+- 이메일/비번 로그인 fully 제거. **선행조건**: 미연결 이메일 셀러 비율이 충분히 낮아질 때까지 fallback 유지(지금 제거하면 미연결 셀러 lockout).
+- 잔여 자동 마이그레이션: 카카오 same-email auto-link(`KakaoAuthService.upsertUser`, 잠금) + `repair-schema` 백필이 이메일 셀러가 카카오로 로그인하는 순간 `linked_user_id` 채움 → 2a/2b 가 그 경로로 유도.
+- 잠금파일(`KakaoAuthService`/`kakao.routes`/`KakaoCallbackPage`/`pending-auth`)은 2a/2b 에서 **무수정**. 2c 진입 시에만 AskUserQuestion + audit log.
+
+### 부가 하드닝 (P1/P2, 별도)
+- 이메일 비교 소문자 통일(대소문자 사고 방지), become-distributor COUNT≤1 게이트, 에이전시-초대 셀러 승인 시 자동연결 probe.
