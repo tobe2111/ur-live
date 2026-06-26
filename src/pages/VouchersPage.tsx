@@ -1000,7 +1000,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 <button
                   type="button"
                   onClick={() => {
-                    const next = embedVisible + 20
+                    // 🎫 2026-06-26 (대표 결정): /vouchers 는 8개 시작이라 더보기도 +8(리듬 정합). 홈은 +20 유지.
+                    const next = embedVisible + (embedded ? 20 : 8)
                     setEmbedVisible(next)
                     if (next >= products.length && hasMore && !loadingMore) {
                       const np = page + 1; setPage(np); loadProducts(np, false)
