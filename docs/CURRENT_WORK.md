@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## 🟡 2026-06-26 — 카카오 ↔ 사업자 유저(셀러) 단일 로그인 통일 2단계 (대표 "응 하자. 가장 이상적으로")
+**배경/설계**: `docs/design/kakao-seller-unification.md`. 감사 확인 — **카카오→셀러 대시보드 진입은 이미 동작**(콜백 `issueLinkedRoleTokens`→역할토큰 fragment→KakaoCallbackPage). 따라서 2단계는 **잠금파일 무수정 + additive UX/마이그레이션 유도**만으로 달성.
+- **2a ✅ 셀러 로그인 카카오 우선**: `SellerLoginPage.tsx` — 카카오 버튼을 기본(상단 prominent CTA)으로 승격, 이메일/비번 폼은 "기존 이메일로 로그인" 토글 뒤로 강등(`showEmailLogin` 기본 접힘). **`seller_remember_email` 저장된 기존 이메일 셀러는 자동 펼침 → 회귀 0.** 이메일 로그인 로직(handleSubmit/Turnstile/remember) byte-동일 보존. i18n `seller.kakaoLoginPrimary/Hint`·`emailLoginToggle` 6언어.
+- **2b ✅ 대시보드 연동 권유 배너**: 신규 `SellerKakaoLinkBanner.tsx`(SellerLayout `<main>` 상단, dismissible). dismiss 플래그/`user_id`(카카오세션) 있으면 **네트워크 0** 미노출; 이메일 셀러 후보만 1회 `GET /api/seller/kakao-link-status` → 미연동시만 노출. CTA→`/seller/profile`(기존 `KakaoLinkButton` OAuth 팝업 재사용, 중복 0). i18n `seller.kakaoBannerTitle/Desc/Cta` 6언어.
+- **2c 🔜 완전 폐지(보류)**: 미연결 이메일 셀러 lockout 방지 위해 마이그레이션 성숙까지 fallback 유지. 잠금파일(KakaoAuthService/kakao.routes/KakaoCallbackPage/pending-auth) 무수정 — 2c 진입 시에만 AskUserQuestion+audit.
+- 검증: tsc 0 · theme-consistency 0 · 6 locale JSON valid · `npm run build` 0.
+
 ## ✅ 2026-06-26 — 결제 셀프취소 머니버그 3종 fix (대표 "지금 진행")
 감사에서 나온 latent 3건을 `refundOrderFully` SSOT 라우팅으로 근본수정 (`src/worker/routes/order.routes.ts` PAID/DONE 전액취소).
 - **B(HIGH)**: 딜 전액결제(toss_key 없음) 셀프취소 422 차단 → refundOrderFully isDeal skip + 딜 환급 → 취소 가능. **C(HIGH)**: 혼합결제 deal_used 미복원 → step 3b 복원. **D(MED)**: 쿠폰/referral_bonus/affiliate/공급/에이전시/영입자 미역전 → 전부 대칭 역전. + CAS 멱등(동시 이중취소 1회만).
