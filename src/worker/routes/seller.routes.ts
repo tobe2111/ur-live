@@ -90,6 +90,50 @@ sellersRouter.get('/:id', async (c) => {
   }
 });
 
+// 🏁 2026-06-25 (대표 신고 — 링크샵 배너 사라짐): 셀러 공개 프로필 SELECT 를 컬럼 단위 self-heal 로.
+//   배경: 기존 FULL/FALLBACK 2단 구조는 sibling 신규컬럼(external_live_* 등)이 prod 에 하나라도 없으면
+//   전체가 FALLBACK 으로 떨어지고, 그 FALLBACK 이 'NULL AS banner_url' 이라 → 저장된 배너가 안 읽혔음.
+//   이제 실제로 없는 컬럼만 NULL 로 빼고 banner_url 등 존재 컬럼은 보존 (productDetailColsHealed 패턴).
+const SELLER_PUBLIC_COLS: Array<{ expr: string; out?: string; probe?: string }> = [
+  { expr: 's.id' }, { expr: 's.username' }, { expr: 's.name' },
+  { expr: 's.business_name', out: 'business_name', probe: 'business_name' },
+  { expr: 's.business_number', out: 'business_number', probe: 'business_number' },
+  { expr: 's.business_address', out: 'business_address', probe: 'business_address' },
+  { expr: 's.profile_image', out: 'profile_image', probe: 'profile_image' },
+  { expr: 's.bio', out: 'bio', probe: 'bio' },
+  { expr: 's.commission_rate', out: 'commission_rate', probe: 'commission_rate' },
+  { expr: 's.created_at' },
+  { expr: 's.sns_instagram', out: 'sns_instagram', probe: 'sns_instagram' },
+  { expr: 's.sns_youtube', out: 'sns_youtube', probe: 'sns_youtube' },
+  { expr: 's.sns_facebook', out: 'sns_facebook', probe: 'sns_facebook' },
+  { expr: 's.sns_twitter', out: 'sns_twitter', probe: 'sns_twitter' },
+  { expr: 's.website_url', out: 'website_url', probe: 'website_url' },
+  { expr: 's.kakao_chat_url AS kakao_chat_link', out: 'kakao_chat_link', probe: 'kakao_chat_url' },
+  { expr: 's.representative_name AS ceo_name', out: 'ceo_name', probe: 'representative_name' },
+  { expr: 's.banner_url', out: 'banner_url', probe: 'banner_url' },
+  { expr: 's.brand_color', out: 'brand_color', probe: 'brand_color' },
+  { expr: 's.external_live_tiktok', out: 'external_live_tiktok', probe: 'external_live_tiktok' },
+  { expr: 's.external_live_instagram', out: 'external_live_instagram', probe: 'external_live_instagram' },
+  { expr: 's.external_live_facebook', out: 'external_live_facebook', probe: 'external_live_facebook' },
+  { expr: '(SELECT COUNT(*) FROM seller_follows WHERE seller_id = s.id) AS follower_count' },
+];
+const _missingSellerCols = new Set<string>();
+function buildSellerPublicSelect(): string {
+  return SELLER_PUBLIC_COLS
+    .map((col) => (col.probe && col.out && _missingSellerCols.has(col.probe)) ? `NULL AS ${col.out}` : col.expr)
+    .join(', ');
+}
+function pruneSellerPublicCol(err: unknown): boolean {
+  const msg = String((err as { message?: string })?.message ?? err);
+  const m = msg.match(/no such column:?\s*(?:[A-Za-z_]+\.)?([A-Za-z_0-9]+)/i);
+  if (!m) return false;
+  const col = m[1];
+  if (!SELLER_PUBLIC_COLS.some((c) => c.probe === col) || _missingSellerCols.has(col)) return false;
+  _missingSellerCols.add(col);
+  console.error('[SELLERS] public SELECT 컬럼 자동 제외:', col, '— repair-schema 등록 필요');
+  return true;
+}
+
 // GET /api/sellers/:id/public — 셀러 공개 프로필 (비인증, ID/username/slug 지원)
 sellersRouter.get('/:id/public', async (c) => {
   try {
@@ -108,40 +152,22 @@ sellersRouter.get('/:id/public', async (c) => {
     //                       민감 필드는 여전히 제외: password_hash/email/phone/bank_*/account_holder/tax_email
     // 🛡️ 2026-05-15 (PRISM 따라잡기): 미니샵 커스터마이징 컬럼 추가
     //   banner_url / brand_color / external_live_* (TikTok/Instagram/Facebook)
-    const PUBLIC_SELLER_COLUMNS_FULL =
-      's.id, s.username, s.name, s.business_name, s.business_number, s.business_address, ' +
-      's.profile_image, s.bio, s.commission_rate, s.created_at, ' +
-      's.sns_instagram, s.sns_youtube, s.sns_facebook, s.sns_twitter, s.website_url, ' +
-      's.kakao_chat_url AS kakao_chat_link, s.representative_name AS ceo_name, ' +
-      's.banner_url, s.brand_color, ' +
-      's.external_live_tiktok, s.external_live_instagram, s.external_live_facebook, ' +
-      '(SELECT COUNT(*) FROM seller_follows WHERE seller_id = s.id) AS follower_count';
-    // 🛡️ 2026-05-16: production 에 신규 컬럼 (banner_url/brand_color/external_live_*) 없는 환경 fallback
-    const PUBLIC_SELLER_COLUMNS_FALLBACK =
-      's.id, s.username, s.name, s.business_name, s.business_number, s.business_address, ' +
-      's.profile_image, s.bio, s.commission_rate, s.created_at, ' +
-      "COALESCE(s.sns_instagram, '') AS sns_instagram, COALESCE(s.sns_youtube, '') AS sns_youtube, " +
-      "COALESCE(s.sns_facebook, '') AS sns_facebook, COALESCE(s.sns_twitter, '') AS sns_twitter, COALESCE(s.website_url, '') AS website_url, " +
-      "NULL AS kakao_chat_link, NULL AS ceo_name, NULL AS banner_url, NULL AS brand_color, " +
-      "NULL AS external_live_tiktok, NULL AS external_live_instagram, NULL AS external_live_facebook, " +
-      '(SELECT COUNT(*) FROM seller_follows WHERE seller_id = s.id) AS follower_count';
     const seller = await cacheGet(
       c.env.SESSION_KV,
       `seller:${param}`,
       async () => {
         const qb = new QueryBuilder(c.env.DB);
         const isNumeric = /^\d+$/.test(param);
-        // 신규 컬럼 SELECT 시도 → 실패 시 fallback SELECT
-        try {
-          return isNumeric
-            ? await qb.queryOne(`SELECT ${PUBLIC_SELLER_COLUMNS_FULL} FROM sellers s WHERE s.id = ?`, [param])
-            : await qb.queryOne(`SELECT ${PUBLIC_SELLER_COLUMNS_FULL} FROM sellers s WHERE s.username = ?`, [param]);
-        } catch (e) {
-          console.warn('[SELLERS] full SELECT failed, fallback:', e instanceof Error ? e.message : e);
-          return isNumeric
-            ? await qb.queryOne(`SELECT ${PUBLIC_SELLER_COLUMNS_FALLBACK} FROM sellers s WHERE s.id = ?`, [param])
-            : await qb.queryOne(`SELECT ${PUBLIC_SELLER_COLUMNS_FALLBACK} FROM sellers s WHERE s.username = ?`, [param]);
+        const where = isNumeric ? 's.id = ?' : 's.username = ?';
+        // 컬럼 단위 self-heal: 실제 없는 컬럼만 NULL 로 빼고 재시도 → banner_url 등 존재 컬럼은 보존.
+        for (let i = 0; i <= SELLER_PUBLIC_COLS.length; i++) {
+          try {
+            return await qb.queryOne(`SELECT ${buildSellerPublicSelect()} FROM sellers s WHERE ${where}`, [param]);
+          } catch (e) {
+            if (!pruneSellerPublicCol(e)) throw e;
+          }
         }
+        return null;
       },
       { ttl: 300, staleWhileRevalidate: 120 }
     );
