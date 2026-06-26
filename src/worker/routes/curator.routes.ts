@@ -385,11 +385,15 @@ curatorRoutes.post('/me/pins', requireAuth(), async (c) => {
     const DB = c.env.DB
 
     // 상품 존재 + 활성 검증
-    const product = await DB.prepare('SELECT id, is_active FROM products WHERE id = ? LIMIT 1')
+    const product = await DB.prepare('SELECT id, is_active, COALESCE(is_supply_product,0) AS is_supply_product, COALESCE(supply_source_id,0) AS supply_source_id FROM products WHERE id = ? LIMIT 1')
       .bind(productId)
-      .first<{ id: number; is_active: number }>()
+      .first<{ id: number; is_active: number; is_supply_product: number; supply_source_id: number }>()
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
     if (!product.is_active) return c.json({ success: false, error: '비활성 상품은 핀할 수 없습니다' }, 400)
+    // 🛡️ 2026-06-26 분리 감사: 도매 카탈로그 마스터(공급상품)는 소비자 링크샵에 핀 불가.
+    if (product.is_supply_product === 1 && product.supply_source_id === 0) {
+      return c.json({ success: false, error: '도매 전용 상품은 핀할 수 없습니다' }, 400)
+    }
 
     // 핀 상한 검증
     const cnt = await getPinCount(DB, userId)
@@ -899,6 +903,7 @@ curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
        FROM products p
        WHERE p.is_active = 1
          AND COALESCE(p.referral_enabled, 0) = 1
+         AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
          ${exclusion}
        ORDER BY p.sold_count DESC, p.id DESC
        LIMIT ?`,

@@ -190,6 +190,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
                 LEFT JOIN gift_catalog gc ON gc.gift_code = p.kt_alpha_gift_code
                 WHERE p.category IN (${placeholders}) AND p.is_active = 1
                   AND (p.group_buy_status = ? OR ? = 'all')
+                  AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
                   ${regionWhere}
                 ORDER BY ${orderBy}
                 LIMIT ${limitClause}
@@ -208,6 +209,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
             ${regionJoin}
             WHERE p.category IN (${placeholders}) AND p.is_active = 1
               AND (p.group_buy_status = ? OR ? = 'all')
+              AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
               ${regionWhere}
             ORDER BY ${orderBy}
             LIMIT ${limitClause}

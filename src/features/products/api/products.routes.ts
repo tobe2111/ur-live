@@ -129,7 +129,7 @@ productsRoutes.get('/search/suggestions', cors(), async (c) => {
       `SELECT keyword FROM popular_searches WHERE keyword LIKE ? ORDER BY search_count DESC LIMIT 6`
     ).bind(`${q}%`).all<{ keyword: string }>().catch(() => ({ results: [] }))
     const productNames = await DB.prepare(
-      `SELECT DISTINCT name FROM products WHERE name LIKE ? AND is_active = 1 ORDER BY sold_count DESC, name ASC LIMIT 10`
+      `SELECT DISTINCT name FROM products WHERE name LIKE ? AND is_active = 1 AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0) ORDER BY sold_count DESC, name ASC LIMIT 10`
     ).bind(`%${q}%`).all<{ name: string }>().catch(() => ({ results: [] }))
 
     const seen = new Set<string>()
@@ -162,6 +162,7 @@ productsRoutes.get('/suggestions', cors(), async (c) => {
     const result = await DB.prepare(
       `SELECT DISTINCT name as suggestion FROM products
        WHERE name LIKE ? AND is_active = 1
+         AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)
        ORDER BY name ASC LIMIT 10`
     ).bind(`%${q}%`).all().catch(() => ({ results: [] }));
     return c.json({ success: true, data: (result.results || []).map((r: any) => r.suggestion) });
