@@ -163,6 +163,12 @@ node scripts/check-query-initialdata.mjs || true
 echo "==> Pre-commit: 듀얼 로그인 가드 (warn-only)..."
 node scripts/check-dual-login-guard.mjs || true
 
+# 🔐 2026-06-26: 유저↔어드민/셀러 상호 로그아웃 재발 방지 (warn-only).
+#   대시보드 로그인이 무조건 clearAuthData('user') 하면 KR httpOnly ur_session 쿠키까지 날아가
+#   소비자 강제 로그아웃. user 정리는 !isKorea() 게이트 안에서만. 차단은 verify.yml CI strict.
+echo "==> Pre-commit: 로그인 세션 공존 가드 (warn-only)..."
+node scripts/check-dashboard-login-session-coexist.mjs || true
+
 # 🛡️ 2026-06-18: group_buy_status 로 상품 종류(교환권/공구 vs 쇼핑) 판별·라우팅 금지 (warn-only).
 #   group_buy_status 는 모든 상품 DEFAULT 'active' → 종류 판별에 쓰면 쇼핑 상품이 교환권으로 오분류
 #   (핀 /group-buy 오라우팅 사고). 종류는 deal_only + isVoucherCategory SSOT 만. 차단은 verify.yml CI strict.

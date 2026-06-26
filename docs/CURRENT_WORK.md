@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-26 — 유저↔어드민/셀러 상호 로그아웃 근본수정 (대표 신고 "유저 계정이랑 어드민 계정 서로 로그아웃")
+**근본원인**: 대시보드 로그인(어드민·셀러)이 시작 시 **무조건 `clearAuthData('user')`** 호출. KR 에선 `clearAuthData` 가 `/api/auth/logout-cookies` 까지 호출해 **httpOnly `ur_session` 쿠키를 삭제** → "어드민/셀러 로그인 = 소비자 강제 로그아웃". 코드베이스의 이중 로그인 **공존** 설계(RouteGuards 토큰존재 기반 + `AdminLoginPage:97` "User 세션 보호" 주석 + KakaoCallbackPage `hasOtherRoleToken` 보존)와 정면 모순. 공존은 *소비자 로그인이 마지막*일 때만 동작했고 *대시보드 로그인이 마지막*이면 소비자가 죽었음.
+- **수정(`AdminLoginPage.tsx`·`SellerLoginPage.tsx`)**: `clearAuthData('user')` 를 **`!isKorea()`(글로벌 Firebase) 게이트 안으로** 이동. KR 소비자=httpOnly 쿠키 세션, 대시보드=Bearer 라 **독립 → 공존**(파괴 안 함). 글로벌(Firebase) 경로는 byte-불변(clearAuthData+signOut 그대로). `clearFirebaseTokenCache()`·`clearAuthData('admin')`(role-scoped)·토큰 저장 전부 불변.
+- **역방향은 이미 타겟됨(무수정)**: KakaoCallbackPage 의 admin/seller wipe 는 *다른 user.id*(계정 전환)에서만 발동(2026-06-25 보안 결정) → 소유자는 같은 계정이라 미발동. 401/403 인터셉터(api.ts)는 전부 role-scoped(교차 안 함).
+- **영구 가드 신설**: `scripts/check-dashboard-login-session-coexist.mjs` — 대시보드 로그인의 무조건 `clearAuthData('user')`(=`!isKorea()` 게이트 밖)를 정적 차단. pre-commit(warn) + verify.yml(strict). 기존 read-side `check-dual-login-guard.mjs`(`user_type==='user'` 로그인판단 금지)와 write-side 짝.
+- 검증: tsc 0 · 두 가드 0 · 회귀주입 테스트로 가드 catch 확인(exit 1).
+
 ## ✅ 2026-06-26 — 서비스 분리 누수 차단: 소비자 카탈로그에서 도매 원본상품 제외 (대표 "응 고치자")
 **분리 전수조사 결과**: 도매↔유어딜 분리는 대체로 양호(크로스 import 0·도매 카탈로그 격리 완벽·양쪽 쓰는 비즈니스 컴포넌트 0·4대시보드 cross-role 0)였으나 **진짜 누수 1건**: 소비자 `ProductRepository.findAll` 가 `is_supply_product` 미필터 → 승인된 도매 원본상품이 `/browse`·검색/자동완성에 노출.
 - **수정(`[UNLOCK_LOADING]`)**: 5개 소비자 쿼리(findAll·count·FTS·검색 자동완성 ×2)에 `AND NOT (COALESCE(is_supply_product,0)=1 AND supply_source_id IS NULL)` 추가. **도매 원본만 제외, 판매사 복제본·플랫폼상품·일반상품 보존**. `group-buy-public`은 category 격리라 무수정. Cache-Control/SSR/LIST_COLUMNS 불변. CLAUDE.md 로딩 audit log 기록.
