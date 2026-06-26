@@ -12,6 +12,19 @@
 | 사파리 Invalid Date/NaN | 교환권 환불버튼 실종(7일 게이트 NaN), 공구 카드 "NaN분" → safeDate. 알림 타임스탬프, 숙소 모달 dvh | `bc7fc43`, 후속 |
 | 로그인 redirect 복원력 | `/u/me` 일시오류 시 /creator 추방 대신 1회 재시도, 같은유저 재로그인 시 핸들 캐시 보존 | `bc7fc43` |
 
+## 🔔 알림 누락 전수조사 (2026-06-26 — confirm↔webhook 비대칭/lifecycle 미통보)
+
+> "유저가 받아야 할 알림을 조용히 못 받는" 클래스. 3개 병렬 에이전트 + 수동 검증. 거짓양성(디지털 access·KT 실패·주문 환불/취소 알림 = 이미 대칭) 기각 후 실제 누락만.
+
+| # | 위치 | 누락 | 상태 |
+|---|---|---|---|
+| **A** | `community-group-buy.routes.ts` `/:id/refund` | 동네공구 무산→보증금(딜) 환불됐는데 참여자 **무통보**(그 자리에 없어 영영 모름) | ✅ **완료** — 실제 환불된(claim 멱등 통과) 멤버에게 `group_buy_refunded` 인앱 알림(confirm 블록과 동일 패턴). |
+| **B** | `stays-public.routes.ts` `/bookings/confirm` + `/:id/cancel` | 숙소 예약 확정/취소·환불 시 **셀러만 통보, 소비자 무통보**(물리상품은 알림 가는데 숙소만 비대칭) | ✅ **완료** — 확정 시 예약자 `stay_booking_confirmed`(셀러 알림 waitUntil 블록에 추가), 취소 시 `stay_booking_cancelled`(환불액 분기 메시지). 둘 다 응답 후 fail-soft, `/my-stays` 링크. |
+| **C** | `group-buy.routes.ts` `/confirm-toss`(카드) | 카드로 교환권 사면 buyer **알림톡·인앱 0**(딜 `/join` 은 알림톡 발송) — 결제수단별 비대칭 | ✅ **완료** — `_saleFx` 에 ① `voucher_issued` 인앱(보관함 링크) ② `sendBuyerVoucherIssuedAlimtalk`(딜 경로와 동일 헬퍼/payload). |
+| **D** | `payment.routes.ts` `/confirm` + `webhook.routes.ts` | 주문 결제완료 시 **셀러·어드민 통보, buyer 인앱 알림 없음** | ⏳ **보류** — ① Toss **잠금 파일**(대표 승인 필요) ② PaymentSuccessPage 가 이미 완료를 표시하므로 buyer 인앱 알림 필요성 자체가 product 판단(셀러는 부재라 필요, buyer는 화면 봄). 대표 결정 대기. |
+
+검증: tsc 0 · 단위 2327 pass · build 0 · sql-bind/not-null/column 0. A·B·C 전부 additive fire-and-forget(응답 후, 실패해도 결제/환불 불막음).
+
 ## 🔒 미결정 — 잠긴 결제코어 (대표 승인 + staging 검증 필요)
 
 **"돈 냈는데 못 받음 / 과소청구" — webhook↔/confirm side-effect 비대칭.** grep 으로 사실 확인됨:

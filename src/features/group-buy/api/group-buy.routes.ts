@@ -1131,6 +1131,24 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
           const { grantInviteRewardForFirstPurchase } = await import('../../../worker/utils/invite-reward')
           await grantInviteRewardForFirstPurchase(DB, String(userId))
         } catch { /* fail-soft */ }
+        // 🔔 2026-06-26 (소비자 감사 C): 카드 결제 buyer 무통보(딜 /join 은 알림톡 발송) 비대칭 보강.
+        //   ① 교환권 발급 인앱 기록(보관함 링크) ② 사용자 phone 알림톡 — 딜 경로와 동일 헬퍼/payload.
+        try {
+          await DB.prepare(
+            `INSERT INTO user_notifications (user_id, type, title, message, link)
+             VALUES (?, 'voucher_issued', ?, ?, ?)`
+          ).bind(String(userId), '🎟️ 교환권이 발급됐어요', `${product.name} ×${qty} — 보관함에서 확인하세요`, '/my-vouchers').run().catch(() => {})
+        } catch { /* ignore */ }
+        try {
+          const userRow = await DB.prepare("SELECT phone FROM users WHERE id = ?").bind(userId).first<{ phone: string | null }>()
+          if (userRow?.phone) {
+            await sendBuyerVoucherIssuedAlimtalk(
+              c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+              userRow.phone,
+              { productName: product.name, restaurantName: (product as { restaurant_name?: string }).restaurant_name, qty, expiresAt, categoryLabel: getVoucherShortLabel(product.category) },
+            )
+          }
+        } catch { /* graceful */ }
       }
       let _saleDeferred = false
       try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_saleFx()); _saleDeferred = true } } catch { /* no ctx */ }
