@@ -12,15 +12,9 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import { toast } from '@/hooks/useToast'
 import BusinessCertUpload from '@/components/BusinessCertUpload'
 import { formatPhoneKr } from '@/utils/format-kr'
+import { digitsOnly, isValidKrPhone, isValidEmail } from '@/utils/form-validators'
 import { isSupplierLoggedIn } from '@/lib/supplier-api'
 import { useWholesaleMall } from '@/hooks/queries/useWholesale'
-
-// 🔢 2026-06-26 (대표 가입폼 UX 요청): 검증 헬퍼 — 미완성 전화/이메일이 통과되던 것 차단.
-const digitsOnly = (s: string) => s.replace(/\D/g, '')
-//   한국 휴대폰 — 010/011/016~019 + 7~8자리(총 10~11자리). "010"·"010-9135" 같은 미완성은 false.
-const isValidKrPhone = (s: string) => /^01[0-9]\d{7,8}$/.test(digitsOnly(s))
-//   이메일 — @ + 도메인 + TLD(2자 이상). "utonggori@naver"(TLD 없음)는 false.
-const isValidEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(s.trim())
 
 export default function SupplierRegisterPage() {
   const { t } = useTranslation()

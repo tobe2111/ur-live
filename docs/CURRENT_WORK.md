@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-26 — 판매사 가입폼(도매몰) 동일 UX 수정 + 검증 헬퍼 단일화 (대표 "도매몰만 해당? 다 이상적?")
+**확인 결과**: 같은 가입폼 버그 클래스가 도매몰 **판매사(WholesaleJoinPage)** + 유어딜 **셀러/에이전시** 가입폼에도 존재(제조사만 수정됐었음). 도매몰 분리 룰에 따라 **도매몰 판매사 폼만** 동일 수정(유어딜 폼은 별도 — 대표 확인 대기).
+- **공유 헬퍼** `src/utils/form-validators.ts`(`digitsOnly`/`isValidKrPhone`/`isValidEmail`) 신설 → 제조사·판매사 폼 동일 규칙. 단위테스트 7건(`form-validators.test.ts`)으로 "010"·"010-9135"·"utonggori@naver" 미통과 고정. (010=11자리, 011/016~019=10~11자리.)
+- **WholesaleJoinPage(판매사)**: `form noValidate` + ref 맵 → 화면 순서대로 검증·첫 문제 필드 포커스. 대표자/담당자 성명·연락처 각각 검증(연락처 완성형만). 이메일 TLD 필수. 비밀번호 정책(영문·숫자·특수 2종+4연속금지)·서버 페이로드·sameAsRep 복사 불변.
+- **SupplierRegisterPage(제조사)**: 인라인 검증을 공유 헬퍼로 리팩터(동작 동일).
+- 검증: tsc 0 · validators 7 pass · theme/light-input 0 · build 0.
+
 ## ✅ 2026-06-26 — 제조사 가입폼(도매몰) 검증/포커스 UX 전면 수정 (대표 시안 7건) — 서비스 분리 준수
 **근본원인**: `<form>` 이 일부 필드(상호·사업자번호·이메일·비번)에만 native `required` → 가입신청 클릭 시 브라우저 native 검증이 **required 없는 대표자/담당자 필드를 건너뛰고 첫 빈 required(=이메일)로 무조건 점프**. 커스텀 JS 순차검증은 native 가 submit 을 막아 **실행 자체가 안 됨**.
 **수정**(`SupplierRegisterPage.tsx`, 도매몰 전용):
