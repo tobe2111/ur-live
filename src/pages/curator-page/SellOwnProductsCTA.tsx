@@ -1,22 +1,21 @@
 /**
  * 🏁 2026-06-18 (사용자 결정 — 사업자 진입 "상태별 직접 노출"): 링크샵 오너 화면 + 크리에이터 콘솔
  *   공용 사업자(판매) 진입 CTA. 기존 CuratorEarningsPage 내부 정의를 공유 컴포넌트로 추출(코드 동일).
- *   - 셀러 아님 → '사업자 등록하고 판매 시작' (→ /seller/register/supplier?from=curator)
- *   - 승인됨 → '빠른 상품 등록'(QuickProductModal, 대시보드 안 나감) + '셀러 대시보드' 전환
+ *   - 셀러 아님 → '인증받고 내 쇼핑몰 열기' (혜택 시트 → /seller/register/supplier?from=curator)
+ *   - 승인됨 → '상품 등록'(/seller/products/new) · '공구권 등록'(/seller/meal-voucher/new) · '셀러 대시보드'
  *   - 심사중/반려/정지 → 상태 안내
- *   QuickProductModal: 검증된 POST /api/seller/products 재활용. seller_token 보장(switch-to-seller).
+ *   🏁 2026-06-26 (대표 — "상품·공구권 모두 전체 등록 페이지로"): 얄팍한 빠른등록 모달 제거 →
+ *     switch-to-seller 로 토큰 보장 후 정식 등록 풀페이지(이미지·상세·옵션)로 이동.
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
-import QuickProductModal from './QuickProductModal'
 
 export default function SellOwnProductsCTA() {
   const navigate = useNavigate()
   const [sellerStatus, setSellerStatus] = useState<{ has_seller?: boolean; status?: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [switching, setSwitching] = useState(false)
-  const [showQuickAdd, setShowQuickAdd] = useState(false)
   // 🏁 2026-06-26 (대표 — 일반 유저용 전환 혜택 안내): 티저 누르면 혜택 바텀시트.
   const [showBenefits, setShowBenefits] = useState(false)
 
@@ -34,9 +33,11 @@ export default function SellOwnProductsCTA() {
   const st = sellerStatus?.status
   const hasSeller = !!sellerStatus?.has_seller
 
-  // 승인됨 → (a) 인라인 빠른 상품 등록 (대시보드 안 나감) + (b) 셀러 대시보드(주문·정산 관리)로 전환
+  // 승인됨 → 정식 등록 풀페이지로 (상품/공구권 각자) + 셀러 대시보드(주문·정산). seller_token 보장(switch-to-seller).
   if (hasSeller && (st === 'approved' || st === 'active')) {
-    const goDashboard = async () => {
+    // 🏁 2026-06-26 (대표 — "상품·공구권 모두 전체 등록 페이지로"): 얄팍한 빠른등록 모달 대신
+    //   switch-to-seller 로 토큰 보장 후 정식 등록 페이지로 이동(이미지·상세·옵션 풀폼).
+    const goSeller = async (path: string) => {
       if (switching) return
       setSwitching(true)
       try {
@@ -51,7 +52,7 @@ export default function SellOwnProductsCTA() {
           localStorage.setItem('seller_email', seller.email)
           localStorage.setItem('seller_username', seller.username)
           localStorage.setItem('seller_type', seller.seller_type)
-          navigate('/seller')
+          navigate(path)
         } else {
           toast.error('셀러 전환에 실패했습니다')
         }
@@ -65,29 +66,31 @@ export default function SellOwnProductsCTA() {
       <section className="mb-6 bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-4">
         <p className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">🛍️ 내 쇼핑몰 운영 중 <USeal size={15} /> <span className="font-medium text-gray-500 dark:text-gray-400">· 판매·현금 정산 활성</span></p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
-          여기서 바로 상품을 올리거나, 셀러 대시보드에서 주문·정산을 관리하세요. 등록한 상품은 내 쇼핑몰에 표시됩니다.
+          상품·공구권을 정식 등록(이미지·상세·옵션)하거나, 셀러 대시보드에서 주문·정산을 관리하세요. 등록한 상품은 내 쇼핑몰에 표시됩니다.
         </p>
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => setShowQuickAdd(true)}
-            className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-xs font-bold rounded-lg"
+            onClick={() => goSeller('/seller/products/new')}
+            disabled={switching}
+            className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-xs font-bold rounded-lg disabled:opacity-50"
           >
-            + 빠른 상품 등록
+            {switching ? '이동 중…' : '+ 상품 등록'}
           </button>
           <button
-            onClick={goDashboard}
+            onClick={() => goSeller('/seller/meal-voucher/new')}
             disabled={switching}
             className="px-4 py-2 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg disabled:opacity-50"
           >
-            {switching ? '이동 중…' : '셀러 대시보드 →'}
+            + 공구권 등록
+          </button>
+          <button
+            onClick={() => goSeller('/seller')}
+            disabled={switching}
+            className="px-4 py-2 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg disabled:opacity-50"
+          >
+            셀러 대시보드 →
           </button>
         </div>
-        {showQuickAdd && (
-          <QuickProductModal
-            onClose={() => setShowQuickAdd(false)}
-            onSuccess={() => setShowQuickAdd(false)}
-          />
-        )}
       </section>
     )
   }
