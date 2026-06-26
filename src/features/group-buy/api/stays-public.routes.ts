@@ -1059,6 +1059,16 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
               '/seller/stays/bookings',
             ).catch(() => {})
           }
+          // 🔔 2026-06-26 (소비자 감사 B): 셀러만 통보되고 소비자는 무통보이던 누락 보강 — 예약자 인앱 알림.
+          //   물리상품 환불/취소는 알림 가는데 숙소 확정만 빠져있던 비대칭. fail-soft.
+          if (order.user_id) {
+            const { notifyUser } = await import('../../../lib/notifications')
+            await notifyUser(
+              c.env.DB, String(order.user_id), 'stay_booking_confirmed',
+              '🏡 숙소 예약이 확정됐어요', `${periodText}${claimed.length > 1 ? ` · ${claimed.length}객실` : ''} · ₩${Number(order.total_amount).toLocaleString('ko-KR')}`,
+              '/my-stays',
+            ).catch(() => {})
+          }
         } catch { /* fail-soft */ }
       })())
     } catch { /* no ctx */ }
@@ -1210,6 +1220,22 @@ staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), async (c) => {
        VALUES (?, ?, ?, 'user', ?, ?)`
     ).bind(id, booking.status, nextStatus, userId, logReason)
       .run().catch(() => { /* noop */ })
+
+    // 🔔 2026-06-26 (소비자 감사 B): 숙소 취소/환불 완료 시 예약자 무통보이던 누락 보강 — 인앱 알림.
+    //   물리상품 취소/환불(order.routes/returns)은 알림 가는데 숙소만 빠져있던 비대칭. 응답 후 실행(fail-soft).
+    try {
+      c.executionCtx?.waitUntil?.((async () => {
+        try {
+          const { notifyUser } = await import('../../../lib/notifications')
+          const msg = refundActuallyDone && refundAmount > 0
+            ? `예약이 취소되고 ₩${Number(refundAmount).toLocaleString('ko-KR')}이 환불됐어요`
+            : refundAmount > 0
+              ? '예약이 취소됐어요 · 환불은 확인 후 처리됩니다'
+              : '예약이 취소됐어요 (환불 정책상 환불금은 없습니다)'
+          await notifyUser(c.env.DB, String(booking.user_id), 'stay_booking_cancelled', '🏡 숙소 예약이 취소됐어요', msg, '/my-stays').catch(() => {})
+        } catch { /* fail-soft */ }
+      })())
+    } catch { /* no ctx */ }
 
     return c.json({
       success: true,

@@ -895,6 +895,18 @@ communityGroupBuyRoutes.post('/:id/refund', rateLimit({ action: 'community_gb_re
       [member.id],
     );
 
+    // 🔔 2026-06-26 (소비자 감사 A): 보증금 환불됐는데 통보 0이던 누락 보강 — 그 자리에 없는 참여자가
+    //   딜 환급을 영영 모르던 문제. claim 멱등 통과한(실제 환불된) 멤버만 1회 알림. confirm 블록과 동일 패턴.
+    await DB.prepare(`
+      INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+      VALUES (?, 'user', 'group_buy_refunded', ?, ?, ?, CURRENT_TIMESTAMP)
+    `).bind(
+      member.user_id,
+      `💰 보증금이 환불됐어요`,
+      `${group.restaurant_name} 공동구매가 무산되어 보증금 ${Number(member.deposit_amount).toLocaleString('ko-KR')}딜을 돌려드렸어요`,
+      `/community-group-buy/${group.invite_code}/messages`,
+    ).run().catch(() => { /* notifications 테이블 없으면 skip (confirm 알림과 동일 패턴) */ });
+
     refundCount++;
   }
 
