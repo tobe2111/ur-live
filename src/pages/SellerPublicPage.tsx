@@ -20,6 +20,7 @@ import type { CuratorProfile } from '@/features/curator/api/curator-api'
 // 🏁 2026-06-25 (대표 "카드 1종"): 내 상품도 표준 BrowseProductCard(★평점·판매수 내장) — EditorialProductCard 폐기.
 import BrowseProductCard from '@/pages/browse/BrowseProductCard'
 import type { Product as BrowseProduct } from '@/pages/browse/types'
+import { seededColor } from '@/utils/card-gradient'
 import InfoTab from './seller-public/InfoTab'
 import { getThemeTokens } from './seller-public/theme'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
@@ -474,6 +475,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
                   product={{ id: p.id, name: p.name, price: p.price, current_price: p.price, original_price: p.original_price ?? undefined, discount_rate: p.discount_rate ?? 0, image_url: p.image_url || '', stock: 0, dominant_color: p.dominant_color, avg_rating: p.avg_rating, review_count: p.review_count, sold_count: p.sold_count } as BrowseProduct}
                   aboveFold={false}
                   to={`/products/${p.id}`}
+                  fallbackColor={seededColor(p.id)}
                 />
               ))}
             </div>

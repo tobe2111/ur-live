@@ -463,18 +463,22 @@ function PinCard({ pin, handle, isOwner, aboveFold, index, onDeleted }: { pin: C
     }
   }
 
-  const product: BrowseProduct = {
+  // 🏁 2026-06-26 (대표 — 링크샵 카드를 쇼핑 카드와 동일하게): 할인/평점/구매수까지 전달.
+  const product = {
     id: pin.product_id,
     name: pin.product_name,
     price: pin.price,
     current_price: pin.price,
     original_price: pin.original_price ?? undefined,
-    discount_rate: 0, // BrowseProductCard 가 original_price 로 자동 계산
+    discount_rate: pin.discount_rate ?? 0,
     image_url: pin.thumbnail || pin.image_url || '',
     stock: 0,
     dominant_color: pin.dominant_color,
     deal_only: pin.deal_only,
-  }
+    avg_rating: pin.avg_rating ?? undefined,
+    review_count: pin.review_count ?? undefined,
+    sold_count: pin.sold_count ?? undefined,
+  } as BrowseProduct
 
   // 🎨 2026-06-18 (사용자 신고 — 방문자 모바일 핀 카드 그라데이션 없음): 핀 상품은 외부호스트(교환권 등)
   //   이미지가 많아 dominant_color null + canvas 추출이 CORS taint 로 실패 → 회색 단색으로 보이던 것.

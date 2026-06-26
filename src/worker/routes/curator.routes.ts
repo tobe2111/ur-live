@@ -180,8 +180,8 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
       ).bind(userId).first<{ id: number; username: string; name: string; status: string }>().catch(() => null),
       DB.prepare(
         `SELECT pp.id, pp.product_id, pp.position, pp.note, pp.click_count,
-                p.name AS product_name, p.image_url, p.thumbnail, p.price, p.original_price,
-                p.category, p.is_active, p.dominant_color,
+                p.name AS product_name, p.image_url, p.thumbnail, p.price, p.original_price, p.discount_rate,
+                p.category, p.is_active, p.dominant_color, p.avg_rating, p.review_count, p.sold_count,
                 COALESCE(p.referral_commission_rate, 0) AS commission_rate
          FROM product_pins pp
          JOIN products p ON p.id = pp.product_id
