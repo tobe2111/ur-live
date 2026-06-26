@@ -2,9 +2,8 @@ import { useEffect, useState, useRef } from 'react'
 // 🏁 2026-06-26 (대표 결정 — "추천템은 사업자 링크샵에선 숨김"): 사업자 = 본인 상품이 주인공.
 //   추천 핀(CuratorPinsSection) 섹션 제거 → 추천 적립 동선은 크리에이터 콘솔(/creator)에서 유지.
 //   (일반 유저 링크샵(CuratorPage)은 추천템이 메인이라 그대로.)
-// 🏁 2026-06-18 (사용자 결정 — 승인 사업자 상점 바로등록): 오너가 대시보드 안 가고 링크샵에서 바로 상품 등록.
-const QuickProductModal = lazy(() => import('./curator-page/QuickProductModal'))
-import { lazy, Suspense } from 'react'
+// 🏁 2026-06-26 (대표 — "상품·공구권 모두 전체 등록 페이지로"): 얄팍한 빠른등록 모달(QuickProductModal) 제거 →
+//   등록은 정식 풀페이지(/seller/products/new · /seller/meal-voucher/new)로. (lazy/Suspense 도 미사용→제거)
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
@@ -70,21 +69,13 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
   }, [curatorHandle, sellerIdOverride, rawParam, navigate])
   // 🔍 2026-06-16 링크샵 시안: 상품 탭 검색 (이름 필터).
   const [shopQuery, setShopQuery] = useState('')
-  // 🏁 2026-06-18 (승인 사업자 상점 바로등록): 오너 빠른 상품 등록 모달 + 성공 시 상품목록 갱신.
-  const [showQuickAdd, setShowQuickAdd] = useState(false)
-  // 🏁 2026-06-26 (대표 결정 — "링크샵에도 공구권 등록 추가"): 등록 종류 선택 시트(상품/공구권).
-  //   상품=인앱 빠른등록(QuickProductModal), 공구권=맵·목표인원 등 상세가 필요해 전용 페이지로 연결.
+  // 🏁 2026-06-26 (대표 결정 — "상품·공구권 각자 전체 등록 페이지로"): 등록 종류 선택 시트(상품/공구권).
+  //   둘 다 정식 등록 풀페이지로 네비게이트(상품=/seller/products/new, 공구권=/seller/meal-voucher/new).
   const [showAddSheet, setShowAddSheet] = useState(false)
   // 🏁 2026-06-25 (대표 "통일"): canonical CuratorHeader 의 인라인 편집 반영(낙관적). curator 우선·seller 폴백.
   const [curatorEdits, setCuratorEdits] = useState<Partial<CuratorProfile>>({})
   const copyLink = async () => {
     try { await navigator.clipboard.writeText(window.location.href); toast.success(t('seller.linkCopiedToast', { defaultValue: '링크가 복사되었어요' })) } catch { /* ignore */ }
-  }
-  const refreshProducts = () => {
-    if (!seller?.id) return
-    api.get(`/api/products?seller_id=${seller.id}&limit=20`)
-      .then(r => setProducts(r.data.data || []))
-      .catch(() => { /* graceful */ })
   }
 
   // 셀러 본인인지 확인 (편집 버튼 표시용) — seller 로드 후 id/username 비교
@@ -393,8 +384,9 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
           </div>
         </div>
       )}
-      {/* 🏁 2026-06-26 (대표 — "공구권 등록 추가"): 등록 종류 선택 시트.
-          상품 = 인앱 빠른등록 / 공구권 = 맵·목표인원 등 상세 필요 → 전용 페이지(/seller/meal-voucher/new). */}
+      {/* 🏁 2026-06-26 (대표 — "상품·공구권 각자 전체 등록 페이지로"): 등록 종류 선택 시트.
+          둘 다 정식 등록 풀페이지로 — 상품=/seller/products/new(이미지·상세·옵션), 공구권=/seller/meal-voucher/new(위치·목표인원).
+          (얄팍한 빠른등록 모달은 제거 — 상세이미지/옵션 없어 실제 상품에 부족.) */}
       {ownerView && showAddSheet && (
         <div className="fixed inset-0 z-[10600] flex items-end justify-center bg-black/60" onClick={() => setShowAddSheet(false)} role="presentation">
           <div
@@ -408,13 +400,13 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
             </div>
             <div className="space-y-2.5">
               <button
-                onClick={() => { setShowAddSheet(false); setShowQuickAdd(true) }}
+                onClick={() => { setShowAddSheet(false); navigate('/seller/products/new') }}
                 className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#1A1A1A] active:scale-[0.99] transition-transform text-left"
               >
                 <span className="w-11 h-11 rounded-xl bg-white dark:bg-[#222] flex items-center justify-center text-xl shrink-0">🛍️</span>
                 <span className="min-w-0">
                   <span className="block text-[14px] font-bold text-gray-900 dark:text-white">{t('seller.publicPage.addProduct', { defaultValue: '상품 등록' })}</span>
-                  <span className="block text-[12px] text-gray-500 dark:text-gray-400">{t('seller.publicPage.addProductDesc', { defaultValue: '배송 상품 — 바로 등록' })}</span>
+                  <span className="block text-[12px] text-gray-500 dark:text-gray-400">{t('seller.publicPage.addProductDesc', { defaultValue: '이미지·상세설명·옵션까지 정식 등록' })}</span>
                 </span>
               </button>
               <button
@@ -430,15 +422,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
             </div>
           </div>
         </div>
-      )}
-      {/* 🏁 2026-06-18 (사용자 결정): 오너 빠른 상품 등록 모달 — 성공 시 상품 목록 즉시 갱신. */}
-      {ownerView && showQuickAdd && (
-        <Suspense fallback={null}>
-          <QuickProductModal
-            onClose={() => setShowQuickAdd(false)}
-            onSuccess={() => { setShowQuickAdd(false); refreshProducts() }}
-          />
-        </Suspense>
       )}
       {/* 🎨 2026-06-17 (#6 통일): 방문자 미리보기 중 — 큐레이터 링크샵과 동일 패턴. theme-dual: 의도적 네이비 */}
       {isOwner && previewAsVisitor && (
@@ -483,11 +466,11 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
         {(shopProducts.length > 0 || ownerView) && (
           shopProducts.length === 0 ? (
             // 🏁 2026-06-26 (대표 — "빈 상태가 너무 큼"): py-16 빈 블록 → 제목 행 옆 인라인 '+ 상품 등록'.
-            //   대시보드로 보내지 않고 인앱 빠른등록(QuickProductModal)으로 바로 → 간결 + 발견성 ↑.
+            //   정식 등록 풀페이지(/seller/products/new — 이미지·상세·옵션)로 이동 → 간결 + 발견성 ↑.
             <div className="mt-7 flex items-center justify-between gap-3">
               <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white">{t('seller.publicPage.shop', { defaultValue: '내 상품' })} 0</h3>
               <button
-                onClick={() => setShowQuickAdd(true)}
+                onClick={() => navigate('/seller/products/new')}
                 className="shrink-0 inline-flex items-center gap-1 px-3.5 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12.5px] font-bold active:scale-95"
               >
                 + {t('seller.publicPage.addProduct', { defaultValue: '상품 등록' })}
