@@ -157,7 +157,7 @@ function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () 
     { icon: '🎟️', t: '공구권 판매 채널', d: '동네 공구·교환권도 함께 판매' },
   ]
   return (
-    <div className="fixed inset-0 z-[9998] flex items-end justify-center" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[10600] flex items-end justify-center" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/55" onClick={onClose} />
       <div className="relative w-full sm:max-w-md bg-white dark:bg-[#121212] rounded-t-3xl px-5 pt-2 pb-7 animate-slideUp">
         <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-[#2A2A2A] mx-auto mt-1.5 mb-4" />

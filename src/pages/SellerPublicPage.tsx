@@ -396,7 +396,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
       {/* 🏁 2026-06-26 (대표 — "공구권 등록 추가"): 등록 종류 선택 시트.
           상품 = 인앱 빠른등록 / 공구권 = 맵·목표인원 등 상세 필요 → 전용 페이지(/seller/meal-voucher/new). */}
       {ownerView && showAddSheet && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60" onClick={() => setShowAddSheet(false)} role="presentation">
+        <div className="fixed inset-0 z-[10600] flex items-end justify-center bg-black/60" onClick={() => setShowAddSheet(false)} role="presentation">
           <div
             className="w-full max-w-[430px] bg-white dark:bg-[#121212] rounded-t-3xl px-5 pt-5 pb-8"
             onClick={(e) => e.stopPropagation()}
@@ -521,7 +521,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
         {/* ③ 교환권 */}
         {mealVouchers.length > 0 && (
           <section className="pt-7">
-            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '교환권' })} {mealVouchers.length}</h3>
+            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '공구권' })} {mealVouchers.length}</h3>
             <VouchersTab mealVouchers={mealVouchers} isOwner={ownerView} textClass={T.text} />
           </section>
         )}

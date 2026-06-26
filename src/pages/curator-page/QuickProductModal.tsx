@@ -72,7 +72,7 @@ export default function QuickProductModal({ onClose, onSuccess }: { onClose: () 
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60" onClick={onClose} role="presentation">
+    <div className="fixed inset-0 z-[10600] flex items-end justify-center bg-black/60" onClick={onClose} role="presentation">
       <div
         className="w-full max-w-[430px] bg-white dark:bg-[#121212] rounded-t-3xl px-5 pt-5 pb-8 max-h-[85dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
