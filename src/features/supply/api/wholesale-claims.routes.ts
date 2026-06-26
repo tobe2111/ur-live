@@ -180,6 +180,14 @@ app.post('/claims', rateLimit({ action: 'wholesale-claim', max: 20, windowSec: 6
       if (sup && Number(sup.cnt) === 1) supplierId = sup.supplier_id ?? null
     }
 
+    // 🛡️ 2026-06-25 (전수조사): 같은 주문(+라인)에 이미 처리중(open/reviewing) 클레임이 있으면 중복접수 차단 —
+    //   기존엔 존재검사 0 이라 재제출마다 새 open 클레임 + holdSettlements + 어드민 알림 반복(큐 스팸·반복 보류).
+    //   (완전 race-proof 는 partial UNIQUE 필요 — TECHNICAL_DEBT 기록. 이 체크가 재제출=지배적 케이스 차단.)
+    const activeClaim = await DB.prepare(
+      "SELECT id FROM wholesale_claims WHERE wholesale_order_id = ? AND COALESCE(wholesale_order_item_id, 0) = COALESCE(?, 0) AND distributor_seller_id = ? AND status IN ('open','reviewing') LIMIT 1"
+    ).bind(wholesaleOrderId, itemId, sellerId).first<{ id: number }>().catch(() => null)
+    if (activeClaim) return c.json({ success: true, claim_id: activeClaim.id, already: true })
+
     const ins = await DB.prepare(`
       INSERT INTO wholesale_claims
         (wholesale_order_id, wholesale_order_item_id, distributor_seller_id, supplier_id, reason_code, reason_text, evidence_url, status)

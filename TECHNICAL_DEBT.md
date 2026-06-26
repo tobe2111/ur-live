@@ -1413,3 +1413,34 @@ src/features/group-buy/api/
 - `WholesaleStaffPage:36` canManage 기본 true 플래시 → 기본 false.
 - `oem-requests.ts:16` ensure WeakSet 선마킹(promise-cache 패턴으로 통일 권장).
 - 등급별 마진율 탭 = 엑셀 전용(라이브 가격 무영향) — **대표 결정 대기**(엑셀전용 라벨 vs 등급차등가 부활).
+
+## 🟡 2026-06-25 신규각도 전수조사(IDOR/stale-UI/숫자/동시성) 잔여
+
+> batch7~8 로 stale-UI·머니상태·IDOR방어심화·become race·claims dup·supply_price 마진가드 fix. 아래는 UNIQUE인덱스/restructure 필요 or 영향 낮아 미적용 — 추적용.
+
+### 1. 채널 export 중복 외부상품 (P0, 채널 한정·restructure 필요)
+- `coupang-commerce.routes.ts:200`·`naver-commerce.routes.ts:192` 가 외부 상품생성(coupang/naver POST)을 **로컬 멱등 row INSERT 전**에 실행 → 동시 export 2회면 외부 스토어에 실상품 2개. 클라 in-flight 가드는 단일클릭만 막음.
+- 수정: 외부호출 전에 `INSERT OR IGNORE coupang_product_exports/naver_commerce_* (..., status='exporting')` claim → `meta.changes===1` 일 때만 외부호출. UNIQUE 이미 존재(coupang-core:59, naver-core:73).
+
+### 2. supply.routes 중복생성 (P1, UNIQUE 인덱스 필요)
+- `/register`(316): `(seller_id, supply_source_id)` partial UNIQUE + ON CONFLICT 없음 → 동시 등록 시 store product 2개.
+- `/sample-requests`(168): `(seller_id, product_id)` UNIQUE 없음 → 중복 PENDING 2개. (admin PATCH 는 이미 CAS.)
+- 수정: 각 partial UNIQUE(repair-schema 등록) + INSERT OR IGNORE/ON CONFLICT.
+
+### 3. wholesale-claims 완전 race-proof (P2)
+- batch8 에서 active-claim 존재검사로 재제출(지배 케이스) 차단. 동시 race 완전차단은 `(wholesale_order_id, COALESCE(item_id,0)) WHERE status IN('open','reviewing')` partial UNIQUE 필요(repair-schema).
+
+### 4. 숫자/단위 LOW (P2)
+- `tax-withholding.ts:133` dup-path 가 `rate/100`(decimal) 반환, fresh-path 는 percent → 100× 불일치(현 호출자 미사용, latent). `dup.withholding_rate || 0` 로.
+- `supplier-dashboard.routes /store/import`(1233): `supply_rate_pct===100` 허용 → supply==sale(마진0). `>=100` 차단.
+- `WholesaleProductPage` qty 스텝퍼: moq 가 order_multiple 배수 아니면 비배수 qty 도달 후 서버 거부(UX dead-end). floor 보정.
+- POST /products(275,278): 공급가/판매가 `Math.floor` 누락(소수 저장). edit/price-change 는 floor 함.
+- WholesaleQuotesPage 견적요청 qty/price 클라 finite/range 가드 누락(서버 검증함, 비금전).
+
+### 5. stale-UI P2
+- `AdminWholesaleProductsPage` togglePremium/bulkSetPremium: 성공 후 optimistic[id] 미삭제 → refetch 후에도 stale optimistic 우세 가능. 성공분기에서 delete.
+- 위시리스트↔카탈로그 ♥ desync(별도 상태). RQ key 통일 권장.
+
+### 6. 동시성 P2
+- 설정 UPDATE(distributor-admin distributors/grades, admin-products premium) 비-CAS → 동시편집 시 중복/stale audit row(값은 last-writer-wins, 머니무관).
+- `wholesale-chat.routes:398` last_message_id 비원자 갱신 → 동시전송 시 preview 역행 + 중복 notify(cosmetic).

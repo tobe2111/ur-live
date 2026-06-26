@@ -708,6 +708,10 @@ supplierDashboardRoutes.post('/products/:id/price-change-request', async (c) => 
       }
       newRetail = r;
     }
+    // 🛡️ 2026-06-25 (전수조사): 판매가 미입력 시 새 공급가가 기존 판매가 이상이면 승인 후 마진 0/음수 → 차단(입력 시와 동일 불변식).
+    if (newRetail == null && existing.price != null && newSupply >= existing.price) {
+      return c.json({ success: false, error: '공급가가 기존 판매가 이상입니다. 판매가도 함께 올려주세요', code: 'RETAIL_TOO_LOW' }, 400);
+    }
     if (newSupply === existing.supply_price && (newRetail == null || newRetail === existing.price)) {
       return c.json({ success: false, error: '기존 가격과 동일합니다' }, 400);
     }

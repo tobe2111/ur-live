@@ -307,17 +307,27 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
       const mallId = await registrationMallId(c).catch(() => 1); // 🛡️ 2026-06-23 fail-soft: 몰 해석 실패가 가입 500 안 내게(기본 몰 1)
       // password_hash='' — 카카오 인증(비밀번호 미사용). linked_user_id 로 세션 연결.
       const nts2 = await ntsStatusOf(c.env, DB, business_number)
-      const ins = await DB.prepare(`
-        INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
-          business_license_url, representative_phone, manager_name, manager_phone, manager_email,
-          linked_user_id, mall_id, nts_status, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
-      `).bind(
-        business_name, business_number, representative || null, email, phone || null,
-        business_license_url || null, representative_phone || null, manager_name || null, manager_phone || null, manager_email || null,
-        userId, mallId, nts2,
-      ).run();
-      const sid = Number(ins.meta?.last_row_id);
+      // 🛡️ 2026-06-25 (전수조사): 사전 dupe SELECT~INSERT 사이 동시 /become 경합 → UNIQUE throw 시 generic 500 +
+      //   중복 알림. /register 와 동일하게 try/catch 로 409 정규화(승인큐 알림은 성공 후에만).
+      let sid: number;
+      try {
+        const ins = await DB.prepare(`
+          INSERT INTO suppliers (business_name, business_number, representative, email, phone, password_hash,
+            business_license_url, representative_phone, manager_name, manager_phone, manager_email,
+            linked_user_id, mall_id, nts_status, status, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))
+        `).bind(
+          business_name, business_number, representative || null, email, phone || null,
+          business_license_url || null, representative_phone || null, manager_name || null, manager_phone || null, manager_email || null,
+          userId, mallId, nts2,
+        ).run();
+        sid = Number(ins.meta?.last_row_id);
+      } catch (e) {
+        if (/UNIQUE|already exists|constraint failed: suppliers\.(email|linked_user)/i.test(String((e as Error)?.message || ''))) {
+          return c.json({ success: false, error: '이미 가입된 이메일입니다. 로그인해주세요' }, 409);
+        }
+        throw e;
+      }
       if (!sid) return c.json({ success: false, error: '제조사 신청 중 오류가 발생했습니다' }, 500);
 
       // 어드민 승인 큐 알림 (/admin/suppliers 에서 처리). fail-soft.
