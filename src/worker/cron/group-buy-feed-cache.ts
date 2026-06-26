@@ -65,6 +65,7 @@ export async function handleGroupBuyFeedCache(env: Env): Promise<{
           LEFT JOIN sellers s ON p.seller_id = s.id
           WHERE p.category IN (${placeholders}) AND p.is_active = 1
             AND (p.group_buy_status = ? OR ? = 'all')
+            AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
           ORDER BY p.created_at DESC
           LIMIT 50
         `).bind(...categories, status, status).all()

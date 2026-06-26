@@ -65,6 +65,7 @@ export default function KakaoCallbackPage() {
             'linked_seller_username', 'user_handle',
             'agency_token', 'agency_refresh_token', 'agency_id', 'agency_name',
             'admin_token', 'admin_refresh_token', 'admin_id', 'admin_name', 'admin_email',
+            'supplier_token', 'supplier_refresh_token', 'supplier_id', 'supplier_name',
             'is_distributor',
           ]) {
             try { localStorage.removeItem(k) } catch { /* ignore */ }

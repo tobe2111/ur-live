@@ -65,9 +65,8 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
     { loc: '/vouchers?category=department', priority: 0.7, changefreq: 'weekly' },
     { loc: '/vouchers?category=mobile', priority: 0.7, changefreq: 'weekly' },
     { loc: '/map', priority: 0.7, changefreq: 'daily' },
-    // 🏭 유통스타트 B2B 도매몰 — 공개 소개/가입 (시중 노출/검색 유입).
-    { loc: '/wholesale/intro', priority: 0.8, changefreq: 'weekly' },
-    { loc: '/wholesale/join', priority: 0.7, changefreq: 'monthly' },
+    // 🏭 2026-06-26 분리 감사: 도매몰(유통스타트) 페이지는 소비자(live.ur-team.com) sitemap 에서 제거.
+    //   utongstart.com sitemap 브랜치가 도매 도메인 canonical 로 별도 발행 → 호스트 분리 일관.
   ];
 
   if (DB) {
@@ -78,6 +77,7 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
          WHERE category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
            AND is_active = 1
            AND group_buy_status IN ('active','achieved')
+           AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)
          ORDER BY updated_at DESC LIMIT 500`
       ).all<{ id: number; image_url: string | null; updated_at: string }>().catch(() => ({ results: [] as Array<{ id: number; image_url: string | null; updated_at: string }> }));
       for (const g of groupBuys.results || []) {
@@ -95,6 +95,7 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
         `SELECT id FROM products
          WHERE is_active = 1
            AND category NOT IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
+           AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)
          ORDER BY id DESC LIMIT 500`
       ).all<{ id: number }>();
       for (const p of products.results || []) {
