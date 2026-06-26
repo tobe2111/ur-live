@@ -191,6 +191,8 @@ import { agencyCalendarRoutes } from '../features/agency/api/agency-calendar.rou
 import { agencyInvitesRoutes, inviteCodePublicRoutes } from '../features/agency/api/agency-invites.routes';
 // 🛡️ 2026-05-27 (영업 검증 Layer 2): 매장 사전 등록 prospects.
 import { prospectsRoutes } from '../features/seller-prospects/api/seller-prospects.routes';
+// 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 3번째 서비스. /api/ads/* (유어딜/도매몰과 분리된 네임스페이스).
+import { marketingRoutes } from '../features/marketing/api/marketing.routes';
 import { agencyKpiRoutes } from '../features/agency/api/agency-kpi.routes';
 import { agencyMatchSuggestionsRoutes } from '../features/agency/api/agency-match-suggestions.routes';
 import { agencyPublicRoutes, agencyPublicEditRoutes } from '../features/agency/api/agency-public.routes';
@@ -618,7 +620,9 @@ app.use('*', async (c, next) => {
     //   첫 paint 에 잠깐 보임 → 도매 surface 와 동일하게 #root 를 라이트 placeholder 로 비워 깜빡임 제거.
     //   createRoot(비-hydrate)라 안전 · 소비자 페이지 SSR inject/0-RTT shell 불변(additive).
     const isDashboardSurface = /^\/(seller|admin|agency)(\/|$)/.test(url.pathname);
-    const needsRootBlank = isWholesaleSurface || isDashboardSurface;
+    // 🆕 2026-06-26 3번째 서비스(통합 마케팅, /ads) — 도매몰처럼 자체 라이트 surface. 소비자 홈 shell 깜빡임 차단(additive).
+    const isMarketingSurface = /^\/(ads)(\/|$)/.test(url.pathname);
+    const needsRootBlank = isWholesaleSurface || isDashboardSurface || isMarketingSurface;
     // 🎨 2026-06-21 [LOADING_ADDITIVE] (대표 신고 — 링크샵 첫 로드 시 옛 홈 shell 잔상): /u·/profile·/s 도
     //   prerender 된 #root 의 소비자 홈 shell(다크·라이브 nav)이 React 마운트 전 잠깐 보임("예전 잔재 이미지").
     //   대시보드/도매와 달리 링크샵은 테마 가변(다크 기본+라이트 토글)이라 라이트 placeholder 대신 #root 를
@@ -1139,6 +1143,7 @@ app.route('/api/streams', streamsRouter);
 
 // Feature products (extended CRUD) — 유일한 /api/products 핸들러
 app.route('/api/products', featureProductsRoutes);
+app.route('/api/ads', marketingRoutes);  // 🆕 통합 마케팅 서비스(3번째) — /api/ads/*
 
 // /api/search/popular — featureProductsRoutes의 /search/popular 에 alias
 // (프론트엔드가 /api/search/popular 로 호출)
