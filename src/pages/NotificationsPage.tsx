@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
+import { safeDate } from '@/utils/safe-date'
 import api from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -86,7 +87,8 @@ export default function NotificationsPage() {
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">{n.title}</p>
                   {n.message && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{n.message}</p>}
                   <p className="text-[10px] text-gray-500 dark:text-gray-500 mt-1">
-                    {new Date(n.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {/* 🛡️ 2026-06-26 (소비자 감사): safeDate — 사파리가 D1 datetime 을 Invalid Date 로 파싱하던 것 보정. */}
+                    {safeDate(n.created_at)?.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) ?? ''}
                   </p>
                 </div>
               </button>
