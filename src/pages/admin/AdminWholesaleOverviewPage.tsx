@@ -81,7 +81,11 @@ export default function AdminWholesaleOverviewPage() {
     {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       select: (r: any) => (r?.success ? { malls: (r.malls ?? []) as MallRow[], totals: (r.totals ?? EMPTY_TOTALS) as Totals, queue: (r.queue ?? EMPTY_QUEUE) as ApprovalQueue } : { malls: [], totals: EMPTY_TOTALS, queue: EMPTY_QUEUE }),
-      staleTime: 2 * 60 * 1000,
+      // 🛡️ 2026-06-26 (대표 신고 — 승인 후에도 '입금확인 1' 잔존): 승인 대기 카운트는 "오늘 처리할 것" 큐라
+      //   방문 시마다 최신이어야 함. staleTime 2분 + 전역 refetchOnMount:false 라 다른 페이지에서 승인 후
+      //   돌아와도 옛 카운트가 남던 문제 → 마운트마다 재조회(백엔드 병렬화로 빨라짐).
+      staleTime: 30 * 1000,
+      refetchOnMount: 'always',
     },
   )
   const malls = data?.malls ?? []

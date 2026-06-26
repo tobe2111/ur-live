@@ -87,68 +87,47 @@ app.get('/', async (c) => {
       return r
     }
 
-    // 2) 판매사 수 — sellers.is_distributor=1, GROUP BY mall.
-    const distRes = await DB.prepare(
-      `SELECT COALESCE(mall_id, 1) AS m, COUNT(*) AS cnt
-       FROM sellers WHERE is_distributor = 1 GROUP BY COALESCE(mall_id, 1)`
-    ).all<{ m: number; cnt: number }>().catch(() => ({ results: [] as { m: number; cnt: number }[] }))
+    // 🛡️ 2026-06-26 (대표 신고 — 느림): 몰별 집계 7종 + 승인큐 5종을 전부 1 Promise.all 로 병렬화.
+    //   기존엔 2~8 을 순차 await(D1 8왕복) + 큐 5 별도 → 저트래픽 콜드 D1 에서 페이지 체감 지연의 주원인.
+    //   각 쿼리 독립 + 개별 fail-soft(0). row(m) 적용/totals 는 결과 수신 후. SQL/의미 전부 불변.
+    const [distRes, supRes, prodRes, gmvRes, depRes, chargeRes, propRes, qDist, qSup, qProd, qPrice, qNotice] = await Promise.all([
+      // 2) 판매사 수 — sellers.is_distributor=1, GROUP BY mall.
+      DB.prepare(`SELECT COALESCE(mall_id, 1) AS m, COUNT(*) AS cnt FROM sellers WHERE is_distributor = 1 GROUP BY COALESCE(mall_id, 1)`)
+        .all<{ m: number; cnt: number }>().catch(() => ({ results: [] as { m: number; cnt: number }[] })),
+      // 3) 제조사(공급자) 수 — suppliers, GROUP BY mall.
+      DB.prepare(`SELECT COALESCE(mall_id, 1) AS m, COUNT(*) AS cnt FROM suppliers GROUP BY COALESCE(mall_id, 1)`)
+        .all<{ m: number; cnt: number }>().catch(() => ({ results: [] as { m: number; cnt: number }[] })),
+      // 4) 도매 카탈로그 상품 수 — is_supply_product=1 AND supply_source_id IS NULL(원본만), GROUP BY mall.
+      DB.prepare(`SELECT COALESCE(mall_id, 1) AS m, COUNT(*) AS cnt FROM products WHERE is_supply_product = 1 AND supply_source_id IS NULL GROUP BY COALESCE(mall_id, 1)`)
+        .all<{ m: number; cnt: number }>().catch(() => ({ results: [] as { m: number; cnt: number }[] })),
+      // 5) 이번달 GMV + 주문수 — wholesale_orders(PAID, paid_at>=월초) JOIN sellers 로 mall 해석.
+      DB.prepare(`SELECT COALESCE(s.mall_id, 1) AS m, COALESCE(SUM(o.subtotal), 0) AS gmv, COUNT(*) AS cnt FROM wholesale_orders o JOIN sellers s ON s.id = o.distributor_seller_id WHERE o.status = 'PAID' AND o.paid_at >= ? GROUP BY COALESCE(s.mall_id, 1)`)
+        .bind(monthStart).all<{ m: number; gmv: number; cnt: number }>().catch(() => ({ results: [] as { m: number; gmv: number; cnt: number }[] })),
+      // 6) 예치금 부채 — SUM(wholesale_deposits.balance) JOIN sellers 로 mall 해석.
+      DB.prepare(`SELECT COALESCE(s.mall_id, 1) AS m, COALESCE(SUM(d.balance), 0) AS liability FROM wholesale_deposits d JOIN sellers s ON s.id = d.seller_id GROUP BY COALESCE(s.mall_id, 1)`)
+        .all<{ m: number; liability: number }>().catch(() => ({ results: [] as { m: number; liability: number }[] })),
+      // 7) 대기 입금확인 — wholesale_deposit_requests(status='pending') JOIN sellers 로 mall 해석.
+      DB.prepare(`SELECT COALESCE(s.mall_id, 1) AS m, COUNT(*) AS cnt FROM wholesale_deposit_requests r JOIN sellers s ON s.id = r.seller_id WHERE r.status = 'pending' GROUP BY COALESCE(s.mall_id, 1)`)
+        .all<{ m: number; cnt: number }>().catch(() => ({ results: [] as { m: number; cnt: number }[] })),
+      // 8) 대기 제안 — wholesale_proposal_tickets(status='open'), 자체 mall_id GROUP BY.
+      DB.prepare(`SELECT COALESCE(mall_id, 1) AS m, COUNT(*) AS cnt FROM wholesale_proposal_tickets WHERE status = 'open' GROUP BY COALESCE(mall_id, 1)`)
+        .all<{ m: number; cnt: number }>().catch(() => ({ results: [] as { m: number; cnt: number }[] })),
+      // 9-a) 승인큐 — 판매사/제조사/상품/가격변경/견적 대기.
+      DB.prepare("SELECT COUNT(*) AS n FROM sellers WHERE is_distributor = 1 AND status = 'pending'").first<{ n: number }>().catch(() => null),
+      DB.prepare("SELECT COUNT(*) AS n FROM suppliers WHERE status = 'pending'").first<{ n: number }>().catch(() => null),
+      DB.prepare("SELECT COUNT(*) AS n FROM products WHERE is_supply_product = 1 AND supply_source_id IS NULL AND supply_approval_status = 'pending'").first<{ n: number }>().catch(() => null),
+      DB.prepare('SELECT COUNT(*) AS n FROM products WHERE is_supply_product = 1 AND pending_supply_price IS NOT NULL').first<{ n: number }>().catch(() => null),
+      DB.prepare("SELECT COUNT(*) AS n FROM wholesale_quotes WHERE status = 'requested'").first<{ n: number }>().catch(() => null),
+    ])
     for (const r of distRes.results ?? []) row(r.m).distributors = num(r.cnt)
-
-    // 3) 제조사(공급자) 수 — suppliers, GROUP BY mall.
-    const supRes = await DB.prepare(
-      `SELECT COALESCE(mall_id, 1) AS m, COUNT(*) AS cnt
-       FROM suppliers GROUP BY COALESCE(mall_id, 1)`
-    ).all<{ m: number; cnt: number }>().catch(() => ({ results: [] as { m: number; cnt: number }[] }))
     for (const r of supRes.results ?? []) row(r.m).suppliers = num(r.cnt)
-
-    // 4) 도매 카탈로그 상품 수 — is_supply_product=1 AND supply_source_id IS NULL(원본만), GROUP BY mall.
-    const prodRes = await DB.prepare(
-      `SELECT COALESCE(mall_id, 1) AS m, COUNT(*) AS cnt
-       FROM products
-       WHERE is_supply_product = 1 AND supply_source_id IS NULL
-       GROUP BY COALESCE(mall_id, 1)`
-    ).all<{ m: number; cnt: number }>().catch(() => ({ results: [] as { m: number; cnt: number }[] }))
     for (const r of prodRes.results ?? []) row(r.m).products = num(r.cnt)
-
-    // 5) 이번달 GMV + 주문수 — wholesale_orders(PAID, paid_at>=월초) JOIN sellers 로 mall 해석.
-    const gmvRes = await DB.prepare(
-      `SELECT COALESCE(s.mall_id, 1) AS m,
-              COALESCE(SUM(o.subtotal), 0) AS gmv,
-              COUNT(*) AS cnt
-       FROM wholesale_orders o
-       JOIN sellers s ON s.id = o.distributor_seller_id
-       WHERE o.status = 'PAID' AND o.paid_at >= ?
-       GROUP BY COALESCE(s.mall_id, 1)`
-    ).bind(monthStart).all<{ m: number; gmv: number; cnt: number }>().catch(() => ({ results: [] as { m: number; gmv: number; cnt: number }[] }))
     for (const r of gmvRes.results ?? []) { const rr = row(r.m); rr.gmv_month = num(r.gmv); rr.orders_month = num(r.cnt) }
-
-    // 6) 예치금 부채 — SUM(wholesale_deposits.balance) JOIN sellers 로 mall 해석(플랫폼이 판매사에 진 빚).
-    const depRes = await DB.prepare(
-      `SELECT COALESCE(s.mall_id, 1) AS m, COALESCE(SUM(d.balance), 0) AS liability
-       FROM wholesale_deposits d
-       JOIN sellers s ON s.id = d.seller_id
-       GROUP BY COALESCE(s.mall_id, 1)`
-    ).all<{ m: number; liability: number }>().catch(() => ({ results: [] as { m: number; liability: number }[] }))
     for (const r of depRes.results ?? []) row(r.m).deposit_liability = num(r.liability)
-
-    // 7) 대기 입금확인 — wholesale_deposit_requests(status='pending') JOIN sellers 로 mall 해석.
-    const chargeRes = await DB.prepare(
-      `SELECT COALESCE(s.mall_id, 1) AS m, COUNT(*) AS cnt
-       FROM wholesale_deposit_requests r
-       JOIN sellers s ON s.id = r.seller_id
-       WHERE r.status = 'pending'
-       GROUP BY COALESCE(s.mall_id, 1)`
-    ).all<{ m: number; cnt: number }>().catch(() => ({ results: [] as { m: number; cnt: number }[] }))
     for (const r of chargeRes.results ?? []) row(r.m).pending_charge_requests = num(r.cnt)
-
-    // 8) 대기 제안 — wholesale_proposal_tickets(status='open'), 자체 mall_id GROUP BY.
-    const propRes = await DB.prepare(
-      `SELECT COALESCE(mall_id, 1) AS m, COUNT(*) AS cnt
-       FROM wholesale_proposal_tickets WHERE status = 'open' GROUP BY COALESCE(mall_id, 1)`
-    ).all<{ m: number; cnt: number }>().catch(() => ({ results: [] as { m: number; cnt: number }[] }))
     for (const r of propRes.results ?? []) row(r.m).pending_proposals = num(r.cnt)
 
-    // 9) 행 정리(mall_id 오름차순) + totals 합산.
+    // 행 정리(mall_id 오름차순) + totals 합산.
     const rows = [...byMall.values()].sort((a, b) => a.mall_id - b.mall_id)
     const totals = rows.reduce((acc, r) => {
       acc.malls += 1
@@ -167,22 +146,7 @@ app.get('/', async (c) => {
       pending_charge_requests: 0, pending_proposals: 0, orders_month: 0,
     })
 
-    // 🗂️ 2026-06-12 (감사 개선 — 통합 승인 큐): 수동 승인 정책의 "오늘 처리할 것" 5종 집계.
-    //   유통/제조/상품/가격변경/입금확인이 5개 페이지에 분산 — 한 번에 카운트 + 딥링크.
-    //   각 쿼리 fail-soft(0) — 큐 집계 실패가 현황 페이지를 안 깨뜨림.
-    const [qDist, qSup, qProd, qPrice, qNotice] = await Promise.all([
-      DB.prepare("SELECT COUNT(*) AS n FROM sellers WHERE is_distributor = 1 AND status = 'pending'")
-        .first<{ n: number }>().catch(() => null),
-      DB.prepare("SELECT COUNT(*) AS n FROM suppliers WHERE status = 'pending'")
-        .first<{ n: number }>().catch(() => null),
-      DB.prepare("SELECT COUNT(*) AS n FROM products WHERE is_supply_product = 1 AND supply_source_id IS NULL AND supply_approval_status = 'pending'")
-        .first<{ n: number }>().catch(() => null),
-      DB.prepare('SELECT COUNT(*) AS n FROM products WHERE is_supply_product = 1 AND pending_supply_price IS NOT NULL')
-        .first<{ n: number }>().catch(() => null),
-      // 견적 요청 대기 — 운영자 회신 큐.
-      DB.prepare("SELECT COUNT(*) AS n FROM wholesale_quotes WHERE status = 'requested'")
-        .first<{ n: number }>().catch(() => null),
-    ])
+    // 🗂️ 통합 승인 큐 — "오늘 처리할 것" 5종(위 Promise.all 에서 병렬 집계됨) + 입금확인(7 재사용).
     const queue = {
       distributors_pending: num(qDist?.n),
       suppliers_pending: num(qSup?.n),
