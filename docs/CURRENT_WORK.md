@@ -1,5 +1,10 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-26 — 결제 셀프취소 머니버그 3종 fix (대표 "지금 진행")
+감사에서 나온 latent 3건을 `refundOrderFully` SSOT 라우팅으로 근본수정 (`src/worker/routes/order.routes.ts` PAID/DONE 전액취소).
+- **B(HIGH)**: 딜 전액결제(toss_key 없음) 셀프취소 422 차단 → refundOrderFully isDeal skip + 딜 환급 → 취소 가능. **C(HIGH)**: 혼합결제 deal_used 미복원 → step 3b 복원. **D(MED)**: 쿠폰/referral_bonus/affiliate/공급/에이전시/영입자 미역전 → 전부 대칭 역전. + CAS 멱등(동시 이중취소 1회만).
+- 부분취소(`cancel_amount<잔여`)는 기존 카드 Toss 경로 유지. order.routes.ts 비잠금. 검증: tsc 0·build 0·refund 27 tests·money-pattern 0. ⚠️ 쇼핑 재오픈 전 staging 실결제 권장.
+
 ## ✅ 2026-06-26 — 전 영역 5도메인 병렬 전수감사 + 감사 게이트 환경구축 (대표 "모두 봐줘 / 이상적이면 이후 감사 스킵하게 환경설정")
 **5개 병렬 에이전트(결제·정산·분리·인증RBAC·크래시) + 코드 재검증.** 결과: 인증RBAC·크래시 2도메인 **clean**(가드 GREEN). 확인 버그 수정 + 가드로 영구 박음.
 - **🔴 서비스 분리 단건 누수 fix (HIGH)**: 리스트/검색은 이미 격리됐으나 **단건 ID 경로**(공구 상세 `group-buy-public.routes` baseWhere ×2, 소비자 상품 상세 `products.routes` GET /:id 라우트가드, 장바구니 `cart.routes` getProduct, 공구확정 `group-buy.routes` confirm-toss)가 도매 원본(`is_supply_product=1 AND supply_source_id 없음`, group_buy_status DEFAULT 'active' 상속)을 미격리 → 소비자 표면+SSR 누수. 5사이트에 `AND NOT (COALESCE(is_supply_product,0)=1 AND COALESCE(supply_source_id,0)=0)` additive(findById 는 create/update 공유라 라우트 가드). **판매사 복제본·플랫폼·일반상품 보존.**

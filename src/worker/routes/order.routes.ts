@@ -851,6 +851,38 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
     // PAID / DONE 상태: 실제 결제가 이루어졌으므로 Toss Cancel API 호출
     const paymentMadeStatuses = ['PAID', 'DONE'];
     if (paymentMadeStatuses.includes(order.status)) {
+      // 💸 2026-06-26 셀프취소 머니버그 3종 근본수정 — 전액취소는 refundOrderFully SSOT 경유.
+      //   기존 인라인 경로의 버그(머니룰 #2 대칭·CAS 멱등 위반):
+      //   ① 딜 전액결제(toss_key 없음) 셀프취소가 PAYMENT_KEY_MISSING 422 로 막히고 딜 환급도 dead.
+      //   ② 혼합결제(카드+딜) 취소 시 orders.deal_used 미복원(유저 딜 순손실).
+      //   ③ 쿠폰·구매자 referral_bonus·affiliate/공급/에이전시/영입자 적립 미역전(쿠폰 소진채 잔류·파밍).
+      //   refundOrderFully: 카드 Toss취소(또는 딜 환급) + 딜 사용분 복원 + 쿠폰복원 + 전 적립 역전 + CAS 멱등.
+      //   부분취소(cancel_amount < 잔여)는 기존 카드 Toss 부분취소 경로 유지(아래).
+      const remaining = Number(order.total_amount ?? 0) - Number(order.refunded_amount ?? 0);
+      const isFullCancel = cancelAmount === undefined || cancelAmount >= remaining;
+      if (isFullCancel) {
+        const { refundOrderFully } = await import('../utils/order-refund');
+        const r = await refundOrderFully(c.env.DB, c.env, orderId, { reason });
+        if (!r.ok) {
+          return c.json({ success: false, error: r.error || '환불 처리에 실패했습니다', code: r.code }, r.status as 400 | 402 | 404 | 422);
+        }
+        // 알림 (admin/seller/user) — 기존 paid-cancel 과 동일.
+        createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(swallow('order:notify-admin-cancel-full'));
+        if (order.seller_id) {
+          createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '주문 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(swallow('order:notify-seller-cancel-full'));
+        }
+        try {
+          const { notifyUser } = await import('../../lib/notifications');
+          await notifyUser(c.env.DB, String(order.user_id), 'order_status', '❌ 주문이 취소되었습니다.', `주문번호: ${order.order_number}`, '/my-orders');
+        } catch {} // fire and forget
+        return c.json({
+          success: true,
+          message: '주문 및 결제가 취소되었습니다',
+          data: { order_id: orderId, cancel_amount: remaining > 0 ? remaining : Number(order.total_amount ?? 0), cancelled_at: new Date().toISOString() },
+        });
+      }
+
+      // ── 부분취소(cancel_amount < 잔여): 카드 Toss 부분취소 (기존 경로) ──
       // toss_payment_key가 있어야 취소 가능
       const payInfo = await orderRepo.getPaymentInfo(orderId);
       const paymentKey = payInfo?.toss_payment_key;

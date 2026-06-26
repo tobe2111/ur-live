@@ -5,11 +5,11 @@
 ## 📊 2026-06-26 — 전수감사 잔여(가드로 못 박는 latent) — 쇼핑 재오픈 전 fix 필수
 2026-06-26 5도메인 병렬 전수감사에서 나온, **결정론적 가드로 박기 어려운**(머니 흐름/문맥 의존) 확인 항목. `docs/AUDIT_INVARIANTS.md` "가드 미보유" 와 연동. **대부분 쇼핑탭 숨김(`SHOPPING_TAB_HIDDEN`) gated = 현재 라이브 영향 0, 단 재오픈 전 반드시 수정 + staging 실결제 검증.**
 
-- 🔴 **결제 셀프취소 `POST /api/orders/:id/cancel` 가 `refundOrderFully` 우회 — 3건** (`src/worker/routes/order.routes.ts`):
-  - **B (HIGH)**: 딜 전액결제(`payment_method='deal_points'`, toss_key=NULL) 주문 셀프취소 시 라인 858 `PAYMENT_KEY_MISSING` 422 로 **차단** → 그 아래 딜 환급(942-958) **도달 불가**(dead). 딜로 산 실물주문을 셀프취소 못 함 + 셀프 환급경로 없음. (딜 실물주문은 대부분 숨긴 쇼핑 경유라 latent.)
-  - **C (HIGH-latent)**: 혼합결제(카드+딜, `orders.deal_used>0`) 셀프취소 시 카드만 환불, **`deal_used` 미복원**(이 엔드포인트는 deal_used 를 안 읽음). 쇼핑 숨김 gated.
-  - **D (MED)**: 셀프취소가 `restoreCouponsForOrders`·`reverseReferralBonusOnRefund`·affiliate/공급/에이전시/영입자 역전 **전부 누락**(referral_commissions 회수만 함). 쿠폰 소진채 복구 안 됨 + referral_bonus 파밍 가능.
-  - **권장 fix**: 전액취소는 `refundOrderFully`(딜복원·쿠폰복원·공구권 clawback·전 적립 역전 대칭+CAS 멱등 이미 보유) 경유로 통일. 부분취소(`cancel_amount`)는 `refundOrderFully` 가 전액전용이라 별도 비례 처리(또는 부분취소 시 딜/쿠폰 주문 차단). `order.routes.ts` 는 비잠금. **머니룰(CAS·대칭·멱등) 준수 + staging 실결제 1회.**
+- ✅ **[FIXED 2026-06-26 — 대표 "지금 진행"] 결제 셀프취소 `POST /api/orders/:id/cancel` refundOrderFully 우회 3건**: **전액취소를 `refundOrderFully` SSOT 경유로 라우팅** → B/C/D 동시 해소.
+  - **B (HIGH)**: 딜 전액결제(toss_key=NULL) 422 차단 → refundOrderFully 는 isDeal 시 Toss/키 체크 skip + 딜 환급 → **취소 가능**.
+  - **C (HIGH)**: 혼합결제 `deal_used` 미복원 → refundOrderFully step 3b 가 카드 Toss취소 후 deal_used 복원.
+  - **D (MED)**: 쿠폰/referral_bonus/affiliate/공급/에이전시/영입자 미역전 → refundOrderFully 가 전부 대칭 역전 + CAS 멱등(동시 이중취소도 1회만 — 기존 인라인의 무CAS 이중환급 race 도 동시 해소).
+  - **부분취소(`cancel_amount < 잔여`)**: 기존 카드 Toss 부분취소 경로 유지(refundOrderFully 는 전액전용). 딜/쿠폰 주문 부분취소는 여전히 제한적(toss_key 없으면 422) — pre-existing, 유저는 전액취소 선택 가능. 검증: tsc 0 · build 0 · refund 27 tests · money-pattern 0. ⚠️ 쇼핑 재오픈 전 staging 실결제(딜전액·혼합·쿠폰 각 1회) 권장.
 - 🟡 **제조사 "출금 가능" 표시 과대** (`src/pages/supplier-dashboard/OverviewTab.tsx:32` + `supplier-analytics.routes.ts` `settle_available`): `supplier_balances.available_amount` 를 그대로 표시, **`reserved_amount`(출금요청 보류분) 미차감**. 실제 출금 CAS(`available-reserved>=amount`)가 초과출금은 막아 **돈 손실 0**, 표시 숫자만 부풀려짐. fix: 출금 페이지의 `spendable=available-reserved` 와 동일하게 overview/analytics 도 차감(또는 API 가 reserved 반환). **Low(표시).**
 - 🟢 **인플 매출분석 프론트 원천징수 하드코딩** (`AdminInfluencerPayoutsPage.tsx:34-35` `calcWithholding` 3.3/8.8 literal): 프론트 표시 계산이라 worker SSOT(`WITHHOLDING_RATES`) 직접 import 불가. cron(서버, `influencer-payout.ts`)은 이미 SSOT 로 fix 됨. 프론트는 API 가 율을 내려주거나 shared 상수 분리 시 정리. **Low(표시 drift 위험).**
 
