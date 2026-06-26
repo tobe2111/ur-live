@@ -35,7 +35,7 @@ const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
   { key: 'price_low',  label: '💰 낮은 가격순' },
   { key: 'price_high', label: '💎 높은 가격순' },
   { key: 'discount',   label: '🏷️ 할인율순' },
-  { key: 'rating',     label: '⭐ 평점순' },
+  // 🎫 2026-06-21 (대표 요청): 교환권 별점 미표시 → '평점순' 정렬 옵션 제거(숨은 필드 정렬 방지).
 ]
 
 interface VoucherProduct {
@@ -129,8 +129,7 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
   const discountRate = hasStrike
     ? Math.round(((p.original_price! - p.price) / p.original_price!) * 100)
     : (p.discount_rate || 0)
-  const rating = Number(p.avg_rating || 0)
-  const reviewCount = Number(p.review_count || 0)
+  // 🎫 2026-06-21 (대표 요청): 교환권은 리뷰/별점 미표시 — 구매수(소셜 proof)만.
   const soldCount = Number(p.sold_count || 0)
   const soldLabel = soldCount >= 10000
     ? `${(soldCount / 10000).toFixed(1).replace(/\.0$/, '')}만`
@@ -192,31 +191,22 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
           <span className="absolute top-2 left-2 text-[11px] font-extrabold text-[#171B24] bg-[#d1d5db] rounded-md px-1.5 py-0.5">{discountRate}%</span>
         )}
       </div>
-      {/* 🎨 본문 — 클린 화이트(다크 토글 대응). 잉크 가격 강조 + 뉴트럴 메타. */}
-      <div className="px-2.5 pt-2 pb-2.5 flex flex-col flex-1">
+      {/* 🎨 본문 — 클린 화이트(다크 토글 대응). 잉크 가격 강조 + 뉴트럴 메타. 컴팩트(별점 제거·여백 축소). */}
+      <div className="px-2.5 pt-1.5 pb-2 flex flex-col flex-1">
         {p.brand_name && (
-          <p className="text-[11px] font-semibold leading-none mb-1 text-gray-400 dark:text-gray-500">{p.brand_name}</p>
+          <p className="text-[11px] font-semibold leading-none mb-0.5 text-gray-400 dark:text-gray-500">{p.brand_name}</p>
         )}
         <p className="text-[13px] leading-tight line-clamp-2 font-medium text-gray-800 dark:text-gray-100">{p.name}</p>
-        {hasStrike && (
-          <p className="text-[11px] mt-1 leading-none line-through text-gray-300 dark:text-gray-600">{formatNumber(p.original_price!)}딜</p>
-        )}
-        <div className="flex items-baseline gap-0.5 mt-0.5">
+        <div className="flex items-baseline gap-0.5 mt-1">
           <span className="text-[16px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
           <span className="text-[12px] font-bold text-[#171B24] dark:text-white">딜</span>
+          {hasStrike && (
+            <span className="text-[11px] ml-1 leading-none line-through text-gray-300 dark:text-gray-600">{formatNumber(p.original_price!)}딜</span>
+          )}
         </div>
-        <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-400 dark:text-gray-500">
-          <span className="inline-flex items-center gap-0.5">
-            <span className="text-amber-400">★</span>
-            {rating > 0 ? (
-              <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
-            ) : (
-              <span className="font-semibold">신규</span>
-            )}
-            {reviewCount > 0 && <span>({reviewCount})</span>}
-          </span>
-          {soldCount > 0 && <span>구매 {soldLabel}</span>}
-        </div>
+        {soldCount > 0 && (
+          <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">구매 {soldLabel}</p>
+        )}
       </div>
     </button>
   )
@@ -233,8 +223,7 @@ const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: VoucherProduc
   const discountRate = hasStrike
     ? Math.round(((p.original_price! - p.price) / p.original_price!) * 100)
     : (p.discount_rate || 0)
-  const rating = Number(p.avg_rating || 0)
-  const reviewCount = Number(p.review_count || 0)
+  // 🎫 2026-06-21 (대표 요청): 교환권은 리뷰/별점 미표시 — 구매수만.
   const soldCount = Number(p.sold_count || 0)
   const soldLabel = soldCount >= 10000
     ? `${(soldCount / 10000).toFixed(1).replace(/\.0$/, '')}만`
@@ -250,11 +239,12 @@ const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: VoucherProduc
       onMouseEnter={() => prefetchProduct(p.id)}
       onTouchStart={() => prefetchProduct(p.id)}
       onFocus={() => prefetchProduct(p.id)}
-      className="w-full flex items-center gap-3.5 text-left py-3.5 border-b border-gray-100 dark:border-[#1A1A1A] active:opacity-60 transition-opacity"
+      className="w-full flex items-center gap-3 text-left py-2.5 border-b border-gray-100 dark:border-[#1A1A1A] active:opacity-60 transition-opacity"
     >
-      {/* 🎨 이미지 — 좌측 정사각 타일. dominant_color 있으면 로딩 플레이스홀더(잠금). */}
+      {/* 🎨 이미지 — 좌측 정사각 타일(컴팩트 64/72). dominant_color 있으면 로딩 플레이스홀더(잠금).
+          ⚠️ img width/height/srcSet/lazy/fetchPriority/dominant_color 속성 불변 — 표시 박스 CSS 크기만 축소. */}
       <div
-        className="relative w-[88px] h-[88px] sm:w-24 sm:h-24 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] dark:from-[#15171C] dark:to-[#0F1115]"
+        className="relative w-16 h-16 sm:w-[72px] sm:h-[72px] shrink-0 overflow-hidden rounded-xl bg-gradient-to-b from-[#F7F8FA] to-[#EFF1F4] dark:from-[#15171C] dark:to-[#0F1115]"
         style={cardColor ? { backgroundColor: cardColor } : undefined}
       >
         {p.image_url && !imgError ? (
@@ -292,31 +282,22 @@ const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: VoucherProduc
           <span className="absolute top-1.5 left-1.5 text-[10px] font-extrabold text-[#171B24] bg-[#d1d5db] rounded px-1 py-0.5">{discountRate}%</span>
         )}
       </div>
-      {/* 🎨 본문 — 우측. 브랜드/상품명/가격/메타 (내용은 카드와 동일, 배치만 1줄 행). */}
+      {/* 🎨 본문 — 우측. 브랜드/상품명/가격/구매수 (별점 제거·여백 축소로 행 높이 컴팩트). */}
       <div className="flex-1 min-w-0">
         {p.brand_name && (
-          <p className="text-[12px] font-semibold leading-none mb-1 text-gray-400 dark:text-gray-500 truncate">{p.brand_name}</p>
+          <p className="text-[11px] font-semibold leading-none mb-0.5 text-gray-400 dark:text-gray-500 truncate">{p.brand_name}</p>
         )}
-        <p className="text-[15px] leading-snug line-clamp-2 font-bold text-gray-900 dark:text-white">{p.name}</p>
-        {hasStrike && (
-          <p className="text-[12px] mt-1.5 leading-none line-through text-gray-300 dark:text-gray-600">{formatNumber(p.original_price!)}딜</p>
+        <p className="text-[14px] leading-snug line-clamp-2 font-bold text-gray-900 dark:text-white">{p.name}</p>
+        <div className="flex items-baseline gap-1 mt-1">
+          <span className="text-[17px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
+          <span className="text-[12px] font-bold text-[#171B24] dark:text-white">딜</span>
+          {hasStrike && (
+            <span className="text-[11px] ml-1 leading-none line-through text-gray-300 dark:text-gray-600">{formatNumber(p.original_price!)}딜</span>
+          )}
+        </div>
+        {soldCount > 0 && (
+          <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">구매 {soldLabel}</p>
         )}
-        <div className="flex items-baseline gap-0.5 mt-1">
-          <span className="text-[19px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
-          <span className="text-[13px] font-bold text-[#171B24] dark:text-white">딜</span>
-        </div>
-        <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-400 dark:text-gray-500">
-          <span className="inline-flex items-center gap-0.5">
-            <span className="text-amber-400">★</span>
-            {rating > 0 ? (
-              <span className="font-bold text-gray-700 dark:text-gray-300">{rating.toFixed(1)}</span>
-            ) : (
-              <span className="font-semibold">신규</span>
-            )}
-            {reviewCount > 0 && <span>({reviewCount})</span>}
-          </span>
-          {soldCount > 0 && <span>구매 {soldLabel}</span>}
-        </div>
       </div>
     </button>
   )
