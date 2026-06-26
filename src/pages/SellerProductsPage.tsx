@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge'
 import SellerLayout from '@/components/SellerLayout'
 import SellerProductTabs from '@/components/seller/SellerProductTabs'
 import { DashboardPageHeader, DashboardEmptyState, DashboardLoading } from '@/components/dashboard'
-import SellerTrackingLinkCopy from '@/components/seller/SellerTrackingLinkCopy'
 import { getSellerId } from '@/lib/seller-auth'
 import {
   Package,
@@ -172,12 +171,7 @@ export default function SellerProductsPage() {
           }
         />
 
-        {/* 🛡️ 2026-05-21 Phase D: 셀러 트래킹 링크 (AI 1 핵심 영업 무기) */}
-        {getSellerId() && (
-          <div className="mb-4 max-w-md">
-            <SellerTrackingLinkCopy sellerId={getSellerId() || ''} />
-          </div>
-        )}
+        {/* 🗑️ 2026-06-26 (대표 — '의미 없음'): 셀러 트래킹 링크(/browse?seller=) 제거 — 쇼핑 숨김 + 링크샵(/u/{handle})이 정식 공유 경로. */}
 
         {/* Error Message */}
         {error && (
