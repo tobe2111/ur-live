@@ -131,17 +131,22 @@ app.post('/quotes', rateLimit({ action: 'wholesale-quote', max: 30, windowSec: 3
     const productId = intOrNull(body.product_id, 1)
     const supplierId = intOrNull(body.supplier_id, 1)
 
-    // 상품 지정 시 존재 검증(선택) — 공급상품 한정.
+    // 🛡️ 2026-06-26 [보안] 상품 지정 시 공급(도매)상품만 허용 + supplier_id 는 클라 입력 신뢰 대신
+    //   상품의 실제 공급자로 서버 도출. 기존엔 존재만 확인하고 임의 supplier_id 를 그대로 저장했음.
+    let resolvedSupplierId = supplierId
     if (productId !== null) {
-      const exists = await DB.prepare('SELECT 1 FROM products WHERE id = ?').bind(productId).first().catch(() => null)
-      if (!exists) return c.json({ success: false, error: '존재하지 않는 상품입니다' }, 400)
+      const prod = await DB.prepare(
+        'SELECT supplier_id FROM products WHERE id = ? AND is_supply_product = 1'
+      ).bind(productId).first<{ supplier_id: number | null }>().catch(() => null)
+      if (!prod) return c.json({ success: false, error: '존재하지 않는 상품입니다' }, 400)
+      if (prod.supplier_id != null) resolvedSupplierId = Number(prod.supplier_id)
     }
 
     const ins = await DB.prepare(
       `INSERT INTO wholesale_quotes
          (distributor_seller_id, supplier_id, product_id, title, request_text, requested_qty, target_unit_price, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'requested')`
-    ).bind(sellerId, supplierId, productId, title, requestText, requestedQty, targetUnitPrice).run()
+    ).bind(sellerId, resolvedSupplierId, productId, title, requestText, requestedQty, targetUnitPrice).run()
 
     // 운영자에게 신규 견적요청 알림 (best-effort).
     await createDashboardNotification(
