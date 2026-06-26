@@ -26,6 +26,7 @@ const TARGET_GLOBS = [
   /^src\/pages\/Supplier.*\.tsx$/,
   /^src\/pages\/supplier-dashboard\/.*\.tsx$/,
   /^src\/pages\/AdminWholesale.*\.tsx$/,
+  /^src\/pages\/admin\/AdminWholesale.*\.tsx$/,
   /^src\/pages\/admin\/AdminDistributor.*\.tsx$/,
   /^src\/pages\/AdminSuppliersPage\.tsx$/,
 ]
