@@ -17,6 +17,8 @@ import { cfImage } from '@/utils/cf-image'
 import { reportFunnel } from '@/lib/web-vitals-report'
 import { recordRecentlyViewed } from '@/components/group-buy/RecentlyViewedStrip'
 import { useInvalidateMyVouchers } from '@/hooks/queries'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/hooks/queries/queryKeys'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -115,6 +117,7 @@ export default function GroupBuyDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const isInfluencerLanding = !!refUserId
+  const qc = useQueryClient()
   const [detail, setDetail] = useState<GroupBuyDetail | null>(null)
   const [participants, setParticipants] = useState<Participant[]>([])
   const [loading, setLoading] = useState(true)
@@ -167,17 +170,32 @@ export default function GroupBuyDetailPage() {
     // 🛡️ 2026-05-27 (loading P0): SSR inject 즉시 사용 — worker HTMLRewriter 가 head 에 inject.
     //   효과: 첫 paint 부터 상세 표시 (axios fetch waterfall ~200-500ms 제거).
     //   miss 시 useEffect 가 정상 axios fetch (fallback 안전).
+    let hasImmediate = false
     try {
       if (typeof document !== 'undefined') {
         const el = document.getElementById('__SSR_INITIAL_DETAIL__')
         if (el?.textContent) {
           const parsed = JSON.parse(el.textContent)
           if (parsed?.success && parsed?.data?.id === productId) {
-            setDetail(parsed.data)
+            setDetail(parsed.data); hasImmediate = true
           }
         }
       }
     } catch { /* SSR inject 누락 / 손상 — fallback */ }
+
+    // 🎯 2026-06-23 (대표 신고 — 홈→상세 전환 시 '이상한 로딩 화면들'): SPA 이동 시엔 SSR inject 가 없어
+    //   매번 스켈레톤이 떴음. 홈 카드가 미리 prefetch 해둔 React Query 캐시(usePrefetchGroupBuyProduct,
+    //   queryKeys.groupBuyProduct)를 즉시 소비 → 데이터 있으면 스켈레톤 없이 바로 콘텐츠. (additive — SSR inject 불변)
+    if (!hasImmediate) {
+      try {
+        const cached = qc.getQueryData<GroupBuyDetail>(queryKeys.groupBuyProduct(productId))
+        if (cached && (cached as { id?: number }).id === productId) {
+          setDetail(cached as GroupBuyDetail); hasImmediate = true
+        }
+      } catch { /* 캐시 없음 — 정상 fetch */ }
+    }
+    // 즉시 데이터(SSR or prefetch)가 있으면 스켈레톤 skip — 백그라운드에서 fresh 재검증만.
+    if (hasImmediate) setLoading(false)
 
     Promise.all([
       api.get(`/api/group-buy/products/${productId}`),
@@ -191,6 +209,7 @@ export default function GroupBuyDetailPage() {
         //   해결: GroupBuyDetailPage 는 받은 상품 그대로 렌더. 새 링크는 SSOT 가 정확한
         //   detail URL 로 생성 (홈 공구 → /group-buy, /vouchers 목록 → /vouchers).
         setDetail(detailRes.data.data)
+        try { qc.setQueryData(queryKeys.groupBuyProduct(productId), detailRes.data.data) } catch { /* 캐시 갱신 best-effort */ }
         reportFunnel('view', productId)  // funnel: page view
         // 🛡️ 2026-05-15: 최근 본 공구 기록 (localStorage 12개 제한)
         try {
@@ -412,8 +431,9 @@ export default function GroupBuyDetailPage() {
     }
   }
 
-  if (loading) {
+  if (loading && !detail) {
     // 🛡️ 2026-05-15: 대기업 수준 skeleton — CLS 0, perceived performance 향상
+    //   🎯 2026-06-23: detail(SSR/prefetch 캐시) 있으면 스켈레톤 skip — 백그라운드 재검증만(깜빡임 0).
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
         {/* 🏭 2026-06-07: 투명 overlay 헤더 — solid 흰 바 깜빡임 없이 이미지가 최상단까지. */}

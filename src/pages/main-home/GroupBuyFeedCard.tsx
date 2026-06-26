@@ -71,6 +71,16 @@ function timeRemaining(expiresAt: string | null | undefined): string | null {
 //   효과: LCP 단축 (첫 진입 시 카드 이미지 우선 로드, lazy 후순위 카드는 nav 중에 로드).
 // 🛡️ 2026-05-27 (loading P1): React.memo — 정렬/카테고리 칩 클릭 시 50카드 reconcile 비용 ↓.
 //   sorted array 는 같은 element references 유지 → shallow compare 로 충분.
+// 🎯 2026-06-23 (대표 신고 — 홈→상세 첫 진입 시 빈 스피너 깜빡임): 데이터뿐 아니라 상세 페이지
+//   CHUNK 도 미리 받아둠 → 첫 클릭에도 Suspense 폴백(PageLoader) 없이 즉시 마운트. 1회 dedupe.
+//   App.tsx 의 lazy import 와 동일 모듈 → Vite 가 같은 chunk 로 합침. (additive — 기존 데이터 prefetch 불변)
+let _detailChunkPrefetched = false
+function prefetchDetailChunk() {
+  if (_detailChunkPrefetched) return
+  _detailChunkPrefetched = true
+  import('@/pages/GroupBuyDetailPage').catch(() => { _detailChunkPrefetched = false })
+}
+
 function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveFold?: boolean }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetch = usePrefetchGroupBuyProduct()
@@ -81,7 +91,7 @@ function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveF
   //   aboveFold 카드는 즉시 prefetch (observer 없이) — 메인 페이지 진입 시 즉시.
   const linkRef = useRef<HTMLAnchorElement>(null)
   useEffect(() => {
-    if (aboveFold) { prefetch(p.id); return }
+    if (aboveFold) { prefetch(p.id); prefetchDetailChunk(); return }
     const el = linkRef.current
     if (!el || typeof IntersectionObserver === 'undefined') return
     const obs = new IntersectionObserver(
@@ -89,6 +99,7 @@ function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveF
         for (const e of entries) {
           if (e.isIntersecting) {
             prefetch(p.id)
+            prefetchDetailChunk()
             obs.disconnect()
             break
           }
