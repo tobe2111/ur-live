@@ -9,7 +9,6 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Users, ShoppingBag, Handshake, CheckCircle, X, FileDown, MessageCircle, Send } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface GroupBuy {
   id: number
@@ -68,90 +67,6 @@ const STATUS_CLS_GB: Record<string, string> = {
   confirmed:   'bg-green-100 text-green-700',
   achieved:    'bg-emerald-100 text-emerald-700',
   failed:      'bg-red-100 text-red-700',
-}
-
-function ConfirmModal({ groupBuy, onClose, onConfirm }: {
-  groupBuy: GroupBuy
-  onClose: () => void
-  onConfirm: (price: number, discount: number) => void
-}) {
-  const { t } = useTranslation()
-  const [price, setPrice] = useState('')
-  const [discount, setDiscount] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-
-  const handleSubmit = async () => {
-    const p = Number(price)
-    const d = Number(discount)
-    if (!p || p <= 0) { toast.error(t('agency.groupBuy.confirmPriceRequired', { defaultValue: '확정 가격을 입력해주세요.' })); return }
-    if (!d || d <= 0 || d > 100) { toast.error(t('agency.groupBuy.discountRateRange', { defaultValue: '할인율을 1~100% 범위로 입력해주세요.' })); return }
-    setSubmitting(true)
-    try {
-      await onConfirm(p, d)
-    } catch {
-      // error handled by parent
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-bold text-gray-900">{t('agency.groupBuy.confirmDeal', { defaultValue: '딜 확정' })}</h3>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100">
-            <X className="w-5 h-5 text-gray-400" />
-          </button>
-        </div>
-
-        <p className="text-sm text-gray-600 mb-4">
-          <span className="font-semibold text-gray-900">{groupBuy.restaurant_name}</span> {t('agency.groupBuy.confirmDesc', { defaultValue: '공구를 확정합니다.' })}
-        </p>
-
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">{t('agency.groupBuy.confirmedPrice', { defaultValue: '확정 가격 (원)' })}</label>
-            <input
-              type="number"
-              value={price}
-              onChange={e => setPrice(e.target.value)}
-              placeholder="예: 15000"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">{t('agency.groupBuy.discountRate', { defaultValue: '할인율 (%)' })}</label>
-            <input
-              type="number"
-              value={discount}
-              onChange={e => setDiscount(e.target.value)}
-              placeholder="예: 25"
-              min={1}
-              max={100}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-2 mt-6">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
-          >
-            {t('common.cancel', { defaultValue: '취소' })}
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50"
-          >
-            {submitting ? t('common.processing', { defaultValue: '처리 중...' }) : t('agency.groupBuy.confirmAction', { defaultValue: '확정' })}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 // 🛡️ 2026-05-13 (공구 UX Phase C): 에이전시 ↔ 식당 협상 메시지 모달
@@ -293,7 +208,6 @@ export default function AgencyGroupBuyPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [tab, setTab] = useState<TabKey>('popular')
-  const [confirmTarget, setConfirmTarget] = useState<GroupBuy | null>(null)
   // 🛡️ 2026-05-13 (Phase C): 메시지 모달 타겟
   const [messagesTarget, setMessagesTarget] = useState<GroupBuy | null>(null)
 
@@ -340,26 +254,9 @@ export default function AgencyGroupBuyPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
-  const changeStatus = (id: number, status: string) => {
-    if (!token) return
-    api.patch(`/api/community-group-buy/${id}/status`, { status }, { headers })
-      .then(() => {
-        toast.success(status === 'negotiating' ? t('agency.groupBuy.negotiationStarted', { defaultValue: '협상이 시작되었습니다.' }) : t('agency.groupBuy.statusChanged', { defaultValue: '상태가 변경되었습니다.' }))
-        fetchData(tab)
-      })
-      .catch(() => toast.error(t('agency.groupBuy.statusChangeFailed', { defaultValue: '상태 변경에 실패했습니다.' })))
-  }
-
-  const confirmDeal = (id: number, confirmed_price: number, confirmed_discount_percent: number) => {
-    if (!token) return
-    return api.patch(`/api/community-group-buy/${id}/confirm`, { confirmed_price, confirmed_discount_percent }, { headers })
-      .then(() => {
-        toast.success(t('agency.groupBuy.dealConfirmed', { defaultValue: '딜이 확정되었습니다!' }))
-        setConfirmTarget(null)
-        fetchData(tab)
-      })
-      .catch(() => toast.error(t('agency.groupBuy.dealConfirmFailed', { defaultValue: '딜 확정에 실패했습니다.' })))
-  }
+  // 🔧 2026-06-24 (전수조사): 상태변경/딜확정 핸들러 제거 — 백엔드 /status·/confirm 은 어드민(+식당주인) 전용
+  //   이라 에이전시 토큰은 항상 403 이었음. 동네공구에 에이전시 소유 개념이 없어 '아무 에이전시가 아무 딜 확정'
+  //   도 부적절. 에이전시는 브라우즈 + 식당 채팅(협상)만. 확정은 어드민. (소유모델 도입 시 재배선 가능.)
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'popular', label: t('agency.groupBuy.tabPopular', { defaultValue: '인기 공구 (50+)' }) },
@@ -446,16 +343,12 @@ export default function AgencyGroupBuyPage() {
                     {g.expires_at ? `만료 ${new Date(g.expires_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}` : ''}
                   </p>
                   <div className="flex gap-1.5">
-                    {g.status === 'proposed' && (
-                      <button onClick={() => changeStatus(g.id, 'negotiating')}
-                        className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-[11px] font-medium">
-                        협상 시작
-                      </button>
-                    )}
+                    {/* 🔧 2026-06-24 (전수조사): 상태변경/딜확정 백엔드는 어드민 전용(에이전시 토큰 403) + 동네공구에
+                        에이전시 소유 개념 없음 → 에이전시는 식당과 '협상 메시지'(채팅)로 브로커링. 확정은 어드민. */}
                     {(g.status === 'proposed' || g.status === 'negotiating') && (
-                      <button onClick={() => setConfirmTarget(g)}
-                        className="px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-[11px] font-medium">
-                        딜 확정
+                      <button onClick={() => setMessagesTarget(g)}
+                        className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-[11px] font-medium flex items-center gap-1">
+                        <MessageCircle className="w-3 h-3" /> 협상 메시지
                       </button>
                     )}
                     {g.status === 'confirmed' && (
@@ -520,9 +413,10 @@ export default function AgencyGroupBuyPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
+                      {/* 🔧 2026-06-24 (전수조사): 협상 시작 = 식당과 채팅(상태변경/확정은 어드민 전용 — 에이전시 403). */}
                       {g.status === 'proposed' && (
                         <button
-                          onClick={() => { changeStatus(g.id, 'negotiating'); setMessagesTarget(g) }}
+                          onClick={() => setMessagesTarget(g)}
                           className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-medium hover:bg-amber-200 flex items-center gap-1"
                         >
                           <MessageCircle className="w-3 h-3" />
@@ -536,26 +430,6 @@ export default function AgencyGroupBuyPage() {
                           title="식당과 메시지"
                         >
                           <MessageCircle className="w-3 h-3" /> 메시지
-                        </button>
-                      )}
-                      {(g.status === 'proposed' || g.status === 'negotiating') && (
-                        <button
-                          onClick={() => setConfirmTarget(g)}
-                          className="px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-medium hover:bg-green-200"
-                        >
-                          {t('agency.groupBuy.confirmDeal', { defaultValue: '딜 확정' })}
-                        </button>
-                      )}
-                      {(g.status === 'proposed' || g.status === 'negotiating') && (
-                        <button
-                          onClick={async () => {
-                            if (await confirmDialog(t('agency.groupBuy.confirmFail', { defaultValue: '이 공구를 실패 처리하시겠습니까?' }))) {
-                              changeStatus(g.id, 'failed')
-                            }
-                          }}
-                          className="px-2.5 py-1 bg-red-100 text-red-600 rounded-lg text-xs font-medium hover:bg-red-200"
-                        >
-                          {t('agency.groupBuy.markFailed', { defaultValue: '실패 처리' })}
                         </button>
                       )}
                       {g.status === 'confirmed' && (
@@ -578,15 +452,6 @@ export default function AgencyGroupBuyPage() {
           </table>
         </div>
       </div>
-
-      {/* Confirm Modal */}
-      {confirmTarget && (
-        <ConfirmModal
-          groupBuy={confirmTarget}
-          onClose={() => setConfirmTarget(null)}
-          onConfirm={(price, discount) => confirmDeal(confirmTarget.id, price, discount)}
-        />
-      )}
 
       {/* 🛡️ 2026-05-13 (Phase C): 협상 메시지 모달 */}
       {messagesTarget && (
