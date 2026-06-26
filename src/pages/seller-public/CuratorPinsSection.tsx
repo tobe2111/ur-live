@@ -74,7 +74,9 @@ export default function CuratorPinsSection({ handle }: { handle?: string | null 
           </a>
         )}
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* 🏁 2026-06-25 (대표 신고 — 카드 가로폭 좁음): 링크샵은 PC 에서도 430 액자라 viewport 기반
+          `sm:grid-cols-4` 가 액자 안에서 4열→카드 협소 + 우측 공백. PinGrid 와 동일하게 항상 2열. */}
+      <div className="grid grid-cols-2 gap-3">
         {pins.map(pin => {
           const name = pin.title || pin.product_name || ''
           const product: BrowseProduct = {
