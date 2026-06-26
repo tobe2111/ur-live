@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
-const CuratorPinsSection = lazy(() => import('./seller-public/CuratorPinsSection'))
+// 🏁 2026-06-26 (대표 결정 — "추천템은 사업자 링크샵에선 숨김"): 사업자 = 본인 상품이 주인공.
+//   추천 핀(CuratorPinsSection) 섹션 제거 → 추천 적립 동선은 크리에이터 콘솔(/creator)에서 유지.
+//   (일반 유저 링크샵(CuratorPage)은 추천템이 메인이라 그대로.)
 // 🏁 2026-06-18 (사용자 결정 — 승인 사업자 상점 바로등록): 오너가 대시보드 안 가고 링크샵에서 바로 상품 등록.
 const QuickProductModal = lazy(() => import('./curator-page/QuickProductModal'))
 import { lazy, Suspense } from 'react'
@@ -16,7 +18,7 @@ import VideosTab from './seller-public/VideosTab'
 import VouchersTab from './seller-public/VouchersTab'
 // 🏁 2026-06-25 (대표 "통일"): 사업자 링크샵 헤더를 canonical CuratorHeader 로 — ProfileHeader 폐기(헤더 1개).
 import CuratorHeader from './curator-page/CuratorHeader'
-import type { CuratorProfile, CuratorPin } from '@/features/curator/api/curator-api'
+import type { CuratorProfile } from '@/features/curator/api/curator-api'
 // 🏁 2026-06-25 (대표 "카드 1종"): 내 상품도 표준 BrowseProductCard(★평점·판매수 내장) — EditorialProductCard 폐기.
 import BrowseProductCard from '@/pages/browse/BrowseProductCard'
 import type { Product as BrowseProduct } from '@/pages/browse/types'
@@ -39,12 +41,9 @@ interface SellerPublicPageProps {
    *  사업자 링크샵도 canonical CuratorHeader 를 렌더 → 헤더 컴포넌트 1개로 통일(ProfileHeader 폐기).
    *  배너/이름 등은 curator 우선·seller 폴백으로 병합(저장 위치 분산 흡수). 비-/u/ 진입은 undefined. */
   curator?: CuratorProfile | null
-  /** 🏁 2026-06-26 (대표 — 진입 불필요 로딩 감사): CuratorPage 가 이미 받은 추천 핀.
-   *  내려주면 CuratorPinsSection 이 같은 /api/curator/{handle} 를 재호출하지 않음(SPA 중복요청 제거). */
-  pins?: CuratorPin[] | null
 }
 
-export default function SellerPublicPage({ sellerIdOverride, curator, pins: initialPins }: SellerPublicPageProps = {}) {
+export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPublicPageProps = {}) {
   const { t } = useTranslation()
   const params = useParams<{ sellerId: string }>()
   const rawParam = sellerIdOverride ?? params.sellerId
@@ -477,17 +476,10 @@ export default function SellerPublicPage({ sellerIdOverride, curator, pins: init
         onCuratorUpdate={(next) => setCuratorEdits((s) => ({ ...s, ...next }))}
       />
 
-      {/* 🏁 2026-06-25 (대표 "한 페이지 · 능력별 섹션"): 탭 제거 → 한 스크롤 섹션. 빈 섹션 자동 숨김.
-          순서: 추천(핀) → 내 상품 → 교환권 → 영상/라이브 → 정보. */}
+      {/* 🏁 2026-06-26 (대표 "추천템 숨김"): 사업자 링크샵 = 본인 상품 주인공 → 한 스크롤 섹션.
+          순서: 내 상품 → 교환권 → 영상/라이브 → 정보. (추천 핀 섹션 제거 — 일반 유저 링크샵은 유지) */}
       <div className="ur-content-wide px-4 lg:px-8 py-5">
-        {/* ① 추천 — 연결된 큐레이터(본인) 추천 핀 (자체 헤더 보유) */}
-        {(seller as { curator_handle?: string | null })?.curator_handle && (
-          <Suspense fallback={null}>
-            <CuratorPinsSection handle={(seller as { curator_handle?: string | null }).curator_handle} initialPins={initialPins} />
-          </Suspense>
-        )}
-
-        {/* ② 내 상품 — 방문자에게 0개면 섹션 숨김(외부 조건), 소유자 0개는 컴팩트 제목 행 + 인라인 추가 */}
+        {/* ① 내 상품 — 방문자에게 0개면 섹션 숨김(외부 조건), 소유자 0개는 컴팩트 제목 행 + 인라인 추가 */}
         {(shopProducts.length > 0 || ownerView) && (
           shopProducts.length === 0 ? (
             // 🏁 2026-06-26 (대표 — "빈 상태가 너무 큼"): py-16 빈 블록 → 제목 행 옆 인라인 '+ 상품 등록'.
