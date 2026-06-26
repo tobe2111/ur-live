@@ -1870,6 +1870,13 @@
       "noShopProductsOwner": "No products yet. Add some from your seller dashboard.",
       "noShopProducts": "No products yet.",
       "previewVisitor": "👀 Preview",
+      "addEntry": "+ Add",
+      "sellerDashboard": "Seller dashboard",
+      "addSheetTitle": "What would you like to add?",
+      "addProduct": "Add product",
+      "addProductDesc": "Shipped product — add now",
+      "addVoucher": "Add group-buy voucher",
+      "addVoucherDesc": "Local deal / voucher — set location & target",
       "previewBanner": "Visitor preview — this is what others see",
       "backToEdit": "Back to editing"
     },

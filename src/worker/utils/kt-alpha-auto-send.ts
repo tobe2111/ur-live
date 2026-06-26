@@ -130,6 +130,13 @@ export async function autoSendKtAlphaVouchersForOrders(
   for (const order of orders) {
     const oid = Number(order.id)
     if (!oid) continue
+    // 🛡️ 2026-06-26 per-order 멱등 — confirm+webhook 양 경로 배선 후 이중발송 방지(상태 CAS 외 추가 방어).
+    //   이 주문의 KT 발송이 이미 시작/완료(voucher_orders 에 external_order_id 'u{oid}-…' 행 존재)면 skip.
+    //   trId 가 'u{oid}-…' 라 LIKE 'u{oid}-%' 는 oid 경계('-')로 prefix 충돌 없음(u85- 는 u850- 미매치).
+    const ktAlready = await env.DB.prepare(
+      `SELECT 1 FROM voucher_orders WHERE source = 'kt_alpha' AND external_order_id LIKE ? LIMIT 1`
+    ).bind(`u${oid}-%`).first().catch(() => null)
+    if (ktAlready) continue
     const ktItems = await env.DB.prepare(
       `SELECT oi.product_id, oi.product_name, oi.quantity, oi.unit_price,
               p.kt_alpha_gift_code

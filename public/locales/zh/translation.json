@@ -1869,6 +1869,13 @@
       "noShopProductsOwner": "还没有商品。请从卖家后台添加。",
       "noShopProducts": "还没有商品。",
       "previewVisitor": "👀 预览",
+      "addEntry": "+ 添加",
+      "sellerDashboard": "卖家后台",
+      "addSheetTitle": "要添加什么？",
+      "addProduct": "添加商品",
+      "addProductDesc": "配送商品 — 立即添加",
+      "addVoucher": "添加拼团券",
+      "addVoucherDesc": "本地拼团・兑换券 — 设置位置・目标人数",
       "previewBanner": "访客预览 — 这是别人看到的页面",
       "backToEdit": "返回编辑"
     },
