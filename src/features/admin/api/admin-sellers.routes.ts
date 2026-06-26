@@ -443,6 +443,52 @@ adminSellersRoutes.patch('/sellers/:id/link-user', cors(), async (c) => {
   }
 });
 
+// 🔗 2026-06-26 (카카오 단일로그인 통일 Step 2 보강): 카카오 미연결 셀러 목록 + 추정 매칭.
+//   same-email 자동연결이 이미 일어난 셀러는 제외. 운영자가 한눈에 보고 원클릭(아래 link-user)으로 연결 →
+//   기존 어긋난 셀러(tobe2111류)의 linked_user_id 백필 → /u/{handle} storefront 정상화.
+//   추정 매칭은 '이메일이 정확히 1명에게만 속하고(COUNT=1) 그 유저가 아직 다른 셀러에 안 묶임' 일 때만 제안(오연결 방지).
+adminSellersRoutes.get('/sellers/unlinked', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const rows = await executeQuery<{
+      seller_id: number; seller_name: string | null; seller_email: string | null;
+      username: string | null; status: string; business_name: string | null;
+      suggested_user_id: number | null; suggested_handle: string | null;
+      suggested_user_name: string | null; suggested_user_email: string | null;
+    }>(DB, `
+      SELECT s.id AS seller_id, s.name AS seller_name, s.email AS seller_email,
+             s.username, s.status, s.business_name,
+             um.id AS suggested_user_id, um.handle AS suggested_handle,
+             um.name AS suggested_user_name, um.email AS suggested_user_email
+      FROM sellers s
+      LEFT JOIN users um
+        ON s.email IS NOT NULL AND s.email != ''
+        AND LOWER(um.email) = LOWER(s.email)
+        AND (SELECT COUNT(*) FROM users u2 WHERE LOWER(u2.email) = LOWER(s.email)) = 1
+        AND NOT EXISTS (SELECT 1 FROM sellers s2 WHERE s2.linked_user_id = um.id)
+      WHERE s.linked_user_id IS NULL
+        AND COALESCE(s.is_distributor, 0) = 0
+        AND s.status IN ('pending','approved')
+      ORDER BY (um.id IS NOT NULL) DESC, s.id DESC
+      LIMIT 300
+    `, []);
+    const data = rows.map((r) => ({
+      seller_id: r.seller_id,
+      seller_name: r.seller_name,
+      seller_email: r.seller_email,
+      username: r.username,
+      status: r.status,
+      business_name: r.business_name,
+      suggested: r.suggested_user_id && r.suggested_handle
+        ? { user_id: r.suggested_user_id, handle: r.suggested_handle, name: r.suggested_user_name, email: r.suggested_user_email }
+        : null,
+    }));
+    return c.json({ success: true, data, total: data.length, matched: data.filter((d) => d.suggested).length });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 adminSellersRoutes.patch('/sellers/:id/reject', cors(), async (c) => {
   try {
     const { DB } = c.env;

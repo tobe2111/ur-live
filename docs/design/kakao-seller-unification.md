@@ -62,6 +62,11 @@
 - CTA → `/seller/profile` (기존 `KakaoLinkButton` 이 OAuth 팝업 + `POST /link-kakao` 처리 — 검증된 흐름 재사용, 중복 0).
 - i18n: `seller.kakaoBannerTitle/Desc/Cta` 6개 언어 추가.
 
+### ✅ 2b+ — 관리자 미연결 셀러 마이그레이션 뷰 (완료, 2026-06-26)
+신규/기존 셀러를 카카오로 *유도*해도 **이미 어긋난 기존 셀러**(이메일 불일치 → 자동연결 실패, 예: tobe2111)는 자동으로 안 풀림. 운영자가 일괄 정리할 수 있게:
+- **`GET /api/admin/sellers/unlinked`** (admin-sellers.routes, 비잠금): `linked_user_id IS NULL` + 비-distributor + status pending/approved 셀러 목록 + **추정 매칭**(이메일이 정확히 1명과 일치(COUNT=1) + 그 유저 미연결일 때만 — 오연결 방지). 매칭 우선 정렬.
+- **AdminPendingSellersPage**: 기존 수동 연결 폼 아래 **미연결 목록 + 추정 매칭 원클릭 '연결'**(공유 `doLink` → 기존 `PATCH /sellers/:id/link-user`, conflict 가드/audit log 그대로). 매칭 없으면 "수동" 표시 → 위 폼으로.
+
 ### 🔜 2c — 완전 폐지 (보류, 마이그레이션 성숙 후)
 - 이메일/비번 로그인 fully 제거. **선행조건**: 미연결 이메일 셀러 비율이 충분히 낮아질 때까지 fallback 유지(지금 제거하면 미연결 셀러 lockout).
 - 잔여 자동 마이그레이션: 카카오 same-email auto-link(`KakaoAuthService.upsertUser`, 잠금) + `repair-schema` 백필이 이메일 셀러가 카카오로 로그인하는 순간 `linked_user_id` 채움 → 2a/2b 가 그 경로로 유도.
