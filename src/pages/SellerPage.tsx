@@ -15,7 +15,6 @@ import { useSellerMode } from '@/hooks/useSellerMode'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import SellerLayout from '@/components/SellerLayout'
 import RoleGate from '@/components/RoleGate'
-import SellerTrackingLinkCopy from '@/components/seller/SellerTrackingLinkCopy'
 import { getRoleLabel, getRoleMeta, getCurrentSellerRole, isInfluencer as checkInfluencer } from '@/shared/seller-roles'
 import { DashboardPageHeader } from '@/components/dashboard'
 import SellerReferralInfoCard from '@/components/seller/SellerReferralInfoCard'
@@ -469,14 +468,8 @@ export default function SellerPage() {
           icon={<LayoutDashboard className="h-5 w-5" />}
         />
 
-        {/* 🛡️ 2026-05-21 Phase D-5: role 기반 자동 분기 — 인플루언서/사장님별 전용 위젯. */}
-        <RoleGate showFor="influencer-or-both">
-          {getSellerId() && (
-            <div className="max-w-md">
-              <SellerTrackingLinkCopy sellerId={getSellerId() || ''} />
-            </div>
-          )}
-        </RoleGate>
+        {/* 🗑️ 2026-06-26 (대표 — '의미 없음'): 셀러 트래킹 링크(/browse?seller=) 제거.
+            대상 /browse(쇼핑)는 SHOPPING_TAB_HIDDEN 으로 숨김 + 정식 공유 경로는 링크샵(/u/{handle}) 이라 obsolete. */}
 
         <RoleGate showFor="store-or-both">
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
