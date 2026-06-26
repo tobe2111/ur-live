@@ -27,7 +27,6 @@ import type { Product as BrowseProduct } from './browse/types'
 import { Search, X, Trash2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
-import CuratorTabs, { type CuratorTab } from './curator-page/CuratorTabs'
 import LinkshopOnboardModal from './curator-page/LinkshopOnboardModal'
 
 // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있으면 같은 페이지에서 SellerPublicPage 직접 render.
@@ -64,7 +63,6 @@ export default function CuratorPage() {
   })
   const [loading, setLoading] = useState(!data)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<CuratorTab>('home')
   // 🔍 2026-06-16 링크샵 시안: 검색 — 상품명 + 추천 코멘트(note) 라이브 필터.
   const [query, setQuery] = useState('')
   // 🎨 2026-06-16 링크샵 시안: '방문자 미리보기' — 본인이 남이 보는 화면 그대로 확인.
@@ -206,18 +204,6 @@ export default function CuratorPage() {
   const onPinDeleted = (pinId: number) => setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== pinId) } : prev)
   // 🎨 2026-06-16 시안: 본인이 '전체 미리보기' 누르면 방문자 화면 그대로(편집/관리 숨김) 렌더. 실제 소유권(isOwner)은 보존.
   const ownerView = isOwner && !previewAsVisitor
-  const renderPinTab = (arr: CuratorPin[], emptyType?: 'shop' | 'voucher') => {
-    if (arr.length === 0) return <EmptyLinkshop handle={curator.handle} isOwner={ownerView} emptyType={emptyType} curatorName={curator.name} />
-    const f = applyQ(arr)
-    if (f.length === 0) return (
-      <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-        <p className="text-sm font-bold text-gray-900 dark:text-white">검색 결과가 없어요</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">다른 키워드로 찾아보세요.</p>
-      </div>
-    )
-    return <PinGrid pins={f} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} kind={emptyType} />
-  }
-
   return (
     <>
       <SEO
