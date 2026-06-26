@@ -87,7 +87,7 @@ export default function WholesaleCheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen pb-32" style={{ background: '#fff', color: WT.ink }}>
+    <div className="min-h-[100dvh] pb-32" style={{ background: '#fff', color: WT.ink }}>
       <SEO title="도매 결제 - 유통스타트" description="예치금으로 도매 주문 결제" url="/wholesale/checkout" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">

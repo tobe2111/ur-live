@@ -7,6 +7,7 @@
  */
 import { useState } from 'react'
 import api from '@/lib/api'
+import { safeHttpHref } from '@/utils/safe-external-url'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { useQueryClient } from '@tanstack/react-query'
 import AdminLayout from '@/components/AdminLayout'
@@ -112,8 +113,8 @@ export default function AdminDistributorApprovalPage() {
                       {d.email && <span className="inline-flex items-center gap-1"><Mail className="w-3 h-3 text-gray-400" /> {d.email}</span>}
                       {d.phone && <span className="inline-flex items-center gap-1"><Phone className="w-3 h-3 text-gray-400" /> {d.phone}</span>}
                     </div>
-                    {d.business_registration_image_url && (
-                      <a href={d.business_registration_image_url} target="_blank" rel="noreferrer"
+                    {safeHttpHref(d.business_registration_image_url) && (
+                      <a href={safeHttpHref(d.business_registration_image_url)} target="_blank" rel="noreferrer"
                         className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
                         <FileText className="w-3 h-3" /> 사업자등록증 보기
                       </a>

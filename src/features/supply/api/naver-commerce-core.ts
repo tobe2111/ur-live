@@ -13,6 +13,7 @@
  */
 import { encryptAtRest, decryptAtRest } from '@/worker/utils/data-crypto'
 import { swallow } from '@/worker/utils/swallow'
+import { isPrivateHost } from '@/worker/utils/validation'
 
 export const NAVER_API_BASE = 'https://api.commerce.naver.com/external'
 
@@ -188,6 +189,16 @@ export async function searchNaverLeafCategories(conn: NaverConnection, q: string
 
 // ── 이미지 업로드 (네이버는 자체 업로드 URL 만 허용) ─────────────────────
 export async function uploadImageToNaver(conn: NaverConnection, imageUrl: string): Promise<{ ok: boolean; url?: string; error?: string }> {
+  // 🛡️ 2026-06-26 [보안] SSRF 가드 — imageUrl 은 셀러-제어 products.image_url 에서 옴.
+  //   http(s) 가 아니거나 내부/사설 호스트면 fetch 거부(내부 메타데이터/사설망 접근 차단).
+  try {
+    const u = new URL(imageUrl)
+    if (!['http:', 'https:'].includes(u.protocol) || isPrivateHost(u.hostname)) {
+      return { ok: false, error: '허용되지 않는 이미지 URL 입니다' }
+    }
+  } catch {
+    return { ok: false, error: '올바른 이미지 URL 이 아닙니다' }
+  }
   const src = await fetch(imageUrl).catch(() => null)
   if (!src?.ok) return { ok: false, error: '상품 이미지 원본을 가져오지 못했습니다' }
   const blob = await src.blob()

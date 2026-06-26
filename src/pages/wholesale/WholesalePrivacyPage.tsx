@@ -108,7 +108,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
 export default function WholesalePrivacyPage() {
   const navigate = useNavigate()
   return (
-    <div className="min-h-screen pb-24" style={{ background: WT.fill }}>
+    <div className="min-h-[100dvh] pb-24" style={{ background: WT.fill }}>
       <SEO title="개인정보처리방침 - 유통스타트" description="유통스타트 B2B 도매몰 개인정보처리방침" url="/wholesale/privacy" noindex />
       <header className="sticky top-0 z-30" style={{ background: '#fff', borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-medium px-5 lg:px-8 flex items-center h-14">

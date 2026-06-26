@@ -60,8 +60,8 @@ export default function WholesaleStatementPage({ embedded = false }: { embedded?
         ) : orders.length === 0 ? (
           <p className="text-center py-16 text-[14px]" style={{ color: WT.ink4 }}>해당 기간 거래내역이 없어요.</p>
         ) : (
-          <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid ' + WT.line }}>
-            <table className="w-full text-[14px]">
+          <div className="rounded-2xl overflow-x-auto" style={{ border: '1px solid ' + WT.line }}>
+            <table className="w-full min-w-[560px] text-[14px]">
               <thead>
                 <tr className="text-left" style={{ color: WT.ink3, background: WT.fill2, borderBottom: '1px solid ' + WT.line }}>
                   <th className="py-2.5 px-4 font-semibold">일자</th>
@@ -92,7 +92,7 @@ export default function WholesaleStatementPage({ embedded = false }: { embedded?
   if (embedded) return <div>{content}</div>
 
   return (
-    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink }}>
+    <div className="min-h-[100dvh]" style={{ background: '#fff', color: WT.ink }}>
       <SEO title="거래내역서 - 유통스타트" description="판매사 도매 거래내역서" url="/wholesale/statement" noindex />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur print:hidden" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-medium flex items-center gap-3 px-5 lg:px-8 h-[52px]">

@@ -117,7 +117,9 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 20, windowS
     const phone = String(body.phone || '').trim()
     const business_number_raw = String(body.business_number || '').replace(/[^0-9]/g, '') // 🏭 사업자등록번호 숫자만(하이픈 무관)
     const representative = String(body.representative || '').trim()    // 대표자명
-    const business_license_url = String(body.business_license_url || '').trim().slice(0, 500) // 사업자등록증 이미지
+    // 🛡️ 2026-06-26 [보안] 사업자등록증 URL scheme 검증 — 어드민 승인화면 <a href> XSS 차단. http(s)·상대경로만.
+    const business_license_raw = String(body.business_license_url || '').trim().slice(0, 500) // 사업자등록증 이미지
+    const business_license_url = (/^https?:\/\//i.test(business_license_raw) || /^\//.test(business_license_raw)) ? business_license_raw : ''
     // 🏭 2026-06-09 대표자 연락처 + 담당자(성명/연락처/이메일) — additive 수집. 길이 cap.
     const representative_phone = String(body.representative_phone || '').trim().slice(0, 40)
     const manager_name = String(body.manager_name || '').trim().slice(0, 80)
@@ -288,7 +290,9 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
     const business_number = String(body.business_number || '').trim()
     const representative = String(body.representative || '').trim()
     const phone = String(body.phone || '').trim()
-    const business_license_url = String(body.business_license_url || '').trim().slice(0, 500)
+    // 🛡️ 2026-06-26 [보안] 사업자등록증 URL scheme 검증 — admin <a href> XSS 차단(위 가입경로와 동일).
+    const business_license_rawc = String(body.business_license_url || '').trim().slice(0, 500)
+    const business_license_url = (/^https?:\/\//i.test(business_license_rawc) || /^\//.test(business_license_rawc)) ? business_license_rawc : ''
     // 🏭 2026-06-09 대표자 연락처 + 담당자(성명/연락처/이메일) — additive 수집. 길이 cap.
     const representative_phone = String(body.representative_phone || '').trim().slice(0, 40)
     const manager_name = String(body.manager_name || '').trim().slice(0, 80)

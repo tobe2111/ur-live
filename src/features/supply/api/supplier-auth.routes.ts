@@ -138,7 +138,10 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
       representative_phone?: string; manager_name?: string; manager_phone?: string; manager_email?: string;
     };
     const body = await c.req.json<RegBody>().catch(() => ({} as RegBody));
-    const bizLicenseUrl = (body.business_license_url || '').trim().slice(0, 500);
+    const bizLicenseRaw = (body.business_license_url || '').trim().slice(0, 500);
+    // 🛡️ 2026-06-26 [보안] 사업자등록증 URL scheme 검증 — 어드민 승인화면 <a href> 로 렌더되므로
+    //   javascript:/data: 면 admin 세션 XSS. http(s)·업로드 상대경로만 허용, 그 외는 빈값(아래 필수검사에서 거부).
+    const bizLicenseUrl = (/^https?:\/\//i.test(bizLicenseRaw) || /^\//.test(bizLicenseRaw)) ? bizLicenseRaw : '';
     // 🏭 2026-06-09 대표자 연락처 + 담당자(성명/연락처/이메일) — additive 수집. 길이 cap.
     const representativePhone = (body.representative_phone || '').trim().slice(0, 40);
     const managerName = (body.manager_name || '').trim().slice(0, 80);
@@ -147,7 +150,7 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
 
     const email = (body.email || '').trim().toLowerCase();
     const password = body.password || '';
-    const businessName = (body.business_name || '').trim();
+    const businessName = (body.business_name || '').trim().slice(0, 200);
 
     if (!EMAIL_RE.test(email)) return c.json({ success: false, error: '올바른 이메일을 입력해주세요' }, 400);
     if (!businessName) return c.json({ success: false, error: '상호(사업자명)는 필수입니다' }, 400);
@@ -247,11 +250,13 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
       phone?: string; business_license_url?: string;
       representative_phone?: string; manager_name?: string; manager_phone?: string; manager_email?: string;
     }>().catch(() => ({} as Record<string, never>));
-    const business_name = String(body.business_name || '').trim();
-    const business_number = String(body.business_number || '').trim();
-    const representative = String(body.representative || '').trim();
-    const phone = String(body.phone || '').trim();
-    const business_license_url = String(body.business_license_url || '').trim().slice(0, 500);
+    const business_name = String(body.business_name || '').trim().slice(0, 200);
+    const business_number = String(body.business_number || '').trim().slice(0, 40);
+    const representative = String(body.representative || '').trim().slice(0, 80);
+    const phone = String(body.phone || '').trim().slice(0, 40);
+    // 🛡️ 2026-06-26 [보안] 사업자등록증 URL scheme 검증 — admin <a href> XSS 차단(위 /register 와 동일).
+    const business_license_rawb = String(body.business_license_url || '').trim().slice(0, 500);
+    const business_license_url = (/^https?:\/\//i.test(business_license_rawb) || /^\//.test(business_license_rawb)) ? business_license_rawb : '';
     // 🏭 2026-06-09 대표자 연락처 + 담당자(성명/연락처/이메일) — additive 수집. 길이 cap.
     const representative_phone = String(body.representative_phone || '').trim().slice(0, 40);
     const manager_name = String(body.manager_name || '').trim().slice(0, 80);

@@ -115,7 +115,6 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
   `).bind(wholesaleOrderId).all<WholesaleLine & { is_brand_product: number }>().catch(() => ({ results: [] as (WholesaleLine & { is_brand_product: number })[] }))
 
   let credited = 0
-  const notifySuppliers = new Set<number>()
   // 🆕 2026-06-16 정산 분배: 제조사 = max(원가, 공급가×(1−수수료%)), 플랫폼 = 공급가 − 제조사(= 수수료).
   const commPct = await loadPlatformCommissionPct(DB)
   // 🗓️ 2026-06-23 (대표 확정): 도매 정산 = "금주(월~일) 발주 → 차주 목요일 00:00 KST" 통일(브랜드/일반 구분 없음).
@@ -156,19 +155,13 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
         metadata: { product_id: r.product_id, qty, wholesale_order_id: wholesaleOrderId },
       })
     } catch { /* ledger best-effort */ }
-    notifySuppliers.add(r.supplier_id)
     credited++
   }
 
-  // 제조사 대시보드 알림 — 주문 접수 시 발송 준비 안내 (제조사당 1회, best-effort).
-  for (const sid of notifySuppliers) {
-    try {
-      await createDashboardNotification(
-        DB, 'supplier', String(sid), 'wholesale_order',
-        '새 도매 주문', '도매 주문이 접수되었습니다. 발송을 준비해주세요.', '/supplier/wholesale-orders',
-      )
-    } catch { /* best-effort */ }
-  }
+  // 🔔 2026-06-26 (알림 중복 제거): 제조사 신규주문 알림은 호출부의 notifySuppliersOfPaidOrder()
+  //   (type='wholesale_new_order', 품목/수량 포함 — 2026-06-12 감사 fix)가 전담한다. 과거엔 여기서도
+  //   type='wholesale_order' 벨을 보내 제조사가 한 주문에 2건(서로 다른 type 이라 dedup 안 됨) 수신했음.
+  //   이 함수는 정산 적립만 담당하도록 알림 루프 제거(적립/원장 로직은 불변).
   return credited
 }
 

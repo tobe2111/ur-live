@@ -30,20 +30,26 @@ export async function handlePayoutsGenerate(env: Env): Promise<void> {
     const { REFUND_POLICY } = await import('../../shared/constants/policy')
     const MIN_AMOUNT = REFUND_POLICY.COMMISSION_MIN_WITHDRAWAL
 
-    // 지난주 발생한 credit (외상) 집계
+    // 🛡️ 2026-06-26 [머니수정] credit 집계를 '지난주만' → '전기간 누적' 으로 변경.
+    //   기존엔 credit 은 1주치인데 차감(paid)은 전기간이라, 누적 payout 이 1주 credit 을
+    //   넘는 기성 payee 는 pending 이 음수→skip(만성 미지급) + 누락된 주/MIN 미만 주의 credit 은
+    //   영영 재포착 못 함(각 run 이 자기 7일 창만 봄). 이제 getPayablePending(ledger.ts) 의 정식
+    //   공식 = (전기간 credit − 전기간 미완료 payout) 으로 실외상 잔액을 반영.
     const credits = await DB.prepare(`
       SELECT credit_account, SUM(amount) as total
         FROM ledger_entries
        WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')
-         AND created_at BETWEEN ? AND ?
        GROUP BY credit_account
-    `).bind(periodStart + ' 00:00:00', periodEnd + ' 23:59:59').all<{ credit_account: string; total: number }>().catch(() => ({ results: [] as Array<{ credit_account: string; total: number }> }))
+    `).all<{ credit_account: string; total: number }>().catch(() => ({ results: [] as Array<{ credit_account: string; total: number }> }))
 
-    // 이미 payout 처리된 amount
+    // 이미 payout 처리됐거나(완료) 처리 대기중인(pending) amount.
+    // 🛡️ credit 이 전기간 누적이 됐으므로 차감도 전기간 — 'pending' 도 포함해야 직전 run 이 만든
+    //   미승인 pending payout 이 다음 주(다른 period) run 에서 같은 외상으로 재생성되는 이중 pending 을 차단.
+    //   (rejected/failed/cancelled 는 미차감 → 그 외상은 다음 run 에서 정상 재포착.)
     const paid = await DB.prepare(`
       SELECT (payee_type || ':' || payee_id) as account, SUM(amount) as total
         FROM payouts
-       WHERE status IN ('approved','sent')
+       WHERE status IN ('pending','approved','sent')
        GROUP BY payee_type, payee_id
     `).all<{ account: string; total: number }>().catch(() => ({ results: [] as Array<{ account: string; total: number }> }))
     const paidMap = new Map((paid.results || []).map(r => [r.account, r.total]))

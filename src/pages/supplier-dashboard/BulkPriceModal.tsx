@@ -72,7 +72,7 @@ export default function BulkPriceModal({ t, items, onClose, onDone }: {
           <p className="text-sm text-gray-400 text-center py-10">{t('supplier.bulkNoApproved', { defaultValue: '가격 변경 가능한 승인 상품이 없습니다.' })}</p>
         ) : (
           <>
-            <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
+            <div className="border border-gray-200 rounded-xl overflow-x-auto mb-4">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-gray-500 text-xs">
                   <tr>

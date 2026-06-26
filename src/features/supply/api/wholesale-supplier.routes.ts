@@ -144,6 +144,21 @@ app.post('/tracking/bulk', async (c) => {
            AND NOT EXISTS (SELECT 1 FROM wholesale_order_items wi WHERE wi.wholesale_order_id = wholesale_orders.id AND wi.line_status != 'SHIPPED')`
       ).bind(...chunk).run().catch(swallow('supplier:ship-all-order-status'))
     }
+
+    // 🔔 2026-06-26 (알림 누락 보강): CSV 일괄 송장 업로드도 영향 주문별로 판매사(바이어)에게 발송 알림.
+    //   기존엔 ship-all 단일 엔드포인트만 통지 → CSV 경로로 발송하면 바이어가 영영 몰랐음. fail-soft.
+    if (oids.length > 0) {
+      const buyers = await DB.prepare(
+        `SELECT id, distributor_seller_id FROM wholesale_orders WHERE id IN (${oids.map(() => '?').join(',')})`
+      ).bind(...oids).all<{ id: number; distributor_seller_id: number | null }>().catch(() => ({ results: [] as Array<{ id: number; distributor_seller_id: number | null }> }))
+      for (const b of buyers.results || []) {
+        if (!b.distributor_seller_id) continue
+        createDashboardNotification(
+          DB, 'seller', String(b.distributor_seller_id), 'wholesale_shipped',
+          '도매 주문 발송 시작', `주문 #${b.id} 상품이 발송되었습니다.`, '/wholesale/dashboard',
+        ).catch(swallow('wholesale-supplier:notify-ship-bulk'))
+      }
+    }
     const ok = results.filter(r => r.status === 'ok').length
     return c.json({ success: true, summary: { total: results.length, ok, skipped: results.filter(r => r.status === 'skip').length, failed: results.filter(r => r.status === 'error').length }, results })
   } catch (err) {
@@ -164,10 +179,13 @@ app.post('/items/:id/ship', async (c) => {
     const tracking = String(body.tracking_number || '').trim().slice(0, 60)
     if (!courier || !tracking) return c.json({ success: false, error: '택배사와 운송장 번호를 입력해주세요' }, 400)
 
-    // 소유권: 내 supplier_id 라인만.
+    // 소유권: 내 supplier_id 라인만. (distributor_seller_id 는 발송 알림용.)
     const line = await DB.prepare(
-      'SELECT id, wholesale_order_id FROM wholesale_order_items WHERE id = ? AND supplier_id = ?'
-    ).bind(itemId, sid).first<{ id: number; wholesale_order_id: number }>()
+      `SELECT wi.id, wi.wholesale_order_id, wo.distributor_seller_id
+         FROM wholesale_order_items wi
+         JOIN wholesale_orders wo ON wo.id = wi.wholesale_order_id
+        WHERE wi.id = ? AND wi.supplier_id = ?`
+    ).bind(itemId, sid).first<{ id: number; wholesale_order_id: number; distributor_seller_id: number | null }>()
     if (!line) return c.json({ success: false, error: '항목을 찾을 수 없습니다' }, 404)
 
     // 🛡️ 2026-06-25 (전수조사): line_status='PENDING' CAS — 가드 없으면 REFUNDED 라인이 SHIPPED 로 되살아나거나
@@ -184,6 +202,13 @@ app.post('/items/:id/ship', async (c) => {
     if ((pending?.c ?? 0) === 0) {
       await DB.prepare("UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now') WHERE id=? AND status='PAID'")
         .bind(line.wholesale_order_id).run()
+    }
+    // 🔔 2026-06-26 (알림 누락 보강): 단건 송장 입력도 판매사(바이어)에게 발송 알림 — 기존엔 ship-all 만 통지했음.
+    if (line.distributor_seller_id) {
+      createDashboardNotification(
+        DB, 'seller', String(line.distributor_seller_id), 'wholesale_shipped',
+        '도매 주문 발송 시작', `주문 #${line.wholesale_order_id} 상품이 발송되었습니다. (${courier} ${tracking})`, '/wholesale/dashboard',
+      ).catch(swallow('wholesale-supplier:notify-ship-single'))
     }
     return c.json({ success: true })
   } catch (err) {

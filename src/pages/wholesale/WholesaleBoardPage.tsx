@@ -102,7 +102,7 @@ export default function WholesaleBoardPage() {
   useEffect(() => { if (tab === 'report' && loggedIn) loadTickets() }, [tab, loggedIn, loadTickets])
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: WT.fill }}>
+    <div className="min-h-[100dvh] pb-24" style={{ background: WT.fill }}>
       <SEO title="게시판 - 유통스타트" description="공지사항, 상품 자료실, 배송 안내, 제안·신고" url="/wholesale/board" noindex />
 
       {/* 헤더 */}

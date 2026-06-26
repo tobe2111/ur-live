@@ -429,7 +429,7 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
 
   return (
     // 🏬 --ud-brand: 몰 브랜드 색(기본 몰 → #FC5424 → 현 디자인과 동일). 주요 브랜드 요소가 var() 로 참조.
-    <div className="min-h-screen" style={{ background: '#fff', color: WT.ink, ['--ud-brand' as string]: mallBrand }}>
+    <div className="min-h-[100dvh]" style={{ background: '#fff', color: WT.ink, ['--ud-brand' as string]: mallBrand }}>
       <SEO
         domain="wholesale"
         title={collectionMode && mode ? `${COLLECTION_TITLE[mode]} — 유통스타트 도매몰` : '유통스타트 도매몰 — 제조사 직거래 도매가 사입 B2B 도매사이트'}
