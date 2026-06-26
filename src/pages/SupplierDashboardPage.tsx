@@ -251,7 +251,7 @@ export default function SupplierDashboardPage() {
           t={t}
           order={shipModal}
           onClose={() => setShipModal(null)}
-          onShipped={() => { setShipModal(null); loadOrders() }}
+          onShipped={() => { setShipModal(null); loadOrders(); loadPendingShipCount() }}
         />
       )}
 

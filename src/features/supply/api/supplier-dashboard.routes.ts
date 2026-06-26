@@ -648,7 +648,8 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
 
     // 거부 상태였으면 재제출 → 다시 pending.
     sets.push("supply_approval_status = 'pending'", 'is_active = 0', "updated_at = datetime('now')");
-    await DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`).bind(...params, pid).run();
+    // 🛡️ 2026-06-25 (전수조사 IDOR 방어심화): UPDATE 에도 supplier_id 재스코프 — peer 핸들러(price-change/bulk)와 통일, TOCTOU 차단.
+    await DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ? AND supplier_id = ?`).bind(...params, pid, sid).run();
 
     // 🚚 상품별 배송비(meta) — 컬럼이 아니라 product_supply_meta. 제공 시에만 갱신(fail-soft).
     if (shipFee !== undefined) {
