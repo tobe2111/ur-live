@@ -1,5 +1,10 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-26 — 서비스 분리 누수 차단: 소비자 카탈로그에서 도매 원본상품 제외 (대표 "응 고치자")
+**분리 전수조사 결과**: 도매↔유어딜 분리는 대체로 양호(크로스 import 0·도매 카탈로그 격리 완벽·양쪽 쓰는 비즈니스 컴포넌트 0·4대시보드 cross-role 0)였으나 **진짜 누수 1건**: 소비자 `ProductRepository.findAll` 가 `is_supply_product` 미필터 → 승인된 도매 원본상품이 `/browse`·검색/자동완성에 노출.
+- **수정(`[UNLOCK_LOADING]`)**: 5개 소비자 쿼리(findAll·count·FTS·검색 자동완성 ×2)에 `AND NOT (COALESCE(is_supply_product,0)=1 AND supply_source_id IS NULL)` 추가. **도매 원본만 제외, 판매사 복제본·플랫폼상품·일반상품 보존**. `group-buy-public`은 category 격리라 무수정. Cache-Control/SSR/LIST_COLUMNS 불변. CLAUDE.md 로딩 audit log 기록.
+- 검증: tsc 0 · sql-column/bind 0 · build 0 · 단위 1805 pass.
+
 ## ✅ 2026-06-26 — 유어딜 셀러·에이전시 가입폼 동일 UX 수정 (대표 "응 하자") — 4개 가입폼 전부 완료
 **범위(유어딜 서비스만 — 도매몰 무관)**: 공유 헬퍼(`form-validators.ts`) 그대로 재사용해 나머지 2개 가입폼 수정. 이로써 가입폼 4종(제조사·판매사·셀러·에이전시) 모두 동일 검증 UX.
 - **SellerRegisterPage(셀러)**: `form noValidate` + focus-by-id(인풋에 id 있음) → 화면 순서 검증·첫 문제 필드 포커스. `email.includes('@')`(=`a@b`·`@naver` 통과) → `isValidEmail`(TLD 필수). **전화 완성형 검증 신규**(기존 미검증). 사업자번호 하이픈 무관 10자리. 비번 정책(8자)·페이로드 불변.
