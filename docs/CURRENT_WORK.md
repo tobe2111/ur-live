@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-26 — 소비자(유어딜) 쇼핑 동선 전수조사 (대표 "일단 그래도 해줘") — 서비스 분리 준수
+**범위(유어딜 공구 서비스만 — 도매몰 무관)**: 홈/교환권/공구/체크아웃/링크샵/마이/충전/알림 신규·빈·비로그인 계정 관점. 2개 에이전트 병렬 + 코드 재검증.
+- **🔴 HIGH(크래시) 수정 — `UserGroupBuyCreatePage`(`/community-group-buy/new`) Rules of Hooks 위반 흰화면**: 자격(셀러/인플) 확인 전 `eligibleAsInfluencer===null` 1차 렌더가 훅 2개 호출 후 early-return → 자격 `true` 재렌더에서 useState 7+useEffect 호출 → React "Rendered more hooks" 크래시. **모든 훅을 early-return 위로 이동**. (현재 `COMMERCE_PROPOSAL_HIDDEN`로 진입 배너 숨김이나 직접 URL·언셸브 시 라이브.)
+- **오탐 기각(코드 검증)**: `/seller/register` dead-nav 주장 → **실재 라우트**(seller.routes:85, 에이전트가 App.tsx만 봄). HomeProductsRail 카테고리 키 오류 → **죽은 코드**(MainHomePage 비라우팅 — 홈은 06-21부터 RestaurantMapPage). reward-ad-card 훅순서 → 무해(isNative 안정값). TossWidgetPayPage(잠금) → 클린, 무수정.
+- **감사 클린**: 교환권 카탈로그/상세/구매(딜잔액 0·비로그인·initialDataUpdatedAt:0 '딜부족' 가드)·공구 상세/참여/충전·마이/주문/주소·링크샵/큐레이터·알림 — 빈/신규/0데이터 전부 가드(formatNumber·?? []·division guard). ₩NaN/dead-end 0.
+- 검증: tsc 0 · dead-links/cross-role strict 0 · build 0. **소비자 쇼핑 동선 = 잠금파일 외 크래시 1건 수정·나머지 클린.**
+
 ## ✅ 2026-06-25 — 비운영자 사용자 에러 전수조사 + 수정 14종 (대표 "운영자가 아닌 다른 사람들이 이용했을 때 나올 에러 전수조사")
 **배경**: 역할-한정 버그(슈퍼/운영자에겐 안 보이고 좁은 권한 사용자에게만 터짐) 런타임 전수조사. 5개 역할 finder(유저/사업자유저/B2B/RBAC/크로스커팅) + 정적 가드 직접 실행 → **과대보고 방지(코드 검증된 것만)** + **현재 main 재검증으로 batch1-5 에서 이미 고친 것 제거**.
 - **P1 5종(2c7b647)**: S1 셀러 상품수정 시 식당연락처/PIN/공구목표 유실(PUT 화이트리스트→fail-soft per-field) · S3 식사권 등록 정가/좌표/지역 유실 · S2 셀러 정산표 전부 ₩0+날짜'오늘'(SELECT 실컬럼 매핑+healing) · B1 판매사 배송비 미표시→예치금 증발오인(3 SELECT+명세서+UI grand_total) · B2 에이전시 '매장 영입 현황' 토큰누락 401(인터셉터 분기).
