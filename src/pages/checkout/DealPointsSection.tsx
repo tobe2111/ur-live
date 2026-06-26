@@ -56,7 +56,7 @@ export default function DealPointsSection({ dealBalance, dealToUse, setDealToUse
           </div>
           <div className="border-t border-gray-200 dark:border-[#2A2A2A] mt-2 pt-2 flex items-center justify-between">
             <span className="text-[13px] font-bold text-gray-900 dark:text-white">{t('checkout.deal.cardAmount', { defaultValue: '카드 결제 금액' })}</span>
-            <span className="text-[15px] font-bold text-gray-900 dark:text-white">{Math.max(0, totalAmount)}{t('checkout.summary.wonSuffix', { defaultValue: '원' })}</span>
+            <span className="text-[15px] font-bold text-gray-900 dark:text-white">{formatNumber(Math.max(0, totalAmount))}{t('checkout.summary.wonSuffix', { defaultValue: '원' })}</span>
           </div>
         </div>
       )}
