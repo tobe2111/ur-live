@@ -180,6 +180,15 @@ node scripts/check-light-input-guard.mjs || true
 echo "==> Pre-commit: 모바일 뷰포트 함정 가드 (warn-only)..."
 node scripts/check-mobile-viewport.mjs || true
 
+# 🛡️ 2026-06-26: CSV 수식 인젝션 가드 (warn-only) — csvEscape 류 함수에 = + - @ 탭/CR 선행 가드 강제.
+echo "==> Pre-commit: CSV 수식 인젝션 가드 (warn-only)..."
+node scripts/check-csv-injection.mjs || true
+
+# 🛡️ 2026-06-26: 쿼리 isError 소비 가드 (warn-only) — 도매/제조사 surface 의 data 페이지가 isError 분기
+#   없이 렌더하면 fetch 실패가 빈화면/₩0 으로 위장됨. 신규 추가 차단.
+echo "==> Pre-commit: 쿼리 isError 소비 가드 (warn-only)..."
+node scripts/check-query-iserror.mjs || true
+
 # 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
 staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)
 if [ -n "$staged_migrations" ]; then
