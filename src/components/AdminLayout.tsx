@@ -63,11 +63,10 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/wholesale-products', label: '도매 프리미엄관', icon: Crown },
       { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
       { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
-      // 🗂️ 2026-06-17: '판매사 등급·수수료'(1,170줄) → 4개 탭 페이지로 분리(딥링크 라우트).
-      { path: '/admin/distributor-grades', label: '판매사 등급·마진', icon: Layers },
-      { path: '/admin/distributor-credit', label: '판매사 여신·외상', icon: CreditCard },
-      { path: '/admin/distributor-tax',    label: '판매사 제안·세금', icon: DollarSign },
-      { path: '/admin/distributor-supply', label: '판매사 공급가·채널·OEM', icon: Package },
+      // 🗂️ 2026-06-26 (대표 요청): 4개 탭(등급·마진 / 여신·외상 / 제안·세금 / 공급가·채널·OEM)이
+      //   한 페이지(AdminDistributorGradesPage)라 좌측 nav 도 1개로 통합. 페이지 내부 탭으로 4영역 이동.
+      //   딥링크 라우트(/admin/distributor-credit 등)는 그대로 유지 — 페이지 탭이 사용.
+      { path: '/admin/distributor-grades', label: '판매사 관리', icon: Layers },
       { path: '/admin/wholesale-malls',    label: '도매 몰 관리',  icon: Building2 },
       { path: '/admin/wholesale-activity', label: '처리 이력 (누가 처리?)', icon: History },
     ],
