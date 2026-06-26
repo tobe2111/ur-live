@@ -1009,8 +1009,9 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
 
   const { DB } = c.env
   // 1. 상품 재검증 (Toss 결제 도중 마감/품절 등 상태 변경 가능).
+  // 🧱 2026-06-26 서비스 분리: confirm-toss 재검증도 /join(category 격리)과 대칭으로 도매 원본 제외.
   const product = await DB.prepare(
-    "SELECT id, name, price, group_buy_status, group_buy_deadline, seller_id, voucher_expiry, category, group_buy_tiers, referral_disabled FROM products WHERE id = ? AND is_active = 1"
+    "SELECT id, name, price, group_buy_status, group_buy_deadline, seller_id, voucher_expiry, category, group_buy_tiers, referral_disabled FROM products WHERE id = ? AND is_active = 1 AND NOT (COALESCE(is_supply_product, 0) = 1 AND COALESCE(supply_source_id, 0) = 0)"
   ).bind(productId).first<{ id: number; name: string; price: number; group_buy_status: string; group_buy_deadline: string | null; seller_id: number; voucher_expiry: string | null; category: string; group_buy_tiers: string | null; referral_disabled: number | null }>()
   if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
