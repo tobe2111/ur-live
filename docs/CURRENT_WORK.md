@@ -9,6 +9,14 @@
 - **이미 수정됨/오탐**: R1(타일 dead-end → 06-24 distributor-approval retarget) · C1(EditorialProductCard null→"0원", NaN 아님).
 - 검증: tsc 0 · vitest 2301 pass · sql-bind/column 0 · money-pattern 0 · light-input/theme ✅. 결제 잠금파일 무관. 미배선 fee-resolver 와 별개.
 
+## ✅ 2026-06-24 — 에이전시 + 소비자 셀러 대시보드 전수조사 (대표 "모두 이상적으로" — 전 대시보드 완주)
+**소비자 셀러 대시보드(/seller/*)**: ~70페이지 정독 → **클린**(신규 셀러 첫 렌더 dashboard→products→orders→settlements 전부 SQL COALESCE + JS `?? 0`, cross-role 0, dead-click 0; 에이전트가 자기 'high' 후보 2건도 직접 재검증 후 기각).
+**에이전시 대시보드(/agency/*, 38p)**: pending 게이트 정상(로그인서 status 차단), 빈/0데이터 클린. 발견·수정 3종:
+- **MED — 매칭추천 점수막대 영구 미표시**: cron(agency-seller-match)이 `match_reason` 을 JSON.stringify 저장 → 라우트가 문자열 그대로 반환 → 프론트가 `reason.tierScore` 읽으면 undefined → ScoreBar 안 뜸. `agency-match-suggestions.routes` 에서 JSON.parse 후 반환.
+- **HIGH(역할-한정) — 에이전시 공동구매 페이지 협상/딜확정/실패처리 버튼 항상 403**: 백엔드 `/status`·`/confirm` 은 어드민(+식당주인) 전용 + 동네공구에 **에이전시 소유 개념 없음**(아무 에이전시가 아무 딜 확정 부적절). → 에이전시 페이지를 **브라우즈 + 식당 채팅(협상)** 으로 정리: '협상 시작'=채팅 열기로 재배선, 딜확정/실패처리 버튼·ConfirmModal·핸들러 제거. (확정은 어드민. 에이전시-딜 소유모델 도입 시 재배선 가능 — 대표 결정 대기.)
+- **MED — '매장 영입 현황' 메뉴가 빈 화면**: `/agency/prospects` 가 셀러용 SellerProspectsPage 렌더 → 에이전시 토큰엔 `/api/prospects/mine` 미매칭으로 항상 빈 목록. nav 링크 제거('내 입점 가게'가 영입현황 커버). 에이전시 전용 영입 파이프라인 필요 시 별도 신설.
+- 검증: tsc 0 · cross-role/links strict 0 · build 0. **이로써 사람이 쓰는 5개 대시보드(도매어드민·제조사·판매사·에이전시·셀러) 빈상태/런타임 정독 완료.**
+
 ## ✅ 2026-06-24 — 도매 어드민·제조사·판매사 대시보드 전 영역 전수조사 (대표 "나 말고 다른 사람들이 썼을 때도 에러 없어야")
 **방식**: 3개 대시보드 병렬 감사(도매 어드민 / 제조사 / 판매사+storefront), **"소유자(슈퍼·시드데이터)에겐 안 보이고 신규·대기·좁은권한 사용자에게만 터지는" 클래스** 집중 → 모든 발견 코드 재검증. 제조사·판매사 frontend 는 빈상태/대기/NaN 대비가 이미 견고(클린). 발견·수정:
 - **🔴 CRITICAL(보안/머니) — 정지된 판매사가 만료 전 토큰으로 발주·충전 지속**: `/orders`·`/orders/confirm`·`/deposits/charge-request` 가 `sellerIdFrom`(서명만, status 미검사) 사용 + `requireAuth` 미경유 → 승인 후 정지/거부된 판매사가 30일 토큰으로 예치금 차감 발주·충전요청 가능(소유자는 도달 못 하는 상태). → 공유 가드 `isSellerBlocked(DB,id)`(reject-list: suspended/rejected/pending/banned/deleted, **approved/active 불변**, fail-open) 신설 + 세 엔드포인트 배선(confirm 은 Toss 캡처 *전* 차단 → 무단결제 방지).
