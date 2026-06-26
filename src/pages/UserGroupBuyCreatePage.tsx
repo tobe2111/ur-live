@@ -71,6 +71,23 @@ export default function UserGroupBuyCreatePage() {
     })
   }, [isLoggedIn, isSeller, navigate, t])
 
+  // ⚠️ Rules of Hooks (2026-06-26 전수조사 수정): 모든 훅은 아래 자격 early-return 보다 *위*에 선언.
+  //   기존엔 자격 미정(null) 1차 렌더가 훅 2개만 호출 후 early-return → 자격 true 재렌더에서 훅 9개 호출 →
+  //   React "Rendered more hooks than during the previous render" 크래시(셀러/인플이 등록 진입 시 흰화면)였음.
+  const [restaurant, setRestaurant] = useState<SelectedRestaurant | null>(null)
+  const [proposedPrice, setProposedPrice] = useState<number | ''>('')
+  const [deposit, setDeposit] = useState<number>(5000)
+  const [targetCount, setTargetCount] = useState<number>(10)
+  const [description, setDescription] = useState<string>('')
+  const [balance, setBalance] = useState<number | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  useEffect(() => {
+    if (!restaurant || !proposedPrice) return
+    api.get('/api/points/balance')
+      .then((r) => { setBalance(r.data?.balance ?? r.data?.data?.balance ?? 0) })
+      .catch(() => setBalance(0))
+  }, [restaurant, proposedPrice])
+
   // 자격 없음 안내 화면
   if (eligibleAsInfluencer === false) {
     return (
@@ -112,33 +129,8 @@ export default function UserGroupBuyCreatePage() {
     )
   }
 
-  // Step state
-  const [restaurant, setRestaurant] = useState<SelectedRestaurant | null>(null)
-
-  // Step 2 fields
-  const [proposedPrice, setProposedPrice] = useState<number | ''>('')
-  const [deposit, setDeposit] = useState<number>(5000)
-  const [targetCount, setTargetCount] = useState<number>(10)
-  const [description, setDescription] = useState<string>('')
-
-  // Step 3
-  const [balance, setBalance] = useState<number | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-
   const kakaoJsKey =
     import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY || ''
-
-  // Fetch balance when restaurant + settings ready
-  useEffect(() => {
-    if (!restaurant || !proposedPrice) return
-    api
-      .get('/api/points/balance')
-      .then((r) => {
-        const b = r.data?.balance ?? r.data?.data?.balance ?? 0
-        setBalance(b)
-      })
-      .catch(() => setBalance(0))
-  }, [restaurant, proposedPrice])
 
   function handlePlaceSelect(place: KakaoPlace) {
     setRestaurant({
