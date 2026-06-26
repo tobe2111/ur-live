@@ -166,7 +166,15 @@ export function TossPaymentWidget({
           .then((agreementWidget) => {
             try {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (agreementWidget as any)?.on?.('agreementStatusChange', (status: any) => {
+              const aw = agreementWidget as any
+              // 🛡️ 2026-06-26 사용자 신고 fix (체크돼 있는데 버튼 비활성 — 해제/재체크해야 풀림):
+              //   Toss SDK 의 agreementStatusChange 는 '변경' 시에만 발생 → 같은 customerKey 가
+              //   이전에 동의해 '체크 복원'된 초기 상태는 이벤트 미발생 → agreedRequired 가 false 고착
+              //   → 버튼이 '필수 약관에 동의해주세요' 로 잠김. getAgreementStatus() 로 초기값을 직접
+              //   읽어 seed → 복원된 동의 상태에서도 버튼 즉시 활성 (uncheck/recheck 불필요).
+              const initial = aw?.getAgreementStatus?.()
+              if (initial) setAgreedRequired(!!initial.agreedRequiredTerms)
+              aw?.on?.('agreementStatusChange', (status: any) => {
                 setAgreedRequired(!!status?.agreedRequiredTerms)
               })
             } catch { /* ignore — event listener 미지원 시 */ }
