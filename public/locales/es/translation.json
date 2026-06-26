@@ -1194,6 +1194,13 @@
       "noShopProductsOwner": "No hay productos aún. Añadelos desde el panel de vendedor.",
       "noShopProducts": "No hay productos aún.",
       "previewVisitor": "👀 Vista previa",
+      "addEntry": "+ Añadir",
+      "sellerDashboard": "Panel de vendedor",
+      "addSheetTitle": "¿Qué quieres añadir?",
+      "addProduct": "Añadir producto",
+      "addProductDesc": "Producto con envío — añadir ahora",
+      "addVoucher": "Añadir cupón de compra grupal",
+      "addVoucherDesc": "Oferta local / cupón — ubicación y meta",
       "previewBanner": "Vista de visitante: así lo ven los demás",
       "backToEdit": "Volver a editar"
     },

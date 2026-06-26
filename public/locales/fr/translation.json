@@ -1194,6 +1194,13 @@
       "noShopProductsOwner": "Pas encore de produits. Ajoutez-en depuis le tableau de bord vendeur.",
       "noShopProducts": "Pas encore de produits.",
       "previewVisitor": "👀 Aperçu",
+      "addEntry": "+ Ajouter",
+      "sellerDashboard": "Tableau de bord vendeur",
+      "addSheetTitle": "Que voulez-vous ajouter ?",
+      "addProduct": "Ajouter un produit",
+      "addProductDesc": "Produit livré — ajouter maintenant",
+      "addVoucher": "Ajouter un bon d'achat groupé",
+      "addVoucherDesc": "Offre locale / bon — lieu et objectif",
       "previewBanner": "Aperçu visiteur — voici ce que voient les autres",
       "backToEdit": "Retour à l'édition"
     },
