@@ -11,8 +11,12 @@
  */
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
-import { cfImage } from '@/utils/cf-image'
 import { Pin } from 'lucide-react'
+// 🏁 2026-06-25 (대표 신고 — "상품쪽이 깨졌다"): 다크 전용 하드코딩 카드(bg-[#121212]/text-white)가
+//   라이트 페이지에서 까맣게 깨져 보임 → 큐레이터 페이지·picker 와 동일한 표준 BrowseProductCard(테마 자동) 로 통일.
+import BrowseProductCard from '@/pages/browse/BrowseProductCard'
+import { seededColor } from '@/utils/card-gradient'
+import type { Product as BrowseProduct } from '@/pages/browse/types'
 
 interface CuratorPin {
   id: number
@@ -61,11 +65,11 @@ export default function CuratorPinsSection({ handle }: { handle?: string | null 
   return (
     <section className="px-4 lg:px-8 py-6">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-[15px] font-bold text-white flex items-center gap-1.5">
-          <Pin className="w-4 h-4 text-pink-400" /> 추천 핀
+        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+          <Pin className="w-4 h-4 text-gray-400 dark:text-gray-500" /> 추천 핀
         </h2>
         {!onOwnLinkshop && (
-          <a href={`/u/${handle}`} className="text-[12px] text-gray-400 hover:text-gray-300">
+          <a href={`/u/${handle}`} className="text-[12px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             링크샵 전체보기 →
           </a>
         )}
@@ -73,29 +77,24 @@ export default function CuratorPinsSection({ handle }: { handle?: string | null 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {pins.map(pin => {
           const name = pin.title || pin.product_name || ''
+          const product: BrowseProduct = {
+            id: pin.product_id,
+            name,
+            price: pin.price ?? 0,
+            current_price: pin.price ?? 0,
+            discount_rate: 0,
+            image_url: pin.image_url || '',
+            stock: 0,
+          }
+          // 클릭은 반드시 /u/:handle/p/:productId (서버 attribution redirect — 큐레이터 적립 작동 경로) 유지.
           return (
-            <a
+            <BrowseProductCard
               key={pin.id}
-              href={`/u/${handle}/p/${pin.product_id}`}
-              className="block rounded-2xl overflow-hidden bg-[#121212] border border-[#1A1A1A] active:scale-[0.98] transition-transform"
-            >
-              <div className="aspect-square bg-[#1A1A1A]">
-                {pin.image_url && (
-                  <img
-                    src={cfImage(pin.image_url, { width: 300 })}
-                    alt={name}
-                    loading="lazy"
-                    className="w-full h-full object-cover"
-                  />
-                )}
-              </div>
-              <div className="p-2.5">
-                <p className="text-[12px] text-gray-300 line-clamp-2 leading-snug">{name}</p>
-                {pin.price != null && pin.price > 0 && (
-                  <p className="text-[13px] font-bold text-white mt-1">{Number(pin.price).toLocaleString('ko-KR')}원</p>
-                )}
-              </div>
-            </a>
+              product={product}
+              aboveFold={false}
+              to={`/u/${handle}/p/${pin.product_id}`}
+              fallbackColor={seededColor(pin.product_id)}
+            />
           )
         })}
       </div>
