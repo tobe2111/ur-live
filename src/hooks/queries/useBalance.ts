@@ -29,6 +29,10 @@ export function useBalance(opts?: { fresh?: boolean }) {
   const fresh = opts?.fresh === true
   return useQuery<number>({
     queryKey: queryKeys.balance(),
+    // 🛡️ 2026-06-26 (소비자 감사 P0): 기존 `.catch(() => readCache(0))` 가 일시 5xx/타임아웃/쿠키 race 를
+    //   '잔액 0(성공)'으로 위장 → 잔액 있는 유저에게 '딜 부족' 오표시로 결제/후원 차단. catch 제거 →
+    //   에러는 isError 로 노출(RQ 는 마지막 성공값/initialData 를 data 로 유지하므로 표시는 안 깨짐),
+    //   결제 직전 화면이 isError 를 보고 '부족' 단정 대신 재시도를 띄울 수 있게 한다.
     queryFn: () =>
       api.get('/api/points/balance').then((r) => {
         const b = Number(r.data?.data?.balance ?? 0)
@@ -37,7 +41,7 @@ export function useBalance(opts?: { fresh?: boolean }) {
           return b
         }
         return 0
-      }).catch(() => readCache<number>(CACHE_KEY, 0)),
+      }),
     initialData: () => readCache<number>(CACHE_KEY, 0),
     // 🛠️ 캐시 seed 를 즉시 stale 로 — refetchOnMount 가 반드시 1회 서버 확인하게(false 0 표시 방지).
     initialDataUpdatedAt: 0,

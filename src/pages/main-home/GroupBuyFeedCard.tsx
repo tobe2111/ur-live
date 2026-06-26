@@ -8,6 +8,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
+import { safeDate } from '@/utils/safe-date'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
@@ -57,7 +58,10 @@ function formatSoldCount(n: number): string {
 
 function timeRemaining(expiresAt: string | null | undefined): string | null {
   if (!expiresAt) return null
-  const ms = new Date(expiresAt).getTime() - Date.now()
+  // 🛡️ 2026-06-26 (소비자 감사): safeDate — 사파리가 D1 datetime 을 NaN 으로 파싱하면 'NaN분' 표시. 파싱 보정.
+  const t = safeDate(expiresAt)?.getTime()
+  if (t == null) return null
+  const ms = t - Date.now()
   if (ms <= 0) return '마감'
   const hours = Math.floor(ms / 3_600_000)
   const days = Math.floor(hours / 24)
