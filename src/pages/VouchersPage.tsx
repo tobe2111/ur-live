@@ -794,13 +794,15 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 </span>
                 <span className="text-[18px] font-bold text-gray-500">딜</span>
               </div>
+              {/* 🎫 2026-06-26 (대표 결정 B): '딜=원' 항상 명확화 — 신규/외부 유입 진입장벽 해소(기존엔 잔액 부족 시만 노출). */}
+              <p className="text-[11px] text-gray-500 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>
             </div>
             <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold mt-1 px-2.5 py-1 rounded-full text-white" style={{ background: 'linear-gradient(135deg, #6b7280, #6b7280)' }}>
               충전 <ArrowRight className="w-3.5 h-3.5" />
             </span>
           </div>
           {dealBalance != null && dealBalance < 10000 && (
-            <p className="text-[11px] text-amber-400 mt-3">잔액 부족 — 1원 = 1딜 즉시 충전</p>
+            <p className="text-[11px] text-amber-400 mt-3">잔액이 부족해요 — 지금 충전하기</p>
           )}
         </button>
         {/* 보조 액션 — 카드 바깥 작은 텍스트 (당근/토스 패턴) */}
@@ -857,9 +859,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* 🛡️ 2026-05-19: 카테고리별 인기 브랜드 그리드.
           🏭 2026-06-04 (사용자 요청): 브랜드를 클릭(필터)해도 그리드 그대로 유지 + 선택 브랜드 강조. */}
       {currentBrands.length > 0 && (
-        <div className="ur-content-wide px-4 lg:px-8 py-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[13px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+        /* 🎫 2026-06-26 (대표 결정 A): 상단 레이어 정리 — 상품을 위로. py-4→pt-1.5/pb-3, 헤더/로고 컴팩트. */
+        <div className="ur-content-wide px-4 lg:px-8 pt-1.5 pb-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <h2 className="text-[12px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
               <span>{getCategoryIcon(category)}</span>
               {category} 인기 브랜드
             </h2>
@@ -868,7 +871,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           </div>
           {/* 🧭 2026-06-20 (사용자: 상품이 너무 아래로 밀림): /vouchers 도 홈처럼 1행 가로 스크롤로 압축 —
               12개 로고 그리드(3~4행)가 상품을 fold 아래로 밀던 주범. 클릭/ring 강조 동작 불변. */}
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide py-1.5 -mx-1 px-1">
+          <div className="flex gap-2.5 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
             {orderedBrands.map(b => {
               const selected = b.brand_name === brand
               return (
@@ -876,19 +879,19 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 key={b.brand_name}
                 type="button"
                 onClick={() => setBrand(selected ? '' : b.brand_name)}
-                className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform shrink-0"
+                className="flex flex-col items-center gap-1 active:scale-95 transition-transform shrink-0"
               >
                 {/* 🎨 2026-06-10 (사용자 요청 — 세련화+잘림): 앰버 박스 → 화이트 로고 타일.
                     선택 = 모노크롬 ring(라이트 검정/다크 흰색) + 살짝 확대 — 로고 본연 색 발색, B&W 톤 정합 */}
-                <div className={`w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center bg-white dark:bg-white border transition-all ${
+                <div className={`w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center bg-white dark:bg-white border transition-all ${
                   selected
                     ? 'border-gray-900 dark:border-white ring-2 ring-gray-900 dark:ring-white scale-105 shadow-md'
                     : 'border-gray-200 dark:border-white/10 opacity-90'
                 }`}>
                   {b.brand_icon_url ? (
-                    <img src={b.brand_icon_url} alt={b.brand_name} loading="lazy" className="w-10 h-10 object-contain" />
+                    <img src={b.brand_icon_url} alt={b.brand_name} loading="lazy" className="w-8 h-8 object-contain" />
                   ) : (
-                    <span className="text-2xl">🎁</span>
+                    <span className="text-xl">🎁</span>
                   )}
                 </div>
                 <span className={`text-[10px] line-clamp-1 max-w-[60px] text-center ${
@@ -917,7 +920,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* 🎫 2026-06-20 (사용자: 상품 시작 지점 구별 안 됨): 브라우즈 chrome ↔ 상품 리스트 경계 명확화.
           구분선(border-t) + '상품' 섹션 헤더(카테고리/브랜드 + 개수) + 정렬을 상품 바로 위로. /vouchers 전용. */}
       {!embedded && (
-        <div className="ur-content-wide px-4 lg:px-8 pt-4 pb-2 mt-1 border-t border-gray-100 dark:border-[#1A1A1A] flex items-center justify-between gap-2">
+        <div className="ur-content-wide px-4 lg:px-8 pt-3 pb-2 border-t border-gray-100 dark:border-[#1A1A1A] flex items-center justify-between gap-2">
           <h2 className="text-[16px] font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5 min-w-0">
             <Gift className="w-[18px] h-[18px] text-amber-500 shrink-0" />
             <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
