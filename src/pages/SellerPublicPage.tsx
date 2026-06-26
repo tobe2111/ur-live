@@ -235,6 +235,9 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
       api.get(`/api/products?seller_id=${numericId}&limit=20`)
         .then(r => setProducts(r.data.data || []))
         .catch(() => { /* graceful */ })
+      // 🏁 2026-06-25 (대표 신고 — 로딩 김): 라이브 영구중단이면 영상/라이브 섹션 미렌더라
+      //   streams/shorts fetch 는 순수 낭비 → 스킵 (요청 2개 + 30초 폴링 제거).
+      if (LIVE_COMMERCE_SUSPENDED) return
       api.get(`/api/streams?seller_id=${numericId}&limit=20`)
         .then(r => setStreams(r.data.data || []))
         .catch(() => { /* graceful */ })
@@ -266,6 +269,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
   // 30초마다 streams 만 재조회 (가벼운 쿼리)
   useEffect(() => {
     if (!seller) return
+    if (LIVE_COMMERCE_SUSPENDED) return  // 🏁 2026-06-25 라이브 영구중단 — 30초 streams 폴링 낭비 제거
     const numericId = seller.id
     let prevLiveCount = streams.filter(s => s.status === 'live').length
 
@@ -298,9 +302,36 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seller?.id])
 
-  if (loading) return (
+  // 🏁 2026-06-25 (대표 신고 — 로딩 김): 헤더 정체성(curator 우선·seller 폴백) 객체. seller 로드 전에도
+  //   curator 만으로 헤더를 즉시 렌더 → /u/ 사업자 진입 시 콜드 seller fetch 동안 빈 스피너 대신 헤더 표시.
+  const headerCurator = {
+    id: curator?.id ?? seller?.id ?? 0,
+    handle: curator?.handle ?? seller?.username ?? String(seller?.id ?? ''),
+    name: (curatorEdits.name ?? curator?.name) || seller?.name || '',
+    bio: curatorEdits.bio ?? curator?.bio ?? seller?.bio ?? null,
+    profile_image: curatorEdits.profile_image ?? curator?.profile_image ?? seller?.profile_image ?? null,
+    banner_url: (curatorEdits.banner_url ?? curator?.banner_url) || seller?.banner_url || null,
+    headline: curatorEdits.headline ?? curator?.headline ?? null,
+    accent: curatorEdits.accent ?? curator?.accent ?? null,
+    youtube_url: curatorEdits.youtube_url ?? curator?.youtube_url ?? seller?.sns_youtube ?? null,
+    instagram_url: curatorEdits.instagram_url ?? curator?.instagram_url ?? seller?.sns_instagram ?? null,
+    tiktok_url: curatorEdits.tiktok_url ?? curator?.tiktok_url ?? null,
+  }
+
+  // 로딩 중: curator 가 있으면(=/u/ 진입) 헤더 즉시 + 본문 스켈레톤. 없으면(직접 /profile) 스피너.
+  if (loading) return curator ? (
+    <div className={`min-h-screen ${T.bg} pb-28`}>
+      <CuratorHeader curator={headerCurator} pinCount={0} isOwner={false} accountType="business" onCopyLink={copyLink} onCuratorUpdate={() => {}} />
+      <div className="ur-content-wide px-4 lg:px-8 py-8">
+        <div className="h-5 w-28 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse mb-4" />
+        <div className="grid grid-cols-2 gap-3">
+          {[0, 1].map(i => <div key={i} className="aspect-[3/4] rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />)}
+        </div>
+      </div>
+    </div>
+  ) : (
     <div className={`min-h-screen ${T.bg} flex items-center justify-center`}>
-      <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+      <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
     </div>
   )
 
@@ -390,21 +421,10 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
           정체성은 curator(users) 우선 · seller(sellers) 폴백으로 병합 → 어디 저장됐든 배너/이름 복구.
           소유자 인라인 편집은 CuratorHeader 가 /api/curator/me/profile 로 처리(낙관적 반영=curatorEdits). */}
       <CuratorHeader
-        curator={{
-          id: curator?.id ?? seller.id,
-          handle: curator?.handle ?? seller.username ?? String(seller.id),
-          name: (curatorEdits.name ?? curator?.name) || seller.name || '',
-          bio: curatorEdits.bio ?? curator?.bio ?? seller.bio ?? null,
-          profile_image: curatorEdits.profile_image ?? curator?.profile_image ?? seller.profile_image ?? null,
-          banner_url: (curatorEdits.banner_url ?? curator?.banner_url) || seller.banner_url || null,
-          headline: curatorEdits.headline ?? curator?.headline ?? null,
-          accent: curatorEdits.accent ?? curator?.accent ?? null,
-          youtube_url: curatorEdits.youtube_url ?? curator?.youtube_url ?? seller.sns_youtube ?? null,
-          instagram_url: curatorEdits.instagram_url ?? curator?.instagram_url ?? seller.sns_instagram ?? null,
-          tiktok_url: curatorEdits.tiktok_url ?? curator?.tiktok_url ?? null,
-        }}
+        curator={headerCurator}
         pinCount={products.length}
         isOwner={ownerView}
+        accountType="business"
         onCopyLink={copyLink}
         onCuratorUpdate={(next) => setCuratorEdits((s) => ({ ...s, ...next }))}
       />
