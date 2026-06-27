@@ -4,6 +4,7 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import SearchAdPanel from './SearchAdPanel'
 
 /**
  * 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 멀티테넌트 입점 대시보드.
@@ -199,6 +200,9 @@ export default function MarketingDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* 네이버 검색광고 계정 연동 + 내 광고 구조(자동입찰/실적 토대) */}
+      {hasToken && <SearchAdPanel />}
 
       {/* 연관키워드 추천 (검색광고 API — RelKwdStat) */}
       {hasToken && kwRelated && kwRelated.length > 0 && (

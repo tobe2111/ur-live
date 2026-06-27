@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## 🚧 2026-06-27 — 유어애즈 검색광고 계정 연동(멀티테넌트) + 내 광고 구조 조회 (대표 "남은거 계속 해줘")
+**배경**: 보라웨어 5종(자동입찰·실적·키워드확장 등)의 **공통 전제 = 고객사 광고계정 연동**. 멀티테넌트 모델 — 각 고객사가 자기 검색광고 키(고객ID/액세스라이선스/비밀키)를 연결 → 플랫폼이 그 키로 대신 호출. 커머스 연동(naver_commerce_connections)과 동일 분리/암호화 패턴(단 3-필드 HMAC이라 별도 테이블).
+- **저장소**(`searchad-connection.ts`): `ad_searchad_connections`(seller_id UNIQUE, customer_id, access_license, **secret_key_enc**=encryptAtRest AES-GCM). ensure(WeakSet 메모이즈)/save(UPSERT)/load(복호화)/delete/status(마스킹). 비밀키 평문저장 0.
+- **클라이언트**(`searchad-client.ts` 확장): `listCampaigns/listAdgroups/listKeywords`(GET /ncc/*) — 캠페인→광고그룹→키워드(현재 입찰가) 드릴다운. 자동입찰/실적의 토대.
+- **라우트**: POST `/api/ads/searchad/connect`(listCampaigns 200=유효 검증 후 암호화 저장, rateLimit 10/min) · GET `/searchad/status` · DELETE `/searchad/connect` · GET `/searchad/campaigns|adgroups|keywords`(연결 필요). `/keywords/related` 는 연결 시 **고객사 키 우선**, 없으면 플랫폼(47982) 폴백(`resolveSearchAdCreds`).
+- **UI**(`SearchAdPanel.tsx`): 연결 폼(3필드) + 연결됨 시 캠페인/광고그룹/키워드 expand 드릴다운(현재 입찰가 표시). 대시보드에 마운트.
+- 검증: tsc 0 · build 0 · 단위 2334 pass · theme/light-input/mobile/sql-bind/sql-null/crossrole 0. ⚠️ **라이브 검증은 실 광고계정 키 + 배포 후**(이 환경 egress 차단). 다음: 키워드 bidAmt PUT(목표순위 자동입찰) + StatReport(통합실적).
+
 ## 🚧 2026-06-27 — 유어애즈 시장분석 무료도구 확장: 브랜드 평판 모니터링 + 자동완성 키워드확장 (대표 "네이버 API로 할 수 있는 서비스 더 찾아서 개발")
 **배경**: 대표가 보라웨어 5개 서비스(자동입찰·부정클릭·키워드확장·통합실적·AI마케터) 시안 공유 + "더 찾아서 개발". 5종은 전부 **광고 write**(입찰/키워드등록/IP차단)라 공통 전제 = 고객사 광고계정을 관리계정(47982)에 연동. 반대로 **읽기 도구는 보유 키만으로 즉시** → 고객 유입용 무료도구로 먼저 출시(레퍼런스: `docs/design/urads-boraware-reference.md`).
 - **브랜드 평판 모니터링**(신규 서비스): `brandReputation` — 오픈API 블로그/카페/뉴스 검색 병렬(Promise.allSettled, 채널별 fail-soft) → 언급량 + 최근 글 3건씩. `GET /api/ads/reputation?q=` (rateLimit 30/min). 대시보드 3컬럼 카드(블로그/카페/뉴스 언급수 + 최근글 링크).
