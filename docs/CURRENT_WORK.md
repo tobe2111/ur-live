@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## 🚧 2026-06-27 — 유어애즈 목표순위 예상 입찰가(Estimate, 읽기) — 자동입찰 핵심 (대표 "남은거 계속 해줘")
+**배경**: 자동입찰의 핵심 = "원하는 순위로 노출하려면 입찰가 얼마?". **읽기(돈 변경 0)**부터 — 실제 입찰가 PUT(write)은 안전레일(max_bid 하드캡·규칙별 enable·변경로그·staging 검증) 갖춰 다음 단계.
+- **클라이언트**: `searchAdGet` → 범용 `searchAdRequest(method, path, query, body)` 로 리팩터(GET/POST/PUT 지원, GET은 단축 래퍼 — 기존 호출부 무변경). `estimateBidForPositions(creds, keyword, [1..5], device)` — POST `/estimate/average-position-bid/keyword`, 응답 방어적 파싱({estimate:[]} 또는 배열).
+- **라우트** GET `/api/ads/searchad/estimate?keyword=&device=PC` (rateLimit 30/min). 연결 시 고객사 키, 없으면 47982 폴백(Estimate는 고객레벨이라 둘 다 동작).
+- **UI**(`SearchAdPanel`): "🎯 목표순위 예상 입찰가" 미니툴 — 키워드+PC/모바일 토글 → 1~5위 예상 입찰가 카드(연결 없이도 동작).
+- 검증: tsc 0 · build 0 · searchad 단위 7 pass · theme/mobile 0. ⚠️ 라이브(estimate 응답 스키마)는 배포 후 실 키로 검증. 다음: bidAmt PUT + 자동입찰 규칙/cron(write, 안전레일).
+
 ## 🚧 2026-06-27 — 유어애즈 검색광고 계정 연동(멀티테넌트) + 내 광고 구조 조회 (대표 "남은거 계속 해줘")
 **배경**: 보라웨어 5종(자동입찰·실적·키워드확장 등)의 **공통 전제 = 고객사 광고계정 연동**. 멀티테넌트 모델 — 각 고객사가 자기 검색광고 키(고객ID/액세스라이선스/비밀키)를 연결 → 플랫폼이 그 키로 대신 호출. 커머스 연동(naver_commerce_connections)과 동일 분리/암호화 패턴(단 3-필드 HMAC이라 별도 테이블).
 - **저장소**(`searchad-connection.ts`): `ad_searchad_connections`(seller_id UNIQUE, customer_id, access_license, **secret_key_enc**=encryptAtRest AES-GCM). ensure(WeakSet 메모이즈)/save(UPSERT)/load(복호화)/delete/status(마스킹). 비밀키 평문저장 0.
