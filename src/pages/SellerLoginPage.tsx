@@ -191,7 +191,10 @@ export default function SellerLoginPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className={`space-y-4 ${showEmailLogin ? 'mt-4' : 'hidden'}`}>
+            {/* 조건부 렌더(=display:none 아님) — invisible Turnstile 이 숨겨진 컨테이너에서 미실행되는 문제 방지.
+                폼 상태(formData/turnstileToken)는 부모 useState 라 토글해도 유지. */}
+            {showEmailLogin && (
+            <form onSubmit={handleSubmit} className="space-y-4 mt-4">
               {/* Email */}
               <div>
                 <label htmlFor="seller-email" className="block text-sm font-medium text-gray-700 mb-1.5">{t('common.email')}</label>
@@ -292,6 +295,7 @@ export default function SellerLoginPage() {
                 )}
               </button>
             </form>
+            )}
 
             <div className="mt-6 pt-6 border-t border-gray-100 text-center">
               <p className="text-sm text-gray-500">

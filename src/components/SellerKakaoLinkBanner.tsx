@@ -7,6 +7,8 @@
  *  2. user_id(카카오 세션) 가 이미 있으면 null — 카카오로 로그인한 셀러는 대상 아님 (네트워크 0).
  *  3. 그 외(이메일 셀러 후보)만 1회 GET /api/seller/kakao-link-status 로 실제 연동 여부 확인 →
  *     이미 연동돼 있으면 dismiss 플래그 캐시 후 null, 미연동이면 배너 노출.
+ *     결과는 sessionStorage 에 캐시 — SellerLayout 이 페이지 이동마다 remount(자체 주석 참조)되어도
+ *     매 네비게이션 재조회하지 않도록(세션당 1회). dismiss(localStorage)는 영구 우선.
  *  CTA 는 /seller/profile (KakaoLinkButton 이 OAuth 팝업 처리) 로 이동 — 검증된 연동 흐름 재사용.
  */
 import { useEffect, useState } from 'react'
@@ -16,6 +18,7 @@ import api from '@/lib/api'
 import { X } from 'lucide-react'
 
 const DISMISS_KEY = 'seller_kakao_link_banner_dismissed_v1'
+const SESSION_KEY = 'seller_kakao_link_banner_session_v1'  // 'show' | 'hide' — 세션당 1회 조회 캐시
 
 export default function SellerKakaoLinkBanner() {
   const { t } = useTranslation()
@@ -24,23 +27,32 @@ export default function SellerKakaoLinkBanner() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    // 1) 이미 닫음 → 노출 안 함
+    // 1) 이미 닫음 → 노출 안 함 (영구, 우선)
     if (localStorage.getItem(DISMISS_KEY) === '1') return
     // 2) 카카오 세션(user_id) 보유 = 카카오 로그인 셀러 → 대상 아님
     if (localStorage.getItem('user_id')) return
-    // 3) 이메일 셀러 후보만 실제 연동 상태 1회 조회
+    // 3) 세션 캐시 — 페이지 이동마다 재조회 방지(SellerLayout remount)
+    const cached = sessionStorage.getItem(SESSION_KEY)
+    if (cached === 'hide') return
+    if (cached === 'show') { setShow(true); return }
+    // 4) 이메일 셀러 후보만 실제 연동 상태 1회 조회
     let alive = true
     api.get('/api/seller/kakao-link-status')
       .then((res) => {
         if (!alive) return
         if (res.data?.success && res.data.data?.linked) {
-          // 이미 연동됨 → 다시 안 묻도록 캐시
+          // 이미 연동됨 → 다시 안 묻도록 영구 캐시
           try { localStorage.setItem(DISMISS_KEY, '1') } catch { /* quota */ }
+          try { sessionStorage.setItem(SESSION_KEY, 'hide') } catch { /* quota */ }
           return
         }
+        try { sessionStorage.setItem(SESSION_KEY, 'show') } catch { /* quota */ }
         setShow(true)
       })
-      .catch(() => { /* silent — 배너 미노출 */ })
+      .catch(() => {
+        // 일시 오류 → 이번 세션엔 더 안 묻음(재조회 storm 방지). 다음 세션 재시도.
+        try { sessionStorage.setItem(SESSION_KEY, 'hide') } catch { /* quota */ }
+      })
     return () => { alive = false }
   }, [])
 
