@@ -145,7 +145,7 @@ export default function MarketingDashboardPage() {
 
   return (
     <MarketingLayout>
-      <SEO title="유어애즈 UR Ads - 유어팀 종합 마케팅" description="네이버 검색광고 자동입찰 + 쇼핑몰 발주수집 + 키워드 — 유어팀 종합 마케팅 툴" url="/ads" />
+      <SEO title="유어애즈 UR Ads - 유어팀 종합 마케팅" description="네이버 검색광고 자동입찰 + 쇼핑몰 발주수집 + 키워드 — 유어팀 종합 마케팅 툴" url="/ads/dashboard" />
       <h1 className="text-[22px] font-extrabold text-gray-900 dark:text-white">유어애즈 <span className="text-gray-400 dark:text-gray-500 text-[14px] font-medium">UR Ads</span></h1>
       <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">연관키워드·검색추세·쇼핑경쟁·자동완성확장·브랜드 평판 모니터링 — 지금 바로 사용 · 자동입찰/발주수집은 광고계정 연동 후</p>
 
