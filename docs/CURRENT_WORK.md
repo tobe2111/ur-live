@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## 🚧 2026-06-27 — 유어애즈 AI 마케터(Claude 진단/추천, 읽기) — 우리 구조적 강점 (대표 "남은거 계속 해줘")
+**배경**: 보라웨어는 외부 AI 의존, 우리는 **자체 Claude 보유** → AI마케터가 구조적 우위. 이미 모은 데이터(실적+연관키워드+추세+쇼핑경쟁)를 Claude 에 넘겨 한국어 진단/추천. **읽기 전용 — 자동 실행 0**(입찰/키워드 변경은 사용자 직접).
+- **헬퍼**(`ai-marketer.ts`): `aiMarketerAdvice(apiKey, ctx)` — system 프롬프트가 "컨텍스트 수치만 근거(환각 금지)" 강제 + 진단/잘되는점/개선점/추천액션/주의 섹션. 기존 admin-review-generator 와 동일 anthropic 호출 패턴(`api.anthropic.com/v1/messages`, claude-haiku-4-5). 미설정 시 NOT_CONFIGURED.
+- **라우트** POST `/api/ads/ai-marketer` body `{seed?}` (rateLimit 10/min) — 연결 시 7일 실적 + seed 시 연관키워드/쇼핑경쟁/추세를 컨텍스트로 수집해 호출. env `ANTHROPIC_API_KEY` 타입 추가(fail-soft).
+- **UI**(대시보드): "🤖 AI 마케터" 카드 — 중심키워드(선택) + 'AI 분석 받기' → 경량 마크다운 렌더(헤더/불릿, dangerouslySetInnerHTML 없음=XSS 0).
+- 검증: tsc 0 · build 0 · 단위 2334 pass · theme/mobile 0. ⚠️ 라이브는 `ANTHROPIC_API_KEY` 설정 + 배포 후. (보라웨어 5종 중 AI마케터 = 읽기로 가동, 자율 자동입찰 cron 만 남음 — 실 계정 검증 후.)
+
 ## 🚧 2026-06-27 — 유어애즈 통합실적(StatService /stats, 읽기) — 보라웨어 통합실적 (대표 "남은거 계속 해줘")
 **배경**: 통합실적 = 캠페인별 노출/클릭/광고비/전환 + 합계. 읽기(돈 변경 0). StatReport(비동기 bulk CSV) 대신 **실시간 `/stats`** 사용(가벼움).
 - **클라이언트**: `accountStats(creds, days)` — listCampaigns→캠페인 id(최대 30)→GET `/stats`(ids/fields/timeRange JSON 인코딩, fields=impCnt/clkCnt/salesAmt/ccnt) → 캠페인별 + 합계(CTR=clk/imp, CPC=cost/clk, 0가드). 응답 방어적 파싱({data:[]} 또는 배열).

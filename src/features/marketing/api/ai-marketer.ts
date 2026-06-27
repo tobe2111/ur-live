@@ -1,0 +1,52 @@
+/**
+ * 🆕 2026-06-27 유어애즈 — AI 마케터 (Claude 진단/추천, 읽기 전용).
+ *
+ *   유어애즈가 이미 모은 데이터(검색광고 실적 + 연관키워드 + 검색추세 + 쇼핑경쟁)를
+ *   Claude 에게 넘겨 한국어 진단 + 실행가능한 추천을 받는다. **읽기 전용 — 자동 실행 없음**
+ *   (입찰/키워드 변경은 사용자가 직접). 우리 강점: 자체 LLM 보유.
+ *
+ *   ⚠️ 데이터 grounding: 컨텍스트에 있는 수치만 근거로 답하도록 강제(환각 방지).
+ *   미설정(ANTHROPIC_API_KEY 없음) 시 NOT_CONFIGURED.
+ */
+export interface AiMarketerContext {
+  connected: boolean
+  stats?: { days: number; impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; ctr: number; cpc: number; topCampaigns: Array<{ name: string; salesAmt: number; clkCnt: number; ccnt: number }> }
+  keyword?: { seed: string; related: Array<{ keyword: string; monthlyTotal: number; compIdx: string }>; shoppingTotal: number; trendPct: number }
+}
+
+const SYSTEM = [
+  '너는 네이버 검색광고 전문 마케터다.',
+  '주어진 데이터만 근거로 간결하고 실행가능한 한국어 조언을 한다.',
+  '데이터에 없는 수치나 사실을 지어내지 마라. 모르면 모른다고 한다.',
+  '출력은 마크다운으로, 아래 섹션을 순서대로: ## 진단 / ## 잘되는 점 / ## 개선할 점 / ## 추천 액션 / ## 주의.',
+  '추천 액션은 3~5개, 각 항목은 "무엇을 / 왜 / 어떻게"가 드러나게 구체적으로(키워드 추가·제외, 입찰 방향, 예산 조정 등).',
+  '광고비/입찰 변경은 사용자가 직접 적용한다는 전제로 제안만 한다.',
+].join(' ')
+
+/** Claude 호출 — 진단/추천 텍스트(마크다운) 반환. */
+export async function aiMarketerAdvice(apiKey: string | undefined, context: AiMarketerContext): Promise<{ ok: boolean; advice?: string; error?: string }> {
+  if (!apiKey) return { ok: false, error: 'NOT_CONFIGURED' }
+  if (!context.stats && !context.keyword) return { ok: false, error: '분석할 데이터가 없습니다 (계정 연동 또는 키워드 입력 필요)' }
+  const userMsg = [
+    '아래는 한 광고주의 네이버 검색광고 현황 데이터다. 이걸 근거로 진단/추천해줘.',
+    '```json',
+    JSON.stringify(context, null, 2),
+    '```',
+  ].join('\n')
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1400,
+      system: SYSTEM,
+      messages: [{ role: 'user', content: userMsg }],
+    }),
+  }).catch(() => null)
+  if (!res) return { ok: false, error: 'AI 호출 실패 (네트워크)' }
+  const data = (await res.json().catch(() => null)) as { content?: Array<{ text?: string }>; error?: { message?: string } } | null
+  if (!res.ok) return { ok: false, error: data?.error?.message || `AI 오류 (HTTP ${res.status})` }
+  const advice = (data?.content || []).map(b => b.text || '').join('').trim()
+  if (!advice) return { ok: false, error: 'AI 응답이 비어 있습니다' }
+  return { ok: true, advice }
+}
