@@ -12,7 +12,7 @@ import { sellerIdFrom } from '../../supply/api/wholesale-helpers'
 import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverConnectionSchema } from '../../supply/api/naver-commerce-core'
 import { collectAndStore, listCollectedOrders } from './order-collection'
 import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete } from './keyword-tools'
-import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, type SearchAdCreds } from './searchad-client'
+import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, type SearchAdCreds } from './searchad-client'
 import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnection, searchAdConnStatus } from './searchad-connection'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
@@ -228,8 +228,23 @@ marketingRoutes.get('/searchad/keywords', rateLimit({ action: 'ads-sa-list', max
   return c.json({ success: true, keywords: r.keywords })
 })
 
-// TODO(자동입찰 — 연결 후 write): Estimate(목표순위 입찰추정) + 키워드 bidAmt PUT + StatReport(실적).
-//   GET/PATCH /searchad/bid  자동입찰 설정(목표순위·최대입찰가) — 공식 검색광고 API only.
+// GET /api/ads/searchad/estimate?keyword=&device=PC — 목표순위(1~5)별 예상 입찰가(읽기)
+//   "원하는 순위로 노출하려면 얼마?" — 자동입찰의 핵심. 돈 변경 없음. 연결 시 고객사 키, 없으면 47982 폴백.
+marketingRoutes.get('/searchad/estimate', rateLimit({ action: 'ads-sa-estimate', max: 30, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const creds = await resolveSearchAdCreds(c, sellerId)
+  if (!creds) return c.json({ success: false, error: 'NOT_CONFIGURED' }, 503)
+  const keyword = String(c.req.query('keyword') || '').trim()
+  if (!keyword) return c.json({ success: false, error: '키워드를 입력해주세요' }, 400)
+  const device = c.req.query('device') === 'MOBILE' ? 'MOBILE' : 'PC'
+  const r = await estimateBidForPositions(creds, keyword, [1, 2, 3, 4, 5], device)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  return c.json({ success: true, device, estimates: r.estimates })
+})
+
+// TODO(자동입찰 write — 안전레일 필요): 키워드 bidAmt PUT(/ncc/keywords) + 규칙저장 + cron 엔진.
+//   ⚠️ 실제 입찰가/광고비 변경 → max_bid 하드캡 + 규칙별 explicit enable + 변경로그 + staging 검증 후 활성.
 //   ⚠️ 순위 측정은 공식 API(Estimate/StatReport)로만 — SERP 스크래핑 금지(2026-04-22 제거 이력, PIPA).
 
 export { marketingRoutes }

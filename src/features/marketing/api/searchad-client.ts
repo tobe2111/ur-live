@@ -48,24 +48,27 @@ async function sign(secretKey: string, timestamp: string, method: string, path: 
   return btoa(bin)
 }
 
-/** 검색광고 API GET 호출 (서명 헤더 자동). path = 쿼리 제외 경로, query = 쿼리 객체. */
-async function searchAdGet(creds: SearchAdCreds, path: string, query: Record<string, string>): Promise<{ ok: boolean; status: number; data: unknown; error?: string }> {
+/** 검색광고 API 호출 (서명 헤더 자동). path = 쿼리 제외 경로(서명 대상). */
+async function searchAdRequest(creds: SearchAdCreds, method: 'GET' | 'POST' | 'PUT', path: string, query: Record<string, string>, body?: unknown): Promise<{ ok: boolean; status: number; data: unknown; error?: string }> {
   const timestamp = String(Date.now())
   let signature: string
   try {
-    signature = await sign(creds.secretKey, timestamp, 'GET', path)
+    signature = await sign(creds.secretKey, timestamp, method, path)
   } catch {
     return { ok: false, status: 0, data: null, error: '검색광고 서명 생성 실패 (비밀키 형식을 확인해주세요)' }
   }
   const qs = new URLSearchParams(query).toString()
+  const headers: Record<string, string> = {
+    'X-Timestamp': timestamp,
+    'X-API-KEY': creds.accessLicense,
+    'X-Customer': creds.customerId,
+    'X-Signature': signature,
+  }
+  if (body !== undefined) headers['content-type'] = 'application/json'
   const res = await fetch(`${SEARCHAD_BASE}${path}${qs ? `?${qs}` : ''}`, {
-    method: 'GET',
-    headers: {
-      'X-Timestamp': timestamp,
-      'X-API-KEY': creds.accessLicense,
-      'X-Customer': creds.customerId,
-      'X-Signature': signature,
-    },
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   }).catch(() => null)
   if (!res) return { ok: false, status: 0, data: null, error: '검색광고 API 호출 실패 (네트워크)' }
   const data = await res.json().catch(() => null)
@@ -75,6 +78,11 @@ async function searchAdGet(creds: SearchAdCreds, path: string, query: Record<str
     return { ok: false, status: res.status, data, error: detail || `검색광고 API 오류 (HTTP ${res.status})` }
   }
   return { ok: true, status: res.status, data }
+}
+
+/** GET 단축. */
+function searchAdGet(creds: SearchAdCreds, path: string, query: Record<string, string>) {
+  return searchAdRequest(creds, 'GET', path, query)
 }
 
 // ── 연관키워드 추천 (RelKwdStat) ────────────────────────────────────────────
@@ -177,4 +185,28 @@ export async function listKeywords(creds: SearchAdCreds, adgroupId: string): Pro
     status: String(k.status || ''),
   })).filter(k => k.id)
   return { ok: true, keywords }
+}
+
+// ── 목표순위 예상 입찰가 (Estimate — 읽기, 돈 변경 없음) ──────────────────────
+//   "이 키워드를 N위에 노출하려면 예상 입찰가 얼마?" = 자동입찰의 핵심 입력(원하는 순위, 원하는 CPC).
+//   POST /estimate/average-position-bid/keyword — auction 기반 추정, 계정 무관(고객레벨).
+export interface BidEstimate { position: number; bid: number }
+
+/** 키워드의 목표순위(positions)별 예상 입찰가. device 'PC' | 'MOBILE'. */
+export async function estimateBidForPositions(creds: SearchAdCreds, keyword: string, positions: number[], device: 'PC' | 'MOBILE' = 'PC'): Promise<{ ok: boolean; estimates?: BidEstimate[]; error?: string }> {
+  const kw = keyword.trim().replace(/\s+/g, '')
+  if (kw.length < 1) return { ok: false, error: '키워드를 입력해주세요' }
+  const pos = positions.filter(p => Number.isFinite(p) && p >= 1 && p <= 15)
+  if (!pos.length) return { ok: false, error: '목표순위를 지정해주세요' }
+  const body = { device, items: pos.map(position => ({ key: kw, position })) }
+  const r = await searchAdRequest(creds, 'POST', '/estimate/average-position-bid/keyword', {}, body)
+  if (!r.ok) return { ok: false, error: r.error }
+  // 응답 형태 방어적 파싱: { estimate: [{ position, bid }] } 또는 배열.
+  const d = r.data as { estimate?: Array<Record<string, unknown>> } | Array<Record<string, unknown>> | null
+  const rows = Array.isArray(d) ? d : (d?.estimate || [])
+  const estimates: BidEstimate[] = rows.map(row => ({
+    position: num(row.position),
+    bid: num(row.bid),
+  })).filter(e => e.position > 0).sort((a, b) => a.position - b.position)
+  return { ok: true, estimates }
 }

@@ -17,6 +17,7 @@ const authHeader = () => {
 interface Campaign { id: string; name: string; type: string; status: string; dailyBudget: number }
 interface AdGroup { id: string; name: string; status: string; bidAmt: number; campaignId: string }
 interface AdKeyword { id: string; keyword: string; bidAmt: number; useGroupBid: boolean; status: string }
+interface BidEstimate { position: number; bid: number }
 
 const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
 const input = 'w-full h-10 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
@@ -31,6 +32,12 @@ export default function SearchAdPanel() {
   const [adgroups, setAdgroups] = useState<Record<string, AdGroup[]>>({})
   const [openGroup, setOpenGroup] = useState<string | null>(null)
   const [keywords, setKeywords] = useState<Record<string, AdKeyword[]>>({})
+  // 목표순위 예상 입찰가 (읽기 — 연결 없이 플랫폼 키 폴백으로도 동작)
+  const [estKw, setEstKw] = useState('')
+  const [estDevice, setEstDevice] = useState<'PC' | 'MOBILE'>('PC')
+  const [estBusy, setEstBusy] = useState(false)
+  const [estimates, setEstimates] = useState<BidEstimate[] | null>(null)
+  const [estOff, setEstOff] = useState(false)
 
   const loadStatus = useCallback(async () => {
     try {
@@ -79,6 +86,21 @@ export default function SearchAdPanel() {
     }
   }
 
+  async function runEstimate() {
+    const kw = estKw.trim()
+    if (kw.length < 1) { toast.error('키워드를 입력해주세요'); return }
+    setEstBusy(true); setEstimates(null); setEstOff(false)
+    try {
+      const r = await api.get(`/api/ads/searchad/estimate?keyword=${encodeURIComponent(kw)}&device=${estDevice}`, { headers: authHeader() })
+      if (r.data?.success) setEstimates(r.data.estimates || [])
+      else toast.error(r.data?.error || '추정 실패')
+    } catch (e: unknown) {
+      const ax = e as { response?: { status?: number; data?: { error?: string } } }
+      if (ax.response?.status === 503) setEstOff(true)
+      else toast.error(ax.response?.data?.error || '추정 실패')
+    } finally { setEstBusy(false) }
+  }
+
   async function toggleGroup(id: string) {
     if (openGroup === id) { setOpenGroup(null); return }
     setOpenGroup(id)
@@ -95,6 +117,34 @@ export default function SearchAdPanel() {
       <div className="flex items-center justify-between">
         <div className="text-[14px] font-bold text-gray-900 dark:text-white">📈 네이버 검색광고 계정 연동</div>
         {connected && <button onClick={disconnect} className="text-[12px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">연결 해제</button>}
+      </div>
+
+      {/* 목표순위 예상 입찰가 (자동입찰 미리보기 — 읽기, 돈 변경 없음) */}
+      <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
+        <div className="text-[12.5px] font-bold text-gray-900 dark:text-white">🎯 목표순위 예상 입찰가</div>
+        <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">"이 키워드를 N위에 노출하려면 입찰가 얼마?" — 자동입찰의 핵심. 실제 입찰 변경은 없습니다.</p>
+        <div className="mt-2 flex gap-2">
+          <input className={input} placeholder="키워드 (예: 무선이어폰)" value={estKw} onChange={e => setEstKw(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') runEstimate() }} />
+          <div className="shrink-0 flex rounded-lg border border-gray-200 dark:border-[#2A2A2A] overflow-hidden">
+            {(['PC', 'MOBILE'] as const).map(d => (
+              <button key={d} onClick={() => setEstDevice(d)} className={`px-2.5 text-[11.5px] font-semibold ${estDevice === d ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0A0A0A]' : 'text-gray-500 dark:text-gray-400'}`}>{d === 'PC' ? 'PC' : '모바일'}</button>
+            ))}
+          </div>
+          <button onClick={runEstimate} disabled={estBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-3 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{estBusy ? '…' : '추정'}</button>
+        </div>
+        {estOff && <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-500">검색광고 키 설정 후 사용할 수 있습니다.</p>}
+        {estimates && (estimates.length === 0 ? (
+          <p className="mt-2 text-[11px] text-gray-400 dark:text-gray-500">추정 데이터가 없습니다(경쟁/노출 부족).</p>
+        ) : (
+          <div className="mt-2 grid grid-cols-5 gap-1.5">
+            {estimates.map(e => (
+              <div key={e.position} className="rounded-lg bg-gray-50 dark:bg-[#0A0A0A] p-2 text-center">
+                <div className="text-[10px] text-gray-400 dark:text-gray-500">{e.position}위</div>
+                <div className="text-[12px] font-bold text-gray-900 dark:text-white tabular-nums">₩{formatNumber(e.bid)}</div>
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
 
       {connected === false && (
