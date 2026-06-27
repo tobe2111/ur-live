@@ -277,6 +277,12 @@ jobs:
         run: node scripts/check-query-iserror.mjs -s
         continue-on-error: false
 
+      # 🛡️ 2026-06-27: "로그인했는데 '로그인하세요'" 재발 방지 — 도매 surface 가 가격(*_price) null/0 을
+      #   로그인 신호로 오용해 로그인 유도(goLogin)하면 위반. 로그인 판정은 토큰으로만. 현재 위반 0 → strict.
+      - name: Wholesale login-gate-by-price guard (strict)
+        run: node scripts/check-login-gate-by-price.mjs -s
+        continue-on-error: false
+
       # ── 2. 스키마 일관성 (TS interface ↔ migrations) ──
       - name: Schema verification (drift detection)
         run: node scripts/verify-schema.mjs --json

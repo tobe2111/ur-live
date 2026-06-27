@@ -200,6 +200,11 @@ node scripts/check-csv-injection.mjs || true
 echo "==> Pre-commit: 쿼리 isError 소비 가드 (warn-only)..."
 node scripts/check-query-iserror.mjs || true
 
+# 🛡️ 2026-06-27: 가격기반 로그인 유도 가드 (warn-only) — 도매 surface 가 가격(*_price) null/0 을
+#   로그인 신호로 오용해 로그인 유도하면 "로그인했는데 '로그인하세요'" 재발. 신규 추가 차단.
+echo "==> Pre-commit: 가격기반 로그인 유도 가드 (warn-only)..."
+node scripts/check-login-gate-by-price.mjs || true
+
 # 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
 staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)
 if [ -n "$staged_migrations" ]; then

@@ -402,9 +402,15 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
 
   const openDetail = (p: CatalogItem) => navigate(`/wholesale/product/${p.id}`)
   const addToCart = (p: CatalogItem) => {
-    if (!loggedIn || p.distributor_price == null) {
+    // 🏭 2026-06-27 (가드 발견 — 같은 버그 클래스): 로그인 판정은 토큰(loggedIn)으로만. 로그인했는데
+    //   등급 공급가가 미설정/스테일(null/0)이면 로그인 유도(goLogin) 대신 안내만 — '로그인하세요' 오판 차단.
+    if (!loggedIn) {
       toast.info('로그인하면 등급 공급가로 담을 수 있어요')
       goLogin()
+      return
+    }
+    if (p.distributor_price == null || p.distributor_price <= 0) {
+      toast.info('이 상품은 회원님 등급의 공급가가 아직 설정되지 않았어요. 제조사에 문의해주세요.')
       return
     }
     const moq = Math.max(1, p.moq || 1)

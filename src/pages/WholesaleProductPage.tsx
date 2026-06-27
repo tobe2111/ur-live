@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, Check, Lock, BellRing, BellOff, MessageCircle, Stor
 import { toast } from '@/hooks/useToast'
 import { useWholesaleProduct } from '@/hooks/queries/useWholesale'
 import { cfImage } from '@/utils/cf-image'
+import { StickyActionBar } from '@/components/ui/sticky-action-bar'
 import { WT, won, comma, discountRate, unitMargin, marginVsRetail, GRADE_LABEL, WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
 
@@ -261,10 +262,10 @@ export default function WholesaleProductPage() {
   const tabs: [typeof tab, string][] = [['desc', '상세설명'], ['ship', '배송'], ['settle', '정산'], ['return', '반품·교환']]
 
   return (
-    // 🏭 2026-06-27 (대표 신고 — 모바일 하단 잘림): 고정 CTA바(수량+담기/주문+iOS 세이프에어리어 ≈150px)가
-    //   기존 pb-28(112px)보다 커서 탭/탭본문 하단이 바에 가려 끝까지 스크롤 안 됐음. 바 높이+세이프에어리어를
-    //   확실히 비우도록 paddingBottom 확대(데스크톱은 고정바 없음 — 여분 여백은 콘텐츠 아래라 무해).
-    <div className="min-h-[100dvh]" style={{ background: '#fff', color: WT.ink, paddingBottom: 'calc(9rem + env(safe-area-inset-bottom))' }}>
+    // 🏭 2026-06-27 (대표 신고 — 모바일 하단 잘림): 하단 여백은 더 이상 고정 숫자(pb-28)로 손맞춤하지 않는다.
+    //   하단 고정 CTA 바를 <StickyActionBar> 로 두면 바 높이(+iOS safe-area)만큼 spacer 가 자동 삽입돼
+    //   본문이 항상 바를 비운다(드리프트 구조적 불가). 루트는 min-h-[100dvh] 만.
+    <div className="min-h-[100dvh]" style={{ background: '#fff', color: WT.ink }}>
       {/* 🏭 2026-06-08 도매 상품 상세 — canonical=utongstart 이되 noindex 유지(공급가/거래정보 비노출 룰).
           description 에도 공급가 절대 미포함. */}
       <SEO domain="wholesale" title={`${item.name} - 유통스타트 도매`} description="판매사 전용 도매 상품 상세 — 도매가는 로그인 후 확인" url={`/wholesale/product/${item.id}`} noindex />
@@ -476,8 +477,8 @@ export default function WholesaleProductPage() {
         </div>
       </div>
 
-      {/* 모바일 하단 고정 CTA */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white z-40 px-5 pt-2.5" style={{ borderTop: '1px solid ' + WT.line, boxShadow: WT.shUp, paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+      {/* 모바일 하단 고정 CTA — StickyActionBar(자동 spacer)로 본문 하단 잘림 구조적 차단. */}
+      <StickyActionBar responsiveClassName="lg:hidden" className="bg-white px-5 pt-2.5" style={{ borderTop: '1px solid ' + WT.line, boxShadow: WT.shUp, paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
         {locked ? (
           <button onClick={goLogin} className="w-full h-14 rounded-2xl text-[16px] font-bold text-white flex items-center justify-center gap-2" style={{ background: WT.brand }}>
             <Lock className="w-5 h-5" /> 로그인하고 공급가 확인
@@ -509,7 +510,7 @@ export default function WholesaleProductPage() {
           </button>
         </div>
         </>)}
-      </div>
+      </StickyActionBar>
 
       {/* 💬 "제조사에 문의" 위젯 — 클릭 시에만 lazy mount, 상품 기준 스레드 자동 진입.
           🛡️ 서버가 product_id → 제조사를 서버사이드 해석 — 클라는 제조사 신원/ID 를 모름. */}
