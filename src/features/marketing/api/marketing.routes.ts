@@ -17,6 +17,7 @@ import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnectio
 import { aiMarketerAdvice, type AiMarketerContext } from './ai-marketer'
 import { registerSite, listSites, deleteSite, recordHit, clickReport, ensureClickguardSchema } from './clickguard'
 import { listRules, upsertRule, deleteRule, recentLog, runAutobidForSeller } from './autobid'
+import { listWatches, addWatch, deleteWatch, refreshWatch } from './price-monitor'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
 
@@ -460,6 +461,51 @@ marketingRoutes.post('/searchad/autobid/run', rateLimit({ action: 'ads-ab-run', 
   if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
   const results = await runAutobidForSeller(c.env.DB, creds, sellerId, { dryRun: false })
   return c.json({ success: true, applied: results.filter(r => r.applied).length, results })
+})
+
+// ── 가격 모니터링 (쇼핑검색 최저가 추적 — 읽기, 연동 불필요) ─────────────────
+// GET /api/ads/price/watches — 내 워치 목록
+marketingRoutes.get('/price/watches', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const watches = await listWatches(c.env.DB, sellerId)
+  return c.json({ success: true, watches })
+})
+
+// POST /api/ads/price/watch — 워치 추가({query, my_price?}) + 즉시 1회 조회
+marketingRoutes.post('/price/watch', rateLimit({ action: 'ads-price-add', max: 30, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const myPrice = body.my_price != null && body.my_price !== '' ? Number(body.my_price) : null
+  const r = await addWatch(c.env, sellerId, String(body.query || ''), myPrice)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  const watches = await listWatches(c.env.DB, sellerId)
+  return c.json({ success: true, watches })
+})
+
+// POST /api/ads/price/refresh?id= — 워치 1건 즉시 갱신
+marketingRoutes.post('/price/refresh', rateLimit({ action: 'ads-price-refresh', max: 30, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const id = Number(c.req.query('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: 'id 가 필요합니다' }, 400)
+  const row = await c.env.DB.prepare('SELECT id, query FROM ad_price_watches WHERE seller_id = ? AND id = ?')
+    .bind(sellerId, id).first<{ id: number; query: string }>().catch(() => null)
+  if (!row) return c.json({ success: false, error: '워치를 찾을 수 없습니다' }, 404)
+  await refreshWatch(c.env, row.id, row.query).catch(() => null)
+  const watches = await listWatches(c.env.DB, sellerId)
+  return c.json({ success: true, watches })
+})
+
+// DELETE /api/ads/price/watch?id= — 워치 삭제
+marketingRoutes.delete('/price/watch', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const id = Number(c.req.query('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: 'id 가 필요합니다' }, 400)
+  await deleteWatch(c.env.DB, sellerId, id)
+  return c.json({ success: true })
 })
 
 // TODO(부정클릭 Phase 2 — 결정 B 후): 노출제한 IP 자동등록(API 지원 시) / 미지원 시 의심IP export(복붙).
