@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## 🚧 2026-06-27 — 유어애즈 부정클릭 방지 Phase 1(수집·탐지·리포트, 차단 0) (대표 "시작해줘 / 가장 이상적으로")
+**배경**: 보라웨어 5종 마지막. 광고 API 가 아니라 방문자 추적 아키텍처. 설계 `docs/design/urads-clickfraud-design.md`. **프라이버시 바이 디자인**(대표 "가장 이상적으로"): 자사 픽셀 1자 수집 + **광고주 도메인 검증**(스푸핑 차단), IP는 **그룹핑 해시+원문 병행**(차단 단계 필요)·**90일 자동삭제**·광고주별 격리, 위치는 **국가 수준만**(CF 헤더), 목적 제한. **Phase 1 = 차단 없음(탐지·리포트만, 저위험).**
+- **코어**(`clickguard.ts`): `ad_clickguard_sites`/`ad_click_events`(인덱스 2). genAdvertiserKey(16자)·hashIp(SHA-256 salt)·domainMatches·lookupSite(isolate 캐시)·registerSite·recordHit(도메인검증+2% 확률 90일 정리)·clickReport(IP별 집계, ≥8클릭 의심).
+- **라우트**: GET `/clickguard/pixel.js`(공개 — sendBeacon 스니펫) · POST `/clickguard/hit`(공개·rateLimit·도메인검증·CF IP/국가·항상 204) · POST/GET/DELETE `/clickguard/site(s)`(인증) · GET `/clickguard/report`(인증, 탐지만).
+- **UI**(`ClickGuardPanel`): 사이트 등록→픽셀 스니펫 복사 + **개인정보처리방침 안내문 복사**(광고주 고지용) + 의심 IP 리포트(7/30일, 총클릭/고유IP/광고유입 + IP표 의심판정).
+- 검증: tsc 0 · build 0 · 단위 2334 pass · theme/mobile/sql-bind/sql-null 0 · api-auth 신규경고 0(pixel/hit 의도적 공개). ⚠️ Phase 2(노출제한 IP 차단)는 결정 B(공식 API 지원 여부) 후. 라이브는 배포 후.
+
 ## 🚧 2026-06-27 — 유어애즈 키워드 자동등록(키워드확장 write, 안전레일) (대표 "남은거 계속 해줘")
 **배경**: 키워드확장의 write(발굴은 read 로 이미 완성). 광고그룹에 키워드 등록. 그룹입찰 상속(useGroupBidAmt=true)이라 키워드별 입찰 surprise 없음(안전).
 - **클라이언트**: `addKeywordsToAdgroup(creds, adgroupId, keywords[])` — POST `/ncc/keywords?nccAdgroupId=`(그룹입찰). dedupe + 길이검증 + `KW_ADD_MAX=20` cap.
