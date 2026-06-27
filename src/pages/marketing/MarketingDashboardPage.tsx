@@ -25,6 +25,9 @@ interface CollectedOrder {
 interface TrendResult { keyword: string; latest: number; changePct: number }
 interface ShoppingResult { total: number; items: Array<{ title: string; lprice: number; mallName: string }> }
 interface RelatedKeyword { keyword: string; monthlyPc: number; monthlyMobile: number; monthlyTotal: number; compIdx: string; monthlyAvgClick: number }
+interface ReputationChannel { channel: 'blog' | 'cafe' | 'news'; total: number; items: Array<{ title: string; link: string; date: string; source: string }> }
+interface ReputationResult { query: string; channels: ReputationChannel[]; totalMentions: number }
+const CHANNEL_LABEL: Record<string, string> = { blog: '블로그', cafe: '카페', news: '뉴스' }
 
 const authHeader = () => {
   const t = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
@@ -45,6 +48,8 @@ export default function MarketingDashboardPage() {
   const [kwShop, setKwShop] = useState<ShoppingResult | null>(null)
   const [kwRelated, setKwRelated] = useState<RelatedKeyword[] | null>(null)
   const [relatedOff, setRelatedOff] = useState(false) // 검색광고 키 미설정(503) — 섹션 자동 숨김
+  const [kwAuto, setKwAuto] = useState<string[] | null>(null)
+  const [kwRep, setKwRep] = useState<ReputationResult | null>(null)
 
   const loadStatus = useCallback(async () => {
     if (!hasToken) { setConnected(false); return }
@@ -88,21 +93,26 @@ export default function MarketingDashboardPage() {
     } finally { setBusy(false) }
   }
 
-  async function analyzeKeyword() {
-    const q = kw.trim()
+  async function analyzeKeyword(term?: string) {
+    const q = (term ?? kw).trim()
     if (q.length < 2) { toast.error('키워드를 2자 이상 입력해주세요'); return }
-    setKwBusy(true); setKwTrend(null); setKwShop(null); setKwRelated(null)
+    if (term) setKw(term)
+    setKwBusy(true); setKwTrend(null); setKwShop(null); setKwRelated(null); setKwAuto(null); setKwRep(null)
     try {
-      const [t, s, rel] = await Promise.allSettled([
+      const [t, s, rel, auto, rep] = await Promise.allSettled([
         api.get(`/api/ads/keywords/trend?keywords=${encodeURIComponent(q)}`, { headers: authHeader() }),
         api.get(`/api/ads/keywords/shopping?q=${encodeURIComponent(q)}`, { headers: authHeader() }),
         api.get(`/api/ads/keywords/related?seed=${encodeURIComponent(q)}`, { headers: authHeader() }),
+        api.get(`/api/ads/keywords/autocomplete?q=${encodeURIComponent(q)}`, { headers: authHeader() }),
+        api.get(`/api/ads/reputation?q=${encodeURIComponent(q)}`, { headers: authHeader() }),
       ])
       if (t.status === 'fulfilled' && t.value.data?.success) setKwTrend(t.value.data.results || [])
       if (s.status === 'fulfilled' && s.value.data?.success) setKwShop(s.value.data.data || null)
       // 연관키워드: 검색광고 키 설정 시만(503 이면 섹션 숨김).
       if (rel.status === 'fulfilled' && rel.value.data?.success) { setKwRelated(rel.value.data.results || []); setRelatedOff(false) }
       else if (rel.status === 'rejected' && (rel.reason as { response?: { status?: number } })?.response?.status === 503) setRelatedOff(true)
+      if (auto.status === 'fulfilled' && auto.value.data?.success) setKwAuto(auto.value.data.suggestions || [])
+      if (rep.status === 'fulfilled' && rep.value.data?.success) setKwRep(rep.value.data.data || null)
       if (t.status === 'rejected' && s.status === 'rejected') toast.error('키워드 분석 실패 (잠시 후 다시)')
     } finally { setKwBusy(false) }
   }
@@ -114,7 +124,7 @@ export default function MarketingDashboardPage() {
     <MarketingLayout>
       <SEO title="유어애즈 UR Ads - 유어팀 종합 마케팅" description="네이버 검색광고 자동입찰 + 쇼핑몰 발주수집 + 키워드 — 유어팀 종합 마케팅 툴" url="/ads" />
       <h1 className="text-[22px] font-extrabold text-gray-900 dark:text-white">유어애즈 <span className="text-gray-400 dark:text-gray-500 text-[14px] font-medium">UR Ads</span></h1>
-      <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">고객사별 입점형 마케팅 툴 · 키워드 도구 사용 가능 · 자동입찰/발주수집 연동 예정</p>
+      <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">연관키워드·검색추세·쇼핑경쟁·자동완성확장·브랜드 평판 모니터링 — 지금 바로 사용 · 자동입찰/발주수집은 광고계정 연동 후</p>
 
       {!hasToken && (
         <div className={`mt-5 ${card}`}>
@@ -152,7 +162,7 @@ export default function MarketingDashboardPage() {
             <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">연관키워드 + 월 검색량 · 검색어 트렌드 · 쇼핑 경쟁(상품수·가격대)</p>
             <div className="mt-2 flex gap-2">
               <input className={input} placeholder="키워드 (예: 무선이어폰)" value={kw} onChange={(e) => setKw(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') analyzeKeyword() }} />
-              <button onClick={analyzeKeyword} disabled={kwBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{kwBusy ? '분석 중…' : '분석'}</button>
+              <button onClick={() => analyzeKeyword()} disabled={kwBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{kwBusy ? '분석 중…' : '분석'}</button>
             </div>
             {kwShop && (
               <div className="mt-3 text-[12px]">
@@ -165,6 +175,20 @@ export default function MarketingDashboardPage() {
                       <span className="truncate">{it.title}</span>
                       <span className="shrink-0 tabular-nums">₩{formatNumber(it.lprice)} <span className="text-gray-400 dark:text-gray-500">{it.mallName}</span></span>
                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* 자동완성 키워드 확장 — 클릭 시 그 키워드로 재분석 */}
+            {kwAuto && kwAuto.length > 0 && (
+              <div className="mt-3">
+                <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5">🧩 자동완성 키워드 확장</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {kwAuto.slice(0, 16).map((s) => (
+                    <button key={s} onClick={() => analyzeKeyword(s)}
+                      className="rounded-full border border-gray-200 dark:border-[#2A2A2A] px-2.5 py-1 text-[11.5px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1A1A1A]">
+                      {s}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -210,6 +234,37 @@ export default function MarketingDashboardPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* 브랜드 평판 모니터링 (블로그/카페/뉴스 언급) */}
+      {hasToken && kwRep && (
+        <div className={`mt-3 ${card}`}>
+          <div className="text-[14px] font-bold text-gray-900 dark:text-white">📣 브랜드 평판 모니터링
+            <span className="ml-2 text-gray-400 dark:text-gray-500 font-medium">"{kwRep.query}" 언급 {formatNumber(kwRep.totalMentions)}건</span>
+          </div>
+          <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">블로그·카페·뉴스 언급량 + 최근 글. 브랜드·상호 검색어로 평판/노출을 추적하세요.</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            {kwRep.channels.map((ch) => (
+              <div key={ch.channel} className="rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[12px] font-bold text-gray-900 dark:text-white">{CHANNEL_LABEL[ch.channel]}</span>
+                  <span className="text-[12px] tabular-nums font-bold text-gray-900 dark:text-white">{formatNumber(ch.total)}<span className="text-gray-400 dark:text-gray-500 font-medium">건</span></span>
+                </div>
+                <div className="mt-2 space-y-1.5">
+                  {ch.items.length === 0 ? (
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500">최근 글 없음</p>
+                  ) : ch.items.map((it, i) => (
+                    <a key={i} href={it.link} target="_blank" rel="noopener noreferrer"
+                      className="block text-[11.5px] text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                      <span className="line-clamp-1">{it.title}</span>
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500">{it.source}{it.date ? ` · ${it.date}` : ''}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
