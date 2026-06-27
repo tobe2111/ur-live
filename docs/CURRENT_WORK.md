@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## 🚧 2026-06-27 — 유어애즈 시장분석 무료도구 확장: 브랜드 평판 모니터링 + 자동완성 키워드확장 (대표 "네이버 API로 할 수 있는 서비스 더 찾아서 개발")
+**배경**: 대표가 보라웨어 5개 서비스(자동입찰·부정클릭·키워드확장·통합실적·AI마케터) 시안 공유 + "더 찾아서 개발". 5종은 전부 **광고 write**(입찰/키워드등록/IP차단)라 공통 전제 = 고객사 광고계정을 관리계정(47982)에 연동. 반대로 **읽기 도구는 보유 키만으로 즉시** → 고객 유입용 무료도구로 먼저 출시(레퍼런스: `docs/design/urads-boraware-reference.md`).
+- **브랜드 평판 모니터링**(신규 서비스): `brandReputation` — 오픈API 블로그/카페/뉴스 검색 병렬(Promise.allSettled, 채널별 fail-soft) → 언급량 + 최근 글 3건씩. `GET /api/ads/reputation?q=` (rateLimit 30/min). 대시보드 3컬럼 카드(블로그/카페/뉴스 언급수 + 최근글 링크).
+- **자동완성 키워드확장**: `keywordAutocomplete` — ac.search.naver.com(키 불필요, best-effort 실패 시 빈배열) 롱테일 후보. `GET /api/ads/keywords/autocomplete?q=`. 대시보드 칩(클릭 시 그 키워드로 재분석 — `analyzeKeyword(term)`).
+- **연동 불필요 — 보유 오픈API 키(NAVER_SEARCH_*/NAVER_*)로 즉시 동작.** 키워드 도구 1회 분석 시 추세/쇼핑/연관/자동완성/평판 5종 동시 호출(allSettled).
+- 검증: tsc 0 · build 0 · 단위 2334 pass · theme/mobile-viewport/sql-bind 0. ⚠️ 라이브(특히 ac.search.naver.com 서버호출)는 배포 후 확인.
+
 ## 🚧 2026-06-27 — 유어애즈(UR Ads) 3번째 서비스: 네이버 검색광고 API 연관키워드 추천 (대표 "모두 다 했어" — 키 설정 완료)
 **배경**: 도매몰·유어딜에 이은 **3번째 분리 서비스** 유어애즈(`/ads` · `/api/ads` · MarketingLayout · 전체 PC폭). 보라웨어식 종합 마케팅 툴(자동입찰/부정클릭/키워드확장/통합실적/AI마케터) 목표. 네이버 = **3개 별개 플랫폼**(오픈API·커머스API·검색광고API). 발주수집(커머스API)은 고정IP 필요 → 보류. 검색광고/오픈API는 고정IP 불필요 → 먼저 구현.
 - **검색광고 API 클라이언트 신설**(`searchad-client.ts`): HMAC-SHA256 서명 인증(`sign=base64(HMAC(secretKey, ts.METHOD.path))`, X-Timestamp/X-API-KEY/X-Customer/X-Signature). `searchAdCredsFrom(env)`=셋 다 있어야 활성(부분키 호출 방지, fail-soft). **RelKwdStat(연관키워드+월검색량)** — 관리계정(47982) customer-level 로 광고계정 0개여도 동작.

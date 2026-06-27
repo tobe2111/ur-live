@@ -11,7 +11,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { sellerIdFrom } from '../../supply/api/wholesale-helpers'
 import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverConnectionSchema } from '../../supply/api/naver-commerce-core'
 import { collectAndStore, listCollectedOrders } from './order-collection'
-import { keywordTrend, keywordShopping } from './keyword-tools'
+import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete } from './keyword-tools'
 import { searchAdCredsFrom, relatedKeywords } from './searchad-client'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
@@ -107,6 +107,24 @@ marketingRoutes.get('/keywords/shopping', rateLimit({ action: 'ads-kw-shop', max
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const r = await keywordShopping(naverOpenId(c.env), naverOpenSecret(c.env), c.req.query('q') || '')
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.error === 'NOT_CONFIGURED' ? 503 : 400)
+  return c.json({ success: true, data: r.data })
+})
+
+// GET /api/ads/keywords/autocomplete?q=키워드 — 자동완성 롱테일 키워드(키워드확장 보강, 키 불필요)
+marketingRoutes.get('/keywords/autocomplete', rateLimit({ action: 'ads-kw-auto', max: 60, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const r = await keywordAutocomplete(c.req.query('q') || '')
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  return c.json({ success: true, suggestions: r.suggestions })
+})
+
+// GET /api/ads/reputation?q=브랜드 — 블로그/카페/뉴스 언급량 + 최근 글(브랜드 평판 모니터링)
+marketingRoutes.get('/reputation', rateLimit({ action: 'ads-reputation', max: 30, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const r = await brandReputation(naverOpenId(c.env), naverOpenSecret(c.env), c.req.query('q') || '')
   if (!r.ok) return c.json({ success: false, error: r.error }, r.error === 'NOT_CONFIGURED' ? 503 : 400)
   return c.json({ success: true, data: r.data })
 })

@@ -60,3 +60,69 @@ export async function keywordShopping(clientId: string | undefined, clientSecret
   })).filter(it => it.lprice > 0)
   return { ok: true, data: { total: Number(data?.total) || 0, items } }
 }
+
+// ── 브랜드 평판 모니터링 (블로그 + 카페 + 뉴스 언급량) ───────────────────────
+export interface ReputationChannel { channel: 'blog' | 'cafe' | 'news'; total: number; items: Array<{ title: string; link: string; date: string; source: string }> }
+export interface ReputationResult { query: string; channels: ReputationChannel[]; totalMentions: number }
+
+const REP_ENDPOINTS: Array<{ channel: 'blog' | 'cafe' | 'news'; path: string }> = [
+  { channel: 'blog', path: '/v1/search/blog.json' },
+  { channel: 'cafe', path: '/v1/search/cafearticle.json' },
+  { channel: 'news', path: '/v1/search/news.json' },
+]
+
+/** YYYYMMDD(블로그) / RFC822(뉴스) → YYYY-MM-DD 표준화. */
+function normDate(raw: string): string {
+  const s = String(raw || '').trim()
+  if (/^\d{8}$/.test(s)) return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`
+  const d = new Date(s)
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10)
+}
+
+/** 브랜드/상호 검색어의 블로그·카페·뉴스 언급량 + 최근 글 3건씩. 오픈API(키 보유)로 즉시 — 연동 불필요. */
+export async function brandReputation(clientId: string | undefined, clientSecret: string | undefined, rawQuery: string): Promise<{ ok: boolean; data?: ReputationResult; error?: string }> {
+  if (!clientId || !clientSecret) return { ok: false, error: 'NOT_CONFIGURED' }
+  const query = rawQuery.trim()
+  if (query.length < 2) return { ok: false, error: '검색어가 너무 짧습니다' }
+  const settled = await Promise.allSettled(REP_ENDPOINTS.map(async ({ channel, path }) => {
+    const url = `${OPENAPI}${path}?query=${encodeURIComponent(query)}&display=3&sort=date`
+    const res = await fetch(url, { headers: hdr(clientId, clientSecret) }).catch(() => null)
+    if (!res || !res.ok) return { channel, total: 0, items: [] } as ReputationChannel
+    const d = (await res.json().catch(() => null)) as { total?: number; items?: Array<{ title?: string; link?: string; postdate?: string; pubDate?: string; bloggername?: string; cafename?: string }> } | null
+    const items = (d?.items || []).map(it => ({
+      title: stripNaverTitle(String(it.title || '')),
+      link: String(it.link || ''),
+      date: normDate(it.postdate || it.pubDate || ''),
+      source: String(it.bloggername || it.cafename || (channel === 'news' ? '뉴스' : '')),
+    }))
+    return { channel, total: Number(d?.total) || 0, items } as ReputationChannel
+  }))
+  const channels = settled.map((r, i) => r.status === 'fulfilled' ? r.value : ({ channel: REP_ENDPOINTS[i].channel, total: 0, items: [] } as ReputationChannel))
+  const totalMentions = channels.reduce((s, ch) => s + ch.total, 0)
+  return { ok: true, data: { query, channels, totalMentions } }
+}
+
+// ── 자동완성 키워드 확장 (네이버 자동완성 — 키 불필요) ──────────────────────
+/** 검색창 자동완성 후보 → 롱테일 키워드 발굴(키워드확장 보강). best-effort(실패 시 빈 배열). */
+export async function keywordAutocomplete(rawQuery: string): Promise<{ ok: boolean; suggestions?: string[]; error?: string }> {
+  const query = rawQuery.trim()
+  if (query.length < 1) return { ok: false, error: '검색어를 입력해주세요' }
+  const url = `https://ac.search.naver.com/nx/ac?q=${encodeURIComponent(query)}&con=0&frm=nv&ans=2&r_format=json&r_enc=UTF-8&st=100`
+  const res = await fetch(url).catch(() => null)
+  if (!res || !res.ok) return { ok: true, suggestions: [] } // best-effort
+  const d = (await res.json().catch(() => null)) as { items?: unknown[][] } | null
+  const groups = Array.isArray(d?.items) ? d!.items : []
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const group of groups) {
+    if (!Array.isArray(group)) continue
+    for (const entry of group) {
+      const term = Array.isArray(entry) ? String(entry[0] ?? '') : ''
+      const t = term.trim()
+      if (t && t.toLowerCase() !== query.toLowerCase() && !seen.has(t)) { seen.add(t); out.push(t) }
+      if (out.length >= 20) break
+    }
+    if (out.length >= 20) break
+  }
+  return { ok: true, suggestions: out }
+}
