@@ -215,6 +215,11 @@ export async function handleCronScheduled(
       await matureReferralCommissions(env.DB, env);
     }));
     ctx.waitUntil(safeCron('daily-self-diagnostic', () => runDailySelfDiagnostic(env)));
+    // 🆕 2026-06-27 유어애즈 가격 모니터링 — 등록된 워치의 네이버쇼핑 최저가 일일 갱신(읽기, 돈 0).
+    ctx.waitUntil(safeCron('ads-price-refresh', async () => {
+      const { refreshAllWatches } = await import('../features/marketing/api/price-monitor')
+      return refreshAllWatches(env)
+    }));
     // 🏭 2026-06-08 DATA-1: 도매 고아행(FK 부재) 일일 스윕 (flag-only, 삭제 X).
     ctx.waitUntil(safeCron('wholesale-orphan-sweep', () => handleWholesaleOrphanSweep(env)));
     // 🛡️ 2026-05-21 Phase D-3: 매일 ledger 정합성 검증 — orphan entries 알림.

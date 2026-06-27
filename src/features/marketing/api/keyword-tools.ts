@@ -61,6 +61,23 @@ export async function keywordShopping(clientId: string | undefined, clientSecret
   return { ok: true, data: { total: Number(data?.total) || 0, items } }
 }
 
+export interface LowestPrice { lowest: number; mall: string; title: string; total: number }
+
+/** 최저가 1건 — 쇼핑검색 가격오름차순(sort=asc) 1위. 가격 모니터링용. */
+export async function lowestPrice(clientId: string | undefined, clientSecret: string | undefined, rawQuery: string): Promise<{ ok: boolean; data?: LowestPrice; error?: string }> {
+  if (!clientId || !clientSecret) return { ok: false, error: 'NOT_CONFIGURED' }
+  const query = rawQuery.trim()
+  if (query.length < 2) return { ok: false, error: '검색어가 너무 짧습니다' }
+  const url = `${OPENAPI}/v1/search/shop.json?query=${encodeURIComponent(query)}&display=1&sort=asc`
+  const res = await fetch(url, { headers: hdr(clientId, clientSecret) }).catch(() => null)
+  if (!res) return { ok: false, error: '쇼핑검색 호출 실패 (네트워크)' }
+  const data = (await res.json().catch(() => null)) as { total?: number; items?: Array<{ title?: string; lprice?: string; mallName?: string }>; errorMessage?: string } | null
+  if (!res.ok) return { ok: false, error: data?.errorMessage || `쇼핑검색 오류 (HTTP ${res.status})` }
+  const it = (data?.items || [])[0]
+  if (!it) return { ok: true, data: { lowest: 0, mall: '', title: '', total: Number(data?.total) || 0 } }
+  return { ok: true, data: { lowest: Math.floor(Number(it.lprice)) || 0, mall: String(it.mallName || ''), title: stripNaverTitle(String(it.title || '')), total: Number(data?.total) || 0 } }
+}
+
 // ── 브랜드 평판 모니터링 (블로그 + 카페 + 뉴스 언급량) ───────────────────────
 export interface ReputationChannel { channel: 'blog' | 'cafe' | 'news'; total: number; items: Array<{ title: string; link: string; date: string; source: string }> }
 export interface ReputationResult { query: string; channels: ReputationChannel[]; totalMentions: number }

@@ -2,6 +2,17 @@
 
 2026-04-22 대장애 복구 이후 남은 기술 부채를 추적하는 문서.
 
+## 📊 2026-06-27 — 유어애즈(UR Ads, 3번째 서비스) 신규 코드 부채
+보라웨어식 검색광고 마케팅 툴 신규 구축(`src/features/marketing/**`, `src/pages/marketing/**`). 이 환경은 외부 egress 차단이라 **네이버 실 API 호출 미검증** — 아래는 배포 후 실 키/실 계정으로 1회 검증 필요한 항목 + 알려진 한계.
+
+- 🟡 **검색광고 API 응답 스키마 블라인드 구현** (`searchad-client.ts`): `keywordstool`(RelKwdStat)·`estimate/average-position-bid`·`stats`·`ncc/campaigns|adgroups|keywords` 요청/응답 형태를 공식 문서 기반 **best-guess + 방어적 파싱**으로 작성. 실 호출 미검증 → 스키마가 다르면 해당 기능이 조용히 빈값/에러. **배포 후 실 계정으로 각 1회 확인 필수**(연관키워드·예상입찰가·실적·캠페인목록). 틀리면 파서만 1줄 수정. **Med(기능 정확성).**
+- 🟡 **자동입찰 자율 엔진 라이브 미검증** (`autobid.ts`): `planBid` 안전로직은 단위테스트로 박음(max_bid 하드캡 불변식), 그러나 estimate 응답·bid PUT 동작은 미검증. **글로벌 킬스위치 `ADS_AUTOBID_ENABLED` 기본 OFF** 라 실수 가동 0. 실 계정에서 `/autobid/preview`(dry-run) + `/autobid/run`(수동) 1회 확인 후에만 env 플래그 `true`. **High(돈) — 단, 기본 OFF 라 현재 위험 0.**
+- 🟢 **부정클릭 hit 엔드포인트 분산 abuse 미차단** (`clickguard.ts` `recordHit`): `advertiser_key` 는 픽셀에 노출(페이지 소스)되고 비-브라우저 요청은 `Origin` 위조 가능 → 분산 IP 로 `ad_click_events` bloat 가능(per-IP rateLimit 만 존재). 영향: 광고주 자기 리포트 오염 + DB 증가(2% 확률 90일 정리로 상한). **Phase 1 저위험**(돈 0). Phase 2 전 per-key 일일 cap 추가 권장. **Low.**
+- 🟢 **마케팅 패널 isError 미분기**: `SearchAdPanel`/`AutobidPanel`/`ClickGuardPanel` 이 fetch 실패를 graceful 빈상태로 처리(에러 토스트 X). 일시 5xx 시 "데이터 없음"으로 보일 수 있음(도매 iserror 가드 scope 밖). **Low(표시).**
+- 🟢 **`accountStats` 캠페인 30개 cap** (`searchad-client.ts`): 통합실적이 캠페인 30개까지만 집계(코드 주석 명시). 캠페인 많은 대형 광고주엔 부분 합계. **Low.**
+- 🟢 **i18n 미적용(국내 B2B 전용)**: 유어애즈 UI 한국어 하드코딩 — 도매몰과 동일(국내 사업자 대상). 셀러 대시보드 파일 아님(i18n 룰 scope 밖). 글로벌 확장 시 후속.
+- 🟢 **신규 테이블 ensureXxx 런타임 생성**(naver_commerce_connections·ad_searchad_connections·ad_clickguard_sites·ad_click_events·ad_autobid_rules/log·ad_price_watches): CLAUDE.md 허용 패턴(WeakSet 메모이즈)이나 production-schema.ts SSOT 미등재. 동작엔 무관(self-heal), 문서화 후속 권장. **Low.**
+
 ## 📊 2026-06-26 — 전수감사 잔여(가드로 못 박는 latent) — 쇼핑 재오픈 전 fix 필수
 2026-06-26 5도메인 병렬 전수감사에서 나온, **결정론적 가드로 박기 어려운**(머니 흐름/문맥 의존) 확인 항목. `docs/AUDIT_INVARIANTS.md` "가드 미보유" 와 연동. **대부분 쇼핑탭 숨김(`SHOPPING_TAB_HIDDEN`) gated = 현재 라이브 영향 0, 단 재오픈 전 반드시 수정 + staging 실결제 검증.**
 

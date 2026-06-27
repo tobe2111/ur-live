@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## 🚧 2026-06-27 — 유어애즈 기술부채 점검 + 가격 모니터링 신규 서비스 (대표 "기능 최대한 / 기술부채 없나")
+**(1) 기술부채 자가점검**: 유어애즈 신규코드 전수 점검 → 전 가드 통과(schema-refs/column-exists/money-strict/sql-bind/sql-null/theme/mobile/csv/iserror 0). 발견 부채는 `TECHNICAL_DEBT.md` 에 등재(블라인드 API 스키마 배포후검증 Med · 자동입찰 라이브검증 High이나 킬스위치 OFF로 현재위험0 · clickguard 분산abuse Low · 패널 isError Low · stats 30캠 cap · i18n 국내전용 · ensureXxx 테이블 SSOT 미등재). **돈/크래시 위험 0, 대부분 "배포후 실키 검증" 성격.**
+**(2) 가격 모니터링 신규 서비스**(쇼핑검색 — 보라웨어에도 없는 추가 서비스, 연동 불필요·돈 0):
+- **코어**(`price-monitor.ts`): `ad_price_watches`(seller_id,query UNIQUE). `lowestPrice`(쇼핑검색 sort=asc 최저가 1건, keyword-tools 신규) 사용. addWatch(즉시1회조회·50개cap)·refreshWatch·listWatches·deleteWatch·refreshAllWatches(cron).
+- **라우트**: GET `/price/watches` · POST `/price/watch`(추가+즉시조회) · POST `/price/refresh?id=` · DELETE `/price/watch?id=`.
+- **cron**: 일일(0 18) `ads-price-refresh` — 오래된 워치 우선 최저가 갱신(상한 300).
+- **UI**(`PricePanel`): 검색어+내판매가 등록 → 최저가/최저몰/상품수 + **내가 최저가인지(최저가✓/더비쌈)** 비교 + 갱신/삭제.
+- 검증: tsc 0 · build 0 · 단위 2340 pass · 전 가드 0.
+
 ## 🚧 2026-06-27 — 유어애즈 자동입찰 자율 엔진 + 규칙 UI (대표 "남은거 계속 / 동작확인 뒤에") — 보라웨어 5종 全 가동
 **배경**: 보라웨어 5종 마지막 핵심 = 자동입찰 자율 cron. **돈 루프라 안전레일 다중**으로 구축.
 - **엔진**(`autobid.ts`): `planBid(estBid, maxBid, currentBid)` **순수 함수**(테스트 6건) — 추정가가 max_bid 넘으면 **max_bid 로 하드캡**, 글로벌 10만 상한, 최소 변경폭 10원(PUT 남발 방지). 엔진은 **절대 사용자 ceiling 초과 입찰 불가**. `runAutobidForSeller`(dryRun 지원) · `runAutobidAll`(cron, 킬스위치 gate).
