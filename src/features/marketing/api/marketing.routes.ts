@@ -12,7 +12,8 @@ import { sellerIdFrom } from '../../supply/api/wholesale-helpers'
 import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverConnectionSchema } from '../../supply/api/naver-commerce-core'
 import { collectAndStore, listCollectedOrders } from './order-collection'
 import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete } from './keyword-tools'
-import { searchAdCredsFrom, relatedKeywords } from './searchad-client'
+import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, type SearchAdCreds } from './searchad-client'
+import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnection, searchAdConnStatus } from './searchad-connection'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
 
@@ -133,11 +134,18 @@ marketingRoutes.get('/reputation', rateLimit({ action: 'ads-reputation', max: 30
 //   오픈API 와 별개. HMAC 서명 인증(고정IP 불필요). 관리/대행 계정 customer-level 로 광고계정 0개여도 동작.
 //   키(NAVER_SEARCHAD_*) 미설정 시 503(NOT_CONFIGURED) — 프런트가 자동 숨김(fail-soft).
 
+// 연관키워드용 자격증명: 연결된 고객사 키 우선, 없으면 플랫폼(관리계정 47982) 폴백.
+//   RelKwdStat 은 customer-level 이라 둘 다 동작 — 연결 시 그 계정 컨텍스트로.
+async function resolveSearchAdCreds(c: { env: Env }, sellerId: number): Promise<SearchAdCreds | null> {
+  const tenant = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY).catch(() => null)
+  return tenant || searchAdCredsFrom(c.env)
+}
+
 // GET /api/ads/keywords/related?seed=키워드 — 연관키워드 + 월 검색량(PC/모바일)
 marketingRoutes.get('/keywords/related', rateLimit({ action: 'ads-kw-related', max: 30, windowSec: 60 }), async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  const creds = searchAdCredsFrom(c.env)
+  const creds = await resolveSearchAdCreds(c, sellerId)
   if (!creds) return c.json({ success: false, error: 'NOT_CONFIGURED' }, 503)
   const seeds = (c.req.query('seed') || c.req.query('keywords') || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 5)
   if (!seeds.length) return c.json({ success: false, error: '키워드를 입력해주세요' }, 400)
@@ -146,8 +154,82 @@ marketingRoutes.get('/keywords/related', rateLimit({ action: 'ads-kw-related', m
   return c.json({ success: true, results: r.results })
 })
 
-// TODO(자동입찰 — 고객사 광고계정 연동 후): 검색광고 Estimate(목표순위 입찰추정) + StatReport(실적).
-//   GET/PATCH /bid/keywords  자동입찰 키워드/입찰설정(목표순위·최대입찰가) — 공식 검색광고 API only.
+// ── 검색광고 계정 연동 (멀티테넌트 — 고객사별 자기 키 연결) ───────────────────
+//   자동입찰·실적·키워드 자동등록 등 per-advertiser 기능의 전제조건.
+
+// POST /api/ads/searchad/connect — 고객사 검색광고 자격증명 연결(캠페인 조회로 즉시 검증 후 암호화 저장)
+marketingRoutes.post('/searchad/connect', rateLimit({ action: 'ads-sa-connect', max: 10, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const customerId = String(body.customer_id || '').trim()
+  const accessLicense = String(body.access_license || '').trim()
+  const secretKey = String(body.secret_key || '').trim()
+  if (!/^\d{1,15}$/.test(customerId)) return c.json({ success: false, error: '고객 ID(숫자)를 확인해주세요' }, 400)
+  if (accessLicense.length < 20 || accessLicense.length > 200) return c.json({ success: false, error: '액세스라이선스를 확인해주세요' }, 400)
+  if (secretKey.length < 20 || secretKey.length > 200) return c.json({ success: false, error: '비밀키를 확인해주세요' }, 400)
+  const creds: SearchAdCreds = { customerId, accessLicense, secretKey }
+  const verify = await listCampaigns(creds) // 200 OK = 유효(캠페인 0개여도 OK)
+  if (!verify.ok) return c.json({ success: false, error: verify.error || '검색광고 인증 실패 — 키를 확인해주세요' }, 400)
+  await saveSearchAdConnection(c.env.DB, sellerId, creds, c.env.DATA_ENCRYPTION_KEY)
+  return c.json({ success: true, message: '검색광고 계정이 연결되었습니다', campaigns: verify.campaigns?.length || 0 })
+})
+
+// GET /api/ads/searchad/status — 연결 상태(마스킹)
+marketingRoutes.get('/searchad/status', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const st = await searchAdConnStatus(c.env.DB, sellerId)
+  return c.json({ success: true, ...st })
+})
+
+// DELETE /api/ads/searchad/connect — 연결 해제
+marketingRoutes.delete('/searchad/connect', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  await deleteSearchAdConnection(c.env.DB, sellerId)
+  return c.json({ success: true })
+})
+
+// GET /api/ads/searchad/campaigns — 내 캠페인 목록(연결 필요)
+marketingRoutes.get('/searchad/campaigns', rateLimit({ action: 'ads-sa-list', max: 60, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
+  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  const r = await listCampaigns(creds)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 502)
+  return c.json({ success: true, campaigns: r.campaigns })
+})
+
+// GET /api/ads/searchad/adgroups?campaignId= — 광고그룹 목록(연결 필요)
+marketingRoutes.get('/searchad/adgroups', rateLimit({ action: 'ads-sa-list', max: 60, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const campaignId = String(c.req.query('campaignId') || '').trim()
+  if (!campaignId) return c.json({ success: false, error: 'campaignId 가 필요합니다' }, 400)
+  const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
+  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  const r = await listAdgroups(creds, campaignId)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 502)
+  return c.json({ success: true, adgroups: r.adgroups })
+})
+
+// GET /api/ads/searchad/keywords?adgroupId= — 키워드+현재 입찰가(연결 필요, 자동입찰 토대)
+marketingRoutes.get('/searchad/keywords', rateLimit({ action: 'ads-sa-list', max: 60, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const adgroupId = String(c.req.query('adgroupId') || '').trim()
+  if (!adgroupId) return c.json({ success: false, error: 'adgroupId 가 필요합니다' }, 400)
+  const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
+  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  const r = await listKeywords(creds, adgroupId)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 502)
+  return c.json({ success: true, keywords: r.keywords })
+})
+
+// TODO(자동입찰 — 연결 후 write): Estimate(목표순위 입찰추정) + 키워드 bidAmt PUT + StatReport(실적).
+//   GET/PATCH /searchad/bid  자동입찰 설정(목표순위·최대입찰가) — 공식 검색광고 API only.
 //   ⚠️ 순위 측정은 공식 API(Estimate/StatReport)로만 — SERP 스크래핑 금지(2026-04-22 제거 이력, PIPA).
 
 export { marketingRoutes }

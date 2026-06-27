@@ -127,3 +127,54 @@ export async function relatedKeywords(creds: SearchAdCreds, hints: string[]): Pr
   const d = r.data as { keywordList?: Array<Record<string, unknown>> } | null
   return { ok: true, results: parseRelatedKeywords(d?.keywordList) }
 }
+
+// ── 광고 구조 조회 (캠페인 → 광고그룹 → 키워드) ─────────────────────────────
+//   per-advertiser 읽기 — 연결된 고객사 자격증명 필요(관리계정으론 못 봄). 자동입찰/실적 UI 토대.
+export interface AdCampaign { id: string; name: string; type: string; status: string; dailyBudget: number }
+export interface AdGroup { id: string; name: string; status: string; bidAmt: number; campaignId: string }
+export interface AdKeyword { id: string; keyword: string; bidAmt: number; useGroupBid: boolean; status: string }
+
+/** 캠페인 목록 — GET /ncc/campaigns. 연결 검증에도 사용(200 OK = 유효한 키). */
+export async function listCampaigns(creds: SearchAdCreds): Promise<{ ok: boolean; campaigns?: AdCampaign[]; error?: string }> {
+  const r = await searchAdGet(creds, '/ncc/campaigns', {})
+  if (!r.ok) return { ok: false, error: r.error }
+  const arr = Array.isArray(r.data) ? (r.data as Array<Record<string, unknown>>) : []
+  const campaigns: AdCampaign[] = arr.map(c => ({
+    id: String(c.nccCampaignId || ''),
+    name: String(c.name || ''),
+    type: String(c.campaignTp || ''),
+    status: String(c.status || c.statusReason || ''),
+    dailyBudget: num(c.dailyBudget),
+  })).filter(c => c.id)
+  return { ok: true, campaigns }
+}
+
+/** 광고그룹 목록 — GET /ncc/adgroups?nccCampaignId=. */
+export async function listAdgroups(creds: SearchAdCreds, campaignId: string): Promise<{ ok: boolean; adgroups?: AdGroup[]; error?: string }> {
+  const r = await searchAdGet(creds, '/ncc/adgroups', { nccCampaignId: campaignId })
+  if (!r.ok) return { ok: false, error: r.error }
+  const arr = Array.isArray(r.data) ? (r.data as Array<Record<string, unknown>>) : []
+  const adgroups: AdGroup[] = arr.map(g => ({
+    id: String(g.nccAdgroupId || ''),
+    name: String(g.name || ''),
+    status: String(g.status || ''),
+    bidAmt: num(g.bidAmt),
+    campaignId: String(g.nccCampaignId || campaignId),
+  })).filter(g => g.id)
+  return { ok: true, adgroups }
+}
+
+/** 키워드 목록(현재 입찰가 포함) — GET /ncc/keywords?nccAdgroupId=. 자동입찰의 입력. */
+export async function listKeywords(creds: SearchAdCreds, adgroupId: string): Promise<{ ok: boolean; keywords?: AdKeyword[]; error?: string }> {
+  const r = await searchAdGet(creds, '/ncc/keywords', { nccAdgroupId: adgroupId })
+  if (!r.ok) return { ok: false, error: r.error }
+  const arr = Array.isArray(r.data) ? (r.data as Array<Record<string, unknown>>) : []
+  const keywords: AdKeyword[] = arr.map(k => ({
+    id: String(k.nccKeywordId || ''),
+    keyword: String(k.keyword || ''),
+    bidAmt: num(k.bidAmt),
+    useGroupBid: !!k.useGroupBidAmt,
+    status: String(k.status || ''),
+  })).filter(k => k.id)
+  return { ok: true, keywords }
+}
