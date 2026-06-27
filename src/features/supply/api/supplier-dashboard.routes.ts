@@ -71,6 +71,17 @@ supplierDashboardRoutes.get('/me', async (c) => {
       `SELECT pending_amount, available_amount, paid_amount FROM supplier_balances WHERE supplier_id = ?`
     ).bind(sid).first<{ pending_amount: number; available_amount: number; paid_amount: number }>().catch(() => null);
 
+    // 🏦 2026-06-27 출금 예약(reserved) 별도 조회(best-effort) — '출금 가능' 표시가 미지급 출금요청
+    //   보류분을 차감하도록(loadSpendable 과 동일 의미: spendable = available - reserved). 컬럼 미존재
+    //   (출금 미경험 제조사)면 0. 기존 balance 조회/응답 필드 불변(additive).
+    let reservedAmount = 0;
+    try {
+      const rRow = await DB.prepare(
+        `SELECT COALESCE(reserved_amount, 0) AS reserved FROM supplier_balances WHERE supplier_id = ?`
+      ).bind(sid).first<{ reserved: number }>();
+      reservedAmount = Math.max(0, Math.floor(Number(rRow?.reserved) || 0));
+    } catch { /* reserved_amount 컬럼 미존재 — 0 (출금 한 번도 안 한 제조사) */ }
+
     const counts = await DB.prepare(
       `SELECT
          COUNT(*) AS total,
@@ -96,6 +107,7 @@ supplierDashboardRoutes.get('/me', async (c) => {
         balance: {
           pending_amount: balance?.pending_amount ?? 0,
           available_amount: balance?.available_amount ?? 0,
+          reserved_amount: reservedAmount,
           paid_amount: balance?.paid_amount ?? 0,
         },
         product_counts: {

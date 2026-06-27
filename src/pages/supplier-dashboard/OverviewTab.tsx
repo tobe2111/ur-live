@@ -29,7 +29,7 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
   if ((c.pending ?? 0) > 0) todos.push({ key: 'pending', label: t('supplier.todoPending', { defaultValue: '검수 대기 {{n}}건 (관리자 승인 중)', n: pendingN }).replace('{{n}}', pendingN), count: pendingN, Icon: Clock, on: () => onGoTab('catalog'), tone: 'info' })
   const cards = [
     { label: t('supplier.balPending', { defaultValue: '정산 대기' }), value: b.pending_amount, cls: 'text-amber-600' },
-    { label: t('supplier.balAvailable', { defaultValue: '출금 가능' }), value: b.available_amount, cls: 'text-blue-600' },
+    { label: t('supplier.balAvailable', { defaultValue: '출금 가능' }), value: Math.max(0, (b.available_amount ?? 0) - (b.reserved_amount ?? 0)), cls: 'text-blue-600' },
     { label: t('supplier.balPaid', { defaultValue: '지급 완료(누적)' }), value: b.paid_amount, cls: 'text-green-600' },
   ]
   const actions: { label: string; desc: string; Icon: typeof Package; on: () => void; primary?: boolean; disabled?: boolean }[] = [
