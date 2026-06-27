@@ -502,10 +502,15 @@ export class KakaoAuthService {
         // 🛡️ 2026-06-24 (속도 최적화): dupe COUNT 를 별도 SELECT → UPDATE 의 WHERE 서브쿼리로
         //   합침. 로그인당 D1 왕복 -1. 의미 동일(이 email 이 정확히 1명에게만 속할 때만 연결) +
         //   원자적이라 기존의 COUNT→UPDATE 사이 race(TOCTOU)도 제거 — 더 안전해짐.
+        // 🔗 2026-06-26 [UNLOCK_LOADING] (대표 "계속 하자" 승인 — 카카오 단일로그인 통일 P1):
+        //   매칭/COUNT 를 LOWER() 대소문자 무시로. "Foo@x.com"(셀러) vs "foo@x.com"(유저)처럼
+        //   대소문자만 달라 자동연결이 silent 실패하던 갭을 메움. **verified===true 게이트 + COUNT≤1
+        //   (이제 대소문자무시) 모호성 보류 + linked_user_id IS NULL idempotent 전부 불변** — 매칭만 넓힘.
+        //   대소문자무시 COUNT 는 잠재 소유자를 더 세므로 모호하면 더 잘 skip(=더 보수적).
         await this.db.prepare(
           `UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now')
-           WHERE email = ? AND (linked_user_id IS NULL OR linked_user_id = 0)
-             AND (SELECT COUNT(*) FROM users WHERE email = ? AND email IS NOT NULL AND email != '') <= 1`
+           WHERE LOWER(email) = LOWER(?) AND (linked_user_id IS NULL OR linked_user_id = 0)
+             AND (SELECT COUNT(*) FROM users WHERE LOWER(email) = LOWER(?) AND email IS NOT NULL AND email != '') <= 1`
         ).bind(user.id, user.email, user.email).run().catch(() => null);
       }
 

@@ -5,7 +5,8 @@
 - **2a ✅ 셀러 로그인 카카오 우선**: `SellerLoginPage.tsx` — 카카오 버튼을 기본(상단 prominent CTA)으로 승격, 이메일/비번 폼은 "기존 이메일로 로그인" 토글 뒤로 강등(`showEmailLogin` 기본 접힘). **`seller_remember_email` 저장된 기존 이메일 셀러는 자동 펼침 → 회귀 0.** 이메일 로그인 로직(handleSubmit/Turnstile/remember) byte-동일 보존. i18n `seller.kakaoLoginPrimary/Hint`·`emailLoginToggle` 6언어.
 - **2b ✅ 대시보드 연동 권유 배너**: 신규 `SellerKakaoLinkBanner.tsx`(SellerLayout `<main>` 상단, dismissible). dismiss 플래그/`user_id`(카카오세션) 있으면 **네트워크 0** 미노출; 이메일 셀러 후보만 1회 `GET /api/seller/kakao-link-status` → 미연동시만 노출. CTA→`/seller/profile`(기존 `KakaoLinkButton` OAuth 팝업 재사용, 중복 0). i18n `seller.kakaoBannerTitle/Desc/Cta` 6언어.
 - **2b+ ✅ 관리자 미연결 셀러 마이그레이션 뷰**: 이미 어긋난 기존 셀러(이메일 불일치 자동연결 실패, 예: tobe2111)를 운영자가 일괄 정리. `GET /api/admin/sellers/unlinked`(비잠금) — 미연결 셀러 + **추정 매칭**(이메일 COUNT=1 + 유저 미연결일 때만, 오연결 방지). `AdminPendingSellersPage` 에 미연결 목록 + 원클릭 '연결'(공유 `doLink`→기존 `PATCH /sellers/:id/link-user`, conflict 가드/audit 그대로).
-- **2c 🔜 완전 폐지(보류)**: 미연결 이메일 셀러 lockout 방지 위해 마이그레이션 성숙까지 fallback 유지. 잠금파일(KakaoAuthService/kakao.routes/KakaoCallbackPage/pending-auth) 무수정 — 2c 진입 시에만 AskUserQuestion+audit.
+- **P1 ✅ 이메일 대소문자 무시 자동연결** (`[UNLOCK_LOADING]` 대표 "계속 하자"): `KakaoAuthService.upsertUser` same-email 자동연결 UPDATE 매칭 + COUNT 게이트를 `LOWER(email)=LOWER(?)` 로 → `"Foo@x.com"`vs`"foo@x.com"` silent 미연결 갭 해소. verified 게이트·COUNT≤1·IS NULL 멱등 byte-불변(매칭만 넓힘). CLAUDE.md 로딩 audit log 기록. unit 1813 pass.
+- **2c 🔜 완전 폐지(보류)**: 미연결 이메일 셀러 lockout 방지 위해 마이그레이션 성숙까지 fallback 유지. 잠금파일(kakao.routes/KakaoCallbackPage/pending-auth) 무수정 — 2c 진입 시에만 AskUserQuestion+audit.
 - 검증: tsc 0 · theme-consistency 0 · 6 locale JSON valid · `npm run build` 0.
 
 ## ✅ 2026-06-26 — 결제 셀프취소 머니버그 3종 fix (대표 "지금 진행")
