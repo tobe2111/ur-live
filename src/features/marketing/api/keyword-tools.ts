@@ -61,6 +61,41 @@ export async function keywordShopping(clientId: string | undefined, clientSecret
   return { ok: true, data: { total: Number(data?.total) || 0, items } }
 }
 
+// ── 소싱 리포트 (데이터랩 쇼핑인사이트 — 분야별 트렌드) ──────────────────────
+//   "뜨는 카테고리" 발굴 → 도매몰 소싱 시너지. 각 카테고리 자체 시계열의 증감률(정규화 내 유효).
+export interface CategoryTrend { name: string; changePct: number; latest: number }
+// 네이버쇼핑 1-depth 대표 카테고리(cid).
+const SHOPPING_CATEGORIES: Array<{ name: string; cid: string }> = [
+  { name: '패션의류', cid: '50000000' }, { name: '패션잡화', cid: '50000001' },
+  { name: '화장품/미용', cid: '50000002' }, { name: '디지털/가전', cid: '50000003' },
+  { name: '가구/인테리어', cid: '50000004' }, { name: '출산/육아', cid: '50000005' },
+  { name: '식품', cid: '50000006' }, { name: '스포츠/레저', cid: '50000007' },
+  { name: '생활/건강', cid: '50000008' }, { name: '여가/생활편의', cid: '50000009' },
+]
+
+/** 분야별 쇼핑 트렌드(최근 12개월, 월단위) — 증감률 내림차순. 소싱 우선순위. */
+export async function shoppingCategoryTrends(clientId: string | undefined, clientSecret: string | undefined): Promise<{ ok: boolean; results?: CategoryTrend[]; error?: string }> {
+  if (!clientId || !clientSecret) return { ok: false, error: 'NOT_CONFIGURED' }
+  const today = new Date()
+  const endDate = today.toISOString().slice(0, 10)
+  const startDate = new Date(today.getTime() - 365 * 86400000).toISOString().slice(0, 10)
+  const res = await fetch(`${OPENAPI}/v1/datalab/shopping/categories`, {
+    method: 'POST',
+    headers: { ...hdr(clientId, clientSecret), 'content-type': 'application/json' },
+    body: JSON.stringify({ startDate, endDate, timeUnit: 'month', category: SHOPPING_CATEGORIES.map(c => ({ name: c.name, param: [c.cid] })) }),
+  }).catch(() => null)
+  if (!res) return { ok: false, error: '쇼핑인사이트 호출 실패 (네트워크)' }
+  const data = (await res.json().catch(() => null)) as { results?: Array<{ title?: string; data?: Array<{ period: string; ratio: number }> }>; errorMessage?: string } | null
+  if (!res.ok) return { ok: false, error: data?.errorMessage || `쇼핑인사이트 오류 (HTTP ${res.status})` }
+  const results: CategoryTrend[] = (data?.results || []).map(r => {
+    const pts = (r.data || []).map(p => Number(p.ratio) || 0)
+    const latest = pts.length ? pts[pts.length - 1] : 0
+    const first = pts.length ? pts[0] : 0
+    return { name: r.title || '', changePct: first > 0 ? Math.round(((latest - first) / first) * 100) : 0, latest }
+  }).filter(c => c.name).sort((a, b) => b.changePct - a.changePct)
+  return { ok: true, results }
+}
+
 export interface LowestPrice { lowest: number; mall: string; title: string; total: number }
 
 /** 최저가 1건 — 쇼핑검색 가격오름차순(sort=asc) 1위. 가격 모니터링용. */

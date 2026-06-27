@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## 🚧 2026-06-27 — 유어애즈 추가기능 3종(소싱리포트·예산페이싱·노출순위) + 판매채널 번들 설계 (대표 "수익화 보류, 기능부터 / 모두 다")
+**결정**: 수익화 토대 보류, **기능 우선**. 3개 후보 중 유어애즈 내부 2개는 풀구현, 크로스서비스 1개는 분리룰상 설계.
+- **소싱 리포트**(`SourcingPanel`): 데이터랩 쇼핑인사이트 — 네이버쇼핑 1-depth 10개 카테고리 최근1년 트렌드 → 증감률 막대(뜨는 분야). `shoppingCategoryTrends`(POST /v1/datalab/shopping/categories, 그룹 내 정규화라 증감률 유효) + GET `/api/ads/sourcing/trends`. **도매몰 소싱 시너지**, 연동 불필요.
+- **노출순위(avgRnk)**: `accountStats` fields 에 `avgRnk` 추가 → 통합실적 캠페인표에 '평균순위' 열(공식 지표, 스크래핑 X).
+- **예산 페이싱**: `budgetPacing` — 오늘 캠페인별 소진(/stats today salesAmt) vs dailyBudget → 과속(≥95%)/저소진(<30%)/정상 플래그. GET `/searchad/pacing` + SearchAdPanel ⏱️ 섹션.
+- **유어딜 판매채널 번들**: 🟡 **설계 문서만**(`urads-yourdeal-channel-bundle.md`) — 세 서비스 잇는 변경이라 정산·이행·소유권 결정(A~D) 선행. 블라인드 코드는 분리 누수 위험(과거 도매상품 누수 클래스) → 결정 후 복제본 플래그로 안전구현.
+- 검증: tsc 0 · build 0 · 단위 2340 pass · theme/mobile/sql-bind 0. 라이브는 배포 후.
+
 ## 🚧 2026-06-27 — 유어애즈 부정클릭 차단 Phase 2(반자동 — 검색광고센터 복붙) (대표 "부정클릭 차단 마저")
 **현실**: 네이버 검색광고 **공식 API 에 노출제한 IP 관리 엔드포인트 없음**(센터 UI 전용, 계정당 600개) → 설계 문서의 "API 미지원 시 반자동" 경로 채택. **실제 동작하는 차단 방식.**
 - **코어**(`clickguard.ts`): `ad_blocked_ips`(seller_id,ip UNIQUE) + addBlockedIp(IP검증·600 cap·INSERT OR IGNORE)·listBlockedIps·removeBlockedIp.
