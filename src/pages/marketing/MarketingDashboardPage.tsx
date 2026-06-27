@@ -22,6 +22,9 @@ interface CollectedOrder {
   orderedAt: string | null
 }
 
+interface TrendResult { keyword: string; latest: number; changePct: number }
+interface ShoppingResult { total: number; items: Array<{ title: string; lprice: number; mallName: string }> }
+
 const authHeader = () => {
   const t = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
@@ -35,6 +38,10 @@ export default function MarketingDashboardPage() {
   const [clientSecret, setClientSecret] = useState('')
   const [busy, setBusy] = useState(false)
   const [orders, setOrders] = useState<CollectedOrder[]>([])
+  const [kw, setKw] = useState('')
+  const [kwBusy, setKwBusy] = useState(false)
+  const [kwTrend, setKwTrend] = useState<TrendResult[] | null>(null)
+  const [kwShop, setKwShop] = useState<ShoppingResult | null>(null)
 
   const loadStatus = useCallback(async () => {
     if (!hasToken) { setConnected(false); return }
@@ -78,6 +85,21 @@ export default function MarketingDashboardPage() {
     } finally { setBusy(false) }
   }
 
+  async function analyzeKeyword() {
+    const q = kw.trim()
+    if (q.length < 2) { toast.error('키워드를 2자 이상 입력해주세요'); return }
+    setKwBusy(true); setKwTrend(null); setKwShop(null)
+    try {
+      const [t, s] = await Promise.allSettled([
+        api.get(`/api/ads/keywords/trend?keywords=${encodeURIComponent(q)}`, { headers: authHeader() }),
+        api.get(`/api/ads/keywords/shopping?q=${encodeURIComponent(q)}`, { headers: authHeader() }),
+      ])
+      if (t.status === 'fulfilled' && t.value.data?.success) setKwTrend(t.value.data.results || [])
+      if (s.status === 'fulfilled' && s.value.data?.success) setKwShop(s.value.data.data || null)
+      if (t.status === 'rejected' && s.status === 'rejected') toast.error('키워드 분석 실패 (잠시 후 다시)')
+    } finally { setKwBusy(false) }
+  }
+
   const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
   const input = 'w-full h-10 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
@@ -85,7 +107,7 @@ export default function MarketingDashboardPage() {
     <MarketingLayout>
       <SEO title="유어애즈 UR Ads - 유어팀 종합 마케팅" description="네이버 검색광고 자동입찰 + 쇼핑몰 발주수집 + 키워드 — 유어팀 종합 마케팅 툴" url="/ads" />
       <h1 className="text-[22px] font-extrabold text-gray-900 dark:text-white">유어애즈 <span className="text-gray-400 dark:text-gray-500 text-[14px] font-medium">UR Ads</span></h1>
-      <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">고객사별 스마트스토어를 연동해 발주를 자동 수집합니다. (입점형 · 검색광고 자동입찰/키워드 준비 중)</p>
+      <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">고객사별 입점형 마케팅 툴 · 키워드 도구 사용 가능 · 자동입찰/발주수집 연동 예정</p>
 
       {!hasToken && (
         <div className={`mt-5 ${card}`}>
@@ -117,11 +139,29 @@ export default function MarketingDashboardPage() {
             )}
           </div>
 
-          {/* 2) 준비 중 기능 */}
+          {/* 2) 키워드 도구 (오픈API — 즉시 사용) */}
           <div className={card}>
-            <div className="text-[14px] font-bold text-gray-900 dark:text-white">🎯 자동입찰 · 🔑 키워드도구</div>
-            <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed">검색광고 자동입찰(공식 API)·키워드 추천 준비 중. 자동입찰은 검색광고 API 키 + 합법성 검토 후 오픈.</p>
-            <span className="mt-3 inline-block text-[11px] font-bold text-amber-600 dark:text-amber-400">준비 중</span>
+            <div className="text-[14px] font-bold text-gray-900 dark:text-white">🔑 키워드 도구</div>
+            <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">검색어 트렌드 + 쇼핑 경쟁(상품수·가격대). 연관키워드 추천·자동입찰은 검색광고 키 발급 후.</p>
+            <div className="mt-2 flex gap-2">
+              <input className={input} placeholder="키워드 (예: 무선이어폰)" value={kw} onChange={(e) => setKw(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') analyzeKeyword() }} />
+              <button onClick={analyzeKeyword} disabled={kwBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">분석</button>
+            </div>
+            {kwShop && (
+              <div className="mt-3 text-[12px]">
+                <div className="text-gray-600 dark:text-gray-300">쇼핑 등록상품 <b className="text-gray-900 dark:text-white">{formatNumber(kwShop.total)}</b>개
+                  {kwTrend && kwTrend[0] && <span className="ml-2 text-gray-400 dark:text-gray-500">· 검색추세 {kwTrend[0].changePct >= 0 ? '▲' : '▼'}{Math.abs(kwTrend[0].changePct)}%</span>}
+                </div>
+                <div className="mt-2 space-y-1">
+                  {kwShop.items.slice(0, 5).map((it, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2 text-gray-600 dark:text-gray-300">
+                      <span className="truncate">{it.title}</span>
+                      <span className="shrink-0 tabular-nums">₩{formatNumber(it.lprice)} <span className="text-gray-400 dark:text-gray-500">{it.mallName}</span></span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
