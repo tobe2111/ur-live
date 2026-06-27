@@ -227,3 +227,39 @@ export async function updateKeywordBid(creds: SearchAdCreds, keywordId: string, 
   if (!r.ok) return { ok: false, error: r.error }
   return { ok: true }
 }
+
+// ── 통합실적 (StatService /stats — 읽기) ─────────────────────────────────────
+//   캠페인별 노출/클릭/비용/전환 + 계정 합계. 평균노출순위까지 공식 지표(스크래핑 아님).
+export interface CampaignStat { id: string; name: string; impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; ctr: number; cpc: number }
+export interface AccountStats { days: number; totals: { impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; ctr: number; cpc: number }; campaigns: CampaignStat[] }
+
+function ymd(d: Date): string { return d.toISOString().slice(0, 10) }
+
+/** 연결 계정의 최근 N일 캠페인별 실적 + 합계. days 기본 7. */
+export async function accountStats(creds: SearchAdCreds, days = 7): Promise<{ ok: boolean; data?: AccountStats; error?: string }> {
+  const span = Math.min(90, Math.max(1, Math.round(days)))
+  const camp = await listCampaigns(creds)
+  if (!camp.ok) return { ok: false, error: camp.error }
+  const idToName = new Map((camp.campaigns || []).map(c => [c.id, c.name]))
+  const ids = [...idToName.keys()].slice(0, 30)
+  if (!ids.length) return { ok: true, data: { days: span, totals: { impCnt: 0, clkCnt: 0, salesAmt: 0, ccnt: 0, ctr: 0, cpc: 0 }, campaigns: [] } }
+  const until = new Date()
+  const since = new Date(until.getTime() - (span - 1) * 86400000)
+  const r = await searchAdGet(creds, '/stats', {
+    ids: JSON.stringify(ids),
+    fields: JSON.stringify(['impCnt', 'clkCnt', 'salesAmt', 'ccnt']),
+    timeRange: JSON.stringify({ since: ymd(since), until: ymd(until) }),
+  })
+  if (!r.ok) return { ok: false, error: r.error }
+  // 응답 방어적 파싱: { data: [{ id, impCnt, clkCnt, salesAmt, ccnt }] } 또는 배열.
+  const d = r.data as { data?: Array<Record<string, unknown>> } | Array<Record<string, unknown>> | null
+  const rows = Array.isArray(d) ? d : (d?.data || [])
+  const campaigns: CampaignStat[] = rows.map(row => {
+    const id = String(row.id ?? '')
+    const impCnt = num(row.impCnt), clkCnt = num(row.clkCnt), salesAmt = num(row.salesAmt), ccnt = num(row.ccnt)
+    return { id, name: idToName.get(id) || id, impCnt, clkCnt, salesAmt, ccnt, ctr: impCnt ? clkCnt / impCnt : 0, cpc: clkCnt ? Math.round(salesAmt / clkCnt) : 0 }
+  }).filter(c => c.id).sort((a, b) => b.salesAmt - a.salesAmt)
+  const T = campaigns.reduce((s, c) => ({ impCnt: s.impCnt + c.impCnt, clkCnt: s.clkCnt + c.clkCnt, salesAmt: s.salesAmt + c.salesAmt, ccnt: s.ccnt + c.ccnt }), { impCnt: 0, clkCnt: 0, salesAmt: 0, ccnt: 0 })
+  const totals = { ...T, ctr: T.impCnt ? T.clkCnt / T.impCnt : 0, cpc: T.clkCnt ? Math.round(T.salesAmt / T.clkCnt) : 0 }
+  return { ok: true, data: { days: span, totals, campaigns } }
+}
