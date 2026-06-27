@@ -249,7 +249,7 @@ export async function addKeywordsToAdgroup(creds: SearchAdCreds, adgroupId: stri
 
 // ── 통합실적 (StatService /stats — 읽기) ─────────────────────────────────────
 //   캠페인별 노출/클릭/비용/전환 + 계정 합계. 평균노출순위까지 공식 지표(스크래핑 아님).
-export interface CampaignStat { id: string; name: string; impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; ctr: number; cpc: number }
+export interface CampaignStat { id: string; name: string; impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; ctr: number; cpc: number; avgRnk: number }
 export interface AccountStats { days: number; totals: { impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; ctr: number; cpc: number }; campaigns: CampaignStat[] }
 
 function ymd(d: Date): string { return d.toISOString().slice(0, 10) }
@@ -266,19 +266,47 @@ export async function accountStats(creds: SearchAdCreds, days = 7): Promise<{ ok
   const since = new Date(until.getTime() - (span - 1) * 86400000)
   const r = await searchAdGet(creds, '/stats', {
     ids: JSON.stringify(ids),
-    fields: JSON.stringify(['impCnt', 'clkCnt', 'salesAmt', 'ccnt']),
+    fields: JSON.stringify(['impCnt', 'clkCnt', 'salesAmt', 'ccnt', 'avgRnk']),
     timeRange: JSON.stringify({ since: ymd(since), until: ymd(until) }),
   })
   if (!r.ok) return { ok: false, error: r.error }
-  // 응답 방어적 파싱: { data: [{ id, impCnt, clkCnt, salesAmt, ccnt }] } 또는 배열.
+  // 응답 방어적 파싱: { data: [{ id, impCnt, clkCnt, salesAmt, ccnt, avgRnk }] } 또는 배열.
   const d = r.data as { data?: Array<Record<string, unknown>> } | Array<Record<string, unknown>> | null
   const rows = Array.isArray(d) ? d : (d?.data || [])
   const campaigns: CampaignStat[] = rows.map(row => {
     const id = String(row.id ?? '')
     const impCnt = num(row.impCnt), clkCnt = num(row.clkCnt), salesAmt = num(row.salesAmt), ccnt = num(row.ccnt)
-    return { id, name: idToName.get(id) || id, impCnt, clkCnt, salesAmt, ccnt, ctr: impCnt ? clkCnt / impCnt : 0, cpc: clkCnt ? Math.round(salesAmt / clkCnt) : 0 }
+    return { id, name: idToName.get(id) || id, impCnt, clkCnt, salesAmt, ccnt, ctr: impCnt ? clkCnt / impCnt : 0, cpc: clkCnt ? Math.round(salesAmt / clkCnt) : 0, avgRnk: num(row.avgRnk) }
   }).filter(c => c.id).sort((a, b) => b.salesAmt - a.salesAmt)
   const T = campaigns.reduce((s, c) => ({ impCnt: s.impCnt + c.impCnt, clkCnt: s.clkCnt + c.clkCnt, salesAmt: s.salesAmt + c.salesAmt, ccnt: s.ccnt + c.ccnt }), { impCnt: 0, clkCnt: 0, salesAmt: 0, ccnt: 0 })
   const totals = { ...T, ctr: T.impCnt ? T.clkCnt / T.impCnt : 0, cpc: T.clkCnt ? Math.round(T.salesAmt / T.clkCnt) : 0 }
   return { ok: true, data: { days: span, totals, campaigns } }
+}
+
+// ── 예산 페이싱 (오늘 소진 vs 일예산) ────────────────────────────────────────
+export interface CampaignPacing { id: string; name: string; dailyBudget: number; todaySpend: number; pacePct: number; status: 'over' | 'ok' | 'under' | 'no_budget' }
+
+/** 오늘 캠페인별 소진률 — dailyBudget(캠페인) vs 오늘 salesAmt(/stats). 과속/과소 플래그. */
+export async function budgetPacing(creds: SearchAdCreds): Promise<{ ok: boolean; campaigns?: CampaignPacing[]; error?: string }> {
+  const camp = await listCampaigns(creds)
+  if (!camp.ok) return { ok: false, error: camp.error }
+  const list = (camp.campaigns || []).slice(0, 30)
+  if (!list.length) return { ok: true, campaigns: [] }
+  const today = ymd(new Date())
+  const r = await searchAdGet(creds, '/stats', {
+    ids: JSON.stringify(list.map(c => c.id)),
+    fields: JSON.stringify(['salesAmt']),
+    timeRange: JSON.stringify({ since: today, until: today }),
+  })
+  if (!r.ok) return { ok: false, error: r.error }
+  const d = r.data as { data?: Array<Record<string, unknown>> } | Array<Record<string, unknown>> | null
+  const rows = Array.isArray(d) ? d : (d?.data || [])
+  const spendById = new Map(rows.map(row => [String(row.id ?? ''), num(row.salesAmt)]))
+  const campaigns: CampaignPacing[] = list.map(c => {
+    const todaySpend = spendById.get(c.id) || 0
+    const pacePct = c.dailyBudget > 0 ? todaySpend / c.dailyBudget : 0
+    const status: CampaignPacing['status'] = c.dailyBudget <= 0 ? 'no_budget' : pacePct >= 0.95 ? 'over' : pacePct < 0.3 ? 'under' : 'ok'
+    return { id: c.id, name: c.name, dailyBudget: c.dailyBudget, todaySpend, pacePct, status }
+  }).sort((a, b) => b.pacePct - a.pacePct)
+  return { ok: true, campaigns }
 }

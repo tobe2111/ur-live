@@ -11,8 +11,8 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { sellerIdFrom } from '../../supply/api/wholesale-helpers'
 import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverConnectionSchema } from '../../supply/api/naver-commerce-core'
 import { collectAndStore, listCollectedOrders } from './order-collection'
-import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete } from './keyword-tools'
-import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, addKeywordsToAdgroup, accountStats, BID_MIN, BID_MAX, KW_ADD_MAX, type SearchAdCreds } from './searchad-client'
+import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete, shoppingCategoryTrends } from './keyword-tools'
+import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, addKeywordsToAdgroup, accountStats, budgetPacing, BID_MIN, BID_MAX, KW_ADD_MAX, type SearchAdCreds } from './searchad-client'
 import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnection, searchAdConnStatus } from './searchad-connection'
 import { aiMarketerAdvice, type AiMarketerContext } from './ai-marketer'
 import { registerSite, listSites, deleteSite, recordHit, clickReport, ensureClickguardSchema, addBlockedIp, listBlockedIps, removeBlockedIp } from './clickguard'
@@ -123,6 +123,15 @@ marketingRoutes.get('/keywords/autocomplete', rateLimit({ action: 'ads-kw-auto',
   const r = await keywordAutocomplete(c.req.query('q') || '')
   if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   return c.json({ success: true, suggestions: r.suggestions })
+})
+
+// GET /api/ads/sourcing/trends — 분야별 쇼핑 트렌드(데이터랩 쇼핑인사이트, 소싱 리포트)
+marketingRoutes.get('/sourcing/trends', rateLimit({ action: 'ads-sourcing', max: 20, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const r = await shoppingCategoryTrends(naverOpenId(c.env), naverOpenSecret(c.env))
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.error === 'NOT_CONFIGURED' ? 503 : 400)
+  return c.json({ success: true, results: r.results })
 })
 
 // GET /api/ads/reputation?q=브랜드 — 블로그/카페/뉴스 언급량 + 최근 글(브랜드 평판 모니터링)
@@ -295,6 +304,17 @@ marketingRoutes.get('/searchad/stats', rateLimit({ action: 'ads-sa-stats', max: 
   const r = await accountStats(creds, days)
   if (!r.ok) return c.json({ success: false, error: r.error }, 502)
   return c.json({ success: true, data: r.data })
+})
+
+// GET /api/ads/searchad/pacing — 오늘 캠페인별 예산 소진률(과속/과소, 연결 필요)
+marketingRoutes.get('/searchad/pacing', rateLimit({ action: 'ads-sa-pacing', max: 30, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
+  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  const r = await budgetPacing(creds)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 502)
+  return c.json({ success: true, campaigns: r.campaigns })
 })
 
 // ── AI 마케터 (Claude 진단/추천 — 읽기 전용, 자동 실행 없음) ────────────────

@@ -8,6 +8,7 @@ import SearchAdPanel from './SearchAdPanel'
 import AutobidPanel from './AutobidPanel'
 import ClickGuardPanel from './ClickGuardPanel'
 import PricePanel from './PricePanel'
+import SourcingPanel from './SourcingPanel'
 
 /**
  * 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 멀티테넌트 입점 대시보드.
@@ -230,6 +231,9 @@ export default function MarketingDashboardPage() {
 
       {/* 가격 모니터링(네이버쇼핑 최저가 추적) */}
       {hasToken && <PricePanel />}
+
+      {/* 소싱 리포트(데이터랩 쇼핑인사이트 — 도매몰 시너지) */}
+      {hasToken && <SourcingPanel />}
 
       {/* 부정클릭 방지(Phase 1 — 탐지/리포트) */}
       {hasToken && <ClickGuardPanel />}
