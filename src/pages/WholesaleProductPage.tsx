@@ -165,7 +165,10 @@ export default function WholesaleProductPage() {
 
   function addToCart() {
     if (!item) return
-    if (item.distributor_price == null) { toast.info('로그인하면 등급 공급가로 담을 수 있어요'); goLogin(); return }
+    // 🏭 2026-06-27 (대표 신고 — 로그인했는데 '로그인하면…' 토스트): 로그인 판정은 토큰으로.
+    //   기존 `distributor_price == null` 게이트는 로그인 상태인데 등급 공급가 미설정/스테일이면 잘못 로그인 유도.
+    if (!token) { toast.info('로그인하면 등급 공급가로 담을 수 있어요'); goLogin(); return }
+    if (item.distributor_price == null || item.distributor_price <= 0) { toast.info('회원님 등급의 공급가가 아직 설정되지 않았어요. 제조사에 문의해주세요.'); return }
     if (!validateQty()) return
     // 현재 수량 구간 단가를 스냅샷으로 저장(표시용). 결제액은 주문 시 서버 재계산(SSOT).
     let unit = item.distributor_price, bm = 0
@@ -176,7 +179,9 @@ export default function WholesaleProductPage() {
 
   async function placeOrder() {
     if (!item || ordering) return
-    if (item.distributor_price == null) { toast.info('로그인하면 주문할 수 있어요'); goLogin(); return }
+    // 🏭 2026-06-27 (대표 신고): 로그인 판정은 토큰으로 — 가격 null(등급 미설정/스테일)은 로그인 유도 아님.
+    if (!token) { toast.info('로그인하면 주문할 수 있어요'); goLogin(); return }
+    if (item.distributor_price == null || item.distributor_price <= 0) { toast.info('회원님 등급의 공급가가 아직 설정되지 않았어요. 제조사에 문의해주세요.'); return }
     if (!validateQty()) return
     setOrdering(true)
     try {
@@ -243,6 +248,8 @@ export default function WholesaleProductPage() {
   //   '로그인하세요' 가 잘못 뜸. 토큰 있으면(로그인) 절대 로그인 UI 안 띄움 — 가격은 useWholesaleProduct 의
   //   인증별 캐시 키로 fresh 보장. (가격 null 가드는 담기/주문 액션에 별도로 남아 안전.)
   const locked = !token // 비로그인(토큰 없음) → 가격 가림 + 로그인 유도
+  // 🏭 2026-06-27 (대표 신고 — ₩0 오표시): 로그인했지만 이 등급의 공급가가 미설정(null/0)이면 '미설정' 안내.
+  const priceUnset = !(item.distributor_price && item.distributor_price > 0)
   // 현재 수량에 적용되는 단가 — qty 이상 만족하는 최대 min_qty tier(없으면 등급가). 서버 /orders 와 동일 규칙.
   let effUnit = item.distributor_price ?? 0, bestMin = 0
   for (const t of tiers) if (qty >= t.min_qty && t.min_qty >= bestMin) { bestMin = t.min_qty; effUnit = t.unit_price }
@@ -254,7 +261,10 @@ export default function WholesaleProductPage() {
   const tabs: [typeof tab, string][] = [['desc', '상세설명'], ['ship', '배송'], ['settle', '정산'], ['return', '반품·교환']]
 
   return (
-    <div className="min-h-[100dvh] pb-28" style={{ background: '#fff', color: WT.ink }}>
+    // 🏭 2026-06-27 (대표 신고 — 모바일 하단 잘림): 고정 CTA바(수량+담기/주문+iOS 세이프에어리어 ≈150px)가
+    //   기존 pb-28(112px)보다 커서 탭/탭본문 하단이 바에 가려 끝까지 스크롤 안 됐음. 바 높이+세이프에어리어를
+    //   확실히 비우도록 paddingBottom 확대(데스크톱은 고정바 없음 — 여분 여백은 콘텐츠 아래라 무해).
+    <div className="min-h-[100dvh]" style={{ background: '#fff', color: WT.ink, paddingBottom: 'calc(9rem + env(safe-area-inset-bottom))' }}>
       {/* 🏭 2026-06-08 도매 상품 상세 — canonical=utongstart 이되 noindex 유지(공급가/거래정보 비노출 룰).
           description 에도 공급가 절대 미포함. */}
       <SEO domain="wholesale" title={`${item.name} - 유통스타트 도매`} description="판매사 전용 도매 상품 상세 — 도매가는 로그인 후 확인" url={`/wholesale/product/${item.id}`} noindex />
@@ -296,10 +306,17 @@ export default function WholesaleProductPage() {
                 <span className="inline-flex items-center font-bold rounded-full px-2.5 py-0.5 text-[13px]" style={{ color: WT.brand, background: WT.brandSoft }}>{GRADE_LABEL[grade] || grade}등급가</span>
                 <span className="text-[13px]" style={{ color: WT.ink3 }}>개당 공급가</span>
               </div>
-              <div className="mt-1.5 flex items-end gap-2.5">
-                <span className="font-extrabold tracking-[-0.02em] tabular-nums leading-none text-[34px] lg:text-[42px]" style={{ color: WT.ink }}>{won(item.distributor_price ?? 0)}</span>
-                {dr > 0 && <span className="text-[15px] font-bold tabular-nums mb-1" style={{ color: WT.brand }}>-{dr}%</span>}
-              </div>
+              {priceUnset ? (
+                <div className="mt-1.5">
+                  <span className="font-extrabold tracking-[-0.01em] leading-none text-[22px] lg:text-[26px]" style={{ color: WT.ink3 }}>공급가 미설정</span>
+                  <p className="mt-1 text-[13px]" style={{ color: WT.ink4 }}>회원님 등급의 공급가가 아직 설정되지 않았어요 · 제조사에 문의해주세요</p>
+                </div>
+              ) : (
+                <div className="mt-1.5 flex items-end gap-2.5">
+                  <span className="font-extrabold tracking-[-0.02em] tabular-nums leading-none text-[34px] lg:text-[42px]" style={{ color: WT.ink }}>{won(item.distributor_price ?? 0)}</span>
+                  {dr > 0 && <span className="text-[15px] font-bold tabular-nums mb-1" style={{ color: WT.brand }}>-{dr}%</span>}
+                </div>
+              )}
               <div className="mt-1.5 text-[14px] tabular-nums" style={{ color: WT.ink4 }}>
                 {item.retail_price ? <>권장 소비자가 <span className="line-through">{won(item.retail_price)}</span></> : null}
                 {moq > 1 && <>{item.retail_price ? <span className="mx-2" style={{ color: WT.line }}>|</span> : null}박스 {comma(moq)}개 <span className="font-semibold" style={{ color: WT.ink2 }}>{won((item.distributor_price ?? 0) * moq)}</span></>}
