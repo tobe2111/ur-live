@@ -468,6 +468,23 @@ paymentsRouter.post('/confirm', async (c) => {
           }
         } catch { /* fail-soft */ }
 
+        // 🔔 2026-06-26 [UNLOCK] (대표 승인 "모두 해줘" — 소비자 감사 D): 결제완료 시 셀러·어드민만
+        //   통보되고 buyer 인앱 알림이 없던 누락 보강. 결제성공화면(PaymentSuccessPage)과 별개로
+        //   알림함에도 주문완료를 남김. confirmClaim CAS 통과한 1회만 도달(webhook 과 단일실행 — 양쪽 배선).
+        //   ⚠️ Toss confirm/금액검증/CAS/재고/딜차감 전부 무변경 — notifyUser side-effect 1블록 추가만.
+        try {
+          const { notifyUser } = await import('../../lib/notifications')
+          const totalAmt = orders.reduce((s, o) => s + Number((o as unknown as { total_amount?: number | null }).total_amount ?? 0), 0)
+          const firstNum = (orders[0] as unknown as { order_number?: string })?.order_number
+          if (firstNum) {
+            await notifyUser(
+              c.env.DB, String(userId), 'order_paid',
+              '✅ 결제가 완료됐어요', `주문 ${firstNum}${orders.length > 1 ? ` 외 ${orders.length - 1}건` : ''} — ₩${totalAmt.toLocaleString('ko-KR')} 결제 완료`,
+              '/my-orders',
+            ).catch(() => {})
+          }
+        } catch { /* fail-soft */ }
+
         // 🏁 2026-06-26 [UNLOCK] (사용자 승인 "문제 4번 해결" — 결제완료 체감 단축):
         //   에이전시/영입자/도매 공급자 커미션 적립 3종을 confirm 응답을 막던 동기 실행에서
         //   이 waitUntil 블록(응답 후)으로 이동. 셋 다 이미 fail-soft + order_id 멱등이라
