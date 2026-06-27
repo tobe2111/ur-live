@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## 🚧 2026-06-27 — 유어애즈 부정클릭 차단 Phase 2(반자동 — 검색광고센터 복붙) (대표 "부정클릭 차단 마저")
+**현실**: 네이버 검색광고 **공식 API 에 노출제한 IP 관리 엔드포인트 없음**(센터 UI 전용, 계정당 600개) → 설계 문서의 "API 미지원 시 반자동" 경로 채택. **실제 동작하는 차단 방식.**
+- **코어**(`clickguard.ts`): `ad_blocked_ips`(seller_id,ip UNIQUE) + addBlockedIp(IP검증·600 cap·INSERT OR IGNORE)·listBlockedIps·removeBlockedIp.
+- **라우트**: POST `/clickguard/block` · GET `/clickguard/blocklist` · DELETE `/clickguard/block?ip=`.
+- **UI**(`ClickGuardPanel`): 의심 IP 리포트에 **'차단' 버튼**(이미 차단=‘차단됨’ 표시) → 🚫 차단목록 카드(칩 + ×제거) + **'전체 복사'** → 검색광고센터 노출제한 IP 붙여넣기 안내. (공식 API 열리면 자동 push 로 전환 — 구조 준비).
+- 검증: tsc 0 · build 0 · 단위 2340 pass · theme/mobile/sql-bind/sql-null 0. **부정클릭 = 탐지+차단 全 완료**(반자동). ⚠️ 라이브는 배포 후.
+
 ## 🚧 2026-06-27 — 유어애즈 기술부채 점검 + 가격 모니터링 신규 서비스 (대표 "기능 최대한 / 기술부채 없나")
 **(1) 기술부채 자가점검**: 유어애즈 신규코드 전수 점검 → 전 가드 통과(schema-refs/column-exists/money-strict/sql-bind/sql-null/theme/mobile/csv/iserror 0). 발견 부채는 `TECHNICAL_DEBT.md` 에 등재(블라인드 API 스키마 배포후검증 Med · 자동입찰 라이브검증 High이나 킬스위치 OFF로 현재위험0 · clickguard 분산abuse Low · 패널 isError Low · stats 30캠 cap · i18n 국내전용 · ensureXxx 테이블 SSOT 미등재). **돈/크래시 위험 0, 대부분 "배포후 실키 검증" 성격.**
 **(2) 가격 모니터링 신규 서비스**(쇼핑검색 — 보라웨어에도 없는 추가 서비스, 연동 불필요·돈 0):

@@ -27,6 +27,8 @@ export default function ClickGuardPanel() {
   const [busy, setBusy] = useState(false)
   const [report, setReport] = useState<ClickReport | null>(null)
   const [days, setDays] = useState<7 | 30>(7)
+  const [blocklist, setBlocklist] = useState<Array<{ ip: string; reason: string | null; created_at: string }>>([])
+  const [blocking, setBlocking] = useState<string | null>(null)
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com'
 
   const loadSites = useCallback(async () => {
@@ -43,8 +45,32 @@ export default function ClickGuardPanel() {
     } catch { /* graceful */ }
   }, [])
 
+  const loadBlocklist = useCallback(async () => {
+    try {
+      const r = await api.get('/api/ads/clickguard/blocklist', { headers: authHeader() })
+      if (r.data?.success) setBlocklist(r.data.blocklist || [])
+    } catch { /* graceful */ }
+  }, [])
+
   useEffect(() => { loadSites() }, [loadSites])
-  useEffect(() => { if (sites.length) loadReport(days) }, [sites.length, days, loadReport])
+  useEffect(() => { if (sites.length) { loadReport(days); loadBlocklist() } }, [sites.length, days, loadReport, loadBlocklist])
+
+  async function blockIp(ip: string) {
+    if (!ip) return
+    setBlocking(ip)
+    try {
+      const r = await api.post('/api/ads/clickguard/block', { ip, reason: '부정클릭 의심' }, { headers: authHeader() })
+      if (r.data?.success) { toast.success(`${ip} 차단 목록에 추가`); setBlocklist(r.data.blocklist || []) }
+      else toast.error(r.data?.error || '추가 실패')
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '추가 실패')
+    } finally { setBlocking(null) }
+  }
+
+  async function unblockIp(ip: string) {
+    await api.delete(`/api/ads/clickguard/block?ip=${encodeURIComponent(ip)}`, { headers: authHeader() }).catch(() => {})
+    await loadBlocklist()
+  }
 
   async function addSite() {
     const d = domain.trim()
@@ -71,6 +97,7 @@ export default function ClickGuardPanel() {
   function copy(text: string) {
     navigator.clipboard?.writeText(text).then(() => toast.success('복사됨')).catch(() => toast.error('복사 실패'))
   }
+  const blockedSet = new Set(blocklist.map(b => b.ip))
 
   const POLICY = '부정클릭 방지를 위해 광고 유입 방문자의 접속기록(IP·접속국가·유입경로)을 수집하며, 이를 (주)유어팀(유어애즈)에 위탁 처리합니다. 수집 정보는 부정클릭 탐지·차단 목적으로만 사용되고 90일 후 파기됩니다.'
 
@@ -136,27 +163,55 @@ export default function ClickGuardPanel() {
             <div className="mt-2 overflow-x-auto">
               <table className="w-full text-[11.5px]">
                 <thead><tr className="text-gray-400 dark:text-gray-500 text-left">
-                  <th className="py-1 pr-2">IP</th><th className="py-1 pr-2">국가</th><th className="py-1 pr-2 text-right">클릭</th><th className="py-1 pr-2 text-right">광고</th><th className="py-1">판정</th>
+                  <th className="py-1 pr-2">IP</th><th className="py-1 pr-2">국가</th><th className="py-1 pr-2 text-right">클릭</th><th className="py-1 pr-2 text-right">광고</th><th className="py-1 pr-2">판정</th><th className="py-1 text-right">차단</th>
                 </tr></thead>
                 <tbody>
-                  {report.suspects.slice(0, 30).map((s, i) => (
+                  {report.suspects.slice(0, 30).map((s, i) => {
+                    const blocked = blockedSet.has(s.ip)
+                    return (
                     <tr key={i} className="border-t border-gray-100 dark:border-[#1A1A1A] text-gray-700 dark:text-gray-300">
                       <td className="py-1 pr-2 font-mono text-[10.5px]">{s.ip || '-'}</td>
                       <td className="py-1 pr-2">{s.country || '-'}</td>
                       <td className="py-1 pr-2 text-right tabular-nums font-bold">{formatNumber(s.clicks)}</td>
                       <td className="py-1 pr-2 text-right tabular-nums">{formatNumber(s.adClicks)}</td>
-                      <td className="py-1">
+                      <td className="py-1 pr-2">
                         {s.suspicious
                           ? <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400">의심</span>
                           : <span className="px-1.5 py-0.5 rounded text-[10px] bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400">정상</span>}
                       </td>
+                      <td className="py-1 text-right">
+                        {blocked
+                          ? <span className="text-[10px] text-gray-400 dark:text-gray-500">차단됨</span>
+                          : <button onClick={() => blockIp(s.ip)} disabled={blocking === s.ip || !s.ip} className="rounded border border-red-200 dark:border-red-500/30 px-1.5 py-0.5 text-[10px] font-bold text-red-600 dark:text-red-400 disabled:opacity-40">{blocking === s.ip ? '…' : '차단'}</button>}
+                      </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
-              <p className="mt-2 text-[10px] text-gray-400 dark:text-gray-500">의심 IP 는 네이버 검색광고센터 &gt; 도구 &gt; 노출제한 IP 에 등록해 차단할 수 있습니다. (자동 차단은 준비 중)</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 차단 목록 (검색광고센터 노출제한 IP 복붙용) */}
+      {sites.length > 0 && blocklist.length > 0 && (
+        <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">🚫 차단 목록 <span className="text-gray-400 dark:text-gray-500 font-medium">({blocklist.length}/600)</span></span>
+            <button onClick={() => copy(blocklist.map(b => b.ip).join('\n'))} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11px] font-bold text-white dark:text-[#0A0A0A]">전체 복사</button>
+          </div>
+          <p className="mt-1 text-[10.5px] text-gray-400 dark:text-gray-500 leading-relaxed">
+            '전체 복사' 후 <b>네이버 검색광고센터 &gt; 도구 &gt; 노출제한 IP 관리</b>에 붙여넣으면 해당 IP 에 광고가 노출되지 않습니다.
+            (네이버가 공식 API 를 열면 자동 등록으로 전환됩니다.)
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {blocklist.map(b => (
+              <span key={b.ip} className="inline-flex items-center gap-1 rounded bg-gray-50 dark:bg-[#0A0A0A] px-1.5 py-0.5 text-[10.5px] font-mono text-gray-600 dark:text-gray-300">
+                {b.ip}
+                <button onClick={() => unblockIp(b.ip)} className="text-gray-400 dark:text-gray-500 hover:text-red-500">×</button>
+              </span>
+            ))}
+          </div>
         </div>
       )}
     </div>

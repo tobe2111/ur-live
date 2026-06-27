@@ -15,7 +15,7 @@ import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete } f
 import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, addKeywordsToAdgroup, accountStats, BID_MIN, BID_MAX, KW_ADD_MAX, type SearchAdCreds } from './searchad-client'
 import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnection, searchAdConnStatus } from './searchad-connection'
 import { aiMarketerAdvice, type AiMarketerContext } from './ai-marketer'
-import { registerSite, listSites, deleteSite, recordHit, clickReport, ensureClickguardSchema } from './clickguard'
+import { registerSite, listSites, deleteSite, recordHit, clickReport, ensureClickguardSchema, addBlockedIp, listBlockedIps, removeBlockedIp } from './clickguard'
 import { listRules, upsertRule, deleteRule, recentLog, runAutobidForSeller } from './autobid'
 import { listWatches, addWatch, deleteWatch, refreshWatch } from './price-monitor'
 
@@ -508,7 +508,38 @@ marketingRoutes.delete('/price/watch', async (c) => {
   return c.json({ success: true })
 })
 
-// TODO(부정클릭 Phase 2 — 결정 B 후): 노출제한 IP 자동등록(API 지원 시) / 미지원 시 의심IP export(복붙).
+// ── 부정클릭 Phase 2 — 차단 목록(검색광고센터 노출제한 IP 복붙용) ───────────────
+//   네이버 공식 API 가 노출제한 IP 관리를 미노출 → 반자동(복붙). API 열리면 자동등록으로 전환.
+
+// POST /api/ads/clickguard/block — 의심 IP 를 차단 목록에 추가
+marketingRoutes.post('/clickguard/block', rateLimit({ action: 'ads-cg-block', max: 60, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await addBlockedIp(c.env.DB, sellerId, String(body.ip || ''), String(body.reason || '부정클릭 의심'))
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  const blocklist = await listBlockedIps(c.env.DB, sellerId)
+  return c.json({ success: true, blocklist })
+})
+
+// GET /api/ads/clickguard/blocklist — 차단 목록(복붙용 전체)
+marketingRoutes.get('/clickguard/blocklist', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const blocklist = await listBlockedIps(c.env.DB, sellerId)
+  return c.json({ success: true, blocklist })
+})
+
+// DELETE /api/ads/clickguard/block?ip= — 차단 목록에서 제거
+marketingRoutes.delete('/clickguard/block', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const ip = String(c.req.query('ip') || '').trim()
+  if (!ip) return c.json({ success: false, error: 'ip 가 필요합니다' }, 400)
+  await removeBlockedIp(c.env.DB, sellerId, ip)
+  return c.json({ success: true })
+})
+
 //   ⚠️ 순위 측정은 공식 API(Estimate/StatReport)로만 — SERP 스크래핑 금지(2026-04-22 제거 이력, PIPA).
 
 export { marketingRoutes }
