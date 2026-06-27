@@ -41,3 +41,4 @@
 | **🖥️ PC = 중앙 모바일 액자 + 데코 사이드레일 + 하단 네비** | 2026-06-20 | ⏳ 방향 확인 대기 (현 app-framed 구조 재구성) | [pc-app-frame-decorated-rails.md](./pc-app-frame-decorated-rails.md) |
 | **🎟️ 동네딜 공구권 사용처리 — 매장원장+느슨카운터+정산검문 (SSOT 확정)** | 2026-06-20 | 🟢 Phase 1 착수 (매장원장 읽기 API ✅ / 셀프사용·에스크로 다음) | [dongnedeal-redemption.md](./dongnedeal-redemption.md) |
 | **🏷️ 상품 소유 모델 — 원청(주인)/홍보(핀) + 어드민·셀러 업로드 통합** | 2026-06-23 | ⏳ 설계 확정 대기 (정책 3개 — 1P계정/대행정산/커미션출처) | [product-ownership-model.md](./product-ownership-model.md) |
+| **📣 유어애즈 — 보라웨어 레퍼런스(자동입찰·부정클릭·키워드확장·통합실적·AI마케터)** | 2026-06-27 | 🟢 연관키워드 ✅ / 나머지는 광고계정 연동 후 (레퍼런스 박제) | [urads-boraware-reference.md](./urads-boraware-reference.md) |
