@@ -41,6 +41,39 @@ export async function ensureClickguardSchema(DB: D1Database): Promise<void> {
   )`).run().catch(swallow('clickguard:events'))
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_clickevt_key_time ON ad_click_events(advertiser_key, created_at)').run().catch(swallow('clickguard:idx1'))
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_clickevt_key_hash ON ad_click_events(advertiser_key, ip_hash)').run().catch(swallow('clickguard:idx2'))
+  // Phase 2 — 차단 목록(검색광고센터 노출제한 IP 복붙용). 공식 API 가 열리면 자동 등록으로 전환.
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_blocked_ips (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    seller_id INTEGER NOT NULL,
+    ip TEXT NOT NULL,
+    reason TEXT,
+    created_at DATETIME DEFAULT (datetime('now')),
+    UNIQUE(seller_id, ip)
+  )`).run().catch(swallow('clickguard:blocked'))
+}
+
+const IP_RE = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$|^[0-9a-fA-F:]{3,45}$/ // IPv4 또는 IPv6(느슨)
+
+export async function addBlockedIp(DB: D1Database, sellerId: number, ip: string, reason: string): Promise<{ ok: boolean; error?: string }> {
+  await ensureClickguardSchema(DB)
+  const clean = ip.trim()
+  if (!IP_RE.test(clean)) return { ok: false, error: '올바른 IP 형식이 아닙니다' }
+  const cnt = await DB.prepare('SELECT COUNT(*) AS c FROM ad_blocked_ips WHERE seller_id = ?').bind(sellerId).first<{ c: number }>().catch(() => null)
+  if ((Number(cnt?.c) || 0) >= 600) return { ok: false, error: '차단 목록은 최대 600개입니다 (네이버 노출제한 IP 한도)' }
+  await DB.prepare('INSERT OR IGNORE INTO ad_blocked_ips (seller_id, ip, reason) VALUES (?, ?, ?)').bind(sellerId, clean, reason.slice(0, 100)).run()
+  return { ok: true }
+}
+
+export async function listBlockedIps(DB: D1Database, sellerId: number): Promise<Array<{ ip: string; reason: string | null; created_at: string }>> {
+  await ensureClickguardSchema(DB)
+  const r = await DB.prepare('SELECT ip, reason, created_at FROM ad_blocked_ips WHERE seller_id = ? ORDER BY id DESC LIMIT 600')
+    .bind(sellerId).all<{ ip: string; reason: string | null; created_at: string }>().catch(() => null)
+  return r?.results || []
+}
+
+export async function removeBlockedIp(DB: D1Database, sellerId: number, ip: string): Promise<void> {
+  await ensureClickguardSchema(DB)
+  await DB.prepare('DELETE FROM ad_blocked_ips WHERE seller_id = ? AND ip = ?').bind(sellerId, ip.trim()).run()
 }
 
 /** 16자 랜덤 advertiser_key(픽셀 토큰). */
