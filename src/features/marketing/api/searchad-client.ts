@@ -210,3 +210,20 @@ export async function estimateBidForPositions(creds: SearchAdCreds, keyword: str
   })).filter(e => e.position > 0).sort((a, b) => a.position - b.position)
   return { ok: true, estimates }
 }
+
+// ── 키워드 입찰가 변경 (WRITE — 실제 광고비 영향) ─────────────────────────────
+//   ⚠️ 돈 변경. 호출 전 라우트에서 범위 검증 필수. 네이버 최소 입찰가 70원.
+export const BID_MIN = 70
+export const BID_MAX = 100_000 // 절대 상한(오타/폭주 방지 하드캡) — 광고주가 더 높이려면 검색광고센터에서 직접.
+
+/** 단일 키워드 입찰가 설정 — PUT /ncc/keywords/{id}?fields=bidAmt. useGroupBidAmt=false(개별입찰). */
+export async function updateKeywordBid(creds: SearchAdCreds, keywordId: string, bidAmt: number): Promise<{ ok: boolean; error?: string }> {
+  const id = String(keywordId || '').trim()
+  if (!id) return { ok: false, error: '키워드 ID 가 없습니다' }
+  if (!Number.isFinite(bidAmt) || bidAmt < BID_MIN || bidAmt > BID_MAX) return { ok: false, error: `입찰가는 ${BID_MIN}~${BID_MAX.toLocaleString()}원 범위여야 합니다` }
+  const bid = Math.round(bidAmt)
+  const body = { nccKeywordId: id, bidAmt: bid, useGroupBidAmt: false }
+  const r = await searchAdRequest(creds, 'PUT', `/ncc/keywords/${encodeURIComponent(id)}`, { fields: 'bidAmt' }, body)
+  if (!r.ok) return { ok: false, error: r.error }
+  return { ok: true }
+}
