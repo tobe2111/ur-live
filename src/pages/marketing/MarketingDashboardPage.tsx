@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import SearchAdPanel from './SearchAdPanel'
+import AutobidPanel from './AutobidPanel'
 import ClickGuardPanel from './ClickGuardPanel'
 
 /**
@@ -222,6 +223,9 @@ export default function MarketingDashboardPage() {
 
       {/* 네이버 검색광고 계정 연동 + 내 광고 구조(자동입찰/실적 토대) */}
       {hasToken && <SearchAdPanel />}
+
+      {/* 자동입찰 규칙(목표순위→입찰가 자동조정) — 규칙 있을 때만 표시 */}
+      {hasToken && <AutobidPanel />}
 
       {/* 부정클릭 방지(Phase 1 — 탐지/리포트) */}
       {hasToken && <ClickGuardPanel />}

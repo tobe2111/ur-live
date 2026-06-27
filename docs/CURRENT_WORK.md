@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## 🚧 2026-06-27 — 유어애즈 자동입찰 자율 엔진 + 규칙 UI (대표 "남은거 계속 / 동작확인 뒤에") — 보라웨어 5종 全 가동
+**배경**: 보라웨어 5종 마지막 핵심 = 자동입찰 자율 cron. **돈 루프라 안전레일 다중**으로 구축.
+- **엔진**(`autobid.ts`): `planBid(estBid, maxBid, currentBid)` **순수 함수**(테스트 6건) — 추정가가 max_bid 넘으면 **max_bid 로 하드캡**, 글로벌 10만 상한, 최소 변경폭 10원(PUT 남발 방지). 엔진은 **절대 사용자 ceiling 초과 입찰 불가**. `runAutobidForSeller`(dryRun 지원) · `runAutobidAll`(cron, 킬스위치 gate).
+- **안전레일 5중**: ① 규칙 기본 OFF ② max_bid 하드캡(불변식 테스트) ③ 글로벌 킬스위치 env `ADS_AUTOBID_ENABLED='true'` 아니면 cron no-op ④ 변경로그 `ad_autobid_log` ⑤ dry-run 미리보기.
+- **라우트**: GET/POST/DELETE `/searchad/autobid/rule(s)` · POST `/autobid/preview`(dry-run) · POST `/autobid/run`(수동 즉시, 킬스위치 무관=사용자 명시). **cron**: scheduled.ts `*/5` 에 `ADS_AUTOBID_ENABLED` gate 추가(기본 OFF → no-op).
+- **UI**: `SearchAdPanel` 키워드 행에 "목표순위 자동입찰"(순위 select+최대₩+🎯) 규칙 생성 / `AutobidPanel`(규칙 목록·ON·OFF·삭제·미리보기·지금적용·변경로그, 엔진 ON/OFF 배너).
+- 검증: tsc 0 · build 0 · 단위 **2340 pass**(+planBid 6) · theme/money/mobile/sql-bind/sql-null 0. ⚠️ **실 계정 검증 후** `ADS_AUTOBID_ENABLED=true` 로 자율 엔진 활성(그 전엔 '지금 적용'으로 수동만).
+- **🎯 보라웨어 5종 = 全 가동**: 자동입찰 ✅(예상가+수동+자율규칙) · 키워드확장 ✅ · 통합실적 ✅ · AI마케터 ✅ · 부정클릭 ✅(Phase1 탐지, 차단은 결정B 후).
+
 ## 🚧 2026-06-27 — 유어애즈 부정클릭 방지 Phase 1(수집·탐지·리포트, 차단 0) (대표 "시작해줘 / 가장 이상적으로")
 **배경**: 보라웨어 5종 마지막. 광고 API 가 아니라 방문자 추적 아키텍처. 설계 `docs/design/urads-clickfraud-design.md`. **프라이버시 바이 디자인**(대표 "가장 이상적으로"): 자사 픽셀 1자 수집 + **광고주 도메인 검증**(스푸핑 차단), IP는 **그룹핑 해시+원문 병행**(차단 단계 필요)·**90일 자동삭제**·광고주별 격리, 위치는 **국가 수준만**(CF 헤더), 목적 제한. **Phase 1 = 차단 없음(탐지·리포트만, 저위험).**
 - **코어**(`clickguard.ts`): `ad_clickguard_sites`/`ad_click_events`(인덱스 2). genAdvertiserKey(16자)·hashIp(SHA-256 salt)·domainMatches·lookupSite(isolate 캐시)·registerSite·recordHit(도메인검증+2% 확률 90일 정리)·clickReport(IP별 집계, ≥8클릭 의심).

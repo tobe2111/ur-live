@@ -48,6 +48,10 @@ export default function SearchAdPanel() {
   // 키워드 자동등록(write)
   const [kwAdd, setKwAdd] = useState<Record<string, string>>({})
   const [kwAddBusy, setKwAddBusy] = useState<string | null>(null)
+  // 자동입찰 규칙 생성(키워드별)
+  const [abRank, setAbRank] = useState<Record<string, string>>({})
+  const [abMax, setAbMax] = useState<Record<string, string>>({})
+  const [abBusy, setAbBusy] = useState<string | null>(null)
   // 통합실적
   const [stats, setStats] = useState<AccountStats | null>(null)
   const [statsDays, setStatsDays] = useState<7 | 30>(7)
@@ -139,6 +143,24 @@ export default function SearchAdPanel() {
     } catch (e: unknown) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '입찰가 변경 실패')
     } finally { setBidBusy(null) }
+  }
+
+  async function createAutobid(kw: AdKeyword, groupId: string) {
+    const rank = Number(abRank[kw.id] || '1')
+    const maxBid = Math.round(Number(abMax[kw.id]))
+    if (!Number.isFinite(maxBid) || maxBid < 70 || maxBid > 100000) { toast.error('최대 입찰가는 70~100,000원으로 입력해주세요'); return }
+    setAbBusy(kw.id)
+    try {
+      const r = await api.post('/api/ads/searchad/autobid/rule', {
+        keyword_id: kw.id, adgroup_id: groupId, keyword_text: kw.keyword, target_rank: rank, max_bid: maxBid, device: 'PC', enabled: true,
+      }, { headers: authHeader() })
+      if (r.data?.success) {
+        toast.success(`자동입찰 규칙 추가 (목표 ${rank}위, 최대 ₩${formatNumber(maxBid)}) — 아래 '자동입찰 규칙'에서 관리`)
+        setAbMax(prev => { const n = { ...prev }; delete n[kw.id]; return n })
+      } else toast.error(r.data?.error || '규칙 추가 실패')
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '규칙 추가 실패')
+    } finally { setAbBusy(null) }
   }
 
   async function addKeywords(groupId: string) {
@@ -305,7 +327,7 @@ export default function SearchAdPanel() {
                                 <p className="text-[11px] text-gray-400 dark:text-gray-500 py-1">키워드 없음</p>
                               ) : (
                                 <table className="w-full text-[11.5px]">
-                                  <thead><tr className="text-gray-400 dark:text-gray-500 text-left"><th className="py-1">키워드</th><th className="py-1 text-right">현재 입찰가</th><th className="py-1 text-right">입찰가 변경</th></tr></thead>
+                                  <thead><tr className="text-gray-400 dark:text-gray-500 text-left"><th className="py-1">키워드</th><th className="py-1 text-right">현재 입찰가</th><th className="py-1 text-right">입찰가 변경</th><th className="py-1 text-right">목표순위 자동입찰</th></tr></thead>
                                   <tbody>
                                     {(keywords[g.id] || []).map(k => (
                                       <tr key={k.id} className="border-t border-gray-100 dark:border-[#1A1A1A] text-gray-700 dark:text-gray-300">
@@ -318,6 +340,19 @@ export default function SearchAdPanel() {
                                               className="w-20 h-7 rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-1.5 text-[11px] text-right text-gray-900 dark:text-white" />
                                             <button onClick={() => applyBid(g.id, k)} disabled={bidBusy === k.id || !bidEdit[k.id]}
                                               className="shrink-0 rounded bg-gray-900 dark:bg-white px-2 h-7 text-[10.5px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-40">{bidBusy === k.id ? '…' : '적용'}</button>
+                                          </div>
+                                        </td>
+                                        <td className="py-1">
+                                          <div className="flex items-center justify-end gap-1">
+                                            <select value={abRank[k.id] ?? '1'} onChange={e => setAbRank(prev => ({ ...prev, [k.id]: e.target.value }))}
+                                              className="h-7 rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-1 text-[10.5px] text-gray-900 dark:text-white">
+                                              {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}위</option>)}
+                                            </select>
+                                            <input type="number" min={70} max={100000} placeholder="최대₩"
+                                              value={abMax[k.id] ?? ''} onChange={e => setAbMax(prev => ({ ...prev, [k.id]: e.target.value }))}
+                                              className="w-20 h-7 rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-1.5 text-[11px] text-right text-gray-900 dark:text-white" />
+                                            <button onClick={() => createAutobid(k, g.id)} disabled={abBusy === k.id || !abMax[k.id]}
+                                              className="shrink-0 rounded border border-gray-300 dark:border-[#2A2A2A] px-1.5 h-7 text-[10.5px] font-bold text-gray-700 dark:text-gray-200 disabled:opacity-40">{abBusy === k.id ? '…' : '🎯'}</button>
                                           </div>
                                         </td>
                                       </tr>

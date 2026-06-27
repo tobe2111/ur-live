@@ -16,6 +16,7 @@ import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKe
 import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnection, searchAdConnStatus } from './searchad-connection'
 import { aiMarketerAdvice, type AiMarketerContext } from './ai-marketer'
 import { registerSite, listSites, deleteSite, recordHit, clickReport, ensureClickguardSchema } from './clickguard'
+import { listRules, upsertRule, deleteRule, recentLog, runAutobidForSeller } from './autobid'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
 
@@ -405,9 +406,63 @@ marketingRoutes.get('/clickguard/report', rateLimit({ action: 'ads-cg-report', m
   return c.json({ success: true, report })
 })
 
+// ── 자동입찰 자율 규칙 (목표순위→입찰가 자동조정) ───────────────────────────
+//   ⚠️ 규칙 기본 OFF + max_bid 하드캡 + 글로벌 킬스위치(ADS_AUTOBID_ENABLED). cron 이 활성 규칙만 실행.
+
+// GET /api/ads/searchad/autobid/rules — 내 규칙 + 최근 변경로그
+marketingRoutes.get('/searchad/autobid/rules', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const [rules, log] = await Promise.all([listRules(c.env.DB, sellerId), recentLog(c.env.DB, sellerId, 30)])
+  return c.json({ success: true, rules, log, engine_on: c.env.ADS_AUTOBID_ENABLED === 'true' })
+})
+
+// POST /api/ads/searchad/autobid/rule — 규칙 생성/수정(목표순위·max_bid·enable)
+marketingRoutes.post('/searchad/autobid/rule', rateLimit({ action: 'ads-ab-rule', max: 60, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await upsertRule(c.env.DB, sellerId, {
+    keyword_id: String(body.keyword_id || ''), adgroup_id: body.adgroup_id ? String(body.adgroup_id) : undefined,
+    keyword_text: body.keyword_text ? String(body.keyword_text) : undefined,
+    target_rank: Number(body.target_rank), max_bid: Number(body.max_bid),
+    device: body.device === 'MOBILE' ? 'MOBILE' : 'PC', enabled: !!body.enabled,
+  })
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  return c.json({ success: true })
+})
+
+// DELETE /api/ads/searchad/autobid/rule?keyword_id=
+marketingRoutes.delete('/searchad/autobid/rule', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const kid = String(c.req.query('keyword_id') || '').trim()
+  if (!kid) return c.json({ success: false, error: 'keyword_id 가 필요합니다' }, 400)
+  await deleteRule(c.env.DB, sellerId, kid)
+  return c.json({ success: true })
+})
+
+// POST /api/ads/searchad/autobid/preview — dry-run(추정→계획만, 입찰 변경 0)
+marketingRoutes.post('/searchad/autobid/preview', rateLimit({ action: 'ads-ab-prev', max: 20, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
+  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  const results = await runAutobidForSeller(c.env.DB, creds, sellerId, { dryRun: true })
+  return c.json({ success: true, results })
+})
+
+// POST /api/ads/searchad/autobid/run — 수동 즉시 실행(활성 규칙 적용, WRITE). 킬스위치 무관(사용자 명시 액션).
+marketingRoutes.post('/searchad/autobid/run', rateLimit({ action: 'ads-ab-run', max: 6, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
+  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  const results = await runAutobidForSeller(c.env.DB, creds, sellerId, { dryRun: false })
+  return c.json({ success: true, applied: results.filter(r => r.applied).length, results })
+})
+
 // TODO(부정클릭 Phase 2 — 결정 B 후): 노출제한 IP 자동등록(API 지원 시) / 미지원 시 의심IP export(복붙).
-// TODO(자동입찰 autonomous — staging 라이브검증 후): 규칙저장(목표순위·max_bid) + cron 엔진(Estimate→clamp→bid PUT)
-//   + 변경로그(ad_autobid_log). ⚠️ 자율 money 루프 — 실 계정 1회 검증(estimate 응답·bid PUT 동작) 전 비활성 유지.
 //   ⚠️ 순위 측정은 공식 API(Estimate/StatReport)로만 — SERP 스크래핑 금지(2026-04-22 제거 이력, PIPA).
 
 export { marketingRoutes }
