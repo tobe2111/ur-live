@@ -148,6 +148,14 @@ export async function handleCronScheduled(
       const { handleProspectsCommissionActivate } = await import('./cron/prospects-commission-activate')
       return handleProspectsCommissionActivate(env)
     }));
+    // 🆕 2026-06-27 유어애즈 자동입찰 — 활성 규칙의 입찰가 자동조정(목표순위→추정→max_bid 클램프).
+    //   글로벌 킬스위치(ADS_AUTOBID_ENABLED='true')일 때만 실제 동작 — 아니면 즉시 no-op(라이브검증 전 OFF).
+    if (env.ADS_AUTOBID_ENABLED === 'true') {
+      ctx.waitUntil(safeCron('ads-autobid', async () => {
+        const { runAutobidAll } = await import('../features/marketing/api/autobid')
+        return runAutobidAll(env)
+      }));
+    }
   }
 
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
