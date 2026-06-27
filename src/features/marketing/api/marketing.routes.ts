@@ -12,7 +12,7 @@ import { sellerIdFrom } from '../../supply/api/wholesale-helpers'
 import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverConnectionSchema } from '../../supply/api/naver-commerce-core'
 import { collectAndStore, listCollectedOrders } from './order-collection'
 import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete } from './keyword-tools'
-import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, accountStats, BID_MIN, BID_MAX, type SearchAdCreds } from './searchad-client'
+import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, addKeywordsToAdgroup, accountStats, BID_MIN, BID_MAX, KW_ADD_MAX, type SearchAdCreds } from './searchad-client'
 import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnection, searchAdConnStatus } from './searchad-connection'
 import { aiMarketerAdvice, type AiMarketerContext } from './ai-marketer'
 
@@ -261,6 +261,25 @@ marketingRoutes.patch('/searchad/keywords/bid', rateLimit({ action: 'ads-sa-bid'
   const r = await updateKeywordBid(creds, keywordId, bidAmt)
   if (!r.ok) return c.json({ success: false, error: r.error }, 502)
   return c.json({ success: true, bid_amt: Math.round(bidAmt) })
+})
+
+// POST /api/ads/searchad/keywords/add — 광고그룹에 키워드 자동등록(키워드확장 write)
+//   ⚠️ 사용자 명시 액션 + 서버 검증(개수≤20·길이) + 연결 필수. 그룹입찰 상속(개별 입찰 surprise 없음).
+marketingRoutes.post('/searchad/keywords/add', rateLimit({ action: 'ads-sa-kwadd', max: 20, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const adgroupId = String(body.adgroup_id || '').trim()
+  const kwRaw: unknown[] = Array.isArray(body.keywords) ? body.keywords : []
+  if (!adgroupId) return c.json({ success: false, error: '광고그룹을 지정해주세요' }, 400)
+  const keywords = kwRaw.map((k: unknown) => String(k || '')).filter(Boolean)
+  if (!keywords.length) return c.json({ success: false, error: '추가할 키워드를 입력해주세요' }, 400)
+  if (keywords.length > KW_ADD_MAX) return c.json({ success: false, error: `한 번에 최대 ${KW_ADD_MAX}개까지 등록할 수 있습니다` }, 400)
+  const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
+  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  const r = await addKeywordsToAdgroup(creds, adgroupId, keywords)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 502)
+  return c.json({ success: true, added: r.added })
 })
 
 // GET /api/ads/searchad/stats?days=7 — 통합실적(캠페인별 노출/클릭/비용/전환 + 합계, 읽기)

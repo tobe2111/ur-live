@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## 🚧 2026-06-27 — 유어애즈 키워드 자동등록(키워드확장 write, 안전레일) (대표 "남은거 계속 해줘")
+**배경**: 키워드확장의 write(발굴은 read 로 이미 완성). 광고그룹에 키워드 등록. 그룹입찰 상속(useGroupBidAmt=true)이라 키워드별 입찰 surprise 없음(안전).
+- **클라이언트**: `addKeywordsToAdgroup(creds, adgroupId, keywords[])` — POST `/ncc/keywords?nccAdgroupId=`(그룹입찰). dedupe + 길이검증 + `KW_ADD_MAX=20` cap.
+- **라우트** POST `/api/ads/searchad/keywords/add` {adgroup_id, keywords[]} — 연결 필수 + 서버 개수(≤20)/길이 검증. rateLimit 20/min.
+- **UI**(`SearchAdPanel`): 광고그룹 드릴다운 하단 "키워드 추가(쉼표 구분)" input + confirm → 등록 후 목록 새로고침.
+- 검증: tsc 0 · build 0 · 단위 2334 pass · theme/money/mobile 0. ⚠️ 실제 키워드 생성 → staging 검증 후.
+- **🎯 유어애즈 보라웨어 5종 현황**: 키워드확장 ✅(발굴+등록) · 통합실적 ✅(읽기) · AI마케터 ✅(읽기) · 자동입찰 ◐(예상입찰가+수동 입찰변경 ✅ / 자율 cron 보류) · 부정클릭 ⏳(추적픽셀+PIPA+IP차단 설계 필요). **남은 핵심 = 자율 자동입찰 cron(실 계정 검증 후) + 부정클릭 설계.**
+
 ## 🚧 2026-06-27 — 유어애즈 AI 마케터(Claude 진단/추천, 읽기) — 우리 구조적 강점 (대표 "남은거 계속 해줘")
 **배경**: 보라웨어는 외부 AI 의존, 우리는 **자체 Claude 보유** → AI마케터가 구조적 우위. 이미 모은 데이터(실적+연관키워드+추세+쇼핑경쟁)를 Claude 에 넘겨 한국어 진단/추천. **읽기 전용 — 자동 실행 0**(입찰/키워드 변경은 사용자 직접).
 - **헬퍼**(`ai-marketer.ts`): `aiMarketerAdvice(apiKey, ctx)` — system 프롬프트가 "컨텍스트 수치만 근거(환각 금지)" 강제 + 진단/잘되는점/개선점/추천액션/주의 섹션. 기존 admin-review-generator 와 동일 anthropic 호출 패턴(`api.anthropic.com/v1/messages`, claude-haiku-4-5). 미설정 시 NOT_CONFIGURED.

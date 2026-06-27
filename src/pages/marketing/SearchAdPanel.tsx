@@ -45,6 +45,9 @@ export default function SearchAdPanel() {
   // 키워드 입찰가 수동 변경(write)
   const [bidEdit, setBidEdit] = useState<Record<string, string>>({})
   const [bidBusy, setBidBusy] = useState<string | null>(null)
+  // 키워드 자동등록(write)
+  const [kwAdd, setKwAdd] = useState<Record<string, string>>({})
+  const [kwAddBusy, setKwAddBusy] = useState<string | null>(null)
   // 통합실적
   const [stats, setStats] = useState<AccountStats | null>(null)
   const [statsDays, setStatsDays] = useState<7 | 30>(7)
@@ -136,6 +139,26 @@ export default function SearchAdPanel() {
     } catch (e: unknown) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '입찰가 변경 실패')
     } finally { setBidBusy(null) }
+  }
+
+  async function addKeywords(groupId: string) {
+    const list = (kwAdd[groupId] || '').split(',').map(s => s.trim()).filter(Boolean)
+    if (!list.length) { toast.error('추가할 키워드를 입력해주세요 (쉼표로 구분)'); return }
+    if (list.length > 20) { toast.error('한 번에 최대 20개까지 등록할 수 있습니다'); return }
+    if (!(await confirmDialog(`이 광고그룹에 키워드 ${list.length}개를 등록할까요? (그룹 입찰가 적용)`))) return
+    setKwAddBusy(groupId)
+    try {
+      const r = await api.post('/api/ads/searchad/keywords/add', { adgroup_id: groupId, keywords: list }, { headers: authHeader() })
+      if (r.data?.success) {
+        toast.success(`키워드 ${r.data.added ?? list.length}개 등록`)
+        setKwAdd(prev => { const n = { ...prev }; delete n[groupId]; return n })
+        // 등록 후 목록 새로고침
+        const kr = await api.get(`/api/ads/searchad/keywords?adgroupId=${encodeURIComponent(groupId)}`, { headers: authHeader() }).catch(() => null)
+        if (kr?.data?.success) setKeywords(prev => ({ ...prev, [groupId]: kr.data.keywords || [] }))
+      } else toast.error(r.data?.error || '키워드 등록 실패')
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '키워드 등록 실패')
+    } finally { setKwAddBusy(null) }
   }
 
   async function toggleGroup(id: string) {
@@ -302,6 +325,14 @@ export default function SearchAdPanel() {
                                   </tbody>
                                 </table>
                               )}
+                              {/* 키워드 자동등록(키워드확장 write) */}
+                              <div className="mt-2 flex gap-1.5">
+                                <input placeholder="키워드 추가 (쉼표로 구분, 최대 20)"
+                                  value={kwAdd[g.id] ?? ''} onChange={e => setKwAdd(prev => ({ ...prev, [g.id]: e.target.value }))}
+                                  className="flex-1 h-7 rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-2 text-[11px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500" />
+                                <button onClick={() => addKeywords(g.id)} disabled={kwAddBusy === g.id || !kwAdd[g.id]}
+                                  className="shrink-0 rounded border border-gray-300 dark:border-[#2A2A2A] px-2.5 h-7 text-[10.5px] font-bold text-gray-700 dark:text-gray-200 disabled:opacity-40">{kwAddBusy === g.id ? '…' : '+ 등록'}</button>
+                              </div>
                             </div>
                           )}
                         </div>
