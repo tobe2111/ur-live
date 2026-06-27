@@ -41,7 +41,8 @@
 | **🖥️ PC = 중앙 모바일 액자 + 데코 사이드레일 + 하단 네비** | 2026-06-20 | ⏳ 방향 확인 대기 (현 app-framed 구조 재구성) | [pc-app-frame-decorated-rails.md](./pc-app-frame-decorated-rails.md) |
 | **🎟️ 동네딜 공구권 사용처리 — 매장원장+느슨카운터+정산검문 (SSOT 확정)** | 2026-06-20 | 🟢 Phase 1 착수 (매장원장 읽기 API ✅ / 셀프사용·에스크로 다음) | [dongnedeal-redemption.md](./dongnedeal-redemption.md) |
 | **🏷️ 상품 소유 모델 — 원청(주인)/홍보(핀) + 어드민·셀러 업로드 통합** | 2026-06-23 | ⏳ 설계 확정 대기 (정책 3개 — 1P계정/대행정산/커미션출처) | [product-ownership-model.md](./product-ownership-model.md) |
-| **📣 유어애즈 — 보라웨어 레퍼런스(자동입찰·부정클릭·키워드확장·통합실적·AI마케터)** | 2026-06-27 | 🟢 4종 구현(키워드확장·통합실적·AI마케터·자동입찰 일부) / 자율 cron·부정클릭 남음 | [urads-boraware-reference.md](./urads-boraware-reference.md) |
+| **📦 유어애즈 인수인계(SSOT — 새 세션 먼저 읽기)** | 2026-06-27 | 🟢 기능 완성 / 키설정·디자인·결정 대기 | [urads-HANDOFF.md](./urads-HANDOFF.md) |
+| **📣 유어애즈 — 보라웨어 레퍼런스(자동입찰·부정클릭·키워드확장·통합실적·AI마케터)** | 2026-06-27 | 🟢 5종 + 추가 전부 구현(현황표) | [urads-boraware-reference.md](./urads-boraware-reference.md) |
 | **🛡️ 유어애즈 부정클릭 방지 설계** | 2026-06-27 | ✅ Phase1(탐지)+Phase2(반자동 차단) 구현 / 공식 API 시 자동전환 | [urads-clickfraud-design.md](./urads-clickfraud-design.md) |
 | **💵 유어애즈 추가 서비스 & 수익화 전략** | 2026-06-27 | 🟡 전략 박제 / 모델·가격 결정 대기(수익화 보류, 기능 우선) | [urads-services-monetization.md](./urads-services-monetization.md) |
 | **🔗 유어애즈 × 유어딜 판매채널 번들** | 2026-06-27 | 🟡 설계 / 크로스서비스 결정 A~D 대기 | [urads-yourdeal-channel-bundle.md](./urads-yourdeal-channel-bundle.md) |
