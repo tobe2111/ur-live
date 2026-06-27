@@ -14,6 +14,7 @@ import { collectAndStore, listCollectedOrders } from './order-collection'
 import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete } from './keyword-tools'
 import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, accountStats, BID_MIN, BID_MAX, type SearchAdCreds } from './searchad-client'
 import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnection, searchAdConnStatus } from './searchad-connection'
+import { aiMarketerAdvice, type AiMarketerContext } from './ai-marketer'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
 
@@ -272,6 +273,48 @@ marketingRoutes.get('/searchad/stats', rateLimit({ action: 'ads-sa-stats', max: 
   const r = await accountStats(creds, days)
   if (!r.ok) return c.json({ success: false, error: r.error }, 502)
   return c.json({ success: true, data: r.data })
+})
+
+// ── AI 마케터 (Claude 진단/추천 — 읽기 전용, 자동 실행 없음) ────────────────
+// POST /api/ads/ai-marketer  body: { seed?: '키워드' } — 실적(연결 시) + 키워드 분석(seed 시)을 Claude 에게.
+marketingRoutes.post('/ai-marketer', rateLimit({ action: 'ads-ai', max: 10, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  if (!c.env.ANTHROPIC_API_KEY) return c.json({ success: false, error: 'NOT_CONFIGURED' }, 503)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const seed = String(body.seed || '').trim().slice(0, 40)
+
+  const ctx: AiMarketerContext = { connected: false }
+  // 실적(연결 시)
+  const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY).catch(() => null)
+  if (creds) {
+    ctx.connected = true
+    const st = await accountStats(creds, 7).catch(() => null)
+    if (st?.ok && st.data) {
+      const t = st.data.totals
+      ctx.stats = {
+        days: st.data.days, impCnt: t.impCnt, clkCnt: t.clkCnt, salesAmt: t.salesAmt, ccnt: t.ccnt, ctr: t.ctr, cpc: t.cpc,
+        topCampaigns: st.data.campaigns.slice(0, 5).map(cp => ({ name: cp.name, salesAmt: cp.salesAmt, clkCnt: cp.clkCnt, ccnt: cp.ccnt })),
+      }
+    }
+  }
+  // 키워드 분석(seed 시) — 연관키워드(연결/플랫폼 키) + 쇼핑경쟁 + 추세
+  if (seed) {
+    const kwCreds = creds || searchAdCredsFrom(c.env)
+    const [rel, shop, trend] = await Promise.allSettled([
+      kwCreds ? relatedKeywords(kwCreds, [seed]) : Promise.resolve({ ok: false as const }),
+      keywordShopping(naverOpenId(c.env), naverOpenSecret(c.env), seed),
+      keywordTrend(naverOpenId(c.env), naverOpenSecret(c.env), [seed]),
+    ])
+    const related = rel.status === 'fulfilled' && rel.value.ok && 'results' in rel.value ? (rel.value.results || []).slice(0, 10).map(k => ({ keyword: k.keyword, monthlyTotal: k.monthlyTotal, compIdx: k.compIdx })) : []
+    const shoppingTotal = shop.status === 'fulfilled' && shop.value.ok ? (shop.value.data?.total || 0) : 0
+    const trendPct = trend.status === 'fulfilled' && trend.value.ok ? (trend.value.results?.[0]?.changePct || 0) : 0
+    ctx.keyword = { seed, related, shoppingTotal, trendPct }
+  }
+
+  const r = await aiMarketerAdvice(c.env.ANTHROPIC_API_KEY, ctx)
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.error === 'NOT_CONFIGURED' ? 503 : 400)
+  return c.json({ success: true, advice: r.advice, grounded: { connected: ctx.connected, hasStats: !!ctx.stats, hasKeyword: !!ctx.keyword } })
 })
 
 // TODO(자동입찰 autonomous — staging 라이브검증 후): 규칙저장(목표순위·max_bid) + cron 엔진(Estimate→clamp→bid PUT)

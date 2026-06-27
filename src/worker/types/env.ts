@@ -135,6 +135,10 @@ export interface Env {
   NAVER_SEARCHAD_ACCESS_LICENSE?: string;
   NAVER_SEARCHAD_SECRET_KEY?: string;
 
+  // ---- Anthropic (AI 마케터 / AI 리뷰 생성) ----
+  //   유어애즈 AI마케터 진단·추천 + admin-review-generator. 미설정 시 해당 기능 자동 비활성(fail-soft).
+  ANTHROPIC_API_KEY?: string;
+
   // ---- 전자세금계산서 (Bill36524 / Popbill / 바로빌) ----
   // 🏭 2026-06-09 Wave 3c: 도매 세금계산서 자동발행 stub(admin-tax.routes.issueTaxInvoice).
   //   미설정 시 provider 발행 silent skip(cost-0) — 레코드는 'draft' 로 남아 후속 발행 가능.

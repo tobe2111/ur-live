@@ -51,6 +51,11 @@ export default function MarketingDashboardPage() {
   const [relatedOff, setRelatedOff] = useState(false) // 검색광고 키 미설정(503) — 섹션 자동 숨김
   const [kwAuto, setKwAuto] = useState<string[] | null>(null)
   const [kwRep, setKwRep] = useState<ReputationResult | null>(null)
+  // AI 마케터
+  const [aiSeed, setAiSeed] = useState('')
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiAdvice, setAiAdvice] = useState<string | null>(null)
+  const [aiOff, setAiOff] = useState(false)
 
   const loadStatus = useCallback(async () => {
     if (!hasToken) { setConnected(false); return }
@@ -116,6 +121,19 @@ export default function MarketingDashboardPage() {
       if (rep.status === 'fulfilled' && rep.value.data?.success) setKwRep(rep.value.data.data || null)
       if (t.status === 'rejected' && s.status === 'rejected') toast.error('키워드 분석 실패 (잠시 후 다시)')
     } finally { setKwBusy(false) }
+  }
+
+  async function runAiMarketer() {
+    setAiBusy(true); setAiAdvice(null); setAiOff(false)
+    try {
+      const r = await api.post('/api/ads/ai-marketer', { seed: aiSeed.trim() || undefined }, { headers: authHeader() })
+      if (r.data?.success) setAiAdvice(r.data.advice || '')
+      else toast.error(r.data?.error || 'AI 분석 실패')
+    } catch (e: unknown) {
+      const ax = e as { response?: { status?: number; data?: { error?: string } } }
+      if (ax.response?.status === 503) setAiOff(true)
+      else toast.error(ax.response?.data?.error || 'AI 분석 실패')
+    } finally { setAiBusy(false) }
   }
 
   const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
@@ -203,6 +221,31 @@ export default function MarketingDashboardPage() {
 
       {/* 네이버 검색광고 계정 연동 + 내 광고 구조(자동입찰/실적 토대) */}
       {hasToken && <SearchAdPanel />}
+
+      {/* AI 마케터 (Claude 진단/추천 — 읽기 전용) */}
+      {hasToken && (
+        <div className={`mt-3 ${card}`}>
+          <div className="text-[14px] font-bold text-gray-900 dark:text-white">🤖 AI 마케터</div>
+          <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">실적·키워드 데이터를 분석해 개선 액션을 제안합니다(추천만 — 자동 실행 없음). 계정 연동 시 실적까지 반영.</p>
+          <div className="mt-2 flex gap-2">
+            <input className={input} placeholder="중심 키워드 (선택, 예: 무선이어폰)" value={aiSeed} onChange={(e) => setAiSeed(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAiMarketer() }} />
+            <button onClick={runAiMarketer} disabled={aiBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{aiBusy ? '분석 중…' : 'AI 분석 받기'}</button>
+          </div>
+          {aiOff && <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-500">AI 마케터는 Anthropic API 키 설정 후 사용할 수 있습니다.</p>}
+          {aiAdvice && (
+            <div className="mt-3 space-y-1 text-[12.5px] leading-relaxed">
+              {aiAdvice.split('\n').map((line, i) => {
+                const h = line.match(/^#{1,4}\s+(.*)/)
+                if (h) return <p key={i} className="font-bold text-gray-900 dark:text-white mt-2">{h[1]}</p>
+                const b = line.match(/^\s*[-*]\s+(.*)/)
+                if (b) return <p key={i} className="text-gray-600 dark:text-gray-300 pl-3">• {b[1].replace(/\*\*/g, '')}</p>
+                if (!line.trim()) return null
+                return <p key={i} className="text-gray-600 dark:text-gray-300">{line.replace(/\*\*/g, '')}</p>
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 연관키워드 추천 (검색광고 API — RelKwdStat) */}
       {hasToken && kwRelated && kwRelated.length > 0 && (
