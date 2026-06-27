@@ -36,6 +36,7 @@ const MOBILE_ONLY_PREFIXES = [
 // 📐 2026-06-16 (사용자 확인): 도매몰 관련은 풀 PC 프레임이어야 함 → 여기 등재되어 app-framed 에서 자동 제외됨.
 const HIDE_SIDEBAR_PREFIXES = [
   '/seller', '/admin', '/agency', '/supplier', '/wholesale', '/embed', '/checkout/return', '/introduce',
+  '/ads', // 🆕 유어애즈(UR Ads) — 도매몰처럼 PC 풀너비(액자/사이드바/거터 제외)
 ]
 
 // 🎨 2026-06-18 (사용자 시안): 링크샵 진입 시 PC 좌측 카테고리 사이드바 숨김 → 깔끔한 액자.
