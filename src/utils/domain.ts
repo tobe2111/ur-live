@@ -53,3 +53,11 @@ export function isWholesaleAllowedPath(pathname: string): boolean {
 export function isWholesaleSurface(pathname: string): boolean {
   return /^\/(wholesale|supplier)(\/|$)/.test(pathname)
 }
+
+/**
+ * 🆕 2026-06-26 유어애즈(UR Ads, /ads) — 3번째 서비스. 도매몰처럼 PC 풀너비 + 소비자 chrome 비노출.
+ *   worker(`isMarketingSurface` `/^\/(ads)(\/|$)/`)와 동일 규칙.
+ */
+export function isMarketingSurface(pathname: string): boolean {
+  return /^\/ads(\/|$)/.test(pathname)
+}

@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from '
 import { HelmetProvider } from 'react-helmet-async'
 import { QueryProvider } from './lib/react-query'
 import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
-import { isUtongstart, isWholesaleAllowedPath, isWholesaleSurface } from './utils/domain'
+import { isUtongstart, isWholesaleAllowedPath, isWholesaleSurface, isMarketingSurface } from './utils/domain'
 import ToastContainer from './components/ToastContainer'
 import { ConfirmHost } from './components/ui/confirm-dialog'
 import NewVersionBanner from './components/main/NewVersionBanner'
@@ -504,7 +504,7 @@ function AppContent() {
   })()
   const embedHideNav = embedFlag && /^\/(u|profile|s)(\/|$)/.test(location.pathname)
   const hideBottomNav = fullScreen || location.pathname.startsWith('/products/')
-    || isWholesaleSurface(location.pathname) || embedHideNav
+    || isWholesaleSurface(location.pathname) || isMarketingSurface(location.pathname) || embedHideNav
   // 🗺️ 2026-06-20 (대표 — 홈=리스트 / 지도는 버튼 이동): 지도 페이지(/restaurant-map)만 h-screen 자체관리
   //   풀스크린(바텀시트가 하단 담당) → main 하단 네비 여백 제외. 홈(/)=리스트는 일반 페이지(여백 필요).
   //   ⚠️ 도매/제조사(isWholesaleSurface)는 위 hideBottomNav 가 이미 커버(여백 0) — 여기 중복 불필요.

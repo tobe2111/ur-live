@@ -83,9 +83,9 @@ export default function MarketingDashboardPage() {
 
   return (
     <MarketingLayout>
-      <SEO title="마케팅 - 유어딜" description="네이버 발주수집 + 검색광고 자동입찰 통합 마케팅 서비스" url="/ads" />
-      <h1 className="text-[22px] font-extrabold text-gray-900 dark:text-white">통합 마케팅</h1>
-      <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">고객사별 스마트스토어를 연동해 발주를 자동 수집합니다. (입점형)</p>
+      <SEO title="유어애즈 UR Ads - 유어팀 종합 마케팅" description="네이버 검색광고 자동입찰 + 쇼핑몰 발주수집 + 키워드 — 유어팀 종합 마케팅 툴" url="/ads" />
+      <h1 className="text-[22px] font-extrabold text-gray-900 dark:text-white">유어애즈 <span className="text-gray-400 dark:text-gray-500 text-[14px] font-medium">UR Ads</span></h1>
+      <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">고객사별 스마트스토어를 연동해 발주를 자동 수집합니다. (입점형 · 검색광고 자동입찰/키워드 준비 중)</p>
 
       {!hasToken && (
         <div className={`mt-5 ${card}`}>
