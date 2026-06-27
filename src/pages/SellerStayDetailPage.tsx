@@ -351,7 +351,7 @@ function RoomFormModal({ productId, room, onClose, onSaved }: {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm p-4 flex items-start justify-center overflow-y-auto" onClick={onClose}>
+    <div className="fixed inset-0 z-[10500] bg-black/50 backdrop-blur-sm p-4 flex items-start justify-center overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-2xl w-full max-w-2xl my-8 p-6" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-bold text-gray-900 mb-4">{room ? '객실 수정' : '객실 추가'}</h3>
         <div className="space-y-3">

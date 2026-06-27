@@ -39,10 +39,10 @@ export function SortMenu<T extends string>({
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-[90]" onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-[10500]" onClick={() => setOpen(false)} />
           <div
             role="listbox"
-            className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-1.5 z-[91] min-w-[150px] rounded-xl bg-white dark:bg-[#1A1A1A] border border-gray-100 dark:border-[#2A2A2A] shadow-xl py-1 overflow-hidden`}
+            className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-1.5 z-[10501] min-w-[150px] rounded-xl bg-white dark:bg-[#1A1A1A] border border-gray-100 dark:border-[#2A2A2A] shadow-xl py-1 overflow-hidden`}
           >
             {options.map((o) => {
               const selected = o.key === value

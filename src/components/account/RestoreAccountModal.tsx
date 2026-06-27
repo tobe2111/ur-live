@@ -102,7 +102,7 @@ export default function RestoreAccountModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[200] bg-black/60 flex items-end sm:items-center justify-center p-4"
+      className="fixed inset-0 z-[10600] bg-black/60 flex items-end sm:items-center justify-center p-4"
       role="presentation"
     >
       <div

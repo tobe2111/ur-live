@@ -79,7 +79,7 @@ export default function SellerApplyModal({ onClose, onSuccess }: { onClose: () =
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60"
+      className="fixed inset-0 z-[10600] flex items-end justify-center bg-black/60"
       onClick={onClose}
       role="presentation"
     >

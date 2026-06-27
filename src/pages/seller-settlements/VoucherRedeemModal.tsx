@@ -104,7 +104,7 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
   }
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm p-4 flex items-center justify-center"
+    <div className="fixed inset-0 z-[10500] bg-black/50 backdrop-blur-sm p-4 flex items-center justify-center"
       onClick={() => !submitting && onClose()}>
       <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}>

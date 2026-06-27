@@ -218,7 +218,7 @@ export default function StaysSearchPage() {
       {/* Filters Modal */}
       {showFilters && (
         <div
-          className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center"
+          className="fixed inset-0 z-[10600] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center"
           onClick={() => setShowFilters(false)}
           role="presentation"
         >

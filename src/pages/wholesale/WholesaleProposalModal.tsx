@@ -166,7 +166,7 @@ export default function WholesaleProposalModal({ onClose }: { onClose: () => voi
   const loggedIn = hasSellerToken()
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end lg:items-center justify-center" style={{ background: 'rgba(20,22,28,0.42)' }} onClick={onClose}>
+    <div className="fixed inset-0 z-[10600] flex items-end lg:items-center justify-center" style={{ background: 'rgba(20,22,28,0.42)' }} onClick={onClose}>
       <div className="w-full lg:max-w-lg bg-white rounded-t-3xl lg:rounded-3xl p-5 pb-7 max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-[18px] font-extrabold" style={{ color: WT.ink }}>

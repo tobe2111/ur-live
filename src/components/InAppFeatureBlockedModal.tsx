@@ -83,7 +83,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-black/60 flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-[10600] bg-black/60 flex items-end sm:items-center justify-center"
       onClick={onClose}
       role="presentation"
     >
