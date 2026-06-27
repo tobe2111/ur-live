@@ -12,6 +12,7 @@ import { sellerIdFrom } from '../../supply/api/wholesale-helpers'
 import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverConnectionSchema } from '../../supply/api/naver-commerce-core'
 import { collectAndStore, listCollectedOrders } from './order-collection'
 import { keywordTrend, keywordShopping } from './keyword-tools'
+import { searchAdCredsFrom, relatedKeywords } from './searchad-client'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
 
@@ -110,8 +111,25 @@ marketingRoutes.get('/keywords/shopping', rateLimit({ action: 'ads-kw-shop', max
   return c.json({ success: true, data: r.data })
 })
 
-// TODO(자동입찰 — 블록됨): 검색광고 API 키(별도 등록) + 순위측정 합법성 검토(2026-04-22 스크래퍼 제거 이력) 선행.
+// ── 연관키워드 추천 (네이버 검색광고 API — RelKwdStat) ───────────────────────
+//   오픈API 와 별개. HMAC 서명 인증(고정IP 불필요). 관리/대행 계정 customer-level 로 광고계정 0개여도 동작.
+//   키(NAVER_SEARCHAD_*) 미설정 시 503(NOT_CONFIGURED) — 프런트가 자동 숨김(fail-soft).
+
+// GET /api/ads/keywords/related?seed=키워드 — 연관키워드 + 월 검색량(PC/모바일)
+marketingRoutes.get('/keywords/related', rateLimit({ action: 'ads-kw-related', max: 30, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const creds = searchAdCredsFrom(c.env)
+  if (!creds) return c.json({ success: false, error: 'NOT_CONFIGURED' }, 503)
+  const seeds = (c.req.query('seed') || c.req.query('keywords') || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 5)
+  if (!seeds.length) return c.json({ success: false, error: '키워드를 입력해주세요' }, 400)
+  const r = await relatedKeywords(creds, seeds)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  return c.json({ success: true, results: r.results })
+})
+
+// TODO(자동입찰 — 고객사 광고계정 연동 후): 검색광고 Estimate(목표순위 입찰추정) + StatReport(실적).
 //   GET/PATCH /bid/keywords  자동입찰 키워드/입찰설정(목표순위·최대입찰가) — 공식 검색광고 API only.
-//   + 연관키워드 추천(RelKwdStat) 도 검색광고 키 발급 후 키워드 도구에 추가.
+//   ⚠️ 순위 측정은 공식 API(Estimate/StatReport)로만 — SERP 스크래핑 금지(2026-04-22 제거 이력, PIPA).
 
 export { marketingRoutes }

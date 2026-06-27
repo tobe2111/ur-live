@@ -127,6 +127,14 @@ export interface Env {
   NAVER_CLIENT_ID?: string;
   NAVER_CLIENT_SECRET?: string;
 
+  // ---- 유어애즈(UR Ads) — 네이버 검색광고 API (searchad.naver.com) ----
+  //   연관키워드 추천(RelKwdStat)·자동입찰 추정(Estimate)·실적(StatReport) 용. 고정IP 불필요(HMAC 서명 인증).
+  //   CUSTOMER_ID = 라이선스 발급 계정(관리/대행 계정 가능, 멀티테넌트 허브). 미설정 시 연관키워드 기능 자동 숨김(fail-soft).
+  //   값은 Cloudflare Secrets 에만 — 코드/채팅 노출 금지. 비밀키는 1회만 표시되므로 별도 안전 보관.
+  NAVER_SEARCHAD_CUSTOMER_ID?: string;
+  NAVER_SEARCHAD_ACCESS_LICENSE?: string;
+  NAVER_SEARCHAD_SECRET_KEY?: string;
+
   // ---- 전자세금계산서 (Bill36524 / Popbill / 바로빌) ----
   // 🏭 2026-06-09 Wave 3c: 도매 세금계산서 자동발행 stub(admin-tax.routes.issueTaxInvoice).
   //   미설정 시 provider 발행 silent skip(cost-0) — 레코드는 'draft' 로 남아 후속 발행 가능.
