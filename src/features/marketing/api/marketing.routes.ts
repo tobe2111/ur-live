@@ -7,9 +7,11 @@
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 import { sellerIdFrom } from '../../supply/api/wholesale-helpers'
 import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverConnectionSchema } from '../../supply/api/naver-commerce-core'
 import { collectAndStore, listCollectedOrders } from './order-collection'
+import { keywordTrend, keywordShopping } from './keyword-tools'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
 
@@ -83,7 +85,33 @@ marketingRoutes.get('/orders', async (c) => {
   return c.json({ success: true, orders })
 })
 
+// ── 키워드 도구 (네이버 오픈API — 고정IP/서버 불필요, 보유 키로 즉시) ──────────
+//   검색광고 키 없이 가능한 범위: 검색어 트렌드(데이터랩) + 쇼핑 경쟁(쇼핑검색).
+//   오픈API = NAVER_SEARCH_* 우선, 없으면 NAVER_* 폴백. 쿼터 보호 위해 rate limit.
+const naverOpenId = (env: Env) => env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
+const naverOpenSecret = (env: Env) => env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET
+
+// GET /api/ads/keywords/trend?keywords=a,b,c — 검색어 트렌드(최대 5)
+marketingRoutes.get('/keywords/trend', rateLimit({ action: 'ads-kw-trend', max: 30, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const keywords = (c.req.query('keywords') || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 5)
+  const r = await keywordTrend(naverOpenId(c.env), naverOpenSecret(c.env), keywords)
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.error === 'NOT_CONFIGURED' ? 503 : 400)
+  return c.json({ success: true, results: r.results })
+})
+
+// GET /api/ads/keywords/shopping?q=키워드 — 쇼핑 경쟁(상품수 + 가격대)
+marketingRoutes.get('/keywords/shopping', rateLimit({ action: 'ads-kw-shop', max: 60, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const r = await keywordShopping(naverOpenId(c.env), naverOpenSecret(c.env), c.req.query('q') || '')
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.error === 'NOT_CONFIGURED' ? 503 : 400)
+  return c.json({ success: true, data: r.data })
+})
+
 // TODO(자동입찰 — 블록됨): 검색광고 API 키(별도 등록) + 순위측정 합법성 검토(2026-04-22 스크래퍼 제거 이력) 선행.
 //   GET/PATCH /bid/keywords  자동입찰 키워드/입찰설정(목표순위·최대입찰가) — 공식 검색광고 API only.
+//   + 연관키워드 추천(RelKwdStat) 도 검색광고 키 발급 후 키워드 도구에 추가.
 
 export { marketingRoutes }
