@@ -73,4 +73,5 @@
 - 잠금파일(`KakaoAuthService`/`kakao.routes`/`KakaoCallbackPage`/`pending-auth`)은 2a/2b 에서 **무수정**. 2c 진입 시에만 AskUserQuestion + audit log.
 
 ### 부가 하드닝 (P1/P2, 별도)
-- 이메일 비교 소문자 통일(대소문자 사고 방지), become-distributor COUNT≤1 게이트, 에이전시-초대 셀러 승인 시 자동연결 probe.
+- **P1 ✅ 이메일 비교 대소문자 무시** (완료, 2026-06-26 — 대표 "계속 하자"): `KakaoAuthService.upsertUser` same-email 자동연결의 UPDATE 매칭 + COUNT 모호성 게이트를 `LOWER(email) = LOWER(?)` 로. `"Foo@x.com"` vs `"foo@x.com"` silent 미연결 갭 해소. **verified 게이트·COUNT≤1·IS NULL 멱등 불변** — 매칭만 넓힘(대소문자무시 COUNT 는 더 보수적). 잠금파일이라 `[UNLOCK_LOADING]` + CLAUDE.md audit log. (비잠금 짝은 이미 LOWER: 관리자 `/sellers/unlinked`·repair-schema.)
+- **P2 🔜 (별도)**: become-distributor COUNT≤1 게이트(도매몰 서비스 — 분리 룰상 별도 작업), 에이전시-초대 셀러 승인 시 자동연결 probe.
