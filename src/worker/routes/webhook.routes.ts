@@ -682,6 +682,28 @@ async function handlePaymentConfirmed(
     }
   }
 
+  // 🔔 2026-06-26 [UNLOCK] (대표 승인 "모두 해줘" — 소비자 감사 D): 결제완료 buyer 인앱 알림 — webhook 경로.
+  //   /confirm 의 동일 'order_paid' 알림과 confirmPaymentAtomic CAS(result.confirmed>0)로 단일실행
+  //   (confirm↔webhook 중 이긴 쪽만 도달 → 이중알림 없음). 셀러만 통보되고 buyer 무통보이던 누락 보강.
+  //   ⚠️ Toss 시그니처/금액검증/confirmPaymentAtomic 무수정 — notifyUser side-effect 배선만.
+  if (DB && result.confirmed > 0) {
+    try {
+      const { notifyUser } = await import('../../lib/notifications')
+      const orow = await DB.prepare(
+        'SELECT user_id FROM orders WHERE order_number = ? AND user_id IS NOT NULL LIMIT 1'
+      ).bind(orderNumber).first<{ user_id: string | number | null }>().catch(() => null)
+      if (orow?.user_id) {
+        await notifyUser(
+          DB, String(orow.user_id), 'order_paid',
+          '✅ 결제가 완료됐어요', `주문 ${orderNumber} — ₩${Number(data.totalAmount ?? 0).toLocaleString('ko-KR')} 결제 완료`,
+          '/my-orders',
+        ).catch(() => {})
+      }
+    } catch (e) {
+      console.error('[WEBHOOK] order_paid buyer notification failed:', String(e).slice(0, 200))
+    }
+  }
+
   // 🛡️ 2026-04-28 (TD-007 자동화): auction winner-paid 자동 처리.
   //   결제한 user 가 낙찰한 ended auction 이 있고 current_price 가 결제 amount 와
   //   같으면 해당 auction_holds 를 'consumed' 마킹. best-effort (실패해도 결제는 성공).

@@ -295,17 +295,51 @@ async function bootApp() {
     if (ticket) {
       const ctrl = new AbortController()
       const timer = setTimeout(() => ctrl.abort(), 4000)
+      let established = false
       try {
-        await fetch('/api/auth/session/establish', {
+        const res = await fetch('/api/auth/session/establish', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ticket }),
           signal: ctrl.signal,
         })
-      } catch { /* establish 실패해도 앱은 뜸 — 302-set 쿠키(Chrome) 또는 재로그인 */ }
+        established = res.ok
+      } catch { /* establish 실패해도 앱은 뜸 — 302-set 쿠키(Chrome) 또는 아래 재시도 */ }
       clearTimeout(timer)
-      try { delete w.__urEstablishTicket } catch { /* */ }
+      if (established) {
+        // 성공: 티켓 소비 (기존 동작 그대로).
+        try { delete w.__urEstablishTicket } catch { /* */ }
+      } else {
+        // 🛡️ 2026-06-26 (대표 승인 "모두 해줘" — 소비자 감사 E): establish 실패 분기 보강.
+        //   기존엔 결과 무관 티켓 삭제 → 타임아웃/5xx/네트워크 블립 한 번이면 단명 티켓이 소진돼
+        //   사파리/카톡 신규 로그인이 '재로그인'밖에 답 없었음. 수정: ① res.ok 검사(위) ② 실패 시
+        //   티켓 보존 + 렌더 후 non-blocking 재시도 1회 → 성공하면 ticket-scoped 가드로 단 1회만
+        //   reload 해 늦게 도착한 ur_session 쿠키를 픽업. happy-path(established=true)는 위 분기로
+        //   기존과 byte-동일 — 이 분기는 원래 '티켓 삭제'뿐이라 순개선(최악=재시도 실패=기존과 동일 재로그인).
+        //   reload 는 ticket-scoped 가드(prefix)로 같은 티켓당 최대 1회 → 루프 불가, 새 로그인은 새 티켓이라 재시도 허용.
+        const guard = String(ticket).slice(0, 16)
+        const retryEstablishOnce = () => {
+          try { if (sessionStorage.getItem('ur_establish_retry') === guard) return } catch { /* */ }
+          const rc = new AbortController()
+          const rt = setTimeout(() => rc.abort(), 4000)
+          fetch('/api/auth/session/establish', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket }),
+            signal: rc.signal,
+          }).then((res) => {
+            clearTimeout(rt)
+            if (res.ok) {
+              try { sessionStorage.setItem('ur_establish_retry', guard) } catch { /* */ }
+              try { delete w.__urEstablishTicket } catch { /* */ }
+              try { window.location.reload() } catch { /* */ }
+            }
+          }).catch(() => { clearTimeout(rt) })
+        }
+        try { setTimeout(retryEstablishOnce, 1500) } catch { /* */ }
+      }
     }
   } catch { /* establish 단계 실패 무시 — 렌더 진행 */ }
 

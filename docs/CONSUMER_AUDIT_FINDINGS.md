@@ -21,7 +21,7 @@
 | **A** | `community-group-buy.routes.ts` `/:id/refund` | 동네공구 무산→보증금(딜) 환불됐는데 참여자 **무통보**(그 자리에 없어 영영 모름) | ✅ **완료** — 실제 환불된(claim 멱등 통과) 멤버에게 `group_buy_refunded` 인앱 알림(confirm 블록과 동일 패턴). |
 | **B** | `stays-public.routes.ts` `/bookings/confirm` + `/:id/cancel` | 숙소 예약 확정/취소·환불 시 **셀러만 통보, 소비자 무통보**(물리상품은 알림 가는데 숙소만 비대칭) | ✅ **완료** — 확정 시 예약자 `stay_booking_confirmed`(셀러 알림 waitUntil 블록에 추가), 취소 시 `stay_booking_cancelled`(환불액 분기 메시지). 둘 다 응답 후 fail-soft, `/my-stays` 링크. |
 | **C** | `group-buy.routes.ts` `/confirm-toss`(카드) | 카드로 교환권 사면 buyer **알림톡·인앱 0**(딜 `/join` 은 알림톡 발송) — 결제수단별 비대칭 | ✅ **완료** — `_saleFx` 에 ① `voucher_issued` 인앱(보관함 링크) ② `sendBuyerVoucherIssuedAlimtalk`(딜 경로와 동일 헬퍼/payload). |
-| **D** | `payment.routes.ts` `/confirm` + `webhook.routes.ts` | 주문 결제완료 시 **셀러·어드민 통보, buyer 인앱 알림 없음** | ⏳ **보류** — ① Toss **잠금 파일**(대표 승인 필요) ② PaymentSuccessPage 가 이미 완료를 표시하므로 buyer 인앱 알림 필요성 자체가 product 판단(셀러는 부재라 필요, buyer는 화면 봄). 대표 결정 대기. |
+| **D** | `payment.routes.ts` `/confirm` + `webhook.routes.ts` | 주문 결제완료 시 **셀러·어드민 통보, buyer 인앱 알림 없음** | ✅ **완료** (대표 승인 "모두 해줘") — 양 경로(`_confirmSideFx`/webhook `result.confirmed>0`)에 `notifyUser('order_paid', …,'/my-orders')` 배선. confirmClaim/confirmPaymentAtomic CAS 가 단일실행 → 이중알림 0. **Toss confirm/금액검증/CAS byte-불변** — notifyUser 1블록씩 추가만. CLAUDE.md Toss audit log 등재. |
 
 검증: tsc 0 · 단위 2327 pass · build 0 · sql-bind/not-null/column 0. A·B·C 전부 additive fire-and-forget(응답 후, 실패해도 결제/환불 불막음).
 
@@ -62,7 +62,12 @@
 ## ✅ 잔여 사파리 Invalid Date sweep — 완료 (비-money, 표시/정렬만)
 `MyVouchersPage`(used_at 표시·만료임박 정렬·nearestExpiry·카드 expiresAt/usedAt), `MyStaysPage`(voucher_used_at·voucher_expires_at + null 폴백), `ProductDetailPage`(voucher_expiry), `GroupBuyDetailPage`(deadline jitter·voucher_expiry chip 2곳), `GroupBuyListPage`(deadline/expires_at/created_at 정렬 5곳) — DB 공백형식 타임스탬프 직접 `new Date()` → 사파리 `Invalid Date`/`NaN`. **표시는 `safeDate()?.`, 정렬/계산은 `safeTime()`(0 폴백)로 교체.** 각 폴백(Infinity/MAX_SAFE_INTEGER/0) 보존. 현재시각(`new Date(now)`, now=`Date.now()`)·인자없는 `new Date()`는 사파리-safe라 무수정. **부가효과**: GroupBuyDetailPage deadline jitter 가 사파리에서 NaN→항상 5s 폴링이던 것도 정상화(D1 부하↓). tsc 0·build 0·theme 0.
 
-## ⚠️ boot/auth — staging 검증 필요 (단독, blind 수정 금지)
+## ✅ boot/auth — establish 실패 분기 보강 완료 (E, 대표 승인 "모두 해줘") · ⚠️ staging 스모크 권장
+
+**적용**: `main.tsx` `bootApp` establish 실패 분기를 **순개선**으로 보강(아래 권장설계대로). happy-path(establish 2xx)는 byte-동일 — `res.ok` 검사 추가 + 실패 시 티켓 보존 + 렌더 후 non-blocking 재시도 1회 → 성공하면 **ticket-scoped 가드(prefix 16자)** 로 같은 티켓당 최대 1회만 `window.location.reload()` 해 늦게 도착한 `ur_session` 쿠키 픽업. **최악(재시도도 실패)=기존과 동일(재로그인), reload 루프 구조적 불가**(가드), 새 로그인은 새 티켓이라 재시도 허용. 검증: tsc 0·단위 2327·build 0·auth-cookie-pattern 0. **롤백**: 그 분기 1블록 제거(else→`delete ticket` 환원). ⚠️ **staging 스모크 1회 권장**(사파리에서 ⓐ 재시도 응답 쿠키 영속 ⓑ reload 후 로그인 복귀 ⓒ 루프 없음 — `/api/_internal/kakao-login-diag` 로 확인).
+
+---
+### (참고) 원래 버그 분석 — staging 검증 항목
 
 **증상**: iOS 사파리/카톡 신규 로그인이 일시 실패 시 **재로그인밖에 답 없음**.
 
