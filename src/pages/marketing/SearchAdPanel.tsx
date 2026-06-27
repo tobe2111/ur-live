@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 /**
  * 🆕 2026-06-27 유어애즈 — 네이버 검색광고 계정 연동 + 내 광고 구조 조회.
@@ -38,6 +39,9 @@ export default function SearchAdPanel() {
   const [estBusy, setEstBusy] = useState(false)
   const [estimates, setEstimates] = useState<BidEstimate[] | null>(null)
   const [estOff, setEstOff] = useState(false)
+  // 키워드 입찰가 수동 변경(write)
+  const [bidEdit, setBidEdit] = useState<Record<string, string>>({})
+  const [bidBusy, setBidBusy] = useState<string | null>(null)
 
   const loadStatus = useCallback(async () => {
     try {
@@ -99,6 +103,24 @@ export default function SearchAdPanel() {
       if (ax.response?.status === 503) setEstOff(true)
       else toast.error(ax.response?.data?.error || '추정 실패')
     } finally { setEstBusy(false) }
+  }
+
+  async function applyBid(groupId: string, kw: AdKeyword) {
+    const raw = bidEdit[kw.id]
+    const bid = Math.round(Number(raw))
+    if (!Number.isFinite(bid) || bid < 70 || bid > 100000) { toast.error('입찰가는 70~100,000원 범위로 입력해주세요'); return }
+    if (!(await confirmDialog(`"${kw.keyword}" 입찰가를 ₩${formatNumber(bid)} 로 변경할까요? (실제 광고비에 영향)`))) return
+    setBidBusy(kw.id)
+    try {
+      const r = await api.patch('/api/ads/searchad/keywords/bid', { keyword_id: kw.id, bid_amt: bid }, { headers: authHeader() })
+      if (r.data?.success) {
+        toast.success(`입찰가 ₩${formatNumber(bid)} 적용`)
+        setKeywords(prev => ({ ...prev, [groupId]: (prev[groupId] || []).map(x => x.id === kw.id ? { ...x, bidAmt: bid, useGroupBid: false } : x) }))
+        setBidEdit(prev => { const n = { ...prev }; delete n[kw.id]; return n })
+      } else toast.error(r.data?.error || '입찰가 변경 실패')
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '입찰가 변경 실패')
+    } finally { setBidBusy(null) }
   }
 
   async function toggleGroup(id: string) {
@@ -189,12 +211,21 @@ export default function SearchAdPanel() {
                                 <p className="text-[11px] text-gray-400 dark:text-gray-500 py-1">키워드 없음</p>
                               ) : (
                                 <table className="w-full text-[11.5px]">
-                                  <thead><tr className="text-gray-400 dark:text-gray-500 text-left"><th className="py-1">키워드</th><th className="py-1 text-right">현재 입찰가</th></tr></thead>
+                                  <thead><tr className="text-gray-400 dark:text-gray-500 text-left"><th className="py-1">키워드</th><th className="py-1 text-right">현재 입찰가</th><th className="py-1 text-right">입찰가 변경</th></tr></thead>
                                   <tbody>
                                     {(keywords[g.id] || []).map(k => (
                                       <tr key={k.id} className="border-t border-gray-100 dark:border-[#1A1A1A] text-gray-700 dark:text-gray-300">
                                         <td className="py-1 pr-2 truncate">{k.keyword}</td>
                                         <td className="py-1 text-right tabular-nums">{k.useGroupBid ? <span className="text-gray-400 dark:text-gray-500">그룹입찰</span> : `₩${formatNumber(k.bidAmt)}`}</td>
+                                        <td className="py-1">
+                                          <div className="flex items-center justify-end gap-1">
+                                            <input type="number" min={70} max={100000} placeholder="70~"
+                                              value={bidEdit[k.id] ?? ''} onChange={e => setBidEdit(prev => ({ ...prev, [k.id]: e.target.value }))}
+                                              className="w-20 h-7 rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-1.5 text-[11px] text-right text-gray-900 dark:text-white" />
+                                            <button onClick={() => applyBid(g.id, k)} disabled={bidBusy === k.id || !bidEdit[k.id]}
+                                              className="shrink-0 rounded bg-gray-900 dark:bg-white px-2 h-7 text-[10.5px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-40">{bidBusy === k.id ? '…' : '적용'}</button>
+                                          </div>
+                                        </td>
                                       </tr>
                                     ))}
                                   </tbody>

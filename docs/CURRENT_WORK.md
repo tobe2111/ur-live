@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## 🚧 2026-06-27 — 유어애즈 키워드 입찰가 수동 변경(WRITE, 안전레일) — 자동입찰 write 첫발 (대표 "남은거 계속 해줘")
+**배경**: 자동입찰의 write(돈 영향). **자율 cron 루프는 보류**(실 계정 1회 검증 전) — 대신 **사용자 명시 액션 기반 단건 변경**부터(blast radius=클릭당 1키워드, confirm + 서버 범위검증).
+- **클라이언트**: `updateKeywordBid(creds, keywordId, bidAmt)` — PUT `/ncc/keywords/{id}?fields=bidAmt`(useGroupBidAmt=false). 상수 `BID_MIN=70`/`BID_MAX=100,000`(오타·폭주 하드캡).
+- **라우트** PATCH `/api/ads/searchad/keywords/bid` (rateLimit 60/min) — 연결 필수 + 서버 `Number.isFinite`+범위검증(클라값 불신). 자동 아님.
+- **UI**(`SearchAdPanel`): 키워드 드릴다운 행에 입찰가 input + '적용'(confirmDialog "실제 광고비 영향" → 성공 시 행 즉시 갱신).
+- 검증: tsc 0 · build 0 · 단위 2334 pass · theme/money-patterns/mobile 0. ⚠️ **실제 입찰가 변경 → 배포 후 staging 실 계정 1회 검증 필수**(estimate 응답·bid PUT 동작 확인) 후에야 자율 cron 엔진 착수.
+
 ## 🚧 2026-06-27 — 유어애즈 목표순위 예상 입찰가(Estimate, 읽기) — 자동입찰 핵심 (대표 "남은거 계속 해줘")
 **배경**: 자동입찰의 핵심 = "원하는 순위로 노출하려면 입찰가 얼마?". **읽기(돈 변경 0)**부터 — 실제 입찰가 PUT(write)은 안전레일(max_bid 하드캡·규칙별 enable·변경로그·staging 검증) 갖춰 다음 단계.
 - **클라이언트**: `searchAdGet` → 범용 `searchAdRequest(method, path, query, body)` 로 리팩터(GET/POST/PUT 지원, GET은 단축 래퍼 — 기존 호출부 무변경). `estimateBidForPositions(creds, keyword, [1..5], device)` — POST `/estimate/average-position-bid/keyword`, 응답 방어적 파싱({estimate:[]} 또는 배열).
