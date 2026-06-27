@@ -228,6 +228,25 @@ export async function updateKeywordBid(creds: SearchAdCreds, keywordId: string, 
   return { ok: true }
 }
 
+// ── 키워드 자동등록 (키워드확장 write — 광고그룹에 키워드 추가) ──────────────
+//   ⚠️ write. 그룹입찰 상속(useGroupBidAmt=true)이라 키워드별 별도 입찰 surprise 없음(안전).
+export const KW_ADD_MAX = 20 // 1회 등록 상한(폭주 방지)
+
+/** 광고그룹에 키워드 추가 — POST /ncc/keywords?nccAdgroupId=. 그룹입찰 사용. */
+export async function addKeywordsToAdgroup(creds: SearchAdCreds, adgroupId: string, keywords: string[]): Promise<{ ok: boolean; added?: number; error?: string }> {
+  const gid = String(adgroupId || '').trim()
+  if (!gid) return { ok: false, error: '광고그룹 ID 가 없습니다' }
+  const clean = Array.from(new Set(
+    keywords.map(k => k.trim().replace(/\s+/g, '')).filter(k => k.length >= 1 && k.length <= 25)
+  )).slice(0, KW_ADD_MAX)
+  if (!clean.length) return { ok: false, error: '추가할 키워드가 없습니다' }
+  const body = clean.map(keyword => ({ keyword, useGroupBidAmt: true }))
+  const r = await searchAdRequest(creds, 'POST', '/ncc/keywords', { nccAdgroupId: gid }, body)
+  if (!r.ok) return { ok: false, error: r.error }
+  const arr = Array.isArray(r.data) ? r.data : []
+  return { ok: true, added: arr.length || clean.length }
+}
+
 // ── 통합실적 (StatService /stats — 읽기) ─────────────────────────────────────
 //   캠페인별 노출/클릭/비용/전환 + 계정 합계. 평균노출순위까지 공식 지표(스크래핑 아님).
 export interface CampaignStat { id: string; name: string; impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; ctr: number; cpc: number }
