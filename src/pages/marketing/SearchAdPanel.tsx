@@ -19,6 +19,9 @@ interface Campaign { id: string; name: string; type: string; status: string; dai
 interface AdGroup { id: string; name: string; status: string; bidAmt: number; campaignId: string }
 interface AdKeyword { id: string; keyword: string; bidAmt: number; useGroupBid: boolean; status: string }
 interface BidEstimate { position: number; bid: number }
+interface CampaignStat { id: string; name: string; impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; ctr: number; cpc: number }
+interface AccountStats { days: number; totals: { impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; ctr: number; cpc: number }; campaigns: CampaignStat[] }
+const pct = (n: number) => `${(n * 100).toFixed(1)}%`
 
 const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
 const input = 'w-full h-10 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
@@ -42,6 +45,10 @@ export default function SearchAdPanel() {
   // 키워드 입찰가 수동 변경(write)
   const [bidEdit, setBidEdit] = useState<Record<string, string>>({})
   const [bidBusy, setBidBusy] = useState<string | null>(null)
+  // 통합실적
+  const [stats, setStats] = useState<AccountStats | null>(null)
+  const [statsDays, setStatsDays] = useState<7 | 30>(7)
+  const [statsBusy, setStatsBusy] = useState(false)
 
   const loadStatus = useCallback(async () => {
     try {
@@ -58,8 +65,16 @@ export default function SearchAdPanel() {
     } catch { /* graceful */ }
   }, [])
 
+  const loadStats = useCallback(async (days: 7 | 30) => {
+    setStatsBusy(true)
+    try {
+      const r = await api.get(`/api/ads/searchad/stats?days=${days}`, { headers: authHeader() })
+      if (r.data?.success) setStats(r.data.data || null)
+    } catch { /* graceful */ } finally { setStatsBusy(false) }
+  }, [])
+
   useEffect(() => { loadStatus() }, [loadStatus])
-  useEffect(() => { if (connected) loadCampaigns() }, [connected, loadCampaigns])
+  useEffect(() => { if (connected) { loadCampaigns(); loadStats(statsDays) } }, [connected, loadCampaigns, loadStats, statsDays])
 
   async function connect() {
     if (!form.customer_id.trim() || !form.access_license.trim() || !form.secret_key.trim()) { toast.error('세 값을 모두 입력해주세요'); return }
@@ -185,6 +200,62 @@ export default function SearchAdPanel() {
       {connected && (
         <div className="mt-2">
           <p className="text-[12px] text-gray-600 dark:text-gray-300">연결됨 <span className="text-gray-400 dark:text-gray-500">(고객 ID {customerId})</span></p>
+
+          {/* 통합실적 */}
+          <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">📊 통합실적</span>
+              <div className="flex rounded-lg border border-gray-200 dark:border-[#2A2A2A] overflow-hidden">
+                {([7, 30] as const).map(d => (
+                  <button key={d} onClick={() => setStatsDays(d)} className={`px-2.5 py-0.5 text-[11px] font-semibold ${statsDays === d ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0A0A0A]' : 'text-gray-500 dark:text-gray-400'}`}>{d}일</button>
+                ))}
+              </div>
+            </div>
+            {statsBusy && !stats ? (
+              <p className="mt-2 text-[11px] text-gray-400 dark:text-gray-500">불러오는 중…</p>
+            ) : stats ? (
+              <>
+                <div className="mt-2 grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {[
+                    { l: '노출', v: formatNumber(stats.totals.impCnt) },
+                    { l: '클릭', v: formatNumber(stats.totals.clkCnt) },
+                    { l: '광고비', v: `₩${formatNumber(stats.totals.salesAmt)}` },
+                    { l: '전환', v: formatNumber(stats.totals.ccnt) },
+                    { l: 'CTR', v: pct(stats.totals.ctr) },
+                    { l: 'CPC', v: `₩${formatNumber(stats.totals.cpc)}` },
+                  ].map(m => (
+                    <div key={m.l} className="rounded-lg bg-gray-50 dark:bg-[#0A0A0A] p-2 text-center">
+                      <div className="text-[10px] text-gray-400 dark:text-gray-500">{m.l}</div>
+                      <div className="text-[12.5px] font-bold text-gray-900 dark:text-white tabular-nums">{m.v}</div>
+                    </div>
+                  ))}
+                </div>
+                {stats.campaigns.length > 0 && (
+                  <div className="mt-2 overflow-x-auto">
+                    <table className="w-full text-[11.5px]">
+                      <thead><tr className="text-gray-400 dark:text-gray-500 text-left">
+                        <th className="py-1 pr-2">캠페인</th><th className="py-1 pr-2 text-right">노출</th><th className="py-1 pr-2 text-right">클릭</th><th className="py-1 pr-2 text-right">광고비</th><th className="py-1 text-right">전환</th>
+                      </tr></thead>
+                      <tbody>
+                        {stats.campaigns.slice(0, 10).map(cs => (
+                          <tr key={cs.id} className="border-t border-gray-100 dark:border-[#1A1A1A] text-gray-700 dark:text-gray-300">
+                            <td className="py-1 pr-2 truncate max-w-[140px]">{cs.name}</td>
+                            <td className="py-1 pr-2 text-right tabular-nums">{formatNumber(cs.impCnt)}</td>
+                            <td className="py-1 pr-2 text-right tabular-nums">{formatNumber(cs.clkCnt)}</td>
+                            <td className="py-1 pr-2 text-right tabular-nums">₩{formatNumber(cs.salesAmt)}</td>
+                            <td className="py-1 text-right tabular-nums">{formatNumber(cs.ccnt)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="mt-2 text-[11px] text-gray-400 dark:text-gray-500">실적 데이터가 없습니다.</p>
+            )}
+          </div>
+
           {campaigns.length === 0 ? (
             <p className="mt-3 text-[12px] text-gray-400 dark:text-gray-500">캠페인이 없습니다. 검색광고센터에서 캠페인을 만든 뒤 새로고침해주세요.</p>
           ) : (

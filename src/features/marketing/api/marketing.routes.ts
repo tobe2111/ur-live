@@ -12,7 +12,7 @@ import { sellerIdFrom } from '../../supply/api/wholesale-helpers'
 import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverConnectionSchema } from '../../supply/api/naver-commerce-core'
 import { collectAndStore, listCollectedOrders } from './order-collection'
 import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete } from './keyword-tools'
-import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, BID_MIN, BID_MAX, type SearchAdCreds } from './searchad-client'
+import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, accountStats, BID_MIN, BID_MAX, type SearchAdCreds } from './searchad-client'
 import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnection, searchAdConnStatus } from './searchad-connection'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
@@ -260,6 +260,18 @@ marketingRoutes.patch('/searchad/keywords/bid', rateLimit({ action: 'ads-sa-bid'
   const r = await updateKeywordBid(creds, keywordId, bidAmt)
   if (!r.ok) return c.json({ success: false, error: r.error }, 502)
   return c.json({ success: true, bid_amt: Math.round(bidAmt) })
+})
+
+// GET /api/ads/searchad/stats?days=7 — 통합실적(캠페인별 노출/클릭/비용/전환 + 합계, 읽기)
+marketingRoutes.get('/searchad/stats', rateLimit({ action: 'ads-sa-stats', max: 30, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
+  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  const days = Number(c.req.query('days')) === 30 ? 30 : 7
+  const r = await accountStats(creds, days)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 502)
+  return c.json({ success: true, data: r.data })
 })
 
 // TODO(자동입찰 autonomous — staging 라이브검증 후): 규칙저장(목표순위·max_bid) + cron 엔진(Estimate→clamp→bid PUT)

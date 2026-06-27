@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## 🚧 2026-06-27 — 유어애즈 통합실적(StatService /stats, 읽기) — 보라웨어 통합실적 (대표 "남은거 계속 해줘")
+**배경**: 통합실적 = 캠페인별 노출/클릭/광고비/전환 + 합계. 읽기(돈 변경 0). StatReport(비동기 bulk CSV) 대신 **실시간 `/stats`** 사용(가벼움).
+- **클라이언트**: `accountStats(creds, days)` — listCampaigns→캠페인 id(최대 30)→GET `/stats`(ids/fields/timeRange JSON 인코딩, fields=impCnt/clkCnt/salesAmt/ccnt) → 캠페인별 + 합계(CTR=clk/imp, CPC=cost/clk, 0가드). 응답 방어적 파싱({data:[]} 또는 배열).
+- **라우트** GET `/api/ads/searchad/stats?days=7|30` (연결 필수, rateLimit 30/min).
+- **UI**(`SearchAdPanel`): 연결 시 "📊 통합실적" — 7/30일 토글 + 6지표 카드(노출/클릭/광고비/전환/CTR/CPC) + 캠페인별 표(top10).
+- 검증: tsc 0 · build 0 · 단위 2334 pass · theme/mobile/nan 0(formatNumber 일관). ⚠️ 라이브(/stats 응답 스키마)는 배포 후 실 계정 검증.
+
 ## 🚧 2026-06-27 — 유어애즈 키워드 입찰가 수동 변경(WRITE, 안전레일) — 자동입찰 write 첫발 (대표 "남은거 계속 해줘")
 **배경**: 자동입찰의 write(돈 영향). **자율 cron 루프는 보류**(실 계정 1회 검증 전) — 대신 **사용자 명시 액션 기반 단건 변경**부터(blast radius=클릭당 1키워드, confirm + 서버 범위검증).
 - **클라이언트**: `updateKeywordBid(creds, keywordId, bidAmt)` — PUT `/ncc/keywords/{id}?fields=bidAmt`(useGroupBidAmt=false). 상수 `BID_MIN=70`/`BID_MAX=100,000`(오타·폭주 하드캡).
