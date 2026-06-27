@@ -122,8 +122,9 @@ export async function issueNaverToken(clientId: string, clientSecret: string): P
 
 // ── 연결 CRUD ────────────────────────────────────────────────────────────
 export interface NaverConnection { client_id: string; client_secret: string; store_name: string | null }
-/** 연결 소유자 — distributor(판매사, 내보내기) / supplier(제조사, 내 상품 가져오기). */
-export type ChannelOwner = 'distributor' | 'supplier'
+/** 연결 소유자 — distributor(판매사, 내보내기) / supplier(제조사, 가져오기) / marketing(마케팅 서비스 고객사 입점, 발주수집).
+ *  UNIQUE(owner_type, seller_id) 로 서비스 간 연결 데이터 격리(CLAUDE.md 공유테이블 구분플래그 패턴). */
+export type ChannelOwner = 'distributor' | 'supplier' | 'marketing'
 
 export async function loadNaverConnection(DB: D1Database, ownerId: number, kek: string | undefined, ownerType: ChannelOwner = 'distributor'): Promise<NaverConnection | null> {
   await ensureNaverConnectionSchema(DB)

@@ -8,7 +8,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { sellerIdFrom } from '../../supply/api/wholesale-helpers'
-import { loadNaverConnection } from '../../supply/api/naver-commerce-core'
+import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverConnectionSchema } from '../../supply/api/naver-commerce-core'
 import { collectAndStore, listCollectedOrders } from './order-collection'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
@@ -18,6 +18,46 @@ marketingRoutes.get('/ping', (c) =>
   c.json({ success: true, service: 'marketing', status: 'scaffold' }),
 )
 
+// ── 멀티테넌트 입점: 고객사별 스마트스토어 연동 (SELF 방식) ──────────────────
+//   tenant = 인증된 계정(seller_id). owner_type='marketing' 으로 도매(supplier/distributor)와 데이터 격리.
+//   각 고객사가 커머스 API센터에서 자기 앱(상품주문/배송 권한 포함) 발급 → client_id/secret 입력.
+//   ⚠️ 라이브: 주문권한 스코프 + 엔드포인트 현행문서 검증 후(이 환경 egress 차단 미검증).
+
+// POST /api/ads/naver/connect — 고객사 스토어 연결(토큰 발급으로 즉시 검증 후 암호화 저장)
+marketingRoutes.post('/naver/connect', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const clientId = String(body.client_id || '').trim()
+  const clientSecret = String(body.client_secret || '').trim()
+  if (!/^[A-Za-z0-9]{10,64}$/.test(clientId)) return c.json({ success: false, error: '애플리케이션 ID 형식을 확인해주세요' }, 400)
+  if (clientSecret.length < 20 || clientSecret.length > 128) return c.json({ success: false, error: '애플리케이션 시크릿을 확인해주세요' }, 400)
+  const tok = await issueNaverToken(clientId, clientSecret)  // 실제 발급으로 검증 — 잘못된 키 저장 방지
+  if (!tok.ok) return c.json({ success: false, error: tok.error }, 400)
+  await saveNaverConnection(c.env.DB, sellerId, clientId, clientSecret, c.env.DATA_ENCRYPTION_KEY, 'marketing')
+  return c.json({ success: true, message: '스마트스토어가 연결되었습니다' })
+})
+
+// GET /api/ads/naver/status — 이 고객사 연결 상태
+marketingRoutes.get('/naver/status', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  await ensureNaverConnectionSchema(c.env.DB)
+  const row = await c.env.DB.prepare(
+    'SELECT client_id, connected_at FROM naver_commerce_connections WHERE owner_type = ? AND seller_id = ?'
+  ).bind('marketing', sellerId).first<{ client_id: string; connected_at: string }>().catch(() => null)
+  return c.json({ success: true, connected: !!row, client_id_masked: row ? `****${row.client_id.slice(-4)}` : null, connected_at: row?.connected_at || null })
+})
+
+// DELETE /api/ads/naver/connect — 연결 해제(marketing 스코프만)
+marketingRoutes.delete('/naver/connect', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  await ensureNaverConnectionSchema(c.env.DB)
+  await c.env.DB.prepare("DELETE FROM naver_commerce_connections WHERE owner_type = 'marketing' AND seller_id = ?").bind(sellerId).run()
+  return c.json({ success: true })
+})
+
 // ── 발주수집 (네이버 커머스 API 재사용) ─────────────────────────────────────
 //   기존 스마트스토어 연동(naver_commerce_connections, supplier/distributor)을 그대로 재사용.
 //   ⚠️ 라이브 동작은 ① 커머스 앱에 '상품주문/배송' 권한 ② 엔드포인트 현행 문서 검증 후(egress 차단 환경 미검증).
@@ -26,10 +66,8 @@ marketingRoutes.get('/ping', (c) =>
 marketingRoutes.post('/orders/sync', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  const kek = c.env.DATA_ENCRYPTION_KEY
-  // 기존 커머스 연결 재사용(supplier 우선 → distributor).
-  let conn = await loadNaverConnection(c.env.DB, sellerId, kek, 'supplier')
-  if (!conn) conn = await loadNaverConnection(c.env.DB, sellerId, kek, 'distributor')
+  // 마케팅 입점 연결(owner_type='marketing')만 사용 — 도매(supplier/distributor) 연결과 격리.
+  const conn = await loadNaverConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY, 'marketing')
   if (!conn) return c.json({ success: false, error: '스마트스토어가 연결되어 있지 않습니다. 먼저 연동해주세요.', code: 'NOT_CONNECTED' }, 400)
   const sinceISO = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() // 최근 24h(향후 param 화)
   const r = await collectAndStore(c.env.DB, sellerId, conn, sinceISO)
