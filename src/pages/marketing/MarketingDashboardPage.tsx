@@ -24,6 +24,7 @@ interface CollectedOrder {
 
 interface TrendResult { keyword: string; latest: number; changePct: number }
 interface ShoppingResult { total: number; items: Array<{ title: string; lprice: number; mallName: string }> }
+interface RelatedKeyword { keyword: string; monthlyPc: number; monthlyMobile: number; monthlyTotal: number; compIdx: string; monthlyAvgClick: number }
 
 const authHeader = () => {
   const t = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
@@ -42,6 +43,8 @@ export default function MarketingDashboardPage() {
   const [kwBusy, setKwBusy] = useState(false)
   const [kwTrend, setKwTrend] = useState<TrendResult[] | null>(null)
   const [kwShop, setKwShop] = useState<ShoppingResult | null>(null)
+  const [kwRelated, setKwRelated] = useState<RelatedKeyword[] | null>(null)
+  const [relatedOff, setRelatedOff] = useState(false) // 검색광고 키 미설정(503) — 섹션 자동 숨김
 
   const loadStatus = useCallback(async () => {
     if (!hasToken) { setConnected(false); return }
@@ -88,14 +91,18 @@ export default function MarketingDashboardPage() {
   async function analyzeKeyword() {
     const q = kw.trim()
     if (q.length < 2) { toast.error('키워드를 2자 이상 입력해주세요'); return }
-    setKwBusy(true); setKwTrend(null); setKwShop(null)
+    setKwBusy(true); setKwTrend(null); setKwShop(null); setKwRelated(null)
     try {
-      const [t, s] = await Promise.allSettled([
+      const [t, s, rel] = await Promise.allSettled([
         api.get(`/api/ads/keywords/trend?keywords=${encodeURIComponent(q)}`, { headers: authHeader() }),
         api.get(`/api/ads/keywords/shopping?q=${encodeURIComponent(q)}`, { headers: authHeader() }),
+        api.get(`/api/ads/keywords/related?seed=${encodeURIComponent(q)}`, { headers: authHeader() }),
       ])
       if (t.status === 'fulfilled' && t.value.data?.success) setKwTrend(t.value.data.results || [])
       if (s.status === 'fulfilled' && s.value.data?.success) setKwShop(s.value.data.data || null)
+      // 연관키워드: 검색광고 키 설정 시만(503 이면 섹션 숨김).
+      if (rel.status === 'fulfilled' && rel.value.data?.success) { setKwRelated(rel.value.data.results || []); setRelatedOff(false) }
+      else if (rel.status === 'rejected' && (rel.reason as { response?: { status?: number } })?.response?.status === 503) setRelatedOff(true)
       if (t.status === 'rejected' && s.status === 'rejected') toast.error('키워드 분석 실패 (잠시 후 다시)')
     } finally { setKwBusy(false) }
   }
@@ -139,13 +146,13 @@ export default function MarketingDashboardPage() {
             )}
           </div>
 
-          {/* 2) 키워드 도구 (오픈API — 즉시 사용) */}
+          {/* 2) 키워드 도구 (오픈API + 검색광고 API) */}
           <div className={card}>
             <div className="text-[14px] font-bold text-gray-900 dark:text-white">🔑 키워드 도구</div>
-            <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">검색어 트렌드 + 쇼핑 경쟁(상품수·가격대). 연관키워드 추천·자동입찰은 검색광고 키 발급 후.</p>
+            <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">연관키워드 + 월 검색량 · 검색어 트렌드 · 쇼핑 경쟁(상품수·가격대)</p>
             <div className="mt-2 flex gap-2">
               <input className={input} placeholder="키워드 (예: 무선이어폰)" value={kw} onChange={(e) => setKw(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') analyzeKeyword() }} />
-              <button onClick={analyzeKeyword} disabled={kwBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">분석</button>
+              <button onClick={analyzeKeyword} disabled={kwBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{kwBusy ? '분석 중…' : '분석'}</button>
             </div>
             {kwShop && (
               <div className="mt-3 text-[12px]">
@@ -162,6 +169,47 @@ export default function MarketingDashboardPage() {
                 </div>
               </div>
             )}
+            {relatedOff && (
+              <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-500">연관키워드(검색량)는 네이버 검색광고 키 설정 후 표시됩니다.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 연관키워드 추천 (검색광고 API — RelKwdStat) */}
+      {hasToken && kwRelated && kwRelated.length > 0 && (
+        <div className={`mt-3 ${card}`}>
+          <div className="text-[14px] font-bold text-gray-900 dark:text-white">🔎 연관키워드 추천 <span className="text-gray-400 dark:text-gray-500 font-medium">({kwRelated.length})</span></div>
+          <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">네이버 검색광고 기준 월 검색량 · 경쟁정도 — 총 검색량 순. 광고 타겟 키워드 발굴에 활용하세요.</p>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-[12px]">
+              <thead><tr className="text-gray-400 dark:text-gray-500 text-left">
+                <th className="py-1 pr-3">키워드</th>
+                <th className="py-1 pr-3 text-right">월 검색량</th>
+                <th className="py-1 pr-3 text-right">PC</th>
+                <th className="py-1 pr-3 text-right">모바일</th>
+                <th className="py-1 pr-3 text-right">월 클릭</th>
+                <th className="py-1">경쟁</th>
+              </tr></thead>
+              <tbody>
+                {kwRelated.slice(0, 30).map((r) => (
+                  <tr key={r.keyword} className="border-t border-gray-100 dark:border-[#1A1A1A] text-gray-700 dark:text-gray-300">
+                    <td className="py-1.5 pr-3 font-medium text-gray-900 dark:text-white">{r.keyword}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums font-bold">{formatNumber(r.monthlyTotal)}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums text-gray-500 dark:text-gray-400">{formatNumber(r.monthlyPc)}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums text-gray-500 dark:text-gray-400">{formatNumber(r.monthlyMobile)}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums text-gray-500 dark:text-gray-400">{formatNumber(r.monthlyAvgClick)}</td>
+                    <td className="py-1.5">
+                      <span className={`px-1.5 py-0.5 rounded text-[11px] ${
+                        r.compIdx === '높음' ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400'
+                        : r.compIdx === '중간' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                        : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                      }`}>{r.compIdx || '-'}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

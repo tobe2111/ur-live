@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## 🚧 2026-06-27 — 유어애즈(UR Ads) 3번째 서비스: 네이버 검색광고 API 연관키워드 추천 (대표 "모두 다 했어" — 키 설정 완료)
+**배경**: 도매몰·유어딜에 이은 **3번째 분리 서비스** 유어애즈(`/ads` · `/api/ads` · MarketingLayout · 전체 PC폭). 보라웨어식 종합 마케팅 툴(자동입찰/부정클릭/키워드확장/통합실적/AI마케터) 목표. 네이버 = **3개 별개 플랫폼**(오픈API·커머스API·검색광고API). 발주수집(커머스API)은 고정IP 필요 → 보류. 검색광고/오픈API는 고정IP 불필요 → 먼저 구현.
+- **검색광고 API 클라이언트 신설**(`searchad-client.ts`): HMAC-SHA256 서명 인증(`sign=base64(HMAC(secretKey, ts.METHOD.path))`, X-Timestamp/X-API-KEY/X-Customer/X-Signature). `searchAdCredsFrom(env)`=셋 다 있어야 활성(부분키 호출 방지, fail-soft). **RelKwdStat(연관키워드+월검색량)** — 관리계정(47982) customer-level 로 광고계정 0개여도 동작.
+- **라우트** `GET /api/ads/keywords/related?seed=` (rateLimit 30/min, 미설정 시 503 → 프런트 자동숨김). **대시보드** 키워드 도구에 연관키워드 테이블(키워드/월검색량/PC/모바일/클릭/경쟁) + 검색추세/쇼핑경쟁 동시 표시.
+- **env** `NAVER_SEARCHAD_CUSTOMER_ID`/`_ACCESS_LICENSE`/`_SECRET_KEY` 추가(Cloudflare Secrets 만 — 코드/채팅 노출 금지). ⚠️ **대표 안내**: 채팅에 붙였던 비밀키는 노출됐으므로 검색광고센터에서 **재발급(회전) 권장**.
+- 다음: 고객사 광고계정 연동 후 Estimate(목표순위 입찰추정)·StatReport(실적). 순위측정은 공식 API only(SERP 스크래핑 금지 — 2026-04-22 제거 이력, PIPA).
+- 검증: tsc 0 · build(worker+client) 0 · 전체 단위 2327+7 pass · 신규 `searchad-client.test.ts` 7건(creds fail-soft·`< 10` 파싱·정렬·100 cap). ⚠️ 라이브 호출은 이 환경 egress 차단 → 배포 후 실 키로 1회 검증 필요.
+
 ## ✅ 2026-06-26 — 결제 셀프취소 머니버그 3종 fix (대표 "지금 진행")
 감사에서 나온 latent 3건을 `refundOrderFully` SSOT 라우팅으로 근본수정 (`src/worker/routes/order.routes.ts` PAID/DONE 전액취소).
 - **B(HIGH)**: 딜 전액결제(toss_key 없음) 셀프취소 422 차단 → refundOrderFully isDeal skip + 딜 환급 → 취소 가능. **C(HIGH)**: 혼합결제 deal_used 미복원 → step 3b 복원. **D(MED)**: 쿠폰/referral_bonus/affiliate/공급/에이전시/영입자 미역전 → 전부 대칭 역전. + CAS 멱등(동시 이중취소 1회만).
