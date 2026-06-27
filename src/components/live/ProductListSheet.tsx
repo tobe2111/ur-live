@@ -30,7 +30,7 @@ export function ProductListSheet({
   return (
     <>
       <div
-        className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm animate-overlay-in"
+        className="fixed inset-0 z-[10500] bg-black/40 backdrop-blur-sm animate-overlay-in"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -40,7 +40,7 @@ export function ProductListSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby="product-list-sheet-title"
-        className="fixed inset-x-0 bottom-0 z-[70] max-h-[60dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 dark:border-[#2A2A2A] animate-sheet-up-bottom no-scrollbar shadow-2xl"
+        className="fixed inset-x-0 bottom-0 z-[10501] max-h-[60dvh] overflow-y-auto rounded-t-3xl bg-white backdrop-blur-xl border-t border-gray-200 dark:border-[#2A2A2A] animate-sheet-up-bottom no-scrollbar shadow-2xl"
       >
         <div className="sticky top-0 z-10 flex items-center justify-center py-3 bg-white/90 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A]">
           <div className="h-1 w-10 rounded-full bg-gray-300" aria-hidden="true" />

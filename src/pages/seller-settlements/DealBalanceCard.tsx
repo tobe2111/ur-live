@@ -157,7 +157,7 @@ export default function DealBalanceCard() {
 
       {/* 환급 모달 */}
       {withdrawOpen && (
-        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm p-4 flex items-center justify-center"
+        <div className="fixed inset-0 z-[10500] bg-black/50 backdrop-blur-sm p-4 flex items-center justify-center"
           onClick={() => !submitting && setWithdrawOpen(false)}>
           <div className="bg-white rounded-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-900 mb-1">딜 환급 신청</h3>

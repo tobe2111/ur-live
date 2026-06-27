@@ -294,7 +294,7 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-[2px]" onClick={onClose} role="presentation">
+    <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-[2px]" onClick={onClose} role="presentation">
       <div className="bg-white dark:bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl p-6 pt-3 sm:pt-6 w-full sm:max-w-xs sm:mx-4 relative animate-slideUp" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
         {/* 그래버 (모바일 바텀시트) */}
         <div className="sm:hidden mx-auto mb-4 h-1 w-9 rounded-full bg-gray-200 dark:bg-[#2A2A2A]" aria-hidden />
@@ -980,7 +980,7 @@ function PostJoinShareModal({ data, onClose }: { data: { product_id: number; nam
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 p-4" onClick={onClose} role="presentation">
+    <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60 p-4" onClick={onClose} role="presentation">
       <div className="bg-white dark:bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 animate-slideUp" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="text-center mb-4">
           <p className="text-3xl mb-2">🎉</p>

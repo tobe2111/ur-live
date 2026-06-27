@@ -40,9 +40,12 @@ interface SellerPublicPageProps {
    *  사업자 링크샵도 canonical CuratorHeader 를 렌더 → 헤더 컴포넌트 1개로 통일(ProfileHeader 폐기).
    *  배너/이름 등은 curator 우선·seller 폴백으로 병합(저장 위치 분산 흡수). 비-/u/ 진입은 undefined. */
   curator?: CuratorProfile | null
+  /** 🏁 2026-06-26 [UNLOCK_LOADING] (대표 — 로딩 워터폴 제거): CuratorPage 가 가진 linked_seller.id(숫자).
+   *  넘기면 셀러 /public 응답을 기다리지 않고 상품 fetch 를 병렬로 시작(RTT 1개 절감). */
+  sellerNumericId?: number
 }
 
-export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPublicPageProps = {}) {
+export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId }: SellerPublicPageProps = {}) {
   const { t } = useTranslation()
   const params = useParams<{ sellerId: string }>()
   const rawParam = sellerIdOverride ?? params.sellerId
@@ -252,15 +255,21 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
       return
     }
 
-    // SSR miss → 메인 fetch 후 sub-data
+    // 🏁 2026-06-26 [UNLOCK_LOADING] (대표 — 로딩 워터폴 제거): /u/ 사업자는 SSR 이 셀러를 주입 안 해
+    //   '셀러 /public → 상품' 2연속 대기였음. linked_seller.id(sellerNumericId)를 알면 상품 fetch 를
+    //   셀러 fetch 와 병렬로 시작 → 내 상품 그리드가 셀러 응답을 안 기다림(RTT 1개 절감).
+    let subFetched = false
+    if (sellerNumericId) { fetchSubData(sellerNumericId); subFetched = true }
+
+    // SSR miss → 메인 fetch (헤더/정보용). sub-data 는 병렬 시작 안 됐을 때만 여기서.
     api.get(`/api/sellers/${sellerId}/public`).then(sellerRes => {
       const sellerData = sellerRes.data.data
       if (!sellerData) { setSeller(null); setLoading(false); return }
       setSeller(sellerData)
       setLoading(false)
-      fetchSubData(sellerData.id)
+      if (!subFetched) fetchSubData(sellerData.id)
     }).catch(() => { setSeller(null); setLoading(false) })
-  }, [sellerId])
+  }, [sellerId, sellerNumericId])
 
   // 실시간 라이브 감지 — 공개 페이지 머물러 있을 때 셀러가 라이브 시작하면 즉시 반영
   // 30초마다 streams 만 재조회 (가벼운 쿼리)

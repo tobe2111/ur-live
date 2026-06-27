@@ -35,7 +35,7 @@ export default function ChatInputModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col justify-end" onClick={onClose} role="presentation">
+    <div className="fixed inset-0 z-[10500] flex flex-col justify-end" onClick={onClose} role="presentation">
       <div className="bg-black/40 absolute inset-0" aria-hidden="true" />
       <div
         role="dialog"

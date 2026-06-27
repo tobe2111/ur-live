@@ -289,7 +289,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[10600] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center" onClick={onClose}>
       <div
         className="bg-white dark:bg-[#0A0A0A] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-100 dark:border-[#1A1A1A] max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}

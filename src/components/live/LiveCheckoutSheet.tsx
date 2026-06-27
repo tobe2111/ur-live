@@ -195,7 +195,7 @@ export default function LiveCheckoutSheet({
   const fmt = (n: number) => `₩${n.toLocaleString('ko-KR')}`
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end" onClick={onClose}>
+    <div className="fixed inset-0 z-[10600] flex items-end" onClick={onClose}>
       {/* Backdrop — 영상이 살짝 보이도록 80% opacity */}
       <div className="absolute inset-0 bg-black/70" />
       {/* Sheet */}

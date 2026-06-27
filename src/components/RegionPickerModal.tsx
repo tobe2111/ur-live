@@ -35,7 +35,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-stretch sm:items-center justify-center bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-[10500] flex items-stretch sm:items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={onClose}
       role="presentation"
     >

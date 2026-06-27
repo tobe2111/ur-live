@@ -191,8 +191,9 @@ export default function CuratorPage() {
         </div>
       }>
         {/* 🏁 2026-06-25 (대표 "통일") — 사업자 링크샵도 canonical CuratorHeader 형태로. curator 객체 전달.
-            🏁 2026-06-26 (대표 "추천템 숨김") — 사업자 링크샵은 추천 핀 섹션을 안 그리므로 pins 미전달. */}
-        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} />
+            🏁 2026-06-26 (대표 "추천템 숨김") — 사업자 링크샵은 추천 핀 섹션을 안 그리므로 pins 미전달.
+            🏁 2026-06-26 [UNLOCK_LOADING] — linked_seller.id 전달 → 상품 fetch 를 셀러 fetch 와 병렬로(워터폴 제거). */}
+        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} sellerNumericId={linked_seller.id} />
       </Suspense>
     )
   }
