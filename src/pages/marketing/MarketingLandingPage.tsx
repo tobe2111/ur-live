@@ -168,10 +168,10 @@ export default function MarketingLandingPage() {
           <div>
             <div style={eyebrow}>POINT 01 — 자동입찰</div>
             <h3 style={h3}>목표순위·최대입찰가만,<br /><span className="grad">최저 CPC는 자동으로.</span></h3>
-            <p style={lead}>원하는 노출 순위와 상한가만 설정하면, 공식 추정 입찰가를 바탕으로 가장 낮은 비용에 그 자리를 지킵니다. 설정한 상한가를 절대 넘지 않는 안전장치와 함께.</p>
+            <p style={lead}>원하는 노출 순위와 상한가만 설정하면, 경쟁 상황을 읽어 가장 낮은 비용으로 그 자리를 지킵니다. 시간대·요일 전략과 CSV 대량 설정까지, 상한가를 절대 넘지 않는 안전장치와 함께.</p>
             <ul style={{ listStyle: 'none', padding: 0, margin: '22px 0 0', display: 'flex', flexDirection: 'column', gap: 11 }}>
-              <Bullet>목표 순위·예상 입찰가(공식 추정) 기반 자동 입찰</Bullet>
-              <Bullet>키워드 원클릭 자동 등록 (그룹 입찰 상속)</Bullet>
+              <Bullet>시간대·요일별 입찰 전략(피크·마감·주말·야간)</Bullet>
+              <Bullet>키워드 대량 CSV 일괄 등록</Bullet>
               <Bullet>상한가 초과 없이 예산 안전장치 작동</Bullet>
             </ul>
           </div>
