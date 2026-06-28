@@ -33,7 +33,7 @@ export default function SourcingPanel() {
   return (
     <div className={`mt-3 ${card}`}>
       <div className="flex items-center justify-between">
-        <div className="text-[14px] font-bold text-gray-900 dark:text-white">📈 소싱 리포트 <span className="text-gray-400 dark:text-gray-500 text-[11px] font-medium">쇼핑 분야 트렌드</span></div>
+        <div className="text-[14px] font-bold text-gray-900 dark:text-white">소싱 리포트 <span className="text-gray-400 dark:text-gray-500 text-[11px] font-medium">쇼핑 분야 트렌드</span></div>
         <button onClick={run} disabled={busy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-3 py-1.5 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{busy ? '분석 중…' : '트렌드 분석'}</button>
       </div>
       <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">최근 1년 분야별 쇼핑 검색 증감 — 뜨는 카테고리를 찾아 소싱(도매)·광고 우선순위에 활용하세요.</p>

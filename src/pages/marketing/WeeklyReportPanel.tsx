@@ -43,7 +43,7 @@ export default function WeeklyReportPanel() {
   return (
     <div className={`mt-3 ${card}`}>
       <div className="flex items-center justify-between">
-        <div className="text-[14px] font-bold text-gray-900 dark:text-white">📈 AI 주간 리포트 <span className="text-gray-400 dark:text-gray-500 font-medium">({reports.length})</span></div>
+        <div className="text-[14px] font-bold text-gray-900 dark:text-white">AI 주간 리포트 <span className="text-gray-400 dark:text-gray-500 font-medium">({reports.length})</span></div>
         <button onClick={generate} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11.5px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-40">{busy ? '생성 중…' : '이번 주 리포트 생성'}</button>
       </div>
       <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">매주 월요일 자동 생성 · 최근 7일 실적 기반 AI 진단(읽기 전용).</p>
