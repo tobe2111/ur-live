@@ -11,7 +11,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
     <div className="min-h-[100dvh] bg-gray-50 dark:bg-[#0A0A0A]">
       <header className="sticky top-0 z-30 bg-white dark:bg-[#121212] border-b border-gray-200 dark:border-[#2A2A2A]">
         <div className="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
-          <Link to="/ads" className="text-[15px] font-extrabold text-gray-900 dark:text-white">
+          <Link to="/ads/dashboard" className="text-[15px] font-extrabold text-gray-900 dark:text-white">
             유어애즈 <span className="text-gray-400 dark:text-gray-500 font-medium text-[12px]">UR Ads</span>
           </Link>
           <span className="text-[11px] text-gray-400 dark:text-gray-500">유어팀 종합 마케팅</span>

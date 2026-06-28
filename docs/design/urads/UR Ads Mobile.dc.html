@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+  body{font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums}
+  .grad{background:linear-gradient(96deg,#3B6EF5,#8B5CF6,#EC4899);-webkit-background-clip:text;background-clip:text;color:transparent}
+</style>
+</helmet>
+
+<div style="position:absolute;left:80px;top:36px;width:900px">
+  <div style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:#0B0E14">모바일 반응형 — 랜딩 &amp; 대시보드</div>
+  <div style="font-size:13px;color:#565E6C;margin-top:3px">유어팀 코스믹 네이비 톤(딥네이비 + 블루→퍼플 그라데이션) 적용. 대시보드는 카드 리스트 + 하단 탭바.</div>
+</div>
+
+<!-- ===== LANDING MOBILE ===== -->
+<div data-drags-parent="1" style="position:absolute;left:80px;top:104px;font:700 12px/1 'Pretendard Variable',sans-serif;letter-spacing:.14em;color:#8A93A3">LANDING · MOBILE</div>
+
+<!-- Phone 1: Hero -->
+<div style="position:absolute;left:80px;top:138px;width:320px">
+  <div data-drags-parent="1" style="position:absolute;top:-22px;font:500 11px 'Pretendard Variable',sans-serif;color:rgba(60,50,40,.65)">히어로</div>
+  <div style="width:320px;height:660px;background:#05070D;border-radius:40px;padding:9px;box-shadow:0 20px 50px -20px rgba(11,14,30,.5)">
+    <div style="width:100%;height:100%;background:radial-gradient(120% 70% at 80% 0%,#16225A,#0A1030 40%,#06080F 75%);border-radius:32px;overflow:hidden;position:relative">
+      <div style="position:absolute;inset:0;background-image:radial-gradient(1px 1px at 25% 20%,#fff,transparent),radial-gradient(1px 1px at 60% 12%,#cdd6ff,transparent),radial-gradient(1px 1px at 80% 30%,#fff,transparent),radial-gradient(1px 1px at 40% 40%,#fff,transparent);opacity:.5"></div>
+      <div style="position:absolute;top:0;left:0;right:0;height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;z-index:5"><span class="num" style="font-size:12px;font-weight:600;color:#fff">9:41</span><div style="display:flex;gap:5px;align-items:center"><svg width="16" height="11" viewBox="0 0 16 11" fill="#fff"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4" y="5" width="3" height="6" rx="1"/><rect x="8" y="2.5" width="3" height="8.5" rx="1"/><rect x="12" y="0" width="3" height="11" rx="1"/></svg><svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="1" y="1" width="17" height="9" rx="2.5" stroke="#fff" stroke-opacity=".6"/><rect x="2.5" y="2.5" width="12" height="6" rx="1" fill="#fff"/></svg></div></div>
+      <div style="position:relative;padding:38px 20px 0;height:100%;overflow:hidden;color:#F5F7FA">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:7px"><svg width="22" height="22" viewBox="0 0 56 56" fill="none"><defs><linearGradient id="m1" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3B6EF5"/><stop offset=".55" stop-color="#8B5CF6"/><stop offset="1" stop-color="#EC4899"/></linearGradient></defs><path d="M28 8 C28 20 30 24 36 27 C42 30 48 28 48 28 C48 28 42 26 36 29 C30 32 28 36 28 48 C28 36 26 32 20 29 C14 26 8 28 8 28 C8 28 14 30 20 27 C26 24 28 20 28 8 Z" fill="url(#m1)"/></svg><span style="font-size:15px;font-weight:800;letter-spacing:-.02em;white-space:nowrap">UR Ads</span></div>
+          <svg width="22" height="22" viewBox="0 0 24 24" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </div>
+        <div style="font-size:11px;letter-spacing:.06em;color:#9BB0FF;font-weight:600;margin-top:30px">네이버 공식 API</div>
+        <h1 style="font-size:27px;line-height:1.14;font-weight:800;letter-spacing:-.04em;margin:12px 0 0">광고 입찰부터 발주까지,<br><span class="grad">하나로 자동화.</span></h1>
+        <p style="font-size:14px;line-height:1.55;color:#9AA6BE;margin:14px 0 0">목표 순위만 정하면 최저 CPC를 24/365 자동으로 찾습니다.</p>
+        <a href="#" style="display:block;text-align:center;margin-top:18px;font-size:14.5px;font-weight:600;color:#fff;background:#3B6EF5;padding:14px;border-radius:11px">30일 무료로 시작</a>
+        <div style="margin-top:20px;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px;background:rgba(255,255,255,.03)">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:#9AA6BE">통합 ROAS</span><span style="font-size:11px;font-weight:700;color:#34D399">▲ 18.4%</span></div>
+          <div class="num" style="font-size:26px;font-weight:800;letter-spacing:-.03em;margin-top:3px">412.8<span style="font-size:15px;color:#6E7A95">%</span></div>
+          <svg width="100%" height="40" viewBox="0 0 260 40" preserveAspectRatio="none" style="margin-top:6px"><defs><linearGradient id="ml" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3B6EF5"/><stop offset="1" stop-color="#8B5CF6"/></linearGradient></defs><polyline points="0,32 32,28 64,30 96,22 128,24 160,15 192,17 224,9 260,4" fill="none" stroke="url(#ml)" stroke-width="2"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Phone 2: Features -->
+<div style="position:absolute;left:440px;top:138px;width:320px">
+  <div data-drags-parent="1" style="position:absolute;top:-22px;font:500 11px 'Pretendard Variable',sans-serif;color:rgba(60,50,40,.65)">기능 섹션</div>
+  <div style="width:320px;height:660px;background:#05070D;border-radius:40px;padding:9px;box-shadow:0 20px 50px -20px rgba(11,14,30,.5)">
+    <div style="width:100%;height:100%;background:#06080F;border-radius:32px;overflow:hidden;position:relative;color:#F5F7FA">
+      <div style="position:absolute;top:0;left:0;right:0;height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;z-index:5"><span class="num" style="font-size:12px;font-weight:600;color:#fff">9:41</span><div style="display:flex;gap:5px;align-items:center"><svg width="16" height="11" viewBox="0 0 16 11" fill="#fff"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4" y="5" width="3" height="6" rx="1"/><rect x="8" y="2.5" width="3" height="8.5" rx="1"/><rect x="12" y="0" width="3" height="11" rx="1"/></svg><svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="1" y="1" width="17" height="9" rx="2.5" stroke="#fff" stroke-opacity=".6"/><rect x="2.5" y="2.5" width="12" height="6" rx="1" fill="#fff"/></svg></div></div>
+      <div style="padding:42px 20px 0;height:100%;overflow:hidden">
+        <div style="font-size:11px;letter-spacing:.06em;color:#9BB0FF;font-weight:600">FEATURES</div>
+        <h2 style="font-size:23px;line-height:1.2;font-weight:800;letter-spacing:-.035em;margin:10px 0 18px">한 곳에서 끝나는<br><span class="grad">광고 운영</span></h2>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:16px;background:#0E1322"><span style="width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#3B6EF5,#8B5CF6);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14M8 5l-3 3M8 5l3 3M16 19V5M16 19l-3-3M16 19l3-3"/></svg></span><div style="font-size:15px;font-weight:700;margin-top:11px">자동입찰</div><div style="font-size:12.5px;color:#9AA6BE;line-height:1.5;margin-top:3px">목표순위·최대입찰가만, 최저 CPC는 자동으로.</div></div>
+          <div style="border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:16px;background:#0E1322"><span style="width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#8B5CF6,#EC4899);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg></span><div style="font-size:15px;font-weight:700;margin-top:11px">부정클릭 방어</div><div style="font-size:12.5px;color:#9AA6BE;line-height:1.5;margin-top:3px">새는 광고비를 실시간으로 막습니다.</div></div>
+          <div style="border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:16px;background:#0E1322"><span style="width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#3B6EF5,#22D3EE);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.4L12 17l-1.9-5.6L4.5 10l5.6-1.4L12 3z"/></svg></span><div style="font-size:15px;font-weight:700;margin-top:11px">AI 마케터</div><div style="font-size:12.5px;color:#9AA6BE;line-height:1.5;margin-top:3px">데이터를 읽고 다음 액션을 제안합니다.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DASHBOARD MOBILE ===== -->
+<div data-drags-parent="1" style="position:absolute;left:80px;top:850px;font:700 12px/1 'Pretendard Variable',sans-serif;letter-spacing:.14em;color:#8A93A3">DASHBOARD · MOBILE</div>
+
+<!-- Phone 3: 통합실적 -->
+<div style="position:absolute;left:80px;top:884px;width:320px">
+  <div data-drags-parent="1" style="position:absolute;top:-22px;font:500 11px 'Pretendard Variable',sans-serif;color:rgba(60,50,40,.65)">통합 실적</div>
+  <div style="width:320px;height:660px;background:#05070D;border-radius:40px;padding:9px;box-shadow:0 20px 50px -20px rgba(11,14,30,.5)">
+    <div style="width:100%;height:100%;background:#06080F;border-radius:32px;overflow:hidden;position:relative;color:#F5F7FA">
+      <div style="position:absolute;top:0;left:0;right:0;height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;z-index:5;background:#0A0E1A"><span class="num" style="font-size:12px;font-weight:600;color:#fff">9:41</span><div style="display:flex;gap:5px;align-items:center"><svg width="16" height="11" viewBox="0 0 16 11" fill="#fff"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4" y="5" width="3" height="6" rx="1"/><rect x="8" y="2.5" width="3" height="8.5" rx="1"/><rect x="12" y="0" width="3" height="11" rx="1"/></svg><svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="1" y="1" width="17" height="9" rx="2.5" stroke="#fff" stroke-opacity=".6"/><rect x="2.5" y="2.5" width="12" height="6" rx="1" fill="#fff"/></svg></div></div>
+      <div style="position:absolute;top:30px;left:0;right:0;height:48px;background:#0A0E1A;border-bottom:1px solid #1B2233;display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:4"><svg width="22" height="22" viewBox="0 0 24 24" stroke="#F5F7FA" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span style="font-size:15px;font-weight:800;letter-spacing:-.02em;white-space:nowrap">통합 실적</span><span style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;background:rgba(59,110,245,.16);color:#9BB0FF;padding:4px 9px;border-radius:999px">루미 ▾</span></div>
+      <div style="padding:90px 14px 70px;height:100%;overflow:hidden">
+        <div style="display:flex;gap:6px;margin-bottom:12px"><span style="font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:7px;background:#0E1322;border:1px solid #1B2233;color:#6E7A95">오늘</span><span style="font-size:11.5px;font-weight:600;padding:6px 11px;border-radius:7px;background:#0E1322;border:1px solid #1B2233;color:#6E7A95">7일</span><span style="font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:7px;background:rgba(59,110,245,.16);color:#9BB0FF">30일</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="background:#0E1322;border:1px solid rgba(255,255,255,.08);border-radius:13px;padding:14px"><div style="font-size:11.5px;color:#9AA6BE">통합 ROAS</div><div class="num" style="font-size:21px;font-weight:800;letter-spacing:-.02em;margin-top:2px">412.8%</div><div style="font-size:10.5px;font-weight:700;color:#34D399">▲ 18.4%</div></div>
+          <div style="background:#0E1322;border:1px solid rgba(255,255,255,.08);border-radius:13px;padding:14px"><div style="font-size:11.5px;color:#9AA6BE">매출</div><div class="num" style="font-size:21px;font-weight:800;letter-spacing:-.02em;margin-top:2px">₩51.2M</div><div style="font-size:10.5px;font-weight:700;color:#34D399">▲ 22.6%</div></div>
+          <div style="background:#0E1322;border:1px solid rgba(255,255,255,.08);border-radius:13px;padding:14px"><div style="font-size:11.5px;color:#9AA6BE">광고비</div><div class="num" style="font-size:21px;font-weight:800;letter-spacing:-.02em;margin-top:2px">₩12.4M</div><div style="font-size:10.5px;font-weight:700;color:#6E7A95">▲ 4.1%</div></div>
+          <div style="background:#0E1322;border:1px solid rgba(255,255,255,.08);border-radius:13px;padding:14px"><div style="font-size:11.5px;color:#9AA6BE">평균 CPC</div><div class="num" style="font-size:21px;font-weight:800;letter-spacing:-.02em;margin-top:2px">₩248</div><div style="font-size:10.5px;font-weight:700;color:#34D399">▼ 15.2%</div></div>
+        </div>
+        <div style="background:#0E1322;border:1px solid rgba(255,255,255,.08);border-radius:13px;padding:16px;margin-top:10px"><div style="font-size:13px;font-weight:700;margin-bottom:6px">매출 추이</div><svg width="100%" height="70" viewBox="0 0 270 70" preserveAspectRatio="none"><g stroke="#1B2233"><line x1="0" y1="20" x2="270" y2="20"/><line x1="0" y1="45" x2="270" y2="45"/></g><polyline points="0,58 34,52 68,55 102,42 136,46 170,32 204,36 238,20 270,10" fill="none" stroke="#3B6EF5" stroke-width="2.2"/></svg></div>
+      </div>
+      <div style="position:absolute;bottom:0;left:0;right:0;height:62px;background:#0A0E1A;border-top:1px solid #1B2233;display:flex;align-items:center;justify-content:space-around;padding-bottom:8px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#3B6EF5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><rect x="5" y="11" width="3.4" height="7" rx="1"/><rect x="10.3" y="6" width="3.4" height="12" rx="1"/><rect x="15.6" y="9" width="3.4" height="9" rx="1"/></svg><span style="font-size:9px;font-weight:600">실적</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#6E7A95"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14M8 5l-3 3M8 5l3 3M16 19V5M16 19l-3-3M16 19l3-3"/></svg><span style="font-size:9px;font-weight:500">입찰</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#6E7A95"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg><span style="font-size:9px;font-weight:500">발주</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#6E7A95"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.4L12 17l-1.9-5.6L4.5 10l5.6-1.4L12 3z"/></svg><span style="font-size:9px;font-weight:500">AI</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#6E7A95"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span style="font-size:9px;font-weight:500">더보기</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Phone 4: 자동입찰 -->
+<div style="position:absolute;left:440px;top:884px;width:320px">
+  <div data-drags-parent="1" style="position:absolute;top:-22px;font:500 11px 'Pretendard Variable',sans-serif;color:rgba(60,50,40,.65)">자동입찰 (카드 리스트)</div>
+  <div style="width:320px;height:660px;background:#05070D;border-radius:40px;padding:9px;box-shadow:0 20px 50px -20px rgba(11,14,30,.5)">
+    <div style="width:100%;height:100%;background:#06080F;border-radius:32px;overflow:hidden;position:relative;color:#F5F7FA">
+      <div style="position:absolute;top:0;left:0;right:0;height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;z-index:5;background:#0A0E1A"><span class="num" style="font-size:12px;font-weight:600;color:#fff">9:41</span><div style="display:flex;gap:5px;align-items:center"><svg width="16" height="11" viewBox="0 0 16 11" fill="#fff"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4" y="5" width="3" height="6" rx="1"/><rect x="8" y="2.5" width="3" height="8.5" rx="1"/><rect x="12" y="0" width="3" height="11" rx="1"/></svg><svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="1" y="1" width="17" height="9" rx="2.5" stroke="#fff" stroke-opacity=".6"/><rect x="2.5" y="2.5" width="12" height="6" rx="1" fill="#fff"/></svg></div></div>
+      <div style="position:absolute;top:30px;left:0;right:0;height:48px;background:#0A0E1A;border-bottom:1px solid #1B2233;display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:4"><svg width="22" height="22" viewBox="0 0 24 24" stroke="#F5F7FA" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span style="font-size:15px;font-weight:800;letter-spacing:-.02em;white-space:nowrap">자동입찰</span><svg width="22" height="22" viewBox="0 0 24 24" fill="#3B6EF5"><circle cx="12" cy="12" r="11"/><path d="M12 7v10M7 12h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
+      <div style="padding:88px 14px 70px;height:100%;overflow:hidden">
+        <span style="display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:600;color:#34D399;background:rgba(52,211,153,.14);padding:6px 11px;border-radius:999px;margin-bottom:12px"><span style="width:6px;height:6px;border-radius:50%;background:#34D399"></span>자동입찰 ON · 142개</span>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="background:#0E1322;border:1px solid rgba(255,255,255,.08);border-radius:13px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;font-weight:700;white-space:nowrap">무선 이어폰</span><span style="width:34px;height:19px;border-radius:999px;background:#3B6EF5;position:relative"><span style="position:absolute;top:2.5px;right:2.5px;width:14px;height:14px;border-radius:50%;background:#fff"></span></span></div><div style="display:flex;gap:14px;margin-top:9px"><div><div style="font-size:10px;color:#6E7A95;white-space:nowrap">목표/현재</div><div class="num" style="font-size:12.5px;font-weight:600;white-space:nowrap">2위/<span style="color:#34D399">2위</span></div></div><div><div style="font-size:10px;color:#6E7A95">입찰가</div><div class="num" style="font-size:12.5px;font-weight:600;white-space:nowrap">₩320</div></div><div><div style="font-size:10px;color:#6E7A95">CPC</div><div class="num" style="font-size:12.5px;font-weight:700;white-space:nowrap">₩214</div></div></div></div>
+          <div style="background:#0E1322;border:1px solid rgba(255,255,255,.08);border-radius:13px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;font-weight:700;white-space:nowrap">블루투스 스피커</span><span style="width:34px;height:19px;border-radius:999px;background:#3B6EF5;position:relative"><span style="position:absolute;top:2.5px;right:2.5px;width:14px;height:14px;border-radius:50%;background:#fff"></span></span></div><div style="display:flex;gap:14px;margin-top:9px"><div><div style="font-size:10px;color:#6E7A95;white-space:nowrap">목표/현재</div><div class="num" style="font-size:12.5px;font-weight:600;white-space:nowrap">1위/<span style="color:#FBBF24">3위</span></div></div><div><div style="font-size:10px;color:#6E7A95">입찰가</div><div class="num" style="font-size:12.5px;font-weight:600;white-space:nowrap">₩480</div></div><div><div style="font-size:10px;color:#6E7A95">CPC</div><div class="num" style="font-size:12.5px;font-weight:700;white-space:nowrap">₩390</div></div></div></div>
+          <div style="background:#0E1322;border:1px solid rgba(255,255,255,.08);border-radius:13px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;font-weight:700;white-space:nowrap">노캔 헤드폰</span><span style="width:34px;height:19px;border-radius:999px;background:#3B6EF5;position:relative"><span style="position:absolute;top:2.5px;right:2.5px;width:14px;height:14px;border-radius:50%;background:#fff"></span></span></div><div style="display:flex;gap:14px;margin-top:9px"><div><div style="font-size:10px;color:#6E7A95;white-space:nowrap">목표/현재</div><div class="num" style="font-size:12.5px;font-weight:600;white-space:nowrap">3위/<span style="color:#34D399">2위</span></div></div><div><div style="font-size:10px;color:#6E7A95">입찰가</div><div class="num" style="font-size:12.5px;font-weight:600;white-space:nowrap">₩540</div></div><div><div style="font-size:10px;color:#6E7A95">CPC</div><div class="num" style="font-size:12.5px;font-weight:700;white-space:nowrap">₩468</div></div></div></div>
+        </div>
+      </div>
+      <div style="position:absolute;bottom:0;left:0;right:0;height:62px;background:#0A0E1A;border-top:1px solid #1B2233;display:flex;align-items:center;justify-content:space-around;padding-bottom:8px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#6E7A95"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><rect x="5" y="11" width="3.4" height="7" rx="1"/><rect x="10.3" y="6" width="3.4" height="12" rx="1"/><rect x="15.6" y="9" width="3.4" height="9" rx="1"/></svg><span style="font-size:9px;font-weight:500">실적</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#3B6EF5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14M8 5l-3 3M8 5l3 3M16 19V5M16 19l-3-3M16 19l3-3"/></svg><span style="font-size:9px;font-weight:600">입찰</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#6E7A95"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg><span style="font-size:9px;font-weight:500">발주</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#6E7A95"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.4L12 17l-1.9-5.6L4.5 10l5.6-1.4L12 3z"/></svg><span style="font-size:9px;font-weight:500">AI</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#6E7A95"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span style="font-size:9px;font-weight:500">더보기</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Phone 5: AI 마케터 -->
+<div style="position:absolute;left:800px;top:884px;width:320px">
+  <div data-drags-parent="1" style="position:absolute;top:-22px;font:500 11px 'Pretendard Variable',sans-serif;color:rgba(60,50,40,.65)">AI 마케터</div>
+  <div style="width:320px;height:660px;background:#000;border-radius:40px;padding:9px;box-shadow:0 20px 50px -20px rgba(11,14,30,.6)">
+    <div style="width:100%;height:100%;background:#06080F;border-radius:32px;overflow:hidden;position:relative">
+      <div style="position:absolute;top:0;left:0;right:0;height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;z-index:5"><span class="num" style="font-size:12px;font-weight:600;color:#F5F7FA">9:41</span><div style="display:flex;gap:5px;align-items:center"><svg width="16" height="11" viewBox="0 0 16 11" fill="#F5F7FA"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4" y="5" width="3" height="6" rx="1"/><rect x="8" y="2.5" width="3" height="8.5" rx="1"/><rect x="12" y="0" width="3" height="11" rx="1"/></svg><svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="1" y="1" width="17" height="9" rx="2.5" stroke="#F5F7FA" stroke-opacity=".6"/><rect x="2.5" y="2.5" width="12" height="6" rx="1" fill="#F5F7FA"/></svg></div></div>
+      <div style="position:absolute;top:30px;left:0;right:0;height:48px;background:#0A0E1A;border-bottom:1px solid #1B2233;display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:4"><svg width="22" height="22" viewBox="0 0 24 24" stroke="#F5F7FA" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg><span style="font-size:15px;font-weight:800;letter-spacing:-.02em;color:#F5F7FA">AI 마케터</span><span style="width:22px"></span></div>
+      <div style="padding:90px 14px 116px;height:100%;overflow:hidden;display:flex;flex-direction:column;gap:11px">
+        <div style="align-self:flex-end;max-width:80%;background:#3B6EF5;color:#fff;font-size:13px;line-height:1.45;padding:10px 13px;border-radius:13px 13px 4px 13px;font-weight:500">이번 주 개선점 알려줘</div>
+        <div style="max-width:88%;background:#0E1322;border:1px solid rgba(255,255,255,.09);color:#E8EBF0;font-size:13px;line-height:1.5;padding:11px 13px;border-radius:13px 13px 13px 4px">ROAS가 <b style="color:#fff">412.8%</b>로 전주 대비 18.4% 올랐어요. 개선 포인트 2가지를 찾았습니다.</div>
+        <div style="max-width:90%;background:#0E1322;border:1px solid rgba(255,255,255,.09);border-radius:13px;padding:14px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:9.5px;font-weight:700;color:#9BB0FF;background:rgba(59,110,245,.16);padding:3px 7px;border-radius:5px">제안 1</span></div>
+          <div style="font-size:12.5px;line-height:1.55;color:#E8EBF0">'블루투스 스피커' 입찰가를 <b class="grad">₩480→₩540</b>로 올리면 1~2위 복귀 예상.</div>
+          <div style="display:flex;gap:7px;margin-top:11px"><span style="font-size:11.5px;font-weight:600;color:#fff;background:#3B6EF5;padding:7px 13px;border-radius:7px">적용</span><span style="font-size:11.5px;font-weight:600;color:#9AA6BE;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:7px 13px;border-radius:7px">나중에</span></div>
+        </div>
+      </div>
+      <div style="position:absolute;bottom:62px;left:0;right:0;padding:12px 14px;background:#06080F;display:flex;gap:9px;align-items:center"><div style="flex:1;background:#0E1322;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 12px;font-size:12.5px;color:#6E7A95">메시지…</div><span style="width:36px;height:36px;border-radius:10px;background:#3B6EF5;display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
+      <div style="position:absolute;bottom:0;left:0;right:0;height:62px;background:#0A0E1A;border-top:1px solid #1B2233;display:flex;align-items:center;justify-content:space-around;padding-bottom:8px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#6E7A95"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><rect x="5" y="11" width="3.4" height="7" rx="1"/><rect x="10.3" y="6" width="3.4" height="12" rx="1"/><rect x="15.6" y="9" width="3.4" height="9" rx="1"/></svg><span style="font-size:9px;font-weight:500">실적</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#6E7A95"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14M8 5l-3 3M8 5l3 3M16 19V5M16 19l-3-3M16 19l3-3"/></svg><span style="font-size:9px;font-weight:500">입찰</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#6E7A95"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg><span style="font-size:9px;font-weight:500">발주</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#3B6EF5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.4L12 17l-1.9-5.6L4.5 10l5.6-1.4L12 3z"/></svg><span style="font-size:9px;font-weight:600">AI</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;color:#6E7A95"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span style="font-size:9px;font-weight:500">더보기</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
