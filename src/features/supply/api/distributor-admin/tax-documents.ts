@@ -4,6 +4,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
 import { ensureTaxDocSchema, splitVat, renderTaxDocHtml, type TaxDocRow } from '../tax-documents'
+import { ACTIVE_WHOLESALE_STATUSES, sqlStatusList } from '../wholesale-order-status'
 import { isBarobillConfigured, issueBarobillTaxInvoice, type BarobillEnv } from '@/services/barobill'
 import type { Env } from './helpers'
 
@@ -25,7 +26,7 @@ export function registerTaxDocumentsRoutes(app: Hono<{ Bindings: Env }>) {
         SELECT o.distributor_seller_id AS seller_id, s.business_name, s.name,
                COUNT(*) AS order_count, COALESCE(SUM(MAX(0, o.subtotal - COALESCE(o.refunded_amount,0))),0) AS total
         FROM wholesale_orders o LEFT JOIN sellers s ON s.id = o.distributor_seller_id
-        WHERE o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED') AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
+        WHERE o.status IN (${sqlStatusList(ACTIVE_WHOLESALE_STATUSES)}) AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
         GROUP BY o.distributor_seller_id
       `).bind(month).all<{ seller_id: number; business_name: string | null; name: string | null; order_count: number; total: number }>().catch(() => ({ results: [] }))
 
@@ -35,7 +36,7 @@ export function registerTaxDocumentsRoutes(app: Hono<{ Bindings: Env }>) {
                COUNT(DISTINCT i.wholesale_order_id) AS order_count, COALESCE(SUM(i.base_supply_price * i.qty),0) AS total
         FROM wholesale_order_items i JOIN wholesale_orders o ON o.id = i.wholesale_order_id
         LEFT JOIN suppliers sup ON sup.id = i.supplier_id
-        WHERE o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED') AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
+        WHERE o.status IN (${sqlStatusList(ACTIVE_WHOLESALE_STATUSES)}) AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
           AND i.supplier_id IS NOT NULL AND i.line_status != 'REFUNDED'
         GROUP BY i.supplier_id
       `).bind(month).all<{ supplier_id: number; business_name: string | null; order_count: number; total: number }>().catch(() => ({ results: [] }))

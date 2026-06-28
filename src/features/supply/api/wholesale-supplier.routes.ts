@@ -18,7 +18,7 @@ import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn } from './wholesale-deposit-core'
 import { refundWholesaleSupplierLines } from './wholesale-refund'
-import { transitionWholesaleOrder } from './wholesale-order-status'
+import { transitionWholesaleOrder, ACTIVE_WHOLESALE_STATUSES, sqlStatusList } from './wholesale-order-status'
 import { parseCsv } from './supply-csv'
 import { buildXlsx, xlsxResponse } from './xlsx'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
@@ -46,7 +46,7 @@ app.get('/orders', async (c) => {
              o.ship_to_name, o.ship_to_phone, o.ship_to_address, o.ship_to_postal
       FROM wholesale_order_items i
       JOIN wholesale_orders o ON o.id = i.wholesale_order_id
-      WHERE i.supplier_id = ? AND o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED')
+      WHERE i.supplier_id = ? AND o.status IN (${sqlStatusList(ACTIVE_WHOLESALE_STATUSES)})
       ORDER BY o.created_at DESC LIMIT 200
     `).bind(sid).all()
     return c.json({ success: true, items: results ?? [] })
@@ -69,7 +69,7 @@ app.get('/orders/export', async (c) => {
              o.ship_to_name, o.ship_to_phone, o.ship_to_address, o.ship_to_postal, o.paid_at
       FROM wholesale_order_items i
       JOIN wholesale_orders o ON o.id = i.wholesale_order_id
-      WHERE i.supplier_id = ? AND o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED') ${statusWhere}
+      WHERE i.supplier_id = ? AND o.status IN (${sqlStatusList(ACTIVE_WHOLESALE_STATUSES)}) ${statusWhere}
       ORDER BY o.created_at DESC LIMIT 5000
     `).bind(sid).all<Record<string, unknown>>()
     const headers = ['item_id', 'order_id', '상품명', '수량', '공급가', '정산금액', '상태', '받는분', '연락처', '주소', '우편번호', '결제일', 'courier', 'tracking_number']
@@ -142,8 +142,8 @@ app.post('/tracking/bulk', async (c) => {
       const ph = chunk.map(() => '?').join(',')
       await DB.prepare(
         `UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now')
-         WHERE id IN (${ph}) AND status='PAID'
-           AND NOT EXISTS (SELECT 1 FROM wholesale_order_items wi WHERE wi.wholesale_order_id = wholesale_orders.id AND wi.line_status != 'SHIPPED')`
+         WHERE id IN (${ph}) AND status IN ('PAID','ACCEPTED','PARTIAL_REFUNDED')
+           AND NOT EXISTS (SELECT 1 FROM wholesale_order_items wi WHERE wi.wholesale_order_id = wholesale_orders.id AND wi.line_status NOT IN ('SHIPPED','REFUNDED'))`
       ).bind(...chunk).run().catch(swallow('supplier:ship-all-order-status'))
     }
 
@@ -199,10 +199,10 @@ app.post('/items/:id/ship', async (c) => {
 
     // 주문의 모든 라인이 발송완료면 주문 상태도 SHIPPED.
     const pending = await DB.prepare(
-      "SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status != 'SHIPPED'"
+      "SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status NOT IN ('SHIPPED','REFUNDED')"
     ).bind(line.wholesale_order_id).first<{ c: number }>()
     if ((pending?.c ?? 0) === 0) {
-      await DB.prepare("UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now') WHERE id=? AND status IN ('PAID','ACCEPTED')")
+      await DB.prepare("UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now') WHERE id=? AND status IN ('PAID','ACCEPTED','PARTIAL_REFUNDED')")
         .bind(line.wholesale_order_id).run()
     }
     // 🔔 2026-06-26 (알림 누락 보강): 단건 송장 입력도 판매사(바이어)에게 발송 알림 — 기존엔 ship-all 만 통지했음.
@@ -250,10 +250,10 @@ app.post('/orders/:id/ship-all', async (c) => {
 
     // 주문의 모든 라인이 발송완료면 주문 상태도 SHIPPED.
     const pending = await DB.prepare(
-      "SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status != 'SHIPPED'"
+      "SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status NOT IN ('SHIPPED','REFUNDED')"
     ).bind(orderId).first<{ c: number }>()
     if ((pending?.c ?? 0) === 0) {
-      await DB.prepare("UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now') WHERE id=? AND status IN ('PAID','ACCEPTED')")
+      await DB.prepare("UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now') WHERE id=? AND status IN ('PAID','ACCEPTED','PARTIAL_REFUNDED')")
         .bind(orderId).run()
     }
 

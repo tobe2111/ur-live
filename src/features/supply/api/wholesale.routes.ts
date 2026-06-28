@@ -41,7 +41,7 @@ import {
   type SubRole, SUB_ROLES, subClaimsFrom, SUB_EMAIL_RE, requireSubAdmin,
   loadGradeTable, loadMinPlatformMarginPct, loadSellerGrade, loadQtyTiers,
   ftsAvailable, buildFtsMatch, CATALOG_SORT_ORDER, ensureDistributorSellerSchema,
-  notifySuppliersOfPaidOrder, BULK_MAX_ROWS,
+  notifySuppliersOfPaidOrder, notifySuppliersOfOrderEvent, BULK_MAX_ROWS,
 } from './wholesale-helpers'
 // public API 보존 — wholesale-board.routes.ts 가 `from './wholesale.routes'` 로 가져옴(re-export).
 export { loadGradeTable, loadSellerGrade } from './wholesale-helpers'
@@ -698,7 +698,7 @@ app.get('/recent-items', async (c) => {
     const lines = await DB.prepare(`
       SELECT i.product_id AS product_id, i.qty AS qty, o.created_at AS created_at
       FROM wholesale_order_items i JOIN wholesale_orders o ON o.id = i.wholesale_order_id
-      WHERE o.distributor_seller_id = ? AND o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED','DONE')
+      WHERE o.distributor_seller_id = ? AND o.status IN ('PAID','ACCEPTED','SHIPPED','PARTIAL_REFUNDED','DONE')
       ORDER BY o.created_at DESC LIMIT 120
     `).bind(sellerId).all<{ product_id: number; qty: number; created_at: string }>().catch(() => ({ results: [] as { product_id: number; qty: number; created_at: string }[] }))
     const seen = new Map<number, { qty: number; created_at: string }>()
@@ -1643,8 +1643,8 @@ app.get('/orders/export', rateLimit({ action: 'wholesale-orders-export', max: 10
     }>()
     const headers = ['주문번호', '주문일', '결제일', '상태', '등급', '상품합계', '배송비', '총결제', '택배사', '운송장번호']
     const STATUS_KO: Record<string, string> = {
-      PENDING: '결제대기', PAID: '결제완료', ON_CREDIT: '여신(외상)', SHIPPED: '배송중',
-      PARTIAL_REFUNDED: '부분환불', REFUNDED: '환불완료', CANCELLED: '취소', DONE: '구매확정', FAILED: '실패', EXPIRED: '만료',
+      PENDING: '결제대기', PAID: '결제완료', ACCEPTED: '수락됨', ON_CREDIT: '여신(외상)', SHIPPED: '배송중',
+      PARTIAL_REFUNDED: '부분환불', REFUNDED: '환불완료', REJECTED: '제조사 거절', CANCELLED: '취소', DONE: '구매확정', FAILED: '실패', EXPIRED: '만료',
     }
     const rows = (results || []).map(o => [
       o.toss_order_id || `W-${o.id}`,
@@ -1744,6 +1744,9 @@ app.post('/orders/:id/confirm', async (c) => {
     if (order.status === 'DONE') return c.json({ success: true, already: true })
     const ok = await transitionWholesaleOrder(DB, id, 'DONE', ['SHIPPED', 'PARTIAL_REFUNDED'], ", confirmed_at=datetime('now')")
     if (!ok) return c.json({ success: false, error: '구매확정할 수 없는 주문 상태입니다 (발송 완료 후 가능)' }, 400)
+    // 🔔 구매확정 시 제조사(공급자)에게 통지 — 정산이 곧 성숙(다음 정산일)함을 알림. fail-soft.
+    await notifySuppliersOfOrderEvent(DB, id, 'wholesale_confirmed', '도매 주문 구매확정',
+      `주문 #${id} 이(가) 판매사 구매확정 처리되었습니다. 정산이 진행됩니다.`).catch(swallow('wholesale:notify-confirm'))
     return c.json({ success: true })
   } catch (err) {
     return safeError(c, err, '구매확정 중 오류가 발생했습니다', '[wholesale]')
@@ -1772,7 +1775,12 @@ app.post('/orders/:id/cancel', async (c) => {
     if ((shipped?.c ?? 0) > 0) return c.json({ success: false, error: '이미 발송된 주문은 취소할 수 없습니다. 반품을 이용해주세요.' }, 400)
     const r = await refundWholesaleOrderFully(c.env, { orderId: id, reason, allowedPrev: ['PAID', 'ACCEPTED'], finalStatus: 'CANCELLED', extraSetSql: ", cancelled_at=datetime('now')", notifyTitle: '도매 주문 취소' })
     if (!r.ok) return c.json({ success: false, error: r.error, code: r.code }, (r.httpStatus as 400 | 402 | 404) || 400)
-    if (!r.already) await DB.prepare('UPDATE wholesale_orders SET cancel_reason = ? WHERE id = ?').bind(reason, id).run().catch(swallow('wholesale:cancel-reason'))
+    if (!r.already) {
+      await DB.prepare('UPDATE wholesale_orders SET cancel_reason = ? WHERE id = ?').bind(reason, id).run().catch(swallow('wholesale:cancel-reason'))
+      // 🔔 제조사(공급자)에게 취소 통지 — 수락했던 주문이 취소될 수 있으므로 발송 준비 중단 안내. fail-soft.
+      await notifySuppliersOfOrderEvent(DB, id, 'wholesale_cancelled', '도매 주문 취소',
+        `주문 #${id} 이(가) 판매사에 의해 취소되었습니다. (${reason})`).catch(swallow('wholesale:notify-cancel'))
+    }
     return c.json({ success: true, already: r.already, refunded_amount: r.refundAmount })
   } catch (err) {
     return safeError(c, err, '주문 취소 중 오류가 발생했습니다', '[wholesale]')
@@ -1819,7 +1827,9 @@ app.get('/statement', async (c) => {
     await ensureOrderTables(DB)
     const from = (c.req.query('from') || '').slice(0, 10)
     const to = (c.req.query('to') || '').slice(0, 10)
-    let where = "distributor_seller_id = ? AND status IN ('PAID','SHIPPED','REFUNDED')"
+    // 2026-06-27: ACCEPTED/DONE/PARTIAL_REFUNDED 누락으로 수락·구매확정·부분환불 주문이 거래내역서에서
+    //   통째로 빠지던 것 — 활성 집합 + REFUNDED 로 확장. (취소/거절은 매입 0이라 제외 유지.)
+    let where = "distributor_seller_id = ? AND status IN ('PAID','ACCEPTED','SHIPPED','PARTIAL_REFUNDED','DONE','REFUNDED')"
     const binds: unknown[] = [sellerId]
     if (/^\d{4}-\d{2}-\d{2}$/.test(from)) { where += ' AND date(COALESCE(paid_at, created_at)) >= ?'; binds.push(from) }
     if (/^\d{4}-\d{2}-\d{2}$/.test(to)) { where += ' AND date(COALESCE(paid_at, created_at)) <= ?'; binds.push(to) }
@@ -1827,16 +1837,19 @@ app.get('/statement', async (c) => {
       SELECT id, status,
              COALESCE(subtotal, 0) AS subtotal,
              COALESCE(shipping_total, 0) AS shipping_total,
+             COALESCE(refunded_amount, 0) AS refunded_amount,
              (COALESCE(subtotal, 0) + COALESCE(shipping_total, 0)) AS grand_total,
              grade, paid_at, created_at
       FROM wholesale_orders WHERE ${where} ORDER BY COALESCE(paid_at, created_at) DESC LIMIT 500
-    `).bind(...binds).all<{ id: number; status: string; subtotal: number; shipping_total: number; grand_total: number; grade: string | null; paid_at: string | null; created_at: string }>()
+    `).bind(...binds).all<{ id: number; status: string; subtotal: number; shipping_total: number; refunded_amount: number; grand_total: number; grade: string | null; paid_at: string | null; created_at: string }>()
     const rows = results || []
-    // 💰 2026-06-25: 예치금은 subtotal+배송비(grand_total) 로 차감되는데 합계가 subtotal 만 더해
-    //   '예치금이 이유없이 새는' 것처럼 보였음 → 배송비 포함 grand_total 로 집계.
-    const totalPaid = rows.filter(r => r.status !== 'REFUNDED').reduce((s, r) => s + (r.grand_total || 0), 0)
-    const totalRefunded = rows.filter(r => r.status === 'REFUNDED').reduce((s, r) => s + (r.grand_total || 0), 0)
-    return c.json({ success: true, orders: rows, summary: { count: rows.length, total_paid: totalPaid, total_refunded: totalRefunded, net: totalPaid - totalRefunded } })
+    // 💰 2026-06-25: 예치금은 subtotal+배송비(grand_total) 로 차감되므로 매입은 grand_total 기준.
+    //   2026-06-27: 부분환불(PARTIAL_REFUNDED) 반영 — net 은 활성주문 gross 에서 부분환불액 차감(전액환불은
+    //   매입 합계에서 이미 제외). 전액/부분 환불 합계는 refunded_amount(환불 helper 가 신뢰성있게 기록).
+    const grossActive = rows.filter(r => r.status !== 'REFUNDED').reduce((s, r) => s + (r.grand_total || 0), 0)
+    const partialRefunds = rows.filter(r => r.status !== 'REFUNDED').reduce((s, r) => s + (r.refunded_amount || 0), 0)
+    const fullRefunds = rows.filter(r => r.status === 'REFUNDED').reduce((s, r) => s + (r.grand_total || 0), 0)
+    return c.json({ success: true, orders: rows, summary: { count: rows.length, total_paid: grossActive, total_refunded: partialRefunds + fullRefunds, net: grossActive - partialRefunds } })
   } catch (err) {
     return safeError(c, err, '거래내역 조회 중 오류가 발생했습니다', '[wholesale]')
   }

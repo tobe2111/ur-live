@@ -33,15 +33,22 @@ interface DetailItem {
   courier: string | null; tracking_number: string | null; supplier_id: number | null; supplier_name: string | null
 }
 
+// 2026-06-27: 상태머신 12종 전부 라벨 — ACCEPTED/REJECTED/CANCELLED/DONE/ON_CREDIT/EXPIRED 누락 시 raw 코드 노출됐음.
 const STATUS: Record<string, { t: string; c: string }> = {
   PENDING: { t: '결제대기', c: 'bg-amber-50 text-amber-700' },
   PAID: { t: '결제완료', c: 'bg-emerald-50 text-emerald-700' },
+  ACCEPTED: { t: '수락됨', c: 'bg-cyan-50 text-cyan-700' },
+  ON_CREDIT: { t: '여신(외상)', c: 'bg-teal-50 text-teal-700' },
   SHIPPED: { t: '발송완료', c: 'bg-blue-50 text-blue-700' },
   PARTIAL_REFUNDED: { t: '부분환불', c: 'bg-orange-50 text-orange-700' },
   REFUNDED: { t: '환불완료', c: 'bg-rose-50 text-rose-700' },
+  REJECTED: { t: '제조사 거절', c: 'bg-rose-50 text-rose-700' },
+  CANCELLED: { t: '취소', c: 'bg-gray-100 text-gray-500' },
+  DONE: { t: '구매확정', c: 'bg-emerald-50 text-emerald-700' },
   FAILED: { t: '실패', c: 'bg-gray-100 text-gray-500' },
+  EXPIRED: { t: '만료', c: 'bg-gray-100 text-gray-500' },
 }
-const FILTERS = ['', 'PAID', 'SHIPPED', 'PARTIAL_REFUNDED', 'REFUNDED']
+const FILTERS = ['', 'PAID', 'ACCEPTED', 'SHIPPED', 'DONE', 'PARTIAL_REFUNDED', 'REFUNDED', 'REJECTED', 'CANCELLED']
 
 // 🧱 2026-06-10: 공통 AdminDataTable 레퍼런스 적용 — 기존 셀 마크업/클래스 그대로 컬럼 정의로 이동.
 const ORDER_COLUMNS: Array<AdminDataTableColumn<OrderRow>> = [
@@ -155,7 +162,7 @@ export default function AdminWholesaleOrdersPage() {
               </tbody>
             </table>
             </div>
-            {['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(detail.order.status as string) && (
+            {['PAID', 'ACCEPTED', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE'].includes(detail.order.status as string) && (
               <button onClick={() => forceRefund(detail.order.id)} disabled={refunding} className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
                 {refunding ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} 관리자 강제 전액환불
               </button>

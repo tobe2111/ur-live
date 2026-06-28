@@ -162,7 +162,8 @@ app.post('/claims', rateLimit({ action: 'wholesale-claim', max: 20, windowSec: 6
     ).bind(wholesaleOrderId, sellerId).first<{ id: number; status: string }>().catch(() => null)
     if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
     // 결제된(또는 그 이후) 주문만 클레임 가능 — 미결제/만료/이미환불완료엔 의미 없음.
-    if (!['PAID', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE'].includes(order.status)) {
+    //   2026-06-27: ACCEPTED(제조사 수락 후 발송 전) 누락 보강 — 활성 집합 전체가 클레임 대상.
+    if (!['PAID', 'ACCEPTED', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE'].includes(order.status)) {
       return c.json({ success: false, error: '클레임을 제기할 수 없는 주문 상태입니다' }, 400)
     }
 

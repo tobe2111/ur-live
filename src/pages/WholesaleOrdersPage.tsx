@@ -134,8 +134,8 @@ function OrderNotesThread({ orderId }: { orderId: number }) {
   )
 }
 
-// 🏭 BIZ-1: 클레임(RMA) 제기 가능한 주문 상태 — 결제완료 이후.
-const CLAIMABLE = new Set(['PAID', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE', 'ON_CREDIT'])
+// 🏭 BIZ-1: 클레임(RMA) 제기 가능한 주문 상태 — 결제완료 이후. (2026-06-27 ACCEPTED 추가 — 백엔드 정합.)
+const CLAIMABLE = new Set(['PAID', 'ACCEPTED', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE', 'ON_CREDIT'])
 
 // 🏭 2026-06-04 유통스타트 도매 주문 내역 — TDS 라이트 시안 정비. 라이트 고정 B2B.
 

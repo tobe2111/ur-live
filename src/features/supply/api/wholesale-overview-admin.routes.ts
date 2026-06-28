@@ -18,6 +18,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admin-security'
 import { ensureMallSchema, DEFAULT_MALL_ID } from './wholesale-malls'
+import { ACTIVE_WHOLESALE_STATUSES, sqlStatusList } from './wholesale-order-status'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', adminIpWhitelist())
@@ -100,8 +101,10 @@ app.get('/', async (c) => {
       // 4) 도매 카탈로그 상품 수 — is_supply_product=1 AND supply_source_id IS NULL(원본만), GROUP BY mall.
       DB.prepare(`SELECT COALESCE(mall_id, 1) AS m, COUNT(*) AS cnt FROM products WHERE is_supply_product = 1 AND supply_source_id IS NULL GROUP BY COALESCE(mall_id, 1)`)
         .all<{ m: number; cnt: number }>().catch(() => ({ results: [] as { m: number; cnt: number }[] })),
-      // 5) 이번달 GMV + 주문수 — wholesale_orders(PAID, paid_at>=월초) JOIN sellers 로 mall 해석.
-      DB.prepare(`SELECT COALESCE(s.mall_id, 1) AS m, COALESCE(SUM(o.subtotal), 0) AS gmv, COUNT(*) AS cnt FROM wholesale_orders o JOIN sellers s ON s.id = o.distributor_seller_id WHERE o.status = 'PAID' AND o.paid_at >= ? GROUP BY COALESCE(s.mall_id, 1)`)
+      // 5) 이번달 GMV + 주문수 — wholesale_orders(결제된 활성 주문, paid_at>=월초) JOIN sellers 로 mall 해석.
+      //   2026-06-27: status='PAID' 단일 조건이라 ACCEPTED/SHIPPED/DONE 으로 진행된 주문이 GMV 에서 빠지던 것 —
+      //   활성 집합(ACTIVE_WHOLESALE_STATUSES)으로 확장. paid_at 이 있으므로 결제 시점 기준 집계 유지.
+      DB.prepare(`SELECT COALESCE(s.mall_id, 1) AS m, COALESCE(SUM(o.subtotal), 0) AS gmv, COUNT(*) AS cnt FROM wholesale_orders o JOIN sellers s ON s.id = o.distributor_seller_id WHERE o.status IN (${sqlStatusList(ACTIVE_WHOLESALE_STATUSES)}) AND o.paid_at >= ? GROUP BY COALESCE(s.mall_id, 1)`)
         .bind(monthStart).all<{ m: number; gmv: number; cnt: number }>().catch(() => ({ results: [] as { m: number; gmv: number; cnt: number }[] })),
       // 6) 예치금 부채 — SUM(wholesale_deposits.balance) JOIN sellers 로 mall 해석.
       DB.prepare(`SELECT COALESCE(s.mall_id, 1) AS m, COALESCE(SUM(d.balance), 0) AS liability FROM wholesale_deposits d JOIN sellers s ON s.id = d.seller_id GROUP BY COALESCE(s.mall_id, 1)`)

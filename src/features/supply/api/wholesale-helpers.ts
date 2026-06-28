@@ -466,6 +466,24 @@ export async function notifySuppliersOfPaidOrder(DB: D1Database, orderId: number
   }
 }
 
+/**
+ * 🔔 2026-06-27 (라이프사이클 알림 완성): 주문에 라인이 있는 모든 제조사(공급자)에게 단일 이벤트 알림.
+ *   구매확정(DONE)/취소(CANCELLED) 등 — 기존엔 신규주문/발송 알림만 있고 확정·취소 통지가 없어 제조사가
+ *   정산 성숙/주문 취소를 대시보드에서 몰랐음. fail-soft(알림 실패가 본 처리를 막지 않음).
+ */
+export async function notifySuppliersOfOrderEvent(
+  DB: D1Database, orderId: number, type: string, title: string, body: string, link = '/supplier/wholesale-orders',
+): Promise<void> {
+  const rows = await DB.prepare(
+    `SELECT DISTINCT supplier_id FROM wholesale_order_items WHERE wholesale_order_id = ? AND supplier_id IS NOT NULL`
+  ).bind(orderId).all<{ supplier_id: number }>()
+  for (const r of rows.results || []) {
+    if (!Number.isFinite(r.supplier_id) || r.supplier_id <= 0) continue
+    await createDashboardNotification(DB, 'supplier', String(r.supplier_id), type, title, body, link)
+      .catch(swallow('wholesale:notify-supplier-event'))
+  }
+}
+
 // ── POST /orders/bulk-preview — 대량주문(엑셀/CSV) 검증·미리보기 (결제 X) ───────────
 //   BIZ-9 (2026-06-09): 작성본 업로드 → 서버가 product_id 로 매칭 + MOQ/박스단위/재고 검증 →
 //   유효 라인(카트에 담을 항목 + 등급 단가) + 오류행(사유) + subtotal 반환. 절대 청구하지 않음.

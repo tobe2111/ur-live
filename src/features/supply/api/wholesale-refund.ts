@@ -15,6 +15,7 @@ import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
+import { ACTIVE_WHOLESALE_STATUSES } from './wholesale-order-status'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn } from './wholesale-deposit-core'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 
@@ -45,7 +46,10 @@ export async function refundWholesaleSupplierLines(
     'SELECT id, distributor_seller_id, status, payment_key, subtotal, COALESCE(shipping_total,0) AS shipping_total, refunded_amount FROM wholesale_orders WHERE id = ?'
   ).bind(orderId).first<{ id: number; distributor_seller_id: number; status: string; payment_key: string | null; subtotal: number; shipping_total: number; refunded_amount: number }>()
   if (!order) return { ok: false, error: '주문을 찾을 수 없습니다', httpStatus: 404 }
-  if (!['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(order.status) || !order.payment_key) {
+  // 환불 가능한 주문 상태 = 활성 집합(PAID/ACCEPTED/SHIPPED/PARTIAL_REFUNDED/DONE).
+  //   2026-06-27: ACCEPTED(수락 후 발송 전 거절·반품)·DONE(구매확정 후 클레임 반품) 누락으로
+  //   제조사 거절/클레임 환불이 막히던 것 — ACTIVE_WHOLESALE_STATUSES 로 상태머신과 동기.
+  if (!(ACTIVE_WHOLESALE_STATUSES as readonly string[]).includes(order.status) || !order.payment_key) {
     return { ok: false, error: '환불할 수 없는 주문 상태입니다', httpStatus: 400 }
   }
   const isDeposit = order.payment_key === 'deposit'

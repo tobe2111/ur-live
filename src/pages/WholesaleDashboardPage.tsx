@@ -35,7 +35,10 @@ const WholesaleStaffPage = lazy(() => import('./wholesale/WholesaleStaffPage'))
 // 🏭 2026-06-12 (감사 부채): 주문 상태 뱃지 → wholesale-theme.ts SSOT 로 통합.
 //   기존 자체 정의(5종)는 주문내역 페이지와 라벨이 달랐음('배송준비' vs '결제완료').
 
-const PAID_STATUSES = ['PAID', 'SHIPPED']
+// 매입(예치금 차감) 집계 대상 = 활성 주문 상태. 예치금은 PAID 시점 차감되어 ACCEPTED→SHIPPED→
+//   PARTIAL_REFUNDED→DONE 내내 차감 유지되므로 매입 총액에 모두 포함(2026-06-27 ACCEPTED/DONE
+//   누락으로 수락·구매확정된 주문이 '이번달/누적 매입'에서 빠지던 것 수정). 상태머신 ACTIVE 집합과 동기.
+const PAID_STATUSES = ['PAID', 'ACCEPTED', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE']
 
 // 탭 정의 — 라벨/아이콘. staff 는 canManageStaff 일 때만 추가.
 const TAB_META: { key: string; label: string; icon: typeof Wallet }[] = [
@@ -91,9 +94,10 @@ export default function WholesaleDashboardPage() {
     .filter((o) => (o.paid_at || o.created_at || '').slice(0, 7) === ym)
     .reduce((s, o) => s + (o.grand_total ?? o.subtotal ?? 0), 0)
   const totalSpend = paidOrders.reduce((s, o) => s + (o.grand_total ?? o.subtotal ?? 0), 0)
-  const activeCount = orders.filter((o) => o.status === 'PAID').length
+  // 진행중(미완결) 주문 = 결제완료~배송중(구매확정/환불/취소 제외). ACCEPTED/SHIPPED/부분환불 포함.
+  const activeCount = orders.filter((o) => ['PAID', 'ACCEPTED', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(o.status)).length
   // 🧾 주문 내역 — 상태 탭 필터 (시안: 마이페이지 주문관리 테이블)
-  const ORDER_TABS = [{ id: 'all', label: '전체' }, { id: 'PAID', label: '결제완료' }, { id: 'SHIPPED', label: '배송중' }, { id: 'DONE', label: '구매확정' }]
+  const ORDER_TABS = [{ id: 'all', label: '전체' }, { id: 'PAID', label: '결제완료' }, { id: 'ACCEPTED', label: '수락됨' }, { id: 'SHIPPED', label: '배송중' }, { id: 'DONE', label: '구매확정' }]
   const filteredOrders = (orderTab === 'all' ? orders : orders.filter((o) => o.status === orderTab)).slice(0, 12)
 
   const company = localStorage.getItem('seller_name') || '판매사'

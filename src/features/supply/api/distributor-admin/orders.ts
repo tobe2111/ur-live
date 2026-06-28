@@ -5,6 +5,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund } from '../wholesale-settlement'
+import { ACTIVE_WHOLESALE_STATUSES, sqlStatusList, WHOLESALE_ORDER_STATUSES } from '../wholesale-order-status'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn, hasDepositRefundTxn } from '../wholesale-deposit-core'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import type { Env } from './helpers'
@@ -21,7 +22,7 @@ export function registerOrdersRoutes(app: Hono<{ Bindings: Env }>) {
         SELECT o.distributor_seller_id AS seller_id, s.business_name, s.name,
                COUNT(*) AS order_count, COALESCE(SUM(MAX(0, o.subtotal - COALESCE(o.refunded_amount,0))),0) AS sales_total
         FROM wholesale_orders o LEFT JOIN sellers s ON s.id = o.distributor_seller_id
-        WHERE o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED') AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
+        WHERE o.status IN (${sqlStatusList(ACTIVE_WHOLESALE_STATUSES)}) AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
         GROUP BY o.distributor_seller_id ORDER BY sales_total DESC
       `).bind(m).all().catch(() => ({ results: [] }))
 
@@ -31,7 +32,7 @@ export function registerOrdersRoutes(app: Hono<{ Bindings: Env }>) {
         FROM wholesale_order_items i
         JOIN wholesale_orders o ON o.id = i.wholesale_order_id
         LEFT JOIN suppliers sup ON sup.id = i.supplier_id
-        WHERE o.status IN ('PAID','SHIPPED','PARTIAL_REFUNDED') AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
+        WHERE o.status IN (${sqlStatusList(ACTIVE_WHOLESALE_STATUSES)}) AND strftime('%Y-%m', COALESCE(o.paid_at, o.created_at)) = ?
           AND i.line_status != 'REFUNDED'
         GROUP BY i.supplier_id ORDER BY purchase_total DESC
       `).bind(m).all().catch(() => ({ results: [] }))
@@ -51,7 +52,7 @@ export function registerOrdersRoutes(app: Hono<{ Bindings: Env }>) {
       const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
       const limit = Math.min(parseInt(c.req.query('limit') || '30', 10), 100)
       const offset = (page - 1) * limit
-      const VALID = ['PENDING', 'PAID', 'ON_CREDIT', 'SHIPPED', 'PARTIAL_REFUNDED', 'REFUNDED', 'FAILED']
+      const VALID = WHOLESALE_ORDER_STATUSES as readonly string[]
       const binds: unknown[] = []
       let where = '1=1'
       if (VALID.includes(status)) { where += ' AND o.status = ?'; binds.push(status) }
@@ -106,8 +107,9 @@ export function registerOrdersRoutes(app: Hono<{ Bindings: Env }>) {
         'SELECT id, distributor_seller_id, status, payment_key, subtotal, COALESCE(shipping_total,0) AS shipping_total, refunded_amount FROM wholesale_orders WHERE id = ?'
       ).bind(id).first<{ id: number; distributor_seller_id: number; status: string; payment_key: string | null; subtotal: number; shipping_total: number; refunded_amount: number }>()
       if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
-      if (order.status === 'REFUNDED') return c.json({ success: true, already: true })
-      if (!['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(order.status) || !order.payment_key) {
+      if (['REFUNDED', 'CANCELLED', 'REJECTED'].includes(order.status)) return c.json({ success: true, already: true })
+      // 2026-06-27: 활성 집합(ACCEPTED/DONE 포함)이면 어드민 강제환불 허용 — 가드와 아래 CAS 의 IN 절을 동일 집합으로.
+      if (!(ACTIVE_WHOLESALE_STATUSES as readonly string[]).includes(order.status) || !order.payment_key) {
         return c.json({ success: false, error: '환불할 수 없는 주문 상태입니다' }, 400)
       }
       // 남은 환불 가능액 = (상품합 + 배송비) - 이미 환불액. (감사 🔴#2: 청구액=subtotal+shipping 전액 환불)
@@ -117,7 +119,7 @@ export function registerOrdersRoutes(app: Hono<{ Bindings: Env }>) {
 
       // CAS claim — PAID/SHIPPED/PARTIAL_REFUNDED → REFUNDED. changes=0 이면 이미 처리됨(멱등).
       const claim = await c.env.DB.prepare(
-        "UPDATE wholesale_orders SET status='REFUNDED', refunded_amount = subtotal + COALESCE(shipping_total,0) WHERE id = ? AND status IN ('PAID','SHIPPED','PARTIAL_REFUNDED')"
+        `UPDATE wholesale_orders SET status='REFUNDED', refunded_amount = subtotal + COALESCE(shipping_total,0) WHERE id = ? AND status IN (${sqlStatusList(ACTIVE_WHOLESALE_STATUSES)})`
       ).bind(id).run()
       if ((claim.meta?.changes ?? 0) === 0) return c.json({ success: true, already: true })
 

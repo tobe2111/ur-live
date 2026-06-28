@@ -24,6 +24,16 @@ export const WHOLESALE_ORDER_STATUSES = [
 ] as const
 export type WholesaleOrderStatus = typeof WHOLESALE_ORDER_STATUSES[number]
 
+/**
+ * "활성(매출·정산·목록에 잡히는)" 도매주문 상태 — PENDING(미결제)/거절/취소/환불/실패/만료 제외.
+ *   매출집계·거래내역·세금·제조사 발송목록·환불가능 판정의 **표준 집합**. 새 상태 추가 시 여기만 갱신하면
+ *   모든 소비처가 일관 반영(2026-06-27 ACCEPTED/DONE 누락으로 매출·발송목록에서 주문이 빠지던 클래스 방지).
+ */
+export const ACTIVE_WHOLESALE_STATUSES = ['PAID', 'ACCEPTED', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE'] as const
+
+/** SQL `IN (...)` 절 빌더 — `status IN (${sqlStatusList(ACTIVE_WHOLESALE_STATUSES)})`. 리터럴만(인젝션 무관). */
+export const sqlStatusList = (statuses: readonly string[]): string => statuses.map(s => `'${s}'`).join(',')
+
 /** 허용 전이 (from → 가능한 to). terminal(DONE/REJECTED/CANCELLED/REFUNDED/FAILED/EXPIRED)은 키 없음. */
 export const WHOLESALE_TRANSITIONS: Record<string, WholesaleOrderStatus[]> = {
   PENDING: ['PAID', 'EXPIRED', 'FAILED'],
