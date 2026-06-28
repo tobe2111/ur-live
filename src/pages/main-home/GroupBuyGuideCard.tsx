@@ -54,7 +54,7 @@ export default function GroupBuyGuideCard() {
             🛒
           </div>
           <p className="text-[10px] font-bold text-gray-900 dark:text-white">결제</p>
-          <p className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">마음에 든 공구권 결제</p>
+          <p className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">마음에 든 이용권 결제</p>
         </li>
         <li className="flex flex-col items-center">
           <div className="w-9 h-9 rounded-full bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] flex items-center justify-center text-base mb-1">

@@ -7,7 +7,7 @@
  *   GET /api/agency/introduced-stores/summary    — 대시보드 요약 (이번달/누적)
  *   GET /api/agency/intro-code                   — 내 추천 코드 (없으면 자동 생성)
  *
- * 사용자 모델: 에이전시 = 가게 영업. 입점 가게의 모든 공구권 매출에 영구 2% commission.
+ * 사용자 모델: 에이전시 = 가게 영업. 입점 가게의 모든 이용권 매출에 영구 2% commission.
  */
 
 import { Hono } from 'hono'

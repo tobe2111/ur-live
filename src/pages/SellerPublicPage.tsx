@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 // 🏁 2026-06-26 (대표 결정 — "추천템은 사업자 링크샵에선 숨김"): 사업자 = 본인 상품이 주인공.
 //   추천 핀(CuratorPinsSection) 섹션 제거 → 추천 적립 동선은 크리에이터 콘솔(/creator)에서 유지.
 //   (일반 유저 링크샵(CuratorPage)은 추천템이 메인이라 그대로.)
-// 🏁 2026-06-26 (대표 — "상품·공구권 모두 전체 등록 페이지로"): 얄팍한 빠른등록 모달(QuickProductModal) 제거 →
+// 🏁 2026-06-26 (대표 — "상품·이용권 모두 전체 등록 페이지로"): 얄팍한 빠른등록 모달(QuickProductModal) 제거 →
 //   등록은 정식 풀페이지(/seller/products/new · /seller/meal-voucher/new)로. (lazy/Suspense 도 미사용→제거)
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -72,8 +72,8 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   }, [curatorHandle, sellerIdOverride, rawParam, navigate])
   // 🔍 2026-06-16 링크샵 시안: 상품 탭 검색 (이름 필터).
   const [shopQuery, setShopQuery] = useState('')
-  // 🏁 2026-06-26 (대표 결정 — "상품·공구권 각자 전체 등록 페이지로"): 등록 종류 선택 시트(상품/공구권).
-  //   둘 다 정식 등록 풀페이지로 네비게이트(상품=/seller/products/new, 공구권=/seller/meal-voucher/new).
+  // 🏁 2026-06-26 (대표 결정 — "상품·이용권 각자 전체 등록 페이지로"): 등록 종류 선택 시트(상품/이용권).
+  //   둘 다 정식 등록 풀페이지로 네비게이트(상품=/seller/products/new, 이용권=/seller/meal-voucher/new).
   const [showAddSheet, setShowAddSheet] = useState(false)
   // 🏁 2026-06-25 (대표 "통일"): canonical CuratorHeader 의 인라인 편집 반영(낙관적). curator 우선·seller 폴백.
   const [curatorEdits, setCuratorEdits] = useState<Partial<CuratorProfile>>({})
@@ -366,7 +366,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           <span className="flex items-center gap-2 min-w-0"><span className="text-[#6b7280] text-[14px] leading-none shrink-0">✎</span><span className="truncate">{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 사진·이름·소개를 눌러 바로 수정하세요' })}</span></span>
           <div className="flex items-center gap-1.5 shrink-0">
             {/* 🏁 2026-06-18 (사용자 결정): 링크샵에서 바로 등록 (대시보드 안 나감).
-                🏁 2026-06-26 (대표 — "공구권 등록도 추가"): 단일 '+ 등록' → 상품/공구권 선택 시트. */}
+                🏁 2026-06-26 (대표 — "이용권 등록도 추가"): 단일 '+ 등록' → 상품/이용권 선택 시트. */}
             <button
               type="button"
               onClick={() => setShowAddSheet(true)}
@@ -382,7 +382,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
               {t('seller.publicPage.previewVisitor', { defaultValue: '👀 미리보기' })}
             </button>
             {/* 🏁 2026-06-26 (대표 결정 — '전체 설정'→'셀러 대시보드'): 라벨/목적지 정정.
-                좁은 사업자정보 탭(?tab=business) 대신 대시보드 홈(/seller — 주문·정산·상품·공구권). */}
+                좁은 사업자정보 탭(?tab=business) 대신 대시보드 홈(/seller — 주문·정산·상품·이용권). */}
             <button
               type="button"
               onClick={() => navigate('/seller')}
@@ -393,8 +393,8 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           </div>
         </div>
       )}
-      {/* 🏁 2026-06-26 (대표 — "상품·공구권 각자 전체 등록 페이지로"): 등록 종류 선택 시트.
-          둘 다 정식 등록 풀페이지로 — 상품=/seller/products/new(이미지·상세·옵션), 공구권=/seller/meal-voucher/new(위치·목표인원).
+      {/* 🏁 2026-06-26 (대표 — "상품·이용권 각자 전체 등록 페이지로"): 등록 종류 선택 시트.
+          둘 다 정식 등록 풀페이지로 — 상품=/seller/products/new(이미지·상세·옵션), 이용권=/seller/meal-voucher/new(위치·목표인원).
           (얄팍한 빠른등록 모달은 제거 — 상세이미지/옵션 없어 실제 상품에 부족.) */}
       {ownerView && showAddSheet && (
         <div className="fixed inset-0 z-[10600] flex items-end justify-center bg-black/60" onClick={() => setShowAddSheet(false)} role="presentation">
@@ -424,7 +424,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
               >
                 <span className="w-11 h-11 rounded-xl bg-white dark:bg-[#222] flex items-center justify-center text-xl shrink-0">🎟️</span>
                 <span className="min-w-0">
-                  <span className="block text-[14px] font-bold text-gray-900 dark:text-white">{t('seller.publicPage.addVoucher', { defaultValue: '공구권 등록' })}</span>
+                  <span className="block text-[14px] font-bold text-gray-900 dark:text-white">{t('seller.publicPage.addVoucher', { defaultValue: '이용권 등록' })}</span>
                   <span className="block text-[12px] text-gray-500 dark:text-gray-400">{t('seller.publicPage.addVoucherDesc', { defaultValue: '동네 공구·교환권 — 위치·목표인원 설정' })}</span>
                 </span>
               </button>
@@ -513,7 +513,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
         {/* ③ 교환권 */}
         {mealVouchers.length > 0 && (
           <section className="pt-7">
-            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '공구권' })} {mealVouchers.length}</h3>
+            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '이용권' })} {mealVouchers.length}</h3>
             <VouchersTab mealVouchers={mealVouchers} isOwner={ownerView} textClass={T.text} />
           </section>
         )}

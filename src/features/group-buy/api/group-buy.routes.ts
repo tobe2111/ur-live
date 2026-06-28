@@ -656,7 +656,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             if (product.seller_id) {
               await createDashboardNotification(
                 DB, 'seller', String(product.seller_id), 'voucher_sold',
-                '🎟️ 공구권 판매', `${product.name} ×${qty} — ₩${Number(totalAmount).toLocaleString('ko-KR')}`,
+                '🎟️ 이용권 판매', `${product.name} ×${qty} — ₩${Number(totalAmount).toLocaleString('ko-KR')}`,
                 '/seller/group-buy',
               ).catch(() => {})
             }
@@ -1121,7 +1121,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
           if (product.seller_id) {
             await createDashboardNotification(
               DB, 'seller', String(product.seller_id), 'voucher_sold',
-              '🎟️ 공구권 판매(카드)', `${product.name} ×${qty} — ₩${Number(expectedAmount).toLocaleString('ko-KR')}`,
+              '🎟️ 이용권 판매(카드)', `${product.name} ×${qty} — ₩${Number(expectedAmount).toLocaleString('ko-KR')}`,
               '/seller/group-buy',
             ).catch(() => {})
           }

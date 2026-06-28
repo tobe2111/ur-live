@@ -66,7 +66,7 @@ export default function StaysSearchPage() {
 
   return (
     <div className="min-h-screen bg-[#020202] text-white pb-safe-nav">
-      <SEO title="숙소 공구 - 유어딜" description="펜션 호텔 모텔 등 매장 공구권 — 최대 70% 할인" url="/stays" />
+      <SEO title="숙소 공구 - 유어딜" description="펜션 호텔 모텔 등 매장 이용권 — 최대 70% 할인" url="/stays" />
 
       {/* Sticky Top Bar */}
       <div className="sticky top-0 z-30 bg-[#020202]/95 backdrop-blur-md border-b border-[#1A1A1A]">

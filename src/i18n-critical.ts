@@ -55,7 +55,7 @@ export const CRITICAL_I18N: Record<string, Record<string, any>> = {
     seo: {
       home: {
         title: '돈버는 쇼핑, 오프라인 공동구매 & 라이브커머스',
-        description: '동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 공구권 + 라이브 쇼핑.',
+        description: '동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 이용권 + 라이브 쇼핑.',
       },
     },
   },

@@ -667,7 +667,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
   })
 
   // ── POST /vouchers/:code/self-redeem — 🎟️ 2026-06-20 소비자 셀프 사용처리 (대표 — 카운터 느슨/정산 검문) ──
-  //   본인 미사용 공구권을 현장에서 직접 사용. CAS(claim-before-credit) 일회성 — 동시/중복 차단.
+  //   본인 미사용 이용권을 현장에서 직접 사용. CAS(claim-before-credit) 일회성 — 동시/중복 차단.
   //   라이브 '사용완료' 화면 데이터 반환(매장명·used_at). 60초 내 cancel 가능(아래). 돈 이동 X(에스크로는 Phase 2).
   router.post('/vouchers/:code/self-redeem', requireAuth(), async (c) => {
     const { DB } = c.env
@@ -690,9 +690,9 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         WHERE v.code=? AND v.user_id=?
       `).bind(code, user.id).first<{ id: number; code: string; status: string; used_at: string; product_name?: string; restaurant_name?: string }>().catch(() => null)
 
-      if (!row) return c.json({ success: false, error: '공구권을 찾을 수 없습니다' }, 404)
+      if (!row) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
       if (!claimed && row.status !== 'used') {
-        return c.json({ success: false, error: row.status === 'refunded' ? '환불된 공구권입니다' : '이미 처리되었거나 사용할 수 없는 공구권입니다' }, 409)
+        return c.json({ success: false, error: row.status === 'refunded' ? '환불된 이용권입니다' : '이미 처리되었거나 사용할 수 없는 이용권입니다' }, 409)
       }
       // 🛰️ 사용 위치 소프트 기록(증거용) — 방금 사용한 건만(멱등 재사용엔 덮지 않음).
       if (claimed && row.id != null) {

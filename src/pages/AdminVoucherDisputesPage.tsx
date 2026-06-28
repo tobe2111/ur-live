@@ -1,7 +1,7 @@
 /**
  * 🎟️ 2026-06-22 (대표 — 사용처리 분쟁 중재): 어드민이 매장 "안 왔어요" 신고를 중재.
  *   백엔드: voucher-dispute.routes (GET /api/admin/voucher-dispute, POST /:id/resolve).
- *   resolve: settle(분쟁 종료 → cron 정산) / reactivate(공구권 used→unused, 손님 재사용).
+ *   resolve: settle(분쟁 종료 → cron 정산) / reactivate(이용권 used→unused, 손님 재사용).
  *   라이트 테마 고정(AdminLayout) — 다크 variant 미사용.
  */
 import { useState, useEffect, useCallback } from 'react'
@@ -91,7 +91,7 @@ export default function AdminVoucherDisputesPage() {
         <div className="bg-white rounded-2xl border border-gray-200 p-5">
           <p className="text-sm font-bold text-gray-900">대기 중 분쟁 ({items.length})</p>
           <p className="text-[12px] text-gray-500 mt-1">
-            매장이 "안 왔어요"로 신고한 사용처리. <b>정산 진행</b> = 정상 처리(매장 정산) · <b>재사용 처리</b> = 공구권을
+            매장이 "안 왔어요"로 신고한 사용처리. <b>정산 진행</b> = 정상 처리(매장 정산) · <b>재사용 처리</b> = 이용권을
             미사용으로 되돌림(손님 재사용). 실제 환불(돈)은 기존 환불 메뉴에서.
           </p>
         </div>
@@ -107,7 +107,7 @@ export default function AdminVoucherDisputesPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-gray-900 truncate">{d.restaurant_name || d.product_name || `상품 #${d.product_id}`}</p>
-                    <p className="text-[12px] text-gray-500 mt-0.5">공구권 #{d.voucher_id} {d.code ? `· ${d.code}` : ''} · 셀러 #{d.seller_id}</p>
+                    <p className="text-[12px] text-gray-500 mt-0.5">이용권 #{d.voucher_id} {d.code ? `· ${d.code}` : ''} · 셀러 #{d.seller_id}</p>
                     <p className="text-[12px] text-gray-700 mt-1.5">사유: {d.reason || '미방문 신고'}</p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       <CustomerResponseBadge resp={d.customer_response} />

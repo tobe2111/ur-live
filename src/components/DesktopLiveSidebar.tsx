@@ -39,10 +39,10 @@ const MENU_ITEMS: NavItem[] = [
 //   맛집/미용/숙소/기타/일반은 동네딜(/group-buy) 페이지의 탭으로 이미 접근 가능 → 사이드바 중복 제거(단순화).
 //   사이드바는 '주요 목적지'만(홈/동네딜/공구제안/링크샵/마이) — 모바일 하단바와 정합.
 
-// 🎟️ 2026-06-18 (대표 결정 — 5탭 통일: 홈/동네딜/공구권/링크샵/마이): 주문/찜/식사권은 마이페이지 안 탭으로
-//   접근 → 사이드바는 핵심만. '내 식사권' → '공구권'(QR 매장사용)으로 명칭/아이콘 통일(모바일 하단바와 동일).
+// 🎟️ 2026-06-18 (대표 결정 — 5탭 통일: 홈/동네딜/이용권/링크샵/마이): 주문/찜/식사권은 마이페이지 안 탭으로
+//   접근 → 사이드바는 핵심만. '내 식사권' → '이용권'(QR 매장사용)으로 명칭/아이콘 통일(모바일 하단바와 동일).
 const MY_ITEMS: NavItem[] = [
-  { labelKey: 'nav.myGbVouchers', labelDefault: '공구권', icon: Ticket, path: '/my-vouchers', active: (p) => p.startsWith('/my-vouchers') },
+  { labelKey: 'nav.myGbVouchers', labelDefault: '이용권', icon: Ticket, path: '/my-vouchers', active: (p) => p.startsWith('/my-vouchers') },
   { labelKey: 'my.profile',       labelDefault: '마이페이지', icon: User, path: '/user/profile', active: (p) => p.startsWith('/user/profile') || p === '/mypage' },
 ]
 
@@ -117,7 +117,7 @@ export default function DesktopLiveSidebar() {
           <p className="hidden xl:block text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
             {t('nav.sectionMy', { defaultValue: 'My' })}
           </p>
-          {/* 순서 통일(모바일 하단바와 동일): 공구권 → 링크샵 → 마이 */}
+          {/* 순서 통일(모바일 하단바와 동일): 이용권 → 링크샵 → 마이 */}
           <NavBtn
             item={MY_ITEMS[0]}
             isActive={MY_ITEMS[0].active?.(pathname, search) ?? false}

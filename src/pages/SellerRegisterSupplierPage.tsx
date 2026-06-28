@@ -2,7 +2,7 @@
  * 🛡️ 2026-05-20: 공급자 (가게 사장님) 자체 onboarding 페이지.
  *
  * 기존 /seller/register/business 는 인플루언서 (라이브 송출자) 용.
- * 본 페이지는 매장 운영자 — 라이브 안 함, 상품/공구권만 등록 + 정산 받음.
+ * 본 페이지는 매장 운영자 — 라이브 안 함, 상품/이용권만 등록 + 정산 받음.
  *
  * 흐름:
  *   1. 카카오 로그인 필수 (세션 쿠키 기반 — SellerRegisterBusinessPage 와 동일)
@@ -231,7 +231,7 @@ export default function SellerRegisterSupplierPage() {
           </div>
           <h2 className="text-base font-bold text-gray-900">매장 공동구매 시작하기</h2>
           <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-            라이브 방송 없이도 OK. 공구권을 발행하면 인플루언서가 자동 추천 + 손님 모객 → 매출 ↑
+            라이브 방송 없이도 OK. 이용권을 발행하면 인플루언서가 자동 추천 + 손님 모객 → 매출 ↑
             <br />
             플랫폼 수수료 5% (기본) — 인플 수수료 별도 협상.
           </p>
@@ -339,7 +339,7 @@ export default function SellerRegisterSupplierPage() {
         <p className="text-[11px] text-gray-500 text-center leading-relaxed">
           신청 후 1-2 영업일 내 관리자가 검토 → 알림톡으로 결과 안내.
           <br />
-          승인 시 셀러 대시보드 (/seller) 에서 상품/공구권 등록 가능.
+          승인 시 셀러 대시보드 (/seller) 에서 상품/이용권 등록 가능.
         </p>
 
         <button onClick={submit} disabled={loading}

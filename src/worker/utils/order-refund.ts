@@ -205,14 +205,14 @@ export async function refundOrderFully(
       .bind(Number(order.id)).run().catch(swallow('order-refund:coupon-uses'))
   } catch { /* best-effort — coupon_uses 부재 등 */ }
 
-  // 9b. 🔁 2026-06-23 차지백 클로백 (최종 이상형 #1): 공구권 무효화 + 매장 정산 회수.
+  // 9b. 🔁 2026-06-23 차지백 클로백 (최종 이상형 #1): 이용권 무효화 + 매장 정산 회수.
   //   미사용/미정산 used → refunded(돈 이동 0, cron 미지급) / 미지급 정산 → 차감+detach /
   //   지급완료 정산 → settlement_clawbacks 회수의무 기록. CAS 전이 후라 멱등.
   //   (확정주문 차지백은 webhook 이 거부하고 환불 API=이 함수로 강제하므로 모든 회수가 여기로 수렴.)
   try {
     const { clawbackVoucherSettlementOnRefund } = await import('./voucher-settlement-clawback')
     await clawbackVoucherSettlementOnRefund(DB, Number(order.id), `order_refund:${opts.reason}`)
-  } catch { /* best-effort — 공구권 없는 주문 등 */ }
+  } catch { /* best-effort — 이용권 없는 주문 등 */ }
 
   // 8. 누적 환불액 기록.
   await DB.prepare('UPDATE orders SET refunded_amount = COALESCE(refunded_amount, 0) + ? WHERE id = ?')

@@ -1,11 +1,11 @@
 /**
- * 🏁 2026-06-22 (대표 요청 — "상품/공구권 모두 선택할 수 있는 전용 페이지"):
+ * 🏁 2026-06-22 (대표 요청 — "상품/이용권 모두 선택할 수 있는 전용 페이지"):
  *   링크샵 '상품·동네딜 추가하기' 전용 picker. 기존엔 /browse(상품) · /group-buy(동네딜)로
- *   흩어져 나가 핀 추가가 이상적이지 않았음 → 한 화면에서 상품 + 공구권·동네딜을 탭으로 둘러보며
+ *   흩어져 나가 핀 추가가 이상적이지 않았음 → 한 화면에서 상품 + 이용권·동네딜을 탭으로 둘러보며
  *   탭 1번으로 추가/제거(토글). 이미 핀된 항목은 '추가됨' 으로 표시.
  *
  *   - 인증: ProtectedRoute(requireUser) — 본인만 (me 엔드포인트 사용).
- *   - 데이터: 상품 `/api/products?exclude_deal_only=1`, 공구권·동네딜은 교환권(`deal_only=1`) +
+ *   - 데이터: 상품 `/api/products?exclude_deal_only=1`, 이용권·동네딜은 교환권(`deal_only=1`) +
  *     동네딜(`/api/group-buy/products`) 병합(id dedupe).
  *   - 토글: curatorApi.addPin / removePin (직접 — usePinAction 의 로그인 redirect/클립보드 흐름 불필요).
  *   - 다크 기본 + 라이트 토글 (CuratorPage 와 동일 테마 토큰).
@@ -117,7 +117,7 @@ export default function LinkshopPinPicker() {
       .finally(() => { if (reset) setLoading(false); else setLoadingMore(false) })
   }, [])
 
-  // ── 공구권·동네딜 로드 (교환권 + 동네딜 병합, 1회) ──
+  // ── 이용권·동네딜 로드 (교환권 + 동네딜 병합, 1회) ──
   const loadVouchers = useCallback(() => {
     if (voucherFetchedRef.current) return
     voucherFetchedRef.current = true
@@ -201,7 +201,7 @@ export default function LinkshopPinPicker() {
 
   return (
     <>
-      <SEO title="링크샵에 추가 - 유어딜" description="상품과 공구권을 내 링크샵에 추가하세요" url="/u/me/add" />
+      <SEO title="링크샵에 추가 - 유어딜" description="상품과 이용권을 내 링크샵에 추가하세요" url="/u/me/add" />
       <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-28">
         {/* 상단 바 */}
         <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
@@ -216,7 +216,7 @@ export default function LinkshopPinPicker() {
             <div className="flex-1 min-w-0">
               <h1 className="text-[15px] font-extrabold leading-tight truncate">내 링크샵에 추가</h1>
               <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-tight">
-                {pinnedCount > 0 ? `${pinnedCount}개 추가됨` : '마음에 든 상품·공구권을 담아보세요'}
+                {pinnedCount > 0 ? `${pinnedCount}개 추가됨` : '마음에 든 상품·이용권을 담아보세요'}
               </p>
             </div>
             <button
@@ -228,7 +228,7 @@ export default function LinkshopPinPicker() {
           </div>
           {/* 탭 */}
           <div className="max-w-3xl mx-auto px-3 flex gap-1">
-            {([['shop', '상품'], ['voucher', '공구권·동네딜']] as [PickerTab, string][]).map(([key, label]) => (
+            {([['shop', '상품'], ['voucher', '이용권·동네딜']] as [PickerTab, string][]).map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => { setTab(key); setQuery('') }}
@@ -250,7 +250,7 @@ export default function LinkshopPinPicker() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={tab === 'shop' ? '상품 이름으로 검색' : '공구권·동네딜 이름으로 검색'}
+              placeholder={tab === 'shop' ? '상품 이름으로 검색' : '이용권·동네딜 이름으로 검색'}
               className="flex-1 min-w-0 bg-transparent outline-none text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400"
             />
             {query && (
@@ -271,7 +271,7 @@ export default function LinkshopPinPicker() {
         ) : filtered.length === 0 ? (
           <div className="max-w-3xl mx-auto px-4 py-20 text-center">
             <p className="text-sm font-bold text-gray-900 dark:text-white">
-              {query ? '검색 결과가 없어요' : tab === 'shop' ? '담을 수 있는 상품이 없어요' : '담을 수 있는 공구권이 없어요'}
+              {query ? '검색 결과가 없어요' : tab === 'shop' ? '담을 수 있는 상품이 없어요' : '담을 수 있는 이용권이 없어요'}
             </p>
             {!query && (
               <Link to={tab === 'shop' ? '/browse' : '/group-buy'} className="inline-block mt-3 text-[13px] font-bold text-gray-500 dark:text-gray-400 underline">

@@ -19,7 +19,7 @@ type SellerType = 'influencer' | 'store_owner' | 'both'
 /**
  * 🛡️ 2026-05-17: Mode-based IA — 각 nav 항목에 'mode' 표시.
  *   live   = 라이브 송출 (인플루언서) 전용
- *   store  = 매장 운영 (공구권 발행) 전용
+ *   store  = 매장 운영 (이용권 발행) 전용
  *   common = 둘 다 사용
  * 사용자가 selectedMode 토글하면 해당 mode + common 만 노출.
  * 'both' 셀러는 상단에 segmented control 로 모드 전환 가능.
@@ -326,7 +326,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           <p className="text-[9px] text-white/40 mt-1.5 px-1">
             {activeMode === 'live'
               ? '라이브 송출 + 일반 상품 메뉴만 표시'
-              : '매장 운영 + 공구권 발행 메뉴만 표시'}
+              : '매장 운영 + 이용권 발행 메뉴만 표시'}
           </p>
         </div>
       )}

@@ -493,8 +493,8 @@ export default function MyVouchersPage() {
   // 상태별 그룹핑
   // 🏁 2026-06-12: 만료/환불 그룹 접기 상태 (기본 접힘)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
-  // 🎟️ 2026-06-18 (대표 신고 — 공구권 탭에 교환권 섞임): source 분리.
-  //   공구권(internal, 매장 QR/PIN) 기본 / 교환권(kt_alpha, MMS 발송)은 별도 세그먼트. 교환권 보유 시에만 토글 노출.
+  // 🎟️ 2026-06-18 (대표 신고 — 이용권 탭에 교환권 섞임): source 분리.
+  //   이용권(internal, 매장 QR/PIN) 기본 / 교환권(kt_alpha, MMS 발송)은 별도 세그먼트. 교환권 보유 시에만 토글 노출.
   const [sourceTab, setSourceTab] = useState<'gb' | 'gift'>('gb')
   const gbCount = vouchers.filter(v => v.source !== 'kt_alpha').length
   const giftCount = vouchers.filter(v => v.source === 'kt_alpha').length
@@ -513,7 +513,7 @@ export default function MyVouchersPage() {
   const usedItems = shownVouchers.filter(v => v.status === 'used')
   const archivedItems = shownVouchers.filter(v => v.status === 'expired' || v.status === 'refunded')
   // 지도에 표시 가능한 미사용 식사권 (좌표 보유) — 메모이즈(지도 재초기화 방지)
-  // 🐛 2026-06-21: 현재 탭(공구권/교환권) 스코프로 제한 — 교환권 탭에서 공구권 핀/지도버튼 새던 것 차단.
+  // 🐛 2026-06-21: 현재 탭(이용권/교환권) 스코프로 제한 — 교환권 탭에서 이용권 핀/지도버튼 새던 것 차단.
   const mapVouchers = useMemo(() => {
     const scoped = giftCount > 0
       ? vouchers.filter(v => (sourceTab === 'gift' ? v.source === 'kt_alpha' : v.source !== 'kt_alpha'))
@@ -644,7 +644,7 @@ export default function MyVouchersPage() {
       {/* Large Title + 메타 */}
       <LargeTitle theme={theme} title={t('voucher.myVouchers')} />
 
-      {/* 🔁 2026-06-23 양방향 분쟁: 매장이 "안 왔어요" 신고한 공구권에 대한 손님 항변 배너(자가완결) */}
+      {/* 🔁 2026-06-23 양방향 분쟁: 매장이 "안 왔어요" 신고한 이용권에 대한 손님 항변 배너(자가완결) */}
       <VoucherDisputeBanner />
 
       {/* 🎨 2026-06-21 시안 A '프리미엄 패스': 보유 금액 히어로 (지갑=자산 느낌). 사용 가능분 있을 때만.
@@ -679,13 +679,13 @@ export default function MyVouchersPage() {
         </div>
       )}
 
-      {/* 🎟️ 2026-06-18: 공구권/교환권 세그먼트 — 교환권(기프티콘) 보유 시에만. 기본 공구권.
+      {/* 🎟️ 2026-06-18: 이용권/교환권 세그먼트 — 교환권(기프티콘) 보유 시에만. 기본 이용권.
           🎨 2026-06-20 (사용자 신고 — '성의없어'): 두 줄짜리 plain pill → iOS 세그먼트 컨트롤(트랙+슬라이드 강조). */}
       {giftCount > 0 && (
         <div className="ur-content-narrow px-4 lg:px-8 mb-4">
           <div className="flex p-1 rounded-2xl bg-gray-100 dark:bg-[#1A1A1A]">
             {([
-              ['gb', '🎟️', t('voucher.tabGroupBuy', { defaultValue: '공구권' }), gbCount],
+              ['gb', '🎟️', t('voucher.tabGroupBuy', { defaultValue: '이용권' }), gbCount],
               ['gift', '📱', t('voucher.tabGifticon', { defaultValue: '교환권' }), giftCount],
             ] as const).map(([key, emoji, label, count]) => {
               const active = sourceTab === key
@@ -1074,7 +1074,7 @@ function VoucherTicket({ v, muted, locale, t, onShowQr }: {
         <span className="flex items-center gap-1 min-w-0 text-[12px] font-semibold text-gray-500 dark:text-gray-400">
           {v.restaurant_name
             ? (<><MapPin className="w-3 h-3 shrink-0" /><span className="truncate">{v.restaurant_name}</span></>)
-            : (<span className="truncate">{t('voucher.tabGroupBuy', { defaultValue: '공구권' })}</span>)}
+            : (<span className="truncate">{t('voucher.tabGroupBuy', { defaultValue: '이용권' })}</span>)}
         </span>
         {v.status === 'unused' ? (
           daysLeft !== null ? (

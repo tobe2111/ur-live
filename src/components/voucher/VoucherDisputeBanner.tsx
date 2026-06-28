@@ -1,6 +1,6 @@
 /**
  * 🔁 2026-06-23 (대표 — 양방향 분쟁): 손님 항변 배너.
- *   매장이 "안 왔어요"로 신고한 내 공구권을 손님이 직접 확인 — 네 이용했어요(contest) / 아직 안 갔어요(concede).
+ *   매장이 "안 왔어요"로 신고한 내 이용권을 손님이 직접 확인 — 네 이용했어요(contest) / 아직 안 갔어요(concede).
  *   자가 완결(자체 fetch/state) — MyVouchersPage 에는 <VoucherDisputeBanner/> 한 줄만 추가(잠금 안전).
  *   API: GET /api/voucher-dispute/against-me · POST /api/voucher-dispute/:id/respond
  *   소비자 테마(화이트/다크) — 분쟁=긴급이라 기능 빨강 사용.
@@ -39,7 +39,7 @@ export default function VoucherDisputeBanner() {
       await api.post(`/api/voucher-dispute/${d.id}/respond`, { action })
       toast.success(action === 'contest'
         ? '이용했다고 알렸어요. 운영자가 확인합니다.'
-        : '공구권을 다시 사용할 수 있도록 되돌렸어요.')
+        : '이용권을 다시 사용할 수 있도록 되돌렸어요.')
       setItems(prev => prev.filter(x => x.id !== d.id))
     } catch {
       toast.error('처리에 실패했어요')
