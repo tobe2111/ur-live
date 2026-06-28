@@ -47,5 +47,18 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- 🛡️ 2026-06-27: 커스텀 URL 스킴 yourdeal:// — Android intent-filter 와 parity.
+	     딥링크 / OAuth 콜백을 앱으로 되돌리기. Universal Links(applinks)는 entitlements 별도. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.urteam.yourdeal</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>yourdeal</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
