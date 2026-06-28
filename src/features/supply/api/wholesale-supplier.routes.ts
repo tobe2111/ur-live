@@ -18,6 +18,7 @@ import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn } from './wholesale-deposit-core'
 import { refundWholesaleSupplierLines } from './wholesale-refund'
+import { transitionWholesaleOrder } from './wholesale-order-status'
 import { parseCsv } from './supply-csv'
 import { buildXlsx, xlsxResponse } from './xlsx'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
@@ -201,7 +202,7 @@ app.post('/items/:id/ship', async (c) => {
       "SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status != 'SHIPPED'"
     ).bind(line.wholesale_order_id).first<{ c: number }>()
     if ((pending?.c ?? 0) === 0) {
-      await DB.prepare("UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now') WHERE id=? AND status='PAID'")
+      await DB.prepare("UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now') WHERE id=? AND status IN ('PAID','ACCEPTED')")
         .bind(line.wholesale_order_id).run()
     }
     // 🔔 2026-06-26 (알림 누락 보강): 단건 송장 입력도 판매사(바이어)에게 발송 알림 — 기존엔 ship-all 만 통지했음.
@@ -236,7 +237,7 @@ app.post('/orders/:id/ship-all', async (c) => {
     const order = await DB.prepare("SELECT id, status, distributor_seller_id FROM wholesale_orders WHERE id = ?")
       .bind(orderId).first<{ id: number; status: string; distributor_seller_id: number }>()
     if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
-    if (!['PAID', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(order.status)) {
+    if (!['PAID', 'ACCEPTED', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(order.status)) {
       return c.json({ success: false, error: '발송할 수 없는 주문 상태입니다' }, 400)
     }
 
@@ -252,7 +253,7 @@ app.post('/orders/:id/ship-all', async (c) => {
       "SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status != 'SHIPPED'"
     ).bind(orderId).first<{ c: number }>()
     if ((pending?.c ?? 0) === 0) {
-      await DB.prepare("UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now') WHERE id=? AND status='PAID'")
+      await DB.prepare("UPDATE wholesale_orders SET status='SHIPPED', shipped_at=datetime('now') WHERE id=? AND status IN ('PAID','ACCEPTED')")
         .bind(orderId).run()
     }
 
@@ -267,6 +268,69 @@ app.post('/orders/:id/ship-all', async (c) => {
     return c.json({ success: true, shipped })
   } catch (err) {
     return safeError(c, err, '일괄 발송 중 오류가 발생했습니다', '[wholesale-supplier]')
+  }
+})
+
+// ── POST /orders/:id/accept — 제조사 주문 수락 (PAID → ACCEPTED) ──────────────
+//   2026-06-27 (대표 — 제조사 확인 단계): 내 라인이 있는 주문을 '수락'해 발송대기로. 수락 없이 바로
+//   발송도 허용(ship 가 PAID/ACCEPTED 둘 다)이라, 수락은 명시적 acknowledgement + 바이어 통지용.
+app.post('/orders/:id/accept', async (c) => {
+  const sid = supplierId(c)
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  const orderId = Number(c.req.param('id'))
+  if (!Number.isFinite(orderId) || orderId <= 0) return c.json({ success: false, error: '잘못된 주문 ID' }, 400)
+  try {
+    const own = await DB.prepare(
+      "SELECT wo.id, wo.status, wo.distributor_seller_id FROM wholesale_orders wo JOIN wholesale_order_items wi ON wi.wholesale_order_id = wo.id WHERE wo.id = ? AND wi.supplier_id = ? LIMIT 1"
+    ).bind(orderId, sid).first<{ id: number; status: string; distributor_seller_id: number | null }>()
+    if (!own) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
+    if (own.status === 'ACCEPTED') return c.json({ success: true, already: true })
+    const ok = await transitionWholesaleOrder(DB, orderId, 'ACCEPTED', ['PAID'], ", accepted_at=datetime('now')")
+    if (!ok) return c.json({ success: false, error: '수락할 수 없는 주문 상태입니다' }, 400)
+    if (own.distributor_seller_id) {
+      createDashboardNotification(
+        DB, 'seller', String(own.distributor_seller_id), 'wholesale_accepted',
+        '도매 주문 수락됨', `주문 #${orderId} 을(를) 제조사가 수락했습니다. 곧 발송됩니다.`, '/wholesale/dashboard',
+      ).catch(swallow('wholesale-supplier:notify-accept'))
+    }
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '주문 수락 중 오류가 발생했습니다', '[wholesale-supplier]')
+  }
+})
+
+// ── POST /orders/:id/reject — 제조사 주문 거절 (발송 전, 내 라인 환불) ──────────
+//   2026-06-27 (대표 — 제조사 거절): 발송 전 주문을 거절 → 내 라인 환불(예치금 복원+정산역전+재고복원).
+//   단일 제조사 주문이 전액 환불되면 상태를 REJECTED 로(거절 명시). 다중이면 PARTIAL_REFUNDED 유지.
+app.post('/orders/:id/reject', async (c) => {
+  const sid = supplierId(c)
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  const orderId = Number(c.req.param('id'))
+  if (!Number.isFinite(orderId) || orderId <= 0) return c.json({ success: false, error: '잘못된 주문 ID' }, 400)
+  try {
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const reason = String(body.reason || '제조사 거절').slice(0, 100)
+    // 발송 전만 거절 가능 — 내 라인 중 SHIPPED 있으면 거절 불가(반품 경로로).
+    const shipped = await DB.prepare(
+      "SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id = ? AND supplier_id = ? AND line_status = 'SHIPPED'"
+    ).bind(orderId, sid).first<{ c: number }>()
+    if ((shipped?.c ?? 0) > 0) return c.json({ success: false, error: '이미 발송된 라인은 거절할 수 없습니다 (반품으로 처리)' }, 400)
+    const r = await refundWholesaleSupplierLines(c.env, { orderId, supplierId: sid, reason, notifyBuyer: true })
+    if (!r.ok) return c.json({ success: false, error: r.error, code: r.code }, (r.httpStatus as 400 | 402 | 404) || 400)
+    if (r.already) return c.json({ success: true, already: true })
+    // 전액 환불(단일 제조사)이면 REJECTED 로 명확화 + 사유 기록.
+    if (r.orderStatus === 'REFUNDED') {
+      await DB.prepare("UPDATE wholesale_orders SET status='REJECTED', rejected_at=datetime('now'), reject_reason=?, updated_at=datetime('now') WHERE id=? AND status='REFUNDED'")
+        .bind(reason, orderId).run().catch(swallow('wholesale-supplier:reject-mark'))
+    } else {
+      await DB.prepare("UPDATE wholesale_orders SET rejected_at=datetime('now'), reject_reason=? WHERE id=?")
+        .bind(reason, orderId).run().catch(swallow('wholesale-supplier:reject-stamp'))
+    }
+    return c.json({ success: true, refunded_amount: r.refundAmount, order_status: r.orderStatus })
+  } catch (err) {
+    return safeError(c, err, '주문 거절 중 오류가 발생했습니다', '[wholesale-supplier]')
   }
 })
 

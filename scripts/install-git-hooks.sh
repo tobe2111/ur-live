@@ -205,6 +205,10 @@ node scripts/check-query-iserror.mjs || true
 echo "==> Pre-commit: 가격기반 로그인 유도 가드 (warn-only)..."
 node scripts/check-login-gate-by-price.mjs || true
 
+# 🛡️ 2026-06-27: 도매주문 상태 무결성 가드 (warn-only) — wholesale_orders.status 정의 밖 값 차단.
+echo "==> Pre-commit: 도매주문 상태 무결성 가드 (warn-only)..."
+node scripts/check-wholesale-order-status.mjs || true
+
 # 🛡️ 2026-04-26 (N4): migrations 변경 시 schema drift 자동 검증
 staged_migrations=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^migrations/.*\.sql$|src/shared/db/production-schema.ts' || true)
 if [ -n "$staged_migrations" ]; then

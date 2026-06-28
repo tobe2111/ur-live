@@ -70,6 +70,7 @@ fi
 if domain classify; then
   echo "🏷️  상품 종류 판별 · 라우팅"
   run "group_buy_status 종류판별 금지"   node scripts/check-groupbuy-status-classify.mjs
+  run "도매주문 상태 무결성"             env STRICT_WHS_STATUS=1       node scripts/check-wholesale-order-status.mjs
 fi
 
 if domain ui; then

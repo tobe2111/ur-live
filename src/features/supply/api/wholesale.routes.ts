@@ -29,6 +29,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAuth } from '@/worker/middleware/auth'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { creditSupplierOnWholesaleOrder, loadPlatformCommissionPct, splitWholesaleUnit } from './wholesale-settlement'
+import { transitionWholesaleOrder, refundWholesaleOrderFully } from './wholesale-order-status'
 import { generateWholesaleSalesInvoice, generateWholesalePurchaseInvoices, listDistributorSalesInvoices } from './wholesale-tax-invoices'
 import { ensureSupplyVisibilitySchema, visibilityWhere, gradeExposureWhere } from './supply-visibility'
 import { ensureDepositSchema, deductDeposit, recordDepositTxn, compensateDepositOrderOnce } from './wholesale-deposit-core'
@@ -1723,6 +1724,58 @@ app.get('/orders/:id', async (c) => {
     return c.json({ success: true, order, items: results ?? [] })
   } catch (err) {
     return safeError(c, err, '주문 조회 중 오류가 발생했습니다', '[wholesale]')
+  }
+})
+
+// ── POST /orders/:id/confirm — 판매사 구매확정 (SHIPPED → DONE) ────────────────
+//   2026-06-27 (대표 — 마무리 단계): 발송 완료된 주문을 판매사가 '구매확정'해 종결(DONE). 고아였던
+//   DONE/구매확정 배지를 살림. 본인 소유만. 멱등(이미 DONE 이면 already).
+app.post('/orders/:id/confirm', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 주문 ID' }, 400)
+  try {
+    await ensureOrderTables(DB)
+    const order = await DB.prepare('SELECT id, status FROM wholesale_orders WHERE id = ? AND distributor_seller_id = ?')
+      .bind(id, sellerId).first<{ id: number; status: string }>()
+    if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
+    if (order.status === 'DONE') return c.json({ success: true, already: true })
+    const ok = await transitionWholesaleOrder(DB, id, 'DONE', ['SHIPPED', 'PARTIAL_REFUNDED'], ", confirmed_at=datetime('now')")
+    if (!ok) return c.json({ success: false, error: '구매확정할 수 없는 주문 상태입니다 (발송 완료 후 가능)' }, 400)
+    return c.json({ success: true })
+  } catch (err) {
+    return safeError(c, err, '구매확정 중 오류가 발생했습니다', '[wholesale]')
+  }
+})
+
+// ── POST /orders/:id/cancel — 판매사 발송 전 주문 취소 (예치금 즉시환불) ─────────
+//   2026-06-27 (대표 — 발송 전 셀프취소): PAID/ACCEPTED(미발송) 주문을 판매사가 취소 → 예치금 복원 +
+//   정산 역전 + 재고복원 + CANCELLED. 발송된 라인이 하나라도 있으면 취소 불가(반품 경로로). 어드민 승인 불필요.
+app.post('/orders/:id/cancel', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const { DB } = c.env
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 주문 ID' }, 400)
+  try {
+    await ensureOrderTables(DB)
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+    const reason = String(body.reason || '판매사 취소').slice(0, 100)
+    const order = await DB.prepare('SELECT id, status FROM wholesale_orders WHERE id = ? AND distributor_seller_id = ?')
+      .bind(id, sellerId).first<{ id: number; status: string }>()
+    if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
+    // 발송된 라인이 있으면 취소 불가 — 반품 경로로.
+    const shipped = await DB.prepare("SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status = 'SHIPPED'")
+      .bind(id).first<{ c: number }>()
+    if ((shipped?.c ?? 0) > 0) return c.json({ success: false, error: '이미 발송된 주문은 취소할 수 없습니다. 반품을 이용해주세요.' }, 400)
+    const r = await refundWholesaleOrderFully(c.env, { orderId: id, reason, allowedPrev: ['PAID', 'ACCEPTED'], finalStatus: 'CANCELLED', extraSetSql: ", cancelled_at=datetime('now')", notifyTitle: '도매 주문 취소' })
+    if (!r.ok) return c.json({ success: false, error: r.error, code: r.code }, (r.httpStatus as 400 | 402 | 404) || 400)
+    if (!r.already) await DB.prepare('UPDATE wholesale_orders SET cancel_reason = ? WHERE id = ?').bind(reason, id).run().catch(swallow('wholesale:cancel-reason'))
+    return c.json({ success: true, already: r.already, refunded_amount: r.refundAmount })
+  } catch (err) {
+    return safeError(c, err, '주문 취소 중 오류가 발생했습니다', '[wholesale]')
   }
 })
 

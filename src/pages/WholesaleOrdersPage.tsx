@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Loader2, Package, Truck, AlertTriangle, MessageSquare, ChevronDown, Send, Download } from 'lucide-react'
+import { ArrowLeft, Loader2, Package, Truck, AlertTriangle, MessageSquare, ChevronDown, Send, Download, CheckCircle2, X } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useWholesaleOrders } from '@/hooks/queries/useWholesale'
@@ -147,6 +147,25 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const { data: orders = [], isLoading: loading, isError, refetch } = useWholesaleOrders()
   const [claimOrderId, setClaimOrderId] = useState<number | null>(null)
+  const [busyOrderId, setBusyOrderId] = useState<number | null>(null)
+  // 🏭 2026-06-27 (대표 — 마무리/발송전취소): 구매확정(SHIPPED→DONE) · 발송 전 주문취소(예치금 환불).
+  async function confirmReceipt(id: number) {
+    setBusyOrderId(id)
+    try {
+      await api.post(`/api/wholesale/orders/${id}/confirm`, {}, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      toast.success('구매확정되었습니다')
+      refetch()
+    } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '구매확정 실패') } finally { setBusyOrderId(null) }
+  }
+  async function cancelOrder(id: number) {
+    if (typeof window !== 'undefined' && !window.confirm(`주문 #${id} 을(를) 취소할까요? 예치금이 환불됩니다. (이미 발송된 주문은 취소할 수 없어요)`)) return
+    setBusyOrderId(id)
+    try {
+      await api.post(`/api/wholesale/orders/${id}/cancel`, { reason: '판매사 취소' }, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      toast.success('주문이 취소되고 예치금이 환불되었습니다')
+      refetch()
+    } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '주문 취소 실패') } finally { setBusyOrderId(null) }
+  }
 
   // 🧭 2026-06-10 (생애주기 감사 갭#2): 내가 제기한 클레임 상태 추적 — 제기만 되고 볼 곳이 없던 갭.
   type MyClaim = { id: number; wholesale_order_id: number; reason_code: string; reason_text: string | null; status: string; admin_memo: string | null; created_at: string }
@@ -250,8 +269,20 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
                       )}
                     </div>
                   )}
+                  {/* 🏭 2026-06-27: 발송완료 → 구매확정(DONE) */}
+                  {(o.status === 'SHIPPED' || o.status === 'PARTIAL_REFUNDED') && (
+                    <button onClick={() => confirmReceipt(o.id)} disabled={busyOrderId === o.id} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold text-white disabled:opacity-50" style={{ background: WT.ink }}>
+                      {busyOrderId === o.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} 구매확정
+                    </button>
+                  )}
+                  {/* 🏭 2026-06-27: 발송 전(PAID/ACCEPTED) 주문 취소 — 예치금 환불(서버가 발송된 라인 있으면 거부) */}
+                  {(o.status === 'PAID' || o.status === 'ACCEPTED') && (
+                    <button onClick={() => cancelOrder(o.id)} disabled={busyOrderId === o.id} className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-semibold disabled:opacity-50" style={{ background: WT.fill, color: WT.ink2, border: '1px solid ' + WT.line }}>
+                      {busyOrderId === o.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />} 주문 취소
+                    </button>
+                  )}
                   {CLAIMABLE.has(o.status) && (
-                    <button onClick={() => setClaimOrderId(o.id)} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-semibold" style={{ background: WT.fill, color: WT.ink2, border: '1px solid ' + WT.line }}>
+                    <button onClick={() => setClaimOrderId(o.id)} className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-semibold" style={{ background: WT.fill, color: WT.ink2, border: '1px solid ' + WT.line }}>
                       <AlertTriangle className="w-4 h-4" style={{ color: WT.brand }} /> 클레임 제기
                     </button>
                   )}

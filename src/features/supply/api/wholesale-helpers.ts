@@ -66,6 +66,14 @@ export async function ensureOrderTables(DB: D1Database) {
   // 🚚 2026-06-09 배송정책: wholesale_orders.shipping_total — 주문에 합산된 (제조사별) 배송비 총액.
   //   grand total = subtotal + shipping_total. 보상환불은 (subtotal+shipping_total) 전액 환불.
   await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN shipping_total INTEGER NOT NULL DEFAULT 0').run().catch(swallow('wholesale:alter-shipping-total'))
+  // 🏭 2026-06-27 (대표 — B2B 플로우 완성): 수락/거절/취소/구매확정 단계 타임스탬프 + 사유 (best-effort self-heal).
+  //   PENDING→PAID→ACCEPTED→SHIPPED→DONE + REJECTED/CANCELLED. 상태머신(wholesale-order-status.ts) 이 전이 관리.
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN accepted_at DATETIME').run().catch(swallow('wholesale:alter-accepted-at'))
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN rejected_at DATETIME').run().catch(swallow('wholesale:alter-rejected-at'))
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN reject_reason TEXT').run().catch(swallow('wholesale:alter-reject-reason'))
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN cancelled_at DATETIME').run().catch(swallow('wholesale:alter-cancelled-at'))
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN cancel_reason TEXT').run().catch(swallow('wholesale:alter-cancel-reason'))
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN confirmed_at DATETIME').run().catch(swallow('wholesale:alter-confirmed-at'))
 }
 
 // ── 🚚 2026-06-09 제조사(공급자)별 배송/주문 정책 — suppliers 3컬럼 멱등 ensure. ──────

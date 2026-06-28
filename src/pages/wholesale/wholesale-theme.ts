@@ -67,6 +67,8 @@ export const GRADE_NAME: Record<string, string> = {
 export const WHOLESALE_ORDER_STATUS: Record<string, { label: string; color: string; bg: string }> = {
   PENDING: { label: '결제대기', color: '#9A6B00', bg: '#f9fafb' },
   PAID: { label: '결제완료', color: '#11875A', bg: '#EAF6EF' },
+  ACCEPTED: { label: '수락됨 · 발송대기', color: '#0E7490', bg: '#E0F2FE' },
+  REJECTED: { label: '제조사 거절', color: '#D63A4E', bg: '#FDECEF' },
   ON_CREDIT: { label: '여신(외상)', color: '#0E8A6E', bg: '#E6F6F1' },
   SHIPPED: { label: '배송중', color: '#1B64DA', bg: '#EAF1FE' },
   PARTIAL_REFUNDED: { label: '부분환불', color: '#C2620C', bg: '#FFF1E6' },

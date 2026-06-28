@@ -283,6 +283,12 @@ jobs:
         run: node scripts/check-login-gate-by-price.mjs -s
         continue-on-error: false
 
+      # 🛡️ 2026-06-27: 도매주문 상태머신 무결성 — wholesale_orders.status 가 free-form TEXT 라 정의 밖
+      #   상태(오타/고아)가 써지면 위반. canonical(wholesale-order-status.ts) 만 허용. 현재 위반 0 → strict.
+      - name: Wholesale order-status integrity guard (strict)
+        run: node scripts/check-wholesale-order-status.mjs -s
+        continue-on-error: false
+
       # ── 2. 스키마 일관성 (TS interface ↔ migrations) ──
       - name: Schema verification (drift detection)
         run: node scripts/verify-schema.mjs --json

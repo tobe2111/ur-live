@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Truck, Loader2, RotateCcw, Package, Download, Upload, Boxes } from 'lucide-react'
+import { ArrowLeft, Truck, Loader2, RotateCcw, Package, Download, Upload, Boxes, Check, X } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
@@ -138,6 +138,25 @@ export default function SupplierWholesaleOrdersPage() {
     } catch (e) { toast.error(e instanceof Error ? e.message : '환불 처리 실패') } finally { setBusy(null) }
   }
 
+  // 🏭 2026-06-27 (대표 — 제조사 확인 단계): 주문 수락(PAID→ACCEPTED) / 거절(발송 전, 내 라인 환불).
+  async function accept(orderId: number) {
+    setBusyOrder(orderId)
+    try {
+      await supplierApi.post(`/api/supplier/wholesale/orders/${orderId}/accept`, {})
+      toast.success('주문을 수락했습니다')
+      load()
+    } catch (e) { toast.error(e instanceof Error ? e.message : '주문 수락 실패') } finally { setBusyOrder(null) }
+  }
+  async function reject(orderId: number) {
+    if (!(await confirmDialog({ message: `주문 #${orderId} 를 거절할까요? 내 상품 라인이 환불되고 판매사에게 통지됩니다. 되돌릴 수 없습니다.`, danger: true }))) return
+    setBusyOrder(orderId)
+    try {
+      await supplierApi.post(`/api/supplier/wholesale/orders/${orderId}/reject`, { reason: '제조사 거절' })
+      toast.success('주문을 거절하고 환불 처리했습니다')
+      load()
+    } catch (e) { toast.error(e instanceof Error ? e.message : '주문 거절 실패') } finally { setBusyOrder(null) }
+  }
+
   return (
     <div className="min-h-[100dvh] bg-[#F4F5F7]">
       <SEO title="도매 주문 처리 - 제조사" description="제조사 도매 주문 송장/반품" url="/supplier/wholesale-orders" noindex />
@@ -177,6 +196,20 @@ export default function SupplierWholesaleOrdersPage() {
                       ? <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">발송대기 {g.pendingCount}건</span>
                       : <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">발송완료</span>}
                   </div>
+                  {/* 🏭 2026-06-27: 제조사 수락/거절 (PAID = 미확인 신규주문). 수락 없이 발송도 가능하나 명시적 확인 권장. */}
+                  {first.order_status === 'PAID' && (
+                    <div className="flex items-center gap-2 mb-3">
+                      <button onClick={() => accept(g.orderId)} disabled={busyOrder === g.orderId} className="inline-flex items-center justify-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold disabled:opacity-50">
+                        {busyOrder === g.orderId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} 주문 수락
+                      </button>
+                      <button onClick={() => reject(g.orderId)} disabled={busyOrder === g.orderId} className="inline-flex items-center gap-1 px-3 py-2 border border-rose-200 text-rose-600 rounded-lg text-sm font-medium disabled:opacity-50">
+                        <X className="w-4 h-4" /> 거절
+                      </button>
+                    </div>
+                  )}
+                  {first.order_status === 'ACCEPTED' && (
+                    <div className="mb-3"><span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-green-50 text-green-700"><Check className="w-3.5 h-3.5" /> 수락됨 · 발송 대기</span></div>
+                  )}
                   <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 mb-3">
                     <div className="font-medium text-gray-800">{first.ship_to_name || '—'} {first.ship_to_phone || ''}</div>
                     <div>{first.ship_to_postal ? `(${first.ship_to_postal}) ` : ''}{first.ship_to_address || '배송지 정보 없음'}</div>
