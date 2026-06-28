@@ -16,6 +16,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import UrAdsLogo from '@/components/brand/UrAdsLogo'
+import { useUrAdsFavicon } from '@/components/brand/useUrAdsFavicon'
 
 const APP = '/ads/dashboard'
 const CONTACT = 'mailto:jiwon@ur-team.com'
@@ -85,12 +86,14 @@ const thRow: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(
 
 export default function MarketingLandingPage() {
   const [dark, setDark] = useState(false) // 기본 라이트(Landing Light). 토글 시 코스믹 네이비(v2).
+  useUrAdsFavicon()
   return (
     <div className="ua-landing" data-theme={dark ? 'dark' : undefined}>
       <style>{SCOPED_CSS}</style>
       <SEO
         title="유어애즈 UR Ads — 광고 입찰부터 발주까지, 하나로 자동화"
         description="네이버 검색광고·커머스를 한곳에서 자동화하는 B2B 종합 마케팅 솔루션. 자동입찰으로 평균 CPC 15% 절감, 부정클릭 방어, 키워드 확장, 통합 실적(ROAS), AI 마케터, 발주 수집. 네이버 공식 API 기반 · 크롤링 아님."
+        image="https://live.ur-team.com/og-urads.png"
         url="/ads"
         type="website"
       />
