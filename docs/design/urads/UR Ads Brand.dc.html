@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+  body{font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums}
+  .grad{background:linear-gradient(96deg,#3B6EF5,#8B5CF6,#EC4899);-webkit-background-clip:text;background-clip:text;color:transparent}
+</style>
+</helmet>
+
+<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="brandgrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3B6EF5"/><stop offset="1" stop-color="#8B5CF6"/></linearGradient></defs></svg>
+
+<div style="position:absolute;left:80px;top:36px;width:1100px">
+  <div style="font-size:24px;font-weight:800;letter-spacing:-.02em;color:#0B0E14">UR Ads — 브랜드 &amp; 디자인 시스템</div>
+  <div style="font-size:13px;color:#565E6C;margin-top:3px">유어팀 코스믹 네이비 톤. 로고 락업 · 심볼 · 앱 아이콘 · 컬러 토큰 · 타이포 · 기능 아이콘 6종.</div>
+</div>
+
+<!-- ===== LOGO ===== -->
+<div data-drags-parent="1" style="position:absolute;left:80px;top:110px;font:700 12px/1 'Pretendard Variable',sans-serif;letter-spacing:.14em;color:#8A93A3">01 · 로고 락업</div>
+
+<!-- primary on dark -->
+<div style="position:absolute;left:80px;top:144px;width:430px">
+  <div data-drags-parent="1" style="position:absolute;top:-22px;font:500 11px 'Pretendard Variable',sans-serif;color:rgba(60,50,40,.65)">기본 (다크)</div>
+  <div style="background:#06080F;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.12);padding:44px;display:flex;align-items:center;justify-content:center;min-height:200px;box-sizing:border-box">
+    <div style="display:flex;align-items:center;gap:13px"><svg width="42" height="42" viewBox="0 0 56 56" fill="none"><path d="M28 8 C28 20 30 24 36 27 C42 30 48 28 48 28 C48 28 42 26 36 29 C30 32 28 36 28 48 C28 36 26 32 20 29 C14 26 8 28 8 28 C8 28 14 30 20 27 C26 24 28 20 28 8 Z" fill="url(#brandgrad)"/></svg><span style="font-size:30px;font-weight:800;letter-spacing:-.03em;white-space:nowrap;color:#F5F7FA">UR Ads</span></div>
+  </div>
+</div>
+<!-- on light -->
+<div style="position:absolute;left:540px;top:144px;width:430px">
+  <div data-drags-parent="1" style="position:absolute;top:-22px;font:500 11px 'Pretendard Variable',sans-serif;color:rgba(60,50,40,.65)">라이트</div>
+  <div style="background:#fff;border:1px solid #ECEDF1;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:44px;display:flex;align-items:center;justify-content:center;min-height:200px;box-sizing:border-box">
+    <div style="display:flex;align-items:center;gap:13px"><svg width="42" height="42" viewBox="0 0 56 56" fill="none"><path d="M28 8 C28 20 30 24 36 27 C42 30 48 28 48 28 C48 28 42 26 36 29 C30 32 28 36 28 48 C28 36 26 32 20 29 C14 26 8 28 8 28 C8 28 14 30 20 27 C26 24 28 20 28 8 Z" fill="url(#brandgrad)"/></svg><span style="font-size:30px;font-weight:800;letter-spacing:-.03em;white-space:nowrap;color:#0B0E14">UR Ads</span></div>
+  </div>
+</div>
+<!-- mono -->
+<div style="position:absolute;left:1000px;top:144px;width:430px">
+  <div data-drags-parent="1" style="position:absolute;top:-22px;font:500 11px 'Pretendard Variable',sans-serif;color:rgba(60,50,40,.65)">단색 (화이트 / 네이비)</div>
+  <div style="border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden;min-height:200px;display:grid;grid-template-rows:1fr 1fr">
+    <div style="background:#06080F;display:flex;align-items:center;justify-content:center"><div style="display:flex;align-items:center;gap:10px"><svg width="26" height="26" viewBox="0 0 56 56" fill="none"><path d="M28 8 C28 20 30 24 36 27 C42 30 48 28 48 28 C48 28 42 26 36 29 C30 32 28 36 28 48 C28 36 26 32 20 29 C14 26 8 28 8 28 C8 28 14 30 20 27 C26 24 28 20 28 8 Z" fill="#fff"/></svg><span style="font-size:22px;font-weight:800;letter-spacing:-.03em;white-space:nowrap;color:#fff">UR Ads</span></div></div>
+    <div style="background:#fff;display:flex;align-items:center;justify-content:center"><div style="display:flex;align-items:center;gap:10px"><svg width="26" height="26" viewBox="0 0 56 56" fill="none"><path d="M28 8 C28 20 30 24 36 27 C42 30 48 28 48 28 C48 28 42 26 36 29 C30 32 28 36 28 48 C28 36 26 32 20 29 C14 26 8 28 8 28 C8 28 14 30 20 27 C26 24 28 20 28 8 Z" fill="#0B0E14"/></svg><span style="font-size:22px;font-weight:800;letter-spacing:-.03em;white-space:nowrap;color:#0B0E14">UR Ads</span></div></div>
+  </div>
+</div>
+
+<!-- ===== SYMBOL / APP ICON ===== -->
+<div data-drags-parent="1" style="position:absolute;left:80px;top:420px;font:700 12px/1 'Pretendard Variable',sans-serif;letter-spacing:.14em;color:#8A93A3">02 · 심볼 / 앱 아이콘</div>
+
+<div style="position:absolute;left:80px;top:454px;width:660px">
+  <div data-drags-parent="1" style="position:absolute;top:-22px;font:500 11px 'Pretendard Variable',sans-serif;color:rgba(60,50,40,.65)">심볼 · 앱 아이콘 · 파비콘</div>
+  <div style="background:#fff;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:32px;min-height:230px;box-sizing:border-box;display:flex;align-items:center;gap:34px;flex-wrap:wrap">
+    <div style="text-align:center"><svg width="96" height="96" viewBox="0 0 56 56" fill="none"><rect width="56" height="56" rx="14" fill="url(#brandgrad)"/><path d="M28 8 C28 20 30 24 36 27 C42 30 48 28 48 28 C48 28 42 26 36 29 C30 32 28 36 28 48 C28 36 26 32 20 29 C14 26 8 28 8 28 C8 28 14 30 20 27 C26 24 28 20 28 8 Z" fill="#fff"/></svg><div style="font-size:11px;color:#8A93A3;margin-top:10px">앱 아이콘</div></div>
+    <div style="text-align:center"><svg width="68" height="68" viewBox="0 0 56 56" fill="none"><rect width="56" height="56" rx="28" fill="#06080F"/><path d="M28 8 C28 20 30 24 36 27 C42 30 48 28 48 28 C48 28 42 26 36 29 C30 32 28 36 28 48 C28 36 26 32 20 29 C14 26 8 28 8 28 C8 28 14 30 20 27 C26 24 28 20 28 8 Z" fill="url(#brandgrad)"/></svg><div style="font-size:11px;color:#8A93A3;margin-top:10px">원형 (다크)</div></div>
+    <div style="text-align:center"><svg width="40" height="40" viewBox="0 0 56 56" fill="none"><rect width="56" height="56" rx="12" fill="url(#brandgrad)"/><path d="M28 8 C28 20 30 24 36 27 C42 30 48 28 48 28 C48 28 42 26 36 29 C30 32 28 36 28 48 C28 36 26 32 20 29 C14 26 8 28 8 28 C8 28 14 30 20 27 C26 24 28 20 28 8 Z" fill="#fff"/></svg><div style="font-size:11px;color:#8A93A3;margin-top:10px">파비콘</div></div>
+    <div style="flex:1;min-width:180px;border-left:1px solid #EEF0F3;padding-left:24px"><div style="font-size:13px;font-weight:700;color:#0B0E14;margin-bottom:8px">의미</div><div style="font-size:12.5px;color:#565E6C;line-height:1.6">4점 스파크 = 지능형 자동화와 성장의 반짝임. 부드러운 라운드 가지로 친근함을 더하고, 그라데이션은 유어팀 패밀리 톤(블루→퍼플→핑크).</div></div>
+  </div>
+</div>
+
+<!-- clear space -->
+<div style="position:absolute;left:770px;top:454px;width:660px">
+  <div data-drags-parent="1" style="position:absolute;top:-22px;font:500 11px 'Pretendard Variable',sans-serif;color:rgba(60,50,40,.65)">여백 규칙 · 최소 크기</div>
+  <div style="background:#fff;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:32px;min-height:230px;box-sizing:border-box;display:flex;align-items:center;gap:34px;flex-wrap:wrap">
+    <div style="position:relative;padding:26px;border:1px dashed #C9CFDA;border-radius:8px"><div style="display:flex;align-items:center;gap:11px"><svg width="34" height="34" viewBox="0 0 56 56" fill="none"><path d="M28 8 C28 20 30 24 36 27 C42 30 48 28 48 28 C48 28 42 26 36 29 C30 32 28 36 28 48 C28 36 26 32 20 29 C14 26 8 28 8 28 C8 28 14 30 20 27 C26 24 28 20 28 8 Z" fill="url(#brandgrad)"/></svg><span style="font-size:24px;font-weight:800;letter-spacing:-.03em;white-space:nowrap;color:#0B0E14">UR Ads</span></div><span style="position:absolute;top:6px;left:8px;font-size:10px;color:#9AA1AE">x</span></div>
+    <div style="flex:1;min-width:160px"><div style="font-size:13px;font-weight:700;color:#0B0E14;margin-bottom:8px">규칙</div><ul style="margin:0;padding-left:16px;font-size:12.5px;color:#565E6C;line-height:1.7"><li>최소 여백 = 심볼 높이의 50%(x)</li><li>최소 사용 크기: 워드마크 높이 16px</li><li>심볼 단독 최소 20px</li><li>그라데이션 방향·각도 변형 금지</li></ul></div>
+  </div>
+</div>
+
+<!-- ===== COLOR ===== -->
+<div data-drags-parent="1" style="position:absolute;left:80px;top:740px;font:700 12px/1 'Pretendard Variable',sans-serif;letter-spacing:.14em;color:#8A93A3">03 · 컬러 토큰</div>
+
+<div style="position:absolute;left:80px;top:774px;width:1350px">
+  <div style="background:#fff;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:28px;box-sizing:border-box">
+    <div style="font-size:12px;font-weight:600;color:#8A93A3;margin-bottom:14px">BRAND · GRADIENT</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px">
+      <div><div style="width:150px;height:54px;border-radius:7px;background:linear-gradient(96deg,#3B6EF5,#8B5CF6,#EC4899)"></div><div style="font-size:12px;font-weight:600;color:#0B0E14;margin-top:7px">Brand Gradient</div><div class="num" style="font-size:11px;color:#8A93A3">3B6EF5 → 8B5CF6 → EC4899</div></div>
+      <div><div style="width:110px;height:54px;border-radius:7px;background:#3B6EF5"></div><div style="font-size:12px;font-weight:600;color:#0B0E14;margin-top:7px">Brand</div><div class="num" style="font-size:11px;color:#8A93A3">#3B6EF5</div></div>
+      <div><div style="width:110px;height:54px;border-radius:7px;background:#8B5CF6"></div><div style="font-size:12px;font-weight:600;color:#0B0E14;margin-top:7px">Violet</div><div class="num" style="font-size:11px;color:#8A93A3">#8B5CF6</div></div>
+      <div><div style="width:110px;height:54px;border-radius:7px;background:#EC4899"></div><div style="font-size:12px;font-weight:600;color:#0B0E14;margin-top:7px">Pink</div><div class="num" style="font-size:11px;color:#8A93A3">#EC4899</div></div>
+    </div>
+    <div style="font-size:12px;font-weight:600;color:#8A93A3;margin-bottom:14px">NEUTRALS (DARK) · STATUS</div>
+    <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:14px">
+      <div><div style="height:50px;border-radius:7px;background:#06080F;border:1px solid #ECEDF1"></div><div style="font-size:11.5px;font-weight:600;color:#0B0E14;margin-top:6px">BG</div><div class="num" style="font-size:10.5px;color:#8A93A3">#06080F</div></div>
+      <div><div style="height:50px;border-radius:7px;background:#0A0E1A"></div><div style="font-size:11.5px;font-weight:600;color:#0B0E14;margin-top:6px">Surface</div><div class="num" style="font-size:10.5px;color:#8A93A3">#0A0E1A</div></div>
+      <div><div style="height:50px;border-radius:7px;background:#0E1322"></div><div style="font-size:11.5px;font-weight:600;color:#0B0E14;margin-top:6px">Panel</div><div class="num" style="font-size:10.5px;color:#8A93A3">#0E1322</div></div>
+      <div><div style="height:50px;border-radius:7px;background:#F5F7FA;border:1px solid #ECEDF1"></div><div style="font-size:11.5px;font-weight:600;color:#0B0E14;margin-top:6px">Ink</div><div class="num" style="font-size:10.5px;color:#8A93A3">#F5F7FA</div></div>
+      <div><div style="height:50px;border-radius:7px;background:#9AA6BE"></div><div style="font-size:11.5px;font-weight:600;color:#0B0E14;margin-top:6px">Ink 2</div><div class="num" style="font-size:10.5px;color:#8A93A3">#9AA6BE</div></div>
+      <div><div style="height:50px;border-radius:7px;background:#34D399"></div><div style="font-size:11.5px;font-weight:600;color:#0B0E14;margin-top:6px">Up</div><div class="num" style="font-size:10.5px;color:#8A93A3">#34D399</div></div>
+      <div><div style="height:50px;border-radius:7px;background:#FB7185"></div><div style="font-size:11.5px;font-weight:600;color:#0B0E14;margin-top:6px">Down</div><div class="num" style="font-size:10.5px;color:#8A93A3">#FB7185</div></div>
+      <div><div style="height:50px;border-radius:7px;background:#FBBF24"></div><div style="font-size:11.5px;font-weight:600;color:#0B0E14;margin-top:6px">Warn</div><div class="num" style="font-size:10.5px;color:#8A93A3">#FBBF24</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TYPE ===== -->
+<div data-drags-parent="1" style="position:absolute;left:80px;top:1064px;font:700 12px/1 'Pretendard Variable',sans-serif;letter-spacing:.14em;color:#8A93A3">04 · 타이포그래피</div>
+
+<div style="position:absolute;left:80px;top:1098px;width:660px">
+  <div data-drags-parent="1" style="position:absolute;top:-22px;font:500 11px 'Pretendard Variable',sans-serif;color:rgba(60,50,40,.65)">Pretendard</div>
+  <div style="background:#fff;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:30px;min-height:330px;box-sizing:border-box">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid #F0F1F4;padding-bottom:14px;margin-bottom:14px"><span style="font-size:40px;font-weight:800;letter-spacing:-.04em;color:#0B0E14">하나로 자동화</span><span class="num" style="font-size:11px;color:#8A93A3;white-space:nowrap">Display · 800</span></div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid #F0F1F4;padding-bottom:12px;margin-bottom:12px"><span style="font-size:28px;font-weight:800;letter-spacing:-.035em;color:#0B0E14">통합 실적 대시보드</span><span class="num" style="font-size:11px;color:#8A93A3;white-space:nowrap">H1 · 800</span></div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid #F0F1F4;padding-bottom:12px;margin-bottom:12px"><span style="font-size:20px;font-weight:700;letter-spacing:-.02em;color:#0B0E14">자동입찰 키워드 전략</span><span class="num" style="font-size:11px;color:#8A93A3;white-space:nowrap">H2 · 700</span></div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid #F0F1F4;padding-bottom:12px;margin-bottom:12px"><span style="font-size:15px;font-weight:400;color:#565E6C">네이버 공식 API 기반 자동화 솔루션.</span><span class="num" style="font-size:11px;color:#8A93A3;white-space:nowrap">Body · 400</span></div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:12.5px;font-weight:600;color:#3B6EF5;letter-spacing:.04em">POINT 01 — EYEBROW</span><span class="num" style="font-size:11px;color:#8A93A3;white-space:nowrap">Eyebrow · 600 · 블루</span></div>
+  </div>
+</div>
+
+<!-- ===== ICONS ===== -->
+<div data-drags-parent="1" style="position:absolute;left:770px;top:1064px;font:700 12px/1 'Pretendard Variable',sans-serif;letter-spacing:.14em;color:#8A93A3">05 · 기능 아이콘 6종</div>
+
+<div style="position:absolute;left:770px;top:1098px;width:660px">
+  <div data-drags-parent="1" style="position:absolute;top:-22px;font:500 11px 'Pretendard Variable',sans-serif;color:rgba(60,50,40,.65)">그라데이션 타일 · 화이트 라인</div>
+  <div style="background:#06080F;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.12);padding:30px;min-height:330px;box-sizing:border-box">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:22px 16px">
+      <div style="text-align:center"><div style="width:62px;height:62px;border-radius:16px;background:linear-gradient(150deg,#3B6EF5,#8B5CF6);display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 12px 26px -12px rgba(59,110,245,.7)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14M8 5l-3 3M8 5l3 3M16 19V5M16 19l-3-3M16 19l3-3"/></svg></div><div style="font-size:13px;font-weight:600;color:#F5F7FA;margin-top:10px">자동입찰</div></div>
+      <div style="text-align:center"><div style="width:62px;height:62px;border-radius:16px;background:linear-gradient(150deg,#8B5CF6,#EC4899);display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 12px 26px -12px rgba(236,72,153,.6)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg></div><div style="font-size:13px;font-weight:600;color:#F5F7FA;margin-top:10px">부정클릭 방어</div></div>
+      <div style="text-align:center"><div style="width:62px;height:62px;border-radius:16px;background:linear-gradient(150deg,#3B6EF5,#22D3EE);display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 12px 26px -12px rgba(34,211,238,.55)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/><path d="M11 8.2v5.6M8.2 11h5.6"/></svg></div><div style="font-size:13px;font-weight:600;color:#F5F7FA;margin-top:10px">키워드 확장</div></div>
+      <div style="text-align:center"><div style="width:62px;height:62px;border-radius:16px;background:linear-gradient(150deg,#6366F1,#3B6EF5);display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 12px 26px -12px rgba(99,102,241,.6)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><rect x="5" y="11" width="3.4" height="7" rx="1"/><rect x="10.3" y="6" width="3.4" height="12" rx="1"/><rect x="15.6" y="9" width="3.4" height="9" rx="1"/></svg></div><div style="font-size:13px;font-weight:600;color:#F5F7FA;margin-top:10px">통합 실적</div></div>
+      <div style="text-align:center"><div style="width:62px;height:62px;border-radius:16px;background:linear-gradient(150deg,#8B5CF6,#6366F1);display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 12px 26px -12px rgba(139,92,246,.6)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.4L12 17l-1.9-5.6L4.5 10l5.6-1.4L12 3z"/></svg></div><div style="font-size:13px;font-weight:600;color:#F5F7FA;margin-top:10px">AI 마케터</div></div>
+      <div style="text-align:center"><div style="width:62px;height:62px;border-radius:16px;background:linear-gradient(150deg,#22D3EE,#3B6EF5);display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 12px 26px -12px rgba(34,211,238,.5)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></div><div style="font-size:13px;font-weight:600;color:#F5F7FA;margin-top:10px">발주 수집</div></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
