@@ -62,7 +62,7 @@ export default function PricePanel() {
 
   return (
     <div className={`mt-3 ${card}`}>
-      <div className="text-[14px] font-bold text-gray-900 dark:text-white">💰 가격 모니터링 <span className="text-gray-400 dark:text-gray-500 text-[11px] font-medium">네이버쇼핑 최저가 추적</span></div>
+      <div className="text-[14px] font-bold text-gray-900 dark:text-white">가격 모니터링 <span className="text-gray-400 dark:text-gray-500 text-[11px] font-medium">네이버쇼핑 최저가 추적</span></div>
       <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">내 상품 검색어 + 판매가를 등록하면 최저가·최저몰을 매일 자동 추적하고, 내가 최저가인지 비교해줍니다.</p>
 
       <div className="mt-2 flex flex-wrap gap-2">

@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { WITHHOLDING_RATES } from '@/shared/constants/policy'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
@@ -29,10 +30,12 @@ interface PayoutRow {
   updated_at: string
 }
 
+// 🛡️ 2026-06-27: 원천징수율 하드코딩 제거 — WITHHOLDING_RATES SSOT(@/shared/constants/policy,
+//   worker tax-withholding 재내보내기) 사용. 율 변경 시 한 곳만 고치면 서버·프론트 동시 반영.
 function calcWithholding(amount: number, taxType: string | null, businessNumber: string | null): { rate: number; tax: number; net: number } {
   let rate = 0
-  if (businessNumber || taxType === 'business_income') rate = 3.3
-  else if (taxType === 'other_income') rate = 8.8
+  if (businessNumber || taxType === 'business_income') rate = WITHHOLDING_RATES.business_income * 100
+  else if (taxType === 'other_income') rate = WITHHOLDING_RATES.other_income * 100
   const tax = Math.floor(amount * rate / 100)
   const net = amount - tax
   return { rate, tax, net }

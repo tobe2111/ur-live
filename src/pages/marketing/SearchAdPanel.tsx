@@ -213,13 +213,13 @@ export default function SearchAdPanel() {
   return (
     <div className={`mt-3 ${card}`}>
       <div className="flex items-center justify-between">
-        <div className="text-[14px] font-bold text-gray-900 dark:text-white">📈 네이버 검색광고 계정 연동</div>
+        <div className="text-[14px] font-bold text-gray-900 dark:text-white">네이버 검색광고 계정 연동</div>
         {connected && <button onClick={disconnect} className="text-[12px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">연결 해제</button>}
       </div>
 
       {/* 목표순위 예상 입찰가 (자동입찰 미리보기 — 읽기, 돈 변경 없음) */}
       <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
-        <div className="text-[12.5px] font-bold text-gray-900 dark:text-white">🎯 목표순위 예상 입찰가</div>
+        <div className="text-[12.5px] font-bold text-gray-900 dark:text-white">목표순위 예상 입찰가</div>
         <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">"이 키워드를 N위에 노출하려면 입찰가 얼마?" — 자동입찰의 핵심. 실제 입찰 변경은 없습니다.</p>
         <div className="mt-2 flex gap-2">
           <input className={input} placeholder="키워드 (예: 무선이어폰)" value={estKw} onChange={e => setEstKw(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') runEstimate() }} />
@@ -265,7 +265,7 @@ export default function SearchAdPanel() {
           {/* 통합실적 */}
           <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
             <div className="flex items-center justify-between">
-              <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">📊 통합실적</span>
+              <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">통합실적</span>
               <div className="flex rounded-lg border border-gray-200 dark:border-[#2A2A2A] overflow-hidden">
                 {([7, 30] as const).map(d => (
                   <button key={d} onClick={() => setStatsDays(d)} className={`px-2.5 py-0.5 text-[11px] font-semibold ${statsDays === d ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0A0A0A]' : 'text-gray-500 dark:text-gray-400'}`}>{d}일</button>
@@ -385,7 +385,7 @@ export default function SearchAdPanel() {
                                               value={abMax[k.id] ?? ''} onChange={e => setAbMax(prev => ({ ...prev, [k.id]: e.target.value }))}
                                               className="w-20 h-7 rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-1.5 text-[11px] text-right text-gray-900 dark:text-white" />
                                             <button onClick={() => createAutobid(k, g.id)} disabled={abBusy === k.id || !abMax[k.id]}
-                                              className="shrink-0 rounded border border-gray-300 dark:border-[#2A2A2A] px-1.5 h-7 text-[10.5px] font-bold text-gray-700 dark:text-gray-200 disabled:opacity-40">{abBusy === k.id ? '…' : '🎯'}</button>
+                                              className="shrink-0 rounded border border-gray-300 dark:border-[#2A2A2A] px-1.5 h-7 text-[10.5px] font-bold text-gray-700 dark:text-gray-200 disabled:opacity-40">{abBusy === k.id ? '…' : '자동입찰'}</button>
                                           </div>
                                         </td>
                                       </tr>

@@ -22,7 +22,7 @@
   - **D (MED)**: 쿠폰/referral_bonus/affiliate/공급/에이전시/영입자 미역전 → refundOrderFully 가 전부 대칭 역전 + CAS 멱등(동시 이중취소도 1회만 — 기존 인라인의 무CAS 이중환급 race 도 동시 해소).
   - **부분취소(`cancel_amount < 잔여`)**: 기존 카드 Toss 부분취소 경로 유지(refundOrderFully 는 전액전용). 딜/쿠폰 주문 부분취소는 여전히 제한적(toss_key 없으면 422) — pre-existing, 유저는 전액취소 선택 가능. 검증: tsc 0 · build 0 · refund 27 tests · money-pattern 0. ⚠️ 쇼핑 재오픈 전 staging 실결제(딜전액·혼합·쿠폰 각 1회) 권장.
 - ✅ **[FIXED 2026-06-27] 제조사 "출금 가능" 표시 과대** (`OverviewTab.tsx:32`): `/api/supplier/me` balance 에 `reserved_amount` 추가(best-effort 조회, 컬럼 미존재 시 0) → 카드가 `available - reserved`(=출금 페이지 `spendable` 동일 의미) 표시. **기존 balance 조회/응답 필드 불변(additive), 도매몰 경계 내**(소비자 영향 0). tsc 0·audit-gate ALL GREEN. 잔여: `supplier-analytics.routes.ts:139 settle_available` 는 **다른 회계축**(`supplier_settlements` status='available' 합 ≠ `supplier_balances.reserved_amount`)이라 reserved 차감이 부정확 → 의도적 미수정(분석 요약 stat, actionable 출금버튼 아님).
-- 🟢 **인플 매출분석 프론트 원천징수 하드코딩** (`AdminInfluencerPayoutsPage.tsx:34-35` `calcWithholding` 3.3/8.8 literal): 프론트 표시 계산이라 worker SSOT(`WITHHOLDING_RATES`) 직접 import 불가. cron(서버, `influencer-payout.ts`)은 이미 SSOT 로 fix 됨. 프론트는 API 가 율을 내려주거나 shared 상수 분리 시 정리. **Low(표시 drift 위험).**
+- ✅ **[FIXED 2026-06-27] 인플 프론트 원천징수 하드코딩**: `AdminInfluencerPayoutsPage.calcWithholding` 가 `WITHHOLDING_RATES`(`@/shared/constants/policy` — worker tax-withholding 재내보내기) 사용 → 3.3/8.8 literal 제거. 서버·프론트 단일 SSOT.
 
 ## 📊 2026-06-22 — 기술부채 전수 점검 + 보안/i18n 정리 (대표 "모두 가장 이상적으로")
 대표 "전체적으로 기술부채 확인" → 진단 도구 전수 실행 후 처리.
@@ -134,7 +134,7 @@
 | 항목 | 위치 | 비고 |
 |---|---|---|
 | 원시에러 누출 잔여 | orders/bulk-upload/admin-kt-alpha 등 | **인증/내부 경로라 저위험**. 점진 `safeError` |
-| 셀러 환불 **프론트 UI 버튼** | seller dashboard | 백엔드 `POST /orders/:id/refund` 완비 — 셀러 주문 상세에 '취소·환불' 버튼만 추가하면 됨(후속, 저위험) |
+| ✅ 셀러 환불 **프론트 UI 버튼** | seller dashboard | **[확인 2026-06-27] 이미 구현됨**(stale) — `OrderDetailModal` 이 PAID/DONE/PREPARING/SHIPPING 주문에 '취소·환불' 버튼 렌더(`onRefund`→`handleRefund`→`POST /orders/:id/refund`). |
 
 ### 검증 결론 (에이전트)
 - **tsc: 0 에러** (빌드는 타입 strip 하지만 tsc/CI 기준도 clean — 직전 `AdminWholesaleOrdersPage` 잠복에러 1건은 이미 수정).
