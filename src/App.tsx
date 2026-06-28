@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from '
 import { HelmetProvider } from 'react-helmet-async'
 import { QueryProvider } from './lib/react-query'
 import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
+import IosTopupGate from './components/IosTopupGate'
 import { isUtongstart, isWholesaleAllowedPath, isWholesaleSurface, isMarketingSurface } from './utils/domain'
 import ToastContainer from './components/ToastContainer'
 import { ConfirmHost } from './components/ui/confirm-dialog'
@@ -127,6 +128,8 @@ const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 // 🛡️ 2026-05-19: 교환권 전용 페이지 — /browse 와 분리 (카카오 선물하기 스타일).
 const VouchersPage = lazy(() => import('./pages/VouchersPage'))
 // 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 3번째 서비스 /ads (유어딜/도매몰과 분리된 surface)
+// 🆕 2026-06-27 /ads = 공개 랜딩(소개), /ads/dashboard = 로그인 후 입점 대시보드
+const MarketingLandingPage = lazy(() => import('./pages/marketing/MarketingLandingPage'))
 const MarketingDashboardPage = lazy(() => import('./pages/marketing/MarketingDashboardPage'))
 const VoucherDetailPage = lazy(() => import('./pages/VoucherDetailPage'))
 const MealVouchersPage = lazy(() => import('./pages/MealVouchersPage'))
@@ -597,7 +600,9 @@ function AppContent() {
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/vouchers" element={<VouchersPage />} />
             {/* 🆕 통합 마케팅 서비스(가칭) — 3번째 서비스. 도매몰처럼 자체 surface 로 분리 */}
-            <Route path="/ads" element={<MarketingDashboardPage />} />
+            {/* 🆕 2026-06-27 /ads = 공개 랜딩(소개), /ads/dashboard = 로그인 후 입점 대시보드 */}
+            <Route path="/ads" element={<MarketingLandingPage />} />
+            <Route path="/ads/dashboard" element={<MarketingDashboardPage />} />
             {/* 🛡️ 2026-05-23: 교환권 전용 detail 페이지 (deal 결제). voucher 와 group-buy UI 분리. */}
             <Route path="/vouchers/:id" element={<VoucherDetailPage />} />
             <Route path="/meal-vouchers" element={<MealVouchersPage />} />
@@ -859,8 +864,8 @@ function AppContent() {
                 : <ProtectedRoute requireAdmin><ErrorBoundary><TossDebugPage /></ErrorBoundary></ProtectedRoute>
             } />
 
-            {/* 딜 포인트 충전 */}
-            <Route path="/points/charge" element={<ProtectedRoute requireUser><PointsChargePage /></ProtectedRoute>} />
+            {/* 딜 포인트 충전 — iOS IAP 게이트(플래그 OFF 기본=children 그대로) */}
+            <Route path="/points/charge" element={<ProtectedRoute requireUser><IosTopupGate><PointsChargePage /></IosTopupGate></ProtectedRoute>} />
             <Route path="/points/charge/success" element={<ErrorBoundary><PointsChargeSuccessPage /></ErrorBoundary>} />
             <Route path="/my-deal-history" element={<ProtectedRoute requireUser><MyDealHistoryPage /></ProtectedRoute>} />
             <Route path="/points/charge/fail" element={<ErrorBoundary><PaymentFailPage /></ErrorBoundary>} />

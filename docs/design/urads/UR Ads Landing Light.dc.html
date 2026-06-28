@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:"Pretendard Variable",Pretendard,system-ui,sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#0B0E14}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+  .grad{background:linear-gradient(96deg,#3B6EF5 0%,#8B5CF6 52%,#EC4899 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  a{text-decoration:none;color:inherit}
+  details>summary{list-style:none;cursor:pointer}
+  details>summary::-webkit-details-marker{display:none}
+  details[open] .fp{transform:rotate(45deg)}
+</style>
+</helmet>
+
+<!-- NAV -->
+<header style="position:sticky;top:0;z-index:50;background:rgba(255,255,255,.82);backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid #ECEDF1">
+  <div style="max-width:1200px;margin:0 auto;padding:0 28px;height:64px;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:38px">
+      <a href="#" style="display:flex;align-items:center;gap:9px"><svg width="26" height="26" viewBox="0 0 56 56" fill="none"><defs><linearGradient id="lg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3B6EF5"/><stop offset=".55" stop-color="#8B5CF6"/><stop offset="1" stop-color="#EC4899"/></linearGradient></defs><path d="M28 8 C28 20 30 24 36 27 C42 30 48 28 48 28 C48 28 42 26 36 29 C30 32 28 36 28 48 C28 36 26 32 20 29 C14 26 8 28 8 28 C8 28 14 30 20 27 C26 24 28 20 28 8 Z" fill="url(#lg)"/></svg><span style="font-size:18px;font-weight:800;letter-spacing:-.02em;white-space:nowrap">UR Ads</span></a>
+      <nav style="display:flex;gap:26px;font-size:14px;color:#565E6C;font-weight:500;white-space:nowrap"><a href="#features">기능</a><a href="#pricing">요금제</a><a href="#proof">고객사례</a><a href="#faq">FAQ</a></nav>
+    </div>
+    <div style="display:flex;gap:16px;align-items:center"><span style="font-size:14px;color:#565E6C;font-weight:500;white-space:nowrap">로그인</span><a href="#" style="font-size:14px;font-weight:600;color:#fff;background:#3B6EF5;padding:9px 18px;border-radius:8px;white-space:nowrap">Contact Us</a></div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section style="position:relative;overflow:hidden;border-bottom:1px solid #ECEDF1;background:radial-gradient(120% 90% at 82% -10%,#E9EFFF 0%,#F4F7FF 36%,#FFFFFF 68%)">
+  <div style="position:absolute;inset:0;background-image:radial-gradient(#D6DEF2 1px,transparent 1px);background-size:24px 24px;-webkit-mask-image:radial-gradient(ellipse 80% 70% at 80% 0%,#000,transparent 70%);mask-image:radial-gradient(ellipse 80% 70% at 80% 0%,#000,transparent 70%);opacity:.6;pointer-events:none"></div>
+  <div style="position:relative;max-width:1200px;margin:0 auto;padding:0 28px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:52px;align-items:center;padding:86px 0 78px">
+      <div>
+        <span style="display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#2A56D4;background:#EAF0FF;border:1px solid #C9D8FF;padding:7px 14px;border-radius:999px">● 네이버 공식 API 기반 · 크롤링 아님</span>
+        <h1 style="font-size:clamp(38px,5vw,56px);line-height:1.08;font-weight:800;letter-spacing:-.045em;margin:22px 0 0">광고 입찰부터 발주까지,<br><span class="grad">하나로 자동화.</span></h1>
+        <p style="font-size:17px;line-height:1.62;color:#565E6C;margin:20px 0 0;max-width:460px">목표 순위와 최대 입찰가만 정하세요. 최저 CPC를 24/365 자동으로 찾고, 부정클릭을 막고, 여러 스토어의 주문까지 한 화면에 모읍니다.</p>
+        <div style="display:flex;gap:13px;align-items:center;margin-top:30px;flex-wrap:wrap">
+          <a href="#" style="font-size:15px;font-weight:600;color:#fff;background:#3B6EF5;padding:14px 26px;border-radius:9px;white-space:nowrap">30일 무료로 시작</a>
+          <a href="#" style="font-size:15px;font-weight:600;color:#0B0E14;background:#fff;border:1px solid #DADCE2;padding:14px 24px;border-radius:9px;white-space:nowrap">데모 영상 보기</a>
+        </div>
+        <div style="display:flex;gap:30px;margin-top:36px">
+          <div><div class="num grad" style="font-size:26px;font-weight:800">15%↓</div><div style="font-size:12.5px;color:#8A93A3;margin-top:2px">평균 CPC 절감</div></div>
+          <div style="width:1px;background:#E5E8EC"></div>
+          <div><div class="num grad" style="font-size:26px;font-weight:800">24/365</div><div style="font-size:12.5px;color:#8A93A3;margin-top:2px">무중단 자동 입찰</div></div>
+          <div style="width:1px;background:#E5E8EC"></div>
+          <div><div class="num grad" style="font-size:26px;font-weight:800">6개</div><div style="font-size:12.5px;color:#8A93A3;margin-top:2px">통합 자동화 기능</div></div>
+        </div>
+      </div>
+      <!-- product window (light) -->
+      <div style="background:#fff;border:1px solid #E5E8EC;border-radius:16px;box-shadow:0 30px 80px -36px rgba(59,110,245,.45);overflow:hidden">
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid #EEF0F3;background:#FAFBFD">
+          <div style="display:flex;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:#E0E2E8"></span><span style="width:10px;height:10px;border-radius:50%;background:#E0E2E8"></span><span style="width:10px;height:10px;border-radius:50%;background:#E0E2E8"></span></div>
+          <div style="font-size:11px;color:#9AA1AE;margin-left:6px">app.urads.kr/dashboard</div>
+        </div>
+        <div style="padding:18px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:14px;font-weight:700;white-space:nowrap">통합 실적</span><span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#8A93A3;white-space:nowrap"><span style="width:6px;height:6px;border-radius:50%;background:#16A36B"></span>실시간 동기화</span></div>
+          <div style="border:1px solid #EEF0F3;border-radius:11px;padding:16px">
+            <div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:#565E6C">통합 ROAS</span><span style="font-size:11.5px;font-weight:700;color:#16A36B">▲ 18.4%</span></div>
+            <div class="num" style="font-size:31px;font-weight:800;letter-spacing:-.03em;margin-top:4px">412.8<span style="font-size:18px;color:#8A93A3">%</span></div>
+            <svg width="100%" height="48" viewBox="0 0 340 48" preserveAspectRatio="none" style="margin-top:8px"><defs><linearGradient id="hl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3B6EF5"/><stop offset="1" stop-color="#8B5CF6"/></linearGradient></defs><polyline points="0,38 38,34 76,36 114,26 152,28 190,18 228,20 266,11 304,13 340,5" fill="none" stroke="url(#hl)" stroke-width="2.4"/></svg>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+            <div style="border:1px solid #EEF0F3;border-radius:11px;padding:14px"><div style="font-size:11.5px;color:#565E6C">평균 CPC</div><div class="num" style="font-size:20px;font-weight:800;margin-top:3px">₩248</div><div style="font-size:11px;font-weight:700;color:#16A36B">▼ 15.2%</div></div>
+            <div style="border:1px solid #EEF0F3;border-radius:11px;padding:14px"><div style="font-size:11.5px;color:#565E6C">자동입찰 키워드</div><div class="num" style="font-size:20px;font-weight:800;margin-top:3px">142개</div><div style="font-size:11px;font-weight:700;color:#3B6EF5">입찰 진행 중</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST -->
+<section style="border-bottom:1px solid #ECEDF1;background:#FAFBFD">
+  <div style="max-width:1200px;margin:0 auto;padding:28px;display:flex;align-items:center;justify-content:space-between;gap:28px;flex-wrap:wrap">
+    <span style="font-size:12px;color:#8A93A3;white-space:nowrap">성장하는 브랜드들이 신뢰합니다</span>
+    <div style="display:flex;gap:38px;align-items:center;flex-wrap:wrap;opacity:.62;color:#3A414C">
+      <span style="font-size:18px;font-weight:800;letter-spacing:-.02em">루미스토어</span>
+      <span style="font-size:18px;font-weight:700;font-style:italic">Nova Living</span>
+      <span style="font-size:18px;font-weight:800">데일리핏</span>
+      <span style="font-size:18px;font-weight:600">감성그릇</span>
+      <span style="font-size:18px;font-weight:800;letter-spacing:.04em">TENON</span>
+    </div>
+  </div>
+</section>
+
+<!-- VALUE BAND -->
+<section style="max-width:1200px;margin:0 auto;padding:84px 28px 20px">
+  <div style="font-size:12.5px;font-weight:600;color:#3B6EF5;letter-spacing:.06em">WHY UR ADS</div>
+  <h2 style="font-size:clamp(28px,3.4vw,38px);line-height:1.18;font-weight:800;letter-spacing:-.035em;margin:14px 0 0;max-width:720px">광고대행사 한 명이 하던 일을,<br>UR Ads가 <span class="grad">24시간 대신</span>합니다.</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0;margin-top:44px;border:1px solid #ECEDF1;border-radius:16px;overflow:hidden">
+    <div style="padding:28px 26px;border-right:1px solid #ECEDF1"><div class="num" style="font-size:38px;font-weight:800;letter-spacing:-.03em">15%<span style="color:#16A36B;font-size:24px">↓</span></div><div style="font-size:14px;color:#565E6C;margin-top:6px;line-height:1.5">평균 CPC 절감<br><span style="color:#8A93A3;font-size:12.5px">동일 순위 유지 기준</span></div></div>
+    <div style="padding:28px 26px;border-right:1px solid #ECEDF1"><div class="num" style="font-size:38px;font-weight:800;letter-spacing:-.03em">24/365</div><div style="font-size:14px;color:#565E6C;margin-top:6px;line-height:1.5">무중단 자동 입찰<br><span style="color:#8A93A3;font-size:12.5px">새벽 경쟁 입찰까지 대응</span></div></div>
+    <div style="padding:28px 26px;border-right:1px solid #ECEDF1"><div class="num" style="font-size:38px;font-weight:800;letter-spacing:-.03em">₩8.4억</div><div style="font-size:14px;color:#565E6C;margin-top:6px;line-height:1.5">누적 광고비 절감액<br><span style="color:#8A93A3;font-size:12.5px">2025년 전체 고객 합산</span></div></div>
+    <div style="padding:28px 26px"><div class="num" style="font-size:38px;font-weight:800;letter-spacing:-.03em">1클릭</div><div style="font-size:14px;color:#565E6C;margin-top:6px;line-height:1.5">스토어 연동<br><span style="color:#8A93A3;font-size:12.5px">공식 API · 크롤링 아님</span></div></div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" style="max-width:1200px;margin:0 auto;padding:70px 28px 30px">
+
+  <!-- 01 -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:60px;align-items:center;padding:46px 0">
+    <div>
+      <div style="font-size:12.5px;font-weight:600;color:#3B6EF5;letter-spacing:.04em">POINT 01 — 자동입찰</div>
+      <h3 style="font-size:clamp(26px,3vw,33px);line-height:1.18;font-weight:800;letter-spacing:-.035em;margin:14px 0 0">목표순위·최대입찰가만,<br><span class="grad">최저 CPC는 자동으로.</span></h3>
+      <p style="font-size:16px;line-height:1.65;color:#565E6C;margin:16px 0 0;max-width:440px">원하는 노출 순위와 상한가만 설정하면, 경쟁 상황을 실시간으로 읽어 가장 낮은 비용으로 그 자리를 지킵니다. 시간대·요일 전략과 CSV 대량 설정까지.</p>
+      <ul style="list-style:none;padding:0;margin:22px 0 0;display:flex;flex-direction:column;gap:11px">
+        <li style="display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:#2A303B"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="margin-top:1px;flex-shrink:0"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>시간대·요일별 입찰 전략 자동 적용</li>
+        <li style="display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:#2A303B"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="margin-top:1px;flex-shrink:0"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>키워드 수천 개도 CSV로 일괄 등록</li>
+        <li style="display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:#2A303B"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="margin-top:1px;flex-shrink:0"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>상한가 초과 없이 예산 안전장치 작동</li>
+      </ul>
+    </div>
+    <div style="border:1px solid #E5E8EC;border-radius:14px;background:#fff;overflow:hidden;box-shadow:0 16px 44px -28px rgba(11,14,30,.3)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #EEF0F3"><span style="font-size:13px;font-weight:700">자동입찰 키워드</span><span style="font-size:11px;font-weight:600;color:#0E8C5A;background:#E3F6EE;padding:4px 9px;border-radius:999px">자동입찰 ON</span></div>
+      <div style="display:grid;grid-template-columns:1.7fr .9fr .8fr .8fr;background:#FAFBFD;padding:10px 16px;font-size:11px;font-weight:700;color:#8A93A3"><div>KEYWORD</div><div style="text-align:right">목표/현재</div><div style="text-align:right">입찰가</div><div style="text-align:right">CPC</div></div>
+      <div style="display:grid;grid-template-columns:1.7fr .9fr .8fr .8fr;padding:13px 16px;font-size:13px;border-top:1px solid #F2F3F6;align-items:center"><div style="font-weight:600">무선 이어폰</div><div class="num" style="text-align:right"><span style="color:#8A93A3">2위</span>/<span style="color:#16A36B;font-weight:700">2위</span></div><div class="num" style="text-align:right">₩320</div><div class="num" style="text-align:right;font-weight:700">₩214</div></div>
+      <div style="display:grid;grid-template-columns:1.7fr .9fr .8fr .8fr;padding:13px 16px;font-size:13px;border-top:1px solid #F2F3F6;align-items:center"><div style="font-weight:600">블루투스 스피커</div><div class="num" style="text-align:right"><span style="color:#8A93A3">1위</span>/<span style="color:#C8961A;font-weight:700">3위</span></div><div class="num" style="text-align:right">₩480</div><div class="num" style="text-align:right;font-weight:700">₩390</div></div>
+      <div style="display:grid;grid-template-columns:1.7fr .9fr .8fr .8fr;padding:13px 16px;font-size:13px;border-top:1px solid #F2F3F6;align-items:center"><div style="font-weight:600">노캔 헤드폰</div><div class="num" style="text-align:right"><span style="color:#8A93A3">3위</span>/<span style="color:#16A36B;font-weight:700">2위</span></div><div class="num" style="text-align:right">₩540</div><div class="num" style="text-align:right;font-weight:700">₩468</div></div>
+    </div>
+  </div>
+
+  <!-- 02 -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:60px;align-items:center;padding:46px 0;border-top:1px solid #ECEDF1">
+    <div style="border:1px solid #E5E8EC;border-radius:14px;background:#fff;overflow:hidden;box-shadow:0 16px 44px -28px rgba(11,14,30,.3);order:2">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #EEF0F3"><span style="font-size:13px;font-weight:700">의심 클릭 모니터</span><span style="font-size:11px;font-weight:600;color:#C3373C;background:#FCE9EA;padding:4px 9px;border-radius:999px">IP 12 차단</span></div>
+      <div style="padding:16px">
+        <div style="display:flex;gap:16px;margin-bottom:14px"><div style="flex:1"><div style="font-size:11.5px;color:#565E6C">오늘 차단</div><div class="num" style="font-size:22px;font-weight:800;margin-top:2px">312<span style="font-size:13px;color:#8A93A3">건</span></div></div><div style="flex:1"><div style="font-size:11.5px;color:#565E6C">절감 추정</div><div class="num" style="font-size:22px;font-weight:800;margin-top:2px;color:#16A36B">₩78K</div></div></div>
+        <div style="font-size:10.5px;color:#9AA1AE;margin-bottom:8px;letter-spacing:.06em">SUSPICIOUS CLICK TIMELINE</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px;font-size:12.5px"><span class="num" style="color:#9AA1AE;width:42px">09:41</span><span style="flex:1;height:6px;border-radius:3px;background:linear-gradient(90deg,#E5484D 70%,#F2F3F6 0)"></span><span class="num" style="color:#C3373C;font-weight:700">211.x.x.18</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:12.5px"><span class="num" style="color:#9AA1AE;width:42px">10:02</span><span style="flex:1;height:6px;border-radius:3px;background:linear-gradient(90deg,#E5484D 45%,#F2F3F6 0)"></span><span class="num" style="color:#C3373C;font-weight:700">59.x.x.7</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:12.5px"><span class="num" style="color:#9AA1AE;width:42px">11:20</span><span style="flex:1;height:6px;border-radius:3px;background:linear-gradient(90deg,#E2A018 30%,#F2F3F6 0)"></span><span class="num" style="color:#9A6700;font-weight:700">175.x.x.2</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:12.5px"><span class="num" style="color:#9AA1AE;width:42px">13:08</span><span style="flex:1;height:6px;border-radius:3px;background:linear-gradient(90deg,#E5484D 88%,#F2F3F6 0)"></span><span class="num" style="color:#C3373C;font-weight:700">203.x.x.9</span></div>
+        </div>
+      </div>
+    </div>
+    <div style="order:1">
+      <div style="font-size:12.5px;font-weight:600;color:#3B6EF5;letter-spacing:.04em">POINT 02 — 부정클릭 방어</div>
+      <h3 style="font-size:clamp(26px,3vw,33px);line-height:1.18;font-weight:800;letter-spacing:-.035em;margin:14px 0 0">새는 광고비를<br><span class="grad">실시간으로 막습니다.</span></h3>
+      <p style="font-size:16px;line-height:1.65;color:#565E6C;margin:16px 0 0;max-width:440px">반복·비정상 클릭 패턴을 탐지해 의심 IP를 자동 차단합니다. 경쟁사·봇 트래픽이 예산을 갉아먹기 전에 차단하고, 막은 만큼의 절감액을 투명하게 보여줍니다.</p>
+      <ul style="list-style:none;padding:0;margin:22px 0 0;display:flex;flex-direction:column;gap:11px">
+        <li style="display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:#2A303B"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="margin-top:1px;flex-shrink:0"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>의심 클릭 패턴 자동 탐지 · IP 차단</li>
+        <li style="display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:#2A303B"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="margin-top:1px;flex-shrink:0"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>차단 내역·절감 추정액 리포트</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 03 -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:60px;align-items:center;padding:46px 0;border-top:1px solid #ECEDF1">
+    <div>
+      <div style="font-size:12.5px;font-weight:600;color:#3B6EF5;letter-spacing:.04em">POINT 03 — 키워드 확장</div>
+      <h3 style="font-size:clamp(26px,3vw,33px);line-height:1.18;font-weight:800;letter-spacing:-.035em;margin:14px 0 0">팔리는 키워드를<br><span class="grad">대신 찾아드립니다.</span></h3>
+      <p style="font-size:16px;line-height:1.65;color:#565E6C;margin:16px 0 0;max-width:440px">상품과 맞닿은 고매출 연관 키워드를 검색량·경쟁도와 함께 자동 발굴합니다. 트렌드를 읽어 지금 떠오르는 키워드를 한발 먼저 잡으세요.</p>
+      <ul style="list-style:none;padding:0;margin:22px 0 0;display:flex;flex-direction:column;gap:11px">
+        <li style="display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:#2A303B"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="margin-top:1px;flex-shrink:0"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>검색량·경쟁도 기반 연관 키워드 추천</li>
+        <li style="display:flex;gap:10px;align-items:flex-start;font-size:14.5px;color:#2A303B"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="margin-top:1px;flex-shrink:0"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>추가·제외 키워드 원클릭 관리</li>
+      </ul>
+    </div>
+    <div style="border:1px solid #E5E8EC;border-radius:14px;background:#fff;overflow:hidden;box-shadow:0 16px 44px -28px rgba(11,14,30,.3)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #EEF0F3"><span style="font-size:13px;font-weight:700">연관 키워드 발굴</span><span style="font-size:11px;color:#8A93A3">+38개 추천</span></div>
+      <div style="padding:8px 16px 16px">
+        <div style="display:grid;grid-template-columns:1.6fr 1fr .7fr;padding:10px 0;font-size:11px;font-weight:700;color:#8A93A3"><div>KEYWORD</div><div>검색량/경쟁도</div><div></div></div>
+        <div style="display:grid;grid-template-columns:1.6fr 1fr .7fr;padding:11px 0;font-size:13px;border-top:1px solid #F2F3F6;align-items:center"><div style="font-weight:600">무선 이어폰 추천</div><div><span class="num" style="font-size:12px;color:#565E6C">14,200</span><div style="height:4px;width:80%;background:linear-gradient(90deg,#3B6EF5,#8B5CF6);border-radius:2px;margin-top:4px"></div></div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:#2A56D4;background:#EAF0FF;padding:4px 9px;border-radius:6px">추가</span></div></div>
+        <div style="display:grid;grid-template-columns:1.6fr 1fr .7fr;padding:11px 0;font-size:13px;border-top:1px solid #F2F3F6;align-items:center"><div style="font-weight:600">블루투스 이어폰</div><div><span class="num" style="font-size:12px;color:#565E6C">21,300</span><div style="height:4px;width:92%;background:linear-gradient(90deg,#3B6EF5,#8B5CF6);border-radius:2px;margin-top:4px"></div></div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:#2A56D4;background:#EAF0FF;padding:4px 9px;border-radius:6px">추가</span></div></div>
+        <div style="display:grid;grid-template-columns:1.6fr 1fr .7fr;padding:11px 0;font-size:13px;border-top:1px solid #F2F3F6;align-items:center"><div style="font-weight:600">운동용 이어폰</div><div><span class="num" style="font-size:12px;color:#565E6C">6,540</span><div style="height:4px;width:42%;background:#D7DCE6;border-radius:2px;margin-top:4px"></div></div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:#8A93A3;background:#F2F3F6;padding:4px 9px;border-radius:6px">제외</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 04 light tinted band -->
+  <div style="margin:46px 0;border-radius:20px;background:linear-gradient(120deg,#EEF2FF,#F6F0FF);border:1px solid #DCE3FB;overflow:hidden">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:52px;align-items:center;padding:50px 44px">
+      <div>
+        <div style="font-size:12.5px;font-weight:600;color:#3B6EF5;letter-spacing:.04em">POINT 04 — 통합 실적</div>
+        <h3 style="font-size:clamp(26px,3vw,33px);line-height:1.18;font-weight:800;letter-spacing:-.035em;margin:14px 0 0">광고비부터 매출까지,<br><span class="grad">하나의 퍼널로.</span></h3>
+        <p style="font-size:16px;line-height:1.65;color:#565E6C;margin:16px 0 0;max-width:440px">광고비 → 클릭 → 주문 → 매출(ROAS)을 한 화면에서. 기간을 비교하고 채널별 기여를 분석해, 어디에 더 투자할지 한눈에 판단합니다.</p>
+      </div>
+      <div style="background:#fff;border:1px solid #E2E6F2;border-radius:13px;padding:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><span style="font-size:13px;font-weight:700">전환 퍼널</span><span style="font-size:11px;color:#8A93A3">최근 30일</span></div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#565E6C">광고비</span><span class="num" style="font-weight:600">₩12.4M</span></div><div style="height:28px;border-radius:7px;background:linear-gradient(90deg,#3B6EF5,#6E8BFF);width:100%"></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#565E6C">클릭</span><span class="num" style="font-weight:600">50,120</span></div><div style="height:28px;border-radius:7px;background:linear-gradient(90deg,#6155E0,#8B5CF6);width:82%"></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#565E6C">주문</span><span class="num" style="font-weight:600">2,840</span></div><div style="height:28px;border-radius:7px;background:linear-gradient(90deg,#8B5CF6,#C152C0);width:54%"></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#565E6C">매출</span><span class="num" style="font-weight:700;color:#16A36B">₩51.2M</span></div><div style="height:28px;border-radius:7px;background:#16A36B;width:40%"></div></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid #EEF0F3"><span style="font-size:13px;color:#565E6C">통합 ROAS</span><span class="num grad" style="font-size:22px;font-weight:800">412.8%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 05 -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:60px;align-items:center;padding:46px 0">
+    <div>
+      <div style="font-size:12.5px;font-weight:600;color:#3B6EF5;letter-spacing:.04em">POINT 05 — AI 마케터</div>
+      <h3 style="font-size:clamp(26px,3vw,33px);line-height:1.18;font-weight:800;letter-spacing:-.035em;margin:14px 0 0">데이터를 읽고,<br><span class="grad">다음 액션을 제안합니다.</span></h3>
+      <p style="font-size:16px;line-height:1.65;color:#565E6C;margin:16px 0 0;max-width:440px">AI가 실적을 분석해 "이 키워드는 입찰을 올리세요" 같은 구체적 액션을 제안합니다. 주간 리포트도 자동으로 정리해 보내드립니다.</p>
+    </div>
+    <div style="border:1px solid #E5E8EC;border-radius:14px;background:#fff;overflow:hidden;box-shadow:0 16px 44px -28px rgba(11,14,30,.3)">
+      <div style="display:flex;align-items:center;gap:9px;padding:13px 16px;border-bottom:1px solid #EEF0F3"><span style="width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#3B6EF5,#8B5CF6);display:flex;align-items:center;justify-content:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.4L12 17l-1.9-5.6L4.5 10l5.6-1.4L12 3z"/></svg></span><span style="font-size:13px;font-weight:700">AI 마케터</span></div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:12px;background:#FAFBFD">
+        <div style="align-self:flex-end;max-width:78%;background:#3B6EF5;color:#fff;font-size:13px;line-height:1.5;padding:11px 14px;border-radius:14px 14px 4px 14px">이번 주 어디를 개선하면 좋을까?</div>
+        <div style="max-width:88%;background:#fff;border:1px solid #EEF0F3;font-size:13px;line-height:1.55;padding:13px 15px;border-radius:14px 14px 14px 4px;color:#2A303B"><span>'블루투스 스피커'는 전환율이 높은데 현재 3위예요. 입찰가를 <b class="grad">₩480 → ₩540</b>로 올리면 1~2위 복귀가 예상됩니다.</span><div style="display:flex;gap:8px;margin-top:12px"><span style="font-size:12px;font-weight:600;color:#fff;background:#3B6EF5;padding:7px 13px;border-radius:7px">적용하기</span><span style="font-size:12px;font-weight:600;color:#565E6C;background:#F2F3F6;padding:7px 13px;border-radius:7px">나중에</span></div></div>
+        <div style="max-width:88%;background:#fff;border:1px solid #EEF0F3;font-size:13px;line-height:1.55;padding:13px 15px;border-radius:14px;color:#2A303B"><span>또한 '운동용 이어폰'은 클릭 대비 주문이 적어 <b style="color:#C3373C">입찰 하향</b>을 추천해요.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 06 -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:60px;align-items:center;padding:46px 0;border-top:1px solid #ECEDF1">
+    <div style="border:1px solid #E5E8EC;border-radius:14px;background:#fff;overflow:hidden;box-shadow:0 16px 44px -28px rgba(11,14,30,.3);order:2">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #EEF0F3"><span style="font-size:13px;font-weight:700">발주 수집</span><span style="font-size:11px;color:#8A93A3">스토어 3곳 연동</span></div>
+      <div style="padding:8px 16px 16px">
+        <div style="display:grid;grid-template-columns:1.4fr 1fr .8fr;padding:10px 0;font-size:11px;font-weight:700;color:#8A93A3"><div>주문</div><div>스토어</div><div style="text-align:right">상태</div></div>
+        <div style="display:grid;grid-template-columns:1.4fr 1fr .8fr;padding:12px 0;font-size:13px;border-top:1px solid #F2F3F6;align-items:center"><div><div style="font-weight:600">무선 이어폰 ×2</div><div class="num" style="font-size:11px;color:#9AA1AE">#A-20614</div></div><div style="font-size:12.5px;color:#565E6C">루미스토어</div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:#0E8C5A;background:#E3F6EE;padding:4px 9px;border-radius:6px">발송완료</span></div></div>
+        <div style="display:grid;grid-template-columns:1.4fr 1fr .8fr;padding:12px 0;font-size:13px;border-top:1px solid #F2F3F6;align-items:center"><div><div style="font-weight:600">가습기 ×1</div><div class="num" style="font-size:11px;color:#9AA1AE">#N-88231</div></div><div style="font-size:12.5px;color:#565E6C">Nova Living</div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:#9A6700;background:#FCF3E1;padding:4px 9px;border-radius:6px">신규</span></div></div>
+        <div style="display:grid;grid-template-columns:1.4fr 1fr .8fr;padding:12px 0;font-size:13px;border-top:1px solid #F2F3F6;align-items:center"><div><div style="font-weight:600">스피커 ×1</div><div class="num" style="font-size:11px;color:#9AA1AE">#D-10925</div></div><div style="font-size:12.5px;color:#565E6C">데일리핏</div><div style="text-align:right"><span style="font-size:11px;font-weight:600;color:#2A56D4;background:#EAF0FF;padding:4px 9px;border-radius:6px">처리중</span></div></div>
+        <div style="display:flex;gap:8px;margin-top:14px"><span style="flex:1;text-align:center;font-size:12.5px;font-weight:600;color:#fff;background:#3B6EF5;padding:9px;border-radius:8px">선택 발송처리</span><span style="text-align:center;font-size:12.5px;font-weight:600;color:#565E6C;background:#F2F3F6;padding:9px 14px;border-radius:8px">엑셀</span></div>
+      </div>
+    </div>
+    <div style="order:1">
+      <div style="font-size:12.5px;font-weight:600;color:#3B6EF5;letter-spacing:.04em">POINT 06 — 발주 수집</div>
+      <h3 style="font-size:clamp(26px,3vw,33px);line-height:1.18;font-weight:800;letter-spacing:-.035em;margin:14px 0 0">여러 스토어 주문을,<br><span class="grad">한 곳에서 처리.</span></h3>
+      <p style="font-size:16px;line-height:1.65;color:#565E6C;margin:16px 0 0;max-width:440px">스토어마다 따로 들어가지 마세요. 모든 주문을 자동으로 한 리스트에 모으고, 연동 상태를 확인하며 한 번에 발송 처리합니다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PROOF -->
+<section id="proof" style="border-top:1px solid #ECEDF1;background:#FAFBFD">
+  <div style="max-width:1200px;margin:0 auto;padding:80px 28px">
+    <div style="font-size:12.5px;font-weight:600;color:#3B6EF5;letter-spacing:.06em">CUSTOMER STORIES</div>
+    <h2 style="font-size:clamp(26px,3.2vw,36px);line-height:1.2;font-weight:800;letter-spacing:-.035em;margin:14px 0 0">숫자로 증명된 변화</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:36px">
+      <div style="background:#fff;border:1px solid #ECEDF1;border-radius:14px;padding:26px"><div class="num grad" style="font-size:30px;font-weight:800;letter-spacing:-.03em">−21%</div><p style="font-size:14.5px;line-height:1.6;color:#2A303B;margin:14px 0 0">"입찰 관리에 쓰던 시간이 사라졌어요. CPC는 내려가고 순위는 그대로라 마진이 눈에 띄게 좋아졌습니다."</p><div style="display:flex;align-items:center;gap:10px;margin-top:18px"><span style="width:34px;height:34px;border-radius:50%;background:#D9D4F8"></span><div style="font-size:12.5px"><div style="font-weight:700">김도현</div><div style="color:#8A93A3">루미스토어 대표</div></div></div></div>
+      <div style="background:#fff;border:1px solid #ECEDF1;border-radius:14px;padding:26px"><div class="num grad" style="font-size:30px;font-weight:800;letter-spacing:-.03em">12개 →1</div><p style="font-size:14.5px;line-height:1.6;color:#2A303B;margin:14px 0 0">"12개 스토어 주문을 매일 옮겨 적었는데, 이제 한 화면에서 끝나요. 발주 누락이 사라졌습니다."</p><div style="display:flex;align-items:center;gap:10px;margin-top:18px"><span style="width:34px;height:34px;border-radius:50%;background:#C3DCEF"></span><div style="font-size:12.5px"><div style="font-weight:700">이서연</div><div style="color:#8A93A3">데일리핏 운영팀</div></div></div></div>
+      <div style="background:#fff;border:1px solid #ECEDF1;border-radius:14px;padding:26px"><div class="num grad" style="font-size:30px;font-weight:800;letter-spacing:-.03em">₩1.4M</div><p style="font-size:14.5px;line-height:1.6;color:#2A303B;margin:14px 0 0">"부정클릭으로 새던 광고비를 한 달에 140만원 넘게 막았어요. 절감 리포트가 가장 만족스럽습니다."</p><div style="display:flex;align-items:center;gap:10px;margin-top:18px"><span style="width:34px;height:34px;border-radius:50%;background:#E7D2B8"></span><div style="font-size:12.5px"><div style="font-weight:700">박준영</div><div style="color:#8A93A3">TENON 마케팅 대행</div></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing" style="max-width:1200px;margin:0 auto;padding:84px 28px">
+  <div style="text-align:center"><div style="font-size:12.5px;font-weight:600;color:#3B6EF5;letter-spacing:.06em">PRICING</div><h2 style="font-size:clamp(28px,3.4vw,38px);line-height:1.18;font-weight:800;letter-spacing:-.035em;margin:14px 0 0">규모에 맞게 시작하세요</h2><p style="font-size:16px;color:#565E6C;margin:14px 0 0">30일 무료. 카드 등록 없이 모든 기능을 체험할 수 있습니다.</p></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:44px;align-items:start">
+    <div style="border:1px solid #ECEDF1;border-radius:16px;padding:30px;background:#fff">
+      <div style="font-size:15px;font-weight:700">스타터</div><div style="font-size:13px;color:#8A93A3;margin-top:4px">이제 막 광고를 시작한 1인 셀러</div>
+      <div style="margin:22px 0 0;display:flex;align-items:baseline;gap:4px"><span class="num" style="font-size:36px;font-weight:800;letter-spacing:-.03em">₩39,000</span><span style="font-size:14px;color:#8A93A3">/월</span></div>
+      <a href="#" style="display:block;text-align:center;margin-top:22px;font-size:14px;font-weight:600;color:#0B0E14;border:1px solid #DADCE2;padding:12px;border-radius:9px">무료로 시작</a>
+      <ul style="list-style:none;padding:0;margin:24px 0 0;display:flex;flex-direction:column;gap:12px;font-size:13.5px;color:#2A303B">
+        <li style="display:flex;gap:9px"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>자동입찰 키워드 100개</li>
+        <li style="display:flex;gap:9px"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>부정클릭 방어</li>
+        <li style="display:flex;gap:9px"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>스토어 1곳 연동</li>
+      </ul>
+    </div>
+    <div style="border:1.5px solid #3B6EF5;border-radius:16px;padding:30px;background:#fff;position:relative;box-shadow:0 24px 60px -30px rgba(59,110,245,.55)">
+      <span style="position:absolute;top:-12px;left:30px;font-size:11px;font-weight:700;color:#fff;background:linear-gradient(96deg,#3B6EF5,#8B5CF6);padding:5px 11px;border-radius:999px">MOST POPULAR</span>
+      <div style="font-size:15px;font-weight:700">프로</div><div style="font-size:13px;color:#8A93A3;margin-top:4px">본격 성장 중인 스토어</div>
+      <div style="margin:22px 0 0;display:flex;align-items:baseline;gap:4px"><span class="num" style="font-size:36px;font-weight:800;letter-spacing:-.03em">₩99,000</span><span style="font-size:14px;color:#8A93A3">/월</span></div>
+      <a href="#" style="display:block;text-align:center;margin-top:22px;font-size:14px;font-weight:600;color:#fff;background:#3B6EF5;padding:12px;border-radius:9px">무료로 시작</a>
+      <ul style="list-style:none;padding:0;margin:24px 0 0;display:flex;flex-direction:column;gap:12px;font-size:13.5px;color:#2A303B">
+        <li style="display:flex;gap:9px"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>자동입찰 키워드 <b>무제한</b></li>
+        <li style="display:flex;gap:9px"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>키워드 확장 + AI 마케터</li>
+        <li style="display:flex;gap:9px"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>스토어 5곳 + 발주 수집</li>
+        <li style="display:flex;gap:9px"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>자동 주간 리포트</li>
+      </ul>
+    </div>
+    <div style="border:1px solid #ECEDF1;border-radius:16px;padding:30px;background:#fff">
+      <div style="font-size:15px;font-weight:700">에이전시</div><div style="font-size:13px;color:#8A93A3;margin-top:4px">여러 고객사를 관리하는 대행사</div>
+      <div style="margin:22px 0 0;display:flex;align-items:baseline;gap:6px"><span class="num" style="font-size:34px;font-weight:800;letter-spacing:-.03em">문의</span><span style="font-size:14px;color:#8A93A3">맞춤 견적</span></div>
+      <a href="#" style="display:block;text-align:center;margin-top:22px;font-size:14px;font-weight:600;color:#0B0E14;border:1px solid #DADCE2;padding:12px;border-radius:9px">영업팀 문의</a>
+      <ul style="list-style:none;padding:0;margin:24px 0 0;display:flex;flex-direction:column;gap:12px;font-size:13.5px;color:#2A303B">
+        <li style="display:flex;gap:9px"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>프로의 모든 기능</li>
+        <li style="display:flex;gap:9px"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>멀티테넌트 · 고객사 무제한</li>
+        <li style="display:flex;gap:9px"><svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="#3B6EF5" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M4 9.5l3 3 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>전담 매니저 · API 액세스</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" style="border-top:1px solid #ECEDF1;background:#FAFBFD">
+  <div style="max-width:820px;margin:0 auto;padding:80px 28px">
+    <div style="text-align:center;margin-bottom:40px"><div style="font-size:12.5px;font-weight:600;color:#3B6EF5;letter-spacing:.06em">FAQ</div><h2 style="font-size:clamp(26px,3.2vw,34px);line-height:1.2;font-weight:800;letter-spacing:-.035em;margin:14px 0 0">자주 묻는 질문</h2></div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <details open style="background:#fff;border:1px solid #ECEDF1;border-radius:12px;padding:4px 20px"><summary style="display:flex;justify-content:space-between;align-items:center;padding:18px 0;font-size:15.5px;font-weight:600">네이버 약관에 위배되지 않나요?<span class="fp" style="font-size:20px;color:#3B6EF5;transition:transform .2s;line-height:1">+</span></summary><div style="font-size:14.5px;line-height:1.65;color:#565E6C;padding:0 0 18px">UR Ads는 네이버가 공식 제공하는 검색광고 API를 통해 동작합니다. 화면을 긁어오는 크롤링 방식이 아니므로 안심하고 사용하실 수 있습니다. 순위는 공식 API 기반 추정치로 제공됩니다.</div></details>
+      <details style="background:#fff;border:1px solid #ECEDF1;border-radius:12px;padding:4px 20px"><summary style="display:flex;justify-content:space-between;align-items:center;padding:18px 0;font-size:15.5px;font-weight:600">자동입찰로 광고비가 갑자기 늘 수 있나요?<span class="fp" style="font-size:20px;color:#3B6EF5;transition:transform .2s;line-height:1">+</span></summary><div style="font-size:14.5px;line-height:1.65;color:#565E6C;padding:0 0 18px">아니요. 키워드별 최대 입찰가(상한가)를 직접 정하므로, 어떤 경우에도 설정한 금액을 넘지 않습니다. 일/월 예산 한도도 함께 설정할 수 있습니다.</div></details>
+      <details style="background:#fff;border:1px solid #ECEDF1;border-radius:12px;padding:4px 20px"><summary style="display:flex;justify-content:space-between;align-items:center;padding:18px 0;font-size:15.5px;font-weight:600">스토어 연동은 얼마나 걸리나요?<span class="fp" style="font-size:20px;color:#3B6EF5;transition:transform .2s;line-height:1">+</span></summary><div style="font-size:14.5px;line-height:1.65;color:#565E6C;padding:0 0 18px">네이버 계정 인증 한 번으로 연동이 완료됩니다. 보통 1분이면 광고 계정과 스토어가 모두 동기화됩니다.</div></details>
+      <details style="background:#fff;border:1px solid #ECEDF1;border-radius:12px;padding:4px 20px"><summary style="display:flex;justify-content:space-between;align-items:center;padding:18px 0;font-size:15.5px;font-weight:600">대행사인데 여러 고객사를 관리할 수 있나요?<span class="fp" style="font-size:20px;color:#3B6EF5;transition:transform .2s;line-height:1">+</span></summary><div style="font-size:14.5px;line-height:1.65;color:#565E6C;padding:0 0 18px">에이전시 플랜에서 고객사를 무제한으로 추가하고, 상단 셀렉터로 즉시 전환하며 관리할 수 있습니다. 고객사별 권한 분리도 지원합니다.</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- CTA (dark for punch) -->
+<section style="max-width:1200px;margin:0 auto;padding:90px 28px">
+  <div style="position:relative;overflow:hidden;border-radius:24px;background:radial-gradient(90% 140% at 50% -20%,#1c2a78 0%,#0e1430 48%,#0a0e1f 80%);padding:70px 48px;text-align:center">
+    <div style="position:absolute;inset:0;background-image:radial-gradient(1px 1px at 25% 40%,#fff,transparent),radial-gradient(1px 1px at 70% 60%,#cdd6ff,transparent),radial-gradient(1px 1px at 50% 25%,#fff,transparent);opacity:.4;pointer-events:none"></div>
+    <h2 style="position:relative;font-size:clamp(30px,4vw,46px);line-height:1.14;font-weight:800;letter-spacing:-.04em;margin:0;color:#fff">월 광고비 낭비에서<br><span class="grad">ROAS 412%</span>로.</h2>
+    <p style="position:relative;font-size:17px;color:#AEB7D0;margin:18px auto 0;max-width:460px">목표 순위만 정하세요. 나머지는 UR Ads가 자동으로. 30일 무료, 카드 등록 없이 시작합니다.</p>
+    <div style="position:relative;display:flex;gap:13px;justify-content:center;margin-top:32px;flex-wrap:wrap">
+      <a href="UR Ads Dashboard.dc.html" style="font-size:15px;font-weight:600;color:#fff;background:#3B6EF5;padding:15px 28px;border-radius:10px">무료로 시작하기 →</a>
+      <a href="#" style="font-size:15px;font-weight:600;color:#DCE3F2;border:1px solid rgba(255,255,255,.18);padding:15px 26px;border-radius:10px">영업팀 문의</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer style="border-top:1px solid #ECEDF1">
+  <div style="max-width:1200px;margin:0 auto;padding:54px 28px 40px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:36px">
+      <div style="grid-column:span 2;min-width:220px">
+        <div style="display:flex;align-items:center;gap:9px"><svg width="26" height="26" viewBox="0 0 56 56" fill="none"><path d="M28 8 C28 20 30 24 36 27 C42 30 48 28 48 28 C48 28 42 26 36 29 C30 32 28 36 28 48 C28 36 26 32 20 29 C14 26 8 28 8 28 C8 28 14 30 20 27 C26 24 28 20 28 8 Z" fill="url(#lg)"/></svg><span style="font-size:18px;font-weight:800;letter-spacing:-.02em;white-space:nowrap">UR Ads</span></div>
+        <p style="font-size:13px;color:#8A93A3;line-height:1.6;margin:16px 0 0;max-width:260px">네이버 광고·커머스를 한 곳에서 자동화하는 종합 마케팅 솔루션. 유어팀 그룹.</p>
+      </div>
+      <div><div style="font-size:12px;font-weight:700;color:#0B0E14;margin-bottom:14px">제품</div><div style="display:flex;flex-direction:column;gap:10px;font-size:13px;color:#565E6C"><a href="#">자동입찰</a><a href="#">부정클릭 방어</a><a href="#">통합 실적</a><a href="#">AI 마케터</a></div></div>
+      <div><div style="font-size:12px;font-weight:700;color:#0B0E14;margin-bottom:14px">회사</div><div style="display:flex;flex-direction:column;gap:10px;font-size:13px;color:#565E6C"><a href="#">소개</a><a href="#">요금제</a><a href="#">고객사례</a><a href="#">채용</a></div></div>
+      <div><div style="font-size:12px;font-weight:700;color:#0B0E14;margin-bottom:14px">지원</div><div style="display:flex;flex-direction:column;gap:10px;font-size:13px;color:#565E6C"><a href="#">도움말</a><a href="#">API 문서</a><a href="#">문의하기</a><a href="#">상태</a></div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:44px;padding-top:24px;border-top:1px solid #ECEDF1">
+      <span style="font-size:12px;color:#9AA1AE">© 2026 UR Ads · 유어팀 주식회사. All rights reserved.</span>
+      <div style="display:flex;gap:20px;font-size:12px;color:#9AA1AE"><a href="#">이용약관</a><a href="#">개인정보처리방침</a><a href="#">네이버 공식 API 파트너</a></div>
+    </div>
+  </div>
+</footer>
+</x-dc>
+</body>
+</html>

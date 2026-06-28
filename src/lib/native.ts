@@ -105,11 +105,13 @@ export async function initNativeFeatures() {
     // 딥링크 처리
     App.addListener('appUrlOpen', (event) => {
       // v32 CRITICAL FIX: 딥링크 open-redirect 방지
-      // event.url: urlive://some/path 또는 https://live.ur-team.com/path 형태
+      // event.url: yourdeal://some/path 또는 https://live.ur-team.com/path 형태
+      //   🛡️ 2026-06-27: 커스텀 스킴을 실제 등록값(yourdeal)과 일치 — AndroidManifest intent-filter
+      //   `android:scheme="yourdeal"` + iOS Info.plist CFBundleURLTypes 와 동일. (urlive/urdeal 는 구 호환 유지)
       try {
         const url = new URL(event.url)
         const allowedHosts = new Set(['live.ur-team.com', 'www.live.ur-team.com'])
-        const isCustomScheme = url.protocol === 'urlive:' || url.protocol === 'urdeal:'
+        const isCustomScheme = url.protocol === 'yourdeal:' || url.protocol === 'urlive:' || url.protocol === 'urdeal:'
         const isAllowedHttps = (url.protocol === 'https:' || url.protocol === 'http:') && allowedHosts.has(url.host)
         if (!isCustomScheme && !isAllowedHttps) {
           return // 외부 도메인 redirect 차단
