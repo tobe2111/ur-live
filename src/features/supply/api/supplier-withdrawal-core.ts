@@ -51,16 +51,32 @@ export async function ensureWithdrawalSchema(DB: D1Database): Promise<void> {
   // supplier_balances.reserved_amount — 출금 예약 락(미지급 출금이 잠근 금액). recompute 가 안 건드리는 컬럼.
   await DB.prepare('ALTER TABLE supplier_balances ADD COLUMN reserved_amount INTEGER NOT NULL DEFAULT 0')
     .run().catch(() => { /* 이미 존재 — 무시 */ })
+  // 🛡️ 2026-06-28 (잔여 P1 후속): held_at 보장 — 분쟁/환불 보류 중인 available 정산을 출금가능액에서 제외하기 위함.
+  await DB.prepare('ALTER TABLE supplier_settlements ADD COLUMN held_at DATETIME').run().catch(() => { /* 이미 존재 */ })
 }
 
-/** 실가용(spendable) 잔액 = available_amount - reserved_amount (행 없으면 0, 음수 클램프). */
+/**
+ * 🛡️ 2026-06-28 보류(held) 중인 available 정산 합계 — 출금가능액에서 제외할 금액.
+ *   fail-safe: held_at 컬럼이 아직 없는 DB(repair 전)면 쿼리 throw → catch → 0 반환(=기존 동작, 회귀 0).
+ *   컬럼이 있으면 분쟁/환불로 보류된 available 정산을 정확히 합산해 spendable 에서 차감.
+ */
+async function heldAvailable(DB: D1Database, supplierId: number): Promise<number> {
+  const r = await DB.prepare(
+    "SELECT COALESCE(SUM(supply_amount), 0) AS held FROM supplier_settlements WHERE supplier_id = ? AND status = 'available' AND held_at IS NOT NULL"
+  ).bind(supplierId).first<{ held: number }>().catch(() => null)
+  return Math.max(0, Math.floor(Number(r?.held) || 0))
+}
+
+/** 실가용(spendable) 잔액 = available_amount - reserved_amount - held(보류) (행 없으면 0, 음수 클램프).
+ *  🛡️ 2026-06-28: 분쟁/환불로 보류(held_at)된 available 정산은 출금 불가 → spendable 에서 차감. */
 export async function loadSpendable(DB: D1Database, supplierId: number): Promise<{ available: number; reserved: number; spendable: number }> {
   const row = await DB.prepare(
     'SELECT COALESCE(available_amount,0) AS available, COALESCE(reserved_amount,0) AS reserved FROM supplier_balances WHERE supplier_id = ?'
   ).bind(supplierId).first<{ available: number; reserved: number }>().catch(() => null)
   const available = Math.max(0, Math.floor(Number(row?.available) || 0))
   const reserved = Math.max(0, Math.floor(Number(row?.reserved) || 0))
-  return { available, reserved, spendable: Math.max(0, available - reserved) }
+  const held = await heldAvailable(DB, supplierId)
+  return { available, reserved, spendable: Math.max(0, available - reserved - held) }
 }
 
 /**
@@ -77,10 +93,12 @@ export async function reserveForWithdrawal(
     return { ok: false, spendable: cur.spendable }
   }
   // CAS — 행이 있고(잔액이 있으려면 settlement 적립으로 행이 생성됨) spendable >= amt 일 때만.
-  //   available_amount - reserved_amount - amt >= 0  (예약 후 음수 불가).
+  //   🛡️ 2026-06-28: 보류(held) 정산 제외 — available - reserved - held >= amt  ⟺  available - reserved >= amt + held.
+  //   held 는 fail-safe(컬럼 없으면 0=기존 동작). reserved += amt(실제 예약분만), threshold 만 held 만큼 상향.
+  const held = await heldAvailable(DB, supplierId)
   const up = await DB.prepare(
     "UPDATE supplier_balances SET reserved_amount = COALESCE(reserved_amount,0) + ?, updated_at = datetime('now') WHERE supplier_id = ? AND (COALESCE(available_amount,0) - COALESCE(reserved_amount,0)) >= ?"
-  ).bind(amt, supplierId, amt).run().catch(() => ({ meta: { changes: 0 } }))
+  ).bind(amt, supplierId, amt + held).run().catch(() => ({ meta: { changes: 0 } }))
   if (((up as { meta?: { changes?: number } }).meta?.changes ?? 0) === 0) {
     const cur = await loadSpendable(DB, supplierId)
     return { ok: false, spendable: cur.spendable }
