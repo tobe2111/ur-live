@@ -401,6 +401,11 @@ export async function handleCronScheduled(
       if (dayOfMonth <= 7) {
         await handleAgencyMonthlyReport(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/monthly-report', e));
       }
+      // 🆕 2026-06-27 유어애즈 AI 주간 리포트 (매주 월요일, 주당 1회 멱등). 연결 고객사만.
+      await (async () => {
+        const { handleAdsWeeklyReport } = await import('../features/marketing/api/weekly-report');
+        return handleAdsWeeklyReport(env);
+      })().catch(e => notifyCronFailure(env, 'agency-weekly-batch/ads-weekly-report', e));
     }));
   }
 }
