@@ -327,10 +327,25 @@ export function useWholesaleDeposit() {
     // 🛡️ 2026-06-19 (감사·머니 중요): 잔액 에러를 ₩0 으로 삼키지 않음 — retry:1 복구. 충전 직후 일시 조회실패가
     //   '잔액 없음'으로 오표시되어 사용자 자산 혼동 + 결제 차단되던 위험 제거. 소비처 `data?.balance` 안전.
     enabled: hasSellerToken(),
-    staleTime: 30 * 1000,
+    // 💰 2026-06-27 (대표 — 예치금 실시간): 잔액은 돈이라 항상 신선해야 함. 주문/충전 후 즉시 반영되도록
+    //   refetchOnMount:'always' + 탭 복귀(focus) 재조회. 주문 성공 시점엔 useInvalidateWholesaleDeposit() 로 즉시 무효화.
+    staleTime: 10 * 1000,
     gcTime: 30 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
+}
+
+/**
+ * 💰 예치금 잔액 즉시 무효화 훅 — 주문 생성/충전 직후 호출하면 모든 화면(공용 util 바 포함)의
+ *   예치금 표시가 실시간으로 갱신된다. (예치금 즉시차감 모델이라 클릭 직후 잔액이 바뀜.)
+ */
+export function useInvalidateWholesaleDeposit() {
+  const qc = useQueryClient()
+  return () => {
+    qc.invalidateQueries({ queryKey: queryKeys.wholesale('deposit-me') })
+    qc.invalidateQueries({ queryKey: queryKeys.wholesale('deposit-requests') })
+  }
 }
 
 export type WholesaleChargeStatus = 'pending' | 'confirmed' | 'rejected'

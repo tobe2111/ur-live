@@ -54,6 +54,7 @@ const WholesaleStatementPage = lazy(() => import('./pages/WholesaleStatementPage
 const WholesaleDocsPage = lazy(() => import('./pages/WholesaleDocsPage'))
 const WholesaleOemPage = lazy(() => import('./pages/WholesaleOemPage'))
 const WholesaleQuotesPage = lazy(() => import('./pages/wholesale/WholesaleQuotesPage'))
+const WholesaleLayout = lazy(() => import('./pages/wholesale/WholesaleLayout'))
 const WholesaleNaverPage = lazy(() => import('./pages/wholesale/WholesaleNaverPage'))
 const WholesaleStartPage = lazy(() => import('./pages/wholesale/WholesaleStartPage'))
 const WholesaleBoardPage = lazy(() => import('./pages/wholesale/WholesaleBoardPage'))
@@ -560,28 +561,33 @@ function AppContent() {
             <Route path="/wholesale/margin" element={<WholesaleCatalogPage key="margin" mode="margin" />} />
             <Route path="/wholesale/premium" element={<WholesaleCatalogPage key="premium" mode="premium" />} />
             <Route path="/wholesale/brands" element={<WholesaleCatalogPage key="brands" mode="brands" />} />
-            <Route path="/wholesale/dashboard" element={<WholesaleDashboardPage />} />
-            <Route path="/wholesale/deposits" element={<WholesaleDepositPage />} />
-            <Route path="/wholesale/product/:id" element={<WholesaleProductPage />} />
-            <Route path="/wholesale/cart" element={<WholesaleCartPage />} />
-            <Route path="/wholesale/checkout" element={<WholesaleCheckoutPage />} />
-            <Route path="/wholesale/success" element={<WholesaleSuccessPage />} />
-            <Route path="/wholesale/orders" element={<WholesaleOrdersPage />} />
-            <Route path="/wholesale/statement" element={<WholesaleStatementPage />} />
-            <Route path="/wholesale/documents" element={<WholesaleDocsPage />} />
-            <Route path="/wholesale/oem" element={<WholesaleOemPage />} />
-            <Route path="/wholesale/quotes" element={<WholesaleQuotesPage />} />
-            <Route path="/wholesale/naver" element={<WholesaleNaverPage />} />
+            {/* 🏭 2026-06-27 (대표 — 모든 도매 페이지 공통 상단바): 도매 app 페이지를 WholesaleLayout 으로 감싸
+                상단 WholesaleUtilBar(회원·예치금 실시간·충전·대시보드·로그아웃) 자동 표시. 카탈로그는 자체
+                풀헤더에 동일 바 존재 → 제외. 인증·랜딩(start/staff-login)·비도매(partnership)도 제외. */}
+            <Route element={<WholesaleLayout />}>
+              <Route path="/wholesale/dashboard" element={<WholesaleDashboardPage />} />
+              <Route path="/wholesale/deposits" element={<WholesaleDepositPage />} />
+              <Route path="/wholesale/product/:id" element={<WholesaleProductPage />} />
+              <Route path="/wholesale/cart" element={<WholesaleCartPage />} />
+              <Route path="/wholesale/checkout" element={<WholesaleCheckoutPage />} />
+              <Route path="/wholesale/success" element={<WholesaleSuccessPage />} />
+              <Route path="/wholesale/orders" element={<WholesaleOrdersPage />} />
+              <Route path="/wholesale/statement" element={<WholesaleStatementPage />} />
+              <Route path="/wholesale/documents" element={<WholesaleDocsPage />} />
+              <Route path="/wholesale/oem" element={<WholesaleOemPage />} />
+              <Route path="/wholesale/quotes" element={<WholesaleQuotesPage />} />
+              <Route path="/wholesale/naver" element={<WholesaleNaverPage />} />
+              <Route path="/wholesale/board" element={<WholesaleBoardPage />} />
+              <Route path="/wholesale/support" element={<WholesaleSupportPage />} />
+              <Route path="/wholesale/channels" element={<WholesaleChannelsPage />} />
+              <Route path="/wholesale/terms" element={<WholesaleTermsPage />} />
+              <Route path="/wholesale/privacy" element={<WholesalePrivacyPage />} />
+              <Route path="/wholesale/wishlist" element={<WholesaleWishlistPage />} />
+              <Route path="/wholesale/proposals" element={<WholesaleProposalsPage />} />
+              <Route path="/wholesale/staff" element={<WholesaleStaffPage />} />
+            </Route>
             <Route path="/wholesale/start" element={<WholesaleStartPage />} />
-            <Route path="/wholesale/board" element={<WholesaleBoardPage />} />
-            <Route path="/wholesale/support" element={<WholesaleSupportPage />} />
-            <Route path="/wholesale/channels" element={<WholesaleChannelsPage />} />
-            <Route path="/wholesale/terms" element={<WholesaleTermsPage />} />
-            <Route path="/wholesale/privacy" element={<WholesalePrivacyPage />} />
             <Route path="/partnership" element={<PartnershipInquiryPage />} />
-            <Route path="/wholesale/wishlist" element={<WholesaleWishlistPage />} />
-            <Route path="/wholesale/proposals" element={<WholesaleProposalsPage />} />
-            <Route path="/wholesale/staff" element={<WholesaleStaffPage />} />
             <Route path="/wholesale/staff-login" element={<WholesaleStaffLoginPage />} />
             <Route path="/shorts" element={<ShortsPage />} />
             <Route path="/v/:code" element={<VoucherVerifyPage />} />

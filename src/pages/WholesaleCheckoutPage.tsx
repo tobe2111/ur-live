@@ -5,7 +5,7 @@ import { ArrowLeft, Loader2, Wallet, AlertTriangle } from 'lucide-react'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { WT, won, comma } from './wholesale/wholesale-theme'
-import { useWholesaleDeposit } from '@/hooks/queries/useWholesale'
+import { useWholesaleDeposit, useInvalidateWholesaleDeposit } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart, groupBySupplier } from './wholesale/useWholesaleCart'
 import { useIsWholesaleViewer, ViewerNotice } from './wholesale/ViewerGate'
 
@@ -21,6 +21,7 @@ export default function WholesaleCheckoutPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const { items, subtotal, totalQty, clear } = useWholesaleCart()
   const depositQ = useWholesaleDeposit()
+  const invalidateDeposit = useInvalidateWholesaleDeposit()
   // 👥 2026-06-12 (감사 부채): viewer 직원 — 서버 403 전 UI 사전 안내 (fail-open, 서버가 최종 방어).
   const isViewer = useIsWholesaleViewer()
 
@@ -62,6 +63,7 @@ export default function WholesaleCheckoutPage() {
       }, { headers: { Authorization: `Bearer ${token}` } })
       if (r.data?.success && r.data?.status === 'PAID') {
         clear()
+        invalidateDeposit() // 💰 예치금 즉시차감 → 잔액 실시간 갱신(상단 util 바 포함)
         navigate(`/wholesale/success?credit=0&order=${r.data.order_id}`)
       } else {
         setErrorMsg(r.data?.error || t('wholesale.checkout.payFailed', { defaultValue: '결제에 실패했습니다' }))

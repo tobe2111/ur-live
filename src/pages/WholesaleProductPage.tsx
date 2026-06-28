@@ -4,7 +4,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { ArrowLeft, Loader2, Check, Lock, BellRing, BellOff, MessageCircle, Store } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
-import { useWholesaleProduct } from '@/hooks/queries/useWholesale'
+import { useWholesaleProduct, useWholesaleDeposit, useInvalidateWholesaleDeposit } from '@/hooks/queries/useWholesale'
 import { cfImage } from '@/utils/cf-image'
 import { StickyActionBar } from '@/components/ui/sticky-action-bar'
 import { WT, won, comma, discountRate, unitMargin, marginVsRetail, GRADE_LABEL, WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
@@ -99,6 +99,11 @@ export default function WholesaleProductPage() {
   const idemKeyRef = useRef<string>(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`)
   const [tab, setTab] = useState<'desc' | 'ship' | 'settle' | 'return'>('desc')
   const cart = useWholesaleCart()
+  // 🏭 2026-06-27 (대표 — 바로주문 중간확인 단계): 예치금 즉시차감 모델이라 한 번 누르면 돈이 바로 빠짐 →
+  //   주문요약+예치금 차감 안내를 보여주는 확인 시트 게이트. 예치금은 실시간 표시 + 주문 후 무효화.
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const depositQ = useWholesaleDeposit()
+  const invalidateDeposit = useInvalidateWholesaleDeposit()
 
   // 💬 "제조사에 문의" — 로그인 판매사만. 서버가 상품→제조사를 서버사이드 해석(신원 비공개).
   //   버튼 클릭 시에만 lazy 위젯 mount + 상품 기준 스레드 자동 진입.
@@ -178,12 +183,20 @@ export default function WholesaleProductPage() {
     toast.success(`장바구니에 ${comma(qty)}개 담았어요`)
   }
 
-  async function placeOrder() {
+  // 🏭 2026-06-27 (대표 — 중간 확인 단계): '바로 주문' 은 검증만 하고 확인 시트를 연다(즉시 차감 X).
+  //   실제 예치금 차감은 시트의 '주문 확정'(confirmOrder)에서만.
+  function placeOrder() {
     if (!item || ordering) return
     // 🏭 2026-06-27 (대표 신고): 로그인 판정은 토큰으로 — 가격 null(등급 미설정/스테일)은 로그인 유도 아님.
     if (!token) { toast.info('로그인하면 주문할 수 있어요'); goLogin(); return }
     if (item.distributor_price == null || item.distributor_price <= 0) { toast.info('회원님 등급의 공급가가 아직 설정되지 않았어요. 제조사에 문의해주세요.'); return }
     if (!validateQty()) return
+    setConfirmOpen(true)
+  }
+
+  async function confirmOrder() {
+    if (!item || ordering) return
+    if (!token || item.distributor_price == null || item.distributor_price <= 0 || !validateQty()) { setConfirmOpen(false); return }
     setOrdering(true)
     try {
       // 🛡️ 2026-06-25: /orders 는 예치금 즉시차감 PAID 모델 — 멱등키 필수(미전송 시 더블클릭=이중차감) +
@@ -191,6 +204,8 @@ export default function WholesaleProductPage() {
       const r = await api.post('/api/wholesale/orders', { items: [{ product_id: item.id, qty }], idempotency_key: idemKeyRef.current }, h)
       if (r.data?.success && r.data?.status === 'PAID') {
         idemKeyRef.current = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+        invalidateDeposit() // 💰 예치금 즉시차감 → 잔액 실시간 갱신(상단 util 바 포함)
+        setConfirmOpen(false)
         navigate(`/wholesale/success?credit=0&order=${r.data.order_id}`)
       } else { toast.error(r.data?.error || '주문 생성 실패') }
     } catch (e: unknown) {
@@ -537,6 +552,49 @@ export default function WholesaleProductPage() {
           />
         </Suspense>
       )}
+
+      {/* 🏭 2026-06-27 (대표 — 바로주문 중간 확인): 예치금 즉시차감 전 주문요약 + 차감 후 잔액 확인 시트. */}
+      {confirmOpen && (() => {
+        const bal = Number(depositQ.data?.balance) || 0
+        const after = bal - total
+        const insufficient = after < 0
+        return (
+          <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center" onClick={() => { if (!ordering) setConfirmOpen(false) }}>
+            <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.45)' }} />
+            <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5" style={{ boxShadow: WT.shUp, paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }} onClick={(e) => e.stopPropagation()}>
+              <div className="text-[17px] font-extrabold mb-1" style={{ color: WT.ink }}>주문 확인</div>
+              <p className="text-[13px] mb-4" style={{ color: WT.ink3 }}>예치금에서 <b style={{ color: WT.ink }}>즉시 차감</b>되는 주문이에요. 내용을 확인해주세요.</p>
+              <div className="flex items-center gap-3 rounded-2xl p-3 mb-3" style={{ background: WT.fill }}>
+                {item.image_url && <img src={cfImage(item.image_url, { width: 120, format: 'auto' }) || item.image_url} alt="" className="w-12 h-12 rounded-lg object-cover" />}
+                <div className="min-w-0 flex-1">
+                  <div className="text-[14px] font-bold truncate" style={{ color: WT.ink }}>{item.name}</div>
+                  <div className="text-[13px] tabular-nums" style={{ color: WT.ink3 }}>{won(effUnit)} × {comma(qty)}개</div>
+                </div>
+              </div>
+              <div className="rounded-2xl overflow-hidden mb-3" style={{ background: WT.fill2 }}>
+                <div className="flex items-center justify-between px-4 h-11"><span className="text-[14px]" style={{ color: WT.ink3 }}>결제 금액</span><span className="text-[16px] font-extrabold tabular-nums" style={{ color: WT.ink }}>{won(total)}</span></div>
+                <div style={{ borderTop: '1px solid ' + WT.line }} />
+                <div className="flex items-center justify-between px-4 h-11"><span className="text-[14px]" style={{ color: WT.ink3 }}>현재 예치금</span><span className="text-[14px] font-bold tabular-nums" style={{ color: WT.ink2 }}>{won(bal)}</span></div>
+                <div style={{ borderTop: '1px solid ' + WT.line }} />
+                <div className="flex items-center justify-between px-4 h-11"><span className="text-[14px]" style={{ color: WT.ink3 }}>결제 후 예치금</span><span className="text-[15px] font-extrabold tabular-nums" style={{ color: insufficient ? '#DC2626' : WT.pos }}>{won(after)}</span></div>
+              </div>
+              {insufficient && (
+                <div className="rounded-xl px-3.5 py-2.5 mb-3 text-[13px] font-semibold" style={{ background: '#FEF2F2', color: '#DC2626' }}>예치금이 부족해요. 충전 후 주문할 수 있어요.</div>
+              )}
+              <div className="flex gap-2.5">
+                <button onClick={() => setConfirmOpen(false)} disabled={ordering} className="px-6 h-12 rounded-2xl text-[15px] font-bold disabled:opacity-50" style={{ background: WT.fill, color: WT.ink }}>취소</button>
+                {insufficient ? (
+                  <button onClick={() => { setConfirmOpen(false); navigate('/wholesale/deposits') }} className="flex-1 h-12 rounded-2xl text-[15px] font-bold text-white" style={{ background: WT.brand }}>충전하러 가기</button>
+                ) : (
+                  <button onClick={confirmOrder} disabled={ordering} className="flex-1 h-12 rounded-2xl text-[15px] font-bold text-white disabled:opacity-60" style={{ background: WT.brand }}>
+                    {ordering ? <Loader2 className="w-5 h-5 animate-spin inline" /> : `${won(total)} 주문 확정`}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
