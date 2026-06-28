@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-27 — 도매 B2B 주문 상태머신 + 전 플로우 정합 (대표 "A+1,2,3,4 / 빠진 것 철저히 분석")
+**배경**: 도매(유통스타트) B2B 주문이 결제(예치금 즉시차감 PAID) 후 제조사 확인·발송·판매사 구매확정까지 가는 라이프사이클이 느슨했음(상태 free-form TEXT, 고아 DONE/CANCELLED, 정산이 발송 여부 무관하게 시간만으로 성숙). 5단계로 정비 + 전수 정합.
+- **Phase A ✅ 정산 발송게이트** (`a9d9599`): `matureSupplierSettlements` 가 도매 정산(`source='wholesale'`)을 **라인 `line_status='SHIPPED'` 일 때만** 성숙(SHIPPED_GATE EXISTS). 소비자 정산(`source!='wholesale'`) byte-불변.
+- **Phase 1~4 ✅ 상태머신 + 수락/거절·구매확정·셀프취소** (`5e8e7c3`): 신규 SSOT `wholesale-order-status.ts`(`WHOLESALE_ORDER_STATUSES` 12종 + `WHOLESALE_TRANSITIONS` + `transitionWholesaleOrder` CAS + `refundWholesaleOrderFully`). 제조사 `/orders/:id/accept`(PAID→ACCEPTED)·`/reject`(라인환불+REJECTED), 판매사 `/confirm`(SHIPPED→DONE)·`/cancel`(발송전 예치금환불 CANCELLED). 가드 `check-wholesale-order-status.mjs`(정의 밖 status write 차단, audit-gate+CI strict). 배지 SSOT(`wholesale-theme.ts`) ACCEPTED/REJECTED 추가.
+- **전 플로우 정합 ✅** (`8e1f707`): 상태머신 추가 후 **이전에 작성된 "활성주문" 필터·매출집계·환불 허용목록이 ACCEPTED/DONE 을 몰라** 주문이 목록·매출에서 빠지고 일부 환불/거절이 막히던 통합 갭 전수 수정. 공유 상수 `ACTIVE_WHOLESALE_STATUSES`+`sqlStatusList()` 로 한 곳에서 파생(재발방지). 고친 곳: 제조사 주문목록(수락 시 사라지던 버그)·매출/GMV/판매사 매입총액·거래내역서(부분환불 net 정확화)·다제조사 SHIPPED 전이(REFUNDED 라인 종결처리)·어드민 강제환불/클레임 허용(가드+CAS 동일집합)·어드민 배지 12종+필터·구매확정/취소 제조사 알림. **소비자 드롭십(`orders` 테이블) 무수정(서비스 분리).**
+- 검증: tsc 0 · 단위 2356 pass · build 0 · audit-gate **31/31 GREEN**(도매주문 상태 무결성 가드 포함).
+- ⚠️ **배포 후 staging 실검증 권장**: 수락→발송→구매확정 1사이클 + 다제조사 주문 한 라인 거절 1회.
+
 ## 🚧 2026-06-27 — 유어애즈 추가기능 3종(소싱리포트·예산페이싱·노출순위) + 판매채널 번들 설계 (대표 "수익화 보류, 기능부터 / 모두 다")
 **결정**: 수익화 토대 보류, **기능 우선**. 3개 후보 중 유어애즈 내부 2개는 풀구현, 크로스서비스 1개는 분리룰상 설계.
 - **소싱 리포트**(`SourcingPanel`): 데이터랩 쇼핑인사이트 — 네이버쇼핑 1-depth 10개 카테고리 최근1년 트렌드 → 증감률 막대(뜨는 분야). `shoppingCategoryTrends`(POST /v1/datalab/shopping/categories, 그룹 내 정규화라 증감률 유효) + GET `/api/ads/sourcing/trends`. **도매몰 소싱 시너지**, 연동 불필요.
