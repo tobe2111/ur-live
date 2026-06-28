@@ -9,6 +9,8 @@
  *    단, MIME/text-html 깨짐(고착 번들)은 복구 위해 즉시 리로드 유지.
  */
 
+import { Capacitor } from '@capacitor/core'
+
 const CHECK_INTERVAL_MS = 5 * 60 * 1000 // 5분
 const VERSION_STORAGE_KEY = 'ur_build_version'
 export const NEW_VERSION_EVENT = 'ur:new-version'
@@ -85,6 +87,11 @@ async function checkVersion() {
 
 export function startVersionCheck() {
   if (import.meta.env.DEV) return
+  // 🛡️ 2026-06-27: 네이티브 앱(Capacitor 번들)에선 version-check 비활성.
+  //   번들 앱은 웹 새로고침으로 갱신 불가(스토어 업데이트로만) → 서버버전≠번들버전이면
+  //   "새로고침" 배너가 반복 노출 + 눌러도 같은 번들 리로드(무의미). 네이티브는 스토어 업데이트.
+  //   ⚠️ 향후 server.url 을 라이브로 전환(앱이 라이브 웹 로드)하면 이 가드 제거 검토.
+  try { if (Capacitor.isNativePlatform()) return } catch { /* 웹 — 계속 */ }
 
   // MIME 에러 감지: 스크립트가 text/html로 로드됐으면 즉시 캐시 클리어
   // sw.js MIME 에러는 무시 (배포 시 일시적으로 발생 가능)
