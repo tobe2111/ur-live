@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import MarketingLayout from '@/components/MarketingLayout'
+import MarketingDashboardShell from '@/components/MarketingDashboardShell'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -145,10 +145,10 @@ export default function MarketingDashboardPage() {
   const input = 'w-full h-10 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
   return (
-    <MarketingLayout>
+    <MarketingDashboardShell title="대시보드">
       <SEO title="유어애즈 UR Ads - 유어팀 종합 마케팅" description="네이버 검색광고 자동입찰 + 쇼핑몰 발주수집 + 키워드 — 유어팀 종합 마케팅 툴" url="/ads/dashboard" />
-      <h1 className="text-[22px] font-extrabold text-gray-900 dark:text-white">유어애즈 <span className="text-gray-400 dark:text-gray-500 text-[14px] font-medium">UR Ads</span></h1>
-      <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">연관키워드·검색추세·쇼핑경쟁·자동완성확장·브랜드 평판 모니터링 — 지금 바로 사용 · 자동입찰/발주수집은 광고계정 연동 후</p>
+      <p className="mono text-[11px] tracking-widest" style={{ color: 'var(--ink3)' }}>OVERVIEW</p>
+      <p className="mt-1.5 text-[13px]" style={{ color: 'var(--ink2)' }}>연관키워드·검색추세·쇼핑경쟁·자동완성확장·브랜드 평판 모니터링 — 지금 바로 사용 · 자동입찰/발주수집은 광고계정 연동 후</p>
 
       {!hasToken && (
         <div className={`mt-5 ${card}`}>
@@ -160,8 +160,8 @@ export default function MarketingDashboardPage() {
       {hasToken && (
         <div className="mt-5 grid gap-3 lg:grid-cols-2">
           {/* 1) 스마트스토어 연동 */}
-          <div className={card}>
-            <div className="text-[14px] font-bold text-gray-900 dark:text-white">📦 스마트스토어 연동</div>
+          <div id="sec-store" className={card}>
+            <div className="text-[14px] font-bold text-gray-900 dark:text-white">스마트스토어 연동</div>
             {connected ? (
               <div className="mt-2 text-[13px] text-gray-600 dark:text-gray-300">
                 연결됨 <span className="text-gray-400 dark:text-gray-500">({maskedId})</span>
@@ -181,8 +181,8 @@ export default function MarketingDashboardPage() {
           </div>
 
           {/* 2) 키워드 도구 (오픈API + 검색광고 API) */}
-          <div className={card}>
-            <div className="text-[14px] font-bold text-gray-900 dark:text-white">🔑 키워드 도구</div>
+          <div id="sec-keyword" className={card}>
+            <div className="text-[14px] font-bold text-gray-900 dark:text-white">키워드 도구</div>
             <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">연관키워드 + 월 검색량 · 검색어 트렌드 · 쇼핑 경쟁(상품수·가격대)</p>
             <div className="mt-2 flex gap-2">
               <input className={input} placeholder="키워드 (예: 무선이어폰)" value={kw} onChange={(e) => setKw(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') analyzeKeyword() }} />
@@ -206,7 +206,7 @@ export default function MarketingDashboardPage() {
             {/* 자동완성 키워드 확장 — 클릭 시 그 키워드로 재분석 */}
             {kwAuto && kwAuto.length > 0 && (
               <div className="mt-3">
-                <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5">🧩 자동완성 키워드 확장</p>
+                <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5">자동완성 키워드 확장</p>
                 <div className="flex flex-wrap gap-1.5">
                   {kwAuto.slice(0, 16).map((s) => (
                     <button key={s} onClick={() => analyzeKeyword(s)}
@@ -225,27 +225,24 @@ export default function MarketingDashboardPage() {
       )}
 
       {/* 네이버 검색광고 계정 연동 + 내 광고 구조(자동입찰/실적 토대) */}
-      {hasToken && <SearchAdPanel />}
+      {hasToken && <section id="sec-searchad" style={{ scrollMarginTop: 76 }}><SearchAdPanel /></section>}
 
       {/* 자동입찰 규칙(목표순위→입찰가 자동조정) — 규칙 있을 때만 표시 */}
-      {hasToken && <AutobidPanel />}
+      {hasToken && <section id="sec-autobid" style={{ scrollMarginTop: 76 }}><AutobidPanel /></section>}
 
       {/* AI 주간 리포트(매주 월요일 자동 생성 — 읽기 전용) */}
-      {hasToken && <WeeklyReportPanel />}
+      {hasToken && <section id="sec-report" style={{ scrollMarginTop: 76 }}><WeeklyReportPanel /></section>}
 
-      {/* 가격 모니터링(네이버쇼핑 최저가 추적) */}
-      {hasToken && <PricePanel />}
-
-      {/* 소싱 리포트(데이터랩 쇼핑인사이트 — 도매몰 시너지) */}
-      {hasToken && <SourcingPanel />}
+      {/* 가격 모니터링(네이버쇼핑 최저가 추적) + 소싱 */}
+      {hasToken && <section id="sec-price" style={{ scrollMarginTop: 76 }}><PricePanel /><SourcingPanel /></section>}
 
       {/* 부정클릭 방지(Phase 1 — 탐지/리포트) */}
-      {hasToken && <ClickGuardPanel />}
+      {hasToken && <section id="sec-fraud" style={{ scrollMarginTop: 76 }}><ClickGuardPanel /></section>}
 
       {/* AI 마케터 (Claude 진단/추천 — 읽기 전용) */}
       {hasToken && (
-        <div className={`mt-3 ${card}`}>
-          <div className="text-[14px] font-bold text-gray-900 dark:text-white">🤖 AI 마케터</div>
+        <section id="sec-ai" style={{ scrollMarginTop: 76 }} className={`mt-3 ${card}`}>
+          <div className="text-[14px] font-bold text-gray-900 dark:text-white">AI 마케터</div>
           <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">실적·키워드 데이터를 분석해 개선 액션을 제안합니다(추천만 — 자동 실행 없음). 계정 연동 시 실적까지 반영.</p>
           <div className="mt-2 flex gap-2">
             <input className={input} placeholder="중심 키워드 (선택, 예: 무선이어폰)" value={aiSeed} onChange={(e) => setAiSeed(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAiMarketer() }} />
@@ -264,13 +261,13 @@ export default function MarketingDashboardPage() {
               })}
             </div>
           )}
-        </div>
+      </section>
       )}
 
       {/* 연관키워드 추천 (검색광고 API — RelKwdStat) */}
       {hasToken && kwRelated && kwRelated.length > 0 && (
         <div className={`mt-3 ${card}`}>
-          <div className="text-[14px] font-bold text-gray-900 dark:text-white">🔎 연관키워드 추천 <span className="text-gray-400 dark:text-gray-500 font-medium">({kwRelated.length})</span></div>
+          <div className="text-[14px] font-bold text-gray-900 dark:text-white">연관키워드 추천 <span className="text-gray-400 dark:text-gray-500 font-medium">({kwRelated.length})</span></div>
           <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">네이버 검색광고 기준 월 검색량 · 경쟁정도 — 총 검색량 순. 광고 타겟 키워드 발굴에 활용하세요.</p>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-[12px]">
@@ -308,7 +305,7 @@ export default function MarketingDashboardPage() {
       {/* 브랜드 평판 모니터링 (블로그/카페/뉴스 언급) */}
       {hasToken && kwRep && (
         <div className={`mt-3 ${card}`}>
-          <div className="text-[14px] font-bold text-gray-900 dark:text-white">📣 브랜드 평판 모니터링
+          <div className="text-[14px] font-bold text-gray-900 dark:text-white">브랜드 평판 모니터링
             <span className="ml-2 text-gray-400 dark:text-gray-500 font-medium">"{kwRep.query}" 언급 {formatNumber(kwRep.totalMentions)}건</span>
           </div>
           <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">블로그·카페·뉴스 언급량 + 최근 글. 브랜드·상호 검색어로 평판/노출을 추적하세요.</p>
@@ -366,6 +363,6 @@ export default function MarketingDashboardPage() {
           )}
         </div>
       )}
-    </MarketingLayout>
+    </MarketingDashboardShell>
   )
 }

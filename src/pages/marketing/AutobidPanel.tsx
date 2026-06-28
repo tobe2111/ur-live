@@ -143,7 +143,7 @@ export default function AutobidPanel() {
     return (
       <div className={`mt-3 ${card}`}>
         <div className="flex items-center justify-between">
-          <div className="text-[14px] font-bold text-gray-900 dark:text-white">⚙️ 자동입찰 규칙 <span className="text-gray-400 dark:text-gray-500 font-medium">(0)</span></div>
+          <div className="text-[14px] font-bold text-gray-900 dark:text-white">자동입찰 규칙 <span className="text-gray-400 dark:text-gray-500 font-medium">(0)</span></div>
           {csvBox}
         </div>
         <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">키워드 행에서 규칙을 만들거나, CSV로 한 번에 등록하세요.</p>
@@ -154,7 +154,7 @@ export default function AutobidPanel() {
   return (
     <div className={`mt-3 ${card}`}>
       <div className="flex items-center justify-between flex-wrap gap-1.5">
-        <div className="text-[14px] font-bold text-gray-900 dark:text-white">⚙️ 자동입찰 규칙 <span className="text-gray-400 dark:text-gray-500 font-medium">({rules.length} · 활성 {enabledCount})</span></div>
+        <div className="text-[14px] font-bold text-gray-900 dark:text-white">자동입찰 규칙 <span className="text-gray-400 dark:text-gray-500 font-medium">({rules.length} · 활성 {enabledCount})</span></div>
         <div className="flex gap-1.5">
           {csvBox}
           <button onClick={runPreview} disabled={busy === 'preview'} className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-2.5 py-1 text-[11.5px] font-bold text-gray-700 dark:text-gray-200 disabled:opacity-50">{busy === 'preview' ? '…' : '미리보기'}</button>
@@ -162,7 +162,7 @@ export default function AutobidPanel() {
         </div>
       </div>
       <p className={`mt-1 text-[11px] ${engineOn ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-500'}`}>
-        {engineOn ? '✅ 자동 엔진 ON — 활성 규칙이 주기적으로 자동 적용됩니다.' : '⏸️ 자동 엔진 OFF — 규칙은 저장되지만 자동 적용은 안 됩니다(‘지금 적용’으로 수동 실행 가능). 운영자가 검증 후 엔진을 켭니다.'}
+        {engineOn ? '자동 엔진 ON — 활성 규칙이 주기적으로 자동 적용됩니다.' : '자동 엔진 OFF — 규칙은 저장되지만 자동 적용은 안 됩니다(‘지금 적용’으로 수동 실행 가능). 운영자가 검증 후 엔진을 켭니다.'}
       </p>
 
       <div className="mt-2 overflow-x-auto">
@@ -202,7 +202,7 @@ export default function AutobidPanel() {
 
       {preview && (
         <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
-          <p className="text-[12px] font-bold text-gray-900 dark:text-white">🔍 미리보기 (적용 안 됨)</p>
+          <p className="text-[12px] font-bold text-gray-900 dark:text-white">미리보기 (적용 안 됨)</p>
           <div className="mt-1.5 space-y-1">
             {preview.length === 0 ? <p className="text-[11px] text-gray-400 dark:text-gray-500">활성 규칙이 없습니다.</p>
               : preview.map((p) => (
