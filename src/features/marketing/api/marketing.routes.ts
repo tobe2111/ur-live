@@ -16,7 +16,7 @@ import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKe
 import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnection, searchAdConnStatus } from './searchad-connection'
 import { aiMarketerAdvice, type AiMarketerContext } from './ai-marketer'
 import { registerSite, listSites, deleteSite, recordHit, clickReport, ensureClickguardSchema, addBlockedIp, listBlockedIps, removeBlockedIp } from './clickguard'
-import { listRules, upsertRule, deleteRule, recentLog, runAutobidForSeller } from './autobid'
+import { listRules, upsertRule, deleteRule, recentLog, runAutobidForSeller, bulkUpsertRules, parseCsvRules } from './autobid'
 import { listWatches, addWatch, deleteWatch, refreshWatch } from './price-monitor'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
@@ -448,9 +448,27 @@ marketingRoutes.post('/searchad/autobid/rule', rateLimit({ action: 'ads-ab-rule'
     keyword_text: body.keyword_text ? String(body.keyword_text) : undefined,
     target_rank: Number(body.target_rank), max_bid: Number(body.max_bid),
     device: body.device === 'MOBILE' ? 'MOBILE' : 'PC', enabled: !!body.enabled,
+    schedule: 'schedule' in body ? body.schedule : undefined, // 시간대·요일 전략(미지정=기존 유지)
   })
   if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   return c.json({ success: true })
+})
+
+// POST /api/ads/searchad/autobid/rules/bulk — CSV/배열 일괄 등록(대량 입찰설정). 최대 200행.
+marketingRoutes.post('/searchad/autobid/rules/bulk', rateLimit({ action: 'ads-ab-bulk', max: 6, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const rows = typeof body.csv === 'string' ? parseCsvRules(body.csv)
+    : Array.isArray(body.rules) ? (body.rules as Array<Record<string, unknown>>).map((r) => ({
+        keyword_id: String(r.keyword_id || ''), keyword_text: r.keyword_text ? String(r.keyword_text) : undefined,
+        target_rank: Number(r.target_rank), max_bid: Number(r.max_bid),
+        device: r.device === 'MOBILE' ? 'MOBILE' : 'PC', schedule: r.schedule, enabled: !!r.enabled,
+      }))
+    : []
+  if (!rows.length) return c.json({ success: false, error: '등록할 행이 없습니다 (CSV: keyword_id,keyword_text,target_rank,max_bid,device,schedule_preset)' }, 400)
+  const result = await bulkUpsertRules(c.env.DB, sellerId, rows)
+  return c.json({ success: true, ...result })
 })
 
 // DELETE /api/ads/searchad/autobid/rule?keyword_id=
