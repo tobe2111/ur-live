@@ -15,6 +15,7 @@ import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete, sh
 import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, addKeywordsToAdgroup, accountStats, budgetPacing, BID_MIN, BID_MAX, KW_ADD_MAX, type SearchAdCreds } from './searchad-client'
 import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnection, searchAdConnStatus } from './searchad-connection'
 import { aiMarketerAdvice, type AiMarketerContext } from './ai-marketer'
+import { listReports, generateWeeklyReport } from './weekly-report'
 import { registerSite, listSites, deleteSite, recordHit, clickReport, ensureClickguardSchema, addBlockedIp, listBlockedIps, removeBlockedIp } from './clickguard'
 import { listRules, upsertRule, deleteRule, recentLog, runAutobidForSeller, bulkUpsertRules, parseCsvRules } from './autobid'
 import { listWatches, addWatch, deleteWatch, refreshWatch } from './price-monitor'
@@ -357,6 +358,24 @@ marketingRoutes.post('/ai-marketer', rateLimit({ action: 'ads-ai', max: 10, wind
   const r = await aiMarketerAdvice(c.env.ANTHROPIC_API_KEY, ctx)
   if (!r.ok) return c.json({ success: false, error: r.error }, r.error === 'NOT_CONFIGURED' ? 503 : 400)
   return c.json({ success: true, advice: r.advice, grounded: { connected: ctx.connected, hasStats: !!ctx.stats, hasKeyword: !!ctx.keyword } })
+})
+
+// ── AI 주간 리포트 (자동 생성·저장 — 읽기 전용) ─────────────────────────────
+// GET /api/ads/reports — 저장된 주간 리포트 목록
+marketingRoutes.get('/reports', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const reports = await listReports(c.env.DB, sellerId, 12)
+  return c.json({ success: true, reports })
+})
+
+// POST /api/ads/reports/generate — 이번 주 리포트 즉시 생성(연결 필요, AI 설정 시 진단 포함)
+marketingRoutes.post('/reports/generate', rateLimit({ action: 'ads-report-gen', max: 4, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const r = await generateWeeklyReport(c.env, sellerId, { replace: true })
+  if (!r.ok) return c.json({ success: false, error: r.error === 'NOT_CONNECTED' ? '검색광고 계정을 먼저 연결해주세요' : r.error, code: r.error }, r.error === 'NOT_CONNECTED' ? 400 : 502)
+  return c.json({ success: true, advice: r.advice })
 })
 
 // ── 부정클릭 방지 Phase 1 (수집·탐지·리포트 — 차단 0) ───────────────────────

@@ -293,7 +293,7 @@ export default function MarketingLandingPage() {
           <div>
             <div style={eyebrow}>POINT 05 — AI 마케터</div>
             <h3 style={h3}>데이터를 읽고,<br /><span className="grad">다음 액션을 제안합니다.</span></h3>
-            <p style={lead}>AI가 실적을 분석해 "이 키워드는 입찰을 올리세요" 같은 구체적 액션을 제안합니다. 광고계정 연동 전에도 읽기 진단부터 바로 시작할 수 있습니다.</p>
+            <p style={lead}>AI가 실적을 분석해 "이 키워드는 입찰을 올리세요" 같은 구체적 액션을 제안합니다. 매주 자동 리포트로 한 주를 정리해 드리고, 연동 전에도 읽기 진단부터 시작할 수 있습니다.</p>
           </div>
           <div style={card()}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '13px 16px', borderBottom: '1px solid #EEF0F3' }}><span style={{ width: 24, height: 24, borderRadius: 7, background: 'linear-gradient(135deg,#3B6EF5,#8B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.6L19.5 10l-5.6 1.4L12 17l-1.9-5.6L4.5 10l5.6-1.4L12 3z" /></svg></span><span style={{ fontSize: 13, fontWeight: 700 }}>AI 마케터</span></div>
@@ -382,7 +382,7 @@ export default function MarketingLandingPage() {
               <li style={{ display: 'flex', gap: 9 }}><Check size={17} />자동입찰 키워드 <b>무제한</b></li>
               <li style={{ display: 'flex', gap: 9 }}><Check size={17} />키워드 확장 + AI 마케터</li>
               <li style={{ display: 'flex', gap: 9 }}><Check size={17} />스토어 5곳 연동 <span style={{ color: '#9A6700', fontWeight: 600 }}>(발주 수집 준비 중)</span></li>
-              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />성과 리포트</li>
+              <li style={{ display: 'flex', gap: 9 }}><Check size={17} />자동 주간 리포트</li>
             </ul>
           </div>
           {/* 에이전시 */}
