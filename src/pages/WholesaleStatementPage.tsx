@@ -9,7 +9,7 @@ import { safeDate } from '@/utils/safe-date'
 
 // 🏭 2026-06-04 유통스타트 거래내역서 — TDS 라이트 시안 정비. 라이트 고정 B2B (인쇄 가능).
 
-const STATUS_KO: Record<string, string> = { PAID: '결제완료', SHIPPED: '배송중', REFUNDED: '환불', PARTIAL_REFUNDED: '부분환불', DONE: '구매확정' }
+const STATUS_KO: Record<string, string> = { PAID: '결제완료', ACCEPTED: '수락됨', SHIPPED: '배송중', REFUNDED: '환불', PARTIAL_REFUNDED: '부분환불', DONE: '구매확정' }
 
 export default function WholesaleStatementPage({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()

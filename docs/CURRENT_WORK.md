@@ -7,6 +7,7 @@
 - **전 플로우 정합 ✅** (`8e1f707`): 상태머신 추가 후 **이전에 작성된 "활성주문" 필터·매출집계·환불 허용목록이 ACCEPTED/DONE 을 몰라** 주문이 목록·매출에서 빠지고 일부 환불/거절이 막히던 통합 갭 전수 수정. 공유 상수 `ACTIVE_WHOLESALE_STATUSES`+`sqlStatusList()` 로 한 곳에서 파생(재발방지). 고친 곳: 제조사 주문목록(수락 시 사라지던 버그)·매출/GMV/판매사 매입총액·거래내역서(부분환불 net 정확화)·다제조사 SHIPPED 전이(REFUNDED 라인 종결처리)·어드민 강제환불/클레임 허용(가드+CAS 동일집합)·어드민 배지 12종+필터·구매확정/취소 제조사 알림. **소비자 드롭십(`orders` 테이블) 무수정(서비스 분리).**
 - 검증: tsc 0 · 단위 2356 pass · build 0 · audit-gate **31/31 GREEN**(도매주문 상태 무결성 가드 포함).
 - ⚠️ **배포 후 staging 실검증 권장**: 수락→발송→구매확정 1사이클 + 다제조사 주문 한 라인 거절 1회.
+- **정밀 correctness 리뷰 + 하드닝 ✅** (3 적대적 에이전트 — 금액/동시성/크래시): **P0 머니버그 fix** — `refundWholesaleSupplierLines` 의 배송비 gap 환불이 함수 진입 stale snapshot 으로 계산돼 **동시 다라인/다제조사 환불에서 배송비 이중환불**(예: ₩12,000 청구에 ₩24,000 환불). 수정: `shipping_refunded` 마커 컬럼 CAS(0→1 + 전라인환불 NOT EXISTS)로 단발 환불 + line 누적에 MIN clamp(grand_total 상한). 동반: ① 신규 6컬럼(accepted_at 등)+shipping_refunded 를 repair-schema 등록 + accept/reject 핸들러에 ensureOrderTables(콜드 isolate 무음실패 차단) ② bulk 송장 UPDATE 에 `line_status='PENDING'` 가드(REFUNDED 라인 부활 차단) ③ 거래내역서 STATUS_KO ACCEPTED 라벨. **문서화된 잔여(미수정)**: 발송완료(SHIPPED) 라인을 *어드민 강제환불/반품승인*(기존 경로)할 때 cron 성숙+payout 과의 레이스로 제조사 지급+바이어 환불이 겹칠 수 있음 — `supplier_clawback_shortfall` 어드민 알림으로 복구(P1, 신규 reject/cancel 경로는 SHIPPED 차단이라 안전). 검증: tsc 0·단위 2356·build 0·audit 31 GREEN.
 
 ## 🚧 2026-06-27 — 유어애즈 추가기능 3종(소싱리포트·예산페이싱·노출순위) + 판매채널 번들 설계 (대표 "수익화 보류, 기능부터 / 모두 다")
 **결정**: 수익화 토대 보류, **기능 우선**. 3개 후보 중 유어애즈 내부 2개는 풀구현, 크로스서비스 1개는 분리룰상 설계.

@@ -77,6 +77,10 @@ export async function ensureOrderTables(DB: D1Database) {
   await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN cancelled_at DATETIME').run().catch(swallow('wholesale:alter-cancelled-at'))
   await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN cancel_reason TEXT').run().catch(swallow('wholesale:alter-cancel-reason'))
   await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN confirmed_at DATETIME').run().catch(swallow('wholesale:alter-confirmed-at'))
+  // 🛡️ 2026-06-28 (머니 P0 — 배송비 이중환불 차단): 라인 스코프 환불의 배송비 단발 환불 멱등 마커.
+  //   전량환불 도달 시 단 하나의 호출만 배송비를 환불(CAS WHERE shipping_refunded=0). 동시 다라인/다제조사
+  //   환불에서 stale snapshot 기반 배송비 gap 이 이중 환불되던 것 차단.
+  await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN shipping_refunded INTEGER NOT NULL DEFAULT 0').run().catch(swallow('wholesale:alter-shipping-refunded'))
 }
 
 // ── 🚚 2026-06-09 제조사(공급자)별 배송/주문 정책 — suppliers 3컬럼 멱등 ensure. ──────

@@ -18,6 +18,7 @@ import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn } from './wholesale-deposit-core'
 import { refundWholesaleSupplierLines } from './wholesale-refund'
+import { ensureOrderTables } from './wholesale-helpers'
 import { transitionWholesaleOrder, ACTIVE_WHOLESALE_STATUSES, sqlStatusList } from './wholesale-order-status'
 import { parseCsv } from './supply-csv'
 import { buildXlsx, xlsxResponse } from './xlsx'
@@ -128,7 +129,9 @@ app.post('/tracking/bulk', async (c) => {
       if (!line) { results.push({ item_id: itemId, status: 'error', reason: '내 주문 라인 아님' }); continue }
       if (line.line_status === 'REFUNDED') { results.push({ item_id: itemId, status: 'skip', reason: '환불된 라인' }); continue }
       stmts.push(DB.prepare(
-        "UPDATE wholesale_order_items SET courier=?, tracking_number=?, shipped_at=datetime('now'), line_status='SHIPPED' WHERE id=? AND supplier_id=?"
+        // 🛡️ 2026-06-28: line_status='PENDING' 가드 추가 — 사전 SELECT(위)와 batch UPDATE 사이에 라인이 REFUNDED 로
+        //   바뀌어도 되살아나지 않게(단건 ship/ship-all 과 동일 가드). REFUNDED/SHIPPED 라인은 changes=0 으로 멱등 skip.
+        "UPDATE wholesale_order_items SET courier=?, tracking_number=?, shipped_at=datetime('now'), line_status='SHIPPED' WHERE id=? AND supplier_id=? AND line_status='PENDING'"
       ).bind(v.courier, v.tracking, itemId, sid))
       affectedOrders.add(line.wholesale_order_id)
       results.push({ item_id: itemId, status: 'ok' })
@@ -281,6 +284,7 @@ app.post('/orders/:id/accept', async (c) => {
   const orderId = Number(c.req.param('id'))
   if (!Number.isFinite(orderId) || orderId <= 0) return c.json({ success: false, error: '잘못된 주문 ID' }, 400)
   try {
+    await ensureOrderTables(DB) // accepted_at 등 신규 컬럼 보장(콜드 isolate — 이 라우트는 wholesale.routes ensure 를 안 거침).
     const own = await DB.prepare(
       "SELECT wo.id, wo.status, wo.distributor_seller_id FROM wholesale_orders wo JOIN wholesale_order_items wi ON wi.wholesale_order_id = wo.id WHERE wo.id = ? AND wi.supplier_id = ? LIMIT 1"
     ).bind(orderId, sid).first<{ id: number; status: string; distributor_seller_id: number | null }>()
@@ -310,6 +314,7 @@ app.post('/orders/:id/reject', async (c) => {
   const orderId = Number(c.req.param('id'))
   if (!Number.isFinite(orderId) || orderId <= 0) return c.json({ success: false, error: '잘못된 주문 ID' }, 400)
   try {
+    await ensureOrderTables(DB) // rejected_at/reject_reason 등 신규 컬럼 보장(콜드 isolate).
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
     const reason = String(body.reason || '제조사 거절').slice(0, 100)
     // 발송 전만 거절 가능 — 내 라인 중 SHIPPED 있으면 거절 불가(반품 경로로).

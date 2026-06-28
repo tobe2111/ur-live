@@ -16,6 +16,7 @@ import { swallow } from '@/worker/utils/swallow'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
 import { ACTIVE_WHOLESALE_STATUSES } from './wholesale-order-status'
+import { ensureOrderTables } from './wholesale-helpers'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn } from './wholesale-deposit-core'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 
@@ -41,6 +42,7 @@ export async function refundWholesaleSupplierLines(
   const DB = env.DB
   const { orderId, supplierId, reason } = params
   const notifyBuyer = params.notifyBuyer !== false
+  await ensureOrderTables(DB) // shipping_refunded 마커 등 신규 컬럼 보장(콜드 isolate 자가치유).
 
   const order = await DB.prepare(
     'SELECT id, distributor_seller_id, status, payment_key, subtotal, COALESCE(shipping_total,0) AS shipping_total, refunded_amount FROM wholesale_orders WHERE id = ?'
@@ -117,30 +119,42 @@ export async function refundWholesaleSupplierLines(
   }
 
   // 누적 환불액 + 주문 상태(전체 환불 시 REFUNDED, 아니면 PARTIAL_REFUNDED).
-  await DB.prepare("UPDATE wholesale_orders SET refunded_amount = refunded_amount + ? WHERE id = ?").bind(refundAmount, orderId).run()
+  //   🛡️ 2026-06-28: MIN clamp 로 refunded_amount 가 grand_total(subtotal+배송비) 초과 못 하게(동시 환불 누적 정합).
+  await DB.prepare("UPDATE wholesale_orders SET refunded_amount = MIN(subtotal + COALESCE(shipping_total,0), refunded_amount + ?) WHERE id = ?").bind(refundAmount, orderId).run()
   const remain = await DB.prepare(
     "SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status != 'REFUNDED'"
   ).bind(orderId).first<{ c: number }>()
   const newStatus = (remain?.c ?? 0) === 0 ? 'REFUNDED' : 'PARTIAL_REFUNDED'
   await DB.prepare("UPDATE wholesale_orders SET status = ? WHERE id = ?").bind(newStatus, orderId).run()
 
-  // 전량환불 도달 시 미회수 잔액(=배송비)을 1회 추가 환불(gap 계산 — 절대 과다환불 없음).
+  // 🛡️ 2026-06-28 (머니 P0 — 배송비 이중환불 차단): 전량환불 도달 시 미회수 배송비를 **원자적 단발** 환불.
+  //   기존엔 배송비 gap 을 함수 진입 시점 stale snapshot(order.refunded_amount)으로 계산해, 동시 다라인/다제조사
+  //   환불에서 각 호출이 배송비 전액 gap 을 중복 환불(예: ₩12,000 청구에 ₩24,000 환불)했다. 수정: shipping_refunded
+  //   마커 CAS(0→1, + 전 라인 환불완료 NOT EXISTS)로 단 하나의 호출만 winner → 정확히 charged shipping_total 1회 환불.
   if (newStatus === 'REFUNDED') {
-    const totalCharge = (order.subtotal || 0) + (order.shipping_total || 0)
-    const refundedSoFar = (order.refunded_amount || 0) + refundAmount
-    const shippingRefund = Math.max(0, totalCharge - refundedSoFar)
-    if (shippingRefund > 0) {
-      let shipApplied = false
-      if (isDeposit) {
-        const bal2 = await refundDeposit(DB, order.distributor_seller_id, shippingRefund)
-        await recordDepositTxn(DB, order.distributor_seller_id, 'refund', shippingRefund, bal2, `${orderId}-ship`.slice(0, 120), `배송비 환불 #${orderId} (전량환불)`).catch(swallow('wholesale-refund:ship-txn'))
-        shipApplied = true
-      } else if (order.payment_key && order.payment_key !== 'deposit') {
-        const shipRes = await cancelTossPayment({ env, paymentKey: order.payment_key, cancelReason: '배송비 환불(전량환불)', cancelAmount: shippingRefund, idempotencyKey: `whs-refund-ship-${orderId}`.slice(0, 100) }).catch(() => null)
-        shipApplied = !!(shipRes && shipRes.ok) // 실패 시 미누적 → reconcile/재시도 여지
-      }
-      if (shipApplied) {
-        await DB.prepare("UPDATE wholesale_orders SET refunded_amount = refunded_amount + ? WHERE id = ?").bind(shippingRefund, orderId).run().catch(swallow('wholesale-refund:ship-acc'))
+    const shipTotal = Math.max(0, Math.floor(Number(order.shipping_total) || 0))
+    if (shipTotal > 0) {
+      const shipClaim = await DB.prepare(
+        `UPDATE wholesale_orders SET shipping_refunded = 1, updated_at = datetime('now')
+           WHERE id = ? AND COALESCE(shipping_refunded, 0) = 0
+             AND NOT EXISTS (SELECT 1 FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status != 'REFUNDED')`
+      ).bind(orderId, orderId).run().catch(() => ({ meta: { changes: 0 } }))
+      if (((shipClaim as { meta?: { changes?: number } }).meta?.changes ?? 0) === 1) {
+        let shipApplied = false
+        if (isDeposit) {
+          const bal2 = await refundDeposit(DB, order.distributor_seller_id, shipTotal)
+          await recordDepositTxn(DB, order.distributor_seller_id, 'refund', shipTotal, bal2, `${orderId}-ship`.slice(0, 120), `배송비 환불 #${orderId} (전량환불)`).catch(swallow('wholesale-refund:ship-txn'))
+          shipApplied = true
+        } else if (order.payment_key && order.payment_key !== 'deposit') {
+          const shipRes = await cancelTossPayment({ env, paymentKey: order.payment_key, cancelReason: '배송비 환불(전량환불)', cancelAmount: shipTotal, idempotencyKey: `whs-refund-ship-${orderId}`.slice(0, 100) }).catch(() => null)
+          shipApplied = !!(shipRes && shipRes.ok)
+        }
+        if (shipApplied) {
+          await DB.prepare("UPDATE wholesale_orders SET refunded_amount = MIN(subtotal + COALESCE(shipping_total,0), refunded_amount + ?) WHERE id = ?").bind(shipTotal, orderId).run().catch(swallow('wholesale-refund:ship-acc'))
+        } else {
+          // 환불 실패(Toss) — 마커 롤백해 재시도 허용(과다환불 없이 reconcile).
+          await DB.prepare("UPDATE wholesale_orders SET shipping_refunded = 0 WHERE id = ? AND shipping_refunded = 1").bind(orderId).run().catch(swallow('wholesale-refund:ship-rollback'))
+        }
       }
     }
   }

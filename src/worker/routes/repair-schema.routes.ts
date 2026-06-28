@@ -317,6 +317,16 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'suppliers.shipping_fee', sql: "ALTER TABLE suppliers ADD COLUMN shipping_fee INTEGER DEFAULT 0" },
     { desc: 'suppliers.free_ship_threshold', sql: "ALTER TABLE suppliers ADD COLUMN free_ship_threshold INTEGER DEFAULT 0" },
     { desc: 'wholesale_orders.shipping_total', sql: "ALTER TABLE wholesale_orders ADD COLUMN shipping_total INTEGER NOT NULL DEFAULT 0" },
+    // 🏭 2026-06-27 B2B 상태머신 단계 타임스탬프/사유 + 🛡️ 2026-06-28 배송비 단발환불 멱등 마커.
+    //   ensureOrderTables 의 ALTER 와 동일 — accept/reject/distributor-admin 라우트는 ensureOrderTables 를
+    //   안 거치는 경로가 있어 repair-schema 에도 등록(콜드 isolate 에서 컬럼 부재로 무음 실패하던 것 차단).
+    { desc: 'wholesale_orders.accepted_at', sql: "ALTER TABLE wholesale_orders ADD COLUMN accepted_at DATETIME" },
+    { desc: 'wholesale_orders.rejected_at', sql: "ALTER TABLE wholesale_orders ADD COLUMN rejected_at DATETIME" },
+    { desc: 'wholesale_orders.reject_reason', sql: "ALTER TABLE wholesale_orders ADD COLUMN reject_reason TEXT" },
+    { desc: 'wholesale_orders.cancelled_at', sql: "ALTER TABLE wholesale_orders ADD COLUMN cancelled_at DATETIME" },
+    { desc: 'wholesale_orders.cancel_reason', sql: "ALTER TABLE wholesale_orders ADD COLUMN cancel_reason TEXT" },
+    { desc: 'wholesale_orders.confirmed_at', sql: "ALTER TABLE wholesale_orders ADD COLUMN confirmed_at DATETIME" },
+    { desc: 'wholesale_orders.shipping_refunded', sql: "ALTER TABLE wholesale_orders ADD COLUMN shipping_refunded INTEGER NOT NULL DEFAULT 0" },
     // 🏦 2026-06-09 예치금 주문 멱등 — 더블클릭/재시도 이중차감 방지(ensureDepositSchema 와 동일, repair 일관성).
     { desc: 'wholesale_orders.idempotency_key', sql: "ALTER TABLE wholesale_orders ADD COLUMN idempotency_key TEXT" },
     { desc: 'idx_wholesale_orders_idem', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_wholesale_orders_idem ON wholesale_orders(distributor_seller_id, idempotency_key) WHERE idempotency_key IS NOT NULL" },
