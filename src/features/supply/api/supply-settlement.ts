@@ -268,18 +268,27 @@ export async function matureSupplierSettlements(DB: D1Database): Promise<number>
   // 🏭 BIZ-1 (2026-06-08): 클레임/분쟁으로 HOLD 된 정산은 성숙에서 제외(분쟁 중 공급자 지급 보류).
   //   held_at 컬럼이 없는 cold DB 도 안전하도록 best-effort ADD COLUMN(이미 있으면 무시) 후 가드 적용.
   await DB.prepare("ALTER TABLE supplier_settlements ADD COLUMN held_at DATETIME").run().catch(() => { /* 이미 존재 — 무시 */ });
-  // 성숙 대상(환불창 경과 + HOLD 아님) 공급자별 합계.
+  // 🚚 2026-06-27 (대표 — P0: 발송 안 한 도매주문 정산 차단): 도매(source='wholesale') 정산은 **해당 라인이
+  //   실제 발송(line_status='SHIPPED')된 경우에만** 성숙시킨다. 기존엔 available_at(차주 목요일)만 보고 발송
+  //   여부와 무관하게 지급돼, 제조사가 운송장 안 찍어도 돈을 받던 구멍. 소비자 정산(source!='wholesale')은
+  //   기존 동작 그대로(별도 발송 플로우). 멱등·HOLD·잔액재산정 로직 전부 불변 — AND 조건 1개 추가만.
+  const SHIPPED_GATE = `AND (COALESCE(source,'') <> 'wholesale' OR EXISTS (
+         SELECT 1 FROM wholesale_order_items wi
+          WHERE wi.wholesale_order_id = supplier_settlements.order_id
+            AND wi.product_id = supplier_settlements.product_id
+            AND wi.line_status = 'SHIPPED'))`;
+  // 성숙 대상(환불창 경과 + HOLD 아님 + 도매는 발송완료) 공급자별 합계.
   const due = await DB.prepare(
-    "SELECT supplier_id, SUM(supply_amount) AS amt, COUNT(*) AS cnt FROM supplier_settlements WHERE status = 'pending' AND available_at IS NOT NULL AND available_at <= datetime('now') AND held_at IS NULL GROUP BY supplier_id"
+    `SELECT supplier_id, SUM(supply_amount) AS amt, COUNT(*) AS cnt FROM supplier_settlements WHERE status = 'pending' AND available_at IS NOT NULL AND available_at <= datetime('now') AND held_at IS NULL ${SHIPPED_GATE} GROUP BY supplier_id`
   ).all<{ supplier_id: number; amt: number; cnt: number }>().catch(() => ({ results: [] as { supplier_id: number; amt: number; cnt: number }[] }));
 
   let matured = 0;
   for (const d of due.results || []) {
     const amt = Math.max(0, Math.floor(Number(d.amt) || 0));
     if (amt <= 0) continue;
-    // 상태 전환 먼저(멱등 보장) → 잔고 이동. HOLD 된 row 는 제외(held_at IS NULL).
+    // 상태 전환 먼저(멱등 보장) → 잔고 이동. HOLD 된 row 는 제외(held_at IS NULL). 도매는 발송완료만(SHIPPED_GATE).
     const upd = await DB.prepare(
-      "UPDATE supplier_settlements SET status = 'available' WHERE supplier_id = ? AND status = 'pending' AND available_at IS NOT NULL AND available_at <= datetime('now') AND held_at IS NULL"
+      `UPDATE supplier_settlements SET status = 'available' WHERE supplier_id = ? AND status = 'pending' AND available_at IS NOT NULL AND available_at <= datetime('now') AND held_at IS NULL ${SHIPPED_GATE}`
     ).bind(d.supplier_id).run();
     const changed = upd.meta?.changes ?? 0;
     if (changed <= 0) continue;
