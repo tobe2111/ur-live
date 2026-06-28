@@ -154,6 +154,7 @@ export default function LiveDonation({ streamId }: LiveDonationProps) {
       {/* 후원 바텀시트 */}
       {showSheet && (
         <>
+          {/* modal-zindex-ok: 라이브 화면(네비 숨김·mobileOnly) 전용 후원 시트 백드롭 — 낮은 z 의도적 */}
           <div
             className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm"
             onClick={() => !processing && setShowSheet(false)}
