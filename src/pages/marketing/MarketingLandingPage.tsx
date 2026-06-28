@@ -51,6 +51,8 @@ const SCOPED_CSS = `
 .ua-landing .ua-hero-dots{position:absolute;inset:0;pointer-events:none;opacity:.6;background-image:radial-gradient(#D6DEF2 1px,transparent 1px);background-size:24px 24px;-webkit-mask-image:radial-gradient(ellipse 80% 70% at 80% 0%,#000,transparent 70%);mask-image:radial-gradient(ellipse 80% 70% at 80% 0%,#000,transparent 70%)}
 .ua-landing[data-theme="dark"] .ua-hero-dots{opacity:.5;background-size:auto;-webkit-mask-image:none;mask-image:none;background-image:radial-gradient(1px 1px at 18% 30%,#fff,transparent),radial-gradient(1px 1px at 42% 68%,#cdd6ff,transparent),radial-gradient(1px 1px at 64% 22%,#fff,transparent),radial-gradient(1.4px 1.4px at 80% 50%,#bcd,transparent),radial-gradient(1px 1px at 30% 82%,#fff,transparent)}
 .ua-landing .ua-tglbtn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;border:1px solid var(--btn-bd);background:var(--panel);color:var(--ink2);cursor:pointer;font-size:15px}
+.ua-landing .ua-navlinks{display:flex;gap:26px}
+@media(max-width:720px){.ua-landing .ua-navlinks{display:none}}
 `
 
 /** 체크 아이콘 (브랜드 블루 stroke) */
@@ -78,7 +80,7 @@ const card = (extra: React.CSSProperties = {}): React.CSSProperties => ({
 const eyebrow: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: 'var(--brand)', letterSpacing: '.04em' }
 const h3: React.CSSProperties = { fontSize: 'clamp(26px,3vw,33px)', lineHeight: 1.18, fontWeight: 800, letterSpacing: '-.035em', margin: '14px 0 0' }
 const lead: React.CSSProperties = { fontSize: 16, lineHeight: 1.65, color: 'var(--ink2)', margin: '16px 0 0', maxWidth: 440 }
-const featRow: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(360px,1fr))', gap: 60, alignItems: 'center', padding: '46px 0' }
+const featRow: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(360px,100%),1fr))', gap: 60, alignItems: 'center', padding: '46px 0' }
 const thRow: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--muted)' }
 
 export default function MarketingLandingPage() {
@@ -98,7 +100,7 @@ export default function MarketingLandingPage() {
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 28px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 38 }}>
             <Link to="/ads"><UrAdsLogo size={26} /></Link>
-            <nav style={{ display: 'flex', gap: 26, fontSize: 14, color: 'var(--ink2)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+            <nav className="ua-navlinks" style={{ fontSize: 14, color: 'var(--ink2)', fontWeight: 500, whiteSpace: 'nowrap' }}>
               <a href="#features">기능</a><a href="#pricing">요금제</a><a href="#proof">고객사례</a><a href="#faq">FAQ</a>
             </nav>
           </div>
@@ -114,7 +116,7 @@ export default function MarketingLandingPage() {
       <section className="ua-hero" style={{ position: 'relative', overflow: 'hidden', borderBottom: '1px solid var(--line)' }}>
         <div className="ua-hero-dots" />
         <div style={{ position: 'relative', maxWidth: 1200, margin: '0 auto', padding: '0 28px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(380px,1fr))', gap: 52, alignItems: 'center', padding: '86px 0 78px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(380px,100%),1fr))', gap: 'clamp(28px,5vw,52px)', alignItems: 'center', padding: 'clamp(48px,9vw,86px) 0 clamp(44px,8vw,78px)' }}>
             <div>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 600, color: 'var(--soft-tx)', background: 'var(--soft-bg)', border: '1px solid var(--soft-bd)', padding: '7px 14px', borderRadius: 999 }}>● 네이버 공식 API 기반 · 크롤링 아님</span>
               <h1 style={{ fontSize: 'clamp(38px,5vw,56px)', lineHeight: 1.08, fontWeight: 800, letterSpacing: '-.045em', margin: '22px 0 0' }}>광고 입찰부터 발주까지,<br /><span className="grad">하나로 자동화.</span></h1>
@@ -172,7 +174,7 @@ export default function MarketingLandingPage() {
       <section style={{ maxWidth: 1200, margin: '0 auto', padding: '84px 28px 20px' }}>
         <div style={{ fontSize: 12.5, fontWeight: 600, color: '#3B6EF5', letterSpacing: '.06em' }}>WHY UR ADS</div>
         <h2 style={{ fontSize: 'clamp(28px,3.4vw,38px)', lineHeight: 1.18, fontWeight: 800, letterSpacing: '-.035em', margin: '14px 0 0', maxWidth: 720 }}>광고대행사 한 명이 하던 일을,<br />UR Ads가 <span className="grad">24시간 대신</span>합니다.</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', marginTop: 44, border: '1px solid var(--line)', borderRadius: 16, overflow: 'hidden' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(220px,100%),1fr))', marginTop: 44, border: '1px solid var(--line)', borderRadius: 16, overflow: 'hidden' }}>
           {[
             { v: <>15%<span style={{ color: 'var(--up)', fontSize: 24 }}>↓</span></>, t: <>평균 CPC 절감<br /><span style={{ color: 'var(--muted)', fontSize: 12.5 }}>동일 순위 유지 기준</span></> },
             { v: '24/365', t: <>무중단 자동 입찰<br /><span style={{ color: 'var(--muted)', fontSize: 12.5 }}>새벽 경쟁 입찰까지 대응</span></> },
@@ -289,7 +291,7 @@ export default function MarketingLandingPage() {
 
         {/* 04 통합 실적 (tinted band) */}
         <div className="ua-tint" style={{ margin: '46px 0', borderRadius: 20, overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(360px,1fr))', gap: 52, alignItems: 'center', padding: '50px 44px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(360px,100%),1fr))', gap: 52, alignItems: 'center', padding: '50px 44px' }}>
             <div>
               <div style={eyebrow}>POINT 04 — 통합 실적</div>
               <h3 style={h3}>광고비부터 매출까지,<br /><span className="grad">하나의 퍼널로.</span></h3>
@@ -368,7 +370,7 @@ export default function MarketingLandingPage() {
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '80px 28px' }}>
           <div style={{ fontSize: 12.5, fontWeight: 600, color: '#3B6EF5', letterSpacing: '.06em' }}>CUSTOMER STORIES</div>
           <h2 style={{ fontSize: 'clamp(26px,3.2vw,36px)', lineHeight: 1.2, fontWeight: 800, letterSpacing: '-.035em', margin: '14px 0 0' }}>숫자로 증명된 변화</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 20, marginTop: 36 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(300px,100%),1fr))', gap: 20, marginTop: 36 }}>
             {[
               { m: '−21%', q: '"입찰 관리에 쓰던 시간이 사라졌어요. CPC는 내려가고 순위는 그대로라 마진이 눈에 띄게 좋아졌습니다."', n: '김도현', r: '루미스토어 대표', av: '#D9D4F8' },
               { m: '12개 →1', q: '"12개 스토어 주문을 매일 옮겨 적었는데, 이제 한 화면에서 끝나요. 발주 누락이 사라졌습니다."', n: '이서연', r: '데일리핏 운영팀', av: '#C3DCEF' },
@@ -387,7 +389,7 @@ export default function MarketingLandingPage() {
       {/* ── PRICING ── */}
       <section id="pricing" style={{ maxWidth: 1200, margin: '0 auto', padding: '84px 28px' }}>
         <div style={{ textAlign: 'center' }}><div style={{ fontSize: 12.5, fontWeight: 600, color: '#3B6EF5', letterSpacing: '.06em' }}>PRICING</div><h2 style={{ fontSize: 'clamp(28px,3.4vw,38px)', lineHeight: 1.18, fontWeight: 800, letterSpacing: '-.035em', margin: '14px 0 0' }}>규모에 맞게 시작하세요</h2><p style={{ fontSize: 16, color: 'var(--ink2)', margin: '14px 0 0' }}>30일 무료. 카드 등록 없이 모든 기능을 체험할 수 있습니다.</p></div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 20, marginTop: 44, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(280px,100%),1fr))', gap: 20, marginTop: 44, alignItems: 'start' }}>
           {/* 스타터 */}
           <div style={{ border: '1px solid var(--line)', borderRadius: 16, padding: 30, background: 'var(--panel)' }}>
             <div style={{ fontSize: 15, fontWeight: 700 }}>스타터</div><div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>이제 막 광고를 시작한 1인 셀러</div>
