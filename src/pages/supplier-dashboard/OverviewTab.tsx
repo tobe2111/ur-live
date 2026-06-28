@@ -27,9 +27,12 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
   if ((pendingShipCount ?? 0) > 0) todos.push({ key: 'ship', label: t('supplier.todoShip', { defaultValue: '발송 대기 {{n}}건', n: shipN }).replace('{{n}}', shipN), count: shipN, Icon: Truck, on: () => onGoTab('orders'), tone: 'danger' })
   if ((c.rejected ?? 0) > 0) todos.push({ key: 'rejected', label: t('supplier.todoRejected', { defaultValue: '반려된 상품 {{n}}건 · 수정 후 재등록', n: rejectedN }).replace('{{n}}', rejectedN), count: rejectedN, Icon: XCircle, on: () => onGoTab('catalog'), tone: 'danger' })
   if ((c.pending ?? 0) > 0) todos.push({ key: 'pending', label: t('supplier.todoPending', { defaultValue: '검수 대기 {{n}}건 (관리자 승인 중)', n: pendingN }).replace('{{n}}', pendingN), count: pendingN, Icon: Clock, on: () => onGoTab('catalog'), tone: 'info' })
+  // 🛡️ 2026-06-27: '출금 가능' = available - reserved(출금신청 보류분). 출금 페이지 spendable 과 일치.
+  //   reserved_amount 미반환(구버전 API)이면 0 폴백 → 기존 표시.
+  const spendable = Math.max(0, (b.available_amount ?? 0) - ((b as { reserved_amount?: number }).reserved_amount ?? 0))
   const cards = [
     { label: t('supplier.balPending', { defaultValue: '정산 대기' }), value: b.pending_amount, cls: 'text-amber-600' },
-    { label: t('supplier.balAvailable', { defaultValue: '출금 가능' }), value: b.available_amount, cls: 'text-blue-600' },
+    { label: t('supplier.balAvailable', { defaultValue: '출금 가능' }), value: spendable, cls: 'text-blue-600' },
     { label: t('supplier.balPaid', { defaultValue: '지급 완료(누적)' }), value: b.paid_amount, cls: 'text-green-600' },
   ]
   const actions: { label: string; desc: string; Icon: typeof Package; on: () => void; primary?: boolean; disabled?: boolean }[] = [
