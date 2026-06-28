@@ -15,7 +15,7 @@ import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn, hasDepositRefundTxn } from './wholesale-deposit-core'
-import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
+import { reverseSupplierOnWholesaleRefund, holdWholesaleSettlements } from './wholesale-settlement'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 
 export const WHOLESALE_ORDER_STATUSES = [
@@ -103,6 +103,9 @@ export async function refundWholesaleOrderFully(
     `UPDATE wholesale_orders SET status=?, refunded_amount = subtotal + COALESCE(shipping_total,0), updated_at = datetime('now')${opts.extraSetSql || ''} WHERE id = ? AND status IN (${ph})`
   ).bind(opts.finalStatus, id, ...opts.allowedPrev).run().catch(() => ({ meta: { changes: 0 } }))
   if (((claim as { meta?: { changes?: number } }).meta?.changes ?? 0) === 0) return { ok: true, already: true }
+
+  // 🛡️ 2026-06-28 (잔여 P1): 환불 확정 직후 정산 보류 — 매숙/지급이 역전과 겹치지 않게.
+  await holdWholesaleSettlements(DB, id)
 
   if (isDeposit) {
     if (remaining > 0) {

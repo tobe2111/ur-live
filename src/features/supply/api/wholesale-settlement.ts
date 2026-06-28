@@ -304,3 +304,35 @@ export async function reverseSupplierOnWholesaleRefund(
   }
   return reversed
 }
+
+/**
+ * 🛡️ 2026-06-28 (대표 — 잔여 P1 근본수정): 환불 진행 중 도매 정산 성숙/지급 보류.
+ *   배경: 발송완료(SHIPPED) 라인을 어드민 강제환불/반품승인할 때, 그 사이 cron(matureSupplierSettlements)
+ *   이 정산을 pending→available 로 매숙하고 payoutSupplier 가 지급해버리면 **제조사 지급 + 바이어 환불**이
+ *   겹쳤다(클로백 후 수동 회수). 환불 경로 시작 시 이 헬퍼로 held_at 을 찍으면:
+ *     - matureSupplierSettlements 는 `held_at IS NULL` 만 매숙 → pending 정산은 매숙 안 됨 → 역전이 cancel 로 깨끗.
+ *     - payoutSupplier 는 `held_at IS NULL` 만 지급(아래 fix) → 이미 available 인 정산도 지급 안 됨 → 역전이 cancel.
+ *   환불 직전에 이미 지급(paid) 완료된 진짜 동시 케이스만 클로백(불가피, 알림 복구). 멱등·best-effort.
+ *   (claim hold = wholesale-claims.routes.holdSettlements 와 동일 메커니즘 — 분쟁 hold 와 공존: 둘 다 held_at.)
+ * @returns hold 된 정산 row 수
+ */
+export async function holdWholesaleSettlements(
+  DB: D1Database,
+  wholesaleOrderId: number,
+  supplierId?: number,
+  productIds?: number[],
+): Promise<number> {
+  if (!wholesaleOrderId) return 0
+  await DB.prepare("ALTER TABLE supplier_settlements ADD COLUMN held_at DATETIME").run().catch(() => { /* 이미 존재 */ })
+  // 🛡️ 스코프는 reverseSupplierOnWholesaleRefund 와 동일하게 — 부분환불(제조사/라인 한정) 시 *역전 대상 정산만*
+  //   보류해야 함. 미스코프로 주문 전체를 보류하면 환불 안 된 다른 제조사/라인의 정산이 영구 동결(미지급)된다.
+  const scoped = Number.isFinite(supplierId) && (supplierId as number) > 0
+  const pids = (productIds || []).filter(p => Number.isFinite(p) && p > 0)
+  const pidWhere = pids.length ? ` AND product_id IN (${pids.map(() => '?').join(',')})` : ''
+  const r = await DB.prepare(
+    `UPDATE supplier_settlements SET held_at = datetime('now')
+       WHERE order_id = ? AND source = 'wholesale' AND status IN ('pending','available') AND held_at IS NULL
+       ${scoped ? 'AND supplier_id = ?' : ''}${pidWhere}`
+  ).bind(...(scoped ? [wholesaleOrderId, supplierId] : [wholesaleOrderId]), ...pids).run().catch(() => null)
+  return r?.meta?.changes ?? 0
+}

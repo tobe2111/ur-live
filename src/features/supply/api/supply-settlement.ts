@@ -331,9 +331,12 @@ export async function payoutSupplier(
 ): Promise<PayoutResult> {
   if (!supplierId) return { ok: false, amount: 0, settlement_count: 0, error: 'invalid_supplier' };
 
-  // 지급 대상 합계(available).
+  // 🛡️ 2026-06-28 (잔여 P1): held_at(환불/분쟁 보류) 정산은 지급 제외 — 컬럼 보장 후 가드.
+  await DB.prepare("ALTER TABLE supplier_settlements ADD COLUMN held_at DATETIME").run().catch(() => { /* 이미 존재 */ });
+
+  // 지급 대상 합계(available, 보류 제외).
   const agg = await DB.prepare(
-    "SELECT COALESCE(SUM(supply_amount), 0) AS amt, COUNT(*) AS cnt FROM supplier_settlements WHERE supplier_id = ? AND status = 'available'"
+    "SELECT COALESCE(SUM(supply_amount), 0) AS amt, COUNT(*) AS cnt FROM supplier_settlements WHERE supplier_id = ? AND status = 'available' AND held_at IS NULL"
   ).bind(supplierId).first<{ amt: number; cnt: number }>().catch(() => null);
   const amount = Math.max(0, Math.floor(Number(agg?.amt) || 0));
   const count = Number(agg?.cnt) || 0;
@@ -386,7 +389,7 @@ export async function payoutSupplier(
     //     캡 초과로 [0] 이 0행이면 EXISTS=false → claim 0행(no-op). 동시 지급 중복은 status CAS 로 차단.
     DB.prepare(
       `UPDATE supplier_settlements SET status = 'paid', paid_at = datetime('now')
-       WHERE supplier_id = ? AND status = 'available'
+       WHERE supplier_id = ? AND status = 'available' AND held_at IS NULL
          AND EXISTS (SELECT 1 FROM supplier_payouts WHERE supplier_id = ? AND note = ?)`
     ).bind(supplierId, supplierId, payoutTag),
     // [2] 잔고 이동 — claim 반영 후 SUM 재계산(자가치유, 증분 드리프트 방지).

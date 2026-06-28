@@ -14,7 +14,7 @@
 import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
-import { reverseSupplierOnWholesaleRefund } from './wholesale-settlement'
+import { reverseSupplierOnWholesaleRefund, holdWholesaleSettlements } from './wholesale-settlement'
 import { ACTIVE_WHOLESALE_STATUSES } from './wholesale-order-status'
 import { ensureOrderTables } from './wholesale-helpers'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn } from './wholesale-deposit-core'
@@ -81,6 +81,10 @@ export async function refundWholesaleSupplierLines(
     `UPDATE wholesale_order_items SET line_status='REFUNDED' WHERE id IN (${ph}) AND line_status != 'REFUNDED'`
   ).bind(...lineIds).run()
   if ((claimUpd.meta?.changes ?? 0) === 0) return { ok: true, already: true }
+
+  // 🛡️ 2026-06-28 (잔여 P1): 환불 확정 직후 *이 환불이 역전할 정산만* 보류(스코프 = 아래 reverseSupplier...과 동일:
+  //   supplierId + 환불 라인의 product_id) — 매숙/지급(payout)이 역전과 겹치지 않게. 타 제조사/라인 정산은 무영향.
+  await holdWholesaleSettlements(DB, orderId, supplierId, lines.map(l => l.product_id))
 
   if (isDeposit) {
     // 💰 예치금 주문 — Toss 미경유. 판매사 잔액에 내 라인 합계 복원.

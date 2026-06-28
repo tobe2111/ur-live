@@ -311,6 +311,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'suppliers.manager_email', sql: "ALTER TABLE suppliers ADD COLUMN manager_email TEXT" },
     // 🏭 2026-06-01 유통스타트: 제조사 정산 source 분리(consumer/wholesale) — order_id 충돌 방지.
     { desc: 'supplier_settlements.source', sql: "ALTER TABLE supplier_settlements ADD COLUMN source TEXT DEFAULT 'consumer'" },
+    // 🛡️ 2026-06-28 정산 보류 — 분쟁/환불 진행 중 성숙·지급 제외(matureSupplierSettlements·payoutSupplier 가 held_at IS NULL 만).
+    { desc: 'supplier_settlements.held_at', sql: "ALTER TABLE supplier_settlements ADD COLUMN held_at DATETIME" },
     { desc: 'wholesale_orders.refunded_amount', sql: "ALTER TABLE wholesale_orders ADD COLUMN refunded_amount INTEGER NOT NULL DEFAULT 0" },
     // 🚚 2026-06-09 제조사별 배송/주문 정책 — suppliers 3컬럼(0=제한/배송비/무료배송 없음) + 주문 배송비 합계.
     { desc: 'suppliers.min_order_amount', sql: "ALTER TABLE suppliers ADD COLUMN min_order_amount INTEGER DEFAULT 0" },
