@@ -782,8 +782,8 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       console.error('[ORDERS] Points refund error:', e);
     }
 
-    // 🛡️ 2026-06-26 (소비자 감사 다): 전액 환불 시 부가 적립·쿠폰·공구권 역전 — refundOrderFully 와
-    //   대칭 공유(쿠폰 un-use, affiliate/공급자/영입자/에이전시 커미션, referral_bonus, 공구권 clawback,
+    // 🛡️ 2026-06-26 (소비자 감사 다): 전액 환불 시 부가 적립·쿠폰·이용권 역전 — refundOrderFully 와
+    //   대칭 공유(쿠폰 un-use, affiliate/공급자/영입자/에이전시 커미션, referral_bonus, 이용권 clawback,
     //   디지털 revoke). 인라인 referral_commissions 회수는 위에서 이미 처리. 부분 환불은 전체역전이 틀리므로 제외.
     //   (/:id/cancel 전액취소는 refundOrderFully 경유라 자동 처리 — /refund 만 인라인이라 여기서 배선.)
     if ((Number((order as any).refunded_amount ?? 0) + refundAmount) >= Number(order.total_amount ?? 0)) {

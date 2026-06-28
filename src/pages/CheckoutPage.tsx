@@ -373,7 +373,7 @@ function CartCheckout() {
       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
       if (isDirectPurchase) sessionStorage.setItem('directPurchase', 'true')
       const shippingPayload = noShipping
-        ? { name: '', phone: '', postal_code: '', address1: isAllDealOnly ? '교환권 — 휴대폰 MMS 발송' : '동네딜 공구권 — 매장에서 사용', address2: '' }
+        ? { name: '', phone: '', postal_code: '', address1: isAllDealOnly ? '교환권 — 휴대폰 MMS 발송' : '동네딜 이용권 — 매장에서 사용', address2: '' }
         : {
             name: selectedAddress!.recipient_name, phone: selectedAddress!.phone,
             postal_code: selectedAddress!.postal_code, address1: selectedAddress!.address,
@@ -484,7 +484,7 @@ function CartCheckout() {
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-gray-900 dark:text-white">매장에서 바로 사용</p>
                       <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                        결제 후 내 지갑에 공구권이 발급돼요. 매장에서 “현장에서 사용하기”로 쓰면 됩니다. 배송지 입력이 필요 없어요.
+                        결제 후 내 지갑에 이용권이 발급돼요. 매장에서 “현장에서 사용하기”로 쓰면 됩니다. 배송지 입력이 필요 없어요.
                       </p>
                     </div>
                   </div>

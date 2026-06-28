@@ -110,7 +110,7 @@ export default function SellerGroupBuyPage() {
               className="inline-flex items-center gap-1.5 rounded-xl bg-pink-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-pink-600 active:scale-[0.98] transition"
             >
               <Plus className="h-4 w-4" />
-              {t('seller.groupBuy.registerVoucher', { defaultValue: '공구권 등록' })}
+              {t('seller.groupBuy.registerVoucher', { defaultValue: '이용권 등록' })}
             </button>
           }
         />

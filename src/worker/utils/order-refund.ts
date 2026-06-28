@@ -36,10 +36,10 @@ interface OrderRow {
 const CANCELLABLE = ['PAID', 'DONE', 'PREPARING', 'SHIPPING', 'DELIVERED']
 
 /**
- * 🛡️ 2026-06-26 전액 환불/취소 시 **부가 적립·쿠폰·공구권 역전** (order_id 멱등, 전부 best-effort).
+ * 🛡️ 2026-06-26 전액 환불/취소 시 **부가 적립·쿠폰·이용권 역전** (order_id 멱등, 전부 best-effort).
  *
  * 디지털 access revoke · affiliate 적립 역전 · 공급자/영입자/에이전시 매장영입 역전 · 구매자
- * referral_bonus 회수 · 쿠폰 un-use · 공구권 정산 clawback. 전부 order_id/order_number 기준이라
+ * referral_bonus 회수 · 쿠폰 un-use · 이용권 정산 clawback. 전부 order_id/order_number 기준이라
  * 멱등(2회차엔 대상 0). **Toss 취소/상태전이/재고/딜/referral_commissions 는 미포함** — 호출자가 처리.
  *
  * `refundOrderFully` 와 인라인 취소/환불 경로(order.routes.ts)가 같은 대칭 역전을 공유해
@@ -103,11 +103,11 @@ export async function reverseOrderAncillaryOnRefund(
       .bind(orderId).run().catch(swallow('order-refund:coupon-uses'))
   } catch { /* best-effort — coupon_uses 부재 등 */ }
 
-  // 공구권 정산 clawback (무효화 + 매장 정산 회수).
+  // 이용권 정산 clawback (무효화 + 매장 정산 회수).
   try {
     const { clawbackVoucherSettlementOnRefund } = await import('./voucher-settlement-clawback')
     await clawbackVoucherSettlementOnRefund(DB, orderId, `order_refund:${reason}`)
-  } catch { /* best-effort — 공구권 없는 주문 등 */ }
+  } catch { /* best-effort — 이용권 없는 주문 등 */ }
 }
 
 /**
@@ -227,8 +227,8 @@ export async function refundOrderFully(
       .bind(Number(order.id)).run().catch(swallow('order-refund:referral-pending'))
   } catch { /* table may not exist */ }
 
-  // 6~9b. 부가 적립·쿠폰·공구권·디지털 역전 (공유 헬퍼 — 인라인 취소/환불 경로와 대칭 공유).
-  //   affiliate · 공급자/영입자/에이전시 매장영입 · referral_bonus · 쿠폰 un-use · 공구권 clawback ·
+  // 6~9b. 부가 적립·쿠폰·이용권·디지털 역전 (공유 헬퍼 — 인라인 취소/환불 경로와 대칭 공유).
+  //   affiliate · 공급자/영입자/에이전시 매장영입 · referral_bonus · 쿠폰 un-use · 이용권 clawback ·
   //   디지털 access revoke. 전부 order_id 멱등(CAS 전이 후라 1회만). (referral_commissions 는 step5 인라인.)
   await reverseOrderAncillaryOnRefund(DB, Number(order.id), order.order_number, opts.reason)
 

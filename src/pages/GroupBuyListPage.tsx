@@ -828,7 +828,7 @@ export default function GroupBuyListPage() {
       )}
 
       {/* 🛡️ 2026-05-17: 지역 필터 버튼 — voucher 류 한정 (general 탭에선 숨김).
-            사용자 결정: "공구권에는 필요. 식사권/숙소권/헬스장 등에." */}
+            사용자 결정: "이용권에는 필요. 식사권/숙소권/헬스장 등에." */}
       <div className={`ur-content-wide px-4 lg:px-8 mt-3 ${category === 'general' ? 'hidden' : 'flex items-center gap-2'}`}>
         <button
           onClick={() => setRegionPickerOpen(true)}

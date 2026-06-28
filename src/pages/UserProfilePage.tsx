@@ -256,7 +256,7 @@ export default function UserProfilePage() {
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gray-100 dark:bg-white/[0.06] text-[13px] font-bold text-gray-900 dark:text-white active:opacity-80 transition-opacity"
           >
             <Store className="w-4 h-4" aria-hidden="true" />
-            {t('userProfile.myStore', { defaultValue: '내 매장 · 공구권·정산' })}
+            {t('userProfile.myStore', { defaultValue: '내 매장 · 이용권·정산' })}
           </button>
         )}
         {!!localStorage.getItem('seller_token') && (

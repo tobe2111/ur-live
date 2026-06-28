@@ -193,8 +193,8 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
     }
   })
 
-  // ── GET /store-voucher-ledger — 🎟️ 2026-06-20 매장 공구권 원장 (대표 — "사장님 지갑") ──
-  //   사장님이 자기 매장의 공구권을 미사용/사용/정산 상태로 한눈에. 읽기 전용·집계 — 돈 이동 X(Phase 1).
+  // ── GET /store-voucher-ledger — 🎟️ 2026-06-20 매장 이용권 원장 (대표 — "사장님 지갑") ──
+  //   사장님이 자기 매장의 이용권을 미사용/사용/정산 상태로 한눈에. 읽기 전용·집계 — 돈 이동 X(Phase 1).
   //   알림톡 실시간 감시 대체: 항상 있는 원장. 정산 검토의 토대.
   router.get('/store-voucher-ledger', requireAuth(), async (c) => {
     const user = getCurrentUser(c)

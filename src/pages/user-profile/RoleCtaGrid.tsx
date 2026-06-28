@@ -42,7 +42,7 @@ export default function RoleCtaGrid() {
       // 🧭 2026-06-10 (전략 정합 — 라이브 영구 중단·동네딜 집중): 라이브 셀러 CTA 제거,
       //   동네 공구 제안 + 역할 전환(사업자/에이전시) 중심으로 재구성.
       { icon: '🤝', title: '동네 공구 제안', desc: '원하는 가게 제안하면 모아서 열어드려요', to: '/community-group-buy/new', show: () => !COMMUNITY_PROPOSAL_HIDDEN },
-      { icon: '🏪', title: '내 쇼핑몰 열기', desc: '사업자 등록 → 내 상품·공구권 판매', to: '/seller/register/supplier', show: () => !hasSellerToken },
+      { icon: '🏪', title: '내 쇼핑몰 열기', desc: '사업자 등록 → 내 상품·이용권 판매', to: '/seller/register/supplier', show: () => !hasSellerToken },
       { icon: '🤵', title: '에이전시 사업', desc: '가게 영업 → 2% 영구 수익',  to: '/agency/register/business', show: () => !hasAgencyToken },
     ]
     return {

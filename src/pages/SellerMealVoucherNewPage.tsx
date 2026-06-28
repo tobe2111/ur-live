@@ -333,17 +333,17 @@ export default function SellerMealVoucherNewPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-base font-bold text-gray-900">
-                {t('seller.voucher.categoryTitle', { defaultValue: '공구권 종류' })}
+                {t('seller.voucher.categoryTitle', { defaultValue: '이용권 종류' })}
               </h2>
             </div>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { key: 'meal_voucher' as const, emoji: '🍽️', label: t('seller.voucher.categoryMeal', { defaultValue: '식사 공구권' }), desc: t('seller.voucher.categoryMealDesc', { defaultValue: '맛집·카페' }) },
-                { key: 'beauty_voucher' as const, emoji: '💇', label: t('seller.voucher.categoryBeauty', { defaultValue: '뷰티 공구권' }), desc: t('seller.voucher.categoryBeautyDesc', { defaultValue: '헤어·네일·피부' }) },
-                { key: 'health_voucher' as const, emoji: '💪', label: t('seller.voucher.categoryHealth', { defaultValue: '헬스 공구권' }), desc: t('seller.voucher.categoryHealthDesc', { defaultValue: 'PT·요가·필라테스' }) },
-                { key: 'pet_voucher' as const, emoji: '🐶', label: t('seller.voucher.categoryPet', { defaultValue: '반려 공구권' }), desc: t('seller.voucher.categoryPetDesc', { defaultValue: '미용·호텔·병원' }) },
-                { key: 'stay_voucher' as const, emoji: '🏨', label: t('seller.voucher.categoryStay', { defaultValue: '숙박 공구권' }), desc: t('seller.voucher.categoryStayDesc', { defaultValue: '펜션·호텔·모텔' }) },
-                { key: 'activity_voucher' as const, emoji: '🎯', label: t('seller.voucher.categoryActivity', { defaultValue: '액티비티 공구권' }), desc: t('seller.voucher.categoryActivityDesc', { defaultValue: '방탈출·볼링·클래스' }) },
+                { key: 'meal_voucher' as const, emoji: '🍽️', label: t('seller.voucher.categoryMeal', { defaultValue: '식사 이용권' }), desc: t('seller.voucher.categoryMealDesc', { defaultValue: '맛집·카페' }) },
+                { key: 'beauty_voucher' as const, emoji: '💇', label: t('seller.voucher.categoryBeauty', { defaultValue: '뷰티 이용권' }), desc: t('seller.voucher.categoryBeautyDesc', { defaultValue: '헤어·네일·피부' }) },
+                { key: 'health_voucher' as const, emoji: '💪', label: t('seller.voucher.categoryHealth', { defaultValue: '헬스 이용권' }), desc: t('seller.voucher.categoryHealthDesc', { defaultValue: 'PT·요가·필라테스' }) },
+                { key: 'pet_voucher' as const, emoji: '🐶', label: t('seller.voucher.categoryPet', { defaultValue: '반려 이용권' }), desc: t('seller.voucher.categoryPetDesc', { defaultValue: '미용·호텔·병원' }) },
+                { key: 'stay_voucher' as const, emoji: '🏨', label: t('seller.voucher.categoryStay', { defaultValue: '숙박 이용권' }), desc: t('seller.voucher.categoryStayDesc', { defaultValue: '펜션·호텔·모텔' }) },
+                { key: 'activity_voucher' as const, emoji: '🎯', label: t('seller.voucher.categoryActivity', { defaultValue: '액티비티 이용권' }), desc: t('seller.voucher.categoryActivityDesc', { defaultValue: '방탈출·볼링·클래스' }) },
               ].map(c => (
                 <button
                   type="button"

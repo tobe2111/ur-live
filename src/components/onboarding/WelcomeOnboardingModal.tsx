@@ -183,7 +183,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                         {bonusAmount.toLocaleString()}딜 <span className="text-[12px] font-medium text-gray-500">(₩{bonusAmount.toLocaleString()} 가치)</span>
                       </p>
                       <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                        공구권 결제 / 후원에 현금처럼 바로 사용 가능
+                        이용권 결제 / 후원에 현금처럼 바로 사용 가능
                       </p>
                     </div>
                   </div>

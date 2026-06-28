@@ -191,7 +191,7 @@ export default function BottomNav() {
   //   intent 시에만 발화 → 홈 초기로딩(Lighthouse) 영향 0. Vite 가 App.tsx 의 동일 청크로 dedup.
   // 🛡️ 2026-06-10 [UNLOCK_LOADING] 하단바 재구성 (사용자 승인): 쇼핑 탭 잠정 숨김 → 가운데 ➕(만들기).
   //   SHOPPING_TAB_HIDDEN=false 로 바꾸면 쇼핑 탭 즉시 복원(가역). /browse 라우트·prefetch 코드는 보존.
-  //   ➕ 는 시트를 열어 (유저) 동네 공구 제안 / (셀러) 공구권 등록으로 분기 — 수요 신호 수집기.
+  //   ➕ 는 시트를 열어 (유저) 동네 공구 제안 / (셀러) 이용권 등록으로 분기 — 수요 신호 수집기.
   const navItems = [
     { icon: Home,        label: t('nav.home',  { defaultValue: '홈' }),    path: '/' },
     // 🎟️ 2026-06-19 [UNLOCK_LOADING] (대표 5탭 확정 — 홈=동네딜이라 동네딜 탭은 홈과 중복): 동네딜 탭 → 교환권(기프티콘).
@@ -200,9 +200,9 @@ export default function BottomNav() {
     // 🛍️ 2026-06-20 (대표 결정 — 홈=동네딜지도 / 일반상품을 교환권 탭에 통합): 탭2 = '쇼핑'(교환권 기프티콘 + 일반상품).
     //   라벨 교환권→쇼핑, 아이콘 Gift→ShoppingBag. path 는 /vouchers 그대로(페이지가 교환권+일반상품 포괄).
     { icon: ShoppingBag, label: t('nav.shopping', { defaultValue: '쇼핑' }), path: '/vouchers', prefetch: () => import('@/pages/VouchersPage') },
-    // 🎟️ 2026-06-18 (대표 결정): 가운데 → '공구권'. 교환권(기프티콘)은 MMS 발송 카탈로그(탭2)이고,
-    //   공구권(동네딜 식사권 등)은 매장에서 QR/PIN 으로 '앱에서 꺼내 쓰는' 지갑이라 상시 탭 가치가 높음.
-    { icon: Ticket,      label: t('nav.myGbVouchers', { defaultValue: '공구권' }), path: '/my-vouchers', prefetch: () => import('@/pages/MyVouchersPage') },
+    // 🎟️ 2026-06-18 (대표 결정): 가운데 → '이용권'. 교환권(기프티콘)은 MMS 발송 카탈로그(탭2)이고,
+    //   이용권(동네딜 식사권 등)은 매장에서 QR/PIN 으로 '앱에서 꺼내 쓰는' 지갑이라 상시 탭 가치가 높음.
+    { icon: Ticket,      label: t('nav.myGbVouchers', { defaultValue: '이용권' }), path: '/my-vouchers', prefetch: () => import('@/pages/MyVouchersPage') },
     // 🧭 2026-06-10: 링크샵도 청크+데이터 동시 워밍 (동네딜과 동일) — 누르는 순간 선요청.
     { icon: Sparkles,    label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath, prefetch: () => {
       if (linkshopPath.startsWith('/u/') && !linkshopPath.startsWith('/u/me')) {
@@ -223,7 +223,7 @@ export default function BottomNav() {
     if (path !== '/' && cur.startsWith(path)) return true
     // v37 FIX: 마이페이지 범주에 /my-* 및 관련 계정/주문 경로 포함
     if (path === '/my-vouchers' && cur.startsWith('/my-vouchers')) return true
-    // 🎟️ 2026-06-18: /my-vouchers 는 '공구권' 탭 전용 활성 → 마이 탭 정규식에서 제외(이중 활성 방지).
+    // 🎟️ 2026-06-18: /my-vouchers 는 '이용권' 탭 전용 활성 → 마이 탭 정규식에서 제외(이중 활성 방지).
     if (path === '/user/profile' && /^\/(my-orders|my-coupons|my-reviews|my-group-buys|wishlist|interest-list|account|mypage|my-returns)(\/|$)/.test(cur)) {
       return true
     }
