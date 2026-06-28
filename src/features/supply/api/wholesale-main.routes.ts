@@ -25,6 +25,7 @@
  *   app.route('/api/admin/wholesale-deposit-account', adminWholesaleDepositAccountRoutes)
  */
 import { Hono } from 'hono'
+import { sellerIdFrom } from '@/worker/utils/seller-auth'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
 import { swallow } from '@/worker/utils/swallow'
@@ -99,16 +100,7 @@ async function ensurePremiumColumn(DB: D1Database): Promise<void> {
 }
 
 // ── 셀러(판매사) JWT → seller_id (wholesale-deposit.routes distributorFrom 미러) ──
-async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!authorization?.startsWith('Bearer ')) return null
-  try {
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { seller_id?: number }
-    return payload.seller_id ?? null
-  } catch {
-    return null
-  }
-}
+// sellerIdFrom: 공용 유틸 `@/worker/utils/seller-auth` 로 이동(상단 import) — 중복 정의 제거.
 
 // URL 검증 — 길이 cap + http(s)/상대경로(/...)만 허용. 실패 시 null.
 function cleanUrl(raw: unknown, max = 1000): string | null {

@@ -22,6 +22,7 @@
  * 스키마는 self-ensure(멱등) — repair-schema 등록은 리포트에 명시(후속 PR).
  */
 import { Hono } from 'hono'
+import { sellerIdFrom } from '@/worker/utils/seller-auth'
 import { sanitizeString } from '@/worker/utils/validation'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
@@ -76,16 +77,7 @@ async function _doEnsure(DB: D1Database): Promise<void> {
 // ── 판매사/공급자(셀러 계열) JWT → seller_id ───────────────────────────────────
 //   wholesale.routes.ts / wholesale-claims.routes.ts 와 동일하게 Bearer JWT 의 seller_id 신뢰.
 //   (판매사·공급자 모두 seller_token 계열 — author_type 은 주문 당사자 판정으로 도출.)
-async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!authorization?.startsWith('Bearer ')) return null
-  try {
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { seller_id?: number }
-    return payload.seller_id ?? null
-  } catch {
-    return null
-  }
-}
+// sellerIdFrom: 공용 유틸 `@/worker/utils/seller-auth` 로 이동(상단 import) — 중복 정의 제거.
 
 // 🛡️ 2026-06-26 [보안] 메모 스레드 신원 해석 — supplier(type:'supplier',supplier_id) 또는 distributor(seller_id).
 //   기존 메모 핸들러는 sellerIdFrom 으로 seller_id 만 읽고 그 값을 wholesale_order_items.supplier_id 와도

@@ -16,7 +16,7 @@
  */
 import { encryptAtRest, decryptAtRest } from '@/worker/utils/data-crypto'
 import { swallow } from '@/worker/utils/swallow'
-import type { ChannelOwner } from './naver-commerce-core'
+import type { ChannelOwner } from '@/services/naver-commerce-core'
 
 export const COUPANG_HOST = 'api-gateway.coupang.com'
 

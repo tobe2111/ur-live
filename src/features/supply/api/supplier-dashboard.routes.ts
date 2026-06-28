@@ -1157,7 +1157,7 @@ supplierDashboardRoutes.post('/store/naver/connect', rateLimit({ action: 'sup-na
   const sid = supplierId(c);
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   try {
-    const { issueNaverToken, saveNaverConnection } = await import('./naver-commerce-core');
+    const { issueNaverToken, saveNaverConnection } = await import('../../../services/naver-commerce-core');
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>));
     const clientId = String(body.client_id || '').trim();
     const clientSecret = String(body.client_secret || '').trim();
@@ -1200,7 +1200,7 @@ supplierDashboardRoutes.get('/store/status', async (c) => {
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const { DB } = c.env;
   try {
-    const { ensureNaverConnectionSchema } = await import('./naver-commerce-core');
+    const { ensureNaverConnectionSchema } = await import('../../../services/naver-commerce-core');
     const { ensureCoupangConnectionSchema } = await import('./coupang-core');
     await Promise.all([ensureNaverConnectionSchema(DB), ensureCoupangConnectionSchema(DB)]);
     const [naver, coupang] = await Promise.all([
@@ -1220,7 +1220,7 @@ supplierDashboardRoutes.get('/store/products', rateLimit({ action: 'sup-store-pr
   try {
     const channel = String(c.req.query('channel') || 'naver');
     if (channel === 'naver') {
-      const { loadNaverConnection, listNaverStoreProducts } = await import('./naver-commerce-core');
+      const { loadNaverConnection, listNaverStoreProducts } = await import('../../../services/naver-commerce-core');
       const conn = await loadNaverConnection(c.env.DB, sid, c.env.DATA_ENCRYPTION_KEY, 'supplier');
       if (!conn) return c.json({ success: false, error: '먼저 스마트스토어를 연결해주세요', code: 'NOT_CONNECTED' }, 400);
       const page = Math.max(1, Math.floor(Number(c.req.query('page')) || 1));
@@ -1288,7 +1288,7 @@ supplierDashboardRoutes.post('/store/import', rateLimit({ action: 'sup-store-imp
     }
     if (!items.length) return c.json({ success: false, error: '가져올 상품이 없습니다' }, 400);
 
-    const { mirrorImageToR2 } = await import('./naver-commerce-core');
+    const { mirrorImageToR2 } = await import('../../../services/naver-commerce-core');
     const r2env = c.env as unknown as { MEDIA_BUCKET?: R2Bucket; PUBLIC_R2_URL?: string };
 
     const results: Array<{ name: string; status: 'ok' | 'error'; reason?: string }> = [];

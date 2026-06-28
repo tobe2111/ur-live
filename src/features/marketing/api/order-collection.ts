@@ -9,7 +9,7 @@
  *   2) 엔드포인트 경로/응답 스키마는 현행 커머스 API 문서 기준 운영 1회 E2E 로 확정 필요.
  *   파싱은 응답 형태 변화에 견디도록 방어적으로 작성(아래 pick/asArray).
  */
-import { naverFetch, type NaverConnection } from '../../supply/api/naver-commerce-core'
+import { naverFetch, type NaverConnection } from '@/services/naver-commerce-core'
 
 export interface CollectedOrder {
   productOrderId: string

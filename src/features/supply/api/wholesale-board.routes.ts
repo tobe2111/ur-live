@@ -14,6 +14,7 @@
  * 신고/제안(최저가 미준수 등)은 기존 wholesale_proposal_tickets(/api/wholesale/proposal-tickets) 재사용.
  */
 import { Hono } from 'hono'
+import { sellerIdFrom } from '@/worker/utils/seller-auth'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admin-security'
@@ -27,16 +28,7 @@ import { loadGradeTable, loadSellerGrade } from './wholesale.routes'
 type D1Database = Env['DB']
 
 // ── 공유 헬퍼 (wholesale-main.routes 와 동일 패턴) ───────────────────────────
-async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!authorization?.startsWith('Bearer ')) return null
-  try {
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { seller_id?: number }
-    return payload.seller_id ?? null
-  } catch {
-    return null
-  }
-}
+// sellerIdFrom: 공용 유틸 `@/worker/utils/seller-auth` 로 이동(상단 import) — 중복 정의 제거.
 
 const VALID_BOARD_TYPE = new Set(['notice', 'archive', 'shipping'])
 

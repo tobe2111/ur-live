@@ -12,6 +12,7 @@
  *   ⚠️ 실계정 E2E 1회 필요 — 경로/필드는 COUPANG_PATHS 상수에 집중, 에러는 쿠팡 메시지 그대로 표면화.
  */
 import { Hono } from 'hono'
+import { sellerIdFrom } from '@/worker/utils/seller-auth'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
@@ -24,14 +25,7 @@ import {
 
 const app = new Hono<{ Bindings: Env }>()
 
-async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!authorization?.startsWith('Bearer ')) return null
-  try {
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { seller_id?: number }
-    return payload.seller_id ?? null
-  } catch { return null }
-}
+// sellerIdFrom: 공용 유틸 `@/worker/utils/seller-auth` 로 이동(상단 import) — 중복 정의 제거.
 
 async function requireDistributor(c: { req: { header: (k: string) => string | undefined }; env: Env }): Promise<{ sellerId: number } | { error: string; status: 401 | 403 }> {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)

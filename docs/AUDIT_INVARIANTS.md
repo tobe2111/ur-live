@@ -21,7 +21,7 @@ bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|mone
 
 | 도메인 | 불변식 (무엇을 보장) | 지키는 가드 | 마지막 수동 전수감사 |
 |---|---|---|---|
-| **서비스 분리** | 도매몰↔유어딜이 안 샘: 교차역할 API 0, 도매 어드민 스코프 내, 소비자 상품조회가 도매 원본 격리 | `check-dashboard-api-crossrole` · `check-wholesale-admin-api-scope` · `check-wholesale-admin-nav-reachability` · `check-consumer-product-supply-isolation` | 2026-06-26 (clean+1 누수 fix) |
+| **서비스 분리** | 도매몰↔유어딜↔유어애즈 3-서비스가 안 샘: 교차역할 API 0(유어애즈 `/api/ads` 포함), 도매 어드민 스코프 내, 소비자 상품조회가 도매 원본 격리, 유어애즈가 도매 폴더에 비의존(공용 인프라는 `@/worker/utils/seller-auth`·`@/services/naver-commerce-core`) | `check-dashboard-api-crossrole`(5그룹) · `check-wholesale-admin-api-scope` · `check-wholesale-admin-nav-reachability` · `check-consumer-product-supply-isolation` | 2026-06-28 (유어애즈 가드 편입 + 공용인프라 추출 리팩터) |
 | **인증·세션·RBAC** | 역할-한정 403 0, 유저↔대시보드 상호 로그아웃 0, OAuth iOS 영속, dead-link 0, 권한 누락 0, **로그인 유도는 토큰으로만(가격 null/0 을 로그아웃으로 오판 0)** | `check-dual-login-guard` · `check-dashboard-login-session-coexist` · `check-auth-cookie-pattern` · `check-internal-links` · `check-api-auth` · `check-light-input-guard` · `check-login-gate-by-price` | 2026-06-27 (도매 상세/카탈로그 가격-로그인 혼용 2건 fix + 가드) |
 | **머니·정합성(패턴)** | CAS-선점/무환불 CANCELLED/빈화면-위장/CSV 인젝션 안티패턴 0 | `check-money-patterns` · `check-status-constraints` · `check-query-iserror` · `check-csv-injection` | 2026-06-26 (정산 clean·결제 셀프취소 latent 별도) |
 | **DB·스키마** | 컬럼/bind/NOT NULL/SELECT* /컬럼예산/복구가능성 정합 | `check-schema-refs` · `check-sql-*` · `check-no-select-star-products` · `check-products-column-budget` · `check-product-detail-fields-repairable` | (상시 가드) |

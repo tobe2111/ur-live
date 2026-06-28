@@ -23,15 +23,21 @@ const EXCLUSIVE = {
   supplier: ['supplier'],
   agency: ['agency'], // agency-public 은 공용(제외)
   seller: ['seller'],
+  // 🆕 2026-06-28 유어애즈(UR Ads) — 3번째 서비스. /api/ads 는 seller_token 게이트지만 도매(supplier)/
+  //   어드민/에이전시 토큰으론 401 → 그 대시보드에서 부르면 먹통. seller/판매사 와는 토큰 공유(같은 사람).
+  ads: ['ads'],
 }
 // 대시보드군: 파일 prefix + 그 화면이 *호출하면 안 되는* 역할들(=교차역할 403).
 //   wholesale storefront 의 사용자 = type='seller'(판매사) → /api/seller 동일토큰이라 forbid 에서 seller 제외.
 const GROUPS = [
-  { name: '제조사(supplier)',  match: (p) => p.startsWith('src/pages/supplier-dashboard/') || p === 'src/pages/SupplierDashboardPage.tsx' || /^src\/pages\/Supplier[A-Z].*\.tsx$/.test(p), forbid: ['admin', 'agency', 'seller'] },
-  { name: '에이전시(agency)',  match: (p) => p.startsWith('src/pages/agency/') || /^src\/pages\/Agency[A-Z].*\.tsx$/.test(p), forbid: ['admin', 'supplier', 'seller'] },
+  { name: '제조사(supplier)',  match: (p) => p.startsWith('src/pages/supplier-dashboard/') || p === 'src/pages/SupplierDashboardPage.tsx' || /^src\/pages\/Supplier[A-Z].*\.tsx$/.test(p), forbid: ['admin', 'agency', 'seller', 'ads'] },
+  { name: '에이전시(agency)',  match: (p) => p.startsWith('src/pages/agency/') || /^src\/pages\/Agency[A-Z].*\.tsx$/.test(p), forbid: ['admin', 'supplier', 'seller', 'ads'] },
   { name: '판매사 storefront', match: (p) => p.startsWith('src/pages/wholesale/') || p.startsWith('src/pages/wholesale-catalog/') || p.startsWith('src/components/wholesale/') || /^src\/pages\/Wholesale[A-Z].*\.tsx$/.test(p), forbid: ['admin', 'supplier', 'agency'] },
   // 어드민: 소비자/도매 어드민 페이지. supplier/agency 전용은 못 부름(admin 토큰). seller 는 일부 공용성 있어 제외(오탐 방지).
-  { name: '어드민(admin)',     match: (p) => (/^src\/pages\/Admin[A-Z].*\.tsx$/.test(p) || p.startsWith('src/pages/admin/')) && !p.includes('AdminProductsPage'), forbid: ['supplier', 'agency'] },
+  { name: '어드민(admin)',     match: (p) => (/^src\/pages\/Admin[A-Z].*\.tsx$/.test(p) || p.startsWith('src/pages/admin/')) && !p.includes('AdminProductsPage'), forbid: ['supplier', 'agency', 'ads'] },
+  // 🆕 유어애즈(marketing) 대시보드: 자기 /api/ads 만. 도매(supplier)·어드민·에이전시 전용 API 는 토큰이 달라
+  //   401/403 → 먹통. seller 는 토큰 공유(같은 사람의 광고툴)라 forbid 제외(오탐 방지).
+  { name: '유어애즈(marketing)', match: (p) => p.startsWith('src/pages/marketing/') || /^src\/components\/Marketing[A-Z].*\.tsx$/.test(p), forbid: ['admin', 'supplier', 'agency'] },
 ]
 
 function walk(dir, acc = []) {
@@ -69,7 +75,7 @@ for (const f of files) {
 }
 
 console.log(`🔀 대시보드 교차-역할 API 검사`)
-console.log(`   스캔 ${files.length} 파일 · 그룹 ${GROUPS.length}개(제조사/에이전시/판매사/어드민)`)
+console.log(`   스캔 ${files.length} 파일 · 그룹 ${GROUPS.length}개(제조사/에이전시/판매사/어드민/유어애즈)`)
 if (violations.length === 0) {
   console.log(`✅ 위반 0 — 어떤 대시보드도 다른 역할 전용 API 를 호출하지 않음(교차역할 403 없음).`)
   process.exit(0)

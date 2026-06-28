@@ -18,6 +18,7 @@
  *   → 유통회원: /api/wholesale/quotes*, 어드민: /api/wholesale/admin/quotes*
  */
 import { Hono } from 'hono'
+import { sellerIdFrom } from '@/worker/utils/seller-auth'
 import { sanitizeString } from '@/worker/utils/validation'
 import { isViewerToken } from './sub-account-gate'
 import type { Env } from '@/worker/types/env'
@@ -89,16 +90,7 @@ async function _ensureWholesaleQuotesSchema(DB: D1Database): Promise<void> {
 }
 
 // ── 셀러(판매사) JWT → seller_id (wholesale.routes.ts 패턴) ─────────────────────
-async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!authorization?.startsWith('Bearer ')) return null
-  try {
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { seller_id?: number }
-    return payload.seller_id ?? null
-  } catch {
-    return null
-  }
-}
+// sellerIdFrom: 공용 유틸 `@/worker/utils/seller-auth` 로 이동(상단 import) — 중복 정의 제거.
 
 /** 유효한 정수(>=min)면 floor, 아니면 null. */
 function intOrNull(v: unknown, min = 0): number | null {

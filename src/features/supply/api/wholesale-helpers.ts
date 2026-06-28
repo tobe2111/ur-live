@@ -6,6 +6,9 @@
 import { swallow } from '@/worker/utils/swallow'
 import { type GradeMargin, type QtyTier } from '@/lib/distributor-pricing'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
+// 🔐 2026-06-28 (대표 "큰 리팩터"): 셀러 토큰 파싱은 서비스 중립 공용 유틸로 이동(`@/worker/utils/seller-auth`).
+//   기존 import 경로(`from './wholesale-helpers'`) 보존을 위해 re-export — wholesale.routes/wholesale-deposit 등 무수정.
+export { sellerIdFrom, sellerIdFromCookieGet } from '@/worker/utils/seller-auth'
 
 // ── B2B 주문 테이블 (선결제). 멱등 ensure. ───────────────────────────────────
 const _whEnsured = new WeakSet<object>()
@@ -251,19 +254,7 @@ export async function loadSellerCredit(DB: D1Database, sellerId: number): Promis
   return { limit, outstanding, frozen, available: Math.max(0, limit - outstanding), status: row?.status ?? null }
 }
 
-// ── 셀러(판매사) JWT → seller_id ──────────────────────────────────────────────
-export async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!authorization?.startsWith('Bearer ')) return null
-  try {
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { seller_id?: number }
-    return payload.seller_id ?? null
-  } catch {
-    return null
-  }
-}
-
-// 🔐 2026-06-24 (전수조사): 판매사 토큰은 30일 유효 + status 를 발급시점에 박제 → sellerIdFrom 은 서명만 검증.
+// 🔐 2026-06-24 (전수조사): 판매사 토큰은 30일 유효 + status 를 발급시점에 박제 → sellerIdFrom(seller-auth) 은 서명만 검증.
 //   승인 후 정지/거부된 판매사가 만료 전까지 발주·충전(예치금 차감/충전요청)을 계속할 수 있던 갭을 닫기 위한
 //   **요청시점 status 재검사**. reject-list(정지/거부/대기/차단)만 차단 → approved/active(정상 happy-path)는 불변.
 //   fail-open: status 조회 실패 시 차단 안 함(정상 발주를 transient DB 오류로 막지 않음).
@@ -272,21 +263,6 @@ export async function isSellerBlocked(DB: D1Database, sellerId: number): Promise
   const row = await DB.prepare('SELECT status FROM sellers WHERE id = ?').bind(sellerId)
     .first<{ status: string | null }>().catch(() => null)
   return BLOCKED_SELLER_STATUSES.has(String(row?.status || '').toLowerCase())
-}
-
-// 🔐 2026-06-11 SSR Phase 2-F (docs/SSR_PHASE2_AUTH.md §3.3): beta(SSR) loader 가 forward 한
-//   httpOnly ud_seller_token 쿠키 fallback. 이 파일 라우트들은 requireAuth 미들웨어를 안 거쳐
-//   auth.ts 의 쿠키 fallback 이 적용되지 않음 → 자체 보강. **GET/HEAD 에서만** 동작(CSRF 표면 0)
-//   — 쓰기(POST/PATCH/DELETE)는 계속 Bearer 전용. 토큰 값/검증 경로는 sellerIdFrom 재사용(단일 유지).
-export async function sellerIdFromCookieGet(
-  c: { req: { method: string; header: (name: string) => string | undefined } },
-  jwtSecret: string,
-): Promise<number | null> {
-  const method = c.req.method.toUpperCase()
-  if (method !== 'GET' && method !== 'HEAD') return null
-  const m = (c.req.header('Cookie') || '').match(/(?:^|;\s*)ud_seller_token=([^;]+)/)
-  if (!m) return null
-  return sellerIdFrom('Bearer ' + decodeURIComponent(m[1]), jwtSecret)
 }
 
 // ── 👥 2026-06-09 판매사 직원 서브계정 ────────────────────────────────────────

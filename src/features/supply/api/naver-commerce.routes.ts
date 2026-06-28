@@ -12,6 +12,7 @@
  *   Phase B(별도): 주문 자동 수집 → 도매 자동 발주 → 송장 푸시 (드랍쉬핑 완성).
  */
 import { Hono } from 'hono'
+import { sellerIdFrom } from '@/worker/utils/seller-auth'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
@@ -20,23 +21,14 @@ import {
   ensureNaverConnectionSchema, loadNaverConnection, saveNaverConnection,
   issueNaverToken, searchNaverLeafCategories, uploadImageToNaver,
   buildNaverProductPayload, naverFetch,
-} from './naver-commerce-core'
+} from '@/services/naver-commerce-core'
 
 type D1Database = Env['DB']
 
 const app = new Hono<{ Bindings: Env }>()
 
 // 공유 헬퍼 (wholesale-board.routes 와 동일 패턴)
-async function sellerIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
-  if (!authorization?.startsWith('Bearer ')) return null
-  try {
-    const { verify } = await import('hono/jwt')
-    const payload = await verify(authorization.substring(7), jwtSecret, 'HS256') as { seller_id?: number }
-    return payload.seller_id ?? null
-  } catch {
-    return null
-  }
-}
+// sellerIdFrom: 공용 유틸 `@/worker/utils/seller-auth` 로 이동(상단 import) — 중복 정의 제거.
 
 /** 유통회원(승인) 본인 확인 — is_distributor 필수. */
 async function requireDistributor(c: { req: { header: (k: string) => string | undefined }; env: Env }): Promise<{ sellerId: number } | { error: string; status: 401 | 403 }> {
