@@ -46,3 +46,14 @@ export const HOSTING_HIDDEN = true
  */
 export const COMMUNITY_PROPOSAL_HIDDEN = true
 
+/**
+ * IOS_HIDE_DIGITAL_TOPUP — iOS 네이티브 앱에서 '딜 충전'(순수 디지털 포인트)을 숨기고
+ *   외부 브라우저로 유도 (Apple 인앱결제(IAP) 정책 대비). 2026-06-27 메커니즘 신설.
+ *   배경: 애플은 앱 내 디지털 재화에 자사 IAP(30%) 강제 가능. 단, 유어딜 딜은 공구/숙소/교환권
+ *         (대부분 실세계 상품·서비스) 결제용이라 외부결제 허용 여지도 있어 **거절 여부 미확정**.
+ *   ⚠️ 기본 false (현행 유지) — 미리 켜면 매출/UX 손실. **애플 심사에서 IAP 사유로 거절되면 true 로**
+ *     전환(딜충전 진입 `/points/charge` 만 게이트, `/pay/widget` 범용결제·실물·숙소는 영향 0).
+ *   true: iOS 네이티브에서 `/points/charge` 진입 시 외부 브라우저(웹)로 충전 유도.
+ */
+export const IOS_HIDE_DIGITAL_TOPUP = false
+

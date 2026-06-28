@@ -14,9 +14,11 @@
 - 인앱브라우저(카톡/네이버 등) 외부열기 안내(`in-app-browser.ts`, 13패턴) — 성숙
 - 푸시 플러그인 + AdMob 리워드 통합
 
-## 2. 🔧 이번에 고친 것 (2026-06-27)
+## 2. 🔧 이번에 고친/준비한 것 (2026-06-27)
 - **딥링크 스킴 불일치 수정**: `native.ts` 가 실제 등록값 `yourdeal://` 인식(기존 `urlive:`/`urdeal:`만 봐서 커스텀 스킴 딥링크가 핸들러 미발동이었음). 구 스킴은 호환 유지.
 - **iOS 커스텀 스킴 등록**: `ios/App/App/Info.plist` 에 `CFBundleURLTypes`(yourdeal) 추가 — Android와 parity(기존 iOS엔 없어서 `yourdeal://` 콜백이 iOS에서 안 먹었음).
+- **✅ 업데이트 전략(결정3) 처리**: `version-check.ts` 가 **네이티브 앱에선 비활성**(`Capacitor.isNativePlatform()` 가드). 번들 앱은 웹 새로고침으로 갱신 불가 → 기존 코드면 "새로고침" 배너가 반복 노출 + 눌러도 같은 번들 리로드(무의미·잠재 루프)였음. 네이티브는 스토어 업데이트로. (server.url 라이브 전환 시 가드 제거)
+- **✅ IAP 게이트(결정2) 메커니즘 신설 — 기본 OFF**: `IOS_HIDE_DIGITAL_TOPUP` 플래그(`shared/feature-flags.ts`) + `IosTopupGate`(`/points/charge` 만 래핑, 잠긴 Toss 페이지 미수정). **기본 false=현행 유지(회귀 0)**. 애플이 IAP 사유로 거절하면 **한 줄(true)로** iOS 딜충전을 외부 웹 유도로 전환. `/pay/widget`(공구·숙소 등 실세계)은 미적용.
 
 ## 3. 🔴 출시 전 필수 결정 4개 (코드 아님 — 정책/검증)
 

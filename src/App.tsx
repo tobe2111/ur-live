@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from '
 import { HelmetProvider } from 'react-helmet-async'
 import { QueryProvider } from './lib/react-query'
 import { ProtectedRoute, PublicRoute } from './components/auth/RouteGuards'
+import IosTopupGate from './components/IosTopupGate'
 import { isUtongstart, isWholesaleAllowedPath, isWholesaleSurface, isMarketingSurface } from './utils/domain'
 import ToastContainer from './components/ToastContainer'
 import { ConfirmHost } from './components/ui/confirm-dialog'
@@ -857,8 +858,8 @@ function AppContent() {
                 : <ProtectedRoute requireAdmin><ErrorBoundary><TossDebugPage /></ErrorBoundary></ProtectedRoute>
             } />
 
-            {/* 딜 포인트 충전 */}
-            <Route path="/points/charge" element={<ProtectedRoute requireUser><PointsChargePage /></ProtectedRoute>} />
+            {/* 딜 포인트 충전 — iOS IAP 게이트(플래그 OFF 기본=children 그대로) */}
+            <Route path="/points/charge" element={<ProtectedRoute requireUser><IosTopupGate><PointsChargePage /></IosTopupGate></ProtectedRoute>} />
             <Route path="/points/charge/success" element={<ErrorBoundary><PointsChargeSuccessPage /></ErrorBoundary>} />
             <Route path="/my-deal-history" element={<ProtectedRoute requireUser><MyDealHistoryPage /></ProtectedRoute>} />
             <Route path="/points/charge/fail" element={<ErrorBoundary><PaymentFailPage /></ErrorBoundary>} />
