@@ -4,7 +4,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
-import { reverseSupplierOnWholesaleRefund } from '../wholesale-settlement'
+import { reverseSupplierOnWholesaleRefund, holdWholesaleSettlements } from '../wholesale-settlement'
 import { ACTIVE_WHOLESALE_STATUSES, sqlStatusList, WHOLESALE_ORDER_STATUSES } from '../wholesale-order-status'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn, hasDepositRefundTxn } from '../wholesale-deposit-core'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
@@ -122,6 +122,9 @@ export function registerOrdersRoutes(app: Hono<{ Bindings: Env }>) {
         `UPDATE wholesale_orders SET status='REFUNDED', refunded_amount = subtotal + COALESCE(shipping_total,0) WHERE id = ? AND status IN (${sqlStatusList(ACTIVE_WHOLESALE_STATUSES)})`
       ).bind(id).run()
       if ((claim.meta?.changes ?? 0) === 0) return c.json({ success: true, already: true })
+
+      // 🛡️ 2026-06-28 (잔여 P1): 환불 확정 직후 정산 보류 — 매숙/지급(payout)이 역전과 겹쳐 제조사 지급+바이어 환불 중복 방지.
+      await holdWholesaleSettlements(c.env.DB, id)
 
       if (isDeposit) {
         // 💰 예치금 주문 — Toss 미경유. 잔액 복원(원자 +) + refund 원장(ref_id=order.id 멱등 가드).
