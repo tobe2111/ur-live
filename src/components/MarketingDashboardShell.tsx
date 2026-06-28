@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import UrAdsLogo from '@/components/brand/UrAdsLogo'
+import { useUrAdsFavicon } from '@/components/brand/useUrAdsFavicon'
 
 /**
  * 🆕 2026-06-27 유어애즈 대시보드 chrome — 코스믹 네이비 사이드바 + 토픽바.
@@ -41,6 +42,7 @@ function NavIcon({ children }: { children: ReactNode }) {
 
 export default function MarketingDashboardShell({ title = '대시보드', planLabel, children }: { title?: string; planLabel?: string; children: ReactNode }) {
   const [active, setActive] = useState<string>(NAV[0].id)
+  useUrAdsFavicon()
 
   // 스크롤스파이 — 보이는 섹션을 사이드바에 활성 표시(전부 마운트 유지).
   useEffect(() => {
