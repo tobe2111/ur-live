@@ -18,7 +18,12 @@ import { fileURLToPath } from 'url'
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const read = (p) => (existsSync(resolve(ROOT, p)) ? readFileSync(resolve(ROOT, p), 'utf8') : null)
 
-const PAGES = ['src/pages/WholesaleLoginPage.tsx', 'src/pages/SupplierLoginPage.tsx']
+const PAGES = [
+  'src/pages/WholesaleLoginPage.tsx',
+  'src/pages/SupplierLoginPage.tsx',
+  'src/pages/wholesale/WholesaleStaffLoginPage.tsx',
+  'src/pages/WholesaleJoinPage.tsx',
+]
 
 // 내부 대시보드 라우트로의 full reload (OAuth /auth/kakao 는 제외).
 const BAD = /window\.location\.(assign\(|href\s*=\s*)['"`]\/(wholesale|supplier)\b/
