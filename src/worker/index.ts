@@ -32,6 +32,7 @@ import { sellersRouter } from './routes/seller.routes';
 import { emailRoutes } from '../features/notifications/api/email.routes';
 import { appointmentsRoutes } from '../features/appointments/api/appointments.routes';
 import { adminPayoutsRoutes } from '../features/admin/api/admin-payouts.routes';
+import { adminFeeBreakdownRoutes } from '../features/admin/api/admin-fee-breakdown.routes';
 import { adminTaxRoutes } from '../features/admin/api/admin-tax.routes';
 import { ledgerRoutes } from '../features/ledger/api/ledger.routes';
 import { streamsRouter } from './routes/streams.routes';  // ✅ 공개 스트림 라우트
@@ -1480,6 +1481,8 @@ app.route('/api', uploadRoutes);
 app.route('/api', appointmentsRoutes);
 // 🛡️ 2026-05-21 Phase C: 통합 정산 (payouts 어드민).
 app.route('/api', adminPayoutsRoutes);
+// 🆕 2026-06-29: fee-resolver 그림자 ↔ 현행 정산 비교(읽기 전용, authoritative 전환 검증용).
+app.route('/api', adminFeeBreakdownRoutes);
 // 🛡️ 2026-05-21 Phase D: 세무 (전자세금계산서 + 연말 리포트).
 app.route('/api', adminTaxRoutes);
 // 🛡️ 2026-05-21 Phase D-2: 셀러/에이전시 본인 ledger 조회.
