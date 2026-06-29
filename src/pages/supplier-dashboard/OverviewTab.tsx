@@ -3,6 +3,7 @@ import { Package, Plus, Clock, CheckCircle, XCircle, Truck, ShieldCheck, BarChar
 import { toast } from '@/hooks/useToast'
 import { formatWon, formatNumber } from '@/utils/format'
 import { supplierApi } from '@/lib/supplier-api'
+import WholesaleSignupMetaEditor from '@/components/wholesale/WholesaleSignupMetaEditor'
 import type { Me, Tab } from './types'
 
 export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, pendingShipCount }: { me: Me | null; meError: boolean; onRetry: () => void; t: (k: string, o?: Record<string, unknown>) => string; onAdd: () => void; onGoTab: (tab: Tab) => void; pendingShipCount: number }) {
@@ -180,6 +181,9 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
 
       {/* 🚚 배송/주문 정책 — 제조사별 최소주문금액 + 배송비 + 무료배송 기준 */}
       <ShippingPolicyCard t={t} />
+
+      {/* 🏭 2026-06-29 (E): 가입 시 입력한 공급 카테고리·희망 유통채널 사후 수정 */}
+      <WholesaleSignupMetaEditor kind="supplier" />
     </div>
   )
 }

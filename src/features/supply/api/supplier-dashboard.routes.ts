@@ -20,6 +20,7 @@ import { createDashboardNotification } from '@/features/notifications/api/dashbo
 import { swallow } from '@/worker/utils/swallow';
 import { setSupplyMeta, getSupplyMeta } from '@/worker/utils/product-supply-meta';
 import { normalizeWholesaleCategory } from '@/shared/wholesale-category';
+import { setWholesaleSignupMeta, getWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta';
 import { ensureSupplyVisibilitySchema, normalizeVisibility, recordSupplyPriceChange } from './supply-visibility';
 import { buildCsv, csvResponse, parseCsv } from './supply-csv';
 import { buildXlsx, xlsxResponse, type XlsxCell } from './xlsx';
@@ -54,6 +55,22 @@ async function ensureQtyConstraintSchema(DB: D1Database) {
     'ALTER TABLE products ADD COLUMN brand_logo_url TEXT',
   ]) { await DB.prepare(sql).run().catch(swallow('supplier-dashboard:biz8:alter')); }
 }
+
+// 🏭 2026-06-29 (E): 제조사 가입 메타(공급 카테고리·희망 유통채널) 셀프 조회/수정.
+supplierDashboardRoutes.get('/signup-meta', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const meta = await getWholesaleSignupMeta(c.env.DB, 'supplier', sid);
+  return c.json({ success: true, ...meta });
+});
+supplierDashboardRoutes.patch('/signup-meta', rateLimit({ action: 'supplier-signup-meta', max: 30, windowSec: 600 }), async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>));
+  await setWholesaleSignupMeta(c.env.DB, 'supplier', sid, body.categories, body.channel, true);
+  const meta = await getWholesaleSignupMeta(c.env.DB, 'supplier', sid);
+  return c.json({ success: true, ...meta });
+});
 
 // ── GET /me — 프로필 + 잔고 요약 ─────────────────────────────────────────────
 supplierDashboardRoutes.get('/me', async (c) => {
@@ -1324,7 +1341,7 @@ supplierDashboardRoutes.post('/store/import', rateLimit({ action: 'sup-store-imp
     const results: Array<{ name: string; status: 'ok' | 'error'; reason?: string }> = [];
     const INSERT_SQL = `INSERT INTO products (name, description, price, supply_price, stock, image_url, category, product_type,
        is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, min_order_qty, pack_size, order_multiple, mall_id, slug, created_at, updated_at)
-     VALUES (?, '', ?, ?, ?, ?, 'living', 'regular', 0, 1, ?, 'pending', 'ALL', 1, 1, 1, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
+     VALUES (?, '', ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', 'ALL', 1, 1, 1, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
     let created = 0;
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
@@ -1336,7 +1353,9 @@ supplierDashboardRoutes.post('/store/import', rateLimit({ action: 'sup-store-imp
       const slug = `sup-${sid}-import-${Date.now()}-${i}`;
       try {
         await DB.prepare(INSERT_SQL).bind(
-          it.name, it.sale_price, supplyPrice, it.stock, image, sid, sid, slug,
+          // 🏭 2026-06-29 (B): 임포트 상품 카테고리를 상품명에서 추론(식품/건강 키워드) → 없으면 living.
+          //   원본 스토어가 카테고리를 안 주므로 이름 기반 자동분류로 카탈로그 칩 배치 개선.
+          it.name, it.sale_price, supplyPrice, it.stock, image, normalizeWholesaleCategory(it.name), sid, sid, slug,
         ).run();
         created++;
         results.push({ name: it.name, status: 'ok' });

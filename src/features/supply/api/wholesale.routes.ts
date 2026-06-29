@@ -24,7 +24,7 @@ import {
 import { confirmTossPayment, cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { swallow } from '@/worker/utils/swallow'
 import { getSupplyMeta, ensureSupplyMetaTable } from '@/worker/utils/product-supply-meta'
-import { setWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta'
+import { setWholesaleSignupMeta, getWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAuth } from '@/worker/middleware/auth'
@@ -608,6 +608,22 @@ app.post('/sub-login', rateLimit({ action: 'wholesale-sub-login', max: 10, windo
 })
 
 // ── GET /me ───────────────────────────────────────────────────────────────────
+// 🏭 2026-06-29 (E): 판매사 가입 메타(취급 카테고리·주력 판매채널) 셀프 조회/수정.
+app.get('/signup-meta', async (c) => {
+  const { sellerId } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const meta = await getWholesaleSignupMeta(c.env.DB, 'distributor', sellerId)
+  return c.json({ success: true, ...meta })
+})
+app.patch('/signup-meta', rateLimit({ action: 'wholesale-signup-meta', max: 30, windowSec: 600 }), async (c) => {
+  const { sellerId } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  await setWholesaleSignupMeta(c.env.DB, 'distributor', sellerId, body.categories, body.channel, true)
+  const meta = await getWholesaleSignupMeta(c.env.DB, 'distributor', sellerId)
+  return c.json({ success: true, ...meta })
+})
+
 app.get('/me', async (c) => {
   const { sellerId, subAccountId, subRole } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)

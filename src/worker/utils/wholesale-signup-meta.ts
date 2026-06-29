@@ -40,17 +40,22 @@ export function sanitizeSignupMeta(rawCategories: unknown, rawChannel: unknown):
   return { categories: uniq, channel }
 }
 
-/** member_type: 'distributor' | 'supplier'. 빈 값(카테고리 0 + 채널 빈)이면 저장 생략. fail-soft. */
+/**
+ * member_type: 'distributor' | 'supplier'. fail-soft.
+ * allowEmpty=false(기본, 가입 시): 빈 값(카테고리 0 + 채널 빈)이면 저장 생략(빈 행 생성 방지).
+ * allowEmpty=true(사후 편집): 비우기도 반영(사용자가 의도적으로 지운 경우 persist).
+ */
 export async function setWholesaleSignupMeta(
   DB: D1Database,
   memberType: 'distributor' | 'supplier',
   memberId: number,
   rawCategories: unknown,
   rawChannel: unknown,
+  allowEmpty = false,
 ): Promise<void> {
   if (!memberId || !Number.isFinite(memberId)) return
   const { categories, channel } = sanitizeSignupMeta(rawCategories, rawChannel)
-  if (categories.length === 0 && !channel) return // 입력 없음 — 저장 생략
+  if (!allowEmpty && categories.length === 0 && !channel) return // 입력 없음 — 저장 생략(가입 시)
   await ensureWholesaleSignupMeta(DB)
   await DB.prepare(
     `INSERT INTO wholesale_signup_meta (member_type, member_id, categories, channel)
