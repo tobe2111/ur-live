@@ -5,6 +5,16 @@
 - **수정**: 이메일 로그인 + 카카오 probe 성공 시 `assign` → `navigate('/wholesale', {replace:true})`. `applySellerSession`이 seller_token 을 localStorage 에 *동기* set 후라 카탈로그(`loggedIn=!!token` render 시 읽음)가 토큰 인지 — 제조사와 동일 패턴, 안전. 카카오 OAuth 시작(`window.location.href=/auth/kakao/start`)은 그대로(불가피).
 - **청크 프리워밍**: 두 로그인 페이지 마운트 시 도착 청크(`WholesaleCatalogPage`/`SupplierDashboardPage`) `import()` 프리페치 → navigate 즉시 렌더(흰화면 0).
 - 검증: tsc 0·build 0·autologin/internal-links 가드 0. 카카오 정상경로는 이미 단일로드(콜백이 토큰 pre-React 적용)라 무변경.
+
+## ✅ 2026-06-29 — "식사권" 완전 제거 → 이용권 일괄 정리 (대표 "이용권으로 일괄 정리해줘")
+앞선 식사권→이용권 통일에서 보존했던 카테고리-종류 알림 라벨 세트까지 정리 → 사용자-가시 "식사권" 0.
+- **알림 라벨 `getVoucherShortLabel`**: `${short}권`(식사권/미용권/숙소권/기타권) → **`${short} 이용권`**(식사 이용권/미용 이용권/숙소 이용권/기타 이용권), fallback `바우처`→`이용권`. 형제(미용/숙소/기타)도 함께 이용권 형태로 통일.
+- **카테고리 칩/필터 라벨**: `VOUCHER_CATEGORY_LABEL.meal.label` "식사권 (음식점/카페)"→"식사 (음식점/카페)", `VOUCHER_CATEGORY_LABELS.meal` "식사권"→"식사"(형제 미용/숙소/기타와 평행, 우산말 이용권과 충돌 방지).
+- **테스트**: `voucher-category-label.test` 8 assertion 신규 라벨로 갱신(meal=식사 이용권 등, fallback=이용권). `voucher-categories.test` 주석.
+- 결과: src+ko 사용자-가시 "식사권" 0(설명 주석 2줄만 잔존). 코드 식별자 `meal_voucher` 불변. CLAUDE.md SSOT 갱신.
+- 검증: tsc 0 · voucher-category 11 pass · 전체 유닛 1842 pass · build 0.
+
+## ✅ 2026-06-29 — 도매 "로그아웃이 전혀 안돼" 근본수정 (대표 신고 → "교과서적으로" Option B 전환)
 **근본원인(코드 추적)**: 도매 페이지가 마운트 시 카카오 소비자 세션(`user_id`)만 있으면 자동으로 `become-distributor`/`/supplier/become`(requireAuth=`ur_session` 쿠키 인증)를 호출해 토큰을 *암묵적 재발급*(ambient privilege elevation). 로그아웃은 `ur_seller_session`만 지우고 `ur_session`을 보존 → probe가 `ur_session`으로 재인증 → 재로그인. (병행 세션의 서버쿠키 await 삭제도 ur_session 미삭제라 이것만으론 못 막음 — 확인됨.)
 - **교과서적 전환(off-by-default, `src/utils/wholesale-session.ts`)**: ambient 자동 probe 제거. `setWholesaleLoginIntent`(카카오 로그인 버튼이 sessionStorage 마커 — OAuth 왕복 생존) / `consumeWholesaleLoginIntent`(probe는 **명시 로그인 직후 1회만** 발화, 소비) / `clearWholesaleLoginIntent`(로그아웃 시 stale 마커 제거). 정상 로그인 1차경로=카카오 콜백 `issueLinkedRoleTokens`(seller_token 명시발급), probe는 토큰 미전달 엣지만 보완(로그인 직후 한정). 4 probe → `|| !consumeWholesaleLoginIntent()`, 2 카카오 버튼 → `setWholesaleLoginIntent()`, 4 로그아웃(판매사 대시보드/카탈로그/예치금 + 제조사) → `authLogout('seller')`(서버쿠키 await) + `clearWholesaleLoginIntent()` + `/wholesale/login`.
 - **결과**: 마운트마다 자동로그인 없음 → 로그아웃이 구조적으로 유지(억제 플래그 불필요). 카카오 소비자 세션 보존(공존). 직접 진입 시 guest 카탈로그(ambient 승격 없음 — 텍스트북).
