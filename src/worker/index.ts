@@ -1432,6 +1432,7 @@ app.post('/api/auth/logout-cookies', async (c) => {
   else if (type === 'admin') clearSess('admin');
   else if (type === 'agency') clearSess('agency');
   else if (type === 'user') clearSess('user');
+  else if (type === 'supplier') { /* 제조사: ur_* 세션쿠키 없음(Bearer 전용) — 아래 ud_* 만 청소, 타역할 세션 보존 */ }
   else { clearSess('user'); clearSess('seller'); clearSess('admin'); clearSess('agency'); }
   // ud_* SSR 토큰 정리 (기존 동작 보존 — 역할 무관 일괄).
   c.header('Set-Cookie', authTokenClearCookie('ud_seller_token', host), { append: true });
