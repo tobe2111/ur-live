@@ -35,7 +35,7 @@ export async function creditAgencyStoreIntroCommission(
 
     // 2. 에이전시 commission rate + 한도(개월) — per-agency 어드민 설정.
     //    🛡️ 2026-06-27: commission_term_months 컬럼 미존재 환경 대비 try, 미존재 시 율만(무제한=현행).
-    let pct = DEFAULT_AGENCY_COMMISSION_PCT
+    let pct: number = DEFAULT_AGENCY_COMMISSION_PCT  // 🏭 2026-06-29 (머지 정합): 리터럴 추론(`2`) 방지 — 재대입 number
     let termMonths = 0  // 0 = 무제한(현행). NULL 컬럼/미설정도 0.
     try {
       const agencyRow = await DB.prepare(
