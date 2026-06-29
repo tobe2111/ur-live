@@ -4,7 +4,6 @@ import { ArrowLeft, Trash2, ShoppingCart, ShieldCheck } from 'lucide-react'
 import { cfImage } from '@/utils/cf-image'
 import { WT, won, comma } from './wholesale/wholesale-theme'
 import { useWholesaleCart, groupBySupplier } from './wholesale/useWholesaleCart'
-import { WholesaleWordmark } from './wholesale-catalog/WholesaleLogo'
 import { useWholesaleBack } from '@/hooks/useWholesaleBack'
 
 // 🏭 2026-06-04 유통스타트 도매몰 — 다품목 장바구니. 2026-06-16 시안(서브페이지) 2단 레이아웃 리디자인.
@@ -65,7 +64,8 @@ export default function WholesaleCartPage() {
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
         <div className="ur-content-wide flex items-center gap-3 px-5 lg:px-8 h-[54px]">
           <button onClick={goBack} aria-label="뒤로"><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
-          <button onClick={() => navigate('/wholesale')} className="shrink-0"><WholesaleWordmark height={22} /></button>
+          {/* 🏭 2026-06-29: 로고는 공통 <WholesaleShopBar/> 가 담당 — 중복 제거하고 페이지 제목만 표시. */}
+          <span className="text-[15px] font-bold" style={{ color: WT.ink }}>장바구니</span>
         </div>
       </header>
 
