@@ -4416,7 +4416,9 @@
     "stepGb3": "店舗で\nQR提示",
     "stepGift1": "引換券\n購入",
     "stepGift2": "MMS\n送信",
-    "stepGift3": "店舗で\n提示"
+    "stepGift3": "店舗で\n提示",
+    "deal": "ディール",
+    "heroBalanceLabelGift": "保有ギフト券の金額"
   },
   "sellerWaiting": {
     "title": "セラー承認待機",

@@ -4416,7 +4416,9 @@
     "stepGb3": "Montrer le QR\nen magasin",
     "stepGift1": "Acheter\nle bon",
     "stepGift2": "Envoyé\npar MMS",
-    "stepGift3": "Montrer\nen magasin"
+    "stepGift3": "Montrer\nen magasin",
+    "deal": "deal",
+    "heroBalanceLabelGift": "Solde des bons cadeaux"
   },
   "sellerWaiting": {
     "title": "Approbation Vendeur en Attente",
