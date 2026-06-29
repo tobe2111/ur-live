@@ -16,6 +16,7 @@ interface Props {
   onOpenBizInfo: (s: Seller) => void
   onApprove: (id: number) => void
   onSuspend: (id: number) => void
+  onReject?: (s: Seller) => void // 🏭 #1 통합: 승인 대기 행의 '거부' (별도 승인 테이블 제거 → 관리 테이블로 일원화)
 }
 
 /**
@@ -24,7 +25,7 @@ interface Props {
  */
 export default function SellersTable({
   sellers, loading, onRefresh, onUpdateCommission, onTogglePermission,
-  onOpenBizInfo, onApprove, onSuspend
+  onOpenBizInfo, onApprove, onSuspend, onReject
 }: Props) {
   const { t } = useTranslation()
   return (
@@ -96,6 +97,9 @@ export default function SellersTable({
                     <button onClick={() => onOpenBizInfo(seller)} className="text-xs text-purple-600 hover:text-purple-800 font-medium">{t('admin.dashboard.k056', { defaultValue: '사업자정보' })}</button>
                     {seller.status !== 'approved' && (
                       <button onClick={() => onApprove(seller.id)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">{t('admin.dashboard.k016', { defaultValue: '승인' })}</button>
+                    )}
+                    {seller.status !== 'approved' && onReject && (
+                      <button onClick={() => onReject(seller)} className="text-xs text-red-600 hover:text-red-800 font-medium">{t('admin.dashboard.reject', { defaultValue: '거부' })}</button>
                     )}
                     {seller.status !== 'suspended' && (
                       <button onClick={() => onSuspend(seller.id)} className="text-xs text-red-500 hover:text-red-700 font-medium">{t('admin.dashboard.k057', { defaultValue: '정지' })}</button>

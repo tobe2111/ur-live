@@ -60,7 +60,7 @@ export default function CatalogHeader({
   const navColor = (to: string) => (pathname === to ? WT.brand : WT.ink2)
   // 🏭 props(loggedIn/supplierToken/depositBalance/grade/logout)는 호출부 호환을 위해 유지 —
   //   상단 유틸바는 이제 공용 <WholesaleUtilBar/> 가 스스로 fetch(useWholesaleMe/Deposit, RQ 캐시 공유)한다.
-  void supplierToken; void depositBalance; void grade; void logout
+  void supplierToken; void depositBalance; void grade; void logout; void memberOnlyGo
 
   return (
     <header className="sticky top-0 z-30">
@@ -144,8 +144,8 @@ export default function CatalogHeader({
             <button onClick={() => navigate('/wholesale/brands')} className="whitespace-nowrap font-bold" style={{ color: navColor('/wholesale/brands') }}>{t('wholesale.nav.brands', { defaultValue: '브랜드관' })}</button>
             <button onClick={() => navigate('/wholesale/best')} className="whitespace-nowrap" style={{ color: navColor('/wholesale/best') }}>{t('wholesale.nav.best', { defaultValue: '월간 베스트' })}</button>
             <button onClick={() => navigate('/wholesale/new')} className="whitespace-nowrap" style={{ color: navColor('/wholesale/new') }}>{t('wholesale.nav.new', { defaultValue: '신상품' })}</button>
-            <button onClick={() => memberOnlyGo('/wholesale/margin')} className="whitespace-nowrap font-bold" style={{ color: WT.brand }}>{t('wholesale.nav.highMargin', { defaultValue: '고마진 특가' })}</button>
-            <button onClick={() => memberOnlyGo('/wholesale/premium')} className="whitespace-nowrap" style={{ color: navColor('/wholesale/premium') }}>{t('wholesale.nav.premium', { defaultValue: '프리미엄 전용관' })}</button>
+            {/* 🏭 2026-06-29 (대표 #15·#16): '고마진 특가'(/wholesale/margin)·'프리미엄 전용관' 메뉴 제거 —
+                일반(Basic) 회원에게 40% 마진·프리미엄관이 노출되던 문제 차단(등급 무관 비노출). */}
           </div>
         </div>
         {/* 전체카테고리 메가 드롭다운 — 기존 cats 재활용 */}

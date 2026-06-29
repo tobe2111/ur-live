@@ -151,6 +151,16 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
               <input required type="number" min={1} disabled={saving} value={form.suggested_retail_price} onChange={e => setForm(f => ({ ...f, suggested_retail_price: e.target.value }))} className={inputCls} />
             </div>
           </div>
+          {/* 🏭 2026-06-29 (대표 #6): 마진율(%) 직접 입력 — 입력 시 공급가 기준으로 판매가 자동 계산.
+              저장은 기존대로 공급가/판매가(정산 엔진 불변). 판매가를 직접 입력해도 됨(양방향). */}
+          <div>
+            <label className={labelCls}>{t('supplier.fieldMargin', { defaultValue: '판매 마진율 (%)' })} <span className="text-gray-400 font-normal">{t('supplier.fieldMarginNote', { defaultValue: '· 공급가·판매가와 자동 연동' })}</span></label>
+            <input type="number" min={0} max={99} disabled={saving}
+              value={(() => { const s = Number(form.supply_price), r = Number(form.suggested_retail_price); return (Number.isFinite(s) && Number.isFinite(r) && r > s && r > 0) ? String(Math.round(((r - s) / r) * 100)) : '' })()}
+              onChange={e => { const m = Number(e.target.value); const s = Number(form.supply_price); if (Number.isFinite(m) && m >= 0 && m < 100 && Number.isFinite(s) && s > 0) setForm(f => ({ ...f, suggested_retail_price: String(Math.round(s / (1 - m / 100))) })) }}
+              className={inputCls} placeholder={t('supplier.fieldMarginPh', { defaultValue: '예: 30' })} />
+            <p className="text-[11px] text-gray-400 mt-1">{t('supplier.marginHint', { defaultValue: '마진율을 입력하면 공급가 기준 권장 판매가가 자동 계산됩니다 (판매가 대비 마진).' })}</p>
+          </div>
           {/* 🏭 2026-06-12 (영업단 제안): 공급률 실시간 안내 — 낮출수록 더 많은 채널 잠금해제.
               권장가 미입력 시엔 입력 유도 한 줄만(공급가 폴백을 쓰면 공급률 100% 로 오해 유발). */}
           <SupplyChannelGuide t={t} supplyPrice={form.supply_price} retailPrice={form.suggested_retail_price} />

@@ -69,14 +69,29 @@ export async function resolveCodes(
     `SELECT code, product_id FROM wholesale_product_code_map WHERE seller_id = ? AND code IN (${ph})`
   ).bind(sellerId, ...uniq).all<{ code: string; product_id: number }>().catch(() => ({ results: [] as Array<{ code: string; product_id: number }> }))
   for (const r of seller.results || []) out.set(r.code, r.product_id)
-  // 2) 미해석 코드만 상품 ext_code(글로벌 메타) 폴백.
+  // 2) 미해석 코드만 상품 product_code(글로벌 메타) 폴백.
+  //   제조사 등록 #8 은 접미(suffix)만 product_supply_meta.product_code 에 저장하고, 표시는 카테고리 접두(FD/LV/HT)+접미.
+  //   판매사가 엑셀에 풀코드(FD000BKJ) 또는 접미(000BKJ) 어느 쪽을 넣어도 매칭되도록 접두 제거본도 후보에 포함.
   const remain = uniq.filter((c) => !out.has(c))
   if (remain.length) {
-    const ph2 = remain.map(() => '?').join(',')
-    const global = await DB.prepare(
-      `SELECT value AS code, product_id FROM product_supply_meta WHERE key = 'ext_code' AND value IN (${ph2})`
-    ).bind(...remain).all<{ code: string; product_id: number }>().catch(() => ({ results: [] as Array<{ code: string; product_id: number }> }))
-    for (const r of global.results || []) if (!out.has(r.code)) out.set(r.code, r.product_id)
+    const candToOrig = new Map<string, string>() // 대문자 영숫자 후보 → 원본 입력코드
+    for (const c of remain) {
+      const up = c.toUpperCase().replace(/[^A-Z0-9]/g, '')
+      if (up) candToOrig.set(up, c)
+      const stripped = up.replace(/^(FD|LV|HT)/, '')
+      if (stripped && stripped !== up && !candToOrig.has(stripped)) candToOrig.set(stripped, c)
+    }
+    const cands = [...candToOrig.keys()]
+    if (cands.length) {
+      const ph2 = cands.map(() => '?').join(',')
+      const global = await DB.prepare(
+        `SELECT value AS code, product_id FROM product_supply_meta WHERE key = 'product_code' AND UPPER(value) IN (${ph2})`
+      ).bind(...cands).all<{ code: string; product_id: number }>().catch(() => ({ results: [] as Array<{ code: string; product_id: number }> }))
+      for (const r of global.results || []) {
+        const orig = candToOrig.get(String(r.code).toUpperCase())
+        if (orig && !out.has(orig)) out.set(orig, r.product_id)
+      }
+    }
   }
   return out
 }

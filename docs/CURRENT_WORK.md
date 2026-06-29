@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-29 — 도매몰 미구현 7건 일괄 ("다 모두 이상적으로")
+16건 점검 → 미구현 7건 구현. (#3·4·5·9·10·11·12·13·14 는 기구현 확인)
+- **#2 상품상세 스마트스토어·쿠팡 등록 버튼 삭제** (`WholesaleProductPage` — 버튼·lazy 모달·state 전부 제거).
+- **#15·#16 `/wholesale/margin`·프리미엄 전용관 메뉴 제거** (`CatalogHeader` — 일반(Basic) 회원에 40% 마진·프리미엄관 노출 차단, 등급 무관 비노출).
+- **#7 체크아웃 배송지 직접 입력** (`WholesaleCheckoutPage` — '사업자 주소지로 배송' 토글, 끄면 받는사람/연락처/우편/주소 입력 → `/orders` `shipping` 전달, 비우면 서버 프로필 폴백).
+- **#6 등록 상품 마진율 직접 입력** (`AddProductModal` — 마진율(%) 입력 시 공급가 기준 판매가 자동계산, 양방향. 저장 구조·정산엔진 불변).
+- **#8 상품코드 (제조사 등록·상세 표시·카테고리 접두)** — SSOT `src/shared/wholesale-category-codes.ts`(식품 FD/리빙 LV/건강 HT, 어드민 `platform_settings.wholesale_category_prefixes` 확장). 제조사 `AddProductModal` 상품코드 입력(접두 자동) → `supplier-dashboard.routes` POST/PATCH 가 `normalizeProductCode` 후 `product_supply_meta.ext_code` 저장 → `catalog/:id` 반환 → `WholesaleProductPage` 코드 배지 표시. **이 ext_code 가 #12 대량발주 코드매칭의 글로벌 소스 → #8 로 #12 명시등록 완성.**
+- **#1 어드민 판매자 승인 통합** (`AdminPage` — 별도 `PendingSellersTable` 제거, 승인 대기자를 `SellersTable`(판매자 관리) 상단에 합쳐 행별 승인/거부/정지 일원화. `SellersTable` 에 `onReject` 추가).
+- 검증: tsc 0 · build 0 · audit-gate 33 GREEN.
+
 ## ✅ 2026-06-29 — 도매 대량발주(엑셀·드랍십) + 등급명 + 상단 '마이' (대표 요청 3건)
 **1) 대량발주 드랍십 (받는사람별 직배, "셀파이는 참고만")** — 한 행 = 한 명에게 보내는 1건. 같은 상품도 받는사람 다르면 별개 라인. 매칭 = `product_id`(우선) 또는 `상품코드`("둘 다" — 판매사별 자동학습 맵 + 제조사 ext_code 폴백, `wholesale-code-map.ts`). 상품상세1=옵션(비가격 패스스루).
 - **금액 경로 byte-불변**: `/orders` POST 의 합산기준 MOQ/박스단위/재고/수량구간 단가 산식 그대로(묶음 사입과 합계 동일). `body.dropship` 면 받는사람별 라인으로 *분해만*(INSERT/재고차감), `Σ라인==subtotal` 검증. 비드랍십은 `insertLines=lines` byte-identical. 예치금 CAS/보상환불/정산 무변경.
