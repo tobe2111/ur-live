@@ -50,6 +50,9 @@
 - 라이트 고정 B2B 테마 유지(dark variant 없음).
 
 ## ✅ 구현 체크리스트
-- [ ] Phase 1: `WholesaleAppBar` 추출 + 카탈로그를 `WholesaleLayout` 산하로 (카탈로그↔판매사 동일 크롬)
-- [ ] Phase 2: `/supplier` 동일 셸 적용 (제조사 섬 제거)
-- [ ] Phase 3: "내 공간" 드롭다운 · 예치금/정산 칩 · 크로스링크 · 상태 일관
+- [x] **Phase 1** (2026-06-29): 카탈로그 `CatalogHeader` 의 *복제된* 유틸 스트립을 공용 `<WholesaleUtilBar/>` 로 일원화 → 카탈로그↔판매사 대시보드가 **동일 상단바(SSOT)** 공유. (Playwright 스샷 확인 — 다크 유틸바+로고+검색+카테고리 정상)
+- [x] **Phase 2** (2026-06-29): `/supplier` 대시보드 라우트를 판매사와 **동일한 `WholesaleLayout`(공용 상단바)** 산하로 — 제조사 섬 제거. 바는 역할 인지(supplier 분기). 로그인/가입은 바 없이 유지.
+- [x] **Phase 3** (2026-06-29): `WholesaleUtilBar` 제조사 분기를 판매사처럼 **신원(회사명·역할) + 빠른 네비(주문 관리)** 로 보강 — 역할 인지 일관. (정산 칩·내공간 드롭다운은 추후 — 정산 잔액 쿼리 신설 필요)
+
+> 검증: tsc 0 · 단위 2361 pass · build 0 · audit-gate 31 GREEN · crossrole 0 · theme/mobile 0 · Playwright 카탈로그 헤더 스샷 정상.
+> 남은 후속(선택): 제조사 정산 잔액 칩, "내 공간" 드롭다운(주문/거래내역서 묶음), 제조사용 카탈로그 미리보기(현재 supplierOnly 리다이렉트와 상충 — `?preview=1` 바이패스 필요).
