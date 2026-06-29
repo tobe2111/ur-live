@@ -15,6 +15,7 @@ import { formatPhoneKr } from '@/utils/format-kr'
 import { digitsOnly, isValidKrPhone, isValidEmail } from '@/utils/form-validators'
 import { isSupplierLoggedIn } from '@/lib/supplier-api'
 import { useWholesaleMall } from '@/hooks/queries/useWholesale'
+import { WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
 
 export default function SupplierRegisterPage() {
   const { t } = useTranslation()
@@ -31,6 +32,10 @@ export default function SupplierRegisterPage() {
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
   const [licenseUrl, setLicenseUrl] = useState('')
+  // 🏭 2026-06-29 (대표): 공급(취급) 카테고리(다중) + 희망 유통채널 — 선택 입력.
+  const [categories, setCategories] = useState<string[]>([])
+  const [channel, setChannel] = useState('')
+  const toggleCat = (id: string) => setCategories(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
   // 🏭 2026-06-08 카카오 통합 (유통회원 WholesaleJoinPage 와 대칭):
   //   카카오로 로그인된 유저(아직 제조회원 아님) → 이메일/비번 없이 사업자 정보만 입력 후 /api/supplier/become.
   const kakaoUser = typeof window !== 'undefined' && !isSupplierLoggedIn() && !!localStorage.getItem('user_id')
@@ -114,6 +119,9 @@ export default function SupplierRegisterPage() {
         manager_name: form.manager_name.trim() || undefined,
         manager_phone: form.manager_phone.trim() || undefined,
         manager_email: managerEmail,
+        // 🏭 2026-06-29 공급(취급) 카테고리 + 희망 유통채널 (선택 — 서버가 사이드테이블에 저장).
+        categories,
+        channel: channel.trim() || undefined,
       }
       const payload = kakaoUser
         ? {
@@ -224,6 +232,26 @@ export default function SupplierRegisterPage() {
             </div>
             {/* 🏭 2026-06-04 사업자등록증 이미지 (승인 심사용) */}
             <BusinessCertUpload value={licenseUrl} onChange={setLicenseUrl} required />
+
+            {/* 🏭 2026-06-29 공급 정보 — 카테고리(다중) + 희망 유통채널 (선택) */}
+            <div className="pt-3 border-t border-gray-100">
+              <p className="text-sm font-bold text-gray-900 mb-3">{t('supplier.supplyInfoSection', { defaultValue: '공급 정보' })} <span className="text-gray-400 font-normal">({t('supplier.optional', { defaultValue: '선택' })})</span></p>
+              <label className={labelCls}>{t('supplier.fieldCategories', { defaultValue: '공급(취급) 카테고리' })}</label>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {WHOLESALE_CATEGORIES.filter(c => c.id !== 'all').map(c => {
+                  const on = categories.includes(c.id)
+                  return (
+                    <button type="button" key={c.id} onClick={() => toggleCat(c.id)} disabled={loading}
+                      className="px-3.5 h-9 rounded-full text-sm font-bold transition-colors border"
+                      style={on ? { background: mallBrand, color: '#fff', borderColor: mallBrand } : { background: '#fff', color: '#4B5563', borderColor: '#E5E7EB' }}>
+                      {c.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <label className={labelCls}>{t('supplier.fieldDistChannel', { defaultValue: '희망 유통채널' })}</label>
+              <input disabled={loading} value={channel} onChange={e => setChannel(e.target.value)} className={inputCls} placeholder={t('supplier.phDistChannel', { defaultValue: '예: 도매몰, 온라인 판매사, 대형마트, 오프라인 도매상' })} />
+            </div>
 
             {/* 🏭 2026-06-09 대표자 정보 · 2026-06-29 (대표): 유통사 가입처럼 구분선 명확화(pt-4 mt-4 border-gray-200). */}
             <div className="pt-4 mt-4 border-t border-gray-200">

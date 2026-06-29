@@ -16,6 +16,7 @@ import { consumeWholesaleLoginIntent } from '@/utils/wholesale-session'
 import { digitsOnly, isValidKrPhone, isValidEmail } from '@/utils/form-validators'
 import { useWholesaleMall } from '@/hooks/queries/useWholesale'
 import { WholesaleWordmark } from './wholesale-catalog/WholesaleLogo'
+import { WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
 
 export default function WholesaleJoinPage() {
   const navigate = useNavigate()
@@ -60,6 +61,10 @@ export default function WholesaleJoinPage() {
     manager_email: loginEmail,
   })
   const [loading, setLoading] = useState(false)
+  // 🏭 2026-06-29 (대표): 취급 카테고리(다중) + 현재 주력 판매채널 — 선택 입력.
+  const [categories, setCategories] = useState<string[]>([])
+  const [channel, setChannel] = useState('')
+  const toggleCat = (id: string) => setCategories(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id])
   const [passwordConfirm, setPasswordConfirm] = useState('')
   // 🏭 2026-06-10: 이용약관 동의 (필수) — /wholesale/terms
   const [agreeTerms, setAgreeTerms] = useState(false)
@@ -127,6 +132,8 @@ export default function WholesaleJoinPage() {
         representative_phone: form.representative_phone.trim(),
         manager_name: form.manager_name.trim(), manager_phone: form.manager_phone.trim(), manager_email: managerEmail,
         business_license_url: licenseUrl,
+        // 🏭 2026-06-29 취급 카테고리 + 현재 주력 판매채널 (선택 — 서버가 사이드테이블에 저장).
+        categories, channel: channel.trim(),
       }
       // 카카오 유저 → become-distributor(세션 인증), 그 외 → register(이메일/비번).
       const res = kakaoUser
@@ -243,6 +250,26 @@ export default function WholesaleJoinPage() {
           <div>
             <label className="block text-[13px] font-semibold mb-1.5">사업자등록번호 <span className="text-[#FC5424]">*</span></label>
             <input ref={reg('business_number')} value={form.business_number} onChange={setBiz} disabled={loading} inputMode="numeric" className={inputCls} placeholder="000-00-00000 (숫자만 입력해도 자동 하이픈)" />
+          </div>
+
+          {/* 🏭 2026-06-29 취급 정보 — 카테고리(다중) + 현재 주력 판매채널 (선택) */}
+          <div className="pt-3 mt-3 border-t border-[#ECEEF1]">
+            <p className="text-[13px] font-bold text-[#0C2454] mb-2.5">취급 정보 <span className="text-[#B6BCC4] font-normal">(선택)</span></p>
+            <label className="block text-[13px] font-semibold mb-1.5">주로 취급할 카테고리</label>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {WHOLESALE_CATEGORIES.filter(c => c.id !== 'all').map(c => {
+                const on = categories.includes(c.id)
+                return (
+                  <button type="button" key={c.id} onClick={() => toggleCat(c.id)} disabled={loading}
+                    className="px-3.5 h-9 rounded-full text-[13px] font-bold transition-colors border"
+                    style={on ? { background: '#FC5424', color: '#fff', borderColor: '#FC5424' } : { background: '#fff', color: '#4E5560', borderColor: '#ECEEF1' }}>
+                    {c.label}
+                  </button>
+                )
+              })}
+            </div>
+            <label className="block text-[13px] font-semibold mb-1.5">현재 주력 판매채널</label>
+            <input value={channel} onChange={e => setChannel(e.target.value)} disabled={loading} className={inputCls} placeholder="예: 스마트스토어, 쿠팡, 자사몰, 오프라인 매장" />
           </div>
 
           {/* 대표자 정보 */}
