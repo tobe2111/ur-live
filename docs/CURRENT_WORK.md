@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-29 — 결제 정확성 감사(C영역, 가드 미보유 머니 산술) + fee-resolver 컷오버 시트 (대표 "뭐가 가장 이상적이야?")
+**배경**: audit-gate 31/31 GREEN(결정론 가드 영역 재감사 스킵) → 가드가 못 보는 **머니 산술/외부PG 실응답**만 수동 감사. 3개 병렬 read-only 에이전트 + 자가 코드 재검증.
+- **🔴 그룹바이 할인 under-charge 구멍 fix** (`8b3802d76`): `order.routes.ts` 가 클라이언트 discount 를 서버 재계산 없이 신뢰 → 공구 상품 할인 위조 가능. 서버가 `maxTierDiscount(group_buy_tiers)` 로 **cap 재계산**(group-buy-public 의 current_price 와 **byte-동일 공식** `Math.round(price×(1−md/100))` → 정상주문 통과·위조만 차단). `groupBuyPortion = min(클라요청, groupBuyCap, 잔여)`.
+- **🟡 클로백 반올림 drift + Toss 취소 비정수액 fix** (`06e0784e1`): `voucher-settlement-clawback.ts` 가 정산을 per-voucher 차감(drift) → cron 공식으로 **남은 매출서 재계산**(절대값 write). `order.routes.ts` Toss 취소액이 `body.refund_amount`(비정수 가능) → 정수 `refundAmount`만 전달.
+- **🟢 5% 커미션 일원화** (`d6567ef89`): `settlement-automation.ts` 의 잔존 10% 기본값 → `COMMISSION_DEFAULTS.PLATFORM_FEE_PCT`(5) SSOT. 라이브는 이미 5%(createOrder 가 seller rate 5% 스냅샷) → 도달 불가 상수 정정(경제변화 ~0). `repair-schema`/`production-schema` 주석도 DEFAULT 5.00.
+- **🟢 store-intro 커미션 상수 SSOT** (`20aa1301c`, #7): 에이전시 2.0%/영입자 1.5% 매직넘버 → `policy.ts` `COMMISSION_DEFAULTS`(값 불변).
+- **⏳ fee-resolver 실배선 = 대표 결정 대기**(`bac613f8b` 결정시트 `docs/design/fee-resolver-cutover.md`): 리졸버(SSOT, 26 불변식)는 깔끔한 5-슬라이스 타겟이나 **라이브가 정책보다 후하게 드리프트**(에이전시 2%/영구/추가 + 영입자 1.5% — 모델 미포함). 배선 = 파트너 지급 변경 → 결정 3건(D2 소급 / D4 영입자 유지·폐지·흡수 / D5 보너스) + shadow mode + 스테이징 필요.
+- 검증: tsc 0 · build 0 · audit-gate **31/31 GREEN** · money/sql 가드 0. ⚠️ **배포 전 staging 실결제 검증 필수**(아래 체크리스트 `docs/STAGING_VERIFY_2026-06-29.md`).
+
 ## ✅ 2026-06-27 — 도매 B2B 주문 상태머신 + 전 플로우 정합 (대표 "A+1,2,3,4 / 빠진 것 철저히 분석")
 **배경**: 도매(유통스타트) B2B 주문이 결제(예치금 즉시차감 PAID) 후 제조사 확인·발송·판매사 구매확정까지 가는 라이프사이클이 느슨했음(상태 free-form TEXT, 고아 DONE/CANCELLED, 정산이 발송 여부 무관하게 시간만으로 성숙). 5단계로 정비 + 전수 정합.
 - **Phase A ✅ 정산 발송게이트** (`a9d9599`): `matureSupplierSettlements` 가 도매 정산(`source='wholesale'`)을 **라인 `line_status='SHIPPED'` 일 때만** 성숙(SHIPPED_GATE EXISTS). 소비자 정산(`source!='wholesale'`) byte-불변.
