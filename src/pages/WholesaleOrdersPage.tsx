@@ -252,6 +252,49 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
                     <span className="text-[13px] font-medium tabular-nums" style={{ color: WT.ink2 }}>주문 #{o.id}{o.grade ? ` · ${o.grade}등급가` : ''}</span>
                     <span className="text-[17px] font-extrabold tabular-nums tracking-[-0.01em]" style={{ color: WT.ink }}>{won(o.grand_total ?? o.subtotal)}</span>
                   </div>
+
+                  {/* 🏭 2026-06-29 주문 라인아이템 — 상품/제조사/단가×수량/소계 */}
+                  {o.items && o.items.length > 0 && (
+                    <div className="mt-3 rounded-xl overflow-hidden" style={{ border: '1px solid ' + WT.line }}>
+                      {o.items.map((it, idx) => (
+                        <div key={idx} className="flex items-start justify-between gap-3 px-3.5 py-2.5" style={idx > 0 ? { borderTop: '1px solid ' + WT.line } : undefined}>
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-medium truncate" style={{ color: WT.ink }}>{it.name || `상품 #${it.product_id}`}</p>
+                            <p className="text-[11px] mt-0.5 tabular-nums" style={{ color: WT.ink4 }}>
+                              {it.supplier_name ? `${it.supplier_name} · ` : ''}{won(it.distributor_unit_price)} × {it.qty}개
+                            </p>
+                          </div>
+                          <span className="text-[13px] font-bold tabular-nums whitespace-nowrap" style={{ color: WT.ink2 }}>{won(it.line_total)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 금액 분해 — 상품 합계 / 배송비 (합계는 위 헤더에 표시) */}
+                  <div className="mt-3 space-y-1">
+                    <div className="flex items-center justify-between text-[12px]">
+                      <span style={{ color: WT.ink4 }}>상품 합계</span>
+                      <span className="tabular-nums" style={{ color: WT.ink2 }}>{won(o.subtotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[12px]">
+                      <span style={{ color: WT.ink4 }}>배송비</span>
+                      <span className="tabular-nums" style={{ color: WT.ink2 }}>{(o.shipping_total ?? 0) > 0 ? won(o.shipping_total) : '무료'}</span>
+                    </div>
+                  </div>
+
+                  {/* 배송지 */}
+                  {(o.ship_to_name || o.ship_to_address) && (
+                    <div className="mt-3 rounded-xl px-3.5 py-2.5" style={{ background: WT.fill2 }}>
+                      <p className="text-[11px] font-semibold mb-0.5" style={{ color: WT.ink3 }}>배송지</p>
+                      {(o.ship_to_name || o.ship_to_phone) && (
+                        <p className="text-[12px]" style={{ color: WT.ink2 }}>{o.ship_to_name || ''}{o.ship_to_phone ? ` · ${o.ship_to_phone}` : ''}</p>
+                      )}
+                      {o.ship_to_address && (
+                        <p className="text-[12px]" style={{ color: WT.ink3 }}>{o.ship_to_postal ? `(${o.ship_to_postal}) ` : ''}{o.ship_to_address}</p>
+                      )}
+                    </div>
+                  )}
+
                   {o.tracking_number && (
                     <div className="mt-3 flex items-stretch gap-2">
                       <button onClick={() => copyTrack(o.tracking_number!)} className="flex-1 flex items-center justify-between rounded-xl px-3.5 h-11" style={{ background: WT.fill2 }}>

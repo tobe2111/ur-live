@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-29 — 도매몰 판매사 주문내역 상세화 (대표 신고 "주문내역이 너무 자세하게 안나와있는데")
+**도매몰 전용**(`/wholesale/dashboard?tab=orders`) — 기존 카드가 주문#·등급가·합계만 표시 → 라인아이템/배송지 추가.
+- **`wholesale.routes.ts` GET /orders**: 주문별 라인아이템 일괄 첨부(idx_wholesale_items_order IN 조회) — 상품명/수량/단가/소계 + suppliers LEFT JOIN 제조사명(조인 실패 시 아이템만 graceful) + ship_to_* 배송지 컬럼. `/orders/:id` 상세는 이미 아이템 반환했으나 목록은 미반환이던 갭.
+- **`WholesaleOrdersPage.tsx` 카드**: 라인아이템 목록(상품·제조사·단가×수량·소계) + 금액분해(상품합계/배송비) + 배송지 블록 추가. 기존 상태뱃지/택배추적/클레임/메모 스레드 불변.
+- **서비스 분리 준수**: 도매(`/api/wholesale`·`src/features/supply`·`Wholesale*`)만 변경, 소비자 무관. 검증: tsc 0·sql-bind/column 0·crossrole 0·theme 0.
+
 ## ✅ 2026-06-27 — 도매 B2B 주문 상태머신 + 전 플로우 정합 (대표 "A+1,2,3,4 / 빠진 것 철저히 분석")
 **배경**: 도매(유통스타트) B2B 주문이 결제(예치금 즉시차감 PAID) 후 제조사 확인·발송·판매사 구매확정까지 가는 라이프사이클이 느슨했음(상태 free-form TEXT, 고아 DONE/CANCELLED, 정산이 발송 여부 무관하게 시간만으로 성숙). 5단계로 정비 + 전수 정합.
 - **Phase A ✅ 정산 발송게이트** (`a9d9599`): `matureSupplierSettlements` 가 도매 정산(`source='wholesale'`)을 **라인 `line_status='SHIPPED'` 일 때만** 성숙(SHIPPED_GATE EXISTS). 소비자 정산(`source!='wholesale'`) byte-불변.

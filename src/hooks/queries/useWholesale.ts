@@ -28,6 +28,15 @@ export function wholesaleAuthSeg(): 'in' | 'out' {
   return hasSellerToken() ? 'in' : 'out'
 }
 
+export interface WholesaleOrderItem {
+  product_id: number
+  name: string | null
+  qty: number
+  distributor_unit_price: number
+  line_total: number
+  supplier_name?: string | null
+}
+
 export interface WholesaleOrderRow {
   id: number
   toss_order_id?: string
@@ -41,6 +50,12 @@ export interface WholesaleOrderRow {
   created_at: string
   paid_at?: string | null
   shipped_at?: string | null
+  // 🏭 2026-06-29 주문내역 상세화 — 라인아이템 + 배송지(목록 API 가 첨부).
+  items?: WholesaleOrderItem[]
+  ship_to_name?: string | null
+  ship_to_phone?: string | null
+  ship_to_address?: string | null
+  ship_to_postal?: string | null
 }
 
 export interface WholesaleSummary {
