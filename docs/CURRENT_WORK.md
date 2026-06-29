@@ -1,10 +1,11 @@
 # 🚧 진행 중 작업
 
-## ✅ 2026-06-29 — 도매 "로그아웃이 전혀 안돼" 근본수정 (대표 신고 — 판매사/제조사)
-**원인**: 도매 페이지(WholesaleCatalogPage/LoginPage/JoinPage·SupplierLoginPage)가 마운트 시 카카오 소비자 세션(`user_id`)만 있으면 자동으로 `become-distributor`/`/supplier/become` 호출 → seller/supplier 토큰 재발급. 로그아웃이 토큰만 지워도 **카카오 세션이 살아있으면 다음 로드에서 즉시 자동 재로그인** → "로그아웃이 안 됨"(새로고침되며 로그인 상태 복귀).
-- **수정(`src/utils/wholesale-session.ts` 신설)**: `markWholesaleLoggedOut`(seller 정리 + 억제 플래그 `ur_wholesale_logout` set) / `setWholesaleLogoutFlag`(제조사용) / `wholesaleAutoLoginSuppressed`(probe 게이트) / `clearWholesaleLogoutFlag`(명시 로그인 시 해제). 3개 로그아웃 핸들러(판매사 대시보드/카탈로그/예치금) + 제조사 대시보드 로그아웃 → 플래그 set + `/wholesale/login`. 4개 자동 probe → `|| wholesaleAutoLoginSuppressed()` 게이트. 명시 로그인(이메일 제출·카카오 버튼 ×판매사/제조사) → 플래그 해제. **카카오 소비자 세션 자체는 보존(분리/공존 유지)** — 명시 로그아웃~명시 로그인 사이만 자동 probe 억제.
-- **영구 가드** `check-wholesale-autologin-guarded.mjs`(audit-gate auth + verify.yml strict + pre-commit): become 자동 probe 보유 파일은 억제 게이트 필수.
-- 검증: tsc 0·build 0·gate auth 8 GREEN·internal-links/dual-login/coexist/crossrole 0·회귀주입 catch.
+## ✅ 2026-06-29 — 도매 "로그아웃이 전혀 안돼" 근본수정 (대표 신고 → "교과서적으로" Option B 전환)
+**근본원인(코드 추적)**: 도매 페이지가 마운트 시 카카오 소비자 세션(`user_id`)만 있으면 자동으로 `become-distributor`/`/supplier/become`(requireAuth=`ur_session` 쿠키 인증)를 호출해 토큰을 *암묵적 재발급*(ambient privilege elevation). 로그아웃은 `ur_seller_session`만 지우고 `ur_session`을 보존 → probe가 `ur_session`으로 재인증 → 재로그인. (병행 세션의 서버쿠키 await 삭제도 ur_session 미삭제라 이것만으론 못 막음 — 확인됨.)
+- **교과서적 전환(off-by-default, `src/utils/wholesale-session.ts`)**: ambient 자동 probe 제거. `setWholesaleLoginIntent`(카카오 로그인 버튼이 sessionStorage 마커 — OAuth 왕복 생존) / `consumeWholesaleLoginIntent`(probe는 **명시 로그인 직후 1회만** 발화, 소비) / `clearWholesaleLoginIntent`(로그아웃 시 stale 마커 제거). 정상 로그인 1차경로=카카오 콜백 `issueLinkedRoleTokens`(seller_token 명시발급), probe는 토큰 미전달 엣지만 보완(로그인 직후 한정). 4 probe → `|| !consumeWholesaleLoginIntent()`, 2 카카오 버튼 → `setWholesaleLoginIntent()`, 4 로그아웃(판매사 대시보드/카탈로그/예치금 + 제조사) → `authLogout('seller')`(서버쿠키 await) + `clearWholesaleLoginIntent()` + `/wholesale/login`.
+- **결과**: 마운트마다 자동로그인 없음 → 로그아웃이 구조적으로 유지(억제 플래그 불필요). 카카오 소비자 세션 보존(공존). 직접 진입 시 guest 카탈로그(ambient 승격 없음 — 텍스트북).
+- **영구 가드** `check-wholesale-autologin-guarded.mjs`: become probe 보유 파일은 `consumeWholesaleLoginIntent` 게이트 필수(audit-gate auth + CI strict + pre-commit).
+- 검증: tsc 0·build 0·가드 0·회귀 catch. ⚠️ staging 1회 권장: 카카오 판매사 로그인→대시보드→로그아웃→**새로고침 시 로그인 유지** 확인.
 
 ## ✅ 2026-06-29 — 환경 준비상태 진단(어드민) (대표 "다른 운영자/브라우저/장소에서 써도 환경 세팅 다 됐어?")
 **검증 가능한 답** — 대시보드 로그인/보안을 게이트하는 Cloudflare 바인딩·시크릿이 실제 설정됐는지 런타임 점검. **시크릿 값은 노출 0(present 불리언만)**.
