@@ -753,7 +753,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   order.repository.ts createOrder 가 이 컬럼에 seller 의 현재 commission_rate 캡처.
     //   settlement-automation.ts 가 COALESCE(o.commission_rate, seller.rate) 로 우선 사용.
     //   production 에 컬럼 부재 환경 안전 — 본 ALTER 가 ensure.
-    { desc: 'orders.commission_rate', sql: "ALTER TABLE orders ADD COLUMN commission_rate REAL DEFAULT 10.00" },
+    { desc: 'orders.commission_rate', sql: "ALTER TABLE orders ADD COLUMN commission_rate REAL DEFAULT 5.00" }, // 🔒 2026-06-27 (감사 ⑤): 기본 5% 통일(셀러 기본·policy 와 일치). createOrder 가 셀러율 스냅샷하므로 평시 미사용 — fresh DB 일관용.
     { desc: 'orders.commission_amount', sql: "ALTER TABLE orders ADD COLUMN commission_amount INTEGER DEFAULT 0" },
     { desc: 'orders.seller_amount', sql: "ALTER TABLE orders ADD COLUMN seller_amount INTEGER DEFAULT 0" },
     // 🛡️ 2026-05-23: SQL column mismatch 23건 일괄 fix — production-schema 정합.
