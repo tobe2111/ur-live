@@ -14,7 +14,10 @@
  * 멱등: (influencer_id, order_id, source='store_intro') 이미 있으면 skip.
  * Fail-soft: 실패해도 결제 흐름 막지 않음.
  */
-const DEFAULT_STORE_INTRO_PCT = 1.5
+import { COMMISSION_DEFAULTS } from '../../shared/constants/policy'
+
+// 🔒 2026-06-27 (감사 #7): 매장영입 기본율 SSOT(policy.ts) — 흩어진 매직넘버 통일(값 1.5 불변).
+const DEFAULT_STORE_INTRO_PCT = COMMISSION_DEFAULTS.INFLUENCER_STORE_INTRO_PCT
 const REFUND_WINDOW_DAYS = 7
 
 async function getStoreIntroPct(DB: D1Database): Promise<number> {
