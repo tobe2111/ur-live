@@ -1,8 +1,15 @@
 import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import api from '@/lib/api'
 import UrAdsLogo from '@/components/brand/UrAdsLogo'
 import { useUrAdsFavicon } from '@/components/brand/useUrAdsFavicon'
+
+interface Tenant { customer_id: string; tenant_label: string | null; connected_at: string | null; is_active: number }
+const authHeader = () => {
+  const t = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+  return t ? { Authorization: `Bearer ${t}` } : undefined
+}
 
 /**
  * 🆕 2026-06-27 유어애즈 대시보드 chrome — 코스믹 네이비 사이드바 + 토픽바.
@@ -55,6 +62,28 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
   const toggleTheme = () => setDark((v) => { const next = !v; try { localStorage.setItem('urads_dash_theme', next ? 'dark' : 'light') } catch { /* ignore */ } return next })
   useUrAdsFavicon()
 
+  // 멀티테넌트 — 연결된 고객사 목록 + 활성 전환.
+  const [tenants, setTenants] = useState<Tenant[]>([])
+  const [tenantOpen, setTenantOpen] = useState(false)
+  const loadTenants = useCallback(async () => {
+    if (!showNav) return
+    try {
+      const r = await api.get('/api/ads/searchad/tenants', { headers: authHeader() })
+      if (r.data?.success) setTenants(r.data.tenants || [])
+    } catch { /* graceful */ }
+  }, [showNav])
+  useEffect(() => { loadTenants() }, [loadTenants])
+  const activeTenant = tenants.find((t) => t.is_active) || tenants[0] || null
+  const tenantName = (t: Tenant) => t.tenant_label || `고객 ${t.customer_id}`
+  async function switchTenant(customerId: string) {
+    if (customerId === activeTenant?.customer_id) { setTenantOpen(false); return }
+    try {
+      await api.post('/api/ads/searchad/tenant/activate', { customer_id: customerId }, { headers: authHeader() })
+      window.location.reload() // 모든 패널을 새 고객사 데이터로 새로고침
+    } catch { setTenantOpen(false) }
+  }
+  const addTenant = () => { setTenantOpen(false); go('sec-searchad') }
+
   // 스크롤스파이 — 보이는 섹션을 사이드바에 활성 표시(전부 마운트 유지). 섹션 없으면(비로그인) skip.
   useEffect(() => {
     if (!showNav) return
@@ -88,6 +117,31 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
         <div style={{ padding: '18px 18px 14px', borderBottom: '1px solid var(--border)' }}>
           <Link to="/ads" aria-label="유어애즈 홈" style={{ color: 'var(--ink)' }}><UrAdsLogo size={24} /></Link>
         </div>
+
+        {/* 고객사 전환(멀티테넌트) — 연결된 고객사가 있을 때만 */}
+        {showNav && activeTenant && (
+          <div style={{ padding: '14px 14px 4px' }}>
+            <div className="mono" style={{ fontSize: 10, letterSpacing: '.1em', color: 'var(--ink3)', padding: '0 2px 7px' }}>고객사 전환</div>
+            <button type="button" onClick={() => setTenantOpen((v) => !v)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 9, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 9, padding: '9px 11px', cursor: 'pointer', color: 'var(--ink)' }}>
+              <span style={{ width: 24, height: 24, borderRadius: 6, background: 'var(--brand-soft)', color: 'var(--brand-ink)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800 }}>{tenantName(activeTenant).slice(0, 1)}</span>
+              <span style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tenantName(activeTenant)}</span>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ stroke: 'var(--ink3)', strokeWidth: 1.8 }}><path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+            {tenantOpen && (
+              <div style={{ marginTop: 6, background: 'var(--panel)', border: '1px solid var(--border2)', borderRadius: 9, padding: 5 }}>
+                {tenants.map((t) => (
+                  <div key={t.customer_id} onClick={() => switchTenant(t.customer_id)} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 9px', borderRadius: 7, fontSize: 13, cursor: 'pointer', fontWeight: t.is_active ? 600 : 400, background: t.is_active ? 'var(--brand-soft)' : 'transparent', color: t.is_active ? 'var(--brand-ink)' : 'var(--ink2)' }}>
+                    <span style={{ width: 22, height: 22, borderRadius: 6, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: 'var(--ink2)' }}>{tenantName(t).slice(0, 1)}</span>
+                    <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tenantName(t)}</span>
+                  </div>
+                ))}
+                <div style={{ borderTop: '1px solid var(--border)', margin: '5px 0' }} />
+                <div onClick={addTenant} style={{ padding: '8px 9px', fontSize: 13, color: 'var(--brand)', fontWeight: 600, cursor: 'pointer' }}>+ 고객사 추가</div>
+              </div>
+            )}
+          </div>
+        )}
+
         <nav style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1, overflowY: 'auto' }}>
           <div className="mono" style={{ fontSize: 10, letterSpacing: '.12em', color: 'var(--ink3)', padding: '6px 4px 6px' }}>MENU</div>
           {showNav ? NAV.map((n) => (

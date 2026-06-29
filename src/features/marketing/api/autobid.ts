@@ -12,7 +12,7 @@
 import { swallow } from '@/worker/utils/swallow'
 import type { Env } from '@/worker/types/env'
 import { BID_MIN, BID_MAX, estimateBidForPositions, updateKeywordBid, type SearchAdCreds } from './searchad-client'
-import { loadSearchAdConnection } from './searchad-connection'
+import { loadSearchAdConnection, loadSearchAdConnectionByTenant } from './searchad-connection'
 
 const MIN_STEP = 10            // 현재가와 목표가 차이가 이보다 작으면 변경 안 함(PUT 남발 방지)
 const MAX_RULES_PER_RUN = 50   // seller 당 1회 처리 상한
@@ -40,6 +40,8 @@ export async function ensureAutobidSchema(DB: D1Database): Promise<void> {
   )`).run().catch(swallow('autobid:rules'))
   // 기존 테이블에 schedule_json 컬럼 보강(이미 있으면 무해 — 시간대·요일 입찰 전략).
   await DB.prepare("ALTER TABLE ad_autobid_rules ADD COLUMN schedule_json TEXT").run().catch(swallow('autobid:rules-sched'))
+  // 🆕 멀티테넌트: 규칙을 고객사(customer_id)별 격리 — 활성 고객사 기준으로만 보이고/실행.
+  await DB.prepare("ALTER TABLE ad_autobid_rules ADD COLUMN tenant TEXT").run().catch(swallow('autobid:rules-tenant'))
   await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_autobid_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     seller_id INTEGER NOT NULL,
@@ -153,14 +155,17 @@ export interface AutobidRule {
   last_applied_bid: number | null; last_run_at: string | null; schedule_json: string | null
 }
 
-export async function listRules(DB: D1Database, sellerId: number): Promise<AutobidRule[]> {
+export async function listRules(DB: D1Database, sellerId: number, tenant?: string): Promise<AutobidRule[]> {
   await ensureAutobidSchema(DB)
-  const r = await DB.prepare(`SELECT keyword_id, adgroup_id, keyword_text, target_rank, max_bid, device, enabled, last_applied_bid, last_run_at, schedule_json
-    FROM ad_autobid_rules WHERE seller_id = ? ORDER BY id DESC LIMIT 500`).bind(sellerId).all<AutobidRule>().catch(() => null)
+  // 활성 고객사(tenant)의 규칙만 + 레거시(tenant NULL) 흡수. tenant 미지정이면 전체(하위호환).
+  const tClause = tenant ? 'AND (tenant = ? OR tenant IS NULL)' : ''
+  const stmt = DB.prepare(`SELECT keyword_id, adgroup_id, keyword_text, target_rank, max_bid, device, enabled, last_applied_bid, last_run_at, schedule_json
+    FROM ad_autobid_rules WHERE seller_id = ? ${tClause} ORDER BY id DESC LIMIT 500`)
+  const r = await (tenant ? stmt.bind(sellerId, tenant) : stmt.bind(sellerId)).all<AutobidRule>().catch(() => null)
   return r?.results || []
 }
 
-export async function upsertRule(DB: D1Database, sellerId: number, rule: { keyword_id: string; adgroup_id?: string; keyword_text?: string; target_rank: number; max_bid: number; device?: string; enabled?: boolean; schedule?: unknown }): Promise<{ ok: boolean; error?: string }> {
+export async function upsertRule(DB: D1Database, sellerId: number, rule: { keyword_id: string; adgroup_id?: string; keyword_text?: string; target_rank: number; max_bid: number; device?: string; enabled?: boolean; schedule?: unknown; tenant?: string | null }): Promise<{ ok: boolean; error?: string }> {
   await ensureAutobidSchema(DB)
   const kid = String(rule.keyword_id || '').trim()
   if (!kid) return { ok: false, error: '키워드를 지정해주세요' }
@@ -173,22 +178,24 @@ export async function upsertRule(DB: D1Database, sellerId: number, rule: { keywo
   // schedule 미지정(undefined)=기존 값 유지 / 지정(string|null)=덮어씀('always'→null=항상으로 초기화).
   const provided = rule.schedule === undefined ? 0 : 1
   const scheduleJson = provided ? normalizeSchedule(rule.schedule) : null
-  await DB.prepare(`INSERT INTO ad_autobid_rules (seller_id, keyword_id, adgroup_id, keyword_text, target_rank, max_bid, device, enabled, schedule_json)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  const tenant = rule.tenant ? String(rule.tenant).slice(0, 40) : null // 활성 고객사 격리 키(없으면 NULL=레거시)
+  await DB.prepare(`INSERT INTO ad_autobid_rules (seller_id, keyword_id, adgroup_id, keyword_text, target_rank, max_bid, device, enabled, schedule_json, tenant)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(seller_id, keyword_id) DO UPDATE SET adgroup_id=excluded.adgroup_id, keyword_text=excluded.keyword_text,
       target_rank=excluded.target_rank, max_bid=excluded.max_bid, device=excluded.device, enabled=excluded.enabled,
-      schedule_json=CASE WHEN ?=1 THEN excluded.schedule_json ELSE ad_autobid_rules.schedule_json END`)
-    .bind(sellerId, kid, rule.adgroup_id || null, rule.keyword_text || null, rank, maxBid, device, enabled, scheduleJson, provided).run()
+      schedule_json=CASE WHEN ?=1 THEN excluded.schedule_json ELSE ad_autobid_rules.schedule_json END,
+      tenant=COALESCE(excluded.tenant, ad_autobid_rules.tenant)`)
+    .bind(sellerId, kid, rule.adgroup_id || null, rule.keyword_text || null, rank, maxBid, device, enabled, scheduleJson, tenant, provided).run()
   return { ok: true }
 }
 
 /** CSV/배열 일괄 등록. 행마다 upsert. 결과 {count, errors}. cap 200. */
-export async function bulkUpsertRules(DB: D1Database, sellerId: number, rows: Array<{ keyword_id: string; keyword_text?: string; target_rank: number; max_bid: number; device?: string; schedule?: unknown; enabled?: boolean }>): Promise<{ count: number; errors: Array<{ keyword_id: string; error: string }> }> {
+export async function bulkUpsertRules(DB: D1Database, sellerId: number, rows: Array<{ keyword_id: string; keyword_text?: string; target_rank: number; max_bid: number; device?: string; schedule?: unknown; enabled?: boolean }>, tenant?: string | null): Promise<{ count: number; errors: Array<{ keyword_id: string; error: string }> }> {
   await ensureAutobidSchema(DB)
   let count = 0
   const errors: Array<{ keyword_id: string; error: string }> = []
   for (const row of rows.slice(0, 200)) {
-    const r = await upsertRule(DB, sellerId, row).catch((e) => ({ ok: false as const, error: String((e as Error)?.message || 'fail') }))
+    const r = await upsertRule(DB, sellerId, { ...row, tenant }).catch((e) => ({ ok: false as const, error: String((e as Error)?.message || 'fail') }))
     if (r.ok) count++
     else errors.push({ keyword_id: String(row.keyword_id || ''), error: r.error || '실패' })
   }
@@ -210,15 +217,25 @@ export async function recentLog(DB: D1Database, sellerId: number, limit = 30): P
 // ── 엔진 ─────────────────────────────────────────────────────────────────
 export interface RuleRunResult { keyword_id: string; keyword_text: string | null; estBid: number; plan: BidPlan; applied: boolean; error?: string }
 
-/** 한 seller 의 활성 규칙 실행. dryRun=true 면 PUT 안 하고 계획만 반환(미리보기). */
-export async function runAutobidForSeller(DB: D1Database, creds: SearchAdCreds, sellerId: number, opts?: { dryRun?: boolean; onlyKeywordId?: string }): Promise<RuleRunResult[]> {
+/** 한 seller 의 활성 규칙 실행. dryRun=true 면 PUT 안 하고 계획만 반환(미리보기).
+ *   opts.tenant: 고객사 격리. string=그 고객사 규칙(+inclusive 면 레거시 NULL 흡수), null=레거시만, undefined=전체.
+ *   ⚠️ cron 은 strict(정확히 그 tenant)로 호출 → 한 규칙이 두 고객사 계정에 이중 적용되는 일 없음. */
+export async function runAutobidForSeller(DB: D1Database, creds: SearchAdCreds, sellerId: number, opts?: { dryRun?: boolean; onlyKeywordId?: string; tenant?: string | null; strict?: boolean }): Promise<RuleRunResult[]> {
   await ensureAutobidSchema(DB)
   const dryRun = !!opts?.dryRun
-  const where = opts?.onlyKeywordId ? 'AND keyword_id = ?' : 'AND enabled = 1'
-  const stmt = DB.prepare(`SELECT keyword_id, keyword_text, target_rank, max_bid, device, last_applied_bid, schedule_json
-    FROM ad_autobid_rules WHERE seller_id = ? ${where} LIMIT ${MAX_RULES_PER_RUN}`)
-  const bound = opts?.onlyKeywordId ? stmt.bind(sellerId, opts.onlyKeywordId) : stmt.bind(sellerId)
-  const rules = (await bound.all<{ keyword_id: string; keyword_text: string | null; target_rank: number; max_bid: number; device: string; last_applied_bid: number | null; schedule_json: string | null }>().catch(() => null))?.results || []
+  const binds: Array<string | number> = [sellerId]
+  let where = opts?.onlyKeywordId ? 'AND keyword_id = ?' : 'AND enabled = 1'
+  if (opts?.onlyKeywordId) binds.push(opts.onlyKeywordId)
+  if (opts && 'tenant' in opts) {
+    if (opts.tenant === null) where += ' AND tenant IS NULL'
+    else if (typeof opts.tenant === 'string') {
+      where += opts.strict ? ' AND tenant = ?' : ' AND (tenant = ? OR tenant IS NULL)'
+      binds.push(opts.tenant)
+    }
+  }
+  const rules = (await DB.prepare(`SELECT keyword_id, keyword_text, target_rank, max_bid, device, last_applied_bid, schedule_json
+    FROM ad_autobid_rules WHERE seller_id = ? ${where} LIMIT ${MAX_RULES_PER_RUN}`).bind(...binds)
+    .all<{ keyword_id: string; keyword_text: string | null; target_rank: number; max_bid: number; device: string; last_applied_bid: number | null; schedule_json: string | null }>().catch(() => null))?.results || []
   const { weekday, hour } = kstWeekdayHour(Date.now()) // 현재 KST 요일·시각(전 규칙 공통)
   const out: RuleRunResult[] = []
   for (const rule of rules) {
@@ -250,18 +267,22 @@ export async function runAutobidForSeller(DB: D1Database, creds: SearchAdCreds, 
   return out
 }
 
-/** cron 엔트리 — 전체 seller 의 활성 규칙 실행. 글로벌 킬스위치(ADS_AUTOBID_ENABLED) gate. */
+/** cron 엔트리 — (seller, tenant=고객사)별 활성 규칙 실행. 글로벌 킬스위치(ADS_AUTOBID_ENABLED) gate.
+ *   ⚠️ 멀티테넌트: 각 (seller, tenant) 쌍을 **그 고객사 자격증명**으로 strict 실행 → 규칙이
+ *   엉뚱한 고객사 계정에 적용되는 일 없음. tenant NULL(레거시) 은 활성 자격증명으로 실행. */
 export async function runAutobidAll(env: Env): Promise<{ sellers: number; applied: number }> {
   if (env.ADS_AUTOBID_ENABLED !== 'true') return { sellers: 0, applied: 0 } // 킬스위치 OFF
   await ensureAutobidSchema(env.DB)
-  const sellers = (await env.DB.prepare(`SELECT DISTINCT seller_id FROM ad_autobid_rules WHERE enabled = 1 LIMIT ${MAX_SELLERS_PER_RUN}`)
-    .all<{ seller_id: number }>().catch(() => null))?.results || []
+  const pairs = (await env.DB.prepare(`SELECT DISTINCT seller_id, tenant FROM ad_autobid_rules WHERE enabled = 1 LIMIT ${MAX_SELLERS_PER_RUN}`)
+    .all<{ seller_id: number; tenant: string | null }>().catch(() => null))?.results || []
   let applied = 0
-  for (const s of sellers) {
-    const creds = await loadSearchAdConnection(env.DB, s.seller_id, env.DATA_ENCRYPTION_KEY).catch(() => null)
+  for (const p of pairs) {
+    const creds = p.tenant
+      ? await loadSearchAdConnectionByTenant(env.DB, p.seller_id, p.tenant, env.DATA_ENCRYPTION_KEY).catch(() => null)
+      : await loadSearchAdConnection(env.DB, p.seller_id, env.DATA_ENCRYPTION_KEY).catch(() => null)
     if (!creds) continue
-    const res = await runAutobidForSeller(env.DB, creds, s.seller_id).catch(() => [] as RuleRunResult[])
+    const res = await runAutobidForSeller(env.DB, creds, p.seller_id, { tenant: p.tenant, strict: true }).catch(() => [] as RuleRunResult[])
     applied += res.filter(r => r.applied).length
   }
-  return { sellers: sellers.length, applied }
+  return { sellers: pairs.length, applied }
 }
