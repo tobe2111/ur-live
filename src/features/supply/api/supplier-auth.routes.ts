@@ -9,7 +9,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
-import { hashPassword, verifyPassword } from '@/lib/password';
+import { hashPassword, verifyPassword, hashToken } from '@/lib/password';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { requireAuth } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
@@ -104,7 +104,9 @@ async function issueSupplierTokens(
   const refreshToken = await sign({ ...base, token_use: 'refresh', iat: nowSec, exp: nowSec + 90 * 24 * 60 * 60 }, jwtSecret);
   try {
     await ensureSupplierAuthRefreshTable(DB);
-    const refreshHash = await hashPassword(refreshToken);
+    // 🏭 2026-06-29 (로그인 속도): refresh 토큰은 고엔트로피라 PBKDF2(10만 회) 대신 빠른 SHA-256 해시.
+    //   verifyPassword 가 s256$ prefix 를 인식 → 검증 무변경. 기존 PBKDF2 토큰도 그대로 검증됨(무중단).
+    const refreshHash = await hashToken(refreshToken);
     await DB.prepare(
       `INSERT INTO auth_refresh_tokens (user_type, user_id, token_hash, expires_at) VALUES ('supplier', ?, ?, ?)`
     ).bind(sup.id, refreshHash, new Date((nowSec + 90 * 24 * 3600) * 1000).toISOString()).run();
