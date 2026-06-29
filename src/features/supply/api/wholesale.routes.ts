@@ -2050,7 +2050,7 @@ app.get('/order-template', async (c) => {
   //   매칭 = product_id(우선) 또는 상품코드(판매사 학습 맵/제조사 ext_code). 빈칸은 판매사가 채움.
   const header = ['product_id', '상품코드', '상품명', '카테고리', '재고', '공급가(내등급)', 'MOQ', '박스단위', '옵션(상품상세)', '주문수량', '받는사람', '전화번호', '우편번호', '주소', '배송메시지']
   if (!sellerId) {
-    return csvResponse(buildCsv(header, [['예: 123', '예: SOTN-001', '상품명(참고용)', '식품', '500', '9000', '1', '1', '화이트', '10', '홍길동', '010-1234-5678', '06236', '서울시 강남구 …', '부재시 경비실에']]), 'wholesale-order-template.csv')
+    return csvResponse(buildCsv(header, [['예: 123', '예: FD000BKJ', '상품명(참고용)', '식품', '500', '9000', '1', '1', '화이트', '10', '홍길동', '010-1234-5678', '06236', '서울시 강남구 …', '부재시 경비실에']]), 'wholesale-order-template.csv')
   }
   const { DB } = c.env
   try {
@@ -2067,16 +2067,21 @@ app.get('/order-template', async (c) => {
         AND ${gradeExposureWhere('p')}
       ORDER BY p.category, p.name LIMIT 10000
     `).bind(sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
-    // 🔁 판매사 학습 코드 맵(product_id → 상품코드) — 이전 업로드에서 학습된 코드를 양식에 미리 채움.
+    // 🔁 상품코드 프리필 — ① 제조사 등록 코드(#8, product_supply_meta.product_code, full) 우선 →
+    //   ② 판매사 학습 맵(이전 업로드에서 product_id+코드 동시 입력으로 학습된 코드). 둘 다 없으면 빈칸.
+    //   ⇒ 제조사가 등록한 코드가 판매사 대량발주 양식에 바로 떠서 #8→#13 즉시 사용 가능.
     await ensureCodeMap(DB)
+    const tplIds = (rows.results || []).map(r => r.id)
+    const tplMeta = await getSupplyMeta(DB, tplIds).catch(() => new Map<number, Record<string, string>>())
     const codeByPid = new Map<number, string>()
     const cm = await DB.prepare('SELECT code, product_id FROM wholesale_product_code_map WHERE seller_id = ?')
       .bind(sellerId).all<{ code: string; product_id: number }>().catch(() => ({ results: [] as Array<{ code: string; product_id: number }> }))
     for (const r of cm.results || []) if (!codeByPid.has(r.product_id)) codeByPid.set(r.product_id, r.code)
     const out = (rows.results || []).map(r => {
       const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
+      const regCode = (tplMeta.get(r.id)?.product_code || '').trim() // 🏭 #8 제조사 등록 코드(full) 우선
       // product_id·상품코드·카탈로그 정보는 프리필, 옵션/주문수량/받는사람~배송메시지는 빈칸(판매사 입력).
-      return [r.id, codeByPid.get(r.id) || '', r.name, r.category || '', r.stock, price, Math.max(1, r.moq || 1), Math.max(1, r.order_multiple || 1), '', '', '', '', '', '', '']
+      return [r.id, regCode || codeByPid.get(r.id) || '', r.name, r.category || '', r.stock, price, Math.max(1, r.moq || 1), Math.max(1, r.order_multiple || 1), '', '', '', '', '', '', '']
     })
     return csvResponse(buildCsv(header, out), `wholesale-order-form-${new Date().toISOString().slice(0, 10)}.csv`)
   } catch (err) {
