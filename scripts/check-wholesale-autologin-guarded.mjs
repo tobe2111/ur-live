@@ -30,14 +30,26 @@ const PAGES = [
 
 const PROBE = /become-distributor|\/supplier\/become/
 
+// 🏭 2026-06-29: 주석-aware 로 PROBE 검사 — 카카오 자동 probe 제거 후 남은 *설명 주석*
+//   (예: `// 기존 카카오 자동 probe(become-distributor)·... 삭제`)을 실제 호출로 오인하던 false
+//   positive 차단. 실제 probe 는 코드의 문자열 리터럴(`api.post('/api/wholesale/become-distributor')`)
+//   에 있으므로 문자열은 보존하고 *순수 주석 라인*(블록 /* */ + 줄 //)만 제거한 뒤 검사한다.
+function stripComments(src) {
+  const noBlock = src.replace(/\/\*[\s\S]*?\*\//g, '')
+  return noBlock
+    .split('\n')
+    .filter((line) => !/^\s*\/\//.test(line))
+    .join('\n')
+}
+
 const violations = []
 let scanned = 0
 for (const rel of PAGES) {
   const src = read(rel)
   if (src == null) continue
   scanned++
-  // 파일에 자동 probe 호출이 있나? (주석/문자열 라인 제외 위해 단순화: 호출 패턴 존재)
-  if (!PROBE.test(src)) continue
+  // 파일에 자동 probe 호출이 있나? (주석 라인 제외 — 코드의 문자열 리터럴만 검사)
+  if (!PROBE.test(stripComments(src))) continue
   if (/autologin-ok/.test(src)) continue // 명시 예외
   // 로그인-의도 게이트 보유? (consumeWholesaleLoginIntent = off-by-default 발화)
   if (!/consumeWholesaleLoginIntent/.test(src)) {
