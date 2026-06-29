@@ -292,6 +292,16 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   useEffect(() => {
     if (supplierOnly) navigate('/supplier', { replace: true })
   }, [supplierOnly, navigate])
+  // 🏭 2026-06-29 (대표 지시 — "/wholesale/margin 안보여야 해"): 고마진 특가(margin)·프리미엄 전용관(premium)
+  //   컬렉션은 판매사(seller_token) 전용. 네비 버튼은 memberOnlyGo 로 비로그인 클릭을 막지만, 라우트 자체엔
+  //   가드가 없어 비로그인 소비자/게스트가 URL(/wholesale/margin·/premium)을 직접 입력하면 페이지가 그대로
+  //   노출되던 구멍을 라우트 레벨에서 차단 → 로그인으로 유도. (제조사 ?preview=1 게스트뷰는 제외.)
+  const memberGated = (mode === 'margin' || mode === 'premium') && !loggedIn && !isPreview
+  useEffect(() => {
+    if (!memberGated) return
+    toast.error(t('wholesale.memberOnly', { defaultValue: '회원 전용 메뉴예요 — 로그인 후 이용해주세요' }))
+    navigate('/wholesale/login', { replace: true })
+  }, [memberGated, navigate, t])
   // 🏭 2026-06-04 카카오 통합: 카카오 유저로 로그인됐지만 아직 유통회원(seller_token)이 아닌 상태.
   //   사업자 정보 + 관리자 승인 필요라 1탭 X → 입점 폼(/wholesale/join)으로 유도.
   const userSession = !loggedIn && typeof window !== 'undefined' && !!localStorage.getItem('user_id')
@@ -430,7 +440,8 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const grade = me?.grade || home?.grade || 'C'
 
   // 🏭 제조사-only 는 /supplier 로 리다이렉트 중 — 판매사 카탈로그(+'제조사 대시보드' 헤더) 깜빡임 방지.
-  if (supplierOnly) return null
+  //   판매사 전용 컬렉션(margin/premium) 을 비로그인이 직접 URL 로 연 경우도 동일하게 렌더 차단(로그인 리다이렉트 중).
+  if (supplierOnly || memberGated) return null
 
   return (
     // 🏬 --ud-brand: 몰 브랜드 색(기본 몰 → #FC5424 → 현 디자인과 동일). 주요 브랜드 요소가 var() 로 참조.
