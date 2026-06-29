@@ -21,7 +21,7 @@ import { useWholesaleCart } from './wholesale/useWholesaleCart'
 import type { WholesaleNavItem } from '@/components/wholesale/WholesaleDashboardShell'
 import { getSupplierToken } from '@/lib/supplier-api'
 import { logout as authLogout } from '@/utils/auth'
-import { setWholesaleLogoutFlag } from '@/utils/wholesale-session'
+import { clearWholesaleLoginIntent } from '@/utils/wholesale-session'
 import WholesaleDashboardShell from '@/components/wholesale/WholesaleDashboardShell'
 import PlusMembershipCard from '@/components/wholesale/PlusMembershipCard'
 
@@ -119,11 +119,11 @@ export default function WholesaleDashboardPage() {
   const activeTabLabel = tabDefs.find((tb) => tb.key === tab)?.label ?? '판매사 대시보드'
 
   const logout = async () => {
-    // 🔑 2026-06-29: ① 서버 세션쿠키 삭제 await(잔존 재인증 방지) + ② 자동 probe 억제 플래그
-    //   (카카오 세션 살아있어도 다음 페이지 become-distributor 가 즉시 재로그인 못 함) → 로그인 화면.
+    // 🔑 2026-06-29: ① 서버 세션쿠키 삭제 await(잔존 재인증 방지) + ② stale 로그인-의도 제거
+    //   (카카오 세션 살아있어도 become-distributor 자동 probe 가 재로그인 못 함 — off-by-default) → 로그인 화면.
     await authLogout('seller')
     try { localStorage.removeItem('is_distributor') } catch { /* ignore */ }
-    setWholesaleLogoutFlag()
+    clearWholesaleLoginIntent()
     window.location.assign('/wholesale/login')
   }
 

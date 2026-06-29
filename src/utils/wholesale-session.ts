@@ -1,36 +1,40 @@
 /**
- * 🏭 2026-06-29 도매몰(판매사/제조사) 세션 — 명시 로그아웃이 자동 재로그인에 풀리지 않게 하는 억제 플래그.
+ * 🏭 2026-06-29 도매몰(판매사/제조사) 자동 로그인 의도 — off-by-default(교과서적 전환, Option B).
  *
- *   배경(대표 신고 "유통사로 로그인한 상태였는데 로그아웃이 전혀 안돼"):
- *   도매 페이지(WholesaleCatalogPage/WholesaleLoginPage/SupplierLoginPage 등)는 마운트 시
- *   카카오 소비자 세션(localStorage.user_id + ur_session 쿠키)만 있으면 자동으로
- *   `become-distributor`/`/supplier/become` 를 호출해 seller/supplier 토큰을 재발급한다.
- *   그래서 로그아웃이 seller 토큰만 지워도, 카카오 세션이 살아있으면 다음 페이지 로드에서
- *   즉시 자동 재로그인 → "로그아웃이 안 됨". 이 플래그로 *명시 로그아웃 후 ~ 명시 로그인 전* 까지
- *   자동 probe 를 억제한다. (소비자/카카오 세션 자체는 보존 — 분리/공존 설계 유지.)
+ *   배경(대표 "근본적으로 / 가장 이상적으로"): 기존엔 도매 페이지가 마운트할 때마다 카카오 소비자
+ *   세션(user_id)만 있으면 자동으로 `become-distributor`/`/supplier/become` 를 호출해 토큰을 *암묵적으로*
+ *   재발급(ambient privilege elevation)했다. 이 ambient 자동로그인이 "로그아웃이 안 됨"의 근본 원인.
+ *   (로그아웃이 seller 토큰·ur_seller_session 을 지워도 ur_session 이 살아있어 probe 가 재인증.)
+ *
+ *   교과서적 모델: **명시 로그인(카카오 버튼) 직후 1회만** 자동 토큰교환을 허용한다(off-by-default).
+ *   - setWholesaleLoginIntent(): 카카오 로그인 시작 직전 1회 마커(세션 스토리지 — OAuth 왕복 생존).
+ *   - consumeWholesaleLoginIntent(): probe 진입 시 마커가 있으면 true 반환 + 소비(1회). 없으면 false → 미발화.
+ *   - clearWholesaleLoginIntent(): 로그아웃 시 미소비 stale 마커 제거(토큰이 콜백으로 직접 전달돼 probe
+ *     미발화 시 잔존 → 다음 로그아웃 후 재로그인 방지).
+ *
+ *   카카오 콜백(issueLinkedRoleTokens)이 승인 판매사의 seller_token 을 *명시 발급*하므로 정상 로그인은
+ *   콜백이 1차 경로. probe 는 토큰이 전달 안 된 엣지(2026-06-06 B2 fix)만 보완 — 단 '로그인 직후'에 한정.
  */
-import { clearAuthData } from './auth'
 
-const LOGOUT_FLAG = 'ur_wholesale_logout'
+const LOGIN_INTENT = 'ur_wholesale_login_intent'
 
-/** 억제 플래그만 set (제조사 로그아웃 등 seller 세션과 무관한 경로용). */
-export function setWholesaleLogoutFlag() {
-  try { localStorage.setItem(LOGOUT_FLAG, '1') } catch { /* ignore */ }
+/** 명시 로그인(카카오 버튼) 직전 1회 마커 set — become 자동 probe 는 이게 있을 때만 발화. */
+export function setWholesaleLoginIntent() {
+  try { sessionStorage.setItem(LOGIN_INTENT, '1') } catch { /* ignore */ }
 }
 
-/** 판매사(도매) 로그아웃 핵심 — seller 세션 정리 + 자동 재로그인 억제 플래그 set. (navigate 는 호출부에서.) */
-export function markWholesaleLoggedOut() {
-  clearAuthData('seller')
-  try { localStorage.removeItem('is_distributor') } catch { /* ignore */ }
-  setWholesaleLogoutFlag()
+/** probe 진입 — 로그인 직후 1회만 true(소비). 마운트마다/로그아웃 후엔 false → ambient 자동로그인 없음. */
+export function consumeWholesaleLoginIntent(): boolean {
+  try {
+    if (sessionStorage.getItem(LOGIN_INTENT) === '1') {
+      sessionStorage.removeItem(LOGIN_INTENT)
+      return true
+    }
+  } catch { /* ignore */ }
+  return false
 }
 
-/** become-distributor / supplier-become 자동 probe 가 억제돼야 하는가(명시 로그아웃 후, 명시 로그인 전). */
-export function wholesaleAutoLoginSuppressed(): boolean {
-  try { return localStorage.getItem(LOGOUT_FLAG) === '1' } catch { return false }
-}
-
-/** 명시 로그인(이메일 제출 / 카카오 버튼 클릭) 시 — 억제 해제(이후 자동 probe 정상). */
-export function clearWholesaleLogoutFlag() {
-  try { localStorage.removeItem(LOGOUT_FLAG) } catch { /* ignore */ }
+/** 로그아웃 — 미소비 stale 마커 제거(콜백 직접발급으로 probe 미발화 시 잔존 → 재로그인 방지). */
+export function clearWholesaleLoginIntent() {
+  try { sessionStorage.removeItem(LOGIN_INTENT) } catch { /* ignore */ }
 }

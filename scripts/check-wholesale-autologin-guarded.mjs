@@ -8,8 +8,9 @@
  *   그래서 로그아웃이 토큰만 지워도 카카오 세션이 살아있으면 다음 로드에서 즉시 자동 재로그인 →
  *   "로그아웃이 안 됨". 명시 로그아웃 후엔 `wholesaleAutoLoginSuppressed()`(억제 플래그)로 막아야 한다.
  *
- *   규칙: 도매/제조 페이지에서 `become-distributor`/`/supplier/become` *자동 probe* 를 호출하는
- *   파일은 반드시 `wholesaleAutoLoginSuppressed` 를 참조(=억제 게이트 보유)해야 한다.
+ *   규칙(교과서적 off-by-default): 도매/제조 페이지에서 `become-distributor`/`/supplier/become`
+ *   *자동 probe* 를 호출하는 파일은 반드시 `consumeWholesaleLoginIntent` 로 게이트(=명시 로그인 직후
+ *   1회만 발화)해야 한다. ambient 자동로그인(마운트마다 발화)이면 로그아웃이 풀린다.
  *   의도적 예외(명시 버튼 핸들러 등 자동 아님)는 같은 줄/근처에 `autologin-ok` 주석.
  */
 import { readFileSync, existsSync } from 'fs'
@@ -38,8 +39,8 @@ for (const rel of PAGES) {
   // 파일에 자동 probe 호출이 있나? (주석/문자열 라인 제외 위해 단순화: 호출 패턴 존재)
   if (!PROBE.test(src)) continue
   if (/autologin-ok/.test(src)) continue // 명시 예외
-  // 억제 게이트 보유?
-  if (!/wholesaleAutoLoginSuppressed/.test(src)) {
+  // 로그인-의도 게이트 보유? (consumeWholesaleLoginIntent = off-by-default 발화)
+  if (!/consumeWholesaleLoginIntent/.test(src)) {
     violations.push(rel)
   }
 }
@@ -47,13 +48,13 @@ for (const rel of PAGES) {
 console.log(`🏭 도매 자동 재로그인 ↔ 로그아웃 억제 가드`)
 console.log(`   스캔 ${scanned}/${PAGES.length} 페이지 (become-distributor / supplier-become 자동 probe)`)
 if (violations.length === 0) {
-  console.log(`✅ 위반 0 — 모든 자동 probe 가 wholesaleAutoLoginSuppressed() 억제 게이트 보유(로그아웃 유지).`)
+  console.log(`✅ 위반 0 — 모든 자동 probe 가 consumeWholesaleLoginIntent() 로 게이트(명시 로그인 직후 1회만, 로그아웃 유지).`)
   process.exit(0)
 }
-console.log(`\n❌ 억제 게이트 누락 ${violations.length}건 (명시 로그아웃이 자동 재로그인에 풀림):`)
+console.log(`\n❌ 로그인-의도 게이트 누락 ${violations.length}건 (ambient 자동로그인 → 명시 로그아웃이 풀림):`)
 for (const v of violations) {
   console.log(`   • ${v}`)
-  console.log(`     → 자동 probe useEffect 의 early-return 에 \`|| wholesaleAutoLoginSuppressed()\` 추가(@/utils/wholesale-session).`)
+  console.log(`     → 자동 probe 의 early-return 에 \`|| !consumeWholesaleLoginIntent()\` 추가(@/utils/wholesale-session). 카카오 로그인 버튼은 setWholesaleLoginIntent().`)
 }
 const STRICT = process.env.STRICT_WHS_AUTOLOGIN === '1'
 process.exit(STRICT ? 1 : 0)
