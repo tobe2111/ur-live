@@ -20,7 +20,7 @@ import {
   type WholesaleDepositTxn, type WholesaleChargeStatus,
 } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
-import { clearAuthData } from '@/utils/auth'
+import { logout as authLogout } from '@/utils/auth'
 import WholesaleDashboardShell from '@/components/wholesale/WholesaleDashboardShell'
 import { useIsWholesaleViewer, ViewerNotice } from './wholesale/ViewerGate'
 
@@ -81,8 +81,9 @@ export default function WholesaleDepositPage({ embedded = false }: { embedded?: 
 
   const navItems = buildWholesaleNav(location.pathname, navigate)
 
-  const logout = () => {
-    clearAuthData('seller')
+  const logout = async () => {
+    // 🔑 2026-06-29: 서버 세션쿠키 삭제 await 후 하드이동.
+    await authLogout('seller')
     try { localStorage.removeItem('is_distributor') } catch { /* ignore */ }
     window.location.assign('/wholesale')
   }

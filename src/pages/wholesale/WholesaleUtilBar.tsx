@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LogIn, LogOut, Factory } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
-import { clearAuthData } from '@/utils/auth'
+import { logout as authLogout } from '@/utils/auth'
 import { getSupplierToken, clearSupplierSession } from '@/lib/supplier-api'
 import { useWholesaleMe, useWholesaleDeposit } from '@/hooks/queries/useWholesale'
 import { WT, won, GRADE_NAME } from './wholesale-theme'
@@ -33,9 +33,10 @@ export default function WholesaleUtilBar() {
   const depositBalance = Number(depositQ.data?.balance) || 0
 
   const goLogin = () => navigate('/wholesale/login')
-  const logout = () => {
+  const logout = async () => {
     // 도매몰 로그아웃 — 판매사(seller) + 제조사(supplier) 세션 모두 정리(유저/어드민 세션 보존). CatalogHeader 와 동일.
-    clearAuthData('seller')
+    // 🔑 2026-06-29: 서버 httpOnly 세션쿠키(ur_seller_session) 삭제를 **await** 후 하드이동 — 없으면 잔존 재인증.
+    await authLogout('seller')
     try { localStorage.removeItem('is_distributor') } catch { /* noop */ }
     try { clearSupplierSession() } catch { /* noop */ }
     toast.success('로그아웃되었어요')

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { clearServerSessionCookies } from '@/utils/auth'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import { usePersistScroll } from '@/hooks/usePersistScroll'
@@ -205,8 +206,11 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
   // 성장 활성 라벨은 최근 30일 매출이 있을 때만 표시
   const hasActiveGrowth = revenue30d != null && revenue30d > 0
 
-  function logout() {
-    ['agency_token', 'agency_id', 'agency_name', 'agency_email'].forEach(k => localStorage.removeItem(k))
+  async function logout() {
+    // 🔑 2026-06-29 (로그아웃 근본수정): 서버 httpOnly agency 세션쿠키(ur_agency_session) 삭제를 await —
+    //   기존엔 localStorage 만 지워 쿠키가 남아 재인증됐다(로그아웃해도 로그인). 유저/셀러/어드민 세션은 보존.
+    await clearServerSessionCookies('agency')
+    ;['agency_token', 'agency_refresh_token', 'agency_id', 'agency_name', 'agency_email'].forEach(k => localStorage.removeItem(k))
     navigate('/agency/login')
   }
 
