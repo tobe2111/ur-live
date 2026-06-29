@@ -1488,6 +1488,11 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       ('D','D등급',8,4,0),
       ('OEM','OEM',40,5,0),
       ('SPECIAL','특별할인(기간한정)',45,9,1)` },
+    // 🏭 2026-06-29 (등급명 영문화) — 기존 DB(옛 라벨 프리미엄/프로/일반) relabel. 멱등(영문이면 no-op),
+    //   label 만 변경(마진/정렬 등 가격 요소 불변). distributor-admin/helpers v3 와 이중 보장.
+    { name: 'relabel: distributor_grades A→Premium', sql: "UPDATE distributor_grades SET label = 'Premium' WHERE grade = 'A' AND label IN ('프리미엄','프리미엄 등급')" },
+    { name: 'relabel: distributor_grades B→Standard', sql: "UPDATE distributor_grades SET label = 'Standard' WHERE grade = 'B' AND label IN ('프로','프로 등급')" },
+    { name: 'relabel: distributor_grades C→Basic', sql: "UPDATE distributor_grades SET label = 'Basic' WHERE grade = 'C' AND label IN ('일반','일반 등급')" },
 
     // 🛡️ 2026-06-16 어드민 활동 감사로그 — writeAuditLog/adminAuditMiddleware 가 기록(모든 어드민 변경 자동).
     //   ⚠️ 마이그레이션(0126/0128)에만 있어 prod(마이그 미실행)엔 테이블이 없을 수 있음 → writeAuditLog 가

@@ -1996,11 +1996,13 @@ app.get('/catalog-export', async (c) => {
         AND ${gradeExposureWhere('p')}
       ORDER BY p.name LIMIT 10000
     `).bind(sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; margin_override: number | null }>()
+    // 🏭 #8 상품코드(제조사 등록, full) — 대량발주 매칭 참고용. 비가격 정보.
+    const catMeta = await getSupplyMeta(DB, (rows.results || []).map(r => r.id)).catch(() => new Map<number, Record<string, string>>())
     const out = (rows.results || []).map(r => {
       const { price, grade } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
-      return [r.id, r.name, r.category || '', r.stock, price, grade]
+      return [r.id, (catMeta.get(r.id)?.product_code || '').trim(), r.name, r.category || '', r.stock, price, grade]
     })
-    return xlsxResponse(buildXlsx(['product_id', '상품명', '카테고리', '재고', '공급가(내등급)', '적용등급'], out), `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.xlsx`)
+    return xlsxResponse(buildXlsx(['product_id', '상품코드', '상품명', '카테고리', '재고', '공급가(내등급)', '적용등급'], out), `wholesale-catalog-${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (err) {
     return safeError(c, err, '카탈로그 내보내기 중 오류가 발생했습니다', '[wholesale]')
   }
@@ -2029,11 +2031,13 @@ app.get('/catalog/export', async (c) => {
         AND ${gradeExposureWhere('p')}
       ORDER BY p.category, p.name LIMIT 10000
     `).bind(sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; barcode: string | null; category: string | null; stock: number; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
-    const header = ['상품명', '바코드', '공급가(내등급)', 'MOQ', '박스단위', '재고']
+    // 🏭 #8 상품코드(제조사 등록, full) — 대량발주 매칭 참고용. 비가격 정보(supply_price/supplier_id 비노출 불변).
+    const plMeta = await getSupplyMeta(DB, (rows.results || []).map(r => r.id)).catch(() => new Map<number, Record<string, string>>())
+    const header = ['상품코드', 'product_id', '상품명', '바코드', '공급가(내등급)', 'MOQ', '박스단위', '재고']
     const out = (rows.results || []).map(r => {
       // ⚠️ 내 등급 단가만 계산 — 타 등급가 누출 없음(카탈로그/주문과 동일 SSOT).
       const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
-      return [r.name, r.barcode || '', price, Math.max(1, r.moq || 1), Math.max(1, r.order_multiple || 1), r.stock]
+      return [(plMeta.get(r.id)?.product_code || '').trim(), r.id, r.name, r.barcode || '', price, Math.max(1, r.moq || 1), Math.max(1, r.order_multiple || 1), r.stock]
     })
     return csvResponse(buildCsv(header, out), `wholesale-pricelist-${new Date().toISOString().slice(0, 10)}.csv`)
   } catch (err) {
