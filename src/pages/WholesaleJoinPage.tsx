@@ -41,7 +41,7 @@ export default function WholesaleJoinPage() {
         else if (d.status === 'approved' && d.data?.accessToken) {
           localStorage.setItem('seller_token', d.data.accessToken)
           localStorage.setItem('is_distributor', '1')
-          window.location.href = '/wholesale'
+          navigate('/wholesale', { replace: true }) // ⚡ SPA — 토큰 동기 set 후 즉시(앱 재다운로드 없음)
         }
       })
       .catch(() => { /* 프로브 실패 — 폼 유지 */ })
@@ -146,7 +146,7 @@ export default function WholesaleJoinPage() {
         localStorage.setItem('seller_type', s.seller_type || 'influencer')
         localStorage.setItem('is_distributor', '1')
         toast.success('판매사로 시작합니다')
-        window.location.assign('/wholesale')
+        navigate('/wholesale', { replace: true }) // ⚡ SPA — 토큰 동기 set 후 즉시(앱 재다운로드 없음)
         return
       }
       // 신규 신청 → 승인 대기 화면.
