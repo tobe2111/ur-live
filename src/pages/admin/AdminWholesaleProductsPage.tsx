@@ -147,7 +147,7 @@ export default function AdminWholesaleProductsPage() {
             <input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder={t('admin.wholesaleProducts.searchPh', { defaultValue: '상품명 / 공급사명 검색' })}
+              placeholder={t('admin.wholesaleProducts.searchPh', { defaultValue: '상품명 / 제조사명 검색' })}
               className="w-full pl-9 pr-9 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
             />
             {searchInput && (
@@ -224,7 +224,7 @@ export default function AdminWholesaleProductsPage() {
                     </div>
                     <p className="text-xs text-gray-500 flex items-center gap-1.5 flex-wrap">
                       <Store className="w-3 h-3 text-gray-400" />
-                      {p.supplier_name || t('admin.wholesaleProducts.noSupplier', { defaultValue: '공급사 미상' })}
+                      {p.supplier_name || t('admin.wholesaleProducts.noSupplier', { defaultValue: '제조사 미상' })}
                       {p.category && <> · {p.category}</>}
                       {<> · {t('admin.wholesaleProducts.supplyPrice', { defaultValue: '공급가' })} {formatWon(p.supply_price)}</>}
                       <> · #{p.id}</>
