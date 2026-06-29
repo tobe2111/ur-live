@@ -1456,6 +1456,8 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     const shipPhone = String(ship.phone || shipFromProfile?.shipping_phone || '').slice(0, 30) || null
     const shipAddr = String(ship.address || shipFromProfile?.shipping_address || '').slice(0, 300) || null
     const shipPostal = String(ship.postal || shipFromProfile?.shipping_postal_code || '').slice(0, 20) || null
+    // 🚚 2026-06-29 (대표): 배송 메시지(선택) — 주문 헤더에 저장해 제조사/판매사 주문 상세에 노출.
+    const shipMessage = String(ship.message || '').slice(0, 100) || null
 
     const orderName = lines.length === 1
       ? lines[0].name.slice(0, 90)
@@ -1482,9 +1484,9 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     let idemConflict = false
     try {
       const insD = await DB.prepare(`
-        INSERT INTO wholesale_orders (distributor_seller_id, toss_order_id, status, grade, subtotal, supply_total, margin_total, shipping_total, payment_key, idempotency_key, ship_to_name, ship_to_phone, ship_to_address, ship_to_postal)
-        VALUES (?, ?, 'PENDING', ?, ?, ?, ?, ?, 'deposit', ?, ?, ?, ?, ?)
-      `).bind(sellerId, depOrderId, grade, subtotal, supplyTotal, subtotal - supplyTotal, shippingTotal, idemKey || null, shipName, shipPhone, shipAddr, shipPostal).run()
+        INSERT INTO wholesale_orders (distributor_seller_id, toss_order_id, status, grade, subtotal, supply_total, margin_total, shipping_total, payment_key, idempotency_key, ship_to_name, ship_to_phone, ship_to_address, ship_to_postal, ship_to_message)
+        VALUES (?, ?, 'PENDING', ?, ?, ?, ?, ?, 'deposit', ?, ?, ?, ?, ?, ?)
+      `).bind(sellerId, depOrderId, grade, subtotal, supplyTotal, subtotal - supplyTotal, shippingTotal, idemKey || null, shipName, shipPhone, shipAddr, shipPostal, shipMessage).run()
       dOrderId = Number(insD.meta?.last_row_id)
     } catch { idemConflict = true }
     if (idemConflict || !dOrderId) {
@@ -1749,7 +1751,7 @@ app.get('/orders', async (c) => {
              COALESCE(shipping_total, 0) AS shipping_total,
              (COALESCE(subtotal, 0) + COALESCE(shipping_total, 0)) AS grand_total,
              courier, tracking_number, created_at, paid_at, shipped_at,
-             ship_to_name, ship_to_phone, ship_to_address, ship_to_postal
+             ship_to_name, ship_to_phone, ship_to_address, ship_to_postal, ship_to_message
       FROM wholesale_orders WHERE distributor_seller_id = ?
       ORDER BY created_at DESC LIMIT 100
     `).bind(sellerId).all()
