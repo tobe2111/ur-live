@@ -14,7 +14,7 @@ export default function GradeSheet({ current, onClose }: { current: string; onCl
   const currentName = GRADE_NAME[current] || current
   const code = (current || '').toUpperCase()
   const loggedIn = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
-  // 프로 자가 구독 동선 — 프리미엄(A) 이면 이미 최상위라 CTA 숨김.
+  // Standard 자가 구독 동선 — Premium(A) 이면 이미 최상위라 CTA 숨김.
   const go = () => { onClose(); navigate(loggedIn ? '/wholesale/dashboard' : '/wholesale/login') }
   return (
     <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center" style={{ background: 'rgba(20,22,28,0.4)' }} onClick={onClose}>

@@ -1,15 +1,15 @@
 /**
- * 🏅 2026-06-16 유통스타트 도매몰 — 프로 멤버십(연 구독) 자가 구매.
- *   등급 모델: 일반(C, 승인 가입) / 프로(B, 연 구독) / 프리미엄(A, 매출 자동승급).
+ * 🏅 2026-06-16 유통스타트 도매몰 — Standard 멤버십(연 구독) 자가 구매.
+ *   등급 모델: Basic(C, 승인 가입) / Standard(B, 연 구독) / Premium(A, 매출 자동승급).
  *   ⚠️ 도매몰은 PG(Toss) 미사용 — 결제는 예치금(계좌이체로 충전된 잔액)에서 차감.
- *   프리미엄(A) 자동승급은 기존 GMV cron(handleWholesaleGradeEval, BIZ-7)이 담당 — 여기선 프로만.
+ *   Premium(A) 자동승급은 기존 GMV cron(handleWholesaleGradeEval, BIZ-7)이 담당 — 여기선 Standard만.
  *
  * 머니-크리티컬: 차감(deductDeposit) = 원자 CAS. 구독 갱신/등급세팅도 claim-before-charge(행 CAS) →
  *   동시요청/더블클릭 이중차감 차단. 차감 실패(잔액부족) 시 등급/만료 claim 즉시 롤백.
  *
  * 마운트: app.route('/api/wholesale/plus', wholesalePlusRoutes)
- *   - GET  /info      — 구독료 · 내 잔액 · 등급 · 만료일 · 프로/프리미엄 여부
- *   - POST /subscribe — 예치금에서 연 구독료 차감 → 프로(B) + plus_until=+365일 (멱등 CAS)
+ *   - GET  /info      — 구독료 · 내 잔액 · 등급 · 만료일 · Standard/Premium 여부
+ *   - POST /subscribe — 예치금에서 연 구독료 차감 → Standard(B) + plus_until=+365일 (멱등 CAS)
  */
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
@@ -87,11 +87,11 @@ plus.get('/info', async (c) => {
       can_afford: balance >= fee,
     })
   } catch (err) {
-    return safeError(c, err, '프로 구독 정보 조회 중 오류가 발생했습니다', '[wholesale-plus]')
+    return safeError(c, err, 'Standard 구독 정보 조회 중 오류가 발생했습니다', '[wholesale-plus]')
   }
 })
 
-// ── POST /subscribe — 예치금에서 연 구독료 차감 → 프로(B) ──────────────────────
+// ── POST /subscribe — 예치금에서 연 구독료 차감 → Standard(B) ──────────────────────
 plus.post('/subscribe', rateLimit({ action: 'wholesale-plus-subscribe', max: 6, windowSec: 60 }), async (c) => {
   const auth = await distributorFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!auth) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -116,9 +116,9 @@ plus.post('/subscribe', rateLimit({ action: 'wholesale-plus-subscribe', max: 6, 
     const grade = (cur?.distributor_grade || '').toUpperCase()
     const prevGrade = cur?.distributor_grade ?? null
     const prevPlus = cur?.plus_until ?? null
-    // 프리미엄(A)은 프로보다 상위 — 구독 불필요(차감 금지).
+    // Premium(A)은 Standard보다 상위 — 구독 불필요(차감 금지).
     if (grade === 'A') {
-      return c.json({ success: false, error: '이미 프리미엄 등급이라 프로 구독이 필요 없어요', code: 'ALREADY_PREMIUM' }, 409)
+      return c.json({ success: false, error: '이미 Premium 등급이라 Standard 구독이 필요 없어요', code: 'ALREADY_PREMIUM' }, 409)
     }
 
     // 🔒 claim-before-charge — 만료 30일 이내(또는 미가입/만료)일 때만 1회 선점.
@@ -132,7 +132,7 @@ plus.post('/subscribe', rateLimit({ action: 'wholesale-plus-subscribe', max: 6, 
        WHERE id = ? AND (plus_until IS NULL OR plus_until < datetime('now','+30 days'))`
     ).bind(sellerId).run()
     if ((claim.meta?.changes ?? 0) === 0) {
-      return c.json({ success: false, error: '이미 프로 구독 중입니다 (만료 30일 전부터 연장할 수 있어요)', code: 'ALREADY_PLUS' }, 409)
+      return c.json({ success: false, error: '이미 Standard 구독 중입니다 (만료 30일 전부터 연장할 수 있어요)', code: 'ALREADY_PLUS' }, 409)
     }
 
     // 예치금 차감(원자 CAS). 부족하면 claim 롤백 후 402.
@@ -150,20 +150,20 @@ plus.post('/subscribe', rateLimit({ action: 'wholesale-plus-subscribe', max: 6, 
     const after = await DB.prepare('SELECT plus_until FROM sellers WHERE id = ?')
       .bind(sellerId).first<{ plus_until: string | null }>().catch(() => null)
     const newUntil = after?.plus_until ?? null
-    await recordDepositTxn(DB, sellerId, 'order', -fee, deduct.balanceAfter, `plus:${sellerId}:${(newUntil || '').slice(0, 10)}`, '프로 멤버십 1년 구독')
+    await recordDepositTxn(DB, sellerId, 'order', -fee, deduct.balanceAfter, `plus:${sellerId}:${(newUntil || '').slice(0, 10)}`, 'Standard 멤버십 1년 구독')
     if (c.executionCtx) {
       c.executionCtx.waitUntil(
         createDashboardNotification(
           DB, 'seller', String(sellerId), 'wholesale_plus',
-          '프로 멤버십이 시작됐어요',
-          `프로 등급(연 구독)이 적용됐어요. 더 낮은 공급가로 사입하세요. (만료 ${(newUntil || '').slice(0, 10)})`,
+          'Standard 멤버십이 시작됐어요',
+          `Standard 등급(연 구독)이 적용됐어요. 더 낮은 공급가로 사입하세요. (만료 ${(newUntil || '').slice(0, 10)})`,
           '/wholesale/dashboard',
         ).catch(swallow('wholesale-plus:notify')),
       )
     }
     return c.json({ success: true, grade: 'B', plus_until: newUntil, balance: deduct.balanceAfter, fee })
   } catch (err) {
-    return safeError(c, err, '프로 구독 처리 중 오류가 발생했습니다', '[wholesale-plus]')
+    return safeError(c, err, 'Standard 구독 처리 중 오류가 발생했습니다', '[wholesale-plus]')
   }
 })
 

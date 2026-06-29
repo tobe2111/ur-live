@@ -260,8 +260,8 @@ export async function notifyExpiringPlus(DB: D1Database): Promise<number> {
         "VALUES ('seller', ?, 'wholesale_plus_expiring', ?, ?, '/wholesale/dashboard', datetime('now'))"
       ).bind(
         String(s.id),
-        '프로 멤버십 만료 예정',
-        `프로 등급이 ${(s.plus_until || '').slice(0, 10)}에 만료돼요. 예치금에서 연장하면 계속 더 낮은 공급가로 사입할 수 있어요.`,
+        'Standard 멤버십 만료 예정',
+        `Standard 등급이 ${(s.plus_until || '').slice(0, 10)}에 만료돼요. 예치금에서 연장하면 계속 더 낮은 공급가로 사입할 수 있어요.`,
       ).run().catch(swallow('wholesale-grade-eval:notify-expiring'));
       n++;
     } catch (err) {

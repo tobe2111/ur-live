@@ -1,8 +1,8 @@
 // ──────────────────────────────────────────────────────────────
-// 🏅 2026-06-16 프로 멤버십(연 구독) 카드 — 대시보드용.
+// 🏅 2026-06-16 Standard 멤버십(연 구독) 카드 — 대시보드용. (등급명: Basic/Standard/Premium = C/B/A)
 //   도매몰은 PG 미사용 → 예치금(계좌이체 충전 잔액)에서 연 구독료 차감.
-//   일반(C) → 구독 CTA / 프로(B) → 만료일·연장 / 프리미엄(A) → 최저가 안내(구독 불필요).
-//   라이트 고정(WT). 등급은 GRADE_NAME(일반/프로/프리미엄)로 표기.
+//   Basic(C) → 구독 CTA / Standard(B) → 만료일·연장 / Premium(A) → 최저가 안내(구독 불필요).
+//   라이트 고정(WT). 등급은 GRADE_NAME(Basic/Standard/Premium)로 표기.
 // ──────────────────────────────────────────────────────────────
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -43,15 +43,15 @@ export default function PlusMembershipCard() {
       return
     }
     const ok = await confirmDialog({
-      title: '프로 멤버십 구독',
-      message: `예치금에서 ${won(info.fee)}이 차감되고 1년간 프로 등급(더 낮은 공급가)이 적용됩니다. 진행할까요?`,
+      title: 'Standard 멤버십 구독',
+      message: `예치금에서 ${won(info.fee)}이 차감되고 1년간 Standard 등급(더 낮은 공급가)이 적용됩니다. 진행할까요?`,
     })
     if (!ok) return
     setBusy(true)
     try {
       const r = await api.post('/api/wholesale/plus/subscribe', {}, sellerAuth())
       if (r.data?.success) {
-        toast.success('프로 멤버십이 시작됐어요 🎉')
+        toast.success('Standard 멤버십이 시작됐어요 🎉')
         setInfo((p) => p ? { ...p, is_plus: true, grade: 'B', plus_until: r.data.plus_until, balance: r.data.balance } : p)
         qc.invalidateQueries({ queryKey: queryKeys.wholesale('me') })
         qc.invalidateQueries({ queryKey: queryKeys.wholesale('deposit-me') })
@@ -68,7 +68,7 @@ export default function PlusMembershipCard() {
 
   if (!info) return null
 
-  // 프리미엄(A) — 구독 불필요.
+  // Premium(A) — 구독 불필요.
   if (info.is_premium) {
     return (
       <div className="rounded-2xl p-4 flex items-center gap-3" style={{ background: WT.ink, boxShadow: WT.shCard }}>
@@ -76,14 +76,14 @@ export default function PlusMembershipCard() {
           <Crown className="w-5 h-5" style={{ color: '#FFC53D' }} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-[14px] font-extrabold text-white">프리미엄 회원</div>
+          <div className="text-[14px] font-extrabold text-white">Premium 회원</div>
           <div className="text-[12px]" style={{ color: 'rgba(255,255,255,0.65)' }}>최저 공급가가 적용 중이에요 (매출 기준 자동 등급)</div>
         </div>
       </div>
     )
   }
 
-  // 프로(B) — 만료일 + (만료 임박 시) 연장.
+  // Standard(B) — 만료일 + (만료 임박 시) 연장.
   if (info.is_plus) {
     return (
       <div className="rounded-2xl p-4 flex items-center gap-3 bg-white" style={{ border: '1px solid ' + WT.line2 }}>
@@ -91,7 +91,7 @@ export default function PlusMembershipCard() {
           <Sparkles className="w-5 h-5" style={{ color: WT.brand }} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-[14px] font-extrabold" style={{ color: WT.ink }}>프로 회원</div>
+          <div className="text-[14px] font-extrabold" style={{ color: WT.ink }}>Standard 회원</div>
           <div className="text-[12px]" style={{ color: WT.ink3 }}>만료 {fmtDate(info.plus_until)} · 연 {won(info.fee)}</div>
         </div>
         <button onClick={subscribe} disabled={busy}
@@ -103,7 +103,7 @@ export default function PlusMembershipCard() {
     )
   }
 
-  // 일반(C) — 구독 CTA.
+  // Basic(C) — 구독 CTA.
   return (
     <div className="rounded-2xl p-4 bg-white" style={{ border: '1px solid ' + WT.brand + '33' }}>
       <div className="flex items-center gap-3">
@@ -111,7 +111,7 @@ export default function PlusMembershipCard() {
           <Sparkles className="w-5 h-5" style={{ color: WT.brand }} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-[14px] font-extrabold" style={{ color: WT.ink }}>프로 멤버십 — 연 {won(info.fee)}</div>
+          <div className="text-[14px] font-extrabold" style={{ color: WT.ink }}>Standard 멤버십 — 연 {won(info.fee)}</div>
           <div className="text-[12px]" style={{ color: WT.ink3 }}>구독하면 더 낮은 공급가로 사입 · 예치금에서 결제</div>
         </div>
       </div>
@@ -119,7 +119,7 @@ export default function PlusMembershipCard() {
         <button onClick={subscribe} disabled={busy}
           className="flex-1 inline-flex items-center justify-center gap-1.5 h-11 rounded-xl text-white text-[13.5px] font-bold disabled:opacity-60"
           style={{ background: WT.brand }}>
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Sparkles className="w-4 h-4" /> 프로 구독하기</>}
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Sparkles className="w-4 h-4" /> Standard 구독하기</>}
         </button>
         {!info.can_afford && (
           <button onClick={() => navigate('/wholesale/deposits')}
@@ -128,7 +128,7 @@ export default function PlusMembershipCard() {
           </button>
         )}
       </div>
-      <p className="mt-2 text-[11px]" style={{ color: WT.ink4 }}>현재 예치금 {won(info.balance)} · 프리미엄(A)은 매출 달성 시 자동 승급</p>
+      <p className="mt-2 text-[11px]" style={{ color: WT.ink4 }}>현재 예치금 {won(info.balance)} · Premium(A)은 매출 달성 시 자동 승급</p>
     </div>
   )
 }

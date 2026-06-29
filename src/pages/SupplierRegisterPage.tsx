@@ -232,8 +232,8 @@ export default function SupplierRegisterPage() {
             {/* 🏭 2026-06-04 사업자등록증 이미지 (승인 심사용) */}
             <BusinessCertUpload value={licenseUrl} onChange={setLicenseUrl} required />
 
-            {/* 🏭 2026-06-09 대표자 정보 */}
-            <div className="pt-3 border-t border-gray-100">
+            {/* 🏭 2026-06-09 대표자 정보 · 2026-06-29 (대표): 유통사 가입처럼 구분선 명확화(pt-4 mt-4 border-gray-200). */}
+            <div className="pt-4 mt-4 border-t border-gray-200">
               <p className="text-sm font-bold text-gray-900 mb-3">{t('supplier.repSection', { defaultValue: '대표자 정보' })}</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -247,8 +247,8 @@ export default function SupplierRegisterPage() {
               </div>
             </div>
 
-            {/* 🏭 2026-06-09 담당자 정보 (+ 대표자와 동일 원클릭 복사) */}
-            <div className="pt-3 border-t border-gray-100">
+            {/* 🏭 2026-06-09 담당자 정보 (+ 대표자와 동일 원클릭 복사) · 2026-06-29 구분선 명확화 */}
+            <div className="pt-4 mt-4 border-t border-gray-200">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-bold text-gray-900">{t('supplier.managerSection', { defaultValue: '담당자 정보' })}</p>
                 <label className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 cursor-pointer select-none">
@@ -275,8 +275,9 @@ export default function SupplierRegisterPage() {
             {!kakaoUser && (
               <>
                 <div>
-                  {/* 🔢 2026-06-26 (대표 신고 #6): 위 '담당자 이메일'(선택)과 혼동 → 로그인 아이디임을 라벨에 명시. */}
-                  <label className={labelCls}>{t('supplier.fieldLoginEmail', { defaultValue: '이메일 (로그인 아이디)' })} <span className="text-red-500">*</span></label>
+                  {/* 🔢 2026-06-26 (대표 신고 #6): 위 '담당자 이메일'(선택)과 혼동 → 로그인 아이디임을 라벨에 명시.
+                      2026-06-29 (대표): 라벨 순서 '로그인 아이디 (이메일)' 로 — 로그인 용도를 앞세움. */}
+                  <label className={labelCls}>{t('supplier.fieldLoginEmail', { defaultValue: '로그인 아이디 (이메일)' })} <span className="text-red-500">*</span></label>
                   <input ref={reg('email')} type="email" inputMode="email" disabled={loading} value={form.email} onChange={set('email')} className={inputCls} placeholder="supplier@example.com" autoComplete="username" />
                   <p className="text-xs text-gray-400 mt-1">{t('supplier.loginEmailHint', { defaultValue: '이 이메일로 로그인합니다. 위 담당자 이메일과 달라도 됩니다.' })}</p>
                 </div>
@@ -294,8 +295,8 @@ export default function SupplierRegisterPage() {
                   {passwordConfirm && form.password !== passwordConfirm && <p className="text-xs text-red-500 mt-1">{t('supplier.errPwMismatch', { defaultValue: '비밀번호가 일치하지 않습니다' })}</p>}
                 </div>
 
-                <div className="pt-2 border-t border-gray-100">
-                  <p className="text-xs font-semibold text-gray-500 mb-3 mt-3">{t('supplier.settlementInfo', { defaultValue: '정산 계좌 (선택 — 나중에 등록 가능)' })}</p>
+                <div className="pt-4 mt-4 border-t border-gray-200">
+                  <p className="text-xs font-semibold text-gray-500 mb-3">{t('supplier.settlementInfo', { defaultValue: '정산 계좌 (선택 — 나중에 등록 가능)' })}</p>
                   <div className="grid grid-cols-3 gap-3">
                     <input disabled={loading} value={form.bank_name} onChange={set('bank_name')} className={inputCls} placeholder={t('supplier.phBank', { defaultValue: '은행' })} />
                     <input disabled={loading} value={form.bank_account} onChange={set('bank_account')} className={`${inputCls} col-span-2`} placeholder={t('supplier.phAccount', { defaultValue: '계좌번호' })} />

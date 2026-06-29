@@ -12,7 +12,7 @@ import { SUPPLY_CHANNELS, DEFAULT_SUPPLY_CHANNEL_THRESHOLDS, type SupplyChannelT
 import { GRADE_NAME } from '@/pages/wholesale/wholesale-theme'
 import AdminDistributorApprovalPage from '@/pages/admin/AdminDistributorApprovalPage'
 
-// 🏅 등급 코드(A/B/C…) + 친화 라벨(프리미엄/프로/일반) 동시 표기 — 운영자 혼동 방지.
+// 🏅 등급 코드(A/B/C…) + 친화 라벨(Premium/Standard/Basic) 동시 표기 — 운영자 혼동 방지.
 const gradeLabel = (g: string) => { const n = GRADE_NAME[g]; return n && n !== g ? `${g} · ${n}` : g }
 
 // 🏭 2026-06-01 유통스타트 도매몰 — 판매사 등급/마진 설정 (Phase 1b).
@@ -632,8 +632,8 @@ export default function AdminDistributorGradesPage() {
                   </div>
                 </div>
               </div>
-              <p className="text-xs text-gray-400">프로(B)는 판매사가 연 구독료를 <b>예치금에서 결제</b>해 1년간 적용(PG 미사용). 프리미엄(A)은 위 매출 임계 자동 승급. 일반(C)은 가입 승인 기본.</p>
-              <p className="text-xs text-gray-400">💰 <b>기본 플랫폼 마진율</b>: 제조사가 받을 금액(공급원가) <b>위에</b> 붙이는 기본 마진(%). 공급가 = 공급원가 × (1 + 이 값), 제조사 정산 = 공급원가 전액, 플랫폼 = 공급가 − 공급원가. 예) 마진 10% · 공급원가 10,000 → 공급가 11,000 / 제조사 10,000 / 플랫폼 1,000. <b>상품별로</b> 다르게(스프레드 큰 상품은 더 높게) 설정 가능하며, 고등급(프로/프리미엄) 판매사는 마진을 낮춰 더 싸게 공급합니다.</p>
+              <p className="text-xs text-gray-400">Standard(B)는 판매사가 연 구독료를 <b>예치금에서 결제</b>해 1년간 적용(PG 미사용). Premium(A)은 위 매출 임계 자동 승급. Basic(C)은 가입 승인 기본.</p>
+              <p className="text-xs text-gray-400">💰 <b>기본 플랫폼 마진율</b>: 제조사가 받을 금액(공급원가) <b>위에</b> 붙이는 기본 마진(%). 공급가 = 공급원가 × (1 + 이 값), 제조사 정산 = 공급원가 전액, 플랫폼 = 공급가 − 공급원가. 예) 마진 10% · 공급원가 10,000 → 공급가 11,000 / 제조사 10,000 / 플랫폼 1,000. <b>상품별로</b> 다르게(스프레드 큰 상품은 더 높게) 설정 가능하며, 고등급(Standard/Premium) 판매사는 마진을 낮춰 더 싸게 공급합니다.</p>
 
               {/* 임계값 테이블 */}
               <div>

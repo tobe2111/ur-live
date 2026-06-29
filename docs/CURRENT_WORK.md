@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-29 — 등급명 영문(Basic/Standard/Premium) 전수 정합 + 제조사 가입폼 정리
+**등급명 전수조사(대표 "약관·계약서 등 A,B,C 다 수정됐나")**: GRADE_NAME/GradeSheet(기완료) 외 잔존 옛이름(프리미엄/프로/일반) 사용자-가시 전부 영문화.
+- 약관/계약서(signup-contract·terms·privacy)엔 등급명 **없음**(클린 확인). 잔존은 멤버십/가이드/FAQ/알림/시드였음.
+- **PlusMembershipCard**(판매사 멤버십 카드) 프리미엄/프로 회원·멤버십·구독 → Premium/Standard. **wholesale-plus.routes** 알림·에러문구·구독 전부. **AdminDistributorGradesPage** 안내문(프로(B)/프리미엄(A)/일반(C)). **guide-seed-seller** 등급 설명. **WholesaleSupportPage** FAQ. **wholesale-grade-eval** 만료 알림(프로→Standard).
+- **DB 시드 라벨**: `distributor-admin/helpers`(seed + v2 + **신규 v3 relabel 마이그레이션** = 기존 DB 라벨 영문화, label만·마진/정렬 불변) + `repair-schema` 시드 → Premium/Standard/Basic.
+- **비대상(별개 개념, 유지)**: "프리미엄 전용관/프리미엄 상품"(쇼룸 큐레이션 — 등급 아님), 컨슈머 "일반 회원"(딜 적립 유저), 내부 주석/`distributor-pricing` A/B/C letter.
+**제조사 가입폼(`/supplier/register`)**: 이메일 라벨 "이메일 (로그인 아이디)" → **"로그인 아이디 (이메일)"**. 대표자/담당자/정산 섹션 구분선 `border-gray-100`→`pt-4 mt-4 border-gray-200`(유통사 가입처럼 명확화).
+- 검증: tsc 0 · build 0 · audit-gate 33 GREEN. ⚠️ 가이드(operation_guides)·등급 라벨은 배포 후 자동 재시드/마이그(v3) 또는 가이드 섹션 DELETE 재시드 1회.
+
 ## ✅ 2026-06-29 — 도매몰 미구현 7건 일괄 ("다 모두 이상적으로")
 16건 점검 → 미구현 7건 구현. (#3·4·5·9·10·11·12·13·14 는 기구현 확인)
 - **#2 상품상세 스마트스토어·쿠팡 등록 버튼 삭제** (`WholesaleProductPage` — 버튼·lazy 모달·state 전부 제거).

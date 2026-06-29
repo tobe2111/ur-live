@@ -1480,11 +1480,11 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       active INTEGER NOT NULL DEFAULT 1,
       updated_at DATETIME DEFAULT (datetime('now'))
     )` },
-    // 기본 등급 시드 (어드민이 /admin 에서 마진율 편집). 고등급(A)일수록 큰 보장마진(= 낮은 공급가). 프리미엄/프로/일반.
+    // 기본 등급 시드 (어드민이 /admin 에서 마진율 편집). 고등급(A)일수록 큰 보장마진(= 낮은 공급가). Basic/Standard/Premium (2026-06-29 영문화).
     { name: 'seed: distributor_grades', sql: `INSERT OR IGNORE INTO distributor_grades (grade, label, margin_pct, sort_order, is_special) VALUES
-      ('A','프리미엄',38,1,0),
-      ('B','프로',30,2,0),
-      ('C','일반',15,3,0),
+      ('A','Premium',38,1,0),
+      ('B','Standard',30,2,0),
+      ('C','Basic',15,3,0),
       ('D','D등급',8,4,0),
       ('OEM','OEM',40,5,0),
       ('SPECIAL','특별할인(기간한정)',45,9,1)` },
