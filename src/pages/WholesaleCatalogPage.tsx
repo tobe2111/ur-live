@@ -513,13 +513,14 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
 
           {/* 🧹 2026-06-17 (시안): 신뢰 신호 바 삭제 */}
 
-          {/* 🏭 2026-06-15 시안: 카테고리 타일 + 베스트 — 비로그인 마케팅 랜딩 */}
-          {!loggedIn && (
-            <div className="pt-4 space-y-8">
-              <CategoryTiles onPick={(id) => { setCat(id); setPremiumView(false); setBrandView(false); setSelectedBrand('') }} />
-              <BestGrid items={bestItems} onOpen={openDetail} onAdd={addToCart} onPrefetch={prefetchProduct} />
-            </div>
-          )}
+          {/* 🏭 2026-06-29 (대표 "로그인 안 한 페이지가 기준 / 구조 통일"): 카테고리 타일 + 베스트를
+              로그인 여부와 무관하게 표시. 기존엔 `!loggedIn` 게이트로 로그인 시 랜딩이 통째로 사라져
+              '다른 페이지' 느낌이었음 — 게스트 마케팅 랜딩 구조가 기준이고, 로그인은 가격(등급가)·개인화
+              레일만 '추가'되게 통일. (bestItems 는 home.best||items 라 로그인 무관 채워짐.) */}
+          <div className="pt-4 space-y-8">
+            <CategoryTiles onPick={(id) => { setCat(id); setPremiumView(false); setBrandView(false); setSelectedBrand('') }} />
+            <BestGrid items={bestItems} onOpen={openDetail} onAdd={addToCart} onPrefetch={prefetchProduct} />
+          </div>
 
           {/* 개인화 레일 (로그인 데이터 기반 — 빠른 재주문·전용 공급) */}
           <HomeRails
