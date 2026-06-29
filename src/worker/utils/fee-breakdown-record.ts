@@ -7,6 +7,11 @@
  *
  *   안전: 순수 additive(INSERT OR IGNORE) + fail-soft. FEE_RESOLVER_ENABLED='true' 일 때만 호출.
  *   per-agency 율·기간(어드민 설정)을 그대로 반영 — pctOverride + withinTerm 판정.
+ *   공급가(supplyCost)도 order_items 공급라인에서 계산해 주입 → 그림자 owner_net 이 authoritative
+ *   전환 후 값과 동일(검증 유효). promo(핀 소개비)만 미모델링(0) — 주인 자율값이라 per-order 권위 없음.
+ *
+ *   ⚠️ 멱등 INSERT OR IGNORE: 요율을 바꾼 뒤 같은 주문을 다시 기록해도 *덮어쓰지 않음*. 새 요율로
+ *   재계산하려면 백필(admin-fee-breakdown.routes recompute=1) 로 해당 주문 row 를 갱신.
  */
 import { resolveOrderFees, loadFeeRates, type AgencyContext } from './fee-resolver'
 import { swallow } from './swallow'
@@ -66,8 +71,25 @@ export async function recordOrderFeeBreakdown(
       }
     }
 
+    // 공급가(B2B 원가) — 공급상품 라인(supply_source_id)의 공급가 합. authoritative 전환 시 resolver 가
+    //   쓸 값과 동일하게 *여기서* 계산해야 검증이 유효(그림자 owner_net == 전환 후 owner_net).
+    //   supplier_settlements 의 supplier_amount(=supply_price, calcSupplySplit) 와 같은 base.
+    let supplyCost = 0
+    if (order.seller_id) {
+      const sc = await DB.prepare(`
+        SELECT COALESCE(SUM(COALESCE(sp.supply_price, 0) * oi.quantity), 0) AS supply_total
+          FROM order_items oi
+          JOIN products sp ON sp.id = oi.product_id
+         WHERE oi.order_id = ?
+           AND sp.supply_source_id IS NOT NULL
+           AND COALESCE(sp.supply_price, 0) > 0
+      `).bind(order.id).first<{ supply_total: number }>().catch(() => null)
+      const t = Math.round(Number(sc?.supply_total) || 0)
+      supplyCost = Number.isFinite(t) && t > 0 ? t : 0
+    }
+
     const rates = await loadFeeRates(DB)
-    const b = resolveOrderFees({ amount, ownership, productKind: 'shopping', agency }, rates)
+    const b = resolveOrderFees({ amount, ownership, productKind: 'shopping', supplyCost, agency }, rates)
     await ensureFeeBreakdownSchema(DB)
     await DB.prepare(
       `INSERT OR IGNORE INTO order_fee_breakdown
