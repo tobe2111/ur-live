@@ -174,6 +174,11 @@ node scripts/check-dashboard-login-session-coexist.mjs || true
 echo "==> Pre-commit: 소비자 상품 도매 격리 가드 (warn-only)..."
 node scripts/check-consumer-product-supply-isolation.mjs || true
 
+# 🏭 2026-06-29: 도매 자동 재로그인 ↔ 로그아웃 억제 가드 (warn-only).
+#   become-distributor/supplier-become 자동 probe 가 억제 게이트 없으면 명시 로그아웃이 풀림. CI strict.
+echo "==> Pre-commit: 도매 자동재로그인 억제 가드 (warn-only)..."
+node scripts/check-wholesale-autologin-guarded.mjs || true
+
 # 🛡️ 2026-06-18: group_buy_status 로 상품 종류(교환권/공구 vs 쇼핑) 판별·라우팅 금지 (warn-only).
 #   group_buy_status 는 모든 상품 DEFAULT 'active' → 종류 판별에 쓰면 쇼핑 상품이 교환권으로 오분류
 #   (핀 /group-buy 오라우팅 사고). 종류는 deal_only + isVoucherCategory SSOT 만. 차단은 verify.yml CI strict.

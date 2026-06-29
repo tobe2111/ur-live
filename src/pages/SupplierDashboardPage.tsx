@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { Package, Wallet, Receipt, LogOut, Truck, MessageCircle, Loader2, Download, Factory } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { supplierApi, isSupplierLoggedIn, clearSupplierSession } from '@/lib/supplier-api'
+import { setWholesaleLogoutFlag } from '@/utils/wholesale-session'
 import WholesaleDashboardShell, { type WholesaleNavItem } from '@/components/wholesale/WholesaleDashboardShell'
 // 🏭 2026-06-09 Wave 4b: 채팅 — adaptive 폴링(배지) + lazy 위젯(탭 열 때만 chunk fetch).
 import { useChatPoll } from '@/hooks/useChatPoll'
@@ -158,6 +159,9 @@ export default function SupplierDashboardPage() {
     const { clearServerSessionCookies } = await import('@/utils/auth')
     await clearServerSessionCookies('supplier')
     clearSupplierSession()
+    // 🏭 2026-06-29 (로그아웃 안 됨 fix): 카카오 세션 살아있어도 /supplier/login 의 자동 become probe 가
+    //   재로그인하지 못하게 억제 플래그 set. 명시 로그인 시 해제.
+    setWholesaleLogoutFlag()
     navigate('/supplier/login', { replace: true })
   }
 

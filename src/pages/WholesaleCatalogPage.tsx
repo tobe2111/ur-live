@@ -10,6 +10,7 @@ import WholesaleBannerCarousel from './wholesale/WholesaleBannerCarousel'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { getSupplierToken, clearSupplierSession } from '@/lib/supplier-api'
 import { logout as authLogout } from '@/utils/auth'
+import { wholesaleAutoLoginSuppressed, setWholesaleLogoutFlag } from '@/utils/wholesale-session'
 import { toast } from '@/hooks/useToast'
 import {
   WT, comma, WHOLESALE_CATEGORIES,
@@ -306,7 +307,8 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   //   사업자정보 400 → 무시하고 신청 배너 유지). SupplierLoginPage 의 /become 자동시도와 대칭.
   const [becoming, setBecoming] = useState(false)
   useEffect(() => {
-    if (!userSession || becoming) return
+    // 🏭 2026-06-29: 명시 로그아웃 직후엔 자동 재로그인(become-distributor) 억제 — 로그아웃이 풀리지 않게.
+    if (!userSession || becoming || wholesaleAutoLoginSuppressed()) return
     let cancelled = false
     setBecoming(true)
     api.post('/api/wholesale/become-distributor', {})
@@ -340,12 +342,14 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const logout = async () => {
     // 🏭 2026-06-08: 도매몰 로그아웃 — 판매사(seller) + 제조사(supplier) 세션 모두 정리(유저/어드민 세션 보존).
     //   둘 중 어느 역할로 들어왔든 한 버튼으로 로그아웃. full reload 로 토큰/RQ 캐시 깨끗이.
-    // 🔑 2026-06-29: 서버 세션쿠키(ur_seller_session) 삭제 await 후 하드이동 — 없으면 잔존 재인증.
+    // 🔑 2026-06-29: ① 서버 세션쿠키(ur_seller_session) 삭제 await(없으면 잔존 재인증) +
+    //   ② setWholesaleLogoutFlag 억제 플래그(카카오 세션 살아있어도 become 자동 probe 가 재로그인 못 함).
     await authLogout('seller')
     try { localStorage.removeItem('is_distributor') } catch { /* noop */ }
+    setWholesaleLogoutFlag()
     try { clearSupplierSession() } catch { /* noop */ }
     toast.success('로그아웃되었어요')
-    if (typeof window !== 'undefined') window.location.assign('/wholesale')
+    if (typeof window !== 'undefined') window.location.assign('/wholesale/login')
   }
   // 🏭 NOTI-1 (2026-06-08): 품절 상품 재입고 알림 구독 — 내 구독 product_id 집합 + 토글 핸들러.
   const [restockSubs, setRestockSubs] = useState<Set<number>>(new Set())
