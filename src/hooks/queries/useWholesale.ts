@@ -62,6 +62,7 @@ export interface WholesaleOrderRow {
   ship_to_phone?: string | null
   ship_to_address?: string | null
   ship_to_postal?: string | null
+  ship_to_message?: string | null
 }
 
 export interface WholesaleSummary {

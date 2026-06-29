@@ -300,6 +300,9 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
                       {o.ship_to_address && (
                         <p className="text-[12px]" style={{ color: WT.ink3 }}>{o.ship_to_postal ? `(${o.ship_to_postal}) ` : ''}{o.ship_to_address}</p>
                       )}
+                      {o.ship_to_message && (
+                        <p className="text-[12px] mt-0.5" style={{ color: WT.ink3 }}>💬 {o.ship_to_message}</p>
+                      )}
                     </div>
                   )}
 
