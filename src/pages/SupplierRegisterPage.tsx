@@ -206,13 +206,6 @@ export default function SupplierRegisterPage() {
             <Link to="/wholesale/join" className="font-semibold underline text-gray-600">{t('supplier.goDistributorJoin', { defaultValue: '판매사 가입 →' })}</Link>
           </p>
 
-          {/* 🏭 2026-06-08 카카오 통합 (WholesaleJoinPage 와 대칭): 카카오로 로그인된 유저는 사업자 정보만 입력. */}
-          {kakaoUser && (
-            <div className="mb-5 rounded-xl px-4 py-3 text-sm" style={{ background: '#FEF6D9', color: '#7A5C00' }}>
-              {t('supplier.kakaoModeNotice', { defaultValue: '카카오 계정으로 진행 중 — 사업자 정보만 입력하면 승인 심사로 넘어갑니다.' })}
-            </div>
-          )}
-
           {error && (
             <div className="mb-5 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
               <p className="text-sm text-red-700">{error}</p>

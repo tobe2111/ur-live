@@ -222,10 +222,7 @@ export default function WholesaleJoinPage() {
         <div className="rounded-2xl border border-[#ECEEF1] p-5 mb-6 bg-[#F8F9FB]">
           <ul className="space-y-2.5 text-[13px] text-[#4E5560]">
             {[
-              '사업자 정보 확인 후 승인 — 승인 즉시 C등급 공급가(실적 쌓이면 A·B)',
-              '제조사 신원·원가 비공개, 등급 공급가만 열람',
-              '엑셀 대량 주문 · 단가표 다운 · OEM/ODM 신청',
-              '가입비·월 고정비 0원',
+              '사업자 정보 확인 후 승인',
             ].map((t, i) => (
               <li key={i} className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-[#FC5424] shrink-0 mt-0.5" />{t}</li>
             ))}
