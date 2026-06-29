@@ -49,13 +49,13 @@ export const GRADE_LABEL: Record<string, string> = {
 }
 
 /**
- * 🏷️ 2026-06-15 (대표 모델 확정) 회원 등급명 — 일반 / 프로 / 프리미엄.
+ * 🏷️ 2026-06-29 (대표 확정) 회원 등급명 — Basic / Standard / Premium.
  *   엔진(distributor-pricing 코드 A/B/C)은 무변경, 표시명만 매핑 → 머니 로직 0 리스크.
- *   프리미엄 = A(일정 매출 달성, 최저 공급가) · 프로 = B(연 구독, 우대 공급가) · 일반 = C(승인 가입, 기본).
+ *   Premium = A(일정 매출 달성, 최저 공급가) · Standard = B(연 구독, 우대 공급가) · Basic = C(승인 가입, 기본).
  *   D/OEM/특별가는 어드민 엣지 케이스로 라벨 유지.
  */
 export const GRADE_NAME: Record<string, string> = {
-  A: '프리미엄', B: '프로', C: '일반', D: 'D', OEM: 'OEM', SPECIAL: '특별가',
+  A: 'Premium', B: 'Standard', C: 'Basic', D: 'D', OEM: 'OEM', SPECIAL: '특별가',
 }
 
 /**

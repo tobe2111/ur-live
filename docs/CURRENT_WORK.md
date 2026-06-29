@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-29 — 도매 대량발주(엑셀·드랍십) + 등급명 + 상단 '마이' (대표 요청 3건)
+**1) 대량발주 드랍십 (받는사람별 직배, "셀파이는 참고만")** — 한 행 = 한 명에게 보내는 1건. 같은 상품도 받는사람 다르면 별개 라인. 매칭 = `product_id`(우선) 또는 `상품코드`("둘 다" — 판매사별 자동학습 맵 + 제조사 ext_code 폴백, `wholesale-code-map.ts`). 상품상세1=옵션(비가격 패스스루).
+- **금액 경로 byte-불변**: `/orders` POST 의 합산기준 MOQ/박스단위/재고/수량구간 단가 산식 그대로(묶음 사입과 합계 동일). `body.dropship` 면 받는사람별 라인으로 *분해만*(INSERT/재고차감), `Σ라인==subtotal` 검증. 비드랍십은 `insertLines=lines` byte-identical. 예치금 CAS/보상환불/정산 무변경.
+- **스키마**(`wholesale_order_items` self-heal ALTER): `option_label·ext_order_no·ship_to_{name,phone,postal,address,message}`. products/sellers 아님 → 컬럼예산 무관.
+- **양식**(`/order-template`): 카탈로그 프리필(product_id·상품코드·공급가) + 받는사람/옵션/주문수량 빈칸. `bulk-preview` 받는사람별 미리보기(코드 해석·검증). `BulkOrderPanel` 재작성: 드랍십 파서(우리 양식 + 외부 발주서 헤더 유연 인식)·받는사람별 미리보기·**예치금 즉시 발주**(카트 미경유, idempotency_key).
+- **표시**: 제조사 `SupplierWholesaleOrdersPage`(라인별 받는사람·옵션·메모, 받는사람 다르면 합배송 비활성) + CSV export(옵션·받는분·주소·배송메시지) / 판매사 `WholesaleOrdersPage`(라인 옵션·받는사람).
+**2) 등급명** — Basic=C / Standard=B / Premium=A (`GRADE_NAME`·`GradeSheet` 영문 통일, 엔진 코드 A/B/C 불변).
+**3) `/wholesale` 상단 '내 공간' → 사람 아이콘 + '마이'** (`WholesaleUtilBar`).
+- 검증: tsc 0·build 0·audit-gate 33 GREEN. ⚠️ staging 1회 권장: 드랍십 엑셀 업로드→미리보기→예치금 발주→제조사 받는사람별 송장.
+
 ## ✅ 2026-06-29 — 판매사 로그인 속도 최적화 (대표 "최대한 빨라져야 해")
 **원인**: 제조사(SupplierLoginPage)는 이미 SPA `navigate('/supplier')`였으나 **판매사(WholesaleLoginPage)는 `window.location.assign('/wholesale')` full reload**(앱 번들 재다운로드) → 로그인 클릭 후 흰 화면 체감.
 - **수정**: 이메일 로그인 + 카카오 probe 성공 시 `assign` → `navigate('/wholesale', {replace:true})`. `applySellerSession`이 seller_token 을 localStorage 에 *동기* set 후라 카탈로그(`loggedIn=!!token` render 시 읽음)가 토큰 인지 — 제조사와 동일 패턴, 안전. 카카오 OAuth 시작(`window.location.href=/auth/kakao/start`)은 그대로(불가피).

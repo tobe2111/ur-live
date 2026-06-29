@@ -39,12 +39,18 @@ app.get('/orders', async (c) => {
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const { DB } = c.env
   try {
+    await ensureOrderTables(DB) // 📦 드랍십 라인 컬럼(option_label/ship_to_*) 보장(콜드 isolate — 이 read 는 ensure 안 거침).
     const { results } = await DB.prepare(`
       SELECT i.id AS item_id, i.wholesale_order_id, i.name, i.qty, i.base_supply_price,
              (i.base_supply_price * i.qty) AS settle_amount,
              i.courier, i.tracking_number, i.shipped_at, i.line_status,
+             i.option_label, i.ext_order_no, i.ship_to_message,
              o.status AS order_status, o.created_at, o.paid_at,
-             o.ship_to_name, o.ship_to_phone, o.ship_to_address, o.ship_to_postal
+             -- 📦 드랍십: 라인별 받는사람 우선, 없으면 주문(판매사) 배송지 폴백.
+             COALESCE(i.ship_to_name, o.ship_to_name) AS ship_to_name,
+             COALESCE(i.ship_to_phone, o.ship_to_phone) AS ship_to_phone,
+             COALESCE(i.ship_to_address, o.ship_to_address) AS ship_to_address,
+             COALESCE(i.ship_to_postal, o.ship_to_postal) AS ship_to_postal
       FROM wholesale_order_items i
       JOIN wholesale_orders o ON o.id = i.wholesale_order_id
       WHERE i.supplier_id = ? AND o.status IN (${sqlStatusList(ACTIVE_WHOLESALE_STATUSES)})
@@ -62,23 +68,29 @@ app.get('/orders/export', async (c) => {
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const { DB } = c.env
   try {
+    await ensureOrderTables(DB) // 📦 드랍십 라인 컬럼 보장(콜드 isolate).
     const onlyToShip = c.req.query('status') !== 'all'
     const statusWhere = onlyToShip ? "AND i.line_status = 'PENDING'" : ''
     const { results } = await DB.prepare(`
       SELECT i.id AS item_id, i.wholesale_order_id, i.name, i.qty, i.base_supply_price,
              (i.base_supply_price * i.qty) AS settle_amount, i.line_status,
-             o.ship_to_name, o.ship_to_phone, o.ship_to_address, o.ship_to_postal, o.paid_at
+             i.option_label, i.ext_order_no, i.ship_to_message,
+             COALESCE(i.ship_to_name, o.ship_to_name) AS ship_to_name,
+             COALESCE(i.ship_to_phone, o.ship_to_phone) AS ship_to_phone,
+             COALESCE(i.ship_to_address, o.ship_to_address) AS ship_to_address,
+             COALESCE(i.ship_to_postal, o.ship_to_postal) AS ship_to_postal, o.paid_at
       FROM wholesale_order_items i
       JOIN wholesale_orders o ON o.id = i.wholesale_order_id
       WHERE i.supplier_id = ? AND o.status IN (${sqlStatusList(ACTIVE_WHOLESALE_STATUSES)}) ${statusWhere}
       ORDER BY o.created_at DESC LIMIT 5000
     `).bind(sid).all<Record<string, unknown>>()
-    const headers = ['item_id', 'order_id', '상품명', '수량', '공급가', '정산금액', '상태', '받는분', '연락처', '주소', '우편번호', '결제일', 'courier', 'tracking_number']
+    // 📦 드랍십 발송용 — 받는분/주소/옵션/배송메시지 포함(제조사가 각 받는사람에게 직배).
+    const headers = ['item_id', 'order_id', '주문번호', '상품명', '옵션', '수량', '공급가', '정산금액', '상태', '받는분', '연락처', '주소', '우편번호', '배송메시지', '결제일', 'courier', 'tracking_number']
     const rows: (string | number | null | undefined)[][] = (results || []).map(r => [
-      Number(r.item_id), Number(r.wholesale_order_id), String(r.name ?? ''), Number(r.qty),
+      Number(r.item_id), Number(r.wholesale_order_id), String(r.ext_order_no ?? ''), String(r.name ?? ''), String(r.option_label ?? ''), Number(r.qty),
       Number(r.base_supply_price), Number(r.settle_amount), String(r.line_status ?? ''),
       String(r.ship_to_name ?? ''), String(r.ship_to_phone ?? ''), String(r.ship_to_address ?? ''),
-      String(r.ship_to_postal ?? ''), String(r.paid_at ?? ''), '', '',
+      String(r.ship_to_postal ?? ''), String(r.ship_to_message ?? ''), String(r.paid_at ?? ''), '', '',
     ])
     return xlsxResponse(buildXlsx(headers, rows), `wholesale-orders-${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (err) {
