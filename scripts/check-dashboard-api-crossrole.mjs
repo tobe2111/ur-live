@@ -61,6 +61,9 @@ for (const f of files) {
   const group = GROUPS.find((g) => g.match(f))
   if (!group) continue
   const src = read(f)
+  // 예외: 양역할 공용 컴포넌트(kind 로 supplier↔wholesale base 분기 — 그 역할 토큰일 때만 해당 API 호출).
+  //   파일에 `crossrole-ok` 주석이 있으면 스킵(정적 검사는 kind 게이팅을 못 봄). 다른 가드와 동일 패턴.
+  if (/crossrole-ok/.test(src)) continue
   const seen = new Set()
   for (const m of src.matchAll(/['"`]\/api\/([a-z0-9-]+)/g)) {
     const seg = m[1]

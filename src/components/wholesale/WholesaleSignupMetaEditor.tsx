@@ -7,6 +7,8 @@ import { WHOLESALE_CATEGORIES } from '@/pages/wholesale/wholesale-theme'
 // 🏭 2026-06-29 (E): 가입 시 입력한 취급 카테고리 + 판매/유통 채널을 대시보드에서 사후 수정.
 //   kind='supplier'(제조사=공급 카테고리/희망 유통채널) | 'distributor'(판매사=취급 카테고리/주력 판매채널).
 //   라이트 테마(대시보드 계열). 백엔드: GET/PATCH /api/{supplier|wholesale}/signup-meta.
+// crossrole-ok: kind 별로 base 를 supplier↔wholesale 로 분기 — `/api/supplier/*` 는 kind==='supplier'
+//   (제조사 대시보드, supplierApi 토큰)일 때만 호출. 판매사(distributor)는 `/api/wholesale/*`. 교차역할 403 없음.
 type Kind = 'supplier' | 'distributor'
 
 export default function WholesaleSignupMetaEditor({ kind, brandColor = '#FC5424' }: { kind: Kind; brandColor?: string }) {
