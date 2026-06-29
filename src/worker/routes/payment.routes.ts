@@ -523,6 +523,23 @@ paymentsRouter.post('/confirm', async (c) => {
         } catch (e) {
           logError('payment.supplier_credit_failed', { error: String(e).slice(0, 200) })
         }
+
+        // 🆕 2026-06-27 [UNLOCK] (대표 "배선하는 길로" 승인): fee-resolver 그림자 기록.
+        //   FEE_RESOLVER_ENABLED='true' 일 때만 — 새 수수료 규칙 분배를 *계산만 해서* order_fee_breakdown
+        //   에 기록(실제 정산/적립/위 커미션 전부 무변경). 스테이징 검증용. 기본 OFF=현행 100% 동일.
+        //   ⚠️ Toss confirm/금액검증/CAS/재고/딜차감/위 커미션 전부 byte-불변 — additive 기록 1블록만.
+        if (c.env.FEE_RESOLVER_ENABLED === 'true') {
+          try {
+            const { recordOrderFeeBreakdown } = await import('../utils/fee-breakdown-record')
+            for (const order of orders) {
+              await recordOrderFeeBreakdown(c.env.DB, {
+                id: Number(order.id),
+                seller_id: (order as unknown as { seller_id?: number | null }).seller_id ?? null,
+                total_amount: (order as unknown as { total_amount?: number | null }).total_amount ?? null,
+              }).catch(() => {})
+            }
+          } catch { /* fail-soft — 기록 실패가 결제 무영향 */ }
+        }
       }
       let _fxDeferred = false
       try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_confirmSideFx()); _fxDeferred = true } } catch { /* no ctx */ }
