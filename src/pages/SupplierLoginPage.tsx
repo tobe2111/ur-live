@@ -12,6 +12,7 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import { toast } from '@/hooks/useToast'
 import { setSupplierSession, isSupplierLoggedIn } from '@/lib/supplier-api'
 import { useWholesaleMall } from '@/hooks/queries/useWholesale'
+import { wholesaleAutoLoginSuppressed, clearWholesaleLogoutFlag } from '@/utils/wholesale-session'
 
 export default function SupplierLoginPage() {
   const { t } = useTranslation()
@@ -38,7 +39,8 @@ export default function SupplierLoginPage() {
     if (isSupplierLoggedIn()) { navigate('/supplier', { replace: true }); return }
     // 🏭 2026-06-04 카카오 통합: 카카오 유저로 로그인된 채 돌아오면 제조회원 전환/로그인 자동 시도.
     //   승인됨 → supplier 세션 + /supplier. 미승인 → 승인 대기 안내. (세션 쿠키로 인증)
-    if (typeof window !== 'undefined' && localStorage.getItem('user_id')) {
+    // 🏭 2026-06-29: 명시 로그아웃 직후 카카오 세션 자동 probe 억제(로그아웃 유지).
+    if (typeof window !== 'undefined' && localStorage.getItem('user_id') && !wholesaleAutoLoginSuppressed()) {
       (async () => {
         try {
           const res = await fetch('/api/supplier/become', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}' })
@@ -64,6 +66,7 @@ export default function SupplierLoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    clearWholesaleLogoutFlag() // 명시 로그인 — 자동 probe 억제 해제.
     setLoading(true)
     try {
       const res = await fetch('/api/supplier/login', {
@@ -230,7 +233,7 @@ export default function SupplierLoginPage() {
               <span className="text-xs text-gray-400">또는</span>
               <div className="flex-1 h-px bg-gray-200" />
             </div>
-            <button type="button" onClick={() => { window.location.href = '/auth/kakao/start?redirect=/supplier/login&intent=user' }}
+            <button type="button" onClick={() => { clearWholesaleLogoutFlag(); window.location.href = '/auth/kakao/start?redirect=/supplier/login&intent=user' }}
               className="w-full h-12 rounded-xl font-bold text-sm" style={{ background: '#FEE500', color: '#3C1E1E' }}>
               카카오로 제조사 입점·로그인
             </button>

@@ -19,7 +19,7 @@ import { useWholesaleMe, useWholesaleOrders, useWholesaleDeposit, type Wholesale
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
 import type { WholesaleNavItem } from '@/components/wholesale/WholesaleDashboardShell'
 import { getSupplierToken } from '@/lib/supplier-api'
-import { clearAuthData } from '@/utils/auth'
+import { markWholesaleLoggedOut } from '@/utils/wholesale-session'
 import WholesaleDashboardShell from '@/components/wholesale/WholesaleDashboardShell'
 import PlusMembershipCard from '@/components/wholesale/PlusMembershipCard'
 
@@ -118,9 +118,10 @@ export default function WholesaleDashboardPage() {
   const activeTabLabel = tabDefs.find((tb) => tb.key === tab)?.label ?? '판매사 대시보드'
 
   const logout = () => {
-    clearAuthData('seller')
-    try { localStorage.removeItem('is_distributor') } catch { /* ignore */ }
-    window.location.assign('/wholesale')
+    // 🏭 2026-06-29 (대표 신고 "로그아웃이 전혀 안돼"): 억제 플래그 set → 카카오 세션이 살아있어도
+    //   다음 페이지의 become-distributor 자동 probe 가 즉시 재로그인하지 못함. 로그인 화면으로.
+    markWholesaleLoggedOut()
+    window.location.assign('/wholesale/login')
   }
 
   const headerRight = (

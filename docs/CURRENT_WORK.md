@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-29 — 도매 "로그아웃이 전혀 안돼" 근본수정 (대표 신고 — 판매사/제조사)
+**원인**: 도매 페이지(WholesaleCatalogPage/LoginPage/JoinPage·SupplierLoginPage)가 마운트 시 카카오 소비자 세션(`user_id`)만 있으면 자동으로 `become-distributor`/`/supplier/become` 호출 → seller/supplier 토큰 재발급. 로그아웃이 토큰만 지워도 **카카오 세션이 살아있으면 다음 로드에서 즉시 자동 재로그인** → "로그아웃이 안 됨"(새로고침되며 로그인 상태 복귀).
+- **수정(`src/utils/wholesale-session.ts` 신설)**: `markWholesaleLoggedOut`(seller 정리 + 억제 플래그 `ur_wholesale_logout` set) / `setWholesaleLogoutFlag`(제조사용) / `wholesaleAutoLoginSuppressed`(probe 게이트) / `clearWholesaleLogoutFlag`(명시 로그인 시 해제). 3개 로그아웃 핸들러(판매사 대시보드/카탈로그/예치금) + 제조사 대시보드 로그아웃 → 플래그 set + `/wholesale/login`. 4개 자동 probe → `|| wholesaleAutoLoginSuppressed()` 게이트. 명시 로그인(이메일 제출·카카오 버튼 ×판매사/제조사) → 플래그 해제. **카카오 소비자 세션 자체는 보존(분리/공존 유지)** — 명시 로그아웃~명시 로그인 사이만 자동 probe 억제.
+- **영구 가드** `check-wholesale-autologin-guarded.mjs`(audit-gate auth + verify.yml strict + pre-commit): become 자동 probe 보유 파일은 억제 게이트 필수.
+- 검증: tsc 0·build 0·gate auth 8 GREEN·internal-links/dual-login/coexist/crossrole 0·회귀주입 catch.
+
 ## ✅ 2026-06-29 — 환경 준비상태 진단(어드민) (대표 "다른 운영자/브라우저/장소에서 써도 환경 세팅 다 됐어?")
 **검증 가능한 답** — 대시보드 로그인/보안을 게이트하는 Cloudflare 바인딩·시크릿이 실제 설정됐는지 런타임 점검. **시크릿 값은 노출 0(present 불리언만)**.
 - **`GET /api/health/env-readiness`**(admin): JWT_SECRET(blocking — 없으면 전 대시보드 로그인 500)·FRONTEND_URL / RATE_LIMIT_KV·TURNSTILE·DATA_ENCRYPTION_KEY·INTERNAL_API_TOKEN(security fail-open) / SESSION_KV·CACHE_KV(perf) / TOSS(결제) / 선택기능 분류 + DB 연결성. `ready`=blocking 전부+DB OK. 기존 `/api/health` 갭(있을 때만 KV 핑·시크릿 미점검) 보완.

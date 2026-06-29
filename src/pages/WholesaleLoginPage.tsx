@@ -12,6 +12,7 @@ import { toast } from '@/hooks/useToast'
 import { Loader2, Factory, ArrowRight, Users } from 'lucide-react'
 import { useWholesaleMall } from '@/hooks/queries/useWholesale'
 import { WholesaleWordmark } from './wholesale-catalog/WholesaleLogo'
+import { wholesaleAutoLoginSuppressed, clearWholesaleLogoutFlag } from '@/utils/wholesale-session'
 
 type SellerSessionData = {
   accessToken: string
@@ -60,7 +61,8 @@ export default function WholesaleLoginPage() {
   //   seller_token 자동 교환 (SupplierLoginPage 의 /supplier/become 자동 probe 와 대칭 — 카카오 콜백 토큰
   //   누락 엣지 보강). 신규/미승인은 조용히 폼 유지. requireAuth 는 세션 쿠키(credentials:include)로 인증.
   useEffect(() => {
-    if (alreadyIn || typeof window === 'undefined' || !localStorage.getItem('user_id')) return
+    // 🏭 2026-06-29: 명시 로그아웃 직후엔 카카오 세션 자동 probe 억제(로그아웃 유지). 명시 로그인 시 해제됨.
+    if (alreadyIn || typeof window === 'undefined' || !localStorage.getItem('user_id') || wholesaleAutoLoginSuppressed()) return
     let cancelled = false
     ;(async () => {
       try {
@@ -87,6 +89,7 @@ export default function WholesaleLoginPage() {
     e.preventDefault()
     if (loading) return
     if (!email.trim() || !password) { toast.error('이메일과 비밀번호를 입력해주세요'); return }
+    clearWholesaleLogoutFlag() // 명시 로그인 — 자동 probe 억제 해제.
     setLoading(true)
     try {
       const r = await api.post('/api/seller/login', { email: email.trim(), password })
@@ -191,7 +194,7 @@ export default function WholesaleLoginPage() {
           <span className="text-[12px]" style={{ color: '#8A929E' }}>또는</span>
           <div className="flex-1 h-px" style={{ background: '#ECEEF1' }} />
         </div>
-        <button type="button" onClick={() => { window.location.href = '/auth/kakao/start?redirect=/wholesale&intent=user' }}
+        <button type="button" onClick={() => { clearWholesaleLogoutFlag(); window.location.href = '/auth/kakao/start?redirect=/wholesale&intent=user' }}
           className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-xl font-bold text-[15px]" style={{ background: '#FEE500', color: '#3C1E1E' }}>
           카카오로 계속하기
         </button>

@@ -12,6 +12,7 @@ import { toast } from '@/hooks/useToast'
 import { Store, ArrowRight, CheckCircle2, Loader2, Factory } from 'lucide-react'
 import BusinessCertUpload from '@/components/BusinessCertUpload'
 import { formatBizNo, formatPhoneKr } from '@/utils/format-kr'
+import { wholesaleAutoLoginSuppressed, clearWholesaleLogoutFlag } from '@/utils/wholesale-session'
 import { digitsOnly, isValidKrPhone, isValidEmail } from '@/utils/form-validators'
 import { useWholesaleMall } from '@/hooks/queries/useWholesale'
 import { WholesaleWordmark } from './wholesale-catalog/WholesaleLogo'
@@ -31,7 +32,8 @@ export default function WholesaleJoinPage() {
   //   빈 body 프로브: 기존 신청자(pending)면 status='pending', 미신청이면 needs_registration(폼 유지).
   const [pendingStatus, setPendingStatus] = useState(false)
   useEffect(() => {
-    if (!kakaoUser) return
+    // 🏭 2026-06-29: 명시 로그아웃 직후 자동 재로그인 억제.
+    if (!kakaoUser || wholesaleAutoLoginSuppressed()) return
     api.post('/api/wholesale/become-distributor', {})
       .then((r) => {
         const d = r.data || {}
@@ -114,6 +116,7 @@ export default function WholesaleJoinPage() {
     // 🛡️ 2026-06-25: 서버(relaxed)의 '같은 문자 4회 반복 금지'와 일치 — 옛 클라는 미검사라 "aaaa1234" 통과 후 서버 400 혼선.
     if (!kakaoUser && /(.)\1{3,}/.test(form.password)) { failAt('password', '비밀번호에 같은 문자를 4번 이상 연속 사용할 수 없습니다'); return }
     if (!kakaoUser && form.password !== passwordConfirm) { failAt('passwordConfirm', '비밀번호가 일치하지 않습니다'); return }
+    clearWholesaleLogoutFlag() // 명시 가입/로그인 — 자동 probe 억제 해제.
     setLoading(true)
     try {
       // 담당자 이메일 — 미입력 시 로그인 이메일을 비즈니스 연락 이메일로 사용.

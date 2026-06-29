@@ -20,7 +20,7 @@ import {
   type WholesaleDepositTxn, type WholesaleChargeStatus,
 } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
-import { clearAuthData } from '@/utils/auth'
+import { markWholesaleLoggedOut } from '@/utils/wholesale-session'
 import WholesaleDashboardShell from '@/components/wholesale/WholesaleDashboardShell'
 import { useIsWholesaleViewer, ViewerNotice } from './wholesale/ViewerGate'
 
@@ -82,9 +82,8 @@ export default function WholesaleDepositPage({ embedded = false }: { embedded?: 
   const navItems = buildWholesaleNav(location.pathname, navigate)
 
   const logout = () => {
-    clearAuthData('seller')
-    try { localStorage.removeItem('is_distributor') } catch { /* ignore */ }
-    window.location.assign('/wholesale')
+    markWholesaleLoggedOut()
+    window.location.assign('/wholesale/login')
   }
 
   // 👥 2026-06-12 (감사 부채): viewer 직원 — 충전 신청 서버 403 전 UI 사전 안내.
