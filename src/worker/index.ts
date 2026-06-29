@@ -137,6 +137,7 @@ import { wholesalePriceReferenceRoutes } from '../features/supply/api/wholesale-
 import wholesaleTaxRoutes from '../features/supply/api/wholesale-tax.routes';
 import { wholesaleIntegrityRoutes } from '../features/supply/api/wholesale-integrity.routes';
 import { wholesaleNotificationsRoutes } from '../features/supply/api/wholesale-notifications.routes';
+import { wholesaleShipAddressRoutes } from '../features/supply/api/wholesale-ship-address.routes';
 import { wholesaleDepositRoutes, adminWholesaleDepositRoutes } from '../features/supply/api/wholesale-deposit.routes';
 import { wholesalePlusRoutes } from '../features/supply/api/wholesale-plus.routes';
 import { supplierWithdrawalRoutes, adminWholesaleWithdrawalRoutes } from '../features/supply/api/supplier-withdrawal.routes';
@@ -1398,6 +1399,7 @@ app.route('/api/wholesale/naver', naverCommerceRoutes); // 🛒 2026-06-12: 판�
 app.route('/api/wholesale/coupang', coupangCommerceRoutes); // 🛒 2026-06-12: 판매사 쿠팡 연동 (Wing 오픈API — 내보내기)
 app.route('/api/wholesale', wholesaleQuotesRoutes);  // BIZ-3: 견적/발주(Quote/PO) 워크플로
 app.route('/api/wholesale', wholesaleNotificationsRoutes); // NOTI-1: 재입고 알림 + 주문 메모 스레드
+app.route('/api/wholesale', wholesaleShipAddressRoutes); // 🚚 판매사 배송지 주소록(기본/최근) — 체크아웃
 app.route('/api/supplier', supplierAnalyticsRoutes); // BIZ-6: 공급사 분석 + 가격일괄/재고import
 app.route('/api/supplier', supplierWithdrawalRoutes); // 🏦 제조사 정산금 출금 신청/내역 (requireSupplier)
 app.route('/api/admin/wholesale', wholesalePriceReferenceRoutes); // BIZ-5: 네이버 최저가 참고값(어드민 검수)
