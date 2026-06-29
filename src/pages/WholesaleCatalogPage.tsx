@@ -53,15 +53,6 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const navigate = useNavigate()
   const { t } = useTranslation()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
-  // 🏭 2026-06-29 (대표 결정 — 제조사 자연 안내): /wholesale 카탈로그는 판매사(구매자) 매장이다.
-  //   로그인된 제조사(supplier_token 보유, 판매사 아님)는 자기 홈인 /supplier 대시보드로 안내 —
-  //   '게스트로 어정쩡하게 보이는' 상태 제거. 겸업(seller_token 도 보유)이면 정상 카탈로그 유지.
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const hasSupplier = !!localStorage.getItem('supplier_token')
-    const hasSeller = !!localStorage.getItem('seller_token')
-    if (hasSupplier && !hasSeller) navigate('/supplier', { replace: true })
-  }, [navigate])
   // 🏭 2026-06-10 (사용자 요청): 찜리스트 — 로그인 시 1회 로드, 카드 하트 토글(낙관 업데이트).
   const [wishedIds, setWishedIds] = useState<Set<number>>(new Set())
   useEffect(() => {
@@ -302,7 +293,10 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   //   /wholesale 카탈로그는 등급가·제조사 신원 비공개의 "판매사(구매자) 전용" 구조라, 제조사가 여기 있으면
   //   상단에 '제조사 대시보드'가 떠 어색. 제조사 홈(/supplier)으로 자동 이동(각 역할이 자기 홈).
   //   판매사 토큰(seller_token)이 있으면 구매자로서 정상 열람 → 리다이렉트 X(겸업 판매사 보호).
-  const supplierOnly = !!supplierToken && !loggedIn
+  // 🏭 2026-06-29 (통합 셸 Phase 3): `?preview=1` 이면 리다이렉트 우회 — 제조사가 상단바 '카탈로그 미리보기'
+  //   로 의도적으로 매장을 둘러보게(게스트 뷰). 일반 진입(파라미터 없음)은 기존대로 /supplier 자연 안내.
+  const isPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === '1'
+  const supplierOnly = !!supplierToken && !loggedIn && !isPreview
   useEffect(() => {
     if (supplierOnly) navigate('/supplier', { replace: true })
   }, [supplierOnly, navigate])

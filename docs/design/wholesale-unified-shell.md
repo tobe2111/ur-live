@@ -54,5 +54,9 @@
 - [x] **Phase 2** (2026-06-29): `/supplier` 대시보드 라우트를 판매사와 **동일한 `WholesaleLayout`(공용 상단바)** 산하로 — 제조사 섬 제거. 바는 역할 인지(supplier 분기). 로그인/가입은 바 없이 유지.
 - [x] **Phase 3** (2026-06-29): `WholesaleUtilBar` 제조사 분기를 판매사처럼 **신원(회사명·역할) + 빠른 네비(주문 관리)** 로 보강 — 역할 인지 일관. (정산 칩·내공간 드롭다운은 추후 — 정산 잔액 쿼리 신설 필요)
 
-> 검증: tsc 0 · 단위 2361 pass · build 0 · audit-gate 31 GREEN · crossrole 0 · theme/mobile 0 · Playwright 카탈로그 헤더 스샷 정상.
-> 남은 후속(선택): 제조사 정산 잔액 칩, "내 공간" 드롭다운(주문/거래내역서 묶음), 제조사용 카탈로그 미리보기(현재 supplierOnly 리다이렉트와 상충 — `?preview=1` 바이패스 필요).
+- [x] **Phase 3+ 후속** (2026-06-29):
+  - **제조사 정산 잔액 칩** — `useSupplierBalance`(`/api/supplier/me` balance.available_amount, supplier_token 게이트) 신설. ⚠️ supplier API 호출은 *훅 파일*에 격리(공용 바=판매사 storefront 그룹이라 직접 호출 시 crossrole 가드 막음). 바 제조사 분기에 `정산 ₩X` 칩(판매사 예치금 칩에 대응).
+  - **"내 공간" 드롭다운** — 2차 링크(대시보드/주문/거래내역서/견적함 · 제조사=대시보드/주문/정산·출금/카탈로그 미리보기 + 로그아웃)를 바깥클릭·Esc 닫힘 팝오버로 정리(디클러터). 신원+잔액칩+(판매사 충전 CTA)만 인라인 유지.
+  - **카탈로그 미리보기** — `WholesaleCatalogPage` 의 `supplierOnly` 리다이렉트를 `?preview=1` 시 우회 → 제조사가 의도적으로 매장 둘러보기 가능(중복이던 옛 리다이렉트 effect 1개 제거·정리). `SupplierDashboardPage` 가 `?tab=settlements` 등 딥링크 honor.
+
+> 검증: tsc 0 · 단위 2361 pass · build 0 · audit-gate 31 GREEN · **crossrole 0(공용 바가 supplier API 직접호출 안 함 — 훅 격리)** · theme/mobile 0 · Playwright 카탈로그 헤더 + 내 공간 드롭다운(판매사) 스샷 정상.
