@@ -43,9 +43,10 @@ const AdminWholesaleProductsPage = lazy(() => import('@/pages/admin/AdminWholesa
 const AdminWholesaleMallsPage = lazy(() => import('@/pages/admin/AdminWholesaleMallsPage'))
 // 🏬 Phase 2 (2026-06-09): 크로스-몰 도매 통합 현황 (운영자 랜딩).
 const AdminWholesaleOverviewPage = lazy(() => import('@/pages/admin/AdminWholesaleOverviewPage'))
-const AdminDistributorApprovalPage = lazy(() => import('@/pages/admin/AdminDistributorApprovalPage'))
 // 🔧 2026-06-29: 환경 준비상태 진단(바인딩/시크릿 설정 여부 — 다른 운영자/브라우저 정상동작 확인).
 const AdminEnvReadinessPage = lazy(() => import('@/pages/admin/AdminEnvReadinessPage'))
+// 🏭 2026-06-29 (판매사 승인 통합): AdminDistributorApprovalPage 는 더 이상 라우트가 직접 렌더하지 않음
+//   (AdminDistributorGradesPage 의 '승인' 탭에서 embedded 로 사용). 여기 import 제거.
 // 🗺️ 2026-06-18: 동네별 딜 밀도 (행정동 태깅 기반 영입 타겟).
 const AdminRegionDensityPage = lazy(() => import('@/pages/AdminRegionDensityPage'))
 // 🏭 BIZ-1 (2026-06-08): 도매 클레임(RMA) 검수 페이지.
@@ -342,10 +343,11 @@ export function AdminRoutes() {
           <ErrorBoundary><AdminWholesaleOverviewPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      {/* 🏭 2026-06-24: 판매사(도매 distributor) 가입 승인 — 도매-스코프(/api/admin/distributor/*) */}
+      {/* 🏭 2026-06-29 (대표 — 판매사 승인 통합): /distributor-approval 는 '판매사 관리'(GradesPage)의 '승인' 탭으로.
+          같은 컴포넌트가 경로로 탭 결정(딥링크 보존) — 별도 AdminDistributorApprovalPage 직접 라우팅 제거. */}
       <Route path="/admin/distributor-approval" element={
         <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminDistributorApprovalPage /></ErrorBoundary>
+          <ErrorBoundary><AdminDistributorGradesPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🔧 2026-06-29: 환경 준비상태 진단 — 바인딩/시크릿 설정 여부(다른 운영자/브라우저 정상동작 확인) */}

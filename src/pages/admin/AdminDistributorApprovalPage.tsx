@@ -37,7 +37,9 @@ interface PendingDistributor {
 
 const QKEY = ['admin', 'distributor', 'pending-approvals']
 
-export default function AdminDistributorApprovalPage() {
+// 🏭 2026-06-29 (대표 — 판매사 승인을 '판매사 관리' 1페이지에 통합): embedded 면 AdminLayout/SEO 래퍼를
+//   생략하고 패널 본문만 반환 → AdminDistributorGradesPage 의 '승인' 탭이 그대로 렌더.
+export default function AdminDistributorApprovalPage({ embedded = false }: { embedded?: boolean } = {}) {
   const qc = useQueryClient()
   const adminAuth = { Authorization: `Bearer ${localStorage.getItem('admin_token') || localStorage.getItem('access_token')}` }
   const [acting, setActing] = useState<number | null>(null)
@@ -76,9 +78,7 @@ export default function AdminDistributorApprovalPage() {
     }
   }
 
-  return (
-    <AdminLayout title="판매사 승인" pendingCount={list.length}>
-      <SEO title="판매사 승인" url="/admin/distributor-approval" noindex />
+  const body = (
       <div className="max-w-4xl mx-auto">
         <p className="text-sm text-gray-500 mb-5 flex items-center gap-2">
           <UserCheck className="w-4 h-4 text-gray-400" />
@@ -146,6 +146,13 @@ export default function AdminDistributorApprovalPage() {
           </div>
         )}
       </div>
+  )
+
+  if (embedded) return body
+  return (
+    <AdminLayout title="판매사 승인" pendingCount={list.length}>
+      <SEO title="판매사 승인" url="/admin/distributor-approval" noindex />
+      {body}
     </AdminLayout>
   )
 }
