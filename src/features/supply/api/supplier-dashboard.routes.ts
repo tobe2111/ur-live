@@ -78,45 +78,39 @@ supplierDashboardRoutes.get('/me', async (c) => {
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const { DB } = c.env;
   try {
-    const profile = await DB.prepare(
-      `SELECT id, business_name, business_number, representative, email, phone,
-              bank_name, bank_account, account_holder, commission_rate, status, created_at
-         FROM suppliers WHERE id = ?`
-    ).bind(sid).first();
-    if (!profile) return c.json({ success: false, error: '제조사를 찾을 수 없습니다' }, 404);
-
-    const balance = await DB.prepare(
-      `SELECT pending_amount, available_amount, paid_amount FROM supplier_balances WHERE supplier_id = ?`
-    ).bind(sid).first<{ pending_amount: number; available_amount: number; paid_amount: number }>().catch(() => null);
-
-    // 🏦 2026-06-27 출금 예약(reserved) 별도 조회(best-effort) — '출금 가능' 표시가 미지급 출금요청
-    //   보류분을 차감하도록(loadSpendable 과 동일 의미: spendable = available - reserved). 컬럼 미존재
-    //   (출금 미경험 제조사)면 0. 기존 balance 조회/응답 필드 불변(additive).
-    let reservedAmount = 0;
-    try {
-      const rRow = await DB.prepare(
+    // ⚡ 2026-06-29 (perf audit): 제조사 대시보드 랜딩 — 6개 독립 쿼리를 직렬 await → 단일 Promise.all
+    //   (~5 RTT → 1, cold D1 체감 단축). reserved 는 컬럼 미존재 가능성이라 balance 와 합치지 않고 별도(.catch)
+    //   유지하되 병렬화. 404 판정은 profile 만 의존 → batch 후 검사.
+    const [profile, balance, rRow, counts, orderCnt, settleCnt] = await Promise.all([
+      DB.prepare(
+        `SELECT id, business_name, business_number, representative, email, phone,
+                bank_name, bank_account, account_holder, commission_rate, status, created_at
+           FROM suppliers WHERE id = ?`
+      ).bind(sid).first(),
+      DB.prepare(
+        `SELECT pending_amount, available_amount, paid_amount FROM supplier_balances WHERE supplier_id = ?`
+      ).bind(sid).first<{ pending_amount: number; available_amount: number; paid_amount: number }>().catch(() => null),
+      // 🏦 2026-06-27 출금 예약(reserved) — '출금 가능' 표시가 미지급 출금요청 보류분 차감(spendable = available - reserved).
+      //   컬럼 미존재(출금 미경험 제조사)면 .catch → null → 0. balance SELECT 와 분리해야 missing-column 안전.
+      DB.prepare(
         `SELECT COALESCE(reserved_amount, 0) AS reserved FROM supplier_balances WHERE supplier_id = ?`
-      ).bind(sid).first<{ reserved: number }>();
-      reservedAmount = Math.max(0, Math.floor(Number(rRow?.reserved) || 0));
-    } catch { /* reserved_amount 컬럼 미존재 — 0 (출금 한 번도 안 한 제조사) */ }
-
-    const counts = await DB.prepare(
-      `SELECT
-         COUNT(*) AS total,
-         SUM(CASE WHEN supply_approval_status = 'pending'  THEN 1 ELSE 0 END) AS pending,
-         SUM(CASE WHEN supply_approval_status = 'approved' OR (supply_approval_status IS NULL AND is_active = 1) THEN 1 ELSE 0 END) AS approved,
-         SUM(CASE WHEN supply_approval_status = 'rejected' THEN 1 ELSE 0 END) AS rejected
-       FROM products WHERE supplier_id = ? AND is_supply_product = 1`
-    ).bind(sid).first<{ total: number; pending: number; approved: number; rejected: number }>().catch(() => null);
-
-    // 🧭 2026-06-12 (감사 개선 ⑥ — 온보딩 마일스톤): 가입→첫 상품→첫 승인→첫 주문→첫 정산.
-    //   홈 탭 체크리스트용 — 라이트한 COUNT 2개(fail-soft)만 추가, 기존 응답 필드 불변(additive).
-    const [orderCnt, settleCnt] = await Promise.all([
+      ).bind(sid).first<{ reserved: number }>().catch(() => null),
+      DB.prepare(
+        `SELECT
+           COUNT(*) AS total,
+           SUM(CASE WHEN supply_approval_status = 'pending'  THEN 1 ELSE 0 END) AS pending,
+           SUM(CASE WHEN supply_approval_status = 'approved' OR (supply_approval_status IS NULL AND is_active = 1) THEN 1 ELSE 0 END) AS approved,
+           SUM(CASE WHEN supply_approval_status = 'rejected' THEN 1 ELSE 0 END) AS rejected
+         FROM products WHERE supplier_id = ? AND is_supply_product = 1`
+      ).bind(sid).first<{ total: number; pending: number; approved: number; rejected: number }>().catch(() => null),
+      // 🧭 온보딩 마일스톤(가입→첫 상품→첫 승인→첫 주문→첫 정산) 체크리스트용 — 라이트 COUNT(fail-soft).
       DB.prepare('SELECT COUNT(*) AS n FROM wholesale_order_items WHERE supplier_id = ?')
         .bind(sid).first<{ n: number }>().catch(() => null),
       DB.prepare("SELECT COUNT(*) AS n FROM supplier_settlements WHERE supplier_id = ? AND source = 'wholesale'")
         .bind(sid).first<{ n: number }>().catch(() => null),
     ]);
+    if (!profile) return c.json({ success: false, error: '제조사를 찾을 수 없습니다' }, 404);
+    const reservedAmount = Math.max(0, Math.floor(Number(rRow?.reserved) || 0));
 
     return c.json({
       success: true,
@@ -251,22 +245,24 @@ supplierDashboardRoutes.get('/products', async (c) => {
       where += " AND (supply_approval_status = 'approved' OR (supply_approval_status IS NULL AND is_active = 1))";
     }
 
-    const rows = await DB.prepare(
-      `SELECT id, name, description, price AS retail_price, COALESCE(supply_price, 0) AS supply_price,
-              stock, image_url, category, COALESCE(supply_visibility,'ALL') AS supply_visibility, barcode, is_brand_product, brand_name, brand_logo_url,
-              COALESCE(min_order_qty,1) AS min_order_qty,
-              COALESCE(pack_size,1) AS pack_size, COALESCE(order_multiple,1) AS order_multiple,
-              lowest_price_url, COALESCE(lowest_price_checked,0) AS lowest_price_checked,
-              pending_supply_price, pending_retail_price, pending_price_url, pending_price_reason, pending_price_requested_at,
-              COALESCE(supply_approval_status, CASE WHEN is_active = 1 THEN 'approved' ELSE 'pending' END) AS approval_status,
-              is_active, admin_memo, created_at, updated_at
-         FROM products WHERE ${where}
-         ORDER BY created_at DESC LIMIT ? OFFSET ?`
-    ).bind(...params, limit, offset).all();
-
-    const total = await DB.prepare(
-      `SELECT COUNT(*) AS count FROM products WHERE ${where}`
-    ).bind(...params).first<{ count: number }>();
+    // ⚡ 2026-06-29 (perf audit): rows + count 독립쿼리 직렬 → Promise.all(/catalog 와 동일 패턴, 1 RTT 절약).
+    const [rows, total] = await Promise.all([
+      DB.prepare(
+        `SELECT id, name, description, price AS retail_price, COALESCE(supply_price, 0) AS supply_price,
+                stock, image_url, category, COALESCE(supply_visibility,'ALL') AS supply_visibility, barcode, is_brand_product, brand_name, brand_logo_url,
+                COALESCE(min_order_qty,1) AS min_order_qty,
+                COALESCE(pack_size,1) AS pack_size, COALESCE(order_multiple,1) AS order_multiple,
+                lowest_price_url, COALESCE(lowest_price_checked,0) AS lowest_price_checked,
+                pending_supply_price, pending_retail_price, pending_price_url, pending_price_reason, pending_price_requested_at,
+                COALESCE(supply_approval_status, CASE WHEN is_active = 1 THEN 'approved' ELSE 'pending' END) AS approval_status,
+                is_active, admin_memo, created_at, updated_at
+           FROM products WHERE ${where}
+           ORDER BY created_at DESC LIMIT ? OFFSET ?`
+      ).bind(...params, limit, offset).all(),
+      DB.prepare(
+        `SELECT COUNT(*) AS count FROM products WHERE ${where}`
+      ).bind(...params).first<{ count: number }>(),
+    ]);
 
     // 🏭 2026-06-29: 상품코드 + 상품별 배송비(meta) 합치기 — products 컬럼 아님(예산제, product_supply_meta).
     //   편집 폼 프리필 + 제조사 목록 노출용. fail-soft(메타 조회 실패해도 목록은 반환).
@@ -826,20 +822,22 @@ supplierDashboardRoutes.get('/settlements', async (c) => {
     if (['pending', 'available', 'paid', 'cancelled'].includes(status)) {
       where += ' AND ss.status = ?'; params.push(status);
     }
-    const rows = await DB.prepare(
-      `SELECT ss.id, ss.order_id, ss.product_id, ss.seller_id,
-              ss.retail_amount, ss.supply_amount, ss.status,
-              ss.created_at, ss.available_at, ss.paid_at, ss.note,
-              p.name AS product_name
-         FROM supplier_settlements ss
-         LEFT JOIN products p ON p.id = ss.product_id
-         WHERE ${where}
-         ORDER BY ss.created_at DESC LIMIT ? OFFSET ?`
-    ).bind(...params, limit, offset).all();
-
-    const total = await DB.prepare(
-      `SELECT COUNT(*) AS count FROM supplier_settlements ss WHERE ${where}`
-    ).bind(...params).first<{ count: number }>();
+    // ⚡ 2026-06-29 (perf audit): rows + count 직렬 → Promise.all (1 RTT 절약).
+    const [rows, total] = await Promise.all([
+      DB.prepare(
+        `SELECT ss.id, ss.order_id, ss.product_id, ss.seller_id,
+                ss.retail_amount, ss.supply_amount, ss.status,
+                ss.created_at, ss.available_at, ss.paid_at, ss.note,
+                p.name AS product_name
+           FROM supplier_settlements ss
+           LEFT JOIN products p ON p.id = ss.product_id
+           WHERE ${where}
+           ORDER BY ss.created_at DESC LIMIT ? OFFSET ?`
+      ).bind(...params, limit, offset).all(),
+      DB.prepare(
+        `SELECT COUNT(*) AS count FROM supplier_settlements ss WHERE ${where}`
+      ).bind(...params).first<{ count: number }>(),
+    ]);
 
     return c.json({
       success: true,
@@ -926,32 +924,33 @@ supplierDashboardRoutes.get('/orders', async (c) => {
     if (status === 'shipped') statusWhere = "o.status IN ('SHIPPING','DELIVERED','DONE','PARTIAL_REFUNDED')";
     else if (status === 'all') statusWhere = "o.status NOT IN ('PENDING','CANCELLED','FAILED','REFUNDED')";
 
-    // 주문 단위 집계 — 이 공급자 라인이 1개 이상 있는 주문.
-    const rows = await DB.prepare(
-      `SELECT o.id AS order_id, o.order_number, o.status, o.created_at,
-              o.shipping_name, o.shipping_phone, o.shipping_address,
-              o.recipient_name, o.recipient_phone,
-              o.courier, o.tracking_number, o.shipped_at,
-              COUNT(oi.id) AS line_count, SUM(oi.quantity) AS total_qty,
-              GROUP_CONCAT(sp.name, ' | ') AS item_names
-         FROM orders o
-         JOIN order_items oi ON oi.order_id = o.id
-         JOIN products sp ON sp.id = oi.product_id
-         JOIN products src ON src.id = sp.supply_source_id
-        WHERE src.supplier_id = ? AND sp.supply_source_id IS NOT NULL AND ${statusWhere}
-        GROUP BY o.id
-        ORDER BY o.created_at DESC
-        LIMIT ? OFFSET ?`
-    ).bind(sid, limit, offset).all();
-
-    const totalRow = await DB.prepare(
-      `SELECT COUNT(DISTINCT o.id) AS count
-         FROM orders o
-         JOIN order_items oi ON oi.order_id = o.id
-         JOIN products sp ON sp.id = oi.product_id
-         JOIN products src ON src.id = sp.supply_source_id
-        WHERE src.supplier_id = ? AND sp.supply_source_id IS NOT NULL AND ${statusWhere}`
-    ).bind(sid).first<{ count: number }>().catch(() => null);
+    // 주문 단위 집계 — 이 공급자 라인이 1개 이상 있는 주문. ⚡ 2026-06-29 (perf audit): rows+count 직렬 → Promise.all.
+    const [rows, totalRow] = await Promise.all([
+      DB.prepare(
+        `SELECT o.id AS order_id, o.order_number, o.status, o.created_at,
+                o.shipping_name, o.shipping_phone, o.shipping_address,
+                o.recipient_name, o.recipient_phone,
+                o.courier, o.tracking_number, o.shipped_at,
+                COUNT(oi.id) AS line_count, SUM(oi.quantity) AS total_qty,
+                GROUP_CONCAT(sp.name, ' | ') AS item_names
+           FROM orders o
+           JOIN order_items oi ON oi.order_id = o.id
+           JOIN products sp ON sp.id = oi.product_id
+           JOIN products src ON src.id = sp.supply_source_id
+          WHERE src.supplier_id = ? AND sp.supply_source_id IS NOT NULL AND ${statusWhere}
+          GROUP BY o.id
+          ORDER BY o.created_at DESC
+          LIMIT ? OFFSET ?`
+      ).bind(sid, limit, offset).all(),
+      DB.prepare(
+        `SELECT COUNT(DISTINCT o.id) AS count
+           FROM orders o
+           JOIN order_items oi ON oi.order_id = o.id
+           JOIN products sp ON sp.id = oi.product_id
+           JOIN products src ON src.id = sp.supply_source_id
+          WHERE src.supplier_id = ? AND sp.supply_source_id IS NOT NULL AND ${statusWhere}`
+      ).bind(sid).first<{ count: number }>().catch(() => null),
+    ]);
 
     return c.json({
       success: true,
