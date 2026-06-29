@@ -22,7 +22,8 @@ export function normalizeWholesaleCategory(raw: unknown): WholesaleCategoryId {
   if (!s) return 'living'
   if ((WHOLESALE_CATEGORY_IDS as readonly string[]).includes(s)) return s as WholesaleCategoryId
   const hit = (keys: string[]) => keys.some((k) => s.includes(k.toLowerCase()))
-  if (hit(FOOD_KEYS)) return 'food'
+  // HEALTH 를 FOOD 보다 먼저 — '건강기능식품'(보충제)이 '식품' 매칭으로 food 오분류되지 않게.
   if (hit(HEALTH_KEYS)) return 'health'
+  if (hit(FOOD_KEYS)) return 'food'
   return 'living'
 }

@@ -1324,7 +1324,7 @@ supplierDashboardRoutes.post('/store/import', rateLimit({ action: 'sup-store-imp
     const results: Array<{ name: string; status: 'ok' | 'error'; reason?: string }> = [];
     const INSERT_SQL = `INSERT INTO products (name, description, price, supply_price, stock, image_url, category, product_type,
        is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, min_order_qty, pack_size, order_multiple, mall_id, slug, created_at, updated_at)
-     VALUES (?, '', ?, ?, ?, ?, 'living', 'regular', 0, 1, ?, 'pending', 'ALL', 1, 1, 1, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
+     VALUES (?, '', ?, ?, ?, ?, ?, 'regular', 0, 1, ?, 'pending', 'ALL', 1, 1, 1, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
     let created = 0;
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
@@ -1336,7 +1336,9 @@ supplierDashboardRoutes.post('/store/import', rateLimit({ action: 'sup-store-imp
       const slug = `sup-${sid}-import-${Date.now()}-${i}`;
       try {
         await DB.prepare(INSERT_SQL).bind(
-          it.name, it.sale_price, supplyPrice, it.stock, image, sid, sid, slug,
+          // 🏭 2026-06-29 (B): 임포트 상품 카테고리를 상품명에서 추론(식품/건강 키워드) → 없으면 living.
+          //   원본 스토어가 카테고리를 안 주므로 이름 기반 자동분류로 카탈로그 칩 배치 개선.
+          it.name, it.sale_price, supplyPrice, it.stock, image, normalizeWholesaleCategory(it.name), sid, sid, slug,
         ).run();
         created++;
         results.push({ name: it.name, status: 'ok' });
