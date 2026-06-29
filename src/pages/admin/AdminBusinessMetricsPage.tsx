@@ -166,7 +166,7 @@ export default function AdminBusinessMetricsPage() {
               />
               <KpiCard
                 icon={<AlertCircle className="w-4 h-4" />}
-                label={t('admin.bizMetrics.supplierPayable', { defaultValue: '공급사 미지급' })}
+                label={t('admin.bizMetrics.supplierPayable', { defaultValue: '제조사 미지급' })}
                 value={formatWon(data?.liabilities.supplier_payable)}
                 sub={t('admin.bizMetrics.supplierPayableSub', { defaultValue: '정산 대기/가용 (플랫폼 채무)' })}
                 danger
