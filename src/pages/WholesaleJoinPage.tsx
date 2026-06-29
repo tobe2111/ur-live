@@ -169,7 +169,7 @@ export default function WholesaleJoinPage() {
           </p>
           <div className="mt-6 flex gap-2 justify-center">
             <button onClick={() => window.location.reload()} className="px-5 h-11 rounded-xl font-bold border border-[#ECEEF1] text-[#0C2454]">승인 다시 확인</button>
-            <button onClick={() => navigate('/wholesale')} className="px-5 h-11 rounded-xl font-bold text-white" style={{ background: '#0C2454' }}>도매몰 둘러보기</button>
+            <button onClick={() => navigate('/wholesale')} className="px-5 h-11 rounded-xl font-bold text-white" style={{ background: '#0C2454' }}>플랫폼 둘러보기</button>
           </div>
         </div>
       </div>
@@ -182,11 +182,11 @@ export default function WholesaleJoinPage() {
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 rounded-2xl bg-[#11875A]/10 flex items-center justify-center mx-auto mb-5"><CheckCircle2 className="w-7 h-7 text-[#11875A]" /></div>
           <h1 className="text-xl font-extrabold mb-2">판매사 신청이 완료됐어요</h1>
-          <p className="text-[#4E5560] text-[14px] leading-relaxed">제출하신 <b>사업자 정보</b>를 확인한 뒤 관리자 승인되면 도매몰을 이용할 수 있어요. (영업일 기준 1~2일)<br/>승인되면 등급 공급가가 열립니다.</p>
+          <p className="text-[#4E5560] text-[14px] leading-relaxed">제출하신 <b>사업자 정보</b>를 확인한 뒤 관리자 승인되면 플랫폼을 이용할 수 있어요. (영업일 기준 1~2일)<br/>승인되면 등급 공급가가 열립니다.</p>
           <p className="text-[#8A929E] text-[12.5px] mt-3">
             급하신가요? <a href="mailto:utongstart@naver.com?subject=%5B%EC%9C%A0%ED%86%B5%ED%9A%8C%EC%9B%90%20%EC%8A%B9%EC%9D%B8%20%EB%AC%B8%EC%9D%98%5D" className="underline font-semibold text-[#4E5560]">utongstart@naver.com</a> 으로 상호·사업자번호와 함께 문의해주세요.
           </p>
-          <button onClick={() => navigate('/wholesale')} className="mt-6 px-5 h-11 rounded-xl font-bold text-white" style={{ background: '#0C2454' }}>도매몰 둘러보기</button>
+          <button onClick={() => navigate('/wholesale')} className="mt-6 px-5 h-11 rounded-xl font-bold text-white" style={{ background: '#0C2454' }}>플랫폼 둘러보기</button>
         </div>
       </div>
     )
@@ -313,7 +313,7 @@ export default function WholesaleJoinPage() {
           <label className="flex items-start gap-2.5 rounded-xl p-3.5 cursor-pointer" style={{ background: '#F8F9FB', border: '1px solid #ECEEF1' }}>
             <input type="checkbox" checked={agreeTerms} onChange={e => setAgreeTerms(e.target.checked)} className="w-4 h-4 mt-0.5 shrink-0" />
             <span className="text-[12.5px] leading-relaxed text-[#4E5560]">
-              <a href="/wholesale/terms" target="_blank" rel="noopener noreferrer" className="font-bold underline text-[#0C2454]">도매몰 이용약관</a>
+              <a href="/wholesale/terms" target="_blank" rel="noopener noreferrer" className="font-bold underline text-[#0C2454]">플랫폼 이용약관</a>
               에 동의합니다. (가격 정책·최저가 준수, 예치금 결제, 상품 자료 사용 조건 포함) <span className="text-[#FC5424]">*</span>
             </span>
           </label>
