@@ -112,7 +112,7 @@ export const TRACKER_GRAPHQL_URL = 'https://apis.tracker.delivery/graphql';
 //   레거시 카테고리 호환: voucher-categories.ts 의 normalizeCategory() 사용.
 // ============================================================
 export const VOUCHER_CATEGORIES = [
-  'meal_voucher',    // 식사권 (음식점/카페)
+  'meal_voucher',    // 식사 (음식점/카페)
   'beauty_voucher',  // 미용 (헬스/뷰티)
   'stay_voucher',    // 숙소 (펜션/호텔/모텔)
   'etc_voucher',     // 기타 (펫/액티비티/그 외)
@@ -120,7 +120,7 @@ export const VOUCHER_CATEGORIES = [
 export type VoucherCategory = typeof VOUCHER_CATEGORIES[number];
 
 export const VOUCHER_CATEGORY_LABELS: Record<VoucherCategory, string> = {
-  meal_voucher:   '식사권',
+  meal_voucher:   '식사',
   beauty_voucher: '미용',
   stay_voucher:   '숙소',
   etc_voucher:    '기타',

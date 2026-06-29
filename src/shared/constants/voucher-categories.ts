@@ -67,7 +67,7 @@ export function voucherCategoriesSqlClause(): { placeholders: string; values: re
 /** 카테고리 → 한글 라벨 + emoji (legacy 도 포함 — 정규화 안 된 row 도 표시 가능). */
 export const VOUCHER_CATEGORY_LABEL: Record<string, { emoji: string; label: string; short: string }> = {
   // 새 카테고리 4종
-  meal_voucher:   { emoji: '🍽️', label: '식사권 (음식점/카페)', short: '식사' },
+  meal_voucher:   { emoji: '🍽️', label: '식사 (음식점/카페)', short: '식사' },
   beauty_voucher: { emoji: '💇', label: '미용 (헬스/뷰티)',     short: '미용' },
   stay_voucher:   { emoji: '🏨', label: '숙소',                  short: '숙소' },
   etc_voucher:    { emoji: '🎯', label: '기타',                  short: '기타' },
@@ -79,9 +79,11 @@ export const VOUCHER_CATEGORY_LABEL: Record<string, { emoji: string; label: stri
 
 // 🛡️ 2026-05-21: 카테고리 short 라벨 (알림톡 / push 메시지용).
 //   "식사권" hardcode 가 곳곳에 있었음 — 모든 voucher 카테고리에서 동작하려면 이 헬퍼로 통일.
-//   fallback: '바우처' (알려지지 않은 카테고리도 graceful).
+// 🏷️ 2026-06-29 (대표 "이용권으로 일괄 정리"): 카테고리-종류 라벨을 "{카테고리} 이용권" 으로
+//   (식사 이용권 / 미용 이용권 / 숙소 이용권 / 기타 이용권). "식사권/미용권/…" 옛 형태 제거 →
+//   우산말 '이용권' 으로 통일하되 카테고리 구분은 보존. fallback 도 '이용권'.
 export function getVoucherShortLabel(category: string | null | undefined): string {
-  if (!category) return '바우처'
+  if (!category) return '이용권'
   const m = VOUCHER_CATEGORY_LABEL[category]
-  return m ? `${m.short}권` : '바우처'
+  return m ? `${m.short} 이용권` : '이용권'
 }

@@ -2,7 +2,7 @@
  * 🛡️ 2026-05-17: 이용권 카테고리 4종 통합 (이전 6종 → 4종) + 레거시 3종 호환 SQL 매처 테스트.
  *
  * 신규 카테고리:
- *   meal_voucher (식사권) / beauty_voucher (미용) / stay_voucher (숙소) / etc_voucher (기타)
+ *   meal_voucher (식사) / beauty_voucher (미용) / stay_voucher (숙소) / etc_voucher (기타)
  *
  * 레거시 (마이그레이션 0255 가 자동 변환하지만 SQL 매처는 호환 유지):
  *   health_voucher → beauty_voucher
