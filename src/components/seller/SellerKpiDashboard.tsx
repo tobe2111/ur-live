@@ -17,6 +17,7 @@ import { Users, Ticket, DollarSign, AlertTriangle, TrendingUp, ChevronRight } fr
 import api from '@/lib/api'
 import { getSellerToken } from '@/lib/seller-auth'
 import { formatNumber } from '@/utils/format'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 
 interface KpiData {
   followers: { total: number; recent_7d: number }
@@ -40,8 +41,7 @@ export default function SellerKpiDashboard() {
     ]).then(([analyticsRes, productsRes, disputesRes]) => {
       const analytics = analyticsRes.data?.data
       const products = productsRes.data?.data || []
-      const VOUCHER = ['meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher']
-      const vouchers = products.filter((p: { category?: string }) => VOUCHER.includes(p.category || ''))
+      const vouchers = products.filter((p: { category?: string }) => isVoucherCategory(p.category))
       const active = vouchers.filter((p: { group_buy_status?: string }) => p.group_buy_status === 'active').length
 
       // 이번 달 GMV (active + achieved 의 진행 합계 × 95% 셀러 수령)
