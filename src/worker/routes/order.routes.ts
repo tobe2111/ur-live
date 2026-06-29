@@ -15,6 +15,7 @@ import { OrderRepository } from '../repositories/order.repository';
 import { ProductRepository } from '../repositories/product.repository';
 import { QueryBuilder } from '../repositories/query-builder';
 import { computeCouponDiscount } from '../../features/coupons/coupon-discount';
+import { maxTierDiscount } from '../../features/group-buy/api/helpers';
 import { ensureOrdersDealUsed } from '../utils/ensure-order-columns';
 import { swallow } from '../utils/swallow';
 import { hideOrder } from '../utils/hidden-orders';
@@ -372,8 +373,29 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     }
 
     // ③ 공구할인 portion = 총할인 − 클라쿠폰 − 클라딜 (클램프). 잔액/쿠폰 차감 후 남은 한도 내.
+    //   🔒 2026-06-27 (결제 정확성 감사 — 그룹바이 할인 클라-신뢰 구멍): 클라 discount_amount 만 믿지
+    //      않고 상품별 authoritative tier(maxTierDiscount)로 서버 cap 재계산 → 조작 과소청구 차단.
+    //      cap = Σ 항목( quantity × (단가 − round(단가 × (1 − md/100))) ) — group-buy-public 의 current_price
+    //      와 동일 공식이라 정직한 클라는 byte-일치(confirm 통과), 부풀린 클라만 cap 으로 잘림.
+    //      tiers 없는 상품(즉시판매 단일가/일반상품)은 md=0 → cap=0(그룹바이 할인 미인정 — price 가 곧 최종가).
+    let groupBuyCap = 0;
+    try {
+      const tierPh = orderItems.map(() => '?').join(',');
+      const { results: tierRows } = await c.env.DB.prepare(
+        `SELECT id, group_buy_tiers FROM products WHERE id IN (${tierPh})`,
+      ).bind(...orderItems.map(i => Number(i.product_id))).all<{ id: number; group_buy_tiers: string | null }>();
+      const tierMap = new Map<number, string | null>((tierRows ?? []).map(r => [Number(r.id), r.group_buy_tiers]));
+      for (const it of orderItems) {
+        const md = maxTierDiscount(tierMap.get(Number(it.product_id)) ?? null);
+        if (md > 0) {
+          const perUnit = Math.max(0, it.unit_price - Math.round(it.unit_price * (1 - md / 100)));
+          groupBuyCap += perUnit * it.quantity;
+        }
+      }
+    } catch { groupBuyCap = 0; } // 조회 실패 → 그룹바이 할인 미인정(fail-closed, 과금 보호)
     const groupBuyPortion = Math.min(
       Math.max(0, clientDiscount - clientCoupon - reqDeal),
+      groupBuyCap,
       Math.max(0, discountBase - couponDiscount - dealUsed),
     );
 
