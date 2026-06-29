@@ -3,6 +3,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import PanelError from './PanelError'
 
 /**
  * 🆕 2026-06-27 유어애즈 — 네이버 검색광고 계정 연동 + 내 광고 구조 조회.
@@ -66,13 +67,15 @@ export default function SearchAdPanel() {
   const [statsBusy, setStatsBusy] = useState(false)
   // 예산 페이싱
   const [pacing, setPacing] = useState<Pacing[] | null>(null)
+  const [statusErr, setStatusErr] = useState(false)
 
   const loadStatus = useCallback(async () => {
+    setStatusErr(false)
     try {
       const r = await api.get('/api/ads/searchad/status', { headers: authHeader() })
       setConnected(!!r.data?.connected)
       setCustomerId(r.data?.customer_id || null)
-    } catch { setConnected(false) }
+    } catch { setConnected(false); setStatusErr(true) }
   }, [])
 
   const loadCampaigns = useCallback(async () => {
@@ -226,6 +229,8 @@ export default function SearchAdPanel() {
         {connected && <button onClick={disconnect} className="text-[12px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">연결 해제</button>}
       </div>
 
+      {statusErr && <PanelError onRetry={loadStatus} label="연동 상태 불러오기 실패" />}
+
       {/* 목표순위 예상 입찰가 (자동입찰 미리보기 — 읽기, 돈 변경 없음) */}
       <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
         <div className="text-[12.5px] font-bold text-gray-900 dark:text-white">목표순위 예상 입찰가</div>
@@ -338,7 +343,7 @@ export default function SearchAdPanel() {
           {/* 예산 페이싱(오늘) */}
           {pacing && pacing.length > 0 && (
             <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
-              <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">⏱️ 예산 페이싱 <span className="text-gray-400 dark:text-gray-500 font-medium">(오늘 소진)</span></span>
+              <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">예산 페이싱 <span className="text-gray-400 dark:text-gray-500 font-medium">(오늘 소진)</span></span>
               <div className="mt-2 space-y-1.5">
                 {pacing.slice(0, 10).map(p => (
                   <div key={p.id} className="flex items-center gap-2 text-[11.5px]">

@@ -128,7 +128,7 @@ export default function MarketingLandingPage() {
               <h1 style={{ fontSize: 'clamp(38px,5vw,56px)', lineHeight: 1.08, fontWeight: 800, letterSpacing: '-.045em', margin: '22px 0 0' }}>광고 입찰부터 발주까지,<br /><span className="grad">하나로 자동화.</span></h1>
               <p style={{ fontSize: 17, lineHeight: 1.62, color: 'var(--ink2)', margin: '20px 0 0', maxWidth: 460 }}>목표 순위와 최대 입찰가만 정하세요. 최저 CPC를 24/365 자동으로 찾고, 부정클릭을 가려내고, 흩어진 성과를 ROAS 한 화면에 모읍니다.</p>
               <div style={{ display: 'flex', gap: 13, alignItems: 'center', marginTop: 30, flexWrap: 'wrap' }}>
-                <Link to={APP} style={{ fontSize: 15, fontWeight: 600, color: '#fff', background: '#3B6EF5', padding: '14px 26px', borderRadius: 9, whiteSpace: 'nowrap' }}>30일 무료로 시작</Link>
+                <Link to={loginHref} style={{ fontSize: 15, fontWeight: 600, color: '#fff', background: '#3B6EF5', padding: '14px 26px', borderRadius: 9, whiteSpace: 'nowrap' }}>30일 무료로 시작</Link>
                 <a href="#features" style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', background: 'var(--panel)', border: '1px solid var(--btn-bd)', padding: '14px 24px', borderRadius: 9, whiteSpace: 'nowrap' }}>기능 둘러보기</a>
               </div>
               <div style={{ display: 'flex', gap: 30, marginTop: 36 }}>
@@ -400,7 +400,7 @@ export default function MarketingLandingPage() {
           <div style={{ border: '1px solid var(--line)', borderRadius: 16, padding: 30, background: 'var(--panel)' }}>
             <div style={{ fontSize: 15, fontWeight: 700 }}>스타터</div><div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>이제 막 광고를 시작한 1인 셀러</div>
             <div style={{ margin: '22px 0 0', display: 'flex', alignItems: 'baseline', gap: 4 }}><span className="num" style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-.03em' }}>₩39,000</span><span style={{ fontSize: 14, color: 'var(--muted)' }}>/월</span></div>
-            <Link to={APP} style={{ display: 'block', textAlign: 'center', marginTop: 22, fontSize: 14, fontWeight: 600, color: 'var(--ink)', border: '1px solid var(--btn-bd)', padding: 12, borderRadius: 9 }}>무료로 시작</Link>
+            <Link to={loginHref} style={{ display: 'block', textAlign: 'center', marginTop: 22, fontSize: 14, fontWeight: 600, color: 'var(--ink)', border: '1px solid var(--btn-bd)', padding: 12, borderRadius: 9 }}>무료로 시작</Link>
             <ul style={{ listStyle: 'none', padding: 0, margin: '24px 0 0', display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13.5, color: 'var(--ink-strong)' }}>
               <li style={{ display: 'flex', gap: 9 }}><Check size={17} />자동입찰 키워드 100개</li>
               <li style={{ display: 'flex', gap: 9 }}><Check size={17} />부정클릭 방어</li>
@@ -412,7 +412,7 @@ export default function MarketingLandingPage() {
             <span style={{ position: 'absolute', top: -12, left: 30, fontSize: 11, fontWeight: 700, color: '#fff', background: 'linear-gradient(96deg,#3B6EF5,#8B5CF6)', padding: '5px 11px', borderRadius: 999 }}>MOST POPULAR</span>
             <div style={{ fontSize: 15, fontWeight: 700 }}>프로</div><div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>본격 성장 중인 스토어</div>
             <div style={{ margin: '22px 0 0', display: 'flex', alignItems: 'baseline', gap: 4 }}><span className="num" style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-.03em' }}>₩99,000</span><span style={{ fontSize: 14, color: 'var(--muted)' }}>/월</span></div>
-            <Link to={APP} style={{ display: 'block', textAlign: 'center', marginTop: 22, fontSize: 14, fontWeight: 600, color: '#fff', background: '#3B6EF5', padding: 12, borderRadius: 9 }}>무료로 시작</Link>
+            <Link to={loginHref} style={{ display: 'block', textAlign: 'center', marginTop: 22, fontSize: 14, fontWeight: 600, color: '#fff', background: '#3B6EF5', padding: 12, borderRadius: 9 }}>무료로 시작</Link>
             <ul style={{ listStyle: 'none', padding: 0, margin: '24px 0 0', display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13.5, color: 'var(--ink-strong)' }}>
               <li style={{ display: 'flex', gap: 9 }}><Check size={17} />자동입찰 키워드 <b>무제한</b></li>
               <li style={{ display: 'flex', gap: 9 }}><Check size={17} />키워드 확장 + AI 마케터</li>
@@ -461,7 +461,7 @@ export default function MarketingLandingPage() {
           <h2 style={{ position: 'relative', fontSize: 'clamp(30px,4vw,46px)', lineHeight: 1.14, fontWeight: 800, letterSpacing: '-.04em', margin: 0, color: '#fff' }}>월 광고비 낭비에서<br /><span className="grad">ROAS 412%</span>로.</h2>
           <p style={{ position: 'relative', fontSize: 17, color: '#AEB7D0', margin: '18px auto 0', maxWidth: 460 }}>목표 순위만 정하세요. 나머지는 UR Ads가 자동으로. 30일 무료, 카드 등록 없이 시작합니다.</p>
           <div style={{ position: 'relative', display: 'flex', gap: 13, justifyContent: 'center', marginTop: 32, flexWrap: 'wrap' }}>
-            <Link to={APP} style={{ fontSize: 15, fontWeight: 600, color: '#fff', background: '#3B6EF5', padding: '15px 28px', borderRadius: 10 }}>무료로 시작하기 →</Link>
+            <Link to={loginHref} style={{ fontSize: 15, fontWeight: 600, color: '#fff', background: '#3B6EF5', padding: '15px 28px', borderRadius: 10 }}>무료로 시작하기 →</Link>
             <a href={CONTACT} style={{ fontSize: 15, fontWeight: 600, color: '#DCE3F2', border: '1px solid rgba(255,255,255,.18)', padding: '15px 26px', borderRadius: 10 }}>영업팀 문의</a>
           </div>
         </div>
@@ -477,7 +477,7 @@ export default function MarketingLandingPage() {
             </div>
             <div><div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 14 }}>제품</div><div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--ink2)' }}><a href="#features">자동입찰</a><a href="#features">부정클릭 방어</a><a href="#features">통합 실적</a><a href="#features">AI 마케터</a></div></div>
             <div><div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 14 }}>회사</div><div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--ink2)' }}><a href="#features">소개</a><a href="#pricing">요금제</a><a href="#proof">고객사례</a><a href={CONTACT}>문의</a></div></div>
-            <div><div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 14 }}>지원</div><div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--ink2)' }}><a href={CONTACT}>도움말</a><a href={CONTACT}>문의하기</a><Link to={APP}>대시보드</Link></div></div>
+            <div><div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 14 }}>지원</div><div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--ink2)' }}><a href={CONTACT}>도움말</a><a href={CONTACT}>문의하기</a><Link to={loginHref}>대시보드</Link></div></div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginTop: 44, paddingTop: 24, borderTop: '1px solid var(--line)' }}>
             <span style={{ fontSize: 12, color: 'var(--muted)' }}>© 2026 UR Ads · 유어팀(리스터코퍼레이션). All rights reserved.</span>

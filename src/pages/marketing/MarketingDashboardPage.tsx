@@ -10,6 +10,7 @@ import ClickGuardPanel from './ClickGuardPanel'
 import PricePanel from './PricePanel'
 import SourcingPanel from './SourcingPanel'
 import WeeklyReportPanel from './WeeklyReportPanel'
+import PanelError from './PanelError'
 
 /**
  * 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 멀티테넌트 입점 대시보드.
@@ -50,6 +51,7 @@ export default function MarketingDashboardPage() {
   const [orders, setOrders] = useState<CollectedOrder[]>([])
   const [kw, setKw] = useState('')
   const [kwBusy, setKwBusy] = useState(false)
+  const [kwErr, setKwErr] = useState(false)
   const [kwTrend, setKwTrend] = useState<TrendResult[] | null>(null)
   const [kwShop, setKwShop] = useState<ShoppingResult | null>(null)
   const [kwRelated, setKwRelated] = useState<RelatedKeyword[] | null>(null)
@@ -108,7 +110,7 @@ export default function MarketingDashboardPage() {
     const q = (term ?? kw).trim()
     if (q.length < 2) { toast.error('키워드를 2자 이상 입력해주세요'); return }
     if (term) setKw(term)
-    setKwBusy(true); setKwTrend(null); setKwShop(null); setKwRelated(null); setKwAuto(null); setKwRep(null)
+    setKwBusy(true); setKwErr(false); setKwTrend(null); setKwShop(null); setKwRelated(null); setKwAuto(null); setKwRep(null)
     try {
       const [t, s, rel, auto, rep] = await Promise.allSettled([
         api.get(`/api/ads/keywords/trend?keywords=${encodeURIComponent(q)}`, { headers: authHeader() }),
@@ -124,7 +126,7 @@ export default function MarketingDashboardPage() {
       else if (rel.status === 'rejected' && (rel.reason as { response?: { status?: number } })?.response?.status === 503) setRelatedOff(true)
       if (auto.status === 'fulfilled' && auto.value.data?.success) setKwAuto(auto.value.data.suggestions || [])
       if (rep.status === 'fulfilled' && rep.value.data?.success) setKwRep(rep.value.data.data || null)
-      if (t.status === 'rejected' && s.status === 'rejected') toast.error('키워드 분석 실패 (잠시 후 다시)')
+      if (t.status === 'rejected' && s.status === 'rejected') { setKwErr(true); toast.error('키워드 분석 실패 (잠시 후 다시)') }
     } finally { setKwBusy(false) }
   }
 
@@ -188,6 +190,7 @@ export default function MarketingDashboardPage() {
               <input className={input} placeholder="키워드 (예: 무선이어폰)" value={kw} onChange={(e) => setKw(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') analyzeKeyword() }} />
               <button onClick={() => analyzeKeyword()} disabled={kwBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{kwBusy ? '분석 중…' : '분석'}</button>
             </div>
+            {kwErr && <PanelError onRetry={() => analyzeKeyword()} busy={kwBusy} label="키워드 분석 실패" />}
             {kwShop && (
               <div className="mt-3 text-[12px]">
                 <div className="text-gray-600 dark:text-gray-300">쇼핑 등록상품 <b className="text-gray-900 dark:text-white">{formatNumber(kwShop.total)}</b>개

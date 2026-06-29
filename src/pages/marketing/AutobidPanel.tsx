@@ -3,6 +3,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import PanelError from './PanelError'
 
 /**
  * 🆕 2026-06-27 유어애즈 — 자동입찰 규칙 관리(목표순위→입찰가 자동조정).
@@ -53,12 +54,14 @@ export default function AutobidPanel() {
   const [busy, setBusy] = useState<string | null>(null)
   const [csvOpen, setCsvOpen] = useState(false)
   const [csvText, setCsvText] = useState('')
+  const [err, setErr] = useState(false)
 
   const load = useCallback(async () => {
+    setErr(false)
     try {
       const r = await api.get('/api/ads/searchad/autobid/rules', { headers: authHeader() })
       if (r.data?.success) { setRules(r.data.rules || []); setLog(r.data.log || []); setEngineOn(!!r.data.engine_on) }
-    } catch { /* graceful */ }
+    } catch { setErr(true) }
   }, [])
   useEffect(() => { load() }, [load])
 
@@ -146,7 +149,9 @@ export default function AutobidPanel() {
           <div className="text-[14px] font-bold text-gray-900 dark:text-white">자동입찰 규칙 <span className="text-gray-400 dark:text-gray-500 font-medium">(0)</span></div>
           {csvBox}
         </div>
-        <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">키워드 행에서 규칙을 만들거나, CSV로 한 번에 등록하세요.</p>
+        {err
+          ? <PanelError onRetry={load} />
+          : <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">키워드 행에서 규칙을 만들거나, CSV로 한 번에 등록하세요.</p>}
       </div>
     )
   }

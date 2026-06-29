@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import PanelError from './PanelError'
 
 /**
  * 🆕 2026-06-27 유어애즈 — AI 주간 리포트 패널.
@@ -20,12 +21,14 @@ export default function WeeklyReportPanel() {
   const [reports, setReports] = useState<Report[]>([])
   const [openId, setOpenId] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState(false)
 
   const load = useCallback(async () => {
+    setErr(false)
     try {
       const r = await api.get('/api/ads/reports', { headers: authHeader() })
       if (r.data?.success) { setReports(r.data.reports || []); setOpenId((r.data.reports || [])[0]?.id ?? null) }
-    } catch { /* graceful */ }
+    } catch { setErr(true) }
   }, [])
   useEffect(() => { load() }, [load])
 
@@ -47,6 +50,8 @@ export default function WeeklyReportPanel() {
         <button onClick={generate} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11.5px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-40">{busy ? '생성 중…' : '이번 주 리포트 생성'}</button>
       </div>
       <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">매주 월요일 자동 생성 · 최근 7일 실적 기반 AI 진단(읽기 전용).</p>
+
+      {err && <PanelError onRetry={load} />}
 
       {reports.length === 0 ? (
         <p className="mt-3 text-[12px] text-gray-500 dark:text-gray-400">아직 리포트가 없습니다. 검색광고 계정을 연결하면 매주 자동 생성됩니다.</p>

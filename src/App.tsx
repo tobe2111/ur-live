@@ -641,8 +641,8 @@ function AppContent() {
             <Route path="/vouchers" element={<VouchersPage />} />
             {/* 🆕 통합 마케팅 서비스(가칭) — 3번째 서비스. 도매몰처럼 자체 surface 로 분리 */}
             {/* 🆕 2026-06-27 /ads = 공개 랜딩(소개), /ads/dashboard = 로그인 후 입점 대시보드 */}
-            <Route path="/ads" element={<MarketingLandingPage />} />
-            <Route path="/ads/dashboard" element={<MarketingDashboardPage />} />
+            <Route path="/ads" element={<ErrorBoundary><MarketingLandingPage /></ErrorBoundary>} />
+            <Route path="/ads/dashboard" element={<ErrorBoundary><MarketingDashboardPage /></ErrorBoundary>} />
             {/* 🛡️ 2026-05-23: 교환권 전용 detail 페이지 (deal 결제). voucher 와 group-buy UI 분리. */}
             <Route path="/vouchers/:id" element={<VoucherDetailPage />} />
             <Route path="/meal-vouchers" element={<MealVouchersPage />} />

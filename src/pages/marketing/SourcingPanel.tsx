@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import PanelError from './PanelError'
 
 /**
  * 🆕 2026-06-27 유어애즈 — 소싱 리포트(데이터랩 쇼핑인사이트 분야 트렌드).
@@ -16,14 +17,16 @@ const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white 
 export default function SourcingPanel() {
   const [rows, setRows] = useState<CategoryTrend[] | null>(null)
   const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState(false)
 
   async function run() {
-    setBusy(true)
+    setBusy(true); setErr(false)
     try {
       const r = await api.get('/api/ads/sourcing/trends', { headers: authHeader() })
       if (r.data?.success) setRows(r.data.results || [])
       else toast.error(r.data?.error || '분석 실패')
     } catch (e: unknown) {
+      setErr(true)
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '분석 실패')
     } finally { setBusy(false) }
   }
@@ -37,6 +40,7 @@ export default function SourcingPanel() {
         <button onClick={run} disabled={busy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-3 py-1.5 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{busy ? '분석 중…' : '트렌드 분석'}</button>
       </div>
       <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">최근 1년 분야별 쇼핑 검색 증감 — 뜨는 카테고리를 찾아 소싱(도매)·광고 우선순위에 활용하세요.</p>
+      {err && <PanelError onRetry={run} busy={busy} label="트렌드 분석 실패" />}
       {rows && (rows.length === 0 ? (
         <p className="mt-3 text-[12px] text-gray-400 dark:text-gray-500">데이터가 없습니다.</p>
       ) : (

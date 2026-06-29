@@ -3,6 +3,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import PanelError from './PanelError'
 
 /**
  * 🆕 2026-06-27 유어애즈 — 부정클릭 방지 Phase 1 (탐지·리포트, 차단 0).
@@ -29,13 +30,15 @@ export default function ClickGuardPanel() {
   const [days, setDays] = useState<7 | 30>(7)
   const [blocklist, setBlocklist] = useState<Array<{ ip: string; reason: string | null; created_at: string }>>([])
   const [blocking, setBlocking] = useState<string | null>(null)
+  const [err, setErr] = useState(false)
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://live.ur-team.com'
 
   const loadSites = useCallback(async () => {
+    setErr(false)
     try {
       const r = await api.get('/api/ads/clickguard/sites', { headers: authHeader() })
       if (r.data?.success) setSites(r.data.sites || [])
-    } catch { /* graceful */ }
+    } catch { setErr(true) }
   }, [])
 
   const loadReport = useCallback(async (d: 7 | 30) => {
@@ -112,6 +115,8 @@ export default function ClickGuardPanel() {
         <button onClick={addSite} disabled={busy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">등록</button>
       </div>
 
+      {err && <PanelError onRetry={loadSites} />}
+
       {/* 등록된 사이트 + 픽셀 스니펫 */}
       {sites.length > 0 && (
         <div className="mt-3 space-y-2">
@@ -142,7 +147,7 @@ export default function ClickGuardPanel() {
       {sites.length > 0 && report && (
         <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
           <div className="flex items-center justify-between">
-            <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">📋 의심 IP 리포트</span>
+            <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">의심 IP 리포트</span>
             <div className="flex rounded-lg border border-gray-200 dark:border-[#2A2A2A] overflow-hidden">
               {([7, 30] as const).map(d => (
                 <button key={d} onClick={() => setDays(d)} className={`px-2.5 py-0.5 text-[11px] font-semibold ${days === d ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0A0A0A]' : 'text-gray-500 dark:text-gray-400'}`}>{d}일</button>
@@ -197,7 +202,7 @@ export default function ClickGuardPanel() {
       {sites.length > 0 && blocklist.length > 0 && (
         <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
           <div className="flex items-center justify-between">
-            <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">🚫 차단 목록 <span className="text-gray-400 dark:text-gray-500 font-medium">({blocklist.length}/600)</span></span>
+            <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">차단 목록 <span className="text-gray-400 dark:text-gray-500 font-medium">({blocklist.length}/600)</span></span>
             <button onClick={() => copy(blocklist.map(b => b.ip).join('\n'))} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11px] font-bold text-white dark:text-[#0A0A0A]">전체 복사</button>
           </div>
           <p className="mt-1 text-[10.5px] text-gray-400 dark:text-gray-500 leading-relaxed">

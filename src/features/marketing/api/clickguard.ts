@@ -140,12 +140,39 @@ export async function deleteSite(DB: D1Database, sellerId: number, key: string):
 
 export interface HitInput { key: string; ip: string; country: string; ua: string; referrer: string; landingUrl: string; isAd: boolean; originOrReferer: string | null }
 
+// 픽셀 남용 캡(isolate 메모리 — DB 비용 0). 픽셀은 공개 엔드포인트라 누구나 호출 가능 →
+// 단일 IP/키가 무한정 행을 적재해 ① 광고주 DB 비대 ② 의심리포트 오염 ③ D1 write 비용 폭증.
+//  · (key, ipHash) 하루 ≥ PER_IP_DAILY → 더 안 쌓음(봇이 한 IP 로 수백만행 적재 차단. 의심신호는 8+ 에서 이미 확보).
+//  · key 전체 하루 ≥ PER_KEY_DAILY → 분산 플러드 백스톱.
+// 날짜(UTC day) 바뀌면 맵 통째 리셋 → 메모리는 하루치 distinct (key,ip) 로 제한. 비정상 폭증 시 하드 size 가드.
+const PER_IP_DAILY = 300
+const PER_KEY_DAILY = 200_000
+const _hitCount = new Map<string, { n: number }>()
+let _hitDay = -1
+function allowHit(key: string, ipHash: string): boolean {
+  const day = Math.floor(Date.now() / 86_400_000)
+  if (day !== _hitDay || _hitCount.size > 200_000) { _hitCount.clear(); _hitDay = day }
+  const keyId = `k:${key}`
+  const kc = _hitCount.get(keyId) || { n: 0 }
+  if (kc.n >= PER_KEY_DAILY) return false
+  if (ipHash) {
+    const ipId = `i:${key}:${ipHash}`
+    const ic = _hitCount.get(ipId) || { n: 0 }
+    if (ic.n >= PER_IP_DAILY) return false
+    ic.n++; _hitCount.set(ipId, ic)
+  }
+  kc.n++; _hitCount.set(keyId, kc)
+  return true
+}
+
 /** 픽셀 hit 기록 — 도메인 검증 통과 시 1행 insert. 가끔 90일 초과분 정리(best-effort). */
 export async function recordHit(DB: D1Database, salt: string | undefined, h: HitInput): Promise<{ ok: boolean }> {
   const site = await lookupSite(DB, h.key)
   if (!site) return { ok: false }
   if (!domainMatches(site.domain, h.originOrReferer)) return { ok: false }
   const ipHash = h.ip ? await hashIp(h.ip, salt) : ''
+  // 남용 캡 초과 시 조용히 OK 반환(픽셀에 차단신호 안 줌) — 행만 안 쌓음.
+  if (!allowHit(h.key, ipHash)) return { ok: true }
   await DB.prepare(`INSERT INTO ad_click_events (seller_id, advertiser_key, ip, ip_hash, country, ua, referrer, landing_url, is_ad_inflow)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .bind(site.seller_id, h.key, h.ip.slice(0, 45), ipHash, h.country.slice(0, 4), h.ua.slice(0, 300), h.referrer.slice(0, 500), h.landingUrl.slice(0, 500), h.isAd ? 1 : 0)
