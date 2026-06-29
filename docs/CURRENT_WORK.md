@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-29 — 환경 준비상태 진단(어드민) (대표 "다른 운영자/브라우저/장소에서 써도 환경 세팅 다 됐어?")
+**검증 가능한 답** — 대시보드 로그인/보안을 게이트하는 Cloudflare 바인딩·시크릿이 실제 설정됐는지 런타임 점검. **시크릿 값은 노출 0(present 불리언만)**.
+- **`GET /api/health/env-readiness`**(admin): JWT_SECRET(blocking — 없으면 전 대시보드 로그인 500)·FRONTEND_URL / RATE_LIMIT_KV·TURNSTILE·DATA_ENCRYPTION_KEY·INTERNAL_API_TOKEN(security fail-open) / SESSION_KV·CACHE_KV(perf) / TOSS(결제) / 선택기능 분류 + DB 연결성. `ready`=blocking 전부+DB OK. 기존 `/api/health` 갭(있을 때만 KV 핑·시크릿 미점검) 보완.
+- **`/admin/env-readiness`** 페이지(`AdminEnvReadinessPage`, 운영 nav '환경 준비상태'): GREEN/RED 종합배지 + 누락목록(필수=빨강/보안=앰버) + 그룹별 설정여부. 비기술 운영자도 클릭 한 번.
+- 검증: tsc 0·build 0·internal-links 0(라우트 도달)·theme/light-input 0. ⚠️ 배포 후 `/admin/env-readiness` 1회 확인 권장(특히 JWT_SECRET·RATE_LIMIT_KV).
+
 ## ✅ 2026-06-29 — 도매몰 판매사 주문내역 상세화 (대표 신고 "주문내역이 너무 자세하게 안나와있는데")
 **도매몰 전용**(`/wholesale/dashboard?tab=orders`) — 기존 카드가 주문#·등급가·합계만 표시 → 라인아이템/배송지 추가.
 - **`wholesale.routes.ts` GET /orders**: 주문별 라인아이템 일괄 첨부(idx_wholesale_items_order IN 조회) — 상품명/수량/단가/소계 + suppliers LEFT JOIN 제조사명(조인 실패 시 아이템만 graceful) + ship_to_* 배송지 컬럼. `/orders/:id` 상세는 이미 아이템 반환했으나 목록은 미반환이던 갭.
