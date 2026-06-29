@@ -35,5 +35,5 @@ export interface Short {
   product_id?: number; product_name?: string; product_price?: number
 }
 
-// 🛡️ 2026-05-19: 'shop' 탭 추가 — 셀러가 등록한 일반 상품 (식사권 외) 공개.
+// 🛡️ 2026-05-19: 'shop' 탭 추가 — 셀러가 등록한 일반 상품 (이용권 외) 공개.
 export type Tab = 'home' | 'shop' | 'vouchers' | 'shorts' | 'live' | 'info'

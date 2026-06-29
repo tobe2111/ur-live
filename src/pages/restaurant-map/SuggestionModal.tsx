@@ -1,7 +1,7 @@
 /**
  * 🛡️ 2026-05-01: TD-018 1387줄 분할 — RestaurantMapPage 의 SuggestionModal 분리.
  *
- * 일반 맛집 (식사권 미출시) 클릭 시 표시. 출시 알림 받기 + 영입 신청 + 카카오맵 길찾기.
+ * 일반 맛집 (이용권 미출시) 클릭 시 표시. 출시 알림 받기 + 영입 신청 + 카카오맵 길찾기.
  */
 import { useState } from 'react'
 import { MapPin, Navigation } from 'lucide-react'
@@ -64,7 +64,7 @@ export default function SuggestionModal({ place, onClose }: Props) {
         </div>
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
-          ⓘ 이 매장은 <strong>아직 식사권이 출시되지 않았어요</strong>. 출시되면 알려드릴까요?
+          ⓘ 이 매장은 <strong>아직 이용권이 출시되지 않았어요</strong>. 출시되면 알려드릴까요?
         </div>
 
         {done === 'notify' ? (

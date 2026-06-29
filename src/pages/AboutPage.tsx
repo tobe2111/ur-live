@@ -373,7 +373,7 @@ export default function AboutPage() {
               tag="단기 (Q2 2026)"
               icon={<Zap className="w-5 h-5" />}
               items={[
-                '식사권·교환권 사용 매장 1000개 확장',
+                '이용권·교환권 사용 매장 1000개 확장',
                 '지역 공구 카테고리 확대 (뷰티·숙소·헬스)',
                 '크리에이터 링크샵 고도화',
               ]}

@@ -190,7 +190,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     })
   }, [])
 
-  // 라이브 셀러 폴링 — 식사권 셀러가 라이브 중이면 핀에 LIVE 배지
+  // 라이브 셀러 폴링 — 이용권 셀러가 라이브 중이면 핀에 LIVE 배지
   // 🛡️ 2026-04-30 UX: 30초 → 90초로 완화 + 탭 숨김 시 일시 정지 (배터리·네트워크 절약).
   //   "자동으로 새로고침되며 긴 로딩" 사용자 신고 대응.
   useEffect(() => {
@@ -267,7 +267,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 🛡️ 2026-05-19: 클라이언트 geocoding loop 제거.
   //   이전: 사용자 1명당 카카오 API ~10 호출 (페이지 진입 시마다).
   //   현재: 서버 cron (worker/cron/restaurant-geocode.ts) 매일 03:00 UTC 일괄 처리.
-  //         새 식사권 등록 후 다음 cron 까지 (최대 24h) 핀 표시 없을 수 있으나,
+  //         새 이용권 등록 후 다음 cron 까지 (최대 24h) 핀 표시 없을 수 있으나,
   //         /api/kakao/place/* 호출은 0 — 페이지 로딩 속도 ~1-3초 개선.
 
 
@@ -339,8 +339,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       .slice(0, 5)
   }, [filtered])
 
-  // 🛡️ 2026-04-28: 동일 좌표 식사권 그룹화 (핀 겹침 방지).
-  //   같은 매장에 식사권 여러 개 등록 시 핀 1개 + 개수 배지.
+  // 🛡️ 2026-04-28: 동일 좌표 이용권 그룹화 (핀 겹침 방지).
+  //   같은 매장에 이용권 여러 개 등록 시 핀 1개 + 개수 배지.
   //   그룹 대표 = 첫 번째 (정렬 순서 따름).
   const withCoords = useMemo(() => {
     const list = filtered.filter(r => r.restaurant_lat && r.restaurant_lng)

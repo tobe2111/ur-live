@@ -176,7 +176,7 @@ function generateContract(groupBuy: GroupBuy) {
   const html = `
     <html><head><meta charset="utf-8"><style>body{font-family:sans-serif;padding:40px;} h1{text-align:center;} table{width:100%;border-collapse:collapse;} td,th{border:1px solid #ddd;padding:8px;}</style></head>
     <body>
-      <h1>식사권 공동구매 계약서</h1>
+      <h1>이용권 공동구매 계약서</h1>
       <p>계약일: ${new Date().toLocaleDateString('ko-KR')}</p>
       <table>
         <tr><th>항목</th><th>내용</th></tr>

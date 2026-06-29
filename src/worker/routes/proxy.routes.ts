@@ -39,7 +39,7 @@ app.get('/kakao/place/search', rateLimit({ action: 'kakao_proxy', max: 30, windo
 });
 
 // ── 카카오 주변 음식점 검색 (좌표 기반) ──
-// 🛡️ 2026-04-28: restaurant-map 페이지가 우리 식사권 외에 카카오 맛집도 표시할 때 사용.
+// 🛡️ 2026-04-28: restaurant-map 페이지가 우리 이용권 외에 카카오 맛집도 표시할 때 사용.
 // 사용자 lat/lng + radius (m) → FD6 (음식점) + CE7 (카페) 자동 검색.
 app.get('/kakao/place/nearby', rateLimit({ action: 'kakao_proxy', max: 30, windowSec: 60 }), async (c) => {
   const x = c.req.query('lng'); // longitude

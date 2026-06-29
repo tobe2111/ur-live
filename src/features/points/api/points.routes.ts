@@ -32,7 +32,7 @@ async function getDefaultCommissionRate(DB: D1Database): Promise<number> {
   return DEFAULT_COMMISSION_RATE;
 }
 
-// 충전: 1원 = 1딜 (수수료 없음, 셀러 정산 시 기본 10% 차감 / 식사권 5% / 어드민 조정 가능)
+// 충전: 1원 = 1딜 (수수료 없음, 셀러 정산 시 기본 10% 차감 / 이용권 5% / 어드민 조정 가능)
 // 🛡️ 2026-05-15: 충전 패키지 재설계 — 5만/10만/20만 권장 + 보너스 딜.
 //   PG 수수료 (~2.5%) 가 충전 1건마다 발생 → 1만 충전 시 마진 거의 0.
 //   고액 충전 유도로 결제 횟수 ↓ + bonus 로 사용자 perceived value ↑.

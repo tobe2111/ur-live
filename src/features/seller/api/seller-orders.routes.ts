@@ -695,7 +695,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
       image_url?: string;
       category?: string;
       live_stream_id?: number | null;
-      // 식사권 (meal_voucher) 전용 필드 — category=meal_voucher 일 때만 사용
+      // 이용권 (meal_voucher) 전용 필드 — category=meal_voucher 일 때만 사용
       restaurant_name?: string;
       restaurant_address?: string;
       restaurant_phone?: string;
@@ -704,7 +704,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
       group_buy_target?: number;
       group_buy_deadline?: string;
       store_verify_pin?: string;
-      // 🗺️ 2026-06-25: 좌표/외부예약/지역 — 식사권 지도·예약·하이퍼로컬 (등록 시 누락 수정)
+      // 🗺️ 2026-06-25: 좌표/외부예약/지역 — 이용권 지도·예약·하이퍼로컬 (등록 시 누락 수정)
       restaurant_lat?: number | null;
       restaurant_lng?: number | null;
       external_booking_url?: string | null;
@@ -773,11 +773,11 @@ sellerOrdersRoutes.post('/products', async (c) => {
 
     if (!result.success) throw new Error('Failed to create product');
 
-    // 식사권/공동구매 필드 저장 (별도 UPDATE — INSERT fallback 구조 유지)
+    // 이용권/공동구매 필드 저장 (별도 UPDATE — INSERT fallback 구조 유지)
     const productId = result.meta.last_row_id;
 
     // 💰 2026-06-25: 정가(original_price) — 할인율 표시용. 별도 fail-soft UPDATE(컬럼 부재 대비).
-    //   기존 INSERT 누락으로 식사권 등록 시 정가가 저장 안 돼 할인율이 안 떴음.
+    //   기존 INSERT 누락으로 이용권 등록 시 정가가 저장 안 돼 할인율이 안 떴음.
     if (body.original_price !== undefined && body.original_price !== null && Number.isFinite(body.original_price)) {
       try { await db.prepare(`UPDATE products SET original_price = ? WHERE id = ?`).bind(body.original_price, productId).run() } catch { /* column may not exist */ }
     }
@@ -894,7 +894,7 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       live_price_enabled?: boolean;
       status?: string;
       is_active?: boolean | number;
-      // 🍽️ 2026-06-25: 식사권/공구 메타 — 수정 시에도 저장(기존 PUT 화이트리스트 누락으로 식당연락처·이용조건·PIN 등이 조용히 버려져 알림톡 영구 불가였음)
+      // 🍽️ 2026-06-25: 이용권/공구 메타 — 수정 시에도 저장(기존 PUT 화이트리스트 누락으로 식당연락처·이용조건·PIN 등이 조용히 버려져 알림톡 영구 불가였음)
       restaurant_name?: string;
       restaurant_address?: string;
       restaurant_phone?: string;
@@ -971,7 +971,7 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       `UPDATE products SET ${fields.join(', ')} WHERE id = ? AND seller_id = ?`
     ).bind(...values).run();
 
-    // 🍽️ 2026-06-25: 식사권/공구 메타 필드 — 단일 UPDATE 에 합치면 컬럼 부재 시 *전체* 실패라
+    // 🍽️ 2026-06-25: 이용권/공구 메타 필드 — 단일 UPDATE 에 합치면 컬럼 부재 시 *전체* 실패라
     //   POST 와 동일하게 별도 fail-soft per-field UPDATE. 보내온 필드만(빈 문자열은 NULL 해제 허용).
     //   소유권은 `AND seller_id = ?` 로 매 쿼리 재확인.
     const mealEditFields = ['restaurant_name', 'restaurant_address', 'restaurant_phone', 'voucher_terms', 'voucher_expiry', 'group_buy_target', 'group_buy_deadline', 'store_verify_pin', 'group_buy_tiers'] as const;
@@ -1129,11 +1129,11 @@ sellerOrdersRoutes.post('/products/:id/resend-store-link', async (c) => {
     const body = await c.req.json<{ rotate?: boolean }>().catch(() => ({} as { rotate?: boolean }));
     const rotate = body.rotate === true;
 
-    // 소유권 확인 + 식사권 + 메타 조회
+    // 소유권 확인 + 이용권 + 메타 조회
     const product = await db.prepare(
       "SELECT id, name, seller_id, restaurant_name, restaurant_phone, store_owner_token FROM products WHERE id = ? AND seller_id = ? AND category = 'meal_voucher'"
     ).bind(productId, sellerId).first<any>();
-    if (!product) return c.json({ success: false, error: '식사권 상품을 찾을 수 없습니다' }, 404);
+    if (!product) return c.json({ success: false, error: '이용권 상품을 찾을 수 없습니다' }, 404);
     if (!product.restaurant_phone) return c.json({ success: false, error: '식당 연락처가 등록되지 않았습니다' }, 400);
 
     const { generateStoreOwnerToken, sendStoreOwnerAlimtalk } = await import('../../group-buy/api/group-buy.routes');

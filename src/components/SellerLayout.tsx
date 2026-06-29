@@ -184,7 +184,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   }
 
   // 🏁 2026-06-14 (사용자 승인 — 공구 중심 재편): 라이브 영구중단 후엔 live/store 모드 토글이 아니라
-  //   seller_type(크리에이터/매장)으로만 분기한다. 크리에이터는 매장 POS 도구(스캔/식사권 발행)를,
+  //   seller_type(크리에이터/매장)으로만 분기한다. 크리에이터는 매장 POS 도구(스캔/이용권 발행)를,
   //   매장은 큐레이터 그룹(hideFor)을 안 본다. live 항목은 항상 숨김.
   //   또한 user 세션 의존 항목(공구 호스팅/큐레이터 수익 = /host·/u/me/earnings)은 user_id 가 있을 때만
   //   노출 — 없으면 클릭 시 /login 으로 튕기던 바운스 버그 차단(카카오 셀러는 정상, 이메일 셀러는 숨김).

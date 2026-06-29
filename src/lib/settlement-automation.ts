@@ -475,7 +475,7 @@ export async function calculateAutoSettlement(
   // 원래 구현 유지: sellers.commission_rate (어드민이 셀러별로 조정 가능)
   // 라이브 수수료, 후원 수수료 등은 platform_settings 테이블 + 각 기능별 라우트에서 별도 관리:
   //   - 후원: points.routes.ts 가 commission_rate_donation 참조
-  //   - 식사권: auto-settlement.ts 가 commission_rate_meal_voucher 참조
+  //   - 이용권: auto-settlement.ts 가 commission_rate_meal_voucher 참조
   //   - 라이브/일반 상품 정산: sellers.commission_rate (이 쿼리)
   const rows = await DB.prepare(`
     SELECT

@@ -10,7 +10,7 @@ import { swallow } from '../../../worker/utils/swallow'
 import { recordLedger } from '../../../worker/utils/ledger'
 import { calcInfluencerCommissionPct, type CommissionRates } from './commission-rates'
 
-const DEFAULT_MEAL_VOUCHER_COMMISSION_RATE = 0.05 // 식사권 기본 수수료 5%
+const DEFAULT_MEAL_VOUCHER_COMMISSION_RATE = 0.05 // 이용권 기본 수수료 5%
 
 // 🛡️ 2026-05-15: 차등 수수료 — 셀러 GMV 기반 자동 산정 (셀러 lock-in)
 //   기본 5%, 월 GMV 1,000만+ 셀러 4%, 월 GMV 1억+ 셀러 3%
@@ -20,7 +20,7 @@ const TIER_COMMISSION = [
   { min_monthly_gmv: 10_000_000,  rate: 0.04 },  // 1천만+ → 4%
 ] as const
 
-/** DB에서 식사권 기본 수수료율 조회 (어드민 설정 우선, 없으면 5%) */
+/** DB에서 이용권 기본 수수료율 조회 (어드민 설정 우선, 없으면 5%) */
 export async function getMealVoucherCommissionRate(DB: D1Database): Promise<number> {
   try {
     const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'commission_rate_meal_voucher'").first<{ value: string }>()
@@ -463,8 +463,8 @@ export async function sendStoreOwnerAlimtalk(
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
 
-    // 🛡️ 2026-05-21: 모든 voucher 카테고리 지원 — categoryLabel 옵션 (default '식사권').
-    const label = data.categoryLabel || '식사권'
+    // 🛡️ 2026-05-21: 모든 voucher 카테고리 지원 — categoryLabel 옵션 (default '이용권').
+    const label = data.categoryLabel || '이용권'
     const message = `[유어딜] ${label} 통계 페이지 안내
 
 안녕하세요, ${data.restaurantName} 사장님!
@@ -513,7 +513,7 @@ export async function sendBuyerVoucherIssuedAlimtalk(
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
     const expDate = new Date(data.expiresAt).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
     // 🛡️ 2026-05-21: 모든 voucher 카테고리 지원 — categoryLabel 옵션.
-    const label = data.categoryLabel || '식사권'
+    const label = data.categoryLabel || '이용권'
     const message = `[유어딜] ${label} 발급 완료
 
 ${data.restaurantName ? data.restaurantName + ' · ' : ''}${data.productName}
@@ -590,7 +590,7 @@ export async function sendBuyerVoucherUsedAlimtalk(
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
     const ts = data.usedAt ? new Date(data.usedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
     // 🛡️ 2026-05-21: 모든 voucher 카테고리 지원 — categoryLabel 옵션.
-    const label = data.categoryLabel || '식사권'
+    const label = data.categoryLabel || '이용권'
     const message = `[유어딜] ✅ ${label} 사용 완료
 
 ${data.restaurantName}

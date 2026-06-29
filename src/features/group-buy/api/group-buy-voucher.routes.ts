@@ -18,7 +18,7 @@ import { recordLedger } from '@/worker/utils/ledger'
 import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
 import { sendBuyerVoucherUsedAlimtalk } from './helpers'
 import { ensureTables, clawbackVoucherCommission, sendRefundAlimtalk } from './helpers'
-// 🛡️ 2026-05-21: 카테고리 라벨 동적 (식사권 hardcode 제거).
+// 🛡️ 2026-05-21: 카테고리 라벨 동적 (이용권 hardcode 제거).
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 
 export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void {
@@ -126,7 +126,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
 
       // 🛡️ 2026-05-16: 사용자에게 사용 완료 알림톡 + 사장님 화면용 attribution 정보 수집
       let responseMeta: { product_name: string; restaurant_name: string | null; influencer_id?: string | null; influencer_commission?: number } = {
-        product_name: '식사권', restaurant_name: null,
+        product_name: '이용권', restaurant_name: null,
       }
       try {
         const meta = await DB.prepare(
@@ -205,7 +205,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
 
       return c.json({
         success: true,
-        message: '식사권이 사용 처리되었습니다! 맛있게 드세요 🍽️',
+        message: '이용권이 사용 처리되었습니다! 맛있게 드세요 🍽️',
         data: responseMeta,
       })
     }

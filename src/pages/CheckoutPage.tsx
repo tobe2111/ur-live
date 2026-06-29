@@ -346,7 +346,7 @@ function CartCheckout() {
     loadData()
   }, [navigate, urlParamsProcessed])
 
-  // 식사권 여부 확인 (참고용 — 비배송 판별은 noShipping SSOT 사용).
+  // 이용권 여부 확인 (참고용 — 비배송 판별은 noShipping SSOT 사용).
   const isMealVoucher = cartItems.some(item => (item as CartItem & { category?: string }).category === 'meal_voucher')
 
   // 결제 전 주문 생성 훅 (TD-018 final pass 분리)

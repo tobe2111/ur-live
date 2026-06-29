@@ -179,7 +179,7 @@ export default function MyGroupBuysPage() {
 
   const tabs: { key: TabKey; label: string; count?: number }[] = [
     { key: 'all', label: t('myGroupBuys.tabAll', { defaultValue: '전체' }), count: unified.length },
-    { key: 'voucher', label: t('myGroupBuys.tabVoucher', { defaultValue: '식사권' }), count: vouchers.length },
+    { key: 'voucher', label: t('myGroupBuys.tabVoucher', { defaultValue: '이용권' }), count: vouchers.length },
     { key: 'community', label: t('myGroupBuys.tabCommunity', { defaultValue: '공구 제안' }), count: community.length },
     // 🧭 2026-06-17: 그룹 referral 숨김 — '친구초대' 탭 비노출(플래그 false 면 복원).
     ...(REFERRAL_GROUP_DISCOUNT_DISABLED ? [] : [{ key: 'referral' as TabKey, label: t('myGroupBuys.tabReferral', { defaultValue: '친구초대' }), count: referralGroups.length }]),
@@ -348,7 +348,7 @@ function SourceBadge({ source }: { source: Source }) {
   const { t } = useTranslation();
   const map: Record<Source, { label: string; cls: string }> = {
     voucher: {
-      label: t('myGroupBuys.tabVoucher', { defaultValue: '식사권' }),
+      label: t('myGroupBuys.tabVoucher', { defaultValue: '이용권' }),
       cls: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300',
     },
     community: {

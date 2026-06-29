@@ -233,7 +233,7 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
 // 🧭 2026-06-17 (사용자 요청 A): 빈 화면을 선택 카테고리에 맞춰 — 부제목 + "곧 오픈" 쇼케이스 카드.
 //   특정 카테고리 선택 시 해당 카드 1개만(+카테고리 부제목), 전체/일반은 4종 전부 노출.
 const CAT_EMPTY_META: Partial<Record<CategoryFilter, { noun: string; card: { emoji: string; label: string; desc: string } }>> = {
-  meal_voucher:     { noun: '맛집', card: { emoji: '🍽️', label: '식사권 공구', desc: '맛집 단체 할인' } },
+  meal_voucher:     { noun: '맛집', card: { emoji: '🍽️', label: '이용권 공구', desc: '맛집 단체 할인' } },
   beauty_voucher:   { noun: '미용', card: { emoji: '💇', label: '뷰티 공구', desc: '시술 공동 예약' } },
   health_voucher:   { noun: '미용', card: { emoji: '💇', label: '뷰티 공구', desc: '시술 공동 예약' } },
   stay_voucher:     { noun: '숙소', card: { emoji: '🏨', label: '숙박 공구', desc: '펜션·호텔 단체' } },
@@ -242,7 +242,7 @@ const CAT_EMPTY_META: Partial<Record<CategoryFilter, { noun: string; card: { emo
   activity_voucher: { noun: '기타', card: { emoji: '🎯', label: '기타 공구', desc: '헬스·펫·액티비티' } },
 }
 const DEFAULT_SHOWCASE = [
-  { emoji: '🍽️', label: '식사권 공구', desc: '맛집 단체 할인' },
+  { emoji: '🍽️', label: '이용권 공구', desc: '맛집 단체 할인' },
   { emoji: '💇', label: '뷰티 공구', desc: '시술 공동 예약' },
   { emoji: '💪', label: '헬스 PT 공구', desc: '월 회원권 공동' },
   { emoji: '🏨', label: '숙박 공구', desc: '펜션·호텔 단체' },
@@ -495,7 +495,7 @@ export default function GroupBuyListPage() {
     }
 
     // 🛡️ 2026-05-17: 지역 필터 — voucher 카테고리에만 적용 (general 은 배송이라 위치 무관).
-    //   사용자 결정: "식사권/숙소권/헬스장 등에 필요" → general 탭은 region 무시.
+    //   사용자 결정: "이용권/숙소권/헬스장 등에 필요" → general 탭은 region 무시.
     //   category='all' 일 때: voucher 류만 region 필터, general 아이템은 통과.
     if (regionKey && category !== 'general') {
       result = result.filter((p) => {
@@ -673,8 +673,8 @@ export default function GroupBuyListPage() {
   return (
     <div className="bg-white dark:bg-[#0A0A0A] min-h-screen">
       <SEO
-        title={t('groupBuy.seoTitle', { defaultValue: '공동구매 — 식사권 / 뷰티 / 헬스 / 펫 / 숙박 / 액티비티' })}
-        description={t('groupBuy.seoDesc', { defaultValue: '맛집 식사권, 뷰티 시술, 헬스 PT, 펜션, 액티비티까지 — 함께 모이면 더 싸게! 진행 중인 공동구매를 한 눈에 확인하세요.' })}
+        title={t('groupBuy.seoTitle', { defaultValue: '공동구매 — 이용권 / 뷰티 / 헬스 / 펫 / 숙박 / 액티비티' })}
+        description={t('groupBuy.seoDesc', { defaultValue: '맛집 이용권, 뷰티 시술, 헬스 PT, 펜션, 액티비티까지 — 함께 모이면 더 싸게! 진행 중인 공동구매를 한 눈에 확인하세요.' })}
         url="/group-buy"
         jsonLd={[
           {
@@ -796,7 +796,7 @@ export default function GroupBuyListPage() {
           <div className="flex gap-2 min-w-max">
             {([
               { key: 'all', label: t('groupBuy.categoryAll', { defaultValue: '전체' }) },
-              { key: 'meal_voucher', label: t('groupBuy.categoryMealVoucher', { defaultValue: '🍽️ 식사권' }) },
+              { key: 'meal_voucher', label: t('groupBuy.categoryMealVoucher', { defaultValue: '🍽️ 이용권' }) },
               { key: 'beauty_voucher', label: t('groupBuy.categoryBeauty', { defaultValue: '💇 미용' }) },
               { key: 'stay_voucher', label: t('groupBuy.categoryStay', { defaultValue: '🏨 숙소' }) },
               { key: 'etc_voucher', label: t('groupBuy.categoryEtc', { defaultValue: '🎯 기타' }) },
@@ -828,7 +828,7 @@ export default function GroupBuyListPage() {
       )}
 
       {/* 🛡️ 2026-05-17: 지역 필터 버튼 — voucher 류 한정 (general 탭에선 숨김).
-            사용자 결정: "이용권에는 필요. 식사권/숙소권/헬스장 등에." */}
+            사용자 결정: "이용권에는 필요. 이용권/숙소권/헬스장 등에." */}
       <div className={`ur-content-wide px-4 lg:px-8 mt-3 ${category === 'general' ? 'hidden' : 'flex items-center gap-2'}`}>
         <button
           onClick={() => setRegionPickerOpen(true)}
@@ -990,7 +990,7 @@ export default function GroupBuyListPage() {
                 <div className="py-14 text-center">
                   <p className="text-[34px] mb-2">🔍</p>
                   <p className="text-gray-900 dark:text-white font-bold text-[15px]">
-                    {(category === 'meal_voucher' ? '식사권 ' : category === 'beauty_voucher' ? '미용 ' : category === 'etc_voucher' ? '기타 ' : category === 'general' ? '온라인 ' : '')}
+                    {(category === 'meal_voucher' ? '식사 ' : category === 'beauty_voucher' ? '미용 ' : category === 'etc_voucher' ? '기타 ' : category === 'general' ? '온라인 ' : '')}
                     {t('groupBuy.emptyFilteredTitle', { defaultValue: '공구가 아직 없어요' })}
                   </p>
                   <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">

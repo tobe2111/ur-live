@@ -14,7 +14,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 const SETTINGS_FIELDS = [
   { key: 'commission_rate_default', label: '기본 수수료율 — 일반 상품 (%)', default: '10' },
   { key: 'commission_rate_live', label: '라이브 판매 수수료율 (%)', default: '5' },
-  { key: 'commission_rate_meal_voucher', label: '식사권(공동구매) 수수료율 (%)', default: '5' },
+  { key: 'commission_rate_meal_voucher', label: '이용권(공동구매) 수수료율 (%)', default: '5' },
   { key: 'agency_commission_rate', label: '에이전시 추가 수수료율 (%)', default: '2' },
   { key: 'min_donation', label: '최소 후원 금액 (딜)', default: '500' },
   { key: 'free_shipping_threshold', label: '무료배송 기준 (원)', default: '50000' },

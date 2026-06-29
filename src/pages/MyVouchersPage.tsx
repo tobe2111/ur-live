@@ -379,7 +379,7 @@ function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClo
           <div className="mt-4 flex items-start gap-2.5 bg-gray-50 dark:bg-[#141414] rounded-xl px-3.5 py-3">
             <CheckCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#16A34A]" strokeWidth={2.2} />
             <div className="text-left">
-              <p className="text-[13px] font-bold text-gray-900 dark:text-white">{t('voucher.alreadyPaidTitle', { defaultValue: '이미 결제 완료된 식사권이에요' })}</p>
+              <p className="text-[13px] font-bold text-gray-900 dark:text-white">{t('voucher.alreadyPaidTitle', { defaultValue: '이미 결제 완료된 이용권이에요' })}</p>
               <p className="text-[11.5px] leading-relaxed text-gray-500 dark:text-gray-400 mt-0.5">{t('voucher.alreadyPaidDesc', { defaultValue: '매장에서 추가 결제 없이 이 화면만 보여주세요' })}</p>
             </div>
           </div>
@@ -507,7 +507,7 @@ export default function MyVouchersPage() {
     : vouchers
   // 🎨 2026-06-20 흑백 리디자인 화면1: 사용가능 카드 + (사용완료 / 만료·환불) 헤어라인 박스
   // 🎨 2026-06-21 (개선 #1): 만료 임박순 정렬 — API 는 created_at DESC 만 → 히어로 'D-N'과 목록 최상단 불일치.
-  //   곧 사라질 식사권이 위로 오도록 만료 가까운 순(만료일 없는 건 뒤로). filter 가 새 배열이라 원본 불변.
+  //   곧 사라질 이용권이 위로 오도록 만료 가까운 순(만료일 없는 건 뒤로). filter 가 새 배열이라 원본 불변.
   const unusedItems = shownVouchers.filter(v => v.status === 'unused')
     .sort((a, b) => {
       const ta = a.expires_at ? safeTime(a.expires_at) : Number.POSITIVE_INFINITY
@@ -516,7 +516,7 @@ export default function MyVouchersPage() {
     })
   const usedItems = shownVouchers.filter(v => v.status === 'used')
   const archivedItems = shownVouchers.filter(v => v.status === 'expired' || v.status === 'refunded')
-  // 지도에 표시 가능한 미사용 식사권 (좌표 보유) — 메모이즈(지도 재초기화 방지)
+  // 지도에 표시 가능한 미사용 이용권 (좌표 보유) — 메모이즈(지도 재초기화 방지)
   // 🐛 2026-06-21: 현재 탭(이용권/교환권) 스코프로 제한 — 교환권 탭에서 이용권 핀/지도버튼 새던 것 차단.
   const mapVouchers = useMemo(() => {
     const scoped = giftCount > 0
@@ -529,7 +529,7 @@ export default function MyVouchersPage() {
     [vouchers],
   )
 
-  // 가까운 만료일 (현재 탭 unused 식사권 중 가장 가까운)
+  // 가까운 만료일 (현재 탭 unused 이용권 중 가장 가까운)
   const nearestExpiry = (() => {
     const now = Date.now()
     const candidates = unusedItems
@@ -543,7 +543,7 @@ export default function MyVouchersPage() {
   })()
 
   // 🎨 2026-06-21 (대표 "페이지가 투박 — UX/UI 재설계", 시안 A '프리미엄 패스'):
-  //   지갑 = 자산. 상단 '보유 식사권 금액' 히어로 — 보유 금액(사용 가능분 합) + 아낀 돈.
+  //   지갑 = 자산. 상단 '보유 이용권 금액' 히어로 — 보유 금액(사용 가능분 합) + 아낀 돈.
   // 🐛 2026-06-21 fix: /vouchers/my 는 product_price 를 안 줘서 (원가-액면)=항상 0 → '아낀 돈' 영구 미표시였음.
   //   applied_price 는 '결제한(할인된) 단가', applied_discount_pct 는 할인율 → 원가 대비 절약 = 액면 * pct/(100-pct).
   const heroTotal = unusedItems.reduce((s, v) => s + (v.applied_price ?? v.product_price ?? 0), 0)
@@ -553,14 +553,14 @@ export default function MyVouchersPage() {
     return (pct > 0 && pct < 100 && paid > 0) ? s + Math.round((paid * pct) / (100 - pct)) : s
   }, 0)
   // 🪙 2026-06-23 (대표 신고 "교환권은 1800딜로 떠야"): 교환권(kt_alpha)은 딜로만 결제 → 단위 '딜'
-  //   (식사권 face value 는 '원' 유지 — utils/format.ts formatProductPrice 의 deal_only 규칙과 동일).
+  //   (이용권 face value 는 '원' 유지 — utils/format.ts formatProductPrice 의 deal_only 규칙과 동일).
   //   히어로는 탭별(unusedItems=shownVouchers) 동질 집합이라 sourceTab 으로 단위 판정.
   const heroIsDeal = sourceTab === 'gift'
   const heroUnit = heroIsDeal ? t('voucher.deal', { defaultValue: '딜' }) : t('voucher.won', { defaultValue: '원' })
 
   // 🎨 화면2 — 지도에서 보기 (전용 인-페이지 화면)
   if (viewMode === 'map') {
-    // 거리순 정렬 캐러셀 (위치 없으면 원본 순). 기본 강조 = 가장 가까운(없으면 첫) 식사권.
+    // 거리순 정렬 캐러셀 (위치 없으면 원본 순). 기본 강조 = 가장 가까운(없으면 첫) 이용권.
     const dist = (v: Voucher) => (userLoc && v.restaurant_lat && v.restaurant_lng)
       ? haversineMeters(userLoc, { lat: v.restaurant_lat, lng: v.restaurant_lng }) : Infinity
     const mapCarousel = userLoc ? [...mapVouchers].sort((a, b) => dist(a) - dist(b)) : mapVouchers
@@ -589,7 +589,7 @@ export default function MyVouchersPage() {
               />
             </div>
           </Suspense>
-          {/* 🎨 2026-06-21 (개선 #1): 주변 식사권 캐러셀 (거리순) — 1장 카드 → 가로 스크롤 비교. */}
+          {/* 🎨 2026-06-21 (개선 #1): 주변 이용권 캐러셀 (거리순) — 1장 카드 → 가로 스크롤 비교. */}
           {mapVouchers.length > 0 && (
             <div className="absolute left-0 right-0 bottom-3 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
               <div className="flex gap-3 px-3 snap-x snap-mandatory">
@@ -657,7 +657,7 @@ export default function MyVouchersPage() {
         <div className="ur-content-narrow px-4 lg:px-8 mb-4">
           <div className="rounded-[20px] px-[18px] pt-[18px] pb-4 bg-gray-900 dark:bg-[#141414] text-white"
             style={{ boxShadow: '0 14px 32px -10px rgba(10,10,10,0.45)' }}>
-            <p className="text-[12px] font-semibold text-gray-400">{heroIsDeal ? t('voucher.heroBalanceLabelGift', { defaultValue: '보유 교환권 금액' }) : t('voucher.heroBalanceLabel', { defaultValue: '보유 식사권 금액' })}</p>
+            <p className="text-[12px] font-semibold text-gray-400">{heroIsDeal ? t('voucher.heroBalanceLabelGift', { defaultValue: '보유 교환권 금액' }) : t('voucher.heroBalanceLabel', { defaultValue: '보유 이용권 금액' })}</p>
             <p className="mt-1 text-[32px] font-extrabold font-mono tracking-tight leading-none">
               {formatNumber(heroTotal)}<span className="font-sans text-[16px] font-bold text-gray-300 ml-0.5">{heroUnit}</span>
             </p>
@@ -739,7 +739,7 @@ export default function MyVouchersPage() {
                 {unusedItems.map(v => <VoucherTicket key={v.id} v={v} muted={false} locale={locale} t={t} onShowQr={() => setQrVoucher(v)} />)}
               </div>
             ) : (
-              <p className="py-8 text-center text-[13px] text-gray-400 dark:text-gray-500">{t('voucher.noUnused', { defaultValue: '사용 가능한 식사권이 없어요' })}</p>
+              <p className="py-8 text-center text-[13px] text-gray-400 dark:text-gray-500">{t('voucher.noUnused', { defaultValue: '사용 가능한 이용권이 없어요' })}</p>
             )}
 
             {/* 사용 완료 / 만료·환불 — 헤어라인 박스 (탭하면 인라인 펼침) */}
@@ -821,7 +821,7 @@ function TicketShape({ className, strokeWidth = 2.2, variant, faded }: {
           </>
         ) : (
           <>
-            {/* 본문 패널 — 식사권 모티프 (포크 + 스푼) */}
+            {/* 본문 패널 — 이용권 모티프 (포크 + 스푼) */}
             <g stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.9">
               {/* 포크: 3갈래 + 수렴 + 손잡이 */}
               <path d="M34 30 V38 M38 30 V38 M42 30 V38" />
@@ -904,10 +904,10 @@ function EmptyVouchers({ mode, onExplore, t }: {
   const isGift = mode === 'gift'
   const title = isGift
     ? t('voucher.emptyGiftTitle', { defaultValue: '받아둔 교환권이 없어요' })
-    : t('voucher.emptyGbTitle', { defaultValue: '받아둔 식사권이 없어요' })
+    : t('voucher.emptyGbTitle', { defaultValue: '받아둔 이용권이 없어요' })
   const desc = isGift
     ? t('voucher.emptyGiftDesc', { defaultValue: '교환권을 구매하면 휴대폰으로 발송되고\n여기에서도 모아볼 수 있어요' })
-    : t('voucher.emptyGbDesc', { defaultValue: '동네 맛집 공동구매에 참여하면\n선결제 식사권이 여기에 쌓여요' })
+    : t('voucher.emptyGbDesc', { defaultValue: '동네 맛집 공동구매에 참여하면\n선결제 이용권이 여기에 쌓여요' })
   const cta = isGift
     ? t('voucher.emptyGiftCta', { defaultValue: '교환권 보러가기' })
     : t('voucher.emptyGbCta', { defaultValue: '공구 보러가기' })
@@ -921,7 +921,7 @@ function EmptyVouchers({ mode, onExplore, t }: {
       ]
     : [
         t('voucher.stepGb1', { defaultValue: '공구\n참여' }),
-        t('voucher.stepGb2', { defaultValue: '지갑에\n식사권' }),
+        t('voucher.stepGb2', { defaultValue: '지갑에\n이용권' }),
         t('voucher.stepGb3', { defaultValue: '매장에서\nQR 제시' }),
       ]
 
@@ -1207,7 +1207,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
   // 🔔 2026-06-17 (사용자 요청): 발송 실패(잔액부족/API오류 등) 명시 — '결제됐는데 안 옴' 깜깜이 해소.
   const sendFailed = v.kt_status === 'failed'
 
-  // 🎨 2026-06-21 (대표 신고 "투박") — 식사권(VoucherTicket)과 동일한 클린 가로 레이아웃으로 통일.
+  // 🎨 2026-06-21 (대표 신고 "투박") — 이용권(VoucherTicket)과 동일한 클린 가로 레이아웃으로 통일.
   //   60px 썸네일(gift_catalog 이미지) · 상태 점 + 기프티쇼 칩 · 제목 · 발송/실패/바코드 안내 ·
   //   우측 가격 + 컴팩트 액션. PIN 모드만 하단에 인앱 바코드. 천공/큰 버튼/세로 패스 구조 제거.
   const price = v.applied_price ?? null

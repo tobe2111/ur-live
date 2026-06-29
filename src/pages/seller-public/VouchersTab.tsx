@@ -12,7 +12,7 @@ interface Props {
 }
 
 /**
- * 셀러 공개페이지 식사권 탭 (리스트).
+ * 셀러 공개페이지 이용권 탭 (리스트).
  * 🛡️ TD-006 추출 (2026-05-06).
  */
 export default function VouchersTab({ mealVouchers, isOwner, textClass }: Props) {

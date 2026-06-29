@@ -502,7 +502,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
   }
 
   // ── Voucher used-state check ──
-  // 식사권 등 이미 사용된 바우처가 포함된 주문은 환불 불가
+  // 이용권 등 이미 사용된 바우처가 포함된 주문은 환불 불가
   try {
     const usedVouchers = await DB.prepare(
       "SELECT COUNT(*) as n FROM vouchers WHERE order_id = ? AND status = 'used'"
@@ -511,7 +511,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     if (usedVouchers && usedVouchers.n > 0) {
       return c.json({
         success: false,
-        error: `이미 사용된 식사권이 ${usedVouchers.n}개 있어 환불할 수 없습니다. 고객센터에 문의해주세요.`,
+        error: `이미 사용된 이용권이 ${usedVouchers.n}개 있어 환불할 수 없습니다. 고객센터에 문의해주세요.`,
       }, 400);
     }
   } catch { /* vouchers table may not exist */ }

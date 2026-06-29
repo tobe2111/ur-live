@@ -25,7 +25,7 @@ export default function SellerTermsPage() {
         <p className="text-[11px] text-gray-400 mb-6">최종 수정일: 2026년 5월 16일 (초안 — 법무 검토 전)</p>
 
         <h2 className="text-lg font-bold mt-4 mb-2">제1조 (목적)</h2>
-        <p className="text-sm">본 약관은 유어딜 (이하 "회사") 의 공동구매 식사권 플랫폼에 매장 (이하 "셀러") 로 입점하여 voucher 발행 / 사용 / 정산하는 절차를 규정합니다.</p>
+        <p className="text-sm">본 약관은 유어딜 (이하 "회사") 의 공동구매 이용권 플랫폼에 매장 (이하 "셀러") 로 입점하여 voucher 발행 / 사용 / 정산하는 절차를 규정합니다.</p>
 
         <h2 className="text-lg font-bold mt-6 mb-2">제2조 (입점 자격)</h2>
         <ul className="text-sm list-disc pl-5 space-y-1">

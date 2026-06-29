@@ -1,5 +1,5 @@
 /**
- * 공동구매 & 식사권 바우처 API
+ * 공동구매 & 이용권 바우처 API
  *
  * GET  /api/group-buy/products       - 공동구매 상품 목록
  * GET  /api/group-buy/products/:id   - 공동구매 상품 상세
@@ -29,7 +29,7 @@ import {
   sendBuyerVoucherIssuedAlimtalk,
   sendSellerFirstVoucherAlimtalk,
 } from './helpers'
-// 🛡️ 2026-05-21: 모든 voucher 카테고리에서 동작하려면 식사권 hardcode 제거 — getVoucherShortLabel 사용.
+// 🛡️ 2026-05-21: 모든 voucher 카테고리에서 동작하려면 이용권 hardcode 제거 — getVoucherShortLabel 사용.
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
