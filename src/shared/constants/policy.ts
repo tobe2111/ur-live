@@ -65,6 +65,12 @@ export const COMMISSION_DEFAULTS = {
   /** 에이전시 본인 commission (매출 기준) */
   AGENCY_OWN_RATE: 2.0,
 
+  /** 🔒 2026-06-27 (감사 #7): 매장영입 커미션 기본율 — util 파일에 흩어진 매직넘버를 SSOT 로 통일(값 불변).
+   *  에이전시 매장영입(agencies.store_intro_commission_pct 미설정 시 fallback). 위 AGENCY_OWN_RATE 와는 별개 개념. */
+  AGENCY_STORE_INTRO_PCT: 2.0,
+  /** 영입자(크리에이터) 매장영입(platform_settings.influencer_store_intro_pct 미설정 시 fallback). */
+  INFLUENCER_STORE_INTRO_PCT: 1.5,
+
   /** 셀러 등급별 보너스 (% 가산) */
   TIER_COMMISSION_BONUS: { bronze: 0, silver: 1, gold: 2, platinum: 3 } as Record<string, number>,
 

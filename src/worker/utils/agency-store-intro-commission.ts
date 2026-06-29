@@ -13,8 +13,11 @@
  * Fail-soft: 어떤 단계 실패해도 결제 흐름 막지 않음 (catch and swallow).
  */
 
+import { COMMISSION_DEFAULTS } from '../../shared/constants/policy'
+
 const SIGNUP_BONUS_AMOUNT = 30000  // ₩30,000 첫 결제 시 1회
-const DEFAULT_AGENCY_COMMISSION_PCT = 2.0  // agencies.store_intro_commission_pct fallback
+// 🔒 2026-06-27 (감사 #7): 매장영입 기본율 SSOT(policy.ts) — 흩어진 매직넘버 통일(값 2.0 불변).
+const DEFAULT_AGENCY_COMMISSION_PCT = COMMISSION_DEFAULTS.AGENCY_STORE_INTRO_PCT  // agencies.store_intro_commission_pct fallback
 
 export async function creditAgencyStoreIntroCommission(
   DB: D1Database,
