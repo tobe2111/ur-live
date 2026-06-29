@@ -53,6 +53,9 @@ export default function WholesaleLoginPage() {
     if (saved) { setEmail(saved); setRememberMe(true) }
   }, [])
 
+  // ⚡ 2026-06-29 (로그인 속도): 로그인 성공 후 이동할 카탈로그 청크를 미리 워밍 → navigate 즉시 렌더(흰화면 0).
+  useEffect(() => { import('./WholesaleCatalogPage').catch(() => { /* prefetch best-effort */ }) }, [])
+
   // 🛡️ 2026-06-19 (대표 결정 B): 판매사는 구매자 → 로그인 후 카탈로그(/wholesale)가 홈. 대시보드는 헤더 버튼으로 진입.
   const alreadyIn = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
   useEffect(() => { if (alreadyIn) navigate('/wholesale', { replace: true }) }, [alreadyIn, navigate])
@@ -72,7 +75,7 @@ export default function WholesaleLoginPage() {
         if (data.success && data.status === 'approved' && data.data?.accessToken) {
           applySellerSession(data.data)
           toast.success('판매사로 로그인되었습니다')
-          window.location.assign('/wholesale') // B: 구매자 → 카탈로그 홈
+          navigate('/wholesale', { replace: true }) // ⚡ SPA — 앱 재다운로드 없이 즉시(토큰 동기 set 후)
         } else if (data.success && (data.status === 'pending' || data.status === 'needs_business_info')) {
           toast.info(data.message || '판매사 승인 대기 중입니다 — 승인 후 이용할 수 있어요')
         }
@@ -99,8 +102,9 @@ export default function WholesaleLoginPage() {
       else localStorage.removeItem('wholesale_remember_email')
       applySellerSession(d)
       // 🛡️ 2026-06-19 (대표 결정 B): 판매사는 구매자 → 항상 카탈로그(/wholesale) 홈. 대시보드는 헤더 버튼.
-      //   full reload → 토큰/세션 반영. (도착지는 역할 무관 /wholesale)
-      window.location.assign('/wholesale')
+      // ⚡ 2026-06-29 (로그인 속도): applySellerSession 이 seller_token 을 localStorage 에 *동기* set 후라
+      //   SPA navigate 로 충분(카탈로그가 render 시 토큰 읽음) — full reload(앱 재다운로드) 제거. 제조사와 대칭.
+      navigate('/wholesale', { replace: true })
     } catch (err) {
       toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || (err as Error)?.message || '로그인 중 오류가 발생했어요')
     } finally { setLoading(false) }

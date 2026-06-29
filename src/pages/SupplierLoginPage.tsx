@@ -35,6 +35,9 @@ export default function SupplierLoginPage() {
     if (saved) { setForm(f => ({ ...f, email: saved })); setRememberMe(true) }
   }, [])
 
+  // ⚡ 2026-06-29 (로그인 속도): 로그인 성공 후 이동할 제조사 대시보드 청크 미리 워밍 → navigate 즉시.
+  useEffect(() => { import('./SupplierDashboardPage').catch(() => { /* prefetch best-effort */ }) }, [])
+
   useEffect(() => {
     if (isSupplierLoggedIn()) { navigate('/supplier', { replace: true }); return }
     // 🏭 2026-06-04 카카오 통합: 카카오 유저로 로그인된 채 돌아오면 제조회원 전환/로그인 자동 시도.
