@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, X, Heart, ShoppingCart, FileText } from 'lucide-react'
+import { Search, X, Heart, ShoppingCart, FileText, Lock } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { WT } from '../wholesale/wholesale-theme'
 import { WholesaleWordmark } from './WholesaleLogo'
@@ -60,7 +60,7 @@ export default function CatalogHeader({
   const navColor = (to: string) => (pathname === to ? WT.brand : WT.ink2)
   // 🏭 props(loggedIn/supplierToken/depositBalance/grade/logout)는 호출부 호환을 위해 유지 —
   //   상단 유틸바는 이제 공용 <WholesaleUtilBar/> 가 스스로 fetch(useWholesaleMe/Deposit, RQ 캐시 공유)한다.
-  void supplierToken; void depositBalance; void grade; void logout; void memberOnlyGo
+  void supplierToken; void depositBalance; void logout; void memberOnlyGo
 
   return (
     <header className="sticky top-0 z-30">
@@ -144,8 +144,16 @@ export default function CatalogHeader({
             <button onClick={() => navigate('/wholesale/brands')} className="whitespace-nowrap font-bold" style={{ color: navColor('/wholesale/brands') }}>{t('wholesale.nav.brands', { defaultValue: '브랜드관' })}</button>
             <button onClick={() => navigate('/wholesale/best')} className="whitespace-nowrap" style={{ color: navColor('/wholesale/best') }}>{t('wholesale.nav.best', { defaultValue: '월간 베스트' })}</button>
             <button onClick={() => navigate('/wholesale/new')} className="whitespace-nowrap" style={{ color: navColor('/wholesale/new') }}>{t('wholesale.nav.new', { defaultValue: '신상품' })}</button>
-            {/* 🏭 2026-06-29 (대표 #15·#16): '고마진 특가'(/wholesale/margin)·'프리미엄 전용관' 메뉴 제거 —
-                일반(Basic) 회원에게 40% 마진·프리미엄관이 노출되던 문제 차단(등급 무관 비노출). */}
+            {/* 🏭 2026-06-29 (대표 재지시): 고마진 특가·프리미엄 전용관 버튼은 *항상 노출*(업셀) — 단 Basic(C, 일반회원)은
+                클릭해 들어가면 페이지가 '등급 전용' 잠금 안내로 막힘(WholesaleCatalogPage 의 gradeBlocked). 등급은 페이지가 판정. */}
+            <button onClick={() => navigate('/wholesale/margin')} className="whitespace-nowrap inline-flex items-center gap-1" style={{ color: navColor('/wholesale/margin') }}>
+              {t('wholesale.nav.margin', { defaultValue: '고마진 특가' })}
+              {grade === 'C' && <Lock className="w-3 h-3" style={{ color: WT.ink4 }} />}
+            </button>
+            <button onClick={() => navigate('/wholesale/premium')} className="whitespace-nowrap inline-flex items-center gap-1 font-bold" style={{ color: navColor('/wholesale/premium') }}>
+              {t('wholesale.nav.premium', { defaultValue: '프리미엄 전용관' })}
+              {grade === 'C' && <Lock className="w-3 h-3" style={{ color: WT.ink4 }} />}
+            </button>
           </div>
         </div>
         {/* 전체카테고리 메가 드롭다운 — 기존 cats 재활용 */}

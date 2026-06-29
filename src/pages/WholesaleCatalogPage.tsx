@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO, { wholesaleStoreJsonLd, itemListJsonLd } from '@/components/SEO'
-import { ChevronRight, FileSpreadsheet } from 'lucide-react'
+import { ChevronRight, FileSpreadsheet, Lock, ArrowLeft } from 'lucide-react'
 import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit, useWholesaleMall, wholesaleAuthSeg } from '@/hooks/queries/useWholesale'
 import WholesaleBannerCarousel from './wholesale/WholesaleBannerCarousel'
 import { queryKeys } from '@/hooks/queries/queryKeys'
@@ -49,6 +49,10 @@ const WholesaleProposalModal = lazy(() => import('./wholesale/WholesaleProposalM
 // 🏬 2026-06-14 (사용자 요청): 컬렉션 페이지 분리 — 같은 데이터 로직 재사용, mode 로 초기 필터/게이팅.
 //   /wholesale(home) | /wholesale/best|new|margin|premium|brands.
 export type WholesaleCollectionMode = 'best' | 'new' | 'margin' | 'premium' | 'brands'
+
+// 🏭 2026-06-29 (대표 — 고마진/프리미엄 등급 게이팅): margin/premium 관에 접속 차단되는 등급.
+//   Basic(C, 일반회원)만 차단 = Standard·Premium 허용(대표 "일반회원 막아줘"). Premium 전용으로 좁히려면 ['B','C'].
+const MARGIN_PREMIUM_BLOCKED_GRADES = ['C']
 
 export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollectionMode } = {}) {
   const navigate = useNavigate()
@@ -305,6 +309,9 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
     toast.error(t('wholesale.memberOnly', { defaultValue: '회원 전용 메뉴예요 — 로그인 후 이용해주세요' }))
     navigate('/wholesale/login', { replace: true })
   }, [memberGated, navigate, t])
+  // 🏭 2026-06-29 (대표 재지시 — 버튼은 보이되 Basic 접속 차단): margin/premium 은 Standard·Premium 등급 전용.
+  //   로그인 Basic(C)은 리다이렉트 대신 페이지 안 '등급 전용' 잠금 안내(아래 gradeBlocked 분기). 등급 미로드 시 판정 보류
+  //   (meQ.isFetched 후에만 차단 — A/B 깜빡임/오차단 방지). me 조회 실패 시 fail-open(정당 회원 lockout 회피).
   // 🏭 2026-06-04 카카오 통합: 카카오 유저로 로그인됐지만 아직 유통회원(seller_token)이 아닌 상태.
   //   사업자 정보 + 관리자 승인 필요라 1탭 X → 입점 폼(/wholesale/join)으로 유도.
   const userSession = !loggedIn && typeof window !== 'undefined' && !!localStorage.getItem('user_id')
@@ -445,6 +452,39 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   // 🏭 제조사-only 는 /supplier 로 리다이렉트 중 — 판매사 카탈로그(+'제조사 대시보드' 헤더) 깜빡임 방지.
   //   판매사 전용 컬렉션(margin/premium) 을 비로그인이 직접 URL 로 연 경우도 동일하게 렌더 차단(로그인 리다이렉트 중).
   if (supplierOnly || memberGated) return null
+
+  // 🏭 Basic(C) 회원이 margin/premium 직접 접속 → 상품 대신 '등급 전용' 잠금 안내(버튼은 보이되 접속 차단).
+  const gradeBlocked = (mode === 'margin' || mode === 'premium') && loggedIn && !isPreview
+    && meQ.isFetched && !!me?.grade && MARGIN_PREMIUM_BLOCKED_GRADES.includes(me.grade)
+  if (gradeBlocked) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col" style={{ background: '#fff', color: WT.ink }}>
+        <header className="sticky top-0 z-40 bg-white/95 backdrop-blur" style={{ borderBottom: '1px solid ' + WT.line }}>
+          <div className="ur-content-wide flex items-center justify-between px-5 lg:px-8 h-[52px]">
+            <button onClick={() => navigate('/wholesale')} aria-label={t('common.back', { defaultValue: '뒤로' })}><ArrowLeft className="w-5 h-5" style={{ color: WT.ink }} /></button>
+            <h1 className="text-[15px] font-bold" style={{ color: WT.ink }}>{mode ? COLLECTION_TITLE[mode] : ''}</h1>
+            <div className="w-9" />
+          </div>
+        </header>
+        <div className="flex-1 flex items-center justify-center px-6 py-16">
+          <div className="text-center max-w-sm">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: WT.fill }}>
+              <Lock className="w-7 h-7" style={{ color: WT.ink3 }} />
+            </div>
+            <h2 className="text-[18px] font-extrabold mb-2" style={{ color: WT.ink }}>
+              {t('wholesale.gradeLocked.title', { defaultValue: '{{name}}은 Standard·Premium 등급 전용이에요', name: mode ? COLLECTION_TITLE[mode] : '' })}
+            </h2>
+            <p className="text-[14px] leading-relaxed mb-6" style={{ color: WT.ink3 }}>
+              {t('wholesale.gradeLocked.desc', { defaultValue: '현재 등급(Basic)에서는 이용할 수 없어요. 등급이 올라가면 더 높은 마진의 상품과 프리미엄 전용관을 이용할 수 있어요.' })}
+            </p>
+            <button onClick={() => navigate('/wholesale')} className="px-6 h-12 rounded-2xl text-[15px] font-bold text-white" style={{ background: WT.brand }}>
+              {t('wholesale.gradeLocked.home', { defaultValue: '도매몰 홈으로' })}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     // 🏬 --ud-brand: 몰 브랜드 색(기본 몰 → #FC5424 → 현 디자인과 동일). 주요 브랜드 요소가 var() 로 참조.
