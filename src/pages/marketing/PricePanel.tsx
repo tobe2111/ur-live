@@ -3,6 +3,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import PanelError from './PanelError'
 
 /**
  * 🆕 2026-06-27 유어애즈 — 가격 모니터링(네이버쇼핑 최저가 추적).
@@ -25,12 +26,14 @@ export default function PricePanel() {
   const [myPrice, setMyPrice] = useState('')
   const [busy, setBusy] = useState(false)
   const [refreshing, setRefreshing] = useState<number | null>(null)
+  const [err, setErr] = useState(false)
 
   const load = useCallback(async () => {
+    setErr(false)
     try {
       const r = await api.get('/api/ads/price/watches', { headers: authHeader() })
       if (r.data?.success) setWatches(r.data.watches || [])
-    } catch { /* graceful */ }
+    } catch { setErr(true) }
   }, [])
   useEffect(() => { load() }, [load])
 
@@ -70,6 +73,8 @@ export default function PricePanel() {
         <input className={`${input} w-32`} type="number" placeholder="내 판매가(선택)" value={myPrice} onChange={e => setMyPrice(e.target.value)} />
         <button onClick={add} disabled={busy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{busy ? '등록 중…' : '추적 추가'}</button>
       </div>
+
+      {err && <PanelError onRetry={load} />}
 
       {watches.length > 0 && (
         <div className="mt-3 overflow-x-auto">
