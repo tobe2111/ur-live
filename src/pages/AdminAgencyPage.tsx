@@ -26,6 +26,9 @@ interface Agency {
   tier_evaluated_at?: string | null
   commission_rate?: number
   auto_settle?: number
+  // 🛡️ 2026-06-27 per-agency 매장영입 율·기간
+  store_intro_commission_pct?: number | null
+  commission_term_months?: number | null
 }
 
 interface Seller {
@@ -37,7 +40,7 @@ interface Seller {
 
 type ModalMode = 'create' | 'edit' | null
 
-const initForm = { name: '', contact_name: '', email: '', password: '', phone: '', status: 'active' }
+const initForm = { name: '', contact_name: '', email: '', password: '', phone: '', status: 'active', store_intro_commission_pct: '', commission_term_months: '' }
 
 export default function AdminAgencyPage() {
   const { t } = useTranslation()
@@ -92,7 +95,11 @@ export default function AdminAgencyPage() {
   }
 
   function openEdit(a: Agency) {
-    setForm({ name: a.name, contact_name: a.contact_name, email: a.email, password: '', phone: a.phone || '', status: a.status })
+    setForm({
+      name: a.name, contact_name: a.contact_name, email: a.email, password: '', phone: a.phone || '', status: a.status,
+      store_intro_commission_pct: a.store_intro_commission_pct != null ? String(a.store_intro_commission_pct) : '',
+      commission_term_months: a.commission_term_months != null ? String(a.commission_term_months) : '',
+    })
     setEditTarget(a)
     setError('')
     setModal('edit')
@@ -105,10 +112,13 @@ export default function AdminAgencyPage() {
       if (modal === 'create') {
         await api.post('/api/admin/agencies', form, { headers })
       } else if (editTarget) {
-        const payload: Record<string, string> = {
+        const payload: Record<string, string | number | null> = {
           name: form.name, contact_name: form.contact_name, phone: form.phone, status: form.status
         }
         if (form.password) payload.password = form.password
+        // 🛡️ 2026-06-27 per-agency 율·기간: 빈칸이면 미전송(미변경). 기간 0/빈칸 = 무제한(서버에서 NULL).
+        if (form.store_intro_commission_pct !== '') payload.store_intro_commission_pct = Number(form.store_intro_commission_pct)
+        if (form.commission_term_months !== '') payload.commission_term_months = Number(form.commission_term_months)
         await api.patch(`/api/admin/agencies/${editTarget.id}`, payload, { headers })
       }
       setModal(null)
@@ -517,6 +527,32 @@ export default function AdminAgencyPage() {
                     <option value="active">{t('admin.agency.k051', { defaultValue: '활성' })}</option>
                     <option value="inactive">{t('admin.agency.k018', { defaultValue: '비활성' })}</option>
                   </select>
+                </div>
+              )}
+
+              {/* 🛡️ 2026-06-27 per-agency 매장영입 커미션 율·기간 (대표 — 에이전시마다 조정) */}
+              {modal === 'edit' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">매장영입 수수료율 (%)</label>
+                    <input
+                      type="number" min={0} max={100} step={0.1}
+                      value={form.store_intro_commission_pct}
+                      onChange={e => setForm(p => ({ ...p, store_intro_commission_pct: e.target.value }))}
+                      placeholder="기본 2"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">지급 한도 (개월)</label>
+                    <input
+                      type="number" min={0} step={1}
+                      value={form.commission_term_months}
+                      onChange={e => setForm(p => ({ ...p, commission_term_months: e.target.value }))}
+                      placeholder="0=무제한"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
               )}
             </div>

@@ -122,7 +122,7 @@
 - [ ] **🔒 배선(gated)** — 리졸버를 `payment.routes.ts /confirm`(잠금 파일)에 연결해 실제 분배. ⚠️ **경제 변화 동반**: 현 라이브는 3P~10%(`orders.commission_rate`)·에이전시 2%(+₩30k 보너스)·시한 없음 → 확정정책(5%/1%/24mo)으로 *내려감*. 잠금 파일 수정 + 스테이징 실결제 검증 필수 → 대표 명시 승인 후. (현재 리졸버 **미배선** = 라이브 영향 0)
 - [ ] 1P/3P 판별 정합 — `products.seller_id IS NULL`=1P(어드민)/non-null=3P(셀러) 이미 존재. 리졸버 입력 ownership 으로 매핑 + 카드/상세 "제공: 원청 · 추천: 프로모터" 표시
 - [ ] 홍보 소개비 = 원청이 자율 책정하는 UI (3P=셀러, 1P=어드민) + 음수 방지 가드
-- [ ] 에이전시 per-agency 설정 UI(어드민): 율·기간(개월)·활성화 보너스. 기존 `creditAgencyStoreIntroCommission`(2% 고정+₩30k, 시한없음)을 리졸버 정책(1%/실판매/24mo)으로 정합 + 환불 역전 대칭 유지
+- [x] **에이전시 per-agency 율·기간 어드민 UI/저장 — 구현(2026-06-27, 현행 시스템에 적용)**: `AdminAgencyPage` 수정모달에 **매장영입 수수료율(%) + 지급 한도(개월)** 입력(에이전시별). `PATCH /admin/agencies/:id` 가 `store_intro_commission_pct`·`commission_term_months`(NULL/0=무제한) 저장. `creditAgencyStoreIntroCommission` 가 per-agency 율 + **기간 한도**(julianday 경과, NULL=무제한=현행 → 회귀 0) 적용. repair-schema 컬럼 등재. ⚠️ 활성화 보너스 per-agency 는 후속. (full fee-resolver 결제 배선은 별도 gated.)
 - [ ] 미세: 홍보 귀속 규칙(last-click + 유효기간) · 활성화 보너스 금액 기본값
 
 ## 구현 현황(코드)
