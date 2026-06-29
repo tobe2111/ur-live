@@ -1,15 +1,19 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, X, LogIn, LogOut, Factory, Heart, ShoppingCart, FileText } from 'lucide-react'
+import { Search, X, Heart, ShoppingCart, FileText } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
-import { WT, won, GRADE_NAME } from '../wholesale/wholesale-theme'
+import { WT } from '../wholesale/wholesale-theme'
 import { WholesaleWordmark } from './WholesaleLogo'
+import WholesaleUtilBar from '../wholesale/WholesaleUtilBar'
 import type { CatOpt } from './types'
 import type { CatalogSort } from './catalog-controls'
 
 // 🏭 2026-06-15 도매몰 리디자인 (Claude Design 핸드오프 — 유통스타트 도매몰.dc.html).
 //   다크 유틸바(회원·예치금·충전) + 셰브론 로고 + 잉크보더 검색 + 견적함/관심상품/장바구니 + 카테고리 네비.
 //   상태/핸들러는 부모 소유(props), 라우팅·검색 와이어링·megamenu·멀티몰 로직 보존.
+// 🏭 2026-06-29 (통합 셸 Phase 1 — 대표 "한 제품화"): 상단 유틸바를 공용 <WholesaleUtilBar/> 로 일원화.
+//   기존엔 이 헤더에 동일한 유틸바가 *복제*돼 있어 카탈로그(자체 복제)와 대시보드(WholesaleUtilBar)가
+//   따로 관리됐다 → 한쪽만 바뀌면 불일치. 이제 한 컴포넌트(SSOT)로 전 도매 표면이 동일 상단바를 공유한다.
 export default function CatalogHeader({
   loggedIn, supplierToken, cartCount, mallName, mallLogo, depositBalance, grade,
   search, setSearch, setCommittedSearch, megaOpen, setMegaOpen,
@@ -47,8 +51,6 @@ export default function CatalogHeader({
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { t } = useTranslation()
-  const companyName = (typeof window !== 'undefined' && localStorage.getItem('seller_name')) || '회원'
-  const gradeLabel = GRADE_NAME[grade || 'C'] || grade || 'C'
   // 회원 전용 메뉴 — 비로그인은 로그인 유도.
   const memberOnlyGo = (to: string) => {
     if (!loggedIn) { toast.error(t('wholesale.memberOnly', { defaultValue: '회원 전용 메뉴예요 — 로그인 후 이용해주세요' })); goLogin(); return }
@@ -56,48 +58,14 @@ export default function CatalogHeader({
   }
   // 네비 활성 색 (현재 경로 기준)
   const navColor = (to: string) => (pathname === to ? WT.brand : WT.ink2)
+  // 🏭 props(loggedIn/supplierToken/depositBalance/grade/logout)는 호출부 호환을 위해 유지 —
+  //   상단 유틸바는 이제 공용 <WholesaleUtilBar/> 가 스스로 fetch(useWholesaleMe/Deposit, RQ 캐시 공유)한다.
+  void supplierToken; void depositBalance; void grade; void logout
 
   return (
     <header className="sticky top-0 z-30">
-      {/* 1. 다크 유틸 바 (시안) — 제조사 입점/고객센터/공지 · 회원·예치금·충전 */}
-      <div style={{ background: WT.ink, color: '#C2C6CC' }}>
-        <div className="ur-content-wide px-5 lg:px-8 h-9 flex items-center justify-between text-[12px]">
-          <div className="flex items-center gap-3 lg:gap-4 min-w-0">
-            {/* 🧹 2026-06-17 (시안): 제조사 입점 삭제 · 순서 공지사항/고객센터/제안·신고 */}
-            <button onClick={() => navigate('/wholesale/board')} className="font-semibold text-white whitespace-nowrap">{t('wholesale.util.notice', { defaultValue: '공지사항' })}</button>
-            <span className="opacity-30 hidden sm:inline">|</span>
-            <button onClick={() => navigate('/wholesale/support')} className="hidden sm:inline whitespace-nowrap">{t('wholesale.util.cs', { defaultValue: '고객센터' })}</button>
-            <button onClick={() => navigate('/wholesale/board?tab=report')} className="hidden sm:inline whitespace-nowrap">{t('wholesale.util.report', { defaultValue: '제안·신고' })}</button>
-          </div>
-          <div className="flex items-center gap-2.5 lg:gap-3.5 shrink-0">
-            {loggedIn ? (
-              <>
-                <span className="hidden md:inline whitespace-nowrap"><b className="text-white">{companyName}</b> 님 · <span className="font-bold" style={{ color: WT.inkPink }}>{gradeLabel} 회원</span></span>
-                <span className="opacity-30 hidden md:inline">|</span>
-                <span className="whitespace-nowrap">{t('wholesale.icon.deposit', { defaultValue: '예치금' })} <b className="text-white tabular-nums">{won(depositBalance)}</b></span>
-                <button onClick={() => navigate('/wholesale/deposits')} className="font-bold text-white rounded-md px-2.5 py-1 whitespace-nowrap" style={{ background: WT.brand }}>{t('wholesale.charge', { defaultValue: '충전' })}</button>
-                <span className="opacity-30">|</span>
-                {/* 🛡️ 2026-06-19 (대표 신고 — 대시보드 유입경로 없음): '마이'(판매사 대시보드) 모바일에서도 노출
-                    (기존 hidden sm:inline → 모바일에서 진입 불가였음). 대시보드 라벨로 명확화. */}
-                <button onClick={() => navigate('/wholesale/dashboard')} className="font-semibold whitespace-nowrap">{t('wholesale.util.my', { defaultValue: '대시보드' })}</button>
-                <button onClick={logout} className="inline-flex items-center gap-1 whitespace-nowrap"><LogOut className="w-3 h-3" /> {t('wholesale.util.logout', { defaultValue: '로그아웃' })}</button>
-              </>
-            ) : supplierToken ? (
-              <>
-                <button onClick={() => navigate('/supplier')} className="font-bold text-white inline-flex items-center gap-1 whitespace-nowrap"><Factory className="w-3.5 h-3.5" /> {t('wholesale.util.supplierDash', { defaultValue: '제조사 대시보드' })}</button>
-                <span className="opacity-30">|</span>
-                <button onClick={logout} className="inline-flex items-center gap-1 whitespace-nowrap"><LogOut className="w-3 h-3" /> {t('wholesale.util.logout', { defaultValue: '로그아웃' })}</button>
-              </>
-            ) : (
-              <>
-                <button onClick={goLogin} className="inline-flex items-center gap-1 whitespace-nowrap"><LogIn className="w-3 h-3" /> {t('wholesale.util.login', { defaultValue: '로그인' })}</button>
-                <span className="opacity-30">|</span>
-                <button onClick={() => navigate('/wholesale/start')} className="font-bold text-white whitespace-nowrap">{t('wholesale.util.join', { defaultValue: '회원가입' })}</button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* 1. 공용 유틸바 (SSOT) — 공지/고객센터/제안·신고 · 회원·예치금·충전·대시보드·로그아웃 */}
+      <WholesaleUtilBar />
 
       {/* 2. 메인 헤더 — 셰브론 로고 + 잉크보더 검색 + 견적함/관심상품/장바구니 */}
       <div className="bg-white" style={{ borderBottom: '1px solid ' + WT.line }}>

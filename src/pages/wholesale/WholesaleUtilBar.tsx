@@ -25,6 +25,8 @@ export default function WholesaleUtilBar() {
   const supplierToken = getSupplierToken()
   const loggedIn = !!token
   const companyName = (typeof window !== 'undefined' && localStorage.getItem('seller_name')) || '회원'
+  // 🏭 2026-06-29 (통합 셸 Phase 3): 제조사 분기도 판매사처럼 신원(회사명·역할) + 빠른 네비를 표시 — 역할 인지 일관.
+  const supplierName = (typeof window !== 'undefined' && localStorage.getItem('supplier_name')) || '제조사'
 
   const meQ = useWholesaleMe()
   const depositQ = useWholesaleDeposit()
@@ -65,6 +67,9 @@ export default function WholesaleUtilBar() {
             </>
           ) : supplierToken ? (
             <>
+              <span className="hidden md:inline whitespace-nowrap"><b className="text-white">{supplierName}</b> 님 · <span className="font-bold" style={{ color: WT.inkPink }}>제조사</span></span>
+              <span className="opacity-30 hidden md:inline">|</span>
+              <button onClick={() => navigate('/supplier/wholesale-orders')} className="font-semibold whitespace-nowrap">{t('wholesale.util.orders', { defaultValue: '주문 관리' })}</button>
               <button onClick={() => navigate('/supplier')} className="font-bold text-white inline-flex items-center gap-1 whitespace-nowrap"><Factory className="w-3.5 h-3.5" /> {t('wholesale.util.supplierDash', { defaultValue: '제조사 대시보드' })}</button>
               <span className="opacity-30">|</span>
               <button onClick={logout} className="inline-flex items-center gap-1 whitespace-nowrap"><LogOut className="w-3 h-3" /> {t('wholesale.util.logout', { defaultValue: '로그아웃' })}</button>
