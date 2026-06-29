@@ -15,6 +15,7 @@ import { DashboardLoadError } from '@/components/dashboard'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
+import { safeDate } from '@/utils/safe-date'
 import { UserCheck, Building2, Phone, Mail, FileText, Loader2, Tag, Store } from 'lucide-react'
 
 interface PendingDistributor {
@@ -146,7 +147,7 @@ export default function AdminDistributorApprovalPage({ embedded = false }: { emb
                         )}
                       </div>
                     )}
-                    <p className="mt-1 text-[11px] text-gray-400">신청 {new Date(d.created_at).toLocaleString('ko-KR')}</p>
+                    <p className="mt-1 text-[11px] text-gray-400">신청 {safeDate(d.created_at)?.toLocaleString('ko-KR') ?? '-'}</p>
                   </div>
                   <div className="flex flex-col gap-2 shrink-0">
                     <button

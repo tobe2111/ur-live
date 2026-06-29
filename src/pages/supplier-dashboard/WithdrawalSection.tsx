@@ -50,7 +50,7 @@ export default function WithdrawalSection({ spendable, items, t, onRequest }: {
                     <td className="py-2.5 text-gray-500 text-xs">{(w.requested_at || '').slice(0, 10)}</td>
                     <td className="py-2.5 text-right font-semibold text-gray-900">{formatWon(w.amount)}</td>
                     <td className="py-2.5 text-center">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${st.cls}`}>{st.label}</span>
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${st.cls}`}>{t(`supplier.wd_${w.status}`, { defaultValue: st.label })}</span>
                       {w.admin_memo && <span className="block text-[10px] text-gray-400 mt-0.5">{w.admin_memo}</span>}
                     </td>
                   </tr>
