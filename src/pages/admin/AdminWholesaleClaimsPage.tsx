@@ -120,7 +120,7 @@ export default function AdminWholesaleClaimsPage() {
                   <th className="py-2.5 px-4 font-medium">클레임</th>
                   <th className="py-2.5 px-4 font-medium">주문</th>
                   <th className="py-2.5 px-4 font-medium">판매사</th>
-                  <th className="py-2.5 px-4 font-medium">공급자</th>
+                  <th className="py-2.5 px-4 font-medium">제조사</th>
                   <th className="py-2.5 px-4 font-medium">사유</th>
                   <th className="py-2.5 px-4 font-medium">상태</th>
                   <th className="py-2.5 px-4 font-medium">일자</th>
@@ -156,7 +156,7 @@ export default function AdminWholesaleClaimsPage() {
             <div className="text-sm text-gray-600 space-y-1.5 mb-4">
               <div>주문 <b className="text-gray-900">#{detail.wholesale_order_id}</b> · 주문상태 {detail.order_status || '-'} · 결제 {formatWon(Number(detail.order_subtotal) || 0)} · 환불 {formatWon(Number(detail.order_refunded) || 0)}</div>
               <div>판매사 <b className="text-gray-900">{detail.distributor_name || detail.distributor_username || `#${detail.distributor_seller_id}`}</b></div>
-              <div>공급자 {detail.supplier_name || (detail.supplier_id ? `#${detail.supplier_id}` : '혼합/미지정')}</div>
+              <div>제조사 {detail.supplier_name || (detail.supplier_id ? `#${detail.supplier_id}` : '혼합/미지정')}</div>
               <div>사유 <b className="text-gray-900">{REASON[detail.reason_code] || detail.reason_code}</b>{detail.wholesale_order_item_id ? ` · 항목 #${detail.wholesale_order_item_id}` : ' · 주문 전체'}</div>
             </div>
 
