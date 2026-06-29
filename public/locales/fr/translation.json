@@ -1155,7 +1155,7 @@
     "settlementAutomation": "Automatisation des reglements",
     "settlementAutomationDesc": "Calcul automatique des commissions et traitement des reglements",
     "publicPage": {
-      "vouchers": "식사권",
+      "vouchers": "Bons",
       "videos": "영상",
       "noName": "Sans nom",
       "mailOrderNumber": "N° de licence de vente à distance",
@@ -1205,8 +1205,8 @@
       "addSheetTitle": "Que voulez-vous ajouter ?",
       "addProduct": "Ajouter un produit",
       "addProductDesc": "Fiche complète — images, détails, options",
-      "addVoucher": "Ajouter un bon d'achat groupé",
-      "addVoucherDesc": "Offre locale / bon — lieu et objectif",
+      "addVoucher": "Ajouter un bon",
+      "addVoucherDesc": "Bon local — lieu et détails",
       "previewBanner": "Aperçu visiteur — voici ce que voient les autres",
       "backToEdit": "Retour à l'édition"
     },

@@ -1155,7 +1155,7 @@
     "settlementAutomation": "Automatizacion de liquidacion",
     "settlementAutomationDesc": "Calculo automatico de comisiones y procesamiento de liquidaciones",
     "publicPage": {
-      "vouchers": "식사권",
+      "vouchers": "Vales",
       "videos": "영상",
       "noName": "Sin nombre",
       "mailOrderNumber": "N.º de licencia de venta por correo",
@@ -1205,8 +1205,8 @@
       "addSheetTitle": "¿Qué quieres añadir?",
       "addProduct": "Añadir producto",
       "addProductDesc": "Registro completo — imágenes, detalles, opciones",
-      "addVoucher": "Añadir cupón de compra grupal",
-      "addVoucherDesc": "Oferta local / cupón — ubicación y meta",
+      "addVoucher": "Añadir vale",
+      "addVoucherDesc": "Vale local — ubicación y detalles",
       "previewBanner": "Vista de visitante: así lo ven los demás",
       "backToEdit": "Volver a editar"
     },

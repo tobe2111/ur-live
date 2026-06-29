@@ -1881,8 +1881,8 @@
       "addSheetTitle": "What would you like to add?",
       "addProduct": "Add product",
       "addProductDesc": "Full listing — images, details, options",
-      "addVoucher": "Add group-buy voucher",
-      "addVoucherDesc": "Local deal / voucher — set location & target",
+      "addVoucher": "Add voucher",
+      "addVoucherDesc": "Local store voucher — location & details",
       "previewBanner": "Visitor preview — this is what others see",
       "backToEdit": "Back to editing"
     },
