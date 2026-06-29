@@ -20,6 +20,7 @@ import { createDashboardNotification } from '@/features/notifications/api/dashbo
 import { swallow } from '@/worker/utils/swallow';
 import { setSupplyMeta, getSupplyMeta } from '@/worker/utils/product-supply-meta';
 import { normalizeWholesaleCategory } from '@/shared/wholesale-category';
+import { setWholesaleSignupMeta, getWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta';
 import { ensureSupplyVisibilitySchema, normalizeVisibility, recordSupplyPriceChange } from './supply-visibility';
 import { buildCsv, csvResponse, parseCsv } from './supply-csv';
 import { buildXlsx, xlsxResponse, type XlsxCell } from './xlsx';
@@ -54,6 +55,22 @@ async function ensureQtyConstraintSchema(DB: D1Database) {
     'ALTER TABLE products ADD COLUMN brand_logo_url TEXT',
   ]) { await DB.prepare(sql).run().catch(swallow('supplier-dashboard:biz8:alter')); }
 }
+
+// 🏭 2026-06-29 (E): 제조사 가입 메타(공급 카테고리·희망 유통채널) 셀프 조회/수정.
+supplierDashboardRoutes.get('/signup-meta', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const meta = await getWholesaleSignupMeta(c.env.DB, 'supplier', sid);
+  return c.json({ success: true, ...meta });
+});
+supplierDashboardRoutes.patch('/signup-meta', rateLimit({ action: 'supplier-signup-meta', max: 30, windowSec: 600 }), async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>));
+  await setWholesaleSignupMeta(c.env.DB, 'supplier', sid, body.categories, body.channel, true);
+  const meta = await getWholesaleSignupMeta(c.env.DB, 'supplier', sid);
+  return c.json({ success: true, ...meta });
+});
 
 // ── GET /me — 프로필 + 잔고 요약 ─────────────────────────────────────────────
 supplierDashboardRoutes.get('/me', async (c) => {
