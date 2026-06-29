@@ -85,7 +85,10 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
               <NavIcon>{n.icon}</NavIcon>{n.label}
             </button>
           )) : (
-            <p style={{ fontSize: 12, color: 'var(--ink3)', padding: '8px 11px', lineHeight: 1.6 }}>로그인하면 메뉴가 표시됩니다.</p>
+            <div style={{ padding: '8px 11px' }}>
+              <p style={{ fontSize: 12, color: 'var(--ink3)', lineHeight: 1.6, margin: 0 }}>로그인하면 메뉴가 표시됩니다.</p>
+              <a href="/seller/login?returnUrl=%2Fads%2Fdashboard" style={{ display: 'inline-block', marginTop: 8, fontSize: 12.5, fontWeight: 700, color: 'var(--brand-ink)' }}>로그인 / 시작하기 →</a>
+            </div>
           )}
         </nav>
         <div style={{ padding: 14, borderTop: '1px solid var(--border)' }}>

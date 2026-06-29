@@ -203,6 +203,10 @@ export default function MarketingDashboardPage() {
                 </div>
               </div>
             )}
+            {/* 검색추세 — 쇼핑결과가 없어도 독립 표시(쇼핑 실패 시 추세 누락 방지) */}
+            {!kwShop && kwTrend && kwTrend[0] && (
+              <div className="mt-3 text-[12px] text-gray-600 dark:text-gray-300">검색추세 <b className="text-gray-900 dark:text-white">{kwTrend[0].changePct >= 0 ? '▲' : '▼'}{Math.abs(kwTrend[0].changePct)}%</b></div>
+            )}
             {/* 자동완성 키워드 확장 — 클릭 시 그 키워드로 재분석 */}
             {kwAuto && kwAuto.length > 0 && (
               <div className="mt-3">
@@ -222,46 +226,6 @@ export default function MarketingDashboardPage() {
             )}
           </div>
         </div>
-      )}
-
-      {/* 네이버 검색광고 계정 연동 + 내 광고 구조(자동입찰/실적 토대) */}
-      {hasToken && <section id="sec-searchad" style={{ scrollMarginTop: 76 }}><SearchAdPanel /></section>}
-
-      {/* 자동입찰 규칙(목표순위→입찰가 자동조정) — 규칙 있을 때만 표시 */}
-      {hasToken && <section id="sec-autobid" style={{ scrollMarginTop: 76 }}><AutobidPanel /></section>}
-
-      {/* AI 주간 리포트(매주 월요일 자동 생성 — 읽기 전용) */}
-      {hasToken && <section id="sec-report" style={{ scrollMarginTop: 76 }}><WeeklyReportPanel /></section>}
-
-      {/* 가격 모니터링(네이버쇼핑 최저가 추적) + 소싱 */}
-      {hasToken && <section id="sec-price" style={{ scrollMarginTop: 76 }}><PricePanel /><SourcingPanel /></section>}
-
-      {/* 부정클릭 방지(Phase 1 — 탐지/리포트) */}
-      {hasToken && <section id="sec-fraud" style={{ scrollMarginTop: 76 }}><ClickGuardPanel /></section>}
-
-      {/* AI 마케터 (Claude 진단/추천 — 읽기 전용) */}
-      {hasToken && (
-        <section id="sec-ai" style={{ scrollMarginTop: 76 }} className={`mt-3 ${card}`}>
-          <div className="text-[14px] font-bold text-gray-900 dark:text-white">AI 마케터</div>
-          <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">실적·키워드 데이터를 분석해 개선 액션을 제안합니다(추천만 — 자동 실행 없음). 계정 연동 시 실적까지 반영.</p>
-          <div className="mt-2 flex gap-2">
-            <input className={input} placeholder="중심 키워드 (선택, 예: 무선이어폰)" value={aiSeed} onChange={(e) => setAiSeed(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAiMarketer() }} />
-            <button onClick={runAiMarketer} disabled={aiBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{aiBusy ? '분석 중…' : 'AI 분석 받기'}</button>
-          </div>
-          {aiOff && <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-500">AI 마케터는 Anthropic API 키 설정 후 사용할 수 있습니다.</p>}
-          {aiAdvice && (
-            <div className="mt-3 space-y-1 text-[12.5px] leading-relaxed">
-              {aiAdvice.split('\n').map((line, i) => {
-                const h = line.match(/^#{1,4}\s+(.*)/)
-                if (h) return <p key={i} className="font-bold text-gray-900 dark:text-white mt-2">{h[1]}</p>
-                const b = line.match(/^\s*[-*]\s+(.*)/)
-                if (b) return <p key={i} className="text-gray-600 dark:text-gray-300 pl-3">• {b[1].replace(/\*\*/g, '')}</p>
-                if (!line.trim()) return null
-                return <p key={i} className="text-gray-600 dark:text-gray-300">{line.replace(/\*\*/g, '')}</p>
-              })}
-            </div>
-          )}
-      </section>
       )}
 
       {/* 연관키워드 추천 (검색광고 API — RelKwdStat) */}
@@ -331,6 +295,46 @@ export default function MarketingDashboardPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* 네이버 검색광고 계정 연동 + 내 광고 구조(자동입찰/실적 토대) */}
+      {hasToken && <section id="sec-searchad" style={{ scrollMarginTop: 76 }}><SearchAdPanel /></section>}
+
+      {/* 자동입찰 규칙(목표순위→입찰가 자동조정) — 규칙 있을 때만 표시 */}
+      {hasToken && <section id="sec-autobid" style={{ scrollMarginTop: 76 }}><AutobidPanel /></section>}
+
+      {/* AI 주간 리포트(매주 월요일 자동 생성 — 읽기 전용) */}
+      {hasToken && <section id="sec-report" style={{ scrollMarginTop: 76 }}><WeeklyReportPanel /></section>}
+
+      {/* 가격 모니터링(네이버쇼핑 최저가 추적) + 소싱 */}
+      {hasToken && <section id="sec-price" style={{ scrollMarginTop: 76 }}><PricePanel /><SourcingPanel /></section>}
+
+      {/* 부정클릭 방지(Phase 1 — 탐지/리포트) */}
+      {hasToken && <section id="sec-fraud" style={{ scrollMarginTop: 76 }}><ClickGuardPanel /></section>}
+
+      {/* AI 마케터 (Claude 진단/추천 — 읽기 전용) */}
+      {hasToken && (
+        <section id="sec-ai" style={{ scrollMarginTop: 76 }} className={`mt-3 ${card}`}>
+          <div className="text-[14px] font-bold text-gray-900 dark:text-white">AI 마케터</div>
+          <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">실적·키워드 데이터를 분석해 개선 액션을 제안합니다(추천만 — 자동 실행 없음). 계정 연동 시 실적까지 반영.</p>
+          <div className="mt-2 flex gap-2">
+            <input className={input} placeholder="중심 키워드 (선택, 예: 무선이어폰)" value={aiSeed} onChange={(e) => setAiSeed(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAiMarketer() }} />
+            <button onClick={runAiMarketer} disabled={aiBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{aiBusy ? '분석 중…' : 'AI 분석 받기'}</button>
+          </div>
+          {aiOff && <p className="mt-2 text-[11px] text-amber-600 dark:text-amber-500">AI 마케터는 Anthropic API 키 설정 후 사용할 수 있습니다.</p>}
+          {aiAdvice && (
+            <div className="mt-3 space-y-1 text-[12.5px] leading-relaxed">
+              {aiAdvice.split('\n').map((line, i) => {
+                const h = line.match(/^#{1,4}\s+(.*)/)
+                if (h) return <p key={i} className="font-bold text-gray-900 dark:text-white mt-2">{h[1]}</p>
+                const b = line.match(/^\s*[-*]\s+(.*)/)
+                if (b) return <p key={i} className="text-gray-600 dark:text-gray-300 pl-3">• {b[1].replace(/\*\*/g, '')}</p>
+                if (!line.trim()) return null
+                return <p key={i} className="text-gray-600 dark:text-gray-300">{line.replace(/\*\*/g, '')}</p>
+              })}
+            </div>
+          )}
+      </section>
       )}
 
       {/* 수집된 발주 */}
