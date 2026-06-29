@@ -47,6 +47,7 @@ if domain auth; then
   run "API 인증 누락"                   bash scripts/check-api-auth.sh
   run "가격기반 로그인 유도 금지"         env STRICT_LOGIN_GATE=1       node scripts/check-login-gate-by-price.mjs
   run "도매 자동재로그인 억제(로그아웃)"   env STRICT_WHS_AUTOLOGIN=1    node scripts/check-wholesale-autologin-guarded.mjs
+  run "도매 로그인 SPA 이동(속도)"        env STRICT_LOGIN_SPA=1        node scripts/check-wholesale-login-spa-navigate.mjs
 fi
 
 if domain money; then
