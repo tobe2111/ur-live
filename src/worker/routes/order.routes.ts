@@ -714,11 +714,15 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       return c.json({ success: false, error: '환불 가능 금액을 초과하거나 이미 처리 중입니다' }, 409);
     }
 
+    // 🔒 2026-06-27 (결제 정확성 감사 Low): Toss 취소 금액은 CAS 로 예약한 정수 refundAmount 와 동일해야
+    //   함(이전엔 미반올림 body.refund_amount 전달 → 비정수 입력 시 장부 1001 ↔ Toss 1000.6 불일치).
+    //   부분환불=정수 refundAmount, 전액환불(body 미지정)=undefined(Toss 전액취소) 유지.
+    const tossCancelAmount = (body.refund_amount && body.refund_amount > 0) ? refundAmount : undefined;
     const tossResult = await tossCancelPayment(
       paymentKey,
       tossSecretKey,
       `[환불요청] ${body.reason}`,
-      body.refund_amount,
+      tossCancelAmount,
     );
 
     if (!tossResult.success) {

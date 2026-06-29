@@ -92,22 +92,27 @@ export async function clawbackVoucherSettlementOnRefund(
 
     if (v.status === 'used' && v.settlement_id != null) {
       const st = await DB.prepare(
-        "SELECT id, status, commission_rate FROM restaurant_settlements WHERE id=?"
-      ).bind(v.settlement_id).first<{ id: number; status: string; commission_rate: number | null }>().catch(() => null)
+        "SELECT id, status, commission_rate, total_revenue FROM restaurant_settlements WHERE id=?"
+      ).bind(v.settlement_id).first<{ id: number; status: string; commission_rate: number | null; total_revenue: number | null }>().catch(() => null)
 
       if (st && st.status !== 'completed') {
         // 미지급 정산 → 이 voucher 분 차감 + detach. 돈은 아직 매장에 안 나감 → 보정만.
+        // 🔒 2026-06-27 (결제 정확성 감사 Low): per-voucher round(rev×rate) 차감은 cron 의
+        //   aggregate round(Σrev×rate) 과 달라 다건 정산에서 ~N원 drift + 전건 회수해도 0 미수렴.
+        //   남은 revenue(total_revenue − 이 voucher)로 cron 과 동일 공식 재집계해 절대값 write → drift 0,
+        //   마지막 voucher 회수 시 revenue 0 → commission/settlement 정확히 0. (revenue=cron 합산 기준 동일)
         const rate = Math.max(0, Number(st.commission_rate || 0))
-        const comm = Math.round(revenue * rate / 100)
-        const net = revenue - comm
+        const newRevenue = Math.max(0, Number(st.total_revenue || 0) - revenue)
+        const newComm = Math.round(newRevenue * rate / 100)
+        const newNet = newRevenue - newComm
         await DB.prepare(`
           UPDATE restaurant_settlements
           SET total_vouchers_used = MAX(0, total_vouchers_used - 1),
-              total_revenue = MAX(0, total_revenue - ?),
-              commission_amount = MAX(0, commission_amount - ?),
-              settlement_amount = MAX(0, settlement_amount - ?)
+              total_revenue = ?,
+              commission_amount = ?,
+              settlement_amount = ?
           WHERE id = ?
-        `).bind(revenue, comm, net, st.id).run().catch(swallow('clawback:settlement-dec'))
+        `).bind(newRevenue, newComm, newNet, st.id).run().catch(swallow('clawback:settlement-dec'))
         const r = await DB.prepare("UPDATE vouchers SET status='refunded', settlement_id=NULL WHERE id=? AND status='used'").bind(v.id).run().catch(() => null)
         if (r?.meta?.changes) out.reclaimedPending++
       } else {
