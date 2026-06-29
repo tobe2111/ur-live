@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Loader2, Crown, Search, Package, Store } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
@@ -46,7 +46,7 @@ export default function AdminWholesaleProductsPage() {
 
   useEffect(() => { if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true }) }, [navigate])
 
-  const { data, isLoading: loading, refetch } = useApiQuery<{ items: WholesaleProductRow[]; premium_count: number }>(
+  const { data, isLoading: loading, isError, error, refetch } = useApiQuery<{ items: WholesaleProductRow[]; premium_count: number }>(
     ['admin', 'wholesale-products', premiumFilter, query, mallId], '/api/admin/wholesale-products',
     {
       params: { premium: premiumFilter, q: query, limit: 200, ...(mallId ? { mall_id: mallId } : {}) },
@@ -172,6 +172,9 @@ export default function AdminWholesaleProductsPage() {
 
         {loading ? (
           <div className="py-20 text-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" /></div>
+        ) : isError ? (
+          // 🛡️ 2026-06-29 (audit): fetch 실패를 '상품 없음'으로 위장 금지 — 에러+재시도(상품 미노출 오판 방지).
+          <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="도매 상품" />
         ) : items.length === 0 ? (
           <div className="bg-white rounded-xl py-20 text-center">
             <Package className="w-12 h-12 text-gray-200 mx-auto mb-3" />
