@@ -770,6 +770,8 @@ app.get('/catalog', async (c) => {
   const sellerId = (await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET))
     ?? (await sellerIdFromCookieGet(c, c.env.JWT_SECRET))
   const guest = !sellerId
+  // 🛡️ 2026-06-29: 인증 시도(무효 토큰/쿠키)가 있었으면 guest 라도 public 공유캐시 금지(v=in 키 오염→누수 차단).
+  const authAttempt = !!c.req.header('Authorization') || /(?:^|;\s*)ud_seller_token=/.test(c.req.header('Cookie') || '')
   const visBind = sellerId ?? -1 // visibilityWhere EXISTS 가 매칭 안 되도록(=ALL/NULL 만 노출)
   const { DB } = c.env
   const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
@@ -807,7 +809,9 @@ app.get('/catalog', async (c) => {
     //   를 직접 read → guest HIT 면 즉시 반환(setup 전부 skip). 아래 put(비어있지 않을 때만)·prewarm 과 동일 키.
     //   guest = 가격 null 이라 머니 무관. 로그인은 미적용(등급가 → 기존 grade-cache 경로).
     {
-      const isDefaultGuestReqEarly = guest && page === 1 && !search && !category && !sortKey
+      // 🛡️ 2026-06-29: !authAttempt — 무효 토큰/쿠키를 보낸 요청은 이 guest 조기 캐시반환을 타지 못하게(그 응답이
+      //   v=in 키에 public 캐시돼 유효토큰 유저에게 누수되는 구멍 차단). 진짜 익명만 조기 KV/edge HIT.
+      const isDefaultGuestReqEarly = guest && !authAttempt && page === 1 && !search && !category && !sortKey
         && minPrice == null && maxPrice == null && !inStock && !premiumOnly && !brand && !brandsMode
       if (isDefaultGuestReqEarly) {
         // 🏎️ 2026-06-19 (B: 글로벌 KV 캐시) — caches.default 는 colo별이라 저트래픽 도매몰은 대부분 colo가 cold
@@ -1067,10 +1071,11 @@ app.get('/catalog', async (c) => {
     //   initialData 로 주입 → guest 가 refetch 없이 빈 화면 고착. 비어있으면 no-store 로 다음 요청이 즉시 재시도.
     const isEmptyCatalog = items.length === 0
     // 기본 guest 요청(검색/카테고리/정렬/가격/프리미엄/브랜드 미지정) — SSR/prewarm 이 읽는 캐논 키와 1:1.
-    const isDefaultGuestReq = guest && page === 1 && !search && !category && !sortKey
+    const isDefaultGuestReq = guest && !authAttempt && page === 1 && !search && !category && !sortKey
       && minPrice == null && maxPrice == null && !inStock && !premiumOnly && !brand && !brandsMode
     if (guest) {
-      if (isEmptyCatalog) {
+      // 🛡️ 빈 결과(콜드/일시오류) 또는 인증 시도(무효 토큰/쿠키)면 public 공유캐시 금지 — 후자는 v=in 키 오염→누수 차단.
+      if (isEmptyCatalog || authAttempt) {
         c.header('Cache-Control', 'private, no-store')
       } else {
         c.header('Cache-Control', 'public, max-age=60')
@@ -1123,6 +1128,10 @@ app.get('/catalog/:id', async (c) => {
   const sellerId = (await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET))
     ?? (await sellerIdFromCookieGet(c, c.env.JWT_SECRET))
   const guest = !sellerId
+  // 🛡️ 2026-06-29 잔여 누수 차단: 토큰/쿠키를 *보냈는데* 무효(만료 등)인 요청은 비록 guest 로 떨어져도 절대
+  //   public 공유캐시 금지 — 그 'null 가격' 응답이 v=in 키에 캐시돼 유효토큰 유저에게 누수되는 구멍을 막음.
+  //   진짜 익명(인증 시도 0)만 public 캐시 → SSR/cron/비로그인 둘러보기 성능 보존.
+  const authAttempt = !!c.req.header('Authorization') || /(?:^|;\s*)ud_seller_token=/.test(c.req.header('Cookie') || '')
   const { DB } = c.env
   const id = Number(c.req.param('id'))
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 상품 ID' }, 400)
@@ -1176,9 +1185,10 @@ app.get('/catalog/:id', async (c) => {
     let detailImages: string[] = []
     try { const arr = JSON.parse(r.detail_images || '[]'); if (Array.isArray(arr)) detailImages = arr.filter(u => typeof u === 'string').slice(0, 10) } catch { /* 손상 JSON — 무시 */ }
     if (guest) {
-      // 🏭 guest 상세는 가격 비노출 → 공유캐시 안전(브라우저 60s + edge 300s, banners 와 동일 분리). KV 미사용.
-      c.header('Cache-Control', 'public, max-age=60')
-      c.header('CDN-Cache-Control', 'public, max-age=300')
+      // 🏭 guest 상세는 가격 비노출 → 공유캐시 안전(브라우저 60s + edge 300s). KV 미사용.
+      //   🛡️ 단, 인증 시도(무효 토큰/쿠키)가 있었으면 public 금지 — v=in 키 오염 방지(잔여 누수 차단).
+      if (authAttempt) { c.header('Cache-Control', 'private, no-store') }
+      else { c.header('Cache-Control', 'public, max-age=60'); c.header('CDN-Cache-Control', 'public, max-age=300') }
       return c.json({
         success: true,
         item: {
