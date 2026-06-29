@@ -82,6 +82,15 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
     } catch { /* graceful */ }
   }, [showNav])
   useEffect(() => { loadTenants() }, [loadTenants])
+  // 드롭다운 바깥 클릭 / Esc 로 닫기.
+  useEffect(() => {
+    if (!tenantOpen) return
+    const onDown = (e: MouseEvent) => { if (!(e.target as Element | null)?.closest?.('.uad-tenant')) setTenantOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setTenantOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
+  }, [tenantOpen])
   const activeTenant = tenants.find((t) => t.is_active) || tenants[0] || null
   const tenantName = (t: Tenant) => t.tenant_label || `고객 ${t.customer_id}`
   async function switchTenant(customerId: string) {
@@ -129,7 +138,7 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
 
         {/* 고객사 전환(멀티테넌트) — 연결된 고객사가 있을 때만 */}
         {showNav && activeTenant && (
-          <div style={{ padding: '14px 14px 4px' }}>
+          <div className="uad-tenant" style={{ padding: '14px 14px 4px' }}>
             <div className="mono" style={{ fontSize: 10, letterSpacing: '.1em', color: 'var(--ink3)', padding: '0 2px 7px' }}>고객사 전환</div>
             <button type="button" onClick={() => setTenantOpen((v) => !v)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 9, background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 9, padding: '9px 11px', cursor: 'pointer', color: 'var(--ink)' }}>
               <span style={{ width: 24, height: 24, borderRadius: 6, background: 'var(--brand-soft)', color: 'var(--brand-ink)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800 }}>{tenantName(activeTenant).slice(0, 1)}</span>
@@ -179,7 +188,7 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {/* 모바일 고객사 칩(사이드바 셀렉터가 숨겨지므로) */}
             {showNav && activeTenant && (
-              <button type="button" className="lg:hidden" onClick={() => setTenantOpen((v) => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600, background: 'var(--brand-soft)', color: 'var(--brand-ink)', border: 'none', padding: '5px 10px', borderRadius: 999, cursor: 'pointer', maxWidth: 130, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <button type="button" className="lg:hidden uad-tenant" onClick={() => setTenantOpen((v) => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600, background: 'var(--brand-soft)', color: 'var(--brand-ink)', border: 'none', padding: '5px 10px', borderRadius: 999, cursor: 'pointer', maxWidth: 130, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {tenantName(activeTenant)} ▾
               </button>
             )}
@@ -190,7 +199,7 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
 
         {/* 모바일 고객사 드롭다운(칩 클릭 시) */}
         {showNav && activeTenant && tenantOpen && (
-          <div className="lg:hidden" style={{ position: 'sticky', top: 60, zIndex: 19, background: 'var(--panel)', borderBottom: '1px solid var(--border)', padding: 8 }}>
+          <div className="lg:hidden uad-tenant" style={{ position: 'sticky', top: 60, zIndex: 19, background: 'var(--panel)', borderBottom: '1px solid var(--border)', padding: 8 }}>
             {tenants.map((t) => (
               <div key={t.customer_id} onClick={() => switchTenant(t.customer_id)} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 11px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: t.is_active ? 600 : 400, background: t.is_active ? 'var(--brand-soft)' : 'transparent', color: t.is_active ? 'var(--brand-ink)' : 'var(--ink2)' }}>
                 <span style={{ width: 24, height: 24, borderRadius: 6, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'var(--ink2)' }}>{tenantName(t).slice(0, 1)}</span>
