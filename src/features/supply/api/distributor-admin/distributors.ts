@@ -4,6 +4,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { ASSIGNABLE, ensureCreditSchemaAdmin, type Env } from './helpers'
+import { ensureWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta'
 
 export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
   // ── GET /distributors?search=&assigned=1 ─────────────────────────────────────
@@ -51,12 +52,16 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
   //   카운트(wholesale-overview-admin: is_distributor=1 AND status='pending')와 동일 조건.
   app.get('/distributors/pending-approvals', async (c) => {
     try {
+      // 🏭 2026-06-29 가입 메타(취급 카테고리·주력 판매채널) 표시 — 사이드테이블 LEFT JOIN(없으면 ensure).
+      await ensureWholesaleSignupMeta(c.env.DB)
       const { results } = await c.env.DB.prepare(
         `SELECT s.id, s.username, s.name, s.business_name, s.business_number, s.email, s.phone,
                 s.representative_name, s.representative_phone, s.manager_name, s.manager_phone,
                 s.business_registration_image_url, s.business_registration_status,
-                s.status, s.created_at, COALESCE(s.mall_id,1) AS mall_id
+                s.status, s.created_at, COALESCE(s.mall_id,1) AS mall_id,
+                m.categories AS signup_categories, m.channel AS signup_channel
          FROM sellers s
+         LEFT JOIN wholesale_signup_meta m ON m.member_type = 'distributor' AND m.member_id = s.id
          WHERE s.is_distributor = 1 AND s.status = 'pending'
          ORDER BY s.created_at ASC, s.id ASC LIMIT 200`
       ).all().catch(() => ({ results: [] }))

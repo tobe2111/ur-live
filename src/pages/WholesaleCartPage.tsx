@@ -1,4 +1,4 @@
-import { useNavigate, Navigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import { ArrowLeft, Trash2, ShoppingCart, ShieldCheck } from 'lucide-react'
 import { cfImage } from '@/utils/cf-image'
@@ -14,7 +14,9 @@ export default function WholesaleCartPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const { items, setQty, remove, clear, subtotal, totalQty } = useWholesaleCart()
 
-  if (!token) return <Navigate to="/wholesale/intro" replace />
+  // 🏭 2026-06-29 (대표 신고 — "장바구니 눌렀는데 소개페이지로"): 장바구니는 localStorage 기반이라
+  //   비로그인도 열람 가능해야 한다. 기존 `!token → /wholesale/intro` 리다이렉트는 게스트가 카트
+  //   아이콘을 누르면 마케팅 소개페이지로 튕겨 혼란만 줬다 → 제거. 로그인은 주문(체크아웃) 시점에만 요구.
 
   // 🚚 제조사별 최소주문금액/배송비 계산(표시용 — 서버가 청구 시 재계산 = SSOT).
   const grouped = groupBySupplier(items)
@@ -24,7 +26,11 @@ export default function WholesaleCartPage() {
   const canOrder = grouped.allMinMet
   const policyGroups = grouped.groups.filter((g) => g.minOrderAmount > 0 || g.shipping > 0 || g.freeShipRemaining > 0)
 
-  const goCheckout = () => { if (items.length && canOrder) navigate('/wholesale/checkout') }
+  // 주문은 판매사 로그인 필요 — 비로그인은 로그인으로(소개페이지 아님).
+  const goCheckout = () => {
+    if (!token) { navigate('/wholesale/login'); return }
+    if (items.length && canOrder) navigate('/wholesale/checkout')
+  }
 
   // ── 주문 예상금액 카드 (데스크톱 우측 sticky / 모바일 인라인) ──
   const summaryCard = (withButton: boolean) => (
