@@ -33,6 +33,8 @@ const WholesaleDocsPage = lazy(() => import('./WholesaleDocsPage'))
 const WholesaleQuotesPage = lazy(() => import('./wholesale/WholesaleQuotesPage'))
 const WholesaleOemPage = lazy(() => import('./WholesaleOemPage'))
 const WholesaleStaffPage = lazy(() => import('./wholesale/WholesaleStaffPage'))
+// 🏭 2026-06-29 (대표 — 판매사 대시보드에 대량주문 항목): 엑셀 대량발주 패널(양식 다운로드 + 작성본 업로드).
+const BulkOrderPanel = lazy(() => import('./wholesale-catalog/BulkOrderPanel'))
 
 // 🏭 2026-06-12 (감사 부채): 주문 상태 뱃지 → wholesale-theme.ts SSOT 로 통합.
 //   기존 자체 정의(5종)는 주문내역 페이지와 라벨이 달랐음('배송준비' vs '결제완료').
@@ -47,6 +49,7 @@ const TAB_META: { key: string; label: string; icon: typeof Wallet }[] = [
   { key: 'overview', label: '대시보드', icon: LayoutDashboard },
   { key: 'deposits', label: '예치금', icon: Wallet },
   { key: 'orders', label: '주문내역', icon: ClipboardList },
+  { key: 'bulk', label: '대량 주문', icon: ShoppingCart },
   { key: 'statement', label: '거래내역', icon: Receipt },
   { key: 'documents', label: '자료', icon: FileText },
   { key: 'quotes', label: '견적', icon: ClipboardList },
@@ -310,6 +313,7 @@ export default function WholesaleDashboardPage() {
       <Suspense fallback={<TabFallback />}>
         {tab === 'deposits' ? <WholesaleDepositPage embedded />
           : tab === 'orders' ? <WholesaleOrdersPage embedded />
+          : tab === 'bulk' ? <div className="pt-1"><BulkOrderPanel token={token} /></div>
           : tab === 'statement' ? <WholesaleStatementPage embedded />
           : tab === 'documents' ? <WholesaleDocsPage embedded />
           : tab === 'quotes' ? <WholesaleQuotesPage embedded />
