@@ -30,6 +30,15 @@ const NAV: Array<{ id: string; label: string; icon: ReactNode }> = [
   { id: 'sec-store', label: '발주 수집', icon: <path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8" /> },
 ]
 
+// 모바일 하단 탭바(5) — 시안 "대시보드는 카드 리스트 + 하단 탭바". 섹션 앵커로 스크롤.
+const MOBILE_TABS: Array<{ id: string; label: string }> = [
+  { id: 'sec-searchad', label: '실적' },
+  { id: 'sec-autobid', label: '자동입찰' },
+  { id: 'sec-keyword', label: '키워드' },
+  { id: 'sec-ai', label: 'AI' },
+  { id: 'sec-store', label: '발주' },
+]
+
 const SCOPED_CSS = `
 .uad{--bg:#F4F5F7;--surface:#FFFFFF;--panel:#FFFFFF;--ink:#0B0E14;--ink2:#565E6C;--ink3:#8A93A3;--border:#ECEDF1;--border2:#E2E6F2;--brand:#3B6EF5;--brand-soft:#EAF0FF;--brand-ink:#2A56D4;--sidebar:#FFFFFF;--topbar:rgba(255,255,255,.85);--scroll:#C7CDD9}
 .uad.dark{--bg:#06080F;--surface:#0A0E1A;--panel:#0E1322;--ink:#F5F7FA;--ink2:#9AA6BE;--ink3:#6E7A95;--border:#1B2233;--border2:#26304A;--brand:#3B6EF5;--brand-soft:#16224A;--brand-ink:#9BB0FF;--sidebar:#090C16;--topbar:rgba(6,8,15,.72);--scroll:#2A3450}
@@ -168,14 +177,50 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
             <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-.02em' }}>{title}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span className="mono" style={{ fontSize: 11, letterSpacing: '.06em', color: 'var(--ink3)' }}>{planLabel || '네이버 공식 API'}</span>
+            {/* 모바일 고객사 칩(사이드바 셀렉터가 숨겨지므로) */}
+            {showNav && activeTenant && (
+              <button type="button" className="lg:hidden" onClick={() => setTenantOpen((v) => !v)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600, background: 'var(--brand-soft)', color: 'var(--brand-ink)', border: 'none', padding: '5px 10px', borderRadius: 999, cursor: 'pointer', maxWidth: 130, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {tenantName(activeTenant)} ▾
+              </button>
+            )}
+            <span className="mono hidden sm:inline" style={{ fontSize: 11, letterSpacing: '.06em', color: 'var(--ink3)' }}>{planLabel || '네이버 공식 API'}</span>
             <button type="button" className="uad-tgl" onClick={toggleTheme} aria-label={dark ? '라이트 모드' : '다크 모드'} title={dark ? '라이트 모드' : '다크 모드'}>{dark ? '☀️' : '🌙'}</button>
           </div>
         </header>
+
+        {/* 모바일 고객사 드롭다운(칩 클릭 시) */}
+        {showNav && activeTenant && tenantOpen && (
+          <div className="lg:hidden" style={{ position: 'sticky', top: 60, zIndex: 19, background: 'var(--panel)', borderBottom: '1px solid var(--border)', padding: 8 }}>
+            {tenants.map((t) => (
+              <div key={t.customer_id} onClick={() => switchTenant(t.customer_id)} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 11px', borderRadius: 8, fontSize: 14, cursor: 'pointer', fontWeight: t.is_active ? 600 : 400, background: t.is_active ? 'var(--brand-soft)' : 'transparent', color: t.is_active ? 'var(--brand-ink)' : 'var(--ink2)' }}>
+                <span style={{ width: 24, height: 24, borderRadius: 6, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'var(--ink2)' }}>{tenantName(t).slice(0, 1)}</span>
+                {tenantName(t)}
+              </div>
+            ))}
+            <div onClick={addTenant} style={{ padding: '10px 11px', fontSize: 14, color: 'var(--brand)', fontWeight: 600, cursor: 'pointer' }}>+ 고객사 추가</div>
+          </div>
+        )}
         <main style={{ flex: 1, minWidth: 0, padding: '20px clamp(14px,3vw,28px) 60px' }}>
           <div style={{ maxWidth: 1180, margin: '0 auto' }}>{children}</div>
+          <div className="lg:hidden" style={{ height: 74 }} />{/* 하단 탭바 여백 */}
         </main>
       </div>
+
+      {/* 모바일 하단 탭바 (lg 이상은 사이드바 사용) */}
+      {showNav && (
+        <nav className="lg:hidden" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 62, background: 'var(--sidebar)', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-around', paddingBottom: 'env(safe-area-inset-bottom)', zIndex: 30 }}>
+          {MOBILE_TABS.map((t) => {
+            const icon = NAV.find((n) => n.id === t.id)?.icon
+            const on = active === t.id
+            return (
+              <button key={t.id} type="button" onClick={() => go(t.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', color: on ? 'var(--brand)' : 'var(--ink3)', padding: '6px 4px', flex: 1 }}>
+                <NavIcon>{icon}</NavIcon>
+                <span style={{ fontSize: 9.5, fontWeight: 600 }}>{t.label}</span>
+              </button>
+            )
+          })}
+        </nav>
+      )}
     </div>
   )
 }
