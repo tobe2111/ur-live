@@ -1419,7 +1419,21 @@ app.route('/api/admin/partnership-inquiries', adminPartnershipRoutes); // 어드
 //   클라 clearAuthData() 가 fire-and-forget 호출. 인증 불필요(쿠키 삭제는 무해·멱등).
 app.post('/api/auth/logout-cookies', async (c) => {
   const { authTokenClearCookie } = await import('./utils/auth-cookies');
+  const { clearSessionCookie } = await import('./utils/session');
   const host = new URL(c.req.url).hostname;
+  // 🔑 2026-06-29 (로그아웃 근본수정): httpOnly *세션* 쿠키(ur_session/ur_seller_session/ur_admin_session/
+  //   ur_agency_session)는 클라가 JS 로 못 지움 → 서버가 Set-Cookie Max-Age=0 으로 삭제해야 진짜 로그아웃.
+  //   기존엔 ud_*(SSR 개인화 토큰)만 지우고 ur_session 을 남겨 /api/auth/me·/session/health 가 그 쿠키로
+  //   재인증 → "로그아웃해도 로그인" 버그. type 지정=그 역할 세션만(선택적 로그아웃—듀얼로그인 보호), 미지정=전체.
+  const body = await c.req.json<{ type?: string }>().catch(() => ({} as { type?: string }));
+  const type = typeof body?.type === 'string' ? body.type : undefined;
+  const clearSess = (t: 'user' | 'seller' | 'admin' | 'agency') => c.header('Set-Cookie', clearSessionCookie(t), { append: true });
+  if (type === 'seller') clearSess('seller');
+  else if (type === 'admin') clearSess('admin');
+  else if (type === 'agency') clearSess('agency');
+  else if (type === 'user') clearSess('user');
+  else { clearSess('user'); clearSess('seller'); clearSess('admin'); clearSess('agency'); }
+  // ud_* SSR 토큰 정리 (기존 동작 보존 — 역할 무관 일괄).
   c.header('Set-Cookie', authTokenClearCookie('ud_seller_token', host), { append: true });
   c.header('Set-Cookie', authTokenClearCookie('ud_agency_token', host), { append: true });
   // 🔐 2026-06-17 쿠키 전환 Phase 1: admin/supplier ud_* 도 정리.

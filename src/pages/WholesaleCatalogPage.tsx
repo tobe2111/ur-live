@@ -9,7 +9,7 @@ import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRe
 import WholesaleBannerCarousel from './wholesale/WholesaleBannerCarousel'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { getSupplierToken, clearSupplierSession } from '@/lib/supplier-api'
-import { clearAuthData } from '@/utils/auth'
+import { logout as authLogout } from '@/utils/auth'
 import { toast } from '@/hooks/useToast'
 import {
   WT, comma, WHOLESALE_CATEGORIES,
@@ -337,10 +337,11 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userSession])
   const goLogin = () => navigate('/wholesale/login')
-  const logout = () => {
+  const logout = async () => {
     // 🏭 2026-06-08: 도매몰 로그아웃 — 판매사(seller) + 제조사(supplier) 세션 모두 정리(유저/어드민 세션 보존).
     //   둘 중 어느 역할로 들어왔든 한 버튼으로 로그아웃. full reload 로 토큰/RQ 캐시 깨끗이.
-    clearAuthData('seller')
+    // 🔑 2026-06-29: 서버 세션쿠키(ur_seller_session) 삭제 await 후 하드이동 — 없으면 잔존 재인증.
+    await authLogout('seller')
     try { localStorage.removeItem('is_distributor') } catch { /* noop */ }
     try { clearSupplierSession() } catch { /* noop */ }
     toast.success('로그아웃되었어요')

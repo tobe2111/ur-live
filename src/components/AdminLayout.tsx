@@ -9,7 +9,7 @@ import {
   ChevronDown, Wrench, RotateCcw, Upload, History, MapPin,
   type LucideIcon
 } from 'lucide-react'
-import { clearAuthData } from '@/utils/auth'
+import { logout as authLogout } from '@/utils/auth'
 import { normalizeAdminRole, ADMIN_ROLE_LABEL, type AdminRole } from '@/shared/admin-roles'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
@@ -354,8 +354,9 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname])
 
-  function logout() {
-    clearAuthData('admin')
+  async function logout() {
+    // 🔑 2026-06-29: 서버 httpOnly admin 세션쿠키 삭제를 await 한 뒤 이동 — 없으면 ur_admin_session 잔존 재인증.
+    await authLogout('admin')
     navigate('/admin/login')
   }
 
