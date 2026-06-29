@@ -36,7 +36,8 @@ const input = 'w-full h-10 rounded-lg border border-gray-200 dark:border-[#2A2A2
 export default function SearchAdPanel() {
   const [connected, setConnected] = useState<boolean | null>(null)
   const [customerId, setCustomerId] = useState<string | null>(null)
-  const [form, setForm] = useState({ customer_id: '', access_license: '', secret_key: '' })
+  const [form, setForm] = useState({ customer_id: '', access_license: '', secret_key: '', label: '' })
+  const [addMode, setAddMode] = useState(false) // 연결된 상태에서 다른 고객사 추가
   const [busy, setBusy] = useState(false)
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [openCampaign, setOpenCampaign] = useState<string | null>(null)
@@ -104,15 +105,23 @@ export default function SearchAdPanel() {
     setBusy(true)
     try {
       const r = await api.post('/api/ads/searchad/connect', form, { headers: authHeader() })
-      if (r.data?.success) { toast.success(`검색광고 연결 완료 (캠페인 ${r.data.campaigns ?? 0}개)`); setForm({ customer_id: '', access_license: '', secret_key: '' }); await loadStatus() }
-      else toast.error(r.data?.error || '연결 실패')
+      if (r.data?.success) {
+        toast.success(`검색광고 연결 완료 (캠페인 ${r.data.campaigns ?? 0}개)`)
+        setForm({ customer_id: '', access_license: '', secret_key: '', label: '' }); setAddMode(false)
+        // 멀티테넌트: 새 고객사가 활성이 됨 → 사이드바 고객사 목록/패널을 새 고객사로 새로고침.
+        if (typeof window !== 'undefined') { window.location.reload(); return }
+        await loadStatus()
+      } else toast.error(r.data?.error || '연결 실패')
     } catch (e: unknown) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '연결 실패')
     } finally { setBusy(false) }
   }
 
   async function disconnect() {
+    if (!(await confirmDialog('이 고객사 연결을 해제할까요? (다른 고객사가 있으면 그쪽이 활성이 됩니다)'))) return
     await api.delete('/api/ads/searchad/connect', { headers: authHeader() }).catch(() => {})
+    // 멀티테넌트: 활성 고객사가 바뀌므로 사이드바·패널 전체 새로고침.
+    if (typeof window !== 'undefined') { window.location.reload(); return }
     setCampaigns([]); setOpenCampaign(null); setOpenGroup(null); setAdgroups({}); setKeywords({})
     await loadStatus()
   }
@@ -245,17 +254,25 @@ export default function SearchAdPanel() {
         ))}
       </div>
 
-      {connected === false && (
+      {(connected === false || addMode) && (
         <div className="mt-2 space-y-2">
           <p className="text-[11.5px] text-gray-400 dark:text-gray-500 leading-relaxed">
             검색광고센터 → 도구 → API 사용관리에서 발급한 <b>고객 ID · 액세스라이선스 · 비밀키</b>를 입력하세요.
-            연결하면 자동입찰·실적·키워드 자동등록을 쓸 수 있습니다.
+            {addMode ? ' 여러 고객사를 등록하면 사이드바에서 전환할 수 있습니다.' : ' 연결하면 자동입찰·실적·키워드 자동등록을 쓸 수 있습니다.'}
           </p>
+          <input className={input} placeholder="고객사 이름 (선택, 예: 루미스토어)" value={form.label} onChange={e => setForm(f => ({ ...f, label: e.target.value }))} />
           <input className={input} placeholder="고객 ID (숫자)" value={form.customer_id} onChange={e => setForm(f => ({ ...f, customer_id: e.target.value }))} />
           <input className={input} placeholder="액세스라이선스" value={form.access_license} onChange={e => setForm(f => ({ ...f, access_license: e.target.value }))} />
           <input className={input} placeholder="비밀키" type="password" value={form.secret_key} onChange={e => setForm(f => ({ ...f, secret_key: e.target.value }))} />
-          <button onClick={connect} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{busy ? '연결 중…' : '연결'}</button>
+          <div className="flex gap-2">
+            <button onClick={connect} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{busy ? '연결 중…' : '연결'}</button>
+            {addMode && <button onClick={() => setAddMode(false)} className="rounded-lg px-3 py-2 text-[12px] text-gray-500 dark:text-gray-400">취소</button>}
+          </div>
         </div>
+      )}
+
+      {connected && !addMode && (
+        <button onClick={() => setAddMode(true)} className="mt-2 text-[12px] font-semibold text-gray-700 dark:text-gray-200">+ 다른 고객사 연결</button>
       )}
 
       {connected && (

@@ -97,8 +97,8 @@ export async function listReports(DB: D1Database, sellerId: number, limit = 12):
 /** cron 엔트리 — 연결된 고객사들의 주간 리포트 자동 생성(주당 1회 멱등). */
 export async function handleAdsWeeklyReport(env: Env): Promise<{ tenants: number; generated: number }> {
   await ensureReportSchema(env.DB)
-  // 검색광고 연결이 있는 고객사만(읽기 실적 필요).
-  const rows = (await env.DB.prepare('SELECT DISTINCT seller_id FROM ad_searchad_connections LIMIT ?')
+  // 검색광고 연결이 있는 셀러만(멀티테넌트 — 활성 고객사 기준 리포트). 읽기 실적 필요.
+  const rows = (await env.DB.prepare('SELECT DISTINCT seller_id FROM ad_searchad_tenants LIMIT ?')
     .bind(MAX_TENANTS_PER_RUN).all<{ seller_id: number }>().catch(() => null))?.results || []
   let generated = 0
   for (const row of rows) {

@@ -13,7 +13,7 @@ import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverC
 import { collectAndStore, listCollectedOrders } from './order-collection'
 import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete, shoppingCategoryTrends } from './keyword-tools'
 import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, addKeywordsToAdgroup, accountStats, budgetPacing, BID_MIN, BID_MAX, KW_ADD_MAX, type SearchAdCreds } from './searchad-client'
-import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnection, searchAdConnStatus } from './searchad-connection'
+import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnection, searchAdConnStatus, getActiveTenantId, listTenants, setActiveTenant } from './searchad-connection'
 import { aiMarketerAdvice, type AiMarketerContext } from './ai-marketer'
 import { listReports, generateWeeklyReport } from './weekly-report'
 import { registerSite, listSites, deleteSite, recordHit, clickReport, ensureClickguardSchema, addBlockedIp, listBlockedIps, removeBlockedIp } from './clickguard'
@@ -187,11 +187,12 @@ marketingRoutes.post('/searchad/connect', rateLimit({ action: 'ads-sa-connect', 
   const creds: SearchAdCreds = { customerId, accessLicense, secretKey }
   const verify = await listCampaigns(creds) // 200 OK = 유효(캠페인 0개여도 OK)
   if (!verify.ok) return c.json({ success: false, error: verify.error || '검색광고 인증 실패 — 키를 확인해주세요' }, 400)
-  await saveSearchAdConnection(c.env.DB, sellerId, creds, c.env.DATA_ENCRYPTION_KEY)
+  const label = body.label ? String(body.label).slice(0, 40) : undefined // 고객사 이름(멀티테넌트)
+  await saveSearchAdConnection(c.env.DB, sellerId, creds, c.env.DATA_ENCRYPTION_KEY, label)
   return c.json({ success: true, message: '검색광고 계정이 연결되었습니다', campaigns: verify.campaigns?.length || 0 })
 })
 
-// GET /api/ads/searchad/status — 연결 상태(마스킹)
+// GET /api/ads/searchad/status — 활성 연결 상태(마스킹)
 marketingRoutes.get('/searchad/status', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -199,11 +200,32 @@ marketingRoutes.get('/searchad/status', async (c) => {
   return c.json({ success: true, ...st })
 })
 
-// DELETE /api/ads/searchad/connect — 연결 해제
+// GET /api/ads/searchad/tenants — 연결된 고객사 목록(멀티테넌트, 마스킹)
+marketingRoutes.get('/searchad/tenants', async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const tenants = await listTenants(c.env.DB, sellerId)
+  return c.json({ success: true, tenants })
+})
+
+// POST /api/ads/searchad/tenant/activate {customer_id} — 활성 고객사 전환
+marketingRoutes.post('/searchad/tenant/activate', rateLimit({ action: 'ads-sa-tenant', max: 60, windowSec: 60 }), async (c) => {
+  const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const customerId = String(body.customer_id || '').trim()
+  if (!customerId) return c.json({ success: false, error: 'customer_id 가 필요합니다' }, 400)
+  const r = await setActiveTenant(c.env.DB, sellerId, customerId)
+  if (!r.ok) return c.json({ success: false, error: '해당 고객사를 찾을 수 없습니다' }, 404)
+  return c.json({ success: true })
+})
+
+// DELETE /api/ads/searchad/connect?customer_id= — 연결 해제(특정 고객사 또는 활성)
 marketingRoutes.delete('/searchad/connect', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  await deleteSearchAdConnection(c.env.DB, sellerId)
+  const customerId = String(c.req.query('customer_id') || '').trim() || undefined
+  await deleteSearchAdConnection(c.env.DB, sellerId, customerId)
   return c.json({ success: true })
 })
 
@@ -455,7 +477,8 @@ marketingRoutes.get('/clickguard/report', rateLimit({ action: 'ads-cg-report', m
 marketingRoutes.get('/searchad/autobid/rules', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  const [rules, log] = await Promise.all([listRules(c.env.DB, sellerId), recentLog(c.env.DB, sellerId, 30)])
+  const tenant = (await getActiveTenantId(c.env.DB, sellerId)) || undefined // 활성 고객사 규칙만
+  const [rules, log] = await Promise.all([listRules(c.env.DB, sellerId, tenant), recentLog(c.env.DB, sellerId, 30)])
   return c.json({ success: true, rules, log, engine_on: c.env.ADS_AUTOBID_ENABLED === 'true' })
 })
 
@@ -464,12 +487,14 @@ marketingRoutes.post('/searchad/autobid/rule', rateLimit({ action: 'ads-ab-rule'
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const tenant = await getActiveTenantId(c.env.DB, sellerId) // 규칙을 활성 고객사로 격리
   const r = await upsertRule(c.env.DB, sellerId, {
     keyword_id: String(body.keyword_id || ''), adgroup_id: body.adgroup_id ? String(body.adgroup_id) : undefined,
     keyword_text: body.keyword_text ? String(body.keyword_text) : undefined,
     target_rank: Number(body.target_rank), max_bid: Number(body.max_bid),
     device: body.device === 'MOBILE' ? 'MOBILE' : 'PC', enabled: !!body.enabled,
     schedule: 'schedule' in body ? body.schedule : undefined, // 시간대·요일 전략(미지정=기존 유지)
+    tenant,
   })
   if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   return c.json({ success: true })
@@ -488,7 +513,8 @@ marketingRoutes.post('/searchad/autobid/rules/bulk', rateLimit({ action: 'ads-ab
       }))
     : []
   if (!rows.length) return c.json({ success: false, error: '등록할 행이 없습니다 (CSV: keyword_id,keyword_text,target_rank,max_bid,device,schedule_preset)' }, 400)
-  const result = await bulkUpsertRules(c.env.DB, sellerId, rows)
+  const tenant = await getActiveTenantId(c.env.DB, sellerId)
+  const result = await bulkUpsertRules(c.env.DB, sellerId, rows, tenant)
   return c.json({ success: true, ...result })
 })
 
@@ -508,7 +534,8 @@ marketingRoutes.post('/searchad/autobid/preview', rateLimit({ action: 'ads-ab-pr
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
   if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
-  const results = await runAutobidForSeller(c.env.DB, creds, sellerId, { dryRun: true })
+  const tenant = (await getActiveTenantId(c.env.DB, sellerId)) || undefined
+  const results = await runAutobidForSeller(c.env.DB, creds, sellerId, { dryRun: true, tenant })
   return c.json({ success: true, results })
 })
 
@@ -518,7 +545,8 @@ marketingRoutes.post('/searchad/autobid/run', rateLimit({ action: 'ads-ab-run', 
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
   if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
-  const results = await runAutobidForSeller(c.env.DB, creds, sellerId, { dryRun: false })
+  const tenant = (await getActiveTenantId(c.env.DB, sellerId)) || undefined
+  const results = await runAutobidForSeller(c.env.DB, creds, sellerId, { dryRun: false, tenant })
   return c.json({ success: true, applied: results.filter(r => r.applied).length, results })
 })
 
