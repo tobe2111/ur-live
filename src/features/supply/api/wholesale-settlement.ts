@@ -99,11 +99,10 @@ export async function creditSupplierOnWholesaleOrder(DB: D1Database, wholesaleOr
   if (!wholesaleOrderId) return 0
   await ensureSourceColumn(DB)
 
-  // 멱등 가드.
-  const existing = await DB.prepare(
-    "SELECT 1 FROM supplier_settlements WHERE order_id = ? AND source = 'wholesale' LIMIT 1"
-  ).bind(wholesaleOrderId).first().catch(() => null)
-  if (existing) return 0
+  // 🛡️ 2026-06-29: 멱등은 per-line ON CONFLICT(order_id, product_id, source) DO NOTHING 으로 *내재적* 보장
+  //   (소비자 creditSupplierOnOrder 와 동일). 기존의 'order 에 settlement 1건이라도 있으면 전체 skip' early-return 은
+  //   부분적립(크래시 mid-loop) 주문의 남은 라인이 재호출로도 영영 안 채워지는 sticky-partial 버그라 제거.
+  //   정상(중복 없음) 경로는 동일, 이미 적립된 라인은 아래 changes==0 게이트로 잔액·원장·카운트까지 skip(이중적립 0).
 
   // 🗓️ 2026-06-23 (대표 확정): 정산 지급일 = 차주 목요일 통일(브랜드/일반 구분 폐지 — 위 wholesaleSettlementAvailableAt).
   //   is_brand_product 컬럼은 더는 분기에 안 쓰지만 SELECT 유지(타입/하위호환, 무해).
@@ -335,4 +334,34 @@ export async function holdWholesaleSettlements(
        ${scoped ? 'AND supplier_id = ?' : ''}${pidWhere}`
   ).bind(...(scoped ? [wholesaleOrderId, supplierId] : [wholesaleOrderId]), ...pids).run().catch(() => null)
   return r?.meta?.changes ?? 0
+}
+
+/**
+ * 🛡️ 2026-06-29 (적대적 self-review 수정): 도매주문의 정산 hold 를 *현재 열린 클레임 스코프*에 맞게 재정렬.
+ *   배경(BUG 2B): 클레임 hold/해제가 주문 전체(unscoped)라, 다제조사 주문에서 제조사 A 클레임 해결 시 *아직 열린*
+ *   제조사 B 클레임의 hold 까지 풀려 분쟁 중 B 정산이 성숙·지급될 수 있었다. 배경(BUG 2A): 환불(Toss) 실패로 라인이
+ *   롤백됐는데 hold 가 남아 정당(미환불) 라인이 영구 동결되기도 했다. → 해제는 항상 이 함수로:
+ *   pending/available hold 를 전부 푼 뒤, **아직 '열린'(open/reviewing) 클레임 스코프(제조사별, order-level 이면 전체)**
+ *   로만 재보류 → 열린 분쟁만 정확히 보호하고, 닫힌 분쟁/롤백된 환불의 hold 는 깨끗이 해제. 멱등·best-effort.
+ *   (취소/클로백 row 는 status 필터로 미접촉 — cancelled 환불 라인은 어차피 성숙/지급 대상 아님.)
+ * @returns 해제(step1)된 정산 row 수
+ */
+export async function reconcileWholesaleHolds(DB: D1Database, wholesaleOrderId: number): Promise<number> {
+  if (!wholesaleOrderId) return 0
+  await DB.prepare("ALTER TABLE supplier_settlements ADD COLUMN held_at DATETIME").run().catch(() => { /* 이미 존재 */ })
+  // 1) 이 주문의 미지급(pending/available) 정산 hold 전부 해제.
+  const rel = await DB.prepare(
+    "UPDATE supplier_settlements SET held_at = NULL WHERE order_id = ? AND source = 'wholesale' AND status IN ('pending','available') AND held_at IS NOT NULL"
+  ).bind(wholesaleOrderId).run().catch(() => null)
+  // 2) 아직 열린 클레임 스코프로 재보류(다른 열린 분쟁이 보호하던 정산은 계속 보류). wholesale_claims 부재 시 catch→[].
+  const open = await DB.prepare(
+    "SELECT DISTINCT supplier_id FROM wholesale_claims WHERE wholesale_order_id = ? AND status IN ('open','reviewing')"
+  ).bind(wholesaleOrderId).all<{ supplier_id: number | null }>().catch(() => ({ results: [] as { supplier_id: number | null }[] }))
+  const rows = open.results || []
+  if (rows.some(r => r.supplier_id == null)) {
+    await holdWholesaleSettlements(DB, wholesaleOrderId) // order-level(다제조사) 클레임 → 전체 보류
+  } else {
+    for (const r of rows) if (r.supplier_id) await holdWholesaleSettlements(DB, wholesaleOrderId, r.supplier_id)
+  }
+  return rel?.meta?.changes ?? 0
 }

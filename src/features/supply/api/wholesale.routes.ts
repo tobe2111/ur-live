@@ -1537,14 +1537,16 @@ app.post('/orders/confirm', rateLimit({ action: 'wholesale-confirm', max: 30, wi
     }
 
     const order = await DB.prepare(
-      'SELECT id, status, subtotal FROM wholesale_orders WHERE toss_order_id = ? AND distributor_seller_id = ?'
-    ).bind(tossOrderId, sellerId).first<{ id: number; status: string; subtotal: number }>()
+      'SELECT id, status, subtotal, COALESCE(shipping_total,0) AS shipping_total FROM wholesale_orders WHERE toss_order_id = ? AND distributor_seller_id = ?'
+    ).bind(tossOrderId, sellerId).first<{ id: number; status: string; subtotal: number; shipping_total: number }>()
     if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
     if (order.status === 'PAID') return c.json({ success: true, order_id: order.id, already: true })
     if (order.status !== 'PENDING') return c.json({ success: false, error: '처리할 수 없는 주문 상태입니다' }, 400)
 
-    // 서버 재계산 금액과 일치 검증 (클라이언트 금액 신뢰 X)
-    if (Number(order.subtotal) !== Math.round(amount)) {
+    // 서버 재계산 금액과 일치 검증 (클라이언트 금액 신뢰 X). 🛡️ 2026-06-29: 청구액 = subtotal + 배송비.
+    //   기존엔 subtotal 만 비교 → (이 Toss 경로 재가동 시) 배송비만큼 과소결제 허용되던 잠복 결함 차단.
+    const expectedCharge = Math.round(Number(order.subtotal) + Number(order.shipping_total))
+    if (expectedCharge !== Math.round(amount)) {
       return c.json({ success: false, error: '결제 금액이 일치하지 않습니다' }, 400)
     }
 
