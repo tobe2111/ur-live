@@ -19,6 +19,7 @@ import { safeError } from '@/worker/utils/safe-error';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { swallow } from '@/worker/utils/swallow';
 import { setSupplyMeta, getSupplyMeta } from '@/worker/utils/product-supply-meta';
+import { normalizeWholesaleCategory } from '@/shared/wholesale-category';
 import { ensureSupplyVisibilitySchema, normalizeVisibility, recordSupplyPriceChange } from './supply-visibility';
 import { buildCsv, csvResponse, parseCsv } from './supply-csv';
 import { buildXlsx, xlsxResponse, type XlsxCell } from './xlsx';
@@ -367,7 +368,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
       stock,
       imageUrlSafe,
       detailImages,
-      (body.category || 'lifestyle').slice(0, 60),
+      normalizeWholesaleCategory(body.category),
       sid,
       visibility,
       barcode,
@@ -411,8 +412,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
 // 🖼️ 2026-06-12 (사용자 요청): 썸네일(대표)과 상세페이지 이미지 분리 — 상세는 쉼표로 여러 장(최대 10).
 const BULK_TEMPLATE_HEADERS = ['상품명', '공급가', '권장소비자가', '재고', '카테고리', '바코드', '공급범위', '브랜드제품', '브랜드명', '최소주문수량', '박스입수', '주문배수', '썸네일 이미지URL', '상세 이미지URL(쉼표로 여러 장)', '설명']
 const BULK_TEMPLATE_ROWS = [
-  ['예시상품A', '5000', '9900', '100', 'lifestyle', '8801234567890', 'ALL', 'N', '', '1', '1', '1', 'https://example.com/a.jpg', 'https://example.com/a-detail1.jpg,https://example.com/a-detail2.jpg', '상품 설명'],
-  ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'beauty', '', 'UTONGSTART_ONLY', 'Y', '브랜드A', '20', '20', '20', '', '', '브랜드제품(브랜드명 입력)·선정 판매사만 노출(20개 단위)'],
+  ['예시상품A', '5000', '9900', '100', 'living', '8801234567890', 'ALL', 'N', '', '1', '1', '1', 'https://example.com/a.jpg', 'https://example.com/a-detail1.jpg,https://example.com/a-detail2.jpg', '상품 설명 (카테고리: food=식품 · living=리빙 · health=건강)'],
+  ['예시상품B(유통스타트전용)', '12000', '19900', '50', 'food', '', 'UTONGSTART_ONLY', 'Y', '브랜드A', '20', '20', '20', '', '', '브랜드제품(브랜드명 입력)·선정 판매사만 노출(20개 단위)'],
 ]
 supplierDashboardRoutes.get('/products/bulk-template', (c) => {
   return csvResponse(buildCsv(BULK_TEMPLATE_HEADERS, BULK_TEMPLATE_ROWS), 'supply-products-template.csv')
@@ -506,7 +507,7 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
       stmts.push(DB.prepare(INSERT_SQL).bind(
         name.slice(0, 200), String(r['설명'] || r.description || '').slice(0, 5000),
         Math.floor(retailFinal), Math.floor(supplyPrice), stock, imageUrl, detailImages,
-        String(r['카테고리'] || r.category || 'lifestyle').slice(0, 60), sid, visibility, barcode, isBrand, brandName, moq, packSize, orderMultiple, sid, slug,
+        normalizeWholesaleCategory(r['카테고리'] || r.category), sid, visibility, barcode, isBrand, brandName, moq, packSize, orderMultiple, sid, slug,
       ));
       results.push({ row: i + 2, name, status: 'ok' });
     }
@@ -656,7 +657,7 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       const safe = (/^https?:\/\//i.test(raw) || /^\//.test(raw)) ? raw : '';
       sets.push('image_url = ?'); params.push(safe);
     }
-    if (typeof body.category === 'string' && body.category.trim()) { sets.push('category = ?'); params.push(body.category.trim().slice(0, 60)); }
+    if (typeof body.category === 'string' && body.category.trim()) { sets.push('category = ?'); params.push(normalizeWholesaleCategory(body.category)); }
     if (body.stock != null && Number.isFinite(Number(body.stock))) { sets.push('stock = ?'); params.push(Math.max(0, Math.floor(Number(body.stock)))); }
     if (typeof body.supply_visibility === 'string') { sets.push('supply_visibility = ?'); params.push(normalizeVisibility(body.supply_visibility, true)); }
     if (typeof body.barcode === 'string') { sets.push('barcode = ?'); params.push(body.barcode.trim().slice(0, 64)); }
@@ -1323,7 +1324,7 @@ supplierDashboardRoutes.post('/store/import', rateLimit({ action: 'sup-store-imp
     const results: Array<{ name: string; status: 'ok' | 'error'; reason?: string }> = [];
     const INSERT_SQL = `INSERT INTO products (name, description, price, supply_price, stock, image_url, category, product_type,
        is_active, is_supply_product, supplier_id, supply_approval_status, supply_visibility, min_order_qty, pack_size, order_multiple, mall_id, slug, created_at, updated_at)
-     VALUES (?, '', ?, ?, ?, ?, 'lifestyle', 'regular', 0, 1, ?, 'pending', 'ALL', 1, 1, 1, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
+     VALUES (?, '', ?, ?, ?, ?, 'living', 'regular', 0, 1, ?, 'pending', 'ALL', 1, 1, 1, (SELECT COALESCE(mall_id,1) FROM suppliers WHERE id=?), ?, datetime('now'), datetime('now'))`;
     let created = 0;
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
