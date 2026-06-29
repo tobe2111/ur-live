@@ -69,6 +69,22 @@ export function validatePasswordComplexity(
   return { ok: true };
 }
 
+// ── 고엔트로피 토큰 전용 빠른 해시 (refresh 토큰 등) ───────────────────────────
+//   🏭 2026-06-29 (로그인 속도): refresh 토큰은 서버가 만든 고엔트로피 랜덤 JWT 라 브루트포스가
+//   구조적으로 불가 → 비밀번호용 PBKDF2(10만 회) KDF 가 불필요(낭비). DB 유출 시 토큰 재사용만
+//   막으면 되므로 단일 SHA-256 으로 충분(+결정적이라 향후 인덱스 조회 가능). ⚠️ *비밀번호엔 쓰지 말 것*.
+const FAST_TOKEN_HASH_PREFIX = 's256$';
+
+async function sha256Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** 고엔트로피 토큰(refresh 등) 빠른 해시 → "s256$<hex>". verifyPassword 가 이 prefix 를 인식해 검증. */
+export async function hashToken(token: string): Promise<string> {
+  return FAST_TOKEN_HASH_PREFIX + (await sha256Hex(token));
+}
+
 /**
  * PBKDF2로 비밀번호 해싱
  * @returns "base64(salt)$base64(hash)" 형식
@@ -172,6 +188,14 @@ export async function verifyPassword(
   password: string,
   storedHash: string
 ): Promise<{ valid: boolean; isLegacy: boolean }> {
+
+  // ── 고엔트로피 토큰 빠른 해시 검증 (s256$ prefix) ──────────────
+  //   🏭 2026-06-29: hashToken() 으로 저장된 refresh 토큰. 단일 SHA-256 비교(상수시간).
+  //   기존 PBKDF2 저장 토큰은 아래 경로로 그대로 검증 → 무중단 마이그레이션(재로그인 불필요).
+  if (storedHash.startsWith(FAST_TOKEN_HASH_PREFIX)) {
+    const computed = FAST_TOKEN_HASH_PREFIX + (await sha256Hex(password));
+    return { valid: timingSafeEqual(computed, storedHash), isLegacy: false };
+  }
 
   // ── bcrypt 검증 ($2a$/$2b$/$2y$ prefix) ───────────────────
   // 구 admin/seller 계정이 bcrypt로 저장됨 (migrations/0104 등)

@@ -11,7 +11,7 @@ import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
 import { rateLimit, resetRateLimit } from '@/worker/middleware/rate-limit';
 import { verifyTurnstile } from '@/worker/utils/turnstile';
-import { verifyPassword, hashPassword, validatePasswordComplexity } from '@/lib/password';
+import { verifyPassword, hashPassword, hashToken, validatePasswordComplexity } from '@/lib/password';
 import { sendEmail } from '@/services/email';
 import type { AuthResponse } from '../types';
 import {
@@ -309,7 +309,8 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
     // ── refresh token 해시 저장 (rotation 기반) ─────────────
     try {
       await ensureAuthRefreshTokensTable(DB);
-      const refreshHash = await hashPassword(refreshToken);
+      // 🏭 2026-06-29 (로그인 속도): refresh 토큰 = 고엔트로피 → 빠른 SHA-256 해시(verifyPassword 가 s256$ 인식).
+      const refreshHash = await hashToken(refreshToken);
       await DB.prepare(
         `INSERT INTO auth_refresh_tokens (user_type, user_id, token_hash, expires_at)
          VALUES (?, ?, ?, ?)`
@@ -562,7 +563,7 @@ sellerRoutes.post('/refresh', cors(), rateLimit({ action: 'seller_refresh', max:
 
     // 새 refresh 해시 저장
     try {
-      const newHash = await hashPassword(newRefreshToken);
+      const newHash = await hashToken(newRefreshToken); // 🏭 2026-06-29: 고엔트로피 토큰 → 빠른 SHA-256
       await DB.prepare(
         `INSERT INTO auth_refresh_tokens (user_type, user_id, token_hash, expires_at)
          VALUES (?, ?, ?, ?)`

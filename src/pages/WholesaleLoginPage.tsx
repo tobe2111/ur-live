@@ -99,8 +99,10 @@ export default function WholesaleLoginPage() {
       else localStorage.removeItem('wholesale_remember_email')
       applySellerSession(d)
       // 🛡️ 2026-06-19 (대표 결정 B): 판매사는 구매자 → 항상 카탈로그(/wholesale) 홈. 대시보드는 헤더 버튼.
-      //   full reload → 토큰/세션 반영. (도착지는 역할 무관 /wholesale)
-      window.location.assign('/wholesale')
+      // 🏭 2026-06-29 (로그인 속도 — 대표 승인): 전체 새로고침(window.location.assign) → SPA 이동.
+      //   applySellerSession 이 seller_token 등을 동기로 저장한 *뒤* 이동하므로, 카탈로그가 마운트 시
+      //   seller_token 을 읽어 등급가(회원) 뷰로 렌더(authSeg 'in' 캐시키 → 가격 fetch). HTML/SSR 재로딩 제거.
+      navigate('/wholesale', { replace: true })
     } catch (err) {
       toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || (err as Error)?.message || '로그인 중 오류가 발생했어요')
     } finally { setLoading(false) }
