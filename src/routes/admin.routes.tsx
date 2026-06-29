@@ -44,6 +44,8 @@ const AdminWholesaleMallsPage = lazy(() => import('@/pages/admin/AdminWholesaleM
 // 🏬 Phase 2 (2026-06-09): 크로스-몰 도매 통합 현황 (운영자 랜딩).
 const AdminWholesaleOverviewPage = lazy(() => import('@/pages/admin/AdminWholesaleOverviewPage'))
 const AdminDistributorApprovalPage = lazy(() => import('@/pages/admin/AdminDistributorApprovalPage'))
+// 🔧 2026-06-29: 환경 준비상태 진단(바인딩/시크릿 설정 여부 — 다른 운영자/브라우저 정상동작 확인).
+const AdminEnvReadinessPage = lazy(() => import('@/pages/admin/AdminEnvReadinessPage'))
 // 🗺️ 2026-06-18: 동네별 딜 밀도 (행정동 태깅 기반 영입 타겟).
 const AdminRegionDensityPage = lazy(() => import('@/pages/AdminRegionDensityPage'))
 // 🏭 BIZ-1 (2026-06-08): 도매 클레임(RMA) 검수 페이지.
@@ -344,6 +346,12 @@ export function AdminRoutes() {
       <Route path="/admin/distributor-approval" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminDistributorApprovalPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🔧 2026-06-29: 환경 준비상태 진단 — 바인딩/시크릿 설정 여부(다른 운영자/브라우저 정상동작 확인) */}
+      <Route path="/admin/env-readiness" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminEnvReadinessPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🏬 Phase 1-b (2026-06-09): 멀티-몰 테넌시 — 도매 몰 관리 */}

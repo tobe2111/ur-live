@@ -49,6 +49,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/operations-guide', label: '운영 가이드',   icon: BookOpen },
       { path: '/admin/region-density',   label: '동네별 딜 밀도', icon: MapPin },
       { path: '/admin/abuse',            label: '어뷰징 탐지',   icon: AlertOctagon },
+      { path: '/admin/env-readiness',    label: '환경 준비상태', icon: Wrench },
     ],
   },
   {

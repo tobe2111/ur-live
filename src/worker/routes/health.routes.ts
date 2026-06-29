@@ -185,6 +185,86 @@ healthRoutes.get('/migrations', requireAuth(), async (c) => {
 })
 
 /**
+ * 🔧 2026-06-29 환경 준비상태 진단 — ADMIN ONLY.
+ *
+ *   대표 질문 "다른 운영자/브라우저/장소에서 써도 문제없게 환경 세팅 다 됐어?" 에 대한
+ *   *검증 가능한* 답. 대시보드 로그인/보안을 게이트하는 Cloudflare 바인딩·시크릿이 실제
+ *   설정됐는지 런타임에서 확인. **값은 절대 노출 안 함 — 존재 여부(present)만.**
+ *
+ *   기존 /api/health 의 갭 보완: 그건 *있을 때만* KV 핑(없으면 skip=안 보임), JWT_SECRET 등
+ *   시크릿은 미점검이었음. 여기선 누락을 명시적으로 RED 로 보고.
+ *
+ *   severity:
+ *     - blocking : 없으면 그 기능 자체가 깨짐(대시보드 로그인 등) → ready=false
+ *     - security : fail-open(동작하나 보안 약화 — brute-force/봇/평문토큰)
+ *     - perf     : degraded(느려지나 동작)
+ *     - payments : 소비자 결제(도매몰 예치금은 무관)
+ *     - optional : 선택 기능(fail-soft)
+ */
+healthRoutes.get('/env-readiness', requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user || user.type !== 'admin') {
+    return c.json({ success: false, error: 'forbidden' }, 403)
+  }
+  const env = c.env as unknown as Record<string, unknown>
+  const has = (k: string) => {
+    const v = env[k]
+    return typeof v === 'string' ? v.trim().length > 0 : v != null
+  }
+
+  const SPEC: Array<{ key: string; group: 'blocking' | 'security' | 'perf' | 'payments' | 'optional'; note: string }> = [
+    // 대시보드/서비스 자체를 게이트 — 없으면 전 운영자 영향.
+    { key: 'JWT_SECRET', group: 'blocking', note: '모든 대시보드 로그인(어드민/셀러/제조사/판매사/에이전시). 없으면 로그인 500.' },
+    { key: 'FRONTEND_URL', group: 'blocking', note: 'OAuth 콜백/리다이렉트 베이스 URL.' },
+    // 보안 — fail-open(동작하나 약화).
+    { key: 'RATE_LIMIT_KV', group: 'security', note: '로그인/결제 brute-force 방어. 없으면 fail-open(무제한 시도).' },
+    { key: 'TURNSTILE_SECRET', group: 'security', note: '봇 차단(CAPTCHA). 없으면 fail-open.' },
+    { key: 'DATA_ENCRYPTION_KEY', group: 'security', note: '카카오/외부 토큰 at-rest 암호화. 없으면 평문 저장 위험.' },
+    { key: 'INTERNAL_API_TOKEN', group: 'security', note: '내부 전용 엔드포인트(cron/정산) 보호.' },
+    // 성능 — degraded.
+    { key: 'SESSION_KV', group: 'perf', note: '세션/카운트 캐시. 없으면 동작하나 D1 부하.' },
+    { key: 'CACHE_KV', group: 'perf', note: '전역 public API 캐시. 없으면 edge 캐시만(region cold 시 D1 hit).' },
+    // 소비자 결제 — 도매몰 무관.
+    { key: 'TOSS_SECRET_KEY', group: 'payments', note: '소비자 결제 승인/취소.' },
+    { key: 'TOSS_CLIENT_KEY', group: 'payments', note: '소비자 결제 위젯.' },
+    { key: 'TOSS_WEBHOOK_SECRET', group: 'payments', note: '결제 webhook 시그니처 검증.' },
+    // 선택 기능 — fail-soft.
+    { key: 'KAKAO_REST_API_KEY', group: 'optional', note: '소비자 카카오 로그인(대시보드 무관).' },
+    { key: 'ALIGO_API_KEY', group: 'optional', note: '알림톡 발송.' },
+    { key: 'NAVER_SEARCH_CLIENT_ID', group: 'optional', note: '제조사 시중최저가 대조.' },
+    { key: 'UCANSIGN_API_KEY', group: 'optional', note: '전자계약 자동발송.' },
+    { key: 'ANTHROPIC_API_KEY', group: 'optional', note: '유어애즈 AI마케터/리뷰생성.' },
+    { key: 'SENTRY_DSN', group: 'optional', note: '에러 모니터링.' },
+  ]
+
+  const results = SPEC.map((s) => ({ key: s.key, group: s.group, present: has(s.key), note: s.note }))
+
+  // DB 연결성 (binding 존재 ≠ 연결 — 실제 쿼리).
+  let dbOk = false
+  try { await c.env.DB.prepare('SELECT 1').first(); dbOk = true } catch { dbOk = false }
+
+  const blockingMissing = results.filter((r) => r.group === 'blocking' && !r.present).map((r) => r.key)
+  const securityMissing = results.filter((r) => r.group === 'security' && !r.present).map((r) => r.key)
+  const ready = dbOk && blockingMissing.length === 0
+
+  const groups: Record<string, Array<{ key: string; present: boolean; note: string }>> = {}
+  for (const r of results) (groups[r.group] ??= []).push({ key: r.key, present: r.present, note: r.note })
+
+  return c.json({
+    ready,                        // true = 다른 운영자/브라우저에서 대시보드 로그인·기본동작 정상
+    db_ok: dbOk,
+    summary: {
+      blocking_missing: blockingMissing,   // 비어야 함 — 있으면 로그인 자체가 깨짐
+      security_missing: securityMissing,   // 비어야 안전 — 있으면 fail-open(동작은 함)
+    },
+    groups,
+    environment: c.env.ENVIRONMENT ?? 'unknown',
+    region: c.env.REGION ?? 'unknown',
+    timestamp: new Date().toISOString(),
+  }, 200) // 항상 200 (인포 용도 — ready 불리언이 상태 신호. /migrations 와 동일).
+})
+
+/**
  * Circuit-breaker state dump — ADMIN ONLY.
  *
  * Although it doesn't contain secrets, it exposes internal dependency
