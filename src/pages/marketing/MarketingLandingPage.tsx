@@ -87,6 +87,9 @@ const thRow: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(
 export default function MarketingLandingPage() {
   const [dark, setDark] = useState(false) // 기본 라이트(Landing Light). 토글 시 코스믹 네이비(v2).
   useUrAdsFavicon()
+  // 로그인 상태면 대시보드로, 아니면 셀러 로그인(로그인 후 /ads/dashboard 로 복귀).
+  const loggedIn = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
+  const loginHref = loggedIn ? APP : `/seller/login?returnUrl=${encodeURIComponent(APP)}`
   return (
     <div className="ua-landing" data-theme={dark ? 'dark' : undefined}>
       <style>{SCOPED_CSS}</style>
@@ -109,7 +112,7 @@ export default function MarketingLandingPage() {
           </div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             <button type="button" className="ua-tglbtn" onClick={() => setDark(v => !v)} aria-label={dark ? '라이트 모드' : '다크 모드'} title={dark ? '라이트 모드' : '다크 모드'}>{dark ? '☀️' : '🌙'}</button>
-            <Link to={APP} style={{ fontSize: 14, color: 'var(--ink2)', fontWeight: 500, whiteSpace: 'nowrap' }}>로그인</Link>
+            <Link to={loginHref} style={{ fontSize: 14, color: 'var(--ink2)', fontWeight: 500, whiteSpace: 'nowrap' }}>{loggedIn ? '대시보드' : '로그인'}</Link>
             <a href={CONTACT} style={{ fontSize: 14, fontWeight: 600, color: '#fff', background: '#3B6EF5', padding: '9px 18px', borderRadius: 8, whiteSpace: 'nowrap' }}>Contact Us</a>
           </div>
         </div>

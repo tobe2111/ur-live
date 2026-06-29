@@ -103,7 +103,7 @@ export default function ClickGuardPanel() {
 
   return (
     <div className={`mt-3 ${card}`}>
-      <div className="text-[14px] font-bold text-gray-900 dark:text-white">🛡️ 부정클릭 방지 <span className="text-gray-400 dark:text-gray-500 text-[11px] font-medium">Phase 1 · 탐지/리포트</span></div>
+      <div className="text-[14px] font-bold text-gray-900 dark:text-white">부정클릭 방지 <span className="text-gray-400 dark:text-gray-500 text-[11px] font-medium">Phase 1 · 탐지/리포트</span></div>
       <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">내 사이트에 픽셀을 넣으면 광고 유입 방문을 수집해 <b>의심 IP</b>를 찾아줍니다. (현재는 탐지·리포트만 — 자동 차단은 준비 중)</p>
 
       {/* 사이트 등록 */}

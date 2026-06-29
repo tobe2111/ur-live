@@ -145,15 +145,15 @@ export default function MarketingDashboardPage() {
   const input = 'w-full h-10 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
   return (
-    <MarketingDashboardShell title="대시보드">
+    <MarketingDashboardShell title="대시보드" showNav={hasToken}>
       <SEO title="유어애즈 UR Ads - 유어팀 종합 마케팅" description="네이버 검색광고 자동입찰 + 쇼핑몰 발주수집 + 키워드 — 유어팀 종합 마케팅 툴" url="/ads/dashboard" />
       <p className="mono text-[11px] tracking-widest" style={{ color: 'var(--ink3)' }}>OVERVIEW</p>
       <p className="mt-1.5 text-[13px]" style={{ color: 'var(--ink2)' }}>연관키워드·검색추세·쇼핑경쟁·자동완성확장·브랜드 평판 모니터링 — 지금 바로 사용 · 자동입찰/발주수집은 광고계정 연동 후</p>
 
       {!hasToken && (
         <div className={`mt-5 ${card}`}>
-          <p className="text-[13px] text-gray-700 dark:text-gray-300">사업자(고객사) 계정으로 로그인 후 이용할 수 있습니다.</p>
-          <a href="/seller/login" className="mt-3 inline-block rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[13px] font-bold text-white dark:text-[#0A0A0A]">로그인</a>
+          <p className="text-[13px] text-gray-700 dark:text-gray-300">사업자(고객사) 계정으로 로그인 후 이용할 수 있습니다. 카카오 한 번이면 됩니다.</p>
+          <a href="/seller/login?returnUrl=%2Fads%2Fdashboard" className="mt-3 inline-block rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[13px] font-bold text-white dark:text-[#0A0A0A]">로그인 / 시작하기</a>
         </div>
       )}
 
