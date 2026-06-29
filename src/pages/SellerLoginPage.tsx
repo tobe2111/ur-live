@@ -8,11 +8,15 @@ import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, Users, Package, TrendingUp, ArrowRight, ChevronDown } from 'lucide-react'
 import TurnstileWidget from '@/components/auth/TurnstileWidget'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+import { safeInternalPath } from '@/utils/safe-internal-path'
 
 export default function SellerLoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  // 🆕 2026-06-28 로그인 후 복귀 경로(예: 유어애즈 /ads/dashboard). 없으면 기존 /seller·/wholesale.
+  const rawReturn = searchParams.get('returnUrl') || searchParams.get('redirect')
+  const returnUrl = rawReturn ? safeInternalPath(rawReturn, '') : ''
   const [formData, setFormData] = useState({ email: '', password: '' })
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -82,13 +86,10 @@ export default function SellerLoginPage() {
         localStorage.setItem('seller_username', seller.username || seller.slug || '')
         localStorage.setItem('seller_type', seller.seller_type || 'influencer')
         // 🏭 2026-06-04 판매사 분리: 순수 판매사(is_distributor)는 셀러 대시보드 대신 도매몰로.
-        if (seller.is_distributor) {
-          localStorage.setItem('is_distributor', '1')
-          navigate('/wholesale', { replace: true })
-        } else {
-          localStorage.removeItem('is_distributor')
-          navigate('/seller', { replace: true })
-        }
+        if (seller.is_distributor) localStorage.setItem('is_distributor', '1')
+        else localStorage.removeItem('is_distributor')
+        // 🆕 returnUrl 있으면 거기로(유어애즈 등), 없으면 기존 분기 유지.
+        navigate(returnUrl || (seller.is_distributor ? '/wholesale' : '/seller'), { replace: true })
       }
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }
@@ -168,7 +169,7 @@ export default function SellerLoginPage() {
 
             {/* 🔗 카카오 로그인 = 기본(권장). 카카오 한 번으로 셀러 권한 자동 복원/신청 */}
             <a
-              href={`/auth/kakao/start?redirect=${encodeURIComponent('/seller')}&intent=seller`}
+              href={`/auth/kakao/start?redirect=${encodeURIComponent(returnUrl || '/seller')}&intent=seller`}
               className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#FEE500] hover:bg-[#FDD800] active:opacity-90 text-[#191600] text-[15px] font-bold rounded-2xl transition-colors no-underline shadow-sm"
             >
               <span className="text-lg">💬</span>

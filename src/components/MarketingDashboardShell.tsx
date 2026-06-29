@@ -30,6 +30,7 @@ const SCOPED_CSS = `
 .uad .uad-nav.active{background:var(--brand-soft);color:var(--brand-ink)}
 .uad ::-webkit-scrollbar{width:9px;height:9px}
 .uad ::-webkit-scrollbar-thumb{background:#2A3450;border-radius:6px;border:3px solid transparent;background-clip:content-box}
+.uad [id^="sec-"]{scroll-margin-top:76px}
 `
 
 function NavIcon({ children }: { children: ReactNode }) {
@@ -40,28 +41,31 @@ function NavIcon({ children }: { children: ReactNode }) {
   )
 }
 
-export default function MarketingDashboardShell({ title = '대시보드', planLabel, children }: { title?: string; planLabel?: string; children: ReactNode }) {
+export default function MarketingDashboardShell({ title = '대시보드', planLabel, showNav = true, children }: { title?: string; planLabel?: string; showNav?: boolean; children: ReactNode }) {
   const [active, setActive] = useState<string>(NAV[0].id)
   useUrAdsFavicon()
 
-  // 스크롤스파이 — 보이는 섹션을 사이드바에 활성 표시(전부 마운트 유지).
+  // 스크롤스파이 — 보이는 섹션을 사이드바에 활성 표시(전부 마운트 유지). 섹션 없으면(비로그인) skip.
   useEffect(() => {
-    const ids = NAV.map((n) => n.id)
-    const els = ids.map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[]
+    if (!showNav) return
+    const els = NAV.map((n) => document.getElementById(n.id)).filter(Boolean) as HTMLElement[]
     if (!els.length) return
     const obs = new IntersectionObserver(
       (entries) => {
         const vis = entries.filter((e) => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)
         if (vis[0]?.target?.id) setActive(vis[0].target.id)
       },
-      { rootMargin: '-45% 0px -45% 0px', threshold: [0, 0.2, 1] },
+      // 토픽바 바로 아래(상단)에 걸린 섹션을 활성으로 — 클릭 후 그 섹션이 계속 하이라이트.
+      { rootMargin: '-72px 0px -62% 0px', threshold: [0, 1] },
     )
     els.forEach((el) => obs.observe(el))
     return () => obs.disconnect()
-  }, [])
+  }, [showNav])
 
   const go = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const el = document.getElementById(id)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     setActive(id)
   }
 
@@ -76,11 +80,13 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
         </div>
         <nav style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1, overflowY: 'auto' }}>
           <div className="mono" style={{ fontSize: 10, letterSpacing: '.12em', color: 'var(--ink3)', padding: '6px 4px 6px' }}>MENU</div>
-          {NAV.map((n) => (
+          {showNav ? NAV.map((n) => (
             <button key={n.id} type="button" onClick={() => go(n.id)} className={`uad-nav${active === n.id ? ' active' : ''}`}>
               <NavIcon>{n.icon}</NavIcon>{n.label}
             </button>
-          ))}
+          )) : (
+            <p style={{ fontSize: 12, color: 'var(--ink3)', padding: '8px 11px', lineHeight: 1.6 }}>로그인하면 메뉴가 표시됩니다.</p>
+          )}
         </nav>
         <div style={{ padding: 14, borderTop: '1px solid var(--border)' }}>
           <Link to="/ads" className="mono" style={{ fontSize: 11, letterSpacing: '.08em', color: 'var(--ink3)' }}>← 랜딩으로</Link>
