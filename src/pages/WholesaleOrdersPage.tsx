@@ -260,10 +260,13 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
                       {o.items.map((it, idx) => (
                         <div key={idx} className="flex items-start justify-between gap-3 px-3.5 py-2.5" style={idx > 0 ? { borderTop: '1px solid ' + WT.line } : undefined}>
                           <div className="min-w-0">
-                            <p className="text-[13px] font-medium truncate" style={{ color: WT.ink }}>{it.name || `상품 #${it.product_id}`}</p>
+                            <p className="text-[13px] font-medium truncate" style={{ color: WT.ink }}>{it.name || `상품 #${it.product_id}`}{it.option_label ? <span style={{ color: WT.ink4 }}> · {it.option_label}</span> : null}</p>
                             <p className="text-[11px] mt-0.5 tabular-nums" style={{ color: WT.ink4 }}>
                               {it.supplier_name ? `${it.supplier_name} · ` : ''}{won(it.distributor_unit_price)} × {it.qty}개
                             </p>
+                            {it.ship_to_name && (
+                              <p className="text-[11px] mt-0.5" style={{ color: WT.ink3 }}>📦 {it.ship_to_name}{it.ext_order_no ? ` · 주문 ${it.ext_order_no}` : ''}</p>
+                            )}
                           </div>
                           <span className="text-[13px] font-bold tabular-nums whitespace-nowrap" style={{ color: WT.ink2 }}>{won(it.line_total)}</span>
                         </div>

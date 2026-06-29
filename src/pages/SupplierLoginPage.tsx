@@ -34,7 +34,8 @@ export default function SupplierLoginPage() {
   useEffect(() => { import('./SupplierDashboardPage').catch(() => { /* prefetch best-effort */ }) }, [])
 
   // 🏭 2026-06-29 (대표 결정 — 도매몰 카카오 로그인 제거): 제조사 로그인은 이메일/비밀번호 전용.
-  //   기존 카카오 자동 probe(/supplier/become)·카카오 버튼·미가입/대기 배너 모두 삭제. (입점은 /supplier/register.)
+  //   마운트 시 자동 토큰 재발급(ambient 자동로그인) probe·카카오 버튼·미가입/대기 배너 모두 삭제 → 로그아웃 억제.
+  //   (입점은 /supplier/register.)
   useEffect(() => {
     if (isSupplierLoggedIn()) navigate('/supplier', { replace: true })
   }, [navigate])

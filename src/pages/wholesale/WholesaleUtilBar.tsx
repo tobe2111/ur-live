@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LogIn, LogOut, Factory, ChevronDown, LayoutDashboard, Wallet, ShoppingBag, FileText, Store, Receipt } from 'lucide-react'
+import { LogIn, LogOut, Factory, ChevronDown, LayoutDashboard, Wallet, ShoppingBag, FileText, Store, Receipt, User } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { logout as authLogout } from '@/utils/auth'
 import { getSupplierToken, clearSupplierSession } from '@/lib/supplier-api'
@@ -113,11 +113,12 @@ export default function WholesaleUtilBar() {
                 </>
               )}
               <span className="opacity-30">|</span>
-              {/* 내 공간 드롭다운 */}
+              {/* 마이 드롭다운 (사람 아이콘 + '마이') */}
               <div className="relative" ref={menuRef}>
                 <button onClick={() => setMenuOpen(o => !o)} aria-expanded={menuOpen} aria-haspopup="menu"
                   className="inline-flex items-center gap-1 font-semibold text-white whitespace-nowrap">
-                  {t('wholesale.util.mySpace', { defaultValue: '내 공간' })}
+                  <User className="w-4 h-4" strokeWidth={1.9} />
+                  {t('wholesale.util.mySpace', { defaultValue: '마이' })}
                   <ChevronDown className={'w-3 h-3 transition-transform ' + (menuOpen ? 'rotate-180' : '')} />
                 </button>
                 {menuOpen && (

@@ -30,6 +30,9 @@ interface Line {
   ship_to_phone: string | null
   ship_to_address: string | null
   ship_to_postal: string | null
+  option_label?: string | null
+  ext_order_no?: string | null
+  ship_to_message?: string | null
 }
 
 export default function SupplierWholesaleOrdersPage() {
@@ -187,7 +190,9 @@ export default function SupplierWholesaleOrdersPage() {
             {groups.map(g => {
               const first = g.items[0]
               const od = orderDraft[g.orderId] || { courier: '', tracking: '' }
-              const canBundle = g.pendingCount >= 2 // 합배송: 미발송 라인 2개 이상일 때만 일괄발송 노출
+              // 📦 드랍십: 한 주문에 받는사람이 여럿이면(라인별 직배) 합배송 불가 — 라인별 개별송장만.
+              const mixedRecipients = g.items.some(it => (it.ship_to_name || '') !== (first.ship_to_name || '') || (it.ship_to_address || '') !== (first.ship_to_address || ''))
+              const canBundle = g.pendingCount >= 2 && !mixedRecipients // 합배송: 같은 받는사람 + 미발송 2건↑
               return (
                 <div key={g.orderId} className="bg-white rounded-xl border border-gray-200 p-4">
                   {/* 주문 헤더 + 배송지 (주문당 1회) */}
@@ -212,8 +217,14 @@ export default function SupplierWholesaleOrdersPage() {
                     <div className="mb-3"><span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-green-50 text-green-700"><Check className="w-3.5 h-3.5" /> 수락됨 · 발송 대기</span></div>
                   )}
                   <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 mb-3">
-                    <div className="font-medium text-gray-800">{first.ship_to_name || '—'} {first.ship_to_phone || ''}</div>
-                    <div>{first.ship_to_postal ? `(${first.ship_to_postal}) ` : ''}{first.ship_to_address || '배송지 정보 없음'}</div>
+                    {mixedRecipients ? (
+                      <div className="font-medium text-gray-800">📦 받는사람별 직배(드랍십) · {g.items.length}건 — 각 상품 아래 받는분 확인</div>
+                    ) : (
+                      <>
+                        <div className="font-medium text-gray-800">{first.ship_to_name || '—'} {first.ship_to_phone || ''}</div>
+                        <div>{first.ship_to_postal ? `(${first.ship_to_postal}) ` : ''}{first.ship_to_address || '배송지 정보 없음'}</div>
+                      </>
+                    )}
                   </div>
 
                   {/* 합배송 일괄발송 (미발송 2건 이상) */}
@@ -251,8 +262,15 @@ export default function SupplierWholesaleOrdersPage() {
                         <div key={l.item_id} className="border border-gray-100 rounded-lg p-3">
                           <div className="flex items-center justify-between mb-2 gap-2">
                             <div>
-                              <div className="font-medium text-gray-900">{l.name}</div>
+                              <div className="font-medium text-gray-900">{l.name}{l.option_label ? <span className="text-gray-500 font-normal"> · {l.option_label}</span> : null}</div>
                               <div className="text-sm text-gray-500">수량 {l.qty}개 · 정산 {formatWon(l.settle_amount)}</div>
+                              {mixedRecipients && (l.ship_to_name || l.ship_to_address) && (
+                                <div className="text-xs text-gray-600 mt-1.5 bg-gray-50 rounded p-2">
+                                  📦 <b className="text-gray-800">{l.ship_to_name || '—'}</b> {l.ship_to_phone || ''} · {l.ship_to_postal ? `(${l.ship_to_postal}) ` : ''}{l.ship_to_address || ''}
+                                  {l.ext_order_no ? <span className="text-gray-400"> · 주문 {l.ext_order_no}</span> : null}
+                                  {l.ship_to_message ? <div className="text-gray-400 mt-0.5">메모: {l.ship_to_message}</div> : null}
+                                </div>
+                              )}
                             </div>
                             <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full ${refunded ? 'bg-gray-100 text-gray-500' : shipped ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>
                               {refunded ? '환불됨' : shipped ? '발송완료' : '발송대기'}

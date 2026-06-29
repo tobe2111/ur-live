@@ -54,7 +54,14 @@ export async function ensureOrderTables(DB: D1Database) {
     courier TEXT,
     tracking_number TEXT,
     shipped_at DATETIME,
-    line_status TEXT NOT NULL DEFAULT 'PENDING'
+    line_status TEXT NOT NULL DEFAULT 'PENDING',
+    option_label TEXT,
+    ext_order_no TEXT,
+    ship_to_name TEXT,
+    ship_to_phone TEXT,
+    ship_to_postal TEXT,
+    ship_to_address TEXT,
+    ship_to_message TEXT
   )`).run().catch(swallow('wholesale:create-items'))
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_orders_seller ON wholesale_orders(distributor_seller_id, created_at DESC)`).run().catch(swallow('wholesale:idx1'))
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_items_order ON wholesale_order_items(wholesale_order_id)`).run().catch(swallow('wholesale:idx2'))
@@ -81,6 +88,18 @@ export async function ensureOrderTables(DB: D1Database) {
   //   전량환불 도달 시 단 하나의 호출만 배송비를 환불(CAS WHERE shipping_refunded=0). 동시 다라인/다제조사
   //   환불에서 stale snapshot 기반 배송비 gap 이 이중 환불되던 것 차단.
   await DB.prepare('ALTER TABLE wholesale_orders ADD COLUMN shipping_refunded INTEGER NOT NULL DEFAULT 0').run().catch(swallow('wholesale:alter-shipping-refunded'))
+  // 📦 2026-06-29 (대표 — 대량발주 드랍십): 라인별 옵션(상품상세) + 받는사람별 배송지. 같은 상품이라도
+  //   행마다 다른 고객에게 직배(드랍십)되므로 라인 단위로 보관 — 제조사가 라인별 송장 발행. 금액 경로 불변
+  //   (옵션/배송지는 비가격 패스스루). best-effort self-heal — 기존 env 에 컬럼 추가(신규는 위 CREATE 포함).
+  for (const sql of [
+    'ALTER TABLE wholesale_order_items ADD COLUMN option_label TEXT',
+    'ALTER TABLE wholesale_order_items ADD COLUMN ext_order_no TEXT',
+    'ALTER TABLE wholesale_order_items ADD COLUMN ship_to_name TEXT',
+    'ALTER TABLE wholesale_order_items ADD COLUMN ship_to_phone TEXT',
+    'ALTER TABLE wholesale_order_items ADD COLUMN ship_to_postal TEXT',
+    'ALTER TABLE wholesale_order_items ADD COLUMN ship_to_address TEXT',
+    'ALTER TABLE wholesale_order_items ADD COLUMN ship_to_message TEXT',
+  ]) { await DB.prepare(sql).run().catch(swallow('wholesale:alter-item-dropship')) }
 }
 
 // ── 🚚 2026-06-09 제조사(공급자)별 배송/주문 정책 — suppliers 3컬럼 멱등 ensure. ──────

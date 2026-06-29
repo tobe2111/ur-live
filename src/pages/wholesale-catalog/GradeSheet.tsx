@@ -2,12 +2,12 @@ import { X, Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { WT, GRADE_NAME } from '../wholesale/wholesale-theme'
 
-// ── 등급 안내 시트 ── (2026-06-16 대표 모델: 일반 / 프로 / 프리미엄 — 판매가 대비 보장마진)
-//   가입 형태로 구분 — 일반=승인 가입 / 프로=연 구독 / 프리미엄=일정 매출 달성. 등급↑ = 더 큰 마진(낮은 공급가).
+// ── 등급 안내 시트 ── (2026-06-29 대표 확정: Basic / Standard / Premium — 판매가 대비 보장마진)
+//   가입 형태로 구분 — Basic=승인 가입 / Standard=연 구독 / Premium=일정 매출 달성. 등급↑ = 더 큰 마진(낮은 공급가).
 const GRADE_SHEET = [
-  { name: '프리미엄', desc: '일정 매출 달성 회원 · 최저 공급가', margin: '마진 38%' },
-  { name: '프로', desc: '연 구독제 회원 · 우대 공급가', margin: '마진 30%' },
-  { name: '일반', desc: '승인 후 가입한 회원 · 기본 공급가', margin: '마진 15%' },
+  { name: 'Premium', desc: '일정 매출 달성 회원 · 최저 공급가', margin: '마진 38%' },
+  { name: 'Standard', desc: '연 구독제 회원 · 우대 공급가', margin: '마진 30%' },
+  { name: 'Basic', desc: '승인 후 가입한 회원 · 기본 공급가', margin: '마진 15%' },
 ]
 export default function GradeSheet({ current, onClose }: { current: string; onClose: () => void }) {
   const navigate = useNavigate()
@@ -40,13 +40,13 @@ export default function GradeSheet({ current, onClose }: { current: string; onCl
           })}
         </div>
         <p className="mt-4 text-[12px] leading-relaxed" style={{ color: WT.ink3 }}>
-          <b style={{ color: WT.ink2 }}>프로</b>는 예치금에서 연 구독료를 결제하면 바로 적용되고, <b style={{ color: WT.ink2 }}>프리미엄</b>은 일정 매출 달성 시 자동 전환됩니다.
+          <b style={{ color: WT.ink2 }}>Standard</b>는 예치금에서 연 구독료를 결제하면 바로 적용되고, <b style={{ color: WT.ink2 }}>Premium</b>은 일정 매출 달성 시 자동 전환됩니다.
         </p>
         {code !== 'A' && (
           <button onClick={go}
             className="mt-3 w-full inline-flex items-center justify-center gap-1.5 h-12 rounded-xl text-white text-[14px] font-bold"
             style={{ background: WT.brand }}>
-            <Sparkles className="w-4 h-4" /> {code === 'B' ? '프로 연장하기' : loggedIn ? '프로 구독하기' : '로그인하고 시작하기'}
+            <Sparkles className="w-4 h-4" /> {code === 'B' ? 'Standard 연장하기' : loggedIn ? 'Standard 구독하기' : '로그인하고 시작하기'}
           </button>
         )}
       </div>

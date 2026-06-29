@@ -34,6 +34,7 @@ import { generateWholesaleSalesInvoice, generateWholesalePurchaseInvoices, listD
 import { ensureSupplyVisibilitySchema, visibilityWhere, gradeExposureWhere } from './supply-visibility'
 import { ensureDepositSchema, deductDeposit, recordDepositTxn, compensateDepositOrderOnce } from './wholesale-deposit-core'
 import { resolveMallId, registrationMallId, loadMallByHost } from './wholesale-malls'
+import { ensureCodeMap, learnCodes, resolveCodes, normCode } from './wholesale-code-map'
 import {
   ensureOrderTables, ensureSupplierPolicySchema, loadSupplierPolicies, computeSupplierShipping,
   parseProductShipFee, hasRestrictedVisibility, _supplyCatalogReady, ensureQtyConstraintSchema,
@@ -1357,6 +1358,44 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     }
     if (subtotal <= 0) return c.json({ success: false, error: '결제 금액이 올바르지 않습니다' }, 400)
 
+    // 📦 2026-06-29 (대표 — 대량발주 드랍십): body.dropship 면 받는사람별 라인으로 분해.
+    //   ⚠️ 단가/합계 불변 — 라인 단가 = 위 상품 합산기준 tier 단가(묶음 사입과 동일). Σ라인 == subtotal 검증.
+    //   비드랍십(기본)은 insertLines = lines 로 *byte-identical*. INSERT/재고 차감만 라인 분해(돈 경로 무변경).
+    type InsertLine = { product_id: number; supplier_id: number | null; name: string; qty: number; base: number; unit: number; line_total: number; option?: string; ship?: { name: string; phone: string; postal: string; address: string; message: string }; ext_order_no?: string }
+    const isDropship = body.dropship === true || body.dropship === 'true'
+    let insertLines: InsertLine[] = lines
+    if (isDropship) {
+      const priceByPid = new Map(lines.map((l) => [l.product_id, l]))
+      const readShip = (o: Record<string, unknown>) => {
+        const s = (o.ship_to && typeof o.ship_to === 'object') ? o.ship_to as Record<string, unknown> : o
+        return {
+          name: String(s.name ?? s.recipient ?? '').trim().slice(0, 60),
+          phone: String(s.phone ?? '').trim().slice(0, 30),
+          postal: String(s.postal ?? s.zipcode ?? '').trim().slice(0, 20),
+          address: String(s.address ?? '').trim().slice(0, 300),
+          message: String(s.message ?? s.memo ?? '').trim().slice(0, 200),
+        }
+      }
+      const ds: InsertLine[] = []
+      for (const it of rawItems as Array<Record<string, unknown>>) {
+        const pid = Math.floor(Number(it.product_id))
+        const qty = Math.floor(Number(it.qty))
+        if (!Number.isFinite(pid) || pid <= 0 || !Number.isFinite(qty) || qty <= 0) continue
+        const pr = priceByPid.get(pid)
+        if (!pr) continue
+        const ship = readShip(it)
+        if (!ship.name || !ship.address) {
+          return c.json({ success: false, error: '받는사람·주소가 비어있는 행이 있습니다', code: 'DROPSHIP_NO_RECIPIENT' }, 400)
+        }
+        ds.push({ product_id: pid, supplier_id: pr.supplier_id, name: pr.name, qty, base: pr.base, unit: pr.unit, line_total: pr.unit * qty, option: String(it.option ?? '').trim().slice(0, 120), ship, ext_order_no: String(it.ext_order_no ?? '').trim().slice(0, 60) })
+      }
+      if (!ds.length) return c.json({ success: false, error: '드랍십 주문 행이 없습니다' }, 400)
+      // 합계 정합 — Σ라인 == subtotal(합산기준). 불일치면 클라 변조/누락 → 차단(돈 미이동).
+      const dsum = ds.reduce((s, l) => s + l.line_total, 0)
+      if (dsum !== subtotal) return c.json({ success: false, error: '주문 합계가 일치하지 않습니다' }, 400)
+      insertLines = ds
+    }
+
     // ── 🚚 2026-06-09 제조사별 최소주문금액 게이트 + 배송비 (청구 *전* 서버 계산·검증) ──────────
     //   ⚠️ MONEY GATE: PENDING insert/deduct 보다 *앞*. min-order 미달이면 청구 자체 안 함(돈 미이동).
     //   shipping_total 은 제조사별 정책으로 서버 계산 → 청구액 = subtotal + shipping_total.
@@ -1452,17 +1491,18 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
 
     // 주문 항목 + 재고 차감(oversell 가드) — 실패 시 주문 FAILED + 예치금 환불(보상).
     try {
-      for (const l of lines) {
+      for (const l of insertLines) {
+        const dl = l as InsertLine
         await DB.prepare(`
-          INSERT INTO wholesale_order_items (wholesale_order_id, product_id, supplier_id, name, qty, base_supply_price, distributor_unit_price, line_total)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `).bind(dOrderId, l.product_id, l.supplier_id ?? null, l.name, l.qty, l.base, l.unit, l.line_total).run()
+          INSERT INTO wholesale_order_items (wholesale_order_id, product_id, supplier_id, name, qty, base_supply_price, distributor_unit_price, line_total, option_label, ext_order_no, ship_to_name, ship_to_phone, ship_to_postal, ship_to_address, ship_to_message)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(dOrderId, dl.product_id, dl.supplier_id ?? null, dl.name, dl.qty, dl.base, dl.unit, dl.line_total, dl.option || null, dl.ext_order_no || null, dl.ship?.name || null, dl.ship?.phone || null, dl.ship?.postal || null, dl.ship?.address || null, dl.ship?.message || null).run()
       }
 
       // 재고 원자적 차감(oversell 가드 — Toss confirm 과 동일). 실패 시 성공분 복원 + 보상 환불.
       const dDecremented: Array<{ product_id: number; qty: number }> = []
       let dOversold = false
-      for (const l of lines) {
+      for (const l of insertLines) {
         const upd = await DB.prepare(
           "UPDATE products SET stock = stock - ?, sold_count = COALESCE(sold_count,0) + ?, updated_at = datetime('now') WHERE id = ? AND (stock IS NULL OR stock >= ?)"
         ).bind(l.qty, l.qty, l.product_id, l.qty).run().catch(() => ({ meta: { changes: 0 } }))
@@ -1511,6 +1551,8 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
       subtotal,
       shipping_total: shippingTotal,
       order_name: orderName,
+      dropship: isDropship,
+      line_count: insertLines.length,
     })
   } catch (err) {
     return safeError(c, err, '주문 생성 중 오류가 발생했습니다', '[wholesale]')
@@ -1694,6 +1736,7 @@ app.get('/orders', async (c) => {
       try {
         const r = await DB.prepare(
           `SELECT i.wholesale_order_id, i.product_id, i.name, i.qty, i.distributor_unit_price, i.line_total,
+                  i.option_label, i.ext_order_no, i.ship_to_name, i.ship_to_message, i.line_status,
                   s.business_name AS supplier_name
              FROM wholesale_order_items i LEFT JOIN suppliers s ON s.id = i.supplier_id
             WHERE i.wholesale_order_id IN (${ph})`
@@ -1702,7 +1745,8 @@ app.get('/orders', async (c) => {
       } catch {
         // suppliers 조인 실패(테이블 부재 등) → 제조사명 없이 아이템만(graceful).
         const r = await DB.prepare(
-          `SELECT i.wholesale_order_id, i.product_id, i.name, i.qty, i.distributor_unit_price, i.line_total
+          `SELECT i.wholesale_order_id, i.product_id, i.name, i.qty, i.distributor_unit_price, i.line_total,
+                  i.option_label, i.ext_order_no, i.ship_to_name, i.ship_to_message, i.line_status
              FROM wholesale_order_items i WHERE i.wholesale_order_id IN (${ph})`
         ).bind(...ids).all<{ wholesale_order_id: number }>().catch(() => ({ results: [] as Array<{ wholesale_order_id: number }> }))
         itemRows = r.results ?? []
@@ -1753,7 +1797,7 @@ app.get('/orders/:id', async (c) => {
     ).bind(id, sellerId).first()
     if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
     const { results } = await DB.prepare(
-      'SELECT product_id, name, qty, distributor_unit_price, line_total FROM wholesale_order_items WHERE wholesale_order_id = ?'
+      'SELECT product_id, name, qty, distributor_unit_price, line_total, option_label, ext_order_no, ship_to_name, ship_to_phone, ship_to_postal, ship_to_address, ship_to_message, line_status FROM wholesale_order_items WHERE wholesale_order_id = ?'
     ).bind(id).all()
     return c.json({ success: true, order, items: results ?? [] })
   } catch (err) {
@@ -1999,11 +2043,12 @@ app.get('/catalog/export', async (c) => {
 //   판매사는 '주문수량' 칸만 채워 업로드. 비로그인은 빈 양식(헤더만).
 app.get('/order-template', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
-  // BIZ-9 (2026-06-09): 박스단위(order_multiple) 열 추가 — 판매사가 양식에서 주문 배수 제약을 바로 보고 입력.
-  //   product_id 가 robust 매칭 키(상품명 변경에도 안전). 주문수량 = 판매사 입력칸(빈칸).
-  const header = ['product_id', '상품명', '카테고리', '재고', '공급가(내등급)', 'MOQ', '박스단위', '주문수량']
+  // 📦 2026-06-29 (대표 — 대량발주 드랍십): 카탈로그(참고) + 받는사람별 직배(드랍십) 입력칸을 한 양식에.
+  //   한 행 = 한 명에게 보내는 1건. 같은 상품을 여러 명에게 보내려면 그 행을 복사해 받는사람만 바꿔 입력.
+  //   매칭 = product_id(우선) 또는 상품코드(판매사 학습 맵/제조사 ext_code). 빈칸은 판매사가 채움.
+  const header = ['product_id', '상품코드', '상품명', '카테고리', '재고', '공급가(내등급)', 'MOQ', '박스단위', '옵션(상품상세)', '주문수량', '받는사람', '전화번호', '우편번호', '주소', '배송메시지']
   if (!sellerId) {
-    return csvResponse(buildCsv(header, [['예: 123', '상품명(참고용)', '식품', '500', '9000', '1', '1', '10']]), 'wholesale-order-template.csv')
+    return csvResponse(buildCsv(header, [['예: 123', '예: SOTN-001', '상품명(참고용)', '식품', '500', '9000', '1', '1', '화이트', '10', '홍길동', '010-1234-5678', '06236', '서울시 강남구 …', '부재시 경비실에']]), 'wholesale-order-template.csv')
   }
   const { DB } = c.env
   try {
@@ -2020,9 +2065,16 @@ app.get('/order-template', async (c) => {
         AND ${gradeExposureWhere('p')}
       ORDER BY p.category, p.name LIMIT 10000
     `).bind(sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; category: string | null; stock: number; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
+    // 🔁 판매사 학습 코드 맵(product_id → 상품코드) — 이전 업로드에서 학습된 코드를 양식에 미리 채움.
+    await ensureCodeMap(DB)
+    const codeByPid = new Map<number, string>()
+    const cm = await DB.prepare('SELECT code, product_id FROM wholesale_product_code_map WHERE seller_id = ?')
+      .bind(sellerId).all<{ code: string; product_id: number }>().catch(() => ({ results: [] as Array<{ code: string; product_id: number }> }))
+    for (const r of cm.results || []) if (!codeByPid.has(r.product_id)) codeByPid.set(r.product_id, r.code)
     const out = (rows.results || []).map(r => {
       const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
-      return [r.id, r.name, r.category || '', r.stock, price, Math.max(1, r.moq || 1), Math.max(1, r.order_multiple || 1), ''] // 주문수량은 빈칸 — 판매사가 입력
+      // product_id·상품코드·카탈로그 정보는 프리필, 옵션/주문수량/받는사람~배송메시지는 빈칸(판매사 입력).
+      return [r.id, codeByPid.get(r.id) || '', r.name, r.category || '', r.stock, price, Math.max(1, r.moq || 1), Math.max(1, r.order_multiple || 1), '', '', '', '', '', '', '']
     })
     return csvResponse(buildCsv(header, out), `wholesale-order-form-${new Date().toISOString().slice(0, 10)}.csv`)
   } catch (err) {
@@ -2051,31 +2103,57 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
       return c.json({ success: false, error: `한 번에 처리 가능한 행은 최대 ${BULK_MAX_ROWS}개입니다 (현재 ${rawItems.length}개)`, code: 'TOO_MANY_ROWS' }, 400)
     }
 
-    // 행 정규화 — product_id 로 합산(같은 상품 여러 줄). qty<=0/비숫자/blank 는 오류로 분류.
+    // 📦 2026-06-29 드랍십 정규화 — 한 행 = 한 명에게 보내는 1건(같은 상품도 받는사람 다르면 별개 라인).
+    //   매칭: product_id 직접(우선) → 상품코드(판매사 학습 맵/제조사 ext_code). 청구 검증/단가는 상품별 *합산*
+    //   기준(MOQ/박스단위/재고/수량구간 할인) — 묶음 사입과 금액 동일. 옵션/받는사람은 비가격 패스스루.
     type ErrRow = { row?: number; product_id?: number | null; name?: string; qty?: number; reason: string }
+    type ShipTo = { name: string; phone: string; postal: string; address: string; message: string }
+    type InRow = { row: number; pid: number | null; code: string; qty: number; option: string; ship: ShipTo; extOrderNo: string }
+    const readShip = (o: Record<string, unknown>): ShipTo => {
+      const s = (o.ship_to && typeof o.ship_to === 'object') ? o.ship_to as Record<string, unknown> : o
+      return {
+        name: String(s.name ?? s.recipient ?? '').trim().slice(0, 60),
+        phone: String(s.phone ?? '').trim().slice(0, 30),
+        postal: String(s.postal ?? s.zipcode ?? '').trim().slice(0, 20),
+        address: String(s.address ?? '').trim().slice(0, 300),
+        message: String(s.message ?? s.memo ?? '').trim().slice(0, 200),
+      }
+    }
     const errors: ErrRow[] = []
-    const reqMap = new Map<number, number>()
-    const lineNoMap = new Map<number, number>() // product_id → 첫 등장 행번호(오류 표시용)
+    const inRows: InRow[] = []
+    const learnPairs: Array<{ code: string; product_id: number }> = []
+    const codesToResolve: string[] = []
     rawItems.forEach((it: unknown, idx: number) => {
       const o = (it && typeof it === 'object') ? it as Record<string, unknown> : {}
-      const pid = Math.floor(Number(o.product_id))
+      const pidRaw = Math.floor(Number(o.product_id))
+      const pid = Number.isFinite(pidRaw) && pidRaw > 0 ? pidRaw : null
+      const code = normCode(o.code ?? o.product_code)
       const qty = Math.floor(Number(o.qty))
       const rowNo = Number.isFinite(Number(o.row)) ? Math.floor(Number(o.row)) : idx + 1
-      if (!Number.isFinite(pid) || pid <= 0) {
-        errors.push({ row: rowNo, product_id: null, reason: '상품코드(product_id)가 올바르지 않습니다' })
-        return
-      }
-      if (!Number.isFinite(qty) || qty <= 0) {
-        errors.push({ row: rowNo, product_id: pid, qty: 0, reason: '주문수량이 비어있거나 0 이하입니다' })
-        return
-      }
-      reqMap.set(pid, (reqMap.get(pid) || 0) + qty)
-      if (!lineNoMap.has(pid)) lineNoMap.set(pid, rowNo)
+      const option = String(o.option ?? '').trim().slice(0, 120)
+      const extOrderNo = String(o.ext_order_no ?? o.order_no ?? '').trim().slice(0, 60)
+      if (pid && code) learnPairs.push({ code, product_id: pid })
+      if (!pid && code) codesToResolve.push(code)
+      inRows.push({ row: rowNo, pid, code, qty, option, ship: readShip(o), extOrderNo })
     })
+
+    // 🔁 코드 학습(product_id+상품코드 동시 행) 후 코드만 있는 행 해석. 같은 업로드 내 학습분도 즉시 반영.
+    await learnCodes(DB, sellerId, learnPairs)
+    const codeMap = codesToResolve.length ? await resolveCodes(DB, sellerId, codesToResolve) : new Map<string, number>()
+    for (const r of inRows) { if (!r.pid && r.code) r.pid = codeMap.get(r.code) ?? null }
+
+    // 상품별 합산 — 검증/단가용(드랍십 다행이라도 같은 상품은 합산 기준으로 MOQ/할인 적용).
+    const reqMap = new Map<number, number>()
+    for (const r of inRows) {
+      if (!r.pid) { errors.push({ row: r.row, product_id: null, reason: r.code ? `상품코드 '${r.code}' 를 찾을 수 없습니다 (등록 필요·product_id 입력)` : '상품을 찾을 수 없습니다 (product_id 또는 상품코드 입력)' }); continue }
+      if (!Number.isFinite(r.qty) || r.qty <= 0) { errors.push({ row: r.row, product_id: r.pid, qty: 0, reason: '주문수량이 비어있거나 0 이하입니다' }); continue }
+      if (!r.ship.name || !r.ship.address) { errors.push({ row: r.row, product_id: r.pid, qty: r.qty, reason: '받는사람·주소가 비어있습니다 (드랍십은 받는사람 필수)' }); continue }
+      reqMap.set(r.pid, (reqMap.get(r.pid) || 0) + r.qty)
+    }
 
     const ids = [...reqMap.keys()]
     if (ids.length === 0) {
-      return c.json({ success: true, items: [], subtotal: 0, matched: 0, error_count: errors.length, errors })
+      return c.json({ success: true, mode: 'dropship', items: [], subtotal: 0, shipping_total: 0, grand_total: 0, matched: 0, error_count: errors.length, errors })
     }
 
     await ensureSupplyVisibilitySchema(DB)
@@ -2096,42 +2174,40 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
     `).bind(...ids, previewMallId, sellerId, effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })).all<{ id: number; name: string; image_url: string | null; supplier_id: number | null; stock: number | null; supply_price: number; moq: number; order_multiple: number; margin_override: number | null }>()
     const found = new Map((prods.results || []).map(p => [p.id, p]))
     const tierMap = await loadQtyTiers(DB, ids)
-
-    const items: Array<{ product_id: number; name: string; image_url: string | null; qty: number; unit_price: number; line_total: number; moq: number; order_multiple: number }> = []
-    // 🚚 제조사별 min-order/배송비 계산용 라인(검증/표시 only — 청구 X). supplier_id 는 응답에 비노출.
     const shipMetaPreview = await getSupplyMeta(DB, ids) // 🚚 상품별 배송비 — 미리보기도 주문과 동일 산식.
+
+    // 상품별 합산 검증 + authoritative 단가 산출 → priceByPid(라인 단가 = 합산기준 tier 단가, 묶음 사입과 동일).
+    type Priced = { unit: number; supplier_id: number | null; name: string; image_url: string | null }
+    const priceByPid = new Map<number, Priced>()
+    const invalidPid = new Set<number>() // 검증 실패 상품 — 그 상품의 모든 행을 오류 처리.
     const previewLines: Array<{ supplier_id: number | null; line_total: number; product_shipping_fee?: number }> = []
-    let subtotal = 0
     for (const pid of ids) {
       const qty = reqMap.get(pid) || 0
-      const rowNo = lineNoMap.get(pid)
       const p = found.get(pid)
-      if (!p) {
-        errors.push({ row: rowNo, product_id: pid, qty, reason: '주문할 수 없는 상품입니다 (품절·중지·열람권한 없음)' })
-        continue
-      }
+      if (!p) { invalidPid.add(pid); errors.push({ row: undefined, product_id: pid, qty, reason: '주문할 수 없는 상품입니다 (품절·중지·열람권한 없음)' }); continue }
       const moq = Math.max(1, p.moq || 1)
       const orderMultiple = Math.max(1, p.order_multiple || 1)
-      if (qty < moq) {
-        errors.push({ row: rowNo, product_id: pid, name: p.name, qty, reason: `최소 주문 수량 ${moq}개 미만 (요청 ${qty}개)` })
-        continue
-      }
-      if (orderMultiple > 1 && qty % orderMultiple !== 0) {
-        errors.push({ row: rowNo, product_id: pid, name: p.name, qty, reason: `${orderMultiple}개 단위로만 주문 가능 (요청 ${qty}개)` })
-        continue
-      }
-      if (p.stock != null && p.stock < qty) {
-        errors.push({ row: rowNo, product_id: pid, name: p.name, qty, reason: `재고 부족 (재고 ${p.stock}개, 요청 ${qty}개)` })
-        continue
-      }
-      // 등급 단가 → tier floor → 수량구간 할인 적용 (주문 생성과 동일 산식 — 표시 정합).
+      if (qty < moq) { invalidPid.add(pid); errors.push({ product_id: pid, name: p.name, qty, reason: `최소 주문 수량 ${moq}개 미만 (합계 ${qty}개)` }); continue }
+      if (orderMultiple > 1 && qty % orderMultiple !== 0) { invalidPid.add(pid); errors.push({ product_id: pid, name: p.name, qty, reason: `${orderMultiple}개 단위로만 주문 가능 (합계 ${qty}개)` }); continue }
+      if (p.stock != null && p.stock < qty) { invalidPid.add(pid); errors.push({ product_id: pid, name: p.name, qty, reason: `재고 부족 (재고 ${p.stock}개, 합계 ${qty}개)` }); continue }
       const { price } = resolveDistributorPrice({ baseSupplyPrice: p.supply_price, retailPrice: (p as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override })
       const tierFloor = effectiveTierFloor(price, p.supply_price, minMarginPct)
       const unit = tierUnitPrice(price, qty, tierMap.get(pid), tierFloor)
-      const lineTotal = unit * qty
+      priceByPid.set(pid, { unit, supplier_id: p.supplier_id, name: p.name, image_url: p.image_url })
+      previewLines.push({ supplier_id: p.supplier_id, line_total: unit * qty, product_shipping_fee: parseProductShipFee(shipMetaPreview.get(pid)) })
+    }
+
+    // 받는사람별 라인(각 1건) — 표시·주문 생성용. 단가=상품 합산기준 tier 단가. Σline_total == subtotal(묶음과 동일).
+    const items: Array<{ row: number; product_id: number; name: string; image_url: string | null; option: string; qty: number; unit_price: number; line_total: number; ship_to: ShipTo; ext_order_no: string }> = []
+    let subtotal = 0
+    for (const r of inRows) {
+      if (!r.pid || r.qty <= 0 || !r.ship.name || !r.ship.address) continue // 이미 errors 에 분류됨.
+      if (invalidPid.has(r.pid)) continue // 상품 검증 실패 — 행 오류(상품 단위로 이미 기록).
+      const pr = priceByPid.get(r.pid)
+      if (!pr) continue
+      const lineTotal = pr.unit * r.qty
       subtotal += lineTotal
-      items.push({ product_id: pid, name: p.name, image_url: p.image_url, qty, unit_price: unit, line_total: lineTotal, moq, order_multiple: orderMultiple })
-      previewLines.push({ supplier_id: p.supplier_id, line_total: lineTotal, product_shipping_fee: parseProductShipFee(shipMetaPreview.get(pid)) })
+      items.push({ row: r.row, product_id: r.pid, name: pr.name, image_url: pr.image_url, option: r.option, qty: r.qty, unit_price: pr.unit, line_total: lineTotal, ship_to: r.ship, ext_order_no: r.extOrderNo })
     }
 
     // 🚚 제조사별 최소주문금액 충족 여부 + 배송비 + 총 청구 예상액(결제 X). supplier_id 미노출(group key 만).
@@ -2142,7 +2218,8 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
 
     return c.json({
       success: true,
-      items,
+      mode: 'dropship',
+      items, // 받는사람별 라인(주문 생성에 그대로 재전송)
       subtotal,
       shipping_total: shippingTotal,
       grand_total: subtotal + shippingTotal,

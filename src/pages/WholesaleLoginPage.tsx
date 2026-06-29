@@ -60,7 +60,8 @@ export default function WholesaleLoginPage() {
   useEffect(() => { if (alreadyIn) navigate('/wholesale', { replace: true }) }, [alreadyIn, navigate])
 
   // 🏭 2026-06-29 (대표 결정 — 도매몰 카카오 로그인 제거): 판매사 로그인은 이메일/비밀번호 전용.
-  //   기존 카카오 자동 probe(become-distributor)·카카오 버튼 모두 삭제. (가입/입점은 /wholesale/join.)
+  //   마운트 시 자동 토큰 재발급(ambient 자동로그인) probe·카카오 버튼 모두 삭제 → 로그아웃 억제(명시 로그인만).
+  //   (가입/입점은 /wholesale/join.)
 
   if (alreadyIn) return null // 리다이렉트 중 로그인폼 깜빡임 방지
 

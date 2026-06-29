@@ -36,6 +36,11 @@ export interface WholesaleOrderItem {
   distributor_unit_price: number
   line_total: number
   supplier_name?: string | null
+  option_label?: string | null      // 📦 드랍십: 라인 옵션(상품상세)
+  ext_order_no?: string | null       // 판매사 외부 주문번호(참조)
+  ship_to_name?: string | null       // 드랍십 라인별 받는사람
+  ship_to_message?: string | null
+  line_status?: string | null
 }
 
 export interface WholesaleOrderRow {
