@@ -21,6 +21,11 @@ function wholesaleAllowedPaths(): Set<string> {
     const nextTitle = layout.indexOf('title:', m.index + 1)
     const block = layout.slice(m.index, nextTitle === -1 ? m.index + 4000 : nextTitle)
     for (const pm of block.matchAll(/path:\s*'(\/admin\/[^']+)'/g)) allowed.add(pm[1])
+    // 🏭 2026-06-29: nav item 의 `also: [...]` 딥링크/통합 서브탭도 도달 가능(런타임 RBAC 가드가 also 를 허용 —
+    //   AdminLayout 의 allowed 계산이 `...(it.also || [])` 를 포함). 테스트가 런타임을 충실히 미러링.
+    for (const am of block.matchAll(/also:\s*\[([^\]]*)\]/g)) {
+      for (const pm of am[1].matchAll(/'(\/admin\/[^']+)'/g)) allowed.add(pm[1])
+    }
   }
   // 2) 명시적 추가 허용 목록(큐 카드 목적지) + 전역 허용.
   for (const name of ['WHOLESALE_EXTRA_ALLOWED_PATHS', 'ALWAYS_ALLOWED_ADMIN_PATHS']) {
