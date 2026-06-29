@@ -24,7 +24,7 @@ export default function HomeProductsRail() {
   const cacheRef = useRef<Record<string, Product[]>>({})
   const startedRef = useRef(false)
 
-  // /browse 카테고리 칩과 동일 키 + 동일 i18n 키 (식사권/교환권 제외 = 실물 상품만).
+  // /browse 카테고리 칩과 동일 키 + 동일 i18n 키 (이용권/교환권 제외 = 실물 상품만).
   const categories = [
     { key: 'all', label: t('browse.categoryAll', { defaultValue: '전체' }) },
     { key: 'food', label: t('browse.categoryFood', { defaultValue: '식품' }) },

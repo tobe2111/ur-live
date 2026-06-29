@@ -638,7 +638,7 @@ export default function ProductDetailPage() {
           </div>
         )}
 
-        {/* 식당 정보 (식사권일 때만) */}
+        {/* 식당 정보 (이용권일 때만) */}
         {product.category === 'meal_voucher' && product.restaurant_name && (
           <AccordionSection title={t('productDetailPage.restaurantInfo')} defaultOpen={true}>
             <div className="space-y-2.5 text-xs text-gray-500 dark:text-gray-400">

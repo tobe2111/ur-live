@@ -10,10 +10,10 @@ import { Upload, Download, PackagePlus, CheckCircle2, AlertTriangle } from 'luci
 //   ⚠️ 숙소는 객실·날짜(product_stay_info)가 필요해 이 도구로 등록 불가 — 숙소 전용 등록 사용.
 
 const TEMPLATE_HEADERS = ['상품명', '카테고리', '판매가', '정가', '매장명', '주소', '이미지URL', '설명']
-const TEMPLATE_SAMPLE = '[강남] 한우 오마카세 2인,식사권,89000,140000,한우공방 강남점,서울 강남구 봉은사로,https://images.unsplash.com/photo-1,2인 한우 코스'
+const TEMPLATE_SAMPLE = '[강남] 한우 오마카세 2인,이용권,89000,140000,한우공방 강남점,서울 강남구 봉은사로,https://images.unsplash.com/photo-1,2인 한우 코스'
 
 const CAT_LABEL: Record<string, string> = {
-  meal_voucher: '맛집 식사권', beauty_voucher: '미용', etc_voucher: '기타', general: '일반 상품', stay_voucher: '숙소',
+  meal_voucher: '맛집 이용권', beauty_voucher: '미용', etc_voucher: '기타', general: '일반 상품', stay_voucher: '숙소',
 }
 
 interface ImportRow { row: number; name?: string; status: 'ok' | 'error'; reason?: string }
@@ -128,7 +128,7 @@ export default function AdminDongnedealImportPage() {
             </button>
           </div>
           <p className="text-[11px] text-gray-400 mt-2">헤더(필수): <b>상품명, 카테고리, 판매가</b>. 선택: 정가(취소선 표시), 매장명, 주소, 이미지URL, 설명.</p>
-          <p className="text-[11px] text-gray-400 mt-1">카테고리는 <b>식사권 / 미용 / 기타 / 일반</b> 중 하나로 입력. <b className="text-amber-600">숙소는 객실·날짜 등록이 필요해 이 도구로 등록 불가</b>(숙소 전용 등록 사용).</p>
+          <p className="text-[11px] text-gray-400 mt-1">카테고리는 <b>이용권 / 미용 / 기타 / 일반</b> 중 하나로 입력. <b className="text-amber-600">숙소는 객실·날짜 등록이 필요해 이 도구로 등록 불가</b>(숙소 전용 등록 사용).</p>
         </div>
 
         <div className={card}>

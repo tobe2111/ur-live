@@ -13,6 +13,13 @@
 - **`/admin/env-readiness`** 페이지(`AdminEnvReadinessPage`, 운영 nav '환경 준비상태'): GREEN/RED 종합배지 + 누락목록(필수=빨강/보안=앰버) + 그룹별 설정여부. 비기술 운영자도 클릭 한 번.
 - 검증: tsc 0·build 0·internal-links 0(라우트 도달)·theme/light-input 0. ⚠️ 배포 후 `/admin/env-readiness` 1회 확인 권장(특히 JWT_SECRET·RATE_LIMIT_KV).
 
+## ✅ 2026-06-29 — 잔여 "식사권" → "이용권" 통일 (대표 "응 통일해줘")
+06-27 공구권→이용권 치환 후에도 남아 있던 일반 "식사권" 225건 마저 통일.
+- **일반 지칭 식사권 → 이용권**: src/ + ko 65파일 일괄(예 "내 식사권"·"식사권 등록/사용/구매"). `git diff` 확인 — 카테고리 SSOT 4파일만 제외.
+- **`meal_voucher` 카테고리 라벨 → "식사"**(우산말 "이용권"과 충돌 방지): BrowsePage h1·GroupBuyDetail 배지·GroupBuyList 빈상태 3곳 `meal_voucher:'이용권'`→`'식사'`(형제 미용/숙소/기타와 평행). 식별자 `meal_voucher` 불변.
+- **예외(의도적 보존)**: `getVoucherShortLabel` 의 카테고리-타입 알림 라벨 세트 **식사권/미용권/숙소권/기타권**(`voucher-categories.ts`·`constants/index.ts`·`voucher-category-label.test`) — 우산말이 아니라 *카테고리 종류* 라벨이라 일관 세트로 유지(형제 미용권/숙소권 동반 변경 회피). CLAUDE.md SSOT 에 명시.
+- 검증: tsc 0 · ko JSON valid · voucher-category 테스트 11 pass · 전체 유닛 1842 pass · build 0.
+
 ## ✅ 2026-06-29 — 도매몰 판매사 주문내역 상세화 (대표 신고 "주문내역이 너무 자세하게 안나와있는데")
 **도매몰 전용**(`/wholesale/dashboard?tab=orders`) — 기존 카드가 주문#·등급가·합계만 표시 → 라인아이템/배송지 추가.
 - **`wholesale.routes.ts` GET /orders**: 주문별 라인아이템 일괄 첨부(idx_wholesale_items_order IN 조회) — 상품명/수량/단가/소계 + suppliers LEFT JOIN 제조사명(조인 실패 시 아이템만 graceful) + ship_to_* 배송지 컬럼. `/orders/:id` 상세는 이미 아이템 반환했으나 목록은 미반환이던 갭.

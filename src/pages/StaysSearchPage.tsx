@@ -87,7 +87,7 @@ export default function StaysSearchPage() {
         <div className="ur-content-wide px-4 lg:px-8 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
           {[
             { key: 'all', to: '/group-buy', label: t('groupBuy.categoryAll', { defaultValue: '전체' }) },
-            { key: 'meal_voucher', to: '/group-buy?category=meal_voucher', label: t('groupBuy.categoryMealVoucher', { defaultValue: '🍽️ 맛집 식사권' }) },
+            { key: 'meal_voucher', to: '/group-buy?category=meal_voucher', label: t('groupBuy.categoryMealVoucher', { defaultValue: '🍽️ 맛집 이용권' }) },
             { key: 'beauty_voucher', to: '/group-buy?category=beauty_voucher', label: t('groupBuy.categoryBeauty', { defaultValue: '💇 미용' }) },
             { key: 'stay_voucher', to: '/stays', label: t('groupBuy.categoryStay', { defaultValue: '🏨 숙소' }) },
             { key: 'etc_voucher', to: '/group-buy?category=etc_voucher', label: t('groupBuy.categoryEtc', { defaultValue: '🎯 기타' }) },

@@ -45,7 +45,7 @@ export default function SellerProductEditPage() {
     detail_images: [] as string[],
     product_type: 'featured',
     category: 'lifestyle',
-    // 식사권 필드
+    // 이용권 필드
     restaurant_name: '',
     restaurant_address: '',
     restaurant_phone: '',
@@ -376,11 +376,11 @@ export default function SellerProductEditPage() {
               <option value="food">{t('common.food')}</option>
               <option value="electronics">{t('common.electronics')}</option>
               <option value="lifestyle">{t('common.lifestyle')}</option>
-              <option value="meal_voucher">🍽️ 식사권 (공동구매)</option>
+              <option value="meal_voucher">🍽️ 이용권 (공동구매)</option>
             </select>
           </div>
 
-          {/* 식사권 전용 필드 */}
+          {/* 이용권 전용 필드 */}
           {formData.category === 'meal_voucher' && (
             <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
               <h3 className="text-sm font-bold text-orange-800">{t('seller.products.mealVoucherInfo')}</h3>

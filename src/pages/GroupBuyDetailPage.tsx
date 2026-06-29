@@ -607,7 +607,7 @@ export default function GroupBuyDetailPage() {
             <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap' }}>{detail.current_discount_pct}% 할인</span>
           )}
           <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 10px', borderRadius: 6, background: 'rgba(18,20,23,.5)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
-            {({ meal_voucher: '식사권', beauty_voucher: '뷰티', health_voucher: '건강', pet_voucher: '반려', stay_voucher: '숙박', activity_voucher: '액티비티' } as Record<string, string>)[detail.category] || '교환권'}
+            {({ meal_voucher: '식사', beauty_voucher: '뷰티', health_voucher: '건강', pet_voucher: '반려', stay_voucher: '숙박', activity_voucher: '액티비티' } as Record<string, string>)[detail.category] || '교환권'}
           </span>
           {detail.group_buy_status === 'expired' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'rgba(55,55,55,.78)', color: '#fff', fontSize: 12, fontWeight: 700 }}>마감</span>}
           {detail.group_buy_status === 'cancelled' && <span style={{ padding: '5px 9px', borderRadius: 6, background: 'var(--gbd-danger)', color: '#fff', fontSize: 12, fontWeight: 700 }}>취소</span>}

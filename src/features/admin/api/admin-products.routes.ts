@@ -886,7 +886,7 @@ adminProductsRoutes.patch('/supplier-products/:id/price-change', cors(), async (
 const DEAL_DEMO_SLUG = 'demo-deal-';
 
 const DEAL_CATEGORY_ALIAS: Record<string, string> = {
-  '식사권': 'meal_voucher', '맛집': 'meal_voucher', '맛집 식사권': 'meal_voucher', 'meal': 'meal_voucher', 'meal_voucher': 'meal_voucher',
+  '이용권': 'meal_voucher', '맛집': 'meal_voucher', '맛집 이용권': 'meal_voucher', 'meal': 'meal_voucher', 'meal_voucher': 'meal_voucher',
   '미용': 'beauty_voucher', '뷰티': 'beauty_voucher', 'beauty': 'beauty_voucher', 'beauty_voucher': 'beauty_voucher',
   '기타': 'etc_voucher', 'etc': 'etc_voucher', 'etc_voucher': 'etc_voucher',
   '일반': 'general', '일반 상품': 'general', '온라인': 'general', 'general': 'general',
@@ -1007,7 +1007,7 @@ adminProductsRoutes.post('/dongnedeal/bulk-import', cors(), async (c) => {
       const cat = mapDealCategory(catRaw);
       if (!name) { results.push({ row: rowNum, status: 'error', reason: '상품명 누락' }); continue; }
       if (!Number.isFinite(price) || price <= 0) { results.push({ row: rowNum, name, status: 'error', reason: '판매가가 올바르지 않습니다' }); continue; }
-      if (!cat) { results.push({ row: rowNum, name, status: 'error', reason: `카테고리 인식 불가 (${catRaw || '빈값'}) — 식사권/미용/기타/일반 중 하나` }); continue; }
+      if (!cat) { results.push({ row: rowNum, name, status: 'error', reason: `카테고리 인식 불가 (${catRaw || '빈값'}) — 이용권/미용/기타/일반 중 하나` }); continue; }
       if (cat === 'stay_voucher') { results.push({ row: rowNum, name, status: 'error', reason: '숙소는 이 도구로 등록 불가 (숙소 전용 등록을 사용하세요)' }); continue; }
       const orig = (r['정가'] || r['original_price'] || '').replace(/[^\d.-]/g, '');
       const origNum = orig ? Math.round(Number(orig)) : 0;

@@ -352,7 +352,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const recentStreams = streams.slice(0, 6)
 
   const mealVouchers = products.filter(p => p.category === 'meal_voucher')
-  // 🛡️ 2026-05-19: '상품' 탭 — 식사권 외 일반 상품 (deal_only 교환권은 셀러가 등록 안 하므로 자동 제외).
+  // 🛡️ 2026-05-19: '상품' 탭 — 이용권 외 일반 상품 (deal_only 교환권은 셀러가 등록 안 하므로 자동 제외).
   const shopProducts = products.filter(p => p.category !== 'meal_voucher' && Number(p.deal_only) !== 1)
 
   // 🏁 2026-06-17 (사용자 "라이브 커머스 안 해" 영구 결정): 라이브/쇼츠(동영상) 탭 숨김.

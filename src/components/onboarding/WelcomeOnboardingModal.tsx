@@ -34,7 +34,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
   const { t } = useTranslation()
 
   const CATEGORIES = [
-    { key: 'meal_voucher', label: t('welcomeOnboarding.catMealVoucher', { defaultValue: '맛집 식사권' }), emoji: '🍽️' },
+    { key: 'meal_voucher', label: t('welcomeOnboarding.catMealVoucher', { defaultValue: '맛집 이용권' }), emoji: '🍽️' },
     { key: 'beauty_voucher', label: t('welcomeOnboarding.catBeautyVoucher', { defaultValue: '뷰티' }), emoji: '💇' },
     { key: 'health_voucher', label: t('welcomeOnboarding.catHealthVoucher', { defaultValue: '헬스·웰니스' }), emoji: '💪' },
     { key: 'fashion', label: t('welcomeOnboarding.catFashion', { defaultValue: '패션' }), emoji: '👗' },

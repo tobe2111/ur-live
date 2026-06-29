@@ -1,5 +1,5 @@
 /**
- * 🛡️ 2026-05-16: 공동구매 사용자 약관 (식사권 / voucher 사용 / 환불 / referral 보너스).
+ * 🛡️ 2026-05-16: 공동구매 사용자 약관 (이용권 / voucher 사용 / 환불 / referral 보너스).
  *
  * ⚠️ 법무 검토 필수.
  */
@@ -12,7 +12,7 @@ export default function GroupBuyTermsPage() {
   const navigate = useNavigate()
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-20">
-      <SEO title="공동구매 약관 - 유어딜" description="유어딜 식사권 공동구매 / voucher 사용 / 환불 약관" url="/terms/group-buy" />
+      <SEO title="공동구매 약관 - 유어딜" description="유어딜 이용권 공동구매 / voucher 사용 / 환불 약관" url="/terms/group-buy" />
       <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-medium flex items-center justify-between px-5 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white"><ChevronLeft className="w-6 h-6" /></button>
@@ -25,12 +25,12 @@ export default function GroupBuyTermsPage() {
         <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-6">최종 수정일: 2026년 5월 16일 (초안 — 법무 검토 전)</p>
 
         <h2 className="text-lg font-bold mt-4 mb-2">제1조 (목적)</h2>
-        <p className="text-sm">본 약관은 유어딜 (이하 "회사") 식사권 공동구매 서비스 이용자 (이하 "사용자") 의 결제·voucher 사용·환불·referral 보너스를 규정합니다.</p>
+        <p className="text-sm">본 약관은 유어딜 (이하 "회사") 이용권 공동구매 서비스 이용자 (이하 "사용자") 의 결제·voucher 사용·환불·referral 보너스를 규정합니다.</p>
 
         <h2 className="text-lg font-bold mt-6 mb-2">제2조 (결제 및 voucher 발급)</h2>
         <ul className="text-sm list-disc pl-5 space-y-1">
           <li>딜 포인트 또는 카드 결제 (Toss Payments).</li>
-          <li>결제 즉시 voucher 발급 — 마이페이지 → 식사권 메뉴에서 확인.</li>
+          <li>결제 즉시 voucher 발급 — 마이페이지 → 이용권 메뉴에서 확인.</li>
           <li>voucher 유효기간 보통 90일 (매장별 상이, 결제 화면에 명시).</li>
         </ul>
 

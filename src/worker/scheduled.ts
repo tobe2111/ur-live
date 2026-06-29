@@ -325,9 +325,9 @@ export async function handleCronScheduled(
     }))
   }
 
-  // 🛡️ 2026-05-19: 식사권 주소 → 좌표 일괄 변환 cron — 매일 03:00 UTC 와 함께 실행.
+  // 🛡️ 2026-05-19: 이용권 주소 → 좌표 일괄 변환 cron — 매일 03:00 UTC 와 함께 실행.
   //   클라이언트에서 페이지 진입 시마다 Kakao API 호출하던 패턴을 제거하기 위함.
-  //   효과: 일 트래픽 1000명 × 10건/명 = 10,000 호출/일 → 새 식사권만 (~10 호출/일) 로 감소.
+  //   효과: 일 트래픽 1000명 × 10건/명 = 10,000 호출/일 → 새 이용권만 (~10 호출/일) 로 감소.
   if (cron === '0 3 * * *') {
     ctx.waitUntil(safeCron('restaurant-geocode', async () => {
       const { runRestaurantGeocode } = await import('./cron/restaurant-geocode')
@@ -347,7 +347,7 @@ export async function handleCronScheduled(
       const { runVoucherExpireCron } = await import('./cron/stay-voucher-expire')
       await runVoucherExpireCron(env as { DB: D1Database })
     }))
-    // 🎫 2026-06-21: 식사권(교환권) 만료 D-7/D-3/D-1 알림 (앱내 + 알림톡). 선결제 돈 소멸 방지.
+    // 🎫 2026-06-21: 이용권(교환권) 만료 D-7/D-3/D-1 알림 (앱내 + 알림톡). 선결제 돈 소멸 방지.
     ctx.waitUntil(safeCron('meal-voucher-expire', async () => {
       const { runMealVoucherExpireCron } = await import('./cron/voucher-expire')
       await runMealVoucherExpireCron(env as Parameters<typeof runMealVoucherExpireCron>[0])

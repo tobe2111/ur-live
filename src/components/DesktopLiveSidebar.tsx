@@ -21,7 +21,7 @@ interface NavItem {
   active?: (pathname: string, search: string) => boolean
 }
 
-// 🧭 2026-06-17 (사용자 요청): '공구'·'식사권'(둘 다 /group-buy 계열) → 단일 '오프라인 공동구매'(동네딜) 로 통합.
+// 🧭 2026-06-17 (사용자 요청): '공구'·'이용권'(둘 다 /group-buy 계열) → 단일 '오프라인 공동구매'(동네딜) 로 통합.
 //   /live·/browse 는 플래그로 숨김 상태이나 가역 위해 항목 보존(아래 filter).
 const MENU_ITEMS: NavItem[] = [
   // 🎟️ 2026-06-19 (대표 5탭 확정): 홈 = 동네딜 피드 → 홈 탭이 /group-buy·/stays·/meal-vouchers surface 도 활성(모바일 하단바와 정합).
@@ -39,8 +39,8 @@ const MENU_ITEMS: NavItem[] = [
 //   맛집/미용/숙소/기타/일반은 동네딜(/group-buy) 페이지의 탭으로 이미 접근 가능 → 사이드바 중복 제거(단순화).
 //   사이드바는 '주요 목적지'만(홈/동네딜/공구제안/링크샵/마이) — 모바일 하단바와 정합.
 
-// 🎟️ 2026-06-18 (대표 결정 — 5탭 통일: 홈/동네딜/이용권/링크샵/마이): 주문/찜/식사권은 마이페이지 안 탭으로
-//   접근 → 사이드바는 핵심만. '내 식사권' → '이용권'(QR 매장사용)으로 명칭/아이콘 통일(모바일 하단바와 동일).
+// 🎟️ 2026-06-18 (대표 결정 — 5탭 통일: 홈/동네딜/이용권/링크샵/마이): 주문/찜/이용권은 마이페이지 안 탭으로
+//   접근 → 사이드바는 핵심만. '내 이용권' → '이용권'(QR 매장사용)으로 명칭/아이콘 통일(모바일 하단바와 동일).
 const MY_ITEMS: NavItem[] = [
   { labelKey: 'nav.myGbVouchers', labelDefault: '이용권', icon: Ticket, path: '/my-vouchers', active: (p) => p.startsWith('/my-vouchers') },
   { labelKey: 'my.profile',       labelDefault: '마이페이지', icon: User, path: '/user/profile', active: (p) => p.startsWith('/user/profile') || p === '/mypage' },

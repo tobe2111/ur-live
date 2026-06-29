@@ -83,7 +83,7 @@ export default function SellerMealVoucherNewPage() {
     store_verify_pin: '',
     stock: 100,
     // 🛡️ 2026-05-21: 외부 예약 링크 (숙소/뷰티 등 사전 예약 필수 카테고리).
-    //   네이버 예약 / 야놀자 / 카카오톡 채널 URL. 식사권은 비워둠 (예약 불요).
+    //   네이버 예약 / 야놀자 / 카카오톡 채널 URL. 이용권은 비워둠 (예약 불요).
     external_booking_url: '',
     // 🛡️ 2026-05-21: 지역 (region_si/region_gu) — restaurant_address 에서 자동 파싱.
     region_si: '',
@@ -260,7 +260,7 @@ export default function SellerMealVoucherNewPage() {
       <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('seller.mealVoucher.title')}
-          subtitle={t('seller.mealVoucher.subtitle', { defaultValue: '식사권/공동구매 상품 등록' })}
+          subtitle={t('seller.mealVoucher.subtitle', { defaultValue: '이용권/공동구매 상품 등록' })}
           icon={<Utensils className="h-5 w-5" />}
         />
         {/* 🛡️ 2026-05-15: OCR Quick Start — 메뉴판 사진 1장으로 30초 등록 */}
@@ -561,7 +561,7 @@ export default function SellerMealVoucherNewPage() {
             </div>
           )}
 
-          {/* 3. 식사권 정보 */}
+          {/* 3. 이용권 정보 */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center gap-2 mb-4">
               <Utensils className="w-5 h-5 text-pink-500" />
@@ -697,7 +697,7 @@ export default function SellerMealVoucherNewPage() {
 
               {/* 🛡️ 2026-05-21: 외부 예약 링크 — 숙소/뷰티 사전 예약 필수 카테고리.
                     유저가 바우처 발급 후 이 링크로 날짜 예약 (네이버 예약 / 야놀자 / 카카오톡 채널).
-                    식사권은 즉시 방문 가능하므로 비워둘 것. */}
+                    이용권은 즉시 방문 가능하므로 비워둘 것. */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   📅 외부 예약 링크 <span className="text-[11px] text-gray-400">(숙소/뷰티 등 예약 필수 카테고리)</span>

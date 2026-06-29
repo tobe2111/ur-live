@@ -869,11 +869,11 @@ export async function handleScheduled(env: Env) {
         await DB.prepare(
           `INSERT INTO user_notifications (user_id, type, title, message, link)
            VALUES (?, 'voucher_expiring', ?, ?, ?)`
-        ).bind(v.user_id, '식사권 만료 7일 전', `${v.product_name ?? '바우처'} 사용을 잊지 마세요`, '/my-vouchers').run();
+        ).bind(v.user_id, '이용권 만료 7일 전', `${v.product_name ?? '바우처'} 사용을 잊지 마세요`, '/my-vouchers').run();
       } catch {}
       try {
         await sendSystemPush(env as unknown, 'user', v.user_id, {
-          title: '식사권 만료 7일 전',
+          title: '이용권 만료 7일 전',
           body: `${v.product_name ?? '바우처'} 사용을 잊지 마세요`,
           url: '/my-vouchers',
           tag: `voucher-d7-${v.id}`,
@@ -899,11 +899,11 @@ export async function handleScheduled(env: Env) {
         await DB.prepare(
           `INSERT INTO user_notifications (user_id, type, title, message, link)
            VALUES (?, 'voucher_expiring', ?, ?, ?)`
-        ).bind(v.user_id, '식사권 만료 1일 전', `${v.product_name ?? '바우처'} 오늘 안에 사용해주세요`, '/my-vouchers').run();
+        ).bind(v.user_id, '이용권 만료 1일 전', `${v.product_name ?? '바우처'} 오늘 안에 사용해주세요`, '/my-vouchers').run();
       } catch {}
       try {
         await sendSystemPush(env as unknown, 'user', v.user_id, {
-          title: '식사권 만료 1일 전',
+          title: '이용권 만료 1일 전',
           body: `${v.product_name ?? '바우처'} 오늘 안에 사용해주세요`,
           url: '/my-vouchers',
           tag: `voucher-d1-${v.id}`,

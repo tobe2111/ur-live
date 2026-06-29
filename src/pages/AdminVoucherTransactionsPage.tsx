@@ -361,7 +361,7 @@ export default function AdminVoucherTransactionsPage() {
               <select value={category} onChange={(e) => { setPage(0); setCategory(e.target.value) }}
                 className="w-full text-sm border rounded px-2 py-1.5 text-gray-900">
                 <option value="">전체</option>
-                <option value="meal_voucher">식사권</option>
+                <option value="meal_voucher">이용권</option>
                 <option value="beauty_voucher">뷰티</option>
                 <option value="stay_voucher">숙박</option>
                 <option value="etc_voucher">기타</option>

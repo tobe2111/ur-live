@@ -2,7 +2,7 @@
  * 🛡️ 2026-05-18: 셀러 등급별 voucher 발행 한도 검증.
  *
  *   migration 0263 으로 seller_tiers 에 voucher_monthly_limit + referral_allowed 추가.
- *   호출처: stay 등록 / 식사권 등록 / 미용권 등록 등 voucher 카테고리 product 생성 시.
+ *   호출처: stay 등록 / 이용권 등록 / 미용권 등록 등 voucher 카테고리 product 생성 시.
  *
  *   defensive: seller_tiers 테이블 없거나 sellers.current_tier 누락 시 unlimited 처리.
  */

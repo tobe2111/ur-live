@@ -110,7 +110,7 @@ export default function CuratorPage() {
     return () => { alive = false }
   }, [handle, t])
 
-  // 🛡️ 2026-05-27 (셀러 페이지 통일): 핀을 상품/식사권 분류 (deal_only / voucher 카테고리).
+  // 🛡️ 2026-05-27 (셀러 페이지 통일): 핀을 상품/이용권 분류 (deal_only / voucher 카테고리).
   const { shopPins, voucherPins } = useMemo(() => {
     if (!data?.pins) return { shopPins: [] as CuratorPin[], voucherPins: [] as CuratorPin[] }
     const isVoucher = (p: CuratorPin) => {

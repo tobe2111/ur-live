@@ -409,7 +409,7 @@ export default function SellerStayNewPage() {
               <div className="space-y-2">
                 {([
                   { v: 'date', label: '📅 날짜 지정 예약 (야놀자 스타일)', desc: '캘린더 + 객실 가용일자 + 즉시 확정' },
-                  { v: 'voucher', label: '🎫 기간 무관 숙소권 (식사권 스타일)', desc: '평일/주말 가격만 — 사용 시 매장 협의' },
+                  { v: 'voucher', label: '🎫 기간 무관 숙소권 (이용권 스타일)', desc: '평일/주말 가격만 — 사용 시 매장 협의' },
                   { v: 'both', label: '🔀 두 모드 동시 운영', desc: '평시 voucher + 성수기 캘린더' },
                 ] as const).map((m) => (
                   <label key={m.v} className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer ${

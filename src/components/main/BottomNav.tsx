@@ -201,7 +201,7 @@ export default function BottomNav() {
     //   라벨 교환권→쇼핑, 아이콘 Gift→ShoppingBag. path 는 /vouchers 그대로(페이지가 교환권+일반상품 포괄).
     { icon: ShoppingBag, label: t('nav.shopping', { defaultValue: '쇼핑' }), path: '/vouchers', prefetch: () => import('@/pages/VouchersPage') },
     // 🎟️ 2026-06-18 (대표 결정): 가운데 → '이용권'. 교환권(기프티콘)은 MMS 발송 카탈로그(탭2)이고,
-    //   이용권(동네딜 식사권 등)은 매장에서 QR/PIN 으로 '앱에서 꺼내 쓰는' 지갑이라 상시 탭 가치가 높음.
+    //   이용권(동네딜 이용권 등)은 매장에서 QR/PIN 으로 '앱에서 꺼내 쓰는' 지갑이라 상시 탭 가치가 높음.
     { icon: Ticket,      label: t('nav.myGbVouchers', { defaultValue: '이용권' }), path: '/my-vouchers', prefetch: () => import('@/pages/MyVouchersPage') },
     // 🧭 2026-06-10: 링크샵도 청크+데이터 동시 워밍 (동네딜과 동일) — 누르는 순간 선요청.
     { icon: Sparkles,    label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath, prefetch: () => {
@@ -398,7 +398,7 @@ export default function BottomNav() {
                   </button>
                   ) : null}
 
-                  {/* Seller: live + 식사권 + dashboard (+ agency 겸직이면 아래 블록도)
+                  {/* Seller: live + 이용권 + dashboard (+ agency 겸직이면 아래 블록도)
                        🏁 2026-06-11 (사용자 요청 — 겸직 유저 1탭 등록): 유저 모드(active_role='user')여도
                        seller_token 보유(카카오 연결 셀러)면 등록 카드 직접 노출. 등록 페이지 가드
                        (requireSeller)는 토큰 존재만 검사라 전환/리로드 없이 바로 진입 가능.
@@ -429,8 +429,8 @@ export default function BottomNav() {
                           <Utensils className="w-6 h-6 text-white" />
                         </div>
                         <div className="text-left">
-                          <p className="text-[15px] font-bold text-white">{t('bottomNav.mealVoucherRegister', { defaultValue: '식사권 상품 등록' })}</p>
-                          <p className="text-[12px] text-white/80 mt-0.5">{t('bottomNav.mealVoucherDesc', { defaultValue: '맛집 식사권을 공구 상품으로 올리기' })}</p>
+                          <p className="text-[15px] font-bold text-white">{t('bottomNav.mealVoucherRegister', { defaultValue: '이용권 상품 등록' })}</p>
+                          <p className="text-[12px] text-white/80 mt-0.5">{t('bottomNav.mealVoucherDesc', { defaultValue: '맛집 이용권을 공구 상품으로 올리기' })}</p>
                         </div>
                       </button>
 

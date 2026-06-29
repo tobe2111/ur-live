@@ -190,7 +190,7 @@ export default function UserGroupBuyCreatePage() {
           : t('groupbuy.seoTitle', { defaultValue: '맛집 공구 시작' })}
         description={catMeta
           ? t('groupbuy.seoDescCat', { defaultValue: '{{label}} 공동구매를 더 싸게! 함께 모여 {{label}} 공구를 시작해보세요.', label: catMeta.label })
-          : t('groupbuy.seoDesc', { defaultValue: '내가 좋아하는 맛집의 식사권을 공동구매로 더 싸게! 맛집 공구를 시작해보세요.' })}
+          : t('groupbuy.seoDesc', { defaultValue: '내가 좋아하는 맛집의 이용권을 공동구매로 더 싸게! 맛집 공구를 시작해보세요.' })}
         url="/community-group-buy/new"
       />
       {/* Header */}
@@ -280,12 +280,12 @@ export default function UserGroupBuyCreatePage() {
           </h2>
 
           <div className="space-y-4">
-            {/* 희망 식사권 가격 */}
+            {/* 희망 이용권 가격 */}
             <div>
               <label className="block text-[13px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
                 {catMeta
                   ? t('groupbuy.priceLabelGeneric', { defaultValue: '희망 가격' })
-                  : t('groupbuy.priceLabel', { defaultValue: '희망 식사권 가격' })}
+                  : t('groupbuy.priceLabel', { defaultValue: '희망 이용권 가격' })}
               </label>
               <div className="relative">
                 <input

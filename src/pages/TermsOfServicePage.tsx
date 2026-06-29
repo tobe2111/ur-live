@@ -113,7 +113,7 @@ export default function TermsOfServicePage() {
                 <p>① 회사는 다음과 같은 서비스를 제공합니다:</p>
                 <ol className="list-decimal list-inside space-y-2 ml-2">
                   <li>공동구매(동네딜)의 등록·참여 및 QR 사용 확인</li>
-                  <li>모바일 교환권·식사권 등 이용권의 구매 및 사용</li>
+                  <li>모바일 교환권·이용권 등 이용권의 구매 및 사용</li>
                   <li>상품 검색·구매 및 온라인 쇼핑</li>
                   <li>추천 링크샵을 통한 상품·공구 추천 및 딜 포인트 적립·사용</li>
                   <li>결제 및 배송 서비스</li>

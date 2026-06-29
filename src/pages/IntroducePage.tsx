@@ -274,7 +274,7 @@ export default function IntroducePage() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {(deals.length > 0 ? deals : [
-            { id: 0, name: '동네 맛집 식사권', restaurant_name: '곧 오픈' },
+            { id: 0, name: '동네 맛집 이용권', restaurant_name: '곧 오픈' },
             { id: 0, name: '뷰티 시술 공구', restaurant_name: '곧 오픈' },
             { id: 0, name: '펜션·호텔 숙박', restaurant_name: '곧 오픈' },
             { id: 0, name: '헬스 PT 공구', restaurant_name: '곧 오픈' },

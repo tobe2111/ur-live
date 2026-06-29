@@ -23,7 +23,7 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
       key: 'assets',
       label: t('shopping.groupAssets', { defaultValue: '이용권·자산' }),
       items: [
-        { icon: '🎟️', label: t('shopping.voucher', { defaultValue: '내 교환권' }), sub: t('shopping.voucherSub', { defaultValue: '식사권·이용권' }), count: counts.voucher, path: '/my-vouchers' },
+        { icon: '🎟️', label: t('shopping.voucher', { defaultValue: '내 교환권' }), sub: t('shopping.voucherSub', { defaultValue: '이용권·이용권' }), count: counts.voucher, path: '/my-vouchers' },
         { icon: '🎫', label: t('shopping.coupons', { defaultValue: '쿠폰함' }), count: counts.coupon, path: '/my-coupons' },
         { icon: '🏨', label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), sub: t('shopping.myStaysSub', { defaultValue: '체크인 코드 / 유효기간' }), path: '/my-stays' },
         { icon: '📚', label: t('shopping.digitalLibrary', { defaultValue: '디지털 보관함' }), sub: t('shopping.digitalLibrarySub', { defaultValue: '전자책·강의·가이드' }), path: '/my/digital' },
