@@ -1,6 +1,13 @@
 // ============================================================
 // Constants
 // ============================================================
+// 🏷️ 2026-06-29: 이용권 카테고리는 `voucher-categories.ts` 단일 SSOT 에서 파생 (drift 차단).
+import {
+  VOUCHER_CATEGORIES,
+  VOUCHER_CATEGORY_LABEL,
+  voucherCategoriesSqlClause,
+  type VoucherCategory,
+} from './voucher-categories';
 
 export const ORDER_STATUS_LABELS: Record<string, string> = {
   PENDING: '결제 대기',
@@ -106,34 +113,24 @@ export const YOUTUBE_OAUTH_BASE = 'https://oauth2.googleapis.com';
 export const TRACKER_GRAPHQL_URL = 'https://apis.tracker.delivery/graphql';
 
 // ============================================================
-// 🛡️ 2026-05-17: 이용권 카테고리 6종 → 4종 통합.
-//   대분류: 오프라인(voucher 4종, 매장 방문) vs 온라인(일반 상품, 배송).
-//   기존 health → beauty 통합, pet/activity → etc 통합.
-//   레거시 카테고리 호환: voucher-categories.ts 의 normalizeCategory() 사용.
+// 🛡️ 2026-05-17: 이용권 카테고리 4종 (meal/beauty/stay/etc).
+// 🏷️ 2026-06-29 단일 SSOT 통합: 카테고리 enum/라벨/아이콘/SQL 은 `voucher-categories.ts` 에서
+//   파생 — 배열·라벨 이중정의 제거 → 한쪽만 고쳐 어긋나는 drift 차단. 하위호환 별칭만 재수출.
 // ============================================================
-export const VOUCHER_CATEGORIES = [
-  'meal_voucher',    // 식사 (음식점/카페)
-  'beauty_voucher',  // 미용 (헬스/뷰티)
-  'stay_voucher',    // 숙소 (펜션/호텔/모텔)
-  'etc_voucher',     // 기타 (펫/액티비티/그 외)
-] as const;
-export type VoucherCategory = typeof VOUCHER_CATEGORIES[number];
+export { VOUCHER_CATEGORIES };
+export type { VoucherCategory };
 
-export const VOUCHER_CATEGORY_LABELS: Record<VoucherCategory, string> = {
-  meal_voucher:   '식사',
-  beauty_voucher: '미용',
-  stay_voucher:   '숙소',
-  etc_voucher:    '기타',
-};
+/** 카테고리 → 짧은 한글 라벨 (식사/미용/숙소/기타). SSOT `.short` 파생. */
+export const VOUCHER_CATEGORY_LABELS = Object.fromEntries(
+  VOUCHER_CATEGORIES.map((c) => [c, VOUCHER_CATEGORY_LABEL[c].short]),
+) as Record<VoucherCategory, string>;
 
-export const VOUCHER_CATEGORY_ICONS: Record<VoucherCategory, string> = {
-  meal_voucher:   '🍽️',
-  beauty_voucher: '💇',
-  stay_voucher:   '🏨',
-  etc_voucher:    '🎯',
-};
+/** 카테고리 → emoji. SSOT `.emoji` 파생. */
+export const VOUCHER_CATEGORY_ICONS = Object.fromEntries(
+  VOUCHER_CATEGORIES.map((c) => [c, VOUCHER_CATEGORY_LABEL[c].emoji]),
+) as Record<VoucherCategory, string>;
 
-// SQL IN 절용 SQL placeholder (legacy + new 모두 — 마이그레이션 사이 graceful).
-const _ALL_LEGACY_AND_NEW = [...VOUCHER_CATEGORIES, 'health_voucher', 'pet_voucher', 'activity_voucher'] as const;
-export const VOUCHER_CATEGORY_SQL_PLACEHOLDERS = _ALL_LEGACY_AND_NEW.map(() => '?').join(',');
-export const VOUCHER_CATEGORY_SQL_VALUES = _ALL_LEGACY_AND_NEW;
+// SQL IN 절 placeholder/values (신규 4 + 레거시 3 = 7, 마이그레이션 사이 graceful). SSOT 헬퍼 파생.
+const _voucherSql = voucherCategoriesSqlClause();
+export const VOUCHER_CATEGORY_SQL_PLACEHOLDERS = _voucherSql.placeholders;
+export const VOUCHER_CATEGORY_SQL_VALUES = _voucherSql.values;

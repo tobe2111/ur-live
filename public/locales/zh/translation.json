@@ -4117,7 +4117,7 @@
     "dongnedeal": "附近团购",
     "create": "创建",
     "offlineGroupBuy": "本地团购",
-    "myGbVouchers": "团购券"
+    "myGbVouchers": "使用券"
   },
   "bulkUpload": {
     "title": "批量上传商品",
@@ -4403,7 +4403,7 @@
     "groupRefunded": "已退款",
     "ktShowBarcode": "请在门店出示下方条形码",
     "ktCheckMms": "请在手机短信中查看优惠券。可自动关联KakaoTalk礼物盒。",
-    "tabGroupBuy": "团购券",
+    "tabGroupBuy": "使用券",
     "tabGifticon": "礼品券",
     "emptyGbTitle": "还没有领取的餐券",
     "emptyGbDesc": "参与社区美食拼团\n预付餐券就会收集到这里",
