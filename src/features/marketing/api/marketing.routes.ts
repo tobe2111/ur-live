@@ -39,8 +39,10 @@ marketingRoutes.post('/naver/connect', async (c) => {
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const clientId = String(body.client_id || '').trim()
   const clientSecret = String(body.client_secret || '').trim()
-  if (!/^[A-Za-z0-9]{10,64}$/.test(clientId)) return c.json({ success: false, error: '애플리케이션 ID 형식을 확인해주세요' }, 400)
-  if (clientSecret.length < 20 || clientSecret.length > 128) return c.json({ success: false, error: '애플리케이션 시크릿을 확인해주세요' }, 400)
+  // ⚠️ 형식 pre-check 는 최소 sanity 만(공백/빈값/과길이) — 실제 검증은 issueNaverToken(네이버 OAuth 실호출).
+  //   과거 `[A-Za-z0-9]{10,64}` 고정 regex 가 정상 애플리케이션 ID 를 false-reject 함(커머스API 센터 ID 가 더 길거나 -/_ 포함 가능).
+  if (!clientId || /\s/.test(clientId) || clientId.length < 6 || clientId.length > 128) return c.json({ success: false, error: '애플리케이션 ID를 입력해주세요 (커머스API센터의 애플리케이션 ID 그대로)' }, 400)
+  if (!clientSecret || /\s/.test(clientSecret) || clientSecret.length < 8 || clientSecret.length > 200) return c.json({ success: false, error: '애플리케이션 시크릿을 입력해주세요 (커머스API센터의 시크릿 그대로)' }, 400)
   const tok = await issueNaverToken(clientId, clientSecret)  // 실제 발급으로 검증 — 잘못된 키 저장 방지
   if (!tok.ok) return c.json({ success: false, error: tok.error }, 400)
   await saveNaverConnection(c.env.DB, sellerId, clientId, clientSecret, c.env.DATA_ENCRYPTION_KEY, 'marketing')
