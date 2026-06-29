@@ -19,7 +19,7 @@ import { useWholesaleMe, useWholesaleOrders, useWholesaleDeposit, type Wholesale
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
 import type { WholesaleNavItem } from '@/components/wholesale/WholesaleDashboardShell'
 import { getSupplierToken } from '@/lib/supplier-api'
-import { clearAuthData } from '@/utils/auth'
+import { logout as authLogout } from '@/utils/auth'
 import WholesaleDashboardShell from '@/components/wholesale/WholesaleDashboardShell'
 import PlusMembershipCard from '@/components/wholesale/PlusMembershipCard'
 
@@ -117,8 +117,9 @@ export default function WholesaleDashboardPage() {
   }))
   const activeTabLabel = tabDefs.find((tb) => tb.key === tab)?.label ?? '판매사 대시보드'
 
-  const logout = () => {
-    clearAuthData('seller')
+  const logout = async () => {
+    // 🔑 2026-06-29: 서버 세션쿠키 삭제 await 후 하드이동.
+    await authLogout('seller')
     try { localStorage.removeItem('is_distributor') } catch { /* ignore */ }
     window.location.assign('/wholesale')
   }

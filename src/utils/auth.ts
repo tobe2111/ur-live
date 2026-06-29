@@ -48,14 +48,35 @@ const LEGACY_KEYS = {
 }
 
 /**
+ * 🔑 2026-06-29 (로그아웃 근본수정): 서버 httpOnly 세션 쿠키(ur_session/ur_seller_session/…) + SSR 토큰(ud_*)
+ *   삭제. httpOnly 라 클라가 JS 로 직접 못 지움 → 서버 엔드포인트가 Set-Cookie Max-Age=0 으로 삭제해야 한다.
+ *   type 지정 시 그 역할 세션만(선택적 로그아웃—듀얼로그인 보호), 미지정 시 전체. **await 가능** →
+ *   네비게이션/리로드 *전*에 쿠키 삭제를 완료해 로그아웃 직후 그 쿠키로 재인증되는 레이스를 제거한다.
+ */
+export async function clearServerSessionCookies(type?: 'seller' | 'admin' | 'user' | 'agency'): Promise<void> {
+  try {
+    await fetch('/api/auth/logout-cookies', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(type ? { type } : {}),
+      // 🔑 keepalive: 호출 직후 navigate/reload 해도 요청이 끝까지 살아 Set-Cookie 가 적용되게(미-await 경로 보호).
+      keepalive: true,
+    })
+  } catch { /* SSR/비브라우저/네트워크 — 로컬 정리는 계속 진행 */ }
+}
+
+/**
  * 선택적 localStorage 키 삭제
  * localStorage.clear() 대신 사용하여 다른 세션 보호
- * 
+ *
  * @param type - 삭제할 세션 타입 ('seller' | 'admin' | 'user')
  */
 export function clearAuthData(type: 'seller' | 'admin' | 'user') {
-  // 🔐 2026-06-11 SSR Phase 2: 서버 httpOnly ud_* 쿠키도 삭제 (fire-and-forget — 실패해도 로컬 정리는 진행)
-  try { void fetch('/api/auth/logout-cookies', { method: 'POST', credentials: 'include' }).catch(() => {}) } catch { /* SSR/비브라우저 */ }
+  // 🔑 2026-06-29: 서버 httpOnly 세션쿠키(ur_*) + SSR 토큰(ud_*) 삭제 — type 전달로 해당 역할 세션만 정리
+  //   (듀얼로그인 보호). httpOnly 라 클라가 못 지움 → 서버 호출 필수. fire-and-forget(로컬 정리는 계속 진행).
+  //   ⚠️ 즉시 리로드/네비게이션이 뒤따르는 경로는 logout(type) 를 써서 이 호출을 await 해야 레이스 0.
+  try { void clearServerSessionCookies(type) } catch { /* SSR/비브라우저 */ }
   const keysToRemove: string[] = []
 
   if (type === 'seller') {
@@ -501,21 +522,30 @@ export function clearTempCartItem(): void {
  */
 export async function logout(type?: 'seller' | 'admin' | 'user' | null): Promise<void> {
   if (type) {
-    // ✅ Selective logout: Use clearAuthData
+    // ✅ 선택적 로그아웃 — 서버 세션쿠키(해당 역할) 삭제를 **await**(레이스 제거) 후 로컬 정리.
+    await clearServerSessionCookies(type)
     clearAuthData(type)
     return
   }
-  
+
   // ❌ Full logout: Remove ALL keys (legacy behavior)
+  // 🔑 2026-06-29 (로그아웃 근본수정): 모든 역할의 서버 httpOnly 세션쿠키(ur_*) 삭제를 **await** —
+  //   안 지우면 ur_session 잔존 → /api/auth/me·/session/health 가 그 쿠키로 재인증 → 로그아웃 실패.
+  await clearServerSessionCookies()
   // Firebase 키 제거
   Object.values(FIREBASE_STORAGE_KEYS).forEach(key => {
     localStorage.removeItem(key)
   })
-  
+
   // 레거시 JWT/세션 키 제거
   Object.values(LEGACY_KEYS).forEach(key => {
     localStorage.removeItem(key)
   })
+
+  // 🔑 2026-06-29: 위 두 목록에 없던 소비자 Bearer 토큰/세션 신호도 제거 — 안 지우면 /session/health 의
+  //   Bearer(user_token) fallback 으로 재인증돼 로그아웃이 안 됨(이메일·카카오 공통 localStorage.user_token).
+  ;['user_token', 'user_refresh_token', 'user_session_token', 'session_login', 'lastLoginUid', 'user_handle', 'linked_seller_username']
+    .forEach(k => localStorage.removeItem(k))
   
   // Sentry 사용자 컨텍스트 제거
   try {
