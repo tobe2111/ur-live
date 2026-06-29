@@ -25,13 +25,20 @@ export default function SettlementsTab({ items, t }: { items: SettlementItem[]; 
         </thead>
         <tbody className="divide-y divide-gray-100">
           {items.map(s => {
+            // 🏭 2026-06-29 (audit): 환불 클로백 행은 supply_amount 음수 + product_id 음수 + product_name null →
+            //   기존엔 '#-123 / 음수액 / 출금 가능' 으로 떠 혼란. '환불 차감'(빨강 음수)로 명확히 구분.
+            const isClawback = (s.supply_amount ?? 0) < 0
             const st = SETTLE_STATUS[s.status] || SETTLE_STATUS.pending
             return (
               <tr key={s.id}>
-                <td className="px-4 py-3 text-gray-900">{s.product_name || `#${s.product_id ?? '-'}`}</td>
-                <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatWon(s.supply_amount)}</td>
+                <td className="px-4 py-3 text-gray-900">{isClawback ? t('supplier.settleClawback', { defaultValue: '환불 차감' }) : (s.product_name || `#${s.product_id ?? '-'}`)}</td>
+                <td className={`px-4 py-3 text-right font-semibold ${isClawback ? 'text-red-600' : 'text-gray-900'}`}>{formatWon(s.supply_amount)}</td>
                 <td className="px-4 py-3 text-center">
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${st.cls}`}>{t(`supplier.settle_${s.status}`, { defaultValue: st.label })}</span>
+                  {isClawback ? (
+                    <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-600">{t('supplier.settleClawback', { defaultValue: '환불 차감' })}</span>
+                  ) : (
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${st.cls}`}>{t(`supplier.settle_${s.status}`, { defaultValue: st.label })}</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-right text-gray-400 text-xs hidden sm:table-cell">{(s.created_at || '').slice(0, 10)}</td>
               </tr>
