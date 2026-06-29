@@ -195,7 +195,11 @@ export function useWholesaleProduct(id: string | undefined) {
     queryKey: queryKeys.wholesale('product', `${id ?? ''}:${wholesaleAuthSeg()}`),
     queryFn: () =>
       api
-        .get(`/api/wholesale/catalog/${id}`, sellerAuth())
+        // 🛡️ 2026-06-29 (대표 신고 — 상세만 '공급가 미설정' 간헐): 비로그인 상세 응답은 CDN public 300s 캐시인데
+        //   CF 캐시 키가 Authorization 을 안 가려 비로그인 'null 가격' 응답이 로그인 판매사에게 서빙됨(목록은
+        //   등급별 캐시키라 정상). 인증 구분자(v=in|out)를 URL 에 붙여 *엣지 캐시 키*를 분리 → 로그인은 비로그인
+        //   캐시를 절대 안 읽음(서버 캐시 로직/비로그인 성능 불변). 서버는 v 파라미터 무시.
+        .get(`/api/wholesale/catalog/${id}?v=${wholesaleAuthSeg()}`, sellerAuth())
         // 🛡️ 2026-06-19 (감사): 에러 삼킴 제거 — retry:1 로 콜드 상세(실측 콜드 1s) 일시 실패 복구. 소비처 `data?.item ?? null` 안전.
         .then((r) => (r.data?.success ? { item: r.data.item, grade: r.data.grade } : { item: null, grade: '' })),
     // 🏭 2026-06-04 몰-first: 비로그인도 상품 상세 열람 가능(가격 null).
