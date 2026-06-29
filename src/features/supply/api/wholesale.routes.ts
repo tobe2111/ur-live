@@ -24,6 +24,7 @@ import {
 import { confirmTossPayment, cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { swallow } from '@/worker/utils/swallow'
 import { getSupplyMeta, ensureSupplyMetaTable } from '@/worker/utils/product-supply-meta'
+import { setWholesaleSignupMeta, getWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAuth } from '@/worker/middleware/auth'
@@ -261,6 +262,9 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 20, windowS
     // 🖋️ 2026-06-22: 가입 시 전자계약서 자동발송(모두싸인 카카오). fail-soft — 미설정/실패가 가입 안 막음.
     dispatchSignupContract(c, { accountType: 'distributor', accountId: sellerId, signerName: representative || name, signerPhone: phone || manager_phone || representative_phone, businessName: business_name })
 
+    // 🏭 2026-06-29 취급 카테고리 + 현재 주력 판매채널 (가입 메타 — 사이드테이블, fail-soft).
+    await setWholesaleSignupMeta(DB, 'distributor', sellerId, body.categories, body.channel)
+
     return c.json({
       success: true,
       status: 'pending',
@@ -398,6 +402,8 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       business_license_url || null, 'pending', DEFAULT_COMMISSION_RATE, userId, mallId, ntsStatus).run()
     const sid = Number(ins.meta?.last_row_id)
     if (!sid) return c.json({ success: false, error: '판매사 신청 중 오류가 발생했습니다' }, 500)
+    // 🏭 2026-06-29 취급 카테고리 + 현재 주력 판매채널 (카카오 가입 메타 — fail-soft).
+    await setWholesaleSignupMeta(DB, 'distributor', sid, body.categories, body.channel)
     createDashboardNotification(DB, 'admin', null, 'distributor_pending', '판매사 승인 요청',
       `${business_name} (${business_number})${ntsStatus ? ` — 국세청: ${ntsStatus}` : ' — 국세청: 조회 안 됨'}`,
       '/admin/seller-approval').catch(swallow('wholesale:become:notify'))
@@ -602,6 +608,22 @@ app.post('/sub-login', rateLimit({ action: 'wholesale-sub-login', max: 10, windo
 })
 
 // ── GET /me ───────────────────────────────────────────────────────────────────
+// 🏭 2026-06-29 (E): 판매사 가입 메타(취급 카테고리·주력 판매채널) 셀프 조회/수정.
+app.get('/signup-meta', async (c) => {
+  const { sellerId } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const meta = await getWholesaleSignupMeta(c.env.DB, 'distributor', sellerId)
+  return c.json({ success: true, ...meta })
+})
+app.patch('/signup-meta', rateLimit({ action: 'wholesale-signup-meta', max: 30, windowSec: 600 }), async (c) => {
+  const { sellerId } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  await setWholesaleSignupMeta(c.env.DB, 'distributor', sellerId, body.categories, body.channel, true)
+  const meta = await getWholesaleSignupMeta(c.env.DB, 'distributor', sellerId)
+  return c.json({ success: true, ...meta })
+})
+
 app.get('/me', async (c) => {
   const { sellerId, subAccountId, subRole } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)

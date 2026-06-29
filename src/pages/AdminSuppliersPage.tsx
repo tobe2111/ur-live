@@ -16,6 +16,14 @@ import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
+// 🏭 도매 카테고리 id → 한글 라벨. 가입 메타(JSON 배열 문자열) 표시용.
+const WS_CAT_LABEL: Record<string, string> = { food: '식품', living: '리빙', health: '건강' }
+function formatSignupCats(raw?: string | null): string {
+  if (!raw) return ''
+  try { const a = JSON.parse(raw); if (Array.isArray(a) && a.length) return a.map((x) => WS_CAT_LABEL[String(x)] || String(x)).join(', ') } catch { /* noop */ }
+  return ''
+}
+
 interface SupplierRow {
   id: number
   business_name: string
@@ -29,6 +37,8 @@ interface SupplierRow {
   manager_name?: string | null
   manager_phone?: string | null
   manager_email?: string | null
+  signup_categories?: string | null   // 🏭 가입 시 선택한 공급(취급) 카테고리 (JSON 배열 문자열)
+  signup_channel?: string | null      // 🏭 가입 시 입력한 희망 유통채널
   bank_name: string | null
   bank_account: string | null
   account_holder: string | null
@@ -145,6 +155,14 @@ export default function AdminSuppliersPage() {
                         {t('admin.suppliers.manager', { defaultValue: '담당자' })}: {s.manager_name || '-'}
                         {s.manager_phone && <> · {s.manager_phone}</>}
                         {s.manager_email && <> · {s.manager_email}</>}
+                      </p>
+                    )}
+                    {/* 🏭 2026-06-29 가입 메타 — 공급(취급) 카테고리 + 희망 유통채널 */}
+                    {(formatSignupCats(s.signup_categories) || s.signup_channel) && (
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        {formatSignupCats(s.signup_categories) && <>취급 {formatSignupCats(s.signup_categories)}</>}
+                        {formatSignupCats(s.signup_categories) && s.signup_channel && <> · </>}
+                        {s.signup_channel && <>희망 유통채널 {s.signup_channel}</>}
                       </p>
                     )}
                     {/* 🏭 2026-06-04 사업자등록증 — 승인 심사용 (클릭 시 원본 확인) */}

@@ -32,7 +32,8 @@ export default function WholesaleDocsPage({ embedded = false }: { embedded?: boo
   const { data: taxInvoices = [] } = useWholesaleTaxInvoices()
   const [tab, setTab] = useState<'all' | 'tax_invoice' | 'transaction_statement'>('all')
 
-  if (!embedded && !token) return <Navigate to="/wholesale/intro" replace />
+  // 🏭 2026-06-29: 비로그인 직접 진입은 마케팅 소개페이지가 아니라 로그인으로(장바구니/체크아웃과 일관).
+  if (!embedded && !token) return <Navigate to="/wholesale/login" replace />
 
   const list = docs.filter((d) => tab === 'all' || d.doc_type === tab)
 

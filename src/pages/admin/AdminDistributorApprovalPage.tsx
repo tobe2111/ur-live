@@ -15,7 +15,7 @@ import { DashboardLoadError } from '@/components/dashboard'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
-import { UserCheck, Building2, Phone, Mail, FileText, Loader2 } from 'lucide-react'
+import { UserCheck, Building2, Phone, Mail, FileText, Loader2, Tag, Store } from 'lucide-react'
 
 interface PendingDistributor {
   id: number
@@ -33,9 +33,19 @@ interface PendingDistributor {
   business_registration_status: string | null
   status: string
   created_at: string
+  signup_categories: string | null   // 🏭 가입 시 선택한 취급 카테고리 (JSON 배열 문자열)
+  signup_channel: string | null      // 🏭 가입 시 입력한 현재 주력 판매채널
 }
 
 const QKEY = ['admin', 'distributor', 'pending-approvals']
+
+// 🏭 도매 카테고리 id → 한글 라벨 (food/living/health). 알 수 없는 값은 원본 그대로.
+const WS_CAT_LABEL: Record<string, string> = { food: '식품', living: '리빙', health: '건강' }
+function formatSignupCategories(raw: string | null): string {
+  if (!raw) return ''
+  try { const arr = JSON.parse(raw); if (Array.isArray(arr) && arr.length) return arr.map((x) => WS_CAT_LABEL[String(x)] || String(x)).join(', ') } catch { /* noop */ }
+  return ''
+}
 
 // 🏭 2026-06-29 (대표 — 판매사 승인을 '판매사 관리' 1페이지에 통합): embedded 면 AdminLayout/SEO 래퍼를
 //   생략하고 패널 본문만 반환 → AdminDistributorGradesPage 의 '승인' 탭이 그대로 렌더.
@@ -121,6 +131,16 @@ export default function AdminDistributorApprovalPage({ embedded = false }: { emb
                         className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
                         <FileText className="w-3 h-3" /> 사업자등록증 보기
                       </a>
+                    )}
+                    {(formatSignupCategories(d.signup_categories) || d.signup_channel) && (
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                        {formatSignupCategories(d.signup_categories) && (
+                          <span className="inline-flex items-center gap-1 text-gray-700"><Tag className="w-3 h-3 text-gray-400" /> 취급 {formatSignupCategories(d.signup_categories)}</span>
+                        )}
+                        {d.signup_channel && (
+                          <span className="inline-flex items-center gap-1 text-gray-700"><Store className="w-3 h-3 text-gray-400" /> 주력 판매채널 {d.signup_channel}</span>
+                        )}
+                      </div>
                     )}
                     <p className="mt-1 text-[11px] text-gray-400">신청 {new Date(d.created_at).toLocaleString('ko-KR')}</p>
                   </div>

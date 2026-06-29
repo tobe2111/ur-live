@@ -24,6 +24,7 @@ import { logout as authLogout } from '@/utils/auth'
 import { clearWholesaleLoginIntent } from '@/utils/wholesale-session'
 import WholesaleDashboardShell from '@/components/wholesale/WholesaleDashboardShell'
 import PlusMembershipCard from '@/components/wholesale/PlusMembershipCard'
+import WholesaleSignupMetaEditor from '@/components/wholesale/WholesaleSignupMetaEditor'
 // 🏭 2026-06-29 (대표 신고 — 판매사 대시보드에 채팅 알람/페이지 없음): 제조사 대시보드와 대칭으로 채팅 탭+배지.
 import { useChatPoll } from '@/hooks/useChatPoll'
 import { wholesaleChatApi, hasChatToken } from '@/hooks/queries/useWholesaleChat'
@@ -320,6 +321,9 @@ export default function WholesaleDashboardPage() {
             )}
           </div>
         </section>
+
+        {/* 🏭 2026-06-29 (E): 가입 시 입력한 취급 카테고리·주력 판매채널 사후 수정 */}
+        <WholesaleSignupMetaEditor kind="distributor" />
 
       </div>
   )

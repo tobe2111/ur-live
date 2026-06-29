@@ -15,6 +15,7 @@ import { requireAuth } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
 import { swallow } from '@/worker/utils/swallow';
 import { dispatchSignupContract } from '@/worker/utils/signup-contract';
+import { setWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta';
 import { startDashboardSession, isDashboardSessionCurrent, deriveDashboardSeat } from '@/worker/utils/dashboard-session';
 import { maskEmail } from '@/lib/mask';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
@@ -221,6 +222,8 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
     // 🖋️ 2026-06-22: 가입 시 전자계약서 자동발송(모두싸인 카카오). fail-soft — 미설정/실패가 가입 안 막음.
     if (supplierId) {
       dispatchSignupContract(c, { accountType: 'supplier', accountId: supplierId, signerName: body.representative || managerName, signerPhone: body.phone || managerPhone || representativePhone, businessName })
+      // 🏭 2026-06-29 공급(취급) 카테고리 + 희망 유통채널 (가입 메타 — 사이드테이블, fail-soft).
+      await setWholesaleSignupMeta(DB, 'supplier', supplierId, (body as Record<string, unknown>).categories, (body as Record<string, unknown>).channel)
     }
 
     return c.json({
@@ -336,6 +339,8 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
         throw e;
       }
       if (!sid) return c.json({ success: false, error: '제조사 신청 중 오류가 발생했습니다' }, 500);
+      // 🏭 2026-06-29 공급(취급) 카테고리 + 희망 유통채널 (카카오 가입 메타 — fail-soft).
+      await setWholesaleSignupMeta(DB, 'supplier', sid, (body as Record<string, unknown>).categories, (body as Record<string, unknown>).channel);
 
       // 어드민 승인 큐 알림 (/admin/suppliers 에서 처리). fail-soft.
       createDashboardNotification(DB, 'admin', null, 'supplier_pending', '제조사 승인 요청',

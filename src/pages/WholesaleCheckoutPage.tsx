@@ -79,7 +79,8 @@ export default function WholesaleCheckoutPage() {
     if (!paying && items.length === 0) navigate('/wholesale/cart', { replace: true })
   }, [items.length, paying, navigate])
 
-  if (!token) return <Navigate to="/wholesale/intro" replace />
+  // 🏭 2026-06-29: 비로그인 직접 진입은 마케팅 소개페이지가 아니라 로그인으로(주문은 판매사 로그인 필요).
+  if (!token) return <Navigate to="/wholesale/login" replace />
 
   async function payWithDeposit() {
     if (!items.length || paying) return
