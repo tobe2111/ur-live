@@ -86,7 +86,9 @@
 - **V-1 ✅** 카카오 소비자 로그인이 generic `useAuthStore`('auth-storage', 핀/큐레이터 인증뷰) 미설정 → "로그인했는데 핀 UI 는 로그아웃" → `KakaoCallbackPage`(POST) + `auth-callback-bootstrap`(서버-redirect) 양 경로에 `setAuth` 배선.
 - **V-3 ✅** 로그아웃이 persist `auth-storage` 미정리 → 새로고침해도 핀 UI 로그인됨 표시 → `clearAuthData`(user) + 전체 `logout()` 에 `useAuthStore.clearAuth()`.
 - **V-5 ✅** `isLoggedIn()`(async)이 `user_type` 게이트에 묶여 듀얼로그인 시 소비자 미인정 → `isLoggedInSync()`(토큰존재 기반) 재사용으로 RouteGuards 와 일관.
-- **문서화 잔여(미수정)**: GAP3(비번 변경 시 세션 epoch 무효화 — 컬럼 신설 필요) · V-2(이메일 로그인이 ur_session 미발급 — 구조적 비대칭) · V-4(establish 실패 시 half-logged-in 창). 셋 다 별도 작업으로 분리.
+- **V-2 ✅ (2026-06-29 후속)**: 이메일 로그인/가입(`auth.routes.ts /login·/register`)이 Bearer 만 주고 `ur_session` httpOnly 미발급이던 비대칭 해소 — 카카오와 동일하게 `createSessionCookie('user')` 를 same-origin 200(JSON) 응답에 additive Set-Cookie(iOS WebKit 영속 패턴). SSR 개인화 경로 통일. Bearer 흐름 무변경. 검증 tsc 0·build 0·auth-cookie 가드 0.
+- **GAP3 재평가(대부분 이미 처리)**: 비번 변경 경로는 이미 refresh token revoke(소비자 `change-password` line363) + 셀러 reset 은 `startDashboardSession`(min_valid_iat 부양)까지 해 **대시보드 세션 완전 무효화**. admin/agency 는 self-service 비번변경 없음. **잔여 = 소비자 30일 stateless `ur_session` 무효화**뿐 — hot-path epoch read(로딩 perf 잠금영역) 설계결정 필요라 의도적 보류.
+- **문서화 잔여(미수정)**: V-4(establish 실패 시 half-logged-in 창 — KakaoCallbackPage 잠금파일) · GAP3 소비자 ur_session epoch(설계결정). 둘 다 대표 결정/승인 선행.
 - 검증: tsc 0 · 단위 **2356 pass** · build(client+ssr+prerender+worker) 0 · audit-gate **31/31 GREEN**(auth-cookie iOS 영속 패턴 포함) · auth-cookie 가드 0. ⚠️ 배포 후 staging: 소비자/셀러/어드민/에이전시/제조사 각 로그아웃 1회 + 카카오 계정전환 1회 + 핀(로그인→핀→로그아웃→핀UI 비로그인) 1회.
 
 ## ✅ 2026-06-29 — 결제 정확성 감사(C영역, 가드 미보유 머니 산술) + fee-resolver 컷오버 시트 (대표 "뭐가 가장 이상적이야?")

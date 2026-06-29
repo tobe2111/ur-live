@@ -97,6 +97,10 @@ authRouter.post('/register', rateLimit({ action: 'register', max: 5, windowSec: 
       [generateId(), userId, tokenHash]
     );
 
+    // 🔐 2026-06-29 (V-2): 가입 직후 자동 로그인도 카카오와 동일하게 ur_session httpOnly 발급(로그인 핸들러와 대칭).
+    const sessionCookie = await createSessionCookie(userId, name, email, undefined, secret, 'user');
+    c.header('Set-Cookie', sessionCookie, { append: true });
+
     return c.json({
       success: true,
       data: {
@@ -188,6 +192,12 @@ authRouter.post('/login', rateLimit({ action: 'login', max: 10, windowSec: 300 }
 
     // Update last login
     await qb.execute('UPDATE users SET last_login_at = datetime(\'now\') WHERE id = ?', [user.id]);
+
+    // 🔐 2026-06-29 (V-2 로그아웃 lifecycle 전수조사): 이메일 로그인도 카카오와 동일하게 ur_session httpOnly 발급.
+    //   그간 Bearer 토큰만 줘서 SSR 개인화/세션 경로가 카카오 로그인과 비대칭이었음(소비자 세션 SSOT 누락).
+    //   same-origin 200(JSON) 응답이라 iOS WebKit 에도 영속(잠긴 iOS 쿠키 패턴 — XHR 로그인은 first-party). additive.
+    const sessionCookie = await createSessionCookie(user.id, user.name, user.email, undefined, secret, 'user');
+    c.header('Set-Cookie', sessionCookie, { append: true });
 
     return c.json({
       success: true,
