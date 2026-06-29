@@ -17,7 +17,7 @@ import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnectio
 import { aiMarketerAdvice, type AiMarketerContext } from './ai-marketer'
 import { listReports, generateWeeklyReport } from './weekly-report'
 import { registerSite, listSites, deleteSite, recordHit, clickReport, ensureClickguardSchema, addBlockedIp, listBlockedIps, removeBlockedIp } from './clickguard'
-import { listRules, upsertRule, deleteRule, recentLog, runAutobidForSeller, bulkUpsertRules, parseCsvRules } from './autobid'
+import { listRules, upsertRule, deleteRule, recentLog, runAutobidForSeller, bulkUpsertRules, parseCsvRules, deleteRulesForTenant } from './autobid'
 import { listWatches, addWatch, deleteWatch, refreshWatch } from './price-monitor'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
@@ -225,7 +225,8 @@ marketingRoutes.delete('/searchad/connect', async (c) => {
   const sellerId = await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const customerId = String(c.req.query('customer_id') || '').trim() || undefined
-  await deleteSearchAdConnection(c.env.DB, sellerId, customerId)
+  const deleted = await deleteSearchAdConnection(c.env.DB, sellerId, customerId)
+  if (deleted) await deleteRulesForTenant(c.env.DB, sellerId, deleted) // 옛 규칙 부활 방지(돈 안전)
   return c.json({ success: true })
 })
 

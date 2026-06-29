@@ -207,6 +207,12 @@ export async function deleteRule(DB: D1Database, sellerId: number, keywordId: st
   await DB.prepare('DELETE FROM ad_autobid_rules WHERE seller_id = ? AND keyword_id = ?').bind(sellerId, keywordId).run()
 }
 
+/** 고객사(tenant) 연결 해제 시 그 고객사의 자동입찰 규칙도 제거 — 재연결 시 옛 규칙이 몰래 부활하지 않도록(돈 안전). */
+export async function deleteRulesForTenant(DB: D1Database, sellerId: number, tenant: string): Promise<void> {
+  await ensureAutobidSchema(DB)
+  await DB.prepare('DELETE FROM ad_autobid_rules WHERE seller_id = ? AND tenant = ?').bind(sellerId, tenant).run().catch(() => null)
+}
+
 export async function recentLog(DB: D1Database, sellerId: number, limit = 30): Promise<Array<{ keyword_id: string; old_bid: number; new_bid: number; target_rank: number; est_bid: number; reason: string; created_at: string }>> {
   await ensureAutobidSchema(DB)
   const r = await DB.prepare(`SELECT keyword_id, old_bid, new_bid, target_rank, est_bid, reason, created_at
