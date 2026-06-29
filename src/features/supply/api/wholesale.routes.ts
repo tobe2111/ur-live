@@ -761,6 +761,9 @@ app.get('/recent-items', async (c) => {
 //   🔭 향후(BIZ-4 후속, OUT OF SCOPE): 품절 상품 '재입고 알림 구독'(restock-alert) — 별도 구독 테이블 +
 //      재고 0→N 전환 감지 cron + 알림 발송 필요. 이번 작업 범위 아님(검색/정렬/필터만).
 app.get('/catalog', async (c) => {
+  // cache-auth-ok: 엣지 캐시 인증 누수 차단 — 비로그인 응답만 public CDN 캐시(canonical 키, SSR/cron prewarm 용).
+  //   로그인 요청은 useWholesaleCatalog 가 URL 에 v=in 을 붙여(비로그인 canonical 유지) *엣지 캐시 키를 분리* →
+  //   로그인 판매사는 비로그인 'null 가격' 공유캐시를 절대 안 읽음(로그인 응답은 private,no-store). 2026-06-29.
   // 🏭 2026-06-04 몰-first: 비로그인도 카탈로그 둘러보기 가능. 가격(등급 공급가)은 로그인 시에만.
   //   비로그인 → distributor_price=null + requires_login. 가시성은 ALL 만(허용목록 매칭 X).
   // 🔐 2026-06-11: Bearer 없으면 ud_seller_token 쿠키 fallback (beta SSR 개인화 — GET 전용 helper).
@@ -1112,6 +1115,9 @@ app.get('/catalog', async (c) => {
 
 // ── GET /catalog/:id ──────────────────────────────────────────────────────────
 app.get('/catalog/:id', async (c) => {
+  // cache-auth-ok: 엣지 캐시 인증 누수 차단 — 비로그인 상세만 public CDN 캐시. 로그인 요청은 useWholesaleProduct
+  //   가 URL 에 ?v=in 을 붙여 *엣지 캐시 키를 비로그인(v=out)과 분리* → 로그인 판매사가 비로그인 'null 가격'
+  //   공유캐시를 절대 안 읽음(로그인 응답은 private,no-store). 대표 신고 "상세만 공급가 미설정 간헐" 근본수정. 2026-06-29.
   // 🏭 2026-06-04 몰-first: 비로그인도 상품 상세 열람 가능. 가격(등급가/권장가/tier)은 로그인 시에만.
   // 🔐 2026-06-11: Bearer 없으면 ud_seller_token 쿠키 fallback (beta SSR 개인화 — GET 전용 helper).
   const sellerId = (await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET))

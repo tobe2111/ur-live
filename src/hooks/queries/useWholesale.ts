@@ -165,6 +165,10 @@ export function useWholesaleCatalog(search: string) {
     queryFn: () => {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
+      // 🛡️ 2026-06-29 엣지 캐시 인증 누수 차단(상세와 동일): 로그인 요청만 v=in 으로 *엣지 캐시 키*를 비로그인과
+      //   분리 → 비로그인 'null 가격' 공유캐시를 로그인 판매사가 절대 안 읽음. 비로그인 URL 은 canonical 유지
+      //   (SSR/cron prewarm 키 1:1 보존) — guest 엔 v 미부착. 서버는 v 무시.
+      if (wholesaleAuthSeg() === 'in') params.set('v', 'in')
       return api.get(`/api/wholesale/catalog?${params.toString()}`, sellerAuth()).then((r) => (r.data?.success ? (r.data.items || []) : []))
     },
     // 🏭 2026-06-04 몰-first: 비로그인도 카탈로그 둘러보기 가능(가격은 서버가 null 로 가림).
