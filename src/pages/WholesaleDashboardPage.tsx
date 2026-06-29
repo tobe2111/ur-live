@@ -11,7 +11,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ShoppingBag, ClipboardList, Receipt, FileText, Factory, Wallet,
   TrendingUp, Box, ChevronRight, LogOut, ShoppingCart, Sparkles, Store,
-  LayoutDashboard, Users,
+  LayoutDashboard, Users, MessageCircle,
 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { WT, won, comma, GRADE_LABEL, wholesaleOrderStatusBadge } from './wholesale/wholesale-theme'
@@ -24,6 +24,10 @@ import { logout as authLogout } from '@/utils/auth'
 import { clearWholesaleLoginIntent } from '@/utils/wholesale-session'
 import WholesaleDashboardShell from '@/components/wholesale/WholesaleDashboardShell'
 import PlusMembershipCard from '@/components/wholesale/PlusMembershipCard'
+// 🏭 2026-06-29 (대표 신고 — 판매사 대시보드에 채팅 알람/페이지 없음): 제조사 대시보드와 대칭으로 채팅 탭+배지.
+import { useChatPoll } from '@/hooks/useChatPoll'
+import { wholesaleChatApi, hasChatToken } from '@/hooks/queries/useWholesaleChat'
+const WholesaleChatWidget = lazy(() => import('./wholesale/WholesaleChatWidget'))
 
 // 서브페이지(탭 콘텐츠) — lazy 로 분리, 탭 열 때만 chunk fetch. embedded 모드로 본문만 렌더.
 const WholesaleDepositPage = lazy(() => import('./WholesaleDepositPage'))
@@ -53,6 +57,7 @@ const TAB_META: { key: string; label: string; icon: typeof Wallet }[] = [
   { key: 'oem', label: 'OEM/ODM', icon: Factory },
 ]
 const STAFF_TAB = { key: 'staff', label: '직원 계정', icon: Users }
+const CHAT_TAB = { key: 'chat', label: '채팅', icon: MessageCircle }
 
 const TabFallback = () => <WholesaleLoading />
 
@@ -77,6 +82,13 @@ export default function WholesaleDashboardPage() {
   const depositQ = useWholesaleDeposit()
   const cart = useWholesaleCart()
   const [orderTab, setOrderTab] = useState('all')
+
+  // 💬 채팅 unread 배지 — 제조사 대시보드와 동일 폴링(탭 숨김이면 중단). 판매사=distributor 토큰(seller_token+is_distributor).
+  const [chatUnread, setChatUnread] = useState(0)
+  useChatPoll(
+    async () => { try { setChatUnread((await wholesaleChatApi.unread()).unread); return true } catch { return false } },
+    { baseInterval: 25_000, maxInterval: 120_000, enabled: hasChatToken() },
+  )
 
   const me = (meQ.data ?? null) as { grade: string; margin_pct: number; special_active: boolean; sub_role?: string | null; can_manage_staff?: boolean } | null
   const grade = me?.grade || 'C'
@@ -108,13 +120,19 @@ export default function WholesaleDashboardPage() {
   const goTab = (key: string) => setSearchParams({ tab: key })
 
   // 🏭 2026-06-20: 사이드바 nav 직접 구성 — route-navigate 대신 setSearchParams(탭 전환). 카탈로그 항목 제거.
-  const tabDefs = canManageStaff ? [...TAB_META, STAFF_TAB] : TAB_META
+  // 💬 채팅 탭은 채팅토큰(distributor=seller_token+is_distributor) 있을 때만 노출 — 없으면 위젯이 빈상태라 숨김.
+  const tabDefs = [
+    ...TAB_META,
+    ...(hasChatToken() ? [CHAT_TAB] : []),
+    ...(canManageStaff ? [STAFF_TAB] : []),
+  ]
   const navItems: WholesaleNavItem[] = tabDefs.map(({ key, label, icon }) => ({
     key,
     label,
     icon,
     active: tab === key,
     onClick: () => goTab(key),
+    badge: key === 'chat' ? chatUnread : undefined,
   }))
   const activeTabLabel = tabDefs.find((tb) => tb.key === tab)?.label ?? '판매사 대시보드'
 
@@ -315,6 +333,7 @@ export default function WholesaleDashboardPage() {
           : tab === 'quotes' ? <WholesaleQuotesPage embedded />
           : tab === 'oem' ? <WholesaleOemPage embedded />
           : tab === 'staff' ? <WholesaleStaffPage embedded />
+          : tab === 'chat' ? <WholesaleChatWidget embedded onClose={() => { /* embedded */ }} onUnreadChange={setChatUnread} />
           : overview}
       </Suspense>
     )
