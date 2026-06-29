@@ -10,6 +10,7 @@ import { WT, won, wholesaleOrderStatusBadge } from './wholesale/wholesale-theme'
 import WholesaleLoading from './wholesale/WholesaleLoading'
 import WholesaleClaimModal from './wholesale/WholesaleClaimModal'
 import { useWholesaleBack } from '@/hooks/useWholesaleBack'
+import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { courierTrackingUrl } from '@/utils/courier-tracking'
 import { safeDate } from '@/utils/safe-date'
 
@@ -151,6 +152,8 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
   const [busyOrderId, setBusyOrderId] = useState<number | null>(null)
   // 🏭 2026-06-27 (대표 — 마무리/발송전취소): 구매확정(SHIPPED→DONE) · 발송 전 주문취소(예치금 환불).
   async function confirmReceipt(id: number) {
+    // 🛡️ 2026-06-29 (audit): 구매확정(SHIPPED→DONE)은 비가역 — 정산 확정 + 클레임 창 종료. 실수 확정 방지 게이트.
+    if (!(await confirmDialog({ message: `주문 #${id} 을(를) 구매확정할까요?\n확정하면 제조사 정산이 확정되고 이후 클레임이 제한돼요.`, confirmText: '구매확정' }))) return
     setBusyOrderId(id)
     try {
       await api.post(`/api/wholesale/orders/${id}/confirm`, {}, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
@@ -159,7 +162,8 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
     } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '구매확정 실패') } finally { setBusyOrderId(null) }
   }
   async function cancelOrder(id: number) {
-    if (typeof window !== 'undefined' && !window.confirm(`주문 #${id} 을(를) 취소할까요? 예치금이 환불됩니다. (이미 발송된 주문은 취소할 수 없어요)`)) return
+    // 🛡️ 2026-06-29 (audit): 네이티브 window.confirm → 통일 디자인 confirmDialog(다른 도매 페이지와 일관, danger 스타일).
+    if (!(await confirmDialog({ message: `주문 #${id} 을(를) 취소할까요? 예치금이 환불됩니다. (이미 발송된 주문은 취소할 수 없어요)`, danger: true, confirmText: '주문 취소' }))) return
     setBusyOrderId(id)
     try {
       await api.post(`/api/wholesale/orders/${id}/cancel`, { reason: '판매사 취소' }, { headers: token ? { Authorization: `Bearer ${token}` } : {} })

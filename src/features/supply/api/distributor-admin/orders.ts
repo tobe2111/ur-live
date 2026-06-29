@@ -57,16 +57,23 @@ export function registerOrdersRoutes(app: Hono<{ Bindings: Env }>) {
       let where = '1=1'
       if (VALID.includes(status)) { where += ' AND o.status = ?'; binds.push(status) }
       if (search) { where += ' AND (s.business_name LIKE ? OR s.name LIKE ? OR s.username LIKE ?)'; const l = `%${search}%`; binds.push(l, l, l) }
-      const { results } = await c.env.DB.prepare(`
-        SELECT o.id, o.distributor_seller_id, o.status, o.grade, o.subtotal, o.supply_total, o.margin_total,
-               o.refunded_amount, o.created_at, o.paid_at,
-               s.business_name, s.name AS seller_name, s.username,
-               (SELECT COUNT(*) FROM wholesale_order_items wi WHERE wi.wholesale_order_id = o.id) AS item_count
-        FROM wholesale_orders o LEFT JOIN sellers s ON s.id = o.distributor_seller_id
-        WHERE ${where} ORDER BY o.created_at DESC LIMIT ? OFFSET ?
-      `).bind(...binds, limit, offset).all().catch(() => ({ results: [] }))
-      const totalRow = await c.env.DB.prepare(`SELECT COUNT(*) AS c FROM wholesale_orders o LEFT JOIN sellers s ON s.id = o.distributor_seller_id WHERE ${where}`)
-        .bind(...binds).first<{ c: number }>().catch(() => ({ c: 0 }))
+      // ⚡ 2026-06-29 (perf audit): ① item_count 상관 서브쿼리(행당 N+1) → LEFT JOIN + COUNT(wi.id) + GROUP BY,
+      //   ② list + count 독립쿼리 직렬 → Promise.all (1 RTT 절약). 결과 동일.
+      const [listRes, totalRow] = await Promise.all([
+        c.env.DB.prepare(`
+          SELECT o.id, o.distributor_seller_id, o.status, o.grade, o.subtotal, o.supply_total, o.margin_total,
+                 o.refunded_amount, o.created_at, o.paid_at,
+                 s.business_name, s.name AS seller_name, s.username,
+                 COUNT(wi.id) AS item_count
+          FROM wholesale_orders o
+          LEFT JOIN sellers s ON s.id = o.distributor_seller_id
+          LEFT JOIN wholesale_order_items wi ON wi.wholesale_order_id = o.id
+          WHERE ${where} GROUP BY o.id ORDER BY o.created_at DESC LIMIT ? OFFSET ?
+        `).bind(...binds, limit, offset).all().catch(() => ({ results: [] })),
+        c.env.DB.prepare(`SELECT COUNT(*) AS c FROM wholesale_orders o LEFT JOIN sellers s ON s.id = o.distributor_seller_id WHERE ${where}`)
+          .bind(...binds).first<{ c: number }>().catch(() => ({ c: 0 })),
+      ])
+      const results = (listRes as { results?: unknown[] }).results
       return c.json({ success: true, orders: results ?? [], total: totalRow?.c ?? 0, page, limit })
     } catch (err) {
       return safeError(c, err, '도매주문 조회 중 오류가 발생했습니다', '[distributor-admin]')

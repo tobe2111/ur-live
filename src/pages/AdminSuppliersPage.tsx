@@ -79,6 +79,13 @@ export default function AdminSuppliersPage() {
   const load = () => refetch()
 
   async function setStatus(id: number, status: string) {
+    // 🛡️ 2026-06-29 (audit): 거부/정지는 제조사 영업을 끊는 비가역적 액션 → 확인 게이트(payout 과 동일 일관성).
+    if (status === 'rejected' || status === 'suspended') {
+      const msg = status === 'rejected'
+        ? t('admin.suppliers.rejectConfirm', { defaultValue: '이 제조사 가입을 거부할까요?' })
+        : t('admin.suppliers.suspendConfirm', { defaultValue: '이 제조사를 정지할까요? 정지 중에는 판매·발주가 중단됩니다.' })
+      if (!(await confirmDialog({ message: msg, danger: true }))) return
+    }
     setActionId(id)
     try {
       await api.patch(`/api/admin/suppliers/${id}`, { status }, { headers: { Authorization: `Bearer ${token()}` } })

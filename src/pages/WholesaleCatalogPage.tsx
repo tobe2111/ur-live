@@ -618,6 +618,13 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
                     </div>
                   ))}
                 </div>
+              ) : (catalogQ.isError && items.length === 0) ? (
+                // 🏭 2026-06-29: fetch 실패를 '상품 없음'으로 위장 금지 — 명시 에러 + 재시도(WholesaleOrdersPage 와 동일 패턴).
+                //   stale 데이터가 있으면(placeholderData) 그리드 유지, 데이터 0 + 에러일 때만 에러 UI.
+                <div className="text-center py-20">
+                  <p className="text-[14px] mb-3" style={{ color: WT.ink3 }}>상품을 불러오지 못했어요. 잠시 후 다시 시도해주세요.</p>
+                  <button onClick={() => catalogQ.refetch()} className="px-4 h-10 rounded-xl text-[14px] font-bold" style={{ background: WT.fill2, color: WT.ink, border: '1px solid ' + WT.line }}>다시 시도</button>
+                </div>
               ) : items.length === 0 ? (
                 <p className="text-center py-20 text-[14px]" style={{ color: WT.ink4 }}>해당 조건의 도매 상품이 없어요.</p>
               ) : (

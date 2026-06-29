@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import ImageUpload from '@/components/upload/ImageUpload'
 import { Building2, Loader2, Plus, Edit, X, Globe, Check } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
@@ -59,7 +59,7 @@ export default function AdminWholesaleMallsPage() {
   const [form, setForm] = useState<MallForm>(EMPTY)
   const [saving, setSaving] = useState(false)
 
-  const { data: malls, isLoading: loading } = useApiQuery<MallRow[]>(
+  const { data: malls, isLoading: loading, isError, error, refetch } = useApiQuery<MallRow[]>(
     ['admin', 'wholesale-malls'], '/api/admin/wholesale-malls',
     {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -161,6 +161,9 @@ export default function AdminWholesaleMallsPage() {
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+        ) : isError ? (
+          // 🛡️ 2026-06-29 (audit): fetch 실패를 '몰 없음'으로 위장 금지 — 에러+재시도.
+          <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="도매 몰" />
         ) : list.length === 0 ? (
           <p className="text-center text-gray-400 py-20">{t('admin.mall.empty', { defaultValue: '등록된 몰이 없습니다.' })}</p>
         ) : (
