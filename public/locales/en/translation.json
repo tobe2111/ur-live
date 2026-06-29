@@ -4416,7 +4416,9 @@
     "stepGb3": "Show QR\nat store",
     "stepGift1": "Buy\nvoucher",
     "stepGift2": "Sent by\nMMS",
-    "stepGift3": "Show\nat store"
+    "stepGift3": "Show\nat store",
+    "deal": "deal",
+    "heroBalanceLabelGift": "Gift voucher balance"
   },
   "sellerWaiting": {
     "title": "Seller Approval Pending",

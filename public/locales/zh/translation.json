@@ -4416,7 +4416,9 @@
     "stepGb3": "门店\n出示二维码",
     "stepGift1": "购买\n兑换券",
     "stepGift2": "MMS\n发送",
-    "stepGift3": "门店\n出示"
+    "stepGift3": "门店\n出示",
+    "deal": "积分",
+    "heroBalanceLabelGift": "持有礼券金额"
   },
   "sellerWaiting": {
     "title": "卖家审核等待",

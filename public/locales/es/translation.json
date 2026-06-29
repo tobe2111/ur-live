@@ -4416,7 +4416,9 @@
     "stepGb3": "Mostrar QR\nen tienda",
     "stepGift1": "Comprar\nvale",
     "stepGift2": "Enviado\npor MMS",
-    "stepGift3": "Mostrar\nen tienda"
+    "stepGift3": "Mostrar\nen tienda",
+    "deal": "deal",
+    "heroBalanceLabelGift": "Saldo de vales regalo"
   },
   "sellerWaiting": {
     "title": "Aprobación de Vendedor Pendiente",
