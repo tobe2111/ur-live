@@ -91,11 +91,12 @@ export async function setActiveTenant(DB: D1Database, sellerId: number, customer
   return { ok: true }
 }
 
-/** 고객사 연결 해제. 활성을 지우면 다른 고객사를 활성으로 승격. customerId 없으면 활성 고객사 삭제. */
-export async function deleteSearchAdConnection(DB: D1Database, sellerId: number, customerId?: string): Promise<void> {
+/** 고객사 연결 해제. 활성을 지우면 다른 고객사를 활성으로 승격. customerId 없으면 활성 고객사 삭제.
+ *   반환: 실제 삭제된 customer_id(없으면 null) — 호출부가 그 고객사의 자동입찰 규칙도 정리하도록. */
+export async function deleteSearchAdConnection(DB: D1Database, sellerId: number, customerId?: string): Promise<string | null> {
   await ensureSearchAdConnSchema(DB)
   const target = customerId || (await getActiveTenantId(DB, sellerId))
-  if (!target) return
+  if (!target) return null
   await DB.prepare('DELETE FROM ad_searchad_tenants WHERE seller_id = ? AND customer_id = ?').bind(sellerId, target).run()
   // 활성이 사라졌으면 가장 최근 것을 활성으로.
   const stillActive = await DB.prepare('SELECT 1 FROM ad_searchad_tenants WHERE seller_id = ? AND is_active = 1').bind(sellerId).first().catch(() => null)
@@ -103,6 +104,7 @@ export async function deleteSearchAdConnection(DB: D1Database, sellerId: number,
     await DB.prepare(`UPDATE ad_searchad_tenants SET is_active = 1 WHERE id = (
       SELECT id FROM ad_searchad_tenants WHERE seller_id = ? ORDER BY id DESC LIMIT 1)`).bind(sellerId).run().catch(() => null)
   }
+  return target
 }
 
 /** 고객사 목록(마스킹 — 비밀키/라이선스 노출 안 함). */

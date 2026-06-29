@@ -60,10 +60,15 @@ UI 패널: `MarketingDashboardPage`(허브) + `SearchAdPanel`·`AutobidPanel`·`
 - **부정클릭**: IP 해시+90일 자동삭제·국가수준만·도메인검증. 차단은 반자동(검색광고센터 복붙 — 네이버 공식 API 에 노출제한IP write 없음).
 - **주간리포트**: 읽기전용·주1회 멱등(period_key UNIQUE)·cap 30 tenant/run.
 
+## 6.5 멀티테넌트(고객사 전환) — 2026-06-28 구현 ✅
+- `ad_searchad_tenants`(seller+customer_id UNIQUE, tenant_label, is_active) 다중 연결 + 활성 전환. 레거시 `ad_searchad_connections` 1회 이관.
+- **자동입찰 격리(돈 안전)**: `ad_autobid_rules.tenant`(customer_id) 컬럼. UI 규칙은 활성 고객사로 태깅(`getActiveTenantId`). cron `runAutobidAll` 은 **(seller, tenant)별로 그 고객사 자격증명으로 strict 실행** → 규칙이 엉뚱한 계정에 적용 불가. 삭제된 고객사 규칙은 creds 없음 → skip(안전). planBid 하드캡 불변.
+- API: `/searchad/tenants` · `/tenant/activate` · `/connect`(label) · `DELETE ?customer_id=`. UI: 사이드바 셀렉터 + SearchAdPanel '다른 고객사 연결' + 모바일 토픽바 칩.
+
 ## 7. 남은 일 (우선순위)
 1. **[대표 — 1순위]** 위 키 설정 + **배포 후 라이브 검증**(이 작업환경은 네이버 egress 차단 → 실호출 미검증). 순서: 읽기(연관키워드·트렌드) → 광고계정 연동 → 예상가/실적/자동입찰 미리보기 → 픽셀. 통과 후 `ADS_AUTOBID_ENABLED=true`.
 2. **[외부제약 — 코드 불가]** ① 발주수집 완성 = 네이버 커머스 '상품주문/배송' 권한 + 고정 egress IP(레포 `wrangler-proxy.toml`) ② 부정클릭 자동차단 = 네이버가 노출제한IP API 개방 시 자동전환(코드 준비됨).
-3. **[선택 디자인]** 모바일 5폰 세부 · 랜딩 더미요소(후기/로고) 실데이터 교체 · 멀티테넌트 고객사 전환 UI(시안엔 있으나 미배선).
+3. **[완료]** ~~멀티테넌트 고객사 전환~~ ✅ · ~~모바일 정밀(하단 탭바)~~ ✅ · 대시보드 라이트/다크 토글 ✅. 남은 디자인: 랜딩 더미요소(후기/로고) 실데이터 교체(의도된 자리표시자).
 
 ## 8. 검증/배포
 - 브랜치 push → 훅이 main 자동머지·배포(Cloudflare Pages). PR 불필요(자동머지로 diff 0).
