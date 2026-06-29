@@ -22,10 +22,6 @@ export default function SupplierLoginPage() {
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  // 🏭 2026-06-08: 카카오 계정에 제조회원 계정이 없을 때 — register 강제이동 대신 선택지 안내(#2 수정).
-  const [kakaoNoSupplier, setKakaoNoSupplier] = useState(false)
-  // 🆕 2026-06-19 (감사 #3): 카카오로 들어온 제조회원이 '승인 대기'면 토스트만 띄우지 말고 명확한 안내 배너.
-  const [kakaoPending, setKakaoPending] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
 
   // 🛡️ 2026-06-17: 이메일 기억하기 — 저장된 이메일 자동 채움 (admin/seller 와 동형).
@@ -34,31 +30,10 @@ export default function SupplierLoginPage() {
     if (saved) { setForm(f => ({ ...f, email: saved })); setRememberMe(true) }
   }, [])
 
+  // 🏭 2026-06-29 (대표 결정 — 도매몰 카카오 로그인 제거): 제조사 로그인은 이메일/비밀번호 전용.
+  //   기존 카카오 자동 probe(/supplier/become)·카카오 버튼·미가입/대기 배너 모두 삭제. (입점은 /supplier/register.)
   useEffect(() => {
-    if (isSupplierLoggedIn()) { navigate('/supplier', { replace: true }); return }
-    // 🏭 2026-06-04 카카오 통합: 카카오 유저로 로그인된 채 돌아오면 제조회원 전환/로그인 자동 시도.
-    //   승인됨 → supplier 세션 + /supplier. 미승인 → 승인 대기 안내. (세션 쿠키로 인증)
-    if (typeof window !== 'undefined' && localStorage.getItem('user_id')) {
-      (async () => {
-        try {
-          const res = await fetch('/api/supplier/become', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}' })
-          const data = await res.json().catch(() => ({})) as { success?: boolean; status?: string; message?: string; data?: { token: string; refreshToken?: string; supplier: { id: number; business_name: string; email: string } } }
-          if (data.success && data.status === 'approved' && data.data) {
-            setSupplierSession(data.data.token, data.data.supplier, data.data.refreshToken)
-            toast.success('제조사로 로그인되었습니다')
-            navigate('/supplier', { replace: true })
-          } else if (data.success && data.status === 'pending') {
-            setKakaoPending(true)
-            toast.info(data.message || '제조사 승인 대기 중입니다 — 승인 후 이용할 수 있어요')
-          } else if (data.success && data.status === 'needs_registration') {
-            // 🏭 2026-06-08 (#2 수정): 이 카카오 계정에 제조회원 계정이 없음.
-            //   기존: /supplier/register 로 강제 이동 → 판매사/일반 유저가 '제조회원 로그인'만 눌러도
-            //   폼도 못 보고 입점신청 폼으로 튕김. 변경: 강제이동 제거 + 선택지 배너 노출(판매사면 판매사 로그인으로).
-            setKakaoNoSupplier(true)
-          }
-        } catch { /* silent — 일반 로그인 폼 유지 */ }
-      })()
-    }
+    if (isSupplierLoggedIn()) navigate('/supplier', { replace: true })
   }, [navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -153,31 +128,6 @@ export default function SupplierLoginPage() {
               </div>
             )}
 
-            {/* 🏭 2026-06-08 (#2): 카카오 계정에 제조회원 계정 없음 — 강제이동 대신 선택지 안내 */}
-            {kakaoNoSupplier && (
-              <div className="mb-5 px-4 py-3.5 bg-amber-50 border border-amber-200 rounded-xl">
-                <p className="text-sm font-semibold text-amber-900">이 카카오 계정은 아직 제조사가 아니에요</p>
-                <p className="text-xs text-amber-700 mt-1">제조사라면 입점 신청을, 판매사(사입)라면 판매사 로그인으로 이동하세요.</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" onClick={() => navigate('/supplier/register')}
-                    className="px-3 py-2 rounded-lg bg-[#FC5424] text-white text-xs font-bold">제조사 입점 신청</button>
-                  <button type="button" onClick={() => navigate('/wholesale/login')}
-                    className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 text-xs font-bold">판매사 로그인 →</button>
-                </div>
-              </div>
-            )}
-
-            {kakaoPending && (
-              <div className="mb-5 px-4 py-3.5 bg-blue-50 border border-blue-200 rounded-xl">
-                <p className="text-sm font-semibold text-blue-900">제조(브랜드)회원 승인 대기 중이에요</p>
-                <p className="text-xs text-blue-700 mt-1">사업자 정보 확인 후 관리자 승인되면 바로 로그인할 수 있어요. 보통 영업일 기준 1–2일 소요됩니다.</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" onClick={() => navigate('/wholesale')}
-                    className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 text-xs font-bold">도매몰 둘러보기</button>
-                </div>
-              </div>
-            )}
-
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="sup-email" className="block text-sm font-medium text-gray-700 mb-1.5">{t('common.email', { defaultValue: '이메일' })}</label>
@@ -223,17 +173,6 @@ export default function SupplierLoginPage() {
                 {loading ? t('common.loading', { defaultValue: '처리 중...' }) : (<>{t('supplier.loginButton', { defaultValue: '로그인' })} <ArrowRight className="w-4 h-4" /></>)}
               </button>
             </form>
-
-            {/* 🏭 2026-06-04 카카오 통합 — 카카오로 제조회원 입점/로그인. 승인 후 이용. */}
-            <div className="my-4 flex items-center gap-3">
-              <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-xs text-gray-400">또는</span>
-              <div className="flex-1 h-px bg-gray-200" />
-            </div>
-            <button type="button" onClick={() => { window.location.href = '/auth/kakao/start?redirect=/supplier/login&intent=user' }}
-              className="w-full h-12 rounded-xl font-bold text-sm" style={{ background: '#FEE500', color: '#3C1E1E' }}>
-              카카오로 제조사 입점·로그인
-            </button>
 
             <p className="mt-6 text-center text-sm text-gray-600">
               {t('supplier.noAccount', { defaultValue: '계정이 없으신가요?' })}{' '}

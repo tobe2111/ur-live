@@ -64,13 +64,19 @@ export default function HeroSection({ loggedIn, userSession, grade, me, monthSpe
         <img src={WHOLESALE_HERO_IMG} alt="" aria-hidden fetchPriority="high" decoding="async" onError={(e) => { e.currentTarget.style.display = 'none' }} className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(100deg, rgba(21,23,28,0.92) 0%, rgba(21,23,28,0.72) 48%, rgba(21,23,28,0.20) 100%)' }} />
         <div className="relative p-6 lg:p-9 flex flex-col justify-center text-white lg:max-w-[560px]">
-          <div className="inline-flex self-start items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold mb-4" style={{ background: 'rgba(255,255,255,0.14)' }}>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: WT.brand }} />사업자 인증 회원 전용
+          {/* 🏭 2026-06-29 (대표 — 메인에 무재고 드랍십 노출): 배지 2개(회원 전용 + 무재고 드랍십 가능) */}
+          <div className="flex flex-wrap items-center gap-1.5 mb-4">
+            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-bold" style={{ background: 'rgba(255,255,255,0.14)' }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: WT.brand }} />사업자 인증 회원 전용
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-extrabold text-white" style={{ background: WT.brand }}>
+              🚚 무재고 드랍십 가능
+            </span>
           </div>
           <h2 className="font-extrabold leading-[1.22]" style={{ fontSize: 'clamp(22px,3.2vw,33px)', letterSpacing: '-0.03em' }}>
             검증된 제조사 상품을<br /><span style={{ color: WT.inkPink }}>도매 공급가</span>로 사입하세요
           </h2>
-          <p className="mt-3 text-[13.5px] lg:text-[14.5px] leading-relaxed" style={{ color: '#D4D7DC' }}>제조사는 가리고 가격은 투명하게. 재고·자금 0원으로 시작하는 무재고 B2B 사입.</p>
+          <p className="mt-3 text-[13.5px] lg:text-[14.5px] leading-relaxed" style={{ color: '#D4D7DC' }}>제조사는 가리고 가격은 투명하게. <b className="text-white">재고·자금 0원</b>으로 시작하는 <b className="text-white">무재고 드랍십</b>부터 대량 사입까지.</p>
           {/* 🧹 2026-06-17 (시안): 히어로 CTA 버튼 삭제 — 배너는 제품/플랫폼 공지 용도 */}
         </div>
       </div>

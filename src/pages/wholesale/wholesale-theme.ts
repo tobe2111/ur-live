@@ -83,13 +83,11 @@ export const WHOLESALE_ORDER_STATUS: Record<string, { label: string; color: stri
 export const wholesaleOrderStatusBadge = (status: string | null | undefined) =>
   WHOLESALE_ORDER_STATUS[String(status || '')] || { label: String(status || '-'), color: WT.ink3, bg: WT.fill }
 
-/** 카테고리 정의 (도매 카탈로그 칩/사이드바) */
+/** 카테고리 정의 (도매 카탈로그 칩/사이드바 + 상품 등록 드롭다운 SSOT).
+ *  🏭 2026-06-29 (대표 결정): 식품·리빙·건강 3종 고정(+전체). 뷰티/패션/디지털/생활 제거. */
 export const WHOLESALE_CATEGORIES: { id: string; label: string }[] = [
   { id: 'all', label: '전체' },
   { id: 'food', label: '식품' },
-  { id: 'beauty', label: '뷰티' },
   { id: 'living', label: '리빙' },
-  { id: 'fashion', label: '패션' },
-  { id: 'digital', label: '디지털' },
-  { id: 'lifestyle', label: '생활' },
+  { id: 'health', label: '건강' },
 ]

@@ -56,30 +56,8 @@ export default function WholesaleLoginPage() {
   const alreadyIn = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
   useEffect(() => { if (alreadyIn) navigate('/wholesale', { replace: true }) }, [alreadyIn, navigate])
 
-  // 🛡️ 2026-06-18 (인증 audit 대칭화): 카카오로 돌아온 기존 판매사면 become-distributor 빈-body probe 로
-  //   seller_token 자동 교환 (SupplierLoginPage 의 /supplier/become 자동 probe 와 대칭 — 카카오 콜백 토큰
-  //   누락 엣지 보강). 신규/미승인은 조용히 폼 유지. requireAuth 는 세션 쿠키(credentials:include)로 인증.
-  useEffect(() => {
-    if (alreadyIn || typeof window === 'undefined' || !localStorage.getItem('user_id')) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('/api/wholesale/become-distributor', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: '{}' })
-        const data = await res.json().catch(() => ({})) as { success?: boolean; status?: string; message?: string; data?: SellerSessionData }
-        if (cancelled) return
-        if (data.success && data.status === 'approved' && data.data?.accessToken) {
-          applySellerSession(data.data)
-          toast.success('판매사로 로그인되었습니다')
-          window.location.assign('/wholesale') // B: 구매자 → 카탈로그 홈
-        } else if (data.success && (data.status === 'pending' || data.status === 'needs_business_info')) {
-          toast.info(data.message || '판매사 승인 대기 중입니다 — 승인 후 이용할 수 있어요')
-        }
-        // needs_registration → 조용히(로그인 폼 유지; 가입은 사용자가 선택)
-      } catch { /* silent — 로그인 폼 유지 */ }
-    })()
-    return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // 🏭 2026-06-29 (대표 결정 — 도매몰 카카오 로그인 제거): 판매사 로그인은 이메일/비밀번호 전용.
+  //   기존 카카오 자동 probe(become-distributor)·카카오 버튼 모두 삭제. (가입/입점은 /wholesale/join.)
 
   if (alreadyIn) return null // 리다이렉트 중 로그인폼 깜빡임 방지
 
@@ -185,18 +163,6 @@ export default function WholesaleLoginPage() {
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>로그인 <ArrowRight className="w-5 h-5" /></>}
           </button>
         </form>
-
-        {/* 🏭 2026-06-04 카카오 통합 로그인 — 카카오 계정으로 유통회원 로그인/시작.
-            기존 판매사(이메일 연결)면 자동 로그인, 신규면 /wholesale 에서 1탭 전환. */}
-        <div className="relative my-4 flex items-center gap-3">
-          <div className="flex-1 h-px" style={{ background: '#ECEEF1' }} />
-          <span className="text-[12px]" style={{ color: '#8A929E' }}>또는</span>
-          <div className="flex-1 h-px" style={{ background: '#ECEEF1' }} />
-        </div>
-        <button type="button" onClick={() => { window.location.href = '/auth/kakao/start?redirect=/wholesale&intent=user' }}
-          className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-xl font-bold text-[15px]" style={{ background: '#FEE500', color: '#3C1E1E' }}>
-          카카오로 계속하기
-        </button>
 
         {/* 👥 직원(서브계정) 로그인 입구 — 회사 owner 와 분리. */}
         <div className="mt-4 text-center text-sm text-[#8A929E]">
