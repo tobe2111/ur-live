@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-29 — 도매몰 판매사 주문내역 상세화 (대표 신고 "주문내역이 너무 자세하게 안나와있는데")
+**도매몰 전용**(`/wholesale/dashboard?tab=orders`) — 기존 카드가 주문#·등급가·합계만 표시 → 라인아이템/배송지 추가.
+- **`wholesale.routes.ts` GET /orders**: 주문별 라인아이템 일괄 첨부(idx_wholesale_items_order IN 조회) — 상품명/수량/단가/소계 + suppliers LEFT JOIN 제조사명(조인 실패 시 아이템만 graceful) + ship_to_* 배송지 컬럼. `/orders/:id` 상세는 이미 아이템 반환했으나 목록은 미반환이던 갭.
+- **`WholesaleOrdersPage.tsx` 카드**: 라인아이템 목록(상품·제조사·단가×수량·소계) + 금액분해(상품합계/배송비) + 배송지 블록 추가. 기존 상태뱃지/택배추적/클레임/메모 스레드 불변.
+- **서비스 분리 준수**: 도매(`/api/wholesale`·`src/features/supply`·`Wholesale*`)만 변경, 소비자 무관. 검증: tsc 0·sql-bind/column 0·crossrole 0·theme 0.
+
 ## ✅ 2026-06-26 — 결제 셀프취소 머니버그 3종 fix (대표 "지금 진행")
 감사에서 나온 latent 3건을 `refundOrderFully` SSOT 라우팅으로 근본수정 (`src/worker/routes/order.routes.ts` PAID/DONE 전액취소).
 - **B(HIGH)**: 딜 전액결제(toss_key 없음) 셀프취소 422 차단 → refundOrderFully isDeal skip + 딜 환급 → 취소 가능. **C(HIGH)**: 혼합결제 deal_used 미복원 → step 3b 복원. **D(MED)**: 쿠폰/referral_bonus/affiliate/공급/에이전시/영입자 미역전 → 전부 대칭 역전. + CAS 멱등(동시 이중취소 1회만).

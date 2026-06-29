@@ -1668,11 +1668,43 @@ app.get('/orders', async (c) => {
              COALESCE(subtotal, 0) AS subtotal,
              COALESCE(shipping_total, 0) AS shipping_total,
              (COALESCE(subtotal, 0) + COALESCE(shipping_total, 0)) AS grand_total,
-             courier, tracking_number, created_at, paid_at, shipped_at
+             courier, tracking_number, created_at, paid_at, shipped_at,
+             ship_to_name, ship_to_phone, ship_to_address, ship_to_postal
       FROM wholesale_orders WHERE distributor_seller_id = ?
       ORDER BY created_at DESC LIMIT 100
     `).bind(sellerId).all()
-    return c.json({ success: true, orders: results ?? [] })
+    const orders = (results ?? []) as Array<Record<string, unknown> & { id: number; items?: unknown[] }>
+    // 🏭 2026-06-29 (대표 신고 — 주문내역 상세 부족): 주문별 라인아이템(상품/수량/단가/제조사) 일괄 첨부.
+    //   idx_wholesale_items_order 로 IN 조회 효율적. suppliers LEFT JOIN 으로 제조사명(조인 실패 시 아이템만).
+    if (orders.length > 0) {
+      const ids = orders.map((o) => o.id)
+      const ph = ids.map(() => '?').join(',')
+      let itemRows: Array<{ wholesale_order_id: number }> = []
+      try {
+        const r = await DB.prepare(
+          `SELECT i.wholesale_order_id, i.product_id, i.name, i.qty, i.distributor_unit_price, i.line_total,
+                  s.business_name AS supplier_name
+             FROM wholesale_order_items i LEFT JOIN suppliers s ON s.id = i.supplier_id
+            WHERE i.wholesale_order_id IN (${ph})`
+        ).bind(...ids).all<{ wholesale_order_id: number }>()
+        itemRows = r.results ?? []
+      } catch {
+        // suppliers 조인 실패(테이블 부재 등) → 제조사명 없이 아이템만(graceful).
+        const r = await DB.prepare(
+          `SELECT i.wholesale_order_id, i.product_id, i.name, i.qty, i.distributor_unit_price, i.line_total
+             FROM wholesale_order_items i WHERE i.wholesale_order_id IN (${ph})`
+        ).bind(...ids).all<{ wholesale_order_id: number }>().catch(() => ({ results: [] as Array<{ wholesale_order_id: number }> }))
+        itemRows = r.results ?? []
+      }
+      const byOrder = new Map<number, unknown[]>()
+      for (const it of itemRows) {
+        const arr = byOrder.get(it.wholesale_order_id) ?? []
+        arr.push(it)
+        byOrder.set(it.wholesale_order_id, arr)
+      }
+      for (const o of orders) o.items = byOrder.get(o.id) ?? []
+    }
+    return c.json({ success: true, orders })
   } catch (err) {
     return safeError(c, err, '주문 조회 중 오류가 발생했습니다', '[wholesale]')
   }
