@@ -76,8 +76,11 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
       })
   }, [navigate])
 
-  const [search, setSearch] = useState('')
-  const [committedSearch, setCommittedSearch] = useState('')
+  // 🏭 2026-06-29 (공통 ShopBar 연동): 서브페이지의 공통 검색바는 `/wholesale?search=` 로 이동시키므로
+  //   카탈로그가 마운트 시 URL ?search= 를 초기 검색어로 흡수해야 그 검색이 실제로 적용된다.
+  const initialSearch = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('search') || '').trim() : ''
+  const [search, setSearch] = useState(initialSearch)
+  const [committedSearch, setCommittedSearch] = useState(initialSearch)
   const [cat, setCat] = useState('all')
   // 🏬 컬렉션 모드 초기 정렬: 신상품=newest, 마진=discount, 그 외=popular(베스트).
   const [sort, setSort] = useState<CatalogSort>(mode === 'new' ? 'newest' : mode === 'margin' ? 'discount' : 'popular')
