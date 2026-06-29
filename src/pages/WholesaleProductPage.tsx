@@ -14,8 +14,6 @@ import { useWholesaleCart } from './wholesale/useWholesaleCart'
 //   (floating FAB 없이 위젯만 직접 mount — 상품 상세는 인라인 "제조사에 문의" 버튼이 트리거)
 const WholesaleChatWidget = lazy(() => import('@/pages/wholesale/WholesaleChatWidget'))
 // 🛒 2026-06-29 (대표 요청): 상품 상세의 스마트스토어/쿠팡 등록 버튼·모달 제거.
-// 📊 시장 신호 카드 — lazy (로그인 판매사만 마운트, 키 미설정이면 자체 숨김).
-const MarketSignalCard = lazy(() => import('@/pages/wholesale/MarketSignalCard'))
 
 // 🏭 2026-06-04 유통스타트 도매 상품 상세 — Claude Design 시안(TDS/Toss 라이트) 구현.
 //   등급 공급가 앵커 + 권장가 대비 할인%/마진 + 수량 구간별 단가표(volume tier) + 하단 고정 CTA.
@@ -361,12 +359,7 @@ export default function WholesaleProductPage() {
             )
           })()}
 
-          {/* 📊 2026-06-12 (감사 개선 ⑤): 시장 신호 — 시중 최저가 vs 내 공급가, 수요/시즌. 사입 확신 보조. */}
-          {!locked && token && (
-            <Suspense fallback={null}>
-              <MarketSignalCard name={item.name} category={item.category} distributorPrice={item.distributor_price} />
-            </Suspense>
-          )}
+          {/* 📊 2026-06-29 (대표 요청): 시장 신호(네이버쇼핑 최저가 참고) 제거 — 정확도 낮고 불필요. */}
 
           {/* 💬 제조사에 문의 — 로그인 판매사 + 연결된 제조사 있는 상품만(데모/관리자 상품은 숨김). */}
           {!locked && token && item.inquirable !== false && (
