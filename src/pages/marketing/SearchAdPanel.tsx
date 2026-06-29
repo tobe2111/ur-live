@@ -355,7 +355,7 @@ export default function SearchAdPanel() {
                             <span className="shrink-0 text-[11px] text-gray-400 dark:text-gray-500">그룹입찰 ₩{formatNumber(g.bidAmt)}</span>
                           </button>
                           {openGroup === g.id && (
-                            <div className="px-2.5 pb-2">
+                            <div className="px-2.5 pb-2 overflow-x-auto">
                               {(keywords[g.id] || []).length === 0 ? (
                                 <p className="text-[11px] text-gray-400 dark:text-gray-500 py-1">키워드 없음</p>
                               ) : (
