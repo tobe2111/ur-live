@@ -9,6 +9,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
+import { clearSessionCookie } from '@/worker/utils/session';
 import {
   deleteUserAccount,
   checkReregistrationRestriction,
@@ -133,6 +134,15 @@ accountRoutes.delete('/delete', requireAuth(), async (c) => {
 
     // 계정 삭제 처리
     const result = await deleteUserAccount({ userId, reason }, c.env.DB);
+
+    // 🔑 2026-06-29 (로그아웃 근본수정 — 탈퇴 시 세션 무효화): 소비자 탈퇴는 row 를 soft-delete/익명화
+    //   하지만 이미 발급된 httpOnly ur_session JWT 는 만료 전까지 유효 → 탈퇴 직후에도 그 쿠키로 재인증되는
+    //   잔존 소비자 세션 위험(클라는 httpOnly 쿠키를 JS 로 못 지움). 200 응답에서 *삭제된 신원*(소비자) 의
+    //   세션쿠키만 Max-Age=0 으로 무효화. 역할 세션(seller/admin/agency/제조사 — ud_* / ur_*_session)은
+    //   별 신원이라 건드리지 않음(같은 기기의 다른 역할 로그인을 부당하게 끊지 않음).
+    try {
+      c.header('Set-Cookie', clearSessionCookie('user'), { append: true });
+    } catch { /* 헤더 set 실패는 탈퇴 결과에 영향 없음 */ }
 
     return c.json(result, 200);
   } catch (error) {

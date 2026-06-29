@@ -85,6 +85,16 @@ export default function KakaoCallbackPage() {
         localStorage.setItem('session_login', 'true')
         if (user.email) localStorage.setItem('user_email', user.email)
         if (user.profile_image) localStorage.setItem('user_profile_image', user.profile_image)
+        // 🔑 2026-06-29 (핀/큐레이터 인증 뷰 동기화): generic useAuthStore('auth-storage') 에도 로그인 반영.
+        //   핀(usePinAction)·PinButton·App.tsx 자동핀이 이 스토어의 isAuthenticated/user 를 읽는데,
+        //   카카오 콜백이 이를 안 세팅하면 "로그인했는데 핀 UI 는 로그아웃" 분기 발생.
+        try {
+          const { useAuthStore } = await import('@/client/stores/auth.store')
+          useAuthStore.getState().setAuth(
+            { id: String(user.id), email: user.email || '', name: user.name || '', role: 'user' },
+            '', '',
+          )
+        } catch { /* 비결정적 — 핀은 다음 마운트에서 보정 */ }
         // 🛡️ 2026-06-20 (A 방식): 이 POST 흐름은 same-origin XHR 200 응답에서 ur_session 쿠키를 set →
         //   iOS 에서도 영속(localStorage Bearer 불필요). 세션은 httpOnly 쿠키로만 인증.
 

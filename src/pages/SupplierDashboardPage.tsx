@@ -152,7 +152,11 @@ export default function SupplierDashboardPage() {
   useEffect(() => { if (tab === 'orders') loadOrders() }, [tab, loadOrders])
   useEffect(() => { if (tab === 'overview') loadPendingShipCount() }, [tab, loadPendingShipCount])
 
-  const logout = () => {
+  const logout = async () => {
+    // 🔑 2026-06-29 (전수조사 GAP2): 제조사는 Bearer(supplier_token) 전용이지만 ud_supplier_token(httpOnly SSR
+    //   쿠키)이 남으면 GET/SSR 재인증 → 서버에서 ud_* 청소(타역할 ur_* 세션은 보존). await 후 이동.
+    const { clearServerSessionCookies } = await import('@/utils/auth')
+    await clearServerSessionCookies('supplier')
     clearSupplierSession()
     navigate('/supplier/login', { replace: true })
   }

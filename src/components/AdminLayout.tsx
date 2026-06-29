@@ -358,6 +358,9 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   async function logout() {
     // 🔑 2026-06-29: 서버 httpOnly admin 세션쿠키 삭제를 await 한 뒤 이동 — 없으면 ur_admin_session 잔존 재인증.
     await authLogout('admin')
+    // 🔑 2026-06-29 (PII 잔존 제거): RQ 캐시에 남은 어드민 데이터(회원/주문/정산 등)를 비움 —
+    //   logoutSeller 와 대칭. 안 지우면 다음 로그인/방문자가 이전 세션 캐시를 잠깐 봄.
+    try { const { getQueryClient } = await import('@/lib/react-query'); getQueryClient().clear() } catch { /* best-effort */ }
     navigate('/admin/login')
   }
 

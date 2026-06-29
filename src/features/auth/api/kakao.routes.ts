@@ -865,11 +865,21 @@ kakaoRoutes.post('/callback', cors(), rateLimit({ action: 'kakao_callback', max:
     // 🔐 2026-06-11 [UNLOCK] SSR Phase 2 D단계 (사용자 승인 "모두 진행" — docs/SSR_PHASE2_AUTH.md §3.2-2):
     //   beta(SSR) 개인화용 httpOnly ud_* 쿠키 **추가 발급만** — 기존 transfer cookie/localStorage
     //   이전 흐름·OAuth state/safeRedirect 로직 전부 불변 (additive Set-Cookie).
+    // 🛡️ 2026-06-29 (계정전환 leak 방어 — 전수조사 GAP1): GET /sync/callback(621-623)처럼 POST(SPA) 경로도
+    //   이전 계정의 역할 세션쿠키(ur_seller/admin/agency_session)를 청소한 뒤 새 계정 linked role 만 재발급.
+    //   안 하면 다른 카카오 계정으로 전환해도 이전 계정의 httpOnly 역할 쿠키가 남아 GET/SSR 재인증(=전환했는데 옛 계정).
+    c.header('Set-Cookie', clearSessionCookie('seller'), { append: true })
+    c.header('Set-Cookie', clearSessionCookie('admin'), { append: true })
+    c.header('Set-Cookie', clearSessionCookie('agency'), { append: true })
     try {
-      const { authTokenSetCookie } = await import('../../../worker/utils/auth-cookies')
+      const { authTokenSetCookie, authTokenClearCookie } = await import('../../../worker/utils/auth-cookies')
       const hostD = new URL(c.req.url).hostname
-      if (linkedRoles.seller_token) c.header('Set-Cookie', authTokenSetCookie('ud_seller_token', linkedRoles.seller_token, hostD), { append: true })
-      if (linkedRoles.agency_token) c.header('Set-Cookie', authTokenSetCookie('ud_agency_token', linkedRoles.agency_token, hostD), { append: true })
+      // admin/supplier ud_* 는 이 흐름에서 재발급 안 함 → 항상 청소(전환 시 이전 계정 잔존 차단).
+      c.header('Set-Cookie', authTokenClearCookie('ud_admin_token', hostD), { append: true })
+      c.header('Set-Cookie', authTokenClearCookie('ud_supplier_token', hostD), { append: true })
+      // seller/agency ud_* 는 새 계정에 linked 면 재발급(set 이 뒤 → 우선), 아니면 청소.
+      c.header('Set-Cookie', linkedRoles.seller_token ? authTokenSetCookie('ud_seller_token', linkedRoles.seller_token, hostD) : authTokenClearCookie('ud_seller_token', hostD), { append: true })
+      c.header('Set-Cookie', linkedRoles.agency_token ? authTokenSetCookie('ud_agency_token', linkedRoles.agency_token, hostD) : authTokenClearCookie('ud_agency_token', hostD), { append: true })
     } catch { /* dual-write — 실패해도 로그인 정상 */ }
 
     const responseBody = {

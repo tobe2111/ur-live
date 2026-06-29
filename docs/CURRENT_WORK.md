@@ -12,6 +12,19 @@
 - **`WholesaleOrdersPage.tsx` 카드**: 라인아이템 목록(상품·제조사·단가×수량·소계) + 금액분해(상품합계/배송비) + 배송지 블록 추가. 기존 상태뱃지/택배추적/클레임/메모 스레드 불변.
 - **서비스 분리 준수**: 도매(`/api/wholesale`·`src/features/supply`·`Wholesale*`)만 변경, 소비자 무관. 검증: tsc 0·sql-bind/column 0·crossrole 0·theme 0.
 
+## ✅ 2026-06-29 — 로그아웃/세션 lifecycle 전수조사 + 근본수정 (대표 "로그아웃이 안돼 / 교과서적으로 / 가장 이상적인 형태 — 전수조사")
+**배경**: "로그아웃해도 로그인 상태" 신고 → 근본원인은 **httpOnly 세션쿠키(`ur_session`/`ur_*_session`)를 클라가 JS 로 못 지우는데 로그아웃이 서버 삭제를 안 함**. 1차 수정(앞 커밋 `a0aad0d`/`b6a863d`) 후 적대적 에이전트 2기로 lifecycle 전수조사 → 잔여 갭 6종 근본수정.
+- **1차 (커밋됨)**: `/api/auth/logout-cookies` 가 ur_* 세션쿠키를 type-scoped 삭제(기존 ud_* 만 지움) · `clearServerSessionCookies(type?)` (await 가능, keepalive) · 소비자/셀러/어드민/에이전시/도매 로그아웃 핸들러 전부 **await 후 navigate**(fire-and-forget 레이스 제거) · 실제 소비자 경로(`login-flow.service.logout`)에 await 배선.
+- **GAP1 ✅** `kakao.routes.ts` POST `/callback`(SPA) 계정전환 역할쿠키 청소 미러 — GET 경로(2026-05-01부터)와 비대칭이던 것 통일(잠금파일, [UNLOCK_LOADING] audit log 등재).
+- **GAP2 ✅** 제조사(supplier) ud_supplier_token 잔존 — `/logout-cookies` supplier 분기 + `clearServerSessionCookies('supplier')` + `SupplierDashboardPage` 로그아웃 async/await.
+- **GAP4 ✅** 계정탈퇴(`DELETE /api/account/delete`)가 Set-Cookie 무발급 → soft-delete row + 30일 ur_session JWT 잔존 재인증 → 200 응답에 `clearSessionCookie('user')`(삭제된 소비자 신원만, 역할세션 보존).
+- **GAP5 ✅** AdminLayout/AgencyLayout 로그아웃이 RQ 캐시 미정리(PII 잔존) → `getQueryClient().clear()` 추가(logoutSeller 와 대칭).
+- **V-1 ✅** 카카오 소비자 로그인이 generic `useAuthStore`('auth-storage', 핀/큐레이터 인증뷰) 미설정 → "로그인했는데 핀 UI 는 로그아웃" → `KakaoCallbackPage`(POST) + `auth-callback-bootstrap`(서버-redirect) 양 경로에 `setAuth` 배선.
+- **V-3 ✅** 로그아웃이 persist `auth-storage` 미정리 → 새로고침해도 핀 UI 로그인됨 표시 → `clearAuthData`(user) + 전체 `logout()` 에 `useAuthStore.clearAuth()`.
+- **V-5 ✅** `isLoggedIn()`(async)이 `user_type` 게이트에 묶여 듀얼로그인 시 소비자 미인정 → `isLoggedInSync()`(토큰존재 기반) 재사용으로 RouteGuards 와 일관.
+- **문서화 잔여(미수정)**: GAP3(비번 변경 시 세션 epoch 무효화 — 컬럼 신설 필요) · V-2(이메일 로그인이 ur_session 미발급 — 구조적 비대칭) · V-4(establish 실패 시 half-logged-in 창). 셋 다 별도 작업으로 분리.
+- 검증: tsc 0 · 단위 **2356 pass** · build(client+ssr+prerender+worker) 0 · audit-gate **31/31 GREEN**(auth-cookie iOS 영속 패턴 포함) · auth-cookie 가드 0. ⚠️ 배포 후 staging: 소비자/셀러/어드민/에이전시/제조사 각 로그아웃 1회 + 카카오 계정전환 1회 + 핀(로그인→핀→로그아웃→핀UI 비로그인) 1회.
+
 ## ✅ 2026-06-27 — 도매 B2B 주문 상태머신 + 전 플로우 정합 (대표 "A+1,2,3,4 / 빠진 것 철저히 분석")
 **배경**: 도매(유통스타트) B2B 주문이 결제(예치금 즉시차감 PAID) 후 제조사 확인·발송·판매사 구매확정까지 가는 라이프사이클이 느슨했음(상태 free-form TEXT, 고아 DONE/CANCELLED, 정산이 발송 여부 무관하게 시간만으로 성숙). 5단계로 정비 + 전수 정합.
 - **Phase A ✅ 정산 발송게이트** (`a9d9599`): `matureSupplierSettlements` 가 도매 정산(`source='wholesale'`)을 **라인 `line_status='SHIPPED'` 일 때만** 성숙(SHIPPED_GATE EXISTS). 소비자 정산(`source!='wholesale'`) byte-불변.

@@ -211,6 +211,8 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
     //   기존엔 localStorage 만 지워 쿠키가 남아 재인증됐다(로그아웃해도 로그인). 유저/셀러/어드민 세션은 보존.
     await clearServerSessionCookies('agency')
     ;['agency_token', 'agency_refresh_token', 'agency_id', 'agency_name', 'agency_email'].forEach(k => localStorage.removeItem(k))
+    // 🔑 2026-06-29 (PII 잔존 제거): RQ 캐시에 남은 에이전시 데이터(매장/정산/실적)를 비움 — logoutSeller 와 대칭.
+    try { const { getQueryClient } = await import('@/lib/react-query'); getQueryClient().clear() } catch { /* best-effort */ }
     navigate('/agency/login')
   }
 
