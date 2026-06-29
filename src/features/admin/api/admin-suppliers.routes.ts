@@ -14,6 +14,7 @@ import type { Env } from '@/worker/types/env';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { matureSupplierSettlements, payoutSupplier } from '@/features/supply/api/supply-settlement';
+import { ensureWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta';
 
 export const adminSuppliersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -47,6 +48,7 @@ adminSuppliersRoutes.get('/suppliers', cors(), async (c) => {
   try {
     const { DB } = c.env;
     await ensureSupplierBalances(DB); // 🛡️ fresh DB 500 방지 (위 주석)
+    await ensureWholesaleSignupMeta(DB); // 🏭 가입 메타(취급 카테고리·희망 유통채널) JOIN 안전 보장
     // 조회 시 성숙(환불창 지난 pending → available) 먼저 반영 — best-effort.
     await matureSupplierSettlements(DB).catch(() => 0);
 
@@ -72,13 +74,15 @@ adminSuppliersRoutes.get('/suppliers', cors(), async (c) => {
     //   repair-schema 미적용 isolate 대비 — 새 컬럼 없으면 fallback 쿼리로 재시도(기존 동작 보존).
     //   🏬 멀티-몰: mall_id + mall name join 도 primary 쿼리에만(컬럼 없으면 fallback 으로 강등).
     const baseTail =
-      `      s.bank_name, s.bank_account, s.account_holder, s.commission_rate, s.status, s.created_at, s.business_license_url,
+      `      m2.categories AS signup_categories, m2.channel AS signup_channel,
+              s.bank_name, s.bank_account, s.account_holder, s.commission_rate, s.status, s.created_at, s.business_license_url,
               COALESCE(b.pending_amount, 0)   AS pending_amount,
               COALESCE(b.available_amount, 0) AS available_amount,
               COALESCE(b.paid_amount, 0)      AS paid_amount,
               (SELECT COUNT(*) FROM products p WHERE p.supplier_id = s.id AND p.is_supply_product = 1) AS product_count
          FROM suppliers s
          LEFT JOIN supplier_balances b ON b.supplier_id = s.id
+         LEFT JOIN wholesale_signup_meta m2 ON m2.member_type = 'supplier' AND m2.member_id = s.id
          WHERE ${whereWithMall}
          ORDER BY (s.status = 'pending') DESC, s.created_at DESC
          LIMIT ? OFFSET ?`;
