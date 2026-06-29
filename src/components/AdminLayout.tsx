@@ -339,7 +339,13 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   //   서버 RBAC 가 데이터는 이미 403 차단 — 이건 깨진 화면 대신 안전한 랜딩을 위한 UX 가드.
   useEffect(() => {
     if (adminRole !== 'wholesale') return
-    const allowed = [...roleNavGroups.flatMap((g) => g.items.map((it) => it.path)), ...ALWAYS_ALLOWED_ADMIN_PATHS, ...WHOLESALE_EXTRA_ALLOWED_PATHS]
+    // 🏭 2026-06-29: nav item 의 `also` 경로도 도달 가능 집합에 포함 — `also` 는 "이 항목에 속한 딥링크/통합 서브탭"
+    //   선언(통합현황 큐 카드의 `/admin/distributor-approval` 등)이라 RBAC 도 허용해야 바운스 안 됨. 안 그러면
+    //   판매사 승인 통합 후 큐 카드 클릭이 /admin/wholesale-overview 로 튕김(이 가드가 isActive 와 동일 의미를 갖도록).
+    const allowed = [
+      ...roleNavGroups.flatMap((g) => g.items.flatMap((it) => [it.path, ...(it.also || [])])),
+      ...ALWAYS_ALLOWED_ADMIN_PATHS, ...WHOLESALE_EXTRA_ALLOWED_PATHS,
+    ]
     const ok = allowed.some((p) => location.pathname === p || location.pathname.startsWith(p + '/'))
     if (!ok) navigate('/admin/wholesale-overview', { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
