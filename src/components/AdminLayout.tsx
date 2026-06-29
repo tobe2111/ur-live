@@ -57,7 +57,7 @@ const NAV_GROUPS: NavGroup[] = [
     domain: 'wholesale',
     items: [
       { path: '/admin/wholesale-overview', label: '도매 통합 현황', icon: LayoutDashboard },
-      { path: '/admin/distributor-approval', label: '판매사 승인', icon: UserCheck },
+      // 🏭 2026-06-29 (대표 — 판매사 승인 통합): '판매사 승인' 별도 항목 제거 → '판매사 관리'(아래) 의 '승인' 탭으로 통합.
       { path: '/admin/suppliers',          label: '제조사 관리', icon: Store },
       { path: '/admin/wholesale-import',   label: '상품 일괄 등록', icon: Upload },
       { path: '/admin/wholesale-products', label: '도매 프리미엄관', icon: Crown },
@@ -66,7 +66,7 @@ const NAV_GROUPS: NavGroup[] = [
       // 🗂️ 2026-06-26 (대표 요청): 4개 탭(등급·마진 / 여신·외상 / 제안·세금 / 공급가·채널·OEM)이
       //   한 페이지(AdminDistributorGradesPage)라 좌측 nav 도 1개로 통합. 페이지 내부 탭으로 4영역 이동.
       //   딥링크 라우트(/admin/distributor-credit 등)는 그대로 유지 — 페이지 탭이 사용.
-      { path: '/admin/distributor-grades', label: '판매사 관리', icon: Layers },
+      { path: '/admin/distributor-grades', label: '판매사 관리', icon: Layers, also: ['/admin/distributor-approval', '/admin/distributor-credit', '/admin/distributor-tax', '/admin/distributor-supply'] },
       { path: '/admin/wholesale-malls',    label: '도매 몰 관리',  icon: Building2 },
       { path: '/admin/wholesale-activity', label: '처리 이력 (누가 처리?)', icon: History },
     ],
