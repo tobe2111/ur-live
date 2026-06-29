@@ -18,7 +18,7 @@ import { requireSupplier } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { swallow } from '@/worker/utils/swallow';
-import { setSupplyMeta } from '@/worker/utils/product-supply-meta';
+import { setSupplyMeta, getSupplyMeta } from '@/worker/utils/product-supply-meta';
 import { ensureSupplyVisibilitySchema, normalizeVisibility, recordSupplyPriceChange } from './supply-visibility';
 import { buildCsv, csvResponse, parseCsv } from './supply-csv';
 import { buildXlsx, xlsxResponse, type XlsxCell } from './xlsx';
@@ -250,10 +250,26 @@ supplierDashboardRoutes.get('/products', async (c) => {
       `SELECT COUNT(*) AS count FROM products WHERE ${where}`
     ).bind(...params).first<{ count: number }>();
 
+    // 🏭 2026-06-29: 상품코드 + 상품별 배송비(meta) 합치기 — products 컬럼 아님(예산제, product_supply_meta).
+    //   편집 폼 프리필 + 제조사 목록 노출용. fail-soft(메타 조회 실패해도 목록은 반환).
+    const items = (rows.results ?? []) as Array<Record<string, unknown> & { id: number }>;
+    if (items.length) {
+      const metaMap = await getSupplyMeta(DB, items.map((r) => Number(r.id))).catch(() => null);
+      if (metaMap) {
+        for (const r of items) {
+          const m = metaMap.get(Number(r.id));
+          r.product_code = m?.product_code || null;
+          if (m?.wholesale_shipping_fee != null && m.wholesale_shipping_fee !== '') {
+            r.shipping_fee = Number(m.wholesale_shipping_fee);
+          }
+        }
+      }
+    }
+
     return c.json({
       success: true,
       data: {
-        items: rows.results ?? [],
+        items,
         total: total?.count ?? 0,
         page, limit,
         has_more: (total?.count ?? 0) > offset + limit,
@@ -275,7 +291,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
       stock?: number; image_url?: string; category?: string;
       supply_visibility?: string; barcode?: string; is_brand_product?: boolean; brand_name?: string; brand_logo_url?: string; min_order_qty?: number;
       pack_size?: number; order_multiple?: number;
-      lowest_price_url?: string;
+      lowest_price_url?: string; product_code?: string;
       // 🖼️ 2026-06-12: 상세페이지 이미지 — 배열 또는 쉼표 구분 문자열 (썸네일 image_url 과 분리).
       detail_images?: string[] | string;
     };
@@ -314,6 +330,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
     //   seller_id=NULL (소스 카탈로그 상품 — 셀러가 register 로 자기 스토어에 복제).
     const visibility = normalizeVisibility(body.supply_visibility, true);
     const barcode = (body.barcode || '').trim().slice(0, 64) || null;
+    // 🏭 2026-06-29 (대표): 상품코드 — 영숫자 대문자만(접두어는 클라가 카테고리로 붙임). product_supply_meta 저장.
+    const productCode = String(body.product_code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 18) || null;
     const isBrand = body.is_brand_product ? 1 : 0;
     // 🏷️ 2026-06-17 (대표 요청): 브랜드명 상시 입력 — is_brand_product 체크 무관하게 저장(브랜드 전시관 노출용).
     const brandName = (body.brand_name || '').trim().slice(0, 120) || null;
@@ -365,11 +383,13 @@ supplierDashboardRoutes.post('/products', async (c) => {
     ).run();
 
     // 🚚 2026-06-15 (대표 요청): 상품별 배송비 — product_supply_meta(products 컬럼 미증식). 0=무료, 미입력=제조사 정책 폴백.
+    // 🏭 2026-06-29: 상품코드(product_code)도 같은 메타에 저장.
     {
+      const meta: Record<string, string | number> = {};
       const shipRaw = (body as { shipping_fee?: unknown }).shipping_fee;
-      if (shipRaw != null && shipRaw !== '' && Number.isFinite(Number(shipRaw))) {
-        await setSupplyMeta(DB, Number(result.meta.last_row_id), { wholesale_shipping_fee: Math.max(0, Math.floor(Number(shipRaw))) }).catch(swallow('supplier-dashboard:ship-meta'));
-      }
+      if (shipRaw != null && shipRaw !== '' && Number.isFinite(Number(shipRaw))) meta.wholesale_shipping_fee = Math.max(0, Math.floor(Number(shipRaw)));
+      if (productCode) meta.product_code = productCode;
+      if (Object.keys(meta).length) await setSupplyMeta(DB, Number(result.meta.last_row_id), meta).catch(swallow('supplier-dashboard:meta'));
     }
 
     // 어드민 승인 큐 알림.
@@ -608,12 +628,16 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       name?: string; description?: string; supply_price?: number; suggested_retail_price?: number;
       stock?: number; image_url?: string; category?: string;
       supply_visibility?: string; barcode?: string; is_brand_product?: boolean; brand_name?: string; brand_logo_url?: string; lowest_price_url?: string;
-      min_order_qty?: number; pack_size?: number; order_multiple?: number; shipping_fee?: number;
+      min_order_qty?: number; pack_size?: number; order_multiple?: number; shipping_fee?: number; product_code?: string;
     };
     const body = await c.req.json<EditBody>().catch(() => ({} as EditBody));
     // 🚚 2026-06-16: 상품별 배송비 수정 — product_supply_meta(wholesale_shipping_fee). 컬럼 아님(예산제) → sets 와 별개.
     const shipFee = (body.shipping_fee != null && Number.isFinite(Number(body.shipping_fee)))
       ? Math.max(0, Math.floor(Number(body.shipping_fee)))
+      : undefined;
+    // 🏭 2026-06-29: 상품코드 수정 — product_supply_meta(product_code). 영숫자 대문자(≤18). 빈 문자열이면 해제(''), 미제공이면 무변경(undefined).
+    const productCode = (body.product_code != null)
+      ? String(body.product_code).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 18)
       : undefined;
     await ensureSupplyVisibilitySchema(DB);
     await ensureQtyConstraintSchema(DB); // BIZ-8: pack_size / order_multiple 컬럼 보장(UPDATE 전).
@@ -666,16 +690,21 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       sets.push('price = ?'); params.push(Math.floor(r));
     }
 
-    if (sets.length === 0 && shipFee === undefined) return c.json({ success: false, error: '변경할 내용이 없습니다' }, 400);
+    if (sets.length === 0 && shipFee === undefined && productCode === undefined) return c.json({ success: false, error: '변경할 내용이 없습니다' }, 400);
 
     // 거부 상태였으면 재제출 → 다시 pending.
     sets.push("supply_approval_status = 'pending'", 'is_active = 0', "updated_at = datetime('now')");
     // 🛡️ 2026-06-25 (전수조사 IDOR 방어심화): UPDATE 에도 supplier_id 재스코프 — peer 핸들러(price-change/bulk)와 통일, TOCTOU 차단.
     await DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ? AND supplier_id = ?`).bind(...params, pid, sid).run();
 
-    // 🚚 상품별 배송비(meta) — 컬럼이 아니라 product_supply_meta. 제공 시에만 갱신(fail-soft).
-    if (shipFee !== undefined) {
-      await setSupplyMeta(DB, Number(pid), { wholesale_shipping_fee: shipFee }).catch(swallow('supplier-dashboard:patch-ship-meta'));
+    // 🚚 상품별 배송비(meta) + 🏭 상품코드(meta) — 컬럼이 아니라 product_supply_meta. 제공 시에만 갱신(fail-soft).
+    {
+      const metaPatch: Record<string, string | number> = {};
+      if (shipFee !== undefined) metaPatch.wholesale_shipping_fee = shipFee;
+      if (productCode !== undefined) metaPatch.product_code = productCode; // 빈 문자열이면 해제.
+      if (Object.keys(metaPatch).length) {
+        await setSupplyMeta(DB, Number(pid), metaPatch).catch(swallow('supplier-dashboard:patch-meta'));
+      }
     }
 
     // 🛡️ 스펙: 공급가 수정 시 수정 전 금액 기록 (관리자만 확인).

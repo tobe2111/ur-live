@@ -3,6 +3,7 @@ import { X, FileSpreadsheet, Download, Upload, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { supplierApi } from '@/lib/supplier-api'
 import { WHOLESALE_CATEGORIES } from '../wholesale/wholesale-theme'
+import { wholesaleCodePrefix, buildWholesaleProductCode, wholesaleCodeSuffix } from '@/shared/wholesale-product-code'
 import SupplyChannelGuide from './SupplyChannelGuide'
 import NaverPriceCheck from './NaverPriceCheck'
 import DemandSignal from './DemandSignal'
@@ -20,11 +21,12 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
     supply_price: String(editItem.supply_price ?? ''), suggested_retail_price: String(editItem.retail_price ?? ''),
     stock: String(editItem.stock ?? ''), min_order_qty: editItem.min_order_qty ? String(editItem.min_order_qty) : '',
     pack_size: editItem.pack_size ? String(editItem.pack_size) : '', order_multiple: editItem.order_multiple ? String(editItem.order_multiple) : '',
-    shipping_fee: '', category: editItem.category || 'lifestyle', image_url: editItem.image_url || '', detail_images: '',
+    shipping_fee: '', category: editItem.category || 'food', image_url: editItem.image_url || '', detail_images: '',
     supply_visibility: editItem.supply_visibility || 'ALL', barcode: editItem.barcode || '',
+    product_code: wholesaleCodeSuffix((editItem as { product_code?: string }).product_code, editItem.category),
     is_brand_product: !!editItem.is_brand_product, brand_name: editItem.brand_name || '', brand_logo_url: editItem.brand_logo_url || '',
     lowest_price_url: editItem.lowest_price_url || '',
-  } : { name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', shipping_fee: '', category: 'lifestyle', image_url: '', detail_images: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '' })
+  } : { name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', shipping_fee: '', category: 'food', image_url: '', detail_images: '', supply_visibility: 'ALL', barcode: '', product_code: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   // 📥 2026-06-12 (사용자 요청): 등록 진입점에서 대량등록 옵션 선택 가능 — CatalogTab 과 동일 흐름 공유.
@@ -67,6 +69,8 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
         image_url: form.image_url.trim() || undefined,
         supply_visibility: form.supply_visibility,
         barcode: form.barcode.trim() || undefined,
+        // 🏭 2026-06-29 (대표): 상품코드 = 카테고리 접두어(FD/LV/HT) + 제조사 입력. 빈 입력이면 미전송(미지정).
+        product_code: buildWholesaleProductCode(form.category, form.product_code) || undefined,
         is_brand_product: form.is_brand_product,
         brand_name: form.brand_name.trim() || undefined,
         brand_logo_url: form.is_brand_product ? (form.brand_logo_url.trim() || undefined) : undefined,
@@ -169,6 +173,21 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
                 ))}
               </select>
             </div>
+          </div>
+          {/* 🏭 2026-06-29 (대표): 상품코드 — 카테고리 접두어(식품 FD · 리빙 LV · 건강 HT) 고정 + 제조사 입력. */}
+          <div>
+            <label className={labelCls}>{t('supplier.fieldProductCode', { defaultValue: '상품코드' })} <span className="text-gray-400 font-normal">(선택)</span></label>
+            <div className="flex items-stretch">
+              <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-100 text-sm font-extrabold text-gray-700 tabular-nums">{wholesaleCodePrefix(form.category)}</span>
+              <input disabled={saving} value={form.product_code}
+                onChange={e => setForm(f => ({ ...f, product_code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) }))}
+                className={inputCls + ' rounded-l-none uppercase tracking-wide'} placeholder="000BKJ" maxLength={16} />
+            </div>
+            <p className="text-[11px] text-gray-400 mt-1">
+              {form.product_code
+                ? t('supplier.productCodePreview', { defaultValue: '최종 코드: {{code}}', code: buildWholesaleProductCode(form.category, form.product_code) })
+                : t('supplier.productCodeHint', { defaultValue: '카테고리 접두어 뒤에 영문·숫자로 입력 (예: FD000BKJ)' })}
+            </p>
           </div>
           {/* 🏷️ 2026-06-17 (대표 요청): 브랜드명 상시 노출 — 모든 상품 등록 시 입력 가능(선택). */}
           <div>

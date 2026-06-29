@@ -33,6 +33,8 @@ interface DetailItem {
   supplier_policy?: { min_order_amount?: number; shipping_fee?: number; free_ship_threshold?: number } | null
   // 🚚 2026-06-16: 상품별 배송비(설정 시 정책 배송비보다 우선). null = 미설정 → 정책 배송비 폴백.
   product_shipping_fee?: number | null
+  // 🏭 2026-06-29: 상품코드(카테고리 접두어 FD/LV/HT + 제조사 입력). null = 미입력 → 미노출.
+  product_code?: string | null
   // 🛡️ 2026-06-13 (채팅 fix): 연결된 제조사 있는 상품만 true → '제조사에 문의' 노출.
   inquirable?: boolean
 }
@@ -302,6 +304,14 @@ export default function WholesaleProductPage() {
         <div className="flex-1 min-w-0">
           {catLabel && <span className="inline-flex rounded-full px-2.5 py-1 text-[12px] font-semibold mb-2.5" style={{ background: WT.fill, color: WT.ink2 }}>{catLabel}</span>}
           <h2 className="font-extrabold tracking-[-0.01em] leading-snug text-[21px] lg:text-[26px]" style={{ color: WT.ink }}>{item.name}</h2>
+          {/* 🏭 2026-06-29: 상품코드 — 카테고리 접두어(FD/LV/HT) + 제조사 입력. 미입력이면 미노출. */}
+          {item.product_code && (
+            <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-bold tracking-wide font-mono"
+              style={{ background: WT.fill, color: WT.ink3, border: '1px solid ' + WT.line }}>
+              <span style={{ color: WT.ink4 }}>상품코드</span>
+              <span className="tabular-nums" style={{ color: WT.ink2 }}>{item.product_code}</span>
+            </div>
+          )}
 
           {locked ? (
             // 비로그인: 도매가 숨김 + 로그인/가입 유도
