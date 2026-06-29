@@ -33,11 +33,25 @@ export async function creditAgencyStoreIntroCommission(
     const agencyId = sellerRow?.introduced_by_agency_id
     if (!agencyId) return
 
-    // 2. 에이전시 commission rate
-    const agencyRow = await DB.prepare(
-      `SELECT COALESCE(store_intro_commission_pct, ${DEFAULT_AGENCY_COMMISSION_PCT}) as pct FROM agencies WHERE id = ?`
-    ).bind(agencyId).first<{ pct: number }>().catch(() => null)
-    const pct = Number(agencyRow?.pct ?? DEFAULT_AGENCY_COMMISSION_PCT)
+    // 2. 에이전시 commission rate + 한도(개월) — per-agency 어드민 설정.
+    //    🛡️ 2026-06-27: commission_term_months 컬럼 미존재 환경 대비 try, 미존재 시 율만(무제한=현행).
+    let pct = DEFAULT_AGENCY_COMMISSION_PCT
+    let termMonths = 0  // 0 = 무제한(현행). NULL 컬럼/미설정도 0.
+    try {
+      const agencyRow = await DB.prepare(
+        `SELECT COALESCE(store_intro_commission_pct, ${DEFAULT_AGENCY_COMMISSION_PCT}) as pct,
+                commission_term_months as term FROM agencies WHERE id = ?`
+      ).bind(agencyId).first<{ pct: number; term: number | null }>()
+      pct = Number(agencyRow?.pct ?? DEFAULT_AGENCY_COMMISSION_PCT)
+      const t = Number(agencyRow?.term)
+      termMonths = Number.isFinite(t) && t > 0 ? t : 0
+    } catch {
+      // commission_term_months 컬럼 미존재(repair 전) → 율만 재조회.
+      const r = await DB.prepare(
+        `SELECT COALESCE(store_intro_commission_pct, ${DEFAULT_AGENCY_COMMISSION_PCT}) as pct FROM agencies WHERE id = ?`
+      ).bind(agencyId).first<{ pct: number }>().catch(() => null)
+      pct = Number(r?.pct ?? DEFAULT_AGENCY_COMMISSION_PCT)
+    }
     if (!Number.isFinite(pct) || pct <= 0) return
 
     // 3. 가게 첫 PAID 주문 여부 확인 — signup_bonus 적립.
@@ -60,7 +74,20 @@ export async function creditAgencyStoreIntroCommission(
       ).run().catch(() => { /* duplicate or rare race — fine */ })
     }
 
-    // 4. 매출 commission (매 주문마다 영구).
+    // 3.5 🛡️ 2026-06-27 per-agency 기간 한도: termMonths>0 이고 가게 활성화(첫 결제=signup_bonus)
+    //     이후 한도 개월 초과면 매출 commission skip. termMonths=0(NULL/미설정) → 무제한(현행).
+    //     활성화 기준일 = signup_bonus.created_at(첫 PAID). julianday 로 경과일 robust 계산.
+    if (termMonths > 0 && existingBonus) {
+      const ageRow = await DB.prepare(
+        `SELECT (julianday('now') - julianday(created_at)) AS days
+           FROM agency_store_intro_commissions
+          WHERE store_seller_id = ? AND type = 'signup_bonus' ORDER BY created_at ASC LIMIT 1`
+      ).bind(order.seller_id).first<{ days: number }>().catch(() => null)
+      const days = Number(ageRow?.days) || 0
+      if (days > termMonths * 30.44) return  // 한도 초과 — 매출 commission 적립 안 함
+    }
+
+    // 4. 매출 commission (한도 내 매 주문마다).
     //    order_amount × pct% — 100원 미만이면 round.
     const commission = Math.floor((order.total_amount * pct) / 100)
     if (commission > 0) {

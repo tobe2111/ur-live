@@ -524,6 +524,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 에이전시 본인의 추천 코드 (가게에게 알려줘 가입 시 입력받음).
     { desc: 'agencies.intro_code', sql: "ALTER TABLE agencies ADD COLUMN intro_code TEXT" },
     { desc: 'agencies.store_intro_commission_pct', sql: "ALTER TABLE agencies ADD COLUMN store_intro_commission_pct REAL DEFAULT 2.0" },
+    { desc: 'agencies.commission_term_months', sql: "ALTER TABLE agencies ADD COLUMN commission_term_months INTEGER" },
     // 🛡️ 2026-05-21: 리뷰 대량 생성 (admin-review-generator) 가 INSERT 하는 컬럼.
     //   기존 0132 schema 에 user_name / selected_option / is_generated 없음 → 사용자 신고 "생성 실패".
     //   영구 fix: daily cron 이 ensure → endpoint 자체 ALTER 의존성 제거.
