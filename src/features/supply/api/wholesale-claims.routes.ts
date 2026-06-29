@@ -23,6 +23,7 @@ import { Hono } from 'hono'
 import { sellerIdFrom } from '@/worker/utils/seller-auth'
 import { sanitizeString } from '@/worker/utils/validation'
 import { refundWholesaleSupplierLines, type WholesaleRefundResult } from './wholesale-refund'
+import { holdWholesaleSettlements, reconcileWholesaleHolds } from './wholesale-settlement'
 import { isViewerToken } from './sub-account-gate'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
@@ -97,22 +98,10 @@ async function _doEnsure(DB: D1Database): Promise<void> {
 //   wholesale.routes.ts 와 동일하게 seller_token Bearer JWT 의 seller_id 를 신뢰.
 // sellerIdFrom: 공용 유틸 `@/worker/utils/seller-auth` 로 이동(상단 import) — 중복 정의 제거.
 
-// ── 정산 HOLD 헬퍼 ─────────────────────────────────────────────────────────────
-/** 도매주문의 미지급(wholesale, pending/available) 정산에 held_at 설정 — 분쟁 중 지급 보류. */
-async function holdSettlements(DB: D1Database, wholesaleOrderId: number): Promise<number> {
-  const r = await DB.prepare(
-    "UPDATE supplier_settlements SET held_at = datetime('now') WHERE order_id = ? AND source = 'wholesale' AND status IN ('pending','available') AND held_at IS NULL"
-  ).bind(wholesaleOrderId).run().catch(() => null)
-  return r?.meta?.changes ?? 0
-}
-
-/** 도매주문의 hold 해제 — held_at NULL 로 되돌려 정상 성숙 재개. */
-async function releaseHold(DB: D1Database, wholesaleOrderId: number): Promise<number> {
-  const r = await DB.prepare(
-    "UPDATE supplier_settlements SET held_at = NULL WHERE order_id = ? AND source = 'wholesale' AND held_at IS NOT NULL"
-  ).bind(wholesaleOrderId).run().catch(() => null)
-  return r?.meta?.changes ?? 0
-}
+// ── 정산 HOLD ──────────────────────────────────────────────────────────────────
+//   2026-06-29: hold/해제를 wholesale-settlement SSOT 로 통일 — 생성은 holdWholesaleSettlements(클레임 제조사
+//   스코프), 해제는 reconcileWholesaleHolds(열린 클레임 스코프로 재정렬, 다른 열린 분쟁 hold 보존). 기존 unscoped
+//   local 헬퍼는 다제조사 주문에서 한 클레임 해결이 다른 클레임 hold 까지 푸는 BUG 2B 라 제거.
 
 // ── POST /claims — 판매사 발의 ─────────────────────────────────────────────────
 app.post('/claims', rateLimit({ action: 'wholesale-claim', max: 20, windowSec: 600 }), async (c) => {
@@ -192,7 +181,8 @@ app.post('/claims', rateLimit({ action: 'wholesale-claim', max: 20, windowSec: 6
     if (!claimId) return c.json({ success: false, error: '클레임 접수 중 오류가 발생했습니다' }, 500)
 
     // 정산 HOLD — 분쟁 중 공급자 지급 보류 (성숙 cron 이 held_at IS NOT NULL 스킵).
-    const held = await holdSettlements(DB, wholesaleOrderId)
+    // 클레임 제조사 스코프로만 보류(supplier_id 없으면 order-level=전체). 무관 제조사 정산을 과도하게 묶지 않음.
+    const held = await holdWholesaleSettlements(DB, wholesaleOrderId, supplierId ?? undefined)
 
     // 어드민 검수 큐 알림.
     createDashboardNotification(
@@ -314,8 +304,10 @@ app.patch('/admin/claims/:id', requireAdmin(), rateLimit({ action: 'admin-wholes
 
     // HOLD 정책 — reject/resolve(무환불) 시 해제. approve 는 환불을 집행했으면(refundDone) 해제(스코프 역전 완료 →
     //   나머지 제조사 정산은 정상 성숙 재개, 환불 라인은 음수 클로백으로 net-out). 미집행이면 유지(어드민 수동 집행).
+    //   2026-06-29 (BUG 2B fix): 해제는 reconcile 로 — 이 클레임 종결 후 *아직 열린* 클레임 스코프만 재보류 →
+    //   다제조사 주문에서 다른 열린 분쟁의 hold 가 같이 풀리던 것 차단. approve-무환불(order-level)은 기존처럼 hold 유지.
     let released = 0
-    if (map.clearHold || refundDone) released = await releaseHold(DB, claim.wholesale_order_id)
+    if (map.clearHold || refundDone) released = await reconcileWholesaleHolds(DB, claim.wholesale_order_id)
 
     // 감사 로그 (admin_audit_logs) — admin-security writeAuditLog 직접 호출.
     try {

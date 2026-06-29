@@ -14,7 +14,7 @@
 import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
-import { reverseSupplierOnWholesaleRefund, holdWholesaleSettlements } from './wholesale-settlement'
+import { reverseSupplierOnWholesaleRefund, holdWholesaleSettlements, reconcileWholesaleHolds } from './wholesale-settlement'
 import { ACTIVE_WHOLESALE_STATUSES } from './wholesale-order-status'
 import { ensureOrderTables } from './wholesale-helpers'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn } from './wholesale-deposit-core'
@@ -108,6 +108,9 @@ export async function refundWholesaleSupplierLines(
       if (shippedIds.length) {
         await DB.prepare(`UPDATE wholesale_order_items SET line_status='SHIPPED' WHERE id IN (${shippedIds.map(() => '?').join(',')}) AND line_status='REFUNDED'`).bind(...shippedIds).run().catch(swallow('wholesale-refund:rollback-shipped'))
       }
+      // 🛡️ 2026-06-29 (BUG 2A): 라인이 미환불로 롤백됐으므로 위에서 잡은 hold 를 재정렬해 *열린 클레임이 없으면* 해제
+      //   → 정당(미환불) 라인 정산이 영구 동결되는 것 방지. 클레임 승인 경유(아직 open)면 reconcile 이 hold 유지.
+      await reconcileWholesaleHolds(DB, orderId)
       return { ok: false, error: res.message || '환불 처리에 실패했습니다', code: res.code, httpStatus: 402 }
     }
   }
