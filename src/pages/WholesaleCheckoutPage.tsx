@@ -8,6 +8,7 @@ import { WT, won, comma } from './wholesale/wholesale-theme'
 import { useWholesaleDeposit, useInvalidateWholesaleDeposit } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart, groupBySupplier } from './wholesale/useWholesaleCart'
 import { useIsWholesaleViewer, ViewerNotice } from './wholesale/ViewerGate'
+import BulkOrderPanel from './wholesale-catalog/BulkOrderPanel'
 
 // 🏦 2026-06-09 유통스타트 도매 — 예치금(선불) 결제 체크아웃.
 //   Toss 위젯 흐름을 REPLACE → 주문 확인 + 예치금 결제. (여신/외상 옵션 제거 — 예치금 전용)
@@ -100,6 +101,10 @@ export default function WholesaleCheckoutPage() {
       </header>
 
       <main className="ur-content-narrow px-4 lg:px-8 py-5 space-y-4">
+        {/* 🏭 2026-06-29 (대표 — 대량발주 엑셀을 주문/결제 페이지에서): 양식 다운로드 + 작성본 업로드.
+            제조사별 코드(product_id)로 매칭 → 검토 후 카트 담아 예치금 결제(여러 제조사 자동 분배). */}
+        <BulkOrderPanel token={token} />
+
         {/* 주문 상품 요약 */}
         <section className="rounded-2xl bg-white p-4" style={{ border: '1px solid ' + WT.line }}>
           <p className="text-[12px] mb-2 font-bold" style={{ color: WT.ink3 }}>{t('wholesale.checkout.items', { defaultValue: '주문 상품' })}</p>

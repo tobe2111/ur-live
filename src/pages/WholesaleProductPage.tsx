@@ -177,15 +177,20 @@ export default function WholesaleProductPage() {
     toast.success(`장바구니에 ${comma(qty)}개 담았어요`)
   }
 
-  // 🏭 2026-06-27 (대표 — 중간 확인 단계): '바로 주문' 은 검증만 하고 확인 시트를 연다(즉시 차감 X).
-  //   실제 예치금 차감은 시트의 '주문 확정'(confirmOrder)에서만.
+  // 🏭 2026-06-29 (대표 — '바로 주문'은 주문/결제 페이지로): 인라인 즉시차감 시트 대신, 이 상품을 카트에
+  //   담아 도매 주문/결제 페이지(/wholesale/checkout — 주문상품·배송지·예치금 결제)로 이동. 실제 예치금
+  //   차감은 체크아웃의 '결제'에서만(상품 상세에서 즉시차감 X).
   function placeOrder() {
     if (!item || ordering) return
     // 🏭 2026-06-27 (대표 신고): 로그인 판정은 토큰으로 — 가격 null(등급 미설정/스테일)은 로그인 유도 아님.
     if (!token) { toast.info('로그인하면 주문할 수 있어요'); goLogin(); return }
     if (item.distributor_price == null || item.distributor_price <= 0) { toast.info('회원님 등급의 공급가가 아직 설정되지 않았어요. 제조사에 문의해주세요.'); return }
     if (!validateQty()) return
-    setConfirmOpen(true)
+    // 현재 수량 구간 단가 스냅샷(표시용 — 결제액은 체크아웃에서 서버 재계산 SSOT).
+    let unit = item.distributor_price, bm = 0
+    for (const t of (item.tiers || [])) if (qty >= t.min_qty && t.min_qty >= bm) { bm = t.min_qty; unit = t.unit_price }
+    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: unit, moq: Math.max(1, item.moq || 1), supplier_group: item.supplier_group ?? null, supplier_policy: item.supplier_policy ?? null })
+    navigate('/wholesale/checkout')
   }
 
   async function confirmOrder() {

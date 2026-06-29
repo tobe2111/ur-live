@@ -222,7 +222,20 @@ export default function SupplierDashboardPage() {
       ) : tab === 'overview' ? (
         <OverviewTab me={me} meError={meError} onRetry={loadMe} t={t} onAdd={() => setShowAdd(true)} onGoTab={setTab} pendingShipCount={pendingShipCount} />
       ) : tab === 'orders' ? (
-        <OrdersTab items={orders} t={t} status={orderStatus} setStatus={setOrderStatus} onShip={setShipModal} />
+        <div>
+          {/* 🏭 2026-06-29 (대표 — 제조사 대시보드 거래내역 엑셀): 내 도매 주문 거래내역 .xlsx 다운로드. */}
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-gray-900">{t('supplier.ordersTitle', { defaultValue: '도매 주문 거래내역' })}</p>
+            <button
+              onClick={() => downloadSupplierCsv('/api/supplier/wholesale/orders/export', `supplier-orders-${new Date().toISOString().slice(0, 10)}.xlsx`)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-300 text-gray-700 text-xs font-medium hover:bg-gray-50"
+            >
+              <Download className="w-3.5 h-3.5" />
+              {t('supplier.exportOrders', { defaultValue: '거래내역 엑셀' })}
+            </button>
+          </div>
+          <OrdersTab items={orders} t={t} status={orderStatus} setStatus={setOrderStatus} onShip={setShipModal} />
+        </div>
       ) : tab === 'catalog' ? (
         <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} onEdit={setEditItem} onBulkDone={() => { loadMe(); loadCatalog() }} onManageChannel={setChannelItem} onRequestPriceChange={setPriceChangeItem} onBulkPrice={() => setBulkPriceOpen(true)} />
       ) : tab === 'chat' ? (
