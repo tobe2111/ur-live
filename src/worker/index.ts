@@ -1893,7 +1893,7 @@ const BASE_URL = 'https://live.ur-team.com';
 //   서버 side rendering 의 OG meta tag 와 크롤러용 fallback HTML (search bot).
 const DEFAULT_OG = {
   title: '유어딜 - 돈버는 쇼핑, 오프라인 공동구매 & 라이브커머스',
-  desc: '동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 공구권 + 라이브 쇼핑.',
+  desc: '동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 이용권 + 라이브 쇼핑.',
   image: `${BASE_URL}/og-image.png`,
 };
 

@@ -154,7 +154,7 @@ function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () 
     { icon: '🛍️', t: '내 상품 직접 판매', d: '링크샵이 곧 내 쇼핑몰 — 내가 파는 상품이 주인공' },
     { icon: '💰', t: '현금 정산', d: '판매 대금과 추천 수익을 현금으로 받아요' },
     { seal: true, t: '이름 옆 파란 인증 씰', d: '방문자에게 신뢰를, 다른 링크샵과 차별을' },
-    { icon: '🎟️', t: '공구권 판매 채널', d: '동네 공구·교환권도 함께 판매' },
+    { icon: '🎟️', t: '이용권 판매 채널', d: '동네 공구·교환권도 함께 판매' },
   ]
   return (
     <div className="fixed inset-0 z-[10600] flex items-end justify-center" role="dialog" aria-modal="true">

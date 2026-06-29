@@ -72,8 +72,8 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
   const [shopQuery, setShopQuery] = useState('')
   // 🏁 2026-06-18 (승인 사업자 상점 바로등록): 오너 빠른 상품 등록 모달 + 성공 시 상품목록 갱신.
   const [showQuickAdd, setShowQuickAdd] = useState(false)
-  // 🏁 2026-06-26 (대표 결정 — "링크샵에도 공구권 등록 추가"): 등록 종류 선택 시트(상품/공구권).
-  //   상품=인앱 빠른등록(QuickProductModal), 공구권=맵·목표인원 등 상세가 필요해 전용 페이지로 연결.
+  // 🏁 2026-06-26 (대표 결정 — "링크샵에도 이용권 등록 추가"): 등록 종류 선택 시트(상품/이용권).
+  //   상품=인앱 빠른등록(QuickProductModal), 이용권=맵·목표인원 등 상세가 필요해 전용 페이지로 연결.
   const [showAddSheet, setShowAddSheet] = useState(false)
   // 🏁 2026-06-25 (대표 "통일"): canonical CuratorHeader 의 인라인 편집 반영(낙관적). curator 우선·seller 폴백.
   const [curatorEdits, setCuratorEdits] = useState<Partial<CuratorProfile>>({})
@@ -366,7 +366,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
           <span className="flex items-center gap-2 min-w-0"><span className="text-[#6b7280] text-[14px] leading-none shrink-0">✎</span><span className="truncate">{t('seller.publicPage.ownerModeNotice', { defaultValue: '편집 모드 · 사진·이름·소개를 눌러 바로 수정하세요' })}</span></span>
           <div className="flex items-center gap-1.5 shrink-0">
             {/* 🏁 2026-06-18 (사용자 결정): 링크샵에서 바로 등록 (대시보드 안 나감).
-                🏁 2026-06-26 (대표 — "공구권 등록도 추가"): 단일 '+ 등록' → 상품/공구권 선택 시트. */}
+                🏁 2026-06-26 (대표 — "이용권 등록도 추가"): 단일 '+ 등록' → 상품/이용권 선택 시트. */}
             <button
               type="button"
               onClick={() => setShowAddSheet(true)}
@@ -382,7 +382,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
               {t('seller.publicPage.previewVisitor', { defaultValue: '👀 미리보기' })}
             </button>
             {/* 🏁 2026-06-26 (대표 결정 — '전체 설정'→'셀러 대시보드'): 라벨/목적지 정정.
-                좁은 사업자정보 탭(?tab=business) 대신 대시보드 홈(/seller — 주문·정산·상품·공구권). */}
+                좁은 사업자정보 탭(?tab=business) 대신 대시보드 홈(/seller — 주문·정산·상품·이용권). */}
             <button
               type="button"
               onClick={() => navigate('/seller')}
@@ -393,8 +393,8 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
           </div>
         </div>
       )}
-      {/* 🏁 2026-06-26 (대표 — "공구권 등록 추가"): 등록 종류 선택 시트.
-          상품 = 인앱 빠른등록 / 공구권 = 맵·목표인원 등 상세 필요 → 전용 페이지(/seller/meal-voucher/new). */}
+      {/* 🏁 2026-06-26 (대표 — "이용권 등록 추가"): 등록 종류 선택 시트.
+          상품 = 인앱 빠른등록 / 이용권 = 맵·목표인원 등 상세 필요 → 전용 페이지(/seller/meal-voucher/new). */}
       {ownerView && showAddSheet && (
         <div className="fixed inset-0 z-[10600] flex items-end justify-center bg-black/60" onClick={() => setShowAddSheet(false)} role="presentation">
           <div
@@ -423,7 +423,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
               >
                 <span className="w-11 h-11 rounded-xl bg-white dark:bg-[#222] flex items-center justify-center text-xl shrink-0">🎟️</span>
                 <span className="min-w-0">
-                  <span className="block text-[14px] font-bold text-gray-900 dark:text-white">{t('seller.publicPage.addVoucher', { defaultValue: '공구권 등록' })}</span>
+                  <span className="block text-[14px] font-bold text-gray-900 dark:text-white">{t('seller.publicPage.addVoucher', { defaultValue: '이용권 등록' })}</span>
                   <span className="block text-[12px] text-gray-500 dark:text-gray-400">{t('seller.publicPage.addVoucherDesc', { defaultValue: '동네 공구·교환권 — 위치·목표인원 설정' })}</span>
                 </span>
               </button>
@@ -521,7 +521,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator }: SellerPu
         {/* ③ 교환권 */}
         {mealVouchers.length > 0 && (
           <section className="pt-7">
-            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '공구권' })} {mealVouchers.length}</h3>
+            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '이용권' })} {mealVouchers.length}</h3>
             <VouchersTab mealVouchers={mealVouchers} isOwner={ownerView} textClass={T.text} />
           </section>
         )}

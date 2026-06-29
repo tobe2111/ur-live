@@ -5,7 +5,7 @@ import { isWholesaleSurface } from '@/utils/domain'
  * 🏭 도매몰(B2B) surface 가드 — INVARIANT 고정 (2026-06-21 대표 신고).
  *
  * 배경: `live.ur-team.com/wholesale` 에 소비자몰 DesktopTopNav(검색바) + BottomNav
- * (홈/쇼핑/공구권/링크샵/마이)가 노출되는 회귀. 원인 = 소비자 nav 가 App.tsx 에 전역
+ * (홈/쇼핑/이용권/링크샵/마이)가 노출되는 회귀. 원인 = 소비자 nav 가 App.tsx 에 전역
  * 마운트되고 단일 경로 allowlist(hideBottomNav) 하나에만 의존 → 그 한 줄이 누락/회귀하면
  * 도매몰에 소비자 UI 가 샘.
  *

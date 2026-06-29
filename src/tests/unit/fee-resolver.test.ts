@@ -2,7 +2,7 @@
  * 💸 단일 수수료 리졸버 — 불변식 + 규칙 테스트
  *
  * docs/design/product-ownership-model.md 의 확정 정책(2026-06-25)을 영구히 잠금:
- *   1. 3P(공구권+쇼핑)=5% / 1P 직판=0%
+ *   1. 3P(이용권+쇼핑)=5% / 1P 직판=0%
  *   2. 홍보 소개비=주인 자율(음수 가드)
  *   3. 에이전시=GMV 1%(플랫폼에서), 실판매+시한 내에만, ≤플랫폼
  *   4. 제조가=B2B 원가(별도 슬라이스)
@@ -43,7 +43,7 @@ describe('수수료 리졸버 — 문서 예시(10,000원) 정확 재현', () =>
     assertFeeInvariants(b);
   });
 
-  it('3P 공구권: 플랫폼 5%=500 / 소개비 500 / 주인 9000 (공급가 없음)', () => {
+  it('3P 이용권: 플랫폼 5%=500 / 소개비 500 / 주인 9000 (공급가 없음)', () => {
     const b = resolveOrderFees({
       amount: 10_000,
       ownership: '3P',
@@ -81,7 +81,7 @@ describe('규칙 1 — 플랫폼 수수료(3P=5% / 1P=0%)', () => {
   it('1P → 0%(직판, 자기한테 수수료 안 매김)', () => {
     expect(resolveOrderFees({ amount: 10_000, ownership: '1P', productKind: 'shopping' }).platform).toBe(0);
   });
-  it('공구권/쇼핑 동일 요율(3P)', () => {
+  it('이용권/쇼핑 동일 요율(3P)', () => {
     const v = resolveOrderFees({ amount: 7_777, ownership: '3P', productKind: 'voucher' }).platform;
     const s = resolveOrderFees({ amount: 7_777, ownership: '3P', productKind: 'shopping' }).platform;
     expect(v).toBe(s);

@@ -413,8 +413,8 @@ function OwnerEarningsStrip() {
 
 function PinGrid({ pins, handle, isOwner, onPinDeleted, kind }: { pins: CuratorPin[]; handle: string; isOwner: boolean; onPinDeleted: (id: number) => void; kind?: 'shop' | 'voucher' }) {
   // 🏷️ 2026-06-19 (대표 — "핀" 내부용어 대신 상품/동네딜): 탭에 맞춘 추가 라벨.
-  // 🏁 2026-06-22 (대표 — "상품/공구권 모두 선택하는 전용 페이지"): /browse·/group-buy 로 흩어지던 동선을
-  //   전용 picker(/u/me/add)로 통합. 탭(상품/공구권)은 ?tab= 으로 초기 선택.
+  // 🏁 2026-06-22 (대표 — "상품/이용권 모두 선택하는 전용 페이지"): /browse·/group-buy 로 흩어지던 동선을
+  //   전용 picker(/u/me/add)로 통합. 탭(상품/이용권)은 ?tab= 으로 초기 선택.
   const addTo = kind === 'voucher' ? '/u/me/add?tab=voucher' : kind === 'shop' ? '/u/me/add?tab=shop' : '/u/me/add'
   const addLabel = kind === 'voucher' ? '동네딜 추가하기' : kind === 'shop' ? '상품 추가하기' : '상품·동네딜 추가하기'
   return (

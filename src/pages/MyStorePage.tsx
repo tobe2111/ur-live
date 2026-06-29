@@ -1,6 +1,6 @@
 /**
  * 🏪 2026-06-22 (대표 — "셀러 대시보드는 무거움, 앱에서 바로"): 사업자 유저용 경량 "내 매장" 화면.
- *   매장 공구권 원장(사용/정산 대기·완료) + "안 왔어요" 분쟁 신고. 풀 셀러 대시보드(/seller) 대신 앱 내.
+ *   매장 이용권 원장(사용/정산 대기·완료) + "안 왔어요" 분쟁 신고. 풀 셀러 대시보드(/seller) 대신 앱 내.
  *   API: GET /api/group-buy/store-voucher-ledger · GET /api/group-buy/store-fcfs · GET /api/voucher-dispute/mine · POST /api/voucher-dispute/report
  *   소비자 앱 테마(화이트/다크 토글) — dark: variant 필수.
  */
@@ -60,7 +60,7 @@ export default function MyStorePage() {
   useEffect(() => { load() }, [load])
 
   async function report(v: LedgerItem) {
-    if (!(await confirmDialog({ message: `이 공구권을 "고객이 방문하지 않았다"고 신고할까요?\n신고 시 해당 건의 정산이 보류되고 운영자가 확인합니다.`, danger: true }))) return
+    if (!(await confirmDialog({ message: `이 이용권을 "고객이 방문하지 않았다"고 신고할까요?\n신고 시 해당 건의 정산이 보류되고 운영자가 확인합니다.`, danger: true }))) return
     setBusy(v.id)
     try {
       await api.post('/api/voucher-dispute/report', { voucherId: v.id })
@@ -92,7 +92,7 @@ export default function MyStorePage() {
 
   return (
     <div className="bg-white dark:bg-[#020202] min-h-screen pb-8">
-      <SEO title="내 매장 — 유어딜" description="내 매장 공구권 사용·정산 현황" url="/my-store" noindex />
+      <SEO title="내 매장 — 유어딜" description="내 매장 이용권 사용·정산 현황" url="/my-store" noindex />
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#020202]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#1A1A1A] px-4 h-12 flex items-center">
         <Store className="w-5 h-5 text-gray-900 dark:text-white mr-2" />
         <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">내 매장</h1>
@@ -143,10 +143,10 @@ export default function MyStorePage() {
               </div>
             )}
 
-            {/* 최근 공구권 */}
-            <p className="text-[13px] font-bold text-gray-900 dark:text-white mt-6 mb-2 px-1">최근 공구권</p>
+            {/* 최근 이용권 */}
+            <p className="text-[13px] font-bold text-gray-900 dark:text-white mt-6 mb-2 px-1">최근 이용권</p>
             {recent.length === 0 ? (
-              <p className="text-center py-10 text-gray-400 text-sm">아직 발급된 공구권이 없어요</p>
+              <p className="text-center py-10 text-gray-400 text-sm">아직 발급된 이용권이 없어요</p>
             ) : (
               <div className="space-y-2">
                 {recent.map(v => {
@@ -155,7 +155,7 @@ export default function MyStorePage() {
                   return (
                     <div key={v.id} className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212] px-3.5 py-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-bold text-gray-900 dark:text-white truncate">{v.restaurant_name || v.product_name || `공구권 #${v.id}`}</p>
+                        <p className="text-[13px] font-bold text-gray-900 dark:text-white truncate">{v.restaurant_name || v.product_name || `이용권 #${v.id}`}</p>
                         <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
                           #{v.id} · {formatNumber(v.applied_price)}원 · {
                             v.status === 'unused' ? '미사용'

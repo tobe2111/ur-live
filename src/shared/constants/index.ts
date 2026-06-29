@@ -106,7 +106,7 @@ export const YOUTUBE_OAUTH_BASE = 'https://oauth2.googleapis.com';
 export const TRACKER_GRAPHQL_URL = 'https://apis.tracker.delivery/graphql';
 
 // ============================================================
-// 🛡️ 2026-05-17: 공구권 카테고리 6종 → 4종 통합.
+// 🛡️ 2026-05-17: 이용권 카테고리 6종 → 4종 통합.
 //   대분류: 오프라인(voucher 4종, 매장 방문) vs 온라인(일반 상품, 배송).
 //   기존 health → beauty 통합, pet/activity → etc 통합.
 //   레거시 카테고리 호환: voucher-categories.ts 의 normalizeCategory() 사용.

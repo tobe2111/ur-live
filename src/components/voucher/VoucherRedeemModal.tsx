@@ -98,7 +98,7 @@ export default function VoucherRedeemModal({
       >
         {phase === 'confirm' && (
           <>
-            <p className="text-[18px] font-extrabold text-gray-900 dark:text-white">이 공구권을 사용할까요?</p>
+            <p className="text-[18px] font-extrabold text-gray-900 dark:text-white">이 이용권을 사용할까요?</p>
             <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5">
               <b className="text-gray-900 dark:text-white">{store}</b> 에서 지금 사용합니다. <br />사용 후 환불은 불가하며, 실수 시 60초 내 취소할 수 있어요.
             </p>

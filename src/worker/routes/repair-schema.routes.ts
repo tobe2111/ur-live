@@ -1230,7 +1230,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
         VALUES('delete', OLD.id, COALESCE(OLD.name,''), COALESCE(OLD.description,''), COALESCE(OLD.category,''));
       END` },
     // 🛡️ 2026-05-20: 에이전시 입점 가게 commission ledger.
-    //   에이전시가 입점시킨 가게 (sellers.introduced_by_agency_id) 의 모든 공구권 매출 →
+    //   에이전시가 입점시킨 가게 (sellers.introduced_by_agency_id) 의 모든 이용권 매출 →
     //   각 주문마다 2% (agencies.store_intro_commission_pct) commission 적립.
     //   타입: 'signup_bonus' (가게 첫 결제 ₩30k) / 'sales_commission' (매출 2%) / 'growth_bonus' (월 100만 돌파 ₩50k).
     //   영구 commission — 12개월 제한 없이 입점 가게 평생 매출에 대해 누적.

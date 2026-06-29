@@ -31,7 +31,7 @@ interface SEOProps {
 
 const SITE_NAME = '유어딜'
 // 🛡️ 2026-05-21: SEO 타이틀/설명 변경 (사용자 요청) — "돈버는 쇼핑" 강조, 오프라인 공동구매 우선.
-const DEFAULT_DESC = '동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 공구권 + 라이브 쇼핑.'
+const DEFAULT_DESC = '동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 이용권 + 라이브 쇼핑.'
 const DEFAULT_IMAGE = 'https://live.ur-team.com/og-image.svg'
 const BASE_URL = 'https://live.ur-team.com'
 

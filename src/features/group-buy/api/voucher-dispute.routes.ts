@@ -1,5 +1,5 @@
 /**
- * 🎟️ 2026-06-22 (대표 — 사용처리 분쟁 "안 왔어요"): 매장이 사용처리된 공구권을 "실제로 안 왔다" 신고 → 정산 보류.
+ * 🎟️ 2026-06-22 (대표 — 사용처리 분쟁 "안 왔어요"): 매장이 사용처리된 이용권을 "실제로 안 왔다" 신고 → 정산 보류.
  *
  * 정합(중복 0): 기존 auto-settlement cron 은 `status='used' AND settlement_id IS NULL` 만 정산.
  *   ⚠️ vouchers.status 는 CHECK(IN 'unused','used','expired','refunded') — 'disputed' 추가 불가.
@@ -67,7 +67,7 @@ sellerApp.post('/report', async (c) => {
     if (!user || !isSeller(user)) return c.json({ success: false, error: '셀러만 신고할 수 있습니다' }, 403)
     const body = await c.req.json<{ code?: string; voucherId?: number; reason?: string }>().catch(() => ({} as { code?: string; voucherId?: number; reason?: string }))
     const vid = Number(body.voucherId)
-    if (!body.code && !Number.isFinite(vid)) return c.json({ success: false, error: '공구권 식별자가 필요합니다' }, 400)
+    if (!body.code && !Number.isFinite(vid)) return c.json({ success: false, error: '이용권 식별자가 필요합니다' }, 400)
 
     // 본인 매장 + 사용됨 + 미정산 voucher 조회 (voucherId 우선 — 코드 노출 없이 원장에서 신고).
     const where = Number.isFinite(vid) ? 'v.id = ?' : 'v.code = ?'
@@ -90,7 +90,7 @@ sellerApp.post('/report', async (c) => {
       const storeName = v.restaurant_name || v.product_name || '매장'
       await DB.prepare(
         "INSERT INTO notifications (user_id, type, title, message, created_at) VALUES (?, 'voucher_dispute', ?, ?, datetime('now'))"
-      ).bind(v.user_id, '공구권 사용 확인 요청', `[${storeName}] 방문이 확인되지 않아 매장이 확인을 요청했어요. 실제로 이용하셨다면 '내 공구권'에서 알려주세요.`).run().catch(() => {})
+      ).bind(v.user_id, '이용권 사용 확인 요청', `[${storeName}] 방문이 확인되지 않아 매장이 확인을 요청했어요. 실제로 이용하셨다면 '내 이용권'에서 알려주세요.`).run().catch(() => {})
     }
     return c.json({ success: true, data: { voucherId: v.id, status: 'disputed', already } })
   } catch (err) { return safeError(c, err, '신고 처리 실패', '[voucher-dispute]') }
@@ -111,7 +111,7 @@ sellerApp.get('/mine', async (c) => {
 
 // ─────────────────────────────── 손님(항변) ───────────────────────────────
 // 🔁 2026-06-23 양방향 분쟁: 같은 라우터(requireAuth '*' 공유) — isSeller 체크 없이 voucher 소유 검증.
-//   GET /against-me: 내 공구권에 걸린 open 분쟁 / POST /:id/respond: 이용했어요(contest) / 취소(concede).
+//   GET /against-me: 내 이용권에 걸린 open 분쟁 / POST /:id/respond: 이용했어요(contest) / 취소(concede).
 sellerApp.get('/against-me', async (c) => {
   try {
     const DB = c.env.DB

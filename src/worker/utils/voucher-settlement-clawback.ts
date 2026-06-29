@@ -1,8 +1,8 @@
 /**
- * 🔁 2026-06-23 (대표 — 최종 이상형 #1): 환불/차지백 시 공구권 무효화 + 매장 정산 회수.
+ * 🔁 2026-06-23 (대표 — 최종 이상형 #1): 환불/차지백 시 이용권 무효화 + 매장 정산 회수.
  *
- * 배경(감사): refundOrderFully 는 커미션/affiliate/쿠폰은 역전했지만 **공구권(vouchers) 자체를
- *   안 건드려** ① 사용된 공구권을 환불해도 status='used' 로 남아 7일 cron 이 매장에 그대로 정산
+ * 배경(감사): refundOrderFully 는 커미션/affiliate/쿠폰은 역전했지만 **이용권(vouchers) 자체를
+ *   안 건드려** ① 사용된 이용권을 환불해도 status='used' 로 남아 7일 cron 이 매장에 그대로 정산
  *   (차지백 아니어도 새는 구멍) ② 차지백(이미 정산)된 매장 돈을 회수 못 함.
  *
  * 모든 환불 경로가 거치는 refundOrderFully 에서 호출 → 차지백(확정주문 취소는 webhook 이 거부하고
@@ -55,7 +55,7 @@ export interface ClawbackResult {
 }
 
 /**
- * 주문의 공구권을 환불 처리하고 매장 정산을 회수한다. 멱등(refunded/expired 는 skip).
+ * 주문의 이용권을 환불 처리하고 매장 정산을 회수한다. 멱등(refunded/expired 는 skip).
  * - unused              → status='refunded' (매장 미지급, 사후 사용 차단)
  * - used + 미정산        → status='refunded' (cron 이 status='used' 만 집음 → 매장 미지급)
  * - used + 정산(미지급)   → 정산행 금액 차감 + settlement_id detach + refunded

@@ -854,7 +854,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
       const { notifyFollowers, sendKakaoToFollowers } = await import('../../../lib/notifications');
       const productName = (newProduct as any).name;
       const productId = (newProduct as any).id;
-      // 🧭 2026-06-10 (재방문 루프): 공구권(voucher)이면 공구 문구 + 공구 상세 링크 — 단골 알림 전환율 ↑.
+      // 🧭 2026-06-10 (재방문 루프): 이용권(voucher)이면 공구 문구 + 공구 상세 링크 — 단골 알림 전환율 ↑.
       const isVoucherProduct = !!(category && VOUCHER_CATEGORY_SET.has(category));
       const notifTitle = isVoucherProduct ? `🍽️ 단골 매장이 새 공구를 열었어요!` : `🛍️ 새 상품 등록!`;
       const notifLink = isVoucherProduct ? `/group-buy/${productId}` : `/products/${productId}`;

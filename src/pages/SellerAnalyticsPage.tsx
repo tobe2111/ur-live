@@ -292,7 +292,7 @@ export default function SellerAnalyticsPage() {
                           <div className="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden relative">
                             <div className="bg-blue-500 h-full rounded-full" style={{ width: `${(m.new_products / max) * 100}%` }} />
                             <span className="absolute inset-0 flex items-center px-2 text-xs font-medium text-gray-900">
-                              {m.new_products}개 (공구권 {m.new_vouchers}개)
+                              {m.new_products}개 (이용권 {m.new_vouchers}개)
                             </span>
                           </div>
                         </div>

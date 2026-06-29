@@ -1855,7 +1855,7 @@
     "settlementAutomation": "정산 자동화",
     "settlementAutomationDesc": "수수료 계산 및 정산 내역 자동 처리",
     "publicPage": {
-      "vouchers": "공구권",
+      "vouchers": "이용권",
       "videos": "영상",
       "noName": "이름 없음",
       "mailOrderNumber": "통신판매업신고번호",
@@ -1905,7 +1905,7 @@
       "addSheetTitle": "무엇을 등록할까요?",
       "addProduct": "상품 등록",
       "addProductDesc": "배송 상품 — 바로 등록",
-      "addVoucher": "공구권 등록",
+      "addVoucher": "이용권 등록",
       "addVoucherDesc": "동네 공구·교환권 — 위치·목표인원 설정",
       "previewBanner": "방문자 미리보기 — 다른 사람에게 보이는 화면이에요",
       "backToEdit": "편집으로 돌아가기"
@@ -2221,18 +2221,18 @@
       "copyFailed": "이전 공구를 불러오지 못했어요"
     },
     "voucher": {
-      "categoryTitle": "공구권 종류",
-      "categoryMeal": "식사 공구권",
+      "categoryTitle": "이용권 종류",
+      "categoryMeal": "식사 이용권",
       "categoryMealDesc": "맛집·카페",
-      "categoryBeauty": "뷰티 공구권",
+      "categoryBeauty": "뷰티 이용권",
       "categoryBeautyDesc": "헤어·네일·피부",
-      "categoryHealth": "헬스 공구권",
+      "categoryHealth": "헬스 이용권",
       "categoryHealthDesc": "PT·요가·필라테스",
-      "categoryPet": "반려 공구권",
+      "categoryPet": "반려 이용권",
       "categoryPetDesc": "미용·호텔·병원",
-      "categoryStay": "숙박 공구권",
+      "categoryStay": "숙박 이용권",
       "categoryStayDesc": "펜션·호텔·모텔",
-      "categoryActivity": "액티비티 공구권",
+      "categoryActivity": "액티비티 이용권",
       "categoryActivityDesc": "방탈출·볼링·클래스"
     },
     "gift": {
@@ -2735,7 +2735,7 @@
       "step1Desc": "정산 받을 계좌와 사업자 정보를 등록해요",
       "step2": "첫 상품 등록",
       "step2Desc": "판매할 상품을 올려요",
-      "step2Store": "첫 공구권 발행",
+      "step2Store": "첫 이용권 발행",
       "step2StoreDesc": "우리 매장 공동구매 교환권을 만들어요",
       "step3": "운영 가이드 읽기",
       "step3Desc": "주문 처리부터 정산까지 한눈에"
@@ -4111,7 +4111,7 @@
     "dongnedeal": "동네딜",
     "create": "만들기",
     "offlineGroupBuy": "오프라인 공동구매",
-    "myGbVouchers": "공구권"
+    "myGbVouchers": "이용권"
   },
   "bulkUpload": {
     "title": "상품 대량등록",
@@ -4399,7 +4399,7 @@
     "groupRefunded": "환불",
     "ktShowBarcode": "매장에서 아래 바코드를 제시하세요",
     "ktCheckMms": "휴대폰 메시지함에서 쿠폰 확인. 카카오톡 선물함 자동 연계 가능.",
-    "tabGroupBuy": "공구권",
+    "tabGroupBuy": "이용권",
     "tabGifticon": "교환권",
     "emptyGbTitle": "받아둔 식사권이 없어요",
     "emptyGbDesc": "동네 맛집 공동구매에 참여하면\n선결제 식사권이 여기에 쌓여요",
