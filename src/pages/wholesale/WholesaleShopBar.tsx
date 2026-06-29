@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, X, Heart, ShoppingCart, FileText } from 'lucide-react'
+import { Search, X, Heart, ShoppingCart } from 'lucide-react'
 import { WT } from './wholesale-theme'
 import { WholesaleWordmark } from '../wholesale-catalog/WholesaleLogo'
 import { useWholesaleCart } from './useWholesaleCart'
@@ -57,12 +57,8 @@ export default function WholesaleShopBar() {
           </button>
         </form>
 
-        {/* 우측 아이콘 (데스크톱) — 견적함 / 관심상품 / 장바구니 */}
+        {/* 우측 아이콘 (데스크톱) — 관심상품 / 장바구니 (견적함 제거 — 대표 요청 2026-06-29) */}
         <div className="hidden md:flex items-center gap-5 shrink-0" style={{ color: WT.ink2 }}>
-          <button onClick={() => navigate('/wholesale/quotes')} className="flex flex-col items-center gap-0.5" title={t('wholesale.icon.quotes', { defaultValue: '견적함' })}>
-            <FileText className="w-[21px] h-[21px]" style={{ color: WT.ink }} strokeWidth={1.8} />
-            <span className="text-[11px] whitespace-nowrap">{t('wholesale.icon.quotes', { defaultValue: '견적함' })}</span>
-          </button>
           <button onClick={() => navigate('/wholesale/wishlist')} className="flex flex-col items-center gap-0.5" title={t('wholesale.icon.wish', { defaultValue: '관심상품' })}>
             <Heart className="w-[21px] h-[21px]" style={{ color: WT.ink }} strokeWidth={1.8} />
             <span className="text-[11px] whitespace-nowrap">{t('wholesale.icon.wish', { defaultValue: '관심상품' })}</span>
