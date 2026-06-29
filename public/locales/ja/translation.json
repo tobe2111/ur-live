@@ -1830,7 +1830,7 @@
     "settlementAutomation": "精算自動化",
     "settlementAutomationDesc": "手数料計算と精算履歴の自動処理",
     "publicPage": {
-      "vouchers": "共同購入券",
+      "vouchers": "利用券",
       "videos": "動画",
       "noName": "名前なし",
       "mailOrderNumber": "通信販売業申告番号",
@@ -1880,8 +1880,8 @@
       "addSheetTitle": "何を登録しますか？",
       "addProduct": "商品登録",
       "addProductDesc": "画像・詳細・オプションまで正式登録",
-      "addVoucher": "共同購入券の登録",
-      "addVoucherDesc": "地域共同購入・引換券 — 位置・目標人数を設定",
+      "addVoucher": "利用券の登録",
+      "addVoucherDesc": "地域の利用券・引換券 — 位置や詳細を設定",
       "previewBanner": "訪問者プレビュー — 他の人に見える画面です",
       "backToEdit": "編集に戻る"
     },

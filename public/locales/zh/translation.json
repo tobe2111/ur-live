@@ -1830,7 +1830,7 @@
     "settlementAutomation": "结算自动化",
     "settlementAutomationDesc": "手续费计算和结算记录自动处理",
     "publicPage": {
-      "vouchers": "拼团券",
+      "vouchers": "使用券",
       "videos": "영상",
       "noName": "无名称",
       "mailOrderNumber": "通信销售业申报编号",
@@ -1880,8 +1880,8 @@
       "addSheetTitle": "要添加什么？",
       "addProduct": "添加商品",
       "addProductDesc": "图片·详情·选项完整登记",
-      "addVoucher": "添加拼团券",
-      "addVoucherDesc": "本地拼团・兑换券 — 设置位置・目标人数",
+      "addVoucher": "添加使用券",
+      "addVoucherDesc": "本地使用券・兑换券 — 设置位置和详情",
       "previewBanner": "访客预览 — 这是别人看到的页面",
       "backToEdit": "返回编辑"
     },
