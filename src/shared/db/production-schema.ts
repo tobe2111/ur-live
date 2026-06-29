@@ -32,7 +32,7 @@ export interface OrdersTable {
   shipped_at: string | null
   delivered_at: string | null
   seller_id: number | null      // INTEGER (nullable!)
-  commission_rate: number        // REAL DEFAULT 10.00
+  commission_rate: number        // REAL DEFAULT 5.00 (snapshot of sellers.commission_rate at order create)
   commission_amount: number      // INTEGER DEFAULT 0
   seller_amount: number          // INTEGER DEFAULT 0
   cancelled_at: string | null
@@ -218,7 +218,7 @@ export interface SellersTable {
   seller_type: string           // DEFAULT 'influencer'
   can_broadcast: number         // 0=라이브 금지 (store_owner default) / 1=가능 (influencer default)
   is_active: number
-  commission_rate: number       // REAL DEFAULT 10.00
+  commission_rate: number       // REAL DEFAULT 5.00 (platform commission %, admin-adjustable per seller)
   // 🛡️ TD-005 (2026-05-25 soft deprecate): shipping_fee 컬럼은 DB 에 유지 (백업 안전망)
   //   그러나 코드는 base_shipping_fee 만 사용 (SSOT).
   //   TD-001 (D1 CI 권한) 해결 후 운영자가 별도 PR 로 DROP migration 가능.
