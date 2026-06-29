@@ -3,6 +3,7 @@ import { X, FileSpreadsheet, Download, Upload, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { supplierApi } from '@/lib/supplier-api'
 import { WHOLESALE_CATEGORIES } from '../wholesale/wholesale-theme'
+import { categoryCodePrefix } from '@/shared/wholesale-category-codes'
 import SupplyChannelGuide from './SupplyChannelGuide'
 import NaverPriceCheck from './NaverPriceCheck'
 import DemandSignal from './DemandSignal'
@@ -23,8 +24,8 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
     shipping_fee: '', category: editItem.category || 'lifestyle', image_url: editItem.image_url || '', detail_images: '',
     supply_visibility: editItem.supply_visibility || 'ALL', barcode: editItem.barcode || '',
     is_brand_product: !!editItem.is_brand_product, brand_name: editItem.brand_name || '', brand_logo_url: editItem.brand_logo_url || '',
-    lowest_price_url: editItem.lowest_price_url || '',
-  } : { name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', shipping_fee: '', category: 'lifestyle', image_url: '', detail_images: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '' })
+    lowest_price_url: editItem.lowest_price_url || '', product_code: (editItem as { product_code?: string }).product_code || '',
+  } : { name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', shipping_fee: '', category: 'food', image_url: '', detail_images: '', supply_visibility: 'ALL', barcode: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '', product_code: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   // 📥 2026-06-12 (사용자 요청): 등록 진입점에서 대량등록 옵션 선택 가능 — CatalogTab 과 동일 흐름 공유.
@@ -71,6 +72,7 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
         brand_name: form.brand_name.trim() || undefined,
         brand_logo_url: form.is_brand_product ? (form.brand_logo_url.trim() || undefined) : undefined,
         lowest_price_url: form.lowest_price_url.trim() || undefined,
+        product_code: form.product_code.trim() || undefined, // 🏭 #8 상품코드(카테고리 접두 자동) — 서버에서 정규화
       }
       if (isEdit && editItem) {
         await supplierApi.patch(`/api/supplier/products/${editItem.id}`, payload)
@@ -90,6 +92,8 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
 
   const inputCls = "w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#FC5424]/30 focus:border-[#FC5424] outline-none"
   const labelCls = "block text-xs font-medium text-gray-600 mb-1"
+  // 🏭 #8 카테고리 접두(식품 FD/리빙 LV/건강 HT) — 상품코드 입력 도우미.
+  const codePrefix = categoryCodePrefix(form.category)
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-0 sm:px-4" onClick={onClose}>
@@ -147,6 +151,16 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
               <input required type="number" min={1} disabled={saving} value={form.suggested_retail_price} onChange={e => setForm(f => ({ ...f, suggested_retail_price: e.target.value }))} className={inputCls} />
             </div>
           </div>
+          {/* 🏭 2026-06-29 (대표 #6): 마진율(%) 직접 입력 — 입력 시 공급가 기준으로 판매가 자동 계산.
+              저장은 기존대로 공급가/판매가(정산 엔진 불변). 판매가를 직접 입력해도 됨(양방향). */}
+          <div>
+            <label className={labelCls}>{t('supplier.fieldMargin', { defaultValue: '판매 마진율 (%)' })} <span className="text-gray-400 font-normal">{t('supplier.fieldMarginNote', { defaultValue: '· 공급가·판매가와 자동 연동' })}</span></label>
+            <input type="number" min={0} max={99} disabled={saving}
+              value={(() => { const s = Number(form.supply_price), r = Number(form.suggested_retail_price); return (Number.isFinite(s) && Number.isFinite(r) && r > s && r > 0) ? String(Math.round(((r - s) / r) * 100)) : '' })()}
+              onChange={e => { const m = Number(e.target.value); const s = Number(form.supply_price); if (Number.isFinite(m) && m >= 0 && m < 100 && Number.isFinite(s) && s > 0) setForm(f => ({ ...f, suggested_retail_price: String(Math.round(s / (1 - m / 100))) })) }}
+              className={inputCls} placeholder={t('supplier.fieldMarginPh', { defaultValue: '예: 30' })} />
+            <p className="text-[11px] text-gray-400 mt-1">{t('supplier.marginHint', { defaultValue: '마진율을 입력하면 공급가 기준 권장 판매가가 자동 계산됩니다 (판매가 대비 마진).' })}</p>
+          </div>
           {/* 🏭 2026-06-12 (영업단 제안): 공급률 실시간 안내 — 낮출수록 더 많은 채널 잠금해제.
               권장가 미입력 시엔 입력 유도 한 줄만(공급가 폴백을 쓰면 공급률 100% 로 오해 유발). */}
           <SupplyChannelGuide t={t} supplyPrice={form.supply_price} retailPrice={form.suggested_retail_price} />
@@ -169,6 +183,16 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
                 ))}
               </select>
             </div>
+          </div>
+          {/* 🏭 2026-06-29 (대표 #8): 상품코드 — 카테고리 접두(식품 FD·리빙 LV·건강 HT)로 시작. 대량발주 매칭 코드. */}
+          <div>
+            <label className={labelCls}>{t('supplier.fieldProductCode', { defaultValue: '상품코드' })} <span className="text-gray-400 font-normal">{t('supplier.fieldProductCodeNote', { defaultValue: '· 대량발주 매칭용' })}</span></label>
+            <div className="flex items-stretch">
+              {codePrefix && <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-sm font-bold text-gray-600">{codePrefix}</span>}
+              <input disabled={saving} value={form.product_code} onChange={e => setForm(f => ({ ...f, product_code: e.target.value }))} maxLength={60}
+                className={codePrefix ? inputCls + ' rounded-l-none' : inputCls} placeholder={codePrefix ? '0001' : '예: FD0001'} />
+            </div>
+            <p className="text-[11px] text-gray-400 mt-1">{t('supplier.productCodeHint', { defaultValue: '카테고리 접두(식품 FD·리빙 LV·건강 HT)로 시작합니다. 접두 없이 입력하면 자동으로 붙어요. 대량발주 엑셀에서 이 코드로 상품을 매칭합니다.' })}</p>
           </div>
           {/* 🏷️ 2026-06-17 (대표 요청): 브랜드명 상시 노출 — 모든 상품 등록 시 입력 가능(선택). */}
           <div>

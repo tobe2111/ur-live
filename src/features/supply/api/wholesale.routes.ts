@@ -1137,6 +1137,8 @@ app.get('/catalog/:id', async (c) => {
     //   이 값 우선(체크아웃 computeSupplierShipping 과 동일 SSOT). 미설정이면 null → 클라가 정책 배송비로 폴백 표시.
     const shipMeta = (await getSupplyMeta(DB, [id]).catch(() => undefined))?.get(id)
     const productShippingFee = parseProductShipFee(shipMeta) ?? null
+    // 🏭 2026-06-29 (대표 #8): 상품코드(제조사 등록, 카테고리 접두 FD/LV/HT) — 비가격 정보라 guest 포함 노출.
+    const productCode = (shipMeta?.ext_code || '').trim() || null
 
     const moq = Math.max(1, r.moq || 1)
     const packSize = Math.max(1, r.pack_size || 1)
@@ -1158,6 +1160,7 @@ app.get('/catalog/:id', async (c) => {
           sold_count: r.sold_count || 0, tiers: [], requires_login: true,
           supplier_group: supplierGroup, supplier_policy: supplierPolicy,
           product_shipping_fee: productShippingFee,
+          product_code: productCode,
           inquirable: supId != null,
         },
         grade: null, requires_login: true,
@@ -1192,6 +1195,7 @@ app.get('/catalog/:id', async (c) => {
         tiers,
         supplier_group: supplierGroup, supplier_policy: supplierPolicy,
         product_shipping_fee: productShippingFee,
+        product_code: productCode,
         // 🛡️ 2026-06-13 (채팅 fix): 연결된 제조사 있을 때만 '제조사에 문의' 노출 (신원 비공개 — boolean 만).
         inquirable: supId != null,
       },

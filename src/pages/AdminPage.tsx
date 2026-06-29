@@ -23,7 +23,6 @@ const RejectionModal = lazy(() => import('./admin-page/RejectionModal'))
 const BizInfoModal = lazy(() => import('./admin-page/BizInfoModal'))
 import SellersTable from './admin-page/SellersTable'
 import StreamsTable from './admin-page/StreamsTable'
-import PendingSellersTable from './admin-page/PendingSellersTable'
 import type { ApiError, Seller, Stream, Stats, DashboardStats, Alert } from './admin-page/types'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / DeferUntilVisible / ChartSkeleton /
@@ -657,16 +656,10 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* ── 승인 대기 판매자 ── */}
-      <PendingSellersTable
-        pendingSellers={pendingSellers}
-        onApprove={approveSeller}
-        onReject={openRejectModal}
-      />
-
-      {/* ── 판매자 관리 ── */}
+      {/* ── 판매자 관리 (승인 대기 통합 — 대표 #1: 별도 승인 테이블 제거, 관리 테이블로 일원화) ──
+          승인 대기 판매자를 목록 상단에 합쳐 표시. 행별 승인/거부/정지를 한 곳에서 처리(중복 UI 제거). */}
       <SellersTable
-        sellers={sellers}
+        sellers={[...pendingSellers, ...sellers.filter((s: Seller) => !pendingSellers.some((p: Seller) => p.id === s.id))]}
         loading={loading}
         onRefresh={loadData}
         onUpdateCommission={updateCommissionRate}
@@ -674,6 +667,7 @@ export default function AdminPage() {
         onOpenBizInfo={openBizInfo}
         onApprove={approveSeller}
         onSuspend={suspendSeller}
+        onReject={openRejectModal}
       />
 
       {/* ── 라이브 스트림 관리 ── */}

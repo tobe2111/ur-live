@@ -13,10 +13,6 @@ import { useWholesaleCart } from './wholesale/useWholesaleCart'
 // 💬 채팅 위젯은 lazy — 상품 상세 초기 청크에 채팅 코드 0 byte(버튼 클릭 시에만 fetch).
 //   (floating FAB 없이 위젯만 직접 mount — 상품 상세는 인라인 "제조사에 문의" 버튼이 트리거)
 const WholesaleChatWidget = lazy(() => import('@/pages/wholesale/WholesaleChatWidget'))
-// 🛒 스마트스토어 내보내기 모달 — lazy (연동 안 쓰는 판매사는 chunk 비용 0).
-const NaverExportModal = lazy(() => import('@/pages/wholesale/NaverExportModal'))
-// 🛒 쿠팡 내보내기 모달 — lazy (연결 폼 내장).
-const CoupangExportModal = lazy(() => import('@/pages/wholesale/CoupangExportModal'))
 // 📊 시장 신호 카드 — lazy (로그인 판매사만 마운트, 키 미설정이면 자체 숨김).
 const MarketSignalCard = lazy(() => import('@/pages/wholesale/MarketSignalCard'))
 
@@ -36,6 +32,8 @@ interface DetailItem {
   supplier_policy?: { min_order_amount?: number; shipping_fee?: number; free_ship_threshold?: number } | null
   // 🚚 2026-06-16: 상품별 배송비(설정 시 정책 배송비보다 우선). null = 미설정 → 정책 배송비 폴백.
   product_shipping_fee?: number | null
+  // 🏭 2026-06-29 (대표 #8): 상품코드(제조사 등록, 카테고리 접두 FD/LV/HT). 없으면 null.
+  product_code?: string | null
   // 🛡️ 2026-06-13 (채팅 fix): 연결된 제조사 있는 상품만 true → '제조사에 문의' 노출.
   inquirable?: boolean
 }
@@ -108,9 +106,6 @@ export default function WholesaleProductPage() {
   // 💬 "제조사에 문의" — 로그인 판매사만. 서버가 상품→제조사를 서버사이드 해석(신원 비공개).
   //   버튼 클릭 시에만 lazy 위젯 mount + 상품 기준 스레드 자동 진입.
   const [chatOpen, setChatOpen] = useState(false)
-  // 🛒 2026-06-12: 스마트스토어/쿠팡 내보내기 모달.
-  const [naverOpen, setNaverOpen] = useState(false)
-  const [coupangOpen, setCoupangOpen] = useState(false)
 
   // 🏭 NOTI-1 (2026-06-08): 품절 상품 재입고 알림 구독 상태.
   //   로그인 + 품절일 때만 노출. 내 구독 목록(/restock/subscriptions)에서 이 상품 포함 여부로 초기화.
@@ -306,7 +301,11 @@ export default function WholesaleProductPage() {
 
         {/* 정보 */}
         <div className="flex-1 min-w-0">
-          {catLabel && <span className="inline-flex rounded-full px-2.5 py-1 text-[12px] font-semibold mb-2.5" style={{ background: WT.fill, color: WT.ink2 }}>{catLabel}</span>}
+          <div className="flex items-center gap-1.5 flex-wrap mb-2.5">
+            {catLabel && <span className="inline-flex rounded-full px-2.5 py-1 text-[12px] font-semibold" style={{ background: WT.fill, color: WT.ink2 }}>{catLabel}</span>}
+            {/* 🏭 2026-06-29 (대표 #8): 상품코드 표시(제조사 등록 코드). */}
+            {item.product_code && <span className="inline-flex rounded-full px-2.5 py-1 text-[12px] font-bold tabular-nums" style={{ background: WT.brandSoft, color: WT.brand }}>코드 {item.product_code}</span>}
+          </div>
           <h2 className="font-extrabold tracking-[-0.01em] leading-snug text-[21px] lg:text-[26px]" style={{ color: WT.ink }}>{item.name}</h2>
 
           {locked ? (
@@ -402,30 +401,6 @@ export default function WholesaleProductPage() {
               <MessageCircle className="w-4.5 h-4.5" style={{ color: WT.brand }} />
               제조사에 문의
             </button>
-          )}
-
-          {/* 🛒 2026-06-12 — 스마트스토어/쿠팡 내보내기 (로그인 판매사만). 사입 즉시 양대 채널 등록. */}
-          {!locked && token && (
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setNaverOpen(true)}
-                className="h-12 rounded-xl text-[13px] font-bold flex items-center justify-center gap-1.5"
-                style={{ background: WT.fill, color: WT.ink, border: '1px solid ' + WT.line }}
-              >
-                <Store className="w-4 h-4" style={{ color: '#03C75A' }} />
-                스마트스토어 등록
-              </button>
-              <button
-                type="button"
-                onClick={() => setCoupangOpen(true)}
-                className="h-12 rounded-xl text-[13px] font-bold flex items-center justify-center gap-1.5"
-                style={{ background: WT.fill, color: WT.ink, border: '1px solid ' + WT.line }}
-              >
-                <Store className="w-4 h-4" style={{ color: '#346AFF' }} />
-                쿠팡 등록
-              </button>
-            </div>
           )}
 
           {/* 데스크톱 인라인 CTA */}
@@ -537,24 +512,6 @@ export default function WholesaleProductPage() {
       {chatOpen && (
         <Suspense fallback={null}>
           <WholesaleChatWidget onClose={() => setChatOpen(false)} initialProductId={item.id} />
-        </Suspense>
-      )}
-
-      {/* 🛒 스마트스토어/쿠팡 내보내기 — lazy 모달. */}
-      {naverOpen && (
-        <Suspense fallback={null}>
-          <NaverExportModal
-            product={{ id: item.id, name: item.name, retail_price: item.retail_price, distributor_price: item.distributor_price, stock: item.stock }}
-            onClose={() => setNaverOpen(false)}
-          />
-        </Suspense>
-      )}
-      {coupangOpen && (
-        <Suspense fallback={null}>
-          <CoupangExportModal
-            product={{ id: item.id, name: item.name, retail_price: item.retail_price, distributor_price: item.distributor_price, stock: item.stock }}
-            onClose={() => setCoupangOpen(false)}
-          />
         </Suspense>
       )}
 

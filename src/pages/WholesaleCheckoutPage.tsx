@@ -31,6 +31,9 @@ export default function WholesaleCheckoutPage() {
   const [errorMsg, setErrorMsg] = useState('')
   // 🔁 멱등키 — 이 체크아웃 1회당 고정(더블클릭/네트워크 재시도가 예치금 이중차감·이중주문 안 하도록).
   const idemKeyRef = useRef<string>(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  // 🏭 2026-06-29 (대표 #7): 배송지 직접 입력. 기본=사업자 등록 주소지(서버 프로필 폴백), 끄면 직접 입력.
+  const [useDefaultAddr, setUseDefaultAddr] = useState(true)
+  const [ship, setShip] = useState({ name: '', phone: '', postal: '', address: '' })
 
   const balance = Number(depositQ.data?.balance) || 0
 
@@ -54,6 +57,11 @@ export default function WholesaleCheckoutPage() {
       setErrorMsg(t('wholesale.checkout.minOrderNotMet', { defaultValue: '최소 주문 금액을 채우지 못한 공급처가 있습니다. 장바구니에서 확인해주세요.' }))
       return
     }
+    // 🏭 직접 입력 배송지 검증 — 받는사람·주소 필수(기본 주소지 사용 시엔 서버 프로필 폴백).
+    if (!useDefaultAddr && (!ship.name.trim() || !ship.address.trim())) {
+      setErrorMsg(t('wholesale.checkout.addrRequired', { defaultValue: '받는사람과 주소를 입력해주세요 (또는 사업자 주소지 사용을 켜주세요).' }))
+      return
+    }
     setPaying(true)
     setInsufficient(null)
     setErrorMsg('')
@@ -61,6 +69,8 @@ export default function WholesaleCheckoutPage() {
       const r = await api.post('/api/wholesale/orders', {
         items: items.map((x) => ({ product_id: x.id, qty: x.qty })),
         idempotency_key: idemKeyRef.current,
+        // 직접 입력 시에만 배송지 전달 — 비우면 서버가 사업자 등록 주소지로 폴백.
+        ...(useDefaultAddr ? {} : { shipping: { name: ship.name.trim(), phone: ship.phone.trim(), address: ship.address.trim(), postal: ship.postal.trim() } }),
       }, { headers: { Authorization: `Bearer ${token}` } })
       if (r.data?.success && r.data?.status === 'PAID') {
         clear()
@@ -155,10 +165,29 @@ export default function WholesaleCheckoutPage() {
           </section>
         )}
 
-        {/* 배송지 안내 */}
-        <section className="rounded-2xl p-4" style={{ background: WT.fill2 }}>
-          <p className="text-[12px] font-bold mb-1" style={{ color: WT.ink2 }}>{t('wholesale.checkout.shipping', { defaultValue: '배송지' })}</p>
-          <p className="text-[12px]" style={{ color: WT.ink3 }}>{t('wholesale.checkout.shippingNote', { defaultValue: '사업자 등록 주소지로 배송됩니다. 변경이 필요하면 관리자에게 문의하세요.' })}</p>
+        {/* 배송지 — 기본 사업자 주소지 / 직접 입력 토글 (대표 #7) */}
+        <section className="rounded-2xl bg-white p-4" style={{ border: '1px solid ' + WT.line }}>
+          <p className="text-[12px] font-bold mb-2" style={{ color: WT.ink2 }}>{t('wholesale.checkout.shipping', { defaultValue: '배송지' })}</p>
+          <label className="flex items-center gap-2 text-[13px] cursor-pointer" style={{ color: WT.ink2 }}>
+            <input type="checkbox" checked={useDefaultAddr} onChange={(e) => setUseDefaultAddr(e.target.checked)} className="w-4 h-4 accent-current" />
+            {t('wholesale.checkout.useBizAddr', { defaultValue: '사업자 등록 주소지로 배송' })}
+          </label>
+          {useDefaultAddr ? (
+            <p className="text-[12px] mt-1.5" style={{ color: WT.ink3 }}>{t('wholesale.checkout.bizAddrNote', { defaultValue: '사업자 등록 주소지로 배송됩니다. 다른 곳으로 받으려면 위 체크를 해제하고 직접 입력하세요.' })}</p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <input value={ship.name} onChange={(e) => setShip(s => ({ ...s, name: e.target.value }))} placeholder={t('wholesale.checkout.recipient', { defaultValue: '받는사람' })} maxLength={60}
+                  className="w-full h-11 px-3 rounded-xl text-[14px] outline-none" style={{ border: '1px solid ' + WT.line, color: WT.ink, background: '#fff' }} />
+                <input value={ship.phone} onChange={(e) => setShip(s => ({ ...s, phone: e.target.value }))} placeholder={t('wholesale.checkout.phone', { defaultValue: '연락처' })} maxLength={30}
+                  className="w-full h-11 px-3 rounded-xl text-[14px] outline-none" style={{ border: '1px solid ' + WT.line, color: WT.ink, background: '#fff' }} />
+              </div>
+              <input value={ship.postal} onChange={(e) => setShip(s => ({ ...s, postal: e.target.value }))} placeholder={t('wholesale.checkout.postal', { defaultValue: '우편번호' })} maxLength={20}
+                className="w-full h-11 px-3 rounded-xl text-[14px] outline-none" style={{ border: '1px solid ' + WT.line, color: WT.ink, background: '#fff' }} />
+              <input value={ship.address} onChange={(e) => setShip(s => ({ ...s, address: e.target.value }))} placeholder={t('wholesale.checkout.address', { defaultValue: '주소 (도로명/지번 + 상세)' })} maxLength={300}
+                className="w-full h-11 px-3 rounded-xl text-[14px] outline-none" style={{ border: '1px solid ' + WT.line, color: WT.ink, background: '#fff' }} />
+            </div>
+          )}
         </section>
 
         {/* 예치금 잔액 vs 주문액 */}
