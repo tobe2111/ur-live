@@ -65,6 +65,10 @@ export default function SupplierDashboardPage() {
   const [shipModal, setShipModal] = useState<OrderItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [meError, setMeError] = useState(false)
+  // 🛡️ 2026-06-29 (audit): 탭 데이터 로더 실패를 빈 상태('정산 없음'/'주문 없음')로 위장하지 않도록 섹션별 에러 추적.
+  //   실패 시 해당 탭에 에러+재시도 표시(meError/onRetry 와 동일 패턴).
+  const [secErr, setSecErr] = useState<Record<string, boolean>>({})
+  const markErr = (k: string, v: boolean) => setSecErr(e => (e[k] === v ? e : { ...e, [k]: v }))
   const [showAdd, setShowAdd] = useState(false)
   // 🔧 2026-06-24 (전수조사 H1): 대기·거부 상품 수정·재제출 모달.
   const [editItem, setEditItem] = useState<CatalogItem | null>(null)
@@ -103,14 +107,16 @@ export default function SupplierDashboardPage() {
     try {
       const res = await supplierApi.get<{ data: { items: CatalogItem[] } }>('/api/supplier/products?limit=100')
       setCatalog(res.data.items ?? [])
-    } catch (err) { if (import.meta.env.DEV) console.error(err) }
+      markErr('catalog', false)
+    } catch (err) { if (import.meta.env.DEV) console.error(err); markErr('catalog', true) }
   }, [])
 
   const loadSettlements = useCallback(async () => {
     try {
       const res = await supplierApi.get<{ data: { items: SettlementItem[] } }>('/api/supplier/settlements?limit=100')
       setSettlements(res.data.items ?? [])
-    } catch (err) { if (import.meta.env.DEV) console.error(err) }
+      markErr('settlements', false)
+    } catch (err) { if (import.meta.env.DEV) console.error(err); markErr('settlements', true) }
   }, [])
 
   // 🏦 2026-06-09: 정산금 출금 신청 내역 + 실가용 잔액(available - reserved).
@@ -119,7 +125,8 @@ export default function SupplierDashboardPage() {
       const res = await supplierApi.get<{ withdrawals: WithdrawalItem[]; spendable: number }>('/api/supplier/withdrawals')
       setWithdrawals(res.withdrawals ?? [])
       setSpendable(Number(res.spendable) || 0)
-    } catch (err) { if (import.meta.env.DEV) console.error(err) }
+      markErr('withdrawals', false)
+    } catch (err) { if (import.meta.env.DEV) console.error(err); markErr('withdrawals', true) }
   }, [])
 
   // 🏭 Wave 3c: 매입 역발행 전자세금계산서(제조사→플랫폼) — 도매 주문 정산 시 자동발행.
@@ -127,14 +134,16 @@ export default function SupplierDashboardPage() {
     try {
       const res = await supplierApi.get<{ invoices: SupplierTaxInvoiceRow[] }>('/api/supplier/tax-invoices')
       setTaxInvoices(res.invoices ?? [])
-    } catch (err) { if (import.meta.env.DEV) console.error(err) }
+      markErr('tax', false)
+    } catch (err) { if (import.meta.env.DEV) console.error(err); markErr('tax', true) }
   }, [])
 
   const loadOrders = useCallback(async () => {
     try {
       const res = await supplierApi.get<{ data: { items: OrderItem[] } }>(`/api/supplier/orders?status=${orderStatus}&limit=100`)
       setOrders(res.data.items ?? [])
-    } catch (err) { if (import.meta.env.DEV) console.error(err) }
+      markErr('orders', false)
+    } catch (err) { if (import.meta.env.DEV) console.error(err); markErr('orders', true) }
   }, [orderStatus])
 
   // 발송 대기(to_ship) 건수만 별도 집계 — OrdersTab 가 to_ship 상태에서 onShip(운송장 입력) 을 노출하는 것과 동일 기준.
@@ -206,6 +215,14 @@ export default function SupplierDashboardPage() {
     </>
   )
 
+  // 🛡️ 2026-06-29 (audit): 탭 데이터 로드 실패 시 빈 상태 대신 에러+재시도(빈상태 위장 방지).
+  const secError = (onRetry: () => void, label: string) => (
+    <div className="bg-white rounded-2xl border border-gray-200 py-12 text-center">
+      <p className="text-sm text-gray-500 mb-3">{t('supplier.loadFailed', { defaultValue: '{{label}} 정보를 불러오지 못했어요. 잠시 후 다시 시도해주세요.', label })}</p>
+      <button onClick={onRetry} className="px-4 h-10 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200">{t('common.retry', { defaultValue: '다시 시도' })}</button>
+    </div>
+  )
+
   return (
     <WholesaleDashboardShell
       brand={t('supplier.center', { defaultValue: '제조사 센터' })}
@@ -234,10 +251,10 @@ export default function SupplierDashboardPage() {
               {t('supplier.exportOrders', { defaultValue: '거래내역 엑셀' })}
             </button>
           </div>
-          <OrdersTab items={orders} t={t} status={orderStatus} setStatus={setOrderStatus} onShip={setShipModal} />
+          {secErr.orders ? secError(loadOrders, t('supplier.tabOrders', { defaultValue: '주문' })) : <OrdersTab items={orders} t={t} status={orderStatus} setStatus={setOrderStatus} onShip={setShipModal} />}
         </div>
       ) : tab === 'catalog' ? (
-        <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} onEdit={setEditItem} onBulkDone={() => { loadMe(); loadCatalog() }} onManageChannel={setChannelItem} onRequestPriceChange={setPriceChangeItem} onBulkPrice={() => setBulkPriceOpen(true)} />
+        secErr.catalog ? secError(loadCatalog, t('supplier.tabCatalog', { defaultValue: '상품' })) : <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} onEdit={setEditItem} onBulkDone={() => { loadMe(); loadCatalog() }} onManageChannel={setChannelItem} onRequestPriceChange={setPriceChangeItem} onBulkPrice={() => setBulkPriceOpen(true)} />
       ) : tab === 'chat' ? (
         <Suspense fallback={<WholesaleLoading />}>
           {/* embedded — slide-in 없이 콘텐츠 채움. onClose 는 임베드에선 미사용. */}
@@ -248,12 +265,14 @@ export default function SupplierDashboardPage() {
           {/* 정산 탭 상단: 매출 추이 + 베스트셀러(분석 요약). 아래는 정산 내역 리스트. 한 스크롤. */}
           <AnalyticsTab data={analytics} loading={analyticsLoading} period={analyticsPeriod} setPeriod={setAnalyticsPeriod} t={t} />
           {/* 🏦 출금 신청 + 신청 내역 */}
-          <WithdrawalSection
-            spendable={spendable}
-            items={withdrawals}
-            t={t}
-            onRequest={() => setShowWithdraw(true)}
-          />
+          {secErr.withdrawals ? secError(loadWithdrawals, t('supplier.tabWithdrawal', { defaultValue: '출금' })) : (
+            <WithdrawalSection
+              spendable={spendable}
+              items={withdrawals}
+              t={t}
+              onRequest={() => setShowWithdraw(true)}
+            />
+          )}
           <div>
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-gray-900">{t('supplier.settlementList', { defaultValue: '정산 내역' })}</p>
@@ -265,12 +284,12 @@ export default function SupplierDashboardPage() {
                 {t('supplier.exportSettlements', { defaultValue: '엑셀 다운로드' })}
               </button>
             </div>
-            <SettlementsTab items={settlements} t={t} />
+            {secErr.settlements ? secError(loadSettlements, t('supplier.tabSettlement', { defaultValue: '정산' })) : <SettlementsTab items={settlements} t={t} />}
           </div>
           <div>
             <p className="text-sm font-semibold text-gray-900 mb-1">{t('supplier.taxInvoiceList', { defaultValue: '세금계산서' })}</p>
             <p className="text-xs text-gray-500 mb-3">{t('supplier.taxInvoiceDesc', { defaultValue: '도매 주문 정산 시 자동 발행되는 매입 역발행 세금계산서예요.' })}</p>
-            <SupplierTaxInvoicesTab items={taxInvoices} t={t} />
+            {secErr.tax ? secError(loadTaxInvoices, t('supplier.tabTax', { defaultValue: '세금계산서' })) : <SupplierTaxInvoicesTab items={taxInvoices} t={t} />}
           </div>
         </div>
       )}
