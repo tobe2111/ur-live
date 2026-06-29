@@ -239,6 +239,36 @@ const PageLoader = () => (
   </div>
 )
 
+// 🏭 2026-06-29 (대표 요청 — 도매몰 페이지 로딩 애니메이션): 도매 surface(/wholesale·/supplier)
+//   전용 *라이트* 브랜드 로더. 소비자 PageLoader 는 다크(흰 spinner) 라 라이트 도매 배경(#F4F5F7)에서
+//   어색 → Suspense fallback 을 surface 별로 분기(아래 isWholesaleSurface). 색상은 WT SSOT
+//   (wholesale-theme.ts: ink #0C2454 / brand #FC5424 / fill #F4F5F7 / line2 #E7E9ED)을 인라인 하드코딩 —
+//   소비자 메인 청크에 wholesale-theme 를 끌어들이지 않기 위함(값은 브랜드 고정). 멀티-몰 커스텀
+//   브랜딩은 로딩 순간엔 기본(유통스타트)으로 표시(전환 잔상 방지보다 단순/안정 우선).
+const WholesaleLoader = () => (
+  <div
+    className="flex flex-col items-center justify-center gap-3.5 min-h-[100dvh]"
+    style={{ background: '#F4F5F7' }}
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <div className="relative w-11 h-11">
+      {/* 트랙(연한 보더) */}
+      <div className="absolute inset-0 rounded-full" style={{ border: '3px solid #E7E9ED' }} />
+      {/* 회전 아크(오렌지 액센트) — 200ms 후 회전 시작해 짧은 로딩엔 모션 깜빡임 방지 */}
+      <div
+        className="absolute inset-0 rounded-full animate-spin"
+        style={{ border: '3px solid transparent', borderTopColor: '#FC5424', animationDelay: '200ms' }}
+      />
+    </div>
+    <span className="text-[13px] font-bold tracking-tight animate-pulse" style={{ color: '#0C2454' }}>
+      유통스타트
+    </span>
+    <span className="sr-only">유통스타트 도매몰 로딩 중…</span>
+  </div>
+)
+
 // ✅ Router 내부에서 실행될 컴포넌트
 function AppContent() {
   // ✅ authInitialized ref: 중복 초기화 방지 (StrictMode 이중 마운트 대비)
@@ -517,7 +547,9 @@ function AppContent() {
   return (
     <>
       <FrameWrapper>
-        <Suspense fallback={<PageLoader />}>
+        {/* 🏭 2026-06-29 (대표 요청): 도매 surface 는 라이트 브랜드 로더로, 그 외(소비자)는 기존 PageLoader.
+            isWholesaleSurface = `/wholesale`·`/supplier` SSOT(소비자 경로엔 byte-동일 — PageLoader 유지). */}
+        <Suspense fallback={isWholesaleSurface(location.pathname) ? <WholesaleLoader /> : <PageLoader />}>
           {/* 📐 2026-05-03: PC 풀너비 활성화 — 모바일 폭 강제 제거.
               각 페이지가 자체 `ur-content-narrow/medium/wide/full` 토큰으로 max-width 관리.
               MobileAppLayout 의 `data-mobile-only="true"` (라이브/쇼츠) 페이지는 여전히 430px 액자 유지. */}
