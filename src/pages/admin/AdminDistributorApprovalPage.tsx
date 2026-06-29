@@ -14,7 +14,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardLoadError } from '@/components/dashboard'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { UserCheck, Building2, Phone, Mail, FileText, Loader2, Tag, Store } from 'lucide-react'
 
 interface PendingDistributor {
@@ -68,7 +68,11 @@ export default function AdminDistributorApprovalPage({ embedded = false }: { emb
   async function act(d: PendingDistributor, action: 'approve' | 'reject') {
     let reason: string | null = null
     if (action === 'reject') {
-      if (!(await confirmDialog({ message: `${d.business_name || d.name || '판매사'} 가입을 거부할까요?`, danger: true }))) return
+      // 🏭 2026-06-29: 거부 사유 입력(선택) — null 이던 reason 을 실제로 수집해 판매사 안내·기록. 취소 시 중단.
+      const name = d.business_name || d.name || '판매사'
+      const r = await promptDialog({ title: `${name} 가입 거부`, message: '거부 사유를 입력하면 판매사에게 함께 안내됩니다. (선택)', danger: true, confirmText: '거부', prompt: { placeholder: '예: 사업자등록증 정보 불일치', multiline: true } })
+      if (r === null) return // 취소
+      reason = r.trim() || null
     } else {
       if (!(await confirmDialog({ message: `${d.business_name || d.name || '판매사'} 가입을 승인할까요?\n승인 시 즉시 도매몰을 이용할 수 있습니다.` }))) return
     }
