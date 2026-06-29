@@ -4117,7 +4117,7 @@
     "dongnedeal": "ご近所ディール",
     "create": "作成",
     "offlineGroupBuy": "オフライン共同購入",
-    "myGbVouchers": "クーポン"
+    "myGbVouchers": "利用券"
   },
   "bulkUpload": {
     "title": "商品一括登録",
@@ -4403,7 +4403,7 @@
     "groupRefunded": "返金済み",
     "ktShowBarcode": "店舗で下のバーコードを提示してください",
     "ktCheckMms": "携帯のメッセージでクーポンをご確認ください。カカオトークのギフトボックス連携も可能です。",
-    "tabGroupBuy": "共同購入",
+    "tabGroupBuy": "利用券",
     "tabGifticon": "ギフト券",
     "emptyGbTitle": "受け取った食事券がありません",
     "emptyGbDesc": "近所のグルメ共同購入に参加すると\n前払い食事券がここに貯まります",

@@ -10,6 +10,13 @@
 **3) `/wholesale` 상단 '내 공간' → 사람 아이콘 + '마이'** (`WholesaleUtilBar`).
 - 검증: tsc 0·build 0·audit-gate 33 GREEN. ⚠️ staging 1회 권장: 드랍십 엑셀 업로드→미리보기→예치금 발주→제조사 받는사람별 송장.
 
+## ✅ 2026-06-29 — 이용권 명칭 후속 부채 정리 (대표 "모두 진행 / 가장 이상적인 형태")
+이용권 통일이 드러낸 부채 3종 정리.
+- **A1 카테고리 SSOT 이중화 제거**: `VOUCHER_CATEGORIES` 배열·라벨·아이콘·SQL placeholder 가 `constants/index.ts` + `voucher-categories.ts` **양쪽 중복정의**(drift 위험)였음 → `constants/index.ts` 가 `voucher-categories.ts`(단일 SSOT)에서 **파생/재수출**하도록 통합(import top-level, 순환참조 0). 값/순서/타입 byte-동일(LABELS=`.short`, ICONS=`.emoji`, SQL=`voucherCategoriesSqlClause()`) → 소비 테스트 11 pass.
+- **A2 하드코딩 카테고리 리스트 1건 헬퍼화**: `SellerKpiDashboard` 의 `['meal_voucher',...7종]` 멤버십 배열 → `isVoucherCategory()` SSOT 헬퍼. (나머지 6곳은 emoji 맵·i18n 피커·`general` 포함 admin 맵 등 *뷰 레이어 선택*이라 SSOT 중복 아님 — 의도적 보존.)
+- **A3 타 언어 이용권 탭 정합**: `tabGroupBuy`(옛 group-buy 프레이밍 Group/共同購入/Grupal/Groupé) → 언어별 voucher 용어로 `myGbVouchers`와 통일. zh 团购券(공구 프레이밍)→使用券, ja→利用券, en→Vouchers, es→Vales, fr→Coupons. (전면 다국어 prose 정합은 KR-primary 라 별도.)
+- 검증: tsc 0 · 6 locale JSON valid · 전체 유닛 1847 pass · build 0. 잔여 "식사권"=설명 주석 2줄(제거된 옛 형태 문서화 — 의도).
+
 ## ✅ 2026-06-29 — 판매사 로그인 속도 최적화 (대표 "최대한 빨라져야 해")
 **원인**: 제조사(SupplierLoginPage)는 이미 SPA `navigate('/supplier')`였으나 **판매사(WholesaleLoginPage)는 `window.location.assign('/wholesale')` full reload**(앱 번들 재다운로드) → 로그인 클릭 후 흰 화면 체감.
 - **수정**: 이메일 로그인 + 카카오 probe 성공 시 `assign` → `navigate('/wholesale', {replace:true})`. `applySellerSession`이 seller_token 을 localStorage 에 *동기* set 후라 카탈로그(`loggedIn=!!token` render 시 읽음)가 토큰 인지 — 제조사와 동일 패턴, 안전. 카카오 OAuth 시작(`window.location.href=/auth/kakao/start`)은 그대로(불가피).
