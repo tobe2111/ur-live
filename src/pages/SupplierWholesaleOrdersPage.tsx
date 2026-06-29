@@ -8,6 +8,7 @@ import { supplierApi, isSupplierLoggedIn, getSupplierToken } from '@/lib/supplie
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { readTableFileAsCsv } from '@/lib/read-table-file'
 import { safeDate } from '@/utils/safe-date'
+import WholesaleLoading from './wholesale/WholesaleLoading'
 
 // 🏭 2026-06-01 유통스타트 — 제조사(공급자) 도매 주문 처리 (Phase 3). 송장 입력 + 반품 승인.
 // 라이트 테마 (대시보드 계열).
@@ -178,7 +179,7 @@ export default function SupplierWholesaleOrdersPage() {
 
       <main className="max-w-5xl mx-auto px-4 py-6">
         {loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin text-gray-400" /></div>
+          <WholesaleLoading />
         ) : lines.length === 0 ? (
           <div className="flex flex-col items-center py-20 text-gray-400"><Package className="w-10 h-10 mb-3" /><p>처리할 도매 주문이 없습니다.</p></div>
         ) : (

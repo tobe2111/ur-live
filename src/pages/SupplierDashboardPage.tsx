@@ -7,10 +7,11 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Package, Wallet, Receipt, LogOut, Truck, MessageCircle, Loader2, Download, Factory } from 'lucide-react'
+import { Package, Wallet, Receipt, LogOut, Truck, MessageCircle, Download, Factory } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { supplierApi, isSupplierLoggedIn, clearSupplierSession } from '@/lib/supplier-api'
 import WholesaleDashboardShell, { type WholesaleNavItem } from '@/components/wholesale/WholesaleDashboardShell'
+import WholesaleLoading from './wholesale/WholesaleLoading'
 // 🏭 2026-06-09 Wave 4b: 채팅 — adaptive 폴링(배지) + lazy 위젯(탭 열 때만 chunk fetch).
 import { useChatPoll } from '@/hooks/useChatPoll'
 import { wholesaleChatApi, hasChatToken } from '@/hooks/queries/useWholesaleChat'
@@ -215,7 +216,7 @@ export default function SupplierDashboardPage() {
       ) : tab === 'catalog' ? (
         <CatalogTab items={catalog} t={t} onAdd={() => setShowAdd(true)} onEdit={setEditItem} onBulkDone={() => { loadMe(); loadCatalog() }} onManageChannel={setChannelItem} onRequestPriceChange={setPriceChangeItem} onBulkPrice={() => setBulkPriceOpen(true)} />
       ) : tab === 'chat' ? (
-        <Suspense fallback={<div className="py-20 text-center"><Loader2 className="w-5 h-5 animate-spin text-gray-300 mx-auto" /></div>}>
+        <Suspense fallback={<WholesaleLoading />}>
           {/* embedded — slide-in 없이 콘텐츠 채움. onClose 는 임베드에선 미사용. */}
           <WholesaleChatWidget embedded onClose={() => { /* embedded */ }} onUnreadChange={setChatUnread} />
         </Suspense>

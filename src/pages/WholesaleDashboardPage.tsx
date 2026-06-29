@@ -11,10 +11,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ShoppingBag, ClipboardList, Receipt, FileText, Factory, Wallet,
   TrendingUp, Box, ChevronRight, LogOut, ShoppingCart, Sparkles, Store,
-  LayoutDashboard, Users, Loader2,
+  LayoutDashboard, Users,
 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { WT, won, comma, GRADE_LABEL, wholesaleOrderStatusBadge } from './wholesale/wholesale-theme'
+import WholesaleLoading from './wholesale/WholesaleLoading'
 import { useWholesaleMe, useWholesaleOrders, useWholesaleDeposit, type WholesaleOrderRow } from '@/hooks/queries/useWholesale'
 import { useWholesaleCart } from './wholesale/useWholesaleCart'
 import type { WholesaleNavItem } from '@/components/wholesale/WholesaleDashboardShell'
@@ -52,9 +53,8 @@ const TAB_META: { key: string; label: string; icon: typeof Wallet }[] = [
 ]
 const STAFF_TAB = { key: 'staff', label: '직원 계정', icon: Users }
 
-const TabFallback = () => (
-  <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin" style={{ color: WT.ink4 }} /></div>
-)
+const TabFallback = () => <WholesaleLoading />
+
 
 export default function WholesaleDashboardPage() {
   const navigate = useNavigate()
