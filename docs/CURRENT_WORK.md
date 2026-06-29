@@ -1,6 +1,10 @@
 # 🚧 진행 중 작업
 
-## ✅ 2026-06-29 — 도매 "로그아웃이 전혀 안돼" 근본수정 (대표 신고 → "교과서적으로" Option B 전환)
+## ✅ 2026-06-29 — 판매사 로그인 속도 최적화 (대표 "최대한 빨라져야 해")
+**원인**: 제조사(SupplierLoginPage)는 이미 SPA `navigate('/supplier')`였으나 **판매사(WholesaleLoginPage)는 `window.location.assign('/wholesale')` full reload**(앱 번들 재다운로드) → 로그인 클릭 후 흰 화면 체감.
+- **수정**: 이메일 로그인 + 카카오 probe 성공 시 `assign` → `navigate('/wholesale', {replace:true})`. `applySellerSession`이 seller_token 을 localStorage 에 *동기* set 후라 카탈로그(`loggedIn=!!token` render 시 읽음)가 토큰 인지 — 제조사와 동일 패턴, 안전. 카카오 OAuth 시작(`window.location.href=/auth/kakao/start`)은 그대로(불가피).
+- **청크 프리워밍**: 두 로그인 페이지 마운트 시 도착 청크(`WholesaleCatalogPage`/`SupplierDashboardPage`) `import()` 프리페치 → navigate 즉시 렌더(흰화면 0).
+- 검증: tsc 0·build 0·autologin/internal-links 가드 0. 카카오 정상경로는 이미 단일로드(콜백이 토큰 pre-React 적용)라 무변경.
 **근본원인(코드 추적)**: 도매 페이지가 마운트 시 카카오 소비자 세션(`user_id`)만 있으면 자동으로 `become-distributor`/`/supplier/become`(requireAuth=`ur_session` 쿠키 인증)를 호출해 토큰을 *암묵적 재발급*(ambient privilege elevation). 로그아웃은 `ur_seller_session`만 지우고 `ur_session`을 보존 → probe가 `ur_session`으로 재인증 → 재로그인. (병행 세션의 서버쿠키 await 삭제도 ur_session 미삭제라 이것만으론 못 막음 — 확인됨.)
 - **교과서적 전환(off-by-default, `src/utils/wholesale-session.ts`)**: ambient 자동 probe 제거. `setWholesaleLoginIntent`(카카오 로그인 버튼이 sessionStorage 마커 — OAuth 왕복 생존) / `consumeWholesaleLoginIntent`(probe는 **명시 로그인 직후 1회만** 발화, 소비) / `clearWholesaleLoginIntent`(로그아웃 시 stale 마커 제거). 정상 로그인 1차경로=카카오 콜백 `issueLinkedRoleTokens`(seller_token 명시발급), probe는 토큰 미전달 엣지만 보완(로그인 직후 한정). 4 probe → `|| !consumeWholesaleLoginIntent()`, 2 카카오 버튼 → `setWholesaleLoginIntent()`, 4 로그아웃(판매사 대시보드/카탈로그/예치금 + 제조사) → `authLogout('seller')`(서버쿠키 await) + `clearWholesaleLoginIntent()` + `/wholesale/login`.
 - **결과**: 마운트마다 자동로그인 없음 → 로그아웃이 구조적으로 유지(억제 플래그 불필요). 카카오 소비자 세션 보존(공존). 직접 진입 시 guest 카탈로그(ambient 승격 없음 — 텍스트북).

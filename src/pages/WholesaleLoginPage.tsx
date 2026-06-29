@@ -53,6 +53,9 @@ export default function WholesaleLoginPage() {
     if (saved) { setEmail(saved); setRememberMe(true) }
   }, [])
 
+  // ⚡ 2026-06-29 (로그인 속도): 로그인 성공 후 이동할 카탈로그 청크를 미리 워밍 → navigate 즉시 렌더(흰화면 0).
+  useEffect(() => { import('./WholesaleCatalogPage').catch(() => { /* prefetch best-effort */ }) }, [])
+
   // 🛡️ 2026-06-19 (대표 결정 B): 판매사는 구매자 → 로그인 후 카탈로그(/wholesale)가 홈. 대시보드는 헤더 버튼으로 진입.
   const alreadyIn = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
   useEffect(() => { if (alreadyIn) navigate('/wholesale', { replace: true }) }, [alreadyIn, navigate])
@@ -72,7 +75,7 @@ export default function WholesaleLoginPage() {
         if (data.success && data.status === 'approved' && data.data?.accessToken) {
           applySellerSession(data.data)
           toast.success('판매사로 로그인되었습니다')
-          window.location.assign('/wholesale') // B: 구매자 → 카탈로그 홈
+          navigate('/wholesale', { replace: true }) // ⚡ SPA — 앱 재다운로드 없이 즉시(토큰 동기 set 후)
         } else if (data.success && (data.status === 'pending' || data.status === 'needs_business_info')) {
           toast.info(data.message || '판매사 승인 대기 중입니다 — 승인 후 이용할 수 있어요')
         }
@@ -99,9 +102,9 @@ export default function WholesaleLoginPage() {
       else localStorage.removeItem('wholesale_remember_email')
       applySellerSession(d)
       // 🛡️ 2026-06-19 (대표 결정 B): 판매사는 구매자 → 항상 카탈로그(/wholesale) 홈. 대시보드는 헤더 버튼.
-      // 🏭 2026-06-29 (로그인 속도 — 대표 승인): 전체 새로고침(window.location.assign) → SPA 이동.
-      //   applySellerSession 이 seller_token 등을 동기로 저장한 *뒤* 이동하므로, 카탈로그가 마운트 시
-      //   seller_token 을 읽어 등급가(회원) 뷰로 렌더(authSeg 'in' 캐시키 → 가격 fetch). HTML/SSR 재로딩 제거.
+      // ⚡ 2026-06-29 (로그인 속도): window.location.assign(full reload) → SPA navigate. applySellerSession 이
+      //   seller_token 을 localStorage 에 *동기* set 후라, 카탈로그 마운트 시 토큰을 읽어 등급가(회원) 뷰로
+      //   렌더(authSeg 'in' 캐시키 → 가격 fetch). 앱/HTML 재다운로드 제거. 제조사(SupplierLoginPage)와 대칭.
       navigate('/wholesale', { replace: true })
     } catch (err) {
       toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || (err as Error)?.message || '로그인 중 오류가 발생했어요')
