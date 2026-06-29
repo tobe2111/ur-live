@@ -247,24 +247,32 @@ const PageLoader = () => (
 //   브랜딩은 로딩 순간엔 기본(유통스타트)으로 표시(전환 잔상 방지보다 단순/안정 우선).
 const WholesaleLoader = () => (
   <div
-    className="flex flex-col items-center justify-center gap-3.5 min-h-[100dvh]"
+    className="flex flex-col items-center justify-center gap-5 min-h-[100dvh]"
     style={{ background: '#F4F5F7' }}
     role="status"
     aria-live="polite"
     aria-busy="true"
   >
-    <div className="relative w-11 h-11">
-      {/* 트랙(연한 보더) */}
-      <div className="absolute inset-0 rounded-full" style={{ border: '3px solid #E7E9ED' }} />
-      {/* 회전 아크(오렌지 액센트) — 200ms 후 회전 시작해 짧은 로딩엔 모션 깜빡임 방지 */}
+    {/* 🏷️ 브랜드 로고(라이트 배경용 PNG, public/utong-start-logo.png) — 은은한 pulse 로 '로딩 중' 표현.
+        로고 종횡비 900:310 → height 52 / width 151 명시(CLS 0). 로고 교체는 public 파일만 변경하면 반영. */}
+    <img
+      src="/utong-start-logo.png"
+      alt="유통스타트 도매몰"
+      width={151}
+      height={52}
+      decoding="async"
+      draggable={false}
+      className="w-auto select-none animate-pulse"
+      style={{ height: 52 }}
+    />
+    {/* 회전 아크(오렌지 액센트) — 명확한 로딩 모션. 200ms 후 회전 시작해 짧은 로딩엔 모션 깜빡임 방지 */}
+    <div className="relative w-6 h-6">
+      <div className="absolute inset-0 rounded-full" style={{ border: '2.5px solid #E7E9ED' }} />
       <div
         className="absolute inset-0 rounded-full animate-spin"
-        style={{ border: '3px solid transparent', borderTopColor: '#FC5424', animationDelay: '200ms' }}
+        style={{ border: '2.5px solid transparent', borderTopColor: '#FC5424', animationDelay: '200ms' }}
       />
     </div>
-    <span className="text-[13px] font-bold tracking-tight animate-pulse" style={{ color: '#0C2454' }}>
-      유통스타트
-    </span>
     <span className="sr-only">유통스타트 도매몰 로딩 중…</span>
   </div>
 )

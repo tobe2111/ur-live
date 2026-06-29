@@ -7,6 +7,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useWholesaleOrders } from '@/hooks/queries/useWholesale'
 import { WT, won, wholesaleOrderStatusBadge } from './wholesale/wholesale-theme'
+import WholesaleLoading from './wholesale/WholesaleLoading'
 import WholesaleClaimModal from './wholesale/WholesaleClaimModal'
 import { useWholesaleBack } from '@/hooks/useWholesaleBack'
 import { courierTrackingUrl } from '@/utils/courier-tracking'
@@ -223,7 +224,7 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
           </div>
         )}
         {loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin" style={{ color: WT.ink4 }} /></div>
+          <WholesaleLoading />
         ) : isError ? (
           <div className="flex flex-col items-center py-24 text-center">
             <Package className="w-12 h-12 mb-4" style={{ color: WT.ink4 }} />

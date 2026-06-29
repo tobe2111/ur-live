@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Loader2, Printer } from 'lucide-react'
+import { ArrowLeft, Printer } from 'lucide-react'
 import { useWholesaleStatement } from '@/hooks/queries/useWholesale'
 import { WT, won, comma } from './wholesale/wholesale-theme'
+import WholesaleLoading from './wholesale/WholesaleLoading'
 import { useWholesaleBack } from '@/hooks/useWholesaleBack'
 import { safeDate } from '@/utils/safe-date'
 
@@ -56,7 +57,7 @@ export default function WholesaleStatementPage({ embedded = false }: { embedded?
         )}
 
         {loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="w-7 h-7 animate-spin" style={{ color: WT.ink4 }} /></div>
+          <WholesaleLoading />
         ) : isError ? (
           <div className="text-center py-16">
             <p className="text-[14px] mb-3" style={{ color: WT.ink3 }}>거래내역을 불러오지 못했어요. 네트워크 상태를 확인해주세요.</p>
