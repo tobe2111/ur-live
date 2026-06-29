@@ -6,6 +6,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
+import { supplierApi, getSupplierToken } from '@/lib/supplier-api'
 
 function sellerAuth(): { headers: Record<string, string> } {
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
@@ -347,6 +348,28 @@ export function useWholesaleDeposit() {
     staleTime: 10 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+  })
+}
+
+/**
+ * 🏭 2026-06-29 (통합 셸 Phase 3): 제조사 정산 가용 잔액 — 공용 상단바(WholesaleUtilBar)의 '정산' 칩용.
+ *   판매사 예치금(useWholesaleDeposit)에 대응하는 제조사 짝. supplier_token 게이트라 판매사/게스트엔 미실행(영향 0).
+ *   /api/supplier/me 의 balance.available_amount(가용 정산금) 사용.
+ *   ⚠️ 이 supplier API 호출은 *훅 파일*에 격리 — 공용 바(판매사 storefront 그룹)가 /api/supplier 를 직접
+ *      호출하면 crossrole 가드가 막으므로, 바는 이 훅만 호출한다(역할 인지 = supplier_token 있을 때만 fetch).
+ */
+export interface SupplierBalance { available_amount?: number; pending_amount?: number; paid_amount?: number }
+export function useSupplierBalance() {
+  return useQuery<SupplierBalance | null>({
+    queryKey: ['supplier', 'balance-me'],
+    queryFn: async () => {
+      const res = await supplierApi.get<{ data?: { balance?: SupplierBalance } }>('/api/supplier/me')
+      return res?.data?.balance ?? null
+    },
+    enabled: typeof window !== 'undefined' && !!getSupplierToken(),
+    staleTime: 30 * 1000,
+    gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: true,
   })
 }

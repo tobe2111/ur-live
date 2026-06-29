@@ -38,8 +38,15 @@ const WholesaleChatWidget = lazy(() => import('./wholesale/WholesaleChatWidget')
 export default function SupplierDashboardPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  // 💬 채팅 알림 딥링크(/supplier/chat) → 채팅 탭으로 진입.
-  const [tab, setTab] = useState<Tab>(() => (typeof window !== 'undefined' && window.location.pathname.endsWith('/chat')) ? 'chat' : 'overview')
+  // 💬 채팅 알림 딥링크(/supplier/chat) → 채팅 탭. 🏭 2026-06-29(통합 셸 Phase 3): `?tab=` 딥링크 지원 —
+  //   공용 상단바 '내 공간' 메뉴가 /supplier?tab=settlements 등으로 바로 진입(없으면 overview).
+  const [tab, setTab] = useState<Tab>(() => {
+    if (typeof window === 'undefined') return 'overview'
+    if (window.location.pathname.endsWith('/chat')) return 'chat'
+    const qt = new URLSearchParams(window.location.search).get('tab')
+    const allowed: Tab[] = ['overview', 'catalog', 'orders', 'settlements', 'chat']
+    return qt && (allowed as string[]).includes(qt) ? (qt as Tab) : 'overview'
+  })
   const [me, setMe] = useState<Me | null>(null)
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
   const [settlements, setSettlements] = useState<SettlementItem[]>([])
