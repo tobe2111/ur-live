@@ -46,3 +46,4 @@
 | **🛡️ 유어애즈 부정클릭 방지 설계** | 2026-06-27 | ✅ Phase1(탐지)+Phase2(반자동 차단) 구현 / 공식 API 시 자동전환 | [urads-clickfraud-design.md](./urads-clickfraud-design.md) |
 | **💵 유어애즈 추가 서비스 & 수익화 전략** | 2026-06-27 | 🟡 전략 박제 / 모델·가격 결정 대기(수익화 보류, 기능 우선) | [urads-services-monetization.md](./urads-services-monetization.md) |
 | **🔗 유어애즈 × 유어딜 판매채널 번들** | 2026-06-27 | 🟡 설계 / 크로스서비스 결정 A~D 대기 | [urads-yourdeal-channel-bundle.md](./urads-yourdeal-channel-bundle.md) |
+| **🏭 도매몰 통합 셸 — 카탈로그↔판매사↔제조사 한 제품화** | 2026-06-29 | ⏳ 제안 / 착수 승인 대기 (Phase 1 권장) | [wholesale-unified-shell.md](./wholesale-unified-shell.md) |
