@@ -121,7 +121,15 @@ export async function logout(userType?: 'user' | 'seller' | 'admin'): Promise<vo
     const storedType = localStorage.getItem('user_type')
     userType = (storedType as 'user' | 'seller' | 'admin') || 'user'
   }
-  
+
+  // 🔑 2026-06-29 (로그아웃 근본수정): httpOnly 세션쿠키(ur_session 등)는 클라가 JS 로 못 지움 → 서버가
+  //   삭제해야 진짜 로그아웃. 이 경로(UserProfilePage 등 실제 로그아웃 버튼)가 **이동 전에 await** 하도록 명시 호출
+  //   (아래 clearAuthData 도 fire-and-forget 로 같은 삭제를 하지만, 여기서 await 해 네비게이션 전 쿠키 삭제를 보장).
+  try {
+    const { clearServerSessionCookies } = await import('@/utils/auth')
+    await clearServerSessionCookies(userType)
+  } catch { /* best-effort — 로컬 정리는 계속 진행 */ }
+
   logger.info(`[LoginFlow] 🚪 ${userType} 로그아웃 시작`)
   
   try {

@@ -3,7 +3,7 @@
  * ⚠️ Firebase 절대 사용 안 함! seller_token만 사용!
  */
 
-import { clearAuthData } from '@/utils/auth'
+import { clearAuthData, clearServerSessionCookies } from '@/utils/auth'
 import { getQueryClient } from '@/lib/react-query'
 
 export function getSellerToken(): string | null {
@@ -39,8 +39,11 @@ export function redirectToLogin(navigate: any) {
   navigate('/seller/login', { replace: true })
 }
 
-export function logoutSeller(navigate: any) {
+export async function logoutSeller(navigate: any) {
   // ✅ Clear only seller session (preserves User and Admin sessions)
+  // 🔑 2026-06-29 (로그아웃 근본수정): 서버 httpOnly seller 세션쿠키(ur_seller_session) 삭제를 **await** 후 이동 —
+  //   없으면 쿠키 잔존으로 재인증(로그아웃해도 로그인). 유저/어드민 세션은 보존(type='seller').
+  await clearServerSessionCookies('seller')
   clearAuthData('seller')
   try { getQueryClient().clear() } catch {}
 
