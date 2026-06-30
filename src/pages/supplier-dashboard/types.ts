@@ -6,7 +6,8 @@ export type Tab = 'overview' | 'catalog' | 'orders' | 'settlements' | 'chat'
 export interface Me {
   profile: { business_name: string; email: string; status: string }
   balance: { pending_amount: number; available_amount: number; reserved_amount?: number; paid_amount: number }
-  product_counts: { total: number; pending: number; approved: number; rejected: number }
+  // 🏭 2026-06-30 (할 일 확장): out_of_stock/low_stock 는 승인·노출 상품 중 품절/저재고 수(서버 additive, optional).
+  product_counts: { total: number; pending: number; approved: number; rejected: number; out_of_stock?: number; low_stock?: number }
   // 🧭 2026-06-12 (온보딩 마일스톤): 첫 주문/첫 정산 달성 판정용 — 서버 additive.
   milestones?: { orders: number; settlements: number }
 }
