@@ -43,6 +43,8 @@ const authHeader = () => {
 
 export default function MarketingDashboardPage() {
   const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
+  // 카카오 로그인은 됐지만 사업자(판매) 계정(seller_token)이 없는 유저 — '인증 필요' 안내 분기용.
+  const hasUser = typeof window !== 'undefined' && !!localStorage.getItem('user_id')
   const [connected, setConnected] = useState<boolean | null>(null)
   const [maskedId, setMaskedId] = useState<string | null>(null)
   const [clientId, setClientId] = useState('')
@@ -155,10 +157,22 @@ export default function MarketingDashboardPage() {
       <p className="mono text-[11px] tracking-widest" style={{ color: 'var(--ink3)' }}>OVERVIEW</p>
       <p className="mt-1.5 text-[13px]" style={{ color: 'var(--ink2)' }}>연관키워드·검색추세·쇼핑경쟁·자동완성확장·브랜드 평판 모니터링 — 지금 바로 사용 · 자동입찰/발주수집은 광고계정 연동 후</p>
 
-      {!hasToken && (
+      {!hasToken && !hasUser && (
         <div className={`mt-5 ${card}`}>
           <p className="text-[13px] text-gray-700 dark:text-gray-300">사업자(고객사) 계정으로 로그인 후 이용할 수 있습니다. 카카오 한 번이면 됩니다.</p>
           <a href="/ads/login" className="mt-3 inline-block rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[13px] font-bold text-white dark:text-[#0A0A0A]">로그인 / 시작하기</a>
+        </div>
+      )}
+
+      {/* 카카오 로그인은 됐지만 사업자(판매) 승인 계정이 없는 유저 — 유어딜/도매몰로 튕기지 않고 여기서 안내. */}
+      {!hasToken && hasUser && (
+        <div className={`mt-5 ${card}`}>
+          <div className="text-[14px] font-bold text-gray-900 dark:text-white">사업자 인증이 필요해요</div>
+          <p className="mt-1.5 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
+            유어애즈는 <b className="text-gray-900 dark:text-white">사업자(판매) 승인 계정</b>에서 광고 계정을 연동해 사용합니다. 카카오 로그인은 완료됐어요 — 사업자 등록 후 바로 이용할 수 있습니다.
+            <br /><span className="text-gray-400 dark:text-gray-500">이미 신청하셨다면 관리자 승인 대기 중일 수 있어요.</span>
+          </p>
+          <a href="/seller/register/supplier?from=ads" className="mt-3 inline-block rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[13px] font-bold text-white dark:text-[#0A0A0A]">사업자 등록하기</a>
         </div>
       )}
 
