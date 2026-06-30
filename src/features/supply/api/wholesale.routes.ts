@@ -1790,7 +1790,8 @@ app.get('/orders', async (c) => {
              COALESCE(shipping_total, 0) AS shipping_total,
              (COALESCE(subtotal, 0) + COALESCE(shipping_total, 0)) AS grand_total,
              courier, tracking_number, created_at, paid_at, shipped_at,
-             ship_to_name, ship_to_phone, ship_to_address, ship_to_postal, ship_to_message
+             ship_to_name, ship_to_phone, ship_to_address, ship_to_postal, ship_to_message,
+             reject_reason, cancel_reason
       FROM wholesale_orders WHERE distributor_seller_id = ?
       ORDER BY created_at DESC LIMIT 100
     `).bind(sellerId).all()
