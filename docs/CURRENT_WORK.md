@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-30 — 판매사 홈 '수령 확인 대기' 액션 배너 (대표 "그 다음 작업")
+제조사 '할 일'(직전) 과 대칭 — 판매사(buyer) 도매몰 홈에 actionable 누락 방지.
+- **배경**: 판매사 주문 페이지엔 발송완료(SHIPPED) 주문에 '구매확정' 버튼이 있으나, **홈엔 '확정해야 할 게 있다'는 신호가 0** → 구매확정을 잊으면 ① 제조사 정산이 마무리 안 됨(SHIPPED 라인 게이트) ② 클레임 창이 안 닫힘. 제조사쪽 '할 일'(품절/출금 등)과 비대칭이었음.
+- **수정(additive)**: `/home`(per-seller·무캐시) Promise.all 에 5번째 쿼리 추가 — `wholesale_orders status IN('SHIPPED','PARTIAL_REFUNDED')` COUNT(fail-soft `.catch→0`) → `pending_receipt` 반환. `useWholesaleHome` 타입/매퍼에 `pending_receipt` 통과. `WholesaleCatalogPage` 홈(로그인 + count>0)에 HeroSection 직후 **탭 배너**(🚚 "수령 확인 대기 N건 · 구매확정하면 정산 마무리·클레임 종료") → `/wholesale/orders`. 구매확정 시 `qc.invalidateQueries(wholesale('home'))` 로 배너 즉시 갱신.
+- **불변**: `/home` 베스트/신상/카테고리/추천 4쿼리·등급가 enrich·캐시 동작(무캐시 authed) 전부 byte-불변(쿼리 1개·응답필드 1개 additive). margin/premium 게이팅·제조사 할 일과 독립.
+- 검증: tsc 0 · build 0 · 가드 0. ⚠️ staging: SHIPPED 발주 있는 판매사 홈 진입 → 배너 표시 → 구매확정 → 배너 사라짐 1회 확인 권장.
+
 ## ✅ 2026-06-30 — 프리미엄 전용관 서버 등급 게이팅 + 제조사 '할 일' 확장 (대표 "1,2 해줘")
 도매몰만. 직전 클라 잠금화면(MARGIN_PREMIUM_BLOCKED_GRADES)의 후속 — 데이터 레이어까지 차단 + 대시보드 actionable 확장.
 - **#1 프리미엄 전용관 서버 게이팅** (`wholesale.routes.ts` `/catalog`): 기존엔 `?premium=1` 이 **guest 만** 차단(로그인 Basic 은 프리미엄 상품 데이터 수신 가능 — 클라 잠금화면은 UX 일 뿐 URL 직접 호출로 우회). → guest 게이트 직후 **로그인 Basic('C') 추가 차단** 블록(등급 1회 조회 후 `PREMIUM_BLOCKED_GRADES` 매칭 시 `premium_locked` 빈 목록 + `private,no-store`). **모든 등급캐시·라이브쿼리에 선행** → Basic 은 캐시·라이브 어디서도 프리미엄 데이터 미수신. 클라 상수와 동일 정책(`['C']`, Premium 전용은 `['B','C']`). **'margin' 관은 정렬(sort=discount)일 뿐 별도 데이터 아님 → 서버 게이트 불필요**(Basic 도 일반 카탈로그에서 같은 상품을 봄, 등급 마진은 서버가 등급별 정확계산). 일반 카탈로그 핫패스 byte-불변(premium 경로에서만 등급조회 추가).

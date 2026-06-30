@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO, { wholesaleStoreJsonLd, itemListJsonLd } from '@/components/SEO'
-import { ChevronRight, FileSpreadsheet, Lock, ArrowLeft } from 'lucide-react'
+import { ChevronRight, FileSpreadsheet, Lock, ArrowLeft, Truck } from 'lucide-react'
 import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit, useWholesaleMall, wholesaleAuthSeg } from '@/hooks/queries/useWholesale'
 import WholesaleBannerCarousel from './wholesale/WholesaleBannerCarousel'
 import { queryKeys } from '@/hooks/queries/queryKeys'
@@ -555,6 +555,27 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
             setGradeOpen={setGradeOpen}
             featured={featured}
           />
+
+          {/* 🏭 2026-06-30 (판매사 할 일): 수령 확인 대기 발주 액션 배너 — 구매확정 누락 방지(정산 마무리·클레임 종료).
+              로그인 + pending_receipt>0 일 때만(없으면 화면 소음 0). 탭하면 주문 목록으로. */}
+          {loggedIn && (home?.pending_receipt ?? 0) > 0 && (
+            <button
+              onClick={() => navigate('/wholesale/orders')}
+              className="mt-4 w-full text-left rounded-2xl px-4 py-3.5 flex items-center gap-3 transition-colors"
+              style={{ background: WT.brandSoft, border: `1px solid ${WT.brand}33` }}
+            >
+              <Truck className="w-5 h-5 shrink-0" style={{ color: WT.brand }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-bold" style={{ color: WT.ink }}>
+                  {t('wholesale.pendingReceipt.title', { defaultValue: '수령 확인 대기 {{n}}건', n: home?.pending_receipt ?? 0 }).replace('{{n}}', String(home?.pending_receipt ?? 0))}
+                </p>
+                <p className="text-[12px] mt-0.5" style={{ color: WT.ink2 }}>
+                  {t('wholesale.pendingReceipt.desc', { defaultValue: '구매확정하면 정산이 마무리되고 클레임 기간이 종료돼요' })}
+                </p>
+              </div>
+              <ChevronRight className="w-5 h-5 shrink-0" style={{ color: WT.brand }} />
+            </button>
+          )}
 
           {/* 🧹 2026-06-17 (시안): 신뢰 신호 바 삭제 */}
 

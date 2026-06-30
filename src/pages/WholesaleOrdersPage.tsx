@@ -5,7 +5,9 @@ import SEO from '@/components/SEO'
 import { ArrowLeft, Loader2, Package, Truck, AlertTriangle, MessageSquare, ChevronDown, Send, Download, CheckCircle2, X } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { useQueryClient } from '@tanstack/react-query'
 import { useWholesaleOrders } from '@/hooks/queries/useWholesale'
+import { queryKeys } from '@/hooks/queries/queryKeys'
 import { WT, won, wholesaleOrderStatusBadge } from './wholesale/wholesale-theme'
 import WholesaleLoading from './wholesale/WholesaleLoading'
 import WholesaleClaimModal from './wholesale/WholesaleClaimModal'
@@ -148,6 +150,7 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
   const goBack = useWholesaleBack()
   const token = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
   const { data: orders = [], isLoading: loading, isError, refetch } = useWholesaleOrders()
+  const qc = useQueryClient()
   const [claimOrderId, setClaimOrderId] = useState<number | null>(null)
   const [busyOrderId, setBusyOrderId] = useState<number | null>(null)
   // 🏭 2026-06-27 (대표 — 마무리/발송전취소): 구매확정(SHIPPED→DONE) · 발송 전 주문취소(예치금 환불).
@@ -159,6 +162,8 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
       await api.post(`/api/wholesale/orders/${id}/confirm`, {}, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
       toast.success('구매확정되었습니다')
       refetch()
+      // 🏭 2026-06-30: 홈 '수령 확인 대기' 배너 즉시 갱신(구매확정으로 카운트 1↓).
+      qc.invalidateQueries({ queryKey: queryKeys.wholesale('home') })
     } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '구매확정 실패') } finally { setBusyOrderId(null) }
   }
   async function cancelOrder(id: number) {
