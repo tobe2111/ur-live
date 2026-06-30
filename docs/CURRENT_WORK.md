@@ -1,5 +1,17 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-30 — 도매 기술부채 정리 + 출금 계좌 게이트 (대표 "부채 정리 하고 개선하자")
+**부채 정리**(TECHNICAL_DEBT `🟡 2026-06-25 6도메인 잔여` 섹션 전수 재검증): 항목 2~5 다수가 해소/무효 확인 → 제거.
+- (구)2 제조사 대시보드 보조 로더 silent-empty → loadCatalog/orders/settlements 전부 `markErr`+`secErr` 표면화 완료(stale).
+- (구)3 wishlist/naver/channels 페이지 **삭제됨**, oem 은 `isError` de-mask 완료(stale).
+- (구)4 Overview "출금 가능"=`available−reserved`(spendable) 표시 완료(stale).
+- (구)5b 송장 0건→`toast.error` 완료 / (구)5c StaffPage **삭제됨**(stale).
+- **(구)5a 실수정**: `WholesaleStatementPage` 순매입 `won(summary.net)` → `won(summary.net ?? (total_paid − total_refunded))` 폴백(net 누락 시 ₩0 오표시 방지).
+- 남은 부채는 oem-requests WeakSet nit + 등급 마진탭(대표 결정 대기) 2건뿐 — 문서 정리 주석 추가.
+
+**개선 — 출금 계좌 게이트**(직전 정산계좌 작업 완결): `WithdrawalSection` 을 `hasAccount` 인지로 — 계좌 미등록(`has_payout_account===false`)이면 '출금 신청' 버튼 비활성 + '정산 계좌 필요' 라벨 + amber 안내(아래 카드로 유도) → NO_BANK 헛걸음 제거. undefined(미로드)면 기존 동작(서버가 최종 게이트). i18n 2키 6개 언어. **출금 신청 로직·NO_BANK 서버 게이트 불변.**
+- 검증: tsc 0 · build 0 · 가드 0.
+
 ## ✅ 2026-06-30 — 제조사 정산 계좌 등록/수정 (출금 막다른 길 해소) (대표 "계속 해줘")
 직전 '출금 가능' 할 일이 드러낸 **막다른 길** 근본수정 — 돈은 쌓이는데 출금 못 하던 구조.
 - **문제**: 가입 시 정산 계좌가 **'선택'**("나중에 등록 가능")인데, **가입 후 등록/수정할 UI·엔드포인트가 0**. 계좌 없이 가입한 제조사는 정산금이 쌓여도 출금 시 `NO_BANK`("먼저 정산 계좌를 등록해주세요")로 막히고 **등록할 길이 없어 영구 출금불가** — 가입폼의 "나중에 등록 가능"이 깨진 약속이었음.

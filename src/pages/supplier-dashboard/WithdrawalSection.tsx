@@ -9,25 +9,32 @@ const WD_STATUS: Record<string, { label: string; cls: string }> = {
   paid: { label: '송금 완료', cls: 'bg-emerald-50 text-emerald-700' },
   rejected: { label: '반려', cls: 'bg-gray-100 text-gray-500' },
 }
-export default function WithdrawalSection({ spendable, items, t, onRequest }: {
+export default function WithdrawalSection({ spendable, items, t, onRequest, hasAccount }: {
   spendable: number
   items: WithdrawalItem[]
   t: (k: string, o?: Record<string, unknown>) => string
   onRequest: () => void
+  // 🏦 2026-06-30: 정산 계좌 미등록이면 출금 신청이 NO_BANK 로 막힘 → 헛걸음 전에 버튼 차단 + 안내.
+  //   undefined(미로드/구버전)면 차단 안 함(기존 동작 유지 — 서버가 최종 게이트).
+  hasAccount?: boolean
 }) {
+  const accountBlocked = hasAccount === false
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-5">
       <div className="flex items-center justify-between gap-3 mb-4">
         <div>
           <p className="text-sm font-semibold text-gray-900 inline-flex items-center gap-1.5"><Wallet className="w-4 h-4 text-blue-600" />{t('supplier.withdrawTitle', { defaultValue: '정산금 출금' })}</p>
           <p className="text-xs text-gray-500 mt-1">{t('supplier.withdrawAvail', { defaultValue: '출금 가능' })}: <span className="font-bold text-blue-600">{formatWon(spendable)}</span></p>
+          {accountBlocked && (
+            <p className="text-xs text-amber-600 font-medium mt-1.5">{t('supplier.withdrawNeedAccount', { defaultValue: '출금하려면 아래에서 정산 계좌를 먼저 등록하세요.' })}</p>
+          )}
         </div>
         <button
           onClick={onRequest}
-          disabled={spendable < 10000}
+          disabled={spendable < 10000 || accountBlocked}
           className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FC5424] text-white font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Wallet className="w-4 h-4" /> {t('supplier.withdrawBtn', { defaultValue: '출금 신청' })}
+          <Wallet className="w-4 h-4" /> {accountBlocked ? t('supplier.withdrawNeedAccountBtn', { defaultValue: '정산 계좌 필요' }) : t('supplier.withdrawBtn', { defaultValue: '출금 신청' })}
         </button>
       </div>
       {items.length === 0 ? (

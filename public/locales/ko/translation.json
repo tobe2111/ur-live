@@ -5805,6 +5805,8 @@
     "quickActions": "빠른 작업",
     "todoTitle": "할 일",
     "todoClear": "✓ 처리할 일이 없어요",
+    "withdrawNeedAccount": "출금하려면 아래에서 정산 계좌를 먼저 등록하세요.",
+    "withdrawNeedAccountBtn": "정산 계좌 필요",
     "todoNoAccount": "정산 계좌 등록 · 출금하려면 필요해요",
     "acctTitle": "정산 계좌",
     "acctDesc": "출금 신청 시 이 계좌로 송금됩니다. 출금하려면 정산 계좌가 반드시 등록돼 있어야 해요.",
