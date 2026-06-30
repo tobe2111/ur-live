@@ -96,13 +96,18 @@ supplierDashboardRoutes.get('/me', async (c) => {
         `SELECT COALESCE(reserved_amount, 0) AS reserved FROM supplier_balances WHERE supplier_id = ?`
       ).bind(sid).first<{ reserved: number }>().catch(() => null),
       DB.prepare(
+        // 🏭 2026-06-30 (할 일 확장): 재고 신호 추가 — 승인/노출 상품 중 품절(out_of_stock)·재고부족(low_stock).
+        //   actionable 'go restock' 만 의미 있으므로 approved/active 만 집계(pending 품절은 아직 노출 전 → 제외).
+        //   저재고 = 0 < stock <= min_order_qty(=한 번에 살 수 있는 최소). analytics 정의와 동일 임계.
         `SELECT
            COUNT(*) AS total,
            SUM(CASE WHEN supply_approval_status = 'pending'  THEN 1 ELSE 0 END) AS pending,
            SUM(CASE WHEN supply_approval_status = 'approved' OR (supply_approval_status IS NULL AND is_active = 1) THEN 1 ELSE 0 END) AS approved,
-           SUM(CASE WHEN supply_approval_status = 'rejected' THEN 1 ELSE 0 END) AS rejected
+           SUM(CASE WHEN supply_approval_status = 'rejected' THEN 1 ELSE 0 END) AS rejected,
+           SUM(CASE WHEN (supply_approval_status = 'approved' OR (supply_approval_status IS NULL AND is_active = 1)) AND COALESCE(stock,0) <= 0 THEN 1 ELSE 0 END) AS out_of_stock,
+           SUM(CASE WHEN (supply_approval_status = 'approved' OR (supply_approval_status IS NULL AND is_active = 1)) AND COALESCE(stock,0) > 0 AND COALESCE(stock,0) <= COALESCE(min_order_qty,1) THEN 1 ELSE 0 END) AS low_stock
          FROM products WHERE supplier_id = ? AND is_supply_product = 1`
-      ).bind(sid).first<{ total: number; pending: number; approved: number; rejected: number }>().catch(() => null),
+      ).bind(sid).first<{ total: number; pending: number; approved: number; rejected: number; out_of_stock: number; low_stock: number }>().catch(() => null),
       // 🧭 온보딩 마일스톤(가입→첫 상품→첫 승인→첫 주문→첫 정산) 체크리스트용 — 라이트 COUNT(fail-soft).
       DB.prepare('SELECT COUNT(*) AS n FROM wholesale_order_items WHERE supplier_id = ?')
         .bind(sid).first<{ n: number }>().catch(() => null),
@@ -127,6 +132,8 @@ supplierDashboardRoutes.get('/me', async (c) => {
           pending: counts?.pending ?? 0,
           approved: counts?.approved ?? 0,
           rejected: counts?.rejected ?? 0,
+          out_of_stock: counts?.out_of_stock ?? 0,
+          low_stock: counts?.low_stock ?? 0,
         },
         milestones: {
           orders: orderCnt?.n ?? 0,

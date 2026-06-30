@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-30 — 프리미엄 전용관 서버 등급 게이팅 + 제조사 '할 일' 확장 (대표 "1,2 해줘")
+도매몰만. 직전 클라 잠금화면(MARGIN_PREMIUM_BLOCKED_GRADES)의 후속 — 데이터 레이어까지 차단 + 대시보드 actionable 확장.
+- **#1 프리미엄 전용관 서버 게이팅** (`wholesale.routes.ts` `/catalog`): 기존엔 `?premium=1` 이 **guest 만** 차단(로그인 Basic 은 프리미엄 상품 데이터 수신 가능 — 클라 잠금화면은 UX 일 뿐 URL 직접 호출로 우회). → guest 게이트 직후 **로그인 Basic('C') 추가 차단** 블록(등급 1회 조회 후 `PREMIUM_BLOCKED_GRADES` 매칭 시 `premium_locked` 빈 목록 + `private,no-store`). **모든 등급캐시·라이브쿼리에 선행** → Basic 은 캐시·라이브 어디서도 프리미엄 데이터 미수신. 클라 상수와 동일 정책(`['C']`, Premium 전용은 `['B','C']`). **'margin' 관은 정렬(sort=discount)일 뿐 별도 데이터 아님 → 서버 게이트 불필요**(Basic 도 일반 카탈로그에서 같은 상품을 봄, 등급 마진은 서버가 등급별 정확계산). 일반 카탈로그 핫패스 byte-불변(premium 경로에서만 등급조회 추가).
+- **#2 제조사 대시보드 '할 일' 확장** (`OverviewTab.tsx` + `/me`): 기존 3종(발송대기·반려·검수대기) → **6종**. 추가 ① **품절 상품**(판매중 무재고=매출손실, danger) ② **재고 부족**(품절 전 보충, info) ③ **출금 가능**(spendable>0, success/green). `/me` counts 쿼리에 `out_of_stock`·`low_stock` 집계 **동일 스캔 추가**(승인·노출 상품 한정, analytics 와 동일 임계 `stock<=min_order_qty`) → RTT 0. tone 'success'(emerald) 추가 + `TODO_TONE` 리터럴 맵. i18n 3키(todoOutOfStock/todoLowStock/todoWithdraw) 6개 언어.
+- 검증: tsc 0 · build 0 · column-exists/bind/login-gate 가드 0 · 단위 pass. ⚠️ 프리미엄 게이트는 staging 에서 Basic 계정으로 `?premium=1` 직접 호출 → 빈 목록(`premium_locked`) 1회 확인 권장.
+
 ## ✅ 2026-06-29 — 등급명 영문(Basic/Standard/Premium) 전수 정합 + 제조사 가입폼 정리
 **등급명 전수조사(대표 "약관·계약서 등 A,B,C 다 수정됐나")**: GRADE_NAME/GradeSheet(기완료) 외 잔존 옛이름(프리미엄/프로/일반) 사용자-가시 전부 영문화.
 - 약관/계약서(signup-contract·terms·privacy)엔 등급명 **없음**(클린 확인). 잔존은 멤버십/가이드/FAQ/알림/시드였음.

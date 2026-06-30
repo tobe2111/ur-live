@@ -53,6 +53,12 @@ import { buildXlsx, xlsxResponse } from './xlsx'
 
 const app = new Hono<{ Bindings: Env }>()
 
+// 🏭 2026-06-30 (대표 — 고마진/프리미엄 등급 서버 게이팅): 프리미엄 전용관(?premium=1) 데이터를
+//   받을 수 없는 등급. 클라(WholesaleCatalogPage)의 MARGIN_PREMIUM_BLOCKED_GRADES 와 동일 정책 —
+//   클라 잠금화면은 UX, 이 서버 게이트가 *데이터* 차단(URL 직접 호출로도 Basic 은 빈 목록). Premium 전용으로
+//   좁히려면 ['B','C']. 'margin' 관은 정렬(sort=discount)일 뿐 별도 데이터가 아니라 서버 게이트 불필요.
+const PREMIUM_BLOCKED_GRADES: DistributorGrade[] = ['C']
+
 // ── GET /mall — PUBLIC 현재 몰(브랜딩) 조회 ─────────────────────────────────────
 //   🏬 2026-06-09 멀티-몰 테넌시: host → mall(없으면 기본 몰 id=1). 프런트 헤더 브랜드명/로고/색/카테고리용.
 //   ⚠️ 공개 브랜딩 필드만 반환 — deposit_account / commission_rate 절대 비노출.
@@ -795,6 +801,19 @@ app.get('/catalog', async (c) => {
     c.header('Cache-Control', 'private, no-store')
     c.header('X-WS-Reason', 'premium-guest-locked')
     return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: null, requires_login: true, premium_locked: true })
+  }
+  // 🏭 2026-06-30 (대표 — 등급 서버 게이팅): 로그인했어도 Basic 등급은 프리미엄 전용관 데이터 차단.
+  //   guest 는 위에서 처리됨. 여기선 로그인 Basic('C')만 추가 차단 → 클라 잠금화면(UX)과 이중 게이트.
+  //   프리미엄 경로(저트래픽·명시적)에서만 등급 1회 조회 — 일반 카탈로그 핫패스엔 영향 0. 아래 등급캐시/쿼리
+  //   전부에 *선행*하므로 Basic 은 프리미엄 응답을 캐시에서도 라이브에서도 절대 수신 못 함.
+  if (premiumOnly && !guest) {
+    const sgGate = await loadSellerGrade(DB, sellerId!).catch(() => ({ distributor_grade: null, special_discount_until: null } as Awaited<ReturnType<typeof loadSellerGrade>>))
+    const gradeGate = effectiveGrade({ grade: sgGate.distributor_grade, specialUntil: sgGate.special_discount_until })
+    if (PREMIUM_BLOCKED_GRADES.includes(gradeGate)) {
+      c.header('Cache-Control', 'private, no-store')
+      c.header('X-WS-Reason', 'premium-grade-locked')
+      return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: gradeGate, premium_locked: true })
+    }
   }
   // 🏷️ 2026-06-09 브랜드 전시관 — ?brand=<name> 이면 brand_name 정확 일치 + is_brand_product=1 만(additive WHERE).
   //   ?brands=1 이면 상품 목록 대신 현재 몰의 브랜드(brand_name) distinct 목록 + 상품수 반환(브랜드 그리드용).
