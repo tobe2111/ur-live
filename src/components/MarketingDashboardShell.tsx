@@ -169,11 +169,16 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
           )) : (
             <div style={{ padding: '8px 11px' }}>
               <p style={{ fontSize: 12, color: 'var(--ink3)', lineHeight: 1.6, margin: 0 }}>로그인하면 메뉴가 표시됩니다.</p>
-              <a href="/seller/login?returnUrl=%2Fads%2Fdashboard" style={{ display: 'inline-block', marginTop: 8, fontSize: 12.5, fontWeight: 700, color: 'var(--brand-ink)' }}>로그인 / 시작하기 →</a>
+              <a href="/ads/login" style={{ display: 'inline-block', marginTop: 8, fontSize: 12.5, fontWeight: 700, color: 'var(--brand-ink)' }}>로그인 / 시작하기 →</a>
             </div>
           )}
         </nav>
-        <div style={{ padding: 14, borderTop: '1px solid var(--border)' }}>
+        <div style={{ padding: 14, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {showNav && (
+            <Link to="/ads/account" className="uad-nav" style={{ padding: '8px 11px' }}>
+              <NavIcon><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" /></NavIcon>계정 설정
+            </Link>
+          )}
           <Link to="/ads" className="mono" style={{ fontSize: 11, letterSpacing: '.08em', color: 'var(--ink3)' }}>← 랜딩으로</Link>
         </div>
       </aside>
@@ -193,6 +198,11 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
               </button>
             )}
             <span className="mono hidden sm:inline" style={{ fontSize: 11, letterSpacing: '.06em', color: 'var(--ink3)' }}>{planLabel || '네이버 공식 API'}</span>
+            {showNav && (
+              <Link to="/ads/account" className="uad-tgl lg:hidden" aria-label="계정 설정" title="계정 설정">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" /></svg>
+              </Link>
+            )}
             <button type="button" className="uad-tgl" onClick={toggleTheme} aria-label={dark ? '라이트 모드' : '다크 모드'} title={dark ? '라이트 모드' : '다크 모드'}>{dark ? '☀️' : '🌙'}</button>
           </div>
         </header>

@@ -119,3 +119,43 @@ export async function getAdsAccount(DB: D1Database, id: number): Promise<AdsAcco
   return DB.prepare('SELECT id, email, company_name, phone, status FROM ad_accounts WHERE id = ?')
     .bind(id).first<AdsAccount>().catch(() => null)
 }
+
+export type MutateResult =
+  | { ok: true; account: AdsAccount }
+  | { ok: false; status: number; error: string }
+
+/** 회사명/연락처 수정. */
+export async function updateAdsAccount(DB: D1Database, id: number, patch: { company_name?: string; phone?: string }): Promise<MutateResult> {
+  await ensureAdsAccountSchema(DB)
+  const sets: string[] = []
+  const binds: (string | null)[] = []
+  if (patch.company_name !== undefined) {
+    const company = patch.company_name.trim()
+    if (!company || company.length > 80) return { ok: false, status: 400, error: '회사(고객사) 이름을 확인해주세요' }
+    sets.push('company_name = ?'); binds.push(company)
+  }
+  if (patch.phone !== undefined) {
+    sets.push('phone = ?'); binds.push(patch.phone.trim() || null)
+  }
+  if (sets.length) {
+    await DB.prepare(`UPDATE ad_accounts SET ${sets.join(', ')} WHERE id = ?`).bind(...binds, id).run().catch(() => null)
+  }
+  const account = await getAdsAccount(DB, id)
+  return account ? { ok: true, account } : { ok: false, status: 404, error: '계정을 찾을 수 없습니다' }
+}
+
+export type PasswordResult = { ok: true } | { ok: false; status: number; error: string }
+
+/** 비밀번호 변경 — 현재 비번 확인 + 새 비번 복잡도 검증. */
+export async function changeAdsPassword(DB: D1Database, id: number, currentPassword: string, newPassword: string): Promise<PasswordResult> {
+  await ensureAdsAccountSchema(DB)
+  const row = await DB.prepare('SELECT password_hash FROM ad_accounts WHERE id = ?').bind(id).first<{ password_hash: string }>().catch(() => null)
+  if (!row) return { ok: false, status: 404, error: '계정을 찾을 수 없습니다' }
+  const { valid } = await verifyPassword(currentPassword, row.password_hash)
+  if (!valid) return { ok: false, status: 401, error: '현재 비밀번호가 올바르지 않습니다' }
+  const pw = validatePasswordComplexity(newPassword)
+  if (!pw.ok) return { ok: false, status: 400, error: pw.error }
+  const hash = await hashPassword(newPassword)
+  await DB.prepare('UPDATE ad_accounts SET password_hash = ? WHERE id = ?').bind(hash, id).run().catch(() => null)
+  return { ok: true }
+}

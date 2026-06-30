@@ -8,7 +8,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { rateLimit } from '@/worker/middleware/rate-limit'
-import { adsAccountIdFrom, createAdsAccount, loginAdsAccount, getAdsAccount, signAdsToken, ensureAdsAccountSchema } from './ads-account'
+import { adsAccountIdFrom, createAdsAccount, loginAdsAccount, getAdsAccount, signAdsToken, ensureAdsAccountSchema, updateAdsAccount, changeAdsPassword } from './ads-account'
 import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverConnectionSchema } from '@/services/naver-commerce-core'
 import { collectAndStore, listCollectedOrders } from './order-collection'
 import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete, shoppingCategoryTrends, categoryDemographics } from './keyword-tools'
@@ -64,6 +64,29 @@ marketingRoutes.get('/auth/me', async (c) => {
   const account = await getAdsAccount(c.env.DB, id)
   if (!account) return c.json({ success: false, error: '계정을 찾을 수 없습니다' }, 404)
   return c.json({ success: true, account })
+})
+
+// PATCH /api/ads/auth/account — 회사명/연락처 수정
+marketingRoutes.patch('/auth/account', async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await updateAdsAccount(c.env.DB, id, {
+    company_name: body.company_name !== undefined ? String(body.company_name) : undefined,
+    phone: body.phone !== undefined ? String(body.phone) : undefined,
+  })
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.status as 400 | 404)
+  return c.json({ success: true, account: r.account })
+})
+
+// POST /api/ads/auth/password — 비밀번호 변경(현재 비번 확인)
+marketingRoutes.post('/auth/password', rateLimit({ action: 'ads-pw', max: 10, windowSec: 600 }), async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await changeAdsPassword(c.env.DB, id, String(body.current_password || ''), String(body.new_password || ''))
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.status as 400 | 401 | 404)
+  return c.json({ success: true })
 })
 
 // ── 멀티테넌트 입점: 고객사별 스마트스토어 연동 (SELF 방식) ──────────────────
