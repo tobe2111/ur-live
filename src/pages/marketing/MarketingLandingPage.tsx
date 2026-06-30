@@ -87,9 +87,9 @@ const thRow: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(
 export default function MarketingLandingPage() {
   const [dark, setDark] = useState(false) // 기본 라이트(Landing Light). 토글 시 코스믹 네이비(v2).
   useUrAdsFavicon()
-  // 로그인 상태면 대시보드로, 아니면 셀러 로그인(로그인 후 /ads/dashboard 로 복귀).
+  // 로그인 상태면 대시보드로, 아니면 유어애즈 코스믹 로그인(/ads/login → 카카오 → /ads/dashboard 복귀).
   const loggedIn = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
-  const loginHref = loggedIn ? APP : `/seller/login?returnUrl=${encodeURIComponent(APP)}`
+  const loginHref = loggedIn ? APP : '/ads/login'
   return (
     <div className="ua-landing" data-theme={dark ? 'dark' : undefined}>
       <style>{SCOPED_CSS}</style>
