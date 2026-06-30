@@ -9,7 +9,7 @@ import PanelError from './PanelError'
  *   "이번 주 리포트 생성"으로 즉시 생성도 가능(연결 필요). 읽기 전용.
  */
 const authHeader = () => {
-  const t = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+  const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
 

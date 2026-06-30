@@ -8,7 +8,7 @@ import PanelError from './PanelError'
  *   "뜨는 카테고리" 발굴 → 도매몰 소싱 시너지. 연동 불필요(오픈API), 읽기 전용.
  */
 const authHeader = () => {
-  const t = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+  const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
 interface CategoryTrend { name: string; changePct: number; latest: number }

@@ -11,7 +11,7 @@ import PanelError from './PanelError'
  *   프라이버시: 국가 수준만, 90일 보관, 광고주별 격리. 차단(노출제한 IP)은 Phase 2.
  */
 const authHeader = () => {
-  const t = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+  const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
 

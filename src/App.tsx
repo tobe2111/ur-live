@@ -131,6 +131,7 @@ const VouchersPage = lazy(() => import('./pages/VouchersPage'))
 // 🆕 2026-06-27 /ads = 공개 랜딩(소개), /ads/dashboard = 로그인 후 입점 대시보드
 const MarketingLandingPage = lazy(() => import('./pages/marketing/MarketingLandingPage'))
 const MarketingLoginPage = lazy(() => import('./pages/marketing/MarketingLoginPage'))
+const MarketingSignupPage = lazy(() => import('./pages/marketing/MarketingSignupPage'))
 const MarketingDashboardPage = lazy(() => import('./pages/marketing/MarketingDashboardPage'))
 const VoucherDetailPage = lazy(() => import('./pages/VoucherDetailPage'))
 const MealVouchersPage = lazy(() => import('./pages/MealVouchersPage'))
@@ -604,6 +605,7 @@ function AppContent() {
             {/* 🆕 2026-06-27 /ads = 공개 랜딩(소개), /ads/dashboard = 로그인 후 입점 대시보드 */}
             <Route path="/ads" element={<ErrorBoundary><MarketingLandingPage /></ErrorBoundary>} />
             <Route path="/ads/login" element={<ErrorBoundary><MarketingLoginPage /></ErrorBoundary>} />
+            <Route path="/ads/signup" element={<ErrorBoundary><MarketingSignupPage /></ErrorBoundary>} />
             <Route path="/ads/dashboard" element={<ErrorBoundary><MarketingDashboardPage /></ErrorBoundary>} />
             {/* 🛡️ 2026-05-23: 교환권 전용 detail 페이지 (deal 결제). voucher 와 group-buy UI 분리. */}
             <Route path="/vouchers/:id" element={<VoucherDetailPage />} />
