@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Factory, ChevronRight, Lock, Check, Wallet } from 'lucide-react'
+import { Factory, ChevronRight, Lock } from 'lucide-react'
 import { WT, won, discountRate } from '../wholesale/wholesale-theme'
 import { cfImage } from '@/utils/cf-image'
 import { safeDate } from '@/utils/safe-date'
@@ -18,44 +18,9 @@ function CountdownBadge() {
   return <span className="text-[11.5px] font-extrabold rounded-md px-2 py-1 text-white tabular-nums" style={{ background: WT.ink }}>{pad(h)}:{pad(m)}:{pad(s)}</span>
 }
 
-// 🚀 2026-06-30 새 판매사 첫 발주 가이드 — 제조사 온보딩 마일스톤과 대칭. orderCount===0 일 때만(첫 발주 후 졸업).
-//   예치금 충전 → 상품 담기 → 첫 발주. 충전 전이면 충전 CTA, 충전 후면 '아래에서 담아 발주' 안내.
-function FirstOrderGuide({ depositBalance, onCharge }: { depositBalance: number; onCharge: () => void }) {
-  const hasDeposit = depositBalance > 0
-  const steps = [
-    { label: '예치금 충전', done: hasDeposit },
-    { label: '상품 담기', done: false },
-    { label: '첫 발주', done: false },
-  ]
-  const nextIdx = steps.findIndex(s => !s.done)
-  return (
-    <div className="rounded-2xl p-4" style={{ border: '1px solid ' + WT.line2, background: WT.fill2 }}>
-      <p className="text-[14px] font-bold mb-3" style={{ color: WT.ink }}>🚀 도매몰 시작하기</p>
-      <div className="flex items-center gap-1.5 flex-wrap mb-3">
-        {steps.map((s, i) => (
-          <div key={s.label} className="flex items-center gap-1.5">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-bold"
-              style={s.done ? { background: WT.posBg, color: WT.pos } : i === nextIdx ? { background: WT.brandSoft, color: WT.brand } : { background: WT.fill, color: WT.ink4 }}>
-              {s.done ? <Check className="w-3 h-3" /> : null}{s.label}
-            </span>
-            {i < steps.length - 1 && <span className="text-[10px]" style={{ color: WT.ink4 }}>→</span>}
-          </div>
-        ))}
-      </div>
-      {!hasDeposit ? (
-        <button onClick={onCharge} className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 h-11 rounded-xl text-white font-bold text-[13.5px]" style={{ background: WT.brand }}>
-          <Wallet className="w-4 h-4" /> 예치금 충전하고 시작하기
-        </button>
-      ) : (
-        <p className="text-[12px] leading-relaxed" style={{ color: WT.ink3 }}>👉 아래에서 상품을 담아 첫 발주를 완료해보세요. <b style={{ color: WT.ink2 }}>재고·자금 0원</b> 무재고 드랍십도 가능해요.</p>
-      )}
-    </div>
-  )
-}
-
 // 히어로 + 대시보드 + OEM — 2026-06-15 시안 리디자인(유통스타트 도매몰.dc.html).
 //   로그인 사입자 = 슬림 사입 대시보드(기존). 비로그인/카카오 = 2단 트러스트 히어로 + 추천 상품(가입 유도).
-export default function HeroSection({ loggedIn, userSession, grade, me, monthSpend, orderCount, depositBalance, setGradeOpen, featured, hasOrdered }: {
+export default function HeroSection({ loggedIn, userSession, grade, me, monthSpend, orderCount, depositBalance, setGradeOpen, featured }: {
   loggedIn: boolean
   userSession: boolean
   grade: string
@@ -65,8 +30,6 @@ export default function HeroSection({ loggedIn, userSession, grade, me, monthSpe
   depositBalance: number
   setGradeOpen: (v: boolean) => void
   featured?: CatalogItem | null
-  // 🚀 2026-06-30: 발주 경험 유무(누적) — 첫 발주 가이드 졸업 판정(월간 orderCount 와 별개). undefined=미로드(가이드 숨김).
-  hasOrdered?: boolean
 }) {
   const navigate = useNavigate()
 
@@ -100,10 +63,6 @@ export default function HeroSection({ loggedIn, userSession, grade, me, monthSpe
       {/* 로그인 회원 — 계정 요약 대시보드 + OEM (게스트 구조에 '추가') */}
       {loggedIn && (
         <div className="pt-4 pb-1 space-y-3">
-          {/* 🚀 새 판매사(발주 경험 없음)만 시작 가이드 — 첫 발주 후 자동 졸업. undefined(미로드)면 숨김(기존 회원 깜빡임 방지). */}
-          {hasOrdered === false && (
-            <FirstOrderGuide depositBalance={depositBalance} onCharge={() => navigate('/wholesale/deposits')} />
-          )}
           <Dashboard grade={grade} marginPct={me?.margin_pct ?? 0} company="회원님" monthSpend={monthSpend} orderCount={orderCount} depositBalance={depositBalance} onGrade={() => setGradeOpen(true)} onCharge={() => navigate('/wholesale/deposits')} />
           {me?.special_active && me.special_discount_until && (
             <div className="px-4 py-3 rounded-2xl text-[13px] font-semibold" style={{ background: WT.brandSoft, color: WT.brand }}>

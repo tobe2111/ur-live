@@ -694,7 +694,7 @@ app.get('/home', async (c) => {
       return { id: r.id, name: r.name, image_url: r.image_url, category: r.category, stock: r.stock, dominant_color: r.dominant_color ?? null, distributor_price: price, retail_price: r.retail_price || null, moq: Math.max(1, r.moq || 1), has_tiers: !!r.has_tiers, sold_count: r.sold_count || 0 }
     })
 
-    const [best, fresh, cats, proposalsRes, pendingReceiptRow, hasOrderedRow] = await Promise.all([
+    const [best, fresh, cats, proposalsRes, pendingReceiptRow] = await Promise.all([
       DB.prepare(`SELECT ${cols} FROM products p WHERE ${baseWhere} ORDER BY COALESCE(p.sold_count,0) DESC, p.created_at DESC LIMIT 12`).bind(sellerId, grade).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
       DB.prepare(`SELECT ${cols} FROM products p WHERE ${baseWhere} ORDER BY p.created_at DESC LIMIT 12`).bind(sellerId, grade).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
       DB.prepare(`SELECT p.category AS category, COUNT(*) AS cnt FROM products p WHERE ${baseWhere} AND p.category IS NOT NULL GROUP BY p.category ORDER BY cnt DESC LIMIT 12`).bind(sellerId, grade).all<{ category: string; cnt: number }>().catch(() => ({ results: [] as { category: string; cnt: number }[] })),
@@ -705,8 +705,6 @@ app.get('/home', async (c) => {
       // 🏭 2026-06-30 (판매사 할 일): 수령 확인 대기 — 발송완료(SHIPPED/PARTIAL_REFUNDED) = 구매확정 전.
       //   구매확정해야 정산 마무리 + 클레임 창 종료 → 홈 액션 배너로 누락 방지. fail-soft(.catch→0).
       DB.prepare(`SELECT COUNT(*) AS n FROM wholesale_orders WHERE distributor_seller_id = ? AND status IN ('SHIPPED','PARTIAL_REFUNDED')`).bind(sellerId).first<{ n: number }>().catch(() => null),
-      // 🚀 2026-06-30: '발주 경험 있음' — 첫 발주 가이드 졸업 판정용(월간 count 가 아닌 누적). fail-soft.
-      DB.prepare(`SELECT EXISTS(SELECT 1 FROM wholesale_orders WHERE distributor_seller_id = ? AND status IN ('PAID','ACCEPTED','SHIPPED','PARTIAL_REFUNDED','DONE')) AS ev`).bind(sellerId).first<{ ev: number }>().catch(() => null),
     ])
 
     return c.json({
@@ -717,7 +715,6 @@ app.get('/home', async (c) => {
       proposals: enrich(proposalsRes.results || []),
       categories: (cats.results || []).map(c2 => ({ key: c2.category, count: c2.cnt })),
       pending_receipt: Math.max(0, Number(pendingReceiptRow?.n) || 0),
-      has_ordered: Number(hasOrderedRow?.ev) === 1,
     })
   } catch (err) {
     return safeError(c, err, '도매몰 홈 조회 중 오류가 발생했습니다', '[wholesale]')

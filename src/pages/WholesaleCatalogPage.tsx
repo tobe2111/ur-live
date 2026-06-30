@@ -551,7 +551,6 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
             me={me}
             monthSpend={monthSpend}
             orderCount={orderCount}
-            hasOrdered={home?.has_ordered}
             depositBalance={Number(depositQ.data?.balance) || 0}
             setGradeOpen={setGradeOpen}
             featured={featured}
