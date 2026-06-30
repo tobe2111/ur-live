@@ -11,7 +11,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { adsAccountIdFrom, createAdsAccount, loginAdsAccount, getAdsAccount, signAdsToken, ensureAdsAccountSchema } from './ads-account'
 import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverConnectionSchema } from '@/services/naver-commerce-core'
 import { collectAndStore, listCollectedOrders } from './order-collection'
-import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete, shoppingCategoryTrends } from './keyword-tools'
+import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete, shoppingCategoryTrends, categoryDemographics } from './keyword-tools'
 import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, addKeywordsToAdgroup, accountStats, budgetPacing, BID_MIN, BID_MAX, KW_ADD_MAX, type SearchAdCreds } from './searchad-client'
 import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnection, searchAdConnStatus, getActiveTenantId, listTenants, setActiveTenant } from './searchad-connection'
 import { aiMarketerAdvice, type AiMarketerContext } from './ai-marketer'
@@ -174,6 +174,16 @@ marketingRoutes.get('/sourcing/trends', rateLimit({ action: 'ads-sourcing', max:
   const r = await shoppingCategoryTrends(naverOpenId(c.env), naverOpenSecret(c.env))
   if (!r.ok) return c.json({ success: false, error: r.error }, r.error === 'NOT_CONFIGURED' ? 503 : 400)
   return c.json({ success: true, results: r.results })
+})
+
+// GET /api/ads/sourcing/demographics?cid=50000002 — 카테고리 기기/성별/연령 분포(쇼핑인사이트)
+marketingRoutes.get('/sourcing/demographics', rateLimit({ action: 'ads-sourcing-demo', max: 30, windowSec: 60 }), async (c) => {
+  const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const cid = String(c.req.query('cid') || '')
+  const r = await categoryDemographics(naverOpenId(c.env), naverOpenSecret(c.env), cid)
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.error === 'NOT_CONFIGURED' ? 503 : 400)
+  return c.json({ success: true, data: r.data })
 })
 
 // GET /api/ads/reputation?q=브랜드 — 블로그/카페/뉴스 언급량 + 최근 글(브랜드 평판 모니터링)
