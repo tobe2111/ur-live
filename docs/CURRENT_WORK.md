@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-30 — 판매사 주문 거절/취소 사유 노출 (가시성 갭) (대표 "응 계속 진행")
+- **문제**: 제조사가 주문을 거절하면 `wholesale_orders.reject_reason` 을 저장하고 판매사에게 '환불 처리' 알림까지 보내는데, **판매사 주문 목록엔 REJECTED 뱃지만 뜨고 사유가 안 보였음** — "왜 거절됐지?"를 알 길이 없던 가시성 갭. (취소 `cancel_reason` 도 동일.)
+- **수정(additive)**: 판매사 주문 목록 API(`/api/wholesale/orders`) SELECT 에 `reject_reason, cancel_reason` 추가(이미 `ensureOrderTables` ensure 컬럼) → `WholesaleOrderRow` 타입 → `WholesaleOrdersPage` 주문 카드에 사유 노트(REJECTED=빨강 '제조사 거절 사유', CANCELLED/REFUNDED=중립 '취소 사유'). 사유 없으면 미표시(소음 0).
+- **불변**: 주문 목록 쿼리 구조·라인아이템 첨부·금액 표시·상태 뱃지 전부 불변(SELECT 컬럼 2개 + 표시 블록 1개 additive). 거절/취소/환불 로직 무변경. WholesaleDashboardPage 임베드 주문도 같은 컴포넌트라 자동 적용.
+- 검증: tsc 0 · build 0 · column-exists/bind 가드 0.
+
 ## ✅ 2026-06-30 — 도매 기술부채 정리 + 출금 계좌 게이트 (대표 "부채 정리 하고 개선하자")
 **부채 정리**(TECHNICAL_DEBT `🟡 2026-06-25 6도메인 잔여` 섹션 전수 재검증): 항목 2~5 다수가 해소/무효 확인 → 제거.
 - (구)2 제조사 대시보드 보조 로더 silent-empty → loadCatalog/orders/settlements 전부 `markErr`+`secErr` 표면화 완료(stale).
