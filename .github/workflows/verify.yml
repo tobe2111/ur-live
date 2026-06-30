@@ -273,6 +273,13 @@ jobs:
         run: STRICT_LIGHT_INPUT=1 node scripts/check-light-input-guard.mjs
         continue-on-error: false
 
+      # 🛡️ 2026-06-30: 배포-청크 자가복구(흰화면/무한로딩) 시스템 회귀 방지 — 현재 위반 0 → strict.
+      #   인라인 부트가드 + chunk-error SSOT(__cb 캐시버스트) + main.tsx 배선 + worker SPA no-cache
+      #   4불변식 중 하나라도 빠지면 새 배포 후 대시보드 안 켜짐(4번+ 재발). 신규 약화 차단.
+      - name: Deploy chunk self-recovery guard (strict)
+        run: STRICT_CHUNK_RECOVERY=1 node scripts/check-chunk-recovery-guard.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-06-26: 모달/시트가 하단 네비 뒤로 가려짐 재발 방지 (대표 "계속 발생 — 근본적으로").
       #   풀스크린 오버레이(fixed inset-0 z-[N])가 네비(9999)보다 낮은 z 면 네비가 덮음. 현재 위반 0 → strict.
       #   표준: 모달 10500 / 시트 10600 (src/constants/z-index.ts). 예외는 `modal-zindex-ok` 주석.
