@@ -48,6 +48,7 @@ export default function MarketingDashboardPage() {
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
   const [connectErr, setConnectErr] = useState<string | null>(null)
+  const [storeOpen, setStoreOpen] = useState(false) // 발주수집(베타) 카드 기본 접힘 — 검색광고 키 오입력 방지
   const [busy, setBusy] = useState(false)
   const [orders, setOrders] = useState<CollectedOrder[]>([])
   const [kw, setKw] = useState('')
@@ -161,11 +162,22 @@ export default function MarketingDashboardPage() {
         </div>
       )}
 
+      {/* 핵심 시작점 안내 — 유어애즈의 주 기능(자동입찰·실적)은 검색광고 연동에서 시작. 발주수집(스마트스토어)과 혼동 방지. */}
       {hasToken && (
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
-          {/* 1) 스마트스토어 연동 */}
+        <a href="#sec-searchad" className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4 hover:border-gray-300 dark:hover:border-[#3A3A3A] transition-colors">
+          <div>
+            <div className="text-[13.5px] font-bold text-gray-900 dark:text-white">네이버 검색광고 계정 연동으로 시작하기</div>
+            <p className="mt-0.5 text-[11.5px] text-gray-500 dark:text-gray-400 leading-relaxed">고객ID·액세스라이선스·비밀키를 연결하면 자동입찰·통합실적·예상입찰가를 바로 사용합니다. <span className="text-gray-400 dark:text-gray-500">(아래 스마트스토어 발주수집과는 다른 키입니다.)</span></p>
+          </div>
+          <span className="shrink-0 text-[12px] font-bold text-gray-700 dark:text-gray-200">아래로 ↓</span>
+        </a>
+      )}
+
+      {hasToken && (
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          {/* 1) 스마트스토어 발주수집 (베타) — 기본 접힘 */}
           <div id="sec-store" className={card}>
-            <div className="text-[14px] font-bold text-gray-900 dark:text-white">스마트스토어 연동</div>
+            <div className="text-[14px] font-bold text-gray-900 dark:text-white">스마트스토어 발주수집 <span className="text-[10.5px] font-medium text-amber-600 dark:text-amber-500">베타</span></div>
             {connected ? (
               <div className="mt-2 text-[13px] text-gray-600 dark:text-gray-300">
                 연결됨 <span className="text-gray-400 dark:text-gray-500">({maskedId})</span>
@@ -173,6 +185,11 @@ export default function MarketingDashboardPage() {
                   <button onClick={sync} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-3 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">발주 동기화</button>
                   <button onClick={async () => { await api.delete('/api/ads/naver/connect', { headers: authHeader() }); loadStatus() }} className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-3 py-2 text-[12px] text-gray-500 dark:text-gray-400">연결 해제</button>
                 </div>
+              </div>
+            ) : !storeOpen ? (
+              <div className="mt-1.5">
+                <p className="text-[11.5px] text-gray-400 dark:text-gray-500 leading-relaxed">스마트스토어 주문을 자동 수집합니다(선택). 커머스 API센터의 '상품주문/배송' 권한 키가 필요합니다.</p>
+                <button onClick={() => setStoreOpen(true)} className="mt-2 text-[12px] font-semibold text-gray-700 dark:text-gray-200">발주수집 연동 설정 →</button>
               </div>
             ) : (
               <div className="mt-2 space-y-2">
@@ -185,7 +202,10 @@ export default function MarketingDashboardPage() {
                 {connectErr && (
                   <p className="text-[11.5px] text-red-600 dark:text-red-400 leading-relaxed">{connectErr}</p>
                 )}
-                <button onClick={connect} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{busy ? '검증 중…' : '연결'}</button>
+                <div className="flex gap-2">
+                  <button onClick={connect} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{busy ? '검증 중…' : '연결'}</button>
+                  <button onClick={() => { setStoreOpen(false); setConnectErr(null) }} className="rounded-lg px-3 py-2 text-[12px] text-gray-500 dark:text-gray-400">취소</button>
+                </div>
               </div>
             )}
           </div>
