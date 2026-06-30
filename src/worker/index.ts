@@ -1853,15 +1853,14 @@ app.get('*', async (c) => {
   // API 경로는 이미 위에서 처리됨 — 여기는 페이지 요청만
   if (path.startsWith('/api/') || path.startsWith('/auth/')) return c.notFound();
 
-  // 🛡️ 2026-06-30 (대시보드 무한로딩 영구수정 — 대표 신고 "절대 발생하면 안됨"): 존재하지 않는 정적
-  //   에셋(옛 배포의 청크 해시)에 SPA index.html(200 text/html)을 돌려주던 것이 근본원인.
-  //   새 배포마다 청크 파일명 해시가 바뀌는데, 옛 HTML 을 들고 있던 브라우저가 옛 `/assets/*.js` 를
-  //   요청 → 새 빌드에 그 파일 없음 → 이 catch-all 로 폴백 → text/html 응답 → 브라우저가
-  //   "Expected a JavaScript module but server responded with MIME text/html" 로 거부 → 대시보드가
-  //   아예 부팅 안 됨(무한 스피너). 게다가 200 응답이라 클라 chunk-error 자동복구가 '실패'로 인식 못 함.
-  //   해결: 없는 정적 에셋은 진짜 404 → 브라우저가 'chunk 로드 실패'로 인식 → 자동 reload → 아래
-  //   no-cache HTML 로 항상 최신 청크 해시 수신 → 자가복구. (존재하는 에셋은 Pages 가 직접 서빙 →
-  //   이 핸들러까지 오지 않음. 따라서 여기 도달 = 그 파일은 실제로 없음 = 404 가 정답.)
+  // 🛡️ 2026-06-30 (배포 후 옛 청크 무한로딩 — 방어 in depth): 없는 정적 에셋(확장자 가진 경로)에
+  //   SPA index.html(text/html)을 돌려주면 브라우저가 "Expected JS module, got text/html" 로 거부.
+  //   ⚠️ 정직한 한계: 실제 청크(`/assets/*`)는 `_routes.json` 의 exclude 목록이라 이 worker 까지
+  //      도달하지 않음 — Pages 가 직접 서빙하고, 없으면 Pages 가 HTML 404 를 반환(그게 대표가 본 MIME
+  //      에러의 출처). 그래서 그 경로의 *근본 자가복구*는 (1) 클라 `reloadWithCacheBust`(chunk-error
+  //      감지 → __cb 캐시버스트 reload) + (2) 아래 SPA 셸 no-cache(reload 가 항상 최신 HTML 수신)다.
+  //   이 분기는 exclude 에 없는 확장자 경로(예: 오타·구버전 비-해시 참조)가 worker 에 도달했을 때
+  //   HTML 셸 대신 깔끔한 404 를 주는 보조 방어(harmless). 청크 복구의 주역은 위 (1)+(2).
   if (path.startsWith('/assets/') || /\.(?:js|mjs|css|map|woff2?|ttf|otf|json|png|jpe?g|gif|svg|webp|avif|ico|wasm|txt|xml)$/i.test(path)) {
     return c.text('Not Found', 404, { 'Cache-Control': 'no-cache, no-store, must-revalidate' });
   }
