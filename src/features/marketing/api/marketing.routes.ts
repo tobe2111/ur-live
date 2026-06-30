@@ -24,6 +24,7 @@ import { listRules, upsertRule, deleteRule, recentLog, runAutobidForSeller, bulk
 import { listWatches, addWatch, deleteWatch, refreshWatch } from './price-monitor'
 import { getAlertSettings, saveAlertSettings, computeAlerts } from './alerts'
 import { listRankTargets, addRankTarget, deleteRankTarget, refreshRankTarget } from './rank-tracker'
+import { getMetricsHistory, computeWoW, snapshotAccountRecent } from './metrics-history'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
 
@@ -516,6 +517,25 @@ marketingRoutes.get('/searchad/stats', rateLimit({ action: 'ads-sa-stats', max: 
   const r = await accountStats(creds, days)
   if (!r.ok) return c.json({ success: false, error: r.error }, 502)
   return c.json({ success: true, data: r.data })
+})
+
+// GET /api/ads/metrics/history?days=30 — 일별 메트릭 시계열(추세 차트) + WoW. cron 적재분 조회(읽기)
+marketingRoutes.get('/metrics/history', rateLimit({ action: 'ads-metrics-hist', max: 60, windowSec: 60 }), async (c) => {
+  const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const days = Math.min(120, Math.max(7, Number(c.req.query('days')) || 30))
+  const series = await getMetricsHistory(c.env.DB, sellerId, days)
+  return c.json({ success: true, series, wow: computeWoW(series) })
+})
+
+// POST /api/ads/metrics/snapshot — 자기 계정 최근치 즉시 적재(첫 진입/지금 갱신). 어제+오늘 2일.
+marketingRoutes.post('/metrics/snapshot', rateLimit({ action: 'ads-metrics-snap', max: 6, windowSec: 60 }), async (c) => {
+  const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const r = await snapshotAccountRecent(c.env, sellerId).catch(() => ({ ok: false as const, reason: 'error' }))
+  if (!r.ok) return c.json({ success: false, error: r.reason === 'no_creds' ? '검색광고 계정을 먼저 연결해주세요' : '적재 실패', code: r.reason === 'no_creds' ? 'NOT_CONNECTED' : undefined }, r.reason === 'no_creds' ? 400 : 502)
+  const series = await getMetricsHistory(c.env.DB, sellerId, 30)
+  return c.json({ success: true, series, wow: computeWoW(series) })
 })
 
 // GET /api/ads/searchad/keyword-efficiency?days=30 — 키워드 ROAS·CPA + 낭비 키워드(쿼터 보호 cap)

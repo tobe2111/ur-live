@@ -21,6 +21,7 @@ const authHeader = () => {
  */
 const NAV: Array<{ id: string; label: string; icon: ReactNode }> = [
   { id: 'sec-keyword', label: '키워드 확장', icon: <path d="M11 4.5a6.5 6.5 0 1 0 4.5 11.2M11 8v6M8 11h6M20 20l-4.2-4.2" /> },
+  { id: 'sec-trend', label: '성과 추세', icon: <path d="M3 17l6-6 4 4 8-8M21 7v5h-5" /> },
   { id: 'sec-searchad', label: '검색광고 실적', icon: <path d="M3 21h18M5 18v-7M10.3 18V6M15.6 18v-9" /> },
   { id: 'sec-efficiency', label: '키워드 효율', icon: <path d="M3 3v18h18M7 14l3-3 3 2 5-6" /> },
   { id: 'sec-autobid', label: '자동입찰', icon: <path d="M8 5v14M8 5l-3 3M8 5l3 3M16 19V5M16 19l-3-3M16 19l3-3" /> },

@@ -225,6 +225,11 @@ export async function handleCronScheduled(
       const { refreshAllRankTargets } = await import('../features/marketing/api/rank-tracker')
       return refreshAllRankTargets(env)
     }));
+    // 🆕 2026-06-30 유어애즈 일별 메트릭 스냅샷 — 연결 계정의 '어제' 실적을 ad_daily_metrics 에 1행/계정/일(추세 차트 원천, 읽기, 돈 0).
+    ctx.waitUntil(safeCron('ads-metrics-snapshot', async () => {
+      const { snapshotAllAccounts } = await import('../features/marketing/api/metrics-history')
+      return snapshotAllAccounts(env)
+    }));
     // 🆕 2026-06-28 유어애즈 임계값 알림 — 예산 소진/최저가 역전 점검 후 이메일(계정+날짜 멱등 1일 1회).
     //   가격 갱신 후 실행되도록 동일 블록 뒤에 등록(최신 last_lowest 반영).
     ctx.waitUntil(safeCron('ads-alerts', async () => {
