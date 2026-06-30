@@ -19,6 +19,7 @@ import { listReports, generateWeeklyReport } from './weekly-report'
 import { registerSite, listSites, deleteSite, recordHit, clickReport, ensureClickguardSchema, addBlockedIp, listBlockedIps, removeBlockedIp } from './clickguard'
 import { listRules, upsertRule, deleteRule, recentLog, runAutobidForSeller, bulkUpsertRules, parseCsvRules, deleteRulesForTenant } from './autobid'
 import { listWatches, addWatch, deleteWatch, refreshWatch } from './price-monitor'
+import { getAlertSettings, saveAlertSettings, computeAlerts } from './alerts'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
 
@@ -207,6 +208,36 @@ marketingRoutes.get('/sourcing/demographics', rateLimit({ action: 'ads-sourcing-
   const r = await categoryDemographics(naverOpenId(c.env), naverOpenSecret(c.env), cid)
   if (!r.ok) return c.json({ success: false, error: r.error }, r.error === 'NOT_CONFIGURED' ? 503 : 400)
   return c.json({ success: true, data: r.data })
+})
+
+// ── 임계값 알림(예산 소진·최저가 역전) ─────────────────────────────────────
+// GET /api/ads/alerts/settings
+marketingRoutes.get('/alerts/settings', async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  return c.json({ success: true, settings: await getAlertSettings(c.env.DB, id) })
+})
+
+// PATCH /api/ads/alerts/settings — 알림 켜기/임계값 변경
+marketingRoutes.patch('/alerts/settings', async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const settings = await saveAlertSettings(c.env.DB, id, {
+    enabled: body.enabled !== undefined ? !!body.enabled : undefined,
+    budget_pace_pct: body.budget_pace_pct !== undefined ? Number(body.budget_pace_pct) : undefined,
+    price_undercut: body.price_undercut !== undefined ? !!body.price_undercut : undefined,
+  })
+  return c.json({ success: true, settings })
+})
+
+// GET /api/ads/alerts/preview — 지금 임계 초과 항목(발송 X)
+marketingRoutes.get('/alerts/preview', rateLimit({ action: 'ads-alerts-preview', max: 20, windowSec: 60 }), async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const settings = await getAlertSettings(c.env.DB, id)
+  const items = await computeAlerts(c.env, id, settings)
+  return c.json({ success: true, items })
 })
 
 // GET /api/ads/reputation?q=브랜드 — 블로그/카페/뉴스 언급량 + 최근 글(브랜드 평판 모니터링)

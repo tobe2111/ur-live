@@ -10,6 +10,7 @@ import ClickGuardPanel from './ClickGuardPanel'
 import PricePanel from './PricePanel'
 import SourcingPanel from './SourcingPanel'
 import WeeklyReportPanel from './WeeklyReportPanel'
+import AlertsPanel from './AlertsPanel'
 import PanelError from './PanelError'
 
 /**
@@ -376,6 +377,9 @@ export default function MarketingDashboardPage() {
 
       {/* 가격 모니터링(네이버쇼핑 최저가 추적) + 소싱 */}
       {hasToken && <section id="sec-price" style={{ scrollMarginTop: 76 }}><PricePanel /><SourcingPanel /></section>}
+
+      {/* 임계값 알림(예산 소진·최저가 역전 → 이메일) */}
+      {hasToken && <section id="sec-alerts" style={{ scrollMarginTop: 76 }}><AlertsPanel /></section>}
 
       {/* 부정클릭 방지(Phase 1 — 탐지/리포트) */}
       {hasToken && <section id="sec-fraud" style={{ scrollMarginTop: 76 }}><ClickGuardPanel /></section>}
