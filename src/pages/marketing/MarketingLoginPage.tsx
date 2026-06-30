@@ -86,7 +86,11 @@ export default function MarketingLoginPage() {
 
         <button type="submit" className="ua-auth-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? '로그인 중…' : '로그인'}</button>
 
-        <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid #ECEDF1', textAlign: 'center' }}>
+        <div style={{ marginTop: 12, textAlign: 'center' }}>
+          <Link to="/ads/forgot" style={{ fontSize: 12.5, color: '#8A93A3' }}>비밀번호를 잊으셨나요?</Link>
+        </div>
+
+        <div style={{ marginTop: 14, paddingTop: 16, borderTop: '1px solid #ECEDF1', textAlign: 'center' }}>
           <span style={{ fontSize: 13, color: '#565E6C' }}>아직 계정이 없으신가요? </span>
           <Link to={signupHref} style={{ fontSize: 13, color: '#2A56D4', fontWeight: 700 }}>회원가입</Link>
         </div>

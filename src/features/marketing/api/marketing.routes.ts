@@ -8,7 +8,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { rateLimit } from '@/worker/middleware/rate-limit'
-import { adsAccountIdFrom, createAdsAccount, loginAdsAccount, getAdsAccount, signAdsToken, ensureAdsAccountSchema, updateAdsAccount, changeAdsPassword } from './ads-account'
+import { adsAccountIdFrom, createAdsAccount, loginAdsAccount, getAdsAccount, signAdsToken, ensureAdsAccountSchema, updateAdsAccount, changeAdsPassword, requestPasswordReset, resetPasswordWithToken } from './ads-account'
 import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverConnectionSchema } from '@/services/naver-commerce-core'
 import { collectAndStore, listCollectedOrders } from './order-collection'
 import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete, shoppingCategoryTrends, categoryDemographics } from './keyword-tools'
@@ -87,6 +87,35 @@ marketingRoutes.post('/auth/password', rateLimit({ action: 'ads-pw', max: 10, wi
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const r = await changeAdsPassword(c.env.DB, id, String(body.current_password || ''), String(body.new_password || ''))
   if (!r.ok) return c.json({ success: false, error: r.error }, r.status as 400 | 401 | 404)
+  return c.json({ success: true })
+})
+
+// POST /api/ads/auth/forgot — 비밀번호 재설정 요청(이메일 링크). 열거 방지 → 항상 success.
+marketingRoutes.post('/auth/forgot', rateLimit({ action: 'ads-forgot', max: 5, windowSec: 600 }), async (c) => {
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const reset = await requestPasswordReset(c.env.DB, String(body.email || '')).catch(() => null)
+  if (reset && c.env.RESEND_API_KEY && c.env.RESEND_FROM) {
+    const origin = new URL(c.req.url).origin
+    const link = `${origin}/ads/reset?token=${reset.token}`
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${c.env.RESEND_API_KEY}` },
+      body: JSON.stringify({
+        from: c.env.RESEND_FROM, to: reset.email,
+        subject: '[유어애즈] 비밀번호 재설정',
+        text: `아래 링크에서 비밀번호를 재설정하세요(1시간 유효):\n\n${link}\n\n본인이 요청하지 않았다면 이 메일을 무시하세요.\n\n— 유어애즈 UR Ads`,
+      }),
+    }).catch(() => null)
+  }
+  // 이메일 존재 여부 노출 금지 — 항상 동일 응답.
+  return c.json({ success: true, message: '가입된 이메일이면 재설정 링크를 보냈습니다.' })
+})
+
+// POST /api/ads/auth/reset — 토큰으로 새 비밀번호 설정
+marketingRoutes.post('/auth/reset', rateLimit({ action: 'ads-reset', max: 10, windowSec: 600 }), async (c) => {
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await resetPasswordWithToken(c.env.DB, String(body.token || ''), String(body.new_password || ''))
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.status as 400)
   return c.json({ success: true })
 })
 

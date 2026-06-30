@@ -120,6 +120,58 @@ export async function getAdsAccount(DB: D1Database, id: number): Promise<AdsAcco
     .bind(id).first<AdsAccount>().catch(() => null)
 }
 
+// ── 비밀번호 재설정(이메일 토큰) ─────────────────────────────────────────────
+const _resetSchemaDone = new WeakSet<object>()
+async function ensureResetSchema(DB: D1Database): Promise<void> {
+  if (_resetSchemaDone.has(DB)) return
+  _resetSchemaDone.add(DB)
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_password_resets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id INTEGER NOT NULL,
+    token_hash TEXT NOT NULL,
+    expires_at DATETIME NOT NULL,
+    used_at DATETIME,
+    created_at DATETIME DEFAULT (datetime('now'))
+  )`).run().catch(() => null)
+  await DB.prepare('CREATE INDEX IF NOT EXISTS idx_ad_resets_token ON ad_password_resets(token_hash)').run().catch(() => null)
+}
+
+async function sha256Hex(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+/** 재설정 요청 — 계정 있으면 1시간 유효 토큰 발급(해시 저장). 호출측이 이메일 발송. 열거 방지 위해
+ *  계정 없으면 null 반환(라우트는 항상 success). */
+export async function requestPasswordReset(DB: D1Database, email: string): Promise<{ accountId: number; email: string; token: string } | null> {
+  await ensureAdsAccountSchema(DB); await ensureResetSchema(DB)
+  const e = (email || '').trim().toLowerCase()
+  if (!EMAIL_RE.test(e)) return null
+  const acc = await DB.prepare('SELECT id, email FROM ad_accounts WHERE LOWER(email) = ?').bind(e).first<{ id: number; email: string }>().catch(() => null)
+  if (!acc) return null
+  const token = Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2, '0')).join('')
+  const tokenHash = await sha256Hex(token)
+  await DB.prepare("INSERT INTO ad_password_resets (account_id, token_hash, expires_at) VALUES (?, ?, datetime('now', '+1 hour'))")
+    .bind(acc.id, tokenHash).run().catch(() => null)
+  return { accountId: acc.id, email: acc.email, token }
+}
+
+/** 토큰으로 비밀번호 재설정 — 미만료·미사용 + 복잡도 검증 후 변경, 토큰 1회용 소모. */
+export async function resetPasswordWithToken(DB: D1Database, token: string, newPassword: string): Promise<PasswordResult> {
+  await ensureResetSchema(DB)
+  if (!token || token.length < 32) return { ok: false, status: 400, error: '유효하지 않은 링크입니다' }
+  const tokenHash = await sha256Hex(token)
+  const row = await DB.prepare("SELECT id, account_id FROM ad_password_resets WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')")
+    .bind(tokenHash).first<{ id: number; account_id: number }>().catch(() => null)
+  if (!row) return { ok: false, status: 400, error: '만료되었거나 이미 사용된 링크입니다. 다시 요청해주세요.' }
+  const pw = validatePasswordComplexity(newPassword)
+  if (!pw.ok) return { ok: false, status: 400, error: pw.error }
+  const hash = await hashPassword(newPassword)
+  await DB.prepare('UPDATE ad_accounts SET password_hash = ? WHERE id = ?').bind(hash, row.account_id).run().catch(() => null)
+  await DB.prepare("UPDATE ad_password_resets SET used_at = datetime('now') WHERE id = ?").bind(row.id).run().catch(() => null)
+  return { ok: true }
+}
+
 export type MutateResult =
   | { ok: true; account: AdsAccount }
   | { ok: false; status: number; error: string }
