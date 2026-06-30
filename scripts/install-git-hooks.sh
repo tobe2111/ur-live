@@ -200,6 +200,11 @@ node scripts/check-light-input-guard.mjs || true
 echo "==> Pre-commit: 모바일 뷰포트 함정 가드 (warn-only)..."
 node scripts/check-mobile-viewport.mjs || true
 
+# 🛡️ 2026-06-29: 파일 크기 래칫 — god 파일 재발 방지. 신규 600줄 초과 / baseline 동결 파일 성장 경고.
+#   staged 파일만 검사. 줄인 뒤엔 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신. warn-only.
+echo "==> Pre-commit: 파일 크기 래칫 (god 파일 방지, warn-only)..."
+node scripts/check-file-size.mjs || true
+
 # 🛡️ 2026-06-26: CSV 수식 인젝션 가드 (warn-only) — csvEscape 류 함수에 = + - @ 탭/CR 선행 가드 강제.
 echo "==> Pre-commit: CSV 수식 인젝션 가드 (warn-only)..."
 node scripts/check-csv-injection.mjs || true

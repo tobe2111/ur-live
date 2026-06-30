@@ -669,7 +669,8 @@ navigate(returnUrl)
    - ❌ **`h-screen`/`min-h-screen`(=100vh) 금지** → ✅ **`h-[100dvh]`/`min-h-[100dvh]`**(또는 `<Screen>`). 모바일 100vh 는 주소창 포함 = 실제 보이는 영역보다 큼 → `bottom-0` 콘텐츠가 화면 밖. `calc(100dvh - …)` 와 컨테이너 단위도 dvh끼리 일치.
    - ❌ **`flex-1 overflow-y-auto` 에 `min-h-0` 빠뜨리기 금지** → ✅ **`flex-1 min-h-0 overflow-y-auto`**(또는 `<ScrollArea>`). flex 자식 기본 `min-height:auto` 라 콘텐츠보다 안 줄어듦 → 스크롤 안 되고 형제(footer/적용버튼)가 밀려 안 보임. 바텀시트/모달 스크롤 영역 필수.
    - 🛡️ 신규 라인은 `check-mobile-viewport.mjs`(pre-commit 래칫)가 자동 경고.
-9. **검증**: `bash scripts/quality-check.sh`
+9. **🧱 파일/컴포넌트 크기 (2026-06-29 — god 파일 재발 방지)**: 페이지/라우트가 600줄 넘어가면 **그 시점에** 카드·모달·섹션·핸들러群을 같은이름 폴더(`foo-list/`, `my-vouchers/` 선례)로 추출. "일단 여기에 한 블록 더"가 god 파일(1300줄+)의 원인 — 처음부터 컴포넌트로. 단일 컴포넌트도 ~300줄 넘으면 분리 고려. 🛡️ `check-file-size.mjs`(래칫: 신규 600줄 초과 / baseline 동결 파일 성장 차단, `verify.yml`+audit-gate strict)가 자동 강제. 대형 파일을 줄였으면 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신.
+10. **검증**: `bash scripts/quality-check.sh`
 
 ## 🚀 배포 아키텍처
 
@@ -778,6 +779,7 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 | 가격으로 로그인 유도(로그인했는데 '로그인하세요') | `check-login-gate-by-price.mjs` (warn) | `verify.yml` (strict) | 2026-06-27 도매 상세/카탈로그가 `distributor_price == null`(가격 없음) 하나로 **로그인 여부**와 **가격 유무**를 동시 판단 → 로그인했는데 그 등급 공급가가 미설정/스테일이면 가격없음을 '로그아웃'으로 오판, 주문/담기 클릭 시 `goLogin()` 으로 쫓아냄. 표면별 패치(2026-06-19 표시만 고침)라 핸들러에서 재발. **로그인 유도는 `if (!token)` 로만**, 가격 null/0 은 '공급가 미설정 · 제조사 문의' 안내(redirect 금지). 도매 surface(`Wholesale*`/`Supplier*`/`supplier-dashboard`/`components/wholesale`)에서 가격-부재 조건이 `goLogin` 게이트하면 위반. 예외 `login-gate-ok` 주석. 같은 사건의 짝(모바일 하단 잘림)은 `StickyActionBar`(`components/ui/sticky-action-bar.tsx`) 자동 spacer 로 구조적 해소 |
 | 모달/시트가 하단 네비 뒤로 가려짐 | `check-modal-zindex.mjs` (warn) | `verify.yml` (strict) | 2026-06-26 대표 "이 문제 계속 발생 — 근본적으로". 풀스크린 오버레이(`fixed inset-0 z-[N]`)를 `z-[100]`(FAB 대) 등 네비(`z-[9999]`) 아래로 달아 하단 네비가 모달/바텀시트(공구권 등록 시트 등) 위를 덮어 버튼이 안 보임. 새 모달 추가마다 재발 → 표준 스케일(`src/constants/z-index.ts`: 모달 10500 / 시트 10600 / 토스트 20000 / 확인창 100000) 강제. 23개 일괄 교정 후 strict. 예외(네비 숨김 화면 전용 등) `modal-zindex-ok` 주석 + `pointer-events-none` 자동 제외 |
 | 셀러↔도매 라우팅(겸업 lock-out) | `check-seller-wholesale-redirect.mjs` (warn) | `verify.yml` (strict) | 2026-06-30 대표 신고 — `/seller` 들어가면 `/wholesale` 로 튕김. `SellerLayout` 이 `localStorage.is_distributor === '1'` 하나로 무조건 도매몰 redirect(마운트 effect + render 가드 2곳) → **소비자 셀러 + 판매사 겸업** 계정이 셀러 대시보드에서 영구 차단(기존 셀러가 `/become-distributor` 한 번만 해도 같은 셀러 행에 is_distributor=1 덧붙어 겸업이 됨). `is_distributor`=도매 *접근권*(capability)이지 도매 *전용*(exclusivity)이 아님(주석은 "겸업 영향 없음" 약속했으나 코드 미구현). **Seller\* surface 에서 is_distributor 직접 게이트로 /wholesale redirect/`return null` 금지** — 도매 전용 판정은 서버 권위 `wholesale_only`(SSOT `computeWholesaleOnly`, 인증 `GET /api/seller/surface`)만. 게이트를 새 신호로 바꿔 기존 깨진 겸업 계정은 재로그인 없이 자동 치유. 예외 `seller-wholesale-redirect-ok` 주석 |
+| god 파일 재발(페이지/라우트 비대화) | `check-file-size.mjs` (warn) | `verify.yml` + audit-gate (strict) | 2026-06-29 대표 "리팩토링 반복 말고 애초에 막아라". 페이지/라우트가 "일단 여기에 한 블록 더" 누적으로 god 파일(MyVouchersPage 1296·GroupBuyListPage 1309…) → 사후 대규모 분해 필요. **래칫**: 신규 파일 600줄 초과 차단 + 기존 대형 파일은 `scripts/file-size-baseline.json`(현재 82개 동결)보다 **커지면 차단**(줄이는 건 OK). 줄인 뒤 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신. 분해법: 카드·모달·섹션·핸들러群을 같은이름 폴더(`foo-list/`)로 추출(GroupBuyListPage→`group-buy-list/` 9개, MyVouchersPage→`my-vouchers/` 7개 선례). 예외 `file-size-ok` 주석 / `[SKIP_SIZE]` |
 
 **Bypass (정당 사유만):**
 - commit message 에 `[SKIP_ROUTER_CHECK]` / `[SKIP_BUILD_CHECK]` / `[SKIP_SECRET_CHECK]` / `[STRICT_SILENT]` 등 명시
