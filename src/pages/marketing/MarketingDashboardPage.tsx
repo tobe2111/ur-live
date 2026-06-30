@@ -47,6 +47,7 @@ export default function MarketingDashboardPage() {
   const [maskedId, setMaskedId] = useState<string | null>(null)
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
+  const [connectErr, setConnectErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [orders, setOrders] = useState<CollectedOrder[]>([])
   const [kw, setKw] = useState('')
@@ -85,13 +86,14 @@ export default function MarketingDashboardPage() {
 
   async function connect() {
     if (!clientId.trim() || !clientSecret.trim()) return
-    setBusy(true)
+    setBusy(true); setConnectErr(null)
     try {
       const r = await api.post('/api/ads/naver/connect', { client_id: clientId.trim(), client_secret: clientSecret.trim() }, { headers: authHeader() })
-      if (r.data?.success) { toast.success('스마트스토어가 연결되었습니다'); setClientSecret(''); await loadStatus() }
-      else toast.error(r.data?.error || '연결 실패')
+      if (r.data?.success) { toast.success('스마트스토어가 연결되었습니다'); setClientSecret(''); setConnectErr(null); await loadStatus() }
+      else { const m = r.data?.error || '연결 실패'; setConnectErr(m); toast.error(m) }
     } catch (e: unknown) {
-      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '연결 실패')
+      const m = (e as { response?: { data?: { error?: string } } })?.response?.data?.error || '연결 실패 — 네트워크 또는 키 오류'
+      setConnectErr(m); toast.error(m)
     } finally { setBusy(false) }
   }
 
@@ -174,10 +176,16 @@ export default function MarketingDashboardPage() {
               </div>
             ) : (
               <div className="mt-2 space-y-2">
-                <p className="text-[11.5px] text-gray-400 dark:text-gray-500 leading-relaxed">커머스 API센터에서 발급한 앱의 <b>'상품주문/배송' 권한</b> 포함 client_id/secret 을 입력하세요.</p>
-                <input className={input} placeholder="client_id" value={clientId} onChange={(e) => setClientId(e.target.value)} />
-                <input className={input} placeholder="client_secret" type="password" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} />
-                <button onClick={connect} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">연결</button>
+                <p className="text-[11.5px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                  <b className="text-gray-600 dark:text-gray-300">발주수집(베타)</b> — <a href="https://apicenter.commerce.naver.com" target="_blank" rel="noopener noreferrer" className="underline">커머스 API센터</a>에서 발급한 앱의 <b>'상품주문/배송' 권한</b> 포함 client_id/secret 을 입력하세요.
+                  <br /><span className="text-amber-600 dark:text-amber-500">※ 검색광고 키(고객ID·액세스라이선스·비밀키)와는 다른 키입니다 — 그건 아래 '검색광고 계정 연동'에 입력하세요.</span>
+                </p>
+                <input className={input} placeholder="client_id (커머스 API 애플리케이션 ID)" value={clientId} onChange={(e) => setClientId(e.target.value)} />
+                <input className={input} placeholder="client_secret (커머스 API 시크릿)" type="password" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} />
+                {connectErr && (
+                  <p className="text-[11.5px] text-red-600 dark:text-red-400 leading-relaxed">{connectErr}</p>
+                )}
+                <button onClick={connect} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{busy ? '검증 중…' : '연결'}</button>
               </div>
             )}
           </div>
