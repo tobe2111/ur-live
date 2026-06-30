@@ -27,6 +27,7 @@ import OverviewTab from './supplier-dashboard/OverviewTab'
 import CatalogTab from './supplier-dashboard/CatalogTab'
 import SettlementsTab from './supplier-dashboard/SettlementsTab'
 import WithdrawalSection from './supplier-dashboard/WithdrawalSection'
+import SettlementAccountCard from './supplier-dashboard/SettlementAccountCard'
 import WithdrawModal from './supplier-dashboard/WithdrawModal'
 import SupplierTaxInvoicesTab from './supplier-dashboard/SupplierTaxInvoicesTab'
 import OrdersTab from './supplier-dashboard/OrdersTab'
@@ -273,6 +274,8 @@ export default function SupplierDashboardPage() {
               onRequest={() => setShowWithdraw(true)}
             />
           )}
+          {/* 🏦 2026-06-30: 정산 계좌 등록/수정 — 출금의 전제. 저장 시 me 재조회로 '계좌 등록' 안내 갱신. */}
+          <SettlementAccountCard t={t} onSaved={loadMe} />
           <div>
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-gray-900">{t('supplier.settlementList', { defaultValue: '정산 내역' })}</p>

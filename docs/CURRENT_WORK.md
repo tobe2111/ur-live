@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-30 — 제조사 정산 계좌 등록/수정 (출금 막다른 길 해소) (대표 "계속 해줘")
+직전 '출금 가능' 할 일이 드러낸 **막다른 길** 근본수정 — 돈은 쌓이는데 출금 못 하던 구조.
+- **문제**: 가입 시 정산 계좌가 **'선택'**("나중에 등록 가능")인데, **가입 후 등록/수정할 UI·엔드포인트가 0**. 계좌 없이 가입한 제조사는 정산금이 쌓여도 출금 시 `NO_BANK`("먼저 정산 계좌를 등록해주세요")로 막히고 **등록할 길이 없어 영구 출금불가** — 가입폼의 "나중에 등록 가능"이 깨진 약속이었음.
+- **수정(additive)**: ① 서버 `GET/PATCH /api/supplier/settlement-account`(supplier-dashboard.routes, `supplierId` 본인행만·rateLimit·계좌번호 `^[0-9-]{6,30}$` 검증·3종 필수). `suppliers.bank_name/bank_account/account_holder`(가입 스키마 기존 컬럼). ② `/me` 에 `has_payout_account` boolean 추가. ③ 신규 `SettlementAccountCard`(ShippingPolicyCard 패턴) — 정산 탭 출금 섹션 아래, 미등록 시 amber 경고/등록 시 green 확인. 저장 시 `loadMe` 로 갱신. ④ OverviewTab '할 일': spendable>0 + `has_payout_account===false` 면 '출금 가능' 대신 **'정산 계좌 등록'**(danger)으로 유도(undefined=구버전이면 기존 동작 유지). i18n 14키 6개 언어.
+- **불변**: 출금 신청(`supplier-withdrawal.routes`)의 `NO_BANK` 게이트·계좌 스냅샷·정산 로직 전부 불변(계좌를 *채울* 경로만 신설). 머니 경로 무변경.
+- 검증: tsc 0 · build 0 · api-auth(IDOR 안전 — WHERE id=sid)·sql·light-input 가드 0. ⚠️ staging: 계좌 없는 제조사 → 정산 탭에서 등록 → 출금 신청 성공 1회 확인 권장.
+
 ## ✅ 2026-06-30 — 판매사 주문 알림 딥링크 정합(발송/수락/환불 → 주문 목록) (대표 "응 진행")
 직전 '수령 확인 대기' 배너의 알림 루프 완결 — 알림을 탭하면 *행동할 화면*에 떨어지게.
 - **문제**: 판매사(바이어) **주문 이벤트** 알림(발송 시작·수락됨·환불)이 `/wholesale/dashboard`(개요 탭)로 딥링크 → 구매확정 버튼이 있는 주문 목록이 아닌 **개요**에 떨어짐. 반면 같은 클래스인 클레임·주문메모 알림은 이미 `/wholesale/orders` 로 정확히 감 → **비대칭**. 발송 알림 받고 탭해도 바로 구매확정 못 함.
