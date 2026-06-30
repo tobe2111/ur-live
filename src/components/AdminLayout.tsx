@@ -53,6 +53,13 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    // 🎯 유어애즈(UR Ads) — 마케팅 서비스 운영
+    title: '🎯 유어애즈 · 운영',
+    items: [
+      { path: '/admin/ads-accounts',     label: '유어애즈 가입자', icon: Megaphone },
+    ],
+  },
+  {
     // 🏭 도매몰 (유통스타트 B2B) — 운영: 카탈로그·주문·회원·설정
     title: '🏭 도매몰 · 운영',
     domain: 'wholesale',

@@ -195,6 +195,7 @@ import { agencyInvitesRoutes, inviteCodePublicRoutes } from '../features/agency/
 import { prospectsRoutes } from '../features/seller-prospects/api/seller-prospects.routes';
 // 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 3번째 서비스. /api/ads/* (유어딜/도매몰과 분리된 네임스페이스).
 import { marketingRoutes } from '../features/marketing/api/marketing.routes';
+import { adminAdsRoutes } from '../features/marketing/api/admin-ads.routes';
 import { agencyKpiRoutes } from '../features/agency/api/agency-kpi.routes';
 import { agencyMatchSuggestionsRoutes } from '../features/agency/api/agency-match-suggestions.routes';
 import { agencyPublicRoutes, agencyPublicEditRoutes } from '../features/agency/api/agency-public.routes';
@@ -1217,6 +1218,7 @@ app.route('/api/seller/transfers', sellerTransferRespondRoutes);
 // 🛡️ 2026-04-27 Phase 3-6: 캐스팅 마켓플레이스
 app.route('/api/admin/advertisers', adminAdvertiserRoutes);
 app.route('/api/admin/castings', adminCastingRoutes);
+app.route('/api/admin/ads', adminAdsRoutes); // 🎯 유어애즈 가입자 운영 어드민
 app.route('/api/seller/castings', sellerCastingRoutes);
 // 🛡️ 2026-04-27 Phase 2-5: 라이브 후원 부스터 이벤트
 app.route('/api/donation-boosters', donationBoosterRoutes);
