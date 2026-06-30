@@ -170,7 +170,7 @@ export async function refundWholesaleSupplierLines(
   if (notifyBuyer && order.distributor_seller_id) {
     createDashboardNotification(
       DB, 'seller', String(order.distributor_seller_id), 'wholesale_refunded',
-      '도매 주문 환불 처리', `주문 #${orderId} ${refundAmount.toLocaleString('ko-KR')}원이 환불되었습니다 (${newStatus === 'REFUNDED' ? '전체' : '부분'} 환불).`, '/wholesale/dashboard',
+      '도매 주문 환불 처리', `주문 #${orderId} ${refundAmount.toLocaleString('ko-KR')}원이 환불되었습니다 (${newStatus === 'REFUNDED' ? '전체' : '부분'} 환불).`, '/wholesale/orders',
     ).catch(swallow('wholesale-refund:notify'))
   }
 
