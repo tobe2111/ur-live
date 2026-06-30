@@ -18,7 +18,7 @@ const SCOPED_CSS = `
 .ua-acc-wrap{max-width:440px;margin:0 auto;}
 .ua-acc-card{background:#0E1322;border:1px solid #1B2233;border-radius:18px;padding:22px 20px;margin-top:14px;}
 .ua-acc-input{width:100%;height:44px;border-radius:11px;background:#070B16;border:1px solid #232C42;
-  padding:0 13px;font-size:14px;color:#E7ECF7;outline:none;}
+  padding:0 13px;font-size:14px;color:#E7ECF7 !important;outline:none;}
 .ua-acc-input:focus{border-color:#3B6EF5;} .ua-acc-input::placeholder{color:#5B678A;}
 .ua-acc-input:disabled{opacity:.6;}
 .ua-acc-btn{height:42px;border-radius:11px;background:#3B6EF5;color:#fff;font-size:13.5px;font-weight:800;padding:0 18px;}

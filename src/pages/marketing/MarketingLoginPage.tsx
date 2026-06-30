@@ -22,7 +22,7 @@ const SCOPED_CSS = `
 .ua-login-card{width:100%;max-width:400px;background:#0E1322;border:1px solid #1B2233;border-radius:20px;
   padding:34px 28px;box-shadow:0 24px 60px -20px rgba(0,0,0,.6);}
 .ua-login-input{width:100%;height:46px;border-radius:12px;background:#070B16;border:1px solid #232C42;
-  padding:0 14px;font-size:14px;color:#E7ECF7;outline:none;}
+  padding:0 14px;font-size:14px;color:#E7ECF7 !important;outline:none;}
 .ua-login-input:focus{border-color:#3B6EF5;}
 .ua-login-input::placeholder{color:#5B678A;}
 .ua-login-btn{width:100%;height:48px;border-radius:13px;background:#3B6EF5;color:#fff;font-size:15px;font-weight:800;
