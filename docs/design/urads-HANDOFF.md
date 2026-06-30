@@ -49,6 +49,8 @@
 | **소싱 인구통계 세분화** 🆕 | `keyword-tools.ts`(`categoryDemographics` — 기기/성별/연령) | `/sourcing/demographics?cid=` |
 | **ROAS·키워드 효율 분석** 🆕 | `searchad-client.ts`(convAmt·`keywordEfficiency` 낭비키워드) | `/searchad/keyword-efficiency` |
 | **쇼핑 순위 추적** 🆕(오가닉, 광고와 별개) | `rank-tracker.ts`(쇼핑검색 상위300·일일 cron) | `/rank/targets`·`/rank/target`·`/rank/refresh` |
+| **성과 추세(일별 메트릭 히스토리)** 🆕 | `metrics-history.ts`(일일 cron→`ad_daily_metrics`·`computeWoW`) + `TrendPanel.tsx`(인라인 SVG 차트) | GET `/metrics/history` · POST `/metrics/snapshot` |
+| **유어애즈 가입자 운영 어드민** 🆕 | `admin-ads.routes.ts` + `AdminAdsAccountsPage.tsx`(잠금해제·정지) | `/api/admin/ads/stats`·`accounts` |
 | **임계값 알림** 🆕(예산 소진·최저가 역전→이메일) | `alerts.ts`(설정+일일 cron+Resend, 계정+날짜 멱등) | `/alerts/settings`·`/alerts/preview` |
 | **독립 계정 + 계정관리** 🆕 | `ads-account.ts`(가입/로그인/프로필/비번, PBKDF2) | `/auth/signup`·`login`·`me`·`account`·`password` |
 | **대시보드 KPI 요약 홈** 🆕 | `MarketingDashboardPage`(30일 실적 스트립) | (stats·autobid 재사용) |

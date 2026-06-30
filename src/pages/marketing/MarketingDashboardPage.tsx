@@ -14,6 +14,7 @@ import WeeklyReportPanel from './WeeklyReportPanel'
 import AlertsPanel from './AlertsPanel'
 import EfficiencyPanel from './EfficiencyPanel'
 import RankPanel from './RankPanel'
+import TrendPanel from './TrendPanel'
 import PanelError from './PanelError'
 import { downloadCsv } from '@/utils/csv-download'
 
@@ -394,6 +395,9 @@ export default function MarketingDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* 성과 추세(30일 시계열 — 매일 자동 적재) */}
+      {hasToken && <section id="sec-trend" style={{ scrollMarginTop: 76 }}><TrendPanel /></section>}
 
       {/* 네이버 검색광고 계정 연동 + 내 광고 구조(자동입찰/실적 토대) */}
       {hasToken && <section id="sec-searchad" style={{ scrollMarginTop: 76 }}><SearchAdPanel /></section>}

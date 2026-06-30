@@ -254,21 +254,18 @@ export interface AccountStats { days: number; totals: { impCnt: number; clkCnt: 
 
 function ymd(d: Date): string { return d.toISOString().slice(0, 10) }
 
-/** 연결 계정의 최근 N일 캠페인별 실적 + 합계. days 기본 7. */
-export async function accountStats(creds: SearchAdCreds, days = 7): Promise<{ ok: boolean; data?: AccountStats; error?: string }> {
-  const span = Math.min(90, Math.max(1, Math.round(days)))
+/** 명시 날짜범위(since~until, YMD)의 캠페인별 실적 + 합계. accountStats / accountStatsForDate 공용 코어. */
+async function accountStatsRangeImpl(creds: SearchAdCreds, sinceYmd: string, untilYmd: string, days: number): Promise<{ ok: boolean; data?: AccountStats; error?: string }> {
   const camp = await listCampaigns(creds)
   if (!camp.ok) return { ok: false, error: camp.error }
   const idToName = new Map((camp.campaigns || []).map(c => [c.id, c.name]))
   const ids = [...idToName.keys()].slice(0, 30)
-  if (!ids.length) return { ok: true, data: { days: span, totals: { impCnt: 0, clkCnt: 0, salesAmt: 0, ccnt: 0, convAmt: 0, ctr: 0, cpc: 0 }, campaigns: [] } }
-  const until = new Date()
-  const since = new Date(until.getTime() - (span - 1) * 86400000)
+  if (!ids.length) return { ok: true, data: { days, totals: { impCnt: 0, clkCnt: 0, salesAmt: 0, ccnt: 0, convAmt: 0, ctr: 0, cpc: 0 }, campaigns: [] } }
   const r = await searchAdGet(creds, '/stats', {
     ids: JSON.stringify(ids),
     // convAmt = 전환매출(ROAS 계산용). 전환추적 미설정 계정은 0 으로 옴.
     fields: JSON.stringify(['impCnt', 'clkCnt', 'salesAmt', 'ccnt', 'convAmt', 'avgRnk']),
-    timeRange: JSON.stringify({ since: ymd(since), until: ymd(until) }),
+    timeRange: JSON.stringify({ since: sinceYmd, until: untilYmd }),
   })
   if (!r.ok) return { ok: false, error: r.error }
   // 응답 방어적 파싱: { data: [{ id, impCnt, clkCnt, salesAmt, ccnt, convAmt, avgRnk }] } 또는 배열.
@@ -281,7 +278,20 @@ export async function accountStats(creds: SearchAdCreds, days = 7): Promise<{ ok
   }).filter(c => c.id).sort((a, b) => b.salesAmt - a.salesAmt)
   const T = campaigns.reduce((s, c) => ({ impCnt: s.impCnt + c.impCnt, clkCnt: s.clkCnt + c.clkCnt, salesAmt: s.salesAmt + c.salesAmt, ccnt: s.ccnt + c.ccnt, convAmt: s.convAmt + c.convAmt }), { impCnt: 0, clkCnt: 0, salesAmt: 0, ccnt: 0, convAmt: 0 })
   const totals = { ...T, ctr: T.impCnt ? T.clkCnt / T.impCnt : 0, cpc: T.clkCnt ? Math.round(T.salesAmt / T.clkCnt) : 0 }
-  return { ok: true, data: { days: span, totals, campaigns } }
+  return { ok: true, data: { days, totals, campaigns } }
+}
+
+/** 연결 계정의 최근 N일 캠페인별 실적 + 합계. days 기본 7. */
+export async function accountStats(creds: SearchAdCreds, days = 7): Promise<{ ok: boolean; data?: AccountStats; error?: string }> {
+  const span = Math.min(90, Math.max(1, Math.round(days)))
+  const until = new Date()
+  const since = new Date(until.getTime() - (span - 1) * 86400000)
+  return accountStatsRangeImpl(creds, ymd(since), ymd(until), span)
+}
+
+/** 특정 날짜(YMD) 하루의 계정 합계. 일별 메트릭 스냅샷(metrics-history)용. */
+export async function accountStatsForDate(creds: SearchAdCreds, dateYmd: string): Promise<{ ok: boolean; data?: AccountStats; error?: string }> {
+  return accountStatsRangeImpl(creds, dateYmd, dateYmd, 1)
 }
 
 // ── 키워드 효율 분석 (ROAS·CPA·낭비 키워드 발굴) ─────────────────────────────
