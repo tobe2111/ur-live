@@ -142,7 +142,7 @@ async function sendAlertEmail(env: Env, to: string, items: AlertItem[]): Promise
 /** cron 엔트리 — 알림 켠 계정들 점검 후 이메일(계정+날짜 멱등 1일 1회). */
 export async function runAlertsAll(env: Env, nowMs?: number): Promise<{ accounts: number; sent: number }> {
   await ensureAlertsSchema(env.DB)
-  const rows = (await env.DB.prepare('SELECT account_id, enabled, budget_pace_pct, price_undercut FROM ad_alert_settings WHERE enabled = 1 LIMIT 200')
+  const rows = (await env.DB.prepare('SELECT account_id, enabled, budget_pace_pct, price_undercut, rank_drop FROM ad_alert_settings WHERE enabled = 1 LIMIT 200')
     .all<{ account_id: number } & AlertSettings>().catch(() => null))?.results || []
   const today = new Date(nowMs ?? Date.now()).toISOString().slice(0, 10)
   let sent = 0
