@@ -1925,13 +1925,36 @@ app.get('*', async (c) => {
   // API 경로는 이미 위에서 처리됨 — 여기는 페이지 요청만
   if (path.startsWith('/api/') || path.startsWith('/auth/')) return c.notFound();
 
+  // 🛡️ 2026-06-30 (대시보드 무한로딩 영구수정 — 대표 신고 "절대 발생하면 안됨"): 존재하지 않는 정적
+  //   에셋(옛 배포의 청크 해시)에 SPA index.html(200 text/html)을 돌려주던 것이 근본원인.
+  //   새 배포마다 청크 파일명 해시가 바뀌는데, 옛 HTML 을 들고 있던 브라우저가 옛 `/assets/*.js` 를
+  //   요청 → 새 빌드에 그 파일 없음 → 이 catch-all 로 폴백 → text/html 응답 → 브라우저가
+  //   "Expected a JavaScript module but server responded with MIME text/html" 로 거부 → 대시보드가
+  //   아예 부팅 안 됨(무한 스피너). 게다가 200 응답이라 클라 chunk-error 자동복구가 '실패'로 인식 못 함.
+  //   해결: 없는 정적 에셋은 진짜 404 → 브라우저가 'chunk 로드 실패'로 인식 → 자동 reload → 아래
+  //   no-cache HTML 로 항상 최신 청크 해시 수신 → 자가복구. (존재하는 에셋은 Pages 가 직접 서빙 →
+  //   이 핸들러까지 오지 않음. 따라서 여기 도달 = 그 파일은 실제로 없음 = 404 가 정답.)
+  if (path.startsWith('/assets/') || /\.(?:js|mjs|css|map|woff2?|ttf|otf|json|png|jpe?g|gif|svg|webp|avif|ico|wasm|txt|xml)$/i.test(path)) {
+    return c.text('Not Found', 404, { 'Cache-Control': 'no-cache, no-store, must-revalidate' });
+  }
+
   // 봇이 아니면 SPA index.html 반환 (Cloudflare Pages가 처리)
   if (!BOT_UA_REGEX.test(ua)) {
     // Worker에서 직접 index.html을 서빙할 수 없으므로 fetch
     const assetUrl = new URL('/', c.req.url);
     const res = await (c.env as any).ASSETS?.fetch?.(assetUrl.toString())
       || await fetch(assetUrl.toString());
-    return new Response(res.body, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8' } });
+    // 🛡️ 2026-06-30: SPA 셸 HTML 은 절대 stale 캐시 금지 — 옛 청크 해시 참조로 인한 무한로딩 근본차단.
+    //   브라우저가 매 진입 시 재검증 → 배포 후 항상 최신 index.html(새 청크 해시) 수신.
+    //   SSR inject(미들웨어 470) + caches.default API 캐시는 서버사이드라 HTML 브라우저캐시와 독립
+    //   → SSR 0-RTT 최적화 불변(byte-identical). 비-SSR 대시보드/로그인 셸이 stale 안 되게만 보장.
+    return new Response(res.body, {
+      status: 200,
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      },
+    });
   }
 
   // ── 봇: 동적 메타 태그 생성 ──

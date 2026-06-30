@@ -623,6 +623,14 @@
 - **수정(fail-safe)**: **세션이 죽었다는 확정 증거(`health.data.data.session === false`) 가 있을 때만 로그아웃.** 헬스 실패(catch)·확정 불가 시 → 세션 유지(이 API 자체 권한/일시 문제로 간주, reject만). 진짜 만료(session:false)는 그대로 로그아웃(정상). `parseSessionCookie` 가 'user' 쿠키 우선이라 멀티쿠키는 무관 확인.
 - **참고**: `auth-callback-bootstrap` 자가점검은 이미 fail-safe(명시 session===false + r.ok 일 때만 wipe). api.ts 핸들러만 결함이었음.
 - 검증: tsc 0 · `npm run build` exit 0. ⚠️ 실 로그인 모니터링 권장(Sentry breadcrumb `Buyer 401: session unconfirmed — keep` 추가로 추적 가능).
+## ✅ 2026-06-30 — 대시보드 무한로딩(배포 후 옛 청크 MIME 에러) 영구수정 (대표 신고 "어드민/에이전시 안 켜짐, 절대 발생하면 안됨") `[UNLOCK_LOADING]`
+**증상**: `/admin`·`/agency` 무한 로딩. 콘솔: `Failed to load module script: Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of "text/html"` (`app-features-DWIZ3X9w.js`).
+- **근본 원인(2겹)**: ① 새 배포마다 청크 파일 해시가 바뀜(`app-features-<해시>.js`). 옛 index.html 을 들고 있던 브라우저가 옛 `/assets/*.js` 요청 → 새 빌드에 없음 → **worker catch-all(`app.get('*')`)이 SPA index.html 을 200 text/html 로 반환** → 브라우저가 "JS 모듈인데 text/html" 로 거부 → 대시보드 부팅 실패. ② 게다가 worker 가 **SPA 셸 HTML 에 Cache-Control 을 전혀 안 붙임**(heuristic 캐시) → 클라 자동복구(chunk-error 1회 reload)가 reload 해도 **stale index.html(옛 해시) 재수신** → 또 실패 → "1회" 가드가 막아 **영구 stuck**. (200 응답이라 복구로직이 '실패'로 인식도 못 함.)
+- **영구 수정(서버측 2 — 이번 커밋)**: ① `worker/index.ts app.get('*')`: 없는 정적 에셋(`/assets/*` 또는 js/css/woff/png… 확장자) 요청은 **진짜 404** 반환(SPA HTML 금지) → 브라우저가 chunk 로드 실패로 인식 → 자동복구 동작. ② 같은 핸들러 SPA 셸 HTML 응답에 **`Cache-Control: no-cache, no-store, must-revalidate`** → 배포 후 항상 최신 index.html(새 해시) 수신.
+- **클라측은 main 에 이미 더 강한 fix(머지 시 채택)**: `main.tsx reloadOnceForChunk` 가 2026-06-25(타 세션, `/admin/wholesale-overview` 흰화면 신고)에 `reloadWithCacheBust()`(`__cb` 캐시버스트 + `location.replace` 로 옛 HTML 재서빙 우회) + 60초창 2회 가드로 이미 개선됨 → 내 버전 대신 그쪽 유지(더 robust). 서버측 404+no-cache 와 상호보완(클라 캐시버스트가 reload 보장, 서버가 stale 발생을 줄이고 MIME 에러를 깔끔한 404 로 전환).
+- **잠금 영향 0(검증)**: SSR inject 블록(미들웨어 470)·`caches.default` API 캐시(0-RTT) **byte-identical 미변경** — SSR 0-RTT 는 서버사이드 API 데이터 주입이라 HTML 브라우저캐시와 독립. worker 가 원래 HTML 에 Cache-Control 을 **아예 안 붙이고 있었음**(전수 grep 확인) → no-cache 추가는 신규(약화 아님). 존재하는 에셋은 Pages 가 직접 서빙 → catch-all 미도달(404 오발동 0).
+- **검증**: tsc 0 · `npm run build`(client+ssr+worker) exit 0. ⚠️ 현재 stuck 사용자는 이 배포 반영 후 강력새로고침 1회(Ctrl/Cmd+Shift+R)면 최신 셸 수신 → 이후 영구 자가복구.
+
 ## ✅ 2026-06-17 — 로그인/가입 입력 글자 흰색으로 안 보이던 문제 영구수정 (대표 신고 "왜 이런 문제, 영구적으로 이상적으로")
 **신고**: `/admin/login` 등에서 타이핑하는 글자가 흰색이라 안 보임. "로그인 쪽 모두 그런 것 같아."
 - **근본 원인**: 전역 CSS `.dark input:not([type=...])` (index.css:492, 특이도 **0,5,1**)가 OS/앱 다크모드(`html.dark`)에서 **모든** 입력 글자색을 gray-100(거의 흰색)으로 덮어씀. 페이지의 `text-gray-900` 유틸(특이도 0,1,0)은 특이도가 낮아 짐 → 흰 배경에 흰 글자. 대시보드는 `.admin/.seller-light-theme` 래퍼로 보호됐으나 ① **`.agency-light-theme` 는 CSS 규칙 자체가 누락**(에이전시 대시보드 잠복 동일버그) ② **로그인/가입/비번재설정 페이지는 레이아웃 밖 standalone 이라 래퍼 없음** → 무방비. (소비자 다크토글은 정상이고, 라이트 고정 표면만 영향.)
