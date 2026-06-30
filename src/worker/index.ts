@@ -575,7 +575,11 @@ app.use('*', async (c, next) => {
         //   1.5초 안에 못 끝내 timeout → 빈 ssrPayload → 주입 스킵 → 클라가 또 콜드 fetch(스켈레톤 장기화).
         //   WHOLESALE 만 3000ms 로 상향 → 콜드여도 데이터 주입 완료(첫 사용자만 ~2-3초 문서 wait, 이후 colo 캐시 300s).
         //   warm(edge-hit) 경로·타 슬롯·소비자 페이지 전부 불변. 근본 해결은 CACHE_KV 전역 워밍(self-fetch=KV-HIT).
-        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT') ? 2000
+        // 🧭 2026-06-30 [UNLOCK_LOADING] (대표 신고 — /u/ 링크샵 로딩): CURATOR(/u/:handle)는 사업자면
+        //   SELLER(/profile)와 **동일한 SellerPublicPage** 를 그리고 콜드 D1 비용도 비슷한데 타임아웃이 1500ms 라
+        //   /profile(2000ms)보다 cold self-fetch 가 더 자주 timeout → SSR 미주입 → CuratorPage 스켈레톤 더 자주 노출.
+        //   같은 페이지군이므로 CURATOR 를 2000ms 로 맞춤(warm/edge-hit·타 슬롯·소비자 페이지 불변 — 콜드 첫 사용자만 영향).
+        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT' || ssrTarget.slot === 'CURATOR') ? 2000
           : ssrTarget.slot === 'WHOLESALE' ? 3000
           : 1500;
         const ctlr = new AbortController();
