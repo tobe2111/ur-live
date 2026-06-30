@@ -12,6 +12,7 @@ import SourcingPanel from './SourcingPanel'
 import WeeklyReportPanel from './WeeklyReportPanel'
 import AlertsPanel from './AlertsPanel'
 import PanelError from './PanelError'
+import { downloadCsv } from '@/utils/csv-download'
 
 /**
  * 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 멀티테넌트 입점 대시보드.
@@ -300,7 +301,13 @@ export default function MarketingDashboardPage() {
       {/* 연관키워드 추천 (검색광고 API — RelKwdStat) */}
       {hasToken && kwRelated && kwRelated.length > 0 && (
         <div className={`mt-3 ${card}`}>
-          <div className="text-[14px] font-bold text-gray-900 dark:text-white">연관키워드 추천 <span className="text-gray-400 dark:text-gray-500 font-medium">({kwRelated.length})</span></div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-[14px] font-bold text-gray-900 dark:text-white">연관키워드 추천 <span className="text-gray-400 dark:text-gray-500 font-medium">({kwRelated.length})</span></div>
+            <button onClick={() => downloadCsv(`유어애즈_연관키워드_${kw || 'all'}.csv`,
+              ['키워드', '월검색량', 'PC', '모바일', '월클릭', '경쟁'],
+              kwRelated.map((r) => [r.keyword, r.monthlyTotal, r.monthlyPc, r.monthlyMobile, r.monthlyAvgClick, r.compIdx || '']))}
+              className="shrink-0 rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-2 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">CSV</button>
+          </div>
           <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">네이버 검색광고 기준 월 검색량 · 경쟁정도 — 총 검색량 순. 광고 타겟 키워드 발굴에 활용하세요.</p>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-[12px]">
