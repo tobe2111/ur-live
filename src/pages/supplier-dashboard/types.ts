@@ -5,6 +5,8 @@ export type Tab = 'overview' | 'catalog' | 'orders' | 'settlements' | 'chat'
 
 export interface Me {
   profile: { business_name: string; email: string; status: string }
+  // 🏦 2026-06-30: 정산 계좌 3종(은행/계좌/예금주) 등록 여부 — 출금 가능 게이트·계좌 등록 안내용(서버 additive).
+  has_payout_account?: boolean
   balance: { pending_amount: number; available_amount: number; reserved_amount?: number; paid_amount: number }
   // 🏭 2026-06-30 (할 일 확장): out_of_stock/low_stock 는 승인·노출 상품 중 품절/저재고 수(서버 additive, optional).
   product_counts: { total: number; pending: number; approved: number; rejected: number; out_of_stock?: number; low_stock?: number }

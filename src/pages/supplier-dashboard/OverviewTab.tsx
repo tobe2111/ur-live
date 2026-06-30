@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Package, Plus, Clock, CheckCircle, XCircle, Truck, ShieldCheck, BarChart3, Upload, ChevronRight, Receipt, AlertTriangle, Banknote } from 'lucide-react'
+import { Package, Plus, Clock, CheckCircle, XCircle, Truck, ShieldCheck, BarChart3, Upload, ChevronRight, Receipt, AlertTriangle, Banknote, Landmark } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon, formatNumber } from '@/utils/format'
 import { supplierApi } from '@/lib/supplier-api'
@@ -41,7 +41,13 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
   if ((c.rejected ?? 0) > 0) todos.push({ key: 'rejected', label: t('supplier.todoRejected', { defaultValue: '반려된 상품 {{n}}건 · 수정 후 재등록', n: rejectedN }).replace('{{n}}', rejectedN), count: rejectedN, Icon: XCircle, on: () => onGoTab('catalog'), tone: 'danger' })
   if ((c.low_stock ?? 0) > 0) todos.push({ key: 'lowstock', label: t('supplier.todoLowStock', { defaultValue: '재고 부족 {{n}}건 · 품절 전에 보충', n: lowN }).replace('{{n}}', lowN), count: lowN, Icon: Package, on: () => onGoTab('catalog'), tone: 'info' })
   if ((c.pending ?? 0) > 0) todos.push({ key: 'pending', label: t('supplier.todoPending', { defaultValue: '검수 대기 {{n}}건 (관리자 승인 중)', n: pendingN }).replace('{{n}}', pendingN), count: pendingN, Icon: Clock, on: () => onGoTab('catalog'), tone: 'info' })
-  if (spendable > 0) todos.push({ key: 'withdraw', label: t('supplier.todoWithdraw', { defaultValue: '출금 가능 {{amt}} · 출금 신청하기', amt: formatWon(spendable) }).replace('{{amt}}', formatWon(spendable)), count: formatWon(spendable), Icon: Banknote, on: () => onGoTab('settlements'), tone: 'success' })
+  // 출금 가능액이 있는데 정산 계좌 미등록이면 출금이 막힘(NO_BANK) → '계좌 등록'으로 먼저 유도(막다른 길 방지).
+  //   has_payout_account 가 undefined(구버전/미로드)면 기존 '출금 가능' 동작 유지(false 일 때만 계좌 등록 안내).
+  if (spendable > 0 && me.has_payout_account === false) {
+    todos.push({ key: 'noaccount', label: t('supplier.todoNoAccount', { defaultValue: '정산 계좌 등록 · 출금하려면 필요해요' }), count: '', Icon: Landmark, on: () => onGoTab('settlements'), tone: 'danger' })
+  } else if (spendable > 0) {
+    todos.push({ key: 'withdraw', label: t('supplier.todoWithdraw', { defaultValue: '출금 가능 {{amt}} · 출금 신청하기', amt: formatWon(spendable) }).replace('{{amt}}', formatWon(spendable)), count: formatWon(spendable), Icon: Banknote, on: () => onGoTab('settlements'), tone: 'success' })
+  }
   const cards = [
     { label: t('supplier.balPending', { defaultValue: '정산 대기' }), value: b.pending_amount, cls: 'text-amber-600' },
     { label: t('supplier.balAvailable', { defaultValue: '출금 가능' }), value: Math.max(0, (b.available_amount ?? 0) - (b.reserved_amount ?? 0)), cls: 'text-blue-600' },
