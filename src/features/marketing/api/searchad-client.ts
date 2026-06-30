@@ -249,8 +249,8 @@ export async function addKeywordsToAdgroup(creds: SearchAdCreds, adgroupId: stri
 
 // ── 통합실적 (StatService /stats — 읽기) ─────────────────────────────────────
 //   캠페인별 노출/클릭/비용/전환 + 계정 합계. 평균노출순위까지 공식 지표(스크래핑 아님).
-export interface CampaignStat { id: string; name: string; impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; ctr: number; cpc: number; avgRnk: number }
-export interface AccountStats { days: number; totals: { impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; ctr: number; cpc: number }; campaigns: CampaignStat[] }
+export interface CampaignStat { id: string; name: string; impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; convAmt: number; ctr: number; cpc: number; avgRnk: number }
+export interface AccountStats { days: number; totals: { impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; convAmt: number; ctr: number; cpc: number }; campaigns: CampaignStat[] }
 
 function ymd(d: Date): string { return d.toISOString().slice(0, 10) }
 
@@ -261,26 +261,77 @@ export async function accountStats(creds: SearchAdCreds, days = 7): Promise<{ ok
   if (!camp.ok) return { ok: false, error: camp.error }
   const idToName = new Map((camp.campaigns || []).map(c => [c.id, c.name]))
   const ids = [...idToName.keys()].slice(0, 30)
-  if (!ids.length) return { ok: true, data: { days: span, totals: { impCnt: 0, clkCnt: 0, salesAmt: 0, ccnt: 0, ctr: 0, cpc: 0 }, campaigns: [] } }
+  if (!ids.length) return { ok: true, data: { days: span, totals: { impCnt: 0, clkCnt: 0, salesAmt: 0, ccnt: 0, convAmt: 0, ctr: 0, cpc: 0 }, campaigns: [] } }
   const until = new Date()
   const since = new Date(until.getTime() - (span - 1) * 86400000)
   const r = await searchAdGet(creds, '/stats', {
     ids: JSON.stringify(ids),
-    fields: JSON.stringify(['impCnt', 'clkCnt', 'salesAmt', 'ccnt', 'avgRnk']),
+    // convAmt = 전환매출(ROAS 계산용). 전환추적 미설정 계정은 0 으로 옴.
+    fields: JSON.stringify(['impCnt', 'clkCnt', 'salesAmt', 'ccnt', 'convAmt', 'avgRnk']),
     timeRange: JSON.stringify({ since: ymd(since), until: ymd(until) }),
   })
   if (!r.ok) return { ok: false, error: r.error }
-  // 응답 방어적 파싱: { data: [{ id, impCnt, clkCnt, salesAmt, ccnt, avgRnk }] } 또는 배열.
+  // 응답 방어적 파싱: { data: [{ id, impCnt, clkCnt, salesAmt, ccnt, convAmt, avgRnk }] } 또는 배열.
   const d = r.data as { data?: Array<Record<string, unknown>> } | Array<Record<string, unknown>> | null
   const rows = Array.isArray(d) ? d : (d?.data || [])
   const campaigns: CampaignStat[] = rows.map(row => {
     const id = String(row.id ?? '')
-    const impCnt = num(row.impCnt), clkCnt = num(row.clkCnt), salesAmt = num(row.salesAmt), ccnt = num(row.ccnt)
-    return { id, name: idToName.get(id) || id, impCnt, clkCnt, salesAmt, ccnt, ctr: impCnt ? clkCnt / impCnt : 0, cpc: clkCnt ? Math.round(salesAmt / clkCnt) : 0, avgRnk: num(row.avgRnk) }
+    const impCnt = num(row.impCnt), clkCnt = num(row.clkCnt), salesAmt = num(row.salesAmt), ccnt = num(row.ccnt), convAmt = num(row.convAmt)
+    return { id, name: idToName.get(id) || id, impCnt, clkCnt, salesAmt, ccnt, convAmt, ctr: impCnt ? clkCnt / impCnt : 0, cpc: clkCnt ? Math.round(salesAmt / clkCnt) : 0, avgRnk: num(row.avgRnk) }
   }).filter(c => c.id).sort((a, b) => b.salesAmt - a.salesAmt)
-  const T = campaigns.reduce((s, c) => ({ impCnt: s.impCnt + c.impCnt, clkCnt: s.clkCnt + c.clkCnt, salesAmt: s.salesAmt + c.salesAmt, ccnt: s.ccnt + c.ccnt }), { impCnt: 0, clkCnt: 0, salesAmt: 0, ccnt: 0 })
+  const T = campaigns.reduce((s, c) => ({ impCnt: s.impCnt + c.impCnt, clkCnt: s.clkCnt + c.clkCnt, salesAmt: s.salesAmt + c.salesAmt, ccnt: s.ccnt + c.ccnt, convAmt: s.convAmt + c.convAmt }), { impCnt: 0, clkCnt: 0, salesAmt: 0, ccnt: 0, convAmt: 0 })
   const totals = { ...T, ctr: T.impCnt ? T.clkCnt / T.impCnt : 0, cpc: T.clkCnt ? Math.round(T.salesAmt / T.clkCnt) : 0 }
   return { ok: true, data: { days: span, totals, campaigns } }
+}
+
+// ── 키워드 효율 분석 (ROAS·CPA·낭비 키워드 발굴) ─────────────────────────────
+export interface KeywordEff { id: string; keyword: string; cost: number; clicks: number; conv: number; convAmt: number; cpa: number | null; roas: number | null; waste: boolean }
+
+/** 키워드별 효율(최근 N일). 캠페인→광고그룹→키워드 일부를 크롤(쿼터 보호 cap)해 /stats 일괄 조회.
+ *  낭비 = 비용>임계 & 전환 0. ROAS=전환매출/비용, CPA=비용/전환. 비용 내림차순.
+ *  ⚠️ 쿼터 보호: 캠페인 4 × 광고그룹 6, 키워드 최대 cap(기본 100) 까지만 — UI 에 '상위 N개 기준' 명시. */
+export async function keywordEfficiency(creds: SearchAdCreds, days = 30, cap = 100): Promise<{ ok: boolean; items?: KeywordEff[]; scanned?: number; error?: string }> {
+  const span = Math.min(90, Math.max(1, Math.round(days)))
+  const camp = await listCampaigns(creds)
+  if (!camp.ok) return { ok: false, error: camp.error }
+  const idToText = new Map<string, string>()
+  outer: for (const c of (camp.campaigns || []).slice(0, 4)) {
+    const ag = await listAdgroups(creds, c.id).catch(() => ({ ok: false as const }))
+    if (!ag.ok || !('adgroups' in ag)) continue
+    for (const g of (ag.adgroups || []).slice(0, 6)) {
+      const kw = await listKeywords(creds, g.id).catch(() => ({ ok: false as const }))
+      if (!kw.ok || !('keywords' in kw)) continue
+      for (const k of kw.keywords || []) {
+        if (idToText.size >= cap) break outer
+        idToText.set(k.id, k.keyword)
+      }
+    }
+  }
+  const ids = [...idToText.keys()]
+  if (!ids.length) return { ok: true, items: [], scanned: 0 }
+  const until = new Date()
+  const since = new Date(until.getTime() - (span - 1) * 86400000)
+  const r = await searchAdGet(creds, '/stats', {
+    ids: JSON.stringify(ids),
+    fields: JSON.stringify(['salesAmt', 'clkCnt', 'ccnt', 'convAmt']),
+    timeRange: JSON.stringify({ since: ymd(since), until: ymd(until) }),
+  })
+  if (!r.ok) return { ok: false, error: r.error }
+  const d = r.data as { data?: Array<Record<string, unknown>> } | Array<Record<string, unknown>> | null
+  const rows = Array.isArray(d) ? d : (d?.data || [])
+  const avgCost = rows.length ? rows.reduce((s, row) => s + num(row.salesAmt), 0) / rows.length : 0
+  const wasteThreshold = Math.max(1000, avgCost) // 평균 비용 이상 쓰면서 전환 0 → 낭비
+  const items: KeywordEff[] = rows.map(row => {
+    const id = String(row.id ?? '')
+    const cost = num(row.salesAmt), clicks = num(row.clkCnt), conv = num(row.ccnt), convAmt = num(row.convAmt)
+    return {
+      id, keyword: idToText.get(id) || id, cost, clicks, conv, convAmt,
+      cpa: conv > 0 ? Math.round(cost / conv) : null,
+      roas: cost > 0 ? Math.round((convAmt / cost) * 100) / 100 : null,
+      waste: cost >= wasteThreshold && conv === 0,
+    }
+  }).filter(k => k.id).sort((a, b) => b.cost - a.cost)
+  return { ok: true, items, scanned: ids.length }
 }
 
 // ── 예산 페이싱 (오늘 소진 vs 일예산) ────────────────────────────────────────

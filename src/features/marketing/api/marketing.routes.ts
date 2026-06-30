@@ -12,7 +12,7 @@ import { adsAccountIdFrom, createAdsAccount, loginAdsAccount, getAdsAccount, sig
 import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverConnectionSchema } from '@/services/naver-commerce-core'
 import { collectAndStore, listCollectedOrders } from './order-collection'
 import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete, shoppingCategoryTrends, categoryDemographics } from './keyword-tools'
-import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, addKeywordsToAdgroup, accountStats, budgetPacing, BID_MIN, BID_MAX, KW_ADD_MAX, type SearchAdCreds } from './searchad-client'
+import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, addKeywordsToAdgroup, accountStats, budgetPacing, keywordEfficiency, BID_MIN, BID_MAX, KW_ADD_MAX, type SearchAdCreds } from './searchad-client'
 import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnection, searchAdConnStatus, getActiveTenantId, listTenants, setActiveTenant } from './searchad-connection'
 import { aiMarketerAdvice, type AiMarketerContext } from './ai-marketer'
 import { listReports, generateWeeklyReport } from './weekly-report'
@@ -462,6 +462,18 @@ marketingRoutes.get('/searchad/stats', rateLimit({ action: 'ads-sa-stats', max: 
   const r = await accountStats(creds, days)
   if (!r.ok) return c.json({ success: false, error: r.error }, 502)
   return c.json({ success: true, data: r.data })
+})
+
+// GET /api/ads/searchad/keyword-efficiency?days=30 — 키워드 ROAS·CPA + 낭비 키워드(쿼터 보호 cap)
+marketingRoutes.get('/searchad/keyword-efficiency', rateLimit({ action: 'ads-sa-eff', max: 10, windowSec: 60 }), async (c) => {
+  const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
+  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  const days = Number(c.req.query('days')) === 7 ? 7 : 30
+  const r = await keywordEfficiency(creds, days)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 502)
+  return c.json({ success: true, items: r.items, scanned: r.scanned })
 })
 
 // GET /api/ads/searchad/pacing — 오늘 캠페인별 예산 소진률(과속/과소, 연결 필요)
