@@ -8,7 +8,10 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { rateLimit } from '@/worker/middleware/rate-limit'
-import { adsAccountIdFrom, createAdsAccount, loginAdsAccount, getAdsAccount, signAdsToken, ensureAdsAccountSchema, updateAdsAccount, changeAdsPassword, requestPasswordReset, resetPasswordWithToken } from './ads-account'
+import { adsAccountIdFrom, createAdsAccount, loginAdsAccount, getAdsAccount, signAdsToken, ensureAdsAccountSchema, updateAdsAccount, changeAdsPassword, requestPasswordReset, resetPasswordWithToken, unlockAdsAccount } from './ads-account'
+
+// 베타 액세스 코드(대표 지정). env 로 교체 가능, 기본 358533.
+const adsAccessCode = (env: Env) => (env as unknown as { ADS_ACCESS_CODE?: string }).ADS_ACCESS_CODE || '358533'
 import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverConnectionSchema } from '@/services/naver-commerce-core'
 import { collectAndStore, listCollectedOrders } from './order-collection'
 import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete, shoppingCategoryTrends, categoryDemographics } from './keyword-tools'
@@ -89,6 +92,16 @@ marketingRoutes.post('/auth/password', rateLimit({ action: 'ads-pw', max: 10, wi
   const r = await changeAdsPassword(c.env.DB, id, String(body.current_password || ''), String(body.new_password || ''))
   if (!r.ok) return c.json({ success: false, error: r.error }, r.status as 400 | 401 | 404)
   return c.json({ success: true })
+})
+
+// POST /api/ads/auth/unlock — 베타 액세스 코드 입력 → 계정 잠금 해제(1회)
+marketingRoutes.post('/auth/unlock', rateLimit({ action: 'ads-unlock', max: 10, windowSec: 300 }), async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await unlockAdsAccount(c.env.DB, id, String(body.code || ''), adsAccessCode(c.env))
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  return c.json({ success: true, unlocked: true })
 })
 
 // POST /api/ads/auth/forgot — 비밀번호 재설정 요청(이메일 링크). 열거 방지 → 항상 success.
