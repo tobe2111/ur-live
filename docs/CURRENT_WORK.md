@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-30 — 사업자 링크샵(`/u/:handle`) 불필요한 중간 로더 제거 (대표 신고 "로딩 중 필요 없는 로딩 애니메이션, 철저히")
+**전수 추적**: 사업자 `/u/`(linked_seller) 콜드 로드가 [PageLoader 스피너 → 전체화면 중앙 '로딩 중' 텍스트(SellerPublicPage 청크 Suspense fallback) → 헤더+스켈레톤(SellerPublicPage 자체 loading) → 본문] 세 로더를 점프. 중간 텍스트가 redundant + 시각 불일치.
+- **CuratorPage.tsx** (`[LOADING_ADDITIVE]`): Suspense fallback(중앙 텍스트) → SellerPublicPage curator-있음 loading 상태와 **byte-동일** 헤더+2카드 스켈레톤(curator 즉시)으로 교체 → 헤더 1회 유지·본문만 채워짐(점프 0).
+- **worker/index.ts** (`[UNLOCK_LOADING]`): SSR self-fetch 타임아웃 CURATOR 1500→2000ms (SELLER=`/profile` 와 동일 페이지·동일 D1 비용인데 짧아 cold timeout→스켈레톤 더 자주). warm/edge-hit·타 슬롯·소비자 불변.
+- 검증: tsc 0·build 0·theme/mobile 0. CLAUDE.md 로딩 audit log 기록. ⚠️ 배포 후 `/u/{사업자handle}` 콜드 1회 시각 확인 권장.
+
 ## ✅ 2026-06-29 — 도매 대량발주(엑셀·드랍십) + 등급명 + 상단 '마이' (대표 요청 3건)
 **1) 대량발주 드랍십 (받는사람별 직배, "셀파이는 참고만")** — 한 행 = 한 명에게 보내는 1건. 같은 상품도 받는사람 다르면 별개 라인. 매칭 = `product_id`(우선) 또는 `상품코드`("둘 다" — 판매사별 자동학습 맵 + 제조사 ext_code 폴백, `wholesale-code-map.ts`). 상품상세1=옵션(비가격 패스스루).
 - **금액 경로 byte-불변**: `/orders` POST 의 합산기준 MOQ/박스단위/재고/수량구간 단가 산식 그대로(묶음 사입과 합계 동일). `body.dropship` 면 받는사람별 라인으로 *분해만*(INSERT/재고차감), `Σ라인==subtotal` 검증. 비드랍십은 `insertLines=lines` byte-identical. 예치금 CAS/보상환불/정산 무변경.
