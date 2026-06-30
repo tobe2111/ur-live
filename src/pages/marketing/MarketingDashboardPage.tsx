@@ -65,6 +65,9 @@ export default function MarketingDashboardPage() {
   const [aiBusy, setAiBusy] = useState(false)
   const [aiAdvice, setAiAdvice] = useState<string | null>(null)
   const [aiOff, setAiOff] = useState(false)
+  // KPI 요약 홈 (최근 30일 통합실적 + 활성 자동입찰)
+  const [summary, setSummary] = useState<{ impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; ctr: number; cpc: number } | null>(null)
+  const [activeRules, setActiveRules] = useState(0)
 
   const loadStatus = useCallback(async () => {
     if (!hasToken) { setConnected(false); return }
@@ -83,7 +86,19 @@ export default function MarketingDashboardPage() {
     } catch { /* graceful */ }
   }, [hasToken])
 
-  useEffect(() => { loadStatus(); loadOrders() }, [loadStatus, loadOrders])
+  const loadSummary = useCallback(async () => {
+    if (!hasToken) return
+    try {
+      const [s, ar] = await Promise.allSettled([
+        api.get('/api/ads/searchad/stats?days=30', { headers: authHeader() }),
+        api.get('/api/ads/searchad/autobid/rules', { headers: authHeader() }),
+      ])
+      if (s.status === 'fulfilled' && s.value.data?.success) setSummary(s.value.data.data?.totals || null)
+      if (ar.status === 'fulfilled' && ar.value.data?.success) setActiveRules((ar.value.data.rules || []).filter((r: { enabled?: number }) => r.enabled).length)
+    } catch { /* graceful — 연동 전이면 표시 안 함 */ }
+  }, [hasToken])
+
+  useEffect(() => { loadStatus(); loadOrders(); loadSummary() }, [loadStatus, loadOrders, loadSummary])
 
   async function connect() {
     if (!clientId.trim() || !clientSecret.trim()) return
@@ -154,6 +169,25 @@ export default function MarketingDashboardPage() {
       <SEO title="유어애즈 UR Ads - 유어팀 종합 마케팅" description="네이버 검색광고 자동입찰 + 쇼핑몰 발주수집 + 키워드 — 유어팀 종합 마케팅 툴" url="/ads/dashboard" />
       <p className="mono text-[11px] tracking-widest" style={{ color: 'var(--ink3)' }}>OVERVIEW</p>
       <p className="mt-1.5 text-[13px]" style={{ color: 'var(--ink2)' }}>연관키워드·검색추세·쇼핑경쟁·자동완성확장·브랜드 평판 모니터링 — 지금 바로 사용 · 자동입찰/발주수집은 광고계정 연동 후</p>
+
+      {/* KPI 요약 홈 — 최근 30일 통합실적(연동·데이터 있을 때만). 빈 0 노출 방지. */}
+      {hasToken && summary && (summary.salesAmt > 0 || summary.impCnt > 0) && (
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          {[
+            { l: '30일 광고비', v: `₩${formatNumber(summary.salesAmt)}` },
+            { l: '클릭', v: formatNumber(summary.clkCnt) },
+            { l: '노출', v: formatNumber(summary.impCnt) },
+            { l: '전환', v: formatNumber(summary.ccnt) },
+            { l: 'CTR', v: `${(summary.ctr * 100).toFixed(1)}%` },
+            { l: '활성 자동입찰', v: `${formatNumber(activeRules)}개` },
+          ].map((m) => (
+            <div key={m.l} className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-3">
+              <div className="text-[10.5px] text-gray-400 dark:text-gray-500">{m.l}</div>
+              <div className="mt-0.5 text-[15px] font-bold text-gray-900 dark:text-white tabular-nums">{m.v}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {!hasToken && (
         <div className={`mt-5 ${card}`}>
