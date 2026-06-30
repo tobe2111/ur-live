@@ -20,6 +20,8 @@ import EmptyShowcase from './group-buy-list/EmptyShowcase'
 import SortBar from './group-buy-list/SortBar'
 import CategoryTabs from './group-buy-list/CategoryTabs'
 import SearchBar from './group-buy-list/SearchBar'
+import RegionBar from './group-buy-list/RegionBar'
+import MainTabs from './group-buy-list/MainTabs'
 import LiveTicker from '@/components/group-buy/LiveTicker'
 import RegionPickerModal from '@/components/RegionPickerModal'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
@@ -613,30 +615,7 @@ export default function GroupBuyListPage() {
       {/* 메인 탭: 셀러 공구 | 유저 공구. 🚫 2026-06-18 제안 숨김 시 '같이 모으기' 탭 제거 →
           탭 1개뿐이라 스위처 자체 숨김(기본 mainTab='seller' 그대로 동네딜 그리드 렌더). */}
       {!COMMUNITY_PROPOSAL_HIDDEN && (
-      <div className="ur-content-wide px-4 lg:px-8 mt-4">
-        <div className="flex border-b border-gray-200 dark:border-[#1A1A1A]">
-          <button
-            onClick={() => { setMainTab('seller'); setCategory('all'); setSortBy('popular') }}
-            className={`flex-1 pb-2.5 text-[14px] font-semibold text-center transition-colors border-b-2 ${
-              mainTab === 'seller'
-                ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
-                : 'text-gray-400 dark:text-gray-600 border-transparent'
-            }`}
-          >
-            {t('groupBuy.tabSeller', { defaultValue: '동네 공구' })}
-          </button>
-          <button
-            onClick={() => { setMainTab('community'); setCategory('all'); setSortBy('popular') }}
-            className={`flex-1 pb-2.5 text-[14px] font-semibold text-center transition-colors border-b-2 ${
-              mainTab === 'community'
-                ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
-                : 'text-gray-400 dark:text-gray-600 border-transparent'
-            }`}
-          >
-            {t('groupBuy.tabCommunity', { defaultValue: '같이 모으기' })}
-          </button>
-        </div>
-      </div>
+        <MainTabs mainTab={mainTab} setMainTab={setMainTab} setCategory={setCategory} setSortBy={setSortBy} />
       )}
 
       {/* 카테고리 탭 (셀러 공구 전용) */}
@@ -652,41 +631,16 @@ export default function GroupBuyListPage() {
 
       {/* 🛡️ 2026-05-17: 지역 필터 버튼 — voucher 류 한정 (general 탭에선 숨김).
             사용자 결정: "이용권에는 필요. 이용권/숙소권/헬스장 등에." */}
-      <div className={`ur-content-wide px-4 lg:px-8 mt-3 ${category === 'general' ? 'hidden' : 'flex items-center gap-2'}`}>
-        <button
-          onClick={() => setRegionPickerOpen(true)}
-          className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold border transition-colors ${
-            (regionKey || gpsRegion)
-              ? 'bg-gray-900 dark:bg-white border-gray-900 dark:border-white text-white dark:text-gray-900'
-              : 'bg-white dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-300'
-          }`}
-          aria-label="지역 선택"
-        >
-          <MapPin className="w-3.5 h-3.5" />
-          <span className="max-w-[150px] truncate">{gpsRegion ? `📍 ${gpsRegion.name}` : regionButtonLabel}</span>
-          <ChevronDown className="w-3.5 h-3.5 opacity-70" />
-        </button>
-        {/* 🗺️ GPS 내 동네 자동 감지 */}
-        <button
-          onClick={detectMyRegion}
-          disabled={detectingRegion}
-          className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-full text-[13px] font-semibold border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 disabled:opacity-50"
-          aria-label={t('groupBuy.detectMyRegion', { defaultValue: '내 동네 자동 감지' })}
-        >
-          {detectingRegion
-            ? t('groupBuy.detecting', { defaultValue: '감지 중…' })
-            : `📍 ${t('groupBuy.myNeighborhood', { defaultValue: '내 동네' })}`}
-        </button>
-        {(regionKey || gpsRegion) && (
-          <button
-            onClick={() => applyRegion(null, null)}
-            className="text-[12px] text-gray-500 dark:text-gray-400 underline underline-offset-2"
-            aria-label={t('groupBuy.clearRegion', { defaultValue: '지역 필터 해제' })}
-          >
-            {t('groupBuy.clearRegionShort', { defaultValue: '해제' })}
-          </button>
-        )}
-      </div>
+      <RegionBar
+        category={category}
+        regionKey={regionKey}
+        gpsRegion={gpsRegion}
+        regionButtonLabel={regionButtonLabel}
+        detectingRegion={detectingRegion}
+        setRegionPickerOpen={setRegionPickerOpen}
+        detectMyRegion={detectMyRegion}
+        applyRegion={applyRegion}
+      />
 
       {/* 🛡️ 2026-05-16: 텍스트 검색 input */}
       <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
