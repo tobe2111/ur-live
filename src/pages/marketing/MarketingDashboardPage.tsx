@@ -14,7 +14,7 @@ import PanelError from './PanelError'
 
 /**
  * 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 멀티테넌트 입점 대시보드.
- *   tenant = 인증된 고객사(seller_token). 각 고객사가 자기 스마트스토어를 연동(SELF) → 발주 자동수집.
+ *   tenant = 유어애즈 독립 계정(ads_token / ad_accounts.id). 셀러/카카오/유어딜·도매몰과 무관.
  *   owner_type='marketing' 으로 도매(supplier/distributor) 연결과 격리.
  *   ⚠️ 라이브: 커머스 앱 '상품주문/배송' 권한 + 엔드포인트 현행문서 검증 후 동작(이 환경 egress 차단).
  */
@@ -37,14 +37,12 @@ interface ReputationResult { query: string; channels: ReputationChannel[]; total
 const CHANNEL_LABEL: Record<string, string> = { blog: '블로그', cafe: '카페', news: '뉴스' }
 
 const authHeader = () => {
-  const t = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+  const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
 
 export default function MarketingDashboardPage() {
-  const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
-  // 카카오 로그인은 됐지만 사업자(판매) 계정(seller_token)이 없는 유저 — '인증 필요' 안내 분기용.
-  const hasUser = typeof window !== 'undefined' && !!localStorage.getItem('user_id')
+  const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('ads_token')
   const [connected, setConnected] = useState<boolean | null>(null)
   const [maskedId, setMaskedId] = useState<string | null>(null)
   const [clientId, setClientId] = useState('')
@@ -157,22 +155,13 @@ export default function MarketingDashboardPage() {
       <p className="mono text-[11px] tracking-widest" style={{ color: 'var(--ink3)' }}>OVERVIEW</p>
       <p className="mt-1.5 text-[13px]" style={{ color: 'var(--ink2)' }}>연관키워드·검색추세·쇼핑경쟁·자동완성확장·브랜드 평판 모니터링 — 지금 바로 사용 · 자동입찰/발주수집은 광고계정 연동 후</p>
 
-      {!hasToken && !hasUser && (
+      {!hasToken && (
         <div className={`mt-5 ${card}`}>
-          <p className="text-[13px] text-gray-700 dark:text-gray-300">사업자(고객사) 계정으로 로그인 후 이용할 수 있습니다. 카카오 한 번이면 됩니다.</p>
-          <a href="/ads/login" className="mt-3 inline-block rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[13px] font-bold text-white dark:text-[#0A0A0A]">로그인 / 시작하기</a>
-        </div>
-      )}
-
-      {/* 카카오 로그인은 됐지만 사업자(판매) 승인 계정이 없는 유저 — 유어딜/도매몰로 튕기지 않고 여기서 안내. */}
-      {!hasToken && hasUser && (
-        <div className={`mt-5 ${card}`}>
-          <div className="text-[14px] font-bold text-gray-900 dark:text-white">사업자 인증이 필요해요</div>
-          <p className="mt-1.5 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
-            유어애즈는 <b className="text-gray-900 dark:text-white">사업자(판매) 승인 계정</b>에서 광고 계정을 연동해 사용합니다. 카카오 로그인은 완료됐어요 — 사업자 등록 후 바로 이용할 수 있습니다.
-            <br /><span className="text-gray-400 dark:text-gray-500">이미 신청하셨다면 관리자 승인 대기 중일 수 있어요.</span>
-          </p>
-          <a href="/seller/register/supplier?from=ads" className="mt-3 inline-block rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[13px] font-bold text-white dark:text-[#0A0A0A]">사업자 등록하기</a>
+          <p className="text-[13px] text-gray-700 dark:text-gray-300">유어애즈 계정으로 로그인 후 이용할 수 있습니다. 가입은 1분이면 됩니다.</p>
+          <div className="mt-3 flex gap-2">
+            <a href="/ads/login" className="inline-block rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[13px] font-bold text-white dark:text-[#0A0A0A]">로그인</a>
+            <a href="/ads/signup" className="inline-block rounded-lg border border-gray-300 dark:border-[#2A2A2A] px-4 py-2 text-[13px] font-bold text-gray-700 dark:text-gray-200">회원가입</a>
+          </div>
         </div>
       )}
 

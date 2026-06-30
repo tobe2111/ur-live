@@ -1,9 +1,8 @@
 /**
- * 🆕 2026-06-28 유어애즈(UR Ads) — 독립 로그인 (/ads/login).
+ * 🆕 2026-06-28 유어애즈(UR Ads) — 독립 회원가입 (/ads/signup).
  *
- *   대표 결정(2026-06-28): "유어애즈는 유어딜·도매몰과 전혀 무관" → 셀러/카카오 의존 제거.
- *   자체 이메일/비밀번호 계정(ad_accounts)으로 로그인. same-origin JSON 200(XHR) → iOS-safe.
- *   성공 시 ads_token(+계정정보) localStorage 저장 후 대시보드로.
+ *   자체 이메일/비밀번호 계정(ad_accounts) 생성. 셀러/카카오/유어딜·도매몰과 무관.
+ *   성공 시 ads_token 발급 → 바로 대시보드. same-origin JSON 200(XHR) → iOS-safe.
  */
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -32,15 +31,17 @@ const SCOPED_CSS = `
 .ua-login-mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.18em;color:#7E8AA8;}
 `
 
-export default function MarketingLoginPage() {
+export default function MarketingSignupPage() {
   useUrAdsFavicon()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const nextRaw = params.get('next') || ''
   const dest = /^\/ads(\/|$)/.test(nextRaw) ? nextRaw : DEFAULT_DEST
 
+  const [company, setCompany] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [phone, setPhone] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -50,46 +51,49 @@ export default function MarketingLoginPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.trim() || !password) { setErr('이메일과 비밀번호를 입력해주세요'); return }
+    if (!company.trim() || !email.trim() || !password) { setErr('회사명·이메일·비밀번호를 입력해주세요'); return }
     setBusy(true); setErr(null)
     try {
-      const r = await api.post('/api/ads/auth/login', { email: email.trim(), password })
+      const r = await api.post('/api/ads/auth/signup', { company_name: company.trim(), email: email.trim(), password, phone: phone.trim() || undefined })
       if (r.data?.success && r.data.token) {
         localStorage.setItem('ads_token', r.data.token)
         localStorage.setItem('ads_account_id', String(r.data.account?.id ?? ''))
         localStorage.setItem('ads_company', r.data.account?.company_name || '')
         navigate(dest, { replace: true })
-      } else setErr(r.data?.error || '로그인에 실패했습니다')
+      } else setErr(r.data?.error || '가입에 실패했습니다')
     } catch (e2: unknown) {
-      setErr((e2 as { response?: { data?: { error?: string } } })?.response?.data?.error || '로그인에 실패했습니다')
+      setErr((e2 as { response?: { data?: { error?: string } } })?.response?.data?.error || '가입에 실패했습니다')
     } finally { setBusy(false) }
   }
 
-  const signupHref = `/ads/signup${nextRaw ? `?next=${encodeURIComponent(dest)}` : ''}`
+  const loginHref = `/ads/login${nextRaw ? `?next=${encodeURIComponent(dest)}` : ''}`
 
   return (
     <div className="ua-login">
-      <SEO title="유어애즈 로그인 - UR Ads" description="유어애즈에 로그인하세요. 네이버 검색광고 자동입찰·통합 실적·AI 마케터." url="/ads/login" />
+      <SEO title="유어애즈 회원가입 - UR Ads" description="유어애즈 계정을 만들고 네이버 검색광고 자동입찰·통합 실적·AI 마케터를 시작하세요." url="/ads/signup" />
       <style dangerouslySetInnerHTML={{ __html: SCOPED_CSS }} />
       <form className="ua-login-card" onSubmit={submit}>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <Link to="/ads" aria-label="유어애즈" style={{ color: '#fff' }}><UrAdsLogo size={30} /></Link>
         </div>
-        <p className="ua-login-mono" style={{ textAlign: 'center', marginTop: 22 }}>UR ADS · SIGN IN</p>
-        <h1 style={{ textAlign: 'center', marginTop: 8, fontSize: 21, fontWeight: 800, letterSpacing: '-.02em', color: '#fff' }}>유어애즈 로그인</h1>
+        <p className="ua-login-mono" style={{ textAlign: 'center', marginTop: 22 }}>UR ADS · SIGN UP</p>
+        <h1 style={{ textAlign: 'center', marginTop: 8, fontSize: 21, fontWeight: 800, letterSpacing: '-.02em', color: '#fff' }}>유어애즈 시작하기</h1>
+        <p style={{ textAlign: 'center', marginTop: 8, fontSize: 13, lineHeight: 1.6, color: '#9AA6C2' }}>광고 계정을 연동하면 자동입찰·통합 실적·AI 마케터를 바로 사용할 수 있어요.</p>
 
         <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <input className="ua-login-input" placeholder="회사(고객사) 이름" value={company} onChange={(e) => setCompany(e.target.value)} />
           <input className="ua-login-input" type="email" autoComplete="email" placeholder="이메일" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input className="ua-login-input" type="password" autoComplete="current-password" placeholder="비밀번호" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input className="ua-login-input" type="password" autoComplete="new-password" placeholder="비밀번호 (10자 이상·대소문자·숫자·특수문자)" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input className="ua-login-input" type="tel" autoComplete="tel" placeholder="연락처 (선택)" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
 
         {err && <p style={{ marginTop: 10, fontSize: 12.5, color: '#F87171' }}>{err}</p>}
 
-        <button type="submit" className="ua-login-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? '로그인 중…' : '로그인'}</button>
+        <button type="submit" className="ua-login-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? '가입 중…' : '가입하고 시작하기'}</button>
 
         <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid #1B2233', textAlign: 'center' }}>
-          <span style={{ fontSize: 13, color: '#9AA6C2' }}>아직 계정이 없으신가요? </span>
-          <Link to={signupHref} style={{ fontSize: 13, color: '#7EA2FF', fontWeight: 700 }}>회원가입</Link>
+          <span style={{ fontSize: 13, color: '#9AA6C2' }}>이미 계정이 있으신가요? </span>
+          <Link to={loginHref} style={{ fontSize: 13, color: '#7EA2FF', fontWeight: 700 }}>로그인</Link>
         </div>
       </form>
     </div>

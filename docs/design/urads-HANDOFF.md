@@ -13,8 +13,13 @@
 - 레이아웃: 랜딩=자체(`MarketingLandingPage`) · 대시보드=`MarketingDashboardShell`(코스믹 사이드바) · 코드: `src/features/marketing/**`, `src/pages/marketing/**`
 - **유어딜(소비자)·도매몰 파일 건드리지 말 것.** 공유 파일은 **추가(additive)만**: `worker/index.ts`(라우트·needsRootBlank·isMarketingSurface), `App.tsx`(라우트·hideBottomNav), `utils/domain.ts`(isMarketingSurface), `MobileAppLayout`(HIDE_SIDEBAR_PREFIXES += /ads), `scheduled.ts`(cron 3개).
 
-## 2. 로그인/인증
-- **새 로그인 없음.** 기존 **사업자 유저(셀러) 로그인**(`seller_token` / `sellerIdFrom`) 재사용. 한 계정으로 유어딜 판매 + 셀러 대시보드 + 유어애즈 광고 전부.
+## 2. 로그인/인증 — **독립 계정** (2026-06-28 대표 결정 "유어딜·도매몰과 전혀 무관")
+- **자체 이메일/비밀번호 계정** — 셀러/카카오/유어딜·도매몰과 완전 분리. 테넌트 = `ad_accounts.id`(독립 테이블).
+- 토큰: `ads_token`(HS256 JWT, claim `{ads_id, typ:'ads'}`, 30일) → `adsAccountIdFrom`(셀러의 `sellerIdFrom` 대체). 클라 `localStorage.ads_token`.
+- 라우트: `/ads/login`·`/ads/signup`(코스믹). API: `POST /api/ads/auth/signup`·`/auth/login`·`GET /auth/me`(same-origin JSON 200 = iOS-safe). 비번 해시는 중립 인프라 `@/lib/password`(PBKDF2) 재사용.
+- 코드: `src/features/marketing/api/ads-account.ts`(스키마+해시+토큰+CRUD). `/api/ads/*` 142곳이 `sellerIdFrom`→`adsAccountIdFrom`.
+- ⚠️ ad_* 테이블의 `seller_id` 컬럼은 이제 **ad_accounts.id**(테넌트)를 담음(프리런치 — 마이그레이션 불필요, 컬럼명만 레거시). `/api/ads/*` 가 배타 소유.
+- (이전 "셀러 로그인 재사용" 설계는 폐기 — 로그인 시 유어딜 '크리에이터 가입'/도매몰로 튕기던 문제의 근본해결.)
 
 ## 3. 디자인 (2026-06-27~28 구현)
 - **브랜드 정체성**: 코스믹 네이비 — 단색 `#3B6EF5` + 그라데이션 `#3B6EF5→#8B5CF6→#EC4899`. 유어딜(모노크롬)·도매몰과 시각 구분. 폰트 Pretendard + 라벨 IBM Plex Mono. 토큰 SSOT: `docs/design/urads/UR Ads Handoff Spec.dc.html`.

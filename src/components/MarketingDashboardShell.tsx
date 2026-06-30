@@ -7,7 +7,7 @@ import { useUrAdsFavicon } from '@/components/brand/useUrAdsFavicon'
 
 interface Tenant { customer_id: string; tenant_label: string | null; connected_at: string | null; is_active: number }
 const authHeader = () => {
-  const t = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+  const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
 

@@ -11,7 +11,7 @@ import PanelError from './PanelError'
  *   연동 불필요(오픈API). 차단/돈 변경 없음.
  */
 const authHeader = () => {
-  const t = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+  const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
 
