@@ -49,7 +49,12 @@ export default function MarketingLoginPage() {
     }
   }, [navigate, dest])
 
-  const kakaoHref = `/auth/kakao/start?redirect=${encodeURIComponent(dest)}&intent=seller`
+  // ⚠️ intent=user (intent=seller 아님): intent=seller 면 카카오 콜백 스마트리다이렉트가 셀러 미보유 유저를
+  //   유어딜 '셀러 가입'(/seller/register/business)으로, 판매사(is_distributor)를 도매몰(/wholesale)로 보냄
+  //   → 유어애즈 밖으로 튕김(대표 신고). intent=user 면 redirectTarget(/ads/dashboard)이 그대로 유지되고,
+  //   사업자(셀러) 계정이 있는 유저는 issueLinkedRoleTokens(intent 무관)가 seller_token 을 그대로 발급 →
+  //   유어애즈 대시보드 정상 진입. 미보유 유저는 대시보드의 '사업자 인증 필요' 카드로 안내.
+  const kakaoHref = `/auth/kakao/start?redirect=${encodeURIComponent(dest)}&intent=user`
   const emailHref = `/seller/login?returnUrl=${encodeURIComponent(dest)}`
 
   return (
