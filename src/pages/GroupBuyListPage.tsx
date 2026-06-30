@@ -1,27 +1,22 @@
-import { useEffect, useMemo, useState, useRef, memo } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   ChevronDown,
-  Clock,
-  Users,
   Sparkles,
   Plus,
   MapPin,
-  HandCoins,
-  Bell,
   ChevronRight,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { safeTime } from '@/utils/safe-date'
 import SEO from '@/components/SEO'
-import { formatPrice } from '@/utils/currency'
 import { toast } from '@/hooks/useToast'
-import { SORT_LABELS, STATUS_BADGES } from './group-buy-list/constants'
-import { formatTimeLeft } from './group-buy-list/utils'
+import { SORT_LABELS } from './group-buy-list/constants'
 import type { GroupBuyProduct, CommunityGroupBuy, MainTab, CategoryFilter, SortOption } from './group-buy-list/types'
 import GroupBuyGridCard from './group-buy-list/GroupBuyGridCard'
 import CurationStrip from './group-buy-list/CurationStrip'
+import CommunityGroupBuyCard from './group-buy-list/CommunityGroupBuyCard'
 import LiveTicker from '@/components/group-buy/LiveTicker'
 import RegionPickerModal from '@/components/RegionPickerModal'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
@@ -955,115 +950,15 @@ export default function GroupBuyListPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {filteredCommunity.map((g) => {
-                  const progress =
-                    g.target_count > 0
-                      ? Math.min(100, (g.current_count / g.target_count) * 100)
-                      : 0
-                  const achieved = g.current_count >= g.target_count
-                  const badge = STATUS_BADGES[g.status] || STATUS_BADGES.proposed
-                  const timeLeft = formatTimeLeft(g.expires_at)
-
-                  return (
-                    <button
-                      key={g.id}
-                      onClick={() => navigate(`/community-group-buy/${g.invite_code}`)}
-                      className="w-full text-left border border-gray-100 dark:border-[#2A2A2A] rounded-2xl p-4 active:scale-[0.98] transition-transform bg-white dark:bg-[#121212] hover:border-gray-200 dark:hover:border-[#3A3A3A]"
-                    >
-                      {/* 상단: 아이콘 + 식당명 + 상태 배지 */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-[#1A1A1A] flex items-center justify-center flex-shrink-0">
-                            <span className="text-[18px]">🙋</span>
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[14px] font-bold text-gray-900 dark:text-white truncate">
-                              {g.restaurant_name}
-                            </p>
-                            {g.restaurant_address && (
-                              <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-0.5 mt-0.5">
-                                <MapPin className="w-3 h-3 flex-shrink-0" />
-                                {g.restaurant_address}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <button
-                            onClick={(e) => toggleInterest(e, g.id, g.restaurant_name)}
-                            className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 dark:border-[#2A2A2A] active:scale-90 transition-transform"
-                            aria-label={t('common.wishlist', { defaultValue: '관심 등록' })}
-                          >
-                            <Bell
-                              className={`w-3.5 h-3.5 ${interestedIds.has(g.id) ? 'text-gray-900 fill-gray-900 dark:text-white dark:fill-white' : 'text-gray-400'}`}
-                            />
-                          </button>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap ${badge.className}`}
-                          >
-                            {badge.label}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* 가격 + 보증금 정보 */}
-                      <div className="flex items-center gap-3 mt-3">
-                        <div className="flex items-center gap-1">
-                          <HandCoins className="w-3.5 h-3.5 text-gray-900 dark:text-white" />
-                          <span className="text-[12px] text-gray-600 dark:text-gray-400">{t('groupBuy.proposedPrice', { defaultValue: '제안가' })}</span>
-                          <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">
-                            {formatPrice(g.proposed_price)}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-gray-400 dark:text-gray-600">|</div>
-                        <div className="text-[12px] text-gray-500 dark:text-gray-400">
-                          {t('groupBuy.depositLabel', { defaultValue: '보증금' })} <span className="font-semibold text-gray-700 dark:text-gray-200">{formatPrice(g.deposit_per_person)}</span>
-                        </div>
-                      </div>
-
-                      {/* 진행률 바 */}
-                      <div className="mt-3">
-                        <div className="w-full h-2.5 bg-gray-100 dark:bg-[#1A1A1A] rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${
-                              achieved ? 'bg-emerald-500' : 'bg-gray-900 dark:bg-white'
-                            }`}
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between mt-1.5">
-                          <p className="text-[11px] text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                            <Users className="w-3 h-3 text-gray-400" />
-                            {achieved ? (
-                              <span className="text-emerald-600 font-semibold">
-                                {t('groupBuy.goalReached', { defaultValue: '목표 달성!' })}
-                              </span>
-                            ) : (
-                              <>
-                                <span className="font-semibold text-gray-900 dark:text-white">
-                                  {g.current_count}
-                                </span>
-                                <span className="text-gray-400">/</span>
-                                <span>{t('groupBuy.peopleSuffix', { defaultValue: '{{count}}명', count: g.target_count })}</span>
-                              </>
-                            )}
-                          </p>
-                          {timeLeft && (
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500 flex items-center gap-0.5">
-                              <Clock className="w-3 h-3" />
-                              {timeLeft}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* 참여하기 CTA — 부모가 이미 <button> 이라 중첩 불가, 표시용 div 유지 */}
-                      <div className="mt-3 bg-gray-900 text-white text-center py-2 rounded-xl text-[13px] font-bold">
-                        {t('groupBuy.joinCta', { defaultValue: '참여하기' })}
-                      </div>
-                    </button>
-                  )
-                })}
+                {filteredCommunity.map((g) => (
+                  <CommunityGroupBuyCard
+                    key={g.id}
+                    g={g}
+                    interested={interestedIds.has(g.id)}
+                    onToggleInterest={toggleInterest}
+                    navigate={navigate}
+                  />
+                ))}
               </div>
             )}
           </>
