@@ -1,6 +1,7 @@
 /**
- * 🆕 2026-06-28 유어애즈(UR Ads) — 계정 설정 (/ads/account).
- *   독립 계정(ad_accounts)의 회사정보 수정 · 비밀번호 변경 · 로그아웃. 코스믹 톤.
+ * 🆕 2026-06-28 유어애즈(UR Ads) — 계정 설정 (/ads/account). 라이트 테마(대시보드·랜딩과 통일).
+ *   독립 계정(ad_accounts)의 회사정보 수정 · 비밀번호 변경 · 로그아웃.
+ *   ⚠️ standalone 라이트 페이지 → 루트 force-light-theme(전역 .dark input 규칙 무력화).
  */
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -12,20 +13,20 @@ import { toast } from '@/hooks/useToast'
 
 const SCOPED_CSS = `
 .ua-acc{min-height:100dvh;padding:32px 24px;
-  background:radial-gradient(120% 80% at 50% -10%,#101A36 0%,#0A0E1C 42%,#06080F 100%);
-  font-family:Pretendard,system-ui,-apple-system,sans-serif;color:#E7ECF7;}
+  background:radial-gradient(120% 80% at 50% -10%,#EEF2FB 0%,#F4F5F7 46%,#F4F5F7 100%);
+  font-family:Pretendard,system-ui,-apple-system,sans-serif;color:#0B0E14;}
 .ua-acc a{text-decoration:none;}
 .ua-acc-wrap{max-width:440px;margin:0 auto;}
-.ua-acc-card{background:#0E1322;border:1px solid #1B2233;border-radius:18px;padding:22px 20px;margin-top:14px;}
-.ua-acc-input{width:100%;height:44px;border-radius:11px;background:#070B16;border:1px solid #232C42;
-  padding:0 13px;font-size:14px;color:#E7ECF7 !important;outline:none;}
-.ua-acc-input:focus{border-color:#3B6EF5;} .ua-acc-input::placeholder{color:#5B678A;}
-.ua-acc-input:disabled{opacity:.6;}
+.ua-acc-card{background:#FFFFFF;border:1px solid #ECEDF1;border-radius:18px;padding:22px 20px;margin-top:14px;box-shadow:0 16px 44px -28px rgba(20,30,60,.25);}
+.ua-acc-input{width:100%;height:44px;border-radius:11px;background:#FFFFFF;border:1px solid #D9DEEA;
+  padding:0 13px;font-size:14px;color:#0B0E14 !important;outline:none;}
+.ua-acc-input:focus{border-color:#3B6EF5;} .ua-acc-input::placeholder{color:#9AA3B5;}
+.ua-acc-input:disabled{background:#F4F5F7;color:#565E6C !important;}
 .ua-acc-btn{height:42px;border-radius:11px;background:#3B6EF5;color:#fff;font-size:13.5px;font-weight:800;padding:0 18px;}
 .ua-acc-btn:disabled{opacity:.55;}
-.ua-acc-btn-ghost{height:42px;border-radius:11px;background:transparent;border:1px solid #2A3450;color:#C7D0E6;font-size:13.5px;font-weight:700;padding:0 16px;}
-.ua-acc-label{font-size:11px;color:#7E8AA8;margin-bottom:6px;}
-.ua-acc-mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.16em;color:#7E8AA8;}
+.ua-acc-btn-ghost{height:42px;border-radius:11px;background:#FFFFFF;border:1px solid #E2E6F2;color:#565E6C;font-size:13.5px;font-weight:700;padding:0 16px;}
+.ua-acc-label{font-size:11px;color:#8A93A3;margin-bottom:6px;}
+.ua-acc-mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.16em;color:#8A93A3;}
 `
 
 export default function MarketingAccountPage() {
@@ -89,16 +90,16 @@ export default function MarketingAccountPage() {
   }
 
   return (
-    <div className="ua-acc">
+    <div className="ua-acc force-light-theme">
       <SEO title="유어애즈 계정 설정 - UR Ads" description="유어애즈 계정 정보·비밀번호 관리" url="/ads/account" noindex />
       <style dangerouslySetInnerHTML={{ __html: SCOPED_CSS }} />
       <div className="ua-acc-wrap">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Link to="/ads/dashboard" aria-label="유어애즈" style={{ color: '#fff' }}><UrAdsLogo size={24} /></Link>
-          <Link to="/ads/dashboard" style={{ fontSize: 13, color: '#9AA6C2', fontWeight: 600 }}>← 대시보드</Link>
+          <Link to="/ads/dashboard" aria-label="유어애즈" style={{ color: '#0B0E14' }}><UrAdsLogo size={24} /></Link>
+          <Link to="/ads/dashboard" style={{ fontSize: 13, color: '#565E6C', fontWeight: 600 }}>← 대시보드</Link>
         </div>
         <p className="ua-acc-mono" style={{ marginTop: 18 }}>UR ADS · ACCOUNT</p>
-        <h1 style={{ marginTop: 6, fontSize: 20, fontWeight: 800, color: '#fff' }}>계정 설정</h1>
+        <h1 style={{ marginTop: 6, fontSize: 20, fontWeight: 800, color: '#0B0E14' }}>계정 설정</h1>
 
         {/* 프로필 */}
         <div className="ua-acc-card">
@@ -115,7 +116,7 @@ export default function MarketingAccountPage() {
 
         {/* 비밀번호 변경 */}
         <div className="ua-acc-card">
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 12 }}>비밀번호 변경</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#0B0E14', marginBottom: 12 }}>비밀번호 변경</div>
           <input className="ua-acc-input" type="password" autoComplete="current-password" value={curPw} onChange={(e) => setCurPw(e.target.value)} placeholder="현재 비밀번호" />
           <input className="ua-acc-input" style={{ marginTop: 10 }} type="password" autoComplete="new-password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="새 비밀번호 (10자 이상·대소문자·숫자·특수문자)" />
           <div style={{ marginTop: 16, textAlign: 'right' }}>
