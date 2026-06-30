@@ -59,7 +59,9 @@ export default function MarketingSignupPage() {
         localStorage.setItem('ads_token', r.data.token)
         localStorage.setItem('ads_account_id', String(r.data.account?.id ?? ''))
         localStorage.setItem('ads_company', r.data.account?.company_name || '')
-        navigate(dest, { replace: true })
+        localStorage.removeItem('ads_unlocked')
+        // 신규 계정은 항상 잠금 상태 → 액세스 코드 입력 화면으로.
+        navigate(`/ads/unlock?next=${encodeURIComponent(dest)}`, { replace: true })
       } else setErr(r.data?.error || '가입에 실패했습니다')
     } catch (e2: unknown) {
       setErr((e2 as { response?: { data?: { error?: string } } })?.response?.data?.error || '가입에 실패했습니다')

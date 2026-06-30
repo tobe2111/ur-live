@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import MarketingDashboardShell from '@/components/MarketingDashboardShell'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
@@ -46,7 +47,23 @@ const authHeader = () => {
 }
 
 export default function MarketingDashboardPage() {
+  const navigate = useNavigate()
   const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('ads_token')
+
+  // 베타 액세스 코드 게이트: 로그인했지만 미해제면 코드 입력 화면으로(직접/북마크 진입 방어).
+  //   캐시('ads_unlocked'==='1')면 즉시 통과, 아니면 서버 확인 후 분기.
+  useEffect(() => {
+    if (!hasToken || localStorage.getItem('ads_unlocked') === '1') return
+    let cancelled = false
+    api.get('/api/ads/auth/me', { headers: { Authorization: `Bearer ${localStorage.getItem('ads_token')}` } })
+      .then((r) => {
+        if (cancelled) return
+        if (r.data?.account?.access_unlocked === 1) localStorage.setItem('ads_unlocked', '1')
+        else navigate('/ads/unlock', { replace: true })
+      })
+      .catch(() => { /* /me 실패는 게이트 강제 안 함(네트워크 일시오류) — 다음 진입에서 재확인 */ })
+    return () => { cancelled = true }
+  }, [hasToken, navigate])
   const [connected, setConnected] = useState<boolean | null>(null)
   const [maskedId, setMaskedId] = useState<string | null>(null)
   const [clientId, setClientId] = useState('')

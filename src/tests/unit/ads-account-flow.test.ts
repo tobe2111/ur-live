@@ -5,6 +5,7 @@ import {
   createAdsAccount, loginAdsAccount, adsAccountIdFrom, signAdsToken,
   updateAdsAccount, changeAdsPassword,
   requestPasswordReset, resetPasswordWithToken,
+  unlockAdsAccount, getAdsAccount,
 } from '@/features/marketing/api/ads-account'
 import { saveAlertSettings, getAlertSettings } from '@/features/marketing/api/alerts'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
@@ -106,6 +107,34 @@ describe('UR Ads 독립 계정 — 실제 SQLite 통합', () => {
     const gj = await get.json() as { settings: { rank_drop: number; budget_pace_pct: number } }
     expect(gj.settings.rank_drop).toBe(5)
     expect(gj.settings.budget_pace_pct).toBe(75)
+  })
+
+  it('베타 액세스 코드 게이트: 신규 계정은 잠금, 코드 검증 후 해제', async () => {
+    const r = await createAdsAccount(DB, { email: 'gate@x.com', password: PW, company_name: 'X' })
+    if (!r.ok) throw new Error('setup')
+    expect(r.account.access_unlocked).toBe(0) // 가입 직후 잠김
+    const id = r.account.id
+    expect((await getAdsAccount(DB, id))?.access_unlocked).toBe(0)
+    // 틀린 코드 → 잠김 유지
+    expect((await unlockAdsAccount(DB, id, '000000', '358533')).ok).toBe(false)
+    expect((await getAdsAccount(DB, id))?.access_unlocked).toBe(0)
+    // 맞는 코드 → 해제
+    expect((await unlockAdsAccount(DB, id, '358533', '358533')).ok).toBe(true)
+    expect((await getAdsAccount(DB, id))?.access_unlocked).toBe(1)
+    // 로그인 응답에도 해제 상태 반영
+    expect((await loginAdsAccount(DB, 'gate@x.com', PW) as { ok: true; account: { access_unlocked: number } }).account.access_unlocked).toBe(1)
+  })
+
+  it('회귀: POST /auth/unlock 라우트 — 틀린 코드 400 / 기본코드 358533 해제', async () => {
+    const env = { DB: makeD1(), JWT_SECRET: JWT } as unknown as Parameters<typeof marketingRoutes.request>[2]
+    const acc = await createAdsAccount((env as unknown as { DB: D1Database }).DB, { email: 'u@x.com', password: PW, company_name: 'X' })
+    if (!acc.ok) throw new Error('setup')
+    const headers = { Authorization: 'Bearer ' + await signAdsToken(acc.account.id, JWT), 'content-type': 'application/json' }
+    const bad = await marketingRoutes.request('/auth/unlock', { method: 'POST', headers, body: JSON.stringify({ code: '111111' }) }, env)
+    expect(bad.status).toBe(400)
+    const ok = await marketingRoutes.request('/auth/unlock', { method: 'POST', headers, body: JSON.stringify({ code: '358533' }) }, env)
+    expect(ok.status).toBe(200)
+    expect((await getAdsAccount((env as unknown as { DB: D1Database }).DB, acc.account.id))?.access_unlocked).toBe(1)
   })
 
   it('미인증 요청은 401', async () => {

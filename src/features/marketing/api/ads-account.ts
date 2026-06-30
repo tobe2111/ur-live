@@ -24,14 +24,17 @@ export async function ensureAdsAccountSchema(DB: D1Database): Promise<void> {
     company_name TEXT,
     phone TEXT,
     status TEXT DEFAULT 'active',
+    access_unlocked INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT (datetime('now')),
     last_login_at DATETIME
   )`).run().catch(() => null)
+  // 기존 행에 액세스 코드 잠금 컬럼 보강(best-effort — 이미 있으면 무시).
+  await DB.prepare('ALTER TABLE ad_accounts ADD COLUMN access_unlocked INTEGER DEFAULT 0').run().catch(() => null)
   // 대소문자 무시 이메일 유일성(중복 가입 차단).
   await DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_ad_accounts_email ON ad_accounts(LOWER(email))`).run().catch(() => null)
 }
 
-export interface AdsAccount { id: number; email: string; company_name: string | null; phone: string | null; status: string | null }
+export interface AdsAccount { id: number; email: string; company_name: string | null; phone: string | null; status: string | null; access_unlocked: number }
 
 /** ads_token(Bearer) → ad_accounts.id. 서명·typ·만료만 검증(상태 재검사는 호출측 선택). */
 export async function adsAccountIdFrom(authorization: string | undefined, jwtSecret: string): Promise<number | null> {
@@ -82,7 +85,7 @@ export async function createAdsAccount(
     ).bind(email, password_hash, company, phone).run()
     const id = Number(r.meta?.last_row_id)
     if (!id) return { ok: false, status: 500, error: '가입 처리 중 오류가 발생했습니다' }
-    return { ok: true, account: { id, email, company_name: company, phone, status: 'active' } }
+    return { ok: true, account: { id, email, company_name: company, phone, status: 'active', access_unlocked: 0 } }
   } catch {
     // UNIQUE 충돌(동시 가입) 등.
     return { ok: false, status: 409, error: '이미 가입된 이메일입니다' }
@@ -103,21 +106,29 @@ export async function loginAdsAccount(
   const e = (email || '').trim().toLowerCase()
   if (!e || !password) return { ok: false, status: 400, error: '이메일과 비밀번호를 입력해주세요' }
   const row = await DB.prepare(
-    'SELECT id, email, password_hash, company_name, phone, status FROM ad_accounts WHERE LOWER(email) = ?'
-  ).bind(e).first<{ id: number; email: string; password_hash: string; company_name: string | null; phone: string | null; status: string | null }>().catch(() => null)
+    'SELECT id, email, password_hash, company_name, phone, status, access_unlocked FROM ad_accounts WHERE LOWER(email) = ?'
+  ).bind(e).first<{ id: number; email: string; password_hash: string; company_name: string | null; phone: string | null; status: string | null; access_unlocked: number | null }>().catch(() => null)
   // 사용자 열거 방지: 계정 없음/비번 불일치 동일 메시지.
   if (!row) return { ok: false, status: 401, error: '이메일 또는 비밀번호가 올바르지 않습니다' }
   const { valid } = await verifyPassword(password, row.password_hash)
   if (!valid) return { ok: false, status: 401, error: '이메일 또는 비밀번호가 올바르지 않습니다' }
   if (row.status && row.status !== 'active') return { ok: false, status: 403, error: '이용이 제한된 계정입니다' }
   await DB.prepare("UPDATE ad_accounts SET last_login_at = datetime('now') WHERE id = ?").bind(row.id).run().catch(() => null)
-  return { ok: true, account: { id: row.id, email: row.email, company_name: row.company_name, phone: row.phone, status: row.status } }
+  return { ok: true, account: { id: row.id, email: row.email, company_name: row.company_name, phone: row.phone, status: row.status, access_unlocked: Number(row.access_unlocked) || 0 } }
 }
 
 export async function getAdsAccount(DB: D1Database, id: number): Promise<AdsAccount | null> {
   await ensureAdsAccountSchema(DB)
-  return DB.prepare('SELECT id, email, company_name, phone, status FROM ad_accounts WHERE id = ?')
+  return DB.prepare('SELECT id, email, company_name, phone, status, access_unlocked FROM ad_accounts WHERE id = ?')
     .bind(id).first<AdsAccount>().catch(() => null)
+}
+
+/** 액세스 코드 검증 → 잠금 해제(계정별 1회). 코드는 호출측(라우트)이 env 에서 주입. */
+export async function unlockAdsAccount(DB: D1Database, id: number, code: string, expected: string): Promise<{ ok: boolean; error?: string }> {
+  await ensureAdsAccountSchema(DB)
+  if (!code || !expected || code.trim() !== String(expected)) return { ok: false, error: '액세스 코드가 올바르지 않습니다' }
+  await DB.prepare('UPDATE ad_accounts SET access_unlocked = 1 WHERE id = ?').bind(id).run().catch(() => null)
+  return { ok: true }
 }
 
 // ── 비밀번호 재설정(이메일 토큰) ─────────────────────────────────────────────

@@ -63,7 +63,7 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
   const [acctOpen, setAcctOpen] = useState(false)
   const company = typeof window !== 'undefined' ? (localStorage.getItem('ads_company') || '내 계정') : '내 계정'
   function logout() {
-    for (const k of ['ads_token', 'ads_account_id', 'ads_company']) { try { localStorage.removeItem(k) } catch { /* ignore */ } }
+    for (const k of ['ads_token', 'ads_account_id', 'ads_company', 'ads_unlocked']) { try { localStorage.removeItem(k) } catch { /* ignore */ } }
     navigate('/ads/login', { replace: true })
   }
   // 화이트(라이트) 기본 + 다크 토글(대표 지시 2026-06-28 "기본은 화이트테마"). 선택은 localStorage 유지
