@@ -446,6 +446,39 @@ export async function ensureDistributorSellerSchema(DB: D1Database) {
   ]) { await DB.prepare(sql).run().catch(swallow('wholesale:become:ensure-schema')) }
 }
 
+/**
+ * 🏭 2026-06-30 [서비스 분리 SSOT] "도매 전용(순수 판매사)" 판별 — 셀러 대시보드 ↔ 도매몰 라우팅 단일 진실원천.
+ *
+ * 배경(대표 신고 — `/seller` 들어가면 `/wholesale` 로 튕김): `SellerLayout` 이 `is_distributor === 1`
+ *   하나로 셀러 대시보드 접근을 막아, **소비자 셀러 + 판매사 겸업** 계정이 대시보드에서 영구 차단됐다.
+ *   문제는 `is_distributor` 가 "도매 접근 권한 있음"(capability)일 뿐 "도매 전용"(exclusivity)이 아니라는 것.
+ *   기존 셀러가 `/become-distributor` 한 번만 해도 같은 셀러 행에 `is_distributor=1` 이 덧붙어 겸업이 된다.
+ *
+ * 규칙(애매하면 false=대시보드 노출 — **절대 lock-out 금지**, 편향은 안전한 쪽으로):
+ *   아래를 **모두** 만족할 때만 '도매 전용'(true):
+ *     · is_distributor = 1
+ *     · seller_type ∉ { store_owner, both }   (소비자 매장 운영자는 언제나 셀러)
+ *     · 소비자(비-도매) 상품이 하나도 없음      (있으면 겸업 — 셀러 대시보드 필요)
+ *
+ *   클라이언트 localStorage(`is_distributor`)는 coarse hint 로만 쓰고, 실제 라우팅 판정은
+ *   반드시 이 서버 권위 함수로 한다. → 표면(SellerLayout/SellerLoginPage)에서 `is_distributor`
+ *   직접 비교로 도매몰 redirect 하는 패턴은 `check-seller-wholesale-redirect.mjs` 가 차단.
+ */
+export async function computeWholesaleOnly(DB: D1Database, sellerId: number): Promise<boolean> {
+  if (!Number.isFinite(sellerId) || sellerId <= 0) return false
+  const s = await DB.prepare('SELECT is_distributor, seller_type FROM sellers WHERE id = ? LIMIT 1')
+    .bind(sellerId).first<{ is_distributor: number | null; seller_type: string | null }>().catch(() => null)
+  if (!s || !s.is_distributor) return false
+  const st = String(s.seller_type || '')
+  if (st === 'store_owner' || st === 'both') return false // 소비자 매장 운영자 → 항상 셀러
+  // 소비자(비-도매) 상품을 하나라도 보유 → 겸업 → 셀러 대시보드 유지(도매 전용 아님).
+  const consumerProduct = await DB.prepare(
+    "SELECT 1 AS x FROM products WHERE seller_id = ? AND COALESCE(is_supply_product, 0) = 0 LIMIT 1"
+  ).bind(sellerId).first<{ x: number }>().catch(() => null)
+  if (consumerProduct) return false
+  return true
+}
+
 // 🔔 2026-06-12 (도매몰 감사 fix): 주문 PAID 확정 시 라인의 제조사들에게 "새 도매 주문" 알림.
 //   기존엔 대시보드 방문 시 발송대기 배지 집계뿐 — 제조사가 접속 전엔 신규 주문을 몰라 발송 지연.
 //   fail-soft(알림 실패가 결제를 절대 막지 않음) + PAID CAS 승자 경로에서만 호출(중복 알림 방지).

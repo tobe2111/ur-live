@@ -26,6 +26,8 @@ import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/accou
 
 import { swallow } from '@/worker/utils/swallow';
 import { startDashboardSession, isDashboardSessionCurrent, deriveDashboardSeat } from '@/worker/utils/dashboard-session';
+import { requireSeller } from '@/worker/middleware/auth';
+import { computeWholesaleOnly } from '@/features/supply/api/wholesale-helpers';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -347,6 +349,12 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
       c.header('Set-Cookie', authTokenSetCookie('ud_seller_token', token, new URL(c.req.url).hostname), { append: true })
     } catch { /* 쿠키 발급 실패해도 로그인은 정상 (dual-write) */ }
 
+    // 🏭 2026-06-30 [서비스 분리] 도매 전용(순수 판매사) 여부 — 로그인 직후 라우팅(/seller vs /wholesale) 결정용.
+    //   겸업(소비자 셀러 + 판매사)은 false → 셀러 대시보드로. is_distributor 면에서만 계산(SSOT: computeWholesaleOnly).
+    const wholesaleOnly = seller.is_distributor
+      ? await computeWholesaleOnly(DB, seller.id as number).catch(() => false)
+      : false
+
     // 5. 응답 반환 (frontend expects accessToken & refreshToken)
     const res = c.json({
       success: true,
@@ -363,7 +371,8 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
           status: seller.status as string,
           commission_rate: seller.commission_rate as number,
           seller_type: (seller.seller_type as string) || 'influencer',
-          is_distributor: seller.is_distributor ? 1 : 0
+          is_distributor: seller.is_distributor ? 1 : 0,
+          wholesale_only: wholesaleOnly ? 1 : 0
         }
       }
     });
@@ -381,6 +390,28 @@ sellerRoutes.post('/login', cors(), rateLimit({ action: 'seller_login', max: 10,
       error: '로그인 중 오류가 발생했습니다.',
       code: 'SELLER_LOGIN_FAILED'
     }, statusCode);
+  }
+});
+
+/**
+ * GET /api/seller/surface — 🏭 2026-06-30 [서비스 분리] 인증된 셀러의 홈 표면(셀러 대시보드 ↔ 도매몰) 권위 판정.
+ *
+ *   `SellerLayout` 이 마운트 시 호출 → `wholesale_only === true` 일 때만 `/wholesale` 로 보낸다.
+ *   기본은 '셀러 대시보드 노출'(절대 lock-out 금지) — 이 응답이 false/실패면 클라는 대시보드 유지.
+ *   판정 SSOT 는 `computeWholesaleOnly`(겸업 계정은 항상 false). 토큰의 seller id 로만 자기 자신 조회 → IDOR 무관.
+ */
+sellerRoutes.get('/surface', requireSeller(), async (c) => {
+  try {
+    const user = c.get('user' as never) as { id?: string | number; seller_id?: string | number } | undefined
+    const sellerId = Number(user?.seller_id ?? user?.id)
+    if (!Number.isFinite(sellerId) || sellerId <= 0) {
+      return c.json({ success: true, wholesale_only: false })
+    }
+    const wholesaleOnly = await computeWholesaleOnly(c.env.DB, sellerId).catch(() => false)
+    return c.json({ success: true, wholesale_only: wholesaleOnly })
+  } catch {
+    // fail-open: 판정 실패해도 셀러 대시보드 유지(lock-out 금지).
+    return c.json({ success: true, wholesale_only: false })
   }
 });
 
