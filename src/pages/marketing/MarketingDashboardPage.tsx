@@ -12,6 +12,7 @@ import SourcingPanel from './SourcingPanel'
 import WeeklyReportPanel from './WeeklyReportPanel'
 import AlertsPanel from './AlertsPanel'
 import EfficiencyPanel from './EfficiencyPanel'
+import RankPanel from './RankPanel'
 import PanelError from './PanelError'
 import { downloadCsv } from '@/utils/csv-download'
 
@@ -388,6 +389,9 @@ export default function MarketingDashboardPage() {
 
       {/* AI 주간 리포트(매주 월요일 자동 생성 — 읽기 전용) */}
       {hasToken && <section id="sec-report" style={{ scrollMarginTop: 76 }}><WeeklyReportPanel /></section>}
+
+      {/* 쇼핑 순위 추적(오가닉/쇼핑 내 내 순위) */}
+      {hasToken && <section id="sec-rank" style={{ scrollMarginTop: 76 }}><RankPanel /></section>}
 
       {/* 가격 모니터링(네이버쇼핑 최저가 추적) + 소싱 */}
       {hasToken && <section id="sec-price" style={{ scrollMarginTop: 76 }}><PricePanel /><SourcingPanel /></section>}

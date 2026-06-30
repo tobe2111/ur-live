@@ -20,6 +20,7 @@ import { registerSite, listSites, deleteSite, recordHit, clickReport, ensureClic
 import { listRules, upsertRule, deleteRule, recentLog, runAutobidForSeller, bulkUpsertRules, parseCsvRules, deleteRulesForTenant } from './autobid'
 import { listWatches, addWatch, deleteWatch, refreshWatch } from './price-monitor'
 import { getAlertSettings, saveAlertSettings, computeAlerts } from './alerts'
+import { listRankTargets, addRankTarget, deleteRankTarget, refreshRankTarget } from './rank-tracker'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
 
@@ -267,6 +268,43 @@ marketingRoutes.get('/alerts/preview', rateLimit({ action: 'ads-alerts-preview',
   const settings = await getAlertSettings(c.env.DB, id)
   const items = await computeAlerts(c.env, id, settings)
   return c.json({ success: true, items })
+})
+
+// ── 네이버 쇼핑 순위 추적 ──────────────────────────────────────────────────
+// GET /api/ads/rank/targets — 추적 키워드 목록(현재/직전 순위)
+marketingRoutes.get('/rank/targets', async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  return c.json({ success: true, targets: await listRankTargets(c.env.DB, id) })
+})
+
+// POST /api/ads/rank/target — 추적 추가(키워드 + 내 몰/도메인) + 즉시 1회 조회
+marketingRoutes.post('/rank/target', rateLimit({ action: 'ads-rank-add', max: 20, windowSec: 60 }), async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await addRankTarget(c.env, id, String(body.keyword || ''), String(body.mall || ''))
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  return c.json({ success: true, targets: await listRankTargets(c.env.DB, id) })
+})
+
+// POST /api/ads/rank/refresh?id= — 한 타겟 즉시 갱신
+marketingRoutes.post('/rank/refresh', rateLimit({ action: 'ads-rank-refresh', max: 30, windowSec: 60 }), async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const targets = await listRankTargets(c.env.DB, id)
+  const t = targets.find(x => x.id === Number(c.req.query('id')))
+  if (!t) return c.json({ success: false, error: '대상을 찾을 수 없습니다' }, 404)
+  await refreshRankTarget(c.env, id, t.id, t.keyword, t.mall_match)
+  return c.json({ success: true, targets: await listRankTargets(c.env.DB, id) })
+})
+
+// DELETE /api/ads/rank/target?id=
+marketingRoutes.delete('/rank/target', async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  await deleteRankTarget(c.env.DB, id, Number(c.req.query('id')))
+  return c.json({ success: true })
 })
 
 // GET /api/ads/reputation?q=브랜드 — 블로그/카페/뉴스 언급량 + 최근 글(브랜드 평판 모니터링)

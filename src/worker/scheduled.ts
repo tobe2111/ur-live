@@ -220,6 +220,11 @@ export async function handleCronScheduled(
       const { refreshAllWatches } = await import('../features/marketing/api/price-monitor')
       return refreshAllWatches(env)
     }));
+    // 🆕 2026-06-28 유어애즈 쇼핑 순위 추적 — 등록 키워드의 내 몰 순위 일일 갱신(읽기, 돈 0).
+    ctx.waitUntil(safeCron('ads-rank-track', async () => {
+      const { refreshAllRankTargets } = await import('../features/marketing/api/rank-tracker')
+      return refreshAllRankTargets(env)
+    }));
     // 🆕 2026-06-28 유어애즈 임계값 알림 — 예산 소진/최저가 역전 점검 후 이메일(계정+날짜 멱등 1일 1회).
     //   가격 갱신 후 실행되도록 동일 블록 뒤에 등록(최신 last_lowest 반영).
     ctx.waitUntil(safeCron('ads-alerts', async () => {
