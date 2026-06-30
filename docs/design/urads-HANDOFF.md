@@ -47,6 +47,8 @@
 | **부정클릭 방어 Phase 1 완료**(탐지·리포트·**반자동** 차단) | `clickguard.ts`(픽셀+PIPA해시+90일+남용캡) | `/clickguard/pixel.js`·`hit`·`site`·`report`·`block`·`blocklist` |
 | 가격 모니터링 / 소싱 | `price-monitor.ts` · `keyword-tools.ts` | `/price/*` · `/sourcing/trends` |
 | **소싱 인구통계 세분화** 🆕 | `keyword-tools.ts`(`categoryDemographics` — 기기/성별/연령) | `/sourcing/demographics?cid=` |
+| **ROAS·키워드 효율 분석** 🆕 | `searchad-client.ts`(convAmt·`keywordEfficiency` 낭비키워드) | `/searchad/keyword-efficiency` |
+| **쇼핑 순위 추적** 🆕(오가닉, 광고와 별개) | `rank-tracker.ts`(쇼핑검색 상위300·일일 cron) | `/rank/targets`·`/rank/target`·`/rank/refresh` |
 | **임계값 알림** 🆕(예산 소진·최저가 역전→이메일) | `alerts.ts`(설정+일일 cron+Resend, 계정+날짜 멱등) | `/alerts/settings`·`/alerts/preview` |
 | **독립 계정 + 계정관리** 🆕 | `ads-account.ts`(가입/로그인/프로필/비번, PBKDF2) | `/auth/signup`·`login`·`me`·`account`·`password` |
 | **대시보드 KPI 요약 홈** 🆕 | `MarketingDashboardPage`(30일 실적 스트립) | (stats·autobid 재사용) |
