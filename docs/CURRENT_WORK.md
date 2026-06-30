@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-30 — 제조사 거절 사유 입력 UI (거절 사유 루프 완결) (대표 "응 해줘")
+직전 '판매사 거절 사유 노출' 의 짝 — 사유를 *실제로 입력*하게.
+- **문제**: `SupplierWholesaleOrdersPage` 의 거절이 `reason: '제조사 거절'` **하드코딩** → 판매사 주문목록에 항상 "제조사 거절"만 떠 직전 가시성 작업이 무의미. 사유 입력 UI 부재.
+- **수정**: 거절 `confirmDialog` → **`promptDialog`**(이 세션에서 추가한 입력 모달, `required`+`multiline`)로 — "거절 사유(예: 재고 소진, 단종)" 입력받아 `reject` API 로 전달(100자, 빈값이면 '제조사 거절' 폴백, 취소 시 abort). 서버/환불/알림 로직 불변(reason 값만 하드코딩→사용자입력).
+- **루프 완결**: 제조사 거절(사유 입력) → `wholesale_orders.reject_reason` 저장 → 판매사 주문카드 '제조사 거절 사유' 노출(직전 작업) → 환불 알림.
+- 검증: tsc 0 · build 0.
+
 ## ✅ 2026-06-30 — 판매사 주문 거절/취소 사유 노출 (가시성 갭) (대표 "응 계속 진행")
 - **문제**: 제조사가 주문을 거절하면 `wholesale_orders.reject_reason` 을 저장하고 판매사에게 '환불 처리' 알림까지 보내는데, **판매사 주문 목록엔 REJECTED 뱃지만 뜨고 사유가 안 보였음** — "왜 거절됐지?"를 알 길이 없던 가시성 갭. (취소 `cancel_reason` 도 동일.)
 - **수정(additive)**: 판매사 주문 목록 API(`/api/wholesale/orders`) SELECT 에 `reject_reason, cancel_reason` 추가(이미 `ensureOrderTables` ensure 컬럼) → `WholesaleOrderRow` 타입 → `WholesaleOrdersPage` 주문 카드에 사유 노트(REJECTED=빨강 '제조사 거절 사유', CANCELLED/REFUNDED=중립 '취소 사유'). 사유 없으면 미표시(소음 0).

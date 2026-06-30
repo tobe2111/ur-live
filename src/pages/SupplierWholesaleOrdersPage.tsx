@@ -5,7 +5,7 @@ import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { supplierApi, isSupplierLoggedIn, getSupplierToken } from '@/lib/supplier-api'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import { readTableFileAsCsv } from '@/lib/read-table-file'
 import { safeDate } from '@/utils/safe-date'
 import WholesaleLoading from './wholesale/WholesaleLoading'
@@ -152,10 +152,19 @@ export default function SupplierWholesaleOrdersPage() {
     } catch (e) { toast.error(e instanceof Error ? e.message : '주문 수락 실패') } finally { setBusyOrder(null) }
   }
   async function reject(orderId: number) {
-    if (!(await confirmDialog({ message: `주문 #${orderId} 를 거절할까요? 내 상품 라인이 환불되고 판매사에게 통지됩니다. 되돌릴 수 없습니다.`, danger: true }))) return
+    // 🏭 2026-06-30: 거절 사유를 입력받아 판매사에게 전달(주문목록에 '제조사 거절 사유'로 노출).
+    //   기존엔 '제조사 거절' 하드코딩이라 판매사가 이유를 알 수 없었음.
+    const reason = await promptDialog({
+      message: `주문 #${orderId} 를 거절할까요? 내 상품 라인이 환불되고, 입력한 사유가 판매사에게 통지됩니다. 되돌릴 수 없습니다.`,
+      danger: true,
+      confirmText: '거절하고 환불',
+      prompt: { placeholder: '거절 사유 (예: 재고 소진, 단종) — 판매사에게 전달돼요', required: true, multiline: true },
+    })
+    if (reason === null) return // 취소
+    const reasonText = reason.trim().slice(0, 100) || '제조사 거절'
     setBusyOrder(orderId)
     try {
-      await supplierApi.post(`/api/supplier/wholesale/orders/${orderId}/reject`, { reason: '제조사 거절' })
+      await supplierApi.post(`/api/supplier/wholesale/orders/${orderId}/reject`, { reason: reasonText })
       toast.success('주문을 거절하고 환불 처리했습니다')
       load()
     } catch (e) { toast.error(e instanceof Error ? e.message : '주문 거절 실패') } finally { setBusyOrder(null) }
