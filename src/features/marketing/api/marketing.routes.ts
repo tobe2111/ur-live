@@ -257,6 +257,7 @@ marketingRoutes.patch('/alerts/settings', async (c) => {
     enabled: body.enabled !== undefined ? !!body.enabled : undefined,
     budget_pace_pct: body.budget_pace_pct !== undefined ? Number(body.budget_pace_pct) : undefined,
     price_undercut: body.price_undercut !== undefined ? !!body.price_undercut : undefined,
+    rank_drop: body.rank_drop !== undefined ? Number(body.rank_drop) : undefined,
   })
   return c.json({ success: true, settings })
 })
@@ -303,7 +304,9 @@ marketingRoutes.post('/rank/refresh', rateLimit({ action: 'ads-rank-refresh', ma
 marketingRoutes.delete('/rank/target', async (c) => {
   const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  await deleteRankTarget(c.env.DB, id, Number(c.req.query('id')))
+  const targetId = Number(c.req.query('id'))
+  if (!Number.isFinite(targetId)) return c.json({ success: false, error: '대상 ID가 올바르지 않습니다' }, 400)
+  await deleteRankTarget(c.env.DB, id, targetId)
   return c.json({ success: true })
 })
 
