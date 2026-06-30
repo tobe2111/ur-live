@@ -12,12 +12,12 @@ import api from '@/lib/api'
 import { safeTime } from '@/utils/safe-date'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
-import { SORT_LABELS } from './group-buy-list/constants'
 import type { GroupBuyProduct, CommunityGroupBuy, MainTab, CategoryFilter, SortOption } from './group-buy-list/types'
 import GroupBuyGridCard from './group-buy-list/GroupBuyGridCard'
 import CurationStrip from './group-buy-list/CurationStrip'
 import CommunityGroupBuyCard from './group-buy-list/CommunityGroupBuyCard'
 import EmptyShowcase from './group-buy-list/EmptyShowcase'
+import SortBar from './group-buy-list/SortBar'
 import LiveTicker from '@/components/group-buy/LiveTicker'
 import RegionPickerModal from '@/components/RegionPickerModal'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
@@ -730,49 +730,14 @@ export default function GroupBuyListPage() {
       </div>
 
       {/* 정렬 pills */}
-      <div className={`ur-content-wide px-4 lg:px-8 ${mainTab === 'seller' ? 'mt-3' : 'mt-4'} flex items-center justify-between`}>
-        <span className="text-[12px] text-gray-500 dark:text-gray-400">
-          {t('groupBuy.totalCount', { defaultValue: '총 {{count}}개', count: currentCount })}
-        </span>
-        <div className="relative" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={() => setShowSortDropdown((v) => !v)}
-            className="flex items-center gap-1 text-[13px] text-gray-700 dark:text-gray-300 font-semibold"
-            aria-label={t('groupBuy.sortAria', { defaultValue: '정렬 기준 선택' })}
-            aria-haspopup="menu"
-            aria-expanded={showSortDropdown}
-          >
-            {SORT_LABELS[sortBy]}
-            <ChevronDown
-              className={`w-4 h-4 transition-transform ${
-                showSortDropdown ? 'rotate-180' : ''
-              }`}
-            />
-          </button>
-          {showSortDropdown && (
-            <div role="menu" className="absolute top-full right-0 mt-1 w-36 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#2A2A2A] rounded-xl shadow-lg z-30 overflow-hidden">
-              {(Object.keys(SORT_LABELS) as SortOption[]).map((opt) => (
-                <button
-                  key={opt}
-                  role="menuitemradio"
-                  aria-checked={sortBy === opt}
-                  onClick={() => {
-                    setSortBy(opt)
-                    setShowSortDropdown(false)
-                  }}
-                  className={`w-full text-left px-3 py-2.5 text-[13px] ${
-                    sortBy === opt
-                      ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white font-semibold'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#121212]'
-                  }`}
-                >
-                  {SORT_LABELS[opt]}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      <SortBar
+        mainTab={mainTab}
+        currentCount={currentCount}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        showSortDropdown={showSortDropdown}
+        setShowSortDropdown={setShowSortDropdown}
+      />
 
       {/* 🛡️ 2026-04-27: 맛집 공구 시작 FAB 제거.
           기존엔 우측 하단 floating 버튼이 카카오 상담 버튼과 겹치고 우측 벽에 붙어 어색했음.
