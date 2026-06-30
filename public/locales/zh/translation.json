@@ -5817,6 +5817,8 @@
     "quickActions": "快捷操作",
     "todoTitle": "待办",
     "todoClear": "✓ 暂无待办事项",
+    "withdrawNeedAccount": "提现前请先在下方登记结算账户。",
+    "withdrawNeedAccountBtn": "需结算账户",
     "todoNoAccount": "登记结算账户 · 提现前必需",
     "acctTitle": "结算账户",
     "acctDesc": "提现时将汇入此账户。提现前必须登记结算账户。",

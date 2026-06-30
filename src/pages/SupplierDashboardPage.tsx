@@ -272,6 +272,7 @@ export default function SupplierDashboardPage() {
               items={withdrawals}
               t={t}
               onRequest={() => setShowWithdraw(true)}
+              hasAccount={me?.has_payout_account}
             />
           )}
           {/* 🏦 2026-06-30: 정산 계좌 등록/수정 — 출금의 전제. 저장 시 me 재조회로 '계좌 등록' 안내 갱신. */}
