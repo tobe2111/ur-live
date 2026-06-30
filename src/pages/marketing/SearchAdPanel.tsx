@@ -3,6 +3,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { downloadCsv } from '@/utils/csv-download'
 import PanelError from './PanelError'
 
 /**
@@ -288,10 +289,18 @@ export default function SearchAdPanel() {
           <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
             <div className="flex items-center justify-between">
               <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">통합실적</span>
-              <div className="flex rounded-lg border border-gray-200 dark:border-[#2A2A2A] overflow-hidden">
-                {([7, 30] as const).map(d => (
-                  <button key={d} onClick={() => setStatsDays(d)} className={`px-2.5 py-0.5 text-[11px] font-semibold ${statsDays === d ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0A0A0A]' : 'text-gray-500 dark:text-gray-400'}`}>{d}일</button>
-                ))}
+              <div className="flex items-center gap-1.5">
+                {stats && stats.campaigns.length > 0 && (
+                  <button onClick={() => downloadCsv(`유어애즈_실적_${statsDays}일.csv`,
+                    ['캠페인', '노출', '클릭', '광고비', '전환', 'CTR', 'CPC', '평균순위'],
+                    stats.campaigns.map(cs => [cs.name, cs.impCnt, cs.clkCnt, cs.salesAmt, cs.ccnt, pct(cs.ctr), cs.cpc, cs.avgRnk > 0 ? cs.avgRnk.toFixed(1) : '']))}
+                    className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-2 py-0.5 text-[11px] font-bold text-gray-700 dark:text-gray-200">CSV</button>
+                )}
+                <div className="flex rounded-lg border border-gray-200 dark:border-[#2A2A2A] overflow-hidden">
+                  {([7, 30] as const).map(d => (
+                    <button key={d} onClick={() => setStatsDays(d)} className={`px-2.5 py-0.5 text-[11px] font-semibold ${statsDays === d ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0A0A0A]' : 'text-gray-500 dark:text-gray-400'}`}>{d}일</button>
+                  ))}
+                </div>
               </div>
             </div>
             {statsBusy && !stats ? (
