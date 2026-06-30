@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react'
 import { useEffect, useState, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import UrAdsLogo from '@/components/brand/UrAdsLogo'
 import { useUrAdsFavicon } from '@/components/brand/useUrAdsFavicon'
 
 interface Tenant { customer_id: string; tenant_label: string | null; connected_at: string | null; is_active: number }
 const authHeader = () => {
-  const t = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+  const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
 
@@ -27,16 +27,8 @@ const NAV: Array<{ id: string; label: string; icon: ReactNode }> = [
   { id: 'sec-report', label: '주간 리포트', icon: <path d="M4 19V5M4 19h16M8 16l3-4 3 2 4-6" /> },
   { id: 'sec-fraud', label: '부정클릭 방어', icon: <path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6l7-3zM9 12l2 2 4-4" /> },
   { id: 'sec-price', label: '가격·소싱', icon: <path d="M20 12l-8 8-9-9V3h8l9 9zM7.5 7.5h.01" /> },
+  { id: 'sec-alerts', label: '알림', icon: <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" /> },
   { id: 'sec-store', label: '발주 수집', icon: <path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8" /> },
-]
-
-// 모바일 하단 탭바(5) — 시안 "대시보드는 카드 리스트 + 하단 탭바". 섹션 앵커로 스크롤.
-const MOBILE_TABS: Array<{ id: string; label: string }> = [
-  { id: 'sec-searchad', label: '실적' },
-  { id: 'sec-autobid', label: '자동입찰' },
-  { id: 'sec-keyword', label: '키워드' },
-  { id: 'sec-ai', label: 'AI' },
-  { id: 'sec-store', label: '발주' },
 ]
 
 const SCOPED_CSS = `
@@ -63,10 +55,19 @@ function NavIcon({ children }: { children: ReactNode }) {
 }
 
 export default function MarketingDashboardShell({ title = '대시보드', planLabel, showNav = true, children }: { title?: string; planLabel?: string; showNav?: boolean; children: ReactNode }) {
+  const navigate = useNavigate()
   const [active, setActive] = useState<string>(NAV[0].id)
-  // 코스믹 다크 기본 + 라이트 토글(시안: "다크 기본 + 라이트 토글"). 선택은 localStorage 유지.
+  // 계정 드롭다운(헤더) — 회사명/계정설정/로그아웃. 모든 화면에서 직접 로그아웃.
+  const [acctOpen, setAcctOpen] = useState(false)
+  const company = typeof window !== 'undefined' ? (localStorage.getItem('ads_company') || '내 계정') : '내 계정'
+  function logout() {
+    for (const k of ['ads_token', 'ads_account_id', 'ads_company']) { try { localStorage.removeItem(k) } catch { /* ignore */ } }
+    navigate('/ads/login', { replace: true })
+  }
+  // 화이트(라이트) 기본 + 다크 토글(대표 지시 2026-06-28 "기본은 화이트테마"). 선택은 localStorage 유지
+  //   — 이전에 'dark' 로 명시 토글한 사용자는 다크 유지, 미설정/신규는 라이트.
   const [dark, setDark] = useState<boolean>(() => {
-    try { return localStorage.getItem('urads_dash_theme') !== 'light' } catch { return true }
+    try { return localStorage.getItem('urads_dash_theme') === 'dark' } catch { return false }
   })
   const toggleTheme = () => setDark((v) => { const next = !v; try { localStorage.setItem('urads_dash_theme', next ? 'dark' : 'light') } catch { /* ignore */ } return next })
   useUrAdsFavicon()
@@ -91,6 +92,15 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
     document.addEventListener('keydown', onKey)
     return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
   }, [tenantOpen])
+  // 계정 드롭다운 바깥 클릭 / Esc 로 닫기.
+  useEffect(() => {
+    if (!acctOpen) return
+    const onDown = (e: MouseEvent) => { if (!(e.target as Element | null)?.closest?.('.uad-acct')) setAcctOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setAcctOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
+  }, [acctOpen])
   const activeTenant = tenants.find((t) => t.is_active) || tenants[0] || null
   const tenantName = (t: Tenant) => t.tenant_label || `고객 ${t.customer_id}`
   async function switchTenant(customerId: string) {
@@ -169,11 +179,16 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
           )) : (
             <div style={{ padding: '8px 11px' }}>
               <p style={{ fontSize: 12, color: 'var(--ink3)', lineHeight: 1.6, margin: 0 }}>로그인하면 메뉴가 표시됩니다.</p>
-              <a href="/seller/login?returnUrl=%2Fads%2Fdashboard" style={{ display: 'inline-block', marginTop: 8, fontSize: 12.5, fontWeight: 700, color: 'var(--brand-ink)' }}>로그인 / 시작하기 →</a>
+              <a href="/ads/login" style={{ display: 'inline-block', marginTop: 8, fontSize: 12.5, fontWeight: 700, color: 'var(--brand-ink)' }}>로그인 / 시작하기 →</a>
             </div>
           )}
         </nav>
-        <div style={{ padding: 14, borderTop: '1px solid var(--border)' }}>
+        <div style={{ padding: 14, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {showNav && (
+            <Link to="/ads/account" className="uad-nav" style={{ padding: '8px 11px' }}>
+              <NavIcon><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" /></NavIcon>계정 설정
+            </Link>
+          )}
           <Link to="/ads" className="mono" style={{ fontSize: 11, letterSpacing: '.08em', color: 'var(--ink3)' }}>← 랜딩으로</Link>
         </div>
       </aside>
@@ -194,6 +209,24 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
             )}
             <span className="mono hidden sm:inline" style={{ fontSize: 11, letterSpacing: '.06em', color: 'var(--ink3)' }}>{planLabel || '네이버 공식 API'}</span>
             <button type="button" className="uad-tgl" onClick={toggleTheme} aria-label={dark ? '라이트 모드' : '다크 모드'} title={dark ? '라이트 모드' : '다크 모드'}>{dark ? '☀️' : '🌙'}</button>
+            {/* 계정 드롭다운 — 회사명·계정설정·로그아웃 (모든 화면) */}
+            {showNav && (
+              <div className="uad-acct" style={{ position: 'relative' }}>
+                <button type="button" className="uad-tgl" onClick={() => setAcctOpen((v) => !v)} aria-label="계정" title="계정">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" /></svg>
+                </button>
+                {acctOpen && (
+                  <div style={{ position: 'absolute', right: 0, top: 40, minWidth: 180, background: 'var(--panel)', border: '1px solid var(--border2)', borderRadius: 10, padding: 6, boxShadow: '0 14px 40px -12px rgba(0,0,0,.4)', zIndex: 40 }}>
+                    <div style={{ padding: '8px 10px 9px', borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{company}</div>
+                      <div className="mono" style={{ fontSize: 10, letterSpacing: '.08em', color: 'var(--ink3)', marginTop: 2 }}>UR ADS ACCOUNT</div>
+                    </div>
+                    <Link to="/ads/account" onClick={() => setAcctOpen(false)} style={{ display: 'block', padding: '9px 10px', fontSize: 13, color: 'var(--ink2)', borderRadius: 7 }}>계정 설정</Link>
+                    <button type="button" onClick={logout} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 10px', fontSize: 13, color: '#EF4444', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', borderRadius: 7 }}>로그아웃</button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </header>
 
@@ -211,25 +244,8 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
         )}
         <main style={{ flex: 1, minWidth: 0, padding: '20px clamp(14px,3vw,28px) 60px' }}>
           <div style={{ maxWidth: 1180, margin: '0 auto' }}>{children}</div>
-          <div className="lg:hidden" style={{ height: 74 }} />{/* 하단 탭바 여백 */}
         </main>
       </div>
-
-      {/* 모바일 하단 탭바 (lg 이상은 사이드바 사용) */}
-      {showNav && (
-        <nav className="lg:hidden" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 62, background: 'var(--sidebar)', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-around', paddingBottom: 'env(safe-area-inset-bottom)', zIndex: 30 }}>
-          {MOBILE_TABS.map((t) => {
-            const icon = NAV.find((n) => n.id === t.id)?.icon
-            const on = active === t.id
-            return (
-              <button key={t.id} type="button" onClick={() => go(t.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', color: on ? 'var(--brand)' : 'var(--ink3)', padding: '6px 4px', flex: 1 }}>
-                <NavIcon>{icon}</NavIcon>
-                <span style={{ fontSize: 9.5, fontWeight: 600 }}>{t.label}</span>
-              </button>
-            )
-          })}
-        </nav>
-      )}
     </div>
   )
 }

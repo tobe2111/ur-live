@@ -12,7 +12,7 @@ import PanelError from './PanelError'
  *   읽기 전용(현재) — 입찰 변경(write)은 다음 단계.
  */
 const authHeader = () => {
-  const t = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+  const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
 

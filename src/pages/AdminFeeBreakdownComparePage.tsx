@@ -11,12 +11,14 @@
  *
  *   데이터: GET /api/admin/fee-breakdown/compare (admin-fee-breakdown.routes.ts).
  */
+import { useState } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import SEO from '@/components/SEO'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import api from '@/lib/api'
 import { formatWon } from '@/utils/format'
-import { Scale, AlertTriangle, ArrowRight } from 'lucide-react'
+import { Scale, AlertTriangle, ArrowRight, Database, RefreshCw } from 'lucide-react'
 
 interface CompareRow {
   order_id: number
@@ -115,6 +117,26 @@ export default function AdminFeeBreakdownComparePage() {
     { params: { limit: 500 }, select: (r) => r as CompareResponse },
   )
 
+  const [backfilling, setBackfilling] = useState(false)
+  const [backfillMsg, setBackfillMsg] = useState<string | null>(null)
+
+  const runBackfill = async (recompute: boolean) => {
+    if (backfilling) return
+    if (recompute && !window.confirm('현재 요율(platform_settings)로 최근 주문의 그림자 기록을 다시 계산합니다. 진행할까요?')) return
+    setBackfilling(true)
+    setBackfillMsg(null)
+    try {
+      const res = await api.post('/api/admin/fee-breakdown/backfill', { limit: 300, recompute })
+      const d = res.data as { attempted?: number; recorded_total?: number; note?: string }
+      setBackfillMsg(`✅ ${d.note || ''} (처리 ${d.attempted ?? 0}건 · 누적 기록 ${d.recorded_total ?? 0}건)`)
+      await refetch()
+    } catch {
+      setBackfillMsg('❌ 백필에 실패했습니다. 다시 시도해 주세요.')
+    } finally {
+      setBackfilling(false)
+    }
+  }
+
   const rows = data?.rows || []
   const totals = data?.totals
   const resolverOn = !!data?.resolver_enabled
@@ -137,10 +159,33 @@ export default function AdminFeeBreakdownComparePage() {
           현행 정산과 얼마나 달라지는지 <strong>계산만 해서</strong> 나란히 보여줍니다. 이 화면은 어떤 돈도 이동시키지 않습니다.
         </p>
         <ol className="list-decimal list-inside space-y-0.5 mt-1">
-          <li>스테이징에서 <code className="font-mono bg-blue-100 px-1 rounded">FEE_RESOLVER_ENABLED=true</code> 설정</li>
-          <li>결제를 발생시키면 그림자 기록이 쌓임 → 여기서 비교 확인</li>
+          <li><strong>가장 빠른 방법</strong>: 아래 <strong>"과거 주문으로 즉시 백필"</strong> 버튼 — 스위치 안 켜고도 실제 과거 데이터로 바로 비교</li>
+          <li>(또는) <code className="font-mono bg-blue-100 px-1 rounded">FEE_RESOLVER_ENABLED=true</code> 설정 → 새 결제마다 자동 기록</li>
           <li>차이가 의도대로면 → authoritative 전환(별도 작업, 잠긴 결제파일, 대표 승인 필요)</li>
         </ol>
+      </div>
+
+      {/* 백필 컨트롤 — 항상 노출(빈 상태든 채워졌든). */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => runBackfill(false)}
+          disabled={backfilling}
+          className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
+        >
+          <Database className="w-4 h-4" />
+          {backfilling ? '처리 중…' : '과거 주문으로 즉시 백필 (최근 300건)'}
+        </button>
+        {hasShadow && (
+          <button
+            onClick={() => runBackfill(true)}
+            disabled={backfilling}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw className="w-4 h-4" />
+            현 요율로 재계산
+          </button>
+        )}
+        {backfillMsg && <span className="text-xs text-gray-600">{backfillMsg}</span>}
       </div>
 
       {/* 리졸버 OFF / 데이터 없음 경고 */}
@@ -206,7 +251,7 @@ export default function AdminFeeBreakdownComparePage() {
             <strong className="text-gray-700">⚠️ 모델 차이 해석 주의:</strong>{' '}
             영입자(인플) 인센티브는 <strong>현행=플랫폼 비용</strong>(순이익에서 차감)이지만{' '}
             <strong>새 모델=주인 자율 promo</strong>(플랫폼 비용 아님)라 ③ 플랫폼 순이익 산식이 다릅니다.{' '}
-            그림자 기록은 supply/promo 를 아직 계산하지 않아(0), 핵심 비교는 ①플랫폼·②에이전시입니다.{' '}
+            공급가(supply)는 공급라인 공급가로 계산되며(현행과 동일 base), promo 만 미모델링(0)입니다. 핵심 비교는 ①플랫폼·②에이전시입니다.{' '}
             현행 영입자 합계 {formatWon(totals.cur_influencer)} · 현행 핀추천(affiliate) 합계 {formatWon(totals.cur_affiliate)} · 현행 공급가 합계 {formatWon(totals.cur_supply)}.
           </div>
 

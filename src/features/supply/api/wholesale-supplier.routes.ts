@@ -172,7 +172,7 @@ app.post('/tracking/bulk', async (c) => {
         if (!b.distributor_seller_id) continue
         createDashboardNotification(
           DB, 'seller', String(b.distributor_seller_id), 'wholesale_shipped',
-          '도매 주문 발송 시작', `주문 #${b.id} 상품이 발송되었습니다.`, '/wholesale/dashboard',
+          '도매 주문 발송 시작', `주문 #${b.id} 상품이 발송되었습니다.`, '/wholesale/orders',
         ).catch(swallow('wholesale-supplier:notify-ship-bulk'))
       }
     }
@@ -224,7 +224,7 @@ app.post('/items/:id/ship', async (c) => {
     if (line.distributor_seller_id) {
       createDashboardNotification(
         DB, 'seller', String(line.distributor_seller_id), 'wholesale_shipped',
-        '도매 주문 발송 시작', `주문 #${line.wholesale_order_id} 상품이 발송되었습니다. (${courier} ${tracking})`, '/wholesale/dashboard',
+        '도매 주문 발송 시작', `주문 #${line.wholesale_order_id} 상품이 발송되었습니다. (${courier} ${tracking})`, '/wholesale/orders',
       ).catch(swallow('wholesale-supplier:notify-ship-single'))
     }
     return c.json({ success: true })
@@ -277,7 +277,7 @@ app.post('/orders/:id/ship-all', async (c) => {
     if (order.distributor_seller_id) {
       createDashboardNotification(
         DB, 'seller', String(order.distributor_seller_id), 'wholesale_shipped',
-        '도매 주문 발송 시작', `주문 #${orderId} 상품이 발송되었습니다. (${courier} ${tracking})`, '/wholesale/dashboard',
+        '도매 주문 발송 시작', `주문 #${orderId} 상품이 발송되었습니다. (${courier} ${tracking})`, '/wholesale/orders',
       ).catch(swallow('wholesale-supplier:notify-ship'))
     }
     return c.json({ success: true, shipped })
@@ -307,7 +307,7 @@ app.post('/orders/:id/accept', async (c) => {
     if (own.distributor_seller_id) {
       createDashboardNotification(
         DB, 'seller', String(own.distributor_seller_id), 'wholesale_accepted',
-        '도매 주문 수락됨', `주문 #${orderId} 을(를) 제조사가 수락했습니다. 곧 발송됩니다.`, '/wholesale/dashboard',
+        '도매 주문 수락됨', `주문 #${orderId} 을(를) 제조사가 수락했습니다. 곧 발송됩니다.`, '/wholesale/orders',
       ).catch(swallow('wholesale-supplier:notify-accept'))
     }
     return c.json({ success: true })

@@ -1,5 +1,32 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-30 — 제조사 정산 계좌 등록/수정 (출금 막다른 길 해소) (대표 "계속 해줘")
+직전 '출금 가능' 할 일이 드러낸 **막다른 길** 근본수정 — 돈은 쌓이는데 출금 못 하던 구조.
+- **문제**: 가입 시 정산 계좌가 **'선택'**("나중에 등록 가능")인데, **가입 후 등록/수정할 UI·엔드포인트가 0**. 계좌 없이 가입한 제조사는 정산금이 쌓여도 출금 시 `NO_BANK`("먼저 정산 계좌를 등록해주세요")로 막히고 **등록할 길이 없어 영구 출금불가** — 가입폼의 "나중에 등록 가능"이 깨진 약속이었음.
+- **수정(additive)**: ① 서버 `GET/PATCH /api/supplier/settlement-account`(supplier-dashboard.routes, `supplierId` 본인행만·rateLimit·계좌번호 `^[0-9-]{6,30}$` 검증·3종 필수). `suppliers.bank_name/bank_account/account_holder`(가입 스키마 기존 컬럼). ② `/me` 에 `has_payout_account` boolean 추가. ③ 신규 `SettlementAccountCard`(ShippingPolicyCard 패턴) — 정산 탭 출금 섹션 아래, 미등록 시 amber 경고/등록 시 green 확인. 저장 시 `loadMe` 로 갱신. ④ OverviewTab '할 일': spendable>0 + `has_payout_account===false` 면 '출금 가능' 대신 **'정산 계좌 등록'**(danger)으로 유도(undefined=구버전이면 기존 동작 유지). i18n 14키 6개 언어.
+- **불변**: 출금 신청(`supplier-withdrawal.routes`)의 `NO_BANK` 게이트·계좌 스냅샷·정산 로직 전부 불변(계좌를 *채울* 경로만 신설). 머니 경로 무변경.
+- 검증: tsc 0 · build 0 · api-auth(IDOR 안전 — WHERE id=sid)·sql·light-input 가드 0. ⚠️ staging: 계좌 없는 제조사 → 정산 탭에서 등록 → 출금 신청 성공 1회 확인 권장.
+
+## ✅ 2026-06-30 — 판매사 주문 알림 딥링크 정합(발송/수락/환불 → 주문 목록) (대표 "응 진행")
+직전 '수령 확인 대기' 배너의 알림 루프 완결 — 알림을 탭하면 *행동할 화면*에 떨어지게.
+- **문제**: 판매사(바이어) **주문 이벤트** 알림(발송 시작·수락됨·환불)이 `/wholesale/dashboard`(개요 탭)로 딥링크 → 구매확정 버튼이 있는 주문 목록이 아닌 **개요**에 떨어짐. 반면 같은 클래스인 클레임·주문메모 알림은 이미 `/wholesale/orders` 로 정확히 감 → **비대칭**. 발송 알림 받고 탭해도 바로 구매확정 못 함.
+- **수정(딥링크 6개만)**: 주문 이벤트 알림 6건 `/wholesale/dashboard` → `/wholesale/orders` 통일 — `wholesale-supplier.routes`(발송×3·수락×1) + `wholesale-order-status`(환불) + `wholesale-refund`(환불 처리). **멤버십 시작 알림(`wholesale-plus`)은 개요가 맞아 `/wholesale/dashboard` 유지**(주문 이벤트 아님). 알림 본문/타입/조건·`createDashboardNotification` 시그니처 전부 불변 — link 인자만 교체.
+- **루프 완결**: 제조사 발송 → 바이어 '발송 시작' 알림 → 탭 → `/wholesale/orders`(구매확정 버튼) → 확정 → 홈 배너 즉시 사라짐(직전 작업) → 제조사 정산 마무리.
+- 검증: tsc 0 · build 0 · 가드 0.
+
+## ✅ 2026-06-30 — 판매사 홈 '수령 확인 대기' 액션 배너 (대표 "그 다음 작업")
+제조사 '할 일'(직전) 과 대칭 — 판매사(buyer) 도매몰 홈에 actionable 누락 방지.
+- **배경**: 판매사 주문 페이지엔 발송완료(SHIPPED) 주문에 '구매확정' 버튼이 있으나, **홈엔 '확정해야 할 게 있다'는 신호가 0** → 구매확정을 잊으면 ① 제조사 정산이 마무리 안 됨(SHIPPED 라인 게이트) ② 클레임 창이 안 닫힘. 제조사쪽 '할 일'(품절/출금 등)과 비대칭이었음.
+- **수정(additive)**: `/home`(per-seller·무캐시) Promise.all 에 5번째 쿼리 추가 — `wholesale_orders status IN('SHIPPED','PARTIAL_REFUNDED')` COUNT(fail-soft `.catch→0`) → `pending_receipt` 반환. `useWholesaleHome` 타입/매퍼에 `pending_receipt` 통과. `WholesaleCatalogPage` 홈(로그인 + count>0)에 HeroSection 직후 **탭 배너**(🚚 "수령 확인 대기 N건 · 구매확정하면 정산 마무리·클레임 종료") → `/wholesale/orders`. 구매확정 시 `qc.invalidateQueries(wholesale('home'))` 로 배너 즉시 갱신.
+- **불변**: `/home` 베스트/신상/카테고리/추천 4쿼리·등급가 enrich·캐시 동작(무캐시 authed) 전부 byte-불변(쿼리 1개·응답필드 1개 additive). margin/premium 게이팅·제조사 할 일과 독립.
+- 검증: tsc 0 · build 0 · 가드 0. ⚠️ staging: SHIPPED 발주 있는 판매사 홈 진입 → 배너 표시 → 구매확정 → 배너 사라짐 1회 확인 권장.
+
+## ✅ 2026-06-30 — 프리미엄 전용관 서버 등급 게이팅 + 제조사 '할 일' 확장 (대표 "1,2 해줘")
+도매몰만. 직전 클라 잠금화면(MARGIN_PREMIUM_BLOCKED_GRADES)의 후속 — 데이터 레이어까지 차단 + 대시보드 actionable 확장.
+- **#1 프리미엄 전용관 서버 게이팅** (`wholesale.routes.ts` `/catalog`): 기존엔 `?premium=1` 이 **guest 만** 차단(로그인 Basic 은 프리미엄 상품 데이터 수신 가능 — 클라 잠금화면은 UX 일 뿐 URL 직접 호출로 우회). → guest 게이트 직후 **로그인 Basic('C') 추가 차단** 블록(등급 1회 조회 후 `PREMIUM_BLOCKED_GRADES` 매칭 시 `premium_locked` 빈 목록 + `private,no-store`). **모든 등급캐시·라이브쿼리에 선행** → Basic 은 캐시·라이브 어디서도 프리미엄 데이터 미수신. 클라 상수와 동일 정책(`['C']`, Premium 전용은 `['B','C']`). **'margin' 관은 정렬(sort=discount)일 뿐 별도 데이터 아님 → 서버 게이트 불필요**(Basic 도 일반 카탈로그에서 같은 상품을 봄, 등급 마진은 서버가 등급별 정확계산). 일반 카탈로그 핫패스 byte-불변(premium 경로에서만 등급조회 추가).
+- **#2 제조사 대시보드 '할 일' 확장** (`OverviewTab.tsx` + `/me`): 기존 3종(발송대기·반려·검수대기) → **6종**. 추가 ① **품절 상품**(판매중 무재고=매출손실, danger) ② **재고 부족**(품절 전 보충, info) ③ **출금 가능**(spendable>0, success/green). `/me` counts 쿼리에 `out_of_stock`·`low_stock` 집계 **동일 스캔 추가**(승인·노출 상품 한정, analytics 와 동일 임계 `stock<=min_order_qty`) → RTT 0. tone 'success'(emerald) 추가 + `TODO_TONE` 리터럴 맵. i18n 3키(todoOutOfStock/todoLowStock/todoWithdraw) 6개 언어.
+- 검증: tsc 0 · build 0 · column-exists/bind/login-gate 가드 0 · 단위 pass. ⚠️ 프리미엄 게이트는 staging 에서 Basic 계정으로 `?premium=1` 직접 호출 → 빈 목록(`premium_locked`) 1회 확인 권장.
+
 ## ✅ 2026-06-29 — 등급명 영문(Basic/Standard/Premium) 전수 정합 + 제조사 가입폼 정리
 **등급명 전수조사(대표 "약관·계약서 등 A,B,C 다 수정됐나")**: GRADE_NAME/GradeSheet(기완료) 외 잔존 옛이름(프리미엄/프로/일반) 사용자-가시 전부 영문화.
 - 약관/계약서(signup-contract·terms·privacy)엔 등급명 **없음**(클린 확인). 잔존은 멤버십/가이드/FAQ/알림/시드였음.

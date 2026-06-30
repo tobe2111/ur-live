@@ -10,11 +10,12 @@ import ClickGuardPanel from './ClickGuardPanel'
 import PricePanel from './PricePanel'
 import SourcingPanel from './SourcingPanel'
 import WeeklyReportPanel from './WeeklyReportPanel'
+import AlertsPanel from './AlertsPanel'
 import PanelError from './PanelError'
 
 /**
  * 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 멀티테넌트 입점 대시보드.
- *   tenant = 인증된 고객사(seller_token). 각 고객사가 자기 스마트스토어를 연동(SELF) → 발주 자동수집.
+ *   tenant = 유어애즈 독립 계정(ads_token / ad_accounts.id). 셀러/카카오/유어딜·도매몰과 무관.
  *   owner_type='marketing' 으로 도매(supplier/distributor) 연결과 격리.
  *   ⚠️ 라이브: 커머스 앱 '상품주문/배송' 권한 + 엔드포인트 현행문서 검증 후 동작(이 환경 egress 차단).
  */
@@ -37,16 +38,18 @@ interface ReputationResult { query: string; channels: ReputationChannel[]; total
 const CHANNEL_LABEL: Record<string, string> = { blog: '블로그', cafe: '카페', news: '뉴스' }
 
 const authHeader = () => {
-  const t = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+  const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
 
 export default function MarketingDashboardPage() {
-  const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
+  const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('ads_token')
   const [connected, setConnected] = useState<boolean | null>(null)
   const [maskedId, setMaskedId] = useState<string | null>(null)
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
+  const [connectErr, setConnectErr] = useState<string | null>(null)
+  const [storeOpen, setStoreOpen] = useState(false) // 발주수집(베타) 카드 기본 접힘 — 검색광고 키 오입력 방지
   const [busy, setBusy] = useState(false)
   const [orders, setOrders] = useState<CollectedOrder[]>([])
   const [kw, setKw] = useState('')
@@ -63,6 +66,9 @@ export default function MarketingDashboardPage() {
   const [aiBusy, setAiBusy] = useState(false)
   const [aiAdvice, setAiAdvice] = useState<string | null>(null)
   const [aiOff, setAiOff] = useState(false)
+  // KPI 요약 홈 (최근 30일 통합실적 + 활성 자동입찰)
+  const [summary, setSummary] = useState<{ impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; ctr: number; cpc: number } | null>(null)
+  const [activeRules, setActiveRules] = useState(0)
 
   const loadStatus = useCallback(async () => {
     if (!hasToken) { setConnected(false); return }
@@ -81,17 +87,30 @@ export default function MarketingDashboardPage() {
     } catch { /* graceful */ }
   }, [hasToken])
 
-  useEffect(() => { loadStatus(); loadOrders() }, [loadStatus, loadOrders])
+  const loadSummary = useCallback(async () => {
+    if (!hasToken) return
+    try {
+      const [s, ar] = await Promise.allSettled([
+        api.get('/api/ads/searchad/stats?days=30', { headers: authHeader() }),
+        api.get('/api/ads/searchad/autobid/rules', { headers: authHeader() }),
+      ])
+      if (s.status === 'fulfilled' && s.value.data?.success) setSummary(s.value.data.data?.totals || null)
+      if (ar.status === 'fulfilled' && ar.value.data?.success) setActiveRules((ar.value.data.rules || []).filter((r: { enabled?: number }) => r.enabled).length)
+    } catch { /* graceful — 연동 전이면 표시 안 함 */ }
+  }, [hasToken])
+
+  useEffect(() => { loadStatus(); loadOrders(); loadSummary() }, [loadStatus, loadOrders, loadSummary])
 
   async function connect() {
     if (!clientId.trim() || !clientSecret.trim()) return
-    setBusy(true)
+    setBusy(true); setConnectErr(null)
     try {
       const r = await api.post('/api/ads/naver/connect', { client_id: clientId.trim(), client_secret: clientSecret.trim() }, { headers: authHeader() })
-      if (r.data?.success) { toast.success('스마트스토어가 연결되었습니다'); setClientSecret(''); await loadStatus() }
-      else toast.error(r.data?.error || '연결 실패')
+      if (r.data?.success) { toast.success('스마트스토어가 연결되었습니다'); setClientSecret(''); setConnectErr(null); await loadStatus() }
+      else { const m = r.data?.error || '연결 실패'; setConnectErr(m); toast.error(m) }
     } catch (e: unknown) {
-      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '연결 실패')
+      const m = (e as { response?: { data?: { error?: string } } })?.response?.data?.error || '연결 실패 — 네트워크 또는 키 오류'
+      setConnectErr(m); toast.error(m)
     } finally { setBusy(false) }
   }
 
@@ -152,18 +171,51 @@ export default function MarketingDashboardPage() {
       <p className="mono text-[11px] tracking-widest" style={{ color: 'var(--ink3)' }}>OVERVIEW</p>
       <p className="mt-1.5 text-[13px]" style={{ color: 'var(--ink2)' }}>연관키워드·검색추세·쇼핑경쟁·자동완성확장·브랜드 평판 모니터링 — 지금 바로 사용 · 자동입찰/발주수집은 광고계정 연동 후</p>
 
-      {!hasToken && (
-        <div className={`mt-5 ${card}`}>
-          <p className="text-[13px] text-gray-700 dark:text-gray-300">사업자(고객사) 계정으로 로그인 후 이용할 수 있습니다. 카카오 한 번이면 됩니다.</p>
-          <a href="/seller/login?returnUrl=%2Fads%2Fdashboard" className="mt-3 inline-block rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[13px] font-bold text-white dark:text-[#0A0A0A]">로그인 / 시작하기</a>
+      {/* KPI 요약 홈 — 최근 30일 통합실적(연동·데이터 있을 때만). 빈 0 노출 방지. */}
+      {hasToken && summary && (summary.salesAmt > 0 || summary.impCnt > 0) && (
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          {[
+            { l: '30일 광고비', v: `₩${formatNumber(summary.salesAmt)}` },
+            { l: '클릭', v: formatNumber(summary.clkCnt) },
+            { l: '노출', v: formatNumber(summary.impCnt) },
+            { l: '전환', v: formatNumber(summary.ccnt) },
+            { l: 'CTR', v: `${(summary.ctr * 100).toFixed(1)}%` },
+            { l: '활성 자동입찰', v: `${formatNumber(activeRules)}개` },
+          ].map((m) => (
+            <div key={m.l} className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-3">
+              <div className="text-[10.5px] text-gray-400 dark:text-gray-500">{m.l}</div>
+              <div className="mt-0.5 text-[15px] font-bold text-gray-900 dark:text-white tabular-nums">{m.v}</div>
+            </div>
+          ))}
         </div>
       )}
 
+      {!hasToken && (
+        <div className={`mt-5 ${card}`}>
+          <p className="text-[13px] text-gray-700 dark:text-gray-300">유어애즈 계정으로 로그인 후 이용할 수 있습니다. 가입은 1분이면 됩니다.</p>
+          <div className="mt-3 flex gap-2">
+            <a href="/ads/login" className="inline-block rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[13px] font-bold text-white dark:text-[#0A0A0A]">로그인</a>
+            <a href="/ads/signup" className="inline-block rounded-lg border border-gray-300 dark:border-[#2A2A2A] px-4 py-2 text-[13px] font-bold text-gray-700 dark:text-gray-200">회원가입</a>
+          </div>
+        </div>
+      )}
+
+      {/* 핵심 시작점 안내 — 유어애즈의 주 기능(자동입찰·실적)은 검색광고 연동에서 시작. 발주수집(스마트스토어)과 혼동 방지. */}
       {hasToken && (
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
-          {/* 1) 스마트스토어 연동 */}
+        <a href="#sec-searchad" className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4 hover:border-gray-300 dark:hover:border-[#3A3A3A] transition-colors">
+          <div>
+            <div className="text-[13.5px] font-bold text-gray-900 dark:text-white">네이버 검색광고 계정 연동으로 시작하기</div>
+            <p className="mt-0.5 text-[11.5px] text-gray-500 dark:text-gray-400 leading-relaxed">고객ID·액세스라이선스·비밀키를 연결하면 자동입찰·통합실적·예상입찰가를 바로 사용합니다. <span className="text-gray-400 dark:text-gray-500">(아래 스마트스토어 발주수집과는 다른 키입니다.)</span></p>
+          </div>
+          <span className="shrink-0 text-[12px] font-bold text-gray-700 dark:text-gray-200">아래로 ↓</span>
+        </a>
+      )}
+
+      {hasToken && (
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          {/* 1) 스마트스토어 발주수집 (베타) — 기본 접힘 */}
           <div id="sec-store" className={card}>
-            <div className="text-[14px] font-bold text-gray-900 dark:text-white">스마트스토어 연동</div>
+            <div className="text-[14px] font-bold text-gray-900 dark:text-white">스마트스토어 발주수집 <span className="text-[10.5px] font-medium text-amber-600 dark:text-amber-500">베타</span></div>
             {connected ? (
               <div className="mt-2 text-[13px] text-gray-600 dark:text-gray-300">
                 연결됨 <span className="text-gray-400 dark:text-gray-500">({maskedId})</span>
@@ -172,12 +224,26 @@ export default function MarketingDashboardPage() {
                   <button onClick={async () => { await api.delete('/api/ads/naver/connect', { headers: authHeader() }); loadStatus() }} className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-3 py-2 text-[12px] text-gray-500 dark:text-gray-400">연결 해제</button>
                 </div>
               </div>
+            ) : !storeOpen ? (
+              <div className="mt-1.5">
+                <p className="text-[11.5px] text-gray-400 dark:text-gray-500 leading-relaxed">스마트스토어 주문을 자동 수집합니다(선택). 커머스 API센터의 '상품주문/배송' 권한 키가 필요합니다.</p>
+                <button onClick={() => setStoreOpen(true)} className="mt-2 text-[12px] font-semibold text-gray-700 dark:text-gray-200">발주수집 연동 설정 →</button>
+              </div>
             ) : (
               <div className="mt-2 space-y-2">
-                <p className="text-[11.5px] text-gray-400 dark:text-gray-500 leading-relaxed">커머스 API센터에서 발급한 앱의 <b>'상품주문/배송' 권한</b> 포함 client_id/secret 을 입력하세요.</p>
-                <input className={input} placeholder="client_id" value={clientId} onChange={(e) => setClientId(e.target.value)} />
-                <input className={input} placeholder="client_secret" type="password" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} />
-                <button onClick={connect} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">연결</button>
+                <p className="text-[11.5px] text-gray-400 dark:text-gray-500 leading-relaxed">
+                  <b className="text-gray-600 dark:text-gray-300">발주수집(베타)</b> — <a href="https://apicenter.commerce.naver.com" target="_blank" rel="noopener noreferrer" className="underline">커머스 API센터</a>에서 발급한 앱의 <b>'상품주문/배송' 권한</b> 포함 client_id/secret 을 입력하세요.
+                  <br /><span className="text-amber-600 dark:text-amber-500">※ 검색광고 키(고객ID·액세스라이선스·비밀키)와는 다른 키입니다 — 그건 아래 '검색광고 계정 연동'에 입력하세요.</span>
+                </p>
+                <input className={input} placeholder="client_id (커머스 API 애플리케이션 ID)" value={clientId} onChange={(e) => setClientId(e.target.value)} />
+                <input className={input} placeholder="client_secret (커머스 API 시크릿)" type="password" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} />
+                {connectErr && (
+                  <p className="text-[11.5px] text-red-600 dark:text-red-400 leading-relaxed">{connectErr}</p>
+                )}
+                <div className="flex gap-2">
+                  <button onClick={connect} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-50">{busy ? '검증 중…' : '연결'}</button>
+                  <button onClick={() => { setStoreOpen(false); setConnectErr(null) }} className="rounded-lg px-3 py-2 text-[12px] text-gray-500 dark:text-gray-400">취소</button>
+                </div>
               </div>
             )}
           </div>
@@ -311,6 +377,9 @@ export default function MarketingDashboardPage() {
 
       {/* 가격 모니터링(네이버쇼핑 최저가 추적) + 소싱 */}
       {hasToken && <section id="sec-price" style={{ scrollMarginTop: 76 }}><PricePanel /><SourcingPanel /></section>}
+
+      {/* 임계값 알림(예산 소진·최저가 역전 → 이메일) */}
+      {hasToken && <section id="sec-alerts" style={{ scrollMarginTop: 76 }}><AlertsPanel /></section>}
 
       {/* 부정클릭 방지(Phase 1 — 탐지/리포트) */}
       {hasToken && <section id="sec-fraud" style={{ scrollMarginTop: 76 }}><ClickGuardPanel /></section>}

@@ -220,6 +220,12 @@ export async function handleCronScheduled(
       const { refreshAllWatches } = await import('../features/marketing/api/price-monitor')
       return refreshAllWatches(env)
     }));
+    // 🆕 2026-06-28 유어애즈 임계값 알림 — 예산 소진/최저가 역전 점검 후 이메일(계정+날짜 멱등 1일 1회).
+    //   가격 갱신 후 실행되도록 동일 블록 뒤에 등록(최신 last_lowest 반영).
+    ctx.waitUntil(safeCron('ads-alerts', async () => {
+      const { runAlertsAll } = await import('../features/marketing/api/alerts')
+      return runAlertsAll(env)
+    }));
     // 🏭 2026-06-08 DATA-1: 도매 고아행(FK 부재) 일일 스윕 (flag-only, 삭제 X).
     ctx.waitUntil(safeCron('wholesale-orphan-sweep', () => handleWholesaleOrphanSweep(env)));
     // 🛡️ 2026-05-21 Phase D-3: 매일 ledger 정합성 검증 — orphan entries 알림.

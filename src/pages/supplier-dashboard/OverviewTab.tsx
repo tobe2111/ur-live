@@ -1,10 +1,17 @@
 import { useState, useEffect } from 'react'
-import { Package, Plus, Clock, CheckCircle, XCircle, Truck, ShieldCheck, BarChart3, Upload, ChevronRight, Receipt } from 'lucide-react'
+import { Package, Plus, Clock, CheckCircle, XCircle, Truck, ShieldCheck, BarChart3, Upload, ChevronRight, Receipt, AlertTriangle, Banknote, Landmark } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatWon, formatNumber } from '@/utils/format'
 import { supplierApi } from '@/lib/supplier-api'
 import WholesaleSignupMetaEditor from '@/components/wholesale/WholesaleSignupMetaEditor'
 import type { Me, Tab } from './types'
+
+// 🏭 2026-06-30 (할 일 확장): tone → Tailwind 클래스 매핑(리터럴 — JIT 안전). danger=긴급/info=안내/success=좋은소식.
+const TODO_TONE: Record<'danger' | 'info' | 'success', { wrap: string; icon: string; text: string; chev: string }> = {
+  danger: { wrap: 'border-amber-200 bg-amber-50 hover:bg-amber-100', icon: 'text-amber-600', text: 'text-amber-900', chev: 'text-amber-500' },
+  info: { wrap: 'border-blue-200 bg-blue-50 hover:bg-blue-100', icon: 'text-blue-600', text: 'text-blue-900', chev: 'text-blue-500' },
+  success: { wrap: 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100', icon: 'text-emerald-600', text: 'text-emerald-900', chev: 'text-emerald-500' },
+}
 
 export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, pendingShipCount }: { me: Me | null; meError: boolean; onRetry: () => void; t: (k: string, o?: Record<string, unknown>) => string; onAdd: () => void; onGoTab: (tab: Tab) => void; pendingShipCount: number }) {
   if (meError) return (
@@ -23,11 +30,24 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
   const shipN = formatNumber(pendingShipCount)
   const rejectedN = formatNumber(c.rejected ?? 0)
   const pendingN = formatNumber(c.pending ?? 0)
-  // '할 일' 카드 — 가용 데이터로 actionable. 발송 대기(primary) > 반려 > 검수 대기 순.
-  const todos: { key: string; label: string; count: string; Icon: typeof Package; on: () => void; tone: 'danger' | 'info' }[] = []
+  const outN = formatNumber(c.out_of_stock ?? 0)
+  const lowN = formatNumber(c.low_stock ?? 0)
+  const spendable = Math.max(0, (b.available_amount ?? 0) - (b.reserved_amount ?? 0))
+  // '할 일' 카드 — 가용 데이터로 actionable. 긴급(danger) → 안내(info) → 좋은소식(success) 순.
+  //   발송 대기 > 품절(판매중 상품 무재고=매출손실) > 반려 → 재고부족 > 검수 대기 → 출금 가능.
+  const todos: { key: string; label: string; count: string; Icon: typeof Package; on: () => void; tone: 'danger' | 'info' | 'success' }[] = []
   if ((pendingShipCount ?? 0) > 0) todos.push({ key: 'ship', label: t('supplier.todoShip', { defaultValue: '발송 대기 {{n}}건', n: shipN }).replace('{{n}}', shipN), count: shipN, Icon: Truck, on: () => onGoTab('orders'), tone: 'danger' })
+  if ((c.out_of_stock ?? 0) > 0) todos.push({ key: 'outofstock', label: t('supplier.todoOutOfStock', { defaultValue: '품절 상품 {{n}}건 · 재입고하면 다시 노출', n: outN }).replace('{{n}}', outN), count: outN, Icon: AlertTriangle, on: () => onGoTab('catalog'), tone: 'danger' })
   if ((c.rejected ?? 0) > 0) todos.push({ key: 'rejected', label: t('supplier.todoRejected', { defaultValue: '반려된 상품 {{n}}건 · 수정 후 재등록', n: rejectedN }).replace('{{n}}', rejectedN), count: rejectedN, Icon: XCircle, on: () => onGoTab('catalog'), tone: 'danger' })
+  if ((c.low_stock ?? 0) > 0) todos.push({ key: 'lowstock', label: t('supplier.todoLowStock', { defaultValue: '재고 부족 {{n}}건 · 품절 전에 보충', n: lowN }).replace('{{n}}', lowN), count: lowN, Icon: Package, on: () => onGoTab('catalog'), tone: 'info' })
   if ((c.pending ?? 0) > 0) todos.push({ key: 'pending', label: t('supplier.todoPending', { defaultValue: '검수 대기 {{n}}건 (관리자 승인 중)', n: pendingN }).replace('{{n}}', pendingN), count: pendingN, Icon: Clock, on: () => onGoTab('catalog'), tone: 'info' })
+  // 출금 가능액이 있는데 정산 계좌 미등록이면 출금이 막힘(NO_BANK) → '계좌 등록'으로 먼저 유도(막다른 길 방지).
+  //   has_payout_account 가 undefined(구버전/미로드)면 기존 '출금 가능' 동작 유지(false 일 때만 계좌 등록 안내).
+  if (spendable > 0 && me.has_payout_account === false) {
+    todos.push({ key: 'noaccount', label: t('supplier.todoNoAccount', { defaultValue: '정산 계좌 등록 · 출금하려면 필요해요' }), count: '', Icon: Landmark, on: () => onGoTab('settlements'), tone: 'danger' })
+  } else if (spendable > 0) {
+    todos.push({ key: 'withdraw', label: t('supplier.todoWithdraw', { defaultValue: '출금 가능 {{amt}} · 출금 신청하기', amt: formatWon(spendable) }).replace('{{amt}}', formatWon(spendable)), count: formatWon(spendable), Icon: Banknote, on: () => onGoTab('settlements'), tone: 'success' })
+  }
   const cards = [
     { label: t('supplier.balPending', { defaultValue: '정산 대기' }), value: b.pending_amount, cls: 'text-amber-600' },
     { label: t('supplier.balAvailable', { defaultValue: '출금 가능' }), value: Math.max(0, (b.available_amount ?? 0) - (b.reserved_amount ?? 0)), cls: 'text-blue-600' },
@@ -106,7 +126,7 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
         )
       })()}
 
-      {/* 할 일 — actionable. 발송 대기 / 반려 / 검수 대기. 빈 상태 히어로(첫 상품 등록)는 위에서 별도 처리. */}
+      {/* 할 일 — actionable. 발송대기/품절/반려/재고부족/검수대기/출금가능. 빈 상태 히어로(첫 상품 등록)는 위에서 별도 처리. */}
       {approved && !noProducts && (
         <div>
           <p className="text-sm font-semibold text-gray-900 mb-3">{t('supplier.todoTitle', { defaultValue: '할 일' })}</p>
@@ -117,14 +137,17 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
             </div>
           ) : (
             <div className="space-y-2">
-              {todos.map(td => (
-                <button key={td.key} onClick={td.on}
-                  className={`w-full text-left rounded-2xl border px-4 py-3.5 flex items-center gap-3 transition-colors ${td.tone === 'danger' ? 'border-amber-200 bg-amber-50 hover:bg-amber-100' : 'border-blue-200 bg-blue-50 hover:bg-blue-100'}`}>
-                  <td.Icon className={`w-5 h-5 shrink-0 ${td.tone === 'danger' ? 'text-amber-600' : 'text-blue-600'}`} />
-                  <p className={`flex-1 min-w-0 text-sm font-semibold ${td.tone === 'danger' ? 'text-amber-900' : 'text-blue-900'}`}>{td.label}</p>
-                  <ChevronRight className={`w-4 h-4 shrink-0 ${td.tone === 'danger' ? 'text-amber-500' : 'text-blue-500'}`} />
-                </button>
-              ))}
+              {todos.map(td => {
+                const tn = TODO_TONE[td.tone]
+                return (
+                  <button key={td.key} onClick={td.on}
+                    className={`w-full text-left rounded-2xl border px-4 py-3.5 flex items-center gap-3 transition-colors ${tn.wrap}`}>
+                    <td.Icon className={`w-5 h-5 shrink-0 ${tn.icon}`} />
+                    <p className={`flex-1 min-w-0 text-sm font-semibold ${tn.text}`}>{td.label}</p>
+                    <ChevronRight className={`w-4 h-4 shrink-0 ${tn.chev}`} />
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>

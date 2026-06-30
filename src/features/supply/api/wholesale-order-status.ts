@@ -143,7 +143,7 @@ export async function refundWholesaleOrderFully(
   if (order.distributor_seller_id) {
     createDashboardNotification(
       DB, 'seller', String(order.distributor_seller_id), 'wholesale_refunded',
-      opts.notifyTitle || '도매 주문 환불', `주문 #${id} ${remaining.toLocaleString('ko-KR')}원이 환불되었습니다. (${reason})`, '/wholesale/dashboard',
+      opts.notifyTitle || '도매 주문 환불', `주문 #${id} ${remaining.toLocaleString('ko-KR')}원이 환불되었습니다. (${reason})`, '/wholesale/orders',
     ).catch(swallow('wholesale-refund-full:notify'))
   }
   return { ok: true, refundAmount: remaining }

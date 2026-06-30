@@ -12,7 +12,7 @@ import PanelError from './PanelError'
  *   🆕 시간대·요일 입찰 전략(schedule preset) + CSV 대량 등록.
  */
 const authHeader = () => {
-  const t = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+  const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
 

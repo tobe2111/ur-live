@@ -14,12 +14,17 @@
  *   new_supply/new_promo 는 항상 0. 즉 *플랫폼+에이전시* 슬라이스가 검증의 핵심. supply 는
  *   현행(supplier_settlements)만 참고로 표시.
  *
- * Endpoints (전부 requireAdmin, read-only):
- *   GET /api/admin/fee-breakdown/compare?limit=N — 그림자 기록 있는 주문별 현행 vs 새 규칙 + 합계
+ * Endpoints (전부 requireAdmin):
+ *   GET  /api/admin/fee-breakdown/compare?limit=N — 그림자 기록 있는 주문별 현행 vs 새 규칙 + 합계
+ *   POST /api/admin/fee-breakdown/backfill — 과거 확정 주문에 그림자 일괄 기록(검증용, record-only).
+ *        body { limit?, recompute? } — recompute=true 면 기존 row 삭제 후 현 요율로 재계산.
+ *        FEE_RESOLVER_ENABLED 와 무관하게 동작(명시적 어드민 검증 액션). 돈 무영향.
  */
 import { Hono } from 'hono'
 import { safeError } from '@/worker/utils/safe-error'
 import { requireAdmin } from '../../../worker/middleware/auth'
+import { auditLog } from '../../../worker/middleware/audit-log'
+import { recordOrderFeeBreakdown } from '@/worker/utils/fee-breakdown-record'
 import { DEFAULT_COMMISSION_RATE } from '@/shared/constants'
 import type { Env } from '../../../worker/types/env'
 
@@ -181,10 +186,70 @@ adminFeeBreakdownRoutes.get('/admin/fee-breakdown/compare', requireAdmin(), asyn
       shadow_table_exists: true,
       rows: list,
       totals,
-      note: '읽기 전용 비교. 새 규칙은 그림자 기록(order_fee_breakdown), 현행은 실제 정산 테이블 라이브 조회. 영입자(인플) 인센티브는 현행=플랫폼 비용 / 새 모델=주인 자율 promo 라 platform_net 산식이 다름(주문별 cur_platform_net = 셀러커미션 − 에이전시 − 영입자). new_supply/new_promo 는 그림자 미모델링이라 0.',
+      note: '읽기 전용 비교. 새 규칙은 그림자 기록(order_fee_breakdown), 현행은 실제 정산 테이블 라이브 조회. 영입자(인플) 인센티브는 현행=플랫폼 비용 / 새 모델=주인 자율 promo 라 platform_net 산식이 다름(주문별 cur_platform_net = 셀러커미션 − 에이전시 − 영입자). new_supply 는 공급라인 공급가로 계산(현행 supplier_settlements 와 동일 base, 단 resolver 는 amount−platform 으로 clamp). new_promo 는 주인 자율값이라 미모델링(0).',
     })
   } catch (err) {
     return safeError(c, err, '비교 데이터 조회 중 오류가 발생했습니다', '[fee-breakdown]')
+  }
+})
+
+// 과거 확정 주문에 그림자 기록 일괄 생성 — 켜고 기다릴 필요 없이 *실제 과거 데이터*로 즉시 비교.
+//   record-only(INSERT OR IGNORE) + 돈 무영향. recompute=true 면 대상 row 삭제 후 현 요율로 재계산.
+adminFeeBreakdownRoutes.post('/admin/fee-breakdown/backfill', requireAdmin(), auditLog('fee_breakdown.backfill'), async (c) => {
+  const { DB } = c.env
+  try {
+    const body = await c.req.json<{ limit?: number; recompute?: boolean }>().catch(() => ({} as { limit?: number; recompute?: boolean }))
+    const limRaw = Number(body.limit)
+    const limit = Number.isFinite(limRaw) && limRaw > 0 && limRaw <= 300 ? Math.floor(limRaw) : 200
+    const recompute = body.recompute === true
+
+    // 그림자 테이블 존재 여부(없으면 NOT IN 서브쿼리가 깨지므로 분기).
+    const tableExists = await DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='order_fee_breakdown'"
+    ).first<{ name: string }>().catch(() => null)
+
+    // 대상: 최근 확정(DONE/PAID/DELIVERED) 주문. 비-recompute 는 아직 그림자 없는 것만.
+    const whereMissing = tableExists && !recompute
+      ? 'AND o.id NOT IN (SELECT order_id FROM order_fee_breakdown)'
+      : ''
+    const orders = await DB.prepare(`
+      SELECT o.id AS id, o.seller_id AS seller_id, o.total_amount AS total_amount
+        FROM orders o
+       WHERE o.status IN ('DONE','PAID','DELIVERED')
+         AND COALESCE(o.total_amount, 0) > 0
+         ${whereMissing}
+       ORDER BY o.created_at DESC
+       LIMIT ?
+    `).bind(limit).all<{ id: number; seller_id: number | null; total_amount: number | null }>().catch(() => ({ results: [] as { id: number; seller_id: number | null; total_amount: number | null }[] }))
+
+    const list = orders.results || []
+    // recompute: 대상 row 삭제 후 recordOrderFeeBreakdown 가 현 요율로 재INSERT.
+    if (recompute && tableExists && list.length) {
+      for (const o of list) {
+        await DB.prepare('DELETE FROM order_fee_breakdown WHERE order_id = ?').bind(o.id).run().catch(() => { /* best-effort */ })
+      }
+    }
+
+    let processed = 0
+    for (const o of list) {
+      await recordOrderFeeBreakdown(DB, { id: Number(o.id), seller_id: o.seller_id ?? null, total_amount: o.total_amount ?? null })
+      processed++
+    }
+
+    const after = await DB.prepare('SELECT COUNT(*) AS n FROM order_fee_breakdown')
+      .first<{ n: number }>().catch(() => null)
+
+    return c.json({
+      success: true,
+      mode: recompute ? 'recompute' : 'fill-missing',
+      attempted: processed,
+      recorded_total: Number(after?.n) || 0,
+      note: list.length >= limit
+        ? `최근 ${limit}건 처리. 더 있으면 다시 실행하세요.`
+        : `대상 ${list.length}건 처리 완료.`,
+    })
+  } catch (err) {
+    return safeError(c, err, '그림자 백필 중 오류가 발생했습니다', '[fee-breakdown-backfill]')
   }
 })
 

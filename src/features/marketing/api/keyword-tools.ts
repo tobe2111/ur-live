@@ -63,7 +63,7 @@ export async function keywordShopping(clientId: string | undefined, clientSecret
 
 // ── 소싱 리포트 (데이터랩 쇼핑인사이트 — 분야별 트렌드) ──────────────────────
 //   "뜨는 카테고리" 발굴 → 도매몰 소싱 시너지. 각 카테고리 자체 시계열의 증감률(정규화 내 유효).
-export interface CategoryTrend { name: string; changePct: number; latest: number }
+export interface CategoryTrend { name: string; changePct: number; latest: number; cid: string }
 // 네이버쇼핑 1-depth 대표 카테고리(cid).
 const SHOPPING_CATEGORIES: Array<{ name: string; cid: string }> = [
   { name: '패션의류', cid: '50000000' }, { name: '패션잡화', cid: '50000001' },
@@ -87,13 +87,66 @@ export async function shoppingCategoryTrends(clientId: string | undefined, clien
   if (!res) return { ok: false, error: '쇼핑인사이트 호출 실패 (네트워크)' }
   const data = (await res.json().catch(() => null)) as { results?: Array<{ title?: string; data?: Array<{ period: string; ratio: number }> }>; errorMessage?: string } | null
   if (!res.ok) return { ok: false, error: data?.errorMessage || `쇼핑인사이트 오류 (HTTP ${res.status})` }
+  const cidByName = new Map(SHOPPING_CATEGORIES.map(c => [c.name, c.cid]))
   const results: CategoryTrend[] = (data?.results || []).map(r => {
     const pts = (r.data || []).map(p => Number(p.ratio) || 0)
     const latest = pts.length ? pts[pts.length - 1] : 0
     const first = pts.length ? pts[0] : 0
-    return { name: r.title || '', changePct: first > 0 ? Math.round(((latest - first) / first) * 100) : 0, latest }
+    return { name: r.title || '', changePct: first > 0 ? Math.round(((latest - first) / first) * 100) : 0, latest, cid: cidByName.get(r.title || '') || '' }
   }).filter(c => c.name).sort((a, b) => b.changePct - a.changePct)
   return { ok: true, results }
+}
+
+// ── 카테고리 인구통계 세분화 (데이터랩 쇼핑인사이트 — 기기/성별/연령) ──────────
+//   "이 카테고리는 누가(연령·성별·기기) 사는가" → 소싱·광고 타겟팅 인사이트.
+//   엔드포인트별로 한 카테고리의 시계열을 group(pc/mo·f/m·10~60)으로 분할 → 그룹별 평균비율을 share(%)로 정규화.
+//   ⚠️ 데이터랩 ratio 는 쿼리 내 max=100 정규화값 → 그룹 평균의 상대크기를 share 로 환산(방향성 지표).
+const DEMO_DIMS = [
+  { dim: 'device' as const, path: '/v1/datalab/shopping/category/device' },
+  { dim: 'gender' as const, path: '/v1/datalab/shopping/category/gender' },
+  { dim: 'age' as const, path: '/v1/datalab/shopping/category/age' },
+]
+const DEMO_GROUP_LABEL: Record<string, string> = {
+  pc: 'PC', mo: '모바일', mobile: '모바일',
+  f: '여성', m: '남성',
+  '10': '10대', '20': '20대', '30': '30대', '40': '40대', '50': '50대', '60': '60대+',
+}
+export interface DemoSegment { label: string; pct: number }
+export interface CategoryDemographics { device: DemoSegment[]; gender: DemoSegment[]; age: DemoSegment[] }
+
+/** 한 카테고리(cid)의 기기/성별/연령 분포(최근 1년, share %). */
+export async function categoryDemographics(clientId: string | undefined, clientSecret: string | undefined, cid: string): Promise<{ ok: boolean; data?: CategoryDemographics; error?: string }> {
+  if (!clientId || !clientSecret) return { ok: false, error: 'NOT_CONFIGURED' }
+  if (!/^\d{8}$/.test(cid)) return { ok: false, error: '카테고리 코드가 올바르지 않습니다' }
+  const today = new Date()
+  const endDate = today.toISOString().slice(0, 10)
+  const startDate = new Date(today.getTime() - 365 * 86400000).toISOString().slice(0, 10)
+  const callDim = async (path: string): Promise<DemoSegment[]> => {
+    const res = await fetch(`${OPENAPI}${path}`, {
+      method: 'POST',
+      headers: { ...hdr(clientId, clientSecret), 'content-type': 'application/json' },
+      body: JSON.stringify({ startDate, endDate, timeUnit: 'month', category: cid }),
+    }).catch(() => null)
+    if (!res || !res.ok) return []
+    const data = (await res.json().catch(() => null)) as { results?: Array<{ data?: Array<{ group?: string; ratio?: number }> }> } | null
+    const rows = data?.results?.[0]?.data || []
+    const acc = new Map<string, { sum: number; n: number }>()
+    for (const row of rows) {
+      const g = String(row.group || '')
+      if (!g) continue
+      const a = acc.get(g) || { sum: 0, n: 0 }
+      a.sum += Number(row.ratio) || 0; a.n += 1
+      acc.set(g, a)
+    }
+    const avgs = [...acc.entries()].map(([g, a]) => ({ g, v: a.n ? a.sum / a.n : 0 }))
+    const total = avgs.reduce((s, x) => s + x.v, 0)
+    return avgs
+      .map(x => ({ label: DEMO_GROUP_LABEL[x.g] || x.g, pct: total > 0 ? Math.round((x.v / total) * 100) : 0 }))
+      .sort((a, b) => b.pct - a.pct)
+  }
+  const [device, gender, age] = await Promise.all(DEMO_DIMS.map(d => callDim(d.path)))
+  if (!device.length && !gender.length && !age.length) return { ok: false, error: '세분화 데이터가 없습니다' }
+  return { ok: true, data: { device, gender, age } }
 }
 
 export interface LowestPrice { lowest: number; mall: string; title: string; total: number }

@@ -53,6 +53,12 @@ import { buildXlsx, xlsxResponse } from './xlsx'
 
 const app = new Hono<{ Bindings: Env }>()
 
+// 🏭 2026-06-30 (대표 — 고마진/프리미엄 등급 서버 게이팅): 프리미엄 전용관(?premium=1) 데이터를
+//   받을 수 없는 등급. 클라(WholesaleCatalogPage)의 MARGIN_PREMIUM_BLOCKED_GRADES 와 동일 정책 —
+//   클라 잠금화면은 UX, 이 서버 게이트가 *데이터* 차단(URL 직접 호출로도 Basic 은 빈 목록). Premium 전용으로
+//   좁히려면 ['B','C']. 'margin' 관은 정렬(sort=discount)일 뿐 별도 데이터가 아니라 서버 게이트 불필요.
+const PREMIUM_BLOCKED_GRADES: DistributorGrade[] = ['C']
+
 // ── GET /mall — PUBLIC 현재 몰(브랜딩) 조회 ─────────────────────────────────────
 //   🏬 2026-06-09 멀티-몰 테넌시: host → mall(없으면 기본 몰 id=1). 프런트 헤더 브랜드명/로고/색/카테고리용.
 //   ⚠️ 공개 브랜딩 필드만 반환 — deposit_account / commission_rate 절대 비노출.
@@ -688,7 +694,7 @@ app.get('/home', async (c) => {
       return { id: r.id, name: r.name, image_url: r.image_url, category: r.category, stock: r.stock, dominant_color: r.dominant_color ?? null, distributor_price: price, retail_price: r.retail_price || null, moq: Math.max(1, r.moq || 1), has_tiers: !!r.has_tiers, sold_count: r.sold_count || 0 }
     })
 
-    const [best, fresh, cats, proposalsRes] = await Promise.all([
+    const [best, fresh, cats, proposalsRes, pendingReceiptRow] = await Promise.all([
       DB.prepare(`SELECT ${cols} FROM products p WHERE ${baseWhere} ORDER BY COALESCE(p.sold_count,0) DESC, p.created_at DESC LIMIT 12`).bind(sellerId, grade).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
       DB.prepare(`SELECT ${cols} FROM products p WHERE ${baseWhere} ORDER BY p.created_at DESC LIMIT 12`).bind(sellerId, grade).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
       DB.prepare(`SELECT p.category AS category, COUNT(*) AS cnt FROM products p WHERE ${baseWhere} AND p.category IS NOT NULL GROUP BY p.category ORDER BY cnt DESC LIMIT 12`).bind(sellerId, grade).all<{ category: string; cnt: number }>().catch(() => ({ results: [] as { category: string; cnt: number }[] })),
@@ -696,6 +702,9 @@ app.get('/home', async (c) => {
         SELECT ${cols} FROM wholesale_proposals wp JOIN products p ON p.id = wp.product_id
         WHERE wp.status = 'active' AND wp.distributor_seller_id = ? AND ${baseWhere} ORDER BY wp.created_at DESC LIMIT 12
       `).bind(sellerId, sellerId, grade).all<HomeRow>().catch(() => ({ results: [] as HomeRow[] })),
+      // 🏭 2026-06-30 (판매사 할 일): 수령 확인 대기 — 발송완료(SHIPPED/PARTIAL_REFUNDED) = 구매확정 전.
+      //   구매확정해야 정산 마무리 + 클레임 창 종료 → 홈 액션 배너로 누락 방지. fail-soft(.catch→0).
+      DB.prepare(`SELECT COUNT(*) AS n FROM wholesale_orders WHERE distributor_seller_id = ? AND status IN ('SHIPPED','PARTIAL_REFUNDED')`).bind(sellerId).first<{ n: number }>().catch(() => null),
     ])
 
     return c.json({
@@ -705,6 +714,7 @@ app.get('/home', async (c) => {
       new: enrich(fresh.results || []),
       proposals: enrich(proposalsRes.results || []),
       categories: (cats.results || []).map(c2 => ({ key: c2.category, count: c2.cnt })),
+      pending_receipt: Math.max(0, Number(pendingReceiptRow?.n) || 0),
     })
   } catch (err) {
     return safeError(c, err, '도매몰 홈 조회 중 오류가 발생했습니다', '[wholesale]')
@@ -795,6 +805,19 @@ app.get('/catalog', async (c) => {
     c.header('Cache-Control', 'private, no-store')
     c.header('X-WS-Reason', 'premium-guest-locked')
     return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: null, requires_login: true, premium_locked: true })
+  }
+  // 🏭 2026-06-30 (대표 — 등급 서버 게이팅): 로그인했어도 Basic 등급은 프리미엄 전용관 데이터 차단.
+  //   guest 는 위에서 처리됨. 여기선 로그인 Basic('C')만 추가 차단 → 클라 잠금화면(UX)과 이중 게이트.
+  //   프리미엄 경로(저트래픽·명시적)에서만 등급 1회 조회 — 일반 카탈로그 핫패스엔 영향 0. 아래 등급캐시/쿼리
+  //   전부에 *선행*하므로 Basic 은 프리미엄 응답을 캐시에서도 라이브에서도 절대 수신 못 함.
+  if (premiumOnly && !guest) {
+    const sgGate = await loadSellerGrade(DB, sellerId!).catch(() => ({ distributor_grade: null, special_discount_until: null } as Awaited<ReturnType<typeof loadSellerGrade>>))
+    const gradeGate = effectiveGrade({ grade: sgGate.distributor_grade, specialUntil: sgGate.special_discount_until })
+    if (PREMIUM_BLOCKED_GRADES.includes(gradeGate)) {
+      c.header('Cache-Control', 'private, no-store')
+      c.header('X-WS-Reason', 'premium-grade-locked')
+      return c.json({ success: true, items: [], total: 0, page, limit, has_more: false, grade: gradeGate, premium_locked: true })
+    }
   }
   // 🏷️ 2026-06-09 브랜드 전시관 — ?brand=<name> 이면 brand_name 정확 일치 + is_brand_product=1 만(additive WHERE).
   //   ?brands=1 이면 상품 목록 대신 현재 몰의 브랜드(brand_name) distinct 목록 + 상품수 반환(브랜드 그리드용).
@@ -1472,6 +1495,8 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     const shipPhone = String(ship.phone || shipFromProfile?.shipping_phone || '').slice(0, 30) || null
     const shipAddr = String(ship.address || shipFromProfile?.shipping_address || '').slice(0, 300) || null
     const shipPostal = String(ship.postal || shipFromProfile?.shipping_postal_code || '').slice(0, 20) || null
+    // 🚚 2026-06-29 (대표): 배송 메시지(선택) — 주문 헤더에 저장해 제조사/판매사 주문 상세에 노출.
+    const shipMessage = String(ship.message || '').slice(0, 100) || null
 
     const orderName = lines.length === 1
       ? lines[0].name.slice(0, 90)
@@ -1498,9 +1523,9 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     let idemConflict = false
     try {
       const insD = await DB.prepare(`
-        INSERT INTO wholesale_orders (distributor_seller_id, toss_order_id, status, grade, subtotal, supply_total, margin_total, shipping_total, payment_key, idempotency_key, ship_to_name, ship_to_phone, ship_to_address, ship_to_postal)
-        VALUES (?, ?, 'PENDING', ?, ?, ?, ?, ?, 'deposit', ?, ?, ?, ?, ?)
-      `).bind(sellerId, depOrderId, grade, subtotal, supplyTotal, subtotal - supplyTotal, shippingTotal, idemKey || null, shipName, shipPhone, shipAddr, shipPostal).run()
+        INSERT INTO wholesale_orders (distributor_seller_id, toss_order_id, status, grade, subtotal, supply_total, margin_total, shipping_total, payment_key, idempotency_key, ship_to_name, ship_to_phone, ship_to_address, ship_to_postal, ship_to_message)
+        VALUES (?, ?, 'PENDING', ?, ?, ?, ?, ?, 'deposit', ?, ?, ?, ?, ?, ?)
+      `).bind(sellerId, depOrderId, grade, subtotal, supplyTotal, subtotal - supplyTotal, shippingTotal, idemKey || null, shipName, shipPhone, shipAddr, shipPostal, shipMessage).run()
       dOrderId = Number(insD.meta?.last_row_id)
     } catch { idemConflict = true }
     if (idemConflict || !dOrderId) {
@@ -1765,7 +1790,7 @@ app.get('/orders', async (c) => {
              COALESCE(shipping_total, 0) AS shipping_total,
              (COALESCE(subtotal, 0) + COALESCE(shipping_total, 0)) AS grand_total,
              courier, tracking_number, created_at, paid_at, shipped_at,
-             ship_to_name, ship_to_phone, ship_to_address, ship_to_postal
+             ship_to_name, ship_to_phone, ship_to_address, ship_to_postal, ship_to_message
       FROM wholesale_orders WHERE distributor_seller_id = ?
       ORDER BY created_at DESC LIMIT 100
     `).bind(sellerId).all()

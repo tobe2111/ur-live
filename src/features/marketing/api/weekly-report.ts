@@ -66,10 +66,11 @@ export async function generateWeeklyReport(env: Env, sellerId: number, opts?: { 
   const verb = opts?.replace ? 'INSERT OR REPLACE' : 'INSERT OR IGNORE'
   await env.DB.prepare(`${verb} INTO ad_weekly_reports (seller_id, period_key, summary_json, advice_md) VALUES (?, ?, ?, ?)`)
     .bind(sellerId, periodKey, JSON.stringify(ctx.stats || {}), advice).run().catch(() => null)
-  // 이메일(best-effort) — Resend + 셀러 이메일 있을 때만.
+  // 이메일(best-effort) — Resend + 유어애즈 계정 이메일 있을 때만.
+  //   ⚠️ 2026-06-28: 테넌트는 이제 ad_accounts.id(독립 계정) — sellers.email 아님(독립 계정 분리 후속 정정).
   if (advice && env.RESEND_API_KEY && env.RESEND_FROM) {
-    const seller = await env.DB.prepare('SELECT email FROM sellers WHERE id = ?').bind(sellerId).first<{ email: string | null }>().catch(() => null)
-    if (seller?.email) await sendReportEmail(env, seller.email, periodKey, advice).catch(() => {})
+    const acc = await env.DB.prepare('SELECT email FROM ad_accounts WHERE id = ?').bind(sellerId).first<{ email: string | null }>().catch(() => null)
+    if (acc?.email) await sendReportEmail(env, acc.email, periodKey, advice).catch(() => {})
   }
   return { ok: true, advice }
 }

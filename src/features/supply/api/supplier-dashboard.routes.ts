@@ -96,13 +96,18 @@ supplierDashboardRoutes.get('/me', async (c) => {
         `SELECT COALESCE(reserved_amount, 0) AS reserved FROM supplier_balances WHERE supplier_id = ?`
       ).bind(sid).first<{ reserved: number }>().catch(() => null),
       DB.prepare(
+        // 🏭 2026-06-30 (할 일 확장): 재고 신호 추가 — 승인/노출 상품 중 품절(out_of_stock)·재고부족(low_stock).
+        //   actionable 'go restock' 만 의미 있으므로 approved/active 만 집계(pending 품절은 아직 노출 전 → 제외).
+        //   저재고 = 0 < stock <= min_order_qty(=한 번에 살 수 있는 최소). analytics 정의와 동일 임계.
         `SELECT
            COUNT(*) AS total,
            SUM(CASE WHEN supply_approval_status = 'pending'  THEN 1 ELSE 0 END) AS pending,
            SUM(CASE WHEN supply_approval_status = 'approved' OR (supply_approval_status IS NULL AND is_active = 1) THEN 1 ELSE 0 END) AS approved,
-           SUM(CASE WHEN supply_approval_status = 'rejected' THEN 1 ELSE 0 END) AS rejected
+           SUM(CASE WHEN supply_approval_status = 'rejected' THEN 1 ELSE 0 END) AS rejected,
+           SUM(CASE WHEN (supply_approval_status = 'approved' OR (supply_approval_status IS NULL AND is_active = 1)) AND COALESCE(stock,0) <= 0 THEN 1 ELSE 0 END) AS out_of_stock,
+           SUM(CASE WHEN (supply_approval_status = 'approved' OR (supply_approval_status IS NULL AND is_active = 1)) AND COALESCE(stock,0) > 0 AND COALESCE(stock,0) <= COALESCE(min_order_qty,1) THEN 1 ELSE 0 END) AS low_stock
          FROM products WHERE supplier_id = ? AND is_supply_product = 1`
-      ).bind(sid).first<{ total: number; pending: number; approved: number; rejected: number }>().catch(() => null),
+      ).bind(sid).first<{ total: number; pending: number; approved: number; rejected: number; out_of_stock: number; low_stock: number }>().catch(() => null),
       // 🧭 온보딩 마일스톤(가입→첫 상품→첫 승인→첫 주문→첫 정산) 체크리스트용 — 라이트 COUNT(fail-soft).
       DB.prepare('SELECT COUNT(*) AS n FROM wholesale_order_items WHERE supplier_id = ?')
         .bind(sid).first<{ n: number }>().catch(() => null),
@@ -111,11 +116,15 @@ supplierDashboardRoutes.get('/me', async (c) => {
     ]);
     if (!profile) return c.json({ success: false, error: '제조사를 찾을 수 없습니다' }, 404);
     const reservedAmount = Math.max(0, Math.floor(Number(rRow?.reserved) || 0));
+    // 🏦 2026-06-30: 출금 가능하려면 정산 계좌 3종 필요 — 클라가 '계좌 등록' 안내/게이트에 사용.
+    const p = profile as { bank_name?: string | null; bank_account?: string | null; account_holder?: string | null };
+    const hasPayoutAccount = !!(p.bank_name && p.bank_account && p.account_holder);
 
     return c.json({
       success: true,
       data: {
         profile,
+        has_payout_account: hasPayoutAccount,
         balance: {
           pending_amount: balance?.pending_amount ?? 0,
           available_amount: balance?.available_amount ?? 0,
@@ -127,6 +136,8 @@ supplierDashboardRoutes.get('/me', async (c) => {
           pending: counts?.pending ?? 0,
           approved: counts?.approved ?? 0,
           rejected: counts?.rejected ?? 0,
+          out_of_stock: counts?.out_of_stock ?? 0,
+          low_stock: counts?.low_stock ?? 0,
         },
         milestones: {
           orders: orderCnt?.n ?? 0,
@@ -222,6 +233,48 @@ supplierDashboardRoutes.patch('/shipping-policy', async (c) => {
     });
   } catch (err) {
     return safeError(c, err, '배송 정책 저장 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+// ── 🏦 2026-06-30 정산 계좌(출금 계좌) 등록/수정 ──────────────────────────────────
+//   배경: 가입 시 정산 계좌는 '선택'(나중에 등록 가능)인데, 가입 후 등록/수정할 UI/엔드포인트가 없었음
+//   → 계좌 없이 가입한 제조사가 정산금이 쌓여도 출금 시 NO_BANK 로 막히고 등록할 길이 없는 막다른 길.
+//   suppliers.bank_name / bank_account / account_holder (가입 스키마에 이미 존재). 본인(sid) 행만.
+supplierDashboardRoutes.get('/settlement-account', async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  try {
+    const row = await DB.prepare('SELECT bank_name, bank_account, account_holder FROM suppliers WHERE id = ?')
+      .bind(sid).first<{ bank_name: string | null; bank_account: string | null; account_holder: string | null }>().catch(() => null);
+    const registered = !!(row?.bank_name && row?.bank_account && row?.account_holder);
+    return c.json({ success: true, data: { bank_name: row?.bank_name || '', bank_account: row?.bank_account || '', account_holder: row?.account_holder || '', registered } });
+  } catch (err) {
+    return safeError(c, err, '정산 계좌 조회 중 오류가 발생했습니다', '[supplier-dashboard]');
+  }
+});
+
+supplierDashboardRoutes.patch('/settlement-account', rateLimit({ action: 'supplier-settlement-account', max: 20, windowSec: 300 }), async (c) => {
+  const sid = supplierId(c);
+  if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+  const { DB } = c.env;
+  try {
+    const body = await c.req.json().catch(() => ({} as Record<string, unknown>));
+    const bankName = String(body.bank_name ?? '').trim().slice(0, 40);
+    const holder = String(body.account_holder ?? '').trim().slice(0, 40);
+    // 계좌번호 — 숫자/하이픈만(공백 제거). 3종 모두 함께 등록해야 출금 가능(부분 계좌는 무의미).
+    const acct = String(body.bank_account ?? '').replace(/\s+/g, '').slice(0, 30);
+    if (!bankName || !holder || !acct) {
+      return c.json({ success: false, error: '은행/계좌번호/예금주를 모두 입력해주세요' }, 400);
+    }
+    if (!/^[0-9-]{6,30}$/.test(acct)) {
+      return c.json({ success: false, error: '계좌번호 형식이 올바르지 않습니다 (숫자와 하이픈만)' }, 400);
+    }
+    await DB.prepare('UPDATE suppliers SET bank_name = ?, bank_account = ?, account_holder = ? WHERE id = ?')
+      .bind(bankName, acct, holder, sid).run();
+    return c.json({ success: true, message: '정산 계좌가 저장되었습니다', data: { bank_name: bankName, bank_account: acct, account_holder: holder, registered: true } });
+  } catch (err) {
+    return safeError(c, err, '정산 계좌 저장 중 오류가 발생했습니다', '[supplier-dashboard]');
   }
 });
 
