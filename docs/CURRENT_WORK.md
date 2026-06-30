@@ -1,5 +1,16 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-30 — 셀러 대시보드 `/seller`→`/wholesale` 강제 튕김 근본수정 (겸업 lock-out) (대표 "원인 전부·영구·이상적")
+- **원인**: `SellerLayout` 이 `localStorage.is_distributor === '1'` **하나로** 무조건 `/wholesale` 로 redirect(2곳: 마운트 effect + render 가드). `is_distributor` 는 '도매 접근권'(capability)일 뿐 '도매 전용'(exclusivity)이 아닌데, 기존 소비자 셀러가 `/become-distributor`(wholesale.routes:344) 한 번만 해도 같은 셀러 행에 `is_distributor=1` 이 덧붙어 **겸업** 이 됨 → 카카오/셀러 로그인 시 플래그 저장 → `/seller` 갈 때마다 도매몰로 튕겨 셀러 대시보드 **영구 접근불가**. (주석은 "겸업 영향 없음" 이라 약속했으나 코드가 미구현.) 소비자측 강제 redirect 는 이 1곳이 유일(전수조사 — 나머지 navigate('/wholesale')는 전부 도매몰 내부 정상 네비).
+- **수정(영구·서버권위)**:
+  - **서버 SSOT 분류기** `computeWholesaleOnly(DB, sellerId)`(wholesale-helpers) — '도매 전용'은 `is_distributor=1` ∧ `seller_type∉{store_owner,both}` ∧ `소비자(비-도매) 상품 0` 일 때만 true. **애매하면 false=대시보드 노출(절대 lock-out 금지).**
+  - **인증 엔드포인트** `GET /api/seller/surface`(requireSeller, IDOR 무관 — 토큰 seller id 로 자기조회) → `{ wholesale_only }`. fail-open.
+  - **SellerLayout**: is_distributor 직접 가드 2곳 → `/api/seller/surface` 권위 판정. 도매 접근권 없으면 조회 skip, 판정 false/네트워크 실패 시 대시보드 유지, `?as=seller` 명시 진입은 강제이동 면제(트랩 방지).
+  - **SellerLoginPage**: 로그인 직후 라우팅을 `is_distributor` → `wholesale_only` 기준으로(login 응답에 `wholesale_only` additive). 겸업은 `/seller`, 순수 판매사만 `/wholesale`.
+- **자동 치유**: 게이트를 새 신호(wholesale_only)로 바꿔, 이미 깨진 겸업 계정은 **재로그인 없이** 다음 `/seller` 진입에서 즉시 복구(서버가 dual 판정). 순수 판매사 UX(도매몰 라우팅)는 보존.
+- **재발 방지(영구)**: 신규 가드 `check-seller-wholesale-redirect.mjs` — Seller* surface 에서 is_distributor 직접 게이트로 /wholesale redirect/return null 금지(권위 wholesale_only 만). audit-gate(서비스 분리 도메인)+verify.yml(strict)+AUDIT_INVARIANTS 등록. 단위 테스트 `wholesale-only.test.ts`(7케이스).
+- 검증: tsc 0 · unit **2368 pass**(+7) · build(client+worker+prerender+prepare) 0 · 서비스분리/UI 도메인 ALL GREEN · sql/light-input/api-auth 가드 0. ⚠️ staging 권장: 겸업 계정(소비자 상품 보유 + is_distributor=1) → `/seller` 정상 진입 / 순수 판매사 → `/wholesale` 라우팅 각 1회.
+
 ## ↩️ 2026-06-30 — 판매사 첫 발주 시작 가이드 **제거**(revert) (대표 "가이드는 필요없어")
 직전 추가한 `FirstOrderGuide`(HeroSection)를 대표 요청으로 통째 revert(`065a5f1`). `/home` 의 `has_ordered` 배선·`useWholesaleHome` 타입/매퍼·HeroSection prop 전부 함께 제거(미사용 방지). **`pending_receipt`(수령확인 배너)는 별개 커밋이라 유지.** tsc 0·build 0.
 
