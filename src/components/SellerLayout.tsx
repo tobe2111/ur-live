@@ -155,7 +155,13 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   //   셀러 대시보드에서 영구 차단됐다. is_distributor 는 '도매 접근권'(capability)일 뿐 '도매 전용'이 아님.
   //   → 서버 권위 판정(GET /api/seller/surface, SSOT computeWholesaleOnly)으로 '도매 전용'일 때만 redirect.
   //   기본은 대시보드 노출(절대 lock-out 금지): 판정 false/네트워크 실패 시 셀러 화면 유지. 도매 접근권 없는
-  //   셀러는 조회 자체 skip. `?as=seller`(도매몰의 '셀러 대시보드' 링크 등) 명시 진입은 강제이동 면제(트랩 방지).
+  //   셀러는 조회 자체 skip.
+  //
+  //   ⚡ 이상화 3가지(SellerLayout 은 50개 셀러 페이지가 각자 렌더 → 페이지 이동마다 remount):
+  //     ① 세션 캐시(`ur_seller_surface`) — 겸업(dual) 판정나면 이후 페이지 이동에서 /surface 재조회 skip(세션당 1회).
+  //     ② 1회만 자동이동(`ur_seller_bounced`) — 한 번 도매몰로 보낸 뒤 사용자가 직접 /seller 로 되돌아오면 존중
+  //        (분류기 오분류 — 예: 홍보전용 인플루언서, 상품 0 — 이어도 영구 트랩 불가).
+  //     ③ `?as=seller`(도매몰의 '셀러 대시보드' 링크 등) 명시 진입은 강제이동 영구 면제.
   const [wholesaleOnly, setWholesaleOnly] = useState(false)
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -164,14 +170,24 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       const sp = new URLSearchParams(location.search)
       if (sp.get('as') === 'seller') sessionStorage.setItem('ur_force_seller', '1')
     } catch { /* noop */ }
-    if (sessionStorage.getItem('ur_force_seller') === '1') return // 명시적 셀러 진입 — 영구 트랩 방지
+    // 명시적 셀러 진입(?as=seller) 또는 이미 1회 자동이동된 뒤 직접 되돌아옴 → 절대 트랩 안 함.
+    if (sessionStorage.getItem('ur_force_seller') === '1') return
+    if (sessionStorage.getItem('ur_seller_bounced') === '1') return
+    // 세션 캐시: 겸업(dual)으로 판정났으면 페이지 이동마다 재조회 안 함.
+    if (sessionStorage.getItem('ur_seller_surface') === 'seller') return
+    const bounce = () => {
+      sessionStorage.setItem('ur_seller_surface', 'wholesale')
+      sessionStorage.setItem('ur_seller_bounced', '1') // 1회만 자동이동 — 되돌아오면 존중
+      setWholesaleOnly(true)
+      navigate('/wholesale', { replace: true })
+    }
+    if (sessionStorage.getItem('ur_seller_surface') === 'wholesale') { bounce(); return }
     let alive = true
     api.get('/api/seller/surface')
       .then((r) => {
-        if (alive && (r?.data as { wholesale_only?: boolean })?.wholesale_only) {
-          setWholesaleOnly(true)
-          navigate('/wholesale', { replace: true })
-        }
+        if (!alive) return
+        if ((r?.data as { wholesale_only?: boolean })?.wholesale_only) bounce()
+        else sessionStorage.setItem('ur_seller_surface', 'seller') // 겸업 — 이후 재조회 skip
       })
       .catch(() => { /* fail-open: 대시보드 유지(lock-out 금지) */ })
     return () => { alive = false }

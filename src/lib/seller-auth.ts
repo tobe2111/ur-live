@@ -45,6 +45,8 @@ export async function logoutSeller(navigate: any) {
   //   없으면 쿠키 잔존으로 재인증(로그아웃해도 로그인). 유저/어드민 세션은 보존(type='seller').
   await clearServerSessionCookies('seller')
   clearAuthData('seller')
+  // 🏭 2026-06-30 [서비스 분리] SellerLayout 표면 판정(셀러↔도매) 세션 상태 정리 — 다음 로그인에 잔존 방지.
+  try { ['ur_seller_surface', 'ur_seller_bounced', 'ur_force_seller'].forEach(k => sessionStorage.removeItem(k)) } catch { /* noop */ }
   try { getQueryClient().clear() } catch {}
 
   navigate('/seller/login', { replace: true })
