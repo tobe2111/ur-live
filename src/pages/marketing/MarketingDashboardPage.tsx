@@ -11,6 +11,7 @@ import PricePanel from './PricePanel'
 import SourcingPanel from './SourcingPanel'
 import WeeklyReportPanel from './WeeklyReportPanel'
 import AlertsPanel from './AlertsPanel'
+import EfficiencyPanel from './EfficiencyPanel'
 import PanelError from './PanelError'
 import { downloadCsv } from '@/utils/csv-download'
 
@@ -68,7 +69,7 @@ export default function MarketingDashboardPage() {
   const [aiAdvice, setAiAdvice] = useState<string | null>(null)
   const [aiOff, setAiOff] = useState(false)
   // KPI 요약 홈 (최근 30일 통합실적 + 활성 자동입찰)
-  const [summary, setSummary] = useState<{ impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; ctr: number; cpc: number } | null>(null)
+  const [summary, setSummary] = useState<{ impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; convAmt: number; ctr: number; cpc: number } | null>(null)
   const [activeRules, setActiveRules] = useState(0)
 
   const loadStatus = useCallback(async () => {
@@ -177,8 +178,11 @@ export default function MarketingDashboardPage() {
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
           {[
             { l: '30일 광고비', v: `₩${formatNumber(summary.salesAmt)}` },
+            ...(summary.convAmt > 0 ? [
+              { l: '전환매출', v: `₩${formatNumber(summary.convAmt)}` },
+              { l: 'ROAS', v: `${Math.round((summary.convAmt / summary.salesAmt) * 100)}%` },
+            ] : []),
             { l: '클릭', v: formatNumber(summary.clkCnt) },
-            { l: '노출', v: formatNumber(summary.impCnt) },
             { l: '전환', v: formatNumber(summary.ccnt) },
             { l: 'CTR', v: `${(summary.ctr * 100).toFixed(1)}%` },
             { l: '활성 자동입찰', v: `${formatNumber(activeRules)}개` },
@@ -375,6 +379,9 @@ export default function MarketingDashboardPage() {
 
       {/* 네이버 검색광고 계정 연동 + 내 광고 구조(자동입찰/실적 토대) */}
       {hasToken && <section id="sec-searchad" style={{ scrollMarginTop: 76 }}><SearchAdPanel /></section>}
+
+      {/* 키워드 효율 분석(ROAS·CPA·낭비 키워드) */}
+      {hasToken && <section id="sec-efficiency" style={{ scrollMarginTop: 76 }}><EfficiencyPanel /></section>}
 
       {/* 자동입찰 규칙(목표순위→입찰가 자동조정) — 규칙 있을 때만 표시 */}
       {hasToken && <section id="sec-autobid" style={{ scrollMarginTop: 76 }}><AutobidPanel /></section>}
