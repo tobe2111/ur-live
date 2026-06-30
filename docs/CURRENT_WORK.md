@@ -1,11 +1,7 @@
 # 🚧 진행 중 작업
 
-## ✅ 2026-06-30 — 판매사 첫 발주 시작 가이드 (제조사 온보딩과 대칭) (대표 "응 진행해")
-- **배경**: 제조사 대시보드엔 '첫 정산까지' 마일스톤 스트립이 있는데 **판매사 홈엔 새 회원용 시작 가이드가 0** — 새 판매사가 예치금 충전→상품 담기→발주 흐름을 몰라 이탈 가능(비대칭).
-- **수정(additive)**: `HeroSection` 에 `FirstOrderGuide`(예치금 충전 → 상품 담기 → 첫 발주 3스텝 칩 + 충전 CTA/안내) — 로그인 회원 중 **발주 경험 없을 때만**, 첫 발주 후 자동 졸업(화면 소음 0).
-- **정확한 졸업 신호**: 기존 `orderCount` 는 *이번달* count(월초마다 0)라 졸업 판정에 부적합 → `/home` 에 **`has_ordered`**(누적 EXISTS, fail-soft) 추가 → 가이드는 `has_ordered===false` 일 때만(undefined=미로드면 숨김 → 기존 회원 깜빡임 0). `useWholesaleHome` 타입/매퍼 통과.
-- **불변**: `/home` 베스트/신상/카테고리/추천/pending_receipt·등급가·캐시 전부 불변(EXISTS 쿼리 1개·응답필드 1개 additive). HeroSection 히어로/대시보드/OEM 불변.
-- 검증: tsc 0 · build 0 · column-exists/bind/theme 가드 0.
+## ↩️ 2026-06-30 — 판매사 첫 발주 시작 가이드 **제거**(revert) (대표 "가이드는 필요없어")
+직전 추가한 `FirstOrderGuide`(HeroSection)를 대표 요청으로 통째 revert(`065a5f1`). `/home` 의 `has_ordered` 배선·`useWholesaleHome` 타입/매퍼·HeroSection prop 전부 함께 제거(미사용 방지). **`pending_receipt`(수령확인 배너)는 별개 커밋이라 유지.** tsc 0·build 0.
 
 ## ✅ 2026-06-30 — 제조사 거절 사유 입력 UI (거절 사유 루프 완결) (대표 "응 해줘")
 직전 '판매사 거절 사유 노출' 의 짝 — 사유를 *실제로 입력*하게.
