@@ -18,6 +18,8 @@ import CurationStrip from './group-buy-list/CurationStrip'
 import CommunityGroupBuyCard from './group-buy-list/CommunityGroupBuyCard'
 import EmptyShowcase from './group-buy-list/EmptyShowcase'
 import SortBar from './group-buy-list/SortBar'
+import CategoryTabs from './group-buy-list/CategoryTabs'
+import SearchBar from './group-buy-list/SearchBar'
 import LiveTicker from '@/components/group-buy/LiveTicker'
 import RegionPickerModal from '@/components/RegionPickerModal'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
@@ -639,42 +641,13 @@ export default function GroupBuyListPage() {
 
       {/* 카테고리 탭 (셀러 공구 전용) */}
       {mainTab === 'seller' && (
-        <div className="ur-content-wide px-4 lg:px-8 mt-4 overflow-x-auto no-scrollbar">
-          {/* 🛡️ 2026-05-17: 카테고리 4종 통합 + 온라인/오프라인 대분류 라벨 표시.
-                탭 순서: [전체] [🏪 오프라인 4종] [🛍️ 온라인]
-                health/pet/activity 는 마이그레이션 0255 가 자동 변환 — UI 에선 제거. */}
-          <div className="flex gap-2 min-w-max">
-            {([
-              { key: 'all', label: t('groupBuy.categoryAll', { defaultValue: '전체' }) },
-              { key: 'meal_voucher', label: t('groupBuy.categoryMealVoucher', { defaultValue: '🍽️ 이용권' }) },
-              { key: 'beauty_voucher', label: t('groupBuy.categoryBeauty', { defaultValue: '💇 미용' }) },
-              { key: 'stay_voucher', label: t('groupBuy.categoryStay', { defaultValue: '🏨 숙소' }) },
-              { key: 'etc_voucher', label: t('groupBuy.categoryEtc', { defaultValue: '🎯 기타' }) },
-              { key: 'general', label: t('groupBuy.categoryGeneral', { defaultValue: '🛍️ 온라인 (배송)' }) },
-            ] as const).map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => {
-                  // 🛡️ 숙소(stay_voucher)는 products.price=0 + 위치·객실이 product_stay_info 별도 테이블이라
-                  //   그리드 카드로는 ₩0·정보누락으로 깨짐 → 전용 /stays(객실·날짜·가격 join) 페이지로.
-                  if (tab.key === 'stay_voucher') { navigate('/stays'); return }
-                  setCategory(tab.key)
-                  // 🧭 2026-06-17: URL 도 동기화 — PC 사이드바/딥링크와 단일 소스(공유·뒤로가기 지원).
-                  const next = new URLSearchParams(searchParams)
-                  if (tab.key === 'all') next.delete('category'); else next.set('category', tab.key)
-                  setSearchParams(next, { replace: true })
-                }}
-                className={`px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap border transition-colors ${
-                  category === tab.key
-                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
-                    : 'bg-white dark:bg-transparent text-gray-700 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A]'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <CategoryTabs
+          category={category}
+          setCategory={setCategory}
+          navigate={navigate}
+          searchParams={searchParams}
+          setSearchParams={setSearchParams}
+        />
       )}
 
       {/* 🛡️ 2026-05-17: 지역 필터 버튼 — voucher 류 한정 (general 탭에선 숨김).
@@ -716,18 +689,7 @@ export default function GroupBuyListPage() {
       </div>
 
       {/* 🛡️ 2026-05-16: 텍스트 검색 input */}
-      <div className="ur-content-wide px-4 lg:px-8 mt-3">
-        <div className="relative">
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t('groupBuy.searchPlaceholder', { defaultValue: '공구명/매장명 검색' })}
-            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-[#2A2A2A] rounded-full text-sm bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-white/30"
-          />
-          <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-        </div>
-      </div>
+      <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
 
       {/* 정렬 pills */}
       <SortBar
