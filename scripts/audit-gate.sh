@@ -83,6 +83,11 @@ if domain ui; then
   run "모바일 뷰포트(하단 잘림)"          node scripts/check-mobile-viewport.mjs
 fi
 
+if domain structure; then
+  echo "🧹 코드 구조 (god 파일 방지)"
+  run "파일 크기 래칫(god 파일)"          env STRICT_FILE_SIZE=1        node scripts/check-file-size.mjs -a
+fi
+
 if domain deploy; then
   echo "🚀 빌드 · 배포 안전"
   run "build 명령(vite 단독 금지)"        bash scripts/check-build-command.sh

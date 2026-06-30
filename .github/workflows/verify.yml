@@ -176,6 +176,14 @@ jobs:
         run: node scripts/check-query-initialdata.mjs -s
         continue-on-error: false
 
+      # 🛡️ 2026-06-29: god 파일 재발 방지 래칫 (strict). 신규 파일 600줄 초과 또는 baseline 동결
+      #   대형 파일이 더 커지면 차단 → 줄이는 건 OK, 키우는 건 금지(god 파일이 다시 못 자람).
+      #   대형 파일을 더 줄였으면 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신.
+      #   우회: 파일 상단 `file-size-ok` 주석 또는 커밋 메시지 [SKIP_SIZE]. 규칙: CLAUDE.md 영구 방어선.
+      - name: File-size ratchet (god file guard, strict)
+        run: node scripts/check-file-size.mjs -a -s
+        continue-on-error: false
+
       # 🛡️ 2026-06-17: 듀얼 로그인(소비자↔대시보드) 재발 방지 — 현재 위반 0 → strict.
       #   localStorage user_type === 'user' 로그인 게이트(세션 풀림 사고 근본원인) 신규 추가 차단.
       - name: Dual-login regression guard (strict)
