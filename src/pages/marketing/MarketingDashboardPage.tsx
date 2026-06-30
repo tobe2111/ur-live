@@ -155,7 +155,7 @@ export default function MarketingDashboardPage() {
       {!hasToken && (
         <div className={`mt-5 ${card}`}>
           <p className="text-[13px] text-gray-700 dark:text-gray-300">사업자(고객사) 계정으로 로그인 후 이용할 수 있습니다. 카카오 한 번이면 됩니다.</p>
-          <a href="/seller/login?returnUrl=%2Fads%2Fdashboard" className="mt-3 inline-block rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[13px] font-bold text-white dark:text-[#0A0A0A]">로그인 / 시작하기</a>
+          <a href="/ads/login" className="mt-3 inline-block rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[13px] font-bold text-white dark:text-[#0A0A0A]">로그인 / 시작하기</a>
         </div>
       )}
 
