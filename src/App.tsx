@@ -133,6 +133,8 @@ const MarketingLandingPage = lazy(() => import('./pages/marketing/MarketingLandi
 const MarketingLoginPage = lazy(() => import('./pages/marketing/MarketingLoginPage'))
 const MarketingSignupPage = lazy(() => import('./pages/marketing/MarketingSignupPage'))
 const MarketingAccountPage = lazy(() => import('./pages/marketing/MarketingAccountPage'))
+const MarketingForgotPage = lazy(() => import('./pages/marketing/MarketingForgotPage'))
+const MarketingResetPage = lazy(() => import('./pages/marketing/MarketingResetPage'))
 const MarketingDashboardPage = lazy(() => import('./pages/marketing/MarketingDashboardPage'))
 const VoucherDetailPage = lazy(() => import('./pages/VoucherDetailPage'))
 const MealVouchersPage = lazy(() => import('./pages/MealVouchersPage'))
@@ -648,6 +650,8 @@ function AppContent() {
             <Route path="/ads/login" element={<ErrorBoundary><MarketingLoginPage /></ErrorBoundary>} />
             <Route path="/ads/signup" element={<ErrorBoundary><MarketingSignupPage /></ErrorBoundary>} />
             <Route path="/ads/account" element={<ErrorBoundary><MarketingAccountPage /></ErrorBoundary>} />
+            <Route path="/ads/forgot" element={<ErrorBoundary><MarketingForgotPage /></ErrorBoundary>} />
+            <Route path="/ads/reset" element={<ErrorBoundary><MarketingResetPage /></ErrorBoundary>} />
             <Route path="/ads/dashboard" element={<ErrorBoundary><MarketingDashboardPage /></ErrorBoundary>} />
             {/* 🛡️ 2026-05-23: 교환권 전용 detail 페이지 (deal 결제). voucher 와 group-buy UI 분리. */}
             <Route path="/vouchers/:id" element={<VoucherDetailPage />} />
