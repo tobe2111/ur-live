@@ -58,6 +58,8 @@ const AdminWholesaleQuotesPage = lazy(() => import('@/pages/admin/AdminWholesale
 const AdminAlimtalkPricingPage = lazy(() => import('@/pages/admin/AdminAlimtalkPricingPage'))
 const KVMonitoringPage = lazy(() => import('@/pages/admin/KVMonitoringPage'))
 const AdminSystemMonitoringPage = lazy(() => import('@/pages/AdminSystemMonitoringPage'))
+// 🎯 2026-06-28: 유어애즈 가입자 운영 어드민.
+const AdminAdsAccountsPage = lazy(() => import('@/pages/admin/AdminAdsAccountsPage'))
 const AdminErrorsPage = lazy(() => import('@/pages/AdminErrorsPage'))
 const AdminEnvCheckPage = lazy(() => import('@/pages/AdminEnvCheckPage'))
 // 🩺 2026-06-24: 카카오 로그인 진단 (서버 ms / iOS 성공률 / OIDC 작동여부) — 어드민 Bearer 로 조회
@@ -142,6 +144,11 @@ export function AdminRoutes() {
       <Route path="/admin/region-density" element={
         <ProtectedRoute requireAdmin>
           <AdminRegionDensityPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/ads-accounts" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminAdsAccountsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🛡️ 2026-05-27 (사용자 결정): admin 매장 검수 통합 페이지 */}
