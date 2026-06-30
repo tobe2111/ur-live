@@ -91,7 +91,11 @@ export default function MarketingSignupPage() {
 
         <button type="submit" className="ua-auth-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? '가입 중…' : '가입하고 시작하기'}</button>
 
-        <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid #ECEDF1', textAlign: 'center' }}>
+        <p style={{ marginTop: 12, textAlign: 'center', fontSize: 11.5, lineHeight: 1.6, color: '#8A93A3' }}>
+          가입 시 <Link to="/ads/terms" style={{ color: '#2A56D4' }}>이용약관</Link> 및 <Link to="/ads/privacy" style={{ color: '#2A56D4' }}>개인정보처리방침</Link>에 동의하게 됩니다.
+        </p>
+
+        <div style={{ marginTop: 14, paddingTop: 16, borderTop: '1px solid #ECEDF1', textAlign: 'center' }}>
           <span style={{ fontSize: 13, color: '#565E6C' }}>이미 계정이 있으신가요? </span>
           <Link to={loginHref} style={{ fontSize: 13, color: '#2A56D4', fontWeight: 700 }}>로그인</Link>
         </div>
