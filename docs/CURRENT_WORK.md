@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-30 — 배포-청크 자가복구 영구 방어선(흰화면/무한로딩 회귀 차단) (대표 "더 이상적으로")
+대시보드 무한로딩(옛 청크 MIME) 수정 후속 — 메커니즘은 이미 견고(인라인 부트가드+`reloadWithCacheBust` SSOT+버전체크). **더 이상적 = 4번+ 재발한 이 버그가 다시 *조용히 회귀* 못 하게 락.**
+- 신규 `scripts/check-chunk-recovery-guard.mjs` — 자가복구 **4불변식** 존재 강제: ① `index.html` 인라인 부트가드 ② `chunk-error.ts` `isChunkLoadError`(MIME 감지)+`reloadWithCacheBust`(`__cb`+`location.replace`, plain reload 회귀 금지) ③ `main.tsx` error/unhandledrejection 배선 ④ worker SPA 셸 `no-cache`. 하나라도 빠지면 flag.
+- 배선: pre-commit(warn) + `verify.yml` CI(strict, 현재 위반 0) + CLAUDE.md 영구 방어선 표 등록. 음성(현 clean)/양성(캐시버스트 revert→차단) 테스트 통과.
+- **정직 메모(이전 turn 자기검증)**: worker `/assets/*` 404 분기는 `_routes.json` exclude 라 실제 청크엔 미도달(Pages 직접 서빙) → 근본복구는 클라 ②③ + 셸 no-cache. 절대-0 흰화면은 Pages 에서 불가(옛 청크 삭제됨) — 현실 이상치=즉시 자가복구(달성). 추가 다듬기는 Pages `not_found_handling=none`(대시보드 설정, repo 밖).
+
 ## ✅ 2026-06-30 — 셀러 대시보드 `/seller`→`/wholesale` 강제 튕김 근본수정 (겸업 lock-out) (대표 "원인 전부·영구·이상적")
 - **원인**: `SellerLayout` 이 `localStorage.is_distributor === '1'` **하나로** 무조건 `/wholesale` 로 redirect(2곳: 마운트 effect + render 가드). `is_distributor` 는 '도매 접근권'(capability)일 뿐 '도매 전용'(exclusivity)이 아닌데, 기존 소비자 셀러가 `/become-distributor`(wholesale.routes:344) 한 번만 해도 같은 셀러 행에 `is_distributor=1` 이 덧붙어 **겸업** 이 됨 → 카카오/셀러 로그인 시 플래그 저장 → `/seller` 갈 때마다 도매몰로 튕겨 셀러 대시보드 **영구 접근불가**. (주석은 "겸업 영향 없음" 이라 약속했으나 코드가 미구현.) 소비자측 강제 redirect 는 이 1곳이 유일(전수조사 — 나머지 navigate('/wholesale')는 전부 도매몰 내부 정상 네비).
 - **수정(영구·서버권위)**:
