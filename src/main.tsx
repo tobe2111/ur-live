@@ -101,11 +101,20 @@ try {
 //   처리: 같은 세션에서 1회만 자동 reload (무한 reload 차단 sessionStorage 가드).
 //   🛡️ 2026-06-16 (사용자 신고 — VoucherDetailPage MIME 에러): isChunkLoadError SSOT 로 변종 전부 감지
 //     (Chrome MIME "Expected a JavaScript-or-Wasm module script ..." 포함) + modulepreload 리소스 실패도 capture.
+// 🛡️ 2026-06-30 (대시보드 무한로딩 영구수정): 기존엔 "세션당 1회"만 reload → 그 reload 가 배포 진행
+//   중(새 청크 아직 전파 전)에 떨어지면 또 실패하고 가드가 막아 영구 stuck. 이제 30초 창 안에서 최대
+//   3회까지 reload 허용(배포 전파 대기) + 30초 무사고면 카운터 리셋(다음 배포는 새 기회). 무한루프는
+//   3회 상한으로 차단. (서버측 fix: 없는 청크 404 + SPA HTML no-cache 로 보통 1회 reload 면 복구.)
 const reloadOnceForChunk = () => {
   try {
     const k = '__ur_chunk_reload__'
-    if (sessionStorage.getItem(k)) return // 이미 1회 시도 — 무한 reload 차단
-    sessionStorage.setItem(k, '1')
+    const now = Date.now()
+    let st: { n: number; t: number } = { n: 0, t: 0 }
+    try { st = JSON.parse(sessionStorage.getItem(k) || '') || st } catch { /* 첫 시도 */ }
+    // 마지막 시도가 30초 넘게 지났으면 페이지가 안정적이었던 것 → 카운터 리셋(새 배포 대응).
+    const n = (now - st.t < 30_000) ? st.n : 0
+    if (n >= 3) return // 30초 내 3회 실패 → 무한루프 방지로 중단(ChunkErrorBoundary/수동 새로고침에 위임)
+    sessionStorage.setItem(k, JSON.stringify({ n: n + 1, t: now }))
     window.location.reload()
   } catch { /* sessionStorage 차단 환경 — silent */ }
 }
