@@ -1,8 +1,8 @@
 /**
- * 🆕 2026-06-28 유어애즈(UR Ads) — 독립 회원가입 (/ads/signup).
- *
+ * 🆕 2026-06-28 유어애즈(UR Ads) — 독립 회원가입 (/ads/signup). 라이트 테마(대시보드·랜딩과 통일).
  *   자체 이메일/비밀번호 계정(ad_accounts) 생성. 셀러/카카오/유어딜·도매몰과 무관.
  *   성공 시 ads_token 발급 → 바로 대시보드. same-origin JSON 200(XHR) → iOS-safe.
+ *   ⚠️ standalone 라이트 페이지 → 루트 force-light-theme(전역 .dark input 규칙 무력화, 글자 항상 보임).
  */
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -14,21 +14,21 @@ import { useUrAdsFavicon } from '@/components/brand/useUrAdsFavicon'
 const DEFAULT_DEST = '/ads/dashboard'
 
 const SCOPED_CSS = `
-.ua-login{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;
-  background:radial-gradient(120% 100% at 50% -10%,#101A36 0%,#0A0E1C 42%,#06080F 100%);
-  font-family:Pretendard,system-ui,-apple-system,sans-serif;color:#E7ECF7;}
-.ua-login a{text-decoration:none;}
-.ua-login-card{width:100%;max-width:400px;background:#0E1322;border:1px solid #1B2233;border-radius:20px;
-  padding:34px 28px;box-shadow:0 24px 60px -20px rgba(0,0,0,.6);}
-.ua-login-input{width:100%;height:46px;border-radius:12px;background:#070B16;border:1px solid #232C42;
-  padding:0 14px;font-size:14px;color:#E7ECF7 !important;outline:none;}
-.ua-login-input:focus{border-color:#3B6EF5;}
-.ua-login-input::placeholder{color:#5B678A;}
-.ua-login-btn{width:100%;height:48px;border-radius:13px;background:#3B6EF5;color:#fff;font-size:15px;font-weight:800;
+.ua-auth{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:radial-gradient(120% 100% at 50% -10%,#EEF2FB 0%,#F4F5F7 46%,#F4F5F7 100%);
+  font-family:Pretendard,system-ui,-apple-system,sans-serif;color:#0B0E14;}
+.ua-auth a{text-decoration:none;}
+.ua-auth-card{width:100%;max-width:400px;background:#FFFFFF;border:1px solid #ECEDF1;border-radius:20px;
+  padding:34px 28px;box-shadow:0 20px 54px -26px rgba(20,30,60,.28);}
+.ua-auth-input{width:100%;height:46px;border-radius:12px;background:#FFFFFF;border:1px solid #D9DEEA;
+  padding:0 14px;font-size:14px;color:#0B0E14 !important;outline:none;}
+.ua-auth-input:focus{border-color:#3B6EF5;}
+.ua-auth-input::placeholder{color:#9AA3B5;}
+.ua-auth-btn{width:100%;height:48px;border-radius:13px;background:#3B6EF5;color:#fff;font-size:15px;font-weight:800;
   transition:filter .15s,transform .05s;}
-.ua-login-btn:hover{filter:brightness(1.06);} .ua-login-btn:active{transform:translateY(1px);}
-.ua-login-btn:disabled{opacity:.55;}
-.ua-login-mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.18em;color:#7E8AA8;}
+.ua-auth-btn:hover{filter:brightness(1.06);} .ua-auth-btn:active{transform:translateY(1px);}
+.ua-auth-btn:disabled{opacity:.55;}
+.ua-auth-mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.18em;color:#8A93A3;}
 `
 
 export default function MarketingSignupPage() {
@@ -69,31 +69,31 @@ export default function MarketingSignupPage() {
   const loginHref = `/ads/login${nextRaw ? `?next=${encodeURIComponent(dest)}` : ''}`
 
   return (
-    <div className="ua-login">
+    <div className="ua-auth force-light-theme">
       <SEO title="유어애즈 회원가입 - UR Ads" description="유어애즈 계정을 만들고 네이버 검색광고 자동입찰·통합 실적·AI 마케터를 시작하세요." url="/ads/signup" />
       <style dangerouslySetInnerHTML={{ __html: SCOPED_CSS }} />
-      <form className="ua-login-card" onSubmit={submit}>
+      <form className="ua-auth-card" onSubmit={submit}>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <Link to="/ads" aria-label="유어애즈" style={{ color: '#fff' }}><UrAdsLogo size={30} /></Link>
+          <Link to="/ads" aria-label="유어애즈" style={{ color: '#0B0E14' }}><UrAdsLogo size={30} /></Link>
         </div>
-        <p className="ua-login-mono" style={{ textAlign: 'center', marginTop: 22 }}>UR ADS · SIGN UP</p>
-        <h1 style={{ textAlign: 'center', marginTop: 8, fontSize: 21, fontWeight: 800, letterSpacing: '-.02em', color: '#fff' }}>유어애즈 시작하기</h1>
-        <p style={{ textAlign: 'center', marginTop: 8, fontSize: 13, lineHeight: 1.6, color: '#9AA6C2' }}>광고 계정을 연동하면 자동입찰·통합 실적·AI 마케터를 바로 사용할 수 있어요.</p>
+        <p className="ua-auth-mono" style={{ textAlign: 'center', marginTop: 22 }}>UR ADS · SIGN UP</p>
+        <h1 style={{ textAlign: 'center', marginTop: 8, fontSize: 21, fontWeight: 800, letterSpacing: '-.02em', color: '#0B0E14' }}>유어애즈 시작하기</h1>
+        <p style={{ textAlign: 'center', marginTop: 8, fontSize: 13, lineHeight: 1.6, color: '#565E6C' }}>광고 계정을 연동하면 자동입찰·통합 실적·AI 마케터를 바로 사용할 수 있어요.</p>
 
         <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <input className="ua-login-input" placeholder="회사(고객사) 이름" value={company} onChange={(e) => setCompany(e.target.value)} />
-          <input className="ua-login-input" type="email" autoComplete="email" placeholder="이메일" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input className="ua-login-input" type="password" autoComplete="new-password" placeholder="비밀번호 (10자 이상·대소문자·숫자·특수문자)" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <input className="ua-login-input" type="tel" autoComplete="tel" placeholder="연락처 (선택)" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <input className="ua-auth-input" placeholder="회사(고객사) 이름" value={company} onChange={(e) => setCompany(e.target.value)} />
+          <input className="ua-auth-input" type="email" autoComplete="email" placeholder="이메일" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input className="ua-auth-input" type="password" autoComplete="new-password" placeholder="비밀번호 (10자 이상·대소문자·숫자·특수문자)" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input className="ua-auth-input" type="tel" autoComplete="tel" placeholder="연락처 (선택)" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
 
-        {err && <p style={{ marginTop: 10, fontSize: 12.5, color: '#F87171' }}>{err}</p>}
+        {err && <p style={{ marginTop: 10, fontSize: 12.5, color: '#DC2626' }}>{err}</p>}
 
-        <button type="submit" className="ua-login-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? '가입 중…' : '가입하고 시작하기'}</button>
+        <button type="submit" className="ua-auth-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? '가입 중…' : '가입하고 시작하기'}</button>
 
-        <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid #1B2233', textAlign: 'center' }}>
-          <span style={{ fontSize: 13, color: '#9AA6C2' }}>이미 계정이 있으신가요? </span>
-          <Link to={loginHref} style={{ fontSize: 13, color: '#7EA2FF', fontWeight: 700 }}>로그인</Link>
+        <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid #ECEDF1', textAlign: 'center' }}>
+          <span style={{ fontSize: 13, color: '#565E6C' }}>이미 계정이 있으신가요? </span>
+          <Link to={loginHref} style={{ fontSize: 13, color: '#2A56D4', fontWeight: 700 }}>로그인</Link>
         </div>
       </form>
     </div>
