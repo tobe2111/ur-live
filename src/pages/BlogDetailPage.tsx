@@ -155,6 +155,8 @@ export default function BlogDetailPage() {
           <button onClick={() => navigate('/blog')} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A]">
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
+          {/* 🧭 풀너비 블로그 — 상단 네비가 없어 방문자 회유용 브랜드 홈 링크 */}
+          <Link to="/" className="text-base font-extrabold text-gray-900 dark:text-white tracking-tight">유어딜</Link>
           <button onClick={() => nativeShare({ title: post.title, url: `https://live.ur-team.com/blog/${post.slug}` })}
             className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A]">
             <Share2 className="w-5 h-5 text-gray-700 dark:text-gray-200" />
