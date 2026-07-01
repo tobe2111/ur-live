@@ -578,8 +578,16 @@ sellerOrdersRoutes.get('/products/:id', async (c) => {
       const raw = mm?.get(Number(productId))?.max_per_person;
       if (raw != null && Number.isFinite(Number(raw)) && Number(raw) > 0) max_per_person = Math.floor(Number(raw));
     } catch { /* fail-soft */ }
+    // 🎯 2026-07-01 (카카오맵 매장 페이지): place_url prefill.
+    let kakao_place_url: string | null = null;
+    try {
+      const { getSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+      const mm = await getSupplyMeta(db, [Number(productId)]).catch(() => null);
+      const kpu = mm?.get(Number(productId))?.kakao_place_url;
+      if (typeof kpu === 'string' && /^https?:\/\/place\.map\.kakao\.com\/\d+/.test(kpu)) kakao_place_url = kpu;
+    } catch { /* fail-soft */ }
 
-    return c.json({ success: true, data: { ...product, options, max_per_person } });
+    return c.json({ success: true, data: { ...product, options, max_per_person, kakao_place_url } });
   } catch (error: unknown) {
     console.error('Get seller product detail error:', error);
     return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
@@ -815,6 +823,16 @@ sellerOrdersRoutes.post('/products', async (c) => {
         } catch { /* fail-soft */ }
       }
     }
+    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 장소 선택 시 캡처한 place_url 저장.
+    {
+      const kpu = String((body as { kakao_place_url?: string }).kakao_place_url || '').trim();
+      if (/^https?:\/\/place\.map\.kakao\.com\/\d+/.test(kpu)) {
+        try {
+          const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+          await setSupplyMeta(db, Number(productId), { kakao_place_url: kpu });
+        } catch { /* fail-soft */ }
+      }
+    }
 
     // 🛡️ 2026-05-05: 디지털 상품 필드 저장 (UPDATE — migration 0243 후 컬럼 존재)
     if (body.product_kind && body.product_kind !== 'physical') {
@@ -928,6 +946,8 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       group_buy_tiers?: string | null;
       // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도" 수정 지원): 0=무제한, 1~99.
       max_per_person?: number;
+      // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): place_url.
+      kakao_place_url?: string;
     }>();
 
     const db = c.env.DB;
@@ -1014,6 +1034,16 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
         try {
           const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
           await setSupplyMeta(db, Number(productId), { max_per_person: String(Math.floor(mpp)) });
+        } catch { /* fail-soft */ }
+      }
+    }
+    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): place_url 수정.
+    if (body.kakao_place_url !== undefined) {
+      const kpu = String(body.kakao_place_url || '').trim();
+      if (/^https?:\/\/place\.map\.kakao\.com\/\d+/.test(kpu)) {
+        try {
+          const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+          await setSupplyMeta(db, Number(productId), { kakao_place_url: kpu });
         } catch { /* fail-soft */ }
       }
     }

@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 카카오맵 "매장 페이지 직접 연결" (place_url 캡처) (대표 "여전히 매장 카카오맵 페이지 연결 안됨")
+E 후속 — `link/search`(검색) 는 정확한 매장 페이지를 못 열어서, **등록 시 카카오 장소 페이지 URL(`place.map.kakao.com/{id}`)을 캡처·저장**해 상세 지도가 직접 연결.
+- **캡처**: 어드민 `ManualDealForm`(카카오 검색 `pick`) + 셀러 `SellerMealVoucherNewPage`(`KakaoMapPicker` `selectPlace`) → `place.place_url` 또는 `place.id`→URL 구성. 프록시(`/api/kakao/place/search`)는 이미 raw 카카오 응답(`id`/`place_url`) 통과 — 클라가 안 잡던 것.
+- **저장**: `product_supply_meta.kakao_place_url` — 어드민 create/patch·셀러 create/PUT. `place.map.kakao.com/\d+` 형식만 허용(임의 URL 주입 방지). 셀러 edit 은 미전송 시 meta 보존(자동 유지).
+- **반환**: group-buy 상세(`/products/:id`)·어드민 list·셀러 GET.
+- **표시**: `RestaurantMiniMap` 에 `placeUrl` prop — 있으면 **매장 페이지 직접 연결**, 없으면 `link/search`(매장명+주소) → 좌표 map 폴백. `GroupBuyDetailPage` 가 `detail.kakao_place_url` 전달.
+- **기존 상품**: place_url 없음 → `link/search` 폴백(직전 배포). 새로 저장/수정하는 상품부터 직접 연결. (대표 질문 "기존 이용권엔 적용 안됨?" = 맞음 — 캡처는 저장 시점.)
+- 검증: tsc 0 · sql bind/column 0 · build 0. ⚠️ staging: 어드민/셀러에서 장소 검색·선택 후 저장 → 공구 상세 '카카오맵' 클릭 시 그 매장 페이지 직접 열림.
+
 ## ✅ 2026-07-01 — 목록페이지 "2번 로딩" 근본수정 (urdeal 로더 유지) (대표 "근본적으로 해결 — urdeal 로딩 그대로")
 - **원인**: 로더 전면 통일 후 목록페이지(/vouchers·/group-buy·/browse) 하드로드 시 **로더가 2번**으로 보임 — ① 청크 다운로드=App.tsx Suspense **BrandLoader(전체화면)** → ② 페이지 마운트 시 **헤더/필터가 먼저 렌더**되고 그 아래 콘텐츠 영역에 **인라인 BrandLoader** 또 표시(`{loading ? <BrandLoader/> : ...}`). 같은 로더가 전체화면→(헤더 뜸)→인라인으로 이어져 "2번" 체감. (상세페이지는 전체화면 early-return 이라 원래 없음.)
 - **근본수정(로더 유지)**: standalone 목록페이지도 상세처럼 **로딩 중 전체화면 `<BrandLoader fullScreen/>` early-return** → 청크 로더와 **끊김 없이 이어져 '한 번'**(헤더가 중간에 안 뜸). `GroupBuyListPage`·`BrowsePage` = `if (loading) return`; `VouchersPage` = `if (loading && !embedded) return`(홈 임베드는 청크 로더 없고 타 콘텐츠와 공존 → 인라인 유지). 인라인 `{loading?}` 블록은 embedded 전용으로만 도달.
