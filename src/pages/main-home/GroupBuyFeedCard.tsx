@@ -13,6 +13,8 @@ import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
+import FcfsBadge from '@/features/group-buy/FcfsBadge'
+import type { FcfsInfo } from '@/features/group-buy/useFcfs'
 import type { Product } from './types'
 
 const CATEGORY_META: Record<string, { emoji: string; label: string }> = {
@@ -85,7 +87,7 @@ function prefetchDetailChunk() {
   import('@/pages/GroupBuyDetailPage').catch(() => { _detailChunkPrefetched = false })
 }
 
-function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveFold?: boolean }) {
+function GroupBuyFeedCard({ p, aboveFold = false, fcfs }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetch = usePrefetchGroupBuyProduct()
 
@@ -197,6 +199,9 @@ function GroupBuyFeedCard({ p, aboveFold = false }: { p: FeedCardProduct; aboveF
             ⏰ {remaining}
           </span>
         )}
+
+        {/* 🎯 추첨 응모 배지 (우상단) — 결제 없이 응모 → 추첨. 상세에서 응모 가능. */}
+        {fcfs && <FcfsBadge info={fcfs} className="absolute top-2 right-2" />}
       </div>
 
       <div className="px-2.5 pb-2.5 pt-1.5">

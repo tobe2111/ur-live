@@ -9,16 +9,19 @@ import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { cardGradient } from '@/utils/card-gradient'
 import { formatPrice } from '@/utils/currency'
+import FcfsBadge from '@/features/group-buy/FcfsBadge'
+import type { FcfsInfo } from '@/features/group-buy/useFcfs'
 import { calcDiscountRate, formatTimeLeft } from './utils'
 import type { GroupBuyProduct } from './types'
 
 const GroupBuyGridCard = memo(function GroupBuyGridCard({
-  p, idx, interested, onToggleInterest,
+  p, idx, interested, onToggleInterest, fcfs,
 }: {
   p: GroupBuyProduct
   idx: number
   interested: boolean
   onToggleInterest: (e: React.MouseEvent, productId: number, restaurantName?: string) => void
+  fcfs?: FcfsInfo
 }) {
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -84,12 +87,15 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
         )}
 
         {/* 달성 뱃지 */}
-        {achieved && (
+        {achieved && !fcfs && (
           <span className="absolute top-2 right-2 flex items-center gap-0.5 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow">
             <CheckCircle2 className="w-3 h-3" />
             {t('groupBuy.achieved', { defaultValue: '달성' })}
           </span>
         )}
+
+        {/* 🎯 추첨 응모 배지 (우상단) — 결제 없이 응모 → 추첨. 상세에서 응모 가능. */}
+        {fcfs && <FcfsBadge info={fcfs} className="absolute top-2 right-2" />}
 
         {/* 관심 등록 */}
         <button
