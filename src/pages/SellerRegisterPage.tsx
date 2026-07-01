@@ -16,7 +16,6 @@ export default function SellerRegisterPage() {
   const refFromUrl = searchParams.get('ref') || ''
   const [inviteAgency, setInviteAgency] = useState<{ name: string; contact: string } | null>(null)
   const [formData, setFormData] = useState({
-    sellerType: 'influencer' as 'influencer' | 'store_owner' | 'both',
     username: '',
     email: '',
     password: '',
@@ -24,8 +23,7 @@ export default function SellerRegisterPage() {
     name: '',
     phone: '',
     businessNumber: '',
-    businessName: '',
-    youtubeEmail: ''
+    businessName: ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -62,8 +60,10 @@ export default function SellerRegisterPage() {
 
     if (formData.username.trim().length < 3) { failAt('username', t('seller.usernameMin3')); return }
     if (!isValidEmail(formData.email)) { failAt('email', t('seller.invalidEmail')); return }
-    if (formData.sellerType !== 'store_owner' && !isValidEmail(formData.youtubeEmail)) { failAt('youtubeEmail', t('seller.invalidYoutubeEmail')); return }
-    if (formData.password.length < 8) { failAt('password', t('seller.passwordMin8')); return }
+    // 🏁 2026-07-01: 서버 비번 정책(10자+대·소·숫자·특수)과 클라 검증 정합 — 백엔드 거절 전 즉시 안내.
+    const pw = formData.password
+    const pwStrong = pw.length >= 10 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw)
+    if (!pwStrong) { failAt('password', t('seller.passwordWeak', { defaultValue: '비밀번호는 10자 이상, 대·소문자·숫자·특수문자를 모두 포함해야 합니다' })); return }
     if (formData.password !== formData.passwordConfirm) { failAt('passwordConfirm', t('seller.passwordMismatch')); return }
     if (!formData.name.trim()) { failAt('name', t('seller.errName', { defaultValue: '대표자 성명을 입력해주세요' })); return }
     if (!isValidKrPhone(formData.phone)) { failAt('phone', t('seller.errPhone', { defaultValue: '연락처를 정확히 입력해주세요 (예: 010-1234-5678)' })); return }
@@ -74,19 +74,23 @@ export default function SellerRegisterPage() {
     setLoading(true)
 
     try {
+      // 사업자번호 하이픈 정규화 (백엔드는 XXX-XX-XXXXX 형식 요구).
+      const bizDigits = digitsOnly(formData.businessNumber)
+      const bizFormatted = `${bizDigits.slice(0, 3)}-${bizDigits.slice(3, 5)}-${bizDigits.slice(5)}`
+
       const response = await api.post('/api/seller/register', {
         username: formData.username,
         email: formData.email,
         password: formData.password,
         name: formData.name,
         phone: formData.phone,
-        business_number: formData.businessNumber,
+        business_number: bizFormatted,
         business_name: formData.businessName,
-        youtube_email: formData.sellerType !== 'store_owner' ? formData.youtubeEmail : undefined,
-        seller_type: formData.sellerType,
+        // 🏁 2026-07-01: 라이브커머스 영구중단 — 모든 신규 가입은 사업자 유저(매장) 단일 유형.
+        seller_type: 'store_owner',
         agency_id: agencyId ? Number(agencyId) : undefined,
         invite_code: inviteCode || undefined,
-        referred_by_influencer: (formData as { referredByInfluencer?: string }).referredByInfluencer || refFromUrl || undefined,
+        referred_by_influencer: refFromUrl || undefined,
       } as any)
 
       if (response.data.success) {
@@ -108,7 +112,7 @@ export default function SellerRegisterPage() {
       <div className="max-w-2xl w-full">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">👨‍💼</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">🛍️</h1>
           <h2 className="text-3xl font-bold text-gray-900">{t('seller.sellerRegister')}</h2>
           <p className="text-gray-600 mt-2">{t('seller.sellerRegistration')}</p>
           {agencyId && (
@@ -133,33 +137,20 @@ export default function SellerRegisterPage() {
               </div>
             )}
 
-            {/* 셀러 유형 선택 */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('seller.sellerTypeLabel')} *</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button type="button"
-                  onClick={() => setFormData(f => ({...f, sellerType: 'influencer'}))}
-                  className={`p-4 rounded-xl border-2 text-left transition-all ${
-                    String(formData.sellerType).toLowerCase() === 'influencer'
-                      ? 'border-gray-900 bg-gray-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}>
-                  <span className="text-xl mb-1 block">🎥</span>
-                  <p className="text-sm font-bold text-gray-900">{t('seller.influencerLabel')}</p>
-                  <p className="text-[11px] text-gray-500 mt-1">{t('seller.influencerDesc')}</p>
-                </button>
-                <button type="button"
-                  onClick={() => setFormData(f => ({...f, sellerType: 'store_owner'}))}
-                  className={`p-4 rounded-xl border-2 text-left transition-all ${
-                    String(formData.sellerType).toLowerCase() === 'store_owner'
-                      ? 'border-gray-900 bg-gray-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}>
-                  <span className="text-xl mb-1 block">🏪</span>
-                  <p className="text-sm font-bold text-gray-900">{t('seller.storeOwnerLabel')}</p>
-                  <p className="text-[11px] text-gray-500 mt-1">{t('seller.storeOwnerDesc')}</p>
-                </button>
-              </div>
+            {/* 가입 혜택 안내 — 내 링크샵(쇼핑몰)으로 상품·이용권 판매 */}
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <p className="text-sm font-bold text-gray-900 mb-2.5">{t('seller.regBenefitsTitle', { defaultValue: '가입하면 이렇게 시작해요' })}</p>
+              <ul className="space-y-1.5">
+                <li className="flex items-start gap-2 text-[13px] text-gray-700">
+                  <span aria-hidden>🏬</span><span>{t('seller.regBenefit1', { defaultValue: '내 링크샵(온라인 쇼핑몰)이 자동으로 만들어져요' })}</span>
+                </li>
+                <li className="flex items-start gap-2 text-[13px] text-gray-700">
+                  <span aria-hidden>📦</span><span>{t('seller.regBenefit2', { defaultValue: '내 상품과 이용권을 올려 바로 판매해요' })}</span>
+                </li>
+                <li className="flex items-start gap-2 text-[13px] text-gray-700">
+                  <span aria-hidden>💰</span><span>{t('seller.regBenefit3', { defaultValue: '매출은 현금으로 정산받아요 (플랫폼 수수료 5%)' })}</span>
+                </li>
+              </ul>
             </div>
 
             {/* 기본 정보 */}
@@ -197,27 +188,6 @@ export default function SellerRegisterPage() {
                 />
               </div>
 
-              {formData.sellerType !== 'store_owner' && (
-              <div>
-                <label htmlFor="youtubeEmail" className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('seller.youtubeEmailLabel')}
-                </label>
-                <p className="text-xs text-gray-500 mb-2">
-                  {t('seller.youtubeEmailDesc')}
-                </p>
-                <input
-                  id="youtubeEmail"
-                  name="youtubeEmail"
-                  type="email"
-                  value={formData.youtubeEmail}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="example@gmail.com"
-                />
-              </div>
-              )}
-
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                   {t('seller.passwordLabel')}
@@ -229,7 +199,7 @@ export default function SellerRegisterPage() {
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  minLength={6}
+                  minLength={10}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="••••••••"
                 />
@@ -244,7 +214,7 @@ export default function SellerRegisterPage() {
                   value={formData.passwordConfirm}
                   onChange={handleChange}
                   required
-                  minLength={6}
+                  minLength={10}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="••••••••"
                 />
@@ -262,7 +232,7 @@ export default function SellerRegisterPage() {
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="John Doe"
+                  placeholder="홍길동"
                 />
               </div>
 
@@ -297,7 +267,7 @@ export default function SellerRegisterPage() {
                   onChange={handleChange}
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Lister Corporation"
+                  placeholder="예: 우리가게"
                 />
               </div>
 
