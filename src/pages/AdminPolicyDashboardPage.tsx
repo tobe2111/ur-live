@@ -137,22 +137,40 @@ export default function AdminPolicyDashboardPage() {
       <DashboardPageHeader
         icon={<ShieldCheck className="w-5 h-5" />}
         title="정책 SSOT 대시보드"
-        subtitle="환불 / 수수료 / 세금 / 시간 상수 — 단일 진실원천"
+        subtitle="환불 / 수수료 / 세금 / 시간 상수 — 지금 적용 중인 값 확인용 (읽기 전용)"
       />
 
-      <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-900">
-        <p className="font-bold mb-1">📖 정책 변경 방법</p>
-        <ul className="list-disc list-inside space-y-0.5 text-xs">
-          <li>
-            <strong>정적 정책</strong> (코드 상수): <code className="font-mono">src/shared/constants/policy.ts</code> 수정 + PR
-          </li>
-          <li>
-            <strong>동적 정책</strong> (수수료 비율): <a href="/admin/payouts" className="underline font-bold">/admin/payouts</a> 에서 platform_settings 편집
-          </li>
-          <li>
-            <strong>원천징수율</strong>: 한국 세법 (소득세법 §127) — hardcode 임 (BUSINESS_INCOME 3.3% / OTHER_INCOME 8.8%)
-          </li>
-        </ul>
+      {/* 🛡️ 2026-07-01 (대표 "여기서 수정 가능해야 하는 거 아냐?"): 이 화면은 '현재 적용값'을 한눈에 보는
+          읽기 전용 뷰어 — 편집은 항목별 실제 편집 페이지에서. 어디서 바꾸는지 크게 안내 + 바로가기 버튼. */}
+      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <div className="flex items-start gap-2">
+          <span className="text-lg leading-none">📖</span>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-amber-900">이 화면은 <span className="underline">읽기 전용</span>입니다 — 값은 여기서 못 바꿔요</p>
+            <p className="text-xs text-amber-800 mt-0.5">
+              지금 어떤 정책이 적용 중인지 한눈에 보는 용도예요. 실제 변경은 항목별 편집 페이지에서 합니다.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a href="/admin/payouts"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white hover:bg-amber-700">
+                ✏️ 수수료율 편집하기 (정산 센터)
+              </a>
+              <a href="/admin/commission-settings"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100">
+                정산 마진 설정
+              </a>
+              <a href="/admin/platform-settings"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100">
+                플랫폼 설정
+              </a>
+            </div>
+            <ul className="mt-3 list-disc list-inside space-y-0.5 text-[11px] text-amber-700">
+              <li><strong>수수료 비율</strong>(동적): 위 <strong>수수료율 편집</strong> 버튼 → platform_settings 값 변경 → 이 화면에도 반영</li>
+              <li><strong>환불/시간 상수</strong>(정적): 코드 <code className="font-mono">src/shared/constants/policy.ts</code> 수정 + 배포 필요</li>
+              <li><strong>원천징수율</strong>: 한국 세법(소득세법 §127) 고정 — 3.3%(사업소득) / 8.8%(기타소득)</li>
+            </ul>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-4">
