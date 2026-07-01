@@ -47,6 +47,10 @@
     <meta name="theme-color" content="#020202" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- 🎯 파비콘 (브라우저 탭) — UR 브랜드 마크. SVG 우선 + PNG 폴백 -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
     <!-- 🛡️ 2026-04-30: iOS Safari PWA 설치용 — 다양한 사이즈 -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
@@ -202,7 +206,10 @@
     <meta name="twitter:title" content="유어딜 - 돈버는 쇼핑, 이용권·교환권·동네딜" />
     <meta name="twitter:description" content="할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 나만의 링크샵까지. 유어딜에서 돈버는 쇼핑." />
     <meta name="naver-site-verification" content="7be066f6c7f451d994e3a5482aa76f87e96c3c2f" />
-    <meta property="og:image" content="https://live.ur-team.com/logo.png" />
+    <meta property="og:image" content="https://live.ur-team.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:image" content="https://live.ur-team.com/og-image.png" />
 
     <!-- 🛡️ FOUC 방지 — React 마운트 전 첫 페인트부터 올바른 테마 적용.
          정책 (CLAUDE.md A안):

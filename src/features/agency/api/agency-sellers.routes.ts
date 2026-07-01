@@ -20,6 +20,7 @@ import type { Context, Next } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAgency, type AgencyVars, type AgencyCtx } from '@/lib/agency-shared'
 import { swallow } from '@/worker/utils/swallow'
+import { intParam } from '@/shared/pagination'
 const app = new Hono<{ Bindings: Env; Variables: AgencyVars }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
 
@@ -106,8 +107,8 @@ app.get('/sellers/:id/stats', async (c) => {
 app.get('/orders', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { id: agencyId } = c.get('agency') as { id: number }
-  const page = Math.max(1, Number(c.req.query('page') || 1))
-  const limit = Math.min(Math.max(1, Number(c.req.query('limit') || 20)), 100)
+  const page = Math.max(1, intParam(c.req.query('page'), 1))
+  const limit = Math.min(Math.max(1, intParam(c.req.query('limit'), 20)), 100)
   const offset = (page - 1) * limit
   const sellerId = c.req.query('seller_id')
 

@@ -41,22 +41,46 @@ function blogCover(slug: string, tags: string[]) {
   return { emoji, gradient: COVER_GRADIENTS[h % COVER_GRADIENTS.length] }
 }
 
+// 📝 2026-07-01 SSR 시드(__SSR_INITIAL_BLOG__) — 서버가 주입한 목록을 0-RTT 로 즉시 사용(콜드 fetch 워터폴 제거).
+function readBlogListSeed(): BlogPost[] | undefined {
+  if (typeof document === 'undefined') return undefined
+  const el = document.getElementById('__SSR_INITIAL_BLOG__')
+  if (!el?.textContent) return undefined
+  try {
+    const raw = JSON.parse(el.textContent) as { success?: boolean; data?: BlogPost[] }
+    return raw?.success ? (raw.data || []) : undefined
+  } catch { return undefined }
+}
+
 export default function BlogListPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [selectedTag, setSelectedTag] = useState('')
 
-  // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ). selectedTag 변경 시 재조회.
-  const { data: posts = [], isLoading: loading } = useApiQuery<BlogPost[]>(
-    ['blog', 'public', selectedTag],
-    selectedTag ? `/api/blog/public?tag=${selectedTag}` : '/api/blog/public',
-    { select: (raw) => ((raw as { success?: boolean; data?: BlogPost[] })?.success ? ((raw as { data: BlogPost[] }).data || []) : []) },
+  // 🛡️ 2026-05-31: 수동 fetch → useApiQuery (RQ).
+  // 📝 2026-07-01: 전체 글을 한 번에 받아(limit=100) 태그 필터는 클라이언트에서 처리.
+  //   (a) 기본 limit=9 라 시드 글 일부가 목록에서 누락되던 버그 수정
+  //   (b) 태그 클릭 시 재조회하면 allTags 가 필터 결과에서 파생돼 다른 태그 칩이 사라지던 버그 수정
+  //   BlogDetailPage 의 관련글 쿼리와 같은 키를 써 캐시를 공유한다.
+  const { data: allPosts = [], isLoading: loading } = useApiQuery<BlogPost[]>(
+    ['blog', 'public', ''],
+    '/api/blog/public?limit=100',
+    {
+      select: (raw) => ((raw as { success?: boolean; data?: BlogPost[] })?.success ? ((raw as { data: BlogPost[] }).data || []) : []),
+      // 📝 2026-07-01 SSR 시드로 0-RTT 첫 페인트 + 마운트 시 백그라운드 최신화(신선도 가드: initialData 는 always 재검증).
+      initialData: readBlogListSeed(),
+      refetchOnMount: 'always',
+    },
   )
 
-  const allTags = [...new Set(posts.flatMap(p => { try { return JSON.parse(p.tags) } catch { return [] } }))]
+  // 태그 목록은 항상 전체 글에서 파생 → 필터 중에도 칩이 안정적으로 유지됨.
+  const allTags = [...new Set(allPosts.flatMap(p => { try { return JSON.parse(p.tags) } catch { return [] } }))]
+  const posts = selectedTag
+    ? allPosts.filter(p => { try { return (JSON.parse(p.tags) as string[]).includes(selectedTag) } catch { return false } })
+    : allPosts
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
+    <div className="min-h-[100dvh] bg-gray-50 dark:bg-[#0A0A0A]">
       <SEO title={t('blog.listSeoTitle', { defaultValue: '블로그' })} description={t('blog.listSeoDesc', { defaultValue: '유어딜 블로그 — 이용권·교환권·동네딜·링크샵 가이드와 서비스 소식' })} url="/blog" />
 
       {/* Header */}
@@ -72,7 +96,7 @@ export default function BlogListPage() {
             </div>
           </div>
           <Link to="/seller/register" className="px-4 py-2 bg-pink-500 text-white rounded-lg text-sm font-bold hover:bg-pink-600">
-            셀러 시작하기
+            판매 시작하기
           </Link>
         </div>
       </div>
@@ -94,8 +118,19 @@ export default function BlogListPage() {
 
         {/* 글 목록 — PC 그리드 */}
         {loading ? (
-          <div className="flex justify-center py-16">
-            <div className="w-8 h-8 border-4 border-gray-300 dark:border-[#2A2A2A] border-t-gray-900 dark:border-t-white rounded-full animate-spin" />
+          // 📝 2026-07-01: 스피너-온리 → 스켈레톤 그리드(첫 페인트 표준). 실제 카드와 같은 레이아웃.
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="bg-white dark:bg-[#1C1C1E] rounded-2xl border border-gray-200 dark:border-[#2A2A2A] overflow-hidden">
+                <div className="w-full h-48 bg-gray-100 dark:bg-[#2A2A2A] animate-pulse" />
+                <div className="p-5 space-y-3">
+                  <div className="h-3 w-16 bg-gray-100 dark:bg-[#2A2A2A] rounded-full animate-pulse" />
+                  <div className="h-4 w-full bg-gray-100 dark:bg-[#2A2A2A] rounded animate-pulse" />
+                  <div className="h-4 w-2/3 bg-gray-100 dark:bg-[#2A2A2A] rounded animate-pulse" />
+                  <div className="h-3 w-1/3 bg-gray-100 dark:bg-[#2A2A2A] rounded animate-pulse mt-4" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : posts.length === 0 ? (
           <div className="text-center py-16 text-gray-500 dark:text-gray-400">아직 작성된 글이 없습니다</div>

@@ -273,13 +273,17 @@ export function registerDistributorsRoutes(app: Hono<{ Bindings: Env }>) {
       const applied = Math.min(amount, prevOut)
       const newOut = prevOut - applied
 
-      const batch = await c.env.DB.batch([
-        c.env.DB.prepare("UPDATE sellers SET outstanding_balance = ?, updated_at = datetime('now') WHERE id = ?").bind(newOut, id),
-        c.env.DB.prepare(
-          "INSERT INTO wholesale_credit_ledger (distributor_seller_id, order_id, type, amount, balance_after, memo) VALUES (?, NULL, 'repayment', ?, ?, ?)"
-        ).bind(id, applied, newOut, memo || `미수금 상환 ${applied.toLocaleString('ko-KR')}원`),
-      ])
-      if ((batch[0]?.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '상환 처리에 실패했습니다' }, 500)
+      // 🛡️ 2026-07-01 (머니 룰 #1 claim-before-credit): outstanding 을 원자 CAS 로 차감.
+      //   기존 batch read-modify-write(절대값 write)는 동시 상환 2건이 같은 prevOut 을 읽어 하나가 덮어써
+      //   미수금이 과대 계상(플랫폼 채권 부풀림·판매사 손해)될 수 있었음. WHERE 에 prevOut 일치를 걸어
+      //   그 사이 값이 바뀌면 changes=0 → 원장 미기록 + 재시도 유도(이중 반영/유실 방지).
+      const upd = await c.env.DB.prepare(
+        "UPDATE sellers SET outstanding_balance = ?, updated_at = datetime('now') WHERE id = ? AND COALESCE(outstanding_balance,0) = ?"
+      ).bind(newOut, id, prevOut).run()
+      if ((upd.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '미수금 잔액이 방금 변경되었습니다. 새로고침 후 다시 시도해주세요', code: 'OUTSTANDING_CHANGED' }, 409)
+      await c.env.DB.prepare(
+        "INSERT INTO wholesale_credit_ledger (distributor_seller_id, order_id, type, amount, balance_after, memo) VALUES (?, NULL, 'repayment', ?, ?, ?)"
+      ).bind(id, applied, newOut, memo || `미수금 상환 ${applied.toLocaleString('ko-KR')}원`).run().catch(() => null)
       await writeAuditLog(c, {
         action: 'wholesale_credit_repayment',
         targetType: 'seller',

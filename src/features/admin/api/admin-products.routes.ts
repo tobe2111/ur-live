@@ -23,6 +23,7 @@ import { ensureSupplyVisibilitySchema, recordSupplyPriceChange } from '../../sup
 import { getSupplyMeta } from '@/worker/utils/product-supply-meta';
 import { loadPlatformCommissionPct } from '../../supply/api/wholesale-settlement';
 import { distributorPriceFromCost } from '@/lib/distributor-pricing';
+import { intParam } from '@/shared/pagination'
 
 export const adminProductsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -69,8 +70,8 @@ adminProductsRoutes.get('/products', cors(), async (c) => {
   try {
     const { DB } = c.env;
     // 🛡️ 2026-05-19: Coupang WING 스타일 — 검색/필터/정렬/페이지네이션.
-    const page = Math.max(1, Number(c.req.query('page') || 1));
-    const limit = Math.min(500, Math.max(1, Number(c.req.query('limit') || 100)));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 100)));
     const offset = (page - 1) * limit;
     const q = String(c.req.query('q') || '').trim();
     const category = String(c.req.query('category') || '').trim();
@@ -480,8 +481,8 @@ adminProductsRoutes.get('/sample-requests', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const status = c.req.query('status') || '';
-    const page = (parseInt(c.req.query('page') || '1', 10) || 1);
-    const limit = Math.min((parseInt(c.req.query('limit') || '20', 10) || 20), 100);
+    const page = intParam(c.req.query('page'), 1);
+    const limit = Math.min(intParam(c.req.query('limit'), 20), 100);
     const offset = (page - 1) * limit;
 
     let where = '1=1';
@@ -617,8 +618,8 @@ adminProductsRoutes.get('/supplier-products', cors(), async (c) => {
     const { DB } = c.env;
     await ensureSupplyVisibilitySchema(DB);
     const status = String(c.req.query('status') || 'pending'); // pending | approved | rejected | price_change | all
-    const page = Math.max(1, Number(c.req.query('page') || 1));
-    const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') || 50)));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(200, Math.max(1, intParam(c.req.query('limit'), 50)));
     const offset = (page - 1) * limit;
 
     let where = 'p.is_supply_product = 1 AND p.supplier_id IS NOT NULL';
@@ -927,17 +928,18 @@ function parseDealCsv(text: string): Record<string, string>[] {
   });
 }
 
-const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest: string; addr: string; img: string }[] = [
-  { name: '[강남] 1++ 한우 오마카세 2인', cat: 'meal_voucher', price: 89000, orig: 140000, rest: '한우공방 강남점', addr: '서울 강남구 봉은사로', img: 'https://picsum.photos/seed/urdeal1/600/600' },
-  { name: '[연남] 화덕피자 + 파스타 2인 세트', cat: 'meal_voucher', price: 25900, orig: 39000, rest: '포르노 로마노', addr: '서울 마포구 동교로', img: 'https://picsum.photos/seed/urdeal2/600/600' },
-  { name: '[성수] 스페셜티 핸드드립 2인 + 디저트', cat: 'meal_voucher', price: 12900, orig: 21000, rest: '성수 로스터스', addr: '서울 성동구 연무장길', img: 'https://picsum.photos/seed/urdeal3/600/600' },
-  { name: '두피 스케일링 + 헤어 클리닉', cat: 'beauty_voucher', price: 39000, orig: 80000, rest: '살롱 드 모드', addr: '서울 강남구 압구정로', img: 'https://picsum.photos/seed/urdeal4/600/600' },
-  { name: '왁싱 전신 패키지', cat: 'beauty_voucher', price: 49000, orig: 90000, rest: '스무스 왁싱 라운지', addr: '서울 서초구 강남대로', img: 'https://picsum.photos/seed/urdeal5/600/600' },
-  { name: '속눈썹 연장 풀세트 + 리터치', cat: 'beauty_voucher', price: 29000, orig: 55000, rest: '아이래쉬 스튜디오', addr: '서울 마포구 양화로', img: 'https://picsum.photos/seed/urdeal6/600/600' },
-  { name: '반려견 종합 미용 (목욕+커트)', cat: 'etc_voucher', price: 35000, orig: 60000, rest: '댕댕살롱', addr: '서울 송파구 올림픽로', img: 'https://picsum.photos/seed/urdeal7/600/600' },
-  { name: '실내 클라이밍 1일 체험 + 강습', cat: 'etc_voucher', price: 19000, orig: 35000, rest: '더 클라임', addr: '서울 광진구 아차산로', img: 'https://picsum.photos/seed/urdeal8/600/600' },
-  { name: '프리미엄 원두 드립백 30개입 (무료배송)', cat: 'general', price: 18900, orig: 32000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal9/600/600' },
-  { name: '제주 한라봉 5kg 산지직송', cat: 'general', price: 21900, orig: 35000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal10/600/600' },
+// q = 네이버 이미지검색 키워드(실사진 확보용). img = 검색 실패/키 미설정 시 폴백.
+const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest: string; addr: string; img: string; q: string }[] = [
+  { name: '[강남] 1++ 한우 오마카세 2인', cat: 'meal_voucher', price: 89000, orig: 140000, rest: '한우공방 강남점', addr: '서울 강남구 봉은사로', img: 'https://picsum.photos/seed/urdeal1/600/600', q: '한우 오마카세' },
+  { name: '[연남] 화덕피자 + 파스타 2인 세트', cat: 'meal_voucher', price: 25900, orig: 39000, rest: '포르노 로마노', addr: '서울 마포구 동교로', img: 'https://picsum.photos/seed/urdeal2/600/600', q: '화덕피자 파스타' },
+  { name: '[성수] 스페셜티 핸드드립 2인 + 디저트', cat: 'meal_voucher', price: 12900, orig: 21000, rest: '성수 로스터스', addr: '서울 성동구 연무장길', img: 'https://picsum.photos/seed/urdeal3/600/600', q: '핸드드립 커피 카페' },
+  { name: '두피 스케일링 + 헤어 클리닉', cat: 'beauty_voucher', price: 39000, orig: 80000, rest: '살롱 드 모드', addr: '서울 강남구 압구정로', img: 'https://picsum.photos/seed/urdeal4/600/600', q: '헤어살롱 두피 스케일링' },
+  { name: '왁싱 전신 패키지', cat: 'beauty_voucher', price: 49000, orig: 90000, rest: '스무스 왁싱 라운지', addr: '서울 서초구 강남대로', img: 'https://picsum.photos/seed/urdeal5/600/600', q: '왁싱샵 인테리어' },
+  { name: '속눈썹 연장 풀세트 + 리터치', cat: 'beauty_voucher', price: 29000, orig: 55000, rest: '아이래쉬 스튜디오', addr: '서울 마포구 양화로', img: 'https://picsum.photos/seed/urdeal6/600/600', q: '속눈썹 연장' },
+  { name: '반려견 종합 미용 (목욕+커트)', cat: 'etc_voucher', price: 35000, orig: 60000, rest: '댕댕살롱', addr: '서울 송파구 올림픽로', img: 'https://picsum.photos/seed/urdeal7/600/600', q: '반려견 미용' },
+  { name: '실내 클라이밍 1일 체험 + 강습', cat: 'etc_voucher', price: 19000, orig: 35000, rest: '더 클라임', addr: '서울 광진구 아차산로', img: 'https://picsum.photos/seed/urdeal8/600/600', q: '실내 클라이밍장' },
+  { name: '프리미엄 원두 드립백 30개입 (무료배송)', cat: 'general', price: 18900, orig: 32000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal9/600/600', q: '원두 드립백 커피' },
+  { name: '제주 한라봉 5kg 산지직송', cat: 'general', price: 21900, orig: 35000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal10/600/600', q: '제주 한라봉' },
 ];
 
 // GET /dongnedeal/stats — 동네딜 상품 현황(전체/노출/데모/카테고리별)
@@ -967,18 +969,27 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     if ((existing?.c ?? 0) > 0) {
       return c.json({ success: true, seeded: 0, existing: existing?.c ?? 0, message: '이미 데모 동네딜 상품이 있습니다 (삭제 후 재생성하세요)' });
     }
+    // 🖼️ 2026-07-01 (대표 요청): 가짜(picsum) 대신 네이버 이미지검색으로 실사진 확보(병렬, best-effort).
+    //   NAVER 키 없거나 검색 실패 시 각 항목의 기존 img(picsum)로 폴백 → 시딩은 항상 성공.
+    const { fetchNaverImageUrl } = await import('../../../worker/utils/naver-image-search');
+    const resolvedImgs = await Promise.all(
+      DEAL_DEMO.map((d) => fetchNaverImageUrl(c.env, d.q).catch(() => null))
+    );
     let seeded = 0;
+    let realPhotos = 0;
     for (let i = 0; i < DEAL_DEMO.length; i++) {
       const d = DEAL_DEMO[i];
+      const img = resolvedImgs[i] || d.img;
+      if (resolvedImgs[i]) realPhotos++;
       await DB.prepare(
         `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
            is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, slug, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, datetime('now'), datetime('now'))`
-      ).bind(d.name, `데모 동네딜 — ${d.name}`, d.price, d.orig, d.img, d.cat, d.rest || null, d.addr || null, DEAL_DEMO_SLUG + (i + 1)).run();
+      ).bind(d.name, `데모 동네딜 — ${d.name}`, d.price, d.orig, img, d.cat, d.rest || null, d.addr || null, DEAL_DEMO_SLUG + (i + 1)).run();
       seeded++;
     }
-    await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded } }).catch(() => {});
-    return c.json({ success: true, seeded });
+    await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded, realPhotos } }).catch(() => {});
+    return c.json({ success: true, seeded, realPhotos });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }

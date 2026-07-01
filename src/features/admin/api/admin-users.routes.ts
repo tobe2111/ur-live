@@ -13,6 +13,7 @@ import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
+import { intParam } from '@/shared/pagination'
 
 export const adminUsersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -43,8 +44,8 @@ interface UserDetailRow extends UserRow {
 adminUsersRoutes.get('/users', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const page = Math.max(1, (parseInt(c.req.query('page') || '1') || 1));
-    const limit = Math.min(100, Math.max(1, (parseInt(c.req.query('limit') || '50') || 50)));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 50)));
     const offset = (page - 1) * limit;
     const search = (c.req.query('search') || '').trim();
     const sortRaw = c.req.query('sort') || 'created_at';

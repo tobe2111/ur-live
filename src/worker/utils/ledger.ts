@@ -421,20 +421,45 @@ export async function recordRefundLedger(
   })
 }
 
-/** 정산 가능 잔액 (특정 payee 의 credit 합 - 이미 payout 처리된 amount 합) */
+/**
+ * 순 receivable (지급 이력 제외) = (credit − fee_amount) − debit.
+ *
+ * 💸 2026-07-01 (정산 정합 — 대표 승인): 이전 payout 집계가 **credit-only** 여서 두 가지가 새고 있었음:
+ *   ① 공구 seller credit 은 `amount=gross`(수수료 포함)+`fee_amount=수수료` 로 기록 → 수수료 미차감 gross 지급.
+ *      (이용권은 `amount=net`+`fee_amount=0`.) → `amount − fee_amount` 로 통일 net 산출.
+ *   ② seller:N 에 이미 존재하던 debit(환불 역전·인플루언서/추천 커미션)이 무시됨 → receivable 과다.
+ *      → debit 를 차감.
+ * 📐 **규칙(신규 credit 추가 시 준수)**: payout 대상 credit 의 `fee_amount` = `amount` 중 payee 의 net 이
+ *    아닌 부분(플랫폼 수수료). net 을 그대로 credit 하면 fee_amount=0. (이 규칙을 어기면 payout 오산.)
+ */
+export async function getLedgerReceivable(
+  DB: D1Database,
+  account: string,
+): Promise<number> {
+  await ensureLedgerTable(DB)
+  const bal = await DB.prepare(`
+    SELECT
+      COALESCE(SUM(CASE WHEN credit_account = ? THEN amount - COALESCE(fee_amount, 0) ELSE 0 END), 0) AS credit_net,
+      COALESCE(SUM(CASE WHEN debit_account  = ? THEN amount ELSE 0 END), 0) AS debit_total
+    FROM ledger_entries
+    WHERE credit_account = ? OR debit_account = ?
+  `).bind(account, account, account, account)
+    .first<{ credit_net: number; debit_total: number }>()
+    .catch(() => ({ credit_net: 0, debit_total: 0 }))
+  return Number(bal?.credit_net ?? 0) - Number(bal?.debit_total ?? 0)
+}
+
+/** 정산 가능 잔액 = 순 receivable − 이미 payout(approved/sent) 처리분 */
 export async function getPayablePending(
   DB: D1Database,
   payeeAccount: string,
 ): Promise<number> {
-  await ensureLedgerTable(DB)
-  const credit = await DB.prepare(
-    `SELECT COALESCE(SUM(amount), 0) as total FROM ledger_entries WHERE credit_account = ?`,
-  ).bind(payeeAccount).first<{ total: number }>().catch(() => ({ total: 0 }))
+  const receivable = await getLedgerReceivable(DB, payeeAccount)
   const paid = await DB.prepare(
     `SELECT COALESCE(SUM(amount), 0) as total FROM payouts
       WHERE (payee_type || ':' || payee_id) = ? AND status IN ('approved','sent')`,
   ).bind(payeeAccount).first<{ total: number }>().catch(() => ({ total: 0 }))
-  return Number(credit?.total ?? 0) - Number(paid?.total ?? 0)
+  return receivable - Number(paid?.total ?? 0)
 }
 
 

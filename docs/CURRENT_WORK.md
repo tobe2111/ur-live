@@ -7,6 +7,16 @@
 - **🟢 문서화(미수정)**: 선물 `gifts/:id/confirm` 은 status 체크-후-UPDATE 사이 CAS 없음 → Toss 멱등이라 이중청구/적립 0, 유일 영향은 알림톡 중복(LOW). 재발 시 status CAS 로 승격.
 - **⚠️ 검증 한계**: 이 원격환경 npm 조직정책 403 으로 `node_modules` 미설치 → 전체 `npm run build`·tsc 미실행. sql-bind/column(신규 UPDATE 컬럼 orders 존재 확인)/CHECK 가드 0. **잠금파일 회귀검증은 staging 배포 후 실결제 필수**(VA 결제 → 입금 전 AWAITING·입금 후 확정+KT 1회).
 
+## ✅ 2026-07-01 — 도매몰 3표면(판매사·제조사·도매어드민) 심층 감사 + 확정 3건 fix (대표 "세 대시보드 모두?")
+pagination 크래시 수정 후속 — 세 표면을 **가드 미보유 영역**(런타임 크래시·정산/금액 정확성·환불 대칭)으로 병렬 심층 감사(에이전트 3). audit-gate GREEN 영역(서비스분리·RBAC·머니패턴·주문상태머신)은 가드 신뢰로 스킵.
+- **판매사 표면: clean**(예치금 차감/복원 CAS·주문 총액 서버재계산·MOQ·tier floor·환불 대칭 전부 정합). 유일 지적=내 pagination 코드모드가 `wholesale.routes.ts` 에 넣은 **mid-file import**(CLAUDE.md 금지 패턴, hoist 되어 무해하나 정리) → 상단 import 블록으로 이동.
+- **제조사 표면: clean**. 에이전트가 올린 '소비자 환불 재고 과다복원'은 **오탐 확정**(이 반품 경로는 `returns.routes:656` 에서 주문 전체 품목 취소=full-order + `reversed>0` 게이트로 멱등 + 판매사복제본↔공급원본 재고는 별개 풀 → 이중복원 없음).
+- **도매어드민: 확정 3건 fix**:
+  - 🔴 **상품 엑셀 내보내기 가격 모델 불일치**(`products-pricing.ts`): 내보내기가 폐기 모델 `distributorPriceFromRetail`(판매가×(1−보장마진)·**등급차등**)을 써 라이브 결제가(`resolveDistributorPrice` cost-plus·**전등급동일**, 2026-06-17 대표확정)와 전혀 다른 A/B/C 등급가를 제안 문서로 내보냄(상거래 분쟁 소지). → `resolveDistributorPrice`(+`loadPlatformCommissionPct` 전역마진)로 통일, 라이브 주문가와 정합. 등급 통일이라 A/B/C 컬럼은 동일값(실가).
+  - 🟡 **강제환불 롤백 상태 강등**(`orders.ts:153`): Toss 취소 실패 시 롤백이 `status='PAID'` 하드코딩 → SHIPPED/ACCEPTED/DONE 레거시 Toss 주문이 '결제완료'로 강등돼 상태머신 꼬임. → 원본 `order.status` 복원.
+  - 🟡 **미수금 상환 비-CAS**(`distributors.ts` credit-repayment): `outstanding_balance` read-modify-write(절대값 write)라 동시 상환 2건이 하나를 덮어써 미수금 과대계상(플랫폼 채권 부풀림) 가능. → 원자 CAS(`WHERE COALESCE(outstanding_balance,0)=prevOut`) + 실패 시 409 재시도, 원장은 CAS 성공 후에만.
+- 검증: tsc 0 · 단위 2443 pass · build 0 · audit-gate 39 GREEN(머니패턴 포함).
+
 ## ✅ 2026-07-01 — 도매몰 라이브 전수조사 + 카탈로그 500 크래시 근본수정 (대표 "라이브로 접근해서 전수조사")
 라이브(`live.ur-team.com/wholesale`) 실접근 전수조사. **결과: 인증/RBAC 게이트 전부 건강(500 없음, 401/404 정상)·엣지캐시 누수 없음·SQL 인젝션 방어 정상.** 발견/수정:
 - **🐛 라이브 500 크래시(수정)**: `GET /api/wholesale/catalog?page=abc&limit=xyz` → HTTP 500. 원인: `page = Math.max(1, parseInt(query||'1',10))` 에 `limit` 이 가진 `|| N` 폴백이 **없어** `parseInt('abc')=NaN → Math.max(1,NaN)=NaN → offset=(NaN-1)*limit=NaN → D1 .bind(NaN) 크래시`. `limit=-1/page=-5/limit=99999999` 는 이미 정상(200) — **비숫자 문자열만** 크래시(봇/스크래퍼/오염된 링크가 도매몰 메인 카탈로그를 500). **수정(도매 서비스 전 인스턴스에 기존 `limit||24` 패턴 미러링)**: `wholesale.routes.ts:787`(page), `supplier-dashboard.routes.ts`(page/limit ×3 핸들러), `distributor-admin/orders.ts`(page/limit), `supply.routes.ts`(page/limit). 전부 `parseInt(...) || N` + `Math.max(...,1)` 클램프. 로직 검증(page=abc→page1/offset0)·tsc 0(사전 config 경고 제외)·build 0·sql bind/column 가드 0.

@@ -13,6 +13,7 @@ import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { requireAdmin } from '@/worker/middleware/auth';
 import { swallow } from '@/worker/utils/swallow';
+import { intParam } from '@/shared/pagination'
 
 export const adminAbuseRoutes = new Hono<{ Bindings: Env }>();
 // 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
@@ -23,7 +24,7 @@ adminAbuseRoutes.get('/abuse-detections', async (c) => {
   const DB = c.env.DB;
   const severity = c.req.query('severity');
   const pattern = c.req.query('pattern');
-  const limit = Math.min(500, Math.max(1, Number(c.req.query('limit') ?? 200) || 200));
+  const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 200)));
 
   const conditions: string[] = [];
   const binds: unknown[] = [];

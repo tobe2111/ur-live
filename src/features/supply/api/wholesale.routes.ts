@@ -22,6 +22,7 @@ import {
   type GradeMargin, type DistributorGrade, type QtyTier,
 } from '@/lib/distributor-pricing'
 import { confirmTossPayment, cancelTossPayment } from '@/worker/utils/toss-gateway'
+import { intParam } from '@/shared/pagination'
 import { swallow } from '@/worker/utils/swallow'
 import { getSupplyMeta, ensureSupplyMetaTable } from '@/worker/utils/product-supply-meta'
 import { setWholesaleSignupMeta, getWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta'
@@ -784,8 +785,8 @@ app.get('/catalog', async (c) => {
   const authAttempt = !!c.req.header('Authorization') || /(?:^|;\s*)ud_seller_token=/.test(c.req.header('Cookie') || '')
   const visBind = sellerId ?? -1 // visibilityWhere EXISTS 가 매칭 안 되도록(=ALL/NULL 만 노출)
   const { DB } = c.env
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10) || 1)
-  const limit = Math.min(Math.max(parseInt(c.req.query('limit') || '24', 10) || 24, 1), 100)
+  const page = Math.max(1, intParam(c.req.query('page'), 1))
+  const limit = Math.min(Math.max(intParam(c.req.query('limit'), 24), 1), 100)
   const offset = (page - 1) * limit
   const search = (c.req.query('search') || '').slice(0, 100)
   const category = (c.req.query('category') || '').slice(0, 80)

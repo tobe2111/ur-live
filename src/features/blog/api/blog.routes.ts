@@ -10,6 +10,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 
 import { swallow } from '@/worker/utils/swallow';
 import { generateBlogDraft, PROMO_TOPICS, type PromoTopic } from './blog-ai';
+import { intParam } from '@/shared/pagination'
 const app = new Hono<{ Bindings: Env }>()
 
 // AI 초안: 미검토(비공개) 초안이 이만큼 쌓이면 추가 생성 중단(관리자 검토 유도).
@@ -61,8 +62,8 @@ app.get('/public', async (c) => {
   await ensureBlogTable(c.env.DB)
   // 버전 재시드: 코드의 시드 버전이 DB 보다 높으면 자동 반영(수동편집 글 보존)
   await maybeSyncBlogSeed(c.env.DB)
-  const page = Math.max(1, Number(c.req.query('page') || 1))
-  const limit = Math.min(Math.max(1, Number(c.req.query('limit') || 9)), 100)
+  const page = Math.max(1, intParam(c.req.query('page'), 1))
+  const limit = Math.min(Math.max(1, intParam(c.req.query('limit'), 9)), 100)
   const tag = c.req.query('tag')
   const offset = (page - 1) * limit
 

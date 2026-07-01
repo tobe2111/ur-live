@@ -18,6 +18,7 @@ import { executeQuery } from '@/worker/utils/database';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { logAudit } from '../../../lib/audit-log';
 import { auditLog } from '@/worker/middleware/audit-log';
+import { intParam } from '@/shared/pagination'
 
 export const adminOrdersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -76,8 +77,8 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
     // 🛡️ 2026-05-27 (loading P1 — audit A): 서버 페이지네이션 + 검색.
     //   이전: LIMIT 1000 hard cap + 클라 측 slice + 클라 측 검색 → 주문 10000+ 시 timeout/OOM.
     //   변경: page/limit + 서버 검색 (order_number / shipping_name / shipping_phone) + total count.
-    const page = Math.max(1, Number.parseInt(c.req.query('page') || '1', 10) || 1);
-    const rawLimit = Number.parseInt(c.req.query('limit') || '50', 10) || 50;
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const rawLimit = intParam(c.req.query('limit'), 50);
     const limit = Math.min(500, Math.max(10, rawLimit));
     const offset = (page - 1) * limit;
 

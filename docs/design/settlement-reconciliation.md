@@ -99,9 +99,34 @@
 - [x] §4.2 셀러 대시보드 실제 payout 노출 — 신규 읽기 엔드포인트 `GET /api/seller/payouts`(`getPayablePending('seller:N')` + `payouts` 실데이터) + `AutoPayoutSection.tsx`(미지급/지급예정/지급완료 + 내역). 오해 유발하던 `settlements` SUM 통계카드 4종 제거.
 - [x] §4.3 옵션 A: 고장난 '정산 신청' 버튼 + `requestSettlement`(→`/settlements/request`) + PIN 프롬프트 제거 → "매주 자동 정산" 안내로 교체. `settlements` 리스트는 '정산/환급 신청 이력(레거시)'로 relabel.
 
-### ⏳ 남은 작업 (일부는 잠금파일·staging 필요)
-- [ ] **일반 쇼핑 상품 주문 → 원장 배선** (payment.routes `/confirm` 잠금 — `recordLedger('seller:N')` 추가). 현재 쇼핑탭 숨김이라 영향 적으나, 재오픈 전 필수. 대표 승인 + staging 실결제 검증 필요.
-- [ ] `settlements` 테이블 + `seller_deal_balances` deprecate 마이그레이션 (백엔드 `/settlements/request`·`/deal-withdraw` 도 안내 응답으로 폐기 — 에이전시 패턴)
+### ✅ 어드민 화면 정합 (2026-07-01, 안전)
+- [x] `AdminSettlementPage`(개별 정산, orders 기반) 상단에 안내 배너 — 이 화면은 주문별 매출/정산상태(집계·세금·감사) 뷰이며 '정산 완료' 표시는 회계 상태일 뿐 송금이 아님. 실제 셀러 지급은 **'통합 정산 (Ledger)' 탭**(payouts)에서 자동 처리됨 + 링크. (혼동 방지, 머니-이동 0.)
+
+### ✅ 선결 A·B 해결 (2026-07-01) — payout 집계식 net 정합 (가동 확인 후 진행)
+**가동 확인**: `handlePayoutsGenerate` 는 `scheduled.ts:400` 에서 매주 월요일(`0 0 * * 1`) **플래그 없이 실행 중** → pending payouts 는 생성되고 있으나 실제 송금(approved→sent)은 어드민 수동(대표 확인상 미가동 추정). 생성이 돌고 있어 선결 A 로 **잘못된 금액의 pending 이 쌓이는 중** → 지금 수정.
+
+**수정(집계식 1곳 정합 — 소스/마이그레이션 불필요):**
+- 정식 순 receivable = **`Σ(credit.amount − fee_amount) − Σ(debit.amount)`**.
+  - `fee_amount` 는 공구 seller credit(gross)에만 존재 → 차감하면 net(=이용권과 동일). 이용권/타 payee(fee_amount=0) 무영향. **과거 gross 엔트리도 자동 정합**(fee_amount 가 이미 기록돼 있어 마이그레이션 불필요).
+  - `debit`(환불 역전·인플루언서/추천 커미션)을 차감 → 이전 credit-only 가 무시하던 것 반영.
+- 적용: `ledger.ts` 신규 `getLedgerReceivable()` + `getPayablePending()` 재정의, `payouts-generate.ts` 집계 쿼리 net 화, 셀러 `/payouts` 엔드포인트가 receivable 기반 3버킷(미지급/예정/완료) 분할.
+- 규칙 박제: **새 payout-대상 credit 은 `fee_amount = amount 중 payee net 이 아닌 부분`**(net 이면 0). 단위 테스트 `ledger-payable-net.test.ts`(9 케이스)로 고정.
+- ⚠️ **운영 정리 필요**: 이 수정 *이전에 생성된* pending payouts 는 gross 금액이 저장돼 있음(집계는 생성 시점 값). 송금 전 어드민이 검토/삭제 후 재생성 권장(dedup 은 period 단위라 자동 재계산 안 됨).
+
+### 🚧 ① 일반 쇼핑 주문 → 원장 배선 — 선결 A·B 해결됨, payment.routes 배선만 잔여 (대표 승인+staging)
+선결 A·B 정합 완료로 이제 쇼핑 주문을 원장에 net 크레딧하면 payout 이 올바르게 계산됨. 남은 것은 잠긴 `payment.routes /confirm _confirmSideFx` 에 `SHOPPING_LEDGER_ENABLED` 게이트로 net 크레딧(seller:N amount=net, fee_amount=수수료) 추가 + `reverseOrderAncillaryOnRefund` 에 seller:N debit 역전. 실결제 검증 불가 → staging 필수. (현재 쇼핑탭 숨김이라 재오픈 전 진행.)
+
+- **선결-A: 원장 seller credit 이 gross vs net 불일치.**
+  - 공구(`group-buy.routes.ts:424`)는 `seller:N` 에 **`amount = totalAmount`(gross, 수수료 포함)** 적립(fee 는 `fee_amount` 필드에만).
+  - 이용권(`ledger.ts recordVoucherUsedLedger`)은 **`amount = sellerAmount`(net)** 적립.
+  - `getPayablePending`/`payouts-generate` 는 `credit_account` 의 `amount` 만 합산(fee_amount·debit 무시) → **공구 셀러는 payout 시 수수료 미차감 gross 로 지급**될 수 있음(플랫폼 수수료 누락). 크레딧 규칙을 net 로 통일 필요.
+- **선결-B: 환불 역전이 payout 산정 base 를 안 줄임.**
+  - `getPayablePending` = `SUM(credit_account=seller:N) − payouts` (credit-only, debit 미차감).
+  - 환불 역전(`recordRefundLedger`)은 `platform:revenue → platform:escrow` 만 기록 → **`seller:N` credit 합 불변** → 환불된 주문도 셀러 payout base 에 계속 포함(구매자 환불 + 셀러 지급 이중손실).
+  - 수정안: payout 산정을 **net(credit − debit)** 으로 바꾸고, 환불 역전이 `seller:N` 을 debit 하도록(또는 정산 base 를 `getAccountBalance` 방식으로) — group-buy/voucher/shopping 전부 일괄 정합.
+- ⚠️ 위 A·B 는 **현재 활성 흐름(공구·이용권)의 라이브 payout 에도 영향** → 먼저 "payouts 크론/지급이 실제 가동 중인지" 확인 후, staging 에서 net 전환 검증. 그 다음에야 쇼핑 주문(payment.routes `_confirmSideFx` 에 `SHOPPING_LEDGER_ENABLED` 게이트로 net 크레딧 + `reverseOrderAncillaryOnRefund` 에 역전) 추가.
+
+### ⏳ 나머지
+- [ ] `settlements` 테이블 + `seller_deal_balances` deprecate 마이그레이션 (백엔드 `/settlements/request`·`/deal-withdraw` 안내 응답으로 폐기 — 에이전시 패턴)
 - [ ] `settlement-automation.ts` 죽은 월간 리포트 경로(소문자 status) 제거
-- [ ] 어드민 '정산 관리'(orders 기반)와 payouts 정합 — 어느 하나로 통일 or 명시적 역할 분리
-- [ ] 이중지급 방지 회귀 테스트(같은 수익이 payout+settlement 로 2번 안 나가는지) — 현재는 수동 레일 제거로 구조적 차단
+- [ ] 이중지급 방지 회귀 테스트 — 현재는 수동 레일 제거로 구조적 차단
