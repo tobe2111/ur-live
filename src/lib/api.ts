@@ -279,10 +279,13 @@ api.interceptors.request.use(
       // fallthrough → user token / cookie
     }
 
-    // ── Admin API (/api/admin/*) ───────────────────────────────────────────
+    // ── Admin API (/api/admin/* + 하이픈 마운트 /api/admin-payouts, /api/admin-review-bonus) ──
     // 🛡️ 2026-04-22 Phase 2A: localStorage 없어도 cookie 로 인증 가능 (Phase 1 cookie 발급).
     // throw 제거 — cookie 만으로도 서버에서 인증 통과.
-    if (url.startsWith('/api/admin/')) {
+    // 🛡️ 2026-07-01 (대표 "403 반복"): 기존 '/api/admin/'(슬래시)만 매칭 → /api/admin-payouts/*(하이픈)엔
+    //   admin_token 미부착 → 소비자 user 토큰이 붙어 requireUserType('admin')=403 (인플루언서 송금/분쟁).
+    //   `admin[-/]` 로 확장해 하이픈 어드민 마운트도 admin_token 부착(둘 다 requireAdmin 전용이라 안전).
+    if (/^\/api\/admin[-/]/.test(url)) {
       const token = localStorage.getItem('admin_token');
       if (token) config.headers['Authorization'] = `Bearer ${token}`;
       return config;
