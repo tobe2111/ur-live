@@ -1,5 +1,10 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 데모 이용권 매장 지도 매칭 + VouchersPage SSR seed 동기소비(즉시표시) (대표 "이어서 해 + 데모도 매칭 제대로")
+- **데모 매장 지도 매칭(대표 "데모 이용권도 매장 지도 매칭 제대로")**: `seed-demo` 데모는 가공 매장명 + 번지 없는 주소라 좌표/place_url 이 없어 지도 매칭 X. → seed 시 신규 헬퍼 `kakaoPlaceLookup`(카카오 키워드검색 `업종+지역`)으로 **실제 매장의 이름·주소·좌표·place_url 확보**해 INSERT(restaurant_lat/lng 추가) + `product_supply_meta.kakao_place_url` 저장. best-effort(키없음/무결과 → 기존 폴백). ⚠️ **기존 데모는 삭제 후 재생성**해야 적용(seed 멱등 — 존재 시 skip).
+- **VouchersPage SSR seed 동기소비(대표 "페이지가 빨리 뜨면 되는거")**: 기존엔 `loading=true` 로 시작 후 effect 에서 SSR seed 소비 → 로더 한 프레임. → 신규 `readVouchersSsrSeed`(effect 의 ssrMatch 와 동일 조건)로 **첫 렌더에 동기 소비** → `products`/`loading`/`hasMore` 초기값에 반영 → 청크 로드 후 **로더 프레임 0, 콘텐츠 즉시**. effect 는 seed-miss 첫 fetch + 필터/정렬 변경 fresh fetch 만 담당(마운트 재fetch 스킵). GroupBuyDetailPage 의 승인된 seed 패턴과 동일 + 잠금 "즉시 사용" 취지 부합. default sort price_low·필터변경 서버정렬 불변.
+- 검증: tsc 0 · theme(strict) 0 · initialData 가드 0 · sql bind/column 0 · build 0. ⚠️ staging: 데모 삭제→재생성 시 지도 핀·카카오맵 매칭 + /vouchers 하드로드 시 로더 없이 즉시 표시.
+
 ## ✅ 2026-07-01 — 카카오맵 "매장 페이지 직접 연결" (place_url 캡처) (대표 "여전히 매장 카카오맵 페이지 연결 안됨")
 E 후속 — `link/search`(검색) 는 정확한 매장 페이지를 못 열어서, **등록 시 카카오 장소 페이지 URL(`place.map.kakao.com/{id}`)을 캡처·저장**해 상세 지도가 직접 연결.
 - **캡처**: 어드민 `ManualDealForm`(카카오 검색 `pick`) + 셀러 `SellerMealVoucherNewPage`(`KakaoMapPicker` `selectPlace`) → `place.place_url` 또는 `place.id`→URL 구성. 프록시(`/api/kakao/place/search`)는 이미 raw 카카오 응답(`id`/`place_url`) 통과 — 클라가 안 잡던 것.
