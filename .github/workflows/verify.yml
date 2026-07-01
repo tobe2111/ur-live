@@ -205,6 +205,18 @@ jobs:
         run: node scripts/check-pagination-nan.mjs -s
         continue-on-error: false
 
+      # 🛡️ 2026-07-01: 도매 공급가 모델 드리프트 방지 — 폐기 distributorPriceFromRetail/distributorPrice
+      #   직접호출 금지(공급가는 resolveDistributorPrice SSOT). 내보내기가 실결제가와 다른 등급가를 냈던 사고.
+      - name: Deprecated pricing model guard (strict)
+        run: node scripts/check-deprecated-pricing.mjs -s
+        continue-on-error: false
+
+      # 🛡️ 2026-07-01: 잔액 컬럼 절대값 write(비원자 read-modify-write) 금지 — 동시 갱신 시 금액 유실/과대계상.
+      #   원자 증감(x=x±?) 또는 CAS(WHERE x=?)만. 미수금 상환 race 사고(머니 룰 #1).
+      - name: Balance absolute-write guard (strict)
+        run: node scripts/check-balance-absolute-write.mjs -s
+        continue-on-error: false
+
       # 🧭 2026-06-24: 도매(wholesale) 권한 어드민이 보는 화면의 /admin 링크가 그 역할 RBAC 로 도달
       #   불가하면 클릭 시 wholesale-overview 로 바운스(="안 넘어가요") — 슈퍼 어드민엔 안 보이는 역할-한정
       #   버그. 대표 신고("상품 승인 클릭해도 안 넘어감") 후 전체 도매 화면 정적 검사로 클래스 고정.

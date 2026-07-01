@@ -204,6 +204,13 @@ node scripts/check-groupbuy-status-classify.mjs || true
 echo "==> Pre-commit: pagination NaN 크래시 가드 (warn-only)..."
 node scripts/check-pagination-nan.mjs || true
 
+# 🛡️ 2026-07-01: 도매 공급가 모델 드리프트(폐기함수 직접호출) + 잔액 절대값 write 가드 (warn-only).
+#   공급가=resolveDistributorPrice SSOT / 잔액=원자증감·CAS. 차단은 verify.yml CI strict.
+echo "==> Pre-commit: 폐기 가격함수 가드 (warn-only)..."
+node scripts/check-deprecated-pricing.mjs || true
+echo "==> Pre-commit: 잔액 절대값 write 가드 (warn-only)..."
+node scripts/check-balance-absolute-write.mjs || true
+
 # 🛡️ 2026-06-20: 라이트 고정 로그인/가입 페이지 입력 글자 흰색 재발 방지 (warn-only).
 #   standalone 라이트 auth 페이지가 force-light-theme(또는 *-light-theme/레이아웃) 없이 input 렌더 시
 #   다크모드에서 글자 안 보임 사고. 차단은 verify.yml CI strict (STRICT_LIGHT_INPUT=1).
