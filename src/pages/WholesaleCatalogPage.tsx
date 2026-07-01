@@ -236,6 +236,47 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   // 비로그인 기본 랜딩(필터/검색/특수뷰 없음) — 시안 큐레이션(타일·베스트·특가 풀폭) 노출 + 필터 사이드바 숨김.
   const cleanHome = !collectionMode && !token && cat === 'all' && !committedSearch && !premiumView && !brandView && !inStock && !priceBand
 
+  // 🔍 2026-06-30 (검색/필터 UX — 더보기): 1페이지(catalogQ)는 SSR/잠금 그대로 두고, 2페이지+ 만 별도 fetch 로
+  //   누적(append). catalogQ/initialData/placeholderData/SSR 전부 미접촉(purely additive). 서버 has_more 로 판정.
+  const CATALOG_PAGE = 24
+  const [moreItems, setMoreItems] = useState<CatalogItem[]>([])
+  const [morePage, setMorePage] = useState(2)
+  const [moreHasMore, setMoreHasMore] = useState(true)
+  const [moreLoading, setMoreLoading] = useState(false)
+  useEffect(() => { setMoreItems([]); setMorePage(2); setMoreHasMore(true) }, [catalogKey]) // 필터/검색/등급 변경 시 누적 초기화
+  const loadMore = useCallback(async () => {
+    if (moreLoading || !moreHasMore) return
+    setMoreLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (committedSearch) params.set('search', committedSearch)
+      if (cat !== 'all') params.set('category', cat)
+      if (sort !== 'popular') params.set('sort', sort)
+      if (inStock) params.set('in_stock', '1')
+      if (band?.min != null) params.set('min_price', String(band.min))
+      if (band?.max != null) params.set('max_price', String(band.max))
+      if (premiumView) params.set('premium', '1')
+      if (selectedBrand) params.set('brand', selectedBrand)
+      params.set('page', String(morePage))
+      const tk = typeof window !== 'undefined' ? localStorage.getItem('seller_token') : null
+      const r = await api.get(`/api/wholesale/catalog?${params.toString()}`, { headers: tk ? { Authorization: `Bearer ${tk}` } : {} })
+      const newItems = (r.data?.success ? (r.data.items || []) : []) as CatalogItem[]
+      const srvMore = typeof r.data?.has_more === 'boolean' ? r.data.has_more : newItems.length >= CATALOG_PAGE
+      setMoreItems(prev => {
+        const seen = new Set([...prev.map(i => i.id), ...allItems.map(i => i.id)])
+        return [...prev, ...newItems.filter(i => !seen.has(i.id))]
+      })
+      setMorePage(p => p + 1)
+      setMoreHasMore(srvMore && newItems.length > 0)
+    } catch { /* 유지(버튼으로 재시도 가능) */ }
+    finally { setMoreLoading(false) }
+  }, [moreLoading, moreHasMore, morePage, committedSearch, cat, sort, inStock, band, premiumView, selectedBrand, allItems])
+  const displayItems = useMemo(() => {
+    if (!moreItems.length) return items
+    const seen = new Set(items.map(i => i.id))
+    return [...items, ...moreItems.filter(i => !seen.has(i.id))]
+  }, [items, moreItems])
+
   // 🏭 2026-06-08 SEO: 카탈로그 상품 ItemList JSON-LD — 이름·이미지·utongstart URL 만(공급가 절대 제외).
   //   기본(검색/필터 없는) 카탈로그에서만 노출 → 정규 도매 인덱스 시그널. 상위 24개로 제한.
   const catalogJsonLd = useMemo(() => {
@@ -711,9 +752,21 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
                   <p className="text-center py-20 text-[14px]" style={{ color: WT.ink4 }}>해당 조건의 도매 상품이 없어요.</p>
                 )
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-7">
-                  {items.map((p, idx) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} subbed={restockSubs.has(p.id)} onRestock={toggleRestock} restockBusy={restockBusyId === p.id} onPrefetch={prefetchProduct} wished={wishedIds.has(p.id)} onWish={toggleWish} aboveFold={idx < 4} priceLoading={catalogQ.isPlaceholderData} />)}
-                </div>
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-7">
+                    {displayItems.map((p, idx) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} subbed={restockSubs.has(p.id)} onRestock={toggleRestock} restockBusy={restockBusyId === p.id} onPrefetch={prefetchProduct} wished={wishedIds.has(p.id)} onWish={toggleWish} aboveFold={idx < 4} priceLoading={catalogQ.isPlaceholderData} />)}
+                  </div>
+                  {/* 🔍 2026-06-30 더보기 — page1 이 꽉 찼고(≥24) 아직 남았으면(has_more) 노출. 추가 페이지만 라이브 fetch. */}
+                  {moreHasMore && displayItems.length >= CATALOG_PAGE && (
+                    <div className="mt-7 text-center">
+                      <button onClick={loadMore} disabled={moreLoading}
+                        className="inline-flex items-center justify-center gap-1.5 px-6 h-12 rounded-2xl text-[14px] font-bold disabled:opacity-60"
+                        style={{ background: WT.fill2, color: WT.ink, border: '1px solid ' + WT.line }}>
+                        {moreLoading ? t('common.loading', { defaultValue: '불러오는 중...' }) : t('wholesale.loadMore', { defaultValue: '더 보기' })}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
