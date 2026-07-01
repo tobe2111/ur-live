@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 토스페이먼츠 결제 라이브 전수조사 (대표 "결제 전수조사 라이브로 접근")
+라이브 실접근 + 코드 전수감사. **결과: 결제 라이브 건강** — `/api/version`·`/api/payments/client-key` 200, **라이브 키 활성**(`live_gck_…`, flow=widget), CSP/frame-src tosspayments 정상. **가드 미보유 3영역(금액정확성·런타임크래시·외부PG 실응답) 심층 감사**:
+- **금액 정확성 — 전 플로우 CLEAN**: 6개 Toss 경로(딜충전·공구·주문·숙소·선물·도매 주문/예치금/환불) 전부 서버 재계산/DB값 strict equality 검증 + **서버 금액을 Toss 에 전달** + CAS 선점 후 side-effect. webhook 도 fail-closed 금액검증 + paid-order 취소거부 + graceful 시그니처 + 멱등. (prior 감사들 효과 확인.)
+- **🟠 수정: 가상계좌(무통장입금) 조기확정 방어** (대표 승인, 잠금파일 — CLAUDE.md Toss audit log 등재): `/confirm` 이 Toss 응답 `status` 무시하고 무조건 `DONE` flip → VA는 confirm 시 `WAITING_FOR_DEPOSIT`(입금 전)인데 주문확정·재고·딜·발급·KT교환권이 입금 전 실행되는 구조적 위험(콘솔 VA 활성 불명이나 코드가드 부재=향후 VA 켜면 조용히 깨짐). `/confirm` 에 WAITING 분기(→ AWAITING_PAYMENT, side-effect skip, releaseStays) + webhook `handleVirtualAccountDeposited` 에 `env` 배선(입금완료 시 KT 발송 대칭). 카드/간편결제(DONE) 경로 byte-불변.
+- **🟢 문서화(미수정)**: 선물 `gifts/:id/confirm` 은 status 체크-후-UPDATE 사이 CAS 없음 → Toss 멱등이라 이중청구/적립 0, 유일 영향은 알림톡 중복(LOW). 재발 시 status CAS 로 승격.
+- **⚠️ 검증 한계**: 이 원격환경 npm 조직정책 403 으로 `node_modules` 미설치 → 전체 `npm run build`·tsc 미실행. sql-bind/column(신규 UPDATE 컬럼 orders 존재 확인)/CHECK 가드 0. **잠금파일 회귀검증은 staging 배포 후 실결제 필수**(VA 결제 → 입금 전 AWAITING·입금 후 확정+KT 1회).
+
 ## ✅ 2026-07-01 — 도매몰 라이브 전수조사 + 카탈로그 500 크래시 근본수정 (대표 "라이브로 접근해서 전수조사")
 라이브(`live.ur-team.com/wholesale`) 실접근 전수조사. **결과: 인증/RBAC 게이트 전부 건강(500 없음, 401/404 정상)·엣지캐시 누수 없음·SQL 인젝션 방어 정상.** 발견/수정:
 - **🐛 라이브 500 크래시(수정)**: `GET /api/wholesale/catalog?page=abc&limit=xyz` → HTTP 500. 원인: `page = Math.max(1, parseInt(query||'1',10))` 에 `limit` 이 가진 `|| N` 폴백이 **없어** `parseInt('abc')=NaN → Math.max(1,NaN)=NaN → offset=(NaN-1)*limit=NaN → D1 .bind(NaN) 크래시`. `limit=-1/page=-5/limit=99999999` 는 이미 정상(200) — **비숫자 문자열만** 크래시(봇/스크래퍼/오염된 링크가 도매몰 메인 카탈로그를 500). **수정(도매 서비스 전 인스턴스에 기존 `limit||24` 패턴 미러링)**: `wholesale.routes.ts:787`(page), `supplier-dashboard.routes.ts`(page/limit ×3 핸들러), `distributor-admin/orders.ts`(page/limit), `supply.routes.ts`(page/limit). 전부 `parseInt(...) || N` + `Math.max(...,1)` 클램프. 로직 검증(page=abc→page1/offset0)·tsc 0(사전 config 경고 제외)·build 0·sql bind/column 가드 0.

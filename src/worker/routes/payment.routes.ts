@@ -290,6 +290,25 @@ paymentsRouter.post('/confirm', async (c) => {
       logError('toss.confirm.amount_mismatch', { orderId: orderNumber });
     }
 
+    // 🛡️ 2026-07-01 [UNLOCK] (대표 승인 — 결제 전수조사): 가상계좌(무통장입금) 조기확정 방어.
+    //   /confirm 은 Toss 응답 status 를 안 보고 무조건 DONE 으로 flip 했음 → 가상계좌는 confirm 시점에
+    //   status='WAITING_FOR_DEPOSIT'(입금 전)로 응답하는데 그대로 주문확정·재고차감·딜차감·디지털발급·
+    //   KT교환권 발송이 '입금 전에' 실행되는 구조적 위험. Toss 콘솔에서 가상계좌를 켜는 순간 조용히 깨짐.
+    //   수정: 입금대기 응답이면 확정하지 않고 AWAITING_PAYMENT 로만 표시 + 모든 side-effect skip →
+    //   실제 입금 시 DEPOSIT_CALLBACK webhook(handlePaymentConfirmed)이 완결. 미리 잡은 숙소 예약은
+    //   되돌림(미결제 방 홀드 방지 — 위 tossResult 실패 경로와 동일 releaseStays).
+    //   ⚠️ WAITING_FOR_DEPOSIT 한정 분기 — 카드/간편결제(DONE) 경로는 byte-불변.
+    if (String((tossData as { status?: string }).status || '').toUpperCase() === 'WAITING_FOR_DEPOSIT') {
+      await releaseStays();
+      await c.env.DB.prepare(
+        `UPDATE orders SET status = 'AWAITING_PAYMENT', payment_method = ?, toss_payment_key = ?, toss_order_id = ?, updated_at = datetime('now')
+         WHERE order_number = ? AND status NOT IN ('DONE','PAID','CANCELLED','REFUNDED','FAILED')`
+      ).bind(tossData.method ?? null, tossData.paymentKey ?? null, orderNumber, orderNumber).run().catch(() => null);
+      logInfo('toss.confirm.awaiting_deposit', { orderId: orderNumber, method: tossData.method });
+      const pendingOrders = await orderRepo.findByOrderNumber(orderNumber);
+      return c.json({ success: true, data: { orders: pendingOrders, payment: tossData }, status: 'AWAITING_PAYMENT' });
+    }
+
     // 🛡️ 2026-05-31 [UNLOCK] (사용자 승인): 동시 /confirm race 가드 (CAS).
     //   기존 read-then-write(alreadyDone SELECT) 는 두 동시요청이 모두 PENDING 을 읽고
     //   둘 다 reduceStock + agency/referral commission 적립 → 재고 2배 차감·커미션 중복.
