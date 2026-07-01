@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Search, PlusCircle, MapPin, CheckCircle2, AlertTriangle, Store } from 'lucide-react'
+import { Search, PlusCircle, MapPin, CheckCircle2, AlertTriangle, Store, Image as ImageIcon } from 'lucide-react'
 
 interface KakaoPlace {
   place_name: string
@@ -33,8 +33,27 @@ export default function ManualDealForm({ onCreated }: { onCreated: () => void })
   const [f, setF] = useState({ ...EMPTY })
   const [coord, setCoord] = useState<{ lat: number; lng: number } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [photos, setPhotos] = useState<{ link: string; thumbnail: string }[]>([])
+  const [photoBusy, setPhotoBusy] = useState(false)
 
   const set = (k: keyof typeof f, v: string) => setF((prev) => ({ ...prev, [k]: v }))
+
+  // 🖼️ 네이버 이미지 검색으로 매장 대표 사진 후보 가져오기 (카카오=정보·좌표, 네이버=사진).
+  const fetchPhotos = async () => {
+    const query = (f.restaurant_name || f.name || q).trim()
+    if (!query) { toast.info('먼저 매장명을 입력/검색하세요'); return }
+    setPhotoBusy(true); setPhotos([])
+    try {
+      const res = await api.get(`/api/naver/image/search?query=${encodeURIComponent(query)}&display=8`)
+      const items: { link?: string; thumbnail?: string }[] = res.data?.data?.items || []
+      const mapped = items.map((it) => ({ link: it.link || '', thumbnail: it.thumbnail || it.link || '' })).filter((x) => x.link)
+      setPhotos(mapped)
+      if (mapped.length === 0) toast.info('네이버 사진 결과가 없어요 (다른 매장명으로 시도)')
+    } catch (e: unknown) {
+      const status = (e as { response?: { status?: number } })?.response?.status
+      toast.error(status === 500 ? '네이버 키가 아직 설정 안 됐어요 (이미지 URL 직접 붙여넣기 가능)' : '네이버 사진 검색 실패')
+    } finally { setPhotoBusy(false) }
+  }
 
   const search = async () => {
     if (!q.trim()) return
@@ -71,7 +90,7 @@ export default function ManualDealForm({ onCreated }: { onCreated: () => void })
       const res = await api.post('/api/admin/dongnedeal/create', { ...f, lat: coord?.lat, lng: coord?.lng }, h)
       if (res.data?.success) {
         toast.success(res.data.hasCoord ? '동네딜 등록 완료 — 지도에도 바로 표시됩니다 ✅' : '동네딜 등록 완료 — 주소 지오코딩 후 지도에 표시돼요(자동)')
-        setF({ ...EMPTY, category: f.category }); setCoord(null); setQ(''); setPlaces([])
+        setF({ ...EMPTY, category: f.category }); setCoord(null); setQ(''); setPlaces([]); setPhotos([])
         onCreated()
       } else toast.error(res.data?.error || '등록 실패')
     } catch (e: unknown) {
@@ -160,8 +179,33 @@ export default function ManualDealForm({ onCreated }: { onCreated: () => void })
           <input value={f.restaurant_address} onChange={(e) => { set('restaurant_address', e.target.value); setCoord(null) }} placeholder="서울 강남구 봉은사로 …" className={input} />
         </div>
         <div className="sm:col-span-2">
-          <label className={lbl}>이미지 URL(선택)</label>
-          <input value={f.image_url} onChange={(e) => set('image_url', e.target.value)} placeholder="https://… (비우면 카테고리 기본)" className={input} />
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-xs font-semibold text-gray-500">대표 사진</label>
+            <button type="button" onClick={fetchPhotos} disabled={photoBusy} className="inline-flex items-center gap-1 text-[12px] font-bold text-gray-700 hover:text-gray-900 disabled:opacity-50">
+              <ImageIcon className="w-3.5 h-3.5" /> {photoBusy ? '검색 중…' : '네이버에서 사진 가져오기'}
+            </button>
+          </div>
+          <input value={f.image_url} onChange={(e) => set('image_url', e.target.value)} placeholder="https://… (네이버 검색으로 채우거나 직접 붙여넣기 · 비우면 카테고리 기본)" className={input} />
+          {photos.length > 0 && (
+            <div className="grid grid-cols-4 gap-2 mt-2">
+              {photos.map((p, i) => (
+                <button
+                  type="button" key={i}
+                  onClick={() => { set('image_url', p.link); setPhotos([]) }}
+                  className={`relative aspect-square rounded-lg overflow-hidden border-2 ${f.image_url === p.link ? 'border-gray-900' : 'border-gray-100'} hover:border-gray-400`}
+                >
+                  <img src={p.thumbnail} alt="" className="w-full h-full object-cover" loading="lazy"
+                    onError={(e) => { const b = (e.currentTarget.closest('button') as HTMLElement | null); if (b) b.style.display = 'none' }} />
+                </button>
+              ))}
+            </div>
+          )}
+          {f.image_url && (
+            <div className="mt-2 flex items-center gap-2">
+              <img src={f.image_url} alt="미리보기" className="w-16 h-16 rounded-lg object-cover border border-gray-200" onError={(e) => { e.currentTarget.style.opacity = '0.25' }} />
+              <span className="text-[11px] text-gray-400">선택된 대표 사진 미리보기 — 흐리게 보이면 안 열리는 이미지예요(다른 사진 선택)</span>
+            </div>
+          )}
         </div>
         <div className="sm:col-span-2">
           <label className={lbl}>설명(선택)</label>
