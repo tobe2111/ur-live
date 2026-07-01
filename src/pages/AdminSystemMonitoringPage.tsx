@@ -38,17 +38,53 @@ const SEVERITY_BADGE: Record<string, string> = {
   critical: 'bg-purple-100 text-purple-700 border-purple-200',
 }
 
+// 🔔 2026-07-01: 알림 채널별 설정 키(모두 있어야 해당 채널 발송 동작). /api/version 존재여부로 판정.
+const CHANNEL_ROWS: Array<{ label: string; keys: string[] }> = [
+  { label: '웹푸시', keys: ['VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY', 'VAPID_SUBJECT'] },
+  { label: '이메일', keys: ['RESEND_API_KEY'] },
+  { label: '알림톡', keys: ['ALIGO_API_KEY', 'ALIGO_USER_ID'] },
+  { label: '네이티브푸시', keys: ['FIREBASE_PROJECT_ID', 'FIREBASE_PRIVATE_KEY', 'FIREBASE_CLIENT_EMAIL'] },
+]
+
 export default function AdminSystemMonitoringPage() {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'cron' | 'alimtalk'>('cron')
   const [showResolved, setShowResolved] = useState(false)
   const [acting, setActing] = useState<number | null>(null)
+  const [channels, setChannels] = useState<Record<string, boolean> | null>(null)
+  const [testing, setTesting] = useState(false)
 
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) navigate('/admin/login', { replace: true })
   }, [navigate])
 
+  useEffect(() => {
+    let alive = true
+    api.get('/api/version').then(r => { if (alive && r.data?.secrets) setChannels(r.data.secrets) }).catch(() => {})
+    return () => { alive = false }
+  }, [])
+
   const auth = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
+
+  // 🔔 나에게 테스트 푸시 — 본인 구독에만 발송. 반환값으로 미도달 원인까지 안내.
+  const sendTestPush = async () => {
+    setTesting(true)
+    try {
+      const res = await api.post('/api/push/test', {}, auth)
+      const r = res.data?.result
+      if (r?.skipped) {
+        toast.error(
+          (r.subscription_count ?? 0) === 0
+            ? '이 관리자 계정에 등록된 푸시 구독이 없어요 — 먼저 브라우저에서 알림을 켜세요'
+            : '발송 skip — VAPID 미설정 또는 알림 꺼짐',
+        )
+      } else if ((r?.delivered ?? 0) > 0) {
+        toast.success(`테스트 푸시 발송됨 (${r.delivered}개 기기)`)
+      } else {
+        toast.error(`전달 0 — 구독 ${r?.subscription_count ?? 0} · 만료 ${r?.expired ?? 0}`)
+      }
+    } catch { toast.error('테스트 발송 실패') } finally { setTesting(false) }
+  }
 
   // 🛡️ 2026-06-03 Tier2(대시보드): 탭별 수동 페칭 → useApiQuery (cron / alimtalk, resolved key 반응형).
   const cronQ = useApiQuery<{ items: CronFailure[]; counts: Array<{ severity: string; cnt: number }> }>(
@@ -93,6 +129,35 @@ export default function AdminSystemMonitoringPage() {
           title="시스템 모니터링"
           subtitle="Cron job 실패 + 알림톡 발송 실패 자동 추적"
         />
+
+        {/* 🔔 알림 채널 상태 + 테스트 푸시 */}
+        {channels && (
+          <DashboardCard className="!p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-gray-700 mr-1">알림 채널 설정</span>
+              {CHANNEL_ROWS.map(({ label, keys }) => {
+                const ok = keys.every(k => channels[k])
+                return (
+                  <span key={label}
+                    className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
+                      ok ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'
+                    }`}>
+                    {ok ? '✓' : '✕'} {label}
+                  </span>
+                )
+              })}
+              <div className="flex-1" />
+              <button onClick={sendTestPush} disabled={testing}
+                className="px-3 py-2 bg-gray-900 text-white rounded-lg text-xs font-semibold flex items-center gap-1 disabled:opacity-50">
+                {testing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Activity className="w-3 h-3" />}
+                나에게 테스트 푸시
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-500 mt-2">
+              ✕ 채널은 Cloudflare에 키 미설정으로 조용히 발송되지 않습니다. 테스트 푸시는 이 브라우저에서 알림을 켠 뒤 눌러야 도달합니다.
+            </p>
+          </DashboardCard>
+        )}
 
         {/* 탭 */}
         <div className="flex gap-2">
