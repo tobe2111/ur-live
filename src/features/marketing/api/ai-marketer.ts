@@ -48,7 +48,8 @@ export async function aiMarketerAdvice(apiKey: string | undefined, context: AiMa
   }).catch(() => null)
   if (!res) return { ok: false, error: 'AI 호출 실패 (네트워크)' }
   const data = (await res.json().catch(() => null)) as { content?: Array<{ text?: string }>; error?: { message?: string } } | null
-  if (!res.ok) return { ok: false, error: data?.error?.message || `AI 오류 (HTTP ${res.status})` }
+  // 업스트림(Anthropic) 원본 에러 메시지를 클라에 그대로 전달하지 않음 — 상태코드 힌트만.
+  if (!res.ok) return { ok: false, error: `AI 분석에 실패했습니다 (HTTP ${res.status})` }
   const advice = (data?.content || []).map(b => b.text || '').join('').trim()
   if (!advice) return { ok: false, error: 'AI 응답이 비어 있습니다' }
   return { ok: true, advice }

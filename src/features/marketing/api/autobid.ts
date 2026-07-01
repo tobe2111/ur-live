@@ -179,13 +179,19 @@ export async function upsertRule(DB: D1Database, sellerId: number, rule: { keywo
   const provided = rule.schedule === undefined ? 0 : 1
   const scheduleJson = provided ? normalizeSchedule(rule.schedule) : null
   const tenant = rule.tenant ? String(rule.tenant).slice(0, 40) : null // 활성 고객사 격리 키(없으면 NULL=레거시)
-  await DB.prepare(`INSERT INTO ad_autobid_rules (seller_id, keyword_id, adgroup_id, keyword_text, target_rank, max_bid, device, enabled, schedule_json, tenant)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(seller_id, keyword_id) DO UPDATE SET adgroup_id=excluded.adgroup_id, keyword_text=excluded.keyword_text,
-      target_rank=excluded.target_rank, max_bid=excluded.max_bid, device=excluded.device, enabled=excluded.enabled,
-      schedule_json=CASE WHEN ?=1 THEN excluded.schedule_json ELSE ad_autobid_rules.schedule_json END,
-      tenant=COALESCE(excluded.tenant, ad_autobid_rules.tenant)`)
-    .bind(sellerId, kid, rule.adgroup_id || null, rule.keyword_text || null, rank, maxBid, device, enabled, scheduleJson, tenant, provided).run()
+  try {
+    await DB.prepare(`INSERT INTO ad_autobid_rules (seller_id, keyword_id, adgroup_id, keyword_text, target_rank, max_bid, device, enabled, schedule_json, tenant)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(seller_id, keyword_id) DO UPDATE SET adgroup_id=excluded.adgroup_id, keyword_text=excluded.keyword_text,
+        target_rank=excluded.target_rank, max_bid=excluded.max_bid, device=excluded.device, enabled=excluded.enabled,
+        schedule_json=CASE WHEN ?=1 THEN excluded.schedule_json ELSE ad_autobid_rules.schedule_json END,
+        tenant=COALESCE(excluded.tenant, ad_autobid_rules.tenant)`)
+      .bind(sellerId, kid, rule.adgroup_id || null, rule.keyword_text || null, rank, maxBid, device, enabled, scheduleJson, tenant, provided).run()
+  } catch {
+    // 🔒 D1 원본 에러 메시지(SqlError 등)를 클라에 노출 금지(레포 safeError 규칙). 단일/벌크 라우트 공통 근본차단
+    //   (단일 라우트의 미가드 throw→bare 500 도 함께 방지).
+    return { ok: false, error: '규칙 저장 중 오류가 발생했습니다' }
+  }
   return { ok: true }
 }
 
