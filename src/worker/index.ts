@@ -773,10 +773,10 @@ app.use('*', async (c, next) => {
           const cTitle = `${cName} 링크샵 - 유어딜`;
           const cDesc = String(cur.bio || '').slice(0, 200) || `${cName}님의 추천 — 교환권·이용권 모음`;
           const canon = `${origin2}/u/${cur.handle || ''}`;
-          const pi = cur.profile_image as string | null;
-          const cImg = pi
-            ? (pi.startsWith('r2://') ? `${origin2}/api/media/${pi.slice(5)}` : (pi.startsWith('/') ? `${origin2}${pi}` : pi))
-            : null;
+          // 🖼️ 2026-07-01 (전수조사 후속 A): og:image 는 전용 OG 카드(1200×630 SVG, 이름·핸들·프로필 합성)를
+          //   사용 — 정사각 raw 프로필보다 소셜(카톡/트위터/FB) 카드 비율에 맞음(블로그 `/blog/og/:slug` 와 동일 방식).
+          //   프로필 유무와 무관하게 카드가 렌더되므로 무조건 설정. `/api/og/curator/:handle` = og-image.routes.ts.
+          const ogCard = `${origin2}/api/og/curator/${encodeURIComponent(cur.handle || '')}`;
           rb = rb
             .on('title', { element(el) { el.setInnerContent(cTitle); } })
             .on('meta[name="description"]', { element(el) { el.setAttribute('content', cDesc); } })
@@ -784,14 +784,11 @@ app.use('*', async (c, next) => {
             .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', cDesc); } })
             .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', canon); } })
             .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', 'profile'); } })
+            .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', ogCard); } })
             .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', cTitle); } })
             .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', cDesc); } })
+            .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', ogCard); } })
             .on('head', { element(el) { el.append(`<link rel="canonical" href="${canon}">`, { html: true }); } });
-          if (cImg) {
-            rb = rb
-              .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', cImg); } })
-              .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', cImg); } });
-          }
         }
       } catch { /* 파싱 실패 시 기본 메타 유지 */ }
     }
@@ -1196,6 +1193,7 @@ app.use('/api/group-buy/products/*', publicCache(30), cacheControl(30));
 app.use('/api/group-buy/products/*/participants', publicCache(60), cacheControl(60));
 app.use('/api/group-buy/live-ticker', publicCache(30), cacheControl(30));
 app.use('/api/og/group-buy/*', publicCache(3600), cacheControl(3600)); // OG image 1h
+app.use('/api/og/curator/*', publicCache(3600), cacheControl(3600)); // 🖼️ 2026-07-01 링크샵 공유카드 — 공유마다 스크래퍼가 fetch → 1h 캐시(group-buy 와 동일)
 app.use('/api/currency/rates', publicCache(3600), cacheControl(3600)); // 환율 1h (전역 데이터)
 app.use('/api/banners', publicCache(300), cacheControl(300));    // 5 min (공개 배너)
 // 🛡️ 2026-04-22: 추가 공개 read-only 엔드포인트 캐싱 (성능 감사 결과)
