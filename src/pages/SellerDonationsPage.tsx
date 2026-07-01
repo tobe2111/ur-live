@@ -8,6 +8,7 @@ import { Heart, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, CreditCard } 
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { formatKSTDate } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader, DashboardStatCard } from '@/components/dashboard'
 
 interface DonationRow {
@@ -103,7 +104,7 @@ export default function SellerDonationsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F4F5F7] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-pink-500 animate-spin" />
+        <BrandLoader />
       </div>
     )
   }

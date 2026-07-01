@@ -5,6 +5,7 @@ import { Ticket, CheckCircle, Clock, XCircle, Loader2, Lock, ScanLine, Camera, X
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 // 🛡️ 2026-05-16: QR 스캐너 모달 — qr-scanner 라이브러리 사용 (~10KB gzipped).
 //   사용 흐름: 매장 점주가 [QR 스캔] 버튼 → 카메라 활성화 → QR 인식 → 코드 자동 입력 후 사용 처리.
@@ -184,10 +185,7 @@ export default function StoreStatsPage() {
     return (
       <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center px-5">
         <SEO title={t('storeStats.seoTitle')} description={t('storeStats.seoDesc')} url={`/store/stats/${productId ?? ''}`} noindex />
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 text-orange-500 animate-spin mx-auto mb-4" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">매장 인증 중...</p>
-        </div>
+        <BrandLoader label="매장 인증 중..." />
       </div>
     )
   }

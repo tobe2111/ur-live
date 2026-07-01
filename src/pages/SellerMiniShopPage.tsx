@@ -20,6 +20,7 @@ import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { compressForUpload } from '@/lib/image-compress'
 import SellerLayout from '@/components/SellerLayout'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { getSellerId } from '@/lib/seller-auth'
 import { DashboardPageHeader } from '@/components/dashboard'
 
@@ -153,7 +154,7 @@ export default function SellerMiniShopPage() {
   }
 
   if (loading) {
-    return <SellerLayout title="미니샵 설정"><div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-pink-500" /></div></SellerLayout>
+    return <SellerLayout title="미니샵 설정"><BrandLoader /></SellerLayout>
   }
 
   return (

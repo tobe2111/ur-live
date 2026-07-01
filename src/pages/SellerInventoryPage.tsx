@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
+import BrandLoader from '@/components/brand/BrandLoader'
 import SellerProductTabs from '@/components/seller/SellerProductTabs'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Package, AlertTriangle, Plus, Minus, BarChart3, QrCode, Search, ArrowUpDown, Camera, X, ArchiveRestore } from 'lucide-react'
@@ -223,9 +224,7 @@ export default function SellerInventoryPage() {
     return (
       <SellerLayout title={t('seller.inventory')}>
       <SellerProductTabs />
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <BrandLoader />
       </SellerLayout>
     )
   }

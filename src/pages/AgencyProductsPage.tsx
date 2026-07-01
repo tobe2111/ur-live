@@ -7,7 +7,8 @@ import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { Plus, Edit2, Package, Loader2, ArrowLeft } from 'lucide-react'
+import BrandLoader from '@/components/brand/BrandLoader'
+import { Plus, Edit2, Package, ArrowLeft } from 'lucide-react'
 
 export default function AgencyProductsPage() {
   const { t } = useTranslation()
@@ -100,7 +101,7 @@ export default function AgencyProductsPage() {
         )}
 
         {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>
+          <BrandLoader />
         ) : products.length === 0 ? (
           <div className="text-center py-12">
             <Package className="w-10 h-10 text-gray-300 mx-auto mb-3" />

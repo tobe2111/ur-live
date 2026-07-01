@@ -18,6 +18,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react'
 import SellerLayout from '@/components/SellerLayout'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader } from '@/components/dashboard'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types 를 ./seller-product-edit/types 로 추출.
@@ -193,7 +194,7 @@ export default function SellerProductEditPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+        <BrandLoader />
       </div>
     )
   }

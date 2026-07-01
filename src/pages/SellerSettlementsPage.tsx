@@ -7,6 +7,7 @@ import { toast } from '@/hooks/useToast'
 import { SellerPinPrompt } from '@/components/auth/SellerPinPrompt'
 import { Button } from '@/components/ui/button'
 import SellerLayout from '@/components/SellerLayout'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader, DashboardStatCard, DashboardCard } from '@/components/dashboard'
 import {
   DollarSign,
@@ -15,7 +16,6 @@ import {
   Clock,
   XCircle,
   TrendingUp,
-  Loader2,
   RefreshCw,
   FileText,
   BarChart3,
@@ -200,10 +200,7 @@ export default function SellerSettlementsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">{t('seller.settlementLoadingText')}</p>
-        </div>
+        <BrandLoader label={t('seller.settlementLoadingText')} />
       </div>
     )
   }

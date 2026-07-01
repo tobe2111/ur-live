@@ -6,7 +6,8 @@ import { toast } from '@/hooks/useToast'
 import { swallow } from '@/shared/utils/swallow'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { DollarSign, CheckCircle, Clock, Loader2 } from 'lucide-react'
+import BrandLoader from '@/components/brand/BrandLoader'
+import { DollarSign, CheckCircle, Clock } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
 export default function AgencySettlementsPage() {
@@ -72,7 +73,7 @@ export default function AgencySettlementsPage() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>
+          <BrandLoader />
         ) : (
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <table className="w-full text-sm">
