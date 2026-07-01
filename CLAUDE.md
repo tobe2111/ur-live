@@ -299,6 +299,12 @@ CLAUDE.md 는 매 작업마다 읽는 활성 규칙만 유지. 사고 후일담 
 - **트리거**: 관리자 수동 `POST /api/admin/blog/ai-draft`(AdminBlogPage "AI 홍보 초안" 버튼) + 주간 cron(`blog-ai-draft`, 월요일). cron 은 킬스위치 **`BLOG_AI_DRAFTS_ENABLED='true'`** 일 때만(기본 OFF — 토큰 낭비 0). `ANTHROPIC_API_KEY` 필요.
 - **캡**: 미검토 AI 초안 5개 이상이면 생성 중단(검토 유도). 초안은 `is_seed=0` 이라 재시드가 안 건드림.
 
+### 🔎 블로그 SEO (구글 + 네이버) — 지속 최적화 규칙
+- **비-JS 크롤러(네이버/카카오/소셜 스크래퍼) 대응**: `/blog`·`/blog/:slug` 는 `worker/index.ts` HTMLRewriter 가 **서버측에서 title/description/OG/twitter/canonical + `BlogPosting` JSON-LD** 를 주입(도매 surface 패턴과 동일). 상세는 `BLOGPOST` SSR 슬롯이 `/api/blog/public/:slug` 를 edge-read/self-fetch → 그 payload 로 메타 생성 + `__SSR_INITIAL_BLOGPOST__` 0-RTT. (Googlebot 은 JS 렌더로 `<SEO>`(react-helmet)도 봄.)
+- **발견성**: `/blog` 는 `SiteFooter`(프리렌더된 홈에 포함 → 네이버도 발견) + `sitemap.xml`(`is_published=1` 글 포함)에 노출. 상세엔 "함께 보면 좋은 글"(같은 태그) 내부 링크.
+- **새 글 작성 시 SEO 필수**: 모든 시드/발행 글은 **`summary`(메타 description, ~50~160자)**, **`tags`(≥1)**, **고유 `slug`(영문 kebab)** 를 갖출 것 — 서버 메타/OG/related 가 이 값들을 사용. 제목은 핵심 키워드를 앞쪽에.
+- ❌ 블로그 라우트(`/blog*`)를 `robots.txt` 에서 Disallow 하지 말 것(현재 Allow). 새 소비자 글 URL 은 sitemap 이 자동 포함.
+
 ## 📖 운영 가이드 3종 자동 업데이트
 
 DB(`operation_guides` 테이블) 에 저장된 3개 가이드:
