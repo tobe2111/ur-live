@@ -946,6 +946,33 @@ const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest:
   { name: '제주 한라봉 5kg 산지직송', cat: 'general', price: 21900, orig: 35000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal10/600/600', q: '한라봉', spots: 5, seed: 27 },
 ];
 
+// 🎯 2026-07-01 (대표 "데모 이용권도 매장 지도 매칭 제대로"): 데모 매장은 가공 이름 + 번지 없는 주소라
+//   좌표/place_url 이 없음 → 카카오 키워드 검색으로 실제 매장의 좌표·주소·place_url 을 붙여 지도 매칭 정상화.
+//   best-effort: 키 없거나 결과 없으면 null → 시딩은 그대로 진행(기존 폴백).
+async function kakaoPlaceLookup(
+  env: { KAKAO_REST_API_KEY?: string },
+  query: string,
+): Promise<{ name: string | null; address: string | null; lat: number | null; lng: number | null; placeUrl: string | null } | null> {
+  const key = env.KAKAO_REST_API_KEY;
+  if (!key || !query.trim()) return null;
+  try {
+    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query.trim())}&size=1`;
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
+    if (!res.ok) return null;
+    const data = await res.json() as { documents?: Array<{ place_name?: string; road_address_name?: string; address_name?: string; x?: string; y?: string; id?: string; place_url?: string }> };
+    const doc = data?.documents?.[0];
+    if (!doc) return null;
+    const lat = Number(doc.y), lng = Number(doc.x);
+    return {
+      name: doc.place_name || null,
+      address: doc.road_address_name || doc.address_name || null,
+      lat: Number.isFinite(lat) ? lat : null,
+      lng: Number.isFinite(lng) ? lng : null,
+      placeUrl: doc.id ? `https://place.map.kakao.com/${doc.id}` : (doc.place_url && /^https?:\/\/place\.map\.kakao\.com\/\d+/.test(doc.place_url) ? doc.place_url : null),
+    };
+  } catch { return null; }
+}
+
 // GET /dongnedeal/stats — 동네딜 상품 현황(전체/노출/데모/카테고리별)
 adminProductsRoutes.get('/dongnedeal/stats', cors(), async (c) => {
   try {
@@ -979,6 +1006,11 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     const resolvedImgs = await Promise.all(
       DEAL_DEMO.map((d) => fetchNaverImageUrl(c.env, d.q).catch(() => null))
     );
+    // 🎯 2026-07-01 (대표 "데모 이용권도 매장 지도 매칭 제대로"): 매장 있는 데모는 카카오 검색으로
+    //   실제 매장 좌표·주소·place_url 확보(query=업종+지역). 실패/키없음 → null(기존 폴백).
+    const resolvedPlaces = await Promise.all(
+      DEAL_DEMO.map((d) => (d.rest || d.addr) ? kakaoPlaceLookup(c.env, `${d.q} ${d.addr}`).catch(() => null) : Promise.resolve(null))
+    );
     // 🎯 2026-07-01 (대표 요청): 데모 딜을 추첨 응모(fcfs)로 — 정원 대비 지원수가 이미 넘치게(30/5, 10/3 …).
     //   삽입 후 last_row_id 로 product_supply_meta 에 fcfs 설정 기록 → 기존 fcfs UI 가 "선착순 {seed}/{spots}명" 표시.
     const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
@@ -989,11 +1021,15 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       const d = DEAL_DEMO[i];
       const img = resolvedImgs[i] || d.img;
       if (resolvedImgs[i]) realPhotos++;
+      // 🎯 실제 매장 매칭 성공 시 그 매장의 이름/주소/좌표 사용(지도 정확). 실패 시 데모값(좌표 없음 → 클라 지오코딩).
+      const place = resolvedPlaces[i];
+      const restName = place?.name || d.rest || null;
+      const restAddr = place?.address || d.addr || null;
       const res = await DB.prepare(
         `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-           is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, slug, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, datetime('now'), datetime('now'))`
-      ).bind(d.name, `데모 동네딜 — ${d.name}`, d.price, d.orig, img, d.cat, d.rest || null, d.addr || null, DEAL_DEMO_SLUG + (i + 1)).run();
+           is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      ).bind(d.name, `데모 동네딜 — ${d.name}`, d.price, d.orig, img, d.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, DEAL_DEMO_SLUG + (i + 1)).run();
       seeded++;
       // 추첨 응모 설정(정원 초과 지원 시드). 실패해도 상품 시딩엔 영향 없음(best-effort).
       const pid = Number((res as { meta?: { last_row_id?: number } })?.meta?.last_row_id ?? 0);
@@ -1004,6 +1040,10 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
           fcfs_applied_seed: d.seed,
           fcfs_deadline: fcfsDeadline,
         }).catch(() => {});
+      }
+      // 🎯 카카오 장소 페이지 URL(매장 지도 직접 연결) — 매칭 성공 시만.
+      if (pid > 0 && place?.placeUrl) {
+        await setSupplyMeta(DB, pid, { kakao_place_url: place.placeUrl }).catch(() => {});
       }
     }
     await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded, realPhotos } }).catch(() => {});
