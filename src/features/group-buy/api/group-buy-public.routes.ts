@@ -17,6 +17,7 @@ import type { Hono } from 'hono'
 import { requireAuth, getCurrentUser, requireAdmin } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
+import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 import { safeError } from '@/worker/utils/safe-error'
 import { productDetailCols, productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns'
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
@@ -443,8 +444,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const mppRaw = metaMap?.get(Number(id))?.max_per_person
     const max_per_person = mppRaw != null && Number.isFinite(Number(mppRaw)) && Number(mppRaw) > 0 ? Math.floor(Number(mppRaw)) : null
     // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 등록 시 캡처한 place_url (있으면 상세 지도가 직접 연결).
-    const kpuRaw = metaMap?.get(Number(id))?.kakao_place_url
-    const kakao_place_url = typeof kpuRaw === 'string' && /^https?:\/\/place\.map\.kakao\.com\/\d+/.test(kpuRaw) ? kpuRaw : null
+    const kakao_place_url = normalizeKakaoPlaceUrl(metaMap?.get(Number(id))?.kakao_place_url)
 
     return c.json({
       success: true,

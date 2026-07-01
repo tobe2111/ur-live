@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 카카오맵 링크 kko.to 허용 + 수동 입력칸 (대표 예시 "김밥천국 kko.to/…")
+카카오맵 매장 연결의 두 갭 해소:
+- **kko.to 단축링크 허용**: 검증이 `place.map.kakao.com/{id}` 만 통과 → 카카오맵 '공유' 버튼 링크(`kko.to/…`)·`map.kakao.com/…` 거부됐음. 신규 SSOT `src/shared/kakao-place-url.ts`(`isValidKakaoPlaceUrl`/`normalizeKakaoPlaceUrl`) — place.map / map.kakao / kko.to 허용(URL 주입 방지). 전 경로(RestaurantMiniMap·group-buy 상세·admin create/patch/list·seller create/PUT/GET·demo lookup) 인라인 정규식 → 헬퍼로 통일.
+- **수동 링크 입력칸**: `ManualDealForm`(어드민)에 "카카오맵 링크" 입력 추가 — 매장 검색 자동입력 + **안 맞으면 카카오맵 '공유' 링크 붙여넣기**(기존 상품 예: 김밥천국에 `kko.to/…` 직접 연결). patch 는 빈값=해제 허용.
+- **김밥천국 등 기존 상품**: `/admin/dongnedeal-import` 에서 해당 딜 수정 → 카카오맵 링크칸에 공유링크 붙여넣기 → 저장 → 상세 지도 '카카오맵' 이 그 매장 페이지 직접 연결.
+- 검증: tsc 0 · narrow regex 잔존 0 · sql 0 · dashboard-theme(내 파일) 0 · build 0.
+
 ## ✅ 2026-07-01 — 데모 이용권 매장 지도 매칭 + VouchersPage SSR seed 동기소비(즉시표시) (대표 "이어서 해 + 데모도 매칭 제대로")
 - **데모 매장 지도 매칭(대표 "데모 이용권도 매장 지도 매칭 제대로")**: `seed-demo` 데모는 가공 매장명 + 번지 없는 주소라 좌표/place_url 이 없어 지도 매칭 X. → seed 시 신규 헬퍼 `kakaoPlaceLookup`(카카오 키워드검색 `업종+지역`)으로 **실제 매장의 이름·주소·좌표·place_url 확보**해 INSERT(restaurant_lat/lng 추가) + `product_supply_meta.kakao_place_url` 저장. best-effort(키없음/무결과 → 기존 폴백). ⚠️ **기존 데모는 삭제 후 재생성**해야 적용(seed 멱등 — 존재 시 skip).
 - **VouchersPage SSR seed 동기소비(대표 "페이지가 빨리 뜨면 되는거")**: 기존엔 `loading=true` 로 시작 후 effect 에서 SSR seed 소비 → 로더 한 프레임. → 신규 `readVouchersSsrSeed`(effect 의 ssrMatch 와 동일 조건)로 **첫 렌더에 동기 소비** → `products`/`loading`/`hasMore` 초기값에 반영 → 청크 로드 후 **로더 프레임 0, 콘텐츠 즉시**. effect 는 seed-miss 첫 fetch + 필터/정렬 변경 fresh fetch 만 담당(마운트 재fetch 스킵). GroupBuyDetailPage 의 승인된 seed 패턴과 동일 + 잠금 "즉시 사용" 취지 부합. default sort price_low·필터변경 서버정렬 불변.

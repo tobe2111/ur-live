@@ -25,6 +25,7 @@ import { VOUCHER_CATEGORY_SET } from '@/shared/constants/voucher-categories';
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { ensureSupplyVisibilitySchema } from '../../supply/api/supply-visibility';
 import { intParam } from '@/shared/pagination'
+import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -583,8 +584,7 @@ sellerOrdersRoutes.get('/products/:id', async (c) => {
     try {
       const { getSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
       const mm = await getSupplyMeta(db, [Number(productId)]).catch(() => null);
-      const kpu = mm?.get(Number(productId))?.kakao_place_url;
-      if (typeof kpu === 'string' && /^https?:\/\/place\.map\.kakao\.com\/\d+/.test(kpu)) kakao_place_url = kpu;
+      kakao_place_url = normalizeKakaoPlaceUrl(mm?.get(Number(productId))?.kakao_place_url);
     } catch { /* fail-soft */ }
 
     return c.json({ success: true, data: { ...product, options, max_per_person, kakao_place_url } });
@@ -825,8 +825,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
     }
     // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 장소 선택 시 캡처한 place_url 저장.
     {
-      const kpu = String((body as { kakao_place_url?: string }).kakao_place_url || '').trim();
-      if (/^https?:\/\/place\.map\.kakao\.com\/\d+/.test(kpu)) {
+      const kpu = normalizeKakaoPlaceUrl((body as { kakao_place_url?: string }).kakao_place_url);
+      if (kpu) {
         try {
           const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
           await setSupplyMeta(db, Number(productId), { kakao_place_url: kpu });
@@ -1039,11 +1039,12 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
     }
     // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): place_url 수정.
     if (body.kakao_place_url !== undefined) {
-      const kpu = String(body.kakao_place_url || '').trim();
-      if (/^https?:\/\/place\.map\.kakao\.com\/\d+/.test(kpu)) {
+      const raw = String(body.kakao_place_url || '').trim();
+      const kpu = raw === '' ? '' : normalizeKakaoPlaceUrl(raw);  // 빈값=해제, 유효=저장
+      if (raw === '' || kpu) {
         try {
           const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
-          await setSupplyMeta(db, Number(productId), { kakao_place_url: kpu });
+          await setSupplyMeta(db, Number(productId), { kakao_place_url: kpu || '' });
         } catch { /* fail-soft */ }
       }
     }
