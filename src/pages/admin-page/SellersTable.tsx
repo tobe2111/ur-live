@@ -67,7 +67,13 @@ export default function SellersTable({
                   )}
                 </td>
                 <td className="px-4 py-3 text-xs text-gray-900">{seller.email}</td>
-                <td className="px-4 py-3 text-xs text-gray-900">{seller.business_name || seller.company_name || '-'}</td>
+                <td className="px-4 py-3 text-xs text-gray-900">
+                  {seller.business_name || seller.company_name || '-'}
+                  {/* 🧱 2026-06-30 (서비스 분리): 도매 판매사 구분 배지 */}
+                  {Number(seller.is_distributor) === 1 && (
+                    <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200" title="도매(유통스타트) 판매사">🏭 도매</span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <button onClick={() => onUpdateCommission(seller.id, seller.commission_rate ?? 10)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">
                     {seller.commission_rate != null ? `${seller.commission_rate.toFixed(2)}%` : '-'}
