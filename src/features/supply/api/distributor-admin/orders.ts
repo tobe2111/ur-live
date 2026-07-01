@@ -149,9 +149,9 @@ export function registerOrdersRoutes(app: Hono<{ Bindings: Env }>) {
           cancelAmount: remaining, idempotencyKey: `whs-admin-refund-${id}`,
         })
         if (!res.ok) {
-          // 롤백.
-          await c.env.DB.prepare("UPDATE wholesale_orders SET status='PAID', refunded_amount=? WHERE id=? AND status='REFUNDED'")
-            .bind(order.refunded_amount || 0, id).run().catch(swallow('admin:refund-rollback'))
+          // 롤백 — Toss 취소 실패 시 원래 상태로 복원(하드코딩 'PAID' 는 SHIPPED/ACCEPTED/DONE 을 강등시켜 상태머신 꼬임).
+          await c.env.DB.prepare("UPDATE wholesale_orders SET status=?, refunded_amount=? WHERE id=? AND status='REFUNDED'")
+            .bind(order.status, order.refunded_amount || 0, id).run().catch(swallow('admin:refund-rollback'))
           return c.json({ success: false, error: res.message || '환불 처리에 실패했습니다', code: res.code }, 402)
         }
       }

@@ -22,6 +22,7 @@ import {
   type GradeMargin, type DistributorGrade, type QtyTier,
 } from '@/lib/distributor-pricing'
 import { confirmTossPayment, cancelTossPayment } from '@/worker/utils/toss-gateway'
+import { intParam } from '@/shared/pagination'
 import { swallow } from '@/worker/utils/swallow'
 import { getSupplyMeta, ensureSupplyMetaTable } from '@/worker/utils/product-supply-meta'
 import { setWholesaleSignupMeta, getWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta'
@@ -2103,7 +2104,6 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
 
 // ── OEM/ODM 신청 (유통회원) — 스펙: 유통스타트가 제조사 찾기·연결·생산 지원 ──────────
 import { ensureOemSchema } from './oem-requests'
-import { intParam } from '@/shared/pagination'
 
 // POST /oem-requests — OEM/ODM 신청
 app.post('/oem-requests', rateLimit({ action: 'wholesale-oem', max: 20, windowSec: 3600 }), async (c) => {
