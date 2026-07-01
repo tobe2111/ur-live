@@ -93,8 +93,10 @@ export async function deleteUserAccount(
     const userIdStr = String(userId);
 
     // Privacy: anonymize reviews
+    // 🛡️ 2026-07-01: 실제 테이블은 product_reviews (존재하지 않는 'reviews' 참조로 탈퇴 시 익명화가 조용히 실패했음).
+    //   user_id 는 INTEGER NOT NULL FK 라 'deleted' 문자열 대입 불가 → PII 인 이름만 익명화.
     await db
-      .prepare("UPDATE reviews SET user_id = 'deleted', user_name = '탈퇴회원' WHERE user_id = ?")
+      .prepare("UPDATE product_reviews SET user_name = '탈퇴회원' WHERE user_id = ?")
       .bind(userIdStr)
       .run()
       .catch(swallow("cleanup"));
