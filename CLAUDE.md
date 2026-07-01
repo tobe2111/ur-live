@@ -297,6 +297,7 @@ CLAUDE.md 는 매 작업마다 읽는 활성 규칙만 유지. 사고 후일담 
 - **🚫 운영 정보 차단**: brief 에 수수료율·정산·원천징수·커미션·매출·관리자·도매(B2B) 를 **아예 넣지 않고**, 출력에 그런 용어(+폐기어·도매몰 명칭)가 나타나면 **초안 폐기**(1회 재시도 후 실패). 소비자 홍보 콘텐츠만 통과.
 - **트리거**: 관리자 수동 `POST /api/admin/blog/ai-draft`(AdminBlogPage "AI 홍보 초안" 버튼) + 주간 cron(`blog-ai-draft`, 월요일). cron 은 킬스위치 **`BLOG_AI_DRAFTS_ENABLED='true'`** 일 때만(기본 OFF — 토큰 낭비 0). `ANTHROPIC_API_KEY` 필요.
 - **캡**: 미검토 AI 초안 5개 이상이면 생성 중단(검토 유도). 초안은 `is_seed=0` 이라 재시드가 안 건드림.
+- 🔁 **되먹임 루프(닫힌 루프)**: 발행 글 조회수(`blog_posts.view_count`, 공개 `POST /api/blog/public/:slug/view` — 세션당 1회)를 태그별 평균으로 집계해, `pickPromoTopic()` 이 **성과 좋은 태그를 가진 미작성 주제를 우선** 생성. 성과 데이터 없으면 백로그 순 폴백. 관리자 목록에 조회수 노출. → AI 생성이 성과 기반 자기최적화.
 
 ### 🔎 블로그 SEO (구글 + 네이버) — 지속 최적화 규칙
 - **비-JS 크롤러(네이버/카카오/소셜 스크래퍼) 대응**: `/blog`·`/blog/:slug` 는 `worker/index.ts` HTMLRewriter 가 **서버측에서 title/description/OG/twitter/canonical + `BlogPosting` JSON-LD** 를 주입(도매 surface 패턴과 동일). 상세는 `BLOGPOST` SSR 슬롯이 `/api/blog/public/:slug` 를 edge-read/self-fetch → 그 payload 로 메타 생성 + `__SSR_INITIAL_BLOGPOST__` 0-RTT. (Googlebot 은 JS 렌더로 `<SEO>`(react-helmet)도 봄.)
