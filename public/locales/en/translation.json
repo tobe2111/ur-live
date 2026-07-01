@@ -1884,7 +1884,8 @@
       "addVoucher": "Add voucher",
       "addVoucherDesc": "Local store voucher — location & details",
       "previewBanner": "Visitor preview — this is what others see",
-      "backToEdit": "Back to editing"
+      "backToEdit": "Back to editing",
+      "verifiedBusiness": "Verified business"
     },
     "storeIntro": "Store Introduction",
     "shippingInfo": "Shipping Info",
