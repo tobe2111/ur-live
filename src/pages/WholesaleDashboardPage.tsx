@@ -11,7 +11,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ShoppingBag, ClipboardList, Receipt, FileText, Factory, Wallet,
   TrendingUp, Box, ChevronRight, LogOut, ShoppingCart, Sparkles, Store,
-  LayoutDashboard, Users, MessageCircle,
+  LayoutDashboard, Users, MessageCircle, Truck,
 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { WT, won, comma, GRADE_LABEL, wholesaleOrderStatusBadge } from './wholesale/wholesale-theme'
@@ -225,6 +225,23 @@ export default function WholesaleDashboardPage() {
             </div>
           ))}
         </section>
+
+        {/* 🚚 2026-06-30: 수령 확인 대기 nudge — 발송완료(SHIPPED/부분환불) 주문 = 구매확정 전. 카탈로그 홈 배너와
+            동일 액션(정산 마무리·클레임 종료). 이미 로드된 orders 로 계산(추가 fetch 0). */}
+        {(() => {
+          const pendingReceipt = orders.filter((o) => ['SHIPPED', 'PARTIAL_REFUNDED'].includes(o.status)).length
+          if (pendingReceipt === 0) return null
+          return (
+            <button onClick={() => goTab('orders')} className="w-full rounded-2xl p-4 flex items-center gap-3 text-left" style={{ background: WT.brandSoft, border: `1px solid ${WT.brand}33` }}>
+              <Truck className="w-5 h-5 shrink-0" style={{ color: WT.brand }} />
+              <div className="min-w-0 flex-1">
+                <div className="text-[14px] font-bold" style={{ color: WT.ink }}>수령 확인 대기 {comma(pendingReceipt)}건</div>
+                <div className="text-[12px] mt-0.5" style={{ color: WT.ink2 }}>구매확정하면 정산이 마무리되고 클레임 기간이 종료돼요</div>
+              </div>
+              <ChevronRight className="w-5 h-5 shrink-0" style={{ color: WT.brand }} />
+            </button>
+          )
+        })()}
 
         {/* 🏅 프로 멤버십(연 구독) — 예치금 차감. 일반→구독 CTA / 프로→만료·연장 / 프리미엄→안내 */}
         <PlusMembershipCard />

@@ -37,6 +37,11 @@ const MOBILE_ONLY_PREFIXES = [
 const HIDE_SIDEBAR_PREFIXES = [
   '/seller', '/admin', '/agency', '/supplier', '/wholesale', '/embed', '/checkout/return', '/introduce',
   '/ads', // 🆕 유어애즈(UR Ads) — 도매몰처럼 PC 풀너비(액자/사이드바/거터 제외)
+  // 📝 2026-07-01 [UNLOCK_LOADING] (대표 요청 — "블로그는 PC 전체 폭을 써야 함, 액자에 갇힘"):
+  //   블로그(/blog·/blog/:slug)를 430 액자에서 제외 → PC 풀너비. App.tsx 가 이미 /blog 를
+  //   fullScreen 으로 처리(상/하단 네비·사이드배너 숨김)라, 프레임만 풀면 깔끔한 풀폭 읽기 화면.
+  //   콘텐츠는 각 페이지의 max-w-6xl/4xl 로 중앙 정렬(가독성 유지). 모바일(<lg) 영향 0.
+  '/blog',
 ]
 
 // 🎨 2026-06-18 (사용자 시안): 링크샵 진입 시 PC 좌측 카테고리 사이드바 숨김 → 깔끔한 액자.

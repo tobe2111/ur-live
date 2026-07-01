@@ -33,6 +33,7 @@ interface BlogPost {
   is_seed?: number          // 1 = 코드 시드가 관리하는 글
   manually_edited?: number  // 1 = 관리자가 직접 수정/작성 → 재시드해도 보존
   ai_generated?: number     // 1 = AI가 생성한 홍보 초안(검토 후 발행)
+  view_count?: number       // 조회수(되먹임 신호)
 }
 
 type View = 'list' | 'edit'
@@ -265,6 +266,7 @@ export default function AdminBlogPage() {
                     {post.author} · {post.published_at
                       ? new Date(post.published_at).toLocaleDateString('ko-KR')
                       : new Date(post.created_at).toLocaleDateString('ko-KR')}
+                    {' · '}👁 {(post.view_count ?? 0).toLocaleString()}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

@@ -61,7 +61,7 @@ export default function BlogListPage() {
 
       {/* Header */}
       <div className="bg-white dark:bg-[#0A0A0A] border-b border-gray-200 dark:border-[#1A1A1A]">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/')} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A]">
               <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
@@ -77,7 +77,7 @@ export default function BlogListPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-6 py-8">
         {/* 태그 필터 */}
         <div className="flex gap-2 overflow-x-auto no-scrollbar mb-8">
           <button onClick={() => setSelectedTag('')}
@@ -100,7 +100,7 @@ export default function BlogListPage() {
         ) : posts.length === 0 ? (
           <div className="text-center py-16 text-gray-500 dark:text-gray-400">아직 작성된 글이 없습니다</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {posts.map(post => {
               const tags: string[] = (() => { try { return JSON.parse(post.tags) } catch { return [] } })()
               return (

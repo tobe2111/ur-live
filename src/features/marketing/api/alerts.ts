@@ -126,6 +126,29 @@ export async function computeAlerts(env: Env, accountId: number, settings: Alert
   return items
 }
 
+/** 카카오 알림톡 발송(설정 시에만) — 이메일과 병행. 승인 템플릿(ADS_ALERT_ALIMTALK_TPL) 필요.
+ *   미설정(키/발신키/템플릿/전화번호 중 하나라도 없음)이면 no-op → 이메일 전용(회귀 0). best-effort. */
+async function sendAlertAlimtalk(env: Env, phone: string | null, items: AlertItem[]): Promise<void> {
+  const senderKey = env.ALIGO_SENDER_KEY || env.ALIMTALK_SENDER_KEY
+  const tpl = env.ADS_ALERT_ALIMTALK_TPL
+  if (!phone || !env.ALIGO_API_KEY || !env.ALIGO_USER_ID || !senderKey || !tpl) return
+  const to = phone.replace(/[^0-9]/g, '')
+  if (to.length < 9) return
+  const head = items[0]
+  const message = `[유어애즈] 광고 알림 ${items.length}건\n\n${head.title}\n${head.detail}${items.length > 1 ? `\n외 ${items.length - 1}건` : ''}\n\n대시보드에서 확인하세요.`
+  try {
+    const mod = await import('../../../lib/aligo').catch(() => null)
+    if (!mod?.sendAlimtalk) return
+    await mod.sendAlimtalk(
+      { ALIGO_API_KEY: env.ALIGO_API_KEY, ALIGO_USER_ID: env.ALIGO_USER_ID },
+      {
+        senderKey, templateCode: tpl, to, message,
+        buttons: [{ type: 'WL', name: '대시보드 열기', url_mobile: 'https://live.ur-team.com/ads/dashboard', url_pc: 'https://live.ur-team.com/ads/dashboard' }],
+      },
+    )
+  } catch { /* 발송 실패는 이메일로 이미 도달(멱등 기록됨) — graceful */ }
+}
+
 async function sendAlertEmail(env: Env, to: string, items: AlertItem[]): Promise<void> {
   const lines = items.map(i => `• ${i.title}\n  ${i.detail}`).join('\n\n')
   await fetch('https://api.resend.com/emails', {
@@ -154,10 +177,12 @@ export async function runAlertsAll(env: Env, nowMs?: number): Promise<{ accounts
     const ins = await env.DB.prepare('INSERT OR IGNORE INTO ad_alert_sent (account_id, dedup_key, sent_date) VALUES (?, ?, ?)')
       .bind(s.account_id, 'daily', today).run().catch(() => null)
     if (!ins || ins.meta?.changes === 0) continue
-    if (env.RESEND_API_KEY && env.RESEND_FROM) {
-      const acc = await getAdsAccount(env.DB, s.account_id).catch(() => null)
-      if (acc?.email) await sendAlertEmail(env, acc.email, items).catch(() => { /* 발송 실패는 다음날 재시도 — 이미 멱등 기록됨이라 같은날 재발송 안 함(허용) */ })
+    const acc = await getAdsAccount(env.DB, s.account_id).catch(() => null)
+    if (acc?.email && env.RESEND_API_KEY && env.RESEND_FROM) {
+      await sendAlertEmail(env, acc.email, items).catch(() => { /* 발송 실패는 다음날 재시도 — 이미 멱등 기록됨이라 같은날 재발송 안 함(허용) */ })
     }
+    // 카카오 알림톡 병행(설정 시에만 — 미설정이면 no-op). 같은 dedup winner 안이라 1일 1회.
+    await sendAlertAlimtalk(env, acc?.phone ?? null, items).catch(() => { /* graceful */ })
     sent++
   }
   return { accounts: rows.length, sent }
