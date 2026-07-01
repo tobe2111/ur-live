@@ -537,7 +537,8 @@ marketingRoutes.get('/metrics/history', rateLimit({ action: 'ads-metrics-hist', 
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const days = Math.min(120, Math.max(7, Number(c.req.query('days')) || 30))
-  const series = await getMetricsHistory(c.env.DB, sellerId, days)
+  const tenant = await getActiveTenantId(c.env.DB, sellerId).catch(() => null)
+  const series = await getMetricsHistory(c.env.DB, sellerId, days, tenant)
   return c.json({ success: true, series, wow: computeWoW(series) })
 })
 
@@ -547,7 +548,8 @@ marketingRoutes.post('/metrics/snapshot', rateLimit({ action: 'ads-metrics-snap'
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const r = await snapshotAccountRecent(c.env, sellerId).catch(() => ({ ok: false as const, reason: 'error' }))
   if (!r.ok) return c.json({ success: false, error: r.reason === 'no_creds' ? '검색광고 계정을 먼저 연결해주세요' : '적재 실패', code: r.reason === 'no_creds' ? 'NOT_CONNECTED' : undefined }, r.reason === 'no_creds' ? 400 : 502)
-  const series = await getMetricsHistory(c.env.DB, sellerId, 30)
+  const tenant = await getActiveTenantId(c.env.DB, sellerId).catch(() => null)
+  const series = await getMetricsHistory(c.env.DB, sellerId, 30, tenant)
   return c.json({ success: true, series, wow: computeWoW(series) })
 })
 
@@ -596,8 +598,9 @@ marketingRoutes.post('/ai-marketer', rateLimit({ action: 'ads-ai', max: 10, wind
         topCampaigns: st.data.campaigns.slice(0, 5).map(cp => ({ name: cp.name, salesAmt: cp.salesAmt, clkCnt: cp.clkCnt, ccnt: cp.ccnt })),
       }
     }
-    // 전주 대비 추세(적재된 시계열 있을 때만) — AI 진단에 시간축 반영.
-    const trend = trendContextFrom(await getMetricsHistory(c.env.DB, sellerId, 14).catch(() => []))
+    // 전주 대비 추세(적재된 시계열 있을 때만) — AI 진단에 시간축 반영(활성 고객사 기준).
+    const trendTenant = await getActiveTenantId(c.env.DB, sellerId).catch(() => null)
+    const trend = trendContextFrom(await getMetricsHistory(c.env.DB, sellerId, 14, trendTenant).catch(() => []))
     if (trend) ctx.trend = trend
   }
   // 키워드 분석(seed 시) — 연관키워드(연결/플랫폼 키) + 쇼핑경쟁 + 추세
