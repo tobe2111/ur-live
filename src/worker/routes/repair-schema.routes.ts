@@ -486,6 +486,23 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       updated_at TEXT
     )` },
     { desc: 'idx_partnership_inquiries_status', sql: "CREATE INDEX IF NOT EXISTS idx_partnership_inquiries_status ON partnership_inquiries(status, id DESC)" },
+    // 🎯 2026-06-30 유어애즈 일별 메트릭(멀티테넌트) — ensureMetricsHistorySchema 와 동일 스키마 등록(복구 가능성).
+    //   핵심: UNIQUE INDEX(account_id, tenant, snap_date) 가 있어야 UPSERT 의 ON CONFLICT 가 유효(멱등·미스토어 방지).
+    { desc: 'ad_daily_metrics', sql: `CREATE TABLE IF NOT EXISTS ad_daily_metrics (
+      account_id INTEGER NOT NULL,
+      tenant TEXT NOT NULL DEFAULT '',
+      snap_date TEXT NOT NULL,
+      cost INTEGER DEFAULT 0,
+      conv_amt INTEGER DEFAULT 0,
+      clicks INTEGER DEFAULT 0,
+      conv INTEGER DEFAULT 0,
+      imp INTEGER DEFAULT 0,
+      roas REAL,
+      avg_rnk REAL,
+      created_at DATETIME DEFAULT (datetime('now')),
+      UNIQUE(account_id, tenant, snap_date)
+    )` },
+    { desc: 'idx_ad_daily_metrics_uniq', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_ad_daily_metrics_uniq ON ad_daily_metrics(account_id, tenant, snap_date)" },
     { desc: 'idx_wholesale_chat_threads_dist', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_dist ON wholesale_chat_threads(distributor_seller_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_threads_sup', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_sup ON wholesale_chat_threads(supplier_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_messages_thread', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_messages_thread ON wholesale_chat_messages(thread_id, id)" },

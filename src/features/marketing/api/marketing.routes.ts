@@ -74,7 +74,7 @@ marketingRoutes.get('/auth/me', async (c) => {
 })
 
 // PATCH /api/ads/auth/account — 회사명/연락처 수정
-marketingRoutes.patch('/auth/account', async (c) => {
+marketingRoutes.patch('/auth/account', rateLimit({ action: 'ads-account-patch', max: 20, windowSec: 60 }), async (c) => {
   const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
@@ -141,7 +141,7 @@ marketingRoutes.post('/auth/reset', rateLimit({ action: 'ads-reset', max: 10, wi
 //   ⚠️ 라이브: 주문권한 스코프 + 엔드포인트 현행문서 검증 후(이 환경 egress 차단 미검증).
 
 // POST /api/ads/naver/connect — 고객사 스토어 연결(토큰 발급으로 즉시 검증 후 암호화 저장)
-marketingRoutes.post('/naver/connect', async (c) => {
+marketingRoutes.post('/naver/connect', rateLimit({ action: 'ads-naver-connect', max: 10, windowSec: 60 }), async (c) => {
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
@@ -169,7 +169,7 @@ marketingRoutes.get('/naver/status', async (c) => {
 })
 
 // DELETE /api/ads/naver/connect — 연결 해제(marketing 스코프만)
-marketingRoutes.delete('/naver/connect', async (c) => {
+marketingRoutes.delete('/naver/connect', rateLimit({ action: 'ads-naver-disc', max: 20, windowSec: 60 }), async (c) => {
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   await ensureNaverConnectionSchema(c.env.DB)
@@ -182,7 +182,7 @@ marketingRoutes.delete('/naver/connect', async (c) => {
 //   ⚠️ 라이브 동작은 ① 커머스 앱에 '상품주문/배송' 권한 ② 엔드포인트 현행 문서 검증 후(egress 차단 환경 미검증).
 
 // POST /api/ads/orders/sync — 연결된 스마트스토어 최근 주문 수집(본인)
-marketingRoutes.post('/orders/sync', async (c) => {
+marketingRoutes.post('/orders/sync', rateLimit({ action: 'ads-orders-sync', max: 10, windowSec: 60 }), async (c) => {
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   // 마케팅 입점 연결(owner_type='marketing')만 사용 — 도매(supplier/distributor) 연결과 격리.
@@ -264,7 +264,7 @@ marketingRoutes.get('/alerts/settings', async (c) => {
 })
 
 // PATCH /api/ads/alerts/settings — 알림 켜기/임계값 변경
-marketingRoutes.patch('/alerts/settings', async (c) => {
+marketingRoutes.patch('/alerts/settings', rateLimit({ action: 'ads-alerts-patch', max: 30, windowSec: 60 }), async (c) => {
   const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
@@ -316,7 +316,7 @@ marketingRoutes.post('/rank/refresh', rateLimit({ action: 'ads-rank-refresh', ma
 })
 
 // DELETE /api/ads/rank/target?id=
-marketingRoutes.delete('/rank/target', async (c) => {
+marketingRoutes.delete('/rank/target', rateLimit({ action: 'ads-rank-del', max: 30, windowSec: 60 }), async (c) => {
   const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const targetId = Number(c.req.query('id'))
@@ -421,7 +421,7 @@ marketingRoutes.post('/searchad/tenant/activate', rateLimit({ action: 'ads-sa-te
 })
 
 // DELETE /api/ads/searchad/connect?customer_id= — 연결 해제(특정 고객사 또는 활성)
-marketingRoutes.delete('/searchad/connect', async (c) => {
+marketingRoutes.delete('/searchad/connect', rateLimit({ action: 'ads-sa-disc', max: 20, windowSec: 60 }), async (c) => {
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const customerId = String(c.req.query('customer_id') || '').trim() || undefined
@@ -671,7 +671,7 @@ marketingRoutes.post('/clickguard/hit', rateLimit({ action: 'ads-cg-hit', max: 1
 })
 
 // POST /api/ads/clickguard/site — 광고주 사이트 등록 → 픽셀 키 발급(인증)
-marketingRoutes.post('/clickguard/site', async (c) => {
+marketingRoutes.post('/clickguard/site', rateLimit({ action: 'ads-cg-site-add', max: 20, windowSec: 60 }), async (c) => {
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
@@ -689,7 +689,7 @@ marketingRoutes.get('/clickguard/sites', async (c) => {
 })
 
 // DELETE /api/ads/clickguard/site?key= — 사이트+이벤트 삭제(인증)
-marketingRoutes.delete('/clickguard/site', async (c) => {
+marketingRoutes.delete('/clickguard/site', rateLimit({ action: 'ads-cg-site-del', max: 20, windowSec: 60 }), async (c) => {
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const key = String(c.req.query('key') || '').trim()
@@ -757,7 +757,7 @@ marketingRoutes.post('/searchad/autobid/rules/bulk', rateLimit({ action: 'ads-ab
 })
 
 // DELETE /api/ads/searchad/autobid/rule?keyword_id=
-marketingRoutes.delete('/searchad/autobid/rule', async (c) => {
+marketingRoutes.delete('/searchad/autobid/rule', rateLimit({ action: 'ads-autobid-del', max: 30, windowSec: 60 }), async (c) => {
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const kid = String(c.req.query('keyword_id') || '').trim()
@@ -824,7 +824,7 @@ marketingRoutes.post('/price/refresh', rateLimit({ action: 'ads-price-refresh', 
 })
 
 // DELETE /api/ads/price/watch?id= — 워치 삭제
-marketingRoutes.delete('/price/watch', async (c) => {
+marketingRoutes.delete('/price/watch', rateLimit({ action: 'ads-price-del', max: 30, windowSec: 60 }), async (c) => {
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const id = Number(c.req.query('id'))
@@ -856,7 +856,7 @@ marketingRoutes.get('/clickguard/blocklist', async (c) => {
 })
 
 // DELETE /api/ads/clickguard/block?ip= — 차단 목록에서 제거
-marketingRoutes.delete('/clickguard/block', async (c) => {
+marketingRoutes.delete('/clickguard/block', rateLimit({ action: 'ads-cg-block-del', max: 30, windowSec: 60 }), async (c) => {
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const ip = String(c.req.query('ip') || '').trim()
