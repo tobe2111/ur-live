@@ -517,6 +517,11 @@ app.use('*', async (c, next) => {
       //   HTML→JS→fetch 3-RTT 워터폴 제거 — 카드가 첫 페인트에 즉시. 비로그인(공유 응답)만 consume
       //   (로그인 등급가는 클라가 fetch — 등급 캐시로 빠름). prewarm 키와 동일 path.
       ssrTarget = { slot: 'WHOLESALE', path: '/api/wholesale/catalog' };
+    } else if (/^\/blog\/[^/]+$/.test(url.pathname)) {
+      // 📝 2026-07-01 블로그 상세 SSR — 비-JS 크롤러(네이버/카카오/소셜 스크래퍼)용 서버 메타/JSON-LD 주입 +
+      //   0-RTT. /api/blog/public/:slug 는 publicCache(180) → edge-hit. 아래 head rewrite 에서 payload 로 메타 생성.
+      const blogSlug = decodeURIComponent(url.pathname.slice('/blog/'.length));
+      if (blogSlug) ssrTarget = { slot: 'BLOGPOST', path: `/api/blog/public/${encodeURIComponent(blogSlug)}` };
     } else {
       // 🛡️ 2026-05-30 (loading): /products/:id 상세 SSR inject — 기존엔 누락되어 마운트 후
       //   useProduct fetch 워터폴(HTML→JS→fetch 3-RTT). /api/products/:id 는 publicCache(120) → edge-hit.
@@ -580,7 +585,7 @@ app.use('*', async (c, next) => {
         //   SELLER(/profile)와 **동일한 SellerPublicPage** 를 그리고 콜드 D1 비용도 비슷한데 타임아웃이 1500ms 라
         //   /profile(2000ms)보다 cold self-fetch 가 더 자주 timeout → SSR 미주입 → CuratorPage 스켈레톤 더 자주 노출.
         //   같은 페이지군이므로 CURATOR 를 2000ms 로 맞춤(warm/edge-hit·타 슬롯·소비자 페이지 불변 — 콜드 첫 사용자만 영향).
-        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT' || ssrTarget.slot === 'CURATOR') ? 2000
+        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT' || ssrTarget.slot === 'CURATOR' || ssrTarget.slot === 'BLOGPOST') ? 2000
           : ssrTarget.slot === 'WHOLESALE' ? 3000
           : 1500;
         const ctlr = new AbortController();
@@ -642,6 +647,8 @@ app.use('*', async (c, next) => {
     //   React 마운트 전 잠깐 보임. linkshop 과 동일하게 #root 비움 — 이 페이지들은 __SSR_INITIAL_DETAIL__ 주입데이터로
     //   즉시 렌더(테마 가변이라 색 placeholder 대신 body 테마 bg 노출). SSR inject/0-RTT·createRoot 비-hydrate 불변(additive).
     const isDetailSurface = /^\/(?:group-buy|vouchers)\/\d+(?:[/?#]|$)/.test(url.pathname);
+    // 📝 2026-07-01 블로그(/blog·/blog/:slug)도 소비자 테마 페이지 — 홈 shell 잔상 제거(#root 비움).
+    const isBlogSurface = /^\/blog(?:\/|$)/.test(url.pathname);
     let rb = new HTMLRewriter()
       .on('script', {
         element(el) { el.setAttribute('nonce', nonce); },
@@ -681,6 +688,56 @@ app.use('*', async (c, next) => {
         .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', wsDesc); } })
         .on('head', { element(el) { el.append(`<link rel="canonical" href="${wsCanonical}">`, { html: true }); } });
     }
+    // 📝 2026-07-01 블로그 서버측 메타/구조화데이터 주입 — JS 안 도는 크롤러(네이버/카카오/소셜)용.
+    //   Googlebot 은 react-helmet(<SEO>)을 렌더해 보지만, 네이버·소셜 스크래퍼는 정적 HTML 메타만 봄.
+    const origin2 = new URL(c.req.url).origin;
+    if (ssrSlot === 'BLOGPOST' && ssrPayload) {
+      try {
+        const post = (JSON.parse(ssrPayload) as { data?: { title?: string; summary?: string; slug?: string; author?: string; published_at?: string } })?.data;
+        if (post && post.title) {
+          const bt = String(post.title);
+          const bd = String(post.summary || '').slice(0, 200);
+          const bTitle = `${bt} - 유어딜 블로그`;
+          const canon = `${origin2}/blog/${post.slug || ''}`;
+          const pub = post.published_at ? new Date(post.published_at).toISOString() : undefined;
+          const article: Record<string, unknown> = {
+            '@context': 'https://schema.org', '@type': 'BlogPosting',
+            headline: bt, description: bd,
+            author: { '@type': 'Organization', name: post.author || '유어딜' },
+            publisher: { '@type': 'Organization', name: '유어딜' },
+            mainEntityOfPage: canon, url: canon,
+            ...(pub ? { datePublished: pub, dateModified: pub } : {}),
+          };
+          const jsonLd = JSON.stringify(article).replace(/<\/script/gi, '<\\/script');
+          rb = rb
+            .on('title', { element(el) { el.setInnerContent(bTitle); } })
+            .on('meta[name="description"]', { element(el) { el.setAttribute('content', bd); } })
+            .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', bt); } })
+            .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', bd); } })
+            .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', canon); } })
+            .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', 'article'); } })
+            .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', bt); } })
+            .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', bd); } })
+            .on('head', { element(el) {
+              el.append(`<link rel="canonical" href="${canon}">`, { html: true });
+              el.append(`<script type="application/ld+json">${jsonLd}</script>`, { html: true });
+            } });
+        }
+      } catch { /* 파싱 실패 시 기본 메타 유지 */ }
+    } else if (url.pathname === '/blog') {
+      const bt = '유어딜 블로그 — 이용권·교환권·동네딜·링크샵 가이드';
+      const bd = '할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 나만의 링크샵까지. 유어딜 활용법과 서비스 소식을 전합니다.';
+      const canon = `${origin2}/blog`;
+      rb = rb
+        .on('title', { element(el) { el.setInnerContent(bt); } })
+        .on('meta[name="description"]', { element(el) { el.setAttribute('content', bd); } })
+        .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', bt); } })
+        .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', bd); } })
+        .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', canon); } })
+        .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', bt); } })
+        .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', bd); } })
+        .on('head', { element(el) { el.append(`<link rel="canonical" href="${canon}">`, { html: true }); } });
+    }
     if (needsRootBlank) {
       // 도매·대시보드 공통: 소비자 홈 shell 깜빡임 제거 (라이트 배경 placeholder).
       rb = rb.on('#root', {
@@ -688,8 +745,8 @@ app.use('*', async (c, next) => {
           el.setInnerContent('<div style="position:fixed;inset:0;background:#F4F5F7"></div>', { html: true });
         },
       });
-    } else if (isLinkshopSurface || isDetailSurface) {
-      // 링크샵·공구/교환권 상세: 홈 shell 잔상 제거 — #root 비움(테마 가변이라 색 placeholder 대신 body 테마 bg 노출).
+    } else if (isLinkshopSurface || isDetailSurface || isBlogSurface) {
+      // 링크샵·공구/교환권 상세·블로그: 홈 shell 잔상 제거 — #root 비움(테마 가변이라 색 placeholder 대신 body 테마 bg 노출).
       rb = rb.on('#root', {
         element(el) { el.setInnerContent('', { html: true }); },
       });
