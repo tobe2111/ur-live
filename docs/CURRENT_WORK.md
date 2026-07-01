@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — C 후속: 1인당 결제 한도 **수정(edit) 경로** 지원 (대표 "이어서 해")
+등록(create)만 있던 1인당 한도를 이미 등록된 이용권 상품에서도 수정 가능하게.
+- **서버 PUT `/api/seller/products/:id`**: body 에 `max_per_person`(0~99) 추가 → mealEditFields 루프 뒤 `setSupplyMeta`(0='0' 저장=무제한 해제, 1~99=제한). 소유권은 기존 existing 확인 재사용.
+- **서버 GET `/products/:id`(prefill)**: `getSupplyMeta` 로 `max_per_person`(0=무제한) 응답에 추가.
+- **UI `SellerProductEditPage`**(이용권 편집): formData `max_per_person` + prefill(`productData.max_per_person`) + meal_voucher payload 포함 + 입력 필드("1인당 최대 구매 수량", 0=무제한). 라이트 대시보드 테마.
+- 검증: tsc 0 · sql bind/column 0 · theme(strict) 0 · build 0. ⚠️ staging: 기존 상품 수정 → 한도 설정/변경/해제(0) → 상세 스텝퍼·주문검증 반영.
+
 ## ✅ 2026-07-01 — C 이용권 1인당 결제 최대 한도(셀러 설정) 신설 (대표 "결제 최대 한도 갯수 1인 당")
 매장 업주(셀러)가 이용권 등록 시 1인당 최대 구매 수량을 설정 → 서버 강제 + 상세 스텝퍼 cap. 예산제 준수(products 컬럼 추가 X → `product_supply_meta.max_per_person`).
 - **저장(셀러)**: `SellerMealVoucherNewPage` 폼에 "1인당 최대 구매 수량"(0=무제한, 1~99) 입력 + 페이로드 → `seller-orders.routes` POST /products 가 `setSupplyMeta(max_per_person)`(menu meta 옆, fail-soft). 미설정/범위밖=무제한(미저장).
