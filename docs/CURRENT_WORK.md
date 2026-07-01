@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-30 — 제조사 발송뷰에 배송 메시지 노출(단일 수령 주문) (대표 "다음으로")
+- **문제**: 판매사가 결제 시 남긴 배송 메시지가 제조사 발송 화면(`SupplierWholesaleOrdersPage`)에서 **드랍십(받는사람 여럿)일 때만** 노출되고, **일반 단일-수령 주문에선 안 보였음** → 발송 지시("부재 시 문 앞" 등) 누락 가능. 게다가 supplier orders API 가 `i.ship_to_message`(라인 레벨)만 반환해, 단일 주문 메시지(헤더 `o.ship_to_message`에 저장)는 애초에 안 넘어왔음.
+- **수정(2)**: ① API `wholesale-supplier.routes` 두 쿼리의 `i.ship_to_message` → `COALESCE(i.ship_to_message, o.ship_to_message)`(다른 ship_to 필드와 동일 폴백 패턴 — 라인 우선, 없으면 주문 헤더). ② UI 단일-수령 배송지 블록에 `💬 {ship_to_message}` 노출(드랍십 브랜치는 이미 라인별 메모 표시 — 불변).
+- **불변**: 드랍십 라인별 메모·합배송·발송/수락/거절 로직·배송지 나머지 전부 불변(SELECT 폴백 1개 + 표시 1줄). `o.ship_to_message` 는 ensureOrderTables ensure 컬럼.
+- 검증: tsc 0 · build 0 · column-exists/bind 가드 0.
+
 ## ✅ 2026-06-30 — 판매사 도매몰 알림 벨 (배선한 알림을 볼 UI) (대표 "다음으로")
 - **문제**: 이번 세션에서 판매사 알림을 대거 배선(발송 시작·수락·거절·환불·예치금 확인/반려·클레임·주문메모…, 전부 `recipient_type='seller'`)했는데 **도매몰(판매사) 표면엔 알림함/벨이 0** — 제조사는 `NotificationsBell`(`/supplier`)이 있으나 판매사는 없어 배선한 알림이 전부 안 보였음. (`WholesaleUtilBar`·`WholesaleDashboardPage` 어디에도 벨 없음.)
 - **수정(재사용)**: 공용 `DashboardNotificationBell`(SellerLayout 이 이미 `tokenKey="seller_token"` 로 `/api/dashboard-notifications` 사용)을 **공유 상단바 `WholesaleUtilBar` 에 배치**(loggedIn=판매사만; 제조사는 supplierToken→자체 벨). 판매사=seller 라 recipient_type='seller' 알림 그대로 표시, 클릭 시 `safeInternalPath` 딥링크(→ `/wholesale/orders` 등). 다크 유틸바용으로 `DashboardNotificationBell` 에 `iconClassName`/`buttonClassName` prop **additive**(미지정=기존 라이트 대시보드 스타일 불변 → SellerLayout/Admin/Agency 무영향).
