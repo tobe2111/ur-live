@@ -12,6 +12,9 @@ interface Props {
   seller: Seller
   sellerId: string
   isOwner: boolean
+  /** 🔗 2026-07-01 링크샵 전수조사: 큐레이터(/u/) 진입 시 헤더는 curator.bio 를 보여주는데 InfoTab 은
+   *  seller.bio(빈값)만 봐 "아직 소개가 없어요"를 띄워 모순이었음. 방문자에겐 헤더와 동일한 effectiveBio 로 폴백. */
+  effectiveBio?: string | null
   T: ThemeTokens
   // 인라인 편집 상태
   editingField: string | null
@@ -30,7 +33,7 @@ interface Props {
 }
 
 export default function InfoTab({
-  seller, sellerId, isOwner, T,
+  seller, sellerId, isOwner, effectiveBio, T,
   editingField, setEditingField, editBio, setEditBio,
   editInsta, setEditInsta, editYoutube, setEditYoutube, editKakao, setEditKakao,
   saving, startEdit, saveEdit,
@@ -52,7 +55,7 @@ export default function InfoTab({
           </div>
         ) : (
           <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-wrap group" onClick={() => { if (isOwner) { setEditBio(seller.bio || ''); setEditingField('bio-info') } }}>
-            {seller.bio || (isOwner ? t('seller.publicPage.enterBioTap') : t('seller.publicPage.noBio'))}
+            {seller.bio || (isOwner ? t('seller.publicPage.enterBioTap') : (effectiveBio || t('seller.publicPage.noBio')))}
             {isOwner && <Pencil className="w-3 h-3 text-gray-300 inline ml-1 opacity-60 lg:opacity-0 lg:group-hover:opacity-100" />}
           </p>
         )}

@@ -440,7 +440,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
         </div>
       )}
       <SEO
-        title={`${seller.name || seller.username || t('product.seller')} 의 링크샵`}
+        title={`${seller.name || seller.username || t('product.seller')}의 링크샵`}
         description={seller.bio || `${seller.name || seller.username || t('product.seller')} 님의 링크샵`}
         image={seller.profile_image}
         url={`/profile/${seller.username || seller.slug || seller.id}`}
@@ -545,6 +545,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
             seller={seller}
             sellerId={sellerId!}
             isOwner={ownerView}
+            effectiveBio={headerCurator.bio}
             T={T}
             editingField={editingField}
             setEditingField={setEditingField}
