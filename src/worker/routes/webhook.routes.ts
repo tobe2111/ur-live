@@ -702,6 +702,26 @@ async function handlePaymentConfirmed(
     } catch (e) {
       console.error('[WEBHOOK] order_paid buyer notification failed:', String(e).slice(0, 200))
     }
+    // 🔔 2026-07-01 [UNLOCK]: 셀러 '결제 확정' 대시보드 알림 — webhook 경로. 이전엔 /confirm(payment.routes:463)
+    //   에만 있어, confirmPaymentAtomic CAS 로 webhook 이 이기면 셀러가 '💳 결제 확정' 벨을 못 받던
+    //   비대칭(2026-06-26 buyer 알림은 대칭화됐으나 셀러 반쪽 누락) 보강. result.confirmed>0(단일실행)
+    //   가드 하에서만 → 이중알림 없음. ⚠️ Toss 시그니처/금액검증/confirmPaymentAtomic 무수정 — 알림 배선만.
+    try {
+      const { createDashboardNotification } = await import('../../features/notifications/api/dashboard-notifications.routes')
+      const { results: sellerRows } = await DB.prepare(
+        'SELECT seller_id, total_amount, order_number FROM orders WHERE order_number = ? AND seller_id IS NOT NULL'
+      ).bind(orderNumber).all<{ seller_id: number | null; total_amount: number | null; order_number: string }>()
+      for (const row of (sellerRows ?? [])) {
+        if (!row.seller_id) continue
+        await createDashboardNotification(
+          DB, 'seller', String(row.seller_id), 'order_paid',
+          '💳 결제 확정', `주문 ${row.order_number} — ₩${Number(row.total_amount ?? 0).toLocaleString('ko-KR')} 결제가 확정되었습니다`,
+          '/seller/orders',
+        ).catch(() => {})
+      }
+    } catch (e) {
+      console.error('[WEBHOOK] seller order_paid notification failed:', String(e).slice(0, 200))
+    }
   }
 
   // 🛡️ 2026-04-28 (TD-007 자동화): auction winner-paid 자동 처리.
@@ -840,6 +860,23 @@ async function handlePaymentCancelled(
   // Send order cancellation notification
   await sendOrderNotification(orderRepo, orderNumber, 'cancelled', env)
     .catch(err => console.error('[WEBHOOK] Notification failed:', err));
+
+  // 🔔 2026-07-01 [UNLOCK]: Toss webhook 취소 → buyer 인앱 알림. 기존 sendOrderNotification 은
+  //   Discord 전용(운영 채널)이라 앱 알림함엔 취소 기록이 없었음. 앱-발화 취소(order.routes)는 이미
+  //   notifyUser 하지만 Toss 측/비동기 취소는 이 webhook 만 도달 → 구매자 무통보. ⚠️ 결제취소/환불/
+  //   커미션역전/쿠폰복원 로직 무수정 — notifyUser side-effect 1블록 추가만.
+  try {
+    const { notifyUser } = await import('../../lib/notifications');
+    const orow = await DB.prepare(
+      'SELECT user_id FROM orders WHERE order_number = ? AND user_id IS NOT NULL LIMIT 1'
+    ).bind(orderNumber).first<{ user_id: string | number | null }>().catch(() => null);
+    if (orow?.user_id) {
+      await notifyUser(DB, String(orow.user_id), 'order_cancelled', '주문이 취소되었습니다', `주문 ${orderNumber}이(가) 취소되었습니다. 환불은 결제수단에 따라 처리됩니다.`, '/my-orders').catch(() => {});
+    }
+  } catch (e) {
+    console.error('[WEBHOOK] order_cancelled buyer notification failed:', String(e).slice(0, 200));
+  }
+
   if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] PAYMENT_CANCELLED_COMPLETE', {
     orderNumber,
     ordersUpdated: orders.length,

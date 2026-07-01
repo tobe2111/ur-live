@@ -69,8 +69,19 @@ export async function sendSystemPush(
       } catch { /* push_enabled 컬럼 미존재 등 — fail-open */ }
     }
 
+    // 🔔 2026-07-01: 네이티브 푸시(FCM) 발송 — 웹푸시와 독립 경로(앱 iOS/Android 토큰).
+    //   FIREBASE_* 자격 미설정/토큰 없음 → skip. 실패해도 아래 웹푸시 흐름에 영향 0.
+    let nativeDelivered = 0;
+    try {
+      const { sendNativePush } = await import('./native-push');
+      const nr = await sendNativePush(env, userType, numId, { title: payload.title, body: payload.body, url: payload.url });
+      nativeDelivered = nr.delivered ?? 0;
+    } catch { /* best-effort — 웹푸시 무영향 */ }
+
     const subs = await getPushSubscriptions(db, numId, userType, e.DATA_ENCRYPTION_KEY);
-    if (subs.length === 0) return { success: false, skipped: true };
+    if (subs.length === 0) {
+      return { success: nativeDelivered > 0, subscription_count: 0, delivered: nativeDelivered, expired: 0 };
+    }
 
     let delivered = 0;
     let expired = 0;
@@ -121,9 +132,9 @@ export async function sendSystemPush(
     }
 
     return {
-      success: delivered > 0,
+      success: (delivered + nativeDelivered) > 0,
       subscription_count: subs.length,
-      delivered,
+      delivered: delivered + nativeDelivered,
       expired,
     };
   } catch (err) {

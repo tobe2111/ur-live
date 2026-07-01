@@ -343,6 +343,24 @@ export async function handleScheduled(env: Env) {
         LIMIT 10000
       )
     `).run();
+    // 🔔 2026-07-01: 레거시 notifications + agency_notifications 도 정리(이전엔 방치 → 무한 증가).
+    //   소비자 벨이 notifications 를 UNION-read 하므로 user_notifications 와 동일 정책 적용.
+    await DB.prepare(`
+      DELETE FROM notifications
+      WHERE rowid IN (
+        SELECT rowid FROM notifications
+        WHERE created_at < datetime('now', '-90 days')
+        LIMIT 10000
+      )
+    `).run().catch(() => { /* table 없으면 skip */ });
+    await DB.prepare(`
+      DELETE FROM agency_notifications
+      WHERE rowid IN (
+        SELECT rowid FROM agency_notifications
+        WHERE created_at < datetime('now', '-90 days')
+        LIMIT 10000
+      )
+    `).run().catch(() => { /* table 없으면 skip */ });
   } catch (e) { logError('[Cron] notifications_cleanup error:', { error: String(e) }) }
 
   // ── 9. 만료된 리프레시 토큰 정리 ──
@@ -980,10 +998,8 @@ export async function handleScheduled(env: Env) {
         try {
           await DB.prepare(`
             INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
-            VALUES (?, 'user', 'community_group_buy_refunded', '공동구매 환불 완료',
-                    '참여하신 공동구매가 만료/실패하여 보증금 ${m.deposit_amount}원이 자동 환불됐어요.',
-                    '/mypage/group-buys', CURRENT_TIMESTAMP)
-          `).bind(m.user_id).run()
+            VALUES (?, 'user', 'community_group_buy_refunded', '공동구매 환불 완료', ?, '/mypage/group-buys', CURRENT_TIMESTAMP)
+          `).bind(m.user_id, `참여하신 공동구매가 만료/실패하여 보증금 ${Number(m.deposit_amount ?? 0).toLocaleString('ko-KR')}원이 자동 환불됐어요.`).run()
         } catch { /* notifications 없으면 skip */ }
         refunded++
       } catch (err) {

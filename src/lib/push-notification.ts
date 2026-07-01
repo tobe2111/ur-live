@@ -191,8 +191,8 @@ function concatBytes(...arrs: Uint8Array[]): Uint8Array {
 }
 
 async function hmacSha256(keyBytes: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
-  const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
-  return new Uint8Array(await crypto.subtle.sign('HMAC', key, data))
+  const key = await crypto.subtle.importKey('raw', keyBytes as BufferSource, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+  return new Uint8Array(await crypto.subtle.sign('HMAC', key, data as BufferSource))
 }
 
 // HKDF-Expand for a single output block (length ≤ 32).
@@ -218,7 +218,7 @@ async function encryptPushPayload(
   // Application-server ephemeral ECDH keypair.
   const asKeyPair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits'])
   const asPublic = new Uint8Array(await crypto.subtle.exportKey('raw', asKeyPair.publicKey)) // 65 bytes
-  const uaKey = await crypto.subtle.importKey('raw', uaPublic, { name: 'ECDH', namedCurve: 'P-256' }, false, [])
+  const uaKey = await crypto.subtle.importKey('raw', uaPublic as BufferSource, { name: 'ECDH', namedCurve: 'P-256' }, false, [])
   const ecdhSecret = new Uint8Array(
     await crypto.subtle.deriveBits({ name: 'ECDH', public: uaKey }, asKeyPair.privateKey, 256),
   ) // 32 bytes
@@ -242,9 +242,9 @@ async function encryptPushPayload(
 
   // Single record: plaintext || 0x02 (RFC 8188 last-record delimiter).
   const record = concatBytes(plaintext, new Uint8Array([2]))
-  const aesKey = await crypto.subtle.importKey('raw', cek, { name: 'AES-GCM' }, false, ['encrypt'])
+  const aesKey = await crypto.subtle.importKey('raw', cek as BufferSource, { name: 'AES-GCM' }, false, ['encrypt'])
   const ciphertext = new Uint8Array(
-    await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce, tagLength: 128 }, aesKey, record),
+    await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce as BufferSource, tagLength: 128 }, aesKey, record as BufferSource),
   )
 
   // RFC 8188 header: salt(16) | rs(4, uint32 BE) | idlen(1) | keyid(as_public, 65).
@@ -364,7 +364,7 @@ export async function sendPushNotification(
         data: payload.data,
       }))
       const encrypted = await encryptPushPayload(subscription.keys.p256dh, subscription.keys.auth, plaintext)
-      body = encrypted
+      body = encrypted as BufferSource
       headers['Content-Encoding'] = 'aes128gcm'
       headers['Content-Length'] = String(encrypted.length)
     } catch (encErr) {

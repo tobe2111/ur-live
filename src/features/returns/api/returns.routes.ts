@@ -346,8 +346,8 @@ returnsRoutes.put('/:id/approve', rateLimit({ action: 'return_approve', max: 60,
   const returnId = c.req.param('id');
 
   const returnRecord = await DB.prepare(
-    'SELECT id, seller_id, status FROM returns WHERE id = ?'
-  ).bind(returnId).first<{ id: number; seller_id: number | null; status: string }>();
+    'SELECT id, seller_id, status, user_id FROM returns WHERE id = ?'
+  ).bind(returnId).first<{ id: number; seller_id: number | null; status: string; user_id: string | number | null }>();
 
   if (!returnRecord) {
     return c.json({ success: false, error: '반품 내역을 찾을 수 없습니다' }, 404);
@@ -364,6 +364,14 @@ returnsRoutes.put('/:id/approve', rateLimit({ action: 'return_approve', max: 60,
   await DB.prepare(`
     UPDATE returns SET status = 'approved', approved_at = datetime('now') WHERE id = ?
   `).bind(returnId).run();
+
+  // 🛡️ 2026-07-01: 반품 승인 → 구매자 인앱 알림(이전엔 status UPDATE 만, 구매자 무통보).
+  try {
+    const { notifyUser } = await import('../../../lib/notifications');
+    if (returnRecord.user_id != null) {
+      notifyUser(DB, String(returnRecord.user_id), 'return_approved', '반품 승인', '요청하신 반품이 승인되었습니다. 환불이 진행됩니다.', '/my-returns').catch(swallow('returns:notify-approved'));
+    }
+  } catch {}
 
   return c.json({ success: true, message: '반품이 승인되었습니다' });
 });
@@ -389,8 +397,8 @@ returnsRoutes.put('/:id/reject', rateLimit({ action: 'return_reject', max: 60, w
   const body = { rejection_reason: bodyRaw.rejection_reason ?? bodyRaw.reason };
 
   const returnRecord = await DB.prepare(
-    'SELECT id, seller_id, status FROM returns WHERE id = ?'
-  ).bind(returnId).first<{ id: number; seller_id: number | null; status: string }>();
+    'SELECT id, seller_id, status, user_id FROM returns WHERE id = ?'
+  ).bind(returnId).first<{ id: number; seller_id: number | null; status: string; user_id: string | number | null }>();
 
   if (!returnRecord) {
     return c.json({ success: false, error: '반품 내역을 찾을 수 없습니다' }, 404);
@@ -404,9 +412,18 @@ returnsRoutes.put('/:id/reject', rateLimit({ action: 'return_reject', max: 60, w
     return c.json({ success: false, error: '요청 상태의 반품만 거부할 수 있습니다' }, 400);
   }
 
+  const rejectionReason = body.rejection_reason ?? '셀러 거부';
   await DB.prepare(`
     UPDATE returns SET status = 'rejected', inspection_notes = ? WHERE id = ?
-  `).bind(body.rejection_reason ?? '셀러 거부', returnId).run();
+  `).bind(rejectionReason, returnId).run();
+
+  // 🛡️ 2026-07-01: 반품 거절 → 구매자 인앱 알림(이전엔 status UPDATE 만, 구매자 무통보).
+  try {
+    const { notifyUser } = await import('../../../lib/notifications');
+    if (returnRecord.user_id != null) {
+      notifyUser(DB, String(returnRecord.user_id), 'return_rejected', '반품 거절', `요청하신 반품이 거절되었습니다. 사유: ${rejectionReason}`, '/my-returns').catch(swallow('returns:notify-rejected'));
+    }
+  } catch {}
 
   return c.json({ success: true, message: '반품이 거부되었습니다' });
 });
@@ -772,7 +789,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
   // 6. 소비자에게 환불 완료 알림
   try {
     const { notifyUser } = await import('../../../lib/notifications');
-    notifyUser(DB, returnRecord.user_id, 'refund_complete', '💰 환불 완료', `${returnRecord.refund_amount?.toLocaleString()}원이 환불되었습니다`, '/my-orders').catch(swallow('returns:api:returns'));
+    notifyUser(DB, returnRecord.user_id, 'refund_complete', '💰 환불 완료', `${Number(returnRecord.refund_amount ?? 0).toLocaleString('ko-KR')}원이 환불되었습니다`, '/my-orders').catch(swallow('returns:api:returns'));
   } catch {}
 
   return c.json({ success: true, message: '환불이 완료되었습니다' });

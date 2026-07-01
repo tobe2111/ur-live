@@ -35,13 +35,7 @@ export default function PushNotificationSetup() {
       localStorage.getItem('agency_id')
     if (!isLoggedIn) return
 
-    // 이미 구독/거부/스누즈면 표시 안 함
-    if (localStorage.getItem('push_subscribed')) return
     if (Notification.permission === 'denied') return
-    try {
-      const until = Number(localStorage.getItem(SNOOZE_KEY) || 0)
-      if (until && Date.now() < until) return
-    } catch { /* */ }
 
     // 🛡️ 2026-04-30 v2: PWA standalone 이면 풀 기능 → 진행. 아니면 인앱 매트릭스 체크.
     if (!isPWAStandalone() && isFeatureBlockedSync('notification')) {
@@ -51,11 +45,24 @@ export default function PushNotificationSetup() {
     // VAPID 키 없으면 푸시 자체가 불가 — 배너도 안 띄움
     if (!import.meta.env.VITE_VAPID_PUBLIC_KEY) return
 
-    // 이미 권한 granted(과거 수락) 인데 구독 기록만 없는 경우 — 배너 없이 조용히 재구독
-    const timer = setTimeout(() => {
-      if (Notification.permission === 'granted') { void subscribe(false) }
-      else setShowBanner(true)
-    }, 10000)
+    // 🔔 2026-07-01: 권한이 이미 granted 면 배너 없이 **항상** 서버 구독을 재조정(self-heal).
+    //   이전엔 localStorage.push_subscribed 플래그가 있으면 조기 return 해서, 브라우저가
+    //   endpoint 를 교체하거나 서버가 410 으로 구독행을 지우면 클라는 '구독됨'으로 착각하고
+    //   영구 두절됐음. 이제 getSubscription→재전송(ON CONFLICT 멱등)으로 매 마운트 self-heal.
+    //   push_subscribed 는 배너 억제용으로만 사용.
+    if (Notification.permission === 'granted') {
+      const timer = setTimeout(() => { void subscribe(false) }, 8000)
+      return () => clearTimeout(timer)
+    }
+
+    // permission === 'default' (아직 안 물어봄) — 구독 이력/스누즈면 배너 skip
+    if (localStorage.getItem('push_subscribed')) return
+    try {
+      const until = Number(localStorage.getItem(SNOOZE_KEY) || 0)
+      if (until && Date.now() < until) return
+    } catch { /* */ }
+
+    const timer = setTimeout(() => setShowBanner(true), 10000)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -83,17 +90,25 @@ export default function PushNotificationSetup() {
         })
       }
 
-      // 제스처 문맥에서만 권한 요청 (granted 재구독 경로는 요청 불필요)
-      if (Notification.permission !== 'granted') {
-        if (!fromGesture) return
-        const permission = await Notification.requestPermission()
-        if (permission !== 'granted') { setShowBanner(false); return }
-      }
+      // 🔔 2026-07-01: 기존 브라우저 구독을 우선 재사용(self-heal). 없을 때만 새로 구독.
+      let sub = await reg.pushManager.getSubscription()
 
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: vapidKey,
-      })
+      if (!sub) {
+        // 제스처 문맥에서만 권한 요청 (granted 재구독 경로는 요청 불필요)
+        if (Notification.permission !== 'granted') {
+          if (!fromGesture) return
+          const permission = await Notification.requestPermission()
+          if (permission !== 'granted') { setShowBanner(false); return }
+        }
+        try {
+          sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKey })
+        } catch (subErr) {
+          // 다른 VAPID 키로 만든 구독이 남아 있으면 InvalidStateError — 교체 후 재시도(키 로테이션 self-heal).
+          const stale = await reg.pushManager.getSubscription()
+          if (stale) { try { await stale.unsubscribe() } catch { /* */ } sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKey }) }
+          else throw subErr
+        }
+      }
 
       const token =
         localStorage.getItem('admin_token') ||

@@ -254,6 +254,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'idx_products_seller_active', sql: "CREATE INDEX IF NOT EXISTS idx_products_seller_active ON products(seller_id, is_active)" },
     // user_notifications: user_id + created_at (알림 목록 최적화)
     { desc: 'idx_user_notifications_user', sql: "CREATE INDEX IF NOT EXISTS idx_user_notifications_user ON user_notifications(user_id, created_at DESC)" },
+    // 🔔 2026-07-01: 레거시 notifications 테이블 인덱스(마이그레이션에만 있던 것 — repair-schema 로 이관).
+    //   소비자 벨/목록(GET /api/social/notifications, unread-count)이 user_type+user_id 로 조회 → 풀스캔 방지.
+    { desc: 'idx_notifications_user', sql: "CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_type, user_id, is_read)" },
+    { desc: 'idx_notifications_created', sql: "CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC)" },
     // 🛡️ 2026-05-16: 광고 슬롯 자동 push EXISTS 서브쿼리용 — 매 streams 호출 시 평가됨
     { desc: 'idx_ad_slots_seller_active', sql: "CREATE INDEX IF NOT EXISTS idx_ad_slots_seller_active ON ad_slots(current_seller_id, is_active, expires_at)" },
     // 🛡️ 2026-05-16: 공구 목록 (지도/리스트) hot query — category + is_active + group_buy_status

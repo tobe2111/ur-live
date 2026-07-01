@@ -104,7 +104,7 @@ socialRoutes.put('/notifications/:id/read', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
-  const raw = c.req.param('id')
+  const raw = c.req.param('id') || ''
   const userId = String(user.id)
   // 🏁 2026-06-12: 본인 소유 검증(id + user_id) — 타인 알림 읽음 플립(저위험 IDOR) 방지.
   let changed = 0
