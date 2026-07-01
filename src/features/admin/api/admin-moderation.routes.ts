@@ -78,8 +78,11 @@ adminModerationRoutes.get('/reviews/list', cors(), async (c) => {
     const conditions: string[] = [];
     const params: unknown[] = [];
 
-    if (status === 'visible') { conditions.push('r.is_visible = 1'); }
-    else if (status === 'hidden') { conditions.push('r.is_visible = 0'); }
+    // 🛡️ 2026-07-01 (대표 "reviews 500"): 실제 테이블은 product_reviews (가시성=is_hidden, 이미지=images).
+    //   기존 'reviews'(존재 안 함)/'is_visible'/'image_urls' 참조 → "no such table: reviews" 로 항상 500.
+    //   정확 테이블·컬럼으로 교정 + 프론트 계약(is_visible/image_urls)은 SQL alias 로 그대로 유지.
+    if (status === 'visible') { conditions.push('COALESCE(r.is_hidden, 0) = 0'); }
+    else if (status === 'hidden') { conditions.push('COALESCE(r.is_hidden, 0) = 1'); }
 
     if (productId) { conditions.push('r.product_id = ?'); params.push(productId); }
     if (rating) { conditions.push('r.rating = ?'); params.push(parseInt(rating)); }
@@ -95,15 +98,15 @@ adminModerationRoutes.get('/reviews/list', cors(), async (c) => {
     }
 
     const countRows = await executeQuery<CountRow>(DB,
-      `SELECT COUNT(*) as count FROM reviews r ${where}`, params
+      `SELECT COUNT(*) as count FROM product_reviews r ${where}`, params
     );
     const total = countRows[0]?.count || 0;
 
     const reviews = await executeQuery<ReviewRow>(DB,
       `SELECT r.id, r.product_id, r.user_id, r.user_name, r.rating, r.content,
-              r.image_urls, r.is_visible, r.created_at,
+              r.images AS image_urls, (1 - COALESCE(r.is_hidden, 0)) AS is_visible, r.created_at,
               p.name as product_name
-       FROM reviews r
+       FROM product_reviews r
        LEFT JOIN products p ON p.id = r.product_id
        ${where}
        ORDER BY ${orderBy}
@@ -133,13 +136,14 @@ adminModerationRoutes.patch('/reviews/:id/visibility', cors(), async (c) => {
     }
 
     const rows = await executeQuery<{ id: number; is_visible: number }>(DB,
-      `SELECT id, is_visible FROM reviews WHERE id = ?`, [reviewId]
+      `SELECT id, (1 - COALESCE(is_hidden, 0)) AS is_visible FROM product_reviews WHERE id = ?`, [reviewId]
     );
     if (rows.length === 0) {
       return c.json({ success: false, error: '리뷰를 찾을 수 없습니다' }, 404);
     }
 
-    await executeRun(DB, `UPDATE reviews SET is_visible = ? WHERE id = ?`, [is_visible, reviewId]);
+    // is_visible(0/1) → is_hidden(반전) 저장.
+    await executeRun(DB, `UPDATE product_reviews SET is_hidden = ? WHERE id = ?`, [is_visible ? 0 : 1, reviewId]);
 
     await writeAuditLog(c, {
       action: is_visible ? 'show_review' : 'hide_review',
@@ -162,14 +166,14 @@ adminModerationRoutes.delete('/reviews/:id', cors(), async (c) => {
     const reviewId = c.req.param('id');
 
     const rows = await executeQuery<ReviewRow>(DB,
-      `SELECT id, product_id, user_id, user_name, rating, content, image_urls, is_visible, created_at
-       FROM reviews WHERE id = ?`, [reviewId]
+      `SELECT id, product_id, user_id, user_name, rating, content, images AS image_urls, (1 - COALESCE(is_hidden, 0)) AS is_visible, created_at
+       FROM product_reviews WHERE id = ?`, [reviewId]
     );
     if (rows.length === 0) {
       return c.json({ success: false, error: '리뷰를 찾을 수 없습니다' }, 404);
     }
 
-    await executeRun(DB, `DELETE FROM reviews WHERE id = ?`, [reviewId]);
+    await executeRun(DB, `DELETE FROM product_reviews WHERE id = ?`, [reviewId]);
 
     await writeAuditLog(c, {
       action: 'delete_review',
@@ -193,13 +197,13 @@ adminModerationRoutes.get('/reviews/stats', cors(), async (c) => {
       `SELECT
         COUNT(*) as total,
         COALESCE(AVG(rating), 0) as avg_rating,
-        SUM(CASE WHEN is_visible = 0 THEN 1 ELSE 0 END) as hidden_count,
+        SUM(CASE WHEN COALESCE(is_hidden, 0) = 1 THEN 1 ELSE 0 END) as hidden_count,
         SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as rating_1,
         SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as rating_2,
         SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as rating_3,
         SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as rating_4,
         SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as rating_5
-       FROM reviews`
+       FROM product_reviews`
     );
 
     return c.json({ success: true, data: stats[0] || { total: 0, avg_rating: 0, hidden_count: 0, rating_1: 0, rating_2: 0, rating_3: 0, rating_4: 0, rating_5: 0 } });

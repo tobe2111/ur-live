@@ -301,7 +301,7 @@ adminUsersRoutes.get('/users/:id', cors(), async (c) => {
     let reviewStats: CountRow[] = [];
     try {
       reviewStats = await executeQuery<CountRow>(DB,
-        `SELECT COUNT(*) as count FROM reviews WHERE user_id = ?`, [userId]
+        `SELECT COUNT(*) as count FROM product_reviews WHERE user_id = ?`, [userId]
       );
     } catch (e) {
       if (typeof console !== 'undefined') console.warn('[admin-users] review stats failed:', e);
