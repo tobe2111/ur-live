@@ -113,8 +113,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     }
     const sortParam = c.req.query('sort') || ''
     const orderBy = ALLOWED_GB_SORT[sortParam] || 'p.created_at DESC'
-    const pageNum = Math.max(1, parseInt(c.req.query('page') || '1', 10))
-    const pageLimit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50', 10)))
+    const pageNum = Math.max(1, (parseInt(c.req.query('page') || '1', 10) || 1))
+    const pageLimit = Math.min(100, Math.max(1, (parseInt(c.req.query('limit') || '50', 10) || 50)))
     const offset = (pageNum - 1) * pageLimit
     // 🗺️ 2026-06-18 [UNLOCK_LOADING]: "내 동네 딜" 지역 필터. region = 시군구코드(5자리) 또는 행정동코드(~10자리).
     //   기본 요청(region 없음)은 키/쿼리/materialized 전부 불변 → SSR 0-RTT 보존. region 붙은 요청만 분기.

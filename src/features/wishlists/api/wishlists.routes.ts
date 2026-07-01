@@ -74,8 +74,8 @@ wishlistRoutes.get('/', requireAuth(), async (c) => {
     const authUser = getCurrentUser(c);
     if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
     const userId = String(authUser.id);
-    const limit = parseInt(c.req.query('limit') || '50');
-    const offset = parseInt(c.req.query('offset') || '0');
+    const limit = (parseInt(c.req.query('limit') || '50') || 50);
+    const offset = (parseInt(c.req.query('offset') || '0') || 0);
     // 🎨 2026-06-10: dominant_color 포함(카드 그라데이션). 컬럼 미적용 DB 는 1회 실패 후 제외 재시도
     //   (ProductRepository `_dominantColorCol` 모듈캐시 패턴 — 매 요청 2쿼리 방지).
     const listSql = (withColor: boolean) => `
@@ -282,8 +282,8 @@ wishlistRoutes.get('/:userId', requireAuth(), async (c) => {
       return c.json({ success: false, error: 'Forbidden' }, 403);
     }
 
-    const limit = parseInt(c.req.query('limit') || '20');
-    const offset = parseInt(c.req.query('offset') || '0');
+    const limit = (parseInt(c.req.query('limit') || '20') || 20);
+    const offset = (parseInt(c.req.query('offset') || '0') || 0);
 
     const { results } = await DB.prepare(`
       SELECT

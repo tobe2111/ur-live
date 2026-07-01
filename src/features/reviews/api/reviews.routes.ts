@@ -61,9 +61,9 @@ reviewsRoutes.get('/product/:productId', async (c) => {
   await ensureTable(DB);
   const productId = c.req.param('productId');
   // v31 FIX: page 파라미터 범위 제한 (offset 폭발 방지)
-  const rawPage = parseInt(c.req.query('page') || '1');
+  const rawPage = (parseInt(c.req.query('page') || '1') || 1);
   const page = Math.min(Math.max(rawPage, 1), 100);
-  const limit = Math.min(parseInt(c.req.query('limit') || '20'), 50);
+  const limit = Math.min((parseInt(c.req.query('limit') || '20') || 20), 50);
   const offset = (page - 1) * limit;
 
   // 🛡️ 2026-05-21: 사용자 신고 — 리뷰 이름이 모두 "sys***".

@@ -100,7 +100,7 @@ adminAnalyticsRoutes.get('/analytics/category', cors(), async (c) => {
 adminAnalyticsRoutes.get('/analytics/top-sellers', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const limit = Math.min(50, Math.max(1, parseInt(c.req.query('limit') || '10')));
+    const limit = Math.min(50, Math.max(1, (parseInt(c.req.query('limit') || '10') || 10)));
 
     const topSellers = await executeQuery<TopSellerRow>(DB,
       `SELECT o.seller_id,
@@ -128,7 +128,7 @@ adminAnalyticsRoutes.get('/analytics/top-sellers', cors(), async (c) => {
 adminAnalyticsRoutes.get('/analytics/top-products', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const limit = Math.min(50, Math.max(1, parseInt(c.req.query('limit') || '10')));
+    const limit = Math.min(50, Math.max(1, (parseInt(c.req.query('limit') || '10') || 10)));
 
     const topProducts = await executeQuery<TopProductRow>(DB,
       `SELECT oi.product_id,

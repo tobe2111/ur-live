@@ -73,8 +73,8 @@ interface IdRow {
 adminSellersRoutes.get('/sellers', cors(), async (c) => {
   try {
     const { DB } = c.env;
-    const page = Math.max(parseInt(c.req.query('page') || '1'), 1);
-    const limit = Math.min(Math.max(parseInt(c.req.query('limit') || '50'), 1), 200);
+    const page = Math.max((parseInt(c.req.query('page') || '1') || 1), 1);
+    const limit = Math.min(Math.max((parseInt(c.req.query('limit') || '50') || 50), 1), 200);
     const offset = (page - 1) * limit;
     // 🧱 2026-06-30 (서비스 분리 — 대표 "구분 표시"): exclude_distributor=1 이면 도매 판매사(is_distributor=1)
     //   행을 유어딜 소비자 셀러 목록에서 제외(도매-전용 회원 숨김). 기본(없음)은 전부 반환 + 배지로 구분.

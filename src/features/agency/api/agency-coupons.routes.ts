@@ -193,7 +193,7 @@ app.post('/distribute', requireAgencyPermission('coupon'), async (c) => {
 // ── GET /distributions — 배포 이력 ──────────────────────
 app.get('/distributions', async (c) => {
   const agencyId = c.get('agency').id
-  const limit = Math.min(parseInt(c.req.query('limit') || '50'), 200)
+  const limit = Math.min((parseInt(c.req.query('limit') || '50') || 50), 200)
 
   try {
     const { results } = await c.env.DB.prepare(`

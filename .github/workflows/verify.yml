@@ -197,6 +197,14 @@ jobs:
         run: node scripts/check-groupbuy-status-classify.mjs -s
         continue-on-error: false
 
+      # 🛡️ 2026-07-01: pagination parseInt/Number NaN 크래시 방어 — 현재 위반 0 → strict.
+      #   도매몰 라이브 전수조사에서 GET /api/wholesale/catalog?page=abc&limit=xyz → HTTP 500 발견.
+      #   비숫자 query 가 NaN → SQL .bind(NaN) → 크래시(봇/스크래퍼/오염 링크가 목록을 500).
+      #   page/limit/offset 등은 `parseInt(...) || <기본값>` 로 NaN 폴백 필수. 예외 `pagination-nan-ok`.
+      - name: Pagination NaN crash guard (strict)
+        run: node scripts/check-pagination-nan.mjs -s
+        continue-on-error: false
+
       # 🧭 2026-06-24: 도매(wholesale) 권한 어드민이 보는 화면의 /admin 링크가 그 역할 RBAC 로 도달
       #   불가하면 클릭 시 wholesale-overview 로 바운스(="안 넘어가요") — 슈퍼 어드민엔 안 보이는 역할-한정
       #   버그. 대표 신고("상품 승인 클릭해도 안 넘어감") 후 전체 도매 화면 정적 검사로 클래스 고정.

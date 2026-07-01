@@ -145,7 +145,7 @@ async function recomputeParticipants(
 app.get('/', async (c) => {
   const agencyId = c.get('agency').id
   const status = c.req.query('status') || 'all'
-  const limit = Math.min(parseInt(c.req.query('limit') || '50'), 200)
+  const limit = Math.min((parseInt(c.req.query('limit') || '50') || 50), 200)
 
   let where = 'agency_id = ?'
   const binds: unknown[] = [agencyId]

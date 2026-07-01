@@ -340,8 +340,8 @@ adminMiscRoutes.put('/settings/commission', cors(), async (c) => {
 adminMiscRoutes.get('/audit-logs', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const page = Math.max(1, parseInt(c.req.query('page') || '1'));
-    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50')));
+    const page = Math.max(1, (parseInt(c.req.query('page') || '1') || 1));
+    const limit = Math.min(100, Math.max(1, (parseInt(c.req.query('limit') || '50') || 50)));
     const offset = (page - 1) * limit;
     const adminId = c.req.query('admin_id');
     const action = c.req.query('action');
@@ -389,8 +389,8 @@ adminMiscRoutes.get('/audit-logs', cors(), async (c) => {
 adminMiscRoutes.get('/login-history', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const page = Math.max(1, parseInt(c.req.query('page') || '1'));
-    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50')));
+    const page = Math.max(1, (parseInt(c.req.query('page') || '1') || 1));
+    const limit = Math.min(100, Math.max(1, (parseInt(c.req.query('limit') || '50') || 50)));
     const offset = (page - 1) * limit;
     const totalRow = await DB.prepare('SELECT COUNT(*) AS c FROM admin_login_history').first<{ c: number }>().catch(() => null);
     const rows = await DB.prepare(

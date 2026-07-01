@@ -434,8 +434,8 @@ sellerManagementRoutes.get('/:sellerId/products-public', async (c) => {
   const { DB } = c.env;
   const sellerId = c.req.param('sellerId');
   const { page = '1', limit = '20' } = c.req.query();
-  const pageNum = parseInt(page, 10);
-  const limitNum = Math.min(parseInt(limit, 10), 100);
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
   const offset = (pageNum - 1) * limitNum;
 
   try {

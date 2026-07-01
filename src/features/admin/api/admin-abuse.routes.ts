@@ -23,7 +23,7 @@ adminAbuseRoutes.get('/abuse-detections', async (c) => {
   const DB = c.env.DB;
   const severity = c.req.query('severity');
   const pattern = c.req.query('pattern');
-  const limit = Math.min(500, Number(c.req.query('limit') ?? 200));
+  const limit = Math.min(500, Math.max(1, Number(c.req.query('limit') ?? 200) || 200));
 
   const conditions: string[] = [];
   const binds: unknown[] = [];

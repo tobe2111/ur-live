@@ -39,8 +39,8 @@ supplyRoutes.get('/products', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
   const { DB } = c.env;
-  const page = parseInt(c.req.query('page') || '1', 10);
-  const limit = Math.min(parseInt(c.req.query('limit') || '20', 10), 100);
+  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10) || 1);
+  const limit = Math.min(Math.max(parseInt(c.req.query('limit') || '20', 10) || 20, 1), 100);
   const offset = (page - 1) * limit;
   const search = c.req.query('search') || '';
   const category = c.req.query('category') || '';

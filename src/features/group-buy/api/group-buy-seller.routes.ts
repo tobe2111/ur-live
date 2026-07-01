@@ -288,7 +288,7 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
     if (!isSeller) return c.json({ success: false, error: '셀러만 접근 가능합니다' }, 403)
 
     const { DB } = c.env
-    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50')))
+    const limit = Math.min(100, Math.max(1, (parseInt(c.req.query('limit') || '50') || 50)))
     try {
       const { results } = await DB.prepare(`
         SELECT l.id, l.code, l.product_id, l.success, l.reason, l.created_at,

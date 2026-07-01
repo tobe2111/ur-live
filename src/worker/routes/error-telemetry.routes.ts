@@ -78,7 +78,7 @@ errorTelemetryRoutes.get('/api/_errors/recent', async (c) => {
   }
 
   const hours = Math.min(Math.max(1, Number(c.req.query('hours') || '1')), 168)
-  const limit = Math.min(Math.max(1, Number(c.req.query('limit') || '100')), 1000)
+  const limit = Math.min(Math.max(1, Number(c.req.query('limit') || '100') || 100), 1000)
 
   try {
     const rows = await c.env.DB.prepare(
