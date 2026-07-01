@@ -104,9 +104,20 @@ app.get('/public/:slug', async (c) => {
 // 발행 글만 카운트. 클라이언트가 세션당 1회 호출(sessionStorage 가드). fail-soft.
 app.post('/public/:slug/view', async (c) => {
   await ensureBlogTable(c.env.DB)
+  const slug = c.req.param('slug')
+  // 봇/중복 보정: 같은 IP+slug 는 1시간 1회만 카운트(KV 있을 때). 되먹임 신호 오염 방지. fail-open.
+  const kv = c.env.CACHE_KV || c.env.RATE_LIMIT_KV
+  if (kv) {
+    try {
+      const ip = c.req.header('CF-Connecting-IP') || c.req.header('x-forwarded-for') || 'unknown'
+      const key = `blogview:${slug}:${ip}`
+      if (await kv.get(key)) return c.json({ success: true, deduped: true })
+      await kv.put(key, '1', { expirationTtl: 3600 })
+    } catch { /* KV 실패 시 그냥 카운트 */ }
+  }
   await c.env.DB.prepare(
     `UPDATE blog_posts SET view_count = COALESCE(view_count,0) + 1 WHERE slug = ? AND is_published = 1`
-  ).bind(c.req.param('slug')).run().catch(swallow('blog:api:blog'))
+  ).bind(slug).run().catch(swallow('blog:api:blog'))
   return c.json({ success: true })
 })
 
