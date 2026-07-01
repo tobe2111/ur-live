@@ -20,7 +20,7 @@ import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { sendAlimtalk, buildSampleApprovalMessage } from '../../alimtalk/aligo';
 import { ensureSupplyVisibilitySchema, recordSupplyPriceChange } from '../../supply/api/supply-visibility';
-import { getSupplyMeta } from '@/worker/utils/product-supply-meta';
+import { getSupplyMeta, setSupplyMeta } from '@/worker/utils/product-supply-meta';
 import { loadPlatformCommissionPct } from '../../supply/api/wholesale-settlement';
 import { distributorPriceFromCost } from '@/lib/distributor-pricing';
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
@@ -1088,6 +1088,7 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
       name?: string; category?: string; price?: number | string; original_price?: number | string;
       image_url?: string; restaurant_name?: string; restaurant_address?: string;
       restaurant_phone?: string; lat?: number | string; lng?: number | string; description?: string;
+      max_per_person?: number | string;
     };
     const name = String(b.name || '').trim();
     const cat = mapDealCategory(String(b.category || '').trim());
@@ -1111,6 +1112,13 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
        VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(name, desc, price, origNum > price ? origNum : null, img, cat, rest, addr, phone,
       hasCoord ? lat : null, hasCoord ? lng : null).run();
+    // 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 한도 meta 저장 (1~99, 0/미설정=무제한).
+    {
+      const mpp = Number(b.max_per_person);
+      if (r.meta?.last_row_id && Number.isFinite(mpp) && mpp >= 1 && mpp <= 99) {
+        await setSupplyMeta(c.env.DB, Number(r.meta.last_row_id), { max_per_person: String(Math.floor(mpp)) }).catch(() => {});
+      }
+    }
     await writeAuditLog(c, { action: 'dongnedeal_create', targetType: 'product', targetId: r.meta?.last_row_id, after: { name, cat, hasCoord } }).catch(() => {});
     // 🛡️ 2026-07-01 (대표 신고 — 어드민 수정이 홈에 즉시 반영 안 됨): 동네딜 뮤테이션 시 공구 목록
     //   앱 캐시(group_buy_products:*) 무효화. 셀러 상품 등록과 동일 패턴. (edge/SSR TTL 은 별도.)
@@ -1133,7 +1141,19 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
               COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at
          FROM products WHERE category IN (${ph}) ORDER BY created_at DESC LIMIT ?`
     ).bind(...cats, lim).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
-    return c.json({ success: true, data: results || [] });
+    const rows = results || [];
+    // 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 한도(meta) 첨부 — 수정 폼 prefill 용 (0=무제한).
+    try {
+      const ids = rows.map(r => Number(r.id)).filter(n => Number.isFinite(n));
+      if (ids.length) {
+        const mm = await getSupplyMeta(c.env.DB, ids).catch(() => null);
+        for (const r of rows) {
+          const raw = mm?.get(Number(r.id))?.max_per_person;
+          r.max_per_person = raw != null && Number.isFinite(Number(raw)) && Number(raw) > 0 ? Math.floor(Number(raw)) : 0;
+        }
+      }
+    } catch { /* fail-soft */ }
+    return c.json({ success: true, data: rows });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env), data: [] }, 500);
   }
@@ -1162,9 +1182,20 @@ adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
       const lat = Number(b.lat), lng = Number(b.lng);
       if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) { put('restaurant_lat', lat); put('restaurant_lng', lng); }
     }
-    if (params.length === 0) return c.json({ success: false, error: '변경할 내용이 없습니다' }, 400);
-    params.push(id);
-    await c.env.DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`).bind(...params).run();
+    // 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 한도는 products 컬럼이 아니라 meta — 이것만 바뀌어도 저장.
+    let mppChanged = false;
+    if (b.max_per_person !== undefined) {
+      const mpp = Number(b.max_per_person);
+      if (Number.isFinite(mpp) && mpp >= 0 && mpp <= 99) {
+        await setSupplyMeta(c.env.DB, Number(id), { max_per_person: String(Math.floor(mpp)) }).catch(() => {});
+        mppChanged = true;
+      }
+    }
+    if (params.length === 0 && !mppChanged) return c.json({ success: false, error: '변경할 내용이 없습니다' }, 400);
+    if (params.length > 0) {
+      params.push(id);
+      await c.env.DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`).bind(...params).run();
+    }
     await writeAuditLog(c, { action: 'dongnedeal_update', targetType: 'product', targetId: id }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
     return c.json({ success: true });

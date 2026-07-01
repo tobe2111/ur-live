@@ -24,7 +24,7 @@ const CATS = [
   { v: 'general', label: '일반' },
 ]
 
-const EMPTY = { name: '', category: 'meal_voucher', price: '', original_price: '', restaurant_name: '', restaurant_address: '', restaurant_phone: '', image_url: '', description: '' }
+const EMPTY = { name: '', category: 'meal_voucher', price: '', original_price: '', restaurant_name: '', restaurant_address: '', restaurant_phone: '', image_url: '', description: '', max_per_person: '' }
 
 export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { onSaved: () => void; editDeal?: DealRow | null; onCancelEdit?: () => void }) {
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
@@ -52,6 +52,7 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
       restaurant_phone: '',
       image_url: editDeal.image_url || '',
       description: '',
+      max_per_person: editDeal.max_per_person ? String(editDeal.max_per_person) : '',
     })
     setCoord(editDeal.restaurant_lat && editDeal.restaurant_lng ? { lat: editDeal.restaurant_lat, lng: editDeal.restaurant_lng } : null)
     setPlaces([]); setPhotos([]); setQ('')
@@ -202,6 +203,11 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
         <div>
           <label className={lbl}>정가(원, 선택 · 취소선)</label>
           <input value={f.original_price} onChange={(e) => set('original_price', e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="140000" className={input} />
+        </div>
+        {/* 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 최대 구매 수량 (0=무제한, 최대 99). */}
+        <div>
+          <label className={lbl}>1인당 최대 구매 수량 (0=무제한)</label>
+          <input value={f.max_per_person} onChange={(e) => set('max_per_person', e.target.value.replace(/[^\d]/g, '').slice(0, 2))} inputMode="numeric" placeholder="0" className={input} />
         </div>
         <div>
           <label className={lbl}>매장명</label>

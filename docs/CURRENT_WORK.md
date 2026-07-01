@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — C 후속2: 1인당 결제 한도 **어드민 동네딜 도구**에도 (대표 "어드민 도구에도 넣어줘")
+셀러 경로에 이어 어드민 수기 동네딜(`/admin/dongnedeal-import`)에도 1인당 한도 설정/수정.
+- **서버** `admin-products.routes`: POST `/dongnedeal/create`(body `max_per_person` → `setSupplyMeta`) · PATCH `/dongnedeal/:id`(meta 별도 저장 — products 컬럼 아니라 **이것만 바뀌어도 저장**되게 params 체크 전 처리) · GET `/dongnedeal/list`(getSupplyMeta 배치 첨부 → 수정 prefill).
+- **UI** `ManualDealForm`: `EMPTY`+prefill(editDeal)+입력 필드("1인당 최대 구매 수량 0=무제한", 2자리 cap). `DealRow` 타입에 `max_per_person`. payload(`{...f}`)가 create/patch 자동 포함.
+- 저장 위치·서버 강제·소비자 표시는 셀러 경로와 동일 SSOT(`product_supply_meta.max_per_person`, group-buy.routes 검증). 어드민 라이트 테마(dark 0).
+- 검증: tsc 0 · dashboard-theme(내 파일 0) · sql bind/column 0 · build 0. ⚠️ staging: 어드민 동네딜 등록/수정 시 한도 입력 → 홈 스텝퍼/주문검증 반영.
+
 ## ✅ 2026-07-01 — C 후속: 1인당 결제 한도 **수정(edit) 경로** 지원 (대표 "이어서 해")
 등록(create)만 있던 1인당 한도를 이미 등록된 이용권 상품에서도 수정 가능하게.
 - **서버 PUT `/api/seller/products/:id`**: body 에 `max_per_person`(0~99) 추가 → mealEditFields 루프 뒤 `setSupplyMeta`(0='0' 저장=무제한 해제, 1~99=제한). 소유권은 기존 existing 확인 재사용.
