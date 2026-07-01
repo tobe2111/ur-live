@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 목록페이지 "2번 로딩" 근본수정 (urdeal 로더 유지) (대표 "근본적으로 해결 — urdeal 로딩 그대로")
+- **원인**: 로더 전면 통일 후 목록페이지(/vouchers·/group-buy·/browse) 하드로드 시 **로더가 2번**으로 보임 — ① 청크 다운로드=App.tsx Suspense **BrandLoader(전체화면)** → ② 페이지 마운트 시 **헤더/필터가 먼저 렌더**되고 그 아래 콘텐츠 영역에 **인라인 BrandLoader** 또 표시(`{loading ? <BrandLoader/> : ...}`). 같은 로더가 전체화면→(헤더 뜸)→인라인으로 이어져 "2번" 체감. (상세페이지는 전체화면 early-return 이라 원래 없음.)
+- **근본수정(로더 유지)**: standalone 목록페이지도 상세처럼 **로딩 중 전체화면 `<BrandLoader fullScreen/>` early-return** → 청크 로더와 **끊김 없이 이어져 '한 번'**(헤더가 중간에 안 뜸). `GroupBuyListPage`·`BrowsePage` = `if (loading) return`; `VouchersPage` = `if (loading && !embedded) return`(홈 임베드는 청크 로더 없고 타 콘텐츠와 공존 → 인라인 유지). 인라인 `{loading?}` 블록은 embedded 전용으로만 도달.
+- 스켈레톤으로 되돌리지 않고 **urdeal 로더 그대로** — 대표 요청대로. 상세/청크 로더 불변.
+- 검증: tsc 0 · theme(strict) 0 · build 0. ⚠️ staging: /vouchers·/group-buy 하드로드 시 로더 1회만.
+
 ## ✅ 2026-07-01 — C 후속2: 1인당 결제 한도 **어드민 동네딜 도구**에도 (대표 "어드민 도구에도 넣어줘")
 셀러 경로에 이어 어드민 수기 동네딜(`/admin/dongnedeal-import`)에도 1인당 한도 설정/수정.
 - **서버** `admin-products.routes`: POST `/dongnedeal/create`(body `max_per_person` → `setSupplyMeta`) · PATCH `/dongnedeal/:id`(meta 별도 저장 — products 컬럼 아니라 **이것만 바뀌어도 저장**되게 params 체크 전 처리) · GET `/dongnedeal/list`(getSupplyMeta 배치 첨부 → 수정 prefill).

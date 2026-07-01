@@ -536,6 +536,9 @@ export default function GroupBuyListPage() {
   const showcaseCards = catEmpty ? [catEmpty.card] : DEFAULT_SHOWCASE
   const createPath = catEmpty ? `/community-group-buy/new?category=${category}` : '/community-group-buy/new'
 
+  // 🎨 2026-07-01 (대표 "2번 로딩 근본 해결" — urdeal 로더 유지): 로딩 중 전체화면 BrandLoader early-return
+  //   → 청크 로더와 끊김 없이 이어져 '한 번'으로 보임(헤더가 중간에 안 뜸).
+  if (loading) return <BrandLoader fullScreen />
   return (
     <div className="bg-white dark:bg-[#0A0A0A] min-h-screen">
       <SEO
