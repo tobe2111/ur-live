@@ -9,7 +9,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { compressForThumbnail } from '@/lib/image-compress'
 import { useTheme } from '@/shared/stores/useTheme'
-import { Loader2, Search, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import StreamCard from './seller-public/StreamCard'
@@ -24,6 +24,7 @@ import type { Product as BrowseProduct } from '@/pages/browse/types'
 import { seededColor } from '@/utils/card-gradient'
 import InfoTab from './seller-public/InfoTab'
 import { getThemeTokens } from './seller-public/theme'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import type { Seller, LiveStream, Product, Short } from './seller-public/types'
 
@@ -324,22 +325,10 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     tiktok_url: curatorEdits.tiktok_url ?? curator?.tiktok_url ?? null,
   }
 
-  // 로딩 중: curator 가 있으면(=/u/ 진입) 헤더 즉시 + 본문 스켈레톤. 없으면(직접 /profile) 스피너.
-  if (loading) return curator ? (
-    <div className={`min-h-screen ${T.bg} pb-28`}>
-      <CuratorHeader curator={headerCurator} pinCount={0} isOwner={false} accountType="business" onCopyLink={copyLink} onCuratorUpdate={() => {}} />
-      <div className="ur-content-wide px-4 lg:px-8 py-8">
-        <div className="h-5 w-28 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse mb-4" />
-        <div className="grid grid-cols-2 gap-3">
-          {[0, 1].map(i => <div key={i} className="aspect-[3/4] rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />)}
-        </div>
-      </div>
-    </div>
-  ) : (
-    <div className={`min-h-screen ${T.bg} flex items-center justify-center`}>
-      <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-    </div>
-  )
+  // 🖼️ 2026-07-01 (대표 지시 — "콜드 로딩은 풀로, 2~3가지 로딩화면 절대 금지"): 링크샵(/u/)·셀러(/profile)
+  //   모두 단일 URDEAL 브랜드 로더로 통일. 기존엔 curator 진입 시 헤더+스켈레톤을 그렸다가 본문 로드 후
+  //   또 바뀌어, CuratorPage 쪽 로더와 합쳐 "2~3가지 로딩화면"이 튀었음. BrandLoader 하나로 준비될 때까지 유지.
+  if (loading) return <BrandLoader fullScreen />
 
   if (!seller) return (
     <div className={`min-h-screen ${T.bg} flex flex-col items-center justify-center`}>

@@ -1883,7 +1883,8 @@
       "addVoucher": "利用券の登録",
       "addVoucherDesc": "地域の利用券・引換券 — 位置や詳細を設定",
       "previewBanner": "訪問者プレビュー — 他の人に見える画面です",
-      "backToEdit": "編集に戻る"
+      "backToEdit": "編集に戻る",
+      "verifiedBusiness": "事業者認証"
     },
     "storeIntro": "ストア紹介",
     "shippingInfo": "配送情報",

@@ -1883,7 +1883,8 @@
       "addVoucher": "添加使用券",
       "addVoucherDesc": "本地使用券・兑换券 — 设置位置和详情",
       "previewBanner": "访客预览 — 这是别人看到的页面",
-      "backToEdit": "返回编辑"
+      "backToEdit": "返回编辑",
+      "verifiedBusiness": "商家认证"
     },
     "storeIntro": "店铺介绍",
     "shippingInfo": "配送信息",

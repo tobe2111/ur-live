@@ -785,8 +785,27 @@ app.use('*', async (c, next) => {
           el.setInnerContent('<div style="position:fixed;inset:0;background:#F4F5F7"></div>', { html: true });
         },
       });
-    } else if (isLinkshopSurface || isDetailSurface || isBlogSurface) {
-      // 링크샵·공구/교환권 상세·블로그: 홈 shell 잔상 제거 — #root 비움(테마 가변이라 색 placeholder 대신 body 테마 bg 노출).
+    } else if (isLinkshopSurface) {
+      // 🖼️ 2026-07-01 [UNLOCK_LOADING] (대표 지시 — "콜드 로딩은 풀로, 2~3가지 로딩화면 절대 금지"): 링크샵은
+      //   #root 를 비워 blank flash 를 노출하던 것 → 첫 페인트부터 URDEAL 브랜드 로더 주입(다른 페이지 라우트
+      //   전환/React 로딩과 동일 로더). createRoot(비-hydrate)가 마운트 시 교체 → [로더 → 완성] 단일 흐름.
+      //   테마 가변 대응: dark: variant 로 다크/라이트 자동(index.html 인라인 스크립트가 첫 페인트 전 테마 적용).
+      //   CSS 클래스(ur-loader-breathe/sweep)는 번들에 존재. BrandLoader(React) 와 시각 동일.
+      rb = rb.on('#root', {
+        element(el) {
+          el.setInnerContent(
+            '<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">' +
+              '<div class="ur-loader-breathe text-[#0A0A0A] dark:text-white" style="font-family:\'Pretendard Variable\',system-ui,sans-serif;font-weight:900;font-size:34px;font-style:italic;letter-spacing:-0.055em;line-height:1">UR·DEAL</div>' +
+              '<div class="bg-gray-200/70 dark:bg-white/10" style="position:relative;overflow:hidden;border-radius:9999px;width:96px;height:3px">' +
+                '<div class="ur-loader-sweep bg-gray-900 dark:bg-white" style="position:absolute;top:0;bottom:0;left:0;border-radius:9999px;width:38%;animation-delay:200ms"></div>' +
+              '</div>' +
+            '</div>',
+            { html: true },
+          );
+        },
+      });
+    } else if (isDetailSurface || isBlogSurface) {
+      // 공구/교환권 상세·블로그: 홈 shell 잔상 제거 — #root 비움(테마 가변이라 색 placeholder 대신 body 테마 bg 노출).
       rb = rb.on('#root', {
         element(el) { el.setInnerContent('', { html: true }); },
       });

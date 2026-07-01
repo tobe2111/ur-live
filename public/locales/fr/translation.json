@@ -1208,7 +1208,8 @@
       "addVoucher": "Ajouter un bon",
       "addVoucherDesc": "Bon local — lieu et détails",
       "previewBanner": "Aperçu visiteur — voici ce que voient les autres",
-      "backToEdit": "Retour à l'édition"
+      "backToEdit": "Retour à l'édition",
+      "verifiedBusiness": "Entreprise vérifiée"
     },
     "storeIntro": "Presentation de la boutique",
     "shippingInfo": "Info livraison",
