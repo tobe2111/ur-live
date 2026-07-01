@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 어드민 RBAC 후속: 역할 권한 과대부여 + fail-open 수정 (대표 "1번(권한) 고쳐 / 3번(fail-open) 고쳐줘")
+2R 에서 "보고만" 했던 권한 항목 중 대표 지시 2건 반영(②딜환급 세율은 세무판단 대기):
+- **① 재무성 하위경로 권한 과대부여** (`shared/admin-roles.ts`): RBAC 의 `WRITE_DOMAINS` 가 경로 *첫 세그먼트*로만 매칭 → 도메인 하나를 주면 그 아래 민감 서브패스까지 통째로 열림(ops 가 `tools` 로 정산일괄·플랫폼설정, `sellers` 로 수수료율 / cs 가 `users` 로 딜 지급). **수정**: `SENSITIVE_MUTATIONS`(gift-deal·tools/settlements/process·tools/settings·sellers/:id/commission·donation-commission) 목록 신설 → `canAdminRoleMutate` 가 이 경로들은 명시 역할(`finance`)+super/admin 만 허용(첫 세그먼트 grant 무시, 短circuit). ops/cs 의 나머지 정당한 서브패스(승인/거절·배너·유저 moderation)는 도메인 매칭으로 그대로 동작. super/admin 전권 불변.
+- **③ requireAdminRole DB오류 fail-open** (`worker/middleware/auth.ts`): 이전엔 role 조회 실패 시 super 로 통과(fail-OPEN) → 일시 D1 오류로 역할게이트 무력화(제한역할 전권). **수정**: 1회 재시도 후 **fail-CLOSED(403 + 재시도 안내)**. 프로덕션은 `admins.role` 컬럼을 repair-schema/로그인이 보장하므로 정상경로 무영향. (normalizeAdminRole 의 미지→super 는 레거시 계정 역호환이라 유지 — 오류경로 아님.)
+- **불변**: 잠금파일 무수정. 서비스분리·라이트테마. 검증: tsc 0 · build 0 · audit-gate 38 ALL GREEN. ⚠️ 스테이징: (a) ops/cs 계정으로 gift-deal·정산처리·수수료율 변경 시 403 + 승인/거절 등 기존기능 정상 (b) finance/super 는 정상 (c) 정상 admin 로그인·역할게이트 라우트 접근 이상無.
+
 ## ✅ 2026-07-01 — 어드민 대시보드 심층 감사 2R: 가드미보유 영역(머니정확성·권한/RBAC) 3건 fix (대표 "계속 진행")
 1R(런타임 크래시) 후속 — CLAUDE.md 가 명시한 **가드 미보유 영역**(결제 금액정확성 + 권한/IDOR 로직)을 어드민에 집중 감사(2개 병렬 에이전트). 라이브 인증 감사는 `ADMIN_IP_WHITELIST`(admin-security.ts)로 샌드박스 IP 403 차단(정상 보안) → 코드 감사로 진행. **확정 3건 수정**:
 - **🔴 HIGH — RBAC 역할 게이트 쿠키 우회** (`admin-rbac.ts`): 게이트가 role 을 Bearer 헤더에서만 추출했는데, `requireAdmin` 은 httpOnly 세션쿠키 인증도 허용 + 쿠키 payload 엔 세부 role 없음(`role='admin'` 하드코딩) → 제한역할(wholesale/ops/cs…)이 **Authorization 헤더만 빼고 쿠키로 호출하면 스코핑 전체 우회**(재무·타서비스 전권, 서비스분리 무력화). **수정**: 게이트의 `adminRoleFromRequest` 가 Bearer 없으면 어드민 세션쿠키를 파싱해 **DB 에서 실제 role 조회 후 동일 스코핑 적용**. Bearer 경로/super·admin 정상접근 불변, 정상 트래픽은 Bearer 라 DB read 없음. (`admin-accounts` 는 독립 super-check 라 기존에도 안전.)
