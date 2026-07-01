@@ -109,6 +109,7 @@ const AdminYoutubeQuotaPage = lazy(() => import('@/pages/AdminYoutubeQuotaPage')
 const AdminHealthPage = lazy(() => import('@/pages/AdminHealthPage'))
 const AdminPolicyDashboardPage = lazy(() => import('@/pages/AdminPolicyDashboardPage'))
 const AdminFeeBreakdownComparePage = lazy(() => import('@/pages/AdminFeeBreakdownComparePage'))
+const AdminFunnelPage = lazy(() => import('@/pages/AdminFunnelPage'))
 const AdminUsersPage = lazy(() => import('@/pages/AdminUsersPage'))
 const AdminReviewModerationPage = lazy(() => import('@/pages/AdminReviewModerationPage'))
 const AdminTikTokDiscoveryPage = lazy(() => import('@/pages/AdminTikTokDiscoveryPage'))
@@ -220,6 +221,11 @@ export function AdminRoutes() {
       <Route path="/admin/fee-breakdown" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminFeeBreakdownComparePage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/funnel" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminFunnelPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/banners" element={

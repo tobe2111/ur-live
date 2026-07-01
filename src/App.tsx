@@ -16,6 +16,7 @@ import ScrollToTop from './components/ScrollToTop'
 import OfflineBanner from './components/OfflineBanner'
 import BottomNav from '@/components/main/BottomNav'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { trackFunnel } from '@/lib/funnel'
 import DesktopTopNav from '@/components/main/DesktopTopNav'
 import { swallow } from '@/shared/utils/swallow'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
@@ -280,6 +281,9 @@ function AppContent() {
   // 🛡️ 2026-05-01: 카카오 콜백 에러 파라미터 처리 — 무한 로딩 방지.
   //   sync/callback 이 세션 쿠키 발급 실패 / 카카오 토큰 교환 실패 등으로 ?error=... 부착 시
   //   사용자에게 명시적 토스트 + URL 정리. 묵음 실패 → 무한 스피너 시나리오 차단.
+  // 🆕 2026-06-29 퍼널 계측: 앱 진입(세션당 1회, 익명) — DAU/리텐션 기준점.
+  useEffect(() => { trackFunnel('app_open') }, [])
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const errorCode = urlParams.get('error')

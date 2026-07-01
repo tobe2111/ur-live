@@ -25,6 +25,7 @@ import MainTabs from './group-buy-list/MainTabs'
 import LiveTicker from '@/components/group-buy/LiveTicker'
 import RegionPickerModal from '@/components/RegionPickerModal'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
+import { trackFunnel } from '@/lib/funnel'
 import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types/constants/utils 를 ./group-buy-list/ 로 추출.
@@ -410,6 +411,13 @@ export default function GroupBuyListPage() {
 
     return result
   }, [items, category, sortBy, searchQuery, regionKey, districtKey])
+
+  // 🆕 2026-06-29 퍼널 계측: 지역 필터 켰는데 결과 0 = "우리 동네 없네" 이탈 신호.
+  useEffect(() => {
+    if (!loading && (regionKey || gpsRegion) && filtered.length === 0) {
+      trackFunnel('empty_region_shown', { region: regionKey || gpsRegion?.name || '' })
+    }
+  }, [loading, regionKey, gpsRegion, filtered.length])
 
   // 🏭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — 카드 로딩 체감): 점진 렌더.
   //   limit=200 데이터를 한 번에 200카드 마운트 → 중저가 폰 TBT/버벅임(데이터는 빨라졌지만 렌더가 병목).

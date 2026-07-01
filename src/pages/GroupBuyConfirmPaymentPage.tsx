@@ -11,6 +11,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle, XCircle } from 'lucide-react'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { trackFunnel } from '@/lib/funnel'
 import api from '@/lib/api'
 import { fireAffiliateTrack } from '@/utils/affiliate-track'
 import SEO from '@/components/SEO'
@@ -45,6 +46,7 @@ export default function GroupBuyConfirmPaymentPage() {
       .then((r) => {
         if (r.data?.success) {
           setState('success')
+          trackFunnel('payment_succeeded', { type: 'group_buy' }) // 🆕 퍼널 계측 (이용권 결제 완료)
           fireAffiliateTrack(r.data?.data?.order_id, Number(productId), undefined) // 큐레이터 적립 (fail-soft)
           invalidateVouchers()
           try {

@@ -5,6 +5,7 @@ import type { CartItem } from '@/types/cart'
 import type { ShippingAddress, GroupBuyTier, SellerGroup } from './checkout/types'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { trackFunnel } from '@/lib/funnel'
 import api from '@/lib/api'
 import { handleApiError, getUserFriendlyError } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
@@ -113,6 +114,9 @@ function CartCheckout() {
   const [serverVariantPayment, setServerVariantPayment] = useState<string>('')
   const [serverVariantAgreement, setServerVariantAgreement] = useState<string>('')
   const [clientKeyLoaded, setClientKeyLoaded] = useState<boolean>(false)
+  // 🆕 2026-06-29 퍼널 계측: 결제 시작(체크아웃 진입) — 결제 완료와 대비해 결제 이탈률 산출.
+  useEffect(() => { trackFunnel('checkout_started') }, [])
+
   useEffect(() => {
     // 🛡️ 2026-06-26 늦은 로딩 fix (대표 신고 — 체크아웃 결제수단 UI 늦게 뜸):
     //   빌드타임 VITE 키(getTossClientKey)가 있으면(정상 운영 케이스 — SDK 도 이 키로 preload 됨)

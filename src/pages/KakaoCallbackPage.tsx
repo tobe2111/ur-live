@@ -10,6 +10,7 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
+import { trackFunnel } from '@/lib/funnel'
 import { isKorea } from '@/config/region'
 import { getTempCartItem, clearTempCartItem } from '@/utils/auth'
 import { toast } from '@/hooks/useToast'
@@ -83,6 +84,7 @@ export default function KakaoCallbackPage() {
         localStorage.setItem('user_id', String(user.id))
         localStorage.setItem('user_name', user.name || '')
         localStorage.setItem('session_login', 'true')
+        try { trackFunnel('login_succeeded') } catch { /* 퍼널 계측 fail-soft */ }
         if (user.email) localStorage.setItem('user_email', user.email)
         if (user.profile_image) localStorage.setItem('user_profile_image', user.profile_image)
         // 🔑 2026-06-29 (핀/큐레이터 인증 뷰 동기화): generic useAuthStore('auth-storage') 에도 로그인 반영.
