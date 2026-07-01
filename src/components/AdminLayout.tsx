@@ -153,7 +153,8 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/withholding',      label: '원천징수/지급조서', icon: Shield },
       { path: '/admin/commission-settings', label: '정산 마진 설정', icon: Settings },
       { path: '/admin/merchant-commissions', label: '매장 커미션', icon: Store },
-      { path: '/admin/fee-breakdown', label: '수수료 규칙 비교', icon: Scale },
+      // 🔧 2026-07-01 (대표 "무슨 말인지 모르겠어"): '수수료 규칙 비교'(fee-resolver 그림자검증 — 개발/검증 전용,
+      //   기본 OFF·돈 안 움직임)는 재무 실무 메뉴에서 오해 소지 → 아래 '개발자 도구' 그룹으로 이동.
     ],
   },
   {
@@ -213,6 +214,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/env-check',         label: 'ENV 점검',      icon: Settings },
       { path: '/admin/kakao-test',        label: '카카오 연동 테스트', icon: Wrench },
       { path: '/admin/youtube-quota',     label: 'YouTube 쿼터',  icon: Play },
+      { path: '/admin/fee-breakdown',     label: '수수료 규칙 검증(개발)', icon: Scale },
     ],
   },
 ]
@@ -227,6 +229,22 @@ const LIVE_ADMIN_PATHS = new Set<string>([
 const VISIBLE_NAV_GROUPS: NavGroup[] = LIVE_COMMERCE_SUSPENDED
   ? NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((it) => !LIVE_ADMIN_PATHS.has(it.path)) })).filter((g) => g.items.length > 0)
   : NAV_GROUPS
+
+// 🎟️🏭 2026-07-01 (대표 "유어딜·도매몰 철저히 UX/UI 분리 — 전체적으로"): 좌측 nav 를 서비스 밴드로 구획.
+//   super 어드민은 전 그룹을 보는데 유어딜(소비자)·유통스타트(도매몰)·공통 그룹이 섞여 보였음(구분=이모지 뿐) →
+//   섹션 헤더 밴드로 3분할(운영 '홈'은 최상단 무밴드). 그룹 정의/RBAC(도매 role=wholesale 그룹만)/collapse/active 전부 불변 — 렌더 구획만.
+type NavSectionKey = 'home' | 'urdeal' | 'wholesale' | 'common'
+const navSectionOf = (g: NavGroup): NavSectionKey =>
+  g.domain === 'wholesale' ? 'wholesale'
+    : g.title === '운영' ? 'home'
+      : (g.title === '🏪 오프라인 공구' || g.title === '🛒 온라인 쇼핑') ? 'urdeal'
+        : 'common'
+const NAV_SECTIONS: Array<{ key: NavSectionKey; label?: string; accent?: string }> = [
+  { key: 'home' },
+  { key: 'urdeal', label: '🎟️ 유어딜 · 소비자', accent: '#a5b4fc' },
+  { key: 'wholesale', label: '🏭 유통스타트 · 도매몰 (B2B)', accent: '#fbbf24' },
+  { key: 'common', label: '⚙️ 공통 · 회원·재무·검증·시스템', accent: '#94a3b8' },
+]
 
 // 🛡️ 2026-06-17 (대표 신고 — 로그인 시 화면이 미친듯이 깜빡): 강제 보안 설정/계정 보안 페이지는
 //   역할과 무관하게 항상 도달 가능해야 한다. 도매 RBAC 리다이렉트(아래)가 강제 PIN 게이트
@@ -441,7 +459,18 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
 
       {/* Grouped navigation — 그룹 헤더 클릭으로 접기/펼치기 (활성 그룹은 강제 펼침) */}
       <nav ref={navScrollRef} className="flex-1 overflow-y-auto scrollbar-hide pb-2">
-        {roleNavGroups.map((group) => {
+        {NAV_SECTIONS.map((sec) => {
+          const secGroups = roleNavGroups.filter((g) => navSectionOf(g) === sec.key)
+          if (secGroups.length === 0) return null
+          return (
+          <div key={sec.key}>
+            {sec.label && (
+              <div className="mt-5 mb-0.5 px-4 flex items-center gap-2">
+                <span className="text-[10px] font-black tracking-wider whitespace-nowrap" style={{ color: sec.accent }}>{sec.label}</span>
+                <span className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${sec.accent}55, transparent)` }} />
+              </div>
+            )}
+            {secGroups.map((group) => {
           const hasActive = group.items.some((it) => isActive(it.path, it.exact, it.also))
           const collapsed = !!collapsedGroups[group.title] && !hasActive
           return (
@@ -492,6 +521,9 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
                   )}
                 </Link>
               )
+            })}
+          </div>
+          )
             })}
           </div>
           )

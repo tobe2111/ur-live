@@ -348,11 +348,16 @@ adminSellersRoutes.get('/sellers/business-registration/pending', cors(), async (
     const { DB } = c.env;
     // defensive: 컬럼 없으면 빈 배열 반환.
     const rows = await DB.prepare(
+      // 🧱 2026-07-01 (서비스 분리 — 대표 "도매몰 건이 여기 들어오는게 맞아?"): 유어딜 사업자등록증
+      //   검증 큐는 소비자 셀러 전용. 도매 판매사(is_distributor=1)는 도매몰(유통스타트) 온보딩의
+      //   NTS(국세청) 검증/판매사 승인에서 처리되므로 이 큐에서 제외 → 두 서비스 검증 흐름 분리.
+      //   (line 480 unlinked-sellers 쿼리와 동일 격리 패턴. 컬럼은 repair-schema 로 보장.)
       `SELECT s.id, s.name, s.business_name, s.business_number, s.business_registration_image_url,
               s.business_registration_status, s.business_registration_reject_reason, s.created_at, s.updated_at
          FROM sellers s
         WHERE s.business_registration_image_url IS NOT NULL
           AND s.business_registration_status = 'pending'
+          AND COALESCE(s.is_distributor, 0) = 0
         ORDER BY s.updated_at DESC
         LIMIT 50`
     ).all<{
