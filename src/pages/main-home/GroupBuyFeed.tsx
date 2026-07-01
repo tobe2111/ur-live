@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from '@/hooks/queries'
+import { useFcfsMap } from '@/features/group-buy/useFcfs'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
 import type { Product } from './types'
 
@@ -48,6 +49,9 @@ type CategoryKey = typeof CATEGORIES[number]['key']
 export default function GroupBuyFeed() {
   const [category, setCategory] = useState<CategoryKey>('all')
   const [sort, setSort] = useState<SortKey>('popular')
+
+  // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.
+  const { fcfsMap } = useFcfsMap()
 
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): React Query + hydration.
   //   목록 fetch 직후 각 product 를 individual detail cache 에 hydrate →
@@ -184,7 +188,7 @@ export default function GroupBuyFeed() {
           {/* 🛡️ 2026-05-24 (loading P0): 첫 4개 카드 = above-fold → eager + fetchpriority=high (LCP 단축).
               나머지는 lazy 유지 (scroll 시 자연 로드). */}
           {sorted.map((p, idx) => (
-            <GroupBuyFeedCard key={p.id} p={p} aboveFold={idx < 4} />
+            <GroupBuyFeedCard key={p.id} p={p} aboveFold={idx < 4} fcfs={fcfsMap.get(p.id)} />
           ))}
         </div>
       )}

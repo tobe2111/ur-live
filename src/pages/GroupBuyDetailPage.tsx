@@ -22,6 +22,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { readCache } from '@/hooks/queries/localCache'
 import { pickSeedDetail } from './group-buy/seed-detail'
+import FcfsApplyBlock from '@/features/group-buy/FcfsApplyBlock'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
 //   - Confetti: 100% 달성 시만 표시 (대부분 사용자 안 봄)
@@ -657,6 +658,9 @@ export default function GroupBuyDetailPage() {
           </div>
           <div style={{ marginTop: 9, fontSize: 13, color: 'var(--gbd-ink2)', fontWeight: 500 }}>{unitSaving > 0 && <>1매당 <b style={{ fontWeight: 800, color: 'var(--gbd-danger)' }}>{formatNumber(unitSaving)}원</b> 저렴 · </>}결제 즉시 교환권 발급</div>
         </div>
+
+        {/* 🎯 추첨 응모 — 이 상품이 추첨 대상일 때만(결제 없음). 아니면 렌더 0. */}
+        <FcfsApplyBlock productId={Number(id)} />
 
         <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
 

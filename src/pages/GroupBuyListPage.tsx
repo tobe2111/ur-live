@@ -26,6 +26,7 @@ import LiveTicker from '@/components/group-buy/LiveTicker'
 import RegionPickerModal from '@/components/RegionPickerModal'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
 import { trackFunnel } from '@/lib/funnel'
+import { useFcfsMap } from '@/features/group-buy/useFcfs'
 import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types/constants/utils 를 ./group-buy-list/ 로 추출.
@@ -121,6 +122,8 @@ export default function GroupBuyListPage() {
   const urlDistrict = searchParams.get('district') || null
 
   const [mainTab, setMainTab] = useState<MainTab>('seller')
+  // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 그리드 카드 배지.
+  const { fcfsMap } = useFcfsMap()
   // SSR 주입 1회 캡처 (lazy init → 첫 렌더에만 읽음). null = 미주입(클라 재진입) → 정상 fetch.
   const ssrInitialRef = useRef<GroupBuyProduct[] | null | undefined>(undefined)
   if (ssrInitialRef.current === undefined) ssrInitialRef.current = readSsrGroupBuy()
@@ -770,6 +773,7 @@ export default function GroupBuyListPage() {
                     idx={idx}
                     interested={interestedIds.has(p.id)}
                     onToggleInterest={toggleInterest}
+                    fcfs={fcfsMap.get(p.id)}
                   />
                 ))}
               </div>

@@ -193,14 +193,14 @@ adminApp.post('/:productId/select', async (c) => {
     if (winnerIds.length === 0) return c.json({ success: false, error: '선정할 지원자가 없습니다' }, 400)
 
     const prod = await DB.prepare("SELECT name, restaurant_name FROM products WHERE id=?").bind(productId).first<{ name?: string; restaurant_name?: string }>().catch(() => null)
-    const dealName = prod?.restaurant_name || prod?.name || '선착순 공구'
+    const dealName = prod?.restaurant_name || prod?.name || '추첨 공구'
 
     for (const uid of winnerIds) {
       await DB.prepare("UPDATE fcfs_applications SET status='selected', selected_at=datetime('now') WHERE product_id=? AND user_id=?").bind(productId, uid).run().catch(() => {})
       // 선정 알림
       await DB.prepare(
         "INSERT INTO notifications (user_id, user_type, type, title, message, created_at) VALUES (?, 'user', 'fcfs_selected', ?, ?, datetime('now'))"
-      ).bind(uid, '🎉 선착순 당첨!', `[${dealName}] 선착순 응모에 당첨되셨어요. 자세한 안내를 확인하세요.`).run().catch(() => {})
+      ).bind(uid, '🎉 추첨 당첨!', `[${dealName}] 추첨 응모에 당첨되셨어요. 자세한 안내를 확인하세요.`).run().catch(() => {})
     }
     return c.json({ success: true, data: { selected: winnerIds.length } })
   } catch (err) { return safeError(c, err, '선정 처리 실패', '[fcfs]') }

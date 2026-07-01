@@ -102,7 +102,7 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
               </div>
               {fcfs && (
                 <span className="inline-flex self-start items-center gap-1 mt-1.5 text-[10px] font-extrabold text-gray-900 dark:text-white bg-gray-900/10 dark:bg-white/15 px-2 py-0.5 rounded-full">
-                  ⚡ 선착순 {formatNumber(fcfs.appliedDisplay)}/{formatNumber(fcfs.spots)}명
+                  🎯 추첨 {formatNumber(fcfs.appliedDisplay)}/{formatNumber(fcfs.spots)}명
                 </span>
               )}
             </div>
@@ -111,7 +111,7 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
                 onClick={(e) => { e.stopPropagation(); onApplyFcfs(r.id) }}
                 className="self-center px-3.5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-xl shrink-0 active:scale-95 transition-transform"
               >
-                지원
+                응모
               </button>
             )}
           </button>
