@@ -45,3 +45,12 @@
 - SSR 시드(`readBlogListSeed`) + `refetchOnMount:'always'` — 첫 페인트 0-RTT.
 - 제목/요약 `stripBold` — `**` 노출 방지.
 - 다크/라이트 양테마(테마 가드 strict).
+
+## ✅ 구현 완료 (2026-07-01)
+`src/pages/BlogListPage.tsx` 전면 개편(그리드 → 히어로+리스트, 260줄).
+- **히어로 캐러셀**: 최신 5개, 좌 제목/요약(카테고리+작성자 칩) + 우 이미지(`aspect-16/10` 라운드) + 원형 ‹› 화살표 + `n/N` 인디케이터. 태그 필터 선택 시 숨김.
+- **전체 아티클 리스트**: `divide-y` 세로 행 — 좌(카테고리 파란칩 + 작성자 회색칩 + 제목 + 요약 2줄) / 우(24~28 정사각 라운드 썸네일, 없으면 그라디언트+이모지 커버).
+- **페이지네이션**: 페이지당 7개, 윈도우(최대 7버튼) + ‹ › (경계서 disabled).
+- 태그 필터 유지(선택 시 히어로 숨김 + 제목 `#태그` + 페이지 1 리셋).
+- 보존: `__SSR_INITIAL_BLOG__` 0-RTT · `stripBold` · SEO · 스켈레톤 로딩 · 다크모드 · `min-h-[100dvh]`.
+- 검증: tsc 0 · theme/mobile-viewport/file-size 가드 GREEN · `npm run build:client` 통과.
