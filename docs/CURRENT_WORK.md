@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 사전방지 가드 2종 신설 (대표 "앞으로 문제 없게 사전 방지") — 이번 감사 미보유 클래스 박제
+도매 3표면 감사에서 **가드가 없어서** 생긴 2개 버그 클래스를 결정론적 가드로 박아 재발 구조적 차단(레포 철학 "버그 클래스 발견 시 가드부터").
+- **① `check-deprecated-pricing.mjs`** — 도매 공급가 모델 드리프트 방지. 폐기 `distributorPriceFromRetail`/`distributorPrice` 직접호출 금지 → `resolveDistributorPrice` SSOT 강제. (내보내기가 실결제가와 다른 등급가 낸 HIGH 사고 재발 차단.)
+- **② `check-balance-absolute-write.mjs`** — `*balance*` 컬럼 절대값 write(비원자 read-modify-write) 금지 → 원자 증감/CAS만(한 UPDATE 에 컬럼 2회+). 스냅샷 `*_after` 예외. (미수금 상환 race 재발 차단.)
+- 배선: audit-gate(머니 도메인) + verify.yml(strict) + pre-commit(warn) + AUDIT_INVARIANTS + CLAUDE.md 방어선. 음성테스트(폐기함수 호출/절대값write 잡고 산술·CAS 통과) 통과. **audit-gate 41 GREEN**.
+
 ## ✅ 2026-07-01 — 도매몰 3표면(판매사·제조사·도매어드민) 심층 감사 + 확정 3건 fix (대표 "세 대시보드 모두?")
 pagination 크래시 수정 후속 — 세 표면을 **가드 미보유 영역**(런타임 크래시·정산/금액 정확성·환불 대칭)으로 병렬 심층 감사(에이전트 3). audit-gate GREEN 영역(서비스분리·RBAC·머니패턴·주문상태머신)은 가드 신뢰로 스킵.
 - **판매사 표면: clean**(예치금 차감/복원 CAS·주문 총액 서버재계산·MOQ·tier floor·환불 대칭 전부 정합). 유일 지적=내 pagination 코드모드가 `wholesale.routes.ts` 에 넣은 **mid-file import**(CLAUDE.md 금지 패턴, hoist 되어 무해하나 정리) → 상단 import 블록으로 이동.
