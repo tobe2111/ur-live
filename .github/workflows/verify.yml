@@ -312,6 +312,13 @@ jobs:
       - name: Column existence (strict)
         run: node scripts/check-sql-column-exists.mjs -s
 
+      # 🛡️ 2026-07-01: 존재하지 않는 '테이블' 참조 — 'no such table' SqlError 방지.
+      #   admin 리뷰관리가 없는 'reviews'(실제=product_reviews) 조회 → 항상 500 사고(대표 신고) 후 strict.
+      #   FROM/JOIN/INTO/UPDATE/DELETE 테이블이 CREATE TABLE(마이그레이션+repair-schema+inline) 또는
+      #   KNOWN_TABLES_EXTRA 에 있는지 검증. 오타 테이블 commit 자체 차단.
+      - name: Table existence (strict)
+        run: node scripts/check-sql-table-exists.mjs -s
+
       # 🛡️ 2026-06-26: CSV/엑셀 수식 인젝션 재발 방지 — csvEscape 류 함수가 = + - @ 탭/CR 선행 셀을
       #   무력화 안 하면 셀러 free-text(상품명/회사명)가 =cmd.../=HYPERLINK 로 실행되던 사고. 현재 위반 0 → strict.
       - name: CSV formula-injection guard (strict)

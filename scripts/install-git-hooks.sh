@@ -121,6 +121,15 @@ node scripts/check-sql-column-exists.mjs -s || {
   exit 1
 }
 
+# 🛡️ 2026-07-01: 존재하지 않는 '테이블' 참조 검사 (strict — 차단).
+#   admin 리뷰관리가 없는 'reviews' 테이블(실제=product_reviews) 조회 → 항상 500 사고(대표 신고).
+#   'no such table' SqlError → 페이지 영구 500 영구 차단. 새 실제 테이블은 CREATE TABLE 추가 시 자동 인식.
+echo "==> Pre-commit: 존재 없는 테이블 참조 검사 (strict)..."
+node scripts/check-sql-table-exists.mjs -s || {
+  echo "❌ Commit blocked. 없는 테이블 참조 발견 — 오타이거나 KNOWN_TABLES_EXTRA 등록 필요."
+  exit 1
+}
+
 # 🛡️ 2026-05-17: 대시보드 NaN/undefined 노출 위험 검사 (warn-only)
 echo "==> Pre-commit: 대시보드 NaN 위험 패턴 검사 (warn-only)..."
 bash scripts/check-nan-dashboard.sh || true
