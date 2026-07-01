@@ -693,6 +693,9 @@ app.use('*', async (c, next) => {
         .on('meta[property="og:site_name"]', { element(el) { el.setAttribute('content', '유통스타트'); } })
         .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', wsTitle); } })
         .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', wsDesc); } })
+        // 🏭 도매 surface 파비콘(브라우저 탭) = 유통스타트 마크(유어딜 UR 아님). 링크 href 를 도매 파비콘으로 rewrite.
+        .on('link[rel="icon"]', { element(el) { el.setAttribute('href', '/favicon-utong.svg'); el.setAttribute('type', 'image/svg+xml'); } })
+        .on('link[rel="apple-touch-icon"]', { element(el) { el.setAttribute('href', '/favicon-utong.svg'); } })
         .on('head', { element(el) { el.append(`<link rel="canonical" href="${wsCanonical}">`, { html: true }); } });
     }
     if (isMarketingSurface) {

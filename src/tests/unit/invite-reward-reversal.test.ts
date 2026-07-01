@@ -11,6 +11,8 @@ import { reverseInviteRewardOnRefund } from '@/worker/utils/invite-reward'
  *   5. 회수액은 MAX(0, balance-amount) clamp + 장부(invite_reward_reversal) 음수 delta 기록.
  */
 
+type DB = Parameters<typeof reverseInviteRewardOnRefund>[0]
+
 interface MockState {
   rewardRow: { id: number; inviter_user_id: string; reward_amount: number } | null
   orderCount: number
@@ -20,7 +22,6 @@ interface MockState {
 function makeDb(state: MockState) {
   const calls = { deductedFromInviter: null as number | null, ledgerDelta: null as number | null, claimAttempted: false }
   const db = {
-    _calls: calls,
     prepare(sql: string) {
       let params: unknown[] = []
       const stmt = {
@@ -49,47 +50,42 @@ function makeDb(state: MockState) {
     },
     async batch() { return [] },
   }
-  return db as never
+  return { db: db as unknown as DB, calls }
 }
 
 describe('reverseInviteRewardOnRefund — 초대보상 환불 회수', () => {
   it('유효주문 0 → 초대자 1,000딜 회수 + granted→expired + 장부 -1,000', async () => {
-    const state: MockState = { rewardRow: { id: 7, inviter_user_id: 'A', reward_amount: 1000 }, orderCount: 0 }
-    const db = makeDb(state)
+    const { db, calls } = makeDb({ rewardRow: { id: 7, inviter_user_id: 'A', reward_amount: 1000 }, orderCount: 0 })
     await reverseInviteRewardOnRefund(db, 'B')
-    expect((db as never as { _calls: typeof db['_calls'] })._calls.claimAttempted).toBe(true)
-    expect((db as never as { _calls: { deductedFromInviter: number } })._calls.deductedFromInviter).toBe(1000)
-    expect((db as never as { _calls: { ledgerDelta: number } })._calls.ledgerDelta).toBe(-1000)
+    expect(calls.claimAttempted).toBe(true)
+    expect(calls.deductedFromInviter).toBe(1000)
+    expect(calls.ledgerDelta).toBe(-1000)
   })
 
   it('다른 유효 주문 존재(cnt>0) → 보상 유지(회수/차감 없음)', async () => {
-    const state: MockState = { rewardRow: { id: 7, inviter_user_id: 'A', reward_amount: 1000 }, orderCount: 2 }
-    const db = makeDb(state)
+    const { db, calls } = makeDb({ rewardRow: { id: 7, inviter_user_id: 'A', reward_amount: 1000 }, orderCount: 2 })
     await reverseInviteRewardOnRefund(db, 'B')
-    expect((db as never as { _calls: { claimAttempted: boolean } })._calls.claimAttempted).toBe(false)
-    expect((db as never as { _calls: { deductedFromInviter: number | null } })._calls.deductedFromInviter).toBeNull()
+    expect(calls.claimAttempted).toBe(false)
+    expect(calls.deductedFromInviter).toBeNull()
   })
 
   it('granted 보상 없음 → no-op(차감 없음)', async () => {
-    const state: MockState = { rewardRow: null, orderCount: 0 }
-    const db = makeDb(state)
+    const { db, calls } = makeDb({ rewardRow: null, orderCount: 0 })
     await reverseInviteRewardOnRefund(db, 'B')
-    expect((db as never as { _calls: { claimAttempted: boolean } })._calls.claimAttempted).toBe(false)
-    expect((db as never as { _calls: { deductedFromInviter: number | null } })._calls.deductedFromInviter).toBeNull()
+    expect(calls.claimAttempted).toBe(false)
+    expect(calls.deductedFromInviter).toBeNull()
   })
 
   it('CAS 경쟁: 다른 경로가 이미 회수(changes==0) → 이중 차감 없음', async () => {
-    const state: MockState = { rewardRow: { id: 7, inviter_user_id: 'A', reward_amount: 1000 }, orderCount: 0, claimChanges: 0 }
-    const db = makeDb(state)
+    const { db, calls } = makeDb({ rewardRow: { id: 7, inviter_user_id: 'A', reward_amount: 1000 }, orderCount: 0, claimChanges: 0 })
     await reverseInviteRewardOnRefund(db, 'B')
-    expect((db as never as { _calls: { claimAttempted: boolean } })._calls.claimAttempted).toBe(true)
-    expect((db as never as { _calls: { deductedFromInviter: number | null } })._calls.deductedFromInviter).toBeNull()
+    expect(calls.claimAttempted).toBe(true)
+    expect(calls.deductedFromInviter).toBeNull()
   })
 
   it('빈 userId → 즉시 no-op', async () => {
-    const state: MockState = { rewardRow: { id: 7, inviter_user_id: 'A', reward_amount: 1000 }, orderCount: 0 }
-    const db = makeDb(state)
+    const { db, calls } = makeDb({ rewardRow: { id: 7, inviter_user_id: 'A', reward_amount: 1000 }, orderCount: 0 })
     await reverseInviteRewardOnRefund(db, '')
-    expect((db as never as { _calls: { claimAttempted: boolean } })._calls.claimAttempted).toBe(false)
+    expect(calls.claimAttempted).toBe(false)
   })
 })
