@@ -82,13 +82,22 @@ describe('keyword-tools — 파싱(fetch 스텁)', () => {
     expect(r.data!.channels.find(c => c.channel === 'news')!.items[0].date).toBe('2026-06-15')
   })
 
-  it('shoppingCategoryTrends: 카테고리별 증감률 내림차순 + cid 매핑', async () => {
-    stub([{ match: '/v1/datalab/shopping/categories', json: { results: [
-      { title: '식품', data: [{ period: '2025-07', ratio: 100 }, { period: '2026-06', ratio: 80 }] },   // -20%
-      { title: '화장품/미용', data: [{ period: '2025-07', ratio: 50 }, { period: '2026-06', ratio: 100 }] }, // +100%
-    ] } }])
+  it('shoppingCategoryTrends: 카테고리별 증감률 내림차순 + cid 매핑 (청크 분할·병합)', async () => {
+    // 쇼핑인사이트 분야 API 는 요청당 최대 3개 → 함수가 3개씩 분할 호출. 실제 네이버처럼
+    //   각 청크는 그 청크가 요청한 카테고리만 반환하도록 body 인지형 mock 으로 검증(중복 없음).
+    const dataByName: Record<string, Array<{ period: string; ratio: number }>> = {
+      '식품': [{ period: '2025-07', ratio: 100 }, { period: '2026-06', ratio: 80 }],        // -20%
+      '화장품/미용': [{ period: '2025-07', ratio: 50 }, { period: '2026-06', ratio: 100 }], // +100%
+    }
+    vi.stubGlobal('fetch', vi.fn(async (url: string, opts?: { body?: string }) => {
+      if (!String(url).includes('/v1/datalab/shopping/categories')) return { ok: false, status: 404, json: async () => ({}) }
+      const body = JSON.parse(opts?.body || '{}') as { category?: Array<{ name: string }> }
+      const results = (body.category || []).filter(c => dataByName[c.name]).map(c => ({ title: c.name, data: dataByName[c.name] }))
+      return { ok: true, status: 200, json: async () => ({ results }) }
+    }))
     const r = await shoppingCategoryTrends(ID, SEC)
-    expect(r.results!.map(c => c.name)).toEqual(['화장품/미용', '식품']) // 증감률 내림차순
+    expect(r.ok).toBe(true)
+    expect(r.results!.map(c => c.name)).toEqual(['화장품/미용', '식품']) // 증감률 내림차순, 중복 0
     expect(r.results![0]).toMatchObject({ changePct: 100, cid: '50000002' })
   })
 
