@@ -44,7 +44,8 @@ app.get('/orders', async (c) => {
       SELECT i.id AS item_id, i.wholesale_order_id, i.name, i.qty, i.base_supply_price,
              (i.base_supply_price * i.qty) AS settle_amount,
              i.courier, i.tracking_number, i.shipped_at, i.line_status,
-             i.option_label, i.ext_order_no, i.ship_to_message,
+             i.option_label, i.ext_order_no,
+             COALESCE(i.ship_to_message, o.ship_to_message) AS ship_to_message,
              o.status AS order_status, o.created_at, o.paid_at,
              -- 📦 드랍십: 라인별 받는사람 우선, 없으면 주문(판매사) 배송지 폴백.
              COALESCE(i.ship_to_name, o.ship_to_name) AS ship_to_name,
@@ -74,7 +75,8 @@ app.get('/orders/export', async (c) => {
     const { results } = await DB.prepare(`
       SELECT i.id AS item_id, i.wholesale_order_id, i.name, i.qty, i.base_supply_price,
              (i.base_supply_price * i.qty) AS settle_amount, i.line_status,
-             i.option_label, i.ext_order_no, i.ship_to_message,
+             i.option_label, i.ext_order_no,
+             COALESCE(i.ship_to_message, o.ship_to_message) AS ship_to_message,
              COALESCE(i.ship_to_name, o.ship_to_name) AS ship_to_name,
              COALESCE(i.ship_to_phone, o.ship_to_phone) AS ship_to_phone,
              COALESCE(i.ship_to_address, o.ship_to_address) AS ship_to_address,

@@ -232,6 +232,8 @@ export default function SupplierWholesaleOrdersPage() {
                       <>
                         <div className="font-medium text-gray-800">{first.ship_to_name || '—'} {first.ship_to_phone || ''}</div>
                         <div>{first.ship_to_postal ? `(${first.ship_to_postal}) ` : ''}{first.ship_to_address || '배송지 정보 없음'}</div>
+                        {/* 🏭 2026-06-30: 판매사 배송 메시지 — 단일 수령 주문에도 노출(발송 지시 누락 방지). */}
+                        {first.ship_to_message && <div className="text-gray-500 mt-1">💬 {first.ship_to_message}</div>}
                       </>
                     )}
                   </div>
