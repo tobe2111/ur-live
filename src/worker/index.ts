@@ -689,6 +689,27 @@ app.use('*', async (c, next) => {
         .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', wsDesc); } })
         .on('head', { element(el) { el.append(`<link rel="canonical" href="${wsCanonical}">`, { html: true }); } });
     }
+    if (isMarketingSurface) {
+      // 🆕 2026-07-01 유어애즈(/ads) surface 서버측 OG/canonical 주입 — 도매 surface 와 동일 패턴.
+      //   비-JS 크롤러/소셜 스크래퍼(카톡/페북/슬랙)는 react-helmet(<SEO>)을 못 봐 index.html 의
+      //   소비자(유어딜) 기본 메타만 봄 → 마케팅 랜딩 공유/검색 시 "유어딜..."로 오노출되던 것 교정.
+      const adTitle = '유어애즈 UR Ads — 네이버 검색광고 자동화·키워드 분석 마케팅 툴';
+      const adDesc = '연관키워드·검색량 분석, 자동입찰, 쇼핑 순위 추적, 부정클릭 방어, AI 주간 리포트까지. 네이버 광고 성과를 높이는 셀러 마케팅 자동화 도구.';
+      const adCanonical = `${new URL(c.req.url).origin}${url.pathname}`;
+      const adOgImg = `${new URL(c.req.url).origin}/og-urads.png`;
+      rb = rb
+        .on('title', { element(el) { el.setInnerContent(adTitle); } })
+        .on('meta[name="description"]', { element(el) { el.setAttribute('content', adDesc); } })
+        .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', adTitle); } })
+        .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', adDesc); } })
+        .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', adCanonical); } })
+        .on('meta[property="og:site_name"]', { element(el) { el.setAttribute('content', '유어애즈'); } })
+        .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', adOgImg); } })
+        .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', adTitle); } })
+        .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', adDesc); } })
+        .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', adOgImg); } })
+        .on('head', { element(el) { el.append(`<link rel="canonical" href="${adCanonical}">`, { html: true }); } });
+    }
     // 📝 2026-07-01 블로그 서버측 메타/구조화데이터 주입 — JS 안 도는 크롤러(네이버/카카오/소셜)용.
     //   Googlebot 은 react-helmet(<SEO>)을 렌더해 보지만, 네이버·소셜 스크래퍼는 정적 HTML 메타만 봄.
     const origin2 = new URL(c.req.url).origin;
