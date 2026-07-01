@@ -6,14 +6,32 @@ import SEO, { breadcrumbJsonLd } from '@/components/SEO'
 import { nativeShare } from '@/lib/native'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import { escapeHtml } from '@/shared/utils/html'
-import { useBlogPost } from '@/hooks/queries/useBlogPost'
+import { useBlogPost, type BlogPost } from '@/hooks/queries/useBlogPost'
+import { useApiQuery } from '@/hooks/queries/useApiQuery'
+
+// 📝 2026-07-01 SSR 시드(__SSR_INITIAL_BLOGPOST__) — 서버가 주입한 글을 0-RTT 로 즉시 사용.
+function readBlogSeed(slug?: string): BlogPost | null {
+  if (typeof document === 'undefined' || !slug) return null
+  const el = document.getElementById('__SSR_INITIAL_BLOGPOST__')
+  if (!el?.textContent) return null
+  try {
+    const post = (JSON.parse(el.textContent) as { data?: BlogPost })?.data
+    return post && post.slug === slug ? post : null
+  } catch { return null }
+}
 
 export default function BlogDetailPage() {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (public 콘텐츠, slug별 캐시).
-  const { data: post = null, isLoading: loading } = useBlogPost(slug)
+  // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (public 콘텐츠, slug별 캐시). SSR 시드 즉시 사용.
+  const { data: post = null, isLoading: loading } = useBlogPost(slug, readBlogSeed(slug))
+
+  // 📝 관련 글(같은 태그) — 내부 링크로 회유·SEO 크롤 깊이 개선.
+  const { data: allPosts = [] } = useApiQuery<BlogPost[]>(
+    ['blog', 'public', ''], '/api/blog/public?limit=100',
+    { select: (r: any) => (r?.success ? (r.data || []) : []) },
+  )
 
   useEffect(() => { window.scrollTo(0, 0) }, [slug])
 
@@ -166,6 +184,35 @@ export default function BlogDetailPage() {
         <div className="mt-6">
           {renderContent(post.content)}
         </div>
+
+        {/* 관련 글 — 같은 태그 우선, 내부 링크(회유·SEO) */}
+        {(() => {
+          const myTags: string[] = (() => { try { return JSON.parse(post.tags) } catch { return [] } })()
+          const related = (allPosts as BlogPost[])
+            .filter((p) => p.slug !== post.slug)
+            .map((p) => {
+              const pt: string[] = (() => { try { return JSON.parse(p.tags) } catch { return [] } })()
+              return { p, overlap: pt.filter((t) => myTags.includes(t)).length }
+            })
+            .sort((a, b) => b.overlap - a.overlap)
+            .slice(0, 4)
+            .map((x) => x.p)
+          if (related.length === 0) return null
+          return (
+            <section className="mt-12">
+              <h2 className="text-base font-bold text-gray-900 dark:text-white mb-3">함께 보면 좋은 글</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {related.map((r) => (
+                  <Link key={r.slug} to={`/blog/${r.slug}`}
+                    className="block p-4 rounded-xl border border-gray-200 dark:border-[#2A2A2A] hover:border-gray-300 dark:hover:border-[#3A3A3A] hover:shadow-sm transition">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2">{r.title}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{r.summary}</p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )
+        })()}
 
         {/* CTA */}
         <div className="mt-12 bg-gradient-to-r from-gray-50 to-gray-50 dark:from-gray-900/20 dark:to-gray-900/20 rounded-2xl p-6 text-center">

@@ -35,6 +35,8 @@ export default function SiteFooter() {
 
         {/* Links */}
         <div className="flex flex-wrap gap-x-1 text-gray-500 dark:text-gray-400">
+          <a href="/blog" className="underline hover:text-white">블로그</a>
+          <span>|</span>
           <a href="/terms" className="underline hover:text-white">서비스 이용약관</a>
           <span>|</span>
           <a href="/privacy" className="underline hover:text-white">개인정보처리방침</a>
