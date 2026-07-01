@@ -190,6 +190,26 @@ export default function AdminSettlementPage() {
             </button>
           }
         />
+
+      {/* 💸 2026-07-01 (정산 정합): 이 페이지(개별 정산)는 주문별 매출/수수료/정산상태(집계·세금·감사)
+          뷰이며 여기서 '정산 완료' 표시는 회계 상태일 뿐 송금이 아님. 실제 셀러 지급(동네딜 공구·이용권)은
+          '통합 정산 (Ledger)' 탭에서 자동 집계되어 처리됨. 혼동 방지 안내. */}
+      <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm">
+        <span className="mt-0.5 text-blue-600">ℹ️</span>
+        <div className="space-y-0.5">
+          <p className="font-semibold text-blue-900">
+            {t('admin.settlement.reconcileBanner', { defaultValue: '이 화면은 주문별 매출·정산 상태(집계/세금/감사) 뷰입니다.' })}
+          </p>
+          <p className="text-xs text-blue-800">
+            {t('admin.settlement.reconcileBannerDesc', { defaultValue: "여기서 '정산 완료' 표시는 회계 상태이며 실제 송금이 아닙니다. 셀러 실제 지급(자동 집계)은" })}{' '}
+            <button onClick={() => navigate('/admin/payouts')} className="font-semibold underline hover:text-blue-900">
+              {t('admin.settlement.goLedger', { defaultValue: '통합 정산 (Ledger) 탭' })}
+            </button>
+            {t('admin.settlement.reconcileBannerDesc2', { defaultValue: '에서 처리됩니다.' })}
+          </p>
+        </div>
+      </div>
+
       {/* 기간 필터 */}
       <div className="flex items-center gap-2">
         {[['today', t('admin.settlement.today', { defaultValue: '오늘' })], ['week', t('admin.settlement.thisWeek', { defaultValue: '이번 주' })], ['month', t('admin.settlement.thisMonth', { defaultValue: '이번 달' })], ['all', t('admin.settlement.all', { defaultValue: '전체' })]].map(([v, l]) => (
