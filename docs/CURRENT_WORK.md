@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-30 — 판매사 도매몰 알림 벨 (배선한 알림을 볼 UI) (대표 "다음으로")
+- **문제**: 이번 세션에서 판매사 알림을 대거 배선(발송 시작·수락·거절·환불·예치금 확인/반려·클레임·주문메모…, 전부 `recipient_type='seller'`)했는데 **도매몰(판매사) 표면엔 알림함/벨이 0** — 제조사는 `NotificationsBell`(`/supplier`)이 있으나 판매사는 없어 배선한 알림이 전부 안 보였음. (`WholesaleUtilBar`·`WholesaleDashboardPage` 어디에도 벨 없음.)
+- **수정(재사용)**: 공용 `DashboardNotificationBell`(SellerLayout 이 이미 `tokenKey="seller_token"` 로 `/api/dashboard-notifications` 사용)을 **공유 상단바 `WholesaleUtilBar` 에 배치**(loggedIn=판매사만; 제조사는 supplierToken→자체 벨). 판매사=seller 라 recipient_type='seller' 알림 그대로 표시, 클릭 시 `safeInternalPath` 딥링크(→ `/wholesale/orders` 등). 다크 유틸바용으로 `DashboardNotificationBell` 에 `iconClassName`/`buttonClassName` prop **additive**(미지정=기존 라이트 대시보드 스타일 불변 → SellerLayout/Admin/Agency 무영향).
+- **불변**: 알림 생성/엔드포인트/제조사 벨/유틸바 나머지(예치금·충전·마이) 전부 불변(벨 1개 배치 + prop 2개 additive). 벨 dropdown 은 기존 흰 팝업 그대로.
+- **알림 루프 완결**: 제조사 발송 → recipient_type='seller' 알림 → **판매사 유틸바 벨(빨간 배지)** → 클릭 → `/wholesale/orders`(구매확정) → 홈 배너 사라짐. (그동안 배선만 하고 볼 곳이 없던 마지막 고리.)
+- 검증: tsc 0 · build 0 · theme-consistency(strict)·가드 0.
+
 ## ✅ 2026-06-30 — 어드민 상품 승인 시 이미지 시각 검수 (갤러리 후속) (대표 "다음으로")
 - **문제**: 어드민 공급상품 승인 큐(`SupplierProductsTab`)가 **이미지를 하나도 안 보여줘** 어드민이 썸네일/갤러리/상세를 못 보고 승인/거부 — 이미지 검수가 구조적으로 불가. API는 `image_url`만 반환(UI 미표시), `detail_images`·갤러리는 미반환.
 - **수정**: ① API(`admin-products.routes GET /supplier-products`) SELECT 에 `detail_images` 추가 + `getSupplyMeta` 로 `gallery_images` 첨부(fail-soft). ② UI: 각 행에 **썸네일** + 접이식 **'이미지 검수(대표 N · 상세 N)'** 패널(썸네일+대표갤러리+상세 전체를 그리드로, 클릭 시 원본 새탭, 중복제거). 이미지 0개면 '⚠️ 등록된 이미지가 없어요' 경고.
