@@ -1,5 +1,10 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 로더 유어딜 전면 통일(완료) + 카카오맵 매장 페이지 링크 수정 (대표 라이브 신고 연속 2)
+- **A 로더 전면 통일(완료, 대표 "전면 통일해")**: 소비자 상세/목록 7페이지의 skeleton/스피너 → `BrandLoader`(SSOT). **상세**(전체페이지 반환): `GroupBuyDetailPage`·`VoucherDetailPage`(스피너)·`ProductDetailPage`(`ProductDetailSkeleton`) → `<BrandLoader fullScreen/>`. **목록**(인라인): `VouchersPage`·`GroupBuyListPage`·`BrowsePage`(카드그리드 skeleton)·`MyVouchersPage`(`WalletSkeleton`) → `<BrandLoader/>`. 미사용된 `ProductDetailSkeleton`/`WalletSkeleton` import 정리. **잠긴 SSR seed 로직 불변**(seed 있으면 loading=false → 로더 미노출, seed-miss/콜드 SPA 이동에만). 대표 확인: 실제 데이터 fetch 속도 동일, skeleton의 CLS/체감 이점만 트레이드오프(전면 통일 선택).
+- **E 카카오맵 매장 페이지 링크(대표 "카카오맵에 매장 페이지가 안 나옴")**: `RestaurantMiniMap` 외부 링크가 `link/map/{name},{lat},{lng}`(좌표 핀만, 장소 페이지 안 열림 + 좌표 오차 시 빈자리) → **매장명+주소 `link/search`**(카카오 등록 장소가 떠서 매장 페이지 연결, 좌표 정밀도 무관). name/address 없을 때만 좌표 map 폴백.
+- 검증: tsc 0 · theme(strict) 0 · build(client+ssr+prerender+worker+prepare) 0.
+
 ## ✅ 2026-07-01 — 어드민 동네딜 수정 홈 즉시 반영(캐시 무효화) + 공구상세 하단바 축소 + 로더 통일 착수 (대표 라이브 신고 연속)
 - **D 동네딜 캐시 무효화(대표 "수정해도 홈에 바로 반영 안됨")**: `/admin/dongnedeal-import` 뮤테이션(`admin-products.routes` create·patch·seed-demo POST/DELETE·bulk-import 5곳)이 **공구 목록 앱 캐시(`group_buy_products:*`)를 전혀 무효화 안 함** — 셀러 상품등록은 `invalidateGroupBuyProductsCache` 호출하는데 어드민만 누락 → 홈/동네딜 stale. 셀러와 동일 패턴으로 5곳 배선(SESSION_KV, fail-open). **잔여**: edge/SSR `caches.default`(≤300s)·CDN(≤900s) TTL 은 별도 — 앱 캐시 무효화로 TTL 만료 시 fresh 재계산 보장(이전엔 만료돼도 stale 앱캐시 재사용). 진짜 0초는 edge 퍼지(잠금영역) 필요.
 - **B 공구상세 하단 구매바 높이 축소(대표 "하단이 너무 높다")**: `GroupBuyDetailPage` footer 패딩 11/13→7/8·행 마진 10/9→6/6·버튼 53→50 (약 19px↓). 탭 타겟 유지.

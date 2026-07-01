@@ -127,10 +127,14 @@ export default function RestaurantMiniMap({ name, address, lat, lng, height = 22
   }, [loaded, resolvedCoord, name])
 
   // 카카오맵 외부 링크 URL
-  const kakaoMapUrl = resolvedCoord
-    ? `https://map.kakao.com/link/map/${encodeURIComponent(name || address || '매장')},${resolvedCoord.lat},${resolvedCoord.lng}`
-    : address
-    ? `https://map.kakao.com/?q=${encodeURIComponent(address)}`
+  // 🛡️ 2026-07-01 (대표 신고 — "카카오맵에 매장 페이지가 안 나옴"): `link/map/{name},{lat},{lng}` 는
+  //   좌표에 핀만 찍고 등록된 장소 페이지(정보/리뷰 카드)를 안 엶 + 좌표 오차 시 빈자리 핀.
+  //   → 매장명+주소로 `link/search` — 카카오에 등록된 실제 장소가 떠서 매장 페이지로 연결(좌표 정밀도 무관).
+  const kakaoSearchQuery = [name, address].filter(Boolean).join(' ').trim()
+  const kakaoMapUrl = kakaoSearchQuery
+    ? `https://map.kakao.com/link/search/${encodeURIComponent(kakaoSearchQuery)}`
+    : resolvedCoord
+    ? `https://map.kakao.com/link/map/${resolvedCoord.lat},${resolvedCoord.lng}`
     : null
 
   if (!address && !resolvedCoord) return null

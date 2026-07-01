@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -716,15 +717,7 @@ export default function GroupBuyListPage() {
             )}
 
             {loading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i}>
-                    <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-xl" />
-                    <div className="mt-2 h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse" />
-                    <div className="mt-1 h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse w-2/3" />
-                  </div>
-                ))}
-              </div>
+              <BrandLoader />
             ) : filtered.length === 0 ? (
               (category !== 'all' || !!regionKey || !!searchQuery.trim()) ? (
                 /* 🧭 2026-06-17 (대표 신고 — 빈 카테고리 UX): 카테고리/지역/검색으로 0건이면 '곧 오픈' 대신

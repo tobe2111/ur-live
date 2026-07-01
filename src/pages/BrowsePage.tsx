@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, ShoppingCart, Truck, ChevronLeft, SlidersHorizontal, ChevronDown, X, Map, List } from 'lucide-react'
@@ -498,17 +499,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
 
         {/* v4 Editorial Grid — hero + 2열 */}
         {loading ? (
-          <div className="space-y-4">
-            <div className="w-full lg:max-w-md aspect-[4/3] lg:aspect-square bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-2xl" />
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {[...Array(4)].map((_, i) => (
-                <div key={i}>
-                  <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-xl" />
-                  <div className="mt-2 h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse w-full" />
-                </div>
-              ))}
-            </div>
-          </div>
+          <BrandLoader />
         ) : error ? (
           /* ✅ UX M17 FIX: 에러 상태 + 재시도 버튼 */
           <div className="text-center py-16">
