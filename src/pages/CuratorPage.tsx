@@ -220,7 +220,7 @@ export default function CuratorPage() {
   return (
     <>
       <SEO
-        title={`${curator.name} (@${curator.handle}) 의 링크샵`}
+        title={`${curator.name} (@${curator.handle})의 링크샵`}
         description={curator.bio || `${curator.name} 님이 추천하는 ${pins.length}개의 상품`}
         url={`/u/${curator.handle}`}
         image={`https://live.ur-team.com/api/og/curator/${curator.handle}`}

@@ -767,6 +767,41 @@ app.use('*', async (c, next) => {
           el.append(`<link rel="alternate" type="application/rss+xml" title="유어딜 블로그 RSS" href="${origin2}/blog/rss">`, { html: true });
         } });
     }
+    // 🔗 2026-07-01 [UNLOCK_LOADING] (대표 승인 — 링크샵 전수조사): /u/:handle 링크샵 서버측 OG/canonical 주입.
+    //   그간 CURATOR 슬롯은 __SSR_INITIAL_CURATOR__ 데이터만 주입하고 메타는 index.html 소비자 기본값(제네릭 홈)을
+    //   그대로 서빙 → 카톡/소셜 공유·비-JS 크롤러가 "정지원 링크샵"이 아니라 "유어딜 홈" 카드를 봄. 개인화 OG 코드는
+    //   실제 안 타는 app.get('*') fallback 에만 있었음(무효). WHOLESALE/BLOGPOST 와 동일하게 서빙 경로(HTMLRewriter)
+    //   에서 rewrite. **SSR inject(__SSR_INITIAL_CURATOR__)·0-RTT·#root 비움·edgeCache 전부 불변 — 메타 rewrite만 additive.**
+    if (ssrSlot === 'CURATOR' && ssrPayload) {
+      try {
+        const cur = (JSON.parse(ssrPayload) as { curator?: { name?: string; bio?: string; handle?: string; profile_image?: string | null } })?.curator;
+        if (cur && (cur.name || cur.handle)) {
+          const cName = String(cur.name || '@' + (cur.handle || ''));
+          const cTitle = `${cName} 링크샵 - 유어딜`;
+          const cDesc = String(cur.bio || '').slice(0, 200) || `${cName}님의 추천 — 교환권·이용권 모음`;
+          const canon = `${origin2}/u/${cur.handle || ''}`;
+          const pi = cur.profile_image as string | null;
+          const cImg = pi
+            ? (pi.startsWith('r2://') ? `${origin2}/api/media/${pi.slice(5)}` : (pi.startsWith('/') ? `${origin2}${pi}` : pi))
+            : null;
+          rb = rb
+            .on('title', { element(el) { el.setInnerContent(cTitle); } })
+            .on('meta[name="description"]', { element(el) { el.setAttribute('content', cDesc); } })
+            .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', cTitle); } })
+            .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', cDesc); } })
+            .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', canon); } })
+            .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', 'profile'); } })
+            .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', cTitle); } })
+            .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', cDesc); } })
+            .on('head', { element(el) { el.append(`<link rel="canonical" href="${canon}">`, { html: true }); } });
+          if (cImg) {
+            rb = rb
+              .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', cImg); } })
+              .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', cImg); } });
+          }
+        }
+      } catch { /* 파싱 실패 시 기본 메타 유지 */ }
+    }
     if (needsRootBlank) {
       // 도매·대시보드 공통: 소비자 홈 shell 깜빡임 제거 (라이트 배경 placeholder).
       rb = rb.on('#root', {
