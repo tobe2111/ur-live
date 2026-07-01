@@ -52,9 +52,9 @@ const KNOWN_TABLES_EXTRA = new Set([
   'social_follows', 'user_follows',      // 팔로우 (notifications / push)
   'search_history',                      // 검색 이력 (delete-account)
   'schema_repair_history',               // repair-schema 실행 이력 (internal-admin-tools)
-  // ⚠️ 아래 2쌍은 유사명 테이블과 공존 — 레거시/오타 가능성 있어 프로덕션 확인 권장(현재는 실재 가정):
-  'admin_notifications', 'admin_dashboard_notifications',  // vs 서로 (prospects-cron / cron-reporter)
-  'refund_history',                      // vs order_refund_history (refund.ts 2경로 공존)
+  'refund_history',                      // 레거시 감사 write-only(읽기 0, swallow 처리) — 존재무관 무해(refund.ts recordRefundHistory)
+  // 참고: admin_notifications·admin_dashboard_notifications 는 오타였음(실제=dashboard_notifications).
+  //   2026-07-01 교정 완료 → 더는 참조 없음(여기 등록 불필요).
 ])
 
 /** SQLite 내장/테이블-값 함수 — 테이블 아님, 무시. */
