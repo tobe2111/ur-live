@@ -1,7 +1,7 @@
 {
-  "name": "유어딜 — 돈버는 쇼핑, 오프라인 공동구매 & 라이브커머스",
+  "name": "유어딜 — 돈버는 쇼핑, 이용권·교환권·동네딜",
   "short_name": "유어딜",
-  "description": "동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 공구권 + 라이브 쇼핑.",
+  "description": "동네 가게 공동구매로 결제하고 딜 적립까지. 이용권·교환권·동네딜을 한곳에서.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -21,16 +21,16 @@
   ],
   "shortcuts": [
     {
-      "name": "라이브 방송",
-      "short_name": "라이브",
-      "description": "지금 진행 중인 라이브 방송 보기",
-      "url": "/live",
+      "name": "이용권",
+      "short_name": "이용권",
+      "description": "이용권·교환권 둘러보기",
+      "url": "/vouchers",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "맛집 지도",
       "short_name": "맛집",
-      "description": "내 주변 맛집 식사권",
+      "description": "내 주변 맛집 이용권",
       "url": "/restaurant-map",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
