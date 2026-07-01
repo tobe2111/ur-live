@@ -1042,4 +1042,43 @@ adminProductsRoutes.post('/dongnedeal/bulk-import', cors(), async (c) => {
   }
 });
 
+// POST /dongnedeal/create — 수기 단건 등록(좌표/전화 포함, 즉시 노출).
+//   🗺️ 카카오 매장 검색으로 좌표(lat/lng) 확보 시 저장 → 지도에 바로 마커 표시.
+//   좌표 없이 주소만 넣어도 OK — 지도 진입 시 클라 지오코딩 + 매일 04:00 cron 이 백필.
+adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
+  try {
+    const b = (await c.req.json().catch(() => ({}))) as {
+      name?: string; category?: string; price?: number | string; original_price?: number | string;
+      image_url?: string; restaurant_name?: string; restaurant_address?: string;
+      restaurant_phone?: string; lat?: number | string; lng?: number | string; description?: string;
+    };
+    const name = String(b.name || '').trim();
+    const cat = mapDealCategory(String(b.category || '').trim());
+    const price = Math.round(Number(String(b.price ?? '').replace(/[^\d.-]/g, '')));
+    if (!name) return c.json({ success: false, error: '상품명을 입력하세요' }, 400);
+    if (!Number.isFinite(price) || price <= 0) return c.json({ success: false, error: '판매가가 올바르지 않습니다' }, 400);
+    if (!cat) return c.json({ success: false, error: '카테고리를 선택하세요 (이용권/미용/기타/일반)' }, 400);
+    if (cat === 'stay_voucher') return c.json({ success: false, error: '숙소는 이 도구로 등록 불가 (숙소 전용 등록을 사용하세요)' }, 400);
+    const origNum = Math.round(Number(String(b.original_price ?? '').replace(/[^\d.-]/g, ''))) || 0;
+    const img = String(b.image_url || '').trim() || null;
+    const rest = String(b.restaurant_name || '').trim() || null;
+    const addr = String(b.restaurant_address || '').trim() || null;
+    const phone = String(b.restaurant_phone || '').trim() || null;
+    const desc = String(b.description || '').trim() || name;
+    const lat = Number(b.lat); const lng = Number(b.lng);
+    const hasCoord = Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0;
+    const r = await c.env.DB.prepare(
+      `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
+         is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, restaurant_phone,
+         restaurant_lat, restaurant_lng, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+    ).bind(name, desc, price, origNum > price ? origNum : null, img, cat, rest, addr, phone,
+      hasCoord ? lat : null, hasCoord ? lng : null).run();
+    await writeAuditLog(c, { action: 'dongnedeal_create', targetType: 'product', targetId: r.meta?.last_row_id, after: { name, cat, hasCoord } }).catch(() => {});
+    return c.json({ success: true, id: r.meta?.last_row_id ?? null, hasCoord });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 export default adminProductsRoutes;
