@@ -53,12 +53,12 @@ describe('UR Ads 부정클릭 — recordHit / clickReport', () => {
     expect(rep.suspects.find(s => s.clicks === 1)?.suspicious).toBe(false)
   })
 
-  it('domainMatches(순수): 서브도메인 허용 / 타도메인 거부 / 헤더 없으면 허용', () => {
+  it('domainMatches(순수): 서브도메인 허용 / 타도메인 거부 / 헤더 없으면 거부', () => {
     expect(domainMatches('example.com', 'https://example.com/a')).toBe(true)
     expect(domainMatches('example.com', 'https://www.example.com/a')).toBe(true)
     expect(domainMatches('example.com', 'https://a.example.com/a')).toBe(true)
     expect(domainMatches('example.com', 'https://evil.com')).toBe(false)
-    expect(domainMatches('example.com', null)).toBe(true) // best-effort
+    expect(domainMatches('example.com', null)).toBe(false) // 헤더 없음 = 검증 불가 → 위조 방지 거부(2026-07-01 하드닝)
   })
 })
 

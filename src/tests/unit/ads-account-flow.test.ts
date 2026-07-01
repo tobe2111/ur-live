@@ -5,7 +5,7 @@ import {
   createAdsAccount, loginAdsAccount, adsAccountIdFrom, signAdsToken,
   updateAdsAccount, changeAdsPassword,
   requestPasswordReset, resetPasswordWithToken,
-  unlockAdsAccount, getAdsAccount,
+  unlockAdsAccount, getAdsAccount, ensureAdsAccountSchema,
 } from '@/features/marketing/api/ads-account'
 import { saveAlertSettings, getAlertSettings } from '@/features/marketing/api/alerts'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
@@ -34,6 +34,11 @@ function makeD1(): D1Database {
 
 const PW = 'Abcd1234!@' // 복잡도 통과
 const JWT = 'test-jwt-secret-0123456789'
+// 서버측 베타 게이트(access_unlocked) 통과용 — unlock·active 계정 시딩(데이터 라우트 테스트 전용).
+async function seedUnlocked(DB: D1Database, id: number): Promise<void> {
+  await ensureAdsAccountSchema(DB)
+  await DB.prepare("INSERT OR IGNORE INTO ad_accounts (id, email, password_hash, company_name, status, access_unlocked) VALUES (?, ?, 'x', 'co', 'active', 1)").bind(id, 'u' + id + '@x.com').run()
+}
 
 describe('UR Ads 독립 계정 — 실제 SQLite 통합', () => {
   let DB: D1Database
@@ -92,7 +97,9 @@ describe('UR Ads 독립 계정 — 실제 SQLite 통합', () => {
   })
 
   it('회귀: PATCH /alerts/settings 라우트가 rank_drop 을 실제로 저장한다(버그 잠금)', async () => {
-    const env = { DB: makeD1(), JWT_SECRET: JWT } as unknown as Parameters<typeof marketingRoutes.request>[2]
+    const DB2 = makeD1()
+    await seedUnlocked(DB2, 42)
+    const env = { DB: DB2, JWT_SECRET: JWT } as unknown as Parameters<typeof marketingRoutes.request>[2]
     const token = await signAdsToken(42, JWT)
     const headers = { Authorization: 'Bearer ' + token, 'content-type': 'application/json' }
     const patch = await marketingRoutes.request('/alerts/settings', {
@@ -123,6 +130,23 @@ describe('UR Ads 독립 계정 — 실제 SQLite 통합', () => {
     expect((await getAdsAccount(DB, id))?.access_unlocked).toBe(1)
     // 로그인 응답에도 해제 상태 반영
     expect((await loginAdsAccount(DB, 'gate@x.com', PW) as { ok: true; account: { access_unlocked: number } }).account.access_unlocked).toBe(1)
+  })
+
+  it('서버측 베타 게이트: 잠긴 계정은 데이터 라우트 403(locked) → 해제 후 통과', async () => {
+    const DB2 = makeD1()
+    const acc = await createAdsAccount(DB2, { email: 'lock@x.com', password: PW, company_name: 'X' })
+    if (!acc.ok) throw new Error('setup')
+    const env = { DB: DB2, JWT_SECRET: JWT } as unknown as Parameters<typeof marketingRoutes.request>[2]
+    const headers = { Authorization: 'Bearer ' + await signAdsToken(acc.account.id, JWT), 'content-type': 'application/json' }
+    // 잠긴 계정(access_unlocked=0) → 데이터 라우트 403 + locked 플래그
+    const locked = await marketingRoutes.request('/alerts/settings', { headers }, env)
+    expect(locked.status).toBe(403)
+    expect((await locked.json() as { locked?: boolean }).locked).toBe(true)
+    // /auth/* 는 잠금상태에서도 접근 가능(면제) — unlock 으로 해제
+    const un = await marketingRoutes.request('/auth/unlock', { method: 'POST', headers, body: JSON.stringify({ code: '358533' }) }, env)
+    expect(un.status).toBe(200)
+    // 해제 후 동일 데이터 라우트 통과(200)
+    expect((await marketingRoutes.request('/alerts/settings', { headers }, env)).status).toBe(200)
   })
 
   it('회귀: POST /auth/unlock 라우트 — 틀린 코드 400 / 기본코드 358533 해제', async () => {

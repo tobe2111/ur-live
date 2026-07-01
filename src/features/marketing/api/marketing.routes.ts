@@ -18,12 +18,15 @@ import { getAlertSettings, saveAlertSettings, computeAlerts } from './alerts'
 import { listRankTargets, addRankTarget, deleteRankTarget, refreshRankTarget } from './rank-tracker'
 import { analyzeCompetitors } from './competitor-tracker'
 import { saveKeyword, listSavedKeywords, listKeywordTags, deleteSavedKeyword, updateSavedKeyword } from './keyword-portfolio'
-import { naverOpenId, naverOpenSecret, resolveSearchAdCreds } from './routes/helpers'
+import { naverOpenId, naverOpenSecret, resolveSearchAdCreds, requireAdsUnlocked } from './routes/helpers'
 import { adsAuthRoutes } from './routes/auth.routes'
 import { adsSearchadRoutes } from './routes/searchad.routes'
 import { adsClickguardRoutes } from './routes/clickguard.routes'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
+
+// 🔒 서버측 베타 액세스 게이트(access_unlocked) — 데이터 엔드포인트 전체. 면제/정책은 requireAdsUnlocked 참조.
+marketingRoutes.use('*', requireAdsUnlocked)
 
 // 스캐폴딩 헬스체크 — GET /api/ads/ping
 marketingRoutes.get('/ping', (c) =>
@@ -325,8 +328,7 @@ marketingRoutes.post('/searchad/autobid/rule', rateLimit({ action: 'ads-ab-rule'
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const tenant = await getActiveTenantId(c.env.DB, sellerId) // 규칙을 활성 고객사로 격리
-  // 🔒 돈 안전: 활성 고객사 없이 만든 규칙(tenant=NULL)은 이후 cron 에서 '그때 활성인' 고객사 계정에
-  //   적용될 수 있음(잘못된 계정 과금). 광고계정 연결을 선행 요구해 고아 규칙 자체를 차단.
+  // 🔒 돈 안전: tenant=NULL 고아 규칙이 cron 에서 '그때 활성' 고객사에 적용되는 과금 벡터 차단(연결 선행 요구).
   if (!tenant) return c.json({ success: false, error: '자동입찰 규칙 등록 전에 광고계정(고객사)을 먼저 연결해주세요' }, 400)
   const r = await upsertRule(c.env.DB, sellerId, {
     keyword_id: String(body.keyword_id || ''), adgroup_id: body.adgroup_id ? String(body.adgroup_id) : undefined,

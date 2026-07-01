@@ -1,8 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 const { DatabaseSync } = await import(/* @vite-ignore */ ('node:' + 'sqlite')) as { DatabaseSync: new (p: string) => { prepare: (sql: string) => { run: (...a: never[]) => { changes: number | bigint; lastInsertRowid: number | bigint }; get: (...a: never[]) => unknown; all: (...a: never[]) => unknown[] } } }
 import { saveKeyword, listSavedKeywords, listKeywordTags, deleteSavedKeyword, updateSavedKeyword } from '@/features/marketing/api/keyword-portfolio'
-import { signAdsToken } from '@/features/marketing/api/ads-account'
+import { signAdsToken, ensureAdsAccountSchema } from '@/features/marketing/api/ads-account'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
+
+// 서버측 베타 게이트(access_unlocked) 통과용 — unlock·active 계정 시딩.
+async function seedUnlocked(DB: D1Database, id: number): Promise<void> {
+  await ensureAdsAccountSchema(DB)
+  await DB.prepare("INSERT OR IGNORE INTO ad_accounts (id, email, password_hash, company_name, status, access_unlocked) VALUES (?, ?, 'x', 'co', 'active', 1)").bind(id, 'u' + id + '@x.com').run()
+}
 
 /**
  * 🆕 2026-06-30 유어애즈 키워드 포트폴리오 — 실제 SQLite 저장/태그/멱등/상한 검증.
@@ -71,6 +77,7 @@ describe('keyword-portfolio — 저장/태그/멱등', () => {
   it('라우트 POST /keywords/save + GET /keywords/saved (인증)', async () => {
     const env = { DB, JWT_SECRET: JWT } as unknown as Parameters<typeof marketingRoutes.request>[2]
     const token = await signAdsToken(7, JWT)
+    await seedUnlocked(DB, 7)
     const headers = { Authorization: 'Bearer ' + token, 'content-type': 'application/json' }
     const post = await marketingRoutes.request('/keywords/save', { method: 'POST', headers, body: JSON.stringify({ keyword: '캠핑용품', monthly_total: 8000, tag: '레저' }) }, env)
     expect(post.status).toBe(200)

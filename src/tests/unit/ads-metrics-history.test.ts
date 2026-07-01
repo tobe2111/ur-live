@@ -5,8 +5,14 @@ import {
   ensureMetricsHistorySchema, getMetricsHistory, computeWoW, snapshotAccountRecent,
   type DailyMetric,
 } from '@/features/marketing/api/metrics-history'
-import { signAdsToken } from '@/features/marketing/api/ads-account'
+import { signAdsToken, ensureAdsAccountSchema } from '@/features/marketing/api/ads-account'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
+
+// 서버측 베타 게이트(access_unlocked) 통과용 — unlock·active 계정 시딩.
+async function seedUnlocked(DB: D1Database, id: number): Promise<void> {
+  await ensureAdsAccountSchema(DB)
+  await DB.prepare("INSERT OR IGNORE INTO ad_accounts (id, email, password_hash, company_name, status, access_unlocked) VALUES (?, ?, 'x', 'co', 'active', 1)").bind(id, 'u' + id + '@x.com').run()
+}
 
 /**
  * 🆕 2026-06-30 유어애즈 일별 메트릭 히스토리 — 실제 SQLite 통합 테스트.
@@ -107,6 +113,7 @@ describe('UR Ads 메트릭 히스토리 — 실제 SQLite 통합', () => {
 
   it('라우트 GET /metrics/history — 인증 + series + wow 반환', async () => {
     const env = { DB, JWT_SECRET: JWT } as unknown as Parameters<typeof marketingRoutes.request>[2]
+    await seedUnlocked(DB, 55)
     await seed(DB, 55, Array.from({ length: 14 }, (_, i) => ({
       date: `2026-06-${String(i + 1).padStart(2, '0')}`, cost: i < 7 ? 100 : 150, conv: 300,
     })))
@@ -136,6 +143,7 @@ describe('UR Ads 메트릭 히스토리 — 실제 SQLite 통합', () => {
 
   it('라우트 POST /metrics/snapshot — 연결 전이면 400 NOT_CONNECTED', async () => {
     const env = { DB, JWT_SECRET: JWT, DATA_ENCRYPTION_KEY: 'k'.repeat(32) } as unknown as Parameters<typeof marketingRoutes.request>[2]
+    await seedUnlocked(DB, 55)
     const token = await signAdsToken(55, JWT)
     const res = await marketingRoutes.request('/metrics/snapshot', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'content-type': 'application/json' }, body: '{}' }, env)
     expect(res.status).toBe(400)

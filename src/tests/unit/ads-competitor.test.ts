@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 const { DatabaseSync } = await import(/* @vite-ignore */ ('node:' + 'sqlite')) as { DatabaseSync: new (p: string) => { prepare: (sql: string) => { run: (...a: never[]) => { changes: number | bigint; lastInsertRowid: number | bigint }; get: (...a: never[]) => unknown; all: (...a: never[]) => unknown[] } } }
 import { aggregateCompetitors, type ShopItem } from '@/features/marketing/api/competitor-tracker'
-import { signAdsToken } from '@/features/marketing/api/ads-account'
+import { signAdsToken, ensureAdsAccountSchema } from '@/features/marketing/api/ads-account'
 import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 
 /**
@@ -22,6 +22,12 @@ function makeD1(): D1Database {
   return { prepare: (sql: string) => wrap(sql) } as unknown as D1Database
 }
 const JWT = 'test-jwt-secret-0123456789'
+
+// 서버측 베타 게이트(access_unlocked) 통과용 — unlock·active 계정 시딩.
+async function seedUnlocked(DB: D1Database, id: number): Promise<void> {
+  await ensureAdsAccountSchema(DB)
+  await DB.prepare("INSERT OR IGNORE INTO ad_accounts (id, email, password_hash, company_name, status, access_unlocked) VALUES (?, ?, 'x', 'co', 'active', 1)").bind(id, 'u' + id + '@x.com').run()
+}
 
 const items = (rows: Array<[number, string, number]>): ShopItem[] =>
   rows.map(([rank, mall, price]) => ({ rank, mall, title: `${mall} 상품`, price, link: `https://${mall}.com/p` }))
@@ -77,8 +83,10 @@ describe('UR Ads 경쟁사 분석 — aggregateCompetitors(순수)', () => {
 
 describe('UR Ads 경쟁사 분석 — 라우트 가드', () => {
   it('미인증 401 / 파라미터 누락 400 / 키 미설정 503', async () => {
-    const env = { DB: makeD1(), JWT_SECRET: JWT } as unknown as Parameters<typeof marketingRoutes.request>[2]
+    const DB = makeD1()
+    const env = { DB, JWT_SECRET: JWT } as unknown as Parameters<typeof marketingRoutes.request>[2]
     const token = await signAdsToken(7, JWT)
+    await seedUnlocked(DB, 7)
     const auth = { Authorization: 'Bearer ' + token }
     expect((await marketingRoutes.request('/rank/competitors?keyword=신발&mall=lumi', {}, env)).status).toBe(401)
     expect((await marketingRoutes.request('/rank/competitors?keyword=&mall=x', { headers: auth }, env)).status).toBe(400) // 키워드 없음

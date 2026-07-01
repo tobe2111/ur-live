@@ -90,9 +90,12 @@ export async function hashIp(ip: string, salt: string | undefined): Promise<stri
   return [...new Uint8Array(buf)].slice(0, 12).map(x => x.toString(16).padStart(2, '0')).join('')
 }
 
-/** 도메인 검증 — origin/referrer host 가 등록 도메인과 일치(또는 서브도메인)인지. */
+/** 도메인 검증 — origin/referrer host 가 등록 도메인과 일치(또는 서브도메인)인지.
+ *  ⚠️ Origin/Referer 둘 다 없으면 **거부**(2026-07-01 하드닝). 픽셀은 광고주 사이트→우리 도메인
+ *  cross-origin POST 라 브라우저가 Origin 을 항상 붙임 → 정상 hit 은 헤더 보유. 헤더 없는 요청은
+ *  curl/봇 위조(공개 advertiser_key 로 의심리포트 오염)일 가능성 → 기록 안 함(탐지 정확도 우선). */
 export function domainMatches(registered: string, originOrReferer: string | null): boolean {
-  if (!originOrReferer) return true // 헤더 없으면 best-effort 허용(일부 브라우저)
+  if (!originOrReferer) return false // 헤더 없음 = 검증 불가 → 위조 방지 위해 거부
   try {
     const host = new URL(originOrReferer).hostname.toLowerCase().replace(/^www\./, '')
     const reg = registered.toLowerCase().replace(/^www\./, '')
