@@ -40,12 +40,13 @@ export async function listWatches(DB: D1Database, sellerId: number): Promise<Pri
   return r?.results || []
 }
 
-/** 워치 1건의 최저가 즉시 조회 후 DB 갱신. */
-export async function refreshWatch(env: Env, watchId: number, query: string): Promise<{ lowest: number; mall: string; total: number } | null> {
+/** 워치 1건의 최저가 즉시 조회 후 DB 갱신. sellerId 지정 시 UPDATE 를 테넌트로 자기-스코프(멀티테넌트 IDOR 방어 — 헬퍼가 스스로 안전). */
+export async function refreshWatch(env: Env, watchId: number, query: string, sellerId?: number): Promise<{ lowest: number; mall: string; total: number } | null> {
   const r = await lowestPrice(openId(env), openSecret(env), query)
   if (!r.ok || !r.data) return null
-  await env.DB.prepare("UPDATE ad_price_watches SET last_lowest = ?, last_mall = ?, last_total = ?, last_checked_at = datetime('now') WHERE id = ?")
-    .bind(r.data.lowest, r.data.mall, r.data.total, watchId).run().catch(() => null)
+  const scoped = Number.isFinite(sellerId as number)
+  await env.DB.prepare(`UPDATE ad_price_watches SET last_lowest = ?, last_mall = ?, last_total = ?, last_checked_at = datetime('now') WHERE id = ?${scoped ? ' AND seller_id = ?' : ''}`)
+    .bind(...(scoped ? [r.data.lowest, r.data.mall, r.data.total, watchId, sellerId] : [r.data.lowest, r.data.mall, r.data.total, watchId])).run().catch(() => null)
   return { lowest: r.data.lowest, mall: r.data.mall, total: r.data.total }
 }
 
@@ -61,7 +62,7 @@ export async function addWatch(env: Env, sellerId: number, query: string, myPric
   if (!res) return { ok: false, error: '등록 실패' }
   // 등록 즉시 1회 조회.
   const row = await env.DB.prepare('SELECT id FROM ad_price_watches WHERE seller_id = ? AND query = ?').bind(sellerId, q).first<{ id: number }>().catch(() => null)
-  if (row) await refreshWatch(env, row.id, q).catch(() => null)
+  if (row) await refreshWatch(env, row.id, q, sellerId).catch(() => null)
   return { ok: true }
 }
 
@@ -74,12 +75,12 @@ export async function deleteWatch(DB: D1Database, sellerId: number, id: number):
 export async function refreshAllWatches(env: Env): Promise<{ checked: number }> {
   await ensurePriceSchema(env.DB)
   if (!openId(env) || !openSecret(env)) return { checked: 0 }
-  const rows = (await env.DB.prepare(`SELECT id, query FROM ad_price_watches
+  const rows = (await env.DB.prepare(`SELECT id, query, seller_id FROM ad_price_watches
     ORDER BY (last_checked_at IS NULL) DESC, last_checked_at ASC LIMIT ${MAX_CHECK_PER_RUN}`)
-    .all<{ id: number; query: string }>().catch(() => null))?.results || []
+    .all<{ id: number; query: string; seller_id: number }>().catch(() => null))?.results || []
   let checked = 0
   for (const w of rows) {
-    const r = await refreshWatch(env, w.id, w.query).catch(() => null)
+    const r = await refreshWatch(env, w.id, w.query, w.seller_id).catch(() => null)
     if (r) checked++
   }
   return { checked }

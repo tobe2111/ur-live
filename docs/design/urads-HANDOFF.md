@@ -96,6 +96,14 @@ UI 패널: `MarketingDashboardPage`(허브+KPI) + `SearchAdPanel`·`AutobidPanel
 - 🟡 잔여 하드닝(미수정, 낮음): unlock 코드 전역상수/비상수시간 비교 · clickguard `domainMatches` null-Origin 허용 · rank 스냅샷/refresh `account_id` 방어스코프.
 - 🧹 `marketing.routes.ts` 965줄(god파일 래칫 RED) — `routes/` 서브 Hono 분할 권장(별도 작업).
 
+## 6.7 2차 전수감사 (2026-07-01) — 4축 병렬 심층감사 + 하드닝 2건
+
+audit-gate(38 GREEN / file-size RED 1=선재 무관) 후 가드 미보유 4축(인증·IDOR / 머니 하드캡 / 런타임크래시 / 서비스분리)을 병렬 심층 재감사. **결과: 6.6 이후 신규 확정 결함 0 — unlock 은 이미 `timingSafeEqual`(상수시간)로 수정됨, IDOR·크래시·분리 전부 클린.** 예방적 하드닝 2건만 반영:
+- ✅ **[하드닝] `refreshWatch` 자기-스코프화**(price-monitor.ts) — 헬퍼 UPDATE 가 `WHERE id=?` 뿐이라 테넌트 미포함(라우트 사전검사로 차폐된 *잠재* IDOR). `sellerId` 인자 추가 → `AND seller_id=?` (전 호출부 3곳 배선). 헬퍼가 스스로 안전(미래 호출자 회귀 방지). 머니룰 "side-effect WHERE 에 항상 tenant 포함" 정합.
+- ✅ **[하드닝] 자동입찰 규칙 생성 시 활성 고객사 필수**(marketing.routes.ts `/searchad/autobid/rule`·`/rules/bulk`) — 활성 고객사 없이 만든 `tenant=NULL` 규칙이 cron 에서 '그때 활성인' 고객사 자격증명으로 실행 → **잘못된 계정 과금** 벡터. 생성 전 `getActiveTenantId` 필수(null 이면 400). planBid 하드캡은 유지되므로 초과입찰은 원래 불가 — 이건 *어느 계정에* 적용되냐의 격리 문제. (autobid 는 `ADS_AUTOBID_ENABLED` 기본 OFF 라 라이브 영향 현재 0, 켜기 전 예방.)
+- 🟡 잔존(미수정, 정보): ① `access_unlocked` 게이트는 **클라 전용** — `/api/ads/*` 데이터 API 는 토큰만 검사(unlock 미검사). 베타 코드 `358533`(helpers.ts 폴백, 공개레포)은 실질 보안경계 아님. 가입 자체가 오픈이라 데이터는 테넌트 격리로 보호되므로 영향 낮음(강제하려면 API 에 unlock 게이트 추가). ② clickguard `domainMatches` null-Origin 허용 유지 — 공개 `hit` + 노출된 advertiser_key 로 클릭이벤트 위조→의심리포트 오염 가능(자동차단 없음=반자동이라 상한. 남용캡 300/IP·200k/key 로 완화). 둘 다 설계상 트레이드오프.
+- 검증: tsc 0(config 경고 제외) · sql-bind/money/pagination 가드 0 · ads 단위테스트는 무관(HTTP autobid 생성 테스트 없음, 커넥션 선연결하는 negative 테스트만). ⚠️ 환경상 vitest/worker-build 는 네트워크·의존성 제약으로 미실행(코드 무관).
+
 ## 7. 남은 일 (우선순위)
 
 ### A. 보류 — 외부 제약/실계정 검증 대기 (코드는 준비됨, 기능은 안 만들어도 됨)

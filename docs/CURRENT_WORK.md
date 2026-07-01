@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 유어애즈(UR Ads) 2차 전수감사 (4축 병렬 심층) + 예방 하드닝 2건 (대표 "유어애즈 서비스 전수조사해봐")
+audit-gate(38 GREEN / file-size RED 1=선재 무관) 후 가드 미보유 4축을 병렬 서브에이전트로 심층 재감사: **①인증·IDOR ②머니 하드캡 ③런타임크래시·입력검증 ④서비스분리·배선.** 결과 = 6.6 라이브감사 이후 **신규 확정 결함 0**(unlock 은 이미 상수시간 `timingSafeEqual` 로 수정됨 · IDOR 0 · 크래시 0 · 분리 완전 클린 · JWT HS256 핀·reset토큰 CSPRNG+해시+1회용 · planBid 하드캡 이중강제 확인). 예방적 하드닝 2건만 반영:
+- **refreshWatch 자기-스코프화**(`price-monitor.ts`) — UPDATE 에 `AND seller_id=?` 추가(라우트로 차폐됐던 잠재 IDOR, 헬퍼 자체 안전화, 호출부 3곳 배선).
+- **자동입찰 규칙 생성 시 활성 고객사 필수**(`marketing.routes.ts` `/searchad/autobid/rule`·`/rules/bulk`) — `tenant=NULL` 고아 규칙이 cron 에서 '그때 활성' 고객사에 적용되는 **잘못된-계정 과금** 벡터 차단(`getActiveTenantId` null→400). autobid 킬스위치 기본 OFF 라 현재 라이브 영향 0, 켜기 전 예방.
+- 잔존(정보, 미수정): `access_unlocked` 게이트 클라전용(베타코드 358533 폴백은 보안경계 아님, 테넌트 격리로 데이터는 보호) · clickguard null-Origin 허용(위조→의심리포트 오염, 자동차단 없어 상한·남용캡 완화) — 설계 트레이드오프. 상세: `docs/design/urads-HANDOFF.md` §6.7.
+- 검증: tsc 0(config 경고 제외) · sql-bind/money/pagination 가드 0. ⚠️ vitest/worker-build 는 이 환경 네트워크·의존성 제약으로 미실행(코드 무관).
+
 ## ✅ 2026-07-01 — 도매몰 라이브 전수조사 + 카탈로그 500 크래시 근본수정 (대표 "라이브로 접근해서 전수조사")
 라이브(`live.ur-team.com/wholesale`) 실접근 전수조사. **결과: 인증/RBAC 게이트 전부 건강(500 없음, 401/404 정상)·엣지캐시 누수 없음·SQL 인젝션 방어 정상.** 발견/수정:
 - **🐛 라이브 500 크래시(수정)**: `GET /api/wholesale/catalog?page=abc&limit=xyz` → HTTP 500. 원인: `page = Math.max(1, parseInt(query||'1',10))` 에 `limit` 이 가진 `|| N` 폴백이 **없어** `parseInt('abc')=NaN → Math.max(1,NaN)=NaN → offset=(NaN-1)*limit=NaN → D1 .bind(NaN) 크래시`. `limit=-1/page=-5/limit=99999999` 는 이미 정상(200) — **비숫자 문자열만** 크래시(봇/스크래퍼/오염된 링크가 도매몰 메인 카탈로그를 500). **수정(도매 서비스 전 인스턴스에 기존 `limit||24` 패턴 미러링)**: `wholesale.routes.ts:787`(page), `supplier-dashboard.routes.ts`(page/limit ×3 핸들러), `distributor-admin/orders.ts`(page/limit), `supply.routes.ts`(page/limit). 전부 `parseInt(...) || N` + `Math.max(...,1)` 클램프. 로직 검증(page=abc→page1/offset0)·tsc 0(사전 config 경고 제외)·build 0·sql bind/column 가드 0.
