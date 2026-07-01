@@ -70,8 +70,8 @@ export async function runVoucherExpireCron(env: Env): Promise<{ d30: number; d7:
       // 1. notifications INSERT (앱 내 알림).
       const voucherTypeKr = r.voucher_type === 'weekend' ? '주말권' : '평일권'
       await env.DB.prepare(
-        `INSERT INTO notifications (user_id, type, title, message, created_at)
-         VALUES (?, ?, ?, ?, datetime('now'))`
+        `INSERT INTO notifications (user_id, user_type, type, title, message, created_at)
+         VALUES (?, 'user', ?, ?, ?, datetime('now'))`
       ).bind(
         r.user_id, notifType,
         `🎫 voucher 만료 ${daysLeft}일 남음 — ${r.product_name}`,

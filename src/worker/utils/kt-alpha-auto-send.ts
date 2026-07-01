@@ -37,8 +37,8 @@ async function notifyUserKtSendFailed(
   if (userId === null || userId === undefined || userId === '') return
   try {
     await env.DB.prepare(
-      `INSERT INTO notifications (user_id, type, title, message, link, created_at)
-       VALUES (?, 'kt_alpha_send_failed', ?, ?, '/my-vouchers', datetime('now'))`
+      `INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+       VALUES (?, 'user', 'kt_alpha_send_failed', ?, ?, '/my-vouchers', datetime('now'))`
     ).bind(String(userId), title, message).run()
   } catch { /* notifications 테이블/컬럼 차이 — silent (best-effort) */ }
 }

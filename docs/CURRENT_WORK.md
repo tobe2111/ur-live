@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 알림 시스템 전수조사 + 버그 6종 수정 (대표 "알림 기능 전수조사")
+소비자/셀러/어드민/에이전시 알림 전 파이프라인 전수조사(트리거 호출부·프론트 표시·스키마·웹푸시·크론) → 실사용 영향 버그 수정. **인프라(라우터 마운트·크론 등록·VAPID 서명·대시보드/에이전시 알림)는 건강** 확인.
+- **#1 유령 뱃지(가장 영향 큼)**: 미읽음 뱃지(`useUnreadCount`→`/api/notifications/unread-count`)는 `user_notifications`+`notifications` **두 테이블 합산**인데, 알림 목록 페이지(`useNotifications`→`/api/social/notifications`)는 `user_notifications`**만** 읽어, `notifications` 테이블에 쓰인 소비자 알림(쿠폰/이용권 만료·숙소 리마인더·KT 교환권·결제완료·공구 당첨 등)이 **뱃지엔 뜨는데 목록엔 안 보이고 '모두 읽음'으로도 안 지워짐**. → `social.routes` GET/read/read-all 을 두 테이블 통합(id `un_`/`n_` prefix 라우팅). 프론트 `NotificationItem.id` string 허용.
+- **#2 웹푸시 내용 표시**: `sendPushNotification` 이 `body:null`(tickle)만 보내 모든 푸시가 generic "새 알림"·클릭 시 홈으로 갔음 → **RFC 8291 aes128gcm 페이로드 암호화 구현**(WebCrypto ECDH P-256+HKDF+AES-GCM). 암호화 실패 시 tickle fallback(회귀 0).
+- **#3 셀러 환불 알림 고아**: `group-buy-admin` 어드민 강제환불 셀러 알림이 `notifications`(user_type='seller')로 가 셀러 벨(`dashboard_notifications`)에 안 보였음 → `createDashboardNotification('seller',…)` 전환.
+- **#4 크론 silent fail**: `voucher-expire`/`stay-reminder`/`stay-voucher-expire`/`fcfs`/`voucher-dispute`/`kt-alpha-auto-send` 의 `notifications` INSERT 가 `user_type` 누락 → 프로덕션 테이블이 NOT NULL(default 없음)이면 조용히 실패. 명시 `'user'` 추가.
+- **#5·6 스키마 견고화**: repair-schema 에 `notifications`(user_type NOT NULL DEFAULT 'user')·`user_notifications`·`agency_notifications`·`push_subscriptions` canonical CREATE 추가(이전엔 인덱스만) — fresh/repaired DB 에서 웹푸시 no-op·알림 유실 방지.
+- **불변**: unread-count 로직·대시보드/에이전시/어드민채널설정·notifyUser 헬퍼·VAPID 서명·크론 등록 전부 불변. 잠금 파일(payment.routes 등) 무수정.
+- 검증: tsc 0 · 단위 73 pass(notification+keyboard) · build(client+worker+prerender+prepare) 0 · sql bind/not-null/column/table 가드 0 · audit-gate 37 GREEN(사전존재 file-size RED 는 무관 — 내 파일 중 append-only `repair-schema` 만 성장, `[SKIP_SIZE]`). ⚠️ staging: 웹푸시 실기기 1회(제목/본문/링크 표시) + `notifications` 테이블 알림(쿠폰만료 등)이 목록에 뜨고 '모두 읽음'으로 지워지는지 1회.
+
 ## ✅ 2026-06-30 — 어드민 상품 승인 시 이미지 시각 검수 (갤러리 후속) (대표 "다음으로")
 - **문제**: 어드민 공급상품 승인 큐(`SupplierProductsTab`)가 **이미지를 하나도 안 보여줘** 어드민이 썸네일/갤러리/상세를 못 보고 승인/거부 — 이미지 검수가 구조적으로 불가. API는 `image_url`만 반환(UI 미표시), `detail_images`·갤러리는 미반환.
 - **수정**: ① API(`admin-products.routes GET /supplier-products`) SELECT 에 `detail_images` 추가 + `getSupplyMeta` 로 `gallery_images` 첨부(fail-soft). ② UI: 각 행에 **썸네일** + 접이식 **'이미지 검수(대표 N · 상세 N)'** 패널(썸네일+대표갤러리+상세 전체를 그리드로, 클릭 시 원본 새탭, 중복제거). 이미지 0개면 '⚠️ 등록된 이미지가 없어요' 경고.

@@ -13,7 +13,9 @@ import { readCache, writeCache } from './localCache'
 import { isLoggedInSync } from '@/utils/auth'
 
 export interface NotificationItem {
-  id: number
+  // 🛡️ 2026-07-01: 통합 id (un_<id> / n_<id>) — 서버가 두 테이블을 합쳐 반환하고
+  //   읽음/삭제를 prefix 로 라우팅. 하위호환 위해 number 도 허용.
+  id: string | number
   type: string
   title: string
   message?: string
@@ -67,7 +69,7 @@ export function useMarkAllNotificationsRead() {
 export function useMarkNotificationRead() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => api.put(`/api/social/notifications/${id}/read`),
+    mutationFn: (id: string | number) => api.put(`/api/social/notifications/${id}/read`),
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey: queryKeys.notifications() })
       const prev = qc.getQueryData<NotificationItem[]>(queryKeys.notifications())

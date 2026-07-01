@@ -89,7 +89,7 @@ sellerApp.post('/report', async (c) => {
     if (!already && v.user_id) {
       const storeName = v.restaurant_name || v.product_name || '매장'
       await DB.prepare(
-        "INSERT INTO notifications (user_id, type, title, message, created_at) VALUES (?, 'voucher_dispute', ?, ?, datetime('now'))"
+        "INSERT INTO notifications (user_id, user_type, type, title, message, created_at) VALUES (?, 'user', 'voucher_dispute', ?, ?, datetime('now'))"
       ).bind(v.user_id, '이용권 사용 확인 요청', `[${storeName}] 방문이 확인되지 않아 매장이 확인을 요청했어요. 실제로 이용하셨다면 '내 이용권'에서 알려주세요.`).run().catch(() => {})
     }
     return c.json({ success: true, data: { voucherId: v.id, status: 'disputed', already } })

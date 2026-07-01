@@ -81,8 +81,8 @@ export async function runMealVoucherExpireCron(env: Env): Promise<{ d7: number; 
 
       // 1. 앱 내 알림 INSERT — 탭하면 /my-vouchers 로 (link 컬럼 존재: youtube-broadcast-end-detect 등에서 사용).
       await env.DB.prepare(
-        `INSERT INTO notifications (user_id, type, title, message, link, created_at)
-         VALUES (?, ?, ?, ?, ?, datetime('now'))`
+        `INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+         VALUES (?, 'user', ?, ?, ?, ?, datetime('now'))`
       ).bind(
         r.user_id, notifType,
         `🎫 이용권 만료 D-${daysLeft} — ${productName}`,

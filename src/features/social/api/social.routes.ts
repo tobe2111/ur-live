@@ -64,6 +64,11 @@ socialRoutes.get('/following', requireAuth(), async (c) => {
 })
 
 // 알림 목록
+// 🛡️ 2026-07-01: 두 테이블(user_notifications + 레거시 notifications[user_type='user'])
+//   통합 조회. 이전엔 user_notifications 만 읽어, notifications 테이블에 쓰인 소비자
+//   알림(쿠폰/이용권 만료·숙소 리마인더·KT 교환권·결제완료 등)이 목록엔 안 뜨는데
+//   미읽음 뱃지(unread-count 는 두 테이블 합산)엔 카운트돼 '안 지워지는 유령 뱃지'가 됐음.
+//   id 는 un_/n_ prefix(unified) 로 반환 → 읽음/삭제가 올바른 테이블로 라우팅.
 socialRoutes.get('/notifications', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
@@ -72,29 +77,64 @@ socialRoutes.get('/notifications', requireAuth(), async (c) => {
   // 🏁 2026-06-12 (감사 🟢): limit/offset additive — 기본(무파라미터)은 기존과 동일 50/0.
   const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50', 10) || 50))
   const offset = Math.max(0, parseInt(c.req.query('offset') || '0', 10) || 0)
-  const { results } = await DB.prepare(
-    "SELECT * FROM user_notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
-  ).bind(String(user.id), limit, offset).all()
-  return c.json({ success: true, data: results ?? [], has_more: (results?.length ?? 0) === limit })
+  const userId = String(user.id)
+  const need = limit + offset
+  const all: any[] = []
+  try {
+    const { results } = await DB.prepare(
+      `SELECT ('un_' || id) AS id, type, title, message, link, is_read, created_at
+       FROM user_notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`
+    ).bind(userId, need).all()
+    all.push(...(results ?? []))
+  } catch { /* 테이블 없음 */ }
+  try {
+    const { results } = await DB.prepare(
+      `SELECT ('n_' || id) AS id, type, title, message, link, is_read, created_at
+       FROM notifications WHERE user_id = ? AND user_type = 'user' ORDER BY created_at DESC LIMIT ?`
+    ).bind(userId, need).all()
+    all.push(...(results ?? []))
+  } catch { /* 테이블 없음 */ }
+  all.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+  const page = all.slice(offset, offset + limit)
+  return c.json({ success: true, data: page, has_more: all.length > offset + limit })
 })
 
-// 알림 읽음 처리
+// 알림 읽음 처리 — id prefix(un_/n_)로 대상 테이블 라우팅. prefix 없으면 양쪽 시도(하위호환).
 socialRoutes.put('/notifications/:id/read', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
-  // 🏁 2026-06-12: 본인 소유 검증 추가 — 기존엔 id 만으로 UPDATE (타인 알림 읽음 플립 가능, 저위험 IDOR).
-  await DB.prepare("UPDATE user_notifications SET is_read = 1 WHERE id = ? AND user_id = ?")
-    .bind(c.req.param('id'), String(user.id)).run()
+  const raw = c.req.param('id')
+  const userId = String(user.id)
+  // 🏁 2026-06-12: 본인 소유 검증(id + user_id) — 타인 알림 읽음 플립(저위험 IDOR) 방지.
+  let changed = 0
+  if (raw.startsWith('un_') || !raw.startsWith('n_')) {
+    const nid = raw.startsWith('un_') ? raw.slice(3) : raw
+    try {
+      const r = await DB.prepare("UPDATE user_notifications SET is_read = 1 WHERE id = ? AND user_id = ?")
+        .bind(nid, userId).run()
+      changed += r.meta?.changes ?? 0
+    } catch {}
+  }
+  if (raw.startsWith('n_') || (changed === 0 && !raw.startsWith('un_'))) {
+    const nid = raw.startsWith('n_') ? raw.slice(2) : raw
+    try {
+      const r = await DB.prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ? AND user_type = 'user'")
+        .bind(nid, userId).run()
+      changed += r.meta?.changes ?? 0
+    } catch {}
+  }
   return c.json({ success: true })
 })
 
-// 알림 전체 읽음
+// 알림 전체 읽음 — 두 테이블 모두 처리(뱃지 = 두 테이블 합산이므로 양쪽 지워야 0).
 socialRoutes.put('/notifications/read-all', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
   const { DB } = c.env
-  await DB.prepare("UPDATE user_notifications SET is_read = 1 WHERE user_id = ?").bind(String(user.id)).run()
+  const userId = String(user.id)
+  try { await DB.prepare("UPDATE user_notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0").bind(userId).run() } catch {}
+  try { await DB.prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND user_type = 'user' AND is_read = 0").bind(userId).run() } catch {}
   return c.json({ success: true })
 })
 

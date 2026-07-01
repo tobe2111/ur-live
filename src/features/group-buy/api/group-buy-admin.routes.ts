@@ -330,13 +330,18 @@ groupBuyAdminRoutes.post('/force-refund/:productId', rateLimit({ action: 'group_
         } catch { /* ignore */ }
       }
       // 셀러 dashboard notification
+      // 🛡️ 2026-07-01: 셀러 대시보드 벨은 dashboard_notifications 를 읽음. 이전엔
+      //   notifications(user_type='seller')에 써서 셀러에게 영원히 안 보였음(고아 알림).
+      //   createDashboardNotification 으로 전환 → 셀러 벨에 정상 노출.
       try {
-        // 🛡️ 2026-05-17: notifications 스키마 fix — (user_type, message) 누락 시 silent fail.
-        await DB.prepare(
-          `INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
-           VALUES ((SELECT user_id FROM sellers WHERE id = ?), 'seller', 'group_buy_admin_refund', ?, ?, '/seller/group-buy', CURRENT_TIMESTAMP)`
-        ).bind(product.seller_id, '관리자 환불 처리', `${product.name} 공구가 어드민에 의해 환불 처리됐습니다 (${refundCount}건). 사유: ${reason}`).run()
-      } catch { /* notifications table may not exist */ }
+        const { createDashboardNotification } = await import('../../../features/notifications/api/dashboard-notifications.routes')
+        await createDashboardNotification(
+          DB, 'seller', String(product.seller_id), 'group_buy_admin_refund',
+          '관리자 환불 처리',
+          `${product.name} 공구가 어드민에 의해 환불 처리됐습니다 (${refundCount}건). 사유: ${reason}`,
+          '/seller/group-buy',
+        )
+      } catch { /* best-effort */ }
     } catch (e) { console.error('[admin force-refund notify]', e) }
 
     return c.json({ success: true, data: { refunded: refundCount }, message: `${refundCount}건 환불 처리 완료` })

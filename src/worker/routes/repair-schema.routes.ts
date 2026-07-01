@@ -1953,6 +1953,64 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     tableResults.push({ name: 'operation_guides:check-migration', status: 'error', error: String(e?.message || e).slice(0, 200) });
   }
 
+  // 🔔 2026-07-01: 알림 기본 테이블 보장(canonical). 이전엔 repair-schema 에 인덱스만 있고
+  //   CREATE TABLE 이 없어, 마이그레이션(CI 미작동) 또는 lazy 인라인 생성에만 의존했음(fresh/
+  //   repaired DB 에서 push_subscriptions 부재 → 웹푸시 전면 no-op 등의 리스크). 특히
+  //   notifications.user_type 을 NOT NULL DEFAULT 'user' 로 통일 — user_type 없이 INSERT 하는
+  //   소비자 알림이 조용히 실패하지 않게 함. 모두 IF NOT EXISTS(기존 테이블 불변).
+  for (const t of [
+    { name: 'notifications', sql: `CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        user_type TEXT NOT NULL DEFAULT 'user',
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT,
+        link TEXT,
+        is_read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        read_at DATETIME
+      )` },
+    { name: 'user_notifications', sql: `CREATE TABLE IF NOT EXISTS user_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT,
+        link TEXT,
+        is_read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { name: 'agency_notifications', sql: `CREATE TABLE IF NOT EXISTS agency_notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agency_id INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT,
+        link TEXT,
+        is_read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { name: 'push_subscriptions', sql: `CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        user_type TEXT NOT NULL DEFAULT 'user',
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        is_active INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )` },
+  ]) {
+    try {
+      await DB.prepare(t.sql).run();
+      tableResults.push({ name: `${t.name}:ensure`, status: 'ok' });
+    } catch (e: any) {
+      tableResults.push({ name: `${t.name}:ensure`, status: 'error', error: String(e?.message || e).slice(0, 200) });
+    }
+  }
+
   // 🏭 2026-06-12: dashboard_notifications CHECK 제약 확장 — recipient_type 에 'supplier' 추가.
   //   기존 프로덕션 테이블은 CHECK(IN ('admin','seller','agency')) 라서 제조사 알림(출금 승인/반려,
   //   신규 도매주문) INSERT 가 무음 실패하던 사고 수정. operation_guides CHECK 마이그레이션과 동일
