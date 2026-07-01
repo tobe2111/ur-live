@@ -1115,10 +1115,15 @@ pointsRoutes.post('/withdraw',
     const net = amount - tax
 
     try {
+      // 🛡️ 2026-07-01 (어드민 라이브 감사 — 머니 대칭): 위에서 딜을 즉시 차감(balance - amount)했으므로
+      //   deal_deducted=1 로 기록해야 지급센터 반려 시 딜이 복원됨(admin-payout-center reject 는 =1 만 복원).
+      //   누락 시 반려된 출금의 딜이 영구 미복원 = 유저 손실. curator.routes 경로와 동일 대칭.
+      //   컬럼 보장(멱등, repair-schema 에도 등록됨).
+      await DB.prepare('ALTER TABLE user_withdrawals ADD COLUMN deal_deducted INTEGER DEFAULT 0').run().catch(() => {})
       const result = await DB.prepare(`
         INSERT INTO user_withdrawals
-          (user_id, amount, withholding_tax, net_amount, bank_name, bank_account, account_holder)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+          (user_id, amount, withholding_tax, net_amount, bank_name, bank_account, account_holder, deal_deducted)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
       `).bind(userId, amount, tax, net, bankName, bankAccount, holder).run()
 
       return c.json({

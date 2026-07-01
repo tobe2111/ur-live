@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 어드민 대시보드 심층 감사 2R: 가드미보유 영역(머니정확성·권한/RBAC) 3건 fix (대표 "계속 진행")
+1R(런타임 크래시) 후속 — CLAUDE.md 가 명시한 **가드 미보유 영역**(결제 금액정확성 + 권한/IDOR 로직)을 어드민에 집중 감사(2개 병렬 에이전트). 라이브 인증 감사는 `ADMIN_IP_WHITELIST`(admin-security.ts)로 샌드박스 IP 403 차단(정상 보안) → 코드 감사로 진행. **확정 3건 수정**:
+- **🔴 HIGH — RBAC 역할 게이트 쿠키 우회** (`admin-rbac.ts`): 게이트가 role 을 Bearer 헤더에서만 추출했는데, `requireAdmin` 은 httpOnly 세션쿠키 인증도 허용 + 쿠키 payload 엔 세부 role 없음(`role='admin'` 하드코딩) → 제한역할(wholesale/ops/cs…)이 **Authorization 헤더만 빼고 쿠키로 호출하면 스코핑 전체 우회**(재무·타서비스 전권, 서비스분리 무력화). **수정**: 게이트의 `adminRoleFromRequest` 가 Bearer 없으면 어드민 세션쿠키를 파싱해 **DB 에서 실제 role 조회 후 동일 스코핑 적용**. Bearer 경로/super·admin 정상접근 불변, 정상 트래픽은 Bearer 라 DB read 없음. (`admin-accounts` 는 독립 super-check 라 기존에도 안전.)
+- **🔴 HIGH — 딜 환급 반려 시 딜 영구 미복원** (`points.routes.ts POST /withdraw`): 딜을 즉시 차감(`balance-amount`)하면서 `user_withdrawals` INSERT 에 `deal_deducted` 누락(기본 0). 어드민 지급센터 반려는 `deal_deducted=1` 일 때만 복원 → 이 경로 출금 반려 시 유저 딜 손실. **수정**: INSERT 에 `deal_deducted=1`(차감했으므로) + 컬럼 보장 — curator.routes 경로와 대칭(머니 역전 대칭 룰).
+- **🟠 MED — fee-breakdown 비교툴 현행수수료 2배 표시** (`admin-fee-breakdown.routes.ts`): NULL-rate 폴백에 옛 `DEFAULT_COMMISSION_RATE=10` 사용(실제 정산 `admin-settlements` 는 `PLATFORM_FEE_PCT=5`) → cur_platform 2배 → 컷오버 판단 오도. **수정**: 정산 라우트와 동일하게 `COMMISSION_DEFAULTS.PLATFORM_FEE_PCT` 로 미러링(읽기전용 툴).
+- **보고만(수정 안 함 — 정책/세무 판단 필요)**: ① MED RBAC 역할 도메인 과대부여(1st-path-segment 매칭 한계) — cs 가 `users` 도메인으로 gift-deal 딜민팅·유저정지 가능, ops 가 `tools`(정산처리·platform_settings)·`sellers`(수수료율) 변경 가능. ② 딜 환급 원천징수 8.8%(기타소득) — SSOT 상수를 쓰나 curator(3.3% 사업소득)와 분류 다름 + `withholdAndLog` 미경유(어드민 원천징수 집계 누락). ③ `normalizeAdminRole`/`requireAdminRole` DB오류 시 super 로 fail-open(방어심층).
+- **불변**: 잠금파일(payment/webhook/toss·SSR·로딩·worker/index.ts 소스) 무수정. 서비스분리 준수(유어딜 어드민+소비자 points). 라이트테마.
+- 검증: tsc 0 · build 0 · audit-gate 38 ALL GREEN · money-pattern/sql bind·column·not-null 가드 0. ⚠️ RBAC 쿠키수정은 보안민감 — 스테이징에서 제한역할 계정 쿠키호출 스코핑 + 정상 super/admin 접근 1회 검증 권장.
+
 ## ✅ 2026-07-01 — 알림 라이브 전수조사(프로덕션 실측) + 웹푸시 활성화 견고화 (대표 "전수조사 라이브로 접근해서")
 코드가 아닌 **라이브(live.ur-team.com) 실측**으로 알림 파이프라인 전수조사. 인증 필요 채널(인앱/대시보드/에이전시/공급자)은 401 정상 게이트 확인, `/api/notifications/unread-count`는 비인증 200 `{count:0}`(데이터 누출 0, 무해). **핵심 발견(설정 누락 — 코드 건강)**:
 - 🔴 **웹푸시가 프로덕션에서 완전 비작동(클라·서버 양쪽)**. ① 배포 번들(`app-components`)에 `const a=void 0; if(!a)return` — 빌드타임 `VITE_VAPID_PUBLIC_KEY`가 비어 subscribe 함수가 **항상 즉시 종료**(배너도 안 뜸). ② 서버 `/api/push/vapid-public-key`가 `""` 반환 → 런타임 `VAPID_PUBLIC_KEY` 미설정 → `sendSystemPush` 웹경로 no-op(`system-push.ts:51` 게이트). 인프라는 건강(`push-sw.js`가 push/pushsubscriptionchange/notificationclick 핸들러 전부 배포). **즉 이번 세션들에서 만든 RFC8291 암호화·self-heal·410 복구 등 전체 웹푸시 스택이 라이브에선 휴면** — 교환권 만료/공구 마감/재입고/가격인하/결제완료 웹푸시가 웹 유저에게 0건 도달.
