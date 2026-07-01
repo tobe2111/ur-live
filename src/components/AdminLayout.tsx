@@ -44,6 +44,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/admin',                  label: '대시보드',      icon: LayoutDashboard, exact: true },
       { path: '/admin/insights',         label: '운영 인사이트', icon: AlertTriangle },
+      { path: '/admin/funnel',           label: '소비자 퍼널',   icon: TrendingUp },
       { path: '/admin/business-metrics', label: '비즈니스 지표', icon: BarChart3 },
       { path: '/admin/revenue',          label: '매출 분석',     icon: BarChart3 },
       { path: '/admin/operations-guide', label: '운영 가이드',   icon: BookOpen },
