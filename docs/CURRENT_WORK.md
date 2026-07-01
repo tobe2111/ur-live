@@ -17,6 +17,13 @@
 - **재발 방지(영구)**: 신규 가드 `check-seller-wholesale-redirect.mjs` — Seller* surface 에서 is_distributor 직접 게이트로 /wholesale redirect/return null 금지(권위 wholesale_only 만). audit-gate(서비스 분리 도메인)+verify.yml(strict)+AUDIT_INVARIANTS 등록. 단위 테스트 `wholesale-only.test.ts`(7케이스).
 - 검증: tsc 0 · unit **2368 pass**(+7) · build(client+worker+prerender+prepare) 0 · 서비스분리/UI 도메인 ALL GREEN · sql/light-input/api-auth 가드 0. ⚠️ staging 권장: 겸업 계정(소비자 상품 보유 + is_distributor=1) → `/seller` 정상 진입 / 순수 판매사 → `/wholesale` 라우팅 각 1회.
 
+## ✅ 2026-06-30 — 제조사 상세페이지 이미지: 수정 지원 + 최대 30장 (대표 "둘 다 고치기")
+대표 질문("상세페이지 이미지 여러 장 순서대로 올리는 거 문제 없어?") → 전 경로 검증: **등록은 정상**(다중·순서·원본화질·R2·순서대로 갤러리 표시 end-to-end)이나 한계 2건 발견 → 둘 다 수정.
+- **① 등록 후 수정 불가 → 지원**: `detail_images` 가 `GET /products` 미반환 + `PATCH` 미처리라 수정모드에서 **숨겨져 있던 미완성** 기능. → GET SELECT 에 `detail_images` 추가 · `PATCH` 에 detail_images 처리(배열/쉼표→http(s)필터→JSON, 빈값=null 해제) · `AddProductModal` 수정모드에서 필드 노출 + prefill(`detailImagesToCsv` JSON파싱) + payload 공통전송(등록·수정). `CatalogItem` 타입 추가.
+- **② 최대 10 → 30장**: 긴 상세페이지 슬라이스가 10장 넘으면 11장째부터 조용히 버려지던 것 → 4곳 동기 상향(`MultiImageUpload MAX_FILES`·POST slice·bulk slice·`catalog/:id` 표시 slice).
+- **불변**: 업로드 컴포넌트(무압축·GIF보존·순서 up/down)·POST 저장·상세 표시 로직·`products.detail_images` 컬럼(예산 무관, 기존 컬럼) 전부 불변(수정 경로 신설 + cap 숫자만). 승인상품 수정불가 게이트·재제출 pending 동작 불변.
+- 검증: tsc 0 · build 0 · column-exists/bind/컬럼예산 가드 0. ⚠️ staging: 등록(30장·순서) → 상세 표시 → 수정모드 재진입(prefill) → 이미지 교체/삭제/추가 → 저장 → 반영 1회 확인 권장.
+
 ## ↩️ 2026-06-30 — 판매사 첫 발주 시작 가이드 **제거**(revert) (대표 "가이드는 필요없어")
 직전 추가한 `FirstOrderGuide`(HeroSection)를 대표 요청으로 통째 revert(`065a5f1`). `/home` 의 `has_ordered` 배선·`useWholesaleHome` 타입/매퍼·HeroSection prop 전부 함께 제거(미사용 방지). **`pending_receipt`(수령확인 배너)는 별개 커밋이라 유지.** tsc 0·build 0.
 
