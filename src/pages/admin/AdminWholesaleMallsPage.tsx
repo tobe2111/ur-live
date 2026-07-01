@@ -16,6 +16,7 @@ import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import ImageUpload from '@/components/upload/ImageUpload'
 import { Building2, Loader2, Plus, Edit, X, Globe, Check } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
+import { normalizeAdminRole } from '@/shared/admin-roles'
 
 interface MallRow {
   id: number
@@ -143,6 +144,20 @@ export default function AdminWholesaleMallsPage() {
     } catch (err: unknown) {
       toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || t('admin.mall.statusFailed', { defaultValue: '상태 변경에 실패했습니다' }))
     }
+  }
+
+  // 🔒 2026-06-29 (대표): 도매몰 관리는 슈퍼어드민 전용 — 다른 역할이 URL 직접진입해도 차단(백엔드 쓰기도 super-only).
+  const isSuper = typeof window !== 'undefined' && normalizeAdminRole(localStorage.getItem('admin_role')) === 'super'
+  if (!isSuper) {
+    return (
+      <AdminLayout title={t('admin.mall.title', { defaultValue: '도매 몰 관리' })}>
+        <div className="ur-content-full px-4 lg:px-8 py-16 text-center">
+          <Building2 className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+          <p className="text-sm font-semibold text-gray-700">{t('admin.mall.superOnly', { defaultValue: '도매몰 관리는 슈퍼관리자만 접근할 수 있어요.' })}</p>
+          <p className="text-xs text-gray-400 mt-1">{t('admin.mall.superOnlyHint', { defaultValue: '몰 생성·수정 권한이 필요하면 슈퍼관리자에게 문의하세요.' })}</p>
+        </div>
+      </AdminLayout>
+    )
   }
 
   return (

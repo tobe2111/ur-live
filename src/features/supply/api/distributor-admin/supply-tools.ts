@@ -109,10 +109,16 @@ export function registerSupplyToolsRoutes(app: Hono<{ Bindings: Env }>) {
     const { DB } = c.env
     try {
       const page = Math.max(1, Number(c.req.query('page') || 1))
-      const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') || 50)))
+      const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') || 30)))
       const offset = (page - 1) * limit
       // auto-audit action = 'METHOD /api/admin/...path' — 도매 관련 경로만.
       const like = `(a.action LIKE '%/wholesale%' OR a.action LIKE '%/distributor%' OR a.action LIKE '%/suppliers%' OR a.action LIKE '%/supplier%' OR a.action LIKE '%/partnership%')`
+      // 🧹 2026-06-29 (대표 — "1달 지난 내역 삭제"): 도매 처리이력 30일 보존. **도매 스코프(like)만** 삭제 —
+      //   admin_audit_logs 는 공용 감사테이블이라 타 서비스 감사로그는 절대 안 건드림. 첫 페이지 진입 시 정리(best-effort).
+      if (page === 1) {
+        await DB.prepare(`DELETE FROM admin_audit_logs WHERE ${like.replace(/a\.action/g, 'action')} AND created_at < datetime('now','-30 days')`)
+          .run().catch(() => { /* best-effort — 정리 실패가 조회를 막지 않음 */ })
+      }
       const totalRow = await DB.prepare(`SELECT COUNT(*) AS c FROM admin_audit_logs a WHERE ${like}`).first<{ c: number }>().catch(() => null)
       const rows = await DB.prepare(
         `SELECT a.id, a.admin_id, a.admin_email, a.action, a.ip, a.created_at,

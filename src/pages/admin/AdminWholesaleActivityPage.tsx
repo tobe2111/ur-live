@@ -53,6 +53,8 @@ function fmtTime(s: string): string {
   return safeDate(s)?.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) ?? s
 }
 
+const PAGE_SIZE = 30 // 🏭 2026-06-29 (대표): 1페이지 30건.
+
 export default function AdminWholesaleActivityPage() {
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
   const [rows, setRows] = useState<LogRow[]>([])
@@ -60,12 +62,13 @@ export default function AdminWholesaleActivityPage() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
 
+  // 🏭 2026-06-29 (대표): 1페이지 30건 + 페이지 번호. 이전 '더 보기(append)' → 페이지 교체 방식.
   const load = useCallback((p: number) => {
     setLoading(true)
-    api.get(`/api/admin/distributor/activity-log?page=${p}&limit=50`, h)
+    api.get(`/api/admin/distributor/activity-log?page=${p}&limit=${PAGE_SIZE}`, h)
       .then(r => {
         if (r.data?.success) {
-          setRows(prev => p === 1 ? r.data.data : [...prev, ...r.data.data])
+          setRows(r.data.data ?? [])            // 교체(누적 X) — 페이지 번호 이동
           setTotal(r.data.pagination?.total ?? 0)
           setPage(p)
         }
@@ -132,13 +135,28 @@ export default function AdminWholesaleActivityPage() {
               </table>
             </div>
           )}
-          {rows.length < total && (
-            <div className="p-3 border-t border-gray-100 text-center">
-              <button onClick={() => load(page + 1)} disabled={loading} className="px-4 py-2 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-50">
-                {loading ? '불러오는 중…' : `더 보기 (${rows.length}/${total})`}
-              </button>
-            </div>
-          )}
+          {(() => {
+            const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+            if (totalPages <= 1) return null
+            // 현재 페이지 ±2 윈도우 + 처음/끝. (많은 페이지도 버튼 과다 방지)
+            const span = 2
+            const nums: number[] = []
+            for (let i = Math.max(1, page - span); i <= Math.min(totalPages, page + span); i++) nums.push(i)
+            if (nums[0] > 1) { nums.unshift(1); if (nums[1] > 2) nums.splice(1, 0, -1) } // -1 = 생략(…)
+            if (nums[nums.length - 1] < totalPages) { if (nums[nums.length - 1] < totalPages - 1) nums.push(-1); nums.push(totalPages) }
+            const btn = 'min-w-[34px] h-8 px-2 rounded-lg text-sm font-semibold disabled:opacity-40'
+            return (
+              <div className="p-3 border-t border-gray-100 flex items-center justify-center gap-1 flex-wrap">
+                <button onClick={() => load(page - 1)} disabled={loading || page <= 1} className={btn + ' text-gray-600 hover:bg-gray-100'}>이전</button>
+                {nums.map((n, i) => n === -1
+                  ? <span key={`e${i}`} className="px-1 text-gray-400">…</span>
+                  : <button key={n} onClick={() => load(n)} disabled={loading}
+                      className={btn + (n === page ? ' bg-gray-900 text-white' : ' text-gray-700 hover:bg-gray-100')}>{n}</button>)}
+                <button onClick={() => load(page + 1)} disabled={loading || page >= totalPages} className={btn + ' text-gray-600 hover:bg-gray-100'}>다음</button>
+                <span className="ml-2 text-[12px] text-gray-400 tabular-nums">{page} / {totalPages}</span>
+              </div>
+            )
+          })()}
         </div>
       </div>
     </AdminLayout>

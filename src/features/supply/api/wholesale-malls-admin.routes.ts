@@ -17,11 +17,25 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admin-security'
 import { ensureMallSchema, invalidateMallCache, DEFAULT_MALL_ID } from './wholesale-malls'
+import { normalizeAdminRole } from '@/shared/admin-roles'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', adminIpWhitelist())
 app.use('*', requireAdmin())
 app.use('*', adminAuditMiddleware())
+
+// 🔒 2026-06-29 (대표 — "도매몰 관리는 슈퍼어드민만"): 몰 생성/수정(관리)은 슈퍼 전용.
+//   GET(몰 목록)은 여러 도매 어드민 화면의 몰 선택기(AdminMallSelect)가 읽으므로 유지 — 관리(쓰기)만 잠금.
+//   requireAdmin 이 c.set('user',{role}) 로 넣은 역할을 정규화해 super 만 통과.
+function requireSuperAdmin() {
+  return async (c: import('hono').Context, next: import('hono').Next) => {
+    const role = normalizeAdminRole((c.get('user') as { role?: string } | undefined)?.role)
+    if (role !== 'super') {
+      return c.json({ success: false, error: '도매몰 관리는 슈퍼관리자만 가능합니다', code: 'SUPER_ONLY' }, 403)
+    }
+    return next()
+  }
+}
 
 // slug: 소문자/숫자/하이픈만 (host 라우팅·URL 안전). 길이 cap. 미충족 시 null.
 function cleanSlug(raw: unknown): string | null {
@@ -55,7 +69,7 @@ app.get('/', async (c) => {
 })
 
 // ── POST / — 몰 생성 ──────────────────────────────────────────────────────────
-app.post('/', rateLimit({ action: 'admin-wholesale-mall-create', max: 20, windowSec: 60 }), async (c) => {
+app.post('/', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall-create', max: 20, windowSec: 60 }), async (c) => {
   const { DB } = c.env
   try {
     await ensureMallSchema(DB)
@@ -91,7 +105,7 @@ app.post('/', rateLimit({ action: 'admin-wholesale-mall-create', max: 20, window
 })
 
 // ── PATCH /:id — 몰 수정 ──────────────────────────────────────────────────────
-app.patch('/:id', rateLimit({ action: 'admin-wholesale-mall-update', max: 60, windowSec: 60 }), async (c) => {
+app.patch('/:id', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall-update', max: 60, windowSec: 60 }), async (c) => {
   const { DB } = c.env
   const id = Number(c.req.param('id'))
   if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 몰 ID' }, 400)

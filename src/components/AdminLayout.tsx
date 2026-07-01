@@ -326,15 +326,17 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   const [adminName] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('admin_name') || localStorage.getItem('admin_email') : null) || '관리자')
   // 🛡️ 2026-06-16 RBAC 네비 게이트 — 슈퍼 전용 항목(계정/감사/2FA)은 슈퍼만 노출. 변경 권한 강제는 서버(admin-rbac).
   const [adminRole] = useState<AdminRole>(() => normalizeAdminRole(typeof window !== 'undefined' ? localStorage.getItem('admin_role') : null))
-  const SUPER_ONLY_NAV = new Set(['/admin/accounts', '/admin/audit-log', '/admin/login-history'])
+  // 🔒 슈퍼 전용 nav — 계정/감사/2FA + 2026-06-29(대표) '도매 몰 관리'(멀티-몰 CRUD). 도매 파트너도 숨김(서버도 super-only).
+  const SUPER_ONLY_NAV = new Set(['/admin/accounts', '/admin/audit-log', '/admin/login-history', '/admin/wholesale-malls'])
+  const stripSuperOnly = (groups: typeof VISIBLE_NAV_GROUPS) => groups
+    .map((g) => ({ ...g, items: g.items.filter((it) => !SUPER_ONLY_NAV.has(it.path)) }))
+    .filter((g) => g.items.length > 0)
   const roleNavGroups = adminRole === 'super'
     ? VISIBLE_NAV_GROUPS
     : adminRole === 'wholesale'
-      // 🆕 도매 파트너 — 도매 도메인 그룹만 노출(유어딜 소비자 어드민 전부 숨김). 서버 RBAC 와 정합.
-      ? VISIBLE_NAV_GROUPS.filter((g) => g.domain === 'wholesale')
-      : VISIBLE_NAV_GROUPS
-          .map((g) => ({ ...g, items: g.items.filter((it) => !SUPER_ONLY_NAV.has(it.path)) }))
-          .filter((g) => g.items.length > 0)
+      // 🆕 도매 파트너 — 도매 도메인 그룹만 노출(유어딜 소비자 어드민 전부 숨김) + 슈퍼전용(몰 관리 등) 제외.
+      ? stripSuperOnly(VISIBLE_NAV_GROUPS.filter((g) => g.domain === 'wholesale'))
+      : stripSuperOnly(VISIBLE_NAV_GROUPS)
 
   // 🆕 도매 파트너가 비-도매 어드민 경로(/admin 소비자 홈, /admin/users 등)로 직접 진입 시 도매 현황으로 리다이렉트.
   //   서버 RBAC 가 데이터는 이미 403 차단 — 이건 깨진 화면 대신 안전한 랜딩을 위한 UX 가드.
