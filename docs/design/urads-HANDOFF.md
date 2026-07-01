@@ -51,6 +51,10 @@
 | **쇼핑 순위 추적** 🆕(오가닉, 광고와 별개) | `rank-tracker.ts`(쇼핑검색 상위300·일일 cron) | `/rank/targets`·`/rank/target`·`/rank/refresh` |
 | **성과 추세(일별 메트릭 히스토리·멀티테넌트)** 🆕 | `metrics-history.ts`(일일 cron→`ad_daily_metrics` 고객사별 1행·`computeWoW`·`trendContextFrom`) + `TrendPanel.tsx`(인라인 SVG 차트) | GET `/metrics/history` · POST `/metrics/snapshot` |
 | **경쟁사 분석**(쇼핑검색 상위 몰) 🆕 | `competitor-tracker.ts`(`aggregateCompetitors` 순수 — 나보다 위/아래·최저가·노출수) + RankPanel 확장 | GET `/rank/competitors?keyword=&mall=` |
+| **제외(네거티브) 키워드 등록** 🆕(효율 루프 닫기·WRITE) | `searchad-client.ts`(`addNegativeKeywords`) + SearchAdPanel | POST `/searchad/negative` |
+| **캠페인 긴급 제어**(정지/재개·일예산·WRITE 하드캡) 🆕 | `searchad-client.ts`(`updateCampaignStatus/Budget`) + SearchAdPanel | PATCH `/searchad/campaign` |
+| **키워드 포트폴리오**(저장·태그) 🆕 | `keyword-portfolio.ts`(순수 DB) + `SavedKeywordsPanel.tsx` | `/keywords/saved`·`/keywords/save` |
+| **카카오 알림톡 알림**(설정 시 이메일과 병행) 🆕 | `alerts.ts`(`sendAlertAlimtalk` — `ADS_ALERT_ALIMTALK_TPL` 게이트) | (기존 `ads-alerts` cron) |
 | **AI 진단에 전주 대비 추세 반영** 🆕 | ai-marketer/weekly-report 컨텍스트에 `trend`(WoW) 주입 | (기존 `/ai-marketer`·`/reports` 강화) |
 | **유어애즈 가입자 운영 어드민** 🆕 | `admin-ads.routes.ts` + `AdminAdsAccountsPage.tsx`(잠금해제·정지) | `/api/admin/ads/stats`·`accounts` |
 | **임계값 알림** 🆕(예산 소진·최저가 역전→이메일) | `alerts.ts`(설정+일일 cron+Resend, 계정+날짜 멱등) | `/alerts/settings`·`/alerts/preview` |

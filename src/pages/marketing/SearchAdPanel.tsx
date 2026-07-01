@@ -58,6 +58,12 @@ export default function SearchAdPanel() {
   // 키워드 자동등록(write)
   const [kwAdd, setKwAdd] = useState<Record<string, string>>({})
   const [kwAddBusy, setKwAddBusy] = useState<string | null>(null)
+  // 제외(네거티브) 키워드 등록(write)
+  const [negAdd, setNegAdd] = useState<Record<string, string>>({})
+  const [negBusy, setNegBusy] = useState<string | null>(null)
+  // 캠페인 제어(정지/재개·예산, write)
+  const [campBusy, setCampBusy] = useState<string | null>(null)
+  const [budgetEdit, setBudgetEdit] = useState<Record<string, string>>({})
   // 자동입찰 규칙 생성(키워드별)
   const [abRank, setAbRank] = useState<Record<string, string>>({})
   const [abMax, setAbMax] = useState<Record<string, string>>({})
@@ -210,6 +216,46 @@ export default function SearchAdPanel() {
     } catch (e: unknown) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '키워드 등록 실패')
     } finally { setKwAddBusy(null) }
+  }
+
+  async function addNegatives(groupId: string) {
+    const list = (negAdd[groupId] || '').split(',').map(s => s.trim()).filter(Boolean)
+    if (!list.length) { toast.error('제외할 키워드를 입력해주세요 (쉼표로 구분)'); return }
+    if (list.length > 20) { toast.error('한 번에 최대 20개까지 등록할 수 있습니다'); return }
+    if (!(await confirmDialog(`이 광고그룹에 제외 키워드 ${list.length}개를 등록할까요? (해당 검색어에 광고 미노출)`))) return
+    setNegBusy(groupId)
+    try {
+      const r = await api.post('/api/ads/searchad/negative', { adgroup_id: groupId, keywords: list }, { headers: authHeader() })
+      if (r.data?.success) { toast.success(`제외 키워드 ${r.data.added ?? list.length}개 등록`); setNegAdd(prev => { const n = { ...prev }; delete n[groupId]; return n }) }
+      else toast.error(r.data?.error || '제외 키워드 등록 실패')
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '제외 키워드 등록 실패')
+    } finally { setNegBusy(null) }
+  }
+
+  async function campaignControl(cp: Campaign, action: 'pause' | 'resume' | 'budget') {
+    const body: Record<string, unknown> = { campaign_id: cp.id, action }
+    if (action === 'budget') {
+      const b = Math.round(Number(budgetEdit[cp.id]))
+      if (!Number.isFinite(b) || b < 100 || b > 10000000) { toast.error('일예산은 100~10,000,000원으로 입력해주세요'); return }
+      if (!(await confirmDialog(`"${cp.name}" 일예산을 ₩${formatNumber(b)} 로 변경할까요? (실제 광고비에 영향)`))) return
+      body.daily_budget = b
+    } else {
+      if (!(await confirmDialog(`"${cp.name}" 캠페인을 ${action === 'pause' ? '일시정지' : '재개'}할까요?`))) return
+    }
+    setCampBusy(cp.id)
+    try {
+      const r = await api.patch('/api/ads/searchad/campaign', body, { headers: authHeader() })
+      if (r.data?.success) {
+        toast.success(action === 'budget' ? `일예산 ₩${formatNumber(Number(body.daily_budget))} 적용` : action === 'pause' ? '캠페인 일시정지' : '캠페인 재개')
+        if (action === 'budget') {
+          setCampaigns(prev => prev.map(x => x.id === cp.id ? { ...x, dailyBudget: Number(body.daily_budget) } : x))
+          setBudgetEdit(prev => { const n = { ...prev }; delete n[cp.id]; return n })
+        } else loadPacing()
+      } else toast.error(r.data?.error || '변경 실패')
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '변경 실패')
+    } finally { setCampBusy(null) }
   }
 
   async function toggleGroup(id: string) {
@@ -377,6 +423,20 @@ export default function SearchAdPanel() {
                   </button>
                   {openCampaign === cp.id && (
                     <div className="px-3 pb-2 space-y-1">
+                      {/* 캠페인 제어(정지/재개·일예산, write) */}
+                      <div className="flex flex-wrap items-center gap-1.5 pb-1.5 mb-1 border-b border-gray-100 dark:border-[#1A1A1A]">
+                        <button onClick={() => campaignControl(cp, 'pause')} disabled={campBusy === cp.id}
+                          className="rounded border border-gray-300 dark:border-[#2A2A2A] px-2 h-7 text-[10.5px] font-bold text-amber-600 dark:text-amber-500 disabled:opacity-40">일시정지</button>
+                        <button onClick={() => campaignControl(cp, 'resume')} disabled={campBusy === cp.id}
+                          className="rounded border border-gray-300 dark:border-[#2A2A2A] px-2 h-7 text-[10.5px] font-bold text-emerald-600 dark:text-emerald-500 disabled:opacity-40">재개</button>
+                        <span className="ml-auto flex items-center gap-1">
+                          <input type="number" min={100} max={10000000} placeholder="일예산₩"
+                            value={budgetEdit[cp.id] ?? ''} onChange={e => setBudgetEdit(prev => ({ ...prev, [cp.id]: e.target.value }))}
+                            className="w-24 h-7 rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-1.5 text-[11px] text-right text-gray-900 dark:text-white" />
+                          <button onClick={() => campaignControl(cp, 'budget')} disabled={campBusy === cp.id || !budgetEdit[cp.id]}
+                            className="shrink-0 rounded bg-gray-900 dark:bg-white px-2 h-7 text-[10.5px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-40">예산변경</button>
+                        </span>
+                      </div>
                       {(adgroups[cp.id] || []).length === 0 ? (
                         <p className="text-[11px] text-gray-400 dark:text-gray-500 py-1">광고그룹 없음</p>
                       ) : (adgroups[cp.id] || []).map(g => (
@@ -431,6 +491,14 @@ export default function SearchAdPanel() {
                                   className="flex-1 h-7 rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-2 text-[11px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500" />
                                 <button onClick={() => addKeywords(g.id)} disabled={kwAddBusy === g.id || !kwAdd[g.id]}
                                   className="shrink-0 rounded border border-gray-300 dark:border-[#2A2A2A] px-2.5 h-7 text-[10.5px] font-bold text-gray-700 dark:text-gray-200 disabled:opacity-40">{kwAddBusy === g.id ? '…' : '+ 등록'}</button>
+                              </div>
+                              {/* 제외(네거티브) 키워드 등록(write) — 낭비 검색어에 광고 미노출 */}
+                              <div className="mt-1.5 flex gap-1.5">
+                                <input placeholder="제외 키워드 (쉼표로 구분, 최대 20)"
+                                  value={negAdd[g.id] ?? ''} onChange={e => setNegAdd(prev => ({ ...prev, [g.id]: e.target.value }))}
+                                  className="flex-1 h-7 rounded border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-2 text-[11px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500" />
+                                <button onClick={() => addNegatives(g.id)} disabled={negBusy === g.id || !negAdd[g.id]}
+                                  className="shrink-0 rounded border border-red-200 dark:border-red-500/30 px-2.5 h-7 text-[10.5px] font-bold text-red-600 dark:text-red-400 disabled:opacity-40">{negBusy === g.id ? '…' : '− 제외'}</button>
                               </div>
                             </div>
                           )}

@@ -77,6 +77,7 @@ export interface Env {
   ALIGO_TPL_SHIPPING_START?: string;     // 배송시작 템플릿 코드
   ALIGO_TPL_ORDER_CANCEL?: string;       // 주문취소 템플릿 코드
   ALIGO_TPL_SAMPLE_APPROVED?: string;    // 샘플 신청 승인 템플릿 코드
+  ADS_ALERT_ALIMTALK_TPL?: string;       // 🎯 유어애즈 광고 알림 알림톡 템플릿 코드(미설정 시 이메일만)
 
   // ---- YouTube ----
   YOUTUBE_CLIENT_ID?: string;

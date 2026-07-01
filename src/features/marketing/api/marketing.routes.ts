@@ -15,7 +15,7 @@ const adsAccessCode = (env: Env) => (env as unknown as { ADS_ACCESS_CODE?: strin
 import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverConnectionSchema } from '@/services/naver-commerce-core'
 import { collectAndStore, listCollectedOrders } from './order-collection'
 import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete, shoppingCategoryTrends, categoryDemographics } from './keyword-tools'
-import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, addKeywordsToAdgroup, accountStats, budgetPacing, keywordEfficiency, BID_MIN, BID_MAX, KW_ADD_MAX, type SearchAdCreds } from './searchad-client'
+import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, addKeywordsToAdgroup, accountStats, budgetPacing, keywordEfficiency, updateCampaignStatus, updateCampaignBudget, addNegativeKeywords, BID_MIN, BID_MAX, KW_ADD_MAX, BUDGET_MIN, BUDGET_MAX, type SearchAdCreds } from './searchad-client'
 import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnection, searchAdConnStatus, getActiveTenantId, listTenants, setActiveTenant } from './searchad-connection'
 import { aiMarketerAdvice, type AiMarketerContext } from './ai-marketer'
 import { listReports, generateWeeklyReport } from './weekly-report'
@@ -26,6 +26,7 @@ import { getAlertSettings, saveAlertSettings, computeAlerts } from './alerts'
 import { listRankTargets, addRankTarget, deleteRankTarget, refreshRankTarget } from './rank-tracker'
 import { getMetricsHistory, computeWoW, snapshotAccountRecent, trendContextFrom } from './metrics-history'
 import { analyzeCompetitors } from './competitor-tracker'
+import { saveKeyword, listSavedKeywords, listKeywordTags, deleteSavedKeyword, updateSavedKeyword } from './keyword-portfolio'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
 
@@ -370,6 +371,53 @@ marketingRoutes.get('/keywords/related', rateLimit({ action: 'ads-kw-related', m
   return c.json({ success: true, results: r.results })
 })
 
+// ── 키워드 포트폴리오(발굴 키워드 저장·태그) — 외부호출 0 ─────────────────────
+// GET /api/ads/keywords/saved?tag= — 저장한 키워드 + 태그 목록
+marketingRoutes.get('/keywords/saved', async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const tag = (c.req.query('tag') || '').trim() || null
+  const [items, tags] = await Promise.all([listSavedKeywords(c.env.DB, id, tag), listKeywordTags(c.env.DB, id)])
+  return c.json({ success: true, items, tags })
+})
+
+// POST /api/ads/keywords/save — 키워드 저장(멱등 upsert)
+marketingRoutes.post('/keywords/save', rateLimit({ action: 'ads-kw-save', max: 60, windowSec: 60 }), async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await saveKeyword(c.env.DB, id, {
+    keyword: String(b.keyword || ''),
+    monthly_total: b.monthly_total != null ? Number(b.monthly_total) : null,
+    comp_idx: b.comp_idx != null ? String(b.comp_idx) : null,
+    tag: b.tag != null ? String(b.tag) : null,
+    memo: b.memo != null ? String(b.memo) : null,
+  })
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  return c.json({ success: true, items: await listSavedKeywords(c.env.DB, id) })
+})
+
+// PATCH /api/ads/keywords/saved?id= — 태그/메모 수정
+marketingRoutes.patch('/keywords/saved', rateLimit({ action: 'ads-kw-saved-patch', max: 60, windowSec: 60 }), async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const savedId = Number(c.req.query('id'))
+  if (!Number.isFinite(savedId)) return c.json({ success: false, error: '대상 ID가 올바르지 않습니다' }, 400)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  await updateSavedKeyword(c.env.DB, id, savedId, { tag: b.tag != null ? String(b.tag) : undefined, memo: b.memo != null ? String(b.memo) : undefined })
+  return c.json({ success: true, items: await listSavedKeywords(c.env.DB, id) })
+})
+
+// DELETE /api/ads/keywords/saved?id=
+marketingRoutes.delete('/keywords/saved', rateLimit({ action: 'ads-kw-saved-del', max: 60, windowSec: 60 }), async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const savedId = Number(c.req.query('id'))
+  if (!Number.isFinite(savedId)) return c.json({ success: false, error: '대상 ID가 올바르지 않습니다' }, 400)
+  await deleteSavedKeyword(c.env.DB, id, savedId)
+  return c.json({ success: true, items: await listSavedKeywords(c.env.DB, id) })
+})
+
 // ── 검색광고 계정 연동 (멀티테넌트 — 고객사별 자기 키 연결) ───────────────────
 //   자동입찰·실적·키워드 자동등록 등 per-advertiser 기능의 전제조건.
 
@@ -516,6 +564,53 @@ marketingRoutes.post('/searchad/keywords/add', rateLimit({ action: 'ads-sa-kwadd
   const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
   if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
   const r = await addKeywordsToAdgroup(creds, adgroupId, keywords)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 502)
+  return c.json({ success: true, added: r.added })
+})
+
+// PATCH /api/ads/searchad/campaign — 캠페인 일시정지/재개 or 일예산 변경(WRITE, 광고비 영향)
+//   ⚠️ 사용자 명시 액션 + 서버 검증(예산 하드캡) + 연결 필수. 예산 페이싱 '초과 임박' 조치용.
+marketingRoutes.patch('/searchad/campaign', rateLimit({ action: 'ads-sa-camp', max: 30, windowSec: 60 }), async (c) => {
+  const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const campaignId = String(body.campaign_id || '').trim()
+  const action = String(body.action || '')
+  if (!campaignId) return c.json({ success: false, error: '캠페인을 지정해주세요' }, 400)
+  const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
+  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  if (action === 'pause' || action === 'resume') {
+    const r = await updateCampaignStatus(creds, campaignId, action === 'pause')
+    if (!r.ok) return c.json({ success: false, error: r.error }, 502)
+    return c.json({ success: true, action })
+  }
+  if (action === 'budget') {
+    const dailyBudget = Number(body.daily_budget)
+    if (!Number.isFinite(dailyBudget) || dailyBudget < BUDGET_MIN || dailyBudget > BUDGET_MAX) {
+      return c.json({ success: false, error: `일예산은 ${BUDGET_MIN.toLocaleString()}~${BUDGET_MAX.toLocaleString()}원 범위여야 합니다` }, 400)
+    }
+    const r = await updateCampaignBudget(creds, campaignId, dailyBudget)
+    if (!r.ok) return c.json({ success: false, error: r.error }, 502)
+    return c.json({ success: true, action, daily_budget: Math.round(dailyBudget) })
+  }
+  return c.json({ success: false, error: '지원하지 않는 작업입니다 (pause|resume|budget)' }, 400)
+})
+
+// POST /api/ads/searchad/negative — 광고그룹 제외(네거티브) 키워드 등록(WRITE, 노출제한)
+//   ⚠️ 사용자 명시 액션 + 서버 검증(개수≤20·길이) + 연결 필수. 키워드 효율의 '낭비 키워드' 조치용.
+marketingRoutes.post('/searchad/negative', rateLimit({ action: 'ads-sa-neg', max: 20, windowSec: 60 }), async (c) => {
+  const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const adgroupId = String(body.adgroup_id || '').trim()
+  const kwRaw: unknown[] = Array.isArray(body.keywords) ? body.keywords : []
+  if (!adgroupId) return c.json({ success: false, error: '광고그룹을 지정해주세요' }, 400)
+  const keywords = kwRaw.map((k: unknown) => String(k || '')).filter(Boolean)
+  if (!keywords.length) return c.json({ success: false, error: '등록할 제외 키워드를 입력해주세요' }, 400)
+  if (keywords.length > KW_ADD_MAX) return c.json({ success: false, error: `한 번에 최대 ${KW_ADD_MAX}개까지 등록할 수 있습니다` }, 400)
+  const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
+  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  const r = await addNegativeKeywords(creds, adgroupId, keywords)
   if (!r.ok) return c.json({ success: false, error: r.error }, 502)
   return c.json({ success: true, added: r.added })
 })
