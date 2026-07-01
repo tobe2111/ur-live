@@ -176,6 +176,84 @@ function base64UrlDecode(s: string): Uint8Array {
   return out
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// Web Push payload encryption — aes128gcm (RFC 8291 + RFC 8188)
+//   Workers WebCrypto supports ECDH P-256 + HKDF(HMAC-SHA-256) + AES-128-GCM,
+//   so we can encrypt without a library. Falls back to a content-less "tickle"
+//   in the caller if this throws — never regresses delivery.
+// ──────────────────────────────────────────────────────────────────────────
+function concatBytes(...arrs: Uint8Array[]): Uint8Array {
+  const total = arrs.reduce((n, a) => n + a.length, 0)
+  const out = new Uint8Array(total)
+  let o = 0
+  for (const a of arrs) { out.set(a, o); o += a.length }
+  return out
+}
+
+async function hmacSha256(keyBytes: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
+  const key = await crypto.subtle.importKey('raw', keyBytes as BufferSource, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+  return new Uint8Array(await crypto.subtle.sign('HMAC', key, data as BufferSource))
+}
+
+// HKDF-Expand for a single output block (length ≤ 32).
+async function hkdfExpand(prk: Uint8Array, info: Uint8Array, length: number): Promise<Uint8Array> {
+  const t = await hmacSha256(prk, concatBytes(info, new Uint8Array([1])))
+  return t.slice(0, length)
+}
+
+/**
+ * Encrypt `plaintext` for a subscription per RFC 8291 (aes128gcm).
+ * Returns the request body: header(salt|rs|idlen|keyid) || AES-GCM ciphertext.
+ */
+async function encryptPushPayload(
+  p256dhB64: string,
+  authB64: string,
+  plaintext: Uint8Array,
+): Promise<Uint8Array> {
+  const uaPublic = base64UrlDecode(p256dhB64)   // client public key, 65 bytes
+  const authSecret = base64UrlDecode(authB64)   // client auth secret, 16 bytes
+  if (uaPublic.length !== 65 || uaPublic[0] !== 0x04) throw new Error('invalid p256dh (expect uncompressed P-256)')
+  if (authSecret.length !== 16) throw new Error('invalid auth secret length')
+
+  // Application-server ephemeral ECDH keypair.
+  const asKeyPair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits'])
+  const asPublic = new Uint8Array(await crypto.subtle.exportKey('raw', asKeyPair.publicKey)) // 65 bytes
+  const uaKey = await crypto.subtle.importKey('raw', uaPublic as BufferSource, { name: 'ECDH', namedCurve: 'P-256' }, false, [])
+  const ecdhSecret = new Uint8Array(
+    await crypto.subtle.deriveBits({ name: 'ECDH', public: uaKey }, asKeyPair.privateKey, 256),
+  ) // 32 bytes
+
+  // RFC 8291 §3.4 — derive the input keying material (IKM) for RFC 8188.
+  const prkKey = await hmacSha256(authSecret, ecdhSecret)
+  const keyInfo = concatBytes(
+    new TextEncoder().encode('WebPush: info'), new Uint8Array([0]), uaPublic, asPublic,
+  )
+  const ikm = await hkdfExpand(prkKey, keyInfo, 32)
+
+  // RFC 8188 aes128gcm — derive content-encryption key (CEK) and nonce.
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+  const prk = await hmacSha256(salt, ikm)
+  const cek = await hkdfExpand(
+    prk, concatBytes(new TextEncoder().encode('Content-Encoding: aes128gcm'), new Uint8Array([0])), 16,
+  )
+  const nonce = await hkdfExpand(
+    prk, concatBytes(new TextEncoder().encode('Content-Encoding: nonce'), new Uint8Array([0])), 12,
+  )
+
+  // Single record: plaintext || 0x02 (RFC 8188 last-record delimiter).
+  const record = concatBytes(plaintext, new Uint8Array([2]))
+  const aesKey = await crypto.subtle.importKey('raw', cek as BufferSource, { name: 'AES-GCM' }, false, ['encrypt'])
+  const ciphertext = new Uint8Array(
+    await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce as BufferSource, tagLength: 128 }, aesKey, record as BufferSource),
+  )
+
+  // RFC 8188 header: salt(16) | rs(4, uint32 BE) | idlen(1) | keyid(as_public, 65).
+  const rs = 4096
+  const rsBytes = new Uint8Array([(rs >>> 24) & 0xff, (rs >>> 16) & 0xff, (rs >>> 8) & 0xff, rs & 0xff])
+  const idlen = new Uint8Array([asPublic.length])
+  return concatBytes(salt, rsBytes, idlen, asPublic, ciphertext)
+}
+
 /**
  * Build a VAPID Authorization header value (vapid scheme, RFC 8292).
  * @param audience   Origin of the push endpoint (e.g. "https://fcm.googleapis.com")
@@ -235,10 +313,6 @@ export async function sendPushNotification(
   vapidPrivateKey: string,
   vapidSubject: string
 ): Promise<PushSendResult> {
-  // `payload` is unused because RFC 8291 aes128gcm encryption is not yet
-  // implemented — we only send the auth tickle. Kept in the signature so
-  // callers don't have to change when encryption lands.
-  void payload;
   try {
     // VAPID is required by FCM/Mozilla push endpoints. Without correctly
     // signed creds the push provider returns 401/403 — treat that as transient
@@ -272,16 +346,38 @@ export async function sendPushNotification(
       return 'transient'
     }
 
-    // NOTE: Payload encryption (aes128gcm per RFC 8291) is NOT implemented
-    // here. For a richer payload pipeline, prefer a mature library. We send
-    // an empty body so providers still deliver a "tickle" notification.
+    // Encrypt the payload (aes128gcm, RFC 8291) so the notification carries a
+    // real title/body/url. If encryption fails for any reason we fall back to a
+    // content-less "tickle" (body: null) — never worse than the prior behaviour,
+    // and a malformed key can't drop delivery.
+    const headers: Record<string, string> = {
+      'Authorization': authHeader,
+      'TTL': '86400', // 24시간
+    }
+    let body: BufferSource | null = null
+    try {
+      const plaintext = new TextEncoder().encode(JSON.stringify({
+        title: payload.title,
+        body: payload.body,
+        icon: payload.icon,
+        url: payload.data?.url,
+        data: payload.data,
+      }))
+      const encrypted = await encryptPushPayload(subscription.keys.p256dh, subscription.keys.auth, plaintext)
+      body = encrypted as BufferSource
+      headers['Content-Encoding'] = 'aes128gcm'
+      headers['Content-Length'] = String(encrypted.length)
+    } catch (encErr) {
+      if (typeof console !== 'undefined') {
+        console.warn('[Push] payload encryption failed — sending tickle:', encErr)
+      }
+      body = null
+    }
+
     const response = await fetch(subscription.endpoint, {
       method: 'POST',
-      headers: {
-        'Authorization': authHeader,
-        'TTL': '86400', // 24시간
-      },
-      body: null,
+      headers,
+      body,
     })
 
     if (response.status === 201 || response.status === 200 || response.status === 202) {

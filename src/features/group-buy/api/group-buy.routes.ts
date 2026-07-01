@@ -854,6 +854,13 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
                 `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id)
                  VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
               ).bind(userId, bonus, bonus, userId, `친구 추천 가입 보상 (from:${refUserId}): ${product.name}`, orderNumber).run().catch(swallow('group-buy:referral-bonus:invitee-tx'))
+              // 🔔 2026-07-01: 추천 보너스 딜 적립 알림(이전엔 무통보 — 유저가 딜 받은 줄 모름).
+              try {
+                const { notifyUser } = await import('../../../lib/notifications')
+                const bonusStr = Number(bonus).toLocaleString('ko-KR')
+                await notifyUser(DB, String(refUserId), 'referral_bonus', '🎉 추천 보상 딜 적립', `공구 추천 보상으로 ${bonusStr}딜이 적립됐어요.`, '/my-deal-history').catch(swallow('group-buy:referral-bonus:notify-referrer'))
+                await notifyUser(DB, String(userId), 'referral_bonus', '🎉 친구 추천 보상 딜 적립', `친구 추천 가입 보상으로 ${bonusStr}딜이 적립됐어요.`, '/my-deal-history').catch(swallow('group-buy:referral-bonus:notify-invitee'))
+              } catch { /* best-effort */ }
             }
           }
         }
@@ -878,6 +885,8 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             <td style="padding:8px 12px;border:1px solid #e5e7eb;font-family:monospace;font-size:13px;color:#6b7280;font-weight:700;">${v.code}</td>
             <td style="padding:8px 12px;border:1px solid #e5e7eb;font-size:13px;color:#6b7280;">${v.expires_at ? new Date(v.expires_at).toLocaleDateString('ko-KR') + ' 까지' : '-'}</td>
           </tr>`).join('')
+        // 🔔 2026-07-01: 셀러/유저 제어 문자열(상품명·매장명·닉네임) 이메일 HTML 이스케이프(인젝션 방지).
+        const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
         const html = `
           <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#fff;">
             <div style="text-align:center;padding:20px 0;border-bottom:1px solid #e5e7eb;">
@@ -885,11 +894,11 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
               <p style="margin:8px 0 0;font-size:13px;color:#6b7280;">유어딜 (live.ur-team.com)</p>
             </div>
             <div style="padding:20px 0;">
-              <p style="margin:0 0 12px;font-size:15px;color:#111827;">${userRow?.display_name || '고객'}님, 공동구매 참여를 확인했어요!</p>
+              <p style="margin:0 0 12px;font-size:15px;color:#111827;">${esc(userRow?.display_name || '고객')}님, 공동구매 참여를 확인했어요!</p>
               <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
                 <tr><td style="padding:6px 0;color:#6b7280;width:120px;">주문번호</td><td style="padding:6px 0;font-family:monospace;color:#111827;">${orderNumber}</td></tr>
-                <tr><td style="padding:6px 0;color:#6b7280;">상품명</td><td style="padding:6px 0;color:#111827;">${product.name}</td></tr>
-                ${product.restaurant_name ? `<tr><td style="padding:6px 0;color:#6b7280;">매장</td><td style="padding:6px 0;color:#111827;">${product.restaurant_name}</td></tr>` : ''}
+                <tr><td style="padding:6px 0;color:#6b7280;">상품명</td><td style="padding:6px 0;color:#111827;">${esc(product.name)}</td></tr>
+                ${product.restaurant_name ? `<tr><td style="padding:6px 0;color:#6b7280;">매장</td><td style="padding:6px 0;color:#111827;">${esc(product.restaurant_name)}</td></tr>` : ''}
                 <tr><td style="padding:6px 0;color:#6b7280;">수량</td><td style="padding:6px 0;color:#111827;">${qty}장</td></tr>
                 ${appliedDiscountPct > 0 ? `<tr><td style="padding:6px 0;color:#6b7280;">🎉 티어 할인</td><td style="padding:6px 0;color:#6b7280;font-weight:700;">-${appliedDiscountPct}% 적용</td></tr>` : ''}
                 <tr><td style="padding:6px 0;color:#6b7280;">결제 금액</td><td style="padding:6px 0;color:#111827;font-weight:700;">${totalAmount.toLocaleString('ko-KR')}딜</td></tr>

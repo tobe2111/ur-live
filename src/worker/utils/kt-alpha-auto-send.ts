@@ -37,8 +37,8 @@ async function notifyUserKtSendFailed(
   if (userId === null || userId === undefined || userId === '') return
   try {
     await env.DB.prepare(
-      `INSERT INTO notifications (user_id, type, title, message, link, created_at)
-       VALUES (?, 'kt_alpha_send_failed', ?, ?, '/my-vouchers', datetime('now'))`
+      `INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at)
+       VALUES (?, 'user', 'kt_alpha_send_failed', ?, ?, '/my-vouchers', datetime('now'))`
     ).bind(String(userId), title, message).run()
   } catch { /* notifications 테이블/컬럼 차이 — silent (best-effort) */ }
 }
@@ -249,6 +249,14 @@ export async function autoSendKtAlphaVouchersForOrders(
             ).bind(res.orderNo || trId, res.pinNo || null, voId).run().catch(() => { /* noop */ })
           }
           totalSent++
+          // 🔔 2026-07-01: 발송 성공 알림(이전엔 실패만 알림). 유료 교환권 수령 확인 필요.
+          try {
+            const uid = order.user_id || fallbackUserId
+            if (uid !== null && uid !== undefined && uid !== '') {
+              const { notifyUser } = await import('../../lib/notifications')
+              await notifyUser(env.DB, String(uid), 'kt_alpha_sent', '🎫 교환권 발송 완료', '구매하신 교환권이 발송되었습니다. 문자와 보관함에서 확인하세요.', '/my-vouchers')
+            }
+          } catch { /* best-effort */ }
         } catch (sendErr) {
           const errMsg = (sendErr as Error).message.slice(0, 300)
           // 🛡️ 2026-05-25: sendCoupon 에러 errors 배열 + frontend_errors 둘 다 기록

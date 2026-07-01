@@ -61,6 +61,36 @@ self.addEventListener('push', (event) => {
 });
 
 /**
+ * 🔔 2026-07-01: pushsubscriptionchange — 브라우저가 구독(endpoint)을 교체/만료시킬 때 호출.
+ *   이전엔 핸들러가 없어, 브라우저가 endpoint 를 rotate 하면 서버는 옛 endpoint 로만 알고
+ *   410 후 구독행을 지워 사용자가 영구 두절됐음. 여기서 새 구독을 만들어 서버에 재등록한다.
+ *   SW 는 localStorage(역할 토큰) 접근 불가 → 세션 쿠키(credentials:'include')로 인증.
+ *   소비자(ur_session 쿠키)는 자동 self-heal, 셀러/어드민은 대시보드 재방문 시 클라가 재조정.
+ */
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil((async () => {
+    try {
+      let sub = await self.registration.pushManager.getSubscription();
+      if (!sub) {
+        const opts = event.oldSubscription && event.oldSubscription.options;
+        if (opts && opts.applicationServerKey) {
+          sub = await self.registration.pushManager.subscribe(opts);
+        }
+      }
+      if (!sub) return;
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(sub.toJSON()),
+      });
+    } catch {
+      // best-effort — 다음 마운트 시 클라이언트가 재조정
+    }
+  })());
+});
+
+/**
  * 알림 클릭 — 해당 URL 새 탭 열기 (또는 기존 탭 포커스).
  */
 self.addEventListener('notificationclick', (event) => {

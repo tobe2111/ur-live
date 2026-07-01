@@ -13,6 +13,23 @@
 - **알림 루프 완결**: 제조사 발송 → recipient_type='seller' 알림 → **판매사 유틸바 벨(빨간 배지)** → 클릭 → `/wholesale/orders`(구매확정) → 홈 배너 사라짐. (그동안 배선만 하고 볼 곳이 없던 마지막 고리.)
 - 검증: tsc 0 · build 0 · theme-consistency(strict)·가드 0.
 
+## ✅ 2026-07-01 — 알림 시스템 2차 전수조사 + 개선 (Tier 1/2/3) (대표 "더 개선할 게 있는지 전수조사")
+1차(버그 6종) 후속 — 아직 깊게 안 본 영역(누락 트리거·알림톡/이메일 채널·내용/중복/성능·푸시 생명주기·설정) 4방향 병렬 조사 → 개선 반영.
+- **Tier 1 (안전·비잠금)**: ① 누락 알림 배선 — 반품 승인/거절(`returns.routes` — status UPDATE만이었음)·KT 교환권 발송 **성공**(`kt-alpha-auto-send` — 실패만 알림이었음)·공구 추천 보너스 딜(`group-buy.routes` — 무통보 적립). ② `returns.routes:775` "undefined원" 가드. ③ 정리 크론(`scheduled-cleanup`)에 레거시 `notifications`·`agency_notifications` 추가(무한 증가 방지) + `notifications` 인덱스 repair-schema 이관. ④ `scheduled-cleanup:984` SQL 문자열 보간 금액 → bind. ⑤ `notifications.ts` 무음 `catch{}` → DEV 경고. ⑥ 웹푸시 **410/재구독 self-heal**: `PushNotificationSetup` 마운트 시 getSubscription 재조정(push_subscribed 플래그는 배너용) + `push-sw.js` `pushsubscriptionchange` 핸들러(endpoint 교체 시 서버 재등록, 세션쿠키).
+- **Tier 2 (잠금 파일, 대표 승인 — audit log 등재)**: `webhook.routes` 확정 경로에 **셀러 '결제 확정' 대시보드 알림**(이전 `/confirm`에만 → CAS webhook-win 시 셀러 누락) + **Toss 취소 → 구매자 인앱 알림**(이전 Discord 전용). CAS 단일실행 가드로 이중알림 0. Toss 승인/금액검증/CAS/환불 로직 byte-불변.
+- **Tier 3**: ① **네이티브 푸시(FCM v1) 발송부 신설** `src/lib/native-push.ts` — `native_push_tokens`(write-only dead)를 읽어 서비스계정 OAuth(firebase.messaging)로 FCM 발송, `sendSystemPush`에 병합(웹푸시와 독립, FIREBASE_* 미설정 시 no-op). ② 이메일 HTML 인젝션 방지 — `buildSystemEmailHtml` 이스케이프 + `group-buy` 선물 이메일 인라인 HTML 이스케이프(상품명/매장명/닉네임). ③ **발견**: 어드민 채널설정의 **dashboard 토글은 이미 작동**(`createDashboardNotification`이 getChannelSettings 게이트) — email/alimtalk은 직접발송이 다수(alimtalk 26곳)+기본 off라 일괄 게이팅 시 라이브 차단 위험 → 미배선 유지(문서화).
+- 검증: tsc 0 · 단위 64 pass · build(client+worker+prerender+prepare) 0 · sql bind/not-null/column/table 가드 0 · theme 0 · audit-gate ALL GREEN. `[SKIP_SIZE]`(append-only repair-schema 성장). ⚠️ staging: 웹푸시 실기기(자가치유) + 반품 승인/거절·KT 성공·추천보너스 알림 노출 + (FCM 자격 설정 시) 네이티브 앱 푸시 1회.
+
+## ✅ 2026-07-01 — 알림 시스템 전수조사 + 버그 6종 수정 (대표 "알림 기능 전수조사")
+소비자/셀러/어드민/에이전시 알림 전 파이프라인 전수조사(트리거 호출부·프론트 표시·스키마·웹푸시·크론) → 실사용 영향 버그 수정. **인프라(라우터 마운트·크론 등록·VAPID 서명·대시보드/에이전시 알림)는 건강** 확인.
+- **#1 유령 뱃지(가장 영향 큼)**: 미읽음 뱃지(`useUnreadCount`→`/api/notifications/unread-count`)는 `user_notifications`+`notifications` **두 테이블 합산**인데, 알림 목록 페이지(`useNotifications`→`/api/social/notifications`)는 `user_notifications`**만** 읽어, `notifications` 테이블에 쓰인 소비자 알림(쿠폰/이용권 만료·숙소 리마인더·KT 교환권·결제완료·공구 당첨 등)이 **뱃지엔 뜨는데 목록엔 안 보이고 '모두 읽음'으로도 안 지워짐**. → `social.routes` GET/read/read-all 을 두 테이블 통합(id `un_`/`n_` prefix 라우팅). 프론트 `NotificationItem.id` string 허용.
+- **#2 웹푸시 내용 표시**: `sendPushNotification` 이 `body:null`(tickle)만 보내 모든 푸시가 generic "새 알림"·클릭 시 홈으로 갔음 → **RFC 8291 aes128gcm 페이로드 암호화 구현**(WebCrypto ECDH P-256+HKDF+AES-GCM). 암호화 실패 시 tickle fallback(회귀 0).
+- **#3 셀러 환불 알림 고아**: `group-buy-admin` 어드민 강제환불 셀러 알림이 `notifications`(user_type='seller')로 가 셀러 벨(`dashboard_notifications`)에 안 보였음 → `createDashboardNotification('seller',…)` 전환.
+- **#4 크론 silent fail**: `voucher-expire`/`stay-reminder`/`stay-voucher-expire`/`fcfs`/`voucher-dispute`/`kt-alpha-auto-send` 의 `notifications` INSERT 가 `user_type` 누락 → 프로덕션 테이블이 NOT NULL(default 없음)이면 조용히 실패. 명시 `'user'` 추가.
+- **#5·6 스키마 견고화**: repair-schema 에 `notifications`(user_type NOT NULL DEFAULT 'user')·`user_notifications`·`agency_notifications`·`push_subscriptions` canonical CREATE 추가(이전엔 인덱스만) — fresh/repaired DB 에서 웹푸시 no-op·알림 유실 방지.
+- **불변**: unread-count 로직·대시보드/에이전시/어드민채널설정·notifyUser 헬퍼·VAPID 서명·크론 등록 전부 불변. 잠금 파일(payment.routes 등) 무수정.
+- 검증: tsc 0 · 단위 73 pass(notification+keyboard) · build(client+worker+prerender+prepare) 0 · sql bind/not-null/column/table 가드 0 · audit-gate 37 GREEN(사전존재 file-size RED 는 무관 — 내 파일 중 append-only `repair-schema` 만 성장, `[SKIP_SIZE]`). ⚠️ staging: 웹푸시 실기기 1회(제목/본문/링크 표시) + `notifications` 테이블 알림(쿠폰만료 등)이 목록에 뜨고 '모두 읽음'으로 지워지는지 1회.
+
 ## ✅ 2026-06-30 — 어드민 상품 승인 시 이미지 시각 검수 (갤러리 후속) (대표 "다음으로")
 - **문제**: 어드민 공급상품 승인 큐(`SupplierProductsTab`)가 **이미지를 하나도 안 보여줘** 어드민이 썸네일/갤러리/상세를 못 보고 승인/거부 — 이미지 검수가 구조적으로 불가. API는 `image_url`만 반환(UI 미표시), `detail_images`·갤러리는 미반환.
 - **수정**: ① API(`admin-products.routes GET /supplier-products`) SELECT 에 `detail_images` 추가 + `getSupplyMeta` 로 `gallery_images` 첨부(fail-soft). ② UI: 각 행에 **썸네일** + 접이식 **'이미지 검수(대표 N · 상세 N)'** 패널(썸네일+대표갤러리+상세 전체를 그리드로, 클릭 시 원본 새탭, 중복제거). 이미지 0개면 '⚠️ 등록된 이미지가 없어요' 경고.

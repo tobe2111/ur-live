@@ -199,7 +199,7 @@ adminApp.post('/:productId/select', async (c) => {
       await DB.prepare("UPDATE fcfs_applications SET status='selected', selected_at=datetime('now') WHERE product_id=? AND user_id=?").bind(productId, uid).run().catch(() => {})
       // 선정 알림
       await DB.prepare(
-        "INSERT INTO notifications (user_id, type, title, message, created_at) VALUES (?, 'fcfs_selected', ?, ?, datetime('now'))"
+        "INSERT INTO notifications (user_id, user_type, type, title, message, created_at) VALUES (?, 'user', 'fcfs_selected', ?, ?, datetime('now'))"
       ).bind(uid, '🎉 선착순 당첨!', `[${dealName}] 선착순 응모에 당첨되셨어요. 자세한 안내를 확인하세요.`).run().catch(() => {})
     }
     return c.json({ success: true, data: { selected: winnerIds.length } })

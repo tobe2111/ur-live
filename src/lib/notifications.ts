@@ -52,7 +52,7 @@ export async function notifyUser(DB: D1Database, userId: string, type: string, t
   try {
     await DB.prepare(`INSERT INTO user_notifications (user_id, type, title, message, link) VALUES (?, ?, ?, ?, ?)`)
       .bind(userId, type, title, message ?? null, link ?? null).run();
-  } catch {}
+  } catch (err) { if (import.meta.env.DEV) console.warn('[notifications] notifyUser failed:', err) }
 }
 
 // ─── 대시보드 알림 (셀러) ───────────────────────────────────────────
@@ -60,7 +60,7 @@ export async function notifySeller(DB: D1Database, sellerId: string | number, ty
   try {
     await DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link) VALUES ('seller', ?, ?, ?, ?, ?)`)
       .bind(String(sellerId), type, title, message ?? null, link ?? null).run();
-  } catch {}
+  } catch (err) { if (import.meta.env.DEV) console.warn('[notifications] notifySeller failed:', err) }
 }
 
 // ─── 대시보드 알림 (어드민) ───────────────────────────────────────────
@@ -68,7 +68,7 @@ export async function notifyAdmin(DB: D1Database, type: string, title: string, m
   try {
     await DB.prepare(`INSERT INTO dashboard_notifications (recipient_type, recipient_id, type, title, message, link) VALUES ('admin', NULL, ?, ?, ?, ?)`)
       .bind(type, title, message ?? null, link ?? null).run();
-  } catch {}
+  } catch (err) { if (import.meta.env.DEV) console.warn('[notifications] notifyAdmin failed:', err) }
 }
 
 // ─── 팔로워 일괄 알림 (소비자, 인앱) ────────────────────────────────────
@@ -83,7 +83,7 @@ export async function notifyFollowers(DB: D1Database, sellerId: number, type: st
     for (let i = 0; i < stmts.length; i += 50) {
       await DB.batch(stmts.slice(i, i + 50));
     }
-  } catch {}
+  } catch (err) { if (import.meta.env.DEV) console.warn('[notifications] notifyFollowers failed:', err) }
 }
 
 // ─── 에이전시 알림 ───────────────────────────────────────────────
