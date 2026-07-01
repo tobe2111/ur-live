@@ -13,6 +13,9 @@
 import { Hono } from 'hono'
 import { requireAdmin } from '../../../worker/middleware/auth'
 import type { Env } from '../../../worker/types/env'
+import { listAdminSettlementInvoices, reissueSettlementInvoice } from '../../seller/api/settlement-tax-invoices'
+import { reverseInvoiceProvider } from '../../../worker/utils/tax-invoice-gateway'
+import { safeError } from '../../../worker/utils/safe-error'
 
 export const adminTaxRoutes = new Hono<{ Bindings: Env }>()
 
@@ -66,6 +69,46 @@ adminTaxRoutes.post('/admin/tax/issue-invoice', requireAdmin(), async (c) => {
   }
   const result = await issueTaxInvoice(c.env as unknown as { TAX_INVOICE_API_KEY?: string; TAX_INVOICE_API_URL?: string; TAX_INVOICE_SENDER_BIZ_NO?: string }, body as TaxInvoiceInput)
   return c.json(result)
+})
+
+// ─── 6b. 정산 매입세금계산서 역발행 (소비자 셀러) — 목록 + 재발행 ──────────
+//   유어딜 → 사업자 유저 셀러 정산 지급 시 자동 생성된 역발행 초안/발행 현황.
+//   provider(REVERSE_INVOICE_PROVIDER) 설정 시 실 발행. 미설정 → draft 로만 남음(cost-0).
+
+adminTaxRoutes.get('/admin/tax/settlement-invoices', requireAdmin(), async (c) => {
+  try {
+    const status = (c.req.query('status') || '').slice(0, 16)
+    const sellerIdQ = Number(c.req.query('seller_id'))
+    const items = await listAdminSettlementInvoices(c.env.DB, {
+      status,
+      sellerId: Number.isFinite(sellerIdQ) && sellerIdQ > 0 ? sellerIdQ : undefined,
+      limit: 500,
+    })
+    return c.json({ success: true, provider: reverseInvoiceProvider(c.env), invoices: items })
+  } catch (err) {
+    return safeError(c, err, '세금계산서 목록 조회 중 오류가 발생했습니다', '[admin-tax]')
+  }
+})
+
+adminTaxRoutes.post('/admin/tax/settlement-invoices/:id/reissue', requireAdmin(), async (c) => {
+  try {
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 ID' }, 400)
+    const result = await reissueSettlementInvoice(c.env.DB, c.env, id)
+    if (!result) return c.json({ success: false, error: '세금계산서를 찾을 수 없습니다' }, 404)
+    return c.json({
+      success: result.ok,
+      status: result.status,
+      skipped: result.skipped || false,
+      message: result.ok
+        ? '역발행 요청이 전송되었습니다'
+        : result.skipped
+          ? '발행 연동(REVERSE_INVOICE_PROVIDER)이 설정되지 않아 임시저장 상태로 유지됩니다'
+          : (result.error || '발행에 실패했습니다'),
+    })
+  } catch (err) {
+    return safeError(c, err, '세금계산서 재발행 중 오류가 발생했습니다', '[admin-tax]')
+  }
 })
 
 // ─── 7. 연말 정산 리포트 (CSV export) ───────────────────────────────

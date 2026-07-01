@@ -170,7 +170,16 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 - 환불된 주문은 자동 차감
 - 셀러 크레딧 잔액(알림톡 선구매 등)은 별도 회계
 
-> 🚨 **주의**: 정산 완료(PAID) 후 수정 불가. 오류 발견 시 다음 정산분에서 조정.`,
+> 🚨 **주의**: 정산 완료(PAID) 후 수정 불가. 오류 발견 시 다음 정산분에서 조정.
+
+### 🧾 세금계산서 역발행 (사업자 유저 셀러 정산 매입)
+- 지급 센터에서 **사업자 유저**(사업자등록 검증) 셀러 정산을 **PAID** 로 처리하면, 그 지급액에 대한
+  **매입세금계산서 역발행 초안**이 \`settlement_tax_invoices\` 에 **자동 생성**됩니다(멱등, fail-soft).
+  카카오 애드핏 = 유니포스트 역발행과 동일 모델(유어딜=공급받는자, 셀러=공급자).
+- 셀러는 \`/seller/settlements\` 에서 **승인** → 발행 확정. 비사업자/미검증 셀러는 대상 아님(원천징수 경로).
+- 현황/재발행: \`GET /api/admin/tax/settlement-invoices\`, \`POST /api/admin/tax/settlement-invoices/:id/reissue\`.
+- **실 발행 활성화**: 환경변수 \`REVERSE_INVOICE_PROVIDER\`(\`unipost\`/\`stub\`) + \`UNIPOST_API_URL\`/\`UNIPOST_API_KEY\`/\`UNIPOST_CORP_NUM\` 설정.
+  미설정 시 초안(draft)으로만 남습니다(실 발행 없음). 설계: \`docs/design/settlement-reverse-issuance.md\`.`,
   },
   {
     key: 'live', icon: '🔴', title: '라이브 방송 운영', order: 70,

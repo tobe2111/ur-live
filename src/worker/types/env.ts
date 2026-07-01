@@ -163,6 +163,15 @@ export interface Env {
   TAX_INVOICE_API_URL?: string;
   TAX_INVOICE_SENDER_BIZ_NO?: string; // 플랫폼(공급자) 사업자등록번호 (123-45-67890)
 
+  // ---- 정산 역발행(매입세금계산서) — 소비자 셀러 정산 (2026-07-01) ----
+  //   유어딜(공급받는자)이 사업자 유저 셀러(공급자)에게 지급한 정산액에 대해 매입세금계산서를
+  //   역발행(초안 자동작성 → 셀러 승인 → NTS 발행). 카카오 애드핏 = 유니포스트 역발행과 동일 모델.
+  //   미설정(기본) → provider='none' → draft 로만 남음(cost-0, 실 발행 없음). tax-invoice-gateway.ts 참조.
+  REVERSE_INVOICE_PROVIDER?: string; // 'unipost' | 'stub' | 미설정('none')
+  UNIPOST_API_URL?: string;
+  UNIPOST_API_KEY?: string;
+  UNIPOST_CORP_NUM?: string; // 유어딜(공급받는자) 사업자등록번호. 미설정 시 TAX_INVOICE_SENDER_BIZ_NO fallback.
+
   // ---- App Config ----
   ENVIRONMENT: string;
   FRONTEND_URL: string;

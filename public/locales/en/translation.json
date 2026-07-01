@@ -2775,6 +2775,19 @@
       "statusProcessing": "Processing",
       "statusCompleted": "Paid",
       "statusFailed": "Failed"
+    },
+    "taxinv": {
+      "title": "Tax Invoice (Reverse-issued)",
+      "desc": "UrDeal reverse-issues a purchase tax invoice for your settlement payout. Approve to finalize.",
+      "emptyDesc": "When a settlement is paid to a business-registered seller, UrDeal reverse-issues the purchase tax invoice. One approval here completes it — no need to issue it yourself.",
+      "period": "Period",
+      "supply": "Supply",
+      "vat": "VAT",
+      "total": "Total",
+      "status": "Status",
+      "approve": "Approve",
+      "approved": "Tax invoice approved",
+      "approveFailed": "Approval failed"
     }
   },
   "admin": {
