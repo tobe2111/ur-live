@@ -1,5 +1,5 @@
 {
-  "src/App.tsx": 1020,
+  "src/App.tsx": 1004,
   "src/components/live/ReelCard.tsx": 1419,
   "src/components/streaming/BrowserBroadcaster.tsx": 1185,
   "src/features/admin/api/admin-products.routes.ts": 1037,
@@ -56,9 +56,9 @@
   "src/pages/seller-live-broadcast/StepInfo.tsx": 606,
   "src/pages/SellerLiveBroadcastPage.tsx": 905,
   "src/pages/SellerMealVoucherNewPage.tsx": 762,
-  "src/pages/SellerOrdersPage.tsx": 617,
+  "src/pages/SellerOrdersPage.tsx": 616,
   "src/pages/SellerPage.tsx": 745,
-  "src/pages/SellerProductEditPage.tsx": 626,
+  "src/pages/SellerProductEditPage.tsx": 627,
   "src/pages/SellerProfileEditPage.tsx": 728,
   "src/pages/SellerStayDetailPage.tsx": 648,
   "src/pages/StayDetailPage.tsx": 709,

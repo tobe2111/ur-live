@@ -6,7 +6,8 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { SellerPinPrompt } from '@/components/auth/SellerPinPrompt'
-import { FileText, Plus, Loader2, AlertTriangle } from 'lucide-react'
+import BrandLoader from '@/components/brand/BrandLoader'
+import { FileText, Plus, AlertTriangle } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
@@ -108,7 +109,7 @@ export default function AgencyContractsPage() {
           </div>
         )}
 
-        {loading ? <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div> : contracts.length === 0 ? (
+        {loading ? <BrandLoader /> : contracts.length === 0 ? (
           <p className="text-center py-12 text-gray-500">{t('agency.contracts.empty', { defaultValue: '등록된 계약이 없습니다' })}</p>
         ) : (
           <div className="space-y-3">

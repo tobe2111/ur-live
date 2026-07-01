@@ -16,6 +16,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import SellerLayout from '@/components/SellerLayout'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
@@ -84,7 +85,7 @@ export default function Seller2FASetupPage() {
   }
 
   if (loading) {
-    return <SellerLayout title="2단계 인증"><div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-pink-500" /></div></SellerLayout>
+    return <SellerLayout title="2단계 인증"><BrandLoader /></SellerLayout>
   }
 
   return (
