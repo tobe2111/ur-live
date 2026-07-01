@@ -20,6 +20,7 @@ import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { sendAlimtalk, buildSampleApprovalMessage } from '../../alimtalk/aligo';
 import { ensureSupplyVisibilitySchema, recordSupplyPriceChange } from '../../supply/api/supply-visibility';
+import { getSupplyMeta } from '@/worker/utils/product-supply-meta';
 import { loadPlatformCommissionPct } from '../../supply/api/wholesale-settlement';
 import { distributorPriceFromCost } from '@/lib/distributor-pricing';
 
@@ -635,7 +636,7 @@ adminProductsRoutes.get('/supplier-products', cors(), async (c) => {
     const orderBy = status === 'price_change' ? 'p.pending_price_requested_at DESC' : 'p.created_at DESC';
     const rows = await DB.prepare(
       `SELECT p.id, p.name, p.description, p.price AS retail_price, COALESCE(p.supply_price, 0) AS supply_price,
-              p.stock, p.image_url, p.category, p.is_active,
+              p.stock, p.image_url, p.detail_images, p.category, p.is_active,
               p.lowest_price_url, COALESCE(p.lowest_price_checked,0) AS lowest_price_checked,
               p.supply_margin_override_pct AS margin_override,
               p.pending_supply_price, p.pending_retail_price, p.pending_price_url, p.pending_price_reason, p.pending_price_requested_at,
@@ -656,7 +657,14 @@ adminProductsRoutes.get('/supplier-products', cors(), async (c) => {
     //   어드민 검수 UI 가 '이 상품 마진 %' 를 결정할 때 기준값으로 표시.
     const defaultMarginPct = await loadPlatformCommissionPct(DB).catch(() => 10);
 
-    return c.json({ success: true, data: { items: rows.results ?? [], total: total?.count ?? 0, page, limit, default_margin_pct: defaultMarginPct } });
+    // 🖼️ 2026-06-30: 대표 이미지 갤러리(meta) 첨부 — 어드민이 승인 전 썸네일·갤러리·상세이미지 시각 검수. fail-soft.
+    const items = (rows.results ?? []) as Array<Record<string, unknown> & { id: number }>;
+    if (items.length) {
+      const metaMap = await getSupplyMeta(DB, items.map((r) => Number(r.id))).catch(() => null);
+      if (metaMap) for (const r of items) r.gallery_images = metaMap.get(Number(r.id))?.gallery_images || null;
+    }
+
+    return c.json({ success: true, data: { items, total: total?.count ?? 0, page, limit, default_margin_pct: defaultMarginPct } });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] GET /supplier-products error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
