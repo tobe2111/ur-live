@@ -49,8 +49,8 @@ export function registerOrdersRoutes(app: Hono<{ Bindings: Env }>) {
     try {
       const status = (c.req.query('status') || '').toUpperCase()
       const search = (c.req.query('search') || '').trim().slice(0, 60)
-      const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
-      const limit = Math.min(parseInt(c.req.query('limit') || '30', 10), 100)
+      const page = Math.max(1, parseInt(c.req.query('page') || '1', 10) || 1)
+      const limit = Math.min(Math.max(parseInt(c.req.query('limit') || '30', 10) || 30, 1), 100)
       const offset = (page - 1) * limit
       const VALID = WHOLESALE_ORDER_STATUSES as readonly string[]
       const binds: unknown[] = []

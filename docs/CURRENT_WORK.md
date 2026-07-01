@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 도매몰 라이브 전수조사 + 카탈로그 500 크래시 근본수정 (대표 "라이브로 접근해서 전수조사")
+라이브(`live.ur-team.com/wholesale`) 실접근 전수조사. **결과: 인증/RBAC 게이트 전부 건강(500 없음, 401/404 정상)·엣지캐시 누수 없음·SQL 인젝션 방어 정상.** 발견/수정:
+- **🐛 라이브 500 크래시(수정)**: `GET /api/wholesale/catalog?page=abc&limit=xyz` → HTTP 500. 원인: `page = Math.max(1, parseInt(query||'1',10))` 에 `limit` 이 가진 `|| N` 폴백이 **없어** `parseInt('abc')=NaN → Math.max(1,NaN)=NaN → offset=(NaN-1)*limit=NaN → D1 .bind(NaN) 크래시`. `limit=-1/page=-5/limit=99999999` 는 이미 정상(200) — **비숫자 문자열만** 크래시(봇/스크래퍼/오염된 링크가 도매몰 메인 카탈로그를 500). **수정(도매 서비스 전 인스턴스에 기존 `limit||24` 패턴 미러링)**: `wholesale.routes.ts:787`(page), `supplier-dashboard.routes.ts`(page/limit ×3 핸들러), `distributor-admin/orders.ts`(page/limit), `supply.routes.ts`(page/limit). 전부 `parseInt(...) || N` + `Math.max(...,1)` 클램프. 로직 검증(page=abc→page1/offset0)·tsc 0(사전 config 경고 제외)·build 0·sql bind/column 가드 0.
+- **⚠️ 크로스-서비스 동일 버그(미수정 — 서비스 분리 규칙, 보고만)**: 소비자 `GET /api/group-buy/products?page=abc` 도 라이브 500(같은 NaN-page 클래스). 그 외 `community-group-buy`·`referral-tree`·`restaurant-settlement`·`admin-*`·`ledger`·`seller-streams` 도 동일 패턴(`Math.max(1, parseInt(...))` `|| N` 누락). **소비자 서비스라 이번 도매 작업에서 미변경** — 대표 승인 시 별도 커밋 권장(영구 가드 신설 고려).
+- **📋 데이터 큐레이션(코드 아님)**: 라이브 도매 카탈로그 상품이 **시드/테스트 2개뿐**(id 6 "Canvas Tote Bag" 영문 unsplash 데모 · id 2306 "테스트"/"좋은제품" 빈 이미지). 배너·게시판·제안 큐 전부 비어있음(정상 상태이나 운영 콘텐츠 필요).
+
 ## ✅ 2026-07-01 — 알림 코드 마무리 4종 + 위시리스트 오발송 버그 fix (대표 "코드로 더 할 수 있는거")
 - **#4 알림톡 `approve`/`approved` 오탐 정정**: 이전 진단에서 "미등록 의심"으로 잡은 `approve`/`approved`는 삼항 조건(`action==='approve' ? 'distributor_approved' : ...`)이라 실제 template 코드가 아니었음(grep 오탐). SSOT `alimtalk-templates.ts`에서 제거 + `test`는 셀러 브랜드메시지 테스트 코드로 주석. **버그 아님 확인.**
 - **#5 위시리스트 dedup 테이블 repair-schema 등록**: `wishlist_stock_notifications`·`wishlist_price_notifications`(크론 self-ensure만 하던 것) → fresh/repaired DB 보장.

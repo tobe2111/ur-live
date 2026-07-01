@@ -784,7 +784,7 @@ app.get('/catalog', async (c) => {
   const authAttempt = !!c.req.header('Authorization') || /(?:^|;\s*)ud_seller_token=/.test(c.req.header('Cookie') || '')
   const visBind = sellerId ?? -1 // visibilityWhere EXISTS 가 매칭 안 되도록(=ALL/NULL 만 노출)
   const { DB } = c.env
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
+  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10) || 1)
   const limit = Math.min(Math.max(parseInt(c.req.query('limit') || '24', 10) || 24, 1), 100)
   const offset = (page - 1) * limit
   const search = (c.req.query('search') || '').slice(0, 100)
