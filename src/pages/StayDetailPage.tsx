@@ -195,7 +195,7 @@ export default function StayDetailPage() {
           <div className="flex gap-1.5 mb-3">
             {[
               { v: 'date' as const, label: '📅 날짜 지정 예약' },
-              { v: 'voucher' as const, label: '🎫 숙소권 (날짜 협의)' },
+              { v: 'voucher' as const, label: '🎫 숙소 이용권 (날짜 협의)' },
             ].map((m) => (
               <button
                 key={m.v}
@@ -531,7 +531,7 @@ function BookingModal({ stay, room, checkIn, checkOut, guests, nights, saleMode,
               <p className="flex justify-between"><span className="text-gray-400">기간</span><span className="font-semibold">{checkIn} → {checkOut} ({nights}박)</span></p>
             ) : (
               <>
-                <p className="flex justify-between"><span className="text-gray-400">숙소권</span><span className="font-semibold">{voucherType === 'weekday' ? '평일권 (월-목)' : '주말권 (금-토)'} × {voucherNights}박</span></p>
+                <p className="flex justify-between"><span className="text-gray-400">숙소 이용권</span><span className="font-semibold">{voucherType === 'weekday' ? '평일권 (월-목)' : '주말권 (금-토)'} × {voucherNights}박</span></p>
                 <p className="flex justify-between mt-1"><span className="text-gray-400">유효기간</span><span className="font-semibold">{stay.voucher_validity_days || 180}일</span></p>
               </>
             )}
@@ -674,7 +674,7 @@ function MultiBookingModal({
             {saleMode === 'date' ? (
               <p className="text-[10px] text-gray-500 mt-1">기간: {checkIn} → {checkOut} ({nights}박)</p>
             ) : (
-              <p className="text-[10px] text-gray-500 mt-1">숙소권 {voucherType === 'weekday' ? '평일권' : '주말권'} × {voucherNights}박</p>
+              <p className="text-[10px] text-gray-500 mt-1">숙소 이용권 {voucherType === 'weekday' ? '평일권' : '주말권'} × {voucherNights}박</p>
             )}
           </div>
           <div>

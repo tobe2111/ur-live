@@ -269,7 +269,7 @@ export default function StaysSearchPage() {
                   {[
                     { v: '', l: '전체' },
                     { v: 'date', l: '📅 날짜 지정' },
-                    { v: 'voucher', l: '🎫 숙소권' },
+                    { v: 'voucher', l: '🎫 숙소 이용권' },
                   ].map((m) => (
                     <button key={m.v} type="button"
                       onClick={() => setFilters({ ...filters, sale_mode: m.v })}

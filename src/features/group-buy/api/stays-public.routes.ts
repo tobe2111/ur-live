@@ -330,7 +330,7 @@ staysPublicRoutes.post('/stays/bookings/create', cors(), async (c) => {
     // 모드 호환성 검증 — 셀러가 허용한 모드인지.
     const allowedMode = room.sale_mode || 'date'
     if (allowedMode !== 'both' && allowedMode !== saleMode) {
-      return c.json({ success: false, error: `이 숙소는 ${allowedMode === 'voucher' ? '숙소권 (날짜 미지정)' : '날짜 지정'} 모드만 지원합니다` }, 400)
+      return c.json({ success: false, error: `이 숙소는 ${allowedMode === 'voucher' ? '숙소 이용권 (날짜 미지정)' : '날짜 지정'} 모드만 지원합니다` }, 400)
     }
     if (saleMode === 'voucher') {
       if (voucherType === 'weekday' && room.voucher_weekend_only) {
@@ -595,7 +595,7 @@ staysPublicRoutes.post('/stays/bookings/create-multi', cors(), async (c) => {
     const sellerId = firstRoom.seller_id
     const allowedMode = firstRoom.sale_mode || 'date'
     if (allowedMode !== 'both' && allowedMode !== saleMode) {
-      return c.json({ success: false, error: `이 숙소는 ${allowedMode === 'voucher' ? '숙소권' : '날짜 지정'} 모드만 지원합니다` }, 400)
+      return c.json({ success: false, error: `이 숙소는 ${allowedMode === 'voucher' ? '숙소 이용권' : '날짜 지정'} 모드만 지원합니다` }, 400)
     }
 
     // 2. 각 item 별 가격 계산 + 검증.
@@ -1045,7 +1045,7 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
     const firstClaimed = claimed[0]
     const periodText = firstClaimed.check_in_date
       ? `${firstClaimed.check_in_date} ~ ${firstClaimed.check_out_date}`
-      : '숙소권 (날짜 협의)'
+      : '숙소 이용권 (날짜 협의)'
     try {
       c.executionCtx?.waitUntil?.((async () => {
         try {
