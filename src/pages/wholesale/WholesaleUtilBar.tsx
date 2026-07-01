@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import { logout as authLogout } from '@/utils/auth'
 import { getSupplierToken, clearSupplierSession } from '@/lib/supplier-api'
 import { useWholesaleMe, useWholesaleDeposit, useSupplierBalance } from '@/hooks/queries/useWholesale'
+import DashboardNotificationBell from '@/components/DashboardNotificationBell'
 import { WT, won, GRADE_NAME } from './wholesale-theme'
 
 /**
@@ -111,6 +112,11 @@ export default function WholesaleUtilBar() {
                   <span className="opacity-30 hidden md:inline">|</span>
                   <button onClick={() => navigate('/supplier?tab=settlements')} className="whitespace-nowrap" title={t('wholesale.util.settlement', { defaultValue: '정산' })}>{t('wholesale.util.settlementShort', { defaultValue: '정산' })} <b className="text-white tabular-nums">{won(settleBalance)}</b></button>
                 </>
+              )}
+              {/* 🔔 2026-06-30: 판매사 알림 벨 — 발송/수락/거절/환불·예치금·클레임 등 recipient_type='seller' 알림.
+                  제조사(supplierToken)는 /supplier 에 자체 벨이 있어 여기선 판매사(loggedIn)만. */}
+              {loggedIn && (
+                <DashboardNotificationBell tokenKey="seller_token" iconClassName="text-white" buttonClassName="hover:bg-white/10" />
               )}
               <span className="opacity-30">|</span>
               {/* 마이 드롭다운 (사람 아이콘 + '마이') */}
