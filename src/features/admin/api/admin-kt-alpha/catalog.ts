@@ -3,6 +3,7 @@ import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
 import { autoSeedFakeReviews } from '../../../../worker/utils/auto-seed-fake-reviews'
 import { safeError } from '../../../../worker/utils/safe-error'
+import { intParam } from '@/shared/pagination'
 
 export function registerCatalog(r: Hono<{ Bindings: Env }>) {
   // 5. GET /catalog — gift_catalog 조회.
@@ -10,8 +11,8 @@ export function registerCatalog(r: Hono<{ Bindings: Env }>) {
     try {
       const q = c.req.query('q') || ''
       const brand = c.req.query('brand') || ''
-      const limit = Math.min(100, Number(c.req.query('limit')) || 30)
-      const offset = Math.max(0, Number(c.req.query('offset')) || 0)
+      const limit = Math.min(100, intParam(c.req.query('limit'), 30))
+      const offset = Math.max(0, intParam(c.req.query('offset'), 0))
 
       let sql = `SELECT gift_code, name, brand_name, sale_price, discount_price, real_price,
                         discount_rate, image_url_small, image_url_large, goods_state, is_active,
@@ -57,8 +58,8 @@ export function registerCatalog(r: Hono<{ Bindings: Env }>) {
       }
       const body = await c.req.json<Body>().catch(() => ({} as Body))
       const dryRun = Boolean(body?.dry_run)
-      const limit = Math.min(5000, Math.max(1, Number(body?.limit) || 5000))
-      const offset = Math.max(0, Number(body?.offset) || 0)
+      const limit = Math.min(5000, Math.max(1, intParam(body?.limit, 5000)))
+      const offset = Math.max(0, intParam(body?.offset, 0))
       const autoSeedReviews = body?.auto_seed_reviews !== false   // default true
       const seedMin = Math.max(0, Math.min(100, Number(body?.seed_min) || 5))
       const seedMax = Math.max(seedMin, Math.min(500, Number(body?.seed_max) || 25))

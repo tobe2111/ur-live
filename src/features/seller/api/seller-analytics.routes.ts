@@ -11,6 +11,7 @@ import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { safeError } from '@/worker/utils/safe-error';
 import type { Env } from '@/worker/types/env'
+import { intParam } from '@/shared/pagination'
 
 // 🛡️ 2026-06-11 감사: per-request ALTER → isolate 당 1회 메모이즈 (DDL 라운드트립 절감).
 const _done_ensureReviewReplyCols = new WeakSet<object>()
@@ -45,7 +46,7 @@ async function getSellerId(c: any): Promise<number | null> {
 sellerAnalyticsRoutes.get('/chart/revenue', requireAuth(), async (c) => {
   const sellerId = await getSellerId(c)
   if (!sellerId) return c.json({ success: false, error: '셀러 정보 없음' }, 403)
-  const days = Number(c.req.query('days') || 30)
+  const days = intParam(c.req.query('days'), 30)
 
   const { results } = await c.env.DB.prepare(`
     SELECT date(created_at) AS date,

@@ -9,6 +9,7 @@ import { ACTIVE_WHOLESALE_STATUSES, sqlStatusList, WHOLESALE_ORDER_STATUSES } fr
 import { ensureDepositSchema, refundDeposit, recordDepositTxn, hasDepositRefundTxn } from '../wholesale-deposit-core'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import type { Env } from './helpers'
+import { intParam } from '@/shared/pagination'
 
 export function registerOrdersRoutes(app: Hono<{ Bindings: Env }>) {
   // ── GET /tax-summary?month=YYYY-MM — 세금계산서 집계 (1차 수동 발행 참고) ───────
@@ -49,8 +50,8 @@ export function registerOrdersRoutes(app: Hono<{ Bindings: Env }>) {
     try {
       const status = (c.req.query('status') || '').toUpperCase()
       const search = (c.req.query('search') || '').trim().slice(0, 60)
-      const page = Math.max(1, parseInt(c.req.query('page') || '1', 10) || 1)
-      const limit = Math.min(Math.max(parseInt(c.req.query('limit') || '30', 10) || 30, 1), 100)
+      const page = Math.max(1, intParam(c.req.query('page'), 1))
+      const limit = Math.min(Math.max(intParam(c.req.query('limit'), 30), 1), 100)
       const offset = (page - 1) * limit
       const VALID = WHOLESALE_ORDER_STATUSES as readonly string[]
       const binds: unknown[] = []

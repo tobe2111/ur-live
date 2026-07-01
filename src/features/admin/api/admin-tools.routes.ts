@@ -13,6 +13,7 @@ import type { Env } from '@/worker/types/env'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
 import { validateImageUrl } from '@/worker/utils/validation'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
+import { intParam } from '@/shared/pagination'
 
 export const adminToolsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -26,7 +27,7 @@ async function ensureSellerRejectReason(db: D1Database) {
 
 // ── 매출 통계 차트 ──
 adminToolsRoutes.get('/chart/revenue', async (c) => {
-  const days = Number(c.req.query('days') || 30)
+  const days = intParam(c.req.query('days'), 30)
   const { results } = await c.env.DB.prepare(`
     SELECT date(created_at) AS date,
       COUNT(*) AS orders,
@@ -39,7 +40,7 @@ adminToolsRoutes.get('/chart/revenue', async (c) => {
 
 // ── 매출 리포트 CSV ──
 adminToolsRoutes.get('/report/csv', async (c) => {
-  const days = Number(c.req.query('days') || 30)
+  const days = intParam(c.req.query('days'), 30)
   const { results } = await c.env.DB.prepare(`
     SELECT date(o.created_at) AS date, s.name AS seller_name,
       COUNT(*) AS order_count,

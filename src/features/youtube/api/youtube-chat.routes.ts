@@ -9,6 +9,7 @@ import jwt from '@tsndr/cloudflare-worker-jwt'
 import { ALLOWED_ORIGINS } from '@/shared/constants'
 // 🛡️ 2026-06-04 (P1): YouTube 토큰 at-rest 복호화 (평문 legacy passthrough).
 import { decryptAtRest } from '../../../worker/utils/data-crypto'
+import { intParam } from '@/shared/pagination'
 
 type Bindings = {
   DB: D1Database
@@ -322,7 +323,7 @@ app.get('/chat/:streamId/cached', async (c) => {
   }
 
   const streamId = parseInt(c.req.param('streamId'))
-  const limit = (parseInt(c.req.query('limit') || '50') || 50)
+  const limit = intParam(c.req.query('limit'), 50)
 
   try {
     const messages = await c.env.DB.prepare(`

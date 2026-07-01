@@ -12,6 +12,7 @@ import { QueryBuilder } from '../repositories/query-builder';
 import type { AuthVariables } from '../middleware/auth.middleware';
 import type { Seller } from '../../shared/types';
 import { cacheGet } from '../utils/cache';
+import { intParam } from '@/shared/pagination'
 
 const sellersRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -20,8 +21,8 @@ sellersRouter.get('/', async (c) => {
   try {
     const qb = new QueryBuilder(c.env.DB);
     const { page = '1', limit = '20' } = c.req.query();
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const pageNum = Math.max(1, intParam(page, 1));
+    const limitNum = Math.min(Math.max(intParam(limit, 20), 1), 100);
     const offset = (pageNum - 1) * limitNum;
 
     // ✅ 실제 sellers 테이블 스키마에 맞게 수정
@@ -210,8 +211,8 @@ sellersRouter.get('/:sellerId/products-public', async (c) => {
       return c.json({ success: false, error: 'Invalid seller ID' }, 400)
     }
     const { page = '1', limit = '20' } = c.req.query();
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const pageNum = Math.max(1, intParam(page, 1));
+    const limitNum = Math.min(Math.max(intParam(limit, 20), 1), 100);
     const offset = (pageNum - 1) * limitNum;
 
     const products = await qb.queryMany<any>(
@@ -251,7 +252,7 @@ sellersRouter.get('/:sellerId/streams', async (c) => {
       return c.json({ success: false, error: 'Invalid seller ID' }, 400)
     }
     const { status, limit = '10' } = c.req.query();
-    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 50);
+    const limitNum = Math.min(Math.max(intParam(limit, 10), 1), 50);
 
     const params: unknown[] = [sellerId];
     let statusWhere = '';

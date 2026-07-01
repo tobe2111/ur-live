@@ -20,6 +20,7 @@ import { swallow } from '@/worker/utils/swallow'
 import { safeError } from '@/worker/utils/safe-error';
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { listSellerSettlementInvoices, approveSettlementInvoice } from './settlement-tax-invoices'
+import { intParam } from '@/shared/pagination'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 interface SettlementStatsRow {
@@ -50,8 +51,8 @@ sellerSettlementsRoutes.get('/settlements', async (c) => {
     const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
-    const limit = Math.max(1, Math.min(200, parseInt(c.req.query('limit') || '20') || 20));
-    const offset = Math.max(0, parseInt(c.req.query('offset') || '0') || 0);
+    const limit = Math.max(1, Math.min(200, intParam(c.req.query('limit'), 20)));
+    const offset = Math.max(0, intParam(c.req.query('offset'), 0));
     // 🩹 2026-06-25: 정산 테이블이 전부 ₩0 + 날짜 '오늘' 로 뜨던 버그 — 기존 SELECT 가 amount 만 반환해
     //   클라(SettlementsTable)가 읽는 settlement_amount/total_sales/commission_*/period_*/requested_at 가 전부 undefined →
     //   formatNumber(undefined)=0, formatKSTDate(undefined)=오늘. 실제 컬럼으로 매핑.
@@ -329,7 +330,7 @@ sellerSettlementsRoutes.get('/voucher-catalog', async (c) => {
     if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403)
 
     const q = c.req.query('q') || ''
-    const limit = Math.min(60, Number(c.req.query('limit')) || 30)
+    const limit = Math.min(60, intParam(c.req.query('limit'), 30))
     let sql = `SELECT gift_code, name, brand_name, brand_icon_url,
                       sale_price, real_price, discount_rate,
                       image_url_small, image_url_large,

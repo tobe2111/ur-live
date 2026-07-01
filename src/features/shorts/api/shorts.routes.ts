@@ -15,6 +15,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { getFeatureFlags } from '@/worker/utils/feature-flags'
 import type { Env } from '@/worker/types/env'
+import { intParam } from '@/shared/pagination'
 const shortsRoutes = new Hono<{ Bindings: Env }>()
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -68,7 +69,7 @@ shortsRoutes.get('/feed', async (c) => {
   const { DB } = c.env
   await ensureTables(DB)
 
-  const limit = Math.min(Math.max(1, Number(c.req.query('limit')) || 10), 100)
+  const limit = Math.min(Math.max(1, intParam(c.req.query('limit'), 10)), 100)
   const exclude = c.req.query('exclude') || ''
 
   const excludeShorts: number[] = []

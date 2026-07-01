@@ -24,6 +24,7 @@ import { swallow } from '@/worker/utils/swallow'
 import { resolveMallId } from './wholesale-malls'
 import { resolveDistributorPrice } from '@/lib/distributor-pricing'
 import { loadGradeTable, loadSellerGrade } from './wholesale.routes'
+import { intParam } from '@/shared/pagination'
 
 type D1Database = Env['DB']
 
@@ -72,7 +73,7 @@ pub.get('/posts', async (c) => {
     await ensureBoardSchema(DB)
     const type = String(c.req.query('type') || 'notice')
     if (!VALID_BOARD_TYPE.has(type)) return c.json({ success: false, error: '게시판 유형 오류' }, 400)
-    const page = Math.max(1, Number(c.req.query('page') || 1) || 1)
+    const page = Math.max(1, intParam(c.req.query('page'), 1))
     const limit = 20
     const mallId = await resolveMallId(c)
     const { results } = await DB.prepare(

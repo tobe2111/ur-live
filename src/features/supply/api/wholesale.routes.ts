@@ -784,8 +784,8 @@ app.get('/catalog', async (c) => {
   const authAttempt = !!c.req.header('Authorization') || /(?:^|;\s*)ud_seller_token=/.test(c.req.header('Cookie') || '')
   const visBind = sellerId ?? -1 // visibilityWhere EXISTS 가 매칭 안 되도록(=ALL/NULL 만 노출)
   const { DB } = c.env
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10) || 1)
-  const limit = Math.min(Math.max(parseInt(c.req.query('limit') || '24', 10) || 24, 1), 100)
+  const page = Math.max(1, intParam(c.req.query('page'), 1))
+  const limit = Math.min(Math.max(intParam(c.req.query('limit'), 24), 1), 100)
   const offset = (page - 1) * limit
   const search = (c.req.query('search') || '').slice(0, 100)
   const category = (c.req.query('category') || '').slice(0, 80)
@@ -2103,6 +2103,7 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
 
 // ── OEM/ODM 신청 (유통회원) — 스펙: 유통스타트가 제조사 찾기·연결·생산 지원 ──────────
 import { ensureOemSchema } from './oem-requests'
+import { intParam } from '@/shared/pagination'
 
 // POST /oem-requests — OEM/ODM 신청
 app.post('/oem-requests', rateLimit({ action: 'wholesale-oem', max: 20, windowSec: 3600 }), async (c) => {
