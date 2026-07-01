@@ -105,7 +105,13 @@ publicUtilityRoutes.get('/api/version', async (c) => {
     KAKAO_REST_API_KEY: !!env.KAKAO_REST_API_KEY,
     FIREBASE_PRIVATE_KEY: !!env.FIREBASE_PRIVATE_KEY,
     FIREBASE_CLIENT_EMAIL: !!env.FIREBASE_CLIENT_EMAIL,
+    FIREBASE_PROJECT_ID: !!env.FIREBASE_PROJECT_ID,
     TOSS_SECRET_KEY: !!env.TOSS_SECRET_KEY,
+    // 🔔 2026-07-01: 웹푸시(VAPID)·네이티브푸시(FCM) 설정 가시성 — 셋 다 있어야 웹푸시 발송/구독 동작.
+    //   빠지면 sendSystemPush 웹경로가 조용히 no-op(라이브 전수조사에서 전부 미설정 확인).
+    VAPID_PUBLIC_KEY: !!env.VAPID_PUBLIC_KEY,
+    VAPID_PRIVATE_KEY: !!env.VAPID_PRIVATE_KEY,
+    VAPID_SUBJECT: !!env.VAPID_SUBJECT,
     DB: !!env.DB,
   }
   try {

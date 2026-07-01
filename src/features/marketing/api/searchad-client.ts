@@ -74,8 +74,21 @@ async function searchAdRequest(creds: SearchAdCreds, method: 'GET' | 'POST' | 'P
   const data = await res.json().catch(() => null)
   if (!res.ok) {
     const d = data as { title?: string; detail?: string; message?: string } | null
-    const detail = d?.detail || d?.title || d?.message
-    return { ok: false, status: res.status, data, error: detail || `검색광고 API 오류 (HTTP ${res.status})` }
+    const raw = d?.detail || d?.title || d?.message || `검색광고 API 오류 (HTTP ${res.status})`
+    // 🔒 네이버는 auth 실패 본문에 X-API-KEY(액세스라이선스)·고객ID 를 그대로 에코함
+    //   ("Auth failed with api-key: 0100..., customer-id: 47982"). 이 원본 메시지를 클라에 반환하면
+    //   운영자 자격증명이 노출됨(레포 safeError 규칙 위반). 자격증명 포함 시 친절한 안내로 치환,
+    //   그 외 에러도 방어적으로 자격증명 문자열을 마스킹.
+    const leaksCred = !!creds.accessLicense && raw.includes(creds.accessLicense)
+    let error: string
+    if (leaksCred) {
+      error = '검색광고 API 인증에 실패했습니다. 액세스라이선스·비밀키·고객ID 설정을 확인해주세요.'
+    } else {
+      error = raw
+      if (creds.accessLicense) error = error.split(creds.accessLicense).join('••••')
+      if (creds.customerId) error = error.split(creds.customerId).join('••••')
+    }
+    return { ok: false, status: res.status, data: null, error }
   }
   return { ok: true, status: res.status, data }
 }

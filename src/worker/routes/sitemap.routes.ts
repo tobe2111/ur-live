@@ -49,8 +49,7 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
     // 정적 페이지
     { loc: '/', priority: 1.0, changefreq: 'daily' },
     { loc: '/browse', priority: 0.9, changefreq: 'daily' },
-    { loc: '/live', priority: 0.9, changefreq: 'hourly' },
-    { loc: '/shorts', priority: 0.8, changefreq: 'hourly' },
+    // 🚫 라이브커머스 영구중단(LIVE_COMMERCE_SUSPENDED) — /live·/shorts 는 sitemap 미노출(폐기 기능 URL 크롤 방지).
     { loc: '/search', priority: 0.7, changefreq: 'weekly' },
     { loc: '/login', priority: 0.5, changefreq: 'monthly' },
     { loc: '/blog', priority: 0.6, changefreq: 'daily' },
