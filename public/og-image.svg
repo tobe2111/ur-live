@@ -19,9 +19,9 @@
   <rect width="1200" height="630" fill="url(#bg)"/>
   <rect width="1200" height="630" fill="url(#glow)"/>
 
-  <!-- UR 마크 -->
-  <rect x="80" y="82" width="132" height="132" rx="34" fill="url(#brand)"/>
-  <text x="146" y="150" font-family="Arial, sans-serif" font-weight="800" font-size="74" letter-spacing="-4" text-anchor="middle" dominant-baseline="central" fill="#FFFFFF">UR</text>
+  <!-- UR 마크 (검정 볼드 워드마크 · 화이트 타일) -->
+  <rect x="80" y="82" width="132" height="132" rx="34" fill="#FFFFFF"/>
+  <text x="146" y="150" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="72" font-style="italic" letter-spacing="-6" text-anchor="middle" dominant-baseline="central" fill="#0A0A0A">UR</text>
 
   <!-- 워드마크 -->
   <text x="240" y="182" font-family="sans-serif" font-weight="800" font-size="92" letter-spacing="-3" fill="#FFFFFF">유어딜</text>
