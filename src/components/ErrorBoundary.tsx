@@ -4,6 +4,7 @@
  */
 
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { isChunkLoadError, reloadWithCacheBust } from '@/utils/chunk-error';
 
 interface Props {
   children: ReactNode;
@@ -14,7 +15,11 @@ interface State {
   hasError: boolean;
   error?: Error;
   componentStack?: string;
+  isChunkError?: boolean;
 }
+
+// 청크 에러 자동복구 루프 가드 — ChunkErrorBoundary 와 동일 키 공유(이중 reload 방지).
+const CHUNK_RETRY_KEY = 'chunk_error_retry';
 
 class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
@@ -23,14 +28,31 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    // 🛡️ 새 배포 후 옛 HTML 이 참조하는 옛 청크 해시 404 → lazy import 실패(ChunkLoadError).
+    //   이 generic 바운더리가 라우트를 감싸므로 여기서도 감지해야 "문제가 발생했습니다" 대신 자동복구.
+    const isChunkError = isChunkLoadError(error?.message);
+    return { hasError: true, error, isChunkError };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({ componentStack: errorInfo.componentStack || '' });
     if (import.meta.env.DEV) {
-      console.error('[ErrorBoundary] caught:', error?.message || '(no message)', error);
+      console.error('[ErrorBoundary] caught:', error?.message || '(no message)', error, 'chunk?', isChunkLoadError(error?.message));
       console.error('[ErrorBoundary] component stack:', errorInfo.componentStack);
+    }
+
+    // 🛡️ 청크 에러(=새 배포 업데이트) 는 무서운 에러 대신 자동 새로고침(캐시버스트)으로 조용히 복구.
+    //   유저는 새 버전을 바로 받게 됨. 무한 루프는 localStorage 가드로 차단(1회, 5초 창).
+    if (this.state.isChunkError) {
+      try {
+        const tried = parseInt(localStorage.getItem(CHUNK_RETRY_KEY) || '0', 10);
+        if (!tried) {
+          localStorage.setItem(CHUNK_RETRY_KEY, '1');
+          setTimeout(() => { try { localStorage.removeItem(CHUNK_RETRY_KEY); } catch { /* noop */ } }, 5000);
+          reloadWithCacheBust(); // location.replace → 항상 새 문서/새 청크 해시
+        }
+      } catch { /* storage/location 차단 — render 의 수동 새로고침 버튼으로 폴백 */ }
+      return; // 청크 에러는 Sentry 전송 안 함(정상적 배포 전환 노이즈)
     }
 
     // 🛡️ 2026-04-29: 프로덕션 Sentry 전송 (window.Sentry 동적 사용 — 번들 영향 최소)
@@ -45,8 +67,36 @@ class ErrorBoundary extends Component<Props, State> {
     } catch { /* Sentry 미초기화 — 조용히 무시 */ }
   }
 
+  private handleManualReload = () => {
+    try { localStorage.removeItem(CHUNK_RETRY_KEY); } catch { /* noop */ }
+    reloadWithCacheBust();
+  };
+
   render() {
     if (this.state.hasError) {
+      // 🛡️ 청크 에러(새 배포 업데이트) — 무서운 에러 대신 "업데이트 중" 안내.
+      //   componentDidCatch 가 자동 새로고침(캐시버스트) 중이라 보통 즉시 사라짐.
+      //   자동복구가 막힌 환경(storage/location 차단·2회차)에선 수동 버튼으로 폴백.
+      if (this.state.isChunkError) {
+        return (
+          <div className="min-h-[100dvh] flex items-center justify-center bg-gray-50 dark:bg-[#0A0A0A] px-4">
+            <div className="max-w-sm w-full text-center">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full border-2 border-gray-200 dark:border-[#2A2A2A] border-t-gray-900 dark:border-t-white animate-spin" />
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">화면을 업데이트하고 있어요</h2>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mb-6 leading-relaxed">
+                새 버전이 배포되어 최신 화면으로 새로고침하고 있어요.<br />잠시만 기다려 주세요.
+              </p>
+              <button
+                onClick={this.handleManualReload}
+                className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold hover:opacity-90"
+              >
+                지금 새로고침
+              </button>
+            </div>
+          </div>
+        );
+      }
+
       // 커스텀 폴백 UI가 제공되면 사용
       if (this.props.fallback) {
         return this.props.fallback;
