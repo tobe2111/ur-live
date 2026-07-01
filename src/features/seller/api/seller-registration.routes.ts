@@ -36,8 +36,7 @@ interface SellerRegisterRequest {
   phone: string
   address?: string
   description?: string
-  // 🏁 2026-07-01: 유튜브 라이브(라이브커머스) 영구중단으로 선택 필드 — 미입력 허용.
-  youtube_email?: string
+  youtube_email?: string  // 🏁 2026-07-01: 라이브커머스 중단으로 선택 필드(미입력 허용)
   seller_type?: 'influencer' | 'store_owner' | 'both'
   invite_code?: string
 }
