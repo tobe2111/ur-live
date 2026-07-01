@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 어드민 동네딜 수정 홈 즉시 반영(캐시 무효화) + 공구상세 하단바 축소 + 로더 통일 착수 (대표 라이브 신고 연속)
+- **D 동네딜 캐시 무효화(대표 "수정해도 홈에 바로 반영 안됨")**: `/admin/dongnedeal-import` 뮤테이션(`admin-products.routes` create·patch·seed-demo POST/DELETE·bulk-import 5곳)이 **공구 목록 앱 캐시(`group_buy_products:*`)를 전혀 무효화 안 함** — 셀러 상품등록은 `invalidateGroupBuyProductsCache` 호출하는데 어드민만 누락 → 홈/동네딜 stale. 셀러와 동일 패턴으로 5곳 배선(SESSION_KV, fail-open). **잔여**: edge/SSR `caches.default`(≤300s)·CDN(≤900s) TTL 은 별도 — 앱 캐시 무효화로 TTL 만료 시 fresh 재계산 보장(이전엔 만료돼도 stale 앱캐시 재사용). 진짜 0초는 edge 퍼지(잠금영역) 필요.
+- **B 공구상세 하단 구매바 높이 축소(대표 "하단이 너무 높다")**: `GroupBuyDetailPage` footer 패딩 11/13→7/8·행 마진 10/9→6/6·버튼 53→50 (약 19px↓). 탭 타겟 유지.
+- **A 로더 유어딜 통일 착수(대표 "전면 통일")**: 공구상세 skeleton → `BrandLoader`(SSOT). 나머지 소비자 상세/목록은 진행 중. SSR seed 있으면 loading=false 라 seed-miss/콜드 SPA 이동에만 노출.
+- 검증: tsc 0 · build 0.
+
 ## ✅ 2026-07-01 — 사전방지 가드 2종 신설 (대표 "앞으로 문제 없게 사전 방지") — 이번 감사 미보유 클래스 박제
 도매 3표면 감사에서 **가드가 없어서** 생긴 2개 버그 클래스를 결정론적 가드로 박아 재발 구조적 차단(레포 철학 "버그 클래스 발견 시 가드부터").
 - **① `check-deprecated-pricing.mjs`** — 도매 공급가 모델 드리프트 방지. 폐기 `distributorPriceFromRetail`/`distributorPrice` 직접호출 금지 → `resolveDistributorPrice` SSOT 강제. (내보내기가 실결제가와 다른 등급가 낸 HIGH 사고 재발 차단.)
