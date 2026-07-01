@@ -11,7 +11,8 @@
 2. `public-utility.routes.ts` `/api/version` — secret 진단에 `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`/`FIREBASE_PROJECT_ID` boolean 추가(값 미노출).
 
 **⚠️ 근본 해결은 운영자 몫(코드 아님)**: Cloudflare에 `VAPID_PUBLIC_KEY`·`VAPID_PRIVATE_KEY`·`VAPID_SUBJECT`(웹푸시), `FIREBASE_PROJECT_ID`(+기존 FIREBASE_PRIVATE_KEY/CLIENT_EMAIL, 네이티브푸시) secret 설정 필요. 설정 후 `/api/version`으로 확인 → 웹푸시 즉시 활성(1의 런타임 해석 덕에 재빌드 불필요). VAPID 키쌍 생성: `npx web-push generate-vapid-keys`.
-  - **2026-07-01 후속**: 대표가 VAPID 3종 secret 등록 완료. Pages는 secret 추가 시 새 배포가 있어야 런타임 주입되므로 본 커밋으로 재배포 트리거(secret 값 자체는 미변경).
+  - **2026-07-01 후속**: 대표가 VAPID 3종 secret 등록 완료. Pages는 secret 추가 시 새 배포가 있어야 런타임 주입되므로 본 커밋으로 재배포 트리거(secret 값 자체는 미변경). **라이브 검증 완료**: `/api/version` VAPID 3종 `true` · `/api/push/vapid-public-key`가 등록한 공개키 반환(빈문자열→해결) · 서버↔등록키 일치.
+  - **2026-07-01 2차 개선(웹푸시 활성화 후 추가 확인)**: (1) **채널 진단 확장** — `/api/version` secret 진단에 `RESEND_API_KEY`(이메일)·`ALIGO_API_KEY`/`ALIGO_USER_ID`(알림톡) 추가. 이 둘도 키 없으면 조용히 no-op 하는 동일 패턴이라 이제 어느 채널이 죽었는지 한눈에 보임. (2) **셀프 테스트 푸시** `POST /api/push/test`(requireAuth, 호출자 **본인 구독에만** 발송 — 임의 대상 불가) — VAPID 켠 뒤 실제 전달을 E2E 확인할 유일 수단이 없던 공백 해소. 반환값(skipped/subscription_count/delivered/expired)으로 미도달 원인 진단. (3) 어드민 `AdminSystemMonitoringPage`에 **알림 채널 상태 배지(웹푸시/이메일/알림톡/네이티브푸시 ✓✕) + "나에게 테스트 푸시" 버튼**(라이트 테마, dark: 0). 발송경로 조사 결과 `sendSystemPush`는 VAPID 게이트·`push_enabled` 유저설정 존중·410 만료삭제·dead-letter 재시도·네이티브 독립으로 **건강** 확인. push-sw.js는 `no-store`(핸들러 갱신 전파 OK)·subscribe 401(인증) 정상. 검증: tsc 0·theme-consistency(strict) 0·build 0.
 - 검증: tsc 0(사전 config 경고 제외) · build(client+ssr+prerender+worker+prepare) 0 · theme(strict) 0.
 
 ## ✅ 2026-07-01 — 이용권 명칭 통일 잔여 "숙소권" → "숙소 이용권" (대표 "이용권 내용 진행 — 모두")
