@@ -45,8 +45,8 @@ interface ApprovalRow {
 // ── GET /agency-creator-approvals ─────────────────────────
 app.get('/', async (c) => {
   const status = c.req.query('status') || 'pending'   // pending/approved/rejected/all
-  const limit = Math.min(parseInt(c.req.query('limit') || '50'), 200)
-  const offset = parseInt(c.req.query('offset') || '0')
+  const limit = Math.min((parseInt(c.req.query('limit') || '50') || 50), 200)
+  const offset = (parseInt(c.req.query('offset') || '0') || 0)
 
   let where = ''
   const binds: unknown[] = []

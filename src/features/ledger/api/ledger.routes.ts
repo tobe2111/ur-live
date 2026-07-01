@@ -61,7 +61,7 @@ ledgerRoutes.get('/seller/funnel-kpi', requireAuth(), async (c) => {
   if (!user || user.type !== 'seller') return c.json({ success: false, error: 'Seller only' }, 403)
   const { DB } = c.env
   const sellerId = String(user.id)
-  const days = Math.min(90, Math.max(1, parseInt(c.req.query('days') || '30', 10)))
+  const days = Math.min(90, Math.max(1, (parseInt(c.req.query('days') || '30', 10) || 30)))
 
   const clicks = await DB.prepare(
     `SELECT COUNT(*) as total, COUNT(DISTINCT ip_hash || user_agent_hash) as unique_visitors

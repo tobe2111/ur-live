@@ -8,7 +8,7 @@ export function registerVoucherOrders(r: Hono<{ Bindings: Env }>) {
   // GET /admin/voucher-orders?hours=24&status=failed&limit=500
   r.get('/voucher-orders', cors(), async (c) => {
     const hours = Math.min(Math.max(1, Number(c.req.query('hours') || '24')), 168)
-    const limit = Math.min(Math.max(1, Number(c.req.query('limit') || '500')), 1000)
+    const limit = Math.min(Math.max(1, Number(c.req.query('limit') || '500') || 500), 1000)
     const status = c.req.query('status')
     try {
       const statusFilter = status && ['processing', 'sent', 'failed'].includes(status)

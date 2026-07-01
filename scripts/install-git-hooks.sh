@@ -198,6 +198,12 @@ node scripts/check-wholesale-login-spa-navigate.mjs || true
 echo "==> Pre-commit: group_buy_status 종류판별 가드 (warn-only)..."
 node scripts/check-groupbuy-status-classify.mjs || true
 
+# 🛡️ 2026-07-01: pagination parseInt/Number NaN 크래시 가드 (warn-only).
+#   도매몰 라이브 전수조사에서 GET /api/wholesale/catalog?page=abc → HTTP 500 발견. 비숫자 query 가
+#   NaN → SQL .bind(NaN) → 크래시. page/limit/offset 은 `parseInt(...) || <기본값>` 필수. 차단은 verify.yml CI strict.
+echo "==> Pre-commit: pagination NaN 크래시 가드 (warn-only)..."
+node scripts/check-pagination-nan.mjs || true
+
 # 🛡️ 2026-06-20: 라이트 고정 로그인/가입 페이지 입력 글자 흰색 재발 방지 (warn-only).
 #   standalone 라이트 auth 페이지가 force-light-theme(또는 *-light-theme/레이아웃) 없이 input 렌더 시
 #   다크모드에서 글자 안 보임 사고. 차단은 verify.yml CI strict (STRICT_LIGHT_INPUT=1).

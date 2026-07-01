@@ -284,7 +284,7 @@ app.post('/send', requireAgencyPermission('message'), async (c) => {
 // ── GET /sends — 발송 이력 ──────────────────────────────
 app.get('/sends', async (c) => {
   const agencyId = c.get('agency').id
-  const limit = Math.min(parseInt(c.req.query('limit') || '50'), 200)
+  const limit = Math.min((parseInt(c.req.query('limit') || '50') || 50), 200)
 
   try {
     const { results } = await c.env.DB.prepare(`

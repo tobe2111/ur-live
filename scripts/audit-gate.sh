@@ -71,6 +71,7 @@ if domain schema; then
   run "products SELECT * 금지"          bash scripts/check-no-select-star-products.sh
   run "products/sellers 컬럼 예산"       node scripts/check-products-column-budget.mjs
   run "PRODUCT_DETAIL_FIELDS 복구가능"   node scripts/check-product-detail-fields-repairable.mjs
+  run "pagination NaN 크래시(page=abc)"  node scripts/check-pagination-nan.mjs -s
 fi
 
 if domain classify; then

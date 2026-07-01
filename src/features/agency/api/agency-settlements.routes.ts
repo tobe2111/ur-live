@@ -85,7 +85,7 @@ app.get('/settlements', async (c) => {
 // 참조: src/worker/cron/agency-monthly-invoices.ts
 app.get('/settlement-invoices', async (c) => {
   const agencyId = c.get('agency').id
-  const limit = Math.min(parseInt(c.req.query('limit') || '24'), 60)
+  const limit = Math.min((parseInt(c.req.query('limit') || '24') || 24), 60)
 
   try {
     const { results } = await c.env.DB.prepare(`

@@ -1021,7 +1021,7 @@ app.post('/invite-seller', rateLimit({ action: 'agency_invite_seller', max: 20, 
 app.get('/report/csv', async (c: AgencyCtx) => {
   const agencyId = c.get('agency').id
   const period = c.req.query('period') || '30'
-  const days = parseInt(period)
+  const days = parseInt(period) || 30
 
   // 🛡️ 2026-05-22 정책 중앙화 — PLATFORM_FEE + AGENCY_OWN_RATE 추정 commission
   const { COMMISSION_DEFAULTS } = await import('../../../shared/constants/policy')
