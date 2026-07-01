@@ -13,6 +13,7 @@
  *   3. 카테고리 탭 (편의점/카페/외식/도서 등) — KT Alpha categories
  */
 import { useEffect, useState, useRef, useCallback, useMemo, memo, Fragment } from 'react'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, Gift, Heart, Wallet, Sparkles, Users, ArrowRight, ChevronDown, ShoppingBag } from 'lucide-react'
@@ -411,17 +412,7 @@ function ShoppingGrid() {
       </div>
       <div className="ur-content-wide px-4 lg:px-8 pt-3">
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212]">
-              <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A]" />
-              <div className="px-2.5 pt-2 pb-2.5">
-                <div className="h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded w-3/4" />
-                <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1A1A1A] rounded w-1/2" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <BrandLoader />
       ) : items.length === 0 ? (
         <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-sm">쇼핑 상품이 없습니다</div>
       ) : (

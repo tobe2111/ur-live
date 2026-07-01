@@ -12,6 +12,7 @@ import { formatPhone } from '@/utils/format-phone'
 import { useInvalidateMyVouchers, useBalance } from '@/hooks/queries'
 import { isLoggedInSync } from '@/utils/auth'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 /**
  * 🛡️ 2026-05-23: 교환권 전용 detail 페이지.
@@ -260,11 +261,8 @@ export default function VoucherDetailPage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white" />
-      </div>
-    )
+    // 🎨 2026-07-01 (대표 "로더 전면 통일"): 유어딜 BrandLoader(SSOT)로 통일.
+    return <BrandLoader fullScreen />
   }
 
   if (error || !product) {
