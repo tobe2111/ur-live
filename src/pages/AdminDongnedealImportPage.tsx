@@ -54,7 +54,11 @@ export default function AdminDongnedealImportPage() {
     setCleaning(true)
     try {
       const r = await api.post('/api/admin/dongnedeal/seed-demo', {}, h)
-      toast.success(r.data?.seeded ? `데모 상품 ${r.data.seeded}개 생성` : (r.data?.message || '이미 데모 상품이 있습니다'))
+      toast.success(
+        r.data?.seeded
+          ? `데모 상품 ${r.data.seeded}개 생성${typeof r.data?.realPhotos === 'number' ? ` (네이버 실사진 ${r.data.realPhotos}개)` : ''}`
+          : (r.data?.message || '이미 데모 상품이 있습니다')
+      )
       loadStats()
     } catch { toast.error('데모 생성 중 오류') } finally { setCleaning(false) }
   }
