@@ -174,6 +174,7 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 
 // 🛡️ 2026-04-26: 파일 중간 import 를 상단으로 이동 (CLAUDE.md 금지 패턴 — 2026-04-22 사고 재발 방지)
 import { blogRoutes } from '../features/blog/api/blog.routes';
+import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
@@ -708,7 +709,8 @@ app.use('*', async (c, next) => {
             mainEntityOfPage: canon, url: canon,
             ...(pub ? { datePublished: pub, dateModified: pub } : {}),
           };
-          const jsonLd = JSON.stringify(article).replace(/<\/script/gi, '<\\/script');
+          const ogImg = `${origin2}/blog/og/${encodeURIComponent(post.slug || '')}`;
+          const jsonLd = JSON.stringify({ ...article, image: ogImg }).replace(/<\/script/gi, '<\\/script');
           rb = rb
             .on('title', { element(el) { el.setInnerContent(bTitle); } })
             .on('meta[name="description"]', { element(el) { el.setAttribute('content', bd); } })
@@ -716,10 +718,13 @@ app.use('*', async (c, next) => {
             .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', bd); } })
             .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', canon); } })
             .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', 'article'); } })
+            .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', ogImg); } })
             .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', bt); } })
             .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', bd); } })
+            .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', ogImg); } })
             .on('head', { element(el) {
               el.append(`<link rel="canonical" href="${canon}">`, { html: true });
+              el.append(`<link rel="alternate" type="application/rss+xml" title="유어딜 블로그 RSS" href="${origin2}/blog/rss">`, { html: true });
               el.append(`<script type="application/ld+json">${jsonLd}</script>`, { html: true });
             } });
         }
@@ -736,7 +741,10 @@ app.use('*', async (c, next) => {
         .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', canon); } })
         .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', bt); } })
         .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', bd); } })
-        .on('head', { element(el) { el.append(`<link rel="canonical" href="${canon}">`, { html: true }); } });
+        .on('head', { element(el) {
+          el.append(`<link rel="canonical" href="${canon}">`, { html: true });
+          el.append(`<link rel="alternate" type="application/rss+xml" title="유어딜 블로그 RSS" href="${origin2}/blog/rss">`, { html: true });
+        } });
     }
     if (needsRootBlank) {
       // 도매·대시보드 공통: 소비자 홈 shell 깜빡임 제거 (라이트 배경 placeholder).
@@ -790,6 +798,8 @@ app.get('/health', (c) => c.json({
 //   (2026-04-27 TD-006 split): 별도 라우터 파일로 분리.
 app.route('/', killerSwRoutes);
 app.route('/', sitemapRoutes);
+// 📝 2026-07-01 블로그 SEO 보조 — /blog/og/:slug(공유 배너 SVG) · /blog/rss(피드). SPA fallback 전에 등록.
+app.route('/', blogSeoRoutes);
 
 // 🏭 2026-06-08 호스트 인지 robots.txt — utongstart.com 은 도매 Sitemap 으로 (도매 정식 도메인 육성).
 //   SSOT 는 public/robots.txt(ASSETS). utongstart 호스트일 때만 Sitemap 라인을 도매 도메인으로 치환.
