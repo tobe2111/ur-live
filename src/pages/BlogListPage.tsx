@@ -33,6 +33,9 @@ const COVER_EMOJI: Array<[RegExp, string]> = [
   [/settlement|정산/, '📊'],
   [/agency|에이전시/, '🤝'],
 ]
+// 📝 제목/요약에서 마크다운 볼드 표기(**) 제거 — 글자로 노출 방지(AI 생성/편집 글 방탄).
+const stripBold = (s?: string | null) => (s || '').replace(/\*\*/g, '')
+
 function blogCover(slug: string, tags: string[]) {
   const hay = `${slug} ${tags.join(' ')}`.toLowerCase()
   const emoji = COVER_EMOJI.find(([re]) => re.test(hay))?.[1] ?? '📝'
@@ -156,8 +159,8 @@ export default function BlogListPage() {
                         ))}
                       </div>
                     )}
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-2 leading-snug group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors">{post.title}</h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 line-clamp-2 leading-relaxed">{post.summary}</p>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-2 leading-snug group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors">{stripBold(post.title)}</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 line-clamp-2 leading-relaxed">{stripBold(post.summary)}</p>
                     <div className="flex items-center gap-2 mt-4 text-xs text-gray-400 dark:text-gray-500">
                       <span>{post.author}</span>
                       <span>·</span>

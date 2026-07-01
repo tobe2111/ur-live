@@ -10,6 +10,11 @@ function escapeScript(s: string): string {
   return s.replace(/<\/script/gi, '<\\/script')
 }
 
+// 제목/요약 등 메타 텍스트의 마크다운 볼드 표기(**) 제거 — 크롤러/소셜/JSON-LD 에 글자로 노출 방지.
+function stripBold(s: string): string {
+  return s.replace(/\*\*/g, '')
+}
+
 export interface BlogPostMeta {
   /** <title> 값 — "제목 - 유어딜 블로그" */
   pageTitle: string
@@ -27,8 +32,8 @@ export function buildBlogPostMeta(ssrPayload: string, origin: string): BlogPostM
   try {
     const post = (JSON.parse(ssrPayload) as { data?: { title?: string; summary?: string; slug?: string; author?: string; published_at?: string } })?.data
     if (!post || !post.title) return null
-    const title = String(post.title)
-    const description = String(post.summary || '').slice(0, 200)
+    const title = stripBold(String(post.title))
+    const description = stripBold(String(post.summary || '')).slice(0, 200)
     const canonical = `${origin}/blog/${post.slug || ''}`
     const pub = post.published_at ? new Date(post.published_at).toISOString() : undefined
     const ogImage = `${origin}/blog/og/${encodeURIComponent(post.slug || '')}`
@@ -56,7 +61,7 @@ export function buildBlogListJsonLd(ssrPayload: string | null, origin: string, c
     const items = posts.slice(0, 20).filter(p => p && p.slug && p.title).map((p, i) => ({
       '@type': 'ListItem', position: i + 1, url: `${origin}/blog/${p.slug}`,
       item: {
-        '@type': 'BlogPosting', headline: String(p.title), description: String(p.summary || '').slice(0, 200),
+        '@type': 'BlogPosting', headline: stripBold(String(p.title)), description: stripBold(String(p.summary || '')).slice(0, 200),
         url: `${origin}/blog/${p.slug}`, mainEntityOfPage: `${origin}/blog/${p.slug}`,
         author: { '@type': 'Organization', name: p.author || '유어딜' },
         publisher: { '@type': 'Organization', name: '유어딜' },
