@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Clock, Share2, Tag } from 'lucide-react'
+import { ArrowLeft, Clock, Share2 } from 'lucide-react'
 import SEO, { breadcrumbJsonLd } from '@/components/SEO'
 import { nativeShare } from '@/lib/native'
 import KakaoShareButton from '@/components/KakaoShareButton'
@@ -49,7 +49,7 @@ export default function BlogDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-gray-300 dark:border-[#3A3A3A] border-t-gray-900 rounded-full animate-spin" />
       </div>
     )
@@ -57,7 +57,7 @@ export default function BlogDetailPage() {
 
   if (!post) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex flex-col items-center justify-center">
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A] flex flex-col items-center justify-center">
         <p className="text-gray-500 dark:text-gray-400 mb-4">{t('blogDetail.notFound', { defaultValue: '글을 찾을 수 없습니다' })}</p>
         <Link to="/blog" className="text-blue-600 text-sm font-medium">{t('blogDetail.backToBlog', { defaultValue: '블로그로 돌아가기' })}</Link>
       </div>
@@ -65,6 +65,8 @@ export default function BlogDetailPage() {
   }
 
   const tags: string[] = (() => { try { return JSON.parse(post.tags) } catch { return [] } })()
+  // 📝 2026-07-01: 읽는 시간 — 한글 기준 대략 분당 500자. 최소 1분.
+  const readMin = Math.max(1, Math.round((post.content?.length || 0) / 500))
 
   function boldify(text: string) {
     return escapeHtml(text).replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900 dark:text-white">$1</strong>')
@@ -187,6 +189,8 @@ export default function BlogDetailPage() {
           <span>{post.author}</span>
           <span>·</span>
           <span>{new Date(post.published_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          <span>·</span>
+          <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{readMin}분 읽기</span>
         </div>
 
         {/* 썸네일 */}
