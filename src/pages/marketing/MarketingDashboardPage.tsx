@@ -15,6 +15,7 @@ import AlertsPanel from './AlertsPanel'
 import EfficiencyPanel from './EfficiencyPanel'
 import RankPanel from './RankPanel'
 import TrendPanel from './TrendPanel'
+import SavedKeywordsPanel from './SavedKeywordsPanel'
 import LazyMount from './LazyMount'
 import PanelError from './PanelError'
 import { downloadCsv } from '@/utils/csv-download'
@@ -169,6 +170,16 @@ export default function MarketingDashboardPage() {
       if (rep.status === 'fulfilled' && rep.value.data?.success) setKwRep(rep.value.data.data || null)
       if (t.status === 'rejected' && s.status === 'rejected') { setKwErr(true); toast.error('키워드 분석 실패 (잠시 후 다시)') }
     } finally { setKwBusy(false) }
+  }
+
+  async function saveKeywordToPortfolio(r: RelatedKeyword) {
+    try {
+      const res = await api.post('/api/ads/keywords/save', { keyword: r.keyword, monthly_total: r.monthlyTotal, comp_idx: r.compIdx }, { headers: authHeader() })
+      if (res.data?.success) toast.success(`'${r.keyword}' 저장 — 아래 '키워드 포트폴리오'에서 관리`)
+      else toast.error(res.data?.error || '저장 실패')
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '저장 실패')
+    }
   }
 
   async function runAiMarketer() {
@@ -341,7 +352,8 @@ export default function MarketingDashboardPage() {
                 <th className="py-1 pr-3 text-right">PC</th>
                 <th className="py-1 pr-3 text-right">모바일</th>
                 <th className="py-1 pr-3 text-right">월 클릭</th>
-                <th className="py-1">경쟁</th>
+                <th className="py-1 pr-3">경쟁</th>
+                <th className="py-1"></th>
               </tr></thead>
               <tbody>
                 {kwRelated.slice(0, 30).map((r) => (
@@ -358,6 +370,9 @@ export default function MarketingDashboardPage() {
                         : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                       }`}>{r.compIdx || '-'}</span>
                     </td>
+                    <td className="py-1.5 text-right">
+                      <button onClick={() => saveKeywordToPortfolio(r)} className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">저장</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -365,6 +380,9 @@ export default function MarketingDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* 키워드 포트폴리오(저장한 키워드·태그) */}
+      {hasToken && <LazyMount id="sec-portfolio"><SavedKeywordsPanel /></LazyMount>}
 
       {/* 브랜드 평판 모니터링 (블로그/카페/뉴스 언급) */}
       {hasToken && kwRep && (

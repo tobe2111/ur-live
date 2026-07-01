@@ -247,6 +247,50 @@ export async function addKeywordsToAdgroup(creds: SearchAdCreds, adgroupId: stri
   return { ok: true, added: arr.length || clean.length }
 }
 
+// ── 캠페인 제어 (WRITE — 상태/예산, 광고비 영향) ─────────────────────────────
+//   예산 페이싱에서 '초과 임박' 발견 시 한 클릭 일시정지/예산조정. updateKeywordBid 와 동일한 안전장치.
+export const BUDGET_MIN = 100          // 네이버 일예산 최소(원)
+export const BUDGET_MAX = 10_000_000   // 오타/폭주 하드캡(1천만원) — 더 높이려면 검색광고센터에서 직접
+
+/** 캠페인 일시정지/재개 — PUT /ncc/campaigns/{id}?fields=userLock. userLock=true → 정지. */
+export async function updateCampaignStatus(creds: SearchAdCreds, campaignId: string, paused: boolean): Promise<{ ok: boolean; error?: string }> {
+  const id = String(campaignId || '').trim()
+  if (!id) return { ok: false, error: '캠페인 ID가 없습니다' }
+  const body = { nccCampaignId: id, userLock: paused }
+  const r = await searchAdRequest(creds, 'PUT', `/ncc/campaigns/${encodeURIComponent(id)}`, { fields: 'userLock' }, body)
+  if (!r.ok) return { ok: false, error: r.error }
+  return { ok: true }
+}
+
+/** 캠페인 일예산 변경 — PUT /ncc/campaigns/{id}?fields=budget. 하드캡(BUDGET_MIN~MAX) 강제. */
+export async function updateCampaignBudget(creds: SearchAdCreds, campaignId: string, dailyBudget: number): Promise<{ ok: boolean; error?: string }> {
+  const id = String(campaignId || '').trim()
+  if (!id) return { ok: false, error: '캠페인 ID가 없습니다' }
+  if (!Number.isFinite(dailyBudget) || dailyBudget < BUDGET_MIN || dailyBudget > BUDGET_MAX) return { ok: false, error: `일예산은 ${BUDGET_MIN.toLocaleString()}~${BUDGET_MAX.toLocaleString()}원 범위여야 합니다` }
+  const budget = Math.round(dailyBudget)
+  const body = { nccCampaignId: id, dailyBudget: budget, useDailyBudget: true }
+  const r = await searchAdRequest(creds, 'PUT', `/ncc/campaigns/${encodeURIComponent(id)}`, { fields: 'budget' }, body)
+  if (!r.ok) return { ok: false, error: r.error }
+  return { ok: true }
+}
+
+// ── 제외(네거티브) 키워드 등록 (WRITE — 노출제한) ────────────────────────────
+//   키워드 효율 분석의 '낭비 키워드'(비용>0·전환 0)를 광고그룹 제외키워드로 등록 → 효율 루프 닫기.
+//   ⚠️ 라이브 미검증(이 환경 egress 차단): 엔드포인트/바디는 현행 검색광고 API 문서로 1회 확정 필요.
+export async function addNegativeKeywords(creds: SearchAdCreds, adgroupId: string, keywords: string[]): Promise<{ ok: boolean; added?: number; error?: string }> {
+  const gid = String(adgroupId || '').trim()
+  if (!gid) return { ok: false, error: '광고그룹 ID가 없습니다' }
+  const clean = Array.from(new Set(
+    keywords.map(k => k.trim().replace(/\s+/g, '')).filter(k => k.length >= 1 && k.length <= 25)
+  )).slice(0, KW_ADD_MAX)
+  if (!clean.length) return { ok: false, error: '등록할 제외 키워드가 없습니다' }
+  const body = clean.map(keyword => ({ nccAdgroupId: gid, restrictedKeyword: keyword, type: 'KEYWORD_PLUS_RESTRICT' }))
+  const r = await searchAdRequest(creds, 'POST', '/ncc/restricted-keywords', { nccAdgroupId: gid }, body)
+  if (!r.ok) return { ok: false, error: r.error }
+  const arr = Array.isArray(r.data) ? r.data : []
+  return { ok: true, added: arr.length || clean.length }
+}
+
 // ── 통합실적 (StatService /stats — 읽기) ─────────────────────────────────────
 //   캠페인별 노출/클릭/비용/전환 + 계정 합계. 평균노출순위까지 공식 지표(스크래핑 아님).
 export interface CampaignStat { id: string; name: string; impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; convAmt: number; ctr: number; cpc: number; avgRnk: number }
