@@ -4,7 +4,7 @@
  */
 
 import { Component, ErrorInfo, ReactNode } from 'react';
-import { isChunkLoadError, reloadWithCacheBust } from '@/utils/chunk-error';
+import { isChunkLoadError, recoverFromChunkError, reloadWithCacheBust } from '@/utils/chunk-error';
 
 interface Props {
   children: ReactNode;
@@ -16,10 +16,8 @@ interface State {
   error?: Error;
   componentStack?: string;
   isChunkError?: boolean;
+  chunkExhausted?: boolean;
 }
-
-// 청크 에러 자동복구 루프 가드 — ChunkErrorBoundary 와 동일 키 공유(이중 reload 방지).
-const CHUNK_RETRY_KEY = 'chunk_error_retry';
 
 class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
@@ -42,16 +40,10 @@ class ErrorBoundary extends Component<Props, State> {
     }
 
     // 🛡️ 청크 에러(=새 배포 업데이트) 는 무서운 에러 대신 자동 새로고침(캐시버스트)으로 조용히 복구.
-    //   유저는 새 버전을 바로 받게 됨. 무한 루프는 localStorage 가드로 차단(1회, 5초 창).
-    if (this.state.isChunkError) {
-      try {
-        const tried = parseInt(localStorage.getItem(CHUNK_RETRY_KEY) || '0', 10);
-        if (!tried) {
-          localStorage.setItem(CHUNK_RETRY_KEY, '1');
-          setTimeout(() => { try { localStorage.removeItem(CHUNK_RETRY_KEY); } catch { /* noop */ } }, 5000);
-          reloadWithCacheBust(); // location.replace → 항상 새 문서/새 청크 해시
-        }
-      } catch { /* storage/location 차단 — render 의 수동 새로고침 버튼으로 폴백 */ }
+    //   단일 SSOT(recoverFromChunkError) — 인라인 부트가드·main.tsx 와 같은 가드(60초 2회) 공유.
+    //   가드 한도 초과(진짜 에러)면 chunkExhausted 로 수동 새로고침 UI 폴백.
+    if (isChunkLoadError(error?.message)) {
+      if (!recoverFromChunkError()) this.setState({ chunkExhausted: true });
       return; // 청크 에러는 Sentry 전송 안 함(정상적 배포 전환 노이즈)
     }
 
@@ -67,9 +59,11 @@ class ErrorBoundary extends Component<Props, State> {
     } catch { /* Sentry 미초기화 — 조용히 무시 */ }
   }
 
-  private handleManualReload = () => {
-    try { localStorage.removeItem(CHUNK_RETRY_KEY); } catch { /* noop */ }
-    reloadWithCacheBust();
+  private handleManualReload = () => { reloadWithCacheBust(); };
+
+  // 소프트 재시도 — 전체 새로고침 없이 바운더리 상태만 리셋해 재렌더(일시적 렌더 에러 회복).
+  private handleSoftRetry = () => {
+    this.setState({ hasError: false, error: undefined, componentStack: undefined, isChunkError: undefined, chunkExhausted: undefined });
   };
 
   render() {
@@ -78,13 +72,20 @@ class ErrorBoundary extends Component<Props, State> {
       //   componentDidCatch 가 자동 새로고침(캐시버스트) 중이라 보통 즉시 사라짐.
       //   자동복구가 막힌 환경(storage/location 차단·2회차)에선 수동 버튼으로 폴백.
       if (this.state.isChunkError) {
+        const exhausted = this.state.chunkExhausted;
         return (
           <div className="min-h-[100dvh] flex items-center justify-center bg-gray-50 dark:bg-[#0A0A0A] px-4">
             <div className="max-w-sm w-full text-center">
-              <div className="w-12 h-12 mx-auto mb-4 rounded-full border-2 border-gray-200 dark:border-[#2A2A2A] border-t-gray-900 dark:border-t-white animate-spin" />
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">화면을 업데이트하고 있어요</h2>
+              {!exhausted && (
+                <div className="w-12 h-12 mx-auto mb-4 rounded-full border-2 border-gray-200 dark:border-[#2A2A2A] border-t-gray-900 dark:border-t-white animate-spin" />
+              )}
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                {exhausted ? '새 버전이 배포됐어요' : '화면을 업데이트하고 있어요'}
+              </h2>
               <p className="text-gray-500 dark:text-gray-400 text-sm mb-6 leading-relaxed">
-                새 버전이 배포되어 최신 화면으로 새로고침하고 있어요.<br />잠시만 기다려 주세요.
+                {exhausted
+                  ? '아래 버튼을 눌러 최신 화면으로 새로고침해 주세요.'
+                  : <>새 버전이 배포되어 최신 화면으로 새로고침하고 있어요.<br />잠시만 기다려 주세요.</>}
               </p>
               <button
                 onClick={this.handleManualReload}
@@ -145,15 +146,16 @@ class ErrorBoundary extends Component<Props, State> {
             )}
 
             <div className="flex gap-3">
+              {/* 소프트 재시도 — 전체 새로고침 없이 상태 리셋 후 재렌더(일시적 에러 회복). 지속되면 다시 이 화면. */}
               <button
-                onClick={() => window.location.reload()}
-                className="flex-1 bg-gray-900 text-white py-3 px-4 rounded-full font-medium hover:bg-gray-800 transition-colors"
+                onClick={this.handleSoftRetry}
+                className="flex-1 bg-gray-900 dark:bg-white text-white dark:text-gray-900 py-3 px-4 rounded-full font-medium hover:opacity-90 transition-opacity"
               >
-                새로고침
+                다시 시도
               </button>
               <button
                 onClick={() => window.location.href = '/'}
-                className="flex-1 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 py-3 px-4 rounded-full font-medium hover:bg-gray-200 transition-colors"
+                className="flex-1 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 py-3 px-4 rounded-full font-medium hover:bg-gray-200 dark:hover:bg-[#2A2A2A] transition-colors"
               >
                 홈으로
               </button>
