@@ -1081,4 +1081,55 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
   }
 });
 
+// GET /dongnedeal/list — 등록된 동네딜 목록(최근순). 수정/삭제 관리용.
+adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
+  try {
+    const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher', 'general'];
+    const ph = cats.map(() => '?').join(',');
+    const limRaw = Number(c.req.query('limit'));
+    const lim = Number.isFinite(limRaw) && limRaw > 0 && limRaw <= 200 ? Math.floor(limRaw) : 50;
+    const { results } = await c.env.DB.prepare(
+      `SELECT id, name, price, original_price, category, restaurant_name, restaurant_address, image_url,
+              COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at
+         FROM products WHERE category IN (${ph}) ORDER BY created_at DESC LIMIT ?`
+    ).bind(...cats, lim).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
+    return c.json({ success: true, data: results || [] });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env), data: [] }, 500);
+  }
+});
+
+// PATCH /dongnedeal/:id — 동네딜 단건 수정(이름/가격/사진/매장/좌표/노출). 부분 업데이트.
+adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
+  try {
+    const id = c.req.param('id');
+    if (!/^\d+$/.test(String(id))) return c.json({ success: false, error: 'bad id' }, 400);
+    const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    const sets: string[] = ["updated_at = datetime('now')"];
+    const params: unknown[] = [];
+    const put = (col: string, val: unknown) => { sets.push(`${col} = ?`); params.push(val); };
+    if (typeof b.name === 'string' && b.name.trim()) put('name', b.name.trim());
+    if (b.price !== undefined) { const n = Math.round(Number(String(b.price).replace(/[^\d.-]/g, ''))); if (Number.isFinite(n) && n > 0) put('price', n); }
+    if (b.original_price !== undefined) { const n = Math.round(Number(String(b.original_price).replace(/[^\d.-]/g, ''))) || 0; put('original_price', n > 0 ? n : null); }
+    if (b.image_url !== undefined) put('image_url', String(b.image_url || '').trim() || null);
+    if (b.restaurant_name !== undefined) put('restaurant_name', String(b.restaurant_name || '').trim() || null);
+    if (b.restaurant_address !== undefined) put('restaurant_address', String(b.restaurant_address || '').trim() || null);
+    if (b.restaurant_phone !== undefined) put('restaurant_phone', String(b.restaurant_phone || '').trim() || null);
+    if (b.description !== undefined) put('description', String(b.description || '').trim() || null);
+    if (b.category !== undefined) { const cat = mapDealCategory(String(b.category || '')); if (cat && cat !== 'stay_voucher') put('category', cat); }
+    if (b.is_active !== undefined) put('is_active', b.is_active ? 1 : 0);
+    if (b.lat !== undefined && b.lng !== undefined) {
+      const lat = Number(b.lat), lng = Number(b.lng);
+      if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) { put('restaurant_lat', lat); put('restaurant_lng', lng); }
+    }
+    if (params.length === 0) return c.json({ success: false, error: '변경할 내용이 없습니다' }, 400);
+    params.push(id);
+    await c.env.DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`).bind(...params).run();
+    await writeAuditLog(c, { action: 'dongnedeal_update', targetType: 'product', targetId: id }).catch(() => {});
+    return c.json({ success: true });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 export default adminProductsRoutes;

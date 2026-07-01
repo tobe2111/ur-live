@@ -1,10 +1,11 @@
 // 🧭 2026-07-01 (대표 — "수기로 진짜 매장 올리기"): 동네딜 직접 등록 폼(1건씩).
 //   카카오 매장 검색(`/api/kakao/place/search`)으로 매장명·주소·좌표(x/y)·전화 자동완성 →
 //   POST `/api/admin/dongnedeal/create` (좌표 저장 → 지도에 바로 마커). 라이트 테마(어드민, dark: 미사용).
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Search, PlusCircle, MapPin, CheckCircle2, AlertTriangle, Store, Image as ImageIcon } from 'lucide-react'
+import { Search, PlusCircle, MapPin, CheckCircle2, AlertTriangle, Store, Image as ImageIcon, X, Pencil } from 'lucide-react'
+import type { DealRow } from './types'
 
 interface KakaoPlace {
   place_name: string
@@ -25,7 +26,7 @@ const CATS = [
 
 const EMPTY = { name: '', category: 'meal_voucher', price: '', original_price: '', restaurant_name: '', restaurant_address: '', restaurant_phone: '', image_url: '', description: '' }
 
-export default function ManualDealForm({ onCreated }: { onCreated: () => void }) {
+export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { onSaved: () => void; editDeal?: DealRow | null; onCancelEdit?: () => void }) {
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
   const [q, setQ] = useState('')
   const [searching, setSearching] = useState(false)
@@ -36,7 +37,29 @@ export default function ManualDealForm({ onCreated }: { onCreated: () => void })
   const [photos, setPhotos] = useState<{ link: string; thumbnail: string }[]>([])
   const [photoBusy, setPhotoBusy] = useState(false)
 
+  const isEdit = !!editDeal
+
+  // 🖊️ 수정 모드: editDeal 이 바뀌면 폼에 채우고 위로 스크롤(부모가 스크롤). 좌표도 복원.
+  useEffect(() => {
+    if (!editDeal) return
+    setF({
+      name: editDeal.name || '',
+      category: editDeal.category || 'meal_voucher',
+      price: String(editDeal.price ?? ''),
+      original_price: editDeal.original_price ? String(editDeal.original_price) : '',
+      restaurant_name: editDeal.restaurant_name || '',
+      restaurant_address: editDeal.restaurant_address || '',
+      restaurant_phone: '',
+      image_url: editDeal.image_url || '',
+      description: '',
+    })
+    setCoord(editDeal.restaurant_lat && editDeal.restaurant_lng ? { lat: editDeal.restaurant_lat, lng: editDeal.restaurant_lng } : null)
+    setPlaces([]); setPhotos([]); setQ('')
+  }, [editDeal])
+
   const set = (k: keyof typeof f, v: string) => setF((prev) => ({ ...prev, [k]: v }))
+
+  const resetForm = () => { setF({ ...EMPTY }); setCoord(null); setQ(''); setPlaces([]); setPhotos([]) }
 
   // 🖼️ 네이버 이미지 검색으로 매장 대표 사진 후보 가져오기 (카카오=정보·좌표, 네이버=사진).
   const fetchPhotos = async () => {
@@ -87,14 +110,21 @@ export default function ManualDealForm({ onCreated }: { onCreated: () => void })
     if (!(Number(f.price.replace(/[^\d]/g, '')) > 0)) { toast.error('판매가를 입력하세요'); return }
     setBusy(true)
     try {
-      const res = await api.post('/api/admin/dongnedeal/create', { ...f, lat: coord?.lat, lng: coord?.lng }, h)
-      if (res.data?.success) {
-        toast.success(res.data.hasCoord ? '동네딜 등록 완료 — 지도에도 바로 표시됩니다 ✅' : '동네딜 등록 완료 — 주소 지오코딩 후 지도에 표시돼요(자동)')
-        setF({ ...EMPTY, category: f.category }); setCoord(null); setQ(''); setPlaces([]); setPhotos([])
-        onCreated()
-      } else toast.error(res.data?.error || '등록 실패')
+      const payload = { ...f, lat: coord?.lat, lng: coord?.lng }
+      if (isEdit && editDeal) {
+        const res = await api.patch(`/api/admin/dongnedeal/${editDeal.id}`, payload, h)
+        if (res.data?.success) { toast.success('수정 저장됨'); onSaved() }
+        else toast.error(res.data?.error || '수정 실패')
+      } else {
+        const res = await api.post('/api/admin/dongnedeal/create', payload, h)
+        if (res.data?.success) {
+          toast.success(res.data.hasCoord ? '동네딜 등록 완료 — 지도에도 바로 표시됩니다 ✅' : '동네딜 등록 완료 — 주소 지오코딩 후 지도에 표시돼요(자동)')
+          setF({ ...EMPTY, category: f.category }); setCoord(null); setQ(''); setPlaces([]); setPhotos([])
+          onSaved()
+        } else toast.error(res.data?.error || '등록 실패')
+      }
     } catch (e: unknown) {
-      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '등록 중 오류')
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || (isEdit ? '수정 중 오류' : '등록 중 오류'))
     } finally { setBusy(false) }
   }
 
@@ -103,10 +133,17 @@ export default function ManualDealForm({ onCreated }: { onCreated: () => void })
   const lbl = 'block text-xs font-semibold text-gray-500 mb-1'
 
   return (
-    <div className={card}>
-      <div className="flex items-center gap-2 mb-1">
-        <Store className="w-4 h-4 text-gray-700" />
-        <p className="text-sm font-bold text-gray-900">동네딜 직접 등록 (수기 · 1건씩)</p>
+    <div className={`${card} ${isEdit ? 'ring-2 ring-gray-900' : ''}`}>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <div className="flex items-center gap-2 min-w-0">
+          {isEdit ? <Pencil className="w-4 h-4 text-gray-700" /> : <Store className="w-4 h-4 text-gray-700" />}
+          <p className="text-sm font-bold text-gray-900 truncate">{isEdit ? `동네딜 수정 (#${editDeal?.id})` : '동네딜 직접 등록 (수기 · 1건씩)'}</p>
+        </div>
+        {isEdit && (
+          <button onClick={() => { resetForm(); onCancelEdit?.() }} className="inline-flex items-center gap-1 text-[12px] font-semibold text-gray-500 hover:text-gray-800 shrink-0">
+            <X className="w-3.5 h-3.5" /> 수정 취소
+          </button>
+        )}
       </div>
       <p className="text-[12px] text-gray-500 mb-4">카카오맵에서 <b>매장을 검색해 선택</b>하면 매장명·주소·좌표·전화가 자동으로 채워집니다. (좌표가 있어야 지도에 마커로 떠요)</p>
 
@@ -215,9 +252,9 @@ export default function ManualDealForm({ onCreated }: { onCreated: () => void })
 
       <div className="mt-4 flex items-center gap-3">
         <button onClick={submit} disabled={busy} className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-gray-900 text-white text-sm font-bold hover:bg-black disabled:opacity-50">
-          <PlusCircle className="w-4 h-4" /> {busy ? '등록 중…' : '동네딜 추가'}
+          {isEdit ? <Pencil className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />} {busy ? '저장 중…' : isEdit ? '수정 저장' : '동네딜 추가'}
         </button>
-        <span className="text-[11px] text-gray-400">등록 즉시 동네딜(홈·리스트·지도)에 노출됩니다.</span>
+        <span className="text-[11px] text-gray-400">{isEdit ? '변경 즉시 반영됩니다.' : '등록 즉시 동네딜(홈·리스트·지도)에 노출됩니다.'}</span>
       </div>
     </div>
   )
