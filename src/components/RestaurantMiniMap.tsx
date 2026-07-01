@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from 'react'
 import { MapPin, ExternalLink } from 'lucide-react'
 import { ensureKakaoMaps } from '@/lib/kakao-sdk'
 import { escapeHtml } from '@/shared/utils/html'
+import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 
 declare global {
   interface Window { kakao: any }
@@ -135,9 +136,7 @@ export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, h
   // 🎯 2026-07-01 (대표 "매장의 카카오맵 페이지와 연결"): 우선순위 —
   //   ① 등록 시 캡처한 place_url(정확한 매장 페이지 직접 열림) ② 매장명+주소 link/search(등록 장소 surfacing)
   //   ③ 좌표 map(폴백). place_url 은 place.map.kakao.com/{id} 형식만 허용(임의 URL 주입 방지).
-  const normalizedPlaceUrl = placeUrl && /^https?:\/\/place\.map\.kakao\.com\/\d+/.test(placeUrl)
-    ? placeUrl.replace(/^http:/, 'https:')
-    : null
+  const normalizedPlaceUrl = normalizeKakaoPlaceUrl(placeUrl)  // place.map.kakao.com / map.kakao.com / kko.to 만
   const kakaoSearchQuery = [name, address].filter(Boolean).join(' ').trim()
   const kakaoMapUrl = normalizedPlaceUrl
     ? normalizedPlaceUrl

@@ -260,6 +260,12 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
           <label className={lbl}>설명(선택)</label>
           <textarea value={f.description} onChange={(e) => set('description', e.target.value)} rows={2} placeholder="2인 한우 코스 · 결제 즉시 이용권 발급" className={input} />
         </div>
+        {/* 🎯 2026-07-01 (대표 예시 — 김밥천국 kko.to): 카카오맵 매장 페이지 직접 연결 링크. */}
+        <div className="sm:col-span-2">
+          <label className={lbl}>카카오맵 링크(선택) — 매장 지도 정확 연결</label>
+          <input value={f.kakao_place_url} onChange={(e) => set('kakao_place_url', e.target.value)} placeholder="https://kko.to/… 또는 place.map.kakao.com/…" className={input} />
+          <p className="text-[11px] text-gray-400 mt-1">매장 검색·선택 시 자동 입력. 안 맞으면 카카오맵에서 매장 &lsquo;공유&rsquo; → 링크 복사해 붙여넣으세요.</p>
+        </div>
       </div>
 
       <div className="mt-4 flex items-center gap-3">

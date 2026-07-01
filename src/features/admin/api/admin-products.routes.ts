@@ -24,6 +24,7 @@ import { getSupplyMeta, setSupplyMeta } from '@/worker/utils/product-supply-meta
 import { loadPlatformCommissionPct } from '../../supply/api/wholesale-settlement';
 import { distributorPriceFromCost } from '@/lib/distributor-pricing';
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
+import { isValidKakaoPlaceUrl, normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url';
 import { intParam } from '@/shared/pagination'
 
 export const adminProductsRoutes = new Hono<{ Bindings: Env }>();
@@ -968,7 +969,7 @@ async function kakaoPlaceLookup(
       address: doc.road_address_name || doc.address_name || null,
       lat: Number.isFinite(lat) ? lat : null,
       lng: Number.isFinite(lng) ? lng : null,
-      placeUrl: doc.id ? `https://place.map.kakao.com/${doc.id}` : (doc.place_url && /^https?:\/\/place\.map\.kakao\.com\/\d+/.test(doc.place_url) ? doc.place_url : null),
+      placeUrl: doc.id ? `https://place.map.kakao.com/${doc.id}` : normalizeKakaoPlaceUrl(doc.place_url),
     };
   } catch { return null; }
 }
@@ -1167,8 +1168,8 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
     }
     // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 등록 시 캡처한 place_url meta 저장.
     {
-      const kpu = String(b.kakao_place_url || '').trim();
-      if (r.meta?.last_row_id && /^https?:\/\/place\.map\.kakao\.com\/\d+/.test(kpu)) {
+      const kpu = normalizeKakaoPlaceUrl(b.kakao_place_url);
+      if (r.meta?.last_row_id && kpu) {
         await setSupplyMeta(c.env.DB, Number(r.meta.last_row_id), { kakao_place_url: kpu }).catch(() => {});
       }
     }
@@ -1205,7 +1206,7 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
           const raw = mm?.get(Number(r.id))?.max_per_person;
           r.max_per_person = raw != null && Number.isFinite(Number(raw)) && Number(raw) > 0 ? Math.floor(Number(raw)) : 0;
           const kpu = mm?.get(Number(r.id))?.kakao_place_url;
-          r.kakao_place_url = typeof kpu === 'string' && /^https?:\/\/place\.map\.kakao\.com\/\d+/.test(kpu) ? kpu : null;
+          r.kakao_place_url = normalizeKakaoPlaceUrl(kpu);
         }
       }
     } catch { /* fail-soft */ }
@@ -1249,9 +1250,10 @@ adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
     }
     // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): place_url meta 수정.
     if (b.kakao_place_url !== undefined) {
-      const kpu = String(b.kakao_place_url || '').trim();
-      if (/^https?:\/\/place\.map\.kakao\.com\/\d+/.test(kpu)) {
-        await setSupplyMeta(c.env.DB, Number(id), { kakao_place_url: kpu }).catch(() => {});
+      const raw = String(b.kakao_place_url || '').trim();
+      const kpu = raw === '' ? '' : normalizeKakaoPlaceUrl(raw);  // 빈값=해제, 유효=저장
+      if (raw === '' || kpu) {
+        await setSupplyMeta(c.env.DB, Number(id), { kakao_place_url: kpu || '' }).catch(() => {});
         mppChanged = true;
       }
     }
