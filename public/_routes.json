@@ -8,7 +8,6 @@
     "/static/*",
     "/favicon.svg",
     "/robots.txt",
-    "/sitemap.xml",
     "/sw.js",
     "/push-sw.js",
     "/pwa-sw.js",

@@ -20,6 +20,12 @@
 - **다국어 locale**: zh/es/fr/ja 의 옛 "식사권"·团购券 → **2026-06-29 결정("전면 다국어 prose 정합=KR-primary라 별도")** 유지(대부분 `[TODO]` 미번역 플레이스홀더). ko(주 언어)는 이미 0건.
 - **알아둘 것(미수정, 대표 판단 필요)**: 카드결제 교환권 셀프취소 시 Toss 취소가 waitUntil 비동기라 실패하면 voucher='refunded'인데 orders='PAID' 잔존 갭 — 드물고 잠긴 결제영역 인접이라 문서화만.
 - 검증: tsc 0(config 경고 제외)·theme(strict) 0·sql-bind 0·blog-seed-currency 0·build(client+ssr+prerender+worker+prepare) 0.
+## ✅ 2026-07-01 — 유어딜 소비자 전수감사(가드 미보유 영역) — 확정 3건 fix (대표 "더 깊게 파봐")
+감사 게이트(37 GREEN/1 RED=선재 file-size 드리프트) 후 **가드 미보유 3영역**(결제 금액정확성·런타임 크래시·외부 PG 실응답)을 라이브+정적으로 심층 감사. 라이브 소비자 API/SSR 전부 건강(200·주입 정상), 크래시 스윕 CLEAN(신규 fcfs/블로그/알림 UI 방어적). **확정 3건 수정**:
+- **#1 (SEO) sitemap.xml stale — 블로그 20개 중 16개 404 + 상품/공구 전무**: 근본원인=`public/sitemap.xml`(옛 하드코딩, 폐기 슬러그 why-live-commerce·meal-voucher-business 등)이 `_routes.json` exclude 로 Pages 직접 서빙 → 워커 동적 `sitemap.routes.ts`(`WHERE is_published=1`) 완전 우회. **수정**: exclude 에서 `/sitemap.xml` 제거 + 정적파일 삭제(git rm) → 워커 동적 라우트가 서빙(상품/공구/블로그 published + 서비스분리 필터 포함). 동적 배열의 `/live`·`/shorts`(LIVE_COMMERCE_SUSPENDED)도 제거(폐기기능 URL 크롤 방지).
+- **#2 (머니) 반품환불 경로 쿠폰 미복원**: `returns.routes PUT /:id/refund` 이 역전을 인라인 재구현하며 `coupon_uses` 복원만 누락(`refundOrderFully`·주문취소는 복원). → 1회용 쿠폰 영구소진+used_count 과대. **수정**: order-refund SSOT 미러 쿠폰 un-use 블록 추가(CAS `transitioned` 게이트 하 단일실행, 자연멱등).
+- **#3 (머니) 초대보상 1,000딜 환불 미회수(파밍 벡터)**: `grantInviteRewardForFirstPurchase` 적립만 있고 clawback 0. **수정**: `reverseInviteRewardOnRefund`(invite-reward.ts) 신설 — 환불 후 초대받은 유저 유효주문 0이면 초대자 보상 회수(다른 유효구매 있으면 보류), 멱등 CAS(granted→expired) + `MAX(0,...)` clamp. `reverseOrderAncillaryOnRefund`(전액환불·주문취소 자동커버) + returns 양경로 배선.
+- 검증: tsc 0 · build 0(client+ssr+prerender+worker) · money-pattern/sql bind·not-null·column·table 가드 0 · audit-gate 37 GREEN(file-size RED 는 선재 드리프트, 본 변경 무관). ⚠️ staging 실결제 권장: 쿠폰주문 반품환불 시 쿠폰 재사용 가능 + 초대유저 첫구매 환불 시 초대자 딜 회수.
 
 ## ✅ 2026-07-01 — 알림 코드 마무리 4종 + 위시리스트 오발송 버그 fix (대표 "코드로 더 할 수 있는거")
 - **#4 알림톡 `approve`/`approved` 오탐 정정**: 이전 진단에서 "미등록 의심"으로 잡은 `approve`/`approved`는 삼항 조건(`action==='approve' ? 'distributor_approved' : ...`)이라 실제 template 코드가 아니었음(grep 오탐). SSOT `alimtalk-templates.ts`에서 제거 + `test`는 셀러 브랜드메시지 테스트 코드로 주석. **버그 아님 확인.**
