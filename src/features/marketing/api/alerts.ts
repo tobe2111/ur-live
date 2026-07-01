@@ -173,9 +173,12 @@ export async function runAlertsAll(env: Env, nowMs?: number): Promise<{ accounts
     // cron 은 순위 스냅샷도 기록(내일 비교 기준). 비교는 직전 스냅샷 대상이라 오늘 기록 전에 계산됨.
     const items = await computeAlerts(env, s.account_id, s, { persistRank: true }).catch(() => [] as AlertItem[])
     if (!items.length) continue
-    // 멱등: 같은 계정·같은 날 1회만. INSERT OR IGNORE 의 changes 로 winner 판정.
+    // 멱등: 같은 계정·같은 날·같은 '알림 종류 조합' 1회만. dedup_key 를 고정 'daily' 로 두면
+    //   아침에 예산 알림이 나간 뒤 낮에 새로 발생한 가격/순위 알림이 통째로 억제됨(버그).
+    //   → 종류 집합(budget/price/rank 정렬)으로 키를 만들어, 새 종류가 생기면 다시 발송.
+    const dedupKey = [...new Set(items.map(i => i.kind))].sort().join(',')
     const ins = await env.DB.prepare('INSERT OR IGNORE INTO ad_alert_sent (account_id, dedup_key, sent_date) VALUES (?, ?, ?)')
-      .bind(s.account_id, 'daily', today).run().catch(() => null)
+      .bind(s.account_id, dedupKey, today).run().catch(() => null)
     if (!ins || ins.meta?.changes === 0) continue
     const acc = await getAdsAccount(env.DB, s.account_id).catch(() => null)
     if (acc?.email && env.RESEND_API_KEY && env.RESEND_FROM) {

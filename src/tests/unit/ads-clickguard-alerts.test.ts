@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 const { DatabaseSync } = await import(/* @vite-ignore */ ('node:' + 'sqlite')) as { DatabaseSync: new (p: string) => { prepare: (sql: string) => { run: (...a: never[]) => { changes: number | bigint; lastInsertRowid: number | bigint }; get: (...a: never[]) => unknown; all: (...a: never[]) => unknown[] } } }
 import { registerSite, recordHit, clickReport, domainMatches } from '@/features/marketing/api/clickguard'
-import { computeAlerts, type AlertSettings } from '@/features/marketing/api/alerts'
+import { computeAlerts, saveAlertSettings, runAlertsAll, type AlertSettings } from '@/features/marketing/api/alerts'
 
 /**
  * 🆕 2026-06-30 유어애즈 — 부정클릭 탐지 집계 + 임계값 알림(가격 역전) 실행 검증.
@@ -90,5 +90,18 @@ describe('UR Ads 임계값 알림 — computeAlerts 가격 역전(연동 없이)
     await DB.prepare('INSERT INTO ad_price_watches (seller_id, query, my_price, last_lowest, last_mall) VALUES (?,?,?,?,?)').bind(42, '무선이어폰', 11000, 12000, '경쟁몰').run()
     const alerts = await computeAlerts(env(DB), 42, settings())
     expect(alerts.filter(a => a.kind === 'price')).toHaveLength(0)
+  })
+
+  it('회귀: runAlertsAll dedup_key = 종류 조합(고정 daily 아님) → 새 종류는 재발송', async () => {
+    // 알림 켠 계정 + 최저가 역전 워치 → 오늘 'price' 종류 1건.
+    await saveAlertSettings(DB, 42, { enabled: true, price_undercut: true })
+    await DB.prepare('INSERT INTO ad_price_watches (seller_id, query, my_price, last_lowest, last_mall) VALUES (?,?,?,?,?)').bind(42, '무선이어폰', 15000, 12000, '경쟁몰').run()
+    const first = await runAlertsAll(env(DB))
+    expect(first.sent).toBe(1)
+    // dedup_key 가 'price'(종류 기반) 여야 함 — 'daily' 고정이면 새 종류가 억제됨(버그).
+    const row = await DB.prepare("SELECT dedup_key FROM ad_alert_sent WHERE account_id = 42").first<{ dedup_key: string }>()
+    expect(row?.dedup_key).toBe('price')
+    // 같은 종류 재실행 → 멱등(재발송 0).
+    expect((await runAlertsAll(env(DB))).sent).toBe(0)
   })
 })
