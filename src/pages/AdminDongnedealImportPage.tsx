@@ -5,6 +5,8 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Upload, Download, PackagePlus, CheckCircle2, AlertTriangle } from 'lucide-react'
 import ManualDealForm from './admin-dongnedeal/ManualDealForm'
+import DealList from './admin-dongnedeal/DealList'
+import type { DealRow } from './admin-dongnedeal/types'
 
 // 🧭 2026-06-17 (대표 요청 — 동네딜 채우기): 어드민 동네딜(오프라인 공동구매) 상품 CSV 일괄 등록 + 데모 시드.
 //   백엔드 /api/admin/dongnedeal/{stats,seed-demo,bulk-import} — 즉시 노출(is_active=1, group_buy_status='active').
@@ -28,6 +30,9 @@ export default function AdminDongnedealImportPage() {
   const [result, setResult] = useState<ImportResult | null>(null)
   const [stats, setStats] = useState<DealStats | null>(null)
   const [cleaning, setCleaning] = useState(false)
+  // 🖊️ 2026-07-01 (대표 — 수정/삭제): 편집 대상 + 목록 새로고침 nonce.
+  const [editing, setEditing] = useState<DealRow | null>(null)
+  const [listNonce, setListNonce] = useState(0)
 
   const loadStats = () => {
     api.get('/api/admin/dongnedeal/stats', h)
@@ -121,8 +126,19 @@ export default function AdminDongnedealImportPage() {
           </div>
         )}
 
-        {/* 🗺️ 2026-07-01 (대표 — 수기로 진짜 매장 등록): 카카오 검색 자동완성 직접 입력 폼 */}
-        <ManualDealForm onCreated={loadStats} />
+        {/* 🗺️ 2026-07-01 (대표 — 수기로 진짜 매장 등록): 카카오 검색 자동완성 직접 입력 폼(+수정 모드) */}
+        <ManualDealForm
+          editDeal={editing}
+          onCancelEdit={() => setEditing(null)}
+          onSaved={() => { setEditing(null); loadStats(); setListNonce((n) => n + 1) }}
+        />
+
+        {/* 🖊️ 등록된 동네딜 목록 — 노출토글 / 수정 / 삭제 */}
+        <DealList
+          nonce={listNonce}
+          onEdit={(d) => { setEditing(d); if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+          onChanged={() => { loadStats(); setListNonce((n) => n + 1) }}
+        />
 
         <div className={card}>
           <div className="flex items-center justify-between gap-3 flex-wrap">

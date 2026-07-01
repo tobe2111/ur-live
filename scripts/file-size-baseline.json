@@ -3,7 +3,7 @@
   "src/components/AdminLayout.tsx": 608,
   "src/components/live/ReelCard.tsx": 1419,
   "src/components/streaming/BrowserBroadcaster.tsx": 1185,
-  "src/features/admin/api/admin-products.routes.ts": 1084,
+  "src/features/admin/api/admin-products.routes.ts": 1135,
   "src/features/admin/api/admin-review-generator.routes.ts": 658,
   "src/features/admin/api/admin-sellers.routes.ts": 972,
   "src/features/agency/api/agency.routes.ts": 1065,
