@@ -15,6 +15,9 @@ interface KakaoPlace {
   x: string // lng
   y: string // lat
   category_name?: string
+  // 🎯 2026-07-01: 카카오 장소 페이지 직접 링크 — place_url(place.map.kakao.com/{id}) 또는 id.
+  id?: string
+  place_url?: string
 }
 
 const CATS = [
@@ -24,7 +27,7 @@ const CATS = [
   { v: 'general', label: '일반' },
 ]
 
-const EMPTY = { name: '', category: 'meal_voucher', price: '', original_price: '', restaurant_name: '', restaurant_address: '', restaurant_phone: '', image_url: '', description: '', max_per_person: '' }
+const EMPTY = { name: '', category: 'meal_voucher', price: '', original_price: '', restaurant_name: '', restaurant_address: '', restaurant_phone: '', image_url: '', description: '', max_per_person: '', kakao_place_url: '' }
 
 export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { onSaved: () => void; editDeal?: DealRow | null; onCancelEdit?: () => void }) {
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
@@ -53,6 +56,7 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
       image_url: editDeal.image_url || '',
       description: '',
       max_per_person: editDeal.max_per_person ? String(editDeal.max_per_person) : '',
+      kakao_place_url: editDeal.kakao_place_url || '',
     })
     setCoord(editDeal.restaurant_lat && editDeal.restaurant_lng ? { lat: editDeal.restaurant_lat, lng: editDeal.restaurant_lng } : null)
     setPlaces([]); setPhotos([]); setQ('')
@@ -101,6 +105,8 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
       restaurant_address: p.road_address_name || p.address_name || '',
       restaurant_phone: p.phone || '',
       name: prev.name || p.place_name || '', // 상품명 비면 매장명으로 시드
+      // 🎯 2026-07-01: 카카오 장소 페이지 URL 캡처 → 상세 지도가 매장 페이지 직접 연결.
+      kakao_place_url: p.place_url || (p.id ? `https://place.map.kakao.com/${p.id}` : ''),
     }))
     setQ(p.place_name || '')
     setPlaces([])

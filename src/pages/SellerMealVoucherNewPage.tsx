@@ -84,6 +84,8 @@ export default function SellerMealVoucherNewPage() {
     stock: 100,
     // 🎯 2026-07-01 (대표 "결제 최대 한도 갯수 1인 당"): 1인당 최대 구매 수량. 0 = 무제한.
     max_per_person: 0,
+    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 장소 선택 시 place_url 캡처 → 상세 지도 직접 연결.
+    kakao_place_url: '',
     // 🛡️ 2026-05-21: 외부 예약 링크 (숙소/뷰티 등 사전 예약 필수 카테고리).
     //   네이버 예약 / 야놀자 / 카카오톡 채널 URL. 이용권은 비워둠 (예약 불요).
     external_booking_url: '',
@@ -150,6 +152,7 @@ export default function SellerMealVoucherNewPage() {
       restaurant_phone: place.phone || '',
       restaurant_lat: place.y || '',
       restaurant_lng: place.x || '',
+      kakao_place_url: place.id ? `https://place.map.kakao.com/${place.id}` : f.kakao_place_url,
     }))
     setPlaceSelected(true)
     toast.success(t('seller.mealVoucher.placeAutoFilled', { name: place.place_name }))
@@ -238,6 +241,8 @@ export default function SellerMealVoucherNewPage() {
         menu: ocrItems.length > 0 ? ocrItems.map(it => ({ name: it.menu, price: `${formatNumber(it.price)}원` })) : undefined,
         // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도"): 0 = 무제한. 서버가 product_supply_meta 에 저장 + 주문 검증.
         max_per_person: Number(form.max_per_person) > 0 ? Math.floor(Number(form.max_per_person)) : 0,
+        // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 캡처한 place_url (없으면 미전송).
+        kakao_place_url: form.kakao_place_url || undefined,
         // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 동적 tier 미사용. 공구가는 price 단일 적용.
         group_buy_tiers: null,
       }

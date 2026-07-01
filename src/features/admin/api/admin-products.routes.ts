@@ -1094,6 +1094,7 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
       image_url?: string; restaurant_name?: string; restaurant_address?: string;
       restaurant_phone?: string; lat?: number | string; lng?: number | string; description?: string;
       max_per_person?: number | string;
+      kakao_place_url?: string;
     };
     const name = String(b.name || '').trim();
     const cat = mapDealCategory(String(b.category || '').trim());
@@ -1122,6 +1123,13 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
       const mpp = Number(b.max_per_person);
       if (r.meta?.last_row_id && Number.isFinite(mpp) && mpp >= 1 && mpp <= 99) {
         await setSupplyMeta(c.env.DB, Number(r.meta.last_row_id), { max_per_person: String(Math.floor(mpp)) }).catch(() => {});
+      }
+    }
+    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 등록 시 캡처한 place_url meta 저장.
+    {
+      const kpu = String(b.kakao_place_url || '').trim();
+      if (r.meta?.last_row_id && /^https?:\/\/place\.map\.kakao\.com\/\d+/.test(kpu)) {
+        await setSupplyMeta(c.env.DB, Number(r.meta.last_row_id), { kakao_place_url: kpu }).catch(() => {});
       }
     }
     await writeAuditLog(c, { action: 'dongnedeal_create', targetType: 'product', targetId: r.meta?.last_row_id, after: { name, cat, hasCoord } }).catch(() => {});
@@ -1156,6 +1164,8 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
         for (const r of rows) {
           const raw = mm?.get(Number(r.id))?.max_per_person;
           r.max_per_person = raw != null && Number.isFinite(Number(raw)) && Number(raw) > 0 ? Math.floor(Number(raw)) : 0;
+          const kpu = mm?.get(Number(r.id))?.kakao_place_url;
+          r.kakao_place_url = typeof kpu === 'string' && /^https?:\/\/place\.map\.kakao\.com\/\d+/.test(kpu) ? kpu : null;
         }
       }
     } catch { /* fail-soft */ }
@@ -1194,6 +1204,14 @@ adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
       const mpp = Number(b.max_per_person);
       if (Number.isFinite(mpp) && mpp >= 0 && mpp <= 99) {
         await setSupplyMeta(c.env.DB, Number(id), { max_per_person: String(Math.floor(mpp)) }).catch(() => {});
+        mppChanged = true;
+      }
+    }
+    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): place_url meta 수정.
+    if (b.kakao_place_url !== undefined) {
+      const kpu = String(b.kakao_place_url || '').trim();
+      if (/^https?:\/\/place\.map\.kakao\.com\/\d+/.test(kpu)) {
+        await setSupplyMeta(c.env.DB, Number(id), { kakao_place_url: kpu }).catch(() => {});
         mppChanged = true;
       }
     }

@@ -442,6 +442,9 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     //   0/미설정=무제한. 클라 스텝퍼 cap + 서버 주문검증(group-buy.routes)이 함께 사용.
     const mppRaw = metaMap?.get(Number(id))?.max_per_person
     const max_per_person = mppRaw != null && Number.isFinite(Number(mppRaw)) && Number(mppRaw) > 0 ? Math.floor(Number(mppRaw)) : null
+    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 등록 시 캡처한 place_url (있으면 상세 지도가 직접 연결).
+    const kpuRaw = metaMap?.get(Number(id))?.kakao_place_url
+    const kakao_place_url = typeof kpuRaw === 'string' && /^https?:\/\/place\.map\.kakao\.com\/\d+/.test(kpuRaw) ? kpuRaw : null
 
     return c.json({
       success: true,
@@ -454,6 +457,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         ...(seller_handle ? { seller_handle } : {}),  // 🔗 셀러 링크샵 handle (있을 때만)
         ...(menu ? { menu } : {}),                // 🍽️ #5: 대표 메뉴 (있을 때만)
         ...(max_per_person ? { max_per_person } : {}),  // 🎯 1인당 구매 한도 (있을 때만)
+        ...(kakao_place_url ? { kakao_place_url } : {}),  // 🎯 카카오 장소 페이지 URL (있을 때만)
       },
     })
     } catch (err) {

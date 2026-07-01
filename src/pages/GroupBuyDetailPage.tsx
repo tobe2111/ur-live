@@ -78,6 +78,8 @@ interface GroupBuyDetail {
   current_discount_pct: number
   /** 🎯 1인당 최대 구매 수량 (셀러 설정, 없으면 무제한). */
   max_per_person?: number
+  /** 🎯 카카오 장소 페이지 URL (등록 시 캡처, 있으면 매장 페이지 직접 연결). */
+  kakao_place_url?: string
   seller_id?: number
   seller_name?: string
   seller_username?: string
@@ -754,7 +756,7 @@ export default function GroupBuyDetailPage() {
               <div style={{ borderRadius: '14px 14px 0 0', overflow: 'hidden', border: '1px solid var(--gbd-line2)', borderBottom: 'none' }}>
                 <DeferUntilVisible minHeight={172}>
                   <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>
-                    <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} />
+                    <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} placeUrl={detail.kakao_place_url} />
                   </Suspense>
                 </DeferUntilVisible>
               </div>
