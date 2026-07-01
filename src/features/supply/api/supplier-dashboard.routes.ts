@@ -302,7 +302,7 @@ supplierDashboardRoutes.get('/products', async (c) => {
     const [rows, total] = await Promise.all([
       DB.prepare(
         `SELECT id, name, description, price AS retail_price, COALESCE(supply_price, 0) AS supply_price,
-                stock, image_url, category, COALESCE(supply_visibility,'ALL') AS supply_visibility, barcode, is_brand_product, brand_name, brand_logo_url,
+                stock, image_url, detail_images, category, COALESCE(supply_visibility,'ALL') AS supply_visibility, barcode, is_brand_product, brand_name, brand_logo_url,
                 COALESCE(min_order_qty,1) AS min_order_qty,
                 COALESCE(pack_size,1) AS pack_size, COALESCE(order_multiple,1) AS order_multiple,
                 lowest_price_url, COALESCE(lowest_price_checked,0) AS lowest_price_checked,
@@ -412,7 +412,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
     const detailListRaw = Array.isArray(body.detail_images)
       ? body.detail_images.map(u => String(u))
       : String(body.detail_images || '').split(/[,\n|]/);
-    const detailList = detailListRaw.map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 10);
+    const detailList = detailListRaw.map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 30); // 최대 30장 (MultiImageUpload MAX_FILES 동기)
     const detailImages = detailList.length ? JSON.stringify(detailList) : null;
     // 🛡️ 2026-06-26 [보안] image_url scheme 검증 — 형제 필드(brand_logo/lowest_price/detail)는
     //   전부 http(s)·상대경로 가드인데 primary image_url 만 raw 였음. javascript:/data: 차단 +
@@ -566,7 +566,7 @@ supplierDashboardRoutes.post('/products/bulk', async (c) => {
       // 🖼️ 상세페이지 이미지 — 쉼표/줄바꿈 구분 여러 장(최대 10), http(s) 만 → detail_images JSON 배열.
       const detailRaw = String(r['상세 이미지URL(쉼표로 여러 장)'] || r['상세이미지URL'] || r.detail_images || '').trim();
       const detailList = detailRaw
-        ? detailRaw.split(/[,\n|]/).map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 10)
+        ? detailRaw.split(/[,\n|]/).map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 30) // 최대 30장 (MultiImageUpload MAX_FILES 동기)
         : [];
       const detailImages = detailList.length ? JSON.stringify(detailList) : null;
       const slug = `sup-${sid}-${name.toLowerCase().replace(/[^a-z0-9가-힣]/g, '-').substring(0, 30)}-${Date.now()}-${i}`;
@@ -696,6 +696,7 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       stock?: number; image_url?: string; category?: string;
       supply_visibility?: string; barcode?: string; is_brand_product?: boolean; brand_name?: string; brand_logo_url?: string; lowest_price_url?: string;
       min_order_qty?: number; pack_size?: number; order_multiple?: number; shipping_fee?: number; product_code?: string;
+      detail_images?: string[] | string; // 🖼️ 2026-06-30: 상세이미지 수정 지원(배열/쉼표 문자열).
     };
     const body = await c.req.json<EditBody>().catch(() => ({} as EditBody));
     // 🚚 2026-06-16: 상품별 배송비 수정 — product_supply_meta(wholesale_shipping_fee). 컬럼 아님(예산제) → sets 와 별개.
@@ -737,6 +738,13 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       sets.push('brand_logo_url = ?'); params.push(safe);
     }
     // 🏭 BIZ-8 (2026-06-08) MOQ/박스단위 수정 — 정수 ≥1, 1~100000 clamp. (가격 산식 무관 — 수량 제약만.)
+    // 🖼️ 2026-06-30: 상세페이지 이미지 수정 — 제공(undefined 아님) 시에만 갱신. 배열/쉼표 문자열 → http(s) 필터 → 최대 30장 JSON.
+    //   빈 값이면 null(전체 해제). CREATE 와 동일 정규화. (기존엔 PATCH 미처리라 수정 불가였던 것 해소.)
+    if (body.detail_images !== undefined) {
+      const rawList = Array.isArray(body.detail_images) ? body.detail_images.map(u => String(u)) : String(body.detail_images || '').split(/[,\n|]/);
+      const list = rawList.map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 30);
+      sets.push('detail_images = ?'); params.push(list.length ? JSON.stringify(list) : null);
+    }
     if (body.min_order_qty != null && Number.isFinite(Number(body.min_order_qty))) { sets.push('min_order_qty = ?'); params.push(Math.min(100000, Math.max(1, Math.floor(Number(body.min_order_qty))))); }
     if (body.pack_size != null && Number.isFinite(Number(body.pack_size))) { sets.push('pack_size = ?'); params.push(Math.min(100000, Math.max(1, Math.floor(Number(body.pack_size))))); }
     if (body.order_multiple != null && Number.isFinite(Number(body.order_multiple))) { sets.push('order_multiple = ?'); params.push(Math.min(100000, Math.max(1, Math.floor(Number(body.order_multiple))))); }

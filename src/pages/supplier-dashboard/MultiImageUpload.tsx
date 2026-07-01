@@ -14,7 +14,9 @@ import { ImagePlus, X, ArrowUp, ArrowDown, Loader2 } from 'lucide-react'
 import { getSupplierToken } from '@/lib/supplier-api'
 import { toast } from '@/hooks/useToast'
 
-const MAX_FILES = 10
+// 🖼️ 2026-06-30: 상세이미지 최대 장수 10→30 (긴 상세페이지 슬라이스 대응). 서버 3곳과 동기:
+//   supplier-dashboard POST/bulk 저장 slice, wholesale catalog/:id 표시 slice.
+const MAX_FILES = 30
 const MAX_SIZE = 10 * 1024 * 1024
 
 function splitUrls(v: string): string[] {

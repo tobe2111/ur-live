@@ -8,6 +8,15 @@ import SupplyChannelGuide from './SupplyChannelGuide'
 import NaverPriceCheck from './NaverPriceCheck'
 import DemandSignal from './DemandSignal'
 import { uploadBulkProducts, BULK_ACCEPT } from './bulk-upload'
+
+// 🖼️ 2026-06-30: 저장된 detail_images(JSON 문자열 | 배열 | 쉼표) → 폼용 쉼표 문자열(MultiImageUpload value 포맷).
+function detailImagesToCsv(d: string | string[] | null | undefined): string {
+  if (!d) return ''
+  if (Array.isArray(d)) return d.filter(Boolean).join(',')
+  const s = String(d).trim()
+  if (s.startsWith('[')) { try { const a = JSON.parse(s); return Array.isArray(a) ? a.filter(Boolean).join(',') : '' } catch { return '' } }
+  return s
+}
 import { downloadSupplierCsv } from './download-csv'
 import MultiImageUpload from './MultiImageUpload'
 import type { CatalogItem } from './types'
@@ -21,7 +30,7 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
     supply_price: String(editItem.supply_price ?? ''), suggested_retail_price: String(editItem.retail_price ?? ''),
     stock: String(editItem.stock ?? ''), min_order_qty: editItem.min_order_qty ? String(editItem.min_order_qty) : '',
     pack_size: editItem.pack_size ? String(editItem.pack_size) : '', order_multiple: editItem.order_multiple ? String(editItem.order_multiple) : '',
-    shipping_fee: '', category: editItem.category || 'food', image_url: editItem.image_url || '', detail_images: '',
+    shipping_fee: '', category: editItem.category || 'food', image_url: editItem.image_url || '', detail_images: detailImagesToCsv(editItem.detail_images),
     supply_visibility: editItem.supply_visibility || 'ALL', barcode: editItem.barcode || '',
     product_code: wholesaleCodeSuffix((editItem as { product_code?: string }).product_code, editItem.category),
     is_brand_product: !!editItem.is_brand_product, brand_name: editItem.brand_name || '', brand_logo_url: editItem.brand_logo_url || '',
@@ -54,9 +63,11 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
     if (!form.suggested_retail_price || !Number.isFinite(retail) || retail <= supply) { setError(t('supplier.errRetail', { defaultValue: '권장 소비자가(판매가)는 공급가보다 높아야 합니다 — 유통 마진이 여기서 나옵니다' })); return }
     setSaving(true)
     try {
-      // 🔧 공통 payload. 수정 모드는 detail_images 제외(PATCH 미처리·GET 미반환 → 유실/혼동 방지).
+      // 🔧 공통 payload. 🖼️ 2026-06-30: detail_images 를 등록·수정 공통으로 전송(PATCH 도 처리 → 수정 가능).
+      //   빈 문자열이면 서버가 전체 해제(null). 미변경이면 prefill 된 값 그대로 재전송(멱등).
       const payload: Record<string, unknown> = {
         name: form.name.trim(),
+        detail_images: form.detail_images.trim(),
         description: form.description.trim() || undefined,
         supply_price: supply,
         suggested_retail_price: retail,
@@ -80,7 +91,6 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
         await supplierApi.patch(`/api/supplier/products/${editItem.id}`, payload)
         toast.success(t('supplier.productUpdated', { defaultValue: '수정되었습니다. 다시 승인 대기 상태가 됩니다.' }))
       } else {
-        payload.detail_images = form.detail_images.trim() || undefined // 🖼️ 쉼표 구분 여러 장 — 서버가 JSON 배열로 정규화
         await supplierApi.post('/api/supplier/products', payload)
         toast.success(t('supplier.productCreated', { defaultValue: '상품이 등록되었습니다. 승인 후 노출됩니다.' }))
       }
@@ -235,13 +245,11 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
           <details className="border border-gray-200 rounded-xl">
             <summary className="cursor-pointer select-none text-sm font-semibold text-gray-700 px-3 py-2.5">⚙️ {t('supplier.moreFields', { defaultValue: '더보기 — 상세이미지 · 최저가 링크 · 바코드 · 공급범위 · 브랜드' })}</summary>
             <div className="px-3 pb-3 space-y-3">
-          {/* 🖼️ 2026-06-13 (사용자 요청): 상세페이지 이미지 — 세로로 긴 사진·GIF 다수 직접 업로드(무압축 원본). (수정 모드는 PATCH 미처리라 숨김) */}
-          {!isEdit && (
+          {/* 🖼️ 2026-06-13 상세페이지 이미지 — 세로로 긴 사진·GIF 다수 직접 업로드(무압축 원본, 최대 30장). 2026-06-30: 수정 모드도 노출(PATCH 처리·GET prefill). */}
           <div>
             <label className={labelCls}>{t('supplier.fieldDetailImages2', { defaultValue: '상세페이지 이미지 (여러 장·GIF 가능)' })}</label>
             <MultiImageUpload value={form.detail_images} onChange={(v) => setForm(f => ({ ...f, detail_images: v }))} t={t} />
           </div>
-          )}
           <div>
             <label className={labelCls}>{t('supplier.fieldLowestUrl', { defaultValue: '온라인 최저가 참고 링크' })}</label>
             <input disabled={saving} value={form.lowest_price_url} onChange={e => setForm(f => ({ ...f, lowest_price_url: e.target.value }))} className={inputCls} placeholder="https://search.shopping.naver.com/..." />
