@@ -322,9 +322,9 @@ sellerSettlementsRoutes.get('/payouts', async (c) => {
     const sellerId = payload.seller_id;
     if (!sellerId) return c.json({ success: false, error: '셀러 권한이 필요합니다' }, 403);
 
-    // 실시간 미지급 외상 (전기간 credit − 미완료 payout). ledger.ts SSOT.
-    const { getPayablePending } = await import('../../../worker/utils/ledger');
-    const payable = await getPayablePending(c.env.DB, `seller:${sellerId}`).catch(() => 0);
+    // 순 receivable(지급 이력 제외) — (credit − fee_amount) − debit. ledger.ts SSOT.
+    const { getLedgerReceivable } = await import('../../../worker/utils/ledger');
+    const receivable = await getLedgerReceivable(c.env.DB, `seller:${sellerId}`).catch(() => 0);
 
     // 실제 지급 기록 (payouts) — 이 셀러 건만.
     const rows = await c.env.DB.prepare(
@@ -343,15 +343,17 @@ sellerSettlementsRoutes.get('/payouts', async (c) => {
       .reduce((a, r) => a + Number(r.amount || 0), 0);
     const scheduledTotal = sum(['pending', 'approved']);
     const sentTotal = sum(['sent']);
+    // 미지급 = 순 receivable − (지급예정 + 지급완료). 세 버킷이 겹치지 않게 분할.
+    const payable = Math.max(0, Number(receivable) - scheduledTotal - sentTotal);
 
     return c.json({
       success: true,
       data: {
-        payable: Math.max(0, Number(payable) || 0),   // 아직 payout 미생성된 실시간 외상
-        scheduled_total: scheduledTotal,              // 집계됐고 송금 대기중
-        sent_total: sentTotal,                        // 송금 완료
+        payable,                          // 아직 payout 에 안 잡힌 순수 외상
+        scheduled_total: scheduledTotal,  // 집계됐고 송금 대기중
+        sent_total: sentTotal,            // 송금 완료
         payouts: list,
-        auto: true,                                   // 자동 정산 파이프라인 사용
+        auto: true,                       // 자동 정산 파이프라인 사용
       },
     });
   } catch (err) {

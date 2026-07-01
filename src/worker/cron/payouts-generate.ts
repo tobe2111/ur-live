@@ -35,12 +35,24 @@ export async function handlePayoutsGenerate(env: Env): Promise<void> {
     //   넘는 기성 payee 는 pending 이 음수→skip(만성 미지급) + 누락된 주/MIN 미만 주의 credit 은
     //   영영 재포착 못 함(각 run 이 자기 7일 창만 봄). 이제 getPayablePending(ledger.ts) 의 정식
     //   공식 = (전기간 credit − 전기간 미완료 payout) 으로 실외상 잔액을 반영.
+    // 💸 2026-07-01 (정산 정합 — 대표 승인): 이전엔 credit-only 합산이라 (A) 공구 seller 의 gross credit
+    //   에서 수수료 미차감 + (B) seller:N 의 기존 debit(환불 역전·인플루언서/추천 커미션)을 무시 → 과다지급.
+    //   정식 net 잔액 = (credit − fee_amount) − debit. getLedgerReceivable(ledger.ts) 와 동일 공식.
+    //   (fee_amount 는 공구 seller credit 에만 존재 → 다른 payee/이용권 무영향. debit 는 payee receivable 차감.)
     const credits = await DB.prepare(`
-      SELECT credit_account, SUM(amount) as total
-        FROM ledger_entries
-       WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')
-       GROUP BY credit_account
-    `).all<{ credit_account: string; total: number }>().catch(() => ({ results: [] as Array<{ credit_account: string; total: number }> }))
+      SELECT account, SUM(net) as total FROM (
+        SELECT credit_account AS account, amount - COALESCE(fee_amount, 0) AS net
+          FROM ledger_entries
+         WHERE credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%'
+        UNION ALL
+        SELECT debit_account AS account, -amount AS net
+          FROM ledger_entries
+         WHERE debit_account LIKE 'merchant:%' OR debit_account LIKE 'seller:%' OR debit_account LIKE 'agency:%' OR debit_account LIKE 'user:%'
+      )
+      GROUP BY account
+    `).all<{ account: string; total: number }>()
+      .then(r => ({ results: (r.results || []).map(x => ({ credit_account: x.account, total: x.total })) }))
+      .catch(() => ({ results: [] as Array<{ credit_account: string; total: number }> }))
 
     // 이미 payout 처리됐거나(완료) 처리 대기중인(pending) amount.
     // 🛡️ credit 이 전기간 누적이 됐으므로 차감도 전기간 — 'pending' 도 포함해야 직전 run 이 만든
