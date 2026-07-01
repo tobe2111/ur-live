@@ -380,12 +380,10 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
 
         const refundAmount = Number(voucher.applied_price) > 0 ? Number(voucher.applied_price) : Number(voucher.product_price || 0)
 
-        // 재고/참여수 원복 — 이 교환권은 그룹에서 이탈 (clamp 로 음수 방어).
-        await DB.prepare(
-          "UPDATE products SET stock = stock + 1, group_buy_current = MAX(0, group_buy_current - 1), updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-        ).bind(voucher.product_id).run().catch(() => null)
-
-        // 딜 결제 — 즉시 지갑 환불
+        // 💳 결제 역전 — CAS 로 voucher 를 선점(refunded)한 뒤, 실제 환불이 성공해야만
+        //   재고/정산/알림 side-effect 를 진행한다. 카드 Toss 취소가 실패하면 voucher 를
+        //   unused 로 되돌려(선점 해제) 유저가 재시도 가능 → "이용권도 잃고 환불도 못 받는" 갭 차단.
+        // 딜 결제 — 즉시 지갑 환불 (동기)
         if (voucher.payment_method === 'deal_points' && refundAmount > 0) {
           await DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?')
             .bind(refundAmount, voucher.user_id).run()
@@ -393,23 +391,33 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
             "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
           ).bind(voucher.user_id, refundAmount, refundAmount, voucher.user_id, `구매 취소 환불: ${voucher.product_name}`).run()
         }
-        // 토스 카드 결제 — cancelTossPayment (waitUntil 비동기, 영업일 3~5일)
+        // 토스 카드 결제 — 동기 취소. 실패 시 선점 원복 + 에러(재고/정산/알림 미실행).
+        //   (이전: waitUntil fire-and-forget → 취소 실패해도 voucher='refunded' 확정 + 미환불.)
         else if ((voucher.payment_method === 'toss' || voucher.payment_method === 'CARD') && voucher.order_id) {
-          c.executionCtx?.waitUntil((async () => {
-            try {
-              if (!voucher.payment_key) return
+          let cancelOk = false
+          try {
+            if (voucher.payment_key) {
               const { tossCancelPayment } = await import('../../../worker/utils/toss-refund')
               const result = await tossCancelPayment(c.env as unknown as { TOSS_SECRET_KEY?: string; DB?: D1Database }, voucher.payment_key, {
                 reason: `구매 취소(청약철회): ${voucher.product_name}`,
                 amount: refundAmount,
                 idempotencyKey: `voucher-${voucher.id}-refund`,
               })
-              if (result.ok) {
-                await DB.prepare("UPDATE orders SET status = 'REFUNDED', payment_status = 'refunded' WHERE id = ?").bind(voucher.order_id).run().catch(() => null)
-              }
-            } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher self-cancel toss]', e) }
-          })())
+              cancelOk = !!result.ok
+            }
+          } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher self-cancel toss]', e) }
+          if (!cancelOk) {
+            // 선점 해제 — 이 요청이 refunded 로 바꾼 것만 되돌림(멱등). 유저 이용권 보존.
+            await DB.prepare("UPDATE vouchers SET status = 'unused' WHERE id = ? AND status = 'refunded'").bind(voucher.id).run().catch(() => null)
+            return c.json({ success: false, error: '카드 취소 처리에 실패했습니다. 잠시 후 다시 시도해주세요', code: 'REFUND_FAILED' }, 502)
+          }
+          await DB.prepare("UPDATE orders SET status = 'REFUNDED', payment_status = 'refunded' WHERE id = ?").bind(voucher.order_id).run().catch(() => null)
         }
+
+        // 재고/참여수 원복 — 환불 성공 후에만 (카드 실패는 위에서 early-return). clamp 로 음수 방어.
+        await DB.prepare(
+          "UPDATE products SET stock = stock + 1, group_buy_current = MAX(0, group_buy_current - 1), updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        ).bind(voucher.product_id).run().catch(() => null)
 
         // ledger reverse entry (멱등)
         c.executionCtx?.waitUntil((async () => {

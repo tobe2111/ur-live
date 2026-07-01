@@ -10,6 +10,13 @@ pagination 크래시 수정 후속 — 세 표면을 **가드 미보유 영역**
   - 🟡 **미수금 상환 비-CAS**(`distributors.ts` credit-repayment): `outstanding_balance` read-modify-write(절대값 write)라 동시 상환 2건이 하나를 덮어써 미수금 과대계상(플랫폼 채권 부풀림) 가능. → 원자 CAS(`WHERE COALESCE(outstanding_balance,0)=prevOut`) + 실패 시 409 재시도, 원장은 CAS 성공 후에만.
 - 검증: tsc 0 · 단위 2443 pass · build 0 · audit-gate 39 GREEN(머니패턴 포함).
 
+## ✅ 2026-07-01 — 카드결제 이용권 셀프취소 Toss 실패 갭 근본수정 (대표 "진행해줘")
+이용권 전수조사에서 유일하게 남았던 실질 돈-정합성 갭 수정 (`group-buy-voucher.routes.ts` `/voucher/:code/cancel`).
+- **문제**: 카드결제 교환권 셀프취소가 ① voucher 를 CAS 로 `refunded` 선점 → ② 재고원복/ledger/clawback/알림톡을 **무조건** 실행 → ③ Toss 취소는 `waitUntil` fire-and-forget. **Toss 취소가 일시 실패하면** voucher='refunded' 확정 + 미환불 + 재시도 없음 → 드물게 **유저가 이용권도 잃고 환불도 못 받는** 상태. (딜 결제는 동기라 안전, 카드만.)
+- **수정(머니룰 claim-release)**: 카드 취소를 **동기(await)** 로 전환 — `result.ok` 면 주문 REFUNDED + 재고원복/side-effect 진행, **실패면 voucher 를 `unused` 로 되돌려(선점 해제, `WHERE status='refunded'` 멱등) `502 REFUND_FAILED` 반환**(이용권 보존, 재시도 가능). 재고원복을 결제역전 **성공 후로** 이동(카드 실패 시 early-return → 재고 이중원복 0). 딜 경로·CAS 선점·7일 청약철회 가드·ledger/clawback/알림톡 로직 전부 불변(카드 분기 순서/동기화만).
+- **잠금 준수**: `group-buy-voucher.routes.ts` 비잠금. 잠긴 `tossCancelPayment`(toss-refund)은 **호출만**(수정 X) — Toss confirm/금액검증/gateway 전부 byte-불변.
+- 검증: tsc 0 · money-pattern 0 · sql-bind/column 0 · voucher 단위 36 pass · build(client+ssr+prerender+worker+prepare) 0. ⚠️ staging: 카드결제 교환권 셀프취소 정상취소 1회 + (가능하면 Toss 실패 유도 시 이용권 unused 유지 + 재시도).
+
 ## ✅ 2026-07-01 — 도매몰 라이브 전수조사 + 카탈로그 500 크래시 근본수정 (대표 "라이브로 접근해서 전수조사")
 라이브(`live.ur-team.com/wholesale`) 실접근 전수조사. **결과: 인증/RBAC 게이트 전부 건강(500 없음, 401/404 정상)·엣지캐시 누수 없음·SQL 인젝션 방어 정상.** 발견/수정:
 - **🐛 라이브 500 크래시(수정)**: `GET /api/wholesale/catalog?page=abc&limit=xyz` → HTTP 500. 원인: `page = Math.max(1, parseInt(query||'1',10))` 에 `limit` 이 가진 `|| N` 폴백이 **없어** `parseInt('abc')=NaN → Math.max(1,NaN)=NaN → offset=(NaN-1)*limit=NaN → D1 .bind(NaN) 크래시`. `limit=-1/page=-5/limit=99999999` 는 이미 정상(200) — **비숫자 문자열만** 크래시(봇/스크래퍼/오염된 링크가 도매몰 메인 카탈로그를 500). **수정(도매 서비스 전 인스턴스에 기존 `limit||24` 패턴 미러링)**: `wholesale.routes.ts:787`(page), `supplier-dashboard.routes.ts`(page/limit ×3 핸들러), `distributor-admin/orders.ts`(page/limit), `supply.routes.ts`(page/limit). 전부 `parseInt(...) || N` + `Math.max(...,1)` 클램프. 로직 검증(page=abc→page1/offset0)·tsc 0(사전 config 경고 제외)·build 0·sql bind/column 가드 0.
