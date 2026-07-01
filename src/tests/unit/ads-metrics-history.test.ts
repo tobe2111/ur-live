@@ -90,6 +90,21 @@ describe('UR Ads 메트릭 히스토리 — 실제 SQLite 통합', () => {
     expect(a[0].cost).toBe(10)
   })
 
+  it('멀티테넌트: 고객사(tenant)별 격리 — UPSERT 충돌 없음 + tenant 필터', async () => {
+    await ensureMetricsHistorySchema(DB)
+    // 같은 계정·같은 날짜지만 고객사(tenant) 다름 → 각각 1행(충돌 X)
+    const put = (tenant: string, cost: number) => DB.prepare('INSERT INTO ad_daily_metrics (account_id, tenant, snap_date, cost, conv_amt, clicks, conv, imp, roas, avg_rnk) VALUES (?,?,?,?,?,?,?,?,?,?)')
+      .bind(7, tenant, '2026-06-01', cost, cost * 2, 1, 1, 1, 200, 2).run()
+    await put('C1', 100)
+    await put('C2', 500)
+    const c1 = await getMetricsHistory(DB, 7, 30, 'C1')
+    const c2 = await getMetricsHistory(DB, 7, 30, 'C2')
+    expect(c1).toHaveLength(1); expect(c1[0].cost).toBe(100)
+    expect(c2).toHaveLength(1); expect(c2[0].cost).toBe(500)
+    // tenant 미지정 → 전체(두 고객사 모두)
+    expect(await getMetricsHistory(DB, 7, 30)).toHaveLength(2)
+  })
+
   it('라우트 GET /metrics/history — 인증 + series + wow 반환', async () => {
     const env = { DB, JWT_SECRET: JWT } as unknown as Parameters<typeof marketingRoutes.request>[2]
     await seed(DB, 55, Array.from({ length: 14 }, (_, i) => ({

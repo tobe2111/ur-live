@@ -49,7 +49,7 @@
 | **소싱 인구통계 세분화** 🆕 | `keyword-tools.ts`(`categoryDemographics` — 기기/성별/연령) | `/sourcing/demographics?cid=` |
 | **ROAS·키워드 효율 분석** 🆕 | `searchad-client.ts`(convAmt·`keywordEfficiency` 낭비키워드) | `/searchad/keyword-efficiency` |
 | **쇼핑 순위 추적** 🆕(오가닉, 광고와 별개) | `rank-tracker.ts`(쇼핑검색 상위300·일일 cron) | `/rank/targets`·`/rank/target`·`/rank/refresh` |
-| **성과 추세(일별 메트릭 히스토리)** 🆕 | `metrics-history.ts`(일일 cron→`ad_daily_metrics`·`computeWoW`·`trendContextFrom`) + `TrendPanel.tsx`(인라인 SVG 차트) | GET `/metrics/history` · POST `/metrics/snapshot` |
+| **성과 추세(일별 메트릭 히스토리·멀티테넌트)** 🆕 | `metrics-history.ts`(일일 cron→`ad_daily_metrics` 고객사별 1행·`computeWoW`·`trendContextFrom`) + `TrendPanel.tsx`(인라인 SVG 차트) | GET `/metrics/history` · POST `/metrics/snapshot` |
 | **경쟁사 분석**(쇼핑검색 상위 몰) 🆕 | `competitor-tracker.ts`(`aggregateCompetitors` 순수 — 나보다 위/아래·최저가·노출수) + RankPanel 확장 | GET `/rank/competitors?keyword=&mall=` |
 | **AI 진단에 전주 대비 추세 반영** 🆕 | ai-marketer/weekly-report 컨텍스트에 `trend`(WoW) 주입 | (기존 `/ai-marketer`·`/reports` 강화) |
 | **유어애즈 가입자 운영 어드민** 🆕 | `admin-ads.routes.ts` + `AdminAdsAccountsPage.tsx`(잠금해제·정지) | `/api/admin/ads/stats`·`accounts` |

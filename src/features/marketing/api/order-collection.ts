@@ -54,8 +54,8 @@ function pick(o: unknown, ...keys: string[]): unknown {
   return cur
 }
 
-/** 변경 주문 ID 추출 — GET .../last-changed-statuses 응답. */
-function extractProductOrderIds(data: unknown): string[] {
+/** 변경 주문 ID 추출 — GET .../last-changed-statuses 응답. (export: 방어 파싱 단위테스트용) */
+export function extractProductOrderIds(data: unknown): string[] {
   let list = asArray(pick(data, 'data', 'lastChangeStatuses'))
   if (!list.length) list = asArray(pick(data, 'data'))
   const ids: string[] = []
@@ -66,8 +66,8 @@ function extractProductOrderIds(data: unknown): string[] {
   return [...new Set(ids)]
 }
 
-/** 주문 상세 → CollectedOrder[] — POST .../query 응답. */
-function mapOrders(data: unknown): CollectedOrder[] {
+/** 주문 상세 → CollectedOrder[] — POST .../query 응답. (export: 방어 파싱 단위테스트용) */
+export function mapOrders(data: unknown): CollectedOrder[] {
   const out: CollectedOrder[] = []
   for (const it of asArray(pick(data, 'data'))) {
     const po = pick(it, 'productOrder') ?? it

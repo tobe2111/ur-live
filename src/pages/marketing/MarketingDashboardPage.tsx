@@ -15,6 +15,7 @@ import AlertsPanel from './AlertsPanel'
 import EfficiencyPanel from './EfficiencyPanel'
 import RankPanel from './RankPanel'
 import TrendPanel from './TrendPanel'
+import LazyMount from './LazyMount'
 import PanelError from './PanelError'
 import { downloadCsv } from '@/utils/csv-download'
 
@@ -402,26 +403,27 @@ export default function MarketingDashboardPage() {
       {/* 네이버 검색광고 계정 연동 + 내 광고 구조(자동입찰/실적 토대) */}
       {hasToken && <section id="sec-searchad" style={{ scrollMarginTop: 76 }}><SearchAdPanel /></section>}
 
+      {/* 아래 패널은 뷰포트 근접 시 지연 마운트(진입 시 동시 다발 외부호출 방지) — 앵커 id 는 항상 존재 */}
       {/* 키워드 효율 분석(ROAS·CPA·낭비 키워드) */}
-      {hasToken && <section id="sec-efficiency" style={{ scrollMarginTop: 76 }}><EfficiencyPanel /></section>}
+      {hasToken && <LazyMount id="sec-efficiency"><EfficiencyPanel /></LazyMount>}
 
       {/* 자동입찰 규칙(목표순위→입찰가 자동조정) — 규칙 있을 때만 표시 */}
-      {hasToken && <section id="sec-autobid" style={{ scrollMarginTop: 76 }}><AutobidPanel /></section>}
+      {hasToken && <LazyMount id="sec-autobid"><AutobidPanel /></LazyMount>}
 
       {/* AI 주간 리포트(매주 월요일 자동 생성 — 읽기 전용) */}
-      {hasToken && <section id="sec-report" style={{ scrollMarginTop: 76 }}><WeeklyReportPanel /></section>}
+      {hasToken && <LazyMount id="sec-report"><WeeklyReportPanel /></LazyMount>}
 
       {/* 쇼핑 순위 추적(오가닉/쇼핑 내 내 순위) */}
-      {hasToken && <section id="sec-rank" style={{ scrollMarginTop: 76 }}><RankPanel /></section>}
+      {hasToken && <LazyMount id="sec-rank"><RankPanel /></LazyMount>}
 
       {/* 가격 모니터링(네이버쇼핑 최저가 추적) + 소싱 */}
-      {hasToken && <section id="sec-price" style={{ scrollMarginTop: 76 }}><PricePanel /><SourcingPanel /></section>}
+      {hasToken && <LazyMount id="sec-price"><PricePanel /><SourcingPanel /></LazyMount>}
 
       {/* 임계값 알림(예산 소진·최저가 역전 → 이메일) */}
-      {hasToken && <section id="sec-alerts" style={{ scrollMarginTop: 76 }}><AlertsPanel /></section>}
+      {hasToken && <LazyMount id="sec-alerts"><AlertsPanel /></LazyMount>}
 
       {/* 부정클릭 방지(Phase 1 — 탐지/리포트) */}
-      {hasToken && <section id="sec-fraud" style={{ scrollMarginTop: 76 }}><ClickGuardPanel /></section>}
+      {hasToken && <LazyMount id="sec-fraud"><ClickGuardPanel /></LazyMount>}
 
       {/* AI 마케터 (Claude 진단/추천 — 읽기 전용) */}
       {hasToken && (

@@ -11,7 +11,7 @@
 import { swallow } from '@/worker/utils/swallow'
 import type { Env } from '@/worker/types/env'
 import { accountStats, type AccountStats } from './searchad-client'
-import { loadSearchAdConnection } from './searchad-connection'
+import { loadSearchAdConnection, getActiveTenantId } from './searchad-connection'
 import { aiMarketerAdvice, type AiMarketerContext } from './ai-marketer'
 import { getMetricsHistory, trendContextFrom } from './metrics-history'
 
@@ -61,8 +61,9 @@ export async function generateWeeklyReport(env: Env, sellerId: number, opts?: { 
   const st = await accountStats(creds, 7).catch(() => ({ ok: false as const }))
   if (!st.ok || !('data' in st) || !st.data) return { ok: false, error: '실적 조회 실패' }
   const ctx = statsToContext(st.data)
-  // 전주 대비 추세(적재된 시계열 있을 때만) — AI 진단 + summary 에 반영.
-  const trend = trendContextFrom(await getMetricsHistory(env.DB, sellerId, 14).catch(() => []))
+  // 전주 대비 추세(적재된 시계열 있을 때만) — AI 진단 + summary 에 반영(활성 고객사 기준).
+  const trendTenant = await getActiveTenantId(env.DB, sellerId).catch(() => null)
+  const trend = trendContextFrom(await getMetricsHistory(env.DB, sellerId, 14, trendTenant).catch(() => []))
   if (trend) ctx.trend = trend
   const ai = await aiMarketerAdvice(env.ANTHROPIC_API_KEY, ctx).catch(() => ({ ok: false as const, error: 'AI 호출 실패' }))
   const advice = ai.ok && 'advice' in ai ? ai.advice || '' : ''
