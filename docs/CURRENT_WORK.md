@@ -1,5 +1,26 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 알림 라이브 전수조사(프로덕션 실측) + 웹푸시 활성화 견고화 (대표 "전수조사 라이브로 접근해서")
+코드가 아닌 **라이브(live.ur-team.com) 실측**으로 알림 파이프라인 전수조사. 인증 필요 채널(인앱/대시보드/에이전시/공급자)은 401 정상 게이트 확인, `/api/notifications/unread-count`는 비인증 200 `{count:0}`(데이터 누출 0, 무해). **핵심 발견(설정 누락 — 코드 건강)**:
+- 🔴 **웹푸시가 프로덕션에서 완전 비작동(클라·서버 양쪽)**. ① 배포 번들(`app-components`)에 `const a=void 0; if(!a)return` — 빌드타임 `VITE_VAPID_PUBLIC_KEY`가 비어 subscribe 함수가 **항상 즉시 종료**(배너도 안 뜸). ② 서버 `/api/push/vapid-public-key`가 `""` 반환 → 런타임 `VAPID_PUBLIC_KEY` 미설정 → `sendSystemPush` 웹경로 no-op(`system-push.ts:51` 게이트). 인프라는 건강(`push-sw.js`가 push/pushsubscriptionchange/notificationclick 핸들러 전부 배포). **즉 이번 세션들에서 만든 RFC8291 암호화·self-heal·410 복구 등 전체 웹푸시 스택이 라이브에선 휴면** — 교환권 만료/공구 마감/재입고/가격인하/결제완료 웹푸시가 웹 유저에게 0건 도달.
+- 🟠 **네이티브 푸시(FCM v1)도 미설정 가능성**: `messages:send`가 `FIREBASE_PROJECT_ID` 필요(URL). `/api/version`이 그동안 이 값을 안 봐 미확인 — 이번에 진단에 추가. (설정돼도 Capacitor 앱 유저 한정, 웹 미해결.)
+- 🟡 **운영 가시성 공백**: `/api/version` secret 진단이 VAPID_*·FIREBASE_PROJECT_ID를 안 봐 이 누락이 표준 진단에서 안 보였음(그래서 대량 코드작업에도 미발견).
+
+**반영(안전·additive, 잠금파일 무수정)**:
+1. `PushNotificationSetup.tsx` — VAPID 공개키를 **런타임 서버(`/api/push/vapid-public-key`) 우선**으로 해석(`resolveVapidKey()`, 빌드변수 폴백). → 공개키 SSOT를 서버 런타임 하나로 통합(build/runtime drift 제거) + secret 설정만으로 **재배포 없이** 구독+서명 키 자동 일치. 키 없으면 기존처럼 배너/구독 skip.
+2. `public-utility.routes.ts` `/api/version` — secret 진단에 `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`/`FIREBASE_PROJECT_ID` boolean 추가(값 미노출).
+
+**⚠️ 근본 해결은 운영자 몫(코드 아님)**: Cloudflare에 `VAPID_PUBLIC_KEY`·`VAPID_PRIVATE_KEY`·`VAPID_SUBJECT`(웹푸시), `FIREBASE_PROJECT_ID`(+기존 FIREBASE_PRIVATE_KEY/CLIENT_EMAIL, 네이티브푸시) secret 설정 필요. 설정 후 `/api/version`으로 확인 → 웹푸시 즉시 활성(1의 런타임 해석 덕에 재빌드 불필요). VAPID 키쌍 생성: `npx web-push generate-vapid-keys`.
+- 검증: tsc 0(사전 config 경고 제외) · build(client+ssr+prerender+worker+prepare) 0 · theme(strict) 0.
+
+## ✅ 2026-07-01 — 이용권 명칭 통일 잔여 "숙소권" → "숙소 이용권" (대표 "이용권 내용 진행 — 모두")
+이용권 전수조사(명칭/버그/UI/기능 4방향 병렬) → **실제 잔여 부채는 명칭 1종**. 나머지 3방향은 오탐/기수정/별도영역 확인.
+- **명칭 (수정 완료)**: 사용자-가시 "숙소권" 12건(6파일) → "숙소 이용권"(SSOT `getVoucherShortLabel`='숙소 이용권'과 정합). 파일: `stay-voucher-expire.ts`(알림톡 제목)·`StayCheckout.tsx`·`SellerStayNewPage.tsx`(판매방식 라벨·유효기간 필드)·`StaysSearchPage.tsx`·`MyStaysPage.tsx`(배지)·`StayDetailPage.tsx`(3곳: 모드 라벨·요약)·`stays-public.routes.ts`(3곳: 에러메시지·응답 라벨). 주석 5건(GroupBuyListPage·stays-public 버그기록)은 CLAUDE.md 규칙대로 보존. "평일권/주말권"(권종 변형)은 불변.
+- **버그 (조사 결과 오탐/기수정)**: ① 셀프취소 정산 미회수 의혹 → 셀프취소는 `status='unused'` CAS 대상뿐이라 정산분 없음(오탐). ② influencer_attributions voucher_id NULL 누수 → 2026-05-31 order_id 기반으로 기수정. ③ MyVouchers 절약액 NaN → 이미 `(pct>0 && pct<100 && paid>0)` 가드. 감사 게이트 머니 GREEN 영역 견고 재확인.
+- **다국어 locale**: zh/es/fr/ja 의 옛 "식사권"·团购券 → **2026-06-29 결정("전면 다국어 prose 정합=KR-primary라 별도")** 유지(대부분 `[TODO]` 미번역 플레이스홀더). ko(주 언어)는 이미 0건.
+- **알아둘 것(미수정, 대표 판단 필요)**: 카드결제 교환권 셀프취소 시 Toss 취소가 waitUntil 비동기라 실패하면 voucher='refunded'인데 orders='PAID' 잔존 갭 — 드물고 잠긴 결제영역 인접이라 문서화만.
+- 검증: tsc 0(config 경고 제외)·theme(strict) 0·sql-bind 0·blog-seed-currency 0·build(client+ssr+prerender+worker+prepare) 0.
+
 ## ✅ 2026-07-01 — 알림 코드 마무리 4종 + 위시리스트 오발송 버그 fix (대표 "코드로 더 할 수 있는거")
 - **#4 알림톡 `approve`/`approved` 오탐 정정**: 이전 진단에서 "미등록 의심"으로 잡은 `approve`/`approved`는 삼항 조건(`action==='approve' ? 'distributor_approved' : ...`)이라 실제 template 코드가 아니었음(grep 오탐). SSOT `alimtalk-templates.ts`에서 제거 + `test`는 셀러 브랜드메시지 테스트 코드로 주석. **버그 아님 확인.**
 - **#5 위시리스트 dedup 테이블 repair-schema 등록**: `wishlist_stock_notifications`·`wishlist_price_notifications`(크론 self-ensure만 하던 것) → fresh/repaired DB 보장.
