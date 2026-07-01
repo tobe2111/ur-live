@@ -15,6 +15,7 @@ import { useMultiTabSync } from './hooks/useMultiTabSync'
 import ScrollToTop from './components/ScrollToTop'
 import OfflineBanner from './components/OfflineBanner'
 import BottomNav from '@/components/main/BottomNav'
+import BrandLoader from '@/components/brand/BrandLoader'
 import DesktopTopNav from '@/components/main/DesktopTopNav'
 import { swallow } from '@/shared/utils/swallow'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
@@ -225,26 +226,9 @@ function CuratorPinClientRedirect() {
 }
 
 // 로딩 컴포넌트 — 배경 투명, 최소 UI로 흰 화면 방지
-// 🛡️ 2026-04-29: PageLoader — 브랜드 spinner + sr-only "로딩 중" announcement (a11y)
-//   짧은 로딩에 깜빡임 방지: 200ms 안에 끝나면 spinner 안 보임.
-const PageLoader = () => (
-  <div
-    className="flex items-center justify-center min-h-screen"
-    role="status"
-    aria-live="polite"
-    aria-busy="true"
-  >
-    <div
-      className="w-8 h-8 rounded-full animate-spin"
-      style={{
-        border: '3px solid rgba(255,255,255,0.08)',
-        borderTopColor: '#6b7280',
-        animationDelay: '200ms',
-      }}
-    />
-    <span className="sr-only">페이지 로딩 중…</span>
-  </div>
-)
+// 🎨 2026-06-29 (대표 — 공통 페이지 로딩 애니메이션): 무채색 스피너 → UrDeal 브랜드 로더.
+//   로고 호흡 + 진행 바 스윕(BrandLoader SSOT). 라우트 청크 로딩 순간 전용 — SSR/스켈레톤 첫페인트 불변.
+const PageLoader = () => <BrandLoader fullScreen />
 
 // 🏭 2026-06-29 (대표 요청 — 도매몰 페이지 로딩 애니메이션): 도매 surface(/wholesale·/supplier)
 //   전용 *라이트* 브랜드 로더. 소비자 PageLoader 는 다크(흰 spinner) 라 라이트 도매 배경(#F4F5F7)에서
