@@ -30,8 +30,11 @@ export async function ensureMetricsHistorySchema(DB: D1Database): Promise<void> 
     created_at DATETIME DEFAULT (datetime('now')),
     UNIQUE(account_id, tenant, snap_date)
   )`).run().catch(() => null)
-  // 기존(멀티테넌트 이전) 테이블 보강 — 컬럼만 추가(pre-launch, best-effort). UNIQUE 재정의는 repair-schema.
+  // 기존(멀티테넌트 이전) 테이블 보강 — 컬럼만 추가(best-effort).
   await DB.prepare("ALTER TABLE ad_daily_metrics ADD COLUMN tenant TEXT NOT NULL DEFAULT ''").run().catch(() => null)
+  // 명시 UNIQUE INDEX — 인라인 UNIQUE 가 옛 정의(테넌트 없음)인 기존 테이블에서도 UPSERT 의
+  //   ON CONFLICT(account_id, tenant, snap_date) 타겟이 유효하도록 보장(멱등·미스토어 방지).
+  await DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_ad_daily_metrics_uniq ON ad_daily_metrics(account_id, tenant, snap_date)').run().catch(() => null)
 }
 
 function ymd(ms: number): string { return new Date(ms).toISOString().slice(0, 10) }
