@@ -148,9 +148,20 @@ export default function LoginPage() {
       o.setAttribute('role', 'alert')
       o.setAttribute('aria-live', 'assertive')
       o.style.cssText = `position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:${bg};${reduce ? '' : 'animation:ur-kakao-fade 0.28s ease both'}`
+      // 🎨 2026-06-29 (대표 — 로딩 브랜드 통일): '유어딜' 텍스트 → UR·DEAL 워드마크(부팅 스플래시/BrandLoader 동일 룩). 순수 DOM.
       const logo = document.createElement('div')
-      logo.textContent = '유어딜'
-      logo.style.cssText = `font-size:27px;font-weight:700;letter-spacing:-0.035em;color:${ink}`
+      logo.setAttribute('aria-label', 'UR·DEAL')
+      logo.style.cssText = `position:relative;display:inline-flex;align-items:center;font-weight:900;font-style:italic;font-size:27px;line-height:1;letter-spacing:-0.055em;color:${ink}`
+      const urWrap = document.createElement('span')
+      urWrap.style.cssText = 'position:relative;display:inline-flex;align-items:baseline'
+      urWrap.textContent = 'UR'
+      const play = document.createElement('span')
+      play.style.cssText = 'position:absolute;left:4.9px;top:7.6px;width:0;height:0;border-left:3.8px solid currentColor;border-top:2.4px solid transparent;border-bottom:2.4px solid transparent;opacity:.85'
+      urWrap.appendChild(play)
+      const dot = document.createElement('span')
+      dot.style.cssText = 'display:inline-block;width:3.8px;height:3.8px;background:currentColor;border-radius:50%;margin:0 2.2px;transform:translateY(-1.6px)'
+      const deal = document.createElement('span'); deal.textContent = 'DEAL'
+      logo.appendChild(urWrap); logo.appendChild(dot); logo.appendChild(deal)
       const bar = document.createElement('div')
       bar.style.cssText = `position:relative;width:128px;height:3px;border-radius:999px;background:${track};overflow:hidden`
       const seg = document.createElement('div')
