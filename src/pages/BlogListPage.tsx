@@ -10,6 +10,37 @@ interface BlogPost {
   author: string; thumbnail_url: string | null; published_at: string
 }
 
+// 📝 2026-07-01: 썸네일 없는 글의 커버 — slug/태그 기반 결정적 그라디언트 + 이모지.
+//   외부 이미지 의존 0(404 위험 없음), 글마다 시각이 달라 목록이 단조롭지 않음.
+const COVER_GRADIENTS = [
+  'from-rose-100 to-orange-100 dark:from-rose-900/30 dark:to-orange-900/20',
+  'from-sky-100 to-indigo-100 dark:from-sky-900/30 dark:to-indigo-900/20',
+  'from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/20',
+  'from-violet-100 to-fuchsia-100 dark:from-violet-900/30 dark:to-fuchsia-900/20',
+  'from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/20',
+  'from-cyan-100 to-blue-100 dark:from-cyan-900/30 dark:to-blue-900/20',
+]
+const COVER_EMOJI: Array<[RegExp, string]> = [
+  [/what-is|유어딜/, '✨'],
+  [/exchange|교환권|기프티콘/, '🎁'],
+  [/voucher|이용권/, '🎟️'],
+  [/dongne|동네딜/, '📍'],
+  [/linkshop|링크샵|쇼핑몰/, '🛍️'],
+  [/business|사업자|판매/, '🏪'],
+  [/deal-points|포인트|딜/, '💰'],
+  [/payment|결제/, '💳'],
+  [/review|리뷰/, '⭐'],
+  [/settlement|정산/, '📊'],
+  [/agency|에이전시/, '🤝'],
+]
+function blogCover(slug: string, tags: string[]) {
+  const hay = `${slug} ${tags.join(' ')}`.toLowerCase()
+  const emoji = COVER_EMOJI.find(([re]) => re.test(hay))?.[1] ?? '📝'
+  let h = 0
+  for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) >>> 0
+  return { emoji, gradient: COVER_GRADIENTS[h % COVER_GRADIENTS.length] }
+}
+
 export default function BlogListPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -26,7 +57,7 @@ export default function BlogListPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
-      <SEO title={t('blog.listSeoTitle', { defaultValue: '블로그' })} description={t('blog.listSeoDesc', { defaultValue: '유어딜 라이브 커머스 블로그 — 셀러 가이드, 트렌드, 팁' })} url="/blog" />
+      <SEO title={t('blog.listSeoTitle', { defaultValue: '블로그' })} description={t('blog.listSeoDesc', { defaultValue: '유어딜 블로그 — 이용권·교환권·동네딜·링크샵 가이드와 서비스 소식' })} url="/blog" />
 
       {/* Header */}
       <div className="bg-white dark:bg-[#0A0A0A] border-b border-gray-200 dark:border-[#1A1A1A]">
@@ -37,7 +68,7 @@ export default function BlogListPage() {
             </button>
             <div>
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">유어딜 블로그</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">셀러 가이드 · 트렌드 · 서비스 소식</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">이용권 · 동네딜 · 링크샵 · 서비스 소식</p>
             </div>
           </div>
           <Link to="/seller/register" className="px-4 py-2 bg-pink-500 text-white rounded-lg text-sm font-bold hover:bg-pink-600">
@@ -78,8 +109,8 @@ export default function BlogListPage() {
                   {post.thumbnail_url ? (
                     <img src={post.thumbnail_url} alt="" className="w-full h-48 object-cover" loading="lazy" />
                   ) : (
-                    <div className="w-full h-48 bg-gradient-to-br from-gray-100 dark:from-gray-900/20 to-gray-100 dark:to-gray-900/20 flex items-center justify-center">
-                      <span className="text-4xl">📝</span>
+                    <div className={`w-full h-48 bg-gradient-to-br ${blogCover(post.slug, tags).gradient} flex items-center justify-center`}>
+                      <span className="text-5xl drop-shadow-sm">{blogCover(post.slug, tags).emoji}</span>
                     </div>
                   )}
                   <div className="p-5">

@@ -59,6 +59,7 @@ if domain money; then
   run "쿼리 isError(빈화면 위장)"        node scripts/check-query-iserror.mjs
   run "CSV 수식 인젝션"                 node scripts/check-csv-injection.mjs
   run "블로그 시드 최신성"               node scripts/check-blog-seed-currency.mjs
+  run "블로그 fact 동기화"               bash scripts/check-blog-fact-sync.sh
 fi
 
 if domain schema; then

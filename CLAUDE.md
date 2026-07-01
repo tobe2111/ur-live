@@ -287,6 +287,7 @@ CLAUDE.md 는 매 작업마다 읽는 활성 규칙만 유지. 사고 후일담 
 > - 수수료율·딜포인트·결제·정산 규칙 변경 → 해당 가이드 글 갱신
 > - ❌ 블로그 시드에 낡은 용어(식사권/공구권, "라이브 커머스"를 현재 기능으로) 재유입 금지 — `scripts/check-blog-seed-currency.mjs` 가 감지.
 > - ❌ 도매몰(유통스타트/판매사/제조사) 내용 유입 금지 — 소비자 블로그 전용(서비스 분리).
+> - 💰 **수치 사실(수수료 5%·원천징수 3.3%·딜포인트·최소후원 500딜)** 이 코드 SSOT(`fee-resolver.ts`/`tax-withholding.ts`/`points.routes.ts`)에서 바뀌면 블로그 시드도 같은 커밋에서 갱신 — `scripts/check-blog-fact-sync.sh` 가 감지(warn).
 
 수동 강제 재동기화: 어드민 `POST /api/blog/seed` (버전 무관 강제 sync).
 
