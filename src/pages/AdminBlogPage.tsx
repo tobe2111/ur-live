@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import {
   Plus, Edit2, Trash2, Eye, EyeOff,
-  Loader2, ArrowLeft, Save, Send, FileText, ExternalLink
+  Loader2, ArrowLeft, Save, Send, FileText, ExternalLink, Sparkles
 } from 'lucide-react'
 
 interface BlogPost {
@@ -32,6 +32,7 @@ interface BlogPost {
   updated_at: string
   is_seed?: number          // 1 = 코드 시드가 관리하는 글
   manually_edited?: number  // 1 = 관리자가 직접 수정/작성 → 재시드해도 보존
+  ai_generated?: number     // 1 = AI가 생성한 홍보 초안(검토 후 발행)
 }
 
 type View = 'list' | 'edit'
@@ -66,6 +67,25 @@ export default function AdminBlogPage() {
   )
   const loadPosts = async () => { await refetch() }
   const [saving, setSaving] = useState(false)
+  const [aiLoading, setAiLoading] = useState(false)
+
+  // 📝 AI 홍보 초안 생성 (비공개 초안 → 검토 후 발행)
+  const generateAiDraft = async () => {
+    setAiLoading(true)
+    try {
+      const { data } = await api.post('/api/admin/blog/ai-draft')
+      if (data?.success) {
+        toast.success(data.message || 'AI 홍보 초안이 생성되었습니다 (비공개)')
+        await refetch()
+      } else {
+        toast.error(data?.error || 'AI 초안 생성에 실패했습니다')
+      }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'AI 초안 생성 중 오류가 발생했습니다')
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (!localStorage.getItem('admin_token')) {
@@ -188,9 +208,15 @@ export default function AdminBlogPage() {
           subtitle={t('admin.blog.k016', { defaultValue: "글을 작성하고 docs.ur-team.com에 발행하세요" })}
           icon={<FileText className="h-5 w-5" />}
           actions={
-            <Button onClick={() => openEdit()} className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-3 text-xs">
-              <Plus className="w-3.5 h-3.5 mr-1.5" /> 새 글 작성
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={generateAiDraft} disabled={aiLoading} variant="outline" className="h-9 px-3 text-xs border-purple-300 text-purple-700 hover:bg-purple-50" title="현재 서비스 기준 홍보 글 초안을 AI로 생성합니다 (비공개 — 검토 후 발행)">
+                {aiLoading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
+                AI 홍보 초안
+              </Button>
+              <Button onClick={() => openEdit()} className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-3 text-xs">
+                <Plus className="w-3.5 h-3.5 mr-1.5" /> 새 글 작성
+              </Button>
+            </div>
           }
         />
 
@@ -214,6 +240,12 @@ export default function AdminBlogPage() {
                     }`}>
                       {post.is_published ? t('admin.blog.k014', { defaultValue: '발행됨' }) : t('admin.blog.k018', { defaultValue: '임시저장' })}
                     </span>
+                    {/* 📝 AI 초안 배지 — 검토 후 발행 대상 */}
+                    {post.ai_generated === 1 && post.is_published !== 1 && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700" title="AI가 생성한 홍보 초안 — 검토 후 발행하세요. 수정하면 '수동편집·보존'으로 바뀝니다">
+                        ✨ AI 초안
+                      </span>
+                    )}
                     {/* 📝 시드 관리 상태 배지 — 재시드 동작을 관리자가 예측할 수 있게 */}
                     {post.manually_edited === 1 ? (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title="관리자가 수정/작성한 글 — 재시드해도 덮어쓰지 않고 보존됩니다">
