@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-30 — 도매 카탈로그 검색/필터 UX (미뤘던 것) — 결과0 복구 + 더보기 (대표 "미뤘던 것 + 자율 개선")
+이전에 미뤘던 판매사 카탈로그 discovery 개선.
+- **A) 결과 0 복구 CTA**(`6d2bdee`): 검색/필터 결과가 0일 때 '없어요' 한 줄 막다른 길 → 필터/검색 활성 시 '검색·필터 초기화' 버튼(검색어·카테고리·정렬·재고·가격대·브랜드 일괄) + 검색어 표시. 진짜 빈 카탈로그면 기존 안내.
+- **B) 더보기(페이지네이션)**: 카탈로그가 **24개만 보이고 더보기 없음**(서버는 `has_more` 리턴하는데 클라 무시) → 상품 늘면 24개 이상 못 봄. **purely additive**: 1페이지(`catalogQ`)는 SSR/잠금 로딩 **완전 미접촉**, 2페이지+만 별도 `api.get(...&page=N)` 로 누적(append, id 중복제거), 서버 `has_more` 로 버튼 노출 판정. `initialData`/`placeholderData`/`queryFn`/worker SSR 전부 byte-불변 → 첫 페인트·0-RTT 캐시 불변(추가 페이지만 라이브 fetch). 필터/검색/등급(catalogKey) 변경 시 누적 초기화.
+- **불변**: 서버 `/catalog` 로직·SSR·기본 요청 URL·잠긴 로딩 전부 불변(잠금 심볼 미변경, 순수 추가). ⚠️ 24-cap 은 상품 수 적어 아직 미발현이나 확장 대비 선제 해소.
+- 검증: tsc 0 · build 0 · theme/가드 0.
+
 ## ✅ 2026-06-30 — 제조사 발송뷰에 배송 메시지 노출(단일 수령 주문) (대표 "다음으로")
 - **문제**: 판매사가 결제 시 남긴 배송 메시지가 제조사 발송 화면(`SupplierWholesaleOrdersPage`)에서 **드랍십(받는사람 여럿)일 때만** 노출되고, **일반 단일-수령 주문에선 안 보였음** → 발송 지시("부재 시 문 앞" 등) 누락 가능. 게다가 supplier orders API 가 `i.ship_to_message`(라인 레벨)만 반환해, 단일 주문 메시지(헤더 `o.ship_to_message`에 저장)는 애초에 안 넘어왔음.
 - **수정(2)**: ① API `wholesale-supplier.routes` 두 쿼리의 `i.ship_to_message` → `COALESCE(i.ship_to_message, o.ship_to_message)`(다른 ship_to 필드와 동일 폴백 패턴 — 라인 우선, 없으면 주문 헤더). ② UI 단일-수령 배송지 블록에 `💬 {ship_to_message}` 노출(드랍십 브랜치는 이미 라인별 메모 표시 — 불변).
