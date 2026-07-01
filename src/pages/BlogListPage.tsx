@@ -41,6 +41,17 @@ function blogCover(slug: string, tags: string[]) {
   return { emoji, gradient: COVER_GRADIENTS[h % COVER_GRADIENTS.length] }
 }
 
+// 📝 2026-07-01 SSR 시드(__SSR_INITIAL_BLOG__) — 서버가 주입한 목록을 0-RTT 로 즉시 사용(콜드 fetch 워터폴 제거).
+function readBlogListSeed(): BlogPost[] | undefined {
+  if (typeof document === 'undefined') return undefined
+  const el = document.getElementById('__SSR_INITIAL_BLOG__')
+  if (!el?.textContent) return undefined
+  try {
+    const raw = JSON.parse(el.textContent) as { success?: boolean; data?: BlogPost[] }
+    return raw?.success ? (raw.data || []) : undefined
+  } catch { return undefined }
+}
+
 export default function BlogListPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -54,7 +65,12 @@ export default function BlogListPage() {
   const { data: allPosts = [], isLoading: loading } = useApiQuery<BlogPost[]>(
     ['blog', 'public', ''],
     '/api/blog/public?limit=100',
-    { select: (raw) => ((raw as { success?: boolean; data?: BlogPost[] })?.success ? ((raw as { data: BlogPost[] }).data || []) : []) },
+    {
+      select: (raw) => ((raw as { success?: boolean; data?: BlogPost[] })?.success ? ((raw as { data: BlogPost[] }).data || []) : []),
+      // 📝 2026-07-01 SSR 시드로 0-RTT 첫 페인트 + 마운트 시 백그라운드 최신화(신선도 가드: initialData 는 always 재검증).
+      initialData: readBlogListSeed(),
+      refetchOnMount: 'always',
+    },
   )
 
   // 태그 목록은 항상 전체 글에서 파생 → 필터 중에도 칩이 안정적으로 유지됨.
