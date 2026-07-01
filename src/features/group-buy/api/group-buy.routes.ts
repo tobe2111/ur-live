@@ -116,6 +116,28 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     return c.json({ success: false, error: '잘못된 결제 수단입니다' }, 400)
   }
 
+  // 🎯 2026-07-01 (대표 "결제 최대 한도 갯수 1인 당" — 셀러가 등록 시 설정): product_supply_meta.max_per_person.
+  //   미설정=무제한(추가 조회 0). 설정 시: 이번 qty + 유저 기존 미환불 이용권(unused/used) 누적 ≤ 한도.
+  //   두 결제 흐름(toss/deal) 공통 사전검증. fail-open — 한도 조회 실패가 구매를 막지 않음(소프트 룰).
+  try {
+    const { getSupplyMeta } = await import('../../../worker/utils/product-supply-meta')
+    const mppMeta = await getSupplyMeta(DB, [Number(productId)]).catch(() => null)
+    const mppRaw = mppMeta?.get(Number(productId))?.max_per_person
+    const maxPerPerson = mppRaw != null && Number.isFinite(Number(mppRaw)) && Number(mppRaw) > 0 ? Math.floor(Number(mppRaw)) : 0
+    if (maxPerPerson > 0) {
+      if (qty > maxPerPerson) {
+        return c.json({ success: false, error: `1인당 최대 ${maxPerPerson}개까지 구매할 수 있습니다`, code: 'PER_PERSON_LIMIT' }, 400)
+      }
+      const ownedRow = await DB.prepare(
+        "SELECT COUNT(*) AS n FROM vouchers WHERE product_id = ? AND user_id = ? AND status IN ('unused','used')"
+      ).bind(productId, userId).first<{ n: number }>().catch(() => ({ n: 0 }))
+      const owned = Number(ownedRow?.n ?? 0)
+      if (owned + qty > maxPerPerson) {
+        return c.json({ success: false, error: `1인당 최대 ${maxPerPerson}개 구매 가능 — 이미 ${owned}개 보유 중입니다`, code: 'PER_PERSON_LIMIT' }, 400)
+      }
+    }
+  } catch { /* fail-open */ }
+
   // 🛡️ 2026-05-22 v2 — toss 결제 진짜 흐름 활성 (이전 fake-PAID 보안 버그 영구 해결):
   //   payment_method='toss' 흐름:
   //     1) /join 은 server-side 검증 (재고/카테고리/마감/seller_id) 만 수행

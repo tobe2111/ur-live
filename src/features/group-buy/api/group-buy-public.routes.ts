@@ -438,6 +438,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr) && arr.length) menu = arr }
     } catch { /* meta 데이터 invalid — 메뉴 없음 */ }
     const seller_handle = (handleRow?.handle && handleRow.handle.toLowerCase() !== 'me') ? handleRow.handle : null
+    // 🛡️ 2026-07-01 (대표 "1인당 결제 최대 한도" — 셀러가 등록 시 설정): product_supply_meta.max_per_person.
+    //   0/미설정=무제한. 클라 스텝퍼 cap + 서버 주문검증(group-buy.routes)이 함께 사용.
+    const mppRaw = metaMap?.get(Number(id))?.max_per_person
+    const max_per_person = mppRaw != null && Number.isFinite(Number(mppRaw)) && Number(mppRaw) > 0 ? Math.floor(Number(mppRaw)) : null
 
     return c.json({
       success: true,
@@ -449,6 +453,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         next_tier_remaining: null,
         ...(seller_handle ? { seller_handle } : {}),  // 🔗 셀러 링크샵 handle (있을 때만)
         ...(menu ? { menu } : {}),                // 🍽️ #5: 대표 메뉴 (있을 때만)
+        ...(max_per_person ? { max_per_person } : {}),  // 🎯 1인당 구매 한도 (있을 때만)
       },
     })
     } catch (err) {

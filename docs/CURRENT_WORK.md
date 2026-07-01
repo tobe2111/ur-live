@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — C 이용권 1인당 결제 최대 한도(셀러 설정) 신설 (대표 "결제 최대 한도 갯수 1인 당")
+매장 업주(셀러)가 이용권 등록 시 1인당 최대 구매 수량을 설정 → 서버 강제 + 상세 스텝퍼 cap. 예산제 준수(products 컬럼 추가 X → `product_supply_meta.max_per_person`).
+- **저장(셀러)**: `SellerMealVoucherNewPage` 폼에 "1인당 최대 구매 수량"(0=무제한, 1~99) 입력 + 페이로드 → `seller-orders.routes` POST /products 가 `setSupplyMeta(max_per_person)`(menu meta 옆, fail-soft). 미설정/범위밖=무제한(미저장).
+- **강제(서버)**: `group-buy.routes` 주문생성(toss/deal 공통, qty 검증 직후)에 사전검증 — `getSupplyMeta` 로 한도 조회(미설정=무제한, 추가조회 0), 설정 시 `qty ≤ 한도` + `유저 기존 미환불 이용권(unused/used) 누적 + qty ≤ 한도` 위반 시 400 `PER_PERSON_LIMIT`. **fail-open**(한도 조회 실패가 구매 안 막음 — 소프트 룰).
+- **표시/cap(소비자)**: `group-buy-public /products/:id` 응답에 `max_per_person` 추가(이미 읽던 metaMap 재사용). `GroupBuyDetailPage` 스텝퍼 상한 10→`maxQty`(설정값 or 10) + 하단바에 "1인당 최대 N개" 안내(설정 시만).
+- **범위**: 등록(create) 경로만(대표 "처음에 올릴 때"). 수정(edit) 경로는 후속. 서비스 분리: 소비자 이용권 전용(도매 무관).
+- 검증: tsc 0 · group-buy/voucher 단위 84 pass · sql bind/column 0 · theme/light-input 0 · build 0. ⚠️ staging: 한도 N 설정 → 상세 스텝퍼 N cap + N개 초과/누적초과 구매 시 400.
+
 ## ✅ 2026-07-01 — 로더 유어딜 전면 통일(완료) + 카카오맵 매장 페이지 링크 수정 (대표 라이브 신고 연속 2)
 - **A 로더 전면 통일(완료, 대표 "전면 통일해")**: 소비자 상세/목록 7페이지의 skeleton/스피너 → `BrandLoader`(SSOT). **상세**(전체페이지 반환): `GroupBuyDetailPage`·`VoucherDetailPage`(스피너)·`ProductDetailPage`(`ProductDetailSkeleton`) → `<BrandLoader fullScreen/>`. **목록**(인라인): `VouchersPage`·`GroupBuyListPage`·`BrowsePage`(카드그리드 skeleton)·`MyVouchersPage`(`WalletSkeleton`) → `<BrandLoader/>`. 미사용된 `ProductDetailSkeleton`/`WalletSkeleton` import 정리. **잠긴 SSR seed 로직 불변**(seed 있으면 loading=false → 로더 미노출, seed-miss/콜드 SPA 이동에만). 대표 확인: 실제 데이터 fetch 속도 동일, skeleton의 CLS/체감 이점만 트레이드오프(전면 통일 선택).
 - **E 카카오맵 매장 페이지 링크(대표 "카카오맵에 매장 페이지가 안 나옴")**: `RestaurantMiniMap` 외부 링크가 `link/map/{name},{lat},{lng}`(좌표 핀만, 장소 페이지 안 열림 + 좌표 오차 시 빈자리) → **매장명+주소 `link/search`**(카카오 등록 장소가 떠서 매장 페이지 연결, 좌표 정밀도 무관). name/address 없을 때만 좌표 map 폴백.
