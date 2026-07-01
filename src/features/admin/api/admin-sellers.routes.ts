@@ -74,7 +74,10 @@ adminSellersRoutes.get('/sellers', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const page = Math.max((parseInt(c.req.query('page') || '1') || 1), 1);
-    const limit = Math.min(Math.max((parseInt(c.req.query('limit') || '50') || 50), 1), 200);
+    // 🛡️ NaN 안전 + clamp-to-1 동시 만족: `|| 50` 는 limit=0 도 falsy 로 잡아 50 이 돼
+    //   clamp-to-1 계약(테스트)을 깨므로, 유한수면 그 값을 쓰고 비유한(NaN)만 기본값.
+    const rawLimit = parseInt(c.req.query('limit') || '50', 10);
+    const limit = Math.min(Math.max(Number.isFinite(rawLimit) ? rawLimit : 50, 1), 200);
     const offset = (page - 1) * limit;
     // 🧱 2026-06-30 (서비스 분리 — 대표 "구분 표시"): exclude_distributor=1 이면 도매 판매사(is_distributor=1)
     //   행을 유어딜 소비자 셀러 목록에서 제외(도매-전용 회원 숨김). 기본(없음)은 전부 반환 + 배지로 구분.
