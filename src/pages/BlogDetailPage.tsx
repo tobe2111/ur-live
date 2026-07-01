@@ -111,7 +111,7 @@ export default function BlogDetailPage() {
         if (trimmed.startsWith('### ')) {
           return <h3 key={i} className="text-lg font-bold text-gray-900 dark:text-white mt-6 mb-2">{trimmed.replace('### ', '')}</h3>
         }
-        // 리스트
+        // 불릿 리스트
         if (trimmed.startsWith('- ')) {
           const items = trimmed.split('\n').filter(l => l.startsWith('- '))
           return (
@@ -123,6 +123,23 @@ export default function BlogDetailPage() {
                 </li>
               ))}
             </ul>
+          )
+        }
+        // 번호 목록 (1. 2. 3.) — 시드 글의 '구매/시작 단계' 다수가 사용. 미처리 시 한 문단으로 뭉침.
+        if (/^\d+\.\s/.test(trimmed)) {
+          const items = trimmed.split('\n').filter(l => /^\d+\.\s/.test(l.trim()))
+          return (
+            <ol key={i} className="my-3 space-y-1.5 list-none">
+              {items.map((item, j) => {
+                const m = item.trim().match(/^(\d+)\.\s+(.*)$/)
+                return (
+                  <li key={j} className="flex items-start gap-2 text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed">
+                    <span className="text-pink-500 font-semibold mt-0.5 shrink-0 tabular-nums">{m?.[1] ?? j + 1}.</span>
+                    <span dangerouslySetInnerHTML={{ __html: boldify(m?.[2] ?? item) }} />
+                  </li>
+                )
+              })}
+            </ol>
           )
         }
         // 구분선
