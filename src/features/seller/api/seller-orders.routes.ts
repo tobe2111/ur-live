@@ -24,6 +24,7 @@ import { swallow } from '@/worker/utils/swallow';
 import { VOUCHER_CATEGORY_SET } from '@/shared/constants/voucher-categories';
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { ensureSupplyVisibilitySchema } from '../../supply/api/supply-visibility';
+import { intParam } from '@/shared/pagination'
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -93,8 +94,8 @@ sellerOrdersRoutes.get('/orders', async (c) => {
 
     const db = c.env.DB;
     const status = c.req.query('status');
-    const limit = Math.min((parseInt(c.req.query('limit') || '50') || 50), 200);
-    const offset = (parseInt(c.req.query('offset') || '0') || 0);
+    const limit = Math.min(intParam(c.req.query('limit'), 50), 200);
+    const offset = intParam(c.req.query('offset'), 0);
     const sort = c.req.query('sort') === 'asc' ? 'ASC' : 'DESC';
 
     let query = `
@@ -458,8 +459,8 @@ sellerOrdersRoutes.get('/products', async (c) => {
     // isolate / fresh D1 the column may be missing → "no such column" 500.
     // Memoized (WeakMap-promise) — runs the ALTERs at most once per isolate.
     await ensureSupplyVisibilitySchema(db);
-    const limit = Math.min((parseInt(c.req.query('limit') || '100') || 100), 500);
-    const offset = (parseInt(c.req.query('offset') || '0') || 0);
+    const limit = Math.min(intParam(c.req.query('limit'), 100), 500);
+    const offset = intParam(c.req.query('offset'), 0);
     const sort = c.req.query('sort') === 'asc' ? 'ASC' : 'DESC';
     const search = c.req.query('search') || '';
 

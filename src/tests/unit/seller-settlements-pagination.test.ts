@@ -218,9 +218,9 @@ describe('GET /settlements — pagination clamping (audit fix)', () => {
     const token = await signSellerJwt(1);
     const res = await getSettlements(app, db, { limit: 0 }, token);
     expect(res.status).toBe(200);
-    // parseInt('0') || 20 = 20, then Math.max(1, Math.min(200, 20)) = 20
-    // The || 20 fallback kicks in when parseInt returns 0 (falsy)
-    expect(captured.limit).toBe(20);
+    // intParam('0', 20) = 0 (유한값 보존), then Math.max(1, Math.min(200, 0)) = 1 (min clamp)
+    // 비숫자만 default 20 으로 폴백; 0 은 삼키지 않고 클램프에 위임 (2026-07-01 NaN-crash 근본수정)
+    expect(captured.limit).toBe(1);
   });
 
   it('limit=NaN (string) → falls back to default 20', async () => {

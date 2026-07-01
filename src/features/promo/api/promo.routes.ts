@@ -22,6 +22,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
 import type { Env } from '@/worker/types/env'
+import { intParam } from '@/shared/pagination'
 
 const promoRoutes = new Hono<{ Bindings: Env }>()
 
@@ -97,7 +98,7 @@ promoRoutes.post('/create',
       return c.json({ success: false, error: '잘못된 audience' }, 400)
     }
     const maxUses = Math.max(0, Math.min(100000, Number(body.max_uses) || 0))
-    const perUserLimit = Math.max(1, Math.min(100, Number(body.per_user_limit) || 1))
+    const perUserLimit = Math.max(1, Math.min(100, intParam(body.per_user_limit, 1)))
     const description = (body.description || '').toString().slice(0, 200)
     const expiresAt = body.expires_at && /^\d{4}-\d{2}-\d{2}/.test(body.expires_at) ? body.expires_at : null
 

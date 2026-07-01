@@ -18,6 +18,7 @@ import { createDashboardNotification } from '@/features/notifications/api/dashbo
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
 import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';
 import { swallow } from '@/worker/utils/swallow';
+import { intParam } from '@/shared/pagination'
 const pointsRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -505,8 +506,8 @@ pointsRoutes.get('/history', requireAuth(), async (c) => {
   await ensureTables(DB);
 
   const userId = String(user.id);
-  const limit = Math.min(100, Math.max(1, Number(c.req.query('limit')) || 50));
-  const offset = Math.max(0, Number(c.req.query('offset')) || 0);
+  const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 50)));
+  const offset = Math.max(0, intParam(c.req.query('offset'), 0));
   const type = c.req.query('type') || ''; // 'charge'|'donate'|'refund'|'referral_bonus' 등
 
   const conditions: string[] = ['user_id = ?'];

@@ -24,6 +24,7 @@ import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { swallow } from '@/worker/utils/swallow';
 import { rateLimit } from '@/worker/middleware/rate-limit';
+import { intParam } from '@/shared/pagination'
 
 export const adminSellersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -73,11 +74,8 @@ interface IdRow {
 adminSellersRoutes.get('/sellers', cors(), async (c) => {
   try {
     const { DB } = c.env;
-    const page = Math.max((parseInt(c.req.query('page') || '1') || 1), 1);
-    // 🛡️ 2026-07-01: parseInt('0')||50 는 0을 falsy 로 봐 clamp(min 1) 대신 기본값 50 을 냄 → limit=0 회귀.
-    //   NaN 일 때만 기본 50, 유효 숫자(0 포함)는 그대로 [1,200] clamp.
-    const rawLimit = parseInt(c.req.query('limit') || '50');
-    const limit = Math.min(Math.max(Number.isNaN(rawLimit) ? 50 : rawLimit, 1), 200);
+    const page = Math.max(intParam(c.req.query('page'), 1), 1);
+    const limit = Math.min(Math.max(intParam(c.req.query('limit'), 50), 1), 200);
     const offset = (page - 1) * limit;
     // 🧱 2026-06-30 (서비스 분리 — 대표 "구분 표시"): exclude_distributor=1 이면 도매 판매사(is_distributor=1)
     //   행을 유어딜 소비자 셀러 목록에서 제외(도매-전용 회원 숨김). 기본(없음)은 전부 반환 + 배지로 구분.

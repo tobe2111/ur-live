@@ -7,6 +7,7 @@ import { ensureSupplyVisibilitySchema, normalizeVisibility } from '../supply-vis
 import { ensureMallSchema } from '../wholesale-malls'
 import { parseCsv, buildCsv, csvResponse } from '../supply-csv'
 import { ensureProductsFtsDeleteTrigger, type Env } from './helpers'
+import { intParam } from '@/shared/pagination'
 
 export function registerSupplyToolsRoutes(app: Hono<{ Bindings: Env }>) {
   // 🏭 2026-06-16 (대표 요청 — 도매몰 채우기): 어드민 공급상품 CSV 일괄 임포트.
@@ -108,8 +109,8 @@ export function registerSupplyToolsRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/activity-log', async (c) => {
     const { DB } = c.env
     try {
-      const page = Math.max(1, Number(c.req.query('page') || 1))
-      const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') || 30)))
+      const page = Math.max(1, intParam(c.req.query('page'), 1))
+      const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 30)))
       const offset = (page - 1) * limit
       // auto-audit action = 'METHOD /api/admin/...path' — 도매 관련 경로만.
       const like = `(a.action LIKE '%/wholesale%' OR a.action LIKE '%/distributor%' OR a.action LIKE '%/suppliers%' OR a.action LIKE '%/supplier%' OR a.action LIKE '%/partnership%')`
@@ -168,8 +169,8 @@ export function registerSupplyToolsRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/supply-list', async (c) => {
     const { DB } = c.env
     try {
-      const page = Math.max(1, Number(c.req.query('page') || 1))
-      const limit = Math.min(100, Math.max(1, Number(c.req.query('limit') || 30)))
+      const page = Math.max(1, intParam(c.req.query('page'), 1))
+      const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 30)))
       const offset = (page - 1) * limit
       const search = String(c.req.query('search') || '').slice(0, 100).trim()
       const params: unknown[] = []

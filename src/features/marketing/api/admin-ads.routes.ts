@@ -7,6 +7,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { ensureAdsAccountSchema } from './ads-account'
+import { intParam } from '@/shared/pagination'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -26,7 +27,7 @@ app.get('/stats', async (c) => {
 // GET /api/admin/ads/accounts?q=&limit= — 가입자 목록(연동/알림 플래그 포함)
 app.get('/accounts', async (c) => {
   await ensureAdsAccountSchema(c.env.DB)
-  const limit = Math.min(300, Math.max(1, Number(c.req.query('limit')) || 100))
+  const limit = Math.min(300, Math.max(1, intParam(c.req.query('limit'), 100)))
   const q = (c.req.query('q') || '').trim().toLowerCase()
   const like = `%${q}%`
   const rows = (await (q

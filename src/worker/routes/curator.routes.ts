@@ -26,6 +26,7 @@ import {
 import { CURATOR_DEFAULTS, WITHDRAWAL_DEFAULTS, TAX_POLICY, COMMISSION_DEFAULTS } from '../../shared/constants/policy'
 import { isVoucherCategory } from '../../shared/constants/voucher-categories'
 import { getPolicy } from '../utils/dynamic-policy'
+import { intParam } from '@/shared/pagination'
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
 
@@ -892,7 +893,7 @@ curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
       : { results: [] as { product_id: number }[] }
     const excludeIds = (pinned ?? []).map(p => p.product_id)
 
-    const limit = Math.max(5, Math.min(50, Number(c.req.query('limit')) || 20))
+    const limit = Math.max(5, Math.min(50, intParam(c.req.query('limit'), 20)))
     const exclusion = excludeIds.length
       ? ` AND p.id NOT IN (${excludeIds.map(() => '?').join(',')})`
       : ''

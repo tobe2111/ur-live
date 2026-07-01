@@ -20,6 +20,7 @@ import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
+import { intParam } from '@/shared/pagination'
 
 export const adminModerationRoutes = new Hono<{ Bindings: Env }>();
 
@@ -67,8 +68,8 @@ interface StreamHistoryRow {
 adminModerationRoutes.get('/reviews/list', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const page = Math.max(1, (parseInt(c.req.query('page') || '1') || 1));
-    const limit = Math.min(100, Math.max(1, (parseInt(c.req.query('limit') || '20') || 20)));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)));
     const offset = (page - 1) * limit;
     const status = c.req.query('status') || 'all';
     const productId = c.req.query('product_id');
@@ -441,7 +442,7 @@ adminModerationRoutes.post('/alerts/:id/resolve', cors(), async (c) => {
 adminModerationRoutes.get('/live-monitor/history', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const days = Math.min(90, Math.max(1, (parseInt(c.req.query('days') || '7') || 7)));
+    const days = Math.min(90, Math.max(1, intParam(c.req.query('days'), 7)));
 
     // 🛡️ 2026-05-18: deleted_at IS NULL 필터 추가에 따른 defensive ALTER.
     //   production 에 0256 migration 미적용 상태에서도 안전하게 동작 (column 이미 존재 시 throw → catch).

@@ -18,6 +18,7 @@ import type { KVNamespace } from '@cloudflare/workers-types';
 import { cacheInvalidate } from '@/worker/utils/cache';
 
 import { swallow } from '@/worker/utils/swallow';
+import { intParam } from '@/shared/pagination'
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -81,8 +82,8 @@ sellerStreamsRoutes.get('/', async (c) => {
     
     // Query parameters for filtering
     const status = c.req.query('status'); // 'scheduled', 'live', 'ended'
-    const limit = Math.min(Math.max(1, (parseInt(c.req.query('limit') || '10') || 10)), 100);
-    const offset = Math.max(0, (parseInt(c.req.query('offset') || '0') || 0));
+    const limit = Math.min(Math.max(1, intParam(c.req.query('limit'), 10)), 100);
+    const offset = Math.max(0, intParam(c.req.query('offset'), 0));
 
     let query = `
       SELECT

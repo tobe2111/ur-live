@@ -23,6 +23,7 @@ import { ensureSupplyVisibilitySchema, recordSupplyPriceChange } from '../../sup
 import { getSupplyMeta } from '@/worker/utils/product-supply-meta';
 import { loadPlatformCommissionPct } from '../../supply/api/wholesale-settlement';
 import { distributorPriceFromCost } from '@/lib/distributor-pricing';
+import { intParam } from '@/shared/pagination'
 
 export const adminProductsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -69,8 +70,8 @@ adminProductsRoutes.get('/products', cors(), async (c) => {
   try {
     const { DB } = c.env;
     // 🛡️ 2026-05-19: Coupang WING 스타일 — 검색/필터/정렬/페이지네이션.
-    const page = Math.max(1, Number(c.req.query('page') || 1));
-    const limit = Math.min(500, Math.max(1, Number(c.req.query('limit') || 100)));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 100)));
     const offset = (page - 1) * limit;
     const q = String(c.req.query('q') || '').trim();
     const category = String(c.req.query('category') || '').trim();
@@ -480,8 +481,8 @@ adminProductsRoutes.get('/sample-requests', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const status = c.req.query('status') || '';
-    const page = (parseInt(c.req.query('page') || '1', 10) || 1);
-    const limit = Math.min((parseInt(c.req.query('limit') || '20', 10) || 20), 100);
+    const page = intParam(c.req.query('page'), 1);
+    const limit = Math.min(intParam(c.req.query('limit'), 20), 100);
     const offset = (page - 1) * limit;
 
     let where = '1=1';
@@ -617,8 +618,8 @@ adminProductsRoutes.get('/supplier-products', cors(), async (c) => {
     const { DB } = c.env;
     await ensureSupplyVisibilitySchema(DB);
     const status = String(c.req.query('status') || 'pending'); // pending | approved | rejected | price_change | all
-    const page = Math.max(1, Number(c.req.query('page') || 1));
-    const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') || 50)));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(200, Math.max(1, intParam(c.req.query('limit'), 50)));
     const offset = (page - 1) * limit;
 
     let where = 'p.is_supply_product = 1 AND p.supplier_id IS NOT NULL';

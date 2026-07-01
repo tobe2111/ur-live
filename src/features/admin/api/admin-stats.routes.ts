@@ -12,6 +12,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { executeQuery } from '@/worker/utils/database';
+import { intParam } from '@/shared/pagination'
 
 export const adminStatsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -182,8 +183,8 @@ adminStatsRoutes.get('/dashboard/stats', cors(), async (c) => {
 adminStatsRoutes.get('/vouchers/transactions', cors(), async (c) => {
   try {
     const { DB } = c.env;
-    const limit = Math.min(500, Math.max(1, Number(c.req.query('limit')) || 50));
-    const offset = Math.max(0, Number(c.req.query('offset')) || 0);
+    const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 50)));
+    const offset = Math.max(0, intParam(c.req.query('offset'), 0));
     const status = c.req.query('status') || '';
     const userId = c.req.query('user_id') || '';
     const dateFrom = c.req.query('date_from') || '';

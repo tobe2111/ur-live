@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { safeError } from '@/worker/utils/safe-error'
 import type { Env } from '@/worker/types/env'
 import { WebhookEventRepository } from '@/worker/repositories/webhook.repository'
+import { intParam } from '@/shared/pagination'
 
 export const adminMetricsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -170,7 +171,7 @@ adminMetricsRoutes.post('/webhook-failures/:id/retry', async (c) => {
  */
 adminMetricsRoutes.get('/groupbuy-settlement-audit', async (c) => {
   const DB = c.env.DB
-  const days = Math.min(Math.max((parseInt(c.req.query('days') || '30') || 30), 1), 365)
+  const days = Math.min(Math.max(intParam(c.req.query('days'), 30), 1), 365)
   const since = `-${days} days`
   const GB = "order_number LIKE 'GB-%' AND status IN ('PAID','DONE') AND created_at > datetime('now', ?)"
   const GBO = "o.order_number LIKE 'GB-%' AND o.status IN ('PAID','DONE') AND o.created_at > datetime('now', ?)"

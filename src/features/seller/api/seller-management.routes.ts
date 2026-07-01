@@ -22,6 +22,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit';
 import { safeError } from '@/worker/utils/safe-error';
 
 import { swallow } from '@/worker/utils/swallow';
+import { intParam } from '@/shared/pagination'
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -434,8 +435,8 @@ sellerManagementRoutes.get('/:sellerId/products-public', async (c) => {
   const { DB } = c.env;
   const sellerId = c.req.param('sellerId');
   const { page = '1', limit = '20' } = c.req.query();
-  const pageNum = Math.max(1, parseInt(page, 10) || 1);
-  const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+  const pageNum = Math.max(1, intParam(page, 1));
+  const limitNum = Math.min(Math.max(intParam(limit, 20), 1), 100);
   const offset = (pageNum - 1) * limitNum;
 
   try {
