@@ -24,6 +24,7 @@
 
 | 페이지 | 시안 받은 날 | 상태 | 파일 |
 |---|---|---|---|
+| **📝 블로그 UI — 토스 테크 스타일**(히어로 캐러셀 + 전체 아티클 리스트 + 페이지네이션) | 2026-07-01 | ⏳ 구현 중 | [blog-toss-style.md](./blog-toss-style.md) |
 | 홈 사이드바 (3 섹션 + 카테고리) | 2026-05-06 | ✅ 구현 완료 (단, 홈은 2026-06-20 동네딜 지도로 전환됨 — 사이드바는 라이브 시절 잔재, 라이브 중단으로 사실상 무의미) | [home-sidebar.md](./home-sidebar.md) |
 | Quick Action FAB (당근식 확장 버튼) | 2026-05-24 | ✅ BottomNav ➕ 시트로 구현(역할별 만들기 메뉴) | [quick-action-fab.md](./quick-action-fab.md) |
 | **🚀 비즈니스 pivot — 링크샵·공구·어필리에이트** | 2026-05-25 | ✅ Phase 1–4 구현(링크샵·핀·어필리에이트 정산·공구 호스팅·셀러 승급). Phase 5(셀러 흡수)+폴리시만 잔여. ⚠️ 문서 내 '라이브' 언급은 **영구 중단**(LIVE_COMMERCE_SUSPENDED) — 무시 | [linkshop-pivot.md](./linkshop-pivot.md) |
