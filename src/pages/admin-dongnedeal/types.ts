@@ -12,6 +12,8 @@ export interface DealRow {
   restaurant_lat?: number | null
   restaurant_lng?: number | null
   created_at?: string
+  /** 🎯 1인당 최대 구매 수량 (0=무제한). */
+  max_per_person?: number | null
 }
 
 export const CAT_LABEL: Record<string, string> = {
