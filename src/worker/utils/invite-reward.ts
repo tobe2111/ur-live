@@ -9,7 +9,7 @@
  * fail-soft: 어떤 실패도 throw 하지 않음 — 결제 흐름 보호 (호출측 waitUntil 권장).
  */
 import { executeRun, queryFirst } from './database'
-import { adjustUserPoints } from './point-ledger'
+import { adjustUserPoints, recordPointTransaction } from './point-ledger'
 
 const _done_ensure = new WeakSet<D1Database>()
 export async function ensureInviteRewardsTable(DB: D1Database): Promise<void> {
@@ -112,4 +112,70 @@ export async function grantInviteRewardForFirstPurchase(
   } catch {
     return { granted: false, reason: 'error' }
   }
+}
+
+/**
+ * 🔐 2026-07-01 (전수감사 머니 #3 — 적립-역전 대칭): 초대받은 유저의 결제가 환불되어
+ * 유효(비취소) 주문이 0이 되면, 초대자에게 지급한 보상을 회수한다. 멱등·fail-soft.
+ *
+ * - 보류 조건: 환불 후에도 다른 유효 주문이 남아있으면 초대자는 여전히 실구매를 유도한 것이므로 회수 안 함.
+ * - CAS(granted→expired)로 동시/중복 환불에도 1회만 회수(claim-before-debit).
+ * - 회수 금액은 기존 clawback(affiliate/referral_bonus) 관례대로 MAX(0, ...) clamp(초대자 잔액 음수 방지).
+ * - 호출: reverseOrderAncillaryOnRefund(=refundOrderFully·주문취소 경유) + 반품환불(returns.routes) 양경로.
+ */
+export async function reverseInviteRewardOnRefund(
+  DB: D1Database,
+  invitedUserId: string,
+): Promise<void> {
+  try {
+    if (!invitedUserId) return
+    await ensureInviteRewardsTable(DB)
+
+    const row = await queryFirst<{ id: number; inviter_user_id: string; reward_amount: number }>(
+      DB,
+      "SELECT id, inviter_user_id, reward_amount FROM invite_rewards WHERE invited_user_id = ? AND status = 'granted'",
+      [String(invitedUserId)],
+    ).catch(() => null)
+    if (!row) return
+
+    // 환불 후 이 유저에게 유효(비취소) 주문이 남아있으면 보상 유지 (여전히 실구매자).
+    //   호출 시점엔 현재 주문이 이미 REFUNDED 로 전이된 상태 → 이 count 에서 제외됨.
+    const orderCount = await queryFirst<{ cnt: number }>(
+      DB,
+      "SELECT COUNT(*) as cnt FROM orders WHERE user_id = ? AND status NOT IN ('CANCELLED','FAILED','REFUNDED')",
+      [String(invitedUserId)],
+    ).catch(() => null)
+    if (!orderCount || orderCount.cnt > 0) return
+
+    // claim-before-debit: granted→expired CAS — 동시/중복 회수 중 1회만 진행.
+    const claim = await executeRun(
+      DB,
+      "UPDATE invite_rewards SET status = 'expired' WHERE id = ? AND status = 'granted'",
+      [row.id],
+    )
+    if (((claim as { meta?: { changes?: number } })?.meta?.changes ?? 0) === 0) return
+
+    const amount = Math.max(0, Math.round(Number(row.reward_amount) || 0))
+    if (amount <= 0) return
+
+    // 초대자 포인트 회수 (MAX(0,...) clamp — 이미 소진했으면 가용분만, 음수 방지).
+    await executeRun(
+      DB,
+      "UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?",
+      [amount, String(row.inviter_user_id)],
+    ).catch(() => {})
+    // 장부 기록 (best-effort, 음수 delta).
+    await recordPointTransaction(DB, {
+      userId: String(row.inviter_user_id),
+      delta: -amount,
+      type: 'invite_reward_reversal',
+      description: '초대 보상 회수 (친구 주문 환불)',
+    }).catch(() => {})
+    // users.deal_balance best-effort 역전.
+    await executeRun(
+      DB,
+      'UPDATE users SET deal_balance = MAX(0, COALESCE(deal_balance, 0) - ?) WHERE id = ?',
+      [amount, String(row.inviter_user_id)],
+    ).catch(() => {})
+  } catch { /* fail-soft */ }
 }

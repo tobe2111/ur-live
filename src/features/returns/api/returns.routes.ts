@@ -740,6 +740,27 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     }
   } catch { /* best-effort */ }
 
+  // 🔐 2026-07-01 (전수감사 머니 #2): 쿠폰 사용 복원 — coupon_uses 삭제 + used_count 감소.
+  //   order-refund.ts reverseOrderAncillaryOnRefund 는 복원하나 이 반품환불 경로는 역전을 인라인
+  //   재구현하면서 쿠폰만 누락 → 1회용 쿠폰 영구소진 + used_count 과대(타 유저 조기소진). CAS 게이트(transitioned) 하 단일실행.
+  try {
+    const cu = await DB.prepare('SELECT coupon_id FROM coupon_uses WHERE order_id = ?')
+      .bind(returnRecord.order_id).all<{ coupon_id: number }>().catch(() => ({ results: [] as Array<{ coupon_id: number }> }));
+    for (const row of (cu?.results ?? [])) {
+      await DB.prepare('UPDATE coupons SET used_count = MAX(0, used_count - 1) WHERE id = ?')
+        .bind(row.coupon_id).run().catch(swallow('returns:coupon-count'));
+    }
+    await DB.prepare('DELETE FROM coupon_uses WHERE order_id = ?')
+      .bind(returnRecord.order_id).run().catch(swallow('returns:coupon-uses'));
+  } catch { /* best-effort — coupon_uses 부재 등 */ }
+
+  // 🔐 2026-07-01 (전수감사 머니 #3): 초대 보상 회수 — 반품환불로 초대받은 유저의 유효주문이 0이 되면
+  //   초대자에게 지급된 1,000딜 회수(파밍 방지). 멱등 CAS(granted→expired) + 다른 유효구매 있으면 보류.
+  try {
+    const { reverseInviteRewardOnRefund } = await import('../../../worker/utils/invite-reward');
+    await reverseInviteRewardOnRefund(DB, String(returnRecord.user_id));
+  } catch { /* best-effort */ }
+
   // ── Settlement adjustment (restaurant vouchers) ──
   // If this order was already rolled into a completed settlement, record a clawback
   // and alert ops so finance can reconcile manually.

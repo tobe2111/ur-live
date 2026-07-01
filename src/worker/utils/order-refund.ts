@@ -108,6 +108,17 @@ export async function reverseOrderAncillaryOnRefund(
     const { clawbackVoucherSettlementOnRefund } = await import('./voucher-settlement-clawback')
     await clawbackVoucherSettlementOnRefund(DB, orderId, `order_refund:${reason}`)
   } catch { /* best-effort — 이용권 없는 주문 등 */ }
+
+  // 🔐 2026-07-01 (전수감사 머니 #3): 초대 보상 회수 — 이 주문이 초대받은 유저의 유효 마지막 주문이었으면
+  //   초대자에게 지급된 1,000딜 회수(파밍 방지, 멱등 CAS). 주문 user_id 조회 후 위임.
+  try {
+    const ord = await DB.prepare('SELECT user_id FROM orders WHERE id = ? LIMIT 1')
+      .bind(orderId).first<{ user_id: string | null }>().catch(() => null)
+    if (ord?.user_id) {
+      const { reverseInviteRewardOnRefund } = await import('./invite-reward')
+      await reverseInviteRewardOnRefund(DB, String(ord.user_id))
+    }
+  } catch { /* best-effort */ }
 }
 
 /**
