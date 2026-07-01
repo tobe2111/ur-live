@@ -1,5 +1,16 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 유어딜 정산 세금계산서 역발행 (매입) — 카카오 애드핏/유니포스트 모델 (대표 "가장 이상적으로")
+소비자(유어딜 공구) **사업자 유저 셀러 정산**의 세금계산서 자동화가 stub만 있고 역발행 0이던 것을 신설. 방향=셀러(공급자)→유어딜(공급받는자) **매입세금계산서 역발행**(유어딜이 초안 자동작성 → 셀러 대시보드 승인 → provider 발행). 애드핏=유니포스트 역발행과 동일 구조.
+- **게이트웨이** `src/worker/utils/tax-invoice-gateway.ts` — provider-agnostic("직접 fetch 금지" 철학). `REVERSE_INVOICE_PROVIDER`=`unipost`(실 API 스켈레톤)/`stub`(스테이징)/미설정(`none`=draft만·cost-0). env.ts에 `UNIPOST_*` 추가.
+- **모듈** `src/features/seller/api/settlement-tax-invoices.ts` — `settlement_tax_invoices`(UNIQUE settlement_id 멱등) 스키마·`generateSettlementReverseInvoice`(사업자 유저 verified 게이트+VAT split)·목록·승인(CAS)·재발행. 전부 fail-soft·additive.
+- **앵커**: `admin-payout-center.routes` `seller/:id/paid`(settlements→'paid', 실 현금지급 이벤트)에 waitUntil additive 훅. 정산 지급/금액/원천징수 로직 **byte 불변**.
+- **UI**: 셀러 `SellerSettlementsPage`에 `SettlementTaxInvoicesSection`(승인 버튼). 어드민 `AdminPayoutCenterPage`에 역발행 현황 패널(재발행·provider 상태). i18n 6개 언어(`seller.taxinv.*`).
+- **라우트**: seller `GET/POST /api/seller/settlement-tax-invoices[/:id/approve]`, admin `GET/POST /api/admin/tax/settlement-invoices[/:id/reissue]`. repair-schema 등록(`settlement_tax_invoices`·`seller_business_info`).
+- 설계: `docs/design/settlement-reverse-issuance.md`. 가이드(셀러/어드민) 갱신. **서비스 분리**: 도매 `wholesale_tax_invoices`와 별개 소비자 전용.
+- ⚠️ 세무 검토(문서화): 사업자 유저 `deal-withdraw`의 8.8% 원천징수 vs 세금계산서 중복은 실 발행 전 정책 확정 필요(현재 draft라 기존 로직 무변경). ⚠️ staging: `REVERSE_INVOICE_PROVIDER='stub'`로 승인 E2E 1회 후 유니포스트 실발행.
+- 검증: tsc 0(사전 config 경고 제외) · sql table/bind/not-null/column 가드 0 · theme(strict) 0 · file-size 0.
+
 ## ✅ 2026-07-01 — 알림 후속: 알림톡 템플릿 진단(a) + 위시리스트 재입고/가격인하 알림(b) (대표 "a,b")
 2차 조사에서 남긴 deferred 항목 2건 처리.
 - **(a) 알림톡 템플릿 불일치 진단**: `aligo.ts sendAlimtalk`엔 **SMS 폴백이 없어**, 미등록/불일치 `tpl_code`는 Aligo가 `result_code!=1`로 거부→`alimtalk_failures`에 쌓여 3회 재시도 후 방치(전달 0, quota 낭비). 코드가 쓰는 template 코드 ~24개 중 문서상 등록 세트에 없는 게 다수(appointment_* 5·auction_won·distributor_*·supplier_*·payout_completed·seller_settlement_completed·voucher_refunded + `approve`/`approved`/`test` 오용 의심). 실제 등록 여부는 Aligo 콘솔(운영 사실)이라 코드에서 직접 못 봄 → **프로덕션 실패를 가시화하는 진단 도구** 제공: ① SSOT `src/lib/alimtalk-templates.ts`(사용 코드 전량 + 문서상 등록 세트 + `isDocumentedRegistered`). ② admin `GET /api/admin/alimtalk-failures`에 **`by_template`**(미해결 실패를 template_code별 그룹 + 등록여부 주석) 추가. ③ `AdminSystemMonitoringPage` 알림톡 탭에 "템플릿별 진단" 섹션(미등록/등록 배지·미해결/포기 수). **발송 로직 무변경(fail-open)**. 실제 수정=운영자가 진단 보고 Aligo 콘솔에 미등록 템플릿 등록.

@@ -134,6 +134,15 @@ payoutCenterRoutes.patch('/seller/:id/paid', async (c) => {
         '/seller/settlements',
       ).catch(() => {})
     }
+
+    // 🧾 2026-07-01: 사업자 유저 셀러 정산 지급 → 매입세금계산서 역발행 초안 자동 생성(additive, fail-soft,
+    //   멱등 settlement_id). provider 미설정 시 draft 로만 남음(cost-0). 정산 지급(CAS) *이후* 기록만 —
+    //   금액/원천징수/지급 로직 전부 불변. 카카오 애드핏 = 유니포스트 역발행 모델.
+    {
+      const { generateSettlementReverseInvoice } = await import('../../seller/api/settlement-tax-invoices')
+      const p = generateSettlementReverseInvoice(DB, c.env, id).catch(() => { /* fail-soft */ })
+      if (c.executionCtx?.waitUntil) c.executionCtx.waitUntil(p); else await p
+    }
     return c.json({ success: true })
   } catch (err) {
     return safeError(c, err, '정산 지급 처리 중 오류가 발생했습니다', '[payout-center]')

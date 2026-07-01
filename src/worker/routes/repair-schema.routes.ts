@@ -1665,6 +1665,50 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'idx_wholesale_tax_inv_distributor', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_tax_inv_distributor ON wholesale_tax_invoices(distributor_seller_id, type, created_at DESC)` },
     { name: 'idx_wholesale_tax_inv_supplier', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_tax_inv_supplier ON wholesale_tax_invoices(supplier_id, type, created_at DESC)` },
     { name: 'idx_wholesale_tax_inv_status', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_tax_inv_status ON wholesale_tax_invoices(status, type, created_at DESC)` },
+    // 🧾 2026-07-01: 소비자 정산 매입세금계산서 역발행(셀러→플랫폼). settlement-tax-invoices.ts.
+    //   유어딜이 사업자 유저 셀러 정산 지급 시 초안 자동생성 → 셀러 승인 → provider(유니포스트) 발행.
+    //   ⚠️ 도매(wholesale_tax_invoices)와 별개 — 소비자(유어딜 공구) 전용 서비스 분리.
+    { name: 'settlement_tax_invoices', sql: `CREATE TABLE IF NOT EXISTS settlement_tax_invoices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      settlement_id INTEGER NOT NULL,
+      seller_id INTEGER NOT NULL,
+      supply_amount INTEGER NOT NULL DEFAULT 0,
+      vat_amount INTEGER NOT NULL DEFAULT 0,
+      total_amount INTEGER NOT NULL DEFAULT 0,
+      supplier_biz_no TEXT,
+      period TEXT,
+      status TEXT NOT NULL DEFAULT 'draft',
+      provider TEXT,
+      provider_ref TEXT,
+      nts_confirm_num TEXT,
+      note TEXT,
+      requested_at DATETIME,
+      approved_at DATETIME,
+      issued_at DATETIME,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_settlement_tax_inv_settlement', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_settlement_tax_inv_settlement ON settlement_tax_invoices(settlement_id)` },
+    { name: 'idx_settlement_tax_inv_seller', sql: `CREATE INDEX IF NOT EXISTS idx_settlement_tax_inv_seller ON settlement_tax_invoices(seller_id, created_at DESC)` },
+    { name: 'idx_settlement_tax_inv_status', sql: `CREATE INDEX IF NOT EXISTS idx_settlement_tax_inv_status ON settlement_tax_invoices(status, created_at DESC)` },
+    // seller_business_info(대표자명/업태/종목/주소 — migration 0012) 역발행 표기용. 미존재 환경 대비 보강.
+    { name: 'seller_business_info', sql: `CREATE TABLE IF NOT EXISTS seller_business_info (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      business_number TEXT,
+      business_name TEXT,
+      ceo_name TEXT,
+      business_type TEXT,
+      business_category TEXT,
+      postal_code TEXT,
+      address TEXT,
+      phone TEXT,
+      email TEXT,
+      is_verified INTEGER DEFAULT 0,
+      verified_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )` },
+    { name: 'idx_seller_business_info_seller', sql: `CREATE INDEX IF NOT EXISTS idx_seller_business_info_seller ON seller_business_info(seller_id)` },
     // 🏭 2026-06-08 DATA-1: 고아행(FK 부재) 일일 스윕 리포트 (flag-only).
     { name: 'wholesale_integrity_reports', sql: `CREATE TABLE IF NOT EXISTS wholesale_integrity_reports (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

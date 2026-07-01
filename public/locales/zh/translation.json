@@ -2775,6 +2775,19 @@
       "statusProcessing": "处理中",
       "statusCompleted": "已支付",
       "statusFailed": "失败"
+    },
+    "taxinv": {
+      "title": "税金计算书（反向开具）",
+      "desc": "UrDeal 会针对结算付款金额反向开具进项税金计算书。批准后即确定。",
+      "emptyDesc": "当结算款项支付给已注册企业的卖家时，UrDeal 会反向开具进项税金计算书。在此批准一次即可完成 — 无需自行开具。",
+      "period": "归属",
+      "supply": "供应价额",
+      "vat": "增值税",
+      "total": "合计",
+      "status": "状态",
+      "approve": "批准",
+      "approved": "已批准税金计算书",
+      "approveFailed": "批准失败"
     }
   },
   "admin": {

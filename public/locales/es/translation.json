@@ -2100,6 +2100,19 @@
       "statusProcessing": "Procesando",
       "statusCompleted": "Pagado",
       "statusFailed": "Fallido"
+    },
+    "taxinv": {
+      "title": "Factura fiscal (emisión inversa)",
+      "desc": "UrDeal emite de forma inversa una factura fiscal de compra por el pago de tu liquidación. Aprueba para finalizar.",
+      "emptyDesc": "Cuando se paga una liquidación a un vendedor con registro de negocio, UrDeal emite de forma inversa la factura fiscal de compra. Una aprobación aquí la completa — no necesitas emitirla tú mismo.",
+      "period": "Periodo",
+      "supply": "Base",
+      "vat": "IVA",
+      "total": "Total",
+      "status": "Estado",
+      "approve": "Aprobar",
+      "approved": "Factura fiscal aprobada",
+      "approveFailed": "Aprobación fallida"
     }
   },
   "admin": {

@@ -2100,6 +2100,19 @@
       "statusProcessing": "En cours",
       "statusCompleted": "Payé",
       "statusFailed": "Échoué"
+    },
+    "taxinv": {
+      "title": "Facture fiscale (émission inversée)",
+      "desc": "UrDeal émet en sens inverse une facture fiscale d’achat pour votre versement. Approuvez pour finaliser.",
+      "emptyDesc": "Lorsqu’un versement est payé à un vendeur enregistré comme entreprise, UrDeal émet en sens inverse la facture fiscale d’achat. Une approbation ici la complète — pas besoin de l’émettre vous-même.",
+      "period": "Période",
+      "supply": "Base HT",
+      "vat": "TVA",
+      "total": "Total",
+      "status": "Statut",
+      "approve": "Approuver",
+      "approved": "Facture fiscale approuvée",
+      "approveFailed": "Échec de l’approbation"
     }
   },
   "admin": {

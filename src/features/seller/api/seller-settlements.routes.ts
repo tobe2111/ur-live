@@ -19,6 +19,7 @@ import { createDashboardNotification } from '@/features/notifications/api/dashbo
 import { swallow } from '@/worker/utils/swallow'
 import { safeError } from '@/worker/utils/safe-error';
 import { rateLimit } from '@/worker/middleware/rate-limit'
+import { listSellerSettlementInvoices, approveSettlementInvoice } from './settlement-tax-invoices'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 interface SettlementStatsRow {
@@ -793,6 +794,41 @@ sellerSettlementsRoutes.get('/tax-summary', async (c) => {
       .catch(() => ({ results: [] }));
 
     return c.json({ success: true, data: { ...summary, monthly: monthly.results || [] } });
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
+  }
+});
+
+// 🧾 2026-07-01: 정산 매입세금계산서 역발행 — 셀러 목록 + 승인.
+//   유어딜이 지급액에 대해 초안(draft)을 자동 작성/요청 → 셀러가 여기서 '승인' 클릭(카카오 애드핏 모델).
+sellerSettlementsRoutes.get('/settlement-tax-invoices', async (c) => {
+  const authorization = c.req.header('Authorization');
+  if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401);
+  try {
+    const token = authorization.substring(7);
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const sellerId = payload.seller_id;
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403);
+    const items = await listSellerSettlementInvoices(c.env.DB, sellerId, 200);
+    return c.json({ success: true, data: items });
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
+  }
+});
+
+sellerSettlementsRoutes.post('/settlement-tax-invoices/:id/approve', rateLimit({ action: 'seller_settlement_taxinv_approve', max: 30, windowSec: 60 }), async (c) => {
+  const authorization = c.req.header('Authorization');
+  if (!authorization?.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401);
+  try {
+    const token = authorization.substring(7);
+    const payload = await import('hono/jwt').then(m => m.verify(token, c.env.JWT_SECRET, 'HS256')) as SellerJWTPayload;
+    const sellerId = payload.seller_id;
+    if (!sellerId) return c.json({ success: false, error: '셀러 권한 필요' }, 403);
+    const id = Number(c.req.param('id'));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 ID' }, 400);
+    const result = await approveSettlementInvoice(c.env.DB, c.env, id, sellerId);
+    if (!result) return c.json({ success: false, error: '세금계산서를 찾을 수 없습니다' }, 404);
+    return c.json({ success: result.ok, status: result.status, message: '승인되었습니다' });
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[seller-settlements]');
   }

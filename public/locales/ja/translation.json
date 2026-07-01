@@ -2775,6 +2775,19 @@
       "statusProcessing": "処理中",
       "statusCompleted": "支払済み",
       "statusFailed": "失敗"
+    },
+    "taxinv": {
+      "title": "税金計算書（逆発行）",
+      "desc": "UrDealが精算支払額に対する仕入税金計算書を逆発行します。承認すると確定します。",
+      "emptyDesc": "事業者登録セラーに精算金が入金されると、UrDealが仕入税金計算書を逆発行します。ここで承認一回で完了します — ご自身で発行する必要はありません。",
+      "period": "帰属",
+      "supply": "供給価額",
+      "vat": "消費税",
+      "total": "合計",
+      "status": "状態",
+      "approve": "承認",
+      "approved": "税金計算書を承認しました",
+      "approveFailed": "承認に失敗しました"
     }
   },
   "admin": {
