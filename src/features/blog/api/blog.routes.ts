@@ -14,7 +14,7 @@ const app = new Hono<{ Bindings: Env }>()
 // 🔄 시드 콘텐츠 버전 — 아래 seedPosts 배열(글 내용)을 바꾸면 이 숫자를 +1 하세요.
 // 올리면 배포 후 첫 접근 시 라이브 DB 에 자동 재반영됩니다.
 // 관리자가 /admin/blog 에서 직접 수정한 글(manually_edited=1)은 재시드해도 보존됩니다.
-const BLOG_SEED_VERSION = 2
+const BLOG_SEED_VERSION = 3
 
 // 테이블 자동 생성
 async function ensureBlogTable(DB: D1Database) {
@@ -110,7 +110,7 @@ app.get('/', async (c) => {
   await ensureBlogTable(c.env.DB)
   await maybeSyncBlogSeed(c.env.DB)
   const posts = await c.env.DB.prepare(`
-    SELECT id, slug, title, summary, tags, author, is_published, published_at, created_at, updated_at
+    SELECT id, slug, title, summary, tags, author, is_published, published_at, created_at, updated_at, is_seed, manually_edited
     FROM blog_posts ORDER BY created_at DESC
   `).all()
   return c.json({ success: true, data: posts.results })
@@ -832,7 +832,10 @@ async function syncBlogSeed(DB: D1Database) {
     ).bind(...LEGACY_SEED_SLUGS).run().catch(swallow('blog:api:blog'))
   }
 
-  for (const post of posts) {
+  for (let i = 0; i < posts.length; i++) {
+    const post = posts[i]
+    // 발행일 분산: 배열 순서대로 3일 간격 과거로 → 목록 정렬/시각이 단조롭지 않게(첫 글이 최신).
+    const ageOffset = `-${i * 3} days`
     const existing = await DB.prepare(
       'SELECT id, manually_edited FROM blog_posts WHERE slug = ?'
     ).bind(post.slug).first<{ id: number; manually_edited: number }>().catch(() => null)
@@ -840,15 +843,15 @@ async function syncBlogSeed(DB: D1Database) {
     if (!existing) {
       await DB.prepare(`
         INSERT OR IGNORE INTO blog_posts (slug, title, summary, content, tags, author, is_published, published_at, is_seed, manually_edited, seed_version)
-        VALUES (?, ?, ?, ?, ?, '유어딜 팀', 1, datetime('now'), 1, 0, ?)
-      `).bind(post.slug, post.title, post.summary, post.content, post.tags, BLOG_SEED_VERSION).run().catch(swallow('blog:api:blog'))
+        VALUES (?, ?, ?, ?, ?, '유어딜 팀', 1, datetime('now', ?), 1, 0, ?)
+      `).bind(post.slug, post.title, post.summary, post.content, post.tags, ageOffset, BLOG_SEED_VERSION).run().catch(swallow('blog:api:blog'))
     } else if (!existing.manually_edited) {
-      // 시드 관리 글 & 수동편집 안 됨 → 최신 시드 내용으로 갱신
+      // 시드 관리 글 & 수동편집 안 됨 → 최신 시드 내용으로 갱신(발행일도 재분산)
       await DB.prepare(`
         UPDATE blog_posts
-        SET title=?, summary=?, content=?, tags=?, is_seed=1, is_published=1, seed_version=?, updated_at=CURRENT_TIMESTAMP
+        SET title=?, summary=?, content=?, tags=?, is_seed=1, is_published=1, published_at=datetime('now', ?), seed_version=?, updated_at=CURRENT_TIMESTAMP
         WHERE id=? AND manually_edited=0
-      `).bind(post.title, post.summary, post.content, post.tags, BLOG_SEED_VERSION, existing.id).run().catch(swallow('blog:api:blog'))
+      `).bind(post.title, post.summary, post.content, post.tags, ageOffset, BLOG_SEED_VERSION, existing.id).run().catch(swallow('blog:api:blog'))
     }
     // manually_edited=1 → 건너뜀(수동편집 보존)
   }

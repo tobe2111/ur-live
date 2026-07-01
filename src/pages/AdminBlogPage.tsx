@@ -30,6 +30,8 @@ interface BlogPost {
   published_at: string | null
   created_at: string
   updated_at: string
+  is_seed?: number          // 1 = 코드 시드가 관리하는 글
+  manually_edited?: number  // 1 = 관리자가 직접 수정/작성 → 재시드해도 보존
 }
 
 type View = 'list' | 'edit'
@@ -212,6 +214,16 @@ export default function AdminBlogPage() {
                     }`}>
                       {post.is_published ? t('admin.blog.k014', { defaultValue: '발행됨' }) : t('admin.blog.k018', { defaultValue: '임시저장' })}
                     </span>
+                    {/* 📝 시드 관리 상태 배지 — 재시드 동작을 관리자가 예측할 수 있게 */}
+                    {post.manually_edited === 1 ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title="관리자가 수정/작성한 글 — 재시드해도 덮어쓰지 않고 보존됩니다">
+                        수동편집 · 보존
+                      </span>
+                    ) : post.is_seed === 1 ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700" title="코드 시드가 관리하는 글 — 배포 시 최신 시드 내용으로 자동 갱신됩니다. 여기서 수정하면 '수동편집·보존'으로 바뀝니다">
+                        시드 · 자동갱신
+                      </span>
+                    ) : null}
                     {parseTags(post.tags).slice(0, 3).map(tag => (
                       <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded">{tag}</span>
                     ))}
