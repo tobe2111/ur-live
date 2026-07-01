@@ -10,12 +10,12 @@ pagination 크래시 수정 후속 — 세 표면을 **가드 미보유 영역**
   - 🟡 **미수금 상환 비-CAS**(`distributors.ts` credit-repayment): `outstanding_balance` read-modify-write(절대값 write)라 동시 상환 2건이 하나를 덮어써 미수금 과대계상(플랫폼 채권 부풀림) 가능. → 원자 CAS(`WHERE COALESCE(outstanding_balance,0)=prevOut`) + 실패 시 409 재시도, 원장은 CAS 성공 후에만.
 - 검증: tsc 0 · 단위 2443 pass · build 0 · audit-gate 39 GREEN(머니패턴 포함).
 
-## ✅ 2026-07-01 — 카드결제 이용권 셀프취소 Toss 실패 갭 근본수정 (대표 "진행해줘")
-이용권 전수조사에서 유일하게 남았던 실질 돈-정합성 갭 수정 (`group-buy-voucher.routes.ts` `/voucher/:code/cancel`).
-- **문제**: 카드결제 교환권 셀프취소가 ① voucher 를 CAS 로 `refunded` 선점 → ② 재고원복/ledger/clawback/알림톡을 **무조건** 실행 → ③ Toss 취소는 `waitUntil` fire-and-forget. **Toss 취소가 일시 실패하면** voucher='refunded' 확정 + 미환불 + 재시도 없음 → 드물게 **유저가 이용권도 잃고 환불도 못 받는** 상태. (딜 결제는 동기라 안전, 카드만.)
-- **수정(머니룰 claim-release)**: 카드 취소를 **동기(await)** 로 전환 — `result.ok` 면 주문 REFUNDED + 재고원복/side-effect 진행, **실패면 voucher 를 `unused` 로 되돌려(선점 해제, `WHERE status='refunded'` 멱등) `502 REFUND_FAILED` 반환**(이용권 보존, 재시도 가능). 재고원복을 결제역전 **성공 후로** 이동(카드 실패 시 early-return → 재고 이중원복 0). 딜 경로·CAS 선점·7일 청약철회 가드·ledger/clawback/알림톡 로직 전부 불변(카드 분기 순서/동기화만).
-- **잠금 준수**: `group-buy-voucher.routes.ts` 비잠금. 잠긴 `tossCancelPayment`(toss-refund)은 **호출만**(수정 X) — Toss confirm/금액검증/gateway 전부 byte-불변.
-- 검증: tsc 0 · money-pattern 0 · sql-bind/column 0 · voucher 단위 36 pass · build(client+ssr+prerender+worker+prepare) 0. ⚠️ staging: 카드결제 교환권 셀프취소 정상취소 1회 + (가능하면 Toss 실패 유도 시 이용권 unused 유지 + 재시도).
+## ↩️ 2026-07-01 — 카드 이용권 셀프취소 "동기 revert" 수정 **자체 회귀 → 원복** (대표 "더 확인해볼 건")
+직전 커밋(`d15afd7`)에서 카드 셀프취소를 동기+실패시 voucher unused 복원으로 바꿨으나, **후속 검증에서 자체 회귀 발견 → 원복**.
+- **왜 회귀였나**: `cancelTossPayment`(toss-gateway)는 **retryable 실패(5xx/PROVIDER_ERROR)**를 `toss_refund_failures` 에 기록하고 `toss-refund-retry` cron(최대 5회 backoff)이 **나중에 환불을 완성**한다(voucher='refunded' 유지가 정답). 원본 async 패턴은 이 cron 백업이 있어 retryable 실패에 이미 안전했고, 실제 갭은 non-retryable(4xx)뿐. 내 "동기 revert" 는 retryable 실패에도 voucher 를 unused 로 되돌리는데, **같은 실패가 cron 으로 재시도돼 성공하면 유저가 이용권+환불 이중이득**(플랫폼 손실). 게다가 셀러(/refund)·어드민 강제환불의 established async+cron 패턴에서 이탈.
+- **조치**: `group-buy-voucher.routes.ts` 카드 분기를 **원본 async(waitUntil) 로 원복** + **왜 이 패턴이 의도된 설계인지 주석 명시**(다음 세션 재발 방지 — retryable=cron 완성, 동기 revert 금지).
+- **교훈**: 결제 side-effect 를 "고치기" 전에 **cron 재시도/dead-letter 백업 경로를 먼저 확인**할 것. 부분 분석으로 잘 설계된 async 패턴을 동기화하면 이중환불 유발. (추측 금지 룰의 실사례.)
+- 검증: tsc 0 · money-pattern 0 · sql-bind/column 0 · voucher 단위 36 pass · build 0. 순 효과: 코드 동작은 `d15afd7` 이전과 동일 + 설명 주석 추가.
 
 ## ✅ 2026-07-01 — 도매몰 라이브 전수조사 + 카탈로그 500 크래시 근본수정 (대표 "라이브로 접근해서 전수조사")
 라이브(`live.ur-team.com/wholesale`) 실접근 전수조사. **결과: 인증/RBAC 게이트 전부 건강(500 없음, 401/404 정상)·엣지캐시 누수 없음·SQL 인젝션 방어 정상.** 발견/수정:
