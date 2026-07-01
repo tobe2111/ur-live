@@ -16,9 +16,11 @@ interface BrandLoaderProps {
   fullScreen?: boolean
   /** 로고 크기(px). 기본 34. */
   size?: number
+  /** 진행 바 아래 상황 문구(예: "결제 승인 중"). 없으면 로고+바만. */
+  label?: string
 }
 
-export default function BrandLoader({ fullScreen = false, size = 34 }: BrandLoaderProps) {
+export default function BrandLoader({ fullScreen = false, size = 34, label }: BrandLoaderProps) {
   return (
     <div
       className={`flex flex-col items-center justify-center gap-5 ${fullScreen ? 'min-h-[100dvh]' : 'py-16'}`}
@@ -43,7 +45,10 @@ export default function BrandLoader({ fullScreen = false, size = 34 }: BrandLoad
         />
       </div>
 
-      <span className="sr-only">페이지 로딩 중…</span>
+      {label ? (
+        <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400">{label}</p>
+      ) : null}
+      <span className="sr-only">{label || '페이지 로딩 중…'}</span>
     </div>
   )
 }

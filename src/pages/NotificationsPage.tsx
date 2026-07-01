@@ -4,6 +4,7 @@ import { safeDate } from '@/utils/safe-date'
 import api from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { ChevronLeft, Bell } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { safeInternalPath } from '@/utils/safe-internal-path'
@@ -56,9 +57,7 @@ export default function NotificationsPage() {
 
       <div className="ur-content-narrow px-4 lg:px-8 py-2">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
-          </div>
+          <BrandLoader />
         ) : error ? (
           <div className="text-center py-20">
             <Bell className="w-12 h-12 text-gray-600 dark:text-gray-300 mx-auto mb-3" aria-hidden="true" />

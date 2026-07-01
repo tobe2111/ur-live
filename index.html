@@ -164,6 +164,17 @@
       #ud-inapp-block .wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; box-sizing: border-box; }
       #ud-inapp-block .ulogo { font-size: 32px; font-weight: 800; letter-spacing: -0.04em; margin-bottom: 8px; background: linear-gradient(135deg, #ff6b6b, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
       #ud-inapp-block .tagline { font-size: 11px; color: #8e8e93; margin-bottom: 24px; letter-spacing: 0.05em; font-weight: 500; }
+
+      /* 🎨 2026-06-29 (대표 — 로딩 브랜드 통일): 부팅 스플래시를 UR·DEAL 워드마크 로더로
+         (React 라우트 전환 BrandLoader 와 동일 룩). '유어딜' 한글 로더 → UR·DEAL 로 통일. */
+      #ur-pre-react .urw { position: relative; display: inline-flex; align-items: center; font-weight: 900; font-style: italic; font-size: 30px; line-height: 1; letter-spacing: -0.055em; font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, system-ui, sans-serif; animation: ur-boot-breathe 1.5s ease-in-out infinite; }
+      #ur-pre-react .urw .p { position: absolute; left: 5.4px; top: 8.4px; width: 0; height: 0; border-left: 4.2px solid currentColor; border-top: 2.7px solid transparent; border-bottom: 2.7px solid transparent; opacity: 0.85; }
+      #ur-pre-react .urw .d { display: inline-block; width: 4.2px; height: 4.2px; background: currentColor; border-radius: 50%; margin: 0 2.4px; transform: translateY(-1.8px); }
+      #ur-pre-react .urt { position: relative; overflow: hidden; width: 96px; height: 3px; border-radius: 999px; margin: 16px auto 0; background: rgba(140,140,140,0.2); }
+      #ur-pre-react .urb { position: absolute; top: 0; bottom: 0; left: 0; width: 38%; border-radius: 999px; background: currentColor; animation: ur-boot-sweep 1.15s cubic-bezier(0.4,0,0.2,1) infinite; animation-delay: 0.2s; }
+      @keyframes ur-boot-breathe { 0%,100% { opacity: 0.5; transform: scale(0.97); } 50% { opacity: 1; transform: scale(1); } }
+      @keyframes ur-boot-sweep { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
+      @media (prefers-reduced-motion: reduce) { #ur-pre-react .urw, #ur-pre-react .urb { animation: none; } }
       #ud-inapp-block .icon { font-size: 56px; margin-bottom: 18px; }
       #ud-inapp-block h1 { font-size: 18px; font-weight: 700; margin: 0 0 12px; line-height: 1.4; }
       #ud-inapp-block p.desc { font-size: 14px; color: #6e6e73; line-height: 1.6; margin: 0 0 24px; max-width: 340px; }
@@ -303,8 +314,8 @@
     <div id="root" role="application" aria-label="유어딜 라이브 커머스">
       <div id="ur-pre-react" style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"><script>(function(){var e=document.currentScript&&document.currentScript.parentElement;if(e){e.style.background=window.__urInitialBg||'#ffffff';e.style.color=window.__urInitialFg||'#1d1d1f';}})();</script>
         <div style="text-align:center;padding:24px;">
-          <div style="font-size:22px;font-weight:700;letter-spacing:-0.02em;margin-bottom:10px;">유어딜</div>
-          <div style="font-size:13px;color:#888;">로딩 중...</div>
+          <div class="urw"><span style="position:relative;display:inline-flex;align-items:baseline;">UR<span class="p"></span></span><span class="d"></span>DEAL</div>
+          <div class="urt"><div class="urb"></div></div>
           <div id="ur-slow-hint" style="display:none;font-size:11px;color:#666;margin-top:24px;max-width:280px;line-height:1.5;">
             10초 이상 멈춰있다면 브라우저 캐시를 비우거나<br/>다른 브라우저(Chrome/Safari)로 열어주세요.
             <br/><br/>
