@@ -419,9 +419,13 @@ function AppContent() {
       //   idle 시 background 로 dashboard 호출 → linked_seller_username / user_handle localStorage 채움.
       //   다음 링크샵 클릭 즉시 /profile/{username} 또는 /u/{handle} 직행 (0 RTT).
       //   5분 이내 이미 cache 있으면 skip — 불필요한 API 호출 방지.
-      const isLoggedIn = !!(localStorage.getItem('user_id') || localStorage.getItem('session_login') ||
-                            localStorage.getItem('seller_token') || localStorage.getItem('admin_token'))
-      if (isLoggedIn) {
+      // 🛡️ 2026-06-30 (무한 리다이렉트 루프 근본수정): 링크샵/큐레이터 프리페치는 *소비자(user) 세션* 전용.
+      //   /api/curator/me/dashboard 는 consumer 인증 필요 → admin/seller 토큰만으론 무조건 401.
+      //   admin-only 사용자가 이 401 을 유발해 리다이렉트 루프가 났다. 소비자 세션(user_id/session_login)
+      //   있을 때만 프리페치 — 사업자 유저(seller)도 소비자 계정이 있어 user_id 보유하므로 링크샵 워밍 정상.
+      //   (api.ts 의 '토큰 있으면 소비자 401 로 대시보드 리다이렉트 안 함' 가드와 이중 방어.)
+      const hasConsumerSession = !!(localStorage.getItem('user_id') || localStorage.getItem('session_login'))
+      if (hasConsumerSession) {
         const lastWarm = Number(localStorage.getItem('linkshop_dashboard_warm_ts') || 0)
         if (Date.now() - lastWarm > 5 * 60_000) {
           import('@/lib/api').then(m => {
