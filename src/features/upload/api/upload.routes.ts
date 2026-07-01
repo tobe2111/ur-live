@@ -93,7 +93,12 @@ async function getRoleAndId(c: { env: Bindings; req: { header: (k: string) => st
   return null
 }
 
-uploadRoutes.post('/upload/image', cors(), async (c) => {
+// 🛡️ 2026-07-01 (Cloudflare 전수조사): 인증 이미지 업로드 IP rate-limit 추가.
+//   기존엔 인증만 있고 rate-limit 이 없어, 탈취/자동화된 인증 계정 1개가 10MB×무한 PUT 으로
+//   R2 스토리지/쓰기·대역폭을 남용할 수 있었음(business-cert 는 이미 10/600 보유). 정상 셀러의
+//   상품 이미지 대량 업로드(수십 장/세션)는 통과하되 스크립트성 폭주는 차단하도록 100/10분(IP).
+//   non-auth 액션이라 DB 오류 시 fail-open(정상 업로드 안 막음) — rate-limit.ts 참조.
+uploadRoutes.post('/upload/image', cors(), rateLimit({ action: 'image-upload', max: 100, windowSec: 600 }), async (c) => {
   try {
     const auth = await getRoleAndId(c)
     if (!auth) return c.json({ success: false, error: '인증 필요' }, 401)
@@ -227,7 +232,9 @@ uploadRoutes.get('/media/:key{.+}', cors(), async (c) => {
 })
 
 // 본인 업로드 파일 삭제 (key 가 본인 prefix 와 일치할 때만).
-uploadRoutes.delete('/upload/image/:key{.+}', cors(), async (c) => {
+// 🛡️ 2026-07-01 (Cloudflare 전수조사): 삭제도 IP rate-limit — 소유권 검증은 있으나 무제한이라
+//   자동화된 대량 삭제(본인 자산 self-DoS / admin 토큰 남용) 가능. 60/10분(IP)로 상한.
+uploadRoutes.delete('/upload/image/:key{.+}', cors(), rateLimit({ action: 'image-delete', max: 60, windowSec: 600 }), async (c) => {
   try {
     const auth = await getRoleAndId(c)
     if (!auth) return c.json({ success: false, error: '인증 필요' }, 401)
