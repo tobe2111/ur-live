@@ -46,6 +46,7 @@ async function ensureBlogTable(DB: D1Database) {
     `ALTER TABLE blog_posts ADD COLUMN manually_edited INTEGER DEFAULT 0`,
     `ALTER TABLE blog_posts ADD COLUMN seed_version INTEGER DEFAULT 0`,
     `ALTER TABLE blog_posts ADD COLUMN ai_generated INTEGER DEFAULT 0`,
+    `ALTER TABLE blog_posts ADD COLUMN view_count INTEGER DEFAULT 0`,
   ]) {
     await DB.prepare(ddl).run().catch(swallow('blog:api:blog'))
   }
@@ -99,6 +100,16 @@ app.get('/public/:slug', async (c) => {
   return c.json({ success: true, data: post })
 })
 
+// ── 공개: 조회수 증가 (되먹임 신호) ────────────────────────────
+// 발행 글만 카운트. 클라이언트가 세션당 1회 호출(sessionStorage 가드). fail-soft.
+app.post('/public/:slug/view', async (c) => {
+  await ensureBlogTable(c.env.DB)
+  await c.env.DB.prepare(
+    `UPDATE blog_posts SET view_count = COALESCE(view_count,0) + 1 WHERE slug = ? AND is_published = 1`
+  ).bind(c.req.param('slug')).run().catch(swallow('blog:api:blog'))
+  return c.json({ success: true })
+})
+
 // ── 어드민 전용 가드 (GET 목록/상세 + POST/PUT/DELETE) ─────────
 // 공개 GET /public, /public/:slug 이후의 모든 핸들러에 인증 + admin 체크 적용
 app.use('*', requireAuth())
@@ -115,7 +126,7 @@ app.get('/', async (c) => {
   await ensureBlogTable(c.env.DB)
   await maybeSyncBlogSeed(c.env.DB)
   const posts = await c.env.DB.prepare(`
-    SELECT id, slug, title, summary, tags, author, is_published, published_at, created_at, updated_at, is_seed, manually_edited, ai_generated
+    SELECT id, slug, title, summary, tags, author, is_published, published_at, created_at, updated_at, is_seed, manually_edited, ai_generated, view_count
     FROM blog_posts ORDER BY created_at DESC
   `).all()
   return c.json({ success: true, data: posts.results })
@@ -1404,14 +1415,44 @@ app.post('/seed', async (c) => {
 })
 
 // ── AI 자동 초안 (홍보 전용) ─────────────────────────────────────
-// 아직 다뤄지지 않은 홍보 주제 하나 선택(모두 다뤄졌으면 null).
+// 🔁 되먹임 루프: 아직 안 다룬 주제 중 "성과 좋은 태그"를 가진 주제를 우선 선택.
+//   발행 글의 태그별 평균 조회수를 계산 → 각 미작성 주제를 그 태그 성과 합으로 점수화 →
+//   최고 점수부터. 성과 데이터가 없으면 기존 순서(백로그 순)로 폴백 → 열린 루프가 닫힌 루프로.
 async function pickPromoTopic(DB: D1Database): Promise<PromoTopic | null> {
-  for (const t of PROMO_TOPICS) {
-    const exists = await DB.prepare('SELECT 1 FROM blog_posts WHERE slug = ?')
-      .bind(t.slug).first().catch(() => null)
-    if (!exists) return t
+  // 이미 작성된 slug + 태그별 성과 수집
+  const rows = await DB.prepare(
+    `SELECT slug, tags, COALESCE(view_count,0) AS views FROM blog_posts WHERE is_published = 1`
+  ).all<{ slug: string; tags: string; views: number }>().catch(() => ({ results: [] as { slug: string; tags: string; views: number }[] }))
+  const existing = new Set<string>()
+  const tagViews = new Map<string, { total: number; count: number }>()
+  for (const r of rows.results || []) {
+    existing.add(r.slug)
+    let tags: string[] = []
+    try { tags = JSON.parse(r.tags || '[]') } catch { tags = [] }
+    for (const tag of tags) {
+      const cur = tagViews.get(tag) || { total: 0, count: 0 }
+      cur.total += Number(r.views) || 0
+      cur.count += 1
+      tagViews.set(tag, cur)
+    }
   }
-  return null
+  const tagScore = (tag: string) => {
+    const v = tagViews.get(tag)
+    return v && v.count > 0 ? v.total / v.count : 0
+  }
+
+  // 미작성 주제만 후보. 성과 점수 = 주제 태그들의 평균 조회수 합. 원래 순서는 안정 tie-break.
+  const candidates = PROMO_TOPICS
+    .map((t, idx) => ({ t, idx }))
+    .filter(({ t }) => !existing.has(t.slug))
+  if (candidates.length === 0) return null
+  candidates.sort((a, b) => {
+    const sa = a.t.tags.reduce((s, tag) => s + tagScore(tag), 0)
+    const sb = b.t.tags.reduce((s, tag) => s + tagScore(tag), 0)
+    if (sb !== sa) return sb - sa       // 성과 높은 주제 우선
+    return a.idx - b.idx                // 동점(또는 성과 0) → 백로그 순
+  })
+  return candidates[0].t
 }
 
 async function pendingAiDraftCount(DB: D1Database): Promise<number> {

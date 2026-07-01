@@ -6,6 +6,7 @@ import SEO, { breadcrumbJsonLd } from '@/components/SEO'
 import { nativeShare } from '@/lib/native'
 import KakaoShareButton from '@/components/KakaoShareButton'
 import { escapeHtml } from '@/shared/utils/html'
+import api from '@/lib/api'
 import { useBlogPost, type BlogPost } from '@/hooks/queries/useBlogPost'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
@@ -34,6 +35,17 @@ export default function BlogDetailPage() {
   )
 
   useEffect(() => { window.scrollTo(0, 0) }, [slug])
+
+  // 🔁 되먹임: 조회수 기록(세션당 slug 1회). 성과 신호 → AI 주제 우선순위에 반영됨.
+  useEffect(() => {
+    if (!slug) return
+    const key = `blog_viewed_${slug}`
+    try {
+      if (sessionStorage.getItem(key)) return
+      sessionStorage.setItem(key, '1')
+    } catch { /* storage 불가 시 그냥 1회 시도 */ }
+    api.post(`/api/blog/public/${slug}/view`).catch(() => {})
+  }, [slug])
 
   if (loading) {
     return (
