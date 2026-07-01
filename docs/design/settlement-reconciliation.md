@@ -92,11 +92,16 @@
 
 ---
 
-## 6. 후속 작업 체크리스트 (스테이징 필요)
-- [ ] §4.1 정책 대표 확정(단일 지급=원장 payout)
-- [ ] §4.2 셀러 대시보드 payable/payouts 노출 (읽기)
-- [ ] §4.3 '정산 신청' 버튼 처리(옵션 A)
-- [ ] `settlements` 테이블 + `seller_deal_balances` deprecate 마이그레이션 계획
+## 6. 후속 작업 체크리스트
+
+### ✅ 구현 완료 (2026-07-01 — 대표 승인 "자동 정산 하나로 통일", 머니-이동 없음)
+- [x] §4.1 정책 확정: **단일 지급 = 원장→payouts** (에이전시가 이미 2026-06-12 P3 로 수동 레일 폐기 → 셀러도 동일 패턴으로 정렬)
+- [x] §4.2 셀러 대시보드 실제 payout 노출 — 신규 읽기 엔드포인트 `GET /api/seller/payouts`(`getPayablePending('seller:N')` + `payouts` 실데이터) + `AutoPayoutSection.tsx`(미지급/지급예정/지급완료 + 내역). 오해 유발하던 `settlements` SUM 통계카드 4종 제거.
+- [x] §4.3 옵션 A: 고장난 '정산 신청' 버튼 + `requestSettlement`(→`/settlements/request`) + PIN 프롬프트 제거 → "매주 자동 정산" 안내로 교체. `settlements` 리스트는 '정산/환급 신청 이력(레거시)'로 relabel.
+
+### ⏳ 남은 작업 (일부는 잠금파일·staging 필요)
+- [ ] **일반 쇼핑 상품 주문 → 원장 배선** (payment.routes `/confirm` 잠금 — `recordLedger('seller:N')` 추가). 현재 쇼핑탭 숨김이라 영향 적으나, 재오픈 전 필수. 대표 승인 + staging 실결제 검증 필요.
+- [ ] `settlements` 테이블 + `seller_deal_balances` deprecate 마이그레이션 (백엔드 `/settlements/request`·`/deal-withdraw` 도 안내 응답으로 폐기 — 에이전시 패턴)
 - [ ] `settlement-automation.ts` 죽은 월간 리포트 경로(소문자 status) 제거
 - [ ] 어드민 '정산 관리'(orders 기반)와 payouts 정합 — 어느 하나로 통일 or 명시적 역할 분리
-- [ ] 이중지급 방지 회귀 테스트(같은 수익이 payout+settlement 로 2번 안 나가는지)
+- [ ] 이중지급 방지 회귀 테스트(같은 수익이 payout+settlement 로 2번 안 나가는지) — 현재는 수동 레일 제거로 구조적 차단
