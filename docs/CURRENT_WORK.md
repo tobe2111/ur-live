@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-30 — 어드민 상품 승인 시 이미지 시각 검수 (갤러리 후속) (대표 "다음으로")
+- **문제**: 어드민 공급상품 승인 큐(`SupplierProductsTab`)가 **이미지를 하나도 안 보여줘** 어드민이 썸네일/갤러리/상세를 못 보고 승인/거부 — 이미지 검수가 구조적으로 불가. API는 `image_url`만 반환(UI 미표시), `detail_images`·갤러리는 미반환.
+- **수정**: ① API(`admin-products.routes GET /supplier-products`) SELECT 에 `detail_images` 추가 + `getSupplyMeta` 로 `gallery_images` 첨부(fail-soft). ② UI: 각 행에 **썸네일** + 접이식 **'이미지 검수(대표 N · 상세 N)'** 패널(썸네일+대표갤러리+상세 전체를 그리드로, 클릭 시 원본 새탭, 중복제거). 이미지 0개면 '⚠️ 등록된 이미지가 없어요' 경고.
+- **불변**: 승인/거부/가격변경/마진설정 로직·RBAC 스코프·상품 SELECT 나머지 전부 불변(SELECT 컬럼 1개+meta 첨부+표시 UI additive). 어드민 라이트 테마(dark: 0).
+- 검증: tsc 0 · build 0 · theme-consistency(strict)·column-exists·bind·cross-role-api 가드 0. (사전존재 `check-dashboard-theme` 경고 5건은 타 세션 파일 — 내 파일 무관.)
+
 ## ✅ 2026-06-30 — 제조사 상품 대표 이미지 갤러리(여러 각도 캐러셀) (대표 "대표 이미지 갤러리")
 상품 대표 이미지가 **썸네일 1장뿐**이라 여러 각도/색상 사진을 못 보여주던 것 → 상단 캐러셀 추가.
 - **저장(예산 준수)**: products 컬럼 동결이라 신규 컬럼 대신 **`product_supply_meta.gallery_images`**(K-V JSON, CLAUDE.md 규칙). image_url(썸네일/커버)은 그대로 — 갤러리는 *추가* 각도.

@@ -7,11 +7,21 @@
  */
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2, Boxes, CheckCircle, XCircle, Clock, ExternalLink, ShieldCheck, TrendingUp, Search, AlertTriangle, Percent, Save } from 'lucide-react'
+import { Loader2, Boxes, CheckCircle, XCircle, Clock, ExternalLink, ShieldCheck, TrendingUp, Search, AlertTriangle, Percent, Save, Image as ImageIcon } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
 import { formatWon } from '@/utils/format'
 import { distributorPriceFromCost } from '@/lib/distributor-pricing'
 import api from '@/lib/api'
+import { cfImage } from '@/utils/cf-image'
+
+// 🖼️ 2026-06-30: 저장된 이미지 목록(JSON 문자열 | 배열) → URL 배열. 승인 전 시각 검수용.
+function parseImgList(v: string | string[] | null | undefined): string[] {
+  if (!v) return []
+  if (Array.isArray(v)) return v.filter((u): u is string => !!u)
+  const s = String(v).trim()
+  if (s.startsWith('[')) { try { const a = JSON.parse(s); return Array.isArray(a) ? a.filter((u: unknown): u is string => typeof u === 'string' && !!u) : [] } catch { return [] } }
+  return s ? [s] : []
+}
 
 export interface SupplierProductRow {
   id: number
@@ -22,6 +32,10 @@ export interface SupplierProductRow {
   stock: number
   category: string | null
   approval_status: string
+  // 🖼️ 2026-06-30: 승인 전 이미지 시각 검수 — 썸네일 + 대표갤러리(meta JSON) + 상세이미지(JSON).
+  image_url?: string | null
+  detail_images?: string | string[] | null
+  gallery_images?: string | string[] | null
   supplier_id: number
   supplier_name: string | null
   supplier_email: string | null
@@ -332,6 +346,9 @@ export default function SupplierProductsTab({
 }: Props) {
   const { t } = useTranslation()
   const wonUnit = t('common.won', { defaultValue: '원' })
+  // 🖼️ 2026-06-30: 상품별 '이미지 검수' 펼침 상태(승인 전 전체 이미지 확인).
+  const [imgOpen, setImgOpen] = useState<Set<number>>(new Set())
+  const toggleImg = (id: number) => setImgOpen(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
 
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -358,6 +375,11 @@ export default function SupplierProductsTab({
             return (
             <div key={p.id} className="p-4">
               <div className="flex items-start justify-between gap-4">
+                {/* 🖼️ 2026-06-30: 대표 썸네일 — 승인 전 시각 확인. */}
+                {p.image_url && (
+                  <img src={cfImage(p.image_url, { width: 120, format: 'auto' }) || p.image_url} alt="" loading="lazy" decoding="async"
+                    className="w-16 h-16 rounded-lg object-cover border border-gray-200 shrink-0 bg-gray-50" />
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     {p.approval_status === 'pending' && <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-50 text-yellow-700"><Clock className="w-3 h-3" /> {t('admin.products.spPending', { defaultValue: '승인 대기' })}</span>}
@@ -383,6 +405,35 @@ export default function SupplierProductsTab({
                       <ExternalLink className="w-3 h-3" /> {t('admin.products.spLowestLink', { defaultValue: '온라인 최저가 참고 링크' })}
                     </a>
                   )}
+
+                  {/* 🖼️ 2026-06-30: 이미지 검수 — 썸네일 + 대표 갤러리 + 상세이미지 전체 확인 후 승인. */}
+                  {(() => {
+                    const gallery = parseImgList(p.gallery_images)
+                    const detail = parseImgList(p.detail_images)
+                    const coverCount = (p.image_url ? 1 : 0) + gallery.length
+                    const allImgs = Array.from(new Set([...(p.image_url ? [p.image_url] : []), ...gallery, ...detail]))
+                    if (allImgs.length === 0) return <p className="text-[11px] text-amber-600 mt-1.5">⚠️ {t('admin.products.spNoImages', { defaultValue: '등록된 이미지가 없어요' })}</p>
+                    const opened = imgOpen.has(p.id)
+                    return (
+                      <div className="mt-1.5">
+                        <button type="button" onClick={() => toggleImg(p.id)}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900">
+                          <ImageIcon className="w-3.5 h-3.5" /> {t('admin.products.spImageReview', { defaultValue: '이미지 검수' })} (
+                          {t('admin.products.spImgCover', { defaultValue: '대표' })} {coverCount} · {t('admin.products.spImgDetail', { defaultValue: '상세' })} {detail.length}) {opened ? '▲' : '▼'}
+                        </button>
+                        {opened && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {allImgs.map((u, i) => (
+                              <a key={u + i} href={u} target="_blank" rel="noopener noreferrer" className="block" title={i === 0 && p.image_url ? '대표(썸네일)' : i < coverCount ? '대표 갤러리' : '상세'}>
+                                <img src={cfImage(u, { width: 200, format: 'auto' }) || u} alt="" loading="lazy" decoding="async"
+                                  className="w-20 h-20 rounded-lg object-cover border border-gray-200 bg-gray-50 hover:border-gray-400" />
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
 
                   {/* 네이버쇼핑 최저가 참고값 (BIZ-5 v1) — 검수 대기/가격변경 단계에서만 노출. advisory. */}
                   {(p.approval_status !== 'approved' || hasPriceChange) && p.name && (
