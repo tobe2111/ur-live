@@ -325,6 +325,9 @@ marketingRoutes.post('/searchad/autobid/rule', rateLimit({ action: 'ads-ab-rule'
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const tenant = await getActiveTenantId(c.env.DB, sellerId) // 규칙을 활성 고객사로 격리
+  // 🔒 돈 안전: 활성 고객사 없이 만든 규칙(tenant=NULL)은 이후 cron 에서 '그때 활성인' 고객사 계정에
+  //   적용될 수 있음(잘못된 계정 과금). 광고계정 연결을 선행 요구해 고아 규칙 자체를 차단.
+  if (!tenant) return c.json({ success: false, error: '자동입찰 규칙 등록 전에 광고계정(고객사)을 먼저 연결해주세요' }, 400)
   const r = await upsertRule(c.env.DB, sellerId, {
     keyword_id: String(body.keyword_id || ''), adgroup_id: body.adgroup_id ? String(body.adgroup_id) : undefined,
     keyword_text: body.keyword_text ? String(body.keyword_text) : undefined,
@@ -351,6 +354,8 @@ marketingRoutes.post('/searchad/autobid/rules/bulk', rateLimit({ action: 'ads-ab
     : []
   if (!rows.length) return c.json({ success: false, error: '등록할 행이 없습니다 (CSV: keyword_id,keyword_text,target_rank,max_bid,device,schedule_preset)' }, 400)
   const tenant = await getActiveTenantId(c.env.DB, sellerId)
+  // 🔒 돈 안전: 단일 규칙과 동일 — 활성 고객사 없이 만든 tenant=NULL 규칙의 잘못된-계정 적용 차단.
+  if (!tenant) return c.json({ success: false, error: '자동입찰 규칙 등록 전에 광고계정(고객사)을 먼저 연결해주세요' }, 400)
   const result = await bulkUpsertRules(c.env.DB, sellerId, rows, tenant)
   return c.json({ success: true, ...result })
 })
@@ -417,7 +422,7 @@ marketingRoutes.post('/price/refresh', rateLimit({ action: 'ads-price-refresh', 
   const row = await c.env.DB.prepare('SELECT id, query FROM ad_price_watches WHERE seller_id = ? AND id = ?')
     .bind(sellerId, id).first<{ id: number; query: string }>().catch(() => null)
   if (!row) return c.json({ success: false, error: '워치를 찾을 수 없습니다' }, 404)
-  await refreshWatch(c.env, row.id, row.query).catch(() => null)
+  await refreshWatch(c.env, row.id, row.query, sellerId).catch(() => null)
   const watches = await listWatches(c.env.DB, sellerId)
   return c.json({ success: true, watches })
 })
