@@ -264,21 +264,35 @@ if (import.meta.env.PROD) {
 //        PWA 설치 가능성보다 안정성이 우선. push-sw.js 만 보호.
 try {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(regs => {
-      regs.forEach(r => {
+    // 🛡️ 2026-06-30 (대표 신고 — /admin 회색 빈화면, 시크릿창은 정상 = 평소 브라우저에 잔존한 stale SW):
+    //   옛 캐시-우선 SW(pwa-sw/sw.js)가 현재 페이지를 '제어(controller)' 중이면, 이미 stale index.html/청크를
+    //   서빙해 blank #root / 무한로딩(콘솔 무에러 — 2026-05-16 사고와 동일 증상)을 만든다. 기존 코드는
+    //   unregister 만 하고 reload 를 안 해 → 그 stale 페이지가 그대로 남아 사용자가 수동 새로고침해야 복구
+    //   ("수차례" 반복 신고의 원인). 수정: unregister+cache clear 를 *기다린 뒤*, stale SW 가 제어 중이었으면
+    //   세션당 1회 캐시버스트 reload → SW 제어 해제된 clean 페이지를 자동 수신(무중단 자가복구).
+    //   push-sw.js 는 fetch 핸들러가 없어(요청 미가로챔) 무해 → controller 여도 트리거 제외(루프 방지).
+    const _ctrl = navigator.serviceWorker.controller
+    const _staleControlling = !!_ctrl && !((_ctrl.scriptURL || '').includes('push-sw.js'))
+    const _unreg = navigator.serviceWorker.getRegistrations().then(regs =>
+      Promise.all(regs.map(r => {
         const scriptUrl = r.active?.scriptURL || r.installing?.scriptURL || r.waiting?.scriptURL || ''
         // push-sw.js 만 보호 (push 알림 전용, fetch handler 없음)
-        if (scriptUrl.includes('push-sw.js')) return
-        r.unregister().catch(swallow('main:sw-unregister'))
+        if (scriptUrl.includes('push-sw.js')) return Promise.resolve()
+        return r.unregister().catch(swallow('main:sw-unregister'))
+      }))
+    ).catch(swallow('main:sw-getRegistrations'))
+    const _cacheClear = ('caches' in window)
+      ? caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).catch(swallow('main:caches-clear'))
+      : Promise.resolve()
+    if (_staleControlling) {
+      // stale SW 가 이 페이지를 서빙 중 → 제거 완료 후 1회만 clean reload (SW 제어 해제 반영).
+      Promise.all([_unreg, _cacheClear]).then(() => {
+        try {
+          const K = '__ur_sw_killed_reload__'
+          if (!sessionStorage.getItem(K)) { sessionStorage.setItem(K, '1'); reloadWithCacheBust() }
+        } catch { /* sessionStorage 차단 — silent */ }
       })
-    }).catch(swallow('main:sw-getRegistrations'))
-    if ('caches' in window) {
-      caches.keys().then(keys => keys.forEach(k => {
-        // 모든 캐시 삭제 (ur-pwa-* 포함)
-        caches.delete(k)
-      })).catch(swallow('main:caches-clear'))
     }
-    // pwa-sw.js 등록 제거 — 사고 재발 방지
   }
 } catch { /* ignore */ }
 
