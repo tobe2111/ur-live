@@ -795,6 +795,18 @@ sellerOrdersRoutes.post('/products', async (c) => {
       } catch { /* meta 저장 실패 — 상품 생성은 유지 (fail-soft) */ }
     }
 
+    // 🎯 2026-07-01 (대표 "결제 최대 한도 갯수 1인 당" — 셀러가 이용권 등록 시 설정):
+    //   product_supply_meta.max_per_person. 0/미설정/범위밖 = 무제한(미저장). 1~99 만 저장.
+    {
+      const mpp = Number((body as { max_per_person?: number | string }).max_per_person);
+      if (Number.isFinite(mpp) && mpp >= 1 && mpp <= 99) {
+        try {
+          const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+          await setSupplyMeta(db, Number(productId), { max_per_person: String(Math.floor(mpp)) });
+        } catch { /* fail-soft */ }
+      }
+    }
+
     // 🛡️ 2026-05-05: 디지털 상품 필드 저장 (UPDATE — migration 0243 후 컬럼 존재)
     if (body.product_kind && body.product_kind !== 'physical') {
       const digitalFields: Array<['product_kind' | 'delivery_type' | 'content_url' | 'content_format' | 'access_duration_days' | 'preview_url', unknown]> = [
