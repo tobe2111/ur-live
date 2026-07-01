@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-30 — 제조사 상품 대표 이미지 갤러리(여러 각도 캐러셀) (대표 "대표 이미지 갤러리")
+상품 대표 이미지가 **썸네일 1장뿐**이라 여러 각도/색상 사진을 못 보여주던 것 → 상단 캐러셀 추가.
+- **저장(예산 준수)**: products 컬럼 동결이라 신규 컬럼 대신 **`product_supply_meta.gallery_images`**(K-V JSON, CLAUDE.md 규칙). image_url(썸네일/커버)은 그대로 — 갤러리는 *추가* 각도.
+- **서버**: POST/PATCH `gallery_images` → meta(배열/쉼표→http(s)필터→최대 10장 JSON, PATCH 빈값=해제) · `GET /catalog/:id` 가 meta 에서 파싱해 `gallery_images` 반환(guest+로그인) · `GET /products` meta 병합에 추가(수정 prefill).
+- **클라**: `AddProductModal` 커버 URL 아래 '대표 이미지 추가(여러 각도)' `MultiImageUpload max={10}`(수정모드 prefill·공통 payload) · `WholesaleProductPage` 상단 = **캐러셀**([image_url, ...gallery] 중복제거·순서보존, 썸네일 탭 전환, 1장이면 기존과 동일). `MultiImageUpload` 에 `max` prop 추가(상세=30/갤러리=10, 클라·서버 slice 동기).
+- **불변**: `image_url` 썸네일(카트/카탈로그 카드)·detail_images·등급가·캐시·products 컬럼 전부 불변(갤러리는 meta 신설 + 캐러셀 UI). 1장 상품은 UI byte-동일.
+- 검증: tsc 0 · build 0 · column-exists/bind/컬럼예산 가드 0. ⚠️ staging: 여러 장 등록 → 상세 상단 캐러셀 썸네일 전환 → 수정모드 prefill/교체 1회.
+
 ## ✅ 2026-06-30 — 배포-청크 자가복구 영구 방어선(흰화면/무한로딩 회귀 차단) (대표 "더 이상적으로")
 대시보드 무한로딩(옛 청크 MIME) 수정 후속 — 메커니즘은 이미 견고(인라인 부트가드+`reloadWithCacheBust` SSOT+버전체크). **더 이상적 = 4번+ 재발한 이 버그가 다시 *조용히 회귀* 못 하게 락.**
 - 신규 `scripts/check-chunk-recovery-guard.mjs` — 자가복구 **4불변식** 존재 강제: ① `index.html` 인라인 부트가드 ② `chunk-error.ts` `isChunkLoadError`(MIME 감지)+`reloadWithCacheBust`(`__cb`+`location.replace`, plain reload 회귀 금지) ③ `main.tsx` error/unhandledrejection 배선 ④ worker SPA 셸 `no-cache`. 하나라도 빠지면 flag.

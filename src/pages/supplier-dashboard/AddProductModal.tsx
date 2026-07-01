@@ -30,12 +30,12 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
     supply_price: String(editItem.supply_price ?? ''), suggested_retail_price: String(editItem.retail_price ?? ''),
     stock: String(editItem.stock ?? ''), min_order_qty: editItem.min_order_qty ? String(editItem.min_order_qty) : '',
     pack_size: editItem.pack_size ? String(editItem.pack_size) : '', order_multiple: editItem.order_multiple ? String(editItem.order_multiple) : '',
-    shipping_fee: '', category: editItem.category || 'food', image_url: editItem.image_url || '', detail_images: detailImagesToCsv(editItem.detail_images),
+    shipping_fee: '', category: editItem.category || 'food', image_url: editItem.image_url || '', detail_images: detailImagesToCsv(editItem.detail_images), gallery_images: detailImagesToCsv(editItem.gallery_images),
     supply_visibility: editItem.supply_visibility || 'ALL', barcode: editItem.barcode || '',
     product_code: wholesaleCodeSuffix((editItem as { product_code?: string }).product_code, editItem.category),
     is_brand_product: !!editItem.is_brand_product, brand_name: editItem.brand_name || '', brand_logo_url: editItem.brand_logo_url || '',
     lowest_price_url: editItem.lowest_price_url || '',
-  } : { name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', shipping_fee: '', category: 'food', image_url: '', detail_images: '', supply_visibility: 'ALL', barcode: '', product_code: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '' })
+  } : { name: '', description: '', supply_price: '', suggested_retail_price: '', stock: '', min_order_qty: '', pack_size: '', order_multiple: '', shipping_fee: '', category: 'food', image_url: '', detail_images: '', gallery_images: '', supply_visibility: 'ALL', barcode: '', product_code: '', is_brand_product: false, brand_name: '', brand_logo_url: '', lowest_price_url: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   // 📥 2026-06-12 (사용자 요청): 등록 진입점에서 대량등록 옵션 선택 가능 — CatalogTab 과 동일 흐름 공유.
@@ -68,6 +68,7 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
       const payload: Record<string, unknown> = {
         name: form.name.trim(),
         detail_images: form.detail_images.trim(),
+        gallery_images: form.gallery_images.trim(),
         description: form.description.trim() || undefined,
         supply_price: supply,
         suggested_retail_price: retail,
@@ -240,6 +241,12 @@ export default function AddProductModal({ t, onClose, onCreated, editItem }: { t
           <div>
             <label className={labelCls}>{t('supplier.fieldImage', { defaultValue: '썸네일(대표) 이미지 URL' })}</label>
             <input disabled={saving} value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} className={inputCls} placeholder="https://..." />
+          </div>
+          {/* 🖼️ 2026-06-30: 대표 이미지 갤러리 — 썸네일 외 여러 각도/색상 사진. 상품 상세 상단 캐러셀(썸네일과 함께 넘겨보기). 최대 10장. */}
+          <div>
+            <label className={labelCls}>{t('supplier.fieldGalleryImages', { defaultValue: '대표 이미지 추가 (여러 각도 · 상단 갤러리)' })}</label>
+            <MultiImageUpload value={form.gallery_images} onChange={(v) => setForm(f => ({ ...f, gallery_images: v }))} t={t} max={10} />
+            <p className="text-[11px] text-gray-400 mt-1">{t('supplier.galleryHint', { defaultValue: '썸네일 외 추가 각도·색상 사진. 상품 상세 상단에서 썸네일과 함께 넘겨볼 수 있어요. (최대 10장)' })}</p>
           </div>
           {/* 🧩 2026-06-17 (입점폼 간소화): 부가 항목은 접어서 첫 등록 마찰 감소. 안의 값은 그대로 제출됨. */}
           <details className="border border-gray-200 rounded-xl">
