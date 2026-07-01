@@ -275,6 +275,21 @@
 
 CLAUDE.md 는 매 작업마다 읽는 활성 규칙만 유지. 사고 후일담 / 긴 표 / 시안 detail 은 위 파일로 분리.
 
+## 📝 블로그 시드 자동 업데이트 (2026-07-01 대표 지시 — "코드 수정될 때마다 블로그도 자동 반영")
+
+소비자 블로그(`/blog`, `/admin/blog`)는 `blog_posts` 테이블 + **버전 재시드** 구조.
+- **SSOT 시드**: `src/features/blog/api/blog.routes.ts` 의 `blogSeedPosts()` 배열 + `BLOG_SEED_VERSION` 상수.
+- **자동 반영 원리**: `BLOG_SEED_VERSION` > DB 저장 버전이면 배포 후 첫 접근 시 `maybeSyncBlogSeed()` 가 자동 동기화. 신규 글 삽입 / 시드 관리 글(`is_seed=1, manually_edited=0`) 최신화 / 새 시드에서 빠진 낡은 글은 **비공개**(삭제 아님). 관리자가 `/admin/blog` 에서 **직접 수정(`manually_edited=1`)하거나 생성(`is_seed=0`)한 글은 절대 덮어쓰지 않음**(수동 편집 보존).
+
+> ⚠️ **필수 룰 (모든 세션 준수)**: **서비스 사실이 바뀌면 블로그 시드도 같은 커밋에서 고치고 `BLOG_SEED_VERSION` 을 +1 하라.** 안 올리면 라이브 블로그가 안 바뀜. 특히:
+> - 명칭 SSOT 변경(이용권/유저/사업자 유저/링크샵/동네딜/교환권 등) → 관련 글 문구 갱신
+> - 기능 신설/중단(예: 라이브커머스 영구중단, 쇼핑탭 숨김) → 해당 글 삭제/수정
+> - 수수료율·딜포인트·결제·정산 규칙 변경 → 해당 가이드 글 갱신
+> - ❌ 블로그 시드에 낡은 용어(식사권/공구권, "라이브 커머스"를 현재 기능으로) 재유입 금지 — `scripts/check-blog-seed-currency.mjs` 가 감지.
+> - ❌ 도매몰(유통스타트/판매사/제조사) 내용 유입 금지 — 소비자 블로그 전용(서비스 분리).
+
+수동 강제 재동기화: 어드민 `POST /api/blog/seed` (버전 무관 강제 sync).
+
 ## 📖 운영 가이드 3종 자동 업데이트
 
 DB(`operation_guides` 테이블) 에 저장된 3개 가이드:
@@ -782,6 +797,7 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 | 모달/시트가 하단 네비 뒤로 가려짐 | `check-modal-zindex.mjs` (warn) | `verify.yml` (strict) | 2026-06-26 대표 "이 문제 계속 발생 — 근본적으로". 풀스크린 오버레이(`fixed inset-0 z-[N]`)를 `z-[100]`(FAB 대) 등 네비(`z-[9999]`) 아래로 달아 하단 네비가 모달/바텀시트(공구권 등록 시트 등) 위를 덮어 버튼이 안 보임. 새 모달 추가마다 재발 → 표준 스케일(`src/constants/z-index.ts`: 모달 10500 / 시트 10600 / 토스트 20000 / 확인창 100000) 강제. 23개 일괄 교정 후 strict. 예외(네비 숨김 화면 전용 등) `modal-zindex-ok` 주석 + `pointer-events-none` 자동 제외 |
 | 대시보드 라우팅(다중역할/겸업 lock-out) | `check-seller-wholesale-redirect.mjs` (warn) | `verify.yml` (strict) | 2026-06-30 대표 신고 — `/seller` 들어가면 `/wholesale` 로 튕김. `SellerLayout` 이 `localStorage.is_distributor === '1'` 하나로 무조건 도매몰 redirect(마운트 effect + render 가드 2곳) → **소비자 셀러 + 판매사 겸업** 계정이 셀러 대시보드에서 영구 차단(기존 셀러가 `/become-distributor` 한 번만 해도 같은 셀러 행에 is_distributor=1 덧붙어 겸업이 됨). `is_distributor`=도매 *접근권*(capability)이지 도매 *전용*(exclusivity)이 아님(주석은 "겸업 영향 없음" 약속했으나 코드 미구현). **일반 룰(이 클래스 전체): 대시보드 레이아웃/페이지(`*Layout`·`*DashboardPage`·`Seller*`·`supplier-dashboard`)에서 가산 권한 플래그(`is_*`) 단독 게이트로 서비스간 redirect/`return null` 금지** — 셀러↔도매=서버 권위 `wholesale_only`(SSOT `computeWholesaleOnly`, 인증 `GET /api/seller/surface`), 또는 다중역할 보호 동반조건(`!loggedIn`/`!token`/단일역할 `role !==`). 게이트를 새 신호로 바꿔 기존 깨진 겸업 계정은 재로그인 없이 자동 치유. 예외 `seller-wholesale-redirect-ok`/`multi-role-redirect-ok` 주석 |
 | god 파일 재발(페이지/라우트 비대화) | `check-file-size.mjs` (warn) | `verify.yml` + audit-gate (strict) | 2026-06-29 대표 "리팩토링 반복 말고 애초에 막아라". 페이지/라우트가 "일단 여기에 한 블록 더" 누적으로 god 파일(MyVouchersPage 1296·GroupBuyListPage 1309…) → 사후 대규모 분해 필요. **래칫**: 신규 파일 600줄 초과 차단 + 기존 대형 파일은 `scripts/file-size-baseline.json`(현재 82개 동결)보다 **커지면 차단**(줄이는 건 OK). 줄인 뒤 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신. 분해법: 카드·모달·섹션·핸들러群을 같은이름 폴더(`foo-list/`)로 추출(GroupBuyListPage→`group-buy-list/` 9개, MyVouchersPage→`my-vouchers/` 7개 선례). 예외 `file-size-ok` 주석 / `[SKIP_SIZE]` |
+| 블로그 시드 최신성(낡은 명칭/기능 재유입) | `check-blog-seed-currency.mjs` (warn) | `verify.yml` + audit-gate (strict) | 2026-07-01 대표 신고 "블로그가 자동으로 안 고쳐짐". 소비자 블로그(`/blog`) 시드는 `blog.routes.ts` `blogSeedPosts()` + `BLOG_SEED_VERSION` 버전 재시드(관리자 수동편집=`manually_edited=1` 보존). 시드가 폐기 명칭(식사권/공구권/인플루언서/큐레이터)·영구중단 기능(라이브커머스/라이브방송/쇼츠)·도매몰(유통스타트/판매사/제조사) 내용으로 되돌아가면 라이브 블로그가 다시 낡아짐. **서비스 사실 바뀌면 시드 고치고 `BLOG_SEED_VERSION` +1**(안 올리면 라이브 미반영). 상세: 위 "📝 블로그 시드 자동 업데이트" 섹션. 예외 `blog-currency-ok` 주석 |
 
 **Bypass (정당 사유만):**
 - commit message 에 `[SKIP_ROUTER_CHECK]` / `[SKIP_BUILD_CHECK]` / `[SKIP_SECRET_CHECK]` / `[STRICT_SILENT]` 등 명시

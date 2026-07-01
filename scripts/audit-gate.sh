@@ -58,6 +58,7 @@ if domain money; then
   run "CHECK 제약 위반"                 node scripts/check-status-constraints.mjs
   run "쿼리 isError(빈화면 위장)"        node scripts/check-query-iserror.mjs
   run "CSV 수식 인젝션"                 node scripts/check-csv-injection.mjs
+  run "블로그 시드 최신성"               node scripts/check-blog-seed-currency.mjs
 fi
 
 if domain schema; then
