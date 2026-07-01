@@ -24,6 +24,8 @@ interface DetailItem {
   id: number; name: string; description?: string | null; image_url: string | null
   // 🖼️ 2026-06-12: 상세페이지 이미지(썸네일과 분리) — 상세설명 탭에 세로 갤러리.
   detail_images?: string[]
+  // 🖼️ 2026-06-30: 대표 이미지 갤러리(여러 각도) — 썸네일(image_url)과 함께 상단 캐러셀.
+  gallery_images?: string[]
   category: string | null; stock: number; distributor_price: number | null
   retail_price?: number | null; moq?: number; pack_size?: number; order_multiple?: number; sold_count?: number; tiers?: QtyTierView[]; requires_login?: boolean
   // 🚚 제조사별 배송/주문 정책(비식별 group key + 정책 숫자) — 카트 그룹 계산용.
@@ -92,6 +94,8 @@ export default function WholesaleProductPage() {
   const grade = data?.grade ?? ''
   const [qty, setQty] = useState(1)
   const [tab, setTab] = useState<'desc' | 'ship' | 'settle' | 'return'>('desc')
+  // 🖼️ 2026-06-30: 대표 이미지 캐러셀 — 썸네일(image_url) + 갤러리(gallery_images) 순서·중복제거. 선택 인덱스 clamp.
+  const [galleryIdx, setGalleryIdx] = useState(0)
   const cart = useWholesaleCart()
 
   // 💬 "제조사에 문의" — 로그인 판매사만. 서버가 상품→제조사를 서버사이드 해석(신원 비공개).
@@ -264,12 +268,30 @@ export default function WholesaleProductPage() {
       </header>
 
       <main className="ur-content-wide px-5 lg:px-8 py-5 lg:flex lg:gap-8">
-        {/* 갤러리 */}
-        <div className="lg:w-[46%] lg:shrink-0 mb-5 lg:mb-0">
-          <div className="aspect-square rounded-2xl overflow-hidden" style={{ border: '1px solid ' + WT.line, background: WT.fill }}>
-            {item.image_url && <img src={cfImage(item.image_url, { width: 800, format: 'auto' }) || item.image_url} alt={item.name} loading="eager" decoding="async" draggable={false} className="w-full h-full object-cover" />}
-          </div>
-        </div>
+        {/* 갤러리 — 썸네일 + 대표 이미지(여러 각도). 중복 제거, 순서 보존. */}
+        {(() => {
+          const gallery = Array.from(new Set([item.image_url, ...(item.gallery_images ?? [])].filter((u): u is string => !!u)))
+          const activeIdx = gallery.length ? Math.min(galleryIdx, gallery.length - 1) : 0
+          const main = gallery[activeIdx]
+          return (
+            <div className="lg:w-[46%] lg:shrink-0 mb-5 lg:mb-0">
+              <div className="aspect-square rounded-2xl overflow-hidden" style={{ border: '1px solid ' + WT.line, background: WT.fill }}>
+                {main && <img src={cfImage(main, { width: 800, format: 'auto' }) || main} alt={item.name} loading="eager" decoding="async" draggable={false} className="w-full h-full object-cover" />}
+              </div>
+              {gallery.length > 1 && (
+                <div className="mt-2.5 flex gap-2 overflow-x-auto pb-1">
+                  {gallery.map((u, i) => (
+                    <button key={u + i} type="button" onClick={() => setGalleryIdx(i)} aria-label={`이미지 ${i + 1}`}
+                      className="w-14 h-14 rounded-lg overflow-hidden shrink-0 transition-all"
+                      style={{ border: `2px solid ${i === activeIdx ? WT.brand : WT.line}`, opacity: i === activeIdx ? 1 : 0.65 }}>
+                      <img src={cfImage(u, { width: 120, format: 'auto' }) || u} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* 정보 */}
         <div className="flex-1 min-w-0">

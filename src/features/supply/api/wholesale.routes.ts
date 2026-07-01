@@ -1207,6 +1207,9 @@ app.get('/catalog/:id', async (c) => {
     // 🖼️ 2026-06-12: 상세페이지 이미지(JSON 배열) — 썸네일과 분리 노출 (guest 포함, 가격정보 아님).
     let detailImages: string[] = []
     try { const arr = JSON.parse(r.detail_images || '[]'); if (Array.isArray(arr)) detailImages = arr.filter(u => typeof u === 'string').slice(0, 30) } catch { /* 손상 JSON — 무시 */ }
+    // 🖼️ 2026-06-30: 대표 이미지 갤러리(여러 각도) — product_supply_meta.gallery_images(JSON). 썸네일(image_url)과 별개, 상단 캐러셀용. 최대 10장.
+    let galleryImages: string[] = []
+    try { const arr = JSON.parse(shipMeta?.gallery_images || '[]'); if (Array.isArray(arr)) galleryImages = arr.filter(u => typeof u === 'string').slice(0, 10) } catch { /* 손상 JSON — 무시 */ }
     if (guest) {
       // 🏭 guest 상세는 가격 비노출 → 공유캐시 안전(브라우저 60s + edge 300s). KV 미사용.
       //   🛡️ 단, 인증 시도(무효 토큰/쿠키)가 있었으면 public 금지 — v=in 키 오염 방지(잔여 누수 차단).
@@ -1217,6 +1220,7 @@ app.get('/catalog/:id', async (c) => {
         item: {
           id: r.id, name: r.name, description: r.description, image_url: r.image_url,
           detail_images: detailImages,
+          gallery_images: galleryImages,
           category: r.category, stock: r.stock, distributor_price: null,
           retail_price: null, moq, pack_size: packSize, order_multiple: orderMultiple,
           sold_count: r.sold_count || 0, tiers: [], requires_login: true,
@@ -1251,6 +1255,7 @@ app.get('/catalog/:id', async (c) => {
       item: {
         id: r.id, name: r.name, description: r.description, image_url: r.image_url,
         detail_images: detailImages,
+        gallery_images: galleryImages,
         category: r.category, stock: r.stock, distributor_price: price,
         retail_price: r.retail_price || null, moq, pack_size: packSize, order_multiple: orderMultiple,
         sold_count: r.sold_count || 0,

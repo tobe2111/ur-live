@@ -25,6 +25,8 @@ export interface CatalogItem {
   min_order_qty?: number; pack_size?: number; order_multiple?: number
   // 🖼️ 2026-06-30: 상세페이지 이미지 — GET 이 JSON 문자열로 반환(수정모드 prefill). 편집 시 PATCH 로 갱신.
   detail_images?: string | string[] | null
+  // 🖼️ 2026-06-30: 대표 이미지 갤러리(여러 각도) — meta 저장, GET 이 JSON 문자열로 반환(수정모드 prefill).
+  gallery_images?: string | string[] | null
 }
 export interface SettlementItem {
   id: number; order_id: number | null; product_id: number | null; product_name: string | null

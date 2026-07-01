@@ -329,6 +329,7 @@ supplierDashboardRoutes.get('/products', async (c) => {
           if (m?.wholesale_shipping_fee != null && m.wholesale_shipping_fee !== '') {
             r.shipping_fee = Number(m.wholesale_shipping_fee);
           }
+          r.gallery_images = m?.gallery_images || null; // 🖼️ 대표 이미지 갤러리(JSON 문자열) — 수정모드 prefill.
         }
       }
     }
@@ -361,6 +362,8 @@ supplierDashboardRoutes.post('/products', async (c) => {
       lowest_price_url?: string; product_code?: string;
       // 🖼️ 2026-06-12: 상세페이지 이미지 — 배열 또는 쉼표 구분 문자열 (썸네일 image_url 과 분리).
       detail_images?: string[] | string;
+      // 🖼️ 2026-06-30: 대표 이미지 갤러리(여러 각도) — meta 저장. 배열/쉼표 문자열.
+      gallery_images?: string[] | string;
     };
     const body = await c.req.json<ProductBody>().catch(() => ({} as ProductBody));
     await ensureSupplyVisibilitySchema(DB);
@@ -414,6 +417,10 @@ supplierDashboardRoutes.post('/products', async (c) => {
       : String(body.detail_images || '').split(/[,\n|]/);
     const detailList = detailListRaw.map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 30); // 최대 30장 (MultiImageUpload MAX_FILES 동기)
     const detailImages = detailList.length ? JSON.stringify(detailList) : null;
+    // 🖼️ 2026-06-30: 대표 이미지 갤러리(여러 각도) — meta.gallery_images(JSON). http(s) 만, 최대 10장. 썸네일 image_url 과 별개.
+    const galleryRaw = Array.isArray(body.gallery_images) ? body.gallery_images.map(u => String(u)) : String(body.gallery_images || '').split(/[,\n|]/);
+    const galleryList = galleryRaw.map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 10);
+    const galleryImagesJson = galleryList.length ? JSON.stringify(galleryList) : null;
     // 🛡️ 2026-06-26 [보안] image_url scheme 검증 — 형제 필드(brand_logo/lowest_price/detail)는
     //   전부 http(s)·상대경로 가드인데 primary image_url 만 raw 였음. javascript:/data: 차단 +
     //   업로드 상대경로(/api/media/...)는 허용. (SSRF 는 fetch 지점에서 추가 차단 — naver-commerce-core)
@@ -456,6 +463,7 @@ supplierDashboardRoutes.post('/products', async (c) => {
       const shipRaw = (body as { shipping_fee?: unknown }).shipping_fee;
       if (shipRaw != null && shipRaw !== '' && Number.isFinite(Number(shipRaw))) meta.wholesale_shipping_fee = Math.max(0, Math.floor(Number(shipRaw)));
       if (productCode) meta.product_code = productCode;
+      if (galleryImagesJson) meta.gallery_images = galleryImagesJson; // 🖼️ 대표 이미지 갤러리
       if (Object.keys(meta).length) await setSupplyMeta(DB, Number(result.meta.last_row_id), meta).catch(swallow('supplier-dashboard:meta'));
     }
 
@@ -697,6 +705,7 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       supply_visibility?: string; barcode?: string; is_brand_product?: boolean; brand_name?: string; brand_logo_url?: string; lowest_price_url?: string;
       min_order_qty?: number; pack_size?: number; order_multiple?: number; shipping_fee?: number; product_code?: string;
       detail_images?: string[] | string; // 🖼️ 2026-06-30: 상세이미지 수정 지원(배열/쉼표 문자열).
+      gallery_images?: string[] | string; // 🖼️ 2026-06-30: 대표 이미지 갤러리 수정(meta 저장).
     };
     const body = await c.req.json<EditBody>().catch(() => ({} as EditBody));
     // 🚚 2026-06-16: 상품별 배송비 수정 — product_supply_meta(wholesale_shipping_fee). 컬럼 아님(예산제) → sets 와 별개.
@@ -707,6 +716,13 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     const productCode = (body.product_code != null)
       ? String(body.product_code).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 18)
       : undefined;
+    // 🖼️ 2026-06-30: 대표 이미지 갤러리 수정 — 제공 시에만. 배열/쉼표 → http(s) 필터 → 최대 10장 JSON. 빈 값이면 ''(해제).
+    let galleryPatch: string | undefined;
+    if (body.gallery_images !== undefined) {
+      const raw = Array.isArray(body.gallery_images) ? body.gallery_images.map(u => String(u)) : String(body.gallery_images || '').split(/[,\n|]/);
+      const list = raw.map(u => u.trim().slice(0, 500)).filter(u => /^https?:\/\//i.test(u)).slice(0, 10);
+      galleryPatch = list.length ? JSON.stringify(list) : '';
+    }
     await ensureSupplyVisibilitySchema(DB);
     await ensureQtyConstraintSchema(DB); // BIZ-8: pack_size / order_multiple 컬럼 보장(UPDATE 전).
 
@@ -765,7 +781,7 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       sets.push('price = ?'); params.push(Math.floor(r));
     }
 
-    if (sets.length === 0 && shipFee === undefined && productCode === undefined) return c.json({ success: false, error: '변경할 내용이 없습니다' }, 400);
+    if (sets.length === 0 && shipFee === undefined && productCode === undefined && galleryPatch === undefined) return c.json({ success: false, error: '변경할 내용이 없습니다' }, 400);
 
     // 거부 상태였으면 재제출 → 다시 pending.
     sets.push("supply_approval_status = 'pending'", 'is_active = 0', "updated_at = datetime('now')");
@@ -777,6 +793,7 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       const metaPatch: Record<string, string | number> = {};
       if (shipFee !== undefined) metaPatch.wholesale_shipping_fee = shipFee;
       if (productCode !== undefined) metaPatch.product_code = productCode; // 빈 문자열이면 해제.
+      if (galleryPatch !== undefined) metaPatch.gallery_images = galleryPatch; // 🖼️ 빈 문자열이면 해제.
       if (Object.keys(metaPatch).length) {
         await setSupplyMeta(DB, Number(pid), metaPatch).catch(swallow('supplier-dashboard:patch-meta'));
       }
