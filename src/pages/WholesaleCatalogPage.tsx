@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO, { wholesaleStoreJsonLd, itemListJsonLd } from '@/components/SEO'
-import { ChevronRight, FileSpreadsheet, Lock, ArrowLeft, Truck } from 'lucide-react'
+import { ChevronRight, FileSpreadsheet, Lock, ArrowLeft, Truck, X, SearchX } from 'lucide-react'
 import { useWholesaleMe, useWholesaleHome, useWholesaleStatement, useWholesaleRecentItems, useWholesaleDeposit, useWholesaleMall, wholesaleAuthSeg } from '@/hooks/queries/useWholesale'
 import WholesaleBannerCarousel from './wholesale/WholesaleBannerCarousel'
 import { queryKeys } from '@/hooks/queries/queryKeys'
@@ -117,6 +117,12 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
 
   // 활성 가격대 → min/max (원). 미선택이면 둘 다 null.
   const band = useMemo(() => PRICE_BANDS.find(b => b.id === priceBand) ?? null, [priceBand])
+
+  // 🔍 2026-06-30 (검색/필터 UX): 활성 필터 여부 + 초기화 — 결과 0 일 때 막다른 길 대신 복구 CTA 제공.
+  const hasActiveFilters = !!committedSearch || cat !== 'all' || sort !== 'popular' || inStock || !!priceBand || !!selectedBrand
+  const resetFilters = () => {
+    setSearch(''); setCommittedSearch(''); setCat('all'); setSort('popular'); setInStock(false); setPriceBand(''); setSelectedBrand('')
+  }
 
   // ── 서버사이드 카탈로그 쿼리(BIZ-4) — 모든 컨트롤을 `/catalog` 파라미터에 위임.
   //   기본값(검색 없음·cat all·popular·재고off·가격 미설정)은 전부 생략 → URL = `/api/wholesale/catalog?`
@@ -687,7 +693,23 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
                   <button onClick={() => catalogQ.refetch()} className="px-4 h-10 rounded-xl text-[14px] font-bold" style={{ background: WT.fill2, color: WT.ink, border: '1px solid ' + WT.line }}>다시 시도</button>
                 </div>
               ) : items.length === 0 ? (
-                <p className="text-center py-20 text-[14px]" style={{ color: WT.ink4 }}>해당 조건의 도매 상품이 없어요.</p>
+                // 🔍 2026-06-30: 검색/필터 결과 0 → 막다른 길 대신 복구(초기화) CTA. 필터 없이 진짜 빈 카탈로그면 기존 안내.
+                hasActiveFilters ? (
+                  <div className="text-center py-20">
+                    <SearchX className="w-10 h-10 mx-auto mb-3" style={{ color: WT.ink4 }} />
+                    <p className="text-[15px] font-semibold mb-1" style={{ color: WT.ink2 }}>
+                      {committedSearch
+                        ? t('wholesale.search.noneFor', { defaultValue: "'{{q}}' 검색 결과가 없어요", q: committedSearch }).replace('{{q}}', committedSearch)
+                        : t('wholesale.search.noneFilter', { defaultValue: '조건에 맞는 상품이 없어요' })}
+                    </p>
+                    <p className="text-[13px] mb-4" style={{ color: WT.ink4 }}>{t('wholesale.search.tryAdjust', { defaultValue: '검색어나 필터를 바꿔보세요.' })}</p>
+                    <button onClick={resetFilters} className="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl text-[13px] font-bold" style={{ background: WT.ink, color: '#fff' }}>
+                      <X className="w-3.5 h-3.5" /> {t('wholesale.search.resetAll', { defaultValue: '검색·필터 초기화' })}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-center py-20 text-[14px]" style={{ color: WT.ink4 }}>해당 조건의 도매 상품이 없어요.</p>
+                )
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-7">
                   {items.map((p, idx) => <ProductCard key={p.id} p={p} onOpen={openDetail} onAdd={addToCart} subbed={restockSubs.has(p.id)} onRestock={toggleRestock} restockBusy={restockBusyId === p.id} onPrefetch={prefetchProduct} wished={wishedIds.has(p.id)} onWish={toggleWish} aboveFold={idx < 4} priceLoading={catalogQ.isPlaceholderData} />)}
