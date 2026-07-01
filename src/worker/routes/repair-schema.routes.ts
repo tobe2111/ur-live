@@ -1021,6 +1021,21 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(user_id, product_id)
     )` },
+    // 🔔 2026-07-01: 찜 재입고/가격인하 알림 dedup(멱등) — wishlist-notify cron 이 self-ensure 하지만
+    //   fresh/repaired DB 보장 위해 등록. user_id TEXT(= wishlists.user_id 저장형).
+    { name: 'wishlist_stock_notifications', sql: `CREATE TABLE IF NOT EXISTS wishlist_stock_notifications (
+      user_id TEXT NOT NULL,
+      product_id INTEGER NOT NULL,
+      notified_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, product_id)
+    )` },
+    { name: 'wishlist_price_notifications', sql: `CREATE TABLE IF NOT EXISTS wishlist_price_notifications (
+      user_id TEXT NOT NULL,
+      product_id INTEGER NOT NULL,
+      last_price INTEGER,
+      notified_at DATETIME,
+      PRIMARY KEY (user_id, product_id)
+    )` },
     { name: 'agencies', sql: `CREATE TABLE IF NOT EXISTS agencies (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,

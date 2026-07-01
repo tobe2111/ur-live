@@ -44,8 +44,8 @@ export const ALL_USED_ALIMTALK_TEMPLATES: readonly string[] = [
   'auction_won', 'voucher_refunded', 'seller_settlement_completed', 'payout_completed',
   // 도매(판매사/제조사) — 등록 미확인
   'distributor_approved', 'distributor_rejected', 'supplier_approved', 'supplier_rejected',
-  // ⚠️ 아래는 제네릭/테스트 코드로 실제 등록 템플릿이 아닐 가능성(오용 의심) — 진단에서 확인 요망
-  'approve', 'approved', 'test',
+  // 셀러 브랜드메시지 테스트 발송(seller-alimtalk-mgmt) — 셀러 자체 Aligo 계정용 테스트 코드(시스템 알림 아님)
+  'test',
 ] as const
 
 const _registeredSet = new Set(DOCUMENTED_REGISTERED_ALIMTALK_TEMPLATES)

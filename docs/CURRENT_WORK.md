@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 알림 코드 마무리 4종 + 위시리스트 오발송 버그 fix (대표 "코드로 더 할 수 있는거")
+- **#4 알림톡 `approve`/`approved` 오탐 정정**: 이전 진단에서 "미등록 의심"으로 잡은 `approve`/`approved`는 삼항 조건(`action==='approve' ? 'distributor_approved' : ...`)이라 실제 template 코드가 아니었음(grep 오탐). SSOT `alimtalk-templates.ts`에서 제거 + `test`는 셀러 브랜드메시지 테스트 코드로 주석. **버그 아님 확인.**
+- **#5 위시리스트 dedup 테이블 repair-schema 등록**: `wishlist_stock_notifications`·`wishlist_price_notifications`(크론 self-ensure만 하던 것) → fresh/repaired DB 보장.
+- **#6 + 🐛 재입고 오발송 근본 fix**: (b) 크론이 **항상 재고 있던 찜 상품에도 "재입고!" 오발송**하던 버그(dedup 행이 없으면 in-stock을 재입고로 오인) 발견 → 찜 추가 시점에 `seedWishlistBaseline`(재고>0이면 stock dedup 시드 → 오통지 차단 / 가격 baseline=찜 시점가). 찜 제거 시 `clearWishlistBaseline`(dedup 누적 방지 + 재추가 fresh). `wishlists.routes` 추가/제거 5경로 배선(toggle·POST·DELETE ×3). 가격 baseline이 '첫 스캔가' → '찜 시점가'로 개선(#6).
+- **#7 dead code 제거**: 미사용 `NotificationBell.tsx`(어디서도 import 0, 자체 뱃지 버그 보유) 삭제. 실사용 소비자 벨은 `useUnreadCount`(정상).
+- 검증: tsc 0 · 단위 pass · build 0 · sql bind/not-null/column/table 가드 0. ⚠️ staging: in-stock 상품 찜 → 재입고 알림 **안 옴**(정상) / 품절→재입고 시에만 1회 / 찜 직후 인하도 통지.
+
 ## ✅ 2026-07-01 — 알림 후속: 알림톡 템플릿 진단(a) + 위시리스트 재입고/가격인하 알림(b) (대표 "a,b")
 2차 조사에서 남긴 deferred 항목 2건 처리.
 - **(a) 알림톡 템플릿 불일치 진단**: `aligo.ts sendAlimtalk`엔 **SMS 폴백이 없어**, 미등록/불일치 `tpl_code`는 Aligo가 `result_code!=1`로 거부→`alimtalk_failures`에 쌓여 3회 재시도 후 방치(전달 0, quota 낭비). 코드가 쓰는 template 코드 ~24개 중 문서상 등록 세트에 없는 게 다수(appointment_* 5·auction_won·distributor_*·supplier_*·payout_completed·seller_settlement_completed·voucher_refunded + `approve`/`approved`/`test` 오용 의심). 실제 등록 여부는 Aligo 콘솔(운영 사실)이라 코드에서 직접 못 봄 → **프로덕션 실패를 가시화하는 진단 도구** 제공: ① SSOT `src/lib/alimtalk-templates.ts`(사용 코드 전량 + 문서상 등록 세트 + `isDocumentedRegistered`). ② admin `GET /api/admin/alimtalk-failures`에 **`by_template`**(미해결 실패를 template_code별 그룹 + 등록여부 주석) 추가. ③ `AdminSystemMonitoringPage` 알림톡 탭에 "템플릿별 진단" 섹션(미등록/등록 배지·미해결/포기 수). **발송 로직 무변경(fail-open)**. 실제 수정=운영자가 진단 보고 Aligo 콘솔에 미등록 템플릿 등록.

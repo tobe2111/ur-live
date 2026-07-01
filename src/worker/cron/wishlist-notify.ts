@@ -50,6 +50,43 @@ function productLink(productId: number, category: string | null): string {
   return isVoucherCategory(category) ? `/group-buy/${productId}` : `/products/${productId}`
 }
 
+/**
+ * 찜 추가 시점 baseline 시드(라우트에서 호출). fail-soft.
+ *  - 재고>0 이면 stock 알림행 시드 → 지금 정상재고를 '재입고'로 오통지하지 않게 함. (품절이면 시드
+ *    안 함 → 나중에 stock>0 회복 시 통지 대상.) ★ 이게 없으면 in-stock 상품 찜마다 '재입고' 오발송.
+ *  - price baseline = 찜 시점 현재가(첫 스캔가 대신) → 찜 직후 인하도 놓치지 않음.
+ */
+export async function seedWishlistBaseline(DB: D1Database, userId: string | number, productId: number | string | undefined): Promise<void> {
+  try {
+    await ensureTables(DB)
+    const uid = String(userId)
+    const pid = Number(productId)
+    if (!Number.isFinite(pid)) return
+    const p = await DB.prepare('SELECT COALESCE(stock, stock_quantity, 0) AS stock, price FROM products WHERE id = ?')
+      .bind(pid).first<{ stock: number; price: number | null }>()
+    if (!p) return
+    if (Number(p.stock) > 0) {
+      await DB.prepare("INSERT OR IGNORE INTO wishlist_stock_notifications (user_id, product_id, notified_at) VALUES (?, ?, datetime('now'))")
+        .bind(uid, pid).run().catch(() => {})
+    }
+    if (p.price != null && Number(p.price) > 0) {
+      await DB.prepare('INSERT OR IGNORE INTO wishlist_price_notifications (user_id, product_id, last_price) VALUES (?, ?, ?)')
+        .bind(uid, pid, Number(p.price)).run().catch(() => {})
+    }
+  } catch { /* best-effort */ }
+}
+
+/** 찜 제거 시 baseline 정리(라우트에서 호출) — 재입고/가격 dedup 행 누적 방지 + 재추가 시 fresh 시드. */
+export async function clearWishlistBaseline(DB: D1Database, userId: string | number, productId: number | string | undefined): Promise<void> {
+  try {
+    const uid = String(userId)
+    const pid = Number(productId)
+    if (!Number.isFinite(pid)) return
+    await DB.prepare('DELETE FROM wishlist_stock_notifications WHERE user_id = ? AND product_id = ?').bind(uid, pid).run().catch(() => {})
+    await DB.prepare('DELETE FROM wishlist_price_notifications WHERE user_id = ? AND product_id = ?').bind(uid, pid).run().catch(() => {})
+  } catch { /* best-effort */ }
+}
+
 interface RestockRow { user_id: string; product_id: number; product_name: string | null; category: string | null }
 
 /** 재입고 알림: 찜한 상품이 stock>0 으로 회복되면 통지(1회). 품절 시 dedup 행 삭제 → 재입고 시 재통지. */
