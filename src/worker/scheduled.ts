@@ -180,6 +180,15 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('wholesale-settle-tick', () => handleWholesaleSettleTick(env)));
     // 🏭 2026-06-08 NOTI-1: 재입고 알림 — 구독 상품 재입고(stock>0) 시 판매사 알림.
     ctx.waitUntil(safeCron('wholesale-restock-notify', () => handleWholesaleRestockNotify(env)));
+    // 🔔 2026-07-01: 소비자 찜(위시리스트) 재입고 + 가격인하 알림(매시간, 멱등 스캔 — 재고/가격 write 무hook).
+    ctx.waitUntil(safeCron('wishlist-restock-notify', async () => {
+      const { handleWishlistRestockNotify } = await import('./cron/wishlist-notify');
+      return handleWishlistRestockNotify(env);
+    }));
+    ctx.waitUntil(safeCron('wishlist-price-drop-notify', async () => {
+      const { handleWishlistPriceDropNotify } = await import('./cron/wishlist-notify');
+      return handleWishlistPriceDropNotify(env);
+    }));
     // 🔁 2026-06-12 (4차 감사 D4 — 1단계): FAILED 웹훅(retry<3) 백로그 감시 — Discord 요약.
     //   실제 자동 재처리는 webhook.routes 잠금 해제 승인 후 2단계 (파일 헤더 참조).
     ctx.waitUntil(safeCron('webhook-failed-drain', async () => {

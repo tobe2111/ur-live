@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 알림 후속: 알림톡 템플릿 진단(a) + 위시리스트 재입고/가격인하 알림(b) (대표 "a,b")
+2차 조사에서 남긴 deferred 항목 2건 처리.
+- **(a) 알림톡 템플릿 불일치 진단**: `aligo.ts sendAlimtalk`엔 **SMS 폴백이 없어**, 미등록/불일치 `tpl_code`는 Aligo가 `result_code!=1`로 거부→`alimtalk_failures`에 쌓여 3회 재시도 후 방치(전달 0, quota 낭비). 코드가 쓰는 template 코드 ~24개 중 문서상 등록 세트에 없는 게 다수(appointment_* 5·auction_won·distributor_*·supplier_*·payout_completed·seller_settlement_completed·voucher_refunded + `approve`/`approved`/`test` 오용 의심). 실제 등록 여부는 Aligo 콘솔(운영 사실)이라 코드에서 직접 못 봄 → **프로덕션 실패를 가시화하는 진단 도구** 제공: ① SSOT `src/lib/alimtalk-templates.ts`(사용 코드 전량 + 문서상 등록 세트 + `isDocumentedRegistered`). ② admin `GET /api/admin/alimtalk-failures`에 **`by_template`**(미해결 실패를 template_code별 그룹 + 등록여부 주석) 추가. ③ `AdminSystemMonitoringPage` 알림톡 탭에 "템플릿별 진단" 섹션(미등록/등록 배지·미해결/포기 수). **발송 로직 무변경(fail-open)**. 실제 수정=운영자가 진단 보고 Aligo 콘솔에 미등록 템플릿 등록.
+- **(b) 위시리스트 재입고/가격인하 알림**: emitter 0이던 소비자 리텐션 알림 신설. 재고/가격 write는 여러 곳(일부 잠금)에 흩어져 hooking 대신 **도매 재입고 크론과 동일 저결합 스캔 패턴**. `src/worker/cron/wishlist-notify.ts` 2함수 — 재입고(`wishlists` × `stock>0` 회복, 품절 시 dedup 삭제→재입고 재통지)·가격인하(첫 관측 baseline만, 이후 `price<last_price`만 통지). 별도 dedup 테이블(`wishlist_stock_notifications`·`wishlist_price_notifications`, 멱등 CAS)로 `wishlists` 핫 테이블 불변. 통지=`notifyUser`(인앱)+`sendSystemPush`(웹/네이티브, push_enabled 존중). `scheduled.ts` 매시간 등록. 링크 voucher→`/group-buy/:id` 아니면 `/products/:id`.
+- 검증: tsc 0 · 단위 64 pass · build 0 · sql/theme 가드 0. `[SKIP_SIZE]`. ⚠️ staging: 찜 품절→재입고 알림 1회 + 가격 인하 시 1회 + admin 알림톡 by_template 확인.
+
 ## ✅ 2026-06-30 — 제조사 발송뷰에 배송 메시지 노출(단일 수령 주문) (대표 "다음으로")
 - **문제**: 판매사가 결제 시 남긴 배송 메시지가 제조사 발송 화면(`SupplierWholesaleOrdersPage`)에서 **드랍십(받는사람 여럿)일 때만** 노출되고, **일반 단일-수령 주문에선 안 보였음** → 발송 지시("부재 시 문 앞" 등) 누락 가능. 게다가 supplier orders API 가 `i.ship_to_message`(라인 레벨)만 반환해, 단일 주문 메시지(헤더 `o.ship_to_message`에 저장)는 애초에 안 넘어왔음.
 - **수정(2)**: ① API `wholesale-supplier.routes` 두 쿼리의 `i.ship_to_message` → `COALESCE(i.ship_to_message, o.ship_to_message)`(다른 ship_to 필드와 동일 폴백 패턴 — 라인 우선, 없으면 주문 헤더). ② UI 단일-수령 배송지 블록에 `💬 {ship_to_message}` 노출(드랍십 브랜치는 이미 라인별 메모 표시 — 불변).

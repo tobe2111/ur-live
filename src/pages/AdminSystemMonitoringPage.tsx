@@ -55,14 +55,15 @@ export default function AdminSystemMonitoringPage() {
     ['admin', 'cron-failures', showResolved], '/api/admin/cron-failures',
     { params: { resolved: showResolved ? 1 : 0 }, enabled: tab === 'cron', select: (r: any) => ({ items: r?.success ? (r.data.items || []) : [], counts: r?.success ? (r.data.unresolved_counts || []) : [] }) },
   )
-  const alimtalkQ = useApiQuery<{ items: AlimtalkFailure[]; stats: { abandoned: number; pending: number; succeeded: number } }>(
+  const alimtalkQ = useApiQuery<{ items: AlimtalkFailure[]; stats: { abandoned: number; pending: number; succeeded: number }; by_template: Array<{ template_code: string; unresolved: number; abandoned: number; registered: boolean; last_error: string | null }> }>(
     ['admin', 'alimtalk-failures', showResolved], '/api/admin/alimtalk-failures',
-    { params: { resolved: showResolved ? 1 : 0 }, enabled: tab === 'alimtalk', select: (r: any) => ({ items: r?.success ? (r.data.items || []) : [], stats: r?.success ? r.data.stats : { abandoned: 0, pending: 0, succeeded: 0 } }) },
+    { params: { resolved: showResolved ? 1 : 0 }, enabled: tab === 'alimtalk', select: (r: any) => ({ items: r?.success ? (r.data.items || []) : [], stats: r?.success ? r.data.stats : { abandoned: 0, pending: 0, succeeded: 0 }, by_template: r?.success ? (r.data.by_template || []) : [] }) },
   )
   const cronFailures = cronQ.data?.items ?? []
   const cronCounts = cronQ.data?.counts ?? []
   const alimtalkFailures = alimtalkQ.data?.items ?? []
   const alimtalkStats = alimtalkQ.data?.stats ?? { abandoned: 0, pending: 0, succeeded: 0 }
+  const alimtalkByTemplate = alimtalkQ.data?.by_template ?? []
   const loading = tab === 'cron' ? cronQ.isLoading : alimtalkQ.isLoading
   const load = () => { if (tab === 'cron') cronQ.refetch(); else alimtalkQ.refetch() }
 
@@ -154,6 +155,33 @@ export default function AdminSystemMonitoringPage() {
                 <p className="text-xs text-gray-500">포기됨 (max 3회 초과)</p>
                 <p className="text-lg font-bold text-red-600">{alimtalkStats.abandoned}</p>
               </div>
+            </div>
+          </DashboardCard>
+        )}
+
+        {/* 🔔 진단: template_code 별 미해결 실패 — registered:false 반복 = Aligo 미등록 템플릿(등록 필요) */}
+        {tab === 'alimtalk' && alimtalkByTemplate.length > 0 && (
+          <DashboardCard className="!p-3">
+            <p className="text-xs font-semibold text-gray-700 mb-2">템플릿별 진단 (미해결 기준)</p>
+            <p className="text-[11px] text-gray-500 mb-2 leading-snug">
+              ⚠️ <b>미등록</b> 템플릿이 반복 실패하면 Aligo 콘솔에 해당 <code>tpl_code</code>로 템플릿을 등록·승인해야 합니다.
+              (알림톡엔 SMS 폴백이 없어 그동안 해당 알림은 전달되지 않고 인앱/푸시로만 도달합니다.)
+            </p>
+            <div className="space-y-1">
+              {alimtalkByTemplate.map(t => (
+                <div key={t.template_code} className="flex items-center justify-between gap-2 text-xs border-b border-gray-100 py-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 shrink-0">{t.template_code}</code>
+                    {t.registered ? (
+                      <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded shrink-0">등록됨</span>
+                    ) : (
+                      <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded shrink-0">미등록</span>
+                    )}
+                    {t.last_error && <span className="text-gray-400 truncate">{t.last_error}</span>}
+                  </div>
+                  <span className="text-gray-600 shrink-0">미해결 {t.unresolved} · 포기 {t.abandoned}</span>
+                </div>
+              ))}
             </div>
           </DashboardCard>
         )}

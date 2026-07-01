@@ -9,6 +9,7 @@
 import { Hono } from 'hono'
 import { safeError } from '@/worker/utils/safe-error'
 import type { Env } from '@/worker/types/env'
+import { isDocumentedRegistered } from '@/lib/alimtalk-templates'
 
 export const adminSystemMonitoringRoutes = new Hono<{ Bindings: Env }>()
 
@@ -76,11 +77,36 @@ adminSystemMonitoringRoutes.get('/alimtalk-failures', async (c) => {
       WHERE created_at >= datetime('now', '-7 days')
     `).first<{ abandoned: number; pending: number; succeeded: number }>().catch(() => null)
 
+    // 🔔 2026-07-01: 진단 — 미해결 실패를 template_code 별로 그룹핑 + 저장소 등록 여부 주석.
+    //   registered:false 가 반복 실패하면 = Aligo 콘솔에 미등록/불일치 템플릿(운영자가 등록해야 함).
+    //   (SMS 폴백이 없어 그동안 해당 알림톡은 전달 0 — 인앱/푸시로만 도달.)
+    let byTemplate: Array<{ template_code: string; unresolved: number; abandoned: number; registered: boolean; last_error: string | null }> = []
+    try {
+      const { results: grp } = await DB.prepare(`
+        SELECT template_code,
+               COUNT(*) AS unresolved,
+               SUM(CASE WHEN retry_count >= max_retries THEN 1 ELSE 0 END) AS abandoned,
+               MAX(error) AS last_error
+        FROM alimtalk_failures
+        WHERE resolved = 0
+        GROUP BY template_code
+        ORDER BY unresolved DESC
+      `).all<{ template_code: string; unresolved: number; abandoned: number; last_error: string | null }>()
+      byTemplate = (grp || []).map(r => ({
+        template_code: r.template_code,
+        unresolved: Number(r.unresolved || 0),
+        abandoned: Number(r.abandoned || 0),
+        registered: isDocumentedRegistered(r.template_code),
+        last_error: r.last_error ?? null,
+      }))
+    } catch { /* 그룹 쿼리 실패 — by_template 생략 */ }
+
     return c.json({
       success: true,
       data: {
         items: results || [],
         stats: stats ?? { abandoned: 0, pending: 0, succeeded: 0 },
+        by_template: byTemplate,
       },
     })
   } catch {
