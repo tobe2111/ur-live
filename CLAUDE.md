@@ -291,6 +291,13 @@ CLAUDE.md 는 매 작업마다 읽는 활성 규칙만 유지. 사고 후일담 
 
 수동 강제 재동기화: 어드민 `POST /api/blog/seed` (버전 무관 강제 sync).
 
+### 🤖 AI 홍보 초안 (2026-07-01 대표 지시 — "비즈니스(서비스 홍보) 차원만, 운영 정보 유출 금지")
+- **목적**: 현재 서비스 사실 기반 **소비자 홍보/마케팅 초안**을 AI로 생성 → **항상 비공개 초안**(`is_published=0, ai_generated=1`) → 관리자 검토 후 발행.
+- **SSOT**: `src/features/blog/api/blog-ai.ts` — `PROMO_BRIEF`(홍보용 사실만, 운영 수치 제외)·`PROMO_TOPICS`(홍보 주제 백로그)·`generateBlogDraft()`(Claude haiku + 출력 검증).
+- **🚫 운영 정보 차단**: brief 에 수수료율·정산·원천징수·커미션·매출·관리자·도매(B2B) 를 **아예 넣지 않고**, 출력에 그런 용어(+폐기어·도매몰 명칭)가 나타나면 **초안 폐기**(1회 재시도 후 실패). 소비자 홍보 콘텐츠만 통과.
+- **트리거**: 관리자 수동 `POST /api/admin/blog/ai-draft`(AdminBlogPage "AI 홍보 초안" 버튼) + 주간 cron(`blog-ai-draft`, 월요일). cron 은 킬스위치 **`BLOG_AI_DRAFTS_ENABLED='true'`** 일 때만(기본 OFF — 토큰 낭비 0). `ANTHROPIC_API_KEY` 필요.
+- **캡**: 미검토 AI 초안 5개 이상이면 생성 중단(검토 유도). 초안은 `is_seed=0` 이라 재시드가 안 건드림.
+
 ## 📖 운영 가이드 3종 자동 업데이트
 
 DB(`operation_guides` 테이블) 에 저장된 3개 가이드:

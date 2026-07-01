@@ -9,7 +9,11 @@ import type { Env } from '@/worker/types/env'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 
 import { swallow } from '@/worker/utils/swallow';
+import { generateBlogDraft, PROMO_TOPICS, type PromoTopic } from './blog-ai';
 const app = new Hono<{ Bindings: Env }>()
+
+// AI 초안: 미검토(비공개) 초안이 이만큼 쌓이면 추가 생성 중단(관리자 검토 유도).
+const MAX_PENDING_AI_DRAFTS = 5
 
 // 🔄 시드 콘텐츠 버전 — 아래 seedPosts 배열(글 내용)을 바꾸면 이 숫자를 +1 하세요.
 // 올리면 배포 후 첫 접근 시 라이브 DB 에 자동 재반영됩니다.
@@ -41,6 +45,7 @@ async function ensureBlogTable(DB: D1Database) {
     `ALTER TABLE blog_posts ADD COLUMN is_seed INTEGER DEFAULT 0`,
     `ALTER TABLE blog_posts ADD COLUMN manually_edited INTEGER DEFAULT 0`,
     `ALTER TABLE blog_posts ADD COLUMN seed_version INTEGER DEFAULT 0`,
+    `ALTER TABLE blog_posts ADD COLUMN ai_generated INTEGER DEFAULT 0`,
   ]) {
     await DB.prepare(ddl).run().catch(swallow('blog:api:blog'))
   }
@@ -110,7 +115,7 @@ app.get('/', async (c) => {
   await ensureBlogTable(c.env.DB)
   await maybeSyncBlogSeed(c.env.DB)
   const posts = await c.env.DB.prepare(`
-    SELECT id, slug, title, summary, tags, author, is_published, published_at, created_at, updated_at, is_seed, manually_edited
+    SELECT id, slug, title, summary, tags, author, is_published, published_at, created_at, updated_at, is_seed, manually_edited, ai_generated
     FROM blog_posts ORDER BY created_at DESC
   `).all()
   return c.json({ success: true, data: posts.results })
@@ -898,6 +903,74 @@ app.post('/seed', async (c) => {
      ON CONFLICT(key) DO UPDATE SET value = excluded.value`
   ).bind(String(BLOG_SEED_VERSION)).run().catch(swallow('blog:api:blog'))
   return c.json({ success: true, message: '블로그 시드 동기화 완료', version: BLOG_SEED_VERSION })
+})
+
+// ── AI 자동 초안 (홍보 전용) ─────────────────────────────────────
+// 아직 다뤄지지 않은 홍보 주제 하나 선택(모두 다뤄졌으면 null).
+async function pickPromoTopic(DB: D1Database): Promise<PromoTopic | null> {
+  for (const t of PROMO_TOPICS) {
+    const exists = await DB.prepare('SELECT 1 FROM blog_posts WHERE slug = ?')
+      .bind(t.slug).first().catch(() => null)
+    if (!exists) return t
+  }
+  return null
+}
+
+async function pendingAiDraftCount(DB: D1Database): Promise<number> {
+  const r = await DB.prepare(
+    `SELECT COUNT(*) as cnt FROM blog_posts WHERE COALESCE(ai_generated,0)=1 AND is_published=0`
+  ).first<{ cnt: number }>().catch(() => null)
+  return r?.cnt || 0
+}
+
+/**
+ * AI 홍보 초안 1편을 생성해 blog_posts 에 **비공개 초안**으로 저장.
+ * 관리자 수동 트리거 + 주간 cron 이 공유. 항상 is_published=0(관리자 검토 후 발행).
+ */
+export async function createAiBlogDraft(
+  DB: D1Database,
+  apiKey: string | undefined,
+): Promise<{ ok: boolean; id?: number; title?: string; skipped?: string; error?: string }> {
+  await ensureBlogTable(DB)
+  if (!apiKey) return { ok: false, error: 'NOT_CONFIGURED' }
+
+  // 미검토 초안이 너무 쌓였으면 중단(관리자 검토 유도)
+  const pending = await pendingAiDraftCount(DB)
+  if (pending >= MAX_PENDING_AI_DRAFTS) {
+    return { ok: false, skipped: `미검토 AI 초안 ${pending}개 — 검토 후 다시 생성하세요` }
+  }
+
+  const topic = await pickPromoTopic(DB)
+  if (!topic) return { ok: false, skipped: '모든 홍보 주제가 이미 작성됨' }
+
+  const existing = await DB.prepare('SELECT title FROM blog_posts ORDER BY id DESC LIMIT 60')
+    .all<{ title: string }>().catch(() => ({ results: [] as { title: string }[] }))
+  const existingTitles = (existing.results || []).map((r) => r.title).filter(Boolean)
+
+  const gen = await generateBlogDraft(apiKey, topic, existingTitles)
+  if (!gen.ok) return { ok: false, error: gen.error }
+
+  const { draft } = gen
+  const res = await DB.prepare(`
+    INSERT OR IGNORE INTO blog_posts (slug, title, summary, content, tags, author, is_published, published_at, is_seed, manually_edited, ai_generated)
+    VALUES (?, ?, ?, ?, ?, '유어딜 팀', 0, NULL, 0, 0, 1)
+  `).bind(
+    topic.slug, draft.title, draft.summary, draft.content, JSON.stringify(draft.tags.length ? draft.tags : topic.tags),
+  ).run().catch(() => null)
+
+  if (!res || res.meta.changes === 0) return { ok: false, error: '초안 저장 실패(중복 slug 가능)' }
+  return { ok: true, id: res.meta.last_row_id as number, title: draft.title }
+}
+
+// 관리자: AI 홍보 초안 생성 (비공개 초안으로 저장 → 검토 후 발행)
+app.post('/ai-draft', async (c) => {
+  const r = await createAiBlogDraft(c.env.DB, c.env.ANTHROPIC_API_KEY)
+  if (!r.ok) {
+    if (r.error === 'NOT_CONFIGURED') return c.json({ success: false, error: 'AI 미설정 (ANTHROPIC_API_KEY)' }, 400)
+    if (r.skipped) return c.json({ success: false, error: r.skipped }, 200)
+    return c.json({ success: false, error: r.error || 'AI 초안 생성 실패' }, 502)
+  }
+  return c.json({ success: true, data: { id: r.id, title: r.title }, message: 'AI 홍보 초안이 생성되었습니다 (비공개). 검토 후 발행하세요.' })
 })
 
 export { app as blogRoutes }
