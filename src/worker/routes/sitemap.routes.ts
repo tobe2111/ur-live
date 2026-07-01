@@ -124,7 +124,7 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
 
       // 블로그 글
       const blogs = await DB.prepare(
-        `SELECT slug FROM blog_posts WHERE published = 1 ORDER BY id DESC LIMIT 100`
+        `SELECT slug FROM blog_posts WHERE is_published = 1 ORDER BY id DESC LIMIT 100`
       ).all<{ slug: string }>().catch(() => ({ results: [] as { slug: string }[] }));
       for (const b of blogs.results || []) {
         if (b.slug) urls.push({ loc: `/blog/${b.slug}`, priority: 0.5, changefreq: 'monthly' });

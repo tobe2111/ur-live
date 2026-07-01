@@ -215,6 +215,10 @@ node scripts/check-file-size.mjs || true
 echo "==> Pre-commit: CSV 수식 인젝션 가드 (warn-only)..."
 node scripts/check-csv-injection.mjs || true
 
+# 🛡️ 2026-07-01: 블로그 시드 최신성 가드 (warn-only) — 소비자 블로그 시드에 폐기 명칭/기능·도매몰 유입 차단.
+echo "==> Pre-commit: 블로그 시드 최신성 가드 (warn-only)..."
+node scripts/check-blog-seed-currency.mjs || true
+
 # 🛡️ 2026-06-26: 쿼리 isError 소비 가드 (warn-only) — 도매/제조사 surface 의 data 페이지가 isError 분기
 #   없이 렌더하면 fetch 실패가 빈화면/₩0 으로 위장됨. 신규 추가 차단.
 echo "==> Pre-commit: 쿼리 isError 소비 가드 (warn-only)..."
