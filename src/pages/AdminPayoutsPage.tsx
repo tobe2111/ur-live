@@ -13,7 +13,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Wallet, CheckCircle, Send, XCircle } from 'lucide-react'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -167,6 +167,18 @@ export default function AdminPayoutsPage() {
           </button>
         )}
       </div>
+
+      {/* 🛡️ 2026-07-01 (어드민 라이브 감사): 5xx/401/403 을 "정산 대기 잔액 없음" 으로 위장하지 않도록 표면화 */}
+      {((tab === 'pending_ledger' && pendingQ.isError) || (tab === 'payouts' && payoutsQ.isError)) && (
+        <div className="mb-4">
+          <DashboardLoadError
+            error={tab === 'pending_ledger' ? pendingQ.error : payoutsQ.error}
+            onRetry={() => (tab === 'pending_ledger' ? pendingQ.refetch() : payoutsQ.refetch())}
+            loginPath="/admin/login"
+            label={tab === 'pending_ledger' ? 'ledger 잔액' : 'payouts 목록'}
+          />
+        </div>
+      )}
 
       {tab === 'pending_ledger' ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

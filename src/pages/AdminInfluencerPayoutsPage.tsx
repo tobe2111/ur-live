@@ -14,7 +14,7 @@ import { WITHHOLDING_RATES } from '@/shared/constants/policy'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
-import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoading, DashboardLoadError } from '@/components/dashboard'
 import { Wallet, CheckCircle, RefreshCw } from 'lucide-react'
 
 interface PayoutRow {
@@ -43,7 +43,7 @@ function calcWithholding(amount: number, taxType: string | null, businessNumber:
 
 export default function AdminInfluencerPayoutsPage() {
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (list + payout_min).
-  const { data: payoutData, isLoading: loading, refetch } = useApiQuery<{ list: PayoutRow[]; payout_min: number }>(
+  const { data: payoutData, isLoading: loading, isError, error, refetch } = useApiQuery<{ list: PayoutRow[]; payout_min: number }>(
     ['admin', 'influencer-payouts'], '/api/admin-payouts/payouts',
     { select: (r: any) => (r?.success ? { list: r.data.list || [], payout_min: r.data.payout_min || 100000 } : { list: [], payout_min: 100000 }) },
   )
@@ -113,6 +113,8 @@ export default function AdminInfluencerPayoutsPage() {
   }
 
   if (loading) return <AdminLayout title="인플루언서 송금"><div className="p-6"><DashboardLoading /></div></AdminLayout>
+  // 🛡️ 2026-07-01 (어드민 라이브 감사): 5xx/401/403 을 "송금 대기 0명 · ₩0" 으로 위장하지 않도록 표면화 (미지급 오인 방지).
+  if (isError) return <AdminLayout title="인플루언서 송금"><div className="p-6"><DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="인플루언서 송금 목록" /></div></AdminLayout>
 
   // 정렬/필터 적용
   const filteredSorted = list

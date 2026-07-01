@@ -39,7 +39,10 @@ adminFlagsRoutes.post('/emergency-mode', async (c) => {
     return c.json({ success: false, error: 'DB not configured' }, 503);
   }
 
-  const { enable } = await c.req.json<{ enable: boolean }>();
+  const { enable } = await c.req.json<{ enable: boolean }>().catch(() => ({} as { enable?: boolean }));
+  if (typeof enable !== 'boolean') {
+    return c.json({ success: false, error: 'enable(boolean) 필수' }, 400);
+  }
   const flags = enable ? EMERGENCY_MODE_FLAGS : NORMAL_MODE_FLAGS;
 
   await setAllFeatureFlags(flags, env.SESSION_KV, env.DB);
@@ -59,7 +62,10 @@ adminFlagsRoutes.patch('/:name', async (c) => {
   }
 
   const name = c.req.param('name') as keyof FeatureFlags;
-  const { value } = await c.req.json<{ value: boolean }>();
+  const { value } = await c.req.json<{ value: boolean }>().catch(() => ({} as { value?: boolean }));
+  if (typeof value !== 'boolean') {
+    return c.json({ success: false, error: 'value(boolean) 필수' }, 400);
+  }
 
   // Guard: ignore unknown flag names rather than writing garbage to KV.
   const known = Object.keys(NORMAL_MODE_FLAGS) as (keyof FeatureFlags)[];

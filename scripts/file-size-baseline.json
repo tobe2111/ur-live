@@ -69,7 +69,7 @@
   "src/shared/db/production-schema.ts": 676,
   "src/utils/auth.ts": 616,
   "src/worker/cron/scheduled-cleanup.ts": 1031,
-  "src/worker/index.ts": 2276,
+  "src/worker/index.ts": 2297,
   "src/worker/middleware/auth.ts": 706,
   "src/worker/openapi.ts": 1544,
   "src/worker/repositories/order.repository.ts": 746,

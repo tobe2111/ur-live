@@ -112,7 +112,7 @@ adminToolsRoutes.get('/banners', async (c) => {
 })
 
 adminToolsRoutes.post('/banners', async (c) => {
-  const { title, image_url, link_url, display_order } = await c.req.json<any>()
+  const { title, image_url, link_url, display_order } = await c.req.json<any>().catch(() => ({} as any))
   if (!image_url) return c.json({ success: false, error: '이미지 URL 필수' }, 400)
 
   // 🛡️ 2026-04-22: URL 검증 추가 (XSS/SSRF 방어)
@@ -137,7 +137,7 @@ adminToolsRoutes.post('/banners', async (c) => {
 
 adminToolsRoutes.put('/banners/:id', async (c) => {
   const id = c.req.param('id')
-  const body = await c.req.json<any>()
+  const body = await c.req.json<any>().catch(() => ({} as any))
   const sets: string[] = []; const vals: any[] = []
   if (body.title !== undefined) { sets.push('title = ?'); vals.push(body.title) }
   if (body.image_url) { sets.push('image_url = ?'); vals.push(body.image_url) }
@@ -160,7 +160,7 @@ adminToolsRoutes.delete('/banners/:id', async (c) => {
 
 // ── 공지사항 발송 ──
 adminToolsRoutes.post('/notices', async (c) => {
-  const body = await c.req.json<{ title: string; message: string; target: 'all' | 'sellers' | 'users' }>()
+  const body = await c.req.json<{ title: string; message: string; target: 'all' | 'sellers' | 'users' }>().catch(() => ({} as any))
   const { target } = body
   let { title, message } = body
 
@@ -231,7 +231,7 @@ adminToolsRoutes.get('/settlements/pending', async (c) => {
 })
 
 adminToolsRoutes.post('/settlements/process', async (c) => {
-  const { seller_ids } = await c.req.json<{ seller_ids: number[] }>()
+  const { seller_ids } = await c.req.json<{ seller_ids: number[] }>().catch(() => ({} as { seller_ids?: number[] }))
   if (!seller_ids?.length) return c.json({ success: false, error: '셀러를 선택해주세요' }, 400)
 
   // 🛡️ 2026-04-22: 입력 검증 + 감사 로그 추가
@@ -277,7 +277,7 @@ adminToolsRoutes.get('/reports', async (c) => {
 
 adminToolsRoutes.put('/reports/:id/resolve', async (c) => {
   const id = c.req.param('id')
-  const { action, note } = await c.req.json<{ action: 'dismiss' | 'warn' | 'suspend'; note?: string }>()
+  const { action, note } = await c.req.json<{ action: 'dismiss' | 'warn' | 'suspend'; note?: string }>().catch(() => ({} as any))
   await c.env.DB.prepare("UPDATE user_reports SET status = ?, admin_note = ?, resolved_at = datetime('now') WHERE id = ?")
     .bind(action, note || '', id).run()
 
@@ -303,7 +303,7 @@ adminToolsRoutes.get('/settings', async (c) => {
 })
 
 adminToolsRoutes.put('/settings', async (c) => {
-  const body = await c.req.json<Record<string, string>>()
+  const body = await c.req.json<Record<string, string>>().catch(() => ({} as Record<string, string>))
   try { await c.env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS platform_settings (
       key TEXT PRIMARY KEY, value TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP

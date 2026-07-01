@@ -20,6 +20,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { formatNumber, formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { DashboardLoadError } from '@/components/dashboard'
 
 interface VoucherTxRow {
   id: number
@@ -330,15 +331,27 @@ export default function AdminVoucherTransactionsPage() {
           </div>
         </div>
 
+        {/* 🛡️ 2026-07-01 (어드민 라이브 감사): 5xx/401/403 을 "오늘 거래 0 · ₩0" 으로 위장하지 않도록 표면화 */}
+        {(todayStatsQ.isError || listQ.isError) && (
+          <div className="mb-4">
+            <DashboardLoadError
+              error={listQ.error ?? todayStatsQ.error}
+              onRetry={() => { todayStatsQ.refetch(); listQ.refetch() }}
+              loginPath="/admin/login"
+              label="교환권 거래 내역"
+            />
+          </div>
+        )}
+
         {/* 오늘 합계 카드 */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="bg-white rounded-lg shadow p-4">
             <p className="text-xs text-gray-500">오늘 거래 수</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{formatNumber(todayStats.count)}</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{todayStatsQ.isError ? '—' : formatNumber(todayStats.count)}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
             <p className="text-xs text-gray-500">오늘 거래 금액 (applied_price 합)</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{formatWon(todayStats.amount)}</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{todayStatsQ.isError ? '—' : formatWon(todayStats.amount)}</p>
           </div>
         </div>
 
