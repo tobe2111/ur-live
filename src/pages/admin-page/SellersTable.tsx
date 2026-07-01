@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { RefreshCw, CheckCircle, XCircle } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import type { Seller } from './types'
 
 const Skel = ({ className }: { className?: string }) => (
@@ -28,6 +29,19 @@ export default function SellersTable({
   onOpenBizInfo, onApprove, onSuspend, onReject
 }: Props) {
   const { t } = useTranslation()
+  // 🏭 2026-07-01 (대표 "라이브 관련 내용 다 빼줘"): '특수권한'(시청자 수 조작 권한)은 라이브 전용 기능 →
+  //   라이브 중단(LIVE_COMMERCE_SUSPENDED) 시 열 자체를 숨김(복원 가능 — 플래그 false 면 즉시 복원).
+  const showManipulate = !LIVE_COMMERCE_SUSPENDED
+  const headers = [
+    'ID',
+    t('admin.dashboard.k037', { defaultValue: '이메일' }),
+    t('admin.dashboard.k044', { defaultValue: '회사명' }),
+    t('admin.dashboard.k045', { defaultValue: '수수료율' }),
+    ...(showManipulate ? [t('admin.dashboard.k046', { defaultValue: '특수권한' })] : []),
+    t('admin.dashboard.k047', { defaultValue: '상태' }),
+    t('admin.dashboard.k048', { defaultValue: '가입일' }),
+    t('admin.dashboard.k049', { defaultValue: '액션' }),
+  ]
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100 dark:border-[#1A1A1A] flex items-center justify-between">
@@ -40,7 +54,7 @@ export default function SellersTable({
         <table className="w-full">
           <thead>
             <tr className="bg-gray-50">
-              {['ID', t('admin.dashboard.k037', { defaultValue: '이메일' }), t('admin.dashboard.k044', { defaultValue: '회사명' }), t('admin.dashboard.k045', { defaultValue: '수수료율' }), t('admin.dashboard.k046', { defaultValue: '특수권한' }), t('admin.dashboard.k047', { defaultValue: '상태' }), t('admin.dashboard.k048', { defaultValue: '가입일' }), t('admin.dashboard.k049', { defaultValue: '액션' })].map(h => (
+              {headers.map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
               ))}
             </tr>
@@ -49,13 +63,13 @@ export default function SellersTable({
             {loading && sellers.length === 0 ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <tr key={`skel-${i}`}>
-                  {Array.from({ length: 8 }).map((_, j) => (
+                  {Array.from({ length: headers.length }).map((_, j) => (
                     <td key={j} className="px-4 py-3"><Skel className="h-4 w-full" /></td>
                   ))}
                 </tr>
               ))
             ) : sellers.length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-400">{t('admin.dashboard.k050', { defaultValue: '등록된 판매자가 없습니다' })}</td></tr>
+              <tr><td colSpan={headers.length} className="px-4 py-8 text-center text-sm text-gray-400">{t('admin.dashboard.k050', { defaultValue: '등록된 판매자가 없습니다' })}</td></tr>
             ) : sellers.map(seller => (
               <tr key={seller.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-xs text-gray-500">
@@ -79,6 +93,7 @@ export default function SellersTable({
                     {seller.commission_rate != null ? `${seller.commission_rate.toFixed(2)}%` : '-'}
                   </button>
                 </td>
+                {showManipulate && (
                 <td className="px-4 py-3">
                   <button
                     onClick={() => onTogglePermission(seller.id, seller.can_manipulate_stats || 0)}
@@ -89,6 +104,7 @@ export default function SellersTable({
                     {seller.can_manipulate_stats ? <><CheckCircle className="w-3 h-3" />{t('admin.dashboard.k052', { defaultValue: '승인됨' })}</> : <><XCircle className="w-3 h-3" />{t('admin.dashboard.k053', { defaultValue: '미승인' })}</>}
                   </button>
                 </td>
+                )}
                 <td className="px-4 py-3">
                   <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
                     seller.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :

@@ -221,6 +221,8 @@ const NAV_GROUPS: NavGroup[] = [
 //   라이브 모니터 / 광고 슬롯(입찰) / 캐스팅 / TikTok 발굴 / 다시보기(라이브 replay).
 const LIVE_ADMIN_PATHS = new Set<string>([
   '/admin/live-monitor', '/admin/ad-slots', '/admin/castings', '/admin/tiktok-discovery', '/admin/replay',
+  // 🏭 2026-07-01 (대표 "라이브 관련 내용 다 빼줘") YouTube 쿼터는 YouTube-라이브 전용 진단 → 라이브 중단 시 숨김.
+  '/admin/youtube-quota',
 ])
 const VISIBLE_NAV_GROUPS: NavGroup[] = LIVE_COMMERCE_SUSPENDED
   ? NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((it) => !LIVE_ADMIN_PATHS.has(it.path)) })).filter((g) => g.items.length > 0)

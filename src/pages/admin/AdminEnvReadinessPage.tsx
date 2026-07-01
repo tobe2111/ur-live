@@ -38,7 +38,10 @@ export default function AdminEnvReadinessPage() {
   const qc = useQueryClient()
   const adminAuth = { Authorization: `Bearer ${localStorage.getItem('admin_token') || localStorage.getItem('access_token')}` }
   const { data, isLoading, isError, error, refetch } = useApiQuery<EnvReadiness | null>(
-    QKEY, '/api/health/env-readiness',
+    // 🛡️ 2026-07-01 (대표 "환경 상태 404"): 라우트는 /api/health/detailed 하위에 마운트됨
+    //   (worker/index.ts: app.route('/api/health/detailed', healthRoutes) + healthRoutes.get('/env-readiness')).
+    //   기존 '/api/health/env-readiness' 는 존재하지 않아 404 → 페이지 백지. 정확 경로로 교정.
+    QKEY, '/api/health/detailed/env-readiness',
     {
       headers: adminAuth,
       select: (raw: unknown) => (raw as EnvReadiness) ?? null,
