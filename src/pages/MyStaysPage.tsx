@@ -90,7 +90,7 @@ export default function MyStaysPage() {
                       <p className="text-[11px] text-gray-400">
                         {b.room_name}
                         {b.sale_mode === 'voucher' && (
-                          <span className="ml-1.5 px-1.5 py-0.5 text-[9px] bg-pink-500/20 text-pink-300 rounded font-bold">🎫 숙소권</span>
+                          <span className="ml-1.5 px-1.5 py-0.5 text-[9px] bg-pink-500/20 text-pink-300 rounded font-bold">🎫 숙소 이용권</span>
                         )}
                       </p>
                       {b.sale_mode === 'voucher' ? (
