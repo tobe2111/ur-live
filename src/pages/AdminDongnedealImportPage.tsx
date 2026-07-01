@@ -4,6 +4,7 @@ import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Upload, Download, PackagePlus, CheckCircle2, AlertTriangle } from 'lucide-react'
+import ManualDealForm from './admin-dongnedeal/ManualDealForm'
 
 // 🧭 2026-06-17 (대표 요청 — 동네딜 채우기): 어드민 동네딜(오프라인 공동구매) 상품 CSV 일괄 등록 + 데모 시드.
 //   백엔드 /api/admin/dongnedeal/{stats,seed-demo,bulk-import} — 즉시 노출(is_active=1, group_buy_status='active').
@@ -119,6 +120,9 @@ export default function AdminDongnedealImportPage() {
             {stats.demo > 0 && <p className="text-[11px] text-amber-600 mt-2">⚠️ 데모 상품 {stats.demo}개가 동네딜에 섞여 있습니다 — 실상품 등록 전 정리를 권장합니다.</p>}
           </div>
         )}
+
+        {/* 🗺️ 2026-07-01 (대표 — 수기로 진짜 매장 등록): 카카오 검색 자동완성 직접 입력 폼 */}
+        <ManualDealForm onCreated={loadStats} />
 
         <div className={card}>
           <div className="flex items-center justify-between gap-3 flex-wrap">
