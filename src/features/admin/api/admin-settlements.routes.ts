@@ -16,7 +16,13 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { executeQuery, executeRun } from '@/worker/utils/database';
-import { DEFAULT_COMMISSION_RATE } from '@/shared/constants';
+// 🔒 2026-07-01 (정산 감사 — 대표 "5% 로 통일"): 소비자 셀러 정산의 플랫폼 take 기본율은
+//   policy SSOT(PLATFORM_FEE_PCT=5). 이전엔 @/shared/constants 의 DEFAULT_COMMISSION_RATE(=10)
+//   를 fallback 으로 써 NULL-rate(레거시) 주문이 fee-resolver(5%)·auto-settlement(5%)와 달리
+//   10% 로 집계/execute 되어 셀러 과소지급 위험이 있었음. 아래 alias 로 파일 전체 정산 수식을 5% 로 통일.
+//   (orders.commission_rate 스냅샷이 있으면 그 값 우선 — 이 기본율은 스냅샷 NULL 인 주문에만 적용.)
+import { COMMISSION_DEFAULTS } from '@/shared/constants/policy';
+const DEFAULT_COMMISSION_RATE = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT;
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { requireAdminRole } from '@/worker/middleware/auth';
 import { logAudit } from '../../../lib/audit-log';

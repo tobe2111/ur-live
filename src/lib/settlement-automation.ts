@@ -599,7 +599,10 @@ export async function executeSettlement(
 export async function getSellerSettlementSummary(
   DB: D1Database,
   sellerId: number,
-  defaultCommissionRate: number = 10.0
+  // 🔒 2026-07-01 (정산 감사 — 대표 "5% 로 통일"): 기본 플랫폼 take 를 10.0 → policy SSOT(5%).
+  //   NULL-rate 셀러의 미정산 요약이 fee-resolver/auto-settlement 와 달리 10% 로 과대 계산돼
+  //   셀러가 보는 미정산액이 실제보다 작게 표시되던 문제 정정.
+  defaultCommissionRate: number = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT
 ): Promise<{
   unsettled_amount: number
   unsettled_orders: number
