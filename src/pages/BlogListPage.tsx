@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Home, ChevronLeft, ChevronRight } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
@@ -71,15 +71,30 @@ function ChipRow({ tags, author }: { tags: string[]; author?: string }) {
   )
 }
 
-function CoverImg({ post, className }: { post: BlogPost; className: string }) {
+// 썸네일이 없으면 주제별 "디자인된 배너"로 슬롯을 꽉 채움 — 그라디언트 + 장식 블롭 + 이모지 스티커.
+//   외부 이미지 의존 0(404 없음), 모든 글(AI 생성 포함)에 자동 적용, 라이트/다크 대응.
+function CoverImg({ post, className, variant = 'thumb' }: { post: BlogPost; className: string; variant?: 'hero' | 'thumb' }) {
   const tags = parseTags(post.tags)
   if (post.thumbnail_url) {
     return <img src={post.thumbnail_url} alt="" className={`${className} object-cover`} loading="lazy" />
   }
   const { emoji, gradient } = blogCover(post.slug, tags)
+  const big = variant === 'hero'
   return (
-    <div className={`${className} bg-gradient-to-br ${gradient} flex items-center justify-center`}>
-      <span className="text-5xl drop-shadow-sm">{emoji}</span>
+    <div className={`${className} relative overflow-hidden bg-gradient-to-br ${gradient}`}>
+      {/* 장식 블롭 — 배너 느낌 */}
+      <div className="absolute -top-6 -right-6 w-2/3 aspect-square rounded-full bg-white/40 dark:bg-white/10 blur-2xl" />
+      <div className="absolute -bottom-8 -left-6 w-2/3 aspect-square rounded-full bg-black/5 dark:bg-black/25 blur-2xl" />
+      {/* 이모지 스티커 */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className={`${big ? 'w-20 h-20 sm:w-24 sm:h-24 text-4xl sm:text-5xl rounded-3xl' : 'w-14 h-14 text-2xl rounded-2xl'} bg-white/70 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center shadow-sm ring-1 ring-black/5 dark:ring-white/10`}>
+          <span className="drop-shadow-sm">{emoji}</span>
+        </div>
+      </div>
+      {/* 카테고리 워터마크 (히어로만) */}
+      {big && tags[0] && (
+        <span className="absolute bottom-3.5 left-4 text-xs font-bold text-gray-700/70 dark:text-white/70">유어딜 · {tags[0]}</span>
+      )}
     </div>
   )
 }
@@ -87,7 +102,6 @@ function CoverImg({ post, className }: { post: BlogPost; className: string }) {
 const PER_PAGE = 7
 
 export default function BlogListPage() {
-  const navigate = useNavigate()
   const { t } = useTranslation()
   const [selectedTag, setSelectedTag] = useState('')
   const [heroIdx, setHeroIdx] = useState(0)
@@ -134,35 +148,35 @@ export default function BlogListPage() {
     <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A]">
       <SEO title={t('blog.listSeoTitle', { defaultValue: '블로그' })} description={t('blog.listSeoDesc', { defaultValue: '유어딜 블로그 — 이용권·교환권·동네딜·링크샵 가이드와 서비스 소식' })} url="/blog" />
 
-      {/* Header */}
-      <div className="bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A] sticky top-0 md:top-14 z-30 backdrop-blur">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-5 lg:px-8 py-3.5">
-          <div className="flex items-center gap-2.5">
-            <button onClick={() => navigate('/')} aria-label="뒤로" className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A]">
-              <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
-            </button>
-            <span className="text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">유어딜 블로그</span>
+      {/* Header — 뒤로가기 제거, 유어딜 홈 버튼 추가, non-sticky(오버랩 방지) */}
+      <div className="bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A]">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-5 lg:px-8 h-14">
+          <Link to="/blog" className="text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">유어딜 블로그</Link>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Link to="/" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1A1A1A]">
+              <Home className="w-4 h-4" /><span className="hidden sm:inline">유어딜 홈</span>
+            </Link>
+            <Link to="/seller/register" className="px-3.5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold hover:opacity-90">
+              판매 시작하기
+            </Link>
           </div>
-          <Link to="/seller/register" className="px-3.5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold hover:opacity-90">
-            판매 시작하기
-          </Link>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-5 lg:px-8">
         {/* ── 히어로 캐러셀 (태그 필터 없을 때) ── */}
         {!selectedTag && !loading && hero && (
-          <section className="pt-8 lg:pt-12 pb-10">
-            <Link to={`/blog/${hero.slug}`} className="group grid lg:grid-cols-2 gap-6 lg:gap-10 items-center">
+          <section className="pt-6 pb-8">
+            <Link to={`/blog/${hero.slug}`} className="group grid lg:grid-cols-2 gap-5 lg:gap-8 items-center">
               <div className="order-2 lg:order-1">
                 <ChipRow tags={parseTags(hero.tags)} author={hero.author} />
-                <h2 className="mt-4 text-[26px] leading-tight sm:text-4xl sm:leading-[1.15] font-extrabold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-3">
+                <h2 className="mt-3 text-2xl sm:text-3xl leading-snug font-extrabold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
                   {stripBold(hero.title)}
                 </h2>
-                <p className="mt-3 text-base text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">{stripBold(hero.summary)}</p>
+                <p className="mt-2.5 text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">{stripBold(hero.summary)}</p>
               </div>
               <div className="order-1 lg:order-2">
-                <CoverImg post={hero} className="w-full aspect-[16/10] rounded-2xl" />
+                <CoverImg post={hero} variant="hero" className="w-full aspect-[16/9] rounded-2xl" />
               </div>
             </Link>
             {featured.length > 1 && (
