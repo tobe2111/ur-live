@@ -570,7 +570,16 @@ sellerOrdersRoutes.get('/products/:id', async (c) => {
       // product_options 테이블 미존재 시 무시
     }
 
-    return c.json({ success: true, data: { ...product, options } });
+    // 🎯 2026-07-01 (1인당 한도 수정 prefill): product_supply_meta.max_per_person (0=무제한).
+    let max_per_person = 0;
+    try {
+      const { getSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+      const mm = await getSupplyMeta(db, [Number(productId)]).catch(() => null);
+      const raw = mm?.get(Number(productId))?.max_per_person;
+      if (raw != null && Number.isFinite(Number(raw)) && Number(raw) > 0) max_per_person = Math.floor(Number(raw));
+    } catch { /* fail-soft */ }
+
+    return c.json({ success: true, data: { ...product, options, max_per_person } });
   } catch (error: unknown) {
     console.error('Get seller product detail error:', error);
     return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
@@ -917,6 +926,8 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       group_buy_deadline?: string;
       store_verify_pin?: string;
       group_buy_tiers?: string | null;
+      // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도" 수정 지원): 0=무제한, 1~99.
+      max_per_person?: number;
     }>();
 
     const db = c.env.DB;
@@ -992,6 +1003,18 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       const val = body[field];
       if (val !== undefined) {
         try { await db.prepare(`UPDATE products SET ${field} = ? WHERE id = ? AND seller_id = ?`).bind(val === '' ? null : val, productId, sellerId).run() } catch { /* column may not exist */ }
+      }
+    }
+
+    // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도" 수정 지원): product_supply_meta.max_per_person.
+    //   0/미설정=무제한. 1~99 저장, 0 은 '0' 저장(리더가 무제한 처리 → 해제). 소유권은 위 existing 로 확인됨.
+    if (body.max_per_person !== undefined) {
+      const mpp = Number(body.max_per_person);
+      if (Number.isFinite(mpp) && mpp >= 0 && mpp <= 99) {
+        try {
+          const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+          await setSupplyMeta(db, Number(productId), { max_per_person: String(Math.floor(mpp)) });
+        } catch { /* fail-soft */ }
       }
     }
 
