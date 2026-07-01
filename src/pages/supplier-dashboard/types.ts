@@ -23,6 +23,8 @@ export interface CatalogItem {
   // 🔧 2026-06-24: GET /products 가 이미 반환하는 편집용 필드(수정 모달 prefill — 데이터 유실 방지).
   description?: string | null; image_url?: string | null; brand_logo_url?: string | null
   min_order_qty?: number; pack_size?: number; order_multiple?: number
+  // 🖼️ 2026-06-30: 상세페이지 이미지 — GET 이 JSON 문자열로 반환(수정모드 prefill). 편집 시 PATCH 로 갱신.
+  detail_images?: string | string[] | null
 }
 export interface SettlementItem {
   id: number; order_id: number | null; product_id: number | null; product_name: string | null

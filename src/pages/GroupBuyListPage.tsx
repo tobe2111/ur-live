@@ -1,35 +1,31 @@
-import { useEffect, useMemo, useState, useRef, memo } from 'react'
-import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   ChevronDown,
-  Clock,
-  Users,
-  CheckCircle2,
   Sparkles,
   Plus,
   MapPin,
-  HandCoins,
-  Bell,
-  Store,
   ChevronRight,
 } from 'lucide-react'
 import api from '@/lib/api'
-import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { safeTime } from '@/utils/safe-date'
-import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
-import { cardGradient } from '@/utils/card-gradient'
 import SEO from '@/components/SEO'
-import { formatPrice } from '@/utils/currency'
 import { toast } from '@/hooks/useToast'
-import { SORT_LABELS, STATUS_BADGES } from './group-buy-list/constants'
-import { formatTimeLeft, calcDiscountRate } from './group-buy-list/utils'
 import type { GroupBuyProduct, CommunityGroupBuy, MainTab, CategoryFilter, SortOption } from './group-buy-list/types'
+import GroupBuyGridCard from './group-buy-list/GroupBuyGridCard'
+import CurationStrip from './group-buy-list/CurationStrip'
+import CommunityGroupBuyCard from './group-buy-list/CommunityGroupBuyCard'
+import EmptyShowcase from './group-buy-list/EmptyShowcase'
+import SortBar from './group-buy-list/SortBar'
+import CategoryTabs from './group-buy-list/CategoryTabs'
+import SearchBar from './group-buy-list/SearchBar'
+import RegionBar from './group-buy-list/RegionBar'
+import MainTabs from './group-buy-list/MainTabs'
 import LiveTicker from '@/components/group-buy/LiveTicker'
 import RegionPickerModal from '@/components/RegionPickerModal'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
-import { SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
+import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types/constants/utils 를 ./group-buy-list/ 로 추출.
 
@@ -87,148 +83,6 @@ function readSsrGroupBuy(): GroupBuyProduct[] | null {
   } catch { return null }
 }
 
-// 🏭 2026-06-04 (사용자 요청): 동네딜 공구 카드 — 대표색 단색 + 사진 자연 번짐.
-//   인라인 .map() 이면 카드별 상태(이미지 추출색)를 못 쓰므로 memo 컴포넌트로 추출.
-//   서버 dominant_color 없으면 이미지 로드 즉시 추출색을 이 카드에 바로 적용(검정 fallback 방지).
-//   (성능: React.memo → 부모 재렌더 시 카드 재조정 0 — 감사 권고 A9 반영.)
-const GroupBuyGridCard = memo(function GroupBuyGridCard({
-  p, idx, interested, onToggleInterest,
-}: {
-  p: GroupBuyProduct
-  idx: number
-  interested: boolean
-  onToggleInterest: (e: React.MouseEvent, productId: number, restaurantName?: string) => void
-}) {
-  const navigate = useNavigate()
-  const { t } = useTranslation()
-  // 🏁 2026-06-11 (플로우 감사 🟢): 메인 피드 카드(GroupBuyFeedCard)에만 있던 상세 prefetch 를
-  //   동네딜 그리드에도 — hover/터치 시 상세 데이터 선로딩 → 클릭 시 fetch 워터폴 제거.
-  const prefetch = usePrefetchGroupBuyProduct()
-  const [cardColor, setCardColor] = useState<string | null>(p.dominant_color || null)
-  // 🏭 2026-06-05 (사용자 신고 — 깨진 이미지가 빈 카드로): onError 폴백.
-  const [imgError, setImgError] = useState(false)
-  const grad = cardGradient(cardColor)
-  const discount = calcDiscountRate(p)
-  const target = p.group_buy_target || 0
-  const current = p.group_buy_current || 0
-  // 🏭 2026-06-07 (사용자 요청): '현재 N명 참여중' 제거 — 즉시판매 단일가 모델에서 카드 참여 수 무의미.
-  //   '달성' 뱃지(이미지 우상단)는 유지. 진행률 바 + 참여 인원 텍스트 삭제 → 업장명/주소/판매자 노출.
-  const achieved = target > 0 && current >= target
-  const timeLeft = formatTimeLeft(p.group_buy_deadline)
-  return (
-    <button
-      onClick={() => navigate(`/group-buy/${p.id}`)}
-      onMouseEnter={() => prefetch(p.id)}
-      onTouchStart={() => prefetch(p.id)}
-      onFocus={() => prefetch(p.id)}
-      className="text-left active:scale-[0.98] transition-transform rounded-2xl overflow-hidden flex flex-col"
-      style={{ backgroundColor: grad.base }}
-    >
-      {/* 이미지 */}
-      <div className="relative aspect-square overflow-hidden" style={{ backgroundColor: grad.base }}>
-        {p.image_url && !imgError ? (
-          <img
-            src={cfImage(p.image_url, { width: 400, format: 'auto' })}
-            srcSet={cfSrcSet(p.image_url, 400)}
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 250px"
-            alt={p.name}
-            className="w-full h-full object-cover"
-            loading={idx < 4 ? 'eager' : 'lazy'}
-            fetchPriority={idx < 2 ? 'high' : 'auto'}
-            decoding="async"
-            onLoad={(e) => {
-              const el = e.currentTarget
-              el.style.opacity = '1'
-              const color = extractDominantColor(el)
-              if (color) {
-                if (!cardColor) setCardColor(color)
-                if (!p.dominant_color) reportDominantColor(p.id, color)
-              }
-            }}
-            onError={() => setImgError(true)}
-            style={{ opacity: idx < 4 ? 1 : 0, transition: 'opacity 200ms ease-out' }}
-          />
-        ) : (
-          <div className="w-full h-full" />
-        )}
-
-        {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거) */}
-        <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
-
-        {/* 할인 뱃지 */}
-        {discount > 0 && (
-          <span className="absolute top-2 left-2 bg-gray-900 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow">
-            {t('groupBuy.maxDiscount', { defaultValue: '최대 -{{rate}}%', rate: discount })}
-          </span>
-        )}
-
-        {/* 달성 뱃지 */}
-        {achieved && (
-          <span className="absolute top-2 right-2 flex items-center gap-0.5 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow">
-            <CheckCircle2 className="w-3 h-3" />
-            {t('groupBuy.achieved', { defaultValue: '달성' })}
-          </span>
-        )}
-
-        {/* 관심 등록 */}
-        <button
-          onClick={(e) => onToggleInterest(e, p.id, p.restaurant_name)}
-          className="absolute bottom-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 dark:bg-[#0A0A0A]/80 backdrop-blur shadow-sm active:scale-90 transition-transform"
-          aria-label={t('common.wishlist', { defaultValue: '관심 등록' })}
-        >
-          <Bell className={`w-3.5 h-3.5 ${interested ? 'text-gray-900 fill-gray-900 dark:text-white dark:fill-white' : 'text-gray-400'}`} />
-        </button>
-      </div>
-
-      {/* 정보 — 카드 대표색 위에 올라가므로 글자색은 grad 로 자동 대비 (내용은 불변) */}
-      <div className="px-2.5 pt-1 pb-2.5 flex flex-col flex-1" style={{ color: grad.text }}>
-        <p className="text-[12px] leading-tight line-clamp-2">{p.name}</p>
-
-        {/* 업장명 + 주소 (참여 인원 대신 — 즉시판매 단일가 모델: 참여 수는 카드에서 무의미) */}
-        {p.restaurant_name && (
-          <p className="text-[10px] mt-0.5 truncate font-medium" style={{ color: grad.sub }}>{p.restaurant_name}</p>
-        )}
-        {p.restaurant_address && (
-          <p className="text-[10px] mt-0.5 truncate flex items-center gap-0.5" style={{ color: grad.sub }}>
-            <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: grad.sub }} />
-            <span className="truncate">{p.restaurant_address}</span>
-          </p>
-        )}
-
-        {/* 가격 */}
-        <div className="flex items-baseline gap-1 mt-1">
-          {p.original_price && p.original_price > p.price && (
-            <span className="text-[10px] line-through" style={{ color: grad.sub }}>{formatPrice(p.original_price)}</span>
-          )}
-        </div>
-        <div className="flex items-baseline gap-1">
-          {discount > 0 && (
-            <span className="text-[13px] font-extrabold" style={{ color: grad.accent }}>{discount}%</span>
-          )}
-          <span className="text-[13px] font-extrabold">{formatPrice(p.price)}</span>
-        </div>
-
-        {/* 판매자 (참여 인원 표기 제거 — 즉시판매 단일가 모델) */}
-        {p.seller_name && (
-          <p className="text-[10px] mt-1.5 truncate flex items-center gap-1" style={{ color: grad.sub }}>
-            <Store className="w-3 h-3 flex-shrink-0" style={{ color: grad.sub }} />
-            <span className="truncate">
-              {t('groupBuy.sellerLabel', { defaultValue: '판매자' })} · {p.seller_name}
-            </span>
-          </p>
-        )}
-
-        {/* 시간 */}
-        {timeLeft && (
-          <p className="text-[10px] mt-1 flex items-center gap-1" style={{ color: grad.sub }}>
-            <Clock className="w-3 h-3" style={{ color: grad.sub }} />
-            {timeLeft}
-          </p>
-        )}
-      </div>
-    </button>
-  )
-})
 
 // 🧭 2026-06-17 (사용자 요청 A): 빈 화면을 선택 카테고리에 맞춰 — 부제목 + "곧 오픈" 쇼케이스 카드.
 //   특정 카테고리 선택 시 해당 카드 1개만(+카테고리 부제목), 전체/일반은 4종 전부 노출.
@@ -761,168 +615,45 @@ export default function GroupBuyListPage() {
       {/* 메인 탭: 셀러 공구 | 유저 공구. 🚫 2026-06-18 제안 숨김 시 '같이 모으기' 탭 제거 →
           탭 1개뿐이라 스위처 자체 숨김(기본 mainTab='seller' 그대로 동네딜 그리드 렌더). */}
       {!COMMUNITY_PROPOSAL_HIDDEN && (
-      <div className="ur-content-wide px-4 lg:px-8 mt-4">
-        <div className="flex border-b border-gray-200 dark:border-[#1A1A1A]">
-          <button
-            onClick={() => { setMainTab('seller'); setCategory('all'); setSortBy('popular') }}
-            className={`flex-1 pb-2.5 text-[14px] font-semibold text-center transition-colors border-b-2 ${
-              mainTab === 'seller'
-                ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
-                : 'text-gray-400 dark:text-gray-600 border-transparent'
-            }`}
-          >
-            {t('groupBuy.tabSeller', { defaultValue: '동네 공구' })}
-          </button>
-          <button
-            onClick={() => { setMainTab('community'); setCategory('all'); setSortBy('popular') }}
-            className={`flex-1 pb-2.5 text-[14px] font-semibold text-center transition-colors border-b-2 ${
-              mainTab === 'community'
-                ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
-                : 'text-gray-400 dark:text-gray-600 border-transparent'
-            }`}
-          >
-            {t('groupBuy.tabCommunity', { defaultValue: '같이 모으기' })}
-          </button>
-        </div>
-      </div>
+        <MainTabs mainTab={mainTab} setMainTab={setMainTab} setCategory={setCategory} setSortBy={setSortBy} />
       )}
 
       {/* 카테고리 탭 (셀러 공구 전용) */}
       {mainTab === 'seller' && (
-        <div className="ur-content-wide px-4 lg:px-8 mt-4 overflow-x-auto no-scrollbar">
-          {/* 🛡️ 2026-05-17: 카테고리 4종 통합 + 온라인/오프라인 대분류 라벨 표시.
-                탭 순서: [전체] [🏪 오프라인 4종] [🛍️ 온라인]
-                health/pet/activity 는 마이그레이션 0255 가 자동 변환 — UI 에선 제거. */}
-          <div className="flex gap-2 min-w-max">
-            {([
-              { key: 'all', label: t('groupBuy.categoryAll', { defaultValue: '전체' }) },
-              { key: 'meal_voucher', label: t('groupBuy.categoryMealVoucher', { defaultValue: '🍽️ 이용권' }) },
-              { key: 'beauty_voucher', label: t('groupBuy.categoryBeauty', { defaultValue: '💇 미용' }) },
-              { key: 'stay_voucher', label: t('groupBuy.categoryStay', { defaultValue: '🏨 숙소' }) },
-              { key: 'etc_voucher', label: t('groupBuy.categoryEtc', { defaultValue: '🎯 기타' }) },
-              { key: 'general', label: t('groupBuy.categoryGeneral', { defaultValue: '🛍️ 온라인 (배송)' }) },
-            ] as const).map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => {
-                  // 🛡️ 숙소(stay_voucher)는 products.price=0 + 위치·객실이 product_stay_info 별도 테이블이라
-                  //   그리드 카드로는 ₩0·정보누락으로 깨짐 → 전용 /stays(객실·날짜·가격 join) 페이지로.
-                  if (tab.key === 'stay_voucher') { navigate('/stays'); return }
-                  setCategory(tab.key)
-                  // 🧭 2026-06-17: URL 도 동기화 — PC 사이드바/딥링크와 단일 소스(공유·뒤로가기 지원).
-                  const next = new URLSearchParams(searchParams)
-                  if (tab.key === 'all') next.delete('category'); else next.set('category', tab.key)
-                  setSearchParams(next, { replace: true })
-                }}
-                className={`px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap border transition-colors ${
-                  category === tab.key
-                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
-                    : 'bg-white dark:bg-transparent text-gray-700 dark:text-gray-300 border-gray-200 dark:border-[#2A2A2A]'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <CategoryTabs
+          category={category}
+          setCategory={setCategory}
+          navigate={navigate}
+          searchParams={searchParams}
+          setSearchParams={setSearchParams}
+        />
       )}
 
       {/* 🛡️ 2026-05-17: 지역 필터 버튼 — voucher 류 한정 (general 탭에선 숨김).
             사용자 결정: "이용권에는 필요. 이용권/숙소권/헬스장 등에." */}
-      <div className={`ur-content-wide px-4 lg:px-8 mt-3 ${category === 'general' ? 'hidden' : 'flex items-center gap-2'}`}>
-        <button
-          onClick={() => setRegionPickerOpen(true)}
-          className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold border transition-colors ${
-            (regionKey || gpsRegion)
-              ? 'bg-gray-900 dark:bg-white border-gray-900 dark:border-white text-white dark:text-gray-900'
-              : 'bg-white dark:bg-[#1A1A1A] border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-300'
-          }`}
-          aria-label="지역 선택"
-        >
-          <MapPin className="w-3.5 h-3.5" />
-          <span className="max-w-[150px] truncate">{gpsRegion ? `📍 ${gpsRegion.name}` : regionButtonLabel}</span>
-          <ChevronDown className="w-3.5 h-3.5 opacity-70" />
-        </button>
-        {/* 🗺️ GPS 내 동네 자동 감지 */}
-        <button
-          onClick={detectMyRegion}
-          disabled={detectingRegion}
-          className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-full text-[13px] font-semibold border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 disabled:opacity-50"
-          aria-label={t('groupBuy.detectMyRegion', { defaultValue: '내 동네 자동 감지' })}
-        >
-          {detectingRegion
-            ? t('groupBuy.detecting', { defaultValue: '감지 중…' })
-            : `📍 ${t('groupBuy.myNeighborhood', { defaultValue: '내 동네' })}`}
-        </button>
-        {(regionKey || gpsRegion) && (
-          <button
-            onClick={() => applyRegion(null, null)}
-            className="text-[12px] text-gray-500 dark:text-gray-400 underline underline-offset-2"
-            aria-label={t('groupBuy.clearRegion', { defaultValue: '지역 필터 해제' })}
-          >
-            {t('groupBuy.clearRegionShort', { defaultValue: '해제' })}
-          </button>
-        )}
-      </div>
+      <RegionBar
+        category={category}
+        regionKey={regionKey}
+        gpsRegion={gpsRegion}
+        regionButtonLabel={regionButtonLabel}
+        detectingRegion={detectingRegion}
+        setRegionPickerOpen={setRegionPickerOpen}
+        detectMyRegion={detectMyRegion}
+        applyRegion={applyRegion}
+      />
 
       {/* 🛡️ 2026-05-16: 텍스트 검색 input */}
-      <div className="ur-content-wide px-4 lg:px-8 mt-3">
-        <div className="relative">
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t('groupBuy.searchPlaceholder', { defaultValue: '공구명/매장명 검색' })}
-            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-[#2A2A2A] rounded-full text-sm bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-white/30"
-          />
-          <svg className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-        </div>
-      </div>
+      <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
 
       {/* 정렬 pills */}
-      <div className={`ur-content-wide px-4 lg:px-8 ${mainTab === 'seller' ? 'mt-3' : 'mt-4'} flex items-center justify-between`}>
-        <span className="text-[12px] text-gray-500 dark:text-gray-400">
-          {t('groupBuy.totalCount', { defaultValue: '총 {{count}}개', count: currentCount })}
-        </span>
-        <div className="relative" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={() => setShowSortDropdown((v) => !v)}
-            className="flex items-center gap-1 text-[13px] text-gray-700 dark:text-gray-300 font-semibold"
-            aria-label={t('groupBuy.sortAria', { defaultValue: '정렬 기준 선택' })}
-            aria-haspopup="menu"
-            aria-expanded={showSortDropdown}
-          >
-            {SORT_LABELS[sortBy]}
-            <ChevronDown
-              className={`w-4 h-4 transition-transform ${
-                showSortDropdown ? 'rotate-180' : ''
-              }`}
-            />
-          </button>
-          {showSortDropdown && (
-            <div role="menu" className="absolute top-full right-0 mt-1 w-36 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#2A2A2A] rounded-xl shadow-lg z-30 overflow-hidden">
-              {(Object.keys(SORT_LABELS) as SortOption[]).map((opt) => (
-                <button
-                  key={opt}
-                  role="menuitemradio"
-                  aria-checked={sortBy === opt}
-                  onClick={() => {
-                    setSortBy(opt)
-                    setShowSortDropdown(false)
-                  }}
-                  className={`w-full text-left px-3 py-2.5 text-[13px] ${
-                    sortBy === opt
-                      ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white font-semibold'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#121212]'
-                  }`}
-                >
-                  {SORT_LABELS[opt]}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      <SortBar
+        mainTab={mainTab}
+        currentCount={currentCount}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        showSortDropdown={showSortDropdown}
+        setShowSortDropdown={setShowSortDropdown}
+      />
 
       {/* 🛡️ 2026-04-27: 맛집 공구 시작 FAB 제거.
           기존엔 우측 하단 floating 버튼이 카카오 상담 버튼과 겹치고 우측 벽에 붙어 어색했음.
@@ -1014,47 +745,13 @@ export default function GroupBuyListPage() {
                   </div>
                 </div>
               ) : (
-              <div className="space-y-4 py-8">
-                {/* 🛡️ 2026-05-15: 빈 화면 → "곧 오픈 예정" Coming Soon 카드 (3 AI 합의) */}
-                <div className="text-center mb-4">
-                  <p className="text-[28px] mb-2">🚀</p>
-                  <p className="text-gray-900 dark:text-white font-bold text-[15px]">
-                    {t('groupBuy.emptySellerNew', { defaultValue: '곧 오픈 예정' })}
-                  </p>
-                  <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
-                    {catEmpty
-                      ? t('groupBuy.emptyCatSub', { defaultValue: '{{noun}} 공구가 곧 시작될 예정이에요. 알림 받아두세요!', noun: catEmpty.noun })
-                      : t('groupBuy.emptySellerNewSub', { defaultValue: '셀러들이 매일 새 공구를 등록 중이에요. 알림 받아두세요!' })}
-                  </p>
-                </div>
-                <div className={`max-w-md mx-auto ${showcaseCards.length === 1 ? 'flex justify-center' : 'grid grid-cols-2 gap-3'}`}>
-                  {showcaseCards.map((c, i) => (
-                    <div key={i} className={`bg-white dark:bg-[#0A0A0A] border-2 border-dashed border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-4 text-center opacity-70 hover:opacity-100 transition-opacity ${showcaseCards.length === 1 ? 'w-44' : ''}`}>
-                      <p className="text-3xl mb-1.5">{c.emoji}</p>
-                      <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{c.label}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{c.desc}</p>
-                      <span className="inline-block mt-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[9px] font-bold">{t('groupBuy.soonOpen', { defaultValue: '곧 오픈' })}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-5 flex gap-2 justify-center flex-wrap">
-                  <button
-                    onClick={() => navigate(createPath)}
-                    className="flex items-center gap-1 px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> {startCtaLabel}
-                  </button>
-                  {/* 🧭 2026-06-10: 쇼핑 잠정 숨김 동안엔 숨겨진 표면으로 보내지 않음 — 홈(교환권)으로 */}
-                  <button
-                    onClick={() => navigate(SHOPPING_TAB_HIDDEN ? '/' : '/browse')}
-                    className="px-5 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 text-[13px] font-semibold rounded-full"
-                  >
-                    {SHOPPING_TAB_HIDDEN
-                      ? t('groupBuy.ctaVouchers', { defaultValue: '교환권 보러가기' })
-                      : t('groupBuy.ctaShop', { defaultValue: '쇼핑하러 가기' })}
-                  </button>
-                </div>
-              </div>
+              <EmptyShowcase
+                catEmpty={catEmpty}
+                showcaseCards={showcaseCards}
+                createPath={createPath}
+                startCtaLabel={startCtaLabel}
+                navigate={navigate}
+              />
               )
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5">
@@ -1101,115 +798,15 @@ export default function GroupBuyListPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {filteredCommunity.map((g) => {
-                  const progress =
-                    g.target_count > 0
-                      ? Math.min(100, (g.current_count / g.target_count) * 100)
-                      : 0
-                  const achieved = g.current_count >= g.target_count
-                  const badge = STATUS_BADGES[g.status] || STATUS_BADGES.proposed
-                  const timeLeft = formatTimeLeft(g.expires_at)
-
-                  return (
-                    <button
-                      key={g.id}
-                      onClick={() => navigate(`/community-group-buy/${g.invite_code}`)}
-                      className="w-full text-left border border-gray-100 dark:border-[#2A2A2A] rounded-2xl p-4 active:scale-[0.98] transition-transform bg-white dark:bg-[#121212] hover:border-gray-200 dark:hover:border-[#3A3A3A]"
-                    >
-                      {/* 상단: 아이콘 + 식당명 + 상태 배지 */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-[#1A1A1A] flex items-center justify-center flex-shrink-0">
-                            <span className="text-[18px]">🙋</span>
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[14px] font-bold text-gray-900 dark:text-white truncate">
-                              {g.restaurant_name}
-                            </p>
-                            {g.restaurant_address && (
-                              <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-0.5 mt-0.5">
-                                <MapPin className="w-3 h-3 flex-shrink-0" />
-                                {g.restaurant_address}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <button
-                            onClick={(e) => toggleInterest(e, g.id, g.restaurant_name)}
-                            className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 dark:border-[#2A2A2A] active:scale-90 transition-transform"
-                            aria-label={t('common.wishlist', { defaultValue: '관심 등록' })}
-                          >
-                            <Bell
-                              className={`w-3.5 h-3.5 ${interestedIds.has(g.id) ? 'text-gray-900 fill-gray-900 dark:text-white dark:fill-white' : 'text-gray-400'}`}
-                            />
-                          </button>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap ${badge.className}`}
-                          >
-                            {badge.label}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* 가격 + 보증금 정보 */}
-                      <div className="flex items-center gap-3 mt-3">
-                        <div className="flex items-center gap-1">
-                          <HandCoins className="w-3.5 h-3.5 text-gray-900 dark:text-white" />
-                          <span className="text-[12px] text-gray-600 dark:text-gray-400">{t('groupBuy.proposedPrice', { defaultValue: '제안가' })}</span>
-                          <span className="text-[13px] font-extrabold text-gray-900 dark:text-white">
-                            {formatPrice(g.proposed_price)}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-gray-400 dark:text-gray-600">|</div>
-                        <div className="text-[12px] text-gray-500 dark:text-gray-400">
-                          {t('groupBuy.depositLabel', { defaultValue: '보증금' })} <span className="font-semibold text-gray-700 dark:text-gray-200">{formatPrice(g.deposit_per_person)}</span>
-                        </div>
-                      </div>
-
-                      {/* 진행률 바 */}
-                      <div className="mt-3">
-                        <div className="w-full h-2.5 bg-gray-100 dark:bg-[#1A1A1A] rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${
-                              achieved ? 'bg-emerald-500' : 'bg-gray-900 dark:bg-white'
-                            }`}
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between mt-1.5">
-                          <p className="text-[11px] text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                            <Users className="w-3 h-3 text-gray-400" />
-                            {achieved ? (
-                              <span className="text-emerald-600 font-semibold">
-                                {t('groupBuy.goalReached', { defaultValue: '목표 달성!' })}
-                              </span>
-                            ) : (
-                              <>
-                                <span className="font-semibold text-gray-900 dark:text-white">
-                                  {g.current_count}
-                                </span>
-                                <span className="text-gray-400">/</span>
-                                <span>{t('groupBuy.peopleSuffix', { defaultValue: '{{count}}명', count: g.target_count })}</span>
-                              </>
-                            )}
-                          </p>
-                          {timeLeft && (
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500 flex items-center gap-0.5">
-                              <Clock className="w-3 h-3" />
-                              {timeLeft}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* 참여하기 CTA — 부모가 이미 <button> 이라 중첩 불가, 표시용 div 유지 */}
-                      <div className="mt-3 bg-gray-900 text-white text-center py-2 rounded-xl text-[13px] font-bold">
-                        {t('groupBuy.joinCta', { defaultValue: '참여하기' })}
-                      </div>
-                    </button>
-                  )
-                })}
+                {filteredCommunity.map((g) => (
+                  <CommunityGroupBuyCard
+                    key={g.id}
+                    g={g}
+                    interested={interestedIds.has(g.id)}
+                    onToggleInterest={toggleInterest}
+                    navigate={navigate}
+                  />
+                ))}
               </div>
             )}
           </>
@@ -1228,82 +825,3 @@ export default function GroupBuyListPage() {
   )
 }
 
-
-// 🧭 2026-06-17: 큐레이션 strip — horizontal scroll 카드 (인기 / 오늘 마감 / 목표 달성).
-//   즉시판매 단일가 정합: 진행률 바 + 'N명 남음'(임계 게이트 연상) 제거 → 소셜 증거('N명 함께 구매 중').
-function CurationStrip({
-  title, subtitle, items, navigate, accent,
-}: {
-  title: string
-  subtitle: string
-  items: GroupBuyProduct[]
-  navigate: (to: string) => void
-  accent: "red" | "amber" | "neutral"
-}) {
-  const { t } = useTranslation()
-  const accentMap = {
-    red:     { bg: "bg-red-50",   text: "text-red-600"   },
-    amber:   { bg: "bg-amber-50", text: "text-amber-600" },
-    neutral: { bg: "bg-gray-900", text: "text-white"     },
-  }
-  const a = accentMap[accent]
-  const badge = accent === "red"
-    ? t('groupBuy.curBadgePopular', { defaultValue: '🔥 인기' })
-    : accent === "amber"
-    ? t('groupBuy.curBadgeClosing', { defaultValue: '오늘 마감' })
-    : t('groupBuy.curBadgeGoal', { defaultValue: '달성 🎉' })
-  return (
-    <section className="mb-6">
-      <div className="flex items-baseline justify-between mb-2 px-1">
-        <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white tracking-tight">{title}</h3>
-        <span className="text-[10px] text-gray-400">{subtitle}</span>
-      </div>
-      <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 lg:-mx-8 px-4 lg:px-8 scrollbar-hide snap-x snap-mandatory">
-        {items.map((p) => {
-          const current = p.group_buy_current ?? 0
-          return (
-            <button
-              key={p.id}
-              onClick={() => navigate(`/group-buy/${p.id}`)}
-              className="snap-start shrink-0 w-[160px] text-left rounded-2xl overflow-hidden border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] hover:shadow-md transition-shadow"
-            >
-              {/* 🏭 2026-06-04 (카드 로딩 체감): 큐레이션 스트립도 cfImage(리사이즈)+srcSet+dominant_color
-                  — 기존 원본 풀사이즈 <img> → 첫 화면 이미지 지연. 메인 그리드와 동일 최적화. */}
-              <div className="relative w-full aspect-square bg-gray-100 dark:bg-[#1A1A1A]" style={p.dominant_color ? { backgroundColor: p.dominant_color } : undefined}>
-                {p.image_url ? (
-                  <img
-                    src={cfImage(p.image_url, { width: 320, format: 'auto' })}
-                    srcSet={cfSrcSet(p.image_url, 320)}
-                    sizes="160px"
-                    alt={p.name}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-[#1A1A1A] dark:to-[#0A0A0A]" />
-                )}
-                <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full ${a.bg} ${a.text} text-[9px] font-extrabold`}>
-                  {badge}
-                </div>
-              </div>
-              <div className="p-2.5 space-y-1">
-                <p className="text-[12px] font-bold text-gray-900 dark:text-white truncate">{p.name}</p>
-                {p.restaurant_name && <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{p.restaurant_name}</p>}
-                {/* 즉시판매 단일가 — 진행률 바 제거. 인원은 소셜 증거로만 노출(0명이면 가격만). */}
-                <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                  {current > 0 && (
-                    <span className={`${a.text} font-bold`}>
-                      {t('groupBuy.curBuying', { defaultValue: '👥 {{count}}명 함께', count: current })} ·{' '}
-                    </span>
-                  )}
-                  ₩{p.price?.toLocaleString("ko-KR") ?? "-"}
-                </p>
-              </div>
-            </button>
-          )
-        })}
-      </div>
-    </section>
-  )
-}

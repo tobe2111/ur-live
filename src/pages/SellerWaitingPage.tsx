@@ -13,7 +13,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { Loader2, Clock, AlertCircle, ArrowRight, Home, RefreshCw } from 'lucide-react'
+import BrandLoader from '@/components/brand/BrandLoader'
+import { Clock, AlertCircle, ArrowRight, Home, RefreshCw } from 'lucide-react'
 
 type Status = 'pending' | 'suspended' | 'rejected' | 'active' | 'unknown'
 
@@ -70,7 +71,7 @@ export default function SellerWaitingPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-6 h-6 text-red-500 animate-spin" />
+        <BrandLoader />
       </div>
     )
   }

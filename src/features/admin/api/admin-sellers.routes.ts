@@ -58,6 +58,10 @@ interface SellerRow {
   manager_name?: string | null;
   manager_phone?: string | null;
   manager_email?: string | null;
+  // 🧱 2026-06-30 (서비스 분리 — 유어딜 셀러 목록에 도매 판매사 구분 표시): 도매 판매사(is_distributor=1)
+  //   행을 소비자 셀러 목록에서 배지로 구분 + 선택적 필터. 데이터는 그대로(숨기지 않음).
+  is_distributor?: number;
+  distributor_grade?: string | null;
 }
 
 interface IdRow {
@@ -72,6 +76,11 @@ adminSellersRoutes.get('/sellers', cors(), async (c) => {
     const page = Math.max(parseInt(c.req.query('page') || '1'), 1);
     const limit = Math.min(Math.max(parseInt(c.req.query('limit') || '50'), 1), 200);
     const offset = (page - 1) * limit;
+    // 🧱 2026-06-30 (서비스 분리 — 대표 "구분 표시"): exclude_distributor=1 이면 도매 판매사(is_distributor=1)
+    //   행을 유어딜 소비자 셀러 목록에서 제외(도매-전용 회원 숨김). 기본(없음)은 전부 반환 + 배지로 구분.
+    //   컬럼은 repair-schema 로 보장(is_distributor). 구세대 env 는 아래 fallback(컬럼 없음)이라 필터 무영향.
+    const excludeDistributor = c.req.query('exclude_distributor') === '1';
+    const distWhere = excludeDistributor ? 'WHERE COALESCE(is_distributor, 0) = 0' : '';
 
     let sellers;
     try {
@@ -80,13 +89,14 @@ adminSellersRoutes.get('/sellers', cors(), async (c) => {
                status, created_at,
                COALESCE(commission_rate, 5) AS commission_rate,
                COALESCE(can_manipulate_stats, 0) AS can_manipulate_stats,
+               COALESCE(is_distributor, 0) AS is_distributor, distributor_grade,
                linked_user_id,
                bank_name, bank_account, account_holder,
                business_registration_image_url, business_registration_status,
                business_registration_reject_reason,
                representative_name, representative_phone,
                manager_name, manager_phone, manager_email
-        FROM sellers ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?
+        FROM sellers ${distWhere} ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?
       `, [limit, offset]);
     } catch {
       // 🛡️ 2026-05-20: migration 0257 (business_registration_*) / 0128 (bank_name, account_holder)
@@ -107,7 +117,7 @@ adminSellersRoutes.get('/sellers', cors(), async (c) => {
         `, [limit, offset]);
       }
     }
-    const totalRow = await DB.prepare('SELECT COUNT(*) as cnt FROM sellers').first<{ cnt: number }>();
+    const totalRow = await DB.prepare(`SELECT COUNT(*) as cnt FROM sellers ${distWhere}`).first<{ cnt: number }>().catch(() => DB.prepare('SELECT COUNT(*) as cnt FROM sellers').first<{ cnt: number }>());
     return c.json({
       success: true,
       data: sellers,

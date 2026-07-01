@@ -186,8 +186,19 @@ export default function CuratorPage() {
   if (linked_seller?.username) {
     return (
       <Suspense fallback={
-        <div className="min-h-screen bg-white dark:bg-[#020202] text-gray-900 dark:text-white flex items-center justify-center">
-          <div className="text-gray-500 dark:text-gray-400">{t('common.loading')}</div>
+        // 🧭 2026-06-30 [LOADING_ADDITIVE] (대표 신고 — "불필요한 로딩 애니메이션"): 기존 fallback 은
+        //   SellerPublicPage 청크 다운로드 동안 전체화면 중앙 '로딩 중' 텍스트를 띄웠다가 → 청크 로드 후
+        //   SellerPublicPage 가 다시 헤더+스켈레톤(자체 loading 상태)을 그려, 사용자가 [스피너→텍스트→스켈레톤]
+        //   세 로더를 점프하며 봤음. fallback 을 SellerPublicPage 의 curator-있음 loading 상태와 **동일**하게 맞춤
+        //   → curator 로 헤더를 즉시 한 번 그려 유지, 본문 2카드 스켈레톤만 이어서 채워짐(중간 텍스트 로더 제거, 점프 0).
+        <div className="min-h-[100dvh] bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-28">
+          <CuratorHeader curator={curator} pinCount={0} isOwner={false} accountType="business" onCopyLink={copyLink} onCuratorUpdate={() => {}} />
+          <div className="ur-content-wide px-4 lg:px-8 py-8">
+            <div className="h-5 w-28 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse mb-4" />
+            <div className="grid grid-cols-2 gap-3">
+              {[0, 1].map(i => <div key={i} className="aspect-[3/4] rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />)}
+            </div>
+          </div>
         </div>
       }>
         {/* 🏁 2026-06-25 (대표 "통일") — 사업자 링크샵도 canonical CuratorHeader 형태로. curator 객체 전달.

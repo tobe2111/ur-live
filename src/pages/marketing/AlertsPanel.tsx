@@ -11,7 +11,7 @@ const authHeader = () => {
   const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
-interface Settings { enabled: number; budget_pace_pct: number; price_undercut: number }
+interface Settings { enabled: number; budget_pace_pct: number; price_undercut: number; rank_drop: number }
 interface AlertItem { kind: 'budget' | 'price'; title: string; detail: string }
 const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
 
@@ -37,7 +37,7 @@ export default function AlertsPanel() {
     setS(merged); setSaving(true)
     try {
       const r = await api.patch('/api/ads/alerts/settings', {
-        enabled: !!merged.enabled, budget_pace_pct: merged.budget_pace_pct, price_undercut: !!merged.price_undercut,
+        enabled: !!merged.enabled, budget_pace_pct: merged.budget_pace_pct, price_undercut: !!merged.price_undercut, rank_drop: merged.rank_drop,
       }, { headers: authHeader() })
       if (r.data?.success) setS(r.data.settings)
       else toast.error('저장 실패')
@@ -90,7 +90,18 @@ export default function AlertsPanel() {
                 {s.price_undercut ? 'ON' : 'OFF'}
               </button>
             </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[12.5px] text-gray-700 dark:text-gray-300">순위 하락 알림 (평균순위 N위 이상 하락, 0=끔)</span>
+              <div className="flex items-center gap-1.5">
+                <input type="number" min={0} max={20} value={s.rank_drop}
+                  onChange={(e) => setS({ ...s, rank_drop: Number(e.target.value) })}
+                  onBlur={() => patch({ rank_drop: s.rank_drop })}
+                  className="w-16 h-8 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-2 text-[12px] text-right text-gray-900 dark:text-white" />
+                <span className="text-[12px] text-gray-400 dark:text-gray-500">위</span>
+              </div>
+            </div>
           </div>
+          <p className="mt-2 text-[10.5px] text-gray-400 dark:text-gray-500">순위 하락은 매일 기록되는 평균순위를 비교합니다(첫날은 기준만 쌓이고 다음날부터 감지).</p>
 
           <div className="mt-3 flex items-center gap-2">
             <button onClick={preview} disabled={previewBusy} className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-3 py-1.5 text-[12px] font-bold text-gray-700 dark:text-gray-200 disabled:opacity-50">{previewBusy ? '확인 중…' : '지금 확인'}</button>

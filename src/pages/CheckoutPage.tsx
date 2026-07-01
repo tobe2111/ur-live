@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { CartItem } from '@/types/cart'
 import type { ShippingAddress, GroupBuyTier, SellerGroup } from './checkout/types'
 import SEO from '@/components/SEO'
+import BrandLoader from '@/components/brand/BrandLoader'
 import api from '@/lib/api'
 import { handleApiError, getUserFriendlyError } from '@/lib/errorHandler'
 import { Button } from '@/components/ui/button'
@@ -405,10 +406,10 @@ function CartCheckout() {
   // ✅ BUG #3 FIX: Auth/loading guards (all hooks called above this line)
   const isSessionUser = hasConsumerSession()
   if (!isSessionUser && (!isAuthReady || authLoading))
-    return <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6b7280] mx-auto mb-4" /><p className="text-gray-400 dark:text-gray-500">{t('common.loading', { defaultValue: '로딩 중...' })}</p></div></div>
+    return <BrandLoader fullScreen label={t('common.loading', { defaultValue: '로딩 중...' })} />
   if (!user && !isSessionUser) return null
   if (loading || tokenRefreshing)
-    return <div className="flex items-center justify-center min-h-screen"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" /><p className="mt-4 text-gray-400 dark:text-gray-500">{tokenRefreshing ? t('payment.errors.securityAuthInProgress') : t('payment.errors.loading')}</p></div></div>
+    return <BrandLoader fullScreen label={tokenRefreshing ? t('payment.errors.securityAuthInProgress') : t('payment.errors.loading')} />
   if (error) return (
     <div className="w-full p-4 sm:p-6">
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg p-4">

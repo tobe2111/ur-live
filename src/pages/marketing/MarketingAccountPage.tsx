@@ -85,7 +85,7 @@ export default function MarketingAccountPage() {
   }
 
   function logout() {
-    for (const k of ['ads_token', 'ads_account_id', 'ads_company']) localStorage.removeItem(k)
+    for (const k of ['ads_token', 'ads_account_id', 'ads_company', 'ads_unlocked']) localStorage.removeItem(k)
     navigate('/ads/login', { replace: true })
   }
 

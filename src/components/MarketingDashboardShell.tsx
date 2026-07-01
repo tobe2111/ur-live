@@ -21,11 +21,14 @@ const authHeader = () => {
  */
 const NAV: Array<{ id: string; label: string; icon: ReactNode }> = [
   { id: 'sec-keyword', label: '키워드 확장', icon: <path d="M11 4.5a6.5 6.5 0 1 0 4.5 11.2M11 8v6M8 11h6M20 20l-4.2-4.2" /> },
+  { id: 'sec-trend', label: '성과 추세', icon: <path d="M3 17l6-6 4 4 8-8M21 7v5h-5" /> },
   { id: 'sec-searchad', label: '검색광고 실적', icon: <path d="M3 21h18M5 18v-7M10.3 18V6M15.6 18v-9" /> },
+  { id: 'sec-efficiency', label: '키워드 효율', icon: <path d="M3 3v18h18M7 14l3-3 3 2 5-6" /> },
   { id: 'sec-autobid', label: '자동입찰', icon: <path d="M8 5v14M8 5l-3 3M8 5l3 3M16 19V5M16 19l-3-3M16 19l3-3" /> },
   { id: 'sec-ai', label: 'AI 마케터', icon: <path d="M12 3l1.9 5.6L19.5 10l-5.6 1.4L12 17l-1.9-5.6L4.5 10l5.6-1.4L12 3z" /> },
   { id: 'sec-report', label: '주간 리포트', icon: <path d="M4 19V5M4 19h16M8 16l3-4 3 2 4-6" /> },
   { id: 'sec-fraud', label: '부정클릭 방어', icon: <path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6l7-3zM9 12l2 2 4-4" /> },
+  { id: 'sec-rank', label: '쇼핑 순위', icon: <path d="M12 15l-5 6 5-3 5 3-5-6zM12 2a6 6 0 1 0 0 12A6 6 0 0 0 12 2z" /> },
   { id: 'sec-price', label: '가격·소싱', icon: <path d="M20 12l-8 8-9-9V3h8l9 9zM7.5 7.5h.01" /> },
   { id: 'sec-alerts', label: '알림', icon: <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" /> },
   { id: 'sec-store', label: '발주 수집', icon: <path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8" /> },
@@ -61,7 +64,7 @@ export default function MarketingDashboardShell({ title = '대시보드', planLa
   const [acctOpen, setAcctOpen] = useState(false)
   const company = typeof window !== 'undefined' ? (localStorage.getItem('ads_company') || '내 계정') : '내 계정'
   function logout() {
-    for (const k of ['ads_token', 'ads_account_id', 'ads_company']) { try { localStorage.removeItem(k) } catch { /* ignore */ } }
+    for (const k of ['ads_token', 'ads_account_id', 'ads_company', 'ads_unlocked']) { try { localStorage.removeItem(k) } catch { /* ignore */ } }
     navigate('/ads/login', { replace: true })
   }
   // 화이트(라이트) 기본 + 다크 토글(대표 지시 2026-06-28 "기본은 화이트테마"). 선택은 localStorage 유지

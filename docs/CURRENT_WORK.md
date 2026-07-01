@@ -1,5 +1,57 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-06-30 — 배포-청크 자가복구 영구 방어선(흰화면/무한로딩 회귀 차단) (대표 "더 이상적으로")
+대시보드 무한로딩(옛 청크 MIME) 수정 후속 — 메커니즘은 이미 견고(인라인 부트가드+`reloadWithCacheBust` SSOT+버전체크). **더 이상적 = 4번+ 재발한 이 버그가 다시 *조용히 회귀* 못 하게 락.**
+- 신규 `scripts/check-chunk-recovery-guard.mjs` — 자가복구 **4불변식** 존재 강제: ① `index.html` 인라인 부트가드 ② `chunk-error.ts` `isChunkLoadError`(MIME 감지)+`reloadWithCacheBust`(`__cb`+`location.replace`, plain reload 회귀 금지) ③ `main.tsx` error/unhandledrejection 배선 ④ worker SPA 셸 `no-cache`. 하나라도 빠지면 flag.
+- 배선: pre-commit(warn) + `verify.yml` CI(strict, 현재 위반 0) + CLAUDE.md 영구 방어선 표 등록. 음성(현 clean)/양성(캐시버스트 revert→차단) 테스트 통과.
+- **정직 메모(이전 turn 자기검증)**: worker `/assets/*` 404 분기는 `_routes.json` exclude 라 실제 청크엔 미도달(Pages 직접 서빙) → 근본복구는 클라 ②③ + 셸 no-cache. 절대-0 흰화면은 Pages 에서 불가(옛 청크 삭제됨) — 현실 이상치=즉시 자가복구(달성). 추가 다듬기는 Pages `not_found_handling=none`(대시보드 설정, repo 밖).
+
+## ✅ 2026-06-30 — 셀러 대시보드 `/seller`→`/wholesale` 강제 튕김 근본수정 (겸업 lock-out) (대표 "원인 전부·영구·이상적")
+- **원인**: `SellerLayout` 이 `localStorage.is_distributor === '1'` **하나로** 무조건 `/wholesale` 로 redirect(2곳: 마운트 effect + render 가드). `is_distributor` 는 '도매 접근권'(capability)일 뿐 '도매 전용'(exclusivity)이 아닌데, 기존 소비자 셀러가 `/become-distributor`(wholesale.routes:344) 한 번만 해도 같은 셀러 행에 `is_distributor=1` 이 덧붙어 **겸업** 이 됨 → 카카오/셀러 로그인 시 플래그 저장 → `/seller` 갈 때마다 도매몰로 튕겨 셀러 대시보드 **영구 접근불가**. (주석은 "겸업 영향 없음" 이라 약속했으나 코드가 미구현.) 소비자측 강제 redirect 는 이 1곳이 유일(전수조사 — 나머지 navigate('/wholesale')는 전부 도매몰 내부 정상 네비).
+- **수정(영구·서버권위)**:
+  - **서버 SSOT 분류기** `computeWholesaleOnly(DB, sellerId)`(wholesale-helpers) — '도매 전용'은 `is_distributor=1` ∧ `seller_type∉{store_owner,both}` ∧ `소비자(비-도매) 상품 0` 일 때만 true. **애매하면 false=대시보드 노출(절대 lock-out 금지).**
+  - **인증 엔드포인트** `GET /api/seller/surface`(requireSeller, IDOR 무관 — 토큰 seller id 로 자기조회) → `{ wholesale_only }`. fail-open.
+  - **SellerLayout**: is_distributor 직접 가드 2곳 → `/api/seller/surface` 권위 판정. 도매 접근권 없으면 조회 skip, 판정 false/네트워크 실패 시 대시보드 유지, `?as=seller` 명시 진입은 강제이동 면제(트랩 방지).
+  - **SellerLoginPage**: 로그인 직후 라우팅을 `is_distributor` → `wholesale_only` 기준으로(login 응답에 `wholesale_only` additive). 겸업은 `/seller`, 순수 판매사만 `/wholesale`.
+- **자동 치유**: 게이트를 새 신호(wholesale_only)로 바꿔, 이미 깨진 겸업 계정은 **재로그인 없이** 다음 `/seller` 진입에서 즉시 복구(서버가 dual 판정). 순수 판매사 UX(도매몰 라우팅)는 보존.
+- **재발 방지(영구)**: 신규 가드 `check-seller-wholesale-redirect.mjs` — Seller* surface 에서 is_distributor 직접 게이트로 /wholesale redirect/return null 금지(권위 wholesale_only 만). audit-gate(서비스 분리 도메인)+verify.yml(strict)+AUDIT_INVARIANTS 등록. 단위 테스트 `wholesale-only.test.ts`(7케이스).
+- 검증: tsc 0 · unit **2368 pass**(+7) · build(client+worker+prerender+prepare) 0 · 서비스분리/UI 도메인 ALL GREEN · sql/light-input/api-auth 가드 0. ⚠️ staging 권장: 겸업 계정(소비자 상품 보유 + is_distributor=1) → `/seller` 정상 진입 / 순수 판매사 → `/wholesale` 라우팅 각 1회.
+
+## ✅ 2026-06-30 — 제조사 상세페이지 이미지: 수정 지원 + 최대 30장 (대표 "둘 다 고치기")
+대표 질문("상세페이지 이미지 여러 장 순서대로 올리는 거 문제 없어?") → 전 경로 검증: **등록은 정상**(다중·순서·원본화질·R2·순서대로 갤러리 표시 end-to-end)이나 한계 2건 발견 → 둘 다 수정.
+- **① 등록 후 수정 불가 → 지원**: `detail_images` 가 `GET /products` 미반환 + `PATCH` 미처리라 수정모드에서 **숨겨져 있던 미완성** 기능. → GET SELECT 에 `detail_images` 추가 · `PATCH` 에 detail_images 처리(배열/쉼표→http(s)필터→JSON, 빈값=null 해제) · `AddProductModal` 수정모드에서 필드 노출 + prefill(`detailImagesToCsv` JSON파싱) + payload 공통전송(등록·수정). `CatalogItem` 타입 추가.
+- **② 최대 10 → 30장**: 긴 상세페이지 슬라이스가 10장 넘으면 11장째부터 조용히 버려지던 것 → 4곳 동기 상향(`MultiImageUpload MAX_FILES`·POST slice·bulk slice·`catalog/:id` 표시 slice).
+- **불변**: 업로드 컴포넌트(무압축·GIF보존·순서 up/down)·POST 저장·상세 표시 로직·`products.detail_images` 컬럼(예산 무관, 기존 컬럼) 전부 불변(수정 경로 신설 + cap 숫자만). 승인상품 수정불가 게이트·재제출 pending 동작 불변.
+- 검증: tsc 0 · build 0 · column-exists/bind/컬럼예산 가드 0. ⚠️ staging: 등록(30장·순서) → 상세 표시 → 수정모드 재진입(prefill) → 이미지 교체/삭제/추가 → 저장 → 반영 1회 확인 권장.
+
+## ↩️ 2026-06-30 — 판매사 첫 발주 시작 가이드 **제거**(revert) (대표 "가이드는 필요없어")
+직전 추가한 `FirstOrderGuide`(HeroSection)를 대표 요청으로 통째 revert(`065a5f1`). `/home` 의 `has_ordered` 배선·`useWholesaleHome` 타입/매퍼·HeroSection prop 전부 함께 제거(미사용 방지). **`pending_receipt`(수령확인 배너)는 별개 커밋이라 유지.** tsc 0·build 0.
+
+## ✅ 2026-06-30 — 제조사 거절 사유 입력 UI (거절 사유 루프 완결) (대표 "응 해줘")
+직전 '판매사 거절 사유 노출' 의 짝 — 사유를 *실제로 입력*하게.
+- **문제**: `SupplierWholesaleOrdersPage` 의 거절이 `reason: '제조사 거절'` **하드코딩** → 판매사 주문목록에 항상 "제조사 거절"만 떠 직전 가시성 작업이 무의미. 사유 입력 UI 부재.
+- **수정**: 거절 `confirmDialog` → **`promptDialog`**(이 세션에서 추가한 입력 모달, `required`+`multiline`)로 — "거절 사유(예: 재고 소진, 단종)" 입력받아 `reject` API 로 전달(100자, 빈값이면 '제조사 거절' 폴백, 취소 시 abort). 서버/환불/알림 로직 불변(reason 값만 하드코딩→사용자입력).
+- **루프 완결**: 제조사 거절(사유 입력) → `wholesale_orders.reject_reason` 저장 → 판매사 주문카드 '제조사 거절 사유' 노출(직전 작업) → 환불 알림.
+- 검증: tsc 0 · build 0.
+
+## ✅ 2026-06-30 — 판매사 주문 거절/취소 사유 노출 (가시성 갭) (대표 "응 계속 진행")
+- **문제**: 제조사가 주문을 거절하면 `wholesale_orders.reject_reason` 을 저장하고 판매사에게 '환불 처리' 알림까지 보내는데, **판매사 주문 목록엔 REJECTED 뱃지만 뜨고 사유가 안 보였음** — "왜 거절됐지?"를 알 길이 없던 가시성 갭. (취소 `cancel_reason` 도 동일.)
+- **수정(additive)**: 판매사 주문 목록 API(`/api/wholesale/orders`) SELECT 에 `reject_reason, cancel_reason` 추가(이미 `ensureOrderTables` ensure 컬럼) → `WholesaleOrderRow` 타입 → `WholesaleOrdersPage` 주문 카드에 사유 노트(REJECTED=빨강 '제조사 거절 사유', CANCELLED/REFUNDED=중립 '취소 사유'). 사유 없으면 미표시(소음 0).
+- **불변**: 주문 목록 쿼리 구조·라인아이템 첨부·금액 표시·상태 뱃지 전부 불변(SELECT 컬럼 2개 + 표시 블록 1개 additive). 거절/취소/환불 로직 무변경. WholesaleDashboardPage 임베드 주문도 같은 컴포넌트라 자동 적용.
+- 검증: tsc 0 · build 0 · column-exists/bind 가드 0.
+
+## ✅ 2026-06-30 — 도매 기술부채 정리 + 출금 계좌 게이트 (대표 "부채 정리 하고 개선하자")
+**부채 정리**(TECHNICAL_DEBT `🟡 2026-06-25 6도메인 잔여` 섹션 전수 재검증): 항목 2~5 다수가 해소/무효 확인 → 제거.
+- (구)2 제조사 대시보드 보조 로더 silent-empty → loadCatalog/orders/settlements 전부 `markErr`+`secErr` 표면화 완료(stale).
+- (구)3 wishlist/naver/channels 페이지 **삭제됨**, oem 은 `isError` de-mask 완료(stale).
+- (구)4 Overview "출금 가능"=`available−reserved`(spendable) 표시 완료(stale).
+- (구)5b 송장 0건→`toast.error` 완료 / (구)5c StaffPage **삭제됨**(stale).
+- **(구)5a 실수정**: `WholesaleStatementPage` 순매입 `won(summary.net)` → `won(summary.net ?? (total_paid − total_refunded))` 폴백(net 누락 시 ₩0 오표시 방지).
+- 남은 부채는 oem-requests WeakSet nit + 등급 마진탭(대표 결정 대기) 2건뿐 — 문서 정리 주석 추가.
+
+**개선 — 출금 계좌 게이트**(직전 정산계좌 작업 완결): `WithdrawalSection` 을 `hasAccount` 인지로 — 계좌 미등록(`has_payout_account===false`)이면 '출금 신청' 버튼 비활성 + '정산 계좌 필요' 라벨 + amber 안내(아래 카드로 유도) → NO_BANK 헛걸음 제거. undefined(미로드)면 기존 동작(서버가 최종 게이트). i18n 2키 6개 언어. **출금 신청 로직·NO_BANK 서버 게이트 불변.**
+- 검증: tsc 0 · build 0 · 가드 0.
+
 ## ✅ 2026-06-30 — 제조사 정산 계좌 등록/수정 (출금 막다른 길 해소) (대표 "계속 해줘")
 직전 '출금 가능' 할 일이 드러낸 **막다른 길** 근본수정 — 돈은 쌓이는데 출금 못 하던 구조.
 - **문제**: 가입 시 정산 계좌가 **'선택'**("나중에 등록 가능")인데, **가입 후 등록/수정할 UI·엔드포인트가 0**. 계좌 없이 가입한 제조사는 정산금이 쌓여도 출금 시 `NO_BANK`("먼저 정산 계좌를 등록해주세요")로 막히고 **등록할 길이 없어 영구 출금불가** — 가입폼의 "나중에 등록 가능"이 깨진 약속이었음.
@@ -45,6 +97,12 @@
 - **#8 상품코드 (제조사 등록·상세 표시·카테고리 접두)** — SSOT `src/shared/wholesale-category-codes.ts`(식품 FD/리빙 LV/건강 HT, 어드민 `platform_settings.wholesale_category_prefixes` 확장). 제조사 `AddProductModal` 상품코드 입력(접두 자동) → `supplier-dashboard.routes` POST/PATCH 가 `normalizeProductCode` 후 `product_supply_meta.ext_code` 저장 → `catalog/:id` 반환 → `WholesaleProductPage` 코드 배지 표시. **이 ext_code 가 #12 대량발주 코드매칭의 글로벌 소스 → #8 로 #12 명시등록 완성.**
 - **#1 어드민 판매자 승인 통합** (`AdminPage` — 별도 `PendingSellersTable` 제거, 승인 대기자를 `SellersTable`(판매자 관리) 상단에 합쳐 행별 승인/거부/정지 일원화. `SellersTable` 에 `onReject` 추가).
 - 검증: tsc 0 · build 0 · audit-gate 33 GREEN.
+
+## ✅ 2026-06-30 — 사업자 링크샵(`/u/:handle`) 불필요한 중간 로더 제거 (대표 신고 "로딩 중 필요 없는 로딩 애니메이션, 철저히")
+**전수 추적**: 사업자 `/u/`(linked_seller) 콜드 로드가 [PageLoader 스피너 → 전체화면 중앙 '로딩 중' 텍스트(SellerPublicPage 청크 Suspense fallback) → 헤더+스켈레톤(SellerPublicPage 자체 loading) → 본문] 세 로더를 점프. 중간 텍스트가 redundant + 시각 불일치.
+- **CuratorPage.tsx** (`[LOADING_ADDITIVE]`): Suspense fallback(중앙 텍스트) → SellerPublicPage curator-있음 loading 상태와 **byte-동일** 헤더+2카드 스켈레톤(curator 즉시)으로 교체 → 헤더 1회 유지·본문만 채워짐(점프 0).
+- **worker/index.ts** (`[UNLOCK_LOADING]`): SSR self-fetch 타임아웃 CURATOR 1500→2000ms (SELLER=`/profile` 와 동일 페이지·동일 D1 비용인데 짧아 cold timeout→스켈레톤 더 자주). warm/edge-hit·타 슬롯·소비자 불변.
+- 검증: tsc 0·build 0·theme/mobile 0. CLAUDE.md 로딩 audit log 기록. ⚠️ 배포 후 `/u/{사업자handle}` 콜드 1회 시각 확인 권장.
 
 ## ✅ 2026-06-29 — 도매 대량발주(엑셀·드랍십) + 등급명 + 상단 '마이' (대표 요청 3건)
 **1) 대량발주 드랍십 (받는사람별 직배, "셀파이는 참고만")** — 한 행 = 한 명에게 보내는 1건. 같은 상품도 받는사람 다르면 별개 라인. 매칭 = `product_id`(우선) 또는 `상품코드`("둘 다" — 판매사별 자동학습 맵 + 제조사 ext_code 폴백, `wholesale-code-map.ts`). 상품상세1=옵션(비가격 패스스루).
@@ -595,6 +653,14 @@
 - **수정(fail-safe)**: **세션이 죽었다는 확정 증거(`health.data.data.session === false`) 가 있을 때만 로그아웃.** 헬스 실패(catch)·확정 불가 시 → 세션 유지(이 API 자체 권한/일시 문제로 간주, reject만). 진짜 만료(session:false)는 그대로 로그아웃(정상). `parseSessionCookie` 가 'user' 쿠키 우선이라 멀티쿠키는 무관 확인.
 - **참고**: `auth-callback-bootstrap` 자가점검은 이미 fail-safe(명시 session===false + r.ok 일 때만 wipe). api.ts 핸들러만 결함이었음.
 - 검증: tsc 0 · `npm run build` exit 0. ⚠️ 실 로그인 모니터링 권장(Sentry breadcrumb `Buyer 401: session unconfirmed — keep` 추가로 추적 가능).
+## ✅ 2026-06-30 — 대시보드 무한로딩(배포 후 옛 청크 MIME 에러) 영구수정 (대표 신고 "어드민/에이전시 안 켜짐, 절대 발생하면 안됨") `[UNLOCK_LOADING]`
+**증상**: `/admin`·`/agency` 무한 로딩. 콘솔: `Failed to load module script: Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of "text/html"` (`app-features-DWIZ3X9w.js`).
+- **근본 원인(2겹)**: ① 새 배포마다 청크 파일 해시가 바뀜(`app-features-<해시>.js`). 옛 index.html 을 들고 있던 브라우저가 옛 `/assets/*.js` 요청 → 새 빌드에 없음 → **worker catch-all(`app.get('*')`)이 SPA index.html 을 200 text/html 로 반환** → 브라우저가 "JS 모듈인데 text/html" 로 거부 → 대시보드 부팅 실패. ② 게다가 worker 가 **SPA 셸 HTML 에 Cache-Control 을 전혀 안 붙임**(heuristic 캐시) → 클라 자동복구(chunk-error 1회 reload)가 reload 해도 **stale index.html(옛 해시) 재수신** → 또 실패 → "1회" 가드가 막아 **영구 stuck**. (200 응답이라 복구로직이 '실패'로 인식도 못 함.)
+- **영구 수정(서버측 2 — 이번 커밋)**: ① `worker/index.ts app.get('*')`: 없는 정적 에셋(`/assets/*` 또는 js/css/woff/png… 확장자) 요청은 **진짜 404** 반환(SPA HTML 금지) → 브라우저가 chunk 로드 실패로 인식 → 자동복구 동작. ② 같은 핸들러 SPA 셸 HTML 응답에 **`Cache-Control: no-cache, no-store, must-revalidate`** → 배포 후 항상 최신 index.html(새 해시) 수신.
+- **클라측은 main 에 이미 더 강한 fix(머지 시 채택)**: `main.tsx reloadOnceForChunk` 가 2026-06-25(타 세션, `/admin/wholesale-overview` 흰화면 신고)에 `reloadWithCacheBust()`(`__cb` 캐시버스트 + `location.replace` 로 옛 HTML 재서빙 우회) + 60초창 2회 가드로 이미 개선됨 → 내 버전 대신 그쪽 유지(더 robust). 서버측 404+no-cache 와 상호보완(클라 캐시버스트가 reload 보장, 서버가 stale 발생을 줄이고 MIME 에러를 깔끔한 404 로 전환).
+- **잠금 영향 0(검증)**: SSR inject 블록(미들웨어 470)·`caches.default` API 캐시(0-RTT) **byte-identical 미변경** — SSR 0-RTT 는 서버사이드 API 데이터 주입이라 HTML 브라우저캐시와 독립. worker 가 원래 HTML 에 Cache-Control 을 **아예 안 붙이고 있었음**(전수 grep 확인) → no-cache 추가는 신규(약화 아님). 존재하는 에셋은 Pages 가 직접 서빙 → catch-all 미도달(404 오발동 0).
+- **검증**: tsc 0 · `npm run build`(client+ssr+worker) exit 0. ⚠️ 현재 stuck 사용자는 이 배포 반영 후 강력새로고침 1회(Ctrl/Cmd+Shift+R)면 최신 셸 수신 → 이후 영구 자가복구.
+
 ## ✅ 2026-06-17 — 로그인/가입 입력 글자 흰색으로 안 보이던 문제 영구수정 (대표 신고 "왜 이런 문제, 영구적으로 이상적으로")
 **신고**: `/admin/login` 등에서 타이핑하는 글자가 흰색이라 안 보임. "로그인 쪽 모두 그런 것 같아."
 - **근본 원인**: 전역 CSS `.dark input:not([type=...])` (index.css:492, 특이도 **0,5,1**)가 OS/앱 다크모드(`html.dark`)에서 **모든** 입력 글자색을 gray-100(거의 흰색)으로 덮어씀. 페이지의 `text-gray-900` 유틸(특이도 0,1,0)은 특이도가 낮아 짐 → 흰 배경에 흰 글자. 대시보드는 `.admin/.seller-light-theme` 래퍼로 보호됐으나 ① **`.agency-light-theme` 는 CSS 규칙 자체가 누락**(에이전시 대시보드 잠복 동일버그) ② **로그인/가입/비번재설정 페이지는 레이아웃 밖 standalone 이라 래퍼 없음** → 무방비. (소비자 다크토글은 정상이고, 라이트 고정 표면만 영향.)

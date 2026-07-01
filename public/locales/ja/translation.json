@@ -5817,6 +5817,8 @@
     "quickActions": "クイックアクション",
     "todoTitle": "やること",
     "todoClear": "✓ やることはありません",
+    "withdrawNeedAccount": "出金には下で精算口座を先に登録してください。",
+    "withdrawNeedAccountBtn": "口座が必要",
     "todoNoAccount": "精算口座を登録 · 出金に必要です",
     "acctTitle": "精算口座",
     "acctDesc": "出金申請時にこの口座へ送金されます。出金には精算口座の登録が必須です。",

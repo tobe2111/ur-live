@@ -46,7 +46,7 @@ export default function WholesaleStatementPage({ embedded = false }: { embedded?
             {[
               { k: '건수', v: comma(summary.count) + '건' },
               { k: '매입 합계', v: won(summary.total_paid) },
-              { k: '순매입 (환불 차감)', v: won(summary.net) },
+              { k: '순매입 (환불 차감)', v: won(summary.net ?? (summary.total_paid - summary.total_refunded)) },
             ].map((m) => (
               <div key={m.k} className="rounded-2xl p-4" style={{ background: WT.fill2 }}>
                 <div className="text-[12px]" style={{ color: WT.ink3 }}>{m.k}</div>

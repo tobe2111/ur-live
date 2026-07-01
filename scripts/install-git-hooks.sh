@@ -195,10 +195,21 @@ node scripts/check-groupbuy-status-classify.mjs || true
 echo "==> Pre-commit: 로그인 입력 글자 가드 (warn-only)..."
 node scripts/check-light-input-guard.mjs || true
 
+# 🛡️ 2026-06-30: 배포-청크 자가복구(흰화면/무한로딩) 시스템 회귀 방지 (warn-only).
+#   인라인 부트가드 + chunk-error SSOT(캐시버스트) + main.tsx 배선 + worker SPA no-cache 4불변식.
+#   4번+ 재발한 버그 클래스 — 하나라도 빠지면 새 배포 후 대시보드 안 켜짐. 차단은 verify.yml CI strict.
+echo "==> Pre-commit: 배포-청크 자가복구 가드 (warn-only)..."
+node scripts/check-chunk-recovery-guard.mjs || true
+
 # 🛡️ 2026-06-22: 모바일 뷰포트/스크롤 함정 래칫 — 신규 라인의 h-screen(100vh)/min-h-0 누락 차단.
 #   동네딜 지도 하단 잘림 사건 재발 방지. staged diff 추가라인만 검사(레거시 무시). warn-only.
 echo "==> Pre-commit: 모바일 뷰포트 함정 가드 (warn-only)..."
 node scripts/check-mobile-viewport.mjs || true
+
+# 🛡️ 2026-06-29: 파일 크기 래칫 — god 파일 재발 방지. 신규 600줄 초과 / baseline 동결 파일 성장 경고.
+#   staged 파일만 검사. 줄인 뒤엔 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신. warn-only.
+echo "==> Pre-commit: 파일 크기 래칫 (god 파일 방지, warn-only)..."
+node scripts/check-file-size.mjs || true
 
 # 🛡️ 2026-06-26: CSV 수식 인젝션 가드 (warn-only) — csvEscape 류 함수에 = + - @ 탭/CR 선행 가드 강제.
 echo "==> Pre-commit: CSV 수식 인젝션 가드 (warn-only)..."

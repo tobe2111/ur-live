@@ -85,11 +85,16 @@ export default function SellerLoginPage() {
         localStorage.setItem('seller_email', seller.email || '')
         localStorage.setItem('seller_username', seller.username || seller.slug || '')
         localStorage.setItem('seller_type', seller.seller_type || 'influencer')
-        // 🏭 2026-06-04 판매사 분리: 순수 판매사(is_distributor)는 셀러 대시보드 대신 도매몰로.
+        // 🏭 2026-06-04 판매사 분리: 도매 접근권(capability) hint — 도매 채팅/배지 등에서 사용.
         if (seller.is_distributor) localStorage.setItem('is_distributor', '1')
         else localStorage.removeItem('is_distributor')
-        // 🆕 returnUrl 있으면 거기로(유어애즈 등), 없으면 기존 분기 유지.
-        navigate(returnUrl || (seller.is_distributor ? '/wholesale' : '/seller'), { replace: true })
+        // 🏭 2026-06-30 [서비스 분리] 새 로그인 = SellerLayout 표면 판정 세션 상태 리셋(이전 계정 잔존 방지).
+        try { ['ur_seller_surface', 'ur_seller_bounced', 'ur_force_seller'].forEach(k => sessionStorage.removeItem(k)) } catch { /* noop */ }
+        // 🏭 2026-06-30 [서비스 분리] 라우팅은 '도매 전용'(wholesale_only) 기준 — 겸업(소비자 셀러+판매사)은
+        //   is_distributor=1 이어도 셀러 대시보드로(서버 권위 computeWholesaleOnly 결과). is_distributor 하나로
+        //   분기하던 옛 코드는 겸업을 도매몰로 잘못 보냈다. wholesale_only 없으면(구버전 응답) 셀러로 폴백.
+        // 🆕 returnUrl 있으면 거기로(유어애즈 등).
+        navigate(returnUrl || (seller.wholesale_only ? '/wholesale' : '/seller'), { replace: true })
       }
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }

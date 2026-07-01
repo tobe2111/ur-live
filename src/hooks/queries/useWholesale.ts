@@ -63,6 +63,9 @@ export interface WholesaleOrderRow {
   ship_to_address?: string | null
   ship_to_postal?: string | null
   ship_to_message?: string | null
+  // 🏭 2026-06-30: 거절/취소 사유 — 제조사 거절(REJECTED) 시 판매사가 사유 확인용.
+  reject_reason?: string | null
+  cancel_reason?: string | null
 }
 
 export interface WholesaleSummary {

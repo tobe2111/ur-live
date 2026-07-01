@@ -35,6 +35,7 @@ if domain separation; then
   run "도매 어드민 API 스코프"            env STRICT_API_SCOPE=1        node scripts/check-wholesale-admin-api-scope.mjs
   run "도매 어드민 nav 도달성"           env STRICT_NAV_REACH=1        node scripts/check-wholesale-admin-nav-reachability.mjs
   run "소비자 상품 도매 원본 격리"        env STRICT_SUPPLY_ISOLATION=1 node scripts/check-consumer-product-supply-isolation.mjs
+  run "대시보드 라우팅(겸업 lock-out)"     env STRICT_SELLER_WHS_REDIRECT=1 node scripts/check-seller-wholesale-redirect.mjs
 fi
 
 if domain auth; then
@@ -81,6 +82,11 @@ if domain ui; then
   run "테마 일관성(dark variant)"        node scripts/check-theme-consistency.mjs
   run "RQ initialData 신선도"           node scripts/check-query-initialdata.mjs
   run "모바일 뷰포트(하단 잘림)"          node scripts/check-mobile-viewport.mjs
+fi
+
+if domain structure; then
+  echo "🧹 코드 구조 (god 파일 방지)"
+  run "파일 크기 래칫(god 파일)"          env STRICT_FILE_SIZE=1        node scripts/check-file-size.mjs -a
 fi
 
 if domain deploy; then

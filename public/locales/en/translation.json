@@ -5817,6 +5817,8 @@
     "quickActions": "Quick actions",
     "todoTitle": "To-do",
     "todoClear": "✓ Nothing to do",
+    "withdrawNeedAccount": "Register a payout account below before withdrawing.",
+    "withdrawNeedAccountBtn": "Account required",
     "todoNoAccount": "Register payout account · Required to withdraw",
     "acctTitle": "Payout account",
     "acctDesc": "Withdrawals are sent to this account. A payout account must be registered to withdraw.",

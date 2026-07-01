@@ -57,7 +57,9 @@ export default function MarketingLoginPage() {
         localStorage.setItem('ads_token', r.data.token)
         localStorage.setItem('ads_account_id', String(r.data.account?.id ?? ''))
         localStorage.setItem('ads_company', r.data.account?.company_name || '')
-        navigate(dest, { replace: true })
+        // 베타 액세스 코드 게이트: 해제된 계정만 대시보드로, 아니면 코드 입력 화면.
+        if (r.data.account?.access_unlocked === 1) { localStorage.setItem('ads_unlocked', '1'); navigate(dest, { replace: true }) }
+        else { localStorage.removeItem('ads_unlocked'); navigate(`/ads/unlock?next=${encodeURIComponent(dest)}`, { replace: true }) }
       } else setErr(r.data?.error || '로그인에 실패했습니다')
     } catch (e2: unknown) {
       setErr((e2 as { response?: { data?: { error?: string } } })?.response?.data?.error || '로그인에 실패했습니다')
@@ -86,7 +88,11 @@ export default function MarketingLoginPage() {
 
         <button type="submit" className="ua-auth-btn" style={{ marginTop: 16 }} disabled={busy}>{busy ? '로그인 중…' : '로그인'}</button>
 
-        <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid #ECEDF1', textAlign: 'center' }}>
+        <div style={{ marginTop: 12, textAlign: 'center' }}>
+          <Link to="/ads/forgot" style={{ fontSize: 12.5, color: '#8A93A3' }}>비밀번호를 잊으셨나요?</Link>
+        </div>
+
+        <div style={{ marginTop: 14, paddingTop: 16, borderTop: '1px solid #ECEDF1', textAlign: 'center' }}>
           <span style={{ fontSize: 13, color: '#565E6C' }}>아직 계정이 없으신가요? </span>
           <Link to={signupHref} style={{ fontSize: 13, color: '#2A56D4', fontWeight: 700 }}>회원가입</Link>
         </div>

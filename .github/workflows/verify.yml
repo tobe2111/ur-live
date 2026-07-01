@@ -176,6 +176,14 @@ jobs:
         run: node scripts/check-query-initialdata.mjs -s
         continue-on-error: false
 
+      # 🛡️ 2026-06-29: god 파일 재발 방지 래칫 (strict). 신규 파일 600줄 초과 또는 baseline 동결
+      #   대형 파일이 더 커지면 차단 → 줄이는 건 OK, 키우는 건 금지(god 파일이 다시 못 자람).
+      #   대형 파일을 더 줄였으면 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신.
+      #   우회: 파일 상단 `file-size-ok` 주석 또는 커밋 메시지 [SKIP_SIZE]. 규칙: CLAUDE.md 영구 방어선.
+      - name: File-size ratchet (god file guard, strict)
+        run: node scripts/check-file-size.mjs -a -s
+        continue-on-error: false
+
       # 🛡️ 2026-06-17: 듀얼 로그인(소비자↔대시보드) 재발 방지 — 현재 위반 0 → strict.
       #   localStorage user_type === 'user' 로그인 게이트(세션 풀림 사고 근본원인) 신규 추가 차단.
       - name: Dual-login regression guard (strict)
@@ -232,6 +240,14 @@ jobs:
         run: STRICT_SUPPLY_ISOLATION=1 node scripts/check-consumer-product-supply-isolation.mjs
         continue-on-error: false
 
+      # 🏭 2026-06-30: 대시보드 라우팅 — 다중역할/겸업 계정이 대시보드에서 lock-out 되는 재발 방지(일반화).
+      #   대시보드 레이아웃/페이지(*Layout·*DashboardPage·Seller*·supplier-dashboard)에서 가산 권한 플래그(is_*)
+      #   단독 게이트로 서비스간 redirect/return null 금지 — 셀러↔도매=서버권위 wholesale_only, 또는 다중역할
+      #   보호 동반조건(!loggedIn/!token/단일역할 role !==). 현재 위반 0 → strict.
+      - name: Dashboard cross-service redirect guard (strict)
+        run: STRICT_SELLER_WHS_REDIRECT=1 node scripts/check-seller-wholesale-redirect.mjs
+        continue-on-error: false
+
       # 🏭 2026-06-29: 도매 "로그아웃이 전혀 안돼" 재발 방지 — 자동 재로그인 probe(become-distributor/
       #   supplier-become)는 명시 로그아웃 억제 게이트(wholesaleAutoLoginSuppressed) 필수. 현재 위반 0 → strict.
       - name: Wholesale auto-login logout guard (strict)
@@ -255,6 +271,13 @@ jobs:
       #   안 보임 사고(전역 .dark input 규칙이 text-gray-900 을 특이도로 이김) 신규 추가 차단.
       - name: Light-input visibility guard (strict)
         run: STRICT_LIGHT_INPUT=1 node scripts/check-light-input-guard.mjs
+        continue-on-error: false
+
+      # 🛡️ 2026-06-30: 배포-청크 자가복구(흰화면/무한로딩) 시스템 회귀 방지 — 현재 위반 0 → strict.
+      #   인라인 부트가드 + chunk-error SSOT(__cb 캐시버스트) + main.tsx 배선 + worker SPA no-cache
+      #   4불변식 중 하나라도 빠지면 새 배포 후 대시보드 안 켜짐(4번+ 재발). 신규 약화 차단.
+      - name: Deploy chunk self-recovery guard (strict)
+        run: STRICT_CHUNK_RECOVERY=1 node scripts/check-chunk-recovery-guard.mjs
         continue-on-error: false
 
       # 🛡️ 2026-06-26: 모달/시트가 하단 네비 뒤로 가려짐 재발 방지 (대표 "계속 발생 — 근본적으로").

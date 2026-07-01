@@ -1206,7 +1206,7 @@ app.get('/catalog/:id', async (c) => {
     const orderMultiple = Math.max(1, r.order_multiple || 1)
     // 🖼️ 2026-06-12: 상세페이지 이미지(JSON 배열) — 썸네일과 분리 노출 (guest 포함, 가격정보 아님).
     let detailImages: string[] = []
-    try { const arr = JSON.parse(r.detail_images || '[]'); if (Array.isArray(arr)) detailImages = arr.filter(u => typeof u === 'string').slice(0, 10) } catch { /* 손상 JSON — 무시 */ }
+    try { const arr = JSON.parse(r.detail_images || '[]'); if (Array.isArray(arr)) detailImages = arr.filter(u => typeof u === 'string').slice(0, 30) } catch { /* 손상 JSON — 무시 */ }
     if (guest) {
       // 🏭 guest 상세는 가격 비노출 → 공유캐시 안전(브라우저 60s + edge 300s). KV 미사용.
       //   🛡️ 단, 인증 시도(무효 토큰/쿠키)가 있었으면 public 금지 — v=in 키 오염 방지(잔여 누수 차단).
@@ -1790,7 +1790,8 @@ app.get('/orders', async (c) => {
              COALESCE(shipping_total, 0) AS shipping_total,
              (COALESCE(subtotal, 0) + COALESCE(shipping_total, 0)) AS grand_total,
              courier, tracking_number, created_at, paid_at, shipped_at,
-             ship_to_name, ship_to_phone, ship_to_address, ship_to_postal, ship_to_message
+             ship_to_name, ship_to_phone, ship_to_address, ship_to_postal, ship_to_message,
+             reject_reason, cancel_reason
       FROM wholesale_orders WHERE distributor_seller_id = ?
       ORDER BY created_at DESC LIMIT 100
     `).bind(sellerId).all()

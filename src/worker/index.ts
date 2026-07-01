@@ -195,6 +195,7 @@ import { agencyInvitesRoutes, inviteCodePublicRoutes } from '../features/agency/
 import { prospectsRoutes } from '../features/seller-prospects/api/seller-prospects.routes';
 // 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 3번째 서비스. /api/ads/* (유어딜/도매몰과 분리된 네임스페이스).
 import { marketingRoutes } from '../features/marketing/api/marketing.routes';
+import { adminAdsRoutes } from '../features/marketing/api/admin-ads.routes';
 import { agencyKpiRoutes } from '../features/agency/api/agency-kpi.routes';
 import { agencyMatchSuggestionsRoutes } from '../features/agency/api/agency-match-suggestions.routes';
 import { agencyPublicRoutes, agencyPublicEditRoutes } from '../features/agency/api/agency-public.routes';
@@ -574,7 +575,11 @@ app.use('*', async (c, next) => {
         //   1.5초 안에 못 끝내 timeout → 빈 ssrPayload → 주입 스킵 → 클라가 또 콜드 fetch(스켈레톤 장기화).
         //   WHOLESALE 만 3000ms 로 상향 → 콜드여도 데이터 주입 완료(첫 사용자만 ~2-3초 문서 wait, 이후 colo 캐시 300s).
         //   warm(edge-hit) 경로·타 슬롯·소비자 페이지 전부 불변. 근본 해결은 CACHE_KV 전역 워밍(self-fetch=KV-HIT).
-        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT') ? 2000
+        // 🧭 2026-06-30 [UNLOCK_LOADING] (대표 신고 — /u/ 링크샵 로딩): CURATOR(/u/:handle)는 사업자면
+        //   SELLER(/profile)와 **동일한 SellerPublicPage** 를 그리고 콜드 D1 비용도 비슷한데 타임아웃이 1500ms 라
+        //   /profile(2000ms)보다 cold self-fetch 가 더 자주 timeout → SSR 미주입 → CuratorPage 스켈레톤 더 자주 노출.
+        //   같은 페이지군이므로 CURATOR 를 2000ms 로 맞춤(warm/edge-hit·타 슬롯·소비자 페이지 불변 — 콜드 첫 사용자만 영향).
+        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT' || ssrTarget.slot === 'CURATOR') ? 2000
           : ssrTarget.slot === 'WHOLESALE' ? 3000
           : 1500;
         const ctlr = new AbortController();
@@ -1217,6 +1222,7 @@ app.route('/api/seller/transfers', sellerTransferRespondRoutes);
 // 🛡️ 2026-04-27 Phase 3-6: 캐스팅 마켓플레이스
 app.route('/api/admin/advertisers', adminAdvertiserRoutes);
 app.route('/api/admin/castings', adminCastingRoutes);
+app.route('/api/admin/ads', adminAdsRoutes); // 🎯 유어애즈 가입자 운영 어드민
 app.route('/api/seller/castings', sellerCastingRoutes);
 // 🛡️ 2026-04-27 Phase 2-5: 라이브 후원 부스터 이벤트
 app.route('/api/donation-boosters', donationBoosterRoutes);
@@ -1925,13 +1931,35 @@ app.get('*', async (c) => {
   // API 경로는 이미 위에서 처리됨 — 여기는 페이지 요청만
   if (path.startsWith('/api/') || path.startsWith('/auth/')) return c.notFound();
 
+  // 🛡️ 2026-06-30 (배포 후 옛 청크 무한로딩 — 방어 in depth): 없는 정적 에셋(확장자 가진 경로)에
+  //   SPA index.html(text/html)을 돌려주면 브라우저가 "Expected JS module, got text/html" 로 거부.
+  //   ⚠️ 정직한 한계: 실제 청크(`/assets/*`)는 `_routes.json` 의 exclude 목록이라 이 worker 까지
+  //      도달하지 않음 — Pages 가 직접 서빙하고, 없으면 Pages 가 HTML 404 를 반환(그게 대표가 본 MIME
+  //      에러의 출처). 그래서 그 경로의 *근본 자가복구*는 (1) 클라 `reloadWithCacheBust`(chunk-error
+  //      감지 → __cb 캐시버스트 reload) + (2) 아래 SPA 셸 no-cache(reload 가 항상 최신 HTML 수신)다.
+  //   이 분기는 exclude 에 없는 확장자 경로(예: 오타·구버전 비-해시 참조)가 worker 에 도달했을 때
+  //   HTML 셸 대신 깔끔한 404 를 주는 보조 방어(harmless). 청크 복구의 주역은 위 (1)+(2).
+  if (path.startsWith('/assets/') || /\.(?:js|mjs|css|map|woff2?|ttf|otf|json|png|jpe?g|gif|svg|webp|avif|ico|wasm|txt|xml)$/i.test(path)) {
+    return c.text('Not Found', 404, { 'Cache-Control': 'no-cache, no-store, must-revalidate' });
+  }
+
   // 봇이 아니면 SPA index.html 반환 (Cloudflare Pages가 처리)
   if (!BOT_UA_REGEX.test(ua)) {
     // Worker에서 직접 index.html을 서빙할 수 없으므로 fetch
     const assetUrl = new URL('/', c.req.url);
     const res = await (c.env as any).ASSETS?.fetch?.(assetUrl.toString())
       || await fetch(assetUrl.toString());
-    return new Response(res.body, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8' } });
+    // 🛡️ 2026-06-30: SPA 셸 HTML 은 절대 stale 캐시 금지 — 옛 청크 해시 참조로 인한 무한로딩 근본차단.
+    //   브라우저가 매 진입 시 재검증 → 배포 후 항상 최신 index.html(새 청크 해시) 수신.
+    //   SSR inject(미들웨어 470) + caches.default API 캐시는 서버사이드라 HTML 브라우저캐시와 독립
+    //   → SSR 0-RTT 최적화 불변(byte-identical). 비-SSR 대시보드/로그인 셸이 stale 안 되게만 보장.
+    return new Response(res.body, {
+      status: 200,
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      },
+    });
   }
 
   // ── 봇: 동적 메타 태그 생성 ──

@@ -1420,21 +1420,15 @@ src/features/group-buy/api/
 - `supplier-dashboard.routes.ts:850-853` GET /orders 가 **주문 status**(o.status)로 to_ship/shipped 분류. 혼합주문(여러 제조사)에서 내 라인만 발송하면 o.status 가 안 올라가 내 발송라인이 양쪽 탭에서 누락 가능.
 - ⚠️ **도매(wholesale-supplier.routes)는 이미 라인 line_status 기준이라 무관** — 소비자 드랍쉽 경로만. 수정: 분류를 내 라인 shipped_at 기준으로(쿼리 재작성 — 신중).
 
-### 2. 제조사 메인 대시보드 보조 로더 silent-empty (P2)
-- `SupplierDashboardPage.tsx` loadCatalog/loadOrders/loadSettlements 가 catch 시 console.error 만 → 로드실패가 "데이터 없음" 위장. (단 핵심 loadMe 는 meError 로 이미 표면화.) 수정: SupplierWholesaleOrdersPage 패턴(toast/error state) 적용.
-
-### 3. 판매사 wishlist/oem/naver 훅 silent-empty (MED)
-- `WholesaleWishlistPage`(.catch→setItems[]), `WholesaleOemPage`(queryFn 내부 .catch→[]), `WholesaleNaverPage`/`WholesaleChannelsPage`(non-auth 에러를 "미연결" 위장). 수정: 내부 catch 제거 → isError 분기 + 별도 error state. (주문/명세 훉은 2026-06-19 audit 로 이미 de-mask 됨.)
-
-### 4. 제조사 Overview "출금 가능" 이 spendable 아닌 available 표시 (MED, 금액손실 아님)
-- `OverviewTab.tsx:32` + `supplier-dashboard.routes GET /me` 가 raw available_amount 를 "출금 가능"으로 라벨. 실제 출금가능 = available − reserved. 출금신청 보류 중이면 과다 표시(요청 endpoint 가 서버 재계산해 거부하므로 금액손실 X). 수정: /me 가 reserved 차감 or "정산 가능 누적" 라벨.
-
-### 5. LOW 정리
-- `WholesaleStatementPage:43` summary.net 누락 시 ₩0 표시 → `?? (total_paid - total_refunded)` 폴백.
-- `SupplierWholesaleOrdersPage:77` 송장 0건 등록에 success 토스트 → `if(!s?.ok) toast.error`.
-- `WholesaleStaffPage:36` canManage 기본 true 플래시 → 기본 false.
-- `oem-requests.ts:16` ensure WeakSet 선마킹(promise-cache 패턴으로 통일 권장).
+### 2. LOW 정리 (잔여)
+- `oem-requests.ts:16` ensure WeakSet 선마킹(promise-cache 패턴으로 통일 권장 — 코드품질 nit).
 - 등급별 마진율 탭 = 엑셀 전용(라이브 가격 무영향) — **대표 결정 대기**(엑셀전용 라벨 vs 등급차등가 부활).
+
+> 🧹 **2026-06-30 정리** — 위 섹션의 (구)항목 2~5 다수가 해소/무효 확인되어 제거:
+> - (구)2 제조사 대시보드 보조 로더 silent-empty → loadCatalog/orders/settlements 전부 `markErr`+`secErr` 로 표면화 완료 ✅
+> - (구)3 판매사 wishlist/naver/channels 페이지 **삭제됨**, oem 은 `isError` 분기로 de-mask 완료 ✅
+> - (구)4 Overview "출금 가능" → `available − reserved`(spendable) 표시 완료 ✅
+> - (구)5a StatementPage net 누락 → `?? (total_paid − total_refunded)` 폴백 적용 ✅ / (구)5b 송장 0건 → `toast.error` 완료 ✅ / (구)5c StaffPage **삭제됨** ✅
 
 ## 🟡 2026-06-25 신규각도 전수조사(IDOR/stale-UI/숫자/동시성) 잔여
 

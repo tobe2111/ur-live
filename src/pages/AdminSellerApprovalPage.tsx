@@ -33,6 +33,9 @@ type Seller = {
   business_registration_image_url?: string | null
   business_registration_status?: BizRegStatus | string | null
   business_registration_reject_reason?: string | null
+  // 🧱 2026-06-30 (서비스 분리 — 도매 판매사 구분): is_distributor=1 이면 도매(유통스타트) 판매사.
+  is_distributor?: number
+  distributor_grade?: string | null
   // 🏭 2026-06-09 Wave 1: 대표자/담당자 인적사항
   representative_name?: string | null
   representative_phone?: string | null
@@ -78,6 +81,9 @@ export default function AdminSellerApprovalPage() {
     (searchParams.get('status') as typeof STATUS_OPTIONS[number]['key']) || 'pending'
   )
   const [search, setSearch] = useState(searchParams.get('q') || '')
+  // 🧱 2026-06-30 (서비스 분리 — 대표 "구분 표시"): 도매 판매사(is_distributor=1) 목록에서 숨김 토글.
+  //   기본 false = 배지로 구분만. true = 유어딜 소비자 셀러만(도매 전용/겸업 판매사 숨김).
+  const [hideDistributor, setHideDistributor] = useState(false)
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [bizActingId, setBizActingId] = useState<number | null>(null)
   const h = useMemo(() => ({
@@ -98,6 +104,7 @@ export default function AdminSellerApprovalPage() {
   const filtered = useMemo(() => {
     return sellers.filter(s => {
       if (filter !== 'all' && normStatus(s.status) !== filter) return false
+      if (hideDistributor && Number(s.is_distributor) === 1) return false  // 🧱 도매 판매사 숨김 토글
       if (search.trim()) {
         const q = search.toLowerCase().trim()
         const text = `${s.name || ''} ${s.email || ''} ${s.business_name || ''} ${s.business_number || ''} ${s.phone || ''}`.toLowerCase()
@@ -105,7 +112,7 @@ export default function AdminSellerApprovalPage() {
       }
       return true
     })
-  }, [sellers, filter, search])
+  }, [sellers, filter, search, hideDistributor])
 
   const approve = async (id: number) => {
     setActingId(id)
@@ -278,6 +285,18 @@ export default function AdminSellerApprovalPage() {
                 <span className="ml-1.5 text-[10px] opacity-70">{counts[opt.key] ?? 0}</span>
               </button>
             ))}
+            {/* 🧱 2026-06-30 (서비스 분리): 도매 판매사 숨김 토글 — 유어딜 소비자 셀러만 보기. */}
+            <button
+              onClick={() => setHideDistributor(v => !v)}
+              title="도매(유통스타트) 판매사를 목록에서 숨깁니다. 겸업(소비자+도매)도 함께 숨겨집니다."
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                hideDistributor
+                  ? 'bg-amber-500 text-white border-amber-500'
+                  : 'bg-white text-amber-700 border-amber-200 hover:border-amber-400'
+              }`}
+            >
+              {hideDistributor ? '🏭 도매 숨김 ON' : '🏭 도매 제외'}
+            </button>
           </div>
         </div>
 
@@ -332,6 +351,13 @@ export default function AdminSellerApprovalPage() {
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${STATUS_BADGE[s.status] || 'bg-gray-100 text-gray-600'}`}>
                       {STATUS_LABEL[s.status] || s.status}
                     </span>
+                    {/* 🧱 2026-06-30 (서비스 분리): 도매 판매사 구분 배지 — 유어딜 셀러 목록에 섞인 도매 회원 식별. */}
+                    {Number(s.is_distributor) === 1 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-amber-100 text-amber-800 border-amber-200"
+                        title={`도매(유통스타트) 판매사${s.distributor_grade ? ` · 등급 ${s.distributor_grade}` : ''} — 도매 관리는 '판매사 관리'`}>
+                        🏭 도매 판매사
+                      </span>
+                    )}
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${bizBadge}`}>
                       {bizLabel}
                     </span>

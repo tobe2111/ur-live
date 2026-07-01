@@ -263,6 +263,21 @@ export default function WholesaleOrdersPage({ embedded = false }: { embedded?: b
                     <span className="text-[17px] font-extrabold tabular-nums tracking-[-0.01em]" style={{ color: WT.ink }}>{won(o.grand_total ?? o.subtotal)}</span>
                   </div>
 
+                  {/* 🏭 2026-06-30: 거절/취소 사유 — 제조사가 주문을 거절하면 판매사가 왜인지 알 수 있게(가시성 갭). */}
+                  {(() => {
+                    const isRej = o.status === 'REJECTED' && !!o.reject_reason
+                    const isCan = (o.status === 'CANCELLED' || o.status === 'REFUNDED') && !!o.cancel_reason
+                    if (!isRej && !isCan) return null
+                    return (
+                      <div className="mt-2.5 rounded-xl px-3.5 py-2.5 flex items-start gap-2" style={{ background: isRej ? '#FEF3F2' : WT.fill, border: '1px solid ' + (isRej ? '#FECDCA' : WT.line) }}>
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: isRej ? '#B42318' : WT.ink3 }} />
+                        <p className="text-[12px] leading-relaxed" style={{ color: isRej ? '#B42318' : WT.ink2 }}>
+                          <b>{isRej ? '제조사 거절 사유' : '취소 사유'}</b>: {isRej ? o.reject_reason : o.cancel_reason}
+                        </p>
+                      </div>
+                    )
+                  })()}
+
                   {/* 🏭 2026-06-29 주문 라인아이템 — 상품/제조사/단가×수량/소계 */}
                   {o.items && o.items.length > 0 && (
                     <div className="mt-3 rounded-xl overflow-hidden" style={{ border: '1px solid ' + WT.line }}>

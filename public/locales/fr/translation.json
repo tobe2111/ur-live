@@ -5817,6 +5817,8 @@
     "quickActions": "Actions rapides",
     "todoTitle": "À faire",
     "todoClear": "✓ Rien à faire",
+    "withdrawNeedAccount": "Enregistrez un compte de versement ci-dessous avant de retirer.",
+    "withdrawNeedAccountBtn": "Compte requis",
     "todoNoAccount": "Enregistrer le compte de versement · Requis pour retirer",
     "acctTitle": "Compte de versement",
     "acctDesc": "Les retraits sont envoyés sur ce compte. Un compte de versement doit être enregistré pour retirer.",

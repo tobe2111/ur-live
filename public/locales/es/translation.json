@@ -5817,6 +5817,8 @@
     "quickActions": "Acciones rápidas",
     "todoTitle": "Por hacer",
     "todoClear": "✓ Nada por hacer",
+    "withdrawNeedAccount": "Registra una cuenta de pago abajo antes de retirar.",
+    "withdrawNeedAccountBtn": "Cuenta requerida",
     "todoNoAccount": "Registrar cuenta de pago · Necesaria para retirar",
     "acctTitle": "Cuenta de pago",
     "acctDesc": "Los retiros se envían a esta cuenta. Debe registrar una cuenta de pago para retirar.",

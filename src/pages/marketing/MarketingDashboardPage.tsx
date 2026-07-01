@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import MarketingDashboardShell from '@/components/MarketingDashboardShell'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
@@ -11,7 +12,11 @@ import PricePanel from './PricePanel'
 import SourcingPanel from './SourcingPanel'
 import WeeklyReportPanel from './WeeklyReportPanel'
 import AlertsPanel from './AlertsPanel'
+import EfficiencyPanel from './EfficiencyPanel'
+import RankPanel from './RankPanel'
+import TrendPanel from './TrendPanel'
 import PanelError from './PanelError'
+import { downloadCsv } from '@/utils/csv-download'
 
 /**
  * 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 멀티테넌트 입점 대시보드.
@@ -43,7 +48,23 @@ const authHeader = () => {
 }
 
 export default function MarketingDashboardPage() {
+  const navigate = useNavigate()
   const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('ads_token')
+
+  // 베타 액세스 코드 게이트: 로그인했지만 미해제면 코드 입력 화면으로(직접/북마크 진입 방어).
+  //   캐시('ads_unlocked'==='1')면 즉시 통과, 아니면 서버 확인 후 분기.
+  useEffect(() => {
+    if (!hasToken || localStorage.getItem('ads_unlocked') === '1') return
+    let cancelled = false
+    api.get('/api/ads/auth/me', { headers: { Authorization: `Bearer ${localStorage.getItem('ads_token')}` } })
+      .then((r) => {
+        if (cancelled) return
+        if (r.data?.account?.access_unlocked === 1) localStorage.setItem('ads_unlocked', '1')
+        else navigate('/ads/unlock', { replace: true })
+      })
+      .catch(() => { /* /me 실패는 게이트 강제 안 함(네트워크 일시오류) — 다음 진입에서 재확인 */ })
+    return () => { cancelled = true }
+  }, [hasToken, navigate])
   const [connected, setConnected] = useState<boolean | null>(null)
   const [maskedId, setMaskedId] = useState<string | null>(null)
   const [clientId, setClientId] = useState('')
@@ -67,7 +88,7 @@ export default function MarketingDashboardPage() {
   const [aiAdvice, setAiAdvice] = useState<string | null>(null)
   const [aiOff, setAiOff] = useState(false)
   // KPI 요약 홈 (최근 30일 통합실적 + 활성 자동입찰)
-  const [summary, setSummary] = useState<{ impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; ctr: number; cpc: number } | null>(null)
+  const [summary, setSummary] = useState<{ impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; convAmt: number; ctr: number; cpc: number } | null>(null)
   const [activeRules, setActiveRules] = useState(0)
 
   const loadStatus = useCallback(async () => {
@@ -176,8 +197,11 @@ export default function MarketingDashboardPage() {
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
           {[
             { l: '30일 광고비', v: `₩${formatNumber(summary.salesAmt)}` },
+            ...(summary.convAmt > 0 ? [
+              { l: '전환매출', v: `₩${formatNumber(summary.convAmt)}` },
+              { l: 'ROAS', v: `${Math.round((summary.convAmt / summary.salesAmt) * 100)}%` },
+            ] : []),
             { l: '클릭', v: formatNumber(summary.clkCnt) },
-            { l: '노출', v: formatNumber(summary.impCnt) },
             { l: '전환', v: formatNumber(summary.ccnt) },
             { l: 'CTR', v: `${(summary.ctr * 100).toFixed(1)}%` },
             { l: '활성 자동입찰', v: `${formatNumber(activeRules)}개` },
@@ -300,7 +324,13 @@ export default function MarketingDashboardPage() {
       {/* 연관키워드 추천 (검색광고 API — RelKwdStat) */}
       {hasToken && kwRelated && kwRelated.length > 0 && (
         <div className={`mt-3 ${card}`}>
-          <div className="text-[14px] font-bold text-gray-900 dark:text-white">연관키워드 추천 <span className="text-gray-400 dark:text-gray-500 font-medium">({kwRelated.length})</span></div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-[14px] font-bold text-gray-900 dark:text-white">연관키워드 추천 <span className="text-gray-400 dark:text-gray-500 font-medium">({kwRelated.length})</span></div>
+            <button onClick={() => downloadCsv(`유어애즈_연관키워드_${kw || 'all'}.csv`,
+              ['키워드', '월검색량', 'PC', '모바일', '월클릭', '경쟁'],
+              kwRelated.map((r) => [r.keyword, r.monthlyTotal, r.monthlyPc, r.monthlyMobile, r.monthlyAvgClick, r.compIdx || '']))}
+              className="shrink-0 rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-2 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">CSV</button>
+          </div>
           <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">네이버 검색광고 기준 월 검색량 · 경쟁정도 — 총 검색량 순. 광고 타겟 키워드 발굴에 활용하세요.</p>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-[12px]">
@@ -366,14 +396,23 @@ export default function MarketingDashboardPage() {
         </div>
       )}
 
+      {/* 성과 추세(30일 시계열 — 매일 자동 적재) */}
+      {hasToken && <section id="sec-trend" style={{ scrollMarginTop: 76 }}><TrendPanel /></section>}
+
       {/* 네이버 검색광고 계정 연동 + 내 광고 구조(자동입찰/실적 토대) */}
       {hasToken && <section id="sec-searchad" style={{ scrollMarginTop: 76 }}><SearchAdPanel /></section>}
+
+      {/* 키워드 효율 분석(ROAS·CPA·낭비 키워드) */}
+      {hasToken && <section id="sec-efficiency" style={{ scrollMarginTop: 76 }}><EfficiencyPanel /></section>}
 
       {/* 자동입찰 규칙(목표순위→입찰가 자동조정) — 규칙 있을 때만 표시 */}
       {hasToken && <section id="sec-autobid" style={{ scrollMarginTop: 76 }}><AutobidPanel /></section>}
 
       {/* AI 주간 리포트(매주 월요일 자동 생성 — 읽기 전용) */}
       {hasToken && <section id="sec-report" style={{ scrollMarginTop: 76 }}><WeeklyReportPanel /></section>}
+
+      {/* 쇼핑 순위 추적(오가닉/쇼핑 내 내 순위) */}
+      {hasToken && <section id="sec-rank" style={{ scrollMarginTop: 76 }}><RankPanel /></section>}
 
       {/* 가격 모니터링(네이버쇼핑 최저가 추적) + 소싱 */}
       {hasToken && <section id="sec-price" style={{ scrollMarginTop: 76 }}><PricePanel /><SourcingPanel /></section>}

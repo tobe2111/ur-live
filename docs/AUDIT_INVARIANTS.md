@@ -9,8 +9,8 @@
 ## 🚦 한 줄 점검
 
 ```bash
-bash scripts/audit-gate.sh           # 전체 (31개 불변식)
-bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|money|schema|classify|ui|deploy)
+bash scripts/audit-gate.sh           # 전체 (35개 불변식)
+bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|money|schema|classify|ui|structure|deploy)
 ```
 
 - **ALL GREEN** → 아래 표의 "감사 스킵" ✅ 도메인은 수동 재감사 불필요. 그 영역의 *새 코드*만 가드가 통과하는지 보면 됨.
@@ -21,13 +21,14 @@ bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|mone
 
 | 도메인 | 불변식 (무엇을 보장) | 지키는 가드 | 마지막 수동 전수감사 |
 |---|---|---|---|
-| **서비스 분리** | 도매몰↔유어딜↔유어애즈 3-서비스가 안 샘: 교차역할 API 0(유어애즈 `/api/ads` 포함), 도매 어드민 스코프 내, 소비자 상품조회가 도매 원본 격리, 유어애즈가 도매 폴더에 비의존(공용 인프라는 `@/worker/utils/seller-auth`·`@/services/naver-commerce-core`) | `check-dashboard-api-crossrole`(5그룹) · `check-wholesale-admin-api-scope` · `check-wholesale-admin-nav-reachability` · `check-consumer-product-supply-isolation` | 2026-06-28 (유어애즈 가드 편입 + 공용인프라 추출 리팩터) |
+| **서비스 분리** | 도매몰↔유어딜↔유어애즈 3-서비스가 안 샘: 교차역할 API 0(유어애즈 `/api/ads` 포함), 도매 어드민 스코프 내, 소비자 상품조회가 도매 원본 격리, 유어애즈가 도매 폴더에 비의존(공용 인프라는 `@/worker/utils/seller-auth`·`@/services/naver-commerce-core`), **대시보드 라우팅이 다중역할/겸업 계정을 lock-out 안 함(대시보드 레이아웃/페이지가 가산 권한 플래그 `is_*` 단독 게이트로 서비스간 redirect/return null 0 — 셀러↔도매=서버권위 `wholesale_only`, 또는 다중역할 보호 동반조건 `!loggedIn`/단일역할 `role !==`)** | `check-dashboard-api-crossrole`(5그룹) · `check-wholesale-admin-api-scope` · `check-wholesale-admin-nav-reachability` · `check-consumer-product-supply-isolation` · `check-seller-wholesale-redirect` | 2026-06-30 (셀러 대시보드 겸업 lock-out fix + 신규 가드: is_distributor=capability ≠ exclusivity, computeWholesaleOnly SSOT) |
 | **인증·세션·RBAC** | 역할-한정 403 0, 유저↔대시보드 상호 로그아웃 0, OAuth iOS 영속, dead-link 0, 권한 누락 0, **로그인 유도는 토큰으로만(가격 null/0 을 로그아웃으로 오판 0)**, **도매 로그아웃 유지(자동 재로그인 probe 가 명시 로그아웃 무력화 0)**, **도매 엣지캐시 인증 누수 0(비로그인 public CDN 캐시가 로그인 판매사에 서빙 → '공급가 미설정' 0)** | `check-dual-login-guard` · `check-dashboard-login-session-coexist` · `check-auth-cookie-pattern` · `check-internal-links` · `check-api-auth` · `check-light-input-guard` · `check-login-gate-by-price` · `check-wholesale-autologin-guarded` · `check-wholesale-login-spa-navigate` · `check-wholesale-cache-auth-leak` | 2026-06-29 (도매 엣지캐시 인증 누수 — 인증별 응답 public 캐시는 캐시키 분리(cache-auth-ok) 필수, 클라 v=in 부착) |
 | **머니·정합성(패턴)** | CAS-선점/무환불 CANCELLED/빈화면-위장/CSV 인젝션 안티패턴 0 | `check-money-patterns` · `check-status-constraints` · `check-query-iserror` · `check-csv-injection` | 2026-06-26 (정산 clean·결제 셀프취소 latent 별도) |
 | **DB·스키마** | 컬럼/bind/NOT NULL/SELECT* /컬럼예산/복구가능성 정합 | `check-schema-refs` · `check-sql-*` · `check-no-select-star-products` · `check-products-column-budget` · `check-product-detail-fields-repairable` | (상시 가드) |
 | **상품 종류·라우팅** | group_buy_status 로 종류판별·라우팅 금지(쇼핑↔교환권 오분류) | `check-groupbuy-status-classify` | (상시 가드) |
 | **도매주문 상태머신** | wholesale_orders.status 가 canonical 집합만(정의 밖 오타/고아 상태 write 0) — 전이는 transitionWholesaleOrder | `check-wholesale-order-status` | 2026-06-27 (B2B 플로우 상태머신 신설: 수락/거절/취소/구매확정 + 발송 전 정산보류) |
 | **UI·테마·첫페인트** | dark variant 일관성, RQ initialData 신선도, 모바일 하단잘림 | `check-theme-consistency` · `check-query-initialdata` · `check-mobile-viewport` | 2026-06-26 (크래시/빈상태 clean) |
+| **코드 구조(god 파일 방지)** | 신규 파일 600줄 초과 차단 + 기존 대형 파일이 `file-size-baseline.json`(82개 동결)보다 성장 시 차단(줄이는 건 OK) → god 파일 재발 0 | `check-file-size` (래칫, `--rebaseline` 로 동결값 갱신) | 2026-06-29 (대표 "리팩토링 반복 말고 애초에 막아라" — MyVouchersPage 1296→386·GroupBuyListPage 1309→827 분해 후 동결) |
 | **빌드·배포 안전** | vite 단독빌드/405 라우터/SW등록/하드코딩 시크릿 금지 | `check-build-command` · `check-router-patterns` · `check-no-sw-register` · `check-no-secrets` | (상시 가드) |
 
 > "마지막 수동 전수감사 = 2026-06-26" 인 도메인은 그날 5개 병렬 에이전트 + 코드 재검증으로 전수조사 완료.

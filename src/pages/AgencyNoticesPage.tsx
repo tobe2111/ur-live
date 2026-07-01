@@ -5,6 +5,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { Send, Loader2, Bell } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -72,7 +73,7 @@ export default function AgencyNoticesPage() {
 
         <h2 className="text-sm font-bold text-gray-900 mb-3">{t('agency.notices.sendHistory', { defaultValue: '발송 이력' })}</h2>
         {loading ? (
-          <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>
+          <BrandLoader />
         ) : notices.length === 0 ? (
           <p className="text-center py-8 text-gray-500 text-sm">{t('agency.notices.empty', { defaultValue: '발송된 공지가 없습니다' })}</p>
         ) : (

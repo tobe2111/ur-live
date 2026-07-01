@@ -21,6 +21,9 @@ export interface Seller {
   can_manipulate_stats?: number
   linked_user_id?: number | null
   created_at: string
+  // 🧱 2026-06-30 (서비스 분리): 도매(유통스타트) 판매사 구분 — 유어딜 셀러 목록에 배지 표시.
+  is_distributor?: number
+  distributor_grade?: string | null
   // seller_business_info joined fields
   biz_number?: string
   biz_name?: string

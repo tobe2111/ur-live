@@ -8,11 +8,14 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { rateLimit } from '@/worker/middleware/rate-limit'
-import { adsAccountIdFrom, createAdsAccount, loginAdsAccount, getAdsAccount, signAdsToken, ensureAdsAccountSchema, updateAdsAccount, changeAdsPassword } from './ads-account'
+import { adsAccountIdFrom, createAdsAccount, loginAdsAccount, getAdsAccount, signAdsToken, ensureAdsAccountSchema, updateAdsAccount, changeAdsPassword, requestPasswordReset, resetPasswordWithToken, unlockAdsAccount } from './ads-account'
+
+// 베타 액세스 코드(대표 지정). env 로 교체 가능, 기본 358533.
+const adsAccessCode = (env: Env) => (env as unknown as { ADS_ACCESS_CODE?: string }).ADS_ACCESS_CODE || '358533'
 import { loadNaverConnection, saveNaverConnection, issueNaverToken, ensureNaverConnectionSchema } from '@/services/naver-commerce-core'
 import { collectAndStore, listCollectedOrders } from './order-collection'
 import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete, shoppingCategoryTrends, categoryDemographics } from './keyword-tools'
-import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, addKeywordsToAdgroup, accountStats, budgetPacing, BID_MIN, BID_MAX, KW_ADD_MAX, type SearchAdCreds } from './searchad-client'
+import { searchAdCredsFrom, relatedKeywords, listCampaigns, listAdgroups, listKeywords, estimateBidForPositions, updateKeywordBid, addKeywordsToAdgroup, accountStats, budgetPacing, keywordEfficiency, BID_MIN, BID_MAX, KW_ADD_MAX, type SearchAdCreds } from './searchad-client'
 import { loadSearchAdConnection, saveSearchAdConnection, deleteSearchAdConnection, searchAdConnStatus, getActiveTenantId, listTenants, setActiveTenant } from './searchad-connection'
 import { aiMarketerAdvice, type AiMarketerContext } from './ai-marketer'
 import { listReports, generateWeeklyReport } from './weekly-report'
@@ -20,6 +23,9 @@ import { registerSite, listSites, deleteSite, recordHit, clickReport, ensureClic
 import { listRules, upsertRule, deleteRule, recentLog, runAutobidForSeller, bulkUpsertRules, parseCsvRules, deleteRulesForTenant } from './autobid'
 import { listWatches, addWatch, deleteWatch, refreshWatch } from './price-monitor'
 import { getAlertSettings, saveAlertSettings, computeAlerts } from './alerts'
+import { listRankTargets, addRankTarget, deleteRankTarget, refreshRankTarget } from './rank-tracker'
+import { getMetricsHistory, computeWoW, snapshotAccountRecent, trendContextFrom } from './metrics-history'
+import { analyzeCompetitors } from './competitor-tracker'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
 
@@ -87,6 +93,45 @@ marketingRoutes.post('/auth/password', rateLimit({ action: 'ads-pw', max: 10, wi
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const r = await changeAdsPassword(c.env.DB, id, String(body.current_password || ''), String(body.new_password || ''))
   if (!r.ok) return c.json({ success: false, error: r.error }, r.status as 400 | 401 | 404)
+  return c.json({ success: true })
+})
+
+// POST /api/ads/auth/unlock — 베타 액세스 코드 입력 → 계정 잠금 해제(1회)
+marketingRoutes.post('/auth/unlock', rateLimit({ action: 'ads-unlock', max: 10, windowSec: 300 }), async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await unlockAdsAccount(c.env.DB, id, String(body.code || ''), adsAccessCode(c.env))
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  return c.json({ success: true, unlocked: true })
+})
+
+// POST /api/ads/auth/forgot — 비밀번호 재설정 요청(이메일 링크). 열거 방지 → 항상 success.
+marketingRoutes.post('/auth/forgot', rateLimit({ action: 'ads-forgot', max: 5, windowSec: 600 }), async (c) => {
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const reset = await requestPasswordReset(c.env.DB, String(body.email || '')).catch(() => null)
+  if (reset && c.env.RESEND_API_KEY && c.env.RESEND_FROM) {
+    const origin = new URL(c.req.url).origin
+    const link = `${origin}/ads/reset?token=${reset.token}`
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${c.env.RESEND_API_KEY}` },
+      body: JSON.stringify({
+        from: c.env.RESEND_FROM, to: reset.email,
+        subject: '[유어애즈] 비밀번호 재설정',
+        text: `아래 링크에서 비밀번호를 재설정하세요(1시간 유효):\n\n${link}\n\n본인이 요청하지 않았다면 이 메일을 무시하세요.\n\n— 유어애즈 UR Ads`,
+      }),
+    }).catch(() => null)
+  }
+  // 이메일 존재 여부 노출 금지 — 항상 동일 응답.
+  return c.json({ success: true, message: '가입된 이메일이면 재설정 링크를 보냈습니다.' })
+})
+
+// POST /api/ads/auth/reset — 토큰으로 새 비밀번호 설정
+marketingRoutes.post('/auth/reset', rateLimit({ action: 'ads-reset', max: 10, windowSec: 600 }), async (c) => {
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await resetPasswordWithToken(c.env.DB, String(body.token || ''), String(body.new_password || ''))
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.status as 400)
   return c.json({ success: true })
 })
 
@@ -227,6 +272,7 @@ marketingRoutes.patch('/alerts/settings', async (c) => {
     enabled: body.enabled !== undefined ? !!body.enabled : undefined,
     budget_pace_pct: body.budget_pace_pct !== undefined ? Number(body.budget_pace_pct) : undefined,
     price_undercut: body.price_undercut !== undefined ? !!body.price_undercut : undefined,
+    rank_drop: body.rank_drop !== undefined ? Number(body.rank_drop) : undefined,
   })
   return c.json({ success: true, settings })
 })
@@ -238,6 +284,57 @@ marketingRoutes.get('/alerts/preview', rateLimit({ action: 'ads-alerts-preview',
   const settings = await getAlertSettings(c.env.DB, id)
   const items = await computeAlerts(c.env, id, settings)
   return c.json({ success: true, items })
+})
+
+// ── 네이버 쇼핑 순위 추적 ──────────────────────────────────────────────────
+// GET /api/ads/rank/targets — 추적 키워드 목록(현재/직전 순위)
+marketingRoutes.get('/rank/targets', async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  return c.json({ success: true, targets: await listRankTargets(c.env.DB, id) })
+})
+
+// POST /api/ads/rank/target — 추적 추가(키워드 + 내 몰/도메인) + 즉시 1회 조회
+marketingRoutes.post('/rank/target', rateLimit({ action: 'ads-rank-add', max: 20, windowSec: 60 }), async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await addRankTarget(c.env, id, String(body.keyword || ''), String(body.mall || ''))
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  return c.json({ success: true, targets: await listRankTargets(c.env.DB, id) })
+})
+
+// POST /api/ads/rank/refresh?id= — 한 타겟 즉시 갱신
+marketingRoutes.post('/rank/refresh', rateLimit({ action: 'ads-rank-refresh', max: 30, windowSec: 60 }), async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const targets = await listRankTargets(c.env.DB, id)
+  const t = targets.find(x => x.id === Number(c.req.query('id')))
+  if (!t) return c.json({ success: false, error: '대상을 찾을 수 없습니다' }, 404)
+  await refreshRankTarget(c.env, id, t.id, t.keyword, t.mall_match)
+  return c.json({ success: true, targets: await listRankTargets(c.env.DB, id) })
+})
+
+// DELETE /api/ads/rank/target?id=
+marketingRoutes.delete('/rank/target', async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const targetId = Number(c.req.query('id'))
+  if (!Number.isFinite(targetId)) return c.json({ success: false, error: '대상 ID가 올바르지 않습니다' }, 400)
+  await deleteRankTarget(c.env.DB, id, targetId)
+  return c.json({ success: true })
+})
+
+// GET /api/ads/rank/competitors?keyword=&mall= — 쇼핑검색 상위에서 나보다 위/아래 경쟁 몰 분석(읽기)
+marketingRoutes.get('/rank/competitors', rateLimit({ action: 'ads-rank-comp', max: 20, windowSec: 60 }), async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const keyword = String(c.req.query('keyword') || '').trim().slice(0, 60)
+  const mall = String(c.req.query('mall') || '').trim().slice(0, 80)
+  if (!keyword || mall.length < 2) return c.json({ success: false, error: '키워드와 내 몰/도메인을 입력해주세요' }, 400)
+  const r = await analyzeCompetitors(c.env, keyword, mall)
+  if (!r.ok) return c.json({ success: false, error: r.error === 'NOT_CONFIGURED' ? '네이버 쇼핑검색 키가 설정되지 않았습니다' : r.error, code: r.error === 'NOT_CONFIGURED' ? 'NOT_CONFIGURED' : undefined }, r.error === 'NOT_CONFIGURED' ? 503 : 502)
+  return c.json({ success: true, data: r.data })
 })
 
 // GET /api/ads/reputation?q=브랜드 — 블로그/카페/뉴스 언급량 + 최근 글(브랜드 평판 모니터링)
@@ -435,6 +532,37 @@ marketingRoutes.get('/searchad/stats', rateLimit({ action: 'ads-sa-stats', max: 
   return c.json({ success: true, data: r.data })
 })
 
+// GET /api/ads/metrics/history?days=30 — 일별 메트릭 시계열(추세 차트) + WoW. cron 적재분 조회(읽기)
+marketingRoutes.get('/metrics/history', rateLimit({ action: 'ads-metrics-hist', max: 60, windowSec: 60 }), async (c) => {
+  const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const days = Math.min(120, Math.max(7, Number(c.req.query('days')) || 30))
+  const series = await getMetricsHistory(c.env.DB, sellerId, days)
+  return c.json({ success: true, series, wow: computeWoW(series) })
+})
+
+// POST /api/ads/metrics/snapshot — 자기 계정 최근치 즉시 적재(첫 진입/지금 갱신). 어제+오늘 2일.
+marketingRoutes.post('/metrics/snapshot', rateLimit({ action: 'ads-metrics-snap', max: 6, windowSec: 60 }), async (c) => {
+  const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const r = await snapshotAccountRecent(c.env, sellerId).catch(() => ({ ok: false as const, reason: 'error' }))
+  if (!r.ok) return c.json({ success: false, error: r.reason === 'no_creds' ? '검색광고 계정을 먼저 연결해주세요' : '적재 실패', code: r.reason === 'no_creds' ? 'NOT_CONNECTED' : undefined }, r.reason === 'no_creds' ? 400 : 502)
+  const series = await getMetricsHistory(c.env.DB, sellerId, 30)
+  return c.json({ success: true, series, wow: computeWoW(series) })
+})
+
+// GET /api/ads/searchad/keyword-efficiency?days=30 — 키워드 ROAS·CPA + 낭비 키워드(쿼터 보호 cap)
+marketingRoutes.get('/searchad/keyword-efficiency', rateLimit({ action: 'ads-sa-eff', max: 10, windowSec: 60 }), async (c) => {
+  const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
+  if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
+  const days = Number(c.req.query('days')) === 7 ? 7 : 30
+  const r = await keywordEfficiency(creds, days)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 502)
+  return c.json({ success: true, items: r.items, scanned: r.scanned })
+})
+
 // GET /api/ads/searchad/pacing — 오늘 캠페인별 예산 소진률(과속/과소, 연결 필요)
 marketingRoutes.get('/searchad/pacing', rateLimit({ action: 'ads-sa-pacing', max: 30, windowSec: 60 }), async (c) => {
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
@@ -468,6 +596,9 @@ marketingRoutes.post('/ai-marketer', rateLimit({ action: 'ads-ai', max: 10, wind
         topCampaigns: st.data.campaigns.slice(0, 5).map(cp => ({ name: cp.name, salesAmt: cp.salesAmt, clkCnt: cp.clkCnt, ccnt: cp.ccnt })),
       }
     }
+    // 전주 대비 추세(적재된 시계열 있을 때만) — AI 진단에 시간축 반영.
+    const trend = trendContextFrom(await getMetricsHistory(c.env.DB, sellerId, 14).catch(() => []))
+    if (trend) ctx.trend = trend
   }
   // 키워드 분석(seed 시) — 연관키워드(연결/플랫폼 키) + 쇼핑경쟁 + 추세
   if (seed) {

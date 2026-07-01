@@ -53,6 +53,13 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    // 🎯 유어애즈(UR Ads) — 마케팅 서비스 운영
+    title: '🎯 유어애즈 · 운영',
+    items: [
+      { path: '/admin/ads-accounts',     label: '유어애즈 가입자', icon: Megaphone },
+    ],
+  },
+  {
     // 🏭 도매몰 (유통스타트 B2B) — 운영: 카탈로그·주문·회원·설정
     title: '🏭 도매몰 · 운영',
     domain: 'wholesale',
@@ -214,6 +221,8 @@ const NAV_GROUPS: NavGroup[] = [
 //   라이브 모니터 / 광고 슬롯(입찰) / 캐스팅 / TikTok 발굴 / 다시보기(라이브 replay).
 const LIVE_ADMIN_PATHS = new Set<string>([
   '/admin/live-monitor', '/admin/ad-slots', '/admin/castings', '/admin/tiktok-discovery', '/admin/replay',
+  // 🏭 2026-07-01 (대표 "라이브 관련 내용 다 빼줘") YouTube 쿼터는 YouTube-라이브 전용 진단 → 라이브 중단 시 숨김.
+  '/admin/youtube-quota',
 ])
 const VISIBLE_NAV_GROUPS: NavGroup[] = LIVE_COMMERCE_SUSPENDED
   ? NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((it) => !LIVE_ADMIN_PATHS.has(it.path)) })).filter((g) => g.items.length > 0)
