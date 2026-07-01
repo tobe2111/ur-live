@@ -175,6 +175,7 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 // 🛡️ 2026-04-26: 파일 중간 import 를 상단으로 이동 (CLAUDE.md 금지 패턴 — 2026-04-22 사고 재발 방지)
 import { blogRoutes } from '../features/blog/api/blog.routes';
 import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes';
+import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blog-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
@@ -698,73 +699,32 @@ app.use('*', async (c, next) => {
     //   Googlebot 은 react-helmet(<SEO>)을 렌더해 보지만, 네이버·소셜 스크래퍼는 정적 HTML 메타만 봄.
     const origin2 = new URL(c.req.url).origin;
     if (ssrSlot === 'BLOGPOST' && ssrPayload) {
-      try {
-        const post = (JSON.parse(ssrPayload) as { data?: { title?: string; summary?: string; slug?: string; author?: string; published_at?: string } })?.data;
-        if (post && post.title) {
-          const bt = String(post.title);
-          const bd = String(post.summary || '').slice(0, 200);
-          const bTitle = `${bt} - 유어딜 블로그`;
-          const canon = `${origin2}/blog/${post.slug || ''}`;
-          const pub = post.published_at ? new Date(post.published_at).toISOString() : undefined;
-          const article: Record<string, unknown> = {
-            '@context': 'https://schema.org', '@type': 'BlogPosting',
-            headline: bt, description: bd,
-            author: { '@type': 'Organization', name: post.author || '유어딜' },
-            publisher: { '@type': 'Organization', name: '유어딜' },
-            mainEntityOfPage: canon, url: canon,
-            ...(pub ? { datePublished: pub, dateModified: pub } : {}),
-          };
-          const ogImg = `${origin2}/blog/og/${encodeURIComponent(post.slug || '')}`;
-          const jsonLd = JSON.stringify({ ...article, image: ogImg }).replace(/<\/script/gi, '<\\/script');
-          rb = rb
-            .on('title', { element(el) { el.setInnerContent(bTitle); } })
-            .on('meta[name="description"]', { element(el) { el.setAttribute('content', bd); } })
-            .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', bt); } })
-            .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', bd); } })
-            .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', canon); } })
-            .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', 'article'); } })
-            .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', ogImg); } })
-            .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', bt); } })
-            .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', bd); } })
-            .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', ogImg); } })
-            .on('head', { element(el) {
-              el.append(`<link rel="canonical" href="${canon}">`, { html: true });
-              el.append(`<link rel="alternate" type="application/rss+xml" title="유어딜 블로그 RSS" href="${origin2}/blog/rss">`, { html: true });
-              el.append(`<script type="application/ld+json">${jsonLd}</script>`, { html: true });
-            } });
-        }
-      } catch { /* 파싱 실패 시 기본 메타 유지 */ }
+      // 📝 순수 계산은 blog-ssr-meta.ts 로 추출(god 파일 성장 방지) — 여기선 rewriter 배선만.
+      const m = buildBlogPostMeta(ssrPayload, origin2);
+      if (m) {
+        rb = rb
+          .on('title', { element(el) { el.setInnerContent(m.pageTitle); } })
+          .on('meta[name="description"]', { element(el) { el.setAttribute('content', m.description); } })
+          .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', m.title); } })
+          .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', m.description); } })
+          .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', m.canonical); } })
+          .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', 'article'); } })
+          .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', m.ogImage); } })
+          .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', m.title); } })
+          .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', m.description); } })
+          .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', m.ogImage); } })
+          .on('head', { element(el) {
+            el.append(`<link rel="canonical" href="${m.canonical}">`, { html: true });
+            el.append(`<link rel="alternate" type="application/rss+xml" title="유어딜 블로그 RSS" href="${origin2}/blog/rss">`, { html: true });
+            el.append(`<script type="application/ld+json">${m.jsonLd}</script>`, { html: true });
+          } });
+      }
     } else if (url.pathname === '/blog') {
       const bt = '유어딜 블로그 — 이용권·교환권·동네딜·링크샵 가이드';
       const bd = '할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 나만의 링크샵까지. 유어딜 활용법과 서비스 소식을 전합니다.';
       const canon = `${origin2}/blog`;
-      // 📝 2026-07-01 목록 구조화데이터 — SSR payload(발행 글)로 Blog + ItemList(BlogPosting) 생성.
-      //   검색엔진이 글 목록을 리치결과로 인식(제목·요약·URL). payload 없으면(콜드 timeout) 메타만 주입.
-      let listJsonLd = '';
-      if (ssrPayload) {
-        try {
-          const posts = (JSON.parse(ssrPayload) as { data?: Array<{ slug?: string; title?: string; summary?: string; author?: string; published_at?: string }> })?.data || [];
-          const items = posts.slice(0, 20).filter(p => p && p.slug && p.title).map((p, i) => ({
-            '@type': 'ListItem', position: i + 1, url: `${origin2}/blog/${p.slug}`,
-            item: {
-              '@type': 'BlogPosting', headline: String(p.title), description: String(p.summary || '').slice(0, 200),
-              url: `${origin2}/blog/${p.slug}`, mainEntityOfPage: `${origin2}/blog/${p.slug}`,
-              author: { '@type': 'Organization', name: p.author || '유어딜' },
-              publisher: { '@type': 'Organization', name: '유어딜' },
-              ...(p.published_at ? { datePublished: new Date(p.published_at).toISOString() } : {}),
-            },
-          }));
-          if (items.length) {
-            const graph = {
-              '@context': 'https://schema.org', '@type': 'Blog', name: bt, description: bd, url: canon,
-              publisher: { '@type': 'Organization', name: '유어딜' },
-              blogPost: items.map(it => it.item),
-              mainEntity: { '@type': 'ItemList', itemListElement: items },
-            };
-            listJsonLd = JSON.stringify(graph).replace(/<\/script/gi, '<\\/script');
-          }
-        } catch { /* 파싱 실패 시 메타만 */ }
-      }
+      // 📝 목록 Blog+ItemList JSON-LD — payload 기반(콜드 timeout 시 '') 계산은 blog-ssr-meta.ts.
+      const listJsonLd = buildBlogListJsonLd(ssrPayload, origin2, canon, bt, bd);
       rb = rb
         .on('title', { element(el) { el.setInnerContent(bt); } })
         .on('meta[name="description"]', { element(el) { el.setAttribute('content', bd); } })
