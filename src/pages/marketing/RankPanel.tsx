@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Fragment } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
@@ -14,6 +14,8 @@ const authHeader = () => {
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
 interface RankTarget { id: number; keyword: string; mall_match: string; last_rank: number | null; last_total: number | null; last_title: string | null; last_checked_at: string | null; prev_rank: number | null }
+interface Competitor { mall: string; bestRank: number; count: number; minPrice: number; sampleTitle: string; aboveMe: boolean }
+interface CompetitorAnalysis { keyword: string; myMall: string; myRank: number | null; total: number; competitors: Competitor[] }
 const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
 const input = 'h-10 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
@@ -33,6 +35,10 @@ export default function RankPanel() {
   const [busy, setBusy] = useState(false)
   const [refreshing, setRefreshing] = useState<number | null>(null)
   const [err, setErr] = useState(false)
+  // 경쟁사 분석 — 어느 타겟이 열렸는지 + 데이터
+  const [compFor, setCompFor] = useState<number | null>(null)
+  const [comp, setComp] = useState<CompetitorAnalysis | null>(null)
+  const [compBusy, setCompBusy] = useState(false)
 
   const load = useCallback(async () => {
     setErr(false)
@@ -63,6 +69,18 @@ export default function RankPanel() {
     } catch { /* graceful */ } finally { setRefreshing(null) }
   }
 
+  async function showCompetitors(t: RankTarget) {
+    if (compFor === t.id) { setCompFor(null); setComp(null); return } // 토글 닫기
+    setCompFor(t.id); setComp(null); setCompBusy(true)
+    try {
+      const r = await api.get(`/api/ads/rank/competitors?keyword=${encodeURIComponent(t.keyword)}&mall=${encodeURIComponent(t.mall_match)}`, { headers: authHeader() })
+      if (r.data?.success) setComp(r.data.data || null)
+      else toast.error(r.data?.error || '경쟁사 분석 실패')
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '경쟁사 분석 실패')
+    } finally { setCompBusy(false) }
+  }
+
   async function remove(id: number) {
     if (!(await confirmDialog('이 순위 추적을 삭제할까요?'))) return
     await api.delete(`/api/ads/rank/target?id=${id}`, { headers: authHeader() }).catch(() => {})
@@ -90,7 +108,8 @@ export default function RankPanel() {
             </tr></thead>
             <tbody>
               {targets.map(t => (
-                <tr key={t.id} className="border-t border-gray-100 dark:border-[#1A1A1A] text-gray-700 dark:text-gray-300">
+                <Fragment key={t.id}>
+                <tr className="border-t border-gray-100 dark:border-[#1A1A1A] text-gray-700 dark:text-gray-300">
                   <td className="py-1.5 pr-2">
                     <span className="font-medium text-gray-900 dark:text-white">{t.keyword}</span>
                     <span className="block text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-[160px]">{t.mall_match}{t.last_title ? ` · ${t.last_title}` : ''}</span>
@@ -101,10 +120,44 @@ export default function RankPanel() {
                   <td className="py-1.5 pr-2 text-right tabular-nums"><RankDelta cur={t.last_rank} prev={t.prev_rank} /></td>
                   <td className="py-1.5 pr-2 text-right tabular-nums text-gray-500 dark:text-gray-400">{t.last_total ? formatNumber(t.last_total) : '-'}</td>
                   <td className="py-1.5 text-right whitespace-nowrap">
-                    <button onClick={() => refresh(t.id)} disabled={refreshing === t.id} className="text-[10.5px] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">{refreshing === t.id ? '…' : '갱신'}</button>
+                    <button onClick={() => showCompetitors(t)} className={`text-[10.5px] ${compFor === t.id ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>경쟁사</button>
+                    <button onClick={() => refresh(t.id)} disabled={refreshing === t.id} className="ml-2 text-[10.5px] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">{refreshing === t.id ? '…' : '갱신'}</button>
                     <button onClick={() => remove(t.id)} className="ml-2 text-[10.5px] text-gray-400 dark:text-gray-500 hover:text-red-500">삭제</button>
                   </td>
                 </tr>
+                {compFor === t.id && (
+                  <tr className="border-t border-gray-50 dark:border-[#141414] bg-gray-50/60 dark:bg-[#0E0E0E]">
+                    <td colSpan={5} className="p-3">
+                      {compBusy ? (
+                        <div className="text-[11.5px] text-gray-400 dark:text-gray-500">경쟁사 분석 중…</div>
+                      ) : !comp ? (
+                        <div className="text-[11.5px] text-gray-400 dark:text-gray-500">분석 결과가 없습니다.</div>
+                      ) : (
+                        <div>
+                          <div className="text-[11.5px] text-gray-600 dark:text-gray-300">
+                            "{comp.keyword}" 쇼핑검색 — 내 최고순위 <b className="text-gray-900 dark:text-white">{comp.myRank != null ? `${comp.myRank}위` : '300위 밖'}</b>
+                            {comp.competitors.some(x => x.aboveMe) && <span className="ml-1 text-amber-600 dark:text-amber-500">· 나보다 위 {comp.competitors.filter(x => x.aboveMe).length}개 몰</span>}
+                          </div>
+                          {comp.competitors.length === 0 ? (
+                            <p className="mt-2 text-[11.5px] text-gray-400 dark:text-gray-500">상위 300위 내 경쟁 몰을 찾지 못했습니다.</p>
+                          ) : (
+                            <div className="mt-2 space-y-1">
+                              {comp.competitors.map((cp) => (
+                                <div key={cp.mall} className="flex items-center gap-2 text-[11.5px]">
+                                  <span className={`shrink-0 w-10 tabular-nums text-right font-bold ${cp.aboveMe ? 'text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>{cp.bestRank}위</span>
+                                  <span className="shrink-0 font-medium text-gray-900 dark:text-white truncate max-w-[120px]">{cp.mall}</span>
+                                  {cp.aboveMe && <span className="shrink-0 rounded bg-red-50 dark:bg-red-500/10 px-1 text-[10px] text-red-600 dark:text-red-400">나보다 위</span>}
+                                  <span className="ml-auto shrink-0 tabular-nums text-gray-500 dark:text-gray-400">{cp.minPrice > 0 ? `₩${formatNumber(cp.minPrice)}` : '-'} · {formatNumber(cp.count)}개</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>

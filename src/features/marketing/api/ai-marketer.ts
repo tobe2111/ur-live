@@ -12,6 +12,8 @@ export interface AiMarketerContext {
   connected: boolean
   stats?: { days: number; impCnt: number; clkCnt: number; salesAmt: number; ccnt: number; ctr: number; cpc: number; topCampaigns: Array<{ name: string; salesAmt: number; clkCnt: number; ccnt: number }> }
   keyword?: { seed: string; related: Array<{ keyword: string; monthlyTotal: number; compIdx: string }>; shoppingTotal: number; trendPct: number }
+  // 전주 대비(WoW) 추세 — ad_daily_metrics 시계열 기반(있을 때만). 증감률(%)·최근/직전 ROAS.
+  trend?: { wowCostPct: number | null; wowConvPct: number | null; recentRoas: number | null; prevRoas: number | null; days: number }
 }
 
 const SYSTEM = [
@@ -19,6 +21,7 @@ const SYSTEM = [
   '주어진 데이터만 근거로 간결하고 실행가능한 한국어 조언을 한다.',
   '데이터에 없는 수치나 사실을 지어내지 마라. 모르면 모른다고 한다.',
   '출력은 마크다운으로, 아래 섹션을 순서대로: ## 진단 / ## 잘되는 점 / ## 개선할 점 / ## 추천 액션 / ## 주의.',
+  'trend(전주 대비 증감률·ROAS 변화)가 있으면 반드시 진단에 반영하라 — 예: 광고비는 늘었는데 ROAS가 떨어졌으면 경고, 전환매출이 오르면 확대 제안.',
   '추천 액션은 3~5개, 각 항목은 "무엇을 / 왜 / 어떻게"가 드러나게 구체적으로(키워드 추가·제외, 입찰 방향, 예산 조정 등).',
   '광고비/입찰 변경은 사용자가 직접 적용한다는 전제로 제안만 한다.',
 ].join(' ')
@@ -26,7 +29,7 @@ const SYSTEM = [
 /** Claude 호출 — 진단/추천 텍스트(마크다운) 반환. */
 export async function aiMarketerAdvice(apiKey: string | undefined, context: AiMarketerContext): Promise<{ ok: boolean; advice?: string; error?: string }> {
   if (!apiKey) return { ok: false, error: 'NOT_CONFIGURED' }
-  if (!context.stats && !context.keyword) return { ok: false, error: '분석할 데이터가 없습니다 (계정 연동 또는 키워드 입력 필요)' }
+  if (!context.stats && !context.keyword && !context.trend) return { ok: false, error: '분석할 데이터가 없습니다 (계정 연동 또는 키워드 입력 필요)' }
   const userMsg = [
     '아래는 한 광고주의 네이버 검색광고 현황 데이터다. 이걸 근거로 진단/추천해줘.',
     '```json',

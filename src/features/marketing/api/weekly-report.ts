@@ -13,6 +13,7 @@ import type { Env } from '@/worker/types/env'
 import { accountStats, type AccountStats } from './searchad-client'
 import { loadSearchAdConnection } from './searchad-connection'
 import { aiMarketerAdvice, type AiMarketerContext } from './ai-marketer'
+import { getMetricsHistory, trendContextFrom } from './metrics-history'
 
 const MAX_TENANTS_PER_RUN = 30
 
@@ -60,12 +61,15 @@ export async function generateWeeklyReport(env: Env, sellerId: number, opts?: { 
   const st = await accountStats(creds, 7).catch(() => ({ ok: false as const }))
   if (!st.ok || !('data' in st) || !st.data) return { ok: false, error: '실적 조회 실패' }
   const ctx = statsToContext(st.data)
+  // 전주 대비 추세(적재된 시계열 있을 때만) — AI 진단 + summary 에 반영.
+  const trend = trendContextFrom(await getMetricsHistory(env.DB, sellerId, 14).catch(() => []))
+  if (trend) ctx.trend = trend
   const ai = await aiMarketerAdvice(env.ANTHROPIC_API_KEY, ctx).catch(() => ({ ok: false as const, error: 'AI 호출 실패' }))
   const advice = ai.ok && 'advice' in ai ? ai.advice || '' : ''
   const periodKey = kstWeekKey(opts?.nowMs ?? Date.now())
   const verb = opts?.replace ? 'INSERT OR REPLACE' : 'INSERT OR IGNORE'
   await env.DB.prepare(`${verb} INTO ad_weekly_reports (seller_id, period_key, summary_json, advice_md) VALUES (?, ?, ?, ?)`)
-    .bind(sellerId, periodKey, JSON.stringify(ctx.stats || {}), advice).run().catch(() => null)
+    .bind(sellerId, periodKey, JSON.stringify({ ...(ctx.stats || {}), trend: ctx.trend || null }), advice).run().catch(() => null)
   // 이메일(best-effort) — Resend + 유어애즈 계정 이메일 있을 때만.
   //   ⚠️ 2026-06-28: 테넌트는 이제 ad_accounts.id(독립 계정) — sellers.email 아님(독립 계정 분리 후속 정정).
   if (advice && env.RESEND_API_KEY && env.RESEND_FROM) {

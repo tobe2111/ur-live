@@ -93,6 +93,15 @@ export async function getMetricsHistory(DB: D1Database, accountId: number, days 
   return rows.reverse() // 차트는 오름차순(과거→현재)
 }
 
+export interface TrendContext { wowCostPct: number | null; wowConvPct: number | null; recentRoas: number | null; prevRoas: number | null; days: number }
+
+/** 시계열 → AI마케터/주간리포트용 압축 추세 컨텍스트(전주 대비). 데이터 2일 미만이면 null. */
+export function trendContextFrom(series: DailyMetric[]): TrendContext | null {
+  if (series.length < 2) return null
+  const w = computeWoW(series)
+  return { wowCostPct: w.costPct, wowConvPct: w.convPct, recentRoas: w.recent.roas, prevRoas: w.prev.roas, days: series.length }
+}
+
 export interface MetricsDelta { cost: number; conv_amt: number; roas: number | null }
 
 /** 최근 7일 vs 직전 7일 합계 비교(WoW). 데이터 14일 미만이면 가능한 만큼. */

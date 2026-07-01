@@ -24,7 +24,8 @@ import { listRules, upsertRule, deleteRule, recentLog, runAutobidForSeller, bulk
 import { listWatches, addWatch, deleteWatch, refreshWatch } from './price-monitor'
 import { getAlertSettings, saveAlertSettings, computeAlerts } from './alerts'
 import { listRankTargets, addRankTarget, deleteRankTarget, refreshRankTarget } from './rank-tracker'
-import { getMetricsHistory, computeWoW, snapshotAccountRecent } from './metrics-history'
+import { getMetricsHistory, computeWoW, snapshotAccountRecent, trendContextFrom } from './metrics-history'
+import { analyzeCompetitors } from './competitor-tracker'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
 
@@ -324,6 +325,18 @@ marketingRoutes.delete('/rank/target', async (c) => {
   return c.json({ success: true })
 })
 
+// GET /api/ads/rank/competitors?keyword=&mall= — 쇼핑검색 상위에서 나보다 위/아래 경쟁 몰 분석(읽기)
+marketingRoutes.get('/rank/competitors', rateLimit({ action: 'ads-rank-comp', max: 20, windowSec: 60 }), async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const keyword = String(c.req.query('keyword') || '').trim().slice(0, 60)
+  const mall = String(c.req.query('mall') || '').trim().slice(0, 80)
+  if (!keyword || mall.length < 2) return c.json({ success: false, error: '키워드와 내 몰/도메인을 입력해주세요' }, 400)
+  const r = await analyzeCompetitors(c.env, keyword, mall)
+  if (!r.ok) return c.json({ success: false, error: r.error === 'NOT_CONFIGURED' ? '네이버 쇼핑검색 키가 설정되지 않았습니다' : r.error, code: r.error === 'NOT_CONFIGURED' ? 'NOT_CONFIGURED' : undefined }, r.error === 'NOT_CONFIGURED' ? 503 : 502)
+  return c.json({ success: true, data: r.data })
+})
+
 // GET /api/ads/reputation?q=브랜드 — 블로그/카페/뉴스 언급량 + 최근 글(브랜드 평판 모니터링)
 marketingRoutes.get('/reputation', rateLimit({ action: 'ads-reputation', max: 30, windowSec: 60 }), async (c) => {
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
@@ -583,6 +596,9 @@ marketingRoutes.post('/ai-marketer', rateLimit({ action: 'ads-ai', max: 10, wind
         topCampaigns: st.data.campaigns.slice(0, 5).map(cp => ({ name: cp.name, salesAmt: cp.salesAmt, clkCnt: cp.clkCnt, ccnt: cp.ccnt })),
       }
     }
+    // 전주 대비 추세(적재된 시계열 있을 때만) — AI 진단에 시간축 반영.
+    const trend = trendContextFrom(await getMetricsHistory(c.env.DB, sellerId, 14).catch(() => []))
+    if (trend) ctx.trend = trend
   }
   // 키워드 분석(seed 시) — 연관키워드(연결/플랫폼 키) + 쇼핑경쟁 + 추세
   if (seed) {
