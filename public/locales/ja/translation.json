@@ -2812,7 +2812,8 @@
     },
     "mailOrderNumber": "通信販売業届出番号",
     "mailOrderNumberPlaceholder": "例: 2026-ソウル江南-01234",
-    "mailOrderNumberHint": "リンクショップの販売者情報に公開表示されます"  },
+    "mailOrderNumberHint": "リンクショップの販売者情報に公開表示されます"
+  },
   "admin": {
     "login": {
       "title": "管理者ログイン",
@@ -5799,7 +5800,40 @@
     "makeMine": "私もリンクショップを作る — 紹介で獲得",
     "console": {
       "title": "クリエイターコンソール"
-    }
+    },
+    "ownerViewBar": "マイリンクショップ · 訪問者に見える画面",
+    "editButton": "編集",
+    "editMode": "編集モード",
+    "tapToEdit": "タップで編集",
+    "reorder": "並べ替え",
+    "dashboardBtn": "ダッシュボード",
+    "done": "完了",
+    "reorderTitle": "ピンの並べ替え",
+    "searchPlaceholder": "商品・ディール名で検索",
+    "clearSearch": "クリア",
+    "noSearchResults": "検索結果がありません",
+    "tryOtherKeyword": "別のキーワードでお試しください。",
+    "shopPinsTitle": "おすすめ",
+    "voucherPinsTitle": "交換券 · ローカルディール",
+    "addVoucherPin": "ローカルディールを追加",
+    "addShopPin": "商品を追加",
+    "addAnyPin": "商品・ディールを追加",
+    "confirmDeletePinMine": "このピンをリンクショップから削除しますか？",
+    "confirmDeletePin": "このピンを削除しますか？",
+    "pinDeleted": "ピンを削除しました",
+    "deleteFailed": "削除に失敗しました",
+    "deletePin": "ピンを削除",
+    "delete": "削除",
+    "myPinsCount": "マイピン {{count}}件",
+    "dragToReorder": "ドラッグで並べ替え",
+    "topPick": "イチオシ",
+    "viewsCount": "閲覧 {{n}}",
+    "earnPerSaleAmt": " · 獲得 ₩{{amt}}/件",
+    "noCommentNudge": "コメント未設定 · 追加で転換率UP",
+    "stepsLeft": "完成まであと{{n}}ステップ",
+    "stepName": "名前を設定",
+    "stepHandle": "アドレスを設定",
+    "stepFirstProduct": "最初の商品を追加"
   },
   "shipping": {
     "trackingTitle": "配送追跡",

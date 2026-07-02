@@ -2137,7 +2137,8 @@
     },
     "mailOrderNumber": "N.º de venta a distancia",
     "mailOrderNumberPlaceholder": "ej. 2026-Seul-01234",
-    "mailOrderNumberHint": "Se muestra públicamente en la información del vendedor de tu linkshop"  },
+    "mailOrderNumberHint": "Se muestra públicamente en la información del vendedor de tu linkshop"
+  },
   "admin": {
     "login": {
       "title": "Inicio de sesión del administrador",
@@ -5799,7 +5800,40 @@
     "makeMine": "Crear mi linkshop — gana recomendando",
     "console": {
       "title": "Consola de creador"
-    }
+    },
+    "ownerViewBar": "Mi linkshop · lo que ven los visitantes",
+    "editButton": "Editar",
+    "editMode": "Modo edición",
+    "tapToEdit": "Toca para editar",
+    "reorder": "Ordenar",
+    "dashboardBtn": "Panel",
+    "done": "Listo",
+    "reorderTitle": "Reordenar pines",
+    "searchPlaceholder": "Buscar productos y ofertas",
+    "clearSearch": "Borrar",
+    "noSearchResults": "Sin resultados",
+    "tryOtherKeyword": "Prueba con otra palabra clave.",
+    "shopPinsTitle": "Recomendados",
+    "voucherPinsTitle": "Cupones · Ofertas locales",
+    "addVoucherPin": "Añadir oferta local",
+    "addShopPin": "Añadir producto",
+    "addAnyPin": "Añadir producto u oferta",
+    "confirmDeletePinMine": "¿Eliminar este pin de tu linkshop?",
+    "confirmDeletePin": "¿Eliminar este pin?",
+    "pinDeleted": "Pin eliminado",
+    "deleteFailed": "Error al eliminar",
+    "deletePin": "Eliminar pin",
+    "delete": "Eliminar",
+    "myPinsCount": "Mis pines: {{count}}",
+    "dragToReorder": "Arrastra para ordenar",
+    "topPick": "Destacado",
+    "viewsCount": "{{n}} vistas",
+    "earnPerSaleAmt": " · Gana ₩{{amt}}/venta",
+    "noCommentNudge": "Sin comentario · añádelo para vender más",
+    "stepsLeft": "{{n}} pasos para completar tu linkshop",
+    "stepName": "Configura el nombre",
+    "stepHandle": "Configura la dirección",
+    "stepFirstProduct": "Añade el primer producto"
   },
   "shipping": {
     "trackingTitle": "Seguimiento de envío",

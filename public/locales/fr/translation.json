@@ -2137,7 +2137,8 @@
     },
     "mailOrderNumber": "N° de vente à distance",
     "mailOrderNumberPlaceholder": "ex. 2026-Seoul-01234",
-    "mailOrderNumberHint": "Affiché publiquement dans les infos vendeur de votre linkshop"  },
+    "mailOrderNumberHint": "Affiché publiquement dans les infos vendeur de votre linkshop"
+  },
   "admin": {
     "login": {
       "title": "Connexion administrateur",
@@ -5799,7 +5800,40 @@
     "makeMine": "Créer mon linkshop — gagnez en recommandant",
     "console": {
       "title": "Console créateur"
-    }
+    },
+    "ownerViewBar": "Mon linkshop · vue visiteur",
+    "editButton": "Modifier",
+    "editMode": "Mode édition",
+    "tapToEdit": "Touchez pour modifier",
+    "reorder": "Réordonner",
+    "dashboardBtn": "Tableau de bord",
+    "done": "Terminé",
+    "reorderTitle": "Réordonner les épingles",
+    "searchPlaceholder": "Rechercher produits et offres",
+    "clearSearch": "Effacer",
+    "noSearchResults": "Aucun résultat",
+    "tryOtherKeyword": "Essayez un autre mot-clé.",
+    "shopPinsTitle": "Sélection",
+    "voucherPinsTitle": "Bons · Offres locales",
+    "addVoucherPin": "Ajouter une offre locale",
+    "addShopPin": "Ajouter un produit",
+    "addAnyPin": "Ajouter produit ou offre",
+    "confirmDeletePinMine": "Supprimer cette épingle de votre linkshop ?",
+    "confirmDeletePin": "Supprimer cette épingle ?",
+    "pinDeleted": "Épingle supprimée",
+    "deleteFailed": "Échec de la suppression",
+    "deletePin": "Supprimer l'épingle",
+    "delete": "Supprimer",
+    "myPinsCount": "Mes épingles : {{count}}",
+    "dragToReorder": "Glisser pour réordonner",
+    "topPick": "Coup de cœur",
+    "viewsCount": "{{n}} vues",
+    "earnPerSaleAmt": " · Gain ₩{{amt}}/vente",
+    "noCommentNudge": "Pas de commentaire · ajoutez-en pour convertir",
+    "stepsLeft": "{{n}} étapes avant de finir votre linkshop",
+    "stepName": "Définir le nom",
+    "stepHandle": "Définir l'adresse",
+    "stepFirstProduct": "Ajouter le premier produit"
   },
   "shipping": {
     "trackingTitle": "Suivi de livraison",
