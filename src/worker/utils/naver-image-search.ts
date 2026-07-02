@@ -15,8 +15,9 @@ import type { Env } from '../types/env'
 interface NaverImageItem { link?: string; thumbnail?: string; sizewidth?: string; sizeheight?: string }
 
 function isProperPhoto(it: NaverImageItem): boolean {
+  // 원본 스킴 무관 — 반환 전 search.pstatic 프록시로 감싸므로(서버측 fetch) http 도 안전.
   const link = it.link || ''
-  if (!link.startsWith('https://')) return false
+  if (!/^https?:\/\//.test(link)) return false
   const w = parseInt(String(it.sizewidth || '0'), 10) || 0
   const h = parseInt(String(it.sizeheight || '0'), 10) || 0
   if (w < 500 || h < 400) return false // 너무 작음 = 아이콘/썸네일/로고
@@ -44,18 +45,32 @@ export async function fetchNaverImageUrl(env: Env, query: string, pickIndex = 0)
     const data = (await res.json()) as { items?: NaverImageItem[] }
     const items = data.items || []
     if (!items.length) return null
-    // 1) 충분한 크기 + 정상 비율 실사진(https 원본) 우선.
-    //    🛡️ 2026-07-01 (mixed content): 모든 단계 https-only — http 원본은 HTTPS 페이지에서
-    //    강제승격되다 네이버 원본 호스트(imgnews/shop1.phinf) 인증서 불일치로 깨짐 → 채택 금지.
-    //    pickIndex 로 후보 로테이션(같은 쿼리 반복 시드의 동일 사진 중복 완화, 기본 0=기존 동작).
+    // 🛡️ 2026-07-02 (대표 "영구적으로 해결"): 네이버 원본 호스트는 https 여도 인증서 불일치
+    //    (shop1.phinf.naver.net ERR_CERT_COMMON_NAME_INVALID)로 깨짐 → **원본 직접 채택 전면 금지**.
+    //    모든 단계를 search.pstatic.net 프록시(toNaverSafeImageUrl, 네이버 검색 자체가 쓰는 CDN —
+    //    인증서 정상·서버측 fetch 라 항상 로드)로 변환해 반환. pickIndex = 후보 로테이션.
+    const { toNaverSafeImageUrl } = await import('../../shared/naver-safe-image')
+    // 1) 충분한 크기 + 정상 비율 실사진 우선 → 프록시 랩.
     const propers = items.filter(isProperPhoto)
-    if (propers.length) return propers[pickIndex % propers.length].link || null
-    // 2) 신뢰 폴백: 네이버 CDN 썸네일(항상 로드 — 깨진 이미지 0). 관련도 순 로테이션.
-    const thumbs = items.filter((i) => i.thumbnail && i.thumbnail.startsWith('https://'))
-    if (thumbs.length) return thumbs[pickIndex % thumbs.length].thumbnail || null
-    // 3) 최후: https 원본 아무거나.
-    const links = items.filter((i) => i.link && i.link.startsWith('https://'))
-    return links.length ? links[pickIndex % links.length].link || null : null
+    if (propers.length) {
+      const it = propers[pickIndex % propers.length]
+      const safe = toNaverSafeImageUrl(it.link, it.thumbnail)
+      if (safe) return safe
+    }
+    // 2) 썸네일 보유 항목 → 프록시 type 상향.
+    const thumbs = items.filter((i) => i.thumbnail)
+    if (thumbs.length) {
+      const it = thumbs[pickIndex % thumbs.length]
+      const safe = toNaverSafeImageUrl(it.link, it.thumbnail)
+      if (safe) return safe
+    }
+    // 3) 최후: 링크만 있는 항목 → 프록시 랩.
+    const links = items.filter((i) => i.link)
+    if (links.length) {
+      const it = links[pickIndex % links.length]
+      return toNaverSafeImageUrl(it.link, it.thumbnail)
+    }
+    return null
   } catch {
     return null
   }

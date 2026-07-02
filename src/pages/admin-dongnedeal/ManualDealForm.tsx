@@ -74,15 +74,17 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
     try {
       const res = await api.get(`/api/naver/image/search?query=${encodeURIComponent(query)}&display=8`)
       const items: { link?: string; thumbnail?: string }[] = res.data?.data?.items || []
-      // 🛡️ 2026-07-01 (대표 신고 — mixed content): http 원본(imgnews/shop1.phinf 등)은 HTTPS 페이지에서
-      //   강제승격되다 인증서 불일치로 깨짐 → https 원본만, 아니면 네이버 CDN 썸네일(https 승격)로 대체.
+      // 🛡️ 2026-07-02 (대표 "영구적으로 해결"): 네이버 원본 호스트는 https 여도 인증서 불일치
+      //   (shop1.phinf ERR_CERT_COMMON_NAME_INVALID)로 깨짐 → 원본 직접 사용 전면 금지.
+      //   후보 표시·저장 모두 search.pstatic.net 프록시(toNaverSafeImageUrl)로 — 항상 열림.
+      const { toNaverSafeImageUrl } = await import('@/shared/naver-safe-image')
       const mapped = items
         .map((it) => {
-          const thumb = (it.thumbnail || '').replace(/^http:/, 'https:')
-          const link = it.link && it.link.startsWith('https://') ? it.link : thumb
-          return { link, thumbnail: thumb || link }
+          const big = toNaverSafeImageUrl(it.link, it.thumbnail)          // 저장용(대형)
+          const small = toNaverSafeImageUrl(it.link, it.thumbnail, 'b400') // 그리드 표시용
+          return big ? { link: big, thumbnail: small || big } : null
         })
-        .filter((x) => x.link.startsWith('https://'))
+        .filter((x): x is { link: string; thumbnail: string } => !!x)
       setPhotos(mapped)
       if (mapped.length === 0) toast.info('네이버 사진 결과가 없어요 (다른 매장명으로 시도)')
     } catch (e: unknown) {
