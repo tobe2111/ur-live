@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, ShoppingCart, Truck, ChevronLeft, SlidersHorizontal, ChevronDown, X, Map, List } from 'lucide-react'
@@ -328,6 +329,9 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   // showCount < 로드된 항목 OR 백엔드에 더 있음 → "더 있다" 표시.
   const canShowMore = showCount < sorted.length || hasMore
 
+  // 🎨 2026-07-01 (대표 "2번 로딩 근본 해결" — urdeal 로더 유지): 로딩 중 전체화면 BrandLoader early-return
+  //   → 청크 로더와 끊김 없이 이어져 '한 번'으로 보임(헤더가 중간에 안 뜸).
+  if (loading) return <BrandLoader fullScreen />
   return (
     <div className="bg-white dark:bg-[#0A0A0A] min-h-screen">
       <SEO
@@ -498,17 +502,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
 
         {/* v4 Editorial Grid — hero + 2열 */}
         {loading ? (
-          <div className="space-y-4">
-            <div className="w-full lg:max-w-md aspect-[4/3] lg:aspect-square bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-2xl" />
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {[...Array(4)].map((_, i) => (
-                <div key={i}>
-                  <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-xl" />
-                  <div className="mt-2 h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse w-full" />
-                </div>
-              ))}
-            </div>
-          </div>
+          <BrandLoader />
         ) : error ? (
           /* ✅ UX M17 FIX: 에러 상태 + 재시도 버튼 */
           <div className="text-center py-16">

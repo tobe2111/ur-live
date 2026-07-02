@@ -13,6 +13,7 @@
  *   3. 카테고리 탭 (편의점/카페/외식/도서 등) — KT Alpha categories
  */
 import { useEffect, useState, useRef, useCallback, useMemo, memo, Fragment } from 'react'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, Gift, Heart, Wallet, Sparkles, Users, ArrowRight, ChevronDown, ShoppingBag } from 'lucide-react'
@@ -411,17 +412,7 @@ function ShoppingGrid() {
       </div>
       <div className="ur-content-wide px-4 lg:px-8 pt-3">
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212]">
-              <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A]" />
-              <div className="px-2.5 pt-2 pb-2.5">
-                <div className="h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded w-3/4" />
-                <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1A1A1A] rounded w-1/2" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <BrandLoader />
       ) : items.length === 0 ? (
         <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-sm">쇼핑 상품이 없습니다</div>
       ) : (
@@ -442,6 +433,24 @@ function ShoppingGrid() {
   )
 }
 
+// 🎨 2026-07-01 (대표 "페이지가 빨리 뜨면 되는거"): SSR seed 를 첫 렌더에 **동기 소비** → 로더 프레임 제거,
+//   청크 로드 끝나면 콘텐츠 즉시. (기존엔 loading=true 로 시작 후 effect 에서 소비 → 로더 한 프레임.)
+//   조건은 기존 effect 의 ssrMatch 와 동일(first-paint·no-filter·price_low). page 는 첫 렌더라 1 고정.
+function readVouchersSsrSeed(embedded: boolean, category: string, brand: string, sort: string): VoucherProduct[] | null {
+  const match = embedded
+    ? (category === EMBEDDED_DEFAULT_CATEGORY && !brand && sort === 'price_low')
+    : (!brand && !category && sort === 'price_low')
+  if (!match || typeof document === 'undefined') return null
+  try {
+    const el = document.getElementById(embedded ? '__SSR_INITIAL_MAIN__' : '__SSR_INITIAL_VOUCHERS__')
+    if (el?.textContent) {
+      const parsed = JSON.parse(el.textContent)
+      if (parsed?.success && Array.isArray(parsed?.data)) return parsed.data as VoucherProduct[]
+    }
+  } catch { /* SSR 누락/파싱 실패 — null 폴백(effect 가 fetch) */ }
+  return null
+}
+
 // 🛡️ 2026-06-01: embedded — 홈(/)에서 교환권 본문을 재사용. SEO/자체헤더 skip + SSR 는 MAIN 슬롯에서 읽음.
 export default function VouchersPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation()
@@ -453,6 +462,13 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   // 🏭 2026-06-04 (사용자 요청): 홈(embedded)은 기본 카테고리를 '커피/음료' 로 — 첫 진입 시 커피 브랜드 먼저.
   //   MAIN SSR 슬롯도 같은 커피 카테고리로 warm → 0-RTT 유지 (worker/index.ts + cache-prewarm).
   const category = searchParams.get('category') || (embedded ? EMBEDDED_DEFAULT_CATEGORY : '')
+
+  // 🎨 2026-07-01 (대표 "페이지가 빨리 뜨면"): SSR seed 를 첫 렌더에 동기 소비(1회) → products/loading 초기값에
+  //   반영 → 청크 로드 후 로더 프레임 없이 콘텐츠 즉시. sort 는 searchParams 에서 직접(아래 sort const 이전).
+  const ssrSeedRef = useRef<VoucherProduct[] | null | undefined>(undefined)
+  if (ssrSeedRef.current === undefined) {
+    ssrSeedRef.current = readVouchersSsrSeed(embedded, category, brand, searchParams.get('sort') || 'price_low')
+  }
 
   // 🎫 2026-06-23 (대표 결정 — '연속 스크롤 + 중앙 스크롤스파이 탭'): 비embedded /vouchers 는 한 페이지에
   //   교환권(상단, ~20개 + 더보기) → 쇼핑(하단 무한)이 이어짐. 상단 [교환권][쇼핑] 탭은 중앙 정렬 +
@@ -466,11 +482,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   sections = 카테고리별 (편의점/카페/외식 등) + 각 카테고리 내 인기 브랜드 12개.
   //   첫 로드 시 cnt 가장 많은 카테고리 자동 선택. 카테고리 변경 시 브랜드 list 자동 갱신.
   const [sections, setSections] = useState<CategorySection[]>([])
-  const [products, setProducts] = useState<VoucherProduct[]>([])
-  const [loading, setLoading] = useState(true)
+  const [products, setProducts] = useState<VoucherProduct[]>(() => ssrSeedRef.current ?? [])
+  const [loading, setLoading] = useState(() => ssrSeedRef.current == null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
+  const [hasMore, setHasMore] = useState(() => ssrSeedRef.current != null ? ssrSeedRef.current.length === PAGE_SIZE : true)
   // 🎫 2026-06-26 (대표 결정): 교환권 노출 cap 리셋 — 홈 12개 / /vouchers 8개. 카테고리·브랜드 변경 시 초기화.
   useEffect(() => { setEmbedVisible(embedded ? 12 : 8) }, [embedded, category, brand])
   const loadMoreRef = useRef<HTMLDivElement>(null)
@@ -640,33 +656,14 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brand, category, sort])
 
-  // 🏭 2026-06-05 (사용자 신고 — 정렬이 안 먹음): SSR(MAIN/VOUCHERS) inject 는 "첫 페인트"에만 소비.
-  //   이후 정렬/카테고리/브랜드 변경은 항상 loadProducts(서버 정렬 적용)로 fresh fetch → 정렬 정상 반영.
-  const ssrConsumedRef = useRef(false)
+  // 🎨 2026-07-01 (대표 "페이지가 빨리 뜨면"): SSR(MAIN/VOUCHERS) seed 는 첫 렌더에 **동기 소비**(products/loading
+  //   초기값, 위 ssrSeedRef). effect 는 (a) seed miss 시 첫 fetch (b) 정렬/카테고리/브랜드 변경 시 fresh fetch 만 담당.
+  //   → 동기 소비된 경우 마운트에서 재fetch 안 함(로더 프레임 0, 서버정렬 필터변경은 그대로 반영).
+  const firstEffectRef = useRef(true)
   useEffect(() => {
-    // 🛡️ 2026-05-27 (loading P0): SSR inject first-paint — no-query 초기 진입 시 즉시 표시.
-    //   카테고리/브랜드/sort 변경 시 loadProducts 가 다시 axios fetch (fallback).
-    // 🏭 2026-06-04: 홈(embedded)은 category='커피/음료' 기본 — MAIN 슬롯이 커피로 warm 됨.
-    const firstPaint = !ssrConsumedRef.current
-    ssrConsumedRef.current = true
-    const ssrMatch = firstPaint && (embedded
-      ? (category === EMBEDDED_DEFAULT_CATEGORY && !brand && sort === 'price_low' && page === 1)
-      : (!brand && !category && sort === 'price_low' && page === 1))
-    if (ssrMatch) {
-      try {
-        if (typeof document !== 'undefined') {
-          const el = document.getElementById(embedded ? '__SSR_INITIAL_MAIN__' : '__SSR_INITIAL_VOUCHERS__')
-          if (el?.textContent) {
-            const parsed = JSON.parse(el.textContent)
-            if (parsed?.success && Array.isArray(parsed?.data)) {
-              setProducts(parsed.data)
-              setHasMore(parsed.data.length === PAGE_SIZE)
-              setLoading(false)
-              return
-            }
-          }
-        }
-      } catch { /* SSR 누락 — fallback */ }
+    if (firstEffectRef.current) {
+      firstEffectRef.current = false
+      if (ssrSeedRef.current != null) return  // 첫 렌더에 seed 동기 소비됨 → 마운트 재fetch 스킵
     }
     loadProducts(1, true)
   }, [brand, category, sort, loadProducts])
@@ -720,6 +717,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     setSearchParams(params)
   }
 
+  // 🎨 2026-07-01 (대표 "2번 로딩 근본 해결" — urdeal 로더 유지): standalone(/vouchers) 은 로딩 중
+  //   전체화면 BrandLoader 로 early-return → 청크 로더와 끊김 없이 이어져 '한 번'으로 보임(헤더가 중간에 안 뜸).
+  //   embedded(홈)은 청크 로더가 없고 다른 콘텐츠와 공존해야 하므로 인라인 유지(아래 {loading?} 블록).
+  if (loading && !embedded) return <BrandLoader fullScreen />
   return (
     <div className={embedded ? '' : 'bg-white dark:bg-[#0A0A0A] pb-safe-nav md:pb-20 min-h-screen'}>
       {!embedded && (

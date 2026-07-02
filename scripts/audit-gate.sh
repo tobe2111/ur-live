@@ -58,6 +58,8 @@ if domain money; then
   run "CHECK 제약 위반"                 node scripts/check-status-constraints.mjs
   run "쿼리 isError(빈화면 위장)"        node scripts/check-query-iserror.mjs
   run "CSV 수식 인젝션"                 node scripts/check-csv-injection.mjs
+  run "폐기 가격함수 직접호출"           node scripts/check-deprecated-pricing.mjs -s
+  run "잔액 절대값 write(비원자)"        node scripts/check-balance-absolute-write.mjs -s
   run "블로그 시드 최신성"               node scripts/check-blog-seed-currency.mjs
   run "블로그 fact 동기화"               bash scripts/check-blog-fact-sync.sh
 fi

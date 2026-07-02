@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from 'react'
 import { MapPin, ExternalLink } from 'lucide-react'
 import { ensureKakaoMaps } from '@/lib/kakao-sdk'
 import { escapeHtml } from '@/shared/utils/html'
+import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 
 declare global {
   interface Window { kakao: any }
@@ -27,11 +28,13 @@ interface Props {
   address?: string
   lat?: number | null
   lng?: number | null
+  /** 🎯 2026-07-01: 카카오 장소 페이지 URL(place.map.kakao.com/{id}) — 등록 시 캡처. 있으면 매장 페이지 직접 연결. */
+  placeUrl?: string | null
   /** 지도 높이 (px). 기본 220px */
   height?: number
 }
 
-export default function RestaurantMiniMap({ name, address, lat, lng, height = 220 }: Props) {
+export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, height = 220 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<any>(null)
@@ -127,10 +130,20 @@ export default function RestaurantMiniMap({ name, address, lat, lng, height = 22
   }, [loaded, resolvedCoord, name])
 
   // 카카오맵 외부 링크 URL
-  const kakaoMapUrl = resolvedCoord
-    ? `https://map.kakao.com/link/map/${encodeURIComponent(name || address || '매장')},${resolvedCoord.lat},${resolvedCoord.lng}`
-    : address
-    ? `https://map.kakao.com/?q=${encodeURIComponent(address)}`
+  // 🛡️ 2026-07-01 (대표 신고 — "카카오맵에 매장 페이지가 안 나옴"): `link/map/{name},{lat},{lng}` 는
+  //   좌표에 핀만 찍고 등록된 장소 페이지(정보/리뷰 카드)를 안 엶 + 좌표 오차 시 빈자리 핀.
+  //   → 매장명+주소로 `link/search` — 카카오에 등록된 실제 장소가 떠서 매장 페이지로 연결(좌표 정밀도 무관).
+  // 🎯 2026-07-01 (대표 "매장의 카카오맵 페이지와 연결"): 우선순위 —
+  //   ① 등록 시 캡처한 place_url(정확한 매장 페이지 직접 열림) ② 매장명+주소 link/search(등록 장소 surfacing)
+  //   ③ 좌표 map(폴백). place_url 은 place.map.kakao.com/{id} 형식만 허용(임의 URL 주입 방지).
+  const normalizedPlaceUrl = normalizeKakaoPlaceUrl(placeUrl)  // place.map.kakao.com / map.kakao.com / kko.to 만
+  const kakaoSearchQuery = [name, address].filter(Boolean).join(' ').trim()
+  const kakaoMapUrl = normalizedPlaceUrl
+    ? normalizedPlaceUrl
+    : kakaoSearchQuery
+    ? `https://map.kakao.com/link/search/${encodeURIComponent(kakaoSearchQuery)}`
+    : resolvedCoord
+    ? `https://map.kakao.com/link/map/${resolvedCoord.lat},${resolvedCoord.lng}`
     : null
 
   if (!address && !resolvedCoord) return null

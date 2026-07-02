@@ -1883,7 +1883,8 @@
       "addVoucher": "利用券の登録",
       "addVoucherDesc": "地域の利用券・引換券 — 位置や詳細を設定",
       "previewBanner": "訪問者プレビュー — 他の人に見える画面です",
-      "backToEdit": "編集に戻る"
+      "backToEdit": "編集に戻る",
+      "verifiedBusiness": "事業者認証"
     },
     "storeIntro": "ストア紹介",
     "shippingInfo": "配送情報",
@@ -2788,6 +2789,26 @@
       "approve": "承認",
       "approved": "税金計算書を承認しました",
       "approveFailed": "承認に失敗しました"
+    },
+    "gateway": {
+      "title": "事業者ユーザー登録 — マイショップを開く",
+      "heroTitle": "マイショップで直接販売",
+      "heroDesc": "事業者認証1回でリンクショップが本物のショップに。商品・利用券の登録＋現金精算（基本手数料5%）。",
+      "kakaoBanner": "このカカオアカウントに販売機能が追加されます。リンクショップ・購入履歴はそのまま。",
+      "escape": "商品のおすすめ・コミッションだけなら登録不要 —",
+      "escapeLink": "マイリンクショップ",
+      "escapeSuffix": "ですぐ始められます。",
+      "applied": "申請完了！審査状況ページへ移動します。",
+      "alreadyActive": "すでに事業者ユーザーです",
+      "alreadyActiveDesc": "セラーダッシュボードへ移動できます。",
+      "pendingTitle": "承認待ち",
+      "pendingDesc": "審査後、アプリ通知・カカオトークでご案内します（1〜2営業日）。",
+      "goDashboard": "セラーダッシュボード",
+      "viewStatus": "審査状況を見る",
+      "reviewNote": "申請後1〜2営業日で審査 → アプリ通知・カカオトークで結果案内。国税庁情報一致で自動承認。",
+      "reviewNote2": "承認後、ダッシュボードで商品・利用券を登録できます。",
+      "submitting": "申請中...",
+      "submit": "事業者登録を申請"
     }
   },
   "admin": {
@@ -4284,7 +4305,8 @@
     "sellerSignup": "セラー会員登録",
     "sheetTitleCreate": "作成",
     "proposeDeal": "近所の共同購入を提案",
-    "proposeDealDesc": "お店を提案すると人を集めて開催します"
+    "proposeDealDesc": "お店を提案すると人を集めて開催します",
+    "openMyShop": "マイショップを開く（事業者）"
   },
   "broadcastNotify": {
     "loginRequired": "ログインが必要です",
@@ -5003,7 +5025,7 @@
     "seoTitle": "Ur-Deal - ライブコマース グルメ共同購入",
     "seoDesc": "オーナーが直接行うライブコマース。地元グルメを特価で見つける最速の方法。",
     "heroLiveCount": "[TODO:ja] 지금 {{count}}명이 라이브 시청 중",
-    "heroDesc": "[TODO:ja] 우리 동네 맛집 사장님이 직접 라이브 방송을 켭니다. 실시간 소통하며 식사권·밀키트를 최대 50% 할인가로 공구하세요.",
+    "heroDesc": "地元の人気店の店主が自らライブ配信。リアルタイムで交流しながら、利用券・ミールキットを最大50%OFFで共同購入できます。",
     "heroCtaStart": "[TODO:ja] 지금 시작하기",
     "heroBrowse": "[TODO:ja] 둘러보기",
     "liveNowLabel": "[TODO:ja] 지금 켜져 있는 라이브",
@@ -5014,7 +5036,7 @@
     "howTitle": "[TODO:ja] 라이브 켜고, 보고, 사고, 먹기.",
     "step1Title": "[TODO:ja] 라이브 시청",
     "step1Desc": "[TODO:ja] 홈에서 지금 방송 중인 사장님 라이브를 바로 시청하세요. 실시간 채팅으로 질문도 하고, 메뉴 추천도 받을 수 있어요.",
-    "step2Title": "[TODO:ja] 식사권 공구",
+    "step2Title": "利用券の共同購入",
     "step2Desc": "[TODO:ja] 동네 맛집·뷰티·숙소를 그룹 특가로. 인원과 상관없이 처음부터 같은 가격이에요.",
     "step3Title": "[TODO:ja] 매장 방문·사용",
     "step3Desc": "[TODO:ja] 구매한 쿠폰을 매장에서 제시하고 맛있게 드세요. 배송 상품은 집에서 바로 받아볼 수 있어요.",
@@ -5355,7 +5377,10 @@
     "applyAria": "セラーとして活動する",
     "applyLabel": "セラーとして活動する",
     "successMsg": "セラーダッシュボードへ移動します!",
-    "errorMsg": "セラー切替に失敗しました"
+    "errorMsg": "セラー切替に失敗しました",
+    "openMyShop": "マイショップを開く",
+    "pendingAria": "審査状況を見る",
+    "statusAria": "セラー状態を見る"
   },
   "pwa": {
     "install": {
@@ -5551,12 +5576,12 @@
   "groupbuy": {
     "createTitle": "[TODO:ja] 맛집 공구 시작하기",
     "seoTitle": "[TODO:ja] 맛집 공구 시작",
-    "seoDesc": "[TODO:ja] 내가 좋아하는 맛집의 식사권을 공동구매로 더 싸게! 맛집 공구를 시작해보세요.",
+    "seoDesc": "お気に入りのお店の利用券を共同購入でもっとお得に！グルメ共同購入を始めましょう。",
     "backAria": "[TODO:ja] 뒤로",
     "step1Title": "[TODO:ja] 맛집 선택",
     "step2Title": "[TODO:ja] 공구 설정",
     "step3Title": "[TODO:ja] 확인 & 시작",
-    "priceLabel": "[TODO:ja] 희망 식사권 가격",
+    "priceLabel": "希望利用券価格",
     "pricePlaceholder": "[TODO:ja] 예: 20000",
     "priceUnit": "[TODO:ja] 원",
     "depositLabel": "[TODO:ja] 1인당 딜 예치금",
@@ -5625,7 +5650,7 @@
     "sectionTitle": "利用履歴",
     "wishlist": "[TODO:ja] 찜한 상품",
     "voucher": "交換券",
-    "voucherSub": "[TODO:ja] 식사권·이용권",
+    "voucherSub": "利用券・ギフト券",
     "digitalLibrary": "[TODO:ja] 디지털 보관함",
     "digitalLibrarySub": "[TODO:ja] 전자책·강의·가이드",
     "coupons": "[TODO:ja] 쿠폰함",

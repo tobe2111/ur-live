@@ -12,6 +12,10 @@ export interface DealRow {
   restaurant_lat?: number | null
   restaurant_lng?: number | null
   created_at?: string
+  /** 🎯 1인당 최대 구매 수량 (0=무제한). */
+  max_per_person?: number | null
+  /** 🎯 카카오 장소 페이지 URL (place.map.kakao.com/{id}). */
+  kakao_place_url?: string | null
 }
 
 export const CAT_LABEL: Record<string, string> = {
