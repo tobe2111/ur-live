@@ -959,8 +959,11 @@ const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest:
   { name: '속눈썹 연장 풀세트 + 리터치', cat: 'beauty_voucher', price: 29000, orig: 55000, rest: '아이래쉬 스튜디오', addr: '서울 마포구 양화로', img: 'https://picsum.photos/seed/urdeal6/600/600', q: '속눈썹 연장 시술', spots: 3, seed: 14, desc: '속눈썹 연장 풀세트 + 2주 내 리터치 1회 포함. 시술 약 90분, 예약 후 방문해주세요.' },
   { name: '반려견 종합 미용 (목욕+커트)', cat: 'etc_voucher', price: 35000, orig: 60000, rest: '댕댕살롱', addr: '서울 송파구 올림픽로', img: 'https://picsum.photos/seed/urdeal7/600/600', q: '강아지 미용', spots: 6, seed: 28, desc: '목욕 + 전체 커트 종합 미용(소형견 기준). 중·대형견은 매장으로 문의해주세요.' },
   { name: '실내 클라이밍 1일 체험 + 강습', cat: 'etc_voucher', price: 19000, orig: 35000, rest: '더 클라임', addr: '서울 광진구 아차산로', img: 'https://picsum.photos/seed/urdeal8/600/600', q: '실내 클라이밍', spots: 4, seed: 19, desc: '실내 클라이밍 1일 이용권 + 초보 강습 30분 + 암벽화·초크 대여 포함. 운동복만 챙겨오세요.' },
-  { name: '프리미엄 원두 드립백 30개입 (무료배송)', cat: 'general', price: 18900, orig: 32000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal9/600/600', q: '드립백 커피', spots: 10, seed: 52, desc: '스페셜티 원두 드립백 30개입, 로스팅 직후 소분 발송. 전국 무료배송.' },
-  { name: '제주 한라봉 5kg 산지직송', cat: 'general', price: 21900, orig: 35000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal10/600/600', q: '한라봉', spots: 5, seed: 27, desc: '제주 산지직송 한라봉 5kg(가정용). 수확 후 24시간 내 발송, 당도 선별 과일만 담습니다.' },
+  // ❌ 2026-07-02 (대표 "왜 이런 서비스가 데모에?"): general(배송형) 데모 2종(원두 드립백/한라봉) 제거.
+  //   배경: 06-17 동네딜 리스트에 general 카테고리 서버 지원이 추가되며 06-30 데모 확장이 샘플을 넣었으나,
+  //   ① 홈/동네딜 어디에도 '일반' 칩이 없고 기본 피드 쿼리도 이용권 4종만이라 소비자 정상 접근 불가(유령),
+  //   ② 상세가 쇼핑 UI(/products, 장바구니·배송)로 열리는데 쇼핑탭은 잠정 숨김 — "동네딜=우리 동네 매장"
+  //   멘탈모델만 흐림. 동네딜 데모 = 로컬 이용권만. (기존 시드분은 아래 heal 패스가 자동 은퇴.)
 ];
 
 // 🎯 2026-07-01 (대표 "데모 이용권도 매장 지도 매칭 제대로"): 데모 매장은 가공 이름 + 번지 없는 주소라
@@ -1041,6 +1044,15 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         }
       }
     } catch { /* best-effort — 치유 실패해도 시드 진행 */ }
+
+    // ❌ 2026-07-02: 과거 시드된 general(배송형) 데모 자동 은퇴 — 동네딜 데모는 로컬 이용권만.
+    //   soft-retire(is_active=0 + slug 리네임)로 노출 제거·참조 보존. 시드 재실행 한 번이면 정리됨.
+    try {
+      await DB.prepare(
+        `UPDATE products SET is_active = 0, slug = 'retired-' || slug || '-' || id, updated_at = datetime('now')
+          WHERE slug LIKE ? AND category = 'general' AND is_active = 1`
+      ).bind(DEAL_DEMO_SLUG + '%').run();
+    } catch { /* best-effort */ }
 
     // 🛡️ 2026-07-02 (대표 "데모 문구가 유저에게 보이면 안 됨"): 기존 시드분의 "데모 동네딜 — …"
     //   설명을 실제 상품 설명(템플릿 desc)으로 일괄 교정. 매칭 = 지역 프리픽스 제거한 상품명.
