@@ -7,6 +7,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { ensureAdsAccountSchema } from './ads-account'
+import { ensureEntitlementSchema, setPlan, type AdsPlan } from './ads-entitlements'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -34,10 +35,11 @@ app.get('/accounts', async (c) => {
         WHERE LOWER(email) LIKE ? OR LOWER(COALESCE(company_name, '')) LIKE ? ORDER BY id DESC LIMIT ?`).bind(like, like, limit)
     : c.env.DB.prepare('SELECT id, email, company_name, phone, status, access_unlocked, created_at, last_login_at FROM ad_accounts ORDER BY id DESC LIMIT ?').bind(limit)
   ).all<{ id: number; email: string; company_name: string | null; phone: string | null; status: string | null; access_unlocked: number; created_at: string; last_login_at: string | null }>().catch(() => null))?.results || []
-  // 연동/알림 플래그(테이블 미존재 가능 → best-effort).
+  // 연동/알림/플랜 플래그(테이블 미존재 가능 → best-effort).
   const connSet = new Set(((await c.env.DB.prepare('SELECT DISTINCT seller_id FROM ad_searchad_tenants').all<{ seller_id: number }>().catch(() => null))?.results || []).map(r => r.seller_id))
   const alertSet = new Set(((await c.env.DB.prepare('SELECT account_id FROM ad_alert_settings WHERE enabled = 1').all<{ account_id: number }>().catch(() => null))?.results || []).map(r => r.account_id))
-  const accounts = rows.map(r => ({ ...r, connected: connSet.has(r.id), alert_on: alertSet.has(r.id) }))
+  const planMap = new Map(((await c.env.DB.prepare('SELECT account_id, plan FROM ad_entitlements').all<{ account_id: number; plan: string }>().catch(() => null))?.results || []).map(r => [r.account_id, r.plan]))
+  const accounts = rows.map(r => ({ ...r, connected: connSet.has(r.id), alert_on: alertSet.has(r.id), plan: planMap.get(r.id) || 'free' }))
   return c.json({ success: true, accounts })
 })
 
@@ -54,6 +56,14 @@ app.patch('/accounts/:id', async (c) => {
     const st = String(body.status)
     if (st !== 'active' && st !== 'suspended') return c.json({ success: false, error: '상태 값이 올바르지 않습니다' }, 400)
     sets.push('status = ?'); binds.push(st)
+  }
+  // 🆕 플랜 지정(엔타이틀먼트 뼈대) — 집행은 ADS_BILLING_ENFORCED='true' 일 때만.
+  if (body.plan !== undefined) {
+    const p = String(body.plan)
+    if (p !== 'free' && p !== 'starter' && p !== 'pro') return c.json({ success: false, error: '플랜 값이 올바르지 않습니다' }, 400)
+    await ensureEntitlementSchema(c.env.DB)
+    await setPlan(c.env.DB, id, p as AdsPlan, body.period_end ? String(body.period_end) : null)
+    if (!sets.length) return c.json({ success: true })
   }
   if (!sets.length) return c.json({ success: false, error: '변경할 항목이 없습니다' }, 400)
   await c.env.DB.prepare(`UPDATE ad_accounts SET ${sets.join(', ')} WHERE id = ?`).bind(...binds, id).run().catch(() => null)

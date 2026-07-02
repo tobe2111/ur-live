@@ -18,6 +18,7 @@ const authHeader = () => {
 
 interface Rule { keyword_id: string; adgroup_id: string | null; keyword_text: string | null; target_rank: number; max_bid: number; device: string; enabled: number; last_applied_bid: number | null; last_run_at: string | null; schedule_json: string | null }
 interface LogRow { keyword_id: string; old_bid: number; new_bid: number; target_rank: number; est_bid: number; reason: string; created_at: string }
+interface ShadowRow { keyword_id: string; keyword_text: string | null; planned_bid: number; est_bid: number; reason: string; run_date: string }
 interface PreviewRow { keyword_id: string; keyword_text: string | null; estBid: number; plan: { bid: number; change: boolean; reason: string }; applied: boolean }
 
 const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
@@ -55,6 +56,7 @@ export default function AutobidPanel() {
   const [csvOpen, setCsvOpen] = useState(false)
   const [csvText, setCsvText] = useState('')
   const [err, setErr] = useState(false)
+  const [shadow, setShadow] = useState<ShadowRow[]>([])
 
   const load = useCallback(async () => {
     setErr(false)
@@ -62,6 +64,11 @@ export default function AutobidPanel() {
       const r = await api.get('/api/ads/searchad/autobid/rules', { headers: authHeader() })
       if (r.data?.success) { setRules(r.data.rules || []); setLog(r.data.log || []); setEngineOn(!!r.data.engine_on) }
     } catch { setErr(true) }
+    // 섀도우 히스토리(있을 때만 표시 — fail-soft).
+    try {
+      const s = await api.get('/api/ads/searchad/autobid/shadow', { headers: authHeader() })
+      if (s.data?.success) setShadow(s.data.items || [])
+    } catch { /* 섀도우 미가동 — 무시 */ }
   }, [])
   useEffect(() => { load() }, [load])
 
@@ -217,6 +224,21 @@ export default function AutobidPanel() {
                 </div>
               ))}
           </div>
+        </div>
+      )}
+
+      {shadow.length > 0 && (
+        <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
+          <p className="text-[12px] font-bold text-gray-900 dark:text-white">섀도우 기록 <span className="font-medium text-gray-400 dark:text-gray-500">— 엔진이 켜져 있었다면 실행했을 변경(실제 적용 0)</span></p>
+          <div className="mt-1.5 space-y-0.5">
+            {shadow.slice(0, 8).map((s, i) => (
+              <div key={i} className="flex items-center justify-between gap-2 text-[10.5px] text-gray-500 dark:text-gray-400">
+                <span className="truncate">{s.keyword_text || s.keyword_id}</span>
+                <span className="shrink-0 tabular-nums">추정 ₩{formatNumber(s.est_bid)} → ₩{formatNumber(s.planned_bid)} · {s.run_date.slice(5)}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[10px] text-gray-400 dark:text-gray-500">이 기록으로 엔진 판단을 검증한 뒤 자동 엔진을 켜세요.</p>
         </div>
       )}
 

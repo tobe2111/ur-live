@@ -12,12 +12,14 @@ import { collectAndStore, listCollectedOrders } from './order-collection'
 import { keywordTrend, keywordShopping, brandReputation, keywordAutocomplete, shoppingCategoryTrends, categoryDemographics } from './keyword-tools'
 import { relatedKeywords } from './searchad-client'
 import { loadSearchAdConnection, getActiveTenantId } from './searchad-connection'
-import { listRules, upsertRule, deleteRule, recentLog, runAutobidForSeller, bulkUpsertRules, parseCsvRules } from './autobid'
+import { listRules, upsertRule, deleteRule, recentLog, runAutobidForSeller, bulkUpsertRules, parseCsvRules, listShadowHistory } from './autobid'
 import { listWatches, addWatch, deleteWatch, refreshWatch } from './price-monitor'
 import { getAlertSettings, saveAlertSettings, computeAlerts } from './alerts'
 import { listRankTargets, addRankTarget, deleteRankTarget, refreshRankTarget } from './rank-tracker'
 import { analyzeCompetitors } from './competitor-tracker'
 import { saveKeyword, listSavedKeywords, listKeywordTags, deleteSavedKeyword, updateSavedKeyword } from './keyword-portfolio'
+import { findKeywordOpportunities } from './keyword-opportunities'
+import { checkCapacity } from './ads-entitlements'
 import { naverOpenId, naverOpenSecret, resolveSearchAdCreds, requireAdsUnlocked } from './routes/helpers'
 import { adsAuthRoutes } from './routes/auth.routes'
 import { adsSearchadRoutes } from './routes/searchad.routes'
@@ -197,6 +199,8 @@ marketingRoutes.post('/rank/target', rateLimit({ action: 'ads-rank-add', max: 20
   const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const rankCap = await checkCapacity(c.env, id, 'rank_targets', (await listRankTargets(c.env.DB, id)).length)
+  if (!rankCap.ok) return c.json({ success: false, error: rankCap.error, plan: rankCap.plan }, 402)
   const r = await addRankTarget(c.env, id, String(body.keyword || ''), String(body.mall || ''))
   if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   return c.json({ success: true, targets: await listRankTargets(c.env.DB, id) })
@@ -262,6 +266,19 @@ marketingRoutes.get('/keywords/related', rateLimit({ action: 'ads-kw-related', m
   return c.json({ success: true, results: r.results })
 })
 
+// 🆕 GET /api/ads/keywords/opportunities?seed=&adgroup_id= — 기회 키워드 발굴
+//   연관키워드 × 내 보유(자동입찰 규칙+저장+[선택]그룹 등록) 교차 → 검색량↑·경쟁↓·미보유 순위.
+marketingRoutes.get('/keywords/opportunities', rateLimit({ action: 'ads-kw-opp', max: 20, windowSec: 60 }), async (c) => {
+  const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const seed = String(c.req.query('seed') || '').trim()
+  if (!seed) return c.json({ success: false, error: '기준 키워드를 입력해주세요' }, 400)
+  const adgroupId = String(c.req.query('adgroup_id') || '').trim() || undefined
+  const r = await findKeywordOpportunities(c.env, sellerId, seed, adgroupId)
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.error === 'NOT_CONFIGURED' ? 503 : 400)
+  return c.json({ success: true, items: r.items })
+})
+
 // ── 키워드 포트폴리오(발굴 키워드 저장·태그) — 외부호출 0 ─────────────────────
 // GET /api/ads/keywords/saved?tag= — 저장한 키워드 + 태그 목록
 marketingRoutes.get('/keywords/saved', async (c) => {
@@ -322,6 +339,15 @@ marketingRoutes.get('/searchad/autobid/rules', async (c) => {
   return c.json({ success: true, rules, log, engine_on: c.env.ADS_AUTOBID_ENABLED === 'true' })
 })
 
+// 🆕 GET /api/ads/searchad/autobid/shadow — 섀도우 히스토리(엔진이 "했을 변경" 일일 기록, 켜기 전 신뢰용)
+marketingRoutes.get('/searchad/autobid/shadow', async (c) => {
+  const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const items = await listShadowHistory(c.env.DB, sellerId, 60)
+  const shadowOn = (c.env as unknown as { ADS_AUTOBID_SHADOW_ENABLED?: string }).ADS_AUTOBID_SHADOW_ENABLED === 'true'
+  return c.json({ success: true, items, shadow_on: shadowOn })
+})
+
 // POST /api/ads/searchad/autobid/rule — 규칙 생성/수정(목표순위·max_bid·enable)
 marketingRoutes.post('/searchad/autobid/rule', rateLimit({ action: 'ads-ab-rule', max: 60, windowSec: 60 }), async (c) => {
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
@@ -330,6 +356,10 @@ marketingRoutes.post('/searchad/autobid/rule', rateLimit({ action: 'ads-ab-rule'
   const tenant = await getActiveTenantId(c.env.DB, sellerId) // 규칙을 활성 고객사로 격리
   // 🔒 돈 안전: tenant=NULL 고아 규칙이 cron 에서 '그때 활성' 고객사에 적용되는 과금 벡터 차단(연결 선행 요구).
   if (!tenant) return c.json({ success: false, error: '자동입찰 규칙 등록 전에 광고계정(고객사)을 먼저 연결해주세요' }, 400)
+  // 플랜 한도(ADS_BILLING_ENFORCED='true' 일 때만 집행 — 기본 무제한).
+  const ruleCnt = await c.env.DB.prepare('SELECT COUNT(*) AS c FROM ad_autobid_rules WHERE seller_id = ?').bind(sellerId).first<{ c: number }>().catch(() => null)
+  const cap = await checkCapacity(c.env, sellerId, 'autobid_rules', Number(ruleCnt?.c) || 0)
+  if (!cap.ok) return c.json({ success: false, error: cap.error, plan: cap.plan }, 402)
   const r = await upsertRule(c.env.DB, sellerId, {
     keyword_id: String(body.keyword_id || ''), adgroup_id: body.adgroup_id ? String(body.adgroup_id) : undefined,
     keyword_text: body.keyword_text ? String(body.keyword_text) : undefined,
@@ -358,6 +388,9 @@ marketingRoutes.post('/searchad/autobid/rules/bulk', rateLimit({ action: 'ads-ab
   const tenant = await getActiveTenantId(c.env.DB, sellerId)
   // 🔒 돈 안전: 단일 규칙과 동일 — 활성 고객사 없이 만든 tenant=NULL 규칙의 잘못된-계정 적용 차단.
   if (!tenant) return c.json({ success: false, error: '자동입찰 규칙 등록 전에 광고계정(고객사)을 먼저 연결해주세요' }, 400)
+  const bulkCnt = await c.env.DB.prepare('SELECT COUNT(*) AS c FROM ad_autobid_rules WHERE seller_id = ?').bind(sellerId).first<{ c: number }>().catch(() => null)
+  const bulkCap = await checkCapacity(c.env, sellerId, 'autobid_rules', (Number(bulkCnt?.c) || 0) + rows.length - 1)
+  if (!bulkCap.ok) return c.json({ success: false, error: bulkCap.error, plan: bulkCap.plan }, 402)
   const result = await bulkUpsertRules(c.env.DB, sellerId, rows, tenant)
   return c.json({ success: true, ...result })
 })
@@ -409,6 +442,8 @@ marketingRoutes.post('/price/watch', rateLimit({ action: 'ads-price-add', max: 3
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const myPrice = body.my_price != null && body.my_price !== '' ? Number(body.my_price) : null
+  const watchCap = await checkCapacity(c.env, sellerId, 'price_watches', (await listWatches(c.env.DB, sellerId)).length)
+  if (!watchCap.ok) return c.json({ success: false, error: watchCap.error, plan: watchCap.plan }, 402)
   const r = await addWatch(c.env, sellerId, String(body.query || ''), myPrice)
   if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   const watches = await listWatches(c.env.DB, sellerId)

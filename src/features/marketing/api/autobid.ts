@@ -227,7 +227,7 @@ export async function recentLog(DB: D1Database, sellerId: number, limit = 30): P
 }
 
 // ── 엔진 ─────────────────────────────────────────────────────────────────
-export interface RuleRunResult { keyword_id: string; keyword_text: string | null; estBid: number; plan: BidPlan; applied: boolean; error?: string }
+export interface RuleRunResult { keyword_id: string; keyword_text: string | null; estBid: number; currentBid?: number; plan: BidPlan; applied: boolean; error?: string }
 
 /** 한 seller 의 활성 규칙 실행. dryRun=true 면 PUT 안 하고 계획만 반환(미리보기).
  *   opts.tenant: 고객사 격리. string=그 고객사 규칙(+inclusive 면 레거시 NULL 흡수), null=레거시만, undefined=전체.
@@ -274,7 +274,7 @@ export async function runAutobidForSeller(DB: D1Database, creds: SearchAdCreds, 
           .bind(plan.bid, sellerId, rule.keyword_id).run().catch(() => null)
       } else error = up.error
     }
-    out.push({ keyword_id: rule.keyword_id, keyword_text: rule.keyword_text, estBid, plan, applied, error })
+    out.push({ keyword_id: rule.keyword_id, keyword_text: rule.keyword_text, estBid, currentBid: current, plan, applied, error })
   }
   return out
 }
@@ -297,4 +297,62 @@ export async function runAutobidAll(env: Env): Promise<{ sellers: number; applie
     applied += res.filter(r => r.applied).length
   }
   return { sellers: pairs.length, applied }
+}
+
+// ── 🆕 섀도우 모드 (2026-07-01) — 실제 적용 없이 "했을 변경"만 일일 기록 ─────────
+//   목적: 자율 cron(ADS_AUTOBID_ENABLED) 을 켜기 전, 엔진이 매일 무엇을 했을지 근거를 쌓아
+//   신뢰 확보(1회성 preview 의 시계열 버전). **PUT 0 — updateKeywordBid 호출 없음(dryRun).**
+//   게이트: ADS_AUTOBID_SHADOW_ENABLED='true' && 실제 cron OFF(둘 다 켜지면 섀도우는 중복이라 skip).
+
+async function ensureShadowSchema(DB: D1Database): Promise<void> {
+  await DB.prepare(`CREATE TABLE IF NOT EXISTS ad_autobid_shadow (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    seller_id INTEGER NOT NULL,
+    keyword_id TEXT NOT NULL,
+    keyword_text TEXT,
+    current_bid INTEGER,
+    planned_bid INTEGER,
+    est_bid INTEGER,
+    reason TEXT,
+    run_date TEXT NOT NULL,
+    created_at DATETIME DEFAULT (datetime('now')),
+    UNIQUE(seller_id, keyword_id, run_date)
+  )`).run().catch(swallow('autobid:shadow'))
+}
+
+/** cron — 활성 규칙을 dryRun 으로 돌려 계획만 기록(하루 1행/키워드 멱등). 실제 입찰 변경 0. */
+export async function runAutobidShadowAll(env: Env): Promise<{ sellers: number; planned: number }> {
+  const e = env as unknown as { ADS_AUTOBID_SHADOW_ENABLED?: string }
+  if (e.ADS_AUTOBID_SHADOW_ENABLED !== 'true') return { sellers: 0, planned: 0 } // 킬스위치 OFF(기본)
+  if (env.ADS_AUTOBID_ENABLED === 'true') return { sellers: 0, planned: 0 }      // 실제 cron 가동 중 → 중복 skip
+  await ensureAutobidSchema(env.DB)
+  await ensureShadowSchema(env.DB)
+  const today = new Date().toISOString().slice(0, 10)
+  const pairs = (await env.DB.prepare(`SELECT DISTINCT seller_id, tenant FROM ad_autobid_rules WHERE enabled = 1 LIMIT ${MAX_SELLERS_PER_RUN}`)
+    .all<{ seller_id: number; tenant: string | null }>().catch(() => null))?.results || []
+  let planned = 0
+  for (const p of pairs) {
+    const creds = p.tenant
+      ? await loadSearchAdConnectionByTenant(env.DB, p.seller_id, p.tenant, env.DATA_ENCRYPTION_KEY).catch(() => null)
+      : await loadSearchAdConnection(env.DB, p.seller_id, env.DATA_ENCRYPTION_KEY).catch(() => null)
+    if (!creds) continue
+    const res = await runAutobidForSeller(env.DB, creds, p.seller_id, { dryRun: true, tenant: p.tenant, strict: true }).catch(() => [] as RuleRunResult[])
+    for (const r of res) {
+      if (!r.plan.change) continue
+      await env.DB.prepare(`INSERT OR IGNORE INTO ad_autobid_shadow (seller_id, keyword_id, keyword_text, current_bid, planned_bid, est_bid, reason, run_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+        .bind(p.seller_id, r.keyword_id, r.keyword_text, r.currentBid ?? null, r.plan.bid, r.estBid, r.plan.reason, today)
+        .run().catch(() => null)
+      planned++
+    }
+  }
+  return { sellers: pairs.length, planned }
+}
+
+/** 섀도우 히스토리(최근 N일) — AutobidPanel "켜기 전 미리보기 시계열". */
+export async function listShadowHistory(DB: D1Database, sellerId: number, limit = 60): Promise<Array<{ keyword_id: string; keyword_text: string | null; planned_bid: number; est_bid: number; reason: string; run_date: string }>> {
+  await ensureShadowSchema(DB)
+  const r = await DB.prepare(`SELECT keyword_id, keyword_text, planned_bid, est_bid, reason, run_date
+    FROM ad_autobid_shadow WHERE seller_id = ? ORDER BY id DESC LIMIT ?`).bind(sellerId, Math.min(200, limit)).all().catch(() => null)
+  return (r?.results || []) as Array<{ keyword_id: string; keyword_text: string | null; planned_bid: number; est_bid: number; reason: string; run_date: string }>
 }

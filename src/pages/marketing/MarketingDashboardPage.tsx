@@ -16,6 +16,8 @@ import EfficiencyPanel from './EfficiencyPanel'
 import RankPanel from './RankPanel'
 import TrendPanel from './TrendPanel'
 import SavedKeywordsPanel from './SavedKeywordsPanel'
+import OpportunityPanel from './OpportunityPanel'
+import OnboardingChecklist from './OnboardingChecklist'
 import LazyMount from './LazyMount'
 import PanelError from './PanelError'
 import { downloadCsv } from '@/utils/csv-download'
@@ -204,6 +206,9 @@ export default function MarketingDashboardPage() {
       <p className="mono text-[11px] tracking-widest" style={{ color: 'var(--ink3)' }}>OVERVIEW</p>
       <p className="mt-1.5 text-[13px]" style={{ color: 'var(--ink2)' }}>연관키워드·검색추세·쇼핑경쟁·자동완성확장·브랜드 평판 모니터링 — 지금 바로 사용 · 자동입찰/발주수집은 광고계정 연동 후</p>
 
+      {/* 온보딩 체크리스트 — 미완료 스텝 있을 때만(완료/닫기 시 스스로 숨김) */}
+      {hasToken && <OnboardingChecklist />}
+
       {/* KPI 요약 홈 — 최근 30일 통합실적(연동·데이터 있을 때만). 빈 0 노출 방지. */}
       {hasToken && summary && (summary.salesAmt > 0 || summary.impCnt > 0) && (
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
@@ -380,6 +385,9 @@ export default function MarketingDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* 기회 키워드 발굴(연관키워드 × 내 보유 교차 — 미보유·저경쟁·고검색량) */}
+      {hasToken && <LazyMount id="sec-opportunity"><OpportunityPanel /></LazyMount>}
 
       {/* 키워드 포트폴리오(저장한 키워드·태그) */}
       {hasToken && <LazyMount id="sec-portfolio"><SavedKeywordsPanel /></LazyMount>}

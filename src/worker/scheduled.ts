@@ -245,6 +245,12 @@ export async function handleCronScheduled(
       const { runAlertsAll } = await import('../features/marketing/api/alerts')
       return runAlertsAll(env)
     }));
+    // 🆕 2026-07-01 유어애즈 자동입찰 섀도우 — 실제 적용 없이 "했을 변경"만 일일 기록(PUT 0, 읽기+DB).
+    //   ADS_AUTOBID_SHADOW_ENABLED='true' && 실제 자동입찰 OFF 일 때만(킬스위치 기본 OFF).
+    ctx.waitUntil(safeCron('ads-autobid-shadow', async () => {
+      const { runAutobidShadowAll } = await import('../features/marketing/api/autobid')
+      return runAutobidShadowAll(env)
+    }));
     // 🏭 2026-06-08 DATA-1: 도매 고아행(FK 부재) 일일 스윕 (flag-only, 삭제 X).
     ctx.waitUntil(safeCron('wholesale-orphan-sweep', () => handleWholesaleOrphanSweep(env)));
     // 🛡️ 2026-05-21 Phase D-3: 매일 ledger 정합성 검증 — orphan entries 알림.

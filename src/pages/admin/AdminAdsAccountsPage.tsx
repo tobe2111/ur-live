@@ -13,8 +13,9 @@ import { safeDate } from '@/utils/safe-date'
 interface AdsAccountRow {
   id: number; email: string; company_name: string | null; phone: string | null
   status: string | null; access_unlocked: number; created_at: string; last_login_at: string | null
-  connected: boolean; alert_on: boolean
+  connected: boolean; alert_on: boolean; plan: string
 }
+const PLANS = ['free', 'starter', 'pro'] as const
 interface Stats { total: number; unlocked: number; suspended: number; recent7: number }
 
 const fmtD = (s: string | null) => { const d = safeDate(s); return d ? d.toLocaleDateString('ko-KR') : '—' }
@@ -41,7 +42,7 @@ export default function AdminAdsAccountsPage() {
   }, [])
   useEffect(() => { load() }, [load])
 
-  async function patch(id: number, body: { access_unlocked?: number; status?: string }, label: string) {
+  async function patch(id: number, body: { access_unlocked?: number; status?: string; plan?: string }, label: string) {
     setBusy(id)
     try {
       const r = await api.patch(`/api/admin/ads/accounts/${id}`, body)
@@ -80,13 +81,13 @@ export default function AdminAdsAccountsPage() {
       <div className="rounded-xl border border-gray-200 bg-white overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead><tr className="text-left text-gray-500 border-b border-gray-100">
-            <th className="py-2.5 px-3">ID</th><th className="py-2.5 px-3">이메일 · 회사</th><th className="py-2.5 px-3">가입</th><th className="py-2.5 px-3">최근 로그인</th><th className="py-2.5 px-3 text-center">연동</th><th className="py-2.5 px-3 text-center">알림</th><th className="py-2.5 px-3 text-center">액세스</th><th className="py-2.5 px-3 text-center">상태</th><th className="py-2.5 px-3"></th>
+            <th className="py-2.5 px-3">ID</th><th className="py-2.5 px-3">이메일 · 회사</th><th className="py-2.5 px-3">가입</th><th className="py-2.5 px-3">최근 로그인</th><th className="py-2.5 px-3 text-center">연동</th><th className="py-2.5 px-3 text-center">알림</th><th className="py-2.5 px-3 text-center">플랜</th><th className="py-2.5 px-3 text-center">액세스</th><th className="py-2.5 px-3 text-center">상태</th><th className="py-2.5 px-3"></th>
           </tr></thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={9} className="py-10 text-center text-gray-400">불러오는 중…</td></tr>
+              <tr><td colSpan={10} className="py-10 text-center text-gray-400">불러오는 중…</td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={9} className="py-10 text-center text-gray-400">가입자가 없습니다.</td></tr>
+              <tr><td colSpan={10} className="py-10 text-center text-gray-400">가입자가 없습니다.</td></tr>
             ) : rows.map((r) => (
               <tr key={r.id} className="border-b border-gray-50 text-gray-700">
                 <td className="py-2.5 px-3 tabular-nums text-gray-400">{r.id}</td>
@@ -95,6 +96,12 @@ export default function AdminAdsAccountsPage() {
                 <td className="py-2.5 px-3 text-gray-500 whitespace-nowrap">{fmtD(r.last_login_at)}</td>
                 <td className="py-2.5 px-3 text-center">{r.connected ? <span className="text-emerald-600">●</span> : <span className="text-gray-300">○</span>}</td>
                 <td className="py-2.5 px-3 text-center">{r.alert_on ? <span className="text-emerald-600">●</span> : <span className="text-gray-300">○</span>}</td>
+                <td className="py-2.5 px-3 text-center">
+                  <select value={r.plan || 'free'} disabled={busy === r.id} onChange={(e) => patch(r.id, { plan: e.target.value }, `플랜 ${e.target.value}`)}
+                    className="rounded border border-gray-200 bg-white px-1 py-0.5 text-[11px] font-semibold text-gray-700">
+                    {PLANS.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </td>
                 <td className="py-2.5 px-3 text-center">
                   <span className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${r.access_unlocked ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{r.access_unlocked ? '해제됨' : '잠김'}</span>
                 </td>

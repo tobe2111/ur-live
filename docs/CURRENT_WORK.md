@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 유어애즈 기능 확장 6종 (대표 "모두 가장 이상적으로 진행해줘" — 전수감사 후속 개선/아이디어 실행)
+전수감사에서 제안한 개선(A)·신기능(B) 중 **유어애즈 경계 안 + 보유 데이터/인프라만 쓰는 것 전부** 구현. 크로스서비스(유어딜 판매채널 번들)는 분리 룰상 정산·CS·소유권 대표 결정 선행이라 설계 문서 상태 유지(미착수 명시).
+- **① 키워드 기회 발굴기(B1)** — `keyword-opportunities.ts` 순수 스코어러(`score = 월검색량 × 경쟁가중치(낮음1.0/중간0.55/높음0.25)`, 보유(자동입찰 규칙+저장 키워드+선택 시 그룹 등록 키워드) 공백무시 제외, 검색량<100 컷) + GET `/api/ads/keywords/opportunities?seed=` + `OpportunityPanel.tsx`(발굴→포트폴리오 저장 '기회' 태그) + 셸 nav 'sec-opportunity'. 단위테스트 6케이스.
+- **② AI 마케터 grounding 확장(A2)** — `/ai-marketer` 컨텍스트에 4종 주입: 키워드 효율(낭비 키워드 8·상위 전환 5, 연결 시)·쇼핑 오가닉 순위(10)·부정클릭 의심 IP 수·최저가 역전(undercut). 전부 fail-soft(Promise.allSettled). SYSTEM 프롬프트에 각 데이터 활용 지시 4줄. 주간리포트 cron 은 quota 보호 위해 기존(stats+trend) 유지.
+- **③ 수익화 엔타이틀먼트 뼈대(A1)** — `ads-entitlements.ts`: `ad_entitlements`(플랜)·`ad_usage_daily`(사용량) + `PLAN_LIMITS`(free/starter/pro — 숫자만 바꾸면 됨) + `checkCapacity`/`meterDaily`. **집행은 `ADS_BILLING_ENFORCED='true'` 킬스위치(기본 OFF = 현행 무제한 byte-동일)**. 게이트 배선 5곳: 자동입찰 규칙(단일402/벌크)·clickguard 사이트·순위 타겟·가격 워치 + AI 일일 미터링(429). 어드민 `/api/admin/ads` PATCH plan + 목록 plan 컬럼 + `AdminAdsAccountsPage` 플랜 셀렉터. 단위테스트(킬스위치 OFF 무조건 통과 불변식 포함).
+- **④ 자동입찰 섀도우 모드(A6)** — `runAutobidShadowAll`: 활성 규칙을 dryRun 으로 돌려 "했을 변경"만 `ad_autobid_shadow`(seller×keyword×일 UNIQUE 멱등)에 기록. **PUT 0**. 게이트 = `ADS_AUTOBID_SHADOW_ENABLED='true'`(기본 OFF) && 실엔진 OFF(중복 방지). 일일 cron(`ads-autobid-shadow`, scheduled.ts additive) + GET `/searchad/autobid/shadow` + AutobidPanel '섀도우 기록' 섹션. 실엔진 켜기 전 신뢰 축적용. 게이트 단위테스트(트랩 DB 로 미접근 증명).
+- **⑤ 온보딩 체크리스트(A5-lite)** — `OnboardingChecklist.tsx`: 연동→키워드→자동화 3스텝(기존 API 3개 재사용), 앵커 점프, 전부 완료/닫기 시 자동 숨김. 대시보드 상단.
+- **⑥ 랜딩 예시 라벨(A3)** — hero 목업 '예시 화면' + 수치 밴드/고객사례 각주("서비스 소개용 예시"). 시안 훼손 없는 각주 방식(실데이터 교체는 라이브 검증 후).
+- 검증: tsc 0(config 경고 제외) · sql bind/column/table/not-null/pagination/theme 가드 0 · 신규 파일 전부 <600줄. ⚠️ vitest/worker-build 는 환경 제약으로 CI 검증. 상세: `urads-HANDOFF.md` §4 표 + §5 env 표 + §7-B.
+
 ## ✅ 2026-07-01 — 유어애즈(UR Ads) 2차 전수감사 (4축 병렬 심층) + 예방 하드닝 2건 (대표 "유어애즈 서비스 전수조사해봐")
 audit-gate(38 GREEN / file-size RED 1=선재 무관) 후 가드 미보유 4축을 병렬 서브에이전트로 심층 재감사: **①인증·IDOR ②머니 하드캡 ③런타임크래시·입력검증 ④서비스분리·배선.** 결과 = 6.6 라이브감사 이후 **신규 확정 결함 0**(unlock 은 이미 상수시간 `timingSafeEqual` 로 수정됨 · IDOR 0 · 크래시 0 · 분리 완전 클린 · JWT HS256 핀·reset토큰 CSPRNG+해시+1회용 · planBid 하드캡 이중강제 확인). 예방적 하드닝 2건만 반영:
 - **refreshWatch 자기-스코프화**(`price-monitor.ts`) — UPDATE 에 `AND seller_id=?` 추가(라우트로 차폐됐던 잠재 IDOR, 헬퍼 자체 안전화, 호출부 3곳 배선).
