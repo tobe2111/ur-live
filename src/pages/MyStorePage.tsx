@@ -24,6 +24,8 @@ interface LedgerItem {
 interface FcfsItem {
   product_id: number; name: string; spots: number; realApplied: number; appliedDisplay: number; deadline: string | null
 }
+// 🔗 2026-07-02 (대표 #5 심화 — 대시보드 없이 인라인 조정): 내 상품 재고·노출 관리.
+interface StoreProduct { id: number; name: string; price: number; stock: number; is_active: boolean | number; is_supply_product?: boolean }
 
 const STAT = (label: string, value: string, sub?: string) => ({ label, value, sub })
 
@@ -36,19 +38,25 @@ export default function MyStorePage() {
   const [loading, setLoading] = useState(true)
   const [forbidden, setForbidden] = useState(false)
   const [busy, setBusy] = useState<number | null>(null)
+  // 🔗 2026-07-02 (#5 심화): 내 상품 인라인 관리 상태.
+  const [products, setProducts] = useState<StoreProduct[]>([])
+  const [stockDraft, setStockDraft] = useState<Record<number, string>>({})
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [ledger, mine, fcfsRes] = await Promise.all([
+      const sellerAuth = { headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } }
+      const [ledger, mine, fcfsRes, prodRes] = await Promise.all([
         api.get('/api/group-buy/store-voucher-ledger'),
         api.get('/api/voucher-dispute/mine').catch(() => ({ data: { data: [] } })),
         api.get('/api/group-buy/store-fcfs').catch(() => ({ data: { data: [] } })),
+        api.get('/api/seller/products', sellerAuth).catch(() => ({ data: { data: [] } })),
       ])
       if (ledger.data?.success === false) { setForbidden(true); return }
       setSummary(ledger.data?.data?.summary || null)
       setRecent(ledger.data?.data?.recent || [])
       setFcfs(fcfsRes.data?.data || [])
+      setProducts((prodRes.data?.data || []).filter((p: StoreProduct) => !p.is_supply_product))
       const open = new Set<number>((mine.data?.data || []).filter((d: { status: string }) => d.status === 'open').map((d: { voucher_id: number }) => d.voucher_id))
       setDisputedIds(open)
     } catch (e) {
@@ -58,6 +66,33 @@ export default function MyStorePage() {
     } finally { setLoading(false) }
   }, [])
   useEffect(() => { load() }, [load])
+
+  // 🔗 2026-07-02 (#5 심화): 상품 노출/숨김 토글 — 대시보드 안 가고 인라인.
+  async function toggleActive(p: StoreProduct) {
+    const next = !(Number(p.is_active) === 1 || p.is_active === true)
+    setBusy(p.id)
+    try {
+      await api.put(`/api/seller/products/${p.id}`, { is_active: next, status: next ? 'ACTIVE' : 'PAUSED' },
+        { headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } })
+      setProducts(prev => prev.map(x => x.id === p.id ? { ...x, is_active: next ? 1 : 0 } : x))
+      toast.success(next ? '노출됨' : '숨김 처리됨')
+    } catch { toast.error('변경 실패 — 다시 시도해주세요') } finally { setBusy(null) }
+  }
+  // 재고 인라인 저장.
+  async function saveStock(p: StoreProduct) {
+    const raw = stockDraft[p.id]
+    if (raw === undefined) return
+    const n = Math.floor(Number(raw))
+    if (!Number.isFinite(n) || n < 0) { toast.error('재고는 0 이상 숫자'); return }
+    setBusy(p.id)
+    try {
+      await api.put(`/api/seller/products/${p.id}`, { stock: n },
+        { headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } })
+      setProducts(prev => prev.map(x => x.id === p.id ? { ...x, stock: n } : x))
+      setStockDraft(prev => { const c = { ...prev }; delete c[p.id]; return c })
+      toast.success('재고 저장됨')
+    } catch { toast.error('재고 저장 실패') } finally { setBusy(null) }
+  }
 
   async function report(v: LedgerItem) {
     if (!(await confirmDialog({ message: `이 이용권을 "고객이 방문하지 않았다"고 신고할까요?\n신고 시 해당 건의 정산이 보류되고 운영자가 확인합니다.`, danger: true }))) return
@@ -136,6 +171,50 @@ export default function MyStorePage() {
               ))}
             </div>
             <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2 px-1">월~일 사용분은 <b className="text-gray-600 dark:text-gray-300">차주 목요일</b>에 정산돼요. 고객이 방문하지 않은 건은 아래에서 신고하면 정산이 보류됩니다.</p>
+
+            {/* 🔗 2026-07-02 (대표 #5 심화): 내 상품 재고·노출 인라인 관리 — 대시보드 안 가고 바로 조정. */}
+            {products.length > 0 && (
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <p className="text-[13px] font-bold text-gray-900 dark:text-white">내 상품 · 재고·노출 관리</p>
+                  <button onClick={() => navigate('/seller/products')} className="text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">전체 관리 →</button>
+                </div>
+                <div className="space-y-2">
+                  {products.map(p => {
+                    const active = Number(p.is_active) === 1 || p.is_active === true
+                    const draft = stockDraft[p.id]
+                    const dirty = draft !== undefined && draft !== String(p.stock ?? 0)
+                    return (
+                      <div key={p.id} className="flex items-center gap-2 rounded-xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212] px-3.5 py-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-bold text-gray-900 dark:text-white truncate">{p.name}</p>
+                          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{formatNumber(p.price)}원 · 재고</p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <input
+                            type="number" inputMode="numeric" min={0}
+                            value={draft ?? String(p.stock ?? 0)}
+                            onChange={e => setStockDraft(prev => ({ ...prev, [p.id]: e.target.value }))}
+                            className="w-16 px-2 py-1 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] text-gray-900 dark:text-white text-[12px] text-right"
+                            aria-label={`${p.name} 재고`}
+                          />
+                          {dirty && (
+                            <button onClick={() => saveStock(p)} disabled={busy === p.id} className="px-2 py-1 rounded-lg bg-blue-600 text-white text-[11px] font-bold disabled:opacity-50">저장</button>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => toggleActive(p)}
+                          disabled={busy === p.id}
+                          className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold disabled:opacity-50 ${active ? 'bg-gray-900/10 dark:bg-white/15 text-gray-900 dark:text-white' : 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-400 dark:text-gray-500'}`}
+                        >
+                          {active ? '노출중' : '숨김'}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* 🎯 선착순 응모 현황 — 운영자가 내 매장 상품을 선착순으로 걸었을 때만 노출(읽기 전용) */}
             {fcfs.length > 0 && (
