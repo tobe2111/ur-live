@@ -176,6 +176,11 @@ export async function handleCronScheduled(
       const { reconcileOrphanedDepositOrders } = await import('../features/supply/api/wholesale-deposit-core')
       return reconcileOrphanedDepositOrders(env.DB)
     }));
+    // 🏦 2026-07-02: 출금 정산원장 자가복구 — status=paid 인데 net-out row 미확정인 출금을 멱등 완료(재출금 방지).
+    ctx.waitUntil(safeCron('wholesale-withdrawal-reconcile', async () => {
+      const { reconcileWithdrawalLedgers } = await import('../features/supply/api/supplier-withdrawal-core')
+      return reconcileWithdrawalLedgers(env.DB)
+    }));
     // 🛡️ 2026-05-21 Phase TD-3: 토스 환불 실패 자동 재시도 (exponential backoff).
     ctx.waitUntil(safeCron('toss-refund-retry', () => handleTossRefundRetry(env)));
     // 🛡️ 2026-05-24: 별점 "신규" 영구 fix — daily (18 UTC) 외에도 매시간 catch.

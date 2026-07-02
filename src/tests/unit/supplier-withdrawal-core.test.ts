@@ -11,7 +11,7 @@ function makeDB(initial: Record<number, { available: number; reserved: number }>
   const bal = new Map<number, { available: number; reserved: number }>(
     Object.entries(initial).map(([k, v]) => [Number(k), { ...v }]),
   )
-  const settlements: { supplier_id: number; supply_amount: number; source: string }[] = []
+  const settlements: { supplier_id: number; product_id: number; supply_amount: number; source: string }[] = []
   const row = (sid: number) => bal.get(sid) ?? { available: 0, reserved: 0 }
 
   const run = (sql: string, a: unknown[]) => {
@@ -32,13 +32,20 @@ function makeDB(initial: Record<number, { available: number; reserved: number }>
       const amt = Number(a[0]); const sid = Number(a[1]); const r = row(sid)
       r.reserved = Math.max(0, r.reserved - amt); bal.set(sid, r); return { meta: { changes: 1 } }
     }
-    if (sql.includes('INSERT INTO supplier_settlements')) {
-      settlements.push({ supplier_id: Number(a[0]), supply_amount: Number(a[2]), source: 'withdrawal' }); return { meta: { changes: 1 } }
+    // settleWithdrawalLedger 의 음수 net-out row INSERT OR IGNORE — (product_id, source='withdrawal') 멱등.
+    if (sql.includes('INSERT') && sql.includes('supplier_settlements')) {
+      const sid = Number(a[0]); const pid = Number(a[1]); const amt = Number(a[2])
+      if (settlements.some((s) => s.product_id === pid && s.source === 'withdrawal')) return { meta: { changes: 0 } } // OR IGNORE dedup
+      settlements.push({ supplier_id: sid, product_id: pid, supply_amount: amt, source: 'withdrawal' }); return { meta: { changes: 1 } }
     }
     return { meta: { changes: 0 } }
   }
   const first = (sql: string, a: unknown[]) => {
     if (sql.includes('FROM supplier_balances')) { const r = row(Number(a[0])); return { available: r.available, reserved: r.reserved } }
+    // settleWithdrawalLedger 멱등판별 SELECT — 이미 net-out row 존재 여부.
+    if (sql.includes('FROM supplier_settlements') && sql.includes("source = 'withdrawal'")) {
+      const pid = Number(a[0]); return settlements.some((s) => s.product_id === pid && s.source === 'withdrawal') ? { x: 1 } : null
+    }
     return null
   }
   const db = {
@@ -98,5 +105,13 @@ describe('supplier-withdrawal-core — release(반려) / settle(송금완료)', 
     expect((await loadSpendable(db, 9)).spendable).toBe(6000)
     await settleWithdrawalLedger(db, 9, 7, 4000)            // available 6000, reserved 0
     expect((await loadSpendable(db, 9)).spendable).toBe(6000) // 동일
+  })
+
+  it('🛡️ 송금완료 멱등 — 같은 출금 2회 확정해도 잔액 1회만 차감(재출금/이중차감 방지)', async () => {
+    const { db, bal, settlements } = makeDB({ 9: { available: 10000, reserved: 3000 } })
+    expect(await settleWithdrawalLedger(db, 9, 42, 3000)).toBe(true)  // 신규 확정
+    expect(await settleWithdrawalLedger(db, 9, 42, 3000)).toBe(true)  // 멱등 재실행(no-op)
+    expect(bal.get(9)).toEqual({ available: 7000, reserved: 0 })      // 1회만 차감
+    expect(settlements.filter((s) => s.source === 'withdrawal').length).toBe(1) // 음수 row 1개만
   })
 })
