@@ -1056,6 +1056,24 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     ).bind(referralInfluencerId, referralInfluencerId).first().catch(() => null)
     if (!exists) referralInfluencerId = ''
   }
+  // 🎯 2026-07-01 (한도 race 차단): /join 사전검증 후 결제창 사이에 다른 탭 구매로 한도를 채우는
+  //   우회 가능 → **과금 전**(confirmTossPayment 이전) 재검증. 초과면 400 — 승인 안 된 결제는
+  //   Toss 측에서 자동 만료(환불 불필요, AMOUNT_MISMATCH 와 동일 패턴). fail-open(조회 실패 무시).
+  try {
+    const { getSupplyMeta } = await import('../../../worker/utils/product-supply-meta')
+    const mppMeta = await getSupplyMeta(DB, [Number(productId)]).catch(() => null)
+    const mppRaw = mppMeta?.get(Number(productId))?.max_per_person
+    const maxPerPerson = mppRaw != null && Number.isFinite(Number(mppRaw)) && Number(mppRaw) > 0 ? Math.floor(Number(mppRaw)) : 0
+    if (maxPerPerson > 0) {
+      const ownedRow = await DB.prepare(
+        "SELECT COUNT(*) AS n FROM vouchers WHERE product_id = ? AND user_id = ? AND status IN ('unused','used')"
+      ).bind(productId, userId).first<{ n: number }>().catch(() => ({ n: 0 }))
+      if (Number(ownedRow?.n ?? 0) + qty > maxPerPerson) {
+        return c.json({ success: false, error: `1인당 최대 ${maxPerPerson}개까지 구매할 수 있습니다`, code: 'PER_PERSON_LIMIT' }, 400)
+      }
+    }
+  } catch { /* fail-open */ }
+
   // amount 재검증 (defense-in-depth — 클라 amount 신뢰 X).
   // 🛡️ 2026-05-31: 즉시판매 단일가(A2) — 카드도 최대 tier 할인 적용 (딜 경로와 일치). toss-init 와 동일 계산.
   const tierDiscountPct = maxTierDiscount(product.group_buy_tiers)

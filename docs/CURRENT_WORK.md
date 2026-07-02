@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 이용권 플로우 재감사: 1인당 한도 갭 2건 마감 (대표 "이상적으로 구현 안 된 부분 없어?")
+이번 세션 신규 코드(1인당 한도) 표면을 적대적 재감사 → 갭 2건 확정·수정.
+- **① confirm-toss(카드 발급) 한도 재검증 누락(race)**: /join 사전검증 후 결제창 사이에 **다른 탭 구매로 한도를 채우면 초과 발급** 가능했음. → confirm-toss 의 **과금 전**(confirmTossPayment 이전, amount 재검증 옆) 재검증 추가 — 초과면 400 `PER_PERSON_LIMIT`(승인 안 된 결제는 Toss 자동 만료 → 환불 불필요, AMOUNT_MISMATCH 동일 패턴). fail-open. **Toss 잠금 심볼 무접촉**(비잠금 confirm-toss 핸들러의 검증 1블록 additive).
+- **② VoucherDetailPage(교환권 상세) 스텝퍼 무상한**: + 버튼에 cap 이 아예 없었음(서버 400 은 막지만 UX 갭). → `max_per_person`(상세 API 가 이미 반환) cap, 미설정 시 10. disabled 스타일 동반.
+- **재확인(건강)**: 교환권 구매도 같은 `/join` 경유라 서버 한도 적용됨 · 환불(refunded)은 누적 카운트 제외(재구매 가능) · GroupBuyDetailPage cap/안내 기존 배선.
+- 검증: tsc 0 · group-buy/voucher 84 pass · sql 0 · build 0.
+
 ## ✅ 2026-07-01 — 데모 플로우 적대적 재검증 → 구멍 1 + 개선 2 (대표 "이상적인지 확인해줘")
 직전 데모 3종 수정을 main 병합 최종 상태로 재검증. **건강 확인**: POST/DELETE 둘 다 앱캐시+edge 피드 무효화(타 세션 병합과 결합) · `products.slug` UNIQUE 없음(retire 리네임 안전) · 소비자 목록 `is_active=1` 필터(retired 미노출) · DELETE 멱등(retired 는 재스캔 제외) · 셀러 폼 이미지 경로는 기존 https 승격 보유. **발견/수정 3건**:
 - 🔴 **ManualDealForm 사진 후보가 같은 mixed content 구멍(진짜 원인 유력)**: `fetchPhotos` 가 raw `link`(http) 그대로 저장 + 후보 그리드 `<img src=thumbnail(http)>` 렌더 — **대표 콘솔 에러(imgnews/shop1.phinf)와 정확히 일치하는 경로**(seed 만 고치고 이걸 놓쳤음). → https 원본만 채택, http 원본은 네이버 CDN 썸네일(https 승격)로 대체, 미리보기도 https.
