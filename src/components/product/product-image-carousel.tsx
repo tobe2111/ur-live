@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import useEmblaCarousel from 'embla-carousel-react'
+import { cfImage, cfSrcSet } from '@/utils/cf-image'
 
 interface ProductImageCarouselProps {
   images: string[];
@@ -34,8 +35,10 @@ export function ProductImageCarousel({ images }: ProductImageCarouselProps) {
         <div className="flex">
           {images.map((src, index) => (
             <div key={src || `slide-${index}`} className="relative aspect-square w-full flex-none">
+              {/* 🚑 2026-07-02 (상세 리뷰): raw 원본(최대 1MB+) → cfImage 리사이즈 — LCP 단축 */}
               <img
-                src={src}
+                src={cfImage(src, { width: 800, quality: 85, format: 'auto' }) || src}
+                srcSet={cfSrcSet(src, 800) || undefined}
                 alt={`Product image ${index + 1}`}
                 className="w-full h-full object-cover"
                 loading={index === 0 ? 'eager' : 'lazy'}

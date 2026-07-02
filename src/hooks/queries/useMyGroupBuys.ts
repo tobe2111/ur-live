@@ -99,6 +99,12 @@ async function fetchMyGroupBuys(): Promise<MyGroupBuysData> {
     community = [...created, ...joined]
   }
 
+  // 🛡️ 2026-07-02: 3개 전부 실패(네트워크 단절 등)면 throw → isError → 페이지 에러+재시도 UI.
+  //   부분 실패는 기존대로 graceful(성공한 목록만 표시). 전멸을 "참여 내역 없음"으로 위장하지 않음.
+  if ([refRes, vouRes, comRes].every((r) => r.status === 'rejected')) {
+    throw (refRes as PromiseRejectedResult).reason ?? new Error('my group-buys load failed')
+  }
+
   // 추천 그룹의 상품정보 hydration (교환권은 이미 상품 필드 포함)
   const products: Record<number, ProductInfo> = {}
   const productIds = Array.from(new Set(referralGroups.map((g) => g.product_id).filter(Boolean)))

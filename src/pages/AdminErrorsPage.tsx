@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import AdminLayout from '@/components/AdminLayout'
 import SEO from '@/components/SEO'
 
 /**
@@ -75,6 +76,7 @@ export default function AdminErrorsPage() {
   }
 
   return (
+    <AdminLayout title="Frontend 에러">
     <div className="min-h-screen bg-gray-50 p-4">
       <SEO title="Frontend 에러 대시보드" url="/admin/errors" noindex />
       <div className="max-w-6xl mx-auto">
@@ -183,5 +185,6 @@ export default function AdminErrorsPage() {
         </div>
       </div>
     </div>
+    </AdminLayout>
   )
 }

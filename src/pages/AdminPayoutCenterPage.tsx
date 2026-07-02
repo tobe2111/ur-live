@@ -4,6 +4,7 @@
  * 어드민 라이트 테마 고정 (dark: 금지 룰).
  */
 import { useState } from 'react'
+import AdminLayout from '@/components/AdminLayout'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -57,6 +58,7 @@ export default function AdminPayoutCenterPage() {
   }
 
   return (
+    <AdminLayout title="지급 센터">
     <div className="ur-content-full px-4 lg:px-8 py-6 space-y-5">
       <AdminFinanceTabs />
       {/* 🛡️ 2026-07-02 (감사 #10): 5xx/401/403 을 '대기 신청 없음'으로 위장하지 않도록 표면화 */}
@@ -186,6 +188,7 @@ export default function AdminPayoutCenterPage() {
       {/* 🧾 정산 매입세금계산서 역발행 현황 */}
       <SettlementTaxInvoicesPanel />
     </div>
+    </AdminLayout>
   )
 }
 

@@ -18,11 +18,14 @@ const STATUS_BADGE: Record<string, { label: string; cls: string; icon: typeof Ch
   approved: { label: '송금 완료', cls: 'bg-emerald-100 text-emerald-700', icon: CheckCircle },
   rejected: { label: '거절', cls: 'bg-red-100 text-red-700', icon: XCircle },
 }
+// 🛡️ 2026-07-02: 정의 밖 status 방어 — meta undefined 렌더 크래시 방지.
+const STATUS_FALLBACK = { label: '처리 중', cls: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300', icon: Clock } as const
 
 export default function MyCommissionsPage() {
   const navigate = useNavigate()
   // 🛡️ 2026-06-01 Tier2: 수동 Promise.all → useMyCommissions 단일 쿼리. 출금 신청 후 refetch.
-  const { data, isLoading: loading, refetch } = useMyCommissions()
+  // 🛡️ 2026-07-02: isError 분기 — 훅이 양 엔드포인트 전멸 시 throw 하게 바뀜("적립 0원" 위장 방지).
+  const { data, isLoading: loading, isError, refetch } = useMyCommissions()
   const summary = data?.summary ?? { total_pending: 0, total_granted: 0, total_withdrawn: 0 }
   const commissions = data?.commissions ?? []
   const withdrawals = data?.withdrawals ?? []
@@ -62,22 +65,33 @@ export default function MyCommissionsPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
-      <SEO title="추천 Commission - 유어딜" description="3단계 추천 commission 잔액 및 출금" url="/my-commissions" />
+      <SEO title="추천 수익 - 유어딜" description="3단계 추천 수익 잔액 및 출금" url="/my-commissions" />
 
       <header className="sticky top-0 md:top-14 z-40 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
         <div className="ur-content-narrow flex items-center justify-between px-4 lg:px-8 h-[52px]">
           <button onClick={() => navigate(-1)} className="w-9 h-9 flex items-center justify-center" aria-label="뒤로가기">
             <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" />
           </button>
-          <h1 className="text-[15px] font-bold text-gray-900 dark:text-white">추천 Commission</h1>
+          <h1 className="text-[15px] font-bold text-gray-900 dark:text-white">추천 수익</h1>
           <div className="w-9" />
         </div>
       </header>
 
       <main className="ur-content-narrow px-4 lg:px-8 pb-20 pt-4">
+        {/* 🛡️ 2026-07-02: 로드 전멸 시 잔액 0원 카드 대신 에러 + 재시도 (돈 표면 오표시 방지). */}
+        {isError ? (
+          <div className="text-center py-20">
+            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">수익 정보를 불러오지 못했어요</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
+            <button onClick={() => refetch()} className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">
+              다시 시도
+            </button>
+          </div>
+        ) : (
+        <>
         {/* 잔액 카드 */}
-        <div className="rounded-3xl p-6 bg-gradient-to-br from-gray-900 to-gray-900 text-white mb-4">
-          <p className="text-[12px] opacity-80">출금 가능 commission</p>
+        <div className="rounded-3xl p-6 bg-gray-900 dark:bg-[#1A1A1A] text-white mb-4">
+          <p className="text-[12px] opacity-80">출금 가능 수익</p>
           <p className="text-[36px] font-extrabold leading-tight mt-1">{formatWon(summary.total_granted)}</p>
           <div className="flex items-center gap-4 mt-3 text-[11px] opacity-80">
             <span>대기 {formatWon(summary.total_pending)}</span>
@@ -87,7 +101,7 @@ export default function MyCommissionsPage() {
           <button
             onClick={() => setShowForm(true)}
             disabled={summary.total_granted < 10000}
-            className="mt-4 w-full py-3 bg-white dark:bg-[#0A0A0A] text-blue-700 rounded-2xl font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+            className="mt-4 w-full py-3 bg-white dark:bg-white text-gray-900 dark:text-gray-900 rounded-2xl font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
           >
             <Wallet className="w-4 h-4" />
             {summary.total_granted < 10000 ? '10,000원 이상부터 출금 가능' : '출금 신청하기'}
@@ -121,7 +135,7 @@ export default function MyCommissionsPage() {
             </div>
             <div className="flex gap-2 mt-3">
               <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 bg-gray-100 dark:bg-[#1A1A1A] rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300">취소</button>
-              <button onClick={submit} disabled={submitting} className="flex-[2] py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold disabled:opacity-50">
+              <button onClick={submit} disabled={submitting} className="flex-[2] py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold disabled:opacity-50">
                 {submitting ? '신청 중...' : `${formatWon(summary.total_granted)} 출금 신청`}
               </button>
             </div>
@@ -134,7 +148,7 @@ export default function MyCommissionsPage() {
             <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">출금 이력</h3>
             <div className="space-y-2">
               {withdrawals.map(w => {
-                const meta = STATUS_BADGE[w.status]
+                const meta = STATUS_BADGE[w.status] ?? STATUS_FALLBACK
                 const Icon = meta.icon
                 return (
                   <div key={w.id} className="rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-3">
@@ -159,18 +173,18 @@ export default function MyCommissionsPage() {
 
         {/* commission 리스트 */}
         <section>
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">최근 commission</h3>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">최근 적립 내역</h3>
           {loading ? (
-            <p className="text-xs text-gray-400 py-8 text-center">불러오는 중...</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 py-8 text-center">불러오는 중...</p>
           ) : commissions.length === 0 ? (
-            <p className="text-xs text-gray-400 py-8 text-center">아직 commission 이 없습니다.</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 py-8 text-center">아직 적립된 수익이 없습니다.</p>
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-[#1A1A1A] border border-gray-100 dark:border-[#1A1A1A] rounded-xl overflow-hidden">
               {commissions.map(c => (
                 <div key={c.id} className="flex items-center justify-between px-3 py-2.5 text-[12px]">
                   <div>
                     <p className="text-gray-900 dark:text-white">주문 #{c.order_id} · {c.tier}단계</p>
-                    <p className="text-[10px] text-gray-400">{new Date(c.created_at).toLocaleDateString('ko-KR')} · {c.status}</p>
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500">{new Date(c.created_at).toLocaleDateString('ko-KR')} · {c.status}</p>
                   </div>
                   <span className="font-bold text-gray-900 dark:text-white">{formatWon(c.commission_amount)}</span>
                 </div>
@@ -178,6 +192,8 @@ export default function MyCommissionsPage() {
             </div>
           )}
         </section>
+        </>
+        )}
       </main>
     </div>
   )

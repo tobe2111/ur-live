@@ -266,7 +266,7 @@ import { communityGroupBuyRoutes } from '../features/community-group-buy/api/com
 import { referralRoutes } from '../features/referral/api/referral.routes';
 // 🖼️ 2026-07-02 (대표 "사진이 빠르게 안 나타남"): 상세 히어로 preload URL 생성 — 클라와 동일 함수 재사용
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
-import { cfImage } from '../utils/cf-image';
+import { cfImage, cfSrcSet } from '../utils/cf-image';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -677,20 +677,30 @@ app.use('*', async (c, next) => {
               { html: true },
             );
             // 🖼️ 2026-07-02 [UNLOCK_LOADING] (대표 "사진이 빠르게 안 나타남"): 공구/교환권 상세 히어로가
-            //   CSS background-image 라 브라우저 프리로드 스캐너를 못 타 [엔트리→페이지 청크→렌더] 뒤에야
-            //   다운로드 시작 → 사진이 늦게 뜸. seed 의 image_url 로 클라와 동일한 cfImage(width 900) URL 을
-            //   <link rel=preload as=image> 주입 → HTML 파싱 즉시 병렬 다운로드, 렌더 시점엔 캐시 적중.
+            //   프리로드 스캐너를 못 타(공구=CSS background-image, 교환권=React 렌더 후 <img>)
+            //   [엔트리→페이지 청크→렌더] 뒤에야 다운로드 시작 → 사진이 늦게 뜸. seed 의 image_url 로
+            //   클라와 **동일 함수**(cfImage/cfSrcSet 공유 import)로 URL 을 만들어 <link rel=preload as=image>
+            //   주입 → HTML 파싱 즉시 병렬 다운로드, 렌더 시점엔 캐시 적중(byte-일치 보장).
+            //   표면별 정합: /group-buy/:id 히어로=cfImage(900) 단일 URL ↔ /vouchers/:id 히어로=
+            //   cfImage(800)+cfSrcSet(800) 밀도 srcSet → preload 도 각각 동일 형태로(불일치 시 이중 다운로드).
             //   (Save-Data 사용자만 quality 65 로 URL 이 달라 미적중 — 히어로 1장 한정 허용 트레이드오프.)
             if (ssrSlot === 'DETAIL') {
               try {
                 const seed = JSON.parse(ssrPayload) as { data?: { image_url?: string } };
                 const heroSrc = seed?.data?.image_url;
-                const heroUrl = heroSrc ? cfImage(heroSrc, { width: 900, format: 'auto' }) : '';
-                if (heroUrl && !heroUrl.startsWith('data:')) {
-                  el.append(
-                    `<link rel="preload" as="image" fetchpriority="high" href="${heroUrl.replace(/"/g, '&quot;')}">`,
-                    { html: true },
-                  );
+                if (heroSrc) {
+                  const esc = (s: string) => s.replace(/"/g, '&quot;');
+                  const isVoucherSurface = url.pathname.startsWith('/vouchers/');
+                  const heroUrl = isVoucherSurface
+                    ? cfImage(heroSrc, { width: 800, format: 'auto' })
+                    : cfImage(heroSrc, { width: 900, format: 'auto' });
+                  const heroSrcSet = isVoucherSurface ? cfSrcSet(heroSrc, 800) : '';
+                  if (heroUrl && !heroUrl.startsWith('data:')) {
+                    el.append(
+                      `<link rel="preload" as="image" fetchpriority="high" href="${esc(heroUrl)}"${heroSrcSet ? ` imagesrcset="${esc(heroSrcSet)}"` : ''}>`,
+                      { html: true },
+                    );
+                  }
                 }
               } catch { /* seed 파싱 실패 — preload 생략(치명 아님) */ }
             }
@@ -1238,6 +1248,8 @@ app.use('/api/products/:id', publicCache(120), cacheControl(120));      // 2 min
 app.use('/api/products/:id/options', publicCache(300), cacheControl(300));  // 5 min — 거의 안 변함
 app.use('/api/reviews/product/:id/summary', publicCache(180), cacheControl(180));  // 3 min
 app.use('/api/streams', publicCache(30), cacheControl(30));      // 30 sec (공개 라이브 목록 — user-agnostic)
+// 🧯 2026-07-02 (대표 "트래픽 폭주" 점검): 추첨 /active — 홈·지도 마운트마다 전 방문자 호출 + 캐시 0 + 상품별 COUNT → 폭주 시 D1 스탬피드. user-agnostic(내 응모는 /:id/me 인증 경로 별도) → 30s. 응모 직후 카운트는 POST /apply 응답이 fresh 라 UX 영향 0.
+app.use('/api/fcfs/active', publicCache(30), cacheControl(30));
 // 🛡️ 2026-05-22 사용자 신고 "메인 공구 상품 로딩 너무 느림" 영구 해결:
 //   edge cache 60s → 300s + SWR 1800s.
 //   stale-while-revalidate 1800s = 5분 fresh + 30분 stale 허용 동안 background revalidate.

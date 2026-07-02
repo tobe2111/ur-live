@@ -41,10 +41,11 @@ describe('FloatingActionBar', () => {
     expect(queryByText('장바구니')).toBeNull()
   })
 
-  it('disabled: 주요 CTA 비활성', () => {
+  it('disabled: 주요 CTA 비활성 + 라벨 "품절"', () => {
     const onBuyNow = vi.fn()
-    const { getByText } = render(<FloatingActionBar {...baseProps} onBuyNow={onBuyNow} disabled />)
-    const btn = getByText('바로 구매').closest('button')!
+    // disabled 면 CTA 라벨이 '바로 구매'→'품절'(장바구니도 '품절') — 주요 CTA(마지막 품절 버튼)가 비활성.
+    const { getAllByText } = render(<FloatingActionBar {...baseProps} onBuyNow={onBuyNow} disabled />)
+    const btn = getAllByText('품절').pop()!.closest('button')!
     expect(btn.disabled).toBe(true)
     fireEvent.click(btn)
     expect(onBuyNow).not.toHaveBeenCalled()

@@ -8,6 +8,7 @@
  * 엔드포인트:
  * - GET    /coupons
  * - POST   /coupons
+ * - PATCH  /coupons/:id — 부분 수정
  * - DELETE /coupons/:id
  * - POST   /coupons/:id/send-segment — 세그먼트 발송
  *
@@ -68,6 +69,79 @@ adminCouponsRoutes.post('/coupons', cors(), async (c) => {
       .bind(code, name, type, valNum, minOrder, maxDisc, totalCnt, body.expires_at || null).run();
     return c.json({ success: true, message: '쿠폰이 생성되었습니다' });
   } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
+});
+
+// PATCH /coupons/:id — 쿠폰 수정 (부분 업데이트: 보내온 필드만 SET, POST 생성과 동일 검증)
+adminCouponsRoutes.patch('/coupons/:id', cors(), async (c) => {
+  try {
+    const DB = c.env.DB;
+    // 🛡️ 입력 검증: 양수 정수만
+    const idNum = Number(c.req.param('id'));
+    if (!Number.isInteger(idNum) || idNum < 1) {
+      return c.json({ success: false, error: '유효하지 않은 id' }, 400);
+    }
+    const body = await c.req.json<{
+      code?: string; name?: string; type?: string; value?: number;
+      min_order_amount?: number; max_discount?: number | null; total_count?: number; expires_at?: string | null
+    }>();
+
+    const sets: string[] = [];
+    const binds: (string | number | null)[] = [];
+
+    if (body.code !== undefined) {
+      if (typeof body.code !== 'string' || !body.code || body.code.length > 50) return c.json({ success: false, error: 'code 50자 이하' }, 400);
+      // 🛡️ code UNIQUE 사전 체크 — 다른 쿠폰이 이미 쓰는 코드면 친절한 409
+      const dup = await DB.prepare('SELECT id FROM coupons WHERE code = ? AND id != ?').bind(body.code, idNum).first<{ id: number }>();
+      if (dup) return c.json({ success: false, error: `이미 사용 중인 쿠폰 코드입니다 (#${dup.id})` }, 409);
+      sets.push('code = ?'); binds.push(body.code);
+    }
+    if (body.name !== undefined) {
+      if (typeof body.name !== 'string' || !body.name || body.name.length > 100) return c.json({ success: false, error: 'name 100자 이하' }, 400);
+      sets.push('name = ?'); binds.push(body.name);
+    }
+    if (body.type !== undefined) {
+      if (!['percent', 'fixed'].includes(String(body.type))) return c.json({ success: false, error: 'type은 percent/fixed' }, 400);
+      sets.push('type = ?'); binds.push(String(body.type));
+    }
+    if (body.value !== undefined) {
+      const valNum = Number(body.value);
+      if (!Number.isFinite(valNum) || valNum < 0 || valNum > 10_000_000) return c.json({ success: false, error: 'value 0~1천만' }, 400);
+      sets.push('value = ?'); binds.push(valNum);
+    }
+    if (body.min_order_amount !== undefined) {
+      const minOrder = Number(body.min_order_amount || 0);
+      if (!Number.isFinite(minOrder) || minOrder < 0) return c.json({ success: false, error: 'min_order_amount 음수 불가' }, 400);
+      sets.push('min_order_amount = ?'); binds.push(minOrder);
+    }
+    if (body.max_discount !== undefined) {
+      const maxDisc = body.max_discount == null ? null : Number(body.max_discount);
+      if (maxDisc !== null && (!Number.isFinite(maxDisc) || maxDisc < 0)) return c.json({ success: false, error: 'max_discount 음수 불가' }, 400);
+      sets.push('max_discount = ?'); binds.push(maxDisc);
+    }
+    if (body.total_count !== undefined) {
+      const totalCnt = Number(body.total_count || 0);
+      if (!Number.isFinite(totalCnt) || totalCnt < 0) return c.json({ success: false, error: 'total_count 음수 불가' }, 400);
+      sets.push('total_count = ?'); binds.push(totalCnt);
+    }
+    if (body.expires_at !== undefined) {
+      if (body.expires_at !== null && typeof body.expires_at !== 'string') return c.json({ success: false, error: 'expires_at 형식 오류' }, 400);
+      sets.push('expires_at = ?'); binds.push(body.expires_at || null);
+    }
+
+    if (sets.length === 0) return c.json({ success: false, error: '수정할 필드가 없습니다' }, 400);
+
+    binds.push(idNum);
+    const result = await DB.prepare(`UPDATE coupons SET ${sets.join(', ')} WHERE id = ?`).bind(...binds).run();
+    if ((result.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '쿠폰을 찾을 수 없습니다' }, 404);
+    return c.json({ success: true, message: '쿠폰이 수정되었습니다' });
+  } catch (err) {
+    // 🛡️ 사전 체크와 UPDATE 사이 race — UNIQUE 충돌은 409 로 친절 메시지
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('UNIQUE constraint failed')) {
+      return c.json({ success: false, error: '이미 사용 중인 쿠폰 코드입니다' }, 409);
+    }
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
 });
 
 // DELETE /coupons/:id — 쿠폰 삭제

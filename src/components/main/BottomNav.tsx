@@ -207,6 +207,9 @@ export default function BottomNav() {
     // 🧭 2026-06-10: 링크샵도 청크+데이터 동시 워밍 (동네딜과 동일) — 누르는 순간 선요청.
     { icon: Sparkles,    label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath, prefetch: () => {
       if (linkshopPath.startsWith('/u/') && !linkshopPath.startsWith('/u/me')) {
+        // 🖼️ 2026-07-01 (로딩 딥다이브, additive): 사업자 링크샵(/u/ + linked_seller)은 CuratorPage 가
+        //   SellerPublicPage 를 lazy 렌더 → 그 청크도 함께 워밍(직렬 청크 대기 제거). 소비자-only 는 no-op 수준.
+        if (localStorage.getItem('linked_seller_username')) { import('@/pages/SellerPublicPage').catch(() => {}) }
         return import('@/pages/CuratorPage').then((m) => { m.warmCurator?.(linkshopPath.slice(3)) })
       }
       if (linkshopPath.startsWith('/profile/')) return import('@/pages/SellerPublicPage')

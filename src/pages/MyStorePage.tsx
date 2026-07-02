@@ -37,6 +37,8 @@ export default function MyStorePage() {
   const [disputedIds, setDisputedIds] = useState<Set<number>>(new Set())
   const [loading, setLoading] = useState(true)
   const [forbidden, setForbidden] = useState(false)
+  // 🛡️ 2026-07-02: 에러 상태 — 실패를 "발급 0건"으로 위장하지 않음(에러 화면 + 재시도).
+  const [loadError, setLoadError] = useState(false)
   const [busy, setBusy] = useState<number | null>(null)
   // 🔗 2026-07-02 (#5 심화): 내 상품 인라인 관리 상태.
   const [products, setProducts] = useState<StoreProduct[]>([])
@@ -44,6 +46,7 @@ export default function MyStorePage() {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(false)
     try {
       const sellerAuth = { headers: { Authorization: `Bearer ${localStorage.getItem('seller_token')}` } }
       const [ledger, mine, fcfsRes, prodRes] = await Promise.all([
@@ -62,7 +65,7 @@ export default function MyStorePage() {
     } catch (e) {
       const err = e as { response?: { status?: number } }
       if (err.response?.status === 403) setForbidden(true)
-      else toast.error('내 매장 정보를 불러오지 못했어요')
+      else { setLoadError(true); toast.error('내 매장 정보를 불러오지 못했어요') }
     } finally { setLoading(false) }
   }, [])
   useEffect(() => { load() }, [load])
@@ -158,6 +161,14 @@ export default function MyStorePage() {
         </div>
         {loading ? (
           <div className="text-center py-16 text-gray-400 text-sm">불러오는 중…</div>
+        ) : loadError ? (
+          <div className="text-center py-16">
+            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">매장 정보를 불러오지 못했어요</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
+            <button onClick={() => load()} className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">
+              다시 시도
+            </button>
+          </div>
         ) : (
           <>
             {/* 요약 */}

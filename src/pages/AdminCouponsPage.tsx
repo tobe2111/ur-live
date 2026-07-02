@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
-import { Plus, Trash2, Ticket, Copy, Send, X } from 'lucide-react'
+import { Plus, Trash2, Ticket, Copy, Send, X, Pencil } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
@@ -29,6 +29,7 @@ export default function AdminCouponsPage() {
   )
   const loadCoupons = () => refetch()
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState({
     code: '', name: '', type: 'fixed' as 'fixed' | 'percent',
     value: 0, min_order_amount: 0, max_discount: 0, total_count: 0, expires_at: ''
@@ -58,6 +59,28 @@ export default function AdminCouponsPage() {
     setForm(f => ({ ...f, code }))
   }
 
+  function resetForm() {
+    setEditingId(null)
+    setForm({ code: '', name: '', type: 'fixed', value: 0, min_order_amount: 0, max_discount: 0, total_count: 0, expires_at: '' })
+  }
+
+  function startEdit(c: Coupon) {
+    setEditingId(c.id)
+    setForm({
+      code: c.code,
+      name: c.name,
+      type: (c.type === 'percent' ? 'percent' : 'fixed'),
+      value: c.value ?? 0,
+      min_order_amount: c.min_order_amount ?? 0,
+      max_discount: c.max_discount ?? 0,
+      total_count: c.total_count ?? 0,
+      // datetime-local 은 'YYYY-MM-DDTHH:mm' 형식 필요 — DATETIME 공백 구분도 변환
+      expires_at: c.expires_at ? c.expires_at.replace(' ', 'T').slice(0, 16) : '',
+    })
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   async function handleCreate() {
     if (!form.code || !form.name || !form.value) {
       toast.error(t('admin.coupons.k002', { defaultValue: '코드, 이름, 할인값을 입력해주세요' }))
@@ -65,16 +88,27 @@ export default function AdminCouponsPage() {
     }
     setSubmitting(true)
     try {
-      const res = await api.post('/api/admin/coupons', form, { headers })
+      const res = editingId
+        ? await api.patch(`/api/admin/coupons/${editingId}`, form, { headers })
+        : await api.post('/api/admin/coupons', form, { headers })
       if (res.data.success) {
-        toast.success(t('admin.coupons.k003', { defaultValue: '쿠폰이 생성되었습니다' }))
+        toast.success(editingId
+          ? t('admin.coupons.k048', { defaultValue: '쿠폰이 수정되었습니다' })
+          : t('admin.coupons.k003', { defaultValue: '쿠폰이 생성되었습니다' }))
         setShowForm(false)
-        setForm({ code: '', name: '', type: 'fixed', value: 0, min_order_amount: 0, max_discount: 0, total_count: 0, expires_at: '' })
+        resetForm()
         loadCoupons()
       } else {
-        toast.error(res.data.error || t('admin.coupons.k004', { defaultValue: '생성 실패' }))
+        toast.error(res.data.error || (editingId
+          ? t('admin.coupons.k049', { defaultValue: '수정 실패' })
+          : t('admin.coupons.k004', { defaultValue: '생성 실패' })))
       }
-    } catch (err: unknown) { toast.error((err as { response?: { data?: { error?: string; message?: string }; status?: number } }).response?.data?.error || t('admin.coupons.k005', { defaultValue: '쿠폰 생성 실패' })) }
+    } catch (err: unknown) {
+      toast.error((err as { response?: { data?: { error?: string; message?: string }; status?: number } }).response?.data?.error
+        || (editingId
+          ? t('admin.coupons.k050', { defaultValue: '쿠폰 수정 실패' })
+          : t('admin.coupons.k005', { defaultValue: '쿠폰 생성 실패' })))
+    }
     finally { setSubmitting(false) }
   }
 
@@ -125,7 +159,7 @@ export default function AdminCouponsPage() {
           icon={<Ticket className="h-5 w-5" />}
           actions={
             <button
-              onClick={() => { setShowForm(!showForm); if (!showForm) generateCode() }}
+              onClick={() => { const opening = !showForm; setShowForm(opening); resetForm(); if (opening) generateCode() }}
               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
             >
               <Plus className="h-3.5 w-3.5" />
@@ -137,7 +171,23 @@ export default function AdminCouponsPage() {
         {/* 쿠폰 생성 폼 */}
         {showForm && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">{t('admin.coupons.k012', { defaultValue: '새 쿠폰 생성' })}</h2>
+            {editingId ? (
+              <div className="flex items-center gap-2 mb-4">
+                <h2 className="text-lg font-bold text-gray-900">
+                  {t('admin.coupons.k051', { defaultValue: '쿠폰 수정 중' })}
+                  <span className="ml-1.5 text-sm font-medium text-gray-500">#{editingId}</span>
+                </h2>
+                <button
+                  onClick={() => { setShowForm(false); resetForm() }}
+                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                >
+                  <X className="w-3 h-3" />
+                  취소
+                </button>
+              </div>
+            ) : (
+              <h2 className="text-lg font-bold text-gray-900 mb-4">{t('admin.coupons.k012', { defaultValue: '새 쿠폰 생성' })}</h2>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.coupons.k013', { defaultValue: '쿠폰 코드' })}</label>
@@ -242,10 +292,12 @@ export default function AdminCouponsPage() {
                 disabled={submitting}
                 className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
               >
-                {submitting ? t('admin.coupons.k026', { defaultValue: '생성 중...' }) : t('admin.coupons.k027', { defaultValue: '생성' })}
+                {submitting
+                  ? (editingId ? t('admin.coupons.k052', { defaultValue: '수정 중...' }) : t('admin.coupons.k026', { defaultValue: '생성 중...' }))
+                  : (editingId ? t('admin.coupons.k053', { defaultValue: '수정' }) : t('admin.coupons.k027', { defaultValue: '생성' }))}
               </button>
               <button
-                onClick={() => setShowForm(false)}
+                onClick={() => { setShowForm(false); resetForm() }}
                 className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200"
               >
                 취소
@@ -319,6 +371,13 @@ export default function AdminCouponsPage() {
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => startEdit(c)}
+                              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                              title={t('admin.coupons.k054', { defaultValue: '수정' })}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
                             <button
                               onClick={() => openSegmentModal(c.id)}
                               className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded"

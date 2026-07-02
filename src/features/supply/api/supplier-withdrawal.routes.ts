@@ -176,8 +176,17 @@ admin.post('/wholesale-withdrawals/:id/approve', requireAdminRole('finance'), ra
     }
 
     const amount = Math.floor(Number(row.amount) || 0)
-    // 💰 예약 → 실제 available 차감 확정(클로백 net-out row + 즉시 차감). 이 호출에서 1회만.
-    await settleWithdrawalLedger(DB, row.supplier_id, id, amount)
+    // 💰 예약 → 실제 available 차감 확정(net-out row + 즉시 차감). 멱등·검증됨(이 호출에서 1회만).
+    //   🛡️ 2026-07-02: settle 실패(음수 row 미확정) 시 reserved 는 잠긴 채 유지 → 재출금 불가(안전).
+    //   status 는 paid 유지(어드민이 이미 송금) — 시간별 스윕(reconcileWithdrawalLedgers)이 후속 완료.
+    const settled = await settleWithdrawalLedger(DB, row.supplier_id, id, amount)
+    if (!settled) {
+      createDashboardNotification(
+        DB, 'admin', null, 'supplier_withdrawal_settle_pending', '출금 정산 원장 확정 지연',
+        `출금 #${id}(제조사 #${row.supplier_id}, ${amount.toLocaleString('ko-KR')}원) 송금은 완료됐으나 정산 원장 확정이 지연됐습니다. 자동 스윕이 곧 완료합니다(재출금 불가 — 잔액 잠금 유지).`,
+        '/admin/wholesale-withdrawals',
+      ).catch(swallow('supplier-withdrawal:notify-settle-pending'))
+    }
 
     createDashboardNotification(
       DB, 'supplier', String(row.supplier_id), 'supplier_withdrawal_approved', '출금 완료',
