@@ -6,7 +6,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { DollarSign, TrendingUp, Users, Download, CheckCircle, Clock } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
@@ -159,6 +159,17 @@ export default function AdminSettlementPage() {
   return (
     <AdminLayout title={t('admin.pages.settlement')}>
       <AdminFinanceTabs />
+      {/* 🛡️ 2026-07-02 (감사 #10): 정산 통계/내역 로드 실패(5xx/401/403)를 빈 화면으로 위장하지 않도록 표면화 */}
+      {(statsQ.isError || recordsQ.isError) && (
+        <div className="mx-auto max-w-5xl px-4 pt-4">
+          <DashboardLoadError
+            error={statsQ.error ?? recordsQ.error}
+            onRetry={() => { statsQ.refetch(); recordsQ.refetch() }}
+            loginPath="/admin/login"
+            label="정산 데이터"
+          />
+        </div>
+      )}
       {/* 정산 되돌리기 사유 입력 모달 */}
       {revertModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">

@@ -87,7 +87,7 @@ app.post('/', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { name, contact_name, email, password, phone } = await c.req.json<{
     name: string; contact_name: string; email: string; password: string; phone?: string
-  }>()
+  }>().catch(() => ({} as any))
 
   if (!name || !contact_name || !email || !password) {
     return c.json({ success: false, error: 'name, contact_name, email, password 필수' }, 400)
@@ -125,7 +125,7 @@ app.patch('/:id', async (c) => {
     // 🛡️ 2026-06-27 (대표 — per-agency 율·기간 조정): 매장영입 커미션 율(%) + 한도(개월).
     store_intro_commission_pct?: number;    // 매장영입 매출 commission % (creditAgencyStoreIntroCommission 가 읽음)
     commission_term_months?: number | null; // 영입 가게당 commission 지급 한도(개월). null/0 = 무제한(현행)
-  }>()
+  }>().catch(() => ({} as any))
 
   const existing = await c.env.DB.prepare('SELECT id FROM agencies WHERE id = ?').bind(id).first()
   if (!existing) return c.json({ success: false, error: 'Not found' }, 404)
@@ -250,7 +250,7 @@ app.delete('/:id', async (c) => {
 // ── POST /agencies/:id/reset-password ─────────────────────────
 app.post('/:id/reset-password', rateLimit({ action: 'admin_agency_reset_password', max: 10, windowSec: 3600 }), async (c) => {
   const id = Number(c.req.param('id'))
-  const { newPassword } = await c.req.json<{ newPassword: string }>()
+  const { newPassword } = await c.req.json<{ newPassword: string }>().catch(() => ({} as any))
   if (!newPassword || newPassword.length < 8) {
     return c.json({ success: false, error: '비밀번호는 8자 이상이어야 합니다.' }, 400)
   }
@@ -281,7 +281,7 @@ app.get('/:id/sellers', async (c) => {
 app.post('/:id/sellers', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const agencyId = Number(c.req.param('id'))
-  const { seller_id } = await c.req.json<{ seller_id: number }>()
+  const { seller_id } = await c.req.json<{ seller_id: number }>().catch(() => ({} as any))
   if (!seller_id) return c.json({ success: false, error: 'seller_id 필수' }, 400)
 
   const agency = await c.env.DB.prepare('SELECT id FROM agencies WHERE id = ?').bind(agencyId).first()

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import api from '@/lib/api'
 import { safeTime } from '@/utils/safe-date'
 import { toast } from '@/hooks/useToast'
@@ -78,6 +79,12 @@ export default function SellerLiveBroadcastPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { streamId: urlStreamId } = useParams<{ streamId?: string }>()
+
+  // 🏭 라이브커머스 영구중단(LIVE_COMMERCE_SUSPENDED): 방송 페이지 자체를 차단 —
+  //   nav 는 store 모드로 숨겨졌지만 직접 URL/북마크/잔여 링크로의 도달을 셀러 홈으로 리다이렉트.
+  useEffect(() => {
+    if (LIVE_COMMERCE_SUSPENDED) navigate('/seller', { replace: true })
+  }, [navigate])
 
   // 데이터
   const [channels, setChannels] = useState<YouTubeChannel[]>([])

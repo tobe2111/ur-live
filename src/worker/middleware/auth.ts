@@ -513,11 +513,22 @@ export function requireAdminRole(...allowed: AdminRole[]) {
       if (allowed.includes(role)) { await next(); return; }
       return c.json(forbiddenResponse(`이 작업은 ${allowed.join('/')} 권한이 필요합니다 (현재: ${role})`), 403);
     } catch (err) {
-      // role 컬럼 없거나 조회 실패 — 기본은 super 로 fallback (역호환).
-      // 🔐 2026-06-11 (보안 감사 🟡#3): fail-open 이라 finance 게이트가 DB 에러로 무력화 가능 →
-      //   경보 로그(운영 안전상 통과는 유지 — fail-closed 면 정산 마비 위험).
-      try { if (typeof console !== 'undefined') console.error('[requireAdminRole] role 조회 실패 — super fallback (finance 게이트 우회 가능):', String(err)); } catch { /* */ }
-      await next();
+      // 🔐 2026-07-01 (보안 감사 ③): 이전엔 DB 오류 시 super 로 fail-OPEN → 일시적 D1 오류로
+      //   역할 게이트가 무력화(제한역할이 전권 획득)될 수 있었음. 이제 1회 재시도 후 fail-CLOSED.
+      //   (프로덕션은 admins.role 컬럼을 repair-schema/로그인이 보장하므로 정상 경로는 영향 없음.)
+      try {
+        const retry = await (c.env as { DB: D1Database }).DB
+          .prepare('SELECT role FROM admins WHERE id = ?')
+          .bind(String(user.id))
+          .first<{ role?: string }>();
+        const rawRole = retry?.role || 'super';
+        const role = (rawRole === 'super_admin' ? 'super' : rawRole) as AdminRole;
+        if (role === 'super' || allowed.includes(role)) { await next(); return; }
+        return c.json(forbiddenResponse(`이 작업은 ${allowed.join('/')} 권한이 필요합니다 (현재: ${role})`), 403);
+      } catch (err2) {
+        try { if (typeof console !== 'undefined') console.error('[requireAdminRole] role 조회 실패(재시도 포함) — 안전차단(403):', String(err), String(err2)); } catch { /* */ }
+        return c.json(forbiddenResponse('권한 확인 중 일시적 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'ADMIN_ROLE_CHECK_FAILED'), 403);
+      }
     }
   };
 }
