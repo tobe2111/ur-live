@@ -997,9 +997,37 @@ adminProductsRoutes.get('/dongnedeal/stats', cors(), async (c) => {
 adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
   try {
     const { DB } = c.env;
-    // 🎯 2026-07-01 (대표 "데모를 계속 추가할 수 있게"): 존재 시 차단(early-return) → **누적 추가**.
-    //   기존 slug(demo-deal-N)의 최대 N 다음 번호부터 이어 시드 → UNIQUE(slug) 충돌 원천 제거
-    //   (반쯤 시드된 상태에서 재시드하던 500 후보도 함께 해소).
+    // 🎯 2026-07-02 (대표): 옵션 — region(특정 지역, 예 "영등포") / category(특정 카테고리)로 시드.
+    const body = (await c.req.json().catch(() => ({}))) as { region?: string; category?: string };
+    const region = String(body.region || '').trim().slice(0, 30);
+    const catFilter = mapDealCategory(String(body.category || '').trim());
+    const items = catFilter ? DEAL_DEMO.filter((d) => d.cat === catFilter) : DEAL_DEMO;
+    if (items.length === 0) return c.json({ success: false, error: '해당 카테고리 데모 템플릿이 없습니다' }, 400);
+
+    // 🛡️ 2026-07-02 (대표 "영구적으로 해결"): 기존에 시드/등록된 **깨지는 이미지**(phinf 인증서
+    //   불일치·http mixed content) 일괄 치유 — search.pstatic 프록시로 랩. 새 시드뿐 아니라
+    //   이미 홈에 떠 있는 오염 카드(ERR_CERT_COMMON_NAME_INVALID)까지 이 버튼 한 번으로 복구.
+    let healed = 0;
+    try {
+      const { needsNaverImageHeal, toNaverSafeImageUrl } = await import('../../../shared/naver-safe-image');
+      const broken = await DB.prepare(
+        `SELECT id, image_url FROM products
+          WHERE image_url LIKE 'http://%'
+             OR image_url LIKE '%phinf%'
+             OR (image_url LIKE '%naver.net%' AND image_url NOT LIKE 'https://search.pstatic.net%')
+          LIMIT 500`
+      ).all<{ id: number; image_url: string }>().catch(() => ({ results: [] as { id: number; image_url: string }[] }));
+      for (const rowB of (broken.results || [])) {
+        if (!needsNaverImageHeal(rowB.image_url)) continue;
+        const safe = toNaverSafeImageUrl(rowB.image_url);
+        if (safe && safe !== rowB.image_url) {
+          await DB.prepare('UPDATE products SET image_url = ? WHERE id = ?').bind(safe, rowB.id).run().catch(() => {});
+          healed++;
+        }
+      }
+    } catch { /* best-effort — 치유 실패해도 시드 진행 */ }
+
+    // 누적 추가 — 기존 slug(demo-deal-N)의 최대 N 다음 번호부터(UNIQUE 충돌 원천 제거).
     const slugRows = await DB.prepare(`SELECT slug FROM products WHERE slug LIKE ?`).bind(DEAL_DEMO_SLUG + '%')
       .all<{ slug: string }>().catch(() => ({ results: [] as { slug: string }[] }));
     let maxSuffix = 0;
@@ -1008,18 +1036,19 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       const m = suffixRe.exec(String(row.slug || ''));
       if (m) maxSuffix = Math.max(maxSuffix, Number(m[1]));
     }
-    // 🖼️ 2026-07-01 (대표 요청): 가짜(picsum) 대신 네이버 이미지검색으로 실사진 확보(병렬, best-effort).
-    //   NAVER 키 없거나 검색 실패 시 각 항목의 기존 img(picsum)로 폴백 → 시딩은 항상 성공.
-    //   배치 회차(batchIndex) 사진 로테이션 → 누적 시드의 동일 카드 중복 노출 완화.
-    const batchIndex = Math.floor(maxSuffix / DEAL_DEMO.length);
+    // 🖼️ 실사진: 네이버 이미지검색(전 단계 search.pstatic 프록시 — 인증서 깨짐 구조적 0).
+    //   실패/키없음 → picsum 폴백. batchIndex 로테이션 = 누적 시드 동일 사진 중복 완화.
+    const batchIndex = Math.floor(maxSuffix / items.length);
     const { fetchNaverImageUrl } = await import('../../../worker/utils/naver-image-search');
     const resolvedImgs = await Promise.all(
-      DEAL_DEMO.map((d) => fetchNaverImageUrl(c.env, d.q, batchIndex).catch(() => null))
+      items.map((d) => fetchNaverImageUrl(c.env, d.q, batchIndex).catch(() => null))
     );
-    // 🎯 2026-07-01 (대표 "데모 이용권도 매장 지도 매칭 제대로"): 매장 있는 데모는 카카오 검색으로
-    //   실제 매장 좌표·주소·place_url 확보(query=업종+지역). 실패/키없음 → null(기존 폴백).
+    // 🎯 실제 매장 매칭(카카오 키워드 검색): region 지정 시 그 지역 매장으로 — 매장명·주소·좌표가
+    //   실제 장소로 채워져 지도 마커·카카오맵 링크(RestaurantMiniMap 이 매장명+주소로 자동 생성)까지 연결.
     const resolvedPlaces = await Promise.all(
-      DEAL_DEMO.map((d) => (d.rest || d.addr) ? kakaoPlaceLookup(c.env, `${d.q} ${d.addr}`).catch(() => null) : Promise.resolve(null))
+      items.map((d) => (d.rest || d.addr || region)
+        ? kakaoPlaceLookup(c.env, `${region || d.addr} ${d.q}`.trim()).catch(() => null)
+        : Promise.resolve(null))
     );
     // 🎯 2026-07-01 (대표 요청): 데모 딜을 추첨 응모(fcfs)로 — 정원 대비 지원수가 이미 넘치게(30/5, 10/3 …).
     //   삽입 후 last_row_id 로 product_supply_meta 에 fcfs 설정 기록 → 기존 fcfs UI 가 "선착순 {seed}/{spots}명" 표시.
@@ -1027,14 +1056,20 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     const fcfsDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7일 후 마감(데모)
     let seeded = 0;
     let realPhotos = 0;
-    for (let i = 0; i < DEAL_DEMO.length; i++) {
-      const d = DEAL_DEMO[i];
+    let placed = 0;
+    for (let i = 0; i < items.length; i++) {
+      const d = items[i];
       const img = resolvedImgs[i] || d.img;
       if (resolvedImgs[i]) realPhotos++;
       // 🎯 실제 매장 매칭 성공 시 그 매장의 이름/주소/좌표 사용(지도 정확). 실패 시 데모값(좌표 없음 → 클라 지오코딩).
       const place = resolvedPlaces[i];
+      if (place?.lat != null) placed++;
       const restName = place?.name || d.rest || null;
       const restAddr = place?.address || d.addr || null;
+      // 🎯 region 지정 시 상품명 지역 프리픽스 교체 — "[강남] …" → "[영등포] …" (없으면 부착).
+      const dispName = region
+        ? (/^\[[^\]]+\]/.test(d.name) ? d.name.replace(/^\[[^\]]+\]/, `[${region}]`) : `[${region}] ${d.name}`)
+        : d.name;
       const slug = DEAL_DEMO_SLUG + (maxSuffix + i + 1);  // 누적 추가 — 기존 번호 다음부터
       let res;
       try {
@@ -1042,14 +1077,14 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
           `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
              is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-        ).bind(d.name, `데모 동네딜 — ${d.name}`, d.price, d.orig, img, d.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, slug).run();
+        ).bind(dispName, `데모 동네딜 — ${dispName}`, d.price, d.orig, img, d.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, slug).run();
       } catch {
         // 🛡️ restaurant_lat/lng 컬럼 미존재 환경 폴백 — 좌표 없이 시드(클라 지오코딩이 지도 보정).
         res = await DB.prepare(
           `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
              is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, slug, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, datetime('now'), datetime('now'))`
-        ).bind(d.name, `데모 동네딜 — ${d.name}`, d.price, d.orig, img, d.cat, restName, restAddr, slug).run();
+        ).bind(dispName, `데모 동네딜 — ${dispName}`, d.price, d.orig, img, d.cat, restName, restAddr, slug).run();
       }
       seeded++;
       // 추첨 응모 설정(정원 초과 지원 시드). 실패해도 상품 시딩엔 영향 없음(best-effort).
@@ -1067,10 +1102,10 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         await setSupplyMeta(DB, pid, { kakao_place_url: place.placeUrl }).catch(() => {});
       }
     }
-    await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded, realPhotos } }).catch(() => {});
+    await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded, realPhotos, placed, healed, region: region || null, category: catFilter || null } }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
-    return c.json({ success: true, seeded, realPhotos });
+    return c.json({ success: true, seeded, realPhotos, placed, healed, region: region || null, category: catFilter || null });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
