@@ -45,7 +45,15 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const [search, setSearch] = useState('')
   const [mapView, setMapView] = useState(true)
   // 🛡️ 2026-04-28: Recommended Pack — 거리/카테고리/정렬
-  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
+  // 📍 2026-07-02 (대표 "첫 화면과 완성 화면이 달라 헷갈림"): 거리(km)는 GPS 측위 후에만 계산돼
+  //   1~5초 늦게 나타나던 것 — 마지막 측위를 localStorage 에 캐시해 **재방문부터는 첫 페인트에 즉시**
+  //   표시(수십 m 오차는 km 단위 표시에 무해), fresh GPS 도착 시 조용히 갱신. 첫 방문(캐시 없음)만 기존과 동일.
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => {
+    try {
+      const c = JSON.parse(localStorage.getItem('ur_last_loc_v1') || 'null')
+      return c && Number.isFinite(c.lat) && Number.isFinite(c.lng) ? { lat: c.lat, lng: c.lng } : null
+    } catch { return null }
+  })
   // 🛡️ 2026-04-28: 이용권 카테고리 (식사/뷰티/헬스) — meal_voucher 인프라 재활용
   const [voucherType, setVoucherType] = useState<MapVoucherType>('all')
   // 🛡️ 2026-06-01 Tier2: products fetch 만 React Query(카테고리별 캐시). live-poller 는 유지.
@@ -214,8 +222,12 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
-      (pos) => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => { /* 거부/실패 — 거리순 비활성 */ },
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setUserLoc(loc)
+        try { localStorage.setItem('ur_last_loc_v1', JSON.stringify(loc)) } catch { /* quota */ }
+      },
+      () => { /* 거부/실패 — 캐시 위치(있으면) 유지, 없으면 거리 비표시 */ },
       { timeout: 5000, enableHighAccuracy: false, maximumAge: 600000 }
     )
   }, [])
