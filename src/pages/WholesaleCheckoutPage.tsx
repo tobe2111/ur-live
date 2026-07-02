@@ -30,8 +30,9 @@ export default function WholesaleCheckoutPage() {
   const [paying, setPaying] = useState(false)
   const [insufficient, setInsufficient] = useState<InsufficientInfo | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
-  // 🔁 멱등키 — 이 체크아웃 1회당 고정(더블클릭/네트워크 재시도가 예치금 이중차감·이중주문 안 하도록).
-  const idemKeyRef = useRef<string>(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  // 🔁 멱등키 — 이 체크아웃 시도당 고정(더블클릭/네트워크 재시도가 예치금 이중차감·이중주문 안 하도록).
+  const newIdem = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  const idemKeyRef = useRef<string>(newIdem())
 
   const balance = Number(depositQ.data?.balance) || 0
 
@@ -146,12 +147,20 @@ export default function WholesaleCheckoutPage() {
         invalidateDeposit() // 💰 예치금 즉시차감 → 잔액 실시간 갱신(상단 util 바 포함)
         navigate(`/wholesale/success?credit=0&order=${r.data.order_id}`)
       } else {
-        setErrorMsg(r.data?.error || t('wholesale.checkout.payFailed', { defaultValue: '결제에 실패했습니다' }))
+        // 🏭 2026-07-01 (라이브 감사): 멱등키 충돌로 기존 미결제 주문(FAILED/EXPIRED/PENDING)이
+        //   status≠'PAID' 로 돌아오면, 같은 키로는 영영 그 주문만 반환돼 재시도가 고착됐음.
+        //   결제 미발생이 확정된 경로이므로 키를 회전해 재시도가 새 주문이 되게 함(이중과금 아님).
+        idemKeyRef.current = newIdem()
+        setErrorMsg(r.data?.error || t('wholesale.checkout.payRetry', { defaultValue: '이전 주문이 완료되지 않았어요. 다시 결제해주세요.' }))
         setPaying(false)
       }
     } catch (e: unknown) {
       const resp = (e as { response?: { status?: number; data?: Record<string, unknown> } })?.response
       const data = resp?.data || {}
+      // 🏭 2026-07-01 (라이브 감사): 402/422/409 는 예치금 청구 전 차단(돈 미이동) → 키 회전해 재시도
+      //   고착 방지. 반면 그 외(5xx/네트워크)는 청구 성공-응답유실 가능성이 있어 회전 금지(이중과금 방지).
+      const preChargeBlock = resp?.status === 402 || resp?.status === 422 || resp?.status === 409
+      if (preChargeBlock) idemKeyRef.current = newIdem()
       if (resp?.status === 402 && data.code === 'INSUFFICIENT_DEPOSIT') {
         setInsufficient({
           balance: Number(data.balance) || 0,

@@ -32,7 +32,9 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
   const pendingN = formatNumber(c.pending ?? 0)
   const outN = formatNumber(c.out_of_stock ?? 0)
   const lowN = formatNumber(c.low_stock ?? 0)
-  const spendable = Math.max(0, (b.available_amount ?? 0) - (b.reserved_amount ?? 0))
+  // 🏦 2026-07-01 (라이브 감사): 서버 SSOT spendable(available-reserved-held) 우선 — 이전엔 held 미차감으로
+  //   '출금 가능'이 과다 표시돼 출금 모달에서 거절됐음. 구버전 응답(미제공)은 available-reserved 폴백.
+  const spendable = b.spendable_amount ?? Math.max(0, (b.available_amount ?? 0) - (b.reserved_amount ?? 0))
   // '할 일' 카드 — 가용 데이터로 actionable. 긴급(danger) → 안내(info) → 좋은소식(success) 순.
   //   발송 대기 > 품절(판매중 상품 무재고=매출손실) > 반려 → 재고부족 > 검수 대기 → 출금 가능.
   const todos: { key: string; label: string; count: string; Icon: typeof Package; on: () => void; tone: 'danger' | 'info' | 'success' }[] = []
@@ -50,7 +52,7 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
   }
   const cards = [
     { label: t('supplier.balPending', { defaultValue: '정산 대기' }), value: b.pending_amount, cls: 'text-amber-600' },
-    { label: t('supplier.balAvailable', { defaultValue: '출금 가능' }), value: Math.max(0, (b.available_amount ?? 0) - (b.reserved_amount ?? 0)), cls: 'text-blue-600' },
+    { label: t('supplier.balAvailable', { defaultValue: '출금 가능' }), value: spendable, cls: 'text-blue-600' },
     { label: t('supplier.balPaid', { defaultValue: '지급 완료(누적)' }), value: b.paid_amount, cls: 'text-green-600' },
   ]
   const actions: { label: string; desc: string; Icon: typeof Package; on: () => void; primary?: boolean; disabled?: boolean }[] = [

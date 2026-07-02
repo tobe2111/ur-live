@@ -142,7 +142,9 @@ export default function CatalogTab({ items, t, onAdd, onEdit, onBulkDone, onMana
                         ⚠ {t('supplier.outOfStock', { defaultValue: '품절 — 주문 불가' })}
                       </span>
                     )}
-                    {isLive && stockNum > 0 && stockNum <= 10 && (
+                    {/* 🏭 2026-07-01 (라이브 감사): 저재고 임계를 서버(홈 '할 일' 카운트)와 동일하게 min_order_qty 로.
+                        이전 하드코딩 10 은 홈 카운트(stock<=min_order_qty)와 불일치해 배지↔카운트가 어긋났음. */}
+                    {isLive && stockNum > 0 && stockNum <= Math.max(1, Number(item.min_order_qty) || 1) && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-amber-200 bg-amber-50 text-amber-700 text-[11px] font-semibold">
                         {t('supplier.lowStock', { defaultValue: '재고 부족' })}
                       </span>
