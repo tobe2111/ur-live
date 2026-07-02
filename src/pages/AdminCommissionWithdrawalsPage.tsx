@@ -11,7 +11,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Wallet, CheckCircle, XCircle, Clock } from 'lucide-react'
 import { formatWon } from '@/utils/format'
 
@@ -43,7 +43,7 @@ export default function AdminCommissionWithdrawalsPage() {
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending')
   const [actionId, setActionId] = useState<number | null>(null)
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (filter별 캐시).
-  const { data: rows = [], isLoading: loading, refetch } = useApiQuery<Withdrawal[]>(
+  const { data: rows = [], isLoading: loading, isError, error, refetch } = useApiQuery<Withdrawal[]>(
     ['admin', 'commission-withdrawals', filter], '/api/referral-tree/admin/withdrawals',
     { params: { status: filter }, select: (r: any) => (r?.success ? r.data || [] : []) },
   )
@@ -105,6 +105,9 @@ export default function AdminCommissionWithdrawalsPage() {
         title="추천 Commission 출금 관리"
         subtitle="에이전시/셀러/유저의 추천 commission 출금 신청을 승인하거나 거절합니다."
       />
+
+      {/* 🛡️ 2026-07-02 (감사 #10): 5xx/401/403 을 '출금 신청 0건'으로 위장하지 않도록 표면화 */}
+      {isError && <div className="mb-4"><DashboardLoadError error={error} onRetry={() => refetch()} loginPath="/admin/login" label="출금 신청 목록" /></div>}
 
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex items-center gap-2">
         {(['pending', 'approved', 'rejected', 'all'] as const).map(s => (

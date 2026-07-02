@@ -374,7 +374,7 @@ export default function AdminKtAlphaPage() {
         return
       }
       const d = r.data.data
-      console.log('[KT Alpha 진단]', d)
+      if (import.meta.env.DEV) console.log('[KT Alpha 진단]', d)
       const summary =
         `📊 카테고리 분류 진단\n\n` +
         `▼ KT Alpha API\n  ${d.kt_alpha_api.provides_classification}\n\n` +

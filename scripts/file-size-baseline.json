@@ -5,7 +5,7 @@
   "src/components/streaming/BrowserBroadcaster.tsx": 1185,
   "src/features/admin/api/admin-products.routes.ts": 1084,
   "src/features/admin/api/admin-review-generator.routes.ts": 658,
-  "src/features/admin/api/admin-sellers.routes.ts": 972,
+  "src/features/admin/api/admin-sellers.routes.ts": 974,
   "src/features/agency/api/agency.routes.ts": 1065,
   "src/features/auction/api/auction.routes.ts": 833,
   "src/features/auth/api/kakao.routes.ts": 1003,

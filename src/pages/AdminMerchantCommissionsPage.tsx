@@ -13,6 +13,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
 import AdminLayout from '@/components/AdminLayout'
+import { DashboardLoadError } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -137,6 +138,16 @@ export default function AdminMerchantCommissionsPage() {
       <SEO title="매장 커미션 관리 - 유어딜" description="매장별 영입 커미션 기간/요율" url="/admin/merchant-commissions" />
       <div className="ur-content-full px-4 py-6 space-y-8">
         <h1 className="text-xl font-bold text-gray-900">매장별 커미션 관리</h1>
+
+        {/* 🛡️ 2026-07-02 (감사 #10): 커미션 audit/대기목록 5xx/401/403 을 '0건/₩0'으로 위장하지 않도록 표면화 */}
+        {(auditQ.isError || pendingBizQ.isError) && (
+          <DashboardLoadError
+            error={auditQ.error ?? pendingBizQ.error}
+            onRetry={() => { auditQ.refetch(); pendingBizQ.refetch() }}
+            loginPath="/admin/login"
+            label="커미션 데이터"
+          />
+        )}
 
         {/* 매장별 설정 */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">

@@ -150,7 +150,9 @@ adminSellersRoutes.get('/sellers/pending', cors(), async (c) => {
   }
 });
 
-adminSellersRoutes.get('/sellers/:id', cors(), async (c) => {
+// 🛡️ 2026-07-02 (감사 #4): :id 를 숫자로 제약 → 정적 경로(/sellers/unlinked 등)를 param 이
+//   가로채 400 내던 shadow 제거. 숫자 id 만 이 핸들러, 그 외는 뒤에 등록된 정적 라우트로 흘러감.
+adminSellersRoutes.get('/sellers/:id{[0-9]+}', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const sellerId = c.req.param('id');

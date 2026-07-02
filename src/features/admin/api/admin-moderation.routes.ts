@@ -160,7 +160,9 @@ adminModerationRoutes.patch('/reviews/:id/visibility', cors(), async (c) => {
   }
 });
 
-adminModerationRoutes.delete('/reviews/:id', cors(), async (c) => {
+// 🛡️ 2026-07-02 (감사 #5): :id 를 숫자로 제약 → 정적 경로 /reviews/generated-bulk-vouchers
+//   (admin-review-generator, 뒤에 마운트)를 이 param 이 가로채 항상 404 내던 shadow 제거.
+adminModerationRoutes.delete('/reviews/:id{[0-9]+}', cors(), async (c) => {
   try {
     const DB = c.env.DB;
     const reviewId = c.req.param('id');

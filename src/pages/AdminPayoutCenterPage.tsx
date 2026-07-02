@@ -10,6 +10,7 @@ import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatWon, formatNumber } from '@/utils/format'
 import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
+import { DashboardLoadError } from '@/components/dashboard'
 import { Banknote, Landmark, Users, Building2, ExternalLink } from 'lucide-react'
 
 interface SellerRow { id: number; seller_id: number; seller_name: string | null; business_name: string | null; amount: number; period_start: string | null; period_end: string | null; bank_name: string | null; account_number: string | null; account_holder: string | null; status: string; created_at: string }
@@ -58,6 +59,8 @@ export default function AdminPayoutCenterPage() {
   return (
     <div className="ur-content-full px-4 lg:px-8 py-6 space-y-5">
       <AdminFinanceTabs />
+      {/* 🛡️ 2026-07-02 (감사 #10): 5xx/401/403 을 '대기 신청 없음'으로 위장하지 않도록 표면화 */}
+      {q.isError && <DashboardLoadError error={q.error} onRetry={() => q.refetch()} loginPath="/admin/login" label="지급 센터 데이터" />}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Landmark className="w-5 h-5" /> 지급 센터</h1>
