@@ -86,6 +86,14 @@ const EXTERNAL_PROXY_HOSTS = new Set([
   'lh3.googleusercontent.com',
   // 🏁 2026-06-11: R2 업로드 공개 도메인 (PUBLIC_R2_URL) — CDN_CGI_VERIFIED 와 짝, 실측 통과.
   'media.ur-team.com',
+  // 🏁 2026-07-02 [LOADING_ADDITIVE] (대표 신고 "홈 이미지 늦게 뜸" — 라이브 실측): 홈 동네딜 피드
+  //   이미지 호스트 누락분. ldb-phinf/naverbooking-phinf 는 '-phinf' 형태라 위 'phinf.pstatic.net'
+  //   suffix 매칭(`'.' + host`)에 안 걸려 **원본 그대로**(실측 1,055KB/1.6s — 300px 카드에 1MB)
+  //   다운로드되고 있었음. apex 'pstatic.net' 등재로 전 네이버 정적 서브도메인 커버(-phinf 변형 포함).
+  'pstatic.net',
+  'imgnews.naver.net',          // 네이버 뉴스 이미지 (셀러 등록 상품에 사용례)
+  'yt3.googleusercontent.com',  // 유튜브 채널 아바타 (브랜드 아이콘)
+  'picsum.photos',              // 데모/시드 이미지
 ])
 
 // 🛡️ 2026-05-27 (mobile data saver): Save-Data 감지 — 데이터 절약 모드 사용자에게 quality 65 로 다운.
@@ -181,9 +189,16 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       if (host === 'giftishow.com' || host.endsWith('.giftishow.com')) {
         return src
       }
-      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com']  // giftishow 제거 (524 — 위에서 raw 처리)
+      // 🏁 2026-07-02 [LOADING_ADDITIVE] (라이브 실측 — 홈 피드 이미지 1MB 원본 다운로드 수리):
+      //   ldb-phinf.pstatic.net / naverbooking-phinf.pstatic.net / imgnews.naver.net /
+      //   yt3.googleusercontent.com / picsum.photos 전부 `cf-resized: internal=ok` 실측 통과
+      //   (1,055KB→14KB). apex 'pstatic.net' 로 기존 프록시 경유 pstatic 서브도메인도 승격 —
+      //   /api/image/resize 프록시는 리사이즈 불가(06-11 실측)라 cdn-cgi 직결이 유일 변환 경로.
+      //   `onerror=redirect` 를 함께 부여: 리사이저 원본 fetch 실패 시 원본으로 302 → 항상 표시
+      //   (2026-06-11 kakaocdn 깨짐 클래스 구조적 차단 — 실패해도 현행(원본)과 동일).
+      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos']  // giftishow 제거 (524 — 위에서 raw 처리)
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
-        return `/cdn-cgi/image/width=${w},quality=${q},format=auto/${src}`
+        return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect/${src}`
       }
       return `/api/image/resize?url=${encodeURIComponent(src)}&w=${w}&q=${q}`
     }
