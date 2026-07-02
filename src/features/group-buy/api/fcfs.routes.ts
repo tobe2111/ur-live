@@ -21,6 +21,7 @@ import type { Env } from '@/worker/types/env'
 import { requireAuth, requireAdmin } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { publicCache } from '@/worker/middleware/edge-cache'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { setSupplyMeta, getSupplyMeta } from '@/worker/utils/product-supply-meta'
 import { safeError } from '@/worker/utils/safe-error'
 
@@ -204,15 +205,20 @@ adminApp.post('/:productId/select', async (c) => {
     }
     if (winnerIds.length === 0) return c.json({ success: false, error: '선정할 지원자가 없습니다' }, 400)
 
-    const prod = await DB.prepare("SELECT name, restaurant_name FROM products WHERE id=?").bind(productId).first<{ name?: string; restaurant_name?: string }>().catch(() => null)
+    const prod = await DB.prepare("SELECT name, restaurant_name, category, deal_only FROM products WHERE id=?").bind(productId).first<{ name?: string; restaurant_name?: string; category?: string; deal_only?: number }>().catch(() => null)
     const dealName = prod?.restaurant_name || prod?.name || '추첨 공구'
+    // 💳 2026-07-02 (대표 "당첨되면 결제되게"): 응모는 무결제 설계 그대로 — 당첨 알림에 **결제 딥링크**
+    //   를 실어 당첨자가 바로 구매(일반 결제 플로우)로 이어지게 함. 경로는 종류판별 SSOT(교환권/이용권
+    //   =/group-buy, 일반=/products — deal_only/isVoucherCategory, group_buy_status 사용 금지 룰 준수).
+    const buyPath = (Number(prod?.deal_only) === 1 || isVoucherCategory(prod?.category))
+      ? `/group-buy/${productId}` : `/products/${productId}`
 
     for (const uid of winnerIds) {
       await DB.prepare("UPDATE fcfs_applications SET status='selected', selected_at=datetime('now') WHERE product_id=? AND user_id=?").bind(productId, uid).run().catch(() => {})
-      // 선정 알림
+      // 선정 알림 + 결제 유도 딥링크
       await DB.prepare(
-        "INSERT INTO notifications (user_id, user_type, type, title, message, created_at) VALUES (?, 'user', 'fcfs_selected', ?, ?, datetime('now'))"
-      ).bind(uid, '🎉 추첨 당첨!', `[${dealName}] 추첨 응모에 당첨되셨어요. 자세한 안내를 확인하세요.`).run().catch(() => {})
+        "INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at) VALUES (?, 'user', 'fcfs_selected', ?, ?, ?, datetime('now'))"
+      ).bind(uid, '🎉 추첨 당첨!', `[${dealName}] 추첨에 당첨되셨어요! 지금 결제하시면 확정됩니다. (미결제 시 예비 당첨자에게 넘어갈 수 있어요)`, buyPath).run().catch(() => {})
     }
     return c.json({ success: true, data: { selected: winnerIds.length } })
   } catch (err) { return safeError(c, err, '선정 처리 실패', '[fcfs]') }
