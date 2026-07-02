@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-02 — sql-bind 가드 확장: bind 통째 누락(무음 no-op) 클래스 박제 (결제 전수조사 후속 — "가드부터" 철학)
+2026-07-01 혼합결제 딜 미차감 실사고(`.bind(orderNumber)` 통째 누락 → D1 에러를 `.catch` 가 삼켜 2주간 무음 no-op — 기존 가드는 bind *보유* 체인의 개수 불일치만 분석해 미감지)의 버그 클래스를 결정론 가드로 차단.
+- `check-sql-bind-params.mjs` 확장: ① `?` 있는 SQL 이 같은 체인에서 `.bind()` 없이 `.run()/.all()/.first()/.raw()` 직행 → violation(`missing-bind`). ② TS 제네릭(`.all<{…}>()`) 체인 파싱 지원(기존 검사 커버리지도 3154→3170 증가). 변수 후행 bind·보간 SQL·placeholder 0 은 미해당(오탐 0).
+- 배선 추가 불필요 — 기존 pre-commit(warn)/verify.yml(strict)/audit-gate 에 이미 등재된 스크립트 확장. CLAUDE.md 방어선 표 갱신.
+- 검증: 레포 전체 0건(현행 클린) + 음성테스트(실사고 형태 `.all<T>().catch()` 포함 2건 차단, 정상 3패턴 통과, strict exit 1).
+
 ## ✅ 2026-07-01 — 토스페이먼츠 결제 라이브 전수조사 (대표 "결제 전수조사 라이브로 접근")
 라이브 실접근 + 코드 전수감사. **결과: 결제 라이브 건강** — `/api/version`·`/api/payments/client-key` 200, **라이브 키 활성**(`live_gck_…`, flow=widget), CSP/frame-src tosspayments 정상. **가드 미보유 3영역(금액정확성·런타임크래시·외부PG 실응답) 심층 감사**:
 - **금액 정확성 — 전 플로우 CLEAN**: 6개 Toss 경로(딜충전·공구·주문·숙소·선물·도매 주문/예치금/환불) 전부 서버 재계산/DB값 strict equality 검증 + **서버 금액을 Toss 에 전달** + CAS 선점 후 side-effect. webhook 도 fail-closed 금액검증 + paid-order 취소거부 + graceful 시그니처 + 멱등. (prior 감사들 효과 확인.)

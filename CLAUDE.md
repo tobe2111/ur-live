@@ -802,7 +802,7 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 | 머니 패턴 (warn, 차단 `STRICT_MONEY=1`) | `check-money-patterns.sh` | - | 2026-06-11 감사 — per-request DDL / 무환불 CANCELLED. 작성 룰: 위 '💸 머니/정합성 코드 작성 룰' |
 | 대시보드 NaN/undefined (warn) | `check-nan-dashboard.sh` | - | 2026-05-17 ₩NaN 노출 |
 | CHECK 제약 위반 | `check-status-constraints.mjs` (warn) | `verify.yml` (strict) | 2026-05-17 admin live-monitor delete 500 |
-| SQL bind param mismatch | `check-sql-bind-params.mjs` (warn) | `verify.yml` (strict) | 'wrong number of bindings' SqlError 방지 |
+| SQL bind param mismatch **+ bind 통째 누락** | `check-sql-bind-params.mjs` (warn) | `verify.yml` (strict) | 'wrong number of bindings' SqlError 방지. 2026-07-02 확장: `?` 있는 SQL 이 같은 체인에서 `.bind()` 없이 `.run()/.all()/.first()/.raw()` 직행하면 차단 — D1 에러를 `.catch(() => …)` 가 삼키면 **무음 no-op**(2026-07-01 혼합결제 딜 미차감 실사고 — 2주간 가드·감사 통과한 클래스). TS 제네릭(`.all<T>()`) 체인 파싱 지원. 변수 후행 bind 패턴은 미해당(오탐 0) |
 | NOT NULL INSERT 누락 | `check-sql-not-null-insert.mjs` (warn) | `verify.yml` (warn) | 2026-05-17 알림 silent fail 사고 (notifications.body 컬럼 없음) |
 | 존재하지 않는 컬럼 참조 | `check-sql-column-exists.mjs` (warn) | `verify.yml` (warn) | 2026-05-17 'no such column' SqlError 방지 |
 | 존재하지 않는 테이블 참조 | `check-sql-table-exists.mjs` (strict) | `verify.yml` (strict) | 2026-07-01 admin 리뷰관리가 없는 `reviews` 테이블(실제 `product_reviews`) 조회 → 항상 500(대표 "에러 너무 많아"). 컬럼 가드는 INSERT/UPDATE 컬럼만 봐 FROM/JOIN 테이블명 오타를 못 잡음. FROM/JOIN/INTO/UPDATE/DELETE 테이블이 CREATE TABLE(마이그레이션+repair-schema+inline src) 또는 `KNOWN_TABLES_EXTRA`(프로덕션 존재·레포 미기록 13개) 에 있는지 검증. 신규 실제 테이블은 CREATE TABLE 추가 시 자동 인식. 예외는 `KNOWN_TABLES_EXTRA` 등록 |

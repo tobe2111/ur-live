@@ -36,7 +36,7 @@ const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
 
 const violations = []
 const skipped = []
-const stats = { prepareCalls: 0, withBind: 0, interpolated: 0, analyzed: 0 }
+const stats = { prepareCalls: 0, withBind: 0, interpolated: 0, analyzed: 0, missingBind: 0 }
 
 /**
  * Top-level comma split — 괄호/대괄호/문자열 안의 콤마는 무시.
@@ -161,6 +161,7 @@ function scanFile(file) {
     // 더 간단히: prepClose+1 부터 .bind( 찾기. 단 다른 prepare/세미콜론 만나면 중단.
     let chainCursor = prepClose + 1
     let bindStart = -1
+    let terminalNoBind = null // 🛡️ 2026-07-02: bind 없이 도달한 실행 메서드 (run/all/first/raw)
     while (chainCursor < src.length) {
       // 다음 token 까지 skip
       while (chainCursor < src.length && /[\s\n]/.test(src[chainCursor])) chainCursor++
@@ -170,11 +171,28 @@ function scanFile(file) {
       const methodStart = chainCursor
       while (chainCursor < src.length && /[a-zA-Z_]/.test(src[chainCursor])) chainCursor++
       const method = src.slice(methodStart, chainCursor)
+      // 🛡️ 2026-07-02: TS 제네릭 skip — `.all<{ id: number }>(` / `.first<T>(` 도 체인으로 인식.
+      //   함수타입 `=>` 의 `>` 가 depth 를 잘못 닫지 않게 `=>` 는 통째로 skip.
+      if (src[chainCursor] === '<') {
+        let angleDepth = 1
+        chainCursor++
+        while (chainCursor < src.length && angleDepth > 0) {
+          if (src[chainCursor] === '=' && src[chainCursor + 1] === '>') { chainCursor += 2; continue }
+          if (src[chainCursor] === '<') angleDepth++
+          else if (src[chainCursor] === '>') angleDepth--
+          chainCursor++
+        }
+      }
       // ( 만나야 함
       if (src[chainCursor] !== '(') break
 
       if (method === 'bind') {
         bindStart = chainCursor + 1
+        break
+      }
+      if (method === 'run' || method === 'all' || method === 'first' || method === 'raw') {
+        // bind 없이 실행 메서드 도달 — placeholder 가 있으면 확정 런타임 에러.
+        terminalNoBind = method
         break
       }
       // method() 의 인자 skip — 균형 paren
@@ -189,7 +207,26 @@ function scanFile(file) {
     }
 
     if (bindStart < 0) {
-      // prepare 만 있고 bind 없음 (인자 0개 SQL) — 체크 대상 아님
+      // 🛡️ 2026-07-02 (혼합결제 딜 미차감 실사고 — bind 통째 누락 클래스): `?` 가 있는 SQL 이
+      //   같은 체인에서 .bind() 없이 .run()/.all()/.first()/.raw() 로 바로 실행되면 D1 이
+      //   바인딩 오류를 던지고, 흔한 `.catch(() => …)` 가 삼키면 **무음 no-op** 이 됨.
+      //   변수에 담아 나중에 bind 하는 패턴(체인에 실행 메서드 없음)은 미해당 — 오탐 0.
+      //   보간(${…}) SQL 은 placeholder 확정 불가라 기존과 동일하게 skip.
+      if (terminalNoBind) {
+        const ph = countPlaceholders(sql)
+        if (ph !== null && ph > 0) {
+          stats.missingBind++
+          violations.push({
+            file: path.relative(ROOT, file),
+            line: lineOf(src, prepIdx),
+            placeholders: ph,
+            bindCount: 0,
+            missingBind: true,
+            terminalMethod: terminalNoBind,
+            sqlSnippet: sql.replace(/\s+/g, ' ').slice(0, 100),
+          })
+        }
+      }
       i = sqlEnd + 1
       continue
     }
@@ -272,23 +309,32 @@ function walk(dir) {
 
 walk(path.join(ROOT, 'src'))
 
-const summary = `prepare=${stats.prepareCalls}, with-bind=${stats.withBind}, analyzed=${stats.analyzed}, interpolated-skip=${stats.interpolated}, spread-skip=${skipped.length}`
+const summary = `prepare=${stats.prepareCalls}, with-bind=${stats.withBind}, analyzed=${stats.analyzed}, interpolated-skip=${stats.interpolated}, spread-skip=${skipped.length}, missing-bind=${stats.missingBind}`
 
 if (violations.length === 0) {
   console.log(`✅ SQL bind param mismatch 없음.\n   ${summary}`)
   process.exit(0)
 }
 
-console.error('\n🚨 SQL prepare(?) ≠ bind(args) 개수 불일치:')
+console.error('\n🚨 SQL prepare(?) ≠ bind(args) 불일치:')
 for (const v of violations) {
-  console.error(
-    `  ${v.file}:${v.line}\n` +
-      `    placeholders=${v.placeholders}, bind args=${v.bindCount}\n` +
-      `    SQL: ${v.sqlSnippet}${v.sqlSnippet.length === 100 ? '...' : ''}`,
-  )
+  if (v.missingBind) {
+    console.error(
+      `  ${v.file}:${v.line}\n` +
+        `    🔇 bind 통째 누락 — placeholders=${v.placeholders} 인데 .bind() 없이 .${v.terminalMethod}() 직행\n` +
+        `    (D1 바인딩 에러 → .catch 가 삼키면 무음 no-op. 2026-07-01 혼합결제 딜 미차감 실사고 클래스)\n` +
+        `    SQL: ${v.sqlSnippet}${v.sqlSnippet.length === 100 ? '...' : ''}`,
+    )
+  } else {
+    console.error(
+      `  ${v.file}:${v.line}\n` +
+        `    placeholders=${v.placeholders}, bind args=${v.bindCount}\n` +
+        `    SQL: ${v.sqlSnippet}${v.sqlSnippet.length === 100 ? '...' : ''}`,
+    )
+  }
 }
 console.error(
-  `\n총 ${violations.length}건. 런타임 시 'wrong number of bindings' SqlError → 500.\n` +
+  `\n총 ${violations.length}건. 런타임 시 'wrong number of bindings' SqlError → 500 (또는 catch 삼킴 시 무음 no-op).\n` +
     `해결책: 누락 bind 추가 or 불필요 ? 제거.\n`,
 )
 
