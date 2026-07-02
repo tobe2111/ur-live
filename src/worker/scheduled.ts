@@ -161,6 +161,11 @@ export async function handleCronScheduled(
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
   if (cron === '0 * * * *') {
     ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
+    // ⏰ 2026-07-02 (#5 승인 SLA): 24h+ 대기 셀러 전환 신청 어드민 리마인드(20h dedup = 하루 1회꼴).
+    ctx.waitUntil(safeCron('seller-approval-reminder', async () => {
+      const { handleSellerApprovalReminder } = await import('./cron/seller-approval-reminder')
+      return handleSellerApprovalReminder(env)
+    }));
     // 🛡️ 2026-05-31: 미결제 pending 숙소 예약 자동 만료 (30분 경과). 재고 미조작 — 정리 목적.
     ctx.waitUntil(safeCron('stay-pending-expire', async () => {
       const { handleStayPendingExpire } = await import('./cron/stay-pending-expire')

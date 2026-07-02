@@ -12,6 +12,8 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Button } from '@/components/ui/button'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import ImageUpload from '@/components/upload/ImageUpload'
+import { BlogMarkdown } from '@/features/blog/BlogMarkdown'
 import {
   Plus, Edit2, Trash2, Eye, EyeOff,
   Loader2, ArrowLeft, Save, Send, FileText, ExternalLink, Sparkles
@@ -93,6 +95,9 @@ export default function AdminBlogPage() {
       navigate('/admin/login', { replace: true })
     }
   }, [navigate])
+
+  // 본문 편집/미리보기 탭 (미리보기는 공개 페이지와 동일한 BlogMarkdown 렌더러 사용 = WYSIWYG)
+  const [preview, setPreview] = useState(false)
 
   // 폼 상태
   const [form, setForm] = useState({
@@ -390,43 +395,59 @@ export default function AdminBlogPage() {
             />
           </div>
 
-          {/* 저자 + 썸네일 */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.blog.k028', { defaultValue: '저자' })}</label>
-              <input
-                value={form.author}
-                onChange={e => setForm(f => ({ ...f, author: e.target.value }))}
-                placeholder={t('admin.blog.k001', { defaultValue: "유어딜 팀" })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.blog.k029', { defaultValue: '썸네일 URL' })}</label>
-              <input
-                value={form.thumbnail_url}
-                onChange={e => setForm(f => ({ ...f, thumbnail_url: e.target.value }))}
-                placeholder="https://..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+          {/* 저자 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.blog.k028', { defaultValue: '저자' })}</label>
+            <input
+              value={form.author}
+              onChange={e => setForm(f => ({ ...f, author: e.target.value }))}
+              placeholder={t('admin.blog.k001', { defaultValue: "유어딜 팀" })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* 썸네일 — 이미지 업로드(R2). 비우면 주제별 자동 배너로 표시됨 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.blog.k029', { defaultValue: '썸네일 이미지' })}</label>
+            <ImageUpload
+              value={form.thumbnail_url}
+              onChange={(url) => setForm(f => ({ ...f, thumbnail_url: url }))}
+              tokenKey="admin_token"
+              aspectRatio="video"
+            />
+            <p className="text-xs text-gray-400 mt-1">비워두면 목록·상세에서 주제별 자동 디자인 배너가 표시됩니다.</p>
           </div>
         </div>
 
-        {/* 본문 에디터 */}
+        {/* 본문 에디터 — 작성/미리보기 탭(미리보기 = 공개 페이지와 동일 렌더러) */}
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50">
-            <span className="text-sm font-medium text-gray-700">{t('admin.blog.k030', { defaultValue: '본문' })}</span>
-            <span className="text-xs text-gray-400">{t('admin.blog.k031', { defaultValue: '(마크다운 지원)' })}</span>
+          <div className="flex items-center gap-1 px-4 py-2.5 border-b border-gray-100 bg-gray-50">
+            <button type="button" onClick={() => setPreview(false)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${!preview ? 'bg-white border border-gray-200 text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+              작성
+            </button>
+            <button type="button" onClick={() => setPreview(true)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${preview ? 'bg-white border border-gray-200 text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+              미리보기
+            </button>
+            <span className="text-xs text-gray-400 ml-1 hidden sm:inline">{t('admin.blog.k031', { defaultValue: '마크다운: ## 제목 · - 목록 · 1. 번호 · **굵게** · [링크](url) · ![이미지](url) · > 인용 · | 표 |' })}</span>
             <span className="ml-auto text-xs text-gray-400">{form.content.length}자</span>
           </div>
-          <textarea
-            value={form.content}
-            onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-            placeholder={`## 소제목\n\n본문 내용을 마크다운으로 작성하세요.\n\n- 목록 항목\n- 목록 항목\n\n**굵게**, *기울임*, \`코드\`\n\n> 인용구`}
-            className="w-full px-5 py-4 text-sm text-gray-900 font-mono leading-relaxed resize-none focus:outline-none"
-            style={{ minHeight: 480 }}
-          />
+          {preview ? (
+            <div className="px-5 py-4 overflow-auto" style={{ minHeight: 480 }}>
+              {form.content.trim()
+                ? <BlogMarkdown content={form.content} />
+                : <p className="text-sm text-gray-400">본문을 입력하면 여기에서 실제 공개 화면 그대로 미리 볼 수 있어요.</p>}
+            </div>
+          ) : (
+            <textarea
+              value={form.content}
+              onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
+              placeholder={`## 소제목\n\n본문 내용을 마크다운으로 작성하세요.\n\n- 목록 항목\n- 목록 항목\n\n**굵게**, [링크](https://...), ![이미지](https://...)\n\n> 인용구`}
+              className="w-full px-5 py-4 text-sm text-gray-900 font-mono leading-relaxed resize-none focus:outline-none"
+              style={{ minHeight: 480 }}
+            />
+          )}
         </div>
 
         {/* 발행 상태 토글 */}

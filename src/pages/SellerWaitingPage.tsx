@@ -187,6 +187,10 @@ export default function SellerWaitingPage() {
               <li>{t('sellerWaiting.benefit2')}</li>
               <li>{t('sellerWaiting.benefit3')}</li>
             </ul>
+            {/* 🏁 2026-07-02 (#3 2단계 심사 투명화): 현금 정산 = 사업자등록증 인증 1회 추가 필요 사전 고지 */}
+            <p className="text-[11px] text-gray-400 pt-1 border-t border-gray-100">
+              {t('sellerWaiting.secondGate', { defaultValue: '💳 승인 후 현금 정산을 받으려면 사업자등록증 인증 1회가 추가로 필요해요 (대시보드 → 사업자 정보).' })}
+            </p>
           </div>
         )}
 
