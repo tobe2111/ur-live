@@ -76,14 +76,9 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{r.restaurant_name}</p>
-                {discount > 0 && (
-                  <span className="text-[10px] bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold px-1.5 py-0.5 rounded-md shrink-0">
-                    -{discount}%
-                  </span>
-                )}
-              </div>
+              {/* 🎨 2026-07-02 (대표): 제목 옆 검정 할인배지가 상호명 가시성을 해침 → 배지 제거,
+                  할인율은 아래 가격 옆 빨간 글자로 (쿠팡식 "34% 25,900원" — 피드 카드와 동일 배치). */}
+              <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{r.restaurant_name}</p>
               <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1 truncate flex items-center gap-0.5">
                 <MapPin className="w-3 h-3 shrink-0" />
                 {r.restaurant_address || '주소 미등록'}
@@ -95,6 +90,9 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
               </p>
               <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-0.5 truncate">{r.name}</p>
               <div className="flex items-baseline gap-1.5 mt-1.5">
+                {discount > 0 && (
+                  <span className="text-[16px] font-extrabold text-red-500 dark:text-red-400">{discount}%</span>
+                )}
                 <span className="text-[16px] font-extrabold text-gray-900 dark:text-white">{formatNumber(r.price)}원</span>
                 {r.original_price > r.price && (
                   <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(r.original_price)}원</span>
