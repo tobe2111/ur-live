@@ -120,8 +120,10 @@
 - env `SHOPPING_LEDGER_ENABLED`. 테스트: `ledger-payable-net.test.ts` 에 크레딧→역전 receivable=0 케이스 포함.
 - **활성 절차(staging)**: `SHOPPING_LEDGER_ENABLED=true` 설정 → 쇼핑 결제 1건 → 원장 seller:N net 크레딧 확인 → 환불 → 역전으로 receivable 0 확인 → 운영 반영. (현재 쇼핑탭 숨김 = 라이브 영향 0.)
 
-### ✅ 어드민 과다지급 방지 가드 (2026-07-01)
-- `/admin/payouts/:id/approve` 승인 순간 `getLedgerReceivable(payee) − 이미 approved/sent 다른 payout` 로 재검증 → payout.amount 초과 시 `PAYOUT_EXCEEDS_RECEIVABLE` 409 차단(정정 이전 생성된 gross pending 오지급 방지). 실패 시 가드 skip(기존 동작 보존).
+### ✅ 어드민 과다지급 방지 가드 + 정리 도구 (2026-07-01)
+- **승인 가드**: `/admin/payouts/:id/approve` 승인 순간 `getLedgerReceivable(payee) − 이미 approved/sent 다른 payout` 로 재검증 → payout.amount 초과 시 `PAYOUT_EXCEEDS_RECEIVABLE` 409 차단(정정 이전 생성된 gross pending 오지급 방지). 실패 시 가드 skip(기존 동작 보존).
+- **pending 원장 뷰 net 정정**: `/admin/payouts/pending` 을 net 공식(Σ(credit−fee)−Σ(debit)−payout(pending/approved/sent))으로 → 어드민 대시보드가 부풀려진 gross 대신 실제 순 외상 표시.
+- **stale 식별**: `/admin/payouts` 목록의 각 pending 건에 `_available`(현재 순 정산가능) + `_stale`(stored amount 초과) 부착. `AdminPayoutsPage` 가 stale 건에 "⚠️ 확인 필요 · 현재 ₩N" 경고 표시 → 어드민이 승인 전 취소(기존 `/cancel`)로 정리. 승인 가드가 최종 백스톱.
 
 - **선결-A: 원장 seller credit 이 gross vs net 불일치.**
   - 공구(`group-buy.routes.ts:424`)는 `seller:N` 에 **`amount = totalAmount`(gross, 수수료 포함)** 적립(fee 는 `fee_amount` 필드에만).

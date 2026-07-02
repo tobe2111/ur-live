@@ -29,31 +29,41 @@ interface PendingGroup {
 adminPayoutsRoutes.get('/admin/payouts/pending', requireAdmin(), async (c) => {
   const { DB } = c.env
   try {
-    // ledger 의 모든 credit (외상 발생) - 이미 payout 처리된 합.
+    // 💸 2026-07-01 (정산 정합): 순 외상 = Σ(credit − fee_amount) − Σ(debit) − 이미 payout(pending/approved/sent).
+    //   이전엔 credit-only(gross, debit 무시)라 부풀려진 pending 을 표시했음. getLedgerReceivable/payouts-generate
+    //   와 동일 net 공식. paid 는 pending 포함(이미 payout row 생성분 제외 → 미생성 순액만 표시, generate 와 정합).
     const rows = await DB.prepare(`
-      WITH credits AS (
-        SELECT credit_account, SUM(amount) as total
+      WITH cred AS (
+        SELECT credit_account AS account, SUM(amount - COALESCE(fee_amount, 0)) AS c
           FROM ledger_entries
-         WHERE credit_account LIKE 'merchant:%'
-            OR credit_account LIKE 'seller:%'
-            OR credit_account LIKE 'agency:%'
-            OR credit_account LIKE 'user:%'
+         WHERE credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%'
+            OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%'
          GROUP BY credit_account
       ),
+      deb AS (
+        SELECT debit_account AS account, SUM(amount) AS d
+          FROM ledger_entries
+         WHERE debit_account LIKE 'merchant:%' OR debit_account LIKE 'seller:%'
+            OR debit_account LIKE 'agency:%' OR debit_account LIKE 'user:%'
+         GROUP BY debit_account
+      ),
       paid AS (
-        SELECT (payee_type || ':' || payee_id) as account, SUM(amount) as total
+        SELECT (payee_type || ':' || payee_id) AS account, SUM(amount) AS p
           FROM payouts
-         WHERE status IN ('approved','sent')
+         WHERE status IN ('pending','approved','sent')
          GROUP BY payee_type, payee_id
-      )
+      ),
+      accts AS (SELECT account FROM cred UNION SELECT account FROM deb)
       SELECT
-        c.credit_account as account,
-        c.total - COALESCE(p.total, 0) as pending_amount,
-        c.total as total_credited,
-        COALESCE(p.total, 0) as total_paid
-      FROM credits c
-      LEFT JOIN paid p ON p.account = c.credit_account
-      WHERE c.total - COALESCE(p.total, 0) > 0
+        a.account AS account,
+        (COALESCE(cred.c, 0) - COALESCE(deb.d, 0) - COALESCE(paid.p, 0)) AS pending_amount,
+        (COALESCE(cred.c, 0) - COALESCE(deb.d, 0)) AS total_credited,
+        COALESCE(paid.p, 0) AS total_paid
+      FROM accts a
+      LEFT JOIN cred ON cred.account = a.account
+      LEFT JOIN deb ON deb.account = a.account
+      LEFT JOIN paid ON paid.account = a.account
+      WHERE (COALESCE(cred.c, 0) - COALESCE(deb.d, 0) - COALESCE(paid.p, 0)) > 0
       ORDER BY pending_amount DESC
       LIMIT 200
     `).all<{ account: string; pending_amount: number; total_credited: number; total_paid: number }>().catch(() => ({ results: [] as Array<{ account: string; pending_amount: number; total_credited: number; total_paid: number }> }))
@@ -142,8 +152,34 @@ adminPayoutsRoutes.get('/admin/payouts', requireAdmin(), async (c) => {
   const params: unknown[] = status === 'all' ? [] : [status]
   const rows = await DB.prepare(
     `SELECT * FROM payouts ${where} ORDER BY created_at DESC LIMIT 200`,
-  ).bind(...params).all().catch(() => ({ results: [] }))
-  return c.json({ success: true, data: rows.results || [] })
+  ).bind(...params).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+  const list = rows.results || []
+
+  // 💸 2026-07-01 (정산 정합): pending payout 이 정정(net) 이전에 생성된 gross 금액이면 표시.
+  //   각 pending 건에 available(순 receivable − 다른 approved/sent) + stale(amount 초과) 부착 → 어드민이
+  //   승인 전 식별/취소. approve 가드와 동일 기준. (getLedgerReceivable per-account, 캐시.)
+  try {
+    const pendingRows = list.filter(r => String(r.status) === 'pending')
+    if (pendingRows.length > 0) {
+      const { getLedgerReceivable } = await import('../../../worker/utils/ledger')
+      const recvCache = new Map<string, number>()
+      for (const r of pendingRows) {
+        const ledgerType = r.payee_type === 'store_owner' ? 'merchant' : String(r.payee_type)
+        const account = `${ledgerType}:${r.payee_id}`
+        let recv = recvCache.get(account)
+        if (recv === undefined) { recv = await getLedgerReceivable(DB, account); recvCache.set(account, recv) }
+        const otherPaid = await DB.prepare(
+          `SELECT COALESCE(SUM(amount), 0) AS t FROM payouts
+            WHERE payee_type = ? AND payee_id = ? AND status IN ('approved','sent') AND id != ?`
+        ).bind(r.payee_type, r.payee_id, r.id).first<{ t: number }>().catch(() => ({ t: 0 }))
+        const available = recv - Number(otherPaid?.t ?? 0)
+        r._available = Math.max(0, available)
+        r._stale = Number(r.amount) > available + 1
+      }
+    }
+  } catch { /* best-effort — 부착 실패해도 목록은 반환 */ }
+
+  return c.json({ success: true, data: list })
 })
 
 adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdminRole('finance'), auditLog('payouts.approve'), async (c) => {
