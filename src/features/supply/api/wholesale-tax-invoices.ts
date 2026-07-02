@@ -200,9 +200,13 @@ export async function generateWholesalePurchaseInvoices(DB: D1Database, env: unk
   if (!orderId) return
   try {
     await ensureSchema(DB)
-    // 제조사별 공급가 합(주문 라인). base_supply_price×qty 가 제조사가 플랫폼에 청구하는 공급대가(VAT 포함).
+    // 제조사별 공급가 합(주문 라인). 제조사가 실제 받는 정산액과 **동일 산식**으로 청구 공급대가를 산출한다:
+    //   🧾 감사 #2 (2026-07-02): 정산은 splitWholesaleUnit 로 라인당 min(원가, 판매사단가) 을 제조사에 지급하는데,
+    //   매입 역발행은 clamp 없는 SUM(base_supply_price×qty) 를 썼다 → 역마진(판매사단가 < 원가) 라인에서 세금계산서가
+    //   실제 지급액보다 과대 기재(제조사 매입세액 부풀림). 정산과 동일하게 MIN(원가, COALESCE(판매사단가,0)) 로 clamp.
+    //   (정상 마진에선 원가 ≤ 판매사단가 → MIN=원가 → 기존과 byte-동일.)
     const rows = await DB.prepare(
-      `SELECT supplier_id AS supplier_id, SUM(base_supply_price * qty) AS supply_gross
+      `SELECT supplier_id AS supplier_id, SUM(MIN(base_supply_price, COALESCE(distributor_unit_price, 0)) * qty) AS supply_gross
          FROM wholesale_order_items
         WHERE wholesale_order_id = ? AND supplier_id IS NOT NULL AND base_supply_price > 0
         GROUP BY supplier_id`
@@ -239,6 +243,84 @@ export async function generateWholesalePurchaseInvoices(DB: D1Database, env: unk
     }
   } catch (e) {
     logSoft('purchase', e) // 절대 throw 금지.
+  }
+}
+
+/**
+ * 🧾 감사 #1 (2026-07-02): 도매 환불 시 세금계산서 반영. 기존엔 PAID 시 매출/매입을 발행하고 환불엔 손도 안 대,
+ *   전액/부분 환불 후에도 세금계산서가 원 거래 그대로 남아 매출·매입세액이 과대 집계됐다.
+ *
+ * 동작(멱등·fail-soft — 절대 throw 안 함):
+ *   - 주문 전량환불(미환불 라인 0) → 그 주문의 **모든** 세금계산서(매출+매입)를 'voided' 로 무효화.
+ *   - 부분환불(supplierId 지정) → 해당 제조사의 남은(미환불) 라인 공급가로:
+ *       · 남은 라인 0 → 그 제조사 매입계산서 'voided'.
+ *       · 남은 라인 有 → draft 매입계산서를 남은 공급가로 재계산(발행완료 'issued' 는 신용전자세금계산서 별도 필요 → 보존+log).
+ *     + 매출계산서(주문 전체)는 남은 청구액(미환불 라인 line_total 합 + 배송비)으로 draft 재계산.
+ *   ⚠️ 'issued' 부분환불은 자동 감액하지 않는다(발행 후 수정 = 수정세금계산서 발행 대상, provider 연동 시 별도) — 전량환불만 void.
+ *
+ * @param supplierId 부분환불(제조사 라인 스코프) 시 그 제조사 id. 미지정 = 어드민 전액환불(주문 전체).
+ */
+export async function voidWholesaleTaxInvoicesOnRefund(
+  DB: D1Database,
+  orderId: number,
+  opts: { supplierId?: number } = {},
+): Promise<void> {
+  if (!orderId) return
+  try {
+    await ensureSchema(DB)
+    const remain = await DB.prepare(
+      "SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status != 'REFUNDED'"
+    ).bind(orderId).first<{ c: number }>().catch(() => null)
+    const fullyRefunded = (remain?.c ?? 1) === 0
+
+    if (fullyRefunded) {
+      // 전량환불 — 매출·매입 전부 무효화(draft/issued/failed 모두. voided/기무효는 재선택 안 됨).
+      await DB.prepare(
+        "UPDATE wholesale_tax_invoices SET status = 'voided', note = COALESCE(note, '') || ' · 환불 무효' WHERE order_id = ? AND status IN ('draft','issued','failed')"
+      ).bind(orderId).run().catch((e) => logSoft('void-all', e))
+      return
+    }
+
+    // ── 부분환불 ──
+    const supplierId = Math.floor(Number(opts.supplierId) || 0)
+    if (supplierId > 0) {
+      // 이 제조사의 남은(미환불) 라인 공급가 — 정산과 동일 clamp(MIN(원가, 판매사단가)).
+      const agg = await DB.prepare(
+        `SELECT COALESCE(SUM(MIN(base_supply_price, COALESCE(distributor_unit_price, 0)) * qty), 0) AS supply_gross
+           FROM wholesale_order_items
+          WHERE wholesale_order_id = ? AND supplier_id = ? AND line_status != 'REFUNDED' AND base_supply_price > 0`
+      ).bind(orderId, supplierId).first<{ supply_gross: number }>().catch(() => null)
+      const gross = Math.max(0, Math.floor(Number(agg?.supply_gross) || 0))
+      if (gross <= 0) {
+        // 이 제조사 라인이 전부 환불 → 매입계산서 무효화.
+        await DB.prepare(
+          "UPDATE wholesale_tax_invoices SET status = 'voided', note = COALESCE(note, '') || ' · 환불 무효' WHERE order_id = ? AND type = 'purchase' AND supplier_id = ? AND status IN ('draft','issued','failed')"
+        ).bind(orderId, supplierId).run().catch((e) => logSoft('void-purchase', e))
+      } else {
+        // 남은 라인 有 → draft 매입계산서를 남은 공급가로 재계산(issued 는 수정세금계산서 필요 → 미변경).
+        const split = splitWholesaleVat(gross)
+        await DB.prepare(
+          "UPDATE wholesale_tax_invoices SET supply_amount = ?, vat_amount = ?, total_amount = ?, note = COALESCE(note, '') || ' · 부분환불 조정' WHERE order_id = ? AND type = 'purchase' AND supplier_id = ? AND status = 'draft'"
+        ).bind(split.supply, split.vat, split.total, orderId, supplierId).run().catch((e) => logSoft('adjust-purchase', e))
+      }
+    }
+
+    // 매출계산서(주문 전체) — 남은 청구액 = 미환불 라인 line_total 합 + 배송비(부분환불 시 배송비 유지). draft 만 재계산.
+    const salesAgg = await DB.prepare(
+      `SELECT COALESCE(SUM(line_total), 0) AS lt FROM wholesale_order_items WHERE wholesale_order_id = ? AND line_status != 'REFUNDED'`
+    ).bind(orderId).first<{ lt: number }>().catch(() => null)
+    const shipRow = await DB.prepare(
+      "SELECT COALESCE(shipping_total, 0) AS ship, COALESCE(shipping_refunded, 0) AS sr FROM wholesale_orders WHERE id = ?"
+    ).bind(orderId).first<{ ship: number; sr: number }>().catch(() => null)
+    const remainingSales = Math.max(0, Math.floor(Number(salesAgg?.lt) || 0)) + (Number(shipRow?.sr) ? 0 : Math.max(0, Math.floor(Number(shipRow?.ship) || 0)))
+    if (remainingSales > 0) {
+      const salesSplit = splitWholesaleVat(remainingSales)
+      await DB.prepare(
+        "UPDATE wholesale_tax_invoices SET supply_amount = ?, vat_amount = ?, total_amount = ?, note = COALESCE(note, '') || ' · 부분환불 조정' WHERE order_id = ? AND type = 'sales' AND status = 'draft'"
+      ).bind(salesSplit.supply, salesSplit.vat, salesSplit.total, orderId).run().catch((e) => logSoft('adjust-sales', e))
+    }
+  } catch (e) {
+    logSoft('void', e) // 절대 throw 금지.
   }
 }
 
@@ -293,7 +375,7 @@ export async function listAdminInvoices(DB: D1Database, opts: { status?: string;
   await ensureSchema(DB)
   const where: string[] = ['1=1']
   const binds: unknown[] = []
-  if (opts.status && ['draft', 'issued', 'failed'].includes(opts.status)) { where.push('ti.status = ?'); binds.push(opts.status) }
+  if (opts.status && ['draft', 'issued', 'failed', 'voided'].includes(opts.status)) { where.push('ti.status = ?'); binds.push(opts.status) }
   if (opts.type && ['sales', 'purchase'].includes(opts.type)) { where.push('ti.type = ?'); binds.push(opts.type) }
   // 행의 귀속 몰 = sales: distributor(sellers.mall_id) / purchase: supplier(suppliers.mall_id). 둘 중 적용되는 쪽(COALESCE).
   const accountMallExpr = "COALESCE(COALESCE(s.mall_id, sup.mall_id), 1)"
@@ -326,6 +408,8 @@ export async function reissueInvoice(DB: D1Database, env: unknown, id: number): 
     const cur = await DB.prepare('SELECT provider_ref FROM wholesale_tax_invoices WHERE id = ?').bind(id).first<{ provider_ref: string | null }>().catch(() => null)
     return { ok: true, status: 'issued', provider_ref: cur?.provider_ref ?? null }
   }
+  // 🧾 감사 #1: 환불로 무효화(voided)된 레코드는 재발행하지 않음(취소된 거래 — 재발행 시 유령 세금계산서).
+  if (rec.status === 'voided') return { ok: false, status: 'voided', provider_ref: null, error: '환불로 무효화된 세금계산서입니다' }
 
   // payee 사업자번호 재조회(type 별).
   let businessNumber: string | null = null

@@ -18,6 +18,7 @@ import { reverseSupplierOnWholesaleRefund, holdWholesaleSettlements, reconcileWh
 import { ACTIVE_WHOLESALE_STATUSES } from './wholesale-order-status'
 import { ensureOrderTables } from './wholesale-helpers'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn } from './wholesale-deposit-core'
+import { voidWholesaleTaxInvoicesOnRefund } from './wholesale-tax-invoices'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 
 export interface WholesaleRefundResult {
@@ -117,6 +118,9 @@ export async function refundWholesaleSupplierLines(
 
   // 제조사 정산 역전 (환불한 라인의 상품만 — 과다 클로백 방지, fail-soft).
   try { await reverseSupplierOnWholesaleRefund(DB, orderId, reason, supplierId, lines.map(l => l.product_id)) } catch { /* best-effort */ }
+
+  // 🧾 감사 #1: 세금계산서 환불 반영 — 전량환불 시 무효화, 부분환불 시 제조사 매입/매출 draft 재계산(fail-soft).
+  try { await voidWholesaleTaxInvoicesOnRefund(DB, orderId, { supplierId }) } catch { /* best-effort */ }
 
   // 재고 복원 (환불 라인만).
   for (const l of lines) {
