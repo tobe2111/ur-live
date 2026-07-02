@@ -109,12 +109,10 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const ownerView = isOwner && !previewAsVisitor
 
   // ── 인라인 편집 상태 ──
+  // 🖼️ 2026-07-01 (대표 신고 — 소개 섹션 헤더와 중복): InfoTab 의 bio/Instagram/YouTube 인라인 편집 폐기
+  //   (CuratorHeader 가 표시+편집 전담). 여기 남는 인라인 편집은 카카오 채팅 링크(헤더에 없는 유일 항목)뿐.
   const [editingField, setEditingField] = useState<string | null>(null)
-  const [editName, setEditName] = useState('')
-  const [editBio, setEditBio] = useState('')
   const [editKakao, setEditKakao] = useState('')
-  const [editInsta, setEditInsta] = useState('')
-  const [editYoutube, setEditYoutube] = useState('')
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   // 전역 테마 토글 연동 (useTheme 스토어)
@@ -125,11 +123,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const startEdit = (field: string) => {
     if (!isOwner) return
     setEditingField(field)
-    if (field === 'name') setEditName(seller?.name || '')
-    if (field === 'bio') setEditBio(seller?.bio || '')
     if (field === 'kakao') setEditKakao(seller?.kakao_chat_link || '')
-    if (field === 'instagram') setEditInsta(seller?.sns_instagram || '')
-    if (field === 'youtube') setEditYoutube(seller?.sns_youtube || '')
   }
 
   const saveEdit = async (field: string, value: string) => {
@@ -137,11 +131,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     const token = localStorage.getItem('seller_token')
     try {
       const payload: Record<string, string> = {}
-      if (field === 'name') payload.name = value
-      if (field === 'bio') payload.bio = value
       if (field === 'kakao') payload.kakao_chat_link = value
-      if (field === 'instagram') payload.sns_instagram = value
-      if (field === 'youtube') payload.sns_youtube = value
 
       await api.put('/api/seller/profile', payload, { headers: { Authorization: `Bearer ${token}` } })
       // 로컬 상태 업데이트
@@ -532,18 +522,10 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.tabInfo', { defaultValue: '정보' })}</h3>
           <InfoTab
             seller={seller}
-            sellerId={sellerId!}
             isOwner={ownerView}
-            effectiveBio={headerCurator.bio}
             T={T}
             editingField={editingField}
             setEditingField={setEditingField}
-            editBio={editBio}
-            setEditBio={setEditBio}
-            editInsta={editInsta}
-            setEditInsta={setEditInsta}
-            editYoutube={editYoutube}
-            setEditYoutube={setEditYoutube}
             editKakao={editKakao}
             setEditKakao={setEditKakao}
             saving={saving}

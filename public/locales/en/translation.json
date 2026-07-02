@@ -2789,7 +2789,10 @@
       "approve": "Approve",
       "approved": "Tax invoice approved",
       "approveFailed": "Approval failed"
-    }
+    },
+    "mailOrderNumber": "Mail-order business no.",
+    "mailOrderNumberPlaceholder": "e.g. 2026-Seoul-01234",
+    "mailOrderNumberHint": "Shown publicly in your linkshop seller info (e-commerce law disclosure)"
   },
   "admin": {
     "login": {

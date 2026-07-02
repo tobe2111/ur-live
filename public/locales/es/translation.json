@@ -2114,7 +2114,10 @@
       "approve": "Aprobar",
       "approved": "Factura fiscal aprobada",
       "approveFailed": "Aprobación fallida"
-    }
+    },
+    "mailOrderNumber": "N.º de venta a distancia",
+    "mailOrderNumberPlaceholder": "ej. 2026-Seul-01234",
+    "mailOrderNumberHint": "Se muestra públicamente en la información del vendedor de tu linkshop"
   },
   "admin": {
     "login": {

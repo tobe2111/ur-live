@@ -2789,7 +2789,10 @@
       "approve": "승인",
       "approved": "세금계산서를 승인했습니다",
       "approveFailed": "승인에 실패했습니다"
-    }
+    },
+    "mailOrderNumber": "통신판매업신고번호",
+    "mailOrderNumberPlaceholder": "예: 2026-서울강남-01234",
+    "mailOrderNumberHint": "링크샵 판매자 정보에 공개 표시됩니다 (전자상거래법 표시 항목)"
   },
   "admin": {
     "login": {

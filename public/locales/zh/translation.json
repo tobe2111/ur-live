@@ -2789,7 +2789,10 @@
       "approve": "批准",
       "approved": "已批准税金计算书",
       "approveFailed": "批准失败"
-    }
+    },
+    "mailOrderNumber": "通信销售业申报号",
+    "mailOrderNumberPlaceholder": "例: 2026-首尔江南-01234",
+    "mailOrderNumberHint": "将公开显示在链接商店的卖家信息中"
   },
   "admin": {
     "login": {

@@ -2789,7 +2789,10 @@
       "approve": "承認",
       "approved": "税金計算書を承認しました",
       "approveFailed": "承認に失敗しました"
-    }
+    },
+    "mailOrderNumber": "通信販売業届出番号",
+    "mailOrderNumberPlaceholder": "例: 2026-ソウル江南-01234",
+    "mailOrderNumberHint": "リンクショップの販売者情報に公開表示されます"
   },
   "admin": {
     "login": {
