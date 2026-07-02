@@ -59,15 +59,16 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
   //   '동네 공구 제안' 카드와 같은 그라데이션 카드 리스트로 통일. 동작 동일(경로 불변).
   return (
     <div className="space-y-3">
+      {/* 🏁 2026-07-02 단일 퍼널: 막다른 /register/business(크리에이터 안내 화면) → 단일 가입 관문. */}
       <button
-        onClick={() => { onDone(); navigate('/seller/register/business?from=kakao') }}
+        onClick={() => { onDone(); navigate('/seller/register/supplier') }}
         className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
       >
         <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
           <UserPlus className="w-6 h-6 text-white" />
         </div>
         <div className="text-left flex-1">
-          <p className="text-[15px] font-bold text-white">{t('bottomNav.startAsSeller', { defaultValue: '셀러로 시작하기' })}</p>
+          <p className="text-[15px] font-bold text-white">{t('bottomNav.openMyShop', { defaultValue: '내 쇼핑몰 열기 (사업자)' })}</p>
           <p className="text-[12px] text-white/80 mt-0.5">{t('bottomNav.sellerNoTokenSub', { defaultValue: '카카오 계정으로 가입·로그인 없이 한 번에' })}</p>
         </div>
       </button>
@@ -505,12 +506,13 @@ export default function BottomNav() {
                         {t('bottomNav.sellerLogin', { defaultValue: '셀러 로그인' })}
                       </button>
 
+                      {/* 🏁 2026-07-02 단일 퍼널: 레거시 별도계정 가입 → 카카오 로그인 후 단일 관문(같은 계정 업그레이드). */}
                       <button
-                        onClick={() => { setSheetOpen(false); navigate('/seller/register') }}
+                        onClick={() => { setSheetOpen(false); navigate('/login?returnUrl=' + encodeURIComponent('/seller/register/supplier')) }}
                         className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-900 dark:text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <UserPlus className="w-5 h-5" />
-                        {t('bottomNav.sellerSignup', { defaultValue: '셀러 회원가입' })}
+                        {t('bottomNav.openMyShop', { defaultValue: '내 쇼핑몰 열기 (사업자)' })}
                       </button>
                     </div>
                   )}

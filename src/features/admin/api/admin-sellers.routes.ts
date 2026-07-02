@@ -402,6 +402,22 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
       isReactivation ? '계정이 다시 활성화되었어요. 판매를 이어가실 수 있습니다' : '판매를 시작할 수 있습니다',
       '/seller').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) });
 
+    // 🏁 2026-07-02 (단일 퍼널 — 닫힌 루프): 유저→셀러 전환 신청자는 승인 전엔 셀러 대시보드에
+    //   못 들어가 위 대시보드 벨을 못 봄 → 실제 쓰는 소비자 앱 알림함에도 통보. 링크는
+    //   /seller/waiting — 그 페이지가 셀러 토큰 자동 발급 후 대시보드로 진입시킴(재로그인 0).
+    try {
+      const linkRow = await executeQuery<{ linked_user_id: number | null }>(DB,
+        'SELECT linked_user_id FROM sellers WHERE id = ?', [sellerId]);
+      const linkedUserId = linkRow[0]?.linked_user_id;
+      if (linkedUserId) {
+        const { notifyUser } = await import('../../../lib/notifications');
+        notifyUser(DB, String(linkedUserId), 'seller_approved',
+          isReactivation ? '🏪 셀러 계정 재활성화' : '🎉 사업자 유저 승인 완료',
+          isReactivation ? '판매를 이어가실 수 있어요' : '내 쇼핑몰이 열렸어요! 지금 상품·이용권을 등록해보세요',
+          '/seller/waiting').catch(swallow('admin-sellers:approve-user-notify'));
+      }
+    } catch { /* best-effort */ }
+
     // 🛡️ 2026-04-28: 셀러에게 카카오 알림톡
     try {
       const sellerInfo = await executeQuery<{ name: string; phone: string | null }>(DB,
@@ -517,12 +533,30 @@ adminSellersRoutes.patch('/sellers/:id/reject', cors(), async (c) => {
     const prevStatusRow = await executeQuery<{ status: string }>(DB, 'SELECT status FROM sellers WHERE id = ?', [sellerId]);
     const prevStatus = prevStatusRow[0]?.status || null;
     await executeQuery(DB, `UPDATE sellers SET status = 'rejected', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
+    // 🏁 2026-07-02: 거절 사유를 sellers.reject_reason 에도 저장 — SellerWaitingPage 가 이 컬럼을
+    //   읽어 표시(기존엔 admin-tools reject 만 저장해 이 엔드포인트 경유 거절은 사유가 안 보였음).
+    if (reason) {
+      await executeRun(DB, `UPDATE sellers SET reject_reason = ? WHERE id = ?`, [reason, sellerId]).catch(() => { /* 컬럼 없는 env */ });
+    }
     DB.prepare(`INSERT INTO seller_status_history (seller_id, prev_status, new_status, reason) VALUES (?, ?, 'rejected', ?)`)
       .bind(sellerId, prevStatus, reason).run().catch(() => { /* silent */ });
     await writeAuditLog(c, { action: 'reject_seller', targetType: 'seller', targetId: sellerId, after: { status: 'rejected', reason } });
 
     // 🛡️ 2026-04-28: 셀러에게 거절 알림 (대시보드)
     createDashboardNotification(DB, 'seller', String(sellerId), 'seller_rejected', '셀러 가입 거절', reason ? `사유: ${reason}` : '관리자에게 문의해주세요', '/seller').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) });
+
+    // 🏁 2026-07-02 (단일 퍼널 — 닫힌 루프): 전환 신청 유저의 소비자 알림함에도 통보 (대시보드 접근 불가 상태).
+    try {
+      const linkRow = await executeQuery<{ linked_user_id: number | null }>(DB,
+        'SELECT linked_user_id FROM sellers WHERE id = ?', [sellerId]);
+      const linkedUserId = linkRow[0]?.linked_user_id;
+      if (linkedUserId) {
+        const { notifyUser } = await import('../../../lib/notifications');
+        notifyUser(DB, String(linkedUserId), 'seller_rejected', '사업자 가입 심사 결과',
+          reason ? `아쉽지만 반려되었어요. 사유: ${reason}` : '아쉽지만 반려되었어요. 자세한 내용을 확인해주세요',
+          '/seller/waiting').catch(swallow('admin-sellers:reject-user-notify'));
+      }
+    } catch { /* best-effort */ }
 
     return c.json({ success: true, data: { id: sellerId, status: 'rejected', reason } });
   } catch (err) {
