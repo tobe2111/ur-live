@@ -27,7 +27,17 @@ export default function BrandLoader({ fullScreen = false, size = 34, label }: Br
   //   → 페이지 로드 시계(performance.now()) 기반 **음수 animation-delay** 로 위상을 전역 동기화:
   //   어떤 시점에 마운트돼도 애니메이션이 같은 위상에서 이어져 여러 로더가 하나처럼 연속으로 보임.
   //   (주기 상수는 index.css 의 ur-loader-breathe 1.5s / ur-loader-sweep 1.15s 와 동기 유지.)
-  const nowSec = typeof performance !== 'undefined' ? performance.now() / 1000 : 0
+  // 🎯 후속(대표 "아직 조금 끊김"): 위상 기준을 t=0(timeOrigin)이 아니라 **첫 페인트(FCP)** 로 —
+  //   worker 가 주입한 정적 로더의 CSS 애니메이션은 첫 페인트에 시작되므로, t=0 기준이면 첫
+  //   페인트 지연(수백 ms)만큼 교체 순간 위상이 점프했음. FCP 기준이면 정적↔React 위상 일치.
+  //   (paint 엔트리 미지원/부재 시 0 폴백 = 기존 동작. SPA 재마운트 간 연속성은 기준이 뭐든 동일.)
+  let phaseBase = 0
+  try {
+    const paints = typeof performance !== 'undefined' ? performance.getEntriesByType('paint') : []
+    const fp = paints.find((e) => e.name === 'first-contentful-paint') || paints.find((e) => e.name === 'first-paint')
+    if (fp) phaseBase = fp.startTime
+  } catch { /* 미지원 브라우저 — 0 폴백 */ }
+  const nowSec = typeof performance !== 'undefined' ? Math.max(0, performance.now() - phaseBase) / 1000 : 0
   const breatheDelay = `-${(nowSec % 1.5).toFixed(3)}s`
   const sweepDelay = `-${(nowSec % 1.15).toFixed(3)}s`
   return (
