@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Gift, Copy, Users } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -23,6 +24,7 @@ interface InviteReward {
 }
 
 export default function MyReferralCard() {
+  const { t } = useTranslation()
   const [rewards, setRewards] = useState<InviteReward[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -52,7 +54,7 @@ export default function MyReferralCard() {
     if (!inviteUrl) return
     try {
       await navigator.clipboard.writeText(inviteUrl)
-      toast.success('초대 링크 복사됨')
+      toast.success(t('inviteCard.copied', { defaultValue: '초대 링크 복사됨' }))
     } catch { /* ignore */ }
   }
 
@@ -65,7 +67,7 @@ export default function MyReferralCard() {
     <div className="rounded-2xl p-5 mt-3 bg-gray-100 dark:bg-white/[0.04] border border-gray-200 dark:border-[#2A2A2A]">
       <div className="flex items-center gap-2 mb-3">
         <Gift className="w-5 h-5 text-gray-700 dark:text-white" />
-        <h3 className="text-base font-extrabold text-gray-900 dark:text-white">친구 초대</h3>
+        <h3 className="text-base font-extrabold text-gray-900 dark:text-white">{t('inviteCard.title', { defaultValue: '친구 초대' })}</h3>
       </div>
 
       <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-3">
@@ -76,15 +78,15 @@ export default function MyReferralCard() {
       {/* 통계 */}
       <div className="grid grid-cols-3 gap-2 mb-3">
         <div className="bg-white dark:bg-[#0A0A0A] rounded-xl px-3 py-2 text-center">
-          <p className="text-[10px] text-gray-500 dark:text-gray-400">획득 딜</p>
+          <p className="text-[10px] text-gray-500 dark:text-gray-400">{t('inviteCard.statEarned', { defaultValue: '획득 딜' })}</p>
           <p className="text-base font-extrabold text-gray-900 dark:text-white">{formatNumber(total)}</p>
         </div>
         <div className="bg-white dark:bg-[#0A0A0A] rounded-xl px-3 py-2 text-center">
-          <p className="text-[10px] text-gray-500 dark:text-gray-400">완료</p>
+          <p className="text-[10px] text-gray-500 dark:text-gray-400">{t('inviteCard.statDone', { defaultValue: '완료' })}</p>
           <p className="text-base font-extrabold text-gray-900 dark:text-white">{grantedCount}</p>
         </div>
         <div className="bg-white dark:bg-[#0A0A0A] rounded-xl px-3 py-2 text-center">
-          <p className="text-[10px] text-gray-500 dark:text-gray-400">대기</p>
+          <p className="text-[10px] text-gray-500 dark:text-gray-400">{t('inviteCard.statPending', { defaultValue: '대기' })}</p>
           <p className="text-base font-extrabold text-gray-400">{pendingCount}</p>
         </div>
       </div>
@@ -98,21 +100,21 @@ export default function MyReferralCard() {
           onClick={copyLink}
           className="px-4 py-2.5 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-xl text-sm font-bold flex items-center gap-1.5 active:scale-95"
         >
-          <Copy className="w-4 h-4" /> 복사
+          <Copy className="w-4 h-4" /> {t('inviteCard.copy', { defaultValue: '복사' })}
         </button>
       </div>
 
       {rewards.length > 0 && (
         <div className="mt-3 pt-3 border-t border-gray-200 dark:border-[#2A2A2A]">
           <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1 mb-1">
-            <Users className="w-3 h-3" /> 최근 초대 ({rewards.length})
+            <Users className="w-3 h-3" /> {t('inviteCard.recent', { defaultValue: '최근 초대' })} ({rewards.length})
           </p>
           <div className="space-y-1">
             {rewards.slice(0, 3).map(r => (
               <div key={r.id} className="flex items-center justify-between text-[11px]">
-                <span className="text-gray-600 dark:text-gray-300">친구 #{r.invited_user_id.slice(-4)}</span>
+                <span className="text-gray-600 dark:text-gray-300">{t('inviteCard.friend', { defaultValue: '친구' })} #{r.invited_user_id.slice(-4)}</span>
                 <span className={r.status === 'granted' ? 'text-gray-900 dark:text-white font-bold' : 'text-gray-400'}>
-                  {r.status === 'granted' ? `+${formatNumber(r.reward_amount)}딜` : '구매 대기'}
+                  {r.status === 'granted' ? `+${formatNumber(r.reward_amount)}딜` : t('inviteCard.waitingPurchase', { defaultValue: '구매 대기' })}
                 </span>
               </div>
             ))}

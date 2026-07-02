@@ -187,7 +187,8 @@
     "unitMan": "万",
     "kakaoConsult": "カカオトークサポート",
     "share": "シェア",
-    "currencyWon": "ウォン"
+    "currencyWon": "ウォン",
+    "checkNetworkRetry": "ネットワークを確認して再試行してください"
   },
   "auth": {
     "email": "メールアドレス",
@@ -685,7 +686,9 @@
     "logout": "ログアウト",
     "coupons": "クーポン",
     "vouchers": "バウチャー",
-    "unitSheet": "枚"
+    "unitSheet": "枚",
+    "editProfile": "プロフィール編集",
+    "refundPolicy": "返金・返品ポリシー"
   },
   "theme": {
     "title": "画面テーマ",
@@ -716,7 +719,8 @@
     "cancelFail": "注文のキャンセルに失敗しました。",
     "cancelError": "注文キャンセル中にエラーが発生しました。",
     "tabCart": "カート",
-    "tabOrders": "注文履歴"
+    "tabOrders": "注文履歴",
+    "filterAll": "すべて"
   },
   "giftClaim": {
     "errorAddressInvalid": "住所を正確に入力してください",
@@ -834,7 +838,8 @@
     "statusExpired": "期限切れ",
     "emptyTitle": "参加中の共同購入がありません",
     "emptyHint": "友達と一緒にお得に買おう",
-    "browseProducts": "商品を見る"
+    "browseProducts": "商品を見る",
+    "loadFailed": "参加履歴を読み込めませんでした"
   },
   "interestList": {
     "title": "お気に入りグルメ",
@@ -4464,7 +4469,8 @@
     "stepGift2": "MMS\n送信",
     "stepGift3": "店舗で\n提示",
     "deal": "ディール",
-    "heroBalanceLabelGift": "保有ギフト券の金額"
+    "heroBalanceLabelGift": "保有ギフト券の金額",
+    "loadFailed": "利用券を読み込めませんでした"
   },
   "sellerWaiting": {
     "title": "セラー承認待機",
@@ -5655,7 +5661,8 @@
     "previewLabel": "[TODO:ja] 미리보기",
     "expiringSoon": "[TODO:ja] ⏰ 곧 만료됩니다",
     "accessError": "[TODO:ja] 접근 불가 ({{status}})",
-    "accessFailed": "[TODO:ja] 접근 실패"
+    "accessFailed": "[TODO:ja] 접근 실패",
+    "loadFailed": "ライブラリを読み込めませんでした"
   },
   "shopping": {
     "sectionTitle": "利用履歴",
@@ -6271,7 +6278,18 @@
     "settingsGroupTitle": "設定",
     "settingsGroupSub": "通知 · テーマ · 言語 · アプリ情報",
     "affiliateLinkTitle": "商品紹介リンク",
-    "affiliateLinkSub": "リンク経由の購入でディール獲得 — 実績を見る"
+    "affiliateLinkSub": "リンク経由の購入でディール獲得 — 実績を見る",
+    "dealBalance": "マイディール残高",
+    "charge": "チャージ",
+    "dealHistory": "利用履歴",
+    "balanceRetry": "残高を再読み込み",
+    "referralEarnedTitle": "紹介の獲得状況",
+    "referralStartTitle": "商品を紹介して獲得",
+    "referralCountN": "紹介 {{n}}件",
+    "referralStartSub": "SNSでシェア → 友達の決済で自動獲得",
+    "curatorTitle": "リンクショップ収益",
+    "curatorCashSub": "現金精算・出金可能",
+    "curatorDealSub": "累計獲得・1ディール=1ウォン"
   },
   "push": {
     "promptTitle": "通知をオンにしますか？",
@@ -6327,5 +6345,32 @@
   "groupBuy.categoryBeauty": "💇 美容",
   "groupBuy.categoryStay": "🏨 宿泊",
   "groupBuy.categoryEtc": "🎯 その他",
-  "groupBuy.stayBadge": "宿泊"
+  "groupBuy.stayBadge": "宿泊",
+  "roleCta": {
+    "myShortcuts": "マイショートカット",
+    "startNewRole": "新しい役割を始める",
+    "linkshop": "マイリンクショップ",
+    "linkshopDesc": "交換券・共同購入を紹介して獲得",
+    "sellerDash": "セラーダッシュボード",
+    "sellerDashDesc": "商品・共同購入・精算の管理",
+    "agencyDash": "エージェンシーダッシュボード",
+    "agencyDashDesc": "紹介した店舗の収益",
+    "proposeGb": "ご近所共同購入の提案",
+    "proposeGbDesc": "希望のお店を提案するとまとめて開催します",
+    "openShop": "マイショップを開く",
+    "openShopDesc": "事業者登録 → 商品・利用券を販売",
+    "agencyBiz": "エージェンシー事業",
+    "agencyBizDesc": "店舗開拓 → 2%の永続収益"
+  },
+  "inviteCard": {
+    "title": "友達を招待",
+    "copied": "招待リンクをコピーしました",
+    "statEarned": "獲得ディール",
+    "statDone": "完了",
+    "statPending": "待機",
+    "copy": "コピー",
+    "recent": "最近の招待",
+    "waitingPurchase": "購入待ち",
+    "friend": "友達"
+  }
 }
