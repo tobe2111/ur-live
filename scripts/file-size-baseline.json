@@ -32,7 +32,7 @@
   "src/features/seller/api/seller-stays.routes.ts": 803,
   "src/features/seller/api/seller-streams.routes.ts": 908,
   "src/features/supply/api/supplier-dashboard.routes.ts": 1467,
-  "src/features/supply/api/wholesale.routes.ts": 2195,
+  "src/features/supply/api/wholesale.routes.ts": 2210,
   "src/features/youtube/api/youtube-live.routes.ts": 3376,
   "src/features/youtube/api/youtube.routes.ts": 602,
   "src/features/youtube/services/youtube-api.service.ts": 669,
