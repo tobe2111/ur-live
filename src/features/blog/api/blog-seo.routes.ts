@@ -44,7 +44,7 @@ app.get('/blog/og/:slug', async (c) => {
     const row = await c.env.DB.prepare(
       `SELECT title, tags FROM blog_posts WHERE slug = ? AND is_published = 1`
     ).bind(slug).first<{ title: string; tags: string }>()
-    if (row?.title) title = row.title
+    if (row?.title) title = row.title.replace(/\*\*/g, '')
     if (row?.tags) { try { tags = JSON.parse(row.tags) } catch { tags = [] } }
   } catch { /* fallback 기본값 */ }
 
@@ -83,10 +83,10 @@ app.get('/blog/rss', async (c) => {
       const link = `${origin}/blog/${p.slug}`
       const date = p.published_at ? new Date(p.published_at).toUTCString() : ''
       return `    <item>
-      <title>${xmlEscape(p.title)}</title>
+      <title>${xmlEscape((p.title || '').replace(/\*\*/g, ''))}</title>
       <link>${xmlEscape(link)}</link>
       <guid isPermaLink="true">${xmlEscape(link)}</guid>
-      <description>${xmlEscape(p.summary || '')}</description>${date ? `\n      <pubDate>${date}</pubDate>` : ''}
+      <description>${xmlEscape((p.summary || '').replace(/\*\*/g, ''))}</description>${date ? `\n      <pubDate>${date}</pubDate>` : ''}
     </item>`
     }).join('\n')
   } catch { /* 비어도 유효한 피드 반환 */ }

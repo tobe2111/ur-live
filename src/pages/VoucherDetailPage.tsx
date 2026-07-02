@@ -12,6 +12,7 @@ import { formatPhone } from '@/utils/format-phone'
 import { useInvalidateMyVouchers, useBalance } from '@/hooks/queries'
 import { isLoggedInSync } from '@/utils/auth'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 /**
  * 🛡️ 2026-05-23: 교환권 전용 detail 페이지.
@@ -46,6 +47,8 @@ interface VoucherProduct {
   restaurant_address?: string | null
   seller_id?: number
   seller_name?: string | null
+  /** 🎯 1인당 최대 구매 수량 (설정 시, 없으면 무제한). */
+  max_per_person?: number
 }
 
 /**
@@ -260,11 +263,8 @@ export default function VoucherDetailPage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white" />
-      </div>
-    )
+    // 🎨 2026-07-01 (대표 "로더 전면 통일"): 유어딜 BrandLoader(SSOT)로 통일.
+    return <BrandLoader fullScreen />
   }
 
   if (error || !product) {
@@ -411,9 +411,10 @@ export default function VoucherDetailPage() {
           )}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-3.5 border border-[#E6E9ED] dark:border-[#2A2A2A] rounded-2xl px-3.5 h-[54px] shrink-0">
+              {/* 🎯 2026-07-01: 1인당 한도(max_per_person) cap — 미설정 시 10(서버 공통 상한과 별개 UX 가드). */}
               <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1} aria-label="수량 감소" className="text-[20px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">−</button>
               <span className="min-w-[14px] text-center text-[16px] font-bold text-gray-900 dark:text-white">{quantity}</span>
-              <button onClick={() => setQuantity(q => q + 1)} aria-label="수량 증가" className="text-[20px] font-semibold text-gray-900 dark:text-white">+</button>
+              <button onClick={() => { const cap = product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : 10; setQuantity(q => Math.min(cap, q + 1)) }} disabled={quantity >= (product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : 10)} aria-label="수량 증가" className="text-[20px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">+</button>
             </div>
             <button
               onClick={handleExchange}

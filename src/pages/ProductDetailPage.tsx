@@ -22,7 +22,7 @@ import KakaoShareButton from '@/components/KakaoShareButton'
 import { ProductInfoGrid } from '@/components/product/ProductInfoGrid'
 import { ProductNoticeSection } from '@/components/product/ProductNoticeSection'
 import { ReturnPolicySection } from '@/components/product/ReturnPolicySection'
-import { ProductDetailSkeleton } from '@/components/ui/skeleton'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import { resolveDetailDisplay } from './product-detail/detail-display'
@@ -338,7 +338,8 @@ export default function ProductDetailPage() {
   }
 
   if (isLoading) {
-    return <ProductDetailSkeleton />
+    // 🎨 2026-07-01 (대표 "로더 전면 통일"): 유어딜 BrandLoader(SSOT)로 통일.
+    return <BrandLoader fullScreen />
   }
 
   if (error || !product) {

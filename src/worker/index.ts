@@ -175,6 +175,7 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 // 🛡️ 2026-04-26: 파일 중간 import 를 상단으로 이동 (CLAUDE.md 금지 패턴 — 2026-04-22 사고 재발 방지)
 import { blogRoutes } from '../features/blog/api/blog.routes';
 import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes';
+import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blog-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
@@ -263,6 +264,9 @@ import { auctionRoutes } from '../features/auction/api/auction.routes';
 import { timedealRoutes } from '../features/timedeal/api/timedeal.routes';
 import { communityGroupBuyRoutes } from '../features/community-group-buy/api/community-group-buy.routes';
 import { referralRoutes } from '../features/referral/api/referral.routes';
+// 🖼️ 2026-07-02 (대표 "사진이 빠르게 안 나타남"): 상세 히어로 preload URL 생성 — 클라와 동일 함수 재사용
+//   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
+import { cfImage } from '../utils/cf-image';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -518,6 +522,11 @@ app.use('*', async (c, next) => {
       //   HTML→JS→fetch 3-RTT 워터폴 제거 — 카드가 첫 페인트에 즉시. 비로그인(공유 응답)만 consume
       //   (로그인 등급가는 클라가 fetch — 등급 캐시로 빠름). prewarm 키와 동일 path.
       ssrTarget = { slot: 'WHOLESALE', path: '/api/wholesale/catalog' };
+    } else if (url.pathname === '/blog' && !url.search) {
+      // 📝 2026-07-01 블로그 목록 SSR — BlogListPage 가 __SSR_INITIAL_BLOG__ 를 0-RTT consume(마운트 후
+      //   cold fetch 워터폴 제거) + 아래 head rewrite 에서 Blog/ItemList 구조화데이터 주입(검색 리치결과).
+      //   path 는 클라(limit=100)와 정확히 일치해야 edge-key hit — prewarm 키도 동일하게 추가.
+      ssrTarget = { slot: 'BLOG', path: '/api/blog/public?limit=100' };
     } else if (/^\/blog\/[^/]+$/.test(url.pathname)) {
       // 📝 2026-07-01 블로그 상세 SSR — 비-JS 크롤러(네이버/카카오/소셜 스크래퍼)용 서버 메타/JSON-LD 주입 +
       //   0-RTT. /api/blog/public/:slug 는 publicCache(180) → edge-hit. 아래 head rewrite 에서 payload 로 메타 생성.
@@ -586,7 +595,7 @@ app.use('*', async (c, next) => {
         //   SELLER(/profile)와 **동일한 SellerPublicPage** 를 그리고 콜드 D1 비용도 비슷한데 타임아웃이 1500ms 라
         //   /profile(2000ms)보다 cold self-fetch 가 더 자주 timeout → SSR 미주입 → CuratorPage 스켈레톤 더 자주 노출.
         //   같은 페이지군이므로 CURATOR 를 2000ms 로 맞춤(warm/edge-hit·타 슬롯·소비자 페이지 불변 — 콜드 첫 사용자만 영향).
-        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT' || ssrTarget.slot === 'CURATOR' || ssrTarget.slot === 'BLOGPOST') ? 2000
+        const timeoutMs = (ssrTarget.slot === 'DETAIL' || ssrTarget.slot === 'SELLER' || ssrTarget.slot === 'PRODUCT' || ssrTarget.slot === 'CURATOR' || ssrTarget.slot === 'BLOGPOST' || ssrTarget.slot === 'BLOG') ? 2000
           : ssrTarget.slot === 'WHOLESALE' ? 3000
           : 1500;
         const ctlr = new AbortController();
@@ -667,6 +676,24 @@ app.use('*', async (c, next) => {
               `<script id="${scriptId}" type="application/json">${ssrPayload}</script>`,
               { html: true },
             );
+            // 🖼️ 2026-07-02 [UNLOCK_LOADING] (대표 "사진이 빠르게 안 나타남"): 공구/교환권 상세 히어로가
+            //   CSS background-image 라 브라우저 프리로드 스캐너를 못 타 [엔트리→페이지 청크→렌더] 뒤에야
+            //   다운로드 시작 → 사진이 늦게 뜸. seed 의 image_url 로 클라와 동일한 cfImage(width 900) URL 을
+            //   <link rel=preload as=image> 주입 → HTML 파싱 즉시 병렬 다운로드, 렌더 시점엔 캐시 적중.
+            //   (Save-Data 사용자만 quality 65 로 URL 이 달라 미적중 — 히어로 1장 한정 허용 트레이드오프.)
+            if (ssrSlot === 'DETAIL') {
+              try {
+                const seed = JSON.parse(ssrPayload) as { data?: { image_url?: string } };
+                const heroSrc = seed?.data?.image_url;
+                const heroUrl = heroSrc ? cfImage(heroSrc, { width: 900, format: 'auto' }) : '';
+                if (heroUrl && !heroUrl.startsWith('data:')) {
+                  el.append(
+                    `<link rel="preload" as="image" fetchpriority="high" href="${heroUrl.replace(/"/g, '&quot;')}">`,
+                    { html: true },
+                  );
+                }
+              } catch { /* seed 파싱 실패 — preload 생략(치명 아님) */ }
+            }
           }
         },
       });
@@ -687,6 +714,9 @@ app.use('*', async (c, next) => {
         .on('meta[property="og:site_name"]', { element(el) { el.setAttribute('content', '유통스타트'); } })
         .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', wsTitle); } })
         .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', wsDesc); } })
+        // 🏭 도매 surface 파비콘(브라우저 탭) = 유통스타트 마크(유어딜 UR 아님). 링크 href 를 도매 파비콘으로 rewrite.
+        .on('link[rel="icon"]', { element(el) { el.setAttribute('href', '/favicon-utong.svg'); el.setAttribute('type', 'image/svg+xml'); } })
+        .on('link[rel="apple-touch-icon"]', { element(el) { el.setAttribute('href', '/favicon-utong.svg'); } })
         .on('head', { element(el) { el.append(`<link rel="canonical" href="${wsCanonical}">`, { html: true }); } });
     }
     if (isMarketingSurface) {
@@ -714,46 +744,32 @@ app.use('*', async (c, next) => {
     //   Googlebot 은 react-helmet(<SEO>)을 렌더해 보지만, 네이버·소셜 스크래퍼는 정적 HTML 메타만 봄.
     const origin2 = new URL(c.req.url).origin;
     if (ssrSlot === 'BLOGPOST' && ssrPayload) {
-      try {
-        const post = (JSON.parse(ssrPayload) as { data?: { title?: string; summary?: string; slug?: string; author?: string; published_at?: string } })?.data;
-        if (post && post.title) {
-          const bt = String(post.title);
-          const bd = String(post.summary || '').slice(0, 200);
-          const bTitle = `${bt} - 유어딜 블로그`;
-          const canon = `${origin2}/blog/${post.slug || ''}`;
-          const pub = post.published_at ? new Date(post.published_at).toISOString() : undefined;
-          const article: Record<string, unknown> = {
-            '@context': 'https://schema.org', '@type': 'BlogPosting',
-            headline: bt, description: bd,
-            author: { '@type': 'Organization', name: post.author || '유어딜' },
-            publisher: { '@type': 'Organization', name: '유어딜' },
-            mainEntityOfPage: canon, url: canon,
-            ...(pub ? { datePublished: pub, dateModified: pub } : {}),
-          };
-          const ogImg = `${origin2}/blog/og/${encodeURIComponent(post.slug || '')}`;
-          const jsonLd = JSON.stringify({ ...article, image: ogImg }).replace(/<\/script/gi, '<\\/script');
-          rb = rb
-            .on('title', { element(el) { el.setInnerContent(bTitle); } })
-            .on('meta[name="description"]', { element(el) { el.setAttribute('content', bd); } })
-            .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', bt); } })
-            .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', bd); } })
-            .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', canon); } })
-            .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', 'article'); } })
-            .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', ogImg); } })
-            .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', bt); } })
-            .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', bd); } })
-            .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', ogImg); } })
-            .on('head', { element(el) {
-              el.append(`<link rel="canonical" href="${canon}">`, { html: true });
-              el.append(`<link rel="alternate" type="application/rss+xml" title="유어딜 블로그 RSS" href="${origin2}/blog/rss">`, { html: true });
-              el.append(`<script type="application/ld+json">${jsonLd}</script>`, { html: true });
-            } });
-        }
-      } catch { /* 파싱 실패 시 기본 메타 유지 */ }
+      // 📝 순수 계산은 blog-ssr-meta.ts 로 추출(god 파일 성장 방지) — 여기선 rewriter 배선만.
+      const m = buildBlogPostMeta(ssrPayload, origin2);
+      if (m) {
+        rb = rb
+          .on('title', { element(el) { el.setInnerContent(m.pageTitle); } })
+          .on('meta[name="description"]', { element(el) { el.setAttribute('content', m.description); } })
+          .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', m.title); } })
+          .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', m.description); } })
+          .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', m.canonical); } })
+          .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', 'article'); } })
+          .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', m.ogImage); } })
+          .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', m.title); } })
+          .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', m.description); } })
+          .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', m.ogImage); } })
+          .on('head', { element(el) {
+            el.append(`<link rel="canonical" href="${m.canonical}">`, { html: true });
+            el.append(`<link rel="alternate" type="application/rss+xml" title="유어딜 블로그 RSS" href="${origin2}/blog/rss">`, { html: true });
+            el.append(`<script type="application/ld+json">${m.jsonLd}</script>`, { html: true });
+          } });
+      }
     } else if (url.pathname === '/blog') {
       const bt = '유어딜 블로그 — 이용권·교환권·동네딜·링크샵 가이드';
       const bd = '할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 나만의 링크샵까지. 유어딜 활용법과 서비스 소식을 전합니다.';
       const canon = `${origin2}/blog`;
+      // 📝 목록 Blog+ItemList JSON-LD — payload 기반(콜드 timeout 시 '') 계산은 blog-ssr-meta.ts.
+      const listJsonLd = buildBlogListJsonLd(ssrPayload, origin2, canon, bt, bd);
       rb = rb
         .on('title', { element(el) { el.setInnerContent(bt); } })
         .on('meta[name="description"]', { element(el) { el.setAttribute('content', bd); } })
@@ -765,7 +781,40 @@ app.use('*', async (c, next) => {
         .on('head', { element(el) {
           el.append(`<link rel="canonical" href="${canon}">`, { html: true });
           el.append(`<link rel="alternate" type="application/rss+xml" title="유어딜 블로그 RSS" href="${origin2}/blog/rss">`, { html: true });
+          if (listJsonLd) el.append(`<script type="application/ld+json">${listJsonLd}</script>`, { html: true });
         } });
+    }
+    // 🔗 2026-07-01 [UNLOCK_LOADING] (대표 승인 — 링크샵 전수조사): /u/:handle 링크샵 서버측 OG/canonical 주입.
+    //   그간 CURATOR 슬롯은 __SSR_INITIAL_CURATOR__ 데이터만 주입하고 메타는 index.html 소비자 기본값(제네릭 홈)을
+    //   그대로 서빙 → 카톡/소셜 공유·비-JS 크롤러가 "정지원 링크샵"이 아니라 "유어딜 홈" 카드를 봄. 개인화 OG 코드는
+    //   실제 안 타는 app.get('*') fallback 에만 있었음(무효). WHOLESALE/BLOGPOST 와 동일하게 서빙 경로(HTMLRewriter)
+    //   에서 rewrite. **SSR inject(__SSR_INITIAL_CURATOR__)·0-RTT·#root 비움·edgeCache 전부 불변 — 메타 rewrite만 additive.**
+    if (ssrSlot === 'CURATOR' && ssrPayload) {
+      try {
+        const cur = (JSON.parse(ssrPayload) as { curator?: { name?: string; bio?: string; handle?: string; profile_image?: string | null } })?.curator;
+        if (cur && (cur.name || cur.handle)) {
+          const cName = String(cur.name || '@' + (cur.handle || ''));
+          const cTitle = `${cName} 링크샵 - 유어딜`;
+          const cDesc = String(cur.bio || '').slice(0, 200) || `${cName}님의 추천 — 교환권·이용권 모음`;
+          const canon = `${origin2}/u/${cur.handle || ''}`;
+          // 🖼️ 2026-07-01 (전수조사 후속 A): og:image 는 전용 OG 카드(1200×630 SVG, 이름·핸들·프로필 합성)를
+          //   사용 — 정사각 raw 프로필보다 소셜(카톡/트위터/FB) 카드 비율에 맞음(블로그 `/blog/og/:slug` 와 동일 방식).
+          //   프로필 유무와 무관하게 카드가 렌더되므로 무조건 설정. `/api/og/curator/:handle` = og-image.routes.ts.
+          const ogCard = `${origin2}/api/og/curator/${encodeURIComponent(cur.handle || '')}`;
+          rb = rb
+            .on('title', { element(el) { el.setInnerContent(cTitle); } })
+            .on('meta[name="description"]', { element(el) { el.setAttribute('content', cDesc); } })
+            .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', cTitle); } })
+            .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', cDesc); } })
+            .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', canon); } })
+            .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', 'profile'); } })
+            .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', ogCard); } })
+            .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', cTitle); } })
+            .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', cDesc); } })
+            .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', ogCard); } })
+            .on('head', { element(el) { el.append(`<link rel="canonical" href="${canon}">`, { html: true }); } });
+        }
+      } catch { /* 파싱 실패 시 기본 메타 유지 */ }
     }
     if (needsRootBlank) {
       // 도매·대시보드 공통: 소비자 홈 shell 깜빡임 제거 (라이트 배경 placeholder).
@@ -774,8 +823,40 @@ app.use('*', async (c, next) => {
           el.setInnerContent('<div style="position:fixed;inset:0;background:#F4F5F7"></div>', { html: true });
         },
       });
-    } else if (isLinkshopSurface || isDetailSurface || isBlogSurface) {
-      // 링크샵·공구/교환권 상세·블로그: 홈 shell 잔상 제거 — #root 비움(테마 가변이라 색 placeholder 대신 body 테마 bg 노출).
+    } else if (isLinkshopSurface || isDetailSurface) {
+      // 🖼️ 2026-07-01 [UNLOCK_LOADING] (대표 지시 — "콜드 로딩은 풀로, 2~3가지 로딩화면 절대 금지"): 링크샵은
+      //   #root 를 비워 blank flash 를 노출하던 것 → 첫 페인트부터 URDEAL 브랜드 로더 주입(다른 페이지 라우트
+      //   전환/React 로딩과 동일 로더). createRoot(비-hydrate)가 마운트 시 교체 → [로더 → 완성] 단일 흐름.
+      //   테마 가변 대응: dark: variant 로 다크/라이트 자동(index.html 인라인 스크립트가 첫 페인트 전 테마 적용).
+      //   CSS 클래스(ur-loader-breathe/sweep)는 번들에 존재. BrandLoader(React) 와 시각 동일.
+      // 🎯 2026-07-01 [UNLOCK_LOADING] (대표 "상세 로딩 2번 나뉨/느림"): 공구/교환권 상세도 동일 정적 로더 —
+      //   #root 비움(blank flash) 대신 첫 페인트부터 로더. BrandLoader 가 performance.now() 기반 음수
+      //   delay 로 위상을 전역 동기화하므로 [정적 → Suspense 청크 → 페이지 데이터] 로더가 하나로 이어짐.
+      //   (같은 이유로 정적 로더의 옛 200ms sweep 지연 제거 — 위상 0 시작 = React 로더와 정합.)
+      rb = rb.on('#root', {
+        element(el) {
+          el.setInnerContent(
+            // 🎯 2026-07-02 (대표 "아직 조금 끊김"): 워드마크를 UrDealLogo(React SSOT)와 픽셀 동일하게 —
+            //   ▶ 플레이 마커 + 블록 도트(size34 사전계산: ▶ left6.12/top9.52/border4.76·3.06, 도트 4.76 원형/
+            //   margin2.72/↑2.04). 이전 평문 "UR·DEAL" 은 React 로더 교체 순간 로고 형태가 미세하게 점프했음.
+            '<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">' +
+              '<div class="ur-loader-breathe text-[#0A0A0A] dark:text-white" style="display:inline-flex;align-items:center;font-family:\'Pretendard Variable\',system-ui,sans-serif;font-weight:900;font-size:34px;font-style:italic;letter-spacing:-0.055em;line-height:1">' +
+                '<span style="position:relative;display:inline-flex;align-items:baseline"><span>UR</span>' +
+                  '<span style="position:absolute;left:6.12px;top:9.52px;width:0;height:0;border-left:4.76px solid currentColor;border-top:3.06px solid transparent;border-bottom:3.06px solid transparent;opacity:.85"></span>' +
+                '</span>' +
+                '<span style="display:inline-block;width:4.76px;height:4.76px;background:currentColor;border-radius:50%;margin:0 2.72px;transform:translateY(-2.04px)"></span>' +
+                '<span>DEAL</span>' +
+              '</div>' +
+              '<div class="bg-gray-200/70 dark:bg-white/10" style="position:relative;overflow:hidden;border-radius:9999px;width:96px;height:3px">' +
+                '<div class="ur-loader-sweep bg-gray-900 dark:bg-white" style="position:absolute;top:0;bottom:0;left:0;border-radius:9999px;width:38%"></div>' +
+              '</div>' +
+            '</div>',
+            { html: true },
+          );
+        },
+      });
+    } else if (isBlogSurface) {
+      // 블로그: 홈 shell 잔상 제거 — #root 비움(테마 가변이라 색 placeholder 대신 body 테마 bg 노출).
       rb = rb.on('#root', {
         element(el) { el.setInnerContent('', { html: true }); },
       });
@@ -1168,6 +1249,7 @@ app.use('/api/group-buy/products/*', publicCache(30), cacheControl(30));
 app.use('/api/group-buy/products/*/participants', publicCache(60), cacheControl(60));
 app.use('/api/group-buy/live-ticker', publicCache(30), cacheControl(30));
 app.use('/api/og/group-buy/*', publicCache(3600), cacheControl(3600)); // OG image 1h
+app.use('/api/og/curator/*', publicCache(3600), cacheControl(3600)); // 🖼️ 2026-07-01 링크샵 공유카드 — 공유마다 스크래퍼가 fetch → 1h 캐시(group-buy 와 동일)
 app.use('/api/currency/rates', publicCache(3600), cacheControl(3600)); // 환율 1h (전역 데이터)
 app.use('/api/banners', publicCache(300), cacheControl(300));    // 5 min (공개 배너)
 // 🛡️ 2026-04-22: 추가 공개 read-only 엔드포인트 캐싱 (성능 감사 결과)
@@ -1194,6 +1276,7 @@ app.use('/api/sellers/*/public', publicCache(60), cacheControl(60));        // �
 app.use('/api/curator/:handle', edgeCache(300));    // 링크샵 — 소유자/인증 bypass→fresh, 익명/SSR/cron 만 edge 캐싱
 app.use('/api/sections', publicCache(120), cacheControl(120));              // 홈 섹션 2min (변동 적음)
 app.use('/api/seller-tiers', publicCache(300), cacheControl(300));          // 셀러 등급 5min (거의 안 변함)
+app.use('/api/blog/public', publicCache(180), cacheControl(180));           // 📝 2026-07-01 블로그 목록(exact) — 목록 SSR 0-RTT edge-hit + prewarm 대상. `/*`(아래)는 상세만 매칭
 app.use('/api/blog/public/*', publicCache(180), cacheControl(180));         // 블로그 공개 글 3min
 app.use('/api/search/*', publicCache(30), cacheControl(30));                // 검색 결과 30s (query 기반 — user 무관)
 // 🛡️ 2026-05-24 perf audit: 누락된 user-agnostic GET 추가 (실코드 검증 — auth/PII 없음, exact path 충돌 없음)
@@ -2009,8 +2092,8 @@ const BASE_URL = 'https://live.ur-team.com';
 // 🛡️ 2026-05-21: 사용자 요청 — "돈버는 쇼핑" 키워드 노출 + 오프라인 공동구매 우선.
 //   서버 side rendering 의 OG meta tag 와 크롤러용 fallback HTML (search bot).
 const DEFAULT_OG = {
-  title: '유어딜 - 돈버는 쇼핑, 오프라인 공동구매 & 라이브커머스',
-  desc: '동네 가게 공동구매로 결제하고 딜 적립까지. 인플루언서 추천 이용권 + 라이브 쇼핑.',
+  title: '유어딜 - 돈버는 쇼핑, 이용권·교환권·동네딜',
+  desc: '할인가로 사서 매장에서 바로 쓰는 이용권, 기프티콘 교환권, 내 주변 동네딜, 나만의 링크샵까지. 유어딜에서 돈버는 쇼핑.',
   image: `${BASE_URL}/og-image.png`,
 };
 

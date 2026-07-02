@@ -21,6 +21,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
 import { clawbackVoucherCommission } from './helpers'
+import { intParam } from '@/shared/pagination'
 
 interface RefundVoucherRow {
   id: number
@@ -128,10 +129,24 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
               if (result.ok) {
                 await DB.prepare("UPDATE orders SET status = 'REFUNDED' WHERE id = ?").bind(v.order_id).run().catch(() => null)
               } else {
-                // toss_refund_failures 에 이미 helper 가 기록 (재시도 cron 가능)
-                if (import.meta.env?.DEV) console.warn('[toss refund failed]', result)
+                // retryable(5xx)은 gateway 가 toss_refund_failures 기록 → cron 재시도.
+                // 🚨 non-retryable(4xx)은 cron 이 안 집음 → 어드민 벨/Discord 수동환불 알림.
+                const { alertTossRefundFailure } = await import('../../../worker/utils/toss-refund-alert')
+                await alertTossRefundFailure(c.env as { DISCORD_WEBHOOK_URL?: string }, DB, {
+                  source: '셀러 수동환불', paymentKey: orderRow.payment_key, voucherId: v.id,
+                  amount: refundAmount, errorCode: result.error_code, errorMessage: result.error_message, httpStatus: result.http_status,
+                })
               }
-            } catch (e) { if (import.meta.env?.DEV) console.warn('[toss refund]', e) }
+            } catch (e) {
+              if (import.meta.env?.DEV) console.warn('[toss refund]', e)
+              try {
+                const { alertTossRefundFailure } = await import('../../../worker/utils/toss-refund-alert')
+                await alertTossRefundFailure(c.env as { DISCORD_WEBHOOK_URL?: string }, DB, {
+                  source: '셀러 수동환불(예외)', voucherId: v.id, amount: refundAmount,
+                  errorCode: 'EXCEPTION', errorMessage: (e as Error)?.message,
+                })
+              } catch { /* fail-soft */ }
+            }
           })())
         }
         // 🛡️ 2026-05-30: 인플 commission clawback — 환불된 매출의 미지급 커미션 회수 (기존 누수 차단).
@@ -288,7 +303,7 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
     if (!isSeller) return c.json({ success: false, error: '셀러만 접근 가능합니다' }, 403)
 
     const { DB } = c.env
-    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '50')))
+    const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 50)))
     try {
       const { results } = await DB.prepare(`
         SELECT l.id, l.code, l.product_id, l.success, l.reason, l.created_at,

@@ -12,6 +12,7 @@ import { QueryBuilder } from '../repositories/query-builder';
 import type { AuthVariables } from '../middleware/auth.middleware';
 import type { Seller } from '../../shared/types';
 import { cacheGet } from '../utils/cache';
+import { intParam } from '@/shared/pagination'
 
 const sellersRouter = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
@@ -20,8 +21,8 @@ sellersRouter.get('/', async (c) => {
   try {
     const qb = new QueryBuilder(c.env.DB);
     const { page = '1', limit = '20' } = c.req.query();
-    const pageNum = parseInt(page, 10);
-    const limitNum = Math.min(parseInt(limit, 10), 100);
+    const pageNum = Math.max(1, intParam(page, 1));
+    const limitNum = Math.min(Math.max(intParam(limit, 20), 1), 100);
     const offset = (pageNum - 1) * limitNum;
 
     // ✅ 실제 sellers 테이블 스키마에 맞게 수정
@@ -193,6 +194,33 @@ sellersRouter.get('/:id/public', async (c) => {
       }
     } catch { /* additive — 생략 가능 */ }
 
+    // 🖼️ 2026-07-01 (대표 — 링크샵 판매자 정보 "항상 미등록" 수정): 통신판매업신고번호는 sellers 컬럼이
+    //   아예 없어(100컬럼 예산제) 공개 응답에 영구 누락 → InfoTab 이 항상 "(정보 미등록)" 표시하던 유령 필드.
+    //   side table(seller_business_info)에서 additive enrich + 대표자명/주소도 sellers 값 비었으면 폴백.
+    //   기존 응답 필드/캐시 키 불변(추가만), 실패 시 조용히 생략.
+    try {
+      const sid2 = (seller as { id?: number }).id
+      if (sid2) {
+        let sbi: { mail_order_number?: string | null; address?: string | null; ceo_name?: string | null } | null = null
+        try {
+          sbi = await c.env.DB.prepare(
+            'SELECT mail_order_number, address, ceo_name FROM seller_business_info WHERE seller_id = ? ORDER BY id DESC LIMIT 1'
+          ).bind(sid2).first()
+        } catch {
+          // mail_order_number 컬럼 미존재 환경 — 주소/대표자 폴백만이라도
+          sbi = await c.env.DB.prepare(
+            'SELECT address, ceo_name FROM seller_business_info WHERE seller_id = ? ORDER BY id DESC LIMIT 1'
+          ).bind(sid2).first()
+        }
+        if (sbi) {
+          const s = seller as Record<string, unknown>
+          if (sbi.mail_order_number) s.mail_order_number = sbi.mail_order_number
+          if (sbi.address && !s.business_address) s.business_address = sbi.address
+          if (sbi.ceo_name && !s.ceo_name) s.ceo_name = sbi.ceo_name
+        }
+      }
+    } catch { /* additive — 생략 가능 */ }
+
     return c.json({ success: true, data: seller });
   } catch (err) {
     console.error('[SELLERS] Public profile error:', err);
@@ -210,8 +238,8 @@ sellersRouter.get('/:sellerId/products-public', async (c) => {
       return c.json({ success: false, error: 'Invalid seller ID' }, 400)
     }
     const { page = '1', limit = '20' } = c.req.query();
-    const pageNum = parseInt(page, 10);
-    const limitNum = Math.min(parseInt(limit, 10), 100);
+    const pageNum = Math.max(1, intParam(page, 1));
+    const limitNum = Math.min(Math.max(intParam(limit, 20), 1), 100);
     const offset = (pageNum - 1) * limitNum;
 
     const products = await qb.queryMany<any>(
@@ -251,7 +279,7 @@ sellersRouter.get('/:sellerId/streams', async (c) => {
       return c.json({ success: false, error: 'Invalid seller ID' }, 400)
     }
     const { status, limit = '10' } = c.req.query();
-    const limitNum = Math.min(parseInt(limit, 10), 50);
+    const limitNum = Math.min(Math.max(intParam(limit, 10), 1), 50);
 
     const params: unknown[] = [sellerId];
     let statusWhere = '';

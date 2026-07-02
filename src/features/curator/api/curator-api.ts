@@ -41,7 +41,7 @@ export interface CuratorProfile {
   banner_url?: string | null
   headline?: string | null // 🎨 2026-06-18 마퀴(흐르는 헤드라인)
   accent?: string | null // 🎨 2026-06-19 마퀴 액센트 색 (#RRGGBB)
-  theme: 'dark' | 'light' | string
+  // 🔗 2026-07-01 (대표 결정): linkshop_theme 필드 제거 — 링크샵은 방문자 전역 테마를 따름(죽은 필드였음).
   // 🎨 2026-06-16 링크샵 시안: 크리에이터 SNS 링크.
   youtube_url?: string | null
   instagram_url?: string | null

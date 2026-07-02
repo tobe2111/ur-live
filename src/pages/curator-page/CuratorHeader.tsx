@@ -536,7 +536,7 @@ export default function CuratorHeader({
             </button>
             <div className="flex-1">
               <KakaoShareButton
-                title={`${curator.name} 의 링크샵`}
+                title={`${curator.name}의 링크샵`}
                 description={curator.bio || `${pinCount}개 상품 추천 중`}
                 imageUrl={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
                 link={`/u/${curator.handle}`}

@@ -110,6 +110,24 @@ export default function BusinessInfoForm({
         </div>
       </div>
 
+      {/* 🖼️ 2026-07-01 (대표 — 링크샵 판매자 정보): 통신판매업신고번호 — 전자상거래법 표시 항목.
+          링크샵(/u/·/profile) 판매자 정보 카드에 공개 표시됨. */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {t('seller.mailOrderNumber', { defaultValue: '통신판매업신고번호' })}
+        </label>
+        <input
+          type="text"
+          name="mail_order_number"
+          value={formData.mail_order_number}
+          onChange={onChange}
+          placeholder={t('seller.mailOrderNumberPlaceholder', { defaultValue: '예: 2026-서울강남-01234' })}
+          disabled={businessInfo?.is_verified && !editMode}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+        />
+        <p className="text-xs text-gray-500 mt-1">{t('seller.mailOrderNumberHint', { defaultValue: '링크샵 판매자 정보에 공개 표시됩니다 (전자상거래법 표시 항목)' })}</p>
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           {t('seller.businessAddress')} <span className="text-red-500">*</span>

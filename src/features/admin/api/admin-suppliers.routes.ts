@@ -15,6 +15,7 @@ import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { matureSupplierSettlements, payoutSupplier } from '@/features/supply/api/supply-settlement';
 import { ensureWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta';
+import { intParam } from '@/shared/pagination'
 
 export const adminSuppliersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -53,8 +54,8 @@ adminSuppliersRoutes.get('/suppliers', cors(), async (c) => {
     await matureSupplierSettlements(DB).catch(() => 0);
 
     const status = String(c.req.query('status') || 'all'); // all | pending | approved | suspended | rejected
-    const page = Math.max(1, Number(c.req.query('page') || 1));
-    const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') || 100)));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(200, Math.max(1, intParam(c.req.query('limit'), 100)));
     const offset = (page - 1) * limit;
 
     let where = '1=1';

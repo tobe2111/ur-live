@@ -24,6 +24,7 @@ import { verify } from 'hono/jwt'
 import type { SellerJWTPayload } from '@/lib/seller-shared'
 import { swallow } from '@/worker/utils/swallow'
 import { safeError } from '@/worker/utils/safe-error';
+import { intParam } from '@/shared/pagination'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 type Vars = { sellerId?: number }
@@ -678,7 +679,7 @@ sellerStaysRoutes.get('/stays-kpi', cors(), async (c) => {
   const sellerId = await getSellerId(c)
   if (!sellerId) return c.json({ success: false, error: '인증 필요' }, 401)
   try {
-    const days = Math.min(90, Math.max(1, Number(c.req.query('days')) || 30))
+    const days = Math.min(90, Math.max(1, intParam(c.req.query('days'), 30)))
     const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10)
 
     // 1) 총 객실 수 (셀러 전체).

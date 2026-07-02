@@ -4,7 +4,8 @@ import { safeError } from '@/worker/utils/safe-error'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
 import { ensureSupplyVisibilitySchema } from '../supply-visibility'
 import { buildXlsx, xlsxResponse } from '../xlsx'
-import { distributorPriceFromRetail, marginForGrade, type GradeMargin } from '@/lib/distributor-pricing'
+import { resolveDistributorPrice, type GradeMargin } from '@/lib/distributor-pricing'
+import { loadPlatformCommissionPct } from '../wholesale-settlement'
 import type { Env } from './helpers'
 
 export function registerProductsPricingRoutes(app: Hono<{ Bindings: Env }>) {
@@ -15,6 +16,9 @@ export function registerProductsPricingRoutes(app: Hono<{ Bindings: Env }>) {
       const gradesRes = await c.env.DB.prepare('SELECT grade, margin_pct, is_special FROM distributor_grades WHERE active = 1')
         .all<{ grade: string; margin_pct: number; is_special: number }>().catch(() => ({ results: [] as { grade: string; margin_pct: number; is_special: number }[] }))
       const table: GradeMargin[] = (gradesRes.results || []).map(r => ({ grade: r.grade, margin_pct: r.margin_pct, is_special: !!r.is_special }))
+      // 🏭 2026-07-01: 내보내기 가격을 라이브 결제가와 정합 — cost-plus(resolveDistributorPrice, 전 등급 동일)로 통일.
+      //   (구) distributorPriceFromRetail(판매가×(1−보장마진), 등급차등)은 폐기 모델이라 실제 공급가와 불일치했음.
+      const commPct = await loadPlatformCommissionPct(c.env.DB)
       const rows = await c.env.DB.prepare(`
         SELECT p.id, p.name, p.category, p.stock, p.barcode, COALESCE(p.supply_visibility,'ALL') AS supply_visibility,
                COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, p.supply_margin_override_pct AS margin_override, sup.business_name AS supplier_name
@@ -23,15 +27,16 @@ export function registerProductsPricingRoutes(app: Hono<{ Bindings: Env }>) {
         ORDER BY p.created_at DESC LIMIT 10000
       `).all<{ id: number; name: string; category: string | null; stock: number; barcode: string | null; supply_visibility: string; supply_price: number; retail_price: number; margin_override: number | null; supplier_name: string | null }>()
       const out = (rows.results || []).map(r => {
-        // 상품별 마진 override(고정) 설정 시 등급 무관 동일가 — A/B/C 컬럼 모두 override 가로 표기.
         const ovSet = r.margin_override != null && Number.isFinite(Number(r.margin_override)) && Number(r.margin_override) >= 0
-        const effMargin = (g: string) => (ovSet ? Number(r.margin_override) : marginForGrade(g, table))
-        // 🆕 2026-06-16 신모델: 공급가 = max(원가, 판매가×(1−보장마진%)).
+        // 🆕 2026-06-17 cost-plus(대표 확정): 공급가 = clamp(원가×(1+마진%), [원가, 판매가]), 전 등급 동일.
+        //   등급은 가격 차등 X(노출 큐레이션 전용) → A/B/C 컬럼은 동일값(실제 결제가). 라이브 주문 경로와 byte-정합.
+        const priceFor = (g: string) => resolveDistributorPrice({
+          baseSupplyPrice: r.supply_price, retailPrice: r.retail_price, grade: g, table,
+          marginOverridePct: r.margin_override, defaultPlatformMarginPct: commPct,
+        }).price
         return [
           r.id, r.name, r.supplier_name || '', r.category || '', r.stock, r.barcode || '', r.supply_visibility, r.supply_price,
-          distributorPriceFromRetail(r.retail_price, r.supply_price, effMargin('A')),
-          distributorPriceFromRetail(r.retail_price, r.supply_price, effMargin('B')),
-          distributorPriceFromRetail(r.retail_price, r.supply_price, effMargin('C')),
+          priceFor('A'), priceFor('B'), priceFor('C'),
           ovSet ? `${Number(r.margin_override)}%` : '',
         ]
       })

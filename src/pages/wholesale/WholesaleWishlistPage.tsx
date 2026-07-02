@@ -25,6 +25,8 @@ interface WishItem {
   distributor_price: number | null
   is_active: number | null
   stock: number | null
+  moq?: number
+  order_multiple?: number
 }
 
 type Filter = 'all' | 'available' | 'sold'
@@ -57,8 +59,13 @@ export default function WholesaleWishlistPage() {
 
   function addToCart(it: WishItem) {
     if (it.distributor_price == null) { navigate(`/wholesale/product/${it.product_id}`); return }
-    cart.add({ id: it.product_id, qty: 1, name: it.name || `상품 #${it.product_id}`, image_url: it.image_url, price: it.distributor_price })
-    toast.success('장바구니에 담았어요')
+    // 🏭 2026-07-01 (라이브 감사): MOQ/주문배수 정합 담기 — 이전엔 qty:1 고정이라 MOQ>1 상품이
+    //   카트엔 정상처럼 보이다 결제 시 MOQ/ORDER_MULTIPLE 400 거부. 초기수량을 MOQ·배수에 맞춤.
+    const moq = Math.max(1, it.moq || 1)
+    const om = Math.max(1, it.order_multiple || 1)
+    const initQty = om > 1 ? Math.ceil(moq / om) * om : moq
+    cart.add({ id: it.product_id, qty: initQty, name: it.name || `상품 #${it.product_id}`, image_url: it.image_url, price: it.distributor_price, moq, order_multiple: om })
+    toast.success(initQty > 1 ? `장바구니에 ${initQty.toLocaleString()}개 담았어요` : '장바구니에 담았어요')
   }
 
   const FILTERS: { id: Filter; label: string }[] = [

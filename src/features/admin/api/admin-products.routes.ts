@@ -20,9 +20,12 @@ import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { sendAlimtalk, buildSampleApprovalMessage } from '../../alimtalk/aligo';
 import { ensureSupplyVisibilitySchema, recordSupplyPriceChange } from '../../supply/api/supply-visibility';
-import { getSupplyMeta } from '@/worker/utils/product-supply-meta';
+import { getSupplyMeta, setSupplyMeta } from '@/worker/utils/product-supply-meta';
 import { loadPlatformCommissionPct } from '../../supply/api/wholesale-settlement';
 import { distributorPriceFromCost } from '@/lib/distributor-pricing';
+import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
+import { isValidKakaoPlaceUrl, normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url';
+import { intParam } from '@/shared/pagination'
 
 export const adminProductsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -69,8 +72,8 @@ adminProductsRoutes.get('/products', cors(), async (c) => {
   try {
     const { DB } = c.env;
     // 🛡️ 2026-05-19: Coupang WING 스타일 — 검색/필터/정렬/페이지네이션.
-    const page = Math.max(1, Number(c.req.query('page') || 1));
-    const limit = Math.min(500, Math.max(1, Number(c.req.query('limit') || 100)));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(500, Math.max(1, intParam(c.req.query('limit'), 100)));
     const offset = (page - 1) * limit;
     const q = String(c.req.query('q') || '').trim();
     const category = String(c.req.query('category') || '').trim();
@@ -291,11 +294,13 @@ adminProductsRoutes.delete('/products/:id', cors(), async (c) => {
     if (hasOrders.length > 0) {
       await executeRun(DB, "UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?", [productId]);
       await writeAuditLog(c, { action: 'soft_delete_product', targetType: 'product', targetId: productId, after: { is_active: 0 } });
+      await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
       return c.json({ success: true, data: { id: productId, soft_deleted: true } });
     }
 
     await executeRun(DB, 'DELETE FROM products WHERE id = ?', [productId]);
     await writeAuditLog(c, { action: 'hard_delete_product', targetType: 'product', targetId: productId });
+    await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
 
     return c.json({ success: true, data: { id: productId } });
   } catch (err) {
@@ -480,8 +485,8 @@ adminProductsRoutes.get('/sample-requests', cors(), async (c) => {
   try {
     const { DB } = c.env;
     const status = c.req.query('status') || '';
-    const page = parseInt(c.req.query('page') || '1', 10);
-    const limit = Math.min(parseInt(c.req.query('limit') || '20', 10), 100);
+    const page = intParam(c.req.query('page'), 1);
+    const limit = Math.min(intParam(c.req.query('limit'), 20), 100);
     const offset = (page - 1) * limit;
 
     let where = '1=1';
@@ -617,8 +622,8 @@ adminProductsRoutes.get('/supplier-products', cors(), async (c) => {
     const { DB } = c.env;
     await ensureSupplyVisibilitySchema(DB);
     const status = String(c.req.query('status') || 'pending'); // pending | approved | rejected | price_change | all
-    const page = Math.max(1, Number(c.req.query('page') || 1));
-    const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') || 50)));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(200, Math.max(1, intParam(c.req.query('limit'), 50)));
     const offset = (page - 1) * limit;
 
     let where = 'p.is_supply_product = 1 AND p.supplier_id IS NOT NULL';
@@ -927,18 +932,49 @@ function parseDealCsv(text: string): Record<string, string>[] {
   });
 }
 
-const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest: string; addr: string; img: string }[] = [
-  { name: '[강남] 1++ 한우 오마카세 2인', cat: 'meal_voucher', price: 89000, orig: 140000, rest: '한우공방 강남점', addr: '서울 강남구 봉은사로', img: 'https://picsum.photos/seed/urdeal1/600/600' },
-  { name: '[연남] 화덕피자 + 파스타 2인 세트', cat: 'meal_voucher', price: 25900, orig: 39000, rest: '포르노 로마노', addr: '서울 마포구 동교로', img: 'https://picsum.photos/seed/urdeal2/600/600' },
-  { name: '[성수] 스페셜티 핸드드립 2인 + 디저트', cat: 'meal_voucher', price: 12900, orig: 21000, rest: '성수 로스터스', addr: '서울 성동구 연무장길', img: 'https://picsum.photos/seed/urdeal3/600/600' },
-  { name: '두피 스케일링 + 헤어 클리닉', cat: 'beauty_voucher', price: 39000, orig: 80000, rest: '살롱 드 모드', addr: '서울 강남구 압구정로', img: 'https://picsum.photos/seed/urdeal4/600/600' },
-  { name: '왁싱 전신 패키지', cat: 'beauty_voucher', price: 49000, orig: 90000, rest: '스무스 왁싱 라운지', addr: '서울 서초구 강남대로', img: 'https://picsum.photos/seed/urdeal5/600/600' },
-  { name: '속눈썹 연장 풀세트 + 리터치', cat: 'beauty_voucher', price: 29000, orig: 55000, rest: '아이래쉬 스튜디오', addr: '서울 마포구 양화로', img: 'https://picsum.photos/seed/urdeal6/600/600' },
-  { name: '반려견 종합 미용 (목욕+커트)', cat: 'etc_voucher', price: 35000, orig: 60000, rest: '댕댕살롱', addr: '서울 송파구 올림픽로', img: 'https://picsum.photos/seed/urdeal7/600/600' },
-  { name: '실내 클라이밍 1일 체험 + 강습', cat: 'etc_voucher', price: 19000, orig: 35000, rest: '더 클라임', addr: '서울 광진구 아차산로', img: 'https://picsum.photos/seed/urdeal8/600/600' },
-  { name: '프리미엄 원두 드립백 30개입 (무료배송)', cat: 'general', price: 18900, orig: 32000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal9/600/600' },
-  { name: '제주 한라봉 5kg 산지직송', cat: 'general', price: 21900, orig: 35000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal10/600/600' },
+// q = 네이버 이미지검색 키워드(실사진 확보용). img = 검색 실패/키 미설정 시 폴백.
+// spots/seed = 추첨 응모(fcfs) — 정원(spots) 대비 지원 시드(seed, 정원 초과) → "선착순 {seed}/{spots}명" 표시.
+// ⚠️ desc = 유저에게 그대로 노출되는 상품 설명 — "데모" 문구 절대 금지(2026-07-02 대표 지시,
+//   실제 상품처럼 보여야 함). 데모 식별은 slug(demo-deal-N, 유저 비노출)로만.
+const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest: string; addr: string; img: string; q: string; spots: number; seed: number; desc: string }[] = [
+  { name: '[강남] 1++ 한우 오마카세 2인', cat: 'meal_voucher', price: 89000, orig: 140000, rest: '한우공방 강남점', addr: '서울 강남구 봉은사로', img: 'https://picsum.photos/seed/urdeal1/600/600', q: '한우 오마카세 상차림', spots: 5, seed: 30, desc: '1++ 한우 오마카세 2인 코스. 셰프가 부위별로 직접 구워드립니다. 매장 방문 후 이용권 QR 제시로 바로 이용하세요.' },
+  { name: '[연남] 화덕피자 + 파스타 2인 세트', cat: 'meal_voucher', price: 25900, orig: 39000, rest: '포르노 로마노', addr: '서울 마포구 동교로', img: 'https://picsum.photos/seed/urdeal2/600/600', q: '화덕피자', spots: 3, seed: 10, desc: '400℃ 화덕에서 구운 나폴리식 피자 1판 + 수제 파스타 1개, 2인 세트. 방문 시 이용권 QR 제시.' },
+  { name: '[성수] 스페셜티 핸드드립 2인 + 디저트', cat: 'meal_voucher', price: 12900, orig: 21000, rest: '성수 로스터스', addr: '서울 성동구 연무장길', img: 'https://picsum.photos/seed/urdeal3/600/600', q: '핸드드립 커피', spots: 10, seed: 47, desc: '스페셜티 원두 핸드드립 2잔 + 오늘의 디저트 1개. 원두는 매주 로스팅분만 사용합니다.' },
+  { name: '두피 스케일링 + 헤어 클리닉', cat: 'beauty_voucher', price: 39000, orig: 80000, rest: '살롱 드 모드', addr: '서울 강남구 압구정로', img: 'https://picsum.photos/seed/urdeal4/600/600', q: '헤어살롱 매장 인테리어', spots: 5, seed: 22, desc: '두피 진단 → 스케일링 → 영양 클리닉 풀코스(약 60분). 방문 전 전화 예약을 권장합니다.' },
+  { name: '왁싱 전신 패키지', cat: 'beauty_voucher', price: 49000, orig: 90000, rest: '스무스 왁싱 라운지', addr: '서울 서초구 강남대로', img: 'https://picsum.photos/seed/urdeal5/600/600', q: '왁싱 뷰티샵 매장', spots: 8, seed: 35, desc: '전신 왁싱 패키지 — 1회용 위생 재료만 사용합니다. 100% 예약제, 이용권 구매 후 전화 예약.' },
+  { name: '속눈썹 연장 풀세트 + 리터치', cat: 'beauty_voucher', price: 29000, orig: 55000, rest: '아이래쉬 스튜디오', addr: '서울 마포구 양화로', img: 'https://picsum.photos/seed/urdeal6/600/600', q: '속눈썹 연장 시술', spots: 3, seed: 14, desc: '속눈썹 연장 풀세트 + 2주 내 리터치 1회 포함. 시술 약 90분, 예약 후 방문해주세요.' },
+  { name: '반려견 종합 미용 (목욕+커트)', cat: 'etc_voucher', price: 35000, orig: 60000, rest: '댕댕살롱', addr: '서울 송파구 올림픽로', img: 'https://picsum.photos/seed/urdeal7/600/600', q: '강아지 미용', spots: 6, seed: 28, desc: '목욕 + 전체 커트 종합 미용(소형견 기준). 중·대형견은 매장으로 문의해주세요.' },
+  { name: '실내 클라이밍 1일 체험 + 강습', cat: 'etc_voucher', price: 19000, orig: 35000, rest: '더 클라임', addr: '서울 광진구 아차산로', img: 'https://picsum.photos/seed/urdeal8/600/600', q: '실내 클라이밍', spots: 4, seed: 19, desc: '실내 클라이밍 1일 이용권 + 초보 강습 30분 + 암벽화·초크 대여 포함. 운동복만 챙겨오세요.' },
+  { name: '프리미엄 원두 드립백 30개입 (무료배송)', cat: 'general', price: 18900, orig: 32000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal9/600/600', q: '드립백 커피', spots: 10, seed: 52, desc: '스페셜티 원두 드립백 30개입, 로스팅 직후 소분 발송. 전국 무료배송.' },
+  { name: '제주 한라봉 5kg 산지직송', cat: 'general', price: 21900, orig: 35000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal10/600/600', q: '한라봉', spots: 5, seed: 27, desc: '제주 산지직송 한라봉 5kg(가정용). 수확 후 24시간 내 발송, 당도 선별 과일만 담습니다.' },
 ];
+
+// 🎯 2026-07-01 (대표 "데모 이용권도 매장 지도 매칭 제대로"): 데모 매장은 가공 이름 + 번지 없는 주소라
+//   좌표/place_url 이 없음 → 카카오 키워드 검색으로 실제 매장의 좌표·주소·place_url 을 붙여 지도 매칭 정상화.
+//   best-effort: 키 없거나 결과 없으면 null → 시딩은 그대로 진행(기존 폴백).
+async function kakaoPlaceLookup(
+  env: { KAKAO_REST_API_KEY?: string },
+  query: string,
+): Promise<{ name: string | null; address: string | null; lat: number | null; lng: number | null; placeUrl: string | null } | null> {
+  const key = env.KAKAO_REST_API_KEY;
+  if (!key || !query.trim()) return null;
+  try {
+    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query.trim())}&size=1`;
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
+    if (!res.ok) return null;
+    const data = await res.json() as { documents?: Array<{ place_name?: string; road_address_name?: string; address_name?: string; x?: string; y?: string; id?: string; place_url?: string }> };
+    const doc = data?.documents?.[0];
+    if (!doc) return null;
+    const lat = Number(doc.y), lng = Number(doc.x);
+    return {
+      name: doc.place_name || null,
+      address: doc.road_address_name || doc.address_name || null,
+      lat: Number.isFinite(lat) ? lat : null,
+      lng: Number.isFinite(lng) ? lng : null,
+      placeUrl: doc.id ? `https://place.map.kakao.com/${doc.id}` : normalizeKakaoPlaceUrl(doc.place_url),
+    };
+  } catch { return null; }
+}
 
 // GET /dongnedeal/stats — 동네딜 상품 현황(전체/노출/데모/카테고리별)
 adminProductsRoutes.get('/dongnedeal/stats', cors(), async (c) => {
@@ -963,22 +999,129 @@ adminProductsRoutes.get('/dongnedeal/stats', cors(), async (c) => {
 adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
   try {
     const { DB } = c.env;
-    const existing = await DB.prepare(`SELECT COUNT(*) AS c FROM products WHERE slug LIKE ?`).bind(DEAL_DEMO_SLUG + '%').first<{ c: number }>();
-    if ((existing?.c ?? 0) > 0) {
-      return c.json({ success: true, seeded: 0, existing: existing?.c ?? 0, message: '이미 데모 동네딜 상품이 있습니다 (삭제 후 재생성하세요)' });
+    // 🎯 2026-07-02 (대표): 옵션 — region(특정 지역, 예 "영등포") / category(특정 카테고리)로 시드.
+    const body = (await c.req.json().catch(() => ({}))) as { region?: string; category?: string };
+    const region = String(body.region || '').trim().slice(0, 30);
+    const catFilter = mapDealCategory(String(body.category || '').trim());
+    const items = catFilter ? DEAL_DEMO.filter((d) => d.cat === catFilter) : DEAL_DEMO;
+    if (items.length === 0) return c.json({ success: false, error: '해당 카테고리 데모 템플릿이 없습니다' }, 400);
+
+    // 🛡️ 2026-07-02 (대표 "영구적으로 해결"): 기존에 시드/등록된 **깨지는 이미지**(phinf 인증서
+    //   불일치·http mixed content) 일괄 치유 — search.pstatic 프록시로 랩. 새 시드뿐 아니라
+    //   이미 홈에 떠 있는 오염 카드(ERR_CERT_COMMON_NAME_INVALID)까지 이 버튼 한 번으로 복구.
+    let healed = 0;
+    try {
+      const { needsNaverImageHeal, toNaverSafeImageUrl } = await import('../../../shared/naver-safe-image');
+      const broken = await DB.prepare(
+        `SELECT id, image_url FROM products
+          WHERE image_url LIKE 'http://%'
+             OR image_url LIKE '%phinf%'
+             OR (image_url LIKE '%naver.net%' AND image_url NOT LIKE 'https://search.pstatic.net%')
+          LIMIT 500`
+      ).all<{ id: number; image_url: string }>().catch(() => ({ results: [] as { id: number; image_url: string }[] }));
+      for (const rowB of (broken.results || [])) {
+        if (!needsNaverImageHeal(rowB.image_url)) continue;
+        const safe = toNaverSafeImageUrl(rowB.image_url);
+        if (safe && safe !== rowB.image_url) {
+          await DB.prepare('UPDATE products SET image_url = ? WHERE id = ?').bind(safe, rowB.id).run().catch(() => {});
+          healed++;
+        }
+      }
+    } catch { /* best-effort — 치유 실패해도 시드 진행 */ }
+
+    // 🛡️ 2026-07-02 (대표 "데모 문구가 유저에게 보이면 안 됨"): 기존 시드분의 "데모 동네딜 — …"
+    //   설명을 실제 상품 설명(템플릿 desc)으로 일괄 교정. 매칭 = 지역 프리픽스 제거한 상품명.
+    try {
+      const oldDemo = await DB.prepare(
+        `SELECT id, name FROM products WHERE slug LIKE ? AND description LIKE '데모%' LIMIT 300`
+      ).bind(DEAL_DEMO_SLUG + '%').all<{ id: number; name: string }>().catch(() => ({ results: [] as { id: number; name: string }[] }));
+      const stripRegion = (s: string) => String(s || '').replace(/^\[[^\]]+\]\s*/, '').trim();
+      for (const rowD of (oldDemo.results || [])) {
+        const tpl = DEAL_DEMO.find((d) => stripRegion(d.name) === stripRegion(rowD.name));
+        const newDesc = tpl?.desc || stripRegion(rowD.name);  // 템플릿 미매칭이어도 최소한 "데모" 제거
+        await DB.prepare('UPDATE products SET description = ? WHERE id = ?').bind(newDesc, rowD.id).run().catch(() => {});
+      }
+    } catch { /* best-effort */ }
+
+    // 누적 추가 — 기존 slug(demo-deal-N)의 최대 N 다음 번호부터(UNIQUE 충돌 원천 제거).
+    const slugRows = await DB.prepare(`SELECT slug FROM products WHERE slug LIKE ?`).bind(DEAL_DEMO_SLUG + '%')
+      .all<{ slug: string }>().catch(() => ({ results: [] as { slug: string }[] }));
+    let maxSuffix = 0;
+    const suffixRe = new RegExp(`^${DEAL_DEMO_SLUG}(\\d+)$`);  // 상수와 동기(리터럴 하드코딩 X)
+    for (const row of (slugRows.results || [])) {
+      const m = suffixRe.exec(String(row.slug || ''));
+      if (m) maxSuffix = Math.max(maxSuffix, Number(m[1]));
     }
+    // 🖼️ 실사진: 네이버 이미지검색(전 단계 search.pstatic 프록시 — 인증서 깨짐 구조적 0).
+    //   실패/키없음 → picsum 폴백. batchIndex 로테이션 = 누적 시드 동일 사진 중복 완화.
+    const batchIndex = Math.floor(maxSuffix / items.length);
+    const { fetchNaverImageUrl } = await import('../../../worker/utils/naver-image-search');
+    const resolvedImgs = await Promise.all(
+      items.map((d) => fetchNaverImageUrl(c.env, d.q, batchIndex).catch(() => null))
+    );
+    // 🎯 실제 매장 매칭(카카오 키워드 검색): region 지정 시 그 지역 매장으로 — 매장명·주소·좌표가
+    //   실제 장소로 채워져 지도 마커·카카오맵 링크(RestaurantMiniMap 이 매장명+주소로 자동 생성)까지 연결.
+    const resolvedPlaces = await Promise.all(
+      items.map((d) => (d.rest || d.addr || region)
+        ? kakaoPlaceLookup(c.env, `${region || d.addr} ${d.q}`.trim()).catch(() => null)
+        : Promise.resolve(null))
+    );
+    // 🎯 2026-07-01 (대표 요청): 데모 딜을 추첨 응모(fcfs)로 — 정원 대비 지원수가 이미 넘치게(30/5, 10/3 …).
+    //   삽입 후 last_row_id 로 product_supply_meta 에 fcfs 설정 기록 → 기존 fcfs UI 가 "선착순 {seed}/{spots}명" 표시.
+    const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+    const fcfsDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7일 후 마감(데모)
     let seeded = 0;
-    for (let i = 0; i < DEAL_DEMO.length; i++) {
-      const d = DEAL_DEMO[i];
-      await DB.prepare(
-        `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-           is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, slug, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, datetime('now'), datetime('now'))`
-      ).bind(d.name, `데모 동네딜 — ${d.name}`, d.price, d.orig, d.img, d.cat, d.rest || null, d.addr || null, DEAL_DEMO_SLUG + (i + 1)).run();
+    let realPhotos = 0;
+    let placed = 0;
+    for (let i = 0; i < items.length; i++) {
+      const d = items[i];
+      const img = resolvedImgs[i] || d.img;
+      if (resolvedImgs[i]) realPhotos++;
+      // 🎯 실제 매장 매칭 성공 시 그 매장의 이름/주소/좌표 사용(지도 정확). 실패 시 데모값(좌표 없음 → 클라 지오코딩).
+      const place = resolvedPlaces[i];
+      if (place?.lat != null) placed++;
+      const restName = place?.name || d.rest || null;
+      const restAddr = place?.address || d.addr || null;
+      // 🎯 region 지정 시 상품명 지역 프리픽스 교체 — "[강남] …" → "[영등포] …" (없으면 부착).
+      const dispName = region
+        ? (/^\[[^\]]+\]/.test(d.name) ? d.name.replace(/^\[[^\]]+\]/, `[${region}]`) : `[${region}] ${d.name}`)
+        : d.name;
+      const slug = DEAL_DEMO_SLUG + (maxSuffix + i + 1);  // 누적 추가 — 기존 번호 다음부터
+      let res;
+      try {
+        res = await DB.prepare(
+          `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
+             is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+        ).bind(dispName, d.desc, d.price, d.orig, img, d.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, slug).run();
+      } catch {
+        // 🛡️ restaurant_lat/lng 컬럼 미존재 환경 폴백 — 좌표 없이 시드(클라 지오코딩이 지도 보정).
+        res = await DB.prepare(
+          `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
+             is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, slug, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, datetime('now'), datetime('now'))`
+        ).bind(dispName, d.desc, d.price, d.orig, img, d.cat, restName, restAddr, slug).run();
+      }
       seeded++;
+      // 추첨 응모 설정(정원 초과 지원 시드). 실패해도 상품 시딩엔 영향 없음(best-effort).
+      const pid = Number((res as { meta?: { last_row_id?: number } })?.meta?.last_row_id ?? 0);
+      if (pid > 0 && d.spots > 0 && d.seed > 0) {
+        await setSupplyMeta(DB, pid, {
+          fcfs_enabled: '1',
+          fcfs_spots: d.spots,
+          fcfs_applied_seed: d.seed,
+          fcfs_deadline: fcfsDeadline,
+        }).catch(() => {});
+      }
+      // 🎯 카카오 장소 페이지 URL(매장 지도 직접 연결) — 매칭 성공 시만.
+      if (pid > 0 && place?.placeUrl) {
+        await setSupplyMeta(DB, pid, { kakao_place_url: place.placeUrl }).catch(() => {});
+      }
     }
-    await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded } }).catch(() => {});
-    return c.json({ success: true, seeded });
+    await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded, realPhotos, placed, healed, region: region || null, category: catFilter || null } }).catch(() => {});
+    await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
+    await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    return c.json({ success: true, seeded, realPhotos, placed, healed, region: region || null, category: catFilter || null });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
@@ -987,9 +1130,33 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
 // DELETE /dongnedeal/seed-demo — 데모 동네딜 상품 일괄 삭제
 adminProductsRoutes.delete('/dongnedeal/seed-demo', cors(), async (c) => {
   try {
-    const r = await c.env.DB.prepare(`DELETE FROM products WHERE slug LIKE ?`).bind(DEAL_DEMO_SLUG + '%').run();
-    await writeAuditLog(c, { action: 'dongnedeal_clear_demo', targetType: 'product', after: { deleted: r.meta?.changes ?? 0 } }).catch(() => {});
-    return c.json({ success: true, deleted: r.meta?.changes ?? 0 });
+    // 추첨(fcfs) 메타·지원 기록도 함께 정리(고아 방지) — best-effort.
+    await c.env.DB.prepare(
+      `DELETE FROM product_supply_meta WHERE product_id IN (SELECT id FROM products WHERE slug LIKE ?)`
+    ).bind(DEAL_DEMO_SLUG + '%').run().catch(() => {});
+    await c.env.DB.prepare(
+      `DELETE FROM fcfs_applications WHERE product_id IN (SELECT id FROM products WHERE slug LIKE ?)`
+    ).bind(DEAL_DEMO_SLUG + '%').run().catch(() => {});
+    // 🛡️ 2026-07-01 (대표 신고 "데모 정리 안됨" — 500): 일괄 DELETE 는 데모에 주문/바우처 등
+    //   FK 참조가 하나라도 붙으면 전체가 실패(500). → 행별 삭제 + 실패 행은 soft-retire
+    //   (is_active=0 + slug 를 retired- 로 리네임 → 노출/데모 카운트에서 제외, 참조 데이터 보존).
+    const demoRows = await c.env.DB.prepare(`SELECT id, slug FROM products WHERE slug LIKE ?`)
+      .bind(DEAL_DEMO_SLUG + '%').all<{ id: number; slug: string }>().catch(() => ({ results: [] as { id: number; slug: string }[] }));
+    let deleted = 0, retired = 0;
+    for (const row of (demoRows.results || [])) {
+      try {
+        const del = await c.env.DB.prepare(`DELETE FROM products WHERE id = ?`).bind(row.id).run();
+        if (del.meta?.changes) { deleted++; continue; }
+      } catch { /* FK 참조 → soft-retire 폴백 */ }
+      await c.env.DB.prepare(
+        `UPDATE products SET is_active = 0, slug = 'retired-' || slug || '-' || id, updated_at = datetime('now') WHERE id = ?`
+      ).bind(row.id).run().catch(() => {});
+      retired++;
+    }
+    await writeAuditLog(c, { action: 'dongnedeal_clear_demo', targetType: 'product', after: { deleted, retired } }).catch(() => {});
+    await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
+    await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    return c.json({ success: true, deleted, retired });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
@@ -1036,6 +1203,8 @@ adminProductsRoutes.post('/dongnedeal/bulk-import', cors(), async (c) => {
       }
     }
     await writeAuditLog(c, { action: 'dongnedeal_bulk_import', targetType: 'product', after: { total: rows.length, created } }).catch(() => {});
+    await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
+    await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
     return c.json({ success: true, summary: { total: rows.length, created, failed: rows.length - created }, results });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
@@ -1051,6 +1220,8 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
       name?: string; category?: string; price?: number | string; original_price?: number | string;
       image_url?: string; restaurant_name?: string; restaurant_address?: string;
       restaurant_phone?: string; lat?: number | string; lng?: number | string; description?: string;
+      max_per_person?: number | string;
+      kakao_place_url?: string;
     };
     const name = String(b.name || '').trim();
     const cat = mapDealCategory(String(b.category || '').trim());
@@ -1074,8 +1245,113 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
        VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(name, desc, price, origNum > price ? origNum : null, img, cat, rest, addr, phone,
       hasCoord ? lat : null, hasCoord ? lng : null).run();
+    // 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 한도 meta 저장 (1~99, 0/미설정=무제한).
+    {
+      const mpp = Number(b.max_per_person);
+      if (r.meta?.last_row_id && Number.isFinite(mpp) && mpp >= 1 && mpp <= 99) {
+        await setSupplyMeta(c.env.DB, Number(r.meta.last_row_id), { max_per_person: String(Math.floor(mpp)) }).catch(() => {});
+      }
+    }
+    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 등록 시 캡처한 place_url meta 저장.
+    {
+      const kpu = normalizeKakaoPlaceUrl(b.kakao_place_url);
+      if (r.meta?.last_row_id && kpu) {
+        await setSupplyMeta(c.env.DB, Number(r.meta.last_row_id), { kakao_place_url: kpu }).catch(() => {});
+      }
+    }
     await writeAuditLog(c, { action: 'dongnedeal_create', targetType: 'product', targetId: r.meta?.last_row_id, after: { name, cat, hasCoord } }).catch(() => {});
+    // 🛡️ 2026-07-01 (대표 신고 — 어드민 수정이 홈에 즉시 반영 안 됨): 동네딜 뮤테이션 시 공구 목록
+    //   앱 캐시(group_buy_products:*) 무효화. 셀러 상품 등록과 동일 패턴. (edge/SSR TTL 은 별도.)
+    await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
+    await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
     return c.json({ success: true, id: r.meta?.last_row_id ?? null, hasCoord });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// GET /dongnedeal/list — 등록된 동네딜 목록(최근순). 수정/삭제 관리용.
+adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
+  try {
+    const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher', 'general'];
+    const ph = cats.map(() => '?').join(',');
+    const limRaw = Number(c.req.query('limit'));
+    const lim = Number.isFinite(limRaw) && limRaw > 0 && limRaw <= 200 ? Math.floor(limRaw) : 50;
+    const { results } = await c.env.DB.prepare(
+      `SELECT id, name, price, original_price, category, restaurant_name, restaurant_address, image_url,
+              COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at
+         FROM products WHERE category IN (${ph}) ORDER BY created_at DESC LIMIT ?`
+    ).bind(...cats, lim).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
+    const rows = results || [];
+    // 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 한도(meta) 첨부 — 수정 폼 prefill 용 (0=무제한).
+    try {
+      const ids = rows.map(r => Number(r.id)).filter(n => Number.isFinite(n));
+      if (ids.length) {
+        const mm = await getSupplyMeta(c.env.DB, ids).catch(() => null);
+        for (const r of rows) {
+          const raw = mm?.get(Number(r.id))?.max_per_person;
+          r.max_per_person = raw != null && Number.isFinite(Number(raw)) && Number(raw) > 0 ? Math.floor(Number(raw)) : 0;
+          const kpu = mm?.get(Number(r.id))?.kakao_place_url;
+          r.kakao_place_url = normalizeKakaoPlaceUrl(kpu);
+        }
+      }
+    } catch { /* fail-soft */ }
+    return c.json({ success: true, data: rows });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env), data: [] }, 500);
+  }
+});
+
+// PATCH /dongnedeal/:id — 동네딜 단건 수정(이름/가격/사진/매장/좌표/노출). 부분 업데이트.
+adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
+  try {
+    const id = c.req.param('id');
+    if (!/^\d+$/.test(String(id))) return c.json({ success: false, error: 'bad id' }, 400);
+    const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    const sets: string[] = ["updated_at = datetime('now')"];
+    const params: unknown[] = [];
+    const put = (col: string, val: unknown) => { sets.push(`${col} = ?`); params.push(val); };
+    if (typeof b.name === 'string' && b.name.trim()) put('name', b.name.trim());
+    if (b.price !== undefined) { const n = Math.round(Number(String(b.price).replace(/[^\d.-]/g, ''))); if (Number.isFinite(n) && n > 0) put('price', n); }
+    if (b.original_price !== undefined) { const n = Math.round(Number(String(b.original_price).replace(/[^\d.-]/g, ''))) || 0; put('original_price', n > 0 ? n : null); }
+    if (b.image_url !== undefined) put('image_url', String(b.image_url || '').trim() || null);
+    if (b.restaurant_name !== undefined) put('restaurant_name', String(b.restaurant_name || '').trim() || null);
+    if (b.restaurant_address !== undefined) put('restaurant_address', String(b.restaurant_address || '').trim() || null);
+    if (b.restaurant_phone !== undefined) put('restaurant_phone', String(b.restaurant_phone || '').trim() || null);
+    if (b.description !== undefined) put('description', String(b.description || '').trim() || null);
+    if (b.category !== undefined) { const cat = mapDealCategory(String(b.category || '')); if (cat && cat !== 'stay_voucher') put('category', cat); }
+    if (b.is_active !== undefined) put('is_active', b.is_active ? 1 : 0);
+    if (b.lat !== undefined && b.lng !== undefined) {
+      const lat = Number(b.lat), lng = Number(b.lng);
+      if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0) { put('restaurant_lat', lat); put('restaurant_lng', lng); }
+    }
+    // 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 한도는 products 컬럼이 아니라 meta — 이것만 바뀌어도 저장.
+    let mppChanged = false;
+    if (b.max_per_person !== undefined) {
+      const mpp = Number(b.max_per_person);
+      if (Number.isFinite(mpp) && mpp >= 0 && mpp <= 99) {
+        await setSupplyMeta(c.env.DB, Number(id), { max_per_person: String(Math.floor(mpp)) }).catch(() => {});
+        mppChanged = true;
+      }
+    }
+    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): place_url meta 수정.
+    if (b.kakao_place_url !== undefined) {
+      const raw = String(b.kakao_place_url || '').trim();
+      const kpu = raw === '' ? '' : normalizeKakaoPlaceUrl(raw);  // 빈값=해제, 유효=저장
+      if (raw === '' || kpu) {
+        await setSupplyMeta(c.env.DB, Number(id), { kakao_place_url: kpu || '' }).catch(() => {});
+        mppChanged = true;
+      }
+    }
+    if (params.length === 0 && !mppChanged) return c.json({ success: false, error: '변경할 내용이 없습니다' }, 400);
+    if (params.length > 0) {
+      params.push(id);
+      await c.env.DB.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`).bind(...params).run();
+    }
+    await writeAuditLog(c, { action: 'dongnedeal_update', targetType: 'product', targetId: id }).catch(() => {});
+    await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
+    await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    return c.json({ success: true });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }

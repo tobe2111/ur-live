@@ -55,6 +55,8 @@ export default function SellerProductEditPage() {
     group_buy_target: '',
     group_buy_deadline: '',
     store_verify_pin: '',
+    // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도"): 0/빈값 = 무제한.
+    max_per_person: '',
   })
   
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
@@ -86,6 +88,7 @@ export default function SellerProductEditPage() {
       voucher_terms: productData.voucher_terms || '', voucher_expiry: productData.voucher_expiry || '',
       group_buy_target: productData.group_buy_target ? String(productData.group_buy_target) : '', group_buy_deadline: productData.group_buy_deadline || '',
       store_verify_pin: productData.store_verify_pin || '',
+      max_per_person: productData.max_per_person ? String(productData.max_per_person) : '',
     })
     if (productData.options && Array.isArray(productData.options)) setProductOptions(productData.options)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -126,6 +129,8 @@ export default function SellerProductEditPage() {
           group_buy_target: Number(formData.group_buy_target) || 0,
           group_buy_deadline: formData.group_buy_deadline || null,
           store_verify_pin: formData.store_verify_pin || null,
+          // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도" 수정): 0=무제한 해제, 1~99=제한.
+          max_per_person: Number(formData.max_per_person) > 0 ? Math.min(99, Math.floor(Number(formData.max_per_person))) : 0,
         } : {}),
       }
 
@@ -410,6 +415,12 @@ export default function SellerProductEditPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.groupBuyTarget')}</label>
                   <input type="number" name="group_buy_target" value={formData.group_buy_target} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
                 </div>
+              </div>
+              {/* 🎯 2026-07-01 (대표 "결제 최대 한도 갯수 1인 당"): 1인당 구매 수량 제한 (0=무제한). */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">1인당 최대 구매 수량</label>
+                <input type="number" name="max_per_person" value={formData.max_per_person} onChange={handleChange} min={0} max={99} placeholder="0 = 무제한" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
+                <p className="text-[11px] text-gray-400 mt-1">한 사람이 최대 몇 개까지 구매할 수 있는지 (0 = 제한 없음, 최대 99)</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.groupBuyDeadline')}</label>

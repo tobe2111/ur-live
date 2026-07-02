@@ -82,6 +82,7 @@ export default function SellerBusinessInfoPage() {
     postal_code: '',
     address: '',
     address_detail: '',
+    mail_order_number: '', // 🖼️ 2026-07-01 통신판매업신고번호 (링크샵 판매자 정보 표시용)
     phone: '',
     email: ''
   })
@@ -233,7 +234,7 @@ export default function SellerBusinessInfoPage() {
     setFormData({
       business_number: d.business_number || '', business_name: d.business_name || '', ceo_name: d.ceo_name || '',
       business_type: d.business_type || '', business_category: d.business_category || '', postal_code: d.postal_code || '',
-      address: d.address || '', address_detail: d.address_detail || '', phone: d.phone || '', email: d.email || '',
+      address: d.address || '', address_detail: d.address_detail || '', mail_order_number: d.mail_order_number || '', phone: d.phone || '', email: d.email || '',
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessInfoQ.data])
@@ -478,6 +479,7 @@ export default function SellerBusinessInfoPage() {
                   postal_code: businessInfo.postal_code || '',
                   address: businessInfo.address || '',
                   address_detail: businessInfo.address_detail || '',
+                  mail_order_number: businessInfo.mail_order_number || '',
                   phone: businessInfo.phone || '',
                   email: businessInfo.email || ''
                 })

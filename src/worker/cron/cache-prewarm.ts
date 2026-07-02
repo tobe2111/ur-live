@@ -88,6 +88,8 @@ const HOT_PATHS: readonly string[] = [
   // 📝 2026-07-01: 블로그 공개 목록 — 이 fetch 가 maybeSyncBlogSeed() 를 트리거해 배포 후
   //   버전 재시드를 cron 이 먼저 수행(첫 방문자 콜드 동기화 제거) + 공개 목록 캐시 warm.
   '/api/blog/public',
+  //   목록 SSR(__SSR_INITIAL_BLOG__) + BlogListPage 클라가 쓰는 정확한 edge 키(limit=100) — 0-RTT 보장.
+  '/api/blog/public?limit=100',
 ] as const;
 
 /**

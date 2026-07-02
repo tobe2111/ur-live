@@ -20,6 +20,7 @@ import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database';
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
+import { intParam } from '@/shared/pagination'
 
 const communityGroupBuyRoutes = new Hono<{ Bindings: Env }>();
 
@@ -590,8 +591,8 @@ communityGroupBuyRoutes.get('/list', async (c) => {
 
   const status = c.req.query('status') || 'proposed';
   const sort = c.req.query('sort') || 'newest';
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
-  const limit = Math.min(50, Math.max(1, parseInt(c.req.query('limit') || '20', 10)));
+  const page = Math.max(1, intParam(c.req.query('page'), 1));
+  const limit = Math.min(50, Math.max(1, intParam(c.req.query('limit'), 20)));
   const offset = (page - 1) * limit;
 
   let orderBy = 'created_at DESC';

@@ -3,7 +3,7 @@
 # Usage: ./scripts/check-naming-conflicts.sh [filename]
 
 TARGET_FILE=${1:-""}
-# 레포 루트(스크립트 위치 기준) — CI/로컬 어디서 실행해도 동작 (하드코딩 경로 제거)
+# 🛡️ 스크립트 위치 기준 레포 루트 (하드코딩 경로 금지 — CI/다른 머신에서도 동작)
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_DIR"
 
@@ -19,21 +19,21 @@ check_file() {
     
     echo "📄 Checking: $file"
     
-    # Extract named imports (실제 로컬 바인딩만): `type ` 프리픽스 제거 + `X as Y` 는 별칭 Y 채택.
-    imports=$(grep -E "^import[^']*\{" "$file" \
-      | sed -E "s/^import[^{]*\{([^}]*)\}.*/\1/" | tr ',' '\n' \
-      | sed -E 's/^[[:space:]]*//; s/[[:space:]]*$//; s/^type[[:space:]]+//; s/.*[[:space:]]as[[:space:]]+//' \
-      | grep -E '^[a-zA-Z_][a-zA-Z0-9_]*$')
-
-    # Extract TOP-LEVEL simple declarations only: `const|let|var NAME =/:/;`.
-    #   - 최상위만(들여쓰기 제외) → 함수 스코프의 합법적 로컬 섀도잉은 충돌 아님.
-    #   - 단순 선언만(destructure `{`/`[` 제외) → 실제 "identifier already declared" 버그 클래스.
-    #   (기존 greedy 정규식은 라인 끝 토큰/주석 단어까지 잡아 lucide 아이콘 `X` 등과 오탐)
-    variables=$(grep -E "^(const|let|var)\s+[a-zA-Z_][a-zA-Z0-9_]*\s*(=|:|;)" "$file" \
-      | sed -E 's/^(const|let|var)[[:space:]]+([a-zA-Z_][a-zA-Z0-9_]*).*/\2/')
-
+    # Extract imports
+    imports=$(grep -E "^import.*from" "$file" | sed -E "s/import \{([^}]+)\}.*/\1/" | tr ',' '\n' | sed 's/^ *//;s/ *$//')
+    
+    # Extract MODULE-LEVEL variable declarations (들여쓰기 없는 최상위만).
+    # 🛡️ 진짜 충돌 = 최상위 import명 == 최상위 선언명 (= JS 중복 바인딩, 컴파일 에러).
+    #   함수 스코프(들여쓰기) 선언이 import 를 가리는 건 합법이라 제외 → 오탐 0.
+    # 🛡️ (이전 버그) greedy `.*` sed 는 `const geo = ... // 게이트 X)` 처럼 줄 끝 주석의
+    #   마지막 단어(X)를 변수로 오인 → lucide `X` import 와 가짜 충돌. grep -oE 로 선언부만 잘라 방지.
+    variables=$(grep -oE "^(const|let|var)[[:space:]]+\[?[a-zA-Z_][a-zA-Z0-9_]*" "$file" | sed -E 's/^(const|let|var)[[:space:]]+\[?//')
+    
     # Check for conflicts
     for import_var in $imports; do
+        # Remove 'as alias' part
+        import_var=$(echo "$import_var" | awk '{print $1}')
+        
         if echo "$variables" | grep -q "^${import_var}$"; then
             echo "  ⚠️  CONFLICT: '$import_var' is both imported and declared as variable"
             conflicts_found=true

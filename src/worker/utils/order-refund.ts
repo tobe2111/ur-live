@@ -85,6 +85,12 @@ export async function reverseOrderAncillaryOnRefund(
     const { reverseAgencyStoreIntroOnRefund } = await import('./agency-store-intro-commission')
     await reverseAgencyStoreIntroOnRefund(DB, orderId, 'order_refund')
   } catch { /* best-effort */ }
+  // 💸 2026-07-01: 쇼핑 주문 원장 크레딧(SHOPPING_LEDGER_ENABLED) 역전 — 게이트 무관 멱등.
+  //   크레딧이 없으면 no-op(플래그 OFF 로 크레딧 안 된 주문은 안전). 플래그를 껐어도 기존 크레딧은 역전.
+  try {
+    const { reverseSellerOrderLedger } = await import('./order-ledger-credit')
+    await reverseSellerOrderLedger(DB, orderId, 'order_refund')
+  } catch { /* best-effort */ }
   // 구매자 referral_bonus 포인트 회수.
   try {
     const { reverseReferralBonusOnRefund } = await import('../../features/group-buy/api/helpers')

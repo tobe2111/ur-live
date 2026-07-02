@@ -8,6 +8,7 @@ import { resolveProductFlow } from '@/shared/product-flow'
 import api from '@/lib/api'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
 import SEO from '@/components/SEO'
+import BrandLoader from '@/components/brand/BrandLoader'
 import KakaoShareButton from '@/components/KakaoShareButton'
 // 🛡️ 2026-06-12 (감사 1단계 — 핀 표면): 공유 버튼 옆 핀 버튼 (additive — 잠금 항목 무변경).
 import PinButton from '@/components/curator/PinButton'
@@ -75,6 +76,10 @@ interface GroupBuyDetail {
   // 🛡️ 2026-05-27: 서버가 array 로 미리 parse 해서 보냄. 구 응답 (stale edge cache) 은 string — 둘 다 handle.
   group_buy_tiers?: string | Array<{ min: number; discount_pct: number }> | null
   current_discount_pct: number
+  /** 🎯 1인당 최대 구매 수량 (셀러 설정, 없으면 무제한). */
+  max_per_person?: number
+  /** 🎯 카카오 장소 페이지 URL (등록 시 캡처, 있으면 매장 페이지 직접 연결). */
+  kakao_place_url?: string
   seller_id?: number
   seller_name?: string
   seller_username?: string
@@ -198,35 +203,42 @@ export default function GroupBuyDetailPage() {
     let cancelled = false
 
     // 🧭 2026-06-22 (전수조사): 첫 paint SSR/prefetch 시드는 위 seedDetail(useState 초기값)이 담당.
-    //   여기서는 freshness 보정 fetch 만 — 시드가 있으면 skeleton 없이 background 갱신, 없으면 skeleton 후 채움.
+    //   여기서는 freshness 보정 fetch 만 — 시드가 있으면 skeleton 없이 background 갱신, 없으면 로더 후 채움.
+    // 🎯 2026-07-01 (대표 "로딩 2번 + 느림" — 근본): raw axios → RQ fetchQuery 로 **in-flight prefetch dedupe**.
+    //   홈 카드 touchstart prefetch(~0.6s) 진행 중에 탭하면, 기존엔 페이지가 같은 요청을 처음부터 다시
+    //   시작(중복 네트워크 + 로더 노출 2배) → fetchQuery 는 같은 키의 진행 중 요청을 그대로 이어받고,
+    //   방금 끝난 prefetch(≤60s fresh)는 네트워크 0회로 즉시 반환. 캐시 write-back 도 RQ 가 자동.
+    const detailPromise = qc.fetchQuery({
+      queryKey: queryKeys.groupBuyProduct(productId),
+      queryFn: async () => {
+        const r = await api.get(`/api/group-buy/products/${productId}`)
+        if (!r.data?.success) throw new Error(r.data?.error || '상품을 찾을 수 없습니다')
+        // 🛡️ 2026-05-23 revert 유지: 받은 상품 그대로 렌더(카테고리 redirect 금지 — 과거 사고).
+        return r.data.data as GroupBuyDetail
+      },
+      staleTime: 60_000,
+    })
     Promise.all([
-      api.get(`/api/group-buy/products/${productId}`),
+      detailPromise,
       api.get(`/api/group-buy/products/${productId}/participants`).catch(() => ({ data: { data: [] } })),
-    ]).then(([detailRes, partRes]) => {
+    ]).then(([detailData, partRes]) => {
       if (cancelled) return
-      if (detailRes.data?.success) {
-        // 🛡️ 2026-05-23 revert: /group-buy/:id 진입 시 redirect 제거.
-        //   이전 redirect 가 모든 voucher 카테고리 상품을 /vouchers/:id 로 보내서
-        //   공구 페이지 자체가 렌더 안 됐던 사고 (모든 공구 상품이 voucher 카테고리인 환경).
-        //   해결: GroupBuyDetailPage 는 받은 상품 그대로 렌더. 새 링크는 SSOT 가 정확한
-        //   detail URL 로 생성 (홈 공구 → /group-buy, /vouchers 목록 → /vouchers).
-        setDetail(detailRes.data.data)
-        // 🧭 2026-06-22: 권위 데이터를 RQ 캐시에 write-back → back-nav/재진입 시 prefetch 와 일관 + 시드 재사용.
-        qc.setQueryData(queryKeys.groupBuyProduct(productId), detailRes.data.data)
+      if (detailData) {
+        setDetail(detailData)
         reportFunnel('view', productId)  // funnel: page view
         // 🛡️ 2026-05-15: 최근 본 공구 기록 (localStorage 12개 제한)
         try {
           recordRecentlyViewed({
-            id: detailRes.data.data.id,
-            name: detailRes.data.data.name,
-            image_url: detailRes.data.data.image_url,
-            restaurant_name: detailRes.data.data.restaurant_name,
-            price: detailRes.data.data.price,
+            id: detailData.id,
+            name: detailData.name,
+            image_url: detailData.image_url,
+            restaurant_name: detailData.restaurant_name,
+            price: detailData.price,
           })
         } catch { /* silent */ }
-      } else toast.error(detailRes.data?.error || '상품을 찾을 수 없습니다')
+      }
       setParticipants(partRes.data?.data || [])
-    }).catch(() => toast.error('네트워크 오류'))
+    }).catch((e) => toast.error((e as Error)?.message || '네트워크 오류'))
       .finally(() => !cancelled && setLoading(false))
     return () => { cancelled = true }
   }, [productId, navigate, qc])
@@ -292,6 +304,8 @@ export default function GroupBuyDetailPage() {
   // 🧭 2026-06-17: 즉시판매 단일가 모델 — 진행률 바/티어 사다리 제거 후 미사용이던 progress 변수 정리.
   const unitPrice = detail ? Math.round(detail.price * (1 - (detail.current_discount_pct || 0) / 100)) : 0
   const total = unitPrice * quantity
+  // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도"): 셀러 설정값으로 스텝퍼 상한. 미설정=기존 10.
+  const maxQty = detail?.max_per_person && detail.max_per_person > 0 ? detail.max_per_person : 10
   // 🏭 2026-06-06 (사용자 요청 — 가격 설득력): 정가(있으면) 대비 실제 결제가 절약액 계산.
   //   기준가 = original_price(정가, MSRP) 가 있고 결제가보다 크면 그것, 없으면 공구 기준가(price).
   //   순수 파생값 — SSR/폴링/잠금 동작 불변(렌더 카피만 추가).
@@ -438,39 +452,9 @@ export default function GroupBuyDetailPage() {
   }
 
   if (loading) {
-    // 🛡️ 2026-05-15: 대기업 수준 skeleton — CLS 0, perceived performance 향상
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
-        {/* 🏭 2026-06-07: 투명 overlay 헤더 — solid 흰 바 깜빡임 없이 이미지가 최상단까지. */}
-        <div
-          className="fixed top-0 inset-x-0 z-30 px-3 flex items-center justify-between lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[var(--app-frame)]"
-          style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))', paddingBottom: '0.625rem' }}
-        >
-          <div className="w-9 h-9 rounded-full bg-black/25 backdrop-blur-sm animate-pulse" />
-          <div className="w-9 h-9 rounded-full bg-black/25 backdrop-blur-sm animate-pulse" />
-        </div>
-        <div className="ur-content-narrow mx-auto">
-          <div className="w-full aspect-square bg-gradient-to-br from-gray-100 to-gray-200 dark:from-[#1A1A1A] dark:to-[#0A0A0A] animate-pulse" />
-        </div>
-        <div className="ur-content-narrow mx-auto px-4 lg:px-8 py-4 space-y-4">
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A] space-y-3">
-            <div className="h-6 w-3/4 bg-gray-200 rounded animate-pulse" />
-            <div className="h-4 w-1/2 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse" />
-            <div className="h-4 w-1/3 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse" />
-            <div className="pt-3 border-t border-gray-100 dark:border-[#1A1A1A]">
-              <div className="h-8 w-32 bg-gray-200 dark:bg-[#1A1A1A] rounded animate-pulse" />
-            </div>
-          </div>
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A] space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
-              <div className="h-6 w-16 bg-gray-200 dark:bg-[#1A1A1A] rounded animate-pulse" />
-            </div>
-            <div className="h-3 w-full bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse" />
-          </div>
-        </div>
-      </div>
-    )
+    // 🎨 2026-07-01 (대표 "로더 전면 통일"): 소비자 로딩을 유어딜 BrandLoader(SSOT)로 통일.
+    //   ⚠️ SSR seed(`__SSR_INITIAL_DETAIL__`) 있으면 loading=false 라 이 로더는 seed-miss/콜드 SPA 이동에만 노출.
+    return <BrandLoader fullScreen />
   }
   if (!detail) {
     return (
@@ -779,7 +763,7 @@ export default function GroupBuyDetailPage() {
               <div style={{ borderRadius: '14px 14px 0 0', overflow: 'hidden', border: '1px solid var(--gbd-line2)', borderBottom: 'none' }}>
                 <DeferUntilVisible minHeight={172}>
                   <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>
-                    <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} />
+                    <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} placeUrl={detail.kakao_place_url} />
                   </Suspense>
                 </DeferUntilVisible>
               </div>
@@ -890,20 +874,25 @@ export default function GroupBuyDetailPage() {
             fixed + 프레임 정렬(lg) 유지 (BottomNav z-9999 위). gbd 자손이라 var() 상속. */}
       <footer
         className="fixed bottom-0 inset-x-0 z-[10002] lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[var(--app-frame)] lg:rounded-t-2xl"
-        style={{ background: 'var(--gbd-card)', borderTop: '1px solid var(--gbd-line2)', padding: '11px 16px calc(13px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 30px -18px rgba(0,0,0,.3)' }}
+        style={{ background: 'var(--gbd-card)', borderTop: '1px solid var(--gbd-line2)', padding: '7px 16px calc(8px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 30px -18px rgba(0,0,0,.3)' }}
         role="contentinfo" aria-label="결제 영역"
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-danger)', whiteSpace: 'nowrap' }}>
-            {isJoinable && totalSaving > 0 ? (quantity > 1 ? `총 ${formatNumber(totalSaving)}원 할인 중` : `${formatNumber(unitSaving)}원 할인 중`) : ''}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-danger)', whiteSpace: 'nowrap' }}>
+              {isJoinable && totalSaving > 0 ? (quantity > 1 ? `총 ${formatNumber(totalSaving)}원 할인 중` : `${formatNumber(unitSaving)}원 할인 중`) : ''}
+            </span>
+            {detail?.max_per_person && detail.max_per_person > 0 ? (
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>1인당 최대 {detail.max_per_person}개</span>
+            ) : null}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--gbd-line2)', borderRadius: 10, overflow: 'hidden' }} role="group" aria-label="수량 조절">
             <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!isJoinable || quantity <= 1} aria-label="수량 감소" style={{ width: 32, height: 32, border: 'none', background: 'var(--gbd-card)', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!isJoinable || quantity <= 1) ? .4 : 1 }}>−</button>
             <span style={{ minWidth: 30, textAlign: 'center', fontSize: 14, fontWeight: 700, color: 'var(--gbd-ink)' }} aria-live="polite" aria-label={`현재 ${quantity}장`}>{quantity}</span>
-            <button onClick={() => setQuantity(q => Math.min(10, q + 1))} disabled={!isJoinable || quantity >= 10} aria-label="수량 증가" style={{ width: 32, height: 32, border: 'none', background: 'var(--gbd-card)', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!isJoinable || quantity >= 10) ? .4 : 1 }}>+</button>
+            <button onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!isJoinable || quantity >= maxQty} aria-label="수량 증가" style={{ width: 32, height: 32, border: 'none', background: 'var(--gbd-card)', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!isJoinable || quantity >= maxQty) ? .4 : 1 }}>+</button>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 9 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 6 }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--gbd-sub)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
           <span style={{ fontSize: 11.5, color: 'var(--gbd-sub)', fontWeight: 500, whiteSpace: 'nowrap' }}>토스로 3초 안전결제 · 미사용 시 100% 자동환불</span>
         </div>
@@ -911,7 +900,7 @@ export default function GroupBuyDetailPage() {
           onClick={handleJoin}
           disabled={!isJoinable || joining}
           aria-label={isJoinable ? `${formatNumber(total)}원 구매하기` : '구매 불가'}
-          style={{ width: '100%', height: 53, border: 'none', borderRadius: 14, background: isJoinable ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: isJoinable ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+          style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: isJoinable ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: isJoinable ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
         >
           {joining ? '처리 중…' : !isJoinable ? '구매 불가' : <>{formatNumber(total)}원 구매하기<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
         </button>

@@ -161,6 +161,11 @@ export async function handleCronScheduled(
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
   if (cron === '0 * * * *') {
     ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
+    // ⏰ 2026-07-02 (#5 승인 SLA): 24h+ 대기 셀러 전환 신청 어드민 리마인드(20h dedup = 하루 1회꼴).
+    ctx.waitUntil(safeCron('seller-approval-reminder', async () => {
+      const { handleSellerApprovalReminder } = await import('./cron/seller-approval-reminder')
+      return handleSellerApprovalReminder(env)
+    }));
     // 🛡️ 2026-05-31: 미결제 pending 숙소 예약 자동 만료 (30분 경과). 재고 미조작 — 정리 목적.
     ctx.waitUntil(safeCron('stay-pending-expire', async () => {
       const { handleStayPendingExpire } = await import('./cron/stay-pending-expire')
@@ -180,6 +185,12 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('wholesale-settle-tick', () => handleWholesaleSettleTick(env)));
     // 🏭 2026-06-08 NOTI-1: 재입고 알림 — 구독 상품 재입고(stock>0) 시 판매사 알림.
     ctx.waitUntil(safeCron('wholesale-restock-notify', () => handleWholesaleRestockNotify(env)));
+    // 🔔 2026-07-01: 알림 채널 설정 회귀 감시 — LIVE 채널 키가 사라지면(true→false) 1회 critical
+    //   경보(cron_failures + 어드민 벨). VAPID 미설정으로 웹푸시가 조용히 죽어있던 사고 재발 방지.
+    ctx.waitUntil(safeCron('channel-watchdog', async () => {
+      const { handleChannelWatchdog } = await import('./cron/channel-watchdog');
+      return handleChannelWatchdog(env);
+    }));
     // 🔔 2026-07-01: 소비자 찜(위시리스트) 재입고 + 가격인하 알림(매시간, 멱등 스캔 — 재고/가격 write 무hook).
     ctx.waitUntil(safeCron('wishlist-restock-notify', async () => {
       const { handleWishlistRestockNotify } = await import('./cron/wishlist-notify');

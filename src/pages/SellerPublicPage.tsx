@@ -9,7 +9,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { compressForThumbnail } from '@/lib/image-compress'
 import { useTheme } from '@/shared/stores/useTheme'
-import { Loader2, Search, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import StreamCard from './seller-public/StreamCard'
@@ -24,6 +24,7 @@ import type { Product as BrowseProduct } from '@/pages/browse/types'
 import { seededColor } from '@/utils/card-gradient'
 import InfoTab from './seller-public/InfoTab'
 import { getThemeTokens } from './seller-public/theme'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import type { Seller, LiveStream, Product, Short } from './seller-public/types'
 
@@ -108,12 +109,10 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const ownerView = isOwner && !previewAsVisitor
 
   // ── 인라인 편집 상태 ──
+  // 🖼️ 2026-07-01 (대표 신고 — 소개 섹션 헤더와 중복): InfoTab 의 bio/Instagram/YouTube 인라인 편집 폐기
+  //   (CuratorHeader 가 표시+편집 전담). 여기 남는 인라인 편집은 카카오 채팅 링크(헤더에 없는 유일 항목)뿐.
   const [editingField, setEditingField] = useState<string | null>(null)
-  const [editName, setEditName] = useState('')
-  const [editBio, setEditBio] = useState('')
   const [editKakao, setEditKakao] = useState('')
-  const [editInsta, setEditInsta] = useState('')
-  const [editYoutube, setEditYoutube] = useState('')
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   // 전역 테마 토글 연동 (useTheme 스토어)
@@ -124,11 +123,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const startEdit = (field: string) => {
     if (!isOwner) return
     setEditingField(field)
-    if (field === 'name') setEditName(seller?.name || '')
-    if (field === 'bio') setEditBio(seller?.bio || '')
     if (field === 'kakao') setEditKakao(seller?.kakao_chat_link || '')
-    if (field === 'instagram') setEditInsta(seller?.sns_instagram || '')
-    if (field === 'youtube') setEditYoutube(seller?.sns_youtube || '')
   }
 
   const saveEdit = async (field: string, value: string) => {
@@ -136,11 +131,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     const token = localStorage.getItem('seller_token')
     try {
       const payload: Record<string, string> = {}
-      if (field === 'name') payload.name = value
-      if (field === 'bio') payload.bio = value
       if (field === 'kakao') payload.kakao_chat_link = value
-      if (field === 'instagram') payload.sns_instagram = value
-      if (field === 'youtube') payload.sns_youtube = value
 
       await api.put('/api/seller/profile', payload, { headers: { Authorization: `Bearer ${token}` } })
       // 로컬 상태 업데이트
@@ -324,22 +315,10 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     tiktok_url: curatorEdits.tiktok_url ?? curator?.tiktok_url ?? null,
   }
 
-  // 로딩 중: curator 가 있으면(=/u/ 진입) 헤더 즉시 + 본문 스켈레톤. 없으면(직접 /profile) 스피너.
-  if (loading) return curator ? (
-    <div className={`min-h-screen ${T.bg} pb-28`}>
-      <CuratorHeader curator={headerCurator} pinCount={0} isOwner={false} accountType="business" onCopyLink={copyLink} onCuratorUpdate={() => {}} />
-      <div className="ur-content-wide px-4 lg:px-8 py-8">
-        <div className="h-5 w-28 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse mb-4" />
-        <div className="grid grid-cols-2 gap-3">
-          {[0, 1].map(i => <div key={i} className="aspect-[3/4] rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />)}
-        </div>
-      </div>
-    </div>
-  ) : (
-    <div className={`min-h-screen ${T.bg} flex items-center justify-center`}>
-      <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-    </div>
-  )
+  // 🖼️ 2026-07-01 (대표 지시 — "콜드 로딩은 풀로, 2~3가지 로딩화면 절대 금지"): 링크샵(/u/)·셀러(/profile)
+  //   모두 단일 URDEAL 브랜드 로더로 통일. 기존엔 curator 진입 시 헤더+스켈레톤을 그렸다가 본문 로드 후
+  //   또 바뀌어, CuratorPage 쪽 로더와 합쳐 "2~3가지 로딩화면"이 튀었음. BrandLoader 하나로 준비될 때까지 유지.
+  if (loading) return <BrandLoader fullScreen />
 
   if (!seller) return (
     <div className={`min-h-screen ${T.bg} flex flex-col items-center justify-center`}>
@@ -440,7 +419,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
         </div>
       )}
       <SEO
-        title={`${seller.name || seller.username || t('product.seller')} 의 링크샵`}
+        title={`${seller.name || seller.username || t('product.seller')}의 링크샵`}
         description={seller.bio || `${seller.name || seller.username || t('product.seller')} 님의 링크샵`}
         image={seller.profile_image}
         url={`/profile/${seller.username || seller.slug || seller.id}`}
@@ -543,17 +522,10 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.tabInfo', { defaultValue: '정보' })}</h3>
           <InfoTab
             seller={seller}
-            sellerId={sellerId!}
             isOwner={ownerView}
             T={T}
             editingField={editingField}
             setEditingField={setEditingField}
-            editBio={editBio}
-            setEditBio={setEditBio}
-            editInsta={editInsta}
-            setEditInsta={setEditInsta}
-            editYoutube={editYoutube}
-            setEditYoutube={setEditYoutube}
             editKakao={editKakao}
             setEditKakao={setEditKakao}
             saving={saving}

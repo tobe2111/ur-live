@@ -3,16 +3,22 @@
  * 공개(register/login/forgot-password) + 보호(Protected) 셀러 페이지 라우트
  */
 import { lazy } from 'react'
-import { Route, Navigate } from 'react-router-dom'
+import { Route, Navigate, useLocation } from 'react-router-dom'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { ProtectedRoute, PublicRoute } from '@/components/auth/RouteGuards'
 
 const SellerPage = lazy(() => import('@/pages/SellerPage'))
 const SellerLoginPage = lazy(() => import('@/pages/SellerLoginPage'))
-const SellerRegisterPage = lazy(() => import('@/pages/SellerRegisterPage'))
-const SellerRegisterBusinessPage = lazy(() => import('@/pages/SellerRegisterBusinessPage'))
-// 🛡️ 2026-05-20: 공급자 (가게 사장님) 자체 가입 — 기존 어드민 quick-register 보완.
+// 🏁 2026-07-02 (대표 "B — 단일 퍼널"): 셀러 가입 단일 관문 = /seller/register/supplier.
+//   레거시 /seller/register(별도 아이디/비번 독립계정)·/seller/register/business(막다른 안내)는
+//   쿼리 보존 리다이렉트로 폐쇄 — 어디서 눌러도 같은 화면(카카오 계정 업그레이드)에 도착.
 const SellerRegisterSupplierPage = lazy(() => import('@/pages/SellerRegisterSupplierPage'))
+
+/** 레거시 셀러 가입 경로 → 단일 관문 리다이렉트 (에이전시 ?agency= 등 쿼리 보존). */
+function LegacySellerRegisterRedirect() {
+  const location = useLocation()
+  return <Navigate to={{ pathname: '/seller/register/supplier', search: location.search }} replace />
+}
 const SellerWaitingPage = lazy(() => import('@/pages/SellerWaitingPage'))
 const SellerTikTokCallbackPage = lazy(() => import('@/pages/SellerTikTokCallbackPage'))
 const SellerForgotPasswordPage = lazy(() => import('@/pages/SellerForgotPasswordPage'))
@@ -82,9 +88,10 @@ export function SellerRoutes() {
           <SellerLoginPage />
         </PublicRoute>
       } />
-      <Route path="/seller/register" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
-      <Route path="/seller/signup" element={<ErrorBoundary><SellerRegisterPage /></ErrorBoundary>} />
-      <Route path="/seller/register/business" element={<ErrorBoundary><SellerRegisterBusinessPage /></ErrorBoundary>} />
+      {/* 🏁 2026-07-02 단일 퍼널: 레거시 가입 경로 전부 → /seller/register/supplier (쿼리 보존) */}
+      <Route path="/seller/register" element={<LegacySellerRegisterRedirect />} />
+      <Route path="/seller/signup" element={<LegacySellerRegisterRedirect />} />
+      <Route path="/seller/register/business" element={<LegacySellerRegisterRedirect />} />
       <Route path="/seller/register/supplier" element={<ErrorBoundary><SellerRegisterSupplierPage /></ErrorBoundary>} />
       <Route path="/seller/waiting" element={<ErrorBoundary><SellerWaitingPage /></ErrorBoundary>} />
       <Route path="/seller/tiktok-callback" element={<ErrorBoundary><SellerTikTokCallbackPage /></ErrorBoundary>} />

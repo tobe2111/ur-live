@@ -4,30 +4,24 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
-import { SellerPinPrompt } from '@/components/auth/SellerPinPrompt'
 import { Button } from '@/components/ui/button'
 import SellerLayout from '@/components/SellerLayout'
 import BrandLoader from '@/components/brand/BrandLoader'
-import { DashboardPageHeader, DashboardStatCard, DashboardCard } from '@/components/dashboard'
+import { DashboardPageHeader } from '@/components/dashboard'
 import {
   DollarSign,
   Calendar,
-  CheckCircle,
-  Clock,
   XCircle,
-  TrendingUp,
   RefreshCw,
-  FileText,
   BarChart3,
   Table
 } from 'lucide-react'
-import { formatNumber } from '@/utils/format'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 // 🛡️ 2026-06-10: 대형 페이지 분해 — 표현부를 ./seller-settlements/* 로 추출 (동작 변화 0, 순수 이동).
 import type { Settlement, SettlementStats } from './seller-settlements/types'
 import RevenueCalendar from './seller-settlements/RevenueCalendar'
 import DealBalanceCard from './seller-settlements/DealBalanceCard'
+import AutoPayoutSection from './seller-settlements/AutoPayoutSection'
 import BizRegStatusBanner from './seller-settlements/BizRegStatusBanner'
 import BizRegSubmitModal from './seller-settlements/BizRegSubmitModal'
 import SettlementsTable from './seller-settlements/SettlementsTable'
@@ -40,7 +34,6 @@ export default function SellerSettlementsPage() {
   const [error, setError] = useState('')
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all')
   const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table')
-  const [pinPrompt, setPinPrompt] = useState(false)
 
   useEffect(() => {
     const sessionToken = localStorage.getItem('seller_token')
@@ -67,7 +60,6 @@ export default function SellerSettlementsPage() {
   const statsQ = useApiQuery<SettlementStats | null>(['seller', 'settlements-stats'], '/api/seller/settlements/stats', { select: (r: any) => (r?.success ? r.data : null) })
   const dailyQ = useApiQuery<{ date: string; revenue: number }[]>(['seller', 'settlements-daily'], '/api/seller/dashboard/stats', { params: { period: '30d' }, select: (r: any) => (r?.success ? (r.data?.daily_revenue || []) : []) })
   const settlements = settlementsQ.data ?? []
-  const stats = statsQ.data ?? null
   const dailyRevenue = dailyQ.data ?? []
   const loading = settlementsQ.isLoading || statsQ.isLoading
   const loadSettlements = () => { settlementsQ.refetch(); statsQ.refetch(); dailyQ.refetch() }
@@ -75,57 +67,9 @@ export default function SellerSettlementsPage() {
 
   const hasBankInfo = !!(localStorage.getItem('seller_bank_name') && localStorage.getItem('seller_account_number'))
 
-  async function requestSettlement() {
-    const pendingAmount = stats?.pending_amount || 0
-    if (pendingAmount <= 0) {
-      toast.error(t('seller.noSettlementAmount'))
-      return
-    }
-    if (!hasBankInfo) {
-      toast.error(t('seller.bankInfoRequired'))
-      return
-    }
-    if (!(await confirmDialog(t('seller.confirmSettlementRequest', { amount: formatNumber(pendingAmount) })))) return
-
-    try {
-      const sessionToken = localStorage.getItem('seller_token')
-      const sellerBankName = localStorage.getItem('seller_bank_name') || ''
-      const sellerAccountNumber = localStorage.getItem('seller_account_number') || ''
-      const sellerAccountHolder = localStorage.getItem('seller_account_holder') || localStorage.getItem('seller_name') || ''
-      const response = await api.post('/api/seller/settlements/request', {
-        amount: pendingAmount,
-        bank_name: sellerBankName,
-        account_number: sellerAccountNumber,
-        account_holder: sellerAccountHolder,
-      }, {
-        headers: { 'Authorization': `Bearer ${sessionToken}` }
-      })
-
-      if (response.data.success) {
-        toast.success(t('seller.settlementRequested'))
-        loadSettlements()
-      }
-    } catch (error: unknown) {
-      const error_ = error as { response?: { data?: { error?: string; code?: string }; status?: number } }
-      const code = error_.response?.data?.code
-      if (code === 'PIN_REQUIRED') {
-        setPinPrompt(true)
-        return
-      }
-      if (code === 'PIN_NOT_SET') {
-        toast.error(t('seller.settlements.pinNotSet', { defaultValue: '보안 PIN이 설정되지 않았어요. 프로필에서 먼저 설정해주세요.' }))
-        navigate('/seller/profile')
-        return
-      }
-      // 🛡️ 2026-05-18: 사업자등록 미검증 — 검증 흐름으로 안내.
-      if (code === 'BUSINESS_REGISTRATION_REQUIRED') {
-        toast.error(error_.response?.data?.error || '사업자등록증 검증이 필요합니다')
-        setBizRegModalOpen(true)
-        return
-      }
-      toast.error(error_.response?.data?.error || t('seller.settlementRequestFailed2'))
-    }
-  }
+  // 💸 2026-07-01 (정산 정합 — 대표 승인 "자동 정산 하나로 통일"): 고장난 '정산 신청'(/settlements/request,
+  //   seller_deal_balances 미적립으로 항상 실패) 제거. 정산은 주간 자동 집계(payouts)로 처리 →
+  //   AutoPayoutSection 이 실제 지급 현황을 노출. 셀러는 계좌만 등록하면 됨(아래 bank 경고 유지).
 
   // 🛡️ 2026-05-18: 사업자등록 검증 상태 + 옵션 조회.
   const [bizRegStatus, setBizRegStatus] = useState<string>('pending')
@@ -224,10 +168,6 @@ export default function SellerSettlementsPage() {
         <RefreshCw className="w-4 h-4 mr-2" />
         {t('common.refresh')}
       </Button>
-      <Button onClick={requestSettlement} className="bg-blue-600 hover:bg-blue-700" size="sm">
-        <FileText className="w-4 h-4 mr-2" />
-        {t('common.apply')}
-      </Button>
     </div>
   )
 
@@ -249,20 +189,12 @@ export default function SellerSettlementsPage() {
           onOpenModal={() => setBizRegModalOpen(true)}
         />
 
-        {/* 🛡️ 2026-05-18: 딜 잔액 + 환급 + 원천징수 현황 */}
-        <DealBalanceCard />
+        {/* 💸 2026-07-01 (정산 정합): 실제 자동 지급(payouts) 현황 — 셀러 정산의 진짜 숫자 SSOT.
+            고장난 '정산 신청' 통계카드(settlements 테이블, 대부분 빈값) 대체. */}
+        <AutoPayoutSection />
 
-        {/* 정산 안내 */}
-        <DashboardCard>
-          <div className="space-y-1.5 text-sm">
-            <p className="font-semibold text-gray-900">📋 {t('seller.settlements.notice')}</p>
-            <ul className="space-y-0.5 text-xs text-gray-600">
-              <li>• {t('seller.settlements.noticeCycle')}</li>
-              <li>• {t('seller.settlements.noticeConfirmed')}</li>
-              <li>• {t('seller.settlements.noticeCommission')}</li>
-            </ul>
-          </div>
-        </DashboardCard>
+        {/* 🛡️ 2026-05-18: 딜 잔액 + 환급 + 원천징수 현황 (비사업자 교환권/원천징수) */}
+        <DealBalanceCard />
 
         {/* Bank info warning */}
         {!hasBankInfo && (
@@ -275,40 +207,6 @@ export default function SellerSettlementsPage() {
             >
               {t('seller.registerBankInfo')}
             </button>
-          </div>
-        )}
-
-        {/* Statistics Cards */}
-        {stats && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            <DashboardStatCard
-              label={t('common.pending')}
-              value={`₩${formatNumber(stats.pending_amount)}`}
-              hint={`${stats.total_pending}${t('seller.ordersUnit', { defaultValue: '건' })}`}
-              icon={<Clock className="h-4 w-4" />}
-              accent="amber"
-            />
-            <DashboardStatCard
-              label={t('common.completed')}
-              value={`₩${formatNumber(stats.approved_amount)}`}
-              hint={`${stats.total_approved}${t('seller.ordersUnit', { defaultValue: '건' })}`}
-              icon={<CheckCircle className="h-4 w-4" />}
-              accent="blue"
-            />
-            <DashboardStatCard
-              label={t('common.paid')}
-              value={`₩${formatNumber(stats.paid_amount)}`}
-              hint={`${stats.total_paid}${t('seller.ordersUnit', { defaultValue: '건' })}`}
-              icon={<DollarSign className="h-4 w-4" />}
-              accent="green"
-            />
-            <DashboardStatCard
-              label={t('common.settlement')}
-              value={`₩${formatNumber(stats.pending_amount + stats.approved_amount + stats.paid_amount)}`}
-              hint={t('seller.allPeriod')}
-              icon={<TrendingUp className="h-4 w-4" />}
-              accent="violet"
-            />
           </div>
         )}
 
@@ -377,7 +275,10 @@ export default function SellerSettlementsPage() {
           </div>
         </div>
 
-        {/* Settlements Table */}
+        {/* 정산/환급 신청 이력 (레거시 수동 경로 — 비사업자 환급 등). 자동 정산은 상단 AutoPayoutSection 참조. */}
+        <p className="mb-2 text-xs font-medium text-gray-500">
+          {t('seller.settlements.manualHistory', { defaultValue: '정산/환급 신청 이력' })}
+        </p>
         <SettlementsTable settlements={settlements} onDownload={downloadSettlement} />
 
         {/* 🏁 2026-06-11 (플로우 감사 갭#11): 공구 자동정산(restaurant_settlements) — cron 적립분 가시화 */}
@@ -404,13 +305,6 @@ export default function SellerSettlementsPage() {
         </>
         )}
       </div>
-      {pinPrompt && (
-        <SellerPinPrompt
-          role="seller"
-          onVerified={() => { setPinPrompt(false); requestSettlement() }}
-          onCancel={() => setPinPrompt(false)}
-        />
-      )}
       {/* 🛡️ 2026-05-18: 사업자등록증 제출 모달. */}
       {bizRegModalOpen && (
         <BizRegSubmitModal

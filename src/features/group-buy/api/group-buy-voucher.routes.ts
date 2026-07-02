@@ -393,7 +393,11 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
             "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
           ).bind(voucher.user_id, refundAmount, refundAmount, voucher.user_id, `구매 취소 환불: ${voucher.product_name}`).run()
         }
-        // 토스 카드 결제 — cancelTossPayment (waitUntil 비동기, 영업일 3~5일)
+        // 토스 카드 결제 — cancelTossPayment (waitUntil 비동기, 영업일 3~5일).
+        //   ⚠️ 이 async+cron 패턴은 의도된 설계: retryable(5xx/PROVIDER) 실패는 gateway 가
+        //   toss_refund_failures 에 기록 → toss-refund-retry cron(최대 5회 backoff)이 완성.
+        //   → voucher='refunded' 유지가 정답(동기 revert 로 바꾸면 cron 재시도 성공 시 이중환불).
+        //   셀러(/refund)·어드민 강제환불과 동일 패턴.
         else if ((voucher.payment_method === 'toss' || voucher.payment_method === 'CARD') && voucher.order_id) {
           c.executionCtx?.waitUntil((async () => {
             try {
@@ -406,8 +410,24 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
               })
               if (result.ok) {
                 await DB.prepare("UPDATE orders SET status = 'REFUNDED', payment_status = 'refunded' WHERE id = ?").bind(voucher.order_id).run().catch(() => null)
+              } else {
+                // 🚨 non-retryable(4xx) 실패는 cron 이 안 집음 → 어드민 벨/Discord 로 수동환불 알림.
+                const { alertTossRefundFailure } = await import('../../../worker/utils/toss-refund-alert')
+                await alertTossRefundFailure(c.env as { DISCORD_WEBHOOK_URL?: string }, DB, {
+                  source: '유저 셀프취소', paymentKey: voucher.payment_key, voucherId: voucher.id,
+                  amount: refundAmount, errorCode: result.error_code, errorMessage: result.error_message, httpStatus: result.http_status,
+                })
               }
-            } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher self-cancel toss]', e) }
+            } catch (e) {
+              if (import.meta.env?.DEV) console.warn('[voucher self-cancel toss]', e)
+              try {
+                const { alertTossRefundFailure } = await import('../../../worker/utils/toss-refund-alert')
+                await alertTossRefundFailure(c.env as { DISCORD_WEBHOOK_URL?: string }, DB, {
+                  source: '유저 셀프취소(예외)', paymentKey: voucher.payment_key, voucherId: voucher.id, amount: refundAmount,
+                  errorCode: 'EXCEPTION', errorMessage: (e as Error)?.message,
+                })
+              } catch { /* fail-soft */ }
+            }
           })())
         }
 

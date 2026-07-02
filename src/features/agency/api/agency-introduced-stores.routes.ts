@@ -13,6 +13,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAgency, type AgencyVars } from '@/lib/agency-shared'
+import { intParam } from '@/shared/pagination'
 
 const app = new Hono<{ Bindings: Env; Variables: AgencyVars }>()
 app.use('*', requireAgency)
@@ -56,7 +57,7 @@ app.get('/introduced-stores', async (c) => {
 app.get('/introduced-stores/commissions', async (c) => {
   const agencyId = c.get('agency')?.id
   if (!agencyId) return c.json({ success: false, error: 'Unauthorized' }, 401)
-  const limit = Math.min(Math.max(Number(c.req.query('limit') || 50), 1), 200)
+  const limit = Math.min(Math.max(intParam(c.req.query('limit'), 50), 1), 200)
 
   const rows = await c.env.DB.prepare(
     `SELECT c.id, c.store_seller_id, c.order_id, c.type, c.order_amount,

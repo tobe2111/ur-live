@@ -9,7 +9,6 @@ import ToastContainer from './components/ToastContainer'
 import { ConfirmHost } from './components/ui/confirm-dialog'
 import NewVersionBanner from './components/main/NewVersionBanner'
 import ErrorBoundary from './components/ErrorBoundary'
-import { ChunkErrorBoundary } from './components/utils/ChunkErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
 import ScrollToTop from './components/ScrollToTop'
@@ -995,16 +994,16 @@ function App({
   routerProps = { future: { v7_startTransition: true, v7_relativeSplatPath: true } },
 }: AppProps = {}) {
   return (
+    // 🛡️ 청크(배포 전환) + 일반 에러를 단일 ErrorBoundary 가 처리(청크는 recoverFromChunkError 자동복구).
+    //   기존 ChunkErrorBoundary 는 최내곽 per-route ErrorBoundary 가 먼저 잡아 死코드였음 → 제거·통합.
     <ErrorBoundary>
-      <ChunkErrorBoundary>
-        <HelmetProvider>
-          <QueryProvider>
-            <Router {...routerProps}>
-              <AppContent />
-            </Router>
-          </QueryProvider>
-        </HelmetProvider>
-      </ChunkErrorBoundary>
+      <HelmetProvider>
+        <QueryProvider>
+          <Router {...routerProps}>
+            <AppContent />
+          </Router>
+        </QueryProvider>
+      </HelmetProvider>
     </ErrorBoundary>
   )
 }

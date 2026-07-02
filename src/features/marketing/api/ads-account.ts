@@ -123,10 +123,20 @@ export async function getAdsAccount(DB: D1Database, id: number): Promise<AdsAcco
     .bind(id).first<AdsAccount>().catch(() => null)
 }
 
+/** 상수시간 문자열 비교 — 타이밍 사이드채널로 코드 추측 방지(길이만 노출, 내용 비교는 일정시간). */
+function timingSafeEqual(a: string, b: string): boolean {
+  const ea = new TextEncoder().encode(a)
+  const eb = new TextEncoder().encode(b)
+  if (ea.length !== eb.length) return false
+  let diff = 0
+  for (let i = 0; i < ea.length; i++) diff |= ea[i] ^ eb[i]
+  return diff === 0
+}
+
 /** 액세스 코드 검증 → 잠금 해제(계정별 1회). 코드는 호출측(라우트)이 env 에서 주입. */
 export async function unlockAdsAccount(DB: D1Database, id: number, code: string, expected: string): Promise<{ ok: boolean; error?: string }> {
   await ensureAdsAccountSchema(DB)
-  if (!code || !expected || code.trim() !== String(expected)) return { ok: false, error: '액세스 코드가 올바르지 않습니다' }
+  if (!code || !expected || !timingSafeEqual(code.trim(), String(expected))) return { ok: false, error: '액세스 코드가 올바르지 않습니다' }
   await DB.prepare('UPDATE ad_accounts SET access_unlocked = 1 WHERE id = ?').bind(id).run().catch(() => null)
   return { ok: true }
 }

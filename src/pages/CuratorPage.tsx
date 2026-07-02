@@ -28,6 +28,7 @@ import { Search, X, Trash2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
 import LinkshopOnboardModal from './curator-page/LinkshopOnboardModal'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있으면 같은 페이지에서 SellerPublicPage 직접 render.
 //   redirect 없음 — URL 그대로 (/u/:handle 유지). lazy chunk — 일반 user 진입 시 chunk fetch 안 함.
@@ -151,22 +152,11 @@ export default function CuratorPage() {
   }
 
   if (loading) {
-    // 🧭 2026-06-10 (사용자 신고 — 링크샵 로딩 김): 빈 화면+텍스트 → 레이아웃 스켈레톤 (체감 즉시 개선).
-    return (
-      <div className="min-h-screen bg-white dark:bg-[#020202]">
-        <div className="h-[220px] bg-gray-100 dark:bg-[#121212] animate-pulse" />
-        <div className="max-w-3xl mx-auto px-4 -mt-12">
-          <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-[#1A1A1A] animate-pulse border-4 border-white dark:border-[#020202]" />
-          <div className="h-5 w-40 mt-3 rounded bg-gray-200 dark:bg-[#1A1A1A] animate-pulse" />
-          <div className="h-3.5 w-24 mt-2 rounded bg-gray-100 dark:bg-[#121212] animate-pulse" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-8">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="aspect-square rounded-2xl bg-gray-100 dark:bg-[#121212] animate-pulse" />
-            ))}
-          </div>
-        </div>
-      </div>
-    )
+    // 🖼️ 2026-07-01 (대표 지시 — "콜드 로딩은 풀로, 2~3가지 로딩화면 절대 금지"): 링크샵 콜드 로딩은
+    //   단일 URDEAL 브랜드 로더(다른 페이지 라우트 전환과 동일)로 통일. 기존엔 [CuratorPage 스켈레톤
+    //   → Suspense 스켈레톤 → SellerPublicPage 스켈레톤]으로 모양이 다른 로더가 2~3번 튀었음.
+    //   worker #root 첫페인트 + 이 로딩 + Suspense fallback + SellerPublicPage 로딩 전부 BrandLoader 로 일치.
+    return <BrandLoader fullScreen />
   }
 
   if (error || !data) {
@@ -186,20 +176,9 @@ export default function CuratorPage() {
   if (linked_seller?.username) {
     return (
       <Suspense fallback={
-        // 🧭 2026-06-30 [LOADING_ADDITIVE] (대표 신고 — "불필요한 로딩 애니메이션"): 기존 fallback 은
-        //   SellerPublicPage 청크 다운로드 동안 전체화면 중앙 '로딩 중' 텍스트를 띄웠다가 → 청크 로드 후
-        //   SellerPublicPage 가 다시 헤더+스켈레톤(자체 loading 상태)을 그려, 사용자가 [스피너→텍스트→스켈레톤]
-        //   세 로더를 점프하며 봤음. fallback 을 SellerPublicPage 의 curator-있음 loading 상태와 **동일**하게 맞춤
-        //   → curator 로 헤더를 즉시 한 번 그려 유지, 본문 2카드 스켈레톤만 이어서 채워짐(중간 텍스트 로더 제거, 점프 0).
-        <div className="min-h-[100dvh] bg-white dark:bg-[#020202] text-gray-900 dark:text-white pb-28">
-          <CuratorHeader curator={curator} pinCount={0} isOwner={false} accountType="business" onCopyLink={copyLink} onCuratorUpdate={() => {}} />
-          <div className="ur-content-wide px-4 lg:px-8 py-8">
-            <div className="h-5 w-28 rounded bg-gray-100 dark:bg-[#1A1A1A] animate-pulse mb-4" />
-            <div className="grid grid-cols-2 gap-3">
-              {[0, 1].map(i => <div key={i} className="aspect-[3/4] rounded-2xl bg-gray-100 dark:bg-[#1A1A1A] animate-pulse" />)}
-            </div>
-          </div>
-        </div>
+        // 🖼️ 2026-07-01 (대표 지시 — 단일 풀 로더): SellerPublicPage 청크 다운로드 동안에도 동일 BrandLoader.
+        //   (기존 헤더+스켈레톤 fallback → SellerPublicPage 자체 로딩과 로더가 두 번 튀어 "2~3가지 로딩화면" 유발.)
+        <BrandLoader fullScreen />
       }>
         {/* 🏁 2026-06-25 (대표 "통일") — 사업자 링크샵도 canonical CuratorHeader 형태로. curator 객체 전달.
             🏁 2026-06-26 (대표 "추천템 숨김") — 사업자 링크샵은 추천 핀 섹션을 안 그리므로 pins 미전달.
@@ -220,7 +199,7 @@ export default function CuratorPage() {
   return (
     <>
       <SEO
-        title={`${curator.name} (@${curator.handle}) 의 링크샵`}
+        title={`${curator.name} (@${curator.handle})의 링크샵`}
         description={curator.bio || `${curator.name} 님이 추천하는 ${pins.length}개의 상품`}
         url={`/u/${curator.handle}`}
         image={`https://live.ur-team.com/api/og/curator/${curator.handle}`}

@@ -15,6 +15,7 @@ import { safeError } from '@/worker/utils/safe-error';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { requireAdmin } from '@/worker/middleware/auth';
 import { swallow } from '@/shared/utils/swallow';
+import { intParam } from '@/shared/pagination'
 
 async function ensureTables(DB: D1Database) {
   if (_done_ensureTables.has(DB)) return
@@ -86,7 +87,7 @@ restaurantSuggestionsRoutes.post('/', rateLimit({ action: 'restaurant_sug', max:
 // GET /api/restaurant-suggestions/stats — admin only, 수요 많은 매장 top N
 restaurantSuggestionsRoutes.get('/stats', requireAdmin(), async (c) => {
   await ensureTables(c.env.DB);
-  const limit = Math.min(50, Number(c.req.query('limit')) || 20);
+  const limit = Math.min(50, intParam(c.req.query('limit'), 20));
   try {
     const rows = await c.env.DB.prepare(`
       SELECT

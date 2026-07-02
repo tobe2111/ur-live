@@ -4,6 +4,7 @@ import type { Env } from '@/worker/types/env'
 import { safeError } from '../../../../worker/utils/safe-error'
 // 🧹 2026-06-17: description 의 공급사 정책 괄호 제거 — cron(1회 자동) 과 공용 SSOT.
 import { cleanupKtAlphaDescriptions } from '../../../../worker/utils/kt-alpha-cleanup'
+import { intParam } from '@/shared/pagination'
 
 export function registerProducts(r: Hono<{ Bindings: Env }>) {
   // 🛡️ 2026-05-19: 카테고리 분류 현황 조회 (어드민 UI 에서 목록 표시).
@@ -19,8 +20,8 @@ export function registerProducts(r: Hono<{ Bindings: Env }>) {
     const env = c.env as unknown as { DB: D1Database; KT_ALPHA_AUTH_CODE?: string; KT_ALPHA_TOKEN_KEY?: string; KT_ALPHA_AUTH_TOKEN?: string; KT_ALPHA_DEV_MODE?: string }
     if (!env.KT_ALPHA_AUTH_CODE) return c.json({ success: false, error: 'KT_ALPHA_AUTH_CODE 미설정' }, 503)
 
-    const startPage = Math.max(1, Number(c.req.query('start_page') || 1))
-    const pageCount = Math.max(1, Math.min(15, Number(c.req.query('page_count') || 10)))
+    const startPage = Math.max(1, intParam(c.req.query('start_page'), 1))
+    const pageCount = Math.max(1, Math.min(15, intParam(c.req.query('page_count'), 10)))
     const pageSize = 100
 
     try {

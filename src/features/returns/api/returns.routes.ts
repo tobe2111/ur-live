@@ -23,6 +23,7 @@ import { tossCancelPayment } from '@/worker/utils/toss-payments';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
 import { swallow } from '@/worker/utils/swallow';
+import { intParam } from '@/shared/pagination'
 const returnsRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -276,7 +277,7 @@ returnsRoutes.get('/admin', requireAuth(), async (c) => {
   await ensureTable(DB);
 
   const status = String(c.req.query('status') || '').trim();
-  const limit = Math.max(10, Math.min(200, Number(c.req.query('limit')) || 50));
+  const limit = Math.max(10, Math.min(200, intParam(c.req.query('limit'), 50)));
   const statusFilter = ['requested','approved','rejected','shipped','received','inspected','refunded','cancelled'].includes(status)
     ? ' AND r.status = ?'
     : '';

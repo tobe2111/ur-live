@@ -24,6 +24,7 @@ import type { Env } from '../types/env'
 import { requireAuth } from '../middleware/auth'
 import { safeError } from '../utils/safe-error'
 import { HOSTING_DEFAULTS } from '../../shared/constants/policy'
+import { intParam } from '@/shared/pagination'
 
 const hostingRoutes = new Hono<{ Bindings: Env }>()
 
@@ -97,7 +98,7 @@ async function generateInviteCode(DB: D1Database): Promise<string> {
 // ============================================================
 hostingRoutes.get('/catalog', requireAuth(), async (c) => {
   try {
-    const limit = Math.max(10, Math.min(100, Number(c.req.query('limit')) || 30))
+    const limit = Math.max(10, Math.min(100, intParam(c.req.query('limit'), 30)))
     const category = String(c.req.query('category') || '').trim()
     const userId = getAuthUserId(c)
 

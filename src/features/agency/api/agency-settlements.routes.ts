@@ -14,6 +14,7 @@ import type { Context, Next } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAgency, type AgencyVars, type AgencyCtx } from '@/lib/agency-shared'
 import { swallow } from '@/worker/utils/swallow'
+import { intParam } from '@/shared/pagination'
 // 테이블 ensure (agency.routes.ts 와 동일 — 모듈 분리 후속 정리 대상)
 let _agencyTablesEnsured = false
 async function ensureAgencyTables(DB: D1Database) {
@@ -85,7 +86,7 @@ app.get('/settlements', async (c) => {
 // 참조: src/worker/cron/agency-monthly-invoices.ts
 app.get('/settlement-invoices', async (c) => {
   const agencyId = c.get('agency').id
-  const limit = Math.min(parseInt(c.req.query('limit') || '24'), 60)
+  const limit = Math.min(intParam(c.req.query('limit'), 24), 60)
 
   try {
     const { results } = await c.env.DB.prepare(`

@@ -22,6 +22,7 @@ import type { Env } from '@/worker/types/env'
 import { executeRun, executeQuery, queryFirst } from '@/worker/utils/database'
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
 import { adjustUserPoints } from '@/worker/utils/point-ledger'
+import { intParam } from '@/shared/pagination'
 
 // ---------------------------------------------------------------------------
 // Router
@@ -695,8 +696,8 @@ referralTreeRoutes.get('/my-commissions', requireAuth(), async (c) => {
   await ensureReferralTreeTables(DB)
 
   const userId = String(user.id)
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
-  const pageSize = Math.min(50, Math.max(1, parseInt(c.req.query('page_size') || '20', 10)))
+  const page = Math.max(1, intParam(c.req.query('page'), 1))
+  const pageSize = Math.min(50, Math.max(1, intParam(c.req.query('page_size'), 20)))
   const offset = (page - 1) * pageSize
 
   // Optional filters

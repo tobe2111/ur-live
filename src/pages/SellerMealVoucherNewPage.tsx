@@ -82,6 +82,10 @@ export default function SellerMealVoucherNewPage() {
     group_buy_deadline: defaultDeadline,
     store_verify_pin: '',
     stock: 100,
+    // 🎯 2026-07-01 (대표 "결제 최대 한도 갯수 1인 당"): 1인당 최대 구매 수량. 0 = 무제한.
+    max_per_person: 0,
+    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 장소 선택 시 place_url 캡처 → 상세 지도 직접 연결.
+    kakao_place_url: '',
     // 🛡️ 2026-05-21: 외부 예약 링크 (숙소/뷰티 등 사전 예약 필수 카테고리).
     //   네이버 예약 / 야놀자 / 카카오톡 채널 URL. 이용권은 비워둠 (예약 불요).
     external_booking_url: '',
@@ -148,6 +152,7 @@ export default function SellerMealVoucherNewPage() {
       restaurant_phone: place.phone || '',
       restaurant_lat: place.y || '',
       restaurant_lng: place.x || '',
+      kakao_place_url: place.id ? `https://place.map.kakao.com/${place.id}` : f.kakao_place_url,
     }))
     setPlaceSelected(true)
     toast.success(t('seller.mealVoucher.placeAutoFilled', { name: place.place_name }))
@@ -234,6 +239,10 @@ export default function SellerMealVoucherNewPage() {
         region_gu: form.region_gu || (form.restaurant_address ? form.restaurant_address.split(/\s+/)[1] || null : null),
         // 🍽️ 2026-06-17 (#5 대표 메뉴): OCR 추출 메뉴 → 공구 상세 '대표 메뉴' 섹션으로 저장 (product_supply_meta).
         menu: ocrItems.length > 0 ? ocrItems.map(it => ({ name: it.menu, price: `${formatNumber(it.price)}원` })) : undefined,
+        // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도"): 0 = 무제한. 서버가 product_supply_meta 에 저장 + 주문 검증.
+        max_per_person: Number(form.max_per_person) > 0 ? Math.floor(Number(form.max_per_person)) : 0,
+        // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 캡처한 place_url (없으면 미전송).
+        kakao_place_url: form.kakao_place_url || undefined,
         // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 동적 tier 미사용. 공구가는 price 단일 적용.
         group_buy_tiers: null,
       }
@@ -649,6 +658,21 @@ export default function SellerMealVoucherNewPage() {
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              {/* 🎯 2026-07-01 (대표 "결제 최대 한도 갯수 1인 당"): 1인당 구매 수량 제한 (0=무제한). */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">1인당 최대 구매 수량</label>
+                <input
+                  type="number"
+                  value={form.max_per_person || ''}
+                  onChange={e => update('max_per_person', Math.max(0, Math.min(99, Number(e.target.value) || 0)))}
+                  placeholder="0 = 무제한"
+                  min={0}
+                  max={99}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">한 사람이 최대 몇 개까지 구매할 수 있는지 설정 (0 = 제한 없음, 최대 99)</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
