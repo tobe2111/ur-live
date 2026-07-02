@@ -156,6 +156,12 @@ export interface Env {
   //   기본 OFF — 미설정/기타값이면 그림자 기록도 안 함(현행과 100% 동일).
   FEE_RESOLVER_ENABLED?: string;
 
+  // ---- 쇼핑 주문 원장 배선 스위치 (정산 자동화 완성) ----
+  //   'true' 면 결제 확정 시 일반 쇼핑 주문 셀러 매출을 이중원장에 net 크레딧 → 주간 자동 payout 포함.
+  //   기본 OFF — 미설정/기타값이면 원장 기록 안 함(현행과 100% 동일). staging 검증 후 활성.
+  //   이용권/공구 주문은 skip(각자 경로에서 이미 원장 기록). 역전은 order-refund 에 배선(게이트 무관).
+  SHOPPING_LEDGER_ENABLED?: string;
+
   // ---- 전자세금계산서 (Bill36524 / Popbill / 바로빌) ----
   // 🏭 2026-06-09 Wave 3c: 도매 세금계산서 자동발행 stub(admin-tax.routes.issueTaxInvoice).
   //   미설정 시 provider 발행 silent skip(cost-0) — 레코드는 'draft' 로 남아 후속 발행 가능.

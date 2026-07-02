@@ -540,6 +540,20 @@ paymentsRouter.post('/confirm', async (c) => {
             }
           } catch { /* fail-soft — 기록 실패가 결제 무영향 */ }
         }
+
+        // 💸 2026-07-01 [UNLOCK] (대표 승인 "가장 이상적으로" — 정산 자동화 완성): 일반 쇼핑 주문
+        //   셀러 매출을 이중원장에 net 크레딧 → 주간 자동 payout 에 포함(공구/이용권과 동일 경로 통일).
+        //   기본 OFF(SHOPPING_LEDGER_ENABLED!=='true') — fee-resolver 그림자와 동일 2단 스위치.
+        //   멱등 + 이용권/공구 주문 skip(이중적립 0), 역전은 order-refund(reverseOrderAncillaryOnRefund)에 배선.
+        //   ⚠️ Toss confirm/금액검증/CAS/재고·딜차감/기존 side-effect 전부 byte-불변 — 게이트 블록 1개 추가만.
+        if (c.env.SHOPPING_LEDGER_ENABLED === 'true') {
+          try {
+            const { creditSellerOrderToLedger } = await import('../utils/order-ledger-credit')
+            for (const order of orders) {
+              await creditSellerOrderToLedger(c.env.DB, Number(order.id)).catch(() => {})
+            }
+          } catch { /* fail-soft — 기록 실패가 결제 무영향 */ }
+        }
       }
       let _fxDeferred = false
       try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_confirmSideFx()); _fxDeferred = true } } catch { /* no ctx */ }
