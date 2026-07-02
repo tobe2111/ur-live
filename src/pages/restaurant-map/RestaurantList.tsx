@@ -1,5 +1,6 @@
 import { MapPin } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { cfImage } from '@/utils/cf-image'
 import { distanceKm } from './utils'
 import type { Restaurant } from './types'
 import { type MapVoucherType, MAP_EMPTY_MSG } from './voucher-types'
@@ -69,7 +70,8 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
             }`}
           >
             {r.image_url ? (
-              <img src={r.image_url} alt="" className="w-[88px] h-[88px] rounded-lg object-cover shrink-0" loading="lazy" />
+              /* 🚑 2026-07-02 (대표 신고 "전체적으로 느림"): raw 원본(네이버 1MB급) → cfImage 리사이즈(88px@2x) */
+              <img src={cfImage(r.image_url, { width: 176, quality: 85, format: 'auto' }) || r.image_url} alt="" className="w-[88px] h-[88px] rounded-lg object-cover shrink-0" loading="lazy" />
             ) : (
               <div className="w-[88px] h-[88px] rounded-lg bg-gray-100 dark:bg-[#1A1A1A] flex items-center justify-center shrink-0">
                 <span className="text-2xl">🍽️</span>
