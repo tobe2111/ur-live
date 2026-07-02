@@ -434,11 +434,18 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           {t('seller.settings')}
         </Link>
         {(() => {
-          const publicSlug = localStorage.getItem('seller_username') || localStorage.getItem('seller_id')
-          if (!publicSlug) return null
+          // 🔗 2026-07-02 (대표 신고 — 공개 프로필 보기 워터폴): 링크샵은 /u/{handle} 로 통일됨.
+          //   기존엔 /profile/{seller_username}(SellerPublicPage) 로 가서 /u/{handle}(CuratorPage) 로
+          //   재라우팅 → "다른 페이지 뜬 뒤 링크샵" 워터폴. 소비자 핸들 있으면 /u/{handle} 직행.
+          //   (useLinkshopPath / BottomNav 우선순위와 동일 — 셀러-only 만 /profile 폴백.)
+          const handle = localStorage.getItem('user_handle')
+          const goodHandle = !!handle && handle.length >= 3 && !['user', 'me', 'admin', 'seller', 'api', 'host', 'new'].includes(handle.toLowerCase())
+          const sellerSlug = localStorage.getItem('seller_username') || localStorage.getItem('seller_id')
+          const target = goodHandle ? `/u/${handle}` : (sellerSlug ? `/profile/${sellerSlug}` : null)
+          if (!target) return null
           return (
             <Link
-              to={`/profile/${publicSlug}`}
+              to={target}
               state={{ preserveScroll: true }}
               onClick={() => setSidebarOpen(false)}
               className="flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-white/55 hover:text-white transition-colors"
