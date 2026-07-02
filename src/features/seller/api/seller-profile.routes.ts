@@ -324,6 +324,14 @@ sellerProfileRoutes.get('/business-info', async (c) => {
       return c.json({ success: false, error: 'Not found' }, 404);
     }
 
+    // 🖼️ 2026-07-01 (대표 — 링크샵 판매자 정보): 통신판매업신고번호 additive 동봉 (컬럼 없으면 조용히 생략 —
+    //   repair-schema 가 seller_business_info.mail_order_number 보장).
+    try {
+      const mo = await db.prepare('SELECT mail_order_number FROM seller_business_info WHERE seller_id = ?')
+        .bind(sellerId).first<{ mail_order_number: string | null }>();
+      (businessInfo as Record<string, unknown>).mail_order_number = mo?.mail_order_number ?? null;
+    } catch { /* additive — 컬럼 미존재 환경 graceful */ }
+
     return c.json({ success: true, data: businessInfo });
 
   } catch (error: unknown) {
@@ -353,6 +361,7 @@ sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => 
       address_detail?: string;
       phone?: string;
       email?: string;
+      mail_order_number?: string; // 🖼️ 2026-07-01 통신판매업신고번호 (side-table 컬럼, additive 저장)
     }>();
 
     // 사업자번호 형식 검증
@@ -482,6 +491,15 @@ sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => 
       }
     }
 
+    // 🖼️ 2026-07-01 (대표 — 링크샵 판매자 정보): 통신판매업신고번호 additive 저장 (컬럼 없으면 조용히 생략).
+    //   메인 UPSERT 와 분리 — 기존 필드/검증/재승인(is_verified=0) 로직 byte-불변.
+    if (body.mail_order_number !== undefined) {
+      try {
+        await db.prepare('UPDATE seller_business_info SET mail_order_number = ? WHERE seller_id = ?')
+          .bind(body.mail_order_number || null, sellerId).run();
+      } catch { /* additive — 컬럼 미존재 환경 graceful */ }
+    }
+
     // 저장 확인 (address_detail 유무에 따라 쿼리 분기)
     let saved;
     try {
@@ -501,6 +519,9 @@ sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => 
       `).bind(sellerId).first();
     }
 
+    if (saved && body.mail_order_number !== undefined) {
+      (saved as Record<string, unknown>).mail_order_number = body.mail_order_number || null;
+    }
     return c.json({ success: true, data: saved });
 
   } catch (error: unknown) {

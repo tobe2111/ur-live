@@ -101,6 +101,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵 — handle / bio / theme
     { desc: 'users.handle', sql: "ALTER TABLE users ADD COLUMN handle TEXT" },
     { desc: 'users.bio', sql: "ALTER TABLE users ADD COLUMN bio TEXT" },
+    // 🖼️ 2026-07-01 (대표 — 링크샵 판매자 정보 편집): 통신판매업신고번호. sellers 는 100컬럼 한도(예산제)라
+    //   side table(seller_business_info)에 저장 — 공개 응답은 seller.routes 가 additive enrich.
+    { desc: 'seller_business_info.mail_order_number', sql: "ALTER TABLE seller_business_info ADD COLUMN mail_order_number TEXT" },
     // 🔗 2026-07-01 (대표 결정): users.linkshop_theme 필드 제거 — 링크샵은 방문자 전역 테마를 따름(죽은 필드).
     //   기존 DB 컬럼은 D1 DROP 위험이라 방치(무해). 신규 복구 대상에서 제외.
     // 🛡️ 2026-05-25 (migration 0279): 배송 재설계 — 지역 / 추적

@@ -2809,8 +2809,10 @@
       "reviewNote2": "Once approved, list products & vouchers from the seller dashboard.",
       "submitting": "Submitting...",
       "submit": "Apply as business"
-    }
-  },
+    },
+    "mailOrderNumber": "Mail-order business no.",
+    "mailOrderNumberPlaceholder": "e.g. 2026-Seoul-01234",
+    "mailOrderNumberHint": "Shown publicly in your linkshop seller info (e-commerce law disclosure)"  },
   "admin": {
     "login": {
       "title": "Admin Login",

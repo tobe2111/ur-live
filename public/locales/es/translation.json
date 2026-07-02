@@ -2134,8 +2134,10 @@
       "reviewNote2": "Una vez aprobado, publica productos y vales desde el panel.",
       "submitting": "Enviando...",
       "submit": "Solicitar como negocio"
-    }
-  },
+    },
+    "mailOrderNumber": "N.º de venta a distancia",
+    "mailOrderNumberPlaceholder": "ej. 2026-Seul-01234",
+    "mailOrderNumberHint": "Se muestra públicamente en la información del vendedor de tu linkshop"  },
   "admin": {
     "login": {
       "title": "Inicio de sesión del administrador",

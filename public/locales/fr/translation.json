@@ -2134,8 +2134,10 @@
       "reviewNote2": "Une fois approuvé, publiez produits et bons depuis le tableau de bord.",
       "submitting": "Envoi...",
       "submit": "Demander un compte pro"
-    }
-  },
+    },
+    "mailOrderNumber": "N° de vente à distance",
+    "mailOrderNumberPlaceholder": "ex. 2026-Seoul-01234",
+    "mailOrderNumberHint": "Affiché publiquement dans les infos vendeur de votre linkshop"  },
   "admin": {
     "login": {
       "title": "Connexion administrateur",

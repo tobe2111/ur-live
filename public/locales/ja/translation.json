@@ -2809,8 +2809,10 @@
       "reviewNote2": "承認後、ダッシュボードで商品・利用券を登録できます。",
       "submitting": "申請中...",
       "submit": "事業者登録を申請"
-    }
-  },
+    },
+    "mailOrderNumber": "通信販売業届出番号",
+    "mailOrderNumberPlaceholder": "例: 2026-ソウル江南-01234",
+    "mailOrderNumberHint": "リンクショップの販売者情報に公開表示されます"  },
   "admin": {
     "login": {
       "title": "管理者ログイン",
