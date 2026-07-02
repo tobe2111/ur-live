@@ -11,6 +11,7 @@
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
 import { curatorApi } from '@/features/curator/api/curator-api'
 import { formatWon, formatNumber } from '@/utils/format'
@@ -24,6 +25,7 @@ interface Info {
 }
 
 export default function CuratorEarningsCard() {
+  const { t } = useTranslation()
   const [info, setInfo] = useState<Info | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -59,9 +61,9 @@ export default function CuratorEarningsCard() {
     >
       <span className="text-lg" aria-hidden="true">🛍️</span>
       <span className="flex-1 min-w-0">
-        <span className="block text-[13px] font-medium text-gray-900 dark:text-white">링크샵 수익</span>
+        <span className="block text-[13px] font-medium text-gray-900 dark:text-white">{t('my.curatorTitle', { defaultValue: '링크샵 수익' })}</span>
         <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
-          {isCash ? '현금 정산 · 출금 가능' : '누적 적립 · 1딜=1원'}
+          {isCash ? t('my.curatorCashSub', { defaultValue: '현금 정산 · 출금 가능' }) : t('my.curatorDealSub', { defaultValue: '누적 적립 · 1딜=1원' })}
         </span>
       </span>
       <span className="text-[12px] font-semibold text-gray-900 dark:text-white shrink-0">

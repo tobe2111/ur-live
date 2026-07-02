@@ -148,7 +148,7 @@ export default function UserProfilePage() {
             </div>
             <p className="text-[11px] text-gray-900 dark:text-white/50 mt-0.5 truncate">{localStorage.getItem('user_email') || ''}</p>
             <button onClick={() => setEditOpen(true)} className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 mt-1.5 bg-gray-100 dark:bg-white/[0.08] text-[10px] text-gray-900 dark:text-white/75 font-semibold">
-              프로필 편집 <ChevronRight className="w-2.5 h-2.5" aria-hidden="true" />
+              {t('userProfile.editProfile', { defaultValue: '프로필 편집' })} <ChevronRight className="w-2.5 h-2.5" aria-hidden="true" />
             </button>
           </div>
           {/* 알림 버튼 — 프로필 우측 (설정 톱니는 '프로필 편집' 알약과 중복이라 제거, 설정은 하단 '설정' 그룹) */}
@@ -296,7 +296,8 @@ export default function UserProfilePage() {
             { label: t('userProfile.faq'), path: '/faq' },
             { label: t('userProfile.terms'), path: '/terms' },
             { label: t('userProfile.privacy'), path: '/privacy' },
-            { label: t('userProfile.shippingPolicy'), path: '/shipping-policy' },
+            // 🛡️ 2026-07-02: '배송정책' 라벨이 /refund(환불·반품 정책)로 리다이렉트돼 라벨-도착지 불일치 — 정합.
+            { label: t('userProfile.refundPolicy', { defaultValue: '환불·반품 정책' }), path: '/refund' },
           ].map((item, i) => (
             <span key={item.label} className="flex items-center gap-2.5">
               {i > 0 && <span className="text-[10px] text-gray-300 dark:text-white/15" aria-hidden="true">·</span>}

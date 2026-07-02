@@ -109,6 +109,25 @@ export default function SellerProspectsPage() {
     }
   }
 
+  // 🏁 2026-07-02 (대리 등록): 사장님 가입 링크 발급+복사 — 매장 정보·에이전시 코드가 자동 채워진
+  //   단일 관문(/seller/register/supplier) 링크. 사장님은 카카오 로그인 + 확인·제출만.
+  async function copyInviteLink(id: number) {
+    try {
+      const r = await api.post(`/api/prospects/${id}/invite-link`)
+      const path = r.data?.path as string | undefined
+      if (!r.data?.success || !path) { toast.error(r.data?.error || '링크 발급 실패'); return }
+      const url = `${window.location.origin}${path}`
+      try {
+        await navigator.clipboard.writeText(url)
+        toast.success('가입 링크 복사됨 — 사장님께 카톡 등으로 전달하세요')
+      } catch {
+        window.prompt('아래 링크를 복사해 사장님께 전달하세요', url)
+      }
+    } catch {
+      toast.error('링크 발급 실패')
+    }
+  }
+
   async function remove(id: number) {
     if (!(await confirmDialog({ message: '이 prospect 를 회수할까요?', danger: true }))) return
     try {
@@ -190,16 +209,25 @@ export default function SellerProspectsPage() {
                     </div>
                   )}
                   {p.status === 'visiting' && (
-                    <div className="mt-2 flex items-center justify-between">
+                    <div className="mt-2 flex items-center justify-between gap-2">
                       <span className="text-[10px] text-gray-400">
                         만료: {p.expires_at ? new Date(p.expires_at).toLocaleDateString('ko-KR') : '없음'}
                       </span>
-                      <button
-                        onClick={() => remove(p.id)}
-                        className="text-[10px] text-red-500 hover:underline"
-                      >
-                        회수
-                      </button>
+                      <div className="flex items-center gap-3">
+                        {/* 🏁 2026-07-02 대리 등록: 사장님은 이 링크로 카카오 로그인+확인만 — 정보 재입력 0 */}
+                        <button
+                          onClick={() => copyInviteLink(p.id)}
+                          className="text-[10px] font-bold text-emerald-700 hover:underline"
+                        >
+                          가입 링크 복사
+                        </button>
+                        <button
+                          onClick={() => remove(p.id)}
+                          className="text-[10px] text-red-500 hover:underline"
+                        >
+                          회수
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

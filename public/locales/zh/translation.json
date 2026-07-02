@@ -187,7 +187,8 @@
     "unitMan": "万",
     "kakaoConsult": "KakaoTalk客服",
     "share": "分享",
-    "currencyWon": "韩元"
+    "currencyWon": "韩元",
+    "checkNetworkRetry": "请检查网络后重试"
   },
   "auth": {
     "email": "邮箱",
@@ -685,7 +686,9 @@
     "logout": "退出登录",
     "coupons": "优惠券",
     "vouchers": "代金券",
-    "unitSheet": "张"
+    "unitSheet": "张",
+    "editProfile": "编辑资料",
+    "refundPolicy": "退款·退货政策"
   },
   "theme": {
     "title": "主题",
@@ -716,7 +719,8 @@
     "cancelFail": "订单取消失败。",
     "cancelError": "订单取消时发生错误。",
     "tabCart": "购物车",
-    "tabOrders": "订单记录"
+    "tabOrders": "订单记录",
+    "filterAll": "全部"
   },
   "giftClaim": {
     "errorAddressInvalid": "请准确填写地址",
@@ -834,7 +838,8 @@
     "statusExpired": "已过期",
     "emptyTitle": "暂无参与的团购",
     "emptyHint": "和朋友一起团购更划算",
-    "browseProducts": "浏览商品"
+    "browseProducts": "浏览商品",
+    "loadFailed": "无法加载参与记录"
   },
   "interestList": {
     "title": "关注的餐厅",
@@ -2813,11 +2818,14 @@
       "reviewNote": "申请后1-2个工作日内审核 → 通过应用通知·KakaoTalk告知结果。与国税厅信息一致时自动批准。",
       "reviewNote2": "批准后可在卖家后台上架商品和使用券。",
       "submitting": "申请中...",
-      "submit": "申请企业注册"
+      "submit": "申请企业注册",
+      "secondGate": "💳 现金结算需要在批准后进行一次营业执照认证（后台 → 企业信息）。",
+      "prospectBanner": " 代理机构已预先填写店铺信息。确认内容后提交即可。"
     },
     "mailOrderNumber": "通信销售业申报号",
     "mailOrderNumberPlaceholder": "例: 2026-首尔江南-01234",
-    "mailOrderNumberHint": "将公开显示在链接商店的卖家信息中"  },
+    "mailOrderNumberHint": "将公开显示在链接商店的卖家信息中"
+  },
   "admin": {
     "login": {
       "title": "管理员登录",
@@ -4461,7 +4469,8 @@
     "stepGift2": "MMS\n发送",
     "stepGift3": "门店\n出示",
     "deal": "积分",
-    "heroBalanceLabelGift": "持有礼券金额"
+    "heroBalanceLabelGift": "持有礼券金额",
+    "loadFailed": "无法加载使用券"
   },
   "sellerWaiting": {
     "title": "卖家审核等待",
@@ -4479,7 +4488,8 @@
     "benefit2": "商品注册和销售",
     "benefit3": "查看营业额和结算",
     "contactCS": "联系客服",
-    "reloadHint": "重新加载页面以刷新状态"
+    "reloadHint": "重新加载页面以刷新状态",
+    "secondGate": "💳 批准后如需现金结算，还需进行一次营业执照认证（后台 → 企业信息）。"
   },
   "sellerRegisterBusiness": {
     "title": "成为卖家",
@@ -5651,7 +5661,8 @@
     "previewLabel": "[TODO:zh] 미리보기",
     "expiringSoon": "[TODO:zh] ⏰ 곧 만료됩니다",
     "accessError": "[TODO:zh] 접근 불가 ({{status}})",
-    "accessFailed": "[TODO:zh] 접근 실패"
+    "accessFailed": "[TODO:zh] 접근 실패",
+    "loadFailed": "无法加载收藏库"
   },
   "shopping": {
     "sectionTitle": "我的使用记录",
@@ -5804,7 +5815,40 @@
     "makeMine": "我也要开链接小店 — 推荐即赚",
     "console": {
       "title": "创作者控制台"
-    }
+    },
+    "ownerViewBar": "我的链接商店 · 访客所见页面",
+    "editButton": "编辑",
+    "editMode": "编辑模式",
+    "tapToEdit": "点击即可修改",
+    "reorder": "排序",
+    "dashboardBtn": "仪表盘",
+    "done": "完成",
+    "reorderTitle": "调整置顶顺序",
+    "searchPlaceholder": "搜索商品·优惠",
+    "clearSearch": "清除",
+    "noSearchResults": "没有搜索结果",
+    "tryOtherKeyword": "请尝试其他关键词。",
+    "shopPinsTitle": "推荐好物",
+    "voucherPinsTitle": "兑换券 · 本地优惠",
+    "addVoucherPin": "添加本地优惠",
+    "addShopPin": "添加商品",
+    "addAnyPin": "添加商品·优惠",
+    "confirmDeletePinMine": "从您的链接商店中删除此置顶？",
+    "confirmDeletePin": "删除此置顶？",
+    "pinDeleted": "已删除",
+    "deleteFailed": "删除失败",
+    "deletePin": "删除置顶",
+    "delete": "删除",
+    "myPinsCount": "我的置顶 {{count}}个",
+    "dragToReorder": "拖动排序",
+    "topPick": "力荐",
+    "viewsCount": "浏览 {{n}}",
+    "earnPerSaleAmt": " · 返 ₩{{amt}}/单",
+    "noCommentNudge": "暂无推荐语 · 添加可提升转化",
+    "stepsLeft": "距完成还差{{n}}步",
+    "stepName": "设置名称",
+    "stepHandle": "设置地址",
+    "stepFirstProduct": "添加首个商品"
   },
   "shipping": {
     "trackingTitle": "配送追踪",
@@ -6267,7 +6311,18 @@
     "settingsGroupTitle": "设置",
     "settingsGroupSub": "通知 · 主题 · 语言 · 应用信息",
     "affiliateLinkTitle": "商品推荐链接",
-    "affiliateLinkSub": "好友通过链接购买即可获得积分 — 查看业绩"
+    "affiliateLinkSub": "好友通过链接购买即可获得积分 — 查看业绩",
+    "dealBalance": "我的Deal余额",
+    "charge": "充值",
+    "dealHistory": "使用记录",
+    "balanceRetry": "重新加载余额",
+    "referralEarnedTitle": "推荐收益",
+    "referralStartTitle": "推荐商品赚积分",
+    "referralCountN": "推荐 {{n}}次",
+    "referralStartSub": "分享到社交平台，好友付款自动积累",
+    "curatorTitle": "链接商店收益",
+    "curatorCashSub": "现金结算·可提现",
+    "curatorDealSub": "累计积累·1 Deal=1韩元"
   },
   "push": {
     "promptTitle": "开启通知？",
@@ -6323,5 +6378,32 @@
   "groupBuy.categoryBeauty": "💇 美容",
   "groupBuy.categoryStay": "🏨 住宿",
   "groupBuy.categoryEtc": "🎯 其他",
-  "groupBuy.stayBadge": "住宿"
+  "groupBuy.stayBadge": "住宿",
+  "roleCta": {
+    "myShortcuts": "我的快捷方式",
+    "startNewRole": "开启新角色",
+    "linkshop": "我的链接商店",
+    "linkshopDesc": "推荐兑换券·团购赚积分",
+    "sellerDash": "卖家后台",
+    "sellerDashDesc": "管理我的商品·团购·结算",
+    "agencyDash": "代理后台",
+    "agencyDashDesc": "合作店铺收益",
+    "proposeGb": "社区团购提案",
+    "proposeGbDesc": "提议想要的店铺，我们来开团",
+    "openShop": "开设我的商店",
+    "openShopDesc": "商家注册 → 销售商品·使用券",
+    "agencyBiz": "代理业务",
+    "agencyBizDesc": "开拓店铺 → 2%永久收益"
+  },
+  "inviteCard": {
+    "title": "邀请好友",
+    "copied": "邀请链接已复制",
+    "statEarned": "获得Deal",
+    "statDone": "完成",
+    "statPending": "待定",
+    "copy": "复制",
+    "recent": "最近邀请",
+    "waitingPurchase": "等待购买",
+    "friend": "好友"
+  }
 }

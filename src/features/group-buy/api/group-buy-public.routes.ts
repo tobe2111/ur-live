@@ -740,7 +740,33 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     if (!code) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
     try {
       // 🛰️ 2026-06-23 사용 위치(소프트 증거, 게이트 X) — body 에 있으면만 기록.
-      const body = await c.req.json<{ lat?: number; lng?: number }>().catch(() => ({} as { lat?: number; lng?: number }))
+      // 🎟️ 2026-07-02 (대표 — 매장별 사용 방식 선택): store_code 모드면 매장 확인코드 동봉 필수.
+      const body = await c.req.json<{ lat?: number; lng?: number; store_code?: string }>().catch(() => ({} as { lat?: number; lng?: number; store_code?: string }))
+
+      // 🎟️ 모드 게이트 — CAS 이전에 매장 설정 확인. scan_only=셀프 차단 / store_code=코드 일치 필수.
+      //   미설정 매장 = self_free(기존 동작). 조회 실패도 fail-open(self_free).
+      const pre = await DB.prepare(
+        'SELECT v.id, v.status, p.seller_id FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code=? AND v.user_id=?'
+      ).bind(code, user.id).first<{ id: number; status: string; seller_id: number | null }>().catch(() => null)
+      if (!pre) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
+      let redemptionMode: 'scan_only' | 'store_code' | 'self_free' = 'self_free'
+      if (pre.seller_id != null && pre.status === 'unused') {
+        try {
+          const { getRedemptionSettings } = await import('../../../worker/utils/redemption-settings')
+          const s = await getRedemptionSettings(DB, Number(pre.seller_id))
+          redemptionMode = s.mode
+          if (redemptionMode === 'scan_only') {
+            return c.json({ success: false, code: 'SCAN_ONLY_MODE', error: '이 매장은 직원 확인 방식이에요. 직원에게 QR 화면을 보여주세요.' }, 403)
+          }
+          if (redemptionMode === 'store_code') {
+            const input = String(body.store_code || '').trim()
+            if (!input || !s.store_code || input !== s.store_code) {
+              return c.json({ success: false, code: 'STORE_CODE_REQUIRED', error: '매장에 비치된 확인코드 4자리를 입력해주세요.' }, 403)
+            }
+          }
+        } catch { /* fail-open — 기존 self_free 동작 */ }
+      }
+
       // 🛡️ 머니룰: claim-before-credit — 미사용+본인 일 때만 원자적 used 선점.
       const res = await DB.prepare(
         "UPDATE vouchers SET status='used', used_at=datetime('now') WHERE code=? AND user_id=? AND status='unused'"
@@ -748,10 +774,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       const claimed = (res.meta?.changes || 0) === 1
 
       const row = await DB.prepare(`
-        SELECT v.id, v.code, v.status, v.used_at, v.product_id, p.name as product_name, p.restaurant_name
+        SELECT v.id, v.code, v.status, v.used_at, v.product_id, v.applied_price, p.name as product_name, p.restaurant_name, p.seller_id
         FROM vouchers v JOIN products p ON p.id = v.product_id
         WHERE v.code=? AND v.user_id=?
-      `).bind(code, user.id).first<{ id: number; code: string; status: string; used_at: string; product_name?: string; restaurant_name?: string }>().catch(() => null)
+      `).bind(code, user.id).first<{ id: number; code: string; status: string; used_at: string; applied_price?: number | null; product_name?: string; restaurant_name?: string; seller_id?: number | null }>().catch(() => null)
 
       if (!row) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
       if (!claimed && row.status !== 'used') {
@@ -764,9 +790,24 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           await recordVoucherRedemptionLocation(DB, Number(row.id), body.lat, body.lng)
         } catch { /* best-effort */ }
       }
+      // 🔔 2026-07-02: 셀프 사용 즉시 사장님 대시보드 알림 — 카운터 크로스체크(위조·취소 악용 억제).
+      if (claimed && row.seller_id != null) {
+        const notifyJob = (async () => {
+          try {
+            const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+            const amt = Number(row.applied_price || 0)
+            await createDashboardNotification(DB, 'seller', String(row.seller_id), 'voucher_self_redeemed',
+              '🎟️ 이용권 셀프 사용', `${row.product_name || '이용권'}${amt > 0 ? ` · ${amt.toLocaleString('ko-KR')}원` : ''} — 손님이 방금 사용 처리했어요`,
+              '/seller/scan')
+          } catch { /* best-effort */ }
+        })()
+        c.executionCtx?.waitUntil?.(notifyJob)
+      }
       // claimed === true (방금 사용) 또는 이미 used(멱등 반환)
       const usedAtMs = row.used_at ? Date.parse(row.used_at.replace(' ', 'T') + 'Z') : Date.now()
-      const cancelableUntil = usedAtMs + 60_000
+      // 🎟️ 셀프취소(60초)는 self_free 모드에서만 — store_code 모드는 2단계 입력이라 오탭이 거의 불가,
+      //   취소 권한은 매장(사장님 스캔 화면)으로. 취소창 0 = "보여주고 나가서 취소" 악용 차단.
+      const cancelableUntil = redemptionMode === 'self_free' ? usedAtMs + 60_000 : usedAtMs
       return c.json({
         success: true,
         data: {
@@ -790,6 +831,20 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const code = c.req.param('code')
     if (!code) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
     try {
+      // 🎟️ 2026-07-02 모드 게이트: 셀프취소는 self_free 매장에서만 — store_code/scan_only 매장은
+      //   취소 권한이 매장(사장님)에 있음("보여주고 나가서 60초 내 취소" 악용 차단).
+      const pre = await DB.prepare(
+        'SELECT p.seller_id, v.applied_price, p.name as product_name FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code=? AND v.user_id=?'
+      ).bind(code, user.id).first<{ seller_id: number | null; applied_price: number | null; product_name?: string }>().catch(() => null)
+      if (pre?.seller_id != null) {
+        try {
+          const { getRedemptionSettings } = await import('../../../worker/utils/redemption-settings')
+          const s = await getRedemptionSettings(DB, Number(pre.seller_id))
+          if (s.mode !== 'self_free') {
+            return c.json({ success: false, error: '이 매장은 셀프 취소가 불가해요. 직원에게 문의해주세요.' }, 403)
+          }
+        } catch { /* fail-open — 기존 동작 */ }
+      }
       // CAS: 본인 + used + used_at 60초 이내 + 아직 정산 전(settlement_id IS NULL) 일 때만 되돌림.
       //   기존 auto-settlement(used 7일 후 정산)와 정합 — 정산된 건 절대 취소 불가(60초 ≪ 7일이라 안전, 명시 가드).
       const res = await DB.prepare(
@@ -797,6 +852,18 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       ).bind(code, user.id).run()
       if ((res.meta?.changes || 0) !== 1) {
         return c.json({ success: false, error: '취소 가능 시간(60초)이 지났습니다' }, 409)
+      }
+      // 🔔 취소도 사장님에게 즉시 알림 — "사용완료 보여주고 취소" 수법의 가시화(악용 억제 핵심).
+      if (pre?.seller_id != null) {
+        const notifyJob = (async () => {
+          try {
+            const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+            await createDashboardNotification(DB, 'seller', String(pre.seller_id), 'voucher_redeem_cancelled',
+              '↩️ 셀프 사용 취소됨', `${pre.product_name || '이용권'} — 손님이 방금 사용을 취소했어요. 매장에서 확인해보세요.`,
+              '/seller/scan')
+          } catch { /* best-effort */ }
+        })()
+        c.executionCtx?.waitUntil?.(notifyJob)
       }
       return c.json({ success: true, data: { code, status: 'unused' } })
     } catch (err) {

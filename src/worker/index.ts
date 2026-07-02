@@ -264,6 +264,9 @@ import { auctionRoutes } from '../features/auction/api/auction.routes';
 import { timedealRoutes } from '../features/timedeal/api/timedeal.routes';
 import { communityGroupBuyRoutes } from '../features/community-group-buy/api/community-group-buy.routes';
 import { referralRoutes } from '../features/referral/api/referral.routes';
+// 🖼️ 2026-07-02 (대표 "사진이 빠르게 안 나타남"): 상세 히어로 preload URL 생성 — 클라와 동일 함수 재사용
+//   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
+import { cfImage } from '../utils/cf-image';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -673,6 +676,24 @@ app.use('*', async (c, next) => {
               `<script id="${scriptId}" type="application/json">${ssrPayload}</script>`,
               { html: true },
             );
+            // 🖼️ 2026-07-02 [UNLOCK_LOADING] (대표 "사진이 빠르게 안 나타남"): 공구/교환권 상세 히어로가
+            //   CSS background-image 라 브라우저 프리로드 스캐너를 못 타 [엔트리→페이지 청크→렌더] 뒤에야
+            //   다운로드 시작 → 사진이 늦게 뜸. seed 의 image_url 로 클라와 동일한 cfImage(width 900) URL 을
+            //   <link rel=preload as=image> 주입 → HTML 파싱 즉시 병렬 다운로드, 렌더 시점엔 캐시 적중.
+            //   (Save-Data 사용자만 quality 65 로 URL 이 달라 미적중 — 히어로 1장 한정 허용 트레이드오프.)
+            if (ssrSlot === 'DETAIL') {
+              try {
+                const seed = JSON.parse(ssrPayload) as { data?: { image_url?: string } };
+                const heroSrc = seed?.data?.image_url;
+                const heroUrl = heroSrc ? cfImage(heroSrc, { width: 900, format: 'auto' }) : '';
+                if (heroUrl && !heroUrl.startsWith('data:')) {
+                  el.append(
+                    `<link rel="preload" as="image" fetchpriority="high" href="${heroUrl.replace(/"/g, '&quot;')}">`,
+                    { html: true },
+                  );
+                }
+              } catch { /* seed 파싱 실패 — preload 생략(치명 아님) */ }
+            }
           }
         },
       });
@@ -815,8 +836,17 @@ app.use('*', async (c, next) => {
       rb = rb.on('#root', {
         element(el) {
           el.setInnerContent(
+            // 🎯 2026-07-02 (대표 "아직 조금 끊김"): 워드마크를 UrDealLogo(React SSOT)와 픽셀 동일하게 —
+            //   ▶ 플레이 마커 + 블록 도트(size34 사전계산: ▶ left6.12/top9.52/border4.76·3.06, 도트 4.76 원형/
+            //   margin2.72/↑2.04). 이전 평문 "UR·DEAL" 은 React 로더 교체 순간 로고 형태가 미세하게 점프했음.
             '<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">' +
-              '<div class="ur-loader-breathe text-[#0A0A0A] dark:text-white" style="font-family:\'Pretendard Variable\',system-ui,sans-serif;font-weight:900;font-size:34px;font-style:italic;letter-spacing:-0.055em;line-height:1">UR·DEAL</div>' +
+              '<div class="ur-loader-breathe text-[#0A0A0A] dark:text-white" style="display:inline-flex;align-items:center;font-family:\'Pretendard Variable\',system-ui,sans-serif;font-weight:900;font-size:34px;font-style:italic;letter-spacing:-0.055em;line-height:1">' +
+                '<span style="position:relative;display:inline-flex;align-items:baseline"><span>UR</span>' +
+                  '<span style="position:absolute;left:6.12px;top:9.52px;width:0;height:0;border-left:4.76px solid currentColor;border-top:3.06px solid transparent;border-bottom:3.06px solid transparent;opacity:.85"></span>' +
+                '</span>' +
+                '<span style="display:inline-block;width:4.76px;height:4.76px;background:currentColor;border-radius:50%;margin:0 2.72px;transform:translateY(-2.04px)"></span>' +
+                '<span>DEAL</span>' +
+              '</div>' +
               '<div class="bg-gray-200/70 dark:bg-white/10" style="position:relative;overflow:hidden;border-radius:9999px;width:96px;height:3px">' +
                 '<div class="ur-loader-sweep bg-gray-900 dark:bg-white" style="position:absolute;top:0;bottom:0;left:0;border-radius:9999px;width:38%"></div>' +
               '</div>' +

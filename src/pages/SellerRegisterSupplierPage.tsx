@@ -101,6 +101,33 @@ export default function SellerRegisterSupplierPage() {
   //   정보(이미 입력한 상호/사업자번호)로 매장 등록 폼 자동채움 — 같은 정보 두 번 입력 방지.
   //   curator /me/business 는 representative/start_date 미저장 → 겹치는 2필드만. 빈 필드에만 채워
   //   사용자 입력 보존. 무인증/사업자정보 없으면 조용히 skip(매장 폼 그대로).
+  // 🏁 2026-07-02 (에이전시 대리 등록): ?prospect=ID&pt=TOKEN — 에이전시가 미리 등록한 매장 정보로
+  //   폼 자동완성(빈 필드만). 사장님은 확인·제출만. 배너로 "OO 에이전시가 준비" 명시(신뢰+투명).
+  const prospectId = searchParams.get('prospect')
+  const prospectPt = searchParams.get('pt')
+  const [prospectIntro, setProspectIntro] = useState<string | null>(null)
+  useEffect(() => {
+    if (!prospectId || !prospectPt) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await api.get(`/api/prospects/prefill/${encodeURIComponent(prospectId)}?pt=${encodeURIComponent(prospectPt)}`)
+        const d = res.data?.data as { store_name?: string; contact_name?: string; contact_phone?: string; business_address?: string; introducer_name?: string } | undefined
+        if (!d || cancelled) return
+        setForm(f => ({
+          ...f,
+          business_name: f.business_name || (d.store_name || ''),
+          representative_name: f.representative_name || (d.contact_name || ''),
+          phone: f.phone || (d.contact_phone ? formatPhone(d.contact_phone) : ''),
+          address: f.address || (d.business_address || ''),
+        }))
+        if (d.introducer_name) setProspectIntro(d.introducer_name)
+      } catch { /* 무효 링크 — 빈 폼 그대로 */ }
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prospectId, prospectPt])
+
   const fromCurator = searchParams.get('from') === 'curator'
   useEffect(() => {
     if (!fromCurator) return
@@ -238,6 +265,12 @@ export default function SellerRegisterSupplierPage() {
           </div>
         )}
 
+        {prospectIntro && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900">
+            🤝 <strong>{prospectIntro}</strong>{t('seller.gateway.prospectBanner', { defaultValue: ' 에이전시가 매장 정보를 미리 준비했어요. 내용 확인 후 제출만 하면 됩니다.' })}
+          </div>
+        )}
+
         <div className="bg-gradient-to-br from-gray-50 to-gray-50 rounded-2xl p-5 text-center">
           <div className="w-14 h-14 mx-auto mb-3 bg-white rounded-full flex items-center justify-center">
             <Store className="w-7 h-7 text-emerald-600" />
@@ -360,6 +393,9 @@ export default function SellerRegisterSupplierPage() {
           {t('seller.gateway.reviewNote', { defaultValue: '신청 후 1-2 영업일 내 관리자 검토 → 앱 알림·알림톡으로 결과 안내. 국세청 정보 일치 시 자동 승인.' })}
           <br />
           {t('seller.gateway.reviewNote2', { defaultValue: '승인되면 셀러 대시보드에서 상품·이용권을 등록할 수 있어요.' })}
+          <br />
+          {/* 🏁 2026-07-02 (#3 2단계 심사 투명화): 정산 직전에야 벽을 만나던 것 → 가입 시점에 고지 */}
+          {t('seller.gateway.secondGate', { defaultValue: '💳 현금 정산에는 승인 후 사업자등록증 인증 1회가 추가로 필요해요 (대시보드 → 사업자 정보).' })}
         </p>
 
         <button onClick={submit} disabled={loading}

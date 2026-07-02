@@ -187,7 +187,8 @@
     "unitMan": "万",
     "kakaoConsult": "カカオトークサポート",
     "share": "シェア",
-    "currencyWon": "ウォン"
+    "currencyWon": "ウォン",
+    "checkNetworkRetry": "ネットワークを確認して再試行してください"
   },
   "auth": {
     "email": "メールアドレス",
@@ -685,7 +686,9 @@
     "logout": "ログアウト",
     "coupons": "クーポン",
     "vouchers": "バウチャー",
-    "unitSheet": "枚"
+    "unitSheet": "枚",
+    "editProfile": "プロフィール編集",
+    "refundPolicy": "返金・返品ポリシー"
   },
   "theme": {
     "title": "画面テーマ",
@@ -716,7 +719,8 @@
     "cancelFail": "注文のキャンセルに失敗しました。",
     "cancelError": "注文キャンセル中にエラーが発生しました。",
     "tabCart": "カート",
-    "tabOrders": "注文履歴"
+    "tabOrders": "注文履歴",
+    "filterAll": "すべて"
   },
   "giftClaim": {
     "errorAddressInvalid": "住所を正確に入力してください",
@@ -834,7 +838,8 @@
     "statusExpired": "期限切れ",
     "emptyTitle": "参加中の共同購入がありません",
     "emptyHint": "友達と一緒にお得に買おう",
-    "browseProducts": "商品を見る"
+    "browseProducts": "商品を見る",
+    "loadFailed": "参加履歴を読み込めませんでした"
   },
   "interestList": {
     "title": "お気に入りグルメ",
@@ -2813,11 +2818,14 @@
       "reviewNote": "申請後1〜2営業日で審査 → アプリ通知・カカオトークで結果案内。国税庁情報一致で自動承認。",
       "reviewNote2": "承認後、ダッシュボードで商品・利用券を登録できます。",
       "submitting": "申請中...",
-      "submit": "事業者登録を申請"
+      "submit": "事業者登録を申請",
+      "secondGate": "💳 現金精算には承認後、事業者登録証の認証（1回）が追加で必要です（ダッシュボード → 事業者情報）。",
+      "prospectBanner": " エージェンシーが店舗情報を準備しました。内容確認後、提出するだけです。"
     },
     "mailOrderNumber": "通信販売業届出番号",
     "mailOrderNumberPlaceholder": "例: 2026-ソウル江南-01234",
-    "mailOrderNumberHint": "リンクショップの販売者情報に公開表示されます"  },
+    "mailOrderNumberHint": "リンクショップの販売者情報に公開表示されます"
+  },
   "admin": {
     "login": {
       "title": "管理者ログイン",
@@ -4461,7 +4469,8 @@
     "stepGift2": "MMS\n送信",
     "stepGift3": "店舗で\n提示",
     "deal": "ディール",
-    "heroBalanceLabelGift": "保有ギフト券の金額"
+    "heroBalanceLabelGift": "保有ギフト券の金額",
+    "loadFailed": "利用券を読み込めませんでした"
   },
   "sellerWaiting": {
     "title": "セラー承認待機",
@@ -4479,7 +4488,8 @@
     "benefit2": "商品登録・販売",
     "benefit3": "精算・売上確認",
     "contactCS": "カスタマーサポートに問い合わせ",
-    "reloadHint": "状態を更新するにはページを再読み込みしてください"
+    "reloadHint": "状態を更新するにはページを再読み込みしてください",
+    "secondGate": "💳 承認後に現金精算を受けるには、事業者登録証の認証（1回）が追加で必要です（ダッシュボード → 事業者情報）。"
   },
   "sellerRegisterBusiness": {
     "title": "セラー転換",
@@ -5651,7 +5661,8 @@
     "previewLabel": "[TODO:ja] 미리보기",
     "expiringSoon": "[TODO:ja] ⏰ 곧 만료됩니다",
     "accessError": "[TODO:ja] 접근 불가 ({{status}})",
-    "accessFailed": "[TODO:ja] 접근 실패"
+    "accessFailed": "[TODO:ja] 접근 실패",
+    "loadFailed": "ライブラリを読み込めませんでした"
   },
   "shopping": {
     "sectionTitle": "利用履歴",
@@ -5804,7 +5815,40 @@
     "makeMine": "私もリンクショップを作る — 紹介で獲得",
     "console": {
       "title": "クリエイターコンソール"
-    }
+    },
+    "ownerViewBar": "マイリンクショップ · 訪問者に見える画面",
+    "editButton": "編集",
+    "editMode": "編集モード",
+    "tapToEdit": "タップで編集",
+    "reorder": "並べ替え",
+    "dashboardBtn": "ダッシュボード",
+    "done": "完了",
+    "reorderTitle": "ピンの並べ替え",
+    "searchPlaceholder": "商品・ディール名で検索",
+    "clearSearch": "クリア",
+    "noSearchResults": "検索結果がありません",
+    "tryOtherKeyword": "別のキーワードでお試しください。",
+    "shopPinsTitle": "おすすめ",
+    "voucherPinsTitle": "交換券 · ローカルディール",
+    "addVoucherPin": "ローカルディールを追加",
+    "addShopPin": "商品を追加",
+    "addAnyPin": "商品・ディールを追加",
+    "confirmDeletePinMine": "このピンをリンクショップから削除しますか？",
+    "confirmDeletePin": "このピンを削除しますか？",
+    "pinDeleted": "ピンを削除しました",
+    "deleteFailed": "削除に失敗しました",
+    "deletePin": "ピンを削除",
+    "delete": "削除",
+    "myPinsCount": "マイピン {{count}}件",
+    "dragToReorder": "ドラッグで並べ替え",
+    "topPick": "イチオシ",
+    "viewsCount": "閲覧 {{n}}",
+    "earnPerSaleAmt": " · 獲得 ₩{{amt}}/件",
+    "noCommentNudge": "コメント未設定 · 追加で転換率UP",
+    "stepsLeft": "完成まであと{{n}}ステップ",
+    "stepName": "名前を設定",
+    "stepHandle": "アドレスを設定",
+    "stepFirstProduct": "最初の商品を追加"
   },
   "shipping": {
     "trackingTitle": "配送追跡",
@@ -6267,7 +6311,18 @@
     "settingsGroupTitle": "設定",
     "settingsGroupSub": "通知 · テーマ · 言語 · アプリ情報",
     "affiliateLinkTitle": "商品紹介リンク",
-    "affiliateLinkSub": "リンク経由の購入でディール獲得 — 実績を見る"
+    "affiliateLinkSub": "リンク経由の購入でディール獲得 — 実績を見る",
+    "dealBalance": "マイディール残高",
+    "charge": "チャージ",
+    "dealHistory": "利用履歴",
+    "balanceRetry": "残高を再読み込み",
+    "referralEarnedTitle": "紹介の獲得状況",
+    "referralStartTitle": "商品を紹介して獲得",
+    "referralCountN": "紹介 {{n}}件",
+    "referralStartSub": "SNSでシェア → 友達の決済で自動獲得",
+    "curatorTitle": "リンクショップ収益",
+    "curatorCashSub": "現金精算・出金可能",
+    "curatorDealSub": "累計獲得・1ディール=1ウォン"
   },
   "push": {
     "promptTitle": "通知をオンにしますか？",
@@ -6323,5 +6378,32 @@
   "groupBuy.categoryBeauty": "💇 美容",
   "groupBuy.categoryStay": "🏨 宿泊",
   "groupBuy.categoryEtc": "🎯 その他",
-  "groupBuy.stayBadge": "宿泊"
+  "groupBuy.stayBadge": "宿泊",
+  "roleCta": {
+    "myShortcuts": "マイショートカット",
+    "startNewRole": "新しい役割を始める",
+    "linkshop": "マイリンクショップ",
+    "linkshopDesc": "交換券・共同購入を紹介して獲得",
+    "sellerDash": "セラーダッシュボード",
+    "sellerDashDesc": "商品・共同購入・精算の管理",
+    "agencyDash": "エージェンシーダッシュボード",
+    "agencyDashDesc": "紹介した店舗の収益",
+    "proposeGb": "ご近所共同購入の提案",
+    "proposeGbDesc": "希望のお店を提案するとまとめて開催します",
+    "openShop": "マイショップを開く",
+    "openShopDesc": "事業者登録 → 商品・利用券を販売",
+    "agencyBiz": "エージェンシー事業",
+    "agencyBizDesc": "店舗開拓 → 2%の永続収益"
+  },
+  "inviteCard": {
+    "title": "友達を招待",
+    "copied": "招待リンクをコピーしました",
+    "statEarned": "獲得ディール",
+    "statDone": "完了",
+    "statPending": "待機",
+    "copy": "コピー",
+    "recent": "最近の招待",
+    "waitingPurchase": "購入待ち",
+    "friend": "友達"
+  }
 }

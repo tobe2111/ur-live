@@ -527,7 +527,10 @@ adminProduct.post('/:id/premium', rateLimit({ action: 'admin-wholesale-premium-t
     await ensurePremiumColumn(DB)
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
     const isPremium = Number(body.is_premium) === 1 ? 1 : 0
-    const up = await DB.prepare('UPDATE products SET is_premium = ? WHERE id = ?').bind(isPremium, id).run()
+    // 🛡️ 2026-07-02 (서비스 분리 #1 룰): bulk 형제(/bulk-premium)와 동일하게 도매 원본상품으로 스코프 제한 —
+    //   isolation 플래그 없이 UPDATE products WHERE id 하면 소비자(유어딜) 상품 행의 is_premium 을 도매 어드민이
+    //   변경하는 크로스-서비스 누수가 됨. 도매 원본(is_supply_product=1 AND supply_source_id IS NULL)만 허용.
+    const up = await DB.prepare('UPDATE products SET is_premium = ? WHERE id = ? AND is_supply_product = 1 AND supply_source_id IS NULL').bind(isPremium, id).run()
     if ((up.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
     return c.json({ success: true, id, is_premium: isPremium })
   } catch (err) {

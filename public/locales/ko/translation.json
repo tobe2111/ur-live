@@ -187,7 +187,8 @@
     "unitMan": "만",
     "kakaoConsult": "카카오 상담",
     "share": "공유",
-    "currencyWon": "원"
+    "currencyWon": "원",
+    "checkNetworkRetry": "네트워크 상태를 확인한 뒤 다시 시도해주세요"
   },
   "auth": {
     "email": "이메일",
@@ -685,7 +686,9 @@
     "logout": "로그아웃",
     "coupons": "쿠폰",
     "vouchers": "바우처",
-    "unitSheet": "장"
+    "unitSheet": "장",
+    "editProfile": "프로필 편집",
+    "refundPolicy": "환불·반품 정책"
   },
   "theme": {
     "title": "화면 테마",
@@ -716,7 +719,8 @@
     "cancelFail": "주문 취소에 실패했습니다.",
     "cancelError": "주문 취소 중 오류가 발생했습니다.",
     "tabCart": "장바구니",
-    "tabOrders": "주문내역"
+    "tabOrders": "주문내역",
+    "filterAll": "전체"
   },
   "giftClaim": {
     "errorAddressInvalid": "주소를 정확히 입력해주세요",
@@ -834,7 +838,8 @@
     "statusExpired": "만료",
     "emptyTitle": "참여 중인 공동구매가 없습니다",
     "emptyHint": "친구와 함께 할인받아 보세요",
-    "browseProducts": "상품 둘러보기"
+    "browseProducts": "상품 둘러보기",
+    "loadFailed": "참여 내역을 불러오지 못했어요"
   },
   "interestList": {
     "title": "관심 맛집",
@@ -2813,11 +2818,14 @@
       "reviewNote": "신청 후 1-2 영업일 내 관리자 검토 → 앱 알림·알림톡으로 결과 안내. 국세청 정보 일치 시 자동 승인.",
       "reviewNote2": "승인되면 셀러 대시보드에서 상품·이용권을 등록할 수 있어요.",
       "submitting": "신청 중...",
-      "submit": "사업자 가입 신청"
+      "submit": "사업자 가입 신청",
+      "secondGate": "💳 현금 정산에는 승인 후 사업자등록증 인증 1회가 추가로 필요해요 (대시보드 → 사업자 정보).",
+      "prospectBanner": " 에이전시가 매장 정보를 미리 준비했어요. 내용 확인 후 제출만 하면 됩니다."
     },
     "mailOrderNumber": "통신판매업신고번호",
     "mailOrderNumberPlaceholder": "예: 2026-서울강남-01234",
-    "mailOrderNumberHint": "링크샵 판매자 정보에 공개 표시됩니다 (전자상거래법 표시 항목)"  },
+    "mailOrderNumberHint": "링크샵 판매자 정보에 공개 표시됩니다 (전자상거래법 표시 항목)"
+  },
   "admin": {
     "login": {
       "title": "관리자 로그인",
@@ -4461,7 +4469,8 @@
     "stepGb3": "매장에서\nQR 제시",
     "stepGift1": "교환권\n구매",
     "stepGift2": "MMS\n발송",
-    "stepGift3": "매장에서\n제시"
+    "stepGift3": "매장에서\n제시",
+    "loadFailed": "이용권을 불러오지 못했어요"
   },
   "sellerWaiting": {
     "title": "셀러 승인 대기",
@@ -4479,7 +4488,8 @@
     "benefit2": "상품 등록 및 판매",
     "benefit3": "정산 및 매출 확인",
     "contactCS": "고객센터 문의",
-    "reloadHint": "상태를 새로고침하려면 페이지를 리로드하세요"
+    "reloadHint": "상태를 새로고침하려면 페이지를 리로드하세요",
+    "secondGate": "💳 승인 후 현금 정산을 받으려면 사업자등록증 인증 1회가 추가로 필요해요 (대시보드 → 사업자 정보)."
   },
   "sellerRegisterBusiness": {
     "title": "셀러 전환",
@@ -5266,13 +5276,14 @@
     "previewLabel": "미리보기",
     "expiringSoon": "⏰ 곧 만료됩니다",
     "accessError": "접근 불가 ({{status}})",
-    "accessFailed": "접근 실패"
+    "accessFailed": "접근 실패",
+    "loadFailed": "보관함을 불러오지 못했어요"
   },
   "shopping": {
     "sectionTitle": "나의 이용 내역",
     "wishlist": "찜한 상품",
-    "voucher": "내 교환권",
-    "voucherSub": "이용권·교환권",
+    "voucher": "내 이용권",
+    "voucherSub": "매장 이용권 · 교환권",
     "digitalLibrary": "디지털 보관함",
     "digitalLibrarySub": "전자책·강의·가이드",
     "coupons": "쿠폰함",
@@ -5792,7 +5803,40 @@
     "makeMine": "나도 내 링크샵 만들기 — 추천하면 적립",
     "console": {
       "title": "크리에이터 콘솔"
-    }
+    },
+    "ownerViewBar": "내 링크샵 · 방문자에게 보이는 화면",
+    "editButton": "편집하기",
+    "editMode": "편집 모드",
+    "tapToEdit": "눌러서 바로 수정",
+    "reorder": "순서",
+    "dashboardBtn": "대시보드",
+    "done": "완료",
+    "reorderTitle": "핀 순서 바꾸기",
+    "searchPlaceholder": "상품·딜 이름으로 검색",
+    "clearSearch": "지우기",
+    "noSearchResults": "검색 결과가 없어요",
+    "tryOtherKeyword": "다른 키워드로 찾아보세요.",
+    "shopPinsTitle": "추천템",
+    "voucherPinsTitle": "교환권 · 동네딜",
+    "addVoucherPin": "동네딜 추가하기",
+    "addShopPin": "상품 추가하기",
+    "addAnyPin": "상품·동네딜 추가하기",
+    "confirmDeletePinMine": "내 링크샵에서 이 핀을 삭제할까요?",
+    "confirmDeletePin": "이 핀을 삭제할까요?",
+    "pinDeleted": "핀 삭제됨",
+    "deleteFailed": "삭제 실패",
+    "deletePin": "핀 삭제",
+    "delete": "삭제",
+    "myPinsCount": "내 핀 {{count}}개",
+    "dragToReorder": "끌어서 정렬",
+    "topPick": "강추",
+    "viewsCount": "조회 {{n}}",
+    "earnPerSaleAmt": " · 적립 ₩{{amt}}/건",
+    "noCommentNudge": "추천 코멘트 없음 · 추가하면 전환 ↑",
+    "stepsLeft": "링크샵 완성까지 {{n}}단계",
+    "stepName": "이름 설정",
+    "stepHandle": "주소 설정",
+    "stepFirstProduct": "첫 상품 추가"
   },
   "shipping": {
     "trackingTitle": "배송 추적",
@@ -6263,7 +6307,18 @@
     "settingsGroupTitle": "설정",
     "settingsGroupSub": "알림 · 화면 테마 · 언어 · 앱 정보",
     "affiliateLinkTitle": "상품 추천 링크",
-    "affiliateLinkSub": "내 링크로 구매하면 딜 적립 — 실적 보기"
+    "affiliateLinkSub": "내 링크로 구매하면 딜 적립 — 실적 보기",
+    "dealBalance": "내 딜 잔액",
+    "charge": "충전하기",
+    "dealHistory": "사용 내역",
+    "balanceRetry": "잔액 다시 불러오기",
+    "referralEarnedTitle": "추천 적립 현황",
+    "referralStartTitle": "상품 추천하고 적립받기",
+    "referralCountN": "추천 {{n}}건",
+    "referralStartSub": "내 SNS 공유 → 친구 결제 시 자동 적립",
+    "curatorTitle": "링크샵 수익",
+    "curatorCashSub": "현금 정산 · 출금 가능",
+    "curatorDealSub": "누적 적립 · 1딜=1원"
   },
   "push": {
     "promptTitle": "알림을 켜시겠어요?",
@@ -6319,5 +6374,32 @@
   "groupBuy.categoryBeauty": "💇 미용",
   "groupBuy.categoryStay": "🏨 숙소",
   "groupBuy.categoryEtc": "🎯 기타",
-  "groupBuy.stayBadge": "숙박"
+  "groupBuy.stayBadge": "숙박",
+  "roleCta": {
+    "myShortcuts": "내 바로가기",
+    "startNewRole": "추가 역할로 시작하기",
+    "linkshop": "내 링크샵",
+    "linkshopDesc": "교환권·공구 추천하고 적립 받기",
+    "sellerDash": "셀러 대시보드",
+    "sellerDashDesc": "내 상품·공구·정산 관리",
+    "agencyDash": "에이전시 대시보드",
+    "agencyDashDesc": "소속 사업자·소개 가게 수익",
+    "proposeGb": "동네 공구 제안",
+    "proposeGbDesc": "원하는 가게 제안하면 모아서 열어드려요",
+    "openShop": "내 쇼핑몰 열기",
+    "openShopDesc": "사업자 등록 → 내 상품·이용권 판매",
+    "agencyBiz": "에이전시 사업",
+    "agencyBizDesc": "가게 영업 → 2% 영구 수익"
+  },
+  "inviteCard": {
+    "title": "친구 초대",
+    "copied": "초대 링크 복사됨",
+    "statEarned": "획득 딜",
+    "statDone": "완료",
+    "statPending": "대기",
+    "copy": "복사",
+    "recent": "최근 초대",
+    "waitingPurchase": "구매 대기",
+    "friend": "친구"
+  }
 }

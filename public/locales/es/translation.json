@@ -187,7 +187,8 @@
     "unitMan": "",
     "kakaoConsult": "Soporte KakaoTalk",
     "share": "Compartir",
-    "currencyWon": "KRW"
+    "currencyWon": "KRW",
+    "checkNetworkRetry": "Comprueba tu red e inténtalo de nuevo"
   },
   "seller": {
     "dashboard": "Panel",
@@ -2138,11 +2139,14 @@
       "reviewNote": "Revisión en 1-2 días hábiles → resultado por app y KakaoTalk. Aprobación automática si coincide con NTS.",
       "reviewNote2": "Una vez aprobado, publica productos y vales desde el panel.",
       "submitting": "Enviando...",
-      "submit": "Solicitar como negocio"
+      "submit": "Solicitar como negocio",
+      "secondGate": "💳 La liquidación en efectivo requiere una verificación única de licencia comercial tras la aprobación (Panel → Info del negocio).",
+      "prospectBanner": " la agencia preparó la información de tu tienda. Solo revisa y envía."
     },
     "mailOrderNumber": "N.º de venta a distancia",
     "mailOrderNumberPlaceholder": "ej. 2026-Seul-01234",
-    "mailOrderNumberHint": "Se muestra públicamente en la información del vendedor de tu linkshop"  },
+    "mailOrderNumberHint": "Se muestra públicamente en la información del vendedor de tu linkshop"
+  },
   "admin": {
     "login": {
       "title": "Inicio de sesión del administrador",
@@ -4188,7 +4192,9 @@
     "logout": "Cerrar sesión",
     "coupons": "Cupones",
     "vouchers": "Vales",
-    "unitSheet": ""
+    "unitSheet": "",
+    "editProfile": "Editar perfil",
+    "refundPolicy": "Política de reembolso y devolución"
   },
   "theme": {
     "title": "Tema",
@@ -4219,7 +4225,8 @@
     "cancelFail": "No se pudo cancelar el pedido.",
     "cancelError": "Ocurrió un error durante la cancelación.",
     "tabCart": "Carrito",
-    "tabOrders": "Pedidos"
+    "tabOrders": "Pedidos",
+    "filterAll": "Todos"
   },
   "giftClaim": {
     "errorAddressInvalid": "Por favor ingresa la dirección correctamente",
@@ -4337,7 +4344,8 @@
     "statusExpired": "Caducado",
     "emptyTitle": "No hay compras grupales activas",
     "emptyHint": "Ahorra con amigos",
-    "browseProducts": "Explorar productos"
+    "browseProducts": "Explorar productos",
+    "loadFailed": "No se pudo cargar tu actividad"
   },
   "interestList": {
     "title": "Restaurantes guardados",
@@ -4461,7 +4469,8 @@
     "stepGift2": "Enviado\npor MMS",
     "stepGift3": "Mostrar\nen tienda",
     "deal": "deal",
-    "heroBalanceLabelGift": "Saldo de vales regalo"
+    "heroBalanceLabelGift": "Saldo de vales regalo",
+    "loadFailed": "No se pudieron cargar tus cupones"
   },
   "sellerWaiting": {
     "title": "Aprobación de Vendedor Pendiente",
@@ -4479,7 +4488,8 @@
     "benefit2": "Registrar y vender productos",
     "benefit3": "Ver ingresos y liquidaciones",
     "contactCS": "Contactar Soporte",
-    "reloadHint": "Recargue la página para actualizar el estado"
+    "reloadHint": "Recargue la página para actualizar el estado",
+    "secondGate": "💳 Para recibir liquidaciones en efectivo tras la aprobación, se requiere una verificación única de licencia comercial (Panel → Info del negocio)."
   },
   "sellerRegisterBusiness": {
     "title": "Convertirse en Vendedor",
@@ -5651,7 +5661,8 @@
     "previewLabel": "[TODO:es] 미리보기",
     "expiringSoon": "[TODO:es] ⏰ 곧 만료됩니다",
     "accessError": "[TODO:es] 접근 불가 ({{status}})",
-    "accessFailed": "[TODO:es] 접근 실패"
+    "accessFailed": "[TODO:es] 접근 실패",
+    "loadFailed": "No se pudo cargar tu biblioteca"
   },
   "shopping": {
     "sectionTitle": "Mi actividad",
@@ -5804,7 +5815,40 @@
     "makeMine": "Crear mi linkshop — gana recomendando",
     "console": {
       "title": "Consola de creador"
-    }
+    },
+    "ownerViewBar": "Mi linkshop · lo que ven los visitantes",
+    "editButton": "Editar",
+    "editMode": "Modo edición",
+    "tapToEdit": "Toca para editar",
+    "reorder": "Ordenar",
+    "dashboardBtn": "Panel",
+    "done": "Listo",
+    "reorderTitle": "Reordenar pines",
+    "searchPlaceholder": "Buscar productos y ofertas",
+    "clearSearch": "Borrar",
+    "noSearchResults": "Sin resultados",
+    "tryOtherKeyword": "Prueba con otra palabra clave.",
+    "shopPinsTitle": "Recomendados",
+    "voucherPinsTitle": "Cupones · Ofertas locales",
+    "addVoucherPin": "Añadir oferta local",
+    "addShopPin": "Añadir producto",
+    "addAnyPin": "Añadir producto u oferta",
+    "confirmDeletePinMine": "¿Eliminar este pin de tu linkshop?",
+    "confirmDeletePin": "¿Eliminar este pin?",
+    "pinDeleted": "Pin eliminado",
+    "deleteFailed": "Error al eliminar",
+    "deletePin": "Eliminar pin",
+    "delete": "Eliminar",
+    "myPinsCount": "Mis pines: {{count}}",
+    "dragToReorder": "Arrastra para ordenar",
+    "topPick": "Destacado",
+    "viewsCount": "{{n}} vistas",
+    "earnPerSaleAmt": " · Gana ₩{{amt}}/venta",
+    "noCommentNudge": "Sin comentario · añádelo para vender más",
+    "stepsLeft": "{{n}} pasos para completar tu linkshop",
+    "stepName": "Configura el nombre",
+    "stepHandle": "Configura la dirección",
+    "stepFirstProduct": "Añade el primer producto"
   },
   "shipping": {
     "trackingTitle": "Seguimiento de envío",
@@ -6267,7 +6311,18 @@
     "settingsGroupTitle": "Ajustes",
     "settingsGroupSub": "Notificaciones · Tema · Idioma · Info de la app",
     "affiliateLinkTitle": "Enlaces de recomendación",
-    "affiliateLinkSub": "Gana deals cuando compran con tu enlace — ver resultados"
+    "affiliateLinkSub": "Gana deals cuando compran con tu enlace — ver resultados",
+    "dealBalance": "Mi saldo Deal",
+    "charge": "Recargar",
+    "dealHistory": "Historial",
+    "balanceRetry": "Recargar saldo",
+    "referralEarnedTitle": "Ganancias por recomendación",
+    "referralStartTitle": "Recomienda y gana",
+    "referralCountN": "{{n}} recomendaciones",
+    "referralStartSub": "Comparte en redes — gana cuando tus amigos paguen",
+    "curatorTitle": "Ingresos de mi linkshop",
+    "curatorCashSub": "Liquidación en efectivo · retirable",
+    "curatorDealSub": "Acumulado · 1 Deal = ₩1"
   },
   "push": {
     "promptTitle": "¿Activar notificaciones?",
@@ -6323,5 +6378,32 @@
   "groupBuy.categoryBeauty": "💇 Belleza",
   "groupBuy.categoryStay": "🏨 Alojamiento",
   "groupBuy.categoryEtc": "🎯 Otros",
-  "groupBuy.stayBadge": "Hotel"
+  "groupBuy.stayBadge": "Hotel",
+  "roleCta": {
+    "myShortcuts": "Mis accesos directos",
+    "startNewRole": "Comenzar un nuevo rol",
+    "linkshop": "Mi linkshop",
+    "linkshopDesc": "Recomienda cupones y ofertas, gana recompensas",
+    "sellerDash": "Panel de vendedor",
+    "sellerDashDesc": "Gestiona productos, ofertas y liquidaciones",
+    "agencyDash": "Panel de agencia",
+    "agencyDashDesc": "Ingresos de tiendas asociadas",
+    "proposeGb": "Proponer compra local",
+    "proposeGbDesc": "Sugiere una tienda y abrimos la oferta",
+    "openShop": "Abrir mi tienda",
+    "openShopDesc": "Registro de negocio → vende productos y cupones",
+    "agencyBiz": "Negocio de agencia",
+    "agencyBizDesc": "Capta tiendas → 2% de ingresos permanentes"
+  },
+  "inviteCard": {
+    "title": "Invitar amigos",
+    "copied": "Enlace de invitación copiado",
+    "statEarned": "Deals ganados",
+    "statDone": "Hecho",
+    "statPending": "Pendiente",
+    "copy": "Copiar",
+    "recent": "Invitaciones recientes",
+    "waitingPurchase": "Esperando compra",
+    "friend": "Amigo"
+  }
 }

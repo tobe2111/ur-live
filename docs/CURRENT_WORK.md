@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-02 — 마이페이지 전수 UX/기능 점검 + 일괄 수정 (대표 "모두 이상적으로")
+`/user/profile` + 위성 15페이지 전수 점검(에이전트 2 + 가드) 후 발견 전량 수정.
+- **🔴 에러 위장 근절(최대 교차 이슈)**: 마이 데이터 훅 8종(`useMyData`×3·`useMyCoupons`·`useMyReturns`·`useMyStays`·`useMyFollows`·`useDigitalLibrary`)이 `.catch(() => readCache(,[]))` 로 에러를 삼켜 **isError 가 절대 발동 불가** → 네트워크 장애가 "빈 지갑/주문 0건"으로 위장, 페이지들의 에러+재시도 UI 전부 dead branch. 수정: `localCache.readCacheOrNull` 신설 — **캐시 있으면 last-known 폴백(오프라인 UX 유지), 없으면 throw → isError**. `useMyGroupBuys`(3endpoint 전멸 시)·`useMyCommissions`(양쪽 전멸 시)도 throw. isError 미분기 페이지 9곳(MyVouchers/MyStays/MyFollows/MyGroupBuys/MyAppointments/MyDigitalLibrary/MyCommissions/MyStore/MyReturns)에 에러+재시도 UI 추가(기존 dead 에러 UI 는 자동 부활). `TeamPointsCard` 실패→"0딜" 위장 → "잔액 다시 불러오기" 버튼, `useMyCounts` 실패→0 배지 위장 → null 유지(배지 숨김).
+- **🔴 MyStaysPage 다크 전용 하드코딩** → 라이트 기본+`dark:` 전면 전환(마이 위성 유일한 테마 규칙 전면 위반이었음) + `refund_rate` NaN% 가드 + 핑크→B&W.
+- **🔴 주문 현황 바 반쪽 동작**: 별도 fetch → `useMyOrders` 재사용(RQ 캐시 공유), 5칸 전부 무필터 `/my-orders` → **상태 필터(`?status=`) 배선 + MyOrdersPage 에 필터 칩 신설**, 항상 0이던 '리뷰' → 리뷰 가능 주문 수(DELIVERED/DONE, MyReviews 기준) + `/my-reviews` 이동.
+- **🟠 중간**: ShoppingGroup(다크 구분선 소실)·AccountControlsSection(라이트 구분선 소실) 인라인 border → 테마 클래스 / STATUS map 무방비 크래시 3곳 fallback(MyAppointments·MyCommissions·MyLedger) / native `prompt()` → `promptDialog`(Stays·Appointments) / "이용권·이용권" 카피 + 푸터 '배송정책'→'환불·반품 정책'(/refund 도착지 정합) / `ReferralEarnedCard` **카카오 세션 유저에게 항상 숨겨지던 버그**(access_token 만 검사 → `isLoggedInSync`) + raw toLocaleString→formatWon + stats 미수신에도 CTA 노출(05-20 정책 복원) / MyGroupBuys 활성 탭 밑줄·MyFollows 배너 다크 대응.
+- **🟢 낮음**: orphan `ChatNameSetting` 삭제 / reward-ad-card **훅 앞 조건부 return**(Hooks 규칙 위반) 수정 + **광고 로드 실패 시 시뮬레이션 폴백으로 리워드 지급되던 딜 누수 제거** / RoleCtaGrid no-op 삼항 / 마이 표면 하드코딩 한국어 t() 래핑 + 6개 언어 키 41개 / "추천 Commission"→"추천 수익"·"단골 셀러"→"단골 가게" 명칭 정리 / MyDigitalLibrary 뒤로가기 추가.
+- 검증: 테마/뷰포트/iserror/initialdata/file-size/modal-zindex 가드 GREEN · 변경파일 구문/타입 오류 신규 0(클린트리 대비 diff 0 — npm 403 환경이라 전체 build/tsc 는 CI 위임). ⚠️ staging: 마이 진입(딜 잔액·카운트), 비행기모드 재현(에러+재시도 UI), 주문 현황 바 칩 필터, 숙소 예약 라이트 모드 1회 확인 권장.
+
 ## ✅ 2026-07-02 — sql-bind 가드 확장: bind 통째 누락(무음 no-op) 클래스 박제 (결제 전수조사 후속 — "가드부터" 철학)
 2026-07-01 혼합결제 딜 미차감 실사고(`.bind(orderNumber)` 통째 누락 → D1 에러를 `.catch` 가 삼켜 2주간 무음 no-op — 기존 가드는 bind *보유* 체인의 개수 불일치만 분석해 미감지)의 버그 클래스를 결정론 가드로 차단.
 - `check-sql-bind-params.mjs` 확장: ① `?` 있는 SQL 이 같은 체인에서 `.bind()` 없이 `.run()/.all()/.first()/.raw()` 직행 → violation(`missing-bind`). ② TS 제네릭(`.all<{…}>()`) 체인 파싱 지원(기존 검사 커버리지도 3154→3170 증가). 변수 후행 bind·보간 SQL·placeholder 0 은 미해당(오탐 0).
@@ -14,6 +23,11 @@
 - **🟢 수정: 선물 `gifts/:id/confirm` status CAS** (비잠금): 사전체크~UPDATE race 로 알림톡 중복 발송 가능하던 것 → `WHERE status='pending'` CAS + loser 멱등 성공 반환. Toss 멱등이라 머니 영향 원래 0.
 - **⚡ 후속: 결제 체감속도(felt-latency) 최적화** (대표 "로딩 속도도 결제쪽에 봐볼래?" → "전부 (1~4)" 승인): ① **KT 교환권 발송(외부 HTTP 1~4.5s)이 결제 응답을 동기로 막던 것** → `/pay`(딜 결제 = 교환권 메인 경로, 비잠금)·`/confirm`(잠금, +multiTier 커미션도) 둘 다 waitUntil 이동 + `kt-alpha-voucher-retry` cron 에 **미발송 스위퍼**(발송기록 0 인 확정주문 재킥 — waitUntil 갭 + 기존 크래시 갭 모두 커버, 이중발송 구조적 0). ② 딜충전 위젯(`TossWidgetPayPage`, 잠금): variant fetch 병렬화 + 약관 비대기 + timeout 4s 정합(주문 위젯 패턴 미러). ③ `CartPage` prefetch 를 `toss-preload`(실제 SDK 로드) 승격. ④ js.tosspayments.com **동적 preconnect**(index.html 예고분 실구현). CheckoutPage/성공페이지는 이미 최적(프리로드·논블로킹 키·약관 비대기) — 무수정. CLAUDE.md Toss audit log 등재.
 - **⚠️ 검증 한계**: 이 원격환경 npm 조직정책 403 으로 `node_modules` 미설치 → 전체 `npm run build`·tsc 미실행. sql-bind/column(신규 UPDATE 컬럼 orders 존재 확인)/CHECK 가드 0. **잠금파일 회귀검증은 staging 배포 후 실결제 필수**(VA 결제 → 입금 전 AWAITING·입금 후 확정+KT 1회).
+
+## ✅ 2026-07-02 — 상세 사진 즉시표시 (대표 "사진도 빠르게 안 나타나네")
+원인 라이브 실측: ① 동네딜 실사진 호스트(ldb-phinf/shop-phinf/naverbooking-phinf.pstatic.net)가 `CDN_CGI_VERIFIED` 미등재 → 리사이즈 불가 워커 프록시 경유 **2.9s·원본 1,055KB**. ② 상세 히어로가 CSS background-image 라 브라우저 프리로드 스캐너 미적용 — [엔트리→청크→렌더] 워터폴 뒤에야 다운로드 시작.
+- **① `cf-image.ts` pstatic cdn-cgi 승격** `[UNLOCK_LOADING ADD-only]`: `pstatic.net` 루트를 EXTERNAL_PROXY_HOSTS+CDN_CGI_VERIFIED 에 추가 — prod 실측 3종 전부 `cf-resized: internal=ok`(1,055KB→106KB @900px). (같은 날 타 세션이 imgnews/yt3/picsum + `onerror=redirect` superset 으로 main 선반영 — 머지 시 main 버전 채택.)
+- **② worker DETAIL 히어로 preload 주입**: SSR seed 의 image_url 로 `<link rel=preload as=image fetchpriority=high>` head 주입 — 클라와 동일 `cfImage()` 공유 import 로 URL byte-일치. CLAUDE.md audit log 등재.
 
 ## ✅ 2026-07-02 — 공구상세 "로딩 2번 나뉨 + 느림" 근본수정 3종 (대표 신고 `/group-buy/2312`)
 진단: 하드로드 SSR seed 는 정상 주입(라이브 2회 실측) — 문제는 ① 로더 **재마운트 시 애니메이션 keyframe 0 재시작**(breathe 가 opacity 0.5 시작=로고 확 어두워짐, sweep 바 화면 밖 시작+200ms 지연=바 사라짐) → "떴다 안떴다 다시" 블링크, ② 홈 카드 touch prefetch(상세 API ~0.6s)와 페이지 자체 axios 가 **중복 fetch**(탭 race 시 로더 노출 2배+느림), ③ 하드로드 첫 페인트가 `#root` blank(흰 화면).

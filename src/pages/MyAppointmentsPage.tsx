@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Calendar, CalendarPlus, MapPin, Phone, X } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { promptDialog } from '@/components/ui/confirm-dialog'
 import SEO from '@/components/SEO'
 import { useMyAppointments } from '@/hooks/queries/useMyData'
 
@@ -37,6 +38,8 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   no_show: { label: '노쇼', cls: 'bg-red-100 text-red-700' },
   completed: { label: '이용 완료', cls: 'bg-blue-100 text-blue-700' },
 }
+// 🛡️ 2026-07-02: 정의 밖 status 방어 — meta undefined 렌더 크래시 방지.
+const STATUS_LABEL_FALLBACK = { label: '처리 중', cls: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-600 dark:text-gray-300' } as const
 
 // 🛡️ 2026-06-12 (B-5): 예약 가능(결제 완료 + booking_required + 미예약) 구매 항목.
 interface BookableItem {
@@ -64,7 +67,8 @@ export default function MyAppointmentsPage() {
   const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → 기존 useMyAppointments 재사용(/api/appointments/my 동일).
-  const { data: appts = [], isLoading: loading, refetch } = useMyAppointments()
+  // 🛡️ 2026-07-02: isError 분기 — 훅이 캐시 없는 실패를 throw 하게 바뀜(빈 예약 위장 방지).
+  const { data: appts = [], isLoading: loading, isError, refetch } = useMyAppointments()
   const items = appts as unknown as Appointment[]
 
   // 🛡️ 2026-06-12 (B-5): 예약 생성 플로우 — bookable 목록 + 생성 모달.
@@ -96,7 +100,14 @@ export default function MyAppointmentsPage() {
   }, [])
 
   async function cancel(a: Appointment) {
-    const reason = window.prompt('취소 사유를 입력하세요:')
+    // 🛡️ 2026-07-02: native window.prompt → 통일 디자인 promptDialog (confirm-dialog 인프라).
+    const reason = await promptDialog({
+      title: '예약 취소',
+      message: '취소 사유를 입력해주세요.',
+      prompt: { multiline: true, required: true, placeholder: '예: 일정 변경' },
+      confirmText: '예약 취소',
+      danger: true,
+    })
     if (!reason) return
     try {
       const res = await api.patch(`/api/appointments/${a.id}/cancel`, { cancel_reason: reason })
@@ -154,6 +165,14 @@ export default function MyAppointmentsPage() {
 
         {loading ? (
           <p className="text-center text-sm text-gray-400 py-16">불러오는 중...</p>
+        ) : isError ? (
+          <div className="text-center py-20">
+            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">예약 내역을 불러오지 못했어요</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
+            <button onClick={() => refetch()} className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">
+              다시 시도
+            </button>
+          </div>
         ) : items.length === 0 ? (
           <div className="text-center py-20">
             <Calendar className="w-12 h-12 text-gray-200 mx-auto mb-3" />
@@ -162,7 +181,7 @@ export default function MyAppointmentsPage() {
         ) : (
           <div className="space-y-3">
             {items.map(a => {
-              const meta = STATUS_LABEL[a.status]
+              const meta = STATUS_LABEL[a.status] ?? STATUS_LABEL_FALLBACK
               return (
                 <div key={a.id} className="rounded-2xl border border-gray-200 dark:border-[#2A2A2A] p-4">
                   <div className="flex items-start gap-3">

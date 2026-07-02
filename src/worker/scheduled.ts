@@ -161,6 +161,11 @@ export async function handleCronScheduled(
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
   if (cron === '0 * * * *') {
     ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
+    // ⏰ 2026-07-02 (#5 승인 SLA): 24h+ 대기 셀러 전환 신청 어드민 리마인드(20h dedup = 하루 1회꼴).
+    ctx.waitUntil(safeCron('seller-approval-reminder', async () => {
+      const { handleSellerApprovalReminder } = await import('./cron/seller-approval-reminder')
+      return handleSellerApprovalReminder(env)
+    }));
     // 🛡️ 2026-05-31: 미결제 pending 숙소 예약 자동 만료 (30분 경과). 재고 미조작 — 정리 목적.
     ctx.waitUntil(safeCron('stay-pending-expire', async () => {
       const { handleStayPendingExpire } = await import('./cron/stay-pending-expire')
@@ -170,6 +175,11 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('wholesale-deposit-reconcile', async () => {
       const { reconcileOrphanedDepositOrders } = await import('../features/supply/api/wholesale-deposit-core')
       return reconcileOrphanedDepositOrders(env.DB)
+    }));
+    // 🏦 2026-07-02: 출금 정산원장 자가복구 — status=paid 인데 net-out row 미확정인 출금을 멱등 완료(재출금 방지).
+    ctx.waitUntil(safeCron('wholesale-withdrawal-reconcile', async () => {
+      const { reconcileWithdrawalLedgers } = await import('../features/supply/api/supplier-withdrawal-core')
+      return reconcileWithdrawalLedgers(env.DB)
     }));
     // 🛡️ 2026-05-21 Phase TD-3: 토스 환불 실패 자동 재시도 (exponential backoff).
     ctx.waitUntil(safeCron('toss-refund-retry', () => handleTossRefundRetry(env)));
