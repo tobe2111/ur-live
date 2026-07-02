@@ -858,6 +858,19 @@ sellerOrdersRoutes.post('/products', async (c) => {
         }
       }
 
+      // 🧭 2026-07-02 (대표 승인 "가장 이상적으로"): 주소만 있고 좌표 없이 등록되면 즉시 지오코딩
+      //   (waitUntil, fail-soft) — 일일 cron 전의 갭 동안 방문자마다 클라 지오코딩 폴백이 발동하던
+      //   것을 원천 제거. 좌표를 함께 보낸 등록은 helper 가 스스로 skip.
+      if (body.restaurant_address) {
+        try {
+          c.executionCtx.waitUntil(
+            import('../../../worker/cron/restaurant-geocode').then(m =>
+              m.geocodeProductNow(c.env as { DB: D1Database; KAKAO_REST_API_KEY?: string }, Number(productId))
+            ).catch(swallow('seller:product-geocode'))
+          );
+        } catch { /* executionCtx 미가용 — cron 이 자연 처리 */ }
+      }
+
       // 🛡️ 2026-04-27: Magic Link — 사장님 전용 영구 token 자동 생성 + 알림톡 발송.
       try {
         const { generateStoreOwnerToken, sendStoreOwnerAlimtalk } = await import('../../group-buy/api/group-buy.routes');
@@ -1026,6 +1039,18 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       if (val !== undefined) {
         try { await db.prepare(`UPDATE products SET ${field} = ? WHERE id = ? AND seller_id = ?`).bind(val === '' ? null : val, productId, sellerId).run() } catch { /* column may not exist */ }
       }
+    }
+
+    // 🧭 2026-07-02: 주소가 *변경*됐는데 수정 경로엔 lat/lng 필드가 없어 좌표가 옛 주소로 영구
+    //   stale 이던 갭 — 새 주소 기준 즉시 재지오코딩(force, waitUntil, fail-soft. 실패 시 기존 좌표 유지).
+    if (typeof body.restaurant_address === 'string' && body.restaurant_address.trim() !== '') {
+      try {
+        c.executionCtx.waitUntil(
+          import('../../../worker/cron/restaurant-geocode').then(m =>
+            m.geocodeProductNow(c.env as { DB: D1Database; KAKAO_REST_API_KEY?: string }, Number(productId), { force: true })
+          ).catch(swallow('seller:product-geocode-edit'))
+        );
+      } catch { /* executionCtx 미가용 — cron 이 자연 처리 */ }
     }
 
     // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도" 수정 지원): product_supply_meta.max_per_person.

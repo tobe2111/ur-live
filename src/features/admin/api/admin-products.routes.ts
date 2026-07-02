@@ -1121,6 +1121,16 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded, realPhotos, placed, healed, region: region || null, category: catFilter || null } }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    // 🧭 2026-07-02 (대표 승인 "가장 이상적으로"): 좌표 없이 시드된 행(place 미매칭/폴백 INSERT)을
+    //   응답 직후 즉시 지오코딩 — 일일 cron Pass A 를 그대로 1회 실행(waitUntil, fail-soft).
+    //   당일 좌표 공백 → 방문자마다 클라 지오코딩 폴백 발동하던 갭 원천 제거.
+    try {
+      c.executionCtx.waitUntil(
+        import('../../../worker/cron/restaurant-geocode').then(m =>
+          m.runRestaurantGeocode(c.env as { DB: D1Database; KAKAO_REST_API_KEY?: string })
+        ).catch(() => {})
+      );
+    } catch { /* executionCtx 미가용 — 일일 cron 이 자연 처리 */ }
     return c.json({ success: true, seeded, realPhotos, placed, healed, region: region || null, category: catFilter || null });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
@@ -1205,6 +1215,15 @@ adminProductsRoutes.post('/dongnedeal/bulk-import', cors(), async (c) => {
     await writeAuditLog(c, { action: 'dongnedeal_bulk_import', targetType: 'product', after: { total: rows.length, created } }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    // 🧭 2026-07-02: CSV 등록은 좌표 없이 INSERT — 응답 직후 cron Pass A 1회 즉시 실행(waitUntil,
+    //   fail-soft, batch ≤100/회)로 좌표+동 태깅 채움 → 당일 클라 지오코딩 폴백 갭 원천 제거.
+    try {
+      c.executionCtx.waitUntil(
+        import('../../../worker/cron/restaurant-geocode').then(m =>
+          m.runRestaurantGeocode(c.env as { DB: D1Database; KAKAO_REST_API_KEY?: string })
+        ).catch(() => {})
+      );
+    } catch { /* executionCtx 미가용 — 일일 cron 이 자연 처리 */ }
     return c.json({ success: true, summary: { total: rows.length, created, failed: rows.length - created }, results });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
