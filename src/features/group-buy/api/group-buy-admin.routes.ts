@@ -261,10 +261,25 @@ groupBuyAdminRoutes.post('/force-refund/:productId', rateLimit({ action: 'group_
           )
           if (result.ok) {
             await DB.prepare("UPDATE orders SET status = 'REFUNDED' WHERE id = ?").bind(v.order_id).run().catch(() => null)
-          } else if (import.meta.env?.DEV) {
-            console.warn('[admin force-refund toss failed]', result.error_code)
+          } else {
+            if (import.meta.env?.DEV) console.warn('[admin force-refund toss failed]', result.error_code)
+            // 🚨 non-retryable(4xx)은 cron 이 안 집음 → 어드민 벨/Discord 수동환불 알림.
+            const { alertTossRefundFailure } = await import('../../../worker/utils/toss-refund-alert')
+            await alertTossRefundFailure(c.env as { DISCORD_WEBHOOK_URL?: string }, DB, {
+              source: '어드민 강제환불', paymentKey: v.payment_key, voucherId: v.id,
+              amount: refundAmount, errorCode: result.error_code, errorMessage: result.error_message, httpStatus: result.http_status,
+            }).catch(() => {})
           }
-        } catch (e) { if (import.meta.env?.DEV) console.warn('[admin force-refund toss]', e) }
+        } catch (e) {
+          if (import.meta.env?.DEV) console.warn('[admin force-refund toss]', e)
+          try {
+            const { alertTossRefundFailure } = await import('../../../worker/utils/toss-refund-alert')
+            await alertTossRefundFailure(c.env as { DISCORD_WEBHOOK_URL?: string }, DB, {
+              source: '어드민 강제환불(예외)', paymentKey: v.payment_key, voucherId: v.id, amount: refundAmount,
+              errorCode: 'EXCEPTION', errorMessage: (e as Error)?.message,
+            })
+          } catch { /* fail-soft */ }
+        }
       }
       if (v.user_id) refundedUsers.add(v.user_id)
       refundCount++
