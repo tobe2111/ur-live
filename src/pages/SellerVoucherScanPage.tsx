@@ -12,6 +12,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle2, XCircle, Camera, Keyboard, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 
@@ -143,6 +144,9 @@ export default function SellerVoucherScanPage() {
           subtitle={t('seller.scan.subtitle', { defaultValue: '손님 QR을 비추면 자동으로 사용 처리돼요 (연속 스캔 가능)' })}
         />
 
+        {/* 🎟️ 2026-07-02 (대표): 매장별 현지 사용 방식 선택 — 3모드 + 매장 확인코드 */}
+        <RedemptionModeCard />
+
         {/* 카메라 뷰 */}
         <div className="relative rounded-2xl overflow-hidden bg-black aspect-[4/3]">
           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
@@ -214,5 +218,75 @@ export default function SellerVoucherScanPage() {
         )}
       </div>
     </SellerLayout>
+  )
+}
+
+/**
+ * 🎟️ 2026-07-02 (대표 "사장님이 사용 방식 선택"): 매장 현지 사용 방식 카드.
+ *  - scan_only  : 직원 확인만(셀프 사용 차단) — 가장 엄격.
+ *  - store_code : 손님 셀프 사용 시 매장 확인코드 4자리 입력 필수(카운터 스티커) — 원격/악용 차단.
+ *  - self_free  : 자유 셀프 사용(기본, 카운터 느슨한 매장). 셀프 취소 60초 허용.
+ */
+function RedemptionModeCard() {
+  const [mode, setMode] = useState<'scan_only' | 'store_code' | 'self_free'>('self_free')
+  const [storeCode, setStoreCode] = useState<string | null>(null)
+  const [loaded, setLoaded] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    const token = localStorage.getItem('seller_token')
+    api.get('/api/group-buy/redemption-settings', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then((r) => {
+        if (r.data?.success) { setMode(r.data.data.mode); setStoreCode(r.data.data.store_code) }
+      })
+      .catch(() => { /* 미로드 시 카드 숨김 유지 */ })
+      .finally(() => setLoaded(true))
+  }, [])
+
+  const save = async (next: 'scan_only' | 'store_code' | 'self_free', regenerate = false) => {
+    setSaving(true)
+    try {
+      const token = localStorage.getItem('seller_token')
+      const r = await api.put('/api/group-buy/redemption-settings', { mode: next, regenerate_code: regenerate }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (r.data?.success) { setMode(r.data.data.mode); setStoreCode(r.data.data.store_code); toast.success('사용 방식이 저장됐어요') }
+      else toast.error(r.data?.error || '저장 실패')
+    } catch { toast.error('저장 실패') } finally { setSaving(false) }
+  }
+
+  if (!loaded) return null
+  const OPTIONS: { value: 'scan_only' | 'store_code' | 'self_free'; label: string; desc: string }[] = [
+    { value: 'scan_only', label: '직원 확인만', desc: '손님 셀프 사용 차단 — 직원이 QR 스캔으로만 처리 (가장 엄격)' },
+    { value: 'store_code', label: '매장 확인코드', desc: '손님이 셀프 사용 시 카운터의 코드 4자리 입력 필수 (추천)' },
+    { value: 'self_free', label: '자유 셀프 사용', desc: '손님이 코드 없이 셀프 사용 (카운터가 바쁜 매장, 60초 취소 허용)' },
+  ]
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-2">
+      <p className="text-sm font-bold text-gray-900">현지 사용 방식</p>
+      <div className="space-y-1.5">
+        {OPTIONS.map((o) => (
+          <label key={o.value} className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer ${mode === o.value ? 'border-gray-900 bg-gray-50' : 'border-gray-200'}`}>
+            <input type="radio" name="redemption-mode" checked={mode === o.value} disabled={saving}
+              onChange={() => save(o.value)} className="mt-0.5" />
+            <span className="min-w-0">
+              <span className="block text-[13px] font-bold text-gray-900">{o.label}</span>
+              <span className="block text-[11px] text-gray-500">{o.desc}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      {mode === 'store_code' && storeCode && (
+        <div className="flex items-center justify-between gap-2 bg-gray-50 rounded-xl px-3 py-2.5">
+          <div>
+            <p className="text-[11px] text-gray-500">매장 확인코드 — 카운터에 붙여두세요</p>
+            <p className="text-[22px] font-black tracking-[0.4em] text-gray-900">{storeCode}</p>
+          </div>
+          <button onClick={() => save(mode, true)} disabled={saving} className="text-[11px] font-bold text-gray-500 hover:text-gray-900 disabled:opacity-50">
+            재발급
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
