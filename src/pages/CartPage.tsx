@@ -406,7 +406,10 @@ function CartPageContent() {
     }
 
     // 토스 SDK 프리로드 (체크아웃 진입 전)
-    import('@tosspayments/tosspayments-sdk').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
+    // ⚡ 2026-07-02 (결제 체감속도): bare npm 청크 import → toss-preload 모듈 import 로 승격.
+    //   기존엔 npm 청크만 데워지고 실제 js.tosspayments.com 브라우저 SDK 는 CheckoutPage 도착 후에야
+    //   fetch 시작 — toss-preload 는 모듈 평가 시 loadTossPayments() 까지 즉시 실행(진짜 워밍).
+    import('@/lib/toss-preload').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
     const selectedItems = cartItems.filter(item => selectedIds.has(item.id))
     navigate('/checkout', {
       state: {
