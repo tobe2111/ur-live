@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 이용권 잔여 🟡 일괄 마감 A/B/C (대표 "모두 진행 — 내가 해야하는 것 말고")
+재감사에서 남긴 🟡 중 코드로 가능한 3건 전부 처리(대표 결정 필요한 fee-resolver·운영 액션(데모 재생성/상품 재저장)만 제외).
+- **A) 카드 환불 non-retryable(4xx) 조용한 미환불 제거**: retryable(5xx)은 gateway 기록→`toss-refund-retry` cron(5회+dead-letter)이 커버하지만 **4xx·예외는 DEV 콘솔에만** 남던 것(셀프취소/셀러환불/어드민 강제환불 3경로 공통). 신규 `worker/utils/toss-refund-alert.ts` — `isRetryableTossFailure`(gateway 와 동일 기준, retryable 은 skip=이중알림 방지) + `alertTossRefundFailure`(어드민 대시보드 벨 `refund_failed` + Discord, paymentKey/금액/코드 포함 → Toss 콘솔 수동환불 안내). 3경로의 `!result.ok`/catch 에 배선(fail-soft). **Toss 잠금 심볼 무접촉.**
+- **B) 다국어 옛 용어 46건 정리**: en/ja/zh/es/fr 의 `[TODO]` 한국어 원문·식사권·团购券 잔존을 06-29 확정 용어(en Voucher/ja 利用券/zh 使用券/es Vale/fr Coupon)로 정식 번역(JSON 파싱 후 키+옛값 정확 일치 노드만 교체 — diff 46줄, 포맷 불변). **+ ko 버그 발견/정정**: `shopping.voucherSub` 가 06-29 일괄치환 부작용으로 "이용권·이용권"(중복) → "이용권·교환권".
+- **C) 셀러 이용권 등록/수정/삭제 edge 즉시반영**: 어드민 동네딜은 7곳 전부 `invalidateGroupBuyFeed`(materialized+edge 퍼지, 타 세션) 배선 완료였으나 **셀러 3경로는 앱캐시만** → 셀러가 올려도 홈 edge 가 TTL 지연. 동일 배선 additive(fail-soft) → 어드민/셀러 대칭.
+- 검증: tsc 0 · group-buy/voucher 84 pass · 6-locale JSON valid · build 0. 잔여: fee-resolver(대표 결정시트 대기)·기존 데이터 소급(데모 재생성/상품 재저장 — 운영 1회).
+
 ## ✅ 2026-07-01 — 이용권 플로우 재감사: 1인당 한도 갭 2건 마감 (대표 "이상적으로 구현 안 된 부분 없어?")
 이번 세션 신규 코드(1인당 한도) 표면을 적대적 재감사 → 갭 2건 확정·수정.
 - **① confirm-toss(카드 발급) 한도 재검증 누락(race)**: /join 사전검증 후 결제창 사이에 **다른 탭 구매로 한도를 채우면 초과 발급** 가능했음. → confirm-toss 의 **과금 전**(confirmTossPayment 이전, amount 재검증 옆) 재검증 추가 — 초과면 400 `PER_PERSON_LIMIT`(승인 안 된 결제는 Toss 자동 만료 → 환불 불필요, AMOUNT_MISMATCH 동일 패턴). fail-open. **Toss 잠금 심볼 무접촉**(비잠금 confirm-toss 핸들러의 검증 1블록 additive).
