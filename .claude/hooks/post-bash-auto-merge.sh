@@ -1,4 +1,8 @@
 #!/bin/bash
+# 🛑 2026-07-02 (대표 승인 "잠시 꺼도 괜찮아"): 원격 환경에서 이 자동 main-머지 훅이
+#   push 후 로컬 feature 브랜치를 origin/main 으로 reset → 미push 커밋 유실 + 워킹트리 충돌마커.
+#   원격 통합 경로는 PR 이므로 자동 머지 불필요. 세션 동안 no-op.
+exit 0
 # PostToolUse hook — Bash tool 실행 후 git push 였다면 main 에 자동 머지.
 #
 # Claude Code 의 hook 표준 (현재): JSON payload 를 stdin 으로 전달.
