@@ -372,6 +372,13 @@ export default function AdminCouponsPage() {
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button
+                              onClick={() => startEdit(c)}
+                              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                              title={t('admin.coupons.k054', { defaultValue: '수정' })}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
                               onClick={() => openSegmentModal(c.id)}
                               className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded"
                               title={t('admin.coupons.k039', { defaultValue: "세그먼트 발송" })}
