@@ -67,11 +67,14 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/admin/wholesale-overview', label: '도매 통합 현황', icon: LayoutDashboard },
       // 🏭 2026-06-29 (대표 — 판매사 승인 통합): '판매사 승인' 별도 항목 제거 → '판매사 관리'(아래) 의 '승인' 탭으로 통합.
-      { path: '/admin/suppliers',          label: '제조사 관리', icon: Store },
+      // 🗂️ 2026-07-02 (IA 통합): '제조사 출금'(/admin/wholesale-withdrawals)은 이 페이지의 '출금 처리' 탭으로
+      //   통합 — also 로 딥링크/RBAC 허용 + 활성 표시.
+      { path: '/admin/suppliers',          label: '제조사 관리', icon: Store, also: ['/admin/wholesale-withdrawals'] },
       // 🗂️ 2026-06-26 (대표 요청): 4개 탭이 한 페이지(AdminDistributorGradesPage)라 nav 1개 통합.
       //   딥링크 라우트(/admin/distributor-credit 등)는 그대로 — 페이지 탭이 사용.
       // 🗂️ 2026-07-02 (대표 요청): 판매사 관리를 제조사 관리 바로 아래로 이동(회원 관리 짝 배치).
-      { path: '/admin/distributor-grades', label: '판매사 관리', icon: Layers, also: ['/admin/distributor-approval', '/admin/distributor-credit', '/admin/distributor-tax', '/admin/distributor-supply'] },
+      // 🗂️ 2026-07-02 (IA 통합): '도매 예치금'(/admin/wholesale-deposits)도 '예치금' 탭으로 통합 — also 에 추가.
+      { path: '/admin/distributor-grades', label: '판매사 관리', icon: Layers, also: ['/admin/distributor-approval', '/admin/distributor-credit', '/admin/distributor-tax', '/admin/distributor-supply', '/admin/wholesale-deposits'] },
       { path: '/admin/wholesale-import',   label: '상품 일괄 등록', icon: Upload },
       { path: '/admin/wholesale-products', label: '도매 프리미엄관', icon: Crown },
       { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
@@ -85,8 +88,8 @@ const NAV_GROUPS: NavGroup[] = [
     title: '💰 도매몰 · 정산',
     domain: 'wholesale',
     items: [
-      { path: '/admin/wholesale-deposits', label: '도매 예치금',   icon: Wallet },
-      { path: '/admin/wholesale-withdrawals', label: '제조사 출금', icon: Wallet },
+      // 🗂️ 2026-07-02 (IA 통합): '도매 예치금'은 '판매사 관리'의 '예치금' 탭, '제조사 출금'은 '제조사 관리'의
+      //   '출금 처리' 탭으로 이동 — 중복 nav 항목 제거(딥링크 라우트는 각 컨테이너 페이지의 탭으로 열림).
       { path: '/admin/wholesale-tax',      label: '도매 세무/정산', icon: Wallet },
       // 🗂️ 2026-06-17: '도매 무결성'(진단 전용)은 상단 nav에서 강등 — '통합 현황' 카드 링크로 접근(/admin/wholesale-integrity 라우트 유지).
     ],

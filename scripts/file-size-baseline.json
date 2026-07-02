@@ -1,6 +1,6 @@
 {
   "src/App.tsx": 1011,
-  "src/components/AdminLayout.tsx": 608,
+  "src/components/AdminLayout.tsx": 611,
   "src/components/live/ReelCard.tsx": 1419,
   "src/components/streaming/BrowserBroadcaster.tsx": 1185,
   "src/features/admin/api/admin-products.routes.ts": 1415,
@@ -39,7 +39,7 @@
   "src/lib/api.ts": 768,
   "src/lib/settlement-automation.ts": 685,
   "src/pages/AboutPage.tsx": 786,
-  "src/pages/AdminDistributorGradesPage.tsx": 1249,
+  "src/pages/AdminDistributorGradesPage.tsx": 1257,
   "src/pages/AdminKtAlphaPage.tsx": 1117,
   "src/pages/AdminOrdersPage.tsx": 670,
   "src/pages/AdminPage.tsx": 697,

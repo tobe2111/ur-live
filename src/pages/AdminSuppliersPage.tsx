@@ -4,10 +4,11 @@
  *   라이트 테마 (어드민 대시보드).
  */
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Loader2, CheckCircle, XCircle, Wallet, Ban, Store } from 'lucide-react'
+import { Loader2, CheckCircle, XCircle, Wallet, Ban, Store, ArrowRight, PackageCheck } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
+import AdminWholesaleWithdrawalsPage from '@/pages/AdminWholesaleWithdrawalsPage'
 import api from '@/lib/api'
 import { safeHttpHref } from '@/utils/safe-external-url'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -57,8 +58,32 @@ const STATUS = {
   rejected: { label: '거부', cls: 'bg-red-50 text-red-600 border-red-200' },
 }
 
+// 🗂️ 2026-07-02 (대표 — 어드민 도매 IA 통합): 제조사 관리 = 탭 컨테이너(AdminDistributorGradesPage 선례).
+//   '계정·승인'=/admin/suppliers, '출금 처리'=/admin/wholesale-withdrawals (딥링크 라우트가 이 페이지로 매핑 —
+//   💰 그룹의 '제조사 출금' nav 항목 제거). '상품 승인'은 embed 대신 /admin/products?tab=supplier-products 로
+//   이동하는 링크 패널(라우트 없음 — 클라 state 로만 표시).
+type SupTab = 'accounts' | 'withdrawals' | 'products'
+const SUP_TABS: { key: SupTab; path?: string; label: string }[] = [
+  { key: 'accounts', path: '/admin/suppliers', label: '계정·승인' },
+  { key: 'withdrawals', path: '/admin/wholesale-withdrawals', label: '출금 처리' },
+  { key: 'products', label: '상품 승인' },
+]
+function supTabFromPath(p: string): SupTab {
+  return p.includes('wholesale-withdrawals') ? 'withdrawals' : 'accounts'
+}
+
 export default function AdminSuppliersPage() {
   const { t } = useTranslation()
+  const location = useLocation()
+  const navigate = useNavigate()
+  // 🗂️ 2026-07-02 IA 통합: 탭은 path 기반(딥링크 보존). '상품 승인'만 라우트 없는 로컬 패널(state).
+  const [showProductsPanel, setShowProductsPanel] = useState(false)
+  const tab: SupTab = showProductsPanel ? 'products' : supTabFromPath(location.pathname)
+  const selectTab = (tb: { key: SupTab; path?: string }) => {
+    if (tb.key === 'products') { setShowProductsPanel(true); return }
+    setShowProductsPanel(false)
+    if (tb.path && tb.path !== location.pathname) navigate(tb.path)
+  }
   // 🔧 2026-06-24 (전수조사 LOW-3): 대시보드 '제조사 승인' 카운트 카드가 ?status=pending 로 딥링크 → 클릭 시 바로 대기목록.
   const [searchParams] = useSearchParams()
   const [statusFilter, setStatusFilter] = useState(() => {
@@ -120,6 +145,38 @@ export default function AdminSuppliersPage() {
 
   return (
     <AdminLayout title={t('admin.suppliers.title', { defaultValue: '제조사 관리' })}>
+      {/* 🗂️ 2026-07-02 IA 통합 탭 — AdminDistributorGradesPage 탭 바 패턴 복제(라이트 테마 고정). */}
+      <div className="flex flex-wrap gap-1.5 border-b border-gray-200 mb-4">
+        {SUP_TABS.map((tb) => (
+          <button key={tb.key} type="button" onClick={() => selectTab(tb)}
+            className={`px-4 py-2 text-sm font-semibold rounded-t-lg -mb-px border-b-2 transition-colors ${tab === tb.key ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-400 hover:text-gray-700'}`}>
+            {tb.label}
+          </button>
+        ))}
+      </div>
+
+      {/* 🏦 '출금 처리' 탭 = 제조사 정산금 출금 패널(embedded — 데이터/핸들러 무변경). */}
+      {tab === 'withdrawals' && <div className="pt-1"><AdminWholesaleWithdrawalsPage embedded /></div>}
+
+      {/* 📦 '상품 승인' 탭 = 링크 패널 — 승인/가격변경 검토는 상품 관리의 '제조사 등록 상품' 탭(embed 는 과대공수라 이동 링크만). */}
+      {tab === 'products' && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 mt-1">
+          <div className="flex items-center gap-2 mb-1">
+            <PackageCheck className="w-4 h-4 text-gray-500" />
+            <p className="text-sm font-semibold text-gray-900">제조사 등록 상품 승인</p>
+          </div>
+          <p className="text-sm text-gray-500">제조사가 등록한 상품의 승인·가격변경 검토는 상품 관리의 &lsquo;제조사 등록 상품&rsquo; 탭에서 처리합니다.</p>
+          <button
+            type="button"
+            onClick={() => navigate('/admin/products?tab=supplier-products')}
+            className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-black"
+          >
+            상품 승인으로 이동 <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {tab === 'accounts' && (<>
       <div className="flex items-center gap-2 mb-4">
         {filters.map(f => (
           <button key={f.key} onClick={() => setStatusFilter(f.key)}
@@ -215,6 +272,8 @@ export default function AdminSuppliersPage() {
                         className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40">
                         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wallet className="w-3 h-3" />} {t('admin.suppliers.payout', { defaultValue: '지급 실행' })} ({formatWon(s.available_amount)})
                       </button>
+                      {/* 💸 2026-07-02 IA 통합 — 돈 나가는 액션 2개(지급 실행 vs 출금 승인) 혼동 방지 안내. */}
+                      <span className="text-[11px] text-gray-400">제조사가 신청한 출금은 &lsquo;출금 처리&rsquo; 탭에서</span>
                       <button onClick={() => setStatus(s.id, 'suspended')} disabled={busy}
                         className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 disabled:opacity-50">
                         <Ban className="w-3 h-3" /> {t('admin.suppliers.suspend', { defaultValue: '정지' })}
@@ -233,6 +292,7 @@ export default function AdminSuppliersPage() {
           })}
         </div>
       )}
+      </>)}
     </AdminLayout>
   )
 }
