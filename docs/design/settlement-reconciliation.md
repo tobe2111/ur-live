@@ -113,8 +113,15 @@
 - 규칙 박제: **새 payout-대상 credit 은 `fee_amount = amount 중 payee net 이 아닌 부분`**(net 이면 0). 단위 테스트 `ledger-payable-net.test.ts`(9 케이스)로 고정.
 - ⚠️ **운영 정리 필요**: 이 수정 *이전에 생성된* pending payouts 는 gross 금액이 저장돼 있음(집계는 생성 시점 값). 송금 전 어드민이 검토/삭제 후 재생성 권장(dedup 은 period 단위라 자동 재계산 안 됨).
 
-### 🚧 ① 일반 쇼핑 주문 → 원장 배선 — 선결 A·B 해결됨, payment.routes 배선만 잔여 (대표 승인+staging)
-선결 A·B 정합 완료로 이제 쇼핑 주문을 원장에 net 크레딧하면 payout 이 올바르게 계산됨. 남은 것은 잠긴 `payment.routes /confirm _confirmSideFx` 에 `SHOPPING_LEDGER_ENABLED` 게이트로 net 크레딧(seller:N amount=net, fee_amount=수수료) 추가 + `reverseOrderAncillaryOnRefund` 에 seller:N debit 역전. 실결제 검증 불가 → staging 필수. (현재 쇼핑탭 숨김이라 재오픈 전 진행.)
+### ✅ ① 일반 쇼핑 주문 → 원장 배선 (2026-07-01, 기본 OFF 그림자)
+선결 A·B 정합 완료 위에 쇼핑 주문 원장 배선을 **그림자(SHOPPING_LEDGER_ENABLED, 기본 OFF)** 로 추가 — fee-resolver 그림자와 동일 2단 스위치. 활성 시 일반 쇼핑 셀러 매출이 원장 net 크레딧 → 주간 자동 payout 에 포함(공구·이용권과 단일 경로 통일).
+- 신규 helper `order-ledger-credit.ts`: `creditSellerOrderToLedger`(멱등 + 이용권/deal_only/공구 주문 skip = 이중적립 0, `amount=gross + fee_amount=수수료`) + `reverseSellerOrderLedger`(seller:N net debit).
+- 배선: `payment.routes /confirm _confirmSideFx`(게이트 블록, 잠금파일 — CLAUDE.md audit log 등재) + `order-refund.ts reverseOrderAncillaryOnRefund`(역전, 게이트 무관 멱등).
+- env `SHOPPING_LEDGER_ENABLED`. 테스트: `ledger-payable-net.test.ts` 에 크레딧→역전 receivable=0 케이스 포함.
+- **활성 절차(staging)**: `SHOPPING_LEDGER_ENABLED=true` 설정 → 쇼핑 결제 1건 → 원장 seller:N net 크레딧 확인 → 환불 → 역전으로 receivable 0 확인 → 운영 반영. (현재 쇼핑탭 숨김 = 라이브 영향 0.)
+
+### ✅ 어드민 과다지급 방지 가드 (2026-07-01)
+- `/admin/payouts/:id/approve` 승인 순간 `getLedgerReceivable(payee) − 이미 approved/sent 다른 payout` 로 재검증 → payout.amount 초과 시 `PAYOUT_EXCEEDS_RECEIVABLE` 409 차단(정정 이전 생성된 gross pending 오지급 방지). 실패 시 가드 skip(기존 동작 보존).
 
 - **선결-A: 원장 seller credit 이 gross vs net 불일치.**
   - 공구(`group-buy.routes.ts:424`)는 `seller:N` 에 **`amount = totalAmount`(gross, 수수료 포함)** 적립(fee 는 `fee_amount` 필드에만).
