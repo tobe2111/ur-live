@@ -41,6 +41,8 @@ export interface WholesaleOrderItem {
   ship_to_name?: string | null       // 드랍십 라인별 받는사람
   ship_to_message?: string | null
   line_status?: string | null
+  courier?: string | null            // 🏭 2026-07-01 라인별 운송장(다제조사/부분발송 — 주문레벨 tracking 은 단일공급자만)
+  tracking_number?: string | null
 }
 
 export interface WholesaleOrderRow {
@@ -53,6 +55,7 @@ export interface WholesaleOrderRow {
   grand_total?: number  // subtotal + 배송비 — 예치금 실제 차감액(표시 기준)
   courier?: string | null
   tracking_number?: string | null
+  refunded_amount?: number  // 🏭 2026-07-01 (라이브 감사): 부분/전액 환불액 — 판매사도 환불 가시성
   created_at: string
   paid_at?: string | null
   shipped_at?: string | null

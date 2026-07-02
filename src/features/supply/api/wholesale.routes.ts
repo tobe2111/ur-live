@@ -355,7 +355,41 @@ app.post('/become-distributor', requireAuth(), rateLimit({ action: 'wholesale-be
       const bizNo = await DB.prepare('SELECT business_number FROM sellers WHERE id = ?')
         .bind(seller.id).first<{ business_number: string | null }>().catch(() => null)
       if (!bizNo?.business_number) {
-        return c.json({ success: true, status: 'needs_business_info', code: 'BUSINESS_INFO_REQUIRED', message: '도매 이용을 위해 사업자 정보 등록이 필요합니다.' })
+        // 🛡️ 2026-07-01 (라이브 전수조사 — 가입 유실 근본수정): 사업자정보 없는 기존 승인셀러가
+        //   가입 폼(사업자번호/등록증/대표자)을 제출하면, 이전엔 저장·알림 없이 needs_business_info 만
+        //   반환 → 프론트는 "신청 완료" 표시 but 어드민 승인큐엔 아무것도 없어 영구 미승인·재제출 무한루프.
+        //   이제 폼이 실제로 왔으면 기존 행에 저장 + status=pending 강등(재검증) + 어드민 벨.
+        const bn = business_number.replace(/[^0-9]/g, '')
+        const hasSubmission = !!(business_name && business_license_url && /^\d{10}$/.test(bn) && representative && representative_phone && manager_name && manager_phone)
+        if (!hasSubmission) {
+          // 빈 body/자동 프로브 — 폼 작성 유도(가입 화면 렌더용).
+          return c.json({ success: true, status: 'needs_business_info', code: 'BUSINESS_INFO_REQUIRED', message: '도매 이용을 위해 사업자 정보 등록이 필요합니다.' })
+        }
+        let ntsStatusUp: string | null = null
+        try {
+          const { ntsCheckStatus } = await import('../../../worker/utils/nts-business-verify')
+          const rows = await ntsCheckStatus((c.env as { NTS_API_KEY?: string }).NTS_API_KEY, [bn])
+          ntsStatusUp = rows[0]?.b_stt || null
+        } catch { /* fail-soft */ }
+        // ⚠️ 소비자 셀러 겸업 보호: 전체 seller `status` 는 건드리지 않는다(pending 강등 시 소비자
+        //   storefront 까지 잠김 — 크로스서비스 사고). 도매 문서 검증 플래그만 pending 으로.
+        await DB.prepare(`UPDATE sellers SET
+            business_name = ?, business_number = ?, representative_name = COALESCE(?, representative_name),
+            phone = COALESCE(?, phone), representative_phone = COALESCE(?, representative_phone),
+            manager_name = COALESCE(?, manager_name), manager_phone = COALESCE(?, manager_phone),
+            manager_email = COALESCE(?, manager_email),
+            business_registration_image_url = ?, business_registration_status = 'pending',
+            nts_status = ?, updated_at = datetime('now')
+          WHERE id = ?`).bind(
+          business_name, bn, representative || null, phone || null, representative_phone || null,
+          manager_name || null, manager_phone || null, manager_email || null,
+          business_license_url, ntsStatusUp, seller.id,
+        ).run().catch(swallow('wholesale:become:bizinfo-update'))
+        await setWholesaleSignupMeta(DB, 'distributor', seller.id, body.categories, body.channel).catch(swallow('wholesale:become:meta'))
+        createDashboardNotification(DB, 'admin', null, 'distributor_pending', '판매사 승인 요청(사업자정보 보완)',
+          `${business_name} (${bn})${ntsStatusUp ? ` — 국세청: ${ntsStatusUp}` : ' — 국세청: 조회 안 됨'}`,
+          '/admin/seller-approval').catch(swallow('wholesale:become:notify-bizinfo'))
+        return c.json({ success: true, status: 'pending', message: '사업자 정보가 접수되었습니다. 관리자 승인 후 이용할 수 있습니다.' })
       }
       const nowSec = Math.floor(Date.now() / 1000)
       const payload = { sub: String(seller.id), seller_id: seller.id, email: seller.email || email, name: seller.name || name, username: seller.username, type: 'seller', status: seller.status, seller_type: seller.seller_type || 'influencer', is_distributor: 1, iat: nowSec, exp: nowSec + 30 * 24 * 60 * 60 }
@@ -1143,7 +1177,10 @@ app.get('/catalog', async (c) => {
 })
 
 // ── GET /catalog/:id ──────────────────────────────────────────────────────────
-app.get('/catalog/:id', async (c) => {
+// 🛡️ 2026-07-01 (라이브 전수조사): :id 를 숫자 전용({[0-9]+})으로 — 이전엔 '/catalog/export'(단가표 CSV,
+//   wholesale-documents 에 등록)까지 이 라우트가 섀도잉해 parseInt('export')=NaN → 400 "잘못된 상품 ID"
+//   (라이브 재현). 숫자 외 세그먼트는 뒤에 등록된 documents 라우트로 정상 폴스루.
+app.get('/catalog/:id{[0-9]+}', async (c) => {
   // cache-auth-ok: 엣지 캐시 인증 누수 차단 — 비로그인 상세만 public CDN 캐시. 로그인 요청은 useWholesaleProduct
   //   가 URL 에 ?v=in 을 붙여 *엣지 캐시 키를 비로그인(v=out)과 분리* → 로그인 판매사가 비로그인 'null 가격'
   //   공유캐시를 절대 안 읽음(로그인 응답은 private,no-store). 대표 신고 "상세만 공급가 미설정 간헐" 근본수정. 2026-06-29.
@@ -1797,7 +1834,8 @@ app.get('/orders', async (c) => {
              (COALESCE(subtotal, 0) + COALESCE(shipping_total, 0)) AS grand_total,
              courier, tracking_number, created_at, paid_at, shipped_at,
              ship_to_name, ship_to_phone, ship_to_address, ship_to_postal, ship_to_message,
-             reject_reason, cancel_reason
+             reject_reason, cancel_reason,
+             COALESCE(refunded_amount, 0) AS refunded_amount
       FROM wholesale_orders WHERE distributor_seller_id = ?
       ORDER BY created_at DESC LIMIT 100
     `).bind(sellerId).all()
@@ -1812,6 +1850,7 @@ app.get('/orders', async (c) => {
         const r = await DB.prepare(
           `SELECT i.wholesale_order_id, i.product_id, i.name, i.qty, i.distributor_unit_price, i.line_total,
                   i.option_label, i.ext_order_no, i.ship_to_name, i.ship_to_message, i.line_status,
+                  i.courier, i.tracking_number,
                   s.business_name AS supplier_name
              FROM wholesale_order_items i LEFT JOIN suppliers s ON s.id = i.supplier_id
             WHERE i.wholesale_order_id IN (${ph})`
@@ -1821,7 +1860,8 @@ app.get('/orders', async (c) => {
         // suppliers 조인 실패(테이블 부재 등) → 제조사명 없이 아이템만(graceful).
         const r = await DB.prepare(
           `SELECT i.wholesale_order_id, i.product_id, i.name, i.qty, i.distributor_unit_price, i.line_total,
-                  i.option_label, i.ext_order_no, i.ship_to_name, i.ship_to_message, i.line_status
+                  i.option_label, i.ext_order_no, i.ship_to_name, i.ship_to_message, i.line_status,
+                  i.courier, i.tracking_number
              FROM wholesale_order_items i WHERE i.wholesale_order_id IN (${ph})`
         ).bind(...ids).all<{ wholesale_order_id: number }>().catch(() => ({ results: [] as Array<{ wholesale_order_id: number }> }))
         itemRows = r.results ?? []
