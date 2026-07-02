@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 데모 플로우 적대적 재검증 → 구멍 1 + 개선 2 (대표 "이상적인지 확인해줘")
+직전 데모 3종 수정을 main 병합 최종 상태로 재검증. **건강 확인**: POST/DELETE 둘 다 앱캐시+edge 피드 무효화(타 세션 병합과 결합) · `products.slug` UNIQUE 없음(retire 리네임 안전) · 소비자 목록 `is_active=1` 필터(retired 미노출) · DELETE 멱등(retired 는 재스캔 제외) · 셀러 폼 이미지 경로는 기존 https 승격 보유. **발견/수정 3건**:
+- 🔴 **ManualDealForm 사진 후보가 같은 mixed content 구멍(진짜 원인 유력)**: `fetchPhotos` 가 raw `link`(http) 그대로 저장 + 후보 그리드 `<img src=thumbnail(http)>` 렌더 — **대표 콘솔 에러(imgnews/shop1.phinf)와 정확히 일치하는 경로**(seed 만 고치고 이걸 놓쳤음). → https 원본만 채택, http 원본은 네이버 CDN 썸네일(https 승격)로 대체, 미리보기도 https.
+- 🟡 **누적 시드 동일 카드 중복**: 같은 10종 반복이라 같은 사진 반복 → `fetchNaverImageUrl` 에 additive `pickIndex`(기본 0=기존 동작 byte-동일) — 후보 배열 로테이션. seed 가 `batchIndex = floor(maxSuffix/10)` 전달 → **채우기 반복 시 배치마다 다른 사진**.
+- 🟢 maxSuffix 정규식 리터럴 → `DEAL_DEMO_SLUG` 상수 동기(`new RegExp`).
+- 검증: tsc 0 · sql 0 · build 0.
+
 ## ✅ 2026-07-01 — 데모 seed 3종 수정: 500(정리 안됨)·mixed content·누적 추가 (대표 "데모 정리 안됨 + 계속 추가되게")
 라이브 신고(seed-demo 500 + http 이미지 mixed content + "한번 채우면 추가 안됨") 3종 근본수정.
 - **DELETE 500 "데모 정리 안됨"**: 일괄 `DELETE FROM products WHERE slug LIKE` 는 데모에 주문/바우처 등 **FK 참조가 하나라도 붙으면 전체 실패(500)**. → 행별 삭제 + 실패 행은 **soft-retire**(`is_active=0` + slug `retired-…-id` 리네임 → 노출/데모카운트 제외, 참조 데이터 보존). 응답/토스트에 `deleted`/`retired` 구분.

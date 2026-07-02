@@ -25,7 +25,11 @@ function isProperPhoto(it: NaverImageItem): boolean {
   return true
 }
 
-export async function fetchNaverImageUrl(env: Env, query: string): Promise<string | null> {
+/**
+ * @param pickIndex 후보 로테이션 인덱스(기본 0 = 기존과 동일). 데모 누적 시드처럼 같은 쿼리를
+ *   반복 호출할 때 배치마다 다른 사진을 고르게 → 동일 카드 중복 노출 완화. 후보 수로 mod.
+ */
+export async function fetchNaverImageUrl(env: Env, query: string, pickIndex = 0): Promise<string | null> {
   const clientId = env.NAVER_SEARCH_CLIENT_ID || env.NAVER_CLIENT_ID
   const clientSecret = env.NAVER_SEARCH_CLIENT_SECRET || env.NAVER_CLIENT_SECRET
   if (!clientId || !clientSecret || !query) return null
@@ -43,13 +47,15 @@ export async function fetchNaverImageUrl(env: Env, query: string): Promise<strin
     // 1) 충분한 크기 + 정상 비율 실사진(https 원본) 우선.
     //    🛡️ 2026-07-01 (mixed content): 모든 단계 https-only — http 원본은 HTTPS 페이지에서
     //    강제승격되다 네이버 원본 호스트(imgnews/shop1.phinf) 인증서 불일치로 깨짐 → 채택 금지.
-    const proper = items.find(isProperPhoto)
-    if (proper?.link) return proper.link
-    // 2) 신뢰 폴백: 네이버 CDN 썸네일(항상 로드 — 깨진 이미지 0). 관련도 순 첫 결과.
-    const thumb = items.find((i) => i.thumbnail && i.thumbnail.startsWith('https://'))?.thumbnail
-    if (thumb) return thumb
+    //    pickIndex 로 후보 로테이션(같은 쿼리 반복 시드의 동일 사진 중복 완화, 기본 0=기존 동작).
+    const propers = items.filter(isProperPhoto)
+    if (propers.length) return propers[pickIndex % propers.length].link || null
+    // 2) 신뢰 폴백: 네이버 CDN 썸네일(항상 로드 — 깨진 이미지 0). 관련도 순 로테이션.
+    const thumbs = items.filter((i) => i.thumbnail && i.thumbnail.startsWith('https://'))
+    if (thumbs.length) return thumbs[pickIndex % thumbs.length].thumbnail || null
     // 3) 최후: https 원본 아무거나.
-    return items.find((i) => i.link && i.link.startsWith('https://'))?.link || null
+    const links = items.filter((i) => i.link && i.link.startsWith('https://'))
+    return links.length ? links[pickIndex % links.length].link || null : null
   } catch {
     return null
   }

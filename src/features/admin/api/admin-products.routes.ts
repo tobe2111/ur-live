@@ -1003,15 +1003,18 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     const slugRows = await DB.prepare(`SELECT slug FROM products WHERE slug LIKE ?`).bind(DEAL_DEMO_SLUG + '%')
       .all<{ slug: string }>().catch(() => ({ results: [] as { slug: string }[] }));
     let maxSuffix = 0;
+    const suffixRe = new RegExp(`^${DEAL_DEMO_SLUG}(\\d+)$`);  // 상수와 동기(리터럴 하드코딩 X)
     for (const row of (slugRows.results || [])) {
-      const m = /^demo-deal-(\d+)$/.exec(String(row.slug || ''));
+      const m = suffixRe.exec(String(row.slug || ''));
       if (m) maxSuffix = Math.max(maxSuffix, Number(m[1]));
     }
     // 🖼️ 2026-07-01 (대표 요청): 가짜(picsum) 대신 네이버 이미지검색으로 실사진 확보(병렬, best-effort).
     //   NAVER 키 없거나 검색 실패 시 각 항목의 기존 img(picsum)로 폴백 → 시딩은 항상 성공.
+    //   배치 회차(batchIndex) 사진 로테이션 → 누적 시드의 동일 카드 중복 노출 완화.
+    const batchIndex = Math.floor(maxSuffix / DEAL_DEMO.length);
     const { fetchNaverImageUrl } = await import('../../../worker/utils/naver-image-search');
     const resolvedImgs = await Promise.all(
-      DEAL_DEMO.map((d) => fetchNaverImageUrl(c.env, d.q).catch(() => null))
+      DEAL_DEMO.map((d) => fetchNaverImageUrl(c.env, d.q, batchIndex).catch(() => null))
     );
     // 🎯 2026-07-01 (대표 "데모 이용권도 매장 지도 매칭 제대로"): 매장 있는 데모는 카카오 검색으로
     //   실제 매장 좌표·주소·place_url 확보(query=업종+지역). 실패/키없음 → null(기존 폴백).

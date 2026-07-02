@@ -74,7 +74,15 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
     try {
       const res = await api.get(`/api/naver/image/search?query=${encodeURIComponent(query)}&display=8`)
       const items: { link?: string; thumbnail?: string }[] = res.data?.data?.items || []
-      const mapped = items.map((it) => ({ link: it.link || '', thumbnail: it.thumbnail || it.link || '' })).filter((x) => x.link)
+      // 🛡️ 2026-07-01 (대표 신고 — mixed content): http 원본(imgnews/shop1.phinf 등)은 HTTPS 페이지에서
+      //   강제승격되다 인증서 불일치로 깨짐 → https 원본만, 아니면 네이버 CDN 썸네일(https 승격)로 대체.
+      const mapped = items
+        .map((it) => {
+          const thumb = (it.thumbnail || '').replace(/^http:/, 'https:')
+          const link = it.link && it.link.startsWith('https://') ? it.link : thumb
+          return { link, thumbnail: thumb || link }
+        })
+        .filter((x) => x.link.startsWith('https://'))
       setPhotos(mapped)
       if (mapped.length === 0) toast.info('네이버 사진 결과가 없어요 (다른 매장명으로 시도)')
     } catch (e: unknown) {
