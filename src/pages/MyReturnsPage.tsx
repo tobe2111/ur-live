@@ -32,7 +32,7 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 export default function MyReturnsPage() {
   const { t } = useTranslation()
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query. 송장 등록 후 캐시만 갱신(재요청 X).
-  const { data: returns = [], isLoading: loading, isError } = useMyReturns()
+  const { data: returns = [], isLoading: loading, isError, refetch } = useMyReturns()
   const applyTracking = useApplyReturnTracking()
   const error = isError ? '반품 목록을 불러올 수 없습니다' : null
   const [trackingTarget, setTrackingTarget] = useState<{ carrier: string; number: string } | null>(null)
@@ -44,7 +44,7 @@ export default function MyReturnsPage() {
         <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
             <h1 className="text-lg font-bold">↩️ {t('returns.title', { defaultValue: '내 반품' })}</h1>
-            <Link to="/my-orders" className="text-sm text-pink-500 dark:text-pink-400 hover:underline">
+            <Link to="/my-orders" className="text-sm text-gray-600 dark:text-gray-300 hover:underline">
               {t('returns.backToOrders', { defaultValue: '주문 목록' })}
             </Link>
           </div>
@@ -54,7 +54,12 @@ export default function MyReturnsPage() {
           {loading ? (
             <p className="text-center text-gray-500 dark:text-gray-400 py-12">{t('common.loading')}</p>
           ) : error ? (
-            <p className="text-center text-red-500 py-12">{error}</p>
+            <div className="text-center py-12">
+              <p className="text-sm text-red-500 mb-4">{error}</p>
+              <button onClick={() => refetch()} className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">
+                {t('common.retry', { defaultValue: '다시 시도' })}
+              </button>
+            </div>
           ) : returns.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-5xl mb-3">📦</p>
@@ -98,7 +103,7 @@ export default function MyReturnsPage() {
                                 carrier: r.return_shipping_company!,
                                 number: r.return_tracking_number!,
                               })}
-                              className="text-xs text-pink-500 dark:text-pink-400 font-bold hover:underline"
+                              className="text-xs text-gray-900 dark:text-white font-bold hover:underline"
                             >
                               📦 추적 →
                             </button>

@@ -187,7 +187,8 @@
     "unitMan": "",
     "kakaoConsult": "Support KakaoTalk",
     "share": "Partager",
-    "currencyWon": "KRW"
+    "currencyWon": "KRW",
+    "checkNetworkRetry": "Vérifiez votre réseau puis réessayez"
   },
   "seller": {
     "dashboard": "Tableau de bord",
@@ -2142,7 +2143,8 @@
     },
     "mailOrderNumber": "N° de vente à distance",
     "mailOrderNumberPlaceholder": "ex. 2026-Seoul-01234",
-    "mailOrderNumberHint": "Affiché publiquement dans les infos vendeur de votre linkshop"  },
+    "mailOrderNumberHint": "Affiché publiquement dans les infos vendeur de votre linkshop"
+  },
   "admin": {
     "login": {
       "title": "Connexion administrateur",
@@ -4188,7 +4190,9 @@
     "logout": "Se déconnecter",
     "coupons": "Coupons",
     "vouchers": "Bons",
-    "unitSheet": ""
+    "unitSheet": "",
+    "editProfile": "Modifier le profil",
+    "refundPolicy": "Politique de remboursement et retour"
   },
   "theme": {
     "title": "Thème",
@@ -4219,7 +4223,8 @@
     "cancelFail": "Échec de l'annulation.",
     "cancelError": "Une erreur s'est produite lors de l'annulation.",
     "tabCart": "Panier",
-    "tabOrders": "Commandes"
+    "tabOrders": "Commandes",
+    "filterAll": "Tous"
   },
   "giftClaim": {
     "errorAddressInvalid": "Veuillez saisir l'adresse correctement",
@@ -4337,7 +4342,8 @@
     "statusExpired": "Expiré",
     "emptyTitle": "Aucun achat groupé actif",
     "emptyHint": "Économisez entre amis",
-    "browseProducts": "Voir les produits"
+    "browseProducts": "Voir les produits",
+    "loadFailed": "Impossible de charger votre activité"
   },
   "interestList": {
     "title": "Restaurants enregistrés",
@@ -4461,7 +4467,8 @@
     "stepGift2": "Envoyé\npar MMS",
     "stepGift3": "Montrer\nen magasin",
     "deal": "deal",
-    "heroBalanceLabelGift": "Solde des bons cadeaux"
+    "heroBalanceLabelGift": "Solde des bons cadeaux",
+    "loadFailed": "Impossible de charger vos bons"
   },
   "sellerWaiting": {
     "title": "Approbation Vendeur en Attente",
@@ -5651,7 +5658,8 @@
     "previewLabel": "[TODO:fr] 미리보기",
     "expiringSoon": "[TODO:fr] ⏰ 곧 만료됩니다",
     "accessError": "[TODO:fr] 접근 불가 ({{status}})",
-    "accessFailed": "[TODO:fr] 접근 실패"
+    "accessFailed": "[TODO:fr] 접근 실패",
+    "loadFailed": "Impossible de charger votre bibliothèque"
   },
   "shopping": {
     "sectionTitle": "Mon activité",
@@ -6267,7 +6275,18 @@
     "settingsGroupTitle": "Paramètres",
     "settingsGroupSub": "Notifications · Thème · Langue · Infos appli",
     "affiliateLinkTitle": "Liens de recommandation",
-    "affiliateLinkSub": "Gagnez des deals via vos liens — voir les résultats"
+    "affiliateLinkSub": "Gagnez des deals via vos liens — voir les résultats",
+    "dealBalance": "Mon solde Deal",
+    "charge": "Recharger",
+    "dealHistory": "Historique",
+    "balanceRetry": "Recharger le solde",
+    "referralEarnedTitle": "Gains de parrainage",
+    "referralStartTitle": "Recommandez et gagnez",
+    "referralCountN": "{{n}} parrainages",
+    "referralStartSub": "Partagez sur les réseaux — gagnez quand vos amis paient",
+    "curatorTitle": "Revenus de mon linkshop",
+    "curatorCashSub": "Règlement en espèces · retirable",
+    "curatorDealSub": "Cumulé · 1 Deal = ₩1"
   },
   "push": {
     "promptTitle": "Activer les notifications ?",
@@ -6323,5 +6342,32 @@
   "groupBuy.categoryBeauty": "💇 Beauté",
   "groupBuy.categoryStay": "🏨 Hébergement",
   "groupBuy.categoryEtc": "🎯 Autres",
-  "groupBuy.stayBadge": "Séjour"
+  "groupBuy.stayBadge": "Séjour",
+  "roleCta": {
+    "myShortcuts": "Mes raccourcis",
+    "startNewRole": "Commencer un nouveau rôle",
+    "linkshop": "Mon linkshop",
+    "linkshopDesc": "Recommandez bons et offres, gagnez des récompenses",
+    "sellerDash": "Tableau de bord vendeur",
+    "sellerDashDesc": "Gérez produits, offres et règlements",
+    "agencyDash": "Tableau de bord agence",
+    "agencyDashDesc": "Revenus des boutiques partenaires",
+    "proposeGb": "Proposer un achat groupé local",
+    "proposeGbDesc": "Suggérez une boutique, nous ouvrons l’offre",
+    "openShop": "Ouvrir ma boutique",
+    "openShopDesc": "Enregistrement pro → vendez produits et bons",
+    "agencyBiz": "Activité d’agence",
+    "agencyBizDesc": "Recrutez des boutiques → 2% de revenus à vie"
+  },
+  "inviteCard": {
+    "title": "Inviter des amis",
+    "copied": "Lien d’invitation copié",
+    "statEarned": "Deals gagnés",
+    "statDone": "Terminé",
+    "statPending": "En attente",
+    "copy": "Copier",
+    "recent": "Invitations récentes",
+    "waitingPurchase": "Achat en attente",
+    "friend": "Ami"
+  }
 }

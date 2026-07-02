@@ -65,7 +65,8 @@ export default function MyGroupBuysPage() {
   const [tab, setTab] = useState<TabKey>('all');
 
   // 🛡️ 2026-06-01 Tier2: 3개 엔드포인트 + 상품 hydration 로드를 useMyGroupBuys 단일 쿼리로 캡슐화.
-  const { data, isLoading: loading } = useMyGroupBuys();
+  // 🛡️ 2026-07-02: isError 분기 — 훅이 3개 엔드포인트 전멸 시 throw 하게 바뀜(빈 목록 위장 방지).
+  const { data, isLoading: loading, isError, refetch } = useMyGroupBuys();
   const referralGroups: ReferralGroup[] = data?.referralGroups ?? [];
   const vouchers: VoucherEntry[] = data?.vouchers ?? [];
   const community: CommunityGroupBuy[] = data?.community ?? [];
@@ -211,7 +212,7 @@ export default function MyGroupBuysPage() {
             onClick={() => setTab(item.key)}
             className={`flex-1 min-w-[80px] py-3 text-sm font-medium transition-colors whitespace-nowrap ${
               tab === item.key
-                ? 'text-gray-900 dark:text-white border-b-2 border-gray-900'
+                ? 'text-gray-900 dark:text-white border-b-2 border-gray-900 dark:border-white'
                 : 'text-gray-500 dark:text-gray-400 border-b-2 border-transparent'
             }`}
           >
@@ -226,7 +227,16 @@ export default function MyGroupBuysPage() {
       <main className="ur-content-narrow px-4 lg:px-8 py-4 pb-24">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-6 h-6 border-2 border-gray-300 dark:border-[#3A3A3A] border-t-gray-900 rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-gray-300 dark:border-[#3A3A3A] border-t-gray-900 dark:border-t-white rounded-full animate-spin" />
+          </div>
+        ) : isError ? (
+          /* 🛡️ 2026-07-02: 로드 전멸을 "참여 내역 없음"으로 위장하지 않음 — 에러 + 재시도. */
+          <div className="text-center py-20">
+            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">{t('myGroupBuys.loadFailed', { defaultValue: '참여 내역을 불러오지 못했어요' })}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
+            <button onClick={() => refetch()} className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">
+              {t('common.retry', { defaultValue: '다시 시도' })}
+            </button>
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState onBrowse={() => navigate('/browse')} />

@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Download, Play, FileText, BookOpen, Music, Image as ImageIcon, Clock, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Download, Play, FileText, BookOpen, Music, Image as ImageIcon, Clock, AlertTriangle } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
@@ -39,7 +39,8 @@ export default function MyDigitalLibraryPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (보관함 목록 캐싱).
-  const { data: items = [], isLoading: loading } = useDigitalLibrary()
+  // 🛡️ 2026-07-02: isError 분기 — 훅이 캐시 없는 실패를 throw 하게 바뀜(빈 보관함 위장 방지).
+  const { data: items = [], isLoading: loading, isError, refetch } = useDigitalLibrary()
   const qc = useQueryClient()
   const [opening, setOpening] = useState<string | null>(null)
 
@@ -97,6 +98,10 @@ export default function MyDigitalLibraryPage() {
       <SEO title={t('digitalLibrary.seoTitle', { defaultValue: '디지털 보관함 - 유어딜' })} description={t('digitalLibrary.seoDesc', { defaultValue: '구매한 전자책, 강의, 가이드 보관함' })} url="/my/digital" />
       <div className="ur-content-narrow px-4 py-6 lg:py-10 mx-auto" style={{ width: '100%' }}>
         <header className="mb-6">
+          {/* 🛡️ 2026-07-02: 위성 페이지 이탈 동선 — 뒤로가기 (다른 My* 페이지와 통일) */}
+          <button onClick={() => navigate(-1)} className="mb-2 -ml-1.5 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1A1A]" aria-label={t('common.back', { defaultValue: '뒤로' })}>
+            <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
+          </button>
           <h1 className="text-xl lg:text-3xl font-bold text-gray-900 dark:text-white">{t('digitalLibrary.title', { defaultValue: '디지털 보관함' })}</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('digitalLibrary.subtitle', { defaultValue: '전자책 · 강의 · 가이드 · 영상 — 구매한 콘텐츠 모음' })}</p>
         </header>
@@ -106,6 +111,14 @@ export default function MyDigitalLibraryPage() {
             {[1, 2, 3].map(i => (
               <div key={i} className="h-24 bg-gray-100 dark:bg-[#1A1A1A] rounded-xl animate-pulse" />
             ))}
+          </div>
+        ) : isError ? (
+          <div className="text-center py-16">
+            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">{t('digitalLibrary.loadFailed', { defaultValue: '보관함을 불러오지 못했어요' })}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
+            <button onClick={() => refetch()} className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">
+              {t('common.retry', { defaultValue: '다시 시도' })}
+            </button>
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-16">
