@@ -753,45 +753,57 @@ paymentsRouter.post('/confirm', async (c) => {
       }
     }
 
-    // 🛡️ 2026-05-19: KT Alpha 교환권 자동 발송 (auto_voucher_send=1 상품 결제 성공 시).
-    try {
-      const { autoSendKtAlphaVouchersForOrders } = await import('../utils/kt-alpha-auto-send')
-      await autoSendKtAlphaVouchersForOrders(
-        c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
-        updatedOrders.map(o => ({
-          id: typeof o.id === 'number' ? o.id : parseInt(String(o.id), 10),
-          shipping_phone: (o as unknown as { shipping_phone?: string }).shipping_phone,
-          user_id: o.user_id,
-        })),
-        String(userId),
-      )
-    } catch (err) {
-      logError('payment.kt_alpha_send_unexpected', { orderNumber, error: String(err).slice(0, 300) })
-    }
+    // ⚡ 2026-07-02 [UNLOCK] (대표 승인 — 결제 체감속도): KT 발송(외부 HTTP, prod 실측 1~4.5s) +
+    //   다단계 추천 커미션(트리 DB 왕복 다수)을 응답 후(waitUntil)로 이동 — confirm 응답을 동기로
+    //   막던 마지막 큰 두 블록. 내용/순서/에러처리 byte-불변, 실행 시점만. 안전판: 둘 다 fail-soft +
+    //   KT 는 per-order 멱등 + kt-alpha-voucher-retry cron(failed 재시도 + 미발송 스위퍼) 백스톱,
+    //   커미션은 confirmClaim CAS 로 단일실행 보장. ctx 없으면 동기 fallback.
+    {
+      const _postConfirmBg = async () => {
+        // 🛡️ 2026-05-19: KT Alpha 교환권 자동 발송 (auto_voucher_send=1 상품 결제 성공 시).
+        try {
+          const { autoSendKtAlphaVouchersForOrders } = await import('../utils/kt-alpha-auto-send')
+          await autoSendKtAlphaVouchersForOrders(
+            c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
+            updatedOrders.map(o => ({
+              id: typeof o.id === 'number' ? o.id : parseInt(String(o.id), 10),
+              shipping_phone: (o as unknown as { shipping_phone?: string }).shipping_phone,
+              user_id: o.user_id,
+            })),
+            String(userId),
+          )
+        } catch (err) {
+          logError('payment.kt_alpha_send_unexpected', { orderNumber, error: String(err).slice(0, 300) })
+        }
 
-    // ── 다단계 추천 커미션 계산 (fire-and-forget) ──────────────────────────
-    // 결제 완료 후 구매자의 추천 트리를 확인하여 상위 추천인에게 커미션 지급
-    // 🛡️ 2026-05-12: silent catch → logError + Sentry. 비결정적 누락은 결제 자체에 영향 없지만
-    //   누락 발견을 위해 관측성 필수 (이전: console 도 없어 운영자가 알 길 없음).
-    try {
-      const { calculateMultiTierCommission } = await import('../../features/referral/api/referral-tree.routes');
-      for (const order of updatedOrders) {
-        const oid = typeof order.id === 'number' ? order.id : parseInt(String(order.id), 10);
-        if (oid && order.total_amount) {
-          await calculateMultiTierCommission(c.env.DB, oid, order.total_amount, String(userId));
+        // ── 다단계 추천 커미션 계산 (fire-and-forget) ──────────────────────────
+        // 결제 완료 후 구매자의 추천 트리를 확인하여 상위 추천인에게 커미션 지급
+        // 🛡️ 2026-05-12: silent catch → logError + Sentry. 비결정적 누락은 결제 자체에 영향 없지만
+        //   누락 발견을 위해 관측성 필수 (이전: console 도 없어 운영자가 알 길 없음).
+        try {
+          const { calculateMultiTierCommission } = await import('../../features/referral/api/referral-tree.routes');
+          for (const order of updatedOrders) {
+            const oid = typeof order.id === 'number' ? order.id : parseInt(String(order.id), 10);
+            if (oid && order.total_amount) {
+              await calculateMultiTierCommission(c.env.DB, oid, order.total_amount, String(userId));
+            }
+          }
+        } catch (err) {
+          logError('payment.referral_commission_failed', {
+            orderNumber,
+            orderIds: updatedOrders.map(o => o.id),
+            userId: String(userId),
+            error: String(err).slice(0, 300),
+          });
+          captureException(err as Error, {
+            tags: { area: 'payment', kind: 'referral_commission', severity: 'warning' },
+            extra: { orderNumber },
+          }).catch(swallow('payment:sentry-referral'));
         }
       }
-    } catch (err) {
-      logError('payment.referral_commission_failed', {
-        orderNumber,
-        orderIds: updatedOrders.map(o => o.id),
-        userId: String(userId),
-        error: String(err).slice(0, 300),
-      });
-      captureException(err as Error, {
-        tags: { area: 'payment', kind: 'referral_commission', severity: 'warning' },
-        extra: { orderNumber },
-      }).catch(swallow('payment:sentry-referral'));
+      let _pcDeferred = false
+      try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_postConfirmBg()); _pcDeferred = true } } catch { /* no ctx */ }
+      if (!_pcDeferred) await _postConfirmBg()
     }
 
     // ── 알림톡 자동 발송 (주문 완료) ──────────────────────────────────────
