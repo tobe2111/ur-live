@@ -90,10 +90,9 @@ export default function SearchPage() {
     }
   }, [isError])
 
-  const getDiscountedPrice = (price: number, discountRate: number) => {
-    // 🛡️ 2026-04-22: 서버 라운딩(Math.round) 과 통일 — 표시-결제 1원 차이 방지
-    return Math.round(price * (1 - discountRate / 100))
-  }
+  // 🛡️ 2026-07-02 (쇼핑 전수조사): price 는 이미 최종 판매가(서버 과금가) — 정렬/필터는 이 값 그대로.
+  //   이전엔 price × (1-rate) 로 이중 할인해 가격 필터/정렬이 실제 판매가와 어긋났음. discount_rate 는 표시용.
+  const getDiscountedPrice = (price: number, _discountRate?: number) => price
 
   const handleSearch = (searchQuery: string) => {
     // 🛡️ 2026-05-19: 최근 검색어 저장 (사용자 요청).
@@ -110,7 +109,11 @@ export default function SearchPage() {
     try {
       const response = await api.get(`/api/search/suggestions?q=${encodeURIComponent(value)}`)
       if (response.data.success) {
-        setSuggestions(response.data.data.suggestions || [])
+        // 🛡️ 2026-07-02 (쇼핑 전수조사): 서버는 data:string[] 직반환 — 이전엔 data.data.suggestions(항상
+        //   undefined)를 읽고 타입도 {type,text} 객체를 기대해 자동완성 드롭다운이 절대 안 떴음.
+        const raw = response.data.data
+        const list: string[] = Array.isArray(raw) ? raw : (raw?.suggestions ?? [])
+        setSuggestions(list.map((text: string) => ({ type: 'product' as const, text })))
       }
     } catch (error) {
       if (import.meta.env.DEV) console.error('Failed to load suggestions:', error)

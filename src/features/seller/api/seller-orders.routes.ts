@@ -783,6 +783,9 @@ sellerOrdersRoutes.post('/products', async (c) => {
     const body = await c.req.json<{
       name: string;
       description?: string;
+      // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/이미지 — 이전엔 POST 에서 저장 안 돼 셀러가 쓴 상세가 소실.
+      long_description?: string;
+      detail_images?: string;
       price: number;
       original_price?: number;
       stock?: number;
@@ -874,6 +877,14 @@ sellerOrdersRoutes.post('/products', async (c) => {
     //   기존 INSERT 누락으로 이용권 등록 시 정가가 저장 안 돼 할인율이 안 떴음.
     if (body.original_price !== undefined && body.original_price !== null && Number.isFinite(body.original_price)) {
       try { await db.prepare(`UPDATE products SET original_price = ? WHERE id = ?`).bind(body.original_price, productId).run() } catch { /* column may not exist */ }
+    }
+
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/이미지 — INSERT 컬럼셋 밖이라 별도 fail-soft UPDATE.
+    if (typeof body.long_description === 'string' && body.long_description.length <= 50000) {
+      try { await db.prepare(`UPDATE products SET long_description = ? WHERE id = ?`).bind(body.long_description, productId).run() } catch { /* column may not exist */ }
+    }
+    if (typeof body.detail_images === 'string' && body.detail_images.length <= 100000) {
+      try { await db.prepare(`UPDATE products SET detail_images = ? WHERE id = ?`).bind(body.detail_images, productId).run() } catch { /* column may not exist */ }
     }
 
     // 🍽️ 2026-06-17 (#5 대표 메뉴): 메뉴(OCR/수동)를 product_supply_meta 사이드테이블에 저장 → 공구 상세가 표시.
@@ -1008,6 +1019,9 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       stock?: number;
       image_url?: string;
       category?: string;
+      // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/상세 이미지 — 이전 PUT 화이트리스트 누락으로 저장 무음 폐기.
+      long_description?: string;
+      detail_images?: string;
       live_only_price?: number | null;
       live_price_enabled?: boolean;
       status?: string;
@@ -1079,6 +1093,13 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       values.push(body.image_url, body.image_url);
     }
     if (body.category !== undefined) { fields.push('category = ?'); values.push(body.category); }
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/이미지 저장(길이·형식 방어). detail_images 는 JSON 문자열.
+    if (body.long_description !== undefined && (typeof body.long_description === 'string') && body.long_description.length <= 50000) {
+      fields.push('long_description = ?'); values.push(body.long_description);
+    }
+    if (body.detail_images !== undefined && (typeof body.detail_images === 'string') && body.detail_images.length <= 100000) {
+      fields.push('detail_images = ?'); values.push(body.detail_images);
+    }
     if (body.live_only_price !== undefined) { fields.push('live_only_price = ?'); values.push(body.live_only_price); }
     if (body.live_price_enabled !== undefined) { fields.push('live_price_enabled = ?'); values.push(body.live_price_enabled ? 1 : 0); }
     if (body.status !== undefined) { fields.push('status = ?'); values.push(body.status); }

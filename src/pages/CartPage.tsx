@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -140,11 +140,23 @@ function CartPageContent() {
   }, [])
 
   // 🔄 장바구니 데이터 로딩 시 선택 상태 초기화
-  // ✅ UX H14 FIX: localStorage hasCartItems 제거 (React Query 캐시가 신뢰 가능 소스)
+  // 🛡️ 2026-07-02 (쇼핑 전수조사): 첫 로드에만 전체선택, 이후 refetch(수량변경/삭제 등)에서는 기존 선택
+  //   보존(사라진 항목만 제거). 이전엔 매 mutation 마다 전체선택으로 리셋 → 부분선택이 초기화돼
+  //   의도 안 한 상품까지 주문에 포함되던 버그.
+  const selectionInitedRef = useRef(false)
   useEffect(() => {
-    if (cartItems.length > 0) {
-      setSelectedIds(new Set(cartItems.map((item: CartItem) => item.id as string | number)))
-    }
+    if (cartItems.length === 0) { selectionInitedRef.current = false; return }
+    setSelectedIds(prev => {
+      if (!selectionInitedRef.current) {
+        selectionInitedRef.current = true
+        return new Set(cartItems.map((item: CartItem) => item.id as string | number))
+      }
+      // 기존 선택 중 여전히 존재하는 항목만 유지.
+      const alive = new Set(cartItems.map(i => String(i.id)))
+      const next = new Set<string | number>()
+      prev.forEach(id => { if (alive.has(String(id))) next.add(id) })
+      return next
+    })
   }, [cartItems])
 
   const allSelected = cartItems.length > 0 && selectedIds.size === cartItems.length
@@ -176,8 +188,10 @@ function CartPageContent() {
 
     const newQuantity = item.quantity + delta
     if (newQuantity < 1) return
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 재고 초과는 '증가(delta>0)'일 때만 차단 — 이전엔 감소도 막혀서
+    //   (예: 담은 뒤 재고가 줄어 qty10>stock3) 수량을 재고 이하로 줄일 수 없고 삭제만 가능했음.
     const stock = item.product_stock
-    if (stock !== undefined && stock !== null && newQuantity > stock) return
+    if (delta > 0 && stock !== undefined && stock !== null && newQuantity > stock) return
     if (updating) return
 
     setUpdating(true)

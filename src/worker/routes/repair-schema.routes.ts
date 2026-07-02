@@ -793,6 +793,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   - products.long_description: 어드민 상품 상세 마크다운 설명.
     //   - products.compare_at_price: 할인 전 가격 (정가) — Cafe24 sync / 어드민 상품 등록 시 사용.
     { desc: 'products.long_description', sql: "ALTER TABLE products ADD COLUMN long_description TEXT" },
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): detail_images 를 repair 에도 등록 — migration 0004 에만 있어
+    //   fresh/미적용 env 부재 가능. PRODUCT_DETAIL_FIELDS 에 추가하려면 repair 로 복구 가능해야 함.
+    { desc: 'products.detail_images', sql: "ALTER TABLE products ADD COLUMN detail_images TEXT" },
     { desc: 'products.compare_at_price', sql: "ALTER TABLE products ADD COLUMN compare_at_price INTEGER" },
     //   - products.dominant_color: 카드 이미지 placeholder hex 색 (클라이언트 canvas 1x1 lazy 백필).
     { desc: 'products.dominant_color', sql: "ALTER TABLE products ADD COLUMN dominant_color TEXT" },
