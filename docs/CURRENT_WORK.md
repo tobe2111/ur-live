@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-02 — 유저→사업자 유저(셀러) 전환 단일 퍼널 (대표 "B — 가장 이상적인 형태, 헷갈리지 않게")
+감사 결과: 진입점 5곳 → 가입화면 3개(레거시 별도계정 `/seller/register` · 막다른 `/seller/register/business` · supplier) → 백엔드 2개 · seller_type 제각각 → 유저가 어디서 누르냐에 따라 다른 세계. **전면 단일 퍼널로 통일**:
+- **단일 관문 = `/seller/register/supplier`** (카카오 세션 같은-계정 업그레이드, store_owner). 레거시 `/seller/register`·`/seller/signup`·`/seller/register/business` 는 **쿼리 보존 리다이렉트**(에이전시 ?agency= 링크 생존). 레거시 페이지 3개(SellerRegisterPage=별도 아이디/비번 독립계정 · SellerRegisterBusinessPage=막다른 안내 · SellerApplyModal=제3의 폼, influencer 하드코딩) **삭제**.
+- **관문 정비**: 명칭 SSOT("사업자 유저"/"내 쇼핑몰", 폐기어 "인플루언서 자동 추천" 제거) + 마운트 로그인 게이트(폼 다 채운 뒤 401 발견 제거) + 크리에이터 탈출구("추천만 원하면 가입 없이 내 링크샵 →", JoinChoice 모델) + 신청 성공 → `/seller/waiting`.
+- **`/seller/waiting` = 상태 정본**: 30초 자동 갱신 + 승인 감지 시 **switch-to-seller 로 셀러 토큰 자동 발급 후 대시보드 진입**(기존: 토큰 없이 /seller → requireSeller 가 이메일/비번 로그인으로 튕김). 미신청자는 단일 관문으로(기존: 막다른 business).
+- **닫힌 루프**: admin approve/reject 가 **소비자 앱 알림함(notifyUser)** 에도 통보(기존: 아직 못 들어가는 셀러 대시보드 벨 + 알림톡만) — 링크 `/seller/waiting`. reject 시 `sellers.reject_reason` 도 저장(기존 admin-tools 경유만 저장 → waiting 페이지 사유 누락).
+- **진입점 통일**: BottomNav ➕(로그인=관문 직행 / 로그아웃=카카오 로그인→관문, 레거시 별도가입 제거, 라벨 "내 쇼핑몰 열기 (사업자)") · 마이페이지 SellerSwitchInline **카카오 유저 숨김 제거**(한국=카카오 전용이라 사실상 전원에게 진입점이 안 보였음) + 심사중/반려 배지 → waiting 링크.
+- i18n `seller.gateway.*` 등 22키 × 6개 언어. 검증: tsc 0 · build 0 · dead-link 0 · route-mounts 11 pass · theme 0 · file-size rebaseline(승인 성장분 3파일). ⚠️ guide-update-pending(셀러 가이드 가입 절차 문구). ⚠️ staging: 카카오 유저 가입→승인→알림 탭→대시보드 진입 E2E 1회 권장.
+
 ## ✅ 2026-07-01 — 어드민 동네딜 수정 홈 즉시 반영(캐시 무효화) + 공구상세 하단바 축소 + 로더 통일 착수 (대표 라이브 신고 연속)
 - **D 동네딜 캐시 무효화(대표 "수정해도 홈에 바로 반영 안됨")**: `/admin/dongnedeal-import` 뮤테이션(`admin-products.routes` create·patch·seed-demo POST/DELETE·bulk-import 5곳)이 **공구 목록 앱 캐시(`group_buy_products:*`)를 전혀 무효화 안 함** — 셀러 상품등록은 `invalidateGroupBuyProductsCache` 호출하는데 어드민만 누락 → 홈/동네딜 stale. 셀러와 동일 패턴으로 5곳 배선(SESSION_KV, fail-open). **잔여**: edge/SSR `caches.default`(≤300s)·CDN(≤900s) TTL 은 별도 — 앱 캐시 무효화로 TTL 만료 시 fresh 재계산 보장(이전엔 만료돼도 stale 앱캐시 재사용). 진짜 0초는 edge 퍼지(잠금영역) 필요.
 - **B 공구상세 하단 구매바 높이 축소(대표 "하단이 너무 높다")**: `GroupBuyDetailPage` footer 패딩 11/13→7/8·행 마진 10/9→6/6·버튼 53→50 (약 19px↓). 탭 타겟 유지.

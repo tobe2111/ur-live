@@ -2114,6 +2114,26 @@
       "approve": "Aprobar",
       "approved": "Factura fiscal aprobada",
       "approveFailed": "Aprobación fallida"
+    },
+    "gateway": {
+      "title": "Cuenta de negocio — abrir mi tienda",
+      "heroTitle": "Vende directamente desde mi tienda",
+      "heroDesc": "Una verificación de negocio convierte tu linkshop en una tienda real. Publica productos y vales, y recibe liquidaciones (comisión base 5%).",
+      "kakaoBanner": "Se añadirán funciones de venta a esta cuenta de Kakao. Tu linkshop e historial se mantienen.",
+      "escape": "¿Solo quieres recomendar productos por comisión? Sin registro —",
+      "escapeLink": "ir a mi linkshop",
+      "escapeSuffix": " y empieza ya.",
+      "applied": "¡Solicitud enviada! Yendo a la página de estado.",
+      "alreadyActive": "Ya eres usuario de negocio",
+      "alreadyActiveDesc": "Puedes ir directo al panel de vendedor.",
+      "pendingTitle": "Pendiente de aprobación",
+      "pendingDesc": "Te avisaremos por la app y KakaoTalk tras la revisión (1-2 días hábiles).",
+      "goDashboard": "Panel de vendedor",
+      "viewStatus": "Ver estado de revisión",
+      "reviewNote": "Revisión en 1-2 días hábiles → resultado por app y KakaoTalk. Aprobación automática si coincide con NTS.",
+      "reviewNote2": "Una vez aprobado, publica productos y vales desde el panel.",
+      "submitting": "Enviando...",
+      "submit": "Solicitar como negocio"
     }
   },
   "admin": {
@@ -3610,7 +3630,8 @@
     "sellerSignup": "Registro de vendedor",
     "sheetTitleCreate": "Crear",
     "proposeDeal": "Proponer compra grupal local",
-    "proposeDealDesc": "Sugiere una tienda y reuniremos gente para abrirla"
+    "proposeDealDesc": "Sugiere una tienda y reuniremos gente para abrirla",
+    "openMyShop": "Abrir mi tienda (negocio)"
   },
   "broadcastNotify": {
     "loginRequired": "Inicio de sesión requerido",
@@ -5356,7 +5377,10 @@
     "applyAria": "Convertirse en vendedor",
     "applyLabel": "Convertirse en vendedor",
     "successMsg": "¡Redirigiendo al panel de vendedor!",
-    "errorMsg": "Error al cambiar a vendedor"
+    "errorMsg": "Error al cambiar a vendedor",
+    "openMyShop": "Abrir mi tienda",
+    "pendingAria": "Ver estado de revisión",
+    "statusAria": "Ver estado de vendedor"
   },
   "pwa": {
     "install": {

@@ -2789,6 +2789,26 @@
       "approve": "承認",
       "approved": "税金計算書を承認しました",
       "approveFailed": "承認に失敗しました"
+    },
+    "gateway": {
+      "title": "事業者ユーザー登録 — マイショップを開く",
+      "heroTitle": "マイショップで直接販売",
+      "heroDesc": "事業者認証1回でリンクショップが本物のショップに。商品・利用券の登録＋現金精算（基本手数料5%）。",
+      "kakaoBanner": "このカカオアカウントに販売機能が追加されます。リンクショップ・購入履歴はそのまま。",
+      "escape": "商品のおすすめ・コミッションだけなら登録不要 —",
+      "escapeLink": "マイリンクショップ",
+      "escapeSuffix": "ですぐ始められます。",
+      "applied": "申請完了！審査状況ページへ移動します。",
+      "alreadyActive": "すでに事業者ユーザーです",
+      "alreadyActiveDesc": "セラーダッシュボードへ移動できます。",
+      "pendingTitle": "承認待ち",
+      "pendingDesc": "審査後、アプリ通知・カカオトークでご案内します（1〜2営業日）。",
+      "goDashboard": "セラーダッシュボード",
+      "viewStatus": "審査状況を見る",
+      "reviewNote": "申請後1〜2営業日で審査 → アプリ通知・カカオトークで結果案内。国税庁情報一致で自動承認。",
+      "reviewNote2": "承認後、ダッシュボードで商品・利用券を登録できます。",
+      "submitting": "申請中...",
+      "submit": "事業者登録を申請"
     }
   },
   "admin": {
@@ -4285,7 +4305,8 @@
     "sellerSignup": "セラー会員登録",
     "sheetTitleCreate": "作成",
     "proposeDeal": "近所の共同購入を提案",
-    "proposeDealDesc": "お店を提案すると人を集めて開催します"
+    "proposeDealDesc": "お店を提案すると人を集めて開催します",
+    "openMyShop": "マイショップを開く（事業者）"
   },
   "broadcastNotify": {
     "loginRequired": "ログインが必要です",
@@ -5356,7 +5377,10 @@
     "applyAria": "セラーとして活動する",
     "applyLabel": "セラーとして活動する",
     "successMsg": "セラーダッシュボードへ移動します!",
-    "errorMsg": "セラー切替に失敗しました"
+    "errorMsg": "セラー切替に失敗しました",
+    "openMyShop": "マイショップを開く",
+    "pendingAria": "審査状況を見る",
+    "statusAria": "セラー状態を見る"
   },
   "pwa": {
     "install": {

@@ -2789,6 +2789,26 @@
       "approve": "批准",
       "approved": "已批准税金计算书",
       "approveFailed": "批准失败"
+    },
+    "gateway": {
+      "title": "企业用户注册 — 开设我的商店",
+      "heroTitle": "在我的商店直接销售",
+      "heroDesc": "一次企业认证，您的链接商店即成为真正的商店。上架商品和使用券并获得现金结算（基础手续费5%）。",
+      "kakaoBanner": "销售功能将添加到此Kakao账户。链接商店和购买记录保持不变。",
+      "escape": "只想推荐商品赚佣金？无需注册 —",
+      "escapeLink": "前往我的链接商店",
+      "escapeSuffix": "即可立即开始。",
+      "applied": "申请完成！正在前往审核状态页面。",
+      "alreadyActive": "您已是企业用户",
+      "alreadyActiveDesc": "可直接进入卖家后台。",
+      "pendingTitle": "等待批准",
+      "pendingDesc": "审核后将通过应用通知·KakaoTalk告知（1-2个工作日）。",
+      "goDashboard": "卖家后台",
+      "viewStatus": "查看审核状态",
+      "reviewNote": "申请后1-2个工作日内审核 → 通过应用通知·KakaoTalk告知结果。与国税厅信息一致时自动批准。",
+      "reviewNote2": "批准后可在卖家后台上架商品和使用券。",
+      "submitting": "申请中...",
+      "submit": "申请企业注册"
     }
   },
   "admin": {
@@ -4285,7 +4305,8 @@
     "sellerSignup": "卖家注册",
     "sheetTitleCreate": "创建",
     "proposeDeal": "提议社区团购",
-    "proposeDealDesc": "推荐店铺，我们召集人一起开团"
+    "proposeDealDesc": "推荐店铺，我们召集人一起开团",
+    "openMyShop": "开设我的商店（企业）"
   },
   "broadcastNotify": {
     "loginRequired": "需要登录",
@@ -5356,7 +5377,10 @@
     "applyAria": "成为卖家",
     "applyLabel": "成为卖家",
     "successMsg": "正在前往卖家后台!",
-    "errorMsg": "切换到卖家失败"
+    "errorMsg": "切换到卖家失败",
+    "openMyShop": "开设我的商店",
+    "pendingAria": "查看审核状态",
+    "statusAria": "查看卖家状态"
   },
   "pwa": {
     "install": {

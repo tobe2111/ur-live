@@ -2114,6 +2114,26 @@
       "approve": "Approuver",
       "approved": "Facture fiscale approuvée",
       "approveFailed": "Échec de l’approbation"
+    },
+    "gateway": {
+      "title": "Compte professionnel — ouvrir ma boutique",
+      "heroTitle": "Vendre directement depuis ma boutique",
+      "heroDesc": "Une vérification pro transforme votre linkshop en vraie boutique. Publiez produits et bons, recevez vos règlements (commission de base 5%).",
+      "kakaoBanner": "Les fonctions de vente seront ajoutées à ce compte Kakao. Linkshop et historique conservés.",
+      "escape": "Vous voulez seulement recommander des produits ? Sans inscription —",
+      "escapeLink": "aller à mon linkshop",
+      "escapeSuffix": " et commencez tout de suite.",
+      "applied": "Demande envoyée ! Redirection vers la page de statut.",
+      "alreadyActive": "Vous êtes déjà utilisateur pro",
+      "alreadyActiveDesc": "Accédez directement au tableau de bord vendeur.",
+      "pendingTitle": "En attente d'approbation",
+      "pendingDesc": "Nous vous informerons via app et KakaoTalk après examen (1-2 jours ouvrés).",
+      "goDashboard": "Tableau de bord vendeur",
+      "viewStatus": "Voir le statut",
+      "reviewNote": "Examen sous 1-2 jours ouvrés → résultat via app et KakaoTalk. Approbation auto si les données NTS correspondent.",
+      "reviewNote2": "Une fois approuvé, publiez produits et bons depuis le tableau de bord.",
+      "submitting": "Envoi...",
+      "submit": "Demander un compte pro"
     }
   },
   "admin": {
@@ -3610,7 +3630,8 @@
     "sellerSignup": "Inscription vendeur",
     "sheetTitleCreate": "Créer",
     "proposeDeal": "Proposer un achat groupé local",
-    "proposeDealDesc": "Suggérez un commerce, on réunit du monde pour l’ouvrir"
+    "proposeDealDesc": "Suggérez un commerce, on réunit du monde pour l’ouvrir",
+    "openMyShop": "Ouvrir ma boutique (pro)"
   },
   "broadcastNotify": {
     "loginRequired": "Connexion requise",
@@ -5356,7 +5377,10 @@
     "applyAria": "Devenir vendeur",
     "applyLabel": "Devenir vendeur",
     "successMsg": "Redirection vers le tableau de bord vendeur!",
-    "errorMsg": "Échec du passage en mode vendeur"
+    "errorMsg": "Échec du passage en mode vendeur",
+    "openMyShop": "Ouvrir ma boutique",
+    "pendingAria": "Voir l'état de la revue",
+    "statusAria": "Voir l'état vendeur"
   },
   "pwa": {
     "install": {
