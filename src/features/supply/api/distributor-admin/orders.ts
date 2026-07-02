@@ -7,6 +7,7 @@ import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { reverseSupplierOnWholesaleRefund, holdWholesaleSettlements } from '../wholesale-settlement'
 import { ACTIVE_WHOLESALE_STATUSES, sqlStatusList, WHOLESALE_ORDER_STATUSES } from '../wholesale-order-status'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn, hasDepositRefundTxn } from '../wholesale-deposit-core'
+import { voidWholesaleTaxInvoicesOnRefund } from '../wholesale-tax-invoices'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import type { Env } from './helpers'
 import { intParam } from '@/shared/pagination'
@@ -176,6 +177,8 @@ export function registerOrdersRoutes(app: Hono<{ Bindings: Env }>) {
       ).bind(id).all<{ product_id: number; qty: number }>().catch(() => ({ results: [] as { product_id: number; qty: number }[] }))
       await c.env.DB.prepare("UPDATE wholesale_order_items SET line_status='REFUNDED' WHERE wholesale_order_id = ? AND line_status != 'REFUNDED'").bind(id).run().catch(swallow('admin:refund-line-update'))
       try { await reverseSupplierOnWholesaleRefund(c.env.DB, id, reason) } catch { /* best-effort */ }
+      // 🧾 감사 #1: 어드민 전액환불 → 주문의 모든 세금계산서 무효화(fail-soft).
+      try { await voidWholesaleTaxInvoicesOnRefund(c.env.DB, id) } catch { /* best-effort */ }
       for (const l of newLines.results || []) {
         await c.env.DB.prepare(
           "UPDATE products SET stock = COALESCE(stock,0) + ?, sold_count = MAX(0, COALESCE(sold_count,0) - ?), updated_at = datetime('now') WHERE id = ? AND stock IS NOT NULL"
