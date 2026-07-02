@@ -934,17 +934,19 @@ function parseDealCsv(text: string): Record<string, string>[] {
 
 // q = 네이버 이미지검색 키워드(실사진 확보용). img = 검색 실패/키 미설정 시 폴백.
 // spots/seed = 추첨 응모(fcfs) — 정원(spots) 대비 지원 시드(seed, 정원 초과) → "선착순 {seed}/{spots}명" 표시.
-const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest: string; addr: string; img: string; q: string; spots: number; seed: number }[] = [
-  { name: '[강남] 1++ 한우 오마카세 2인', cat: 'meal_voucher', price: 89000, orig: 140000, rest: '한우공방 강남점', addr: '서울 강남구 봉은사로', img: 'https://picsum.photos/seed/urdeal1/600/600', q: '한우 오마카세 상차림', spots: 5, seed: 30 },
-  { name: '[연남] 화덕피자 + 파스타 2인 세트', cat: 'meal_voucher', price: 25900, orig: 39000, rest: '포르노 로마노', addr: '서울 마포구 동교로', img: 'https://picsum.photos/seed/urdeal2/600/600', q: '화덕피자', spots: 3, seed: 10 },
-  { name: '[성수] 스페셜티 핸드드립 2인 + 디저트', cat: 'meal_voucher', price: 12900, orig: 21000, rest: '성수 로스터스', addr: '서울 성동구 연무장길', img: 'https://picsum.photos/seed/urdeal3/600/600', q: '핸드드립 커피', spots: 10, seed: 47 },
-  { name: '두피 스케일링 + 헤어 클리닉', cat: 'beauty_voucher', price: 39000, orig: 80000, rest: '살롱 드 모드', addr: '서울 강남구 압구정로', img: 'https://picsum.photos/seed/urdeal4/600/600', q: '헤어살롱 매장 인테리어', spots: 5, seed: 22 },
-  { name: '왁싱 전신 패키지', cat: 'beauty_voucher', price: 49000, orig: 90000, rest: '스무스 왁싱 라운지', addr: '서울 서초구 강남대로', img: 'https://picsum.photos/seed/urdeal5/600/600', q: '왁싱 뷰티샵 매장', spots: 8, seed: 35 },
-  { name: '속눈썹 연장 풀세트 + 리터치', cat: 'beauty_voucher', price: 29000, orig: 55000, rest: '아이래쉬 스튜디오', addr: '서울 마포구 양화로', img: 'https://picsum.photos/seed/urdeal6/600/600', q: '속눈썹 연장 시술', spots: 3, seed: 14 },
-  { name: '반려견 종합 미용 (목욕+커트)', cat: 'etc_voucher', price: 35000, orig: 60000, rest: '댕댕살롱', addr: '서울 송파구 올림픽로', img: 'https://picsum.photos/seed/urdeal7/600/600', q: '강아지 미용', spots: 6, seed: 28 },
-  { name: '실내 클라이밍 1일 체험 + 강습', cat: 'etc_voucher', price: 19000, orig: 35000, rest: '더 클라임', addr: '서울 광진구 아차산로', img: 'https://picsum.photos/seed/urdeal8/600/600', q: '실내 클라이밍', spots: 4, seed: 19 },
-  { name: '프리미엄 원두 드립백 30개입 (무료배송)', cat: 'general', price: 18900, orig: 32000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal9/600/600', q: '드립백 커피', spots: 10, seed: 52 },
-  { name: '제주 한라봉 5kg 산지직송', cat: 'general', price: 21900, orig: 35000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal10/600/600', q: '한라봉', spots: 5, seed: 27 },
+// ⚠️ desc = 유저에게 그대로 노출되는 상품 설명 — "데모" 문구 절대 금지(2026-07-02 대표 지시,
+//   실제 상품처럼 보여야 함). 데모 식별은 slug(demo-deal-N, 유저 비노출)로만.
+const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest: string; addr: string; img: string; q: string; spots: number; seed: number; desc: string }[] = [
+  { name: '[강남] 1++ 한우 오마카세 2인', cat: 'meal_voucher', price: 89000, orig: 140000, rest: '한우공방 강남점', addr: '서울 강남구 봉은사로', img: 'https://picsum.photos/seed/urdeal1/600/600', q: '한우 오마카세 상차림', spots: 5, seed: 30, desc: '1++ 한우 오마카세 2인 코스. 셰프가 부위별로 직접 구워드립니다. 매장 방문 후 이용권 QR 제시로 바로 이용하세요.' },
+  { name: '[연남] 화덕피자 + 파스타 2인 세트', cat: 'meal_voucher', price: 25900, orig: 39000, rest: '포르노 로마노', addr: '서울 마포구 동교로', img: 'https://picsum.photos/seed/urdeal2/600/600', q: '화덕피자', spots: 3, seed: 10, desc: '400℃ 화덕에서 구운 나폴리식 피자 1판 + 수제 파스타 1개, 2인 세트. 방문 시 이용권 QR 제시.' },
+  { name: '[성수] 스페셜티 핸드드립 2인 + 디저트', cat: 'meal_voucher', price: 12900, orig: 21000, rest: '성수 로스터스', addr: '서울 성동구 연무장길', img: 'https://picsum.photos/seed/urdeal3/600/600', q: '핸드드립 커피', spots: 10, seed: 47, desc: '스페셜티 원두 핸드드립 2잔 + 오늘의 디저트 1개. 원두는 매주 로스팅분만 사용합니다.' },
+  { name: '두피 스케일링 + 헤어 클리닉', cat: 'beauty_voucher', price: 39000, orig: 80000, rest: '살롱 드 모드', addr: '서울 강남구 압구정로', img: 'https://picsum.photos/seed/urdeal4/600/600', q: '헤어살롱 매장 인테리어', spots: 5, seed: 22, desc: '두피 진단 → 스케일링 → 영양 클리닉 풀코스(약 60분). 방문 전 전화 예약을 권장합니다.' },
+  { name: '왁싱 전신 패키지', cat: 'beauty_voucher', price: 49000, orig: 90000, rest: '스무스 왁싱 라운지', addr: '서울 서초구 강남대로', img: 'https://picsum.photos/seed/urdeal5/600/600', q: '왁싱 뷰티샵 매장', spots: 8, seed: 35, desc: '전신 왁싱 패키지 — 1회용 위생 재료만 사용합니다. 100% 예약제, 이용권 구매 후 전화 예약.' },
+  { name: '속눈썹 연장 풀세트 + 리터치', cat: 'beauty_voucher', price: 29000, orig: 55000, rest: '아이래쉬 스튜디오', addr: '서울 마포구 양화로', img: 'https://picsum.photos/seed/urdeal6/600/600', q: '속눈썹 연장 시술', spots: 3, seed: 14, desc: '속눈썹 연장 풀세트 + 2주 내 리터치 1회 포함. 시술 약 90분, 예약 후 방문해주세요.' },
+  { name: '반려견 종합 미용 (목욕+커트)', cat: 'etc_voucher', price: 35000, orig: 60000, rest: '댕댕살롱', addr: '서울 송파구 올림픽로', img: 'https://picsum.photos/seed/urdeal7/600/600', q: '강아지 미용', spots: 6, seed: 28, desc: '목욕 + 전체 커트 종합 미용(소형견 기준). 중·대형견은 매장으로 문의해주세요.' },
+  { name: '실내 클라이밍 1일 체험 + 강습', cat: 'etc_voucher', price: 19000, orig: 35000, rest: '더 클라임', addr: '서울 광진구 아차산로', img: 'https://picsum.photos/seed/urdeal8/600/600', q: '실내 클라이밍', spots: 4, seed: 19, desc: '실내 클라이밍 1일 이용권 + 초보 강습 30분 + 암벽화·초크 대여 포함. 운동복만 챙겨오세요.' },
+  { name: '프리미엄 원두 드립백 30개입 (무료배송)', cat: 'general', price: 18900, orig: 32000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal9/600/600', q: '드립백 커피', spots: 10, seed: 52, desc: '스페셜티 원두 드립백 30개입, 로스팅 직후 소분 발송. 전국 무료배송.' },
+  { name: '제주 한라봉 5kg 산지직송', cat: 'general', price: 21900, orig: 35000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal10/600/600', q: '한라봉', spots: 5, seed: 27, desc: '제주 산지직송 한라봉 5kg(가정용). 수확 후 24시간 내 발송, 당도 선별 과일만 담습니다.' },
 ];
 
 // 🎯 2026-07-01 (대표 "데모 이용권도 매장 지도 매칭 제대로"): 데모 매장은 가공 이름 + 번지 없는 주소라
@@ -1027,6 +1029,20 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       }
     } catch { /* best-effort — 치유 실패해도 시드 진행 */ }
 
+    // 🛡️ 2026-07-02 (대표 "데모 문구가 유저에게 보이면 안 됨"): 기존 시드분의 "데모 동네딜 — …"
+    //   설명을 실제 상품 설명(템플릿 desc)으로 일괄 교정. 매칭 = 지역 프리픽스 제거한 상품명.
+    try {
+      const oldDemo = await DB.prepare(
+        `SELECT id, name FROM products WHERE slug LIKE ? AND description LIKE '데모%' LIMIT 300`
+      ).bind(DEAL_DEMO_SLUG + '%').all<{ id: number; name: string }>().catch(() => ({ results: [] as { id: number; name: string }[] }));
+      const stripRegion = (s: string) => String(s || '').replace(/^\[[^\]]+\]\s*/, '').trim();
+      for (const rowD of (oldDemo.results || [])) {
+        const tpl = DEAL_DEMO.find((d) => stripRegion(d.name) === stripRegion(rowD.name));
+        const newDesc = tpl?.desc || stripRegion(rowD.name);  // 템플릿 미매칭이어도 최소한 "데모" 제거
+        await DB.prepare('UPDATE products SET description = ? WHERE id = ?').bind(newDesc, rowD.id).run().catch(() => {});
+      }
+    } catch { /* best-effort */ }
+
     // 누적 추가 — 기존 slug(demo-deal-N)의 최대 N 다음 번호부터(UNIQUE 충돌 원천 제거).
     const slugRows = await DB.prepare(`SELECT slug FROM products WHERE slug LIKE ?`).bind(DEAL_DEMO_SLUG + '%')
       .all<{ slug: string }>().catch(() => ({ results: [] as { slug: string }[] }));
@@ -1077,14 +1093,14 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
           `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
              is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-        ).bind(dispName, `데모 동네딜 — ${dispName}`, d.price, d.orig, img, d.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, slug).run();
+        ).bind(dispName, d.desc, d.price, d.orig, img, d.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, slug).run();
       } catch {
         // 🛡️ restaurant_lat/lng 컬럼 미존재 환경 폴백 — 좌표 없이 시드(클라 지오코딩이 지도 보정).
         res = await DB.prepare(
           `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
              is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, slug, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, datetime('now'), datetime('now'))`
-        ).bind(dispName, `데모 동네딜 — ${dispName}`, d.price, d.orig, img, d.cat, restName, restAddr, slug).run();
+        ).bind(dispName, d.desc, d.price, d.orig, img, d.cat, restName, restAddr, slug).run();
       }
       seeded++;
       // 추첨 응모 설정(정원 초과 지원 시드). 실패해도 상품 시딩엔 영향 없음(best-effort).
