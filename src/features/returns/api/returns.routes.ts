@@ -731,6 +731,16 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     const { reverseAgencyStoreIntroOnRefund } = await import('../../../worker/utils/agency-store-intro-commission');
     await reverseAgencyStoreIntroOnRefund(DB, Number(returnRecord.order_id), 'return_refund');
   } catch { /* best-effort */ }
+
+  // 🛡️ 2026-07-02 (쇼핑 전수조사 — 대표 승인 "선행 수리까지"): 쇼핑 원장 net 크레딧 역전.
+  //   이 반품환불 경로가 역전을 인라인 재구현하면서 order-refund.ts 의 reverseSellerOrderLedger 만
+  //   누락 → SHOPPING_LEDGER_ENABLED 활성 시 반품된 쇼핑 주문의 셀러 net 크레딧이 원장에 잔존해
+  //   주간 payout 과지급(예: 3만원 반품 후에도 receivable 28,500 유지). reverseSellerOrderLedger 는
+  //   게이트 무관 완전 멱등(적립 기록 없으면 no-op) → 현재 게이트 OFF 라 라이브 영향 0, 활성 전 대칭 확보.
+  try {
+    const { reverseSellerOrderLedger } = await import('../../../worker/utils/order-ledger-credit');
+    await reverseSellerOrderLedger(DB, Number(returnRecord.order_id), 'return_refund');
+  } catch { /* ledger 테이블 없거나 미적립 주문 — best-effort */ }
   // 🔐 2026-06-11 (머니 감사 High#3): 구매자 referral_bonus 포인트 회수 (order_id→order_number 조회).
   try {
     const onum = await DB.prepare('SELECT order_number FROM orders WHERE id = ? LIMIT 1')
