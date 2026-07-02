@@ -19,6 +19,8 @@ import type { Env } from '@/worker/types/env';
 import { requireSupplier } from '@/worker/middleware/auth';
 import { safeError } from '@/worker/utils/safe-error';
 import { parseCsv } from './supply-csv';
+import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
+import { swallow } from '@/worker/utils/swallow';
 
 export const supplierAnalyticsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -223,6 +225,12 @@ supplierAnalyticsRoutes.post('/products/bulk-price-change', async (c) => {
     }
 
     const okCount = results.filter(r => r.status === 'ok').length;
+    // 🏭 2026-07-01 (라이브 감사): 어드민 승인 큐 알림 — 단건 price-change 는 벨을 보내는데 일괄은 누락돼
+    //   어드민이 승인화면을 직접 열지 않으면 일괄 가격변경이 무기한 대기했음(알림 비대칭 해소).
+    if (okCount > 0) {
+      createDashboardNotification(DB, 'admin', null, 'supply_price_change_requested', '공급가 일괄변경 승인 요청',
+        `제조사 #${sid}: 상품 ${okCount}건 가격변경 요청`, '/admin/products').catch(swallow('supplier-analytics'));
+    }
     return c.json({
       success: true,
       summary: { total: items.length, queued: okCount, skipped: items.length - okCount },

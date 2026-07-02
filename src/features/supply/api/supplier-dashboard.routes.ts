@@ -28,6 +28,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit';
 import { listSupplierPurchaseInvoices } from './wholesale-tax-invoices';
 import { SUPPLY_CHANNEL_THRESHOLDS_KEY, parseChannelThresholds } from '@/shared/supply-channels';
 import { intParam } from '@/shared/pagination'
+import { loadSpendable } from './supplier-withdrawal-core'
 
 export const supplierDashboardRoutes = new Hono<{ Bindings: Env }>();
 
@@ -117,6 +118,12 @@ supplierDashboardRoutes.get('/me', async (c) => {
     ]);
     if (!profile) return c.json({ success: false, error: '제조사를 찾을 수 없습니다' }, 404);
     const reservedAmount = Math.max(0, Math.floor(Number(rRow?.reserved) || 0));
+    // 🏦 2026-07-01 (라이브 감사): 분쟁/환불 보류(held) 반영한 실가용액 — 이전엔 /me 가 held 를 안 내려
+    //   OverviewTab 이 available-reserved 만 '출금 가능'으로 표시 → held 있으면 출금 모달에서 "잔액 초과" 거절.
+    //   loadSpendable(SSOT) = available - reserved - held. fail-soft(컬럼 없으면 available-reserved).
+    const sp = await loadSpendable(DB, sid).catch(() => null);
+    const spendableAmount = sp ? sp.spendable : Math.max(0, (Number(balance?.available_amount) || 0) - reservedAmount);
+    const heldAmount = Math.max(0, (Number(balance?.available_amount) || 0) - reservedAmount - spendableAmount);
     // 🏦 2026-06-30: 출금 가능하려면 정산 계좌 3종 필요 — 클라가 '계좌 등록' 안내/게이트에 사용.
     const p = profile as { bank_name?: string | null; bank_account?: string | null; account_holder?: string | null };
     const hasPayoutAccount = !!(p.bank_name && p.bank_account && p.account_holder);
@@ -130,6 +137,8 @@ supplierDashboardRoutes.get('/me', async (c) => {
           pending_amount: balance?.pending_amount ?? 0,
           available_amount: balance?.available_amount ?? 0,
           reserved_amount: reservedAmount,
+          held_amount: heldAmount,           // 🏦 분쟁/환불 보류 — 출금 불가분
+          spendable_amount: spendableAmount, // 🏦 실제 출금 가능액(available-reserved-held)
           paid_amount: balance?.paid_amount ?? 0,
         },
         product_counts: {
@@ -804,6 +813,12 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
     if (supplyChanged) {
       await recordSupplyPriceChange(DB, Number(pid), sid, existing.supply_price, newSupply, `supplier:${sid}`);
     }
+
+    // 🏭 2026-07-01 (라이브 감사): 수정=pending 재제출이므로 어드민 재승인 필요 → 승인 큐 알림.
+    //   이전엔 신규 등록만 벨을 보내 거부상품 수정 후 재제출이 무기한 대기했음(알림 비대칭 해소).
+    createDashboardNotification(DB, 'admin', null, 'supply_product_submitted', '공급상품 재승인 요청',
+      `제조사 #${sid}: ${(existing as { name?: string }).name || `상품 #${pid}`} 수정 후 재제출`, '/admin/supplier-products')
+      .catch(swallow('supplier-dashboard:patch-notify'));
 
     return c.json({ success: true, data: { id: Number(pid), approval_status: 'pending' }, message: '수정되었습니다. 다시 승인 대기 상태가 됩니다.' });
   } catch (err) {
