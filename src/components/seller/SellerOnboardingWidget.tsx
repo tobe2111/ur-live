@@ -4,6 +4,7 @@ import api from '@/lib/api'
 import { swallow } from '@/shared/utils/swallow'
 import { CheckCircle2, Circle, Trophy, Sparkles, BookOpen, ChevronRight } from 'lucide-react'
 import LiveStartGuideModal from './LiveStartGuideModal'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 
 interface OnboardingStep {
   step_key: string
@@ -95,6 +96,8 @@ export default function SellerOnboardingWidget() {
 
       <div className="space-y-1">
         {data.steps.map((s) => {
+          // 🏭 라이브커머스 영구중단(LIVE_COMMERCE_SUSPENDED): '첫 라이브' 온보딩 스텝 숨김.
+          if (LIVE_COMMERCE_SUSPENDED && s.step_key === 'first_live') return null
           const meta = STEP_LABEL[s.step_key]
           if (!meta) return null
           return (
@@ -125,18 +128,23 @@ export default function SellerOnboardingWidget() {
         </div>
       )}
 
-      <button
-        onClick={() => setShowLiveGuide(true)}
-        className="mt-3 w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors"
-      >
-        <BookOpen className="w-3.5 h-3.5" /> 라이브 시작 가이드 보기
-      </button>
+      {/* 🏭 라이브커머스 영구중단(LIVE_COMMERCE_SUSPENDED): '라이브 시작 가이드' 버튼/모달 숨김. */}
+      {!LIVE_COMMERCE_SUSPENDED && (
+        <>
+          <button
+            onClick={() => setShowLiveGuide(true)}
+            className="mt-3 w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors"
+          >
+            <BookOpen className="w-3.5 h-3.5" /> 라이브 시작 가이드 보기
+          </button>
 
-      <LiveStartGuideModal
-        open={showLiveGuide}
-        onClose={() => setShowLiveGuide(false)}
-        onContinue={() => setShowLiveGuide(false)}
-      />
+          <LiveStartGuideModal
+            open={showLiveGuide}
+            onClose={() => setShowLiveGuide(false)}
+            onContinue={() => setShowLiveGuide(false)}
+          />
+        </>
+      )}
     </div>
   )
 }
