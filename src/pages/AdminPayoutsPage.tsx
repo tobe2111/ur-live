@@ -35,6 +35,9 @@ interface Payout {
   created_at: string
   approved_at: string | null
   sent_at: string | null
+  // 💸 2026-07-01 정산 정합: 서버가 pending 건에 부착(정정 전 gross 식별).
+  _stale?: boolean
+  _available?: number
 }
 
 interface PendingRow {
@@ -237,7 +240,14 @@ export default function AdminPayoutsPage() {
                           <div className="font-mono">{p.payee_type}:{p.payee_id}</div>
                           <div className="text-[10px] text-gray-400">{p.period_start} ~ {p.period_end}</div>
                         </td>
-                        <td className="px-4 py-3 text-right font-bold">{formatWon(p.amount)}</td>
+                        <td className="px-4 py-3 text-right font-bold">
+                          {formatWon(p.amount)}
+                          {p._stale && (
+                            <div className="mt-0.5 text-[10px] font-medium text-red-600" title="정산식 정정 이전에 생성된 금액입니다. 현재 정산 가능액과 다릅니다 — 취소 후 재생성 권장(승인 시 자동 차단).">
+                              ⚠️ 확인 필요 · 현재 {formatWon(p._available ?? 0)}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-gray-700">
                           {p.account_holder || '-'}
                           {p.account_number && <div className="font-mono text-[10px]">{p.account_number}</div>}
