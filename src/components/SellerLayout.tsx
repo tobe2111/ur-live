@@ -10,7 +10,6 @@ import api from '@/lib/api'
 import { HOSTING_HIDDEN } from '@/shared/feature-flags'
 import { getRoleShortLabel, isStoreOwner } from '@/shared/seller-roles'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
-import { toast } from '@/hooks/useToast'
 import { useTokenAutoRefresh } from '@/hooks/useTokenAutoRefresh'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import DashboardNotificationBell from './DashboardNotificationBell'
@@ -455,19 +454,9 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
             </Link>
           )
         })()}
-        {localStorage.getItem('user_id') && (
-          <button
-            onClick={() => {
-              toast.success(t('seller.layout.backToUser'))
-              setSidebarOpen(false)
-              navigate('/user/profile', { state: { preserveScroll: true } })
-            }}
-            className="w-full flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-blue-400 hover:text-blue-300 transition-colors"
-          >
-            <Globe size={13} strokeWidth={2} />
-            {t('seller.layout.backToUser')}
-          </button>
-        )}
+        {/* 🔗 2026-07-02 (대표 지시 — 셀러 모드 영구 유지): '유저로 돌아가기' 제거.
+            승인된 셀러는 하나의 계정으로 셀러 능력이 상시 켜진 상태 유지(유저→사업자 유저=레이어 추가).
+            소비자 화면으로의 출구는 위 '공개 프로필 보기'(→ /u/{handle} 링크샵)가 담당. */}
         <button
           onClick={() => logoutSeller(navigate)}
           className="w-full flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-red-400 hover:text-red-300 transition-colors"
