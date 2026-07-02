@@ -2405,7 +2405,8 @@
       "curatorEarnings": "Curator Earnings",
       "prospects": "Recruit Stores",
       "voucherScan": "Scan voucher",
-      "proxyProducts": "Proxy Listing Approvals"
+      "proxyProducts": "Proxy Listing Approvals",
+      "reviewVerifications": "Review Checks"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",
@@ -2819,7 +2820,27 @@
     },
     "mailOrderNumber": "Mail-order business no.",
     "mailOrderNumberPlaceholder": "e.g. 2026-Seoul-01234",
-    "mailOrderNumberHint": "Shown publicly in your linkshop seller info (e-commerce law disclosure)"
+    "mailOrderNumberHint": "Shown publicly in your linkshop seller info (e-commerce law disclosure)",
+    "reviewVerify": {
+      "title": "Kakao Map Review Checks",
+      "subtitle": "Verify Kakao Map reviews submitted by customers who used a voucher. Approving grants the customer bonus deals + reviewer level points.",
+      "tabPending": "Pending",
+      "tabPaid": "Paid",
+      "tabRejected": "Rejected",
+      "empty": "Nothing here yet",
+      "emptyPending": "No review proofs waiting for confirmation",
+      "approve": "Confirm (pay bonus)",
+      "reject": "Reject",
+      "rejectConfirm": "Confirm rejection",
+      "reasonPlaceholder": "Rejection reason (sent to the customer)",
+      "reasonRequired": "Please enter a rejection reason",
+      "approvedToast": "Confirmed — bonus and review points sent to the customer",
+      "rejectedToast": "Rejected",
+      "ocrPassed": "Auto-check passed (reference)",
+      "openReview": "View proof",
+      "footNote": "Bonuses are paid for visit verification regardless of rating or content. The operations team may audit approvals by sampling.",
+      "loadError": "Failed to load the list"
+    }
   },
   "admin": {
     "login": {

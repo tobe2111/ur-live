@@ -1,11 +1,20 @@
 /**
  * 🛡️ 2026-05-16: 카카오맵 후기 작성 보너스 API.
+ * 🗺️ 2026-07-02 (대표 "카카오맵 리뷰 게이미피케이션 — 추천대로"): 승인 시 리뷰 점수/레벨 적립 +
+ *   매장(셀러) 확인 큐 신설 + OCR 자동지급 강등(참고 라벨만 — 지급 판정은 사람).
+ *   설계: docs/design/kakao-review-gamification.md
  *
  * 사용자 측:
- *   POST /api/review-bonus/submit — voucher 사용 완료 후 카카오맵 후기 URL 제출
+ *   POST /api/review-bonus/submit   — voucher 사용 완료 후 카카오맵 후기 URL 제출
  *   GET  /api/review-bonus/my       — 내 제출 내역
+ *   GET  /api/review-bonus/my-level — 내 동네 리뷰어 레벨/점수
  *
- * 어드민 측:
+ * 매장(셀러) 측 — 매장에서 확인 (index.ts 에서 requireSeller 게이트):
+ *   GET  /api/seller/review-verifications             — 내 매장 제출 목록
+ *   POST /api/seller/review-verifications/:id/approve — 확인(승인) + 보너스/점수 지급
+ *   POST /api/seller/review-verifications/:id/reject  — 거절 (이유 입력)
+ *
+ * 어드민 측 (샘플링 감사 + 상위 권한):
  *   GET  /api/admin-review-bonus/list           — status='submitted' 검증 대기 목록
  *   POST /api/admin-review-bonus/:id/approve    — 승인 + 보너스 즉시 지급
  *   POST /api/admin-review-bonus/:id/reject     — 거절 (이유 입력)
@@ -16,11 +25,13 @@ import type { Env } from '@/worker/types/env'
 import { requireAuth } from '@/worker/middleware/auth'
 import type { AuthUser } from '@/worker/middleware/auth'
 import { swallow } from '@/worker/utils/swallow'
+import { creditReviewScoreOnApproval, getUserReviewLevelSummary } from '@/worker/utils/review-level'
 
 // 🛡️ 2026-05-20: c.get('user') 등 타입 보장 위한 Variables.
-type ReviewBonusVars = { user?: { id: string | number; email?: string } }
+type ReviewBonusVars = { user?: { id: string | number; email?: string; type?: string } }
 const userApp = new Hono<{ Bindings: Env; Variables: ReviewBonusVars }>()
 const adminApp = new Hono<{ Bindings: Env; Variables: ReviewBonusVars }>()
+const sellerApp = new Hono<{ Bindings: Env; Variables: ReviewBonusVars }>()
 
 userApp.use('*', requireAuth())
 
@@ -88,8 +99,10 @@ userApp.post('/submit', async (c) => {
   const autoRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'kakao_review_auto_approve'").first<{ value: string }>().catch(() => null)
   const autoApprove = String(autoRow?.value ?? '0') === '1'
 
-  // 🛡️ 2026-05-16: 스크린샷 제출 시 Workers AI llava OCR 자동 검증 시도
-  //   매칭 성공 → status='paid' 즉시 지급. 실패 → status='submitted' 어드민 검증으로.
+  // 🛡️ 2026-05-16: 스크린샷 제출 시 Workers AI llava OCR 자동 검증 시도.
+  // 🗺️ 2026-07-02 강등 (대표 "OCR 너무 무거운 거 아니야?" — 설계문서 §3-3): OCR 매칭 성공해도
+  //   **자동 지급하지 않는다** — 스크린샷은 위조/타인 리뷰 캡처를 구분 못 하므로 지급 판정은
+  //   사람(매장 확인 큐 → 어드민 샘플링). OCR 결과는 큐의 "자동검증 통과" 참고 라벨로만 사용.
   let ocrPassed = false
   let ocrNotes = ''
   if (screenshotUrl) {
@@ -125,22 +138,25 @@ userApp.post('/submit', async (c) => {
     }
   }
 
-  const status = (autoApprove || ocrPassed) ? 'paid' : 'submitted'
-  const willPay = autoApprove || ocrPassed
+  // 🗺️ 2026-07-02: OCR 은 지급 판정에서 제외 (라벨만). autoApprove(어드민 명시 설정)만 즉시 지급 유지.
+  const status = autoApprove ? 'paid' : 'submitted'
+  const willPay = autoApprove
   try {
     await DB.prepare(
       `INSERT INTO kakao_review_submissions (voucher_id, user_id, product_id, seller_id, review_url, bonus_amount, status, admin_notes, reviewed_at, paid_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ${willPay ? "datetime('now')" : 'NULL'}, ${willPay ? "datetime('now')" : 'NULL'})`
-    ).bind(voucher.id, userId, voucher.product_id, product?.seller_id ?? null, url || screenshotUrl, willPay ? bonusAmount : 0, status, ocrPassed ? `OCR auto-approved: ${ocrNotes}` : (ocrNotes ? `OCR review: ${ocrNotes}` : null)).run()
+    ).bind(voucher.id, userId, voucher.product_id, product?.seller_id ?? null, url || screenshotUrl, willPay ? bonusAmount : 0, status, ocrPassed ? `OCR 자동검증 통과 (참고): ${ocrNotes}` : (ocrNotes ? `OCR 검토필요: ${ocrNotes}` : null)).run()
   } catch (e) {
     return c.json({ success: false, error: '이미 제출된 voucher 입니다' }, 409)
   }
 
   if (willPay) {
     await payBonus(DB, userId, bonusAmount, voucher.id)
-    return c.json({ success: true, message: `${bonusAmount.toLocaleString()}딜 즉시 지급되었습니다 ${ocrPassed ? '(OCR 자동 승인)' : ''}`, bonus: bonusAmount, auto_approved: true })
+    // 🗺️ INSERT(UNIQUE voucher_id) 성공 = 단일 실행 보장 → 점수 적립 안전 (fail-soft)
+    await creditReviewScoreOnApproval(DB, userId).catch(swallow('review-bonus:score-auto'))
+    return c.json({ success: true, message: `${bonusAmount.toLocaleString()}딜 즉시 지급되었습니다`, bonus: bonusAmount, auto_approved: true })
   }
-  return c.json({ success: true, message: '제출됨 — 어드민 검증 후 보너스 지급 (보통 1~3일)', bonus: bonusAmount, auto_approved: false })
+  return c.json({ success: true, message: '제출됨 — 매장/운영팀 확인 후 보너스와 리뷰 점수가 지급됩니다 (보통 1~3일)', bonus: bonusAmount, auto_approved: false })
 })
 
 userApp.get('/my', async (c) => {
@@ -153,6 +169,92 @@ userApp.get('/my', async (c) => {
   ).bind(userId).all().catch(() => ({ results: [] as any[] }))
   return c.json({ success: true, data: results || [] })
 })
+
+// 🗺️ 2026-07-02: 내 동네 리뷰어 레벨/점수 (제출 모달·마이 표시용)
+userApp.get('/my-level', async (c) => {
+  const userId = String((c.get('user') as AuthUser).id)
+  const summary = await getUserReviewLevelSummary(c.env.DB, userId).catch(() => null)
+  if (!summary) return c.json({ success: true, data: { level: 1, label: '새싹', score: 0, approved_count: 0, next_level: 2, next_threshold: 3, remaining: 3 } })
+  return c.json({ success: true, data: summary })
+})
+
+/**
+ * 🗺️ 2026-07-02 공용 승인/거절 헬퍼 — 어드민·매장(셀러) 두 경로가 같은 멱등 규칙 공유.
+ * 머니 룰 #1 (claim-before-credit): status CAS (submitted→paid) 선점 후에만 지급/점수.
+ *   기존 어드민 approve 는 pre-check 후 지급→UPDATE 순서라 동시 요청 이중지급 가능했음 → CAS 로 교정.
+ *   지급 실패 시 status 원복 (보상 트랜지션).
+ */
+async function approveSubmission(
+  DB: D1Database,
+  id: number,
+  opts: { restrictSellerId?: number } = {},
+): Promise<{ ok: true; bonus: number } | { ok: false; httpStatus: 400 | 403 | 404 | 500; error: string }> {
+  const submission = await DB.prepare(
+    'SELECT user_id, voucher_id, seller_id, status FROM kakao_review_submissions WHERE id = ?'
+  ).bind(id).first<{ user_id: string; voucher_id: number; seller_id: number | null; status: string }>()
+  if (!submission) return { ok: false, httpStatus: 404, error: 'not found' }
+  if (opts.restrictSellerId != null && Number(submission.seller_id) !== Number(opts.restrictSellerId)) {
+    return { ok: false, httpStatus: 403, error: '내 매장 제출 건만 처리할 수 있습니다' }
+  }
+  if (submission.status !== 'submitted') return { ok: false, httpStatus: 400, error: '이미 처리됨' }
+
+  const bonusRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'kakao_review_bonus_amount'").first<{ value: string }>().catch(() => null)
+  const bonusAmount = Number(bonusRow?.value ?? 1000)
+
+  // CAS 선점 — 동시 승인(어드민↔매장 포함) 중 승자 1명만 지급 경로 진입
+  const claim = await DB.prepare(
+    "UPDATE kakao_review_submissions SET status = 'paid', bonus_amount = ?, reviewed_at = datetime('now'), paid_at = datetime('now') WHERE id = ? AND status = 'submitted'"
+  ).bind(bonusAmount, id).run()
+  if (!claim.meta?.changes) return { ok: false, httpStatus: 400, error: '이미 처리됨' }
+
+  const paid = await payBonus(DB, submission.user_id, bonusAmount, submission.voucher_id)
+  if (!paid) {
+    // 보상 트랜지션 — 지급 실패 시 재시도 가능하게 원복
+    await DB.prepare("UPDATE kakao_review_submissions SET status = 'submitted', bonus_amount = 0, reviewed_at = NULL, paid_at = NULL WHERE id = ? AND status = 'paid'")
+      .bind(id).run().catch(swallow('review-bonus:approve-revert'))
+    return { ok: false, httpStatus: 500, error: '지급 실패 — 다시 시도해주세요' }
+  }
+
+  // 🗺️ 리뷰 점수/레벨 적립 (CAS 승자만 도달 → 멱등) + 유저 알림 — fail-soft
+  await creditReviewScoreOnApproval(DB, submission.user_id).catch(swallow('review-bonus:score'))
+  try {
+    const { notifyUser } = await import('../../../lib/notifications')
+    await notifyUser(
+      DB, submission.user_id, 'review_bonus_paid', '✨ 후기 보너스 지급',
+      `카카오맵 후기 확인 완료! ${bonusAmount.toLocaleString()}딜 + 리뷰 점수가 적립되었습니다`,
+      '/my-vouchers',
+    )
+  } catch { /* silent */ }
+  return { ok: true, bonus: bonusAmount }
+}
+
+async function rejectSubmission(
+  DB: D1Database,
+  id: number,
+  reason: string,
+  opts: { restrictSellerId?: number } = {},
+): Promise<{ ok: true } | { ok: false; httpStatus: 400 | 403 | 404; error: string }> {
+  if (opts.restrictSellerId != null) {
+    const sub = await DB.prepare('SELECT seller_id FROM kakao_review_submissions WHERE id = ?')
+      .bind(id).first<{ seller_id: number | null }>()
+    if (!sub) return { ok: false, httpStatus: 404, error: 'not found' }
+    if (Number(sub.seller_id) !== Number(opts.restrictSellerId)) {
+      return { ok: false, httpStatus: 403, error: '내 매장 제출 건만 처리할 수 있습니다' }
+    }
+  }
+  const result = await DB.prepare(
+    "UPDATE kakao_review_submissions SET status = 'rejected', admin_notes = ?, reviewed_at = datetime('now') WHERE id = ? AND status = 'submitted'"
+  ).bind(reason, id).run()
+  if (!result.meta?.changes) return { ok: false, httpStatus: 404, error: 'not found or already processed' }
+  try {
+    const sub = await DB.prepare('SELECT user_id FROM kakao_review_submissions WHERE id = ?').bind(id).first<{ user_id: string }>()
+    if (sub) {
+      const { notifyUser } = await import('../../../lib/notifications')
+      await notifyUser(DB, sub.user_id, 'review_bonus_rejected', '후기 보너스 거절됨', `사유: ${reason}`, '/my-vouchers')
+    }
+  } catch { /* silent */ }
+  return { ok: true }
+}
 
 // 어드민
 adminApp.get('/list', async (c) => {
@@ -172,55 +274,69 @@ adminApp.get('/list', async (c) => {
 
 adminApp.post('/:id/approve', async (c) => {
   const id = Number(c.req.param('id'))
-  const DB = c.env.DB
-  const submission = await DB.prepare("SELECT user_id, voucher_id, status FROM kakao_review_submissions WHERE id = ?").bind(id).first<{ user_id: string; voucher_id: number; status: string }>()
-  if (!submission) return c.json({ success: false, error: 'not found' }, 404)
-  if (submission.status !== 'submitted') return c.json({ success: false, error: '이미 처리됨' }, 400)
-
-  const bonusRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'kakao_review_bonus_amount'").first<{ value: string }>().catch(() => null)
-  const bonusAmount = Number(bonusRow?.value ?? 1000)
-
-  const paid = await payBonus(DB, submission.user_id, bonusAmount, submission.voucher_id)
-  if (!paid) return c.json({ success: false, error: '지급 실패' }, 500)
-
-  await DB.prepare(
-    "UPDATE kakao_review_submissions SET status = 'paid', bonus_amount = ?, reviewed_at = datetime('now'), paid_at = datetime('now') WHERE id = ?"
-  ).bind(bonusAmount, id).run()
-
-  // user notification
-  try {
-    await DB.prepare(
-      `INSERT INTO user_notifications (user_id, type, title, message, link)
-       VALUES (?, 'review_bonus_paid', '✨ 후기 보너스 지급', ?, '/user/profile')`
-    ).bind(submission.user_id, `카카오맵 후기 작성 감사합니다! ${bonusAmount.toLocaleString()}딜 적립`).run()
-  } catch { /* silent */ }
-
-  return c.json({ success: true, bonus: bonusAmount })
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'invalid id' }, 400)
+  const r = await approveSubmission(c.env.DB, id)
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.httpStatus)
+  return c.json({ success: true, bonus: r.bonus })
 })
 
 adminApp.post('/:id/reject', async (c) => {
   const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'invalid id' }, 400)
   const body = await c.req.json<{ reason: string }>().catch(() => ({ reason: '' }))
   const reason = String(body.reason || '').trim().slice(0, 500)
   if (!reason) return c.json({ success: false, error: '거절 사유 필수' }, 400)
-  const result = await c.env.DB.prepare(
-    "UPDATE kakao_review_submissions SET status = 'rejected', admin_notes = ?, reviewed_at = datetime('now') WHERE id = ? AND status = 'submitted'"
-  ).bind(reason, id).run()
-  if (!result.meta?.changes) return c.json({ success: false, error: 'not found or already processed' }, 404)
-  // notify user
-  try {
-    const sub = await c.env.DB.prepare("SELECT user_id FROM kakao_review_submissions WHERE id = ?").bind(id).first<{ user_id: string }>()
-    if (sub) {
-      await c.env.DB.prepare(
-        `INSERT INTO user_notifications (user_id, type, title, message, link)
-         VALUES (?, 'review_bonus_rejected', '후기 보너스 거절됨', ?, '/user/profile')`
-      ).bind(sub.user_id, `사유: ${reason}`).run()
-    }
-  } catch { /* silent */ }
+  const r = await rejectSubmission(c.env.DB, id, reason)
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.httpStatus)
   return c.json({ success: true })
 })
 
-export { userApp as reviewBonusUserRoutes, adminApp as reviewBonusAdminRoutes }
+// ── 🗺️ 2026-07-02 매장(셀러) 확인 큐 — "매장에서 확인하면 점수를 높여주는" 플로우의 확인 주체 ──
+//   index.ts 에서 requireSeller() 로 게이트. IDOR 방지: 모든 조회/처리에 본인 seller_id 강제.
+sellerApp.get('/', async (c) => {
+  const user = c.get('user') as AuthUser | undefined
+  if (!user || user.type !== 'seller') return c.json({ success: false, error: '셀러만 가능' }, 403)
+  const sellerId = Number(user.id)
+  const statusParam = c.req.query('status') || 'submitted'
+  if (!['submitted', 'paid', 'rejected'].includes(statusParam)) {
+    return c.json({ success: false, error: 'invalid status' }, 400)
+  }
+  await ensureTable(c.env.DB)
+  const { results } = await c.env.DB.prepare(
+    `SELECT r.id, r.voucher_id, r.review_url, r.bonus_amount, r.status, r.admin_notes, r.created_at, r.reviewed_at,
+            p.name AS product_name, p.restaurant_name
+     FROM kakao_review_submissions r
+     LEFT JOIN products p ON p.id = r.product_id
+     WHERE r.seller_id = ? AND r.status = ?
+     ORDER BY r.created_at ASC LIMIT 100`
+  ).bind(sellerId, statusParam).all().catch(() => ({ results: [] as any[] }))
+  return c.json({ success: true, data: results || [] })
+})
+
+sellerApp.post('/:id/approve', async (c) => {
+  const user = c.get('user') as AuthUser | undefined
+  if (!user || user.type !== 'seller') return c.json({ success: false, error: '셀러만 가능' }, 403)
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'invalid id' }, 400)
+  const r = await approveSubmission(c.env.DB, id, { restrictSellerId: Number(user.id) })
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.httpStatus)
+  return c.json({ success: true, bonus: r.bonus })
+})
+
+sellerApp.post('/:id/reject', async (c) => {
+  const user = c.get('user') as AuthUser | undefined
+  if (!user || user.type !== 'seller') return c.json({ success: false, error: '셀러만 가능' }, 403)
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'invalid id' }, 400)
+  const body = await c.req.json<{ reason: string }>().catch(() => ({ reason: '' }))
+  const reason = String(body.reason || '').trim().slice(0, 500)
+  if (!reason) return c.json({ success: false, error: '거절 사유 필수' }, 400)
+  const r = await rejectSubmission(c.env.DB, id, reason, { restrictSellerId: Number(user.id) })
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.httpStatus)
+  return c.json({ success: true })
+})
+
+export { userApp as reviewBonusUserRoutes, adminApp as reviewBonusAdminRoutes, sellerApp as reviewBonusSellerRoutes }
 
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).

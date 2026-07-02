@@ -70,12 +70,26 @@
 
 ## 5. 구현 todo (결정 후)
 
-- [ ] `user_review_scores` 테이블 (migration + repair-schema) + 승인 CAS 에 점수 적립 배선 (멱등: UNIQUE(voucher_id) 기존 활용)
-- [ ] 레벨 산정 + `platform_settings` 임계값 + 레벨업 notifyUser
-- [ ] `product_supply_meta.min_review_level` + 이용권 구매 라우트 이중 게이트 (join 사전검증 + confirm-toss 재검증) + 상세/목록 배지
-- [ ] (결정 1=a/b 시) 셀러 대시보드 리뷰 확인 큐 (requireSeller + seller_id 소유권)
-- [ ] OCR 자동 지급 경로 제거/강등 (`review-bonus.routes.ts` — `ocrPassed → status='paid'` 를 라벨만 남기고 사람 승인 필수로; 점수 축 도입 시 필수)
-- [ ] 사용 완료 이용권 화면에 리뷰 미션 CTA (kakao_place_url 딥링크)
-- [ ] (결정 4=a 시) 제출 화면 대가 표시 안내 문구 + 6개 언어
-- [ ] 마이페이지 레벨/점수 표시
-- [ ] 가이드(셀러/어드민) + 블로그 시드 갱신 (`BLOG_SEED_VERSION` +1)
+- [x] `user_review_scores` 테이블 (`review-level.ts` ensure 패턴 — redemption-settings 선례) + 승인 CAS 에 점수 적립 배선 (멱등: CAS 승자 + UNIQUE(voucher_id))
+- [x] 레벨 산정 + `platform_settings` 임계값(`review_level_thresholds`/`review_score_per_approval`) + 레벨업 notifyUser
+- [x] `product_supply_meta.min_review_level` + 이용권 구매 라우트 이중 게이트 (join 사전검증 + confirm-toss 재검증, `REVIEW_LEVEL_REQUIRED`) + 상세 API/배지(공구 상세·교환권 상세) + 어드민 동네딜 폼(등록/수정/목록)
+- [x] 셀러 대시보드 리뷰 확인 큐 (`/seller/review-verifications` — requireSeller + seller_id 소유권, i18n 6언어)
+- [x] OCR 자동 지급 경로 강등 (라벨만 — 어드민 명시 `kakao_review_auto_approve` 설정은 유지)
+- [x] 어드민 승인 경로 CAS 교정 (기존: pre-check 후 지급→UPDATE 순서라 동시 승인 이중지급 레이스 → claim-before-credit + 지급실패 보상 원복)
+- [x] 제출 모달 대가 표시 안내 + 별점 무관 문구 + 내 레벨 표시 (`ReviewBonusButton`)
+- [x] 가이드(셀러/어드민) + 블로그 시드 갱신 (`BLOG_SEED_VERSION` 4→5)
+- [ ] (v2) 홍보 자격 — 레벨 배지 노출·핀 부스트 (대표 결정 3 범위 밖)
+- [ ] (v2) 사용 완료 이용권 카드에 kakao_place_url 딥링크 CTA (현재는 제출 버튼만 — 매장 후기 페이지 바로 열기)
+- [ ] (v2) 셀러 상품 등록 폼에도 min_review_level (v1 은 어드민 동네딜 도구만 — 큐레이션 통제)
+
+## ✅ 구현 완료 (2026-07-02 — 대표 "추천대로 진행해줘. 가장 이상적으로")
+
+**확정된 결정**: 1=(a) 매장 승인+어드민 샘플링(OCR 라벨 강등) · 2=(a) 리뷰 전용 레벨 신설 · 3=(a) 전용 이용권 구매 게이트만 · 4=(a) 별점 무관 지급+대가 표시 안내.
+
+**구현 요약**:
+- 신규 SSOT: `src/worker/utils/review-level.ts` (user_review_scores + 레벨 산정 + 적립 + 레벨업 알림)
+- `review-bonus.routes.ts`: OCR 지급 강등 · 공용 approve/reject 헬퍼(CAS) · 셀러 큐 3 endpoint · `GET /my-level`
+- 게이트: `group-buy.routes.ts` join+confirm-toss (per-person-limit 과 동일 이중 게이트 패턴, 기존 metaMap 재사용 = 추가 조회 0)
+- UI: `SellerReviewVerificationsPage`(신규) · 공구/교환권 상세 Lv 배지 · 어드민 동네딜 폼 레벨 셀렉트 · 제출 모달 안전장치
+- 매장 현지 사용 3모드(2026-07-02 타 세션, `redemption-settings.ts`)와 결합: 모드 ①②는 "사용 완료" 신뢰 앵커를 강화 → 리뷰 미션 전제(used 이용권)의 위조가 더 어려워짐
+- ⚠️ 이 원격환경 npm 403 으로 전체 tsc/build 미실행 — 변경 파일 개별 구문검사 + 가드 스크립트(sql/theme/blog/pagination 등) 전부 GREEN. staging 검증 항목: 제출→매장 승인→보너스+점수→레벨업 알림→레벨 전용 이용권 구매 게이트 E2E 1회.

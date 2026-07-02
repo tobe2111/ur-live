@@ -445,6 +445,9 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const max_per_person = mppRaw != null && Number.isFinite(Number(mppRaw)) && Number(mppRaw) > 0 ? Math.floor(Number(mppRaw)) : null
     // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 등록 시 캡처한 place_url (있으면 상세 지도가 직접 연결).
     const kakao_place_url = normalizeKakaoPlaceUrl(metaMap?.get(Number(id))?.kakao_place_url)
+    // 🗺️ 2026-07-02 (카카오맵 리뷰 게이미피케이션): 레벨 전용 이용권 — 클라 배지/안내 + 서버 주문검증(group-buy.routes)이 함께 사용.
+    const mrlRaw = metaMap?.get(Number(id))?.min_review_level
+    const min_review_level = mrlRaw != null && Number.isFinite(Number(mrlRaw)) && Number(mrlRaw) > 1 ? Math.floor(Number(mrlRaw)) : null
 
     return c.json({
       success: true,
@@ -458,6 +461,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         ...(menu ? { menu } : {}),                // 🍽️ #5: 대표 메뉴 (있을 때만)
         ...(max_per_person ? { max_per_person } : {}),  // 🎯 1인당 구매 한도 (있을 때만)
         ...(kakao_place_url ? { kakao_place_url } : {}),  // 🎯 카카오 장소 페이지 URL (있을 때만)
+        ...(min_review_level ? { min_review_level } : {}),  // 🗺️ 동네 리뷰어 레벨 전용 (있을 때만)
       },
     })
     } catch (err) {

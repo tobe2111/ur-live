@@ -72,6 +72,8 @@ const NAV_GROUPS: {
       // group-buy(교환권/공구) 는 매장·크리에이터 공통 (둘 다 발행).
       // 🧭 2026-06-10: 계산대 스캔 — 현장에서 가장 자주 쓰는 동선이라 그룹 최상단.
       { path: '/seller/scan', labelKey: 'seller.nav.voucherScan', icon: ScanLine, mode: 'store' },
+      // 🗺️ 2026-07-02 카카오맵 리뷰 게이미피케이션 — 손님 후기 인증 확인(승인 시 보너스+레벨 점수)
+      { path: '/seller/review-verifications', labelKey: 'seller.nav.reviewVerifications', icon: Sparkles, mode: 'store' },
       { path: '/seller/group-buy', labelKey: 'seller.nav.mealVoucher', icon: Ticket, mode: 'store' },
       // 🏭 2026-06-04 역할 큐레이션 — 숙소는 매장(오프라인 숙박) 전용. 크리에이터에겐 숨김.
       { path: '/seller/stays', labelKey: 'seller.nav.stays', icon: Building2, mode: 'store', hideFor: ['influencer'] },

@@ -49,6 +49,7 @@ interface VoucherProduct {
   seller_name?: string | null
   /** 🎯 1인당 최대 구매 수량 (설정 시, 없으면 무제한). */
   max_per_person?: number
+  min_review_level?: number
 }
 
 /**
@@ -336,6 +337,10 @@ export default function VoucherDetailPage() {
             <span className="text-[11.5px] font-bold text-[#171B24] bg-[#d1d5db] rounded-md px-[9px] py-1 whitespace-nowrap">{label}</span>
           </div>
           <h2 className="mt-[7px] text-[23px] font-extrabold text-[#171B24] dark:text-white leading-tight tracking-tight">{product.name}</h2>
+          {/* 🗺️ 2026-07-02 카카오맵 리뷰 게이미피케이션 — 레벨 전용 배지 (서버 게이트의 UX 안내) */}
+          {product.min_review_level && product.min_review_level > 1 ? (
+            <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A1A1A] text-[11px] font-bold text-gray-700 dark:text-gray-200">🏅 동네 리뷰어 Lv.{product.min_review_level} 전용</span>
+          ) : null}
           {product.restaurant_name && (
             <div className="mt-1 text-[13.5px] text-gray-400 dark:text-gray-500">{product.restaurant_name}{product.restaurant_address ? ` · ${product.restaurant_address}` : ''}</div>
           )}

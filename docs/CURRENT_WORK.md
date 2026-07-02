@@ -1,5 +1,17 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-02 — 카카오맵 리뷰 게이미피케이션 v1 (대표 컨셉 → "추천대로 진행해줘. 가장 이상적으로")
+"유저가 카카오맵에 후기 작성 → 매장에서 확인 → 점수/레벨 상승 → 레벨 전용 이용권 구매 자격" 플로우 전체 구현. 설계+결정표: `docs/design/kakao-review-gamification.md` (결정 4건 전부 추천안 확정 — 매장승인+어드민샘플링 / 리뷰 전용 레벨 / 전용 이용권 게이트만 / 별점무관+대가표시).
+- **점수/레벨 SSOT**: 신규 `worker/utils/review-level.ts` — `user_review_scores`(ensure 패턴) + `platform_settings`(`review_level_thresholds` 기본 Lv2=3/Lv3=10/Lv4=25/Lv5=50 · `review_score_per_approval` 기본 10) + 레벨업 notifyUser. 적립은 승인 CAS 승자에서만(멱등).
+- **매장 확인 큐**: `/api/seller/review-verifications`(requireSeller + seller_id 소유권) + `SellerReviewVerificationsPage`(`/seller/review-verifications`, 메뉴 등록, i18n 6언어 `seller.reviewVerify.*`). 어드민 큐는 샘플링 감사로 병행.
+- **머니 교정(동반)**: 기존 어드민 approve 가 pre-check→지급→UPDATE 순서라 **동시 승인 이중지급 레이스** → 공용 헬퍼로 CAS(claim-before-credit) + 지급실패 보상원복. **OCR 자동지급 강등**(대표 "OCR 너무 무거운 거 아니야?" — 위조 스크린샷에 퍼지 모델이 돈 판정하던 구조 제거, 라벨만. 어드민 명시 `kakao_review_auto_approve` 는 유지).
+- **레벨 전용 이용권**: `product_supply_meta.min_review_level`(2~5) — join+confirm-toss **이중 게이트**(`REVIEW_LEVEL_REQUIRED`, per-person-limit 패턴·기존 metaMap 재사용=추가조회 0) + 상세 API/공구·교환권 상세 배지 + 어드민 동네딜 폼(등록/수정/목록) 셀렉트.
+- **유저 표면**: 제출 모달(`ReviewBonusButton`)에 내 레벨(`GET /api/review-bonus/my-level`) + 별점무관·대가표시 안내 + "AI 즉시지급" 문구 제거.
+- **문서/시드**: 셀러·어드민 가이드 섹션 추가, 블로그 리뷰 리워드 글에 레벨 섹션(`BLOG_SEED_VERSION` 4→5).
+- 검증: 변경 파일 개별 구문검사 0 · sql-bind/column/table/not-null 0 · theme/blog/pagination/modal-zindex/crossrole 등 가드 GREEN (⚠️ 이 원격환경 npm 403 — 전체 tsc/build 미실행, staging 필수: 제출→매장 승인→보너스+점수→레벨업 알림→레벨 전용 구매 게이트 E2E).
+- v2 잔여: 홍보 자격(배지 노출·핀 부스트) · 사용완료 카드 kakao_place_url 딥링크 CTA · 셀러 폼 min_review_level.
+
+
 ## ✅ 2026-07-02 — sql-bind 가드 확장: bind 통째 누락(무음 no-op) 클래스 박제 (결제 전수조사 후속 — "가드부터" 철학)
 2026-07-01 혼합결제 딜 미차감 실사고(`.bind(orderNumber)` 통째 누락 → D1 에러를 `.catch` 가 삼켜 2주간 무음 no-op — 기존 가드는 bind *보유* 체인의 개수 불일치만 분석해 미감지)의 버그 클래스를 결정론 가드로 차단.
 - `check-sql-bind-params.mjs` 확장: ① `?` 있는 SQL 이 같은 체인에서 `.bind()` 없이 `.run()/.all()/.first()/.raw()` 직행 → violation(`missing-bind`). ② TS 제네릭(`.all<{…}>()`) 체인 파싱 지원(기존 검사 커버리지도 3154→3170 증가). 변수 후행 bind·보간 SQL·placeholder 0 은 미해당(오탐 0).

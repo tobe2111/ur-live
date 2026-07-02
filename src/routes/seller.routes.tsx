@@ -55,6 +55,7 @@ const SellerReviewsPage = lazy(() => import('@/pages/SellerReviewsPage'))
 const SellerCouponsPage = lazy(() => import('@/pages/SellerCouponsPage'))
 const SellerSupplyPage = lazy(() => import('@/pages/SellerSupplyPage'))
 const SellerGroupBuyPage = lazy(() => import('@/pages/SellerGroupBuyPage'))
+const SellerReviewVerificationsPage = lazy(() => import('@/pages/SellerReviewVerificationsPage'))
 const SellerVoucherScanPage = lazy(() => import('@/pages/SellerVoucherScanPage'))
 const SellerBundlesPage = lazy(() => import('@/pages/SellerBundlesPage'))
 const SellerGuidePage = lazy(() => import('@/pages/SellerGuidePage'))
@@ -254,6 +255,12 @@ export function SellerRoutes() {
       <Route path="/seller/scan" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerVoucherScanPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🗺️ 2026-07-02: 카카오맵 리뷰 확인 큐 — 매장에서 확인(게이미피케이션) */}
+      <Route path="/seller/review-verifications" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerReviewVerificationsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🛡️ 2026-05-18: 숙소 공구 — PR 2/6 */}

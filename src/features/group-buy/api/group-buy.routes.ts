@@ -136,6 +136,19 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         return c.json({ success: false, error: `1인당 최대 ${maxPerPerson}개 구매 가능 — 이미 ${owned}개 보유 중입니다`, code: 'PER_PERSON_LIMIT' }, 400)
       }
     }
+    // 🗺️ 2026-07-02 (대표 "레벨이 올라가면 그 사람들에게만 보이는 이용권 구매 자격" — 카카오맵 리뷰
+    //   게이미피케이션): product_supply_meta.min_review_level. 미설정=전체 공개(추가 조회 0).
+    //   설정 시: 유저 동네 리뷰어 레벨(user_review_scores — 카카오맵 후기 승인으로 상승)이 그
+    //   이상이어야 구매 가능. fail-open — 레벨 조회 실패가 구매를 막지 않음(소프트 게이트).
+    const mrlRaw = mppMeta?.get(Number(productId))?.min_review_level
+    const minReviewLevel = mrlRaw != null && Number.isFinite(Number(mrlRaw)) && Number(mrlRaw) > 1 ? Math.floor(Number(mrlRaw)) : 0
+    if (minReviewLevel > 0) {
+      const { getUserReviewLevelValue } = await import('../../../worker/utils/review-level')
+      const myLevel = await getUserReviewLevelValue(DB, String(userId))
+      if (myLevel < minReviewLevel) {
+        return c.json({ success: false, error: `동네 리뷰어 Lv.${minReviewLevel} 전용 이용권입니다 (현재 Lv.${myLevel}) — 이용권 사용 후 카카오맵 후기 인증으로 레벨을 올릴 수 있어요`, code: 'REVIEW_LEVEL_REQUIRED' }, 403)
+      }
+    }
   } catch { /* fail-open */ }
 
   // 🛡️ 2026-05-22 v2 — toss 결제 진짜 흐름 활성 (이전 fake-PAID 보안 버그 영구 해결):
@@ -1070,6 +1083,17 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
       ).bind(productId, userId).first<{ n: number }>().catch(() => ({ n: 0 }))
       if (Number(ownedRow?.n ?? 0) + qty > maxPerPerson) {
         return c.json({ success: false, error: `1인당 최대 ${maxPerPerson}개까지 구매할 수 있습니다`, code: 'PER_PERSON_LIMIT' }, 400)
+      }
+    }
+    // 🗺️ 2026-07-02 (레벨 게이트 race 차단): /join 사전검증과 대칭 — **과금 전** 재검증.
+    //   초과면 403 — 승인 안 된 결제는 Toss 측 자동 만료(환불 불필요, PER_PERSON_LIMIT 동일 패턴).
+    const mrlRaw = mppMeta?.get(Number(productId))?.min_review_level
+    const minReviewLevel = mrlRaw != null && Number.isFinite(Number(mrlRaw)) && Number(mrlRaw) > 1 ? Math.floor(Number(mrlRaw)) : 0
+    if (minReviewLevel > 0) {
+      const { getUserReviewLevelValue } = await import('../../../worker/utils/review-level')
+      const myLevel = await getUserReviewLevelValue(DB, String(userId))
+      if (myLevel < minReviewLevel) {
+        return c.json({ success: false, error: `동네 리뷰어 Lv.${minReviewLevel} 전용 이용권입니다 (현재 Lv.${myLevel})`, code: 'REVIEW_LEVEL_REQUIRED' }, 403)
       }
     }
   } catch { /* fail-open */ }

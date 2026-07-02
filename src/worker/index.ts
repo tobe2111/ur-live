@@ -163,7 +163,7 @@ import { liveSseRoutes, chatRoutes } from './routes/live-sse.routes';
 import { cafe24Routes } from '../features/cafe24/api/cafe24.routes';
 
 import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/constants';
-import { requireAdmin, requireAuth } from './middleware/auth';
+import { requireAdmin, requireAuth, requireSeller } from './middleware/auth';
 import { adminIpWhitelist, adminAuditMiddleware } from './middleware/admin-security';
 import { adminRbacMiddleware } from './middleware/admin-rbac';
 import { rateLimit } from './middleware/rate-limit';
@@ -232,7 +232,7 @@ import { staysPublicRoutes } from '../features/group-buy/api/stays-public.routes
 // 🛡️ 2026-05-18: R2 이미지 업로드 (seller/admin/agency/user 공용).
 import { uploadRoutes } from '../features/upload/api/upload.routes';
 import { sellerMarketingRoutes, influencerSettlementRoutes, adminPayoutRoutes, influencerDiscoverRoutes, influencerRankingsRoutes } from '../features/group-buy/api/marketing.routes';
-import { reviewBonusUserRoutes, reviewBonusAdminRoutes } from '../features/group-buy/api/review-bonus.routes';
+import { reviewBonusUserRoutes, reviewBonusAdminRoutes, reviewBonusSellerRoutes } from '../features/group-buy/api/review-bonus.routes';
 import { fcfsRoutes, fcfsAdminRoutes } from '../features/group-buy/api/fcfs.routes';
 import { voucherDisputeRoutes, voucherDisputeAdminRoutes } from '../features/group-buy/api/voucher-dispute.routes';
 // 🛡️ 2026-05-20: requireAdmin 은 위 (line 127) 에서 이미 import — 중복 제거.
@@ -1681,6 +1681,9 @@ app.route('/api/influencer-rankings', influencerRankingsRoutes);
 app.route('/api/review-bonus', reviewBonusUserRoutes);
 app.use('/api/admin-review-bonus/*', requireAdmin());
 app.route('/api/admin-review-bonus', reviewBonusAdminRoutes);
+// 🗺️ 2026-07-02 카카오맵 리뷰 게이미피케이션 — 매장(셀러) 확인 큐 (대표 "매장에서 확인")
+app.use('/api/seller/review-verifications/*', requireSeller());
+app.route('/api/seller/review-verifications', reviewBonusSellerRoutes);
 // 🎯 2026-06-20 선착순 응모 상품 (대표) — 공개(목록/상태) + 유저(지원) + 어드민(설정/지원자/선정)
 app.route('/api/fcfs', fcfsRoutes);
 app.route('/api/admin/fcfs', fcfsAdminRoutes);

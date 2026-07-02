@@ -2395,7 +2395,8 @@
       "curatorEarnings": "策展人收益",
       "prospects": "招募门店",
       "voucherScan": "扫描兑换券",
-      "proxyProducts": "代理上架审批"
+      "proxyProducts": "代理上架审批",
+      "reviewVerifications": "评价确认"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
@@ -2819,7 +2820,27 @@
     },
     "mailOrderNumber": "通信销售业申报号",
     "mailOrderNumberPlaceholder": "例: 2026-首尔江南-01234",
-    "mailOrderNumberHint": "将公开显示在链接商店的卖家信息中"
+    "mailOrderNumberHint": "将公开显示在链接商店的卖家信息中",
+    "reviewVerify": {
+      "title": "Kakao地图评价确认",
+      "subtitle": "请确认使用过使用券的顾客提交的Kakao地图评价。确认后顾客将获得奖励Deal＋评价者等级积分。",
+      "tabPending": "待确认",
+      "tabPaid": "已发放",
+      "tabRejected": "已拒绝",
+      "empty": "暂无记录",
+      "emptyPending": "没有待确认的评价认证",
+      "approve": "确认（发放奖励）",
+      "reject": "拒绝",
+      "rejectConfirm": "确认拒绝",
+      "reasonPlaceholder": "拒绝原因（将发送给顾客）",
+      "reasonRequired": "请输入拒绝原因",
+      "approvedToast": "确认完成 — 已向顾客发放奖励和评价积分",
+      "rejectedToast": "已拒绝",
+      "ocrPassed": "自动验证通过（参考）",
+      "openReview": "查看认证",
+      "footNote": "奖励与评分和内容无关，仅针对到店认证发放。运营团队可能会抽样审核。",
+      "loadError": "无法加载列表"
+    }
   },
   "admin": {
     "login": {

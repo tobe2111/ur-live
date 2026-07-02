@@ -1222,6 +1222,7 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
       restaurant_phone?: string; lat?: number | string; lng?: number | string; description?: string;
       max_per_person?: number | string;
       kakao_place_url?: string;
+      min_review_level?: number | string;
     };
     const name = String(b.name || '').trim();
     const cat = mapDealCategory(String(b.category || '').trim());
@@ -1259,6 +1260,13 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
         await setSupplyMeta(c.env.DB, Number(r.meta.last_row_id), { kakao_place_url: kpu }).catch(() => {});
       }
     }
+    // 🗺️ 2026-07-02 (카카오맵 리뷰 게이미피케이션): 동네 리뷰어 레벨 전용 이용권 (2~5, 0/미설정=전체 공개).
+    {
+      const mrl = Number(b.min_review_level);
+      if (r.meta?.last_row_id && Number.isFinite(mrl) && mrl >= 2 && mrl <= 5) {
+        await setSupplyMeta(c.env.DB, Number(r.meta.last_row_id), { min_review_level: String(Math.floor(mrl)) }).catch(() => {});
+      }
+    }
     await writeAuditLog(c, { action: 'dongnedeal_create', targetType: 'product', targetId: r.meta?.last_row_id, after: { name, cat, hasCoord } }).catch(() => {});
     // 🛡️ 2026-07-01 (대표 신고 — 어드민 수정이 홈에 즉시 반영 안 됨): 동네딜 뮤테이션 시 공구 목록
     //   앱 캐시(group_buy_products:*) 무효화. 셀러 상품 등록과 동일 패턴. (edge/SSR TTL 은 별도.)
@@ -1293,6 +1301,8 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
           r.max_per_person = raw != null && Number.isFinite(Number(raw)) && Number(raw) > 0 ? Math.floor(Number(raw)) : 0;
           const kpu = mm?.get(Number(r.id))?.kakao_place_url;
           r.kakao_place_url = normalizeKakaoPlaceUrl(kpu);
+          const mrl = mm?.get(Number(r.id))?.min_review_level;
+          r.min_review_level = mrl != null && Number.isFinite(Number(mrl)) && Number(mrl) > 1 ? Math.floor(Number(mrl)) : 0;
         }
       }
     } catch { /* fail-soft */ }
@@ -1331,6 +1341,14 @@ adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
       const mpp = Number(b.max_per_person);
       if (Number.isFinite(mpp) && mpp >= 0 && mpp <= 99) {
         await setSupplyMeta(c.env.DB, Number(id), { max_per_person: String(Math.floor(mpp)) }).catch(() => {});
+        mppChanged = true;
+      }
+    }
+    // 🗺️ 2026-07-02 (카카오맵 리뷰 게이미피케이션): 레벨 전용 meta 수정 (0=해제, 2~5=설정).
+    if (b.min_review_level !== undefined) {
+      const mrl = Number(b.min_review_level);
+      if (Number.isFinite(mrl) && (mrl === 0 || (mrl >= 2 && mrl <= 5))) {
+        await setSupplyMeta(c.env.DB, Number(id), { min_review_level: mrl === 0 ? '' : String(Math.floor(mrl)) }).catch(() => {});
         mppChanged = true;
       }
     }
