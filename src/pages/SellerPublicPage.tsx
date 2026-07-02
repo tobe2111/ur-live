@@ -427,8 +427,9 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
         jsonLd={{
           '@context': 'https://schema.org',
           '@type': 'Person',
-          name: seller.name || seller.username || '셀러',
-          description: seller.bio || `${seller.name || '셀러'}의 라이브 커머스 채널`,
+          // 🏷️ 2026-07-01: 폐기어 정정 — "라이브 커머스 채널"(영구중단 기능) → "링크샵" (크롤러 노출 구조화 데이터)
+          name: seller.name || seller.username || '유어딜 링크샵',
+          description: seller.bio || `${seller.name || seller.username || ''}의 링크샵 — 상품·이용권 모음`,
           image: seller.profile_image || undefined,
           url: `https://live.ur-team.com/profile/${seller.username || seller.slug || seller.id}`,
           ...((seller as any).follower_count != null && { interactionStatistic: { '@type': 'InteractionCounter', interactionType: 'https://schema.org/FollowAction', userInteractionCount: (seller as any).follower_count } }),

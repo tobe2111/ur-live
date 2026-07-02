@@ -169,7 +169,7 @@ export default function WholesaleProductPage() {
     // 현재 수량 구간 단가를 스냅샷으로 저장(표시용). 결제액은 주문 시 서버 재계산(SSOT).
     let unit = item.distributor_price, bm = 0
     for (const t of (item.tiers || [])) if (qty >= t.min_qty && t.min_qty >= bm) { bm = t.min_qty; unit = t.unit_price }
-    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: unit, moq: Math.max(1, item.moq || 1), supplier_group: item.supplier_group ?? null, supplier_policy: item.supplier_policy ?? null })
+    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: unit, moq: Math.max(1, item.moq || 1), supplier_group: item.supplier_group ?? null, supplier_policy: item.supplier_policy ?? null, product_shipping_fee: item.product_shipping_fee ?? null })
     toast.success(`장바구니에 ${comma(qty)}개 담았어요`)
   }
 
@@ -185,7 +185,7 @@ export default function WholesaleProductPage() {
     // 현재 수량 구간 단가 스냅샷(표시용 — 결제액은 체크아웃에서 서버 재계산 SSOT).
     let unit = item.distributor_price, bm = 0
     for (const t of (item.tiers || [])) if (qty >= t.min_qty && t.min_qty >= bm) { bm = t.min_qty; unit = t.unit_price }
-    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: unit, moq: Math.max(1, item.moq || 1), supplier_group: item.supplier_group ?? null, supplier_policy: item.supplier_policy ?? null })
+    cart.add({ id: item.id, qty, name: item.name, image_url: item.image_url, price: unit, moq: Math.max(1, item.moq || 1), supplier_group: item.supplier_group ?? null, supplier_policy: item.supplier_policy ?? null, product_shipping_fee: item.product_shipping_fee ?? null })
     navigate('/wholesale/checkout')
   }
 

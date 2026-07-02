@@ -28,10 +28,9 @@ const AdminDongnedealImportPage = lazy(() => import('@/pages/AdminDongnedealImpo
 const AdminWholesaleActivityPage = lazy(() => import('@/pages/admin/AdminWholesaleActivityPage'))
 const AdminLoginHistoryPage = lazy(() => import('@/pages/AdminLoginHistoryPage'))
 const AdminWholesaleOrdersPage = lazy(() => import('@/pages/AdminWholesaleOrdersPage'))
-// 🏦 2026-06-09: 도매 예치금 입금확인 페이지.
-const AdminWholesaleDepositsPage = lazy(() => import('@/pages/AdminWholesaleDepositsPage'))
-// 🏦 2026-06-09: 제조사 정산금 출금 신청 처리 페이지.
-const AdminWholesaleWithdrawalsPage = lazy(() => import('@/pages/AdminWholesaleWithdrawalsPage'))
+// 🏦 2026-07-02 (어드민 도매 IA 통합): 예치금/출금 페이지는 라우트가 직접 렌더하지 않음 —
+//   예치금 = AdminDistributorGradesPage('판매사 관리')의 '예치금' 탭, 출금 = AdminSuppliersPage('제조사 관리')의
+//   '출금 처리' 탭에서 embedded 로 사용(딥링크 경로는 아래에서 컨테이너 페이지로 매핑 → 탭으로 열림).
 // 🏭 2026-06-09 Wave 2: 도매 메인 배너 관리 + 제안/신고 처리 큐.
 const AdminWholesaleBannersPage = lazy(() => import('@/pages/AdminWholesaleBannersPage'))
 const AdminWholesaleBoardPage = lazy(() => import('@/pages/AdminWholesaleBoardPage'))
@@ -316,16 +315,16 @@ export function AdminRoutes() {
           <AdminWholesaleOrdersPage />
         </ProtectedRoute>
       } />
-      {/* 🏦 2026-06-09: 도매 예치금 입금확인 */}
+      {/* 🏦 2026-07-02 (IA 통합): 도매 예치금 딥링크 → '판매사 관리'의 '예치금' 탭으로 열림(같은 컴포넌트 다중 매핑). */}
       <Route path="/admin/wholesale-deposits" element={
         <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminWholesaleDepositsPage /></ErrorBoundary>
+          <ErrorBoundary><AdminDistributorGradesPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      {/* 🏦 2026-06-09: 제조사 정산금 출금 신청 처리 */}
+      {/* 🏦 2026-07-02 (IA 통합): 제조사 출금 딥링크 → '제조사 관리'의 '출금 처리' 탭으로 열림. */}
       <Route path="/admin/wholesale-withdrawals" element={
         <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminWholesaleWithdrawalsPage /></ErrorBoundary>
+          <ErrorBoundary><AdminSuppliersPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🏭 Wave 2 (2026-06-09): 도매 메인 배너 관리 */}

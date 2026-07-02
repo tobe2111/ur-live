@@ -1,56 +1,58 @@
 /**
- * 🛡️ 2026-07-02 (대표 "영구적으로 해결") — 네이버 이미지 인증서/핫링크 깨짐 영구 차단 SSOT.
+ * 🛡️ 네이버 이미지 저장 정규화 SSOT — 2026-07-02 v2 (라이브 콘솔 증거 기반 방향 전환).
  *
- * 배경: 네이버 이미지검색의 원본 link 는 https 여도 깨진다 —
- *   `shop1.phinf.naver.net` 등 원본 호스트가 **호스트명과 불일치하는 인증서**를 서빙
- *   (ERR_CERT_COMMON_NAME_INVALID) + 핫링크 차단 호스트도 존재. "https-only 필터"로는 부족.
+ * v1(같은 날 오전)은 `https://search.pstatic.net/common/?src=<원본>&type=sc960` 프록시로 감쌌으나,
+ * **라이브 콘솔 실측으로 그 프록시가 404 를 반환**함이 확인됨(비네이버 원본 yt3 는 물론
+ * `imgnews.naver.net` 조차 404 — 네이버 내부 전용 프록시라 외부발 임의 src 를 거부).
  *
- * 영구 해법: 원본 호스트를 **절대 직접 쓰지 않고**, 네이버 검색 자체가 쓰는 이미지 프록시
- *   `https://search.pstatic.net/common/?src=<원본>&type=<크기>` 로 항상 감싼다.
- *   search.pstatic.net 은 인증서 정상 + 원본을 서버측에서 fetch 해 재서빙 → 항상 로드.
- *   API 의 thumbnail 필드가 이미 이 프록시(type=b150 소형) — type 만 키워 재사용.
+ * v2 영구 해법: **DB 에는 항상 원본 URL 을 저장**하고, 깨짐 방지는 렌더 시점의
+ * `cfImage()`(cf-image.ts) 가 담당 — phinf.naver.net/pstatic.net/imgnews 등이 CDN_CGI_VERIFIED
+ * 에 등재되어 zone 리사이저가 서버측에서 원본(http 포함)을 fetch 해 same-origin https 로 서빙
+ * (라이브 실측 `cf-resized: internal=ok`, 인증서/CSP/mixed-content 문제 원천 소멸).
  *
+ * 함수 시그니처는 v1 과 동일(호출부 무수정) — 의미만 "프록시 랩" → "원본 정규화(un-wrap)".
  * 클라(ManualDealForm)와 워커(naver-image-search, seed heal) 공용 — 순수 함수만.
  */
 
 const PROXY_HOST = 'https://search.pstatic.net/common/'
 
-/** 이미 안전한(프록시) URL 인지 */
+/** v1 프록시로 감싸진(=치유 대상) URL 인지 */
 export function isNaverSafeImageUrl(url: string | null | undefined): boolean {
   return !!url && url.startsWith(PROXY_HOST)
 }
 
+/** search.pstatic 프록시 래퍼에서 원본 src 를 추출. 래퍼가 아니면 그대로 반환. */
+function unwrapProxy(url: string): string {
+  if (!url.startsWith(PROXY_HOST)) return url
+  try {
+    const src = new URL(url).searchParams.get('src')
+    if (src && /^https?:\/\//.test(src)) return src
+  } catch { /* 파싱 실패 — 원문 유지 */ }
+  return url
+}
+
 /**
- * 원본 link / API thumbnail 을 안전한 프록시 URL(큰 사이즈)로 변환.
- * - thumbnail(이미 프록시)이 있으면 type 파라미터만 상향.
- * - 아니면 원본 link 를 프록시로 감쌈.
- * - 둘 다 없으면 null.
+ * 저장용 이미지 URL 정규화 — **항상 원본**을 반환.
+ * - link 우선. link 가 프록시 래퍼면 src 추출(un-wrap).
+ * - link 없으면 thumbnail 에서 un-wrap 시도.
+ * - 렌더 시 cfImage() 가 원본을 안전하게 변환하므로 여기서 감싸지 않는다.
  */
 export function toNaverSafeImageUrl(
   link: string | null | undefined,
   thumbnail?: string | null,
-  size = 'sc960',
+  _size = 'sc960',
 ): string | null {
-  if (thumbnail && thumbnail.startsWith(PROXY_HOST)) {
-    // 기존 type=bXXX → 상향. type 파라미터 없으면 append.
-    return /[?&]type=/.test(thumbnail)
-      ? thumbnail.replace(/([?&]type=)[^&]*/, `$1${size}`)
-      : `${thumbnail}${thumbnail.includes('?') ? '&' : '?'}type=${size}`
-  }
   const raw = (link || thumbnail || '').trim()
   if (!raw) return null
-  if (raw.startsWith(PROXY_HOST)) return toNaverSafeImageUrl(null, raw, size)
-  if (!/^https?:\/\//.test(raw)) return null
-  return `${PROXY_HOST}?src=${encodeURIComponent(raw)}&type=${size}`
+  if (!/^https?:\/\//.test(raw) && !raw.startsWith(PROXY_HOST)) return null
+  const original = unwrapProxy(raw)
+  return /^https?:\/\//.test(original) ? original : null
 }
 
 /**
- * 저장된 image_url 이 "깨질 수 있는" 네이버 원본/HTTP 인지 → 치유(프록시 랩) 필요 여부.
- * 대상: phinf.* (인증서 불일치 상습) · *.naver.net 원본 · http:// 전부(mixed content).
+ * 저장된 image_url 치유 필요 여부 — v1 프록시 래퍼(404 유발)만 대상.
+ * 원본 http://·phinf 등은 더 이상 치유 불필요(렌더 시 cfImage 가 처리).
  */
 export function needsNaverImageHeal(url: string | null | undefined): boolean {
-  if (!url) return false
-  if (isNaverSafeImageUrl(url)) return false
-  if (url.startsWith('http://')) return true
-  return /https:\/\/[^/]*(?:phinf|naver\.net)/i.test(url)
+  return isNaverSafeImageUrl(url)
 }

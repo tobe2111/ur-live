@@ -45,7 +45,15 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const [search, setSearch] = useState('')
   const [mapView, setMapView] = useState(true)
   // 🛡️ 2026-04-28: Recommended Pack — 거리/카테고리/정렬
-  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
+  // 📍 2026-07-02 (대표 "첫 화면과 완성 화면이 달라 헷갈림"): 거리(km)는 GPS 측위 후에만 계산돼
+  //   1~5초 늦게 나타나던 것 — 마지막 측위를 localStorage 에 캐시해 **재방문부터는 첫 페인트에 즉시**
+  //   표시(수십 m 오차는 km 단위 표시에 무해), fresh GPS 도착 시 조용히 갱신. 첫 방문(캐시 없음)만 기존과 동일.
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => {
+    try {
+      const c = JSON.parse(localStorage.getItem('ur_last_loc_v1') || 'null')
+      return c && Number.isFinite(c.lat) && Number.isFinite(c.lng) ? { lat: c.lat, lng: c.lng } : null
+    } catch { return null }
+  })
   // 🛡️ 2026-04-28: 이용권 카테고리 (식사/뷰티/헬스) — meal_voucher 인프라 재활용
   const [voucherType, setVoucherType] = useState<MapVoucherType>('all')
   // 🛡️ 2026-06-01 Tier2: products fetch 만 React Query(카테고리별 캐시). live-poller 는 유지.
@@ -54,7 +62,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   //   (캐시 보유분 재요청 금지 + 동일 주소 1회만 + 429 시 배치 중단 — useGeocodeMissing.ts 참조).
   const enrichedRestaurants = useGeocodeMissing(restaurants)
   // 🎯 2026-06-20 선착순: 활성 선착순 상품 config(상위노출·배지·지원용). id→{spots,appliedDisplay}.
-  const [fcfsMap, setFcfsMap] = useState<Map<number, { spots: number; appliedDisplay: number }>>(new Map())
+  // 🎯 2026-07-02 (대표 "첫 페인트에 응모 버튼 늦게 등장"): 목록 응답에 서버 enrich 된 r.fcfs 를
+  //   첫 페인트 시드로 즉시 사용 — 별도 /api/fcfs/active 도착 전에도 응모 버튼·배지가 함께 그려짐.
+  //   fetch 결과가 오면 그 값(신선 카운트) 우선.
+  const [liveFcfsMap, setLiveFcfsMap] = useState<Map<number, { spots: number; appliedDisplay: number }>>(new Map())
   useEffect(() => {
     api.get('/api/fcfs/active')
       .then(r => {
@@ -62,10 +73,17 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         for (const p of (r.data?.data || [])) {
           if (p?.fcfs?.enabled) m.set(p.id, { spots: p.fcfs.spots || 0, appliedDisplay: p.fcfs.appliedDisplay || 0 })
         }
-        setFcfsMap(m)
+        setLiveFcfsMap(m)
       })
       .catch(() => { /* silent */ })
   }, [])
+  const fcfsMap = useMemo(() => {
+    const m = new Map(liveFcfsMap)
+    for (const r of restaurants as Array<{ id: number; fcfs?: { enabled?: boolean; spots?: number; appliedDisplay?: number } }>) {
+      if (!m.has(r.id) && r.fcfs?.enabled) m.set(r.id, { spots: r.fcfs.spots || 0, appliedDisplay: r.fcfs.appliedDisplay || 0 })
+    }
+    return m
+  }, [liveFcfsMap, restaurants])
   const applyFcfs = useCallback(async (productId: number) => {
     try {
       const res = await api.post(`/api/fcfs/${productId}/apply`)
@@ -204,8 +222,12 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
-      (pos) => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => { /* 거부/실패 — 거리순 비활성 */ },
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setUserLoc(loc)
+        try { localStorage.setItem('ur_last_loc_v1', JSON.stringify(loc)) } catch { /* quota */ }
+      },
+      () => { /* 거부/실패 — 캐시 위치(있으면) 유지, 없으면 거리 비표시 */ },
       { timeout: 5000, enableHighAccuracy: false, maximumAge: 600000 }
     )
   }, [])

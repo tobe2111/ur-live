@@ -11,6 +11,7 @@ import { formatWon, formatNumber } from '@/utils/format'
 import { SUPPLY_CHANNELS, DEFAULT_SUPPLY_CHANNEL_THRESHOLDS, type SupplyChannelThresholds } from '@/shared/supply-channels'
 import { GRADE_NAME } from '@/pages/wholesale/wholesale-theme'
 import AdminDistributorApprovalPage from '@/pages/admin/AdminDistributorApprovalPage'
+import AdminWholesaleDepositsPage from '@/pages/AdminWholesaleDepositsPage'
 
 // 🏅 등급 코드(A/B/C…) + 친화 라벨(Premium/Standard/Basic) 동시 표기 — 운영자 혼동 방지.
 const gradeLabel = (g: string) => { const n = GRADE_NAME[g]; return n && n !== g ? `${g} · ${n}` : g }
@@ -55,17 +56,21 @@ const ASSIGNABLE = ['A', 'B', 'C', 'D', 'OEM']
 // 🗂️ 2026-06-17: 1,170줄 단일 페이지를 4개 탭(딥링크 라우트)으로 분리 — 머니 로직 무변경(섹션 그룹만 탭 조건부 렌더).
 //   각 탭은 자기 데이터만 로드(useApiQuery enabled 게이트) → 가벼워짐. 사이드바 4개 항목 → 각 탭 라우트.
 // 🏭 2026-06-29 (대표 — 판매사 승인 통합): 승인을 '판매사 관리' 첫 탭으로 흡수(별도 nav 항목 제거).
-type DistTab = 'approval' | 'grades' | 'credit' | 'tax' | 'supply'
+// 🏦 2026-07-02 (대표 — 어드민 도매 IA 통합): '도매 예치금'(입금확인)도 판매사 돈 흐름이라 '예치금' 탭으로 흡수
+//   (💰 도매몰·정산 그룹의 별도 nav 항목 제거). 딥링크 /admin/wholesale-deposits 는 이 페이지의 탭으로 열림.
+type DistTab = 'approval' | 'grades' | 'credit' | 'deposits' | 'tax' | 'supply'
 const DIST_TABS: { key: DistTab; path: string; label: string }[] = [
   { key: 'approval', path: '/admin/distributor-approval', label: '승인' },
   { key: 'grades', path: '/admin/distributor-grades', label: '등급·마진' },
   { key: 'credit', path: '/admin/distributor-credit', label: '여신·외상' },
+  { key: 'deposits', path: '/admin/wholesale-deposits', label: '예치금' },
   { key: 'tax', path: '/admin/distributor-tax', label: '제안·세금' },
   { key: 'supply', path: '/admin/distributor-supply', label: '공급가·채널·OEM' },
 ]
 function tabFromPath(p: string): DistTab {
   if (p.includes('distributor-approval')) return 'approval'
   if (p.includes('distributor-credit')) return 'credit'
+  if (p.includes('wholesale-deposits')) return 'deposits'
   if (p.includes('distributor-tax')) return 'tax'
   if (p.includes('distributor-supply')) return 'supply'
   return 'grades'
@@ -497,6 +502,9 @@ export default function AdminDistributorGradesPage() {
 
         {/* 🏭 2026-06-29 (대표 — 승인 통합): '승인' 탭 = 판매사 가입 승인 패널(embedded — 자체 AdminLayout 생략). */}
         {tab === 'approval' && <div className="pt-5"><AdminDistributorApprovalPage embedded /></div>}
+
+        {/* 🏦 2026-07-02 (IA 통합): '예치금' 탭 = 도매 예치금 입금확인 패널(embedded — 데이터/핸들러 무변경). */}
+        {tab === 'deposits' && <div className="pt-5"><AdminWholesaleDepositsPage embedded /></div>}
 
         {tab === 'grades' && (<>
         {/* ── 등급별 마진율 ── */}

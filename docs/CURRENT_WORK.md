@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-02 — 마이페이지 전수 UX/기능 점검 + 일괄 수정 (대표 "모두 이상적으로")
+`/user/profile` + 위성 15페이지 전수 점검(에이전트 2 + 가드) 후 발견 전량 수정.
+- **🔴 에러 위장 근절(최대 교차 이슈)**: 마이 데이터 훅 8종(`useMyData`×3·`useMyCoupons`·`useMyReturns`·`useMyStays`·`useMyFollows`·`useDigitalLibrary`)이 `.catch(() => readCache(,[]))` 로 에러를 삼켜 **isError 가 절대 발동 불가** → 네트워크 장애가 "빈 지갑/주문 0건"으로 위장, 페이지들의 에러+재시도 UI 전부 dead branch. 수정: `localCache.readCacheOrNull` 신설 — **캐시 있으면 last-known 폴백(오프라인 UX 유지), 없으면 throw → isError**. `useMyGroupBuys`(3endpoint 전멸 시)·`useMyCommissions`(양쪽 전멸 시)도 throw. isError 미분기 페이지 9곳(MyVouchers/MyStays/MyFollows/MyGroupBuys/MyAppointments/MyDigitalLibrary/MyCommissions/MyStore/MyReturns)에 에러+재시도 UI 추가(기존 dead 에러 UI 는 자동 부활). `TeamPointsCard` 실패→"0딜" 위장 → "잔액 다시 불러오기" 버튼, `useMyCounts` 실패→0 배지 위장 → null 유지(배지 숨김).
+- **🔴 MyStaysPage 다크 전용 하드코딩** → 라이트 기본+`dark:` 전면 전환(마이 위성 유일한 테마 규칙 전면 위반이었음) + `refund_rate` NaN% 가드 + 핑크→B&W.
+- **🔴 주문 현황 바 반쪽 동작**: 별도 fetch → `useMyOrders` 재사용(RQ 캐시 공유), 5칸 전부 무필터 `/my-orders` → **상태 필터(`?status=`) 배선 + MyOrdersPage 에 필터 칩 신설**, 항상 0이던 '리뷰' → 리뷰 가능 주문 수(DELIVERED/DONE, MyReviews 기준) + `/my-reviews` 이동.
+- **🟠 중간**: ShoppingGroup(다크 구분선 소실)·AccountControlsSection(라이트 구분선 소실) 인라인 border → 테마 클래스 / STATUS map 무방비 크래시 3곳 fallback(MyAppointments·MyCommissions·MyLedger) / native `prompt()` → `promptDialog`(Stays·Appointments) / "이용권·이용권" 카피 + 푸터 '배송정책'→'환불·반품 정책'(/refund 도착지 정합) / `ReferralEarnedCard` **카카오 세션 유저에게 항상 숨겨지던 버그**(access_token 만 검사 → `isLoggedInSync`) + raw toLocaleString→formatWon + stats 미수신에도 CTA 노출(05-20 정책 복원) / MyGroupBuys 활성 탭 밑줄·MyFollows 배너 다크 대응.
+- **🟢 낮음**: orphan `ChatNameSetting` 삭제 / reward-ad-card **훅 앞 조건부 return**(Hooks 규칙 위반) 수정 + **광고 로드 실패 시 시뮬레이션 폴백으로 리워드 지급되던 딜 누수 제거** / RoleCtaGrid no-op 삼항 / 마이 표면 하드코딩 한국어 t() 래핑 + 6개 언어 키 41개 / "추천 Commission"→"추천 수익"·"단골 셀러"→"단골 가게" 명칭 정리 / MyDigitalLibrary 뒤로가기 추가.
+- 검증: 테마/뷰포트/iserror/initialdata/file-size/modal-zindex 가드 GREEN · 변경파일 구문/타입 오류 신규 0(클린트리 대비 diff 0 — npm 403 환경이라 전체 build/tsc 는 CI 위임). ⚠️ staging: 마이 진입(딜 잔액·카운트), 비행기모드 재현(에러+재시도 UI), 주문 현황 바 칩 필터, 숙소 예약 라이트 모드 1회 확인 권장.
+
 ## ✅ 2026-07-02 — sql-bind 가드 확장: bind 통째 누락(무음 no-op) 클래스 박제 (결제 전수조사 후속 — "가드부터" 철학)
 2026-07-01 혼합결제 딜 미차감 실사고(`.bind(orderNumber)` 통째 누락 → D1 에러를 `.catch` 가 삼켜 2주간 무음 no-op — 기존 가드는 bind *보유* 체인의 개수 불일치만 분석해 미감지)의 버그 클래스를 결정론 가드로 차단.
 - `check-sql-bind-params.mjs` 확장: ① `?` 있는 SQL 이 같은 체인에서 `.bind()` 없이 `.run()/.all()/.first()/.raw()` 직행 → violation(`missing-bind`). ② TS 제네릭(`.all<{…}>()`) 체인 파싱 지원(기존 검사 커버리지도 3154→3170 증가). 변수 후행 bind·보간 SQL·placeholder 0 은 미해당(오탐 0).

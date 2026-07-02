@@ -163,13 +163,14 @@ export function AppVersionSection() {
           <span className="text-[13px] text-gray-900 dark:text-white/75">{t('accountSettings.currentVersion', { defaultValue: '현재 버전' })}</span>
           <span className="text-[12px] font-medium text-gray-900 dark:text-white">v{APP_VERSION}</span>
         </div>
+        {/* 🛡️ 2026-07-02: 인라인 흰색 고정 borderTop → 테마 클래스(라이트에서 구분선 소실 수정) */}
         {BUILD_HASH && (
-          <div className="flex items-center justify-between px-4 py-3.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="flex items-center justify-between px-4 py-3.5 border-t border-black/[0.06] dark:border-white/[0.06]">
             <span className="text-[13px] text-gray-900 dark:text-white/75">{t('accountSettings.build', { defaultValue: '빌드' })}</span>
             <span className="text-[11px] font-mono text-gray-900 dark:text-white/55">{BUILD_HASH}</span>
           </div>
         )}
-        <div className="flex items-center justify-between px-4 py-3.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center justify-between px-4 py-3.5 border-t border-black/[0.06] dark:border-white/[0.06]">
           <span className="text-[13px] text-gray-900 dark:text-white/75">{t('accountSettings.checkLatest', { defaultValue: '최신 버전 확인' })}</span>
           {loading ? (
             <span className="flex items-center gap-1.5 text-[12px] text-gray-900 dark:text-white/55">
@@ -180,7 +181,7 @@ export function AppVersionSection() {
               <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} /> 다시 시도
             </button>
           ) : isLatest ? (
-            <span className="flex items-center gap-1.5 text-[12px] text-emerald-400 font-medium">
+            <span className="flex items-center gap-1.5 text-[12px] text-emerald-600 dark:text-emerald-400 font-medium">
               <CheckCircle2 className="w-3.5 h-3.5" /> 최신 버전
             </span>
           ) : hasUpdate ? (

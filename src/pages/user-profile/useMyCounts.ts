@@ -24,8 +24,9 @@ export function useMyCounts(): MyCounts {
         const items = (d as { items?: unknown[] })?.items
         return Array.isArray(items) ? items.length : 0
       }
-      api.get('/api/wishlists').then(r => setCounts(c => ({ ...c, wish: extract(r) }))).catch(() => setCounts(c => ({ ...c, wish: 0 })))
-      api.get('/api/coupons/my').then(r => setCounts(c => ({ ...c, coupon: extract(r) }))).catch(() => setCounts(c => ({ ...c, coupon: 0 })))
+      // 🛡️ 2026-07-02: 실패 시 null 유지(배지 미표시) — 네트워크 오류를 "0개"로 위장하지 않음.
+      api.get('/api/wishlists').then(r => setCounts(c => ({ ...c, wish: extract(r) }))).catch(() => { /* null 유지 */ })
+      api.get('/api/coupons/my').then(r => setCounts(c => ({ ...c, coupon: extract(r) }))).catch(() => { /* null 유지 */ })
     })
   }, [])
 

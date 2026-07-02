@@ -96,6 +96,41 @@ export async function deductDeposit(DB: D1Database, sellerId: number, amount: nu
 }
 
 /**
+ * 💰 예치금 차감 + 'order' 원장 기록을 **원자적**으로(단일 D1 batch = 단일 트랜잭션).
+ *   🛡️ 2026-07-02 (감사 — orphan-reconcile 근본수정): 기존엔 deductDeposit(잔액 CAS) 후 recordDepositTxn
+ *   ('order' 원장)이 **별도 write** 라, 그 사이 크래시 시 "잔액만 빠지고 order 원장 없음" → reconcile 의
+ *   EXISTS('order' txn) 게이트가 false → **영구 미회수**(자동복구 불가). 이제 batch 두 문장으로:
+ *     [0] 잔액 충분할 때만 'order' 원장 INSERT(ref_id=orderId 로 식별) — balance_after=현재잔액-amt.
+ *     [1] [0] 가 넣은 그 원장이 존재할 때만 잔액 차감(EXISTS 게이트 — payoutSupplier 의 batch 행-가시성 패턴).
+ *   → 잔액차감 ⟺ 'order' 원장 존재 가 **원자 불변식**이 되어 reconcile 게이트가 신뢰 가능(크래시=둘 다/둘 다 아님).
+ *   멱등: 호출측(PENDING order INSERT idem 승자)이 주문당 1회만 호출 → 중복 없음(recordDepositTxn 과 동일 가정).
+ *   @returns 성공 시 { ok:true, balanceAfter } · 부족/실패 시 { ok:false, balance }.
+ */
+export async function deductDepositForOrder(
+  DB: D1Database, sellerId: number, amount: number, orderId: number, memo: string,
+): Promise<{ ok: true; balanceAfter: number } | { ok: false; balance: number }> {
+  const amt = Math.floor(amount)
+  if (!Number.isFinite(amt) || amt <= 0) return { ok: false, balance: await loadDepositBalance(DB, sellerId) }
+  await DB.prepare('INSERT OR IGNORE INTO wholesale_deposits (seller_id, balance) VALUES (?, 0)').bind(sellerId).run().catch(swallow('deposit:deduct-ensure-row'))
+  const batch = await DB.batch([
+    // [0] 잔액 충분(balance >= amt)일 때만 'order' 원장 INSERT. balance_after = 차감 후 값(현재-amt).
+    DB.prepare(
+      `INSERT INTO wholesale_deposit_txns (seller_id, type, amount, balance_after, ref_id, memo)
+       SELECT ?, 'order', ?, (SELECT COALESCE(balance,0) FROM wholesale_deposits WHERE seller_id = ?) - ?, ?, ?
+       WHERE (SELECT COALESCE(balance,0) FROM wholesale_deposits WHERE seller_id = ?) >= ?`
+    ).bind(sellerId, -amt, sellerId, amt, String(orderId), memo, sellerId, amt),
+    // [1] [0] 의 'order' 원장이 실제로 들어갔을 때만 차감(단일 트랜잭션 순차 실행 → [1] 이 [0] 의 행을 봄).
+    DB.prepare(
+      `UPDATE wholesale_deposits SET balance = balance - ?, updated_at = datetime('now')
+       WHERE seller_id = ? AND EXISTS (SELECT 1 FROM wholesale_deposit_txns WHERE type = 'order' AND ref_id = ?)`
+    ).bind(amt, sellerId, String(orderId)),
+  ]).catch(() => null)
+  const deducted = (((batch?.[1] as { meta?: { changes?: number } })?.meta?.changes) ?? 0) === 1
+  if (!deducted) return { ok: false, balance: await loadDepositBalance(DB, sellerId) }
+  return { ok: true, balanceAfter: await loadDepositBalance(DB, sellerId) }
+}
+
+/**
  * 💰 예치금 복원(환불·보상). 원자적 += amount. 행 보장 후 적립.
  *   성공 시 balanceAfter 반환. (음수 검증 불필요 — 적립이므로 항상 증가.)
  */

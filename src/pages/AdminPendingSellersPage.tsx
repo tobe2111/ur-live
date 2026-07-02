@@ -11,6 +11,7 @@
 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import AdminLayout from '@/components/AdminLayout'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
@@ -144,7 +145,7 @@ export default function AdminPendingSellersPage() {
   }
 
   return (
-    <>
+    <AdminLayout title="매장 검수">
       <SEO title="매장 검수 - admin" description="pending 셀러 통합 검수" url="/admin/pending-sellers" />
       <div className="min-h-screen bg-gray-50 pb-24">
         <header className="sticky top-0 z-20 bg-white border-b border-gray-200">
@@ -321,6 +322,6 @@ export default function AdminPendingSellersPage() {
           )}
         </div>
       </div>
-    </>
+    </AdminLayout>
   )
 }

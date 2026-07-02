@@ -298,8 +298,22 @@ adminProductsRoutes.delete('/products/:id', cors(), async (c) => {
       return c.json({ success: true, data: { id: productId, soft_deleted: true } });
     }
 
-    await executeRun(DB, 'DELETE FROM products WHERE id = ?', [productId]);
-    await writeAuditLog(c, { action: 'hard_delete_product', targetType: 'product', targetId: productId });
+    // 🛡️ 2026-07-02 (대표 신고 — 동네딜 단건 삭제 500): order_items 만 검사하던 하드삭제가
+    //   다른 FK 참조(fcfs_applications/product_supply_meta/vouchers/product_regions 등) 때문에 실패 → 500.
+    //   seed-demo 일괄삭제(2026-07-01)와 동일 패턴: 부속 데이터 선정리(best-effort) → DELETE 시도 →
+    //   그래도 실패(잔여 FK)면 soft-retire(is_active=0) 폴백 — 어떤 경우에도 500 없이 목록에서 사라짐.
+    await executeRun(DB, 'DELETE FROM product_supply_meta WHERE product_id = ?', [productId]).catch(() => {});
+    await executeRun(DB, 'DELETE FROM fcfs_applications WHERE product_id = ?', [productId]).catch(() => {});
+    await executeRun(DB, 'DELETE FROM product_regions WHERE product_id = ?', [productId]).catch(() => {});
+    try {
+      await executeRun(DB, 'DELETE FROM products WHERE id = ?', [productId]);
+      await writeAuditLog(c, { action: 'hard_delete_product', targetType: 'product', targetId: productId });
+    } catch {
+      await executeRun(DB, "UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?", [productId]);
+      await writeAuditLog(c, { action: 'soft_delete_product', targetType: 'product', targetId: productId, after: { is_active: 0, reason: 'fk_refs' } });
+      await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+      return c.json({ success: true, data: { id: productId, soft_deleted: true } });
+    }
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
 
     return c.json({ success: true, data: { id: productId } });
@@ -902,7 +916,7 @@ const DEAL_CATEGORY_ALIAS: Record<string, string> = {
   '이용권': 'meal_voucher', '맛집': 'meal_voucher', '맛집 이용권': 'meal_voucher', 'meal': 'meal_voucher', 'meal_voucher': 'meal_voucher',
   '미용': 'beauty_voucher', '뷰티': 'beauty_voucher', 'beauty': 'beauty_voucher', 'beauty_voucher': 'beauty_voucher',
   '기타': 'etc_voucher', 'etc': 'etc_voucher', 'etc_voucher': 'etc_voucher',
-  '일반': 'general', '일반 상품': 'general', '온라인': 'general', 'general': 'general',
+  // ❌ 2026-07-02 (대표 확정 "완전 분리"): general(배송형) alias 제거 — 동네딜 도구로 배송형 등록 불가.
   '숙소': 'stay_voucher', 'stay': 'stay_voucher', 'stay_voucher': 'stay_voucher',
 };
 function mapDealCategory(raw: string): string | null {
@@ -945,8 +959,11 @@ const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest:
   { name: '속눈썹 연장 풀세트 + 리터치', cat: 'beauty_voucher', price: 29000, orig: 55000, rest: '아이래쉬 스튜디오', addr: '서울 마포구 양화로', img: 'https://picsum.photos/seed/urdeal6/600/600', q: '속눈썹 연장 시술', spots: 3, seed: 14, desc: '속눈썹 연장 풀세트 + 2주 내 리터치 1회 포함. 시술 약 90분, 예약 후 방문해주세요.' },
   { name: '반려견 종합 미용 (목욕+커트)', cat: 'etc_voucher', price: 35000, orig: 60000, rest: '댕댕살롱', addr: '서울 송파구 올림픽로', img: 'https://picsum.photos/seed/urdeal7/600/600', q: '강아지 미용', spots: 6, seed: 28, desc: '목욕 + 전체 커트 종합 미용(소형견 기준). 중·대형견은 매장으로 문의해주세요.' },
   { name: '실내 클라이밍 1일 체험 + 강습', cat: 'etc_voucher', price: 19000, orig: 35000, rest: '더 클라임', addr: '서울 광진구 아차산로', img: 'https://picsum.photos/seed/urdeal8/600/600', q: '실내 클라이밍', spots: 4, seed: 19, desc: '실내 클라이밍 1일 이용권 + 초보 강습 30분 + 암벽화·초크 대여 포함. 운동복만 챙겨오세요.' },
-  { name: '프리미엄 원두 드립백 30개입 (무료배송)', cat: 'general', price: 18900, orig: 32000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal9/600/600', q: '드립백 커피', spots: 10, seed: 52, desc: '스페셜티 원두 드립백 30개입, 로스팅 직후 소분 발송. 전국 무료배송.' },
-  { name: '제주 한라봉 5kg 산지직송', cat: 'general', price: 21900, orig: 35000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal10/600/600', q: '한라봉', spots: 5, seed: 27, desc: '제주 산지직송 한라봉 5kg(가정용). 수확 후 24시간 내 발송, 당도 선별 과일만 담습니다.' },
+  // ❌ 2026-07-02 (대표 "왜 이런 서비스가 데모에?"): general(배송형) 데모 2종(원두 드립백/한라봉) 제거.
+  //   배경: 06-17 동네딜 리스트에 general 카테고리 서버 지원이 추가되며 06-30 데모 확장이 샘플을 넣었으나,
+  //   ① 홈/동네딜 어디에도 '일반' 칩이 없고 기본 피드 쿼리도 이용권 4종만이라 소비자 정상 접근 불가(유령),
+  //   ② 상세가 쇼핑 UI(/products, 장바구니·배송)로 열리는데 쇼핑탭은 잠정 숨김 — "동네딜=우리 동네 매장"
+  //   멘탈모델만 흐림. 동네딜 데모 = 로컬 이용권만. (기존 시드분은 아래 heal 패스가 자동 은퇴.)
 ];
 
 // 🎯 2026-07-01 (대표 "데모 이용권도 매장 지도 매칭 제대로"): 데모 매장은 가공 이름 + 번지 없는 주소라
@@ -1006,17 +1023,16 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     const items = catFilter ? DEAL_DEMO.filter((d) => d.cat === catFilter) : DEAL_DEMO;
     if (items.length === 0) return c.json({ success: false, error: '해당 카테고리 데모 템플릿이 없습니다' }, 400);
 
-    // 🛡️ 2026-07-02 (대표 "영구적으로 해결"): 기존에 시드/등록된 **깨지는 이미지**(phinf 인증서
-    //   불일치·http mixed content) 일괄 치유 — search.pstatic 프록시로 랩. 새 시드뿐 아니라
-    //   이미 홈에 떠 있는 오염 카드(ERR_CERT_COMMON_NAME_INVALID)까지 이 버튼 한 번으로 복구.
+    // 🛡️ 2026-07-02 v2 (라이브 콘솔 증거로 방향 전환): v1 은 phinf/http 원본을 search.pstatic
+    //   프록시로 감쌌으나 **그 프록시가 404**(imgnews·yt3 등 외부발 src 거부 — 콘솔 실측).
+    //   v2 치유 = 프록시 래퍼로 오염된 행을 **원본으로 un-wrap**. 원본 http/phinf 는 렌더 시점
+    //   cfImage(zone 리사이저, CDN_CGI_VERIFIED 실측 ok)가 처리하므로 DB 는 원본이 정답.
     let healed = 0;
     try {
       const { needsNaverImageHeal, toNaverSafeImageUrl } = await import('../../../shared/naver-safe-image');
       const broken = await DB.prepare(
         `SELECT id, image_url FROM products
-          WHERE image_url LIKE 'http://%'
-             OR image_url LIKE '%phinf%'
-             OR (image_url LIKE '%naver.net%' AND image_url NOT LIKE 'https://search.pstatic.net%')
+          WHERE image_url LIKE 'https://search.pstatic.net/common/%'
           LIMIT 500`
       ).all<{ id: number; image_url: string }>().catch(() => ({ results: [] as { id: number; image_url: string }[] }));
       for (const rowB of (broken.results || [])) {
@@ -1028,6 +1044,15 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         }
       }
     } catch { /* best-effort — 치유 실패해도 시드 진행 */ }
+
+    // ❌ 2026-07-02: 과거 시드된 general(배송형) 데모 자동 은퇴 — 동네딜 데모는 로컬 이용권만.
+    //   soft-retire(is_active=0 + slug 리네임)로 노출 제거·참조 보존. 시드 재실행 한 번이면 정리됨.
+    try {
+      await DB.prepare(
+        `UPDATE products SET is_active = 0, slug = 'retired-' || slug || '-' || id, updated_at = datetime('now')
+          WHERE slug LIKE ? AND category = 'general' AND is_active = 1`
+      ).bind(DEAL_DEMO_SLUG + '%').run();
+    } catch { /* best-effort */ }
 
     // 🛡️ 2026-07-02 (대표 "데모 문구가 유저에게 보이면 안 됨"): 기존 시드분의 "데모 동네딜 — …"
     //   설명을 실제 상품 설명(템플릿 desc)으로 일괄 교정. 매칭 = 지역 프리픽스 제거한 상품명.
@@ -1091,15 +1116,15 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       try {
         res = await DB.prepare(
           `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-             is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+             is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
         ).bind(dispName, d.desc, d.price, d.orig, img, d.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, slug).run();
       } catch {
         // 🛡️ restaurant_lat/lng 컬럼 미존재 환경 폴백 — 좌표 없이 시드(클라 지오코딩이 지도 보정).
         res = await DB.prepare(
           `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-             is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, slug, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, datetime('now'), datetime('now'))`
+             is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, slug, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, datetime('now'), datetime('now'))`
         ).bind(dispName, d.desc, d.price, d.orig, img, d.cat, restName, restAddr, slug).run();
       }
       seeded++;
@@ -1121,6 +1146,16 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded, realPhotos, placed, healed, region: region || null, category: catFilter || null } }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    // 🧭 2026-07-02 (대표 승인 "가장 이상적으로"): 좌표 없이 시드된 행(place 미매칭/폴백 INSERT)을
+    //   응답 직후 즉시 지오코딩 — 일일 cron Pass A 를 그대로 1회 실행(waitUntil, fail-soft).
+    //   당일 좌표 공백 → 방문자마다 클라 지오코딩 폴백 발동하던 갭 원천 제거.
+    try {
+      c.executionCtx.waitUntil(
+        import('../../../worker/cron/restaurant-geocode').then(m =>
+          m.runRestaurantGeocode(c.env as { DB: D1Database; KAKAO_REST_API_KEY?: string })
+        ).catch(() => {})
+      );
+    } catch { /* executionCtx 미가용 — 일일 cron 이 자연 처리 */ }
     return c.json({ success: true, seeded, realPhotos, placed, healed, region: region || null, category: catFilter || null });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
@@ -1182,7 +1217,7 @@ adminProductsRoutes.post('/dongnedeal/bulk-import', cors(), async (c) => {
       const cat = mapDealCategory(catRaw);
       if (!name) { results.push({ row: rowNum, status: 'error', reason: '상품명 누락' }); continue; }
       if (!Number.isFinite(price) || price <= 0) { results.push({ row: rowNum, name, status: 'error', reason: '판매가가 올바르지 않습니다' }); continue; }
-      if (!cat) { results.push({ row: rowNum, name, status: 'error', reason: `카테고리 인식 불가 (${catRaw || '빈값'}) — 이용권/미용/기타/일반 중 하나` }); continue; }
+      if (!cat) { results.push({ row: rowNum, name, status: 'error', reason: `카테고리 인식 불가 (${catRaw || '빈값'}) — 이용권/미용/기타/숙소 중 하나` }); continue; }
       if (cat === 'stay_voucher') { results.push({ row: rowNum, name, status: 'error', reason: '숙소는 이 도구로 등록 불가 (숙소 전용 등록을 사용하세요)' }); continue; }
       const orig = (r['정가'] || r['original_price'] || '').replace(/[^\d.-]/g, '');
       const origNum = orig ? Math.round(Number(orig)) : 0;
@@ -1193,8 +1228,8 @@ adminProductsRoutes.post('/dongnedeal/bulk-import', cors(), async (c) => {
       try {
         await c.env.DB.prepare(
           `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-             is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, datetime('now'), datetime('now'))`
+             is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, datetime('now'), datetime('now'))`
         ).bind(name, desc, price, origNum > price ? origNum : null, img, cat, rest, addr).run();
         created++;
         results.push({ row: rowNum, name, status: 'ok' });
@@ -1205,6 +1240,15 @@ adminProductsRoutes.post('/dongnedeal/bulk-import', cors(), async (c) => {
     await writeAuditLog(c, { action: 'dongnedeal_bulk_import', targetType: 'product', after: { total: rows.length, created } }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    // 🧭 2026-07-02: CSV 등록은 좌표 없이 INSERT — 응답 직후 cron Pass A 1회 즉시 실행(waitUntil,
+    //   fail-soft, batch ≤100/회)로 좌표+동 태깅 채움 → 당일 클라 지오코딩 폴백 갭 원천 제거.
+    try {
+      c.executionCtx.waitUntil(
+        import('../../../worker/cron/restaurant-geocode').then(m =>
+          m.runRestaurantGeocode(c.env as { DB: D1Database; KAKAO_REST_API_KEY?: string })
+        ).catch(() => {})
+      );
+    } catch { /* executionCtx 미가용 — 일일 cron 이 자연 처리 */ }
     return c.json({ success: true, summary: { total: rows.length, created, failed: rows.length - created }, results });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
@@ -1222,13 +1266,14 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
       restaurant_phone?: string; lat?: number | string; lng?: number | string; description?: string;
       max_per_person?: number | string;
       kakao_place_url?: string;
+      image_urls?: string[];  // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 갤러리용 다중 이미지
     };
     const name = String(b.name || '').trim();
     const cat = mapDealCategory(String(b.category || '').trim());
     const price = Math.round(Number(String(b.price ?? '').replace(/[^\d.-]/g, '')));
     if (!name) return c.json({ success: false, error: '상품명을 입력하세요' }, 400);
     if (!Number.isFinite(price) || price <= 0) return c.json({ success: false, error: '판매가가 올바르지 않습니다' }, 400);
-    if (!cat) return c.json({ success: false, error: '카테고리를 선택하세요 (이용권/미용/기타/일반)' }, 400);
+    if (!cat) return c.json({ success: false, error: '카테고리를 선택하세요 (이용권/미용/기타)' }, 400);
     if (cat === 'stay_voucher') return c.json({ success: false, error: '숙소는 이 도구로 등록 불가 (숙소 전용 등록을 사용하세요)' }, 400);
     const origNum = Math.round(Number(String(b.original_price ?? '').replace(/[^\d.-]/g, ''))) || 0;
     const img = String(b.image_url || '').trim() || null;
@@ -1238,12 +1283,19 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
     const desc = String(b.description || '').trim() || name;
     const lat = Number(b.lat); const lng = Number(b.lng);
     const hasCoord = Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0;
+    // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 다중 이미지 → products.image_urls(JSON) — 상세 스와이프
+    //   갤러리(image_url + image_urls 병합·중복제거)가 소비. 최대 8장·http(s) URL 만.
+    const galleryJson = Array.isArray(b.image_urls)
+      ? JSON.stringify(b.image_urls.filter((u) => typeof u === 'string' && /^https?:\/\//.test(u)).slice(0, 8))
+      : null;
+    // 갤러리 저장처 = detail_images (0004 마이그레이션 실존 컬럼 — 상세 스와이프 갤러리가 병합 소비.
+    //   image_urls 는 products 에 없음 + 컬럼 예산제로 신설 금지 → 기존 컬럼 재사용이 정답.)
     const r = await c.env.DB.prepare(
-      `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-         is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, restaurant_phone,
+      `INSERT INTO products (name, description, price, original_price, image_url, detail_images, category, product_type,
+         is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, restaurant_phone,
          restaurant_lat, restaurant_lng, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-    ).bind(name, desc, price, origNum > price ? origNum : null, img, cat, rest, addr, phone,
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+    ).bind(name, desc, price, origNum > price ? origNum : null, img, galleryJson && galleryJson !== '[]' ? galleryJson : null, cat, rest, addr, phone,
       hasCoord ? lat : null, hasCoord ? lng : null).run();
     // 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 한도 meta 저장 (1~99, 0/미설정=무제한).
     {
@@ -1258,6 +1310,16 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
       if (r.meta?.last_row_id && kpu) {
         await setSupplyMeta(c.env.DB, Number(r.meta.last_row_id), { kakao_place_url: kpu }).catch(() => {});
       }
+    }
+    // 🧭 2026-07-02: 좌표 없이 등록 시 즉시 지오코딩(waitUntil, fail-soft) — cron 전 갭 제거.
+    if (!hasCoord && addr && r.meta?.last_row_id) {
+      try {
+        c.executionCtx.waitUntil(
+          import('../../../worker/cron/restaurant-geocode').then((m) =>
+            m.geocodeProductNow(c.env as { DB: D1Database; KAKAO_REST_API_KEY?: string }, Number(r.meta.last_row_id))
+          ).catch(() => {})
+        );
+      } catch { /* ctx 미가용 — cron 백필 */ }
     }
     await writeAuditLog(c, { action: 'dongnedeal_create', targetType: 'product', targetId: r.meta?.last_row_id, after: { name, cat, hasCoord } }).catch(() => {});
     // 🛡️ 2026-07-01 (대표 신고 — 어드민 수정이 홈에 즉시 반영 안 됨): 동네딜 뮤테이션 시 공구 목록
@@ -1315,6 +1377,13 @@ adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
     if (b.price !== undefined) { const n = Math.round(Number(String(b.price).replace(/[^\d.-]/g, ''))); if (Number.isFinite(n) && n > 0) put('price', n); }
     if (b.original_price !== undefined) { const n = Math.round(Number(String(b.original_price).replace(/[^\d.-]/g, ''))) || 0; put('original_price', n > 0 ? n : null); }
     if (b.image_url !== undefined) put('image_url', String(b.image_url || '').trim() || null);
+    // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 갤러리 다중 이미지 수정 — 빈 배열=해제(null).
+    if (b.image_urls !== undefined) {
+      const arr = Array.isArray(b.image_urls)
+        ? (b.image_urls as unknown[]).filter((u): u is string => typeof u === 'string' && /^https?:\/\//.test(u)).slice(0, 8)
+        : [];
+      put('detail_images', arr.length > 0 ? JSON.stringify(arr) : null);  // 실존 컬럼(0004) — image_urls 는 products 에 없음
+    }
     if (b.restaurant_name !== undefined) put('restaurant_name', String(b.restaurant_name || '').trim() || null);
     if (b.restaurant_address !== undefined) put('restaurant_address', String(b.restaurant_address || '').trim() || null);
     if (b.restaurant_phone !== undefined) put('restaurant_phone', String(b.restaurant_phone || '').trim() || null);

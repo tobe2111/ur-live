@@ -35,7 +35,9 @@ const STATUS: Record<DepositRequest['status'], { t: string; c: string }> = {
   rejected: { t: '반려', c: 'bg-rose-50 text-rose-700' },
 }
 
-export default function AdminWholesaleDepositsPage() {
+// 🏦 2026-07-02 (대표 — 어드민 도매 IA 통합): embedded 면 AdminLayout 래퍼를 생략하고 본문만 반환 →
+//   AdminDistributorGradesPage('판매사 관리')의 '예치금' 탭이 그대로 렌더 (AdminDistributorApprovalPage 패턴).
+export default function AdminWholesaleDepositsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate()
   const [filter, setFilter] = useState<'pending' | 'all'>('pending')
   const [mallId, setMallId] = useState('') // '' = 전 몰(기존 무필터 동작 불변)
@@ -117,9 +119,8 @@ export default function AdminWholesaleDepositsPage() {
     } finally { setActingId(null) }
   }
 
-  return (
-    <AdminLayout title="도매 예치금">
-      <div className="ur-content-full px-4 lg:px-8 py-6">
+  const body = (
+      <div className={embedded ? '' : 'ur-content-full px-4 lg:px-8 py-6'}>
         <DashboardPageHeader icon={<Wallet className="w-5 h-5" />} title="도매 예치금 입금확인" subtitle="판매사 예치금 충전 신청을 확인하고 입금 완료 시 잔액을 충전합니다." />
 
         {/* 🏦 예치금 입금 안내 계좌 — 판매사 충전 화면에 "이 계좌로 입금하세요"로 표시. 값은 DB(platform_settings) 저장. */}
@@ -217,6 +218,8 @@ export default function AdminWholesaleDepositsPage() {
           </div>
         )}
       </div>
-    </AdminLayout>
   )
+
+  if (embedded) return body
+  return <AdminLayout title="도매 예치금">{body}</AdminLayout>
 }

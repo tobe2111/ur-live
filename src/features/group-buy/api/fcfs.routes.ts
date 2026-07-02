@@ -19,6 +19,9 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAuth, requireAdmin } from '@/worker/middleware/auth'
+import { rateLimit } from '@/worker/middleware/rate-limit'
+import { publicCache } from '@/worker/middleware/edge-cache'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { setSupplyMeta, getSupplyMeta } from '@/worker/utils/product-supply-meta'
 import { safeError } from '@/worker/utils/safe-error'
 
@@ -78,17 +81,25 @@ publicApp.get('/active', async (c) => {
     const { results: prods } = await DB.prepare(
       `SELECT id, name, price, original_price, image_url, restaurant_name, restaurant_address, category FROM products WHERE id IN (${ph}) AND is_active=1`
     ).bind(...enabledIds).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+    // 🧯 2026-07-02: 상품별 COUNT 루프(N+1) → GROUP BY 단일 쿼리 — 캐시 miss 시에도 D1 왕복 상수화.
+    const countRows = await DB.prepare(
+      `SELECT product_id, COUNT(*) as n FROM fcfs_applications
+        WHERE product_id IN (${ph}) AND status IN ('applied','selected') GROUP BY product_id`
+    ).bind(...enabledIds).all<{ product_id: number; n: number }>().catch(() => ({ results: [] as { product_id: number; n: number }[] }))
+    const countById = new Map((countRows.results || []).map(r => [r.product_id, r.n]))
     const out = []
     for (const p of prods || []) {
       const cfg = parseConfig(byId.get(p.id as number))
-      const real = await realAppliedCount(DB, p.id as number)
+      const real = countById.get(p.id as number) || 0
       out.push({ ...p, fcfs: { ...cfg, appliedDisplay: cfg.appliedSeed + real, realApplied: real } })
     }
     return c.json({ success: true, data: out })
   } catch (err) { return safeError(c, err, '선착순 목록 조회 실패', '[fcfs]') }
 })
 
-publicApp.get('/:productId', async (c) => {
+// 🧯 2026-07-02 (폭주 점검): 공개 config+카운트 — 상세 표면 폭주 시 D1 직행이던 것 30s 엣지 캐시.
+//   publicApp 한정이라 인증 경로(/:id/me, /:id/apply — userApp)와 URL 충돌 없음. 응모 직후 fresh 카운트는 POST 응답이 담당.
+publicApp.get('/:productId', publicCache(30), async (c) => {
   try {
     const DB = c.env.DB
     const productId = parseInt(c.req.param('productId'), 10)
@@ -105,7 +116,9 @@ publicApp.get('/:productId', async (c) => {
 const userApp = new Hono<{ Bindings: Env; Variables: Vars }>()
 userApp.use('*', requireAuth())
 
-userApp.post('/:productId/apply', async (c) => {
+// 🧯 2026-07-02 (대표 "트래픽 폭주에도 이상적으로"): 오픈런 표면 — IP당 10회/분 캡.
+//   정상 유저는 1탭 1회(멱등)라 무영향, 봇/연타만 차단. INSERT OR IGNORE 멱등은 기존 유지.
+userApp.post('/:productId/apply', rateLimit({ action: 'fcfs_apply', max: 10, windowSec: 60 }), async (c) => {
   try {
     const DB = c.env.DB
     const productId = parseInt(c.req.param('productId'), 10)
@@ -192,15 +205,20 @@ adminApp.post('/:productId/select', async (c) => {
     }
     if (winnerIds.length === 0) return c.json({ success: false, error: '선정할 지원자가 없습니다' }, 400)
 
-    const prod = await DB.prepare("SELECT name, restaurant_name FROM products WHERE id=?").bind(productId).first<{ name?: string; restaurant_name?: string }>().catch(() => null)
+    const prod = await DB.prepare("SELECT name, restaurant_name, category, deal_only FROM products WHERE id=?").bind(productId).first<{ name?: string; restaurant_name?: string; category?: string; deal_only?: number }>().catch(() => null)
     const dealName = prod?.restaurant_name || prod?.name || '추첨 공구'
+    // 💳 2026-07-02 (대표 "당첨되면 결제되게"): 응모는 무결제 설계 그대로 — 당첨 알림에 **결제 딥링크**
+    //   를 실어 당첨자가 바로 구매(일반 결제 플로우)로 이어지게 함. 경로는 종류판별 SSOT(교환권/이용권
+    //   =/group-buy, 일반=/products — deal_only/isVoucherCategory, group_buy_status 사용 금지 룰 준수).
+    const buyPath = (Number(prod?.deal_only) === 1 || isVoucherCategory(prod?.category))
+      ? `/group-buy/${productId}` : `/products/${productId}`
 
     for (const uid of winnerIds) {
       await DB.prepare("UPDATE fcfs_applications SET status='selected', selected_at=datetime('now') WHERE product_id=? AND user_id=?").bind(productId, uid).run().catch(() => {})
-      // 선정 알림
+      // 선정 알림 + 결제 유도 딥링크
       await DB.prepare(
-        "INSERT INTO notifications (user_id, user_type, type, title, message, created_at) VALUES (?, 'user', 'fcfs_selected', ?, ?, datetime('now'))"
-      ).bind(uid, '🎉 추첨 당첨!', `[${dealName}] 추첨 응모에 당첨되셨어요. 자세한 안내를 확인하세요.`).run().catch(() => {})
+        "INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at) VALUES (?, 'user', 'fcfs_selected', ?, ?, ?, datetime('now'))"
+      ).bind(uid, '🎉 추첨 당첨!', `[${dealName}] 추첨에 당첨되셨어요! 지금 결제하시면 확정됩니다. (미결제 시 예비 당첨자에게 넘어갈 수 있어요)`, buyPath).run().catch(() => {})
     }
     return c.json({ success: true, data: { selected: winnerIds.length } })
   } catch (err) { return safeError(c, err, '선정 처리 실패', '[fcfs]') }

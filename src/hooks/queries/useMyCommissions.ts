@@ -56,6 +56,9 @@ export function useMyCommissions() {
         api.get('/api/referral-tree/my-commissions?page_size=20').catch(() => null),
         api.get('/api/referral-tree/withdrawals').catch(() => null),
       ])
+      // 🛡️ 2026-07-02: 둘 다 실패면 throw → isError — "적립 0원" 위장 방지(돈 표면).
+      //   부분 실패는 기존대로 graceful(성공한 쪽만 표시).
+      if (!comRes && !wdRes) throw new Error('my commissions load failed')
       const data: MyCommissionsData = { ...EMPTY, commissions: [], withdrawals: [] }
       if (comRes?.data?.success) {
         data.summary = comRes.data.data.summary ?? EMPTY.summary

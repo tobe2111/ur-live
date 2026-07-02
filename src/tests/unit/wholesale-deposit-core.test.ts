@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { deductDeposit, compensateDepositOrderOnce, loadDepositBalance, hasDepositRefundTxn } from '@/features/supply/api/wholesale-deposit-core'
+import { deductDeposit, deductDepositForOrder, compensateDepositOrderOnce, loadDepositBalance, hasDepositRefundTxn } from '@/features/supply/api/wholesale-deposit-core'
 
 /**
  * 🏦 2026-06-09 예치금 머니 코어 — 차감 CAS + 멱등 보상환불 불변식 고정 (테스트 0개였음, 실제 돈).
@@ -18,6 +18,12 @@ function makeDB(initial: { balances?: Record<number, number>; orders?: Record<nu
     if (sql.includes('INSERT OR IGNORE INTO wholesale_deposits')) {
       const sid = Number(a[0]); if (!balances.has(sid)) balances.set(sid, 0); return { meta: { changes: 1 } }
     }
+    // deductDepositForOrder [1] — 차감 gated on 'order' 원장 존재(EXISTS). 일반 CAS 보다 먼저 매칭.
+    if (sql.includes('SET balance = balance - ?') && sql.includes('EXISTS')) {
+      const amt = Number(a[0]); const sid = Number(a[1]); const ref = String(a[2])
+      if (txns.some((t) => t.type === 'order' && t.ref_id === ref)) { balances.set(sid, (balances.get(sid) ?? 0) - amt); return { meta: { changes: 1 } } }
+      return { meta: { changes: 0 } }
+    }
     if (sql.includes('SET balance = balance - ?')) {
       const amt = Number(a[0]); const sid = Number(a[1]); const min = Number(a[2]); const cur = balances.get(sid) ?? 0
       if (cur >= min) { balances.set(sid, cur - amt); return { meta: { changes: 1 } } }
@@ -31,6 +37,13 @@ function makeDB(initial: { balances?: Record<number, number>; orders?: Record<nu
       if (o && (o.refunded_amount ?? 0) === 0 && o.status !== 'REFUNDED' && o.status !== 'PAID') {
         o.refunded_amount = amt; o.status = 'FAILED'; return { meta: { changes: 1 } }
       }
+      return { meta: { changes: 0 } }
+    }
+    // deductDepositForOrder [0] — 잔액 충분(gate)일 때만 'order' 원장 INSERT...SELECT (조건부).
+    if (sql.includes('INSERT INTO wholesale_deposit_txns') && sql.includes("'order'") && sql.includes('WHERE (SELECT')) {
+      const sid = Number(a[0]); const negAmt = Number(a[1]); const orderId = a[4]; const gateSid = Number(a[6]); const gateAmt = Number(a[7])
+      const cur = balances.get(gateSid) ?? 0
+      if (cur >= gateAmt) { txns.push({ type: 'order', amount: negAmt, ref_id: String(orderId) }); return { meta: { changes: 1 } } }
       return { meta: { changes: 0 } }
     }
     if (sql.includes('INSERT INTO wholesale_deposit_txns')) {
@@ -50,6 +63,8 @@ function makeDB(initial: { balances?: Record<number, number>; orders?: Record<nu
       const make = (a: unknown[]) => ({ run: async () => run(sql, a), first: async () => first(sql, a), all: async () => ({ results: [] }) })
       return { ...make([]), bind: (...a: unknown[]) => make(a) }
     },
+    // D1 batch — 단일 트랜잭션 순차 실행 시뮬(공유 state closure). deductDepositForOrder 원자성 검증용.
+    async batch(stmts: Array<{ run: () => Promise<unknown> }>) { const out: unknown[] = []; for (const s of stmts) out.push(await s.run()); return out },
   }
   return { db: db as never, balances, orders, txns }
 }
@@ -84,6 +99,31 @@ describe('wholesale-deposit-core — deductDeposit (원자 차감 CAS)', () => {
     const { db } = makeDB({ balances: { 9: 1000 } })
     expect((await deductDeposit(db, 9, 0)).ok).toBe(false)
     expect((await deductDeposit(db, 9, -100)).ok).toBe(false)
+  })
+})
+
+describe('wholesale-deposit-core — deductDepositForOrder (원자 차감+원장, 감사 orphan-reconcile)', () => {
+  it('잔액 충분 → 차감 + order 원장 원자 기록(차감 ⟺ 원장)', async () => {
+    const { db, balances, txns } = makeDB({ balances: { 9: 10000 } })
+    const r = await deductDepositForOrder(db, 9, 3000, 42, 'm')
+    expect(r).toEqual({ ok: true, balanceAfter: 7000 })
+    expect(balances.get(9)).toBe(7000)
+    const orderTxn = txns.find((t) => t.type === 'order' && t.ref_id === '42')
+    expect(orderTxn?.amount).toBe(-3000) // 원장 존재(reconcile EXISTS 게이트 신뢰 근거)
+  })
+
+  it('잔액 부족 → 차감 안 함 + order 원장도 없음(둘 다 아님 = 원자)', async () => {
+    const { db, balances, txns } = makeDB({ balances: { 9: 2000 } })
+    const r = await deductDepositForOrder(db, 9, 3000, 42, 'm')
+    expect(r).toEqual({ ok: false, balance: 2000 })
+    expect(balances.get(9)).toBe(2000)                                   // 차감 없음
+    expect(txns.some((t) => t.type === 'order' && t.ref_id === '42')).toBe(false) // 원장도 없음
+  })
+
+  it('0/음수 방어', async () => {
+    const { db } = makeDB({ balances: { 9: 5000 } })
+    expect((await deductDepositForOrder(db, 9, 0, 1, 'm')).ok).toBe(false)
+    expect((await deductDepositForOrder(db, 9, -100, 1, 'm')).ok).toBe(false)
   })
 })
 

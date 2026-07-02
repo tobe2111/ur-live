@@ -11,6 +11,7 @@
 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import AdminLayout from '@/components/AdminLayout'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
@@ -60,7 +61,7 @@ export default function AdminProspectsPage() {
   const topIntroducers = Object.entries(introducerStats).sort((a, b) => b[1] - a[1]).slice(0, 5)
 
   return (
-    <>
+    <AdminLayout title="영업 prospects">
       <SEO title="영업 prospects 검토 - admin" description="영업자 매장 영입 모니터링" url="/admin/prospects" />
       <div className="min-h-screen bg-gray-50 pb-24">
         <header className="sticky top-0 z-20 bg-white border-b border-gray-200">
@@ -165,6 +166,6 @@ export default function AdminProspectsPage() {
           )}
         </div>
       </div>
-    </>
+    </AdminLayout>
   )
 }

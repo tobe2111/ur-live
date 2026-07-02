@@ -23,6 +23,7 @@ import { ProductInfoGrid } from '@/components/product/ProductInfoGrid'
 import { ProductNoticeSection } from '@/components/product/ProductNoticeSection'
 import { ReturnPolicySection } from '@/components/product/ReturnPolicySection'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { cfImage } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import { resolveDetailDisplay } from './product-detail/detail-display'
@@ -405,7 +406,7 @@ export default function ProductDetailPage() {
         {/* 상품 이미지 */}
         <div className="px-5 pt-10 pb-6 flex justify-center">
           {product.image_url ? (
-            <img src={product.image_url} alt={product.name} className="w-48 h-48 object-contain" loading="lazy" />
+            <img src={cfImage(product.image_url, { width: 384, quality: 85, format: 'auto' }) || product.image_url} alt={product.name} className="w-48 h-48 object-contain" loading="lazy" />
           ) : (
             <div className="w-48 h-48 bg-gray-100 dark:bg-[#1A1A1A] rounded" />
           )}
@@ -429,7 +430,7 @@ export default function ProductDetailPage() {
               onClick={() => navigate(`/browse?brand=${encodeURIComponent(brandName)}`)}
               role="button" tabIndex={0}>
               {brandIcon ? (
-                <img src={brandIcon} alt={brandName} className="w-12 h-12 rounded-lg object-cover bg-white dark:bg-[#0A0A0A] border border-amber-100" loading="lazy" />
+                <img src={cfImage(brandIcon, { width: 96, quality: 80, format: 'auto' }) || brandIcon} alt={brandName} className="w-12 h-12 rounded-lg object-cover bg-white dark:bg-[#0A0A0A] border border-amber-100" loading="lazy" />
               ) : (
                 <div className="w-12 h-12 bg-white dark:bg-[#0A0A0A] rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold border border-amber-100">
                   {brandName.slice(0, 4)}
@@ -506,7 +507,7 @@ export default function ProductDetailPage() {
         productPrice={product?.price ? Number(product.price) : undefined}
       />
 
-      <main className="pb-20 ur-content-wide lg:px-8">
+      <main className="pb-28 ur-content-wide lg:px-8">
         {/* PC 좌우 2단: lg 이상에서 좌(이미지) / 우(상품헤더 sticky).
             mobile: 기존 세로 1열 그대로 (sm/md). */}
         <div className="lg:grid lg:grid-cols-5 lg:gap-8 lg:pt-6">
@@ -579,6 +580,17 @@ export default function ProductDetailPage() {
               <svg className="w-3.5 h-3.5 text-gray-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
             </button>
           )}
+          {/* 🚑 2026-07-02 (상세 리뷰): 수량 스텝퍼 부재 — setQuantity 미배선이라 2개 이상 즉시구매 불가하던 것 */}
+          <div className="flex items-center justify-between mt-3">
+            <span className="text-[12px] font-bold text-gray-900 dark:text-white">{t('productDetail.quantity', { defaultValue: '수량' })}</span>
+            <div className="flex items-center gap-3 border border-gray-200 dark:border-[#2A2A2A] rounded-xl px-2 py-1">
+              <button type="button" aria-label="수량 감소" onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                className="w-8 h-8 flex items-center justify-center text-gray-900 dark:text-white font-bold disabled:opacity-30" disabled={quantity <= 1}>−</button>
+              <span className="min-w-[2ch] text-center text-[14px] font-bold text-gray-900 dark:text-white">{quantity}</span>
+              <button type="button" aria-label="수량 증가" onClick={() => setQuantity((q) => Math.min(Math.max((product.stock ?? 0), (product.stock_quantity ?? 0), 1), 99, q + 1))}
+                className="w-8 h-8 flex items-center justify-center text-gray-900 dark:text-white font-bold">＋</button>
+            </div>
+          </div>
           <div className="flex items-center gap-2 mt-3">
             <span className="text-[11px] text-gray-400 dark:text-gray-500">{t('productDetail.pointReward')}</span>
             <span className="text-[11px] font-bold text-gray-900 dark:text-white">{t('productDetail.maxPointReward', { defaultValue: '최대 {{value}}딜', value: formatNumber(Math.round(displayPrice * 0.03)) })}</span>
@@ -595,12 +607,12 @@ export default function ProductDetailPage() {
             detailExpanded ? (
               <div className="space-y-2 mb-3">
                 {detail.images.map((img, i) => (
-                  <img key={i} src={img} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority={i === 0 ? 'high' : 'auto'} className="w-full rounded-xl" />
+                  <img key={i} src={cfImage(img, { width: 800, quality: 85, format: 'auto' }) || img} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority={i === 0 ? 'high' : 'auto'} className="w-full rounded-xl" />
                 ))}
               </div>
             ) : (
               <div className="rounded-xl overflow-hidden mb-3 bg-gray-50 dark:bg-[#121212]">
-                <img src={detail.images[0]} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority="high" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
+                <img src={cfImage(detail.images[0], { width: 800, quality: 85, format: 'auto' }) || detail.images[0]} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority="high" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} />
               </div>
             )
           )}
@@ -619,7 +631,10 @@ export default function ProductDetailPage() {
         {/* v4 공동구매 배너 (다크 카드) */}
         {product.category === 'meal_voucher' && (product.group_buy_target ?? 0) > 0 && (
           <div className="px-5 py-5">
-            <div className="rounded-2xl p-4 bg-gray-900 text-white">
+            {/* 🚑 2026-07-02 (상세 리뷰): ChevronRight 로 클릭 유도하면서 onClick 없던 dead 어포던스 → 공구 상세로 배선 */}
+            <div className="rounded-2xl p-4 bg-gray-900 text-white cursor-pointer active:scale-[0.99] transition-transform" role="button" tabIndex={0}
+              onClick={() => navigate(`/group-buy/${id}`)}
+              onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/group-buy/${id}`) }}>
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 bg-red-500 text-[9px] font-extrabold tracking-wide mb-2">{t('productDetail.groupBuyJoin')}</span>
@@ -808,7 +823,7 @@ export default function ProductDetailPage() {
         <FloatingActionBar
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
-          disabled={product.stock === 0 && product.stock_quantity === 0}
+          disabled={(product.stock ?? 0) <= 0 && (product.stock_quantity ?? 0) <= 0} /* 🚑 2026-07-02: null===0 갭 — 한쪽 컬럼만 쓰는 품절 상품이 구매 가능하던 버그 */
           isWishlisted={isWishlisted}
           onToggleWishlist={handleToggleWishlist}
           price={product.price}
@@ -858,7 +873,7 @@ export default function ProductDetailPage() {
           <div className="w-full sm:max-w-sm bg-white dark:bg-[#121212] rounded-t-2xl sm:rounded-2xl p-5 m-0 sm:mx-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3">
               {product.image_url && (
-                <img src={product.image_url} alt="" loading="lazy" decoding="async" className="w-14 h-14 rounded-xl object-cover shrink-0" />
+                <img src={cfImage(product.image_url, { width: 112, quality: 80, format: 'auto' }) || product.image_url} alt="" loading="lazy" decoding="async" className="w-14 h-14 rounded-xl object-cover shrink-0" />
               )}
               <div className="min-w-0">
                 <p className="text-[14px] font-bold text-gray-900 dark:text-white line-clamp-2">{product.name}</p>
@@ -882,7 +897,7 @@ export default function ProductDetailPage() {
               </button>
               <button onClick={runVoucherDealPurchase} disabled={dealBuying}
                 className="flex-1 h-12 rounded-xl text-[14px] font-extrabold text-white active:scale-[0.98] transition-transform disabled:opacity-60"
-                style={{ background: 'linear-gradient(135deg, #6b7280, #6b7280)' }}>
+                style={{ background: 'linear-gradient(135deg, #1f2937, #111827)' }}>
                 {dealBuying ? '처리 중…' : `${formatNumber(dealConfirm.total)}딜로 교환`}
               </button>
             </div>
@@ -896,7 +911,7 @@ export default function ProductDetailPage() {
           className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-lg shadow-lg max-w-sm transition-all ${
             toast.type === 'success' 
               ? 'bg-foreground text-background' 
-              : 'bg-destructive text-gray-900 dark:text-white'
+              : 'bg-destructive text-white'
           }`}
         >
           <p className="text-sm font-medium text-center">{toast.message}</p>

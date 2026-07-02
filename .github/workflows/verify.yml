@@ -197,6 +197,11 @@ jobs:
         run: node scripts/check-groupbuy-status-classify.mjs -s
         continue-on-error: false
 
+      # 🛡️ 2026-07-02: 동네딜↔쇼핑 완전 분리(대표 확정) — 동네딜 표면/도구에 배송형(general) 유입 차단.
+      - name: dongnedeal separation guard (strict)
+        run: node scripts/check-dongnedeal-separation.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-07-01: pagination parseInt/Number NaN 크래시 방어 — 현재 위반 0 → strict.
       #   도매몰 라이브 전수조사에서 GET /api/wholesale/catalog?page=abc&limit=xyz → HTTP 500 발견.
       #   비숫자 query 가 NaN → SQL .bind(NaN) → 크래시(봇/스크래퍼/오염 링크가 목록을 500).

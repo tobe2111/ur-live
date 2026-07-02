@@ -187,7 +187,8 @@
     "unitMan": "",
     "kakaoConsult": "KakaoTalk Support",
     "share": "Share",
-    "currencyWon": "KRW"
+    "currencyWon": "KRW",
+    "checkNetworkRetry": "Check your network and try again"
   },
   "auth": {
     "email": "Email",
@@ -685,7 +686,9 @@
     "logout": "Log out",
     "coupons": "Coupons",
     "vouchers": "Vouchers",
-    "unitSheet": ""
+    "unitSheet": "",
+    "editProfile": "Edit profile",
+    "refundPolicy": "Refund & Return Policy"
   },
   "theme": {
     "title": "Theme",
@@ -716,7 +719,8 @@
     "cancelFail": "Failed to cancel order.",
     "cancelError": "An error occurred during cancellation.",
     "tabCart": "Cart",
-    "tabOrders": "Orders"
+    "tabOrders": "Orders",
+    "filterAll": "All"
   },
   "giftClaim": {
     "errorAddressInvalid": "Please enter your address correctly",
@@ -834,7 +838,8 @@
     "statusExpired": "Expired",
     "emptyTitle": "No active group buys",
     "emptyHint": "Save with friends",
-    "browseProducts": "Browse Products"
+    "browseProducts": "Browse Products",
+    "loadFailed": "Could not load your activity"
   },
   "interestList": {
     "title": "Saved Restaurants",
@@ -4464,7 +4469,8 @@
     "stepGift2": "Sent by\nMMS",
     "stepGift3": "Show\nat store",
     "deal": "deal",
-    "heroBalanceLabelGift": "Gift voucher balance"
+    "heroBalanceLabelGift": "Gift voucher balance",
+    "loadFailed": "Could not load your vouchers"
   },
   "sellerWaiting": {
     "title": "Seller Approval Pending",
@@ -5708,7 +5714,8 @@
     "previewLabel": "[TODO:en] 미리보기",
     "expiringSoon": "[TODO:en] ⏰ 곧 만료됩니다",
     "accessError": "[TODO:en] 접근 불가 ({{status}})",
-    "accessFailed": "[TODO:en] 접근 실패"
+    "accessFailed": "[TODO:en] 접근 실패",
+    "loadFailed": "Could not load your library"
   },
   "shopping": {
     "sectionTitle": "My activity",
@@ -5808,7 +5815,40 @@
     "makeMine": "Make my own linkshop — earn by recommending",
     "console": {
       "title": "Creator Console"
-    }
+    },
+    "ownerViewBar": "My linkshop · what visitors see",
+    "editButton": "Edit",
+    "editMode": "Edit mode",
+    "tapToEdit": "Tap to edit",
+    "reorder": "Reorder",
+    "dashboardBtn": "Dashboard",
+    "done": "Done",
+    "reorderTitle": "Reorder pins",
+    "searchPlaceholder": "Search products & deals",
+    "clearSearch": "Clear",
+    "noSearchResults": "No results found",
+    "tryOtherKeyword": "Try a different keyword.",
+    "shopPinsTitle": "Picks",
+    "voucherPinsTitle": "Vouchers · Local deals",
+    "addVoucherPin": "Add local deal",
+    "addShopPin": "Add product",
+    "addAnyPin": "Add product or deal",
+    "confirmDeletePinMine": "Remove this pin from your linkshop?",
+    "confirmDeletePin": "Delete this pin?",
+    "pinDeleted": "Pin deleted",
+    "deleteFailed": "Delete failed",
+    "deletePin": "Delete pin",
+    "delete": "Delete",
+    "myPinsCount": "My pins: {{count}}",
+    "dragToReorder": "Drag to reorder",
+    "topPick": "Top pick",
+    "viewsCount": "{{n}} views",
+    "earnPerSaleAmt": " · Earn ₩{{amt}}/sale",
+    "noCommentNudge": "No comment yet · add one to boost sales",
+    "stepsLeft": "{{n}} steps to finish your linkshop",
+    "stepName": "Set name",
+    "stepHandle": "Set address",
+    "stepFirstProduct": "Add first product"
   },
   "shipping": {
     "trackingTitle": "Shipping Tracking",
@@ -6271,7 +6311,18 @@
     "settingsGroupTitle": "Settings",
     "settingsGroupSub": "Notifications · Theme · Language · App info",
     "affiliateLinkTitle": "Product Referral Links",
-    "affiliateLinkSub": "Earn deals when friends buy via your link"
+    "affiliateLinkSub": "Earn deals when friends buy via your link",
+    "dealBalance": "My Deal balance",
+    "charge": "Top up",
+    "dealHistory": "History",
+    "balanceRetry": "Reload balance",
+    "referralEarnedTitle": "Referral earnings",
+    "referralStartTitle": "Recommend & earn",
+    "referralCountN": "{{n}} referrals",
+    "referralStartSub": "Share on social — earn when friends pay",
+    "curatorTitle": "Linkshop earnings",
+    "curatorCashSub": "Cash settlement · withdrawable",
+    "curatorDealSub": "Accumulated · 1 Deal = ₩1"
   },
   "push": {
     "promptTitle": "Turn on notifications?",
@@ -6327,5 +6378,32 @@
   "groupBuy.categoryBeauty": "💇 Beauty",
   "groupBuy.categoryStay": "🏨 Stays",
   "groupBuy.categoryEtc": "🎯 Others",
-  "groupBuy.stayBadge": "Stay"
+  "groupBuy.stayBadge": "Stay",
+  "roleCta": {
+    "myShortcuts": "My shortcuts",
+    "startNewRole": "Start a new role",
+    "linkshop": "My linkshop",
+    "linkshopDesc": "Recommend vouchers & deals, earn rewards",
+    "sellerDash": "Seller dashboard",
+    "sellerDashDesc": "Manage my products, deals & settlements",
+    "agencyDash": "Agency dashboard",
+    "agencyDashDesc": "Earnings from partner stores",
+    "proposeGb": "Propose a local deal",
+    "proposeGbDesc": "Suggest a store and we will open a deal",
+    "openShop": "Open my shop",
+    "openShopDesc": "Register a business → sell products & vouchers",
+    "agencyBiz": "Agency business",
+    "agencyBizDesc": "Recruit stores → 2% lifetime revenue"
+  },
+  "inviteCard": {
+    "title": "Invite friends",
+    "copied": "Invite link copied",
+    "statEarned": "Deals earned",
+    "statDone": "Done",
+    "statPending": "Pending",
+    "copy": "Copy",
+    "recent": "Recent invites",
+    "waitingPurchase": "Awaiting purchase",
+    "friend": "Friend"
+  }
 }
