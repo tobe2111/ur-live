@@ -24,12 +24,14 @@ export async function fetchNaverImageUrl(env: Env, query: string): Promise<strin
     const data = (await res.json()) as { items?: Array<{ link?: string; thumbnail?: string }> }
     const items = data.items || []
     if (!items.length) return null
+    // 🛡️ 2026-07-01 (대표 신고 — mixed content): http:// 원본 채택 금지.
+    //   HTTPS 페이지의 http 이미지는 브라우저가 https 로 강제 승격하는데, 네이버 원본 호스트
+    //   (imgnews/shop1.phinf 등)는 https 인증서가 안 맞아 ERR_CERT_COMMON_NAME_INVALID 로 깨짐.
+    //   → https 원본만 채택, 없으면 네이버 CDN 썸네일(search.pstatic.net, https 안정)로 폴백.
     const httpsLink = items.find((i) => i.link && i.link.startsWith('https://'))?.link
     if (httpsLink) return httpsLink
-    const anyLink = items.find((i) => i.link)?.link
-    if (anyLink) return anyLink
-    // 원본 링크가 없으면 네이버 자체 CDN 썸네일(안정적) 사용
-    return items.find((i) => i.thumbnail)?.thumbnail || null
+    const thumb = items.find((i) => i.thumbnail)?.thumbnail || null
+    return thumb ? thumb.replace(/^http:/, 'https:') : null
   } catch {
     return null
   }
