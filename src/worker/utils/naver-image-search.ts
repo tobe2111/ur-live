@@ -41,6 +41,8 @@ export async function fetchNaverImageUrl(env: Env, query: string): Promise<strin
     const items = data.items || []
     if (!items.length) return null
     // 1) 충분한 크기 + 정상 비율 실사진(https 원본) 우선.
+    //    🛡️ 2026-07-01 (mixed content): 모든 단계 https-only — http 원본은 HTTPS 페이지에서
+    //    강제승격되다 네이버 원본 호스트(imgnews/shop1.phinf) 인증서 불일치로 깨짐 → 채택 금지.
     const proper = items.find(isProperPhoto)
     if (proper?.link) return proper.link
     // 2) 신뢰 폴백: 네이버 CDN 썸네일(항상 로드 — 깨진 이미지 0). 관련도 순 첫 결과.

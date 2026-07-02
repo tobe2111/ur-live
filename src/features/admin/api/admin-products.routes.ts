@@ -997,9 +997,15 @@ adminProductsRoutes.get('/dongnedeal/stats', cors(), async (c) => {
 adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
   try {
     const { DB } = c.env;
-    const existing = await DB.prepare(`SELECT COUNT(*) AS c FROM products WHERE slug LIKE ?`).bind(DEAL_DEMO_SLUG + '%').first<{ c: number }>();
-    if ((existing?.c ?? 0) > 0) {
-      return c.json({ success: true, seeded: 0, existing: existing?.c ?? 0, message: '이미 데모 동네딜 상품이 있습니다 (삭제 후 재생성하세요)' });
+    // 🎯 2026-07-01 (대표 "데모를 계속 추가할 수 있게"): 존재 시 차단(early-return) → **누적 추가**.
+    //   기존 slug(demo-deal-N)의 최대 N 다음 번호부터 이어 시드 → UNIQUE(slug) 충돌 원천 제거
+    //   (반쯤 시드된 상태에서 재시드하던 500 후보도 함께 해소).
+    const slugRows = await DB.prepare(`SELECT slug FROM products WHERE slug LIKE ?`).bind(DEAL_DEMO_SLUG + '%')
+      .all<{ slug: string }>().catch(() => ({ results: [] as { slug: string }[] }));
+    let maxSuffix = 0;
+    for (const row of (slugRows.results || [])) {
+      const m = /^demo-deal-(\d+)$/.exec(String(row.slug || ''));
+      if (m) maxSuffix = Math.max(maxSuffix, Number(m[1]));
     }
     // 🖼️ 2026-07-01 (대표 요청): 가짜(picsum) 대신 네이버 이미지검색으로 실사진 확보(병렬, best-effort).
     //   NAVER 키 없거나 검색 실패 시 각 항목의 기존 img(picsum)로 폴백 → 시딩은 항상 성공.
@@ -1026,11 +1032,22 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       const place = resolvedPlaces[i];
       const restName = place?.name || d.rest || null;
       const restAddr = place?.address || d.addr || null;
-      const res = await DB.prepare(
-        `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-           is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-      ).bind(d.name, `데모 동네딜 — ${d.name}`, d.price, d.orig, img, d.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, DEAL_DEMO_SLUG + (i + 1)).run();
+      const slug = DEAL_DEMO_SLUG + (maxSuffix + i + 1);  // 누적 추가 — 기존 번호 다음부터
+      let res;
+      try {
+        res = await DB.prepare(
+          `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
+             is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+        ).bind(d.name, `데모 동네딜 — ${d.name}`, d.price, d.orig, img, d.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, slug).run();
+      } catch {
+        // 🛡️ restaurant_lat/lng 컬럼 미존재 환경 폴백 — 좌표 없이 시드(클라 지오코딩이 지도 보정).
+        res = await DB.prepare(
+          `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
+             is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, slug, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, datetime('now'), datetime('now'))`
+        ).bind(d.name, `데모 동네딜 — ${d.name}`, d.price, d.orig, img, d.cat, restName, restAddr, slug).run();
+      }
       seeded++;
       // 추첨 응모 설정(정원 초과 지원 시드). 실패해도 상품 시딩엔 영향 없음(best-effort).
       const pid = Number((res as { meta?: { last_row_id?: number } })?.meta?.last_row_id ?? 0);
@@ -1066,11 +1083,26 @@ adminProductsRoutes.delete('/dongnedeal/seed-demo', cors(), async (c) => {
     await c.env.DB.prepare(
       `DELETE FROM fcfs_applications WHERE product_id IN (SELECT id FROM products WHERE slug LIKE ?)`
     ).bind(DEAL_DEMO_SLUG + '%').run().catch(() => {});
-    const r = await c.env.DB.prepare(`DELETE FROM products WHERE slug LIKE ?`).bind(DEAL_DEMO_SLUG + '%').run();
-    await writeAuditLog(c, { action: 'dongnedeal_clear_demo', targetType: 'product', after: { deleted: r.meta?.changes ?? 0 } }).catch(() => {});
+    // 🛡️ 2026-07-01 (대표 신고 "데모 정리 안됨" — 500): 일괄 DELETE 는 데모에 주문/바우처 등
+    //   FK 참조가 하나라도 붙으면 전체가 실패(500). → 행별 삭제 + 실패 행은 soft-retire
+    //   (is_active=0 + slug 를 retired- 로 리네임 → 노출/데모 카운트에서 제외, 참조 데이터 보존).
+    const demoRows = await c.env.DB.prepare(`SELECT id, slug FROM products WHERE slug LIKE ?`)
+      .bind(DEAL_DEMO_SLUG + '%').all<{ id: number; slug: string }>().catch(() => ({ results: [] as { id: number; slug: string }[] }));
+    let deleted = 0, retired = 0;
+    for (const row of (demoRows.results || [])) {
+      try {
+        const del = await c.env.DB.prepare(`DELETE FROM products WHERE id = ?`).bind(row.id).run();
+        if (del.meta?.changes) { deleted++; continue; }
+      } catch { /* FK 참조 → soft-retire 폴백 */ }
+      await c.env.DB.prepare(
+        `UPDATE products SET is_active = 0, slug = 'retired-' || slug || '-' || id, updated_at = datetime('now') WHERE id = ?`
+      ).bind(row.id).run().catch(() => {});
+      retired++;
+    }
+    await writeAuditLog(c, { action: 'dongnedeal_clear_demo', targetType: 'product', after: { deleted, retired } }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
-    return c.json({ success: true, deleted: r.meta?.changes ?? 0 });
+    return c.json({ success: true, deleted, retired });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }

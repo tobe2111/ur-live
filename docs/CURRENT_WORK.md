@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 데모 seed 3종 수정: 500(정리 안됨)·mixed content·누적 추가 (대표 "데모 정리 안됨 + 계속 추가되게")
+라이브 신고(seed-demo 500 + http 이미지 mixed content + "한번 채우면 추가 안됨") 3종 근본수정.
+- **DELETE 500 "데모 정리 안됨"**: 일괄 `DELETE FROM products WHERE slug LIKE` 는 데모에 주문/바우처 등 **FK 참조가 하나라도 붙으면 전체 실패(500)**. → 행별 삭제 + 실패 행은 **soft-retire**(`is_active=0` + slug `retired-…-id` 리네임 → 노출/데모카운트 제외, 참조 데이터 보존). 응답/토스트에 `deleted`/`retired` 구분.
+- **mixed content (http 이미지)**: `fetchNaverImageUrl` 이 https 원본 없으면 **http 원본을 그대로 채택** → 저장된 http URL 이 HTTPS 페이지에서 강제승격되다 네이버 원본 호스트(imgnews/shop1.phinf)의 https 인증서 불일치로 `ERR_CERT_COMMON_NAME_INVALID`. → http 원본 채택 제거: https 원본만, 없으면 네이버 CDN 썸네일(https 안정) 폴백. **기존 http 이미지 데모는 삭제→재생성으로 치유.**
+- **데모 누적 추가 (대표 "계속 추가할 수 있게")**: POST seed-demo 의 존재 시 early-return 제거 → **기존 `demo-deal-N` 최대 N 다음 번호부터 10개씩 누적 시드**. UNIQUE(slug) 충돌 원천 제거(반쯤 시드된 상태 재시드 500 후보도 해소). INSERT 는 `restaurant_lat/lng` 컬럼 미존재 환경 폴백(catch → 좌표 없는 INSERT) 추가.
+- 검증: tsc 0 · sql bind/column/table 0 · build 0. ⚠️ staging: 데모 삭제(주문 붙은 행은 '비활성 처리' 토스트) → 채우기 반복 시 +10 씩 누적 + 이미지 전부 https.
+
 ## ✅ 2026-07-01 — 카카오맵 링크 kko.to 허용 + 수동 입력칸 (대표 예시 "김밥천국 kko.to/…")
 카카오맵 매장 연결의 두 갭 해소:
 - **kko.to 단축링크 허용**: 검증이 `place.map.kakao.com/{id}` 만 통과 → 카카오맵 '공유' 버튼 링크(`kko.to/…`)·`map.kakao.com/…` 거부됐음. 신규 SSOT `src/shared/kakao-place-url.ts`(`isValidKakaoPlaceUrl`/`normalizeKakaoPlaceUrl`) — place.map / map.kakao / kko.to 허용(URL 주입 방지). 전 경로(RestaurantMiniMap·group-buy 상세·admin create/patch/list·seller create/PUT/GET·demo lookup) 인라인 정규식 → 헬퍼로 통일.
