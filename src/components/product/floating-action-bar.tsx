@@ -57,7 +57,7 @@ export function FloatingActionBar({
             onClick={onAddToCart}
             disabled={disabled}
           >
-            <span className="text-[13px] font-bold text-gray-900 dark:text-white">장바구니</span>
+            <span className="text-[13px] font-bold text-gray-900 dark:text-white">{disabled ? '품절' : '장바구니'}</span>
           </button>
         )}
 
@@ -75,7 +75,7 @@ export function FloatingActionBar({
               <span className="text-[13px] font-extrabold text-white">🎁 딜로 교환</span>
             </>
           ) : (
-            <span className="text-[14px] font-extrabold text-white">바로 구매</span>
+            <span className="text-[14px] font-extrabold text-white">{disabled ? '품절' : '바로 구매'}</span>
           )}
         </button>
       </div>
