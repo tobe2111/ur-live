@@ -28,10 +28,21 @@ app.get('/kakao/place/search', rateLimit({ action: 'kakao_proxy', max: 30, windo
   if (!query) return c.json({ success: false, error: 'query required' }, 400);
   const KAKAO_REST_KEY = c.env.KAKAO_REST_API_KEY;
   if (!KAKAO_REST_KEY) return c.json({ success: false, error: 'KAKAO_REST_API_KEY not configured' }, 500);
+  // 🧯 2026-07-02 (폭주 점검): address(30일)와 달리 캐시가 없어 지도 표면 폭주 시 요청마다 카카오 직행
+  //   → 동일 검색어 24h KV 캐시(장소 키워드 결과는 단기 안정). 카카오 쿼터·429 양쪽 보호.
+  const KV = (c.env as Env & { RATE_LIMIT_KV?: KVNamespace }).RATE_LIMIT_KV;
+  const cacheKey = `kakao:place:search:${query.slice(0, 120)}:${category}:${size}`;
+  if (KV) {
+    const cached = await KV.get(cacheKey, 'json').catch(() => null);
+    if (cached) return c.json({ success: true, data: cached, cached: true });
+  }
   try {
     const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=${size}${category && !category.includes(',') ? `&category_group_code=${category}` : ''}`;
     const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } });
     const data = await res.json();
+    if (KV && (data as { documents?: unknown[] })?.documents?.length) {
+      c.executionCtx?.waitUntil?.(KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 24 * 60 * 60 }).catch(() => {}));
+    }
     return c.json({ success: true, data });
   } catch (e) {
     console.error("[proxy/kakao-place] error:", e); return c.json({ success: false, error: "외부 API 호출 실패" }, 500);
@@ -50,10 +61,23 @@ app.get('/kakao/place/nearby', rateLimit({ action: 'kakao_proxy', max: 30, windo
   if (!x || !y) return c.json({ success: false, error: 'lat,lng required' }, 400);
   const KAKAO_REST_KEY = c.env.KAKAO_REST_API_KEY;
   if (!KAKAO_REST_KEY) return c.json({ success: false, error: 'KAKAO_REST_API_KEY not configured' }, 500);
+  // 🧯 2026-07-02 (폭주 점검): 좌표를 ~110m 그리드(소수 3자리)로 라운딩해 10분 KV 캐시 —
+  //   같은 동네를 보는 동시 방문자들이 카카오 1콜을 공유(기본 지도 중심 등 인기 좌표 히트율 높음).
+  //   radius/sort 는 그대로라 결과 의미 변화 미미(반경 1km+ 대비 110m 오차).
+  const KV = (c.env as Env & { RATE_LIMIT_KV?: KVNamespace }).RATE_LIMIT_KV;
+  const gx = Number(x).toFixed(3), gy = Number(y).toFixed(3);
+  const cacheKey = `kakao:place:nearby:${gy},${gx}:${Math.min(20000, Number(radius) || 1000)}:${category}:${size}`;
+  if (KV && Number.isFinite(Number(x)) && Number.isFinite(Number(y))) {
+    const cached = await KV.get(cacheKey, 'json').catch(() => null);
+    if (cached) return c.json({ success: true, data: cached, cached: true });
+  }
   try {
     const url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=${category}&x=${x}&y=${y}&radius=${Math.min(20000, Number(radius) || 1000)}&size=${size}&sort=distance`;
     const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } });
     const data = await res.json();
+    if (KV && (data as { documents?: unknown[] })?.documents?.length) {
+      c.executionCtx?.waitUntil?.(KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 10 * 60 }).catch(() => {}));
+    }
     return c.json({ success: true, data });
   } catch (e) {
     console.error("[proxy/kakao-geocode] error:", (e as Error)?.message || String(e)); return c.json({ success: false, error: "외부 API 호출 실패" }, 500);

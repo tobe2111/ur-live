@@ -19,6 +19,8 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAuth, requireAdmin } from '@/worker/middleware/auth'
+import { rateLimit } from '@/worker/middleware/rate-limit'
+import { publicCache } from '@/worker/middleware/edge-cache'
 import { setSupplyMeta, getSupplyMeta } from '@/worker/utils/product-supply-meta'
 import { safeError } from '@/worker/utils/safe-error'
 
@@ -78,17 +80,25 @@ publicApp.get('/active', async (c) => {
     const { results: prods } = await DB.prepare(
       `SELECT id, name, price, original_price, image_url, restaurant_name, restaurant_address, category FROM products WHERE id IN (${ph}) AND is_active=1`
     ).bind(...enabledIds).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+    // 🧯 2026-07-02: 상품별 COUNT 루프(N+1) → GROUP BY 단일 쿼리 — 캐시 miss 시에도 D1 왕복 상수화.
+    const countRows = await DB.prepare(
+      `SELECT product_id, COUNT(*) as n FROM fcfs_applications
+        WHERE product_id IN (${ph}) AND status IN ('applied','selected') GROUP BY product_id`
+    ).bind(...enabledIds).all<{ product_id: number; n: number }>().catch(() => ({ results: [] as { product_id: number; n: number }[] }))
+    const countById = new Map((countRows.results || []).map(r => [r.product_id, r.n]))
     const out = []
     for (const p of prods || []) {
       const cfg = parseConfig(byId.get(p.id as number))
-      const real = await realAppliedCount(DB, p.id as number)
+      const real = countById.get(p.id as number) || 0
       out.push({ ...p, fcfs: { ...cfg, appliedDisplay: cfg.appliedSeed + real, realApplied: real } })
     }
     return c.json({ success: true, data: out })
   } catch (err) { return safeError(c, err, '선착순 목록 조회 실패', '[fcfs]') }
 })
 
-publicApp.get('/:productId', async (c) => {
+// 🧯 2026-07-02 (폭주 점검): 공개 config+카운트 — 상세 표면 폭주 시 D1 직행이던 것 30s 엣지 캐시.
+//   publicApp 한정이라 인증 경로(/:id/me, /:id/apply — userApp)와 URL 충돌 없음. 응모 직후 fresh 카운트는 POST 응답이 담당.
+publicApp.get('/:productId', publicCache(30), async (c) => {
   try {
     const DB = c.env.DB
     const productId = parseInt(c.req.param('productId'), 10)
@@ -105,7 +115,9 @@ publicApp.get('/:productId', async (c) => {
 const userApp = new Hono<{ Bindings: Env; Variables: Vars }>()
 userApp.use('*', requireAuth())
 
-userApp.post('/:productId/apply', async (c) => {
+// 🧯 2026-07-02 (대표 "트래픽 폭주에도 이상적으로"): 오픈런 표면 — IP당 10회/분 캡.
+//   정상 유저는 1탭 1회(멱등)라 무영향, 봇/연타만 차단. INSERT OR IGNORE 멱등은 기존 유지.
+userApp.post('/:productId/apply', rateLimit({ action: 'fcfs_apply', max: 10, windowSec: 60 }), async (c) => {
   try {
     const DB = c.env.DB
     const productId = parseInt(c.req.param('productId'), 10)

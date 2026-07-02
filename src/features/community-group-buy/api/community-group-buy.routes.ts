@@ -323,7 +323,9 @@ communityGroupBuyRoutes.post('/create', rateLimit({ action: 'group_buy_create', 
 });
 
 // ── POST /join/:code — 초대코드로 참여 ────────────────────────────────
-communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'group_buy_join', max: 10, windowSec: 300 }), requireAuth(), async (c) => {
+// 🧯 2026-07-02 (폭주 점검): action 이 소비자 공구 join 과 'group_buy_join' 으로 동일해 같은 IP 버킷을
+//   공유(서로의 한도 소모) → 'community_gb_join' 으로 분리. 한도/윈도우 불변.
+communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'community_gb_join', max: 10, windowSec: 300 }), requireAuth(), async (c) => {
   const user = getCurrentUser(c);
   if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 

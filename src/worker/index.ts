@@ -1208,6 +1208,8 @@ app.use('/api/products/:id', publicCache(120), cacheControl(120));      // 2 min
 app.use('/api/products/:id/options', publicCache(300), cacheControl(300));  // 5 min — 거의 안 변함
 app.use('/api/reviews/product/:id/summary', publicCache(180), cacheControl(180));  // 3 min
 app.use('/api/streams', publicCache(30), cacheControl(30));      // 30 sec (공개 라이브 목록 — user-agnostic)
+// 🧯 2026-07-02 (대표 "트래픽 폭주" 점검): 추첨 /active — 홈·지도 마운트마다 전 방문자 호출 + 캐시 0 + 상품별 COUNT → 폭주 시 D1 스탬피드. user-agnostic(내 응모는 /:id/me 인증 경로 별도) → 30s. 응모 직후 카운트는 POST /apply 응답이 fresh 라 UX 영향 0.
+app.use('/api/fcfs/active', publicCache(30), cacheControl(30));
 // 🛡️ 2026-05-22 사용자 신고 "메인 공구 상품 로딩 너무 느림" 영구 해결:
 //   edge cache 60s → 300s + SWR 1800s.
 //   stale-while-revalidate 1800s = 5분 fresh + 30분 stale 허용 동안 background revalidate.
