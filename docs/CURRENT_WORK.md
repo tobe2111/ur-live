@@ -1,5 +1,15 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-02 — 쇼핑 상품 전 구간 전수조사 + 일괄 수리 (대표 "전부", PR #429)
+일반 온라인 쇼핑 상품(교환권/동네딜/도매 제외) 셀러등록~상세~카트~주문/결제~환불~정산 6세그먼트 병렬 감사(에이전트 6 + audit-gate 41). **P0(돈유출) 0 확인**(서버 가격/할인/재고 권위 재계산 + Toss confirm strict 금액검증) — 대신 "표시금액≠서버금액 → 결제 400" 클래스 + 배선 끊김 다수 수리. 3커밋(857bb73·9ccdee5·4dd8675).
+- **결제 금액 정합(Toss confirm 400 클래스)**: `shipping.ts` free_shipping_threshold=0="무료배송 없음"(클라/points 정합) + `order.routes` 비배송(교환권/이용권) 배송비 0(threshold 수정과 상쇄짝 — 동일커밋) + `POST /orders/shipping-quote`(주문생성과 동일 함수·데이터 견적) + 미결제취소 CAS+재고/쿠폰 복원. `CheckoutPage/useBeforePayment` 서버 견적 사용·쿠폰 최대그룹 배정(멀티셀러 UNIQUE 회피)·Σ(서버 total) 검증 후 승인·stale snapshot 최신가. `scheduled-cleanup` AWAITING_PAYMENT 스위핑+쿠폰 복원.
+- **옵션 파이프라인 재건(전 구간 사망→복구)**: `useProduct` 응답형태(항상 [] 였음)·셀러 GET/POST 컬럼·필드명 정합(수정저장 시 옵션 전멸+재고 0 저장 수정)·order.routes 옵션가 서버 재계산+option_id 소유권검증+옵션재고 CAS 차감/복원·카트 option_id 저장/표시(join)/변경(PUT)·상세 UI 추가금/품절·useCart id 타입 정합.
+- **환불/취소 상태머신**: 부분취소가 주문 전체 CANCELLED+전 재고/커미션 회수 → refunded_amount CAS만(status 유지)·refundOrderFully 잔여액 기준(이중환급/EXCEED 방지)·`/orders/refund` DELIVERED 제거(반품 절차 경유)+전액시만 플립.
+- **셀러 대시보드 진실**: 상품목록 is_active 반환·재고 COALESCE 순서·비활성 표시(재활성화 가능)·토글 enum(PAUSED→HIDDEN)·삭제 status=DELETED 실세팅(구매 차단)·주문 order_items/payment_status 반환·50→200 cap·송장/일괄 상태 전이 가드(취소·미결제 부활 차단)·delivered_at 기록.
+- **소비자 표시**: 검색 카드/정렬/필터 이중할인 제거(price=최종가)·자동완성 형태 정합·prefetch 키 String·카트 선택리셋/수량감소 수정·PRODUCT_DETAIL_FIELDS 에 detail_images/long_description(+repair 등록)로 상세정보 빈렌더 복구+셀러 저장 배선.
+- **[UNLOCK] 정산/재고(대표 AskUserQuestion 2건 승인)**: `webhook.routes handlePaymentFailed` 재고복원을 전이 성공분(status='FAILED')만(지연 실패 webhook이 DONE 주문 재고 부풀리던 초과판매 차단). `handlePaymentConfirmed`+`returns.routes` 에 쇼핑 원장 credit/reverse 대칭(SHOPPING_LEDGER_ENABLED 게이트 OFF=현행 동일, 재오픈 선행 수리). CLAUDE.md audit log 2건.
+- 검증: audit-gate **41 invariants ALL GREEN**. ⚠️ **이 원격환경 npm 403 → 전체 tsc/build 미실행. 잠금파일 회귀 + 결제 정합은 staging 실결제 E2E 필수**: 옵션상품(선택→담기→결제→옵션재고 차감→환불복원)·배송비(제주/무료배송/멀티셀러)·멀티셀러+쿠폰·부분취소(주문유지·잔여 추가취소)·셀러 상품 비활성/재활성·주문 상품목록 표시. 🔵 미완(별도): 쇼핑탭 재오픈 시 정산 게이트 ON + 이중계상 가드 확정, 옵션 조합(색상×사이즈) 모델, 리뷰 사진 업로드(소비자용 엔드포인트)·카트 뱃지 invalidate(P2).
+
 ## ✅ 2026-07-02 — 마이페이지 전수 UX/기능 점검 + 일괄 수정 (대표 "모두 이상적으로")
 `/user/profile` + 위성 15페이지 전수 점검(에이전트 2 + 가드) 후 발견 전량 수정.
 - **🔴 에러 위장 근절(최대 교차 이슈)**: 마이 데이터 훅 8종(`useMyData`×3·`useMyCoupons`·`useMyReturns`·`useMyStays`·`useMyFollows`·`useDigitalLibrary`)이 `.catch(() => readCache(,[]))` 로 에러를 삼켜 **isError 가 절대 발동 불가** → 네트워크 장애가 "빈 지갑/주문 0건"으로 위장, 페이지들의 에러+재시도 UI 전부 dead branch. 수정: `localCache.readCacheOrNull` 신설 — **캐시 있으면 last-known 폴백(오프라인 UX 유지), 없으면 throw → isError**. `useMyGroupBuys`(3endpoint 전멸 시)·`useMyCommissions`(양쪽 전멸 시)도 throw. isError 미분기 페이지 9곳(MyVouchers/MyStays/MyFollows/MyGroupBuys/MyAppointments/MyDigitalLibrary/MyCommissions/MyStore/MyReturns)에 에러+재시도 UI 추가(기존 dead 에러 UI 는 자동 부활). `TeamPointsCard` 실패→"0딜" 위장 → "잔액 다시 불러오기" 버튼, `useMyCounts` 실패→0 배지 위장 → null 유지(배지 숨김).
