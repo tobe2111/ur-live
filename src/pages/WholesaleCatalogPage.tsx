@@ -483,7 +483,9 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
     // 🏭 BIZ-8: 초기 담기 수량 = MOQ 를 만족하는 최소 order_multiple 배수(서버 검증과 일치).
     const om = Math.max(1, p.order_multiple || 1)
     const initQty = om > 1 ? Math.ceil(moq / om) * om : moq
-    cart.add({ id: p.id, qty: initQty, name: p.name, image_url: p.image_url, price: p.distributor_price, moq })
+    // 🏭 2026-07-01 (라이브 감사): order_multiple·제조사 정책 스냅샷 포함 — 상세페이지 담기와 동일 계약.
+    //   (이전 누락 → 카트/체크아웃 배송비 '무료'·최소주문 미표시, 결제 시 ORDER_MULTIPLE/MIN_ORDER 뒤늦은 거부.)
+    cart.add({ id: p.id, qty: initQty, name: p.name, image_url: p.image_url, price: p.distributor_price, moq, order_multiple: om, supplier_group: p.supplier_group ?? null, supplier_policy: p.supplier_policy ?? null })
     toast.success(initQty > 1 ? `장바구니에 ${comma(initQty)}개 담았어요` : '장바구니에 담았어요')
   }
   const reorder = (r: ReorderItem) => {
