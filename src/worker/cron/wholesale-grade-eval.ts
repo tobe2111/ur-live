@@ -166,13 +166,15 @@ export async function evaluateWholesaleGrades(env: Env, force = false): Promise<
 
   for (const s of sellers.results) {
     try {
-      // trailing-window GMV — statements 집계와 동일한 status 집합 + (subtotal - 환불액).
-      //   포함: PAID/SHIPPED/PARTIAL_REFUNDED/DONE/ON_CREDIT. 제외: PENDING/FAILED/CANCELLED/REFUNDED/EXPIRED.
+      // trailing-window GMV — 실수취 매출(예치금 결제분)만 + (subtotal - 환불액).
+      //   포함: PAID/SHIPPED/PARTIAL_REFUNDED/DONE. 제외: PENDING/FAILED/CANCELLED/REFUNDED/EXPIRED.
+      //   🏭 2026-07-01 (라이브 감사): ON_CREDIT(미결제 외상) 제외 — 결제가 예치금 단일화(여신 비활성)라
+      //   미수/연체/부도 외상까지 GMV 로 세면 미수취 매출로 등급 승급되는 유령매출. 실회수분만 등급 반영.
       const gmvRow = await DB.prepare(`
         SELECT COALESCE(SUM(MAX(0, subtotal - COALESCE(refunded_amount, 0))), 0) AS gmv
         FROM wholesale_orders
         WHERE distributor_seller_id = ?
-          AND status IN ('PAID','SHIPPED','PARTIAL_REFUNDED','DONE','ON_CREDIT')
+          AND status IN ('PAID','SHIPPED','PARTIAL_REFUNDED','DONE')
           AND COALESCE(paid_at, created_at) >= ?
       `).bind(s.id, since).first<{ gmv: number }>().catch(() => null);
 

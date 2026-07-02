@@ -120,16 +120,23 @@ export function registerOrdersRoutes(app: Hono<{ Bindings: Env }>) {
       if (!(ACTIVE_WHOLESALE_STATUSES as readonly string[]).includes(order.status) || !order.payment_key) {
         return c.json({ success: false, error: '환불할 수 없는 주문 상태입니다' }, 400)
       }
-      // 남은 환불 가능액 = (상품합 + 배송비) - 이미 환불액. (감사 🔴#2: 청구액=subtotal+shipping 전액 환불)
-      const remaining = Math.max(0, (order.subtotal || 0) + (order.shipping_total || 0) - (order.refunded_amount || 0))
-      if (remaining <= 0) return c.json({ success: false, error: '환불할 잔액이 없습니다' }, 400)
+      const grandTotal = (order.subtotal || 0) + (order.shipping_total || 0)
       const isDeposit = order.payment_key === 'deposit'
 
-      // CAS claim — PAID/SHIPPED/PARTIAL_REFUNDED → REFUNDED. changes=0 이면 이미 처리됨(멱등).
+      // 🛡️ 2026-07-01 (라이브 감사 — 크로스경로 과다환불 방지): 상태만 먼저 원자 선점(REFUNDED).
+      //   제조사/클레임 라인환불(refundWholesaleSupplierLines)은 order.status∈ACTIVE 를 게이트하므로 여기서
+      //   REFUNDED 로 전환되면 이후 라인환불은 차단된다. **환불액을 CAS 이전 stale refunded_amount 로 계산하면**
+      //   그 사이 완료된 라인환불을 놓쳐 과다환불(예치금 무상 유입) → CAS 이후 refunded_amount 를 *fresh* 재조회해
+      //   실복원액 = grand_total − 기환불액 으로 계산.
       const claim = await c.env.DB.prepare(
-        `UPDATE wholesale_orders SET status='REFUNDED', refunded_amount = subtotal + COALESCE(shipping_total,0) WHERE id = ? AND status IN (${sqlStatusList(ACTIVE_WHOLESALE_STATUSES)})`
+        `UPDATE wholesale_orders SET status='REFUNDED', updated_at=datetime('now') WHERE id = ? AND status IN (${sqlStatusList(ACTIVE_WHOLESALE_STATUSES)})`
       ).bind(id).run()
       if ((claim.meta?.changes ?? 0) === 0) return c.json({ success: true, already: true })
+
+      // fresh 기환불액(상태 선점 후 — 신규 라인환불 차단, 완료분 반영). 실복원 = grand_total − 기환불.
+      const freshRow = await c.env.DB.prepare('SELECT COALESCE(refunded_amount,0) AS r FROM wholesale_orders WHERE id = ?').bind(id).first<{ r: number }>().catch(() => null)
+      const alreadyRefunded = Math.max(0, Number(freshRow?.r) || 0)
+      const remaining = Math.max(0, grandTotal - alreadyRefunded)
 
       // 🛡️ 2026-06-28 (잔여 P1): 환불 확정 직후 정산 보류 — 매숙/지급(payout)이 역전과 겹쳐 제조사 지급+바이어 환불 중복 방지.
       await holdWholesaleSettlements(c.env.DB, id)
@@ -138,22 +145,27 @@ export function registerOrdersRoutes(app: Hono<{ Bindings: Env }>) {
         // 💰 예치금 주문 — Toss 미경유. 잔액 복원(원자 +) + refund 원장(ref_id=order.id 멱등 가드).
         await ensureDepositSchema(c.env.DB)
         const already = await hasDepositRefundTxn(c.env.DB, id)
-        if (!already) {
+        if (!already && remaining > 0) {
           const bal = await refundDeposit(c.env.DB, order.distributor_seller_id, remaining)
           await recordDepositTxn(c.env.DB, order.distributor_seller_id, 'refund', remaining, bal, String(id), `관리자 환불 #${id} (${reason})`)
         }
+        // refunded_amount 를 grand_total 로 확정(= 기환불 + remaining).
+        await c.env.DB.prepare('UPDATE wholesale_orders SET refunded_amount = ? WHERE id = ?').bind(grandTotal, id).run().catch(swallow('admin:refund-finalize'))
       } else {
         // 레거시 Toss 주문 — 기존 cancelTossPayment 경로 유지.
-        const res = await cancelTossPayment({
-          env: c.env, paymentKey: order.payment_key, cancelReason: reason,
-          cancelAmount: remaining, idempotencyKey: `whs-admin-refund-${id}`,
-        })
-        if (!res.ok) {
-          // 롤백 — Toss 취소 실패 시 원래 상태로 복원(하드코딩 'PAID' 는 SHIPPED/ACCEPTED/DONE 을 강등시켜 상태머신 꼬임).
-          await c.env.DB.prepare("UPDATE wholesale_orders SET status=?, refunded_amount=? WHERE id=? AND status='REFUNDED'")
-            .bind(order.status, order.refunded_amount || 0, id).run().catch(swallow('admin:refund-rollback'))
-          return c.json({ success: false, error: res.message || '환불 처리에 실패했습니다', code: res.code }, 402)
+        if (remaining > 0) {
+          const res = await cancelTossPayment({
+            env: c.env, paymentKey: order.payment_key, cancelReason: reason,
+            cancelAmount: remaining, idempotencyKey: `whs-admin-refund-${id}`,
+          })
+          if (!res.ok) {
+            // 롤백 — Toss 취소 실패 시 원래 상태로 복원(refunded_amount 는 아직 미변경).
+            await c.env.DB.prepare("UPDATE wholesale_orders SET status=? WHERE id=? AND status='REFUNDED'")
+              .bind(order.status, id).run().catch(swallow('admin:refund-rollback'))
+            return c.json({ success: false, error: res.message || '환불 처리에 실패했습니다', code: res.code }, 402)
+          }
         }
+        await c.env.DB.prepare('UPDATE wholesale_orders SET refunded_amount = ? WHERE id = ?').bind(grandTotal, id).run().catch(swallow('admin:refund-finalize'))
       }
 
       // 남은 모든 라인 REFUNDED + 정산 역전(전체) + 재고복원.
@@ -171,7 +183,7 @@ export function registerOrdersRoutes(app: Hono<{ Bindings: Env }>) {
       }
       // 🔔 2026-06-17 (알림 완성도): 직접 어드민 환불 시 바이어 통지 — 클레임 경유 환불은 클레임 알림이 있으나
       //   어드민이 직접 환불하는 경로는 바이어 통지가 없던 누락 보강. fail-soft.
-      if (order.distributor_seller_id) {
+      if (order.distributor_seller_id && remaining > 0) {
         createDashboardNotification(
           c.env.DB, 'seller', String(order.distributor_seller_id), 'wholesale_refunded',
           '도매 주문 환불', `주문 #${id} ${remaining.toLocaleString('ko-KR')}원이 환불되었습니다. (${reason})`, '/wholesale/dashboard',
