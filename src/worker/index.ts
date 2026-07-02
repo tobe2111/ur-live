@@ -264,6 +264,9 @@ import { auctionRoutes } from '../features/auction/api/auction.routes';
 import { timedealRoutes } from '../features/timedeal/api/timedeal.routes';
 import { communityGroupBuyRoutes } from '../features/community-group-buy/api/community-group-buy.routes';
 import { referralRoutes } from '../features/referral/api/referral.routes';
+// 🖼️ 2026-07-02 (대표 "사진이 빠르게 안 나타남"): 상세 히어로 preload URL 생성 — 클라와 동일 함수 재사용
+//   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
+import { cfImage } from '../utils/cf-image';
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -673,6 +676,24 @@ app.use('*', async (c, next) => {
               `<script id="${scriptId}" type="application/json">${ssrPayload}</script>`,
               { html: true },
             );
+            // 🖼️ 2026-07-02 [UNLOCK_LOADING] (대표 "사진이 빠르게 안 나타남"): 공구/교환권 상세 히어로가
+            //   CSS background-image 라 브라우저 프리로드 스캐너를 못 타 [엔트리→페이지 청크→렌더] 뒤에야
+            //   다운로드 시작 → 사진이 늦게 뜸. seed 의 image_url 로 클라와 동일한 cfImage(width 900) URL 을
+            //   <link rel=preload as=image> 주입 → HTML 파싱 즉시 병렬 다운로드, 렌더 시점엔 캐시 적중.
+            //   (Save-Data 사용자만 quality 65 로 URL 이 달라 미적중 — 히어로 1장 한정 허용 트레이드오프.)
+            if (ssrSlot === 'DETAIL') {
+              try {
+                const seed = JSON.parse(ssrPayload) as { data?: { image_url?: string } };
+                const heroSrc = seed?.data?.image_url;
+                const heroUrl = heroSrc ? cfImage(heroSrc, { width: 900, format: 'auto' }) : '';
+                if (heroUrl && !heroUrl.startsWith('data:')) {
+                  el.append(
+                    `<link rel="preload" as="image" fetchpriority="high" href="${heroUrl.replace(/"/g, '&quot;')}">`,
+                    { html: true },
+                  );
+                }
+              } catch { /* seed 파싱 실패 — preload 생략(치명 아님) */ }
+            }
           }
         },
       });

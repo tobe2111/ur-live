@@ -52,6 +52,9 @@ const EXTERNAL_PROXY_HOSTS = new Set([
   'postfiles.pstatic.net',
   'phinf.pstatic.net',
   'mblogthumb-phinf.pstatic.net',
+  // 🖼️ 2026-07-02 (대표 "사진이 빠르게 안 나타남" — ADD only): 네이버 CDN 루트 — endsWith 매칭으로
+  //   ldb-phinf/naverbooking-phinf 등 전 서브도메인 커버(동네딜 실사진이 이 호스트들에 저장됨).
+  'pstatic.net',
   // 카카오 image 호스트
   't1.daumcdn.net',
   'i1.daumcdn.net',
@@ -181,7 +184,11 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       if (host === 'giftishow.com' || host.endsWith('.giftishow.com')) {
         return src
       }
-      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com']  // giftishow 제거 (524 — 위에서 raw 처리)
+      // 🖼️ 2026-07-02 [UNLOCK_LOADING] (대표 "사진이 빠르게 안 나타남" — prod 실측 통과 후 ADD):
+      //   pstatic.net(네이버 CDN) — ldb-phinf/shop-phinf/naverbooking-phinf 3종 라이브 실측 전부
+      //   cf-resized: internal=ok (1,055KB→106KB, 900px). 이전엔 미검증이라 워커 프록시(리사이즈 불가,
+      //   실측 2.9s·원본 1MB) 경유 → 동네딜 상세 사진이 늦게 떴음.
+      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net']  // giftishow 제거 (524 — 위에서 raw 처리)
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
         return `/cdn-cgi/image/width=${w},quality=${q},format=auto/${src}`
       }
