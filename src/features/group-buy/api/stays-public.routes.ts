@@ -9,6 +9,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { safeError } from '../../../worker/utils/safe-error'
+import { rateLimit } from '../../../worker/middleware/rate-limit'
 import { releaseStayInventory } from '../../../worker/utils/stay-inventory'
 
 type Bindings = { DB: D1Database }
@@ -245,7 +246,7 @@ staysPublicRoutes.get('/stays/:productId/availability', cors(), async (c) => {
 // 🛡️ 2026-05-18: 예약 생성 — date 모드 (날짜 지정) + voucher 모드 (기간 무관) 둘 다 지원.
 //   date 모드: body.check_in_date / check_out_date + room_id 필수.
 //   voucher 모드: body.voucher_type ('weekday' | 'weekend') 필수, 날짜 없음.
-staysPublicRoutes.post('/stays/bookings/create', cors(), async (c) => {
+staysPublicRoutes.post('/stays/bookings/create', cors(), rateLimit({ action: 'stay_booking_create', max: 10, windowSec: 60 }), async (c) => {
   try {
     const auth = c.req.header('Authorization') || ''
     if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -522,7 +523,7 @@ function generateCheckInCode(): string {
 //     - 1 order 의 total_amount 는 모든 item 의 합.
 //
 //   응답: { order_id, bookings: [...], total_amount, items: [...] }
-staysPublicRoutes.post('/stays/bookings/create-multi', cors(), async (c) => {
+staysPublicRoutes.post('/stays/bookings/create-multi', cors(), rateLimit({ action: 'stay_booking_create', max: 10, windowSec: 60 }), async (c) => {
   try {
     const auth = c.req.header('Authorization') || ''
     if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -851,7 +852,7 @@ staysPublicRoutes.get('/stays/orders/:orderId', cors(), async (c) => {
 //   🛡️ 2026-06-12 (전수조사 4차 B-2 다객실 confirm 단일화): orders.stay_booking_id(첫 booking)만
 //     confirmed 하던 것을 stay_bookings WHERE order_id=? 전체 루프로 — 각 booking CAS + 달력 차감.
 //     단건 주문은 루프가 1건이라 기존 동작과 동일.
-staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
+staysPublicRoutes.post('/stays/bookings/confirm', cors(), rateLimit({ action: 'stay_booking_confirm', max: 10, windowSec: 300 }), async (c) => {
   try {
     const auth = c.req.header('Authorization') || ''
     if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -1090,7 +1091,7 @@ staysPublicRoutes.post('/stays/bookings/confirm', cors(), async (c) => {
 })
 
 // 🛡️ 2026-05-18 (PR 6): 사용자 예약 취소 — 취소 정책 따른 환불 비율 자동 계산.
-staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), async (c) => {
+staysPublicRoutes.patch('/stays/bookings/:id/cancel', cors(), rateLimit({ action: 'stay_booking_cancel', max: 10, windowSec: 3600 }), async (c) => {
   try {
     const auth = c.req.header('Authorization') || ''
     if (!auth.startsWith('Bearer ')) return c.json({ success: false, error: '인증 필요' }, 401)

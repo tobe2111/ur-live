@@ -10,6 +10,7 @@
  */
 
 import { useState } from 'react'
+import AdminLayout from '@/components/AdminLayout'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -120,6 +121,7 @@ export default function AdminVoucherOrdersPage() {
   }
 
   return (
+    <AdminLayout title="교환권 발송 관리">
     <div className="min-h-screen bg-gray-50 p-4">
       <SEO title="교환권 발송 관리" url="/admin/voucher-orders" noindex />
       <div className="max-w-6xl mx-auto">
@@ -297,5 +299,6 @@ export default function AdminVoucherOrdersPage() {
         </div>
       </div>
     </div>
+    </AdminLayout>
   )
 }

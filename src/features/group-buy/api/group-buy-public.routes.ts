@@ -93,14 +93,12 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const status = c.req.query('status') || 'active'
     const categoryParam = c.req.query('category') || 'all'
     const validCategories = VOUCHER_CATEGORIES as readonly string[]
-    // 🧭 2026-06-17 [UNLOCK_LOADING] (사용자 요청 — 일반 상품 카테고리): general 은 VOUCHER_CATEGORIES 에
-    //   없어 기존엔 항상 voucher 로 폴백 → 클라 필터에서 0개로 사라지는 구조적 빈 카테고리였음.
-    //   이제 general 도 명시 지원(해당 카테고리 요청 시에만 — 기본 'all' 피드/캐시키/SSR 는 voucher 그대로 불변).
+    // ❌ 2026-07-02 [UNLOCK_LOADING] (대표 확정 "동네딜에는 안 섞는다 — 완전 분리 유지"): 06-17 에
+    //   추가됐던 general(배송형) 명시 지원 제거 — 어떤 소비자 UI 도 안 쓰던 휴면 분기였고, 동네딜=로컬
+    //   이용권 전용. 배송형은 쇼핑(/browse) 전용. 가드: scripts/check-dongnedeal-separation.mjs
     const categories = categoryParam === 'all'
       ? validCategories
-      : categoryParam === 'general'
-        ? ['general']
-        : (validCategories.includes(categoryParam) ? [categoryParam] : validCategories)
+      : (validCategories.includes(categoryParam) ? [categoryParam] : validCategories)
 
     // 🏭 2026-06-05 [UNLOCK_LOADING] (사용자 승인 — 동네딜 필터 근본수정): sort + 페이지네이션 서버사이드.
     //   기존: 클라가 항상 ?status=active(파라미터 없음)로 받아 최신 50개만 → 카테고리/정렬/검색을 클라에서
@@ -279,7 +277,54 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       return { ...p, current_price: Math.round(base * (1 - md / 100)), current_discount_pct: md }
     })
 
-    return c.json({ success: true, data: mapped })
+    // 🎯 2026-07-02 [UNLOCK_LOADING] (대표 신고 "홈이 미완성으로 먼저 뜨고 응모 버튼이 나중에 등장"):
+    //   추첨(fcfs) 정보 body enrich — 기존엔 카드가 별도 /api/fcfs/active 클라 fetch 를 기다려
+    //   [배지·응모 버튼 없음 → 등장] 2단 페인트였음. 피드 응답에 서버에서 합쳐 SSR/엣지캐시 첫
+    //   페인트부터 완성형(카운트 실시간 보정은 클라 훅이 후속). 2026-05-30 current_price enrich 와
+    //   동일 additive 패턴 — 캐시키/캐시 헤더/tiers parse/기존 필드 전부 불변, fail-soft(실패 시 기존 응답).
+    let withFcfs = mapped
+    try {
+      const ids = mapped.map((p) => Number(p.id)).filter((n) => Number.isFinite(n) && n > 0)
+      if (ids.length > 0) {
+        const ph2 = ids.map(() => '?').join(',')
+        const { results: fcfsMeta } = await DB.prepare(
+          `SELECT product_id, key, value FROM product_supply_meta WHERE key LIKE 'fcfs_%' AND product_id IN (${ph2})`,
+        ).bind(...ids).all<{ product_id: number; key: string; value: string | null }>()
+        const cfgById = new Map<number, Record<string, string>>()
+        for (const m of fcfsMeta || []) {
+          const rec = cfgById.get(m.product_id) || {}
+          rec[m.key] = m.value ?? ''
+          cfgById.set(m.product_id, rec)
+        }
+        const enabledIds = [...cfgById.entries()].filter(([, r]) => r.fcfs_enabled === '1').map(([id]) => id)
+        if (enabledIds.length > 0) {
+          const ph3 = enabledIds.map(() => '?').join(',')
+          const { results: cnts } = await DB.prepare(
+            `SELECT product_id, COUNT(*) as n FROM fcfs_applications
+              WHERE product_id IN (${ph3}) AND status IN ('applied','selected') GROUP BY product_id`,
+          ).bind(...enabledIds).all<{ product_id: number; n: number }>().catch(() => ({ results: [] as { product_id: number; n: number }[] }))
+          const cntById = new Map((cnts || []).map((r) => [r.product_id, r.n]))
+          const enabledSet = new Set(enabledIds)
+          withFcfs = mapped.map((p) => {
+            const pid = Number(p.id)
+            if (!enabledSet.has(pid)) return p
+            const rec = cfgById.get(pid) || {}
+            const seed = Math.max(0, parseInt(rec.fcfs_applied_seed || '0', 10) || 0)
+            return {
+              ...p,
+              fcfs: {
+                enabled: true,
+                spots: Math.max(0, parseInt(rec.fcfs_spots || '0', 10) || 0),
+                appliedDisplay: seed + (cntById.get(pid) || 0),
+                deadline: rec.fcfs_deadline || null,
+              },
+            }
+          })
+        }
+      }
+    } catch { /* fail-soft — 클라 useFcfs 훅이 폴백 */ }
+
+    return c.json({ success: true, data: withFcfs })
   })
 
   // 🛡️ 2026-06-10 (사용자 신고 — 교환권 상세 500 전수 재현): 어드민 전용 단계별 진단.
