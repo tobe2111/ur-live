@@ -78,10 +78,12 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
               </div>
             )}
             <div className="flex-1 min-w-0">
-              {/* 🎨 2026-07-02 (대표): 제목 옆 검정 할인배지가 상호명 가시성을 해침 → 배지 제거,
-                  할인율은 아래 가격 옆 빨간 글자로 (쿠팡식 "34% 25,900원" — 피드 카드와 동일 배치). */}
-              <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{r.restaurant_name}</p>
-              <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1 truncate flex items-center gap-0.5">
+              {/* 🎨 2026-07-02 (대표 — UI 우선순위): 유저가 궁금한 건 매장이 아니라 '어떤 이용권인지' →
+                  이용권명(r.name)을 볼드 제목으로 승격, 매장명은 작은 보조 줄로 강등 (홈 피드 카드와 동일 위계).
+                  제목 옆 검정 할인배지는 제거, 할인율은 아래 가격 옆 빨간 글자로. */}
+              <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{r.name}</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{r.restaurant_name}</p>
+              <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-0.5 truncate flex items-center gap-0.5">
                 <MapPin className="w-3 h-3 shrink-0" />
                 {r.restaurant_address || '주소 미등록'}
                 {userLoc && r.restaurant_lat && r.restaurant_lng && (
@@ -90,7 +92,6 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
                   </span>
                 )}
               </p>
-              <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-0.5 truncate">{r.name}</p>
               <div className="flex items-baseline gap-1.5 mt-1.5">
                 {discount > 0 && (
                   <span className="text-[16px] font-extrabold text-red-500 dark:text-red-400">{discount}%</span>
