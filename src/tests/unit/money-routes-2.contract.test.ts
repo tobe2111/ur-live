@@ -19,7 +19,10 @@ function mounted(app: { routes: { method: string; path: string }[] }): Set<strin
 
 describe('wholesale(도매 B2B) 라우트 계약 + 인증', () => {
   const EXPECTED = [
-    'GET /catalog', 'GET /catalog/:id', 'GET /me', 'GET /orders', 'GET /orders/:id',
+    // 🛡️ 2026-07-02: 카탈로그 상세는 숫자 제약 라우트(`/catalog/:id{[0-9]+}` — 2026-07-01 도매
+    //   라이브 감사에서 비숫자 id 방어로 변경)로 마운트됨. Hono app.routes 는 등록 문자열 그대로라
+    //   계약도 동일 표기 필수 — 불일치가 main 배포(Deploy 워크플로 유닛 게이트)를 차단하고 있었음.
+    'GET /catalog', 'GET /catalog/:id{[0-9]+}', 'GET /me', 'GET /orders', 'GET /orders/:id',
     'GET /proposals', 'GET /statement', 'POST /orders', 'POST /orders/confirm',
   ]
   it('엔드포인트 전부 마운트', () => {
