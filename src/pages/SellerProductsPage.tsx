@@ -84,9 +84,11 @@ export default function SellerProductsPage() {
       const sessionToken = localStorage.getItem('seller_token')
       
 
+      // 🛡️ 2026-07-02 (쇼핑 전수조사): 서버 허용 status 는 ACTIVE/SOLD_OUT/HIDDEN/DELETED — 'PAUSED'
+      //   는 400 이었음. 비활성화 = HIDDEN(일시중지, 재활성화 가능), 활성화 = ACTIVE.
       const response = await api.put(
         `/api/seller/products/${productId}`,
-        { is_active: !currentStatus, status: !currentStatus ? 'ACTIVE' : 'PAUSED' },
+        { is_active: !currentStatus, status: !currentStatus ? 'ACTIVE' : 'HIDDEN' },
         { headers: { 'Authorization': `Bearer ${sessionToken}` } }
       )
 

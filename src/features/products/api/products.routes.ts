@@ -361,8 +361,13 @@ productsRoutes.get('/:id/options', cors(), async (c) => {
   try {
     const KV = (c.env as any).SESSION_KV;
     const data = await cacheGet(KV, `product_options:${id}`, async () => {
+      // 🛡️ 2026-07-02 (쇼핑 전수조사): canonical `stock` 컬럼(migration 0001, 항상 존재)을 반환.
+      //   이전엔 `stock_quantity`(0113 추가, repair-schema 미등록 → fresh env 부재 가능)를 읽어
+      //   ① 셀러 POST 가 쓰는 `stock` 과 다른 컬럼 → 항상 0/stale ② 컬럼 부재 시 전체 catch → 옵션
+      //   아예 안 뜸. `AS stock` 으로 소비자/모달(option.stock)이 기대하는 필드명과 일치.
       const result = await DB.prepare(
-        `SELECT id, product_id, option_type, option_value, price_adjustment, stock_quantity, created_at
+        `SELECT id, product_id, option_type, option_value, price_adjustment,
+                COALESCE(stock, 0) AS stock, created_at
          FROM product_options
          WHERE product_id = ?
          ORDER BY option_type, option_value`

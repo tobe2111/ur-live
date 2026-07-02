@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { CartItem } from '@/types/cart'
@@ -99,6 +99,51 @@ function CartCheckout() {
 
   // 배송지 — CheckoutAddressSection 이 관리, 부모는 selectedAddress 만 보관
   const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(null)
+
+  // 🛡️ 2026-07-02 (쇼핑 전수조사 — 결제 금액 정합): 배송비/가격 서버 권위 견적.
+  //   서버 주문 생성과 동일 함수·데이터(POST /api/orders/shipping-quote)로 그룹별 배송비와
+  //   현재가를 받아 그대로 표시/청구 — 클라 자체 계산(바로구매 3,000 하드코드 / 무료배송
+  //   threshold / 제주·도서산간 지역비 미인지 / stale snapshot)이 서버 총액과 어긋나
+  //   Toss confirm "금액 불일치" 400 을 유발하던 클래스 제거. 견적 실패 시 기존 클라 계산 fallback.
+  const [quotedFees, setQuotedFees] = useState<Record<string, number> | null>(null)
+  const quoteKeyRef = useRef('')
+  useEffect(() => {
+    if (cartItems.length === 0) return
+    const key = cartItems.map(i => `${i.product_id}x${i.quantity}`).sort().join(',') + '|' + (selectedAddress?.postal_code || '')
+    if (quoteKeyRef.current === key) return
+    quoteKeyRef.current = key
+    api.post('/api/orders/shipping-quote', {
+      items: cartItems.map(i => ({ product_id: i.product_id, quantity: i.quantity })),
+      postal_code: selectedAddress?.postal_code || null,
+    }).then(r => {
+      if (!r.data?.success) return
+      const data = r.data.data as {
+        items: Array<{ product_id: string; unit_price: number; available: boolean }>
+        groups: Array<{ seller_id: string | null; shipping_fee: number }>
+      }
+      const fees: Record<string, number> = {}
+      for (const g of data.groups) fees[String(Number(g.seller_id) || 0)] = g.shipping_fee
+      setQuotedFees(fees)
+      // 현재가 반영 — snapshot 이 stale(셀러 가격 변경)이면 최신가로 교체 + 안내. 판매종료는 제외.
+      const priceMap = new Map(data.items.filter(it => it.available).map(it => [String(it.product_id), it.unit_price]))
+      const unavailable = new Set(data.items.filter(it => !it.available).map(it => String(it.product_id)))
+      let changed = false; let removed = false
+      setCartItems(prev => {
+        const next = prev
+          .filter(it => { const gone = unavailable.has(String(it.product_id)); if (gone) removed = true; return !gone })
+          .map(it => {
+            const cur = priceMap.get(String(it.product_id))
+            const shown = it.price_snapshot ?? it.price ?? 0
+            if (cur == null || cur === shown) return it
+            changed = true
+            return { ...it, price_snapshot: cur, price: cur, item_total: cur * it.quantity }
+          })
+        return (changed || removed) ? next : prev
+      })
+      if (removed) toast.error(t('checkoutPage.itemsUnavailableRemoved', { defaultValue: '판매가 종료된 상품을 주문에서 제외했어요' }))
+      else if (changed) toast.info(t('checkoutPage.pricesUpdated', { defaultValue: '상품 가격이 변경되어 최신 가격으로 반영했어요' }))
+    }).catch(err => { if (import.meta.env.DEV) console.warn('[Checkout] shipping-quote 실패 — 클라 계산 fallback:', err) })
+  }, [cartItems, selectedAddress])
 
   // 🛡️ 2026-05-23 v2 (revert + 회귀 방어): server clientKey 다시 fetch — env 미스매치 영구 차단.
   //   배경: 이전 commit (eb29a060) 에서 VITE env 만 사용으로 바꿨는데, 운영자가 빌드 env 미설정 시
@@ -207,6 +252,10 @@ function CartCheckout() {
   // 소계 및 배송비 계산
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price_snapshot ?? item.price ?? 0) * item.quantity, 0)
   const totalShippingFee = Object.values(sellerGroups).reduce((total, group) => {
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 서버 견적 우선 — 비배송/무료배송/지역비(제주·도서산간)가
+    //   전부 반영된 권위 값(주문 생성과 동일 계산). 견적 미도착/실패 시에만 아래 클라 계산 fallback.
+    const quoted = quotedFees?.[String(group.seller_id)]
+    if (quoted != null) return total + quoted
     // 🛡️ 2026-05-19 (사용자 신고: 교환권 배송비 치명적 버그):
     //   KT Alpha 교환권 (deal_only=1) 은 휴대폰 MMS 발송이라 배송비 불요.
     //   그룹의 모든 item 이 deal_only=1 이면 shipping_fee 무시.
@@ -367,6 +416,9 @@ function CartCheckout() {
     couponDiscount,
     totalGroupBuyDiscount,
     dealToUse,
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): 서버 배송비 견적 + Σ(서버 총액) 검증용 청구 예정액.
+    quotedFees,
+    expectedTotal: totalAmount,
   })
 
   const handlePayWithDeals = async () => {

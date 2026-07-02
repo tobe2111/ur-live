@@ -136,12 +136,15 @@ cartRoutes.get('/', requireAuth(), async (c) => {
            p.deal_only,
            p.seller_id,
            p.bundling_key,
+           po.option_value AS option_value,
+           po.option_type  AS option_type,
            s.business_name AS seller_name,
            COALESCE(s.base_shipping_fee, s.shipping_fee, 3000) AS shipping_fee,
            COALESCE(s.free_shipping_threshold, 0) AS free_shipping_threshold
          FROM cart_items ci
          JOIN products p  ON ci.product_id = p.id
          LEFT JOIN sellers s ON p.seller_id = s.id
+         LEFT JOIN product_options po ON ci.option_id = po.id
          WHERE ci.user_id = ?
          ORDER BY ci.added_at DESC`
       )
@@ -163,6 +166,8 @@ cartRoutes.get('/', requireAuth(), async (c) => {
         deal_only: number | null;
         seller_id: number;
         bundling_key: string | null;
+        option_value: string | null;  // 🛡️ 2026-07-02: 카트에 옵션 표시 + 옵션 변경 진입점.
+        option_type: string | null;
         seller_name: string | null;
         shipping_fee: number;
         free_shipping_threshold: number;
@@ -174,12 +179,14 @@ cartRoutes.get('/', requireAuth(), async (c) => {
                     p.name AS product_name, p.description AS product_description, p.price AS product_price,
                     p.image_url AS product_image, p.stock AS product_stock, p.is_active AS product_is_active,
                     p.deal_only, p.seller_id, NULL AS bundling_key,
+                    po.option_value AS option_value, po.option_type AS option_type,
                     s.business_name AS seller_name,
                     COALESCE(s.base_shipping_fee, s.shipping_fee, 3000) AS shipping_fee,
                     COALESCE(s.free_shipping_threshold, 0) AS free_shipping_threshold
              FROM cart_items ci
              JOIN products p ON ci.product_id = p.id
              LEFT JOIN sellers s ON p.seller_id = s.id
+             LEFT JOIN product_options po ON ci.option_id = po.id
              WHERE ci.user_id = ?
              ORDER BY ci.added_at DESC`,
           )
@@ -410,13 +417,21 @@ cartRoutes.put('/:id', cartRateLimit, requireAuth(), async (c) => {
     if (!cartItemId || cartItemId < 1)
       return c.json(badRequestResponse('Invalid cart item id'), 400);
 
-    const body = await c.req.json<{ quantity?: number }>();
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): quantity 와 option_id 둘 다 선택적 — 옵션 변경(option_id 만)도 허용.
+    //   이전엔 quantity 필수라 옵션 변경 mutation(option_id 만 전송)이 항상 400 → CartPage 의 옵션 변경
+    //   기능 전체가 데드였음. 최소 하나는 있어야 함.
+    const body = await c.req.json<{ quantity?: number; option_id?: number | string | null; optionId?: number | string | null }>();
     const quantity = body.quantity != null ? Number(body.quantity) : undefined;
+    const optionIdRaw = body.option_id ?? body.optionId;
+    const hasOption = optionIdRaw !== undefined;
+    const optionId = hasOption && optionIdRaw != null ? Number(optionIdRaw) : null;
 
-    if (quantity === undefined)
-      return c.json(badRequestResponse('quantity is required'), 400);
-    if (!Number.isFinite(quantity) || quantity < 1 || quantity > 10000)
+    if (quantity === undefined && !hasOption)
+      return c.json(badRequestResponse('quantity 또는 option_id가 필요합니다'), 400);
+    if (quantity !== undefined && (!Number.isFinite(quantity) || quantity < 1 || quantity > 10000))
       return c.json(badRequestResponse('quantity must be 1~10000'), 400);
+    if (hasOption && optionId != null && (!Number.isFinite(optionId) || optionId < 1))
+      return c.json(badRequestResponse('Invalid option_id'), 400);
 
     const db = c.env.DB;
     const userId = await getUserDbId(db, String(user.id));
@@ -425,22 +440,51 @@ cartRoutes.put('/:id', cartRateLimit, requireAuth(), async (c) => {
     // 소유권 확인
     const item = await db
       .prepare(
-        `SELECT ci.id, ci.product_id, p.stock
+        `SELECT ci.id, ci.product_id, ci.quantity AS cur_quantity, p.stock, p.price AS product_price
            FROM cart_items ci
            JOIN products p ON ci.product_id = p.id
           WHERE ci.id = ? AND ci.user_id = ? LIMIT 1`
       )
       .bind(cartItemId, userId)
-      .first<{ id: number; product_id: number; stock: number }>();
+      .first<{ id: number; product_id: number; cur_quantity: number; stock: number; product_price: number }>();
 
     if (!item) return c.json(notFoundResponse('Cart item'), 404);
-    if (item.stock < quantity)
+    const effectiveQty = quantity ?? item.cur_quantity;
+    if (item.stock < effectiveQty)
       return c.json(badRequestResponse('Insufficient stock'), 400);
 
-    await db
-      .prepare('UPDATE cart_items SET quantity = ? WHERE id = ?')
-      .bind(quantity, cartItemId)
-      .run();
+    // 옵션 변경 시 소유권/재고 검증 — 해당 상품의 옵션인지 + 재고. 표시가격(snapshot)도 재계산.
+    let newSnapshot: number | null = null;
+    if (hasOption && optionId != null) {
+      const opt = await db
+        .prepare('SELECT id, product_id, COALESCE(price_adjustment,0) AS price_adjustment, COALESCE(stock,0) AS stock FROM product_options WHERE id = ?')
+        .bind(optionId)
+        .first<{ id: number; product_id: number; price_adjustment: number; stock: number }>()
+        .catch(() => null);
+      if (!opt || Number(opt.product_id) !== Number(item.product_id))
+        return c.json(badRequestResponse('해당 상품의 옵션이 아닙니다'), 400);
+      if (Number(opt.stock) > 0 && Number(opt.stock) < effectiveQty)
+        return c.json(badRequestResponse('옵션 재고가 부족합니다'), 400);
+      newSnapshot = Math.max(0, Number(item.product_price || 0) + Math.trunc(Number(opt.price_adjustment) || 0));
+    } else if (hasOption && optionId == null) {
+      // 옵션 해제 — 기본가로 복원.
+      newSnapshot = Math.max(0, Number(item.product_price || 0));
+    }
+
+    // 부분 업데이트 — 전달된 필드만 갱신.
+    const sets: string[] = [];
+    const params: unknown[] = [];
+    if (quantity !== undefined) { sets.push('quantity = ?'); params.push(quantity); }
+    if (hasOption) { sets.push('option_id = ?'); params.push(optionId); }
+    if (newSnapshot != null) { sets.push('price_snapshot = ?'); params.push(newSnapshot); }
+    params.push(cartItemId);
+    try {
+      await db.prepare(`UPDATE cart_items SET ${sets.join(', ')} WHERE id = ?`).bind(...params).run();
+    } catch (e) {
+      // UNIQUE(user_id, product_id, COALESCE(option_id,-1)) 충돌 — 같은 상품의 그 옵션이 이미 카트에 있음.
+      if (hasOption) return c.json(badRequestResponse('이미 장바구니에 담긴 옵션입니다'), 409);
+      throw e;
+    }
 
     return c.json(successResponse({ id: cartItemId, quantity }, 'Cart item updated'));
   } catch (error: any) {

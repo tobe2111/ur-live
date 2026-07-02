@@ -176,6 +176,9 @@ export interface Product {
   detail_images?: string | string[];
   long_description?: string;
   original_price?: number;
+  // 🛡️ 2026-07-02 (쇼핑 전수조사): 비배송 판별(교환권/이용권)용 — 주문 배송비 서버 계산에서 사용.
+  category?: string | null;
+  deal_only?: number | null;
 }
 
 // ---- Cart ----

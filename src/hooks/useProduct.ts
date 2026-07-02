@@ -96,7 +96,10 @@ export function useProductOptions(productId: string | undefined) {
     queryFn: async () => {
       if (!productId) throw new Error('Product ID is required')
       const response = await api.get(`/api/products/${productId}/options`)
-      return (response.data.data.options || []) as ProductOption[]
+      // 🛡️ 2026-07-02 (쇼핑 전수조사): 서버는 data:[배열] 직반환 — 이전엔 data.data.options(항상 undefined)
+      //   를 읽어 옵션이 상세 페이지에서 절대 로드되지 않았음(옵션 상품 구매 자체 불가).
+      const data = response.data?.data
+      return (Array.isArray(data) ? data : (data?.options ?? [])) as ProductOption[]
     },
     enabled: !!productId,
   })

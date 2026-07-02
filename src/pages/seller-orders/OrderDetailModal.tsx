@@ -74,8 +74,8 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                 <div>
                   <p className="text-gray-500 mb-1">{t('seller.paymentStatusHeader')}</p>
                   <div>
-                    <Badge className={order.payment_status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                      {order.payment_status === 'completed' ? t('seller.statusDone') : order.payment_status}
+                    <Badge className={(order.payment_status === 'approved' || order.payment_status === 'completed') ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                      {(order.payment_status === 'approved' || order.payment_status === 'completed') ? t('seller.statusDone') : order.payment_status}
                     </Badge>
                   </div>
                 </div>

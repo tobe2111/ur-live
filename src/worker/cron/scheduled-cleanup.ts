@@ -150,11 +150,14 @@ export async function handleScheduled(env: Env) {
   // 전환된 행만 반환하므로 웹훅과의 경쟁에서도 재고 복구는 한 번만 실행됨.
   // 추가 방어: 재고 복구한 order_items를 CANCELLED로 표시해서 이중 복구 차단.
   try {
+    // 🛡️ 2026-07-02 (쇼핑 전수조사): AWAITING_PAYMENT(가상계좌 입금대기)도 스위핑 —
+    //   입금 만료 webhook(EXPIRED) 유실 시 재고가 영구 예약되던 갭. VA 입금기한을 넉넉히
+    //   넘긴 7일 후에만 회수(정상 VA 는 webhook 이 먼저 처리 → 이 절은 안전망).
     const { results: cancelledOrders } = await DB.prepare(`
       UPDATE orders
       SET status = 'CANCELLED', cancel_reason = '결제 시간 초과 (24시간)', updated_at = datetime('now')
-      WHERE status = 'PENDING'
-        AND created_at < datetime('now', '-24 hours')
+      WHERE (status = 'PENDING' AND created_at < datetime('now', '-24 hours'))
+         OR (status = 'AWAITING_PAYMENT' AND created_at < datetime('now', '-7 days'))
       RETURNING id
     `).all<{ id: number }>();
 
@@ -180,6 +183,15 @@ export async function handleScheduled(env: Env) {
         );
         try { await DB.batch(stmts); } catch (e) { logError('[Cron] stock restore batch', { error: String(e) }); }
       }
+
+      // 💸 2026-07-02 (쇼핑 전수조사): 미결제 자동취소 시 쿠폰 복원 — 주문 생성 시점에 소진된
+      //   coupon_uses 가 결제 미완료(이탈/confirm 400)면 영구 소실되던 갭. 결제완료 주문은 이
+      //   절에 도달하지 않으므로(status PENDING/AWAITING 한정) 이중 복원 없음.
+      try {
+        const { restoreCouponsForOrders } = await import('../../features/coupons/api/coupons.routes');
+        await restoreCouponsForOrders(DB, orderIds);
+      } catch (e) { logError('[Cron] coupon restore error:', { error: String(e) }); }
+
       results.pending_orders_cancelled = cancelledOrders.length;
     }
   } catch (e) { logError('[Cron] pending_orders error:', { error: String(e) }) }

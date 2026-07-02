@@ -194,7 +194,9 @@ export default function ProductDetailPage() {
         product_id: product!.id,
         quantity,
         price_snapshot: (product!.price || 0) + optAdj,
-        options: Object.values(selectedOptions)[0] ? JSON.stringify(selectedOptions) : null
+        // 🛡️ 2026-07-02 (쇼핑 전수조사): option_id 를 실제로 전송 — 이전엔 options JSON 문자열만 보내
+        //   서버가 무시(option_id NULL) → 서로 다른 옵션이 한 행으로 병합·옵션 표시/변경 불가.
+        option_id: selectedOptions.option || null,
       })
       showToast(t('cart.itemAdded'), 'success')
       try {
@@ -559,19 +561,31 @@ export default function ProductDetailPage() {
           <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-3">{t('productDetail.optionSelect')}</p>
           {options.length > 0 ? (
             <div className="space-y-2">
-              {options.map((opt: ProductOption) => (
-                <button key={opt.id} onClick={() => setSelectedOptions({ option: Number(opt.id) })}
+              {options.map((opt: ProductOption) => {
+                // 🛡️ 2026-07-02 (쇼핑 전수조사): 옵션 품절 표시/선택 차단. stock 은 canonical(서버 COALESCE(stock)).
+                //   stock===0 은 '재고관리 안 함(무제한)' 의미가 아니라 실제 0 일 때만 품절 — 서버 주문 생성도
+                //   stock>0 일 때만 CAS 차감하므로 UI 도 명시적 0 만 품절 처리(옵션 재고 미설정 상품과 구분 불가한
+                //   한계는 있으나, 재고 입력한 셀러의 품절 옵션을 못 고르게 하는 게 우선).
+                const soldOut = opt.stock === 0
+                const selected = selectedOptions.option === Number(opt.id)
+                return (
+                <button key={opt.id} disabled={soldOut} onClick={() => !soldOut && setSelectedOptions({ option: Number(opt.id) })}
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${
-                    selectedOptions.option === opt.id ? 'border-gray-900 bg-gray-50 dark:bg-[#121212]' : 'border-gray-200 dark:border-[#2A2A2A]'
+                    soldOut ? 'border-gray-200 dark:border-[#2A2A2A] opacity-40 cursor-not-allowed'
+                    : selected ? 'border-gray-900 bg-gray-50 dark:bg-[#121212]' : 'border-gray-200 dark:border-[#2A2A2A]'
                   }`}>
-                  <span className="text-[12px] text-gray-900 dark:text-white">{opt.option_value}</span>
-                  {opt.price_adjustment !== 0 && (
-                    <span className="text-[11px] text-red-500 font-bold">
-                      {(opt.price_adjustment || 0) > 0 ? '+' : ''}{t('productDetail.priceWon', { defaultValue: '{{value}}원', value: formatNumber(opt.price_adjustment || 0) })}
-                    </span>
-                  )}
+                  <span className={`text-[12px] ${soldOut ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>{opt.option_value}</span>
+                  <span className="flex items-center gap-2">
+                    {soldOut && <span className="text-[11px] text-red-500 font-medium">{t('product.optionSoldOut', { defaultValue: '품절' })}</span>}
+                    {!soldOut && opt.price_adjustment !== 0 && (
+                      <span className="text-[11px] text-red-500 font-bold">
+                        {(opt.price_adjustment || 0) > 0 ? '+' : ''}{t('productDetail.priceWon', { defaultValue: '{{value}}원', value: formatNumber(opt.price_adjustment || 0) })}
+                      </span>
+                    )}
+                  </span>
                 </button>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A]">
@@ -808,7 +822,7 @@ export default function ProductDetailPage() {
         <FloatingActionBar
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
-          disabled={product.stock === 0 && product.stock_quantity === 0}
+          disabled={(product.stock ?? product.stock_quantity ?? 0) === 0}
           isWishlisted={isWishlisted}
           onToggleWishlist={handleToggleWishlist}
           price={product.price}
