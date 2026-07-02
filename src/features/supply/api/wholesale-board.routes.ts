@@ -143,7 +143,8 @@ wish.get('/', async (c) => {
       `SELECT w.product_id, w.created_at,
               p.name, p.image_url, p.category, p.brand_name, p.price AS retail_price, p.is_active,
               COALESCE(p.supply_price, 0) AS supply_price, p.supply_margin_override_pct AS margin_override,
-              COALESCE(p.is_supply_product, 0) AS is_supply_product, COALESCE(p.stock, 0) AS stock
+              COALESCE(p.is_supply_product, 0) AS is_supply_product, COALESCE(p.stock, 0) AS stock,
+              COALESCE(p.min_order_qty, 1) AS moq, COALESCE(p.order_multiple, 1) AS order_multiple
        FROM wholesale_wishlists w
        LEFT JOIN products p ON p.id = w.product_id
        WHERE w.seller_id = ?
@@ -152,6 +153,7 @@ wish.get('/', async (c) => {
       product_id: number; created_at: string; name: string | null; image_url: string | null
       category: string | null; brand_name: string | null; retail_price: number | null; is_active: number | null
       supply_price: number; margin_override: number | null; is_supply_product: number; stock: number
+      moq: number; order_multiple: number
     }>()
     const rows = results ?? []
     // 🏷️ 등급 공급가 enrich — 카탈로그와 동일 SSOT(resolveDistributorPrice). 공급상품이고 원가>0 일 때만.
@@ -164,6 +166,7 @@ wish.get('/', async (c) => {
         product_id: r.product_id, created_at: r.created_at, name: r.name, image_url: r.image_url,
         category: r.category, brand_name: r.brand_name, retail_price: r.retail_price || null,
         is_active: r.is_active, stock: r.stock, distributor_price,
+        moq: r.moq, order_multiple: r.order_multiple, // 🏭 2026-07-01: 담기 시 MOQ/배수 정합(결제 거부 방지)
       }
     })
     return c.json({ success: true, items })
