@@ -290,7 +290,7 @@ CLAUDE.md 는 매 작업마다 읽는 활성 규칙만 유지. 사고 후일담 
 ## 📝 블로그 시드 자동 업데이트 (2026-07-01 대표 지시 — "코드 수정될 때마다 블로그도 자동 반영")
 
 소비자 블로그(`/blog`, `/admin/blog`)는 `blog_posts` 테이블 + **버전 재시드** 구조.
-- **SSOT 시드**: `src/features/blog/api/blog.routes.ts` 의 `blogSeedPosts()` 배열 + `BLOG_SEED_VERSION` 상수.
+- **SSOT 시드**: `src/features/blog/api/blog-seed.ts` 의 `blogSeedPosts()` 배열(콘텐츠 데이터, blog.routes.ts 에서 분리) + `blog.routes.ts` 의 `BLOG_SEED_VERSION` 상수. 시드 문구는 blog-seed.ts, 버전 bump 는 blog.routes.ts. (본문 렌더러는 상세·관리자 미리보기 공용 `src/features/blog/BlogMarkdown.tsx`.)
 - **자동 반영 원리**: `BLOG_SEED_VERSION` > DB 저장 버전이면 배포 후 첫 접근 시 `maybeSyncBlogSeed()` 가 자동 동기화. 신규 글 삽입 / 시드 관리 글(`is_seed=1, manually_edited=0`) 최신화 / 새 시드에서 빠진 낡은 글은 **비공개**(삭제 아님). 관리자가 `/admin/blog` 에서 **직접 수정(`manually_edited=1`)하거나 생성(`is_seed=0`)한 글은 절대 덮어쓰지 않음**(수동 편집 보존).
 
 > ⚠️ **필수 룰 (모든 세션 준수)**: **서비스 사실이 바뀌면 블로그 시드도 같은 커밋에서 고치고 `BLOG_SEED_VERSION` 을 +1 하라.** 안 올리면 라이브 블로그가 안 바뀜. 특히:

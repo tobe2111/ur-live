@@ -10,7 +10,7 @@
   "src/features/auction/api/auction.routes.ts": 833,
   "src/features/auth/api/kakao.routes.ts": 1003,
   "src/features/auth/api/seller.routes.ts": 822,
-  "src/features/blog/api/blog.routes.ts": 1531,
+  "src/features/blog/api/blog.routes.ts": 428,
   "src/features/community-group-buy/api/community-group-buy.routes.ts": 1187,
   "src/features/group-buy/api/group-buy-public.routes.ts": 858,
   "src/features/group-buy/api/group-buy-voucher.routes.ts": 690,
