@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Home, ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 
@@ -104,6 +104,7 @@ const PER_PAGE = 7
 export default function BlogListPage() {
   const { t } = useTranslation()
   const [selectedTag, setSelectedTag] = useState('')
+  const [query, setQuery] = useState('')
   const [heroIdx, setHeroIdx] = useState(0)
   const [page, setPage] = useState(1)
 
@@ -122,16 +123,26 @@ export default function BlogListPage() {
 
   // 태그 목록은 항상 전체 글에서 파생 → 필터 중에도 칩이 안정적으로 유지됨.
   const allTags = [...new Set(allPosts.flatMap(p => parseTags(p.tags)))]
-  const filtered = selectedTag
-    ? allPosts.filter(p => parseTags(p.tags).includes(selectedTag))
-    : allPosts
+  // 클라이언트 필터 — 태그 + 검색어(제목/요약/태그). 전량 로드(limit=100)라 즉시 반영.
+  //   ⚠️ 글이 수백 편으로 늘면 서버 페이지네이션/검색(엔드포인트 page/limit/tag/q 지원)으로 전환 권장.
+  const q = query.trim().toLowerCase()
+  const searching = q.length > 0
+  const filtered = allPosts.filter(p => {
+    if (selectedTag && !parseTags(p.tags).includes(selectedTag)) return false
+    if (q) {
+      const hay = `${p.title} ${p.summary} ${p.tags} ${p.author}`.toLowerCase()
+      if (!hay.includes(q)) return false
+    }
+    return true
+  })
 
-  // 히어로 = 최신 글 상위 5개(태그 필터 없을 때만 노출).
+  // 히어로 = 최신 글 상위 5개(태그·검색 없을 때만 노출).
   const featured = allPosts.slice(0, 5)
   const hero = featured[heroIdx % (featured.length || 1)]
   const moveHero = (d: number) => setHeroIdx(i => (i + d + featured.length) % featured.length)
 
   const pickTag = (tag: string) => { setSelectedTag(tag); setPage(1) }
+  const onSearch = (v: string) => { setQuery(v); setPage(1) }
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE))
   const curPage = Math.min(page, totalPages)
@@ -164,8 +175,8 @@ export default function BlogListPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-5 lg:px-8">
-        {/* ── 히어로 캐러셀 (태그 필터 없을 때) ── */}
-        {!selectedTag && !loading && hero && (
+        {/* ── 히어로 캐러셀 (태그·검색 없을 때) ── */}
+        {!selectedTag && !searching && !loading && hero && (
           <section className="pt-6 pb-8">
             <Link to={`/blog/${hero.slug}`} className="group grid lg:grid-cols-2 gap-5 lg:gap-8 items-center">
               <div className="order-2 lg:order-1">
@@ -193,8 +204,26 @@ export default function BlogListPage() {
           </section>
         )}
 
+        {/* ── 검색 ── */}
+        <div className="pt-6 pb-1">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
+            <input
+              value={query}
+              onChange={(e) => onSearch(e.target.value)}
+              placeholder="블로그 검색 — 이용권, 링크샵, 정산…"
+              className="w-full h-11 pl-10 pr-10 rounded-xl bg-gray-50 dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#2A2A2A] text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-300 dark:focus:border-[#3A3A3A]"
+            />
+            {query && (
+              <button onClick={() => onSearch('')} aria-label="검색어 지우기" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-[#2A2A2A]">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* ── 태그 필터 ── */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar py-4 border-t border-gray-100 dark:border-[#1A1A1A]">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar py-4">
           <button onClick={() => pickTag('')}
             className={`px-3.5 py-1.5 rounded-full text-sm font-medium shrink-0 ${!selectedTag ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-50 dark:bg-[#1C1C1E] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2A2A2A]'}`}>
             전체
@@ -210,7 +239,8 @@ export default function BlogListPage() {
         {/* ── 전체 아티클 리스트 ── */}
         <section className="py-8">
           <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-2">
-            {selectedTag ? `#${selectedTag}` : '전체 아티클'}
+            {searching ? `‘${query.trim()}’ 검색 결과` : selectedTag ? `#${selectedTag}` : '전체 아티클'}
+            {(searching || selectedTag) && <span className="ml-2 text-base font-semibold text-gray-400 dark:text-gray-500">{filtered.length}</span>}
           </h3>
 
           {loading ? (
@@ -227,7 +257,9 @@ export default function BlogListPage() {
               ))}
             </div>
           ) : pagePosts.length === 0 ? (
-            <div className="text-center py-16 text-gray-500 dark:text-gray-400">아직 작성된 글이 없습니다</div>
+            <div className="text-center py-16 text-gray-500 dark:text-gray-400">
+              {searching ? `‘${query.trim()}’에 대한 검색 결과가 없어요` : selectedTag ? '이 태그의 글이 아직 없어요' : '아직 작성된 글이 없습니다'}
+            </div>
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-[#1A1A1A]">
               {pagePosts.map(post => {
