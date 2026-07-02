@@ -4,6 +4,9 @@ import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Upload, Download, PackagePlus, CheckCircle2, AlertTriangle } from 'lucide-react'
+import ManualDealForm from './admin-dongnedeal/ManualDealForm'
+import DealList from './admin-dongnedeal/DealList'
+import type { DealRow } from './admin-dongnedeal/types'
 
 // 🧭 2026-06-17 (대표 요청 — 동네딜 채우기): 어드민 동네딜(오프라인 공동구매) 상품 CSV 일괄 등록 + 데모 시드.
 //   백엔드 /api/admin/dongnedeal/{stats,seed-demo,bulk-import} — 즉시 노출(is_active=1, group_buy_status='active').
@@ -27,6 +30,12 @@ export default function AdminDongnedealImportPage() {
   const [result, setResult] = useState<ImportResult | null>(null)
   const [stats, setStats] = useState<DealStats | null>(null)
   const [cleaning, setCleaning] = useState(false)
+  // 🎯 2026-07-02 (대표): 데모 채우기 옵션 — 특정 지역/카테고리 지정 시드.
+  const [seedRegion, setSeedRegion] = useState('')
+  const [seedCategory, setSeedCategory] = useState('')
+  // 🖊️ 2026-07-01 (대표 — 수정/삭제): 편집 대상 + 목록 새로고침 nonce.
+  const [editing, setEditing] = useState<DealRow | null>(null)
+  const [listNonce, setListNonce] = useState(0)
 
   const loadStats = () => {
     api.get('/api/admin/dongnedeal/stats', h)
@@ -40,16 +49,28 @@ export default function AdminDongnedealImportPage() {
     setCleaning(true)
     try {
       const r = await api.delete('/api/admin/dongnedeal/seed-demo', h)
-      toast.success(`데모 상품 ${r.data?.deleted ?? 0}개 삭제`)
+      const retired = Number(r.data?.retired ?? 0)
+      toast.success(`데모 상품 ${r.data?.deleted ?? 0}개 삭제${retired ? ` · ${retired}개는 주문 이력이 있어 비활성 처리` : ''}`)
       loadStats()
     } catch { toast.error('데모 정리 중 오류') } finally { setCleaning(false) }
   }
   const seedDemo = async () => {
     setCleaning(true)
     try {
-      const r = await api.post('/api/admin/dongnedeal/seed-demo', {}, h)
-      toast.success(r.data?.seeded ? `데모 상품 ${r.data.seeded}개 생성` : (r.data?.message || '이미 데모 상품이 있습니다'))
-      loadStats()
+      const r = await api.post('/api/admin/dongnedeal/seed-demo', {
+        region: seedRegion.trim() || undefined,
+        category: seedCategory || undefined,
+      }, h)
+      if (r.data?.seeded) {
+        const parts = [`데모 상품 ${r.data.seeded}개 생성`]
+        if (typeof r.data?.realPhotos === 'number') parts.push(`실사진 ${r.data.realPhotos}`)
+        if (typeof r.data?.placed === 'number') parts.push(`매장매칭 ${r.data.placed}`)
+        if (r.data?.healed > 0) parts.push(`깨진 이미지 ${r.data.healed}개 복구`)
+        toast.success(parts.join(' · '))
+      } else {
+        toast.success(r.data?.message || '이미 데모 상품이 있습니다')
+      }
+      loadStats(); setListNonce((n) => n + 1)
     } catch { toast.error('데모 생성 중 오류') } finally { setCleaning(false) }
   }
 
@@ -103,10 +124,29 @@ export default function AdminDongnedealImportPage() {
                 <div><p className="text-[11px] text-gray-400">노출중(활성)</p><p className="text-xl font-bold text-emerald-600">{stats.active.toLocaleString()}</p></div>
                 <div><p className="text-[11px] text-gray-400">데모</p><p className="text-xl font-bold text-amber-500">{stats.demo.toLocaleString()}</p></div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {stats.demo > 0 && (
                   <button onClick={clearDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">데모 {stats.demo}개 정리</button>
                 )}
+                {/* 🎯 2026-07-02 (대표): 특정 지역·카테고리 지정 시드 — 지역 입력 시 그 지역 실제 매장으로 매칭 */}
+                <input
+                  value={seedRegion}
+                  onChange={(e) => setSeedRegion(e.target.value)}
+                  placeholder="지역 (예: 영등포)"
+                  maxLength={30}
+                  className="w-32 px-2.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900"
+                />
+                <select
+                  value={seedCategory}
+                  onChange={(e) => setSeedCategory(e.target.value)}
+                  className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
+                >
+                  <option value="">전체 카테고리</option>
+                  <option value="meal_voucher">맛집 이용권</option>
+                  <option value="beauty_voucher">미용</option>
+                  <option value="etc_voucher">기타</option>
+                  <option value="general">일반 상품</option>
+                </select>
                 <button onClick={seedDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">데모 채우기</button>
               </div>
             </div>
@@ -119,6 +159,20 @@ export default function AdminDongnedealImportPage() {
             {stats.demo > 0 && <p className="text-[11px] text-amber-600 mt-2">⚠️ 데모 상품 {stats.demo}개가 동네딜에 섞여 있습니다 — 실상품 등록 전 정리를 권장합니다.</p>}
           </div>
         )}
+
+        {/* 🗺️ 2026-07-01 (대표 — 수기로 진짜 매장 등록): 카카오 검색 자동완성 직접 입력 폼(+수정 모드) */}
+        <ManualDealForm
+          editDeal={editing}
+          onCancelEdit={() => setEditing(null)}
+          onSaved={() => { setEditing(null); loadStats(); setListNonce((n) => n + 1) }}
+        />
+
+        {/* 🖊️ 등록된 동네딜 목록 — 노출토글 / 수정 / 삭제 */}
+        <DealList
+          nonce={listNonce}
+          onEdit={(d) => { setEditing(d); if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+          onChanged={() => { loadStats(); setListNonce((n) => n + 1) }}
+        />
 
         <div className={card}>
           <div className="flex items-center justify-between gap-3 flex-wrap">

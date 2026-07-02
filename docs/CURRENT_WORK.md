@@ -1,5 +1,171 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-01 — 토스페이먼츠 결제 라이브 전수조사 (대표 "결제 전수조사 라이브로 접근")
+라이브 실접근 + 코드 전수감사. **결과: 결제 라이브 건강** — `/api/version`·`/api/payments/client-key` 200, **라이브 키 활성**(`live_gck_…`, flow=widget), CSP/frame-src tosspayments 정상. **가드 미보유 3영역(금액정확성·런타임크래시·외부PG 실응답) 심층 감사**:
+- **금액 정확성 — 전 플로우 CLEAN**: 6개 Toss 경로(딜충전·공구·주문·숙소·선물·도매 주문/예치금/환불) 전부 서버 재계산/DB값 strict equality 검증 + **서버 금액을 Toss 에 전달** + CAS 선점 후 side-effect. webhook 도 fail-closed 금액검증 + paid-order 취소거부 + graceful 시그니처 + 멱등. (prior 감사들 효과 확인.)
+- **🟠 수정: 가상계좌(무통장입금) 조기확정 방어** (대표 승인, 잠금파일 — CLAUDE.md Toss audit log 등재): `/confirm` 이 Toss 응답 `status` 무시하고 무조건 `DONE` flip → VA는 confirm 시 `WAITING_FOR_DEPOSIT`(입금 전)인데 주문확정·재고·딜·발급·KT교환권이 입금 전 실행되는 구조적 위험(콘솔 VA 활성 불명이나 코드가드 부재=향후 VA 켜면 조용히 깨짐). `/confirm` 에 WAITING 분기(→ AWAITING_PAYMENT, side-effect skip, releaseStays) + webhook `handleVirtualAccountDeposited` 에 `env` 배선(입금완료 시 KT 발송 대칭). 카드/간편결제(DONE) 경로 byte-불변.
+- **🔴 후속 발견+수정: 혼합결제 딜 차감 `.bind(orderNumber)` 누락** (대표 승인 "수정 + 선물 CAS도"): `/confirm` 딜 차감 블록(2026-06-17 배선)의 orders 조회가 `?` 를 갖고도 bind 없이 `.all()` → D1 오류를 `.catch` 가 빈배열로 삼켜 **블록 전체 무음 no-op**. /confirm 이 CAS 승자면 webhook 딜차감도 skip → 양쪽 미차감(쇼핑탭 숨김이라 라이브 손실 ≈0, 재오픈 시 지뢰). bind 1줄 fix. sql-bind 가드 사각지대(bind 통째 누락 미감지) 확인 — 가드 보강 후보.
+- **🟢 수정: 선물 `gifts/:id/confirm` status CAS** (비잠금): 사전체크~UPDATE race 로 알림톡 중복 발송 가능하던 것 → `WHERE status='pending'` CAS + loser 멱등 성공 반환. Toss 멱등이라 머니 영향 원래 0.
+- **⚡ 후속: 결제 체감속도(felt-latency) 최적화** (대표 "로딩 속도도 결제쪽에 봐볼래?" → "전부 (1~4)" 승인): ① **KT 교환권 발송(외부 HTTP 1~4.5s)이 결제 응답을 동기로 막던 것** → `/pay`(딜 결제 = 교환권 메인 경로, 비잠금)·`/confirm`(잠금, +multiTier 커미션도) 둘 다 waitUntil 이동 + `kt-alpha-voucher-retry` cron 에 **미발송 스위퍼**(발송기록 0 인 확정주문 재킥 — waitUntil 갭 + 기존 크래시 갭 모두 커버, 이중발송 구조적 0). ② 딜충전 위젯(`TossWidgetPayPage`, 잠금): variant fetch 병렬화 + 약관 비대기 + timeout 4s 정합(주문 위젯 패턴 미러). ③ `CartPage` prefetch 를 `toss-preload`(실제 SDK 로드) 승격. ④ js.tosspayments.com **동적 preconnect**(index.html 예고분 실구현). CheckoutPage/성공페이지는 이미 최적(프리로드·논블로킹 키·약관 비대기) — 무수정. CLAUDE.md Toss audit log 등재.
+- **⚠️ 검증 한계**: 이 원격환경 npm 조직정책 403 으로 `node_modules` 미설치 → 전체 `npm run build`·tsc 미실행. sql-bind/column(신규 UPDATE 컬럼 orders 존재 확인)/CHECK 가드 0. **잠금파일 회귀검증은 staging 배포 후 실결제 필수**(VA 결제 → 입금 전 AWAITING·입금 후 확정+KT 1회).
+
+## ✅ 2026-07-02 — 유저→사업자 유저(셀러) 전환 단일 퍼널 (대표 "B — 가장 이상적인 형태, 헷갈리지 않게")
+감사 결과: 진입점 5곳 → 가입화면 3개(레거시 별도계정 `/seller/register` · 막다른 `/seller/register/business` · supplier) → 백엔드 2개 · seller_type 제각각 → 유저가 어디서 누르냐에 따라 다른 세계. **전면 단일 퍼널로 통일**:
+- **단일 관문 = `/seller/register/supplier`** (카카오 세션 같은-계정 업그레이드, store_owner). 레거시 `/seller/register`·`/seller/signup`·`/seller/register/business` 는 **쿼리 보존 리다이렉트**(에이전시 ?agency= 링크 생존). 레거시 페이지 3개(SellerRegisterPage=별도 아이디/비번 독립계정 · SellerRegisterBusinessPage=막다른 안내 · SellerApplyModal=제3의 폼, influencer 하드코딩) **삭제**.
+- **관문 정비**: 명칭 SSOT("사업자 유저"/"내 쇼핑몰", 폐기어 "인플루언서 자동 추천" 제거) + 마운트 로그인 게이트(폼 다 채운 뒤 401 발견 제거) + 크리에이터 탈출구("추천만 원하면 가입 없이 내 링크샵 →", JoinChoice 모델) + 신청 성공 → `/seller/waiting`.
+- **`/seller/waiting` = 상태 정본**: 30초 자동 갱신 + 승인 감지 시 **switch-to-seller 로 셀러 토큰 자동 발급 후 대시보드 진입**(기존: 토큰 없이 /seller → requireSeller 가 이메일/비번 로그인으로 튕김). 미신청자는 단일 관문으로(기존: 막다른 business).
+- **닫힌 루프**: admin approve/reject 가 **소비자 앱 알림함(notifyUser)** 에도 통보(기존: 아직 못 들어가는 셀러 대시보드 벨 + 알림톡만) — 링크 `/seller/waiting`. reject 시 `sellers.reject_reason` 도 저장(기존 admin-tools 경유만 저장 → waiting 페이지 사유 누락).
+- **진입점 통일**: BottomNav ➕(로그인=관문 직행 / 로그아웃=카카오 로그인→관문, 레거시 별도가입 제거, 라벨 "내 쇼핑몰 열기 (사업자)") · 마이페이지 SellerSwitchInline **카카오 유저 숨김 제거**(한국=카카오 전용이라 사실상 전원에게 진입점이 안 보였음) + 심사중/반려 배지 → waiting 링크.
+- i18n `seller.gateway.*` 등 22키 × 6개 언어. 검증: tsc 0 · build 0 · dead-link 0 · route-mounts 11 pass · theme 0 · file-size rebaseline(승인 성장분 3파일). ⚠️ guide-update-pending(셀러 가이드 가입 절차 문구). ⚠️ staging: 카카오 유저 가입→승인→알림 탭→대시보드 진입 E2E 1회 권장.
+
+## ✅ 2026-07-01 — 이용권 잔여 🟡 일괄 마감 A/B/C (대표 "모두 진행 — 내가 해야하는 것 말고")
+재감사에서 남긴 🟡 중 코드로 가능한 3건 전부 처리(대표 결정 필요한 fee-resolver·운영 액션(데모 재생성/상품 재저장)만 제외).
+- **A) 카드 환불 non-retryable(4xx) 조용한 미환불 제거**: retryable(5xx)은 gateway 기록→`toss-refund-retry` cron(5회+dead-letter)이 커버하지만 **4xx·예외는 DEV 콘솔에만** 남던 것(셀프취소/셀러환불/어드민 강제환불 3경로 공통). 신규 `worker/utils/toss-refund-alert.ts` — `isRetryableTossFailure`(gateway 와 동일 기준, retryable 은 skip=이중알림 방지) + `alertTossRefundFailure`(어드민 대시보드 벨 `refund_failed` + Discord, paymentKey/금액/코드 포함 → Toss 콘솔 수동환불 안내). 3경로의 `!result.ok`/catch 에 배선(fail-soft). **Toss 잠금 심볼 무접촉.**
+- **B) 다국어 옛 용어 46건 정리**: en/ja/zh/es/fr 의 `[TODO]` 한국어 원문·식사권·团购券 잔존을 06-29 확정 용어(en Voucher/ja 利用券/zh 使用券/es Vale/fr Coupon)로 정식 번역(JSON 파싱 후 키+옛값 정확 일치 노드만 교체 — diff 46줄, 포맷 불변). **+ ko 버그 발견/정정**: `shopping.voucherSub` 가 06-29 일괄치환 부작용으로 "이용권·이용권"(중복) → "이용권·교환권".
+- **C) 셀러 이용권 등록/수정/삭제 edge 즉시반영**: 어드민 동네딜은 7곳 전부 `invalidateGroupBuyFeed`(materialized+edge 퍼지, 타 세션) 배선 완료였으나 **셀러 3경로는 앱캐시만** → 셀러가 올려도 홈 edge 가 TTL 지연. 동일 배선 additive(fail-soft) → 어드민/셀러 대칭.
+- 검증: tsc 0 · group-buy/voucher 84 pass · 6-locale JSON valid · build 0. 잔여: fee-resolver(대표 결정시트 대기)·기존 데이터 소급(데모 재생성/상품 재저장 — 운영 1회).
+
+## ✅ 2026-07-01 — 이용권 플로우 재감사: 1인당 한도 갭 2건 마감 (대표 "이상적으로 구현 안 된 부분 없어?")
+이번 세션 신규 코드(1인당 한도) 표면을 적대적 재감사 → 갭 2건 확정·수정.
+- **① confirm-toss(카드 발급) 한도 재검증 누락(race)**: /join 사전검증 후 결제창 사이에 **다른 탭 구매로 한도를 채우면 초과 발급** 가능했음. → confirm-toss 의 **과금 전**(confirmTossPayment 이전, amount 재검증 옆) 재검증 추가 — 초과면 400 `PER_PERSON_LIMIT`(승인 안 된 결제는 Toss 자동 만료 → 환불 불필요, AMOUNT_MISMATCH 동일 패턴). fail-open. **Toss 잠금 심볼 무접촉**(비잠금 confirm-toss 핸들러의 검증 1블록 additive).
+- **② VoucherDetailPage(교환권 상세) 스텝퍼 무상한**: + 버튼에 cap 이 아예 없었음(서버 400 은 막지만 UX 갭). → `max_per_person`(상세 API 가 이미 반환) cap, 미설정 시 10. disabled 스타일 동반.
+- **재확인(건강)**: 교환권 구매도 같은 `/join` 경유라 서버 한도 적용됨 · 환불(refunded)은 누적 카운트 제외(재구매 가능) · GroupBuyDetailPage cap/안내 기존 배선.
+- 검증: tsc 0 · group-buy/voucher 84 pass · sql 0 · build 0.
+
+## ✅ 2026-07-01 — 데모 플로우 적대적 재검증 → 구멍 1 + 개선 2 (대표 "이상적인지 확인해줘")
+직전 데모 3종 수정을 main 병합 최종 상태로 재검증. **건강 확인**: POST/DELETE 둘 다 앱캐시+edge 피드 무효화(타 세션 병합과 결합) · `products.slug` UNIQUE 없음(retire 리네임 안전) · 소비자 목록 `is_active=1` 필터(retired 미노출) · DELETE 멱등(retired 는 재스캔 제외) · 셀러 폼 이미지 경로는 기존 https 승격 보유. **발견/수정 3건**:
+- 🔴 **ManualDealForm 사진 후보가 같은 mixed content 구멍(진짜 원인 유력)**: `fetchPhotos` 가 raw `link`(http) 그대로 저장 + 후보 그리드 `<img src=thumbnail(http)>` 렌더 — **대표 콘솔 에러(imgnews/shop1.phinf)와 정확히 일치하는 경로**(seed 만 고치고 이걸 놓쳤음). → https 원본만 채택, http 원본은 네이버 CDN 썸네일(https 승격)로 대체, 미리보기도 https.
+- 🟡 **누적 시드 동일 카드 중복**: 같은 10종 반복이라 같은 사진 반복 → `fetchNaverImageUrl` 에 additive `pickIndex`(기본 0=기존 동작 byte-동일) — 후보 배열 로테이션. seed 가 `batchIndex = floor(maxSuffix/10)` 전달 → **채우기 반복 시 배치마다 다른 사진**.
+- 🟢 maxSuffix 정규식 리터럴 → `DEAL_DEMO_SLUG` 상수 동기(`new RegExp`).
+- 검증: tsc 0 · sql 0 · build 0.
+
+## ✅ 2026-07-01 — 데모 seed 3종 수정: 500(정리 안됨)·mixed content·누적 추가 (대표 "데모 정리 안됨 + 계속 추가되게")
+라이브 신고(seed-demo 500 + http 이미지 mixed content + "한번 채우면 추가 안됨") 3종 근본수정.
+- **DELETE 500 "데모 정리 안됨"**: 일괄 `DELETE FROM products WHERE slug LIKE` 는 데모에 주문/바우처 등 **FK 참조가 하나라도 붙으면 전체 실패(500)**. → 행별 삭제 + 실패 행은 **soft-retire**(`is_active=0` + slug `retired-…-id` 리네임 → 노출/데모카운트 제외, 참조 데이터 보존). 응답/토스트에 `deleted`/`retired` 구분.
+- **mixed content (http 이미지)**: `fetchNaverImageUrl` 이 https 원본 없으면 **http 원본을 그대로 채택** → 저장된 http URL 이 HTTPS 페이지에서 강제승격되다 네이버 원본 호스트(imgnews/shop1.phinf)의 https 인증서 불일치로 `ERR_CERT_COMMON_NAME_INVALID`. → http 원본 채택 제거: https 원본만, 없으면 네이버 CDN 썸네일(https 안정) 폴백. **기존 http 이미지 데모는 삭제→재생성으로 치유.**
+- **데모 누적 추가 (대표 "계속 추가할 수 있게")**: POST seed-demo 의 존재 시 early-return 제거 → **기존 `demo-deal-N` 최대 N 다음 번호부터 10개씩 누적 시드**. UNIQUE(slug) 충돌 원천 제거(반쯤 시드된 상태 재시드 500 후보도 해소). INSERT 는 `restaurant_lat/lng` 컬럼 미존재 환경 폴백(catch → 좌표 없는 INSERT) 추가.
+- 검증: tsc 0 · sql bind/column/table 0 · build 0. ⚠️ staging: 데모 삭제(주문 붙은 행은 '비활성 처리' 토스트) → 채우기 반복 시 +10 씩 누적 + 이미지 전부 https.
+
+## ✅ 2026-07-01 — 카카오맵 링크 kko.to 허용 + 수동 입력칸 (대표 예시 "김밥천국 kko.to/…")
+카카오맵 매장 연결의 두 갭 해소:
+- **kko.to 단축링크 허용**: 검증이 `place.map.kakao.com/{id}` 만 통과 → 카카오맵 '공유' 버튼 링크(`kko.to/…`)·`map.kakao.com/…` 거부됐음. 신규 SSOT `src/shared/kakao-place-url.ts`(`isValidKakaoPlaceUrl`/`normalizeKakaoPlaceUrl`) — place.map / map.kakao / kko.to 허용(URL 주입 방지). 전 경로(RestaurantMiniMap·group-buy 상세·admin create/patch/list·seller create/PUT/GET·demo lookup) 인라인 정규식 → 헬퍼로 통일.
+- **수동 링크 입력칸**: `ManualDealForm`(어드민)에 "카카오맵 링크" 입력 추가 — 매장 검색 자동입력 + **안 맞으면 카카오맵 '공유' 링크 붙여넣기**(기존 상품 예: 김밥천국에 `kko.to/…` 직접 연결). patch 는 빈값=해제 허용.
+- **김밥천국 등 기존 상품**: `/admin/dongnedeal-import` 에서 해당 딜 수정 → 카카오맵 링크칸에 공유링크 붙여넣기 → 저장 → 상세 지도 '카카오맵' 이 그 매장 페이지 직접 연결.
+- 검증: tsc 0 · narrow regex 잔존 0 · sql 0 · dashboard-theme(내 파일) 0 · build 0.
+
+## ✅ 2026-07-01 — 데모 이용권 매장 지도 매칭 + VouchersPage SSR seed 동기소비(즉시표시) (대표 "이어서 해 + 데모도 매칭 제대로")
+- **데모 매장 지도 매칭(대표 "데모 이용권도 매장 지도 매칭 제대로")**: `seed-demo` 데모는 가공 매장명 + 번지 없는 주소라 좌표/place_url 이 없어 지도 매칭 X. → seed 시 신규 헬퍼 `kakaoPlaceLookup`(카카오 키워드검색 `업종+지역`)으로 **실제 매장의 이름·주소·좌표·place_url 확보**해 INSERT(restaurant_lat/lng 추가) + `product_supply_meta.kakao_place_url` 저장. best-effort(키없음/무결과 → 기존 폴백). ⚠️ **기존 데모는 삭제 후 재생성**해야 적용(seed 멱등 — 존재 시 skip).
+- **VouchersPage SSR seed 동기소비(대표 "페이지가 빨리 뜨면 되는거")**: 기존엔 `loading=true` 로 시작 후 effect 에서 SSR seed 소비 → 로더 한 프레임. → 신규 `readVouchersSsrSeed`(effect 의 ssrMatch 와 동일 조건)로 **첫 렌더에 동기 소비** → `products`/`loading`/`hasMore` 초기값에 반영 → 청크 로드 후 **로더 프레임 0, 콘텐츠 즉시**. effect 는 seed-miss 첫 fetch + 필터/정렬 변경 fresh fetch 만 담당(마운트 재fetch 스킵). GroupBuyDetailPage 의 승인된 seed 패턴과 동일 + 잠금 "즉시 사용" 취지 부합. default sort price_low·필터변경 서버정렬 불변.
+- 검증: tsc 0 · theme(strict) 0 · initialData 가드 0 · sql bind/column 0 · build 0. ⚠️ staging: 데모 삭제→재생성 시 지도 핀·카카오맵 매칭 + /vouchers 하드로드 시 로더 없이 즉시 표시.
+
+## ✅ 2026-07-01 — 카카오맵 "매장 페이지 직접 연결" (place_url 캡처) (대표 "여전히 매장 카카오맵 페이지 연결 안됨")
+E 후속 — `link/search`(검색) 는 정확한 매장 페이지를 못 열어서, **등록 시 카카오 장소 페이지 URL(`place.map.kakao.com/{id}`)을 캡처·저장**해 상세 지도가 직접 연결.
+- **캡처**: 어드민 `ManualDealForm`(카카오 검색 `pick`) + 셀러 `SellerMealVoucherNewPage`(`KakaoMapPicker` `selectPlace`) → `place.place_url` 또는 `place.id`→URL 구성. 프록시(`/api/kakao/place/search`)는 이미 raw 카카오 응답(`id`/`place_url`) 통과 — 클라가 안 잡던 것.
+- **저장**: `product_supply_meta.kakao_place_url` — 어드민 create/patch·셀러 create/PUT. `place.map.kakao.com/\d+` 형식만 허용(임의 URL 주입 방지). 셀러 edit 은 미전송 시 meta 보존(자동 유지).
+- **반환**: group-buy 상세(`/products/:id`)·어드민 list·셀러 GET.
+- **표시**: `RestaurantMiniMap` 에 `placeUrl` prop — 있으면 **매장 페이지 직접 연결**, 없으면 `link/search`(매장명+주소) → 좌표 map 폴백. `GroupBuyDetailPage` 가 `detail.kakao_place_url` 전달.
+- **기존 상품**: place_url 없음 → `link/search` 폴백(직전 배포). 새로 저장/수정하는 상품부터 직접 연결. (대표 질문 "기존 이용권엔 적용 안됨?" = 맞음 — 캡처는 저장 시점.)
+- 검증: tsc 0 · sql bind/column 0 · build 0. ⚠️ staging: 어드민/셀러에서 장소 검색·선택 후 저장 → 공구 상세 '카카오맵' 클릭 시 그 매장 페이지 직접 열림.
+
+## ✅ 2026-07-01 — 목록페이지 "2번 로딩" 근본수정 (urdeal 로더 유지) (대표 "근본적으로 해결 — urdeal 로딩 그대로")
+- **원인**: 로더 전면 통일 후 목록페이지(/vouchers·/group-buy·/browse) 하드로드 시 **로더가 2번**으로 보임 — ① 청크 다운로드=App.tsx Suspense **BrandLoader(전체화면)** → ② 페이지 마운트 시 **헤더/필터가 먼저 렌더**되고 그 아래 콘텐츠 영역에 **인라인 BrandLoader** 또 표시(`{loading ? <BrandLoader/> : ...}`). 같은 로더가 전체화면→(헤더 뜸)→인라인으로 이어져 "2번" 체감. (상세페이지는 전체화면 early-return 이라 원래 없음.)
+- **근본수정(로더 유지)**: standalone 목록페이지도 상세처럼 **로딩 중 전체화면 `<BrandLoader fullScreen/>` early-return** → 청크 로더와 **끊김 없이 이어져 '한 번'**(헤더가 중간에 안 뜸). `GroupBuyListPage`·`BrowsePage` = `if (loading) return`; `VouchersPage` = `if (loading && !embedded) return`(홈 임베드는 청크 로더 없고 타 콘텐츠와 공존 → 인라인 유지). 인라인 `{loading?}` 블록은 embedded 전용으로만 도달.
+- 스켈레톤으로 되돌리지 않고 **urdeal 로더 그대로** — 대표 요청대로. 상세/청크 로더 불변.
+- 검증: tsc 0 · theme(strict) 0 · build 0. ⚠️ staging: /vouchers·/group-buy 하드로드 시 로더 1회만.
+
+## ✅ 2026-07-01 — C 후속2: 1인당 결제 한도 **어드민 동네딜 도구**에도 (대표 "어드민 도구에도 넣어줘")
+셀러 경로에 이어 어드민 수기 동네딜(`/admin/dongnedeal-import`)에도 1인당 한도 설정/수정.
+- **서버** `admin-products.routes`: POST `/dongnedeal/create`(body `max_per_person` → `setSupplyMeta`) · PATCH `/dongnedeal/:id`(meta 별도 저장 — products 컬럼 아니라 **이것만 바뀌어도 저장**되게 params 체크 전 처리) · GET `/dongnedeal/list`(getSupplyMeta 배치 첨부 → 수정 prefill).
+- **UI** `ManualDealForm`: `EMPTY`+prefill(editDeal)+입력 필드("1인당 최대 구매 수량 0=무제한", 2자리 cap). `DealRow` 타입에 `max_per_person`. payload(`{...f}`)가 create/patch 자동 포함.
+- 저장 위치·서버 강제·소비자 표시는 셀러 경로와 동일 SSOT(`product_supply_meta.max_per_person`, group-buy.routes 검증). 어드민 라이트 테마(dark 0).
+- 검증: tsc 0 · dashboard-theme(내 파일 0) · sql bind/column 0 · build 0. ⚠️ staging: 어드민 동네딜 등록/수정 시 한도 입력 → 홈 스텝퍼/주문검증 반영.
+
+## ✅ 2026-07-01 — C 후속: 1인당 결제 한도 **수정(edit) 경로** 지원 (대표 "이어서 해")
+등록(create)만 있던 1인당 한도를 이미 등록된 이용권 상품에서도 수정 가능하게.
+- **서버 PUT `/api/seller/products/:id`**: body 에 `max_per_person`(0~99) 추가 → mealEditFields 루프 뒤 `setSupplyMeta`(0='0' 저장=무제한 해제, 1~99=제한). 소유권은 기존 existing 확인 재사용.
+- **서버 GET `/products/:id`(prefill)**: `getSupplyMeta` 로 `max_per_person`(0=무제한) 응답에 추가.
+- **UI `SellerProductEditPage`**(이용권 편집): formData `max_per_person` + prefill(`productData.max_per_person`) + meal_voucher payload 포함 + 입력 필드("1인당 최대 구매 수량", 0=무제한). 라이트 대시보드 테마.
+- 검증: tsc 0 · sql bind/column 0 · theme(strict) 0 · build 0. ⚠️ staging: 기존 상품 수정 → 한도 설정/변경/해제(0) → 상세 스텝퍼·주문검증 반영.
+
+## ✅ 2026-07-01 — C 이용권 1인당 결제 최대 한도(셀러 설정) 신설 (대표 "결제 최대 한도 갯수 1인 당")
+매장 업주(셀러)가 이용권 등록 시 1인당 최대 구매 수량을 설정 → 서버 강제 + 상세 스텝퍼 cap. 예산제 준수(products 컬럼 추가 X → `product_supply_meta.max_per_person`).
+- **저장(셀러)**: `SellerMealVoucherNewPage` 폼에 "1인당 최대 구매 수량"(0=무제한, 1~99) 입력 + 페이로드 → `seller-orders.routes` POST /products 가 `setSupplyMeta(max_per_person)`(menu meta 옆, fail-soft). 미설정/범위밖=무제한(미저장).
+- **강제(서버)**: `group-buy.routes` 주문생성(toss/deal 공통, qty 검증 직후)에 사전검증 — `getSupplyMeta` 로 한도 조회(미설정=무제한, 추가조회 0), 설정 시 `qty ≤ 한도` + `유저 기존 미환불 이용권(unused/used) 누적 + qty ≤ 한도` 위반 시 400 `PER_PERSON_LIMIT`. **fail-open**(한도 조회 실패가 구매 안 막음 — 소프트 룰).
+- **표시/cap(소비자)**: `group-buy-public /products/:id` 응답에 `max_per_person` 추가(이미 읽던 metaMap 재사용). `GroupBuyDetailPage` 스텝퍼 상한 10→`maxQty`(설정값 or 10) + 하단바에 "1인당 최대 N개" 안내(설정 시만).
+- **범위**: 등록(create) 경로만(대표 "처음에 올릴 때"). 수정(edit) 경로는 후속. 서비스 분리: 소비자 이용권 전용(도매 무관).
+- 검증: tsc 0 · group-buy/voucher 단위 84 pass · sql bind/column 0 · theme/light-input 0 · build 0. ⚠️ staging: 한도 N 설정 → 상세 스텝퍼 N cap + N개 초과/누적초과 구매 시 400.
+
+## ✅ 2026-07-01 — 로더 유어딜 전면 통일(완료) + 카카오맵 매장 페이지 링크 수정 (대표 라이브 신고 연속 2)
+- **A 로더 전면 통일(완료, 대표 "전면 통일해")**: 소비자 상세/목록 7페이지의 skeleton/스피너 → `BrandLoader`(SSOT). **상세**(전체페이지 반환): `GroupBuyDetailPage`·`VoucherDetailPage`(스피너)·`ProductDetailPage`(`ProductDetailSkeleton`) → `<BrandLoader fullScreen/>`. **목록**(인라인): `VouchersPage`·`GroupBuyListPage`·`BrowsePage`(카드그리드 skeleton)·`MyVouchersPage`(`WalletSkeleton`) → `<BrandLoader/>`. 미사용된 `ProductDetailSkeleton`/`WalletSkeleton` import 정리. **잠긴 SSR seed 로직 불변**(seed 있으면 loading=false → 로더 미노출, seed-miss/콜드 SPA 이동에만). 대표 확인: 실제 데이터 fetch 속도 동일, skeleton의 CLS/체감 이점만 트레이드오프(전면 통일 선택).
+- **E 카카오맵 매장 페이지 링크(대표 "카카오맵에 매장 페이지가 안 나옴")**: `RestaurantMiniMap` 외부 링크가 `link/map/{name},{lat},{lng}`(좌표 핀만, 장소 페이지 안 열림 + 좌표 오차 시 빈자리) → **매장명+주소 `link/search`**(카카오 등록 장소가 떠서 매장 페이지 연결, 좌표 정밀도 무관). name/address 없을 때만 좌표 map 폴백.
+- 검증: tsc 0 · theme(strict) 0 · build(client+ssr+prerender+worker+prepare) 0.
+
+## ✅ 2026-07-01 — 어드민 동네딜 수정 홈 즉시 반영(캐시 무효화) + 공구상세 하단바 축소 + 로더 통일 착수 (대표 라이브 신고 연속)
+- **D 동네딜 캐시 무효화(대표 "수정해도 홈에 바로 반영 안됨")**: `/admin/dongnedeal-import` 뮤테이션(`admin-products.routes` create·patch·seed-demo POST/DELETE·bulk-import 5곳)이 **공구 목록 앱 캐시(`group_buy_products:*`)를 전혀 무효화 안 함** — 셀러 상품등록은 `invalidateGroupBuyProductsCache` 호출하는데 어드민만 누락 → 홈/동네딜 stale. 셀러와 동일 패턴으로 5곳 배선(SESSION_KV, fail-open). **잔여**: edge/SSR `caches.default`(≤300s)·CDN(≤900s) TTL 은 별도 — 앱 캐시 무효화로 TTL 만료 시 fresh 재계산 보장(이전엔 만료돼도 stale 앱캐시 재사용). 진짜 0초는 edge 퍼지(잠금영역) 필요.
+- **B 공구상세 하단 구매바 높이 축소(대표 "하단이 너무 높다")**: `GroupBuyDetailPage` footer 패딩 11/13→7/8·행 마진 10/9→6/6·버튼 53→50 (약 19px↓). 탭 타겟 유지.
+- **A 로더 유어딜 통일 착수(대표 "전면 통일")**: 공구상세 skeleton → `BrandLoader`(SSOT). 나머지 소비자 상세/목록은 진행 중. SSR seed 있으면 loading=false 라 seed-miss/콜드 SPA 이동에만 노출.
+- 검증: tsc 0 · build 0.
+
+## ✅ 2026-07-01 — 사전방지 가드 2종 신설 (대표 "앞으로 문제 없게 사전 방지") — 이번 감사 미보유 클래스 박제
+도매 3표면 감사에서 **가드가 없어서** 생긴 2개 버그 클래스를 결정론적 가드로 박아 재발 구조적 차단(레포 철학 "버그 클래스 발견 시 가드부터").
+- **① `check-deprecated-pricing.mjs`** — 도매 공급가 모델 드리프트 방지. 폐기 `distributorPriceFromRetail`/`distributorPrice` 직접호출 금지 → `resolveDistributorPrice` SSOT 강제. (내보내기가 실결제가와 다른 등급가 낸 HIGH 사고 재발 차단.)
+- **② `check-balance-absolute-write.mjs`** — `*balance*` 컬럼 절대값 write(비원자 read-modify-write) 금지 → 원자 증감/CAS만(한 UPDATE 에 컬럼 2회+). 스냅샷 `*_after` 예외. (미수금 상환 race 재발 차단.)
+- 배선: audit-gate(머니 도메인) + verify.yml(strict) + pre-commit(warn) + AUDIT_INVARIANTS + CLAUDE.md 방어선. 음성테스트(폐기함수 호출/절대값write 잡고 산술·CAS 통과) 통과. **audit-gate 41 GREEN**.
+
+## ✅ 2026-07-01 — 도매몰 3표면(판매사·제조사·도매어드민) 심층 감사 + 확정 3건 fix (대표 "세 대시보드 모두?")
+pagination 크래시 수정 후속 — 세 표면을 **가드 미보유 영역**(런타임 크래시·정산/금액 정확성·환불 대칭)으로 병렬 심층 감사(에이전트 3). audit-gate GREEN 영역(서비스분리·RBAC·머니패턴·주문상태머신)은 가드 신뢰로 스킵.
+- **판매사 표면: clean**(예치금 차감/복원 CAS·주문 총액 서버재계산·MOQ·tier floor·환불 대칭 전부 정합). 유일 지적=내 pagination 코드모드가 `wholesale.routes.ts` 에 넣은 **mid-file import**(CLAUDE.md 금지 패턴, hoist 되어 무해하나 정리) → 상단 import 블록으로 이동.
+- **제조사 표면: clean**. 에이전트가 올린 '소비자 환불 재고 과다복원'은 **오탐 확정**(이 반품 경로는 `returns.routes:656` 에서 주문 전체 품목 취소=full-order + `reversed>0` 게이트로 멱등 + 판매사복제본↔공급원본 재고는 별개 풀 → 이중복원 없음).
+- **도매어드민: 확정 3건 fix**:
+  - 🔴 **상품 엑셀 내보내기 가격 모델 불일치**(`products-pricing.ts`): 내보내기가 폐기 모델 `distributorPriceFromRetail`(판매가×(1−보장마진)·**등급차등**)을 써 라이브 결제가(`resolveDistributorPrice` cost-plus·**전등급동일**, 2026-06-17 대표확정)와 전혀 다른 A/B/C 등급가를 제안 문서로 내보냄(상거래 분쟁 소지). → `resolveDistributorPrice`(+`loadPlatformCommissionPct` 전역마진)로 통일, 라이브 주문가와 정합. 등급 통일이라 A/B/C 컬럼은 동일값(실가).
+  - 🟡 **강제환불 롤백 상태 강등**(`orders.ts:153`): Toss 취소 실패 시 롤백이 `status='PAID'` 하드코딩 → SHIPPED/ACCEPTED/DONE 레거시 Toss 주문이 '결제완료'로 강등돼 상태머신 꼬임. → 원본 `order.status` 복원.
+  - 🟡 **미수금 상환 비-CAS**(`distributors.ts` credit-repayment): `outstanding_balance` read-modify-write(절대값 write)라 동시 상환 2건이 하나를 덮어써 미수금 과대계상(플랫폼 채권 부풀림) 가능. → 원자 CAS(`WHERE COALESCE(outstanding_balance,0)=prevOut`) + 실패 시 409 재시도, 원장은 CAS 성공 후에만.
+- 검증: tsc 0 · 단위 2443 pass · build 0 · audit-gate 39 GREEN(머니패턴 포함).
+
+## ↩️ 2026-07-01 — 카드 이용권 셀프취소 "동기 revert" 수정 **자체 회귀 → 원복** (대표 "더 확인해볼 건")
+직전 커밋(`d15afd7`)에서 카드 셀프취소를 동기+실패시 voucher unused 복원으로 바꿨으나, **후속 검증에서 자체 회귀 발견 → 원복**.
+- **왜 회귀였나**: `cancelTossPayment`(toss-gateway)는 **retryable 실패(5xx/PROVIDER_ERROR)**를 `toss_refund_failures` 에 기록하고 `toss-refund-retry` cron(최대 5회 backoff)이 **나중에 환불을 완성**한다(voucher='refunded' 유지가 정답). 원본 async 패턴은 이 cron 백업이 있어 retryable 실패에 이미 안전했고, 실제 갭은 non-retryable(4xx)뿐. 내 "동기 revert" 는 retryable 실패에도 voucher 를 unused 로 되돌리는데, **같은 실패가 cron 으로 재시도돼 성공하면 유저가 이용권+환불 이중이득**(플랫폼 손실). 게다가 셀러(/refund)·어드민 강제환불의 established async+cron 패턴에서 이탈.
+- **조치**: `group-buy-voucher.routes.ts` 카드 분기를 **원본 async(waitUntil) 로 원복** + **왜 이 패턴이 의도된 설계인지 주석 명시**(다음 세션 재발 방지 — retryable=cron 완성, 동기 revert 금지).
+- **교훈**: 결제 side-effect 를 "고치기" 전에 **cron 재시도/dead-letter 백업 경로를 먼저 확인**할 것. 부분 분석으로 잘 설계된 async 패턴을 동기화하면 이중환불 유발. (추측 금지 룰의 실사례.)
+- 검증: tsc 0 · money-pattern 0 · sql-bind/column 0 · voucher 단위 36 pass · build 0. 순 효과: 코드 동작은 `d15afd7` 이전과 동일 + 설명 주석 추가.
+
+## ✅ 2026-07-01 — 도매몰 라이브 전수조사 + 카탈로그 500 크래시 근본수정 (대표 "라이브로 접근해서 전수조사")
+라이브(`live.ur-team.com/wholesale`) 실접근 전수조사. **결과: 인증/RBAC 게이트 전부 건강(500 없음, 401/404 정상)·엣지캐시 누수 없음·SQL 인젝션 방어 정상.** 발견/수정:
+- **🐛 라이브 500 크래시(수정)**: `GET /api/wholesale/catalog?page=abc&limit=xyz` → HTTP 500. 원인: `page = Math.max(1, parseInt(query||'1',10))` 에 `limit` 이 가진 `|| N` 폴백이 **없어** `parseInt('abc')=NaN → Math.max(1,NaN)=NaN → offset=(NaN-1)*limit=NaN → D1 .bind(NaN) 크래시`. `limit=-1/page=-5/limit=99999999` 는 이미 정상(200) — **비숫자 문자열만** 크래시(봇/스크래퍼/오염된 링크가 도매몰 메인 카탈로그를 500). **수정(도매 서비스 전 인스턴스에 기존 `limit||24` 패턴 미러링)**: `wholesale.routes.ts:787`(page), `supplier-dashboard.routes.ts`(page/limit ×3 핸들러), `distributor-admin/orders.ts`(page/limit), `supply.routes.ts`(page/limit). 전부 `parseInt(...) || N` + `Math.max(...,1)` 클램프. 로직 검증(page=abc→page1/offset0)·tsc 0(사전 config 경고 제외)·build 0·sql bind/column 가드 0.
+- **✅ 전 서비스 일괄 수정(대표 "모두 고쳐줘")**: 같은 NaN 크래시 클래스를 도매뿐 아니라 소비자(`group-buy-public`·`community-group-buy`·`referral-tree`·`wishlists`)·에이전시·어드민(`admin-*`·`kt-alpha`)·셀러(`seller-orders`·`seller.routes`·`seller-management`)·정산·알림·리뷰·유튜브·telemetry 전 영역에서 수정. `parseInt` 43라인(코드모드) + `Number(...)` 4건(수동) + bare `parseInt(page,10)` 5건(수동). ID 해석용 parseInt(`numId`/`numericUid` — `isNaN` 가드 보유)는 무관하므로 미변경. `Number(q)===30?30:7` 삼항(NaN 전파 불가)은 안전.
+- **🛡️ 영구 가드 신설**: `scripts/check-pagination-nan.mjs` — request pagination(page/limit/offset/days…)이 `parseInt/Number` NaN 폴백 없이 assign 되면 차단(닫는 괄호 뒤 `|| 숫자` 또는 `isNaN`/`Number.isFinite`/삼항리터럴 필요). `verify.yml`(strict)·`audit-gate.sh`(schema 도메인)·pre-commit(warn)·`AUDIT_INVARIANTS.md`·CLAUDE.md 방어선 표 등록. 현재 위반 0(scanned=143, safe=143). 예외 `pagination-nan-ok` 주석.
+- **검증**: tsc 0(사전 config 경고 제외)·build(client+ssr+prerender+worker+prepare) 0·SQL bind/column 가드 0·audit-gate 38 GREEN(무관 file-size RED 1건=타 세션 blog.routes/worker index).
+- **📋 데이터 큐레이션(코드 아님)**: 라이브 도매 카탈로그 상품이 **시드/테스트 2개뿐**(id 6 "Canvas Tote Bag" 영문 unsplash 데모 · id 2306 "테스트"/"좋은제품" 빈 이미지). 배너·게시판·제안 큐 전부 비어있음(정상 상태이나 운영 콘텐츠 필요).
+## ✅ 2026-07-01 — 알림 라이브 전수조사(프로덕션 실측) + 웹푸시 활성화 견고화 (대표 "전수조사 라이브로 접근해서")
+코드가 아닌 **라이브(live.ur-team.com) 실측**으로 알림 파이프라인 전수조사. 인증 필요 채널(인앱/대시보드/에이전시/공급자)은 401 정상 게이트 확인, `/api/notifications/unread-count`는 비인증 200 `{count:0}`(데이터 누출 0, 무해). **핵심 발견(설정 누락 — 코드 건강)**:
+- 🔴 **웹푸시가 프로덕션에서 완전 비작동(클라·서버 양쪽)**. ① 배포 번들(`app-components`)에 `const a=void 0; if(!a)return` — 빌드타임 `VITE_VAPID_PUBLIC_KEY`가 비어 subscribe 함수가 **항상 즉시 종료**(배너도 안 뜸). ② 서버 `/api/push/vapid-public-key`가 `""` 반환 → 런타임 `VAPID_PUBLIC_KEY` 미설정 → `sendSystemPush` 웹경로 no-op(`system-push.ts:51` 게이트). 인프라는 건강(`push-sw.js`가 push/pushsubscriptionchange/notificationclick 핸들러 전부 배포). **즉 이번 세션들에서 만든 RFC8291 암호화·self-heal·410 복구 등 전체 웹푸시 스택이 라이브에선 휴면** — 교환권 만료/공구 마감/재입고/가격인하/결제완료 웹푸시가 웹 유저에게 0건 도달.
+- 🟠 **네이티브 푸시(FCM v1)도 미설정 가능성**: `messages:send`가 `FIREBASE_PROJECT_ID` 필요(URL). `/api/version`이 그동안 이 값을 안 봐 미확인 — 이번에 진단에 추가. (설정돼도 Capacitor 앱 유저 한정, 웹 미해결.)
+- 🟡 **운영 가시성 공백**: `/api/version` secret 진단이 VAPID_*·FIREBASE_PROJECT_ID를 안 봐 이 누락이 표준 진단에서 안 보였음(그래서 대량 코드작업에도 미발견).
+
+**반영(안전·additive, 잠금파일 무수정)**:
+1. `PushNotificationSetup.tsx` — VAPID 공개키를 **런타임 서버(`/api/push/vapid-public-key`) 우선**으로 해석(`resolveVapidKey()`, 빌드변수 폴백). → 공개키 SSOT를 서버 런타임 하나로 통합(build/runtime drift 제거) + secret 설정만으로 **재배포 없이** 구독+서명 키 자동 일치. 키 없으면 기존처럼 배너/구독 skip.
+2. `public-utility.routes.ts` `/api/version` — secret 진단에 `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`/`FIREBASE_PROJECT_ID` boolean 추가(값 미노출).
+
+**⚠️ 근본 해결은 운영자 몫(코드 아님)**: Cloudflare에 `VAPID_PUBLIC_KEY`·`VAPID_PRIVATE_KEY`·`VAPID_SUBJECT`(웹푸시), `FIREBASE_PROJECT_ID`(+기존 FIREBASE_PRIVATE_KEY/CLIENT_EMAIL, 네이티브푸시) secret 설정 필요. 설정 후 `/api/version`으로 확인 → 웹푸시 즉시 활성(1의 런타임 해석 덕에 재빌드 불필요). VAPID 키쌍 생성: `npx web-push generate-vapid-keys`.
+  - **2026-07-01 후속**: 대표가 VAPID 3종 secret 등록 완료. Pages는 secret 추가 시 새 배포가 있어야 런타임 주입되므로 본 커밋으로 재배포 트리거(secret 값 자체는 미변경). **라이브 검증 완료**: `/api/version` VAPID 3종 `true` · `/api/push/vapid-public-key`가 등록한 공개키 반환(빈문자열→해결) · 서버↔등록키 일치.
+  - **2026-07-01 3차 개선(대표 "더 개선할 부분?")**: 채널 진단 배포 즉시 **이메일(Resend) 채널만 미설정**으로 확인(셀러 일일리포트·에이전시 월간리포트·배송메일 0건 발송 중 — 켤지는 대표 결정 대기). 나머지 3채널(웹푸시/네이티브/알림톡) LIVE. 추가 구현 2건: (1) **채널 회귀 워치독** `cron/channel-watchdog.ts`(매시간) — 채널 설정 스냅샷을 `platform_settings` 에 저장, **LIVE→죽음 전환 시 1회 critical 경보**(reportCronFailure → cron_failures + 어드민 벨). VAPID 미설정으로 수개월 조용히 죽어있던 사고의 재발 방지(한번도 설정 안 된 채널 false→false 는 무경보 = 노이즈 0). `env.ts` 에 `VAPID_SUBJECT` 타입 추가. (2) **dead-letter 가시성** — `push_failures`/`email_failures` 는 재시도 크론만 있고 볼 UI 가 0 이었음 → admin `GET /api/admin/delivery-failures`(양쪽 items+7일 stats) + `POST /delivery-failures/:kind/:id/retry`(next_retry_at 즉시화 + 포기건 retry_count 복원 → 5분 크론이 수거) + 모니터링 페이지 3번째 탭 '푸시·이메일 실패'(웹푸시/이메일 배지·즉시 재시도 버튼). 부수 확인: `enable_push_notifications` 기본 ON(false 는 비상모드 전용), `PushNotificationSetup` 은 App 전역 마운트(셀러/어드민 포함), push_failures drain 크론 정상 등록. 검증: tsc 0 · 전체 2443 pass · build 0 · theme/table/bind/column/file-size 가드 0.
+  - **2026-07-01 2차 개선(웹푸시 활성화 후 추가 확인)**: (1) **채널 진단 확장** — `/api/version` secret 진단에 `RESEND_API_KEY`(이메일)·`ALIGO_API_KEY`/`ALIGO_USER_ID`(알림톡) 추가. 이 둘도 키 없으면 조용히 no-op 하는 동일 패턴이라 이제 어느 채널이 죽었는지 한눈에 보임. (2) **셀프 테스트 푸시** `POST /api/push/test`(requireAuth, 호출자 **본인 구독에만** 발송 — 임의 대상 불가) — VAPID 켠 뒤 실제 전달을 E2E 확인할 유일 수단이 없던 공백 해소. 반환값(skipped/subscription_count/delivered/expired)으로 미도달 원인 진단. (3) 어드민 `AdminSystemMonitoringPage`에 **알림 채널 상태 배지(웹푸시/이메일/알림톡/네이티브푸시 ✓✕) + "나에게 테스트 푸시" 버튼**(라이트 테마, dark: 0). 발송경로 조사 결과 `sendSystemPush`는 VAPID 게이트·`push_enabled` 유저설정 존중·410 만료삭제·dead-letter 재시도·네이티브 독립으로 **건강** 확인. push-sw.js는 `no-store`(핸들러 갱신 전파 OK)·subscribe 401(인증) 정상. 검증: tsc 0·theme-consistency(strict) 0·build 0.
+- 검증: tsc 0(사전 config 경고 제외) · build(client+ssr+prerender+worker+prepare) 0 · theme(strict) 0.
+
+## ✅ 2026-07-01 — 이용권 명칭 통일 잔여 "숙소권" → "숙소 이용권" (대표 "이용권 내용 진행 — 모두")
+이용권 전수조사(명칭/버그/UI/기능 4방향 병렬) → **실제 잔여 부채는 명칭 1종**. 나머지 3방향은 오탐/기수정/별도영역 확인.
+- **명칭 (수정 완료)**: 사용자-가시 "숙소권" 12건(6파일) → "숙소 이용권"(SSOT `getVoucherShortLabel`='숙소 이용권'과 정합). 파일: `stay-voucher-expire.ts`(알림톡 제목)·`StayCheckout.tsx`·`SellerStayNewPage.tsx`(판매방식 라벨·유효기간 필드)·`StaysSearchPage.tsx`·`MyStaysPage.tsx`(배지)·`StayDetailPage.tsx`(3곳: 모드 라벨·요약)·`stays-public.routes.ts`(3곳: 에러메시지·응답 라벨). 주석 5건(GroupBuyListPage·stays-public 버그기록)은 CLAUDE.md 규칙대로 보존. "평일권/주말권"(권종 변형)은 불변.
+- **버그 (조사 결과 오탐/기수정)**: ① 셀프취소 정산 미회수 의혹 → 셀프취소는 `status='unused'` CAS 대상뿐이라 정산분 없음(오탐). ② influencer_attributions voucher_id NULL 누수 → 2026-05-31 order_id 기반으로 기수정. ③ MyVouchers 절약액 NaN → 이미 `(pct>0 && pct<100 && paid>0)` 가드. 감사 게이트 머니 GREEN 영역 견고 재확인.
+- **다국어 locale**: zh/es/fr/ja 의 옛 "식사권"·团购券 → **2026-06-29 결정("전면 다국어 prose 정합=KR-primary라 별도")** 유지(대부분 `[TODO]` 미번역 플레이스홀더). ko(주 언어)는 이미 0건.
+- **알아둘 것(미수정, 대표 판단 필요)**: 카드결제 교환권 셀프취소 시 Toss 취소가 waitUntil 비동기라 실패하면 voucher='refunded'인데 orders='PAID' 잔존 갭 — 드물고 잠긴 결제영역 인접이라 문서화만.
+- 검증: tsc 0(config 경고 제외)·theme(strict) 0·sql-bind 0·blog-seed-currency 0·build(client+ssr+prerender+worker+prepare) 0.
+## ✅ 2026-07-01 — 유어딜 소비자 전수감사(가드 미보유 영역) — 확정 3건 fix (대표 "더 깊게 파봐")
+감사 게이트(37 GREEN/1 RED=선재 file-size 드리프트) 후 **가드 미보유 3영역**(결제 금액정확성·런타임 크래시·외부 PG 실응답)을 라이브+정적으로 심층 감사. 라이브 소비자 API/SSR 전부 건강(200·주입 정상), 크래시 스윕 CLEAN(신규 fcfs/블로그/알림 UI 방어적). **확정 3건 수정**:
+- **#1 (SEO) sitemap.xml stale — 블로그 20개 중 16개 404 + 상품/공구 전무**: 근본원인=`public/sitemap.xml`(옛 하드코딩, 폐기 슬러그 why-live-commerce·meal-voucher-business 등)이 `_routes.json` exclude 로 Pages 직접 서빙 → 워커 동적 `sitemap.routes.ts`(`WHERE is_published=1`) 완전 우회. **수정**: exclude 에서 `/sitemap.xml` 제거 + 정적파일 삭제(git rm) → 워커 동적 라우트가 서빙(상품/공구/블로그 published + 서비스분리 필터 포함). 동적 배열의 `/live`·`/shorts`(LIVE_COMMERCE_SUSPENDED)도 제거(폐기기능 URL 크롤 방지).
+- **#2 (머니) 반품환불 경로 쿠폰 미복원**: `returns.routes PUT /:id/refund` 이 역전을 인라인 재구현하며 `coupon_uses` 복원만 누락(`refundOrderFully`·주문취소는 복원). → 1회용 쿠폰 영구소진+used_count 과대. **수정**: order-refund SSOT 미러 쿠폰 un-use 블록 추가(CAS `transitioned` 게이트 하 단일실행, 자연멱등).
+- **#3 (머니) 초대보상 1,000딜 환불 미회수(파밍 벡터)**: `grantInviteRewardForFirstPurchase` 적립만 있고 clawback 0. **수정**: `reverseInviteRewardOnRefund`(invite-reward.ts) 신설 — 환불 후 초대받은 유저 유효주문 0이면 초대자 보상 회수(다른 유효구매 있으면 보류), 멱등 CAS(granted→expired) + `MAX(0,...)` clamp. `reverseOrderAncillaryOnRefund`(전액환불·주문취소 자동커버) + returns 양경로 배선.
+- 검증: tsc 0 · build 0(client+ssr+prerender+worker) · money-pattern/sql bind·not-null·column·table 가드 0 · audit-gate 37 GREEN(file-size RED 는 선재 드리프트, 본 변경 무관). ⚠️ staging 실결제 권장: 쿠폰주문 반품환불 시 쿠폰 재사용 가능 + 초대유저 첫구매 환불 시 초대자 딜 회수.
+
 ## ✅ 2026-07-01 — 알림 코드 마무리 4종 + 위시리스트 오발송 버그 fix (대표 "코드로 더 할 수 있는거")
 - **#4 알림톡 `approve`/`approved` 오탐 정정**: 이전 진단에서 "미등록 의심"으로 잡은 `approve`/`approved`는 삼항 조건(`action==='approve' ? 'distributor_approved' : ...`)이라 실제 template 코드가 아니었음(grep 오탐). SSOT `alimtalk-templates.ts`에서 제거 + `test`는 셀러 브랜드메시지 테스트 코드로 주석. **버그 아님 확인.**
 - **#5 위시리스트 dedup 테이블 repair-schema 등록**: `wishlist_stock_notifications`·`wishlist_price_notifications`(크론 self-ensure만 하던 것) → fresh/repaired DB 보장.

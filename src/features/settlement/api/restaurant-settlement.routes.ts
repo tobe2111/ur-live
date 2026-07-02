@@ -15,6 +15,7 @@ import { executeQuery, executeRun, queryFirst } from '@/worker/utils/database';
 import { safeError } from '@/worker/utils/safe-error';
 import { requireAuth, getCurrentUser, requireAdminRole } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
+import { intParam } from '@/shared/pagination'
 // ── Table setup ────────────────────────────────────────────────────────────
 
 async function ensureSettlementTables(DB: D1Database) {
@@ -174,8 +175,8 @@ restaurantSettlementRoutes.get('/list', async (c) => {
   try {
     const status = c.req.query('status') || null;
     const sellerId = c.req.query('seller_id') || null;
-    const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20', 10)));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)));
     const offset = (page - 1) * limit;
 
     const conditions: string[] = [];
@@ -386,8 +387,8 @@ sellerSettlementRoutes.get('/', requireAuth(), async (c) => {
     }
 
     const status = c.req.query('status') || null;
-    const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20', 10)));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)));
     const offset = (page - 1) * limit;
 
     const conditions: string[] = ['rs.seller_id = ?'];

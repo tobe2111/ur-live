@@ -12,6 +12,7 @@ import { cors } from 'hono/cors';
 import { verify } from 'hono/jwt';
 import type { Env } from '@/worker/types/env';
 import { safeError } from '@/worker/utils/safe-error';
+import { intParam } from '@/shared/pagination'
 const sellerDonationsRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -84,8 +85,8 @@ sellerDonationsRoutes.get('/donations', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
   const { DB } = c.env;
-  const limit = Math.min(parseInt(c.req.query('limit') || '50', 10), 200);
-  const offset = parseInt(c.req.query('offset') || '0', 10);
+  const limit = Math.min(intParam(c.req.query('limit'), 50), 200);
+  const offset = intParam(c.req.query('offset'), 0);
 
   try {
     const [rows, countRow] = await Promise.all([

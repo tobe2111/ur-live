@@ -13,7 +13,8 @@ import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import { walletTokens } from '@/components/wallet/walletTokens'
 import { formatNumber } from '@/utils/format'
 import VoucherDisputeBanner from '@/components/voucher/VoucherDisputeBanner'
-import { WalletSkeleton, EmptyVouchers } from './my-vouchers/WalletEmpty'
+import { EmptyVouchers } from './my-vouchers/WalletEmpty'
+import BrandLoader from '@/components/brand/BrandLoader'
 import PostJoinShareModal from './my-vouchers/PostJoinShareModal'
 import VoucherTicket from './my-vouchers/VoucherTicket'
 import QRModal from './my-vouchers/QRModal'
@@ -313,7 +314,7 @@ export default function MyVouchersPage() {
 
       <div className="ur-content-narrow px-4 lg:px-8 pb-2">
         {loading ? (
-          <WalletSkeleton />
+          <BrandLoader />
         ) : shownVouchers.length === 0 ? (
           <EmptyVouchers
             mode={giftCount > 0 && sourceTab === 'gift' ? 'gift' : 'gb'}

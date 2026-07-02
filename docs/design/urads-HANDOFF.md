@@ -85,10 +85,21 @@ UI 패널: `MarketingDashboardPage`(허브+KPI) + `SearchAdPanel`·`AutobidPanel
 - **자동입찰 격리(돈 안전)**: `ad_autobid_rules.tenant`(customer_id) 컬럼. UI 규칙은 활성 고객사로 태깅(`getActiveTenantId`). cron `runAutobidAll` 은 **(seller, tenant)별로 그 고객사 자격증명으로 strict 실행** → 규칙이 엉뚱한 계정에 적용 불가. 삭제된 고객사 규칙은 creds 없음 → skip(안전). planBid 하드캡 불변.
 - API: `/searchad/tenants` · `/tenant/activate` · `/connect`(label) · `DELETE ?customer_id=`. UI: 사이드바 셀렉터 + SearchAdPanel '다른 고객사 연결' + 모바일 토픽바 칩.
 
+## 6.6 라이브 전수감사 (2026-07-01) — 실접근 검증 + 수정
+
+라이브(`live.ur-team.com/ads`)에 테스트 계정 실생성해 전 기능 프로빙 + 전 코드 4축(인증격리·머니안전·서비스분리·정합성) 감사. **결과: 서비스 분리 완전 클린 · 머니 하드캡 이중강제 · 확정 IDOR 0건.** 발견·수정:
+- ✅ **[수정] 검색광고 API 키 유출** — `searchAdRequest`(searchad-client.ts)가 네이버 auth 에러 본문(`"Auth failed with api-key: 0100..., customer-id: 47982"`)을 클라에 그대로 반환 → 운영자 X-API-KEY/고객ID 노출. 자격증명 포함 시 친절 안내로 치환 + 방어적 마스킹.
+- ✅ **[수정] 소싱 트렌드 400** — `shoppingCategoryTrends`가 카테고리 10개를 한 요청에 보내 쇼핑인사이트 400. 3개씩 분할 병렬 호출 후 병합.
+- ✅ **[수정] `/ads` 크롤러 메타** — 서버 HTML `<title>`/OG 가 소비자(유어딜) 것 → 공유/SEO 시 오노출. `worker/index.ts` 에 도매 패턴 따라 유어애즈 OG/canonical 주입(og-urads.png).
+- ✅ **[수정] 내부 에러 유출** — autobid `upsertRule` INSERT 미가드(D1 메시지 유출+bare 500), `ai-marketer` 업스트림 에러 전달 → 제네릭 메시지로.
+- ⚠️ **[대표 확인 필요] 연관키워드 라이브 auth 실패** — 위 유출된 에러가 곧 **플랫폼 폴백 검색광고 키(customer 47982) 인증 실패**를 의미. 서명 코드는 네이버 스펙과 일치 → **`NAVER_SEARCHAD_ACCESS_LICENSE`/`_SECRET_KEY`/`_CUSTOMER_ID` 시크릿(키·고객ID 대응)을 재확인**해야 연관키워드·예상가·실적이 동작.
+- 🟡 잔여 하드닝(미수정, 낮음): unlock 코드 전역상수/비상수시간 비교 · clickguard `domainMatches` null-Origin 허용 · rank 스냅샷/refresh `account_id` 방어스코프.
+- 🧹 `marketing.routes.ts` 965줄(god파일 래칫 RED) — `routes/` 서브 Hono 분할 권장(별도 작업).
+
 ## 7. 남은 일 (우선순위)
 
 ### A. 보류 — 외부 제약/실계정 검증 대기 (코드는 준비됨, 기능은 안 만들어도 됨)
-1. **[대표 — 1순위] 라이브 검증** (이 작업환경 네이버/이메일 egress 차단 → 실호출 미검증). 순서: 읽기(연관키워드·트렌드) → 광고계정 연동 → 예상가/실적/미리보기 → 픽셀 → 가입/로그인(`ad_accounts` 자동생성) → 알림 이메일(Resend). 통과 후 `ADS_AUTOBID_ENABLED=true`.
+1. **[대표 — 1순위] 라이브 검증** (이 작업환경 네이버/이메일 egress 차단 → 실호출 미검증). 순서: 읽기(연관키워드·트렌드) → 광고계정 연동 → 예상가/실적/미리보기 → 픽셀 → 가입/로그인(`ad_accounts` 자동생성) → 알림 이메일(Resend). 통과 후 `ADS_AUTOBID_ENABLED=true`. ⚠️ 2026-07-01 라이브: 오픈API(트렌드/쇼핑/평판/자동완성/인구통계) 실데이터 확인 · 검색광고 키는 auth 실패(위 6.6 참조).
 2. **자율 자동입찰 cron** — 돈 영향이라 위 검증 전 **보류**. 킬스위치 기본 OFF(`autobid.ts:280`), 수동 '지금 적용'만 동작. planBid 하드캡 잠금.
 3. **부정클릭 자동차단** — **Phase 1(탐지·리포트·반자동 차단)은 완료**(픽셀+PIPA해시+90일+의심IP리포트+검색광고센터 복붙 차단목록). 막힌 건 **완전 자동 차단 하나** = 네이버가 노출제한IP **쓰기 API** 를 안 열어서. 열리면 자동 전환(코드 준비됨). ⚠️ "미착수" 아님 — 재구현 금지.
 4. **발주수집** — 커머스 '상품주문/배송' 권한 + **고정 egress IP**(`wrangler-proxy.toml`) 필요 → 보류. 코드 배선됨.

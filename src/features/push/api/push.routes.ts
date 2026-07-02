@@ -166,3 +166,24 @@ pushRoutes.get('/api/push/vapid-public-key', cors(), async (c) => {
     return c.json({ success: false, error: error.message }, 500);
   }
 });
+
+// 🔔 2026-07-01: 셀프 테스트 푸시 — 호출자 **본인 구독**에만 발송(임의 대상 지정 불가 → 안전).
+//   VAPID 설정 후 실제 전달을 E2E 확인할 유일한 수단. 반환값(skipped/subscription_count/
+//   delivered/expired)으로 왜 안 오는지(키 미설정·구독 0·push_enabled off·만료)까지 진단 가능.
+pushRoutes.post('/api/push/test', requireAuth(), async (c) => {
+  try {
+    const authUser = getCurrentUser(c);
+    if (!authUser) return c.json({ success: false, error: 'Unauthorized' }, 401);
+    const userType = authUser.type as 'user' | 'seller' | 'admin' | 'agency';
+    const { sendSystemPush } = await import('../../../lib/system-push');
+    const result = await sendSystemPush(c.env, userType, authUser.id, {
+      title: '유어딜 테스트 알림 🔔',
+      body: '웹푸시가 정상 작동합니다. 이 알림이 보이면 설정 완료!',
+      url: '/notifications',
+    });
+    return c.json({ success: true, result });
+  } catch (error: any) {
+    console.error('[Push Test] Error:', error?.message);
+    return c.json({ success: false, error: '테스트 발송에 실패했습니다.' }, 500);
+  }
+});

@@ -130,7 +130,7 @@ interface CuratorForOG {
 function generateCuratorSVG(curator: CuratorForOG, pinThumbs: string[]): string {
   const safeName = escapeXml(curator.name || curator.handle)
   const safeHandle = escapeXml(curator.handle)
-  const safeBio = escapeXml((curator.bio || `${curator.name} 의 큐레이션 링크샵`).slice(0, 80))
+  const safeBio = escapeXml((curator.bio || `${curator.name}의 큐레이션 링크샵`).slice(0, 80))
   const profile = curator.profile_image
     ? `<image href="${escapeXml(curator.profile_image)}" x="80" y="80" width="160" height="160" clip-path="url(#cprofile)" preserveAspectRatio="xMidYMid slice"/>`
     : `<circle cx="160" cy="160" r="80" fill="#1A1A1A"/>

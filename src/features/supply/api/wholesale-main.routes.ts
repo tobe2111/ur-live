@@ -35,6 +35,7 @@ import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admi
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { resolveMallId, DEFAULT_MALL_ID } from './wholesale-malls'
 import { PROPOSAL_CATEGORY_KEYS, categoryToType, categoryKeysByType, isProposalKind } from '@/shared/wholesale-proposal-categories'
+import { intParam } from '@/shared/pagination'
 
 // ── 멱등 ensure (repair-schema 와 동일 DDL — cold isolate self-heal) ────────────
 const _bannerEnsured = new WeakSet<object>()
@@ -227,7 +228,7 @@ pub.get('/proposal-tickets/board', async (c) => {
     // 🏬 2026-06-21 필터 탭 3개(전체/제안/신고): kind 우선 — proposal/report 면 해당 type 의 카테고리 key 전부 IN.
     //   화이트리스트('proposal'|'report')만 허용, 그 외는 무시(전체). 기존 category(세부) 파라미터도 하위호환.
     const kind = String(c.req.query('kind') || '').trim()
-    const page = Math.max(1, Math.floor(Number(c.req.query('page')) || 1))
+    const page = Math.max(1, Math.floor(intParam(c.req.query('page'), 1)))
     const PER = 15
     const conds = ['COALESCE(wp.mall_id, 1) = ?']
     const binds: (string | number)[] = [Number(mallId) || DEFAULT_MALL_ID]
@@ -458,8 +459,8 @@ adminProduct.get('/', async (c) => {
     await ensurePremiumColumn(DB)
     const premiumQ = String(c.req.query('premium') || '').trim() // '' | '0' | '1'
     const q = String(c.req.query('q') || '').trim().slice(0, 100)
-    const page = Math.max(1, Number(c.req.query('page') || 1))
-    const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') || 100)))
+    const page = Math.max(1, intParam(c.req.query('page'), 1))
+    const limit = Math.min(200, Math.max(1, intParam(c.req.query('limit'), 100)))
     const offset = (page - 1) * limit
 
     // 도매(공급) 카탈로그 = supplier 가 등록한 원본 상품(리셀 복사본 supply_source_id 제외).

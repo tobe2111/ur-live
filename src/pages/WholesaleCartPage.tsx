@@ -96,7 +96,12 @@ export default function WholesaleCartPage() {
 
               <div>
                 {items.map((it) => {
-                  const step = Math.max(1, it.moq || 1)
+                  // 🏭 2026-07-01 (라이브 감사): 주문 배수(order_multiple) 정합 — om>1 이면 배수 단위로 증감하고
+                  //   하한을 MOQ-정렬 최소수량으로. 이전엔 moq 단위로만 증감해 배수 어긋난 수량이 결제 시 400 거부.
+                  const moq = Math.max(1, it.moq || 1)
+                  const om = Math.max(1, it.order_multiple || 1)
+                  const minQty = om > 1 ? Math.ceil(moq / om) * om : moq
+                  const step = om > 1 ? om : moq
                   return (
                     <div key={it.id} className="flex gap-3.5 py-4 items-center" style={{ borderBottom: '1px solid ' + WT.line }}>
                       <button onClick={() => navigate(`/wholesale/product/${it.id}`)} className="w-[72px] h-[72px] lg:w-[78px] lg:h-[78px] shrink-0 rounded-xl overflow-hidden" style={{ background: WT.fill }}>
@@ -105,13 +110,14 @@ export default function WholesaleCartPage() {
                       <div className="flex-1 min-w-0">
                         <button onClick={() => navigate(`/wholesale/product/${it.id}`)} className="text-left text-[14px] font-medium line-clamp-2 leading-[1.4]" style={{ color: WT.ink }}>{it.name || `상품 #${it.id}`}</button>
                         <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                          {step > 1 && <span className="text-[10.5px] font-bold rounded-[5px] px-1.5 py-0.5" style={{ border: '1px solid ' + WT.line2, color: WT.ink2 }}>MOQ {comma(step)}</span>}
+                          {moq > 1 && <span className="text-[10.5px] font-bold rounded-[5px] px-1.5 py-0.5" style={{ border: '1px solid ' + WT.line2, color: WT.ink2 }}>MOQ {comma(moq)}</span>}
+                          {om > 1 && <span className="text-[10.5px] font-bold rounded-[5px] px-1.5 py-0.5" style={{ border: '1px solid ' + WT.line2, color: WT.ink2 }}>{comma(om)}개 단위</span>}
                           <button onClick={() => remove(it.id)} className="inline-flex items-center gap-0.5 text-[11.5px]" style={{ color: WT.ink4 }}><Trash2 className="w-3 h-3" /> 삭제</button>
                         </div>
                         {/* 모바일: 수량 스텝퍼 + 라인합 (좁은 화면용 인라인) */}
                         <div className="mt-2 flex items-center justify-between lg:hidden">
                           <div className="inline-flex items-center rounded-lg h-9" style={{ border: '1px solid ' + WT.line2 }}>
-                            <button className="h-9 w-9 text-[16px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(it.id, it.qty - step)} disabled={it.qty <= step}>−</button>
+                            <button className="h-9 w-9 text-[16px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(it.id, it.qty - step)} disabled={it.qty <= minQty}>−</button>
                             <span className="w-10 text-center text-[14px] font-bold tabular-nums" style={{ color: WT.ink }}>{comma(it.qty)}</span>
                             <button className="h-9 w-9 text-[16px]" style={{ color: WT.ink2 }} onClick={() => setQty(it.id, it.qty + step)}>+</button>
                           </div>
@@ -121,7 +127,7 @@ export default function WholesaleCartPage() {
                       {/* 데스크톱: 수량 스텝퍼 */}
                       <div className="hidden lg:flex flex-col items-center gap-1.5 shrink-0">
                         <div className="inline-flex items-center rounded-lg h-8" style={{ border: '1px solid ' + WT.line2 }}>
-                          <button className="h-8 w-[30px] text-[15px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(it.id, it.qty - step)} disabled={it.qty <= step}>−</button>
+                          <button className="h-8 w-[30px] text-[15px] disabled:opacity-30" style={{ color: WT.ink2 }} onClick={() => setQty(it.id, it.qty - step)} disabled={it.qty <= minQty}>−</button>
                           <span className="w-[42px] text-center text-[13px] font-bold tabular-nums" style={{ color: WT.ink, borderLeft: '1px solid ' + WT.line, borderRight: '1px solid ' + WT.line }}>{comma(it.qty)}</span>
                           <button className="h-8 w-[30px] text-[15px]" style={{ color: WT.ink2 }} onClick={() => setQty(it.id, it.qty + step)}>+</button>
                         </div>

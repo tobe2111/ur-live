@@ -26,6 +26,7 @@ import {
 import { CURATOR_DEFAULTS, WITHDRAWAL_DEFAULTS, TAX_POLICY, COMMISSION_DEFAULTS } from '../../shared/constants/policy'
 import { isVoucherCategory } from '../../shared/constants/voucher-categories'
 import { getPolicy } from '../utils/dynamic-policy'
+import { intParam } from '@/shared/pagination'
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
 
@@ -99,11 +100,13 @@ async function ensureCuratorTables(DB: D1Database): Promise<void> {
       UNIQUE(user_id, product_id)
     )`).run()
     await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_product_pins_user_pos ON product_pins(user_id, position)`).run().catch(() => null)
-    // users.handle / bio / linkshop_theme 컬럼 (idempotent ALTER — 이미 있으면 throw → swallow)
+    // users.handle / bio 컬럼 (idempotent ALTER — 이미 있으면 throw → swallow)
+    // 🔗 2026-07-01 (대표 결정 — 링크샵 전수조사): linkshop_theme 필드 제거. 링크샵은 방문자 전역 테마
+    //   (useTheme, /account/settings 토글)를 따르므로 큐레이터별 theme 은 안 쓰이던 죽은 필드였음.
+    //   기존 DB 컬럼은 D1 DROP 위험이라 그대로 방치(무해) — 읽기/반환/신규 ALTER 만 제거.
     for (const sql of [
       "ALTER TABLE users ADD COLUMN handle TEXT",
       "ALTER TABLE users ADD COLUMN bio TEXT",
-      "ALTER TABLE users ADD COLUMN linkshop_theme TEXT DEFAULT 'dark'",
     ]) {
       await DB.prepare(sql).run().catch(() => null)
     }
@@ -136,18 +139,18 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     //   🏭 2026-06-04: 컬럼 존재 여부 모듈 캐시(_bannerUrlCol) — 없는 환경에서 매 요청 2회 user 쿼리 방지.
     type CuratorUser = {
       id: number; handle: string; name: string; bio: string | null;
-      profile_image: string | null; linkshop_theme: string; banner_url?: string | null;
+      profile_image: string | null; banner_url?: string | null;
       youtube_url?: string | null; instagram_url?: string | null; tiktok_url?: string | null
     }
     // 🎨 2026-06-16: banner_url + SNS 포함 전체 SELECT 우선 — 컬럼 없는 레거시 DB 면 throw → undefined →
     //   최소 컬럼 폴백(과거 _bannerUrlCol 분기 대체, 같은 1-query 정상상태 + 컬럼 부재시 graceful).
     let user = await DB.prepare(
-      `SELECT id, handle, name, bio, profile_image, linkshop_theme, banner_url, youtube_url, instagram_url, tiktok_url
+      `SELECT id, handle, name, bio, profile_image, banner_url, youtube_url, instagram_url, tiktok_url
        FROM users WHERE handle = ? LIMIT 1`,
     ).bind(handle).first<CuratorUser>().catch(() => undefined)
     if (user === undefined) {
       user = await DB.prepare(
-        `SELECT id, handle, name, bio, profile_image, linkshop_theme
+        `SELECT id, handle, name, bio, profile_image
          FROM users WHERE handle = ? LIMIT 1`,
       ).bind(handle).first<CuratorUser>().catch(() => null) ?? null
     }
@@ -239,7 +242,6 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         //   CuratorHeader 가 curator.banner_url 을 읽는데 항상 undefined → 저장돼도 절대 표시 안 됐음.
         // 레거시 'r2://key' 저장분(2026-06-05 이전 버그) 읽기측 정규화 — 모든 소비처 동시 치유.
         banner_url: user.banner_url?.startsWith('r2://') ? `/api/media/${user.banner_url.slice(5)}` : (user.banner_url ?? null),
-        theme: user.linkshop_theme || 'dark',
         // 🎨 2026-06-16 링크샵 시안: 크리에이터 SNS 링크.
         youtube_url: user.youtube_url ?? null,
         instagram_url: user.instagram_url ?? null,
@@ -414,8 +416,8 @@ curatorRoutes.post('/me/pins', requireAuth(), async (c) => {
     let handle = user.handle
     if (!handle) {
       handle = await generateUniqueHandle(DB, user.name, undefined, userId)
-      await DB.prepare('UPDATE users SET handle = ?, linkshop_theme = COALESCE(linkshop_theme, ?) WHERE id = ?')
-        .bind(handle, 'dark', userId)
+      await DB.prepare('UPDATE users SET handle = ? WHERE id = ?')
+        .bind(handle, userId)
         .run()
       handleJustCreated = true
     }
@@ -891,7 +893,7 @@ curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
       : { results: [] as { product_id: number }[] }
     const excludeIds = (pinned ?? []).map(p => p.product_id)
 
-    const limit = Math.max(5, Math.min(50, Number(c.req.query('limit')) || 20))
+    const limit = Math.max(5, Math.min(50, intParam(c.req.query('limit'), 20)))
     const exclusion = excludeIds.length
       ? ` AND p.id NOT IN (${excludeIds.map(() => '?').join(',')})`
       : ''

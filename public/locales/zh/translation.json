@@ -879,8 +879,8 @@
       "bulkResult": "{{success}}개 등록 완료, {{fail}}개 실패",
       "csvReadFailed": "CSV 파일을 읽을 수 없습니다",
       "bulkUploadHint": "템플릿을 다운로드 후 작성하여 업로드하세요",
-      "mealVoucherCategory": "🍽️ 식사권 (공동구매)",
-      "mealVoucherInfo": "🍽️ 식사권 / 공동구매 정보",
+      "mealVoucherCategory": "🍽️ 使用券（团购）",
+      "mealVoucherInfo": "🍽️ 使用券 / 团购信息",
       "restaurantName": "식당명",
       "restaurantNamePlaceholder": "예) 강남 OO식당",
       "restaurantAddress": "식당 주소",
@@ -1839,14 +1839,14 @@
       "noBio": "소개글이 없습니다.",
       "profileImageChanged": "프로필 이미지가 변경되었습니다",
       "imageUploadFailed": "이미지 업로드 실패",
-      "recommendedVouchers": "추천 식사권",
+      "recommendedVouchers": "推荐使用券",
       "achieved": "달성!",
       "joinGroupBuy": "공구 참여하기 →",
       "reviewVideos": "맛집 리뷰 영상",
       "addVideo": "영상 추가",
       "moreVideos": "영상 더보기 ({{count}}개)",
-      "noVouchers": "등록된 식사권이 없습니다",
-      "registerVoucher": "식사권 등록하기",
+      "noVouchers": "暂无已上架的使用券",
+      "registerVoucher": "上架使用券",
       "noVideos": "등록된 영상이 없습니다",
       "registerVideo": "영상 등록하기",
       "noLiveRecords": "라이브 기록이 없습니다",
@@ -1860,7 +1860,7 @@
       "businessNumber": "사업자번호",
       "kakaoInquiry": "카카오 문의",
       "phoneInquiry": "전화 문의",
-      "voucherGuide": "식사권 이용안내",
+      "voucherGuide": "使用券使用指南",
       "howToUse": "이용방법",
       "howToUseDesc": "구매 후 발급되는 바우처 코드를 식당에서 제시",
       "validity": "유효기간",
@@ -1883,7 +1883,8 @@
       "addVoucher": "添加使用券",
       "addVoucherDesc": "本地使用券・兑换券 — 设置位置和详情",
       "previewBanner": "访客预览 — 这是别人看到的页面",
-      "backToEdit": "返回编辑"
+      "backToEdit": "返回编辑",
+      "verifiedBusiness": "商家认证"
     },
     "storeIntro": "店铺介绍",
     "shippingInfo": "配送信息",
@@ -2196,7 +2197,7 @@
       "copyFailed": "无法载入上次团购"
     },
     "voucher": {
-      "categoryTitle": "团购券类型",
+      "categoryTitle": "使用券类型",
       "categoryMeal": "餐券",
       "categoryMealDesc": "餐厅·咖啡",
       "categoryBeauty": "美容券",
@@ -2741,7 +2742,7 @@
       "step1Desc": "登记结算账户和商家信息",
       "step2": "上架首个商品",
       "step2Desc": "登记要销售的商品",
-      "step2Store": "发行首张团购券",
+      "step2Store": "发行首张使用券",
       "step2StoreDesc": "为您的店铺创建团购兑换券",
       "step3": "阅读运营指南",
       "step3Desc": "从订单处理到结算一目了然"
@@ -2788,8 +2789,30 @@
       "approve": "批准",
       "approved": "已批准税金计算书",
       "approveFailed": "批准失败"
-    }
-  },
+    },
+    "gateway": {
+      "title": "企业用户注册 — 开设我的商店",
+      "heroTitle": "在我的商店直接销售",
+      "heroDesc": "一次企业认证，您的链接商店即成为真正的商店。上架商品和使用券并获得现金结算（基础手续费5%）。",
+      "kakaoBanner": "销售功能将添加到此Kakao账户。链接商店和购买记录保持不变。",
+      "escape": "只想推荐商品赚佣金？无需注册 —",
+      "escapeLink": "前往我的链接商店",
+      "escapeSuffix": "即可立即开始。",
+      "applied": "申请完成！正在前往审核状态页面。",
+      "alreadyActive": "您已是企业用户",
+      "alreadyActiveDesc": "可直接进入卖家后台。",
+      "pendingTitle": "等待批准",
+      "pendingDesc": "审核后将通过应用通知·KakaoTalk告知（1-2个工作日）。",
+      "goDashboard": "卖家后台",
+      "viewStatus": "查看审核状态",
+      "reviewNote": "申请后1-2个工作日内审核 → 通过应用通知·KakaoTalk告知结果。与国税厅信息一致时自动批准。",
+      "reviewNote2": "批准后可在卖家后台上架商品和使用券。",
+      "submitting": "申请中...",
+      "submit": "申请企业注册"
+    },
+    "mailOrderNumber": "通信销售业申报号",
+    "mailOrderNumberPlaceholder": "例: 2026-首尔江南-01234",
+    "mailOrderNumberHint": "将公开显示在链接商店的卖家信息中"  },
   "admin": {
     "login": {
       "title": "管理员登录",
@@ -4116,6 +4139,7 @@
   "nav": {
     "home": "首页",
     "shop": "商城",
+    "shopping": "购物",
     "cart": "购物车",
     "myPage": "我的",
     "live": "直播",
@@ -4283,7 +4307,8 @@
     "sellerSignup": "卖家注册",
     "sheetTitleCreate": "创建",
     "proposeDeal": "提议社区团购",
-    "proposeDealDesc": "推荐店铺，我们召集人一起开团"
+    "proposeDealDesc": "推荐店铺，我们召集人一起开团",
+    "openMyShop": "开设我的商店（企业）"
   },
   "broadcastNotify": {
     "loginRequired": "需要登录",
@@ -5002,7 +5027,7 @@
     "seoTitle": "Ur-Deal - 直播电商美食团购",
     "seoDesc": "店主直播的直播电商。以特价发现当地美食的最快方式。",
     "heroLiveCount": "[TODO:zh] 지금 {{count}}명이 라이브 시청 중",
-    "heroDesc": "[TODO:zh] 우리 동네 맛집 사장님이 직접 라이브 방송을 켭니다. 실시간 소통하며 식사권·밀키트를 최대 50% 할인가로 공구하세요.",
+    "heroDesc": "本地人气餐厅的老板亲自开直播，实时互动，以最高5折团购使用券和料理包。",
     "heroCtaStart": "[TODO:zh] 지금 시작하기",
     "heroBrowse": "[TODO:zh] 둘러보기",
     "liveNowLabel": "[TODO:zh] 지금 켜져 있는 라이브",
@@ -5013,7 +5038,7 @@
     "howTitle": "[TODO:zh] 라이브 켜고, 보고, 사고, 먹기.",
     "step1Title": "[TODO:zh] 라이브 시청",
     "step1Desc": "[TODO:zh] 홈에서 지금 방송 중인 사장님 라이브를 바로 시청하세요. 실시간 채팅으로 질문도 하고, 메뉴 추천도 받을 수 있어요.",
-    "step2Title": "[TODO:zh] 식사권 공구",
+    "step2Title": "使用券团购",
     "step2Desc": "[TODO:zh] 동네 맛집·뷰티·숙소를 그룹 특가로. 인원과 상관없이 처음부터 같은 가격이에요.",
     "step3Title": "[TODO:zh] 매장 방문·사용",
     "step3Desc": "[TODO:zh] 구매한 쿠폰을 매장에서 제시하고 맛있게 드세요. 배송 상품은 집에서 바로 받아볼 수 있어요.",
@@ -5354,7 +5379,10 @@
     "applyAria": "成为卖家",
     "applyLabel": "成为卖家",
     "successMsg": "正在前往卖家后台!",
-    "errorMsg": "切换到卖家失败"
+    "errorMsg": "切换到卖家失败",
+    "openMyShop": "开设我的商店",
+    "pendingAria": "查看审核状态",
+    "statusAria": "查看卖家状态"
   },
   "pwa": {
     "install": {
@@ -5550,12 +5578,12 @@
   "groupbuy": {
     "createTitle": "[TODO:zh] 맛집 공구 시작하기",
     "seoTitle": "[TODO:zh] 맛집 공구 시작",
-    "seoDesc": "[TODO:zh] 내가 좋아하는 맛집의 식사권을 공동구매로 더 싸게! 맛집 공구를 시작해보세요.",
+    "seoDesc": "以团购价更优惠地购买喜爱餐厅的使用券！立即发起美食团购。",
     "backAria": "[TODO:zh] 뒤로",
     "step1Title": "[TODO:zh] 맛집 선택",
     "step2Title": "[TODO:zh] 공구 설정",
     "step3Title": "[TODO:zh] 확인 & 시작",
-    "priceLabel": "[TODO:zh] 희망 식사권 가격",
+    "priceLabel": "期望使用券价格",
     "pricePlaceholder": "[TODO:zh] 예: 20000",
     "priceUnit": "[TODO:zh] 원",
     "depositLabel": "[TODO:zh] 1인당 딜 예치금",
@@ -5624,7 +5652,7 @@
     "sectionTitle": "我的使用记录",
     "wishlist": "[TODO:zh] 찜한 상품",
     "voucher": "我的兑换券",
-    "voucherSub": "[TODO:zh] 식사권·이용권",
+    "voucherSub": "使用券·礼品券",
     "digitalLibrary": "[TODO:zh] 디지털 보관함",
     "digitalLibrarySub": "[TODO:zh] 전자책·강의·가이드",
     "coupons": "[TODO:zh] 쿠폰함",

@@ -84,7 +84,7 @@ export async function runVoucherExpireCron(env: Env): Promise<{ d30: number; d7:
         if (/^01\d{8,9}$/.test(phone)) {
           const templateCode = env.ALIGO_STAY_VOUCHER_EXPIRE_SOON || 'stay_voucher_expire_soon'
           const message =
-            `[유어딜] 숙소권 유효기간 안내\n\n` +
+            `[유어딜] 숙소 이용권 유효기간 안내\n\n` +
             `${r.product_name} ${voucherTypeKr}이 ${daysLeft}일 후 만료됩니다.\n\n` +
             `· voucher 코드: ${r.check_in_code || '-'}\n` +
             `· 만료일: ${r.voucher_expires_at.slice(0, 10)}\n\n` +

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Clock, Share2, Tag } from 'lucide-react'
+import { ArrowLeft, Clock, Share2 } from 'lucide-react'
 import SEO, { breadcrumbJsonLd } from '@/components/SEO'
 import { nativeShare } from '@/lib/native'
 import KakaoShareButton from '@/components/KakaoShareButton'
@@ -9,6 +9,9 @@ import { escapeHtml } from '@/shared/utils/html'
 import api from '@/lib/api'
 import { useBlogPost, type BlogPost } from '@/hooks/queries/useBlogPost'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+
+// 📝 제목/요약 등 일반 텍스트에서 마크다운 볼드 표기(**) 제거 — 글자로 노출 방지(AI 생성/편집 글 방탄).
+const stripBold = (s?: string | null) => (s || '').replace(/\*\*/g, '')
 
 // 📝 2026-07-01 SSR 시드(__SSR_INITIAL_BLOGPOST__) — 서버가 주입한 글을 0-RTT 로 즉시 사용.
 function readBlogSeed(slug?: string): BlogPost | null {
@@ -49,7 +52,7 @@ export default function BlogDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-gray-300 dark:border-[#3A3A3A] border-t-gray-900 rounded-full animate-spin" />
       </div>
     )
@@ -57,7 +60,7 @@ export default function BlogDetailPage() {
 
   if (!post) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex flex-col items-center justify-center">
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A] flex flex-col items-center justify-center">
         <p className="text-gray-500 dark:text-gray-400 mb-4">{t('blogDetail.notFound', { defaultValue: '글을 찾을 수 없습니다' })}</p>
         <Link to="/blog" className="text-blue-600 text-sm font-medium">{t('blogDetail.backToBlog', { defaultValue: '블로그로 돌아가기' })}</Link>
       </div>
@@ -65,9 +68,15 @@ export default function BlogDetailPage() {
   }
 
   const tags: string[] = (() => { try { return JSON.parse(post.tags) } catch { return [] } })()
+  // 📝 2026-07-01: 읽는 시간 — 한글 기준 대략 분당 500자. 최소 1분.
+  const readMin = Math.max(1, Math.round((post.content?.length || 0) / 500))
 
   function boldify(text: string) {
-    return escapeHtml(text).replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900 dark:text-white">$1</strong>')
+    return escapeHtml(text)
+      // **굵게** → <strong>. [\s\S] 로 개행 걸친 볼드도 매칭.
+      .replace(/\*\*([\s\S]*?)\*\*/g, '<strong class="text-gray-900 dark:text-white">$1</strong>')
+      // 짝이 안 맞아 남은 ** 는 글자로 노출되지 않게 제거(AI 생성/편집 글 방탄).
+      .replace(/\*\*/g, '')
   }
 
   // 마크다운 → HTML 간단 변환
@@ -88,7 +97,7 @@ export default function BlogDetailPage() {
               <div key={i} className="overflow-x-auto my-4">
                 <table className="w-full text-sm border-collapse">
                   <thead>
-                    <tr>{headers.map((h, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1A1A1A] border-b border-gray-200 dark:border-[#2A2A2A] font-semibold text-gray-700 dark:text-gray-200">{h}</th>)}</tr>
+                    <tr>{headers.map((h, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1A1A1A] border-b border-gray-200 dark:border-[#2A2A2A] font-semibold text-gray-700 dark:text-gray-200">{h.replace(/\*\*/g, '')}</th>)}</tr>
                   </thead>
                   <tbody>
                     {rows.map((row, ri) => (
@@ -101,15 +110,15 @@ export default function BlogDetailPage() {
           }
         }
 
-        // H2
+        // H2 (헤딩은 이미 굵게 — ** 표기는 제거)
         if (trimmed.startsWith('## ')) {
-          return <h2 key={i} className="text-xl font-bold text-gray-900 dark:text-white mt-8 mb-3">{trimmed.replace('## ', '')}</h2>
+          return <h2 key={i} className="text-xl font-bold text-gray-900 dark:text-white mt-8 mb-3">{trimmed.replace('## ', '').replace(/\*\*/g, '')}</h2>
         }
         // H3
         if (trimmed.startsWith('### ')) {
-          return <h3 key={i} className="text-lg font-bold text-gray-900 dark:text-white mt-6 mb-2">{trimmed.replace('### ', '')}</h3>
+          return <h3 key={i} className="text-lg font-bold text-gray-900 dark:text-white mt-6 mb-2">{trimmed.replace('### ', '').replace(/\*\*/g, '')}</h3>
         }
-        // 리스트
+        // 불릿 리스트
         if (trimmed.startsWith('- ')) {
           const items = trimmed.split('\n').filter(l => l.startsWith('- '))
           return (
@@ -121,6 +130,23 @@ export default function BlogDetailPage() {
                 </li>
               ))}
             </ul>
+          )
+        }
+        // 번호 목록 (1. 2. 3.) — 시드 글의 '구매/시작 단계' 다수가 사용. 미처리 시 한 문단으로 뭉침.
+        if (/^\d+\.\s/.test(trimmed)) {
+          const items = trimmed.split('\n').filter(l => /^\d+\.\s/.test(l.trim()))
+          return (
+            <ol key={i} className="my-3 space-y-1.5 list-none">
+              {items.map((item, j) => {
+                const m = item.trim().match(/^(\d+)\.\s+(.*)$/)
+                return (
+                  <li key={j} className="flex items-start gap-2 text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed">
+                    <span className="text-pink-500 font-semibold mt-0.5 shrink-0 tabular-nums">{m?.[1] ?? j + 1}.</span>
+                    <span dangerouslySetInnerHTML={{ __html: boldify(m?.[2] ?? item) }} />
+                  </li>
+                )
+              })}
+            </ol>
           )
         }
         // 구분선
@@ -140,7 +166,7 @@ export default function BlogDetailPage() {
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
       <SEO
         title={post.title}
-        description={post.summary}
+        description={stripBold(post.summary)}
         url={`/blog/${post.slug}`}
         jsonLd={breadcrumbJsonLd([
           { name: '홈', url: '/' },
@@ -177,16 +203,18 @@ export default function BlogDetailPage() {
         )}
 
         {/* 제목 */}
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white leading-tight">{post.title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white leading-tight">{stripBold(post.title)}</h1>
 
         {/* 요약 */}
-        <p className="text-base text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">{post.summary}</p>
+        <p className="text-base text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">{stripBold(post.summary)}</p>
 
         {/* 메타 */}
         <div className="flex items-center gap-3 mt-4 pb-6 border-b border-gray-100 dark:border-[#1A1A1A] text-sm text-gray-400 dark:text-gray-500">
           <span>{post.author}</span>
           <span>·</span>
           <span>{new Date(post.published_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          <span>·</span>
+          <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{readMin}분 읽기</span>
         </div>
 
         {/* 썸네일 */}
@@ -219,8 +247,8 @@ export default function BlogDetailPage() {
                 {related.map((r) => (
                   <Link key={r.slug} to={`/blog/${r.slug}`}
                     className="block p-4 rounded-xl border border-gray-200 dark:border-[#2A2A2A] hover:border-gray-300 dark:hover:border-[#3A3A3A] hover:shadow-sm transition">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2">{r.title}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{r.summary}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2">{stripBold(r.title)}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{stripBold(r.summary)}</p>
                   </Link>
                 ))}
               </div>
@@ -237,7 +265,7 @@ export default function BlogDetailPage() {
             <Link to="/u/me" className="px-5 py-2.5 bg-pink-500 text-white rounded-xl text-sm font-bold">내 링크샵 만들기</Link>
           </div>
           <div className="mt-3">
-            <KakaoShareButton title={post.title} description={post.summary} link={`/blog/${post.slug}`} buttonText={t('blog.readBtn', { defaultValue: '글 읽기' })} />
+            <KakaoShareButton title={stripBold(post.title)} description={stripBold(post.summary)} link={`/blog/${post.slug}`} buttonText={t('blog.readBtn', { defaultValue: '글 읽기' })} />
           </div>
         </div>
       </article>

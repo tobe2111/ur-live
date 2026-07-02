@@ -27,6 +27,7 @@ import { buildXlsx, xlsxResponse, type XlsxCell } from './xlsx';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { listSupplierPurchaseInvoices } from './wholesale-tax-invoices';
 import { SUPPLY_CHANNEL_THRESHOLDS_KEY, parseChannelThresholds } from '@/shared/supply-channels';
+import { intParam } from '@/shared/pagination'
 
 export const supplierDashboardRoutes = new Hono<{ Bindings: Env }>();
 
@@ -283,8 +284,8 @@ supplierDashboardRoutes.get('/products', async (c) => {
   const sid = supplierId(c);
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const { DB } = c.env;
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
-  const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20', 10)));
+  const page = Math.max(1, intParam(c.req.query('page'), 1));
+  const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)));
   const offset = (page - 1) * limit;
   const status = c.req.query('status') || ''; // pending | approved | rejected
   try {
@@ -890,8 +891,8 @@ supplierDashboardRoutes.get('/settlements', async (c) => {
   const sid = supplierId(c);
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const { DB } = c.env;
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
-  const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20', 10)));
+  const page = Math.max(1, intParam(c.req.query('page'), 1));
+  const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)));
   const offset = (page - 1) * limit;
   const status = c.req.query('status') || ''; // pending | available | paid | cancelled
   try {
@@ -991,8 +992,8 @@ supplierDashboardRoutes.get('/orders', async (c) => {
   const sid = supplierId(c);
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const { DB } = c.env;
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
-  const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20', 10)));
+  const page = Math.max(1, intParam(c.req.query('page'), 1));
+  const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)));
   const offset = (page - 1) * limit;
   // status: to_ship(발송대기) | shipped(발송완료) | all
   const status = c.req.query('status') || 'to_ship';
@@ -1347,7 +1348,7 @@ supplierDashboardRoutes.get('/store/products', rateLimit({ action: 'sup-store-pr
       const { loadNaverConnection, listNaverStoreProducts } = await import('../../../services/naver-commerce-core');
       const conn = await loadNaverConnection(c.env.DB, sid, c.env.DATA_ENCRYPTION_KEY, 'supplier');
       if (!conn) return c.json({ success: false, error: '먼저 스마트스토어를 연결해주세요', code: 'NOT_CONNECTED' }, 400);
-      const page = Math.max(1, Math.floor(Number(c.req.query('page')) || 1));
+      const page = Math.max(1, Math.floor(intParam(c.req.query('page'), 1)));
       const r = await listNaverStoreProducts(conn, page, 50);
       if (!r.ok) return c.json({ success: false, error: r.error }, 502);
       return c.json({ success: true, channel, items: r.items, total: r.total, page });

@@ -3,16 +3,17 @@
 //   ① 카테고리 타일 8종 ② 실시간 베스트(탭 + 순위 그리드). 실데이터 와이어링.
 // ──────────────────────────────────────────────────────────────
 import { useState } from 'react'
-import { Utensils, Home, Dumbbell } from 'lucide-react'
+import { UtensilsCrossed, Sofa, HeartPulse } from 'lucide-react'
 import { WT } from '../wholesale/wholesale-theme'
 import { ProductCard } from './cards'
 import type { CatalogItem } from './types'
 
 // 🧹 2026-06-17 (시안): 카테고리 3종 — 식품 · 리빙 · 건강. id 는 카탈로그 category 필터값.
-const TILES: { id: string; name: string; Icon: typeof Utensils }[] = [
-  { id: 'food', name: '식품', Icon: Utensils },
-  { id: 'living', name: '리빙', Icon: Home },
-  { id: 'health', name: '건강', Icon: Dumbbell },
+// 🎨 2026-07-01 (대표): 아이콘 세련화 — 식품 UtensilsCrossed(교차 커틀러리)·리빙 Sofa·건강 HeartPulse.
+const TILES: { id: string; name: string; Icon: typeof UtensilsCrossed }[] = [
+  { id: 'food', name: '식품', Icon: UtensilsCrossed },
+  { id: 'living', name: '리빙', Icon: Sofa },
+  { id: 'health', name: '건강', Icon: HeartPulse },
 ]
 
 export function CategoryTiles({ onPick }: { onPick: (id: string) => void }) {
@@ -20,10 +21,10 @@ export function CategoryTiles({ onPick }: { onPick: (id: string) => void }) {
     <div className="grid grid-cols-3 gap-2 lg:gap-3">
       {TILES.map((t) => (
         <button key={t.id} onClick={() => onPick(t.id)}
-          className="flex flex-col items-center gap-2 py-3 lg:py-[15px] px-1 rounded-xl transition-colors hover:bg-[#FAFBFC]"
+          className="ws-cat-tile flex flex-col items-center gap-2 py-3 lg:py-[15px] px-1 rounded-xl transition-colors hover:bg-[#FAFBFC]"
           style={{ border: '1px solid ' + WT.line }}>
-          <span className="flex h-[42px] w-[42px] lg:h-[46px] lg:w-[46px] items-center justify-center rounded-xl" style={{ background: WT.fill }}>
-            <t.Icon className="w-[21px] h-[21px]" strokeWidth={1.7} style={{ color: WT.ink }} />
+          <span className="ws-cat-badge flex h-[42px] w-[42px] lg:h-[46px] lg:w-[46px] items-center justify-center rounded-xl">
+            <t.Icon className="w-[21px] h-[21px]" strokeWidth={1.5} style={{ color: WT.ink }} />
           </span>
           <span className="text-[11.5px] lg:text-[12.5px] font-semibold whitespace-nowrap" style={{ color: '#33373E' }}>{t.name}</span>
         </button>

@@ -552,7 +552,10 @@ export interface UsersCuratorColumns {
   handle: string | null            // TEXT UNIQUE (partial idx: WHERE NOT NULL)
                                    //   regex: /^[a-z0-9_]{3,30}$/ — slugify + suffix
   bio: string | null               // TEXT — 큐레이터 한 줄 소개
-  linkshop_theme: string           // TEXT DEFAULT 'dark' — 'dark' | 'light' (forward-compat)
+  // ⚰️ DEPRECATED (2026-07-01, 대표 결정): linkshop_theme 은 코드에서 미사용(죽은 필드) — 링크샵은
+  //   방문자 전역 테마(useTheme, /account/settings)를 따름. 기존 prod 컬럼은 D1 DROP 위험이라 방치(무해).
+  //   신규 코드는 이 컬럼을 읽거나 쓰지 말 것. repair-schema/curator.routes 에서 참조 제거됨.
+  linkshop_theme?: string          // (deprecated) TEXT DEFAULT 'dark' — 잔존 컬럼, 미사용
 }
 
 // ============================================================

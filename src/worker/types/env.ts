@@ -99,6 +99,7 @@ export interface Env {
   // ---- Push Notifications ----
   VAPID_PUBLIC_KEY?: string;
   VAPID_PRIVATE_KEY?: string;
+  VAPID_SUBJECT?: string;
 
   // ---- Email (Resend) ----
   RESEND_API_KEY?: string;

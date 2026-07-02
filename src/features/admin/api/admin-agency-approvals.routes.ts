@@ -16,6 +16,7 @@ import { requireAdmin } from '@/worker/middleware/auth'
 import { auditLog } from '@/worker/middleware/audit-log'
 import type { Env } from '@/worker/types/env'
 import { swallow } from '@/worker/utils/swallow'
+import { intParam } from '@/shared/pagination'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -45,8 +46,8 @@ interface ApprovalRow {
 // ── GET /agency-creator-approvals ─────────────────────────
 app.get('/', async (c) => {
   const status = c.req.query('status') || 'pending'   // pending/approved/rejected/all
-  const limit = Math.min(parseInt(c.req.query('limit') || '50'), 200)
-  const offset = parseInt(c.req.query('offset') || '0')
+  const limit = Math.min(intParam(c.req.query('limit'), 50), 200)
+  const offset = intParam(c.req.query('offset'), 0)
 
   let where = ''
   const binds: unknown[] = []

@@ -36,7 +36,7 @@ echo "✅ Build completed"
 
 # Step 6: 배포
 echo "🌍 Step 6/7: Deploying to Cloudflare Pages..."
-npx wrangler pages deploy dist --project-name ur-live-global
+npx wrangler pages deploy dist/client --project-name ur-live-global
 echo "✅ Deployment completed"
 
 # Step 7: 헬스 체크

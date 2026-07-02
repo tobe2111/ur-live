@@ -152,7 +152,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
                       <Calendar className="w-3 h-3 shrink-0" />
                       {b.check_in_date
                         ? `${b.check_in_date} → ${b.check_out_date} (${b.nights || 1}박)`
-                        : `숙소권 ${b.voucher_type === 'weekend' ? '주말권' : '평일권'} × ${b.nights || 1}박 (날짜 협의)`}
+                        : `숙소 이용권 ${b.voucher_type === 'weekend' ? '주말권' : '평일권'} × ${b.nights || 1}박 (날짜 협의)`}
                     </p>
                     {(b.guest_count || 0) > 0 && (
                       <p className="text-[12px] text-gray-500 flex items-center gap-1">

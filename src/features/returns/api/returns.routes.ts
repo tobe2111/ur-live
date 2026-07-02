@@ -23,6 +23,7 @@ import { tossCancelPayment } from '@/worker/utils/toss-payments';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 
 import { swallow } from '@/worker/utils/swallow';
+import { intParam } from '@/shared/pagination'
 const returnsRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -276,7 +277,7 @@ returnsRoutes.get('/admin', requireAuth(), async (c) => {
   await ensureTable(DB);
 
   const status = String(c.req.query('status') || '').trim();
-  const limit = Math.max(10, Math.min(200, Number(c.req.query('limit')) || 50));
+  const limit = Math.max(10, Math.min(200, intParam(c.req.query('limit'), 50)));
   const statusFilter = ['requested','approved','rejected','shipped','received','inspected','refunded','cancelled'].includes(status)
     ? ' AND r.status = ?'
     : '';
@@ -738,6 +739,27 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
       const { reverseReferralBonusOnRefund } = await import('../../group-buy/api/helpers');
       await reverseReferralBonusOnRefund(DB, String(onum.order_number));
     }
+  } catch { /* best-effort */ }
+
+  // 🔐 2026-07-01 (전수감사 머니 #2): 쿠폰 사용 복원 — coupon_uses 삭제 + used_count 감소.
+  //   order-refund.ts reverseOrderAncillaryOnRefund 는 복원하나 이 반품환불 경로는 역전을 인라인
+  //   재구현하면서 쿠폰만 누락 → 1회용 쿠폰 영구소진 + used_count 과대(타 유저 조기소진). CAS 게이트(transitioned) 하 단일실행.
+  try {
+    const cu = await DB.prepare('SELECT coupon_id FROM coupon_uses WHERE order_id = ?')
+      .bind(returnRecord.order_id).all<{ coupon_id: number }>().catch(() => ({ results: [] as Array<{ coupon_id: number }> }));
+    for (const row of (cu?.results ?? [])) {
+      await DB.prepare('UPDATE coupons SET used_count = MAX(0, used_count - 1) WHERE id = ?')
+        .bind(row.coupon_id).run().catch(swallow('returns:coupon-count'));
+    }
+    await DB.prepare('DELETE FROM coupon_uses WHERE order_id = ?')
+      .bind(returnRecord.order_id).run().catch(swallow('returns:coupon-uses'));
+  } catch { /* best-effort — coupon_uses 부재 등 */ }
+
+  // 🔐 2026-07-01 (전수감사 머니 #3): 초대 보상 회수 — 반품환불로 초대받은 유저의 유효주문이 0이 되면
+  //   초대자에게 지급된 1,000딜 회수(파밍 방지). 멱등 CAS(granted→expired) + 다른 유효구매 있으면 보류.
+  try {
+    const { reverseInviteRewardOnRefund } = await import('../../../worker/utils/invite-reward');
+    await reverseInviteRewardOnRefund(DB, String(returnRecord.user_id));
   } catch { /* best-effort */ }
 
   // ── Settlement adjustment (restaurant vouchers) ──

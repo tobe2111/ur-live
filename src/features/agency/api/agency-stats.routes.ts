@@ -18,6 +18,7 @@ import type { Context, Next } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAgency, type AgencyVars, type AgencyCtx } from '@/lib/agency-shared'
 import { swallow } from '@/worker/utils/swallow'
+import { intParam } from '@/shared/pagination'
 const app = new Hono<{ Bindings: Env; Variables: AgencyVars }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — worker/index.ts:243 글로벌 cors 가 처리.
 
@@ -201,7 +202,7 @@ app.get('/stats/kpi', async (c) => {
 // ── GET /stats/daily — 일별 매출 추이 (RevenueTrendChart 용) ───
 app.get('/stats/daily', async (c: AgencyCtx) => {
   const agencyId = c.get('agency').id
-  const days = Number(c.req.query('days') || 7)
+  const days = intParam(c.req.query('days'), 7)
   try {
     const { results } = await c.env.DB.prepare(`
       SELECT date(o.created_at) AS date,

@@ -16,6 +16,7 @@ import type { Env } from '@/worker/types/env';
 import { safeError } from '@/worker/utils/safe-error';
 import {TOSS_PAYMENT_URL } from '@/shared/constants';
 import { withCircuitBreaker } from '@/worker/utils/circuit-breaker';
+import { intParam } from '@/shared/pagination'
 const alimtalkRoutes = new Hono<{ Bindings: Env }>();
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -257,7 +258,7 @@ alimtalkRoutes.get('/logs', async (c) => {
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
 
   const { DB } = c.env;
-  const limit = Math.min(parseInt(c.req.query('limit') || '30', 10), 100);
+  const limit = Math.min(intParam(c.req.query('limit'), 30), 100);
 
   try {
     const logs = await DB.prepare(`

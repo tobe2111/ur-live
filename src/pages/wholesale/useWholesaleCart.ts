@@ -20,6 +20,7 @@ export interface WCartItem {
   image_url?: string | null
   price?: number // 담을 당시 등급 공급가
   moq?: number   // 최소 주문 수량 (스텝퍼 단위/하한)
+  order_multiple?: number // 🏭 2026-07-01 주문 배수(박스 단위) — 결제 시 서버 ORDER_MULTIPLE_VIOLATION 사전 차단용
   // 🚚 제조사별 그룹 표시용(비식별 group key s{id}) + 정책. 카트/체크아웃이 제조사별 최소주문금액/배송비 계산.
   supplier_group?: string | null
   supplier_policy?: WCartSupplierPolicy | null

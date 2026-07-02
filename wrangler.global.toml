@@ -1,8 +1,10 @@
 name = "ur-live-global"
 # Global version configuration for world.ur-team.com
-# Deploy command: npx wrangler pages deploy dist --config wrangler.global.toml
+# Deploy command: npx wrangler pages deploy dist/client --project-name ur-live-global
 compatibility_date = "2026-02-01"
-pages_build_output_dir = "./dist"
+# 🛡️ vite outDir 는 dist/client (index.html·_worker.js·_routes.json·_headers 전부 여기).
+#   dist 루트엔 index.html 없음 → "./dist" 로 두면 런칭 시 Pages 배포가 깨짐. 한국(ur-live)도 dist/client 배포.
+pages_build_output_dir = "./dist/client"
 compatibility_flags = ["nodejs_compat"]
 
 # Build command: Cloudflare Workers CI가 빌드 전 프론트엔드를 생성하도록

@@ -50,3 +50,26 @@ export function reloadWithCacheBust(): void {
     try { window.location.reload() } catch { /* URL/location 차단 환경 — silent */ }
   }
 }
+
+/**
+ * 🛡️ 청크 에러 자동복구 — 단일 루프 가드 SSOT.
+ *   index.html 인라인 부트가드 + main.tsx window 핸들러 + React ErrorBoundary 가 모두 이 함수를 통해
+ *   같은 sessionStorage 키(`__ur_chunk_reload__`)·포맷(`{n,t}`)·윈도(60초 내 2회)를 공유 → 이중 카운트·무한 reload 0.
+ *   (인라인 가드는 모듈 로드 전 실행이라 같은 로직을 하드코딩으로 별도 보유 — 키/포맷/윈도만 일치.)
+ * @returns true = 캐시버스트 새로고침 트리거함(곧 새 문서) / false = 60초 내 2회 초과(=stale 아닌 진짜 에러 → UI 표시)
+ */
+export function recoverFromChunkError(): boolean {
+  try {
+    const KEY = '__ur_chunk_reload__'
+    const now = Date.now()
+    let st: { n: number; t: number } = { n: 0, t: 0 }
+    try { const raw = sessionStorage.getItem(KEY); if (raw) { const p = JSON.parse(raw); if (p && typeof p === 'object') st = p } } catch { /* 옛 포맷 — 리셋 */ }
+    const within = now - st.t < 60_000
+    if (within && st.n >= 2) return false // 60초 내 2회 — 진짜 에러 → 무한 reload 차단
+    sessionStorage.setItem(KEY, JSON.stringify({ n: within ? st.n + 1 : 1, t: now }))
+    reloadWithCacheBust()
+    return true
+  } catch {
+    try { window.location.reload(); return true } catch { return false }
+  }
+}

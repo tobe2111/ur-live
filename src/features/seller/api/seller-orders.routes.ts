@@ -24,6 +24,8 @@ import { swallow } from '@/worker/utils/swallow';
 import { VOUCHER_CATEGORY_SET } from '@/shared/constants/voucher-categories';
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { ensureSupplyVisibilitySchema } from '../../supply/api/supply-visibility';
+import { intParam } from '@/shared/pagination'
+import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -93,8 +95,8 @@ sellerOrdersRoutes.get('/orders', async (c) => {
 
     const db = c.env.DB;
     const status = c.req.query('status');
-    const limit = Math.min(parseInt(c.req.query('limit') || '50'), 200);
-    const offset = parseInt(c.req.query('offset') || '0');
+    const limit = Math.min(intParam(c.req.query('limit'), 50), 200);
+    const offset = intParam(c.req.query('offset'), 0);
     const sort = c.req.query('sort') === 'asc' ? 'ASC' : 'DESC';
 
     let query = `
@@ -458,8 +460,8 @@ sellerOrdersRoutes.get('/products', async (c) => {
     // isolate / fresh D1 the column may be missing → "no such column" 500.
     // Memoized (WeakMap-promise) — runs the ALTERs at most once per isolate.
     await ensureSupplyVisibilitySchema(db);
-    const limit = Math.min(parseInt(c.req.query('limit') || '100'), 500);
-    const offset = parseInt(c.req.query('offset') || '0');
+    const limit = Math.min(intParam(c.req.query('limit'), 100), 500);
+    const offset = intParam(c.req.query('offset'), 0);
     const sort = c.req.query('sort') === 'asc' ? 'ASC' : 'DESC';
     const search = c.req.query('search') || '';
 
@@ -569,7 +571,23 @@ sellerOrdersRoutes.get('/products/:id', async (c) => {
       // product_options 테이블 미존재 시 무시
     }
 
-    return c.json({ success: true, data: { ...product, options } });
+    // 🎯 2026-07-01 (1인당 한도 수정 prefill): product_supply_meta.max_per_person (0=무제한).
+    let max_per_person = 0;
+    try {
+      const { getSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+      const mm = await getSupplyMeta(db, [Number(productId)]).catch(() => null);
+      const raw = mm?.get(Number(productId))?.max_per_person;
+      if (raw != null && Number.isFinite(Number(raw)) && Number(raw) > 0) max_per_person = Math.floor(Number(raw));
+    } catch { /* fail-soft */ }
+    // 🎯 2026-07-01 (카카오맵 매장 페이지): place_url prefill.
+    let kakao_place_url: string | null = null;
+    try {
+      const { getSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+      const mm = await getSupplyMeta(db, [Number(productId)]).catch(() => null);
+      kakao_place_url = normalizeKakaoPlaceUrl(mm?.get(Number(productId))?.kakao_place_url);
+    } catch { /* fail-soft */ }
+
+    return c.json({ success: true, data: { ...product, options, max_per_person, kakao_place_url } });
   } catch (error: unknown) {
     console.error('Get seller product detail error:', error);
     return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
@@ -794,6 +812,28 @@ sellerOrdersRoutes.post('/products', async (c) => {
       } catch { /* meta 저장 실패 — 상품 생성은 유지 (fail-soft) */ }
     }
 
+    // 🎯 2026-07-01 (대표 "결제 최대 한도 갯수 1인 당" — 셀러가 이용권 등록 시 설정):
+    //   product_supply_meta.max_per_person. 0/미설정/범위밖 = 무제한(미저장). 1~99 만 저장.
+    {
+      const mpp = Number((body as { max_per_person?: number | string }).max_per_person);
+      if (Number.isFinite(mpp) && mpp >= 1 && mpp <= 99) {
+        try {
+          const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+          await setSupplyMeta(db, Number(productId), { max_per_person: String(Math.floor(mpp)) });
+        } catch { /* fail-soft */ }
+      }
+    }
+    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 장소 선택 시 캡처한 place_url 저장.
+    {
+      const kpu = normalizeKakaoPlaceUrl((body as { kakao_place_url?: string }).kakao_place_url);
+      if (kpu) {
+        try {
+          const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+          await setSupplyMeta(db, Number(productId), { kakao_place_url: kpu });
+        } catch { /* fail-soft */ }
+      }
+    }
+
     // 🛡️ 2026-05-05: 디지털 상품 필드 저장 (UPDATE — migration 0243 후 컬럼 존재)
     if (body.product_kind && body.product_kind !== 'physical') {
       const digitalFields: Array<['product_kind' | 'delivery_type' | 'content_url' | 'content_format' | 'access_duration_days' | 'preview_url', unknown]> = [
@@ -866,6 +906,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
     if (category && VOUCHER_CATEGORY_SET.has(category)) {
       const kv = (c.env as Bindings).SESSION_KV;
       invalidateGroupBuyProductsCache(kv).catch(swallow('seller:cache-invalidate'));
+      // 🔄 2026-07-01: edge/materialized 피드도 퍼지(어드민 동네딜과 동일) → 홈 즉시 반영.
+      import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env as unknown as Parameters<typeof m.invalidateGroupBuyFeed>[0], new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(swallow('seller:feed-invalidate'));
     }
 
     return c.json({ success: true, data: newProduct }, 201);
@@ -904,6 +946,10 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       group_buy_deadline?: string;
       store_verify_pin?: string;
       group_buy_tiers?: string | null;
+      // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도" 수정 지원): 0=무제한, 1~99.
+      max_per_person?: number;
+      // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): place_url.
+      kakao_place_url?: string;
     }>();
 
     const db = c.env.DB;
@@ -982,6 +1028,29 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       }
     }
 
+    // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도" 수정 지원): product_supply_meta.max_per_person.
+    //   0/미설정=무제한. 1~99 저장, 0 은 '0' 저장(리더가 무제한 처리 → 해제). 소유권은 위 existing 로 확인됨.
+    if (body.max_per_person !== undefined) {
+      const mpp = Number(body.max_per_person);
+      if (Number.isFinite(mpp) && mpp >= 0 && mpp <= 99) {
+        try {
+          const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+          await setSupplyMeta(db, Number(productId), { max_per_person: String(Math.floor(mpp)) });
+        } catch { /* fail-soft */ }
+      }
+    }
+    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): place_url 수정.
+    if (body.kakao_place_url !== undefined) {
+      const raw = String(body.kakao_place_url || '').trim();
+      const kpu = raw === '' ? '' : normalizeKakaoPlaceUrl(raw);  // 빈값=해제, 유효=저장
+      if (raw === '' || kpu) {
+        try {
+          const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+          await setSupplyMeta(db, Number(productId), { kakao_place_url: kpu || '' });
+        } catch { /* fail-soft */ }
+      }
+    }
+
     const updated = await db.prepare(
       `SELECT id, name, description, price, original_price,
               COALESCE(stock_quantity, stock, 0) AS stock,
@@ -995,6 +1064,8 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
     if (updated?.category && VOUCHER_CATEGORY_SET.has(String(updated.category))) {
       const kv = (c.env as Bindings).SESSION_KV;
       invalidateGroupBuyProductsCache(kv).catch(swallow('seller:cache-invalidate'));
+      // 🔄 2026-07-01: edge/materialized 피드도 퍼지(어드민 동네딜과 동일) → 홈 즉시 반영.
+      import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env as unknown as Parameters<typeof m.invalidateGroupBuyFeed>[0], new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(swallow('seller:feed-invalidate'));
     }
 
     return c.json({ success: true, data: updated });
@@ -1040,6 +1111,8 @@ sellerOrdersRoutes.delete('/products/:id', async (c) => {
     // 🛡️ 2026-05-16: 상품 삭제 시 공구 목록 캐시 무효화 (카테고리 모름 → 전체 nuke)
     const kv = (c.env as Bindings).SESSION_KV;
     invalidateGroupBuyProductsCache(kv).catch(swallow('seller:cache-invalidate'));
+    // 🔄 2026-07-01: edge/materialized 피드도 퍼지(어드민 동네딜과 동일) → 홈 즉시 반영.
+    import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env as unknown as Parameters<typeof m.invalidateGroupBuyFeed>[0], new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(swallow('seller:feed-invalidate'));
 
     return c.json({ success: true, message: '상품이 삭제되었습니다.' });
   } catch (error: unknown) {
