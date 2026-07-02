@@ -4,7 +4,8 @@
 라이브 실접근 + 코드 전수감사. **결과: 결제 라이브 건강** — `/api/version`·`/api/payments/client-key` 200, **라이브 키 활성**(`live_gck_…`, flow=widget), CSP/frame-src tosspayments 정상. **가드 미보유 3영역(금액정확성·런타임크래시·외부PG 실응답) 심층 감사**:
 - **금액 정확성 — 전 플로우 CLEAN**: 6개 Toss 경로(딜충전·공구·주문·숙소·선물·도매 주문/예치금/환불) 전부 서버 재계산/DB값 strict equality 검증 + **서버 금액을 Toss 에 전달** + CAS 선점 후 side-effect. webhook 도 fail-closed 금액검증 + paid-order 취소거부 + graceful 시그니처 + 멱등. (prior 감사들 효과 확인.)
 - **🟠 수정: 가상계좌(무통장입금) 조기확정 방어** (대표 승인, 잠금파일 — CLAUDE.md Toss audit log 등재): `/confirm` 이 Toss 응답 `status` 무시하고 무조건 `DONE` flip → VA는 confirm 시 `WAITING_FOR_DEPOSIT`(입금 전)인데 주문확정·재고·딜·발급·KT교환권이 입금 전 실행되는 구조적 위험(콘솔 VA 활성 불명이나 코드가드 부재=향후 VA 켜면 조용히 깨짐). `/confirm` 에 WAITING 분기(→ AWAITING_PAYMENT, side-effect skip, releaseStays) + webhook `handleVirtualAccountDeposited` 에 `env` 배선(입금완료 시 KT 발송 대칭). 카드/간편결제(DONE) 경로 byte-불변.
-- **🟢 문서화(미수정)**: 선물 `gifts/:id/confirm` 은 status 체크-후-UPDATE 사이 CAS 없음 → Toss 멱등이라 이중청구/적립 0, 유일 영향은 알림톡 중복(LOW). 재발 시 status CAS 로 승격.
+- **🔴 후속 발견+수정: 혼합결제 딜 차감 `.bind(orderNumber)` 누락** (대표 승인 "수정 + 선물 CAS도"): `/confirm` 딜 차감 블록(2026-06-17 배선)의 orders 조회가 `?` 를 갖고도 bind 없이 `.all()` → D1 오류를 `.catch` 가 빈배열로 삼켜 **블록 전체 무음 no-op**. /confirm 이 CAS 승자면 webhook 딜차감도 skip → 양쪽 미차감(쇼핑탭 숨김이라 라이브 손실 ≈0, 재오픈 시 지뢰). bind 1줄 fix. sql-bind 가드 사각지대(bind 통째 누락 미감지) 확인 — 가드 보강 후보.
+- **🟢 수정: 선물 `gifts/:id/confirm` status CAS** (비잠금): 사전체크~UPDATE race 로 알림톡 중복 발송 가능하던 것 → `WHERE status='pending'` CAS + loser 멱등 성공 반환. Toss 멱등이라 머니 영향 원래 0.
 - **⚠️ 검증 한계**: 이 원격환경 npm 조직정책 403 으로 `node_modules` 미설치 → 전체 `npm run build`·tsc 미실행. sql-bind/column(신규 UPDATE 컬럼 orders 존재 확인)/CHECK 가드 0. **잠금파일 회귀검증은 staging 배포 후 실결제 필수**(VA 결제 → 입금 전 AWAITING·입금 후 확정+KT 1회).
 
 ## ✅ 2026-07-01 — 도매몰 3표면(판매사·제조사·도매어드민) 심층 감사 + 확정 3건 fix (대표 "세 대시보드 모두?")

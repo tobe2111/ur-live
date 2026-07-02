@@ -385,9 +385,12 @@ paymentsRouter.post('/confirm', async (c) => {
     //   adjustUserPoints CAS(guardBalance) 로 음수잔액 방지. fail-soft(경보로 추적, 결제확정 불막음).
     //   ⚠️ Toss confirm/금액검증/confirmClaim 무수정 — side-effect 차감 1블록 추가만.
     try {
+      // 🐛 2026-07-01 [UNLOCK] (대표 승인 — 결제 전수조사 후속): `.bind(orderNumber)` 누락으로 D1 이
+      //   바인딩 오류를 던지고 .catch 가 빈 배열로 삼켜 이 블록 전체가 무음 no-op 이던 버그 수정.
+      //   (webhook 쪽 동일 블록은 bind 정상 — 그러나 /confirm 이 CAS 승자면 webhook 도 skip → 양쪽 미차감.)
       const dealRows = await c.env.DB.prepare(
         'SELECT id, user_id, deal_used FROM orders WHERE order_number = ?'
-      ).all<{ id: string | number; user_id: string | number | null; deal_used: number | null }>().catch(() => ({ results: [] as Array<{ id: string | number; user_id: string | number | null; deal_used: number | null }> }));
+      ).bind(orderNumber).all<{ id: string | number; user_id: string | number | null; deal_used: number | null }>().catch(() => ({ results: [] as Array<{ id: string | number; user_id: string | number | null; deal_used: number | null }> }));
       for (const r of (dealRows?.results ?? [])) {
         const used = Math.max(0, Math.round(Number(r.deal_used ?? 0)));
         if (used > 0 && r.user_id != null) {
