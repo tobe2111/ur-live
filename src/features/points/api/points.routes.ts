@@ -1013,21 +1013,31 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
     createDashboardNotification(DB, 'admin', null, 'deal_payment', '딜 결제', `${Number(authoritativeTotal ?? 0).toLocaleString('ko-KR')}딜 상품 결제`, '/admin/orders').catch(swallow('points:api:points'));
 
     // 🛡️ 2026-05-19: KT Alpha 교환권 자동 발송 — 딜 교환 전용 상품 결제 시.
-    try {
-      const ktOrders = await DB.prepare(
-        `SELECT id, shipping_phone, user_id FROM orders WHERE order_number LIKE ? AND user_id = ? AND status = 'PAID'`
-      ).bind(`${order_number}%`, userId).all<{ id: number; shipping_phone: string | null; user_id: string }>()
-        .catch(() => ({ results: [] }))
-      if (ktOrders.results && ktOrders.results.length > 0) {
-        const { autoSendKtAlphaVouchersForOrders } = await import('../../../worker/utils/kt-alpha-auto-send')
-        await autoSendKtAlphaVouchersForOrders(
-          c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
-          ktOrders.results,
-          userId,
-        )
+    // ⚡ 2026-07-02 (대표 승인 — 결제 체감속도): 응답 후(waitUntil) 실행으로 이동. KT/기프티쇼 외부 HTTP
+    //   (prod 실측 1~4.5s)가 교환권 메인 결제 응답을 동기로 막던 것 제거 — 내용/에러처리 불변, 시점만.
+    //   안전판: fail-soft + per-order 멱등 + kt-alpha-voucher-retry cron(failed 재시도 + 미발송 스위퍼).
+    {
+      const _ktBg = async () => {
+        try {
+          const ktOrders = await DB.prepare(
+            `SELECT id, shipping_phone, user_id FROM orders WHERE order_number LIKE ? AND user_id = ? AND status = 'PAID'`
+          ).bind(`${order_number}%`, userId).all<{ id: number; shipping_phone: string | null; user_id: string }>()
+            .catch(() => ({ results: [] }))
+          if (ktOrders.results && ktOrders.results.length > 0) {
+            const { autoSendKtAlphaVouchersForOrders } = await import('../../../worker/utils/kt-alpha-auto-send')
+            await autoSendKtAlphaVouchersForOrders(
+              c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
+              ktOrders.results,
+              userId,
+            )
+          }
+        } catch (e) {
+          console.error('[points/pay] kt-alpha auto-send failed:', e)
+        }
       }
-    } catch (e) {
-      console.error('[points/pay] kt-alpha auto-send failed:', e)
+      let _ktDeferred = false
+      try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_ktBg()); _ktDeferred = true } } catch { /* no ctx */ }
+      if (!_ktDeferred) await _ktBg()
     }
 
     return c.json({

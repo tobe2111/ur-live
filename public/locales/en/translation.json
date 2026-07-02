@@ -1889,7 +1889,8 @@
       "addVoucher": "Add voucher",
       "addVoucherDesc": "Local store voucher — location & details",
       "previewBanner": "Visitor preview — this is what others see",
-      "backToEdit": "Back to editing"
+      "backToEdit": "Back to editing",
+      "verifiedBusiness": "Verified business"
     },
     "storeIntro": "Store Introduction",
     "shippingInfo": "Shipping Info",
@@ -2793,8 +2794,30 @@
       "approve": "Approve",
       "approved": "Tax invoice approved",
       "approveFailed": "Approval failed"
-    }
-  },
+    },
+    "gateway": {
+      "title": "Business account — open my shop",
+      "heroTitle": "Sell directly from my shop",
+      "heroDesc": "One business verification turns your linkshop into a real store. List products & vouchers and get cash settlements (5% base platform fee).",
+      "kakaoBanner": "Selling features will be added to this Kakao account. Your linkshop and purchase history stay intact.",
+      "escape": "Only want to recommend products for commission? No sign-up needed —",
+      "escapeLink": "go to my linkshop",
+      "escapeSuffix": " and start right away.",
+      "applied": "Application submitted! Moving to the review status page.",
+      "alreadyActive": "You are already a business user",
+      "alreadyActiveDesc": "You can go straight to the seller dashboard.",
+      "pendingTitle": "Awaiting approval",
+      "pendingDesc": "We will notify you in-app and via KakaoTalk after review (1-2 business days).",
+      "goDashboard": "Seller dashboard",
+      "viewStatus": "View review status",
+      "reviewNote": "Reviewed within 1-2 business days → results via in-app & KakaoTalk. Auto-approved if NTS records match.",
+      "reviewNote2": "Once approved, list products & vouchers from the seller dashboard.",
+      "submitting": "Submitting...",
+      "submit": "Apply as business"
+    },
+    "mailOrderNumber": "Mail-order business no.",
+    "mailOrderNumberPlaceholder": "e.g. 2026-Seoul-01234",
+    "mailOrderNumberHint": "Shown publicly in your linkshop seller info (e-commerce law disclosure)"  },
   "admin": {
     "login": {
       "title": "Admin Login",
@@ -4289,7 +4312,8 @@
     "sellerSignup": "Seller Sign Up",
     "sheetTitleCreate": "Create",
     "proposeDeal": "Propose a local group buy",
-    "proposeDealDesc": "Suggest a shop and we’ll gather people to open it"
+    "proposeDealDesc": "Suggest a shop and we’ll gather people to open it",
+    "openMyShop": "Open my shop (business)"
   },
   "broadcastNotify": {
     "loginRequired": "Login required",
@@ -5008,7 +5032,7 @@
     "seoTitle": "Ur-Deal - Live Commerce Restaurant Group Buy",
     "seoDesc": "Live commerce run by restaurant owners. The fastest way to find great local food deals.",
     "heroLiveCount": "[TODO:en] 지금 {{count}}명이 라이브 시청 중",
-    "heroDesc": "[TODO:en] 우리 동네 맛집 사장님이 직접 라이브 방송을 켭니다. 실시간 소통하며 식사권·밀키트를 최대 50% 할인가로 공구하세요.",
+    "heroDesc": "Local restaurant owners go live themselves. Chat in real time and group-buy vouchers and meal kits at up to 50% off.",
     "heroCtaStart": "[TODO:en] 지금 시작하기",
     "heroBrowse": "[TODO:en] 둘러보기",
     "liveNowLabel": "[TODO:en] 지금 켜져 있는 라이브",
@@ -5019,7 +5043,7 @@
     "howTitle": "[TODO:en] 라이브 켜고, 보고, 사고, 먹기.",
     "step1Title": "[TODO:en] 라이브 시청",
     "step1Desc": "[TODO:en] 홈에서 지금 방송 중인 사장님 라이브를 바로 시청하세요. 실시간 채팅으로 질문도 하고, 메뉴 추천도 받을 수 있어요.",
-    "step2Title": "[TODO:en] 식사권 공구",
+    "step2Title": "Voucher group buy",
     "step2Desc": "[TODO:en] 동네 맛집·뷰티·숙소를 그룹 특가로. 인원과 상관없이 처음부터 같은 가격이에요.",
     "step3Title": "[TODO:en] 매장 방문·사용",
     "step3Desc": "[TODO:en] 구매한 쿠폰을 매장에서 제시하고 맛있게 드세요. 배송 상품은 집에서 바로 받아볼 수 있어요.",
@@ -5413,7 +5437,10 @@
     "applyAria": "Become a seller",
     "applyLabel": "Become a seller",
     "successMsg": "Redirecting to seller dashboard!",
-    "errorMsg": "Failed to switch to seller"
+    "errorMsg": "Failed to switch to seller",
+    "openMyShop": "Open my shop",
+    "pendingAria": "View seller review status",
+    "statusAria": "View seller status"
   },
   "pwa": {
     "install": {
@@ -5609,12 +5636,12 @@
   "groupbuy": {
     "createTitle": "[TODO:en] 맛집 공구 시작하기",
     "seoTitle": "[TODO:en] 맛집 공구 시작",
-    "seoDesc": "[TODO:en] 내가 좋아하는 맛집의 식사권을 공동구매로 더 싸게! 맛집 공구를 시작해보세요.",
+    "seoDesc": "Get vouchers for your favorite restaurants cheaper through group buying! Start a group buy now.",
     "backAria": "[TODO:en] 뒤로",
     "step1Title": "[TODO:en] 맛집 선택",
     "step2Title": "[TODO:en] 공구 설정",
     "step3Title": "[TODO:en] 확인 & 시작",
-    "priceLabel": "[TODO:en] 희망 식사권 가격",
+    "priceLabel": "Desired voucher price",
     "pricePlaceholder": "[TODO:en] 예: 20000",
     "priceUnit": "[TODO:en] 원",
     "depositLabel": "[TODO:en] 1인당 딜 예치금",
@@ -5683,7 +5710,7 @@
     "sectionTitle": "My activity",
     "wishlist": "[TODO:en] 찜한 상품",
     "voucher": "My vouchers",
-    "voucherSub": "[TODO:en] 식사권·이용권",
+    "voucherSub": "Vouchers & gift cards",
     "digitalLibrary": "[TODO:en] 디지털 보관함",
     "digitalLibrarySub": "[TODO:en] 전자책·강의·가이드",
     "coupons": "[TODO:en] 쿠폰함",

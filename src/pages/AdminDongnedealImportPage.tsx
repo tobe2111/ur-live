@@ -46,7 +46,8 @@ export default function AdminDongnedealImportPage() {
     setCleaning(true)
     try {
       const r = await api.delete('/api/admin/dongnedeal/seed-demo', h)
-      toast.success(`데모 상품 ${r.data?.deleted ?? 0}개 삭제`)
+      const retired = Number(r.data?.retired ?? 0)
+      toast.success(`데모 상품 ${r.data?.deleted ?? 0}개 삭제${retired ? ` · ${retired}개는 주문 이력이 있어 비활성 처리` : ''}`)
       loadStats()
     } catch { toast.error('데모 정리 중 오류') } finally { setCleaning(false) }
   }

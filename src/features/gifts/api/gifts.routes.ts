@@ -188,10 +188,16 @@ giftsRoutes.post('/:id/confirm', requireAuth(), async (c) => {
       } catch { /* exists */ }
       _giftPayKeyColEnsured = true
     }
-    await c.env.DB.prepare(`
+    // 🛡️ 2026-07-01 (결제 전수조사): status CAS — line 151 사전체크와 이 UPDATE 사이 race 로
+    //   동시 confirm 2건이 둘 다 통과해 알림톡이 중복 발송되던 것 차단. Toss 는 멱등(이중청구 없음)이라
+    //   머니 영향은 원래 0 — CAS loser 는 알림톡 skip + 멱등 성공 반환(둘 다 정상 응답).
+    const paidClaim = await c.env.DB.prepare(`
       UPDATE gifts SET status = 'paid', paid_at = datetime('now'),
-        toss_payment_key = ?, updated_at = datetime('now') WHERE id = ?
+        toss_payment_key = ?, updated_at = datetime('now') WHERE id = ? AND status = 'pending'
     `).bind(body.paymentKey, giftId).run()
+    if ((paidClaim.meta?.changes ?? 0) === 0) {
+      return c.json({ success: true, data: { id: giftId, status: 'paid', claim_token: gift.claim_token }, idempotent: true })
+    }
 
     // 5) 알림톡 발송 (best-effort, 실패해도 결제는 성공 처리)
     // 🏁 2026-06-11 (응답 경로 부수효과 전수조사): 외부 HTTP(알리고) — 응답 후 실행(waitUntil).

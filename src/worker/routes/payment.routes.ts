@@ -290,6 +290,25 @@ paymentsRouter.post('/confirm', async (c) => {
       logError('toss.confirm.amount_mismatch', { orderId: orderNumber });
     }
 
+    // 🛡️ 2026-07-01 [UNLOCK] (대표 승인 — 결제 전수조사): 가상계좌(무통장입금) 조기확정 방어.
+    //   /confirm 은 Toss 응답 status 를 안 보고 무조건 DONE 으로 flip 했음 → 가상계좌는 confirm 시점에
+    //   status='WAITING_FOR_DEPOSIT'(입금 전)로 응답하는데 그대로 주문확정·재고차감·딜차감·디지털발급·
+    //   KT교환권 발송이 '입금 전에' 실행되는 구조적 위험. Toss 콘솔에서 가상계좌를 켜는 순간 조용히 깨짐.
+    //   수정: 입금대기 응답이면 확정하지 않고 AWAITING_PAYMENT 로만 표시 + 모든 side-effect skip →
+    //   실제 입금 시 DEPOSIT_CALLBACK webhook(handlePaymentConfirmed)이 완결. 미리 잡은 숙소 예약은
+    //   되돌림(미결제 방 홀드 방지 — 위 tossResult 실패 경로와 동일 releaseStays).
+    //   ⚠️ WAITING_FOR_DEPOSIT 한정 분기 — 카드/간편결제(DONE) 경로는 byte-불변.
+    if (String((tossData as { status?: string }).status || '').toUpperCase() === 'WAITING_FOR_DEPOSIT') {
+      await releaseStays();
+      await c.env.DB.prepare(
+        `UPDATE orders SET status = 'AWAITING_PAYMENT', payment_method = ?, toss_payment_key = ?, toss_order_id = ?, updated_at = datetime('now')
+         WHERE order_number = ? AND status NOT IN ('DONE','PAID','CANCELLED','REFUNDED','FAILED')`
+      ).bind(tossData.method ?? null, tossData.paymentKey ?? null, orderNumber, orderNumber).run().catch(() => null);
+      logInfo('toss.confirm.awaiting_deposit', { orderId: orderNumber, method: tossData.method });
+      const pendingOrders = await orderRepo.findByOrderNumber(orderNumber);
+      return c.json({ success: true, data: { orders: pendingOrders, payment: tossData }, status: 'AWAITING_PAYMENT' });
+    }
+
     // 🛡️ 2026-05-31 [UNLOCK] (사용자 승인): 동시 /confirm race 가드 (CAS).
     //   기존 read-then-write(alreadyDone SELECT) 는 두 동시요청이 모두 PENDING 을 읽고
     //   둘 다 reduceStock + agency/referral commission 적립 → 재고 2배 차감·커미션 중복.
@@ -366,9 +385,12 @@ paymentsRouter.post('/confirm', async (c) => {
     //   adjustUserPoints CAS(guardBalance) 로 음수잔액 방지. fail-soft(경보로 추적, 결제확정 불막음).
     //   ⚠️ Toss confirm/금액검증/confirmClaim 무수정 — side-effect 차감 1블록 추가만.
     try {
+      // 🐛 2026-07-01 [UNLOCK] (대표 승인 — 결제 전수조사 후속): `.bind(orderNumber)` 누락으로 D1 이
+      //   바인딩 오류를 던지고 .catch 가 빈 배열로 삼켜 이 블록 전체가 무음 no-op 이던 버그 수정.
+      //   (webhook 쪽 동일 블록은 bind 정상 — 그러나 /confirm 이 CAS 승자면 webhook 도 skip → 양쪽 미차감.)
       const dealRows = await c.env.DB.prepare(
         'SELECT id, user_id, deal_used FROM orders WHERE order_number = ?'
-      ).all<{ id: string | number; user_id: string | number | null; deal_used: number | null }>().catch(() => ({ results: [] as Array<{ id: string | number; user_id: string | number | null; deal_used: number | null }> }));
+      ).bind(orderNumber).all<{ id: string | number; user_id: string | number | null; deal_used: number | null }>().catch(() => ({ results: [] as Array<{ id: string | number; user_id: string | number | null; deal_used: number | null }> }));
       for (const r of (dealRows?.results ?? [])) {
         const used = Math.max(0, Math.round(Number(r.deal_used ?? 0)));
         if (used > 0 && r.user_id != null) {
@@ -731,45 +753,57 @@ paymentsRouter.post('/confirm', async (c) => {
       }
     }
 
-    // 🛡️ 2026-05-19: KT Alpha 교환권 자동 발송 (auto_voucher_send=1 상품 결제 성공 시).
-    try {
-      const { autoSendKtAlphaVouchersForOrders } = await import('../utils/kt-alpha-auto-send')
-      await autoSendKtAlphaVouchersForOrders(
-        c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
-        updatedOrders.map(o => ({
-          id: typeof o.id === 'number' ? o.id : parseInt(String(o.id), 10),
-          shipping_phone: (o as unknown as { shipping_phone?: string }).shipping_phone,
-          user_id: o.user_id,
-        })),
-        String(userId),
-      )
-    } catch (err) {
-      logError('payment.kt_alpha_send_unexpected', { orderNumber, error: String(err).slice(0, 300) })
-    }
+    // ⚡ 2026-07-02 [UNLOCK] (대표 승인 — 결제 체감속도): KT 발송(외부 HTTP, prod 실측 1~4.5s) +
+    //   다단계 추천 커미션(트리 DB 왕복 다수)을 응답 후(waitUntil)로 이동 — confirm 응답을 동기로
+    //   막던 마지막 큰 두 블록. 내용/순서/에러처리 byte-불변, 실행 시점만. 안전판: 둘 다 fail-soft +
+    //   KT 는 per-order 멱등 + kt-alpha-voucher-retry cron(failed 재시도 + 미발송 스위퍼) 백스톱,
+    //   커미션은 confirmClaim CAS 로 단일실행 보장. ctx 없으면 동기 fallback.
+    {
+      const _postConfirmBg = async () => {
+        // 🛡️ 2026-05-19: KT Alpha 교환권 자동 발송 (auto_voucher_send=1 상품 결제 성공 시).
+        try {
+          const { autoSendKtAlphaVouchersForOrders } = await import('../utils/kt-alpha-auto-send')
+          await autoSendKtAlphaVouchersForOrders(
+            c.env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
+            updatedOrders.map(o => ({
+              id: typeof o.id === 'number' ? o.id : parseInt(String(o.id), 10),
+              shipping_phone: (o as unknown as { shipping_phone?: string }).shipping_phone,
+              user_id: o.user_id,
+            })),
+            String(userId),
+          )
+        } catch (err) {
+          logError('payment.kt_alpha_send_unexpected', { orderNumber, error: String(err).slice(0, 300) })
+        }
 
-    // ── 다단계 추천 커미션 계산 (fire-and-forget) ──────────────────────────
-    // 결제 완료 후 구매자의 추천 트리를 확인하여 상위 추천인에게 커미션 지급
-    // 🛡️ 2026-05-12: silent catch → logError + Sentry. 비결정적 누락은 결제 자체에 영향 없지만
-    //   누락 발견을 위해 관측성 필수 (이전: console 도 없어 운영자가 알 길 없음).
-    try {
-      const { calculateMultiTierCommission } = await import('../../features/referral/api/referral-tree.routes');
-      for (const order of updatedOrders) {
-        const oid = typeof order.id === 'number' ? order.id : parseInt(String(order.id), 10);
-        if (oid && order.total_amount) {
-          await calculateMultiTierCommission(c.env.DB, oid, order.total_amount, String(userId));
+        // ── 다단계 추천 커미션 계산 (fire-and-forget) ──────────────────────────
+        // 결제 완료 후 구매자의 추천 트리를 확인하여 상위 추천인에게 커미션 지급
+        // 🛡️ 2026-05-12: silent catch → logError + Sentry. 비결정적 누락은 결제 자체에 영향 없지만
+        //   누락 발견을 위해 관측성 필수 (이전: console 도 없어 운영자가 알 길 없음).
+        try {
+          const { calculateMultiTierCommission } = await import('../../features/referral/api/referral-tree.routes');
+          for (const order of updatedOrders) {
+            const oid = typeof order.id === 'number' ? order.id : parseInt(String(order.id), 10);
+            if (oid && order.total_amount) {
+              await calculateMultiTierCommission(c.env.DB, oid, order.total_amount, String(userId));
+            }
+          }
+        } catch (err) {
+          logError('payment.referral_commission_failed', {
+            orderNumber,
+            orderIds: updatedOrders.map(o => o.id),
+            userId: String(userId),
+            error: String(err).slice(0, 300),
+          });
+          captureException(err as Error, {
+            tags: { area: 'payment', kind: 'referral_commission', severity: 'warning' },
+            extra: { orderNumber },
+          }).catch(swallow('payment:sentry-referral'));
         }
       }
-    } catch (err) {
-      logError('payment.referral_commission_failed', {
-        orderNumber,
-        orderIds: updatedOrders.map(o => o.id),
-        userId: String(userId),
-        error: String(err).slice(0, 300),
-      });
-      captureException(err as Error, {
-        tags: { area: 'payment', kind: 'referral_commission', severity: 'warning' },
-        extra: { orderNumber },
-      }).catch(swallow('payment:sentry-referral'));
+      let _pcDeferred = false
+      try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_postConfirmBg()); _pcDeferred = true } } catch { /* no ctx */ }
+      if (!_pcDeferred) await _postConfirmBg()
     }
 
     // ── 알림톡 자동 발송 (주문 완료) ──────────────────────────────────────

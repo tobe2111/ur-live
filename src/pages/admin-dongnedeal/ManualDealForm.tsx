@@ -15,6 +15,9 @@ interface KakaoPlace {
   x: string // lng
   y: string // lat
   category_name?: string
+  // 🎯 2026-07-01: 카카오 장소 페이지 직접 링크 — place_url(place.map.kakao.com/{id}) 또는 id.
+  id?: string
+  place_url?: string
 }
 
 const CATS = [
@@ -24,7 +27,7 @@ const CATS = [
   { v: 'general', label: '일반' },
 ]
 
-const EMPTY = { name: '', category: 'meal_voucher', price: '', original_price: '', restaurant_name: '', restaurant_address: '', restaurant_phone: '', image_url: '', description: '' }
+const EMPTY = { name: '', category: 'meal_voucher', price: '', original_price: '', restaurant_name: '', restaurant_address: '', restaurant_phone: '', image_url: '', description: '', max_per_person: '', kakao_place_url: '' }
 
 export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { onSaved: () => void; editDeal?: DealRow | null; onCancelEdit?: () => void }) {
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
@@ -52,6 +55,8 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
       restaurant_phone: '',
       image_url: editDeal.image_url || '',
       description: '',
+      max_per_person: editDeal.max_per_person ? String(editDeal.max_per_person) : '',
+      kakao_place_url: editDeal.kakao_place_url || '',
     })
     setCoord(editDeal.restaurant_lat && editDeal.restaurant_lng ? { lat: editDeal.restaurant_lat, lng: editDeal.restaurant_lng } : null)
     setPlaces([]); setPhotos([]); setQ('')
@@ -69,7 +74,15 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
     try {
       const res = await api.get(`/api/naver/image/search?query=${encodeURIComponent(query)}&display=8`)
       const items: { link?: string; thumbnail?: string }[] = res.data?.data?.items || []
-      const mapped = items.map((it) => ({ link: it.link || '', thumbnail: it.thumbnail || it.link || '' })).filter((x) => x.link)
+      // 🛡️ 2026-07-01 (대표 신고 — mixed content): http 원본(imgnews/shop1.phinf 등)은 HTTPS 페이지에서
+      //   강제승격되다 인증서 불일치로 깨짐 → https 원본만, 아니면 네이버 CDN 썸네일(https 승격)로 대체.
+      const mapped = items
+        .map((it) => {
+          const thumb = (it.thumbnail || '').replace(/^http:/, 'https:')
+          const link = it.link && it.link.startsWith('https://') ? it.link : thumb
+          return { link, thumbnail: thumb || link }
+        })
+        .filter((x) => x.link.startsWith('https://'))
       setPhotos(mapped)
       if (mapped.length === 0) toast.info('네이버 사진 결과가 없어요 (다른 매장명으로 시도)')
     } catch (e: unknown) {
@@ -100,6 +113,8 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
       restaurant_address: p.road_address_name || p.address_name || '',
       restaurant_phone: p.phone || '',
       name: prev.name || p.place_name || '', // 상품명 비면 매장명으로 시드
+      // 🎯 2026-07-01: 카카오 장소 페이지 URL 캡처 → 상세 지도가 매장 페이지 직접 연결.
+      kakao_place_url: p.place_url || (p.id ? `https://place.map.kakao.com/${p.id}` : ''),
     }))
     setQ(p.place_name || '')
     setPlaces([])
@@ -203,6 +218,11 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
           <label className={lbl}>정가(원, 선택 · 취소선)</label>
           <input value={f.original_price} onChange={(e) => set('original_price', e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="140000" className={input} />
         </div>
+        {/* 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 최대 구매 수량 (0=무제한, 최대 99). */}
+        <div>
+          <label className={lbl}>1인당 최대 구매 수량 (0=무제한)</label>
+          <input value={f.max_per_person} onChange={(e) => set('max_per_person', e.target.value.replace(/[^\d]/g, '').slice(0, 2))} inputMode="numeric" placeholder="0" className={input} />
+        </div>
         <div>
           <label className={lbl}>매장명</label>
           <input value={f.restaurant_name} onChange={(e) => set('restaurant_name', e.target.value)} placeholder="한우공방 강남점" className={input} />
@@ -247,6 +267,12 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
         <div className="sm:col-span-2">
           <label className={lbl}>설명(선택)</label>
           <textarea value={f.description} onChange={(e) => set('description', e.target.value)} rows={2} placeholder="2인 한우 코스 · 결제 즉시 이용권 발급" className={input} />
+        </div>
+        {/* 🎯 2026-07-01 (대표 예시 — 김밥천국 kko.to): 카카오맵 매장 페이지 직접 연결 링크. */}
+        <div className="sm:col-span-2">
+          <label className={lbl}>카카오맵 링크(선택) — 매장 지도 정확 연결</label>
+          <input value={f.kakao_place_url} onChange={(e) => set('kakao_place_url', e.target.value)} placeholder="https://kko.to/… 또는 place.map.kakao.com/…" className={input} />
+          <p className="text-[11px] text-gray-400 mt-1">매장 검색·선택 시 자동 입력. 안 맞으면 카카오맵에서 매장 &lsquo;공유&rsquo; → 링크 복사해 붙여넣으세요.</p>
         </div>
       </div>
 

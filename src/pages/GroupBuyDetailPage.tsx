@@ -76,6 +76,10 @@ interface GroupBuyDetail {
   // 🛡️ 2026-05-27: 서버가 array 로 미리 parse 해서 보냄. 구 응답 (stale edge cache) 은 string — 둘 다 handle.
   group_buy_tiers?: string | Array<{ min: number; discount_pct: number }> | null
   current_discount_pct: number
+  /** 🎯 1인당 최대 구매 수량 (셀러 설정, 없으면 무제한). */
+  max_per_person?: number
+  /** 🎯 카카오 장소 페이지 URL (등록 시 캡처, 있으면 매장 페이지 직접 연결). */
+  kakao_place_url?: string
   seller_id?: number
   seller_name?: string
   seller_username?: string
@@ -293,6 +297,8 @@ export default function GroupBuyDetailPage() {
   // 🧭 2026-06-17: 즉시판매 단일가 모델 — 진행률 바/티어 사다리 제거 후 미사용이던 progress 변수 정리.
   const unitPrice = detail ? Math.round(detail.price * (1 - (detail.current_discount_pct || 0) / 100)) : 0
   const total = unitPrice * quantity
+  // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도"): 셀러 설정값으로 스텝퍼 상한. 미설정=기존 10.
+  const maxQty = detail?.max_per_person && detail.max_per_person > 0 ? detail.max_per_person : 10
   // 🏭 2026-06-06 (사용자 요청 — 가격 설득력): 정가(있으면) 대비 실제 결제가 절약액 계산.
   //   기준가 = original_price(정가, MSRP) 가 있고 결제가보다 크면 그것, 없으면 공구 기준가(price).
   //   순수 파생값 — SSR/폴링/잠금 동작 불변(렌더 카피만 추가).
@@ -438,8 +444,9 @@ export default function GroupBuyDetailPage() {
     }
   }
 
-  // 🧭 2026-07-02: skeleton 을 DetailSkeleton.tsx 로 추출(byte-동일 JSX) — App.tsx PageLoader 의
-  //   공구상세 분기와 공유해 [청크 로딩 → 데이터 로딩]이 한 장의 스켈레톤으로 이어짐(이중 로더 제거).
+  // 🧭 2026-07-02 (대표 신고 "로딩 2번 끊김" — 07-01 BrandLoader 통일을 상세에선 스켈레톤 공유로 대체):
+  //   청크 Suspense(App.tsx PageLoader 의 /group-buy/:id 분기)와 이 loading 이 **같은 DetailSkeleton** 을
+  //   사용 → 청크~데이터 로딩이 한 장으로 이어짐(로더 인스턴스 교체로 애니메이션 리셋되던 끊김 제거).
   if (loading) return <GroupBuyDetailSkeleton />
   if (!detail) {
     return (
@@ -748,7 +755,7 @@ export default function GroupBuyDetailPage() {
               <div style={{ borderRadius: '14px 14px 0 0', overflow: 'hidden', border: '1px solid var(--gbd-line2)', borderBottom: 'none' }}>
                 <DeferUntilVisible minHeight={172}>
                   <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>
-                    <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} />
+                    <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} placeUrl={detail.kakao_place_url} />
                   </Suspense>
                 </DeferUntilVisible>
               </div>
@@ -859,20 +866,25 @@ export default function GroupBuyDetailPage() {
             fixed + 프레임 정렬(lg) 유지 (BottomNav z-9999 위). gbd 자손이라 var() 상속. */}
       <footer
         className="fixed bottom-0 inset-x-0 z-[10002] lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[var(--app-frame)] lg:rounded-t-2xl"
-        style={{ background: 'var(--gbd-card)', borderTop: '1px solid var(--gbd-line2)', padding: '11px 16px calc(13px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 30px -18px rgba(0,0,0,.3)' }}
+        style={{ background: 'var(--gbd-card)', borderTop: '1px solid var(--gbd-line2)', padding: '7px 16px calc(8px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 30px -18px rgba(0,0,0,.3)' }}
         role="contentinfo" aria-label="결제 영역"
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-danger)', whiteSpace: 'nowrap' }}>
-            {isJoinable && totalSaving > 0 ? (quantity > 1 ? `총 ${formatNumber(totalSaving)}원 할인 중` : `${formatNumber(unitSaving)}원 할인 중`) : ''}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-danger)', whiteSpace: 'nowrap' }}>
+              {isJoinable && totalSaving > 0 ? (quantity > 1 ? `총 ${formatNumber(totalSaving)}원 할인 중` : `${formatNumber(unitSaving)}원 할인 중`) : ''}
+            </span>
+            {detail?.max_per_person && detail.max_per_person > 0 ? (
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>1인당 최대 {detail.max_per_person}개</span>
+            ) : null}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--gbd-line2)', borderRadius: 10, overflow: 'hidden' }} role="group" aria-label="수량 조절">
             <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!isJoinable || quantity <= 1} aria-label="수량 감소" style={{ width: 32, height: 32, border: 'none', background: 'var(--gbd-card)', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!isJoinable || quantity <= 1) ? .4 : 1 }}>−</button>
             <span style={{ minWidth: 30, textAlign: 'center', fontSize: 14, fontWeight: 700, color: 'var(--gbd-ink)' }} aria-live="polite" aria-label={`현재 ${quantity}장`}>{quantity}</span>
-            <button onClick={() => setQuantity(q => Math.min(10, q + 1))} disabled={!isJoinable || quantity >= 10} aria-label="수량 증가" style={{ width: 32, height: 32, border: 'none', background: 'var(--gbd-card)', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!isJoinable || quantity >= 10) ? .4 : 1 }}>+</button>
+            <button onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!isJoinable || quantity >= maxQty} aria-label="수량 증가" style={{ width: 32, height: 32, border: 'none', background: 'var(--gbd-card)', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!isJoinable || quantity >= maxQty) ? .4 : 1 }}>+</button>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 9 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 6 }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--gbd-sub)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
           <span style={{ fontSize: 11.5, color: 'var(--gbd-sub)', fontWeight: 500, whiteSpace: 'nowrap' }}>토스로 3초 안전결제 · 미사용 시 100% 자동환불</span>
         </div>
@@ -880,7 +892,7 @@ export default function GroupBuyDetailPage() {
           onClick={handleJoin}
           disabled={!isJoinable || joining}
           aria-label={isJoinable ? `${formatNumber(total)}원 구매하기` : '구매 불가'}
-          style={{ width: '100%', height: 53, border: 'none', borderRadius: 14, background: isJoinable ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: isJoinable ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+          style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: isJoinable ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: isJoinable ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
         >
           {joining ? '처리 중…' : !isJoinable ? '구매 불가' : <>{formatNumber(total)}원 구매하기<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
         </button>

@@ -410,8 +410,24 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
               })
               if (result.ok) {
                 await DB.prepare("UPDATE orders SET status = 'REFUNDED', payment_status = 'refunded' WHERE id = ?").bind(voucher.order_id).run().catch(() => null)
+              } else {
+                // 🚨 non-retryable(4xx) 실패는 cron 이 안 집음 → 어드민 벨/Discord 로 수동환불 알림.
+                const { alertTossRefundFailure } = await import('../../../worker/utils/toss-refund-alert')
+                await alertTossRefundFailure(c.env as { DISCORD_WEBHOOK_URL?: string }, DB, {
+                  source: '유저 셀프취소', paymentKey: voucher.payment_key, voucherId: voucher.id,
+                  amount: refundAmount, errorCode: result.error_code, errorMessage: result.error_message, httpStatus: result.http_status,
+                })
               }
-            } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher self-cancel toss]', e) }
+            } catch (e) {
+              if (import.meta.env?.DEV) console.warn('[voucher self-cancel toss]', e)
+              try {
+                const { alertTossRefundFailure } = await import('../../../worker/utils/toss-refund-alert')
+                await alertTossRefundFailure(c.env as { DISCORD_WEBHOOK_URL?: string }, DB, {
+                  source: '유저 셀프취소(예외)', paymentKey: voucher.payment_key, voucherId: voucher.id, amount: refundAmount,
+                  errorCode: 'EXCEPTION', errorMessage: (e as Error)?.message,
+                })
+              } catch { /* fail-soft */ }
+            }
           })())
         }
 
