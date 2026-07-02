@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
+import AdminLayout from '@/components/AdminLayout'
 import SEO from '@/components/SEO'
 
 /**
@@ -82,6 +83,7 @@ export default function AdminKakaoLoginDiagPage() {
   const recentOidcCount = recentLogins.filter((r) => (r.ms_userinfo ?? 99) <= 5).length
 
   return (
+    <AdminLayout title="카카오 로그인 진단">
     <div className="min-h-screen bg-[#F4F5F7] p-4 md:p-8">
       <SEO title="카카오 로그인 진단 - 유어딜" description="admin" url="/admin/kakao-login-diag" noindex />
       <div className="max-w-3xl mx-auto">
@@ -177,5 +179,6 @@ export default function AdminKakaoLoginDiagPage() {
         </details>
       </div>
     </div>
+    </AdminLayout>
   )
 }

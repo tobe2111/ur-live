@@ -298,8 +298,22 @@ adminProductsRoutes.delete('/products/:id', cors(), async (c) => {
       return c.json({ success: true, data: { id: productId, soft_deleted: true } });
     }
 
-    await executeRun(DB, 'DELETE FROM products WHERE id = ?', [productId]);
-    await writeAuditLog(c, { action: 'hard_delete_product', targetType: 'product', targetId: productId });
+    // 🛡️ 2026-07-02 (대표 신고 — 동네딜 단건 삭제 500): order_items 만 검사하던 하드삭제가
+    //   다른 FK 참조(fcfs_applications/product_supply_meta/vouchers/product_regions 등) 때문에 실패 → 500.
+    //   seed-demo 일괄삭제(2026-07-01)와 동일 패턴: 부속 데이터 선정리(best-effort) → DELETE 시도 →
+    //   그래도 실패(잔여 FK)면 soft-retire(is_active=0) 폴백 — 어떤 경우에도 500 없이 목록에서 사라짐.
+    await executeRun(DB, 'DELETE FROM product_supply_meta WHERE product_id = ?', [productId]).catch(() => {});
+    await executeRun(DB, 'DELETE FROM fcfs_applications WHERE product_id = ?', [productId]).catch(() => {});
+    await executeRun(DB, 'DELETE FROM product_regions WHERE product_id = ?', [productId]).catch(() => {});
+    try {
+      await executeRun(DB, 'DELETE FROM products WHERE id = ?', [productId]);
+      await writeAuditLog(c, { action: 'hard_delete_product', targetType: 'product', targetId: productId });
+    } catch {
+      await executeRun(DB, "UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?", [productId]);
+      await writeAuditLog(c, { action: 'soft_delete_product', targetType: 'product', targetId: productId, after: { is_active: 0, reason: 'fk_refs' } });
+      await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+      return c.json({ success: true, data: { id: productId, soft_deleted: true } });
+    }
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
 
     return c.json({ success: true, data: { id: productId } });
@@ -1006,17 +1020,16 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     const items = catFilter ? DEAL_DEMO.filter((d) => d.cat === catFilter) : DEAL_DEMO;
     if (items.length === 0) return c.json({ success: false, error: '해당 카테고리 데모 템플릿이 없습니다' }, 400);
 
-    // 🛡️ 2026-07-02 (대표 "영구적으로 해결"): 기존에 시드/등록된 **깨지는 이미지**(phinf 인증서
-    //   불일치·http mixed content) 일괄 치유 — search.pstatic 프록시로 랩. 새 시드뿐 아니라
-    //   이미 홈에 떠 있는 오염 카드(ERR_CERT_COMMON_NAME_INVALID)까지 이 버튼 한 번으로 복구.
+    // 🛡️ 2026-07-02 v2 (라이브 콘솔 증거로 방향 전환): v1 은 phinf/http 원본을 search.pstatic
+    //   프록시로 감쌌으나 **그 프록시가 404**(imgnews·yt3 등 외부발 src 거부 — 콘솔 실측).
+    //   v2 치유 = 프록시 래퍼로 오염된 행을 **원본으로 un-wrap**. 원본 http/phinf 는 렌더 시점
+    //   cfImage(zone 리사이저, CDN_CGI_VERIFIED 실측 ok)가 처리하므로 DB 는 원본이 정답.
     let healed = 0;
     try {
       const { needsNaverImageHeal, toNaverSafeImageUrl } = await import('../../../shared/naver-safe-image');
       const broken = await DB.prepare(
         `SELECT id, image_url FROM products
-          WHERE image_url LIKE 'http://%'
-             OR image_url LIKE '%phinf%'
-             OR (image_url LIKE '%naver.net%' AND image_url NOT LIKE 'https://search.pstatic.net%')
+          WHERE image_url LIKE 'https://search.pstatic.net/common/%'
           LIMIT 500`
       ).all<{ id: number; image_url: string }>().catch(() => ({ results: [] as { id: number; image_url: string }[] }));
       for (const rowB of (broken.results || [])) {
@@ -1091,15 +1104,15 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       try {
         res = await DB.prepare(
           `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-             is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+             is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
         ).bind(dispName, d.desc, d.price, d.orig, img, d.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, slug).run();
       } catch {
         // 🛡️ restaurant_lat/lng 컬럼 미존재 환경 폴백 — 좌표 없이 시드(클라 지오코딩이 지도 보정).
         res = await DB.prepare(
           `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-             is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, slug, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, datetime('now'), datetime('now'))`
+             is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, slug, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, datetime('now'), datetime('now'))`
         ).bind(dispName, d.desc, d.price, d.orig, img, d.cat, restName, restAddr, slug).run();
       }
       seeded++;
@@ -1203,8 +1216,8 @@ adminProductsRoutes.post('/dongnedeal/bulk-import', cors(), async (c) => {
       try {
         await c.env.DB.prepare(
           `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-             is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, datetime('now'), datetime('now'))`
+             is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, datetime('now'), datetime('now'))`
         ).bind(name, desc, price, origNum > price ? origNum : null, img, cat, rest, addr).run();
         created++;
         results.push({ row: rowNum, name, status: 'ok' });
@@ -1241,6 +1254,7 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
       restaurant_phone?: string; lat?: number | string; lng?: number | string; description?: string;
       max_per_person?: number | string;
       kakao_place_url?: string;
+      image_urls?: string[];  // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 갤러리용 다중 이미지
     };
     const name = String(b.name || '').trim();
     const cat = mapDealCategory(String(b.category || '').trim());
@@ -1257,12 +1271,17 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
     const desc = String(b.description || '').trim() || name;
     const lat = Number(b.lat); const lng = Number(b.lng);
     const hasCoord = Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0;
+    // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 다중 이미지 → products.image_urls(JSON) — 상세 스와이프
+    //   갤러리(image_url + image_urls 병합·중복제거)가 소비. 최대 8장·http(s) URL 만.
+    const galleryJson = Array.isArray(b.image_urls)
+      ? JSON.stringify(b.image_urls.filter((u) => typeof u === 'string' && /^https?:\/\//.test(u)).slice(0, 8))
+      : null;
     const r = await c.env.DB.prepare(
-      `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
-         is_active, group_buy_status, group_buy_target, restaurant_name, restaurant_address, restaurant_phone,
+      `INSERT INTO products (name, description, price, original_price, image_url, image_urls, category, product_type,
+         is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, restaurant_phone,
          restaurant_lat, restaurant_lng, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-    ).bind(name, desc, price, origNum > price ? origNum : null, img, cat, rest, addr, phone,
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+    ).bind(name, desc, price, origNum > price ? origNum : null, img, galleryJson && galleryJson !== '[]' ? galleryJson : null, cat, rest, addr, phone,
       hasCoord ? lat : null, hasCoord ? lng : null).run();
     // 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 한도 meta 저장 (1~99, 0/미설정=무제한).
     {
@@ -1277,6 +1296,16 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
       if (r.meta?.last_row_id && kpu) {
         await setSupplyMeta(c.env.DB, Number(r.meta.last_row_id), { kakao_place_url: kpu }).catch(() => {});
       }
+    }
+    // 🧭 2026-07-02: 좌표 없이 등록 시 즉시 지오코딩(waitUntil, fail-soft) — cron 전 갭 제거.
+    if (!hasCoord && addr && r.meta?.last_row_id) {
+      try {
+        c.executionCtx.waitUntil(
+          import('../../../worker/cron/restaurant-geocode').then((m) =>
+            m.geocodeProductNow(c.env as { DB: D1Database; KAKAO_REST_API_KEY?: string }, Number(r.meta.last_row_id))
+          ).catch(() => {})
+        );
+      } catch { /* ctx 미가용 — cron 백필 */ }
     }
     await writeAuditLog(c, { action: 'dongnedeal_create', targetType: 'product', targetId: r.meta?.last_row_id, after: { name, cat, hasCoord } }).catch(() => {});
     // 🛡️ 2026-07-01 (대표 신고 — 어드민 수정이 홈에 즉시 반영 안 됨): 동네딜 뮤테이션 시 공구 목록
@@ -1334,6 +1363,13 @@ adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
     if (b.price !== undefined) { const n = Math.round(Number(String(b.price).replace(/[^\d.-]/g, ''))); if (Number.isFinite(n) && n > 0) put('price', n); }
     if (b.original_price !== undefined) { const n = Math.round(Number(String(b.original_price).replace(/[^\d.-]/g, ''))) || 0; put('original_price', n > 0 ? n : null); }
     if (b.image_url !== undefined) put('image_url', String(b.image_url || '').trim() || null);
+    // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 갤러리 다중 이미지 수정 — 빈 배열=해제(null).
+    if (b.image_urls !== undefined) {
+      const arr = Array.isArray(b.image_urls)
+        ? (b.image_urls as unknown[]).filter((u): u is string => typeof u === 'string' && /^https?:\/\//.test(u)).slice(0, 8)
+        : [];
+      put('image_urls', arr.length > 0 ? JSON.stringify(arr) : null);
+    }
     if (b.restaurant_name !== undefined) put('restaurant_name', String(b.restaurant_name || '').trim() || null);
     if (b.restaurant_address !== undefined) put('restaurant_address', String(b.restaurant_address || '').trim() || null);
     if (b.restaurant_phone !== undefined) put('restaurant_phone', String(b.restaurant_phone || '').trim() || null);

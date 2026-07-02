@@ -94,6 +94,11 @@ const EXTERNAL_PROXY_HOSTS = new Set([
   'imgnews.naver.net',          // 네이버 뉴스 이미지 (셀러 등록 상품에 사용례)
   'yt3.googleusercontent.com',  // 유튜브 채널 아바타 (브랜드 아이콘)
   'picsum.photos',              // 데모/시드 이미지
+  // 🚑 2026-07-02 (대표 신고 CSP/cert — 네이버 쇼핑 이미지): shop1.phinf.naver.net 등 *.phinf.naver.net 는
+  //   http:// 로 저장돼 브라우저 직결 시 CSP 차단 + https 승격 시 인증서 오류(ERR_CERT_COMMON_NAME_INVALID)로
+  //   **완전 깨짐**. cdn-cgi 리사이저는 http 원본 fetch 가능(라이브 실측 cf-resized ok, 50KB) → same-origin
+  //   https 로 서빙되며 CSP/cert 문제 원천 해소. apex 등재로 shop1/shop2… 전 서브도메인 커버.
+  'phinf.naver.net',
 ])
 
 // 🛡️ 2026-05-27 (mobile data saver): Save-Data 감지 — 데이터 절약 모드 사용자에게 quality 65 로 다운.
@@ -196,7 +201,7 @@ export function cfImage(src: string | undefined | null, opts: ResizeOptions = {}
       //   /api/image/resize 프록시는 리사이즈 불가(06-11 실측)라 cdn-cgi 직결이 유일 변환 경로.
       //   `onerror=redirect` 를 함께 부여: 리사이저 원본 fetch 실패 시 원본으로 302 → 항상 표시
       //   (2026-06-11 kakaocdn 깨짐 클래스 구조적 차단 — 실패해도 현행(원본)과 동일).
-      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos']  // giftishow 제거 (524 — 위에서 raw 처리)
+      const CDN_CGI_VERIFIED = ['kt.com', 'media.ur-team.com', 'pstatic.net', 'imgnews.naver.net', 'yt3.googleusercontent.com', 'picsum.photos', 'phinf.naver.net']  // giftishow 제거 (524 — 위에서 raw 처리)
       if (CDN_CGI_VERIFIED.some(h => host === h || host.endsWith('.' + h))) {
         return `/cdn-cgi/image/width=${w},quality=${q},format=auto,onerror=redirect/${src}`
       }

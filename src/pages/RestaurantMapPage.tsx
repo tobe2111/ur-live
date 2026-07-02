@@ -54,7 +54,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   //   (캐시 보유분 재요청 금지 + 동일 주소 1회만 + 429 시 배치 중단 — useGeocodeMissing.ts 참조).
   const enrichedRestaurants = useGeocodeMissing(restaurants)
   // 🎯 2026-06-20 선착순: 활성 선착순 상품 config(상위노출·배지·지원용). id→{spots,appliedDisplay}.
-  const [fcfsMap, setFcfsMap] = useState<Map<number, { spots: number; appliedDisplay: number }>>(new Map())
+  // 🎯 2026-07-02 (대표 "첫 페인트에 응모 버튼 늦게 등장"): 목록 응답에 서버 enrich 된 r.fcfs 를
+  //   첫 페인트 시드로 즉시 사용 — 별도 /api/fcfs/active 도착 전에도 응모 버튼·배지가 함께 그려짐.
+  //   fetch 결과가 오면 그 값(신선 카운트) 우선.
+  const [liveFcfsMap, setLiveFcfsMap] = useState<Map<number, { spots: number; appliedDisplay: number }>>(new Map())
   useEffect(() => {
     api.get('/api/fcfs/active')
       .then(r => {
@@ -62,10 +65,17 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         for (const p of (r.data?.data || [])) {
           if (p?.fcfs?.enabled) m.set(p.id, { spots: p.fcfs.spots || 0, appliedDisplay: p.fcfs.appliedDisplay || 0 })
         }
-        setFcfsMap(m)
+        setLiveFcfsMap(m)
       })
       .catch(() => { /* silent */ })
   }, [])
+  const fcfsMap = useMemo(() => {
+    const m = new Map(liveFcfsMap)
+    for (const r of restaurants as Array<{ id: number; fcfs?: { enabled?: boolean; spots?: number; appliedDisplay?: number } }>) {
+      if (!m.has(r.id) && r.fcfs?.enabled) m.set(r.id, { spots: r.fcfs.spots || 0, appliedDisplay: r.fcfs.appliedDisplay || 0 })
+    }
+    return m
+  }, [liveFcfsMap, restaurants])
   const applyFcfs = useCallback(async (productId: number) => {
     try {
       const res = await api.post(`/api/fcfs/${productId}/apply`)

@@ -27,6 +27,8 @@ const CATS = [
   { v: 'general', label: '일반' },
 ]
 
+import { cfImage } from '@/utils/cf-image'
+
 const EMPTY = { name: '', category: 'meal_voucher', price: '', original_price: '', restaurant_name: '', restaurant_address: '', restaurant_phone: '', image_url: '', description: '', max_per_person: '', kakao_place_url: '' }
 
 export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { onSaved: () => void; editDeal?: DealRow | null; onCancelEdit?: () => void }) {
@@ -39,6 +41,8 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
   const [busy, setBusy] = useState(false)
   const [photos, setPhotos] = useState<{ link: string; thumbnail: string }[]>([])
   const [photoBusy, setPhotoBusy] = useState(false)
+  // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 다중 선택 — 첫 장 = 대표(image_url), 전체 = image_urls(JSON, 상세 갤러리).
+  const [selectedPhotos, setSelectedPhotos] = useState<string[]>([])
 
   const isEdit = !!editDeal
 
@@ -64,7 +68,7 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
 
   const set = (k: keyof typeof f, v: string) => setF((prev) => ({ ...prev, [k]: v }))
 
-  const resetForm = () => { setF({ ...EMPTY }); setCoord(null); setQ(''); setPlaces([]); setPhotos([]) }
+  const resetForm = () => { setF({ ...EMPTY }); setCoord(null); setQ(''); setPlaces([]); setPhotos([]); setSelectedPhotos([]) }
 
   // 🖼️ 네이버 이미지 검색으로 매장 대표 사진 후보 가져오기 (카카오=정보·좌표, 네이버=사진).
   const fetchPhotos = async () => {
@@ -74,9 +78,8 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
     try {
       const res = await api.get(`/api/naver/image/search?query=${encodeURIComponent(query)}&display=8`)
       const items: { link?: string; thumbnail?: string }[] = res.data?.data?.items || []
-      // 🛡️ 2026-07-02 (대표 "영구적으로 해결"): 네이버 원본 호스트는 https 여도 인증서 불일치
-      //   (shop1.phinf ERR_CERT_COMMON_NAME_INVALID)로 깨짐 → 원본 직접 사용 전면 금지.
-      //   후보 표시·저장 모두 search.pstatic.net 프록시(toNaverSafeImageUrl)로 — 항상 열림.
+      // 🛡️ 2026-07-02 v2: search.pstatic 프록시가 외부발 src 에 404(콘솔 실측) → 저장은 **원본**
+      //   (toNaverSafeImageUrl v2 = un-wrap/정규화), 표시·렌더는 cfImage(zone 리사이저)가 담당.
       const { toNaverSafeImageUrl } = await import('@/shared/naver-safe-image')
       const mapped = items
         .map((it) => {
@@ -127,7 +130,8 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
     if (!(Number(f.price.replace(/[^\d]/g, '')) > 0)) { toast.error('판매가를 입력하세요'); return }
     setBusy(true)
     try {
-      const payload = { ...f, lat: coord?.lat, lng: coord?.lng }
+      // 🖼️ 다중 선택분 전달 — 서버가 products.image_urls(JSON) 저장 → 상세 스와이프 갤러리 표시.
+      const payload = { ...f, lat: coord?.lat, lng: coord?.lng, image_urls: selectedPhotos.length > 0 ? selectedPhotos : undefined }
       if (isEdit && editDeal) {
         const res = await api.patch(`/api/admin/dongnedeal/${editDeal.id}`, payload, h)
         if (res.data?.success) { toast.success('수정 저장됨'); onSaved() }
@@ -247,22 +251,40 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
           <input value={f.image_url} onChange={(e) => set('image_url', e.target.value)} placeholder="https://… (네이버 검색으로 채우거나 직접 붙여넣기 · 비우면 카테고리 기본)" className={input} />
           {photos.length > 0 && (
             <div className="grid grid-cols-4 gap-2 mt-2">
-              {photos.map((p, i) => (
-                <button
-                  type="button" key={i}
-                  onClick={() => { set('image_url', p.link); setPhotos([]) }}
-                  className={`relative aspect-square rounded-lg overflow-hidden border-2 ${f.image_url === p.link ? 'border-gray-900' : 'border-gray-100'} hover:border-gray-400`}
-                >
-                  <img src={p.thumbnail} alt="" className="w-full h-full object-cover" loading="lazy"
-                    onError={(e) => { const b = (e.currentTarget.closest('button') as HTMLElement | null); if (b) b.style.display = 'none' }} />
-                </button>
-              ))}
+              {photos.map((p, i) => {
+                const sel = selectedPhotos.indexOf(p.link)
+                return (
+                  <button
+                    type="button" key={i}
+                    onClick={() => {
+                      // 토글 다중 선택 — 첫 장이 대표. 그리드는 유지해 여러 장 고르게.
+                      setSelectedPhotos((prev) => {
+                        const next = prev.includes(p.link) ? prev.filter((u) => u !== p.link) : [...prev, p.link]
+                        set('image_url', next[0] || '')
+                        return next
+                      })
+                    }}
+                    className={`relative aspect-square rounded-lg overflow-hidden border-2 ${sel >= 0 ? 'border-gray-900' : 'border-gray-100'} hover:border-gray-400`}
+                  >
+                    <img src={cfImage(p.thumbnail, { width: 200, quality: 80, format: 'auto' }) || p.thumbnail} alt="" className="w-full h-full object-cover" loading="lazy"
+                      onError={(e) => { const b = (e.currentTarget.closest('button') as HTMLElement | null); if (b) b.style.display = 'none' }} />
+                    {sel >= 0 && (
+                      <span className="absolute top-1 left-1 w-5 h-5 rounded-full bg-gray-900 text-white text-[11px] font-bold flex items-center justify-center">
+                        {sel + 1}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
+          )}
+          {photos.length > 0 && (
+            <p className="text-[11px] text-gray-400 mt-1.5">여러 장 클릭해 고르세요 — ①번이 대표 사진, 나머지는 상세 갤러리에 함께 표시돼요.</p>
           )}
           {f.image_url && (
             <div className="mt-2 flex items-center gap-2">
-              <img src={f.image_url} alt="미리보기" className="w-16 h-16 rounded-lg object-cover border border-gray-200" onError={(e) => { e.currentTarget.style.opacity = '0.25' }} />
-              <span className="text-[11px] text-gray-400">선택된 대표 사진 미리보기 — 흐리게 보이면 안 열리는 이미지예요(다른 사진 선택)</span>
+              <img src={cfImage(f.image_url, { width: 128, quality: 80, format: 'auto' }) || f.image_url} alt="미리보기" className="w-16 h-16 rounded-lg object-cover border border-gray-200" onError={(e) => { e.currentTarget.style.opacity = '0.25' }} />
+              <span className="text-[11px] text-gray-400">대표 사진 미리보기{selectedPhotos.length > 1 ? ` · 갤러리 ${selectedPhotos.length}장` : ''} — 흐리게 보이면 안 열리는 이미지예요</span>
             </div>
           )}
         </div>

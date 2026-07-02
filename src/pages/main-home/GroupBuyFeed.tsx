@@ -187,9 +187,13 @@ export default function GroupBuyFeed() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8">
           {/* 🛡️ 2026-05-24 (loading P0): 첫 4개 카드 = above-fold → eager + fetchpriority=high (LCP 단축).
               나머지는 lazy 유지 (scroll 시 자연 로드). */}
-          {sorted.map((p, idx) => (
-            <GroupBuyFeedCard key={p.id} p={p} aboveFold={idx < 4} fcfs={fcfsMap.get(p.id)} />
-          ))}
+          {/* 🎯 2026-07-02 (대표 "첫 페인트에 응모/추첨 배지 늦게 등장"): 피드 응답에 서버 enrich 된
+              p.fcfs 를 첫 페인트 시드로 사용, 클라 훅(fcfsMap — 신선 카운트)이 도착하면 그 값 우선. */}
+          {sorted.map((p, idx) => {
+            const emb = (p as { fcfs?: { enabled?: boolean; spots?: number; appliedDisplay?: number; deadline?: string | null } }).fcfs
+            const seed = emb?.enabled ? { spots: emb.spots || 0, appliedDisplay: emb.appliedDisplay || 0, deadline: emb.deadline ?? null } : undefined
+            return <GroupBuyFeedCard key={p.id} p={p} aboveFold={idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} />
+          })}
         </div>
       )}
 

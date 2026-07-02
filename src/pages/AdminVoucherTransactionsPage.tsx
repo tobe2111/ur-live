@@ -14,6 +14,7 @@
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import AdminLayout from '@/components/AdminLayout'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -292,6 +293,7 @@ export default function AdminVoucherTransactionsPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
+    <AdminLayout title="교환권 거래">
     <div className="min-h-screen bg-gray-50 p-4">
       <SEO title="교환권 거래 — 어드민" url="/admin/voucher-transactions" noindex />
       <div className="max-w-7xl mx-auto">
@@ -475,6 +477,7 @@ export default function AdminVoucherTransactionsPage() {
         )}
       </div>
     </div>
+    </AdminLayout>
   )
 }
 
