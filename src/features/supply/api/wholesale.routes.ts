@@ -715,7 +715,7 @@ app.get('/home', async (c) => {
   const { DB } = c.env
   try {
     await Promise.all([ensureSupplyVisibilitySchema(DB), ensureSupplyMetaTable(DB)])
-    const [sg, table, homeMallId] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), resolveMallId(c)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
+    const [sg, table, homeMallId, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), resolveMallId(c), loadPlatformCommissionPct(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약). 🛡️ 2026-07-02: commPct(표시=청구 정합).
     const grade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
     // 🏁 2026-06-12 (전 플로우 감사 🟡): /home 만 mall_id 스코프 누락 — 멀티몰 2개+ 가동 시
     //   베스트/신상에 타 몰 상품 노출(주문은 차단되나 혼선). 카탈로그(:1090)와 동일 조건으로 정합.
@@ -724,7 +724,7 @@ app.get('/home', async (c) => {
     const baseWhere = `p.is_supply_product = 1 AND p.is_active = 1 AND p.supply_source_id IS NULL AND COALESCE(p.supply_price,0) > 0 AND COALESCE(p.mall_id,1) = ${Number(homeMallId) || 1} AND ${visibilityWhere('p')} AND ${gradeExposureWhere('p')}`
     const cols = `p.id, p.name, p.image_url, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, COALESCE(p.min_order_qty,1) AS moq, EXISTS(SELECT 1 FROM product_qty_tiers t WHERE t.product_id = p.id) AS has_tiers, p.supply_margin_override_pct AS margin_override, p.dominant_color, COALESCE(p.sold_count,0) AS sold_count`
     const enrich = (rows: HomeRow[]) => (rows || []).map(r => {
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override })
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: r.supply_price, retailPrice: (r as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override, defaultPlatformMarginPct: commPct })
       // ⚠️ retail_price = 권장소비자가(공급자 입력) — 원가(supply_price)/제조사 신원은 비노출. 판매사 마진 산출용.
       return { id: r.id, name: r.name, image_url: r.image_url, category: r.category, stock: r.stock, dominant_color: r.dominant_color ?? null, distributor_price: price, retail_price: r.retail_price || null, moq: Math.max(1, r.moq || 1), has_tiers: !!r.has_tiers, sold_count: r.sold_count || 0 }
     })
@@ -777,7 +777,7 @@ app.get('/recent-items', async (c) => {
     const ids = [...seen.keys()].slice(0, 12)
     if (!ids.length) return c.json({ success: true, items: [] })
 
-    const [sg, table] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
+    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadPlatformCommissionPct(DB)])  // 🏭 2026-06-07: 병렬. 🛡️ 2026-07-02: commPct(표시=청구 정합)
     const ph = ids.map(() => '?').join(',')
     // 현재 구매 가능 + 가시성 통과한 원본 공급상품만 (단종/숨김 제외).
     const prods = await DB.prepare(`
@@ -792,7 +792,7 @@ app.get('/recent-items', async (c) => {
     const items = ids.map(id => {
       const p = byId.get(id); const meta = seen.get(id)
       if (!p) return null
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: p.supply_price, retailPrice: (p as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override })
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: p.supply_price, retailPrice: (p as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override, defaultPlatformMarginPct: commPct })
       const moq = Math.max(1, p.moq || 1)
       return { id: p.id, name: p.name, image_url: p.image_url, stock: p.stock, distributor_price: price, retail_price: p.retail_price || null, moq, last_qty: Math.max(moq, meta?.qty || moq), last_date: (meta?.created_at || '').slice(0, 10) }
     }).filter(Boolean)
@@ -947,11 +947,12 @@ app.get('/catalog', async (c) => {
     // ensure 류는 WeakSet 메모이즈(첫 요청 후 no-op) — 병렬 실행으로 첫 요청 RTT 도 단축.
     await Promise.all([ensureSupplyVisibilitySchema(DB), ensureQtyConstraintSchema(DB), ensureSupplierPolicySchema(DB), ensureSupplyMetaTable(DB)])
     // 🏭 등급/등급표/몰/가시성제한 — 상호 독립 쿼리 4개 순차 await → 병렬(1 RTT).
-    const [sg, table, mallId, visRestricted] = await Promise.all([
+    const [sg, table, mallId, visRestricted, commPct] = await Promise.all([
       guest ? Promise.resolve({ distributor_grade: null, special_discount_until: null } as Awaited<ReturnType<typeof loadSellerGrade>>) : loadSellerGrade(DB, sellerId!),
       loadGradeTable(DB),
       resolveMallId(c),
       hasRestrictedVisibility(DB),
+      loadPlatformCommissionPct(DB), // 🛡️ 2026-07-02: 표시가=청구가 정합(전역 마진 기본).
     ])
     const grade: DistributorGrade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
 
@@ -1091,11 +1092,16 @@ app.get('/catalog', async (c) => {
     }
 
 
+    // 🚚 2026-07-02 (감사 — 표시=청구 정합): 상품별 배송비(wholesale_shipping_fee) 일괄 로드 → 카드/카트에 동봉.
+    //   기존엔 카탈로그가 정책 배송비만 줘서, 상품별 배송비 설정 상품을 리스트에서 담으면 체크아웃 배송비가
+    //   서버 청구액(computeSupplierShipping 은 상품별 우선)과 어긋났음. detail 은 이미 반환 중 — 리스트도 정합.
+    const listShipMeta = await getSupplyMeta(DB, (rows.results || []).map(r => r.id)).catch(() => undefined)
     //   비로그인(guest) → 도매가/권장가/마진 전부 가림(null) + requires_login. (옵션 A: 도매가 숨김)
     const items = (rows.results || []).map(r => {
       const price = guest ? null : resolveDistributorPrice({
         baseSupplyPrice: r.supply_price, retailPrice: r.retail_price, grade: sg.distributor_grade,
         specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override,
+        defaultPlatformMarginPct: commPct,
       }).price
       const supId = (Number.isFinite(r.supplier_id as number) && (r.supplier_id as number) > 0) ? (r.supplier_id as number) : null
       // 🚚 정책은 JOIN 으로 동봉됨 (loadSupplierPolicies 별도 RTT 제거) — 동일 값.
@@ -1115,6 +1121,8 @@ app.get('/catalog', async (c) => {
         // 🚚 제조사별 배송/주문 정책(비식별 group key + 정책 숫자) — 카트 그룹 계산용.
         supplier_group: supId != null ? `s${supId}` : null,
         supplier_policy: supId != null ? { min_order_amount: supPol?.min_order_amount ?? 0, shipping_fee: supPol?.shipping_fee ?? 0, free_ship_threshold: supPol?.free_ship_threshold ?? 0 } : null,
+        // 🚚 상품별 배송비(설정 시 정책보다 우선) — 카트 그룹 배송비 계산이 서버와 동일하도록 동봉.
+        product_shipping_fee: parseProductShipFee(listShipMeta?.get(r.id)) ?? null,
         requires_login: guest,
       }
     })
@@ -1273,14 +1281,16 @@ app.get('/catalog/:id{[0-9]+}', async (c) => {
 
     // 🛡️ PRC-1: 최소 플랫폼 마진율(%) — DISPLAY 와 CHARGE 가 동일 floor 를 쓰도록 요청당 1회 읽음(기본 0=현행 불변).
     //   네 쿼리 모두 독립 → 병렬(3 RTT 절약, 카탈로그 리스트와 동일 패턴).
-    const [table, minMarginPct, tierMap] = await Promise.all([
+    const [table, minMarginPct, tierMap, commPct] = await Promise.all([
       loadGradeTable(DB),
       loadMinPlatformMarginPct(DB),
       loadQtyTiers(DB, [id]),
+      loadPlatformCommissionPct(DB), // 🛡️ 2026-07-02: 표시가=청구가 정합(전역 마진 기본).
     ]) // sg 는 SELECT 전 등급게이트에서 이미 로드됨(재사용 — 중복 쿼리 제거)
     const { price, grade } = resolveDistributorPrice({
       baseSupplyPrice: r.supply_price, retailPrice: r.retail_price, grade: sg.distributor_grade,
       specialUntil: sg.special_discount_until, table, marginOverridePct: r.margin_override,
+      defaultPlatformMarginPct: commPct,
     })
     const rawTiers = tierMap.get(r.id) || []
     // 🛡️ PRC-1: floor = effectiveTierFloor(등급가, 공급원가, 최소마진%) = min(등급가, round(공급가×(1+최소마진%))).
@@ -2076,7 +2086,7 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
 
     await ensureSupplyVisibilitySchema(DB)
     await ensureQtyConstraintSchema(DB)
-    const [sg, table, minMarginPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB)])
+    const [sg, table, minMarginPct, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB), loadPlatformCommissionPct(DB)]) // 🛡️ 2026-07-02: commPct(표시=청구 정합)
     const placeholders = ids.map(() => '?').join(',')
     // 🏬 감사 🟡#3: 미리보기도 주문과 동일 mall 스코프(크로스몰 차단).
     const previewMallId = await resolveMallId(c)
@@ -2108,7 +2118,7 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
       if (qty < moq) { invalidPid.add(pid); errors.push({ product_id: pid, name: p.name, qty, reason: `최소 주문 수량 ${moq}개 미만 (합계 ${qty}개)` }); continue }
       if (orderMultiple > 1 && qty % orderMultiple !== 0) { invalidPid.add(pid); errors.push({ product_id: pid, name: p.name, qty, reason: `${orderMultiple}개 단위로만 주문 가능 (합계 ${qty}개)` }); continue }
       if (p.stock != null && p.stock < qty) { invalidPid.add(pid); errors.push({ product_id: pid, name: p.name, qty, reason: `재고 부족 (재고 ${p.stock}개, 합계 ${qty}개)` }); continue }
-      const { price } = resolveDistributorPrice({ baseSupplyPrice: p.supply_price, retailPrice: (p as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override })
+      const { price } = resolveDistributorPrice({ baseSupplyPrice: p.supply_price, retailPrice: (p as { retail_price?: number }).retail_price, grade: sg.distributor_grade, specialUntil: sg.special_discount_until, table, marginOverridePct: p.margin_override, defaultPlatformMarginPct: commPct })
       const tierFloor = effectiveTierFloor(price, p.supply_price, minMarginPct)
       const unit = tierUnitPrice(price, qty, tierMap.get(pid), tierFloor)
       priceByPid.set(pid, { unit, supplier_id: p.supplier_id, name: p.name, image_url: p.image_url })

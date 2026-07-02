@@ -24,6 +24,8 @@ export interface CatalogItem {
   //   카트에 스냅샷으로 넘겨야 카트·체크아웃 배송비/최소주문 표시가 실청구와 일치(이전 누락 → 표시 0/무료).
   supplier_group?: string | null
   supplier_policy?: { min_order_amount?: number; shipping_fee?: number; free_ship_threshold?: number } | null
+  // 🚚 2026-07-02 (감사): 상품별 배송비(설정 시 정책보다 우선) — 담기 시 카트에 넘겨 체크아웃 배송비가 실청구와 일치.
+  product_shipping_fee?: number | null
 }
 
 // 🏷️ 2026-06-09 브랜드 전시관 — 현재 몰의 브랜드(brand_name) distinct 목록 + 상품수 + 로고 (?brands=1 응답).
