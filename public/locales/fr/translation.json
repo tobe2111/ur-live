@@ -2138,11 +2138,14 @@
       "reviewNote": "Examen sous 1-2 jours ouvrés → résultat via app et KakaoTalk. Approbation auto si les données NTS correspondent.",
       "reviewNote2": "Une fois approuvé, publiez produits et bons depuis le tableau de bord.",
       "submitting": "Envoi...",
-      "submit": "Demander un compte pro"
+      "submit": "Demander un compte pro",
+      "secondGate": "💳 Le règlement en espèces nécessite une vérification unique de la licence commerciale après approbation (Tableau de bord → Infos pro).",
+      "prospectBanner": " l'agence a pré-rempli les infos de votre boutique. Vérifiez et soumettez."
     },
     "mailOrderNumber": "N° de vente à distance",
     "mailOrderNumberPlaceholder": "ex. 2026-Seoul-01234",
-    "mailOrderNumberHint": "Affiché publiquement dans les infos vendeur de votre linkshop"  },
+    "mailOrderNumberHint": "Affiché publiquement dans les infos vendeur de votre linkshop"
+  },
   "admin": {
     "login": {
       "title": "Connexion administrateur",
@@ -4479,7 +4482,8 @@
     "benefit2": "Enregistrer et vendre des produits",
     "benefit3": "Voir revenus et règlements",
     "contactCS": "Contacter le Support",
-    "reloadHint": "Rechargez la page pour actualiser le statut"
+    "reloadHint": "Rechargez la page pour actualiser le statut",
+    "secondGate": "💳 Pour recevoir des règlements en espèces après approbation, une vérification unique de la licence commerciale est requise (Tableau de bord → Infos pro)."
   },
   "sellerRegisterBusiness": {
     "title": "Devenir Vendeur",
