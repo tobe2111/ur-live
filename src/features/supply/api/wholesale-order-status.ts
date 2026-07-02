@@ -16,6 +16,7 @@ import { swallow } from '@/worker/utils/swallow'
 import { cancelTossPayment } from '@/worker/utils/toss-gateway'
 import { ensureDepositSchema, refundDeposit, recordDepositTxn, hasDepositRefundTxn } from './wholesale-deposit-core'
 import { reverseSupplierOnWholesaleRefund, holdWholesaleSettlements } from './wholesale-settlement'
+import { voidWholesaleTaxInvoicesOnRefund } from './wholesale-tax-invoices'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 
 export const WHOLESALE_ORDER_STATUSES = [
@@ -135,6 +136,8 @@ export async function refundWholesaleOrderFully(
   ).bind(id).all<{ product_id: number; qty: number }>().catch(() => ({ results: [] as { product_id: number; qty: number }[] }))
   await DB.prepare("UPDATE wholesale_order_items SET line_status='REFUNDED' WHERE wholesale_order_id = ? AND line_status != 'REFUNDED'").bind(id).run().catch(swallow('wholesale-refund-full:lines'))
   try { await reverseSupplierOnWholesaleRefund(DB, id, reason) } catch { /* best-effort */ }
+  // 🧾 감사 #1: 전액환불 → 주문의 모든 세금계산서 무효화(fail-soft, 멱등).
+  try { await voidWholesaleTaxInvoicesOnRefund(DB, id) } catch { /* best-effort */ }
   for (const l of newLines.results || []) {
     await DB.prepare(
       "UPDATE products SET stock = COALESCE(stock,0) + ?, sold_count = MAX(0, COALESCE(sold_count,0) - ?), updated_at = datetime('now') WHERE id = ? AND stock IS NOT NULL"

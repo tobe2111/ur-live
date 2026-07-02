@@ -34,7 +34,7 @@ import { creditSupplierOnWholesaleOrder, loadPlatformCommissionPct, splitWholesa
 import { transitionWholesaleOrder, refundWholesaleOrderFully } from './wholesale-order-status'
 import { generateWholesaleSalesInvoice, generateWholesalePurchaseInvoices, listDistributorSalesInvoices } from './wholesale-tax-invoices'
 import { ensureSupplyVisibilitySchema, visibilityWhere, gradeExposureWhere } from './supply-visibility'
-import { ensureDepositSchema, deductDeposit, recordDepositTxn, compensateDepositOrderOnce } from './wholesale-deposit-core'
+import { ensureDepositSchema, deductDepositForOrder, compensateDepositOrderOnce } from './wholesale-deposit-core'
 import { resolveMallId, registrationMallId, loadMallByHost } from './wholesale-malls'
 import { learnCodes, resolveCodes, normCode } from './wholesale-code-map'
 import {
@@ -1557,7 +1557,22 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     //   UNIQUE(distributor_seller_id, idempotency_key) 가 동시/재시도 race 를 단독 중재. 차감은 이 INSERT 를
     //   '이긴' 요청만 1회 수행 → 이중차감 불가. 차감 전 주문 행이 존재하므로 차감↔주문 사이 크래시에도
     //   '잔액만 빠지고 주문 없음'(무음 손실) 불가 — PENDING 주문이 감사추적 + EXPIRED 스윕 대상으로 남음.
-    const idemKey = String(body.idempotency_key || '').slice(0, 64)
+    let idemKey = String(body.idempotency_key || '').slice(0, 64)
+    if (!idemKey) {
+      // 🛡️ 2026-07-02 (감사 — 클라 키 누락 시 이중주문 방어): 클라가 idempotency_key 를 안 보내면
+      //   UNIQUE(seller, key) 가 NULL-distinct 로 더블클릭/재시도 중복주문을 못 막는다(공식 클라는 안정키
+      //   전송·방어됨 — 직접 API/누락 호출자용 defense-in-depth). 서버가 요청 내용(판매사+장바구니+청구액+
+      //   배송지)의 결정적 해시 + 30초 버킷으로 폴백 키 합성 → 같은 장바구니의 빠른 중복 제출은 같은 키로
+      //   충돌(기존 주문 반환, 무-이중차감), 의도적 재주문(30초 후 다른 버킷)은 새 키로 정상 통과.
+      const sig = [
+        sellerId, chargeTotal, (shipAddr || '').slice(0, 60),
+        lines.map((l) => `${l.product_id}:${l.qty}:${l.unit}`).sort().join(','),
+        Math.floor(Date.now() / 30_000),
+      ].join('|')
+      let h = 5381
+      for (let i = 0; i < sig.length; i++) h = ((h << 5) + h + sig.charCodeAt(i)) | 0
+      idemKey = `auto-${sellerId}-${(h >>> 0).toString(36)}`.slice(0, 64)
+    }
     // 합성 toss_order_id — wholesale_orders.toss_order_id 는 NOT NULL/UNIQUE.
     const depOrderId = `DEP-${sellerId}-${Date.now()}-${Math.floor(Math.random() * 1000)}`
 
@@ -1580,9 +1595,12 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
       return c.json({ success: false, error: '주문 생성 중 오류가 발생했습니다' }, 500)
     }
 
-    // STEP 2 — 예치금 원자 차감(CAS). 이 요청이 주문을 소유(INSERT 승리) → 단 1회만 차감.
+    // STEP 2 — 예치금 원자 차감 + 'order' 원장 기록을 **단일 트랜잭션**으로(deductDepositForOrder).
     //   💰 차감액 = chargeTotal(상품합 + 제조사별 배송비). 클라 금액 불신 — 전부 서버 재계산값.
-    const deduct = await deductDeposit(DB, sellerId, chargeTotal)
+    //   🛡️ 2026-07-02 (감사 orphan-reconcile 근본수정): 차감과 'order' 원장이 원자적이라 "잔액만 빠지고
+    //   원장 없음" 크래시 윈도우 소멸 → reconcileOrphanedDepositOrders 의 EXISTS('order' txn) 게이트가
+    //   신뢰 가능(차감 ⟺ 원장). 별도 STEP 3(recordDepositTxn) 불필요.
+    const deduct = await deductDepositForOrder(DB, sellerId, chargeTotal, dOrderId, `도매 예치금 주문 #${dOrderId}`)
     if (!deduct.ok) {
       // 잔액 부족 — 돈 미이동. PENDING 예약 삭제(idemKey 해제 → 충전 후 동일 체크아웃 재시도 가능) 후 402.
       await DB.prepare("DELETE FROM wholesale_orders WHERE id=? AND status='PENDING'").bind(dOrderId).run().catch(swallow('wholesale:pending-release'))
@@ -1595,10 +1613,7 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
         shortfall: Math.max(0, chargeTotal - deduct.balance),
       }, 402)
     }
-    const balanceAfterDeduct = deduct.balanceAfter
-
-    // STEP 3 — 차감 원장(ref_id=order.id, 환불 멱등 가드가 이 ref_id 로 매칭). PAID 확정은 재고 확보 후(아래).
-    await recordDepositTxn(DB, sellerId, 'order', -chargeTotal, balanceAfterDeduct, String(dOrderId), `도매 예치금 주문 #${dOrderId}`)
+    const balanceAfterDeduct = deduct.balanceAfter // 응답 표시용. 원장은 deductDepositForOrder 가 원자 기록.
 
     // 주문 항목 + 재고 차감(oversell 가드) — 실패 시 주문 FAILED + 예치금 환불(보상).
     try {
