@@ -7,7 +7,15 @@ import api from '@/lib/api'
 
 type MyLevel = { level: number; label: string; approved_count: number; next_level: number | null; remaining: number | null }
 
-export default function ReviewBonusButton({ voucherCode }: { voucherCode: string }) {
+/** 🗺️ 2026-07-02: 매장명(+주소)로 카카오맵 실제 장소 페이지 딥링크 — RestaurantMiniMap 폴백 ②와 동일 패턴.
+ *   place_url 없이도 등록된 장소가 떠서 후기 작성 페이지로 바로 연결(수동 검색 제거). */
+function kakaoStoreLink(name?: string, address?: string): string | null {
+  const q = [name, address].filter(Boolean).join(' ').trim()
+  if (!q) return null
+  return `https://map.kakao.com/link/search/${encodeURIComponent(q)}`
+}
+
+export default function ReviewBonusButton({ voucherCode, restaurantName, restaurantAddress }: { voucherCode: string; restaurantName?: string; restaurantAddress?: string }) {
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'url' | 'screenshot'>('url')
   const [reviewUrl, setReviewUrl] = useState('')
@@ -81,10 +89,16 @@ export default function ReviewBonusButton({ voucherCode }: { voucherCode: string
             )}
             <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-2">
               매장 카카오맵 후기 작성하고 인증해주시면 보너스 딜 + 리뷰 점수(레벨) 지급.
-              <br/>1) 카카오맵 앱에서 매장 검색 → 후기 작성
+              <br/>1) 아래 버튼으로 우리 매장 카카오맵 열기 → 후기 작성
               <br/>2) 후기 페이지 URL 복사 또는 스크린샷 캡쳐
               <br/>3) 아래에 제출 → 매장/운영팀 확인 후 지급
             </p>
+            {kakaoStoreLink(restaurantName, restaurantAddress) && (
+              <a href={kakaoStoreLink(restaurantName, restaurantAddress)!} target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1.5 w-full py-2.5 mb-3 rounded-xl bg-[#FEE500] text-[#191600] text-xs font-bold">
+                📍 카카오맵에서 {restaurantName ? `'${restaurantName}'` : '우리 매장'} 열기
+              </a>
+            )}
             <p className="text-[10px] text-amber-600 dark:text-amber-500 mb-4 leading-relaxed">
               보너스는 별점·내용과 <b>무관하게</b> 방문 인증에 대해 지급돼요. 솔직하게 써주시고,
               후기에 &quot;포인트를 받고 작성했어요&quot; 같은 대가 표시를 남겨주시면 카카오맵 정책에도 안전해요.
