@@ -2133,11 +2133,14 @@
       "reviewNote": "Revisión en 1-2 días hábiles → resultado por app y KakaoTalk. Aprobación automática si coincide con NTS.",
       "reviewNote2": "Una vez aprobado, publica productos y vales desde el panel.",
       "submitting": "Enviando...",
-      "submit": "Solicitar como negocio"
+      "submit": "Solicitar como negocio",
+      "secondGate": "💳 La liquidación en efectivo requiere una verificación única de licencia comercial tras la aprobación (Panel → Info del negocio).",
+      "prospectBanner": " la agencia preparó la información de tu tienda. Solo revisa y envía."
     },
     "mailOrderNumber": "N.º de venta a distancia",
     "mailOrderNumberPlaceholder": "ej. 2026-Seul-01234",
-    "mailOrderNumberHint": "Se muestra públicamente en la información del vendedor de tu linkshop"  },
+    "mailOrderNumberHint": "Se muestra públicamente en la información del vendedor de tu linkshop"
+  },
   "admin": {
     "login": {
       "title": "Inicio de sesión del administrador",
@@ -4474,7 +4477,8 @@
     "benefit2": "Registrar y vender productos",
     "benefit3": "Ver ingresos y liquidaciones",
     "contactCS": "Contactar Soporte",
-    "reloadHint": "Recargue la página para actualizar el estado"
+    "reloadHint": "Recargue la página para actualizar el estado",
+    "secondGate": "💳 Para recibir liquidaciones en efectivo tras la aprobación, se requiere una verificación única de licencia comercial (Panel → Info del negocio)."
   },
   "sellerRegisterBusiness": {
     "title": "Convertirse en Vendedor",

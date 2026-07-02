@@ -2808,11 +2808,14 @@
       "reviewNote": "Reviewed within 1-2 business days → results via in-app & KakaoTalk. Auto-approved if NTS records match.",
       "reviewNote2": "Once approved, list products & vouchers from the seller dashboard.",
       "submitting": "Submitting...",
-      "submit": "Apply as business"
+      "submit": "Apply as business",
+      "secondGate": "💳 Cash settlement requires a one-time business license verification after approval (Dashboard → Business info).",
+      "prospectBanner": " agency has pre-filled your store info. Just review and submit."
     },
     "mailOrderNumber": "Mail-order business no.",
     "mailOrderNumberPlaceholder": "e.g. 2026-Seoul-01234",
-    "mailOrderNumberHint": "Shown publicly in your linkshop seller info (e-commerce law disclosure)"  },
+    "mailOrderNumberHint": "Shown publicly in your linkshop seller info (e-commerce law disclosure)"
+  },
   "admin": {
     "login": {
       "title": "Admin Login",
@@ -4474,7 +4477,8 @@
     "benefit2": "Register and sell products",
     "benefit3": "View revenue and settlements",
     "contactCS": "Contact Support",
-    "reloadHint": "Reload the page to refresh status"
+    "reloadHint": "Reload the page to refresh status",
+    "secondGate": "💳 To receive cash settlements after approval, a one-time business license verification is required (Dashboard → Business info)."
   },
   "sellerRegisterBusiness": {
     "title": "Become a Seller",
