@@ -1288,8 +1288,10 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
     const galleryJson = Array.isArray(b.image_urls)
       ? JSON.stringify(b.image_urls.filter((u) => typeof u === 'string' && /^https?:\/\//.test(u)).slice(0, 8))
       : null;
+    // 갤러리 저장처 = detail_images (0004 마이그레이션 실존 컬럼 — 상세 스와이프 갤러리가 병합 소비.
+    //   image_urls 는 products 에 없음 + 컬럼 예산제로 신설 금지 → 기존 컬럼 재사용이 정답.)
     const r = await c.env.DB.prepare(
-      `INSERT INTO products (name, description, price, original_price, image_url, image_urls, category, product_type,
+      `INSERT INTO products (name, description, price, original_price, image_url, detail_images, category, product_type,
          is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, restaurant_phone,
          restaurant_lat, restaurant_lng, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
@@ -1380,7 +1382,7 @@ adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
       const arr = Array.isArray(b.image_urls)
         ? (b.image_urls as unknown[]).filter((u): u is string => typeof u === 'string' && /^https?:\/\//.test(u)).slice(0, 8)
         : [];
-      put('image_urls', arr.length > 0 ? JSON.stringify(arr) : null);
+      put('detail_images', arr.length > 0 ? JSON.stringify(arr) : null);  // 실존 컬럼(0004) — image_urls 는 products 에 없음
     }
     if (b.restaurant_name !== undefined) put('restaurant_name', String(b.restaurant_name || '').trim() || null);
     if (b.restaurant_address !== undefined) put('restaurant_address', String(b.restaurant_address || '').trim() || null);
