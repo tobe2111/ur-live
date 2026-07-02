@@ -102,7 +102,7 @@ publicApp.get('/active', async (c) => {
 publicApp.get('/:productId', publicCache(30), async (c) => {
   try {
     const DB = c.env.DB
-    const productId = parseInt(c.req.param('productId'), 10)
+    const productId = parseInt(c.req.param('productId') || '', 10)
     if (!Number.isFinite(productId)) return c.json({ success: false, error: 'bad id' }, 400)
     await ensureFcfsTable(DB)
     const meta = await getSupplyMeta(DB, [productId])
@@ -121,7 +121,7 @@ userApp.use('*', requireAuth())
 userApp.post('/:productId/apply', rateLimit({ action: 'fcfs_apply', max: 10, windowSec: 60 }), async (c) => {
   try {
     const DB = c.env.DB
-    const productId = parseInt(c.req.param('productId'), 10)
+    const productId = parseInt(c.req.param('productId') || '', 10)
     const userId = String(c.get('user')?.id || '')
     if (!Number.isFinite(productId) || !userId) return c.json({ success: false, error: 'bad request' }, 400)
     await ensureFcfsTable(DB)
@@ -141,7 +141,7 @@ userApp.post('/:productId/apply', rateLimit({ action: 'fcfs_apply', max: 10, win
 userApp.get('/:productId/me', async (c) => {
   try {
     const DB = c.env.DB
-    const productId = parseInt(c.req.param('productId'), 10)
+    const productId = parseInt(c.req.param('productId') || '', 10)
     const userId = String(c.get('user')?.id || '')
     if (!Number.isFinite(productId) || !userId) return c.json({ success: false, error: 'bad request' }, 400)
     await ensureFcfsTable(DB)
@@ -158,7 +158,7 @@ adminApp.use('*', requireAdmin())
 adminApp.put('/:productId', async (c) => {
   try {
     const DB = c.env.DB
-    const productId = parseInt(c.req.param('productId'), 10)
+    const productId = parseInt(c.req.param('productId') || '', 10)
     if (!Number.isFinite(productId)) return c.json({ success: false, error: 'bad id' }, 400)
     const body = await c.req.json<{ enabled?: boolean; spots?: number; appliedSeed?: number; deadline?: string | null }>()
     await ensureFcfsTable(DB)
@@ -175,7 +175,7 @@ adminApp.put('/:productId', async (c) => {
 adminApp.get('/:productId/applicants', async (c) => {
   try {
     const DB = c.env.DB
-    const productId = parseInt(c.req.param('productId'), 10)
+    const productId = parseInt(c.req.param('productId') || '', 10)
     await ensureFcfsTable(DB)
     const { results } = await DB.prepare(
       `SELECT a.id, a.user_id, a.status, a.created_at, a.selected_at, u.name as user_name, u.phone as user_phone
@@ -189,7 +189,7 @@ adminApp.get('/:productId/applicants', async (c) => {
 adminApp.post('/:productId/select', async (c) => {
   try {
     const DB = c.env.DB
-    const productId = parseInt(c.req.param('productId'), 10)
+    const productId = parseInt(c.req.param('productId') || '', 10)
     if (!Number.isFinite(productId)) return c.json({ success: false, error: 'bad id' }, 400)
     const body = await c.req.json<{ winners?: string[]; count?: number }>().catch(() => ({} as { winners?: string[]; count?: number }))
     await ensureFcfsTable(DB)
