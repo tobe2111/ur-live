@@ -22,6 +22,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { readCache } from '@/hooks/queries/localCache'
 import { pickSeedDetail } from './group-buy/seed-detail'
+import GroupBuyDetailSkeleton from './group-buy/DetailSkeleton'
 import FcfsApplyBlock from '@/features/group-buy/FcfsApplyBlock'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
@@ -437,41 +438,9 @@ export default function GroupBuyDetailPage() {
     }
   }
 
-  if (loading) {
-    // 🛡️ 2026-05-15: 대기업 수준 skeleton — CLS 0, perceived performance 향상
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#121212]">
-        {/* 🏭 2026-06-07: 투명 overlay 헤더 — solid 흰 바 깜빡임 없이 이미지가 최상단까지. */}
-        <div
-          className="fixed top-0 inset-x-0 z-30 px-3 flex items-center justify-between lg:inset-x-auto lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-[var(--app-frame)]"
-          style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))', paddingBottom: '0.625rem' }}
-        >
-          <div className="w-9 h-9 rounded-full bg-black/25 backdrop-blur-sm animate-pulse" />
-          <div className="w-9 h-9 rounded-full bg-black/25 backdrop-blur-sm animate-pulse" />
-        </div>
-        <div className="ur-content-narrow mx-auto">
-          <div className="w-full aspect-square bg-gradient-to-br from-gray-100 to-gray-200 dark:from-[#1A1A1A] dark:to-[#0A0A0A] animate-pulse" />
-        </div>
-        <div className="ur-content-narrow mx-auto px-4 lg:px-8 py-4 space-y-4">
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A] space-y-3">
-            <div className="h-6 w-3/4 bg-gray-200 rounded animate-pulse" />
-            <div className="h-4 w-1/2 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse" />
-            <div className="h-4 w-1/3 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse" />
-            <div className="pt-3 border-t border-gray-100 dark:border-[#1A1A1A]">
-              <div className="h-8 w-32 bg-gray-200 dark:bg-[#1A1A1A] rounded animate-pulse" />
-            </div>
-          </div>
-          <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-5 border border-gray-100 dark:border-[#1A1A1A] space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
-              <div className="h-6 w-16 bg-gray-200 dark:bg-[#1A1A1A] rounded animate-pulse" />
-            </div>
-            <div className="h-3 w-full bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse" />
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // 🧭 2026-07-02: skeleton 을 DetailSkeleton.tsx 로 추출(byte-동일 JSX) — App.tsx PageLoader 의
+  //   공구상세 분기와 공유해 [청크 로딩 → 데이터 로딩]이 한 장의 스켈레톤으로 이어짐(이중 로더 제거).
+  if (loading) return <GroupBuyDetailSkeleton />
   if (!detail) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0A0A0A] text-gray-900 dark:text-white">
