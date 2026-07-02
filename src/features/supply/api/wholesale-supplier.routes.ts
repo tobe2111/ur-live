@@ -251,8 +251,12 @@ app.post('/orders/:id/ship-all', async (c) => {
     if (!courier || !tracking) return c.json({ success: false, error: '택배사와 운송장 번호를 입력해주세요' }, 400)
 
     // 주문 존재 + 발송 가능 상태 확인.
-    const order = await DB.prepare("SELECT id, status, distributor_seller_id FROM wholesale_orders WHERE id = ?")
-      .bind(orderId).first<{ id: number; status: string; distributor_seller_id: number }>()
+    //   🛡️ 2026-07-02 (감사 — 존재/상태 오라클 제거): 내 라인이 있는 주문만 조회(EXISTS supplier_id=sid).
+    //   무predicate 로 SELECT 하면 임의 orderId 로 타 제조사 주문의 존재/상태를 구분 가능(404/400/already)해
+    //   정보가 샜음 — /accept 와 동일하게 소유(라인 보유) 주문만 보이게 해 없는-주문과 남의-주문을 동일 404 처리.
+    const order = await DB.prepare(
+      "SELECT o.id, o.status, o.distributor_seller_id FROM wholesale_orders o WHERE o.id = ? AND EXISTS (SELECT 1 FROM wholesale_order_items WHERE wholesale_order_id = o.id AND supplier_id = ?)"
+    ).bind(orderId, sid).first<{ id: number; status: string; distributor_seller_id: number }>()
     if (!order) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
     if (!['PAID', 'ACCEPTED', 'SHIPPED', 'PARTIAL_REFUNDED'].includes(order.status)) {
       return c.json({ success: false, error: '발송할 수 없는 주문 상태입니다' }, 400)

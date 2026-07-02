@@ -21,6 +21,9 @@ export interface WCartItem {
   price?: number // 담을 당시 등급 공급가
   moq?: number   // 최소 주문 수량 (스텝퍼 단위/하한)
   order_multiple?: number // 🏭 2026-07-01 주문 배수(박스 단위) — 결제 시 서버 ORDER_MULTIPLE_VIOLATION 사전 차단용
+  // 🚚 상품별 배송비(product_supply_meta.wholesale_shipping_fee). 설정 시(>=0, 0=무료) 제조사 정책 배송비보다
+  //   우선(서버 computeSupplierShipping 미러). 미설정(null/undefined)이면 정책 배송비 폴백.
+  product_shipping_fee?: number | null
   // 🚚 제조사별 그룹 표시용(비식별 group key s{id}) + 정책. 카트/체크아웃이 제조사별 최소주문금액/배송비 계산.
   supplier_group?: string | null
   supplier_policy?: WCartSupplierPolicy | null
@@ -119,7 +122,16 @@ export function groupBySupplier(items: WCartItem[]): {
     const sub = arr.reduce((s, x) => s + (Number(x.price) || 0) * (Number(x.qty) || 0), 0)
     const pol = arr.find((x) => x.supplier_policy)?.supplier_policy || {}
     const minOrderAmount = Math.max(0, Math.floor(Number(pol.min_order_amount) || 0))
-    const shippingFee = Math.max(0, Math.floor(Number(pol.shipping_fee) || 0))
+    const policyFee = Math.max(0, Math.floor(Number(pol.shipping_fee) || 0))
+    // 🚚 2026-07-02 (감사 — 표시=청구 정합): 서버 computeSupplierShipping 미러 — 상품별 배송비(설정 시) 우선,
+    //   미설정 라인은 정책 배송비 폴백, 그룹 배송비 = 라인 유효배송비의 최댓값(묶음배송 1회 청구).
+    //   (기존엔 정책 배송비만 써서, 상품별 배송비 설정 상품을 담으면 체크아웃 배송비가 서버 청구액과 어긋났음.)
+    let shippingFee = 0
+    for (const x of arr) {
+      const pf = x.product_shipping_fee
+      const lineFee = (pf != null && Number.isFinite(Number(pf))) ? Math.max(0, Math.floor(Number(pf))) : policyFee
+      shippingFee = Math.max(shippingFee, lineFee)
+    }
     const freeShipThreshold = Math.max(0, Math.floor(Number(pol.free_ship_threshold) || 0))
     const meetsMin = !(minOrderAmount > 0 && sub < minOrderAmount)
     const shortfall = meetsMin ? 0 : Math.max(0, minOrderAmount - sub)
