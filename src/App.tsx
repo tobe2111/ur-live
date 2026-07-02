@@ -15,7 +15,6 @@ import ScrollToTop from './components/ScrollToTop'
 import OfflineBanner from './components/OfflineBanner'
 import BottomNav from '@/components/main/BottomNav'
 import BrandLoader from '@/components/brand/BrandLoader'
-import GroupBuyDetailSkeleton from './pages/group-buy/DetailSkeleton'
 import { trackFunnel } from '@/lib/funnel'
 import DesktopTopNav from '@/components/main/DesktopTopNav'
 import { swallow } from '@/shared/utils/swallow'
@@ -226,9 +225,10 @@ function CuratorPinClientRedirect() {
   return <Navigate to={`/products/${productId}`} replace />
 }
 
-// 로딩 컴포넌트 — 배경 투명, 최소 UI로 흰 화면 방지. 🎨 2026-06-29: 무채색 스피너 → 브랜드 로더(BrandLoader SSOT), 라우트 청크 로딩 순간 전용.
-// 🧭 2026-07-02 (대표 신고 "공구 상세 로딩 2번 끊김"): `/group-buy/:id` 청크 로딩은 페이지 자체 loading 과 동일 스켈레톤(DetailSkeleton)으로 — 스피너↔스켈레톤 비주얼 점프 제거(06-30 링크샵 수리와 동일 패턴).
-const PageLoader = () => (/^\/group-buy\/\d+/.test(window.location.pathname) ? <GroupBuyDetailSkeleton /> : <BrandLoader fullScreen />)
+// 로딩 컴포넌트 — 배경 투명, 최소 UI로 흰 화면 방지
+// 🎨 2026-06-29 (대표 — 공통 페이지 로딩 애니메이션): 무채색 스피너 → UrDeal 브랜드 로더.
+//   로고 호흡 + 진행 바 스윕(BrandLoader SSOT). 라우트 청크 로딩 순간 전용 — SSR/스켈레톤 첫페인트 불변.
+const PageLoader = () => <BrandLoader fullScreen />
 
 // 🏭 2026-06-29 (대표 요청 — 도매몰 페이지 로딩 애니메이션): 도매 surface(/wholesale·/supplier)
 //   전용 *라이트* 브랜드 로더. 소비자 PageLoader 는 다크(흰 spinner) 라 라이트 도매 배경(#F4F5F7)에서

@@ -150,9 +150,35 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdminRole('finance
   const id = parseInt(c.req.param('id') || '', 10)
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'Invalid id' }, 400)
   const { DB } = c.env
-  const row = await DB.prepare('SELECT status FROM payouts WHERE id = ?').bind(id).first<{ status: string }>()
+  const row = await DB.prepare('SELECT status, payee_type, payee_id, amount FROM payouts WHERE id = ?')
+    .bind(id).first<{ status: string; payee_type: string; payee_id: string; amount: number }>()
   if (!row) return c.json({ success: false, error: 'Not found' }, 404)
   if (row.status !== 'pending') return c.json({ success: false, error: 'Not pending' }, 409)
+
+  // 💸 2026-07-01 (정산 정합 — 대표 승인): 과다지급 방지 가드.
+  //   payout.amount 는 *생성 시점* 값이라, net 집계 수정(2026-07-01) 이전에 생성된 pending 은
+  //   gross(수수료 미차감) 금액일 수 있음. 승인 순간 현재 순 receivable 로 재검증 → 초과 시 차단.
+  //   available = getLedgerReceivable(원장 net) − 이미 approved/sent 된 다른 payout 합.
+  try {
+    const { getLedgerReceivable } = await import('../../../worker/utils/ledger')
+    const ledgerType = row.payee_type === 'store_owner' ? 'merchant' : row.payee_type
+    const account = `${ledgerType}:${row.payee_id}`
+    const receivable = await getLedgerReceivable(DB, account)
+    const otherPaid = await DB.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM payouts
+        WHERE payee_type = ? AND payee_id = ? AND status IN ('approved','sent') AND id != ?`
+    ).bind(row.payee_type, row.payee_id, id).first<{ total: number }>().catch(() => ({ total: 0 }))
+    const available = receivable - Number(otherPaid?.total ?? 0)
+    if (Number(row.amount) > available + 1) {
+      return c.json({
+        success: false,
+        error: '지급 금액이 현재 정산 가능 잔액을 초과합니다. 정산식 정정 이전 생성된 오래된 건일 수 있어 취소 후 재생성이 필요합니다.',
+        code: 'PAYOUT_EXCEEDS_RECEIVABLE',
+        data: { requested: Number(row.amount), available: Math.max(0, available) },
+      }, 409)
+    }
+  } catch { /* getLedgerReceivable 실패 시 가드 skip (기존 동작 보존) */ }
+
   await DB.prepare(
     `UPDATE payouts SET status = 'approved', approved_at = datetime('now') WHERE id = ?`,
   ).bind(id).run()

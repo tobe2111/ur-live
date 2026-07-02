@@ -118,3 +118,34 @@ describe('getPayablePending = receivable − 지급(approved/sent)', () => {
     expect(ledgerReceivable(entries, 'seller:2')).toBe(47_500)
   })
 })
+
+describe('쇼핑 주문 원장 크레딧 → 환불 역전 (order-ledger-credit.ts)', () => {
+  // creditSellerOrderToLedger: {credit seller, debit user, amount=gross, fee_amount=플랫폼수수료}
+  // reverseSellerOrderLedger: {debit seller, credit escrow, amount=net(=gross−fee)}
+  const total = 10_000
+  const fee = 500 // 5%
+  const net = total - fee // 9,500
+
+  it('크레딧 후 receivable = net(수수료 제외)', () => {
+    const entries: LedgerEntry[] = [
+      { credit_account: SELLER, debit_account: 'user:9', amount: total, fee_amount: fee },
+    ]
+    expect(ledgerReceivable(entries, SELLER)).toBe(net)
+  })
+
+  it('환불 역전(net debit) 후 receivable = 0 (gross 아닌 net 으로 정확히 상쇄)', () => {
+    const entries: LedgerEntry[] = [
+      { credit_account: SELLER, debit_account: 'user:9', amount: total, fee_amount: fee }, // +net
+      { debit_account: SELLER, credit_account: 'platform:escrow', amount: net },            // −net
+    ]
+    expect(ledgerReceivable(entries, SELLER)).toBe(0)
+  })
+
+  it('부분 아이템 여럿이어도 주문 net 합만 payable', () => {
+    const entries: LedgerEntry[] = [
+      { credit_account: SELLER, debit_account: 'user:9', amount: 10_000, fee_amount: 500 }, // 9,500
+      { credit_account: SELLER, debit_account: 'user:9', amount: 30_000, fee_amount: 1_500 }, // 28,500
+    ]
+    expect(ledgerReceivable(entries, SELLER)).toBe(38_000)
+  })
+})

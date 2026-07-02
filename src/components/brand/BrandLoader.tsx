@@ -21,6 +21,15 @@ interface BrandLoaderProps {
 }
 
 export default function BrandLoader({ fullScreen = false, size = 34, label }: BrandLoaderProps) {
+  // 🎯 2026-07-01 (대표 "로딩이 2번 나뉘어" — 근본): 로더가 연달아 재마운트(Suspense 청크 로더 →
+  //   페이지 데이터 로더)되면 CSS 애니메이션이 keyframe 0 부터 재시작 — breathe 는 opacity 0.5(로고 확
+  //   어두워짐), sweep 바는 화면 밖(-120%)에서 시작(바 사라짐) → "떴다 안떴다 다시 뜨는" 블링크.
+  //   → 페이지 로드 시계(performance.now()) 기반 **음수 animation-delay** 로 위상을 전역 동기화:
+  //   어떤 시점에 마운트돼도 애니메이션이 같은 위상에서 이어져 여러 로더가 하나처럼 연속으로 보임.
+  //   (주기 상수는 index.css 의 ur-loader-breathe 1.5s / ur-loader-sweep 1.15s 와 동기 유지.)
+  const nowSec = typeof performance !== 'undefined' ? performance.now() / 1000 : 0
+  const breatheDelay = `-${(nowSec % 1.5).toFixed(3)}s`
+  const sweepDelay = `-${(nowSec % 1.15).toFixed(3)}s`
   return (
     <div
       className={`flex flex-col items-center justify-center gap-5 ${fullScreen ? 'min-h-[100dvh]' : 'py-16'}`}
@@ -28,12 +37,13 @@ export default function BrandLoader({ fullScreen = false, size = 34, label }: Br
       aria-live="polite"
       aria-busy="true"
     >
-      {/* 로고 — 은은한 호흡 */}
-      <div className="ur-loader-breathe">
+      {/* 로고 — 은은한 호흡 (전역 위상 동기 — 재마운트에도 연속) */}
+      <div className="ur-loader-breathe" style={{ animationDelay: breatheDelay }}>
         <UrDealLogo size={size} />
       </div>
 
-      {/* 인디터미넌트 진행 바 — 트랙 위 바가 좌→우 스윕. 200ms 지연(짧은 로딩엔 정적) */}
+      {/* 인디터미넌트 진행 바 — 전역 위상 동기 스윕 (이전 200ms 지연은 재마운트 시 바가 사라지는
+          블링크의 원인이라 제거 — 연속성이 우선). */}
       <div
         className="relative overflow-hidden rounded-full bg-gray-200/70 dark:bg-white/10"
         style={{ width: 96, height: 3 }}
@@ -41,7 +51,7 @@ export default function BrandLoader({ fullScreen = false, size = 34, label }: Br
       >
         <div
           className="ur-loader-sweep absolute inset-y-0 left-0 rounded-full bg-gray-900 dark:bg-white"
-          style={{ width: '38%', animationDelay: '200ms' }}
+          style={{ width: '38%', animationDelay: sweepDelay }}
         />
       </div>
 

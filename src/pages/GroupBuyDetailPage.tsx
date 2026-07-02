@@ -8,6 +8,7 @@ import { resolveProductFlow } from '@/shared/product-flow'
 import api from '@/lib/api'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
 import SEO from '@/components/SEO'
+import BrandLoader from '@/components/brand/BrandLoader'
 import KakaoShareButton from '@/components/KakaoShareButton'
 // 🛡️ 2026-06-12 (감사 1단계 — 핀 표면): 공유 버튼 옆 핀 버튼 (additive — 잠금 항목 무변경).
 import PinButton from '@/components/curator/PinButton'
@@ -22,7 +23,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { readCache } from '@/hooks/queries/localCache'
 import { pickSeedDetail } from './group-buy/seed-detail'
-import GroupBuyDetailSkeleton from './group-buy/DetailSkeleton'
 import FcfsApplyBlock from '@/features/group-buy/FcfsApplyBlock'
 
 // 🛡️ 2026-05-27 (loading P1): below-fold 컴포넌트 lazy — 초기 chunk 30-50KB ↓.
@@ -203,35 +203,42 @@ export default function GroupBuyDetailPage() {
     let cancelled = false
 
     // 🧭 2026-06-22 (전수조사): 첫 paint SSR/prefetch 시드는 위 seedDetail(useState 초기값)이 담당.
-    //   여기서는 freshness 보정 fetch 만 — 시드가 있으면 skeleton 없이 background 갱신, 없으면 skeleton 후 채움.
+    //   여기서는 freshness 보정 fetch 만 — 시드가 있으면 skeleton 없이 background 갱신, 없으면 로더 후 채움.
+    // 🎯 2026-07-01 (대표 "로딩 2번 + 느림" — 근본): raw axios → RQ fetchQuery 로 **in-flight prefetch dedupe**.
+    //   홈 카드 touchstart prefetch(~0.6s) 진행 중에 탭하면, 기존엔 페이지가 같은 요청을 처음부터 다시
+    //   시작(중복 네트워크 + 로더 노출 2배) → fetchQuery 는 같은 키의 진행 중 요청을 그대로 이어받고,
+    //   방금 끝난 prefetch(≤60s fresh)는 네트워크 0회로 즉시 반환. 캐시 write-back 도 RQ 가 자동.
+    const detailPromise = qc.fetchQuery({
+      queryKey: queryKeys.groupBuyProduct(productId),
+      queryFn: async () => {
+        const r = await api.get(`/api/group-buy/products/${productId}`)
+        if (!r.data?.success) throw new Error(r.data?.error || '상품을 찾을 수 없습니다')
+        // 🛡️ 2026-05-23 revert 유지: 받은 상품 그대로 렌더(카테고리 redirect 금지 — 과거 사고).
+        return r.data.data as GroupBuyDetail
+      },
+      staleTime: 60_000,
+    })
     Promise.all([
-      api.get(`/api/group-buy/products/${productId}`),
+      detailPromise,
       api.get(`/api/group-buy/products/${productId}/participants`).catch(() => ({ data: { data: [] } })),
-    ]).then(([detailRes, partRes]) => {
+    ]).then(([detailData, partRes]) => {
       if (cancelled) return
-      if (detailRes.data?.success) {
-        // 🛡️ 2026-05-23 revert: /group-buy/:id 진입 시 redirect 제거.
-        //   이전 redirect 가 모든 voucher 카테고리 상품을 /vouchers/:id 로 보내서
-        //   공구 페이지 자체가 렌더 안 됐던 사고 (모든 공구 상품이 voucher 카테고리인 환경).
-        //   해결: GroupBuyDetailPage 는 받은 상품 그대로 렌더. 새 링크는 SSOT 가 정확한
-        //   detail URL 로 생성 (홈 공구 → /group-buy, /vouchers 목록 → /vouchers).
-        setDetail(detailRes.data.data)
-        // 🧭 2026-06-22: 권위 데이터를 RQ 캐시에 write-back → back-nav/재진입 시 prefetch 와 일관 + 시드 재사용.
-        qc.setQueryData(queryKeys.groupBuyProduct(productId), detailRes.data.data)
+      if (detailData) {
+        setDetail(detailData)
         reportFunnel('view', productId)  // funnel: page view
         // 🛡️ 2026-05-15: 최근 본 공구 기록 (localStorage 12개 제한)
         try {
           recordRecentlyViewed({
-            id: detailRes.data.data.id,
-            name: detailRes.data.data.name,
-            image_url: detailRes.data.data.image_url,
-            restaurant_name: detailRes.data.data.restaurant_name,
-            price: detailRes.data.data.price,
+            id: detailData.id,
+            name: detailData.name,
+            image_url: detailData.image_url,
+            restaurant_name: detailData.restaurant_name,
+            price: detailData.price,
           })
         } catch { /* silent */ }
-      } else toast.error(detailRes.data?.error || '상품을 찾을 수 없습니다')
+      }
       setParticipants(partRes.data?.data || [])
-    }).catch(() => toast.error('네트워크 오류'))
+    }).catch((e) => toast.error((e as Error)?.message || '네트워크 오류'))
       .finally(() => !cancelled && setLoading(false))
     return () => { cancelled = true }
   }, [productId, navigate, qc])
@@ -444,10 +451,11 @@ export default function GroupBuyDetailPage() {
     }
   }
 
-  // 🧭 2026-07-02 (대표 신고 "로딩 2번 끊김" — 07-01 BrandLoader 통일을 상세에선 스켈레톤 공유로 대체):
-  //   청크 Suspense(App.tsx PageLoader 의 /group-buy/:id 분기)와 이 loading 이 **같은 DetailSkeleton** 을
-  //   사용 → 청크~데이터 로딩이 한 장으로 이어짐(로더 인스턴스 교체로 애니메이션 리셋되던 끊김 제거).
-  if (loading) return <GroupBuyDetailSkeleton />
+  if (loading) {
+    // 🎨 2026-07-01 (대표 "로더 전면 통일"): 소비자 로딩을 유어딜 BrandLoader(SSOT)로 통일.
+    //   ⚠️ SSR seed(`__SSR_INITIAL_DETAIL__`) 있으면 loading=false 라 이 로더는 seed-miss/콜드 SPA 이동에만 노출.
+    return <BrandLoader fullScreen />
+  }
   if (!detail) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0A0A0A] text-gray-900 dark:text-white">
