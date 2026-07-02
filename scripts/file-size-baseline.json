@@ -1,6 +1,6 @@
 {
   "src/App.tsx": 1011,
-  "src/components/AdminLayout.tsx": 611,
+  "src/components/AdminLayout.tsx": 614,
   "src/components/live/ReelCard.tsx": 1419,
   "src/components/streaming/BrowserBroadcaster.tsx": 1185,
   "src/features/admin/api/admin-products.routes.ts": 1427,

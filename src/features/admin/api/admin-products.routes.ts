@@ -916,7 +916,7 @@ const DEAL_CATEGORY_ALIAS: Record<string, string> = {
   '이용권': 'meal_voucher', '맛집': 'meal_voucher', '맛집 이용권': 'meal_voucher', 'meal': 'meal_voucher', 'meal_voucher': 'meal_voucher',
   '미용': 'beauty_voucher', '뷰티': 'beauty_voucher', 'beauty': 'beauty_voucher', 'beauty_voucher': 'beauty_voucher',
   '기타': 'etc_voucher', 'etc': 'etc_voucher', 'etc_voucher': 'etc_voucher',
-  '일반': 'general', '일반 상품': 'general', '온라인': 'general', 'general': 'general',
+  // ❌ 2026-07-02 (대표 확정 "완전 분리"): general(배송형) alias 제거 — 동네딜 도구로 배송형 등록 불가.
   '숙소': 'stay_voucher', 'stay': 'stay_voucher', 'stay_voucher': 'stay_voucher',
 };
 function mapDealCategory(raw: string): string | null {
@@ -1217,7 +1217,7 @@ adminProductsRoutes.post('/dongnedeal/bulk-import', cors(), async (c) => {
       const cat = mapDealCategory(catRaw);
       if (!name) { results.push({ row: rowNum, status: 'error', reason: '상품명 누락' }); continue; }
       if (!Number.isFinite(price) || price <= 0) { results.push({ row: rowNum, name, status: 'error', reason: '판매가가 올바르지 않습니다' }); continue; }
-      if (!cat) { results.push({ row: rowNum, name, status: 'error', reason: `카테고리 인식 불가 (${catRaw || '빈값'}) — 이용권/미용/기타/일반 중 하나` }); continue; }
+      if (!cat) { results.push({ row: rowNum, name, status: 'error', reason: `카테고리 인식 불가 (${catRaw || '빈값'}) — 이용권/미용/기타/숙소 중 하나` }); continue; }
       if (cat === 'stay_voucher') { results.push({ row: rowNum, name, status: 'error', reason: '숙소는 이 도구로 등록 불가 (숙소 전용 등록을 사용하세요)' }); continue; }
       const orig = (r['정가'] || r['original_price'] || '').replace(/[^\d.-]/g, '');
       const origNum = orig ? Math.round(Number(orig)) : 0;
@@ -1273,7 +1273,7 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
     const price = Math.round(Number(String(b.price ?? '').replace(/[^\d.-]/g, '')));
     if (!name) return c.json({ success: false, error: '상품명을 입력하세요' }, 400);
     if (!Number.isFinite(price) || price <= 0) return c.json({ success: false, error: '판매가가 올바르지 않습니다' }, 400);
-    if (!cat) return c.json({ success: false, error: '카테고리를 선택하세요 (이용권/미용/기타/일반)' }, 400);
+    if (!cat) return c.json({ success: false, error: '카테고리를 선택하세요 (이용권/미용/기타)' }, 400);
     if (cat === 'stay_voucher') return c.json({ success: false, error: '숙소는 이 도구로 등록 불가 (숙소 전용 등록을 사용하세요)' }, 400);
     const origNum = Math.round(Number(String(b.original_price ?? '').replace(/[^\d.-]/g, ''))) || 0;
     const img = String(b.image_url || '').trim() || null;

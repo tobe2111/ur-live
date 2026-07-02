@@ -24,7 +24,6 @@ const CATS = [
   { v: 'meal_voucher', label: '식사' },
   { v: 'beauty_voucher', label: '미용' },
   { v: 'etc_voucher', label: '기타' },
-  { v: 'general', label: '일반' },
 ]
 
 import { cfImage } from '@/utils/cf-image'

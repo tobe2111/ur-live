@@ -259,7 +259,9 @@ const ALWAYS_ALLOWED_ADMIN_PATHS = ['/admin/set-pin', '/admin/2fa']
 //   (상품 승인/가격변경 = /admin/products 의 '제조사 등록 상품' 탭 / 판매사 승인 = /admin/seller-approval)
 //   nav 에는 노출 안 하되(소비자 어드민 메뉴는 계속 숨김), 큐 클릭 시 wholesale-overview 로 바운스되던 것 차단.
 //   /admin/products 진입 시 AdminProductsPage 가 도매 파트너에게는 '제조사 등록 상품' 탭만 노출(소비자 상품관리 차단).
-const WHOLESALE_EXTRA_ALLOWED_PATHS = ['/admin/products', '/admin/wholesale-integrity']
+// 🗂️ 2026-07-02 (1페이지화): 예치금/출금 nav 항목이 판매사·제조사 관리의 탭으로 흡수되며 딥링크
+//   경로가 nav 주항목에서 사라짐 → wholesale role 도달성 명시 허용(탭으로 열림).
+const WHOLESALE_EXTRA_ALLOWED_PATHS = ['/admin/products', '/admin/wholesale-integrity', '/admin/wholesale-deposits', '/admin/wholesale-withdrawals']
 
 interface AdminLayoutProps {
   title: string
