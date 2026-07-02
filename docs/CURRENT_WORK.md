@@ -9,6 +9,13 @@
 - **⚡ 후속: 결제 체감속도(felt-latency) 최적화** (대표 "로딩 속도도 결제쪽에 봐볼래?" → "전부 (1~4)" 승인): ① **KT 교환권 발송(외부 HTTP 1~4.5s)이 결제 응답을 동기로 막던 것** → `/pay`(딜 결제 = 교환권 메인 경로, 비잠금)·`/confirm`(잠금, +multiTier 커미션도) 둘 다 waitUntil 이동 + `kt-alpha-voucher-retry` cron 에 **미발송 스위퍼**(발송기록 0 인 확정주문 재킥 — waitUntil 갭 + 기존 크래시 갭 모두 커버, 이중발송 구조적 0). ② 딜충전 위젯(`TossWidgetPayPage`, 잠금): variant fetch 병렬화 + 약관 비대기 + timeout 4s 정합(주문 위젯 패턴 미러). ③ `CartPage` prefetch 를 `toss-preload`(실제 SDK 로드) 승격. ④ js.tosspayments.com **동적 preconnect**(index.html 예고분 실구현). CheckoutPage/성공페이지는 이미 최적(프리로드·논블로킹 키·약관 비대기) — 무수정. CLAUDE.md Toss audit log 등재.
 - **⚠️ 검증 한계**: 이 원격환경 npm 조직정책 403 으로 `node_modules` 미설치 → 전체 `npm run build`·tsc 미실행. sql-bind/column(신규 UPDATE 컬럼 orders 존재 확인)/CHECK 가드 0. **잠금파일 회귀검증은 staging 배포 후 실결제 필수**(VA 결제 → 입금 전 AWAITING·입금 후 확정+KT 1회).
 
+## ✅ 2026-07-02 — 공구상세 "로딩 2번 나뉨 + 느림" 근본수정 3종 (대표 신고 `/group-buy/2312`)
+진단: 하드로드 SSR seed 는 정상 주입(라이브 2회 실측) — 문제는 ① 로더 **재마운트 시 애니메이션 keyframe 0 재시작**(breathe 가 opacity 0.5 시작=로고 확 어두워짐, sweep 바 화면 밖 시작+200ms 지연=바 사라짐) → "떴다 안떴다 다시" 블링크, ② 홈 카드 touch prefetch(상세 API ~0.6s)와 페이지 자체 axios 가 **중복 fetch**(탭 race 시 로더 노출 2배+느림), ③ 하드로드 첫 페인트가 `#root` blank(흰 화면).
+- **① BrandLoader 위상 전역동기**: `performance.now()` 기반 음수 animation-delay — 어떤 마운트든 같은 위상에서 이어져 [정적→Suspense→페이지] 로더가 **하나처럼 연속**. 200ms sweep 지연 제거(블링크 원인).
+- **② fetch dedupe**: `GroupBuyDetailPage` freshness fetch raw axios → RQ `fetchQuery`(staleTime 60s) — in-flight prefetch 이어받기 + 방금 끝난 prefetch 네트워크 0회. 캐시 write-back 자동(기존 setQueryData 제거).
+- **③ [UNLOCK_LOADING] detail 정적 로더**: worker `#root` 비움 → 링크샵 승인 패턴과 동일 정적 URDEAL 로더(분기 통합, blog 비움 유지) → 흰 화면 0, 첫 페인트부터 로더 연속. CLAUDE.md audit log 등재.
+- file-size rebaseline(오늘 병합 승인 성장 정합 13건). 검증: tsc 0·seed-detail/group-buy 단위 pass·build 0. ⚠️ staging: 홈→상세 탭(느린 네트워크)+하드로드 각 1회 — 로더가 끊김 없이 한 번만.
+
 ## ✅ 2026-07-02 — 유저→사업자 유저(셀러) 전환 단일 퍼널 (대표 "B — 가장 이상적인 형태, 헷갈리지 않게")
 감사 결과: 진입점 5곳 → 가입화면 3개(레거시 별도계정 `/seller/register` · 막다른 `/seller/register/business` · supplier) → 백엔드 2개 · seller_type 제각각 → 유저가 어디서 누르냐에 따라 다른 세계. **전면 단일 퍼널로 통일**:
 - **단일 관문 = `/seller/register/supplier`** (카카오 세션 같은-계정 업그레이드, store_owner). 레거시 `/seller/register`·`/seller/signup`·`/seller/register/business` 는 **쿼리 보존 리다이렉트**(에이전시 ?agency= 링크 생존). 레거시 페이지 3개(SellerRegisterPage=별도 아이디/비번 독립계정 · SellerRegisterBusinessPage=막다른 안내 · SellerApplyModal=제3의 폼, influencer 하드코딩) **삭제**.
