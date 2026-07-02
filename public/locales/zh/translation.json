@@ -2813,11 +2813,14 @@
       "reviewNote": "申请后1-2个工作日内审核 → 通过应用通知·KakaoTalk告知结果。与国税厅信息一致时自动批准。",
       "reviewNote2": "批准后可在卖家后台上架商品和使用券。",
       "submitting": "申请中...",
-      "submit": "申请企业注册"
+      "submit": "申请企业注册",
+      "secondGate": "💳 现金结算需要在批准后进行一次营业执照认证（后台 → 企业信息）。",
+      "prospectBanner": " 代理机构已预先填写店铺信息。确认内容后提交即可。"
     },
     "mailOrderNumber": "通信销售业申报号",
     "mailOrderNumberPlaceholder": "例: 2026-首尔江南-01234",
-    "mailOrderNumberHint": "将公开显示在链接商店的卖家信息中"  },
+    "mailOrderNumberHint": "将公开显示在链接商店的卖家信息中"
+  },
   "admin": {
     "login": {
       "title": "管理员登录",
@@ -4479,7 +4482,8 @@
     "benefit2": "商品注册和销售",
     "benefit3": "查看营业额和结算",
     "contactCS": "联系客服",
-    "reloadHint": "重新加载页面以刷新状态"
+    "reloadHint": "重新加载页面以刷新状态",
+    "secondGate": "💳 批准后如需现金结算，还需进行一次营业执照认证（后台 → 企业信息）。"
   },
   "sellerRegisterBusiness": {
     "title": "成为卖家",

@@ -211,6 +211,34 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
     }
   )
 
+  // ── 🎟️ 2026-07-02 (대표): 매장별 "현지 사용 방식" 설정 — 사장님이 3모드 중 선택 ──
+  //   scan_only(직원 확인만) / store_code(매장 확인코드 셀프) / self_free(자유 셀프, 현행 기본).
+  router.get('/redemption-settings', requireAuth(), async (c) => {
+    const user = getCurrentUser(c)
+    if (!user || user.type !== 'seller') return c.json({ success: false, error: '셀러만 가능' }, 403)
+    const { getRedemptionSettings, upsertRedemptionSettings, generateStoreCode } = await import('../../../worker/utils/redemption-settings')
+    const s = await getRedemptionSettings(c.env.DB, Number(user.id))
+    // store_code 미보유면 최초 발급(모드 무관 — 스티커 미리 준비 가능).
+    if (!s.store_code) {
+      const code = generateStoreCode()
+      await upsertRedemptionSettings(c.env.DB, Number(user.id), s.mode, code)
+      s.store_code = code
+    }
+    return c.json({ success: true, data: s })
+  })
+
+  router.put('/redemption-settings', requireAuth(), async (c) => {
+    const user = getCurrentUser(c)
+    if (!user || user.type !== 'seller') return c.json({ success: false, error: '셀러만 가능' }, 403)
+    const body = await c.req.json<{ mode?: string; regenerate_code?: boolean }>().catch(() => ({} as { mode?: string; regenerate_code?: boolean }))
+    const { getRedemptionSettings, upsertRedemptionSettings, generateStoreCode, REDEMPTION_MODES } = await import('../../../worker/utils/redemption-settings')
+    const cur = await getRedemptionSettings(c.env.DB, Number(user.id))
+    const mode = (REDEMPTION_MODES as readonly string[]).includes(String(body.mode || '')) ? (body.mode as typeof cur.mode) : cur.mode
+    const storeCode = body.regenerate_code ? generateStoreCode() : (cur.store_code || generateStoreCode())
+    await upsertRedemptionSettings(c.env.DB, Number(user.id), mode, storeCode)
+    return c.json({ success: true, data: { mode, store_code: storeCode } })
+  })
+
   // ── POST /:code/use-by-seller — 매장 사장님이 본인 매장 voucher 사용 (PIN 없이, seller JWT) ──
   // 🛡️ 2026-05-16: 기본 카메라 스캔으로 진입한 사장님이 1탭 사용 처리 가능하게.
   //   PIN 입력 없이 seller token 만으로 product 소유권 검증 후 atomic CAS.

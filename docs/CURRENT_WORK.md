@@ -15,6 +15,11 @@
 - **⚡ 후속: 결제 체감속도(felt-latency) 최적화** (대표 "로딩 속도도 결제쪽에 봐볼래?" → "전부 (1~4)" 승인): ① **KT 교환권 발송(외부 HTTP 1~4.5s)이 결제 응답을 동기로 막던 것** → `/pay`(딜 결제 = 교환권 메인 경로, 비잠금)·`/confirm`(잠금, +multiTier 커미션도) 둘 다 waitUntil 이동 + `kt-alpha-voucher-retry` cron 에 **미발송 스위퍼**(발송기록 0 인 확정주문 재킥 — waitUntil 갭 + 기존 크래시 갭 모두 커버, 이중발송 구조적 0). ② 딜충전 위젯(`TossWidgetPayPage`, 잠금): variant fetch 병렬화 + 약관 비대기 + timeout 4s 정합(주문 위젯 패턴 미러). ③ `CartPage` prefetch 를 `toss-preload`(실제 SDK 로드) 승격. ④ js.tosspayments.com **동적 preconnect**(index.html 예고분 실구현). CheckoutPage/성공페이지는 이미 최적(프리로드·논블로킹 키·약관 비대기) — 무수정. CLAUDE.md Toss audit log 등재.
 - **⚠️ 검증 한계**: 이 원격환경 npm 조직정책 403 으로 `node_modules` 미설치 → 전체 `npm run build`·tsc 미실행. sql-bind/column(신규 UPDATE 컬럼 orders 존재 확인)/CHECK 가드 0. **잠금파일 회귀검증은 staging 배포 후 실결제 필수**(VA 결제 → 입금 전 AWAITING·입금 후 확정+KT 1회).
 
+## ✅ 2026-07-02 — 상세 사진 즉시표시 (대표 "사진도 빠르게 안 나타나네")
+원인 라이브 실측: ① 동네딜 실사진 호스트(ldb-phinf/shop-phinf/naverbooking-phinf.pstatic.net)가 `CDN_CGI_VERIFIED` 미등재 → 리사이즈 불가 워커 프록시 경유 **2.9s·원본 1,055KB**. ② 상세 히어로가 CSS background-image 라 브라우저 프리로드 스캐너 미적용 — [엔트리→청크→렌더] 워터폴 뒤에야 다운로드 시작.
+- **① `cf-image.ts` pstatic cdn-cgi 승격** `[UNLOCK_LOADING ADD-only]`: `pstatic.net` 루트를 EXTERNAL_PROXY_HOSTS+CDN_CGI_VERIFIED 에 추가 — prod 실측 3종 전부 `cf-resized: internal=ok`(1,055KB→106KB @900px). (같은 날 타 세션이 imgnews/yt3/picsum + `onerror=redirect` superset 으로 main 선반영 — 머지 시 main 버전 채택.)
+- **② worker DETAIL 히어로 preload 주입**: SSR seed 의 image_url 로 `<link rel=preload as=image fetchpriority=high>` head 주입 — 클라와 동일 `cfImage()` 공유 import 로 URL byte-일치. CLAUDE.md audit log 등재.
+
 ## ✅ 2026-07-02 — 공구상세 "로딩 2번 나뉨 + 느림" 근본수정 3종 (대표 신고 `/group-buy/2312`)
 진단: 하드로드 SSR seed 는 정상 주입(라이브 2회 실측) — 문제는 ① 로더 **재마운트 시 애니메이션 keyframe 0 재시작**(breathe 가 opacity 0.5 시작=로고 확 어두워짐, sweep 바 화면 밖 시작+200ms 지연=바 사라짐) → "떴다 안떴다 다시" 블링크, ② 홈 카드 touch prefetch(상세 API ~0.6s)와 페이지 자체 axios 가 **중복 fetch**(탭 race 시 로더 노출 2배+느림), ③ 하드로드 첫 페인트가 `#root` blank(흰 화면).
 - **① BrandLoader 위상 전역동기**: `performance.now()` 기반 음수 animation-delay — 어떤 마운트든 같은 위상에서 이어져 [정적→Suspense→페이지] 로더가 **하나처럼 연속**. 200ms sweep 지연 제거(블링크 원인).

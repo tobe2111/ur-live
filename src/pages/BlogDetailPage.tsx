@@ -5,7 +5,7 @@ import { ArrowLeft, Clock, Share2 } from 'lucide-react'
 import SEO, { breadcrumbJsonLd } from '@/components/SEO'
 import { nativeShare } from '@/lib/native'
 import KakaoShareButton from '@/components/KakaoShareButton'
-import { escapeHtml } from '@/shared/utils/html'
+import { BlogMarkdown } from '@/features/blog/BlogMarkdown'
 import api from '@/lib/api'
 import { useBlogPost, type BlogPost } from '@/hooks/queries/useBlogPost'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -71,97 +71,6 @@ export default function BlogDetailPage() {
   // 📝 2026-07-01: 읽는 시간 — 한글 기준 대략 분당 500자. 최소 1분.
   const readMin = Math.max(1, Math.round((post.content?.length || 0) / 500))
 
-  function boldify(text: string) {
-    return escapeHtml(text)
-      // **굵게** → <strong>. [\s\S] 로 개행 걸친 볼드도 매칭.
-      .replace(/\*\*([\s\S]*?)\*\*/g, '<strong class="text-gray-900 dark:text-white">$1</strong>')
-      // 짝이 안 맞아 남은 ** 는 글자로 노출되지 않게 제거(AI 생성/편집 글 방탄).
-      .replace(/\*\*/g, '')
-  }
-
-  // 마크다운 → HTML 간단 변환
-  function renderContent(content: string) {
-    return content
-      .split('\n\n')
-      .map((block, i) => {
-        const trimmed = block.trim()
-        if (!trimmed) return null
-
-        // 표 처리
-        if (trimmed.includes('|') && trimmed.includes('---')) {
-          const lines = trimmed.split('\n').filter(l => l.trim() && !l.trim().match(/^\|[-\s|]+\|$/))
-          if (lines.length >= 2) {
-            const headers = lines[0].split('|').filter(Boolean).map(h => h.trim())
-            const rows = lines.slice(1).map(l => l.split('|').filter(Boolean).map(c => c.trim()))
-            return (
-              <div key={i} className="overflow-x-auto my-4">
-                <table className="w-full text-sm border-collapse">
-                  <thead>
-                    <tr>{headers.map((h, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1A1A1A] border-b border-gray-200 dark:border-[#2A2A2A] font-semibold text-gray-700 dark:text-gray-200">{h.replace(/\*\*/g, '')}</th>)}</tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, ri) => (
-                      <tr key={ri}>{row.map((cell, ci) => <td key={ci} className="px-3 py-2 border-b border-gray-100 dark:border-[#1A1A1A] text-gray-600 dark:text-gray-300">{cell.replace(/\*\*/g, '')}</td>)}</tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )
-          }
-        }
-
-        // H2 (헤딩은 이미 굵게 — ** 표기는 제거)
-        if (trimmed.startsWith('## ')) {
-          return <h2 key={i} className="text-xl font-bold text-gray-900 dark:text-white mt-8 mb-3">{trimmed.replace('## ', '').replace(/\*\*/g, '')}</h2>
-        }
-        // H3
-        if (trimmed.startsWith('### ')) {
-          return <h3 key={i} className="text-lg font-bold text-gray-900 dark:text-white mt-6 mb-2">{trimmed.replace('### ', '').replace(/\*\*/g, '')}</h3>
-        }
-        // 불릿 리스트
-        if (trimmed.startsWith('- ')) {
-          const items = trimmed.split('\n').filter(l => l.startsWith('- '))
-          return (
-            <ul key={i} className="my-3 space-y-1.5">
-              {items.map((item, j) => (
-                <li key={j} className="flex items-start gap-2 text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed">
-                  <span className="text-pink-500 mt-1 shrink-0">•</span>
-                  <span dangerouslySetInnerHTML={{ __html: boldify(item.replace('- ', '')) }} />
-                </li>
-              ))}
-            </ul>
-          )
-        }
-        // 번호 목록 (1. 2. 3.) — 시드 글의 '구매/시작 단계' 다수가 사용. 미처리 시 한 문단으로 뭉침.
-        if (/^\d+\.\s/.test(trimmed)) {
-          const items = trimmed.split('\n').filter(l => /^\d+\.\s/.test(l.trim()))
-          return (
-            <ol key={i} className="my-3 space-y-1.5 list-none">
-              {items.map((item, j) => {
-                const m = item.trim().match(/^(\d+)\.\s+(.*)$/)
-                return (
-                  <li key={j} className="flex items-start gap-2 text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed">
-                    <span className="text-pink-500 font-semibold mt-0.5 shrink-0 tabular-nums">{m?.[1] ?? j + 1}.</span>
-                    <span dangerouslySetInnerHTML={{ __html: boldify(m?.[2] ?? item) }} />
-                  </li>
-                )
-              })}
-            </ol>
-          )
-        }
-        // 구분선
-        if (trimmed === '---') {
-          return <hr key={i} className="my-8 border-gray-200 dark:border-[#2A2A2A]" />
-        }
-        // 일반 단락
-        return (
-          <p key={i} className="text-[15px] text-gray-700 dark:text-gray-200 leading-[1.8] my-3"
-            dangerouslySetInnerHTML={{ __html: boldify(trimmed) }} />
-        )
-      })
-      .filter(Boolean)
-  }
-
   return (
     <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
       <SEO
@@ -222,9 +131,9 @@ export default function BlogDetailPage() {
           <img src={post.thumbnail_url} alt="" className="w-full rounded-2xl mt-6 mb-2" loading="lazy" />
         )}
 
-        {/* 본문 */}
+        {/* 본문 — 공유 안전 렌더러(BlogMarkdown): 링크·이미지·인용구 지원, dangerouslySetInnerHTML 미사용 */}
         <div className="mt-6">
-          {renderContent(post.content)}
+          <BlogMarkdown content={post.content} />
         </div>
 
         {/* 관련 글 — 같은 태그 우선, 내부 링크(회유·SEO) */}

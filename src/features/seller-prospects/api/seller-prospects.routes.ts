@@ -143,6 +143,74 @@ prospectsRoutes.get('/mine', requireAuth(), async (c) => {
   return c.json({ success: true, data: results })
 })
 
+// ── 🏁 2026-07-02 (대표 "가장 이상적으로" — 에이전시 대리 등록) ──────────────────────
+// 에이전시/영입자가 등록한 prospect 로 **사장님 가입 링크** 생성 → 사장님은 카카오 로그인 +
+// 확인·제출만(정보 재입력 0). 무상태 HMAC 토큰(스키마 무변경) — 링크 소지자만 프리필 조회 가능.
+async function prospectToken(secret: string, id: number): Promise<string> {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`prospect:${id}`))
+  return Array.from(new Uint8Array(sig)).slice(0, 12).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+// POST /:id/invite-link — 본인 prospect 의 사장님 가입 링크 발급(에이전시 코드 자동 포함).
+prospectsRoutes.post('/:id/invite-link', requireAuth(), async (c) => {
+  const user = (c.get as (k: string) => unknown)('user') as { id: number } | undefined
+  if (!user?.id) return c.json({ success: false, error: '인증 필요' }, 401)
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400)
+  const row = await c.env.DB.prepare(
+    `SELECT id, introducer_type, introducer_id FROM seller_prospects WHERE id = ?`
+  ).bind(id).first<{ id: number; introducer_type: string; introducer_id: string }>()
+  if (!row) return c.json({ success: false, error: 'prospect 없음' }, 404)
+  // 소유권: introducer_id 는 user.id 또는 (agency 매핑) agencies.id/linked_user_id — POST / 와 동일 기준.
+  let ownerOk = String(row.introducer_id) === String(user.id)
+  if (!ownerOk && row.introducer_type === 'agency') {
+    const ag = await c.env.DB.prepare('SELECT id FROM agencies WHERE (id = ? OR linked_user_id = ?) AND id = ?')
+      .bind(user.id, user.id, Number(row.introducer_id) || 0).first().catch(() => null)
+    ownerOk = !!ag
+  }
+  if (!ownerOk) return c.json({ success: false, error: '본인 등록 prospect 아님' }, 403)
+  const pt = await prospectToken(c.env.JWT_SECRET, id)
+  // 에이전시면 intro_code 동봉 → 가입 폼 추천코드 자동 입력(영입 커미션 lock-in 보장).
+  let agencyCode: string | null = null
+  if (row.introducer_type === 'agency') {
+    const ag = await c.env.DB.prepare('SELECT intro_code FROM agencies WHERE id = ?')
+      .bind(Number(row.introducer_id) || 0).first<{ intro_code: string | null }>().catch(() => null)
+    agencyCode = ag?.intro_code || null
+  }
+  const qs = new URLSearchParams({ prospect: String(id), pt })
+  if (agencyCode) qs.set('agency', agencyCode)
+  return c.json({ success: true, path: `/seller/register/supplier?${qs.toString()}` })
+})
+
+// GET /prefill/:id?pt= — 가입 관문 프리필(공개 — 토큰 소지 = 링크 수신 사장님).
+prospectsRoutes.get('/prefill/:id', async (c) => {
+  const id = Number(c.req.param('id'))
+  const pt = String(c.req.query('pt') || '')
+  if (!Number.isFinite(id) || !pt) return c.json({ success: false, error: 'invalid' }, 400)
+  const expect = await prospectToken(c.env.JWT_SECRET, id)
+  if (pt !== expect) return c.json({ success: false, error: '유효하지 않은 링크' }, 403)
+  const row = await c.env.DB.prepare(
+    `SELECT store_name, contact_name, contact_phone, business_address, introducer_type, introducer_id, status
+       FROM seller_prospects WHERE id = ?`
+  ).bind(id).first<{ store_name: string | null; contact_name: string | null; contact_phone: string | null; business_address: string | null; introducer_type: string; introducer_id: string; status: string }>()
+  if (!row) return c.json({ success: false, error: 'prospect 없음' }, 404)
+  let introducerName: string | null = null
+  if (row.introducer_type === 'agency') {
+    const ag = await c.env.DB.prepare('SELECT name FROM agencies WHERE id = ?')
+      .bind(Number(row.introducer_id) || 0).first<{ name: string | null }>().catch(() => null)
+    introducerName = ag?.name || null
+  }
+  return c.json({
+    success: true,
+    data: {
+      store_name: row.store_name, contact_name: row.contact_name,
+      contact_phone: row.contact_phone, business_address: row.business_address,
+      introducer_name: introducerName, converted: row.status === 'converted',
+    },
+  })
+})
+
 // prospect 회수 (만료 전)
 prospectsRoutes.delete('/:id', requireAuth(), async (c) => {
   const user = (c.get as (k: string) => unknown)('user') as { id: number } | undefined
