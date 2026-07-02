@@ -21,6 +21,14 @@ export default function ScrollToTop() {
   const positionsRef = useRef<Map<string, number>>(new Map())
   const preserveScroll = !!(state as PreserveScrollState)?.preserveScroll
 
+  // 🛡️ 2026-07-02: 브라우저 기본 스크롤 복원(auto)이 SPA 비동기 콘텐츠에선 오작동하며 아래 수동
+  //   복원과 충돌 → manual 로 전환해 이 컴포넌트가 단독 관리.
+  useEffect(() => {
+    if (typeof history !== 'undefined' && 'scrollRestoration' in history) {
+      history.scrollRestoration = 'manual'
+    }
+  }, [])
+
   // 현재 페이지 스크롤 위치 저장 (페이지 이탈 직전)
   useEffect(() => {
     const key = pathname + search
@@ -40,13 +48,23 @@ export default function ScrollToTop() {
     if (preserveScroll) return
     const key = pathname + search
     if (navType === 'POP') {
-      // 뒤로가기/앞으로가기 — 저장된 위치로 복원 (RAF로 렌더 완료 후)
+      // 뒤로가기/앞으로가기 — 저장된 위치로 복원.
       const saved = positionsRef.current.get(key)
       if (saved && saved > 0) {
-        requestAnimationFrame(() => {
-          window.scrollTo({ top: saved, left: 0, behavior: 'instant' as ScrollBehavior })
-        })
-        return
+        // 🛡️ 2026-07-02 (대표 신고 — 동네딜 상세 갔다 뒤로오면 맨 위로 튐): 홈/리스트 피드는 데이터를
+        //   비동기로 불러와 복귀 순간 페이지 높이가 저장 위치보다 짧음 → RAF 1회 scrollTo 는 top 으로
+        //   clamp. 콘텐츠 높이가 목표에 닿을 때까지 여러 프레임 재시도(최대 ~1.2s) 후 정착.
+        let raf = 0
+        const started = performance.now()
+        const tryRestore = () => {
+          const maxScroll = document.documentElement.scrollHeight - window.innerHeight
+          window.scrollTo({ top: Math.min(saved, Math.max(0, maxScroll)), left: 0, behavior: 'instant' as ScrollBehavior })
+          if (maxScroll < saved - 2 && performance.now() - started < 1200) {
+            raf = requestAnimationFrame(tryRestore)  // 아직 콘텐츠 로딩 중 — 다음 프레임 재시도
+          }
+        }
+        raf = requestAnimationFrame(tryRestore)
+        return () => cancelAnimationFrame(raf)
       }
     }
     // 새 페이지(PUSH/REPLACE) 또는 저장 위치 없음 — 상단으로
