@@ -24,6 +24,7 @@ interface Line {
   tracking_number: string | null
   shipped_at: string | null
   line_status: string
+  accepted_at?: string | null
   order_status: string
   created_at: string
   ship_to_name: string | null
@@ -57,6 +58,9 @@ export default function SupplierWholesaleOrdersPage() {
     return [...m.entries()].map(([orderId, items]) => ({
       orderId, items,
       pendingCount: items.filter(it => it.line_status !== 'SHIPPED' && it.line_status !== 'REFUNDED').length,
+      // 🏭 2026-07-01 (라이브 감사 — 라인단위 수락): 내 미처리(발송/환불 전) 라인 중 아직 수락 안 한 것.
+      //   수락/거절 버튼은 주문 상태가 아니라 '내 라인'으로 게이트 → 다제조사에서 남의 수락에 안 사라짐.
+      unacceptedCount: items.filter(it => it.line_status === 'PENDING' && !it.accepted_at).length,
     }))
   }, [lines])
 
@@ -211,19 +215,26 @@ export default function SupplierWholesaleOrdersPage() {
                       ? <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">발송대기 {g.pendingCount}건</span>
                       : <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">발송완료</span>}
                   </div>
-                  {/* 🏭 2026-06-27: 제조사 수락/거절 (PAID = 미확인 신규주문). 수락 없이 발송도 가능하나 명시적 확인 권장. */}
-                  {first.order_status === 'PAID' && (
+                  {/* 🏭 2026-07-01 (라이브 감사 — 라인단위): 수락/거절은 '내 라인' 기준(주문 상태 아님).
+                      다제조사 주문에서 다른 제조사가 수락해도 내 미처리 라인이 있으면 버튼 유지. 수락 없이 발송도 가능. */}
+                  {g.unacceptedCount > 0 && (
                     <div className="flex items-center gap-2 mb-3">
                       <button onClick={() => accept(g.orderId)} disabled={busyOrder === g.orderId} className="inline-flex items-center justify-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold disabled:opacity-50">
-                        {busyOrder === g.orderId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} 주문 수락
+                        {busyOrder === g.orderId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} 내 상품 수락
                       </button>
                       <button onClick={() => reject(g.orderId)} disabled={busyOrder === g.orderId} className="inline-flex items-center gap-1 px-3 py-2 border border-rose-200 text-rose-600 rounded-lg text-sm font-medium disabled:opacity-50">
                         <X className="w-4 h-4" /> 거절
                       </button>
                     </div>
                   )}
-                  {first.order_status === 'ACCEPTED' && (
-                    <div className="mb-3"><span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-green-50 text-green-700"><Check className="w-3.5 h-3.5" /> 수락됨 · 발송 대기</span></div>
+                  {/* 내 라인을 모두 수락했으나 아직 미발송 — 수락됨 배지 + 거절(발송 전) 유지 */}
+                  {g.unacceptedCount === 0 && g.pendingCount > 0 && (
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-green-50 text-green-700"><Check className="w-3.5 h-3.5" /> 수락됨 · 발송 대기</span>
+                      <button onClick={() => reject(g.orderId)} disabled={busyOrder === g.orderId} className="inline-flex items-center gap-1 px-2.5 py-1 border border-rose-200 text-rose-600 rounded-lg text-xs font-medium disabled:opacity-50">
+                        <X className="w-3.5 h-3.5" /> 거절
+                      </button>
+                    </div>
                   )}
                   <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 mb-3">
                     {mixedRecipients ? (
