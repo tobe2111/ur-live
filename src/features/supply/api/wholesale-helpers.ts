@@ -55,6 +55,7 @@ export async function ensureOrderTables(DB: D1Database) {
     tracking_number TEXT,
     shipped_at DATETIME,
     line_status TEXT NOT NULL DEFAULT 'PENDING',
+    accepted_at DATETIME,
     option_label TEXT,
     ext_order_no TEXT,
     ship_to_name TEXT,
@@ -63,6 +64,9 @@ export async function ensureOrderTables(DB: D1Database) {
     ship_to_address TEXT,
     ship_to_message TEXT
   )`).run().catch(swallow('wholesale:create-items'))
+  // 🏭 2026-07-01 (라이브 감사 — 라인단위 수락): 제조사별 수락 시각. line_status(발송/환불 게이트)는
+  //   건드리지 않고(수락해도 PENDING 유지 → 발송 가능) accepted_at 로만 수락 표시(다제조사 독립 수락).
+  await DB.prepare('ALTER TABLE wholesale_order_items ADD COLUMN accepted_at DATETIME').run().catch(swallow('wholesale:items-accepted-at'))
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_orders_seller ON wholesale_orders(distributor_seller_id, created_at DESC)`).run().catch(swallow('wholesale:idx1'))
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_items_order ON wholesale_order_items(wholesale_order_id)`).run().catch(swallow('wholesale:idx2'))
   await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_wholesale_items_supplier ON wholesale_order_items(supplier_id)`).run().catch(swallow('wholesale:idx3'))

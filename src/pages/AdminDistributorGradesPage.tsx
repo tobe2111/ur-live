@@ -755,10 +755,15 @@ export default function AdminDistributorGradesPage() {
           <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
             <Wallet className="w-4 h-4 text-emerald-600" /> 여신 · 외상 관리
           </h2>
-          <p className="text-sm text-gray-500 mb-4">
-            판매사에 <b>여신 한도</b>를 부여하면 도매 주문 시 선결제 대신 <b>외상(ON_CREDIT)</b>으로 주문할 수 있습니다.
-            (가용 한도 = 한도 − 미수금. 연체 시 동결.) 한도 0 = 외상 불가(선결제 전용).
-          </p>
+          {/* 🏭 2026-07-01 (라이브 감사 — 여신 잔재 정리): 도매 주문은 현재 예치금(선결제) 단일화라
+              외상(ON_CREDIT) 결제 경로가 없다. 이전 카피는 "외상 주문 가능"을 약속했으나 한도를 줘도
+              외상 결제가 열리지 않음(모순) → 현행 동작을 정직하게 표기. 미수금 원장/상환은 기록·회수용
+              으로 유지, 외상 결제 재개는 별도 기능으로 준비. */}
+          <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-[13px] text-amber-800">
+            ⚠️ 현재 도매 주문은 <b>예치금(선결제) 전용</b>입니다. 외상(ON_CREDIT) 결제 기능은 <b>비활성</b> 상태로,
+            한도를 부여해도 외상 주문은 아직 열리지 않습니다. 이 화면의 한도·미수금·상환은 <b>기록/회수 관리용</b>이며,
+            외상 결제 재개는 별도 기능으로 준비 중입니다.
+          </div>
           <div className="flex flex-wrap items-end gap-2 mb-4">
             <input type="number" value={creditSellerId} onChange={e => setCreditSellerId(e.target.value)} placeholder="판매사 ID" className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
             <button onClick={() => loadCredit(creditSellerId)} disabled={creditBusy} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">{creditBusy ? '처리중…' : '여신 조회'}</button>

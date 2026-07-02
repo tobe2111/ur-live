@@ -43,7 +43,7 @@ app.get('/orders', async (c) => {
     const { results } = await DB.prepare(`
       SELECT i.id AS item_id, i.wholesale_order_id, i.name, i.qty, i.base_supply_price,
              (i.base_supply_price * i.qty) AS settle_amount,
-             i.courier, i.tracking_number, i.shipped_at, i.line_status,
+             i.courier, i.tracking_number, i.shipped_at, i.line_status, i.accepted_at,
              i.option_label, i.ext_order_no,
              COALESCE(i.ship_to_message, o.ship_to_message) AS ship_to_message,
              o.status AS order_status, o.created_at, o.paid_at,
@@ -288,9 +288,11 @@ app.post('/orders/:id/ship-all', async (c) => {
   }
 })
 
-// ── POST /orders/:id/accept — 제조사 주문 수락 (PAID → ACCEPTED) ──────────────
-//   2026-06-27 (대표 — 제조사 확인 단계): 내 라인이 있는 주문을 '수락'해 발송대기로. 수락 없이 바로
-//   발송도 허용(ship 가 PAID/ACCEPTED 둘 다)이라, 수락은 명시적 acknowledgement + 바이어 통지용.
+// ── POST /orders/:id/accept — 제조사 주문 수락 (라인단위) ──────────────────────
+//   🏭 2026-07-01 (라이브 감사 — 라인단위 수락): 다제조사 주문에서 한 제조사가 수락해도 주문 전체가
+//   ACCEPTED 로 튀어 다른 제조사의 수락/거절이 사라지던 것 근본수정. **내 라인만** accepted_at 스탬프하고,
+//   모든(미환불) 라인이 수락(또는 발송)됐을 때만 주문 상태를 ACCEPTED 로 롤업. line_status 는 PENDING
+//   유지(발송 게이트 불변 — 수락해도 바로 발송 가능). 발송·거절(라인환불)은 이미 라인단위라 이로써 전 흐름 라인단위 정합.
 app.post('/orders/:id/accept', async (c) => {
   const sid = supplierId(c)
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -303,16 +305,27 @@ app.post('/orders/:id/accept', async (c) => {
       "SELECT wo.id, wo.status, wo.distributor_seller_id FROM wholesale_orders wo JOIN wholesale_order_items wi ON wi.wholesale_order_id = wo.id WHERE wo.id = ? AND wi.supplier_id = ? LIMIT 1"
     ).bind(orderId, sid).first<{ id: number; status: string; distributor_seller_id: number | null }>()
     if (!own) return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
-    if (own.status === 'ACCEPTED') return c.json({ success: true, already: true })
-    const ok = await transitionWholesaleOrder(DB, orderId, 'ACCEPTED', ['PAID'], ", accepted_at=datetime('now')")
-    if (!ok) return c.json({ success: false, error: '수락할 수 없는 주문 상태입니다' }, 400)
+    if (!['PAID', 'ACCEPTED', 'PARTIAL_REFUNDED'].includes(own.status)) return c.json({ success: false, error: '수락할 수 없는 주문 상태입니다' }, 400)
+    // 내 PENDING·미수락 라인만 수락 스탬프(멱등 — 이미 수락/발송/환불 라인은 미변경).
+    const upd = await DB.prepare(
+      "UPDATE wholesale_order_items SET accepted_at=datetime('now') WHERE wholesale_order_id=? AND supplier_id=? AND line_status='PENDING' AND accepted_at IS NULL"
+    ).bind(orderId, sid).run()
+    const acceptedNow = (upd.meta?.changes ?? 0)
+    if (acceptedNow === 0) return c.json({ success: true, already: true })
+    // 롤업: 미환불 라인 중 '미수락+미발송'(=아직 처리 안 된 라인)이 없으면 주문 ACCEPTED 로.
+    const remain = await DB.prepare(
+      "SELECT COUNT(*) AS c FROM wholesale_order_items WHERE wholesale_order_id=? AND line_status NOT IN ('REFUNDED','SHIPPED') AND accepted_at IS NULL"
+    ).bind(orderId).first<{ c: number }>()
+    if ((remain?.c ?? 0) === 0) {
+      await transitionWholesaleOrder(DB, orderId, 'ACCEPTED', ['PAID'], ", accepted_at=datetime('now')")
+    }
     if (own.distributor_seller_id) {
       createDashboardNotification(
         DB, 'seller', String(own.distributor_seller_id), 'wholesale_accepted',
-        '도매 주문 수락됨', `주문 #${orderId} 을(를) 제조사가 수락했습니다. 곧 발송됩니다.`, '/wholesale/orders',
+        '도매 주문 수락됨', `주문 #${orderId} 의 상품을 제조사가 수락했습니다. 곧 발송됩니다.`, '/wholesale/orders',
       ).catch(swallow('wholesale-supplier:notify-accept'))
     }
-    return c.json({ success: true })
+    return c.json({ success: true, accepted_lines: acceptedNow })
   } catch (err) {
     return safeError(c, err, '주문 수락 중 오류가 발생했습니다', '[wholesale-supplier]')
   }
