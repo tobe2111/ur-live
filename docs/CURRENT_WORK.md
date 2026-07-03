@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-03 — 동네딜 데모: 이미지 R2 재호스팅 + 실매장 좌표 정확화 + 선택삭제 (대표 "애초에 정확하게, 가장 이상적으로")
+데모 생성 시 좌표·이미지를 **애초에 정확하게** 불러오도록 소스 단에서 개선(필터는 백스톱으로 유지).
+- **이미지 = 우리 R2 재호스팅**(`rehostImageToR2`): 네이버 검색 실사진을 서버측에서 내려받아 `MEDIA_BUCKET` 에 PUT → 저장 URL 은 항상 우리 도메인(`/api/media/…`). 핫링크의 인증서불일치·혼합콘텐츠·핫링크차단·원본404 **구조적 소멸**(대표 콘솔에러 근본해결). R2 미바인딩/실패 시 null → picsum 폴백(좌표 보유분) 또는 스킵.
+- **좌표 = 순수 업종 키워드(pq) 매칭**: DEAL_DEMO 에 `pq`(카카오 장소검색용, 이미지검색 노이즈 "상차림/시술" 배제) 추가 → `{지역} {pq}` 로 실제 매장(좌표·주소·place_url) 매칭률 극대화. 지역 지정 시 그 지역 실매장으로 바인딩.
+- **유령 데모 스킵**(백스톱): 좌표도 없고 재호스팅된 실사진도 없으면 생성 안 함. 응답/토스트에 `skipped` 노출.
+- **DealList 체크박스 선택삭제**: 행별 체크박스 + 전체선택 + "선택 삭제(N)"(단건 DELETE 순회 = 부속정리·soft-retire 재사용) + 썸네일 cfImage 래핑.
+- 검증: tsc 0·build 0·sql-bind 0. ⚠️ 라이브: 지역 지정 데모 생성 → 실매장 좌표·우리도메인 이미지 확인.
+
 ## ✅ 2026-07-02 — 마이페이지 전수 UX/기능 점검 + 일괄 수정 (대표 "모두 이상적으로")
 `/user/profile` + 위성 15페이지 전수 점검(에이전트 2 + 가드) 후 발견 전량 수정.
 - **🔴 에러 위장 근절(최대 교차 이슈)**: 마이 데이터 훅 8종(`useMyData`×3·`useMyCoupons`·`useMyReturns`·`useMyStays`·`useMyFollows`·`useDigitalLibrary`)이 `.catch(() => readCache(,[]))` 로 에러를 삼켜 **isError 가 절대 발동 불가** → 네트워크 장애가 "빈 지갑/주문 0건"으로 위장, 페이지들의 에러+재시도 UI 전부 dead branch. 수정: `localCache.readCacheOrNull` 신설 — **캐시 있으면 last-known 폴백(오프라인 UX 유지), 없으면 throw → isError**. `useMyGroupBuys`(3endpoint 전멸 시)·`useMyCommissions`(양쪽 전멸 시)도 throw. isError 미분기 페이지 9곳(MyVouchers/MyStays/MyFollows/MyGroupBuys/MyAppointments/MyDigitalLibrary/MyCommissions/MyStore/MyReturns)에 에러+재시도 UI 추가(기존 dead 에러 UI 는 자동 부활). `TeamPointsCard` 실패→"0딜" 위장 → "잔액 다시 불러오기" 버튼, `useMyCounts` 실패→0 배지 위장 → null 유지(배지 숨김).
