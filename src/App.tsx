@@ -600,7 +600,8 @@ function AppContent() {
                 key 로 컬렉션 전환 시 강제 리마운트(초기 정렬/필터 재적용). */}
             <Route path="/wholesale/best" element={<WholesaleCatalogPage key="best" mode="best" />} />
             <Route path="/wholesale/new" element={<WholesaleCatalogPage key="new" mode="new" />} />
-            <Route path="/wholesale/margin" element={<WholesaleCatalogPage key="margin" mode="margin" />} />
+            {/* 🏭 2026-07-03 (대표): '고마진 특가'(/wholesale/margin) 완전 숨김 — 나브 진입 제거 + 직접 URL 도 전체상품으로 리다이렉트. */}
+            <Route path="/wholesale/margin" element={<Navigate to="/wholesale" replace />} />
             <Route path="/wholesale/premium" element={<WholesaleCatalogPage key="premium" mode="premium" />} />
             <Route path="/wholesale/brands" element={<WholesaleCatalogPage key="brands" mode="brands" />} />
             {/* 🏭 2026-06-27 (대표 — 모든 도매 페이지 공통 상단바): 도매 app 페이지를 WholesaleLayout 으로 감싸
