@@ -198,5 +198,102 @@
 
 ---
 
+# Part II — 시스템 상세 (Deep Dive)
+
+> Part I 이 "구조/관계"라면, Part II 는 실제 동작하는 서브시스템의 상세. 코드 변경 시 해당 섹션 갱신.
+
+## 14. 인증·세션 시스템
+
+### 14-1. 토큰/세션 모델 (역할별 독립·병렬)
+소비자와 각 대시보드 역할은 **독립 토큰**을 병렬 보관 → **이중 로그인** 지원(한 기기에서 소비자+셀러+어드민 동시).
+
+| 역할 | localStorage 키 | 서버 세션(httpOnly) | 만료/갱신 |
+|---|---|---|---|
+| 소비자(유저) | `user_id`·`user_type`·`session_login`·`active_role` | `ur_session`(카카오) | 세션쿠키 + `/session/establish` 재발급 |
+| 사업자 유저(셀러) | `seller_token`(JWT 30일)·`seller_refresh_token`·`seller_id`·`seller_username` | `ud_seller_token` | `useTokenAutoRefresh('seller')` |
+| 에이전시 | `agency_token`·`agency_refresh_token` | `ud_agency_token` | 동일 |
+| 어드민 | `admin_token`·`admin_refresh_token` | — | 동일 |
+| 도매(공급자) | `ud_supplier_token` | 쿠키 | — |
+
+### 14-2. 로그인 플로우
+- **카카오(소비자)**: OAuth → `state` CSRF + `safeRedirect` → 콜백. **iOS 쿠키 미영속** 대응: 세션은 fragment(`#st=`) 티켓 → same-origin `POST /api/auth/session/establish` 로 `ur_session` 200-발급 / 역할토큰은 fragment(`#auth=`, `pending-auth.ts`). 302 Set-Cookie 의존 금지.
+- **연결 역할 자동발급**: `issueLinkedRoleTokens(DB, jwtSecret, userId)` — `sellers.linked_user_id = userId` (status active/approved) → `seller_token`(30일) 발급. agency 동일. **pending/suspended 는 미발급**. → 사업자 유저는 카카오 로그인 한 번에 셀러 토큰까지.
+- **same-email 자동연결**: `KakaoAuthService.upsertUser` 가 `email_verified` + `LOWER(email)=LOWER(?)` + COUNT≤1(모호성 게이트)일 때만 미연결 셀러를 링크(takeover 방어).
+- **대시보드 직접 로그인**: `/seller/login`·`/admin/login`·`/agency/login` (이메일/비번 또는 카카오) → 해당 역할 JWT+refresh.
+
+### 14-3. 로그아웃
+- `logout(type?)`: type 지정 시 **부분**(해당 역할 쿠키+localStorage), 미지정 시 **전체**. 서버 `clearServerSessionCookies()` 를 **await**(레이스 제거) — 안 지우면 `ur_session` 잔존 → `/api/auth/me` 재인증으로 로그아웃 실패(2026-06-29 근본수정).
+- 계정 전환(다른 user.id 로그인): 이전 계정 역할 토큰·핸들 wipe 후 새 응답에서 재설정.
+
+### 14-4. 게이트 (ProtectedRoute)
+- `requireSeller`/`requireAdmin`: 해당 토큰 **존재 + JWT exp 유효**(2026-07-02 P1b) 검사. 만료+refresh불가면 로그인으로. `requireUser`: `user_id`/`session_login`.
+- **이중 세션 원칙**: `user_type`은 DISPLAY 용. 게이트는 각 역할 토큰만 봄(한쪽 로그인이 다른쪽 자동 로그아웃 유발 금지).
+
+### 14-5. 알려진 취약점 (auth-product-registration-audit)
+- **P1(부분수정 2026-07-02)**: 소비자앱 체류 중 seller_token 미갱신 → App 전역 refresh 로 보강. 게이트 exp 검사 추가.
+- **P2(미해결)**: 연결 셀러인데 seller_token 미발급/만료+무refresh → `/seller/login` 튕김. **자가치유 재발급 엔드포인트**(소비자 세션 → `issueLinkedRoleTokens` 재노출) 필요 — 소비자 id 해석(firebaseUid↔users.id) + staging 검증 필요.
+- **UX**: 링크샵(모바일) → 상품등록 = 셀러 대시보드 풀폼 점프. 경량 바텀시트 등록 미구현.
+
+## 15. 결제·정산 시스템
+
+### 15-1. 결제 (Toss V2)
+- **게이트웨이 SSOT** `toss-gateway.ts`: `confirmTossPayment`/`cancelTossPayment` — circuit breaker·idempotency-key·금액검증·에러코드(~100) 표준화. **직접 fetch 금지**.
+- **확정 경로 2개**: ① 브라우저 `POST /api/payments/confirm` ② Toss `webhook`. **CAS(confirmClaim/confirmPaymentAtomic)로 단일실행 보장** → 재고차감·커미션·발송·딜차감 이중실행 0(winner만 side-effect).
+- **확정 side-effect**(waitUntil): 재고차감 → 어필리에이트/영입/공급자 커미션 적립 → 셀러/buyer 알림 → 디지털 access 발급 → KT-Alpha 교환권 발송 → 혼합결제 딜차감. 전부 fail-soft + order_id 멱등.
+- **위젯**: `TossPaymentWidget`(V2 widgets, 약관 클릭시점 검증) · 충전 `TossWidgetPayPage`.
+
+### 15-2. 딜포인트
+- 충전 1원=1딜(수수료 0, 보너스 0 — 2026-05-22 신뢰 위해 제거). 패키지 5천/1만/… 고액유도(PG 변동비 흡수). 사용=즉시차감(`adjustUserPoints` CAS guardBalance). 원장 `point_ledger`.
+
+### 15-3. 정산 (Settlement)
+- 판매 정산: 플랫폼 수수료(3P 5%/1P 0%, `fee-resolver`) 차감 후 성숙(hold, 기본 T+7) → payout. 이용권은 **매장 발송/사용 확인 게이트**.
+- 커미션 성숙: 어필리에이트/영입 T+7 + **원천징수**(사업 3.3%/기타 8.8%, `withholdAndLog`) → 지급.
+- 역전: 환불 시 `refundOrderFully`+`returns.routes` 에서 커미션 clawback·딜 복원·쿠폰 un-use **대칭**.
+- 크론: `auto-settlement`·`payouts-generate`·`influencer-payout`·`agency-auto-settle`·`reconciliation`·`ledger-integrity-check`.
+
+## 16. 주문·환불·반품 라이프사이클
+- **주문 status(대문자)**: `PENDING → PAID → DONE`(디지털/이용권) 또는 `PREPARING → SHIPPING → DELIVERED`(배송). 종결: `CANCELLED`/`REFUNDED`/`FAILED`. `payment_status`는 소문자.
+- **환불**: `refundOrderFully`(전액)·`returns.routes`(부분 비례) — 캡처된 주문은 status 플립 금지, 반드시 환불경유(딜/커미션/재고/쿠폰 대칭 역전).
+- **반품**: `returns` 도메인. 숙소는 reserve-before-charge + `releaseStays()` 되돌림.
+
+## 17. 알림 시스템
+- **채널**: ① 인앱(`notifyUser`/`createDashboardNotification` — 유저/셀러 벨) ② 알림톡(알리고, `alimtalk`) ③ 웹푸시(`push`) ④ Discord(운영). 
+- **재시도 크론**: `retry-notifications`·`retry-alimtalk`·`webhook-failed-drain`·`bulk-email-drain`.
+- 확정/취소/발송/정산/영입/초대/공구확정 등 이벤트별 발화. 양 확정경로(confirm/webhook) 대칭 배선.
+
+## 18. 백그라운드 잡 (크론 60+, `wrangler.toml` 스케줄)
+- **정산/재무**: auto-settlement·payouts-generate·influencer-payout·reconciliation·ledger-reconcile·ledger-integrity-check·prospects-commission-activate
+- **에이전시**: agency-auto-settle·agency-monthly-invoices/report/tasks·agency-tier-eval·agency-creator-eval·agency-seller-match·agency-store-intro-monthly-bonus·agency-inactive-sellers
+- **셀러/등급**: seller-tier-eval·seller-daily-report·seller-churn-detect·wholesale-grade-eval
+- **캐시/성능**: cache-prewarm·cache-warming·group-buy-feed-cache
+- **숙소**: stay-checkout-transition·stay-pending-expire·stay-reminder·stay-voucher-expire
+- **교환권/외부**: kt-alpha-catalog-sync·kt-alpha-voucher-retry·voucher-expire·tiktok-videos-sync·youtube-*·shipping-sync·restaurant-geocode
+- **운영/안전**: anomaly-detect·disputes-escalation·daily-self-diagnostic·d1-backup·scheduled-cleanup·channel-watchdog·toss-refund-retry·blog-ai-draft(킬스위치)
+- **schema-repair-daily**(18 UTC): migrations 누락 컬럼/테이블 자동 보장(신규 컬럼은 다음날 자동 적용 — 또는 어드민 수동 `/api/_internal/repair-schema`).
+
+## 19. 어드민 운영 도구 (101 페이지, `AdminLayout` 그룹)
+운영 · 🎯유어애즈 · 🏭도매몰(운영/정산/CS) · 🏪오프라인 공구 · 🛒온라인 쇼핑 · 회원/파트너 · 💰정산/재무 · 검증/CS. 주요: 대시보드·인사이트·퍼널·매출분석·운영가이드·**플랫폼 모델**·어뷰징탐지·환경준비·정산·분쟁·리뷰관리·셀러/에이전시 승인·블로그·유어애즈.
+
+## 20. 캐싱·성능 아키텍처 (잠금)
+- **SSR 0-RTT**: `worker/index.ts` HTMLRewriter 가 `__SSR_INITIAL_{MAIN,VOUCHERS,BROWSE,DETAIL,SELLER,CURATOR,WHOLESALE,BLOGPOST,GROUPBUY}__` 주입 + `caches.default` edge read → 첫 페인트 데이터 즉시.
+- **edge cache**: `publicCache(useKv:false)` + `CDN-Cache-Control` 분리(브라우저 60 / edge 900). cron `cache-prewarm` HOT_PATHS 워밍.
+- **청크 자가복구**: index.html 부트가드 + `chunk-error.ts`(MIME 감지·`__cb` 캐시버스트) + main.tsx 배선 + SPA 셸 `no-cache`. 배포마다 해시회전 → stale HTML 자동복구.
+- **로딩 로더**: 단일 URDEAL BrandLoader(라우트전환/링크샵 #root). 상품 이미지 `cf-image`(cdn-cgi 리사이즈) + dominant_color placeholder.
+
+## 21. 보안·컴플라이언스
+- **인증/권한**: requireAuth/Seller/Admin/Agency · IDOR(소유권 체크) · 서버 재계산(금액 클라 불신) · Rate limit(`RATE_LIMIT_KV`) · Turnstile(민감) · `safeError`(DB 에러 미노출) · `safeInternalPath`/`safeRedirect`(오픈리다이렉트 방어).
+- **개인정보(PIPA)**: 셀러 phone/email 공개 제외 · 토큰 암호화(`encryptToken`).
+- **전자상거래법**: 링크샵 MORE INFO 푸터(상호·대표·사업자번호+공정위확인·통신판매업신고·주소) · 원천징수 · 세금계산서(`tax-invoice-gateway`).
+- **결제 잠금**: Toss V2 docs audit 잠금(gateway/에러코드/webhook/위젯 SSOT).
+
+## 22. 자동 방어선 (품질 가드 42종)
+pre-commit + `verify.yml` + `audit-gate.sh` 가 결정론으로 강제(수동 재감사 스킵 가능): 서비스분리·인증세션RBAC·머니패턴(claim-before-credit/역전대칭/멱등/무환불CANCELLED)·SQL(bind/컬럼/테이블/NOT NULL)·상품종류판별·UI테마(dark variant)·i18n·파일크기 래칫·청크자가복구·auth-쿠키(iOS)·CSV인젝션·로그인게이트·모달z-index·**플랫폼모델 문서동기화** 등. 상세: `docs/AUDIT_INVARIANTS.md`.
+
+## 23. 에러·장애 대응
+- Playbook: `docs/ERROR_DEBUGGING_PLAYBOOK.md`(신고 시)·`KNOWN_ERRORS.md`(grep)·`DEV_IMPLEMENTATION_PLAYBOOK.md`(개발 시). 원칙: 추측 금지 → 진단도구 먼저 → 에러 단어 그대로 grep → dual-mode 제거 금지 → 1 commit 1 원인.
+- 진행 SSOT: `docs/CURRENT_WORK.md`. 사고 기록: `docs/INCIDENTS.md`.
+
+---
+
 ## ✅ 구현 로그
-- 2026-07-02 문서 신설 (마스터 SSOT). 개별 단계 완료 시 commit hash 기록.
+- 2026-07-02 문서 신설 (마스터 SSOT) + Part II 시스템 상세(인증·결제·정산·주문·알림·크론·어드민·캐싱·보안·가드·장애) 확장. 개별 단계 완료 시 commit hash 기록.
