@@ -87,7 +87,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const applyFcfs = useCallback(async (productId: number) => {
     try {
       const res = await api.post(`/api/fcfs/${productId}/apply`)
-      toast.success(res.data?.data?.already ? '이미 응모했어요' : '🎉 응모 완료! 추첨 결과는 알림으로 안내드려요')
+      toast.success(res.data?.data?.already ? '이미 응모했어요' : '🎉 응모 완료! 당첨 시 안내드려요')
     } catch {
       toast.error('응모하려면 로그인이 필요해요')
     }

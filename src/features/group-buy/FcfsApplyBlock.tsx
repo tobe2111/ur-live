@@ -39,7 +39,7 @@ export default function FcfsApplyBlock({ productId }: { productId: number }) {
         setApplied(true)
         const disp = res.data?.data?.appliedDisplay
         if (typeof disp === 'number') setInfo((p) => (p ? { ...p, appliedDisplay: disp } : p))
-        toast.success(res.data?.data?.already ? '이미 응모했어요' : '🎉 응모 완료! 추첨 결과는 알림으로 안내드려요')
+        toast.success(res.data?.data?.already ? '이미 응모했어요' : '🎉 응모 완료! 당첨 시 안내드려요')
       })
       .catch((e) => {
         if (e?.response?.status === 401) toast.error('응모하려면 로그인이 필요해요')
@@ -56,7 +56,7 @@ export default function FcfsApplyBlock({ productId }: { productId: number }) {
             🎯 추첨 응모 <span style={{ color: 'var(--gbd-sub)', fontWeight: 700 }}>{formatNumber(info.appliedDisplay)}/{formatNumber(info.spots)}명</span>
           </p>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--gbd-sub)', lineHeight: 1.5 }}>
-            {closed ? '응모가 마감되었어요' : applied ? '응모 완료 · 추첨 결과는 알림으로 안내드려요' : '결제 없이 응모하면 추첨으로 선정돼요'}
+            {closed ? '응모가 마감되었어요' : applied ? '응모 완료 · 당첨 시 안내드려요' : '결제 없이 응모하면 추첨으로 선정돼요'}
           </p>
         </div>
         <button
