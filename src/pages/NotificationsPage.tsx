@@ -41,8 +41,8 @@ export default function NotificationsPage() {
     })
   }
 
+  // 🛡️ 2026-07-03: min-h-screen(100vh) → min-h-[100dvh] — 인앱/웹뷰 하단 네비 실종 방지(룰 #8, /vouchers 와 동일).
   return (
-    {/* 🛡️ 2026-07-03: min-h-screen(100vh) → min-h-[100dvh] — 인앱/웹뷰 하단 네비 실종 방지(룰 #8, /vouchers 와 동일). */}
     <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A] pb-safe-nav md:pb-20">
       <SEO title={t('notifications.seoTitle', { defaultValue: '알림 - 유어딜' })} description={t('notifications.seoDesc', { defaultValue: '새로운 알림을 확인하세요' })} url="/notifications" noindex />
       {/* Header */}
