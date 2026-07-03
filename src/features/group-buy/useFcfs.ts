@@ -62,7 +62,7 @@ export function useFcfsMap(): { fcfsMap: Map<number, FcfsInfo>; applyFcfs: (id: 
       .post(`/api/fcfs/${id}/apply`)
       .then((res) => {
         const already = !!res.data?.data?.already
-        toast.success(already ? '이미 응모했어요' : '🎉 응모 완료! 추첨 결과는 알림으로 안내드려요')
+        toast.success(already ? '이미 응모했어요' : '🎉 응모 완료! 당첨 시 안내드려요')
         // 낙관적 표시 갱신(신규 응모만 +1). 서버가 appliedDisplay 를 주면 그 값 우선.
         setFcfsMap((prev) => {
           const info = prev.get(id)
