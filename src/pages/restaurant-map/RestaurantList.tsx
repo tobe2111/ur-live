@@ -11,14 +11,15 @@ interface Props {
   selected: Restaurant | null
   userLoc: { lat: number; lng: number } | null
   onSelect: (r: Restaurant) => void
-  /** 🎯 선착순: id→{spots,appliedDisplay}. 있으면 배지 + '지원' 버튼. */
+  /** 🎯 선착순: id→{spots,appliedDisplay}. 있으면 추첨 배지 표시(응모는 카드 탭 → 상세). */
   fcfsMap?: Map<number, { spots: number; appliedDisplay: number }>
+  /** @deprecated 2026-07-03 카드 내 응모 버튼 제거 — 상세에서 응모. 호출부 호환 위해 유지(미사용). */
   onApplyFcfs?: (productId: number) => void
   /** 빈 상태 문구를 카테고리에 맞게 표시 (기본 all). */
   voucherType?: MapVoucherType
 }
 
-export default function RestaurantList({ loading, filtered, selected, userLoc, onSelect, fcfsMap, onApplyFcfs, voucherType = 'all' }: Props) {
+export default function RestaurantList({ loading, filtered, selected, userLoc, onSelect, fcfsMap, voucherType = 'all' }: Props) {
 
   if (loading) {
     return (
@@ -80,8 +81,16 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
             <div className="flex-1 min-w-0">
               {/* 🎨 2026-07-02 (대표 — UI 우선순위): 유저가 궁금한 건 매장이 아니라 '어떤 이용권인지' →
                   이용권명(r.name)을 볼드 제목으로 승격, 매장명은 작은 보조 줄로 강등 (홈 피드 카드와 동일 위계).
-                  제목 옆 검정 할인배지는 제거, 할인율은 아래 가격 옆 빨간 글자로. */}
-              <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{r.name}</p>
+                  🎯 2026-07-03 (대표 시안 옵션2): 제목 오른쪽 끝에 추첨 배지 + 매장명 밑에 주소·거리 + 응모버튼 제거
+                  (카드 전체 탭 → 상세에서 응모). 중첩 <button> 도 함께 해소. */}
+              <div className="flex items-start gap-2">
+                <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate flex-1 min-w-0">{r.name}</p>
+                {fcfs && (
+                  <span className="shrink-0 mt-0.5 inline-flex items-center gap-1 text-[10px] font-extrabold text-gray-900 dark:text-white bg-gray-900/10 dark:bg-white/15 px-2 py-0.5 rounded-full">
+                    🎯 {formatNumber(fcfs.appliedDisplay)}/{formatNumber(fcfs.spots)}명
+                  </span>
+                )}
+              </div>
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{r.restaurant_name}</p>
               <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-0.5 truncate flex items-center gap-0.5">
                 <MapPin className="w-3 h-3 shrink-0" />
@@ -101,20 +110,7 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
                   <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(r.original_price)}원</span>
                 )}
               </div>
-              {fcfs && (
-                <span className="inline-flex self-start items-center gap-1 mt-1.5 text-[10px] font-extrabold text-gray-900 dark:text-white bg-gray-900/10 dark:bg-white/15 px-2 py-0.5 rounded-full">
-                  🎯 추첨 {formatNumber(fcfs.appliedDisplay)}/{formatNumber(fcfs.spots)}명
-                </span>
-              )}
             </div>
-            {fcfs && onApplyFcfs && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onApplyFcfs(r.id) }}
-                className="self-center px-3.5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-xl shrink-0 active:scale-95 transition-transform"
-              >
-                응모
-              </button>
-            )}
           </button>
         )
       })}
