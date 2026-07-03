@@ -1884,7 +1884,9 @@
       "addVoucherDesc": "本地使用券・兑换券 — 设置位置和详情",
       "previewBanner": "访客预览 — 这是别人看到的页面",
       "backToEdit": "返回编辑",
-      "verifiedBusiness": "商家认证"
+      "verifiedBusiness": "商家认证",
+      "moreInfo": "MORE INFO",
+      "bizInfoCheck": "商家信息查询"
     },
     "storeIntro": "店铺介绍",
     "shippingInfo": "配送信息",
@@ -5833,7 +5835,9 @@
     "stepsLeft": "距完成还差{{n}}步",
     "stepName": "设置名称",
     "stepHandle": "设置地址",
-    "stepFirstProduct": "添加首个商品"
+    "stepFirstProduct": "添加首个商品",
+    "verifiedBusinessUser": "已通过商家认证的用户",
+    "verifiedBusinessDesc": "已核实营业执照信息的卖家。"
   },
   "shipping": {
     "trackingTitle": "配送追踪",

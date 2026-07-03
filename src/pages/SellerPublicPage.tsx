@@ -518,9 +518,9 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           </section>
         )}
 
-        {/* ⑥ 정보 */}
-        <section className="pt-7">
-          <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.tabInfo', { defaultValue: '정보' })}</h3>
+        {/* ⑥ 판매자 정보 — 🧾 2026-07-02 (대표 시안): "정보" 제목 카드 → 링크샵 맨 밑 쇼핑몰식 푸터.
+            상단 얇은 구분선으로 본문과 자연스럽게 분리 + InfoTab 이 "MORE INFO +" 접이식으로 렌더. */}
+        <footer className="mt-4 pt-6 border-t border-gray-100 dark:border-[#1A1A1A]">
           <InfoTab
             seller={seller}
             isOwner={ownerView}
@@ -533,7 +533,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
             startEdit={startEdit}
             saveEdit={saveEdit}
           />
-        </section>
+        </footer>
       </div>
 
       {/* 🏁 2026-06-17 (#3): 추천 핀 섹션은 홈 탭 상단으로 이동(위) — 맨 아래 매몰 제거. */}
