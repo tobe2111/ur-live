@@ -526,7 +526,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             전역 Map(생성자) 가림 방지 위해 `Map as MapIcon` 별칭. 아이콘 색 = 알약 글자색(currentColor). */}
         <button
           onClick={() => navigate('/map')}
-          className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full pl-3.5 pr-4 py-2.5 shadow-lg active:scale-95 transition-transform"
+          className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-blue-600 text-white rounded-full pl-3.5 pr-4 py-2.5 shadow-lg active:scale-95 transition-transform"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom,0px) + 16px)' }}
           aria-label={t('map.viewMap', { defaultValue: '지도로 보기' })}
         >
