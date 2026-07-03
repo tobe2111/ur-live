@@ -101,6 +101,21 @@ export default function PointsChargeSuccessPage() {
           <p className="text-[34px] font-extrabold text-white leading-none tracking-tight">+{formatNumber(result?.points_added)}<span className="text-[20px] font-bold ml-0.5">딜</span></p>
           <p className="text-[12px] text-white/55 mt-2.5">{t('pointsCharge.successBalance', { balance: formatNumber(result?.balance), defaultValue: '현재 잔액: {{balance}}딜' })}</p>
         </div>
+        {/* 🔗 2026-07-03 [UNLOCK_LOADING] (대표 승인 "1~4번 전부, 가장 이상적으로" — 딜포인트 락인 강화):
+              충전 직후는 float→spend 전환의 최적 순간인데 기존 CTA(이전 화면/추가 충전)엔 '쓰러 가기'가
+              없어 잔액이 유휴로 남았음(소진 유인 0 = 락인 약화). 방금 충전한 딜을 즉시 이용권/교환권
+              카탈로그에서 쓰도록 유도 → 소비 습관 형성. **가짜 보너스 없음**(2026-05-22 대표의 '맞지도 않는
+              보너스 제거' 방침 준수) — 이미 보유한 실잔액을 쓰라는 정직한 넛지만. 충전 confirm/잔액 로직
+              byte-불변(additive CTA). 단, '딜 부족→충전' 복귀 루프(loginReturnUrl)면 원래 결제로 돌아가야
+              하므로 그 경우엔 이 스팬드 CTA 대신 복귀를 우선(끊기지 않게). */}
+        {(() => { try { return !localStorage.getItem('loginReturnUrl') } catch { return true } })() && (
+          <button
+            onClick={() => navigate('/vouchers')}
+            className="w-full py-3.5 mb-3 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white rounded-xl font-bold"
+          >
+            {t('pointsCharge.spendNow', { defaultValue: '지금 이용권 사러 가기 →' })}
+          </button>
+        )}
         <div className="flex gap-3">
           <button
             onClick={() => {
@@ -120,7 +135,7 @@ export default function PointsChargeSuccessPage() {
           </button>
           <button
             onClick={() => navigate('/points/charge')}
-            className="flex-1 py-3 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white rounded-xl font-bold"
+            className="flex-1 py-3 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-200 rounded-xl font-bold"
           >
             {t('pointsCharge.chargeMore', { defaultValue: '추가 충전' })}
           </button>

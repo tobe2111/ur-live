@@ -8,6 +8,8 @@ import { CheckCircle, Package, AlertCircle } from 'lucide-react'
 import { getUserId } from '@/utils/auth'
 import { addBreadcrumb, captureError } from '@/lib/sentry'
 import { formatNumber } from '@/utils/format'
+// 🔗 2026-07-03 구매 직후 셀러 전환 넛지 (자기완결 — 결제 로직과 분리)
+import SellerConversionNudge from './payment-success/SellerConversionNudge'
 
 export default function PaymentSuccessPage() {
   const { t } = useTranslation()
@@ -508,6 +510,13 @@ export default function PaymentSuccessPage() {
               )}
             </div>
           )}
+
+          {/* 🔗 2026-07-03 [UNLOCK] (대표 승인 "1~4번 전부, 가장 이상적으로" — 웨지 전환 깔때기 P0):
+                구매 직후(가장 뜨거운 순간) 셀러 전환 넛지. 기존 전환 CTA 는 마이/링크샵 소유자뷰에만
+                있어 이미 관심 있는 사람만 봄(self-selection). 방금 산 소비자에게 "당신도 팔 수 있어요"를
+                제시해 로컬딜 미끼 → 링크샵 D2C 로 잇는다. 자기완결 컴포넌트라 결제 승인/금액검증/표시
+                로직 전부 byte-불변(additive only). 셀러(seller_token 보유)·데모·닫음 사용자에겐 미노출. */}
+          {orderInfo && orderInfo.status !== 'demo' && <SellerConversionNudge />}
 
           {/* 액션 버튼 */}
           <div className="mt-5 sm:mt-6 lg:mt-8 flex flex-col sm:flex-row gap-2.5 sm:gap-3">

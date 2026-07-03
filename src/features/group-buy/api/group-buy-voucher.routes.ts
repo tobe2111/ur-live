@@ -40,6 +40,27 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         return c.json({ success: false, error: '비밀번호를 입력해주세요' }, 400)
       }
 
+      // 🎟️ 2026-07-03 [부정사용 방어] (대표 승인 "1~4번 전부") — 매장 store_code 모드 + PIN 미설정 상품 갭.
+      //   이 엔드포인트(코드 직접입력)는 무인증 + CAS 가 `store_verify_pin IS NULL OR = ?` 라, 상품에
+      //   store_verify_pin 이 없으면 제출한 pin 을 사실상 무시하고 코드만 알면 사용처리됨(=아무나 소각).
+      //   소비자 셀프 경로(self-redeem)는 이미 모드 강제되나, 이 staff/카운터 경로엔 no-PIN 갭이 남아 있었음.
+      //   → 매장이 store_code 모드를 골랐고 상품 PIN 이 없으면, 제출값이 '매장 확인코드'와 일치할 때만 허용
+      //   (카운터 스티커=매장 비밀). PIN 이 설정된 상품 / self_free / scan_only(코드 직접입력 허용) 는 불변.
+      //   조회 실패는 fail-open(기존 동작) — redemption-settings SSOT 와 동일 사상.
+      try {
+        const prod = await DB.prepare(
+          `SELECT p.seller_id AS seller_id, p.store_verify_pin AS store_verify_pin
+             FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code = ?`
+        ).bind(code).first<{ seller_id: number | null; store_verify_pin: string | null }>()
+        if (prod && prod.seller_id != null && (prod.store_verify_pin == null || prod.store_verify_pin === '')) {
+          const { getRedemptionSettings } = await import('../../../worker/utils/redemption-settings')
+          const s = await getRedemptionSettings(DB, Number(prod.seller_id))
+          if (s.mode === 'store_code' && (!s.store_code || pin !== s.store_code)) {
+            return c.json({ success: false, code: 'STORE_CODE_REQUIRED', error: '매장 확인코드를 입력해주세요.' }, 403)
+          }
+        }
+      } catch { /* fail-open — 기존 self_free 동작 */ }
+
       // 만료된 바우처 선차단: 만료 기한이 지났다면 상태를 전이시킨 뒤 400 응답.
       // (CAS 조건에 만료 체크를 묶으면 만료 자체가 "PIN 오류"로 혼동될 수 있어 분리)
       try {
