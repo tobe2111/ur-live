@@ -42,7 +42,8 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] pb-safe-nav md:pb-20">
+    {/* 🛡️ 2026-07-03: min-h-screen(100vh) → min-h-[100dvh] — 인앱/웹뷰 하단 네비 실종 방지(룰 #8, /vouchers 와 동일). */}
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A] pb-safe-nav md:pb-20">
       <SEO title={t('notifications.seoTitle', { defaultValue: '알림 - 유어딜' })} description={t('notifications.seoDesc', { defaultValue: '새로운 알림을 확인하세요' })} url="/notifications" noindex />
       {/* Header */}
       <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
