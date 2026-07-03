@@ -50,3 +50,4 @@
 | **🔗 유어애즈 × 유어딜 판매채널 번들** | 2026-06-27 | 🟡 설계 / 크로스서비스 결정 A~D 대기 | [urads-yourdeal-channel-bundle.md](./urads-yourdeal-channel-bundle.md) |
 | **🏭 도매몰 통합 셸 — 카탈로그↔판매사↔제조사 한 제품화** | 2026-06-29 | ⏳ 제안 / 착수 승인 대기 (Phase 1 권장) | [wholesale-unified-shell.md](./wholesale-unified-shell.md) |
 | **💸 정산 정합(소비자 셀러) — 3중 회계 통합 + 지급 SSOT** (아키텍처) | 2026-07-01 | 🟡 수수료 5% 통일 ✅ 배포 / 머니-이동(payout 단일화·정산신청 폐기) 대표 정책 결정 + staging 대기 | [settlement-reconciliation.md](./settlement-reconciliation.md) |
+| **🏦 이용권 에스크로 & 정산 안전판 (티몬 붕괴 회피)** | 2026-07-03 | 🟡 "사용 후 정산" ✅ / 진짜 신탁분리(Phase 2a 회계분리 코드가능·2b PG/은행 결정)·기본 redemption 모드 대표 결정 대기 | [voucher-escrow.md](./voucher-escrow.md) |
