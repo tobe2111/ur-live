@@ -62,6 +62,7 @@ if domain money; then
   run "잔액 절대값 write(비원자)"        node scripts/check-balance-absolute-write.mjs -s
   run "블로그 시드 최신성"               node scripts/check-blog-seed-currency.mjs
   run "블로그 fact 동기화"               bash scripts/check-blog-fact-sync.sh
+  run "플랫폼 모델 문서 동기화"          node scripts/check-platform-model-sync.mjs
 fi
 
 if domain schema; then

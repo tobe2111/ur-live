@@ -91,10 +91,10 @@ export default function InfoTab({
           <button
             onClick={() => setOpen(o => !o)}
             aria-expanded={open}
-            className="w-full flex items-center gap-1.5 py-1 text-[10.5px] font-bold tracking-wider text-gray-400 dark:text-gray-500 uppercase active:opacity-70"
+            className="w-full flex items-center gap-1.5 py-1 text-[10px] font-bold tracking-wider text-gray-400 dark:text-gray-500 uppercase active:opacity-70"
           >
             {t('seller.publicPage.moreInfo', { defaultValue: 'MORE INFO' })}
-            <span className="text-[12px] leading-none font-normal">{open ? '−' : '+'}</span>
+            <span className="text-[11px] leading-none font-normal">{open ? '−' : '+'}</span>
             {isOwner && (
               <Link
                 to="/seller/business-info"
@@ -107,7 +107,7 @@ export default function InfoTab({
           </button>
 
           {open && (
-            <div className="mt-2 space-y-0.5 text-[10.5px] text-gray-400 dark:text-gray-500">
+            <div className="mt-2 space-y-0.5 text-[10px] leading-relaxed text-gray-400 dark:text-gray-500">
               {(seller.business_name || ceo) && (
                 <p className="leading-relaxed">
                   {seller.business_name && (
