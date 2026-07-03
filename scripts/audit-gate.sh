@@ -35,6 +35,7 @@ if domain separation; then
   run "도매 어드민 API 스코프"            env STRICT_API_SCOPE=1        node scripts/check-wholesale-admin-api-scope.mjs
   run "도매 어드민 nav 도달성"           env STRICT_NAV_REACH=1        node scripts/check-wholesale-admin-nav-reachability.mjs
   run "소비자 상품 도매 원본 격리"        env STRICT_SUPPLY_ISOLATION=1 node scripts/check-consumer-product-supply-isolation.mjs
+  run "동네딜 카테고리(쇼핑 유입 금지)"     env STRICT_DONGNEDEAL=1       node scripts/check-dongnedeal-category.mjs
   run "대시보드 라우팅(겸업 lock-out)"     env STRICT_SELLER_WHS_REDIRECT=1 node scripts/check-seller-wholesale-redirect.mjs
 fi
 

@@ -21,7 +21,7 @@
   "src/features/guides/api/guide-seed-admin.ts": 1040,
   "src/features/guides/api/guide-seed-seller.ts": 933,
   "src/features/points/api/points.routes.ts": 1179,
-  "src/features/products/api/products.routes.ts": 639,
+  "src/features/products/api/products.routes.ts": 640,
   "src/features/referral/api/referral-tree.routes.ts": 1144,
   "src/features/returns/api/returns.routes.ts": 834,
   "src/features/seller/api/seller-orders.routes.ts": 1332,

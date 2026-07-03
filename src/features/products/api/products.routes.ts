@@ -163,6 +163,7 @@ productsRoutes.get('/suggestions', cors(), async (c) => {
       `SELECT DISTINCT name as suggestion FROM products
        WHERE name LIKE ? AND is_active = 1
          AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)
+         AND NOT (COALESCE(category,'') = 'general' AND seller_id IS NULL)
        ORDER BY name ASC LIMIT 10`
     ).bind(`%${q}%`).all().catch(() => ({ results: [] }));
     return c.json({ success: true, data: (result.results || []).map((r: any) => r.suggestion) });
