@@ -19,6 +19,15 @@ const CAT_LABEL: Record<string, string> = {
   meal_voucher: '맛집 이용권', beauty_voucher: '미용', etc_voucher: '기타', general: '일반 상품', stay_voucher: '숙소',
 }
 
+// 🎯 2026-07-03 (대표 "지역 정확도"): 카카오가 좌표로 안정적으로 해석하는 서울 25개 자치구 + 대표 상권.
+//   datalist 제안 목록 — 선택하면 정확, 직접 입력(다른 시/동)도 허용.
+const REGION_SUGGESTIONS = [
+  '강남구', '강동구', '강북구', '강서구', '관악구', '광진구', '구로구', '금천구', '노원구', '도봉구',
+  '동대문구', '동작구', '마포구', '서대문구', '서초구', '성동구', '성북구', '송파구', '양천구', '영등포구',
+  '용산구', '은평구', '종로구', '중구', '중랑구',
+  '성수동', '연남동', '홍대', '강남역', '이태원', '여의도', '잠실', '건대입구',
+]
+
 interface ImportRow { row: number; name?: string; status: 'ok' | 'error'; reason?: string }
 interface ImportResult { summary: { total: number; created: number; failed: number }; results: ImportRow[] }
 interface DealStats { total: number; active: number; demo: number; by_category: { category: string; c: number }[] }
@@ -133,14 +142,19 @@ export default function AdminDongnedealImportPage() {
                 {stats.demo > 0 && (
                   <button onClick={clearDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">데모 {stats.demo}개 정리</button>
                 )}
-                {/* 🎯 2026-07-02 (대표): 특정 지역·카테고리 지정 시드 — 지역 입력 시 그 지역 실제 매장으로 매칭 */}
+                {/* 🎯 2026-07-03 (대표 "지역 정확도"): 자치구 목록에서 선택(정확도↑) — 카카오가 좌표로
+                    해석해 그 반경 실매장을 거리순 매칭. datalist 라 직접 입력(동/역 이름)도 가능. */}
                 <input
+                  list="ur-region-suggestions"
                   value={seedRegion}
                   onChange={(e) => setSeedRegion(e.target.value)}
-                  placeholder="지역 (예: 영등포)"
+                  placeholder="지역 선택/입력 (예: 강남구)"
                   maxLength={30}
-                  className="w-32 px-2.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900"
+                  className="w-40 px-2.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900"
                 />
+                <datalist id="ur-region-suggestions">
+                  {REGION_SUGGESTIONS.map((r) => <option key={r} value={r} />)}
+                </datalist>
                 <select
                   value={seedCategory}
                   onChange={(e) => setSeedCategory(e.target.value)}

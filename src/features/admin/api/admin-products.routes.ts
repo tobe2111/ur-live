@@ -979,16 +979,43 @@ const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest:
 // 🎯 2026-07-01 (대표 "데모 이용권도 매장 지도 매칭 제대로"): 데모 매장은 가공 이름 + 번지 없는 주소라
 //   좌표/place_url 이 없음 → 카카오 키워드 검색으로 실제 매장의 좌표·주소·place_url 을 붙여 지도 매칭 정상화.
 //   best-effort: 키 없거나 결과 없으면 null → 시딩은 그대로 진행(기존 폴백).
+// 🎯 2026-07-03 (대표 "지역 정확도"): 지역명을 좌표(중심점)로 1회 해석 — 이후 매장검색을 이 좌표
+//   반경으로 앵커링(문자열 이어붙이기보다 정확). 카카오 주소검색 우선, 실패 시 키워드검색 폴백.
+async function resolveRegionCenter(
+  env: { KAKAO_REST_API_KEY?: string },
+  region: string,
+): Promise<{ x: string; y: string } | null> {
+  const key = env.KAKAO_REST_API_KEY;
+  const q = (region || '').trim();
+  if (!key || !q) return null;
+  try {
+    for (const url of [
+      `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(q)}&size=1`,
+      `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(q)}&size=1`,
+    ]) {
+      const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
+      if (!res.ok) continue;
+      const data = await res.json() as { documents?: Array<{ x?: string; y?: string }> };
+      const doc = data?.documents?.[0];
+      if (doc?.x && doc?.y) return { x: doc.x, y: doc.y };
+    }
+    return null;
+  } catch { return null; }
+}
+
 async function kakaoPlaceLookup(
   env: { KAKAO_REST_API_KEY?: string },
   query: string,
   pickIndex = 0,  // 🎯 여러 실매장 중 로테이션 선택(누적 시드 시 매번 다른 실매장 = "랜덤" 다양성)
+  center?: { x: string; y: string } | null,  // 🎯 지역 중심좌표 — 있으면 반경 검색 + 거리순(정확도 ↑)
 ): Promise<{ name: string | null; address: string | null; lat: number | null; lng: number | null; placeUrl: string | null } | null> {
   const key = env.KAKAO_REST_API_KEY;
   if (!key || !query.trim()) return null;
   try {
     // size 넉넉히(15) → 실제 존재하는 매장 후보 확보 후 pickIndex 로 회전 선택(대표 "카카오맵에서 랜덤/필터로 매장 선정").
-    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query.trim())}&size=15`;
+    //   center 지정 시 그 좌표 반경 20km 내를 거리순으로 → 지역 정확도 극대화(문자열 이어붙이기 대비).
+    let url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query.trim())}&size=15`;
+    if (center) url += `&x=${center.x}&y=${center.y}&radius=20000&sort=distance`;
     const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
     if (!res.ok) return null;
     const data = await res.json() as { documents?: Array<{ place_name?: string; road_address_name?: string; address_name?: string; x?: string; y?: string; id?: string; place_url?: string }> };
@@ -1135,11 +1162,12 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     const validImgs = await Promise.all(
       resolvedImgs.map((u) => rehostImageToR2(c.env as unknown as { MEDIA_BUCKET?: R2Bucket }, u)),
     );
-    // 🎯 실제 매장 매칭(카카오 키워드 검색): region 지정 시 그 지역 매장으로 — 매장명·주소·좌표가
-    //   실제 장소로 채워져 지도 마커·카카오맵 링크(RestaurantMiniMap 이 매장명+주소로 자동 생성)까지 연결.
+    // 🎯 실제 매장 매칭(카카오): region 을 중심좌표로 1회 해석 → 그 반경 내 거리순 검색(정확도 ↑).
+    //   center 있으면 검색어는 순수 업종(pq)만(지역명은 좌표로 반영), 없으면 "지역 pq" 문자열 폴백.
+    const regionCenter = region ? await resolveRegionCenter(c.env, region) : null;
     const resolvedPlaces = await Promise.all(
       items.map((d) => (d.pq || d.addr || region)
-        ? kakaoPlaceLookup(c.env, `${region || d.addr} ${d.pq}`.trim(), batchIndex).catch(() => null)  // 순수 업종 키워드(pq)+회전으로 실제 매장 매칭
+        ? kakaoPlaceLookup(c.env, regionCenter ? d.pq : `${region || d.addr} ${d.pq}`.trim(), batchIndex, regionCenter).catch(() => null)
         : Promise.resolve(null))
     );
     // 🎯 2026-07-01 (대표 요청): 데모 딜을 추첨 응모(fcfs)로 — 정원 대비 지원수가 이미 넘치게(30/5, 10/3 …).
