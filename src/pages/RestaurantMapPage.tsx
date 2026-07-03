@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
-import { MapPin, Map as MapIcon, ChevronDown, Search, Bell, ShoppingCart, LocateFixed, Loader2 } from 'lucide-react'
+import { MapPin, ChevronDown, Search, Bell, ShoppingCart, LocateFixed, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
@@ -521,15 +521,16 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             voucherType={voucherType}
           />
         </div>
-        {/* 플로팅 '지도' 버튼 — 하단 네비 위 중앙 */}
+        {/* 플로팅 '지도로 보기' 버튼 — 하단 네비 위 중앙.
+            🎨 2026-07-03 (대표 첨부 시안): 빨간 핀(📍) + "지도로 보기" 다크 알약. 아이콘 MapIcon→MapPin(red fill). */}
         <button
           onClick={() => navigate('/map')}
-          className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full pl-4 pr-5 py-3 shadow-xl active:scale-95 transition-transform"
+          className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full px-4 py-2.5 shadow-lg active:scale-95 transition-transform"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom,0px) + 16px)' }}
           aria-label={t('map.viewMap', { defaultValue: '지도로 보기' })}
         >
-          <MapIcon className="w-4 h-4" />
-          <span className="text-[14px] font-bold">{t('map.viewMap', { defaultValue: '지도' })}</span>
+          <MapPin className="w-4 h-4 text-red-500 shrink-0" fill="currentColor" strokeWidth={2} />
+          <span className="text-[14px] font-bold">{t('map.viewMap', { defaultValue: '지도로 보기' })}</span>
         </button>
         {filterSheetOpen && (
           <FilterSheet
