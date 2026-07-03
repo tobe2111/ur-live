@@ -898,11 +898,13 @@ adminProductsRoutes.patch('/supplier-products/:id/price-change', cors(), async (
 
 const DEAL_DEMO_SLUG = 'demo-deal-';
 
+// 🛡️ 2026-07-02 (대표 신고 — 쇼핑 상품이 동네딜에 섞임): 동네딜 = 이용권 4종 전용.
+//   'general'(일반 온라인 쇼핑, 별칭 '일반'/'일반 상품'/'온라인') 매핑 제거 → mapDealCategory 가 null
+//   반환 → bulk-import/단건등록이 "카테고리 인식 불가"로 거부. 서비스 분리(도매/쇼핑↔동네딜) 정합.
 const DEAL_CATEGORY_ALIAS: Record<string, string> = {
   '이용권': 'meal_voucher', '맛집': 'meal_voucher', '맛집 이용권': 'meal_voucher', 'meal': 'meal_voucher', 'meal_voucher': 'meal_voucher',
   '미용': 'beauty_voucher', '뷰티': 'beauty_voucher', 'beauty': 'beauty_voucher', 'beauty_voucher': 'beauty_voucher',
   '기타': 'etc_voucher', 'etc': 'etc_voucher', 'etc_voucher': 'etc_voucher',
-  '일반': 'general', '일반 상품': 'general', '온라인': 'general', 'general': 'general',
   '숙소': 'stay_voucher', 'stay': 'stay_voucher', 'stay_voucher': 'stay_voucher',
 };
 function mapDealCategory(raw: string): string | null {
@@ -945,8 +947,8 @@ const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest:
   { name: '속눈썹 연장 풀세트 + 리터치', cat: 'beauty_voucher', price: 29000, orig: 55000, rest: '아이래쉬 스튜디오', addr: '서울 마포구 양화로', img: 'https://picsum.photos/seed/urdeal6/600/600', q: '속눈썹 연장 시술', spots: 3, seed: 14, desc: '속눈썹 연장 풀세트 + 2주 내 리터치 1회 포함. 시술 약 90분, 예약 후 방문해주세요.' },
   { name: '반려견 종합 미용 (목욕+커트)', cat: 'etc_voucher', price: 35000, orig: 60000, rest: '댕댕살롱', addr: '서울 송파구 올림픽로', img: 'https://picsum.photos/seed/urdeal7/600/600', q: '강아지 미용', spots: 6, seed: 28, desc: '목욕 + 전체 커트 종합 미용(소형견 기준). 중·대형견은 매장으로 문의해주세요.' },
   { name: '실내 클라이밍 1일 체험 + 강습', cat: 'etc_voucher', price: 19000, orig: 35000, rest: '더 클라임', addr: '서울 광진구 아차산로', img: 'https://picsum.photos/seed/urdeal8/600/600', q: '실내 클라이밍', spots: 4, seed: 19, desc: '실내 클라이밍 1일 이용권 + 초보 강습 30분 + 암벽화·초크 대여 포함. 운동복만 챙겨오세요.' },
-  { name: '프리미엄 원두 드립백 30개입 (무료배송)', cat: 'general', price: 18900, orig: 32000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal9/600/600', q: '드립백 커피', spots: 10, seed: 52, desc: '스페셜티 원두 드립백 30개입, 로스팅 직후 소분 발송. 전국 무료배송.' },
-  { name: '제주 한라봉 5kg 산지직송', cat: 'general', price: 21900, orig: 35000, rest: '', addr: '', img: 'https://picsum.photos/seed/urdeal10/600/600', q: '한라봉', spots: 5, seed: 27, desc: '제주 산지직송 한라봉 5kg(가정용). 수확 후 24시간 내 발송, 당도 선별 과일만 담습니다.' },
+  // 🛡️ 2026-07-02 (대표 신고): 드립백/한라봉(cat:'general' 무료배송·산지직송 = 일반 온라인 쇼핑) 데모 제거 —
+  //   동네딜(매장 이용권) 데모에 쇼핑 상품이 섞여 시드되던 것. 동네딜 데모는 이용권 4종만.
 ];
 
 // 🎯 2026-07-01 (대표 "데모 이용권도 매장 지도 매칭 제대로"): 데모 매장은 가공 이름 + 번지 없는 주소라
@@ -979,7 +981,10 @@ async function kakaoPlaceLookup(
 // GET /dongnedeal/stats — 동네딜 상품 현황(전체/노출/데모/카테고리별)
 adminProductsRoutes.get('/dongnedeal/stats', cors(), async (c) => {
   try {
-    const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher', 'general'];
+    // 🛡️ 2026-07-02 (대표 신고 — 쇼핑 상품이 동네딜 현황에 섞임): 동네딜은 이용권 4종(VOUCHER_CATEGORIES)
+    //   전용. 'general'(일반 온라인 쇼핑, 별칭 '온라인'/'일반 상품')은 서비스 분리상 동네딜 아님 —
+    //   소비자 동네딜 피드(group-buy-public)도 general 제외. 통계에서 general 제거해 경계 정합.
+    const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher'];
     const ph = cats.map(() => '?').join(',');
     const row = await c.env.DB.prepare(
       `SELECT COUNT(*) AS total, SUM(CASE WHEN COALESCE(is_active,1)=1 AND group_buy_status='active' THEN 1 ELSE 0 END) AS active FROM products WHERE category IN (${ph})`
@@ -1182,7 +1187,7 @@ adminProductsRoutes.post('/dongnedeal/bulk-import', cors(), async (c) => {
       const cat = mapDealCategory(catRaw);
       if (!name) { results.push({ row: rowNum, status: 'error', reason: '상품명 누락' }); continue; }
       if (!Number.isFinite(price) || price <= 0) { results.push({ row: rowNum, name, status: 'error', reason: '판매가가 올바르지 않습니다' }); continue; }
-      if (!cat) { results.push({ row: rowNum, name, status: 'error', reason: `카테고리 인식 불가 (${catRaw || '빈값'}) — 이용권/미용/기타/일반 중 하나` }); continue; }
+      if (!cat) { results.push({ row: rowNum, name, status: 'error', reason: `카테고리 인식 불가 (${catRaw || '빈값'}) — 맛집(이용권)/미용/기타 중 하나 (일반 쇼핑 상품은 동네딜 아님)` }); continue; }
       if (cat === 'stay_voucher') { results.push({ row: rowNum, name, status: 'error', reason: '숙소는 이 도구로 등록 불가 (숙소 전용 등록을 사용하세요)' }); continue; }
       const orig = (r['정가'] || r['original_price'] || '').replace(/[^\d.-]/g, '');
       const origNum = orig ? Math.round(Number(orig)) : 0;
@@ -1273,7 +1278,8 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
 // GET /dongnedeal/list — 등록된 동네딜 목록(최근순). 수정/삭제 관리용.
 adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
   try {
-    const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher', 'general'];
+    // 🛡️ 2026-07-02 (대표 신고): 동네딜 목록도 이용권 4종 전용 — general(일반 쇼핑) 제외.
+    const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher'];
     const ph = cats.map(() => '?').join(',');
     const limRaw = Number(c.req.query('limit'));
     const lim = Number.isFinite(limRaw) && limRaw > 0 && limRaw <= 200 ? Math.floor(limRaw) : 50;

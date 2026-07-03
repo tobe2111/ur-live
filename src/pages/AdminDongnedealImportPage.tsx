@@ -145,13 +145,12 @@ export default function AdminDongnedealImportPage() {
                   <option value="meal_voucher">맛집 이용권</option>
                   <option value="beauty_voucher">미용</option>
                   <option value="etc_voucher">기타</option>
-                  <option value="general">일반 상품</option>
                 </select>
                 <button onClick={seedDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">데모 채우기</button>
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap mt-3">
-              {['meal_voucher', 'beauty_voucher', 'etc_voucher', 'general'].map(cat => {
+              {['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher'].map(cat => {
                 const found = stats.by_category.find(b => b.category === cat)
                 return <span key={cat} className="text-[12px] text-gray-500">{CAT_LABEL[cat]} <b className="text-gray-800">{found?.c ?? 0}</b></span>
               })}
@@ -182,7 +181,7 @@ export default function AdminDongnedealImportPage() {
             </button>
           </div>
           <p className="text-[11px] text-gray-400 mt-2">헤더(필수): <b>상품명, 카테고리, 판매가</b>. 선택: 정가(취소선 표시), 매장명, 주소, 이미지URL, 설명.</p>
-          <p className="text-[11px] text-gray-400 mt-1">카테고리는 <b>이용권 / 미용 / 기타 / 일반</b> 중 하나로 입력. <b className="text-amber-600">숙소는 객실·날짜 등록이 필요해 이 도구로 등록 불가</b>(숙소 전용 등록 사용).</p>
+          <p className="text-[11px] text-gray-400 mt-1">카테고리는 <b>맛집(이용권) / 미용 / 기타</b> 중 하나로 입력. <b className="text-amber-600">일반 온라인 쇼핑 상품은 동네딜이 아니라 등록 불가</b> · <b className="text-amber-600">숙소는 객실·날짜 등록이 필요해 이 도구로 등록 불가</b>(숙소 전용 등록 사용).</p>
         </div>
 
         <div className={card}>
