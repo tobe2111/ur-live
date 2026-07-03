@@ -1,9 +1,12 @@
 // 🧭 2026-07-01 (대표 — "기존 동네딜 수정/삭제"): 등록된 동네딜 목록 + 노출토글/수정/삭제.
 //   GET /api/admin/dongnedeal/list · PATCH /dongnedeal/:id(is_active) · DELETE /products/:id.
+//   🎯 2026-07-03 (대표 — "체크박스로 선택 삭제"): 다중 선택 + 일괄 삭제(단건 DELETE 를 순회 —
+//   부속테이블 정리·주문이력 soft-retire 를 단건 엔드포인트가 이미 보장하므로 재사용).
 //   라이트 테마(어드민, dark: 미사용).
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { cfImage } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { Eye, EyeOff, Pencil, Trash2, MapPin, RefreshCw } from 'lucide-react'
 import type { DealRow } from './types'
@@ -14,6 +17,9 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
   const [rows, setRows] = useState<DealRow[]>([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<number | null>(null)
+  // 🎯 다중 선택(체크박스) — 선택된 product id 집합.
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -22,7 +28,7 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
       .catch(() => toast.error('목록 불러오기 실패'))
       .finally(() => setLoading(false))
   }
-  useEffect(load, [nonce]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setSelected(new Set()); load() }, [nonce]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleActive = async (d: DealRow) => {
     setBusyId(d.id)
@@ -39,18 +45,64 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
     try {
       await api.delete(`/api/admin/products/${d.id}`, h)
       setRows((prev) => prev.filter((x) => x.id !== d.id))
+      setSelected((prev) => { const n = new Set(prev); n.delete(d.id); return n })
       toast.success('삭제됨')
       onChanged()
     } catch { toast.error('삭제 실패') } finally { setBusyId(null) }
   }
 
+  const toggleSelect = (id: number) => {
+    setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  const allSelected = rows.length > 0 && rows.every((d) => selected.has(d.id))
+  const toggleSelectAll = () => {
+    setSelected(allSelected ? new Set() : new Set(rows.map((d) => d.id)))
+  }
+
+  const removeSelected = async () => {
+    const ids = rows.filter((d) => selected.has(d.id)).map((d) => d.id)
+    if (ids.length === 0) return
+    if (!confirm(`선택한 ${ids.length}개 동네딜을 삭제할까요? (되돌릴 수 없음 · 주문 이력이 있으면 자동으로 숨김 처리)`)) return
+    setBulkBusy(true)
+    // 단건 DELETE 순회 — 각 요청이 부속 데이터 정리 + 주문이력 시 soft-retire 를 이미 처리(엔드포인트 정책 재사용).
+    const results = await Promise.allSettled(ids.map((id) => api.delete(`/api/admin/products/${id}`, h)))
+    const okIds = new Set<number>()
+    let failed = 0
+    results.forEach((res, i) => { if (res.status === 'fulfilled') okIds.add(ids[i]); else failed++ })
+    setRows((prev) => prev.filter((x) => !okIds.has(x.id)))
+    setSelected(new Set())
+    setBulkBusy(false)
+    if (okIds.size > 0) toast.success(`${okIds.size}개 삭제됨${failed ? ` · ${failed}개 실패` : ''}`)
+    else toast.error('삭제 실패')
+    onChanged()
+  }
+
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-5">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-bold text-gray-900">등록된 동네딜 ({rows.length})</p>
-        <button onClick={load} className="inline-flex items-center gap-1 text-[12px] font-semibold text-gray-500 hover:text-gray-800">
-          <RefreshCw className="w-3.5 h-3.5" /> 새로고침
-        </button>
+      <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-bold text-gray-900">등록된 동네딜 ({rows.length})</p>
+          {selected.size > 0 && (
+            <button
+              onClick={removeSelected}
+              disabled={bulkBusy}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> {bulkBusy ? '삭제 중…' : `선택 삭제 (${selected.size})`}
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          {rows.length > 0 && (
+            <label className="inline-flex items-center gap-1.5 text-[12px] text-gray-500 cursor-pointer select-none">
+              <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="w-4 h-4 accent-gray-900" />
+              전체 선택
+            </label>
+          )}
+          <button onClick={load} className="inline-flex items-center gap-1 text-[12px] font-semibold text-gray-500 hover:text-gray-800">
+            <RefreshCw className="w-3.5 h-3.5" /> 새로고침
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -60,9 +112,16 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
       ) : (
         <div className="divide-y divide-gray-100">
           {rows.map((d) => (
-            <div key={d.id} className="flex items-center gap-3 py-2.5">
+            <div key={d.id} className={`flex items-center gap-3 py-2.5 ${selected.has(d.id) ? 'bg-red-50/40 -mx-2 px-2 rounded-lg' : ''}`}>
+              <input
+                type="checkbox"
+                checked={selected.has(d.id)}
+                onChange={() => toggleSelect(d.id)}
+                className="w-4 h-4 accent-gray-900 shrink-0"
+                aria-label={`${d.name} 선택`}
+              />
               {d.image_url ? (
-                <img src={d.image_url} alt="" className="w-12 h-12 rounded-lg object-cover border border-gray-100 shrink-0" loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.25' }} />
+                <img src={cfImage(d.image_url, { width: 96, quality: 80, format: 'auto' }) || d.image_url} alt="" className="w-12 h-12 rounded-lg object-cover border border-gray-100 shrink-0" loading="lazy" onError={(e) => { e.currentTarget.style.opacity = '0.25' }} />
               ) : (
                 <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 text-lg">🍽️</div>
               )}

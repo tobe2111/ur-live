@@ -1012,6 +1012,24 @@ adminProductsRoutes.get('/dongnedeal/stats', cors(), async (c) => {
   }
 });
 
+// 🎯 2026-07-03 (대표 "좌표도 없고 이미지 생성 안되는 데모는 걸러줘 — 생성 안되게"): 서버측 이미지 도달성 검증.
+//   http(혼합콘텐츠)·인증서오류(Workers fetch 는 잘못된 인증서에 throw)·404·비이미지 응답을 전부 '무효'로 판정 →
+//   깨진 실사진 URL 저장을 원천 차단 + 실사진 없음 판정에 사용. Range 0-0 으로 본문 미다운로드, 3.5s 타임아웃.
+async function isReachableHttpsImage(url: string | null | undefined): Promise<boolean> {
+  if (!url || !/^https:\/\//i.test(url)) return false; // http = 혼합콘텐츠 → 무효
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3500);
+    let res: Response;
+    try {
+      res = await fetch(url, { method: 'GET', headers: { Range: 'bytes=0-0' }, signal: ctrl.signal });
+    } finally { clearTimeout(timer); }
+    if (!res.ok && res.status !== 206) return false;
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    return ct.startsWith('image/');
+  } catch { return false; } // 인증서 오류·DNS·타임아웃 → 무효
+}
+
 // POST /dongnedeal/seed-demo — 데모 동네딜 상품 시드 (멱등, slug 'demo-deal-N')
 adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
   try {
@@ -1084,6 +1102,12 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     const resolvedImgs = await Promise.all(
       items.map((d) => fetchNaverImageUrl(c.env, d.q, batchIndex).catch(() => null))
     );
+    // 🎯 2026-07-03 (대표 "이미지 생성 안되는 것 걸러줘"): 검색된 실사진을 서버측 도달성 검증 —
+    //   https+200+image/* 만 통과. http·인증서오류·404·비이미지는 null 로 떨궈 **깨진 URL 저장 0** +
+    //   아래 좌표없음 스킵 판정에 사용(실사진도 좌표도 없으면 생성 안 함).
+    const validImgs = await Promise.all(
+      resolvedImgs.map((u) => isReachableHttpsImage(u).then((ok) => (ok ? u : null))),
+    );
     // 🎯 실제 매장 매칭(카카오 키워드 검색): region 지정 시 그 지역 매장으로 — 매장명·주소·좌표가
     //   실제 장소로 채워져 지도 마커·카카오맵 링크(RestaurantMiniMap 이 매장명+주소로 자동 생성)까지 연결.
     const resolvedPlaces = await Promise.all(
@@ -1098,13 +1122,19 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     let seeded = 0;
     let realPhotos = 0;
     let placed = 0;
+    let skipped = 0;  // 🎯 좌표·실사진 둘 다 없어 생성하지 않은 데모 수
     for (let i = 0; i < items.length; i++) {
       const d = items[i];
-      const img = resolvedImgs[i] || d.img;
-      if (resolvedImgs[i]) realPhotos++;
+      const realPhoto = validImgs[i];               // 검증 통과 실사진(없으면 null)
+      if (realPhoto) realPhotos++;
       // 🎯 실제 매장 매칭 성공 시 그 매장의 이름/주소/좌표 사용(지도 정확). 실패 시 데모값(좌표 없음 → 클라 지오코딩).
       const place = resolvedPlaces[i];
-      if (place?.lat != null) placed++;
+      const hasCoord = place?.lat != null;
+      if (hasCoord) placed++;
+      // 🎯 2026-07-03 (대표 지시): 좌표도 없고 실사진도 없으면 = 유령 데모 → 생성하지 않음(스킵).
+      //   둘 중 하나라도 있으면 생성(좌표만 → picsum 폴백 이미지 / 실사진만 → 응답 후 지오코딩 보정).
+      if (!hasCoord && !realPhoto) { skipped++; continue; }
+      const img = realPhoto || d.img;               // 실사진 우선, 없으면(좌표 보유분) 깨끗한 picsum 폴백
       const restName = place?.name || d.rest || null;
       const restAddr = place?.address || d.addr || null;
       // 🎯 region 지정 시 상품명 지역 프리픽스 교체 — "[강남] …" → "[영등포] …" (없으면 부착).
@@ -1143,7 +1173,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         await setSupplyMeta(DB, pid, { kakao_place_url: place.placeUrl }).catch(() => {});
       }
     }
-    await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded, realPhotos, placed, healed, region: region || null, category: catFilter || null } }).catch(() => {});
+    await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded, realPhotos, placed, skipped, healed, region: region || null, category: catFilter || null } }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
     // 🧭 2026-07-02 (대표 승인 "가장 이상적으로"): 좌표 없이 시드된 행(place 미매칭/폴백 INSERT)을
@@ -1156,7 +1186,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         ).catch(() => {})
       );
     } catch { /* executionCtx 미가용 — 일일 cron 이 자연 처리 */ }
-    return c.json({ success: true, seeded, realPhotos, placed, healed, region: region || null, category: catFilter || null });
+    return c.json({ success: true, seeded, realPhotos, placed, skipped, healed, region: region || null, category: catFilter || null });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
