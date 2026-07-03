@@ -721,10 +721,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   전체화면 BrandLoader 로 early-return → 청크 로더와 끊김 없이 이어져 '한 번'으로 보임(헤더가 중간에 안 뜸).
   //   embedded(홈)은 청크 로더가 없고 다른 콘텐츠와 공존해야 하므로 인라인 유지(아래 {loading?} 블록).
   if (loading && !embedded) return <BrandLoader fullScreen />
+  // 🛡️ 2026-07-03 (대표 신고 — 모바일 쇼핑탭 하단 네비 실종): min-h-screen(=100vh) → min-h-[100dvh].
+  //   100vh 는 주소창 포함 '큰 뷰포트'라 카카오톡 인앱/일부 안드로이드 웹뷰에서 fixed 하단 네비를
+  //   화면 밖으로 밀어냄(CLAUDE.md 룰 #8). 정상 동작하는 홈(RestaurantMapPage)도 min-h-[100dvh] 사용.
   return (
-    {/* 🛡️ 2026-07-03 (대표 신고 — 모바일 쇼핑탭 하단 네비 실종): min-h-screen(=100vh) → min-h-[100dvh].
-        100vh 는 주소창 포함 '큰 뷰포트'라 카카오톡 인앱/일부 안드로이드 웹뷰에서 fixed 하단 네비를
-        화면 밖으로 밀어냄(CLAUDE.md 룰 #8). 정상 동작하는 홈(RestaurantMapPage)도 min-h-[100dvh] 사용. */}
     <div className={embedded ? '' : 'bg-white dark:bg-[#0A0A0A] pb-safe-nav md:pb-20 min-h-[100dvh]'}>
       {!embedded && (
         <SEO
