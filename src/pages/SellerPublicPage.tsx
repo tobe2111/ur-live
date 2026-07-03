@@ -518,9 +518,9 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           </section>
         )}
 
-        {/* ⑥ 판매자 정보 — 🧾 2026-07-02 (대표 시안): "정보" 제목 카드 → 링크샵 맨 밑 쇼핑몰식 푸터.
-            상단 얇은 구분선으로 본문과 자연스럽게 분리 + InfoTab 이 "MORE INFO +" 접이식으로 렌더. */}
-        <footer className="mt-4 pt-6 border-t border-gray-100 dark:border-[#1A1A1A]">
+        {/* ⑥ 판매자 정보 — 🧾 2026-07-02 (대표 시안): "정보" 제목 카드 → 링크샵 **맨 밑** 쇼핑몰식 작은 푸터.
+            콘텐츠와 넉넉히 떨어뜨려(mt-12) 진짜 페이지 하단 푸터로 읽히게. 얇은 구분선 + "MORE INFO +" 접이식. */}
+        <footer className="mt-12 pt-5 border-t border-gray-100 dark:border-[#1A1A1A]">
           <InfoTab
             seller={seller}
             isOwner={ownerView}

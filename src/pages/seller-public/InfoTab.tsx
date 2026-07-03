@@ -41,12 +41,12 @@ export default function InfoTab({
     : null
   const hasAnyInfo = !!(seller.business_name || ceo || seller.business_number || seller.mail_order_number || seller.business_address)
 
-  // 푸터 한 줄 — `LABEL. value` (라벨 볼드/뮤트, 값 살짝 진하게). 값 없으면 렌더 스킵.
+  // 푸터 한 줄 — `LABEL. value` (라벨 세미볼드/뮤트, 값 살짝 진하게). 값 없으면 렌더 스킵.
   const Row = ({ label, value, extra }: { label: string; value?: string | null; extra?: ReactNode }) =>
     value ? (
       <p className="leading-relaxed">
-        <span className="font-bold text-gray-500 dark:text-gray-400">{label}</span>{' '}
-        <span className="text-gray-500 dark:text-gray-400">{value}</span>
+        <span className="font-semibold text-gray-500 dark:text-gray-400">{label}</span>{' '}
+        <span className="text-gray-400 dark:text-gray-500">{value}</span>
         {extra ? <> {extra}</> : null}
       </p>
     ) : null
@@ -91,30 +91,30 @@ export default function InfoTab({
           <button
             onClick={() => setOpen(o => !o)}
             aria-expanded={open}
-            className="w-full flex items-center gap-1.5 py-1 text-[12px] font-bold tracking-wider text-gray-400 dark:text-gray-500 uppercase active:opacity-70"
+            className="w-full flex items-center gap-1.5 py-1 text-[10.5px] font-bold tracking-wider text-gray-400 dark:text-gray-500 uppercase active:opacity-70"
           >
             {t('seller.publicPage.moreInfo', { defaultValue: 'MORE INFO' })}
-            <span className="text-[14px] leading-none font-normal">{open ? '−' : '+'}</span>
+            <span className="text-[12px] leading-none font-normal">{open ? '−' : '+'}</span>
             {isOwner && (
               <Link
                 to="/seller/business-info"
                 onClick={e => e.stopPropagation()}
-                className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 dark:text-gray-400 normal-case tracking-normal active:opacity-70"
+                className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold text-gray-400 dark:text-gray-500 normal-case tracking-normal active:opacity-70"
               >
-                <Pencil className="w-3 h-3" /> {t('common.edit', { defaultValue: '수정' })}
+                <Pencil className="w-2.5 h-2.5" /> {t('common.edit', { defaultValue: '수정' })}
               </Link>
             )}
           </button>
 
           {open && (
-            <div className="mt-2 space-y-1 text-[11.5px] text-gray-400 dark:text-gray-500">
+            <div className="mt-2 space-y-0.5 text-[10.5px] text-gray-400 dark:text-gray-500">
               {(seller.business_name || ceo) && (
                 <p className="leading-relaxed">
                   {seller.business_name && (
-                    <><span className="font-bold text-gray-500 dark:text-gray-400">COMPANY.</span> <span>{seller.business_name}</span></>
+                    <><span className="font-semibold text-gray-500 dark:text-gray-400">COMPANY.</span> <span className="text-gray-400 dark:text-gray-500">{seller.business_name}</span></>
                   )}
                   {ceo && (
-                    <><span className="ml-3 font-bold text-gray-500 dark:text-gray-400">CEO.</span> <span>{ceo}</span></>
+                    <><span className="ml-3 font-semibold text-gray-500 dark:text-gray-400">CEO.</span> <span className="text-gray-400 dark:text-gray-500">{ceo}</span></>
                   )}
                 </p>
               )}
@@ -132,7 +132,7 @@ export default function InfoTab({
               <Row label="ORDER LICENSE." value={seller.mail_order_number} />
               {isOwner && !seller.mail_order_number && (
                 <p className="leading-relaxed">
-                  <span className="font-bold text-gray-500 dark:text-gray-400">ORDER LICENSE.</span>{' '}
+                  <span className="font-semibold text-gray-500 dark:text-gray-400">ORDER LICENSE.</span>{' '}
                   <Link to="/seller/business-info" className="text-gray-400 dark:text-gray-500 underline underline-offset-2">
                     {t('seller.publicPage.mailOrderNumber', { defaultValue: '통신판매업신고번호' })} {t('common.register', { defaultValue: '등록' })}
                   </Link>
