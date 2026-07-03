@@ -348,20 +348,8 @@ export default function WholesaleJoinPage() {
           </button>
         </form>
 
-        {/* 🏭 2026-06-04 카카오로 간편 가입 — 비-카카오 사용자에게만 노출 (사업자 정보는 동일하게 입력). */}
-        {!kakaoUser && (
-          <>
-            <div className="relative my-4 flex items-center gap-3">
-              <div className="flex-1 h-px" style={{ background: '#ECEEF1' }} />
-              <span className="text-[12px]" style={{ color: '#8A929E' }}>또는</span>
-              <div className="flex-1 h-px" style={{ background: '#ECEEF1' }} />
-            </div>
-            <button type="button" onClick={() => { window.location.href = '/auth/kakao/start?redirect=/wholesale/join&intent=user' }}
-              className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-xl font-bold text-[15px]" style={{ background: '#FEE500', color: '#3C1E1E' }}>
-              카카오로 시작하기
-            </button>
-          </>
-        )}
+        {/* 🏭 2026-07-03 (대표): 유통스타트 도매몰 카카오 간편가입 제거 — 판매사 가입은 사업자 인증(이메일/비밀번호) 전용.
+            ⚠️ 소비자(유어딜) 카카오 로그인과 무관 — 도매몰 가입 표면에서만 카카오 진입 제거(서비스 분리). */}
 
         <div className="mt-8 pt-6 border-t border-[#ECEEF1] text-center text-sm text-[#8A929E]">
           제조사이신가요?{' '}
