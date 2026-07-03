@@ -2,7 +2,7 @@
 
 ## 🌐 유어딜 플랫폼 모델 SSOT — 전 세션 자동 최신화 (2026-07-02 대표 지시 "어떤 세션에서 작업하더라도 자동 업데이트")
 
-**플랫폼 전체 그림(SSOT)** = `docs/design/urdeal-platform-model.md` (드릴다운: `linkshop-role-model.md`). 새 세션은 이 문서로 전체 구조(3서비스·행위자·상품종류·경제·성장·데이터)를 먼저 잡는다. **어드민 `/admin/platform-model` 에서도 이 문서를 그대로 열람**(`?raw` import → 배포 시 자동 동기화).
+**플랫폼 전체 그림(SSOT)** = `docs/design/urdeal-platform-model.md` (드릴다운: `linkshop-role-model.md`) + **대외 비즈니스 문서** `docs/business/urdeal-business-plan.md`(사업계획/회사소개/입점제안). 새 세션은 이 문서로 전체 구조(3서비스·행위자·상품종류·경제·성장·데이터)를 먼저 잡는다. **어드민 `/admin/platform-model` 에서 두 문서 모두 탭으로 열람**(`?raw` import → 배포 시 자동 동기화).
 
 **🔄 필수 룰 (모든 세션 준수 — "자동 업데이트"의 실체는 이 규칙이다)**: 플랫폼 **구조**가 바뀌면 **같은 커밋에서** 이 문서를 갱신한다. 구조 = 행위자(부류)·상품/콘텐츠 종류·커미션/정산의 *종류*·서비스 경계·역할·성장 루프·주요 라우트. 예:
 - 새 행위자·역할(`seller-roles.ts`)·상품종류(`voucher-categories`)·커미션종류(affiliate/영입/공급자 helper) 추가/변경 → §2~5 갱신
