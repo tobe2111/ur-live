@@ -2,6 +2,7 @@ import { MapPin } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { cfImage } from '@/utils/cf-image'
 import { distanceKm } from './utils'
+import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import type { Restaurant } from './types'
 import { type MapVoucherType, MAP_EMPTY_MSG } from './voucher-types'
 
@@ -79,18 +80,10 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
               </div>
             )}
             <div className="flex-1 min-w-0">
-              {/* 🎨 2026-07-02 (대표 — UI 우선순위): 유저가 궁금한 건 매장이 아니라 '어떤 이용권인지' →
-                  이용권명(r.name)을 볼드 제목으로 승격, 매장명은 작은 보조 줄로 강등 (홈 피드 카드와 동일 위계).
-                  🎯 2026-07-03 (대표 시안 옵션2): 제목 오른쪽 끝에 추첨 배지 + 매장명 밑에 주소·거리 + 응모버튼 제거
-                  (카드 전체 탭 → 상세에서 응모). 중첩 <button> 도 함께 해소. */}
-              <div className="flex items-start gap-2">
-                <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate flex-1 min-w-0">{r.name}</p>
-                {fcfs && (
-                  <span className="shrink-0 mt-0.5 inline-flex items-center gap-1 text-[10px] font-extrabold text-gray-900 dark:text-white bg-gray-900/10 dark:bg-white/15 px-2 py-0.5 rounded-full">
-                    🎯 {formatNumber(fcfs.appliedDisplay)}/{formatNumber(fcfs.spots)}명
-                  </span>
-                )}
-              </div>
+              {/* 🎨 2026-07-02 (대표 — UI 우선순위): 이용권명(r.name)을 볼드 제목으로, 매장명은 보조 줄로.
+                  🎨 2026-07-03 (대표 — "칙칙해"): 제목 옆 흐린 회색 추첨 배지 제거 → 가격 아래 선명한
+                  모집현황 chip("N명 모집 · M명 지원", FcfsBadge)로 전용 줄에 배치(긴 제목 안 찌그러뜨림). */}
+              <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{r.name}</p>
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{r.restaurant_name}</p>
               <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-0.5 truncate flex items-center gap-0.5">
                 <MapPin className="w-3 h-3 shrink-0" />
@@ -110,6 +103,7 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
                   <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(r.original_price)}원</span>
                 )}
               </div>
+              {fcfs && <div className="mt-2"><FcfsBadge info={fcfs} /></div>}
             </div>
           </button>
         )
