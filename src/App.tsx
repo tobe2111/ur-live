@@ -141,7 +141,8 @@ const MarketingUnlockPage = lazy(() => import('./pages/marketing/MarketingUnlock
 const MarketingDashboardPage = lazy(() => import('./pages/marketing/MarketingDashboardPage'))
 const VoucherDetailPage = lazy(() => import('./pages/VoucherDetailPage'))
 const MealVouchersPage = lazy(() => import('./pages/MealVouchersPage'))
-const GroupBuyListPage = lazy(() => import('./pages/GroupBuyListPage'))
+// 🗺️ 2026-07-03 (대표 결정 — /group-buy 은퇴): 홈(/)이 동네딜 목록·지도·지역선택을 담당 → 중복.
+//   /group-buy 는 홈으로 리다이렉트(아래 Route). GroupBuyListPage 는 미라우팅(파일 보존). /group-buy/:id 상세는 유지.
 const GroupBuyDetailPage = lazy(() => import('./pages/GroupBuyDetailPage'))
 const GroupBuyConfirmPaymentPage = lazy(() => import('./pages/GroupBuyConfirmPaymentPage'))
 // 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6, PR 6/6.
@@ -652,7 +653,8 @@ function AppContent() {
             {/* 🛡️ 2026-05-23: 교환권 전용 detail 페이지 (deal 결제). voucher 와 group-buy UI 분리. */}
             <Route path="/vouchers/:id" element={<VoucherDetailPage />} />
             <Route path="/meal-vouchers" element={<MealVouchersPage />} />
-            <Route path="/group-buy" element={<GroupBuyListPage />} />
+            {/* 🗺️ 2026-07-03 (대표 결정): /group-buy 은퇴 → 홈 리다이렉트. 기존 15+ 링크·북마크·SEO 모두 홈으로 흡수. */}
+            <Route path="/group-buy" element={<Navigate to="/" replace />} />
             {/* confirm-payment 가 :id 매칭 우선 — 더 구체적인 path 먼저 */}
             <Route path="/group-buy/confirm-payment" element={<GroupBuyConfirmPaymentPage />} />
             <Route path="/group-buy/:id" element={<GroupBuyDetailPage />} />
