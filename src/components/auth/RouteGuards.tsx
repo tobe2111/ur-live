@@ -36,12 +36,35 @@ function isUserLoggedIn(): boolean {
   return !!localStorage.getItem('user_id') || !!localStorage.getItem('session_login')
 }
 
+// 🔑 2026-07-02 (인증 회복력 P1b — 대표 "상품등록 흰화면"): JWT exp 디코드.
+//   기존 게이트는 토큰 '존재'만 봐, **만료된** seller_token 도 통과시켜 → 페이지 마운트 → API 401 폭포 →
+//   흰화면이 됐다. 만료 + 갱신불가(refresh_token 없음)면 '로그아웃'으로 취급해 로그인으로 **깔끔히** 보낸다.
+//   (만료됐어도 refresh_token 이 있으면 통과 — 인터셉터가 401→refresh 로 복구. 디코드 실패 시 관대하게 통과 = 기존 동작.)
+function isDashboardTokenUsable(role: 'seller' | 'admin' | 'agency'): boolean {
+  const token = localStorage.getItem(`${role}_token`)
+  if (!token) return false
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return true // 비표준 토큰 — 기존처럼 관대 통과
+    let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    b64 += '='.repeat((4 - (b64.length % 4)) % 4) // base64url 패딩 보정 (atob 엄격 엔진 대비)
+    const payload = JSON.parse(atob(b64))
+    const expMs = typeof payload.exp === 'number' ? payload.exp * 1000 : null
+    if (expMs === null) return true // exp 없음 — 관대 통과
+    if (expMs > Date.now()) return true // 아직 유효
+    // 만료됨 → refresh_token 있으면 통과(인터셉터가 복구), 없으면 로그인 필요
+    return !!localStorage.getItem(`${role}_refresh_token`)
+  } catch {
+    return true // 디코드 실패 — 기존 동작(관대 통과)
+  }
+}
+
 function isSellerLoggedIn(): boolean {
-  return !!localStorage.getItem('seller_token')
+  return isDashboardTokenUsable('seller')
 }
 
 function isAdminLoggedIn(): boolean {
-  return !!localStorage.getItem('admin_token')
+  return isDashboardTokenUsable('admin')
 }
 
 function makeLoginUrl(pathname: string, search: string): string {
@@ -70,8 +93,8 @@ export function ProtectedRoute({
   // ─── Seller: 동기 체크 (Firebase 완전 무관) ─────────────────────────
   // 듀얼 세션: user_type이 'user'여도 seller_token이 있으면 셀러 대시보드 접근 허용
   if (requireSeller) {
-    const sellerToken = localStorage.getItem('seller_token')
-    const ok = !!sellerToken
+    // 🔑 2026-07-02 (P1b): 존재만 X → 유효성(exp)까지. 만료+갱신불가면 흰화면 대신 로그인으로.
+    const ok = isSellerLoggedIn()
     if (DEBUG) if (import.meta.env.DEV) console.log('[ProtectedRoute] Seller 체크:', { ok, path: location.pathname })
     if (!ok) return <Navigate to="/seller/login" state={{ from: location.pathname }} replace />
     return <>{children}</>
