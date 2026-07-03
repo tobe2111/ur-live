@@ -522,14 +522,15 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           />
         </div>
         {/* 플로팅 '지도로 보기' 버튼 — 하단 네비 위 중앙.
-            🎨 2026-07-03 (대표 첨부 시안): 빨간 핀(📍) + "지도로 보기" 다크 알약. 아이콘 MapIcon→MapPin(red fill). */}
+            🎨 2026-07-03 (대표 첨부 시안): 또렷한 📍 이모지(안쪽 점 있는 핀) + "지도로 보기" 다크 알약.
+            (이전 lucide MapPin fill 은 안쪽 구멍이 사라져 밋밋한 덩어리로 보임 → 시안의 📍 로 교체.) */}
         <button
           onClick={() => navigate('/map')}
-          className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full px-4 py-2.5 shadow-lg active:scale-95 transition-transform"
+          className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full pl-3.5 pr-4 py-2.5 shadow-lg active:scale-95 transition-transform"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom,0px) + 16px)' }}
           aria-label={t('map.viewMap', { defaultValue: '지도로 보기' })}
         >
-          <MapPin className="w-4 h-4 text-red-500 shrink-0" fill="currentColor" strokeWidth={2} />
+          <span className="text-[16px] leading-none shrink-0" aria-hidden>📍</span>
           <span className="text-[14px] font-bold">{t('map.viewMap', { defaultValue: '지도로 보기' })}</span>
         </button>
         {filterSheetOpen && (
