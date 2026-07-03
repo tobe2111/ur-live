@@ -28,7 +28,8 @@
 | 홈 사이드바 (3 섹션 + 카테고리) | 2026-05-06 | ✅ 구현 완료 (단, 홈은 2026-06-20 동네딜 지도로 전환됨 — 사이드바는 라이브 시절 잔재, 라이브 중단으로 사실상 무의미) | [home-sidebar.md](./home-sidebar.md) |
 | Quick Action FAB (당근식 확장 버튼) | 2026-05-24 | ✅ BottomNav ➕ 시트로 구현(역할별 만들기 메뉴) | [quick-action-fab.md](./quick-action-fab.md) |
 | **🚀 비즈니스 pivot — 링크샵·공구·어필리에이트** | 2026-05-25 | ✅ Phase 1–4 구현(링크샵·핀·어필리에이트 정산·공구 호스팅·셀러 승급). Phase 5(셀러 흡수)+폴리시만 잔여. ⚠️ 문서 내 '라이브' 언급은 **영구 중단**(LIVE_COMMERCE_SUSPENDED) — 무시 | [linkshop-pivot.md](./linkshop-pivot.md) |
-| **🧭 링크샵 역할 모델 — 5부류 성과 구조 + 역할 적응형 링크샵(SSOT)** | 2026-07-02 | 🟡 설계 / 대표 결정(§7 4건) 대기 · 1단계(매장 링크샵 하단 추천 opt-in 부활)부터 착수 권장 | [linkshop-role-model.md](./linkshop-role-model.md) |
+| **🌐 유어딜 플랫폼 모델 — 전 서비스 마스터 SSOT(행위자·상품·경제·성장·로드맵)** | 2026-07-02 | 🟡 전략/설계 SSOT (살아있는 문서) · 새 세션 전체그림 진입점 · 결정 6건 §13 | [urdeal-platform-model.md](./urdeal-platform-model.md) |
+| **🧭 링크샵 역할 모델 — 5부류 성과 구조 + 역할 적응형 링크샵(드릴다운)** | 2026-07-02 | 🟡 설계 / 대표 결정(§7 4건) 대기 · 1단계(매장 링크샵 하단 추천 opt-in 부활)부터 착수 권장 · 마스터=urdeal-platform-model.md | [linkshop-role-model.md](./linkshop-role-model.md) |
 | **🚢 배송 시스템 재설계** | 2026-05-25 | ⏳ 컨셉 / 정책 결정 대기 | [shipping-redesign.md](./shipping-redesign.md) |
 | **🛒 공동구매 = 즉시판매 모델** | 2026-05-30 | 🟡 설계 확정 대기 (A1/A2 + UNLOCK) | [groupbuy-instant-sale.md](./groupbuy-instant-sale.md) |
 | **🏭 유통스타트 도매몰 — 제조사↔플랫폼↔유통사 등급제** | 2026-06-01 | 🟡 스펙 박제 / 결정(D-A~F) 대기 | [wholesale-utongstart.md](./wholesale-utongstart.md) |
