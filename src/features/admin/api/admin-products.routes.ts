@@ -290,9 +290,12 @@ adminProductsRoutes.delete('/products/:id', cors(), async (c) => {
       return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
     }
 
+    // 🎯 2026-07-03 (대표 "삭제하면 아예 안 보여야"): soft-retire 는 slug 를 'retired-' 로 마킹 →
+    //   목록(dongnedeal/list)이 제외 → 삭제 즉시 관리 목록에서 사라짐(눈-토글 '숨김'은 slug 유지라 계속 보임).
+    const RETIRE_SET = "is_active = 0, slug = CASE WHEN slug LIKE 'retired-%' THEN slug ELSE 'retired-' || slug || '-' || id END, updated_at = datetime('now')";
     const hasOrders = await executeQuery<IdRow>(DB, 'SELECT id FROM order_items WHERE product_id = ? LIMIT 1', [productId]);
     if (hasOrders.length > 0) {
-      await executeRun(DB, "UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?", [productId]);
+      await executeRun(DB, `UPDATE products SET ${RETIRE_SET} WHERE id = ?`, [productId]);
       await writeAuditLog(c, { action: 'soft_delete_product', targetType: 'product', targetId: productId, after: { is_active: 0 } });
       await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
       return c.json({ success: true, data: { id: productId, soft_deleted: true } });
@@ -302,14 +305,19 @@ adminProductsRoutes.delete('/products/:id', cors(), async (c) => {
     //   다른 FK 참조(fcfs_applications/product_supply_meta/vouchers/product_regions 등) 때문에 실패 → 500.
     //   seed-demo 일괄삭제(2026-07-01)와 동일 패턴: 부속 데이터 선정리(best-effort) → DELETE 시도 →
     //   그래도 실패(잔여 FK)면 soft-retire(is_active=0) 폴백 — 어떤 경우에도 500 없이 목록에서 사라짐.
+    // 🎯 2026-07-03 (대표 신고 — 삭제해도 '숨김'으로 남음): 자동시드된 fake 리뷰(product_reviews)·장바구니·
+    //   위시리스트가 FK 로 하드삭제를 막아 soft-retire 로만 처리되던 것 → 파생 자식행도 선정리(주문 없을 때만이라 안전).
     await executeRun(DB, 'DELETE FROM product_supply_meta WHERE product_id = ?', [productId]).catch(() => {});
     await executeRun(DB, 'DELETE FROM fcfs_applications WHERE product_id = ?', [productId]).catch(() => {});
     await executeRun(DB, 'DELETE FROM product_regions WHERE product_id = ?', [productId]).catch(() => {});
+    await executeRun(DB, 'DELETE FROM product_reviews WHERE product_id = ?', [productId]).catch(() => {});
+    await executeRun(DB, 'DELETE FROM cart_items WHERE product_id = ?', [productId]).catch(() => {});
+    await executeRun(DB, 'DELETE FROM wishlists WHERE product_id = ?', [productId]).catch(() => {});
     try {
       await executeRun(DB, 'DELETE FROM products WHERE id = ?', [productId]);
       await writeAuditLog(c, { action: 'hard_delete_product', targetType: 'product', targetId: productId });
     } catch {
-      await executeRun(DB, "UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?", [productId]);
+      await executeRun(DB, `UPDATE products SET ${RETIRE_SET} WHERE id = ?`, [productId]);
       await writeAuditLog(c, { action: 'soft_delete_product', targetType: 'product', targetId: productId, after: { is_active: 0, reason: 'fk_refs' } });
       await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
       return c.json({ success: true, data: { id: productId, soft_deleted: true } });
@@ -974,15 +982,19 @@ const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest:
 async function kakaoPlaceLookup(
   env: { KAKAO_REST_API_KEY?: string },
   query: string,
+  pickIndex = 0,  // 🎯 여러 실매장 중 로테이션 선택(누적 시드 시 매번 다른 실매장 = "랜덤" 다양성)
 ): Promise<{ name: string | null; address: string | null; lat: number | null; lng: number | null; placeUrl: string | null } | null> {
   const key = env.KAKAO_REST_API_KEY;
   if (!key || !query.trim()) return null;
   try {
-    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query.trim())}&size=1`;
+    // size 넉넉히(15) → 실제 존재하는 매장 후보 확보 후 pickIndex 로 회전 선택(대표 "카카오맵에서 랜덤/필터로 매장 선정").
+    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query.trim())}&size=15`;
     const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
     if (!res.ok) return null;
     const data = await res.json() as { documents?: Array<{ place_name?: string; road_address_name?: string; address_name?: string; x?: string; y?: string; id?: string; place_url?: string }> };
-    const doc = data?.documents?.[0];
+    const docs = data?.documents || [];
+    if (!docs.length) return null;
+    const doc = docs[pickIndex % docs.length];
     if (!doc) return null;
     const lat = Number(doc.y), lng = Number(doc.x);
     return {
@@ -1127,7 +1139,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     //   실제 장소로 채워져 지도 마커·카카오맵 링크(RestaurantMiniMap 이 매장명+주소로 자동 생성)까지 연결.
     const resolvedPlaces = await Promise.all(
       items.map((d) => (d.pq || d.addr || region)
-        ? kakaoPlaceLookup(c.env, `${region || d.addr} ${d.pq}`.trim()).catch(() => null)  // 순수 업종 키워드(pq)로 실제 매장 매칭
+        ? kakaoPlaceLookup(c.env, `${region || d.addr} ${d.pq}`.trim(), batchIndex).catch(() => null)  // 순수 업종 키워드(pq)+회전으로 실제 매장 매칭
         : Promise.resolve(null))
     );
     // 🎯 2026-07-01 (대표 요청): 데모 딜을 추첨 응모(fcfs)로 — 정원 대비 지원수가 이미 넘치게(30/5, 10/3 …).
@@ -1146,16 +1158,17 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       const place = resolvedPlaces[i];
       const hasCoord = place?.lat != null;
       if (hasCoord) placed++;
-      // 🎯 2026-07-03 (대표 지시): 좌표도 없고 실사진도 없으면 = 유령 데모 → 생성하지 않음(스킵).
-      //   둘 중 하나라도 있으면 생성(좌표만 → picsum 폴백 이미지 / 실사진만 → 응답 후 지오코딩 보정).
-      if (!hasCoord && !realPhoto) { skipped++; continue; }
-      const img = realPhoto || d.img;               // 실사진 우선, 없으면(좌표 보유분) 깨끗한 picsum 폴백
-      const restName = place?.name || d.rest || null;
+      // 🎯 2026-07-03 (대표 "데모는 실제 있는 매장이어야 해"): 카카오 실매장 매칭 실패 = 생성 안 함(스킵).
+      //   실제 존재하는 매장(좌표·주소·place_url)만 데모로 — 가공 상호·좌표없음 유령 데모 원천 차단.
+      if (!hasCoord) { skipped++; continue; }
+      const img = realPhoto || d.img;               // 실사진(R2) 우선, 없으면 깨끗한 picsum 폴백
+      const restName = place?.name || d.rest || null;   // hasCoord 보장 → 항상 실매장명
       const restAddr = place?.address || d.addr || null;
-      // 🎯 region 지정 시 상품명 지역 프리픽스 교체 — "[강남] …" → "[영등포] …" (없으면 부착).
-      const dispName = region
-        ? (/^\[[^\]]+\]/.test(d.name) ? d.name.replace(/^\[[^\]]+\]/, `[${region}]`) : `[${region}] ${d.name}`)
-        : d.name;
+      // 🎯 상품명 지역 프리픽스 = 지정 region 우선, 없으면 **실매장 주소의 구/시**로 정합(가공 "[강남]" 오표기 방지).
+      const realRegion = region || (place?.address ? (place.address.match(/([가-힣]+구|[가-힣]+시)/)?.[1] || '') : '');
+      const dispName = realRegion
+        ? (/^\[[^\]]+\]/.test(d.name) ? d.name.replace(/^\[[^\]]+\]/, `[${realRegion}]`) : `[${realRegion}] ${d.name}`)
+        : d.name.replace(/^\[[^\]]+\]\s*/, '');  // 지역 못 구하면 프리픽스 제거(가공 지역 표기 금지)
       const slug = DEAL_DEMO_SLUG + (maxSuffix + i + 1);  // 누적 추가 — 기존 번호 다음부터
       let res;
       try {
@@ -1217,6 +1230,13 @@ adminProductsRoutes.delete('/dongnedeal/seed-demo', cors(), async (c) => {
     await c.env.DB.prepare(
       `DELETE FROM fcfs_applications WHERE product_id IN (SELECT id FROM products WHERE slug LIKE ?)`
     ).bind(DEAL_DEMO_SLUG + '%').run().catch(() => {});
+    // 🎯 2026-07-03 (대표 신고 — 삭제해도 '숨김'으로 남음): 자동시드 fake 리뷰·장바구니·위시가 FK 로 하드삭제를
+    //   막아 soft-retire 로만 남던 것 → 파생 자식행 선정리(데모 전용이라 안전) → 실제 하드삭제.
+    for (const t of ['product_reviews', 'cart_items', 'wishlists']) {
+      await c.env.DB.prepare(
+        `DELETE FROM ${t} WHERE product_id IN (SELECT id FROM products WHERE slug LIKE ?)`
+      ).bind(DEAL_DEMO_SLUG + '%').run().catch(() => {});
+    }
     // 🛡️ 2026-07-01 (대표 신고 "데모 정리 안됨" — 500): 일괄 DELETE 는 데모에 주문/바우처 등
     //   FK 참조가 하나라도 붙으면 전체가 실패(500). → 행별 삭제 + 실패 행은 soft-retire
     //   (is_active=0 + slug 를 retired- 로 리네임 → 노출/데모 카운트에서 제외, 참조 데이터 보존).
@@ -1387,7 +1407,7 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
     const { results } = await c.env.DB.prepare(
       `SELECT id, name, price, original_price, category, restaurant_name, restaurant_address, image_url,
               COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at
-         FROM products WHERE category IN (${ph}) ORDER BY created_at DESC LIMIT ?`
+         FROM products WHERE category IN (${ph}) AND COALESCE(slug,'') NOT LIKE 'retired-%' ORDER BY created_at DESC LIMIT ?`
     ).bind(...cats, lim).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
     const rows = results || [];
     // 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 한도(meta) 첨부 — 수정 폼 prefill 용 (0=무제한).
