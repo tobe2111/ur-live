@@ -1215,7 +1215,9 @@
       "addVoucherDesc": "Bon local — lieu et détails",
       "previewBanner": "Aperçu visiteur — voici ce que voient les autres",
       "backToEdit": "Retour à l'édition",
-      "verifiedBusiness": "Entreprise vérifiée"
+      "verifiedBusiness": "Entreprise vérifiée",
+      "moreInfo": "MORE INFO",
+      "bizInfoCheck": "Vérifier entreprise"
     },
     "storeIntro": "Presentation de la boutique",
     "shippingInfo": "Info livraison",
@@ -5848,7 +5850,9 @@
     "stepsLeft": "{{n}} étapes avant de finir votre linkshop",
     "stepName": "Définir le nom",
     "stepHandle": "Définir l'adresse",
-    "stepFirstProduct": "Ajouter le premier produit"
+    "stepFirstProduct": "Ajouter le premier produit",
+    "verifiedBusinessUser": "Vendeur vérifié",
+    "verifiedBusinessDesc": "Immatriculation vérifiée."
   },
   "shipping": {
     "trackingTitle": "Suivi de livraison",

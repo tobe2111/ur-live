@@ -1925,7 +1925,9 @@
       "addVoucherDesc": "동네 공구·교환권 — 위치·목표인원 설정",
       "previewBanner": "방문자 미리보기 — 다른 사람에게 보이는 화면이에요",
       "backToEdit": "편집으로 돌아가기",
-      "verifiedBusiness": "사업자 인증"
+      "verifiedBusiness": "사업자 인증",
+      "moreInfo": "MORE INFO",
+      "bizInfoCheck": "사업자정보확인"
     },
     "storeIntro": "스토어 소개",
     "shippingInfo": "배송 정보",
@@ -5836,7 +5838,9 @@
     "stepsLeft": "링크샵 완성까지 {{n}}단계",
     "stepName": "이름 설정",
     "stepHandle": "주소 설정",
-    "stepFirstProduct": "첫 상품 추가"
+    "stepFirstProduct": "첫 상품 추가",
+    "verifiedBusinessUser": "사업자 인증이 된 유저예요",
+    "verifiedBusinessDesc": "사업자등록 정보가 확인된 판매자예요."
   },
   "shipping": {
     "trackingTitle": "배송 추적",

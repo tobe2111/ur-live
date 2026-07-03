@@ -1894,7 +1894,9 @@
       "addVoucherDesc": "地域の利用券・引換券 — 位置や詳細を設定",
       "previewBanner": "訪問者プレビュー — 他の人に見える画面です",
       "backToEdit": "編集に戻る",
-      "verifiedBusiness": "事業者認証"
+      "verifiedBusiness": "事業者認証",
+      "moreInfo": "MORE INFO",
+      "bizInfoCheck": "事業者情報確認"
     },
     "storeIntro": "ストア紹介",
     "shippingInfo": "配送情報",
@@ -5848,7 +5850,9 @@
     "stepsLeft": "完成まであと{{n}}ステップ",
     "stepName": "名前を設定",
     "stepHandle": "アドレスを設定",
-    "stepFirstProduct": "最初の商品を追加"
+    "stepFirstProduct": "最初の商品を追加",
+    "verifiedBusinessUser": "事業者認証済みユーザーです",
+    "verifiedBusinessDesc": "事業者登録情報が確認された販売者です。"
   },
   "shipping": {
     "trackingTitle": "配送追跡",

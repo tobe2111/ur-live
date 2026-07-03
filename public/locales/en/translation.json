@@ -1895,7 +1895,9 @@
       "addVoucherDesc": "Local store voucher — location & details",
       "previewBanner": "Visitor preview — this is what others see",
       "backToEdit": "Back to editing",
-      "verifiedBusiness": "Verified business"
+      "verifiedBusiness": "Verified business",
+      "moreInfo": "MORE INFO",
+      "bizInfoCheck": "Business info"
     },
     "storeIntro": "Store Introduction",
     "shippingInfo": "Shipping Info",
@@ -5848,7 +5850,9 @@
     "stepsLeft": "{{n}} steps to finish your linkshop",
     "stepName": "Set name",
     "stepHandle": "Set address",
-    "stepFirstProduct": "Add first product"
+    "stepFirstProduct": "Add first product",
+    "verifiedBusinessUser": "Verified business seller",
+    "verifiedBusinessDesc": "Business registration has been verified."
   },
   "shipping": {
     "trackingTitle": "Shipping Tracking",
