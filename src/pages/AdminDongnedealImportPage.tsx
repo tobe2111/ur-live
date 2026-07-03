@@ -61,12 +61,17 @@ export default function AdminDongnedealImportPage() {
         region: seedRegion.trim() || undefined,
         category: seedCategory || undefined,
       }, h)
+      const skipped = Number(r.data?.skipped ?? 0)
       if (r.data?.seeded) {
         const parts = [`데모 상품 ${r.data.seeded}개 생성`]
         if (typeof r.data?.realPhotos === 'number') parts.push(`실사진 ${r.data.realPhotos}`)
         if (typeof r.data?.placed === 'number') parts.push(`매장매칭 ${r.data.placed}`)
+        if (skipped > 0) parts.push(`${skipped}개 건너뜀(좌표·사진 없음)`)
         if (r.data?.healed > 0) parts.push(`깨진 이미지 ${r.data.healed}개 복구`)
         toast.success(parts.join(' · '))
+      } else if (skipped > 0) {
+        // 🎯 전부 좌표·실사진 없어 생성 0 — 유령 데모 방지 규칙이 걸러낸 상태.
+        toast.error(`생성된 상품 없음 — ${skipped}개 모두 좌표·실사진이 없어 걸렀습니다(지역을 지정하면 실제 매장으로 매칭됩니다)`)
       } else {
         toast.success(r.data?.message || '이미 데모 상품이 있습니다')
       }
