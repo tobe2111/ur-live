@@ -148,6 +148,38 @@ jobs:
           find dist/client/assets -name '*.map' -delete
           echo "✅ Sentry source maps uploaded for release $RELEASE"
 
+      # 🛡️ 2026-07-03 (대표 — "영구적으로 이런 일 발생하지 않도록"): stale-chunk 404 무한로딩 근본차단.
+      #   원인: 매 배포마다 Vite 해시 청크 파일명이 바뀜 → 브라우저/bfcache 에 남은 옛 index.html 이
+      #   삭제된 `/assets/*.js` 를 참조 → 404 → SPA HTML 폴백 → "무한 로딩"(라이브 실사고).
+      #   현재 방어(부트가드 재로드)는 사후복구라 잦은 배포 땐 사용자가 깜빡임을 봄.
+      #   근본 fix = **자산 보존(asset retention)**: 이전 배포들의 해시 청크를 이번 배포에도 함께 올려
+      #   옛 청크가 계속 200 을 반환하게 함(업계 표준 — Vercel/Netlify 가 자동으로 하는 것).
+      #   → HTML 은 여전히 no-cache 라 다음 네비게이션은 최신 청크를 씀. 옛 탭/캐시는 404 없이 살아 있음.
+      #   보존 청크는 mtime 14일 + 6000개 상한으로 정리(CF Pages 20k 파일 한도 안전).
+      - name: Restore prior chunk archive
+        uses: actions/cache@v4
+        with:
+          path: .assets-archive
+          key: assets-archive-${{ github.sha }}
+          restore-keys: |
+            assets-archive-
+      - name: Merge prior chunks into deploy (asset retention)
+        run: |
+          set -e
+          mkdir -p .assets-archive
+          # 1) 이번 빌드 청크를 아카이브에 추가(신선 mtime)
+          find dist/client/assets -maxdepth 1 -type f \( -name '*.js' -o -name '*.css' \) -exec cp -n {} .assets-archive/ \;
+          # 2) 오래된 청크 정리(14일 이상 미갱신)
+          find .assets-archive -type f -mtime +14 -delete 2>/dev/null || true
+          # 3) 개수 상한(6000) — 초과 시 오래된 것부터 제거
+          CNT=$(ls -1 .assets-archive 2>/dev/null | wc -l)
+          if [ "$CNT" -gt 6000 ]; then
+            ls -1t .assets-archive | tail -n +6001 | while read f; do rm -f ".assets-archive/$f"; done
+          fi
+          # 4) 아카이브의 옛 청크를 이번 배포 디렉토리에 병합(이번 빌드에 없는 것만 — 최신 우선)
+          cp -n .assets-archive/* dist/client/assets/ 2>/dev/null || true
+          echo "✅ asset retention: $(find dist/client/assets -name '*.js' | wc -l) js chunks in deploy (archive holds $(ls -1 .assets-archive | wc -l) files)"
+
       # 2026-04-22: Workers 프로젝트 제거 — 이 프로젝트는 Pages (with _worker.js) 구조.
       # 사용자가 이미 Pages(ur-live.pages.dev)에 모든 secret(JWT_SECRET 등)을 세팅함.
       # `live.ur-team.com` Custom Domain을 Workers → Pages로 이동 (사용자 Dashboard 작업).
