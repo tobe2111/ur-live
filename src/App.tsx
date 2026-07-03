@@ -11,6 +11,7 @@ import NewVersionBanner from './components/main/NewVersionBanner'
 import ErrorBoundary from './components/ErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
+import { useTokenAutoRefresh } from './hooks/useTokenAutoRefresh'
 import ScrollToTop from './components/ScrollToTop'
 import OfflineBanner from './components/OfflineBanner'
 import BottomNav from '@/components/main/BottomNav'
@@ -272,6 +273,13 @@ const WholesaleLoader = () => (
 function AppContent() {
   // ✅ authInitialized ref: 중복 초기화 방지 (StrictMode 이중 마운트 대비)
   const authInitialized = useRef(false)
+
+  // 🔑 2026-07-02 (인증 회복력 P1a — 대표 "상품등록 흰화면"): 역할 토큰 proactive refresh 를 App 전역에.
+  //   기존엔 대시보드 레이아웃(Seller/Admin/Agency)에서만 갱신 → 사업자 유저가 소비자 앱(링크샵) 체류 중엔
+  //   seller_token 이 안 갱신돼, 만료 후 '상품등록' 진입 시 401 폭포 → 흰화면. 훅은 토큰 없으면 no-op(안전),
+  //   refresh inflight 락으로 대시보드 중복마운트도 무해. 링크샵에 있어도 셀러 토큰이 신선하게 유지됨.
+  useTokenAutoRefresh('seller')
+  useTokenAutoRefresh('agency')
 
   // 🛡️ 2026-05-01 (D fix): 카카오 OAuth callback URL → localStorage 처리는
   //   src/utils/auth-callback-bootstrap.ts 로 이전됨 (main.tsx 에서 React mount 전 동기 호출).
