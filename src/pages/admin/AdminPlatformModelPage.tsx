@@ -7,12 +7,14 @@ import { useState } from 'react'
 // ⚠️ 이 두 import 는 repo 의 실제 SSOT 문서를 그대로 가져온다(빌드 시 인라인). 문서 수정 → 배포 → 자동 반영.
 import platformMd from '../../../docs/design/urdeal-platform-model.md?raw'
 import linkshopMd from '../../../docs/design/linkshop-role-model.md?raw'
+import businessMd from '../../../docs/business/urdeal-business-plan.md?raw'
 import MarkdownView from '@/components/MarkdownView'
 import { FileText } from 'lucide-react'
 
 const DOCS = [
   { key: 'platform', label: '플랫폼 모델 (전체)', src: platformMd },
   { key: 'linkshop', label: '링크샵 역할 모델', src: linkshopMd },
+  { key: 'business', label: '비즈니스 문서 (사업계획/회사소개/입점제안)', src: businessMd },
 ] as const
 
 export default function AdminPlatformModelPage() {
