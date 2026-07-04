@@ -66,47 +66,49 @@ adminReviewGeneratorRoutes.post('/reviews/generate', cors(), async (c) => {
     const now = Date.now();
     const BATCH_SIZE = 50;
 
-    // ── AI 모드 ──
+    // 🎯 2026-07-03 (대표 "AI 없이는 안되려나?"): 이용권(오프라인) 카테고리는 **모드 무관** 매장/업종 grounding
+    //   생성기 사용. buildStoreReviews 가 키 있으면 Claude, 없으면 **업종별 결정론 composer**(AI 없이 동작 · 배송어 금지).
+    //   → 템플릿/AI 어느 버튼이든 이용권은 매장 특색 리뷰가 나오고, 키 없어도 실패하지 않음. (쇼핑 상품만 아래 기존 분기.)
+    if (isVoucherCategory(product_category)) {
+      const meta = await DB.prepare('SELECT restaurant_name FROM products WHERE id = ?')
+        .bind(product_id).first<{ restaurant_name?: string }>().catch(() => null);
+      const reviews = await buildStoreReviews(c.env, {
+        name: product_name || '이용권',
+        category: product_category || 'etc_voucher',
+        storeName: meta?.restaurant_name || null,
+        price: product_price,
+      }, Math.min(count, 2000));
+      const nowV = Date.now();
+      const stmts = reviews.map((r) => {
+        const nm = KOREAN_NAMES[Math.floor(Math.random() * KOREAN_NAMES.length)];
+        const masked = nm[0] + '*' + nm[nm.length - 1];
+        const daysAgo = Math.floor(Math.random() * 90);
+        return DB.prepare(
+          'INSERT INTO product_reviews (product_id, user_id, user_name, rating, content, is_generated, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)'
+        ).bind(product_id, 'system-generated', masked, r.rating, r.content || null, new Date(nowV - daysAgo * 86400000).toISOString());
+      });
+      for (let i = 0; i < stmts.length; i += 50) await DB.batch(stmts.slice(i, i + 50));
+      generated = stmts.length;
+      const soldInc = generated * (2 + Math.round(Math.random()));
+      await DB.prepare(`
+        UPDATE products SET
+          sold_count = COALESCE(sold_count, 0) + ?,
+          review_count = COALESCE((SELECT COUNT(*) FROM product_reviews WHERE product_id = ?), 0),
+          avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = ?), 0),
+          updated_at = datetime('now')
+        WHERE id = ?
+      `).bind(soldInc, product_id, product_id, product_id).run().catch(() => {});
+      const usedAi = !!(c.env as any).ANTHROPIC_API_KEY;
+      return c.json({ success: true, data: { generated }, message: `매장 특색 리뷰 ${generated}개 생성${usedAi ? '' : ' (AI 없이 업종별 생성)'}` });
+    }
+
+    // ── AI 모드 (쇼핑 상품) ──
     if (mode === 'ai') {
       const apiKey = (c.env as any).ANTHROPIC_API_KEY;
       if (!apiKey) return c.json({ success: false, error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다. Cloudflare 환경변수에 추가해주세요.' }, 400);
 
       const aiCount = Math.min(count, 500);
       const batchSize = 50;
-
-      // 🎯 2026-07-03 (대표 "어드민에서 이상적으로"): 이용권(오프라인) 카테고리는 매장/업종 grounding 생성기 사용
-      //   (배송어 금지, 실매장명·업종 반영 — 데모와 동일 SSOT). 쇼핑 상품은 아래 기존 일반 프롬프트 유지.
-      if (isVoucherCategory(product_category)) {
-        const meta = await DB.prepare('SELECT restaurant_name FROM products WHERE id = ?')
-          .bind(product_id).first<{ restaurant_name?: string }>().catch(() => null);
-        const reviews = await buildStoreReviews(c.env, {
-          name: product_name || '이용권',
-          category: product_category || 'etc_voucher',
-          storeName: meta?.restaurant_name || null,
-          price: product_price,
-        }, aiCount);
-        const nowV = Date.now();
-        const stmts = reviews.map((r) => {
-          const nm = KOREAN_NAMES[Math.floor(Math.random() * KOREAN_NAMES.length)];
-          const masked = nm[0] + '*' + nm[nm.length - 1];
-          const daysAgo = Math.floor(Math.random() * 90);
-          return DB.prepare(
-            'INSERT INTO product_reviews (product_id, user_id, user_name, rating, content, is_generated, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)'
-          ).bind(product_id, 'system-generated', masked, r.rating, r.content || null, new Date(nowV - daysAgo * 86400000).toISOString());
-        });
-        for (let i = 0; i < stmts.length; i += 50) await DB.batch(stmts.slice(i, i + 50));
-        generated = stmts.length;
-        const soldInc = generated * (2 + Math.round(Math.random()));
-        await DB.prepare(`
-          UPDATE products SET
-            sold_count = COALESCE(sold_count, 0) + ?,
-            review_count = COALESCE((SELECT COUNT(*) FROM product_reviews WHERE product_id = ?), 0),
-            avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = ?), 0),
-            updated_at = datetime('now')
-          WHERE id = ?
-        `).bind(soldInc, product_id, product_id, product_id).run().catch(() => {});
-        return c.json({ success: true, data: { generated }, message: `매장 특색 AI 리뷰 ${generated}개가 생성되었습니다` });
-      }
 
       for (let batchStart = 0; batchStart < aiCount; batchStart += batchSize) {
         const batchCount = Math.min(batchSize, aiCount - batchStart);

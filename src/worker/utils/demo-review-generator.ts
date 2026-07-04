@@ -99,14 +99,20 @@ const TAILS = ['', '', '', ' 추천해요!', ' 강추합니다', ' 또 갈게요
 
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)] }
 
-/** 결정론 폴백 — 업종 특색 문구 조합(배송어 없음, 별점별 톤). */
+/** 결정론 폴백 — 업종 특색 문구 조합(배송어 없음, 별점별 톤). AI 없이도 다양성 확보(문구 결합·매장명·꼬리). */
 export function composeDemoReview(rating: number, topic: Topic, storeName?: string | null): string {
   const pool = POOLS[topic] || POOLS.etc
-  const base = rating >= 4 ? pick(pool.pos) : (pool.mid.length ? pick(pool.mid) : pick(pool.pos))
-  let s = base
-  // 20% 확률로 매장명 자연스럽게 앞에 붙임
-  if (storeName && Math.random() < 0.22) s = `${storeName} 다녀왔어요. ${s}`
-  if (rating >= 5) s += pick(TAILS)
+  if (rating >= 4) {
+    let s = pick(pool.pos)
+    // 35% 확률로 두 번째 긍정 문구 결합 → 조합 수 급증(중복 완화, pos×pos)
+    if (Math.random() < 0.35) { const b = pick(pool.pos); if (b !== s) s = `${s} ${b}` }
+    // 22% 확률로 매장명 자연스럽게 앞에 붙임
+    if (storeName && Math.random() < 0.22) s = `${storeName} 다녀왔어요. ${s}`
+    if (rating >= 5) s += pick(TAILS)
+    return s
+  }
+  let s = pool.mid.length ? pick(pool.mid) : pick(pool.pos)
+  if (storeName && Math.random() < 0.15) s = `${storeName} ${s}`
   return s
 }
 
