@@ -120,7 +120,14 @@ try {
 //              60초 지나면 카운트 리셋(나중에 또 배포되면 다음 stale 도 재시도 허용).
 // 🛡️ 단일 SSOT(recoverFromChunkError) 위임 — 가드 키/포맷/윈도(60초 2회)·캐시버스트 reload 를
 //   ErrorBoundary·인라인 부트가드와 공유(이중 카운트·무한 reload 0). 로직 중복 제거.
-const reloadOnceForChunk = () => { recoverFromChunkError() }
+//   복구 한도(60초 내 2회) 초과 = stale 고착(예: 잔존 캐시-우선 SW) → 무한 reload/무한로딩 대신 인라인
+//   부트가드의 정적 복구 UI(캐시 완전삭제 후 새로고침 버튼)를 띄운다. React ErrorBoundary 밖(window
+//   리스너·unhandledrejection)에서 난 청크 실패도 "응답 없는 페이지"/무한 스피너에 갇히지 않게 함.
+const reloadOnceForChunk = () => {
+  if (!recoverFromChunkError()) {
+    try { (window as { __urShowStuckUI?: () => void }).__urShowStuckUI?.() } catch { /* silent */ }
+  }
+}
 window.addEventListener('error', (e) => {
   if (isChunkLoadError(e.message)) { reloadOnceForChunk(); return }
   // modulepreload/script 리소스 로드 실패 (message 없음 — target 검사). 우리 청크(/assets/*.js)만.
