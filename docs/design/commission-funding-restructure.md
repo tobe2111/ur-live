@@ -45,7 +45,7 @@
 - 요율(`platform_settings`)은 어드민이 계속 자유 조정 — **총합이 예산에 닿으면 비례 축소**(요청액 비율대로, 정수 배분).
 - 정액 보상(C5 초대 1,000딜, C4 signup ₩30,000)은 거래 캡 **밖** — 대신 **월 예산 캡**(§4-D).
 - (V) 이용권 셰어는 이미 fee 內 분배라 대상 외(이 불변식의 선례).
-- 예산이 0 이하(1P 주문 등 platform fee 0)면 비례 커미션도 0.
+- **적용 범위 = 3P 주문만**(구현 시 확정): 1P 는 수수료 슬라이스가 없어 예산 정의 불가(원가/마진은 머천다이징 관심사) → 현행 유지. 1P 커미션 노출은 F4 로 별도 트랙.
 
 ---
 
@@ -136,7 +136,7 @@ agency_signup_bonus_monthly_budget_krw 미설정=무제한
 ## 5. 롤아웃 (모두 기본 OFF — 배포 = 행동 0 변화)
 | 단계 | 내용 | 검증 |
 |---|---|---|
-| **1. 배포(그림자)** | 3-A~3-G 전부 머지. 게이트 전부 off. 아비터는 예산 계산을 **로그로만** 기록(capped vs uncapped 비교) | 단위테스트 + tsc + build + 가드 42+1 GREEN. 라이브 돈 무변경 |
+| **1. 배포** | 3-A~3-G 전부 머지. 게이트 전부 off(=현행 100% 동일 — 별도 그림자 로깅 없음, 검증은 2단계 staging 게이트-on 으로) | 단위테스트 + tsc + build + 가드 GREEN. 라이브 돈 무변경 |
 | **2. staging 실결제** | `commission_budget_enabled=true` — 트리추천+영입 겹친 주문 → Σ적립 ≤ 예산 확인 + 환불 역전 확인. `promo_funding_source='owner'` — 이용권 구매→사용→원장 promo debit 1행 + 환불 역전 | 필수(잠금 파일 룰) |
 | **3. 운영 활성** | `commission_budget_enabled=true` flip | 첫 주 그림자 로그 대조 |
 | **4. promo 'owner' 전환** | 미팅 포지셔닝(A안/B안) 대표 결정 후 별도 flip | — |
@@ -150,4 +150,12 @@ agency_signup_bonus_monthly_budget_krw 미설정=무제한
 ---
 
 ## ✅ 구현 로그
-- (구현 전) 2026-07-04 설계 작성. 단계 완료 시 commit hash 기록.
+- 2026-07-04 설계 작성.
+- 2026-07-04 **§3 전체 구현** (같은 브랜치 — 커밋 해시는 PR #446): commission-budget.ts(+유닛) ·
+  헬퍼 4종 compute/override · order-commissions 오케스트레이터(게이트 OFF=현행 byte-동일) ·
+  promo owner-펀딩(이용권 debit/쇼핑 fee/그림자 promo/환불 역전) · 월예산 캡 2종 ·
+  payment.routes [UNLOCK] 통합 · check-commission-budget 가드(audit-gate+verify strict).
+  구현 중 정제 2건: ① 캡 적용 범위 3P 한정(1P=F4) ② 1단계 그림자 로깅 생략(게이트-off 순수 배포).
+  신규 발견 F5(숙소 referral 직접 INSERT — 예산 밖, 가드 베이스라인 등재) ·
+  F6(/track 경로 — 동일) · F7(공구 딜결제 agency credit 2곳 — 래칫 등재, 통합은 별도 결정).
+  ⚠️ 활성화는 staging 실결제 검증 후(§5 2단계).

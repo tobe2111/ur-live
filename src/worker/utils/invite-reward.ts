@@ -72,6 +72,27 @@ export async function grantInviteRewardForFirstPurchase(
       if (parsed > 0) rewardAmount = parsed
     } catch { /* default */ }
 
+    // 💸 2026-07-04 [INV-CB]: 초대 보상은 정액이라 거래 예산 캡에 못 들어감 → **월 예산 캡**으로 방어.
+    //   platform_settings.invite_reward_monthly_budget_krw 미설정(또는 0 이하)=무제한(현행).
+    //   soft cap(동시 2건 레이스 시 1건 초과 가능 — 가드레일 목적). 설계: commission-funding-restructure.md §3-E.
+    try {
+      const budgetRow = await queryFirst<{ value: string }>(
+        DB, "SELECT value FROM platform_settings WHERE key = 'invite_reward_monthly_budget_krw'", [],
+      )
+      const budget = budgetRow?.value ? parseInt(budgetRow.value, 10) : 0
+      if (Number.isFinite(budget) && budget > 0) {
+        const spent = await queryFirst<{ total: number }>(
+          DB,
+          `SELECT COALESCE(SUM(reward_amount), 0) AS total FROM invite_rewards
+            WHERE status = 'granted' AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')`,
+          [],
+        )
+        if ((Number(spent?.total) || 0) + rewardAmount > budget) {
+          return { granted: false, reason: 'monthly_budget_exhausted' }
+        }
+      }
+    } catch { /* 설정 조회 실패 → 현행(무제한) */ }
+
     // claim-before-credit: UNIQUE 선점 — 동시/중복 호출 중 1회만 적립
     const claim = await executeRun(
       DB,
