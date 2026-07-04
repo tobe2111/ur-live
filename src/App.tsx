@@ -21,6 +21,7 @@ import DesktopTopNav from '@/components/main/DesktopTopNav'
 import { swallow } from '@/shared/utils/swallow'
 import KakaoConsultButton from '@/components/KakaoConsultButton'
 import { featureFlags } from '@/shared/config/feature-flags'
+import { AGENCY_HIDDEN } from '@/shared/feature-flags'
 // lazy-loaded — only rendered conditionally, not on initial paint
 const PushNotificationSetup = lazy(() => import('./components/PushNotificationSetup'))
 const PWAInstallPrompt = lazy(() => import('./components/PWAInstallPrompt'))
@@ -677,9 +678,8 @@ function AppContent() {
             {/* 🛡️ 2026-05-15: B2B 랜딩 페이지 — PC 풀 너비, 영업/모집용 */}
             <Route path="/business" element={<BusinessLandingPage />} />
             <Route path="/influencer" element={<InfluencerLandingPage />} />
-            <Route path="/agency-partner" element={<AgencyPartnerLandingPage />} />
-            {/* 🛡️ 2026-05-27 (영업 검증 Layer 2): 영업자 prospects dashboard. */}
-            <Route path="/agency/prospects" element={<SellerProspectsPage />} />
+            <Route path="/agency-partner" element={AGENCY_HIDDEN ? <Navigate to="/" replace /> : <AgencyPartnerLandingPage />} />
+            <Route path="/agency/prospects" element={AGENCY_HIDDEN ? <Navigate to="/" replace /> : <SellerProspectsPage />} />{/* AGENCY_HIDDEN 셸브 */}
             <Route path="/seller/prospects" element={<SellerProspectsPage />} />
             <Route path="/seller/proxy-products" element={<SellerProxyProductsPage />} />
             <Route path="/seller/plus-friend-guide" element={<SellerPlusFriendGuidePage />} />

@@ -57,3 +57,18 @@ export const COMMUNITY_PROPOSAL_HIDDEN = true
  */
 export const IOS_HIDE_DIGITAL_TOPUP = false
 
+/**
+ * AGENCY_HIDDEN — 에이전시(B2B 매장영입 파트너) 진입 **셸브** (2026-07-04 대표 결정).
+ *   배경: 라이브커머스 영구중단으로 에이전시의 차별점이던 '소속 셀러 로스터 관리(MCN 모델)'가 근거를
+ *         잃음 + **실제 에이전시 파트너 0명**. 남은 유일 가치인 '매장 영입'은 이미 인플루언서 store-intro
+ *         커미션으로 존재 → 39페이지 투기적 대시보드를 더 다듬을 시점이 아님. community-proposal·shopping-tab
+ *         과 동일 철학으로 **flag 뒤로 접어 보류**(삭제 아님).
+ *   true (현재): 소비자/공용 표면의 에이전시 진입(하단바 파트너 시트·푸터·랜딩 nav)과 `/agency/*` 대시보드·
+ *         `/agency-partner` 랜딩·`/agency/register`·공개 프로필 `/a/:slug` 라우트를 홈으로 리다이렉트.
+ *         라우트·페이지·API·admin 승인·정산 크론·`agencies` 데이터 전부 **보존**(가역).
+ *   ⚠️ 재정의: 재오픈 시 에이전시 = "조직 규모 매장영입 계정"(store-intro at scale). **로스터/랭킹/비교/PK/
+ *         캠페인 등 라이브 시대 운영도구는 부활 금지** — 영입→입점가게 매출→정산 커미션 루프만 린하게.
+ *   복원: 이 값을 false 로. (첫 진짜 파트너 대화 발생 시 위 린 셋만.)
+ */
+export const AGENCY_HIDDEN = true
+

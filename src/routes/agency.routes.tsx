@@ -3,7 +3,7 @@
  */
 import { lazy } from 'react'
 import { Route, Navigate } from 'react-router-dom'
-import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
+import { LIVE_COMMERCE_SUSPENDED, AGENCY_HIDDEN } from '@/shared/feature-flags'
 
 const AgencyLoginPage = lazy(() => import('@/pages/AgencyLoginPage'))
 const AgencyForgotPasswordPage = lazy(() => import('@/pages/AgencyForgotPasswordPage'))
@@ -65,6 +65,17 @@ function AgencyLiveGate({ children }: { children: React.ReactNode }) {
 }
 
 export function AgencyRoutes() {
+  // 🏭 AGENCY_HIDDEN 셸브(2026-07-04) — 파트너 0명 + 라이브 중단으로 로스터 모델 근거 상실.
+  //   모든 에이전시 라우트를 홈으로 리다이렉트(라우트/페이지/코드 보존, flag=false 로 즉시 복원).
+  if (AGENCY_HIDDEN) {
+    return (
+      <>
+        <Route path="/agency" element={<Navigate to="/" replace />} />
+        <Route path="/agency/*" element={<Navigate to="/" replace />} />
+        <Route path="/a/:slug" element={<Navigate to="/" replace />} />
+      </>
+    )
+  }
   return (
     <>
       {/* Public agency pages */}

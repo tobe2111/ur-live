@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { cfImage } from '@/utils/cf-image'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
+import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN, AGENCY_HIDDEN } from '@/shared/feature-flags'
 import { isWholesaleSurface } from '@/utils/domain'
 import { Home, ShoppingBag, User, Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin, Ticket, Gift } from 'lucide-react'
 
@@ -43,7 +43,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
           <Radio className="w-5 h-5" />
           {t('bottomNav.goToSellerDashboard', { defaultValue: '셀러 대시보드로 전환' })}
         </button>
-        {!hasAgencyToken && (
+        {!AGENCY_HIDDEN && !hasAgencyToken && (
           <button
             onClick={() => { onDone(); navigate('/agency/register/business') }}
             className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-700 dark:text-gray-300 font-semibold text-[13px] rounded-xl"
@@ -73,7 +73,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
         </div>
       </button>
 
-      {!hasAgencyToken && (
+      {!AGENCY_HIDDEN && !hasAgencyToken && (
         <button
           onClick={() => { onDone(); navigate('/agency/register/business') }}
           className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 text-gray-700 dark:text-gray-300 font-semibold text-[13px] rounded-xl"
@@ -453,8 +453,8 @@ export default function BottomNav() {
                     </div>
                   )}
 
-                  {/* 에이전시 권한도 있으면 (셀러 + 에이전시 겸직) 별도 링크 */}
-                  {(isSeller || hasSellerToken) && (isAgency || hasAgencyToken) && (
+                  {/* 에이전시 권한도 있으면 (셀러 + 에이전시 겸직) 별도 링크 — AGENCY_HIDDEN 셸브 시 숨김 */}
+                  {!AGENCY_HIDDEN && (isSeller || hasSellerToken) && (isAgency || hasAgencyToken) && (
                     <button
                       onClick={() => { setSheetOpen(false); navigate('/agency') }}
                       className="w-full mt-2 flex items-center gap-3 p-3 bg-gray-100 dark:bg-[#1A1A1A] hover:bg-[#222] rounded-xl active:scale-[0.98] transition-transform"
@@ -469,8 +469,8 @@ export default function BottomNav() {
                     </button>
                   )}
 
-                  {/* 에이전시만 있고 셀러 아님 */}
-                  {!(isSeller || hasSellerToken) && (isAgency || hasAgencyToken) && (
+                  {/* 에이전시만 있고 셀러 아님 — AGENCY_HIDDEN 셸브 시 숨김 */}
+                  {!AGENCY_HIDDEN && !(isSeller || hasSellerToken) && (isAgency || hasAgencyToken) && (
                     <div className="space-y-3">
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/agency') }}
