@@ -111,6 +111,17 @@
 | **초대 보상** | 초대한 유저 | 1,000딜 | 피초대자 첫 구매, UNIQUE claim | — |
 
 > **머니 룰**(코드 작성 시 필수): ① Claim-before-credit(CAS 선점) ② 적립-역전 대칭(같은 commit) ③ 멱등=UNIQUE+INSERT OR IGNORE ④ status 플립≠취소(환불 경유). 자세히는 CLAUDE.md "💸 머니/정합성".
+>
+> 💸 **[INV-CB] 커미션 예산 캡 (2026-07-04 대표 확정 — "수수료율 동결, 재원 구조 수정")**: 위 커미션 중
+> **플랫폼 부담 비례(%) 커미션**(어필리에이트·멀티티어 추천트리·크리에이터 영입·에이전시 영입)의 총합은
+> 3P 주문당 **예산 = 플랫폼 수수료 − PG 준비금(`pg_reserve_pct`)** 을 초과할 수 없다(초과 시 비례 축소) —
+> 어떤 3P 거래도 커미션 때문에 플랫폼 마이너스가 구조적으로 불가. 오케스트레이터 `order-commissions.ts`
+> `creditOrderCommissions`(confirm/webhook 공용 진입점) 가 단일 배분자이고, 우회는 `check-commission-budget` 가드가 차단.
+> 정액 보상(초대 1,000딜·에이전시 signup ₩30,000)은 거래 캡 밖 → **월 예산 캡**(`invite_reward_monthly_budget_krw` /
+> `agency_signup_bonus_monthly_budget_krw`). 어필리에이트 재원은 `promo_funding_source`('platform' 기본 / 'owner')
+> 스위치로 **주인(셀러) 부담(promo 슬라이스)** 이전 가능 — 'owner' 면 추천인 딜 적립은 유지하되 같은 금액을
+> 주인 정산에서 차감(이용권=사용 시 원장 debit, 쇼핑=원장 fee 합산, 환불 역전 대칭). 게이트
+> `commission_budget_enabled` 기본 OFF(=현행) — staging 실결제 검증 후 활성. 설계: `commission-funding-restructure.md`.
 
 ### 5-4. 결제 (Toss V2)
 - 모든 confirm은 `confirmTossPayment()` 게이트웨이 경유(직접 fetch 금지). circuit breaker·idempotency·금액검증 자동.

@@ -146,7 +146,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
           //   waitUntil 비동기 — 응답 지연 0.
           c.executionCtx?.waitUntil((async () => {
             try {
-              const { recordVoucherUsedLedger, recordAgencyCommissionShare, recordIntroductionCommissionShare } = await import('../../../worker/utils/ledger')
+              const { recordVoucherUsedLedger, recordAgencyCommissionShare, recordIntroductionCommissionShare, debitOwnerPromoForOrder } = await import('../../../worker/utils/ledger')
               const merchantId = meta.consigned_from_seller_id ?? meta.seller_id ?? 0
               const sellerId = meta.consigned_from_seller_id ? meta.seller_id : null
               const amount = meta.applied_price || 0
@@ -168,6 +168,12 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
                   voucher_id: meta.voucher_id,
                   merchant_id: merchantId,
                   platform_fee: result.platform_amount,
+                })
+                // 💸 2026-07-04 [INV-CB §3-D]: promo owner-펀딩 — 이 주문의 핀 소개비를 매장 몫에서
+                //   차감(주문당 1회 멱등). 게이트 promo_funding_source='owner' 아닐 땐 내부 no-op(현행).
+                await debitOwnerPromoForOrder(DB, {
+                  orderId: meta.order_id,
+                  ownerAccount: `merchant:${merchantId}`,
                 })
               }
             } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher-used-ledger]', e) }
@@ -288,7 +294,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       // 🛡️ 2026-05-21 Phase C: 정산 ledger entries 3개 자동 기록 (멱등).
       c.executionCtx?.waitUntil((async () => {
         try {
-          const { recordVoucherUsedLedger, recordAgencyCommissionShare, recordIntroductionCommissionShare } = await import('../../../worker/utils/ledger')
+          const { recordVoucherUsedLedger, recordAgencyCommissionShare, recordIntroductionCommissionShare, debitOwnerPromoForOrder } = await import('../../../worker/utils/ledger')
           const merchantId = voucher.consigned_from_seller_id ?? voucher.seller_id
           const sellerForCommission = voucher.consigned_from_seller_id ? voucher.seller_id : null
           const amount = voucher.applied_price || 0
@@ -308,6 +314,12 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
               voucher_id: voucher.id,
               merchant_id: merchantId,
               platform_fee: result.platform_amount,
+            })
+            // 💸 2026-07-04 [INV-CB §3-D]: promo owner-펀딩 — 이 voucher 셀렉트엔 order_id 가 없어
+            //   voucherId 로 전달(헬퍼가 vouchers.order_id 해석). 게이트 아닐 땐 내부 no-op(현행).
+            await debitOwnerPromoForOrder(DB, {
+              voucherId: voucher.id,
+              ownerAccount: `merchant:${merchantId}`,
             })
           }
         } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher-used-ledger]', e) }

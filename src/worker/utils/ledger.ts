@@ -422,6 +422,100 @@ export async function recordRefundLedger(
 }
 
 /**
+ * 💸 2026-07-04 (promo owner-펀딩 — docs/design/commission-funding-restructure.md §3-D):
+ *   핀 추천 소개비(affiliate)를 **주인(매장/셀러) 부담**으로 이전하는 원장 차감.
+ *   추천인에게는 현행대로 딜이 적립되고(affiliate-credit), 같은 금액을 주인 receivable 에서
+ *   debit → platform:revenue 로 회수(플랫폼이 딜 지급 재원을 주인 몫에서 충당).
+ *
+ *   게이트: platform_settings.promo_funding_source === 'owner' 일 때만 (기본 'platform' = no-op 현행).
+ *   멱등: reference_id = `order:{id}:promo` 주문당 1회. 대상: 해당 주문의 affiliate_earnings
+ *   유효분(holding/granted — refunded 제외) 합계. 0이면 no-op.
+ *   호출: 이용권 사용 확정 시(group-buy-voucher.routes — 주인 receivable 이 생기는 시점과 동일).
+ *   역전: reverseOwnerPromoDebit (환불 시 affiliate clawback 과 함께).
+ * @returns 차감된 금액 (no-op 이면 0)
+ */
+export async function debitOwnerPromoForOrder(
+  DB: D1Database,
+  params: {
+    orderId?: number | string | null
+    /** orderId 미보유 호출부(셀러 PIN 사용 등)용 — vouchers.order_id 를 조회해 해석 */
+    voucherId?: number | string | null
+    /** 주인 원장 계정 — 예: `merchant:{id}` (이용권) / `seller:{id}` (쇼핑) */
+    ownerAccount: string
+  },
+): Promise<number> {
+  try {
+    const src = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'promo_funding_source'")
+      .first<{ value: string }>().catch(() => null)
+    if (src?.value !== 'owner') return 0
+
+    let orderId = params.orderId
+    if (!orderId && params.voucherId) {
+      const v = await DB.prepare('SELECT order_id FROM vouchers WHERE id = ?')
+        .bind(params.voucherId).first<{ order_id: number | null }>().catch(() => null)
+      orderId = v?.order_id ?? null
+    }
+    if (!orderId || !params.ownerAccount) return 0
+
+    await ensureLedgerTable(DB)
+    const ref = `order:${orderId}:promo`
+    const existing = await DB.prepare(
+      `SELECT id FROM ledger_entries WHERE reference_id = ? AND event_type = 'promo_fee' LIMIT 1`,
+    ).bind(ref).first().catch(() => null)
+    if (existing) return 0
+
+    const sum = await DB.prepare(
+      `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
+        WHERE order_id = ? AND COALESCE(status, '') IN ('holding', 'granted')`,
+    ).bind(orderId).first<{ total: number }>().catch(() => null)
+    const promo = Math.max(0, Math.round(Number(sum?.total) || 0))
+    if (promo <= 0) return 0
+
+    await recordLedger(DB, {
+      event_type: 'promo_fee',
+      reference_id: ref,
+      amount: promo,
+      debit_account: params.ownerAccount,   // 주인 receivable 차감
+      credit_account: 'platform:revenue',   // 딜 지급 재원 회수
+      metadata: { kind: 'owner_promo_fee', order_id: orderId },
+    })
+    return promo
+  } catch {
+    return 0 // fail-soft — 사용 확정/정산 흐름 불막음 (미차감 방향 = 주인에게 유리, 안전)
+  }
+}
+
+/**
+ * 환불 시 promo 차감 역전(멱등) — affiliate clawback 과 대칭. debit 이 없으면 no-op.
+ */
+export async function reverseOwnerPromoDebit(
+  DB: D1Database,
+  orderId: number | string,
+  reason: string,
+): Promise<void> {
+  try {
+    if (!orderId) return
+    const ref = `order:${orderId}:promo`
+    const orig = await DB.prepare(
+      `SELECT debit_account, amount FROM ledger_entries WHERE reference_id = ? AND event_type = 'promo_fee' LIMIT 1`,
+    ).bind(ref).first<{ debit_account: string; amount: number }>().catch(() => null)
+    if (!orig || !(Number(orig.amount) > 0)) return
+    const done = await DB.prepare(
+      `SELECT id FROM ledger_entries WHERE reference_id = ? AND event_type = 'promo_fee_reversal' LIMIT 1`,
+    ).bind(ref).first().catch(() => null)
+    if (done) return
+    await recordLedger(DB, {
+      event_type: 'promo_fee_reversal',
+      reference_id: ref,
+      amount: Number(orig.amount),
+      debit_account: 'platform:revenue',
+      credit_account: String(orig.debit_account), // 주인 receivable 복원
+      metadata: { kind: 'owner_promo_fee_reversal', order_id: orderId, reason },
+    })
+  } catch { /* fail-soft */ }
+}
+
+/**
  * 순 receivable (지급 이력 제외) = (credit − fee_amount) − debit.
  *
  * 💸 2026-07-01 (정산 정합 — 대표 승인): 이전 payout 집계가 **credit-only** 여서 두 가지가 새고 있었음:
