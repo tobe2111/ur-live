@@ -21,7 +21,7 @@ import { WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
 export default function WholesaleJoinPage() {
   const navigate = useNavigate()
   // 🏬 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FC5424 → byte-identical).
-  const { displayName: mallName, logoUrl: mallLogo } = useWholesaleMall()
+  const { displayName: mallName, logoUrl: mallLogo, requiresLicense, licenseLabel } = useWholesaleMall()
   const hasSeller = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
   // 🔢 2026-06-26 (대표 가입폼 UX): 가입 클릭 시 첫 문제 필드로 포커스 이동 + 전화/이메일 완성형 검증.
   const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({})
@@ -70,6 +70,8 @@ export default function WholesaleJoinPage() {
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [licenseUrl, setLicenseUrl] = useState('')
+  // 🏥 2026-07-03 규제 몰(의료용품) 인허가 신고번호 — requiresLicense 몰에서만 노출·필수.
+  const [licenseNo, setLicenseNo] = useState('')
   // 담당자가 대표자와 동일 — 체크 시 대표자(성명/연락처)를 담당자에 즉시 복사.
   const [sameAsRep, setSameAsRep] = useState(false)
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [k]: e.target.value }))
@@ -105,6 +107,8 @@ export default function WholesaleJoinPage() {
     if (!form.business_name.trim()) { failAt('business_name', '상호(회사명)를 입력해주세요'); return }
     if (!/^\d{10}$/.test(digitsOnly(form.business_number))) { failAt('business_number', '사업자등록번호 10자리를 정확히 입력해주세요'); return }
     if (!licenseUrl) { toast.error('사업자등록증 이미지를 업로드해주세요'); return }
+    // 🏥 규제 몰(의료용품) — 인허가 신고번호 필수.
+    if (requiresLicense && !licenseNo.trim()) { toast.error(`${licenseLabel || '인허가 신고번호'}를 입력해주세요`); return }
     if (!form.representative.trim()) { failAt('representative', '대표자 성명을 입력해주세요'); return }
     if (!isValidKrPhone(form.representative_phone)) { failAt('representative_phone', '대표자 연락처를 정확히 입력해주세요 (예: 010-1234-5678)'); return }
     if (!sameAsRep) {
@@ -132,6 +136,8 @@ export default function WholesaleJoinPage() {
         representative_phone: form.representative_phone.trim(),
         manager_name: form.manager_name.trim(), manager_phone: form.manager_phone.trim(), manager_email: managerEmail,
         business_license_url: licenseUrl,
+        // 🏥 2026-07-03 규제 몰 인허가 신고번호(있을 때만) — 서버가 requires_license 몰에서 필수 검증.
+        license_no: licenseNo.trim() || undefined,
         // 🏭 2026-06-29 취급 카테고리 + 현재 주력 판매채널 (선택 — 서버가 사이드테이블에 저장).
         categories, channel: channel.trim(),
       }
@@ -331,6 +337,14 @@ export default function WholesaleJoinPage() {
             </div>
           )}
           <BusinessCertUpload value={licenseUrl} onChange={setLicenseUrl} required />
+          {/* 🏥 2026-07-03 규제 몰(의료용품) — 인허가 신고번호 (해당 몰에서만 노출·필수) */}
+          {requiresLicense && (
+            <div>
+              <label className="block text-[13px] font-semibold text-[#0C2454] mb-1.5">{licenseLabel || '인허가 신고번호'} <span className="text-[#FC5424]">*</span></label>
+              <input value={licenseNo} onChange={e => setLicenseNo(e.target.value.slice(0, 60))} disabled={loading} className={inputCls} placeholder="예: 제0000-000호" />
+              <p className="mt-1 text-[12px] text-[#8A929E]">규제 품목 취급을 위해 {licenseLabel || '인허가 신고번호'}가 필요합니다. 승인 시 관리자가 확인합니다.</p>
+            </div>
+          )}
           <p className="text-[12px] text-[#8A929E]">제출하신 사업자 정보(사업자등록증 포함)를 관리자가 확인 후 승인합니다. 승인되면 도매 공급가가 열려요.</p>
 
           {/* 🏭 2026-06-10 (사용자 요청 — 약관): 가입 = 도매몰 이용약관 동의 (필수 체크) */}

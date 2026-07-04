@@ -36,6 +36,7 @@ import { generateWholesaleSalesInvoice, generateWholesalePurchaseInvoices, listD
 import { ensureSupplyVisibilitySchema, visibilityWhere, gradeExposureWhere } from './supply-visibility'
 import { ensureDepositSchema, deductDepositForOrder, compensateDepositOrderOnce } from './wholesale-deposit-core'
 import { resolveMallId, registrationMallId, loadMallByHost, loadMallById } from './wholesale-malls'
+import { saveWholesaleLicense } from './wholesale-license'
 import { learnCodes, resolveCodes, normCode } from './wholesale-code-map'
 import {
   ensureOrderTables, ensureSupplierPolicySchema, loadSupplierPolicies, computeSupplierShipping,
@@ -193,6 +194,14 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 20, windowS
     const passwordHash = await hashPassword(password)
     // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
     const mallId = await registrationMallId(c).catch(() => 1) // 🛡️ 2026-06-23 fail-soft: 몰 해석 실패가 가입 500 안 내게(기본 몰 1)
+    // 🏥 2026-07-03 규제 몰(의료용품) 인허가 게이트 — requires_license 면 판매업 신고번호 필수.
+    const regMall = await loadMallById(DB, mallId).catch(() => null)
+    const licenseRequired = !!(regMall && regMall.requires_license)
+    const permitNo = String(body.license_no || body.permit_no || '').trim().slice(0, 60)
+    const permitUrl = String(body.license_url || '').trim().slice(0, 1000)
+    if (licenseRequired && !permitNo) {
+      return c.json({ success: false, error: `${regMall?.license_label || '인허가 신고번호'}를 입력해주세요`, code: 'LICENSE_REQUIRED' }, 400)
+    }
     // 🏁 2026-06-12 (P4 정책 확정 — "둘 다 수동 승인"): 국세청 결과는 참고 표시용 저장만. fail-soft.
     let ntsStatus2: string | null = null
     try {
@@ -267,6 +276,8 @@ app.post('/register', rateLimit({ action: 'wholesale_register', max: 20, windowS
       sellerId = Number(row?.id) || 0
     }
     if (!sellerId) return c.json({ success: false, error: '가입 처리 중 오류가 발생했습니다' }, 500)
+    // 🏥 2026-07-03 인허가 저장(규제 몰이거나 신고번호 입력됐으면) — 사이드 테이블, fail-soft.
+    if (licenseRequired || permitNo) await saveWholesaleLicense(DB, 'distributor', sellerId, mallId, permitNo, permitUrl || null)
 
     // 어드민 승인 큐 알림 (셀러 승인 페이지에서 처리 — 유통회원도 동일 큐).
     createDashboardNotification(DB, 'admin', null, 'distributor_pending', '판매사 승인 요청',

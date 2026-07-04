@@ -1895,6 +1895,19 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { name: 'seed: wholesale_malls default (id=1)', sql: `INSERT OR IGNORE INTO wholesale_malls (id, slug, name, host, brand_name, brand_color, active, created_at) VALUES (1, 'default', '유통스타트', 'utongstart.com', '유통스타트', '#1f2937', 1, datetime('now'))` },
     // 🏥 2026-07-03 (의료용품 도매몰): 메디스타트(id=2, slug='medi') 시드 — slug UNIQUE 로 멱등, host 없음(?mall=medi 접근).
     { name: 'seed: wholesale_malls medi (id=2)', sql: `INSERT OR IGNORE INTO wholesale_malls (id, slug, name, host, brand_name, brand_color, categories_json, requires_license, license_label, active, created_at) VALUES (2, 'medi', '메디스타트', NULL, '메디스타트', '#0ea5e9', '[{"id":"medical_device","label":"의료기기"},{"id":"hygiene","label":"위생용품"},{"id":"care","label":"간병용품"},{"id":"health","label":"건강용품"}]', 1, '의료기기 판매업 신고번호', 1, datetime('now'))` },
+    // 🏥 2026-07-03 규제 몰 인허가(신고번호) 사이드 테이블 — owner_type='supplier'|'distributor', owner 당 1행.
+    { name: 'wholesale_licenses', sql: `CREATE TABLE IF NOT EXISTS wholesale_licenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      owner_type TEXT NOT NULL,
+      owner_id INTEGER NOT NULL,
+      mall_id INTEGER NOT NULL DEFAULT 1,
+      permit_no TEXT,
+      permit_url TEXT,
+      verified INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT (datetime('now')),
+      updated_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_wholesale_license_owner', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_wholesale_license_owner ON wholesale_licenses(owner_type, owner_id)` },
 
     // 🏭 2026-06-09 도매몰 메인 리디자인 Wave 2 — 메인 배너 캐러셀(어드민 CRUD).
     { name: 'wholesale_banners', sql: `CREATE TABLE IF NOT EXISTS wholesale_banners (

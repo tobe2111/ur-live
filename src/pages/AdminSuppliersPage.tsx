@@ -39,6 +39,8 @@ interface SupplierRow {
   manager_email?: string | null
   signup_categories?: string | null   // 🏭 가입 시 선택한 공급(취급) 카테고리 (JSON 배열 문자열)
   signup_channel?: string | null      // 🏭 가입 시 입력한 희망 유통채널
+  license_no?: string | null          // 🏥 2026-07-03 규제 몰(의료용품) 인허가 신고번호
+  license_verified?: number | null    // 🏥 검증 여부(0/1)
   bank_name: string | null
   bank_account: string | null
   account_holder: string | null
@@ -157,6 +159,13 @@ export default function AdminSuppliersPage() {
                       {s.representative && <>{t('admin.suppliers.ceo', { defaultValue: '대표자' })} {s.representative}{s.representative_phone ? ` (${s.representative_phone})` : ''} · </>}{s.email}{s.phone && <> · {s.phone}</>}
                       {s.business_number && <> · {t('admin.suppliers.bizNo', { defaultValue: '사업자' })} {s.business_number}</>}
                     </p>
+                    {/* 🏥 2026-07-03 규제 몰(의료용품) 인허가 신고번호 — 승인 전 검토용. */}
+                    {s.license_no && (
+                      <p className="text-xs mt-0.5 font-semibold text-sky-700">
+                        🏥 인허가 신고번호: {s.license_no}
+                        {s.license_verified ? <span className="ml-1 text-emerald-600">· 확인됨</span> : <span className="ml-1 text-amber-600">· 미확인</span>}
+                      </p>
+                    )}
                     {(s.manager_name || s.manager_phone || s.manager_email) && (
                       <p className="text-xs text-gray-500 mt-0.5">
                         {t('admin.suppliers.manager', { defaultValue: '담당자' })}: {s.manager_name || '-'}
