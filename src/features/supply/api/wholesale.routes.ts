@@ -77,6 +77,11 @@ app.get('/mall', async (c) => {
     if (mall?.categories_json) {
       try { categories = JSON.parse(mall.categories_json) } catch { categories = null }
     }
+    // 🧩 2026-07-03 몰 기능 토글(제외 레이어) — 파싱해 객체로 반환(미설정=빈 객체=전 기능 ON).
+    let features: Record<string, boolean> = {}
+    if (mall?.features_json) {
+      try { const f = JSON.parse(mall.features_json); if (f && typeof f === 'object' && !Array.isArray(f)) features = f } catch { features = {} }
+    }
     c.header('Cache-Control', 'public, max-age=60')
     c.header('CDN-Cache-Control', 'max-age=300')
     return c.json({
@@ -91,11 +96,13 @@ app.get('/mall', async (c) => {
         // 🏥 규제 몰 게이트 — 클라가 인허가 필드 노출 여부 판단.
         requires_license: mall?.requires_license ? 1 : 0,
         license_label: mall?.license_label ?? null,
+        // 🧩 몰 기능 토글(제외 레이어) — 클라가 UI 게이트. 키 부재 = ON.
+        features,
       },
     })
   } catch (err) {
     // 브랜딩 조회 실패 시에도 기본 몰 값으로 graceful — 헤더가 절대 비지 않도록.
-    return c.json({ success: false, mall: { slug: 'default', name: '유통스타트', brand_name: null, brand_color: null, logo_url: null, categories: null, requires_license: 0, license_label: null } })
+    return c.json({ success: false, mall: { slug: 'default', name: '유통스타트', brand_name: null, brand_color: null, logo_url: null, categories: null, requires_license: 0, license_label: null, features: {} } })
   }
 })
 
