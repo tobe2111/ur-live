@@ -26,12 +26,14 @@ export default function SupplierRegisterPage() {
   const reg = (k: string) => (el: HTMLInputElement | null) => { fieldRefs.current[k] = el }
   const focusField = (k: string) => { const el = fieldRefs.current[k]; if (el) { el.focus(); el.scrollIntoView({ block: 'center', behavior: 'smooth' }) } }
   // 🏬 2026-06-09 멀티-몰 브랜딩 — host → mall (기본 몰 → 유통스타트/#FC5424 → byte-identical).
-  const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo } = useWholesaleMall()
+  const { displayName: mallName, brandColor: mallBrand, logoUrl: mallLogo, requiresLicense, licenseLabel } = useWholesaleMall()
   const [loading, setLoading] = useState(false)
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
   const [licenseUrl, setLicenseUrl] = useState('')
+  // 🏥 2026-07-03 규제 몰(의료용품) 인허가 신고번호 — requiresLicense 몰에서만 노출·필수.
+  const [licenseNo, setLicenseNo] = useState('')
   // 🏭 2026-06-29 (대표): 공급(취급) 카테고리(다중) + 희망 유통채널 — 선택 입력.
   const [categories, setCategories] = useState<string[]>([])
   const [channel, setChannel] = useState('')
@@ -92,6 +94,8 @@ export default function SupplierRegisterPage() {
     if (!form.business_name.trim()) { failAt('business_name', t('supplier.errBizName', { defaultValue: '상호(사업자명)를 입력해주세요' })); return }
     if (!/^\d{10}$/.test(digitsOnly(form.business_number))) { failAt('business_number', t('supplier.errBizNum', { defaultValue: '사업자등록번호 10자리를 정확히 입력해주세요' })); return }
     if (!licenseUrl) { fail(t('supplier.errBizLicense', { defaultValue: '사업자등록증 이미지를 업로드해주세요' })); return }
+    // 🏥 규제 몰(의료용품) — 인허가 신고번호 필수.
+    if (requiresLicense && !licenseNo.trim()) { fail(`${licenseLabel || '인허가 신고번호'}를 입력해주세요`); return }
     // 🏭 대표자 — 성명/연락처 각각 검증(연락처는 완성형 휴대폰만). "010"·"010-9135" 미완성 차단.
     if (!form.representative.trim()) { failAt('representative', t('supplier.errRepName', { defaultValue: '대표자 성명을 입력해주세요' })); return }
     if (!isValidKrPhone(form.representative_phone)) { failAt('representative_phone', t('supplier.errRepPhone', { defaultValue: '대표자 연락처를 정확히 입력해주세요 (예: 010-1234-5678)' })); return }
@@ -122,6 +126,8 @@ export default function SupplierRegisterPage() {
         // 🏭 2026-06-29 공급(취급) 카테고리 + 희망 유통채널 (선택 — 서버가 사이드테이블에 저장).
         categories,
         channel: channel.trim() || undefined,
+        // 🏥 2026-07-03 규제 몰 인허가 신고번호(있을 때만) — 서버가 requires_license 몰에서 필수 검증.
+        license_no: licenseNo.trim() || undefined,
       }
       const payload = kakaoUser
         ? {
@@ -232,6 +238,15 @@ export default function SupplierRegisterPage() {
             </div>
             {/* 🏭 2026-06-04 사업자등록증 이미지 (승인 심사용) */}
             <BusinessCertUpload value={licenseUrl} onChange={setLicenseUrl} required />
+
+            {/* 🏥 2026-07-03 규제 몰(의료용품) — 인허가 신고번호 (해당 몰에서만 노출·필수) */}
+            {requiresLicense && (
+              <div>
+                <label className={labelCls}>{licenseLabel || '인허가 신고번호'} <span className="text-[#FC5424]">*</span></label>
+                <input disabled={loading} value={licenseNo} onChange={(e) => setLicenseNo(e.target.value.slice(0, 60))} className={inputCls} placeholder="예: 제0000-000호" />
+                <p className="mt-1 text-[12px] text-gray-500">규제 품목 취급을 위해 {licenseLabel || '인허가 신고번호'}가 필요합니다. 승인 시 관리자가 확인합니다.</p>
+              </div>
+            )}
 
             {/* 🏭 2026-06-29 공급 정보 — 카테고리(다중) + 희망 유통채널 (선택) */}
             <div className="pt-3 border-t border-gray-100">

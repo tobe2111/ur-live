@@ -106,7 +106,20 @@ ${baseTail.replace(whereWithMall, where)}`
     const total = await DB.prepare(`SELECT COUNT(*) AS count FROM suppliers s WHERE ${where}`).bind(...params).first<{ count: number }>();
     const pendingCount = await DB.prepare("SELECT COUNT(*) AS count FROM suppliers WHERE status = 'pending'").first<{ count: number }>().catch(() => null);
 
-    return c.json({ success: true, data: { items: rows.results ?? [], total: total?.count ?? 0, pending_count: pendingCount?.count ?? 0, page, limit } });
+    // 🏥 2026-07-03 규제 몰(의료용품) 인허가 첨부 — 승인 검토용(신고번호/검증여부). fail-soft(테이블 부재/오류 시 미부착).
+    const items = (rows.results ?? []) as Array<Record<string, unknown>>;
+    try {
+      const supIds = items.map((i) => Number(i.id)).filter((n) => Number.isFinite(n) && n > 0);
+      if (supIds.length) {
+        const ph = supIds.map(() => '?').join(',');
+        const lic = await DB.prepare(`SELECT owner_id, permit_no, verified FROM wholesale_licenses WHERE owner_type = 'supplier' AND owner_id IN (${ph})`)
+          .bind(...supIds).all<{ owner_id: number; permit_no: string | null; verified: number }>().catch(() => ({ results: [] as { owner_id: number; permit_no: string | null; verified: number }[] }));
+        const byId = new Map((lic.results || []).map((r) => [Number(r.owner_id), r]));
+        for (const it of items) { const l = byId.get(Number(it.id)); it.license_no = l?.permit_no ?? null; it.license_verified = l?.verified ?? 0; }
+      }
+    } catch { /* fail-soft */ }
+
+    return c.json({ success: true, data: { items, total: total?.count ?? 0, pending_count: pendingCount?.count ?? 0, page, limit } });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] GET /suppliers error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
