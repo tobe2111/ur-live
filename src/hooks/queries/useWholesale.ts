@@ -96,6 +96,15 @@ export interface WholesaleMallBrand {
   // 🏥 2026-07-03 규제 몰(의료용품): 가입 시 인허가 신고번호 필수 여부 + 필드 라벨.
   requires_license?: number | null
   license_label?: string | null
+  // 🧩 2026-07-03 몰 기능 토글(제외 레이어) — { key: boolean }. 키 부재 = ON.
+  features?: Record<string, boolean>
+}
+
+/** 🧩 몰 기능이 켜졌는지(제외 레이어) — 키 부재/미설정 = 기본값(def, 기본 ON). false 면 그 몰에서 숨김. */
+export function mallFeatureEnabled(features: Record<string, boolean> | undefined | null, key: string, def = true): boolean {
+  if (!features) return def
+  const v = features[key]
+  return typeof v === 'boolean' ? v : def
 }
 
 /** 기본 몰 fallback — config 없거나 로딩 전이면 항상 유통스타트/#FC5424 (default 몰 byte-identical). */
@@ -108,6 +117,7 @@ export const DEFAULT_MALL_BRAND: WholesaleMallBrand = {
   categories: null,
   requires_license: 0,
   license_label: null,
+  features: {},
 }
 
 /**
@@ -154,6 +164,9 @@ export function useWholesaleMall() {
     requiresLicense: mall.requires_license === 1,
     licenseLabel: mall.license_label || null,
     slug: mall.slug || 'default',
+    features: mall.features || {},
+    // 🧩 편의: 이 몰에서 기능이 켜졌는지(제외 레이어). 예: feature('dropship') === false → 숨김.
+    feature: (key: string, def = true) => mallFeatureEnabled(mall.features, key, def),
     isLoading: q.isLoading,
   }
 }

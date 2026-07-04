@@ -43,8 +43,25 @@ export interface WholesaleMall {
   // 🏥 2026-07-03 (의료용품 도매몰): 규제 몰 게이트 — 1이면 가입 시 인허가(신고번호) 필수. (구 행/픽스처엔 부재 → optional.)
   requires_license?: number | null
   license_label?: string | null // 예: '의료기기 판매업 신고번호' (인허가 필드 라벨)
+  // 🧩 2026-07-03 (대표 — "이상적 제외 레이어"): 몰별 기능 토글 JSON. { "dropship": false, ... } 형태.
+  //   키 부재 = 기본 켜짐(feature ON). 특정 몰에서 기능을 빼려면 그 키를 false 로. → 코드 0, 어드민 데이터 토글.
+  features_json?: string | null
   active: number
   created_at?: string | null
+}
+
+/**
+ * 🧩 2026-07-03 몰 기능 플래그 SSOT — mall.features_json 을 파싱해 특정 기능이 그 몰에서 켜졌는지 반환.
+ *   키가 없으면 기본값(def, 기본 true=ON) → 기존 몰/미설정 몰은 전부 ON(동작 불변). 몰에서 빼려면 false 로 저장.
+ *   예: mallFeature(mall, 'dropship') === false 면 그 몰은 무재고 드랍십 숨김.
+ */
+export function mallFeature(mall: { features_json?: string | null } | null | undefined, key: string, def = true): boolean {
+  if (!mall?.features_json) return def
+  try {
+    const f = JSON.parse(mall.features_json) as Record<string, unknown>
+    const v = f?.[key]
+    return typeof v === 'boolean' ? v : def
+  } catch { return def }
 }
 
 // ── 멱등 ensure + 기본몰 시드 (repair-schema 와 동일 DDL — cold isolate self-heal) ──
@@ -65,12 +82,14 @@ async function ensureMallSchema(DB: D1Database): Promise<void> {
     categories_json TEXT,
     requires_license INTEGER DEFAULT 0,
     license_label TEXT,
+    features_json TEXT,
     active INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT (datetime('now'))
   )`).run().catch(swallow('wholesale-malls:ensure'))
   // 🏥 2026-07-03 자가치유 ALTER — 기존 테이블에 규제 몰 컬럼 보강(신규 컬럼, 기본 0/NULL = 기존 몰 무영향).
   await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN requires_license INTEGER DEFAULT 0').run().catch(() => { /* 이미 존재 */ })
   await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN license_label TEXT').run().catch(() => { /* 이미 존재 */ })
+  await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN features_json TEXT').run().catch(() => { /* 이미 존재 */ })
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_malls_host ON wholesale_malls(host) WHERE host IS NOT NULL').run().catch(swallow('wholesale-malls:idx-host'))
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_malls_active ON wholesale_malls(active)').run().catch(swallow('wholesale-malls:idx-active'))
   // 기본 몰(id=1) 시드 — 행이 하나도 없을 때만(기존 유통스타트 = 기본 몰). host=현 도매 호스트.
@@ -113,7 +132,7 @@ async function buildMallCache(DB: D1Database): Promise<MallCache> {
   const byId = new Map<number, WholesaleMall>()
   const bySlug = new Map<string, WholesaleMall>()
   const { results } = await DB.prepare(
-    'SELECT id, slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, active, created_at FROM wholesale_malls'
+    'SELECT id, slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, active, created_at FROM wholesale_malls'
   ).all<WholesaleMall>().catch(() => ({ results: [] as WholesaleMall[] }))
   for (const m of results || []) {
     byId.set(m.id, m)

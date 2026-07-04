@@ -870,6 +870,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🏥 2026-07-03 (의료용품 도매몰): 규제 몰 게이트 컬럼(기존 몰 기본 0/NULL = 무영향).
     { desc: 'wholesale_malls.requires_license', sql: "ALTER TABLE wholesale_malls ADD COLUMN requires_license INTEGER DEFAULT 0" },
     { desc: 'wholesale_malls.license_label', sql: "ALTER TABLE wholesale_malls ADD COLUMN license_label TEXT" },
+    { desc: 'wholesale_malls.features_json', sql: "ALTER TABLE wholesale_malls ADD COLUMN features_json TEXT" },
     { desc: 'wholesale_banners.mall_id', sql: "ALTER TABLE wholesale_banners ADD COLUMN mall_id INTEGER DEFAULT 1" },
     { desc: 'wholesale_proposal_tickets.mall_id', sql: "ALTER TABLE wholesale_proposal_tickets ADD COLUMN mall_id INTEGER DEFAULT 1" },
     // 🏬 2026-06-15 (sellpie형 게시판): 세부 카테고리(supply/codev/live/sns/report/inquiry). my-tickets/board SELECT 가 참조.
@@ -1887,6 +1888,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       categories_json TEXT,
       requires_license INTEGER DEFAULT 0,
       license_label TEXT,
+      features_json TEXT,
       active INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT (datetime('now'))
     )` },
