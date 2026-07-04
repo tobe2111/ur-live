@@ -35,7 +35,7 @@ import { transitionWholesaleOrder, refundWholesaleOrderFully } from './wholesale
 import { generateWholesaleSalesInvoice, generateWholesalePurchaseInvoices, listDistributorSalesInvoices } from './wholesale-tax-invoices'
 import { ensureSupplyVisibilitySchema, visibilityWhere, gradeExposureWhere } from './supply-visibility'
 import { ensureDepositSchema, deductDepositForOrder, compensateDepositOrderOnce } from './wholesale-deposit-core'
-import { resolveMallId, registrationMallId, loadMallByHost } from './wholesale-malls'
+import { resolveMallId, registrationMallId, loadMallByHost, loadMallById } from './wholesale-malls'
 import { learnCodes, resolveCodes, normCode } from './wholesale-code-map'
 import {
   ensureOrderTables, ensureSupplierPolicySchema, loadSupplierPolicies, computeSupplierShipping,
@@ -67,9 +67,10 @@ const PREMIUM_BLOCKED_GRADES: DistributorGrade[] = ['C']
 app.get('/mall', async (c) => {
   const { DB } = c.env
   try {
-    let host: string | null = null
-    try { host = new URL(c.req.url).hostname } catch { host = c.req.header('Host') || null }
-    const mall = await loadMallByHost(DB, host)
+    // 🏥 2026-07-03: host-only → resolveMallId(c) — `?mall=<slug>` 도 존중해 도메인 연결 전 몰도 브랜딩/카테고리 노출.
+    //   (기존: loadMallByHost host 전용 → ?mall=medi 여도 기본 몰 브랜드로 표시되던 갭.)
+    const mallId = await resolveMallId(c)
+    const mall = await loadMallById(DB, mallId)
     // categories_json 서버 parse → 배열(파싱 실패 시 null). 클라 JSON.parse 부담 제거.
     let categories: unknown = null
     if (mall?.categories_json) {
@@ -86,11 +87,14 @@ app.get('/mall', async (c) => {
         brand_color: mall?.brand_color ?? null,
         logo_url: mall?.logo_url ?? null,
         categories: Array.isArray(categories) ? categories : null,
+        // 🏥 규제 몰 게이트 — 클라가 인허가 필드 노출 여부 판단.
+        requires_license: mall?.requires_license ? 1 : 0,
+        license_label: mall?.license_label ?? null,
       },
     })
   } catch (err) {
     // 브랜딩 조회 실패 시에도 기본 몰 값으로 graceful — 헤더가 절대 비지 않도록.
-    return c.json({ success: false, mall: { slug: 'default', name: '유통스타트', brand_name: null, brand_color: null, logo_url: null, categories: null } })
+    return c.json({ success: false, mall: { slug: 'default', name: '유통스타트', brand_name: null, brand_color: null, logo_url: null, categories: null, requires_license: 0, license_label: null } })
   }
 })
 

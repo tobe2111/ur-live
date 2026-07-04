@@ -40,6 +40,9 @@ export interface WholesaleMall {
   deposit_account: string | null
   commission_rate: number | null
   categories_json: string | null
+  // 🏥 2026-07-03 (의료용품 도매몰): 규제 몰 게이트 — 1이면 가입 시 인허가(신고번호) 필수. (구 행/픽스처엔 부재 → optional.)
+  requires_license?: number | null
+  license_label?: string | null // 예: '의료기기 판매업 신고번호' (인허가 필드 라벨)
   active: number
   created_at?: string | null
 }
@@ -60,9 +63,14 @@ async function ensureMallSchema(DB: D1Database): Promise<void> {
     deposit_account TEXT,
     commission_rate REAL,
     categories_json TEXT,
+    requires_license INTEGER DEFAULT 0,
+    license_label TEXT,
     active INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT (datetime('now'))
   )`).run().catch(swallow('wholesale-malls:ensure'))
+  // 🏥 2026-07-03 자가치유 ALTER — 기존 테이블에 규제 몰 컬럼 보강(신규 컬럼, 기본 0/NULL = 기존 몰 무영향).
+  await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN requires_license INTEGER DEFAULT 0').run().catch(() => { /* 이미 존재 */ })
+  await DB.prepare('ALTER TABLE wholesale_malls ADD COLUMN license_label TEXT').run().catch(() => { /* 이미 존재 */ })
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_malls_host ON wholesale_malls(host) WHERE host IS NOT NULL').run().catch(swallow('wholesale-malls:idx-host'))
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_wholesale_malls_active ON wholesale_malls(active)').run().catch(swallow('wholesale-malls:idx-active'))
   // 기본 몰(id=1) 시드 — 행이 하나도 없을 때만(기존 유통스타트 = 기본 몰). host=현 도매 호스트.
@@ -74,6 +82,18 @@ async function ensureMallSchema(DB: D1Database): Promise<void> {
       `INSERT OR IGNORE INTO wholesale_malls (id, slug, name, host, brand_name, brand_color, active, created_at)
        VALUES (1, 'default', '유통스타트', 'utongstart.com', '유통스타트', '#1f2937', 1, datetime('now'))`
     ).run().catch(swallow('wholesale-malls:seed-default'))
+  }
+  // 🏥 2026-07-03 (대표 — 의료용품 도매몰 신설): 메디스타트(id=2, slug='medi') 시드 — slug 기준 멱등(중복 X).
+  //   host 는 도메인 연결 전이라 비움 → ?mall=medi 로 미리보기/가입 접근. 어드민에서 도메인 PATCH 시 라이브.
+  //   requires_license=1 + categories_json(의료기기/위생/간병/건강) → 규제 몰 게이트 + 카테고리 세트.
+  const medi = await DB.prepare("SELECT id FROM wholesale_malls WHERE slug = 'medi' LIMIT 1").first<{ id: number }>().catch(() => null)
+  if (!medi) {
+    await DB.prepare(
+      `INSERT OR IGNORE INTO wholesale_malls (id, slug, name, host, brand_name, brand_color, categories_json, requires_license, license_label, active, created_at)
+       VALUES (2, 'medi', '메디스타트', NULL, '메디스타트', '#0ea5e9',
+         '[{"id":"medical_device","label":"의료기기"},{"id":"hygiene","label":"위생용품"},{"id":"care","label":"간병용품"},{"id":"health","label":"건강용품"}]',
+         1, '의료기기 판매업 신고번호', 1, datetime('now'))`
+    ).run().catch(swallow('wholesale-malls:seed-medi'))
   }
 }
 
@@ -93,7 +113,7 @@ async function buildMallCache(DB: D1Database): Promise<MallCache> {
   const byId = new Map<number, WholesaleMall>()
   const bySlug = new Map<string, WholesaleMall>()
   const { results } = await DB.prepare(
-    'SELECT id, slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, active, created_at FROM wholesale_malls'
+    'SELECT id, slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, active, created_at FROM wholesale_malls'
   ).all<WholesaleMall>().catch(() => ({ results: [] as WholesaleMall[] }))
   for (const m of results || []) {
     byId.set(m.id, m)
