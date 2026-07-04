@@ -1927,7 +1927,14 @@
       "backToEdit": "편집으로 돌아가기",
       "verifiedBusiness": "사업자 인증",
       "moreInfo": "MORE INFO",
-      "bizInfoCheck": "사업자정보확인"
+      "bizInfoCheck": "사업자정보확인",
+      "recommendOn": "하단 \"추천\" 섹션이 켜졌어요 — 담은 핀이 링크샵 맨 아래에 노출됩니다",
+      "recommendOff": "하단 \"추천\" 섹션을 껐어요",
+      "recommendSaveFail": "설정 저장 실패 — 소비자 계정 로그인 상태를 확인해주세요",
+      "recommendToggleHint": "담은 핀을 링크샵 하단 \"추천\" 섹션에 표시",
+      "recommendToggleOn": "✨ 추천 ON",
+      "recommendToggleOff": "추천 OFF",
+      "recommendPreviewNote": "방문자에게는 숨겨져 있어요 — 상단 \"추천 OFF\" 버튼으로 켤 수 있습니다"
     },
     "storeIntro": "스토어 소개",
     "shippingInfo": "배송 정보",

@@ -14,6 +14,8 @@ interface FcfsDetail { enabled: boolean; spots: number; appliedDisplay: number; 
 export default function FcfsApplyBlock({ productId }: { productId: number }) {
   const [info, setInfo] = useState<FcfsDetail | null>(null)
   const [applied, setApplied] = useState(false)
+  // 🎯 2026-07-04 (당첨자 결제 게이트 동반): 'selected'=당첨(구매 가능) / 'paid'=구매 완료 구분 표시.
+  const [myStatus, setMyStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -23,13 +25,18 @@ export default function FcfsApplyBlock({ productId }: { productId: number }) {
     // 비로그인이면 401 — 무시(응모 상태 없음).
     api.get(`/api/fcfs/${productId}/me`).then((r) => {
       const st = r.data?.data?.status
-      if (alive && r.data?.success && (st === 'applied' || st === 'selected')) setApplied(true)
+      if (alive && r.data?.success && (st === 'applied' || st === 'selected' || st === 'paid')) {
+        setApplied(true)
+        setMyStatus(String(st))
+      }
     }).catch(() => {})
     return () => { alive = false }
   }, [productId])
 
   if (!info?.enabled) return null
   const closed = info.deadline ? new Date(info.deadline).getTime() < Date.now() : false
+  const isWinner = myStatus === 'selected'
+  const isPaid = myStatus === 'paid'
 
   const apply = () => {
     if (busy || applied || closed) return
@@ -56,16 +63,16 @@ export default function FcfsApplyBlock({ productId }: { productId: number }) {
             🎯 추첨 응모 <span style={{ color: 'var(--gbd-sub)', fontWeight: 700 }}>{formatNumber(info.appliedDisplay)}/{formatNumber(info.spots)}명</span>
           </p>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--gbd-sub)', lineHeight: 1.5 }}>
-            {closed ? '응모가 마감되었어요' : applied ? '응모 완료 · 당첨 시 안내드려요' : '결제 없이 응모하면 추첨으로 선정돼요'}
+            {isPaid ? '🎉 당첨 · 구매 완료' : isWinner ? '🎉 당첨! 아래 구매 버튼으로 결제해주세요 — 미결제 시 예비 당첨자에게 넘어갈 수 있어요' : closed ? '응모가 마감되었어요' : applied ? '응모 완료 · 당첨 시 안내드려요' : '결제 없이 응모하면 추첨으로 선정돼요 · 당첨자만 구매 가능'}
           </p>
         </div>
         <button
           type="button"
           onClick={apply}
           disabled={busy || applied || closed}
-          style={{ flex: '0 0 auto', padding: '11px 16px', borderRadius: 12, fontSize: 13.5, fontWeight: 800, border: 'none', cursor: busy || applied || closed ? 'default' : 'pointer', background: 'var(--gbd-ink)', color: 'var(--gbd-card)', opacity: applied || closed ? 0.45 : 1 }}
+          style={{ flex: '0 0 auto', padding: '11px 16px', borderRadius: 12, fontSize: 13.5, fontWeight: 800, border: 'none', cursor: busy || applied || closed ? 'default' : 'pointer', background: isWinner ? '#16a34a' : 'var(--gbd-ink)', color: isWinner ? '#fff' : 'var(--gbd-card)', opacity: (applied && !isWinner) || closed ? 0.45 : 1 }}
         >
-          {applied ? '응모 완료' : closed ? '마감' : busy ? '처리 중…' : '응모하기'}
+          {isPaid ? '구매 완료' : isWinner ? '🎉 당첨' : applied ? '응모 완료' : closed ? '마감' : busy ? '처리 중…' : '응모하기'}
         </button>
       </div>
     </div>

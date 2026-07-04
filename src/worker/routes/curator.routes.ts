@@ -79,6 +79,9 @@ async function ensureUserProfileCols(DB: D1Database): Promise<void> {
     'ALTER TABLE users ADD COLUMN linkshop_headline TEXT',
     // 🎨 2026-06-19 마퀴 액센트 색(#RRGGBB) — 소유자 조정. 비면 기본 주황.
     'ALTER TABLE users ADD COLUMN linkshop_accent TEXT',
+    // ✨ 2026-07-04 링크샵 1단계(linkshop-role-model §5): 매장(스토어프론트) 링크샵 하단
+    //   "추천(핀)" 섹션 opt-in — 0(기본 off)/1. sellers 는 컬럼 한도(100) 도달이라 users 에.
+    'ALTER TABLE users ADD COLUMN linkshop_show_recommend INTEGER DEFAULT 0',
   ]) {
     await DB.prepare(sql).run().catch(() => { /* 이미 존재 → 정상 */ })
   }
@@ -199,11 +202,13 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     //   메인 SELECT 의 banner/sns 가 폴백으로 사라지지 않도록 분리). 컬럼 없으면 null.
     let headline: string | null = null
     let accent: string | null = null
+    let showRecommend = 0
     try {
-      const h = await DB.prepare('SELECT linkshop_headline, linkshop_accent FROM users WHERE id = ? LIMIT 1')
-        .bind(userId).first<{ linkshop_headline: string | null; linkshop_accent: string | null }>()
+      const h = await DB.prepare('SELECT linkshop_headline, linkshop_accent, COALESCE(linkshop_show_recommend, 0) AS show_recommend FROM users WHERE id = ? LIMIT 1')
+        .bind(userId).first<{ linkshop_headline: string | null; linkshop_accent: string | null; show_recommend: number }>()
       headline = h?.linkshop_headline ?? null
       accent = h?.linkshop_accent ?? null
+      showRecommend = Number(h?.show_recommend) === 1 ? 1 : 0
     } catch {
       // linkshop_accent 컬럼 없는 env — headline 만이라도.
       try {
@@ -249,6 +254,8 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         // 🎨 2026-06-17 링크샵 랜딩 리디자인: 상단 마퀴 헤드라인 + 액센트 색.
         headline,
         accent,
+        // ✨ 2026-07-04 링크샵 1단계: 매장 링크샵 하단 추천(핀) 섹션 opt-in (기본 0=off).
+        linkshop_show_recommend: showRecommend,
       },
       pins: pins ?? [],
       // 🛡️ 2026-05-25 신모델: linked seller 있으면 셀러 공개페이지로 자연 흡수.
@@ -689,6 +696,11 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
       if (v && !/^#[0-9A-Fa-f]{6}$/.test(v)) return c.json({ success: false, error: '색상은 #RRGGBB 형식' }, 400)
       updates.push('linkshop_accent = ?')
       binds.push(v)
+    }
+    // ✨ 2026-07-04 링크샵 1단계: 하단 추천 섹션 opt-in 토글 (boolean → 0/1).
+    if (typeof body.show_recommend === 'boolean') {
+      updates.push('linkshop_show_recommend = ?')
+      binds.push(body.show_recommend ? 1 : 0)
     }
     if (updates.length === 0) return c.json({ success: false, error: '변경할 필드 없음' }, 400)
 

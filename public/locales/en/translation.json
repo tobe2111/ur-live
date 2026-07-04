@@ -1897,7 +1897,14 @@
       "backToEdit": "Back to editing",
       "verifiedBusiness": "Verified business",
       "moreInfo": "MORE INFO",
-      "bizInfoCheck": "Business info"
+      "bizInfoCheck": "Business info",
+      "recommendOn": "Bottom \"Picks\" section is now on — pinned items show at the bottom of your link shop",
+      "recommendOff": "Bottom \"Picks\" section turned off",
+      "recommendSaveFail": "Failed to save — please check your consumer account login",
+      "recommendToggleHint": "Show pinned items in the bottom \"Picks\" section",
+      "recommendToggleOn": "✨ Picks ON",
+      "recommendToggleOff": "Picks OFF",
+      "recommendPreviewNote": "Hidden from visitors — turn it on with the \"Picks OFF\" button above"
     },
     "storeIntro": "Store Introduction",
     "shippingInfo": "Shipping Info",

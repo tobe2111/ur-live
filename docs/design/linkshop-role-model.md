@@ -149,4 +149,10 @@
 ---
 
 ## ✅ 구현 로그
-- (미구현) — 단계 완료 시 commit hash 기록.
+- 2026-07-04 **1단계 + 1b 구현** (대표 "다 해줘 이상적으로" — commit 은 PR 참조):
+  ① `users.linkshop_show_recommend`(기본 0=off, sellers 컬럼한도 회피) — curator.routes GET/PATCH/DDL 3곳.
+  ② CuratorPage → SellerPublicPage `curatorPins` 전달 재개(2026-06-26 숨김의 opt-in 해소).
+  ③ SellerPublicPage: 라이브 섹션 아래·푸터 위에 `CuratorPinsSection`(기존 고아 컴포넌트 재사용) —
+  opt-in ON 이면 방문자 노출, 오너뷰에선 OFF 여도 흐린 미리보기 + 안내. 오너 편집 배너에 "추천 ON/OFF"
+  토글(유저 세션 인증 PATCH /api/curator/me/profile). ④ 1b: 매장 업주(seller_id 보유)가 핀 담으면
+  "내 링크샵 하단 '추천'에 담김 + ON 안내" 토스트(usePinAction). 기본값 off = §7 열린결정 1 보수안 채택.

@@ -182,7 +182,7 @@
 
 | 단계 | 내용 | 리스크 |
 |---|---|---|
-| **1** | 매장 링크샵 하단 "추천" opt-in 부활(`CuratorPinsSection` 재연결) + 핀 담기 토스트 안내 | 낮음 |
+| **1** | ✅ 완료(2026-07-04) — 매장 링크샵 하단 "추천" opt-in 부활 + 핀 담기 토스트 + 오너 토글(기본 off) | 낮음 |
 | **2** | 링크샵 모드 자동 전환(본인 상품 유무 → 큐레이터↔스토어프론트) | 중 |
 | **3** | 에이전시 매출 rollup 대시보드(관리 매장 GMV/정산 집계) | 중 |
 | **4** | 부류별 온보딩 분기("추천할래요/팔래요" 초기 모드 힌트) | 낮음 |
@@ -242,7 +242,7 @@
 
 ### 14-5. 알려진 취약점 (auth-product-registration-audit)
 - **P1(부분수정 2026-07-02)**: 소비자앱 체류 중 seller_token 미갱신 → App 전역 refresh 로 보강. 게이트 exp 검사 추가.
-- **P2(미해결)**: 연결 셀러인데 seller_token 미발급/만료+무refresh → `/seller/login` 튕김. **자가치유 재발급 엔드포인트**(소비자 세션 → `issueLinkedRoleTokens` 재노출) 필요 — 소비자 id 해석(firebaseUid↔users.id) + staging 검증 필요.
+- **P2(✅ 해결 2026-07-04)**: 연결 셀러인데 seller_token 만료/부재 → `/seller/login` 튕김 → **자가치유 구현**: `POST /api/auth/reissue-role-tokens`(requireAuth 소비자 세션 → `issueLinkedRoleTokens` 재사용, rate limit 10/분) + RouteGuards `RoleTokenSelfHeal`(게이트 실패 시 소비자 세션 있으면 1회 재발급 후 통과, 실패 시 기존과 동일 로그인 이동). 잠금 불변식(토큰 존재/exp 검사) byte-불변.
 - **UX**: 링크샵(모바일) → 상품등록 = 셀러 대시보드 풀폼 점프. 경량 바텀시트 등록 미구현.
 
 ## 15. 결제·정산 시스템

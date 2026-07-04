@@ -242,6 +242,16 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
         }, 400);
       }
 
+      // 🎯 2026-07-04 (FCFS 당첨자 전용 결제 게이트 — fcfs-gate.ts): 추첨(체험단) 상품은
+      //   당첨자만 주문 가능. 비-FCFS 상품은 메타 1조회 후 통과(fail-open — 소프트 접근제어).
+      {
+        const { checkFcfsPurchasable } = await import('../utils/fcfs-gate');
+        const fcfsGate = await checkFcfsPurchasable(c.env.DB, Number(product.id), userId);
+        if (!fcfsGate.ok) {
+          return c.json({ success: false, error: `"${product.name}" — ${fcfsGate.error}`, code: fcfsGate.code }, 403);
+        }
+      }
+
       const itemSubtotal = product.price * reqItem.quantity;
       subtotal += itemSubtotal;
 

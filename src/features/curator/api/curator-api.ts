@@ -46,6 +46,8 @@ export interface CuratorProfile {
   youtube_url?: string | null
   instagram_url?: string | null
   tiktok_url?: string | null
+  /** ✨ 2026-07-04 링크샵 1단계: 매장 링크샵 하단 추천(핀) 섹션 opt-in (0/1, 기본 0). */
+  linkshop_show_recommend?: number
 }
 
 export interface CuratorPageResponse {

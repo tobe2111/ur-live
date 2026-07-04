@@ -25,7 +25,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit';
  * - agency: agencies.linked_user_id = user.id AND status = 'active'
  * Pending/suspended 는 토큰 발급 안 함 (승인 대기).
  */
-async function issueLinkedRoleTokens(
+export async function issueLinkedRoleTokens(
   DB: D1Database,
   jwtSecret: string,
   userId: number
