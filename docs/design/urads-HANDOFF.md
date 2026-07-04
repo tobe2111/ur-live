@@ -70,6 +70,7 @@
 | ├ 생성(블로그/인스타/틱톡/광고문구) | 타입별 시스템프롬프트 + 네이버 소재 규격(제목15·설명45) 검증 | POST `/content/generate` |
 | ├ 댓글/리뷰 답변 초안 | 톤 선택(정중/친근/사과/간결) — 답변 초안(자동게시 X) | POST `/content/reply` |
 | └ 성과분석(콘텐츠 관점) | 실적(stats+효율)근거 메시지 분석 + 콘텐츠 방향 제안(연동 시) | POST `/content/analyze` |
+| **미디어 생성 게이트웨이** 🆕(2026-07-02, **킬스위치 기본 OFF**) | `media-gateway.ts`(provider-agnostic: 이미지 OpenAI·음성 ElevenLabs·영상 Replicate/HeyGen · 잡모델 `ad_media_jobs`) — 토스게이트웨이 철학(직접 fetch 금지). ⚠️ egress 차단으로 실호출 미검증 | `/content/media/status`·`image`·`voice`·`video`(submit)·`video/:id`(poll) |
 | 발주수집(**보류**) | `order-collection.ts` | `/orders/sync`·`/orders` |
 
 UI 패널: `MarketingDashboardPage`(허브+KPI) + `SearchAdPanel`·`AutobidPanel`·`WeeklyReportPanel`·`PricePanel`·`SourcingPanel`·`AlertsPanel`·`ClickGuardPanel`. 인증/계정: `MarketingLoginPage`·`MarketingSignupPage`·`MarketingAccountPage`(라이트, force-light-theme).
@@ -84,6 +85,10 @@ UI 패널: `MarketingDashboardPage`(허브+KPI) + `SearchAdPanel`·`AutobidPanel
 | `ADS_AUTOBID_ENABLED='true'` | 자율 자동입찰 cron 킬스위치 | **기본 OFF**(수동 '지금 적용'만) |
 | `ADS_AUTOBID_SHADOW_ENABLED='true'` | 섀도우 모드(dryRun 일일 기록, PUT 0) — 실엔진 켜기 전 신뢰 축적용 | **기본 OFF** · 실엔진 ON 이면 자동 skip |
 | `ADS_BILLING_ENFORCED='true'` | 플랜 한도 집행(엔타이틀먼트) — 가격/모델 확정 후 | **기본 OFF**(전 기능 무제한 = 현행) |
+| `ADS_MEDIA_ENABLED='true'` | 미디어 생성(이미지/음성/영상) 전면 킬스위치 | **기본 OFF**(미디어 UI 자동 숨김) |
+| `OPENAI_API_KEY` | 콘텐츠 스튜디오 이미지 생성 | 없으면 이미지 미설정 |
+| `ELEVENLABS_API_KEY` | AI 음성(TTS) | 없으면 음성 미설정 |
+| `REPLICATE_API_TOKEN`/`HEYGEN_API_KEY` | 숏폼 영상/아바타(`ADS_VIDEO_PROVIDER`로 선택) | 없으면 영상 미설정 |
 | `DATA_ENCRYPTION_KEY` | 연결 자격증명 암호화 | (이미 보유) |
 
 ## 6. ⚠️ 안전장치 (건드릴 때 주의)
@@ -129,7 +134,7 @@ audit-gate(38 GREEN / file-size RED 1=선재 무관) 후 가드 미보유 4축(�
 ### B. 코드로 가능 — 남은 것(선택)
 - ~~랜딩 더미요소 라벨링~~ ✅(2026-07-01 — hero '예시 화면'·수치/후기 각주. 실데이터 *교체*는 라이브 검증 후 별도).
 - **전환 추적(진짜 ROAS)** — 부정클릭 픽셀 인프라 재활용해 구매완료 픽셀 → 실전환/매출 귀속(convAmt=0 계정 해소). 설계 필요(다음 후보 1순위).
-- **콘텐츠 스튜디오 미디어 확장(로드맵)** — 텍스트 파트(리퍼포징/생성/답변/분석)는 완료(2026-07-02). **숏폼 영상·AI 음성(더빙)·아바타·이미지 생성**은 외부 유료 API(ElevenLabs/HeyGen/Runway/이미지생성) + 키 + egress + 단가 정책 필요 → 대표 결정 후 provider 게이트웨이(“직접 fetch 금지” 철학, `toss-gateway` 패턴)로 배선. UI에 "준비 중" 자리 이미 있음.
+- ~~콘텐츠 스튜디오 미디어(영상/음성/아바타/이미지)~~ ✅ **게이트웨이 배선 완료**(2026-07-02, `media-gateway.ts`). 이미지(OpenAI)·음성(ElevenLabs)·영상(Replicate/HeyGen) provider-agnostic + 킬스위치 `ADS_MEDIA_ENABLED`(기본 OFF) + 잡모델(`ad_media_jobs`). **남은 건 대표의 (1) provider 키 설정 (2) `ADS_MEDIA_ENABLED='true'` (3) 단가/구독 정책**뿐. ⚠️ egress 차단으로 실호출 미검증 — 키 설정 후 provider별 요청/응답 스펙(특히 Replicate 모델버전·HeyGen 페이로드)을 1회 실검증 필요.
 - **소재 A/B 관리** — 네이버 Ad(소재) write. / **다매체(구글/메타/카카오)** — 큰 통합, 후순위.
 - **유어딜 판매채널 번들** — `urads-yourdeal-channel-bundle.md` 설계 존재. ⚠️ 크로스서비스(분리 룰) — 정산·CS·소유권 대표 결정 선행.
 - 수익화 **집행**: 대표가 티어 가격 확정 → `PLAN_LIMITS` 숫자 조정 + `ADS_BILLING_ENFORCED='true'` + `/ads/pricing` 결제 연동(유어딜 Toss helper 호출).

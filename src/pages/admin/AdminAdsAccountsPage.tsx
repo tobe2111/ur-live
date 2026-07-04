@@ -17,12 +17,14 @@ interface AdsAccountRow {
 }
 const PLANS = ['free', 'starter', 'pro'] as const
 interface Stats { total: number; unlocked: number; suspended: number; recent7: number }
+interface Media { enabled: boolean; image: string | null; voice: string | null; video: string | null }
 
 const fmtD = (s: string | null) => { const d = safeDate(s); return d ? d.toLocaleDateString('ko-KR') : '—' }
 
 export default function AdminAdsAccountsPage() {
   const [rows, setRows] = useState<AdsAccountRow[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
+  const [media, setMedia] = useState<Media | null>(null)
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<number | null>(null)
@@ -35,7 +37,7 @@ export default function AdminAdsAccountsPage() {
         api.get('/api/admin/ads/stats'),
       ])
       if (a.data?.success) setRows(a.data.accounts || [])
-      if (s.data?.success) setStats(s.data.stats || null)
+      if (s.data?.success) { setStats(s.data.stats || null); setMedia(s.data.media || null) }
     } catch {
       toast.error('가입자 정보를 불러오지 못했습니다')
     } finally { setLoading(false) }
@@ -70,6 +72,16 @@ export default function AdminAdsAccountsPage() {
           </div>
         ))}
       </div>
+
+      {media && (
+        <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 text-[12px]">
+          <span className="font-semibold text-gray-700">미디어 생성</span>
+          <span className={`ml-2 px-1.5 py-0.5 rounded font-bold ${media.enabled ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>{media.enabled ? 'ON' : 'OFF (ADS_MEDIA_ENABLED)'}</span>
+          {(['image', 'voice', 'video'] as const).map(k => (
+            <span key={k} className="ml-2 text-gray-500">{k}: <b className={media[k] ? 'text-emerald-600' : 'text-gray-400'}>{media[k] || '미설정'}</b></span>
+          ))}
+        </div>
+      )}
 
       <div className="flex items-center gap-2 mb-3">
         <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') load(q) }}

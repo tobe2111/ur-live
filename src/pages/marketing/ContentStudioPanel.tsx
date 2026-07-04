@@ -18,10 +18,11 @@ const ta = 'w-full rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-wh
 const btnPrimary = 'shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 h-9 text-[12.5px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-40'
 const chip = (on: boolean) => `rounded-full px-3 py-1 text-[12px] font-semibold ${on ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0A0A0A]' : 'border border-gray-200 dark:border-[#2A2A2A] text-gray-600 dark:text-gray-300'}`
 
-type Mode = 'repurpose' | 'generate' | 'reply' | 'analyze' | 'library'
+type Mode = 'repurpose' | 'generate' | 'reply' | 'analyze' | 'media' | 'library'
 const MODES: Array<{ k: Mode; l: string }> = [
-  { k: 'repurpose', l: '리퍼포징' }, { k: 'generate', l: '생성' }, { k: 'reply', l: '댓글 답변' }, { k: 'analyze', l: '성과 분석' }, { k: 'library', l: '보관함' },
+  { k: 'repurpose', l: '리퍼포징' }, { k: 'generate', l: '생성' }, { k: 'reply', l: '댓글 답변' }, { k: 'analyze', l: '성과 분석' }, { k: 'media', l: '미디어' }, { k: 'library', l: '보관함' },
 ]
+const MEDIA_KINDS = [{ k: 'image', l: '이미지' }, { k: 'voice', l: '음성' }, { k: 'video', l: '영상' }] as const
 const GEN_TYPES = [{ k: 'blog', l: '블로그' }, { k: 'instagram', l: '인스타' }, { k: 'tiktok', l: '틱톡' }, { k: 'ad_copy', l: '광고문구' }] as const
 const TONES = [{ k: 'polite', l: '정중' }, { k: 'friendly', l: '친근' }, { k: 'apologetic', l: '사과·해결' }, { k: 'concise', l: '간결' }]
 
@@ -82,6 +83,11 @@ export default function ContentStudioPanel() {
   // 보관함
   const [lib, setLib] = useState<LibItem[]>([])
   const [libLoaded, setLibLoaded] = useState(false)
+  // 미디어
+  const [mediaStat, setMediaStat] = useState<{ enabled: boolean; image: string | null; voice: string | null; video: string | null } | null>(null)
+  const [mKind, setMKind] = useState<'image' | 'voice' | 'video'>('image')
+  const [mPrompt, setMPrompt] = useState('')
+  const [mResult, setMResult] = useState<{ kind: string; url?: string; jobId?: number; status?: string } | null>(null)
 
   const save = useCallback(async (type: string, body: string, title?: string | null, meta?: unknown) => {
     try { const r = await api.post('/api/ads/content/save', { type, body, title, meta }, { headers: authHeader() }); if (r.data?.success) { toast.success('보관함 저장'); setLib(r.data.items || []) } else toast.error(r.data?.error || '저장 실패') }
@@ -118,7 +124,29 @@ export default function ContentStudioPanel() {
     try { const r = await api.delete(`/api/ads/content?id=${id}`, { headers: authHeader() }); if (r.data?.success) setLib(r.data.items || []) } catch { toast.error('삭제 실패') }
   }
 
-  const switchMode = (m: Mode) => { setMode(m); setErr(null); if (m === 'library' && !libLoaded) loadLib() }
+  const loadMediaStatus = useCallback(() => run(async () => {
+    const r = await api.get('/api/ads/content/media/status', { headers: authHeader() })
+    if (r.data?.success) setMediaStat(r.data.status)
+  }), [])
+  const doMedia = () => run(async () => {
+    setMResult(null)
+    if (mKind === 'video') {
+      const r = await api.post('/api/ads/content/media/video', { prompt: mPrompt }, { headers: authHeader() })
+      if (r.data?.success) { setMResult({ kind: 'video', jobId: r.data.jobId, status: r.data.status }); toast.success('영상 작업을 제출했습니다. 잠시 후 상태를 확인하세요.') }
+      else setErr(r.data?.error || '제출 실패')
+    } else {
+      const ep = mKind === 'image' ? 'image' : 'voice'
+      const payload = mKind === 'image' ? { prompt: mPrompt } : { text: mPrompt }
+      const r = await api.post(`/api/ads/content/media/${ep}`, payload, { headers: authHeader() })
+      if (r.data?.success) setMResult({ kind: mKind, url: r.data.url }); else setErr(r.data?.error || '생성 실패')
+    }
+  })
+  const pollVideoJob = async () => {
+    if (!mResult?.jobId) return
+    try { const r = await api.get(`/api/ads/content/media/video/${mResult.jobId}`, { headers: authHeader() }); if (r.data?.success) setMResult(m => m ? { ...m, status: r.data.status, url: r.data.url } : m) } catch { /* ignore */ }
+  }
+
+  const switchMode = (m: Mode) => { setMode(m); setErr(null); if (m === 'library' && !libLoaded) loadLib(); if (m === 'media' && !mediaStat) loadMediaStatus() }
   const packText = (p: Pack) => [p.summary && `[요약]\n${p.summary}`, p.blog && `[블로그] ${p.blog.title}\n${p.blog.body}`, p.instagram && `[인스타]\n${p.instagram.caption}\n${p.instagram.hashtags.join(' ')}`, p.tiktok && `[틱톡]\n${p.tiktok.hook}\n${p.tiktok.script}\n${p.tiktok.hashtags.join(' ')}`, p.seo && `[SEO] ${p.seo.metaTitle} / ${p.seo.metaDescription}`].filter(Boolean).join('\n\n')
 
   return (
@@ -198,6 +226,43 @@ export default function ContentStudioPanel() {
         </div>
       )}
 
+      {/* ── 미디어(이미지/음성/영상) ── */}
+      {mode === 'media' && (
+        <div className="mt-2.5">
+          {(() => {
+            const avail = mediaStat && (mKind === 'image' ? mediaStat.image : mKind === 'voice' ? mediaStat.voice : mediaStat.video)
+            const anyOn = mediaStat && mediaStat.enabled && (mediaStat.image || mediaStat.voice || mediaStat.video)
+            return (
+              <>
+                <div className="flex flex-wrap gap-1.5">{MEDIA_KINDS.map(t => <button key={t.k} onClick={() => { setMKind(t.k); setMResult(null) }} className={chip(mKind === t.k)}>{t.l}</button>)}</div>
+                {!anyOn ? (
+                  <div className="mt-2 rounded-xl border border-amber-100 dark:border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/5 p-3 text-[12px] text-amber-700 dark:text-amber-400">
+                    미디어 생성(이미지·음성·영상)은 외부 생성 API 연동이 필요합니다. 관리자가 설정하면 여기서 바로 사용할 수 있습니다.
+                  </div>
+                ) : !avail ? (
+                  <p className="mt-2 text-[12px] text-gray-400 dark:text-gray-500">이 미디어 유형은 아직 설정되지 않았습니다. 다른 유형을 선택해보세요.</p>
+                ) : (
+                  <>
+                    <textarea className={`${ta} mt-2`} rows={3} placeholder={mKind === 'voice' ? '읽어줄 텍스트 (800자 이내)' : mKind === 'image' ? '이미지 설명 (예: 미니멀한 무선이어폰 제품컷, 밝은 배경)' : '숏폼 영상 설명/컨셉'} value={mPrompt} onChange={e => setMPrompt(e.target.value)} />
+                    <button onClick={doMedia} disabled={busy || !mPrompt.trim()} className={`mt-2 ${btnPrimary}`}>{busy ? '생성 중…' : mKind === 'video' ? '영상 작업 제출' : '생성'}</button>
+                    {mResult && (
+                      <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
+                        {mResult.kind === 'image' && mResult.url && <img src={mResult.url} alt="생성 이미지" className="max-w-full rounded-lg" />}
+                        {mResult.kind === 'voice' && mResult.url && <audio controls src={mResult.url} className="w-full" />}
+                        {mResult.kind === 'video' && (
+                          mResult.url ? <video controls src={mResult.url} className="max-w-full rounded-lg" />
+                          : <div className="flex items-center justify-between gap-2"><span className="text-[12px] text-gray-500 dark:text-gray-400">상태: {mResult.status === 'processing' ? '생성 중…' : mResult.status}</span><button onClick={pollVideoJob} className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-2.5 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">상태 확인</button></div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )
+          })()}
+        </div>
+      )}
+
       {/* ── 보관함 ── */}
       {mode === 'library' && (
         <div className="mt-2.5">
@@ -219,8 +284,6 @@ export default function ContentStudioPanel() {
       )}
 
       {err && <PanelError onRetry={() => setErr(null)} label={err} />}
-
-      <p className="mt-3 text-[10.5px] text-gray-400 dark:text-gray-500">영상·음성·아바타 자동 생성(숏폼 영상 등)은 준비 중입니다.</p>
     </div>
   )
 }

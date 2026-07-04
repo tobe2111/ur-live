@@ -9,7 +9,7 @@
 - **④ 성과분석(콘텐츠 관점)**: 실적(accountStats+keywordEfficiency, 연동 시) 근거로 "잘 통하는 메시지" 분석 + 콘텐츠 방향 제안 → 생성으로 루프.
 - **UI**: `ContentStudioPanel.tsx` 5모드 탭(리퍼포징/생성/댓글답변/성과분석/보관함) + 복사/보관함저장. 셸 nav `sec-content` + 대시보드 LazyMount. 광고문구 글자수 배지(초과 빨강).
 - **엔타이틀먼트**: `PLAN_LIMITS`에 `content_per_day`(free 10/starter 50/pro 200) 추가.
-- **미착수(로드맵, 명시)**: 숏폼 영상·AI 음성/아바타·이미지 생성 = 외부 유료 API(ElevenLabs/HeyGen/Runway) + 키+egress+단가정책 → 대표 결정 후 provider 게이트웨이 배선. 패널에 "준비 중" 자리 존재.
+- **미디어 생성 게이트웨이(2026-07-02 "일단 다 해줘")**: `media-gateway.ts` — provider-agnostic(이미지 OpenAI·음성 ElevenLabs·영상 Replicate/HeyGen) + 킬스위치 `ADS_MEDIA_ENABLED`(기본 OFF) + 잡모델 `ad_media_jobs`(비동기 영상 submit/poll) + `media_per_day` 한도. 토스게이트웨이 철학(직접 fetch 금지). 라우트 `/content/media/{status,image,voice,video,video/:id}` + 패널 '미디어' 모드(키 없으면 "설정 필요" 안내) + 어드민 provider 상태 배지. env.ts 타입 6종 추가. 게이트 앞단 단위테스트(트랩DB — 킬스위치 OFF/키 없음 시 DB·네트워크 미접근 증명). **⚠️ egress 차단으로 실 provider 호출 미검증 — 대표가 키 설정 후 provider별 스펙(Replicate 모델버전·HeyGen 페이로드) 1회 실검증 필요.** 남은 건 대표의 키 설정 + 킬스위치 ON + 단가/구독 정책.
 - 검증: tsc 0(config 경고 제외) · sql bind/table/not-null/pagination/theme 가드 0 · 신규 파일 전부 <600줄(content-studio 239·panel 226) · 단위테스트 `ads-content-studio`(파서/정규화/규격). ⚠️ vitest/worker-build CI 검증.
 
 ## ✅ 2026-07-01 — 유어애즈 기능 확장 6종 (대표 "모두 가장 이상적으로 진행해줘" — 전수감사 후속 개선/아이디어 실행)

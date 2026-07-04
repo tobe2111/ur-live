@@ -14,6 +14,7 @@ import {
 } from '../content-studio'
 import { loadSearchAdConnection } from '../searchad-connection'
 import { accountStats, keywordEfficiency } from '../searchad-client'
+import { mediaStatus, generateImage, generateVoice, submitVideo, pollVideo, listMediaJobs } from '../media-gateway'
 
 const adsContentRoutes = new Hono<{ Bindings: Env }>()
 
@@ -118,6 +119,63 @@ adsContentRoutes.delete('/content', rateLimit({ action: 'ads-content-del', max: 
   if (!Number.isFinite(cid)) return c.json({ success: false, error: 'id 가 필요합니다' }, 400)
   await deleteContent(c.env.DB, id, cid)
   return c.json({ success: true, items: await listContent(c.env.DB, id) })
+})
+
+// ── 미디어 생성(이미지/음성/영상) — provider 게이트웨이. 킬스위치+키 없으면 NOT_CONFIGURED. ──
+const adsId = (c: { req: { header: (k: string) => string | undefined }; env: Env }) => adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+
+// GET /api/ads/content/media/status — 어떤 미디어가 켜져 있는지(키 비노출)
+adsContentRoutes.get('/content/media/status', async (c) => {
+  const id = await adsId(c)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  return c.json({ success: true, status: mediaStatus(c.env), jobs: await listMediaJobs(c.env.DB, id, 30) })
+})
+
+// POST /api/ads/content/media/image  body: { prompt, size? }
+adsContentRoutes.post('/content/media/image', rateLimit({ action: 'ads-media-image', max: 10, windowSec: 60 }), async (c) => {
+  const id = await adsId(c)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const meter = await meterDaily(c.env, id, 'media_per_day')
+  if (!meter.ok) return c.json({ success: false, error: meter.error, plan: meter.plan }, 429)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await generateImage(c.env, id, String(b.prompt || ''), { size: b.size ? String(b.size) : undefined })
+  if (!r.ok) return c.json({ success: false, error: r.error === 'NOT_CONFIGURED' ? '이미지 생성이 아직 설정되지 않았습니다' : r.error === 'DISABLED' ? '미디어 생성이 비활성화되어 있습니다' : r.error }, r.error === 'NOT_CONFIGURED' || r.error === 'DISABLED' ? 503 : 400)
+  return c.json({ success: true, url: r.url, jobId: r.jobId })
+})
+
+// POST /api/ads/content/media/voice  body: { text, voiceId? }
+adsContentRoutes.post('/content/media/voice', rateLimit({ action: 'ads-media-voice', max: 10, windowSec: 60 }), async (c) => {
+  const id = await adsId(c)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const meter = await meterDaily(c.env, id, 'media_per_day')
+  if (!meter.ok) return c.json({ success: false, error: meter.error, plan: meter.plan }, 429)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await generateVoice(c.env, id, String(b.text || ''), { voiceId: b.voiceId ? String(b.voiceId) : undefined })
+  if (!r.ok) return c.json({ success: false, error: r.error === 'NOT_CONFIGURED' ? '음성 생성이 아직 설정되지 않았습니다' : r.error === 'DISABLED' ? '미디어 생성이 비활성화되어 있습니다' : r.error }, r.error === 'NOT_CONFIGURED' || r.error === 'DISABLED' ? 503 : 400)
+  return c.json({ success: true, url: r.url, jobId: r.jobId })
+})
+
+// POST /api/ads/content/media/video  body: { prompt } — 비동기 잡 제출
+adsContentRoutes.post('/content/media/video', rateLimit({ action: 'ads-media-video', max: 6, windowSec: 60 }), async (c) => {
+  const id = await adsId(c)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const meter = await meterDaily(c.env, id, 'media_per_day')
+  if (!meter.ok) return c.json({ success: false, error: meter.error, plan: meter.plan }, 429)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await submitVideo(c.env, id, String(b.prompt || ''))
+  if (!r.ok) return c.json({ success: false, error: r.error === 'NOT_CONFIGURED' ? '영상 생성이 아직 설정되지 않았습니다' : r.error === 'DISABLED' ? '미디어 생성이 비활성화되어 있습니다' : r.error }, r.error === 'NOT_CONFIGURED' || r.error === 'DISABLED' ? 503 : 400)
+  return c.json({ success: true, jobId: r.jobId, status: r.status })
+})
+
+// GET /api/ads/content/media/video/:id — 영상 잡 상태 폴링
+adsContentRoutes.get('/content/media/video/:id', async (c) => {
+  const id = await adsId(c)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const jobId = Number(c.req.param('id'))
+  if (!Number.isFinite(jobId)) return c.json({ success: false, error: '잘못된 작업 ID' }, 400)
+  const r = await pollVideo(c.env, id, jobId)
+  if (!r.ok) return c.json({ success: false, error: r.error }, 404)
+  return c.json({ success: true, status: r.status, url: r.url })
 })
 
 export { adsContentRoutes }
