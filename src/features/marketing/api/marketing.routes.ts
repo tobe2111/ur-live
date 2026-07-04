@@ -24,6 +24,7 @@ import { naverOpenId, naverOpenSecret, resolveSearchAdCreds, requireAdsUnlocked 
 import { adsAuthRoutes } from './routes/auth.routes'
 import { adsSearchadRoutes } from './routes/searchad.routes'
 import { adsClickguardRoutes } from './routes/clickguard.routes'
+import { adsContentRoutes } from './routes/content.routes'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
 
@@ -478,5 +479,6 @@ marketingRoutes.delete('/price/watch', rateLimit({ action: 'ads-price-del', max:
 marketingRoutes.route('/', adsAuthRoutes)
 marketingRoutes.route('/', adsSearchadRoutes)
 marketingRoutes.route('/', adsClickguardRoutes)
+marketingRoutes.route('/', adsContentRoutes)
 
 export { marketingRoutes }

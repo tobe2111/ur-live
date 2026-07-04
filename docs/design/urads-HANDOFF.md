@@ -65,6 +65,11 @@
 | **수익화 엔타이틀먼트 뼈대** 🆕(2026-07-01, **집행 기본 OFF**) | `ads-entitlements.ts`(PLAN_LIMITS·checkCapacity·meterDaily — `ADS_BILLING_ENFORCED='true'` 일 때만 강제) + 어드민 플랜 셀렉터 | (규칙/사이트/순위/워치 생성 + AI 에 게이트) |
 | **자동입찰 섀도우 모드** 🆕(2026-07-01, 킬스위치 기본 OFF) | `autobid.ts` `runAutobidShadowAll`(dryRun 일일 기록, PUT 0 — `ADS_AUTOBID_SHADOW_ENABLED='true'`) + AutobidPanel 섹션 | GET `/searchad/autobid/shadow` + cron |
 | **온보딩 체크리스트** 🆕(2026-07-01) | `OnboardingChecklist.tsx`(연동→키워드→자동화 3스텝, 완료/닫기 시 자동 숨김) | (기존 status/saved/rules 재사용) |
+| **AI 콘텐츠 스튜디오** 🆕(2026-07-02) | `content-studio.ts`(생성/리퍼포징/답변/분석·순수파서) + `claude-client.ts`(공유 Claude 헬퍼) + `ContentStudioPanel.tsx`(5모드) | `/content/generate`·`repurpose`·`reply`·`analyze`·`save`·`list`·(DELETE)`content` |
+| ├ 리퍼포징(원문1→멀티팩) | 원문→요약+블로그+인스타+틱톡+광고문구+SEO **1회 호출**(JSON) | POST `/content/repurpose` |
+| ├ 생성(블로그/인스타/틱톡/광고문구) | 타입별 시스템프롬프트 + 네이버 소재 규격(제목15·설명45) 검증 | POST `/content/generate` |
+| ├ 댓글/리뷰 답변 초안 | 톤 선택(정중/친근/사과/간결) — 답변 초안(자동게시 X) | POST `/content/reply` |
+| └ 성과분석(콘텐츠 관점) | 실적(stats+효율)근거 메시지 분석 + 콘텐츠 방향 제안(연동 시) | POST `/content/analyze` |
 | 발주수집(**보류**) | `order-collection.ts` | `/orders/sync`·`/orders` |
 
 UI 패널: `MarketingDashboardPage`(허브+KPI) + `SearchAdPanel`·`AutobidPanel`·`WeeklyReportPanel`·`PricePanel`·`SourcingPanel`·`AlertsPanel`·`ClickGuardPanel`. 인증/계정: `MarketingLoginPage`·`MarketingSignupPage`·`MarketingAccountPage`(라이트, force-light-theme).
@@ -124,6 +129,7 @@ audit-gate(38 GREEN / file-size RED 1=선재 무관) 후 가드 미보유 4축(�
 ### B. 코드로 가능 — 남은 것(선택)
 - ~~랜딩 더미요소 라벨링~~ ✅(2026-07-01 — hero '예시 화면'·수치/후기 각주. 실데이터 *교체*는 라이브 검증 후 별도).
 - **전환 추적(진짜 ROAS)** — 부정클릭 픽셀 인프라 재활용해 구매완료 픽셀 → 실전환/매출 귀속(convAmt=0 계정 해소). 설계 필요(다음 후보 1순위).
+- **콘텐츠 스튜디오 미디어 확장(로드맵)** — 텍스트 파트(리퍼포징/생성/답변/분석)는 완료(2026-07-02). **숏폼 영상·AI 음성(더빙)·아바타·이미지 생성**은 외부 유료 API(ElevenLabs/HeyGen/Runway/이미지생성) + 키 + egress + 단가 정책 필요 → 대표 결정 후 provider 게이트웨이(“직접 fetch 금지” 철학, `toss-gateway` 패턴)로 배선. UI에 "준비 중" 자리 이미 있음.
 - **소재 A/B 관리** — 네이버 Ad(소재) write. / **다매체(구글/메타/카카오)** — 큰 통합, 후순위.
 - **유어딜 판매채널 번들** — `urads-yourdeal-channel-bundle.md` 설계 존재. ⚠️ 크로스서비스(분리 룰) — 정산·CS·소유권 대표 결정 선행.
 - 수익화 **집행**: 대표가 티어 가격 확정 → `PLAN_LIMITS` 숫자 조정 + `ADS_BILLING_ENFORCED='true'` + `/ads/pricing` 결제 연동(유어딜 Toss helper 호출).

@@ -1,5 +1,17 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-02 — 유어애즈 AI 콘텐츠 스튜디오 (대표 "블로그 자동작성·인스타/틱톡·광고문구·댓글답변·성과분석 서비스 구현" + "리퍼포징/멀티플랫폼 자동화" 아이디어)
+유어애즈에 AI 콘텐츠 스튜디오 신설(유어애즈 경계 안, 소비자 `blog-ai.ts`와 무관). 전부 **초안 생성(자동 게시 없음)** + AI 미터링(`content_per_day`, 집행은 `ADS_BILLING_ENFORCED` 게이트) + `ANTHROPIC_API_KEY` 필요(없으면 503).
+- **모듈**: `claude-client.ts`(공유 Claude 호출 + `parseJsonLoose` 관대 파서) · `content-studio.ts`(생성/리퍼포징/답변/분석 + 라이브러리 `ad_content` + 순수 파서 `normalizeAdCopy`/`extractHashtags`/`extractTitle`) · `routes/content.routes.ts`(`/content/*` 서브라우터, marketing.routes 마운트).
+- **① 리퍼포징(핵심)**: 원문 1개(유튜브 대본·블로그·제품설명) → 요약+블로그+인스타+틱톡+광고문구+SEO를 **1회 호출(JSON)**. "하나 올리면 여러 채널" 자동화의 텍스트 파트.
+- **② 생성**: 블로그(SEO 마크다운)·인스타(캡션+해시태그)·틱톡(훅+씬 대본+해시태그)·광고문구(네이버 소재 제목15·설명45자 규격 검증+변형4). 
+- **③ 댓글/리뷰 답변 초안**: 톤 4종(정중/친근/사과·해결/간결).
+- **④ 성과분석(콘텐츠 관점)**: 실적(accountStats+keywordEfficiency, 연동 시) 근거로 "잘 통하는 메시지" 분석 + 콘텐츠 방향 제안 → 생성으로 루프.
+- **UI**: `ContentStudioPanel.tsx` 5모드 탭(리퍼포징/생성/댓글답변/성과분석/보관함) + 복사/보관함저장. 셸 nav `sec-content` + 대시보드 LazyMount. 광고문구 글자수 배지(초과 빨강).
+- **엔타이틀먼트**: `PLAN_LIMITS`에 `content_per_day`(free 10/starter 50/pro 200) 추가.
+- **미착수(로드맵, 명시)**: 숏폼 영상·AI 음성/아바타·이미지 생성 = 외부 유료 API(ElevenLabs/HeyGen/Runway) + 키+egress+단가정책 → 대표 결정 후 provider 게이트웨이 배선. 패널에 "준비 중" 자리 존재.
+- 검증: tsc 0(config 경고 제외) · sql bind/table/not-null/pagination/theme 가드 0 · 신규 파일 전부 <600줄(content-studio 239·panel 226) · 단위테스트 `ads-content-studio`(파서/정규화/규격). ⚠️ vitest/worker-build CI 검증.
+
 ## ✅ 2026-07-01 — 유어애즈 기능 확장 6종 (대표 "모두 가장 이상적으로 진행해줘" — 전수감사 후속 개선/아이디어 실행)
 전수감사에서 제안한 개선(A)·신기능(B) 중 **유어애즈 경계 안 + 보유 데이터/인프라만 쓰는 것 전부** 구현. 크로스서비스(유어딜 판매채널 번들)는 분리 룰상 정산·CS·소유권 대표 결정 선행이라 설계 문서 상태 유지(미착수 명시).
 - **① 키워드 기회 발굴기(B1)** — `keyword-opportunities.ts` 순수 스코어러(`score = 월검색량 × 경쟁가중치(낮음1.0/중간0.55/높음0.25)`, 보유(자동입찰 규칙+저장 키워드+선택 시 그룹 등록 키워드) 공백무시 제외, 검색량<100 컷) + GET `/api/ads/keywords/opportunities?seed=` + `OpportunityPanel.tsx`(발굴→포트폴리오 저장 '기회' 태그) + 셸 nav 'sec-opportunity'. 단위테스트 6케이스.

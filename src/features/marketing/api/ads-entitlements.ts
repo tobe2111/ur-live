@@ -19,13 +19,14 @@ export interface PlanLimits {
   rank_targets: number       // 쇼핑 순위 추적 키워드 수
   price_watches: number      // 가격 모니터링 워치 수
   ai_per_day: number         // AI 마케터 호출/일
+  content_per_day: number    // AI 콘텐츠 스튜디오 생성/일(블로그·SNS·광고문구·답변·분석)
 }
 
 /** 한도 SSOT — 숫자만 바꾸면 전 게이트 반영(-1 = 무제한). ⚠️ 집행은 ADS_BILLING_ENFORCED 게이트. */
 export const PLAN_LIMITS: Record<AdsPlan, PlanLimits> = {
-  free: { autobid_rules: 10, clickguard_sites: 1, rank_targets: 20, price_watches: 10, ai_per_day: 5 },
-  starter: { autobid_rules: 100, clickguard_sites: 3, rank_targets: 100, price_watches: 50, ai_per_day: 30 },
-  pro: { autobid_rules: -1, clickguard_sites: -1, rank_targets: -1, price_watches: -1, ai_per_day: 200 },
+  free: { autobid_rules: 10, clickguard_sites: 1, rank_targets: 20, price_watches: 10, ai_per_day: 5, content_per_day: 10 },
+  starter: { autobid_rules: 100, clickguard_sites: 3, rank_targets: 100, price_watches: 50, ai_per_day: 30, content_per_day: 50 },
+  pro: { autobid_rules: -1, clickguard_sites: -1, rank_targets: -1, price_watches: -1, ai_per_day: 200, content_per_day: 200 },
 }
 
 const _schemaDone = new WeakSet<object>()

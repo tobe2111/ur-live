@@ -17,6 +17,7 @@ import RankPanel from './RankPanel'
 import TrendPanel from './TrendPanel'
 import SavedKeywordsPanel from './SavedKeywordsPanel'
 import OpportunityPanel from './OpportunityPanel'
+import ContentStudioPanel from './ContentStudioPanel'
 import OnboardingChecklist from './OnboardingChecklist'
 import LazyMount from './LazyMount'
 import PanelError from './PanelError'
@@ -450,6 +451,9 @@ export default function MarketingDashboardPage() {
 
       {/* 부정클릭 방지(Phase 1 — 탐지/리포트) */}
       {hasToken && <LazyMount id="sec-fraud"><ClickGuardPanel /></LazyMount>}
+
+      {/* AI 콘텐츠 스튜디오 (리퍼포징·생성·댓글답변·성과분석) */}
+      {hasToken && <LazyMount id="sec-content"><ContentStudioPanel /></LazyMount>}
 
       {/* AI 마케터 (Claude 진단/추천 — 읽기 전용) */}
       {hasToken && (
