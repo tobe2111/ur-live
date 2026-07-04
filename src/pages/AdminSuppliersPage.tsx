@@ -113,6 +113,19 @@ export default function AdminSuppliersPage() {
     } finally { setActionId(null) }
   }
 
+  // 🏥 2026-07-03 규제 몰 인허가 확인/해제 토글.
+  async function verifyLicense(s: SupplierRow, verified: boolean) {
+    setActionId(s.id)
+    try {
+      await api.post(`/api/admin/suppliers/${s.id}/license-verify`, { verified }, { headers: { Authorization: `Bearer ${token()}` } })
+      toast.success(verified ? '인허가 확인 처리되었습니다.' : '인허가 확인이 해제되었습니다.')
+      load()
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e.response?.data?.error || '처리에 실패했습니다.')
+    } finally { setActionId(null) }
+  }
+
   const filters = [
     { key: 'all', label: t('admin.suppliers.fAll', { defaultValue: '전체' }) },
     { key: 'pending', label: t('admin.suppliers.fPending', { defaultValue: '승인 대기' }) },
@@ -159,11 +172,16 @@ export default function AdminSuppliersPage() {
                       {s.representative && <>{t('admin.suppliers.ceo', { defaultValue: '대표자' })} {s.representative}{s.representative_phone ? ` (${s.representative_phone})` : ''} · </>}{s.email}{s.phone && <> · {s.phone}</>}
                       {s.business_number && <> · {t('admin.suppliers.bizNo', { defaultValue: '사업자' })} {s.business_number}</>}
                     </p>
-                    {/* 🏥 2026-07-03 규제 몰(의료용품) 인허가 신고번호 — 승인 전 검토용. */}
+                    {/* 🏥 2026-07-03 규제 몰(의료용품) 인허가 신고번호 — 승인 전 검토용 + 확인 토글. */}
                     {s.license_no && (
-                      <p className="text-xs mt-0.5 font-semibold text-sky-700">
-                        🏥 인허가 신고번호: {s.license_no}
-                        {s.license_verified ? <span className="ml-1 text-emerald-600">· 확인됨</span> : <span className="ml-1 text-amber-600">· 미확인</span>}
+                      <p className="text-xs mt-0.5 font-semibold text-sky-700 flex items-center gap-2 flex-wrap">
+                        <span>🏥 인허가 신고번호: {s.license_no}
+                          {s.license_verified ? <span className="ml-1 text-emerald-600">· 확인됨</span> : <span className="ml-1 text-amber-600">· 미확인</span>}
+                        </span>
+                        <button type="button" disabled={busy} onClick={() => verifyLicense(s, !s.license_verified)}
+                          className={`px-2 py-0.5 rounded-md border text-[11px] font-semibold ${s.license_verified ? 'border-gray-300 text-gray-500 hover:bg-gray-50' : 'border-emerald-300 text-emerald-700 hover:bg-emerald-50'}`}>
+                          {s.license_verified ? '확인 해제' : '확인 처리'}
+                        </button>
                       </p>
                     )}
                     {(s.manager_name || s.manager_phone || s.manager_email) && (
