@@ -867,6 +867,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.mall_id', sql: "ALTER TABLE sellers ADD COLUMN mall_id INTEGER DEFAULT 1" },
     { desc: 'suppliers.mall_id', sql: "ALTER TABLE suppliers ADD COLUMN mall_id INTEGER DEFAULT 1" },
     { desc: 'products.mall_id', sql: "ALTER TABLE products ADD COLUMN mall_id INTEGER DEFAULT 1" },
+    // 🏥 2026-07-03 (의료용품 도매몰): 규제 몰 게이트 컬럼(기존 몰 기본 0/NULL = 무영향).
+    { desc: 'wholesale_malls.requires_license', sql: "ALTER TABLE wholesale_malls ADD COLUMN requires_license INTEGER DEFAULT 0" },
+    { desc: 'wholesale_malls.license_label', sql: "ALTER TABLE wholesale_malls ADD COLUMN license_label TEXT" },
     { desc: 'wholesale_banners.mall_id', sql: "ALTER TABLE wholesale_banners ADD COLUMN mall_id INTEGER DEFAULT 1" },
     { desc: 'wholesale_proposal_tickets.mall_id', sql: "ALTER TABLE wholesale_proposal_tickets ADD COLUMN mall_id INTEGER DEFAULT 1" },
     // 🏬 2026-06-15 (sellpie형 게시판): 세부 카테고리(supply/codev/live/sns/report/inquiry). my-tickets/board SELECT 가 참조.
@@ -1882,12 +1885,16 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       deposit_account TEXT,
       commission_rate REAL,
       categories_json TEXT,
+      requires_license INTEGER DEFAULT 0,
+      license_label TEXT,
       active INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT (datetime('now'))
     )` },
     { name: 'idx_wholesale_malls_host', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_malls_host ON wholesale_malls(host) WHERE host IS NOT NULL` },
     { name: 'idx_wholesale_malls_active', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_malls_active ON wholesale_malls(active)` },
     { name: 'seed: wholesale_malls default (id=1)', sql: `INSERT OR IGNORE INTO wholesale_malls (id, slug, name, host, brand_name, brand_color, active, created_at) VALUES (1, 'default', '유통스타트', 'utongstart.com', '유통스타트', '#1f2937', 1, datetime('now'))` },
+    // 🏥 2026-07-03 (의료용품 도매몰): 메디스타트(id=2, slug='medi') 시드 — slug UNIQUE 로 멱등, host 없음(?mall=medi 접근).
+    { name: 'seed: wholesale_malls medi (id=2)', sql: `INSERT OR IGNORE INTO wholesale_malls (id, slug, name, host, brand_name, brand_color, categories_json, requires_license, license_label, active, created_at) VALUES (2, 'medi', '메디스타트', NULL, '메디스타트', '#0ea5e9', '[{"id":"medical_device","label":"의료기기"},{"id":"hygiene","label":"위생용품"},{"id":"care","label":"간병용품"},{"id":"health","label":"건강용품"}]', 1, '의료기기 판매업 신고번호', 1, datetime('now'))` },
 
     // 🏭 2026-06-09 도매몰 메인 리디자인 Wave 2 — 메인 배너 캐러셀(어드민 CRUD).
     { name: 'wholesale_banners', sql: `CREATE TABLE IF NOT EXISTS wholesale_banners (

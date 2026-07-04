@@ -85,6 +85,9 @@ app.post('/', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall-cre
     const deposit_account = cleanText(body.deposit_account, 500)
     const commission_rate = Number.isFinite(Number(body.commission_rate)) ? Number(body.commission_rate) : null
     const categories_json = cleanText(body.categories_json, 4000)
+    // 🏥 2026-07-03 규제 몰 게이트 — 가입 시 인허가(신고번호) 필수 여부 + 필드 라벨.
+    const requires_license = Number(body.requires_license) === 1 ? 1 : 0
+    const license_label = cleanText(body.license_label, 80)
     const active = Number(body.active) === 0 ? 0 : 1
 
     // slug 중복 차단 (UNIQUE 와 정합 — 친절한 메시지).
@@ -92,9 +95,9 @@ app.post('/', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall-cre
     if (dupe) return c.json({ success: false, error: '이미 사용 중인 slug 입니다' }, 409)
 
     const ins = await DB.prepare(
-      `INSERT INTO wholesale_malls (slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, active).run()
+      `INSERT INTO wholesale_malls (slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, active).run()
     const id = Number(ins.meta?.last_row_id)
     if (!id) return c.json({ success: false, error: '몰 생성 중 오류가 발생했습니다' }, 500)
     invalidateMallCache(DB)
@@ -130,6 +133,8 @@ app.patch('/:id', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall
     if ('deposit_account' in body) { sets.push('deposit_account = ?'); binds.push(cleanText(body.deposit_account, 500)) }
     if ('commission_rate' in body) { sets.push('commission_rate = ?'); binds.push(Number.isFinite(Number(body.commission_rate)) ? Number(body.commission_rate) : null) }
     if ('categories_json' in body) { sets.push('categories_json = ?'); binds.push(cleanText(body.categories_json, 4000)) }
+    if ('requires_license' in body) { sets.push('requires_license = ?'); binds.push(Number(body.requires_license) === 1 ? 1 : 0) }
+    if ('license_label' in body) { sets.push('license_label = ?'); binds.push(cleanText(body.license_label, 80)) }
     if ('active' in body) {
       const act = Number(body.active) === 0 ? 0 : 1
       // 🔒 INVARIANT 가드: 기본 몰(id=1)은 비활성 금지(전 데이터의 기본 몰 — 비활성 시 카탈로그/배너 전멸).
