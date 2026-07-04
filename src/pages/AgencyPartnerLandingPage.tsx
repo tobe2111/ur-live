@@ -14,8 +14,10 @@ export default function AgencyPartnerLandingPage() {
   const [avgGmv, setAvgGmv] = useState(2_000_000)
 
   const totalGmv = sellers * avgGmv
-  const ourCommission = totalGmv * 0.05
-  const agencyShare = ourCommission * 0.3  // 30% rebate
+  // 🏷️ 에이전시 수수료 = GMV × commission_rate% (실제 정산 SSOT: agencies.commission_rate, 기본 2%,
+  //   어드민이 에이전시별 조정 가능). 이전의 '5%×30%=1.5%' 표기는 실제 정산과 불일치라 폐기.
+  const AGENCY_RATE_PCT = 2
+  const agencyShare = totalGmv * AGENCY_RATE_PCT / 100
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
@@ -107,11 +109,7 @@ export default function AgencyPartnerLandingPage() {
                   <span className="font-bold">{(totalGmv / 100_000_000).toFixed(2)}억원</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">플랫폼 수수료 5%</span>
-                  <span>{(ourCommission / 10000).toFixed(0)}만원</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">에이전시 분배 30%</span>
+                  <span className="text-gray-500">에이전시 수수료 {AGENCY_RATE_PCT}%</span>
                   <span className="font-bold text-pink-600">{(agencyShare / 10000).toFixed(0)}만원</span>
                 </div>
                 <div className="bg-gradient-to-r from-gray-900 to-gray-700 rounded-2xl p-5 text-white text-center mt-4">
