@@ -40,7 +40,8 @@ app.get('/stats', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { id: agencyId } = c.get('agency') as { id: number }
 
-  const [sellerCount, orderStats, activeStreams, activeGroupBuys] = await Promise.all([
+  // 🏭 라이브커머스 영구 중단 — active_streams(진행 중 라이브 수) 죽은 지표 제거. 공구 중심 KPI 만.
+  const [sellerCount, orderStats, activeGroupBuys] = await Promise.all([
     c.env.DB.prepare('SELECT COUNT(*) AS cnt FROM agency_sellers WHERE agency_id = ?')
       .bind(agencyId).first<{ cnt: number }>(),
     // 🏪 2026-06-25 스코프 정합: revenue_30d 도 active_group_buys 와 동일하게 소속 셀러(agency_sellers)
@@ -60,12 +61,6 @@ app.get('/stats', async (c) => {
           OR EXISTS (SELECT 1 FROM agency_sellers ag WHERE ag.seller_id = o.seller_id AND ag.agency_id = ?)
         )
     `).bind(agencyId, agencyId).first<{ order_count: number; total_revenue: number; net_revenue: number }>(),
-    c.env.DB.prepare(`
-      SELECT COUNT(*) AS cnt
-      FROM live_streams ls
-      INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
-      WHERE ag.agency_id = ? AND ls.status = 'live'
-    `).bind(agencyId).first<{ cnt: number }>(),
     // 🏁 2026-06-17 (공구 집중): 진행중 공구(상품) 수 — 라이브 KPI 대체용.
     //   🏪 2026-06-17 스코프 정합: 소속 셀러(agency_sellers) **또는** 영입 매장(introduced_by_agency_id)
     //   의 공구를 모두 집계 — 영입 매장이 agency_sellers 에 없어도 그 가게 공구가 KPI 에 잡히도록(매장 영입 중심).
@@ -89,7 +84,6 @@ app.get('/stats', async (c) => {
       orders_30d: orderStats?.order_count ?? 0,
       revenue_30d: orderStats?.total_revenue ?? 0,
       net_revenue_30d: orderStats?.net_revenue ?? 0,
-      active_streams: activeStreams?.cnt ?? 0,
       active_group_buys: activeGroupBuys?.cnt ?? 0,
     },
   })
@@ -121,7 +115,8 @@ app.get('/stats/kpi', async (c) => {
     new Date().getUTCDate()
   )).toISOString()
 
-  const [totalSellersRow, diamondRow, liveStatsRow, newTodayRow] = await Promise.all([
+  // 🏭 라이브커머스 영구 중단 — 라이브 진행률/유효라이브/후원(donations) 죽은 KPI 제거. 매출·셀러·영입만.
+  const [totalSellersRow, revenueRow, newTodayRow] = await Promise.all([
     // 1) 총 소속 활성 셀러 수
     c.env.DB.prepare(`
       SELECT COUNT(DISTINCT ag.seller_id) AS total
@@ -130,38 +125,15 @@ app.get('/stats/kpi', async (c) => {
       WHERE ag.agency_id = ? AND COALESCE(s.is_active, 1) = 1
     `).bind(agencyId).first<{ total: number }>(),
 
-    // 2) 다이아몬드 (= 매출 + 후원) 30일 누적
+    // 2) 30일 누적 매출
     c.env.DB.prepare(`
-      SELECT
-        COALESCE((SELECT SUM(o.total_amount)
-          FROM orders o
-          INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
-          WHERE ag.agency_id = ? AND o.status IN ('PAID','DONE') AND o.created_at >= ?), 0) AS revenue,
-        COALESCE((SELECT SUM(d.amount)
-          FROM donations d
-          INNER JOIN agency_sellers ag ON ag.seller_id = d.seller_id
-          WHERE ag.agency_id = ? AND d.payment_status = 'approved' AND d.created_at >= ?), 0) AS donations
-    `).bind(agencyId, since, agencyId, since).first<{ revenue: number; donations: number }>(),
+      SELECT COALESCE(SUM(o.total_amount), 0) AS revenue
+      FROM orders o
+      INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
+      WHERE ag.agency_id = ? AND o.status IN ('PAID','DONE') AND o.created_at >= ?
+    `).bind(agencyId, since).first<{ revenue: number }>(),
 
-    // 3) 라이브 진행 통계 (period 기준)
-    //    - active: started_at 이 있는 라이브 1회 이상 셀러
-    //    - effective: 종료 시각 - 시작 시각 >= 60분
-    c.env.DB.prepare(`
-      SELECT
-        COUNT(DISTINCT ls.seller_id) AS active_count,
-        COUNT(DISTINCT CASE
-          WHEN ls.ended_at IS NOT NULL
-            AND (julianday(ls.ended_at) - julianday(ls.started_at)) * 1440 >= 60
-          THEN ls.seller_id
-        END) AS effective_count
-      FROM live_streams ls
-      INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
-      WHERE ag.agency_id = ?
-        AND ls.created_at >= ?
-        AND ls.status IN ('live','ended')
-    `).bind(agencyId, since).first<{ active_count: number; effective_count: number }>(),
-
-    // 4) 오늘 매니지먼트 관계 시작 (agency_sellers 의 created_at)
+    // 3) 오늘 매니지먼트 관계 시작 (agency_sellers 의 created_at)
     //    실제 컬럼이 없을 수 있어 try/catch 로 감쌈 (구 스키마 호환)
     c.env.DB.prepare(`
       SELECT COUNT(*) AS cnt
@@ -172,23 +144,12 @@ app.get('/stats/kpi', async (c) => {
   ])
 
   const totalSellers = totalSellersRow?.total ?? 0
-  const activeCount = liveStatsRow?.active_count ?? 0
-  const effectiveCount = liveStatsRow?.effective_count ?? 0
-  const diamondTotal = (diamondRow?.revenue ?? 0) + (diamondRow?.donations ?? 0)
 
   return c.json({
     success: true,
     data: {
-      // 30일 누적 매출 + 후원 (= 다이아몬드 등가)
-      diamond_total: diamondTotal,
-      // 라이브 진행 셀러 비율 (총 소속 셀러 대비)
-      live_rate: totalSellers > 0 ? Math.round((activeCount / totalSellers) * 1000) / 10 : 0,
-      // 1시간 이상 라이브 진행 셀러 비율
-      effective_live_rate: totalSellers > 0 ? Math.round((effectiveCount / totalSellers) * 1000) / 10 : 0,
-      // 활성 라이브 크리에이터 수 (탈퇴/비활성 제외)
-      active_creators: activeCount,
-      // 유효 활성 크리에이터 수 (1시간 이상)
-      effective_active_creators: effectiveCount,
+      // 30일 누적 매출
+      revenue_total: revenueRow?.revenue ?? 0,
       // 오늘 영입한 셀러 수
       new_creators_today: newTodayRow?.cnt ?? 0,
       // 메타
@@ -253,7 +214,8 @@ app.get('/stats/realtime', async (c) => {
   const todayStart = new Date(kstMidnight.getTime() - kstOffsetMs).toISOString()
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString()
 
-  const [today, lastHour, activeStreams, todayViewers] = await Promise.all([
+  // 🏭 라이브커머스 영구 중단 — 실시간 라이브/시청자 집계 죽은 블록 제거. 매출/주문 실시간만.
+  const [today, lastHour] = await Promise.all([
     c.env.DB.prepare(`
       SELECT
         COUNT(*) AS order_count,
@@ -271,20 +233,6 @@ app.get('/stats/realtime', async (c) => {
       INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
       WHERE ag.agency_id = ? AND o.status IN ('PAID','DONE') AND o.created_at >= ?
     `).bind(agencyId, oneHourAgo).first<{ order_count: number; revenue: number }>(),
-    c.env.DB.prepare(`
-      SELECT
-        COUNT(*) AS live_count,
-        COALESCE(SUM(ls.current_viewers), 0) AS total_viewers
-      FROM live_streams ls
-      INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
-      WHERE ag.agency_id = ? AND ls.status = 'live'
-    `).bind(agencyId).first<{ live_count: number; total_viewers: number }>(),
-    c.env.DB.prepare(`
-      SELECT COALESCE(SUM(ls.peak_viewers), 0) AS peak_today
-      FROM live_streams ls
-      INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
-      WHERE ag.agency_id = ? AND ls.created_at >= ?
-    `).bind(agencyId, todayStart).first<{ peak_today: number }>().catch(() => ({ peak_today: 0 })),
   ])
 
   const data = {
@@ -297,11 +245,6 @@ app.get('/stats/realtime', async (c) => {
     last_hour: {
       orders: lastHour?.order_count ?? 0,
       revenue: lastHour?.revenue ?? 0,
-    },
-    streams: {
-      live_count: activeStreams?.live_count ?? 0,
-      current_viewers: activeStreams?.total_viewers ?? 0,
-      peak_today: todayViewers?.peak_today ?? 0,
     },
   }
 
@@ -324,8 +267,8 @@ app.get('/stats/batch', async (c) => {
   const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
   const since = new Date(Date.now() - days * 86400_000).toISOString()
 
-  const [orderStats, streamStats] = await Promise.all([
-    c.env.DB.prepare(`
+  // 🏭 라이브커머스 영구 중단 — 셀러별 라이브/시청자 집계(streamStats) 죽은 쿼리 제거. 주문/매출만.
+  const orderStats = await c.env.DB.prepare(`
       SELECT
         o.seller_id,
         COUNT(*) AS order_count,
@@ -335,26 +278,12 @@ app.get('/stats/batch', async (c) => {
       INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
       WHERE ag.agency_id = ? AND o.status IN ('PAID','DONE') AND o.created_at >= ?
       GROUP BY o.seller_id
-    `).bind(agencyId, since).all<{ seller_id: number; order_count: number; revenue: number; net_revenue: number }>(),
-    c.env.DB.prepare(`
-      SELECT
-        ls.seller_id,
-        COUNT(*) AS stream_count,
-        COALESCE(SUM(ls.current_viewers), 0) AS total_viewers
-      FROM live_streams ls
-      INNER JOIN agency_sellers ag ON ag.seller_id = ls.seller_id
-      WHERE ag.agency_id = ? AND ls.created_at >= ?
-      GROUP BY ls.seller_id
-    `).bind(agencyId, since).all<{ seller_id: number; stream_count: number; total_viewers: number }>(),
-  ])
+    `).bind(agencyId, since).all<{ seller_id: number; order_count: number; revenue: number; net_revenue: number }>()
 
   const orders: Record<number, { order_count: number; revenue: number; net_revenue: number }> = {}
   for (const r of orderStats.results) orders[r.seller_id] = r
 
-  const streams: Record<number, { stream_count: number; total_viewers: number }> = {}
-  for (const r of streamStats.results) streams[r.seller_id] = r
-
-  return c.json({ success: true, data: { orders, streams, period } })
+  return c.json({ success: true, data: { orders, period } })
 })
 
 // 🛡️ 2026-05-19: KT Alpha (기프티쇼) voucher 발송 통계 — 담당 셀러 단위.

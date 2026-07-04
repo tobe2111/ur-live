@@ -210,19 +210,17 @@ app.get('/sellers/compare', async (c: AgencyCtx) => {
   const agencyId = c.get('agency').id
   const period = c.req.query('period') || '30'
 
+  // 🏭 라이브커머스 영구 중단 — live_count/ended_streams 죽은 컬럼 + live_streams JOIN 제거. 주문/매출/공구만.
   const { results } = await c.env.DB.prepare(`
     SELECT s.id, s.name, s.business_name,
       COUNT(DISTINCT o.id) AS order_count,
-      COALESCE(SUM(CASE WHEN o.status IN ('PAID','DONE') THEN o.total_amount END), 0) AS revenue,
-      COUNT(DISTINCT CASE WHEN ls.status = 'live' THEN ls.id END) AS live_count,
-      COUNT(DISTINCT CASE WHEN ls.status = 'ended' THEN ls.id END) AS ended_streams
+      COALESCE(SUM(CASE WHEN o.status IN ('PAID','DONE') THEN o.total_amount END), 0) AS revenue
     FROM agency_sellers ag
     JOIN sellers s ON ag.seller_id = s.id
     LEFT JOIN orders o ON o.seller_id = s.id AND o.created_at > datetime('now', '-' || ? || ' days')
-    LEFT JOIN live_streams ls ON ls.seller_id = s.id AND ls.created_at > datetime('now', '-' || ? || ' days')
     WHERE ag.agency_id = ?
     GROUP BY s.id, s.name ORDER BY revenue DESC
-  `).bind(period, period, agencyId).all()
+  `).bind(period, agencyId).all()
 
   // Fetch voucher usage stats per seller
   const { results: voucherStats } = await c.env.DB.prepare(`

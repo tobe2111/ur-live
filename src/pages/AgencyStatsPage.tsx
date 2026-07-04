@@ -16,13 +16,11 @@ interface Seller {
   status: string
   total_orders: number
   total_revenue: number
-  active_streams: number
 }
 
 interface SellerStat {
   seller: Seller
   orders: { order_count: number; revenue: number; net_revenue: number } | null
-  streams: { stream_count: number; total_viewers: number } | null
 }
 
 interface ComparisonRow {
@@ -31,8 +29,6 @@ interface ComparisonRow {
   business_name: string
   order_count: number
   revenue: number
-  live_count: number
-  ended_streams: number
   total_vouchers: number
   used_vouchers: number
   voucher_usage_rate: number
@@ -71,14 +67,13 @@ export default function AgencyStatsPage() {
   const commissionRate = profileQ.data ?? 2.0
 
   const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
-  const statsBatchQ = useApiQuery<{ orders: Record<number, { order_count: number; revenue: number; net_revenue: number }>; streams: Record<number, { stream_count: number; total_viewers: number }> } | null>(
+  const statsBatchQ = useApiQuery<{ orders: Record<number, { order_count: number; revenue: number; net_revenue: number }> } | null>(
     ['agency', 'stats-batch', period], '/api/agency/stats/batch',
     { params: { period }, enabled: sellers.length > 0, select: (r: any) => (r?.data || null) },
   )
   const stats: SellerStat[] = useMemo(() => sellers.map(s => ({
     seller: s,
     orders: statsBatchQ.data?.orders?.[s.id] ?? null,
-    streams: statsBatchQ.data?.streams?.[s.id] ?? null,
   })), [sellers, statsBatchQ.data])
   const loading = sellersQ.isLoading || (sellers.length > 0 && statsBatchQ.isLoading)
 
