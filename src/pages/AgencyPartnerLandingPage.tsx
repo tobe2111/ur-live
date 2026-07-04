@@ -16,13 +16,12 @@ export default function AgencyPartnerLandingPage() {
   const totalGmv = sellers * avgGmv
   const ourCommission = totalGmv * 0.05
   const agencyShare = ourCommission * 0.3  // 30% rebate
-  const monthlySubscription = 500_000  // 정액 50만
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
       <SEO
         title="유어딜 에이전시 파트너 — 셀러 데려오면 평생 GMV 분배"
-        description="공구 에이전시 / 마케팅 회사 / 인플루언서 MCN 을 위한 총판 파트너십. 자체 셀러 망 + 우리 인프라 = 30% 수수료 분배 + 월 정액 + 데이터 dashboard."
+        description="공구 에이전시 / 마케팅 회사 를 위한 총판 파트너십. 자체 셀러 망 + 우리 인프라 = 30% 수수료 분배 + 데이터 dashboard."
         url="/agency-partner"
         type="website"
       />
@@ -115,13 +114,9 @@ export default function AgencyPartnerLandingPage() {
                   <span className="text-gray-500">에이전시 분배 30%</span>
                   <span className="font-bold text-pink-600">{(agencyShare / 10000).toFixed(0)}만원</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">월 정액 구독료</span>
-                  <span className="font-bold text-pink-600">{(monthlySubscription / 10000).toFixed(0)}만원</span>
-                </div>
                 <div className="bg-gradient-to-r from-gray-900 to-gray-700 rounded-2xl p-5 text-white text-center mt-4">
                   <p className="text-sm opacity-90 mb-1">에이전시 월 수익</p>
-                  <p className="text-3xl font-extrabold">{((agencyShare + monthlySubscription) / 10000).toFixed(0)}<span className="text-xl font-bold">만원</span></p>
+                  <p className="text-3xl font-extrabold">{(agencyShare / 10000).toFixed(0)}<span className="text-xl font-bold">만원</span></p>
                 </div>
               </div>
             </div>
