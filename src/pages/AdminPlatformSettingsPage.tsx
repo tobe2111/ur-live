@@ -39,6 +39,33 @@ const SETTINGS_FIELDS = [
   { key: 'island_extra_fee', label: '도서산간 추가 배송비 (원)', default: '5000' },
 ]
 
+// 💸 2026-07-04 [INV-CB] 커미션 예산 아비터 스위치 (docs/design/commission-funding-restructure.md).
+//   전부 미설정=현행. 활성화는 staging 실결제 검증 후(설계 §5). select 형은 숫자 검증 제외.
+const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: string; options?: Array<{ value: string; label: string }>; hint?: string }> = [
+  {
+    key: 'commission_budget_enabled', label: '커미션 예산 캡 활성화', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행)' }, { value: 'true', label: 'ON — 예산 캡 적용' }],
+    hint: '3P 주문당 성장 커미션 총합 ≤ 수수료 − PG준비금 (비례 축소). ⚠️ staging 검증 후 ON',
+  },
+  {
+    key: 'pg_reserve_pct', label: 'PG 준비금 (%)', default: '2.5',
+    hint: '예산 = 플랫폼 수수료 − 결제액×이 비율',
+  },
+  {
+    key: 'promo_funding_source', label: '핀 추천(어필리에이트) 재원', default: 'platform',
+    options: [{ value: 'platform', label: '플랫폼 부담 (현행)' }, { value: 'owner', label: '주인(셀러) 부담 — promo 슬라이스' }],
+    hint: "'owner' 시 추천인 딜 적립은 유지, 같은 금액을 매장/셀러 정산에서 차감",
+  },
+  {
+    key: 'invite_reward_monthly_budget_krw', label: '초대 보상 월 예산 (딜, 0=무제한)', default: '0',
+    hint: '이달 지급 합계가 예산 초과 시 자동 skip',
+  },
+  {
+    key: 'agency_signup_bonus_monthly_budget_krw', label: '에이전시 signup 보너스 월 예산 (원, 0=무제한)', default: '0',
+    hint: '₩30,000 정액 보너스의 월 상한',
+  },
+]
+
 export default function AdminPlatformSettingsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -59,8 +86,8 @@ export default function AdminPlatformSettingsPage() {
     const n = Number(value)
     if (!Number.isFinite(n)) return `${key}: 숫자 값만 허용됩니다`
     if (n < 0) return `${key}: 0 이상이어야 합니다`
-    // 수수료/할인율 (%) — 0~100 사이
-    if (key.includes('rate') || key.includes('percent')) {
+    // 수수료/할인율 (%) — 0~100 사이 (pct 표기 포함 — pg_reserve_pct 등)
+    if (key.includes('rate') || key.includes('percent') || key.includes('pct')) {
       if (n < 0 || n > 100) return `${key}: 0~100 사이 값만 허용됩니다`
     }
     // 금액/딜 — 상한 1억
@@ -80,6 +107,16 @@ export default function AdminPlatformSettingsPage() {
       const v = settings[f.key] ?? f.default
       const err = validateSetting(f.key, v)
       if (err) { toast.error(err); return }
+    }
+    // [INV-CB] 커미션 예산 필드 — select 는 옵션값 검증, 숫자형만 validateSetting
+    for (const f of COMMISSION_BUDGET_FIELDS) {
+      const v = settings[f.key] ?? f.default
+      if (f.options) {
+        if (!f.options.some(o => o.value === v)) { toast.error(`${f.key}: 허용되지 않는 값`); return }
+      } else {
+        const err = validateSetting(f.key, v)
+        if (err) { toast.error(err); return }
+      }
     }
     setSaving(true)
     try {
@@ -109,6 +146,7 @@ export default function AdminPlatformSettingsPage() {
         <KtAlphaSystemSellerSection />
 
         {loading ? <DashboardLoading /> : (
+          <>
           <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
             {SETTINGS_FIELDS.map(f => (
               <div key={f.key} className="flex items-center justify-between px-5 py-4">
@@ -124,6 +162,43 @@ export default function AdminPlatformSettingsPage() {
               </div>
             ))}
           </div>
+
+          {/* 💸 [INV-CB] 커미션 예산 아비터 — 2026-07-04 재원 구조 개편. 활성화는 staging 검증 후. */}
+          <div className="bg-white rounded-xl border border-gray-200">
+            <div className="px-5 pt-4 pb-2">
+              <h3 className="text-sm font-bold text-gray-900">💸 커미션 예산 아비터 (INV-CB)</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                플랫폼 부담 성장 커미션(핀 추천·멀티티어·영입자·에이전시)의 주문당 총액 캡.
+                ⚠️ 활성화 전 staging 실결제 검증 필수 — 설계: commission-funding-restructure.md
+              </p>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {COMMISSION_BUDGET_FIELDS.map(f => (
+                <div key={f.key} className="flex items-center justify-between gap-4 px-5 py-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{f.label}</p>
+                    {f.hint && <p className="text-xs text-gray-400 mt-0.5">{f.hint}</p>}
+                  </div>
+                  {f.options ? (
+                    <select
+                      value={settings[f.key] ?? f.default}
+                      onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
+                      className="shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium bg-white"
+                    >
+                      {f.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      value={settings[f.key] ?? f.default}
+                      onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
+                      className="w-28 shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 text-right font-medium"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          </>
         )}
       </div>
     </AdminLayout>

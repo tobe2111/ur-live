@@ -34,6 +34,9 @@ import {
 
 type OrderLike = { id: number; seller_id?: number | null; total_amount?: number | null }
 
+/** 커미션 축 식별 키 — opts.only 필터용. */
+export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'agency_intro' | 'supplier'
+
 export interface CreditOrderCommissionsOpts {
   /** system-push 등 side-effect 용 env (affiliate 알림). 미전달 시 push 만 생략됨. */
   env?: unknown
@@ -41,6 +44,16 @@ export interface CreditOrderCommissionsOpts {
   buyerUserId?: string | null
   /** C1 핀 어필리에이트 intent 소비 — /confirm 만 true. */
   withAffiliate?: boolean
+  /**
+   * 💸 2026-07-04 (F7): 실행할 축 제한 — 미전달=전체(현행). 공구 딜결제(group-buy.routes)처럼
+   * 역사적으로 agency 만 적립하던 경로가 **행동 불변**으로 아비터(예산 캡)를 경유하기 위한 필터.
+   * 새 축을 여기 없이 추가하면 안 됨(전체 실행이 기본).
+   */
+  only?: CommissionAxis[]
+}
+
+function axisOn(opts: CreditOrderCommissionsOpts | undefined, axis: CommissionAxis): boolean {
+  return !opts?.only || opts.only.includes(axis)
 }
 
 async function readSetting(DB: D1Database, key: string): Promise<string | null> {
@@ -69,7 +82,7 @@ async function resolveOrderPlatformFeeKrw(DB: D1Database, order: OrderLike): Pro
 
 /** 게이트 OFF — 현행과 동일한 순서/인자로 위임 (2026-07-04 이전 동작 보존). */
 async function legacyCredit(DB: D1Database, orders: OrderLike[], opts?: CreditOrderCommissionsOpts): Promise<void> {
-  if (opts?.withAffiliate) {
+  if (opts?.withAffiliate && axisOn(opts, 'affiliate')) {
     try {
       const { creditAffiliateFromIntent } = await import('./affiliate-credit')
       for (const o of orders) {
@@ -77,25 +90,25 @@ async function legacyCredit(DB: D1Database, orders: OrderLike[], opts?: CreditOr
       }
     } catch { /* fail-soft */ }
   }
-  try {
+  if (axisOn(opts, 'agency_intro')) try {
     const { creditAgencyStoreIntroCommission } = await import('./agency-store-intro-commission')
     for (const o of orders) {
       await creditAgencyStoreIntroCommission(DB, { id: Number(o.id), seller_id: o.seller_id ?? null, total_amount: o.total_amount ?? null })
     }
   } catch { /* fail-soft */ }
-  try {
+  if (axisOn(opts, 'influencer_intro')) try {
     const { creditInfluencerStoreIntroCommission } = await import('./influencer-store-intro-commission')
     for (const o of orders) {
       await creditInfluencerStoreIntroCommission(DB, { id: Number(o.id), seller_id: o.seller_id ?? null, total_amount: o.total_amount ?? null })
     }
   } catch { /* fail-soft */ }
-  try {
+  if (axisOn(opts, 'supplier')) try {
     const { creditSupplierOnOrder } = await import('../../features/supply/api/supply-settlement')
     for (const o of orders) {
       await creditSupplierOnOrder(DB, Number(o.id))
     }
   } catch { /* fail-soft */ }
-  if (opts?.buyerUserId) {
+  if (opts?.buyerUserId && axisOn(opts, 'multi_tier')) {
     try {
       const { calculateMultiTierCommission } = await import('../../features/referral/api/referral-tree.routes')
       for (const o of orders) {
@@ -122,11 +135,11 @@ async function budgetedCreditForOrder(
 
   // 1P(플랫폼 직판): 수수료 슬라이스 없음 → 예산 정의 불가 → 현행 유지(C1/C2 만 해당 가능).
   if (!order.seller_id) {
-    if (opts?.withAffiliate) {
+    if (opts?.withAffiliate && axisOn(opts, 'affiliate')) {
       const { creditAffiliateFromIntent } = await import('./affiliate-credit')
       await creditAffiliateFromIntent(DB, opts?.env, oid).catch(() => {})
     }
-    if (opts?.buyerUserId) {
+    if (opts?.buyerUserId && axisOn(opts, 'multi_tier')) {
       const { calculateMultiTierCommission } = await import('../../features/referral/api/referral-tree.routes')
       await calculateMultiTierCommission(DB, oid, total, String(opts.buyerUserId)).catch(() => {})
     }
@@ -141,13 +154,13 @@ async function budgetedCreditForOrder(
   // ── 요청액 산출 (compute-only, read-only) ───────────────────────────────
   const requests: CommissionRequest[] = []
   let affReq = 0
-  if (opts?.withAffiliate) {
+  if (opts?.withAffiliate && axisOn(opts, 'affiliate')) {
     affReq = await peekAffiliateIntentRequest(DB, oid).catch(() => 0)
     // promo owner-펀딩이면 C1 은 셀러 부담(promo 슬라이스) → 플랫폼 예산 대상 아님.
     if (affReq > 0 && !promoOwnerFunded) requests.push({ key: 'affiliate', amountKrw: affReq })
   }
   let mtReq = 0
-  if (opts?.buyerUserId && affReq === 0) {
+  if (opts?.buyerUserId && affReq === 0 && axisOn(opts, 'multi_tier')) {
     // C1↔C2 상호배타(기존 dedup 규칙 계승) — C1 요청이 있으면 C2 는 시도 자체를 안 함.
     try {
       const entries = await computeMultiTierEntries(DB, oid, total, String(opts.buyerUserId))
@@ -155,9 +168,9 @@ async function budgetedCreditForOrder(
     } catch { mtReq = 0 }
     if (mtReq > 0) requests.push({ key: 'multi_tier', amountKrw: mtReq })
   }
-  const infReq = await computeInfluencerStoreIntroRequest(DB, order)
+  const infReq = axisOn(opts, 'influencer_intro') ? await computeInfluencerStoreIntroRequest(DB, order) : 0
   if (infReq > 0) requests.push({ key: 'influencer_intro', amountKrw: infReq })
-  const agReq = await computeAgencyStoreIntroRequest(DB, order)
+  const agReq = axisOn(opts, 'agency_intro') ? await computeAgencyStoreIntroRequest(DB, order) : 0
   if (agReq > 0) requests.push({ key: 'agency_intro', amountKrw: agReq })
 
   // ── 예산 배분 ([INV-CB]) ────────────────────────────────────────────────
@@ -184,8 +197,8 @@ async function budgetedCreditForOrder(
   }
   // C3/C4 는 요청 0(부적격)이어도 호출 — helper 자체가 안전 skip 하고, C4 는 signup 보너스
   // (월예산 캡, 거래 예산 밖 정액)를 독립 처리해야 하므로 항상 통과시킨다.
-  await creditInfluencerStoreIntroCommission(DB, order, { amountOverride: granted('influencer_intro') }).catch(() => {})
-  await creditAgencyStoreIntroCommission(DB, order, { amountOverride: granted('agency_intro') }).catch(() => {})
+  if (axisOn(opts, 'influencer_intro')) await creditInfluencerStoreIntroCommission(DB, order, { amountOverride: granted('influencer_intro') }).catch(() => {})
+  if (axisOn(opts, 'agency_intro')) await creditAgencyStoreIntroCommission(DB, order, { amountOverride: granted('agency_intro') }).catch(() => {})
 }
 
 export async function creditOrderCommissions(
@@ -217,8 +230,8 @@ export async function creditOrderCommissions(
   for (const o of orders) {
     await budgetedCreditForOrder(DB, o, pgReservePct, promoOwnerFunded, opts).catch(() => { /* fail-soft — 다음 주문 계속 */ })
   }
-  // 공급자(B2B) 정산 — 플랫폼 부담 아님(예산 무관), 기존대로 항상.
-  try {
+  // 공급자(B2B) 정산 — 플랫폼 부담 아님(예산 무관), 기존대로 항상(only 필터만 존중).
+  if (axisOn(opts, 'supplier')) try {
     const { creditSupplierOnOrder } = await import('../../features/supply/api/supply-settlement')
     for (const o of orders) {
       await creditSupplierOnOrder(DB, Number(o.id))
