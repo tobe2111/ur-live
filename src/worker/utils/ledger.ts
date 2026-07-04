@@ -230,6 +230,24 @@ export async function recordAgencyCommissionShare(
     return { agency_id: null, amount: 0 }
   }
 
+  // 💸 2026-07-04 [INV-CB-DEDUP] (F2 이중 커미션 수정 — commission-funding-restructure.md):
+  //   같은 구매에 결제확정 시 GMV 커미션(agency_store_intro_commissions sales_commission, 아비터 캡 대상)이
+  //   이미 적립됐으면 이 사용시점 셰어(platform_fee 30%)는 **skip** — 두 시스템이 같은 에이전시에
+  //   같은 주문으로 이중 적립(최대 GMV 3.5% > 플랫폼 수수료)하던 구조적 누수 차단.
+  //   확정 커미션이 없을 때(영입 시점이 구매 후 등)만 이 레거시 셰어가 단독 지급(단일-지급 보장).
+  try {
+    const v = await DB.prepare('SELECT order_id FROM vouchers WHERE id = ?')
+      .bind(params.voucher_id).first<{ order_id: number | null }>().catch(() => null)
+    if (v?.order_id) {
+      const dup = await DB.prepare(
+        `SELECT id FROM agency_store_intro_commissions
+          WHERE order_id = ? AND agency_id = ? AND type = 'sales_commission'
+            AND COALESCE(status, 'pending') != 'cancelled' LIMIT 1`,
+      ).bind(v.order_id, seller.introduced_by_agency_id).first().catch(() => null)
+      if (dup) return { agency_id: seller.introduced_by_agency_id, amount: 0 }
+    }
+  } catch { /* dedup 조회 실패 → 기존 동작(지급) — 멱등 ref 가 재실행 이중은 막음 */ }
+
   // 분배 비율 (platform_settings)
   let sharePct = 0.30  // default 30%
   try {
@@ -360,6 +378,22 @@ export async function recordIntroductionCommissionShare(
   if (seller.referral_bonus_until && new Date(seller.referral_bonus_until) < new Date()) {
     return { influencer_id: null, amount: 0 }
   }
+
+  // 💸 2026-07-04 [INV-CB-DEDUP] (F2 이중 커미션 수정): 같은 구매에 결제확정 시 영입 커미션
+  //   (influencer_attributions source='store_intro', 아비터 캡 대상)이 이미 적립됐으면 이 사용시점
+  //   셰어(platform_fee 20%)는 skip — 같은 크리에이터에 같은 주문 이중 적립(GMV 2.5%) 차단.
+  try {
+    const v = await DB.prepare('SELECT order_id FROM vouchers WHERE id = ?')
+      .bind(params.voucher_id).first<{ order_id: number | null }>().catch(() => null)
+    if (v?.order_id) {
+      const dup = await DB.prepare(
+        `SELECT id FROM influencer_attributions
+          WHERE order_id = ? AND influencer_id = ? AND source = 'store_intro'
+            AND COALESCE(status, 'pending') NOT IN ('clawed_back', 'cancelled') LIMIT 1`,
+      ).bind(v.order_id, String(seller.introduced_by_influencer_id)).first().catch(() => null)
+      if (dup) return { influencer_id: seller.introduced_by_influencer_id, amount: 0 }
+    }
+  } catch { /* dedup 조회 실패 → 기존 동작(지급) — 멱등 ref 가 재실행 이중은 막음 */ }
 
   // 분배 비율 (platform_settings.influencer_intro_share_pct, default 20%)
   let sharePct = 0.20

@@ -159,3 +159,14 @@ agency_signup_bonus_monthly_budget_krw 미설정=무제한
   신규 발견 F5(숙소 referral 직접 INSERT — 예산 밖, 가드 베이스라인 등재) ·
   F6(/track 경로 — 동일) · F7(공구 딜결제 agency credit 2곳 — 래칫 등재, 통합은 별도 결정).
   ⚠️ 활성화는 staging 실결제 검증 후(§5 2단계).
+- 2026-07-04 **후속 3건** (같은 세션 "더 진행해줘 이상적으로"):
+  ① **F2 확정+수정**: 이용권 이중 커미션 실재 확인 — 영입 매장 이용권 1건에 에이전시(확정 GMV 1~2% +
+  사용시 수수료 30%=GMV 1.5%)·크리에이터(확정 1.5% + 사용시 수수료 20%=GMV 1.0%) 이중 적립,
+  합계 최대 GMV 6% > 수수료 5%. 수정: `ledger.ts` 사용시점 셰어 2함수에 **주문 단위 dedup**
+  ([INV-CB-DEDUP] — 확정 시 적립이 있으면 skip, 없으면 레거시 셰어 단독 지급 = 단일-지급 보장).
+  가드 R3(마커 2개 존재) 추가 — dedup 제거 회귀 차단.
+  ② **F7 봉합**: 오케스트레이터에 `only` 축 필터 additive → group-buy 딜/카드 결제의 agency 적립
+  2곳을 `creditOrderCommissions(..., { only: ['agency_intro'] })` 경유로(행동 불변 + 게이트 ON 시
+  예산 캡 적용). 가드 R1 베이스라인에서 group-buy 예외 제거(예외 1곳 감소).
+  ③ **어드민 스위치 UI**: `/admin/platform-settings` 에 [INV-CB] 섹션 — 5키 전부 편집 가능
+  (select 2종 + 숫자 3종, staging 경고 문구 포함). 서버는 제네릭 upsert 라 무수정.

@@ -19,7 +19,7 @@
  *      **베이스라인 파일 목록**만. 새 파일의 직접 INSERT 금지(SSOT 헬퍼 경유).
  *
  * 기존 예외(베이스라인 — 카운트 래칫):
- *  - group-buy.routes.ts: 공구 딜결제의 agency credit 2곳 (2026-05-31 배선 — 설계 F7, 통합은 별도 결정)
+ *  - (해소됨 2026-07-04) group-buy.routes.ts 의 agency credit 2곳 → F7 로 오케스트레이터(only 필터) 경유
  *  - affiliate.routes.ts: /track 경로의 creditAffiliateForOrder (설계 F6)
  *  - payment.routes.ts: 숙소(stay) referral 의 affiliate_earnings 직접 INSERT (설계 F5)
  *  - group-buy helpers.ts / group-buy.routes.ts: 이용권 인플 attribution INSERT (별개 source)
@@ -79,7 +79,6 @@ const R1_ALLOW = {
     calculateMultiTierCommission: '*', creditAffiliateFromIntent: '*',
   },
   // 기존 예외 (래칫 — 늘어나면 위반)
-  'src/features/group-buy/api/group-buy.routes.ts': { creditAgencyStoreIntroCommission: 4 }, // import 2 + 호출 2
   'src/features/affiliate/api/affiliate.routes.ts': { creditAffiliateForOrder: 2 },          // import 1 + /track 1
 }
 
@@ -132,6 +131,22 @@ for (const file of files) {
       `   - [R2] ${rel} — ${table} 직접 INSERT — SSOT 적립 헬퍼(+오케스트레이터) 경유 필수`,
     )
   }
+}
+
+// ── R3: F2 이중 커미션 dedup 회귀 방지 ───────────────────────────────────────
+//   ledger.ts 의 사용시점 셰어 2함수(recordAgencyCommissionShare/recordIntroductionCommissionShare)는
+//   결제확정 시 GMV 커미션과의 주문 단위 dedup([INV-CB-DEDUP] 마커 블록)을 반드시 보유해야 함.
+//   제거되면 같은 주문에 두 시스템이 이중 적립(최대 GMV 6% > 수수료 5%) — 2026-07-04 F2 실감사 확정.
+try {
+  const ledgerSrc = readFileSync('src/worker/utils/ledger.ts', 'utf8')
+  const dedupCount = (ledgerSrc.match(/\[INV-CB-DEDUP\]/g) || []).length
+  if (dedupCount < 2) {
+    violations.push(
+      `   - [R3] src/worker/utils/ledger.ts — [INV-CB-DEDUP] 마커 ${dedupCount}개(<2) — 사용시점 셰어의 확정-커미션 dedup 이 제거됨(이중 적립 회귀)`,
+    )
+  }
+} catch {
+  violations.push('   - [R3] src/worker/utils/ledger.ts 읽기 실패')
 }
 
 if (violations.length) {
