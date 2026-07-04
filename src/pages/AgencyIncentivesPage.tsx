@@ -10,7 +10,7 @@ import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatNumber } from '@/utils/format'
 
-type Metric = 'sales' | 'rating' | 'streams' | 'orders' | 'viewers'
+type Metric = 'sales' | 'rating' | 'orders'
 
 interface Rule {
   id: number
@@ -57,12 +57,10 @@ interface Preview {
 const METRIC_LABEL_KEYS: Record<Metric, string> = {
   sales: 'agency.incentives.metricSales',
   rating: 'agency.incentives.metricRating',
-  streams: 'agency.incentives.metricStreams',
   orders: 'agency.incentives.metricOrders',
-  viewers: 'agency.incentives.metricViewers',
 }
 
-const METRIC_OPTIONS: Metric[] = ['sales', 'rating', 'streams', 'orders', 'viewers']
+const METRIC_OPTIONS: Metric[] = ['sales', 'rating', 'orders']
 
 const ymNow = () => {
   const d = new Date()
@@ -142,7 +140,7 @@ export default function AgencyIncentivesPage() {
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('agency.incentives.engineTitle', { defaultValue: '인센티브 규칙 엔진' })}
-          subtitle={t('agency.incentives.engineSubtitle', { defaultValue: '매출/평점/라이브 등 KPI 기반 셀러 보너스 자동 계산' })}
+          subtitle={t('agency.incentives.engineSubtitle', { defaultValue: '매출/평점/주문 등 KPI 기반 셀러 보너스 자동 계산' })}
           icon={<Award className="h-5 w-5" />}
         />
 

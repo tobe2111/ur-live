@@ -381,7 +381,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
   )
 
   return (
-    <div className="agency-light-theme flex h-screen overflow-hidden bg-[#F4F5F7] text-gray-900">
+    <div className="agency-light-theme flex h-[100dvh] overflow-hidden bg-[#F4F5F7] text-gray-900">
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setSidebarOpen(false)} />
       )}

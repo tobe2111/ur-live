@@ -86,7 +86,7 @@ app.get('/', async (c) => {
       FROM agency_sellers ag_s
       JOIN orders o ON o.seller_id = ag_s.seller_id
       WHERE ag_s.agency_id = ?
-        AND o.payment_status = 'approved'
+        AND o.status IN ('PAID','DONE')
         AND o.created_at >= ?
     `).bind(agency.id, startISO).first<{ revenue: number }>().catch(() => null);
     const totalRevenue = revRow?.revenue ?? 0;

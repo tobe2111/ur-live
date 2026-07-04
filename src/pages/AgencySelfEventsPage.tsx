@@ -93,13 +93,12 @@ export default function AgencySelfEventsPage() {
       <div className="p-6 space-y-6">
         <DashboardPageHeader
           title={t('agency.selfEvents.pageTitle', { defaultValue: '자사 이벤트 (매출 챌린지)' })}
-          subtitle={t('agency.selfEvents.pageSubtitle', { defaultValue: '셀러들이 참여하는 매출/라이브/시청자 챌린지. 달성 시 자동 보상 (딜)' })}
+          subtitle={t('agency.selfEvents.pageSubtitle', { defaultValue: '셀러들이 참여하는 매출 챌린지. 달성 시 자동 보상 (딜)' })}
           icon={<Trophy className="h-5 w-5" />}
         />
 
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-xs text-yellow-800">
           💡 <strong>팁</strong>: 짧은 기간 (1~4주) + 명확한 목표 + 적절한 보상 의 조합이 효과적.
-          TikTok 데이터: 이벤트 참여 셀러 매출 평균 60% 증가.
         </div>
 
         {/* 생성 폼 */}
@@ -141,8 +140,6 @@ export default function AgencySelfEventsPage() {
                 <select value={metric} onChange={(e) => setMetric(e.target.value as any)}
                   className="w-full text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900">
                   <option value="revenue">{t('agency.selfEvents.metricRevenue', { defaultValue: '매출 (딜)' })}</option>
-                  <option value="live_count">{t('agency.selfEvents.metricLiveCount', { defaultValue: '라이브 횟수' })}</option>
-                  <option value="viewer_peak">{t('agency.selfEvents.metricViewerPeak', { defaultValue: '피크 시청자' })}</option>
                 </select>
               </div>
               <div>

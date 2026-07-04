@@ -3,6 +3,7 @@
  */
 import { lazy } from 'react'
 import { Route, Navigate } from 'react-router-dom'
+import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 
 const AgencyLoginPage = lazy(() => import('@/pages/AgencyLoginPage'))
 const AgencyForgotPasswordPage = lazy(() => import('@/pages/AgencyForgotPasswordPage'))
@@ -45,11 +46,22 @@ const AgencyStaysPage = lazy(() => import('@/pages/AgencyStaysPage'))
 const AgencyRegisterBusinessPage = lazy(() => import('@/pages/AgencyRegisterBusinessPage'))
 const AgencyWaitingPage = lazy(() => import('@/pages/AgencyWaitingPage'))
 const AgencyGuidePage = lazy(() => import('@/pages/AgencyGuidePage'))
+const AgencyAcceptInvitePage = lazy(() => import('@/pages/AgencyAcceptInvitePage'))
 
 function AgencyAuthGuard({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('agency_token')
   if (!token) return <Navigate to="/agency/login" replace />
   return <>{children}</>
+}
+
+/**
+ * 🏭 라이브커머스 영구 중단 가드 — 라이브 전용 페이지(라이브 현황/방송 캘린더/라이브 캘린더/PK/노출 부스팅/자동 매칭)는
+ *   nav 에서 이미 숨겨졌지만 직접 URL 로는 접근 가능한 고아 라우트였음. LIVE_COMMERCE_SUSPENDED 면 대시보드로 리다이렉트.
+ *   코드/페이지는 보존(복원 가능) — 라우트 도달만 차단.
+ */
+function AgencyLiveGate({ children }: { children: React.ReactNode }) {
+  if (LIVE_COMMERCE_SUSPENDED) return <Navigate to="/agency" replace />
+  return <AgencyAuthGuard>{children}</AgencyAuthGuard>
 }
 
 export function AgencyRoutes() {
@@ -60,6 +72,7 @@ export function AgencyRoutes() {
       <Route path="/agency/register" element={<AgencyRegisterPage />} />
       <Route path="/agency/register/business" element={<AgencyRegisterBusinessPage />} />
       <Route path="/agency/waiting" element={<AgencyWaitingPage />} />
+      <Route path="/agency/accept-invite" element={<AgencyAcceptInvitePage />} />
       <Route path="/agency/forgot-password" element={<AgencyForgotPasswordPage />} />
       <Route path="/agency/reset-password" element={<AgencyResetPasswordPage />} />
       <Route path="/a/:slug" element={<AgencyPublicPage />} />
@@ -68,14 +81,14 @@ export function AgencyRoutes() {
       <Route path="/agency" element={<AgencyAuthGuard><AgencyPage /></AgencyAuthGuard>} />
       <Route path="/agency/sellers" element={<AgencyAuthGuard><AgencySellersPage /></AgencyAuthGuard>} />
       <Route path="/agency/orders" element={<AgencyAuthGuard><AgencyOrdersPage /></AgencyAuthGuard>} />
-      <Route path="/agency/streams" element={<AgencyAuthGuard><AgencyStreamsPage /></AgencyAuthGuard>} />
+      <Route path="/agency/streams" element={<AgencyLiveGate><AgencyStreamsPage /></AgencyLiveGate>} />
       <Route path="/agency/stats" element={<AgencyAuthGuard><AgencyStatsPage /></AgencyAuthGuard>} />
       <Route path="/agency/introduced-stores" element={<AgencyAuthGuard><AgencyIntroducedStoresPage /></AgencyAuthGuard>} />
       <Route path="/agency/guide" element={<AgencyAuthGuard><AgencyGuidePage /></AgencyAuthGuard>} />
       <Route path="/agency/settlements" element={<AgencyAuthGuard><AgencySettlementsPage /></AgencyAuthGuard>} />
       <Route path="/agency/ledger" element={<AgencyAuthGuard><MyLedgerPage /></AgencyAuthGuard>} />
       <Route path="/agency/ranking" element={<AgencyAuthGuard><AgencyRankingPage /></AgencyAuthGuard>} />
-      <Route path="/agency/schedule" element={<AgencyAuthGuard><AgencySchedulePage /></AgencyAuthGuard>} />
+      <Route path="/agency/schedule" element={<AgencyLiveGate><AgencySchedulePage /></AgencyLiveGate>} />
       <Route path="/agency/returns" element={<AgencyAuthGuard><AgencyReturnsPage /></AgencyAuthGuard>} />
       <Route path="/agency/sellers/:sellerId/products" element={<AgencyAuthGuard><AgencyProductsPage /></AgencyAuthGuard>} />
       <Route path="/agency/notices" element={<AgencyAuthGuard><AgencyNoticesPage /></AgencyAuthGuard>} />
@@ -87,13 +100,13 @@ export function AgencyRoutes() {
       <Route path="/agency/messages" element={<AgencyAuthGuard><AgencyMessagesPage /></AgencyAuthGuard>} />
       <Route path="/agency/coupons" element={<AgencyAuthGuard><AgencyCouponsPage /></AgencyAuthGuard>} />
       <Route path="/agency/members" element={<AgencyAuthGuard><AgencyMembersPage /></AgencyAuthGuard>} />
-      <Route path="/agency/calendar" element={<AgencyAuthGuard><AgencyCalendarPage /></AgencyAuthGuard>} />
+      <Route path="/agency/calendar" element={<AgencyLiveGate><AgencyCalendarPage /></AgencyLiveGate>} />
       <Route path="/agency/invites" element={<AgencyAuthGuard><AgencyInvitesPage /></AgencyAuthGuard>} />
-      <Route path="/agency/pk" element={<AgencyAuthGuard><AgencyPKBattlesPage /></AgencyAuthGuard>} />
+      <Route path="/agency/pk" element={<AgencyLiveGate><AgencyPKBattlesPage /></AgencyLiveGate>} />
       <Route path="/agency/transfers" element={<AgencyAuthGuard><AgencyTransfersPage /></AgencyAuthGuard>} />
-      <Route path="/agency/match-suggestions" element={<AgencyAuthGuard><AgencyMatchSuggestionsPage /></AgencyAuthGuard>} />
+      <Route path="/agency/match-suggestions" element={<AgencyLiveGate><AgencyMatchSuggestionsPage /></AgencyLiveGate>} />
       <Route path="/agency/events" element={<AgencyAuthGuard><AgencySelfEventsPage /></AgencyAuthGuard>} />
-      <Route path="/agency/promote-boosts" element={<AgencyAuthGuard><AgencyPromoteBoostsPage /></AgencyAuthGuard>} />
+      <Route path="/agency/promote-boosts" element={<AgencyLiveGate><AgencyPromoteBoostsPage /></AgencyLiveGate>} />
       <Route path="/agency/profile" element={<AgencyAuthGuard><AgencyProfilePage /></AgencyAuthGuard>} />
       <Route path="/agency/group-buy" element={<AgencyAuthGuard><AgencyGroupBuyPage /></AgencyAuthGuard>} />
       <Route path="/agency/stays" element={<AgencyAuthGuard><AgencyStaysPage /></AgencyAuthGuard>} />

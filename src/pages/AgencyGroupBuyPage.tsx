@@ -123,7 +123,7 @@ function MessagesModal({ groupBuy, headers, onClose }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col" style={{ height: '80vh', maxHeight: '600px' }} onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col" style={{ height: '80dvh', maxHeight: '600px' }} onClick={e => e.stopPropagation()}>
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] text-gray-500">{groupBuy.restaurant_name} · 협상 메시지</p>
@@ -133,7 +133,7 @@ function MessagesModal({ groupBuy, headers, onClose }: {
             <X className="w-5 h-5 text-gray-400" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-50">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2 bg-gray-50">
           {loading ? (
             <p className="text-center text-gray-400 text-sm py-6">불러오는 중...</p>
           ) : messages.length === 0 ? (
@@ -182,7 +182,7 @@ function generateContract(groupBuy: GroupBuy) {
         <tr><th>항목</th><th>내용</th></tr>
         <tr><td>식당명</td><td>${groupBuy.restaurant_name}</td></tr>
         <tr><td>확정 가격</td><td>${formatNumber(groupBuy.confirmed_price)}원</td></tr>
-        <tr><td>할인율</td><td>${groupBuy.confirmed_discount_percent}%</td></tr>
+        <tr><td>할인율</td><td>${groupBuy.confirmed_discount_percent ?? 0}%</td></tr>
         <tr><td>참여 인원</td><td>${groupBuy.participant_count}명</td></tr>
         <tr><td>총 거래액</td><td>${formatNumber(groupBuy.total_deposit_deals || 0)}딜</td></tr>
       </table>
@@ -385,7 +385,7 @@ export default function AgencyGroupBuyPage() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">{t('agency.groupBuy.loading', { defaultValue: '불러오는 중...' })}</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">{t('agency.groupBuy.loading', { defaultValue: '불러오는 중...' })}</td></tr>
               ) : groupBuys.length === 0 ? (
                 <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">{t('agency.groupBuy.empty', { defaultValue: '해당하는 공구가 없습니다.' })}</td></tr>
               ) : groupBuys.map(g => (

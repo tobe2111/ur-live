@@ -234,7 +234,7 @@ export default function AgencyIntroducedStoresPage() {
                       </div>
                       <div className="text-center">
                         <p className="text-[10px] text-gray-500">진행중 공구</p>
-                        <p className={`text-sm font-bold ${s.active_group_buys > 0 ? 'text-amber-600' : 'text-gray-300'}`}>{s.active_group_buys}</p>
+                        <p className={`text-sm font-bold ${(s.active_group_buys || 0) > 0 ? 'text-amber-600' : 'text-gray-300'}`}>{s.active_group_buys || 0}</p>
                         <p className="text-[10px] text-gray-400">개</p>
                       </div>
                       <div className="text-right">

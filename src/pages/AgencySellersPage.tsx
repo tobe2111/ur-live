@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
-import { Search, TrendingUp, ShoppingBag, Play, UserPlus, Copy, Link, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Search, TrendingUp, ShoppingBag, UserPlus, Copy, Link, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
 interface Seller {
@@ -212,20 +212,14 @@ export default function AgencySellersPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-semibold text-gray-900 truncate">{s.business_name || s.name}</p>
-                        {s.active_streams > 0 && (
-                          <span className="flex items-center gap-1 text-xs bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full flex-shrink-0">
-                            <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
-                            LIVE
-                          </span>
-                        )}
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5">{s.email}</p>
                     </div>
                     <div className="flex items-center gap-3 ml-3 flex-shrink-0">
                       <div className="text-right">
-                        <p className="text-xs font-semibold text-gray-900">{(s.total_revenue / 10000).toFixed(0)}만원</p>
-                        <p className="text-xs text-indigo-500 font-medium">수수료 {formatNumber(Math.round(s.total_revenue * (s.commission_rate || 2) / 100))}원</p>
-                        <p className="text-xs text-gray-400">{s.total_orders}건</p>
+                        <p className="text-xs font-semibold text-gray-900">{((s.total_revenue || 0) / 10000).toFixed(0)}만원</p>
+                        <p className="text-xs text-indigo-500 font-medium">수수료 {formatNumber(Math.round((s.total_revenue || 0) * (s.commission_rate || 2) / 100))}원</p>
+                        <p className="text-xs text-gray-400">{s.total_orders ?? 0}건</p>
                       </div>
                       <StatusBadge status={s.status} />
                     </div>
@@ -293,14 +287,6 @@ export default function AgencySellersPage() {
                       </p>
                       <p className="text-xs text-gray-400">원</p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Play className="w-3.5 h-3.5 text-rose-500" />
-                        <span className="text-xs text-gray-500">라이브</span>
-                      </div>
-                      <p className="text-lg font-bold text-gray-900">{sellerStats.streams?.stream_count ?? 0}</p>
-                      <p className="text-xs text-gray-400">회</p>
-                    </div>
                   </div>
 
                   <div className="bg-indigo-50 rounded-lg p-3">
@@ -309,10 +295,6 @@ export default function AgencySellersPage() {
                   </div>
 
                   <div className="space-y-1 text-xs text-gray-500">
-                    <div className="flex justify-between">
-                      <span>총 시청자</span>
-                      <span className="font-medium text-gray-700">{formatNumber(sellerStats.streams?.total_viewers ?? 0)}명</span>
-                    </div>
                     <div className="flex justify-between">
                       <span>가입일</span>
                       <span className="font-medium text-gray-700">{new Date(selected.created_at).toLocaleDateString('ko-KR')}</span>

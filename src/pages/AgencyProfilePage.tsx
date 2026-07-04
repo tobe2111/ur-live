@@ -106,7 +106,7 @@ export default function AgencyProfilePage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('agency.agencyProfile.commissionRate', { defaultValue: '수수료율' })}</label>
-            <p className="text-sm text-gray-900 font-bold">{profile?.commission_rate || 2}%</p>
+            <p className="text-sm text-gray-900 font-bold">{profile?.commission_rate ?? 2}%</p>
             <p className="text-xs text-gray-400">{t('agency.agencyProfile.commissionNote', { defaultValue: '수수료율은 관리자만 변경할 수 있습니다' })}</p>
           </div>
         </div>

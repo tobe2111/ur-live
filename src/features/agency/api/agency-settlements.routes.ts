@@ -49,7 +49,7 @@ app.get('/settlements', async (c) => {
       FROM orders o
       INNER JOIN agency_sellers ag ON ag.seller_id = o.seller_id
       LEFT JOIN sellers s ON s.id = o.seller_id
-      WHERE ag.agency_id = ? AND o.status IN ('delivered', 'DONE')
+      WHERE ag.agency_id = ? AND o.status IN ('PAID', 'DONE')
       ORDER BY o.created_at DESC LIMIT 100
     `).bind(agencyId).all()
 

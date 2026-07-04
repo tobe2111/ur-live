@@ -113,7 +113,7 @@ app.get('/stats/kpi', async (c) => {
   await ensureAgencyTables(c.env.DB)
   const { id: agencyId } = c.get('agency') as { id: number }
 
-  const period = parseInt(c.req.query('days') || '30')
+  const period = intParam(c.req.query('days'), 30)
   const since = new Date(Date.now() - period * 86400_000).toISOString()
   const todayStart = new Date(Date.UTC(
     new Date().getUTCFullYear(),

@@ -213,7 +213,7 @@ app.get('/sellers/compare', async (c: AgencyCtx) => {
   const { results } = await c.env.DB.prepare(`
     SELECT s.id, s.name, s.business_name,
       COUNT(DISTINCT o.id) AS order_count,
-      COALESCE(SUM(CASE WHEN o.status NOT IN ('CANCELLED','FAILED','REFUNDED') THEN o.total_amount END), 0) AS revenue,
+      COALESCE(SUM(CASE WHEN o.status IN ('PAID','DONE') THEN o.total_amount END), 0) AS revenue,
       COUNT(DISTINCT CASE WHEN ls.status = 'live' THEN ls.id END) AS live_count,
       COUNT(DISTINCT CASE WHEN ls.status = 'ended' THEN ls.id END) AS ended_streams
     FROM agency_sellers ag

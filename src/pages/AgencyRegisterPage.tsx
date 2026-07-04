@@ -96,11 +96,11 @@ export default function AgencyRegisterPage() {
             {t('agency.agencyRegister.brandingTitle', { defaultValue: '에이전시 파트너로 함께 성장하세요' })}
           </h1>
           <p className="text-gray-500 text-base mb-8">
-            {t('agency.agencyRegister.brandingDesc', { defaultValue: '유어딜 에이전시로 등록하면 소속 셀러들의 라이브 커머스를 통합 관리하고 수익을 함께 나눌 수 있습니다.' })}
+            {t('agency.agencyRegister.brandingDesc', { defaultValue: '유어딜 에이전시로 등록하면 소속 매장의 공동구매·이용권 판매를 통합 관리하고 수익을 함께 나눌 수 있습니다.' })}
           </p>
           <div className="space-y-4">
             {[
-              t('agency.agencyRegister.feature1', { defaultValue: '소속 셀러 매출·주문·라이브 통합 대시보드' }),
+              t('agency.agencyRegister.feature1', { defaultValue: '소속 매장 매출·주문·공동구매 통합 대시보드' }),
               t('agency.agencyRegister.feature2', { defaultValue: '에이전시 전담 고객지원' }),
               t('agency.agencyRegister.feature3', { defaultValue: '셀러 퍼포먼스 리포트 제공' }),
             ].map(text => (
