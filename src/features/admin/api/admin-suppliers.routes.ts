@@ -14,6 +14,7 @@ import type { Env } from '@/worker/types/env';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { matureSupplierSettlements, payoutSupplier } from '@/features/supply/api/supply-settlement';
+import { setWholesaleLicenseVerified } from '@/features/supply/api/wholesale-license';
 import { ensureWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta';
 import { intParam } from '@/shared/pagination'
 
@@ -208,6 +209,23 @@ adminSuppliersRoutes.patch('/suppliers/:id', cors(), async (c) => {
     return c.json({ success: true, data: { id: Number(id), status: body.status ?? existing.status }, message: '제조사 정보가 업데이트되었습니다.' });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] PATCH /suppliers/:id error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// ── POST /suppliers/:id/license-verify — 🏥 2026-07-03 규제 몰 인허가 확인/해제 토글 ──────────
+//   승인 검토자가 신고번호 확인 후 verified=1 로 표시(취소 가능). requires_license 몰 승인 절차 보조.
+adminSuppliersRoutes.post('/suppliers/:id/license-verify', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const id = Number(c.req.param('id'));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'Invalid ID' }, 400);
+    const body = await c.req.json<{ verified?: boolean }>().catch(() => ({} as { verified?: boolean }));
+    const verified = body.verified !== false; // 기본 true(확인). 명시적 false 면 해제.
+    await setWholesaleLicenseVerified(DB, 'supplier', id, verified);
+    return c.json({ success: true, verified });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] license-verify error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
