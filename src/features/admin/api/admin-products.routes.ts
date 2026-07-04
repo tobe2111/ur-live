@@ -1178,6 +1178,8 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     let realPhotos = 0;
     let placed = 0;
     let skipped = 0;  // 🎯 좌표·실사진 둘 다 없어 생성하지 않은 데모 수
+    // 🎯 2026-07-03 (대표 "데모 리뷰가 매장 특색에 안 맞음"): 시드된 데모의 매장특색 리뷰 생성 대상.
+    const seededForReviews: Array<{ id: number; name: string; category: string; storeName: string | null; price: number }> = [];
     for (let i = 0; i < items.length; i++) {
       const d = items[i];
       const realPhoto = validImgs[i];               // 검증 통과 실사진(없으면 null)
@@ -1228,6 +1230,8 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       if (pid > 0 && place?.placeUrl) {
         await setSupplyMeta(DB, pid, { kakao_place_url: place.placeUrl }).catch(() => {});
       }
+      // 🎯 매장특색 리뷰 생성 대상(응답 후 waitUntil 로 채움 — 실매장명/업종 grounding).
+      if (pid > 0) seededForReviews.push({ id: pid, name: dispName, category: d.cat, storeName: restName, price: d.price });
     }
     await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded, realPhotos, placed, skipped, healed, region: region || null, category: catFilter || null } }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
@@ -1242,6 +1246,20 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         ).catch(() => {})
       );
     } catch { /* executionCtx 미가용 — 일일 cron 이 자연 처리 */ }
+    // 🎯 2026-07-03 (대표 "데모 리뷰 매장 특색에 맞게, 가장 이상적으로"): 시드된 데모에 매장특색 리뷰 생성
+    //   (Claude Haiku grounding: 오프라인 이용권·실매장명·업종 → 배송어 없이 자연스럽게. 키/실패 시 업종별 결정론 폴백).
+    //   응답 후 waitUntil(외부 LLM 호출이라 응답 블록 방지) — review_count>0 채워 시간당 generic cron 이 안 건드림.
+    if (seededForReviews.length > 0) {
+      try {
+        c.executionCtx.waitUntil(
+          import('../../../worker/utils/demo-review-generator').then((m) =>
+            Promise.all(seededForReviews.map((prod) => m.seedDemoReviews(c.env as unknown as Env, prod, 8).catch(() => 0)))
+          ).then(() =>
+            invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {})
+          ).catch(() => {})
+        );
+      } catch { /* executionCtx 미가용 — 시간당 cron 이 폴백 처리 */ }
+    }
     return c.json({ success: true, seeded, realPhotos, placed, skipped, healed, region: region || null, category: catFilter || null });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
