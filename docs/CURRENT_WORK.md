@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-03 — 의료용품 도매몰(메디스타트) 신설 (대표 "의료몰 생성 + 모두 이상적으로") — 3커밋
+멀티몰 인프라(`wholesale_malls`, mall_id 격리) 위에 두번째 몰 구축. 유통스타트(mall 1)는 전부 fallback = byte-불변.
+- **커밋1(백엔드 기반)**: 카테고리 전역확장(의료기기/위생/간병 + 라벨 SSOT + 코드접두어 MD/SN/CR + 정규화 몰스코프 클램프) · `wholesale_malls.requires_license`/`license_label` 컬럼 · **메디스타트 시드**(id=2, slug `medi`, `#0ea5e9`, categories_json=의료4종, requires_license=1) · `GET /mall` → `resolveMallId`(?mall= 존중).
+- **커밋2(프론트 per-mall)**: `?mall=<slug>` 클라 전달(`currentWholesaleMallSlug`/`withWholesaleMall`/`wholesaleMallSeg`, URL우선·세션지속) + RQ키 몰분리 · 카탈로그 칩·상품폼 드롭다운이 `mall.categories` 우선(폴백 WHOLESALE_CATEGORIES).
+- **커밋3(규제 게이트)**: `wholesale_licenses` 사이드테이블(컬럼예산 회피) · 제조사/판매사 가입 API가 requires_license 몰에서 신고번호 필수·저장 · 가입폼 조건부 필드 · 어드민 목록에 인허가 표시.
+- **접근**: 도메인 연결 전 **`live.ur-team.com/wholesale?mall=medi`** 로 미리보기/가입. 세션 지속(in-app 이동 유지).
+- ⏭️ **남은 운영 스텝(코드 아님)**: ① 의료몰 **도메인 연결**(어드민 `/admin/wholesale-malls` PATCH host=medi도메인 → host 해석으로 ?mall= 불필요) ② 어드민 **인허가 '확인됨' 토글 버튼**(현재 표시만 — `setWholesaleLicenseVerified` 헬퍼 존재, 승인 UI 버튼 배선은 후속) ③ 의료 상품 큐레이션(카탈로그 비어있음) ④ 법무: 의료기기 판매업/제조업 신고 검증 정책.
+- 검증: tsc 0 · vitest 2447 · build 0 · 가드(table/bind/column/theme/light-input/file-size) 0. 배포: main 9bd5305.
+
 ## 📌 보류 결정 — 리마인드 필요 (대표 "고민 중이니 다음에도 리마인드")
 > **다음 세션은 이 블록을 반드시 대표에게 상기시킬 것.** 대표가 아직 결정 보류한 항목.
 
