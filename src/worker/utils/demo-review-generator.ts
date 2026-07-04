@@ -111,7 +111,8 @@ export function composeDemoReview(rating: number, topic: Topic, storeName?: stri
 }
 
 interface DemoProduct { id: number; name: string; category: string; storeName?: string | null; price?: number }
-interface GenReview { rating: number; content: string }
+export interface StoreReviewInput { name: string; category: string; storeName?: string | null; price?: number }
+export interface GenReview { rating: number; content: string }
 
 function ratingSample(): number {
   // 4.3~4.9 평균 근사 — 대부분 5, 가끔 4, 드물게 3.
@@ -170,7 +171,30 @@ JSON 배열로만. 각 항목 {"content": "리뷰", "rating": 별점}. 그 외 �
 }
 
 /**
- * 데모 상품 1건에 매장 특색 리뷰를 시드(이미 리뷰 있으면 skip). LLM 우선, 실패 시 결정론 폴백.
+ * 매장/업종 특색 리뷰 **생성만**(삽입 X) — LLM(오프라인 이용권·실매장 grounding) 우선, 실패/키없음 시
+ * 업종별 결정론 composer 폴백. 대량(어드민)도 40개씩 배치(배치별 LLM→실패분만 compose). 데모·어드민 공용.
+ */
+export async function buildStoreReviews(env: Env, p: StoreReviewInput, count = 8): Promise<GenReview[]> {
+  const topic = detectTopic(p.name, p.category)
+  const total = Math.max(1, Math.min(2000, count))
+  const out: GenReview[] = []
+  const CHUNK = 40
+  for (let i = 0; i < total; i += CHUNK) {
+    const n = Math.min(CHUNK, total - i)
+    try {
+      out.push(...await generateReviewsLLM(env, { id: 0, ...p }, n))
+    } catch {
+      for (let k = 0; k < n; k++) {
+        const rating = ratingSample()
+        out.push({ rating, content: Math.random() < 0.15 ? '' : composeDemoReview(rating, topic, p.storeName) })
+      }
+    }
+  }
+  return out
+}
+
+/**
+ * 데모 상품 1건에 매장 특색 리뷰를 시드(이미 리뷰 있으면 skip).
  * review_count/avg_rating/sold_count 갱신까지 — 시간당 generic cron 이 안 건드리게(review_count>0).
  */
 export async function seedDemoReviews(env: Env, p: DemoProduct, count = 8): Promise<number> {
@@ -179,18 +203,7 @@ export async function seedDemoReviews(env: Env, p: DemoProduct, count = 8): Prom
     .bind(p.id).first<{ c: number }>().catch(() => ({ c: 0 }))
   if ((existing?.c ?? 0) > 0) return 0
 
-  const topic = detectTopic(p.name, p.category)
-  const n = Math.max(4, Math.min(20, count))
-  let reviews: GenReview[]
-  try {
-    reviews = await generateReviewsLLM(env, p, n)
-  } catch {
-    reviews = Array.from({ length: n }, () => {
-      const rating = ratingSample()
-      const content = Math.random() < 0.15 ? '' : composeDemoReview(rating, topic, p.storeName)
-      return { rating, content }
-    })
-  }
+  const reviews = await buildStoreReviews(env, p, Math.max(4, Math.min(20, count)))
 
   const stmts = reviews.map((r) => {
     const nm = pick(KOREAN_NAMES)

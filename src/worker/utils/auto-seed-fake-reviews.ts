@@ -64,6 +64,9 @@ export async function autoSeedFakeReviews(
   const ratingMax = Math.max(ratingMin, Math.min(5, opts.seedRatingMax ?? 4.8))
 
   // 대상 필터: review_count=0 + is_active=1 (검수 통과 정책 B).
+  //   🎯 2026-07-03 (대표 "실제 사업자 유저가 올린 이용권은 리뷰 붙으면 안됨 — 어드민에서만"):
+  //   자동 리뷰는 **seller_id 없는 상품(데모·플랫폼)** 에만. 실 사업자 유저 업로드(seller_id 있음)는 제외.
+  //   → 실 매장 상품은 유기적 리뷰 + 어드민 수동 부여(admin-review-generator, 별도 경로)만 붙음.
   //   chunk 단위로 IN 쿼리 (D1 placeholder 한도 100 안전 마진).
   const CHUNK_SCAN = 80
   const targets: Array<{ id: number }> = []
@@ -74,7 +77,8 @@ export async function autoSeedFakeReviews(
       `SELECT id FROM products
        WHERE id IN (${ph})
          AND is_active = 1
-         AND (review_count IS NULL OR review_count = 0)`,
+         AND (review_count IS NULL OR review_count = 0)
+         AND seller_id IS NULL`,
     ).bind(...slice).all<{ id: number }>().catch(() => ({ results: [] as Array<{ id: number }> }))
     targets.push(...(rows.results || []))
   }
@@ -140,9 +144,11 @@ export async function autoSeedMissingReviews(
 ): Promise<AutoSeedResult> {
   const maxBatch = Math.max(1, Math.min(1000, opts.maxBatch ?? 200))
   const rows = await env.DB.prepare(
+    // 🎯 2026-07-03 (대표): 실 사업자 유저 업로드(seller_id 있음) 제외 — 자동 리뷰는 데모·플랫폼(seller_id NULL)만.
     `SELECT id FROM products
      WHERE is_active = 1
        AND (review_count IS NULL OR review_count = 0)
+       AND seller_id IS NULL
      ORDER BY created_at DESC
      LIMIT ?`,
   ).bind(maxBatch).all<{ id: number }>().catch(() => ({ results: [] as Array<{ id: number }> }))
