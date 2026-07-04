@@ -138,6 +138,14 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     }
   } catch { /* fail-open */ }
 
+  // 🎯 2026-07-04 (FCFS 당첨자 전용 결제 게이트 — fcfs-gate.ts): 추첨 상품은 당첨자만 구매.
+  //   딜/토스 두 흐름 공통 사전검증(아래 toss 분기 이전). 비-FCFS 상품은 메타 1조회 후 통과.
+  {
+    const { checkFcfsPurchasable } = await import('../../../worker/utils/fcfs-gate')
+    const fcfsGate = await checkFcfsPurchasable(DB, Number(productId), userId)
+    if (!fcfsGate.ok) return c.json({ success: false, error: fcfsGate.error, code: fcfsGate.code }, 403)
+  }
+
   // 🛡️ 2026-05-22 v2 — toss 결제 진짜 흐름 활성 (이전 fake-PAID 보안 버그 영구 해결):
   //   payment_method='toss' 흐름:
   //     1) /join 은 server-side 검증 (재고/카테고리/마감/seller_id) 만 수행
@@ -462,6 +470,11 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
           const { creditOrderCommissions } = await import('../../../worker/utils/order-commissions')
           await creditOrderCommissions(DB, [{ id: newOrderId, seller_id: Number(product.seller_id), total_amount: totalAmount }], { only: ['agency_intro'] })
         } catch (e) { if (import.meta.env?.DEV) console.warn('[gb agency intro]', e) }
+        // 🎯 2026-07-04 FCFS: 당첨자 결제 완료 마킹(selected→paid, 멱등) — 예비 승계 판단 근거.
+        try {
+          const { markFcfsPaid } = await import('../../../worker/utils/fcfs-gate')
+          await markFcfsPaid(DB, Number(productId), userId)
+        } catch { /* fail-soft */ }
       })())
     }
 
@@ -1076,6 +1089,14 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     }
   } catch { /* fail-open */ }
 
+  // 🎯 2026-07-04 (FCFS 게이트 — 과금 직전 재검증): /join 사전검증과 결제창 사이 우회 방지.
+  //   승인 전 400 이므로 Toss 측 자동 만료(환불 불필요) — 한도 재검증과 동일 패턴.
+  {
+    const { checkFcfsPurchasable } = await import('../../../worker/utils/fcfs-gate')
+    const fcfsGate = await checkFcfsPurchasable(DB, Number(productId), userId)
+    if (!fcfsGate.ok) return c.json({ success: false, error: fcfsGate.error, code: fcfsGate.code }, 403)
+  }
+
   // amount 재검증 (defense-in-depth — 클라 amount 신뢰 X).
   // 🛡️ 2026-05-31: 즉시판매 단일가(A2) — 카드도 최대 tier 할인 적용 (딜 경로와 일치). toss-init 와 동일 계산.
   const tierDiscountPct = maxTierDiscount(product.group_buy_tiers)
@@ -1213,6 +1234,11 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
         const { creditOrderCommissions } = await import('../../../worker/utils/order-commissions')
         await creditOrderCommissions(DB, [{ id: newOrderId, seller_id: Number(product.seller_id), total_amount: expectedAmount }], { only: ['agency_intro'] })
       } catch (e) { if (import.meta.env?.DEV) console.warn('[confirm-toss agency intro]', e) }
+      // 🎯 2026-07-04 FCFS: 당첨자 결제 완료 마킹(selected→paid, 멱등).
+      try {
+        const { markFcfsPaid } = await import('../../../worker/utils/fcfs-gate')
+        await markFcfsPaid(DB, Number(productId), userId)
+      } catch { /* fail-soft */ }
     })())
 
     // 🛡️ 2026-05-31: 정산 정합 — 딜 경로(group-buy /join)와 동일하게 ledger + donations + 인플 attribution.

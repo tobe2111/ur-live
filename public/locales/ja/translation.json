@@ -1896,7 +1896,14 @@
       "backToEdit": "編集に戻る",
       "verifiedBusiness": "事業者認証",
       "moreInfo": "MORE INFO",
-      "bizInfoCheck": "事業者情報確認"
+      "bizInfoCheck": "事業者情報確認",
+      "recommendOn": "下部「おすすめ」セクションがオンになりました — ピンした商品がリンクショップの最下部に表示されます",
+      "recommendOff": "下部「おすすめ」セクションをオフにしました",
+      "recommendSaveFail": "設定の保存に失敗しました — 一般アカウントのログイン状態をご確認ください",
+      "recommendToggleHint": "ピンした商品を下部「おすすめ」に表示",
+      "recommendToggleOn": "✨ おすすめ ON",
+      "recommendToggleOff": "おすすめ OFF",
+      "recommendPreviewNote": "訪問者には非表示です — 上部の「おすすめ OFF」ボタンでオンにできます"
     },
     "storeIntro": "ストア紹介",
     "shippingInfo": "配送情報",

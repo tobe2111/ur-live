@@ -23,6 +23,9 @@ import BrowseProductCard from '@/pages/browse/BrowseProductCard'
 import type { Product as BrowseProduct } from '@/pages/browse/types'
 import { seededColor } from '@/utils/card-gradient'
 import InfoTab from './seller-public/InfoTab'
+// ✨ 2026-07-04 링크샵 1단계(linkshop-role-model §5): 매장 링크샵 하단 추천(핀) opt-in 섹션.
+import CuratorPinsSection from './seller-public/CuratorPinsSection'
+import type { CuratorPin } from '@/features/curator/api/curator-api'
 import { getThemeTokens } from './seller-public/theme'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
@@ -44,9 +47,12 @@ interface SellerPublicPageProps {
   /** 🏁 2026-06-26 [UNLOCK_LOADING] (대표 — 로딩 워터폴 제거): CuratorPage 가 가진 linked_seller.id(숫자).
    *  넘기면 셀러 /public 응답을 기다리지 않고 상품 fetch 를 병렬로 시작(RTT 1개 절감). */
   sellerNumericId?: number
+  /** ✨ 2026-07-04 링크샵 1단계: CuratorPage 가 이미 보유한 핀 목록 — opt-in 켜진 매장 링크샵
+   *  하단 "추천" 섹션에 재사용(추가 fetch 0). 미전달이면 섹션이 자체 fetch. */
+  curatorPins?: CuratorPin[] | null
 }
 
-export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId }: SellerPublicPageProps = {}) {
+export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId, curatorPins }: SellerPublicPageProps = {}) {
   const { t } = useTranslation()
   const params = useParams<{ sellerId: string }>()
   const rawParam = sellerIdOverride ?? params.sellerId
@@ -78,6 +84,24 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const [showAddSheet, setShowAddSheet] = useState(false)
   // 🏁 2026-06-25 (대표 "통일"): canonical CuratorHeader 의 인라인 편집 반영(낙관적). curator 우선·seller 폴백.
   const [curatorEdits, setCuratorEdits] = useState<Partial<CuratorProfile>>({})
+  // ✨ 2026-07-04 링크샵 1단계: 하단 추천(핀) 섹션 opt-in — 서버값 시드 + 낙관적 토글.
+  const [showRecommend, setShowRecommend] = useState<boolean>(Number(curator?.linkshop_show_recommend) === 1)
+  useEffect(() => { setShowRecommend(Number(curator?.linkshop_show_recommend) === 1) }, [curator?.linkshop_show_recommend])
+  const toggleRecommend = async () => {
+    const next = !showRecommend
+    setShowRecommend(next) // 낙관적 — 실패 시 롤백
+    try {
+      // 유저 토큰/세션(same-origin 쿠키) 인증 — 매장 업주는 linked_user 본인이라 통과.
+      const r = await api.patch('/api/curator/me/profile', { show_recommend: next }, { withCredentials: true })
+      if (!r.data?.success) throw new Error(r.data?.error || 'save failed')
+      toast.success(next
+        ? t('seller.publicPage.recommendOn', { defaultValue: '하단 "추천" 섹션이 켜졌어요 — 담은 핀이 링크샵 맨 아래에 노출됩니다' })
+        : t('seller.publicPage.recommendOff', { defaultValue: '하단 "추천" 섹션을 껐어요' }))
+    } catch {
+      setShowRecommend(!next)
+      toast.error(t('seller.publicPage.recommendSaveFail', { defaultValue: '설정 저장 실패 — 소비자 계정 로그인 상태를 확인해주세요' }))
+    }
+  }
   const copyLink = async () => {
     try { await navigator.clipboard.writeText(window.location.href); toast.success(t('seller.linkCopiedToast', { defaultValue: '링크가 복사되었어요' })) } catch { /* ignore */ }
   }
@@ -353,6 +377,19 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
             >
               {t('seller.publicPage.addEntry', { defaultValue: '+ 등록' })}
             </button>
+            {/* ✨ 2026-07-04 링크샵 1단계: 하단 추천(핀) 섹션 opt-in 토글 — 기본 off(정체성 보수). */}
+            {curator?.handle && (
+              <button
+                type="button"
+                onClick={toggleRecommend}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap ${showRecommend ? 'bg-white text-[#141A2E]' : 'bg-white/15 hover:bg-white/25'}`}
+                title={t('seller.publicPage.recommendToggleHint', { defaultValue: '담은 핀을 링크샵 하단 "추천" 섹션에 표시' })}
+              >
+                {showRecommend
+                  ? t('seller.publicPage.recommendToggleOn', { defaultValue: '✨ 추천 ON' })
+                  : t('seller.publicPage.recommendToggleOff', { defaultValue: '추천 OFF' })}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setPreviewAsVisitor(true)}
@@ -515,6 +552,21 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
                 <StreamCard key={s.id} stream={s} onClick={() => navigate(`/live/${s.id}`)} />
               ))}
             </div>
+          </section>
+        )}
+
+        {/* ✨ 2026-07-04 링크샵 1단계(linkshop-role-model §5): 하단 "추천(핀)" opt-in 섹션.
+            본인 상품이 hero 인 스토어프론트 정체성은 유지 — 맨 아래, 명확한 라벨, 기본 off.
+            CuratorPinsSection 은 pins 0개면 자체 null 반환(fail-soft). 오너뷰에선 off 여도
+            토글 안내를 위해 흐리게 미리보기. */}
+        {curator?.handle && (showRecommend || ownerView) && (
+          <section className={`pt-7 ${!showRecommend ? 'opacity-40' : ''}`}>
+            {!showRecommend && ownerView && (
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-2">
+                {t('seller.publicPage.recommendPreviewNote', { defaultValue: '방문자에게는 숨겨져 있어요 — 상단 "추천 OFF" 버튼으로 켤 수 있습니다' })}
+              </p>
+            )}
+            <CuratorPinsSection handle={curator.handle} initialPins={curatorPins ?? null} />
           </section>
         )}
 

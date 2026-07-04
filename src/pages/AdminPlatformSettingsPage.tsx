@@ -27,6 +27,10 @@ const SETTINGS_FIELDS = [
   { key: 'review_reward_image', label: '이미지 리뷰 보상 (딜)', default: '300' },
   { key: 'review_reward_video', label: '영상 리뷰 보상 (딜)', default: '500' },
   { key: 'affiliate_commission_rate', label: '제휴 마케팅 수수료율 (%)', default: '2' },
+  // 💸 2026-07-04 F1: 멀티티어 추천트리 요율 어드민 노출 — 코드 기본값(10/3)이 "추천은 CAC라 2%"
+  //   결정(2026-06-17)과 어긋남. 예산 캡(INV-CB)이 초과지급은 막지만 기본율 자체도 여기서 조정.
+  { key: 'tier1_commission_rate', label: '추천트리 1단계 요율 (%) — 권장 2', default: '10' },
+  { key: 'tier2_commission_rate', label: '추천트리 2단계 요율 (%) — 권장 1', default: '3' },
   // 🛡️ 2026-05-25 (migration 0278/0280): 큐레이터 / 호스팅 / 출금 정책 동적화
   { key: 'curator_affiliate_pct', label: '큐레이터 어필리에이트 (%)', default: '1' },
   { key: 'host_incentive_pct', label: '호스팅 인센티브 (%)', default: '1' },

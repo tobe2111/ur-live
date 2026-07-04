@@ -1896,7 +1896,14 @@
       "backToEdit": "返回编辑",
       "verifiedBusiness": "商家认证",
       "moreInfo": "MORE INFO",
-      "bizInfoCheck": "商家信息查询"
+      "bizInfoCheck": "商家信息查询",
+      "recommendOn": "底部\"推荐\"区域已开启 — 收藏的商品将显示在链接商店底部",
+      "recommendOff": "已关闭底部\"推荐\"区域",
+      "recommendSaveFail": "保存失败 — 请检查消费者账号登录状态",
+      "recommendToggleHint": "在底部\"推荐\"区域显示收藏商品",
+      "recommendToggleOn": "✨ 推荐 ON",
+      "recommendToggleOff": "推荐 OFF",
+      "recommendPreviewNote": "对访客隐藏 — 可通过上方\"推荐 OFF\"按钮开启"
     },
     "storeIntro": "店铺介绍",
     "shippingInfo": "配送信息",

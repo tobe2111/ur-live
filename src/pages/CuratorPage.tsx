@@ -181,9 +181,11 @@ export default function CuratorPage() {
         <BrandLoader fullScreen />
       }>
         {/* 🏁 2026-06-25 (대표 "통일") — 사업자 링크샵도 canonical CuratorHeader 형태로. curator 객체 전달.
-            🏁 2026-06-26 (대표 "추천템 숨김") — 사업자 링크샵은 추천 핀 섹션을 안 그리므로 pins 미전달.
+            ✨ 2026-07-04 링크샵 1단계(linkshop-role-model §5, 대표 "다 해줘"): pins 전달 재개 —
+            SellerPublicPage 가 curator.linkshop_show_recommend(opt-in, 기본 off)일 때만 하단
+            "추천" 섹션을 렌더. 2026-06-26 "추천템 숨김"의 막다른 골목(담아도 안 보임)을 opt-in 으로 해소.
             🏁 2026-06-26 [UNLOCK_LOADING] — linked_seller.id 전달 → 상품 fetch 를 셀러 fetch 와 병렬로(워터폴 제거). */}
-        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} sellerNumericId={linked_seller.id} />
+        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} sellerNumericId={linked_seller.id} curatorPins={pins} />
       </Suspense>
     )
   }

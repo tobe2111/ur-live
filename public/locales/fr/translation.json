@@ -1217,7 +1217,14 @@
       "backToEdit": "Retour à l'édition",
       "verifiedBusiness": "Entreprise vérifiée",
       "moreInfo": "MORE INFO",
-      "bizInfoCheck": "Vérifier entreprise"
+      "bizInfoCheck": "Vérifier entreprise",
+      "recommendOn": "La section \"Sélection\" est activée — vos épingles s'affichent en bas de votre boutique",
+      "recommendOff": "Section \"Sélection\" désactivée",
+      "recommendSaveFail": "Échec de l'enregistrement — vérifiez votre connexion au compte consommateur",
+      "recommendToggleHint": "Afficher les épingles dans la section \"Sélection\"",
+      "recommendToggleOn": "✨ Sélection ON",
+      "recommendToggleOff": "Sélection OFF",
+      "recommendPreviewNote": "Masqué pour les visiteurs — activez-le via le bouton \"Sélection OFF\" ci-dessus"
     },
     "storeIntro": "Presentation de la boutique",
     "shippingInfo": "Info livraison",

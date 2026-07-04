@@ -1217,7 +1217,14 @@
       "backToEdit": "Volver a editar",
       "verifiedBusiness": "Negocio verificado",
       "moreInfo": "MORE INFO",
-      "bizInfoCheck": "Verificar empresa"
+      "bizInfoCheck": "Verificar empresa",
+      "recommendOn": "La sección \"Recomendados\" está activada — los pines se muestran al final de tu tienda",
+      "recommendOff": "Sección \"Recomendados\" desactivada",
+      "recommendSaveFail": "Error al guardar — verifica tu sesión de cuenta de consumidor",
+      "recommendToggleHint": "Mostrar pines en la sección \"Recomendados\"",
+      "recommendToggleOn": "✨ Recom. ON",
+      "recommendToggleOff": "Recom. OFF",
+      "recommendPreviewNote": "Oculto para visitantes — actívalo con el botón \"Recom. OFF\" arriba"
     },
     "storeIntro": "Introduccion de la tienda",
     "shippingInfo": "Info de envio",
