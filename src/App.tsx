@@ -24,8 +24,6 @@ import { featureFlags } from '@/shared/config/feature-flags'
 // lazy-loaded — only rendered conditionally, not on initial paint
 const PushNotificationSetup = lazy(() => import('./components/PushNotificationSetup'))
 const PWAInstallPrompt = lazy(() => import('./components/PWAInstallPrompt'))
-// 📜 2026-07-05: 약관 동의 게이트 (버전 포함 동의 로그 — terms_agreements)
-const TermsConsentGate = lazy(() => import('./components/TermsConsentGate'))
 const OnboardingTrigger = lazy(() => import('./components/onboarding/OnboardingTrigger'))
 const RestoreAccountModal = lazy(() => import('./components/account/RestoreAccountModal'))
 const SideBanner = lazy(() => import('@/components/SideBanner'))
@@ -595,8 +593,9 @@ function AppContent() {
           {/* 🗑️ 2026-06-17 (사용자 요청): 앱 설치 팝업(PWAInstallPrompt) 제거 */}
           <Suspense fallback={null}><OnboardingTrigger /></Suspense>
           <Suspense fallback={null}><RestoreAccountModal /></Suspense>
-          {/* 📜 2026-07-05: 약관 동의 게이트 — 카카오 첫 로그인 자체 동의 스텝 + 개정 재동의 (버전 로그) */}
-          <Suspense fallback={null}><TermsConsentGate /></Suspense>
+          {/* 📜 2026-07-05 (대표 "들어오자마자 나오면 안 되지 — 자연스럽게"): 약관 동의 차단 모달(TermsConsentGate)
+              제거. 소비자 동의 = LoginPage 간주 고지(제5조) + 가입 시점 1회 서버 기록(kakao.routes isNewUser →
+              terms_agreements). 개정 재동의가 필요해지면 /api/terms/status 로 비차단 배너를 붙이는 것이 후속안. */}
           <OfflineBanner />
           <ConfirmHost />
           <ScrollToTop />
