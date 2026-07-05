@@ -2333,7 +2333,10 @@
       "pinHint": "💡 If you enter the restaurant's phone number, the owner will automatically receive a statistics page link via notification (PIN not required).",
       "imageAiNotice": "AI recommendations may not be accurate. If you don't like any, search below or upload a file.",
       "uploadPhoto": "📁 Upload photo",
-      "imageSearchPlaceholder": "Re-search images with different keywords (e.g. store interior, menu name)"
+      "imageSearchPlaceholder": "Re-search images with different keywords (e.g. store interior, menu name)",
+      "promoLabel": "推荐佣金 (%)",
+      "promoRecommend": "建议 {{min}}~{{max}}%",
+      "promoHint": "网红通过推荐链接售出时，您按此比例支付佣金。请与折扣一起作为一个营销预算来设计。没有推荐销售就不产生费用。"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

@@ -10,6 +10,31 @@
 - **🐛 리뷰 부풀림(57~119개) 근본수리**: 원인 = 데모 회수(hard delete) 후 **SQLite rowid 재사용** → 새 데모가 과거 상품의 고아 리뷰/응모를 상속. 수리 ① 시드 INSERT 직후 재사용 id 의 product_reviews/fcfs_applications/cart_items/wishlists purge ② auto-seed cron 을 review_count 집계 대신 **실제 행 NOT EXISTS 이중 게이트**. 오염 라이브 3건(2493/2494/2484) wipe 후 세션 수기 리뷰 재부여 완료.
 - **데모별 추첨 편집**: 어드민 리스트 행별 🎯 지원자/모집정원/마감 인라인 편집(PUT /admin/fcfs/:id) + 선택 삭제. 지역 타겟은 소비자 홈 필터와 동일 KOREA_REGIONS 캐스케이드(1차 시/도→2차 동네그룹).
 - 검증: tsc 0 · build 0 · sql bind 가드 0 · 라이브 재생성 24개(실상품 16+오픈예정 8) 전부 카카오 실매장·R2 사진·할인율 캘리브레이션 범위 확인.
+## 🔵 진행 중 — 인플루언서 이용권 공구 엔진 스프린트 (2026-07-05 대표 개발요청)
+GTM 무게중심 = "인플루언서가 오프라인 이용권을 공동구매로 파는 인프라". 대부분 부품(promo 슬라이스·aff·링크샵·QR·원천징수) 기구현 → 기본값·표면·우선순위 재배치. **핵심 불변: 큰 판매수수료는 매장→인플루언서, 유어딜은 5%만.** 대표 결정(2026-07-05): "둘 다"(§2 안전 표면 라이브 + §1 flip-ready) · 스테이징 있음.
+
+### ✅ §1 매출 엔진 — 셀러 소개비(promo)% 필드 + 마진 계산기 (flip-ready, 게이트 OFF)
+- **발견**: [INV-CB] 예산캡 · owner-funding(promo_funding_source) · fee-resolver · 그림자 기록이 **전부 기구현·게이트 OFF**. §1 = 스테이징 검증 후 flip(신규 코드 아님).
+- **커플링 리스크(중요)**: 셀러 소개비% 는 `products.referral_commission_rate`(라이브 어필리에이트 override)로 저장 → **owner-funding 이 꺼져 있으면 매장 소개비를 플랫폼이 부담**(설계 −14% 누수). 그래서 이번 필드는 **이중 게이트 OFF**: 클라 `SELLER_PROMO_FIELD_ENABLED=false`(빌드타임) + 서버 `platform_settings.seller_promo_field_enabled!=='true'` 면 referral_commission_rate 저장 안 함.
+- **구현(게이트 OFF=현행 100% 동일)**: `PromoMarginCalculator`(resolveOrderFees owner-funded 모델 재사용 — 판매가→플랫폼5%→소개비→매장실수령, 버티컬 권장 소개비 §5) · `SellerMealVoucherNewPage` 에 소개비% 입력+계산기(플래그 게이트) · 서버 create 핸들러 이중 게이트 저장(0~0.5 clamp, fail-soft) · 어드민 platform-settings 에 `seller_promo_field_enabled` 스위치 · i18n 6개 언어.
+- **활성 런북**: `docs/design/commission-funding-restructure.md` §1 런북 — 순서 엄수(①예산캡 →②owner-funding →③셀러필드, 각 스테이징 검증). 순서 틀리면 플랫폼 누수.
+- 검증: tsc 0 · build 0 · 테마/sql-bind/column/money/file-size 가드 GREEN. ⚠️ 활성 = 스테이징 실결제 검증 후(이 환경 불가).
+- ⏭️ **다음**: §1 나머지(리졸버 authoritative 전환은 스테이징 대조 후 별도) · **§2 인플루언서 표면**(3분 온보딩·수익형 링크트리·자동 #광고 고지·크리에이터 매장영입 유도 — 머니게이트 무관, 라이브 가능) · §3 소스 어트리뷰션 리포트 · §4 서초 A/B.
+
+
+## ✅ 2026-07-05 — 데모 추첨 구조 차단 + 에이전시 요율 1%·기간 24개월 기본화 (대표+자문 확정)
+- **데모 추첨 (대표 "데모로 만드는 건 실 유저가 추첨될 수 없는 형태")**: 2단 구조 — ① 데모 상품(slug `demo-deal-N`) 응모는 `fcfs_applications.status='demo'` 로 저장 → **추첨 풀(status='applied')에 존재 자체 불가**(표시 카운트에는 포함 — 체감 유지, `/me` 는 'demo' 를 응모완료로 표시). ② 어드민 선정 API 데모 게이트(crypto/수동 모두 400) — 이중 방어. 기존 데모의 옛 'applied' 행도 게이트가 차단.
+- **에이전시 매장영입 요율 기본 1% (자문 (b)안 — 문서 정합)**: `COMMISSION_DEFAULTS.AGENCY_STORE_INTRO_PCT` 2.0→**1.0** (약관3 제4조·파트너 안내·회사소개서 전부 "기본 1%"). intro-code 응답의 하드코딩 `?? 2.0` → SSOT 상수 연동, 에이전시 대시보드 문구도 설정값 연동(`{pct}% · 첫 판매 확정일로부터 {N}개월`). **개별 상향은 어드민 에이전시 관리(store_intro_commission_pct) = 성과 보상 레버.** 기존 per-agency 설정값 보유 에이전시는 무영향(폴백만 변경).
+- **신규 에이전시 커미션 기간 기본 24개월**: 3개 생성 경로(어드민 생성/자체 가입/유저 전환) INSERT 직후 `commission_term_months IS NULL → 24` fail-soft 배선 — NULL=무제한이라 수동 입력 누락 시 무제한으로 도는 사고 방지(약관 "기본 24개월" 정합). 무제한 계약만 어드민이 개별 NULL. **기존 에이전시는 불변.**
+- 동반: 유닛테스트(default 1% 기대값)·운영 가이드 시드 2종(에이전시/어드민 수수료 구조 — 매장영입 1%·24개월·T+7·레거시 rail 봉인 반영)·코드 주석 갱신.
+- ⚠️ **약관·기산일**: 자문이 약관3 을 "매장별 첫 판매 확정일로부터 24개월"로 수정 중 — 코드 기산일(첫 signup_bonus=첫 결제)과 일치.
+## ✅ 2026-07-05 — 약관 v1.0 3종 정본 게시 + 가입 약관 동의 기능 신설 (대표 "초안 빼고 jiwon@ur-team.com, 에이전시 약관에도 적용")
+대표 전달 약관 3종(이용약관/판매자/에이전시 파트너 — 시행 2026-07-05 · v1.0)을 정본으로 게시 + 가입 동의 배선.
+- **약관 페이지(데이터 주도)**: `src/pages/terms/`(terms-types + consumer/seller/agency 콘텐츠 + TermsDocument 렌더러). `/terms`(전면 교체)·`/terms/seller`(구 2026-05-16 초안 대체 — 인플/라이브 송출 조항 폐기)·`/terms/agency`(신규 라우트). 초안 표기 제거·연락처 jiwon@ur-team.com 통일. **에이전시 제4조1항에 요율 변동 가능 명문화**(대표 지시 — "기본 1%, 개별 합의 또는 제9조 절차로 변경 가능").
+- **가입 약관 동의(이전엔 전무)**: `TermsConsentBox` 공용 컴포넌트. ① 에이전시 2경로(`/agency/register`·`/agency/register/business`) — 전체 동의 + **핵심조항(제4·5·9·10조) 요약 상시 노출 + 개별 동의**(약관 전문 요구사항), 서버 400 강제. ② 셀러 가입(`/seller/register/supplier`) — 판매자 약관 동의 필수, 서버 400 강제. ③ 소비자 — LoginPage 에 "로그인 시 이용약관·개인정보처리방침 동의 간주" 고지(제5조 정합).
+- **서버 기록**: `terms_consents` 테이블(repair-schema + `worker/utils/terms-consent.ts` ensure/record) — subject/user/slug/version/core동의/ip/시각. agency /register·/register-from-user + seller /register-from-user 3곳 배선(검증은 400 선행, 기록은 fail-soft).
+- SiteFooter 에 판매자/에이전시 약관 링크 추가. i18n 신규 키 6개 언어.
+- ⚠️ 약관 문구는 대표 정본 — 수정 시 대표 확인 + 버전 +0.1 + BLOG/가이드 정합 확인.
 
 ## ✅ 2026-07-04 — 데모 후순위 노출 + 세션 작성 리뷰 교체 (대표 "데모는 항상 후순위 · 리뷰 AI 티 0 · API 키 말고 세션 토큰으로")
 - **데모 항상 후순위**: 피드 모든 정렬 1차 키=데모-후순위(`[UNLOCK_LOADING]` audit 등재) + materialized cron 파리티 + fcfs/active `is_demo` + 지도 '선착순 상위노출' boost 를 non-demo 한정. 라이브 실측 R→DDDD ✅.

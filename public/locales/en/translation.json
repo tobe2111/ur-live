@@ -2334,7 +2334,10 @@
       "pinHint": "💡 If you enter the restaurant's phone number, the owner will automatically receive a statistics page link via notification (PIN not required).",
       "imageAiNotice": "AI recommendations may not be accurate. If you don't like any, search below or upload a file.",
       "uploadPhoto": "📁 Upload photo",
-      "imageSearchPlaceholder": "Re-search images with different keywords (e.g. store interior, menu name)"
+      "imageSearchPlaceholder": "Re-search images with different keywords (e.g. store interior, menu name)",
+      "promoLabel": "Referral commission (%)",
+      "promoRecommend": "Recommended {{min}}~{{max}}%",
+      "promoHint": "When an influencer sells via their referral link, you pay this share as commission. Design it together with your discount as one marketing budget. No referral sale, no cost."
     },
     "analyticsTitle": "Sales Analytics",
     "revenueChart": "Revenue Chart",

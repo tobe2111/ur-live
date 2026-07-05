@@ -10,6 +10,8 @@ import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
 import { compressForUpload } from '@/lib/image-compress'
+import { SELLER_PROMO_FIELD_ENABLED } from '@/shared/feature-flags'
+import PromoMarginCalculator, { promoGuideFor } from './seller-product-new/PromoMarginCalculator'
 
 export default function SellerMealVoucherNewPage() {
   const { t } = useTranslation()
@@ -84,6 +86,9 @@ export default function SellerMealVoucherNewPage() {
     stock: 100,
     // 🎯 2026-07-01 (대표 "결제 최대 한도 갯수 1인 당"): 1인당 최대 구매 수량. 0 = 무제한.
     max_per_person: 0,
+    // 💰 2026-07-05 (§1 인플루언서 엔진): 소개비 % (0~50). 추천 판매 시 인플루언서 몫.
+    //   SELLER_PROMO_FIELD_ENABLED 로 게이트 — 서버도 platform_settings 게이트로 이중 안전.
+    promo_pct: 0,
     // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 장소 선택 시 place_url 캡처 → 상세 지도 직접 연결.
     kakao_place_url: '',
     // 🛡️ 2026-05-21: 외부 예약 링크 (숙소/뷰티 등 사전 예약 필수 카테고리).
@@ -245,6 +250,11 @@ export default function SellerMealVoucherNewPage() {
         kakao_place_url: form.kakao_place_url || undefined,
         // 🛡️ 2026-05-30: 즉시판매 단일가 모델 — 동적 tier 미사용. 공구가는 price 단일 적용.
         group_buy_tiers: null,
+        // 💰 2026-07-05 (§1): 소개비 → referral_commission_rate(0~0.5 fraction) + referral_enabled.
+        //   플래그 OFF 또는 0 이면 미전송(서버도 platform_settings 게이트로 이중 방어).
+        ...(SELLER_PROMO_FIELD_ENABLED && Number(form.promo_pct) > 0
+          ? { referral_enabled: true, referral_commission_rate: Math.min(0.5, Number(form.promo_pct) / 100) }
+          : {}),
       }
 
       const res = await api.post('/api/seller/products', payload, { headers })
@@ -623,6 +633,43 @@ export default function SellerMealVoucherNewPage() {
                   />
                 </div>
               </div>
+
+              {/* 💰 2026-07-05 (§1 인플루언서 엔진): 소개비(promo)% + 매장 실수령 계산기.
+                  SELLER_PROMO_FIELD_ENABLED = false (기본) → owner-funding 스테이징 검증 전까지 미노출. */}
+              {SELLER_PROMO_FIELD_ENABLED && (
+                <div className="mt-4 space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t('seller.mealVoucher.promoLabel', { defaultValue: '추천 소개비 (%)' })}
+                      <span className="ml-2 text-[11px] font-normal text-gray-400">
+                        {t('seller.mealVoucher.promoRecommend', {
+                          defaultValue: `권장 ${promoGuideFor(form.category).min}~${promoGuideFor(form.category).max}%`,
+                          min: promoGuideFor(form.category).min, max: promoGuideFor(form.category).max,
+                        })}
+                      </span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number" min={0} max={50} step={1}
+                        value={form.promo_pct || ''}
+                        onChange={e => update('promo_pct', Math.max(0, Math.min(50, Number(e.target.value))))}
+                        placeholder="0"
+                        className="w-full px-3 py-2.5 pr-8 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+                      {t('seller.mealVoucher.promoHint', { defaultValue: '인플루언서가 추천 링크로 팔면 이 비율만큼 소개비를 지급해요. 할인과 함께 하나의 마케팅 예산으로 설계하세요. 추천 판매가 없으면 발생하지 않아요.' })}
+                    </p>
+                  </div>
+                  <PromoMarginCalculator
+                    price={form.price}
+                    originalPrice={form.original_price}
+                    promoPct={form.promo_pct}
+                    category={form.category}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
