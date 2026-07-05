@@ -1,5 +1,11 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-04 — 데모 후순위 노출 + 세션 작성 리뷰 교체 (대표 "데모는 항상 후순위 · 리뷰 AI 티 0 · API 키 말고 세션 토큰으로")
+- **데모 항상 후순위**: 피드 모든 정렬 1차 키=데모-후순위(`[UNLOCK_LOADING]` audit 등재) + materialized cron 파리티 + fcfs/active `is_demo` + 지도 '선착순 상위노출' boost 를 non-demo 한정. 라이브 실측 R→DDDD ✅.
+- **POST /api/admin/reviews/import 신설**: 외부(운영 Claude 세션)가 작성한 리뷰를 그대로 삽입 — 서버 ANTHROPIC_API_KEY 불필요. 운영 플로우: 데모 생성 → 세션이 매장별 리뷰 작성 → import.
+- **실행 완료(라이브)**: 관리자 토큰으로 구 데모 8개 삭제 → 신 파이프라인 재생성 7개(전부 카카오 실매장+우리 R2 이미지+좌표+place_url, 미매칭 1 스킵) → 자동생성 리뷰 전량 삭제 후 **세션이 직접 쓴 58개**(매장·가격·업종 반영, 길이/말투/3점 아쉬움 혼합) import. 집계 8~9개/avg 4.4~4.7 확인.
+- ⚠️ 관찰: 재생성 직후 상품당 생성리뷰가 53~115개로 부풀어 있었음(시간당 generic cron 과 시드 waitUntil 의 review_count=0 레이스 추정) — 현재는 review_count>0 이라 재발 불가하나, 다음 데모 생성 시 리뷰 수 재확인 권장.
+
 ## ✅ 2026-07-04 — 멀티몰 완전체: 몰별 회원격리·캐시·푸터/로고/배너/수수료 (대표 신고 "medi 에 유통스타트 로그인/재주문 노출" + "푸터·로고·배너 몰별 + 어드민 조정")
 - **몰별 별도 회원 서버 강제**: sellerMallId 가드 — /me(mall_mismatch)·/home(401)·/recent-items(빈)·카탈로그(게스트 강등)·/orders(빈)·발주(403). 클라 me/orders/recent/banners 훅 ?mall= 전달+몰별 RQ 키. 카탈로그 UI 게스트 강등+배너. **가입도 몰 귀속**(join/register/become POST ?mall=). 카트 localStorage 몰별 키.
 - **게스트 캐시 몰 차원**(크로스몰 상품 누수 — X-WS-Cache:KV-HIT 실측): KV 키 `ws:cat:g:{host}` → `+:m{id}`(비기본 몰만, 기본 키 byte-불변=SSR/prewarm 잠금 보존), 캐논 edge put 은 기본 몰만(역방향 오염 차단).

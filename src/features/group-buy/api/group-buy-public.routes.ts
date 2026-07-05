@@ -112,7 +112,11 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       discount: 'p.discount_rate DESC, p.created_at DESC',
     }
     const sortParam = c.req.query('sort') || ''
-    const orderBy = ALLOWED_GB_SORT[sortParam] || 'p.created_at DESC'
+    // 🎯 2026-07-04 [UNLOCK_LOADING] (대표 "데모 이용권 노출은 항상 후순위"): 어떤 정렬이든 1차 키 =
+    //   데모-후순위(slug demo-deal-*). 실 사업자/플랫폼 상품이 항상 먼저, 데모는 뒤 채움용.
+    //   캐시키/헤더/필드 전부 불변 — 응답 내 행 순서만. materialized cron 도 동일 정렬(짝 수정).
+    const DEMO_LAST = "(CASE WHEN COALESCE(p.slug,'') LIKE 'demo-deal-%' THEN 1 ELSE 0 END)"
+    const orderBy = `${DEMO_LAST}, ${ALLOWED_GB_SORT[sortParam] || 'p.created_at DESC'}`
     const pageNum = Math.max(1, intParam(c.req.query('page'), 1))
     const pageLimit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 50)))
     const offset = (pageNum - 1) * pageLimit
@@ -170,7 +174,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           p.group_buy_deadline AS expires_at, p.group_buy_tiers,
           p.discount_rate, p.sold_count, p.avg_rating, p.deal_only,
           p.brand_name, p.brand_icon_url, p.created_at, p.seller_id,
-          p.restaurant_name, p.restaurant_address,
+          p.restaurant_name, p.restaurant_address, p.slug,
           ${_dominantColorCol === false ? '' : 'p.dominant_color,'}
           s.name AS seller_name, s.profile_image AS seller_avatar
         `
@@ -317,6 +321,9 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
                 spots: Math.max(0, parseInt(rec.fcfs_spots || '0', 10) || 0),
                 appliedDisplay: seed + (cntById.get(pid) || 0),
                 deadline: rec.fcfs_deadline || null,
+                // 🎯 2026-07-04 (대표 "데모 항상 후순위"): 클라 '선착순 상위노출' boost 가 데모를
+                //   끌어올리지 않게 demo 플래그 — RestaurantMapPage displayList 가 non-demo 만 boost.
+                demo: String((p as { slug?: string }).slug || '').startsWith('demo-deal-'),
               },
             }
           })

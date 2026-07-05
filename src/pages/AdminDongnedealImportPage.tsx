@@ -7,6 +7,7 @@ import { Upload, Download, PackagePlus, CheckCircle2, AlertTriangle } from 'luci
 import ManualDealForm from './admin-dongnedeal/ManualDealForm'
 import DealList from './admin-dongnedeal/DealList'
 import type { DealRow } from './admin-dongnedeal/types'
+import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions'
 
 // 🧭 2026-06-17 (대표 요청 — 동네딜 채우기): 어드민 동네딜(오프라인 공동구매) 상품 CSV 일괄 등록 + 데모 시드.
 //   백엔드 /api/admin/dongnedeal/{stats,seed-demo,bulk-import} — 즉시 노출(is_active=1, group_buy_status='active').
@@ -19,14 +20,22 @@ const CAT_LABEL: Record<string, string> = {
   meal_voucher: '맛집 이용권', beauty_voucher: '미용', etc_voucher: '기타', general: '일반 상품', stay_voucher: '숙소',
 }
 
-// 🎯 2026-07-03 (대표 "지역 정확도"): 카카오가 좌표로 안정적으로 해석하는 서울 25개 자치구 + 대표 상권.
-//   datalist 제안 목록 — 선택하면 정확, 직접 입력(다른 시/동)도 허용.
-const REGION_SUGGESTIONS = [
-  '강남구', '강동구', '강북구', '강서구', '관악구', '광진구', '구로구', '금천구', '노원구', '도봉구',
-  '동대문구', '동작구', '마포구', '서대문구', '서초구', '성동구', '성북구', '송파구', '양천구', '영등포구',
-  '용산구', '은평구', '종로구', '중구', '중랑구',
-  '성수동', '연남동', '홍대', '강남역', '이태원', '여의도', '잠실', '건대입구',
-]
+// 🎯 2026-07-03 (대표 "지역은 홈 필터 그대로 — 1차/2차로 세팅"): 소비자 홈 지역필터와 **동일 SSOT**(KOREA_REGIONS)
+//   를 1차(시/도)·2차(동네그룹)로 사용. 선택값을 카카오가 지오코딩 가능한 검색어로 변환 → 그 동네 실매장 매칭.
+function cleanSido(label: string): string {
+  // '전주/전북' → '전주', '충남\n세종' → '충남', '서울' → '서울'
+  return label.replace(/\n[\s\S]*/, '').split('/')[0].trim()
+}
+function buildRegionParam(sidoKey: string, districtKey: string): string {
+  const region = findRegionByKey(sidoKey)
+  if (!region) return ''
+  const sido = cleanSido(region.label)
+  if (districtKey) {
+    const dg = region.districtGroups.find((g) => g.key === districtKey)
+    if (dg && dg.keywords.length) return `${sido} ${dg.keywords[0]}`.trim()  // 예: "서울 강남", "경기 인계동"
+  }
+  return sido  // 동네그룹 미선택 = 시/도 전체
+}
 
 interface ImportRow { row: number; name?: string; status: 'ok' | 'error'; reason?: string }
 interface ImportResult { summary: { total: number; created: number; failed: number }; results: ImportRow[] }
@@ -39,9 +48,17 @@ export default function AdminDongnedealImportPage() {
   const [result, setResult] = useState<ImportResult | null>(null)
   const [stats, setStats] = useState<DealStats | null>(null)
   const [cleaning, setCleaning] = useState(false)
-  // 🎯 2026-07-02 (대표): 데모 채우기 옵션 — 특정 지역/카테고리 지정 시드.
-  const [seedRegion, setSeedRegion] = useState('')
+  // 🎯 2026-07-03 (대표): 데모 채우기 지역 — 홈 필터와 동일 1차(시/도)·2차(동네그룹).
+  const [seedSido, setSeedSido] = useState('')       // 1차: KOREA_REGIONS key (예 '서울')
+  const [seedDistrict, setSeedDistrict] = useState('') // 2차: districtGroup key (예 'gangnam')
   const [seedCategory, setSeedCategory] = useState('')
+  // 🔁 2026-07-04 (대표 "계속 생성해야 하는데"): 한 번에 생성 개수(라운드 보충으로 정확히 채움).
+  const [seedCount, setSeedCount] = useState(8)
+  // 🎛️ 2026-07-04 (대표 "지원자 수 조절 + 기간 설정 — 데모"): 추첨 마감(N일 후) + 표시 지원자 수 범위.
+  const [seedFcfsDays, setSeedFcfsDays] = useState(7)
+  const [seedApplicantsMin, setSeedApplicantsMin] = useState('')
+  const [seedApplicantsMax, setSeedApplicantsMax] = useState('')
+  const sidoRegion = findRegionByKey(seedSido)
   // 🖊️ 2026-07-01 (대표 — 수정/삭제): 편집 대상 + 목록 새로고침 nonce.
   const [editing, setEditing] = useState<DealRow | null>(null)
   const [listNonce, setListNonce] = useState(0)
@@ -57,7 +74,7 @@ export default function AdminDongnedealImportPage() {
     if (!confirm('데모 동네딜 상품(demo-deal-*)을 모두 삭제할까요? 실제 등록 상품은 영향받지 않습니다.')) return
     setCleaning(true)
     try {
-      const r = await api.delete('/api/admin/dongnedeal/seed-demo', h)
+      const r = await api.delete('/api/admin/dongnedeal/seed-demo', { ...h, timeout: 120000 })
       const retired = Number(r.data?.retired ?? 0)
       toast.success(`데모 상품 ${r.data?.deleted ?? 0}개 삭제${retired ? ` · ${retired}개는 주문 이력이 있어 비활성 처리` : ''}`)
       loadStats()
@@ -66,10 +83,20 @@ export default function AdminDongnedealImportPage() {
   const seedDemo = async () => {
     setCleaning(true)
     try {
+      const regionParam = buildRegionParam(seedSido, seedDistrict)
+      const aMin = parseInt(seedApplicantsMin, 10)
+      const aMax = parseInt(seedApplicantsMax, 10)
+      // 🚑 2026-07-04 (대표 "데모 생성 오류"): 기본 axios timeout 15s < 생성 소요(매장당 네이버+R2+카카오,
+      //   24개면 수 분) → 클라만 타임아웃으로 '오류' 표시되고 서버는 계속 생성(개수 제각각 원인 중 하나).
+      //   넉넉히 5분. 버튼은 cleaning 으로 이중클릭 차단.
       const r = await api.post('/api/admin/dongnedeal/seed-demo', {
-        region: seedRegion.trim() || undefined,
+        region: regionParam || undefined,
         category: seedCategory || undefined,
-      }, h)
+        count: seedCount,
+        fcfsDays: seedFcfsDays,
+        applicantsMin: Number.isFinite(aMin) && aMin > 0 ? aMin : undefined,
+        applicantsMax: Number.isFinite(aMax) && aMax > 0 ? aMax : undefined,
+      }, { ...h, timeout: 300000 })
       const skipped = Number(r.data?.skipped ?? 0)
       if (r.data?.seeded) {
         const parts = [`데모 상품 ${r.data.seeded}개 생성`]
@@ -142,19 +169,31 @@ export default function AdminDongnedealImportPage() {
                 {stats.demo > 0 && (
                   <button onClick={clearDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">데모 {stats.demo}개 정리</button>
                 )}
-                {/* 🎯 2026-07-03 (대표 "지역 정확도"): 자치구 목록에서 선택(정확도↑) — 카카오가 좌표로
-                    해석해 그 반경 실매장을 거리순 매칭. datalist 라 직접 입력(동/역 이름)도 가능. */}
-                <input
-                  list="ur-region-suggestions"
-                  value={seedRegion}
-                  onChange={(e) => setSeedRegion(e.target.value)}
-                  placeholder="지역 선택/입력 (예: 강남구)"
-                  maxLength={30}
-                  className="w-40 px-2.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900"
-                />
-                <datalist id="ur-region-suggestions">
-                  {REGION_SUGGESTIONS.map((r) => <option key={r} value={r} />)}
-                </datalist>
+                {/* 🎯 2026-07-03 (대표 "지역은 홈 필터 그대로 — 1차/2차"): 소비자 홈과 동일 SSOT(KOREA_REGIONS).
+                    1차 시/도 → 2차 동네그룹. 선택값을 카카오 지오코딩 → 그 동네 실매장 매칭. */}
+                <select
+                  value={seedSido}
+                  onChange={(e) => { setSeedSido(e.target.value); setSeedDistrict('') }}
+                  className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
+                  aria-label="시/도 선택"
+                >
+                  <option value="">시/도 (전체)</option>
+                  {KOREA_REGIONS.map((r) => (
+                    <option key={r.key} value={r.key}>{r.label.replace(/\n/g, ' ')}</option>
+                  ))}
+                </select>
+                <select
+                  value={seedDistrict}
+                  onChange={(e) => setSeedDistrict(e.target.value)}
+                  disabled={!sidoRegion || sidoRegion.districtGroups.length === 0}
+                  className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white disabled:opacity-50 max-w-[220px]"
+                  aria-label="동네 선택"
+                >
+                  <option value="">{sidoRegion ? `${cleanSido(sidoRegion.label)} 전체` : '동네 (시/도 먼저)'}</option>
+                  {sidoRegion?.districtGroups.map((g) => (
+                    <option key={g.key} value={g.key}>{g.label}</option>
+                  ))}
+                </select>
                 <select
                   value={seedCategory}
                   onChange={(e) => setSeedCategory(e.target.value)}
@@ -166,7 +205,31 @@ export default function AdminDongnedealImportPage() {
                   <option value="etc_voucher">기타</option>
                   <option value="general">일반 상품</option>
                 </select>
-                <button onClick={seedDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">데모 채우기</button>
+                <select
+                  value={seedCount}
+                  onChange={(e) => setSeedCount(Number(e.target.value))}
+                  className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
+                  aria-label="생성 개수"
+                >
+                  <option value={8}>8개</option>
+                  <option value={16}>16개</option>
+                  <option value={24}>24개</option>
+                </select>
+                {/* 🎛️ 추첨 마감 + 표시 지원자 수 범위 (데모 시드 옵션) */}
+                <select
+                  value={seedFcfsDays}
+                  onChange={(e) => setSeedFcfsDays(Number(e.target.value))}
+                  className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
+                  aria-label="추첨 마감 기간"
+                >
+                  <option value={3}>마감 3일</option>
+                  <option value={7}>마감 7일</option>
+                  <option value={14}>마감 14일</option>
+                  <option value={30}>마감 30일</option>
+                </select>
+                <input value={seedApplicantsMin} onChange={(e) => setSeedApplicantsMin(e.target.value.replace(/\D/g, ''))} placeholder="지원자↓" maxLength={4} className="w-[70px] px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" title="표시 지원자 수 최소(비우면 기본)" />
+                <input value={seedApplicantsMax} onChange={(e) => setSeedApplicantsMax(e.target.value.replace(/\D/g, ''))} placeholder="지원자↑" maxLength={4} className="w-[70px] px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" title="표시 지원자 수 최대" />
+                <button onClick={seedDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">{cleaning ? '생성 중…' : '데모 채우기'}</button>
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap mt-3">
