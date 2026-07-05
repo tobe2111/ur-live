@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-04 — 멀티몰 완전체: 몰별 회원격리·캐시·푸터/로고/배너/수수료 (대표 신고 "medi 에 유통스타트 로그인/재주문 노출" + "푸터·로고·배너 몰별 + 어드민 조정")
+- **몰별 별도 회원 서버 강제**: sellerMallId 가드 — /me(mall_mismatch)·/home(401)·/recent-items(빈)·카탈로그(게스트 강등)·/orders(빈)·발주(403). 클라 me/orders/recent/banners 훅 ?mall= 전달+몰별 RQ 키. 카탈로그 UI 게스트 강등+배너. **가입도 몰 귀속**(join/register/become POST ?mall=). 카트 localStorage 몰별 키.
+- **게스트 캐시 몰 차원**(크로스몰 상품 누수 — X-WS-Cache:KV-HIT 실측): KV 키 `ws:cat:g:{host}` → `+:m{id}`(비기본 몰만, 기본 키 byte-불변=SSR/prewarm 잠금 보존), 캐논 edge put 은 기본 몰만(역방향 오염 차단).
+- **몰별 회사(푸터) 정보** `wholesale_malls.company_json`: useBusinessInfo() 병합(미설정=기본) — 푸터·고객센터·약관·개인정보방침 반영. 푸터 로고 = mall.logo_url(미설정=워드마크). **배너**: 서버/어드민 기완비 — 클라 훅 ?mall= 갭만 수정.
+- **몰별 수수료율 실배선**(write-only 함정 제거): mallCommissionPctOverride/loadMallCommissionPct — resolveDistributorPrice 12개 호출부 전부(회원 표면=소속몰 sellerMallIdOf SSOT, 게스트=요청몰, 어드민 export=per-row). NULL=전역 폴백(라이브 불변).
+- **어드민 몰 관리 폼 완비**: 인허가 체크+라벨 · 기능토글 JSON · 푸터 사업자정보 11필드 · 수수료 힌트. 제조사 상품 몰 상속(3경로 서브쿼리) 기확인 ✓.
+- 잔여(문서화된 트레이드오프): ①프리뷰 중 회원 위성페이지 브랜딩 혼재(자기 데이터 — 도메인 연결 시 소멸) ②로그인 시점 차단 대신 로그인 후 강등+배너(소비자 로그인 API 공유 — 서비스분리).
+- 검증: tsc 0 · vitest 2447 · build 0 · 가드 GREEN. 라이브: /mall?mall=medi 메디 브랜딩 ✓ · 비로그인 401 ✓.
+
 ## ✅ 2026-07-03 — 의료용품 도매몰(메디스타트) 신설 (대표 "의료몰 생성 + 모두 이상적으로") — 3커밋
 멀티몰 인프라(`wholesale_malls`, mall_id 격리) 위에 두번째 몰 구축. 유통스타트(mall 1)는 전부 fallback = byte-불변.
 - **커밋1(백엔드 기반)**: 카테고리 전역확장(의료기기/위생/간병 + 라벨 SSOT + 코드접두어 MD/SN/CR + 정규화 몰스코프 클램프) · `wholesale_malls.requires_license`/`license_label` 컬럼 · **메디스타트 시드**(id=2, slug `medi`, `#0ea5e9`, categories_json=의료4종, requires_license=1) · `GET /mall` → `resolveMallId`(?mall= 존중).
