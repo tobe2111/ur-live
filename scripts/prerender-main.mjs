@@ -61,7 +61,10 @@ async function main() {
   console.log('[prerender-main] 시작')
 
   // 🛡️ entry-server dynamic import — Node ESM 호환.
-  const { renderApp } = await import(SERVER_ENTRY)
+  // 🧵 2026-07-05 (prerender 스피너 근본수정): renderAppComplete(onAllReady — lazy 실마크업까지
+  //   구움, 실패/타임아웃 시 내부적으로 renderToString 폴백) 우선, 구버전 번들이면 renderApp.
+  const serverEntry = await import(SERVER_ENTRY)
+  const renderApp = serverEntry.renderAppComplete || serverEntry.renderApp
 
   // 🛡️ API fetch 완전 제거 — 빌드 환경 의존성 0, 무조건 성공.
   //   데이터는 worker HTMLRewriter (runtime) 가 __SSR_INITIAL_MAIN__ inject + React Query fresh fetch.
@@ -69,10 +72,19 @@ async function main() {
   const initialData = null
 
   // 🛡️ renderApp 호출 — React renderToString 실행.
-  console.log('[prerender-main] renderToString 시작...')
+  console.log('[prerender-main] 렌더 시작 (allReady 모드)...')
   const start = Date.now()
-  const { html } = await renderApp('/', initialData)
-  console.log(`[prerender-main] renderToString 완료 (${Date.now() - start}ms, ${html.length} chars)`)
+  const { html: rawHtml } = await renderApp('/', initialData)
+  console.log(`[prerender-main] 렌더 완료 (${Date.now() - start}ms, ${rawHtml.length} chars)`)
+
+  // 🧹 2026-07-05: Suspense 실패 잔재 제거 — SSR-unsafe 경계가 남긴 `<template data-msg="...">`
+  //   (에러 메시지가 그대로 서빙 HTML 에 박히던 잔재)를 스트립. `<!--$-->` 류 마커 주석은
+  //   createRoot(비-hydrate) 라 무해하지만 data-msg 는 진단 노이즈 + 바이트 낭비라 제거.
+  const html = rawHtml.replace(/<template data-msg="[^"]*"[^>]*><\/template>/g, '')
+  const strippedCount = (rawHtml.match(/<template data-msg=/g) || []).length
+  if (strippedCount > 0) {
+    console.warn(`[prerender-main] ⚠️ SSR-unsafe 경계 ${strippedCount}곳 (data-msg 템플릿 스트립됨) — docs/SSR_MIGRATION.md 체크리스트로 해당 컴포넌트 점검 권장`)
+  }
 
   // 🛡️ dist/client/index.html 의 <div id="root"></div> 를 SSR HTML 로 교체.
   let indexHtml = readFileSync(CLIENT_HTML, 'utf-8')

@@ -39,6 +39,10 @@ export default function SiteFooter() {
           <span>|</span>
           <a href="/terms" className="underline hover:text-white">서비스 이용약관</a>
           <span>|</span>
+          <a href="/terms/seller" className="underline hover:text-white">판매자 약관</a>
+          <span>|</span>
+          <a href="/terms/agency" className="underline hover:text-white">에이전시 파트너 약관</a>
+          <span>|</span>
           <a href="/privacy" className="underline hover:text-white">개인정보처리방침</a>
           <span>|</span>
           <a href="/refund" className="underline hover:text-white">배송 및 환불 정책</a>

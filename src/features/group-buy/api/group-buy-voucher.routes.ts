@@ -16,7 +16,7 @@ import { auditLog } from '@/worker/middleware/audit-log'
 import type { Env } from '@/worker/types/env'
 import { recordLedger } from '@/worker/utils/ledger'
 import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
-import { sendBuyerVoucherUsedAlimtalk } from './helpers'
+import { sendBuyerVoucherUsedAlimtalk, sendSellerVoucherUsedAlimtalk } from './helpers'
 import { ensureTables, clawbackVoucherCommission, sendRefundAlimtalk } from './helpers'
 // 🛡️ 2026-05-21: 카테고리 라벨 동적 (이용권 hardcode 제거).
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
@@ -50,6 +50,9 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
 
       // CAS: code + pin + status='unused' 세 조건을 원자적으로 검증/갱신.
       // 중간 SELECT 없이 단일 UPDATE 로 경쟁 조건과 PIN 타이밍 공격을 동시에 차단.
+      // 🔒 2026-07-02 (감사 25③): PIN 미설정 매장은 이 경로 자체를 거부 — 기존 `IS NULL OR =?` 는
+      //   PIN 안 만든 매장의 이용권을 코드 소지자가 아무 값으로나 태울 수 있는 구멍(남의 이용권
+      //   griefing). PIN 미설정 매장은 사장님 스캔(use-by-seller)·셀프사용(모드별) 경로 사용.
       const result = await DB.prepare(
         `UPDATE vouchers
            SET status = 'used', used_at = datetime('now')
@@ -59,7 +62,8 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
            AND product_id IN (
              SELECT id FROM products
              WHERE id = vouchers.product_id
-               AND (store_verify_pin IS NULL OR store_verify_pin = ?)
+               AND store_verify_pin IS NOT NULL
+               AND store_verify_pin = ?
            )`
       ).bind(code, pin).run()
 
@@ -146,7 +150,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
           //   waitUntil 비동기 — 응답 지연 0.
           c.executionCtx?.waitUntil((async () => {
             try {
-              const { recordVoucherUsedLedger, recordAgencyCommissionShare, recordIntroductionCommissionShare } = await import('../../../worker/utils/ledger')
+              const { recordVoucherUsedLedger, recordAgencyCommissionShare, recordIntroductionCommissionShare, debitOwnerPromoForOrder } = await import('../../../worker/utils/ledger')
               const merchantId = meta.consigned_from_seller_id ?? meta.seller_id ?? 0
               const sellerId = meta.consigned_from_seller_id ? meta.seller_id : null
               const amount = meta.applied_price || 0
@@ -168,6 +172,12 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
                   voucher_id: meta.voucher_id,
                   merchant_id: merchantId,
                   platform_fee: result.platform_amount,
+                })
+                // 💸 2026-07-04 [INV-CB §3-D]: promo owner-펀딩 — 이 주문의 핀 소개비를 매장 몫에서
+                //   차감(주문당 1회 멱등). 게이트 promo_funding_source='owner' 아닐 땐 내부 no-op(현행).
+                await debitOwnerPromoForOrder(DB, {
+                  orderId: meta.order_id,
+                  ownerAccount: `merchant:${merchantId}`,
                 })
               }
             } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher-used-ledger]', e) }
@@ -200,6 +210,29 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
               )
             )
           }
+          // 📣 2026-07-05 (운영 감사 Q4): 손님 셀프(PIN/매장코드) 사용은 사장님이 실행자가 아님 —
+          //   사장님에게 사용 알림톡 + 대시보드 벨. (use-by-seller 직접 스캔 경로는 본인 실행이라 미발송.)
+          c.executionCtx?.waitUntil((async () => {
+            try {
+              const merchantId = meta.consigned_from_seller_id ?? meta.seller_id
+              if (!merchantId) return
+              const sellerRow = await DB.prepare('SELECT phone, business_name FROM sellers WHERE id = ?')
+                .bind(merchantId).first<{ phone: string | null; business_name: string | null }>()
+              if (sellerRow?.phone) {
+                await sendSellerVoucherUsedAlimtalk(
+                  c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+                  sellerRow.phone,
+                  { restaurantName: sellerRow.business_name || meta.restaurant_name || '매장', productName: meta.product_name, usedAt: new Date().toISOString() },
+                )
+              }
+              const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+              await createDashboardNotification(
+                DB, 'seller', String(merchantId), 'voucher_used',
+                '✅ 이용권 사용', `${meta.product_name} — 손님 셀프 사용 처리`,
+                '/seller/group-buy',
+              ).catch(() => {})
+            } catch { /* fail-soft */ }
+          })())
         }
       } catch { /* graceful */ }
 
@@ -288,7 +321,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       // 🛡️ 2026-05-21 Phase C: 정산 ledger entries 3개 자동 기록 (멱등).
       c.executionCtx?.waitUntil((async () => {
         try {
-          const { recordVoucherUsedLedger, recordAgencyCommissionShare, recordIntroductionCommissionShare } = await import('../../../worker/utils/ledger')
+          const { recordVoucherUsedLedger, recordAgencyCommissionShare, recordIntroductionCommissionShare, debitOwnerPromoForOrder } = await import('../../../worker/utils/ledger')
           const merchantId = voucher.consigned_from_seller_id ?? voucher.seller_id
           const sellerForCommission = voucher.consigned_from_seller_id ? voucher.seller_id : null
           const amount = voucher.applied_price || 0
@@ -308,6 +341,12 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
               voucher_id: voucher.id,
               merchant_id: merchantId,
               platform_fee: result.platform_amount,
+            })
+            // 💸 2026-07-04 [INV-CB §3-D]: promo owner-펀딩 — 이 voucher 셀렉트엔 order_id 가 없어
+            //   voucherId 로 전달(헬퍼가 vouchers.order_id 해석). 게이트 아닐 땐 내부 no-op(현행).
+            await debitOwnerPromoForOrder(DB, {
+              voucherId: voucher.id,
+              ownerAccount: `merchant:${merchantId}`,
             })
           }
         } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher-used-ledger]', e) }
@@ -414,12 +453,23 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         ).bind(voucher.product_id).run().catch(() => null)
 
         // 딜 결제 — 즉시 지갑 환불
+        // 💸 2026-07-05 버킷: 원거래(order_number)에서 무상으로 차감된 만큼 무상 복원 (refundDealPoints SSOT).
         if (voucher.payment_method === 'deal_points' && refundAmount > 0) {
-          await DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?')
-            .bind(refundAmount, voucher.user_id).run()
-          await DB.prepare(
-            "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-          ).bind(voucher.user_id, refundAmount, refundAmount, voucher.user_id, `구매 취소 환불: ${voucher.product_name}`).run()
+          const { refundDealPoints } = await import('../../../worker/utils/point-buckets')
+          const orderRow = await DB.prepare('SELECT order_number FROM orders WHERE id = ?')
+            .bind(voucher.order_id).first<{ order_number: string }>().catch(() => null)
+          await refundDealPoints(DB, {
+            userId: voucher.user_id,
+            amount: refundAmount,
+            ref: orderRow?.order_number || null,
+            type: 'refund',
+            description: `구매 취소 환불: ${voucher.product_name}`,
+          })
+          // 🏙️ 2026-07-05: 트리거 주문 셀프취소 → 방문 리워드 회수 (멱등 CAS, fail-soft)
+          try {
+            const { reverseVisitRewardOnRefund } = await import('../../../worker/utils/visit-reward')
+            await reverseVisitRewardOnRefund(DB, orderRow?.order_number)
+          } catch { /* fail-soft */ }
         }
         // 토스 카드 결제 — cancelTossPayment (waitUntil 비동기, 영업일 3~5일).
         //   ⚠️ 이 async+cron 패턴은 의도된 설계: retryable(5xx/PROVIDER) 실패는 gateway 가
@@ -563,13 +613,18 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       if (!useResult.meta?.changes) return c.json({ success: false, error: '동시성 충돌' }, 409)
 
       // 부분 환불 — 유저 user_points 에 차액 환불 + ledger reverse entry
+      // 💸 2026-07-05 버킷: 원거래 무상 차감분 우선 무상 복원 (refundDealPoints SSOT).
       try {
-        const order = await DB.prepare("SELECT payment_method FROM orders o JOIN vouchers v ON v.order_id = o.id WHERE v.id = ?").bind(voucher.id).first<{ payment_method: string }>()
+        const order = await DB.prepare("SELECT o.payment_method, o.order_number FROM orders o JOIN vouchers v ON v.order_id = o.id WHERE v.id = ?").bind(voucher.id).first<{ payment_method: string; order_number: string }>()
         if (order?.payment_method === 'deal_points' && voucher.user_id) {
-          await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(refundAmount, voucher.user_id).run()
-          await DB.prepare(
-            "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-          ).bind(voucher.user_id, refundAmount, refundAmount, voucher.user_id, `부분 환불 (사용 ${usedAmount}원/${voucherValue}원): ${reason || code}`).run()
+          const { refundDealPoints } = await import('../../../worker/utils/point-buckets')
+          await refundDealPoints(DB, {
+            userId: voucher.user_id,
+            amount: refundAmount,
+            ref: order?.order_number || null,
+            type: 'refund',
+            description: `부분 환불 (사용 ${usedAmount}원/${voucherValue}원): ${reason || code}`,
+          })
 
           // 🛡️ 2026-05-15 (TD-G05): ledger reverse entry — 셀러 receivable 차감, 유저 wallet 환불
           try {

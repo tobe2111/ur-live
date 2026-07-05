@@ -11,6 +11,7 @@ import NewVersionBanner from './components/main/NewVersionBanner'
 import ErrorBoundary from './components/ErrorBoundary'
 import FrameWrapper from './components/FrameWrapper'
 import { useMultiTabSync } from './hooks/useMultiTabSync'
+import { useTokenAutoRefresh } from './hooks/useTokenAutoRefresh'
 import ScrollToTop from './components/ScrollToTop'
 import OfflineBanner from './components/OfflineBanner'
 import BottomNav from '@/components/main/BottomNav'
@@ -23,6 +24,8 @@ import { featureFlags } from '@/shared/config/feature-flags'
 // lazy-loaded — only rendered conditionally, not on initial paint
 const PushNotificationSetup = lazy(() => import('./components/PushNotificationSetup'))
 const PWAInstallPrompt = lazy(() => import('./components/PWAInstallPrompt'))
+// 📜 2026-07-05: 약관 동의 게이트 (버전 포함 동의 로그 — terms_agreements)
+const TermsConsentGate = lazy(() => import('./components/TermsConsentGate'))
 const OnboardingTrigger = lazy(() => import('./components/onboarding/OnboardingTrigger'))
 const RestoreAccountModal = lazy(() => import('./components/account/RestoreAccountModal'))
 const SideBanner = lazy(() => import('@/components/SideBanner'))
@@ -141,7 +144,8 @@ const MarketingUnlockPage = lazy(() => import('./pages/marketing/MarketingUnlock
 const MarketingDashboardPage = lazy(() => import('./pages/marketing/MarketingDashboardPage'))
 const VoucherDetailPage = lazy(() => import('./pages/VoucherDetailPage'))
 const MealVouchersPage = lazy(() => import('./pages/MealVouchersPage'))
-const GroupBuyListPage = lazy(() => import('./pages/GroupBuyListPage'))
+// 🗺️ 2026-07-03 (대표 결정 — /group-buy 은퇴): 홈(/)이 동네딜 목록·지도·지역선택을 담당 → 중복.
+//   /group-buy 는 홈으로 리다이렉트(아래 Route). GroupBuyListPage 는 미라우팅(파일 보존). /group-buy/:id 상세는 유지.
 const GroupBuyDetailPage = lazy(() => import('./pages/GroupBuyDetailPage'))
 const GroupBuyConfirmPaymentPage = lazy(() => import('./pages/GroupBuyConfirmPaymentPage'))
 // 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6, PR 6/6.
@@ -184,6 +188,8 @@ const BlogListPage = lazy(() => import('./pages/BlogListPage'))
 const BlogDetailPage = lazy(() => import('./pages/BlogDetailPage'))
 const ReferralPage = lazy(() => import('./pages/ReferralPage'))
 const RestaurantMapPage = lazy(() => import('./pages/RestaurantMapPage'))
+// 🏙️ 2026-07-04 상권관 랜딩(B2G 상권 패키지) — /local/:code (시군구/행정동 코드).
+const LocalTownPage = lazy(() => import('./pages/LocalTownPage'))
 const UserGroupBuyCreatePage = lazy(() => import('./pages/UserGroupBuyCreatePage'))
 const CommunityGroupBuyMessagesPage = lazy(() => import('./pages/CommunityGroupBuyMessagesPage'))
 
@@ -195,6 +201,7 @@ const ServerErrorPage = lazy(() => import('./pages/ServerErrorPage'))
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'))
 const InfluencerTermsPage = lazy(() => import('./pages/InfluencerTermsPage'))
 const SellerTermsPage = lazy(() => import('./pages/SellerTermsPage'))
+const AgencyPartnerTermsPage = lazy(() => import('./pages/AgencyPartnerTermsPage'))
 const GroupBuyTermsPage = lazy(() => import('./pages/GroupBuyTermsPage'))
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'))
@@ -273,6 +280,13 @@ function AppContent() {
   // ✅ authInitialized ref: 중복 초기화 방지 (StrictMode 이중 마운트 대비)
   const authInitialized = useRef(false)
 
+  // 🔑 2026-07-02 (인증 회복력 P1a — 대표 "상품등록 흰화면"): 역할 토큰 proactive refresh 를 App 전역에.
+  //   기존엔 대시보드 레이아웃(Seller/Admin/Agency)에서만 갱신 → 사업자 유저가 소비자 앱(링크샵) 체류 중엔
+  //   seller_token 이 안 갱신돼, 만료 후 '상품등록' 진입 시 401 폭포 → 흰화면. 훅은 토큰 없으면 no-op(안전),
+  //   refresh inflight 락으로 대시보드 중복마운트도 무해. 링크샵에 있어도 셀러 토큰이 신선하게 유지됨.
+  useTokenAutoRefresh('seller')
+  useTokenAutoRefresh('agency')
+
   // 🛡️ 2026-05-01 (D fix): 카카오 OAuth callback URL → localStorage 처리는
   //   src/utils/auth-callback-bootstrap.ts 로 이전됨 (main.tsx 에서 React mount 전 동기 호출).
   //   render 함수 안에서 localStorage / history 를 건드리지 않음 — pure render.
@@ -282,6 +296,17 @@ function AppContent() {
   //   사용자에게 명시적 토스트 + URL 정리. 묵음 실패 → 무한 스피너 시나리오 차단.
   // 🆕 2026-06-29 퍼널 계측: 앱 진입(세션당 1회, 익명) — DAU/리텐션 기준점.
   useEffect(() => { trackFunnel('app_open') }, [])
+
+  // 📡 2026-07-05 유입 소스 어트리뷰션: ?src=(시설물 QR)/utm_source first-touch 30일 캡처 +
+  //   로그인 상태면 유저 귀속(claim, 멱등). 랜딩→가입→첫구매 퍼널의 클라 시작점 (lib/acquisition.ts).
+  useEffect(() => {
+    import('@/lib/acquisition').then(({ captureAcquisitionSource, claimAcquisitionIfLoggedIn }) => {
+      captureAcquisitionSource()
+      import('@/utils/auth').then(({ isLoggedInSync }) => {
+        claimAcquisitionIfLoggedIn(isLoggedInSync())
+      }).catch(() => {})
+    }).catch(swallow('app:acquisition-import'))
+  }, [])
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -570,6 +595,8 @@ function AppContent() {
           {/* 🗑️ 2026-06-17 (사용자 요청): 앱 설치 팝업(PWAInstallPrompt) 제거 */}
           <Suspense fallback={null}><OnboardingTrigger /></Suspense>
           <Suspense fallback={null}><RestoreAccountModal /></Suspense>
+          {/* 📜 2026-07-05: 약관 동의 게이트 — 카카오 첫 로그인 자체 동의 스텝 + 개정 재동의 (버전 로그) */}
+          <Suspense fallback={null}><TermsConsentGate /></Suspense>
           <OfflineBanner />
           <ConfirmHost />
           <ScrollToTop />
@@ -599,7 +626,8 @@ function AppContent() {
                 key 로 컬렉션 전환 시 강제 리마운트(초기 정렬/필터 재적용). */}
             <Route path="/wholesale/best" element={<WholesaleCatalogPage key="best" mode="best" />} />
             <Route path="/wholesale/new" element={<WholesaleCatalogPage key="new" mode="new" />} />
-            <Route path="/wholesale/margin" element={<WholesaleCatalogPage key="margin" mode="margin" />} />
+            {/* 🏭 2026-07-03 (대표): '고마진 특가'(/wholesale/margin) 완전 숨김 — 나브 진입 제거 + 직접 URL 도 전체상품으로 리다이렉트. */}
+            <Route path="/wholesale/margin" element={<Navigate to="/wholesale" replace />} />
             <Route path="/wholesale/premium" element={<WholesaleCatalogPage key="premium" mode="premium" />} />
             <Route path="/wholesale/brands" element={<WholesaleCatalogPage key="brands" mode="brands" />} />
             {/* 🏭 2026-06-27 (대표 — 모든 도매 페이지 공통 상단바): 도매 app 페이지를 WholesaleLayout 으로 감싸
@@ -652,10 +680,13 @@ function AppContent() {
             {/* 🛡️ 2026-05-23: 교환권 전용 detail 페이지 (deal 결제). voucher 와 group-buy UI 분리. */}
             <Route path="/vouchers/:id" element={<VoucherDetailPage />} />
             <Route path="/meal-vouchers" element={<MealVouchersPage />} />
-            <Route path="/group-buy" element={<GroupBuyListPage />} />
+            {/* 🗺️ 2026-07-03 (대표 결정): /group-buy 은퇴 → 홈 리다이렉트. 기존 15+ 링크·북마크·SEO 모두 홈으로 흡수. */}
+            <Route path="/group-buy" element={<Navigate to="/" replace />} />
             {/* confirm-payment 가 :id 매칭 우선 — 더 구체적인 path 먼저 */}
             <Route path="/group-buy/confirm-payment" element={<GroupBuyConfirmPaymentPage />} />
             <Route path="/group-buy/:id" element={<GroupBuyDetailPage />} />
+            {/* 🏙️ 2026-07-04 상권관 랜딩 — 지역코드 하나로 그 상권의 동네딜+체험단 전체(B2G QR/링크 진입). */}
+            <Route path="/local/:code" element={<LocalTownPage />} />
             {/* 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6 */}
             <Route path="/stays" element={<StaysSearchPage />} />
             {/* 🛡️ 2026-06-12 (B-1): Toss returnUrl confirm 페이지 — :id 보다 구체적 path (정적 세그먼트 우선 매칭) */}
@@ -933,6 +964,7 @@ function AppContent() {
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/terms/influencer" element={<InfluencerTermsPage />} />
             <Route path="/terms/seller" element={<SellerTermsPage />} />
+            <Route path="/terms/agency" element={<AgencyPartnerTermsPage />} />
             <Route path="/terms/group-buy" element={<GroupBuyTermsPage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/gdpr" element={<GDPRPage />} />

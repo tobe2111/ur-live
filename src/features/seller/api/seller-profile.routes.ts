@@ -332,6 +332,13 @@ sellerProfileRoutes.get('/business-info', async (c) => {
       (businessInfo as Record<string, unknown>).mail_order_number = mo?.mail_order_number ?? null;
     } catch { /* additive — 컬럼 미존재 환경 graceful */ }
 
+    // 🏪 2026-07-05 온누리 가맹 플래그 additive 동봉 (seller_meta K-V).
+    try {
+      const { getSellerMeta } = await import('../../../worker/utils/seller-meta');
+      const sm = await getSellerMeta(db, [Number(sellerId)]);
+      (businessInfo as Record<string, unknown>).onnuri_merchant = sm.get(Number(sellerId))?.onnuri_merchant === '1';
+    } catch { /* additive — fail-soft */ }
+
     return c.json({ success: true, data: businessInfo });
 
   } catch (error: unknown) {
@@ -362,6 +369,7 @@ sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => 
       phone?: string;
       email?: string;
       mail_order_number?: string; // 🖼️ 2026-07-01 통신판매업신고번호 (side-table 컬럼, additive 저장)
+      onnuri_merchant?: boolean;  // 🏪 2026-07-05 온누리상품권 가맹 여부 (seller_meta K-V, additive 저장)
     }>();
 
     // 사업자번호 형식 검증
@@ -498,6 +506,15 @@ sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => 
         await db.prepare('UPDATE seller_business_info SET mail_order_number = ? WHERE seller_id = ?')
           .bind(body.mail_order_number || null, sellerId).run();
       } catch { /* additive — 컬럼 미존재 환경 graceful */ }
+    }
+
+    // 🏪 2026-07-05 온누리 가맹 플래그 — sellers 컬럼 한도(100=D1 한도) 회피, seller_meta K-V 저장.
+    //   소비자 표면(동네딜 카드/상세/상권관)이 이 키로 뱃지 렌더. 메인 UPSERT 와 분리(additive).
+    if (body.onnuri_merchant !== undefined) {
+      try {
+        const { setSellerMeta } = await import('../../../worker/utils/seller-meta');
+        await setSellerMeta(db, Number(sellerId), { onnuri_merchant: body.onnuri_merchant ? '1' : null });
+      } catch { /* additive — fail-soft */ }
     }
 
     // 저장 확인 (address_detail 유무에 따라 쿼리 분기)

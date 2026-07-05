@@ -290,9 +290,12 @@ adminProductsRoutes.delete('/products/:id', cors(), async (c) => {
       return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
     }
 
+    // 🎯 2026-07-03 (대표 "삭제하면 아예 안 보여야"): soft-retire 는 slug 를 'retired-' 로 마킹 →
+    //   목록(dongnedeal/list)이 제외 → 삭제 즉시 관리 목록에서 사라짐(눈-토글 '숨김'은 slug 유지라 계속 보임).
+    const RETIRE_SET = "is_active = 0, slug = CASE WHEN slug LIKE 'retired-%' THEN slug ELSE 'retired-' || slug || '-' || id END, updated_at = datetime('now')";
     const hasOrders = await executeQuery<IdRow>(DB, 'SELECT id FROM order_items WHERE product_id = ? LIMIT 1', [productId]);
     if (hasOrders.length > 0) {
-      await executeRun(DB, "UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?", [productId]);
+      await executeRun(DB, `UPDATE products SET ${RETIRE_SET} WHERE id = ?`, [productId]);
       await writeAuditLog(c, { action: 'soft_delete_product', targetType: 'product', targetId: productId, after: { is_active: 0 } });
       await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
       return c.json({ success: true, data: { id: productId, soft_deleted: true } });
@@ -302,14 +305,19 @@ adminProductsRoutes.delete('/products/:id', cors(), async (c) => {
     //   다른 FK 참조(fcfs_applications/product_supply_meta/vouchers/product_regions 등) 때문에 실패 → 500.
     //   seed-demo 일괄삭제(2026-07-01)와 동일 패턴: 부속 데이터 선정리(best-effort) → DELETE 시도 →
     //   그래도 실패(잔여 FK)면 soft-retire(is_active=0) 폴백 — 어떤 경우에도 500 없이 목록에서 사라짐.
+    // 🎯 2026-07-03 (대표 신고 — 삭제해도 '숨김'으로 남음): 자동시드된 fake 리뷰(product_reviews)·장바구니·
+    //   위시리스트가 FK 로 하드삭제를 막아 soft-retire 로만 처리되던 것 → 파생 자식행도 선정리(주문 없을 때만이라 안전).
     await executeRun(DB, 'DELETE FROM product_supply_meta WHERE product_id = ?', [productId]).catch(() => {});
     await executeRun(DB, 'DELETE FROM fcfs_applications WHERE product_id = ?', [productId]).catch(() => {});
     await executeRun(DB, 'DELETE FROM product_regions WHERE product_id = ?', [productId]).catch(() => {});
+    await executeRun(DB, 'DELETE FROM product_reviews WHERE product_id = ?', [productId]).catch(() => {});
+    await executeRun(DB, 'DELETE FROM cart_items WHERE product_id = ?', [productId]).catch(() => {});
+    await executeRun(DB, 'DELETE FROM wishlists WHERE product_id = ?', [productId]).catch(() => {});
     try {
       await executeRun(DB, 'DELETE FROM products WHERE id = ?', [productId]);
       await writeAuditLog(c, { action: 'hard_delete_product', targetType: 'product', targetId: productId });
     } catch {
-      await executeRun(DB, "UPDATE products SET is_active = 0, updated_at = datetime('now') WHERE id = ?", [productId]);
+      await executeRun(DB, `UPDATE products SET ${RETIRE_SET} WHERE id = ?`, [productId]);
       await writeAuditLog(c, { action: 'soft_delete_product', targetType: 'product', targetId: productId, after: { is_active: 0, reason: 'fk_refs' } });
       await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
       return c.json({ success: true, data: { id: productId, soft_deleted: true } });
@@ -950,15 +958,17 @@ function parseDealCsv(text: string): Record<string, string>[] {
 // spots/seed = 추첨 응모(fcfs) — 정원(spots) 대비 지원 시드(seed, 정원 초과) → "선착순 {seed}/{spots}명" 표시.
 // ⚠️ desc = 유저에게 그대로 노출되는 상품 설명 — "데모" 문구 절대 금지(2026-07-02 대표 지시,
 //   실제 상품처럼 보여야 함). 데모 식별은 slug(demo-deal-N, 유저 비노출)로만.
-const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest: string; addr: string; img: string; q: string; spots: number; seed: number; desc: string }[] = [
-  { name: '[강남] 1++ 한우 오마카세 2인', cat: 'meal_voucher', price: 89000, orig: 140000, rest: '한우공방 강남점', addr: '서울 강남구 봉은사로', img: 'https://picsum.photos/seed/urdeal1/600/600', q: '한우 오마카세 상차림', spots: 5, seed: 30, desc: '1++ 한우 오마카세 2인 코스. 셰프가 부위별로 직접 구워드립니다. 매장 방문 후 이용권 QR 제시로 바로 이용하세요.' },
-  { name: '[연남] 화덕피자 + 파스타 2인 세트', cat: 'meal_voucher', price: 25900, orig: 39000, rest: '포르노 로마노', addr: '서울 마포구 동교로', img: 'https://picsum.photos/seed/urdeal2/600/600', q: '화덕피자', spots: 3, seed: 10, desc: '400℃ 화덕에서 구운 나폴리식 피자 1판 + 수제 파스타 1개, 2인 세트. 방문 시 이용권 QR 제시.' },
-  { name: '[성수] 스페셜티 핸드드립 2인 + 디저트', cat: 'meal_voucher', price: 12900, orig: 21000, rest: '성수 로스터스', addr: '서울 성동구 연무장길', img: 'https://picsum.photos/seed/urdeal3/600/600', q: '핸드드립 커피', spots: 10, seed: 47, desc: '스페셜티 원두 핸드드립 2잔 + 오늘의 디저트 1개. 원두는 매주 로스팅분만 사용합니다.' },
-  { name: '두피 스케일링 + 헤어 클리닉', cat: 'beauty_voucher', price: 39000, orig: 80000, rest: '살롱 드 모드', addr: '서울 강남구 압구정로', img: 'https://picsum.photos/seed/urdeal4/600/600', q: '헤어살롱 매장 인테리어', spots: 5, seed: 22, desc: '두피 진단 → 스케일링 → 영양 클리닉 풀코스(약 60분). 방문 전 전화 예약을 권장합니다.' },
-  { name: '왁싱 전신 패키지', cat: 'beauty_voucher', price: 49000, orig: 90000, rest: '스무스 왁싱 라운지', addr: '서울 서초구 강남대로', img: 'https://picsum.photos/seed/urdeal5/600/600', q: '왁싱 뷰티샵 매장', spots: 8, seed: 35, desc: '전신 왁싱 패키지 — 1회용 위생 재료만 사용합니다. 100% 예약제, 이용권 구매 후 전화 예약.' },
-  { name: '속눈썹 연장 풀세트 + 리터치', cat: 'beauty_voucher', price: 29000, orig: 55000, rest: '아이래쉬 스튜디오', addr: '서울 마포구 양화로', img: 'https://picsum.photos/seed/urdeal6/600/600', q: '속눈썹 연장 시술', spots: 3, seed: 14, desc: '속눈썹 연장 풀세트 + 2주 내 리터치 1회 포함. 시술 약 90분, 예약 후 방문해주세요.' },
-  { name: '반려견 종합 미용 (목욕+커트)', cat: 'etc_voucher', price: 35000, orig: 60000, rest: '댕댕살롱', addr: '서울 송파구 올림픽로', img: 'https://picsum.photos/seed/urdeal7/600/600', q: '강아지 미용', spots: 6, seed: 28, desc: '목욕 + 전체 커트 종합 미용(소형견 기준). 중·대형견은 매장으로 문의해주세요.' },
-  { name: '실내 클라이밍 1일 체험 + 강습', cat: 'etc_voucher', price: 19000, orig: 35000, rest: '더 클라임', addr: '서울 광진구 아차산로', img: 'https://picsum.photos/seed/urdeal8/600/600', q: '실내 클라이밍', spots: 4, seed: 19, desc: '실내 클라이밍 1일 이용권 + 초보 강습 30분 + 암벽화·초크 대여 포함. 운동복만 챙겨오세요.' },
+// pq = 카카오 장소검색용 순수 업종 키워드(이미지검색용 q 와 분리 — "상차림/인테리어/시술" 같은 노이즈 배제).
+//   place 매칭은 `{지역} {pq}` 로 질의 → 실제 매장(좌표·주소·place_url) 반환 확률 극대화(대표 "정확하게").
+const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest: string; addr: string; img: string; q: string; pq: string; spots: number; seed: number; desc: string }[] = [
+  { name: '[강남] 1++ 한우 오마카세 2인', cat: 'meal_voucher', price: 89000, orig: 140000, rest: '한우공방 강남점', addr: '서울 강남구 봉은사로', img: 'https://picsum.photos/seed/urdeal1/600/600', q: '한우 오마카세 상차림', pq: '한우 오마카세', spots: 5, seed: 30, desc: '1++ 한우 오마카세 2인 코스. 셰프가 부위별로 직접 구워드립니다. 매장 방문 후 이용권 QR 제시로 바로 이용하세요.' },
+  { name: '[연남] 화덕피자 + 파스타 2인 세트', cat: 'meal_voucher', price: 25900, orig: 39000, rest: '포르노 로마노', addr: '서울 마포구 동교로', img: 'https://picsum.photos/seed/urdeal2/600/600', q: '화덕피자', pq: '화덕피자', spots: 3, seed: 10, desc: '400℃ 화덕에서 구운 나폴리식 피자 1판 + 수제 파스타 1개, 2인 세트. 방문 시 이용권 QR 제시.' },
+  { name: '[성수] 스페셜티 핸드드립 2인 + 디저트', cat: 'meal_voucher', price: 12900, orig: 21000, rest: '성수 로스터스', addr: '서울 성동구 연무장길', img: 'https://picsum.photos/seed/urdeal3/600/600', q: '핸드드립 커피', pq: '카페', spots: 10, seed: 47, desc: '스페셜티 원두 핸드드립 2잔 + 오늘의 디저트 1개. 원두는 매주 로스팅분만 사용합니다.' },
+  { name: '두피 스케일링 + 헤어 클리닉', cat: 'beauty_voucher', price: 39000, orig: 80000, rest: '살롱 드 모드', addr: '서울 강남구 압구정로', img: 'https://picsum.photos/seed/urdeal4/600/600', q: '헤어살롱 매장 인테리어', pq: '헤어살롱', spots: 5, seed: 22, desc: '두피 진단 → 스케일링 → 영양 클리닉 풀코스(약 60분). 방문 전 전화 예약을 권장합니다.' },
+  { name: '왁싱 전신 패키지', cat: 'beauty_voucher', price: 49000, orig: 90000, rest: '스무스 왁싱 라운지', addr: '서울 서초구 강남대로', img: 'https://picsum.photos/seed/urdeal5/600/600', q: '왁싱 뷰티샵 매장', pq: '왁싱샵', spots: 8, seed: 35, desc: '전신 왁싱 패키지 — 1회용 위생 재료만 사용합니다. 100% 예약제, 이용권 구매 후 전화 예약.' },
+  { name: '속눈썹 연장 풀세트 + 리터치', cat: 'beauty_voucher', price: 29000, orig: 55000, rest: '아이래쉬 스튜디오', addr: '서울 마포구 양화로', img: 'https://picsum.photos/seed/urdeal6/600/600', q: '속눈썹 연장 시술', pq: '속눈썹', spots: 3, seed: 14, desc: '속눈썹 연장 풀세트 + 2주 내 리터치 1회 포함. 시술 약 90분, 예약 후 방문해주세요.' },
+  { name: '반려견 종합 미용 (목욕+커트)', cat: 'etc_voucher', price: 35000, orig: 60000, rest: '댕댕살롱', addr: '서울 송파구 올림픽로', img: 'https://picsum.photos/seed/urdeal7/600/600', q: '강아지 미용', pq: '애견미용', spots: 6, seed: 28, desc: '목욕 + 전체 커트 종합 미용(소형견 기준). 중·대형견은 매장으로 문의해주세요.' },
+  { name: '실내 클라이밍 1일 체험 + 강습', cat: 'etc_voucher', price: 19000, orig: 35000, rest: '더 클라임', addr: '서울 광진구 아차산로', img: 'https://picsum.photos/seed/urdeal8/600/600', q: '실내 클라이밍', pq: '클라이밍', spots: 4, seed: 19, desc: '실내 클라이밍 1일 이용권 + 초보 강습 30분 + 암벽화·초크 대여 포함. 운동복만 챙겨오세요.' },
   // ❌ 2026-07-02 (대표 "왜 이런 서비스가 데모에?"): general(배송형) 데모 2종(원두 드립백/한라봉) 제거.
   //   배경: 06-17 동네딜 리스트에 general 카테고리 서버 지원이 추가되며 06-30 데모 확장이 샘플을 넣었으나,
   //   ① 홈/동네딜 어디에도 '일반' 칩이 없고 기본 피드 쿼리도 이용권 4종만이라 소비자 정상 접근 불가(유령),
@@ -969,18 +979,49 @@ const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest:
 // 🎯 2026-07-01 (대표 "데모 이용권도 매장 지도 매칭 제대로"): 데모 매장은 가공 이름 + 번지 없는 주소라
 //   좌표/place_url 이 없음 → 카카오 키워드 검색으로 실제 매장의 좌표·주소·place_url 을 붙여 지도 매칭 정상화.
 //   best-effort: 키 없거나 결과 없으면 null → 시딩은 그대로 진행(기존 폴백).
+// 🎯 2026-07-03 (대표 "지역 정확도"): 지역명을 좌표(중심점)로 1회 해석 — 이후 매장검색을 이 좌표
+//   반경으로 앵커링(문자열 이어붙이기보다 정확). 카카오 주소검색 우선, 실패 시 키워드검색 폴백.
+async function resolveRegionCenter(
+  env: { KAKAO_REST_API_KEY?: string },
+  region: string,
+): Promise<{ x: string; y: string } | null> {
+  const key = env.KAKAO_REST_API_KEY;
+  const q = (region || '').trim();
+  if (!key || !q) return null;
+  try {
+    for (const url of [
+      `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(q)}&size=1`,
+      `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(q)}&size=1`,
+    ]) {
+      const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
+      if (!res.ok) continue;
+      const data = await res.json() as { documents?: Array<{ x?: string; y?: string }> };
+      const doc = data?.documents?.[0];
+      if (doc?.x && doc?.y) return { x: doc.x, y: doc.y };
+    }
+    return null;
+  } catch { return null; }
+}
+
 async function kakaoPlaceLookup(
   env: { KAKAO_REST_API_KEY?: string },
   query: string,
+  pickIndex = 0,  // 🎯 여러 실매장 중 로테이션 선택(누적 시드 시 매번 다른 실매장 = "랜덤" 다양성)
+  center?: { x: string; y: string } | null,  // 🎯 지역 중심좌표 — 있으면 반경 검색 + 거리순(정확도 ↑)
 ): Promise<{ name: string | null; address: string | null; lat: number | null; lng: number | null; placeUrl: string | null } | null> {
   const key = env.KAKAO_REST_API_KEY;
   if (!key || !query.trim()) return null;
   try {
-    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query.trim())}&size=1`;
+    // size 넉넉히(15) → 실제 존재하는 매장 후보 확보 후 pickIndex 로 회전 선택(대표 "카카오맵에서 랜덤/필터로 매장 선정").
+    //   center 지정 시 그 좌표 반경 20km 내를 거리순으로 → 지역 정확도 극대화(문자열 이어붙이기 대비).
+    let url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query.trim())}&size=15`;
+    if (center) url += `&x=${center.x}&y=${center.y}&radius=20000&sort=distance`;
     const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
     if (!res.ok) return null;
     const data = await res.json() as { documents?: Array<{ place_name?: string; road_address_name?: string; address_name?: string; x?: string; y?: string; id?: string; place_url?: string }> };
-    const doc = data?.documents?.[0];
+    const docs = data?.documents || [];
+    if (!docs.length) return null;
+    const doc = docs[pickIndex % docs.length];
     if (!doc) return null;
     const lat = Number(doc.y), lng = Number(doc.x);
     return {
@@ -1011,6 +1052,38 @@ adminProductsRoutes.get('/dongnedeal/stats', cors(), async (c) => {
     return c.json({ success: false, error: safeAdminError(err, c.env), total: 0, active: 0, demo: 0, by_category: [] }, 500);
   }
 });
+
+// 🎯 2026-07-03 (대표 "애초에 정확하게, 가장 이상적으로"): 검색된 실사진을 서버측에서 내려받아
+//   우리 R2(MEDIA_BUCKET)에 **재호스팅** → 우리 도메인(/api/media/…) https 로 영구 서빙.
+//   핫링크의 구조적 문제(인증서 불일치·혼합콘텐츠·핫링크차단·원본 404/삭제)를 원천 소멸 —
+//   저장되는 건 항상 우리 URL 이라 렌더 시 cfImage(zone 리사이저)가 same-origin 으로 리사이즈.
+//   이 함수가 URL 을 돌려주면 = "정상 이미지 확보"(검증+영구화 동시). 실패(키·네트워크·비이미지·과대/과소)
+//   → null → 호출측이 좌표없음과 결합해 '유령 데모' 스킵 판정에 사용.
+async function rehostImageToR2(env: { MEDIA_BUCKET?: R2Bucket }, srcUrl: string | null | undefined): Promise<string | null> {
+  if (!srcUrl || !env.MEDIA_BUCKET || !/^https?:\/\//i.test(srcUrl)) return null;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 6000);
+    let res: Response;
+    try {
+      res = await fetch(srcUrl, { signal: ctrl.signal });  // 인증서오류/DNS → throw → null
+    } finally { clearTimeout(timer); }
+    if (!res.ok) return null;
+    const ct = (res.headers.get('content-type') || '').toLowerCase().split(';')[0].trim();
+    if (!ct.startsWith('image/')) return null;
+    const buf = await res.arrayBuffer();
+    if (buf.byteLength < 500 || buf.byteLength > 6 * 1024 * 1024) return null; // 아이콘/깨짐 or 과대
+    const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg';
+    const yyyymm = new Date().toISOString().slice(0, 7);
+    const rand = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const key = `uploads/demo/${yyyymm}/${rand}.${ext}`;
+    await env.MEDIA_BUCKET.put(key, buf, {
+      httpMetadata: { contentType: ct, cacheControl: 'public, max-age=31536000, immutable' },
+      customMetadata: { source: 'dongnedeal-demo', at: new Date().toISOString() },
+    });
+    return `/api/media/${key}`;  // upload.routes 의 same-origin 서빙 규약과 동일(PUBLIC_R2_URL 무관하게 표시)
+  } catch { return null; }
+}
 
 // POST /dongnedeal/seed-demo — 데모 동네딜 상품 시드 (멱등, slug 'demo-deal-N')
 adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
@@ -1084,11 +1157,17 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     const resolvedImgs = await Promise.all(
       items.map((d) => fetchNaverImageUrl(c.env, d.q, batchIndex).catch(() => null))
     );
-    // 🎯 실제 매장 매칭(카카오 키워드 검색): region 지정 시 그 지역 매장으로 — 매장명·주소·좌표가
-    //   실제 장소로 채워져 지도 마커·카카오맵 링크(RestaurantMiniMap 이 매장명+주소로 자동 생성)까지 연결.
+    // 🎯 2026-07-03 (대표 "애초에 정확하게, 가장 이상적으로"): 검색된 실사진을 우리 R2 로 재호스팅 →
+    //   저장 URL 은 항상 우리 도메인(/api/media/…). 실패분은 null(좌표없음과 결합해 아래에서 스킵).
+    const validImgs = await Promise.all(
+      resolvedImgs.map((u) => rehostImageToR2(c.env as unknown as { MEDIA_BUCKET?: R2Bucket }, u)),
+    );
+    // 🎯 실제 매장 매칭(카카오): region 을 중심좌표로 1회 해석 → 그 반경 내 거리순 검색(정확도 ↑).
+    //   center 있으면 검색어는 순수 업종(pq)만(지역명은 좌표로 반영), 없으면 "지역 pq" 문자열 폴백.
+    const regionCenter = region ? await resolveRegionCenter(c.env, region) : null;
     const resolvedPlaces = await Promise.all(
-      items.map((d) => (d.rest || d.addr || region)
-        ? kakaoPlaceLookup(c.env, `${region || d.addr} ${d.q}`.trim()).catch(() => null)
+      items.map((d) => (d.pq || d.addr || region)
+        ? kakaoPlaceLookup(c.env, regionCenter ? d.pq : `${region || d.addr} ${d.pq}`.trim(), batchIndex, regionCenter).catch(() => null)
         : Promise.resolve(null))
     );
     // 🎯 2026-07-01 (대표 요청): 데모 딜을 추첨 응모(fcfs)로 — 정원 대비 지원수가 이미 넘치게(30/5, 10/3 …).
@@ -1098,19 +1177,28 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     let seeded = 0;
     let realPhotos = 0;
     let placed = 0;
+    let skipped = 0;  // 🎯 좌표·실사진 둘 다 없어 생성하지 않은 데모 수
+    // 🎯 2026-07-03 (대표 "데모 리뷰가 매장 특색에 안 맞음"): 시드된 데모의 매장특색 리뷰 생성 대상.
+    const seededForReviews: Array<{ id: number; name: string; category: string; storeName: string | null; price: number }> = [];
     for (let i = 0; i < items.length; i++) {
       const d = items[i];
-      const img = resolvedImgs[i] || d.img;
-      if (resolvedImgs[i]) realPhotos++;
+      const realPhoto = validImgs[i];               // 검증 통과 실사진(없으면 null)
+      if (realPhoto) realPhotos++;
       // 🎯 실제 매장 매칭 성공 시 그 매장의 이름/주소/좌표 사용(지도 정확). 실패 시 데모값(좌표 없음 → 클라 지오코딩).
       const place = resolvedPlaces[i];
-      if (place?.lat != null) placed++;
-      const restName = place?.name || d.rest || null;
+      const hasCoord = place?.lat != null;
+      if (hasCoord) placed++;
+      // 🎯 2026-07-03 (대표 "데모는 실제 있는 매장이어야 해"): 카카오 실매장 매칭 실패 = 생성 안 함(스킵).
+      //   실제 존재하는 매장(좌표·주소·place_url)만 데모로 — 가공 상호·좌표없음 유령 데모 원천 차단.
+      if (!hasCoord) { skipped++; continue; }
+      const img = realPhoto || d.img;               // 실사진(R2) 우선, 없으면 깨끗한 picsum 폴백
+      const restName = place?.name || d.rest || null;   // hasCoord 보장 → 항상 실매장명
       const restAddr = place?.address || d.addr || null;
-      // 🎯 region 지정 시 상품명 지역 프리픽스 교체 — "[강남] …" → "[영등포] …" (없으면 부착).
-      const dispName = region
-        ? (/^\[[^\]]+\]/.test(d.name) ? d.name.replace(/^\[[^\]]+\]/, `[${region}]`) : `[${region}] ${d.name}`)
-        : d.name;
+      // 🎯 상품명 지역 프리픽스 = 지정 region 우선, 없으면 **실매장 주소의 구/시**로 정합(가공 "[강남]" 오표기 방지).
+      const realRegion = region || (place?.address ? (place.address.match(/([가-힣]+구|[가-힣]+시)/)?.[1] || '') : '');
+      const dispName = realRegion
+        ? (/^\[[^\]]+\]/.test(d.name) ? d.name.replace(/^\[[^\]]+\]/, `[${realRegion}]`) : `[${realRegion}] ${d.name}`)
+        : d.name.replace(/^\[[^\]]+\]\s*/, '');  // 지역 못 구하면 프리픽스 제거(가공 지역 표기 금지)
       const slug = DEAL_DEMO_SLUG + (maxSuffix + i + 1);  // 누적 추가 — 기존 번호 다음부터
       let res;
       try {
@@ -1142,8 +1230,10 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       if (pid > 0 && place?.placeUrl) {
         await setSupplyMeta(DB, pid, { kakao_place_url: place.placeUrl }).catch(() => {});
       }
+      // 🎯 매장특색 리뷰 생성 대상(응답 후 waitUntil 로 채움 — 실매장명/업종 grounding).
+      if (pid > 0) seededForReviews.push({ id: pid, name: dispName, category: d.cat, storeName: restName, price: d.price });
     }
-    await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded, realPhotos, placed, healed, region: region || null, category: catFilter || null } }).catch(() => {});
+    await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded, realPhotos, placed, skipped, healed, region: region || null, category: catFilter || null } }).catch(() => {});
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {}); // 홈/동네딜 즉시 반영
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
     // 🧭 2026-07-02 (대표 승인 "가장 이상적으로"): 좌표 없이 시드된 행(place 미매칭/폴백 INSERT)을
@@ -1156,7 +1246,21 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         ).catch(() => {})
       );
     } catch { /* executionCtx 미가용 — 일일 cron 이 자연 처리 */ }
-    return c.json({ success: true, seeded, realPhotos, placed, healed, region: region || null, category: catFilter || null });
+    // 🎯 2026-07-03 (대표 "데모 리뷰 매장 특색에 맞게, 가장 이상적으로"): 시드된 데모에 매장특색 리뷰 생성
+    //   (Claude Haiku grounding: 오프라인 이용권·실매장명·업종 → 배송어 없이 자연스럽게. 키/실패 시 업종별 결정론 폴백).
+    //   응답 후 waitUntil(외부 LLM 호출이라 응답 블록 방지) — review_count>0 채워 시간당 generic cron 이 안 건드림.
+    if (seededForReviews.length > 0) {
+      try {
+        c.executionCtx.waitUntil(
+          import('../../../worker/utils/demo-review-generator').then((m) =>
+            Promise.all(seededForReviews.map((prod) => m.seedDemoReviews(c.env as unknown as Env, prod, 8).catch(() => 0)))
+          ).then(() =>
+            invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {})
+          ).catch(() => {})
+        );
+      } catch { /* executionCtx 미가용 — 시간당 cron 이 폴백 처리 */ }
+    }
+    return c.json({ success: true, seeded, realPhotos, placed, skipped, healed, region: region || null, category: catFilter || null });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
@@ -1172,6 +1276,13 @@ adminProductsRoutes.delete('/dongnedeal/seed-demo', cors(), async (c) => {
     await c.env.DB.prepare(
       `DELETE FROM fcfs_applications WHERE product_id IN (SELECT id FROM products WHERE slug LIKE ?)`
     ).bind(DEAL_DEMO_SLUG + '%').run().catch(() => {});
+    // 🎯 2026-07-03 (대표 신고 — 삭제해도 '숨김'으로 남음): 자동시드 fake 리뷰·장바구니·위시가 FK 로 하드삭제를
+    //   막아 soft-retire 로만 남던 것 → 파생 자식행 선정리(데모 전용이라 안전) → 실제 하드삭제.
+    for (const t of ['product_reviews', 'cart_items', 'wishlists']) {
+      await c.env.DB.prepare(
+        `DELETE FROM ${t} WHERE product_id IN (SELECT id FROM products WHERE slug LIKE ?)`
+      ).bind(DEAL_DEMO_SLUG + '%').run().catch(() => {});
+    }
     // 🛡️ 2026-07-01 (대표 신고 "데모 정리 안됨" — 500): 일괄 DELETE 는 데모에 주문/바우처 등
     //   FK 참조가 하나라도 붙으면 전체가 실패(500). → 행별 삭제 + 실패 행은 soft-retire
     //   (is_active=0 + slug 를 retired- 로 리네임 → 노출/데모 카운트에서 제외, 참조 데이터 보존).
@@ -1342,7 +1453,7 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
     const { results } = await c.env.DB.prepare(
       `SELECT id, name, price, original_price, category, restaurant_name, restaurant_address, image_url,
               COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at
-         FROM products WHERE category IN (${ph}) ORDER BY created_at DESC LIMIT ?`
+         FROM products WHERE category IN (${ph}) AND COALESCE(slug,'') NOT LIKE 'retired-%' ORDER BY created_at DESC LIMIT ?`
     ).bind(...cats, lim).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
     const rows = results || [];
     // 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 한도(meta) 첨부 — 수정 폼 prefill 용 (0=무제한).

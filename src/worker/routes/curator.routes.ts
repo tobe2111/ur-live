@@ -79,6 +79,9 @@ async function ensureUserProfileCols(DB: D1Database): Promise<void> {
     'ALTER TABLE users ADD COLUMN linkshop_headline TEXT',
     // 🎨 2026-06-19 마퀴 액센트 색(#RRGGBB) — 소유자 조정. 비면 기본 주황.
     'ALTER TABLE users ADD COLUMN linkshop_accent TEXT',
+    // ✨ 2026-07-04 링크샵 1단계(linkshop-role-model §5): 매장(스토어프론트) 링크샵 하단
+    //   "추천(핀)" 섹션 opt-in — 0(기본 off)/1. sellers 는 컬럼 한도(100) 도달이라 users 에.
+    'ALTER TABLE users ADD COLUMN linkshop_show_recommend INTEGER DEFAULT 0',
   ]) {
     await DB.prepare(sql).run().catch(() => { /* 이미 존재 → 정상 */ })
   }
@@ -199,11 +202,13 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     //   메인 SELECT 의 banner/sns 가 폴백으로 사라지지 않도록 분리). 컬럼 없으면 null.
     let headline: string | null = null
     let accent: string | null = null
+    let showRecommend = 0
     try {
-      const h = await DB.prepare('SELECT linkshop_headline, linkshop_accent FROM users WHERE id = ? LIMIT 1')
-        .bind(userId).first<{ linkshop_headline: string | null; linkshop_accent: string | null }>()
+      const h = await DB.prepare('SELECT linkshop_headline, linkshop_accent, COALESCE(linkshop_show_recommend, 0) AS show_recommend FROM users WHERE id = ? LIMIT 1')
+        .bind(userId).first<{ linkshop_headline: string | null; linkshop_accent: string | null; show_recommend: number }>()
       headline = h?.linkshop_headline ?? null
       accent = h?.linkshop_accent ?? null
+      showRecommend = Number(h?.show_recommend) === 1 ? 1 : 0
     } catch {
       // linkshop_accent 컬럼 없는 env — headline 만이라도.
       try {
@@ -249,6 +254,8 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         // 🎨 2026-06-17 링크샵 랜딩 리디자인: 상단 마퀴 헤드라인 + 액센트 색.
         headline,
         accent,
+        // ✨ 2026-07-04 링크샵 1단계: 매장 링크샵 하단 추천(핀) 섹션 opt-in (기본 0=off).
+        linkshop_show_recommend: showRecommend,
       },
       pins: pins ?? [],
       // 🛡️ 2026-05-25 신모델: linked seller 있으면 셀러 공개페이지로 자연 흡수.
@@ -634,7 +641,7 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
-    type ProfileBody = { name?: string; bio?: string; profile_image?: string; banner_url?: string; youtube_url?: string; instagram_url?: string; tiktok_url?: string; headline?: string; accent?: string }
+    type ProfileBody = { name?: string; bio?: string; profile_image?: string; banner_url?: string; youtube_url?: string; instagram_url?: string; tiktok_url?: string; headline?: string; accent?: string; show_recommend?: boolean }
     const body = await c.req.json<ProfileBody>().catch(() => ({} as ProfileBody))
 
     const updates: string[] = []
@@ -689,6 +696,11 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
       if (v && !/^#[0-9A-Fa-f]{6}$/.test(v)) return c.json({ success: false, error: '색상은 #RRGGBB 형식' }, 400)
       updates.push('linkshop_accent = ?')
       binds.push(v)
+    }
+    // ✨ 2026-07-04 링크샵 1단계: 하단 추천 섹션 opt-in 토글 (boolean → 0/1).
+    if (typeof body.show_recommend === 'boolean') {
+      updates.push('linkshop_show_recommend = ?')
+      binds.push(body.show_recommend ? 1 : 0)
     }
     if (updates.length === 0) return c.json({ success: false, error: '변경할 필드 없음' }, 400)
 
@@ -1008,12 +1020,16 @@ curatorRoutes.post('/me/withdrawal', rateLimit({ action: 'curator_withdrawal', m
         return c.json({ success: false, error: '출금 가능 금액이 부족하거나 처리 중인 신청이 있습니다. 새로고침 후 다시 시도하세요.', available }, 409)
       }
       // 🏁 P2: 딜 즉시 차감 (CAS — 잔액 부족이면 신청 롤백). 반려 시 지급센터가 deal_deducted=1 만 복원.
+      // 💸 2026-07-05 버킷 (약관 강제): 현금 환급은 유상(balance - free_balance) 한도로만 —
+      //   무상(리워드) 딜의 현금 인출 차단. free_balance 무변경 (출금은 유상에서만 나감).
+      const { ensureDealBuckets, PAID_BALANCE_SQL } = await import('../utils/point-buckets')
+      await ensureDealBuckets(DB)
       const dealDeduct = await DB.prepare(
-        "UPDATE user_points SET balance = balance - ?, updated_at = datetime('now') WHERE user_id = ? AND balance >= ?"
+        `UPDATE user_points SET balance = balance - ?, updated_at = datetime('now') WHERE user_id = ? AND ${PAID_BALANCE_SQL} >= ?`
       ).bind(amount, String(userId), amount).run().catch(() => null)
       if (!dealDeduct?.meta?.changes) {
         await DB.prepare('DELETE FROM user_withdrawals WHERE id = ?').bind(result.meta.last_row_id).run().catch(() => {})
-        return c.json({ success: false, error: '딜 잔액이 부족합니다 (이미 사용된 딜은 환급할 수 없어요)', available }, 409)
+        return c.json({ success: false, error: '출금 가능한 유상 딜이 부족합니다 (무상 리워드 딜은 환급 대상이 아닙니다)', available }, 409)
       }
       await DB.prepare(
         `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description)

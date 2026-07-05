@@ -4,6 +4,7 @@
 //   판매사별 분리 키(seller_token 해시 불필요 — origin+token 로컬이라 단순 키 사용).
 // ──────────────────────────────────────────────────────────────
 import { useSyncExternalStore, useCallback } from 'react'
+import { currentWholesaleMallSlug } from '@/hooks/queries/useWholesale'
 
 // 🚚 제조사별 배송/주문 정책 스냅샷(비식별 — group key + 정책 숫자). 서버가 청구 시 재계산(SSOT) — 표시용.
 export interface WCartSupplierPolicy {
@@ -30,28 +31,37 @@ export interface WCartItem {
 }
 
 const KEY = 'ut_wholesale_cart_v1'
+// 🏬 2026-07-04 (몰별 분리): 장바구니도 몰 단위 — 기본 몰은 기존 키 그대로(하위호환, byte-동일),
+//   타 몰(?mall=medi 프리뷰/별도 도메인 전환기)은 `ut_wholesale_cart_v1:<slug>` 로 분리.
+//   같은 키를 쓰면 메디스타트에 담은 상품이 유통스타트 카트에 섞여 보임(주문은 서버 몰스코프가 거르지만 UX 혼입).
+function cartKey(): string {
+  const s = currentWholesaleMallSlug()
+  return s && s !== 'default' ? `${KEY}:${s}` : KEY
+}
 const listeners = new Set<() => void>()
-let cache: WCartItem[] | null = null
+let cache: { key: string; items: WCartItem[] } | null = null
 
 function read(): WCartItem[] {
-  if (cache) return cache
+  const k = cartKey()
+  if (cache && cache.key === k) return cache.items
   if (typeof window === 'undefined') return []
   try {
-    const raw = localStorage.getItem(KEY)
-    cache = raw ? (JSON.parse(raw) as WCartItem[]) : []
-  } catch { cache = [] }
-  return cache!
+    const raw = localStorage.getItem(k)
+    cache = { key: k, items: raw ? (JSON.parse(raw) as WCartItem[]) : [] }
+  } catch { cache = { key: k, items: [] } }
+  return cache!.items
 }
 
 function write(next: WCartItem[]) {
-  cache = next
-  try { localStorage.setItem(KEY, JSON.stringify(next)) } catch { /* quota — ignore */ }
+  const k = cartKey()
+  cache = { key: k, items: next }
+  try { localStorage.setItem(k, JSON.stringify(next)) } catch { /* quota — ignore */ }
   listeners.forEach((l) => l())
 }
 
 function subscribe(cb: () => void) {
   listeners.add(cb)
-  const onStorage = (e: StorageEvent) => { if (e.key === KEY) { cache = null; cb() } }
+  const onStorage = (e: StorageEvent) => { if (e.key === cartKey()) { cache = null; cb() } }
   if (typeof window !== 'undefined') window.addEventListener('storage', onStorage)
   return () => { listeners.delete(cb); if (typeof window !== 'undefined') window.removeEventListener('storage', onStorage) }
 }

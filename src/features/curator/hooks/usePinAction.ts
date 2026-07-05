@@ -84,7 +84,12 @@ export function usePinAction(): UsePinActionResult {
 
       // 수익 simulator — 5명 공유 시 예상 적립
       const copySuffix = linkCopied ? ' · 추천링크 복사됨' : ''
-      if (price && Number.isFinite(price) && price > 0) {
+      // ✨ 2026-07-04 링크샵 1단계 1b(linkshop-role-model §2 원칙3): 매장 업주(스토어프론트 모드)가
+      //   담으면 "어디 갔는지 모름" 혼란 방지 — 하단 추천 섹션 위치 + opt-in 안내를 명시.
+      const isStoreOwner = typeof localStorage !== 'undefined' && !!localStorage.getItem('seller_id')
+      if (isStoreOwner) {
+        toast.success(`📌 내 링크샵 하단 '추천'에 담김${copySuffix} — 링크샵 편집 모드에서 '추천 ON' 하면 방문자에게 표시`)
+      } else if (price && Number.isFinite(price) && price > 0) {
         const expected = Math.round(price * 5 * (CURATOR_DEFAULTS.STATS_DEFAULT_RANGE_DAYS / 7) * 0.01)
         toast.success(`📌 링크샵에 담김${copySuffix} · 5명 공유 시 예상 ${expected.toLocaleString()}원 적립`)
       } else {

@@ -19,7 +19,8 @@ import { setWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta';
 import { startDashboardSession, isDashboardSessionCurrent, deriveDashboardSeat } from '@/worker/utils/dashboard-session';
 import { maskEmail } from '@/lib/mask';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
-import { registrationMallId } from './wholesale-malls';
+import { registrationMallId, loadMallById } from './wholesale-malls';
+import { saveWholesaleLicense } from './wholesale-license';
 
 // fail-soft 알림 발송 (가입 흐름이 알림 실패로 깨지지 않도록).
 const swallowNotify = (tag: string) => (err: unknown) => { if (import.meta.env.DEV) console.warn(`[supplier-auth] ${tag}`, err); };
@@ -176,6 +177,15 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
     const passwordHash = await hashPassword(password);
     // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
     const mallId = await registrationMallId(c).catch(() => 1); // 🛡️ 2026-06-23 fail-soft: 몰 해석 실패가 가입 500 안 내게(기본 몰 1)
+    // 🏥 2026-07-03 규제 몰(의료용품) 인허가 게이트 — requires_license 면 신고번호 필수(없으면 가입 차단).
+    const regMall = await loadMallById(DB, mallId).catch(() => null)
+    const licenseRequired = !!(regMall && regMall.requires_license)
+    const licBody = body as Record<string, unknown>
+    const permitNo = String(licBody.license_no || licBody.permit_no || '').trim().slice(0, 60)
+    const permitUrl = String(licBody.license_url || '').trim().slice(0, 1000)
+    if (licenseRequired && !permitNo) {
+      return c.json({ success: false, error: `${regMall?.license_label || '인허가 신고번호'}를 입력해주세요`, code: 'LICENSE_REQUIRED' }, 400)
+    }
     const nts1 = await ntsStatusOf(c.env, DB, bizNum)
     // 🛡️ 2026-06-25: 판매사(wholesale.routes)와 동일한 self-heal — 풀 INSERT 가 컬럼 누락/드리프트로 실패해도
     //   base 컬럼(business_name/email/password_hash NOT NULL)만 최소 INSERT 후 optional best-effort UPDATE → 가입 500 방지.
@@ -217,6 +227,11 @@ supplierAuthRoutes.post('/register', cors(), rateLimit({ action: 'supplier_regis
           await DB.prepare(`UPDATE suppliers SET ${col} = ? WHERE id = ?`).bind(val, supplierId).run().catch(swallow('supplier-auth:register:opt-col'))
         }
       }
+    }
+
+    // 🏥 2026-07-03 인허가 저장(규제 몰이거나 신고번호 입력됐으면) — 사이드 테이블, fail-soft(가입 자체는 안 막음).
+    if (supplierId && (licenseRequired || permitNo)) {
+      await saveWholesaleLicense(DB, 'supplier', supplierId, mallId, permitNo, permitUrl || null)
     }
 
     // 🖋️ 2026-06-22: 가입 시 전자계약서 자동발송(모두싸인 카카오). fail-soft — 미설정/실패가 가입 안 막음.
@@ -315,6 +330,15 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
 
       // 🏬 멀티-몰: 가입 대상 몰 = host(또는 ?mall=slug). 기본(단일 호스트) 환경은 1 → 동작 불변.
       const mallId = await registrationMallId(c).catch(() => 1); // 🛡️ 2026-06-23 fail-soft: 몰 해석 실패가 가입 500 안 내게(기본 몰 1)
+      // 🏥 2026-07-03 규제 몰(의료용품) 인허가 게이트 — /register 와 대칭.
+      const regMall2 = await loadMallById(DB, mallId).catch(() => null)
+      const licenseRequired2 = !!(regMall2 && regMall2.requires_license)
+      const licBody2 = body as Record<string, unknown>
+      const permitNo2 = String(licBody2.license_no || licBody2.permit_no || '').trim().slice(0, 60)
+      const permitUrl2 = String(licBody2.license_url || '').trim().slice(0, 1000)
+      if (licenseRequired2 && !permitNo2) {
+        return c.json({ success: false, error: `${regMall2?.license_label || '인허가 신고번호'}를 입력해주세요`, code: 'LICENSE_REQUIRED' }, 400)
+      }
       // password_hash='' — 카카오 인증(비밀번호 미사용). linked_user_id 로 세션 연결.
       const nts2 = await ntsStatusOf(c.env, DB, business_number)
       // 🛡️ 2026-06-25 (전수조사): 사전 dupe SELECT~INSERT 사이 동시 /become 경합 → UNIQUE throw 시 generic 500 +
@@ -339,6 +363,8 @@ supplierAuthRoutes.post('/become', requireAuth(), rateLimit({ action: 'supplier_
         throw e;
       }
       if (!sid) return c.json({ success: false, error: '제조사 신청 중 오류가 발생했습니다' }, 500);
+      // 🏥 2026-07-03 인허가 저장(규제 몰이거나 신고번호 입력됐으면) — fail-soft.
+      if (licenseRequired2 || permitNo2) await saveWholesaleLicense(DB, 'supplier', sid, mallId, permitNo2, permitUrl2 || null);
       // 🏭 2026-06-29 공급(취급) 카테고리 + 희망 유통채널 (카카오 가입 메타 — fail-soft).
       await setWholesaleSignupMeta(DB, 'supplier', sid, (body as Record<string, unknown>).categories, (body as Record<string, unknown>).channel);
 

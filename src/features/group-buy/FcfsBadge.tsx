@@ -1,14 +1,18 @@
 /**
- * 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): "추첨 {지원}/{정원}명" 소셜 증거 배지.
- *   카드 이미지 위 오버레이(잉크 pill). 기존 할인/달성 배지와 동일 스타일(bg-gray-900 text-white).
+ * 🎯 추첨 모집 현황 배지 — "N명 모집 · M명 지원" (사회적 증거).
+ * 🎨 2026-07-03 (대표 선택): 다크 잉크 알약(검정·흰 글자) — 브랜드 B&W 정체성 정합, 할인 빨강과 구분.
+ *   다크 테마에선 검정 카드에 묻히지 않게 자동 반전(흰 알약·검정 글자). 사진 오버레이(GroupBuyGridCard)·
+ *   플레인 배경(RestaurantList) 양쪽에서 선명. spots=모집 정원, appliedDisplay=지원자(굵게 강조).
  */
 import { formatNumber } from '@/utils/format'
 import type { FcfsInfo } from './useFcfs'
 
 export default function FcfsBadge({ info, className = '' }: { info: FcfsInfo; className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-0.5 bg-gray-900 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow ${className}`}>
-      🎯 추첨 {formatNumber(info.appliedDisplay)}/{formatNumber(info.spots)}명
+    <span className={`inline-flex items-center gap-1 rounded-full bg-gray-900 dark:bg-white px-2.5 py-1 text-[10px] font-bold leading-none text-white dark:text-gray-900 shadow-sm ${className}`}>
+      <span className="opacity-80">🎯 {formatNumber(info.spots)}명 모집</span>
+      <span className="opacity-40">·</span>
+      <span className="font-extrabold">{formatNumber(info.appliedDisplay)}명 지원</span>
     </span>
   )
 }

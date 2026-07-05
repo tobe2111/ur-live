@@ -272,6 +272,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'idx_product_regions_dong_code', sql: "CREATE INDEX IF NOT EXISTS idx_product_regions_dong_code ON product_regions(region_dong_code)" },
     // 🗺️ 2026-06-18: 유저 "내 동네" 태깅 — region.routes 가 채움 (GPS/수동). "내 동네 딜" 필터 기준.
     { desc: 'user_regions table', sql: "CREATE TABLE IF NOT EXISTS user_regions (user_id TEXT PRIMARY KEY, region_si TEXT, region_gu TEXT, region_dong TEXT, region_dong_code TEXT, gu_code TEXT, source TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)" },
+    // 📜 2026-07-05: 약관 v1.0 시행 — 가입 시 약관 동의 기록 (terms-consent.ts ensureTermsConsents 와 동일 스키마)
+    { desc: 'terms_consents table', sql: "CREATE TABLE IF NOT EXISTS terms_consents (id INTEGER PRIMARY KEY AUTOINCREMENT, subject_type TEXT NOT NULL, subject_id TEXT, user_id TEXT, terms_slug TEXT NOT NULL, terms_version TEXT NOT NULL, core_terms_agreed INTEGER DEFAULT 0, ip TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)" },
     // 🛡️ 2026-05-16: 인플루언서 정산 인프라 (migration 0247)
     { desc: 'sellers.marketing_enabled', sql: "ALTER TABLE sellers ADD COLUMN marketing_enabled INTEGER DEFAULT 1" },
     { desc: 'products.referral_disabled', sql: "ALTER TABLE products ADD COLUMN referral_disabled INTEGER DEFAULT 0" },
@@ -809,6 +811,12 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'donation_settlements.donation_ids', sql: "ALTER TABLE donation_settlements ADD COLUMN donation_ids TEXT" },
     //   - user_points.total_used: 총 사용 누적 (충전 vs 사용 추적).
     { desc: 'user_points.total_used', sql: "ALTER TABLE user_points ADD COLUMN total_used INTEGER DEFAULT 0" },
+    //   - 💸 2026-07-05 유상/무상 버킷 (point-buckets.ts SSOT): free_balance = 무상 잔액(0 ≤ free ≤ balance),
+    //     free_delta = 거래별 무상 적용분(적립+/차감-) — 무상 우선 차감·무상 환급 제외·환불 대칭 복원 근거.
+    { desc: 'user_points.free_balance', sql: "ALTER TABLE user_points ADD COLUMN free_balance INTEGER NOT NULL DEFAULT 0" },
+    { desc: 'point_transactions.free_delta', sql: "ALTER TABLE point_transactions ADD COLUMN free_delta INTEGER DEFAULT 0" },
+    //   - 🎁 2026-07-05 체험단(FCFS) 참여 리뷰 자동 표시 (표시광고법) — 작성 API 서버 판정으로 세팅.
+    { desc: 'product_reviews.is_sponsored', sql: "ALTER TABLE product_reviews ADD COLUMN is_sponsored INTEGER DEFAULT 0" },
     //   - settlements: 셀러 정산 신청 / 자동 정산 보고서 양쪽 모두 settlements 테이블 사용.
     //     amount / bank_name / account_number / account_holder = 셀러 정산 신청 지급 정보.
     //     total_sales / total_platform_fee / total_settlement / generated_at = 자동 정산 보고서 집계 컬럼.
@@ -871,6 +879,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.mall_id', sql: "ALTER TABLE sellers ADD COLUMN mall_id INTEGER DEFAULT 1" },
     { desc: 'suppliers.mall_id', sql: "ALTER TABLE suppliers ADD COLUMN mall_id INTEGER DEFAULT 1" },
     { desc: 'products.mall_id', sql: "ALTER TABLE products ADD COLUMN mall_id INTEGER DEFAULT 1" },
+    // 🏥 2026-07-03 (의료용품 도매몰): 규제 몰 게이트 컬럼(기존 몰 기본 0/NULL = 무영향).
+    { desc: 'wholesale_malls.requires_license', sql: "ALTER TABLE wholesale_malls ADD COLUMN requires_license INTEGER DEFAULT 0" },
+    { desc: 'wholesale_malls.license_label', sql: "ALTER TABLE wholesale_malls ADD COLUMN license_label TEXT" },
+    { desc: 'wholesale_malls.features_json', sql: "ALTER TABLE wholesale_malls ADD COLUMN features_json TEXT" },
     { desc: 'wholesale_banners.mall_id', sql: "ALTER TABLE wholesale_banners ADD COLUMN mall_id INTEGER DEFAULT 1" },
     { desc: 'wholesale_proposal_tickets.mall_id', sql: "ALTER TABLE wholesale_proposal_tickets ADD COLUMN mall_id INTEGER DEFAULT 1" },
     // 🏬 2026-06-15 (sellpie형 게시판): 세부 카테고리(supply/codev/live/sns/report/inquiry). my-tickets/board SELECT 가 참조.
@@ -994,6 +1006,17 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       type TEXT NOT NULL,
       description TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )` },
+    // 📜 2026-07-05 약관 동의 로그 (누가·언제·몇 버전) — worker/utils/terms-agreements.ts SSOT 미러.
+    { name: 'terms_agreements', sql: `CREATE TABLE IF NOT EXISTS terms_agreements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      subject_type TEXT NOT NULL,
+      subject_id TEXT NOT NULL,
+      doc_type TEXT NOT NULL,
+      doc_version TEXT NOT NULL,
+      agreed INTEGER NOT NULL DEFAULT 1,
+      agreed_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(subject_type, subject_id, doc_type, doc_version)
     )` },
     { name: 'coupons', sql: `CREATE TABLE IF NOT EXISTS coupons (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1886,12 +1909,30 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       deposit_account TEXT,
       commission_rate REAL,
       categories_json TEXT,
+      requires_license INTEGER DEFAULT 0,
+      license_label TEXT,
+      features_json TEXT,
       active INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT (datetime('now'))
     )` },
     { name: 'idx_wholesale_malls_host', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_malls_host ON wholesale_malls(host) WHERE host IS NOT NULL` },
     { name: 'idx_wholesale_malls_active', sql: `CREATE INDEX IF NOT EXISTS idx_wholesale_malls_active ON wholesale_malls(active)` },
     { name: 'seed: wholesale_malls default (id=1)', sql: `INSERT OR IGNORE INTO wholesale_malls (id, slug, name, host, brand_name, brand_color, active, created_at) VALUES (1, 'default', '유통스타트', 'utongstart.com', '유통스타트', '#1f2937', 1, datetime('now'))` },
+    // 🏥 2026-07-03 (의료용품 도매몰): 메디스타트(id=2, slug='medi') 시드 — slug UNIQUE 로 멱등, host 없음(?mall=medi 접근).
+    { name: 'seed: wholesale_malls medi (id=2)', sql: `INSERT OR IGNORE INTO wholesale_malls (id, slug, name, host, brand_name, brand_color, categories_json, requires_license, license_label, active, created_at) VALUES (2, 'medi', '메디스타트', NULL, '메디스타트', '#0ea5e9', '[{"id":"medical_device","label":"의료기기"},{"id":"hygiene","label":"위생용품"},{"id":"care","label":"간병용품"},{"id":"health","label":"건강용품"}]', 1, '의료기기 판매업 신고번호', 1, datetime('now'))` },
+    // 🏥 2026-07-03 규제 몰 인허가(신고번호) 사이드 테이블 — owner_type='supplier'|'distributor', owner 당 1행.
+    { name: 'wholesale_licenses', sql: `CREATE TABLE IF NOT EXISTS wholesale_licenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      owner_type TEXT NOT NULL,
+      owner_id INTEGER NOT NULL,
+      mall_id INTEGER NOT NULL DEFAULT 1,
+      permit_no TEXT,
+      permit_url TEXT,
+      verified INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT (datetime('now')),
+      updated_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { name: 'idx_wholesale_license_owner', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_wholesale_license_owner ON wholesale_licenses(owner_type, owner_id)` },
 
     // 🏭 2026-06-09 도매몰 메인 리디자인 Wave 2 — 메인 배너 캐러셀(어드민 CRUD).
     { name: 'wholesale_banners', sql: `CREATE TABLE IF NOT EXISTS wholesale_banners (

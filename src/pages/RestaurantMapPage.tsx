@@ -87,7 +87,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const applyFcfs = useCallback(async (productId: number) => {
     try {
       const res = await api.post(`/api/fcfs/${productId}/apply`)
-      toast.success(res.data?.data?.already ? '이미 응모했어요' : '🎉 응모 완료! 추첨 결과는 알림으로 안내드려요')
+      toast.success(res.data?.data?.already ? '이미 응모했어요' : '🎉 응모 완료! 당첨 시 안내드려요')
     } catch {
       toast.error('응모하려면 로그인이 필요해요')
     }
@@ -521,15 +521,17 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             voucherType={voucherType}
           />
         </div>
-        {/* 플로팅 '지도' 버튼 — 하단 네비 위 중앙 */}
+        {/* 플로팅 '지도로 보기' 버튼 — 하단 네비 위 중앙.
+            🎨 2026-07-03 (대표 시안 A 선택): 이모지(📍/기기별 편차) → lucide Map(접힌 지도) 라인 아이콘.
+            전역 Map(생성자) 가림 방지 위해 `Map as MapIcon` 별칭. 아이콘 색 = 알약 글자색(currentColor). */}
         <button
           onClick={() => navigate('/map')}
-          className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full pl-4 pr-5 py-3 shadow-xl active:scale-95 transition-transform"
+          className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-blue-600 text-white rounded-full pl-3.5 pr-4 py-2.5 shadow-lg active:scale-95 transition-transform"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom,0px) + 16px)' }}
           aria-label={t('map.viewMap', { defaultValue: '지도로 보기' })}
         >
-          <MapIcon className="w-4 h-4" />
-          <span className="text-[14px] font-bold">{t('map.viewMap', { defaultValue: '지도' })}</span>
+          <MapIcon className="w-[18px] h-[18px] shrink-0" strokeWidth={2} />
+          <span className="text-[14px] font-bold">{t('map.viewMap', { defaultValue: '지도로 보기' })}</span>
         </button>
         {filterSheetOpen && (
           <FilterSheet

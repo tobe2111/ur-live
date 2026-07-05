@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { QRCodeSVG } from 'qrcode.react'
-import { Home, Ticket, MapPin, Wallet, User, ChevronRight, Smartphone } from 'lucide-react'
+import { Home, ShoppingBag, Ticket, Sparkles, User, ChevronRight, Smartphone, MapPin } from 'lucide-react'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 /**
@@ -86,22 +86,26 @@ export default function ConsumerFrameRails() {
         style={rightStyle}
       >
         <div className="pointer-events-auto flex flex-col gap-4">
+          {/* 🧭 2026-07-03 (대표 — 바로가기 업데이트): 하단 네비 정본 5탭과 통일
+              (홈·쇼핑·이용권·링크샵·마이). 낡은 라벨(교환권/내 지갑)·중복 동네딜(→은퇴한 /group-buy) 제거. */}
           <div className={`${cardCls} p-2`}>
             <p className="px-3.5 pt-2 pb-1 text-[11px] font-bold tracking-wide text-gray-500 dark:text-gray-400">
               {t('frameRails.quicklinks', { defaultValue: '바로가기' })}
             </p>
             <QuickLink icon={Home} label={t('nav.home', { defaultValue: '홈' })} onClick={() => navigate('/')} />
-            <QuickLink icon={Ticket} label={t('nav.vouchers', { defaultValue: '교환권' })} onClick={() => navigate('/vouchers')} />
-            <QuickLink icon={MapPin} label={t('nav.dongnedeal', { defaultValue: '동네딜' })} onClick={() => navigate('/group-buy')} />
-            <QuickLink icon={Wallet} label={t('myVouchers.title', { defaultValue: '내 지갑' })} onClick={() => navigate('/my-vouchers')} />
-            <QuickLink icon={User} label={t('nav.mypage', { defaultValue: '마이' })} onClick={() => navigate('/user/profile')} />
+            <QuickLink icon={ShoppingBag} label={t('nav.shopping', { defaultValue: '쇼핑' })} onClick={() => navigate('/vouchers')} />
+            <QuickLink icon={Ticket} label={t('nav.myGbVouchers', { defaultValue: '이용권' })} onClick={() => navigate('/my-vouchers')} />
+            <QuickLink icon={Sparkles} label={t('nav.linkshop', { defaultValue: '링크샵' })} onClick={() => navigate('/u/me')} />
+            <QuickLink icon={User} label={t('nav.my', { defaultValue: '마이' })} onClick={() => navigate('/user/profile')} />
           </div>
 
+          {/* CTA: 홈이 곧 동네딜이라 '전체 동네딜'(은퇴)은 중복 → '지도로 동네딜 보기'로 (홈 목록과 상호보완). */}
           <button
-            onClick={() => navigate('/group-buy')}
-            className="pointer-events-auto w-full rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4 py-3.5 text-[13px] font-bold hover:opacity-90 transition-opacity shadow-sm"
+            onClick={() => navigate('/map')}
+            className="pointer-events-auto w-full flex items-center justify-center gap-1.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4 py-3.5 text-[13px] font-bold hover:opacity-90 transition-opacity shadow-sm"
           >
-            {t('frameRails.exploreDeals', { defaultValue: '전체 동네딜 둘러보기 →' })}
+            <MapPin className="w-4 h-4" aria-hidden="true" />
+            {t('frameRails.exploreMap', { defaultValue: '지도로 동네딜 보기 →' })}
           </button>
         </div>
       </aside>

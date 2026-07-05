@@ -242,6 +242,16 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
         }, 400);
       }
 
+      // 🎯 2026-07-04 (FCFS 당첨자 전용 결제 게이트 — fcfs-gate.ts): 추첨(체험단) 상품은
+      //   당첨자만 주문 가능. 비-FCFS 상품은 메타 1조회 후 통과(fail-open — 소프트 접근제어).
+      {
+        const { checkFcfsPurchasable } = await import('../utils/fcfs-gate');
+        const fcfsGate = await checkFcfsPurchasable(c.env.DB, Number(product.id), userId);
+        if (!fcfsGate.ok) {
+          return c.json({ success: false, error: `"${product.name}" — ${fcfsGate.error}`, code: fcfsGate.code }, 403);
+        }
+      }
+
       const itemSubtotal = product.price * reqItem.quantity;
       subtotal += itemSubtotal;
 
@@ -797,12 +807,15 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
         dealRefund = Math.min(dealUsedTotal, Math.round(dealUsedTotal * (refundAmount / totalAmt))); // 혼합 — 현금 환불비율만큼 딜 비례
       }
       if (dealRefund > 0) {
-        await c.env.DB.prepare(
-          'UPDATE user_points SET balance = balance + ? WHERE user_id = ?'
-        ).bind(dealRefund, String(order.user_id)).run();
-        await c.env.DB.prepare(
-          "INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)"
-        ).bind(String(order.user_id), dealRefund, dealRefund, `[환불] 주문 환불 딜분 (order:${(order as any).order_number || body.order_id})`).run().catch(swallow('order:point-tx-refund-audit'));
+        // 💸 2026-07-05 버킷: 원거래 무상 차감분 우선 무상 복원 (refundDealPoints SSOT — 원장 order_id 역산).
+        const { refundDealPoints } = await import('../utils/point-buckets');
+        await refundDealPoints(c.env.DB, {
+          userId: String(order.user_id),
+          amount: dealRefund,
+          ref: [(order as any).order_number || null, String(order.id ?? body.order_id)],
+          type: 'refund',
+          description: `[환불] 주문 환불 딜분 (order:${(order as any).order_number || body.order_id})`,
+        });
       }
     } catch (e) {
       console.error('[ORDERS] Points refund error:', e);
@@ -938,8 +951,15 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
           return c.json({ success: false, error: '취소 가능 금액을 초과하거나 이미 처리 중입니다' }, 409);
         }
         try {
-          await c.env.DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?').bind(refundPoints, String(order.user_id)).run();
-          await c.env.DB.prepare("INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)").bind(String(order.user_id), refundPoints, refundPoints, `[환불] 주문 부분취소 (order:${order.order_number})`).run().catch(swallow('order:point-tx-deal-partial'));
+          // 💸 2026-07-05 버킷: 원거래 무상 차감분 우선 무상 복원 (refundDealPoints SSOT).
+          const { refundDealPoints } = await import('../utils/point-buckets');
+          await refundDealPoints(c.env.DB, {
+            userId: String(order.user_id),
+            amount: refundPoints,
+            ref: [order.order_number, String(orderId)],
+            type: 'refund',
+            description: `[환불] 주문 부분취소 (order:${order.order_number})`,
+          });
         } catch (e) { console.error('[ORDERS] deal partial refund error:', e); }
         createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '부분 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(swallow('order:notify-admin-deal-partial'));
         return c.json({ success: true, message: '부분 취소되어 딜이 환급되었습니다', data: { order_id: orderId, cancel_amount: refundPoints, cancelled_at: new Date().toISOString() } });
@@ -1045,10 +1065,15 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
           const cashRefund = Math.max(0, Math.round(cancelAmount ?? totalAmt));
           const dealRefund = Math.min(dealUsedTotal, Math.round(dealUsedTotal * (cashRefund / totalAmt)));
           if (dealRefund > 0) {
-            await c.env.DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?').bind(dealRefund, String(order.user_id)).run();
-            await c.env.DB.prepare(
-              "INSERT INTO point_transactions (user_id, type, amount, points_amount, description) VALUES (?, 'refund', ?, ?, ?)"
-            ).bind(String(order.user_id), dealRefund, dealRefund, `[환불] 혼합결제 딜분 환급 (order:${order.order_number})`).run().catch(swallow('order:point-tx-mixed-cancel'));
+            // 💸 2026-07-05 버킷: 혼합결제 딜 차감(원장 order_id=orders.id)의 무상분 무상 복원 (refundDealPoints SSOT).
+            const { refundDealPoints } = await import('../utils/point-buckets');
+            await refundDealPoints(c.env.DB, {
+              userId: String(order.user_id),
+              amount: dealRefund,
+              ref: [String(orderId), order.order_number],
+              type: 'refund',
+              description: `[환불] 혼합결제 딜분 환급 (order:${order.order_number})`,
+            });
           }
         }
       } catch (e) {

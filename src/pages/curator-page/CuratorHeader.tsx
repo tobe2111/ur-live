@@ -59,6 +59,9 @@ export default function CuratorHeader({
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [editingField, setEditingField] = useState<'name' | 'bio' | null>(null)
+  // 🏅 2026-07-02 (대표 — "처음 보는 유저는 저 문양이 뭔지 모름"): 이름 옆 파란 U 인증씰을 클릭하면
+  //   "사업자 인증이 된 유저" 설명 팝오버. hover title 은 모바일 미노출이라 tap 기반으로 전환.
+  const [showVerified, setShowVerified] = useState(false)
   // 🔗 2026-06-17 (사용자 요청 — 공유 우선 + 주소변경 통합): 헤더 '내 링크샵 주소' 카드의 주소 변경 인라인.
   const shareHost = typeof window !== 'undefined' ? window.location.host : 'live.ur-team.com'
   const [editingHandle, setEditingHandle] = useState(false)
@@ -394,13 +397,46 @@ export default function CuratorHeader({
                 {curator.name}
               </h1>
               {/* 🏁 2026-06-25 (대표 — 인스타 인증딱지 스타일): 인증 유저(사업자)는 이름 옆 파란 U 씰.
-                  일반 유저는 미표시(인증=특별 유지). 회색 씰 원하면 user 분기 추가. */}
+                  🏅 2026-07-02 (대표 — "처음 보는 유저는 저 문양이 뭔지 모름"): 클릭 시 설명 팝오버(tap 기반). */}
               {accountType === 'business' && (
-                <span title="인증 유저" aria-label="인증 유저" className="inline-flex shrink-0">
-                  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#1d9bf0" />
-                    <text x="12" y="12" textAnchor="middle" dominantBaseline="central" fontSize="11" fontWeight="900" fill="#ffffff" fontFamily="-apple-system, system-ui, sans-serif">U</text>
-                  </svg>
+                <span className="relative inline-flex shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setShowVerified(v => !v) }}
+                    aria-label={t('curator.verifiedBusinessUser', { defaultValue: '사업자 인증이 된 유저예요' })}
+                    aria-expanded={showVerified}
+                    className="inline-flex active:scale-90 transition-transform"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#1d9bf0" />
+                      <text x="12" y="12" textAnchor="middle" dominantBaseline="central" fontSize="11" fontWeight="900" fill="#ffffff" fontFamily="-apple-system, system-ui, sans-serif">U</text>
+                    </svg>
+                  </button>
+                  {showVerified && (
+                    <>
+                      {/* 바깥 클릭 닫기 백드롭 (span — h1 안이라 inline 요소만 허용) */}
+                      <span className="fixed inset-0 z-[10499]" onClick={(e) => { e.stopPropagation(); setShowVerified(false) }} />
+                      <span
+                        role="tooltip"
+                        className="absolute left-1/2 top-full mt-2 -translate-x-1/2 z-[10500] block w-max max-w-[220px] rounded-xl bg-gray-900 dark:bg-white px-3 py-2 text-left shadow-xl ring-1 ring-black/5"
+                      >
+                        {/* 위쪽 꼭지 */}
+                        <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-gray-900 dark:bg-white" />
+                        <span className="flex items-center gap-1.5">
+                          <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+                            <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#1d9bf0" />
+                            <text x="12" y="12" textAnchor="middle" dominantBaseline="central" fontSize="11" fontWeight="900" fill="#ffffff" fontFamily="-apple-system, system-ui, sans-serif">U</text>
+                          </svg>
+                          <span className="text-[12.5px] font-bold text-white dark:text-gray-900 leading-tight whitespace-nowrap">
+                            {t('curator.verifiedBusinessUser', { defaultValue: '사업자 인증이 된 유저예요' })}
+                          </span>
+                        </span>
+                        <span className="block mt-1 text-[11px] text-white/70 dark:text-gray-500 leading-snug">
+                          {t('curator.verifiedBusinessDesc', { defaultValue: '사업자등록 정보가 확인된 판매자예요.' })}
+                        </span>
+                      </span>
+                    </>
+                  )}
                 </span>
               )}
               {isOwner && <Pencil className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 cursor-pointer" onClick={() => setEditingField('name')} />}

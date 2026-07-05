@@ -1925,7 +1925,16 @@
       "addVoucherDesc": "동네 공구·교환권 — 위치·목표인원 설정",
       "previewBanner": "방문자 미리보기 — 다른 사람에게 보이는 화면이에요",
       "backToEdit": "편집으로 돌아가기",
-      "verifiedBusiness": "사업자 인증"
+      "verifiedBusiness": "사업자 인증",
+      "moreInfo": "MORE INFO",
+      "bizInfoCheck": "사업자정보확인",
+      "recommendOn": "하단 \"추천\" 섹션이 켜졌어요 — 담은 핀이 링크샵 맨 아래에 노출됩니다",
+      "recommendOff": "하단 \"추천\" 섹션을 껐어요",
+      "recommendSaveFail": "설정 저장 실패 — 소비자 계정 로그인 상태를 확인해주세요",
+      "recommendToggleHint": "담은 핀을 링크샵 하단 \"추천\" 섹션에 표시",
+      "recommendToggleOn": "✨ 추천 ON",
+      "recommendToggleOff": "추천 OFF",
+      "recommendPreviewNote": "방문자에게는 숨겨져 있어요 — 상단 \"추천 OFF\" 버튼으로 켤 수 있습니다"
     },
     "storeIntro": "스토어 소개",
     "shippingInfo": "배송 정보",
@@ -2780,6 +2789,8 @@
       "colPeriod": "기간",
       "colStore": "매장",
       "colUsed": "사용 수",
+      "colRevenue": "판매액",
+      "colFee": "수수료",
       "colAmount": "정산액",
       "colStatus": "상태",
       "statusPending": "대기",
@@ -2820,7 +2831,9 @@
       "submitting": "신청 중...",
       "submit": "사업자 가입 신청",
       "secondGate": "💳 현금 정산에는 승인 후 사업자등록증 인증 1회가 추가로 필요해요 (대시보드 → 사업자 정보).",
-      "prospectBanner": " 에이전시가 매장 정보를 미리 준비했어요. 내용 확인 후 제출만 하면 됩니다."
+      "prospectBanner": " 에이전시가 매장 정보를 미리 준비했어요. 내용 확인 후 제출만 하면 됩니다.",
+      "termsRequired": "판매자 이용약관에 동의해주세요",
+      "termsAgree": "유어딜 판매자 이용약관(v1.0)에 동의합니다"
     },
     "mailOrderNumber": "통신판매업신고번호",
     "mailOrderNumberPlaceholder": "예: 2026-서울강남-01234",
@@ -4112,7 +4125,10 @@
       "brandingDesc": "유어딜 에이전시로 등록하면 소속 셀러들의 라이브 커머스를 통합 관리하고 수익을 함께 나눌 수 있습니다.",
       "formTitle": "에이전시 가입 신청",
       "formDesc": "가입 신청 후 관리자 승인 시 이용 가능합니다",
-      "passwordMismatch": "비밀번호가 일치하지 않습니다."
+      "passwordMismatch": "비밀번호가 일치하지 않습니다.",
+      "termsRequired": "파트너 약관과 핵심 조항에 모두 동의해주세요",
+      "termsAgree": "유어딜 에이전시 파트너 약관(v1.0)에 동의합니다",
+      "coreAgree": "위 핵심 조항(커미션·정산·조건 변경·해지)을 확인했고 동의합니다"
     },
     "registerBusiness": {
       "startTitle": "에이전시로 시작하기",
@@ -4142,7 +4158,10 @@
       "pageTitle": "에이전시로 시작하기",
       "kakaoDone": "카카오 로그인 완료",
       "kakaoHint": "아래 에이전시 정보만 입력하면 신청이 끝나요",
-      "approvalNote": "신청 후 관리자 승인까지 보통 1~2일 소요됩니다. 승인 완료 시 카카오 로그인으로 바로 에이전시 기능 이용 가능."
+      "approvalNote": "신청 후 관리자 승인까지 보통 1~2일 소요됩니다. 승인 완료 시 카카오 로그인으로 바로 에이전시 기능 이용 가능.",
+      "termsRequired": "파트너 약관과 핵심 조항에 모두 동의해주세요",
+      "termsAgree": "유어딜 에이전시 파트너 약관(v1.0)에 동의합니다",
+      "coreAgree": "위 핵심 조항(커미션·정산·조건 변경·해지)을 확인했고 동의합니다"
     },
     "settlementsAuto": {
       "autoPayout": "✨ 이제 신청이 필요 없어요",
@@ -5515,7 +5534,8 @@
     "sharedShareTitle": "이 상품 추천해요!",
     "sharedShareDesc": "유어딜에서 좋은 상품을 발견했어요",
     "sharedShareBtn": "상품 보러가기",
-    "sellerReplyLabel": "판매자 답글"
+    "sellerReplyLabel": "판매자 답글",
+    "sponsoredBadge": "체험 제공"
   },
   "productOption": {
     "title": "상품 옵션 관리",
@@ -5704,7 +5724,12 @@
     "chipVoucher": "교환권·기프티콘",
     "chipWholesale": "사장님 도매몰",
     "kakaoHint": "복잡한 가입 절차 없이 바로 시작할 수 있어요",
-    "aboutLink": "유어딜이 처음이세요? 서비스 알아보기 →"
+    "aboutLink": "유어딜이 처음이세요? 서비스 알아보기 →",
+    "termsNotice": "로그인(가입) 시",
+    "termsLink": "이용약관",
+    "termsAnd": "및",
+    "privacyLink": "개인정보처리방침",
+    "termsNoticeEnd": "에 동의하는 것으로 봅니다"
   },
   "guide": {
     "sectionTitlePlaceholder": "섹션 제목",
@@ -5836,7 +5861,9 @@
     "stepsLeft": "링크샵 완성까지 {{n}}단계",
     "stepName": "이름 설정",
     "stepHandle": "주소 설정",
-    "stepFirstProduct": "첫 상품 추가"
+    "stepFirstProduct": "첫 상품 추가",
+    "verifiedBusinessUser": "사업자 인증이 된 유저예요",
+    "verifiedBusinessDesc": "사업자등록 정보가 확인된 판매자예요."
   },
   "shipping": {
     "trackingTitle": "배송 추적",
@@ -6318,7 +6345,8 @@
     "referralStartSub": "내 SNS 공유 → 친구 결제 시 자동 적립",
     "curatorTitle": "링크샵 수익",
     "curatorCashSub": "현금 정산 · 출금 가능",
-    "curatorDealSub": "누적 적립 · 1딜=1원"
+    "curatorDealSub": "누적 적립 · 1딜=1원",
+    "freeDealNote": "무상 리워드 {{free}}딜 포함 · 환급 가능 {{paid}}딜"
   },
   "push": {
     "promptTitle": "알림을 켜시겠어요?",

@@ -93,6 +93,18 @@ export interface WholesaleMallBrand {
   brand_color: string | null
   logo_url: string | null
   categories: { id: string; label: string }[] | null
+  // 🏥 2026-07-03 규제 몰(의료용품): 가입 시 인허가 신고번호 필수 여부 + 필드 라벨.
+  requires_license?: number | null
+  license_label?: string | null
+  // 🧩 2026-07-03 몰 기능 토글(제외 레이어) — { key: boolean }. 키 부재 = ON.
+  features?: Record<string, boolean>
+}
+
+/** 🧩 몰 기능이 켜졌는지(제외 레이어) — 키 부재/미설정 = 기본값(def, 기본 ON). false 면 그 몰에서 숨김. */
+export function mallFeatureEnabled(features: Record<string, boolean> | undefined | null, key: string, def = true): boolean {
+  if (!features) return def
+  const v = features[key]
+  return typeof v === 'boolean' ? v : def
 }
 
 /** 기본 몰 fallback — config 없거나 로딩 전이면 항상 유통스타트/#FC5424 (default 몰 byte-identical). */
@@ -103,14 +115,37 @@ export const DEFAULT_MALL_BRAND: WholesaleMallBrand = {
   brand_color: '#FC5424',
   logo_url: null,
   categories: null,
+  requires_license: 0,
+  license_label: null,
+  features: {},
+}
+
+/**
+ * 🏥 2026-07-03 (의료용품 도매몰): 현재 도매 몰 slug — URL `?mall=<slug>` 우선(있으면 세션 저장),
+ *   없으면 세션 폴백. 도메인 연결 전 `?mall=medi` 미리보기/가입용. 기본 몰(호스트 해석)은 slug 없음
+ *   → 서버가 host 로 결정(기존 동작 불변). in-app 이동에도 몰 컨텍스트 유지(세션 지속).
+ */
+export function currentWholesaleMallSlug(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const fromUrl = new URLSearchParams(window.location.search).get('mall')
+    if (fromUrl) { try { sessionStorage.setItem('ur_wholesale_mall', fromUrl) } catch { /* quota */ } return fromUrl }
+    try { return sessionStorage.getItem('ur_wholesale_mall') || null } catch { return null }
+  } catch { return null }
+}
+/** RQ 캐시 키 세그먼트 — 몰별 캐시 분리(없으면 'default'). 두 몰이 `?mall=` 로 섞여도 캐시 충돌 방지. */
+export function wholesaleMallSeg(): string { return currentWholesaleMallSlug() || 'default' }
+/** URLSearchParams 에 `mall=<slug>` 부착(있을 때만) — 서버 resolveMallId 가 존중. */
+export function withWholesaleMall(params: URLSearchParams): URLSearchParams {
+  const s = currentWholesaleMallSlug(); if (s) params.set('mall', s); return params
 }
 
 export function useWholesaleMall() {
   const q = useQuery<WholesaleMallBrand>({
-    queryKey: queryKeys.wholesale('mall'),
+    queryKey: queryKeys.wholesale('mall', wholesaleMallSeg()),
     queryFn: () =>
       api
-        .get('/api/wholesale/mall')
+        .get(`/api/wholesale/mall${currentWholesaleMallSlug() ? `?mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`)
         .then((r) => (r.data?.success && r.data.mall ? (r.data.mall as WholesaleMallBrand) : DEFAULT_MALL_BRAND))
         .catch(() => DEFAULT_MALL_BRAND),
     staleTime: 30 * 60 * 1000, // per-host — 한 도메인은 한 몰. 길게 캐시.
@@ -126,17 +161,24 @@ export function useWholesaleMall() {
     brandColor: mall.brand_color || '#FC5424',
     logoUrl: mall.logo_url || null,
     categories: mall.categories || null,
+    requiresLicense: mall.requires_license === 1,
+    licenseLabel: mall.license_label || null,
+    slug: mall.slug || 'default',
+    features: mall.features || {},
+    // 🧩 편의: 이 몰에서 기능이 켜졌는지(제외 레이어). 예: feature('dropship') === false → 숨김.
+    feature: (key: string, def = true) => mallFeatureEnabled(mall.features, key, def),
     isLoading: q.isLoading,
   }
 }
 
 export function useWholesaleOrders() {
   return useQuery<WholesaleOrderRow[]>({
-    queryKey: queryKeys.wholesale('orders'),
+    queryKey: queryKeys.wholesale('orders', wholesaleMallSeg()),
     // 🛡️ 2026-06-19 (감사): .catch 로 에러를 빈배열로 삼키지 않음 — 전역 retry:1 로 일시 실패 자동 복구.
     //   삼키면 네트워크/5xx 가 '주문 없음'으로 오표시 + staleTime 동안 재시도 0. 소비처는 `data: orders=[]` 안전.
+    //   🏬 2026-07-04: ?mall= 전달(타 몰 컨텍스트에선 주문 이력 비노출) + 몰별 캐시 분리.
     queryFn: () =>
-      api.get('/api/wholesale/orders', sellerAuth()).then((r) => (r.data?.success ? (r.data.orders || []) : [])),
+      api.get(`/api/wholesale/orders${currentWholesaleMallSlug() ? `?mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`, sellerAuth()).then((r) => (r.data?.success ? (r.data.orders || []) : [])),
     enabled: hasSellerToken(),
     staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -168,9 +210,10 @@ export function useWholesaleStatement(from: string, to: string, opts?: { enabled
 export function useWholesaleCatalog(search: string) {
   return useQuery<WholesaleCatalogItem[]>({
     // 🏭 2026-06-19: 인증별 캐시 분리(게스트 가격 null 이 로그인 후 잔존 방지).
-    queryKey: queryKeys.wholesale('catalog', `${search}:${wholesaleAuthSeg()}`),
+    queryKey: queryKeys.wholesale('catalog', `${search}:${wholesaleAuthSeg()}:${wholesaleMallSeg()}`),
     queryFn: () => {
       const params = new URLSearchParams()
+      withWholesaleMall(params) // 🏥 ?mall= 부착(있을 때만)
       if (search) params.set('search', search)
       // 🛡️ 2026-06-29 엣지 캐시 인증 누수 차단(상세와 동일): 로그인 요청만 v=in 으로 *엣지 캐시 키*를 비로그인과
       //   분리 → 비로그인 'null 가격' 공유캐시를 로그인 판매사가 절대 안 읽음. 비로그인 URL 은 canonical 유지
@@ -203,14 +246,15 @@ export function useWholesaleProduct(id: string | undefined) {
   //   게스트로 본 응답(distributor_price=null)이 로그인 후에도 남아 비로그인 UI 고착. 카탈로그 훅은
   //   로그인 시 항상 fresh fetch 하는데 이 훅만 누락된 비대칭이 원인. 키 분리 → 로그인은 'in' 키로 항상 fresh.
   return useQuery<WholesaleProductData>({
-    queryKey: queryKeys.wholesale('product', `${id ?? ''}:${wholesaleAuthSeg()}`),
+    queryKey: queryKeys.wholesale('product', `${id ?? ''}:${wholesaleAuthSeg()}:${wholesaleMallSeg()}`),
     queryFn: () =>
       api
         // 🛡️ 2026-06-29 (대표 신고 — 상세만 '공급가 미설정' 간헐): 비로그인 상세 응답은 CDN public 300s 캐시인데
         //   CF 캐시 키가 Authorization 을 안 가려 비로그인 'null 가격' 응답이 로그인 판매사에게 서빙됨(목록은
         //   등급별 캐시키라 정상). 인증 구분자(v=in|out)를 URL 에 붙여 *엣지 캐시 키*를 분리 → 로그인은 비로그인
         //   캐시를 절대 안 읽음(서버 캐시 로직/비로그인 성능 불변). 서버는 v 파라미터 무시.
-        .get(`/api/wholesale/catalog/${id}?v=${wholesaleAuthSeg()}`, sellerAuth())
+        //   🏥 2026-07-03: `?mall=` 부착(있을 때만) — 의료몰 상세도 올바른 몰로 해석.
+        .get(`/api/wholesale/catalog/${id}?v=${wholesaleAuthSeg()}${currentWholesaleMallSlug() ? `&mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`, sellerAuth())
         // 🛡️ 2026-06-19 (감사): 에러 삼킴 제거 — retry:1 로 콜드 상세(실측 콜드 1s) 일시 실패 복구. 소비처 `data?.item ?? null` 안전.
         .then((r) => (r.data?.success ? { item: r.data.item, grade: r.data.grade } : { item: null, grade: '' })),
     // 🏭 2026-06-04 몰-first: 비로그인도 상품 상세 열람 가능(가격 null).
@@ -224,8 +268,9 @@ export function useWholesaleProduct(id: string | undefined) {
 export function useWholesaleMe() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return useQuery<any>({
-    queryKey: queryKeys.wholesale('me'),
-    queryFn: () => api.get('/api/wholesale/me', sellerAuth()).then((r) => (r.data?.success ? r.data : null)),
+    queryKey: queryKeys.wholesale('me', wholesaleMallSeg()),
+    // 🏬 2026-07-04 각 몰 별도 회원 — ?mall= 전달(서버가 타 몰 회원이면 mall_mismatch 반환) + 몰별 캐시 분리.
+    queryFn: () => api.get(`/api/wholesale/me${currentWholesaleMallSlug() ? `?mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`, sellerAuth()).then((r) => (r.data?.success ? r.data : null)),
     enabled: hasSellerToken(),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -246,10 +291,10 @@ export interface WholesaleHomeData {
 /** 도매몰 홈 한 번에 (베스트/신상품/추천제안/카테고리). 시안 홈의 섹션 레일용. */
 export function useWholesaleHome() {
   return useQuery<WholesaleHomeData>({
-    queryKey: queryKeys.wholesale('home'),
+    queryKey: queryKeys.wholesale('home', wholesaleMallSeg()),
     queryFn: () =>
       api
-        .get('/api/wholesale/home', sellerAuth())
+        .get(`/api/wholesale/home${currentWholesaleMallSlug() ? `?mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`, sellerAuth())
         .then((r) =>
           r.data?.success
             ? { grade: r.data.grade || '', best: r.data.best || [], new: r.data.new || [], proposals: r.data.proposals || [], categories: r.data.categories || [], pending_receipt: Number(r.data.pending_receipt) || 0 }
@@ -271,9 +316,10 @@ export interface WholesaleReorderItem {
 /** 빠른 재주문 — 최근 사입한 상품 + 마지막 수량. */
 export function useWholesaleRecentItems(opts?: { enabled?: boolean }) {
   return useQuery<WholesaleReorderItem[]>({
-    queryKey: queryKeys.wholesale('recent-items'),
+    queryKey: queryKeys.wholesale('recent-items', wholesaleMallSeg()),
     queryFn: () =>
-      api.get('/api/wholesale/recent-items', sellerAuth()).then((r) => (r.data?.success ? (r.data.items || []) : [])).catch(() => []),
+      // 🏬 2026-07-04 각 몰 별도 회원 — ?mall= 전달(타 몰 회원이면 서버가 빈 목록) + 몰별 캐시 분리.
+      api.get(`/api/wholesale/recent-items${currentWholesaleMallSlug() ? `?mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`, sellerAuth()).then((r) => (r.data?.success ? (r.data.items || []) : [])).catch(() => []),
     // 🏭 2026-06-10 (카탈로그 최속화): 호출부가 idle 이후로 미룰 수 있게 enabled 옵션 — 기본 true(기존 동작 불변).
     enabled: hasSellerToken() && (opts?.enabled ?? true),
     staleTime: 60 * 1000,
@@ -502,10 +548,10 @@ export function useWholesaleBanners() {
 export function useWholesalePremiumCatalog(enabled = true) {
   return useQuery<WholesaleCatalogItem[]>({
     // 🏭 2026-06-19: 인증별 캐시 분리(게스트 가격 null 이 로그인 후 잔존 방지).
-    queryKey: queryKeys.wholesale('catalog', `premium:${wholesaleAuthSeg()}`),
+    queryKey: queryKeys.wholesale('catalog', `premium:${wholesaleAuthSeg()}:${wholesaleMallSeg()}`),
     queryFn: () =>
       api
-        .get('/api/wholesale/catalog?premium=1', sellerAuth())
+        .get(`/api/wholesale/catalog?premium=1${currentWholesaleMallSlug() ? `&mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`, sellerAuth())
         .then((r) => (r.data?.success ? ((r.data.items || []) as WholesaleCatalogItem[]) : []))
         .catch(() => []),
     enabled,

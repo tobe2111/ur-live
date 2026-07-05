@@ -222,6 +222,14 @@ jobs:
         run: node scripts/check-balance-absolute-write.mjs -s
         continue-on-error: false
 
+      # 🛡️ 2026-07-04 [INV-CB]: 커미션 예산 아비터 우회 금지 — 플랫폼 부담 성장 커미션(어필리에이트/
+      #   멀티티어/영입자/에이전시)은 creditOrderCommissions(오케스트레이터) 경유해야 3P 주문당
+      #   예산(수수료−PG준비금) 캡이 적용됨. 직접 호출/신규 적립 INSERT 경로가 생기면 캡에 구멍.
+      #   설계: docs/design/commission-funding-restructure.md
+      - name: Commission budget arbiter guard (strict)
+        run: node scripts/check-commission-budget.mjs
+        continue-on-error: false
+
       # 🧭 2026-06-24: 도매(wholesale) 권한 어드민이 보는 화면의 /admin 링크가 그 역할 RBAC 로 도달
       #   불가하면 클릭 시 wholesale-overview 로 바운스(="안 넘어가요") — 슈퍼 어드민엔 안 보이는 역할-한정
       #   버그. 대표 신고("상품 승인 클릭해도 안 넘어감") 후 전체 도매 화면 정적 검사로 클래스 고정.

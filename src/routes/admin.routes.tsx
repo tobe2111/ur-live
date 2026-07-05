@@ -48,6 +48,9 @@ const AdminEnvReadinessPage = lazy(() => import('@/pages/admin/AdminEnvReadiness
 //   (AdminDistributorGradesPage 의 '승인' 탭에서 embedded 로 사용). 여기 import 제거.
 // 🗺️ 2026-06-18: 동네별 딜 밀도 (행정동 태깅 기반 영입 타겟).
 const AdminRegionDensityPage = lazy(() => import('@/pages/AdminRegionDensityPage'))
+const AdminDistrictReportPage = lazy(() => import('@/pages/AdminDistrictReportPage'))
+// 🏙️ 2026-07-05: 상권 방문 리워드 캠페인 (B2G — 첫 구매 무상 딜, 총액 캡).
+const AdminVisitRewardsPage = lazy(() => import('@/pages/AdminVisitRewardsPage'))
 // 🏭 BIZ-1 (2026-06-08): 도매 클레임(RMA) 검수 페이지.
 const AdminWholesaleClaimsPage = lazy(() => import('@/pages/admin/AdminWholesaleClaimsPage'))
 const AdminWholesaleTaxPage = lazy(() => import('@/pages/admin/AdminWholesaleTaxPage'))
@@ -71,6 +74,7 @@ const AdminKakaoTestPage = lazy(() => import('@/pages/admin/AdminKakaoTestPage')
 const AdminKakaoTestCallbackPage = lazy(() => import('@/pages/admin/AdminKakaoTestCallbackPage'))
 const AdminSampleRequestsPage = lazy(() => import('@/pages/admin/AdminSampleRequestsPage'))
 const AdminOperationsGuidePage = lazy(() => import('@/pages/admin/AdminOperationsGuidePage'))
+const AdminPlatformModelPage = lazy(() => import('@/pages/admin/AdminPlatformModelPage'))
 // 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드.
 const AdminWholesaleGuidePage = lazy(() => import('@/pages/admin/AdminWholesaleGuidePage'))
 const AdminBlogPage = lazy(() => import('@/pages/AdminBlogPage'))
@@ -144,6 +148,16 @@ export function AdminRoutes() {
       <Route path="/admin/region-density" element={
         <ProtectedRoute requireAdmin>
           <AdminRegionDensityPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/district-report" element={
+        <ProtectedRoute requireAdmin>
+          <AdminDistrictReportPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/visit-rewards" element={
+        <ProtectedRoute requireAdmin>
+          <AdminVisitRewardsPage />
         </ProtectedRoute>
       } />
       <Route path="/admin/ads-accounts" element={
@@ -433,6 +447,12 @@ export function AdminRoutes() {
       <Route path="/admin/operations-guide" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminOperationsGuidePage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      {/* 🌐 2026-07-02 (대표 요청): 유어딜 플랫폼 모델 SSOT 문서 뷰어 (docs/design/*.md ?raw 자동동기화) */}
+      <Route path="/admin/platform-model" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminPlatformModelPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       {/* 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드 */}

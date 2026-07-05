@@ -6,7 +6,7 @@ import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
   BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers, Mail, Crown,
-  ChevronDown, Wrench, RotateCcw, Upload, History, MapPin, Scale,
+  ChevronDown, Wrench, RotateCcw, Upload, History, MapPin, Scale, FileText,
   type LucideIcon
 } from 'lucide-react'
 import { logout as authLogout } from '@/utils/auth'
@@ -48,7 +48,10 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/business-metrics', label: '비즈니스 지표', icon: BarChart3 },
       { path: '/admin/revenue',          label: '매출 분석',     icon: BarChart3 },
       { path: '/admin/operations-guide', label: '운영 가이드',   icon: BookOpen },
+      { path: '/admin/platform-model',   label: '플랫폼 모델',   icon: FileText },
       { path: '/admin/region-density',   label: '동네별 딜 밀도', icon: MapPin },
+      { path: '/admin/district-report',  label: '상권 성과 리포트', icon: BarChart3 },
+      { path: '/admin/visit-rewards',    label: '상권 방문 리워드', icon: MapPin },
       { path: '/admin/abuse',            label: '어뷰징 탐지',   icon: AlertOctagon },
       { path: '/admin/env-readiness',    label: '환경 준비상태', icon: Wrench },
     ],
