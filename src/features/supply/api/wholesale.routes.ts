@@ -35,7 +35,7 @@ import { transitionWholesaleOrder, refundWholesaleOrderFully } from './wholesale
 import { generateWholesaleSalesInvoice, generateWholesalePurchaseInvoices, listDistributorSalesInvoices } from './wholesale-tax-invoices'
 import { ensureSupplyVisibilitySchema, visibilityWhere, gradeExposureWhere } from './supply-visibility'
 import { ensureDepositSchema, deductDepositForOrder, compensateDepositOrderOnce } from './wholesale-deposit-core'
-import { resolveMallId, registrationMallId, loadMallByHost, loadMallById } from './wholesale-malls'
+import { resolveMallId, registrationMallId, loadMallByHost, loadMallById, loadMallBySlug, DEFAULT_MALL_ID } from './wholesale-malls'
 import { saveWholesaleLicense } from './wholesale-license'
 import { learnCodes, resolveCodes, normCode } from './wholesale-code-map'
 import {
@@ -864,6 +864,18 @@ app.get('/catalog', async (c) => {
   const authAttempt = !!c.req.header('Authorization') || /(?:^|;\s*)ud_seller_token=/.test(c.req.header('Cookie') || '')
   const visBind = sellerId ?? -1 // visibilityWhere EXISTS 가 매칭 안 되도록(=ALL/NULL 만 노출)
   const { DB } = c.env
+  // 🏬 2026-07-04 (대표 신고 — medi 카탈로그에 유통스타트 상품): 게스트 KV/캐논 캐시가 host 로만 몰을 구분해
+  //   같은 도메인 ?mall= 프리뷰가 타 몰 페이로드를 서빙(KV-HIT) + 역방향(캐논 키 오염)도 가능했음.
+  //   → 몰 캐시 세그먼트: 기본 몰(파라미터 없음/미해석 slug)은 '' = 기존 키 byte-동일(SSR/prewarm 잠금 보존),
+  //   비기본 몰만 `:m{id}` 부착. 쓰레기 slug 는 기본 몰로 해석되므로 '' → KV 키 파편화/write 낭비 0.
+  let mallCacheSeg = ''
+  {
+    const mallQ = (c.req.query('mall') || '').trim()
+    if (mallQ) {
+      const mPrev = await loadMallBySlug(DB, mallQ).catch(() => null)
+      if (mPrev && mPrev.id !== DEFAULT_MALL_ID) mallCacheSeg = `:m${mPrev.id}`
+    }
+  }
   const page = Math.max(1, intParam(c.req.query('page'), 1))
   const limit = Math.min(Math.max(intParam(c.req.query('limit'), 24), 1), 100)
   const offset = (page - 1) * limit
@@ -925,7 +937,8 @@ app.get('/catalog', async (c) => {
           const kv = (c.env as { CACHE_KV?: { get: (k: string) => Promise<string | null>; put: (k: string, v: string, o?: { expirationTtl?: number }) => Promise<void> } }).CACHE_KV
           if (kv) {
             const host = new URL(c.req.url).hostname
-            const kvBody = await kv.get(`ws:cat:g:${host}`).catch(() => null)
+            // 🏬 2026-07-04: 몰 세그 포함 — ?mall= 프리뷰가 타 몰 KV 페이로드를 절대 못 받게(기본 몰 키는 불변).
+            const kvBody = await kv.get(`ws:cat:g:${host}${mallCacheSeg}`).catch(() => null)
             if (kvBody) return c.body(kvBody, 200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60', 'CDN-Cache-Control': 'public, max-age=300', 'X-WS-Cache': 'KV-HIT' })
           }
         } catch { /* KV 미지원/오류 — caches.default 로 진행 */ }
@@ -1201,12 +1214,17 @@ app.get('/catalog', async (c) => {
           //   host 별 키(early KV read 와 1:1). TTL 600s(>cron 5분 주기 → 항상 신선 유지). CACHE_KV 없으면 skip.
           const kv = (c.env as { CACHE_KV?: { put: (k: string, v: string, o?: { expirationTtl?: number }) => Promise<void> } }).CACHE_KV
           const host = new URL(c.req.url).hostname
+          // 🏬 2026-07-04: 캐논 edge put 은 **기본 몰일 때만** — ?mall= 프리뷰 페이로드가 캐논 키(SSR/prewarm 이 읽는
+          //   /api/wholesale/catalog)를 오염시켜 기본 몰 사용자에게 타 몰 상품이 서빙되는 역방향 누수 차단.
+          //   KV 는 몰 세그 키로 항상 put(비기본 몰도 자체 키로 워밍 이득).
           c.executionCtx.waitUntil(Promise.all([
-            // @ts-expect-error — Cloudflare Workers 전역 caches
-            caches.default.put(new Request(`${origin}/api/wholesale/catalog`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
-            // @ts-expect-error — Cloudflare Workers 전역 caches
-            caches.default.put(new Request(`${origin}/api/wholesale/catalog?`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
-            kv ? kv.put(`ws:cat:g:${host}`, payload, { expirationTtl: 600 }).catch(swallow('wholesale:guest-catalog-kv')) : Promise.resolve(),
+            ...(mallCacheSeg === '' ? [
+              // @ts-expect-error — Cloudflare Workers 전역 caches
+              caches.default.put(new Request(`${origin}/api/wholesale/catalog`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
+              // @ts-expect-error — Cloudflare Workers 전역 caches
+              caches.default.put(new Request(`${origin}/api/wholesale/catalog?`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
+            ] : []),
+            kv ? kv.put(`ws:cat:g:${host}${mallCacheSeg}`, payload, { expirationTtl: 600 }).catch(swallow('wholesale:guest-catalog-kv')) : Promise.resolve(),
           ]))
         }
       }
