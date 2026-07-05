@@ -52,6 +52,12 @@ export default function AdminDongnedealImportPage() {
   const [seedSido, setSeedSido] = useState('')       // 1차: KOREA_REGIONS key (예 '서울')
   const [seedDistrict, setSeedDistrict] = useState('') // 2차: districtGroup key (예 'gangnam')
   const [seedCategory, setSeedCategory] = useState('')
+  // 🔁 2026-07-04 (대표 "계속 생성해야 하는데"): 한 번에 생성 개수(라운드 보충으로 정확히 채움).
+  const [seedCount, setSeedCount] = useState(8)
+  // 🎛️ 2026-07-04 (대표 "지원자 수 조절 + 기간 설정 — 데모"): 추첨 마감(N일 후) + 표시 지원자 수 범위.
+  const [seedFcfsDays, setSeedFcfsDays] = useState(7)
+  const [seedApplicantsMin, setSeedApplicantsMin] = useState('')
+  const [seedApplicantsMax, setSeedApplicantsMax] = useState('')
   const sidoRegion = findRegionByKey(seedSido)
   // 🖊️ 2026-07-01 (대표 — 수정/삭제): 편집 대상 + 목록 새로고침 nonce.
   const [editing, setEditing] = useState<DealRow | null>(null)
@@ -68,7 +74,7 @@ export default function AdminDongnedealImportPage() {
     if (!confirm('데모 동네딜 상품(demo-deal-*)을 모두 삭제할까요? 실제 등록 상품은 영향받지 않습니다.')) return
     setCleaning(true)
     try {
-      const r = await api.delete('/api/admin/dongnedeal/seed-demo', h)
+      const r = await api.delete('/api/admin/dongnedeal/seed-demo', { ...h, timeout: 120000 })
       const retired = Number(r.data?.retired ?? 0)
       toast.success(`데모 상품 ${r.data?.deleted ?? 0}개 삭제${retired ? ` · ${retired}개는 주문 이력이 있어 비활성 처리` : ''}`)
       loadStats()
@@ -78,10 +84,19 @@ export default function AdminDongnedealImportPage() {
     setCleaning(true)
     try {
       const regionParam = buildRegionParam(seedSido, seedDistrict)
+      const aMin = parseInt(seedApplicantsMin, 10)
+      const aMax = parseInt(seedApplicantsMax, 10)
+      // 🚑 2026-07-04 (대표 "데모 생성 오류"): 기본 axios timeout 15s < 생성 소요(매장당 네이버+R2+카카오,
+      //   24개면 수 분) → 클라만 타임아웃으로 '오류' 표시되고 서버는 계속 생성(개수 제각각 원인 중 하나).
+      //   넉넉히 5분. 버튼은 cleaning 으로 이중클릭 차단.
       const r = await api.post('/api/admin/dongnedeal/seed-demo', {
         region: regionParam || undefined,
         category: seedCategory || undefined,
-      }, h)
+        count: seedCount,
+        fcfsDays: seedFcfsDays,
+        applicantsMin: Number.isFinite(aMin) && aMin > 0 ? aMin : undefined,
+        applicantsMax: Number.isFinite(aMax) && aMax > 0 ? aMax : undefined,
+      }, { ...h, timeout: 300000 })
       const skipped = Number(r.data?.skipped ?? 0)
       if (r.data?.seeded) {
         const parts = [`데모 상품 ${r.data.seeded}개 생성`]
@@ -190,7 +205,31 @@ export default function AdminDongnedealImportPage() {
                   <option value="etc_voucher">기타</option>
                   <option value="general">일반 상품</option>
                 </select>
-                <button onClick={seedDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">데모 채우기</button>
+                <select
+                  value={seedCount}
+                  onChange={(e) => setSeedCount(Number(e.target.value))}
+                  className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
+                  aria-label="생성 개수"
+                >
+                  <option value={8}>8개</option>
+                  <option value={16}>16개</option>
+                  <option value={24}>24개</option>
+                </select>
+                {/* 🎛️ 추첨 마감 + 표시 지원자 수 범위 (데모 시드 옵션) */}
+                <select
+                  value={seedFcfsDays}
+                  onChange={(e) => setSeedFcfsDays(Number(e.target.value))}
+                  className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
+                  aria-label="추첨 마감 기간"
+                >
+                  <option value={3}>마감 3일</option>
+                  <option value={7}>마감 7일</option>
+                  <option value={14}>마감 14일</option>
+                  <option value={30}>마감 30일</option>
+                </select>
+                <input value={seedApplicantsMin} onChange={(e) => setSeedApplicantsMin(e.target.value.replace(/\D/g, ''))} placeholder="지원자↓" maxLength={4} className="w-[70px] px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" title="표시 지원자 수 최소(비우면 기본)" />
+                <input value={seedApplicantsMax} onChange={(e) => setSeedApplicantsMax(e.target.value.replace(/\D/g, ''))} placeholder="지원자↑" maxLength={4} className="w-[70px] px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" title="표시 지원자 수 최대" />
+                <button onClick={seedDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">{cleaning ? '생성 중…' : '데모 채우기'}</button>
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap mt-3">
