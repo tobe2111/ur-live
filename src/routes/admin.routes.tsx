@@ -48,6 +48,7 @@ const AdminEnvReadinessPage = lazy(() => import('@/pages/admin/AdminEnvReadiness
 //   (AdminDistributorGradesPage 의 '승인' 탭에서 embedded 로 사용). 여기 import 제거.
 // 🗺️ 2026-06-18: 동네별 딜 밀도 (행정동 태깅 기반 영입 타겟).
 const AdminRegionDensityPage = lazy(() => import('@/pages/AdminRegionDensityPage'))
+const AdminDistrictReportPage = lazy(() => import('@/pages/AdminDistrictReportPage'))
 // 🏭 BIZ-1 (2026-06-08): 도매 클레임(RMA) 검수 페이지.
 const AdminWholesaleClaimsPage = lazy(() => import('@/pages/admin/AdminWholesaleClaimsPage'))
 const AdminWholesaleTaxPage = lazy(() => import('@/pages/admin/AdminWholesaleTaxPage'))
@@ -145,6 +146,11 @@ export function AdminRoutes() {
       <Route path="/admin/region-density" element={
         <ProtectedRoute requireAdmin>
           <AdminRegionDensityPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/district-report" element={
+        <ProtectedRoute requireAdmin>
+          <AdminDistrictReportPage />
         </ProtectedRoute>
       } />
       <Route path="/admin/ads-accounts" element={

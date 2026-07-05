@@ -78,9 +78,18 @@ publicApp.get('/active', async (c) => {
     const enabledIds = [...byId.entries()].filter(([, rec]) => rec.fcfs_enabled === '1').map(([id]) => id)
     if (enabledIds.length === 0) return c.json({ success: true, data: [] })
     const ph = enabledIds.map(() => '?').join(',')
+    // 🏙️ 2026-07-04 (상권관 랜딩): ?region=<지역코드 5~12자리> 면 product_regions prefix 필터(additive).
+    //   group-buy-public 의 region 분기와 동일 패턴 — 미전달 시 기존 쿼리 그대로.
+    const regionRaw = String(c.req.query('region') || '').trim()
+    const regionParam = /^\d{5,12}$/.test(regionRaw) ? regionRaw : ''
+    const regionJoin = regionParam ? 'JOIN product_regions pr ON pr.product_id = p.id' : ''
+    const regionWhere = regionParam ? 'AND pr.region_dong_code LIKE ?' : ''
+    const regionBinds = regionParam ? [`${regionParam}%`] : []
     const { results: prods } = await DB.prepare(
-      `SELECT id, name, price, original_price, image_url, restaurant_name, restaurant_address, category FROM products WHERE id IN (${ph}) AND is_active=1`
-    ).bind(...enabledIds).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+      `SELECT p.id, p.name, p.price, p.original_price, p.image_url, p.restaurant_name, p.restaurant_address, p.category
+         FROM products p ${regionJoin}
+        WHERE p.id IN (${ph}) AND p.is_active=1 ${regionWhere}`
+    ).bind(...enabledIds, ...regionBinds).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
     // 🧯 2026-07-02: 상품별 COUNT 루프(N+1) → GROUP BY 단일 쿼리 — 캐시 miss 시에도 D1 왕복 상수화.
     const countRows = await DB.prepare(
       `SELECT product_id, COUNT(*) as n FROM fcfs_applications

@@ -106,6 +106,29 @@ publicRegionRoutes.get('/resolve', rateLimit({ action: 'region_resolve', max: 20
   return c.json({ success: true, data: { region_si: r.si, region_gu: r.gu, region_dong: r.dong, region_dong_code: r.dongCode, gu_code: guCodeOf(r.dongCode) } })
 })
 
+// 🏙️ 2026-07-04 (상권관 랜딩 — B2G 상권 패키지): 지역코드 → 표시명 해석. 카카오 호출 없이
+//   이미 태깅된 product_regions 에서 조회(시군구 5자리 prefix / 행정동 10자리 모두 지원).
+//   공개·불변성 높은 데이터라 엣지 캐시. 데이터 없으면 null(페이지가 '우리 동네' 폴백).
+publicRegionRoutes.get('/label', async (c) => {
+  const code = String(c.req.query('code') || '').trim()
+  if (!/^\d{5,12}$/.test(code)) return c.json({ success: false, error: '지역 코드는 숫자 5~12자리' }, 400)
+  const row = await c.env.DB.prepare(
+    `SELECT region_si, region_gu, region_dong FROM product_regions
+      WHERE region_dong_code LIKE ? AND region_gu IS NOT NULL AND region_gu != '' LIMIT 1`,
+  ).bind(`${code}%`).first<{ region_si: string | null; region_gu: string | null; region_dong: string | null }>().catch(() => null)
+  c.header('Cache-Control', 'public, max-age=300')
+  c.header('CDN-Cache-Control', 'public, max-age=3600')
+  return c.json({
+    success: true,
+    data: row ? {
+      region_si: row.region_si,
+      region_gu: row.region_gu,
+      // 행정동 코드(10자리)로 조회한 경우에만 동 표시가 의미 있음 — 시군구(5자리)면 구 단위 라벨.
+      region_dong: code.length >= 8 ? row.region_dong : null,
+    } : null,
+  })
+})
+
 export const adminRegionRoutes = new Hono<{ Bindings: Env }>()
 
 // 동/구별 활성 딜 밀도 — "어느 동네에 딜이 깔렸나 / 어디가 비었나" 영입 타겟용.
@@ -132,4 +155,101 @@ adminRegionRoutes.get('/density', requireAdmin(), async (c) => {
       LIMIT 200`,
   ).all().catch(() => ({ results: [] as unknown[] }))
   return c.json({ success: true, data: { by_dong: byDong.results || [], by_gu: byGu.results || [] } })
+})
+
+// 📊 2026-07-04 (상권 성과 리포트 — B2G 수주처 제출용, 대표 "다음 꺼 해줘"):
+//   특정 상권(시군구 5자리/행정동 10자리 prefix)의 매장·딜·이용권 판매/사용·체험단 성과 집계.
+//   AdminRevenueAnalytics(기간 집계) + RegionDensity(product_regions 조인) 패턴 합성 — 읽기 전용.
+//   GMV 는 vouchers(이용권 발급, applied_price) 기준 — 동네딜 상권 사업의 핵심 지표.
+adminRegionRoutes.get('/report', requireAdmin(), async (c) => {
+  const { DB } = c.env
+  const code = String(c.req.query('region') || '').trim()
+  if (!/^\d{5,12}$/.test(code)) return c.json({ success: false, error: 'region 은 지역코드(숫자 5~12자리)' }, 400)
+  const days = (() => {
+    const n = parseInt(String(c.req.query('days') || '30'), 10)
+    return Number.isFinite(n) && n >= 1 && n <= 365 ? n : 30
+  })()
+  const like = `${code}%`
+  const since = `-${days} days`
+
+  // ① 매장/딜 현황 (현재 시점)
+  const stores = await DB.prepare(
+    `SELECT COUNT(DISTINCT pr.product_id) AS deals,
+            COUNT(DISTINCT COALESCE(p.restaurant_name, p.seller_id)) AS stores
+       FROM product_regions pr JOIN products p ON p.id = pr.product_id
+      WHERE pr.region_dong_code LIKE ? AND p.is_active = 1`,
+  ).bind(like).first<{ deals: number; stores: number }>().catch(() => null)
+
+  // ② 이용권 판매(발급)·사용 — 기간 내, KST
+  const voucherAgg = await DB.prepare(
+    `SELECT COUNT(*) AS issued,
+            COALESCE(SUM(v.applied_price), 0) AS issued_amount,
+            SUM(CASE WHEN v.status = 'used' THEN 1 ELSE 0 END) AS used,
+            COALESCE(SUM(CASE WHEN v.status = 'used' THEN v.applied_price ELSE 0 END), 0) AS used_amount
+       FROM vouchers v JOIN product_regions pr ON pr.product_id = v.product_id
+      WHERE pr.region_dong_code LIKE ?
+        AND v.created_at >= datetime('now', ?)`,
+  ).bind(like, since).first<{ issued: number; issued_amount: number; used: number; used_amount: number }>().catch(() => null)
+
+  // ③ 체험단(FCFS) — 응모/당첨/결제완료 (기간 내 응모 기준)
+  const fcfsAgg = await DB.prepare(
+    `SELECT COUNT(*) AS applied,
+            SUM(CASE WHEN f.status IN ('selected','paid') THEN 1 ELSE 0 END) AS selected,
+            SUM(CASE WHEN f.status = 'paid' THEN 1 ELSE 0 END) AS paid
+       FROM fcfs_applications f JOIN product_regions pr ON pr.product_id = f.product_id
+      WHERE pr.region_dong_code LIKE ?
+        AND f.created_at >= datetime('now', ?)`,
+  ).bind(like, since).first<{ applied: number; selected: number; paid: number }>().catch(() => null)
+
+  // ④ 동별 분해 (매장 밀도 + 기간 판매)
+  const byDong = await DB.prepare(
+    `SELECT pr.region_dong AS dong, pr.region_dong_code AS dong_code,
+            COUNT(DISTINCT pr.product_id) AS deals,
+            COALESCE(SUM(CASE WHEN v.created_at >= datetime('now', ?) THEN v.applied_price ELSE 0 END), 0) AS issued_amount,
+            SUM(CASE WHEN v.created_at >= datetime('now', ?) THEN 1 ELSE 0 END) AS issued
+       FROM product_regions pr
+       JOIN products p ON p.id = pr.product_id AND p.is_active = 1
+       LEFT JOIN vouchers v ON v.product_id = pr.product_id
+      WHERE pr.region_dong_code LIKE ? AND pr.region_dong IS NOT NULL AND pr.region_dong != ''
+      GROUP BY pr.region_dong_code
+      ORDER BY issued_amount DESC, deals DESC
+      LIMIT 100`,
+  ).bind(since, since, like).all().catch(() => ({ results: [] as unknown[] }))
+
+  // ⑤ 일별 판매 추이 (차트용, KST)
+  const daily = await DB.prepare(
+    `SELECT DATE(v.created_at, '+9 hours') AS day,
+            COUNT(*) AS issued, COALESCE(SUM(v.applied_price), 0) AS amount
+       FROM vouchers v JOIN product_regions pr ON pr.product_id = v.product_id
+      WHERE pr.region_dong_code LIKE ? AND v.created_at >= datetime('now', ?)
+      GROUP BY DATE(v.created_at, '+9 hours') ORDER BY day ASC`,
+  ).bind(like, since).all().catch(() => ({ results: [] as unknown[] }))
+
+  // 라벨
+  const label = await DB.prepare(
+    `SELECT region_si, region_gu FROM product_regions WHERE region_dong_code LIKE ? AND region_gu != '' LIMIT 1`,
+  ).bind(like).first<{ region_si: string | null; region_gu: string | null }>().catch(() => null)
+
+  return c.json({
+    success: true,
+    data: {
+      region: { code, si: label?.region_si ?? null, gu: label?.region_gu ?? null },
+      days,
+      stores: Number(stores?.stores) || 0,
+      deals: Number(stores?.deals) || 0,
+      vouchers: {
+        issued: Number(voucherAgg?.issued) || 0,
+        issued_amount: Number(voucherAgg?.issued_amount) || 0,
+        used: Number(voucherAgg?.used) || 0,
+        used_amount: Number(voucherAgg?.used_amount) || 0,
+      },
+      fcfs: {
+        applied: Number(fcfsAgg?.applied) || 0,
+        selected: Number(fcfsAgg?.selected) || 0,
+        paid: Number(fcfsAgg?.paid) || 0,
+      },
+      by_dong: byDong.results || [],
+      daily: daily.results || [],
+    },
+  })
 })
