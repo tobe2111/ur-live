@@ -24,6 +24,7 @@
 
 | 페이지 | 시안 받은 날 | 상태 | 파일 |
 |---|---|---|---|
+| **🤝 파트너 약관-as-계약 (에이전시·셀러 온보딩)** — 계정발급=계약체결, 약관규제법 4대 요건(개별동의·버전기록·요율변경조항·사업자검증) | 2026-07-04 | 📋 스펙 박제(미착수) — 법적 문안 확정 후 착수 | [partner-terms-as-contract.md](./partner-terms-as-contract.md) |
 | **📝 블로그 UI — 토스 테크 스타일**(히어로 캐러셀 + 전체 아티클 리스트 + 페이지네이션) | 2026-07-01 | ✅ 구현 완료 (BlogListPage 전면 개편) | [blog-toss-style.md](./blog-toss-style.md) |
 | 홈 사이드바 (3 섹션 + 카테고리) | 2026-05-06 | ✅ 구현 완료 (단, 홈은 2026-06-20 동네딜 지도로 전환됨 — 사이드바는 라이브 시절 잔재, 라이브 중단으로 사실상 무의미) | [home-sidebar.md](./home-sidebar.md) |
 | Quick Action FAB (당근식 확장 버튼) | 2026-05-24 | ✅ BottomNav ➕ 시트로 구현(역할별 만들기 메뉴) | [quick-action-fab.md](./quick-action-fab.md) |
