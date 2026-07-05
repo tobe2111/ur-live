@@ -438,6 +438,11 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
             type: 'refund',
             description: `구매 취소 환불: ${voucher.product_name}`,
           })
+          // 🏙️ 2026-07-05: 트리거 주문 셀프취소 → 방문 리워드 회수 (멱등 CAS, fail-soft)
+          try {
+            const { reverseVisitRewardOnRefund } = await import('../../../worker/utils/visit-reward')
+            await reverseVisitRewardOnRefund(DB, orderRow?.order_number)
+          } catch { /* fail-soft */ }
         }
         // 토스 카드 결제 — cancelTossPayment (waitUntil 비동기, 영업일 3~5일).
         //   ⚠️ 이 async+cron 패턴은 의도된 설계: retryable(5xx/PROVIDER) 실패는 gateway 가

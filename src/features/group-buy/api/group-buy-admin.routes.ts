@@ -168,6 +168,9 @@ groupBuyAdminRoutes.post('/seller-closure/:sellerId', requireAdmin(), require2FA
           type: 'refund',
           description: `[매장 폐업 환불] ${v.product_name}: ${reason}`,
         })
+        // 🏙️ 2026-07-05: 트리거 주문 환불 → 방문 리워드 회수 (멱등 CAS, fail-soft)
+        const { reverseVisitRewardOnRefund } = await import('../../../worker/utils/visit-reward')
+        await reverseVisitRewardOnRefund(DB, orderRow?.order_number).catch(() => {})
       } catch (e) { console.error('[seller-closure refund]', e) }
     }
     // 인플 clawback
@@ -260,6 +263,9 @@ groupBuyAdminRoutes.post('/force-refund/:productId', rateLimit({ action: 'group_
             type: 'refund',
             description: `[어드민 환불] ${product.name}: ${reason}`,
           })
+          // 🏙️ 2026-07-05: 트리거 주문 환불 → 방문 리워드 회수 (멱등 CAS, fail-soft)
+          const { reverseVisitRewardOnRefund } = await import('../../../worker/utils/visit-reward')
+          await reverseVisitRewardOnRefund(DB, orderRow?.order_number).catch(() => {})
         } catch (e) { console.error('[admin force-refund credit]', e) }
       }
       // 🛡️ 2026-05-30: 토스(카드) 결제건 실제 환불 — 기존엔 deal_points 만 환불되어

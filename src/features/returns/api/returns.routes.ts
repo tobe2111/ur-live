@@ -766,6 +766,12 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     await reverseInviteRewardOnRefund(DB, String(returnRecord.user_id));
   } catch { /* best-effort */ }
 
+  // 🏙️ 2026-07-05: 상권 방문 리워드 회수 — 트리거 주문 반품환불 시 대칭 (멱등 CAS, fail-soft).
+  try {
+    const { reverseVisitRewardOnRefund } = await import('../../../worker/utils/visit-reward');
+    await reverseVisitRewardOnRefund(DB, order.order_number || String(returnRecord.order_id));
+  } catch { /* best-effort */ }
+
   // ── Settlement adjustment (restaurant vouchers) ──
   // If this order was already rolled into a completed settlement, record a clawback
   // and alert ops so finance can reconcile manually.

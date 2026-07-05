@@ -99,6 +99,9 @@
   `user_points.balance`=총액 · `free_balance`=무상(가입/초대/광고/리뷰/이벤트/어드민 선물 등 리워드) · 유상=차액(파생).
   차감은 전 경로 **무상 우선 소진**, **현금 환급(출금)은 유상 한도**(무상 딜 인출 불가 — 전금법 유상 잔액 산출 근거),
   환불은 원장(`point_transactions.free_delta`) 역산으로 **원 버킷 대칭 복원**. 커미션성 소득(어필리에이트/추천 수익)은 유상.
+- **상권 방문 리워드** (2026-07-05, B2G 상권 패키지 — SSOT `worker/utils/visit-reward.ts`): 캠페인(상권 지역코드·기간·
+  지급액·총액 캡) 단위로 그 상권 매장 상품 **첫 구매 확정** 시 무상 딜 1인 1회 지급(UNIQUE claim 멱등 · 캡 도달 자동 종료
+  +어드민 알림 · 환불 시 회수). 트리거: group-buy `/join`·`/confirm-toss`. 어드민 `/admin/visit-rewards`.
 
 ### 5-2. 판매 정산 (사업자 유저)
 - **플랫폼 수수료**: **3P(남의 상품, 이용권+쇼핑) 5%** / **1P(유어딜 직판) 0%** (`fee-resolver.ts` SSOT, `product-ownership-model.md`).

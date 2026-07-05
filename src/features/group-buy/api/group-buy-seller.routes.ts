@@ -120,6 +120,11 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
             type: 'refund',
             description: `공동구매 미달성 환불: ${product.name}`,
           })
+          // 🏙️ 2026-07-05: 트리거 주문 환불 → 방문 리워드 회수 (멱등 CAS, fail-soft)
+          try {
+            const { reverseVisitRewardOnRefund } = await import('../../../worker/utils/visit-reward')
+            await reverseVisitRewardOnRefund(DB, orderRow?.order_number)
+          } catch { /* fail-soft */ }
         }
         // 🛡️ 2026-05-21 Phase TD-A1: 토스 결제건 자동 환불 (영구 — 기존엔 어드민이 수동 처리).
         else if ((v.payment_method === 'toss' || v.payment_method === 'CARD') && v.order_id) {

@@ -131,6 +131,13 @@ export async function reverseOrderAncillaryOnRefund(
       await reverseInviteRewardOnRefund(DB, String(ord.user_id))
     }
   } catch { /* best-effort */ }
+
+  // 🏙️ 2026-07-05: 상권 방문 리워드 회수 — 트리거 주문(order_ref=order_number) 환불 시
+  //   granted→revoked CAS 후 free 버킷에서 회수 (적립-역전 대칭, 멱등·fail-soft).
+  try {
+    const { reverseVisitRewardOnRefund } = await import('./visit-reward')
+    await reverseVisitRewardOnRefund(DB, orderNumber)
+  } catch { /* best-effort */ }
 }
 
 /**

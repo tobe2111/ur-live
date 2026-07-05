@@ -253,3 +253,73 @@ adminRegionRoutes.get('/report', requireAdmin(), async (c) => {
     },
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// 🏙️ 2026-07-05 상권 방문 리워드 캠페인 (B2G 상권 패키지 — 실행계획 "첫 구매 시 무상 딜 지급").
+//   지급 트리거/멱등/캡/역전은 worker/utils/visit-reward.ts SSOT — 여기는 어드민 CRUD + 현황만.
+// ─────────────────────────────────────────────────────────────────────────
+
+// 캠페인 목록 + 지급 현황 (건수/소진액)
+adminRegionRoutes.get('/visit-rewards', requireAdmin(), async (c) => {
+  const { DB } = c.env
+  const { ensureVisitRewardTables } = await import('../utils/visit-reward')
+  await ensureVisitRewardTables(DB)
+  const rows = await DB.prepare(
+    `SELECT c.id, c.name, c.region_code, c.reward_amount, c.total_budget, c.starts_at, c.ends_at, c.status, c.created_at,
+            COALESCE(SUM(CASE WHEN g.status = 'granted' THEN g.amount ELSE 0 END), 0) AS spent,
+            SUM(CASE WHEN g.status = 'granted' THEN 1 ELSE 0 END) AS granted_count,
+            SUM(CASE WHEN g.status = 'revoked' THEN 1 ELSE 0 END) AS revoked_count
+       FROM visit_reward_campaigns c
+       LEFT JOIN visit_reward_grants g ON g.campaign_id = c.id
+      GROUP BY c.id ORDER BY c.id DESC LIMIT 100`,
+  ).all().catch(() => ({ results: [] as unknown[] }))
+  return c.json({ success: true, data: rows.results || [] })
+})
+
+// 캠페인 생성
+adminRegionRoutes.post('/visit-rewards', requireAdmin(), async (c) => {
+  const { DB } = c.env
+  const body = await c.req.json<{
+    name?: string; region_code?: string; reward_amount?: number; total_budget?: number;
+    starts_at?: string; ends_at?: string;
+  }>().catch(() => ({} as Record<string, never>))
+  const name = String(body.name || '').trim().slice(0, 80)
+  const regionCode = String(body.region_code || '').trim()
+  const rewardAmount = Math.round(Number(body.reward_amount))
+  const totalBudget = Math.round(Number(body.total_budget))
+  if (!name) return c.json({ success: false, error: '캠페인 이름이 필요합니다' }, 400)
+  if (!/^\d{5,12}$/.test(regionCode)) return c.json({ success: false, error: '지역코드는 숫자 5~12자리 (시군구5/행정동10)' }, 400)
+  if (!Number.isFinite(rewardAmount) || rewardAmount < 100 || rewardAmount > 100_000) {
+    return c.json({ success: false, error: '지급액은 100~100,000딜' }, 400)
+  }
+  if (!Number.isFinite(totalBudget) || totalBudget < rewardAmount || totalBudget > 100_000_000) {
+    return c.json({ success: false, error: '총액 캡은 지급액 이상 ~ 1억딜 이하' }, 400)
+  }
+  const startsAt = body.starts_at ? String(body.starts_at).slice(0, 25) : null
+  const endsAt = body.ends_at ? String(body.ends_at).slice(0, 25) : null
+  const { ensureVisitRewardTables } = await import('../utils/visit-reward')
+  await ensureVisitRewardTables(DB)
+  const r = await DB.prepare(
+    `INSERT INTO visit_reward_campaigns (name, region_code, reward_amount, total_budget, starts_at, ends_at, status)
+     VALUES (?, ?, ?, ?, ?, ?, 'active')`,
+  ).bind(name, regionCode, rewardAmount, totalBudget, startsAt, endsAt).run()
+  return c.json({ success: true, data: { id: r.meta?.last_row_id } })
+})
+
+// 캠페인 상태 변경 (종료/재활성) — 값 필드 수정은 지급 정합 혼선 방지 위해 미지원(새 캠페인 생성 권장)
+adminRegionRoutes.patch('/visit-rewards/:id', requireAdmin(), async (c) => {
+  const { DB } = c.env
+  const id = parseInt(c.req.param('id'), 10)
+  if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 id' }, 400)
+  const body = await c.req.json<{ status?: string }>().catch(() => ({} as Record<string, never>))
+  const status = String(body.status || '')
+  if (status !== 'active' && status !== 'ended') {
+    return c.json({ success: false, error: "status 는 'active' | 'ended'" }, 400)
+  }
+  const { ensureVisitRewardTables } = await import('../utils/visit-reward')
+  await ensureVisitRewardTables(DB)
+  const r = await DB.prepare('UPDATE visit_reward_campaigns SET status = ? WHERE id = ?')
+    .bind(status, id).run().catch(() => null)
+  if (!r?.meta?.changes) return c.json({ success: false, error: '캠페인을 찾을 수 없습니다' }, 404)
+  return c.json({ success: true })
+})
