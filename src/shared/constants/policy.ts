@@ -67,7 +67,7 @@ export const COMMISSION_DEFAULTS = {
 
   /** 🔒 2026-06-27 (감사 #7): 매장영입 커미션 기본율 — util 파일에 흩어진 매직넘버를 SSOT 로 통일(값 불변).
    *  에이전시 매장영입(agencies.store_intro_commission_pct 미설정 시 fallback). 위 AGENCY_OWN_RATE 와는 별개 개념. */
-  AGENCY_STORE_INTRO_PCT: 2.0,
+  AGENCY_STORE_INTRO_PCT: 1.0,  // 🏷️ 2026-07-02 대표 확정: 2%→1% (약관·파트너 안내·회사소개서 1%와 삼위일체, fee-resolver 새 정책과 정합)
   /** 영입자(크리에이터) 매장영입(platform_settings.influencer_store_intro_pct 미설정 시 fallback). */
   INFLUENCER_STORE_INTRO_PCT: 1.5,
 

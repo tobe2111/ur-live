@@ -7,7 +7,7 @@
  *   GET /api/agency/introduced-stores/summary    — 대시보드 요약 (이번달/누적)
  *   GET /api/agency/intro-code                   — 내 추천 코드 (없으면 자동 생성)
  *
- * 사용자 모델: 에이전시 = 가게 영업. 입점 가게의 모든 이용권 매출에 영구 2% commission.
+ * 사용자 모델: 에이전시 = 가게 영업. 입점 가게 매출에 영구 commission(기본율 SSOT COMMISSION_DEFAULTS.AGENCY_STORE_INTRO_PCT, per-agency 조정).
  */
 
 import { Hono } from 'hono'
@@ -109,11 +109,22 @@ app.get('/introduced-stores/summary', async (c) => {
       pending_commission: number; available_commission: number; paid_commission: number;
     }>().catch(() => null)
 
-  return c.json({ success: true, data: summary || {
+  // 🏷️ 2026-07-02 (대표 확정 — 요율 표기 설정값 연동): 화면 하드코딩("2%") 제거를 위해
+  //   본 에이전시의 실제 적용 요율(per-agency override, 없으면 SSOT 기본 1%)을 함께 반환.
+  let commissionPct: number = (await import('../../../shared/constants/policy')).COMMISSION_DEFAULTS.AGENCY_STORE_INTRO_PCT
+  try {
+    const ag = await c.env.DB.prepare('SELECT store_intro_commission_pct FROM agencies WHERE id = ?')
+      .bind(agencyId).first<{ store_intro_commission_pct: number | null }>()
+    if (ag?.store_intro_commission_pct != null && Number.isFinite(Number(ag.store_intro_commission_pct))) {
+      commissionPct = Number(ag.store_intro_commission_pct)
+    }
+  } catch { /* 컬럼 부재 등 — 기본율 */ }
+
+  return c.json({ success: true, data: { ...(summary || {
     total_stores: 0, active_stores: 0, inactive_stores: 0,
     total_commission: 0, month_commission: 0,
     pending_commission: 0, available_commission: 0, paid_commission: 0,
-  } })
+  }), commission_pct: commissionPct } })
 })
 
 // ─── GET /intro-code ────────────────────────────────────────────────────
@@ -152,7 +163,8 @@ app.get('/intro-code', async (c) => {
     success: true,
     data: {
       intro_code: row?.intro_code || null,
-      commission_pct: row?.store_intro_commission_pct ?? 2.0,
+      // 🏷️ 2026-07-02 대표 확정: 폴백 = SSOT 기본율(1%) — 하드코딩 2.0 제거.
+      commission_pct: row?.store_intro_commission_pct ?? (await import('../../../shared/constants/policy')).COMMISSION_DEFAULTS.AGENCY_STORE_INTRO_PCT,
       // 0 = 무제한(미설정). 잔여기간 계산은 매장별 term_started_at(첫 결제)과 조합 — UI 담당.
       term_months: Number(row?.commission_term_months) > 0 ? Number(row?.commission_term_months) : 0,
       share_url: row?.intro_code

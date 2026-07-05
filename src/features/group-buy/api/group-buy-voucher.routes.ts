@@ -50,6 +50,9 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
 
       // CAS: code + pin + status='unused' 세 조건을 원자적으로 검증/갱신.
       // 중간 SELECT 없이 단일 UPDATE 로 경쟁 조건과 PIN 타이밍 공격을 동시에 차단.
+      // 🔒 2026-07-02 (감사 25③): PIN 미설정 매장은 이 경로 자체를 거부 — 기존 `IS NULL OR =?` 는
+      //   PIN 안 만든 매장의 이용권을 코드 소지자가 아무 값으로나 태울 수 있는 구멍(남의 이용권
+      //   griefing). PIN 미설정 매장은 사장님 스캔(use-by-seller)·셀프사용(모드별) 경로 사용.
       const result = await DB.prepare(
         `UPDATE vouchers
            SET status = 'used', used_at = datetime('now')
@@ -59,7 +62,8 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
            AND product_id IN (
              SELECT id FROM products
              WHERE id = vouchers.product_id
-               AND (store_verify_pin IS NULL OR store_verify_pin = ?)
+               AND store_verify_pin IS NOT NULL
+               AND store_verify_pin = ?
            )`
       ).bind(code, pin).run()
 
