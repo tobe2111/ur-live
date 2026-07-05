@@ -272,6 +272,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'idx_product_regions_dong_code', sql: "CREATE INDEX IF NOT EXISTS idx_product_regions_dong_code ON product_regions(region_dong_code)" },
     // 🗺️ 2026-06-18: 유저 "내 동네" 태깅 — region.routes 가 채움 (GPS/수동). "내 동네 딜" 필터 기준.
     { desc: 'user_regions table', sql: "CREATE TABLE IF NOT EXISTS user_regions (user_id TEXT PRIMARY KEY, region_si TEXT, region_gu TEXT, region_dong TEXT, region_dong_code TEXT, gu_code TEXT, source TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)" },
+    // 📜 2026-07-05: 약관 v1.0 시행 — 가입 시 약관 동의 기록 (terms-consent.ts ensureTermsConsents 와 동일 스키마)
+    { desc: 'terms_consents table', sql: "CREATE TABLE IF NOT EXISTS terms_consents (id INTEGER PRIMARY KEY AUTOINCREMENT, subject_type TEXT NOT NULL, subject_id TEXT, user_id TEXT, terms_slug TEXT NOT NULL, terms_version TEXT NOT NULL, core_terms_agreed INTEGER DEFAULT 0, ip TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)" },
     // 🛡️ 2026-05-16: 인플루언서 정산 인프라 (migration 0247)
     { desc: 'sellers.marketing_enabled', sql: "ALTER TABLE sellers ADD COLUMN marketing_enabled INTEGER DEFAULT 1" },
     { desc: 'products.referral_disabled', sql: "ALTER TABLE products ADD COLUMN referral_disabled INTEGER DEFAULT 0" },

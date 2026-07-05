@@ -320,3 +320,14 @@ adminToolsRoutes.put('/settings', async (c) => {
   } catch { /* ignore — cache 만료 자연 처리 */ }
   return c.json({ success: true })
 })
+
+// 📊 2026-07-05 (운영 감사 Q10 — 캡 관측성): 커미션 예산 캡 발동 이력.
+//   order-commissions.ts 가 Σ요청>예산인 주문만 기록(detail = 축별 요청/배분 JSON).
+//   테이블 미존재(캡 미발동/게이트 OFF)면 빈 배열 — 정상.
+adminToolsRoutes.get('/commission-budget-logs', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, order_id, budget_krw, requested_krw, granted_krw, detail, created_at
+     FROM commission_budget_logs ORDER BY created_at DESC LIMIT 100`
+  ).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+  return c.json({ success: true, data: results || [] })
+})

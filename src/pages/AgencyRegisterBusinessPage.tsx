@@ -10,7 +10,9 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { ChevronLeft, Loader2, Briefcase, CheckCircle2, MessageCircle } from 'lucide-react'
-import AgencyTermsClauses, { EMPTY_AGENCY_CLAUSES, allAgencyClausesAgreed, type AgencyClauses } from '@/components/agency/AgencyTermsClauses'
+import TermsConsentBox from '@/components/terms/TermsConsentBox'
+import { AGENCY_CORE_TERMS_SUMMARY } from './terms/agency-terms-content'
+import { TERMS_CURRENT_VERSION } from './terms/terms-types'
 
 export default function AgencyRegisterBusinessPage() {
   const { t } = useTranslation()
@@ -26,8 +28,9 @@ export default function AgencyRegisterBusinessPage() {
     contact_name: userName || '',
     phone: '',
   })
-  // 📜 2026-07-05: 중요 조항 4개 개별 동의 — 서버도 강제, terms_agreements 에 버전 로그.
-  const [clauses, setClauses] = useState<AgencyClauses>(EMPTY_AGENCY_CLAUSES)
+  // 📜 2026-07-05 파트너 약관 v1.0: 전체 동의 + 핵심조항(제4·5·9·10조) 개별 동의 — 둘 다 필수
+  const [termsAgreed, setTermsAgreed] = useState(false)
+  const [coreAgreed, setCoreAgreed] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -46,14 +49,18 @@ export default function AgencyRegisterBusinessPage() {
       toast.error('에이전시명과 담당자명은 필수입니다')
       return
     }
-    if (!allAgencyClausesAgreed(clauses)) {
-      toast.error(t('agency.terms.required', { defaultValue: '중요 조항 4개에 모두 동의해주세요.' }))
+    if (!termsAgreed || !coreAgreed) {
+      toast.error(t('agency.registerBusiness.termsRequired', { defaultValue: '파트너 약관과 핵심 조항에 모두 동의해주세요' }))
       return
     }
 
     setLoading(true)
     try {
-      const res = await api.post('/api/agency/register-from-user', { ...form, clauses_agreed: clauses })
+      const res = await api.post('/api/agency/register-from-user', {
+        ...form,
+        terms_agreed_version: TERMS_CURRENT_VERSION,
+        core_terms_agreed: true,
+      })
       if (res.data?.success) {
         toast.success('에이전시 가입 신청이 완료됐어요. 관리자 승인을 기다려주세요.')
         setExistingStatus('pending')
@@ -168,14 +175,24 @@ export default function AgencyRegisterBusinessPage() {
           </Field>
         </div>
 
-        {/* 📜 2026-07-05: 중요 조항 4개(커미션 1%·24개월/회수/정산·원천징수/약관) 요약 + 개별 동의 */}
-        <AgencyTermsClauses value={clauses} onChange={setClauses} />
+        <TermsConsentBox
+          termsLabel={t('agency.registerBusiness.termsAgree', { defaultValue: '유어딜 에이전시 파트너 약관(v1.0)에 동의합니다' })}
+          termsPath="/terms/agency"
+          agreed={termsAgreed}
+          onAgreedChange={setTermsAgreed}
+          core={{
+            label: t('agency.registerBusiness.coreAgree', { defaultValue: '위 핵심 조항(커미션·정산·조건 변경·해지)을 확인했고 동의합니다' }),
+            items: AGENCY_CORE_TERMS_SUMMARY,
+            agreed: coreAgreed,
+            onChange: setCoreAgreed,
+          }}
+        />
 
         <p className="text-[11px] text-gray-500 text-center leading-relaxed">
           {t('agency.registerBusiness.approvalNote', { defaultValue: '신청 후 관리자 승인까지 보통 1~2일 소요됩니다. 승인 완료 시 카카오 로그인으로 바로 에이전시 기능 이용 가능.' })}
         </p>
 
-        <button onClick={submit} disabled={loading || !allAgencyClausesAgreed(clauses)}
+        <button onClick={submit} disabled={loading}
           className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 disabled:opacity-50 text-white font-bold rounded-2xl flex items-center justify-center gap-2">
           {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
           {loading ? t('agency.registerBusiness.submitting', { defaultValue: '신청 중...' }) : t('agency.registerBusiness.submitBtn', { defaultValue: '에이전시 신청하기' })}

@@ -371,8 +371,8 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       agency_intro_code?: string;
       // 🛡️ 2026-05-21 Phase D-6: 인플루언서 입점 유치 — 사장님 가입 시 인플루언서 추천코드 입력.
       influencer_intro_code?: string;
-      // 📜 2026-07-05: 셀러 약관 동의 (필수) — terms_agreements 에 버전 포함 증적 기록.
-      terms_agreed?: boolean;
+      // 📜 2026-07-05: 판매자 이용약관 v1.0 동의 (가입 화면 필수 체크)
+      terms_agreed_version?: string;
     }>();
 
     const { business_name, business_number, phone, seller_type, youtube_email, description, agency_intro_code, influencer_intro_code } = body;
@@ -381,9 +381,10 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       return c.json({ success: false, error: '사업자명, 사업자번호, 연락처는 필수입니다' }, 400);
     }
 
-    // 📜 2026-07-05: 셀러 약관 동의 필수 — 동의 없이 가입 불가 (버전 로그는 셀러 생성 후 기록).
-    if (body.terms_agreed !== true) {
-      return c.json({ success: false, error: '셀러 이용약관 동의가 필요합니다', code: 'TERMS_REQUIRED' }, 400);
+    // 📜 2026-07-05 판매자 이용약관 v1.0: 동의 없이는 판매 신청 불가 (동의 기록은 INSERT 후).
+    const { isValidTermsVersion, recordTermsConsent } = await import('../../../worker/utils/terms-consent');
+    if (!isValidTermsVersion(body.terms_agreed_version)) {
+      return c.json({ success: false, error: '판매자 이용약관 동의가 필요합니다. 화면을 새로고침한 뒤 다시 시도해주세요.' }, 400);
     }
 
     const businessNumberRegex = /^\d{3}-\d{2}-\d{5}$/;
@@ -512,6 +513,16 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     // 🏁 2026-06-17 (#2 정체성 연속성): 큐레이터 프로필 → 신규 셀러 1회 복사(빈 값 skip). best-effort —
     //   컬럼 없는 env / 실패해도 가입은 성공. 승인되면 /u/{handle} 가 빈 셀러프로필 대신 큐레이터 브랜딩 유지.
     const newSellerId = result?.meta?.last_row_id;
+
+    // 📜 판매자 이용약관 동의 기록 (fail-soft — 검증은 상단에서 이미 통과)
+    recordTermsConsent(db, {
+      subjectType: 'seller',
+      subjectId: newSellerId ?? null,
+      userId,
+      slug: 'seller',
+      version: body.terms_agreed_version as string,
+      ip: c.req.header('CF-Connecting-IP') || null,
+    }).catch(() => null);
     if (newSellerId && curatorProfile) {
       const sets: string[] = [];
       const vals: any[] = [];
@@ -527,16 +538,6 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
           .bind(...vals, newSellerId).run().catch(() => { /* 컬럼 없는 env — skip */ });
       }
     }
-
-    // 📜 2026-07-05: 셀러 약관 동의 로그 — 누가(seller id + 신청 유저 id)·언제·몇 버전 (fail-soft, 멱등).
-    try {
-      const { recordTermsAgreements } = await import('../../../worker/utils/terms-agreements');
-      if (newSellerId) {
-        await recordTermsAgreements(db, 'seller', String(newSellerId), [{ doc_type: 'seller', agreed: true }]);
-      }
-      // 신청 유저 계정에도 병기 (승인 반려 후 재신청 시 seller row 가 바뀌어도 유저 증적 유지)
-      await recordTermsAgreements(db, 'user', String(userId), [{ doc_type: 'seller', agreed: true }]);
-    } catch { /* fail-soft */ }
 
     const { createDashboardNotification: notify } = await import('../../notifications/api/dashboard-notifications.routes');
     // 🛡️ 2026-06-12 (감사 1단계): deep-link 교정 — /admin/sellers 는 클라 라우트에 없음 → 승인 페이지로.

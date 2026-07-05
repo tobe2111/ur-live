@@ -2789,6 +2789,8 @@
       "colPeriod": "期間",
       "colStore": "店舗",
       "colUsed": "使用数",
+      "colRevenue": "販売額",
+      "colFee": "手数料",
       "colAmount": "精算額",
       "colStatus": "状態",
       "statusPending": "待機",
@@ -2830,9 +2832,8 @@
       "submit": "事業者登録を申請",
       "secondGate": "💳 現金精算には承認後、事業者登録証の認証（1回）が追加で必要です（ダッシュボード → 事業者情報）。",
       "prospectBanner": " エージェンシーが店舗情報を準備しました。内容確認後、提出するだけです。",
-      "termsRequired": "セラー利用規約に同意してください",
-      "termsLabel": "セラー(事業者ユーザー)利用規約に同意します",
-      "termsView": "規約を見る"
+      "termsRequired": "販売者利用規約に同意してください",
+      "termsAgree": "UrDeal販売者利用規約(v1.0)に同意します"
     },
     "mailOrderNumber": "通信販売業届出番号",
     "mailOrderNumberPlaceholder": "例: 2026-ソウル江南-01234",
@@ -4124,7 +4125,10 @@
       "brandingDesc": "ユアライブエージェンシーとして登録すると、所属セラーのライブコマースを統合管理し、収益を共有できます。",
       "formTitle": "エージェンシー加入申請",
       "formDesc": "申請後、管理者承認後に利用可能です",
-      "passwordMismatch": "パスワードが一致しません。"
+      "passwordMismatch": "パスワードが一致しません。",
+      "termsRequired": "パートナー規約と主要条項の両方に同意してください",
+      "termsAgree": "UrDealエージェンシーパートナー規約(v1.0)に同意します",
+      "coreAgree": "上記の主要条項(コミッション・精算・変更・解約)を確認し同意します"
     },
     "registerBusiness": {
       "startTitle": "エージェンシーとして始める",
@@ -4154,24 +4158,14 @@
       "pageTitle": "エージェンシーとして始める",
       "kakaoDone": "カカオログイン完了",
       "kakaoHint": "以下のエージェンシー情報を入力するだけで申請完了",
-      "approvalNote": "申請後、管理者承認まで通常1〜2日かかります。承認後、カカオログインでエージェンシー機能が利用できます。"
+      "approvalNote": "申請後、管理者承認まで通常1〜2日かかります。承認後、カカオログインでエージェンシー機能が利用できます。",
+      "termsRequired": "パートナー規約と主要条項の両方に同意してください",
+      "termsAgree": "UrDealエージェンシーパートナー規約(v1.0)に同意します",
+      "coreAgree": "上記の主要条項(コミッション・精算・変更・解約)を確認し同意します"
     },
     "settlementsAuto": {
       "autoPayout": "✨ 申請は不要になりました",
       "autoPayoutDesc": "獲得コミッションは自動集計され、毎週金曜日にまとめて入金されます（返金保護のため7日経過分）"
-    },
-    "terms": {
-      "allAgree": "重要条項すべてに同意(必須)",
-      "commissionTitle": "紹介コミッション条件",
-      "commissionDesc": "コミッションは、獲得した店舗で実際に販売が発生した場合のみ、その売上を基準に店舗ごとに最初の24か月間支給されます(基本1%、プラットフォーム方針に従う)。",
-      "clawbackTitle": "コミッション回収(返金時)",
-      "clawbackDesc": "支給済みコミッションの根拠取引が返金・キャンセルされた場合、当該コミッションは回収されます。",
-      "settlementTitle": "精算・源泉徴収",
-      "settlementDesc": "精算はプラットフォームの精算周期に従い、法令上の源泉徴収後に支給されます。",
-      "termsTitle": "エージェンシー規約・個人情報",
-      "termsDesc": "エージェンシー利用規約全文および個人情報の収集・利用に同意します。",
-      "logNote": "同意内容は規約バージョンとともに記録されます。",
-      "required": "重要条項4つすべてに同意してください。"
     }
   },
   "nav": {
@@ -5484,7 +5478,12 @@
     "chipVoucher": "クーポン・ギフト券",
     "chipWholesale": "卸売モール (B2B)",
     "kakaoHint": "面倒な登録なしで、すぐに始められます",
-    "aboutLink": "Ur-Dealは初めてですか？サービスを見る →"
+    "aboutLink": "Ur-Dealは初めてですか？サービスを見る →",
+    "termsNotice": "ログイン(登録)により",
+    "termsLink": "利用規約",
+    "termsAnd": "および",
+    "privacyLink": "プライバシーポリシー",
+    "termsNoticeEnd": "に同意したものとみなされます"
   },
   "guide": {
     "sectionTitlePlaceholder": "セクションタイトル",

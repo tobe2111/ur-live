@@ -2110,6 +2110,8 @@
       "colPeriod": "Période",
       "colStore": "Boutique",
       "colUsed": "Utilisés",
+      "colRevenue": "Ventes",
+      "colFee": "Commission",
       "colAmount": "Montant",
       "colStatus": "Statut",
       "statusPending": "En attente",
@@ -2151,9 +2153,8 @@
       "submit": "Demander un compte pro",
       "secondGate": "💳 Le règlement en espèces nécessite une vérification unique de la licence commerciale après approbation (Tableau de bord → Infos pro).",
       "prospectBanner": " l'agence a pré-rempli les infos de votre boutique. Vérifiez et soumettez.",
-      "termsRequired": "Veuillez accepter les conditions vendeur",
-      "termsLabel": "J'accepte les Conditions Vendeur (Utilisateur Pro)",
-      "termsView": "Voir les conditions"
+      "termsRequired": "Veuillez accepter les Conditions Vendeur",
+      "termsAgree": "J'accepte les Conditions Vendeur UrDeal (v1.0)"
     },
     "mailOrderNumber": "N° de vente à distance",
     "mailOrderNumberPlaceholder": "ex. 2026-Seoul-01234",
@@ -3445,7 +3446,10 @@
       "brandingDesc": "Inscrivez-vous en tant qu'agence Ur-Live pour gérer le commerce en direct de vos vendeurs et partager les profits.",
       "formTitle": "Demande d'inscription agence",
       "formDesc": "Disponible après approbation de l'administrateur",
-      "passwordMismatch": "Les mots de passe ne correspondent pas."
+      "passwordMismatch": "Les mots de passe ne correspondent pas.",
+      "termsRequired": "Veuillez accepter les conditions partenaires et les clauses clés",
+      "termsAgree": "J'accepte les Conditions Partenaire Agence UrDeal (v1.0)",
+      "coreAgree": "J'ai lu et j'accepte les clauses clés ci-dessus (commission, règlement, modifications, résiliation)"
     },
     "registerBusiness": {
       "startTitle": "Commencer en tant qu'agence",
@@ -3475,24 +3479,14 @@
       "pageTitle": "Commencer en tant qu'agence",
       "kakaoDone": "Connexion Kakao terminée",
       "kakaoHint": "Remplissez simplement les informations de l'agence ci-dessous",
-      "approvalNote": "L'approbation prend généralement 1 à 2 jours. Après approbation, vous pouvez utiliser les fonctionnalités d'agence via Kakao."
+      "approvalNote": "L'approbation prend généralement 1 à 2 jours. Après approbation, vous pouvez utiliser les fonctionnalités d'agence via Kakao.",
+      "termsRequired": "Veuillez accepter les conditions partenaires et les clauses clés",
+      "termsAgree": "J'accepte les Conditions Partenaire Agence UrDeal (v1.0)",
+      "coreAgree": "J'ai lu et j'accepte les clauses clés ci-dessus (commission, règlement, modifications, résiliation)"
     },
     "settlementsAuto": {
       "autoPayout": "✨ Plus besoin de demander",
       "autoPayoutDesc": "Les commissions sont calculées automatiquement et versées chaque vendredi (après 7 jours de protection remboursement)"
-    },
-    "terms": {
-      "allAgree": "Accepter toutes les clauses clés (obligatoire)",
-      "commissionTitle": "Conditions de commission",
-      "commissionDesc": "La commission n'est versée que sur les ventes réelles des magasins recrutés, dans la limite des 24 premiers mois par magasin (1% par défaut, selon la politique).",
-      "clawbackTitle": "Récupération de commission",
-      "clawbackDesc": "Si la transaction sous-jacente est remboursée ou annulée, la commission versée est récupérée.",
-      "settlementTitle": "Règlement et retenue",
-      "settlementDesc": "Les règlements sont versés selon le cycle de la plateforme après retenue fiscale légale.",
-      "termsTitle": "Conditions agence et confidentialité",
-      "termsDesc": "J'accepte les conditions complètes et l'utilisation des données personnelles.",
-      "logNote": "Votre consentement est enregistré avec la version des conditions.",
-      "required": "Veuillez accepter les 4 clauses clés."
     }
   },
   "nav": {
@@ -5484,7 +5478,12 @@
     "chipVoucher": "Bons et cartes cadeaux",
     "chipWholesale": "Grossiste (B2B)",
     "kakaoHint": "Pas d'inscription compliquée — commencez tout de suite",
-    "aboutLink": "Nouveau sur Ur-Deal ? Découvrir le service →"
+    "aboutLink": "Nouveau sur Ur-Deal ? Découvrir le service →",
+    "termsNotice": "En vous connectant, vous acceptez les",
+    "termsLink": "Conditions d'utilisation",
+    "termsAnd": "et la",
+    "privacyLink": "Politique de confidentialité",
+    "termsNoticeEnd": ""
   },
   "guide": {
     "sectionTitlePlaceholder": "Titre de section",

@@ -606,6 +606,10 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     return c.json({ success: true, message: '이미 환불 처리된 주문입니다' });
   }
 
+  // 🧾 2026-07-05 (운영 감사 Q12): 환불이 무엇을 역전했는지 요약 수집 — 응답에 담아 어드민이
+  //   "부분 환불 시 커미션/딜/재고가 어떻게 됐는지"를 한 화면에서 확인. 표시 전용(로직 불변).
+  const reversal: Array<{ step: string; count?: number; amount?: number }> = [];
+
   // 💸 2026-06-17 혼합결제(Toss+딜) 반품 환불 시 '딜 사용분' 비례 복원 (적립-역전 대칭, 머니 룰 #2).
   //   transition 성공(1회) 후라 멱등. 전액 딜(payment_method='deal_points')은 위에서 처리 → 여기선
   //   카드/Toss 주문의 부분 딜만. orders.deal_used 를 '아직 미복원 딜' 잔여 원장으로 차감 →
@@ -629,6 +633,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
         });
         await DB.prepare('UPDATE orders SET deal_used = MAX(0, deal_used - ?) WHERE id = ?')
           .bind(restore, returnRecord.order_id).run().catch(() => {});
+        reversal.push({ step: '딜 사용분 복원', amount: restore });
       }
     } catch { /* best-effort — deal_used 컬럼 부재 등 */ }
   }
@@ -652,6 +657,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
               .bind(item.quantity, item.product_id)
           )
         );
+        reversal.push({ step: '재고 복원', count: physicalItems.length });
       }
       // 디지털 상품 — access revoke
       await DB.prepare(
@@ -686,6 +692,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
       await DB.prepare(
         "UPDATE referral_commissions SET status = 'withdrawn' WHERE order_id = ? AND status = 'granted'"
       ).bind(returnRecord.order_id).run().catch(swallow('returns:api:returns'));
+      reversal.push({ step: '추천 커미션 회수', count: commissions.results.length, amount: commissions.results.reduce((s, r) => s + (r.commission_amount || 0), 0) });
     }
     // ⏳ 2026-06-15 (T+7 hold): 미성숙(pending=보류, 잔액 미적립) 추천 커미션은 잔액 회수 없이 상태만 닫음.
     await DB.prepare(
@@ -711,6 +718,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
       await DB.prepare(
         "UPDATE affiliate_earnings SET status = 'refunded' WHERE order_id = ? AND COALESCE(status, 'pending') IN ('granted', 'pending')"
       ).bind(returnRecord.order_id).run().catch(swallow('returns:api:returns'));
+      reversal.push({ step: '핀 추천(어필리에이트) 회수', count: aff.results.length, amount: aff.results.reduce((s, r) => s + (r.commission || 0), 0) });
     }
     // ⏳ holding(미성숙·미적립) 적립: 잔액 회수 없이 상태만 refunded — 성숙 cron 이 확정 안 함.
     await DB.prepare(
@@ -757,6 +765,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     }
     await DB.prepare('DELETE FROM coupon_uses WHERE order_id = ?')
       .bind(returnRecord.order_id).run().catch(swallow('returns:coupon-uses'));
+    if ((cu?.results ?? []).length > 0) reversal.push({ step: '쿠폰 사용 복원', count: (cu?.results ?? []).length });
   } catch { /* best-effort — coupon_uses 부재 등 */ }
 
   // 🔐 2026-07-01 (전수감사 머니 #3): 초대 보상 회수 — 반품환불로 초대받은 유저의 유효주문이 0이 되면
@@ -815,6 +824,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
           },
         });
       } catch { /* alert failure is non-fatal */ }
+      reversal.push({ step: '완료 정산 clawback 기록(수동 대사 필요)', amount: returnRecord.refund_amount || 0 });
     }
   } catch { /* table may not exist */ }
 
@@ -824,7 +834,9 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     notifyUser(DB, returnRecord.user_id, 'refund_complete', '💰 환불 완료', `${Number(returnRecord.refund_amount ?? 0).toLocaleString('ko-KR')}원이 환불되었습니다`, '/my-orders').catch(swallow('returns:api:returns'));
   } catch {}
 
-  return c.json({ success: true, message: '환불이 완료되었습니다' });
+  // 🧾 Q12: 역전 요약 동봉 — 커미션(공급자/영입자/에이전시/초대)은 헬퍼 내부 처리라 여기 미집계
+  //   (0건이어도 시도됨). 측정 가능한 항목만 담아 오해 방지.
+  return c.json({ success: true, message: '환불이 완료되었습니다', data: { reversal } });
 });
 
 export { returnsRoutes };

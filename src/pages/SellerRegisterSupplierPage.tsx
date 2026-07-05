@@ -21,6 +21,8 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { ChevronLeft, Loader2, Store, CheckCircle2 } from 'lucide-react'
+import TermsConsentBox from '@/components/terms/TermsConsentBox'
+import { TERMS_CURRENT_VERSION } from './terms/terms-types'
 
 const STORE_CATEGORIES = [
   { value: 'restaurant', label: '음식점' },
@@ -41,7 +43,7 @@ export default function SellerRegisterSupplierPage() {
   const agencyFromUrl = (searchParams.get('agency') || '').toUpperCase().slice(0, 12)
   const userName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null
   const [loading, setLoading] = useState(false)
-  // 📜 2026-07-05: 셀러 약관 동의 (필수 — 미동의 시 신청 불가, 서버도 강제)
+  // 📜 2026-07-05 판매자 이용약관 v1.0: 가입 시 동의 필수
   const [termsAgreed, setTermsAgreed] = useState(false)
   const [statusChecked, setStatusChecked] = useState(false)
   const [existingStatus, setExistingStatus] = useState<'none' | 'pending' | 'active' | 'suspended'>('none')
@@ -158,9 +160,8 @@ export default function SellerRegisterSupplierPage() {
       toast.error(t('seller.register.businessNumberFormat', { defaultValue: '사업자번호 형식: XXX-XX-XXXXX' }))
       return
     }
-    // 📜 2026-07-05: 셀러 약관 동의 필수 — 서버(register-from-user)도 terms_agreed 를 강제 + 버전 로그 기록.
     if (!termsAgreed) {
-      toast.error(t('seller.gateway.termsRequired', { defaultValue: '셀러 이용약관에 동의해주세요' }))
+      toast.error(t('seller.gateway.termsRequired', { defaultValue: '판매자 이용약관에 동의해주세요' }))
       return
     }
 
@@ -183,7 +184,7 @@ export default function SellerRegisterSupplierPage() {
         seller_type: 'store_owner',
         description: descWithMeta,
         agency_intro_code: form.agency_intro_code.trim() || undefined,
-        terms_agreed: termsAgreed, // 📜 셀러 약관 동의 (서버가 버전 포함 로그 기록)
+        terms_agreed_version: TERMS_CURRENT_VERSION,
       })
       if (res.data?.success) {
         toast.success(t('seller.gateway.applied', {
@@ -397,6 +398,13 @@ export default function SellerRegisterSupplierPage() {
           </Field>
         </div>
 
+        <TermsConsentBox
+          termsLabel={t('seller.gateway.termsAgree', { defaultValue: '유어딜 판매자 이용약관(v1.0)에 동의합니다' })}
+          termsPath="/terms/seller"
+          agreed={termsAgreed}
+          onAgreedChange={setTermsAgreed}
+        />
+
         <p className="text-[11px] text-gray-500 text-center leading-relaxed">
           {t('seller.gateway.reviewNote', { defaultValue: '신청 후 1-2 영업일 내 관리자 검토 → 앱 알림·알림톡으로 결과 안내. 국세청 정보 일치 시 자동 승인.' })}
           <br />
@@ -406,23 +414,7 @@ export default function SellerRegisterSupplierPage() {
           {t('seller.gateway.secondGate', { defaultValue: '💳 현금 정산에는 승인 후 사업자등록증 인증 1회가 추가로 필요해요 (대시보드 → 사업자 정보).' })}
         </p>
 
-        {/* 📜 2026-07-05: 셀러 약관 동의 (필수) — 버전 포함 동의 로그가 서버(terms_agreements)에 기록됨 */}
-        <label className="flex items-start gap-2.5 p-3 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212] cursor-pointer">
-          <input
-            type="checkbox"
-            checked={termsAgreed}
-            onChange={(e) => setTermsAgreed(e.target.checked)}
-            className="mt-0.5 w-4 h-4 accent-gray-900 dark:accent-white"
-          />
-          <span className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-            <b>[필수]</b> {t('seller.gateway.termsLabel', { defaultValue: '셀러(사업자 유저) 이용약관에 동의합니다' })}{' '}
-            <a href="/terms/seller" target="_blank" rel="noreferrer" className="underline underline-offset-2 text-gray-500 dark:text-gray-400">
-              {t('seller.gateway.termsView', { defaultValue: '약관 보기' })}
-            </a>
-          </span>
-        </label>
-
-        <button onClick={submit} disabled={loading || !termsAgreed}
+        <button onClick={submit} disabled={loading}
           className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 disabled:opacity-50 text-white font-bold rounded-2xl flex items-center justify-center gap-2">
           {loading && <Loader2 className="w-5 h-5 animate-spin" />}
           {loading

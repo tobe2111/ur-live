@@ -2789,6 +2789,8 @@
       "colPeriod": "期间",
       "colStore": "门店",
       "colUsed": "使用数",
+      "colRevenue": "销售额",
+      "colFee": "手续费",
       "colAmount": "结算额",
       "colStatus": "状态",
       "statusPending": "待处理",
@@ -2830,9 +2832,8 @@
       "submit": "申请企业注册",
       "secondGate": "💳 现金结算需要在批准后进行一次营业执照认证（后台 → 企业信息）。",
       "prospectBanner": " 代理机构已预先填写店铺信息。确认内容后提交即可。",
-      "termsRequired": "请同意卖家条款",
-      "termsLabel": "我同意卖家(企业用户)条款",
-      "termsView": "查看条款"
+      "termsRequired": "请同意卖家服务条款",
+      "termsAgree": "我同意UrDeal卖家服务条款(v1.0)"
     },
     "mailOrderNumber": "通信销售业申报号",
     "mailOrderNumberPlaceholder": "例: 2026-首尔江南-01234",
@@ -4124,7 +4125,10 @@
       "brandingDesc": "注册为유어딜代理商，统一管理所属卖家的直播电商并共享收益。",
       "formTitle": "代理商注册申请",
       "formDesc": "申请后管理员审批后可使用",
-      "passwordMismatch": "密码不匹配。"
+      "passwordMismatch": "密码不匹配。",
+      "termsRequired": "请同意合作伙伴条款和核心条款",
+      "termsAgree": "我同意UrDeal代理合作伙伴条款(v1.0)",
+      "coreAgree": "我已确认并同意上述核心条款(佣金、结算、变更、终止)"
     },
     "registerBusiness": {
       "startTitle": "以代理商身份开始",
@@ -4154,24 +4158,14 @@
       "pageTitle": "作为代理商开始",
       "kakaoDone": "Kakao登录完成",
       "kakaoHint": "只需填写以下代理商信息即可完成申请",
-      "approvalNote": "申请后，管理员审批通常需要1-2天。审批后，可直接通过Kakao登录使用代理商功能。"
+      "approvalNote": "申请后，管理员审批通常需要1-2天。审批后，可直接通过Kakao登录使用代理商功能。",
+      "termsRequired": "请同意合作伙伴条款和核心条款",
+      "termsAgree": "我同意UrDeal代理合作伙伴条款(v1.0)",
+      "coreAgree": "我已确认并同意上述核心条款(佣金、结算、变更、终止)"
     },
     "settlementsAuto": {
       "autoPayout": "✨ 无需再申请",
       "autoPayoutDesc": "引入佣金将自动汇总，每周五统一打款（为保障退款，仅限满7天的部分）"
-    },
-    "terms": {
-      "allAgree": "同意全部重要条款(必填)",
-      "commissionTitle": "招募佣金条件",
-      "commissionDesc": "佣金仅在您招募的店铺产生实际销售时支付,按该销售额计算,每店限首24个月(默认1%,依平台政策)。",
-      "clawbackTitle": "佣金追回(退款时)",
-      "clawbackDesc": "若佣金对应的交易被退款或取消,该佣金将被追回。",
-      "settlementTitle": "结算与代扣税",
-      "settlementDesc": "结算按平台结算周期,在依法代扣税后支付。",
-      "termsTitle": "代理条款与个人信息",
-      "termsDesc": "我同意代理条款全文及个人信息的收集与使用。",
-      "logNote": "您的同意将与条款版本一并记录。",
-      "required": "请同意全部4项重要条款。"
     }
   },
   "nav": {
@@ -5484,7 +5478,12 @@
     "chipVoucher": "兑换券·礼品卡",
     "chipWholesale": "批发商城 (B2B)",
     "kakaoHint": "无需繁琐注册，立即开始",
-    "aboutLink": "第一次使用Ur-Deal？了解服务 →"
+    "aboutLink": "第一次使用Ur-Deal？了解服务 →",
+    "termsNotice": "登录(注册)即表示您同意",
+    "termsLink": "服务条款",
+    "termsAnd": "和",
+    "privacyLink": "隐私政策",
+    "termsNoticeEnd": ""
   },
   "guide": {
     "sectionTitlePlaceholder": "章节标题",

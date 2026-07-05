@@ -66,11 +66,33 @@ async function readSetting(DB: D1Database, key: string): Promise<string | null> 
   }
 }
 
+// 📊 2026-07-05 (운영 감사 Q10 — 캡 관측성): 캡이 실제로 깎은 주문을 영구 기록.
+//   "캡이 발동했는가/누가 얼마 깎였는가"가 로그 없이는 어드민이 알 수 없어(적립액만 보임)
+//   요율 조정·에이전시 소명 대응이 불가했음. 발동(Σ요청>예산) 시에만 1행 — 평시 write 0.
+const _capLogEnsured = new WeakSet<object>()
+async function ensureCapLogTable(DB: D1Database): Promise<void> {
+  if (_capLogEnsured.has(DB)) return
+  _capLogEnsured.add(DB)
+  try {
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS commission_budget_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL,
+      budget_krw INTEGER NOT NULL,
+      requested_krw INTEGER NOT NULL,
+      granted_krw INTEGER NOT NULL,
+      detail TEXT,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )`).run()
+    await DB.prepare('CREATE INDEX IF NOT EXISTS idx_cb_logs_order ON commission_budget_logs(order_id)').run()
+    await DB.prepare('CREATE INDEX IF NOT EXISTS idx_cb_logs_created ON commission_budget_logs(created_at)').run()
+  } catch { /* fail-soft */ }
+}
+
 /** 주문의 플랫폼 수수료(원) — order-ledger-credit 와 동일 규칙(orders.commission_rate ?? 기본 5%). */
 async function resolveOrderPlatformFeeKrw(DB: D1Database, order: OrderLike): Promise<number> {
   const total = Number(order.total_amount || 0)
   if (!(total > 0)) return 0
-  let rate = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT
+  let rate: number = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT  // as-const 리터럴(5) 추론 방지 — 재대입 number
   try {
     const row = await DB.prepare('SELECT COALESCE(commission_rate, ?) AS rate FROM orders WHERE id = ?')
       .bind(COMMISSION_DEFAULTS.PLATFORM_FEE_PCT, order.id).first<{ rate: number }>()
@@ -127,6 +149,7 @@ async function budgetedCreditForOrder(
   order: OrderLike,
   pgReservePct: number,
   promoOwnerFunded: boolean,
+  priorityKeys: string[],
   opts?: CreditOrderCommissionsOpts,
 ): Promise<void> {
   const total = Number(order.total_amount || 0)
@@ -176,7 +199,19 @@ async function budgetedCreditForOrder(
   // ── 예산 배분 ([INV-CB]) ────────────────────────────────────────────────
   const platformFeeKrw = await resolveOrderPlatformFeeKrw(DB, order)
   const budget = computeCommissionBudget({ amountKrw: total, platformFeeKrw, pgReservePct })
-  const grants = allocateCommissions(requests, budget)
+  // 🥇 Q10: 에이전시 매장영입 1% 는 계약 기반(24개월 약속) — 캡 발동 시에도 최우선 보전.
+  const grants = allocateCommissions(requests, budget, { priorityKeys })
+  // 📊 Q10 관측성: 캡이 실제 깎은 주문만 기록(Σ요청 > 예산) — 평시 write 0, fail-soft.
+  const requestedSum = requests.reduce((s, r) => s + r.amountKrw, 0)
+  if (requestedSum > budget) {
+    try {
+      await ensureCapLogTable(DB)
+      const grantedSum = grants.reduce((s, g) => s + g.grantedKrw, 0)
+      await DB.prepare(
+        'INSERT INTO commission_budget_logs (order_id, budget_krw, requested_krw, granted_krw, detail) VALUES (?, ?, ?, ?, ?)'
+      ).bind(oid, budget, requestedSum, grantedSum, JSON.stringify(grants)).run()
+    } catch { /* 로그 실패가 적립을 막지 않음 */ }
+  }
   try {
     assertCommissionBudgetInvariants(grants, budget)
   } catch {
@@ -211,12 +246,19 @@ export async function creditOrderCommissions(
   let gateOn = false
   let pgReservePct = DEFAULT_PG_RESERVE_PCT
   let promoOwnerFunded = false
+  // 🥇 Q10 기본: agency_intro 최우선("에이전시 1% 보호" 자문) — platform_settings 로 조정 가능.
+  let priorityKeys: string[] = ['agency_intro']
   try {
     gateOn = (await readSetting(DB, 'commission_budget_enabled')) === 'true'
     if (gateOn) {
       const pg = Number(await readSetting(DB, 'pg_reserve_pct'))
       if (Number.isFinite(pg) && pg >= 0 && pg <= 100) pgReservePct = pg
       promoOwnerFunded = (await readSetting(DB, 'promo_funding_source')) === 'owner'
+      const prioRaw = await readSetting(DB, 'commission_priority_axes')
+      if (prioRaw !== null) {
+        // CSV — 빈 문자열이면 '우선 없음(전 축 비례)' 의도로 존중.
+        priorityKeys = prioRaw.split(',').map(s => s.trim()).filter(Boolean)
+      }
     }
   } catch {
     gateOn = false // 설정 조회 실패 → 현행 경로(안전)
@@ -228,7 +270,7 @@ export async function creditOrderCommissions(
   }
 
   for (const o of orders) {
-    await budgetedCreditForOrder(DB, o, pgReservePct, promoOwnerFunded, opts).catch(() => { /* fail-soft — 다음 주문 계속 */ })
+    await budgetedCreditForOrder(DB, o, pgReservePct, promoOwnerFunded, priorityKeys, opts).catch(() => { /* fail-soft — 다음 주문 계속 */ })
   }
   // 공급자(B2B) 정산 — 플랫폼 부담 아님(예산 무관), 기존대로 항상(only 필터만 존중).
   if (axisOn(opts, 'supplier')) try {

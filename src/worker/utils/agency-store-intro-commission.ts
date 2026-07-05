@@ -5,7 +5,7 @@
  * 입력: 각 order 의 seller_id + total_amount.
  * 동작:
  *   1. 해당 seller 의 introduced_by_agency_id 조회 — null 이면 noop.
- *   2. 에이전시의 store_intro_commission_pct (default 2%) 가져옴.
+ *   2. 에이전시의 store_intro_commission_pct (default 1% — 2026-07-05 대표 확정) 가져옴.
  *   3. (가게 첫 PAID 주문이면) signup_bonus ₩30,000 1회 적립.
  *   4. sales_commission 적립 — 매 주문마다 (영구).
  *   5. UNIQUE(order_id, type) 으로 중복 방지 — 재confirm 시 안전.

@@ -2789,6 +2789,8 @@
       "colPeriod": "기간",
       "colStore": "매장",
       "colUsed": "사용 수",
+      "colRevenue": "판매액",
+      "colFee": "수수료",
       "colAmount": "정산액",
       "colStatus": "상태",
       "statusPending": "대기",
@@ -2830,9 +2832,8 @@
       "submit": "사업자 가입 신청",
       "secondGate": "💳 현금 정산에는 승인 후 사업자등록증 인증 1회가 추가로 필요해요 (대시보드 → 사업자 정보).",
       "prospectBanner": " 에이전시가 매장 정보를 미리 준비했어요. 내용 확인 후 제출만 하면 됩니다.",
-      "termsRequired": "셀러 이용약관에 동의해주세요",
-      "termsLabel": "셀러(사업자 유저) 이용약관에 동의합니다",
-      "termsView": "약관 보기"
+      "termsRequired": "판매자 이용약관에 동의해주세요",
+      "termsAgree": "유어딜 판매자 이용약관(v1.0)에 동의합니다"
     },
     "mailOrderNumber": "통신판매업신고번호",
     "mailOrderNumberPlaceholder": "예: 2026-서울강남-01234",
@@ -4124,7 +4125,10 @@
       "brandingDesc": "유어딜 에이전시로 등록하면 소속 셀러들의 라이브 커머스를 통합 관리하고 수익을 함께 나눌 수 있습니다.",
       "formTitle": "에이전시 가입 신청",
       "formDesc": "가입 신청 후 관리자 승인 시 이용 가능합니다",
-      "passwordMismatch": "비밀번호가 일치하지 않습니다."
+      "passwordMismatch": "비밀번호가 일치하지 않습니다.",
+      "termsRequired": "파트너 약관과 핵심 조항에 모두 동의해주세요",
+      "termsAgree": "유어딜 에이전시 파트너 약관(v1.0)에 동의합니다",
+      "coreAgree": "위 핵심 조항(커미션·정산·조건 변경·해지)을 확인했고 동의합니다"
     },
     "registerBusiness": {
       "startTitle": "에이전시로 시작하기",
@@ -4154,24 +4158,14 @@
       "pageTitle": "에이전시로 시작하기",
       "kakaoDone": "카카오 로그인 완료",
       "kakaoHint": "아래 에이전시 정보만 입력하면 신청이 끝나요",
-      "approvalNote": "신청 후 관리자 승인까지 보통 1~2일 소요됩니다. 승인 완료 시 카카오 로그인으로 바로 에이전시 기능 이용 가능."
+      "approvalNote": "신청 후 관리자 승인까지 보통 1~2일 소요됩니다. 승인 완료 시 카카오 로그인으로 바로 에이전시 기능 이용 가능.",
+      "termsRequired": "파트너 약관과 핵심 조항에 모두 동의해주세요",
+      "termsAgree": "유어딜 에이전시 파트너 약관(v1.0)에 동의합니다",
+      "coreAgree": "위 핵심 조항(커미션·정산·조건 변경·해지)을 확인했고 동의합니다"
     },
     "settlementsAuto": {
       "autoPayout": "✨ 이제 신청이 필요 없어요",
       "autoPayoutDesc": "영입 커미션이 자동 집계되어 매주 금요일 일괄 입금됩니다 (환불 보호를 위해 7일 경과분)"
-    },
-    "terms": {
-      "allAgree": "중요 조항 전체 동의 (필수)",
-      "commissionTitle": "영입 커미션 조건",
-      "commissionDesc": "커미션은 영입한 매장에서 실제 판매가 발생한 경우에만, 해당 매출 기준으로 매장별 최초 24개월 한도 내에서 지급됩니다 (기본 1% — 플랫폼 정책에 따름).",
-      "clawbackTitle": "커미션 회수(환불 역전)",
-      "clawbackDesc": "지급된 커미션의 근거 거래가 환불·취소되면 해당 커미션은 회수됩니다.",
-      "settlementTitle": "정산·원천징수",
-      "settlementDesc": "정산은 플랫폼 정산 주기에 따라 관련 법령상 원천징수 후 지급됩니다.",
-      "termsTitle": "에이전시 약관·개인정보",
-      "termsDesc": "에이전시 이용약관 전문 및 개인정보 수집·이용에 동의합니다.",
-      "logNote": "동의 내역은 약관 버전과 함께 기록됩니다.",
-      "required": "중요 조항 4개에 모두 동의해주세요."
     }
   },
   "nav": {
@@ -5730,7 +5724,12 @@
     "chipVoucher": "교환권·기프티콘",
     "chipWholesale": "사장님 도매몰",
     "kakaoHint": "복잡한 가입 절차 없이 바로 시작할 수 있어요",
-    "aboutLink": "유어딜이 처음이세요? 서비스 알아보기 →"
+    "aboutLink": "유어딜이 처음이세요? 서비스 알아보기 →",
+    "termsNotice": "로그인(가입) 시",
+    "termsLink": "이용약관",
+    "termsAnd": "및",
+    "privacyLink": "개인정보처리방침",
+    "termsNoticeEnd": "에 동의하는 것으로 봅니다"
   },
   "guide": {
     "sectionTitlePlaceholder": "섹션 제목",
