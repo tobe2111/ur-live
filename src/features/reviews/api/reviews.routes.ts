@@ -367,21 +367,23 @@ reviewsRoutes.post('/', rateLimit({ action: 'review_post', max: 5, windowSec: 30
 
     // v24 FIX: lost-update 방지. SELECT-then-UPDATE 패턴은 동시 리뷰 작성 시 잔액 덮어쓰기 발생.
     // 원자적 UPSERT + balance = balance + ? 패턴으로 전환.
+    // 💸 2026-07-05 버킷: 리뷰 리워드 = 무상 딜 (free_balance 동시 증가 — 출금 제외·우선 차감).
     await DB.prepare(`
-      INSERT INTO user_points (user_id, balance, total_charged)
-      VALUES (?, ?, 0)
+      INSERT INTO user_points (user_id, balance, free_balance, total_charged)
+      VALUES (?, ?, ?, 0)
       ON CONFLICT(user_id) DO UPDATE SET
         balance = balance + excluded.balance,
+        free_balance = COALESCE(free_balance, 0) + excluded.free_balance,
         updated_at = datetime('now')
-    `).bind(ptsUserId, rewardAmount).run();
+    `).bind(ptsUserId, rewardAmount, rewardAmount).run();
 
     // 트랜잭션 기록용 최신 잔액 조회 (원자성 보장 후)
     const updatedRow = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
       .bind(ptsUserId).first<{ balance: number }>();
     const newBalance = updatedRow?.balance ?? rewardAmount;
 
-    await DB.prepare('INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, ?, ?, ?, ?, ?)')
-      .bind(ptsUserId, 'charge', rewardAmount, rewardAmount, newBalance, rewardDesc).run();
+    await DB.prepare('INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, free_delta) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .bind(ptsUserId, 'charge', rewardAmount, rewardAmount, newBalance, rewardDesc, rewardAmount).run();
 
     // deal_balance도 동기화 (users 테이블)
     await DB.prepare('UPDATE users SET deal_balance = COALESCE(deal_balance, 0) + ? WHERE id = ?')

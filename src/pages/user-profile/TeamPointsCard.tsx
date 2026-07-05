@@ -10,6 +10,8 @@ export default function TeamPointsCard() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [balance, setBalance] = useState(0)
+  // 💸 2026-07-05 버킷: 무상(리워드) 딜 — 사용은 자유, 현금 환급 제외 (약관). 0 이면 표기 생략.
+  const [freeBalance, setFreeBalance] = useState(0)
   const [loading, setLoading] = useState(true)
   // 🛡️ 2026-07-02: 에러 구분 — 실패를 "0딜"로 위장하지 않음(— 표시 + 재시도).
   const [error, setError] = useState(false)
@@ -18,7 +20,12 @@ export default function TeamPointsCard() {
     import('@/lib/api').then(({ default: api }) => {
       setError(false)
       api.get('/api/points/balance')
-        .then(r => { if (r.data.success) setBalance(r.data.data.balance); else setError(true) })
+        .then(r => {
+          if (r.data.success) {
+            setBalance(r.data.data.balance)
+            setFreeBalance(Math.max(0, Number(r.data.data.free_balance ?? 0)))
+          } else setError(true)
+        })
         .catch(() => { setError(true) })
         .finally(() => setLoading(false))
     })
@@ -48,6 +55,15 @@ export default function TeamPointsCard() {
                   </button>
                 ) : `${formatNumber(balance)}딜`}
               </p>
+              {!loading && !error && freeBalance > 0 && (
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+                  {t('my.freeDealNote', {
+                    defaultValue: '무상 리워드 {{free}}딜 포함 · 환급 가능 {{paid}}딜',
+                    free: formatNumber(freeBalance),
+                    paid: formatNumber(Math.max(0, balance - freeBalance)),
+                  })}
+                </p>
+              )}
             </div>
           </div>
         </div>

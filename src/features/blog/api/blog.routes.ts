@@ -20,7 +20,8 @@ const MAX_PENDING_AI_DRAFTS = 5
 // 🔄 시드 콘텐츠 버전 — 아래 seedPosts 배열(글 내용)을 바꾸면 이 숫자를 +1 하세요.
 // 올리면 배포 후 첫 접근 시 라이브 DB 에 자동 재반영됩니다.
 // 관리자가 /admin/blog 에서 직접 수정한 글(manually_edited=1)은 재시드해도 보존됩니다.
-const BLOG_SEED_VERSION = 4
+// 💸 2026-07-05 v5: 딜 가이드에 유상/무상 버킷 정책 반영.
+const BLOG_SEED_VERSION = 5
 
 // 테이블 자동 생성
 async function ensureBlogTable(DB: D1Database) {

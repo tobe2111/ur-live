@@ -6333,7 +6333,8 @@
     "referralStartSub": "Share on social — earn when friends pay",
     "curatorTitle": "Linkshop earnings",
     "curatorCashSub": "Cash settlement · withdrawable",
-    "curatorDealSub": "Accumulated · 1 Deal = ₩1"
+    "curatorDealSub": "Accumulated · 1 Deal = ₩1",
+    "freeDealNote": "Includes {{free}} free reward deals · {{paid}} deals withdrawable"
   },
   "push": {
     "promptTitle": "Turn on notifications?",

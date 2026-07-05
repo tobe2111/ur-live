@@ -106,13 +106,20 @@ export function registerSellerEndpoints(router: Hono<{ Bindings: Env }>): void {
         })())
 
         // 딜 결제건 1 voucher 당 applied_price(실제 결제가) 환불 (BUG #45: total_amount 사용 시 N배 환불 위험)
+        // 💸 2026-07-05 버킷: 원거래 무상 차감분 우선 무상 복원 (refundDealPoints SSOT).
         if (v.payment_method === 'deal_points' && v.user_id) {
           const amount = refundAmount
-          await DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?')
-            .bind(amount, v.user_id).run()
-          await DB.prepare(
-            "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-          ).bind(v.user_id, amount, amount, v.user_id, `공동구매 미달성 환불: ${product.name}`).run()
+          const { refundDealPoints } = await import('../../../worker/utils/point-buckets')
+          const orderRow = v.order_id
+            ? await DB.prepare('SELECT order_number FROM orders WHERE id = ?').bind(v.order_id).first<{ order_number: string }>().catch(() => null)
+            : null
+          await refundDealPoints(DB, {
+            userId: v.user_id,
+            amount,
+            ref: orderRow?.order_number || null,
+            type: 'refund',
+            description: `공동구매 미달성 환불: ${product.name}`,
+          })
         }
         // 🛡️ 2026-05-21 Phase TD-A1: 토스 결제건 자동 환불 (영구 — 기존엔 어드민이 수동 처리).
         else if ((v.payment_method === 'toss' || v.payment_method === 'CARD') && v.order_id) {

@@ -426,12 +426,18 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
         ).bind(voucher.product_id).run().catch(() => null)
 
         // 딜 결제 — 즉시 지갑 환불
+        // 💸 2026-07-05 버킷: 원거래(order_number)에서 무상으로 차감된 만큼 무상 복원 (refundDealPoints SSOT).
         if (voucher.payment_method === 'deal_points' && refundAmount > 0) {
-          await DB.prepare('UPDATE user_points SET balance = balance + ? WHERE user_id = ?')
-            .bind(refundAmount, voucher.user_id).run()
-          await DB.prepare(
-            "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-          ).bind(voucher.user_id, refundAmount, refundAmount, voucher.user_id, `구매 취소 환불: ${voucher.product_name}`).run()
+          const { refundDealPoints } = await import('../../../worker/utils/point-buckets')
+          const orderRow = await DB.prepare('SELECT order_number FROM orders WHERE id = ?')
+            .bind(voucher.order_id).first<{ order_number: string }>().catch(() => null)
+          await refundDealPoints(DB, {
+            userId: voucher.user_id,
+            amount: refundAmount,
+            ref: orderRow?.order_number || null,
+            type: 'refund',
+            description: `구매 취소 환불: ${voucher.product_name}`,
+          })
         }
         // 토스 카드 결제 — cancelTossPayment (waitUntil 비동기, 영업일 3~5일).
         //   ⚠️ 이 async+cron 패턴은 의도된 설계: retryable(5xx/PROVIDER) 실패는 gateway 가
@@ -575,13 +581,18 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       if (!useResult.meta?.changes) return c.json({ success: false, error: '동시성 충돌' }, 409)
 
       // 부분 환불 — 유저 user_points 에 차액 환불 + ledger reverse entry
+      // 💸 2026-07-05 버킷: 원거래 무상 차감분 우선 무상 복원 (refundDealPoints SSOT).
       try {
-        const order = await DB.prepare("SELECT payment_method FROM orders o JOIN vouchers v ON v.order_id = o.id WHERE v.id = ?").bind(voucher.id).first<{ payment_method: string }>()
+        const order = await DB.prepare("SELECT o.payment_method, o.order_number FROM orders o JOIN vouchers v ON v.order_id = o.id WHERE v.id = ?").bind(voucher.id).first<{ payment_method: string; order_number: string }>()
         if (order?.payment_method === 'deal_points' && voucher.user_id) {
-          await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(refundAmount, voucher.user_id).run()
-          await DB.prepare(
-            "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-          ).bind(voucher.user_id, refundAmount, refundAmount, voucher.user_id, `부분 환불 (사용 ${usedAmount}원/${voucherValue}원): ${reason || code}`).run()
+          const { refundDealPoints } = await import('../../../worker/utils/point-buckets')
+          await refundDealPoints(DB, {
+            userId: voucher.user_id,
+            amount: refundAmount,
+            ref: order?.order_number || null,
+            type: 'refund',
+            description: `부분 환불 (사용 ${usedAmount}원/${voucherValue}원): ${reason || code}`,
+          })
 
           // 🛡️ 2026-05-15 (TD-G05): ledger reverse entry — 셀러 receivable 차감, 유저 wallet 환불
           try {

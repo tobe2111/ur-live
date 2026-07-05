@@ -6329,7 +6329,8 @@
     "referralStartSub": "내 SNS 공유 → 친구 결제 시 자동 적립",
     "curatorTitle": "링크샵 수익",
     "curatorCashSub": "현금 정산 · 출금 가능",
-    "curatorDealSub": "누적 적립 · 1딜=1원"
+    "curatorDealSub": "누적 적립 · 1딜=1원",
+    "freeDealNote": "무상 리워드 {{free}}딜 포함 · 환급 가능 {{paid}}딜"
   },
   "push": {
     "promptTitle": "알림을 켜시겠어요?",

@@ -6333,7 +6333,8 @@
     "referralStartSub": "SNSでシェア → 友達の決済で自動獲得",
     "curatorTitle": "リンクショップ収益",
     "curatorCashSub": "現金精算・出金可能",
-    "curatorDealSub": "累計獲得・1ディール=1ウォン"
+    "curatorDealSub": "累計獲得・1ディール=1ウォン",
+    "freeDealNote": "無償リワード{{free}}ディール含む · 換金可能{{paid}}ディール"
   },
   "push": {
     "promptTitle": "通知をオンにしますか？",

@@ -680,14 +680,15 @@ adminApp.post('/payouts/process', async (c) => {
     const bonusPct = Number(bonusRow?.value ?? 20)
     const dealAmount = Math.floor(amount * (100 + bonusPct) / 100)
     try { await DB.prepare("CREATE TABLE IF NOT EXISTS user_points (user_id TEXT PRIMARY KEY, balance INTEGER DEFAULT 0, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)").run() } catch {}
-    await DB.prepare(
-      `INSERT INTO user_points (user_id, balance, updated_at) VALUES (?, ?, datetime('now'))
-       ON CONFLICT(user_id) DO UPDATE SET balance = balance + ?, updated_at = datetime('now')`
-    ).bind(influencerId, dealAmount, dealAmount).run().catch(swallow('marketing:influencer-payout:balance'))
-    await DB.prepare(
-      `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description)
-       VALUES (?, 'influencer_payout', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)`
-    ).bind(influencerId, dealAmount, dealAmount, influencerId, `인플 정산 (딜 +${bonusPct}% 보너스)`).run().catch(swallow('marketing:influencer-payout:tx'))
+    // 💸 2026-07-05 버킷: 딜 수령(+보너스) = 무상 딜 — paid 로 두면 [현금정산 100 → 딜 120 → 재출금]
+    //   +보너스% 차익 세탁 루프가 열림. 딜 선택은 플랫폼 내 사용 목적(보너스가 그 대가) → free 태깅.
+    const { creditFreePoints } = await import('../../../worker/utils/point-buckets')
+    await creditFreePoints(DB, {
+      userId: influencerId,
+      amount: dealAmount,
+      type: 'influencer_payout',
+      description: `인플 정산 (딜 +${bonusPct}% 보너스)`,
+    }).catch(swallow('marketing:influencer-payout:balance'))
   }
   // attribution paid 처리 (잔고 claim 은 위에서 완료).
   await c.env.DB.prepare(

@@ -630,6 +630,9 @@ export async function reverseReferralBonusOnRefund(
 ): Promise<number> {
   if (!orderNumber) return 0
   try {
+    // 💸 2026-07-05 버킷: 아래 회수 UPDATE 가 free_balance 컬럼 참조 — 사전 보장(멱등).
+    const { ensureDealBuckets } = await import('../../../worker/utils/point-buckets')
+    await ensureDealBuckets(DB)
     const rows = await DB.prepare(
       "SELECT user_id, points_amount FROM point_transactions WHERE order_id = ? AND type = 'referral_bonus'"
     ).bind(orderNumber).all<{ user_id: string; points_amount: number }>().catch(() => ({ results: [] as { user_id: string; points_amount: number }[] }))
@@ -641,12 +644,13 @@ export async function reverseReferralBonusOnRefund(
       if (dup) continue
       const amt = Math.floor(t.points_amount || 0)
       if (amt <= 0) continue
-      await DB.prepare("UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = CURRENT_TIMESTAMP WHERE user_id = ?")
-        .bind(amt, t.user_id).run().catch(() => {})
+      // 💸 2026-07-05 버킷: referral_bonus 는 무상 적립 → 회수도 free 에서 (무상 적립-역전 대칭).
+      await DB.prepare("UPDATE user_points SET balance = MAX(0, balance - ?), free_balance = MAX(0, COALESCE(free_balance, 0) - ?), updated_at = CURRENT_TIMESTAMP WHERE user_id = ?")
+        .bind(amt, amt, t.user_id).run().catch(() => {})
       await DB.prepare(
-        `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id)
-         VALUES (?, 'referral_bonus_reversed', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
-      ).bind(t.user_id, -amt, -amt, t.user_id, '추천 보너스 환불 회수', orderNumber).run().catch(() => {})
+        `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id, free_delta)
+         VALUES (?, 'referral_bonus_reversed', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)`
+      ).bind(t.user_id, -amt, -amt, t.user_id, '추천 보너스 환불 회수', orderNumber, -amt).run().catch(() => {})
       reversed++
     }
     return reversed

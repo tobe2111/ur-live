@@ -6333,7 +6333,8 @@
     "referralStartSub": "Comparte en redes — gana cuando tus amigos paguen",
     "curatorTitle": "Ingresos de mi linkshop",
     "curatorCashSub": "Liquidación en efectivo · retirable",
-    "curatorDealSub": "Acumulado · 1 Deal = ₩1"
+    "curatorDealSub": "Acumulado · 1 Deal = ₩1",
+    "freeDealNote": "Incluye {{free}} deals de recompensa gratis · {{paid}} deals retirables"
   },
   "push": {
     "promptTitle": "¿Activar notificaciones?",
