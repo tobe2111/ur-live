@@ -2789,6 +2789,8 @@
       "colPeriod": "Period",
       "colStore": "Store",
       "colUsed": "Redeemed",
+      "colRevenue": "Sales",
+      "colFee": "Fee",
       "colAmount": "Payout",
       "colStatus": "Status",
       "statusPending": "Pending",
@@ -2829,7 +2831,9 @@
       "submitting": "Submitting...",
       "submit": "Apply as business",
       "secondGate": "💳 Cash settlement requires a one-time business license verification after approval (Dashboard → Business info).",
-      "prospectBanner": " agency has pre-filled your store info. Just review and submit."
+      "prospectBanner": " agency has pre-filled your store info. Just review and submit.",
+      "termsRequired": "Please agree to the Seller Terms of Service",
+      "termsAgree": "I agree to the UrDeal Seller Terms of Service (v1.0)"
     },
     "mailOrderNumber": "Mail-order business no.",
     "mailOrderNumberPlaceholder": "e.g. 2026-Seoul-01234",
@@ -4121,7 +4125,10 @@
       "brandingDesc": "Register as a Ur-Live agency to manage live commerce for your sellers and share profits.",
       "formTitle": "Agency sign-up",
       "formDesc": "Available after admin approval",
-      "passwordMismatch": "Passwords do not match."
+      "passwordMismatch": "Passwords do not match.",
+      "termsRequired": "Please agree to the partner terms and key clauses",
+      "termsAgree": "I agree to the UrDeal Agency Partner Terms (v1.0)",
+      "coreAgree": "I have reviewed and agree to the key clauses above (commission, settlement, changes, termination)"
     },
     "registerBusiness": {
       "startTitle": "Start as Agency",
@@ -4151,7 +4158,10 @@
       "pageTitle": "Start as an agency",
       "kakaoDone": "Kakao login complete",
       "kakaoHint": "Just fill in the agency info below to complete",
-      "approvalNote": "Approval usually takes 1-2 days. After approval, you can use agency features via Kakao login."
+      "approvalNote": "Approval usually takes 1-2 days. After approval, you can use agency features via Kakao login.",
+      "termsRequired": "Please agree to the partner terms and key clauses",
+      "termsAgree": "I agree to the UrDeal Agency Partner Terms (v1.0)",
+      "coreAgree": "I have reviewed and agree to the key clauses above (commission, settlement, changes, termination)"
     },
     "settlementsAuto": {
       "autoPayout": "✨ No request needed",
@@ -5331,7 +5341,8 @@
     "sharedShareTitle": "I recommend this product!",
     "sharedShareDesc": "Found a great product on Urdeal",
     "sharedShareBtn": "View Product",
-    "sellerReplyLabel": "Seller reply"
+    "sellerReplyLabel": "Seller reply",
+    "sponsoredBadge": "Sponsored"
   },
   "productOption": {
     "title": "Product Option Management",
@@ -5520,7 +5531,12 @@
     "chipVoucher": "Vouchers & gift cards",
     "chipWholesale": "B2B wholesale",
     "kakaoHint": "No complicated sign-up — start right away",
-    "aboutLink": "New to Ur-Deal? Learn about the service →"
+    "aboutLink": "New to Ur-Deal? Learn about the service →",
+    "termsNotice": "By signing in, you agree to the",
+    "termsLink": "Terms of Service",
+    "termsAnd": "and",
+    "privacyLink": "Privacy Policy",
+    "termsNoticeEnd": ""
   },
   "guide": {
     "sectionTitlePlaceholder": "Section title",
@@ -6333,7 +6349,8 @@
     "referralStartSub": "Share on social — earn when friends pay",
     "curatorTitle": "Linkshop earnings",
     "curatorCashSub": "Cash settlement · withdrawable",
-    "curatorDealSub": "Accumulated · 1 Deal = ₩1"
+    "curatorDealSub": "Accumulated · 1 Deal = ₩1",
+    "freeDealNote": "Includes {{free}} free reward deals · {{paid}} deals withdrawable"
   },
   "push": {
     "promptTitle": "Turn on notifications?",

@@ -30,6 +30,7 @@ interface TownProduct {
   restaurant_name?: string | null
   restaurant_address?: string | null
   category?: string | null
+  onnuri_merchant?: boolean // 🏪 2026-07-05 온누리 가맹 (seller_meta enrich)
 }
 
 interface TownFcfs extends TownProduct {
@@ -56,7 +57,13 @@ function DealCard({ p, onClick }: { p: TownProduct; onClick: () => void }) {
       </div>
       <p className="mt-2 text-[13px] font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug">{p.name}</p>
       {p.restaurant_name && (
-        <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate">{p.restaurant_name}</p>
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate">
+          {p.restaurant_name}
+          {/* 🏪 온누리 가맹 뱃지 (B2G — "온누리 사용 가능 표시" 약속) */}
+          {p.onnuri_merchant && (
+            <span className="ml-1 px-1 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[9px] font-bold align-middle">온누리</span>
+          )}
+        </p>
       )}
       <p className="mt-0.5 flex items-baseline gap-1">
         {discount > 0 && <span className="text-[14px] font-extrabold text-red-500 dark:text-red-400">{discount}%</span>}

@@ -49,6 +49,8 @@ const AdminEnvReadinessPage = lazy(() => import('@/pages/admin/AdminEnvReadiness
 // 🗺️ 2026-06-18: 동네별 딜 밀도 (행정동 태깅 기반 영입 타겟).
 const AdminRegionDensityPage = lazy(() => import('@/pages/AdminRegionDensityPage'))
 const AdminDistrictReportPage = lazy(() => import('@/pages/AdminDistrictReportPage'))
+// 🏙️ 2026-07-05: 상권 방문 리워드 캠페인 (B2G — 첫 구매 무상 딜, 총액 캡).
+const AdminVisitRewardsPage = lazy(() => import('@/pages/AdminVisitRewardsPage'))
 // 🏭 BIZ-1 (2026-06-08): 도매 클레임(RMA) 검수 페이지.
 const AdminWholesaleClaimsPage = lazy(() => import('@/pages/admin/AdminWholesaleClaimsPage'))
 const AdminWholesaleTaxPage = lazy(() => import('@/pages/admin/AdminWholesaleTaxPage'))
@@ -151,6 +153,11 @@ export function AdminRoutes() {
       <Route path="/admin/district-report" element={
         <ProtectedRoute requireAdmin>
           <AdminDistrictReportPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/visit-rewards" element={
+        <ProtectedRoute requireAdmin>
+          <AdminVisitRewardsPage />
         </ProtectedRoute>
       } />
       <Route path="/admin/ads-accounts" element={

@@ -2110,6 +2110,8 @@
       "colPeriod": "Période",
       "colStore": "Boutique",
       "colUsed": "Utilisés",
+      "colRevenue": "Ventes",
+      "colFee": "Commission",
       "colAmount": "Montant",
       "colStatus": "Statut",
       "statusPending": "En attente",
@@ -2150,7 +2152,9 @@
       "submitting": "Envoi...",
       "submit": "Demander un compte pro",
       "secondGate": "💳 Le règlement en espèces nécessite une vérification unique de la licence commerciale après approbation (Tableau de bord → Infos pro).",
-      "prospectBanner": " l'agence a pré-rempli les infos de votre boutique. Vérifiez et soumettez."
+      "prospectBanner": " l'agence a pré-rempli les infos de votre boutique. Vérifiez et soumettez.",
+      "termsRequired": "Veuillez accepter les Conditions Vendeur",
+      "termsAgree": "J'accepte les Conditions Vendeur UrDeal (v1.0)"
     },
     "mailOrderNumber": "N° de vente à distance",
     "mailOrderNumberPlaceholder": "ex. 2026-Seoul-01234",
@@ -3442,7 +3446,10 @@
       "brandingDesc": "Inscrivez-vous en tant qu'agence Ur-Live pour gérer le commerce en direct de vos vendeurs et partager les profits.",
       "formTitle": "Demande d'inscription agence",
       "formDesc": "Disponible après approbation de l'administrateur",
-      "passwordMismatch": "Les mots de passe ne correspondent pas."
+      "passwordMismatch": "Les mots de passe ne correspondent pas.",
+      "termsRequired": "Veuillez accepter les conditions partenaires et les clauses clés",
+      "termsAgree": "J'accepte les Conditions Partenaire Agence UrDeal (v1.0)",
+      "coreAgree": "J'ai lu et j'accepte les clauses clés ci-dessus (commission, règlement, modifications, résiliation)"
     },
     "registerBusiness": {
       "startTitle": "Commencer en tant qu'agence",
@@ -3472,7 +3479,10 @@
       "pageTitle": "Commencer en tant qu'agence",
       "kakaoDone": "Connexion Kakao terminée",
       "kakaoHint": "Remplissez simplement les informations de l'agence ci-dessous",
-      "approvalNote": "L'approbation prend généralement 1 à 2 jours. Après approbation, vous pouvez utiliser les fonctionnalités d'agence via Kakao."
+      "approvalNote": "L'approbation prend généralement 1 à 2 jours. Après approbation, vous pouvez utiliser les fonctionnalités d'agence via Kakao.",
+      "termsRequired": "Veuillez accepter les conditions partenaires et les clauses clés",
+      "termsAgree": "J'accepte les Conditions Partenaire Agence UrDeal (v1.0)",
+      "coreAgree": "J'ai lu et j'accepte les clauses clés ci-dessus (commission, règlement, modifications, résiliation)"
     },
     "settlementsAuto": {
       "autoPayout": "✨ Plus besoin de demander",
@@ -5278,7 +5288,8 @@
     "sharedShareTitle": "Je recommande ce produit !",
     "sharedShareDesc": "J'ai trouvé un super produit sur Urdeal",
     "sharedShareBtn": "Voir le produit",
-    "sellerReplyLabel": "Réponse du vendeur"
+    "sellerReplyLabel": "Réponse du vendeur",
+    "sponsoredBadge": "Sponsorisé"
   },
   "productOption": {
     "title": "Gestion des options produit",
@@ -5467,7 +5478,12 @@
     "chipVoucher": "Bons et cartes cadeaux",
     "chipWholesale": "Grossiste (B2B)",
     "kakaoHint": "Pas d'inscription compliquée — commencez tout de suite",
-    "aboutLink": "Nouveau sur Ur-Deal ? Découvrir le service →"
+    "aboutLink": "Nouveau sur Ur-Deal ? Découvrir le service →",
+    "termsNotice": "En vous connectant, vous acceptez les",
+    "termsLink": "Conditions d'utilisation",
+    "termsAnd": "et la",
+    "privacyLink": "Politique de confidentialité",
+    "termsNoticeEnd": ""
   },
   "guide": {
     "sectionTitlePlaceholder": "Titre de section",
@@ -6333,7 +6349,8 @@
     "referralStartSub": "Partagez sur les réseaux — gagnez quand vos amis paient",
     "curatorTitle": "Revenus de mon linkshop",
     "curatorCashSub": "Règlement en espèces · retirable",
-    "curatorDealSub": "Cumulé · 1 Deal = ₩1"
+    "curatorDealSub": "Cumulé · 1 Deal = ₩1",
+    "freeDealNote": "Inclut {{free}} deals de récompense gratuits · {{paid}} deals retirables"
   },
   "push": {
     "promptTitle": "Activer les notifications ?",

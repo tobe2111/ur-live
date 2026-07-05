@@ -199,6 +199,7 @@ const ServerErrorPage = lazy(() => import('./pages/ServerErrorPage'))
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'))
 const InfluencerTermsPage = lazy(() => import('./pages/InfluencerTermsPage'))
 const SellerTermsPage = lazy(() => import('./pages/SellerTermsPage'))
+const AgencyPartnerTermsPage = lazy(() => import('./pages/AgencyPartnerTermsPage'))
 const GroupBuyTermsPage = lazy(() => import('./pages/GroupBuyTermsPage'))
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'))
@@ -293,6 +294,17 @@ function AppContent() {
   //   사용자에게 명시적 토스트 + URL 정리. 묵음 실패 → 무한 스피너 시나리오 차단.
   // 🆕 2026-06-29 퍼널 계측: 앱 진입(세션당 1회, 익명) — DAU/리텐션 기준점.
   useEffect(() => { trackFunnel('app_open') }, [])
+
+  // 📡 2026-07-05 유입 소스 어트리뷰션: ?src=(시설물 QR)/utm_source first-touch 30일 캡처 +
+  //   로그인 상태면 유저 귀속(claim, 멱등). 랜딩→가입→첫구매 퍼널의 클라 시작점 (lib/acquisition.ts).
+  useEffect(() => {
+    import('@/lib/acquisition').then(({ captureAcquisitionSource, claimAcquisitionIfLoggedIn }) => {
+      captureAcquisitionSource()
+      import('@/utils/auth').then(({ isLoggedInSync }) => {
+        claimAcquisitionIfLoggedIn(isLoggedInSync())
+      }).catch(() => {})
+    }).catch(swallow('app:acquisition-import'))
+  }, [])
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -581,6 +593,9 @@ function AppContent() {
           {/* 🗑️ 2026-06-17 (사용자 요청): 앱 설치 팝업(PWAInstallPrompt) 제거 */}
           <Suspense fallback={null}><OnboardingTrigger /></Suspense>
           <Suspense fallback={null}><RestoreAccountModal /></Suspense>
+          {/* 📜 2026-07-05 (대표 "들어오자마자 나오면 안 되지 — 자연스럽게"): 약관 동의 차단 모달(TermsConsentGate)
+              제거. 소비자 동의 = LoginPage 간주 고지(제5조) + 가입 시점 1회 서버 기록(kakao.routes isNewUser →
+              terms_agreements). 개정 재동의가 필요해지면 /api/terms/status 로 비차단 배너를 붙이는 것이 후속안. */}
           <OfflineBanner />
           <ConfirmHost />
           <ScrollToTop />
@@ -948,6 +963,7 @@ function AppContent() {
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/terms/influencer" element={<InfluencerTermsPage />} />
             <Route path="/terms/seller" element={<SellerTermsPage />} />
+            <Route path="/terms/agency" element={<AgencyPartnerTermsPage />} />
             <Route path="/terms/group-buy" element={<GroupBuyTermsPage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/gdpr" element={<GDPRPage />} />

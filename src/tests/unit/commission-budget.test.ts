@@ -129,6 +129,69 @@ describe('allocateCommissions', () => {
   })
 })
 
+describe('allocateCommissions — priorityKeys (Q10 에이전시 1% 보호 최우선)', () => {
+  it('우선 축은 예산에서 먼저 전액 — 나머지가 잔여를 비례 배분', () => {
+    // 예산 250: agency 100 선배정 → 잔여 150 을 aff 2000 : inf 1000 = 2:1 비례
+    const grants = allocateCommissions(
+      [
+        { key: 'affiliate', amountKrw: 2000 },
+        { key: 'influencer_intro', amountKrw: 1000 },
+        { key: 'agency_intro', amountKrw: 100 },
+      ],
+      250,
+      { priorityKeys: ['agency_intro'] },
+    )
+    const g = (k: string) => grants.find(x => x.key === k)!.grantedKrw
+    expect(g('agency_intro')).toBe(100)
+    expect(g('affiliate') + g('influencer_intro')).toBeLessThanOrEqual(150)
+    expect(g('affiliate')).toBeGreaterThan(g('influencer_intro'))
+    assertCommissionBudgetInvariants(grants, 250)
+  })
+
+  it('우선 축 요청이 예산 초과면 예산까지만 (Σ ≤ budget 유지)', () => {
+    const grants = allocateCommissions(
+      [{ key: 'affiliate', amountKrw: 500 }, { key: 'agency_intro', amountKrw: 400 }],
+      300,
+      { priorityKeys: ['agency_intro'] },
+    )
+    const g = (k: string) => grants.find(x => x.key === k)!.grantedKrw
+    expect(g('agency_intro')).toBe(300)
+    expect(g('affiliate')).toBe(0)
+    assertCommissionBudgetInvariants(grants, 300)
+  })
+
+  it('여유 예산이면 priorityKeys 무관 전액 (기존 동작 보존)', () => {
+    const withPrio = allocateCommissions(
+      [{ key: 'a', amountKrw: 100 }, { key: 'agency_intro', amountKrw: 50 }],
+      500,
+      { priorityKeys: ['agency_intro'] },
+    )
+    expect(withPrio.map(g => g.grantedKrw)).toEqual([100, 50])
+  })
+
+  it('priorityKeys 미전달 = 기존 비례 배분과 byte-동일', () => {
+    const reqs = [{ key: 'x', amountKrw: 777 }, { key: 'y', amountKrw: 333 }]
+    expect(allocateCommissions(reqs, 500, {})).toEqual(allocateCommissions(reqs, 500))
+    expect(allocateCommissions(reqs, 500, { priorityKeys: [] })).toEqual(allocateCommissions(reqs, 500))
+  })
+
+  it('property-ish: priority 모드에서도 불변식 유지', () => {
+    let seed = 7
+    const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648
+    for (let t = 0; t < 200; t++) {
+      const n = 1 + Math.floor(rnd() * 5)
+      const keys = ['affiliate', 'multi_tier', 'influencer_intro', 'agency_intro', 'etc']
+      const reqs = Array.from({ length: n }, (_, i) => ({ key: keys[i], amountKrw: Math.floor(rnd() * 5000) }))
+      const budget = Math.floor(rnd() * 3000)
+      const grants = allocateCommissions(reqs, budget, { priorityKeys: ['agency_intro'] })
+      expect(() => assertCommissionBudgetInvariants(grants, budget)).not.toThrow()
+      // 우선 축은 min(요청, 예산) 보장
+      const ag = grants.find(g => g.key === 'agency_intro')
+      if (ag) expect(ag.grantedKrw).toBe(Math.min(ag.requestedKrw, budget))
+    }
+  })
+})
+
 describe('assertCommissionBudgetInvariants', () => {
   it('초과 지급 조작 시 throw (fail-closed 신호)', () => {
     expect(() =>

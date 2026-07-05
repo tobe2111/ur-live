@@ -108,8 +108,17 @@ export default function AdminReturnsPage() {
   async function handleRefund(id: number) {
     if (!(await confirmDialog({ message: '환불 처리하시겠습니까? (취소 불가)', danger: true }))) return
     try {
-      await api.put(`/api/returns/${id}/refund`, {}, h)
-      toast.success('환불 처리되었습니다')
+      const res = await api.put(`/api/returns/${id}/refund`, {}, h)
+      // 🧾 2026-07-05 (운영 감사 Q12): 무엇이 역전됐는지 한 화면 확인 — 서버가 담아준 요약 표시.
+      const reversal = (res.data?.data?.reversal || []) as Array<{ step: string; count?: number; amount?: number }>
+      if (reversal.length > 0) {
+        const lines = reversal.map(r =>
+          `· ${r.step}${r.count != null ? ` ${r.count}건` : ''}${r.amount != null ? ` ₩${Number(r.amount).toLocaleString('ko-KR')}` : ''}`
+        ).join('\n')
+        toast.success(`환불 완료 — 역전 처리:\n${lines}`, { duration: 8000 })
+      } else {
+        toast.success(res.data?.message || '환불 처리되었습니다')
+      }
       loadReturns()
     } catch (err: any) {
       toast.error(err?.response?.data?.error || '환불 실패')

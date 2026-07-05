@@ -28,6 +28,7 @@ import {
   applyGroupBuyReferral,
   sendBuyerVoucherIssuedAlimtalk,
   sendSellerFirstVoucherAlimtalk,
+  sendSellerVoucherSoldAlimtalk,
 } from './helpers'
 // 🛡️ 2026-05-21: 모든 voucher 카테고리에서 동작하려면 이용권 hardcode 제거 — getVoucherShortLabel 사용.
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
@@ -319,6 +320,12 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     const totalAmount = unitPrice * qty
     const orderNumber = `GB-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
 
+    // 💸 2026-07-05 버킷: 이번 차감에서 무상으로 소진된 금액 (rollback 대칭 복원용)
+    //   ensureDealBuckets 는 결제수단 무관 1회 — 아래 추천 보너스(무상 적립) 경로도 컬럼 필요.
+    let freeUsedJoin = 0
+    const { ensureDealBuckets } = await import('../../../worker/utils/point-buckets')
+    await ensureDealBuckets(DB)
+
     // 딜 결제
     if (payment_method === 'deal') {
       // 🛡️ 2026-05-24: KT Alpha 상품 (kt_alpha_gift_code 보유) 인데 사용자 phone 없으면
@@ -339,18 +346,22 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
 
       // 🏁 2026-06-11 perf: 잔액 사전 SELECT 제거 — 차감 UPDATE 의 `balance >= ?` 가드가 단일 진실
       //   (원자성/가드 의미 동일, 행복경로 D1 1왕복 절약). 실패 시에만 잔액 조회해 메시지 구성.
-      const deductResult = await DB.prepare('UPDATE user_points SET balance = balance - ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND balance >= ?')
-        .bind(totalAmount, userId, totalAmount).run()
+      // 💸 2026-07-05 버킷: 무상 우선 차감 + free 사전 조회(원장 free_delta 기록용 — 잔액 정합은 원자 UPDATE 가 보장).
+      const freeRowJoin = await DB.prepare('SELECT COALESCE(free_balance, 0) AS fb FROM user_points WHERE user_id = ?')
+        .bind(userId).first<{ fb: number }>().catch(() => null)
+      const deductResult = await DB.prepare('UPDATE user_points SET balance = balance - ?, free_balance = MAX(0, COALESCE(free_balance, 0) - ?), updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND balance >= ?')
+        .bind(totalAmount, totalAmount, userId, totalAmount).run()
       if (!deductResult.meta.changes) {
         const wallet = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
           .bind(userId).first<{ balance: number }>().catch(() => null)
         return c.json({ success: false, error: `딜이 부족합니다 (보유: ${wallet?.balance ?? 0}딜)`, code: 'INSUFFICIENT_POINTS' }, 400)
       }
+      freeUsedJoin = Math.min(Math.max(0, Number(freeRowJoin?.fb ?? 0)), totalAmount)
 
       await DB.prepare(
-        `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id)
-         VALUES (?, 'donate', ?, 0, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
-      ).bind(userId, totalAmount, totalAmount, userId, `공동구매: ${product.name}`, orderNumber).run()
+        `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id, free_delta)
+         VALUES (?, 'donate', ?, 0, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)`
+      ).bind(userId, totalAmount, totalAmount, userId, `공동구매: ${product.name}`, orderNumber, -freeUsedJoin).run()
     }
 
     // 🛡️ 2026-05-13 (운영 안정성 #2): 딜 차감 후 후속 INSERT (orders/items/vouchers/progress)
@@ -359,12 +370,13 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     const rollbackDealAndStock = async () => {
       if (payment_method === 'deal') {
         try {
-          await DB.prepare("UPDATE user_points SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?")
-            .bind(totalAmount, userId).run()
+          // 💸 버킷 대칭: 방금 무상에서 차감된 만큼 무상으로 복원.
+          await DB.prepare("UPDATE user_points SET balance = balance + ?, free_balance = COALESCE(free_balance, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?")
+            .bind(totalAmount, freeUsedJoin, userId).run()
           await DB.prepare(
-            `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id)
-             VALUES (?, 'refund', ?, 0, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
-          ).bind(userId, totalAmount, totalAmount, userId, `공동구매 자동 환불 (주문 실패): ${product.name}`, orderNumber).run()
+            `INSERT INTO point_transactions (user_id, type, amount, commission_amount, points_amount, balance_after, description, order_id, free_delta)
+             VALUES (?, 'refund', ?, 0, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)`
+          ).bind(userId, totalAmount, totalAmount, userId, `공동구매 자동 환불 (주문 실패): ${product.name}`, orderNumber, freeUsedJoin).run()
         } catch (e) { console.error('[group-buy/join] deal rollback failed', e) }
       }
       // stock 도 복구
@@ -483,13 +495,14 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
       // 사용자 보너스 즉시 적립 (active 든 차단이든 사용자에겐 약속한 보너스 지급)
       if (userBonusAmount > 0) {
         try {
+          // 💸 2026-07-05 버킷: 추천 보너스 = 무상 딜 (free_balance 동시 증가 — 출금 제외·우선 차감)
           await DB.prepare(
-            "UPDATE user_points SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?"
-          ).bind(userBonusAmount, userId).run()
+            "UPDATE user_points SET balance = balance + ?, free_balance = COALESCE(free_balance, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?"
+          ).bind(userBonusAmount, userBonusAmount, userId).run()
           await DB.prepare(
-            `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id)
-             VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
-          ).bind(userId, userBonusAmount, userBonusAmount, userId, `친구 추천 보너스 (${product.name})`, orderNumber).run()
+            `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id, free_delta)
+             VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)`
+          ).bind(userId, userBonusAmount, userBonusAmount, userId, `친구 추천 보너스 (${product.name})`, orderNumber, userBonusAmount).run()
           await recordLedger(DB, {
             event_type: 'user_referral_bonus',
             reference_id: orderNumber,
@@ -676,6 +689,15 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             )
           )
           await DB.prepare("UPDATE sellers SET first_voucher_notified = 1 WHERE id = ?").bind(product.seller_id).run()
+        } else if (seller?.phone) {
+          // 📣 2026-07-05 (운영 감사 Q4): 2번째 판매부터 건별 판매 알림톡 — 기존엔 첫 1회 뒤로는
+          //   대시보드 벨뿐이라 대시보드를 안 보는 사장님이 판매를 몰랐음. 같은 블록에서 분기해
+          //   첫 판매(온보딩 상세)와 이중발송 불가(레이스 0).
+          await sendSellerVoucherSoldAlimtalk(
+            c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+            seller.phone,
+            { restaurantName: seller.business_name, productName: product.name, qty, amount: Number(totalAmount) || 0 },
+          )
         }
       } catch { /* graceful */ }
       }
@@ -701,6 +723,16 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
           try {
             const { grantInviteRewardForFirstPurchase } = await import('../../../worker/utils/invite-reward')
             await grantInviteRewardForFirstPurchase(DB, String(userId))
+          } catch { /* fail-soft */ }
+          // 🏙️ 2026-07-05 상권 방문 리워드: 캠페인 상권 매장 상품 첫 구매 → 무상 딜 (멱등·캡·fail-soft).
+          try {
+            const { grantVisitRewardOnPurchase } = await import('../../../worker/utils/visit-reward')
+            await grantVisitRewardOnPurchase(DB, { userId: String(userId), productId: Number(productId), orderRef: orderNumber })
+          } catch { /* fail-soft */ }
+          // 📡 2026-07-05 유입 소스 첫 구매 스냅샷 (랜딩→가입→첫구매 퍼널 완결, 멱등·fail-soft).
+          try {
+            const { markAcquisitionFirstPurchase } = await import('../../../worker/utils/acquisition')
+            await markAcquisitionFirstPurchase(DB, String(userId), orderNumber)
           } catch { /* fail-soft */ }
         }
         let _saleDeferred = false
@@ -881,16 +913,17 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             const bonus = Math.round(totalAmount * COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT / 100)
             if (bonus > 0) {
               // 🛡️ 2026-05-22: swallow() — 추천 보너스 실패 시 description 으로 추적 가능 (silent 금지).
-              await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(bonus, refUserId).run().catch(swallow('group-buy:referral-bonus:referrer-balance'))
+              // 💸 2026-07-05 버킷: 추천 보상 = 무상 딜 (free_balance 동시 증가 — 출금 제외·우선 차감)
+              await DB.prepare("UPDATE user_points SET balance = balance + ?, free_balance = COALESCE(free_balance, 0) + ? WHERE user_id = ?").bind(bonus, bonus, refUserId).run().catch(swallow('group-buy:referral-bonus:referrer-balance'))
               await DB.prepare(
-                `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id)
-                 VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
-              ).bind(refUserId, bonus, bonus, refUserId, `공구 추천 보상 (to:${userId}): ${product.name}`, orderNumber).run().catch(swallow('group-buy:referral-bonus:referrer-tx'))
-              await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(bonus, userId).run().catch(swallow('group-buy:referral-bonus:invitee-balance'))
+                `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id, free_delta)
+                 VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)`
+              ).bind(refUserId, bonus, bonus, refUserId, `공구 추천 보상 (to:${userId}): ${product.name}`, orderNumber, bonus).run().catch(swallow('group-buy:referral-bonus:referrer-tx'))
+              await DB.prepare("UPDATE user_points SET balance = balance + ?, free_balance = COALESCE(free_balance, 0) + ? WHERE user_id = ?").bind(bonus, bonus, userId).run().catch(swallow('group-buy:referral-bonus:invitee-balance'))
               await DB.prepare(
-                `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id)
-                 VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
-              ).bind(userId, bonus, bonus, userId, `친구 추천 가입 보상 (from:${refUserId}): ${product.name}`, orderNumber).run().catch(swallow('group-buy:referral-bonus:invitee-tx'))
+                `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id, free_delta)
+                 VALUES (?, 'referral_bonus', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)`
+              ).bind(userId, bonus, bonus, userId, `친구 추천 가입 보상 (from:${refUserId}): ${product.name}`, orderNumber, bonus).run().catch(swallow('group-buy:referral-bonus:invitee-tx'))
               // 🔔 2026-07-01: 추천 보너스 딜 적립 알림(이전엔 무통보 — 유저가 딜 받은 줄 모름).
               try {
                 const { notifyUser } = await import('../../../lib/notifications')
@@ -1202,6 +1235,16 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
         try {
           const { grantInviteRewardForFirstPurchase } = await import('../../../worker/utils/invite-reward')
           await grantInviteRewardForFirstPurchase(DB, String(userId))
+        } catch { /* fail-soft */ }
+        // 🏙️ 2026-07-05 상권 방문 리워드: 카드 확정 경로도 딜 /join 과 대칭 배선 (멱등이라 중복 지급 0).
+        try {
+          const { grantVisitRewardOnPurchase } = await import('../../../worker/utils/visit-reward')
+          await grantVisitRewardOnPurchase(DB, { userId: String(userId), productId: Number(productId), orderRef: orderNumber })
+        } catch { /* fail-soft */ }
+        // 📡 2026-07-05 유입 소스 첫 구매 스냅샷 (멱등·fail-soft).
+        try {
+          const { markAcquisitionFirstPurchase } = await import('../../../worker/utils/acquisition')
+          await markAcquisitionFirstPurchase(DB, String(userId), orderNumber)
         } catch { /* fail-soft */ }
         // 🔔 2026-06-26 (소비자 감사 C): 카드 결제 buyer 무통보(딜 /join 은 알림톡 발송) 비대칭 보강.
         //   ① 교환권 발급 인앱 기록(보관함 링크) ② 사용자 phone 알림톡 — 딜 경로와 동일 헬퍼/payload.
