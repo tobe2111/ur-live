@@ -107,7 +107,7 @@ export default function AdminVisitRewardsPage() {
   }
 
   return (
-    <AdminLayout>
+    <AdminLayout title="상권 방문 리워드">
       <div className="p-4 lg:p-6 max-w-5xl">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
