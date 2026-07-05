@@ -5341,7 +5341,8 @@
     "sharedShareTitle": "I recommend this product!",
     "sharedShareDesc": "Found a great product on Urdeal",
     "sharedShareBtn": "View Product",
-    "sellerReplyLabel": "Seller reply"
+    "sellerReplyLabel": "Seller reply",
+    "sponsoredBadge": "Sponsored"
   },
   "productOption": {
     "title": "Product Option Management",
@@ -6348,7 +6349,8 @@
     "referralStartSub": "Share on social — earn when friends pay",
     "curatorTitle": "Linkshop earnings",
     "curatorCashSub": "Cash settlement · withdrawable",
-    "curatorDealSub": "Accumulated · 1 Deal = ₩1"
+    "curatorDealSub": "Accumulated · 1 Deal = ₩1",
+    "freeDealNote": "Includes {{free}} free reward deals · {{paid}} deals withdrawable"
   },
   "push": {
     "promptTitle": "Turn on notifications?",

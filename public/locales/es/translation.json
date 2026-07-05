@@ -5288,7 +5288,8 @@
     "sharedShareTitle": "¡Recomiendo este producto!",
     "sharedShareDesc": "Encontré un gran producto en Urdeal",
     "sharedShareBtn": "Ver producto",
-    "sellerReplyLabel": "Respuesta del vendedor"
+    "sellerReplyLabel": "Respuesta del vendedor",
+    "sponsoredBadge": "Patrocinado"
   },
   "productOption": {
     "title": "Gestión de opciones de producto",
@@ -6348,7 +6349,8 @@
     "referralStartSub": "Comparte en redes — gana cuando tus amigos paguen",
     "curatorTitle": "Ingresos de mi linkshop",
     "curatorCashSub": "Liquidación en efectivo · retirable",
-    "curatorDealSub": "Acumulado · 1 Deal = ₩1"
+    "curatorDealSub": "Acumulado · 1 Deal = ₩1",
+    "freeDealNote": "Incluye {{free}} deals de recompensa gratis · {{paid}} deals retirables"
   },
   "push": {
     "promptTitle": "¿Activar notificaciones?",

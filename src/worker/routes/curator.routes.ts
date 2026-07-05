@@ -1020,12 +1020,16 @@ curatorRoutes.post('/me/withdrawal', rateLimit({ action: 'curator_withdrawal', m
         return c.json({ success: false, error: '출금 가능 금액이 부족하거나 처리 중인 신청이 있습니다. 새로고침 후 다시 시도하세요.', available }, 409)
       }
       // 🏁 P2: 딜 즉시 차감 (CAS — 잔액 부족이면 신청 롤백). 반려 시 지급센터가 deal_deducted=1 만 복원.
+      // 💸 2026-07-05 버킷 (약관 강제): 현금 환급은 유상(balance - free_balance) 한도로만 —
+      //   무상(리워드) 딜의 현금 인출 차단. free_balance 무변경 (출금은 유상에서만 나감).
+      const { ensureDealBuckets, PAID_BALANCE_SQL } = await import('../utils/point-buckets')
+      await ensureDealBuckets(DB)
       const dealDeduct = await DB.prepare(
-        "UPDATE user_points SET balance = balance - ?, updated_at = datetime('now') WHERE user_id = ? AND balance >= ?"
+        `UPDATE user_points SET balance = balance - ?, updated_at = datetime('now') WHERE user_id = ? AND ${PAID_BALANCE_SQL} >= ?`
       ).bind(amount, String(userId), amount).run().catch(() => null)
       if (!dealDeduct?.meta?.changes) {
         await DB.prepare('DELETE FROM user_withdrawals WHERE id = ?').bind(result.meta.last_row_id).run().catch(() => {})
-        return c.json({ success: false, error: '딜 잔액이 부족합니다 (이미 사용된 딜은 환급할 수 없어요)', available }, 409)
+        return c.json({ success: false, error: '출금 가능한 유상 딜이 부족합니다 (무상 리워드 딜은 환급 대상이 아닙니다)', available }, 409)
       }
       await DB.prepare(
         `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description)

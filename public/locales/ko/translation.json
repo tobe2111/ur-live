@@ -5534,7 +5534,8 @@
     "sharedShareTitle": "이 상품 추천해요!",
     "sharedShareDesc": "유어딜에서 좋은 상품을 발견했어요",
     "sharedShareBtn": "상품 보러가기",
-    "sellerReplyLabel": "판매자 답글"
+    "sellerReplyLabel": "판매자 답글",
+    "sponsoredBadge": "체험 제공"
   },
   "productOption": {
     "title": "상품 옵션 관리",
@@ -6344,7 +6345,8 @@
     "referralStartSub": "내 SNS 공유 → 친구 결제 시 자동 적립",
     "curatorTitle": "링크샵 수익",
     "curatorCashSub": "현금 정산 · 출금 가능",
-    "curatorDealSub": "누적 적립 · 1딜=1원"
+    "curatorDealSub": "누적 적립 · 1딜=1원",
+    "freeDealNote": "무상 리워드 {{free}}딜 포함 · 환급 가능 {{paid}}딜"
   },
   "push": {
     "promptTitle": "알림을 켜시겠어요?",

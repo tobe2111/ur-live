@@ -24,6 +24,8 @@ import { featureFlags } from '@/shared/config/feature-flags'
 // lazy-loaded — only rendered conditionally, not on initial paint
 const PushNotificationSetup = lazy(() => import('./components/PushNotificationSetup'))
 const PWAInstallPrompt = lazy(() => import('./components/PWAInstallPrompt'))
+// 📜 2026-07-05: 약관 동의 게이트 (버전 포함 동의 로그 — terms_agreements)
+const TermsConsentGate = lazy(() => import('./components/TermsConsentGate'))
 const OnboardingTrigger = lazy(() => import('./components/onboarding/OnboardingTrigger'))
 const RestoreAccountModal = lazy(() => import('./components/account/RestoreAccountModal'))
 const SideBanner = lazy(() => import('@/components/SideBanner'))
@@ -294,6 +296,17 @@ function AppContent() {
   //   사용자에게 명시적 토스트 + URL 정리. 묵음 실패 → 무한 스피너 시나리오 차단.
   // 🆕 2026-06-29 퍼널 계측: 앱 진입(세션당 1회, 익명) — DAU/리텐션 기준점.
   useEffect(() => { trackFunnel('app_open') }, [])
+
+  // 📡 2026-07-05 유입 소스 어트리뷰션: ?src=(시설물 QR)/utm_source first-touch 30일 캡처 +
+  //   로그인 상태면 유저 귀속(claim, 멱등). 랜딩→가입→첫구매 퍼널의 클라 시작점 (lib/acquisition.ts).
+  useEffect(() => {
+    import('@/lib/acquisition').then(({ captureAcquisitionSource, claimAcquisitionIfLoggedIn }) => {
+      captureAcquisitionSource()
+      import('@/utils/auth').then(({ isLoggedInSync }) => {
+        claimAcquisitionIfLoggedIn(isLoggedInSync())
+      }).catch(() => {})
+    }).catch(swallow('app:acquisition-import'))
+  }, [])
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -582,6 +595,8 @@ function AppContent() {
           {/* 🗑️ 2026-06-17 (사용자 요청): 앱 설치 팝업(PWAInstallPrompt) 제거 */}
           <Suspense fallback={null}><OnboardingTrigger /></Suspense>
           <Suspense fallback={null}><RestoreAccountModal /></Suspense>
+          {/* 📜 2026-07-05: 약관 동의 게이트 — 카카오 첫 로그인 자체 동의 스텝 + 개정 재동의 (버전 로그) */}
+          <Suspense fallback={null}><TermsConsentGate /></Suspense>
           <OfflineBanner />
           <ConfirmHost />
           <ScrollToTop />

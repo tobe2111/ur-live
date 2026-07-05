@@ -811,6 +811,12 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'donation_settlements.donation_ids', sql: "ALTER TABLE donation_settlements ADD COLUMN donation_ids TEXT" },
     //   - user_points.total_used: 총 사용 누적 (충전 vs 사용 추적).
     { desc: 'user_points.total_used', sql: "ALTER TABLE user_points ADD COLUMN total_used INTEGER DEFAULT 0" },
+    //   - 💸 2026-07-05 유상/무상 버킷 (point-buckets.ts SSOT): free_balance = 무상 잔액(0 ≤ free ≤ balance),
+    //     free_delta = 거래별 무상 적용분(적립+/차감-) — 무상 우선 차감·무상 환급 제외·환불 대칭 복원 근거.
+    { desc: 'user_points.free_balance', sql: "ALTER TABLE user_points ADD COLUMN free_balance INTEGER NOT NULL DEFAULT 0" },
+    { desc: 'point_transactions.free_delta', sql: "ALTER TABLE point_transactions ADD COLUMN free_delta INTEGER DEFAULT 0" },
+    //   - 🎁 2026-07-05 체험단(FCFS) 참여 리뷰 자동 표시 (표시광고법) — 작성 API 서버 판정으로 세팅.
+    { desc: 'product_reviews.is_sponsored', sql: "ALTER TABLE product_reviews ADD COLUMN is_sponsored INTEGER DEFAULT 0" },
     //   - settlements: 셀러 정산 신청 / 자동 정산 보고서 양쪽 모두 settlements 테이블 사용.
     //     amount / bank_name / account_number / account_holder = 셀러 정산 신청 지급 정보.
     //     total_sales / total_platform_fee / total_settlement / generated_at = 자동 정산 보고서 집계 컬럼.
@@ -1000,6 +1006,17 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       type TEXT NOT NULL,
       description TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )` },
+    // 📜 2026-07-05 약관 동의 로그 (누가·언제·몇 버전) — worker/utils/terms-agreements.ts SSOT 미러.
+    { name: 'terms_agreements', sql: `CREATE TABLE IF NOT EXISTS terms_agreements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      subject_type TEXT NOT NULL,
+      subject_id TEXT NOT NULL,
+      doc_type TEXT NOT NULL,
+      doc_version TEXT NOT NULL,
+      agreed INTEGER NOT NULL DEFAULT 1,
+      agreed_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(subject_type, subject_id, doc_type, doc_version)
     )` },
     { name: 'coupons', sql: `CREATE TABLE IF NOT EXISTS coupons (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

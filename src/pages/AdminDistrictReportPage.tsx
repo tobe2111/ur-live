@@ -10,10 +10,12 @@ import { useState, useCallback } from 'react'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { BarChart3, Printer, RefreshCw, MapPin, ExternalLink } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import { formatNumber, formatWon } from '@/utils/format'
 
 interface DongRow { dong: string; dong_code: string; deals: number; issued: number; issued_amount: number }
 interface DailyRow { day: string; issued: number; amount: number }
+interface SourceRow { src: string; landings: number; signups: number; first_purchases: number }
 interface Report {
   region: { code: string; si: string | null; gu: string | null }
   days: number
@@ -23,6 +25,7 @@ interface Report {
   fcfs: { applied: number; selected: number; paid: number }
   by_dong: DongRow[]
   daily: DailyRow[]
+  sources: SourceRow[]
 }
 
 // 자주 쓰는 상권 프리셋 — 코드는 시군구 5자리(법정동/행정동 공통 prefix). 필요 시 자유 입력.
@@ -34,6 +37,49 @@ const PRESETS: Array<{ label: string; code: string }> = [
 ]
 
 const PERIODS = [7, 30, 90, 180] as const
+
+/**
+ * 📡 시설물 QR 생성기 — 인쇄물(포토존/배너/깃발) 제작용 소스 태깅 링크.
+ * URL 규격 SSOT: /local/{지역코드}?src={소스} · 소스는 소문자/숫자/하이픈 (lib/acquisition.ts 와 동일 검증).
+ */
+function FacilityQrMaker({ regionCode }: { regionCode: string }) {
+  const [src, setSrc] = useState('photozone')
+  const valid = /^[a-z0-9][a-z0-9-]{0,39}$/.test(src)
+  const url = `${window.location.origin}/local/${regionCode}?src=${src}`
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4 print:hidden">
+      <h3 className="text-sm font-bold text-gray-900">시설물 QR 만들기</h3>
+      <p className="text-[11px] text-gray-400 mt-0.5 mb-3">
+        시설물마다 다른 소스명을 부여하세요 (소문자·숫자·하이픈) — 예: photozone, banner-01, flag-1234, insta, danggn
+      </p>
+      <div className="flex flex-wrap items-start gap-4">
+        <div className="flex-1 min-w-[220px]">
+          <input
+            value={src}
+            onChange={e => setSrc(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40))}
+            placeholder="소스명 (예: photozone)"
+            className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900"
+          />
+          {valid ? (
+            <p className="mt-2 text-xs text-gray-600 break-all">
+              <span className="text-gray-400">인쇄용 URL: </span>
+              <code className="bg-gray-50 px-1.5 py-0.5 rounded">{url}</code>
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-red-500">소스명은 소문자/숫자/하이픈 1~40자</p>
+          )}
+          <p className="mt-1 text-[11px] text-gray-400">QR 을 우클릭 저장하거나, 인쇄 업체에 URL 을 그대로 전달하세요. 스캔 유입은 위 소스별 퍼널에 집계됩니다.</p>
+        </div>
+        {valid && (
+          <div className="p-3 bg-white border border-gray-200 rounded-xl">
+            <QRCodeSVG value={url} size={140} level="M" />
+            <p className="mt-1 text-center text-[10px] text-gray-500">{src}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -190,8 +236,48 @@ export default function AdminDistrictReportPage() {
               )}
             </div>
 
+            {/* 📡 2026-07-05 소스별 유입 퍼널 — 시설물 QR(?src=)·UTM 이 "어떤 시설물이 일했는지" */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <h3 className="text-sm font-bold text-gray-900 px-4 pt-4 pb-1">소스별 유입 퍼널 (시설물 QR · 광고)</h3>
+              <p className="px-4 pb-2 text-[11px] text-gray-400">
+                랜딩(QR 스캔/링크 첫 접촉) → 가입 → 첫 구매. 소스는 <code className="bg-gray-100 px-1 rounded">/local/{report.region.code}?src=소스명</code> 의 src 값.
+              </p>
+              {(report.sources || []).length === 0 ? (
+                <p className="px-4 pb-4 text-sm text-gray-400">아직 소스 태깅 유입이 없습니다 — 아래 QR 생성기로 시설물별 링크를 만들어 배포하세요</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-[11px] text-gray-400 border-b border-gray-100">
+                      <th className="px-4 py-2 font-semibold">소스</th>
+                      <th className="px-2 py-2 font-semibold text-right">랜딩</th>
+                      <th className="px-2 py-2 font-semibold text-right">가입</th>
+                      <th className="px-2 py-2 font-semibold text-right">첫 구매</th>
+                      <th className="px-4 py-2 font-semibold text-right">구매 전환율</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(report.sources || []).map(s => (
+                      <tr key={s.src} className="border-b border-gray-50 last:border-0">
+                        <td className="px-4 py-2 font-semibold text-gray-900"><code className="bg-gray-50 px-1.5 py-0.5 rounded text-xs">{s.src}</code></td>
+                        <td className="px-2 py-2 text-right text-gray-600">{formatNumber(s.landings)}</td>
+                        <td className="px-2 py-2 text-right text-gray-600">{formatNumber(s.signups)}</td>
+                        <td className="px-2 py-2 text-right text-gray-600">{formatNumber(s.first_purchases)}</td>
+                        <td className="px-4 py-2 text-right font-semibold text-gray-900">
+                          {s.landings > 0 ? `${Math.round((s.first_purchases / s.landings) * 100)}%` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* 시설물 QR 생성기 — 인쇄물 제작용 (인쇄 리포트에선 숨김) */}
+            <FacilityQrMaker regionCode={report.region.code} />
+
             <p className="text-[10px] text-gray-400 print:block">
               * 판매=이용권 발급 기준(applied_price 합), 사용=매장 QR/PIN 확인 기준. 체험단 구매전환=당첨 후 결제 완료.
+              소스 퍼널의 랜딩·가입은 30일 first-touch 귀속(같은 유저의 첫 소스 고정).
             </p>
           </div>
         )}

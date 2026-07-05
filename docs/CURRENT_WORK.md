@@ -1,5 +1,17 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-05 — B2G 상권 패키지 연결부 7종 (자문 점검 14~21번, 대표 "모두 확인해줘") — 7커밋
+자문이 확인 요청한 14~21번 중 미구현 확정 7건 전부 구현 (15번=실기기 QA 만 잔여).
+- **16 유상/무상 딜 버킷** (`point-buckets.ts` SSOT): `user_points.free_balance` + `point_transactions.free_delta`. 차감 전 경로 무상 우선, 출금(points/curator 2경로) 유상 한도, 환불은 원장 역산 대칭 복원, 리워드 적립 9종 free 태깅(충전·커미션 소득은 유상 유지). 잠긴 payment.routes 는 adjustUserPoints SSOT 경유라 무수정. 블로그 딜 가이드 v5.
+- **17 상권 방문 리워드** (`visit-reward.ts`): 캠페인(상권코드·기간·지급액·총액캡) — 첫 구매 확정 시 무상 딜 1인 1회(UNIQUE claim), 캡 도달 자동 종료+어드민 벨, 환불 회수. 트리거 group-buy /join·confirm-toss. 어드민 `/admin/visit-rewards`.
+- **14 QR 소스 어트리뷰션** (`acquisition.ts` 2종): URL 규격 `/local/{code}?src={소스}`(소문자-하이픈 — **인쇄물 제작 기준 확정**). first-touch 30일 → landing → 로그인 claim(UNIQUE user) → 첫구매 스냅샷. 상권 리포트에 소스별 랜딩→가입→첫구매 퍼널 + 시설물 QR 생성기.
+- **19 체험단 리뷰 뱃지**: `product_reviews.is_sponsored` — 작성 API 가 fcfs 참여(selected/paid) 서버 판정 자동 부착(끌 수 없음) + '체험 제공' 뱃지 (표시광고법).
+- **21 온누리 뱃지**: `seller_meta.onnuri_merchant`(사이드테이블 첫 실사용) — 셀러 사업자정보 토글 + 피드카드/상세/상권관 additive enrich 뱃지.
+- **20 약관 동의 로그 (main 병합으로 역할 분담)**: **소비자** = `terms_agreements`(subject·doc·version UNIQUE) + 버전 SSOT `terms-versions.ts` + `TermsConsentGate`(카카오 첫 로그인 동의 모달 — 개정 시 버전 업만으로 재동의 재발동) + 이메일가입(/users/init) 동의값 실저장 + `/api/terms/status·agree`. **셀러/에이전시 가입 동의는 같은 날 main 의 정본 약관 체계(`terms_consents` + TermsConsentBox, d88fbb5)를 채택** — 병합 시 중복 UI 제거(내 셀러 체크/AgencyTermsClauses 폐기). 두 테이블 공존: terms_consents=가입 시점(셀러/에이전시), terms_agreements=소비자 상시 게이트.
+- **18 알림톡 배선**: fcfs /select 당첨(fcfs_selected)·승계 자동판정(fcfs_replacement) + 이용권 사용완료(voucher_used — 기존 solapi LMS chokepoint 에 Aligo 경로 추가). ⚠️ **운영 잔여: 알리고 콘솔 템플릿 3종 등록·심사 신청**(코드 message 와 본문 일치 필수).
+- 검증: sql-bind/table/column/balance/theme/modal-zindex/INV-CB/file-size(rebaseline) 가드 전부 GREEN · 수정 파일 구문 오류 0 · point-buckets 유닛 11케이스 신설 (⚠️ 이 원격환경 npm 403 — 전체 build/tsc/vitest 는 CI 위임).
+- ⚠️ **스테이징 검증 필수**: ① 무상 1,000+유상 1,000 보유 → 500딜 결제 시 무상 차감·출금가능=유상만 ② 방문 리워드 재구매 미지급/캡 종료/환불 회수 ③ src 2종 가입·구매 분리 집계 ④ 체험단 리뷰 뱃지 ⑤ 가입 3종 동의 row. 15번(카톡 인앱 실기기 E2E)은 iOS/Android QA 세션 + `/api/_internal/kakao-login-diag` 확인.
+
 ## ✅ 2026-07-05 — 데모 추첨 구조 차단 + 에이전시 요율 1%·기간 24개월 기본화 (대표+자문 확정)
 - **데모 추첨 (대표 "데모로 만드는 건 실 유저가 추첨될 수 없는 형태")**: 2단 구조 — ① 데모 상품(slug `demo-deal-N`) 응모는 `fcfs_applications.status='demo'` 로 저장 → **추첨 풀(status='applied')에 존재 자체 불가**(표시 카운트에는 포함 — 체감 유지, `/me` 는 'demo' 를 응모완료로 표시). ② 어드민 선정 API 데모 게이트(crypto/수동 모두 400) — 이중 방어. 기존 데모의 옛 'applied' 행도 게이트가 차단.
 - **에이전시 매장영입 요율 기본 1% (자문 (b)안 — 문서 정합)**: `COMMISSION_DEFAULTS.AGENCY_STORE_INTRO_PCT` 2.0→**1.0** (약관3 제4조·파트너 안내·회사소개서 전부 "기본 1%"). intro-code 응답의 하드코딩 `?? 2.0` → SSOT 상수 연동, 에이전시 대시보드 문구도 설정값 연동(`{pct}% · 첫 판매 확정일로부터 {N}개월`). **개별 상향은 어드민 에이전시 관리(store_intro_commission_pct) = 성과 보상 레버.** 기존 per-agency 설정값 보유 에이전시는 무영향(폴백만 변경).
@@ -24,7 +36,6 @@
 - **P2 Q3**: 셀러 공구 자동정산 표에 판매액·수수료(율) 분해 컬럼(데이터 기존 API 포함, 표시만 + i18n 6개 언어). **Q6**: 에이전시 입점가게에 커미션 잔여기간 컬럼(기산일=첫 결제 signup_bonus, `term_months`=agencies.commission_term_months, 무제한/기산 전/잔여 N개월/만료) — introduced-stores API `term_started_at` + intro-code `term_months` additive. **Q12**: 반품 환불 응답에 역전 요약(`data.reversal[]` — 딜 복원·재고·추천/어필리에이트 회수·쿠폰·정산 clawback, 측정 가능 항목만) → AdminReturnsPage 토스트로 한 화면 표시.
 - 검증: audit-gate **44 GREEN**(file-size 는 승인 additive 성장 → rebaseline) · check-commission-budget ✅ · sql bind/table/column ✅ · 테마 ✅. ⚠️ 유닛테스트/tsc/build 는 CI(Verify)가 게이트(원격환경 npm 차단).
 - ⏭️ 운영(코드 아님): Q1 온보딩 데이 — `seller_register` rate limit IP당 5/시간이라 **공유 와이파이 30명 동시 가입 시 429** → 행사 당일 핫스팟 분산 or 임시 상향 필요 + 실시간 승인 담당자 배치. Q13 staging E2E 시나리오는 세션 회신 참조.
-
 ## ✅ 2026-07-03 — 의료용품 도매몰(메디스타트) 신설 (대표 "의료몰 생성 + 모두 이상적으로") — 3커밋
 멀티몰 인프라(`wholesale_malls`, mall_id 격리) 위에 두번째 몰 구축. 유통스타트(mall 1)는 전부 fallback = byte-불변.
 - **커밋1(백엔드 기반)**: 카테고리 전역확장(의료기기/위생/간병 + 라벨 SSOT + 코드접두어 MD/SN/CR + 정규화 몰스코프 클램프) · `wholesale_malls.requires_license`/`license_label` 컬럼 · **메디스타트 시드**(id=2, slug `medi`, `#0ea5e9`, categories_json=의료4종, requires_license=1) · `GET /mall` → `resolveMallId`(?mall= 존중).

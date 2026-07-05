@@ -48,6 +48,8 @@ interface FeedCardProduct extends Product {
   gc_brand_name?: string | null
   gc_brand_icon_url?: string | null
   gc_goods_type_detail?: string | null
+  // 🏪 2026-07-05: 온누리상품권 가맹 매장 (seller_meta enrich — B2G 표시)
+  onnuri_merchant?: boolean
 }
 
 // 🛡️ 2026-05-21: 구매 수 사람 친화 포맷 (4 자리 이상 → 만 단위).
@@ -205,11 +207,14 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs }: { p: FeedCardProduct; 
       </div>
 
       <div className="px-2.5 pb-2.5 pt-1.5">
-        {/* 브랜드 (gift_catalog) — 있을 때만 */}
-        {brandName && (
+        {/* 브랜드 (gift_catalog) — 있을 때만. 🏪 온누리 가맹 뱃지는 브랜드 유무와 무관 표시 */}
+        {(brandName || p.onnuri_merchant) && (
           <p className="flex items-center gap-1 text-[10px] leading-none mb-0.5" style={{ color: grad.sub }}>
             {brandIcon && <img src={brandIcon} alt="" className="w-3 h-3 rounded-full object-contain" loading="lazy" />}
-            <span className="truncate">{brandName}</span>
+            {brandName && <span className="truncate">{brandName}</span>}
+            {p.onnuri_merchant && (
+              <span className="shrink-0 px-1 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[9px] font-bold">온누리</span>
+            )}
           </p>
         )}
 

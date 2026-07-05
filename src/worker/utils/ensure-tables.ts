@@ -49,6 +49,7 @@ export async function ensureUserPointsTable(DB: D1Database): Promise<void> {
       CREATE TABLE IF NOT EXISTS user_points (
         user_id TEXT PRIMARY KEY,
         balance INTEGER NOT NULL DEFAULT 0,
+        free_balance INTEGER NOT NULL DEFAULT 0,
         total_charged INTEGER NOT NULL DEFAULT 0,
         total_donated INTEGER NOT NULL DEFAULT 0,
         created_at DATETIME DEFAULT (datetime('now')),
@@ -84,6 +85,7 @@ export async function ensurePointTransactionsTable(DB: D1Database): Promise<void
         order_id TEXT,
         stream_id INTEGER,
         seller_id INTEGER,
+        free_delta INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT (datetime('now'))
       )
     `).run()
@@ -103,6 +105,9 @@ export async function ensurePointsTables(DB: D1Database): Promise<void> {
   _done_ensurePointsTables.add(DB)
   await ensureUserPointsTable(DB)
   await ensurePointTransactionsTable(DB)
+  // 💸 2026-07-05 유상/무상 버킷 — 기존(레거시) 테이블에 free_balance/free_delta ALTER 보장.
+  const { ensureDealBuckets } = await import('./point-buckets')
+  await ensureDealBuckets(DB)
 }
 
 

@@ -5288,7 +5288,8 @@
     "sharedShareTitle": "この商品、おすすめです！",
     "sharedShareDesc": "Urdealで素晴らしい商品を見つけました",
     "sharedShareBtn": "商品を見る",
-    "sellerReplyLabel": "販売者の返信"
+    "sellerReplyLabel": "販売者の返信",
+    "sponsoredBadge": "体験提供"
   },
   "productOption": {
     "title": "商品オプション管理",
@@ -6348,7 +6349,8 @@
     "referralStartSub": "SNSでシェア → 友達の決済で自動獲得",
     "curatorTitle": "リンクショップ収益",
     "curatorCashSub": "現金精算・出金可能",
-    "curatorDealSub": "累計獲得・1ディール=1ウォン"
+    "curatorDealSub": "累計獲得・1ディール=1ウォン",
+    "freeDealNote": "無償リワード{{free}}ディール含む · 換金可能{{paid}}ディール"
   },
   "push": {
     "promptTitle": "通知をオンにしますか？",
