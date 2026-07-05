@@ -1105,11 +1105,20 @@ const DEMO_BIZ: DemoBiz[] = [
 ];
 // 미지정 지역 시드 시 검색 앵커를 서울 전역에 분산(로테이션 대신 랜덤 구).
 const DEMO_GUS = ['강남구', '서초구', '송파구', '마포구', '성동구', '용산구', '영등포구', '광진구', '종로구', '중구', '강동구', '동작구', '관악구', '서대문구', '노원구'];
-// 오퍼 랜덤 조합: 패턴 → 가격(밴드 내 100원 단위) → 할인 25~45% 역산 정가.
+// 오퍼 랜덤 조합: 패턴 → 가격(밴드 내 100원 단위) → 업종별 현실 할인율 역산 정가.
+//   💰 2026-07-05 (대표 "가격대 합리적인가? 시중가 대비 할인 맞나?"): 판매가 밴드는 업종 시세 기준
+//   수기 캘리브레이션(매장별 실가는 API 미제공 — 합성 정가임을 인지하고 운영). 할인율은 실제 로컬딜
+//   관행대로 업종별 차등: 식사 12~28%(음식점 마진 얇음), 뷰티 30~50%(첫방문 할인 관행 큼), 기타 18~38%.
+function demoDiscountRange(cat: string): [number, number] {
+  if (cat === 'meal_voucher') return [0.12, 0.28];
+  if (cat === 'beauty_voucher') return [0.3, 0.5];
+  return [0.18, 0.38];
+}
 function buildDemoOffer(t: DemoBiz): { name: string; desc: string; price: number; orig: number; q: string } {
   const p = t.pat[Math.floor(Math.random() * t.pat.length)];
   const price = Math.round((p.min + Math.random() * (p.max - p.min)) / 100) * 100;
-  const disc = 0.25 + Math.random() * 0.2;
+  const [dMin, dMax] = demoDiscountRange(t.cat);
+  const disc = dMin + Math.random() * (dMax - dMin);
   const orig = Math.round(price / (1 - disc) / 1000) * 1000;
   return { name: p.n, desc: p.d, price, orig, q: t.iq || t.pq };
 }
