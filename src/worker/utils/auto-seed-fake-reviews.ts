@@ -68,6 +68,7 @@ export async function autoSeedFakeReviews(
   //   자동 리뷰는 **seller_id 없는 상품(데모·플랫폼)** 에만. 실 사업자 유저 업로드(seller_id 있음)는 제외.
   //   🧯 2026-07-05: review_count 집계가 어긋나도(rowid 재사용·집계 UPDATE 실패) 무한 재주입되지 않게
   //   **실제 리뷰 행 NOT EXISTS** 를 이중 게이트로 — 부풀림(57~119개) 클래스 구조적 차단.
+  //   🔔 2026-07-05: 오픈 예정(prelaunch='1') 데모 제외 — 아직 안 연 매장에 사용 후기가 붙는 모순 차단.
   //   → 실 매장 상품은 유기적 리뷰 + 어드민 수동 부여(admin-review-generator, 별도 경로)만 붙음.
   //   chunk 단위로 IN 쿼리 (D1 placeholder 한도 100 안전 마진).
   const CHUNK_SCAN = 80
@@ -81,7 +82,8 @@ export async function autoSeedFakeReviews(
          AND is_active = 1
          AND (review_count IS NULL OR review_count = 0)
          AND seller_id IS NULL
-         AND NOT EXISTS (SELECT 1 FROM product_reviews r WHERE r.product_id = p.id)`,
+         AND NOT EXISTS (SELECT 1 FROM product_reviews r WHERE r.product_id = p.id)
+         AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'prelaunch' AND m.value = '1')`,
     ).bind(...slice).all<{ id: number }>().catch(() => ({ results: [] as Array<{ id: number }> }))
     targets.push(...(rows.results || []))
   }
@@ -153,6 +155,7 @@ export async function autoSeedMissingReviews(
        AND (review_count IS NULL OR review_count = 0)
        AND seller_id IS NULL
        AND NOT EXISTS (SELECT 1 FROM product_reviews r WHERE r.product_id = p.id)
+       AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'prelaunch' AND m.value = '1')
      ORDER BY created_at DESC
      LIMIT ?`,
   ).bind(maxBatch).all<{ id: number }>().catch(() => ({ results: [] as Array<{ id: number }> }))

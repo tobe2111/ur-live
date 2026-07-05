@@ -304,6 +304,14 @@ adminReviewGeneratorRoutes.delete('/reviews/generated/:productId', cors(), async
     const DB = c.env.DB;
     const productId = c.req.param('productId');
     const result = await DB.prepare('DELETE FROM product_reviews WHERE product_id = ? AND is_generated = 1').bind(productId).run();
+    // 🧮 2026-07-05: 삭제 후 집계 재계산 — 유령 review_count(행 0인데 카운트 잔존)로 상세가 "리뷰 N개" 오표시하던 것 차단.
+    await DB.prepare(`
+      UPDATE products SET
+        review_count = COALESCE((SELECT COUNT(*) FROM product_reviews WHERE product_id = ?), 0),
+        avg_rating = COALESCE((SELECT ROUND(AVG(rating), 1) FROM product_reviews WHERE product_id = ?), 0),
+        updated_at = datetime('now')
+      WHERE id = ?
+    `).bind(productId, productId, productId).run().catch(() => {});
     return c.json({ success: true, message: `${result.meta.changes}개 생성 리뷰 삭제됨` });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
