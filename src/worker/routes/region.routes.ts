@@ -225,6 +225,35 @@ adminRegionRoutes.get('/report', requireAdmin(), async (c) => {
       GROUP BY DATE(v.created_at, '+9 hours') ORDER BY day ASC`,
   ).bind(like, since).all().catch(() => ({ results: [] as unknown[] }))
 
+  // ⑥ 📡 2026-07-05 소스별 유입 퍼널 (시설물 QR ?src= / UTM) — 랜딩 → 가입 → 첫구매.
+  //   랜딩: acquisition_landings (이 상권 랜딩 + 상권 미지정 랜딩은 코드 무관 소스로 별도 노출 안 함 —
+  //   region_code 가 이 상권이거나 NULL(전역 소스: insta 등)인 것 포함). 가입/첫구매: user_acquisition.
+  const { ensureAcquisitionTables } = await import('../utils/acquisition')
+  await ensureAcquisitionTables(DB)
+  const sources = await DB.prepare(
+    `SELECT s.src AS src,
+            COALESCE(l.landings, 0) AS landings,
+            COALESCE(u.signups, 0) AS signups,
+            COALESCE(u.first_purchases, 0) AS first_purchases
+       FROM (
+         SELECT src FROM acquisition_landings WHERE (region_code LIKE ? OR region_code IS NULL) AND created_at >= datetime('now', ?)
+         UNION
+         SELECT src FROM user_acquisition WHERE (region_code LIKE ? OR region_code IS NULL) AND claimed_at >= datetime('now', ?)
+       ) s
+       LEFT JOIN (
+         SELECT src, COUNT(*) AS landings FROM acquisition_landings
+          WHERE (region_code LIKE ? OR region_code IS NULL) AND created_at >= datetime('now', ?) GROUP BY src
+       ) l ON l.src = s.src
+       LEFT JOIN (
+         SELECT src, COUNT(*) AS signups,
+                SUM(CASE WHEN first_order_at IS NOT NULL THEN 1 ELSE 0 END) AS first_purchases
+           FROM user_acquisition
+          WHERE (region_code LIKE ? OR region_code IS NULL) AND claimed_at >= datetime('now', ?) GROUP BY src
+       ) u ON u.src = s.src
+      ORDER BY landings DESC, signups DESC
+      LIMIT 50`,
+  ).bind(like, since, like, since, like, since, like, since).all().catch(() => ({ results: [] as unknown[] }))
+
   // 라벨
   const label = await DB.prepare(
     `SELECT region_si, region_gu FROM product_regions WHERE region_dong_code LIKE ? AND region_gu != '' LIMIT 1`,
@@ -250,6 +279,7 @@ adminRegionRoutes.get('/report', requireAdmin(), async (c) => {
       },
       by_dong: byDong.results || [],
       daily: daily.results || [],
+      sources: sources.results || [],
     },
   })
 })

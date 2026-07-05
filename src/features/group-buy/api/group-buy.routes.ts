@@ -719,6 +719,11 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             const { grantVisitRewardOnPurchase } = await import('../../../worker/utils/visit-reward')
             await grantVisitRewardOnPurchase(DB, { userId: String(userId), productId: Number(productId), orderRef: orderNumber })
           } catch { /* fail-soft */ }
+          // 📡 2026-07-05 유입 소스 첫 구매 스냅샷 (랜딩→가입→첫구매 퍼널 완결, 멱등·fail-soft).
+          try {
+            const { markAcquisitionFirstPurchase } = await import('../../../worker/utils/acquisition')
+            await markAcquisitionFirstPurchase(DB, String(userId), orderNumber)
+          } catch { /* fail-soft */ }
         }
         let _saleDeferred = false
         try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_saleFx()); _saleDeferred = true } } catch { /* no ctx */ }
@@ -1225,6 +1230,11 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
         try {
           const { grantVisitRewardOnPurchase } = await import('../../../worker/utils/visit-reward')
           await grantVisitRewardOnPurchase(DB, { userId: String(userId), productId: Number(productId), orderRef: orderNumber })
+        } catch { /* fail-soft */ }
+        // 📡 2026-07-05 유입 소스 첫 구매 스냅샷 (멱등·fail-soft).
+        try {
+          const { markAcquisitionFirstPurchase } = await import('../../../worker/utils/acquisition')
+          await markAcquisitionFirstPurchase(DB, String(userId), orderNumber)
         } catch { /* fail-soft */ }
         // 🔔 2026-06-26 (소비자 감사 C): 카드 결제 buyer 무통보(딜 /join 은 알림톡 발송) 비대칭 보강.
         //   ① 교환권 발급 인앱 기록(보관함 링크) ② 사용자 phone 알림톡 — 딜 경로와 동일 헬퍼/payload.

@@ -1060,6 +1060,19 @@ pointsRoutes.post('/pay', rateLimit({ action: 'points_pay', max: 20, windowSec: 
       if (!_ktDeferred) await _ktBg()
     }
 
+    // 📡 2026-07-05 유입 소스 첫 구매 스냅샷 (랜딩→가입→첫구매 퍼널, 멱등·fail-soft — 응답 후 실행).
+    {
+      const _acqBg = async () => {
+        try {
+          const { markAcquisitionFirstPurchase } = await import('../../../worker/utils/acquisition')
+          await markAcquisitionFirstPurchase(DB, userId, order_number)
+        } catch { /* fail-soft */ }
+      }
+      let _acqDeferred = false
+      try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_acqBg()); _acqDeferred = true } } catch { /* no ctx */ }
+      if (!_acqDeferred) await _acqBg()
+    }
+
     return c.json({
       success: true,
       data: {

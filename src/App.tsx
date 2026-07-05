@@ -294,6 +294,17 @@ function AppContent() {
   // 🆕 2026-06-29 퍼널 계측: 앱 진입(세션당 1회, 익명) — DAU/리텐션 기준점.
   useEffect(() => { trackFunnel('app_open') }, [])
 
+  // 📡 2026-07-05 유입 소스 어트리뷰션: ?src=(시설물 QR)/utm_source first-touch 30일 캡처 +
+  //   로그인 상태면 유저 귀속(claim, 멱등). 랜딩→가입→첫구매 퍼널의 클라 시작점 (lib/acquisition.ts).
+  useEffect(() => {
+    import('@/lib/acquisition').then(({ captureAcquisitionSource, claimAcquisitionIfLoggedIn }) => {
+      captureAcquisitionSource()
+      import('@/utils/auth').then(({ isLoggedInSync }) => {
+        claimAcquisitionIfLoggedIn(isLoggedInSync())
+      }).catch(() => {})
+    }).catch(swallow('app:acquisition-import'))
+  }, [])
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const errorCode = urlParams.get('error')

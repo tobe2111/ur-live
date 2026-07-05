@@ -102,6 +102,10 @@
 - **상권 방문 리워드** (2026-07-05, B2G 상권 패키지 — SSOT `worker/utils/visit-reward.ts`): 캠페인(상권 지역코드·기간·
   지급액·총액 캡) 단위로 그 상권 매장 상품 **첫 구매 확정** 시 무상 딜 1인 1회 지급(UNIQUE claim 멱등 · 캡 도달 자동 종료
   +어드민 알림 · 환불 시 회수). 트리거: group-buy `/join`·`/confirm-toss`. 어드민 `/admin/visit-rewards`.
+- **유입 소스 어트리뷰션** (2026-07-05 — SSOT `worker/utils/acquisition.ts` + `lib/acquisition.ts`): 시설물 QR/광고 URL 규격
+  `/local/{지역코드}?src={소스}`(소문자·숫자·하이픈, UTM 은 utm_source 흡수). 클라 first-touch 30일 고정 →
+  `acquisition_landings`(랜딩) → 로그인 claim `user_acquisition`(UNIQUE user_id=가입 귀속) → 첫 구매 스냅샷.
+  소스별 랜딩→가입→첫구매 퍼널은 어드민 상권 리포트(`/admin/district-report`)에 표시 + 시설물 QR 생성기 내장.
 
 ### 5-2. 판매 정산 (사업자 유저)
 - **플랫폼 수수료**: **3P(남의 상품, 이용권+쇼핑) 5%** / **1P(유어딜 직판) 0%** (`fee-resolver.ts` SSOT, `product-ownership-model.md`).
