@@ -75,7 +75,7 @@
 ## 4. 표면(라우트) 지도 — 행위자별
 
 ### 소비자 (다크/화이트 테마)
-- **발견**: `/`(동네딜 지도) · `/vouchers`(이용권+쇼핑) · `/group-buy`(동네딜) · `/browse`(쇼핑,숨김) · `/search` · `/blog`
+- **발견**: `/`(동네딜 지도) · `/vouchers`(이용권+쇼핑) · `/group-buy`(동네딜) · `/browse`(쇼핑,숨김) · `/search` · `/blog` · **`/local/:code`(상권관 — B2G 상권 패키지 지역 랜딩, 2026-07-04)**
 - **상세/구매**: `/vouchers/:id` · `/group-buy/:id` · `/products/:id` · `/stays/:id` · `/checkout` · `/points/charge`
 - **링크샵**: `/u/:handle`(단일화) · `/u/me`(본인) · `/u/me/add`(핀 추가) · `/u/me/earnings` · `/profile/:username`·`/s/:id`(셀러 공개)
 - **마이**: `/user/profile` · `/my-vouchers`(지갑) · `/my-orders` · `/my-deal-history` · `/my-commissions` · `/notifications` · `/account/settings`
