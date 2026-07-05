@@ -10,6 +10,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { ChevronLeft, Loader2, Briefcase, CheckCircle2, MessageCircle } from 'lucide-react'
+import AgencyTermsClauses, { EMPTY_AGENCY_CLAUSES, allAgencyClausesAgreed, type AgencyClauses } from '@/components/agency/AgencyTermsClauses'
 
 export default function AgencyRegisterBusinessPage() {
   const { t } = useTranslation()
@@ -25,6 +26,8 @@ export default function AgencyRegisterBusinessPage() {
     contact_name: userName || '',
     phone: '',
   })
+  // 📜 2026-07-05: 중요 조항 4개 개별 동의 — 서버도 강제, terms_agreements 에 버전 로그.
+  const [clauses, setClauses] = useState<AgencyClauses>(EMPTY_AGENCY_CLAUSES)
 
   useEffect(() => {
     (async () => {
@@ -43,10 +46,14 @@ export default function AgencyRegisterBusinessPage() {
       toast.error('에이전시명과 담당자명은 필수입니다')
       return
     }
+    if (!allAgencyClausesAgreed(clauses)) {
+      toast.error(t('agency.terms.required', { defaultValue: '중요 조항 4개에 모두 동의해주세요.' }))
+      return
+    }
 
     setLoading(true)
     try {
-      const res = await api.post('/api/agency/register-from-user', form)
+      const res = await api.post('/api/agency/register-from-user', { ...form, clauses_agreed: clauses })
       if (res.data?.success) {
         toast.success('에이전시 가입 신청이 완료됐어요. 관리자 승인을 기다려주세요.')
         setExistingStatus('pending')
@@ -161,11 +168,14 @@ export default function AgencyRegisterBusinessPage() {
           </Field>
         </div>
 
+        {/* 📜 2026-07-05: 중요 조항 4개(커미션 1%·24개월/회수/정산·원천징수/약관) 요약 + 개별 동의 */}
+        <AgencyTermsClauses value={clauses} onChange={setClauses} />
+
         <p className="text-[11px] text-gray-500 text-center leading-relaxed">
           {t('agency.registerBusiness.approvalNote', { defaultValue: '신청 후 관리자 승인까지 보통 1~2일 소요됩니다. 승인 완료 시 카카오 로그인으로 바로 에이전시 기능 이용 가능.' })}
         </p>
 
-        <button onClick={submit} disabled={loading}
+        <button onClick={submit} disabled={loading || !allAgencyClausesAgreed(clauses)}
           className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 disabled:opacity-50 text-white font-bold rounded-2xl flex items-center justify-center gap-2">
           {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
           {loading ? t('agency.registerBusiness.submitting', { defaultValue: '신청 중...' }) : t('agency.registerBusiness.submitBtn', { defaultValue: '에이전시 신청하기' })}

@@ -2829,7 +2829,10 @@
       "submitting": "申请中...",
       "submit": "申请企业注册",
       "secondGate": "💳 现金结算需要在批准后进行一次营业执照认证（后台 → 企业信息）。",
-      "prospectBanner": " 代理机构已预先填写店铺信息。确认内容后提交即可。"
+      "prospectBanner": " 代理机构已预先填写店铺信息。确认内容后提交即可。",
+      "termsRequired": "请同意卖家条款",
+      "termsLabel": "我同意卖家(企业用户)条款",
+      "termsView": "查看条款"
     },
     "mailOrderNumber": "通信销售业申报号",
     "mailOrderNumberPlaceholder": "例: 2026-首尔江南-01234",
@@ -4156,6 +4159,19 @@
     "settlementsAuto": {
       "autoPayout": "✨ 无需再申请",
       "autoPayoutDesc": "引入佣金将自动汇总，每周五统一打款（为保障退款，仅限满7天的部分）"
+    },
+    "terms": {
+      "allAgree": "同意全部重要条款(必填)",
+      "commissionTitle": "招募佣金条件",
+      "commissionDesc": "佣金仅在您招募的店铺产生实际销售时支付,按该销售额计算,每店限首24个月(默认1%,依平台政策)。",
+      "clawbackTitle": "佣金追回(退款时)",
+      "clawbackDesc": "若佣金对应的交易被退款或取消,该佣金将被追回。",
+      "settlementTitle": "结算与代扣税",
+      "settlementDesc": "结算按平台结算周期,在依法代扣税后支付。",
+      "termsTitle": "代理条款与个人信息",
+      "termsDesc": "我同意代理条款全文及个人信息的收集与使用。",
+      "logNote": "您的同意将与条款版本一并记录。",
+      "required": "请同意全部4项重要条款。"
     }
   },
   "nav": {

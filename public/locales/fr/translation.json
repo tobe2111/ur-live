@@ -2150,7 +2150,10 @@
       "submitting": "Envoi...",
       "submit": "Demander un compte pro",
       "secondGate": "💳 Le règlement en espèces nécessite une vérification unique de la licence commerciale après approbation (Tableau de bord → Infos pro).",
-      "prospectBanner": " l'agence a pré-rempli les infos de votre boutique. Vérifiez et soumettez."
+      "prospectBanner": " l'agence a pré-rempli les infos de votre boutique. Vérifiez et soumettez.",
+      "termsRequired": "Veuillez accepter les conditions vendeur",
+      "termsLabel": "J'accepte les Conditions Vendeur (Utilisateur Pro)",
+      "termsView": "Voir les conditions"
     },
     "mailOrderNumber": "N° de vente à distance",
     "mailOrderNumberPlaceholder": "ex. 2026-Seoul-01234",
@@ -3477,6 +3480,19 @@
     "settlementsAuto": {
       "autoPayout": "✨ Plus besoin de demander",
       "autoPayoutDesc": "Les commissions sont calculées automatiquement et versées chaque vendredi (après 7 jours de protection remboursement)"
+    },
+    "terms": {
+      "allAgree": "Accepter toutes les clauses clés (obligatoire)",
+      "commissionTitle": "Conditions de commission",
+      "commissionDesc": "La commission n'est versée que sur les ventes réelles des magasins recrutés, dans la limite des 24 premiers mois par magasin (1% par défaut, selon la politique).",
+      "clawbackTitle": "Récupération de commission",
+      "clawbackDesc": "Si la transaction sous-jacente est remboursée ou annulée, la commission versée est récupérée.",
+      "settlementTitle": "Règlement et retenue",
+      "settlementDesc": "Les règlements sont versés selon le cycle de la plateforme après retenue fiscale légale.",
+      "termsTitle": "Conditions agence et confidentialité",
+      "termsDesc": "J'accepte les conditions complètes et l'utilisation des données personnelles.",
+      "logNote": "Votre consentement est enregistré avec la version des conditions.",
+      "required": "Veuillez accepter les 4 clauses clés."
     }
   },
   "nav": {

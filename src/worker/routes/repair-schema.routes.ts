@@ -1005,6 +1005,17 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       description TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )` },
+    // 📜 2026-07-05 약관 동의 로그 (누가·언제·몇 버전) — worker/utils/terms-agreements.ts SSOT 미러.
+    { name: 'terms_agreements', sql: `CREATE TABLE IF NOT EXISTS terms_agreements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      subject_type TEXT NOT NULL,
+      subject_id TEXT NOT NULL,
+      doc_type TEXT NOT NULL,
+      doc_version TEXT NOT NULL,
+      agreed INTEGER NOT NULL DEFAULT 1,
+      agreed_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(subject_type, subject_id, doc_type, doc_version)
+    )` },
     { name: 'coupons', sql: `CREATE TABLE IF NOT EXISTS coupons (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT UNIQUE NOT NULL,

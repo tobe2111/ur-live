@@ -74,7 +74,11 @@ usersRouter.post('/init', requireAuth(), async (c) => {
       return c.json({ success: false, error: 'Unauthorized' }, 401);
     }
 
-    const { displayName } = await c.req.json<{ displayName?: string }>().catch(() => ({} as any));
+    // 📜 2026-07-05: 이메일 가입 폼(RegisterPage)이 보내던 동의 플래그 — 기존엔 서버가 읽지도
+    //   저장하지도 않고 버렸음(감사 발견). terms_agreements 에 버전 포함 증적으로 기록.
+    const { displayName, terms_agreed, privacy_agreed, marketing_agreed } = await c.req.json<{
+      displayName?: string; terms_agreed?: boolean; privacy_agreed?: boolean; marketing_agreed?: boolean; age_confirmed?: boolean;
+    }>().catch(() => ({} as any));
 
     // 서명 검증된 토큰에서 UID/이메일 사용
     const firebaseUid = String(authUser.id);
@@ -109,6 +113,27 @@ usersRouter.post('/init', requireAuth(), async (c) => {
           console.warn('[/api/users/init] DB upsert failed (non-critical):', e?.message);
         });
     }
+
+    // 📜 2026-07-05: 동의 로그 기록 (누가·언제·몇 버전) — fail-soft(가입 흐름 보호), 멱등(UNIQUE).
+    try {
+      if (terms_agreed !== undefined || privacy_agreed !== undefined || marketing_agreed !== undefined) {
+        const { recordTermsAgreements } = await import('../utils/terms-agreements');
+        const agreements: Array<{ doc_type: string; agreed: boolean }> = [];
+        if (terms_agreed) agreements.push({ doc_type: 'service', agreed: true });
+        if (privacy_agreed) agreements.push({ doc_type: 'privacy', agreed: true });
+        if (marketing_agreed !== undefined) agreements.push({ doc_type: 'marketing', agreed: !!marketing_agreed });
+        if (agreements.length > 0) {
+          // subject_id: 세션(숫자 id) 유저는 그대로, firebase 유저는 firebase_uid 로 기록.
+          await recordTermsAgreements(db, 'user', firebaseUid, agreements);
+        }
+        // users.terms_agreed_at (기존 dead column 실사용화 — 있으면 채움)
+        if (terms_agreed) {
+          await db.prepare(`UPDATE users SET terms_agreed_at = datetime('now') WHERE (id = ? OR firebase_uid = ?) AND terms_agreed_at IS NULL`)
+            .bind(Number.isFinite(initNumericId) ? initNumericId : -1, firebaseUid)
+            .run().catch(() => { /* 컬럼 부재 환경 graceful */ });
+        }
+      }
+    } catch { /* fail-soft */ }
 
     return c.json({ success: true, message: 'User initialized' });
   } catch (err: any) {

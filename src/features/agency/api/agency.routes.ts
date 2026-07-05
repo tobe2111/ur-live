@@ -234,12 +234,18 @@ const requireAgency = async (c: AgencyCtx, next: Next) => {
 // 🛡️ 2026-04-22 배치 147: rate limit 추가 (spam registration 차단 버그 fix)
 app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, windowSec: 3600 }), async (c) => {
   await ensureAgencyTables(c.env.DB)
-  const { name, contact_name, email, password, phone } = await c.req.json<{
+  const { name, contact_name, email, password, phone, clauses_agreed } = await c.req.json<{
     name: string; contact_name: string; email: string; password: string; phone?: string
+    // 📜 2026-07-05: 중요 조항 4개 개별 동의 (커미션 조건 / 회수 / 정산·원천징수 / 약관·개인정보)
+    clauses_agreed?: { commission?: boolean; clawback?: boolean; settlement?: boolean; terms?: boolean }
   }>()
 
   if (!name || !contact_name || !email || !password) {
     return c.json({ success: false, error: '에이전시명, 담당자명, 이메일, 비밀번호는 필수입니다.' }, 400)
+  }
+  // 📜 2026-07-05: 커미션 조건(1%·24개월·회수)은 분쟁 소지가 큰 조항 — 개별 체크 4개 전부 필수.
+  if (!clauses_agreed?.commission || !clauses_agreed?.clawback || !clauses_agreed?.settlement || !clauses_agreed?.terms) {
+    return c.json({ success: false, error: '에이전시 약관의 중요 조항 4개에 모두 동의해야 합니다.', code: 'TERMS_REQUIRED' }, 400)
   }
   // 🛡️ 입력 길이 검증
   if (typeof name !== 'string' || name.length < 1 || name.length > 100) {
@@ -260,10 +266,19 @@ app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, win
   if (existing) return c.json({ success: false, error: '이미 사용 중인 이메일입니다.' }, 409)
 
   const hash = await hashPassword(password)
-  await c.env.DB.prepare(`
+  const regResult = await c.env.DB.prepare(`
     INSERT INTO agencies (name, contact_name, email, password_hash, phone, status)
     VALUES (?, ?, ?, ?, ?, 'pending')
   `).bind(name, contact_name, email, hash, phone || null).run()
+
+  // 📜 2026-07-05: 에이전시 약관 동의 로그 (누가·언제·몇 버전 — fail-soft, 멱등).
+  try {
+    const agencyId = regResult?.meta?.last_row_id
+    if (agencyId) {
+      const { recordTermsAgreements } = await import('../../../worker/utils/terms-agreements')
+      await recordTermsAgreements(c.env.DB, 'agency', String(agencyId), [{ doc_type: 'agency', agreed: true }])
+    }
+  } catch { /* fail-soft */ }
 
   // 🛡️ 2026-04-28: 어드민 알림 — 셀러 가입 흐름과 동일하게 추가 (이전 누락).
   createDashboardNotification(
@@ -315,12 +330,18 @@ app.post('/register-from-user', cors(), rateLimit({ action: 'agency_register_fro
       }, 409)
     }
 
-    const { name, contact_name, phone } = await c.req.json<{
+    const { name, contact_name, phone, clauses_agreed } = await c.req.json<{
       name: string; contact_name: string; phone?: string
+      // 📜 2026-07-05: 중요 조항 4개 개별 동의 (커미션 조건 / 회수 / 정산·원천징수 / 약관·개인정보)
+      clauses_agreed?: { commission?: boolean; clawback?: boolean; settlement?: boolean; terms?: boolean }
     }>()
 
     if (!name || !contact_name) {
       return c.json({ success: false, error: '에이전시명과 담당자명은 필수입니다.' }, 400)
+    }
+    // 📜 2026-07-05: 커미션 조건(1%·24개월·회수) 개별 체크 4개 전부 필수 — /register 와 동일 강제.
+    if (!clauses_agreed?.commission || !clauses_agreed?.clawback || !clauses_agreed?.settlement || !clauses_agreed?.terms) {
+      return c.json({ success: false, error: '에이전시 약관의 중요 조항 4개에 모두 동의해야 합니다.', code: 'TERMS_REQUIRED' }, 400)
     }
     if (typeof name !== 'string' || name.length < 1 || name.length > 100) {
       return c.json({ success: false, error: '에이전시명은 1~100자여야 합니다.' }, 400)
@@ -344,10 +365,18 @@ app.post('/register-from-user', cors(), rateLimit({ action: 'agency_register_fro
     const tempPassword = Array.from(tempBytes).map(b => b.toString(16).padStart(2, '0')).join('')
     const passwordHash = await hashPassword(tempPassword)
 
-    await db.prepare(`
+    const regFromUserResult = await db.prepare(`
       INSERT INTO agencies (name, contact_name, email, password_hash, phone, status, linked_user_id)
       VALUES (?, ?, ?, ?, ?, 'pending', ?)
     `).bind(name, contact_name, email, passwordHash, phone || null, userId).run()
+
+    // 📜 2026-07-05: 에이전시 약관 동의 로그 — agency id + 신청 유저 id 병기 (fail-soft, 멱등).
+    try {
+      const { recordTermsAgreements } = await import('../../../worker/utils/terms-agreements')
+      const agencyId = regFromUserResult?.meta?.last_row_id
+      if (agencyId) await recordTermsAgreements(db, 'agency', String(agencyId), [{ doc_type: 'agency', agreed: true }])
+      await recordTermsAgreements(db, 'user', String(userId), [{ doc_type: 'agency', agreed: true }])
+    } catch { /* fail-soft */ }
 
     // 🛡️ 2026-04-28: 어드민 알림 — 유저→에이전시 전환 신청 (이전 누락).
     createDashboardNotification(

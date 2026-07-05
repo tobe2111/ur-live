@@ -371,12 +371,19 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       agency_intro_code?: string;
       // 🛡️ 2026-05-21 Phase D-6: 인플루언서 입점 유치 — 사장님 가입 시 인플루언서 추천코드 입력.
       influencer_intro_code?: string;
+      // 📜 2026-07-05: 셀러 약관 동의 (필수) — terms_agreements 에 버전 포함 증적 기록.
+      terms_agreed?: boolean;
     }>();
 
     const { business_name, business_number, phone, seller_type, youtube_email, description, agency_intro_code, influencer_intro_code } = body;
 
     if (!business_name || !business_number || !phone) {
       return c.json({ success: false, error: '사업자명, 사업자번호, 연락처는 필수입니다' }, 400);
+    }
+
+    // 📜 2026-07-05: 셀러 약관 동의 필수 — 동의 없이 가입 불가 (버전 로그는 셀러 생성 후 기록).
+    if (body.terms_agreed !== true) {
+      return c.json({ success: false, error: '셀러 이용약관 동의가 필요합니다', code: 'TERMS_REQUIRED' }, 400);
     }
 
     const businessNumberRegex = /^\d{3}-\d{2}-\d{5}$/;
@@ -520,6 +527,16 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
           .bind(...vals, newSellerId).run().catch(() => { /* 컬럼 없는 env — skip */ });
       }
     }
+
+    // 📜 2026-07-05: 셀러 약관 동의 로그 — 누가(seller id + 신청 유저 id)·언제·몇 버전 (fail-soft, 멱등).
+    try {
+      const { recordTermsAgreements } = await import('../../../worker/utils/terms-agreements');
+      if (newSellerId) {
+        await recordTermsAgreements(db, 'seller', String(newSellerId), [{ doc_type: 'seller', agreed: true }]);
+      }
+      // 신청 유저 계정에도 병기 (승인 반려 후 재신청 시 seller row 가 바뀌어도 유저 증적 유지)
+      await recordTermsAgreements(db, 'user', String(userId), [{ doc_type: 'seller', agreed: true }]);
+    } catch { /* fail-soft */ }
 
     const { createDashboardNotification: notify } = await import('../../notifications/api/dashboard-notifications.routes');
     // 🛡️ 2026-06-12 (감사 1단계): deep-link 교정 — /admin/sellers 는 클라 라우트에 없음 → 승인 페이지로.

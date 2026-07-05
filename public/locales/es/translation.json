@@ -2150,7 +2150,10 @@
       "submitting": "Enviando...",
       "submit": "Solicitar como negocio",
       "secondGate": "💳 La liquidación en efectivo requiere una verificación única de licencia comercial tras la aprobación (Panel → Info del negocio).",
-      "prospectBanner": " la agencia preparó la información de tu tienda. Solo revisa y envía."
+      "prospectBanner": " la agencia preparó la información de tu tienda. Solo revisa y envía.",
+      "termsRequired": "Acepte los términos del vendedor",
+      "termsLabel": "Acepto los Términos del Vendedor (Usuario Comercial)",
+      "termsView": "Ver términos"
     },
     "mailOrderNumber": "N.º de venta a distancia",
     "mailOrderNumberPlaceholder": "ej. 2026-Seul-01234",
@@ -3477,6 +3480,19 @@
     "settlementsAuto": {
       "autoPayout": "✨ Ya no es necesario solicitar",
       "autoPayoutDesc": "Las comisiones se calculan automáticamente y se pagan cada viernes (tras 7 días de protección por reembolsos)"
+    },
+    "terms": {
+      "allAgree": "Aceptar todas las cláusulas clave (obligatorio)",
+      "commissionTitle": "Condiciones de comisión",
+      "commissionDesc": "La comisión se paga solo sobre ventas reales de tiendas captadas, dentro de los primeros 24 meses por tienda (1% por defecto, según política).",
+      "clawbackTitle": "Recuperación de comisión",
+      "clawbackDesc": "Si la transacción subyacente se reembolsa o cancela, la comisión pagada se recupera.",
+      "settlementTitle": "Liquidación y retención",
+      "settlementDesc": "Las liquidaciones se pagan según el ciclo de la plataforma tras la retención fiscal legal.",
+      "termsTitle": "Términos de agencia y privacidad",
+      "termsDesc": "Acepto los términos completos de agencia y el uso de datos personales.",
+      "logNote": "Su consentimiento se registra con la versión de los términos.",
+      "required": "Acepte las 4 cláusulas clave."
     }
   },
   "nav": {

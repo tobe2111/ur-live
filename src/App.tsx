@@ -24,6 +24,8 @@ import { featureFlags } from '@/shared/config/feature-flags'
 // lazy-loaded — only rendered conditionally, not on initial paint
 const PushNotificationSetup = lazy(() => import('./components/PushNotificationSetup'))
 const PWAInstallPrompt = lazy(() => import('./components/PWAInstallPrompt'))
+// 📜 2026-07-05: 약관 동의 게이트 (버전 포함 동의 로그 — terms_agreements)
+const TermsConsentGate = lazy(() => import('./components/TermsConsentGate'))
 const OnboardingTrigger = lazy(() => import('./components/onboarding/OnboardingTrigger'))
 const RestoreAccountModal = lazy(() => import('./components/account/RestoreAccountModal'))
 const SideBanner = lazy(() => import('@/components/SideBanner'))
@@ -592,6 +594,8 @@ function AppContent() {
           {/* 🗑️ 2026-06-17 (사용자 요청): 앱 설치 팝업(PWAInstallPrompt) 제거 */}
           <Suspense fallback={null}><OnboardingTrigger /></Suspense>
           <Suspense fallback={null}><RestoreAccountModal /></Suspense>
+          {/* 📜 2026-07-05: 약관 동의 게이트 — 카카오 첫 로그인 자체 동의 스텝 + 개정 재동의 (버전 로그) */}
+          <Suspense fallback={null}><TermsConsentGate /></Suspense>
           <OfflineBanner />
           <ConfirmHost />
           <ScrollToTop />

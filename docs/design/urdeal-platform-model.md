@@ -102,6 +102,10 @@
 - **상권 방문 리워드** (2026-07-05, B2G 상권 패키지 — SSOT `worker/utils/visit-reward.ts`): 캠페인(상권 지역코드·기간·
   지급액·총액 캡) 단위로 그 상권 매장 상품 **첫 구매 확정** 시 무상 딜 1인 1회 지급(UNIQUE claim 멱등 · 캡 도달 자동 종료
   +어드민 알림 · 환불 시 회수). 트리거: group-buy `/join`·`/confirm-toss`. 어드민 `/admin/visit-rewards`.
+- **약관 동의 로그** (2026-07-05 — SSOT `worker/utils/terms-agreements.ts`, 버전 `shared/constants/terms-versions.ts`):
+  `terms_agreements`(subject_type user/seller/agency · doc_type · doc_version · agreed_at, UNIQUE 멱등) — 누가·언제·몇 버전.
+  배선: 유저 = 카카오 첫 로그인 동의 게이트(`TermsConsentGate`, 개정 시 재동의 겸용) + 이메일 가입 `/users/init` /
+  셀러 = `register-from-user`(terms_agreed 필수) / 에이전시 = register 2종(중요 조항 4개 개별 체크 필수 — 커미션 1%·24개월·회수).
 - **유입 소스 어트리뷰션** (2026-07-05 — SSOT `worker/utils/acquisition.ts` + `lib/acquisition.ts`): 시설물 QR/광고 URL 규격
   `/local/{지역코드}?src={소스}`(소문자·숫자·하이픈, UTM 은 utm_source 흡수). 클라 first-touch 30일 고정 →
   `acquisition_landings`(랜딩) → 로그인 claim `user_acquisition`(UNIQUE user_id=가입 귀속) → 첫 구매 스냅샷.

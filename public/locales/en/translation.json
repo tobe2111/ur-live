@@ -2829,7 +2829,10 @@
       "submitting": "Submitting...",
       "submit": "Apply as business",
       "secondGate": "💳 Cash settlement requires a one-time business license verification after approval (Dashboard → Business info).",
-      "prospectBanner": " agency has pre-filled your store info. Just review and submit."
+      "prospectBanner": " agency has pre-filled your store info. Just review and submit.",
+      "termsRequired": "Please agree to the seller terms",
+      "termsLabel": "I agree to the Seller (Business User) Terms",
+      "termsView": "View terms"
     },
     "mailOrderNumber": "Mail-order business no.",
     "mailOrderNumberPlaceholder": "e.g. 2026-Seoul-01234",
@@ -4156,6 +4159,19 @@
     "settlementsAuto": {
       "autoPayout": "✨ No request needed",
       "autoPayoutDesc": "Intro commissions are aggregated automatically and paid out every Friday (after a 7-day refund window)"
+    },
+    "terms": {
+      "allAgree": "Agree to all key clauses (required)",
+      "commissionTitle": "Referral commission terms",
+      "commissionDesc": "Commission is paid only on actual sales from stores you onboard, based on that revenue, within the first 24 months per store (default 1%, per platform policy).",
+      "clawbackTitle": "Commission clawback",
+      "clawbackDesc": "If the underlying transaction is refunded or cancelled, the paid commission is clawed back.",
+      "settlementTitle": "Settlement & withholding",
+      "settlementDesc": "Settlements are paid on the platform settlement cycle after statutory tax withholding.",
+      "termsTitle": "Agency terms & privacy",
+      "termsDesc": "I agree to the full agency terms and the collection/use of personal information.",
+      "logNote": "Your consent is recorded with the terms version.",
+      "required": "Please agree to all 4 key clauses."
     }
   },
   "nav": {
