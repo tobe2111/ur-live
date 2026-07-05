@@ -95,24 +95,35 @@ const POOLS: Record<Topic, { pos: string[]; mid: string[] }> = {
   },
 }
 
-const TAILS = ['', '', '', ' 추천해요!', ' 강추합니다', ' 또 갈게요', ' 만족스러워요', ' :)']
+const TAILS = ['', '', '', '', ' 또 갈게요', ' 재방문 의사 있어요', ' 만족합니다', ' ㅎㅎ', '~']
+
+// 🎭 방문 맥락 오프너(업종 무관 안전) — 빈 문자열 비중 높게(대부분 리뷰는 바로 본론).
+const OPENERS = ['', '', '', '', '', '주말에 다녀왔는데 ', '평일 저녁에 방문했어요. ', '지인 추천으로 가봤는데 ', '두 번째 방문이에요. ', '예약하고 갔습니다. ', '동네라 자주 가는데 ', '처음 가봤는데 ']
+// 🎭 아주 짧은 한마디형(실제 리뷰 최빈 패턴) — 길이 다양성의 핵심.
+const SHORTS_POS = ['만족합니다', '잘 이용했어요', '좋았어요 또 갈게요', '굿', '재방문 의사 있습니다', '만족스러웠어요 ㅎㅎ', '좋아요', '괜찮았습니다']
 
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)] }
 
-/** 결정론 폴백 — 업종 특색 문구 조합(배송어 없음, 별점별 톤). AI 없이도 다양성 확보(문구 결합·매장명·꼬리). */
+/** 결정론 폴백 — 업종 특색 문구 조합(배송어 없음, 별점별 톤).
+ *  🎭 2026-07-04 (대표 "최대 다양성, AI 티 0"): 길이 극단(한마디~2문장)·오프너·말투 꼬리 조합으로
+ *  같은 상품 안에서도 문장 구조가 겹치지 않게. avoid(이미 쓴 문구) 재시도는 buildStoreReviews 가 담당. */
 export function composeDemoReview(rating: number, topic: Topic, storeName?: string | null): string {
   const pool = POOLS[topic] || POOLS.etc
   if (rating >= 4) {
+    // 25%: 아주 짧은 한마디(업종 무관 실제 최빈 패턴 — 길이 다양성)
+    if (Math.random() < 0.25) return pick(SHORTS_POS)
     let s = pick(pool.pos)
-    // 35% 확률로 두 번째 긍정 문구 결합 → 조합 수 급증(중복 완화, pos×pos)
-    if (Math.random() < 0.35) { const b = pick(pool.pos); if (b !== s) s = `${s} ${b}` }
-    // 22% 확률로 매장명 자연스럽게 앞에 붙임
-    if (storeName && Math.random() < 0.22) s = `${storeName} 다녀왔어요. ${s}`
+    // 30%: 두 번째 긍정 문구 결합(조합 수 급증) / 오프너와 동시엔 안 씀(과장 방지)
+    const opener = pick(OPENERS)
+    if (!opener && Math.random() < 0.3) { const b = pick(pool.pos); if (b !== s) s = `${s} ${b}` }
+    s = opener + s
+    // 15%: 매장명 자연스럽게 앞에(오프너 없을 때만)
+    if (!opener && storeName && Math.random() < 0.15) s = `${storeName} 다녀왔어요. ${s}`
     if (rating >= 5) s += pick(TAILS)
     return s
   }
   let s = pool.mid.length ? pick(pool.mid) : pick(pool.pos)
-  if (storeName && Math.random() < 0.15) s = `${storeName} ${s}`
+  if (storeName && Math.random() < 0.12) s = `${storeName} ${s}`
   return s
 }
 
@@ -144,10 +155,19 @@ async function generateReviewsLLM(env: Env, p: DemoProduct, count: number): Prom
   절대 "배송/택배/포장/도착" 같은 배송형 표현 쓰지 말 것.
 - 그 **업종의 실제 경험**을 구체적으로: (식사=맛/양/직원/재방문, 왁싱·뷰티=위생/시술/예약/원장님,
   숙소=객실/뷰/체크인, 반려미용=아이 상태/스타일, 클라이밍=강습/시설/난이도, 카페=원두/분위기 등)
-- 매장명을 가끔 자연스럽게 녹여도 좋다(전부는 아님).
-- 실제 손님처럼 1~2문장, 구어체, 표현 다양하게(반복 최소). 별점별 톤: 5=매우 만족, 4=만족, 3=보통.
-- 약 15%는 content 를 빈 문자열("")로(별점만).
-- 이모지는 20% 정도만 가볍게.
+
+## 🎭 다양성 — "여러 명의 진짜 사람"이 쓴 것처럼 (가장 중요)
+- 리뷰들끼리 **문장 구조·길이·말투가 절대 겹치지 않게**. 같은 시작 패턴("~가 좋아요") 반복 금지.
+- **길이 극단 섞기**: 30%는 아주 짧게(한 단어~한 마디: "만족합니다", "잘 먹었어요 또 올게요", "굿"),
+  50%는 1~2문장, 20%는 2~3문장으로 디테일 있게.
+- **말투 섞기**: ~요/~습니다/~네요/~음(명사형)/ㅎㅎ/ㅠㅠ 등 실제 리뷰 말투 다양하게. 마침표 없는 문장도 섞기.
+- **구체 디테일**을 절반 이상에 1개씩: 방문 시점(주말 저녁/평일 점심), 동행(친구랑/아이랑/혼자),
+  구체 메뉴·부위·시술 단계·직원 응대 같은 실제 있었을 법한 것. 지어낸 티 나는 과장 금지.
+- **광고체 금지**: "인생맛집", "강추", "최고예요!!" 남발 금지. 담백하고 무심한 톤도 섞기.
+- 별점 3점은 만족+아쉬운 점 1개를 구체적으로(예: "맛은 좋은데 주차가 좀").
+- 매장명은 2~3개 리뷰에만 자연스럽게.
+- 약 15%는 content 를 빈 문자열("")로(별점만 남기는 사람).
+- 이모지는 15% 정도만, 한 개씩.
 - 각 리뷰 별점은 아래 배열을 그대로 사용: [${ratings.join(', ')}]
 
 ## 출력
@@ -185,6 +205,7 @@ export async function buildStoreReviews(env: Env, p: StoreReviewInput, count = 8
   const total = Math.max(1, Math.min(2000, count))
   const out: GenReview[] = []
   const CHUNK = 40
+  const seen = new Set<string>()  // 🎭 같은 상품 안 문구 중복 방지(작은 n 에서 특히 티 남)
   for (let i = 0; i < total; i += CHUNK) {
     const n = Math.min(CHUNK, total - i)
     try {
@@ -192,7 +213,11 @@ export async function buildStoreReviews(env: Env, p: StoreReviewInput, count = 8
     } catch {
       for (let k = 0; k < n; k++) {
         const rating = ratingSample()
-        out.push({ rating, content: Math.random() < 0.15 ? '' : composeDemoReview(rating, topic, p.storeName) })
+        if (Math.random() < 0.15) { out.push({ rating, content: '' }); continue }  // 별점만(실제 최빈 패턴)
+        let content = composeDemoReview(rating, topic, p.storeName)
+        for (let attempt = 0; attempt < 6 && seen.has(content); attempt++) content = composeDemoReview(rating, topic, p.storeName)
+        seen.add(content)
+        out.push({ rating, content })
       }
     }
   }

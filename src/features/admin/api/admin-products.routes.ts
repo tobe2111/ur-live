@@ -1253,7 +1253,8 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       try {
         c.executionCtx.waitUntil(
           import('../../../worker/utils/demo-review-generator').then((m) =>
-            Promise.all(seededForReviews.map((prod) => m.seedDemoReviews(c.env as unknown as Env, prod, 8).catch(() => 0)))
+            // 🎭 상품별 리뷰 수도 6~12 랜덤 — 전 상품 동일 개수(8)면 그 자체가 조작 티.
+            Promise.all(seededForReviews.map((prod) => m.seedDemoReviews(c.env as unknown as Env, prod, 6 + Math.floor(Math.random() * 7)).catch(() => 0)))
           ).then(() =>
             invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {})
           ).catch(() => {})

@@ -134,10 +134,14 @@ publicApp.get('/active', async (c) => {
     const regionJoin = regionParam ? 'JOIN product_regions pr ON pr.product_id = p.id' : ''
     const regionWhere = regionParam ? 'AND pr.region_dong_code LIKE ?' : ''
     const regionBinds = regionParam ? [`${regionParam}%`] : []
+    // 🎯 2026-07-04 (대표 "데모 이용권 노출은 항상 후순위"): is_demo 플래그 + 데모-후순위 정렬 —
+    //   이 목록을 직접 렌더하는 표면(상권관 랜딩 등)에서도 실 상품 먼저, 데모는 뒤.
     const { results: prods } = await DB.prepare(
-      `SELECT p.id, p.name, p.price, p.original_price, p.image_url, p.restaurant_name, p.restaurant_address, p.category
+      `SELECT p.id, p.name, p.price, p.original_price, p.image_url, p.restaurant_name, p.restaurant_address, p.category,
+              (CASE WHEN COALESCE(p.slug,'') LIKE 'demo-deal-%' THEN 1 ELSE 0 END) AS is_demo
          FROM products p ${regionJoin}
-        WHERE p.id IN (${ph}) AND p.is_active=1 ${regionWhere}`
+        WHERE p.id IN (${ph}) AND p.is_active=1 ${regionWhere}
+        ORDER BY is_demo, p.created_at DESC`
     ).bind(...enabledIds, ...regionBinds).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
     // 🧯 2026-07-02: 상품별 COUNT 루프(N+1) → GROUP BY 단일 쿼리 — 캐시 miss 시에도 D1 왕복 상수화.
     const countRows = await DB.prepare(
