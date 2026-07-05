@@ -105,4 +105,6 @@ ALTER agencies ADD business_number / business_registration_status / _image_url /
 4. **에이전시 재개 여부**: 에이전시 온보딩 구현은 `AGENCY_HIDDEN` 해제를 전제. 지금은 셸브 유지(급하지 않음).
 
 ## 구현 로그
-- (미착수) — 본 문서는 스펙 박제. 위 §6 결정 후 착수.
+- 2026-07-05 **법적 문안 5종 공식본 반영** — `src/shared/legal/*`(이용/판매자/에이전시/개인정보/위치기반), 렌더 `/terms`·`/terms/seller`·`/terms/agency`·`/privacy`·`/terms/location`. 개인정보 §5 위탁 실vendor 반영(교환권=KT알파(주), 알림톡·SMS=알리고·솔라피).
+- 2026-07-05 **셀러 clickwrap 인프라 구축** — ① DB `partner_terms_agreements`(repair-schema+ensure, UNIQUE 멱등) ② `GET /api/partner-terms/seller/active` + `validatePartnerConsent`/`recordPartnerTermsAgreement`(`partner-terms.routes.ts`) ③ `PartnerTermsConsent` 4개 개별체크 컴포넌트 ④ `SellerRegisterSupplierPage` 배선 + `register-from-user` 서버 검증·동의기록. ④(사업자검증)는 셀러가 기존 완비(국세청 진위확인). ③(요율변경 30일고지) 운영배선은 Phase 2.
+- **에이전시측**: PARTNER_TERMS.agency 시드·약관 준비됨. AGENCY_HIDDEN 재개 시 동일 공용 컴포넌트로 배선(§0).

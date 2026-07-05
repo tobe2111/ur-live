@@ -268,6 +268,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'idx_products_voucher_active', sql: "CREATE INDEX IF NOT EXISTS idx_products_voucher_active ON products(category, is_active, group_buy_status)" },
     // 🗺️ 2026-06-18: 매장 행정동(洞) 태깅 — restaurant-geocode cron 이 채움 (하이퍼로컬 "내 동네 딜" 토대).
     //   products 컬럼 예산제 회피 위해 별도 테이블. region_dong_code 인덱스로 동별 집계/조인.
+    // 🤝 2026-07-05: 파트너 약관-as-계약 동의기록 (셀러·에이전시 가입 clickwrap). 설계: partner-terms-as-contract.md
+    { desc: 'partner_terms_agreements table', sql: "CREATE TABLE IF NOT EXISTS partner_terms_agreements (id INTEGER PRIMARY KEY AUTOINCREMENT, terms_type TEXT NOT NULL, terms_version INTEGER NOT NULL, subject_type TEXT NOT NULL, subject_id INTEGER NOT NULL, user_id TEXT, per_clause_consent TEXT NOT NULL, ip_address TEXT, user_agent TEXT, agreed_at DATETIME DEFAULT CURRENT_TIMESTAMP, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)" },
+    { desc: 'idx_pta_subject_version', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_pta_subject_version ON partner_terms_agreements (subject_type, subject_id, terms_type, terms_version)" },
     { desc: 'product_regions table', sql: "CREATE TABLE IF NOT EXISTS product_regions (product_id INTEGER PRIMARY KEY, region_si TEXT, region_gu TEXT, region_dong TEXT, region_dong_code TEXT, lat REAL, lng REAL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)" },
     { desc: 'idx_product_regions_dong_code', sql: "CREATE INDEX IF NOT EXISTS idx_product_regions_dong_code ON product_regions(region_dong_code)" },
     // 🗺️ 2026-06-18: 유저 "내 동네" 태깅 — region.routes 가 채움 (GPS/수동). "내 동네 딜" 필터 기준.
