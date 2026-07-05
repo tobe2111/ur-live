@@ -100,6 +100,44 @@ export async function runDailySelfDiagnostic(env: Env) {
     }
   } catch {}
 
+  // 🫀 2026-07-05: 핵심 cron 침묵 감지 — heartbeat 가 허용 간격을 넘긴 cron 표시.
+  //   ⚠️ 이 진단 자체가 cron 이라 cron 전면 사망은 외부 uptime.yml(/api/_healthcheck/cron)이 잡음.
+  //   여기서는 "일부 cron 만 조용히 안 도는" 부분 침묵(스케줄 누락/특정 트리거 drift)을 커버.
+  try {
+    const { getCronHealth } = await import('../utils/cron-heartbeat');
+    const health = await getCronHealth(DB);
+    if (health.stale.length > 0) {
+      for (const s of health.stale) {
+        issues.push(`🔴 Cron 침묵: ${s.label} (${s.name}) — 마지막 실행 ${s.age_min}분 전 (허용 ${s.max_gap_min}분)`);
+      }
+    } else if (!health.bootstrapping) {
+      info.push(`Cron heartbeat: 핵심 ${health.missing.length > 0 ? `정상 (기록 대기 ${health.missing.length}건)` : '전체 정상'}`);
+    }
+  } catch {}
+
+  // 🖥️ 2026-07-05: 프론트(브라우저) 에러 24h 집계 — 수집(frontend_errors)은 2026-05-23부터
+  //   돌고 있었으나 진단이 안 봐서 "대표가 직접 발견" 의존이 남아있던 마지막 축.
+  //   급증 시에만 깨움 + 상시 요약. 상세: /admin/errors
+  try {
+    const row = await DB.prepare(`
+      SELECT COUNT(*) as total, COUNT(DISTINCT message) as distinct_msgs
+      FROM frontend_errors
+      WHERE created_at >= datetime('now', '-24 hours')
+    `).first<{ total: number; distinct_msgs: number }>();
+    if (row && row.total > 0) {
+      info.push(`프론트 에러 24h: ${row.total}건 (고유 ${row.distinct_msgs}종) — /admin/errors`);
+      if (row.total > 30) {
+        const top = await DB.prepare(`
+          SELECT message, COUNT(*) as c FROM frontend_errors
+          WHERE created_at >= datetime('now', '-24 hours')
+          GROUP BY message ORDER BY c DESC LIMIT 3
+        `).all<{ message: string; c: number }>().catch(() => ({ results: [] as Array<{ message: string; c: number }> }));
+        const topStr = (top.results || []).map((t) => `${t.c}× ${t.message.slice(0, 80)}`).join(' / ');
+        issues.push(`⚠️ 프론트 에러 급증: 24h ${row.total}건 — 상위: ${topStr}`);
+      }
+    }
+  } catch {}
+
   // 알림 발송
   if (!webhookUrl) {
     // 🛡️ 2026-04-22: webhook 미설정 알림 — 진단 자체 작동 안 함을 운영자가 인지하도록

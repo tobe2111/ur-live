@@ -72,6 +72,8 @@ import { getFeatureFlags } from './utils/feature-flags';
 //   플래그만 false 로 되돌리면 즉시 복원 — 코드 보존.
 import { LIVE_COMMERCE_SUSPENDED } from '../shared/feature-flags';
 import { logError, logInfo } from './utils/logger';
+// 🫀 2026-07-05: cron 침묵 감지 — 매 실행 heartbeat 기록 (외부 uptime.yml 이 stale 감시).
+import { recordCronHeartbeat } from './utils/cron-heartbeat';
 
 /**
  * 🔔 2026-06-12 (4차 감사 D3): cron 내부 실패 공용 통지 — logError + Discord (fail-soft).
@@ -100,10 +102,14 @@ export async function handleCronScheduled(
   const cron = event.cron;
 
   const safeCron = async (name: string, task: () => Promise<unknown>) => {
+    const t0 = Date.now();
     try {
       await task();
+      // 🫀 heartbeat 는 fail-soft (내부 try-catch) — cron 본연 작업에 절대 영향 없음.
+      await recordCronHeartbeat(env.DB, name, 'ok', Date.now() - t0);
     } catch (err) {
       await notifyCronFailure(env, name, err);
+      await recordCronHeartbeat(env.DB, name, 'fail', Date.now() - t0, err);
     }
   };
 

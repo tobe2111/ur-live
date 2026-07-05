@@ -38,6 +38,10 @@ jobs:
           check "도매 카탈로그" "https://live.ur-team.com/api/wholesale/catalog?limit=1"
           # HTML 셸
           check "메인 페이지 HTML" "https://live.ur-team.com/"
+          # 🫀 2026-07-05: cron 침묵 감지 (dead-man's switch) — 핵심 cron heartbeat 가
+          #   허용 간격을 넘기면 worker 가 503 반환 → 여기서 다운으로 잡혀 이슈 생성.
+          #   cron 내부 자가진단은 cron 전면 사망 시 같이 죽으므로 외부 관측이 필수.
+          check "Cron heartbeat (침묵 감지)" "https://live.ur-team.com/api/_healthcheck/cron"
           if [ -n "$FAILS" ]; then
             echo "down=true" >> "$GITHUB_OUTPUT"
             printf "fails<<EOF\n${FAILS}EOF\n" >> "$GITHUB_OUTPUT"
