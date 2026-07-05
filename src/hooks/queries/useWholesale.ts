@@ -173,11 +173,12 @@ export function useWholesaleMall() {
 
 export function useWholesaleOrders() {
   return useQuery<WholesaleOrderRow[]>({
-    queryKey: queryKeys.wholesale('orders'),
+    queryKey: queryKeys.wholesale('orders', wholesaleMallSeg()),
     // 🛡️ 2026-06-19 (감사): .catch 로 에러를 빈배열로 삼키지 않음 — 전역 retry:1 로 일시 실패 자동 복구.
     //   삼키면 네트워크/5xx 가 '주문 없음'으로 오표시 + staleTime 동안 재시도 0. 소비처는 `data: orders=[]` 안전.
+    //   🏬 2026-07-04: ?mall= 전달(타 몰 컨텍스트에선 주문 이력 비노출) + 몰별 캐시 분리.
     queryFn: () =>
-      api.get('/api/wholesale/orders', sellerAuth()).then((r) => (r.data?.success ? (r.data.orders || []) : [])),
+      api.get(`/api/wholesale/orders${currentWholesaleMallSlug() ? `?mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`, sellerAuth()).then((r) => (r.data?.success ? (r.data.orders || []) : [])),
     enabled: hasSellerToken(),
     staleTime: 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -267,8 +268,9 @@ export function useWholesaleProduct(id: string | undefined) {
 export function useWholesaleMe() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return useQuery<any>({
-    queryKey: queryKeys.wholesale('me'),
-    queryFn: () => api.get('/api/wholesale/me', sellerAuth()).then((r) => (r.data?.success ? r.data : null)),
+    queryKey: queryKeys.wholesale('me', wholesaleMallSeg()),
+    // 🏬 2026-07-04 각 몰 별도 회원 — ?mall= 전달(서버가 타 몰 회원이면 mall_mismatch 반환) + 몰별 캐시 분리.
+    queryFn: () => api.get(`/api/wholesale/me${currentWholesaleMallSlug() ? `?mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`, sellerAuth()).then((r) => (r.data?.success ? r.data : null)),
     enabled: hasSellerToken(),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -314,9 +316,10 @@ export interface WholesaleReorderItem {
 /** 빠른 재주문 — 최근 사입한 상품 + 마지막 수량. */
 export function useWholesaleRecentItems(opts?: { enabled?: boolean }) {
   return useQuery<WholesaleReorderItem[]>({
-    queryKey: queryKeys.wholesale('recent-items'),
+    queryKey: queryKeys.wholesale('recent-items', wholesaleMallSeg()),
     queryFn: () =>
-      api.get('/api/wholesale/recent-items', sellerAuth()).then((r) => (r.data?.success ? (r.data.items || []) : [])).catch(() => []),
+      // 🏬 2026-07-04 각 몰 별도 회원 — ?mall= 전달(타 몰 회원이면 서버가 빈 목록) + 몰별 캐시 분리.
+      api.get(`/api/wholesale/recent-items${currentWholesaleMallSlug() ? `?mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`, sellerAuth()).then((r) => (r.data?.success ? (r.data.items || []) : [])).catch(() => []),
     // 🏭 2026-06-10 (카탈로그 최속화): 호출부가 idle 이후로 미룰 수 있게 enabled 옵션 — 기본 true(기존 동작 불변).
     enabled: hasSellerToken() && (opts?.enabled ?? true),
     staleTime: 60 * 1000,

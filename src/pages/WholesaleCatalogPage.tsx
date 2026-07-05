@@ -331,7 +331,10 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
   const recentQ = useWholesaleRecentItems({ enabled: deferredReady })
   const recent = (recentQ.data ?? []) as ReorderItem[]
   const cart = useWholesaleCart()
-  const loggedIn = !!token
+  // 🏬 2026-07-04 (대표 신고): 각 몰 별도 회원 — 타 몰 계정(서버 /me 가 mall_mismatch)은 이 몰에서 게스트 취급.
+  //   토큰만으로 로그인 판정하면 유통스타트 세션이 메디스타트 프리뷰(?mall=)에 그대로 노출됐음.
+  const mallMismatch = meQ.data?.mall_mismatch === true
+  const loggedIn = !!token && !mallMismatch
   // 로그인한 판매사의 /me 실패(네트워크 오류 등) — 조용히 C등급 표시하지 않도록 에러 구분.
   const meLoadFailed = !!(loggedIn && meQ.isFetched && meQ.isError && !me)
   useEffect(() => {
@@ -583,6 +586,13 @@ export default function WholesaleCatalogPage({ mode }: { mode?: WholesaleCollect
       />
 
       <main className="ur-content-wide px-5 lg:px-8">
+        {/* 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 계정 안내 배너(게스트 강등 이유 설명 + 이 몰 가입 유도). */}
+        {mallMismatch && (
+          <div className="mt-3 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2 flex-wrap" style={{ background: '#FFF7E6', border: '1px solid #FDE1A8', color: '#8A5A00' }}>
+            <span>지금 로그인된 계정은 <b>{meQ.data?.member_mall_name || '다른 몰'}</b> 회원이에요. <b>{mallName}</b>은 별도 가입이 필요합니다.</span>
+            <button onClick={() => navigate('/wholesale/join')} className="font-extrabold underline underline-offset-2">{mallName} 판매사 가입 →</button>
+          </div>
+        )}
         {/* 🏬 컬렉션 모드: 전용 페이지 타이틀 (홈은 배너/히어로/레일 노출). */}
         {collectionMode ? (
           <div className="pt-5 pb-1 flex items-center gap-2.5">
