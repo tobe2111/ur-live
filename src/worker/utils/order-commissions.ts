@@ -92,7 +92,7 @@ async function ensureCapLogTable(DB: D1Database): Promise<void> {
 async function resolveOrderPlatformFeeKrw(DB: D1Database, order: OrderLike): Promise<number> {
   const total = Number(order.total_amount || 0)
   if (!(total > 0)) return 0
-  let rate = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT
+  let rate: number = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT  // as-const 리터럴(5) 추론 방지 — 재대입 number
   try {
     const row = await DB.prepare('SELECT COALESCE(commission_rate, ?) AS rate FROM orders WHERE id = ?')
       .bind(COMMISSION_DEFAULTS.PLATFORM_FEE_PCT, order.id).first<{ rate: number }>()
