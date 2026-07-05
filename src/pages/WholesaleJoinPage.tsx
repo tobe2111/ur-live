@@ -14,7 +14,12 @@ import BusinessCertUpload from '@/components/BusinessCertUpload'
 import { formatBizNo, formatPhoneKr } from '@/utils/format-kr'
 import { consumeWholesaleLoginIntent } from '@/utils/wholesale-session'
 import { digitsOnly, isValidKrPhone, isValidEmail } from '@/utils/form-validators'
-import { useWholesaleMall } from '@/hooks/queries/useWholesale'
+import { useWholesaleMall, currentWholesaleMallSlug } from '@/hooks/queries/useWholesale'
+
+// 🏬 2026-07-04 (대표 신고 — 몰별 별도 회원가입): 가입/전환 POST 에 현재 몰 slug 전달.
+//   서버 registrationMallId 가 ?mall= 을 최우선으로 읽음 — 미전달 시 host(live.ur-team.com=기본 1) 폴백이라
+//   메디스타트(?mall=medi) 가입 폼에서 가입해도 유통스타트(mall 1)로 가입되던 갭 차단.
+const mallQS = () => { const s = currentWholesaleMallSlug(); return s ? `?mall=${encodeURIComponent(s)}` : '' }
 import { WholesaleWordmark } from './wholesale-catalog/WholesaleLogo'
 import { WHOLESALE_CATEGORIES } from './wholesale/wholesale-theme'
 
@@ -35,7 +40,7 @@ export default function WholesaleJoinPage() {
   useEffect(() => {
     // 🏭 2026-06-29 (교과서적 — off-by-default): 명시 로그인 직후 1회만 자동 토큰교환. 아니면 미발화.
     if (!kakaoUser || !consumeWholesaleLoginIntent()) return
-    api.post('/api/wholesale/become-distributor', {})
+    api.post(`/api/wholesale/become-distributor${mallQS()}`, {})
       .then((r) => {
         const d = r.data || {}
         if (d.status === 'pending') setPendingStatus(true)
@@ -143,8 +148,8 @@ export default function WholesaleJoinPage() {
       }
       // 카카오 유저 → become-distributor(세션 인증), 그 외 → register(이메일/비번).
       const res = kakaoUser
-        ? await api.post('/api/wholesale/become-distributor', payload)
-        : await api.post('/api/wholesale/register', { ...payload, email: form.email.trim(), password: form.password })
+        ? await api.post(`/api/wholesale/become-distributor${mallQS()}`, payload)
+        : await api.post(`/api/wholesale/register${mallQS()}`, { ...payload, email: form.email.trim(), password: form.password })
       const data = res.data
       if (!data?.success) throw new Error(data?.error || '신청에 실패했어요')
       // 이미 승인된 셀러(겸업)가 카카오로 유통회원 승급한 경우 → 즉시 로그인.

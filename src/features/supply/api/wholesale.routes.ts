@@ -61,6 +61,15 @@ const app = new Hono<{ Bindings: Env }>()
 //   좁히려면 ['B','C']. 'margin' 관은 정렬(sort=discount)일 뿐 별도 데이터가 아니라 서버 게이트 불필요.
 const PREMIUM_BLOCKED_GRADES: DistributorGrade[] = ['C']
 
+// 🏬 2026-07-04 (대표 신고 — ?mall=medi 에서 유통스타트 세션/빠른재주문 노출): 판매사 소속 몰 조회.
+//   "몰=도메인=계정" 설계는 도메인별 localStorage 분리 전제였으나, 같은 도메인 ?mall= 프리뷰(+API 직접 호출)에선
+//   타 몰 토큰이 회원 표면을 그대로 통과했다 → **회원 표면(me/home/recent-items/catalog 등급가/주문)은
+//   소속 몰에서만 회원으로 인정**(타 몰에선 게스트/차단). 각 몰 별도 로그인·회원가입 원칙의 서버 강제.
+async function sellerMallId(DB: D1Database, sellerId: number): Promise<number> {
+  const r = await DB.prepare('SELECT COALESCE(mall_id, 1) AS m FROM sellers WHERE id = ?').bind(sellerId).first<{ m: number }>().catch(() => null)
+  return Math.floor(Number(r?.m)) || 1
+}
+
 // ── GET /mall — PUBLIC 현재 몰(브랜딩) 조회 ─────────────────────────────────────
 //   🏬 2026-06-09 멀티-몰 테넌시: host → mall(없으면 기본 몰 id=1). 프런트 헤더 브랜드명/로고/색/카테고리용.
 //   ⚠️ 공개 브랜딩 필드만 반환 — deposit_account / commission_rate 절대 비노출.
@@ -694,6 +703,13 @@ app.get('/me', async (c) => {
   const { sellerId, subAccountId, subRole } = await subClaimsFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
   try {
+    // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 판매사면 회원정보 대신 mall_mismatch 만 반환(데이터 비노출).
+    const curMall = await resolveMallId(c)
+    const myMall = await sellerMallId(c.env.DB, sellerId)
+    if (myMall !== curMall) {
+      const member = await loadMallById(c.env.DB, myMall).catch(() => null)
+      return c.json({ success: true, mall_mismatch: true, member_mall_slug: member?.slug ?? 'default', member_mall_name: member?.brand_name || member?.name || '유통스타트' })
+    }
     await ensureCreditSchema(c.env.DB)
     const sg = await loadSellerGrade(c.env.DB, sellerId)
     const table = await loadGradeTable(c.env.DB)
@@ -737,7 +753,10 @@ app.get('/home', async (c) => {
   const { DB } = c.env
   try {
     await Promise.all([ensureSupplyVisibilitySchema(DB), ensureSupplyMetaTable(DB)])
-    const [sg, table, homeMallId, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), resolveMallId(c), loadPlatformCommissionPct(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약). 🛡️ 2026-07-02: commPct(표시=청구 정합).
+    // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 판매사의 회원 홈 차단(빠른재주문/등급가 등 회원 데이터).
+    const homeMallId = await resolveMallId(c)
+    if (await sellerMallId(DB, sellerId) !== homeMallId) return c.json({ success: false, error: '이 몰의 회원이 아닙니다', code: 'MALL_MISMATCH' }, 401)
+    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadPlatformCommissionPct(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약). 🛡️ 2026-07-02: commPct(표시=청구 정합).
     const grade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
     // 🏁 2026-06-12 (전 플로우 감사 🟡): /home 만 mall_id 스코프 누락 — 멀티몰 2개+ 가동 시
     //   베스트/신상에 타 몰 상품 노출(주문은 차단되나 혼선). 카탈로그(:1090)와 동일 조건으로 정합.
@@ -787,6 +806,8 @@ app.get('/recent-items', async (c) => {
   try {
     await ensureOrderTables(DB)
     await ensureSupplyVisibilitySchema(DB)
+    // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 판매사의 '빠른 재주문'(타 몰 사입 이력) 노출 차단(대표 신고 증상).
+    if (await sellerMallId(DB, sellerId) !== await resolveMallId(c)) return c.json({ success: true, items: [] })
     // 최근 주문 라인 (상품별 최신 1건 — JS dedupe). 결제완료 이상만.
     const lines = await DB.prepare(`
       SELECT i.product_id AS product_id, i.qty AS qty, o.created_at AS created_at
@@ -834,8 +855,10 @@ app.get('/catalog', async (c) => {
   // 🏭 2026-06-04 몰-first: 비로그인도 카탈로그 둘러보기 가능. 가격(등급 공급가)은 로그인 시에만.
   //   비로그인 → distributor_price=null + requires_login. 가시성은 ALL 만(허용목록 매칭 X).
   // 🔐 2026-06-11: Bearer 없으면 ud_seller_token 쿠키 fallback (beta SSR 개인화 — GET 전용 helper).
-  const sellerId = (await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET))
+  let sellerId = (await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET))
     ?? (await sellerIdFromCookieGet(c, c.env.JWT_SECRET))
+  // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 판매사는 이 몰 카탈로그에서 게스트(등급가 비노출) 강등.
+  if (sellerId && (await sellerMallId(c.env.DB, sellerId)) !== (await resolveMallId(c))) sellerId = null
   const guest = !sellerId
   // 🛡️ 2026-06-29: 인증 시도(무효 토큰/쿠키)가 있었으면 guest 라도 public 공유캐시 금지(v=in 키 오염→누수 차단).
   const authAttempt = !!c.req.header('Authorization') || /(?:^|;\s*)ud_seller_token=/.test(c.req.header('Cookie') || '')
@@ -1216,8 +1239,10 @@ app.get('/catalog/:id{[0-9]+}', async (c) => {
   //   공유캐시를 절대 안 읽음(로그인 응답은 private,no-store). 대표 신고 "상세만 공급가 미설정 간헐" 근본수정. 2026-06-29.
   // 🏭 2026-06-04 몰-first: 비로그인도 상품 상세 열람 가능. 가격(등급가/권장가/tier)은 로그인 시에만.
   // 🔐 2026-06-11: Bearer 없으면 ud_seller_token 쿠키 fallback (beta SSR 개인화 — GET 전용 helper).
-  const sellerId = (await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET))
+  let sellerId = (await sellerIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET))
     ?? (await sellerIdFromCookieGet(c, c.env.JWT_SECRET))
+  // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 판매사는 이 몰 상세에서 게스트(등급가 비노출) 강등.
+  if (sellerId && (await sellerMallId(c.env.DB, sellerId)) !== (await resolveMallId(c))) sellerId = null
   const guest = !sellerId
   // 🛡️ 2026-06-29 잔여 누수 차단: 토큰/쿠키를 *보냈는데* 무효(만료 등)인 요청은 비록 guest 로 떨어져도 절대
   //   public 공유캐시 금지 — 그 'null 가격' 응답이 v=in 키에 캐시돼 유효토큰 유저에게 누수되는 구멍을 막음.
@@ -1400,6 +1425,10 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
   // 🔐 2026-06-24 (전수조사): 승인 후 정지·거부된 판매사가 만료 전 토큰으로 발주(예치금 차감)하던 갭 차단.
   if (await isSellerBlocked(DB, sellerId)) {
     return c.json({ success: false, error: '계정이 정지·승인대기 상태입니다. 관리자에게 문의해주세요.', code: 'ACCOUNT_NOT_ACTIVE' }, 403)
+  }
+  // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 판매사의 이 몰 발주 차단(상품 몰스코프로도 걸러지지만 명확한 에러 우선).
+  if (await sellerMallId(DB, sellerId) !== await resolveMallId(c)) {
+    return c.json({ success: false, error: '이 몰의 회원이 아닙니다. 해당 몰에 별도 가입 후 이용해주세요.', code: 'MALL_MISMATCH' }, 403)
   }
   try {
     await ensureOrderTables(DB)
@@ -1874,6 +1903,8 @@ app.get('/orders', async (c) => {
   const { DB } = c.env
   try {
     await ensureOrderTables(DB)
+    // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 컨텍스트에선 이 판매사의 주문 이력 비노출.
+    if (await sellerMallId(DB, sellerId) !== await resolveMallId(c)) return c.json({ success: true, orders: [] })
     const { results } = await DB.prepare(`
       SELECT id, toss_order_id, status, grade,
              COALESCE(subtotal, 0) AS subtotal,
