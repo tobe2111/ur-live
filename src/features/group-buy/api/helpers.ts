@@ -577,6 +577,77 @@ ${data.restaurantName} 사장님,
 }
 
 /**
+ * 📣 2026-07-05 (운영 감사 Q4 — "판매될 때마다 사장님이 알아야"): 건별 판매 알림톡.
+ *   첫 판매는 sendSellerFirstVoucherAlimtalk(온보딩 상세)가 담당 — 이 함수는 2번째 판매부터.
+ *   호출측(group-buy.routes)이 first_voucher_notified 로 분기해 첫 판매 이중발송 없음.
+ */
+export async function sendSellerVoucherSoldAlimtalk(
+  env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+  phone: string,
+  data: { restaurantName: string; productName: string; qty: number; amount: number }
+): Promise<void> {
+  if (!env.ALIMTALK_API_KEY || !phone) return
+  try {
+    const cleanPhone = phone.replace(/[^0-9]/g, '')
+    if (!/^01\d{8,9}$/.test(cleanPhone)) return
+    const message = `[유어딜] 🎟️ 이용권 판매
+
+${data.restaurantName}
+"${data.productName}" ${data.qty}장 · ₩${Number(data.amount).toLocaleString('ko-KR')}
+
+손님이 곧 방문할 수 있어요. 판매/사용 현황:
+https://live.ur-team.com/seller/group-buy
+
+문의: 유어딜 고객센터`
+    await fetch('https://api.solapi.com/messages/v4/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
+      }),
+      signal: AbortSignal.timeout(10000),
+    }).catch(swallow('helpers:alimtalk:seller-voucher-sold'))
+  } catch { /* graceful */ }
+}
+
+/**
+ * 📣 2026-07-05 (운영 감사 Q4): 손님이 **셀프(PIN/매장코드)** 로 사용 처리했을 때 사장님 알림톡.
+ *   사장님이 직접 스캔(use-by-seller)한 경우는 본인이 실행자라 발송하지 않음(호출측 책임).
+ */
+export async function sendSellerVoucherUsedAlimtalk(
+  env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+  phone: string,
+  data: { restaurantName: string; productName: string; usedAt?: string }
+): Promise<void> {
+  if (!env.ALIMTALK_API_KEY || !phone) return
+  try {
+    const cleanPhone = phone.replace(/[^0-9]/g, '')
+    if (!/^01\d{8,9}$/.test(cleanPhone)) return
+    const ts = data.usedAt ? new Date(data.usedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
+    const message = `[유어딜] ✅ 이용권 사용 처리됨
+
+${data.restaurantName}
+"${data.productName}"${ts ? `
+사용 시각: ${ts}` : ''}
+
+손님이 매장에서 셀프 사용 처리했어요.
+정산은 사용 +7일 후 등록 계좌로 자동 진행됩니다.
+
+사용 내역: https://live.ur-team.com/seller/group-buy
+
+문의: 유어딜 고객센터`
+    await fetch('https://api.solapi.com/messages/v4/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
+      }),
+      signal: AbortSignal.timeout(10000),
+    }).catch(swallow('helpers:alimtalk:seller-voucher-used'))
+  } catch { /* graceful */ }
+}
+
+/**
  * 🛡️ 2026-05-16: voucher 사용 완료 알림톡 (매장이 QR 스캔 직후).
  */
 export async function sendBuyerVoucherUsedAlimtalk(

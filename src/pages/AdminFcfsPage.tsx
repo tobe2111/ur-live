@@ -19,12 +19,24 @@ interface Applicant {
   user_phone?: string
 }
 
+// 🎲 2026-07-05 (Q9 공정성 증빙): 추첨 실행 이력 — 실행자·방식·풀 크기·당첨자 수.
+interface DrawLog {
+  id: number
+  admin_id: string | null
+  method: string
+  requested_count: number | null
+  pool_size: number
+  winners: string
+  created_at: string
+}
+
 export default function AdminFcfsPage() {
   const [productId, setProductId] = useState('')
   const [loading, setLoading] = useState(false)
   const [cfg, setCfg] = useState({ enabled: false, spots: 5, appliedSeed: 100, deadline: '' })
   const [realApplied, setRealApplied] = useState(0)
   const [applicants, setApplicants] = useState<Applicant[]>([])
+  const [draws, setDraws] = useState<DrawLog[]>([])
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [randomCount, setRandomCount] = useState('')
 
@@ -35,14 +47,16 @@ export default function AdminFcfsPage() {
     if (!valid) { toast.error('상품 ID를 입력하세요'); return }
     setLoading(true)
     try {
-      const [cfgRes, appRes] = await Promise.all([
+      const [cfgRes, appRes, drawRes] = await Promise.all([
         api.get(`/api/fcfs/${pid}`),
         api.get(`/api/admin/fcfs/${pid}/applicants`),
+        api.get(`/api/admin/fcfs/${pid}/draws`).catch(() => ({ data: { data: [] } })),
       ])
       const d = cfgRes.data?.data
       if (d) setCfg({ enabled: !!d.enabled, spots: d.spots || 0, appliedSeed: d.appliedSeed || 0, deadline: d.deadline || '' })
       setRealApplied(d?.realApplied || 0)
       setApplicants(appRes.data?.data || [])
+      setDraws(drawRes.data?.data || [])
       setChecked(new Set())
     } catch {
       toast.error('불러오기 실패')
@@ -159,6 +173,30 @@ export default function AdminFcfsPage() {
                 </div>
               )}
             </div>
+
+            {/* 추첨 실행 이력 — 공정성 증빙(실행자·방식·응모 풀·당첨자) */}
+            {draws.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                <p className="text-sm font-bold text-gray-900 mb-1">추첨 실행 이력 ({draws.length})</p>
+                <p className="text-[11px] text-gray-400 mb-3">모든 추첨은 crypto 난수 + 응모자 풀 스냅샷과 함께 기록됩니다 — 공정성 증빙용</p>
+                <div className="divide-y divide-gray-100">
+                  {draws.map((dr) => {
+                    let winnersCount = 0
+                    try { winnersCount = (JSON.parse(dr.winners) as string[]).length } catch { /* 표시용 */ }
+                    return (
+                      <div key={dr.id} className="py-2.5 flex items-center gap-3 text-sm">
+                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${dr.method === 'manual' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                          {dr.method === 'manual' ? '수동 지정' : 'crypto 랜덤'}
+                        </span>
+                        <span className="text-gray-900 font-semibold">{winnersCount}명 당첨</span>
+                        <span className="text-gray-400 text-[12px]">풀 {formatNumber(dr.pool_size)}명</span>
+                        <span className="text-gray-400 text-[12px] ml-auto">관리자 #{dr.admin_id || '?'} · {dr.created_at}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

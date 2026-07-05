@@ -2789,6 +2789,8 @@
       "colPeriod": "기간",
       "colStore": "매장",
       "colUsed": "사용 수",
+      "colRevenue": "판매액",
+      "colFee": "수수료",
       "colAmount": "정산액",
       "colStatus": "상태",
       "statusPending": "대기",

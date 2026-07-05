@@ -68,6 +68,15 @@ const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: str
     key: 'agency_signup_bonus_monthly_budget_krw', label: '에이전시 signup 보너스 월 예산 (원, 0=무제한)', default: '0',
     hint: '₩30,000 정액 보너스의 월 상한',
   },
+  // 🥇 2026-07-05 (운영 감사 Q10): 캡 발동 시 어느 축을 먼저 보전할지 — "에이전시 1% 보호 최우선" 자문.
+  {
+    key: 'commission_priority_axes', label: '캡 발동 시 우선 보전 축', default: 'agency_intro',
+    options: [
+      { value: 'agency_intro', label: '에이전시 매장영입 최우선 (권장)' },
+      { value: '', label: '우선 없음 — 전 축 비례 축소' },
+    ],
+    hint: '계약 기반(24개월) 에이전시 커미션을 캡 축소에서 먼저 보전. 발동 이력은 아래 표',
+  },
 ]
 
 export default function AdminPlatformSettingsPage() {
@@ -202,6 +211,9 @@ export default function AdminPlatformSettingsPage() {
               ))}
             </div>
           </div>
+
+          {/* 📊 Q10 캡 관측성 — 발동 이력 (order-commissions 가 Σ요청>예산 주문만 기록) */}
+          <CommissionCapLogsSection />
           </>
         )}
       </div>
@@ -252,6 +264,61 @@ function KtAlphaSystemSellerSection() {
       </button>
       {result && <p className="mt-2 text-xs text-emerald-700 font-bold">✅ {result}</p>}
       {error && <p className="mt-2 text-xs text-red-600 font-bold">❌ {error}</p>}
+    </div>
+  )
+}
+
+// 📊 2026-07-05 (운영 감사 Q10): 커미션 예산 캡 발동 이력 — "캡이 언제 누굴 얼마 깎았나"를
+//   어드민이 직접 확인. 발동 0건이면 안내문만(게이트 OFF/여유 예산 = 정상).
+function CommissionCapLogsSection() {
+  interface CapLog { id: number; order_id: number; budget_krw: number; requested_krw: number; granted_krw: number; detail: string | null; created_at: string }
+  const logsQ = useApiQuery<CapLog[]>(
+    ['admin', 'commission-budget-logs'],
+    '/api/admin/tools/commission-budget-logs',
+    { select: (r: any) => (r?.success ? r.data || [] : []) },
+  )
+  const logs = logsQ.data || []
+  return (
+    <div className="bg-white rounded-xl border border-gray-200">
+      <div className="px-5 pt-4 pb-2">
+        <p className="text-sm font-bold text-gray-900">커미션 캡 발동 이력</p>
+        <p className="text-xs text-gray-400 mt-0.5">Σ요청 커미션이 주문 예산(수수료−PG준비금)을 넘어 비례/우선 축소가 실행된 주문 — 최근 100건</p>
+      </div>
+      {logs.length === 0 ? (
+        <p className="px-5 pb-4 text-sm text-gray-400">발동 이력이 없습니다 (캡 OFF 또는 예산 내 정상)</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[11px] text-gray-400 border-b border-gray-100">
+                <th className="px-5 py-2 font-semibold">주문</th>
+                <th className="px-2 py-2 font-semibold text-right">예산</th>
+                <th className="px-2 py-2 font-semibold text-right">요청</th>
+                <th className="px-2 py-2 font-semibold text-right">배분</th>
+                <th className="px-5 py-2 font-semibold">축별 내역 · 시각</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map(l => {
+                let axes = ''
+                try {
+                  const d = JSON.parse(l.detail || '[]') as Array<{ key: string; requestedKrw: number; grantedKrw: number }>
+                  axes = d.map(g => `${g.key} ${g.requestedKrw.toLocaleString()}→${g.grantedKrw.toLocaleString()}`).join(' · ')
+                } catch { /* 표시용 */ }
+                return (
+                  <tr key={l.id} className="border-b border-gray-50 last:border-0">
+                    <td className="px-5 py-2 font-semibold text-gray-900">#{l.order_id}</td>
+                    <td className="px-2 py-2 text-right text-gray-600">{Number(l.budget_krw).toLocaleString()}</td>
+                    <td className="px-2 py-2 text-right text-red-500 font-semibold">{Number(l.requested_krw).toLocaleString()}</td>
+                    <td className="px-2 py-2 text-right text-gray-900 font-semibold">{Number(l.granted_krw).toLocaleString()}</td>
+                    <td className="px-5 py-2 text-[11px] text-gray-500">{axes}<span className="text-gray-300"> · {l.created_at}</span></td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

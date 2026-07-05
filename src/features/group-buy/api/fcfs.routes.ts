@@ -42,7 +42,46 @@ async function ensureFcfsTable(DB: D1Database) {
       UNIQUE(product_id, user_id)
     )`).run()
     await DB.prepare("CREATE INDEX IF NOT EXISTS idx_fcfs_app_product ON fcfs_applications(product_id, status)").run()
+    // 🎲 2026-07-05 (운영 감사 Q9 — 추첨 공정성 증빙): 추첨 실행 기록. "당첨이 조작 아니냐"에
+    //   답할 수 있도록 실행자·방식·응모자 풀 스냅샷·당첨자를 영구 보관. 지자체(B2G) 체험단
+    //   사업 정산 증빙으로도 제출 가능.
+    await DB.prepare(`CREATE TABLE IF NOT EXISTS fcfs_draw_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL,
+      admin_id TEXT,
+      method TEXT NOT NULL,
+      requested_count INTEGER,
+      pool_size INTEGER NOT NULL,
+      pool_snapshot TEXT,
+      winners TEXT NOT NULL,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )`).run()
+    await DB.prepare("CREATE INDEX IF NOT EXISTS idx_fcfs_draw_product ON fcfs_draw_logs(product_id, created_at)").run()
   } catch { /* ignore */ }
+}
+
+/**
+ * 편향 없는 crypto 정수 [0, maxExclusive) — modulo 편향을 rejection sampling 으로 제거.
+ * SQLite RANDOM() 은 시드/구현이 불투명해 공정성 증빙에 부적합 — WebCrypto CSPRNG 사용.
+ */
+function cryptoInt(maxExclusive: number): number {
+  if (maxExclusive <= 1) return 0
+  const buf = new Uint32Array(1)
+  const limit = Math.floor(0x100000000 / maxExclusive) * maxExclusive
+  for (;;) {
+    crypto.getRandomValues(buf)
+    if (buf[0] < limit) return buf[0] % maxExclusive
+  }
+}
+
+/** Fisher-Yates (crypto) — 앞에서 n 개가 당첨. 원본 배열 비파괴. */
+function cryptoShuffle<T>(arr: T[]): T[] {
+  const a = arr.slice()
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = cryptoInt(i + 1)
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
 }
 
 interface FcfsConfig { enabled: boolean; spots: number; appliedSeed: number; deadline: string | null }
@@ -195,6 +234,21 @@ adminApp.get('/:productId/applicants', async (c) => {
   } catch (err) { return safeError(c, err, '지원자 조회 실패', '[fcfs]') }
 })
 
+// 🎲 2026-07-05 (Q9): 추첨 실행 이력 — 공정성 증빙 열람용(실행자·방식·풀 크기·당첨자).
+adminApp.get('/:productId/draws', async (c) => {
+  try {
+    const DB = c.env.DB
+    const productId = parseInt(c.req.param('productId') || '', 10)
+    if (!Number.isFinite(productId)) return c.json({ success: false, error: 'bad id' }, 400)
+    await ensureFcfsTable(DB)
+    const { results } = await DB.prepare(
+      `SELECT id, admin_id, method, requested_count, pool_size, winners, created_at
+       FROM fcfs_draw_logs WHERE product_id=? ORDER BY created_at DESC LIMIT 50`
+    ).bind(productId).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+    return c.json({ success: true, data: results || [] })
+  } catch (err) { return safeError(c, err, '추첨 이력 조회 실패', '[fcfs]') }
+})
+
 adminApp.post('/:productId/select', async (c) => {
   try {
     const DB = c.env.DB
@@ -203,16 +257,35 @@ adminApp.post('/:productId/select', async (c) => {
     const body = await c.req.json<{ winners?: string[]; count?: number }>().catch(() => ({} as { winners?: string[]; count?: number }))
     await ensureFcfsTable(DB)
 
+    // 🎲 2026-07-05 (Q9 공정성): 추첨 방식 교체 — SQLite `ORDER BY RANDOM()`(재현/증빙 불가) →
+    //   응모자 풀 전체를 읽어 WebCrypto Fisher-Yates 로 셔플. 실행 내역(실행자·방식·풀·당첨자)을
+    //   fcfs_draw_logs 에 영구 기록해 "공정했는가"에 데이터로 답한다.
+    const { results: poolRows } = await DB.prepare(
+      "SELECT user_id FROM fcfs_applications WHERE product_id=? AND status='applied' ORDER BY created_at ASC"
+    ).bind(productId).all<{ user_id: string }>().catch(() => ({ results: [] as { user_id: string }[] }))
+    const pool = (poolRows || []).map(r => r.user_id)
+
     let winnerIds: string[] = []
+    let method = 'crypto_random'
     if (Array.isArray(body.winners) && body.winners.length > 0) {
-      winnerIds = body.winners.map(String)
+      // 수동 지정 — 풀에 실제 존재하는 응모자만 인정(임의 uid 주입 차단).
+      const poolSet = new Set(pool)
+      winnerIds = body.winners.map(String).filter(uid => poolSet.has(uid))
+      method = 'manual'
     } else if (body.count && body.count > 0) {
-      // 랜덤 N명 (applied 중)
-      const { results } = await DB.prepare("SELECT user_id FROM fcfs_applications WHERE product_id=? AND status='applied' ORDER BY RANDOM() LIMIT ?")
-        .bind(productId, Math.floor(body.count)).all<{ user_id: string }>().catch(() => ({ results: [] as { user_id: string }[] }))
-      winnerIds = (results || []).map(r => r.user_id)
+      winnerIds = cryptoShuffle(pool).slice(0, Math.floor(body.count))
     }
     if (winnerIds.length === 0) return c.json({ success: false, error: '선정할 지원자가 없습니다' }, 400)
+
+    // 감사 로그 — 알림/상태 갱신 전에 기록(실패해도 추첨은 진행, fail-soft).
+    const adminId = String(c.get('user')?.id || '')
+    await DB.prepare(
+      `INSERT INTO fcfs_draw_logs (product_id, admin_id, method, requested_count, pool_size, pool_snapshot, winners)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      productId, adminId, method, Math.floor(Number(body.count) || winnerIds.length),
+      pool.length, JSON.stringify(pool.slice(0, 5000)), JSON.stringify(winnerIds),
+    ).run().catch(() => {})
 
     const prod = await DB.prepare("SELECT name, restaurant_name, category, deal_only FROM products WHERE id=?").bind(productId).first<{ name?: string; restaurant_name?: string; category?: string; deal_only?: number }>().catch(() => null)
     const dealName = prod?.restaurant_name || prod?.name || '추첨 공구'
