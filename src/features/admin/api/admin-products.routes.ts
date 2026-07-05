@@ -1177,6 +1177,48 @@ adminProductsRoutes.put('/dongnedeal/price-bands', cors(), async (c) => {
   } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
 });
 
+// 📊 2026-07-05 (대표 "데모가 만든 데이터를 활용하면 되지 않을까"): **응모 수요 인사이트** —
+//   데모에 대한 **실제 유저 응모**(fcfs_applications 행 = 전부 실유저, 표시용 시드 미포함)를
+//   업종·지역·가격대로 집계. ① 어디부터 입점 영업할지(수요 증거) ② 가격 수용성(응모 많은 가격대)
+//   ③ 쌓이면 밴드 자동 보정 근거. 데모의 부산물이 아니라 데모의 **본래 목적** 데이터.
+adminProductsRoutes.get('/dongnedeal/demand-insights', cors(), async (c) => {
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT p.id, p.name, p.price, p.restaurant_name, p.restaurant_address,
+             bm.value AS biz, COALESCE(a.cnt, 0) AS applies
+        FROM products p
+        LEFT JOIN product_supply_meta bm ON bm.product_id = p.id AND bm.key = 'demo_biz'
+        LEFT JOIN (SELECT product_id, COUNT(*) AS cnt FROM fcfs_applications GROUP BY product_id) a
+               ON a.product_id = p.id
+       WHERE p.slug LIKE ?
+       ORDER BY applies DESC
+       LIMIT 500
+    `).bind(DEAL_DEMO_SLUG + '%').all<{ id: number; name: string; price: number; restaurant_name: string | null; restaurant_address: string | null; biz: string | null; applies: number }>();
+    const rows = results || [];
+    const byBiz = new Map<string, { products: number; applies: number; priceSum: number }>();
+    const byGu = new Map<string, { products: number; applies: number }>();
+    for (const r of rows) {
+      const biz = r.biz || '(태그 없음)';
+      const b = byBiz.get(biz) || { products: 0, applies: 0, priceSum: 0 };
+      b.products++; b.applies += r.applies; b.priceSum += r.price || 0; byBiz.set(biz, b);
+      const gu = (r.restaurant_address || '').match(/([가-힣]+구)/)?.[1] || '(기타)';
+      const g = byGu.get(gu) || { products: 0, applies: 0 };
+      g.products++; g.applies += r.applies; byGu.set(gu, g);
+    }
+    const biz = [...byBiz.entries()].map(([k, v]) => ({
+      biz: k, products: v.products, applies: v.applies,
+      avg_price: Math.round(v.priceSum / Math.max(1, v.products)),
+      applies_per_product: Math.round((v.applies / Math.max(1, v.products)) * 10) / 10,
+    })).sort((x, y) => y.applies - x.applies);
+    const regions = [...byGu.entries()].map(([k, v]) => ({ gu: k, products: v.products, applies: v.applies }))
+      .sort((x, y) => y.applies - x.applies);
+    const top = rows.filter((r) => r.applies > 0).slice(0, 20).map((r) => ({
+      id: r.id, name: r.name, store: r.restaurant_name, price: r.price, applies: r.applies,
+    }));
+    return c.json({ success: true, biz, regions, top, total_applies: rows.reduce((s2, r) => s2 + r.applies, 0), total_products: rows.length });
+  } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
+});
+
 // 🎯 2026-07-01 (대표 "데모 이용권도 매장 지도 매칭 제대로"): 데모 매장은 가공 이름 + 번지 없는 주소라
 //   좌표/place_url 이 없음 → 카카오 키워드 검색으로 실제 매장의 좌표·주소·place_url 을 붙여 지도 매칭 정상화.
 //   best-effort: 키 없거나 결과 없으면 null → 시딩은 그대로 진행(기존 폴백).
@@ -1481,6 +1523,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
             fcfs_spots: spots,
             fcfs_applied_seed: pickApplicants(spots * (3 + Math.floor(Math.random() * 4))),
             fcfs_deadline: fcfsDeadline,
+            demo_biz: t.pq,  // 📊 수요 인사이트 그룹핑 키(업종별 실응모 집계)
             ...(isPrelaunch ? { prelaunch: '1' } : {}),  // 🏷️ 오픈 예정형 표시(소비자 배지·CTA 분기)
           }).catch(() => {});
         }

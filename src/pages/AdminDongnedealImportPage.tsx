@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Upload, Download, PackagePlus, CheckCircle2, AlertTriangle } from 'lucide-react'
@@ -73,6 +74,17 @@ export default function AdminDongnedealImportPage() {
       const r = await api.get('/api/admin/dongnedeal/price-bands', h)
       if (r.data?.success) { setBands(r.data.data || []); setBandsUpdatedAt(r.data.updated_at || null) }
     } catch { toast.error('밴드 불러오기 실패') }
+  }
+  // 📊 2026-07-05 (대표 "데모가 만든 데이터 활용"): 응모 수요 인사이트 — 실유저 응모 집계.
+  const [insightsOpen, setInsightsOpen] = useState(false)
+  const [insights, setInsights] = useState<{ biz: Array<{ biz: string; products: number; applies: number; avg_price: number; applies_per_product: number }>; regions: Array<{ gu: string; products: number; applies: number }>; top: Array<{ id: number; name: string; store: string | null; price: number; applies: number }>; total_applies: number; total_products: number } | null>(null)
+  const openInsights = async () => {
+    if (insightsOpen) { setInsightsOpen(false); return }
+    setInsightsOpen(true)
+    try {
+      const r = await api.get('/api/admin/dongnedeal/demand-insights', h)
+      if (r.data?.success) setInsights(r.data)
+    } catch { toast.error('인사이트 불러오기 실패') }
   }
   const saveBands = async () => {
     setBandsSaving(true)
@@ -282,6 +294,79 @@ export default function AdminDongnedealImportPage() {
             {stats.demo > 0 && <p className="text-[11px] text-amber-600 mt-2">⚠️ 데모 상품 {stats.demo}개가 동네딜에 섞여 있습니다 — 실상품 등록 전 정리를 권장합니다.</p>}
           </div>
         )}
+
+        {/* 📊 응모 수요 인사이트 — 데모가 만드는 실유저 수요 데이터(입점 영업·가격 수용성 근거) */}
+        <div className={card}>
+          <button onClick={openInsights} className="w-full flex items-center justify-between text-left">
+            <p className="text-sm font-bold text-gray-900">📊 응모 수요 인사이트 (실유저 응모만 — 표시용 시드 제외)</p>
+            <span className="text-[12px] text-gray-400">{insightsOpen ? '접기 ▲' : '펼치기 ▼'}</span>
+          </button>
+          {insightsOpen && (
+            insights ? (
+              <div className="mt-3 space-y-4">
+                <p className="text-[12px] text-gray-500">데모 {insights.total_products}개 · 누적 실응모 <b className="text-gray-900">{insights.total_applies}건</b> — 이 숫자가 입점 영업 무기이자 가격 수용성 데이터입니다.</p>
+                <div className="grid lg:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[12px] font-bold text-gray-700 mb-1.5">업종별 (응모 많은 순)</p>
+                    <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-100">
+                      <table className="w-full text-[12px]">
+                        <thead className="bg-gray-50 text-gray-500 sticky top-0"><tr><th className="text-left px-2 py-1.5">업종</th><th className="text-right px-2 py-1.5">상품</th><th className="text-right px-2 py-1.5">평균가</th><th className="text-right px-2 py-1.5">실응모</th><th className="text-right px-2 py-1.5">응모/상품</th></tr></thead>
+                        <tbody>
+                          {insights.biz.map((b) => (
+                            <tr key={b.biz} className="border-t border-gray-100 text-gray-700">
+                              <td className="px-2 py-1">{b.biz}</td>
+                              <td className="px-2 py-1 text-right">{b.products}</td>
+                              <td className="px-2 py-1 text-right">{Math.round(b.avg_price / 1000)}천원</td>
+                              <td className="px-2 py-1 text-right font-bold text-gray-900">{b.applies}</td>
+                              <td className="px-2 py-1 text-right">{b.applies_per_product}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[12px] font-bold text-gray-700 mb-1.5">지역(구)별 실응모</p>
+                    <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-100">
+                      <table className="w-full text-[12px]">
+                        <thead className="bg-gray-50 text-gray-500 sticky top-0"><tr><th className="text-left px-2 py-1.5">구</th><th className="text-right px-2 py-1.5">상품</th><th className="text-right px-2 py-1.5">실응모</th></tr></thead>
+                        <tbody>
+                          {insights.regions.map((g) => (
+                            <tr key={g.gu} className="border-t border-gray-100 text-gray-700">
+                              <td className="px-2 py-1">{g.gu}</td>
+                              <td className="px-2 py-1 text-right">{g.products}</td>
+                              <td className="px-2 py-1 text-right font-bold text-gray-900">{g.applies}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+                {insights.top.length > 0 && (
+                  <div>
+                    <p className="text-[12px] font-bold text-gray-700 mb-1.5">응모 상위 상품 (입점 영업 1순위 — "이 매장에 N명 대기 중")</p>
+                    <div className="max-h-44 overflow-y-auto rounded-lg border border-gray-100">
+                      <table className="w-full text-[12px]">
+                        <thead className="bg-gray-50 text-gray-500 sticky top-0"><tr><th className="text-left px-2 py-1.5">상품</th><th className="text-left px-2 py-1.5">매장</th><th className="text-right px-2 py-1.5">가격</th><th className="text-right px-2 py-1.5">실응모</th></tr></thead>
+                        <tbody>
+                          {insights.top.map((t2) => (
+                            <tr key={t2.id} className="border-t border-gray-100 text-gray-700">
+                              <td className="px-2 py-1 truncate max-w-[200px]">{t2.name}</td>
+                              <td className="px-2 py-1 truncate max-w-[140px]">{t2.store || '-'}</td>
+                              <td className="px-2 py-1 text-right">{formatNumber(t2.price)}원</td>
+                              <td className="px-2 py-1 text-right font-bold text-gray-900">{t2.applies}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : <p className="mt-3 text-[12px] text-gray-400">불러오는 중…</p>
+          )}
+        </div>
 
         {/* 💰 업종별 가격 밴드 보정 — 시세 스냅샷 낡음 방지(물가 변동 시 배율로 보정) */}
         <div className={card}>
