@@ -325,7 +325,8 @@ export default function AdminWholesaleMallsPage() {
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">{t('admin.mall.commission', { defaultValue: '수수료율 (%)' })}</label>
                   <input type="number" step="0.1" value={form.commission_rate} onChange={(e) => setForm((f) => ({ ...f, commission_rate: e.target.value }))}
-                    className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400" placeholder="5" />
+                    className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400" placeholder="10" />
+                  <p className="text-[11px] text-gray-400 mt-1">이 몰의 플랫폼 마진%(공급가 = 원가×(1+%)). 비우면 전역 수수료 사용 — 표시가·결제가에 즉시 적용.</p>
                 </div>
               </div>
 
