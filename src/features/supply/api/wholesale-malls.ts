@@ -187,6 +187,12 @@ export async function loadMallBySlug(DB: D1Database, slug: string): Promise<Whol
   return cache.bySlug.get(slug) ?? null
 }
 
+/** 🏬 판매사 소속 몰 id (없으면 1) — 회원 표면(문서/보고서/수수료)의 몰별 설정 기준. */
+export async function sellerMallIdOf(DB: D1Database, sellerId: number): Promise<number> {
+  const r = await DB.prepare('SELECT COALESCE(mall_id, 1) AS m FROM sellers WHERE id = ?').bind(sellerId).first<{ m: number }>().catch(() => null)
+  return Math.floor(Number(r?.m)) || 1
+}
+
 /** host → mall_id (없으면 기본 1). 가입(register) 이 "어느 몰에 가입하는가" 결정에 사용. */
 export async function mallIdByHost(DB: D1Database, host: string | null | undefined): Promise<number> {
   const m = await loadMallByHost(DB, host)
