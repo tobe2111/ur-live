@@ -78,6 +78,9 @@ export const CRITICAL_CRON_EXPECTATIONS: Array<{ name: string; label: string; ma
 
 const _ensured = new WeakSet<object>()
 
+/** 추적 시작 시점 sentinel — "한 번도 안 돈 cron" 을 stale 로 승격하는 기준점 (아래 getCronHealth). */
+const TRACKING_SENTINEL = '__tracking_since'
+
 async function ensureCronHeartbeats(DB: D1Database): Promise<void> {
   if (_ensured.has(DB)) return
   _ensured.add(DB)
@@ -93,7 +96,11 @@ async function ensureCronHeartbeats(DB: D1Database): Promise<void> {
         run_count INTEGER NOT NULL DEFAULT 0
       )
     `).run()
-  } catch { /* 테이블 생성 실패해도 cron 본연 작업은 계속 — repair-schema 가 다음날 보장 */ }
+    // 최초 1회만 삽입(OR IGNORE) — 이후 절대 갱신 안 함 = "추적이 시작된 시각".
+    await DB.prepare(
+      `INSERT OR IGNORE INTO cron_heartbeats (cron_name, last_status, last_finished_at, run_count) VALUES (?, 'meta', datetime('now'), 0)`,
+    ).bind(TRACKING_SENTINEL).run()
+  } catch { /* 테이블 생성 실패해도 cron 본연 작업은 계속 — 다음 호출/스케줄에서 재시도 */ }
 }
 
 /**
@@ -142,25 +149,32 @@ function ageMinutes(datetime: string | null | undefined, nowMs: number): number 
 
 /**
  * 핵심 cron stale 판정.
- * ok:false 조건 = (기록된 핵심 cron 이 허용 간격 초과) OR (전체 heartbeat 최신값이 90분 초과
- * — 5분 주기군이 항상 돌아야 하므로 90분 침묵 = cron 시스템 전면 사망).
+ * ok:false 조건 =
+ *   ① 기록된 핵심 cron 이 허용 간격 초과, 또는
+ *   ② **한 번도 기록 없는 핵심 cron 인데 추적 기간(sentinel)이 이미 허용 간격을 초과**
+ *      — 트리거 자체 누락(wrangler.toml drift)으로 주간 백업 등이 영영 안 도는 케이스도 잡음, 또는
+ *   ③ 전체 heartbeat 최신값이 90분 초과 (5분 주기군이 항상 돌아야 하므로 90분 침묵 = cron 전면 사망).
  * 기록이 하나도 없으면 bootstrapping (첫 배포 직후 5분 내 채워짐 — 오탐 방지 위해 ok:true).
  */
 export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
   const now = Date.now()
-  let rows: CronHeartbeatRow[] = []
+  let allRows: CronHeartbeatRow[] = []
   try {
     await ensureCronHeartbeats(DB)
     const r = await DB.prepare(
       `SELECT cron_name, last_status, last_started_at, last_finished_at, last_duration_ms, last_error, run_count
        FROM cron_heartbeats`,
     ).all<CronHeartbeatRow>()
-    rows = r.results || []
+    allRows = r.results || []
   } catch (e) {
     logError('[cron-heartbeat] health read failed', { error: String(e) })
     // 조회 자체가 실패하면 판정 불가 — DB 장애는 별도 프로브(/api/version 등)가 잡음
     return { ok: true, bootstrapping: true, latest_heartbeat_at: null, latest_age_min: null, stale: [], missing: [] }
   }
+
+  const sentinel = allRows.find(r => r.cron_name === TRACKING_SENTINEL)
+  const trackingAgeMin = sentinel ? ageMinutes(sentinel.last_finished_at, now) : null
+  const rows = allRows.filter(r => r.cron_name !== TRACKING_SENTINEL && !r.cron_name.startsWith('__'))
 
   if (rows.length === 0) {
     return { ok: true, bootstrapping: true, latest_heartbeat_at: null, latest_age_min: null, stale: [], missing: CRITICAL_CRON_EXPECTATIONS.map(x => x.name) }
@@ -171,7 +185,15 @@ export async function getCronHealth(DB: D1Database): Promise<CronHealth> {
   const missing: string[] = []
   for (const exp of CRITICAL_CRON_EXPECTATIONS) {
     const row = byName.get(exp.name)
-    if (!row || !row.last_finished_at) { missing.push(exp.name); continue }
+    if (!row || !row.last_finished_at) {
+      // 기록 자체가 없는 핵심 cron — 추적 기간이 허용 간격을 넘었으면 "안 돌고 있음" 확정 → stale 승격.
+      if (trackingAgeMin !== null && trackingAgeMin > exp.maxGapMin) {
+        stale.push({ name: exp.name, label: exp.label, max_gap_min: exp.maxGapMin, last_finished_at: null, age_min: null })
+      } else {
+        missing.push(exp.name)
+      }
+      continue
+    }
     const age = ageMinutes(row.last_finished_at, now)
     if (age !== null && age > exp.maxGapMin) {
       stale.push({ name: exp.name, label: exp.label, max_gap_min: exp.maxGapMin, last_finished_at: row.last_finished_at, age_min: age })

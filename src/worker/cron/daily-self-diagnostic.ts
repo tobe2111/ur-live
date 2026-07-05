@@ -108,7 +108,8 @@ export async function runDailySelfDiagnostic(env: Env) {
     const health = await getCronHealth(DB);
     if (health.stale.length > 0) {
       for (const s of health.stale) {
-        issues.push(`🔴 Cron 침묵: ${s.label} (${s.name}) — 마지막 실행 ${s.age_min}분 전 (허용 ${s.max_gap_min}분)`);
+        const when = s.age_min != null ? `마지막 실행 ${s.age_min}분 전` : '실행 기록 없음 (트리거 누락 의심)';
+        issues.push(`🔴 Cron 침묵: ${s.label} (${s.name}) — ${when} (허용 ${s.max_gap_min}분)`);
       }
     } else if (!health.bootstrapping) {
       info.push(`Cron heartbeat: 핵심 ${health.missing.length > 0 ? `정상 (기록 대기 ${health.missing.length}건)` : '전체 정상'}`);
@@ -119,6 +120,8 @@ export async function runDailySelfDiagnostic(env: Env) {
   //   돌고 있었으나 진단이 안 봐서 "대표가 직접 발견" 의존이 남아있던 마지막 축.
   //   급증 시에만 깨움 + 상시 요약. 상세: /admin/errors
   try {
+    // 30일 초과분 프루닝 (best-effort) — 수집 테이블 무한 성장 방지 (인덱스 idx_frontend_errors_created 사용).
+    await DB.prepare(`DELETE FROM frontend_errors WHERE created_at < datetime('now', '-30 days')`).run().catch(() => null);
     const row = await DB.prepare(`
       SELECT COUNT(*) as total, COUNT(DISTINCT message) as distinct_msgs
       FROM frontend_errors

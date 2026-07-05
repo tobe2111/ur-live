@@ -110,7 +110,7 @@ export default function OpsStatusTab() {
           <div className="space-y-1 mb-2">
             {health.stale.map(s => (
               <p key={s.name} className="text-xs text-red-600">
-                🔴 {s.label} (<code className="bg-red-50 px-1 rounded">{s.name}</code>) — 마지막 실행 {s.age_min ?? '?'}분 전 (허용 {s.max_gap_min}분)
+                🔴 {s.label} (<code className="bg-red-50 px-1 rounded">{s.name}</code>) — {s.age_min != null ? `마지막 실행 ${s.age_min}분 전` : '실행 기록 없음 (트리거 누락 의심)'} (허용 {s.max_gap_min}분)
               </p>
             ))}
           </div>

@@ -8,7 +8,7 @@
 - **🚦 게이트 플래그 현황판**: 신규 `GET /api/admin/ops-status`(admin-system-monitoring.routes — 게이트 7종 env/platform_settings 값 + heartbeat 전체 + stale) + `/admin/system-monitoring` **"게이트·하트비트" 탭**(`admin-system-monitoring/OpsStatusTab.tsx`). 열람 전용 — staging 미검증 게이트 실수 활성 방지.
 - **🧪 STAGING_CHECKLIST.md 신설(SSOT)**: CLAUDE.md 곳곳의 "staging 실결제 검증 필수" 항목을 S1~S4(게이트)/P1~P8(경로 변경분)로 통합 — 시나리오·통과 기준·검증 데이 순서. 게이트 레지스트리(OPS_GATES)의 staging_ref 와 연동.
 - **훅 수리**: `.claude/hooks/session-start.sh` — npm 403 시 스크래퍼 서버 기동 스킵(매 세션 ERR_MODULE_NOT_FOUND 노이즈 제거).
-- ⏭️ **대표 액션 잔여**: ① 반나절 "검증 데이"로 STAGING_CHECKLIST S/P 항목 소화 ② 분기 백업 복구 리허설 1회(BACKUP_RESTORE.md) ③ TD-001 D1 Migration CI 토큰 권한.
+- ⏭️ **대표 액션 잔여**: ① 머지 후 `npx wrangler@3 deploy` 1회(cron 은 별도 Workers 프로젝트 — heartbeat 기록이 그때부터 시작, 그 전까지는 bootstrapping=오탐 0) ② 반나절 "검증 데이"로 STAGING_CHECKLIST S/P 항목 소화 ③ 분기 백업 복구 리허설 1회(BACKUP_RESTORE.md) ④ TD-001 D1 Migration CI 토큰 권한.
 - ⚠️ 이 원격환경 npm 403 으로 전체 tsc/build 미실행 — CI(verify.yml) 위임. 가드(sql-table/bind/theme/file-size 등) 통과 확인.
 
 ## ✅ 2026-07-03 — 의료용품 도매몰(메디스타트) 신설 (대표 "의료몰 생성 + 모두 이상적으로") — 3커밋

@@ -253,7 +253,8 @@ adminSystemMonitoringRoutes.get('/ops-status', async (c) => {
     const health = await getCronHealth(DB)
     const hb = await DB.prepare(
       `SELECT cron_name, last_status, last_finished_at, last_duration_ms, last_error, run_count
-       FROM cron_heartbeats ORDER BY last_finished_at DESC LIMIT 200`,
+       FROM cron_heartbeats WHERE substr(cron_name, 1, 2) != '__'
+       ORDER BY last_finished_at DESC LIMIT 200`,
     ).all().catch(() => ({ results: [] }))
 
     return c.json({
