@@ -91,6 +91,11 @@ app.get('/mall', async (c) => {
     if (mall?.features_json) {
       try { const f = JSON.parse(mall.features_json); if (f && typeof f === 'object' && !Array.isArray(f)) features = f } catch { features = {} }
     }
+    // 🏢 2026-07-04 몰 회사(푸터) 정보 — 미설정 키는 클라가 기본 BUSINESS_INFO 로 폴백(기본 몰 byte-불변).
+    let company: Record<string, string> | null = null
+    if (mall?.company_json) {
+      try { const cj = JSON.parse(mall.company_json); if (cj && typeof cj === 'object' && !Array.isArray(cj)) company = cj as Record<string, string> } catch { company = null }
+    }
     c.header('Cache-Control', 'public, max-age=60')
     c.header('CDN-Cache-Control', 'max-age=300')
     return c.json({
@@ -107,11 +112,13 @@ app.get('/mall', async (c) => {
         license_label: mall?.license_label ?? null,
         // 🧩 몰 기능 토글(제외 레이어) — 클라가 UI 게이트. 키 부재 = ON.
         features,
+        // 🏢 몰 회사(푸터) 정보 — 상호/대표/사업자번호/통판신고/주소/입금/연락처. 미설정=null(기본 폴백).
+        company,
       },
     })
   } catch (err) {
     // 브랜딩 조회 실패 시에도 기본 몰 값으로 graceful — 헤더가 절대 비지 않도록.
-    return c.json({ success: false, mall: { slug: 'default', name: '유통스타트', brand_name: null, brand_color: null, logo_url: null, categories: null, requires_license: 0, license_label: null, features: {} } })
+    return c.json({ success: false, mall: { slug: 'default', name: '유통스타트', brand_name: null, brand_color: null, logo_url: null, categories: null, requires_license: 0, license_label: null, features: {}, company: null } })
   }
 })
 
