@@ -1,5 +1,16 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-05 — 데모 이용권 생성형 전환 완전체 + 리뷰 부풀림 근본수리 (대표 "랜덤으로 뽑아와야 · 마감돼도 사라지지 말고 · 가격 최대한 이상적으로 · 데모 데이터 활용")
+- **생성형 데모 그래머**: 고정 40종 템플릿 폐기 → `DEMO_BIZ` 34업종 × 83 수기 오퍼 패턴 × 카테고리별 현실 할인율(식사 12-28%/뷰티 30-50%/기타 18-38%, 정상가 역산) × 카카오 **랜덤 실매장**(random page/candidate + category_name/place_name 업종 affinity 필터 — 샤브샤브가 갈비집에 붙던 오매칭 차단). 매장명-우선 네이버 이미지 → **R2 재호스팅**(`uploads/demo/YYYY-MM/`, 외부 URL 썩음 영구 차단).
+- **CF 50-subrequest 한도 대응**: 24개 1요청 시 realPhotos 0/24 실증 → 서버·어드민 UI 모두 **8개/요청 청크**(8×3 → 23/24 실증). 라운드(≤3) fill-to-target 으로 요청 갯수 정확히 충족.
+- **오픈 예정(사전 응모) 모드 옵션**: 어드민 시드 모드 선택(실상품형/오픈예정형) → `product_supply_meta.prelaunch='1'` → 리스트/상세/fcfs 응답 enrich([UNLOCK_LOADING] 등재) + FcfsBadge `🔔 오픈 예정` + 상세 CTA '사전 응모하기' 분기(구매 차단).
+- **데모 영속(콜드스타트 보존)**: `demo-fcfs-renew` cron(매시) — 마감 지난 데모 fcfs_deadline 을 now+5~10일 랜덤 롤링. 응모 누적 유지.
+- **가격 현실화 어드민 통제**: `demo_price_multipliers`(platform_settings JSON, 0.5~2.0) 밴드 배수 편집 패널 + 미리보기. **수요 인사이트 대시보드**: 실제 fcfs_applications 를 업종/구/상품 Top 으로 집계(`GET /admin/dongnedeal/demand-insights`) — 데모가 만든 수요 데이터를 입점영업 근거로 활용.
+- **리뷰**: 키리스 결정론 컴포저(토픽 감지 수기 풀 — 스시/베이커리 신설·우선순위 매칭) + 세션 작성 리뷰 `POST /api/admin/reviews/import`. **실 사업자 상품(seller_id 있음) 자동리뷰 구조적 제외**(어드민 수동만).
+- **🐛 리뷰 부풀림(57~119개) 근본수리**: 원인 = 데모 회수(hard delete) 후 **SQLite rowid 재사용** → 새 데모가 과거 상품의 고아 리뷰/응모를 상속. 수리 ① 시드 INSERT 직후 재사용 id 의 product_reviews/fcfs_applications/cart_items/wishlists purge ② auto-seed cron 을 review_count 집계 대신 **실제 행 NOT EXISTS 이중 게이트**. 오염 라이브 3건(2493/2494/2484) wipe 후 세션 수기 리뷰 재부여 완료.
+- **데모별 추첨 편집**: 어드민 리스트 행별 🎯 지원자/모집정원/마감 인라인 편집(PUT /admin/fcfs/:id) + 선택 삭제. 지역 타겟은 소비자 홈 필터와 동일 KOREA_REGIONS 캐스케이드(1차 시/도→2차 동네그룹).
+- 검증: tsc 0 · build 0 · sql bind 가드 0 · 라이브 재생성 24개(실상품 16+오픈예정 8) 전부 카카오 실매장·R2 사진·할인율 캘리브레이션 범위 확인.
+
 ## ✅ 2026-07-04 — 데모 후순위 노출 + 세션 작성 리뷰 교체 (대표 "데모는 항상 후순위 · 리뷰 AI 티 0 · API 키 말고 세션 토큰으로")
 - **데모 항상 후순위**: 피드 모든 정렬 1차 키=데모-후순위(`[UNLOCK_LOADING]` audit 등재) + materialized cron 파리티 + fcfs/active `is_demo` + 지도 '선착순 상위노출' boost 를 non-demo 한정. 라이브 실측 R→DDDD ✅.
 - **POST /api/admin/reviews/import 신설**: 외부(운영 Claude 세션)가 작성한 리뷰를 그대로 삽입 — 서버 ANTHROPIC_API_KEY 불필요. 운영 플로우: 데모 생성 → 세션이 매장별 리뷰 작성 → import.
