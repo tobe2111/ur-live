@@ -200,6 +200,8 @@ const InfluencerTermsPage = lazy(() => import('./pages/InfluencerTermsPage'))
 const SellerTermsPage = lazy(() => import('./pages/SellerTermsPage'))
 const GroupBuyTermsPage = lazy(() => import('./pages/GroupBuyTermsPage'))
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
+const AgencyTermsPage = lazy(() => import('./pages/AgencyTermsPage'))
+const LocationTermsPage = lazy(() => import('./pages/LocationTermsPage'))
 const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'))
 const GDPRPage = lazy(() => import('./pages/GDPRPage'))
 const AffiliatePage = lazy(() => import('./pages/AffiliatePage'))
@@ -944,7 +946,9 @@ function AppContent() {
             <Route path="/terms" element={<TermsOfServicePage />} />
             <Route path="/terms/influencer" element={<InfluencerTermsPage />} />
             <Route path="/terms/seller" element={<SellerTermsPage />} />
+            <Route path="/terms/agency" element={<AgencyTermsPage />} />
             <Route path="/terms/group-buy" element={<GroupBuyTermsPage />} />
+            <Route path="/terms/location" element={<LocationTermsPage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/gdpr" element={<GDPRPage />} />
             <Route path="/user/affiliate" element={<AffiliatePage />} />
