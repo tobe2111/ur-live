@@ -339,7 +339,7 @@ adminRegionRoutes.post('/visit-rewards', requireAdmin(), async (c) => {
 // 캠페인 상태 변경 (종료/재활성) — 값 필드 수정은 지급 정합 혼선 방지 위해 미지원(새 캠페인 생성 권장)
 adminRegionRoutes.patch('/visit-rewards/:id', requireAdmin(), async (c) => {
   const { DB } = c.env
-  const id = parseInt(c.req.param('id'), 10)
+  const id = parseInt(c.req.param('id') || '', 10)
   if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 id' }, 400)
   const body = await c.req.json<{ status?: string }>().catch(() => ({} as Record<string, never>))
   const status = String(body.status || '')

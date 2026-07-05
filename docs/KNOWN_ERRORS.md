@@ -43,6 +43,7 @@
 | `_worker.js` 갱신 안 됨 / worker 코드 변경 안 반영 | `vite build` 단독 사용 | `npm run build` (= client + worker + prepare) 필수 |
 | 글로벌 CSS invert 적용 후 UI 깨짐 | 다크모드 invert hack | 사용 금지 (`docs/INCIDENTS.md`) |
 | CSP nonce 적용 후 화면 깨짐 | `style-src` 에 `'nonce-XXX'` | 사용 금지. `'unsafe-inline'` 유지 |
+| 특정 브라우저에서만 페이지 무한로딩/"응답 없는 페이지"/흰화면 + 콘솔 무에러 (특히 /admin 등 저빈도 대시보드) | 그 브라우저에 잔존한 캐시(낡은 index.html)·캐시형 서비스워커·만료 토큰 상태 — 서버는 정상인데 원격에서 원인 특정 불가 | **사용자에게 `live.ur-team.com/recover` 열게 하기** — SW/캐시/HTML 신선도/청크/토큰/어드민 API 를 자동 진단 + 원클릭 완전복구 버튼. 결과는 `frontend_errors`(type='admin-diag') 에 자동 기록 (2026-07-04, killer-sw.routes.ts) |
 
 ## 환경변수 / 배포
 
