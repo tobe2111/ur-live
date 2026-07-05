@@ -1117,9 +1117,16 @@ async function kakaoPlaceLookup(
     if (center) url += `&x=${center.x}&y=${center.y}&radius=20000&sort=distance`;
     const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
     if (!res.ok) return null;
-    const data = await res.json() as { documents?: Array<{ place_name?: string; road_address_name?: string; address_name?: string; x?: string; y?: string; id?: string; place_url?: string }> };
-    const docs = data?.documents || [];
+    const data = await res.json() as { documents?: Array<{ place_name?: string; category_name?: string; road_address_name?: string; address_name?: string; x?: string; y?: string; id?: string; place_url?: string }> };
+    let docs = data?.documents || [];
     if (!docs.length) return null;
+    // 🎯 2026-07-05 (오매칭 축소 — 갈비집에 샤브샤브): 랜덤 모드에선 카카오 카테고리/상호에
+    //   검색 업종 토큰이 포함된 후보를 우선(없으면 전체 폴백 — 매칭 자체는 안 죽임).
+    if (randomMode) {
+      const token = query.trim().split(/\s+/).pop() || '';
+      const affine = docs.filter((d) => (d.category_name || '').includes(token) || (d.place_name || '').includes(token));
+      if (affine.length) docs = affine;
+    }
     const doc = randomMode ? docs[Math.floor(Math.random() * docs.length)] : docs[pickIndex % docs.length];
     if (!doc) return null;
     const lat = Number(doc.y), lng = Number(doc.x);

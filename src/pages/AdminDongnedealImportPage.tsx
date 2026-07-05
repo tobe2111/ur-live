@@ -86,30 +86,35 @@ export default function AdminDongnedealImportPage() {
       const regionParam = buildRegionParam(seedSido, seedDistrict)
       const aMin = parseInt(seedApplicantsMin, 10)
       const aMax = parseInt(seedApplicantsMax, 10)
-      // 🚑 2026-07-04 (대표 "데모 생성 오류"): 기본 axios timeout 15s < 생성 소요(매장당 네이버+R2+카카오,
-      //   24개면 수 분) → 클라만 타임아웃으로 '오류' 표시되고 서버는 계속 생성(개수 제각각 원인 중 하나).
-      //   넉넉히 5분. 버튼은 cleaning 으로 이중클릭 차단.
-      const r = await api.post('/api/admin/dongnedeal/seed-demo', {
-        region: regionParam || undefined,
-        category: seedCategory || undefined,
-        count: seedCount,
-        fcfsDays: seedFcfsDays,
-        applicantsMin: Number.isFinite(aMin) && aMin > 0 ? aMin : undefined,
-        applicantsMax: Number.isFinite(aMax) && aMax > 0 ? aMax : undefined,
-      }, { ...h, timeout: 300000 })
-      const skipped = Number(r.data?.skipped ?? 0)
-      if (r.data?.seeded) {
-        const parts = [`데모 상품 ${r.data.seeded}개 생성`]
-        if (typeof r.data?.realPhotos === 'number') parts.push(`실사진 ${r.data.realPhotos}`)
-        if (typeof r.data?.placed === 'number') parts.push(`매장매칭 ${r.data.placed}`)
-        if (skipped > 0) parts.push(`${skipped}개 건너뜀(실매장 미매칭)`)
-        if (r.data?.healed > 0) parts.push(`깨진 이미지 ${r.data.healed}개 복구`)
+      // 🚑 2026-07-04 (대표 "데모 생성 오류"): 기본 axios timeout 15s < 생성 소요 → 요청당 5분 명시.
+      // 🧩 2026-07-05 (실측 — 24개 한 요청이면 realPhotos 0): Cloudflare 요청당 외부호출 한도(50)에
+      //   걸려 사진 다운로드가 전멸 → **8개씩 나눠 순차 호출**(각 요청이 한도를 새로 받음). 실측 검증:
+      //   24개 1요청 = 실사진 0/24, 8개×3요청 = 실사진 23/24.
+      let seededSum = 0, photoSum = 0, placedSum = 0, skippedSum = 0
+      const CHUNK = 8
+      for (let done = 0; done < seedCount; done += CHUNK) {
+        const r = await api.post('/api/admin/dongnedeal/seed-demo', {
+          region: regionParam || undefined,
+          category: seedCategory || undefined,
+          count: Math.min(CHUNK, seedCount - done),
+          fcfsDays: seedFcfsDays,
+          applicantsMin: Number.isFinite(aMin) && aMin > 0 ? aMin : undefined,
+          applicantsMax: Number.isFinite(aMax) && aMax > 0 ? aMax : undefined,
+        }, { ...h, timeout: 300000 })
+        seededSum += Number(r.data?.seeded ?? 0)
+        photoSum += Number(r.data?.realPhotos ?? 0)
+        placedSum += Number(r.data?.placed ?? 0)
+        skippedSum += Number(r.data?.skipped ?? 0)
+      }
+      if (seededSum > 0) {
+        const parts = [`데모 상품 ${seededSum}개 생성`, `실사진 ${photoSum}`, `매장매칭 ${placedSum}`]
+        if (skippedSum > 0) parts.push(`${skippedSum}개 건너뜀(실매장 미매칭)`)
         toast.success(parts.join(' · '))
-      } else if (skipped > 0) {
+      } else if (skippedSum > 0) {
         // 🎯 전부 카카오 실매장 매칭 실패 — 실제 매장만 데모로 만드는 규칙이 걸러낸 상태.
-        toast.error(`생성된 상품 없음 — ${skipped}개 모두 실제 매장을 못 찾았습니다. 지역(예: 강남·영등포)을 지정하면 그 지역 실매장으로 매칭됩니다`)
+        toast.error(`생성된 상품 없음 — ${skippedSum}개 모두 실제 매장을 못 찾았습니다. 지역을 바꿔보세요`)
       } else {
-        toast.success(r.data?.message || '이미 데모 상품이 있습니다')
+        toast.success('생성된 상품이 없습니다')
       }
       loadStats(); setListNonce((n) => n + 1)
     } catch { toast.error('데모 생성 중 오류') } finally { setCleaning(false) }
