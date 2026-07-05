@@ -442,6 +442,26 @@ export function requireUserType(...types: UserType[]) {
     const currentUser = c.get('user') as AuthUser;
 
     if (!types.includes(currentUser.type)) {
+      // 🛡️ 2026-07-04 (실사고 — /admin 무한 403): Bearer 가 '요구 타입'(예: admin)을 자칭하는데
+      //   검증 실패(만료/무효)해서 하위 우선순위 신원(예: 소비자 세션쿠키)으로 인증된 경우 —
+      //   의미상 '권한 부족(403)'이 아니라 '토큰 만료(401)'다. 403 을 주면 클라 401-refresh
+      //   인터셉터가 영영 안 돌아 refresh_token 이 있어도 대시보드가 죽은 채 유지된다
+      //   (만료 admin Bearer + 상시 카카오 소비자 쿠키 조합 — 대표 /recover 진단 실측 FORBIDDEN).
+      //   401 이면 인터셉터가 자동 갱신·재시도 → 무개입 자가치유. 서명 검증 없는 디코드지만
+      //   *거부 status 선택*에만 쓰므로 권한 부여와 무관(위조해도 401 vs 403 차이뿐).
+      try {
+        const authHeader = c.req.header('Authorization') || '';
+        const rawBearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+        const seg = rawBearer.split('.')[1];
+        if (seg) {
+          const b64 = seg.replace(/-/g, '+').replace(/_/g, '/');
+          const pad = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+          const claimType = (JSON.parse(atob(pad)) as { type?: string }).type;
+          if (claimType && types.includes(claimType as UserType) && currentUser.type !== claimType) {
+            return c.json(unauthorizedResponse('토큰이 만료되었습니다. 다시 로그인해주세요'), 401);
+          }
+        }
+      } catch { /* 디코드 실패 — 기존 403 유지 */ }
       return c.json(
         forbiddenResponse(`Access denied. Required user type: ${types.join(' or ')}`),
         403
