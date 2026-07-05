@@ -149,6 +149,33 @@ agency_signup_bonus_monthly_budget_krw 미설정=무제한
 
 ---
 
+## §1 authoritative 활성 런북 (2026-07-05 인플루언서 이용권 공구 엔진 스프린트)
+
+> 목적: "매장이 딜마다 소개비%를 걸고, 그 비용은 매장이 부담하고, 유어딜은 5%만 갖는" owner-funded 모델을
+> 라이브로. 이 문서 §3-D(owner-funding)·§2(예산캡)가 코드로 이미 존재 — 활성은 **스테이징 실결제 검증 후
+> 게이트 flip** (잠금파일 룰). 아래 순서 **엄수**(순서 틀리면 플랫폼 누수).
+
+**전제**: 실 Toss 키로 소액 결제 가능한 스테이징 배포 존재(대표 확인 2026-07-05 "있음/만들 수 있음").
+
+**활성 순서 (스테이징 → 라이브, 각 단계 검증 후 다음)**
+1. **예산캡 먼저** — `commission_budget_enabled='true'` (staging). 트리추천+영입 겹친 3P 주문 결제 →
+   `commission_budget_logs` 에 Σ적립 ≤ 예산 확인 + 환불 시 역전 대칭 확인. (플랫폼 보호막 먼저.)
+2. **owner-funding** — `promo_funding_source='owner'` (staging). 이용권 구매→사용 → `ledger_entries` 에
+   promo debit 1행(매장 몫에서 차감) + 어필리에이트 딜 적립 유지 확인 + 환불 시 promo 복원 확인.
+   → 이 단계가 켜져야 매장이 건 소개비를 **매장이** 문다(플랫폼 아님).
+3. **셀러 소개비 필드** — 위 1·2 가 staging 에서 green 이면:
+   - 서버: `seller_promo_field_enabled='true'` (staging → 검증 후 라이브).
+   - 클라: `src/shared/feature-flags.ts` `SELLER_PROMO_FIELD_ENABLED=true` 로 바꿔 **배포**(빌드타임 플래그).
+   - 검증: 이용권 등록 시 소개비 20% 입력 → 추천 링크 판매 → 매장 실수령 = 판매가−5%−20%,
+     인플루언서 딜 적립 = 20%, 유어딜 = 5%−(예산캡 내 플랫폼부담분). 캡·owner-funding 로 플랫폼 음수 불가.
+4. **라이브 flip** — staging green 후 라이브 platform_settings 3키 + 클라 플래그 배포. 첫 주 `commission_budget_logs`·원장 대조.
+
+**롤백**: 어느 단계든 해당 게이트를 이전 값으로 되돌리면 즉시 현행 복귀(클라 플래그는 재배포 필요).
+소개비 필드만 끄려면 `seller_promo_field_enabled='false'` — 서버가 referral_commission_rate 저장을 즉시 중단.
+
+**주의(누수 방지)**: 3번(셀러 필드)을 2번(owner-funding) 없이 켜면 매장 소개비를 **플랫폼이 부담**(설계 §1 −14% 노출).
+서버 게이트가 백스톱이지만, 순서를 지켜 owner-funding ON 상태에서만 필드 ON 할 것.
+
 ## ✅ 구현 로그
 - 2026-07-04 설계 작성.
 - 2026-07-04 **§3 전체 구현** (같은 브랜치 — 커밋 해시는 PR #446): commission-budget.ts(+유닛) ·

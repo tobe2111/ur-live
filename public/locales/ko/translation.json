@@ -2364,7 +2364,10 @@
       "pinHint": "💡 식당 전화번호를 입력하시면 사장님께 통계 페이지 링크가 알림톡으로 자동 발송됩니다 (PIN 불필요).",
       "imageAiNotice": "AI 추천이라 정확하지 않을 수 있어요. 마음에 드는 게 없으면 아래에서 직접 검색하거나 파일을 업로드하세요.",
       "uploadPhoto": "📁 내 사진 업로드",
-      "imageSearchPlaceholder": "다른 키워드로 이미지 재검색 (예: 가게 인테리어, 대표 메뉴 이름)"
+      "imageSearchPlaceholder": "다른 키워드로 이미지 재검색 (예: 가게 인테리어, 대표 메뉴 이름)",
+      "promoLabel": "추천 소개비 (%)",
+      "promoRecommend": "권장 {{min}}~{{max}}%",
+      "promoHint": "인플루언서가 추천 링크로 팔면 이 비율만큼 소개비를 지급해요. 할인과 함께 하나의 마케팅 예산으로 설계하세요. 추천 판매가 없으면 발생하지 않아요."
     },
     "analyticsTitle": "매출 분석",
     "revenueChart": "매출 차트",

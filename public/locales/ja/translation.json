@@ -2333,7 +2333,10 @@
       "pinHint": "💡 If you enter the restaurant's phone number, the owner will automatically receive a statistics page link via notification (PIN not required).",
       "imageAiNotice": "AI recommendations may not be accurate. If you don't like any, search below or upload a file.",
       "uploadPhoto": "📁 Upload photo",
-      "imageSearchPlaceholder": "Re-search images with different keywords (e.g. store interior, menu name)"
+      "imageSearchPlaceholder": "Re-search images with different keywords (e.g. store interior, menu name)",
+      "promoLabel": "紹介手数料 (%)",
+      "promoRecommend": "推奨 {{min}}~{{max}}%",
+      "promoHint": "インフルエンサーが紹介リンクで販売するとこの割合を紹介料として支払います。割引と合わせて一つのマーケティング予算として設計してください。紹介販売がなければ発生しません。"
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

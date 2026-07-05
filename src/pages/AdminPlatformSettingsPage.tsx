@@ -77,6 +77,12 @@ const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: str
     ],
     hint: '계약 기반(24개월) 에이전시 커미션을 캡 축소에서 먼저 보전. 발동 이력은 아래 표',
   },
+  // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러 딜 등록 화면의 소개비(promo)% 저장 게이트.
+  {
+    key: 'seller_promo_field_enabled', label: '셀러 소개비(promo)% 필드 저장', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 저장 안 함)' }, { value: 'true', label: 'ON — referral_commission_rate 저장' }],
+    hint: "⚠️ owner-funding('주인 부담') 을 먼저 켜고 staging 검증한 뒤에만 ON. 안 그러면 매장 소개비를 플랫폼이 부담(누수). 클라 플래그 SELLER_PROMO_FIELD_ENABLED 도 함께 배포",
+  },
 ]
 
 export default function AdminPlatformSettingsPage() {

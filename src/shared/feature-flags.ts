@@ -47,6 +47,21 @@ export const HOSTING_HIDDEN = true
 export const COMMUNITY_PROPOSAL_HIDDEN = true
 
 /**
+ * SELLER_PROMO_FIELD_ENABLED — 셀러 딜 등록 화면의 '소개비(promo)%' 입력 + 마진 계산기 노출
+ *   (2026-07-05 인플루언서 이용권 공구 엔진 스프린트 §1).
+ *   배경: 매장이 딜마다 "추천(핀) 판매 시 인플루언서에게 줄 소개비 N%"를 직접 설정하는 레버.
+ *         resolveOrderFees(owner-funded promo 슬라이스)로 실수령 실시간 표시.
+ *   ⚠️ **커플링(중요)**: 이 필드가 저장하는 products.referral_commission_rate 는 *라이브 어필리에이트
+ *     적립*을 override 한다. 그런데 어필리에이트 재원이 아직 **플랫폼 부담**(promo_funding_source='platform',
+ *     기본)이면 매장이 건 소개비를 **유어딜이 대신 문다**(재원 구조 설계의 −14% 누수). 따라서 이 필드는
+ *     **owner-funding(promo_funding_source='owner') + 예산캡(commission_budget_enabled)이 스테이징에서
+ *     검증돼 라이브로 켜진 뒤에만** 활성해야 안전하다. 그 전까지 기본 false(=미노출) + 서버도
+ *     `platform_settings.seller_promo_field_enabled==='true'` 일 때만 referral_commission_rate 저장(이중 안전).
+ *   활성 절차: docs/design/commission-funding-restructure.md 의 "§1 authoritative 활성 런북" 참조.
+ */
+export const SELLER_PROMO_FIELD_ENABLED = false
+
+/**
  * IOS_HIDE_DIGITAL_TOPUP — iOS 네이티브 앱에서 '딜 충전'(순수 디지털 포인트)을 숨기고
  *   외부 브라우저로 유도 (Apple 인앱결제(IAP) 정책 대비). 2026-06-27 메커니즘 신설.
  *   배경: 애플은 앱 내 디지털 재화에 자사 IAP(30%) 강제 가능. 단, 유어딜 딜은 공구/숙소/교환권

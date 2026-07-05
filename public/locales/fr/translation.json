@@ -1654,7 +1654,10 @@
       "pinHint": "💡 If you enter the restaurant's phone number, the owner will automatically receive a statistics page link via notification (PIN not required).",
       "imageAiNotice": "AI recommendations may not be accurate. If you don't like any, search below or upload a file.",
       "uploadPhoto": "📁 Upload photo",
-      "imageSearchPlaceholder": "Re-search images with different keywords (e.g. store interior, menu name)"
+      "imageSearchPlaceholder": "Re-search images with different keywords (e.g. store interior, menu name)",
+      "promoLabel": "Commission de recommandation (%)",
+      "promoRecommend": "Recommandé {{min}}~{{max}}%",
+      "promoHint": "Quand un influenceur vend via son lien, vous payez cette part en commission. Concevez-la avec la remise comme un seul budget marketing. Pas de vente référée, pas de coût."
     },
     "addProduct": "Add Product",
     "deleteProduct": "Delete Product",

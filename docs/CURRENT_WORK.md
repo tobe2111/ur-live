@@ -1,5 +1,17 @@
 # 🚧 진행 중 작업
 
+## 🔵 진행 중 — 인플루언서 이용권 공구 엔진 스프린트 (2026-07-05 대표 개발요청)
+GTM 무게중심 = "인플루언서가 오프라인 이용권을 공동구매로 파는 인프라". 대부분 부품(promo 슬라이스·aff·링크샵·QR·원천징수) 기구현 → 기본값·표면·우선순위 재배치. **핵심 불변: 큰 판매수수료는 매장→인플루언서, 유어딜은 5%만.** 대표 결정(2026-07-05): "둘 다"(§2 안전 표면 라이브 + §1 flip-ready) · 스테이징 있음.
+
+### ✅ §1 매출 엔진 — 셀러 소개비(promo)% 필드 + 마진 계산기 (flip-ready, 게이트 OFF)
+- **발견**: [INV-CB] 예산캡 · owner-funding(promo_funding_source) · fee-resolver · 그림자 기록이 **전부 기구현·게이트 OFF**. §1 = 스테이징 검증 후 flip(신규 코드 아님).
+- **커플링 리스크(중요)**: 셀러 소개비% 는 `products.referral_commission_rate`(라이브 어필리에이트 override)로 저장 → **owner-funding 이 꺼져 있으면 매장 소개비를 플랫폼이 부담**(설계 −14% 누수). 그래서 이번 필드는 **이중 게이트 OFF**: 클라 `SELLER_PROMO_FIELD_ENABLED=false`(빌드타임) + 서버 `platform_settings.seller_promo_field_enabled!=='true'` 면 referral_commission_rate 저장 안 함.
+- **구현(게이트 OFF=현행 100% 동일)**: `PromoMarginCalculator`(resolveOrderFees owner-funded 모델 재사용 — 판매가→플랫폼5%→소개비→매장실수령, 버티컬 권장 소개비 §5) · `SellerMealVoucherNewPage` 에 소개비% 입력+계산기(플래그 게이트) · 서버 create 핸들러 이중 게이트 저장(0~0.5 clamp, fail-soft) · 어드민 platform-settings 에 `seller_promo_field_enabled` 스위치 · i18n 6개 언어.
+- **활성 런북**: `docs/design/commission-funding-restructure.md` §1 런북 — 순서 엄수(①예산캡 →②owner-funding →③셀러필드, 각 스테이징 검증). 순서 틀리면 플랫폼 누수.
+- 검증: tsc 0 · build 0 · 테마/sql-bind/column/money/file-size 가드 GREEN. ⚠️ 활성 = 스테이징 실결제 검증 후(이 환경 불가).
+- ⏭️ **다음**: §1 나머지(리졸버 authoritative 전환은 스테이징 대조 후 별도) · **§2 인플루언서 표면**(3분 온보딩·수익형 링크트리·자동 #광고 고지·크리에이터 매장영입 유도 — 머니게이트 무관, 라이브 가능) · §3 소스 어트리뷰션 리포트 · §4 서초 A/B.
+
+
 ## ✅ 2026-07-05 — 데모 추첨 구조 차단 + 에이전시 요율 1%·기간 24개월 기본화 (대표+자문 확정)
 - **데모 추첨 (대표 "데모로 만드는 건 실 유저가 추첨될 수 없는 형태")**: 2단 구조 — ① 데모 상품(slug `demo-deal-N`) 응모는 `fcfs_applications.status='demo'` 로 저장 → **추첨 풀(status='applied')에 존재 자체 불가**(표시 카운트에는 포함 — 체감 유지, `/me` 는 'demo' 를 응모완료로 표시). ② 어드민 선정 API 데모 게이트(crypto/수동 모두 400) — 이중 방어. 기존 데모의 옛 'applied' 행도 게이트가 차단.
 - **에이전시 매장영입 요율 기본 1% (자문 (b)안 — 문서 정합)**: `COMMISSION_DEFAULTS.AGENCY_STORE_INTRO_PCT` 2.0→**1.0** (약관3 제4조·파트너 안내·회사소개서 전부 "기본 1%"). intro-code 응답의 하드코딩 `?? 2.0` → SSOT 상수 연동, 에이전시 대시보드 문구도 설정값 연동(`{pct}% · 첫 판매 확정일로부터 {N}개월`). **개별 상향은 어드민 에이전시 관리(store_intro_commission_pct) = 성과 보상 레버.** 기존 per-agency 설정값 보유 에이전시는 무영향(폴백만 변경).

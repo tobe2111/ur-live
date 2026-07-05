@@ -739,6 +739,10 @@ sellerOrdersRoutes.post('/products', async (c) => {
       preview_url?: string | null;
       // 🍽️ 2026-06-17 (#5 대표 메뉴): OCR/수동 추출 메뉴 — product_supply_meta 'menu' 에 저장 (products 컬럼 증식 방지).
       menu?: Array<{ name: string; price?: string; desc?: string }>;
+      // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러가 설정한 소개비 % (fraction 0~0.5) → 어필리에이트 override.
+      //   ⚠️ platform_settings.seller_promo_field_enabled==='true' 일 때만 저장(owner-funding 검증 전 누수 방지).
+      referral_enabled?: boolean;
+      referral_commission_rate?: number;
     }>();
 
     const { name, description, price, stock, image_url, category } = body;
@@ -798,6 +802,23 @@ sellerOrdersRoutes.post('/products', async (c) => {
     //   기존 INSERT 누락으로 이용권 등록 시 정가가 저장 안 돼 할인율이 안 떴음.
     if (body.original_price !== undefined && body.original_price !== null && Number.isFinite(body.original_price)) {
       try { await db.prepare(`UPDATE products SET original_price = ? WHERE id = ?`).bind(body.original_price, productId).run() } catch { /* column may not exist */ }
+    }
+
+    // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러 소개비(promo%) → referral_commission_rate override.
+    //   ⚠️ 이중 안전 게이트 — platform_settings.seller_promo_field_enabled==='true' 일 때만 저장.
+    //   어필리에이트 재원이 아직 플랫폼 부담이면 매장이 건 소개비를 유어딜이 무는 누수(설계 −14%)가
+    //   되므로, owner-funding(promo_funding_source='owner')이 스테이징 검증돼 켜진 뒤에만 이 게이트 ON.
+    //   범위 0~0.5(=0~50%) clamp. fail-soft(컬럼 부재 대비). 클라 플래그 우회해도 서버가 최종 차단.
+    if (body.referral_commission_rate !== undefined && body.referral_commission_rate !== null) {
+      try {
+        const gate = await db.prepare("SELECT value FROM platform_settings WHERE key = 'seller_promo_field_enabled'")
+          .first<{ value: string }>().catch(() => null)
+        const rate = Number(body.referral_commission_rate)
+        if (gate?.value === 'true' && Number.isFinite(rate) && rate >= 0 && rate <= 0.5) {
+          await db.prepare(`UPDATE products SET referral_enabled = ?, referral_commission_rate = ? WHERE id = ?`)
+            .bind(body.referral_enabled === false || rate === 0 ? 0 : 1, rate, productId).run()
+        }
+      } catch { /* 게이트 OFF / 컬럼 부재 — 저장 생략(현행과 동일) */ }
     }
 
     // 🍽️ 2026-06-17 (#5 대표 메뉴): 메뉴(OCR/수동)를 product_supply_meta 사이드테이블에 저장 → 공구 상세가 표시.
