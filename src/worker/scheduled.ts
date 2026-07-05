@@ -417,6 +417,11 @@ export async function handleCronScheduled(
   if (cron === '0 0 * * 1') {
     // 🛡️ 2026-05-21 Phase C: 주 1회 정산 자동 생성 — admin 검토용 pending payouts 생성.
     ctx.waitUntil(safeCron('payouts-generate', () => handlePayoutsGenerate(env)));
+    // 📊 2026-07-05 (자문 ⑤): 주간 조종석 숫자 5개 — 어드민 벨 + Discord (read-only 집계, fail-soft).
+    ctx.waitUntil(safeCron('weekly-metrics-summary', async () => {
+      const { runWeeklyMetricsSummary } = await import('./cron/weekly-metrics-summary');
+      return runWeeklyMetricsSummary(env);
+    }));
     // 📝 2026-07-01: 블로그 AI 홍보 초안 주간 1편(비공개, 관리자 검토 후 발행).
     //   킬스위치 BLOG_AI_DRAFTS_ENABLED='true' 일 때만 — 기본 OFF(토큰 낭비 0). 홍보 전용.
     ctx.waitUntil(safeCron('blog-ai-draft', async () => {
