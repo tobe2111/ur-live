@@ -578,13 +578,16 @@ ${data.restaurantName} 사장님,
 
 /**
  * 🛡️ 2026-05-16: voucher 사용 완료 알림톡 (매장이 QR 스캔 직후).
+ * 🔔 2026-07-05: Aligo 카카오 알림톡(tpl_code 'voucher_used', sendSystemAlimtalk — dedup·캡·재시도 큐)
+ *   경로 추가. 기존 solapi LMS 는 레거시 폴백으로 유지(ALIMTALK_API_KEY 설정 환경만 동작).
+ *   ⚠️ 'voucher_used' 는 Aligo 콘솔 등록·승인 필요 — message 를 승인 템플릿 본문과 일치시켜 유지.
  */
 export async function sendBuyerVoucherUsedAlimtalk(
   env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
   phone: string,
   data: { restaurantName: string; productName: string; usedAt?: string; categoryLabel?: string }
 ): Promise<void> {
-  if (!env.ALIMTALK_API_KEY || !phone) return
+  if (!phone) return
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
@@ -603,6 +606,13 @@ ${ts ? '사용 시각: ' + ts : ''}
 https://live.ur-team.com/my-vouchers
 
 문의: 유어딜 고객센터`
+    // ① Aligo 카카오 알림톡 (시스템 SSOT — ALIGO_* 미설정 시 내부 silent skip)
+    try {
+      const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
+      await sendSystemAlimtalk(env, cleanPhone, 'voucher_used', message)
+    } catch { /* fail-soft — 아래 레거시 경로가 백업 */ }
+    // ② 레거시 solapi LMS 폴백 (해당 키 설정 환경만)
+    if (!env.ALIMTALK_API_KEY) return
     await fetch('https://api.solapi.com/messages/v4/send', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
