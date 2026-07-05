@@ -86,8 +86,9 @@ export default function AdminFcfsPage() {
       const res = await api.post(`/api/admin/fcfs/${pid}/select`, payload)
       toast.success(`${res.data?.data?.selected || 0}명 선정 + 알림 발송`)
       await load()
-    } catch {
-      toast.error('선정 실패')
+    } catch (e: any) {
+      // 데모 상품 차단(실 유저 당첨 방지) 등 서버 사유를 그대로 표시.
+      toast.error(e?.response?.data?.error || '선정 실패')
     } finally { setLoading(false) }
   }
 

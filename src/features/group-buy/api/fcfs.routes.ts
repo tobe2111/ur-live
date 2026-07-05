@@ -257,6 +257,17 @@ adminApp.post('/:productId/select', async (c) => {
     const body = await c.req.json<{ winners?: string[]; count?: number }>().catch(() => ({} as { winners?: string[]; count?: number }))
     await ensureFcfsTable(DB)
 
+    // 🧯 2026-07-05 (대표 "이용권 데모의 경우 실 유저가 추첨되면 안돼"): 데모 동네딜/이용권
+    //   (slug 'demo-deal-N', seed-demo 시드 — 실매장 딜 아님)은 추첨 선정 전면 차단.
+    //   fcfs_applications 행은 전부 **실 유저**라 데모에서 선정하는 순간 실 유저에게
+    //   "당첨! 결제하세요" 딥링크 알림이 나가 가짜 딜 결제 사고로 이어짐.
+    //   수동 winners 지정도 동일 차단. 응모수 시드(fcfs_applied_seed) 표시는 불변.
+    const prodGate = await DB.prepare('SELECT slug FROM products WHERE id=?')
+      .bind(productId).first<{ slug: string | null }>().catch(() => null)
+    if ((prodGate?.slug || '').startsWith('demo-deal-')) {
+      return c.json({ success: false, error: '데모 상품은 추첨 선정이 차단되어 있습니다 — 실 유저 당첨 방지 (응모수 시드 표시만 사용)' }, 400)
+    }
+
     // 🎲 2026-07-05 (Q9 공정성): 추첨 방식 교체 — SQLite `ORDER BY RANDOM()`(재현/증빙 불가) →
     //   응모자 풀 전체를 읽어 WebCrypto Fisher-Yates 로 셔플. 실행 내역(실행자·방식·풀·당첨자)을
     //   fcfs_draw_logs 에 영구 기록해 "공정했는가"에 데이터로 답한다.
