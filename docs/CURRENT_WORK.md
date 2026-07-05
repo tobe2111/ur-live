@@ -1,5 +1,17 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-05 — B2G 상권 패키지 연결부 7종 (자문 점검 14~21번, 대표 "모두 확인해줘") — 7커밋
+자문이 확인 요청한 14~21번 중 미구현 확정 7건 전부 구현 (15번=실기기 QA 만 잔여).
+- **16 유상/무상 딜 버킷** (`point-buckets.ts` SSOT): `user_points.free_balance` + `point_transactions.free_delta`. 차감 전 경로 무상 우선, 출금(points/curator 2경로) 유상 한도, 환불은 원장 역산 대칭 복원, 리워드 적립 9종 free 태깅(충전·커미션 소득은 유상 유지). 잠긴 payment.routes 는 adjustUserPoints SSOT 경유라 무수정. 블로그 딜 가이드 v5.
+- **17 상권 방문 리워드** (`visit-reward.ts`): 캠페인(상권코드·기간·지급액·총액캡) — 첫 구매 확정 시 무상 딜 1인 1회(UNIQUE claim), 캡 도달 자동 종료+어드민 벨, 환불 회수. 트리거 group-buy /join·confirm-toss. 어드민 `/admin/visit-rewards`.
+- **14 QR 소스 어트리뷰션** (`acquisition.ts` 2종): URL 규격 `/local/{code}?src={소스}`(소문자-하이픈 — **인쇄물 제작 기준 확정**). first-touch 30일 → landing → 로그인 claim(UNIQUE user) → 첫구매 스냅샷. 상권 리포트에 소스별 랜딩→가입→첫구매 퍼널 + 시설물 QR 생성기.
+- **19 체험단 리뷰 뱃지**: `product_reviews.is_sponsored` — 작성 API 가 fcfs 참여(selected/paid) 서버 판정 자동 부착(끌 수 없음) + '체험 제공' 뱃지 (표시광고법).
+- **21 온누리 뱃지**: `seller_meta.onnuri_merchant`(사이드테이블 첫 실사용) — 셀러 사업자정보 토글 + 피드카드/상세/상권관 additive enrich 뱃지.
+- **20 약관 동의 로그**: `terms_agreements`(subject·doc·version UNIQUE) + 버전 SSOT `terms-versions.ts`. 유저=TermsConsentGate(첫 로그인+개정 재동의 겸용)+이메일가입 저장, 셀러=관문 필수 체크+서버 강제, 에이전시=중요조항 4개 개별 체크(커미션 1%·24개월·회수) 2경로 서버 강제.
+- **18 알림톡 배선**: fcfs /select 당첨(fcfs_selected)·승계 자동판정(fcfs_replacement) + 이용권 사용완료(voucher_used — 기존 solapi LMS chokepoint 에 Aligo 경로 추가). ⚠️ **운영 잔여: 알리고 콘솔 템플릿 3종 등록·심사 신청**(코드 message 와 본문 일치 필수).
+- 검증: sql-bind/table/column/balance/theme/modal-zindex/INV-CB/file-size(rebaseline) 가드 전부 GREEN · 수정 파일 구문 오류 0 · point-buckets 유닛 11케이스 신설 (⚠️ 이 원격환경 npm 403 — 전체 build/tsc/vitest 는 CI 위임).
+- ⚠️ **스테이징 검증 필수**: ① 무상 1,000+유상 1,000 보유 → 500딜 결제 시 무상 차감·출금가능=유상만 ② 방문 리워드 재구매 미지급/캡 종료/환불 회수 ③ src 2종 가입·구매 분리 집계 ④ 체험단 리뷰 뱃지 ⑤ 가입 3종 동의 row. 15번(카톡 인앱 실기기 E2E)은 iOS/Android QA 세션 + `/api/_internal/kakao-login-diag` 확인.
+
 ## ✅ 2026-07-03 — 의료용품 도매몰(메디스타트) 신설 (대표 "의료몰 생성 + 모두 이상적으로") — 3커밋
 멀티몰 인프라(`wholesale_malls`, mall_id 격리) 위에 두번째 몰 구축. 유통스타트(mall 1)는 전부 fallback = byte-불변.
 - **커밋1(백엔드 기반)**: 카테고리 전역확장(의료기기/위생/간병 + 라벨 SSOT + 코드접두어 MD/SN/CR + 정규화 몰스코프 클램프) · `wholesale_malls.requires_license`/`license_label` 컬럼 · **메디스타트 시드**(id=2, slug `medi`, `#0ea5e9`, categories_json=의료4종, requires_license=1) · `GET /mall` → `resolveMallId`(?mall= 존중).
