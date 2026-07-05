@@ -61,6 +61,29 @@ export default function AdminDongnedealImportPage() {
   const [seedApplicantsMin, setSeedApplicantsMin] = useState('')
   const [seedApplicantsMax, setSeedApplicantsMax] = useState('')
   const sidoRegion = findRegionByKey(seedSido)
+  // 💰 2026-07-05 (대표 "최대한 이상적으로"): 업종별 가격 밴드 보정(배율) 편집기.
+  const [bandsOpen, setBandsOpen] = useState(false)
+  const [bands, setBands] = useState<Array<{ pq: string; cat: string; min: number; max: number; multiplier: number }>>([])
+  const [bandsUpdatedAt, setBandsUpdatedAt] = useState<string | null>(null)
+  const [bandsSaving, setBandsSaving] = useState(false)
+  const openBands = async () => {
+    if (bandsOpen) { setBandsOpen(false); return }
+    setBandsOpen(true)
+    try {
+      const r = await api.get('/api/admin/dongnedeal/price-bands', h)
+      if (r.data?.success) { setBands(r.data.data || []); setBandsUpdatedAt(r.data.updated_at || null) }
+    } catch { toast.error('밴드 불러오기 실패') }
+  }
+  const saveBands = async () => {
+    setBandsSaving(true)
+    try {
+      const multipliers: Record<string, number> = {}
+      for (const b of bands) if (Math.abs(b.multiplier - 1) > 0.001) multipliers[b.pq] = b.multiplier
+      const r = await api.put('/api/admin/dongnedeal/price-bands', { multipliers }, h)
+      if (r.data?.success) { setBandsUpdatedAt(r.data.updated_at); toast.success('가격 밴드 보정 저장됨 — 다음 생성부터 적용') }
+      else toast.error(r.data?.error || '저장 실패')
+    } catch { toast.error('저장 실패') } finally { setBandsSaving(false) }
+  }
   // 🖊️ 2026-07-01 (대표 — 수정/삭제): 편집 대상 + 목록 새로고침 nonce.
   const [editing, setEditing] = useState<DealRow | null>(null)
   const [listNonce, setListNonce] = useState(0)
@@ -259,6 +282,33 @@ export default function AdminDongnedealImportPage() {
             {stats.demo > 0 && <p className="text-[11px] text-amber-600 mt-2">⚠️ 데모 상품 {stats.demo}개가 동네딜에 섞여 있습니다 — 실상품 등록 전 정리를 권장합니다.</p>}
           </div>
         )}
+
+        {/* 💰 업종별 가격 밴드 보정 — 시세 스냅샷 낡음 방지(물가 변동 시 배율로 보정) */}
+        <div className={card}>
+          <button onClick={openBands} className="w-full flex items-center justify-between text-left">
+            <p className="text-sm font-bold text-gray-900">💰 데모 가격 밴드 보정 (업종별 배율)</p>
+            <span className="text-[12px] text-gray-400">{bandsOpen ? '접기 ▲' : `펼치기 ▼${bandsUpdatedAt ? ` · 최종 보정 ${bandsUpdatedAt.slice(0, 10)}` : ''}`}</span>
+          </button>
+          {bandsOpen && (
+            <div className="mt-3">
+              <p className="text-[11px] text-gray-400 mb-2">기준 밴드는 시세 스냅샷(2026-07 캘리브레이션) — 물가가 바뀌면 배율(0.5~2.0)로 보정하세요. 다음 생성분부터 적용됩니다.</p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1.5 max-h-72 overflow-y-auto pr-1">
+                {bands.map((b, i) => (
+                  <label key={b.pq} className="flex items-center justify-between gap-2 text-[12px] text-gray-600">
+                    <span className="truncate">{b.pq} <span className="text-gray-400">({Math.round(b.min * b.multiplier / 1000)}~{Math.round(b.max * b.multiplier / 1000)}천원)</span></span>
+                    <input
+                      type="number" step="0.05" min="0.5" max="2"
+                      value={b.multiplier}
+                      onChange={(e) => { const v = Number(e.target.value); setBands((prev) => prev.map((x, j) => j === i ? { ...x, multiplier: Number.isFinite(v) ? v : 1 } : x)) }}
+                      className="w-16 px-1.5 py-1 border border-gray-200 rounded text-[12px] text-gray-900 text-right shrink-0"
+                    />
+                  </label>
+                ))}
+              </div>
+              <button onClick={saveBands} disabled={bandsSaving} className="mt-3 px-3 py-2 rounded-lg text-sm font-bold text-white bg-gray-900 hover:bg-black disabled:opacity-50">{bandsSaving ? '저장 중…' : '배율 저장'}</button>
+            </div>
+          )}
+        </div>
 
         {/* 🗺️ 2026-07-01 (대표 — 수기로 진짜 매장 등록): 카카오 검색 자동완성 직접 입력 폼(+수정 모드) */}
         <ManualDealForm

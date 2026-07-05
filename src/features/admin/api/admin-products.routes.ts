@@ -1114,14 +1114,68 @@ function demoDiscountRange(cat: string): [number, number] {
   if (cat === 'beauty_voucher') return [0.3, 0.5];
   return [0.18, 0.38];
 }
-function buildDemoOffer(t: DemoBiz): { name: string; desc: string; price: number; orig: number; q: string } {
+// mult = 업종별 시세 보정 배율(어드민 편집, platform_settings.demo_price_multipliers) — 물가 드리프트 대응.
+function buildDemoOffer(t: DemoBiz, mult = 1): { name: string; desc: string; price: number; orig: number; q: string } {
   const p = t.pat[Math.floor(Math.random() * t.pat.length)];
-  const price = Math.round((p.min + Math.random() * (p.max - p.min)) / 100) * 100;
+  const price = Math.max(1000, Math.round((p.min + Math.random() * (p.max - p.min)) * mult / 100) * 100);
   const [dMin, dMax] = demoDiscountRange(t.cat);
   const disc = dMin + Math.random() * (dMax - dMin);
   const orig = Math.round(price / (1 - disc) / 1000) * 1000;
   return { name: p.n, desc: p.d, price, orig, q: t.iq || t.pq };
 }
+
+// 💰 2026-07-05 (대표 "최대한 이상적으로" — 시세 스냅샷의 낡음 방지): 업종별 가격 배율을
+//   어드민이 직접 보정(platform_settings JSON). 시드 시 밴드에 곱해짐. '*' = 전체 기본 배율.
+async function loadDemoPriceMultipliers(DB: D1Database): Promise<Map<string, number>> {
+  const m = new Map<string, number>();
+  try {
+    const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'demo_price_multipliers'").first<{ value: string }>();
+    if (row?.value) {
+      const obj = JSON.parse(row.value) as Record<string, unknown>;
+      for (const [k, v] of Object.entries(obj)) {
+        const n = Number(v);
+        if (Number.isFinite(n) && n >= 0.5 && n <= 2) m.set(k, n);
+      }
+    }
+  } catch { /* 미설정 = 배율 1 */ }
+  return m;
+}
+
+// GET /dongnedeal/price-bands — 업종별 기준 밴드 + 현재 배율 + 최종 보정일 (어드민 보정 UI 용)
+adminProductsRoutes.get('/dongnedeal/price-bands', cors(), async (c) => {
+  try {
+    const mult = await loadDemoPriceMultipliers(c.env.DB);
+    const updated = await c.env.DB.prepare("SELECT value FROM platform_settings WHERE key = 'demo_price_bands_updated_at'").first<{ value: string }>().catch(() => null);
+    const rows = DEMO_BIZ.map((t) => ({
+      pq: t.pq,
+      cat: t.cat,
+      min: Math.min(...t.pat.map((p) => p.min)),
+      max: Math.max(...t.pat.map((p) => p.max)),
+      multiplier: mult.get(t.pq) ?? mult.get('*') ?? 1,
+    }));
+    return c.json({ success: true, data: rows, updated_at: updated?.value || null });
+  } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
+});
+
+// PUT /dongnedeal/price-bands — 업종별 배율 저장(0.5~2.0). 물가 변동 시 어드민이 직접 보정.
+adminProductsRoutes.put('/dongnedeal/price-bands', cors(), async (c) => {
+  try {
+    const body = await c.req.json<{ multipliers?: Record<string, unknown> }>().catch(() => ({} as never));
+    const src = body?.multipliers && typeof body.multipliers === 'object' ? body.multipliers : {};
+    const clean: Record<string, number> = {};
+    for (const [k, v] of Object.entries(src)) {
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 0.5 || n > 2) continue;  // 0.5~2 배 밖은 무시(오타 방어)
+      if (k !== '*' && !DEMO_BIZ.some((t) => t.pq === k)) continue;
+      if (Math.abs(n - 1) > 0.001) clean[k] = Math.round(n * 100) / 100;
+    }
+    const now = new Date().toISOString();
+    await c.env.DB.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('demo_price_multipliers', ?)").bind(JSON.stringify(clean)).run();
+    await c.env.DB.prepare("INSERT OR REPLACE INTO platform_settings (key, value) VALUES ('demo_price_bands_updated_at', ?)").bind(now).run().catch(() => {});
+    await writeAuditLog(c, { action: 'dongnedeal_price_bands', targetType: 'settings', after: clean }).catch(() => {});
+    return c.json({ success: true, saved: Object.keys(clean).length, updated_at: now });
+  } catch (err) { return c.json({ success: false, error: safeAdminError(err, c.env) }, 500); }
+});
 
 // 🎯 2026-07-01 (대표 "데모 이용권도 매장 지도 매칭 제대로"): 데모 매장은 가공 이름 + 번지 없는 주소라
 //   좌표/place_url 이 없음 → 카카오 키워드 검색으로 실제 매장의 좌표·주소·place_url 을 붙여 지도 매칭 정상화.
@@ -1317,6 +1371,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     //   소비자 표면에 '오픈 예정' 배지 + 구매 대신 사전 응모 유도 + **생성 리뷰 미부착**(정직 모드).
     //   기본(미지정) = 실상품형(기존과 동일).
     const isPrelaunch = String((body as { mode?: unknown }).mode || '') === 'prelaunch';
+    const priceMult = await loadDemoPriceMultipliers(DB);  // 💰 어드민 시세 보정 배율
     const { fetchNaverImageUrl } = await import('../../../worker/utils/naver-image-search');
     // 🎯 실제 매장 매칭(카카오): region 을 중심좌표로 1회 해석 → 그 반경 내 거리순 검색(정확도 ↑).
     //   center 있으면 검색어는 순수 업종(pq)만(지역명은 좌표로 반영), 없으면 "지역 랜덤구 pq" 폴백.
@@ -1393,7 +1448,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         if (usedStores.has(storeKey)) { skipped++; continue; }  // 같은/이전 배치 매장 재사용 방지
         usedStores.add(storeKey);
         // 🎲 3단계: 그 매장에 맞는 오퍼 랜덤 조합(패턴×가격밴드×할인 25~45%).
-        const offer = buildDemoOffer(t);
+        const offer = buildDemoOffer(t, priceMult.get(t.pq) ?? priceMult.get('*') ?? 1);
         const img = realPhoto || `https://picsum.photos/seed/urdeal-${t.pq}-${slugCursor + 1}/600/600`;
         const restName = place?.name || null;         // hasCoord 보장 → 항상 실매장명
         const restAddr = place?.address || null;
