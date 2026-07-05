@@ -9,11 +9,12 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { WT } from './wholesale-theme'
-import { BUSINESS_INFO } from './WholesaleFooter'
+import { useBusinessInfo, type BusinessInfo } from './WholesaleFooter'
 
-const OP = BUSINESS_INFO.company // 플랫폼 운영자 = 사람과고리
-
-const SECTIONS: { title: string; body: string[] }[] = [
+// 🏢 2026-07-04 몰별 사업자정보 — company_json 오버레이 주입(미설정 몰은 기본과 동일).
+function buildSections(BUSINESS_INFO: BusinessInfo): { title: string; body: string[] }[] {
+  const OP = BUSINESS_INFO.company // 플랫폼 운영자
+  return [
   {
     title: '제1조 (목적)',
     body: [
@@ -160,9 +161,11 @@ const SECTIONS: { title: string; body: string[] }[] = [
     ],
   },
 ]
+}
 
 export default function WholesaleTermsPage() {
   const navigate = useNavigate()
+  const SECTIONS = buildSections(useBusinessInfo())
   return (
     <div className="min-h-[100dvh] pb-24" style={{ background: WT.fill }}>
       <SEO title="이용약관 - 유통스타트" description="유통스타트 B2B 도매몰 이용약관(물품 공급 약관)" url="/wholesale/terms" noindex />
