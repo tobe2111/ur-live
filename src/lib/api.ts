@@ -506,6 +506,20 @@ api.interceptors.response.use(
             originalRequest.headers['Authorization'] = `Bearer ${refreshed.accessToken}`;
             return api(originalRequest);
           }
+          // 🛡️ 2026-07-04 (대표 "수시로 로그아웃"): 탭/코드경로 경합 가드 — refresh 실패가
+          //   '다른 탭(또는 useTokenAutoRefresh)이 먼저 회전(rotation)시켜 내 refresh 토큰이
+          //   폐기됨'인 경우, 저장소(localStorage 는 탭 공유)엔 이미 *새* 토큰이 있다.
+          //   기존엔 무조건 강제 로그아웃 + clearAuthData 가 그 새 토큰까지 삭제 → 이긴 탭도
+          //   동반 로그아웃(전 탭 로그아웃 연쇄). 저장소가 내가 시도한 값과 달라졌으면
+          //   로그아웃 대신 새 access 토큰으로 원요청 재시도.
+          try {
+            const latestRefresh = localStorage.getItem(refreshTokenKey);
+            const latestAccess = localStorage.getItem(tokenKey);
+            if (latestAccess && latestRefresh && latestRefresh !== refreshToken) {
+              originalRequest.headers['Authorization'] = `Bearer ${latestAccess}`;
+              return api(originalRequest);
+            }
+          } catch { /* storage 접근 불가 — 기존 로그아웃 흐름 */ }
           // null 이면 refresh 실패 → 아래 강제 로그아웃 fallthrough
         }
 
