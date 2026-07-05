@@ -13,6 +13,10 @@
  *   '0 0 * * 1'    — weekly agency batch (auto-settle, incentives, tier-eval, invoices)
  *
  * Extracted from worker/index.ts (TD-006 부분, 2026-04-27).
+ *
+ * ⚠️ 배포 주의 (2026-07-05): 이 파일(및 cron/**)은 Pages 배포(main.yml)에 **포함되지 않는다** —
+ *   cron 은 별도 Workers 프로젝트에서 돈다. 변경 시 `.github/workflows/worker-deploy.yml` 이
+ *   자동 트리거(이 경로 push 시)되어 `wrangler deploy` 로 동기화. 수동 실행: Actions → Deploy Worker.
  */
 
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types';
