@@ -1304,6 +1304,10 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     //   라운드 보충(최대 3라운드) — 실매장 미매칭/중복매장 스킵분을 다른 랜덤 매장으로 메꿈.
     //   그 지역 실매장 후보가 고갈될 때만 목표 미달(skipped 표기).
     const reqCount = Math.max(1, Math.min(24, Math.round(Number((body as { count?: unknown }).count)) || 8));
+    // 🏷️ 2026-07-05 (대표 "옵션으로 선택할 수 있게 개발해줘"): mode='prelaunch' = **오픈 예정·사전 응모형** —
+    //   소비자 표면에 '오픈 예정' 배지 + 구매 대신 사전 응모 유도 + **생성 리뷰 미부착**(정직 모드).
+    //   기본(미지정) = 실상품형(기존과 동일).
+    const isPrelaunch = String((body as { mode?: unknown }).mode || '') === 'prelaunch';
     const { fetchNaverImageUrl } = await import('../../../worker/utils/naver-image-search');
     // 🎯 실제 매장 매칭(카카오): region 을 중심좌표로 1회 해석 → 그 반경 내 거리순 검색(정확도 ↑).
     //   center 있으면 검색어는 순수 업종(pq)만(지역명은 좌표로 반영), 없으면 "지역 랜덤구 pq" 폴백.
@@ -1394,14 +1398,14 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
             `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
                is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-          ).bind(dispName, offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, slug).run();
+          ).bind(dispName, isPrelaunch ? offer.desc + '\n\n※ 오픈 협의 중인 매장입니다. 사전 응모하시면 오픈 시 알림과 응모자 혜택을 드려요.' : offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, slug).run();
         } catch {
           // 🛡️ restaurant_lat/lng 컬럼 미존재 환경 폴백 — 좌표 없이 시드(클라 지오코딩이 지도 보정).
           res = await DB.prepare(
             `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
                is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, slug, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, datetime('now'), datetime('now'))`
-          ).bind(dispName, offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, slug).run();
+          ).bind(dispName, isPrelaunch ? offer.desc + '\n\n※ 오픈 협의 중인 매장입니다. 사전 응모하시면 오픈 시 알림과 응모자 혜택을 드려요.' : offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, slug).run();
         }
         seeded++;
         // 추첨 응모 설정 — 정원 3~8 랜덤, 표시 지원자 = 정원×3~6배(범위 지정 시 그 랜덤).
@@ -1413,6 +1417,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
             fcfs_spots: spots,
             fcfs_applied_seed: pickApplicants(spots * (3 + Math.floor(Math.random() * 4))),
             fcfs_deadline: fcfsDeadline,
+            ...(isPrelaunch ? { prelaunch: '1' } : {}),  // 🏷️ 오픈 예정형 표시(소비자 배지·CTA 분기)
           }).catch(() => {});
         }
         // 🎯 카카오 장소 페이지 URL(매장 지도 직접 연결) — 매칭 성공 시만.
@@ -1420,7 +1425,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
           await setSupplyMeta(DB, pid, { kakao_place_url: place.placeUrl }).catch(() => {});
         }
         // 🎯 매장특색 리뷰 생성 대상(응답 후 waitUntil 로 채움 — 실매장명/업종 grounding).
-        if (pid > 0) seededForReviews.push({ id: pid, name: dispName, category: t.cat, storeName: restName, price: offer.price });
+        if (pid > 0 && !isPrelaunch) seededForReviews.push({ id: pid, name: dispName, category: t.cat, storeName: restName, price: offer.price });  // 🏷️ 오픈 예정형 = 리뷰 미부착
       }
     }
     await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded, realPhotos, placed, skipped, healed, region: region || null, category: catFilter || null } }).catch(() => {});

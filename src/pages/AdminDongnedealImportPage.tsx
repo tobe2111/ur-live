@@ -56,6 +56,8 @@ export default function AdminDongnedealImportPage() {
   const [seedCount, setSeedCount] = useState(8)
   // 🎛️ 2026-07-04 (대표 "지원자 수 조절 + 기간 설정 — 데모"): 추첨 마감(N일 후) + 표시 지원자 수 범위.
   const [seedFcfsDays, setSeedFcfsDays] = useState(7)
+  // 🏷️ 2026-07-05 (대표 "옵션으로 선택할 수 있게"): 실상품형 vs 오픈 예정·사전 응모형(리뷰 미부착·구매 대신 응모).
+  const [seedMode, setSeedMode] = useState<'live' | 'prelaunch'>('live')
   const [seedApplicantsMin, setSeedApplicantsMin] = useState('')
   const [seedApplicantsMax, setSeedApplicantsMax] = useState('')
   const sidoRegion = findRegionByKey(seedSido)
@@ -97,6 +99,7 @@ export default function AdminDongnedealImportPage() {
           region: regionParam || undefined,
           category: seedCategory || undefined,
           count: Math.min(CHUNK, seedCount - done),
+          mode: seedMode === 'prelaunch' ? 'prelaunch' : undefined,
           fcfsDays: seedFcfsDays,
           applicantsMin: Number.isFinite(aMin) && aMin > 0 ? aMin : undefined,
           applicantsMax: Number.isFinite(aMax) && aMax > 0 ? aMax : undefined,
@@ -209,6 +212,16 @@ export default function AdminDongnedealImportPage() {
                   <option value="beauty_voucher">미용</option>
                   <option value="etc_voucher">기타</option>
                   <option value="general">일반 상품</option>
+                </select>
+                {/* 🏷️ 데모 유형 — 실상품형(리뷰 포함) vs 오픈 예정형(사전 응모, 리뷰 없음) */}
+                <select
+                  value={seedMode}
+                  onChange={(e) => setSeedMode(e.target.value as 'live' | 'prelaunch')}
+                  className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
+                  aria-label="데모 유형"
+                >
+                  <option value="live">실상품형</option>
+                  <option value="prelaunch">오픈 예정형</option>
                 </select>
                 <select
                   value={seedCount}

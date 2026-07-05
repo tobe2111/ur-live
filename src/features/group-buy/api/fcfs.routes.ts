@@ -118,7 +118,7 @@ publicApp.get('/active', async (c) => {
     await ensureFcfsTable(DB)
     // fcfs_enabled='1' 인 product_id 들 → 상품 정보 join
     const { results: metaRows } = await DB.prepare(
-      "SELECT product_id, key, value FROM product_supply_meta WHERE key LIKE 'fcfs_%'"
+      "SELECT product_id, key, value FROM product_supply_meta WHERE key LIKE 'fcfs_%' OR key = 'prelaunch'"
     ).all<{ product_id: number; key: string; value: string | null }>().catch(() => ({ results: [] as { product_id: number; key: string; value: string | null }[] }))
     const byId = new Map<number, Record<string, string>>()
     for (const m of metaRows || []) {
@@ -153,7 +153,7 @@ publicApp.get('/active', async (c) => {
     for (const p of prods || []) {
       const cfg = parseConfig(byId.get(p.id as number))
       const real = countById.get(p.id as number) || 0
-      out.push({ ...p, fcfs: { ...cfg, appliedDisplay: cfg.appliedSeed + real, realApplied: real } })
+      out.push({ ...p, fcfs: { ...cfg, prelaunch: (byId.get(p.id as number)?.prelaunch === '1'), appliedDisplay: cfg.appliedSeed + real, realApplied: real } })
     }
     return c.json({ success: true, data: out })
   } catch (err) { return safeError(c, err, '선착순 목록 조회 실패', '[fcfs]') }

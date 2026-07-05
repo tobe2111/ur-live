@@ -292,7 +292,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       if (ids.length > 0) {
         const ph2 = ids.map(() => '?').join(',')
         const { results: fcfsMeta } = await DB.prepare(
-          `SELECT product_id, key, value FROM product_supply_meta WHERE key LIKE 'fcfs_%' AND product_id IN (${ph2})`,
+          `SELECT product_id, key, value FROM product_supply_meta WHERE (key LIKE 'fcfs_%' OR key = 'prelaunch') AND product_id IN (${ph2})`,
         ).bind(...ids).all<{ product_id: number; key: string; value: string | null }>()
         const cfgById = new Map<number, Record<string, string>>()
         for (const m of fcfsMeta || []) {
@@ -316,8 +316,11 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
             const seed = Math.max(0, parseInt(rec.fcfs_applied_seed || '0', 10) || 0)
             return {
               ...p,
+              // 🏷️ 2026-07-05 (대표 "옵션으로 선택") — 오픈 예정형 데모: 카드 '오픈 예정' 배지 + 상세 CTA 분기.
+              ...(rec.prelaunch === '1' ? { prelaunch: true } : {}),
               fcfs: {
                 enabled: true,
+                prelaunch: rec.prelaunch === '1',
                 spots: Math.max(0, parseInt(rec.fcfs_spots || '0', 10) || 0),
                 appliedDisplay: seed + (cntById.get(pid) || 0),
                 deadline: rec.fcfs_deadline || null,
@@ -513,6 +516,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const max_per_person = mppRaw != null && Number.isFinite(Number(mppRaw)) && Number(mppRaw) > 0 ? Math.floor(Number(mppRaw)) : null
     // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 등록 시 캡처한 place_url (있으면 상세 지도가 직접 연결).
     const kakao_place_url = normalizeKakaoPlaceUrl(metaMap?.get(Number(id))?.kakao_place_url)
+    const prelaunch = metaMap?.get(Number(id))?.prelaunch === '1'  // 🏷️ 오픈 예정형(상세 배지·구매 CTA 분기)
     // 🏪 2026-07-05 온누리 가맹 뱃지 (B2G): seller_meta.onnuri_merchant='1' 이면 상세에 additive 동봉.
     let onnuri_merchant = false
     try {
@@ -535,6 +539,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         ...(seller_handle ? { seller_handle } : {}),  // 🔗 셀러 링크샵 handle (있을 때만)
         ...(menu ? { menu } : {}),                // 🍽️ #5: 대표 메뉴 (있을 때만)
         ...(max_per_person ? { max_per_person } : {}),  // 🎯 1인당 구매 한도 (있을 때만)
+        ...(prelaunch ? { prelaunch: true } : {}),  // 🏷️ 오픈 예정형
         ...(kakao_place_url ? { kakao_place_url } : {}),  // 🎯 카카오 장소 페이지 URL (있을 때만)
         ...(onnuri_merchant ? { onnuri_merchant: true } : {}),  // 🏪 온누리 가맹 매장 (있을 때만)
       },

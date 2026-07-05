@@ -8,6 +8,16 @@ import { formatNumber } from '@/utils/format'
 import type { FcfsInfo } from './useFcfs'
 
 export default function FcfsBadge({ info, className = '' }: { info: FcfsInfo; className?: string }) {
+  // 🏷️ 2026-07-05 (대표 "옵션으로 선택"): 오픈 예정형 — 판매 중이 아니라 '오픈 예정 + 사전 응모' 소구.
+  if (info.prelaunch) {
+    return (
+      <span className={`inline-flex items-center gap-1 rounded-full bg-gray-900 dark:bg-white px-2.5 py-1 text-[10px] font-bold leading-none text-white dark:text-gray-900 shadow-sm ${className}`}>
+        <span className="opacity-80">🔔 오픈 예정</span>
+        <span className="opacity-40">·</span>
+        <span className="font-extrabold">{formatNumber(info.appliedDisplay)}명 사전응모</span>
+      </span>
+    )
+  }
   return (
     <span className={`inline-flex items-center gap-1 rounded-full bg-gray-900 dark:bg-white px-2.5 py-1 text-[10px] font-bold leading-none text-white dark:text-gray-900 shadow-sm ${className}`}>
       <span className="opacity-80">🎯 {formatNumber(info.spots)}명 모집</span>
