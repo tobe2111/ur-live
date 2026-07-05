@@ -561,11 +561,15 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
   // 🏁 2026-06-12 (전수조사 🔴 G4): 딜(deal_points) 결제 주문의 반품 환불 시 딜 미환급이던 갭 —
   //   cancel 경로(order.routes:624 패턴)와 동일하게 환급 + 장부 기록. Toss 키 없고 딜 결제면 이 분기가 실환불.
   if (!paymentKey && order.payment_method === 'deal_points' && (returnRecord.refund_amount || 0) > 0 && order.user_id != null) {
-    await DB.prepare('UPDATE user_points SET balance = balance + ?, updated_at = datetime(\'now\') WHERE user_id = ?')
-      .bind(returnRecord.refund_amount, String(order.user_id)).run();
-    await DB.prepare(
-      "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-    ).bind(String(order.user_id), returnRecord.refund_amount, returnRecord.refund_amount, String(order.user_id), `[반품 환불] ${order.order_number || returnRecord.order_id}`).run().catch(() => {});
+    // 💸 2026-07-05 버킷: 원거래 무상 차감분 우선 무상 복원 (refundDealPoints SSOT).
+    const { refundDealPoints } = await import('../../../worker/utils/point-buckets');
+    await refundDealPoints(DB, {
+      userId: String(order.user_id),
+      amount: returnRecord.refund_amount,
+      ref: [order.order_number || null, String(returnRecord.order_id)],
+      type: 'refund',
+      description: `[반품 환불] ${order.order_number || returnRecord.order_id}`,
+    });
   }
 
   // 2. Toss 결제 취소 (payment_key가 있는 경우만)
@@ -769,6 +773,12 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
   try {
     const { reverseInviteRewardOnRefund } = await import('../../../worker/utils/invite-reward');
     await reverseInviteRewardOnRefund(DB, String(returnRecord.user_id));
+  } catch { /* best-effort */ }
+
+  // 🏙️ 2026-07-05: 상권 방문 리워드 회수 — 트리거 주문 반품환불 시 대칭 (멱등 CAS, fail-soft).
+  try {
+    const { reverseVisitRewardOnRefund } = await import('../../../worker/utils/visit-reward');
+    await reverseVisitRewardOnRefund(DB, order.order_number || String(returnRecord.order_id));
   } catch { /* best-effort */ }
 
   // ── Settlement adjustment (restaurant vouchers) ──

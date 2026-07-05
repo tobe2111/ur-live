@@ -98,6 +98,8 @@ export interface WholesaleMallBrand {
   license_label?: string | null
   // 🧩 2026-07-03 몰 기능 토글(제외 레이어) — { key: boolean }. 키 부재 = ON.
   features?: Record<string, boolean>
+  // 🏢 2026-07-04 몰 회사(푸터) 정보 — 미설정 키는 기본(유통스타트) 폴백.
+  company?: Record<string, string> | null
 }
 
 /** 🧩 몰 기능이 켜졌는지(제외 레이어) — 키 부재/미설정 = 기본값(def, 기본 ON). false 면 그 몰에서 숨김. */
@@ -118,6 +120,7 @@ export const DEFAULT_MALL_BRAND: WholesaleMallBrand = {
   requires_license: 0,
   license_label: null,
   features: {},
+  company: null,
 }
 
 /**
@@ -167,6 +170,8 @@ export function useWholesaleMall() {
     features: mall.features || {},
     // 🧩 편의: 이 몰에서 기능이 켜졌는지(제외 레이어). 예: feature('dropship') === false → 숨김.
     feature: (key: string, def = true) => mallFeatureEnabled(mall.features, key, def),
+    // 🏢 몰 회사(푸터) 정보 — 미설정 시 null(소비처가 기본 BUSINESS_INFO 폴백).
+    company: mall.company || null,
     isLoading: q.isLoading,
   }
 }
@@ -532,10 +537,11 @@ export interface WholesaleBanner {
 /** 메인 배너 캐러셀 — 공개(비로그인 노출). active 배너만 서버가 반환. */
 export function useWholesaleBanners() {
   return useQuery<WholesaleBanner[]>({
-    queryKey: queryKeys.wholesale('banners'),
+    queryKey: queryKeys.wholesale('banners', wholesaleMallSeg()),
     queryFn: () =>
       api
-        .get('/api/wholesale/banners')
+        // 🏬 2026-07-04: ?mall= 전달 — 몰별 배너(서버 GET /banners 는 이미 resolveMallId 필터) + 몰별 캐시 분리.
+        .get(`/api/wholesale/banners${currentWholesaleMallSlug() ? `?mall=${encodeURIComponent(currentWholesaleMallSlug()!)}` : ''}`)
         .then((r) => (r.data?.success ? ((r.data.banners || []) as WholesaleBanner[]) : []))
         .catch(() => []),
     staleTime: 5 * 60 * 1000,

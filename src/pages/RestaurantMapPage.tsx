@@ -65,13 +65,15 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 🎯 2026-07-02 (대표 "첫 페인트에 응모 버튼 늦게 등장"): 목록 응답에 서버 enrich 된 r.fcfs 를
   //   첫 페인트 시드로 즉시 사용 — 별도 /api/fcfs/active 도착 전에도 응모 버튼·배지가 함께 그려짐.
   //   fetch 결과가 오면 그 값(신선 카운트) 우선.
-  const [liveFcfsMap, setLiveFcfsMap] = useState<Map<number, { spots: number; appliedDisplay: number }>>(new Map())
+  // 🎯 2026-07-04 (대표 "데모 이용권 노출은 항상 후순위"): demo 플래그 동반 — '상위노출' boost 는
+  //   실(non-demo) 선착순만. 데모는 base 순서(서버가 이미 데모-후순위 정렬) 그대로 뒤에 남음.
+  const [liveFcfsMap, setLiveFcfsMap] = useState<Map<number, { spots: number; appliedDisplay: number; demo?: boolean; prelaunch?: boolean }>>(new Map())
   useEffect(() => {
     api.get('/api/fcfs/active')
       .then(r => {
-        const m = new Map<number, { spots: number; appliedDisplay: number }>()
+        const m = new Map<number, { spots: number; appliedDisplay: number; demo?: boolean; prelaunch?: boolean }>()
         for (const p of (r.data?.data || [])) {
-          if (p?.fcfs?.enabled) m.set(p.id, { spots: p.fcfs.spots || 0, appliedDisplay: p.fcfs.appliedDisplay || 0 })
+          if (p?.fcfs?.enabled) m.set(p.id, { spots: p.fcfs.spots || 0, appliedDisplay: p.fcfs.appliedDisplay || 0, demo: !!(p.is_demo || p.fcfs.demo), prelaunch: !!p.fcfs.prelaunch })
         }
         setLiveFcfsMap(m)
       })
@@ -79,8 +81,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   }, [])
   const fcfsMap = useMemo(() => {
     const m = new Map(liveFcfsMap)
-    for (const r of restaurants as Array<{ id: number; fcfs?: { enabled?: boolean; spots?: number; appliedDisplay?: number } }>) {
-      if (!m.has(r.id) && r.fcfs?.enabled) m.set(r.id, { spots: r.fcfs.spots || 0, appliedDisplay: r.fcfs.appliedDisplay || 0 })
+    for (const r of restaurants as Array<{ id: number; fcfs?: { enabled?: boolean; spots?: number; appliedDisplay?: number; demo?: boolean; prelaunch?: boolean } }>) {
+      if (!m.has(r.id) && r.fcfs?.enabled) m.set(r.id, { spots: r.fcfs.spots || 0, appliedDisplay: r.fcfs.appliedDisplay || 0, demo: !!r.fcfs.demo, prelaunch: !!r.fcfs.prelaunch })
     }
     return m
   }, [liveFcfsMap, restaurants])
@@ -310,9 +312,11 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   }, [enrichedRestaurants, region, district, search, sortBy, radiusKm, priceRange, matchesFilter, showFavoritesOnly, favorites])
 
   // 🎯 2026-06-20 선착순 상위노출 — 선착순 상품을 리스트 최상단으로(나머지 순서 보존).
+  // 🎯 2026-07-04 (대표 "데모 항상 후순위"): boost 는 실(non-demo) 선착순만 — 데모는 끌어올리지 않음.
   const displayList = useMemo(() => {
     if (fcfsMap.size === 0) return filtered
-    return [...filtered].sort((a, b) => (fcfsMap.has(b.id) ? 1 : 0) - (fcfsMap.has(a.id) ? 1 : 0))
+    const boost = (id: number) => { const f = fcfsMap.get(id); return f && !f.demo ? 1 : 0 }
+    return [...filtered].sort((a, b) => boost(b.id) - boost(a.id))
   }, [filtered, fcfsMap])
 
   // 🛡️ 2026-04-30 Phase 3: hero carousel — 인기 (할인율 높은 순) 상위 5개

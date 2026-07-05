@@ -13,6 +13,7 @@ import { verifyPassword, hashPassword } from '@/lib/password';
 import { validateRequired } from '@/worker/utils/validation';
 import { executeQuery } from '@/worker/utils/database';
 import { startDashboardSession, isDashboardSessionCurrent } from '@/worker/utils/dashboard-session';
+import { filterAliveRefreshRows, rotationGraceExpiryIso } from '@/worker/utils/refresh-rotation';
 import { maskEmail } from '@/lib/mask';
 import { verifyTurnstile } from '@/worker/utils/turnstile';
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout';
@@ -331,8 +332,13 @@ adminRoutes.post('/refresh', cors(), rateLimit({ action: 'admin_refresh', max: 2
 
       const candidates = rows.results || [];
       if (candidates.length > 0) {
+        // 🛡️ 2026-07-04: 행 단위 만료 강제 — 이전엔 expires_at 을 조회만 하고 검사하지 않았음
+        //   (JWT exp 에만 의존). 아래 회전-유예(grace)를 도입하며 유예 지난 행이 계속 통하지
+        //   않도록 여기서 걸러낸다.
+        const nowMs = Date.now();
+        const alive = filterAliveRefreshRows(candidates, nowMs);
         let matchedId: number | null = null;
-        for (const row of candidates) {
+        for (const row of alive) {
           const { valid } = await verifyPassword(refreshToken, row.token_hash);
           if (valid) {
             matchedId = row.id;
@@ -343,8 +349,20 @@ adminRoutes.post('/refresh', cors(), rateLimit({ action: 'admin_refresh', max: 2
           console.warn('[Admin Refresh] refresh token not recognized (revoked or reused)');
           return c.json({ success: false, error: 'Refresh Token이 유효하지 않습니다.' }, 401);
         }
-        // rotate: 사용한 토큰 행 삭제
-        await DB.prepare('DELETE FROM auth_refresh_tokens WHERE id = ?').bind(matchedId).run().catch(swallow('auth:api:admin'));
+        // 🛡️ 2026-07-04 (대표 "수시로 로그아웃"): rotate 즉시삭제 → **60초 유예**로 변경.
+        //   즉시 삭제하면 여러 탭이 같은 refresh 로 동시 갱신할 때 진 쪽이 'not recognized' 401
+        //   → 강제 로그아웃 + clearAuthData 가 이긴 탭의 새 토큰까지 삭제 → 전 탭 연쇄 로그아웃.
+        //   유예 내 재사용은 각자 새 토큰을 받고(경합 무해화), 유예 후엔 위 alive 필터가 차단
+        //   (rotation/재사용-탐지 의미 보존). 클라 짝: api.ts 인터셉터의 '저장소 변화 감지 재시도'.
+        await DB.prepare(
+          `UPDATE auth_refresh_tokens SET expires_at = ? WHERE id = ? AND expires_at > ?`,
+        ).bind(
+          rotationGraceExpiryIso(nowMs), matchedId, rotationGraceExpiryIso(nowMs),
+        ).run().catch(swallow('auth:api:admin'));
+        // 유예 지난 행 정리 (best-effort)
+        await DB.prepare(
+          `DELETE FROM auth_refresh_tokens WHERE user_type = 'admin' AND user_id = ? AND expires_at <= ?`,
+        ).bind(Number(adminId), new Date(nowMs).toISOString()).run().catch(swallow('auth:api:admin'));
       }
     } catch (e) {
       console.error('[Admin Refresh] token store verify failed:', e);

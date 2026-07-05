@@ -30,12 +30,12 @@ import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAuth } from '@/worker/middleware/auth'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
-import { creditSupplierOnWholesaleOrder, loadPlatformCommissionPct, splitWholesaleUnit } from './wholesale-settlement'
+import { creditSupplierOnWholesaleOrder, loadMallCommissionPct, splitWholesaleUnit } from './wholesale-settlement'
 import { transitionWholesaleOrder, refundWholesaleOrderFully } from './wholesale-order-status'
 import { generateWholesaleSalesInvoice, generateWholesalePurchaseInvoices, listDistributorSalesInvoices } from './wholesale-tax-invoices'
 import { ensureSupplyVisibilitySchema, visibilityWhere, gradeExposureWhere } from './supply-visibility'
 import { ensureDepositSchema, deductDepositForOrder, compensateDepositOrderOnce } from './wholesale-deposit-core'
-import { resolveMallId, registrationMallId, loadMallByHost, loadMallById } from './wholesale-malls'
+import { resolveMallId, registrationMallId, loadMallByHost, loadMallById, loadMallBySlug, DEFAULT_MALL_ID, sellerMallIdOf } from './wholesale-malls'
 import { saveWholesaleLicense } from './wholesale-license'
 import { learnCodes, resolveCodes, normCode } from './wholesale-code-map'
 import {
@@ -66,8 +66,7 @@ const PREMIUM_BLOCKED_GRADES: DistributorGrade[] = ['C']
 //   타 몰 토큰이 회원 표면을 그대로 통과했다 → **회원 표면(me/home/recent-items/catalog 등급가/주문)은
 //   소속 몰에서만 회원으로 인정**(타 몰에선 게스트/차단). 각 몰 별도 로그인·회원가입 원칙의 서버 강제.
 async function sellerMallId(DB: D1Database, sellerId: number): Promise<number> {
-  const r = await DB.prepare('SELECT COALESCE(mall_id, 1) AS m FROM sellers WHERE id = ?').bind(sellerId).first<{ m: number }>().catch(() => null)
-  return Math.floor(Number(r?.m)) || 1
+  return sellerMallIdOf(DB, sellerId) // SSOT = wholesale-malls.sellerMallIdOf (documents/board 와 공용)
 }
 
 // ── GET /mall — PUBLIC 현재 몰(브랜딩) 조회 ─────────────────────────────────────
@@ -91,6 +90,11 @@ app.get('/mall', async (c) => {
     if (mall?.features_json) {
       try { const f = JSON.parse(mall.features_json); if (f && typeof f === 'object' && !Array.isArray(f)) features = f } catch { features = {} }
     }
+    // 🏢 2026-07-04 몰 회사(푸터) 정보 — 미설정 키는 클라가 기본 BUSINESS_INFO 로 폴백(기본 몰 byte-불변).
+    let company: Record<string, string> | null = null
+    if (mall?.company_json) {
+      try { const cj = JSON.parse(mall.company_json); if (cj && typeof cj === 'object' && !Array.isArray(cj)) company = cj as Record<string, string> } catch { company = null }
+    }
     c.header('Cache-Control', 'public, max-age=60')
     c.header('CDN-Cache-Control', 'max-age=300')
     return c.json({
@@ -107,11 +111,13 @@ app.get('/mall', async (c) => {
         license_label: mall?.license_label ?? null,
         // 🧩 몰 기능 토글(제외 레이어) — 클라가 UI 게이트. 키 부재 = ON.
         features,
+        // 🏢 몰 회사(푸터) 정보 — 상호/대표/사업자번호/통판신고/주소/입금/연락처. 미설정=null(기본 폴백).
+        company,
       },
     })
   } catch (err) {
     // 브랜딩 조회 실패 시에도 기본 몰 값으로 graceful — 헤더가 절대 비지 않도록.
-    return c.json({ success: false, mall: { slug: 'default', name: '유통스타트', brand_name: null, brand_color: null, logo_url: null, categories: null, requires_license: 0, license_label: null, features: {} } })
+    return c.json({ success: false, mall: { slug: 'default', name: '유통스타트', brand_name: null, brand_color: null, logo_url: null, categories: null, requires_license: 0, license_label: null, features: {}, company: null } })
   }
 })
 
@@ -756,7 +762,7 @@ app.get('/home', async (c) => {
     // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 판매사의 회원 홈 차단(빠른재주문/등급가 등 회원 데이터).
     const homeMallId = await resolveMallId(c)
     if (await sellerMallId(DB, sellerId) !== homeMallId) return c.json({ success: false, error: '이 몰의 회원이 아닙니다', code: 'MALL_MISMATCH' }, 401)
-    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadPlatformCommissionPct(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약). 🛡️ 2026-07-02: commPct(표시=청구 정합).
+    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMallCommissionPct(DB, homeMallId)])  // 🏭 병렬. 🏬 2026-07-04: 몰별 수수료(override ?? 전역).
     const grade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
     // 🏁 2026-06-12 (전 플로우 감사 🟡): /home 만 mall_id 스코프 누락 — 멀티몰 2개+ 가동 시
     //   베스트/신상에 타 몰 상품 노출(주문은 차단되나 혼선). 카탈로그(:1090)와 동일 조건으로 정합.
@@ -807,7 +813,8 @@ app.get('/recent-items', async (c) => {
     await ensureOrderTables(DB)
     await ensureSupplyVisibilitySchema(DB)
     // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 판매사의 '빠른 재주문'(타 몰 사입 이력) 노출 차단(대표 신고 증상).
-    if (await sellerMallId(DB, sellerId) !== await resolveMallId(c)) return c.json({ success: true, items: [] })
+    const riMallId = await resolveMallId(c)
+    if (await sellerMallId(DB, sellerId) !== riMallId) return c.json({ success: true, items: [] })
     // 최근 주문 라인 (상품별 최신 1건 — JS dedupe). 결제완료 이상만.
     const lines = await DB.prepare(`
       SELECT i.product_id AS product_id, i.qty AS qty, o.created_at AS created_at
@@ -820,7 +827,7 @@ app.get('/recent-items', async (c) => {
     const ids = [...seen.keys()].slice(0, 12)
     if (!ids.length) return c.json({ success: true, items: [] })
 
-    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadPlatformCommissionPct(DB)])  // 🏭 2026-06-07: 병렬. 🛡️ 2026-07-02: commPct(표시=청구 정합)
+    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMallCommissionPct(DB, riMallId)])  // 🏭 병렬. 🏬 2026-07-04: 몰별 수수료
     const ph = ids.map(() => '?').join(',')
     // 현재 구매 가능 + 가시성 통과한 원본 공급상품만 (단종/숨김 제외).
     const prods = await DB.prepare(`
@@ -864,6 +871,18 @@ app.get('/catalog', async (c) => {
   const authAttempt = !!c.req.header('Authorization') || /(?:^|;\s*)ud_seller_token=/.test(c.req.header('Cookie') || '')
   const visBind = sellerId ?? -1 // visibilityWhere EXISTS 가 매칭 안 되도록(=ALL/NULL 만 노출)
   const { DB } = c.env
+  // 🏬 2026-07-04 (대표 신고 — medi 카탈로그에 유통스타트 상품): 게스트 KV/캐논 캐시가 host 로만 몰을 구분해
+  //   같은 도메인 ?mall= 프리뷰가 타 몰 페이로드를 서빙(KV-HIT) + 역방향(캐논 키 오염)도 가능했음.
+  //   → 몰 캐시 세그먼트: 기본 몰(파라미터 없음/미해석 slug)은 '' = 기존 키 byte-동일(SSR/prewarm 잠금 보존),
+  //   비기본 몰만 `:m{id}` 부착. 쓰레기 slug 는 기본 몰로 해석되므로 '' → KV 키 파편화/write 낭비 0.
+  let mallCacheSeg = ''
+  {
+    const mallQ = (c.req.query('mall') || '').trim()
+    if (mallQ) {
+      const mPrev = await loadMallBySlug(DB, mallQ).catch(() => null)
+      if (mPrev && mPrev.id !== DEFAULT_MALL_ID) mallCacheSeg = `:m${mPrev.id}`
+    }
+  }
   const page = Math.max(1, intParam(c.req.query('page'), 1))
   const limit = Math.min(Math.max(intParam(c.req.query('limit'), 24), 1), 100)
   const offset = (page - 1) * limit
@@ -925,7 +944,8 @@ app.get('/catalog', async (c) => {
           const kv = (c.env as { CACHE_KV?: { get: (k: string) => Promise<string | null>; put: (k: string, v: string, o?: { expirationTtl?: number }) => Promise<void> } }).CACHE_KV
           if (kv) {
             const host = new URL(c.req.url).hostname
-            const kvBody = await kv.get(`ws:cat:g:${host}`).catch(() => null)
+            // 🏬 2026-07-04: 몰 세그 포함 — ?mall= 프리뷰가 타 몰 KV 페이로드를 절대 못 받게(기본 몰 키는 불변).
+            const kvBody = await kv.get(`ws:cat:g:${host}${mallCacheSeg}`).catch(() => null)
             if (kvBody) return c.body(kvBody, 200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60', 'CDN-Cache-Control': 'public, max-age=300', 'X-WS-Cache': 'KV-HIT' })
           }
         } catch { /* KV 미지원/오류 — caches.default 로 진행 */ }
@@ -992,12 +1012,12 @@ app.get('/catalog', async (c) => {
     // ensure 류는 WeakSet 메모이즈(첫 요청 후 no-op) — 병렬 실행으로 첫 요청 RTT 도 단축.
     await Promise.all([ensureSupplyVisibilitySchema(DB), ensureQtyConstraintSchema(DB), ensureSupplierPolicySchema(DB), ensureSupplyMetaTable(DB)])
     // 🏭 등급/등급표/몰/가시성제한 — 상호 독립 쿼리 4개 순차 await → 병렬(1 RTT).
-    const [sg, table, mallId, visRestricted, commPct] = await Promise.all([
+    const mallId = await resolveMallId(c) // 🏬 몰 선해석(per-isolate 캐시) — 몰별 수수료 병렬 로드에 필요.
+    const [sg, table, visRestricted, commPct] = await Promise.all([
       guest ? Promise.resolve({ distributor_grade: null, special_discount_until: null } as Awaited<ReturnType<typeof loadSellerGrade>>) : loadSellerGrade(DB, sellerId!),
       loadGradeTable(DB),
-      resolveMallId(c),
       hasRestrictedVisibility(DB),
-      loadPlatformCommissionPct(DB), // 🛡️ 2026-07-02: 표시가=청구가 정합(전역 마진 기본).
+      loadMallCommissionPct(DB, mallId), // 🏬 2026-07-04: 몰별 수수료(override ?? 전역) — 표시=청구 정합 유지.
     ])
     const grade: DistributorGrade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
 
@@ -1201,12 +1221,17 @@ app.get('/catalog', async (c) => {
           //   host 별 키(early KV read 와 1:1). TTL 600s(>cron 5분 주기 → 항상 신선 유지). CACHE_KV 없으면 skip.
           const kv = (c.env as { CACHE_KV?: { put: (k: string, v: string, o?: { expirationTtl?: number }) => Promise<void> } }).CACHE_KV
           const host = new URL(c.req.url).hostname
+          // 🏬 2026-07-04: 캐논 edge put 은 **기본 몰일 때만** — ?mall= 프리뷰 페이로드가 캐논 키(SSR/prewarm 이 읽는
+          //   /api/wholesale/catalog)를 오염시켜 기본 몰 사용자에게 타 몰 상품이 서빙되는 역방향 누수 차단.
+          //   KV 는 몰 세그 키로 항상 put(비기본 몰도 자체 키로 워밍 이득).
           c.executionCtx.waitUntil(Promise.all([
-            // @ts-expect-error — Cloudflare Workers 전역 caches
-            caches.default.put(new Request(`${origin}/api/wholesale/catalog`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
-            // @ts-expect-error — Cloudflare Workers 전역 caches
-            caches.default.put(new Request(`${origin}/api/wholesale/catalog?`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
-            kv ? kv.put(`ws:cat:g:${host}`, payload, { expirationTtl: 600 }).catch(swallow('wholesale:guest-catalog-kv')) : Promise.resolve(),
+            ...(mallCacheSeg === '' ? [
+              // @ts-expect-error — Cloudflare Workers 전역 caches
+              caches.default.put(new Request(`${origin}/api/wholesale/catalog`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
+              // @ts-expect-error — Cloudflare Workers 전역 caches
+              caches.default.put(new Request(`${origin}/api/wholesale/catalog?`, { method: 'GET' }), mkRes()).catch(swallow('wholesale:guest-catalog-cache')),
+            ] : []),
+            kv ? kv.put(`ws:cat:g:${host}${mallCacheSeg}`, payload, { expirationTtl: 600 }).catch(swallow('wholesale:guest-catalog-kv')) : Promise.resolve(),
           ]))
         }
       }
@@ -1332,7 +1357,7 @@ app.get('/catalog/:id{[0-9]+}', async (c) => {
       loadGradeTable(DB),
       loadMinPlatformMarginPct(DB),
       loadQtyTiers(DB, [id]),
-      loadPlatformCommissionPct(DB), // 🛡️ 2026-07-02: 표시가=청구가 정합(전역 마진 기본).
+      loadMallCommissionPct(DB, mallId), // 🏬 2026-07-04: 몰별 수수료(override ?? 전역).
     ]) // sg 는 SELECT 전 등급게이트에서 이미 로드됨(재사용 — 중복 쿼리 제거)
     const { price, grade } = resolveDistributorPrice({
       baseSupplyPrice: r.supply_price, retailPrice: r.retail_price, grade: sg.distributor_grade,
@@ -1427,7 +1452,8 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     return c.json({ success: false, error: '계정이 정지·승인대기 상태입니다. 관리자에게 문의해주세요.', code: 'ACCOUNT_NOT_ACTIVE' }, 403)
   }
   // 🏬 2026-07-04 각 몰 별도 회원 — 타 몰 판매사의 이 몰 발주 차단(상품 몰스코프로도 걸러지지만 명확한 에러 우선).
-  if (await sellerMallId(DB, sellerId) !== await resolveMallId(c)) {
+  const orderMallId = await resolveMallId(c)
+  if (await sellerMallId(DB, sellerId) !== orderMallId) {
     return c.json({ success: false, error: '이 몰의 회원이 아닙니다. 해당 몰에 별도 가입 후 이용해주세요.', code: 'MALL_MISMATCH' }, 403)
   }
   try {
@@ -1459,14 +1485,13 @@ app.post('/orders', rateLimit({ action: 'wholesale-order', max: 30, windowSec: 6
     await ensureSupplyMetaTable(DB) // 🏷️ 등급별 노출 게이트(visible_grades) 서브쿼리 대상 보장
     // 🛡️ PRC-1: 최소 플랫폼 마진율(%) 요청당 1회 — CHARGE 가 DISPLAY(카탈로그)와 동일 floor 를 쓰도록(기본 0=현행 불변).
     // 🆕 2026-06-16 commPct: 정산 분배(제조사 vs 플랫폼). 정산 호출(creditSupplier…)이 같은 요청에서 동기 실행 → drift 없음.
-    const [sg, table, minMarginPct, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB), loadPlatformCommissionPct(DB)])  // 🏭 2026-06-07: 순차 await → 병렬(1 RTT 절약)
+    const [sg, table, minMarginPct, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB), loadMallCommissionPct(DB, orderMallId)])  // 🏭 병렬. 🏬 2026-07-04: 몰별 수수료(청구=표시 정합)
     // 🏷️ 2026-06-18 등급별 노출 게이트 — 카탈로그에서 안 보이는(등급 제한) 상품은 ID 직접 주문도 차단.
     const orderViewerGrade = effectiveGrade({ grade: sg.distributor_grade, specialUntil: sg.special_discount_until })
     const ids = [...reqMap.keys()]
     const placeholders = ids.map(() => '?').join(',')
     // 가시성 가드 — 판매사가 볼 수 없는(선정 안 된) 공급상품은 주문 불가.
     // 🏬 감사 🟡#3: mall 스코프 — 카탈로그처럼 주문도 요청 판매사의 몰로 제한(크로스몰 주문 차단).
-    const orderMallId = await resolveMallId(c)
     const prods = await DB.prepare(`
       SELECT p.id, p.name, p.supplier_id, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple, p.supply_margin_override_pct AS margin_override
       FROM products p
@@ -2139,10 +2164,10 @@ app.post('/orders/bulk-preview', rateLimit({ action: 'wholesale-bulk-preview', m
 
     await ensureSupplyVisibilitySchema(DB)
     await ensureQtyConstraintSchema(DB)
-    const [sg, table, minMarginPct, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB), loadPlatformCommissionPct(DB)]) // 🛡️ 2026-07-02: commPct(표시=청구 정합)
+    const previewMallId = await resolveMallId(c) // 🏬 몰 선해석 — 아래 몰스코프 SELECT + 몰별 수수료 공용.
+    const [sg, table, minMarginPct, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMinPlatformMarginPct(DB), loadMallCommissionPct(DB, previewMallId)]) // 🏬 2026-07-04: 몰별 수수료
     const placeholders = ids.map(() => '?').join(',')
     // 🏬 감사 🟡#3: 미리보기도 주문과 동일 mall 스코프(크로스몰 차단).
-    const previewMallId = await resolveMallId(c)
     const prods = await DB.prepare(`
       SELECT p.id, p.name, p.image_url, p.supplier_id, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple,

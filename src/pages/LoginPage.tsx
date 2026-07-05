@@ -439,6 +439,14 @@ export default function LoginPage() {
               <p className="mt-3 text-center text-[11px] text-gray-500 dark:text-gray-500 font-light">
                 {t('login.kakaoHint', { defaultValue: '복잡한 가입 절차 없이 바로 시작할 수 있어요' })}
               </p>
+              {/* 📜 2026-07-05 이용약관 v1.0 제5조: 가입(로그인)으로 약관·개인정보처리방침 동의 성립 고지 */}
+              <p className="mt-2 text-center text-[10.5px] text-gray-400 dark:text-gray-600 font-light leading-relaxed">
+                {t('login.termsNotice', { defaultValue: '로그인(가입) 시' })}{' '}
+                <Link to="/terms" className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-400">{t('login.termsLink', { defaultValue: '이용약관' })}</Link>
+                {' '}{t('login.termsAnd', { defaultValue: '및' })}{' '}
+                <Link to="/privacy" className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-400">{t('login.privacyLink', { defaultValue: '개인정보처리방침' })}</Link>
+                {t('login.termsNoticeEnd', { defaultValue: '에 동의하는 것으로 봅니다' })}
+              </p>
             </div>
 
             {/* Email Login Link */}

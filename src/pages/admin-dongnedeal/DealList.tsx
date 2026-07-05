@@ -8,9 +8,12 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { cfImage } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
-import { Eye, EyeOff, Pencil, Trash2, MapPin, RefreshCw } from 'lucide-react'
+import { Eye, EyeOff, Pencil, Trash2, MapPin, RefreshCw, Target } from 'lucide-react'
 import type { DealRow } from './types'
 import { CAT_LABEL } from './types'
+
+// 🎛️ 2026-07-04 (대표 "지원자 수·기간 각각 설정"): 행별 추첨 설정 인라인 편집 상태.
+interface FcfsDraft { id: number; spots: string; applied: string; deadline: string; loading: boolean }
 
 export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; onEdit: (d: DealRow) => void; onChanged: () => void }) {
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
@@ -20,6 +23,35 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
   // 🎯 다중 선택(체크박스) — 선택된 product id 집합.
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [fcfsDraft, setFcfsDraft] = useState<FcfsDraft | null>(null)
+
+  const openFcfs = async (d: DealRow) => {
+    if (fcfsDraft?.id === d.id) { setFcfsDraft(null); return }
+    setFcfsDraft({ id: d.id, spots: '', applied: '', deadline: '', loading: true })
+    try {
+      const r = await api.get(`/api/fcfs/${d.id}`)
+      const cfg = r.data?.data || {}
+      setFcfsDraft({
+        id: d.id,
+        spots: String(cfg.spots ?? ''),
+        applied: String(cfg.appliedSeed ?? cfg.appliedDisplay ?? ''),
+        deadline: cfg.deadline ? String(cfg.deadline).slice(0, 10) : '',
+        loading: false,
+      })
+    } catch { setFcfsDraft({ id: d.id, spots: '', applied: '', deadline: '', loading: false }) }
+  }
+  const saveFcfs = async () => {
+    if (!fcfsDraft) return
+    const spots = Math.max(0, parseInt(fcfsDraft.spots, 10) || 0)
+    const applied = Math.max(0, parseInt(fcfsDraft.applied, 10) || 0)
+    const deadline = fcfsDraft.deadline ? `${fcfsDraft.deadline}T23:59:59.000Z` : null
+    try {
+      await api.put(`/api/admin/fcfs/${fcfsDraft.id}`, { enabled: spots > 0, spots, appliedSeed: applied, deadline }, h)
+      toast.success('추첨 설정 저장됨')
+      setFcfsDraft(null)
+      onChanged()
+    } catch { toast.error('추첨 설정 저장 실패') }
+  }
 
   const load = () => {
     setLoading(true)
@@ -112,7 +144,8 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
       ) : (
         <div className="divide-y divide-gray-100">
           {rows.map((d) => (
-            <div key={d.id} className={`flex items-center gap-3 py-2.5 ${selected.has(d.id) ? 'bg-red-50/40 -mx-2 px-2 rounded-lg' : ''}`}>
+            <div key={d.id}>
+              <div className={`flex items-center gap-3 py-2.5 ${selected.has(d.id) ? 'bg-red-50/40 -mx-2 px-2 rounded-lg' : ''}`}>
               <input
                 type="checkbox"
                 checked={selected.has(d.id)}
@@ -137,6 +170,9 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
                 </p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
+                <button onClick={() => openFcfs(d)} title="추첨 설정(지원자·정원·마감)" className={`p-2 rounded-lg hover:bg-gray-100 ${fcfsDraft?.id === d.id ? 'text-gray-900 bg-gray-100' : 'text-gray-500'}`}>
+                  <Target className="w-4 h-4" />
+                </button>
                 <button onClick={() => toggleActive(d)} disabled={busyId === d.id} title={d.is_active ? '숨기기' : '노출'} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 disabled:opacity-40">
                   {d.is_active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                 </button>
@@ -147,6 +183,29 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
+              </div>
+              {/* 🎛️ 추첨 설정 인라인 편집 — 지원자(표시 시드)·정원·마감을 개별 조절 */}
+              {fcfsDraft?.id === d.id && (
+                <div className="flex items-center gap-2 flex-wrap py-2 pl-16 bg-gray-50/60 rounded-lg mb-1">
+                  {fcfsDraft.loading ? (
+                    <span className="text-[12px] text-gray-400">불러오는 중…</span>
+                  ) : (
+                    <>
+                      <label className="text-[11px] text-gray-500">지원자
+                        <input value={fcfsDraft.applied} onChange={(e) => setFcfsDraft({ ...fcfsDraft, applied: e.target.value.replace(/\D/g, '') })} className="ml-1 w-16 px-2 py-1 border border-gray-200 rounded text-[12px] text-gray-900" />
+                      </label>
+                      <label className="text-[11px] text-gray-500">모집정원
+                        <input value={fcfsDraft.spots} onChange={(e) => setFcfsDraft({ ...fcfsDraft, spots: e.target.value.replace(/\D/g, '') })} className="ml-1 w-14 px-2 py-1 border border-gray-200 rounded text-[12px] text-gray-900" />
+                      </label>
+                      <label className="text-[11px] text-gray-500">마감
+                        <input type="date" value={fcfsDraft.deadline} onChange={(e) => setFcfsDraft({ ...fcfsDraft, deadline: e.target.value })} className="ml-1 px-2 py-1 border border-gray-200 rounded text-[12px] text-gray-900" />
+                      </label>
+                      <button onClick={saveFcfs} className="px-2.5 py-1 rounded-lg text-[12px] font-bold bg-gray-900 text-white">저장</button>
+                      <button onClick={() => setFcfsDraft(null)} className="px-2 py-1 rounded-lg text-[12px] text-gray-500">닫기</button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

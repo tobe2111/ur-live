@@ -95,6 +95,24 @@
 - **충전**: 1원 = 1딜 (수수료 없음). 고액 패키지(5/10/20만) 권장 — PG 수수료(~2.5%) 흡수 위해 결제 횟수↓.
 - **사용**: 후원·상품결제·이용권 구매 시 즉시 차감 (`adjustUserPoints` CAS guardBalance).
 - **최소 후원**: 500딜 · **후원 수수료**: 15%.
+- **유상/무상 이중 버킷** (2026-07-05, 약관 강제 — SSOT `worker/utils/point-buckets.ts`):
+  `user_points.balance`=총액 · `free_balance`=무상(가입/초대/광고/리뷰/이벤트/어드민 선물 등 리워드) · 유상=차액(파생).
+  차감은 전 경로 **무상 우선 소진**, **현금 환급(출금)은 유상 한도**(무상 딜 인출 불가 — 전금법 유상 잔액 산출 근거),
+  환불은 원장(`point_transactions.free_delta`) 역산으로 **원 버킷 대칭 복원**. 커미션성 소득(어필리에이트/추천 수익)은 유상.
+- **상권 방문 리워드** (2026-07-05, B2G 상권 패키지 — SSOT `worker/utils/visit-reward.ts`): 캠페인(상권 지역코드·기간·
+  지급액·총액 캡) 단위로 그 상권 매장 상품 **첫 구매 확정** 시 무상 딜 1인 1회 지급(UNIQUE claim 멱등 · 캡 도달 자동 종료
+  +어드민 알림 · 환불 시 회수). 트리거: group-buy `/join`·`/confirm-toss`. 어드민 `/admin/visit-rewards`.
+- **약관 동의 로그** (2026-07-05, 두 체계 역할 분담 — ⚠️ 유어딜 소비자 서비스 전용, 도매몰/유어애즈는 각자 약관 별개):
+  **소비자(유저)** = 간주 동의(차단 UI 없음, 대표 확정 "자연스럽게") — LoginPage 카카오 버튼 아래 "로그인하면 이용약관·개인정보
+  동의" 고지(약관 제5조) + **신규 가입(첫 로그인) 시점에 1회** `terms_agreements`(SSOT `worker/utils/terms-agreements.ts`, 버전
+  `shared/constants/terms-versions.ts`, UNIQUE 멱등) 서버 기록(kakao.routes isNewUser). 이메일 가입은 체크박스 → `/users/init` 실저장.
+  `/api/terms/status·agree` 는 향후 개정 재동의(비차단 배너)용 대기 인프라. **가입 시점(셀러/에이전시)** = 정본 약관 체계
+  `terms_consents`(SSOT `worker/utils/terms-consent.ts` + `TermsConsentBox`) — 셀러 `register-from-user`·에이전시 register 2종
+  서버 400 강제(에이전시는 핵심조항 제4·5·9·10조 개별 동의).
+- **유입 소스 어트리뷰션** (2026-07-05 — SSOT `worker/utils/acquisition.ts` + `lib/acquisition.ts`): 시설물 QR/광고 URL 규격
+  `/local/{지역코드}?src={소스}`(소문자·숫자·하이픈, UTM 은 utm_source 흡수). 클라 first-touch 30일 고정 →
+  `acquisition_landings`(랜딩) → 로그인 claim `user_acquisition`(UNIQUE user_id=가입 귀속) → 첫 구매 스냅샷.
+  소스별 랜딩→가입→첫구매 퍼널은 어드민 상권 리포트(`/admin/district-report`)에 표시 + 시설물 QR 생성기 내장.
 
 ### 5-2. 판매 정산 (사업자 유저)
 - **플랫폼 수수료**: **3P(남의 상품, 이용권+쇼핑) 5%** / **1P(유어딜 직판) 0%** (`fee-resolver.ts` SSOT, `product-ownership-model.md`).

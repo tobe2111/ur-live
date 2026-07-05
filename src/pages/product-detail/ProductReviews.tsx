@@ -181,6 +181,8 @@ interface Review {
   created_at: string
   seller_reply?: string | null
   seller_reply_at?: string | null
+  // 🎁 2026-07-05: 체험단(FCFS) 참여 리뷰 — 서버 자동 판정(표시광고법 의무 표시)
+  is_sponsored?: number | boolean
 }
 
 export default function ProductReviews({ productId, limit = 5 }: { productId: number | string; limit?: number }) {
@@ -253,6 +255,12 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
                     ))}
                   </div>
                   <span className="text-[10px] text-gray-500 dark:text-gray-400">{r.user_name}</span>
+                  {/* 🎁 표시광고법: 체험단 리뷰 자동 뱃지 — 서버 판정(작성자가 끌 수 없음) */}
+                  {!!r.is_sponsored && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[9px] font-bold border border-amber-200 dark:border-amber-500/30">
+                      {t('reviews.sponsoredBadge', { defaultValue: '체험 제공' })}
+                    </span>
+                  )}
                 </div>
                 <span className="text-[10px] text-gray-500 dark:text-gray-400">{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>
               </div>

@@ -1,7 +1,7 @@
 /**
  * 🛡️ 2026-05-20: 에이전시 — "내가 입점시킨 가게" 대시보드 (Phase 2).
  *
- * 사용자 요청: 에이전시 = 가게 입점 영업. 입점 가게의 모든 이용권 매출 → 2% 영구 commission.
+ * 에이전시 = 가게 입점 영업. 요율은 설정값 연동(per-agency, 기본 SSOT 1%) — 하드코딩 금지(2026-07-02 대표 확정).
  *   추가 보상: ₩30k 가입 보너스 (가게 첫 결제) + ₩50k 월 성장 보너스 (월 100만 돌파).
  *
  * 페이지 구성:
@@ -28,6 +28,7 @@ interface Summary {
   pending_commission: number
   available_commission: number
   paid_commission: number
+  commission_pct?: number  // 🏷️ 2026-07-02: 본 에이전시 실제 적용 요율(설정값 연동, 기본 SSOT 1%)
 }
 
 interface IntroducedStore {
@@ -129,7 +130,7 @@ export default function AgencyIntroducedStoresPage() {
       <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title="내가 입점시킨 가게"
-          subtitle={`입점 가게의 매출 ${introCode?.commission_pct ?? 1}% commission (첫 판매 확정일로부터 ${introCode?.term_months ? `${introCode.term_months}개월` : '약정 기간'}) · 가입 보너스 ₩30,000 · 월 100만 돌파 ₩50,000`}
+          subtitle={`입점 가게의 매출 ${summary?.commission_pct ?? introCode?.commission_pct ?? 1}% commission (첫 판매 확정일로부터 ${introCode?.term_months ? `${introCode.term_months}개월` : '약정 기간'}) · 가입 보너스 ₩30,000 · 월 100만 돌파 ₩50,000`}
           icon={<Store className="h-5 w-5" />}
         />
 

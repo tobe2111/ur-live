@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Upload, Download, PackagePlus, CheckCircle2, AlertTriangle } from 'lucide-react'
 import ManualDealForm from './admin-dongnedeal/ManualDealForm'
 import DealList from './admin-dongnedeal/DealList'
 import type { DealRow } from './admin-dongnedeal/types'
+import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions'
 
 // 🧭 2026-06-17 (대표 요청 — 동네딜 채우기): 어드민 동네딜(오프라인 공동구매) 상품 CSV 일괄 등록 + 데모 시드.
 //   백엔드 /api/admin/dongnedeal/{stats,seed-demo,bulk-import} — 즉시 노출(is_active=1, group_buy_status='active').
@@ -19,14 +21,22 @@ const CAT_LABEL: Record<string, string> = {
   meal_voucher: '맛집 이용권', beauty_voucher: '미용', etc_voucher: '기타', general: '일반 상품', stay_voucher: '숙소',
 }
 
-// 🎯 2026-07-03 (대표 "지역 정확도"): 카카오가 좌표로 안정적으로 해석하는 서울 25개 자치구 + 대표 상권.
-//   datalist 제안 목록 — 선택하면 정확, 직접 입력(다른 시/동)도 허용.
-const REGION_SUGGESTIONS = [
-  '강남구', '강동구', '강북구', '강서구', '관악구', '광진구', '구로구', '금천구', '노원구', '도봉구',
-  '동대문구', '동작구', '마포구', '서대문구', '서초구', '성동구', '성북구', '송파구', '양천구', '영등포구',
-  '용산구', '은평구', '종로구', '중구', '중랑구',
-  '성수동', '연남동', '홍대', '강남역', '이태원', '여의도', '잠실', '건대입구',
-]
+// 🎯 2026-07-03 (대표 "지역은 홈 필터 그대로 — 1차/2차로 세팅"): 소비자 홈 지역필터와 **동일 SSOT**(KOREA_REGIONS)
+//   를 1차(시/도)·2차(동네그룹)로 사용. 선택값을 카카오가 지오코딩 가능한 검색어로 변환 → 그 동네 실매장 매칭.
+function cleanSido(label: string): string {
+  // '전주/전북' → '전주', '충남\n세종' → '충남', '서울' → '서울'
+  return label.replace(/\n[\s\S]*/, '').split('/')[0].trim()
+}
+function buildRegionParam(sidoKey: string, districtKey: string): string {
+  const region = findRegionByKey(sidoKey)
+  if (!region) return ''
+  const sido = cleanSido(region.label)
+  if (districtKey) {
+    const dg = region.districtGroups.find((g) => g.key === districtKey)
+    if (dg && dg.keywords.length) return `${sido} ${dg.keywords[0]}`.trim()  // 예: "서울 강남", "경기 인계동"
+  }
+  return sido  // 동네그룹 미선택 = 시/도 전체
+}
 
 interface ImportRow { row: number; name?: string; status: 'ok' | 'error'; reason?: string }
 interface ImportResult { summary: { total: number; created: number; failed: number }; results: ImportRow[] }
@@ -39,9 +49,53 @@ export default function AdminDongnedealImportPage() {
   const [result, setResult] = useState<ImportResult | null>(null)
   const [stats, setStats] = useState<DealStats | null>(null)
   const [cleaning, setCleaning] = useState(false)
-  // 🎯 2026-07-02 (대표): 데모 채우기 옵션 — 특정 지역/카테고리 지정 시드.
-  const [seedRegion, setSeedRegion] = useState('')
+  // 🎯 2026-07-03 (대표): 데모 채우기 지역 — 홈 필터와 동일 1차(시/도)·2차(동네그룹).
+  const [seedSido, setSeedSido] = useState('')       // 1차: KOREA_REGIONS key (예 '서울')
+  const [seedDistrict, setSeedDistrict] = useState('') // 2차: districtGroup key (예 'gangnam')
   const [seedCategory, setSeedCategory] = useState('')
+  // 🔁 2026-07-04 (대표 "계속 생성해야 하는데"): 한 번에 생성 개수(라운드 보충으로 정확히 채움).
+  const [seedCount, setSeedCount] = useState(8)
+  // 🎛️ 2026-07-04 (대표 "지원자 수 조절 + 기간 설정 — 데모"): 추첨 마감(N일 후) + 표시 지원자 수 범위.
+  const [seedFcfsDays, setSeedFcfsDays] = useState(7)
+  // 🏷️ 2026-07-05 (대표 "옵션으로 선택할 수 있게"): 실상품형 vs 오픈 예정·사전 응모형(리뷰 미부착·구매 대신 응모).
+  const [seedMode, setSeedMode] = useState<'live' | 'prelaunch'>('live')
+  const [seedApplicantsMin, setSeedApplicantsMin] = useState('')
+  const [seedApplicantsMax, setSeedApplicantsMax] = useState('')
+  const sidoRegion = findRegionByKey(seedSido)
+  // 💰 2026-07-05 (대표 "최대한 이상적으로"): 업종별 가격 밴드 보정(배율) 편집기.
+  const [bandsOpen, setBandsOpen] = useState(false)
+  const [bands, setBands] = useState<Array<{ pq: string; cat: string; min: number; max: number; multiplier: number }>>([])
+  const [bandsUpdatedAt, setBandsUpdatedAt] = useState<string | null>(null)
+  const [bandsSaving, setBandsSaving] = useState(false)
+  const openBands = async () => {
+    if (bandsOpen) { setBandsOpen(false); return }
+    setBandsOpen(true)
+    try {
+      const r = await api.get('/api/admin/dongnedeal/price-bands', h)
+      if (r.data?.success) { setBands(r.data.data || []); setBandsUpdatedAt(r.data.updated_at || null) }
+    } catch { toast.error('밴드 불러오기 실패') }
+  }
+  // 📊 2026-07-05 (대표 "데모가 만든 데이터 활용"): 응모 수요 인사이트 — 실유저 응모 집계.
+  const [insightsOpen, setInsightsOpen] = useState(false)
+  const [insights, setInsights] = useState<{ biz: Array<{ biz: string; products: number; applies: number; avg_price: number; applies_per_product: number }>; regions: Array<{ gu: string; products: number; applies: number }>; top: Array<{ id: number; name: string; store: string | null; price: number; applies: number }>; total_applies: number; total_products: number } | null>(null)
+  const openInsights = async () => {
+    if (insightsOpen) { setInsightsOpen(false); return }
+    setInsightsOpen(true)
+    try {
+      const r = await api.get('/api/admin/dongnedeal/demand-insights', h)
+      if (r.data?.success) setInsights(r.data)
+    } catch { toast.error('인사이트 불러오기 실패') }
+  }
+  const saveBands = async () => {
+    setBandsSaving(true)
+    try {
+      const multipliers: Record<string, number> = {}
+      for (const b of bands) if (Math.abs(b.multiplier - 1) > 0.001) multipliers[b.pq] = b.multiplier
+      const r = await api.put('/api/admin/dongnedeal/price-bands', { multipliers }, h)
+      if (r.data?.success) { setBandsUpdatedAt(r.data.updated_at); toast.success('가격 밴드 보정 저장됨 — 다음 생성부터 적용') }
+      else toast.error(r.data?.error || '저장 실패')
+    } catch { toast.error('저장 실패') } finally { setBandsSaving(false) }
+  }
   // 🖊️ 2026-07-01 (대표 — 수정/삭제): 편집 대상 + 목록 새로고침 nonce.
   const [editing, setEditing] = useState<DealRow | null>(null)
   const [listNonce, setListNonce] = useState(0)
@@ -57,7 +111,7 @@ export default function AdminDongnedealImportPage() {
     if (!confirm('데모 동네딜 상품(demo-deal-*)을 모두 삭제할까요? 실제 등록 상품은 영향받지 않습니다.')) return
     setCleaning(true)
     try {
-      const r = await api.delete('/api/admin/dongnedeal/seed-demo', h)
+      const r = await api.delete('/api/admin/dongnedeal/seed-demo', { ...h, timeout: 120000 })
       const retired = Number(r.data?.retired ?? 0)
       toast.success(`데모 상품 ${r.data?.deleted ?? 0}개 삭제${retired ? ` · ${retired}개는 주문 이력이 있어 비활성 처리` : ''}`)
       loadStats()
@@ -66,23 +120,39 @@ export default function AdminDongnedealImportPage() {
   const seedDemo = async () => {
     setCleaning(true)
     try {
-      const r = await api.post('/api/admin/dongnedeal/seed-demo', {
-        region: seedRegion.trim() || undefined,
-        category: seedCategory || undefined,
-      }, h)
-      const skipped = Number(r.data?.skipped ?? 0)
-      if (r.data?.seeded) {
-        const parts = [`데모 상품 ${r.data.seeded}개 생성`]
-        if (typeof r.data?.realPhotos === 'number') parts.push(`실사진 ${r.data.realPhotos}`)
-        if (typeof r.data?.placed === 'number') parts.push(`매장매칭 ${r.data.placed}`)
-        if (skipped > 0) parts.push(`${skipped}개 건너뜀(실매장 미매칭)`)
-        if (r.data?.healed > 0) parts.push(`깨진 이미지 ${r.data.healed}개 복구`)
+      const regionParam = buildRegionParam(seedSido, seedDistrict)
+      const aMin = parseInt(seedApplicantsMin, 10)
+      const aMax = parseInt(seedApplicantsMax, 10)
+      // 🚑 2026-07-04 (대표 "데모 생성 오류"): 기본 axios timeout 15s < 생성 소요 → 요청당 5분 명시.
+      // 🧩 2026-07-05 (실측 — 24개 한 요청이면 realPhotos 0): Cloudflare 요청당 외부호출 한도(50)에
+      //   걸려 사진 다운로드가 전멸 → **8개씩 나눠 순차 호출**(각 요청이 한도를 새로 받음). 실측 검증:
+      //   24개 1요청 = 실사진 0/24, 8개×3요청 = 실사진 23/24.
+      let seededSum = 0, photoSum = 0, placedSum = 0, skippedSum = 0
+      const CHUNK = 8
+      for (let done = 0; done < seedCount; done += CHUNK) {
+        const r = await api.post('/api/admin/dongnedeal/seed-demo', {
+          region: regionParam || undefined,
+          category: seedCategory || undefined,
+          count: Math.min(CHUNK, seedCount - done),
+          mode: seedMode === 'prelaunch' ? 'prelaunch' : undefined,
+          fcfsDays: seedFcfsDays,
+          applicantsMin: Number.isFinite(aMin) && aMin > 0 ? aMin : undefined,
+          applicantsMax: Number.isFinite(aMax) && aMax > 0 ? aMax : undefined,
+        }, { ...h, timeout: 300000 })
+        seededSum += Number(r.data?.seeded ?? 0)
+        photoSum += Number(r.data?.realPhotos ?? 0)
+        placedSum += Number(r.data?.placed ?? 0)
+        skippedSum += Number(r.data?.skipped ?? 0)
+      }
+      if (seededSum > 0) {
+        const parts = [`데모 상품 ${seededSum}개 생성`, `실사진 ${photoSum}`, `매장매칭 ${placedSum}`]
+        if (skippedSum > 0) parts.push(`${skippedSum}개 건너뜀(실매장 미매칭)`)
         toast.success(parts.join(' · '))
-      } else if (skipped > 0) {
+      } else if (skippedSum > 0) {
         // 🎯 전부 카카오 실매장 매칭 실패 — 실제 매장만 데모로 만드는 규칙이 걸러낸 상태.
-        toast.error(`생성된 상품 없음 — ${skipped}개 모두 실제 매장을 못 찾았습니다. 지역(예: 강남·영등포)을 지정하면 그 지역 실매장으로 매칭됩니다`)
+        toast.error(`생성된 상품 없음 — ${skippedSum}개 모두 실제 매장을 못 찾았습니다. 지역을 바꿔보세요`)
       } else {
-        toast.success(r.data?.message || '이미 데모 상품이 있습니다')
+        toast.success('생성된 상품이 없습니다')
       }
       loadStats(); setListNonce((n) => n + 1)
     } catch { toast.error('데모 생성 중 오류') } finally { setCleaning(false) }
@@ -142,19 +212,31 @@ export default function AdminDongnedealImportPage() {
                 {stats.demo > 0 && (
                   <button onClick={clearDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">데모 {stats.demo}개 정리</button>
                 )}
-                {/* 🎯 2026-07-03 (대표 "지역 정확도"): 자치구 목록에서 선택(정확도↑) — 카카오가 좌표로
-                    해석해 그 반경 실매장을 거리순 매칭. datalist 라 직접 입력(동/역 이름)도 가능. */}
-                <input
-                  list="ur-region-suggestions"
-                  value={seedRegion}
-                  onChange={(e) => setSeedRegion(e.target.value)}
-                  placeholder="지역 선택/입력 (예: 강남구)"
-                  maxLength={30}
-                  className="w-40 px-2.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900"
-                />
-                <datalist id="ur-region-suggestions">
-                  {REGION_SUGGESTIONS.map((r) => <option key={r} value={r} />)}
-                </datalist>
+                {/* 🎯 2026-07-03 (대표 "지역은 홈 필터 그대로 — 1차/2차"): 소비자 홈과 동일 SSOT(KOREA_REGIONS).
+                    1차 시/도 → 2차 동네그룹. 선택값을 카카오 지오코딩 → 그 동네 실매장 매칭. */}
+                <select
+                  value={seedSido}
+                  onChange={(e) => { setSeedSido(e.target.value); setSeedDistrict('') }}
+                  className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
+                  aria-label="시/도 선택"
+                >
+                  <option value="">시/도 (전체)</option>
+                  {KOREA_REGIONS.map((r) => (
+                    <option key={r.key} value={r.key}>{r.label.replace(/\n/g, ' ')}</option>
+                  ))}
+                </select>
+                <select
+                  value={seedDistrict}
+                  onChange={(e) => setSeedDistrict(e.target.value)}
+                  disabled={!sidoRegion || sidoRegion.districtGroups.length === 0}
+                  className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white disabled:opacity-50 max-w-[220px]"
+                  aria-label="동네 선택"
+                >
+                  <option value="">{sidoRegion ? `${cleanSido(sidoRegion.label)} 전체` : '동네 (시/도 먼저)'}</option>
+                  {sidoRegion?.districtGroups.map((g) => (
+                    <option key={g.key} value={g.key}>{g.label}</option>
+                  ))}
+                </select>
                 <select
                   value={seedCategory}
                   onChange={(e) => setSeedCategory(e.target.value)}
@@ -166,7 +248,41 @@ export default function AdminDongnedealImportPage() {
                   <option value="etc_voucher">기타</option>
                   <option value="general">일반 상품</option>
                 </select>
-                <button onClick={seedDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">데모 채우기</button>
+                {/* 🏷️ 데모 유형 — 실상품형(리뷰 포함) vs 오픈 예정형(사전 응모, 리뷰 없음) */}
+                <select
+                  value={seedMode}
+                  onChange={(e) => setSeedMode(e.target.value as 'live' | 'prelaunch')}
+                  className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
+                  aria-label="데모 유형"
+                >
+                  <option value="live">실상품형</option>
+                  <option value="prelaunch">오픈 예정형</option>
+                </select>
+                <select
+                  value={seedCount}
+                  onChange={(e) => setSeedCount(Number(e.target.value))}
+                  className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
+                  aria-label="생성 개수"
+                >
+                  <option value={8}>8개</option>
+                  <option value={16}>16개</option>
+                  <option value={24}>24개</option>
+                </select>
+                {/* 🎛️ 추첨 마감 + 표시 지원자 수 범위 (데모 시드 옵션) */}
+                <select
+                  value={seedFcfsDays}
+                  onChange={(e) => setSeedFcfsDays(Number(e.target.value))}
+                  className="px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
+                  aria-label="추첨 마감 기간"
+                >
+                  <option value={3}>마감 3일</option>
+                  <option value={7}>마감 7일</option>
+                  <option value={14}>마감 14일</option>
+                  <option value={30}>마감 30일</option>
+                </select>
+                <input value={seedApplicantsMin} onChange={(e) => setSeedApplicantsMin(e.target.value.replace(/\D/g, ''))} placeholder="지원자↓" maxLength={4} className="w-[70px] px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" title="표시 지원자 수 최소(비우면 기본)" />
+                <input value={seedApplicantsMax} onChange={(e) => setSeedApplicantsMax(e.target.value.replace(/\D/g, ''))} placeholder="지원자↑" maxLength={4} className="w-[70px] px-2 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" title="표시 지원자 수 최대" />
+                <button onClick={seedDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">{cleaning ? '생성 중…' : '데모 채우기'}</button>
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap mt-3">
@@ -178,6 +294,106 @@ export default function AdminDongnedealImportPage() {
             {stats.demo > 0 && <p className="text-[11px] text-amber-600 mt-2">⚠️ 데모 상품 {stats.demo}개가 동네딜에 섞여 있습니다 — 실상품 등록 전 정리를 권장합니다.</p>}
           </div>
         )}
+
+        {/* 📊 응모 수요 인사이트 — 데모가 만드는 실유저 수요 데이터(입점 영업·가격 수용성 근거) */}
+        <div className={card}>
+          <button onClick={openInsights} className="w-full flex items-center justify-between text-left">
+            <p className="text-sm font-bold text-gray-900">📊 응모 수요 인사이트 (실유저 응모만 — 표시용 시드 제외)</p>
+            <span className="text-[12px] text-gray-400">{insightsOpen ? '접기 ▲' : '펼치기 ▼'}</span>
+          </button>
+          {insightsOpen && (
+            insights ? (
+              <div className="mt-3 space-y-4">
+                <p className="text-[12px] text-gray-500">데모 {insights.total_products}개 · 누적 실응모 <b className="text-gray-900">{insights.total_applies}건</b> — 이 숫자가 입점 영업 무기이자 가격 수용성 데이터입니다.</p>
+                <div className="grid lg:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[12px] font-bold text-gray-700 mb-1.5">업종별 (응모 많은 순)</p>
+                    <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-100">
+                      <table className="w-full text-[12px]">
+                        <thead className="bg-gray-50 text-gray-500 sticky top-0"><tr><th className="text-left px-2 py-1.5">업종</th><th className="text-right px-2 py-1.5">상품</th><th className="text-right px-2 py-1.5">평균가</th><th className="text-right px-2 py-1.5">실응모</th><th className="text-right px-2 py-1.5">응모/상품</th></tr></thead>
+                        <tbody>
+                          {insights.biz.map((b) => (
+                            <tr key={b.biz} className="border-t border-gray-100 text-gray-700">
+                              <td className="px-2 py-1">{b.biz}</td>
+                              <td className="px-2 py-1 text-right">{b.products}</td>
+                              <td className="px-2 py-1 text-right">{Math.round(b.avg_price / 1000)}천원</td>
+                              <td className="px-2 py-1 text-right font-bold text-gray-900">{b.applies}</td>
+                              <td className="px-2 py-1 text-right">{b.applies_per_product}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[12px] font-bold text-gray-700 mb-1.5">지역(구)별 실응모</p>
+                    <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-100">
+                      <table className="w-full text-[12px]">
+                        <thead className="bg-gray-50 text-gray-500 sticky top-0"><tr><th className="text-left px-2 py-1.5">구</th><th className="text-right px-2 py-1.5">상품</th><th className="text-right px-2 py-1.5">실응모</th></tr></thead>
+                        <tbody>
+                          {insights.regions.map((g) => (
+                            <tr key={g.gu} className="border-t border-gray-100 text-gray-700">
+                              <td className="px-2 py-1">{g.gu}</td>
+                              <td className="px-2 py-1 text-right">{g.products}</td>
+                              <td className="px-2 py-1 text-right font-bold text-gray-900">{g.applies}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+                {insights.top.length > 0 && (
+                  <div>
+                    <p className="text-[12px] font-bold text-gray-700 mb-1.5">응모 상위 상품 (입점 영업 1순위 — "이 매장에 N명 대기 중")</p>
+                    <div className="max-h-44 overflow-y-auto rounded-lg border border-gray-100">
+                      <table className="w-full text-[12px]">
+                        <thead className="bg-gray-50 text-gray-500 sticky top-0"><tr><th className="text-left px-2 py-1.5">상품</th><th className="text-left px-2 py-1.5">매장</th><th className="text-right px-2 py-1.5">가격</th><th className="text-right px-2 py-1.5">실응모</th></tr></thead>
+                        <tbody>
+                          {insights.top.map((t2) => (
+                            <tr key={t2.id} className="border-t border-gray-100 text-gray-700">
+                              <td className="px-2 py-1 truncate max-w-[200px]">{t2.name}</td>
+                              <td className="px-2 py-1 truncate max-w-[140px]">{t2.store || '-'}</td>
+                              <td className="px-2 py-1 text-right">{formatNumber(t2.price)}원</td>
+                              <td className="px-2 py-1 text-right font-bold text-gray-900">{t2.applies}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : <p className="mt-3 text-[12px] text-gray-400">불러오는 중…</p>
+          )}
+        </div>
+
+        {/* 💰 업종별 가격 밴드 보정 — 시세 스냅샷 낡음 방지(물가 변동 시 배율로 보정) */}
+        <div className={card}>
+          <button onClick={openBands} className="w-full flex items-center justify-between text-left">
+            <p className="text-sm font-bold text-gray-900">💰 데모 가격 밴드 보정 (업종별 배율)</p>
+            <span className="text-[12px] text-gray-400">{bandsOpen ? '접기 ▲' : `펼치기 ▼${bandsUpdatedAt ? ` · 최종 보정 ${bandsUpdatedAt.slice(0, 10)}` : ''}`}</span>
+          </button>
+          {bandsOpen && (
+            <div className="mt-3">
+              <p className="text-[11px] text-gray-400 mb-2">기준 밴드는 시세 스냅샷(2026-07 캘리브레이션) — 물가가 바뀌면 배율(0.5~2.0)로 보정하세요. 다음 생성분부터 적용됩니다.</p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1.5 max-h-72 overflow-y-auto pr-1">
+                {bands.map((b, i) => (
+                  <label key={b.pq} className="flex items-center justify-between gap-2 text-[12px] text-gray-600">
+                    <span className="truncate">{b.pq} <span className="text-gray-400">({Math.round(b.min * b.multiplier / 1000)}~{Math.round(b.max * b.multiplier / 1000)}천원)</span></span>
+                    <input
+                      type="number" step="0.05" min="0.5" max="2"
+                      value={b.multiplier}
+                      onChange={(e) => { const v = Number(e.target.value); setBands((prev) => prev.map((x, j) => j === i ? { ...x, multiplier: Number.isFinite(v) ? v : 1 } : x)) }}
+                      className="w-16 px-1.5 py-1 border border-gray-200 rounded text-[12px] text-gray-900 text-right shrink-0"
+                    />
+                  </label>
+                ))}
+              </div>
+              <button onClick={saveBands} disabled={bandsSaving} className="mt-3 px-3 py-2 rounded-lg text-sm font-bold text-white bg-gray-900 hover:bg-black disabled:opacity-50">{bandsSaving ? '저장 중…' : '배율 저장'}</button>
+            </div>
+          )}
+        </div>
 
         {/* 🗺️ 2026-07-01 (대표 — 수기로 진짜 매장 등록): 카카오 검색 자동완성 직접 입력 폼(+수정 모드) */}
         <ManualDealForm

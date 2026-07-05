@@ -118,7 +118,7 @@ publicApp.get('/active', async (c) => {
     await ensureFcfsTable(DB)
     // fcfs_enabled='1' 인 product_id 들 → 상품 정보 join
     const { results: metaRows } = await DB.prepare(
-      "SELECT product_id, key, value FROM product_supply_meta WHERE key LIKE 'fcfs_%'"
+      "SELECT product_id, key, value FROM product_supply_meta WHERE key LIKE 'fcfs_%' OR key = 'prelaunch'"
     ).all<{ product_id: number; key: string; value: string | null }>().catch(() => ({ results: [] as { product_id: number; key: string; value: string | null }[] }))
     const byId = new Map<number, Record<string, string>>()
     for (const m of metaRows || []) {
@@ -134,10 +134,14 @@ publicApp.get('/active', async (c) => {
     const regionJoin = regionParam ? 'JOIN product_regions pr ON pr.product_id = p.id' : ''
     const regionWhere = regionParam ? 'AND pr.region_dong_code LIKE ?' : ''
     const regionBinds = regionParam ? [`${regionParam}%`] : []
+    // 🎯 2026-07-04 (대표 "데모 이용권 노출은 항상 후순위"): is_demo 플래그 + 데모-후순위 정렬 —
+    //   이 목록을 직접 렌더하는 표면(상권관 랜딩 등)에서도 실 상품 먼저, 데모는 뒤.
     const { results: prods } = await DB.prepare(
-      `SELECT p.id, p.name, p.price, p.original_price, p.image_url, p.restaurant_name, p.restaurant_address, p.category
+      `SELECT p.id, p.name, p.price, p.original_price, p.image_url, p.restaurant_name, p.restaurant_address, p.category,
+              (CASE WHEN COALESCE(p.slug,'') LIKE 'demo-deal-%' THEN 1 ELSE 0 END) AS is_demo
          FROM products p ${regionJoin}
-        WHERE p.id IN (${ph}) AND p.is_active=1 ${regionWhere}`
+        WHERE p.id IN (${ph}) AND p.is_active=1 ${regionWhere}
+        ORDER BY is_demo, p.created_at DESC`
     ).bind(...enabledIds, ...regionBinds).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
     // 🧯 2026-07-02: 상품별 COUNT 루프(N+1) → GROUP BY 단일 쿼리 — 캐시 miss 시에도 D1 왕복 상수화.
     const countRows = await DB.prepare(
@@ -149,7 +153,7 @@ publicApp.get('/active', async (c) => {
     for (const p of prods || []) {
       const cfg = parseConfig(byId.get(p.id as number))
       const real = countById.get(p.id as number) || 0
-      out.push({ ...p, fcfs: { ...cfg, appliedDisplay: cfg.appliedSeed + real, realApplied: real } })
+      out.push({ ...p, fcfs: { ...cfg, prelaunch: (byId.get(p.id as number)?.prelaunch === '1'), appliedDisplay: cfg.appliedSeed + real, realApplied: real } })
     }
     return c.json({ success: true, data: out })
   } catch (err) { return safeError(c, err, '선착순 목록 조회 실패', '[fcfs]') }
@@ -182,6 +186,16 @@ userApp.post('/:productId/apply', rateLimit({ action: 'fcfs_apply', max: 10, win
     const productId = parseInt(c.req.param('productId') || '', 10)
     const userId = String(c.get('user')?.id || '')
     if (!Number.isFinite(productId) || !userId) return c.json({ success: false, error: 'bad request' }, 400)
+    // 🛡️ 2026-07-02 (감사 26 — 봇 응모 방어): 가입 24시간 미만 신규 계정 응모 제한.
+    //   무료 응모 특성상 계정 양산 봇의 1순위 표적 — 최소 숙성 기간 요구(조회 실패 시 fail-open).
+    try {
+      const u = await DB.prepare('SELECT created_at FROM users WHERE id = ?').bind(userId)
+        .first<{ created_at: string | null }>()
+      const createdMs = u?.created_at ? Date.parse(String(u.created_at).replace(' ', 'T') + 'Z') : NaN
+      if (Number.isFinite(createdMs) && Date.now() - createdMs < 24 * 60 * 60 * 1000) {
+        return c.json({ success: false, error: '가입 후 24시간이 지나야 응모할 수 있어요' }, 403)
+      }
+    } catch { /* fail-open */ }
     await ensureFcfsTable(DB)
     const meta = await getSupplyMeta(DB, [productId])
     const cfg = parseConfig(meta.get(productId))
@@ -318,6 +332,15 @@ adminApp.post('/:productId/select', async (c) => {
     const buyPath = (Number(prod?.deal_only) === 1 || isVoucherCategory(prod?.category))
       ? `/group-buy/${productId}` : `/products/${productId}`
 
+    // 🔔 2026-07-05: 이번 선정이 '승계'(재선정)인지 판정 — 이번 winners 를 제외하고 이미 선정 이력
+    //   (selected/paid)이 있으면, 초기 선정 이후의 재선정 = 예비 당첨 승계로 본다. 알림톡 문안 분기용.
+    const winnerPh = winnerIds.map(() => '?').join(',')
+    const priorRow = await DB.prepare(
+      `SELECT COUNT(*) AS n FROM fcfs_applications
+        WHERE product_id = ? AND status IN ('selected','paid') AND user_id NOT IN (${winnerPh})`,
+    ).bind(productId, ...winnerIds).first<{ n: number }>().catch(() => null)
+    const isReplacement = (Number(priorRow?.n) || 0) > 0
+
     for (const uid of winnerIds) {
       await DB.prepare("UPDATE fcfs_applications SET status='selected', selected_at=datetime('now') WHERE product_id=? AND user_id=?").bind(productId, uid).run().catch(() => {})
       // 선정 알림 + 결제 유도 딥링크
@@ -325,7 +348,33 @@ adminApp.post('/:productId/select', async (c) => {
         "INSERT INTO notifications (user_id, user_type, type, title, message, link, created_at) VALUES (?, 'user', 'fcfs_selected', ?, ?, ?, datetime('now'))"
       ).bind(uid, '🎉 추첨 당첨!', `[${dealName}] 추첨에 당첨되셨어요! 지금 결제하시면 확정됩니다. (미결제 시 예비 당첨자에게 넘어갈 수 있어요)`, buyPath).run().catch(() => {})
     }
-    return c.json({ success: true, data: { selected: winnerIds.length } })
+
+    // 🔔 2026-07-05 알림톡: 체험단 선정/승계 안내 — 앱을 안 여는 초기 유저 도달 채널 (waitUntil·fail-soft,
+    //   sendSystemAlimtalk 이 dedup(phone+template 1h)·일일 캡·실패 재시도 큐 담당).
+    //   ⚠️ tpl_code fcfs_selected/fcfs_replacement 는 Aligo 콘솔 등록·승인 필요 — 아래 message 는 승인
+    //   템플릿 본문과 일치시켜 유지할 것 ("추첨" 대신 "선정" 표기, alimtalk-templates.ts 레지스트리 등재).
+    {
+      const _alimBg = async () => {
+        try {
+          const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
+          const ph2 = winnerIds.map(() => '?').join(',')
+          const { results: phones } = await DB.prepare(
+            `SELECT id, phone FROM users WHERE id IN (${ph2}) AND phone IS NOT NULL AND phone != ''`,
+          ).bind(...winnerIds).all<{ id: string; phone: string }>().catch(() => ({ results: [] as Array<{ id: string; phone: string }> }))
+          const tpl = isReplacement ? 'fcfs_replacement' : 'fcfs_selected'
+          const msg = isReplacement
+            ? `[유어딜] ${dealName} 체험단 참여 기회가 회원님께 넘어왔어요!\n\n앞선 선정자의 미결제로 예비 순번이 승계되었습니다. 기한 내 결제하시면 참여가 확정됩니다.\n\n확정하기: https://live.ur-team.com${buyPath}`
+            : `[유어딜] ${dealName} 체험단에 선정되셨습니다! 🎉\n\n기한 내 결제하시면 참여가 확정됩니다. (미결제 시 예비 선정자에게 기회가 넘어갈 수 있어요)\n\n확정하기: https://live.ur-team.com${buyPath}`
+          for (const p of phones || []) {
+            await sendSystemAlimtalk(c.env, p.phone, tpl, msg).catch(() => {})
+          }
+        } catch { /* fail-soft — 인앱 알림은 위에서 이미 기록됨 */ }
+      }
+      let _alimDeferred = false
+      try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(_alimBg()); _alimDeferred = true } } catch { /* no ctx */ }
+      if (!_alimDeferred) await _alimBg()
+    }
+    return c.json({ success: true, data: { selected: winnerIds.length, replacement: isReplacement } })
   } catch (err) { return safeError(c, err, '선정 처리 실패', '[fcfs]') }
 })
 

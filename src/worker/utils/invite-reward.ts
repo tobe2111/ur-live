@@ -111,6 +111,7 @@ export async function grantInviteRewardForFirstPurchase(
       type: 'invite_reward',
       description: '친구 초대 첫 구매 보상',
       bumpTotalCharged: true,
+      bucket: 'free', // 💸 2026-07-05: 초대 보상 = 무상 딜 (출금 제외·우선 차감)
     })
     if (!adjusted.ok) return { granted: false, reason: 'error' }
     // users.deal_balance best-effort (컬럼 없을 수 있음)
@@ -180,10 +181,13 @@ export async function reverseInviteRewardOnRefund(
     if (amount <= 0) return
 
     // 초대자 포인트 회수 (MAX(0,...) clamp — 이미 소진했으면 가용분만, 음수 방지).
+    // 💸 2026-07-05 버킷: 무상 적립의 회수 → free 도 함께 회수 (무상 적립-역전 대칭). 컬럼 사전 보장.
+    const { ensureDealBuckets } = await import('./point-buckets')
+    await ensureDealBuckets(DB)
     await executeRun(
       DB,
-      "UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = datetime('now') WHERE user_id = ?",
-      [amount, String(row.inviter_user_id)],
+      "UPDATE user_points SET balance = MAX(0, balance - ?), free_balance = MAX(0, COALESCE(free_balance, 0) - ?), updated_at = datetime('now') WHERE user_id = ?",
+      [amount, amount, String(row.inviter_user_id)],
     ).catch(() => {})
     // 장부 기록 (best-effort, 음수 delta).
     await recordPointTransaction(DB, {
@@ -191,6 +195,7 @@ export async function reverseInviteRewardOnRefund(
       delta: -amount,
       type: 'invite_reward_reversal',
       description: '초대 보상 회수 (친구 주문 환불)',
+      freeDelta: -amount,
     }).catch(() => {})
     // users.deal_balance best-effort 역전.
     await executeRun(

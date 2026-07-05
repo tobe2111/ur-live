@@ -44,6 +44,9 @@ export const ALL_USED_ALIMTALK_TEMPLATES: readonly string[] = [
   'auction_won', 'voucher_refunded', 'seller_settlement_completed', 'payout_completed',
   // 도매(판매사/제조사) — 등록 미확인
   'distributor_approved', 'distributor_rejected', 'supplier_approved', 'supplier_rejected',
+  // 🏙️ 2026-07-05 체험단(FCFS) + 이용권 사용 완료 — 콘솔 등록·심사 신청 필요 (문안은 운영이
+  //   Aligo 에 등록한 승인 본문과 코드의 message 를 일치시킬 것 — 승인 후 DOCUMENTED 로 이동).
+  'fcfs_selected', 'fcfs_replacement', 'voucher_used',
   // 셀러 브랜드메시지 테스트 발송(seller-alimtalk-mgmt) — 셀러 자체 Aligo 계정용 테스트 코드(시스템 알림 아님)
   'test',
 ] as const

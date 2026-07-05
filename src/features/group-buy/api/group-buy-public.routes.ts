@@ -112,7 +112,11 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       discount: 'p.discount_rate DESC, p.created_at DESC',
     }
     const sortParam = c.req.query('sort') || ''
-    const orderBy = ALLOWED_GB_SORT[sortParam] || 'p.created_at DESC'
+    // 🎯 2026-07-04 [UNLOCK_LOADING] (대표 "데모 이용권 노출은 항상 후순위"): 어떤 정렬이든 1차 키 =
+    //   데모-후순위(slug demo-deal-*). 실 사업자/플랫폼 상품이 항상 먼저, 데모는 뒤 채움용.
+    //   캐시키/헤더/필드 전부 불변 — 응답 내 행 순서만. materialized cron 도 동일 정렬(짝 수정).
+    const DEMO_LAST = "(CASE WHEN COALESCE(p.slug,'') LIKE 'demo-deal-%' THEN 1 ELSE 0 END)"
+    const orderBy = `${DEMO_LAST}, ${ALLOWED_GB_SORT[sortParam] || 'p.created_at DESC'}`
     const pageNum = Math.max(1, intParam(c.req.query('page'), 1))
     const pageLimit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 50)))
     const offset = (pageNum - 1) * pageLimit
@@ -170,7 +174,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           p.group_buy_deadline AS expires_at, p.group_buy_tiers,
           p.discount_rate, p.sold_count, p.avg_rating, p.deal_only,
           p.brand_name, p.brand_icon_url, p.created_at, p.seller_id,
-          p.restaurant_name, p.restaurant_address,
+          p.restaurant_name, p.restaurant_address, p.slug,
           ${_dominantColorCol === false ? '' : 'p.dominant_color,'}
           s.name AS seller_name, s.profile_image AS seller_avatar
         `
@@ -288,7 +292,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       if (ids.length > 0) {
         const ph2 = ids.map(() => '?').join(',')
         const { results: fcfsMeta } = await DB.prepare(
-          `SELECT product_id, key, value FROM product_supply_meta WHERE key LIKE 'fcfs_%' AND product_id IN (${ph2})`,
+          `SELECT product_id, key, value FROM product_supply_meta WHERE (key LIKE 'fcfs_%' OR key = 'prelaunch') AND product_id IN (${ph2})`,
         ).bind(...ids).all<{ product_id: number; key: string; value: string | null }>()
         const cfgById = new Map<number, Record<string, string>>()
         for (const m of fcfsMeta || []) {
@@ -312,11 +316,17 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
             const seed = Math.max(0, parseInt(rec.fcfs_applied_seed || '0', 10) || 0)
             return {
               ...p,
+              // 🏷️ 2026-07-05 (대표 "옵션으로 선택") — 오픈 예정형 데모: 카드 '오픈 예정' 배지 + 상세 CTA 분기.
+              ...(rec.prelaunch === '1' ? { prelaunch: true } : {}),
               fcfs: {
                 enabled: true,
+                prelaunch: rec.prelaunch === '1',
                 spots: Math.max(0, parseInt(rec.fcfs_spots || '0', 10) || 0),
                 appliedDisplay: seed + (cntById.get(pid) || 0),
                 deadline: rec.fcfs_deadline || null,
+                // 🎯 2026-07-04 (대표 "데모 항상 후순위"): 클라 '선착순 상위노출' boost 가 데모를
+                //   끌어올리지 않게 demo 플래그 — RestaurantMapPage displayList 가 non-demo 만 boost.
+                demo: String((p as { slug?: string }).slug || '').startsWith('demo-deal-'),
               },
             }
           })
@@ -324,7 +334,23 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       }
     } catch { /* fail-soft — 클라 useFcfs 훅이 폴백 */ }
 
-    return c.json({ success: true, data: withFcfs })
+    // 🏪 2026-07-05 온누리 가맹 뱃지 (B2G — "온누리 사용 가능 표시" 약속): seller_meta.onnuri_merchant='1'
+    //   인 매장 상품에 onnuri_merchant: true 를 additive enrich — fcfs/current_price enrich 와 동일 패턴
+    //   (캐시키/헤더/기존 필드 불변, fail-soft).
+    let withOnnuri = withFcfs
+    try {
+      const sellerIds = [...new Set(withFcfs.map((p) => Number((p as { seller_id?: number }).seller_id)).filter((n) => Number.isFinite(n) && n > 0))]
+      if (sellerIds.length > 0) {
+        const { getSellerMeta } = await import('../../../worker/utils/seller-meta')
+        const metaMap = await getSellerMeta(DB, sellerIds)
+        const onnuriSet = new Set([...metaMap.entries()].filter(([, r]) => r.onnuri_merchant === '1').map(([sid]) => sid))
+        if (onnuriSet.size > 0) {
+          withOnnuri = withFcfs.map((p) => (onnuriSet.has(Number((p as { seller_id?: number }).seller_id)) ? { ...p, onnuri_merchant: true } : p))
+        }
+      }
+    } catch { /* fail-soft */ }
+
+    return c.json({ success: true, data: withOnnuri })
   })
 
   // 🛡️ 2026-06-10 (사용자 신고 — 교환권 상세 500 전수 재현): 어드민 전용 단계별 진단.
@@ -490,6 +516,17 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const max_per_person = mppRaw != null && Number.isFinite(Number(mppRaw)) && Number(mppRaw) > 0 ? Math.floor(Number(mppRaw)) : null
     // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 등록 시 캡처한 place_url (있으면 상세 지도가 직접 연결).
     const kakao_place_url = normalizeKakaoPlaceUrl(metaMap?.get(Number(id))?.kakao_place_url)
+    const prelaunch = metaMap?.get(Number(id))?.prelaunch === '1'  // 🏷️ 오픈 예정형(상세 배지·구매 CTA 분기)
+    // 🏪 2026-07-05 온누리 가맹 뱃지 (B2G): seller_meta.onnuri_merchant='1' 이면 상세에 additive 동봉.
+    let onnuri_merchant = false
+    try {
+      const sid = Number((product as { seller_id?: number }).seller_id)
+      if (Number.isFinite(sid) && sid > 0) {
+        const { getSellerMeta } = await import('../../../worker/utils/seller-meta')
+        const sm = await getSellerMeta(DB, [sid])
+        onnuri_merchant = sm.get(sid)?.onnuri_merchant === '1'
+      }
+    } catch { /* fail-soft */ }
 
     return c.json({
       success: true,
@@ -502,7 +539,9 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         ...(seller_handle ? { seller_handle } : {}),  // 🔗 셀러 링크샵 handle (있을 때만)
         ...(menu ? { menu } : {}),                // 🍽️ #5: 대표 메뉴 (있을 때만)
         ...(max_per_person ? { max_per_person } : {}),  // 🎯 1인당 구매 한도 (있을 때만)
+        ...(prelaunch ? { prelaunch: true } : {}),  // 🏷️ 오픈 예정형
         ...(kakao_place_url ? { kakao_place_url } : {}),  // 🎯 카카오 장소 페이지 URL (있을 때만)
+        ...(onnuri_merchant ? { onnuri_merchant: true } : {}),  // 🏪 온누리 가맹 매장 (있을 때만)
       },
     })
     } catch (err) {

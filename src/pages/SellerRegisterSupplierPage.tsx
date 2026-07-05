@@ -21,6 +21,8 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { ChevronLeft, Loader2, Store, CheckCircle2 } from 'lucide-react'
+import TermsConsentBox from '@/components/terms/TermsConsentBox'
+import { TERMS_CURRENT_VERSION } from './terms/terms-types'
 
 const STORE_CATEGORIES = [
   { value: 'restaurant', label: '음식점' },
@@ -41,6 +43,8 @@ export default function SellerRegisterSupplierPage() {
   const agencyFromUrl = (searchParams.get('agency') || '').toUpperCase().slice(0, 12)
   const userName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null
   const [loading, setLoading] = useState(false)
+  // 📜 2026-07-05 판매자 이용약관 v1.0: 가입 시 동의 필수
+  const [termsAgreed, setTermsAgreed] = useState(false)
   const [statusChecked, setStatusChecked] = useState(false)
   const [existingStatus, setExistingStatus] = useState<'none' | 'pending' | 'active' | 'suspended'>('none')
   const [form, setForm] = useState({
@@ -156,6 +160,10 @@ export default function SellerRegisterSupplierPage() {
       toast.error(t('seller.register.businessNumberFormat', { defaultValue: '사업자번호 형식: XXX-XX-XXXXX' }))
       return
     }
+    if (!termsAgreed) {
+      toast.error(t('seller.gateway.termsRequired', { defaultValue: '판매자 이용약관에 동의해주세요' }))
+      return
+    }
 
     setLoading(true)
     try {
@@ -176,6 +184,7 @@ export default function SellerRegisterSupplierPage() {
         seller_type: 'store_owner',
         description: descWithMeta,
         agency_intro_code: form.agency_intro_code.trim() || undefined,
+        terms_agreed_version: TERMS_CURRENT_VERSION,
       })
       if (res.data?.success) {
         toast.success(t('seller.gateway.applied', {
@@ -388,6 +397,13 @@ export default function SellerRegisterSupplierPage() {
             </p>
           </Field>
         </div>
+
+        <TermsConsentBox
+          termsLabel={t('seller.gateway.termsAgree', { defaultValue: '유어딜 판매자 이용약관(v1.0)에 동의합니다' })}
+          termsPath="/terms/seller"
+          agreed={termsAgreed}
+          onAgreedChange={setTermsAgreed}
+        />
 
         <p className="text-[11px] text-gray-500 text-center leading-relaxed">
           {t('seller.gateway.reviewNote', { defaultValue: '신청 후 1-2 영업일 내 관리자 검토 → 앱 알림·알림톡으로 결과 안내. 국세청 정보 일치 시 자동 승인.' })}
