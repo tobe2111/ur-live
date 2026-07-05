@@ -281,6 +281,8 @@
 
 > 현재 29개 불변식 GREEN (서비스분리·인증세션RBAC·머니패턴·DB스키마·상품종류·UI테마·배포). 상세: `docs/AUDIT_INVARIANTS.md`.
 
+> 🧪 **staging 검증 백로그 SSOT = `docs/STAGING_CHECKLIST.md`** (2026-07-05 신설). audit log 에 "staging 실결제 검증 필수"를 남길 때는 **같은 커밋에서 이 체크리스트에 항목(S#/P#) 추가** + 게이트 플래그면 `admin-system-monitoring.routes.ts` `OPS_GATES` 등록. 어드민 열람: `/admin/system-monitoring` "게이트·하트비트" 탭. cron 침묵·백업 무결성 관측: `cron-heartbeat.ts` + `/api/_healthcheck/cron` + `docs/BACKUP_RESTORE.md`.
+
 ## 🎨 디자인 시안 archive 룰 (필수)
 
 사용자가 디자인 시안 (이미지/스크린샷) 을 보낼 때:
