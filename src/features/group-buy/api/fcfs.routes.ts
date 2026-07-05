@@ -93,8 +93,18 @@ function parseConfig(rec: Record<string, string> | undefined): FcfsConfig {
     deadline: rec?.fcfs_deadline || null,
   }
 }
+// 🧯 2026-07-05 (대표 "데모로 만드는 건 실 유저가 추첨될 수 없는 형태여야"): 데모 상품 판별 —
+//   seed-demo 시드 동네딜/이용권은 slug 'demo-deal-N' 이 유일 식별자(어드민 삭제/집계와 동일 기준).
+async function isDemoProduct(DB: D1Database, productId: number): Promise<boolean> {
+  const row = await DB.prepare('SELECT slug FROM products WHERE id=?')
+    .bind(productId).first<{ slug: string | null }>().catch(() => null)
+  return (row?.slug || '').startsWith('demo-deal-')
+}
+
+// 표시 카운트에는 'demo'(데모 상품에 실 유저가 응모한 행 — 추첨 풀 제외 전용 상태)도 포함 —
+// 응모하면 숫자는 올라가되(체감 유지) 추첨 풀(status='applied')에는 구조적으로 못 들어간다.
 async function realAppliedCount(DB: D1Database, productId: number): Promise<number> {
-  const r = await DB.prepare("SELECT COUNT(*) as n FROM fcfs_applications WHERE product_id=? AND status IN ('applied','selected')")
+  const r = await DB.prepare("SELECT COUNT(*) as n FROM fcfs_applications WHERE product_id=? AND status IN ('applied','selected','demo')")
     .bind(productId).first<{ n: number }>().catch(() => null)
   return r?.n || 0
 }
@@ -132,7 +142,7 @@ publicApp.get('/active', async (c) => {
     // 🧯 2026-07-02: 상품별 COUNT 루프(N+1) → GROUP BY 단일 쿼리 — 캐시 miss 시에도 D1 왕복 상수화.
     const countRows = await DB.prepare(
       `SELECT product_id, COUNT(*) as n FROM fcfs_applications
-        WHERE product_id IN (${ph}) AND status IN ('applied','selected') GROUP BY product_id`
+        WHERE product_id IN (${ph}) AND status IN ('applied','selected','demo') GROUP BY product_id`
     ).bind(...enabledIds).all<{ product_id: number; n: number }>().catch(() => ({ results: [] as { product_id: number; n: number }[] }))
     const countById = new Map((countRows.results || []).map(r => [r.product_id, r.n]))
     const out = []
@@ -177,9 +187,13 @@ userApp.post('/:productId/apply', rateLimit({ action: 'fcfs_apply', max: 10, win
     const cfg = parseConfig(meta.get(productId))
     if (!cfg.enabled) return c.json({ success: false, error: '선착순 응모 대상이 아닙니다' }, 400)
     if (cfg.deadline && new Date(cfg.deadline).getTime() < Date.now()) return c.json({ success: false, error: '응모가 마감되었습니다' }, 400)
+    // 🧯 2026-07-05: 데모 상품 응모는 status='demo' 로 저장 — 추첨 풀(status='applied')에
+    //   **존재 자체가 불가능**해 실 유저가 당첨될 수 없는 구조(선정 게이트와 이중 방어).
+    //   표시 카운트에는 포함(체감 유지), UX 는 일반 응모와 동일("응모 완료 · 당첨 시 안내").
+    const applyStatus = (await isDemoProduct(DB, productId)) ? 'demo' : 'applied'
     // 1인 1회 (UNIQUE) — INSERT OR IGNORE 멱등
-    const res = await DB.prepare("INSERT OR IGNORE INTO fcfs_applications (product_id, user_id, status) VALUES (?, ?, 'applied')")
-      .bind(productId, userId).run()
+    const res = await DB.prepare("INSERT OR IGNORE INTO fcfs_applications (product_id, user_id, status) VALUES (?, ?, ?)")
+      .bind(productId, userId, applyStatus).run()
     const already = (res.meta?.changes || 0) === 0
     const real = await realAppliedCount(DB, productId)
     return c.json({ success: true, data: { applied: true, already, appliedDisplay: cfg.appliedSeed + real } })
@@ -262,9 +276,7 @@ adminApp.post('/:productId/select', async (c) => {
     //   fcfs_applications 행은 전부 **실 유저**라 데모에서 선정하는 순간 실 유저에게
     //   "당첨! 결제하세요" 딥링크 알림이 나가 가짜 딜 결제 사고로 이어짐.
     //   수동 winners 지정도 동일 차단. 응모수 시드(fcfs_applied_seed) 표시는 불변.
-    const prodGate = await DB.prepare('SELECT slug FROM products WHERE id=?')
-      .bind(productId).first<{ slug: string | null }>().catch(() => null)
-    if ((prodGate?.slug || '').startsWith('demo-deal-')) {
+    if (await isDemoProduct(DB, productId)) {
       return c.json({ success: false, error: '데모 상품은 추첨 선정이 차단되어 있습니다 — 실 유저 당첨 방지 (응모수 시드 표시만 사용)' }, 400)
     }
 

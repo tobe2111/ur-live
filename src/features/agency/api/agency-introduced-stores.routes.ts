@@ -14,6 +14,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAgency, type AgencyVars } from '@/lib/agency-shared'
 import { intParam } from '@/shared/pagination'
+import { COMMISSION_DEFAULTS } from '@/shared/constants/policy'
 
 const app = new Hono<{ Bindings: Env; Variables: AgencyVars }>()
 app.use('*', requireAgency)
@@ -152,7 +153,8 @@ app.get('/intro-code', async (c) => {
     success: true,
     data: {
       intro_code: row?.intro_code || null,
-      commission_pct: row?.store_intro_commission_pct ?? 2.0,
+      // 💰 2026-07-05: 하드코딩 2.0 → SSOT 상수(기본 1%) — 적립 헬퍼(getAgencyRate)와 동일 폴백.
+      commission_pct: row?.store_intro_commission_pct ?? COMMISSION_DEFAULTS.AGENCY_STORE_INTRO_PCT,
       // 0 = 무제한(미설정). 잔여기간 계산은 매장별 term_started_at(첫 결제)과 조합 — UI 담당.
       term_months: Number(row?.commission_term_months) > 0 ? Number(row?.commission_term_months) : 0,
       share_url: row?.intro_code

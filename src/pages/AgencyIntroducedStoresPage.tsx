@@ -129,7 +129,7 @@ export default function AgencyIntroducedStoresPage() {
       <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title="내가 입점시킨 가게"
-          subtitle="입점 가게의 매출 2% 영구 commission · 가입 보너스 ₩30,000 · 월 100만 돌파 ₩50,000"
+          subtitle={`입점 가게의 매출 ${introCode?.commission_pct ?? 1}% commission (첫 판매 확정일로부터 ${introCode?.term_months ? `${introCode.term_months}개월` : '약정 기간'}) · 가입 보너스 ₩30,000 · 월 100만 돌파 ₩50,000`}
           icon={<Store className="h-5 w-5" />}
         />
 
@@ -188,7 +188,8 @@ export default function AgencyIntroducedStoresPage() {
               <p className="text-xs text-gray-600 mt-2 leading-relaxed">
                 가게 사장님에게 이 코드를 알려주거나 가입 링크를 공유하세요.
                 <br />
-                가입 시 자동 매칭 → 입점 가게의 모든 매출에 <strong>{introCode?.commission_pct ?? 2}%</strong> 영구 commission.
+                가입 시 자동 매칭 → 입점 가게의 매출에 <strong>{introCode?.commission_pct ?? 1}%</strong> commission
+                {introCode?.term_months ? ` (첫 판매 확정일로부터 ${introCode.term_months}개월)` : ''}.
               </p>
             </div>
 

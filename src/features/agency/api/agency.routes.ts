@@ -265,6 +265,12 @@ app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, win
     VALUES (?, ?, ?, ?, ?, 'pending')
   `).bind(name, contact_name, email, hash, phone || null).run()
 
+  // 🗓️ 2026-07-05 대표 확정 (자문): 신규 에이전시 커미션 기간 기본 24개월 — 약관3 제4조 "기본 24개월"과 정합.
+  //   NULL=무제한이라 수동 입력 누락 시 무제한으로 도는 사고 방지. 무제한 계약만 어드민이 개별 NULL.
+  //   fail-soft(컴럼 미존재 구 DB 는 repair-schema 후 반영).
+  await c.env.DB.prepare("UPDATE agencies SET commission_term_months = 24 WHERE email = ? AND commission_term_months IS NULL")
+    .bind(email).run().catch(() => {})
+
   // 🛡️ 2026-04-28: 어드민 알림 — 셀러 가입 흐름과 동일하게 추가 (이전 누락).
   createDashboardNotification(
     c.env.DB, 'admin', null, 'agency_registered',
@@ -348,6 +354,12 @@ app.post('/register-from-user', cors(), rateLimit({ action: 'agency_register_fro
       INSERT INTO agencies (name, contact_name, email, password_hash, phone, status, linked_user_id)
       VALUES (?, ?, ?, ?, ?, 'pending', ?)
     `).bind(name, contact_name, email, passwordHash, phone || null, userId).run()
+
+    // 🗓️ 2026-07-05 대표 확정 (자문): 신규 에이전시 커미션 기간 기본 24개월 — 약관3 제4조 "기본 24개월"과 정합.
+    //   NULL=무제한이라 수동 입력 누락 시 무제한으로 도는 사고 방지. 무제한 계약만 어드민이 개별 NULL.
+    //   fail-soft(컴럼 미존재 구 DB 는 repair-schema 후 반영).
+    await db.prepare("UPDATE agencies SET commission_term_months = 24 WHERE email = ? AND commission_term_months IS NULL")
+      .bind(email).run().catch(() => {})
 
     // 🛡️ 2026-04-28: 어드민 알림 — 유저→에이전시 전환 신청 (이전 누락).
     createDashboardNotification(
