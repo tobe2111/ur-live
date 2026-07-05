@@ -1,6 +1,6 @@
 /**
  * 🛡️ 2026-05-28 (대행 등록 승인 — docs/SERVICE_MODEL.md §6):
- *   크리에이터/에이전시가 우리 매장 공구를 대행 등록 (is_active=0, registration_approved=0).
+ *   크리에이터/벤더사가 우리 매장 공구를 대행 등록 (is_active=0, registration_approved=0).
  *   매장 사장님이 검토 후 승인 → 공개 / 거부 → 삭제.
  *
  * 라이트 테마 고정 (대시보드 룰 — 다크 variant 금지).
@@ -67,7 +67,7 @@ export default function SellerProxyProductsPage() {
 
         <div className="max-w-3xl mx-auto px-4 py-4">
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 leading-relaxed">
-            크리에이터·에이전시가 우리 매장을 대신해 등록한 공구입니다. 내용을 확인하고 승인하면 공개돼요.
+            크리에이터·벤더사가 우리 매장을 대신해 등록한 공구입니다. 내용을 확인하고 승인하면 공개돼요.
             정산은 항상 우리 매장으로 들어옵니다.
           </div>
         </div>

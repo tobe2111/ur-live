@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { creditAgencyStoreIntroCommission } from '@/worker/utils/agency-store-intro-commission'
 
 /**
- * 🛡️ 2026-06-01 에이전시 입점 commission 적립 테스트 (테스트 0개였음).
+ * 🛡️ 2026-06-01 벤더사 입점 commission 적립 테스트 (테스트 0개였음).
  *   signup_bonus(₩30,000 첫결제 1회) + sales_commission(매출×pct, default 2%) 적립 분기.
  */
 
@@ -50,7 +50,7 @@ describe('creditAgencyStoreIntroCommission', () => {
     expect(ins(inserts, 'sales_commission')!.args).toContain(4000) // 200,000 × 2%
   })
 
-  it('영입 에이전시 없음 → 적립 없음', async () => {
+  it('영입 벤더사 없음 → 적립 없음', async () => {
     const { db, inserts } = makeDB({ agencyId: null })
     await creditAgencyStoreIntroCommission(db, { id: 4, seller_id: 9, total_amount: 100_000 })
     expect(inserts.filter((i) => i.sql.includes('INSERT INTO agency_store_intro_commissions'))).toHaveLength(0)

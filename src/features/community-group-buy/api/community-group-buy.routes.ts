@@ -467,8 +467,8 @@ communityGroupBuyRoutes.post('/join/:code', rateLimit({ action: 'community_gb_jo
     if (!_deferredCreator) await _bgCreator();
   }
 
-  // 50명 도달 시 모든 에이전시에 알림 전송
-  // 🏁 2026-06-11 (응답 경로 부수효과 전수조사): inline CREATE TABLE + 에이전시 N명 INSERT 루프 —
+  // 50명 도달 시 모든 벤더사에 알림 전송
+  // 🏁 2026-06-11 (응답 경로 부수효과 전수조사): inline CREATE TABLE + 벤더사 N명 INSERT 루프 —
   //   응답 후 실행(waitUntil). 블록 내용/순서/에러처리 불변 — 실행 시점만 이동. ctx 없으면(테스트) 동기 실행.
   if (newCount === 50) {
     const _bg = async () => {
@@ -1010,12 +1010,12 @@ communityGroupBuyRoutes.get('/popular', async (c) => {
   });
 });
 
-// 🛡️ 2026-05-13 (공구 UX Phase C): 에이전시 ↔ 식당 협상 메시지 채널
+// 🛡️ 2026-05-13 (공구 UX Phase C): 벤더사 ↔ 식당 협상 메시지 채널
 //   기존: "협상 시작" 버튼이 상태만 변경하고 실제 소통 도구 없음.
 //   현재: messages 테이블 + 양방향 endpoint.
 //   인증:
 //     - 어드민 (admin token)
-//     - 에이전시 (agency token)
+//     - 벤더사 (agency token)
 //     - 공구 생성자 (creator_user_id = current user)
 //     - 식당 (restaurant_seller_id 가 본인이거나, 향후 magic-link token 도 가능)
 async function ensureMessagesTable(DB: D1Database) {
@@ -1132,7 +1132,7 @@ communityGroupBuyRoutes.post('/:id/messages',
     if (!canRead || !senderType) return c.json({ success: false, error: '메시지 전송 권한 없음' }, 403)
 
     const senderName = userAsAny.name || (
-      senderType === 'agency' ? '에이전시' :
+      senderType === 'agency' ? '벤더사' :
       senderType === 'restaurant' ? '식당' :
       senderType === 'admin' ? '운영자' : '제안자'
     )

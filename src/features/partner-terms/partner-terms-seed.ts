@@ -1,5 +1,5 @@
 /**
- * 파트너 약관-as-계약 시드 (셀러·에이전시 온보딩 clickwrap).
+ * 파트너 약관-as-계약 시드 (셀러·벤더사 온보딩 clickwrap).
  * 설계: docs/design/partner-terms-as-contract.md · 문안 SSOT: src/shared/legal.
  *
  * body = 실제 약관 전문(SSOT). key_clauses = 약관규제법 §2① "중요조항 개별 동의" 대상 —
@@ -45,14 +45,14 @@ export const PARTNER_TERMS: Record<'seller' | 'agency', PartnerTermsDoc> = {
   agency: {
     terms_type: 'agency',
     version: 1,
-    title: '유어딜 에이전시 파트너 약관',
+    title: '유어딜 벤더사 파트너 약관',
     body: AGENCY_TERMS_MD,
     // 약관 서두 명시: 제4조·제5조·제9조·제10조는 요약 고지 및 개별 동의 대상.
     key_clauses: [
       { key: 'commission', required: true, title: '영입 커미션 (제4조)',
         summary: '영입 매장의 확정 거래 결제액의 일정 비율(기본 1%)을 커미션으로 지급하며, 지급 기간은 귀속 등록일로부터 24개월입니다. 소비자 결제액에 추가되거나 판매자에게 전가되지 않습니다.' },
       { key: 'settlement', required: true, title: '정산 및 세금 (제5조)',
-        summary: '확정 커미션은 성숙 기간(기본 7일) 후 정산 가능 금액으로 전환되어 등록 계좌로 지급되며, 에이전시는 세금계산서를 발행합니다(미등록 수령자는 원천징수 후 지급).' },
+        summary: '확정 커미션은 성숙 기간(기본 7일) 후 정산 가능 금액으로 전환되어 등록 계좌로 지급되며, 벤더사는 세금계산서를 발행합니다(미등록 수령자는 원천징수 후 지급).' },
       { key: 'change', required: true, title: '조건의 변경 (제9조)',
         summary: '회사는 커미션 요율·기간·정산 주기를 변경할 수 있고, 불리한 변경은 시행 30일 전 대시보드·이메일로 고지합니다. 동의하지 않으면 해지할 수 있으며, 변경 전 발생 커미션은 종전 조건에 따릅니다.' },
       { key: 'termination', required: true, title: '해지 및 종료 후 처리 (제10조)',

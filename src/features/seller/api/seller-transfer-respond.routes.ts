@@ -107,7 +107,7 @@ app.post('/:id/respond', rateLimit({ action: 'seller_transfer_respond', max: 20,
     return c.json({ success: false, error: '본인의 이전 요청이 아닙니다.' }, 403);
   }
   if (t.status !== 'accepted_by_to') {
-    return c.json({ success: false, error: '받는 에이전시 수락 후에만 응답 가능합니다.' }, 409);
+    return c.json({ success: false, error: '받는 벤더사 수락 후에만 응답 가능합니다.' }, 409);
   }
 
   if (!body.approved) {
@@ -119,7 +119,7 @@ app.post('/:id/respond', rateLimit({ action: 'seller_transfer_respond', max: 20,
       WHERE id = ?
     `).bind((body.reason || '셀러 거부').slice(0, 500), id).run();
 
-    // 양 에이전시에 거부 알림
+    // 양 벤더사에 거부 알림
     await c.env.DB.prepare(`
       INSERT INTO agency_notifications (agency_id, type, title, message)
       VALUES (?, 'seller_transfer_rejected', ?, ?), (?, 'seller_transfer_rejected', ?, ?)
@@ -148,13 +148,13 @@ app.post('/:id/respond', rateLimit({ action: 'seller_transfer_respond', max: 20,
     `).bind(id),
   ]);
 
-  // 양 에이전시 알림
+  // 양 벤더사 알림
   await c.env.DB.prepare(`
     INSERT INTO agency_notifications (agency_id, type, title, message)
     VALUES (?, 'seller_transferred_out', ?, ?), (?, 'seller_transferred_in', ?, ?)
   `).bind(
-    t.from_agency_id, '셀러 이전 완료', `셀러 #${t.seller_id} 가 다른 에이전시로 이전됐습니다.`,
-    t.to_agency_id, '셀러 영입 완료', `셀러 #${t.seller_id} 가 본 에이전시에 합류했습니다.`,
+    t.from_agency_id, '셀러 이전 완료', `셀러 #${t.seller_id} 가 다른 벤더사로 이전됐습니다.`,
+    t.to_agency_id, '셀러 영입 완료', `셀러 #${t.seller_id} 가 본 벤더사에 합류했습니다.`,
   ).run().catch(swallow('seller:api:transfer-respond'));
 
   return c.json({ success: true, data: { status: 'completed' } });

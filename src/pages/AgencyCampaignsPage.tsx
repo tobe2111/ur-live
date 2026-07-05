@@ -159,7 +159,7 @@ export default function AgencyCampaignsPage() {
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('agency.campaigns.title', { defaultValue: '캠페인' })}
-          subtitle={t('agency.campaigns.subtitle', { defaultValue: '에이전시 주도의 매출 캠페인 — 셀러별 KPI/보너스 설정' })}
+          subtitle={t('agency.campaigns.subtitle', { defaultValue: '벤더사 주도의 매출 캠페인 — 셀러별 KPI/보너스 설정' })}
           icon={<Megaphone className="h-5 w-5" />}
           actions={
             <button

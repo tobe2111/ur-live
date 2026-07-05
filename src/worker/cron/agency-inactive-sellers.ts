@@ -7,7 +7,7 @@
  *   1) 7일 무라이브 (마지막 라이브 시작 시각이 7일 전)
  *   2) 30일 무매출 (마지막 결제 완료 시각이 30일 전)
  *
- * 알림 → agency_notifications 에 INSERT (에이전시 대시보드 표시).
+ * 알림 → agency_notifications 에 INSERT (벤더사 대시보드 표시).
  *
  * 정책 (느슨): 강제 패널티 X. 단순 알림만.
  */
@@ -42,7 +42,7 @@ export async function handleAgencyInactiveSellers(env: Env): Promise<void> {
   let notified = 0;
 
   try {
-    // 모든 에이전시 소속 셀러 + 마지막 라이브/결제 시각 조회
+    // 모든 벤더사 소속 셀러 + 마지막 라이브/결제 시각 조회
     const rows = await DB.prepare(`
       SELECT
         ag_s.agency_id,

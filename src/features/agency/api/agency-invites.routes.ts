@@ -5,7 +5,7 @@
  *   POST /api/agency/invites              — 새 코드 발급 (인증 필요)
  *   GET  /api/agency/invites              — 발급 내역 + 사용 통계
  *   DELETE /api/agency/invites/:code      — 비활성화 (soft)
- *   GET  /api/invite/:code                — 공개 (가입 폼에서 에이전시 정보 조회)
+ *   GET  /api/invite/:code                — 공개 (가입 폼에서 벤더사 정보 조회)
  *
  * 코드 정책: 8자 대문자 영숫자, 7일 유효, 기본 max_uses=100.
  * 셀러 register 라우트가 ?invite=<code> 받으면 agencySeller 자동 매핑.
@@ -111,7 +111,7 @@ interface InviteCodeRow {
 app.use('*', requireAgency);
 
 // 🛡️ 2026-04-27: 일일 발급 제한 (TikTok 자료의 "한 명이 하루에 최대 X개" 정책).
-// 에이전시 멤버 1명이 하루 최대 10개 코드 발급 가능. 남용 방지.
+// 벤더사 멤버 1명이 하루 최대 10개 코드 발급 가능. 남용 방지.
 const DAILY_ISSUE_LIMIT = 10;
 
 // 🛡️ 2026-04-27: invite 권한 필요 (owner/manager/agent — analyst 차단)
@@ -207,7 +207,7 @@ app.delete('/:code', requireAgencyPermission('invite'), async (c) => {
 // 공개 라우터 (별도 마운트 — /api/invite/:code, 인증 불필요)
 const publicApp = new Hono<{ Bindings: Env }>();
 
-// GET /api/invite/:code — 가입 폼에서 에이전시 정보 prefill
+// GET /api/invite/:code — 가입 폼에서 벤더사 정보 prefill
 publicApp.get('/:code', async (c) => {
   const code = c.req.param('code').toUpperCase();
   if (!/^[A-Z0-9]{4,16}$/.test(code)) {
@@ -275,7 +275,7 @@ export async function consumeInviteCode(
   if (row.expires_at < now) return { ok: false, reason: 'expired' };
   if (row.used_count >= row.max_uses) return { ok: false, reason: 'used_up' };
 
-  // 🛡️ 2026-04-27: 거부 후 10일 cooldown — 같은 에이전시에서 최근 reject 된 셀러 차단.
+  // 🛡️ 2026-04-27: 거부 후 10일 cooldown — 같은 벤더사에서 최근 reject 된 셀러 차단.
   // TikTok Backstage 자료의 "거부 후 14일 재신청 불가" 정책을 10일로 적응.
   try {
     const recentReject = await DB.prepare(`

@@ -86,7 +86,7 @@ export async function notifyFollowers(DB: D1Database, sellerId: number, type: st
   } catch (err) { if (import.meta.env.DEV) console.warn('[notifications] notifyFollowers failed:', err) }
 }
 
-// ─── 에이전시 알림 ───────────────────────────────────────────────
+// ─── 벤더사 알림 ───────────────────────────────────────────────
 export async function notifyAgencyForSeller(DB: D1Database, sellerId: number, type: string, title: string, message?: string, link?: string) {
   try {
     // ⚠️ ensureTable best-effort — 이미 있으면 no-op, 권한/race fail 시 INSERT 가 throw 하므로 throw 함수 전체 catch 에 잡힘

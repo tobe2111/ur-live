@@ -1,12 +1,12 @@
 /**
  * Admin Agency Management Routes
  *
- * GET    /agencies                      - 에이전시 목록
- * POST   /agencies                      - 에이전시 생성
- * PATCH  /agencies/:id                  - 에이전시 정보 수정
- * DELETE /agencies/:id                  - 에이전시 삭제
- * POST   /agencies/:id/reset-password   - 에이전시 비밀번호 재설정
- * GET    /agencies/:id/sellers          - 에이전시 소속 셀러
+ * GET    /agencies                      - 벤더사 목록
+ * POST   /agencies                      - 벤더사 생성
+ * PATCH  /agencies/:id                  - 벤더사 정보 수정
+ * DELETE /agencies/:id                  - 벤더사 삭제
+ * POST   /agencies/:id/reset-password   - 벤더사 비밀번호 재설정
+ * GET    /agencies/:id/sellers          - 벤더사 소속 셀러
  * POST   /agencies/:id/sellers          - 셀러 소속 추가
  * DELETE /agencies/:id/sellers/:sellerId - 셀러 소속 제거
  */
@@ -194,14 +194,14 @@ app.patch('/:id', async (c) => {
     `).bind(name ?? null, contact_name ?? null, phone ?? null, status ?? null, commission_rate ?? null, id).run()
   })
 
-  // 🛡️ 2026-04-28: 에이전시 측 알림 — status='active' 로 변경 시 (승인 처리)
+  // 🛡️ 2026-04-28: 벤더사 측 알림 — status='active' 로 변경 시 (승인 처리)
   if (status === 'active') {
     try {
       // 🛡️ 2026-04-29: Worker 코드 dynamic import 는 상대경로만 사용 (CLAUDE.md 룰)
       const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
       createDashboardNotification(
         c.env.DB, 'agency', String(id), 'agency_approved',
-        '에이전시 승인 완료', '대시보드 사용을 시작할 수 있습니다', '/agency'
+        '벤더사 승인 완료', '대시보드 사용을 시작할 수 있습니다', '/agency'
       ).catch(swallow('admin-agency:approve-dashboard'))
     } catch { /* notification 모듈 로드 실패 시 ignore */ }
 
@@ -213,7 +213,7 @@ app.patch('/:id', async (c) => {
       if (agency?.phone) {
         const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
         sendSystemAlimtalk(c.env, agency.phone, 'agency_approved',
-          `[유어딜] ${agency.contact_name}님,\n에이전시 승인이 완료되었어요!\n대시보드에 접속해 셀러 관리를 시작하세요.`
+          `[유어딜] ${agency.contact_name}님,\n벤더사 승인이 완료되었어요!\n대시보드에 접속해 셀러 관리를 시작하세요.`
         ).catch(swallow('admin-agency:approve-alimtalk'))
       }
     } catch { /* ignore */ }
@@ -224,14 +224,14 @@ app.patch('/:id', async (c) => {
 
 // ── DELETE /agencies/:id ──────────────────────────────────────
 // 🛡️ 2026-05-07: HARD DELETE → SOFT DELETE 변경.
-//   에이전시 데이터는 정산/계약/감사 위해 영구 보존 필수. is_active=0 + status='deleted'.
+//   벤더사 데이터는 정산/계약/감사 위해 영구 보존 필수. is_active=0 + status='deleted'.
 //   소속 셀러 매핑(agency_sellers)은 hard-delete 유지 (mapping 자체는 일시적 관계).
 app.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'))
   // agency 컬럼 보장
   try { await c.env.DB.prepare(`ALTER TABLE agencies ADD COLUMN is_active INTEGER DEFAULT 1`).run() } catch { /* exists */ }
   try { await c.env.DB.prepare(`ALTER TABLE agencies ADD COLUMN deleted_at DATETIME`).run() } catch { /* exists */ }
-  // 소속 셀러 매핑은 정리 (에이전시 비활성 후 매핑 유지 의미 없음)
+  // 소속 셀러 매핑은 정리 (벤더사 비활성 후 매핑 유지 의미 없음)
   await c.env.DB.prepare('DELETE FROM agency_sellers WHERE agency_id = ?').bind(id).run()
   // soft-delete: status + email/username suffix (재사용 unique 충돌 방지)
   const ts = Date.now()
@@ -285,7 +285,7 @@ app.post('/:id/sellers', async (c) => {
   if (!seller_id) return c.json({ success: false, error: 'seller_id 필수' }, 400)
 
   const agency = await c.env.DB.prepare('SELECT id FROM agencies WHERE id = ?').bind(agencyId).first()
-  if (!agency) return c.json({ success: false, error: '에이전시를 찾을 수 없습니다.' }, 404)
+  if (!agency) return c.json({ success: false, error: '벤더사를 찾을 수 없습니다.' }, 404)
 
   const seller = await c.env.DB.prepare('SELECT id FROM sellers WHERE id = ?').bind(seller_id).first()
   if (!seller) return c.json({ success: false, error: '셀러를 찾을 수 없습니다.' }, 404)

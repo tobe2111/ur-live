@@ -1,5 +1,5 @@
 /**
- * 🛡️ 2026-05-20: 에이전시 — 내가 입점시킨 가게 (Phase 2).
+ * 🛡️ 2026-05-20: 벤더사 — 내가 입점시킨 가게 (Phase 2).
  *
  * Routes:
  *   GET /api/agency/introduced-stores            — 입점 가게 리스트 + 누적 commission
@@ -7,7 +7,7 @@
  *   GET /api/agency/introduced-stores/summary    — 대시보드 요약 (이번달/누적)
  *   GET /api/agency/intro-code                   — 내 추천 코드 (없으면 자동 생성)
  *
- * 사용자 모델: 에이전시 = 가게 영업. 입점 가게의 모든 이용권 매출에 영구 2% commission.
+ * 사용자 모델: 벤더사 = 가게 영업. 입점 가게의 모든 이용권 매출에 영구 2% commission.
  */
 
 import { Hono } from 'hono'
@@ -110,7 +110,7 @@ app.get('/introduced-stores/summary', async (c) => {
 })
 
 // ─── GET /intro-code ────────────────────────────────────────────────────
-// 에이전시 본인의 추천 코드 조회 + 없으면 자동 생성 (AG-XXXXXXXX 형식).
+// 벤더사 본인의 추천 코드 조회 + 없으면 자동 생성 (AG-XXXXXXXX 형식).
 app.get('/intro-code', async (c) => {
   const agencyId = c.get('agency')?.id
   if (!agencyId) return c.json({ success: false, error: 'Unauthorized' }, 401)

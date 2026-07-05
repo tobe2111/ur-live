@@ -1,5 +1,5 @@
 /**
- * 🛡️ 2026-05-18: 에이전시 숙소 모니터링 (PR 5/6).
+ * 🛡️ 2026-05-18: 벤더사 숙소 모니터링 (PR 5/6).
  *
  * 담당 셀러들의 숙소 + 예약 + KPI.
  */
@@ -91,7 +91,7 @@ export default function AgencyStaysPage() {
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title="담당 셀러 숙소"
-          subtitle="에이전시 담당 셀러들의 숙소 운영 현황 + 예약 통계"
+          subtitle="벤더사 담당 셀러들의 숙소 운영 현황 + 예약 통계"
           icon={<Building2 className="h-5 w-5" />}
         />
 

@@ -13,7 +13,7 @@ const AgencySellersPage = lazy(() => import('@/pages/AgencySellersPage'))
 const AgencyOrdersPage = lazy(() => import('@/pages/AgencyOrdersPage'))
 const AgencyStreamsPage = lazy(() => import('@/pages/AgencyStreamsPage'))
 const AgencyStatsPage = lazy(() => import('@/pages/AgencyStatsPage'))
-// 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2)
+// 🛡️ 2026-05-20: 벤더사 = 가게 입점 영업 모델 (Phase 2)
 const AgencyIntroducedStoresPage = lazy(() => import('@/pages/AgencyIntroducedStoresPage'))
 const AgencySettlementsPage = lazy(() => import('@/pages/AgencySettlementsPage'))
 const MyLedgerPage = lazy(() => import('@/pages/MyLedgerPage'))
@@ -41,7 +41,7 @@ const AgencySelfEventsPage = lazy(() => import('@/pages/AgencySelfEventsPage'))
 const AgencyPromoteBoostsPage = lazy(() => import('@/pages/AgencyPromoteBoostsPage'))
 const AgencyRegisterPage = lazy(() => import('@/pages/AgencyRegisterPage'))
 const AgencyGroupBuyPage = lazy(() => import('@/pages/AgencyGroupBuyPage'))
-// 🛡️ 2026-05-18: 숙소 공구 에이전시 — PR 5/6.
+// 🛡️ 2026-05-18: 숙소 공구 벤더사 — PR 5/6.
 const AgencyStaysPage = lazy(() => import('@/pages/AgencyStaysPage'))
 const AgencyRegisterBusinessPage = lazy(() => import('@/pages/AgencyRegisterBusinessPage'))
 const AgencyWaitingPage = lazy(() => import('@/pages/AgencyWaitingPage'))
@@ -66,7 +66,7 @@ function AgencyLiveGate({ children }: { children: React.ReactNode }) {
 
 export function AgencyRoutes() {
   // 🏭 AGENCY_HIDDEN 셸브(2026-07-04) — 파트너 0명 + 라이브 중단으로 로스터 모델 근거 상실.
-  //   모든 에이전시 라우트를 홈으로 리다이렉트(라우트/페이지/코드 보존, flag=false 로 즉시 복원).
+  //   모든 벤더사 라우트를 홈으로 리다이렉트(라우트/페이지/코드 보존, flag=false 로 즉시 복원).
   if (AGENCY_HIDDEN) {
     return (
       <>

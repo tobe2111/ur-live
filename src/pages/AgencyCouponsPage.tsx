@@ -113,7 +113,7 @@ export default function AgencyCouponsPage() {
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('agency.coupons.pageTitle', { defaultValue: '쿠폰 캐스케이드' })}
-          subtitle={t('agency.coupons.subtitle', { defaultValue: '에이전시 → 셀러 → 고객 3단 쿠폰 배포. 셀러별 사용율 분석 가능.' })}
+          subtitle={t('agency.coupons.subtitle', { defaultValue: '벤더사 → 셀러 → 고객 3단 쿠폰 배포. 셀러별 사용율 분석 가능.' })}
           icon={<Ticket className="h-5 w-5" />}
           actions={
             <button onClick={() => { loadSellers(); setCreating(true) }}

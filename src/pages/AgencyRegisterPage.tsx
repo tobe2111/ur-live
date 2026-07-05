@@ -29,7 +29,7 @@ export default function AgencyRegisterPage() {
     setError('')
     // 🔢 2026-06-26 (대표 가입폼 UX): 화면 순서대로 검증 + 첫 문제 필드로 포커스(이메일/전화 미완성 통과 차단).
     const failAt = (k: string, m: string) => { setError(m); focusField(k) }
-    if (!form.name.trim()) { failAt('name', t('agency.agencyRegister.errName', { defaultValue: '에이전시명을 입력해주세요' })); return }
+    if (!form.name.trim()) { failAt('name', t('agency.agencyRegister.errName', { defaultValue: '벤더사명을 입력해주세요' })); return }
     if (!form.contact_name.trim()) { failAt('contact_name', t('agency.agencyRegister.errContact', { defaultValue: '담당자명을 입력해주세요' })); return }
     if (!isValidEmail(form.email)) { failAt('email', t('agency.agencyRegister.errEmail', { defaultValue: '이메일을 정확히 입력해주세요 (예: name@company.com)' })); return }
     // 전화번호는 선택 — 입력했을 때만 완성형 검증.
@@ -63,7 +63,7 @@ export default function AgencyRegisterPage() {
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">{t('agency.agencyRegister.doneTitle', { defaultValue: '가입 신청 완료' })}</h2>
           <p className="text-gray-500 text-sm mb-1">
-            {t('agency.agencyRegister.doneDesc1', { defaultValue: '에이전시 가입 신청이 접수되었습니다.' })}
+            {t('agency.agencyRegister.doneDesc1', { defaultValue: '벤더사 가입 신청이 접수되었습니다.' })}
           </p>
           <p className="text-gray-500 text-sm mb-8">
             {t('agency.agencyRegister.doneDesc2', { defaultValue: '관리자 검토 후 승인 시 이메일로 안내드립니다.' })}
@@ -93,15 +93,15 @@ export default function AgencyRegisterPage() {
         </div>
         <div className="flex-1 flex flex-col justify-center px-10">
           <h1 className="text-3xl font-bold text-gray-900 leading-tight mb-3">
-            {t('agency.agencyRegister.brandingTitle', { defaultValue: '에이전시 파트너로 함께 성장하세요' })}
+            {t('agency.agencyRegister.brandingTitle', { defaultValue: '벤더사 파트너로 함께 성장하세요' })}
           </h1>
           <p className="text-gray-500 text-base mb-8">
-            {t('agency.agencyRegister.brandingDesc', { defaultValue: '유어딜 에이전시로 등록하면 소속 매장의 공동구매·이용권 판매를 통합 관리하고 수익을 함께 나눌 수 있습니다.' })}
+            {t('agency.agencyRegister.brandingDesc', { defaultValue: '유어딜 벤더사로 등록하면 소속 매장의 공동구매·이용권 판매를 통합 관리하고 수익을 함께 나눌 수 있습니다.' })}
           </p>
           <div className="space-y-4">
             {[
               t('agency.agencyRegister.feature1', { defaultValue: '소속 매장 매출·주문·공동구매 통합 대시보드' }),
-              t('agency.agencyRegister.feature2', { defaultValue: '에이전시 전담 고객지원' }),
+              t('agency.agencyRegister.feature2', { defaultValue: '벤더사 전담 고객지원' }),
               t('agency.agencyRegister.feature3', { defaultValue: '셀러 퍼포먼스 리포트 제공' }),
             ].map(text => (
               <div key={text} className="flex items-center gap-3">
@@ -112,7 +112,7 @@ export default function AgencyRegisterPage() {
           </div>
         </div>
         <div className="px-10 pb-8">
-          <p className="text-xs text-gray-400">{t('agency.agencyRegister.copyright', { defaultValue: '© 2026 유어딜. 에이전시 파트너 전용 서비스' })}</p>
+          <p className="text-xs text-gray-400">{t('agency.agencyRegister.copyright', { defaultValue: '© 2026 유어딜. 벤더사 파트너 전용 서비스' })}</p>
         </div>
       </div>
 
@@ -127,7 +127,7 @@ export default function AgencyRegisterPage() {
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">{t('agency.agencyRegister.formTitle', { defaultValue: '에이전시 가입 신청' })}</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">{t('agency.agencyRegister.formTitle', { defaultValue: '벤더사 가입 신청' })}</h2>
             <p className="text-gray-500 text-sm mb-7">{t('agency.agencyRegister.formDesc', { defaultValue: '가입 신청 후 관리자 승인 시 이용 가능합니다' })}</p>
 
             {error && (
@@ -135,14 +135,14 @@ export default function AgencyRegisterPage() {
             )}
 
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
-              {/* 에이전시명 */}
+              {/* 벤더사명 */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('agency.agencyRegister.labelAgencyName', { defaultValue: '에이전시명' })} <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('agency.agencyRegister.labelAgencyName', { defaultValue: '벤더사명' })} <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input ref={reg('name')}
                     type="text" value={form.name} onChange={update('name')}
-                    placeholder="(주)베스트에이전시"
+                    placeholder="(주)베스트벤더사"
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>

@@ -86,7 +86,7 @@ export default function AgencyProfilePage() {
 
         <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('agency.agencyProfile.agencyName', { defaultValue: '에이전시명' })}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('agency.agencyProfile.agencyName', { defaultValue: '벤더사명' })}</label>
             <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900" />
           </div>
@@ -114,7 +114,7 @@ export default function AgencyProfilePage() {
         {/* 🛡️ 2026-04-22 배치 162: 정산 계좌 정보 섹션 (이전엔 UI 없어서 정산 불가 P0 fix) */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
           <h3 className="text-sm font-bold text-gray-900">{t('agency.agencyProfile.bankInfoTitle', { defaultValue: '정산 계좌 정보' })}</h3>
-          <p className="text-xs text-gray-500">{t('agency.agencyProfile.bankInfoDesc', { defaultValue: '정산금 입금 받을 계좌입니다. 에이전시 명의 계좌만 사용 가능합니다.' })}</p>
+          <p className="text-xs text-gray-500">{t('agency.agencyProfile.bankInfoDesc', { defaultValue: '정산금 입금 받을 계좌입니다. 벤더사 명의 계좌만 사용 가능합니다.' })}</p>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t('agency.agencyProfile.bankName', { defaultValue: '은행명' })}</label>
             <select
@@ -157,7 +157,7 @@ export default function AgencyProfilePage() {
             <span className="text-lg">💬</span>
             <div>
               <h3 className="text-sm font-bold text-gray-900">{t('agency.agencyProfile.kakaoTitle', { defaultValue: '카카오 계정 연동' })}</h3>
-              <p className="text-[11px] text-gray-500">{t('agency.agencyProfile.kakaoDesc', { defaultValue: '카카오 로그인으로도 에이전시 계정 접근 가능' })}</p>
+              <p className="text-[11px] text-gray-500">{t('agency.agencyProfile.kakaoDesc', { defaultValue: '카카오 로그인으로도 벤더사 계정 접근 가능' })}</p>
             </div>
           </div>
           <KakaoLinkButton role="agency" />

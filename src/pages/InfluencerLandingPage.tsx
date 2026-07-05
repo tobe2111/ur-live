@@ -27,7 +27,7 @@ export default function InfluencerLandingPage() {
         <Link to="/" className="text-lg font-extrabold tracking-tight">유어딜</Link>
         <div className="flex items-center gap-3">
           <Link to="/business" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">사장님</Link>
-          {!AGENCY_HIDDEN && <Link to="/agency-partner" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">에이전시</Link>}
+          {!AGENCY_HIDDEN && <Link to="/agency-partner" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">벤더사</Link>}
           <button onClick={() => navigate('/register')} className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-full text-sm font-bold">
             지금 가입
           </button>
@@ -82,7 +82,7 @@ export default function InfluencerLandingPage() {
           {[
             { icon: Wallet, title: '친구 추천 보상', desc: '내 share 링크로 친구가 공구 참여 시 양쪽 0.5% 보너스 딜 (첫 1회).', amt: '예: 친구 5만원 공구 → 250딜 × 양쪽' },
             { icon: Megaphone, title: '본인 공구 진행', desc: '본인이 검증한 매장과 직접 공구 캠페인. 5% 수수료 후 90% 인플루언서 수령 옵션.', amt: '예: 100만 GMV → 90만 수령' },
-            { icon: BarChart3, title: '셀러 영입 commission', desc: '본인이 영입한 셀러의 평생 GMV 의 일정 비율 분배 (에이전시 모델).', amt: '예: 영입 셀러 월 GMV 1천만 → 인플루언서 50만/월' },
+            { icon: BarChart3, title: '셀러 영입 commission', desc: '본인이 영입한 셀러의 평생 GMV 의 일정 비율 분배 (벤더사 모델).', amt: '예: 영입 셀러 월 GMV 1천만 → 인플루언서 50만/월' },
           ].map((s, i) => (
             <div key={i} className="bg-white dark:bg-[#0A0A0A] rounded-2xl p-6 border border-gray-200 dark:border-[#2A2A2A] flex gap-4">
               <s.icon className="w-10 h-10 text-pink-500 shrink-0" />

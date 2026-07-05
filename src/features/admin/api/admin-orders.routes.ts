@@ -312,7 +312,7 @@ adminOrdersRoutes.patch('/orders/:orderNumber/status', cors(), async (c) => {
 
     // 🔐 2026-06-11 머니 감사: 결제 캡처된 주문을 CANCELLED/REFUNDED 로 바꿀 때 반드시 환불 경로 경유.
     //   기존 구멍: status 만 바꿔 재고만 복원 → 고객 미환불 + 커미션(추천/affiliate/공급자/영입자/
-    //   에이전시/referral_bonus) 미역전(출금 누수). refundOrderFully = Toss취소/딜환불 + CAS 멱등 +
+    //   벤더사/referral_bonus) 미역전(출금 누수). refundOrderFully = Toss취소/딜환불 + CAS 멱등 +
     //   재고복원 + 전 커미션 역전. 관리자는 환불 권한자이므로 자동 환불 라우팅(셀러는 전용 환불 endpoint).
     const CAPTURED = ['PAID', 'DONE', 'PREPARING', 'SHIPPING', 'DELIVERED'];
     if ((status === 'CANCELLED' || status === 'REFUNDED') && CAPTURED.includes(String(orders[0].status).toUpperCase())) {

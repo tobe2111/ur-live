@@ -3,7 +3,7 @@
  *
  * Migration 0245 적용 후 동작.
  *
- * GET  /match-suggestions          — 내 에이전시로 들어온 매칭 제안 목록 (pending)
+ * GET  /match-suggestions          — 내 벤더사로 들어온 매칭 제안 목록 (pending)
  * POST /match-suggestions/:id/accept — 제안 수락 → agency_sellers 에 INSERT
  * POST /match-suggestions/:id/decline — 제안 거절
  */
@@ -89,8 +89,8 @@ app.post('/match-suggestions/:id/accept', async (c) => {
     DB.prepare(`
       INSERT INTO dashboard_notifications
         (recipient_type, recipient_id, type, title, message, link, created_at)
-      VALUES ('seller', ?, 'agency_match_accepted', '에이전시 매칭이 확정되었습니다! 🎉',
-        '에이전시가 매칭을 수락했습니다. 이제 에이전시의 지원을 받을 수 있습니다.',
+      VALUES ('seller', ?, 'agency_match_accepted', '벤더사 매칭이 확정되었습니다! 🎉',
+        '벤더사가 매칭을 수락했습니다. 이제 벤더사의 지원을 받을 수 있습니다.',
         '/seller/agency', datetime('now'))
     `).bind(String(suggestion.seller_id)),
   ]).catch(swallow('agency:match-suggestions:accept'));

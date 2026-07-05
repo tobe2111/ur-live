@@ -3,7 +3,7 @@
  * 설계: docs/design/partner-terms-as-contract.md · 문안 SSOT: src/shared/legal.
  *
  * - GET /api/partner-terms/:type/active — 가입 화면용 활성 약관(제목·버전·중요조항·전문). 공개(읽기).
- * - recordPartnerTermsAgreement() — 계약 성립 시 동의기록 저장(멱등). 셀러/에이전시 가입 라우트가 호출.
+ * - recordPartnerTermsAgreement() — 계약 성립 시 동의기록 저장(멱등). 셀러/벤더사 가입 라우트가 호출.
  * - validatePartnerConsent() — 중요조항 4개 전부 동의했는지 서버 검증(§2① 개별 동의 강제).
  */
 import { Hono } from 'hono'

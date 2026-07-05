@@ -16,7 +16,7 @@
  *
  * 🛡️ 2026-04-30 TD-016 CRITICAL 보안 사고 방지:
  *   기존 /:id/seller-approve 는 from_agency 가 셀러 동의를 대행하는
- *   위험 endpoint. agency 가 셀러 행세 가능 → 셀러 동의 없이 다른 에이전시로
+ *   위험 endpoint. agency 가 셀러 행세 가능 → 셀러 동의 없이 다른 벤더사로
  *   강제 이전 가능했음. 410 Gone 으로 차단. 셀러 본인은 /api/seller/transfers
  *   에서 직접 응답해야 함.
  *
@@ -92,7 +92,7 @@ async function ensureTable(DB: D1Database) {
   `).run().catch(swallow('agency:api:seller-transfer'));
 }
 
-// POST / — 신청 (from = 본인 에이전시)
+// POST / — 신청 (from = 본인 벤더사)
 app.post('/', rateLimit({ action: 'agency_transfer_create', max: 20, windowSec: 3600 }), async (c) => {
   const agency = c.get('agency');
   const body = await c.req.json<{
@@ -103,12 +103,12 @@ app.post('/', rateLimit({ action: 'agency_transfer_create', max: 20, windowSec: 
     return c.json({ success: false, error: 'invalid params' }, 400);
   }
 
-  // 셀러가 본 에이전시 소속 확인
+  // 셀러가 본 벤더사 소속 확인
   const ms = await c.env.DB.prepare(
     `SELECT 1 FROM agency_sellers WHERE agency_id = ? AND seller_id = ?`
   ).bind(agency.id, body.seller_id).first().catch(() => null);
   if (!ms) {
-    return c.json({ success: false, error: '본 에이전시 소속 셀러가 아닙니다.' }, 403);
+    return c.json({ success: false, error: '본 벤더사 소속 셀러가 아닙니다.' }, 403);
   }
 
   // Cooldown 확인 — 30일 내 완료된 이전 있으면 차단
@@ -144,7 +144,7 @@ app.post('/', rateLimit({ action: 'agency_transfer_create', max: 20, windowSec: 
   return c.json({ success: true, data: { id: result.meta.last_row_id, status: 'pending' } });
 });
 
-// GET / — 본 에이전시 관련 이전 신청 (보낸 + 받은)
+// GET / — 본 벤더사 관련 이전 신청 (보낸 + 받은)
 app.get('/', async (c) => {
   const agency = c.get('agency');
   await ensureTable(c.env.DB);
@@ -202,8 +202,8 @@ app.post('/:id/respond', rateLimit({ action: 'agency_transfer_respond', max: 30,
     createDashboardNotification(
       c.env.DB, 'seller', String(t.seller_id),
       'seller_transfer_pending_approval',
-      '🔄 에이전시 이전 요청 — 동의 필요',
-      '다른 에이전시 소속으로 이전 요청이 들어왔습니다. 본인 동의가 필요합니다.',
+      '🔄 벤더사 이전 요청 — 동의 필요',
+      '다른 벤더사 소속으로 이전 요청이 들어왔습니다. 본인 동의가 필요합니다.',
       '/seller/transfers',
     ).catch(swallow('agency:api:seller-transfer:notify-seller'));
   }

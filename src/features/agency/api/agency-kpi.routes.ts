@@ -12,7 +12,7 @@
  * 정책 (느슨): 강제 패널티 X — 참고/벤치마크용.
  *
  * 라우트:
- *   GET /api/agency/kpi?range=week|month  — 본인 에이전시 KPI 6개
+ *   GET /api/agency/kpi?range=week|month  — 본인 벤더사 KPI 6개
  */
 
 import { Hono, type Next } from 'hono';

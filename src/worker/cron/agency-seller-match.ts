@@ -4,18 +4,18 @@
  * Migration 0245 적용 후 동작. 매일 18시 배치에 포함.
  *
  * 대상:
- *   - 가입 60일 이내이고 어느 에이전시에도 소속되지 않은 셀러
+ *   - 가입 60일 이내이고 어느 벤더사에도 소속되지 않은 셀러
  *   - 이미 pending/accepted 제안이 존재하는 셀러는 제외
  *
  * 매칭 스코어 (100점 만점):
- *   40pt  에이전시 티어   (senior=40, junior=25, new=10)
+ *   40pt  벤더사 티어   (senior=40, junior=25, new=10)
  *   30pt  여유 용량       max(0, 30 × (1 - currentSellers / softCap))  softCap=30
  *   20pt  최근 활성도     최근 30일 GMV가 있는 소속 셀러 비율 × 20
  *   10pt  신규 환영 보너스 최근 90일 내 신규 셀러 수락 이력 × 2 (최대 10)
  *
  * 결과:
  *   - agency_match_suggestions INSERT (30일 만료)
- *   - 에이전시 → dashboard_notification (수락/거절 링크 포함)
+ *   - 벤더사 → dashboard_notification (수락/거절 링크 포함)
  *   - 셀러     → dashboard_notification (매칭 제안 안내)
  *   - 만료 처리: 30일 지난 pending → expired (멱등)
  */
@@ -23,7 +23,7 @@
 import type { Env } from '../types/env';
 import { swallow } from '../utils/swallow';
 
-const SOFT_CAP = 30;       // 에이전시당 권장 최대 셀러 수
+const SOFT_CAP = 30;       // 벤더사당 권장 최대 셀러 수
 const NEW_SELLER_DAYS = 60; // 가입 N일 이내를 '신규'로 간주
 
 interface AgencyCandidate {
@@ -132,7 +132,7 @@ export async function handleAgencySellerMatch(env: Env): Promise<void> {
   const agencies = await fetchAgencyCandidates(DB);
   if (agencies.length === 0) return;
 
-  // 각 에이전시 점수 계산 (전체 동일하므로 사전 계산)
+  // 각 벤더사 점수 계산 (전체 동일하므로 사전 계산)
   const scored = agencies
     .map(a => ({ agency: a, ...calcMatchScore(a) }))
     .filter(a => a.score >= 10)           // 최소 10점 이상만
@@ -143,7 +143,7 @@ export async function handleAgencySellerMatch(env: Env): Promise<void> {
   let matched = 0;
 
   for (const seller of sellers) {
-    // 이 셀러에게 아직 제안하지 않은 최고 점수 에이전시 선택
+    // 이 셀러에게 아직 제안하지 않은 최고 점수 벤더사 선택
     const best = scored[0]; // 모든 셀러에게 현재 순위 기준으로 동일 배정 (round-robin도 가능하나 단순화)
 
     const expiresAt = new Date(Date.now() + 30 * 86400_000).toISOString();
@@ -161,7 +161,7 @@ export async function handleAgencySellerMatch(env: Env): Promise<void> {
         expiresAt,
       ).run();
 
-      // 에이전시 알림 (수락/거절 링크)
+      // 벤더사 알림 (수락/거절 링크)
       await DB.prepare(`
         INSERT INTO dashboard_notifications
           (recipient_type, recipient_id, type, title, message, link, created_at)
@@ -180,9 +180,9 @@ export async function handleAgencySellerMatch(env: Env): Promise<void> {
         VALUES ('seller', ?, 'agency_match', ?, ?, '/seller/agency', datetime('now'))
       `).bind(
         String(seller.id),
-        `에이전시 매칭 제안이 도착했습니다 🎉`,
-        `${best.agency.name} 에이전시에서 여러분의 성장을 돕고 싶어 합니다. ` +
-        `에이전시가 수락하면 더 많은 지원을 받을 수 있습니다.`,
+        `벤더사 매칭 제안이 도착했습니다 🎉`,
+        `${best.agency.name} 벤더사에서 여러분의 성장을 돕고 싶어 합니다. ` +
+        `벤더사가 수락하면 더 많은 지원을 받을 수 있습니다.`,
       ).run().catch(swallow('cron:agency-seller-match:notif-seller'));
 
       matched++;

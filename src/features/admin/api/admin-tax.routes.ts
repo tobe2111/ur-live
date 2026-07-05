@@ -8,7 +8,7 @@
  * 7번 — 연말 정산 리포트 자동 생성:
  *   - GET /api/admin/tax/annual-report?year=2026&payee_type=store_owner — CSV 출력
  *   - payouts.sent + ledger 합산 → payee 별 연간 수입 정리
- *   - 사장님 / 셀러 / 에이전시 세무사 제공용
+ *   - 사장님 / 셀러 / 벤더사 세무사 제공용
  */
 import { Hono } from 'hono'
 import { requireAdmin } from '../../../worker/middleware/auth'

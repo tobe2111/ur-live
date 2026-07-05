@@ -200,7 +200,7 @@ export default function CommunityGroupBuyMessagesPage() {
                 </span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400">
                   {m.sender_type === 'admin' ? t('groupbuyMessages.roleAdmin', { defaultValue: '운영자' })
-                    : m.sender_type === 'agency' ? t('groupbuyMessages.roleAgency', { defaultValue: '에이전시' })
+                    : m.sender_type === 'agency' ? t('groupbuyMessages.roleAgency', { defaultValue: '벤더사' })
                     : m.sender_type === 'restaurant' ? t('groupbuyMessages.roleRestaurant', { defaultValue: '식당' })
                     : t('groupbuyMessages.roleMember', { defaultValue: '참여자' })}
                 </span>

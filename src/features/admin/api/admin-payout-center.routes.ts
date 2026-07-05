@@ -1,6 +1,6 @@
 /**
  * 🏦 지급 센터 (2026-06-12 — 사용자 결정 "1번 그렇게 진행"):
- *   셀러 정산(settlements) · 큐레이터 환급(user_withdrawals) · 에이전시 영입 커미션
+ *   셀러 정산(settlements) · 큐레이터 환급(user_withdrawals) · 벤더사 영입 커미션
  *   (agency_store_intro_commissions, P3 결정으로 정본 레일) 의 "신청 → 입금완료" 를
  *   어드민 한 화면에서 처리. 운영 = 수동 이체 + 기록 + 주 1회(금요일) 루틴.
  *
@@ -62,7 +62,7 @@ payoutCenterRoutes.get('/', async (c) => {
         WHERE w.status IN ('requested', 'approved')
         ORDER BY w.requested_at ASC LIMIT 200
       `).all().catch(() => ({ results: [] })),
-      // 에이전시: T+7 성숙(환불창 경과)된 pending 커미션의 에이전시별 합계
+      // 벤더사: T+7 성숙(환불창 경과)된 pending 커미션의 벤더사별 합계
       DB.prepare(`
         SELECT a.id AS agency_id, a.name AS agency_name,
                a.bank_name, a.bank_account, a.account_holder,
@@ -217,7 +217,7 @@ payoutCenterRoutes.patch('/curator/:id/reject', async (c) => {
   }
 })
 
-// ── 에이전시 영입 커미션 일괄 지급 (T+7 성숙분) ──
+// ── 벤더사 영입 커미션 일괄 지급 (T+7 성숙분) ──
 payoutCenterRoutes.post('/agency/:agencyId/paid', async (c) => {
   try {
     const DB = c.env.DB
@@ -256,7 +256,7 @@ payoutCenterRoutes.post('/agency/:agencyId/paid', async (c) => {
 
     return c.json({ success: true, data: { amount: total, row_count: paidRows.length } })
   } catch (err) {
-    return safeError(c, err, '에이전시 지급 처리 중 오류가 발생했습니다', '[payout-center]')
+    return safeError(c, err, '벤더사 지급 처리 중 오류가 발생했습니다', '[payout-center]')
   }
 })
 

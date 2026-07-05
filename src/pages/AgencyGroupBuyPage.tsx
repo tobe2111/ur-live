@@ -69,7 +69,7 @@ const STATUS_CLS_GB: Record<string, string> = {
   failed:      'bg-red-100 text-red-700',
 }
 
-// 🛡️ 2026-05-13 (공구 UX Phase C): 에이전시 ↔ 식당 협상 메시지 모달
+// 🛡️ 2026-05-13 (공구 UX Phase C): 벤더사 ↔ 식당 협상 메시지 모달
 interface ChatMessage {
   id: number
   sender_type: 'agency' | 'restaurant' | 'user' | 'admin' | 'system'
@@ -188,7 +188,7 @@ function generateContract(groupBuy: GroupBuy) {
       </table>
       <p style="margin-top:40px">양 당사자는 위 내용에 동의합니다.</p>
       <div style="display:flex;justify-content:space-between;margin-top:60px">
-        <div>에이전시 서명: ___________</div>
+        <div>벤더사 서명: ___________</div>
         <div>식당 대표 서명: ___________</div>
       </div>
     </body></html>
@@ -241,9 +241,9 @@ export default function AgencyGroupBuyPage() {
   const loading = listQ.isLoading
   const fetchData = (_tab?: TabKey) => { listQ.refetch(); statsQ.refetch() }
 
-  // 🏪 2026-06-17 (정합성): 동네 공구 확정에는 에이전시 직접 적립 코드가 없음(확인). 기존 '예상 수익'(확정가×참여자×
+  // 🏪 2026-06-17 (정합성): 동네 공구 확정에는 벤더사 직접 적립 코드가 없음(확인). 기존 '예상 수익'(확정가×참여자×
   //   수수료율)은 실제 정산 없는 오해 소지 라벨이라 **예상 거래액(GMV = 확정가 × 참여자)** 으로 정정.
-  //   에이전시 실수익은 이 공구가 영입 매장으로 전환될 때 store-intro commission 에서 발생.
+  //   벤더사 실수익은 이 공구가 영입 매장으로 전환될 때 store-intro commission 에서 발생.
   function estimateDealGmv(g: GroupBuy): number {
     if (!g.confirmed_price || !g.participant_count) return 0
     return Math.round(g.confirmed_price * g.participant_count)
@@ -255,8 +255,8 @@ export default function AgencyGroupBuyPage() {
   }, [token])
 
   // 🔧 2026-06-24 (전수조사): 상태변경/딜확정 핸들러 제거 — 백엔드 /status·/confirm 은 어드민(+식당주인) 전용
-  //   이라 에이전시 토큰은 항상 403 이었음. 동네공구에 에이전시 소유 개념이 없어 '아무 에이전시가 아무 딜 확정'
-  //   도 부적절. 에이전시는 브라우즈 + 식당 채팅(협상)만. 확정은 어드민. (소유모델 도입 시 재배선 가능.)
+  //   이라 벤더사 토큰은 항상 403 이었음. 동네공구에 벤더사 소유 개념이 없어 '아무 벤더사가 아무 딜 확정'
+  //   도 부적절. 벤더사는 브라우즈 + 식당 채팅(협상)만. 확정은 어드민. (소유모델 도입 시 재배선 가능.)
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'popular', label: t('agency.groupBuy.tabPopular', { defaultValue: '인기 공구 (50+)' }) },
@@ -343,8 +343,8 @@ export default function AgencyGroupBuyPage() {
                     {g.expires_at ? `만료 ${new Date(g.expires_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}` : ''}
                   </p>
                   <div className="flex gap-1.5">
-                    {/* 🔧 2026-06-24 (전수조사): 상태변경/딜확정 백엔드는 어드민 전용(에이전시 토큰 403) + 동네공구에
-                        에이전시 소유 개념 없음 → 에이전시는 식당과 '협상 메시지'(채팅)로 브로커링. 확정은 어드민. */}
+                    {/* 🔧 2026-06-24 (전수조사): 상태변경/딜확정 백엔드는 어드민 전용(벤더사 토큰 403) + 동네공구에
+                        벤더사 소유 개념 없음 → 벤더사는 식당과 '협상 메시지'(채팅)로 브로커링. 확정은 어드민. */}
                     {(g.status === 'proposed' || g.status === 'negotiating') && (
                       <button onClick={() => setMessagesTarget(g)}
                         className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-[11px] font-medium flex items-center gap-1">
@@ -413,7 +413,7 @@ export default function AgencyGroupBuyPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
-                      {/* 🔧 2026-06-24 (전수조사): 협상 시작 = 식당과 채팅(상태변경/확정은 어드민 전용 — 에이전시 403). */}
+                      {/* 🔧 2026-06-24 (전수조사): 협상 시작 = 식당과 채팅(상태변경/확정은 어드민 전용 — 벤더사 403). */}
                       {g.status === 'proposed' && (
                         <button
                           onClick={() => setMessagesTarget(g)}

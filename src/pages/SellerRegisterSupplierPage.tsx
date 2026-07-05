@@ -37,7 +37,7 @@ const STORE_CATEGORIES = [
 export default function SellerRegisterSupplierPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  // 🛡️ 2026-05-20: 에이전시 가입 링크 (/seller/register/supplier?agency=AG-XXXXXXXX) 자동 prefill.
+  // 🛡️ 2026-05-20: 벤더사 가입 링크 (/seller/register/supplier?agency=AG-XXXXXXXX) 자동 prefill.
   const [searchParams] = useSearchParams()
   const agencyFromUrl = (searchParams.get('agency') || '').toUpperCase().slice(0, 12)
   const userName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null
@@ -53,8 +53,8 @@ export default function SellerRegisterSupplierPage() {
     store_category: '',
     address: '',
     description: '',
-    // 🛡️ 2026-05-20: 에이전시 (입점 영업) 가 가게에 추천 코드 전달 → 가입 시 입력.
-    //   서버는 agency_intro_code 로 에이전시 매칭 + sellers.introduced_by_agency_id 자동 채움.
+    // 🛡️ 2026-05-20: 벤더사 (입점 영업) 가 가게에 추천 코드 전달 → 가입 시 입력.
+    //   서버는 agency_intro_code 로 벤더사 매칭 + sellers.introduced_by_agency_id 자동 채움.
     //   URL ?agency=AG-XXXXXXXX 가 있으면 useEffect 에서 자동 prefill.
     agency_intro_code: agencyFromUrl,
   })
@@ -115,8 +115,8 @@ export default function SellerRegisterSupplierPage() {
   //   정보(이미 입력한 상호/사업자번호)로 매장 등록 폼 자동채움 — 같은 정보 두 번 입력 방지.
   //   curator /me/business 는 representative/start_date 미저장 → 겹치는 2필드만. 빈 필드에만 채워
   //   사용자 입력 보존. 무인증/사업자정보 없으면 조용히 skip(매장 폼 그대로).
-  // 🏁 2026-07-02 (에이전시 대리 등록): ?prospect=ID&pt=TOKEN — 에이전시가 미리 등록한 매장 정보로
-  //   폼 자동완성(빈 필드만). 사장님은 확인·제출만. 배너로 "OO 에이전시가 준비" 명시(신뢰+투명).
+  // 🏁 2026-07-02 (벤더사 대리 등록): ?prospect=ID&pt=TOKEN — 벤더사가 미리 등록한 매장 정보로
+  //   폼 자동완성(빈 필드만). 사장님은 확인·제출만. 배너로 "OO 벤더사가 준비" 명시(신뢰+투명).
   const prospectId = searchParams.get('prospect')
   const prospectPt = searchParams.get('pt')
   const [prospectIntro, setProspectIntro] = useState<string | null>(null)
@@ -289,7 +289,7 @@ export default function SellerRegisterSupplierPage() {
 
         {prospectIntro && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900">
-            🤝 <strong>{prospectIntro}</strong>{t('seller.gateway.prospectBanner', { defaultValue: ' 에이전시가 매장 정보를 미리 준비했어요. 내용 확인 후 제출만 하면 됩니다.' })}
+            🤝 <strong>{prospectIntro}</strong>{t('seller.gateway.prospectBanner', { defaultValue: ' 벤더사가 매장 정보를 미리 준비했어요. 내용 확인 후 제출만 하면 됩니다.' })}
           </div>
         )}
 
@@ -382,12 +382,12 @@ export default function SellerRegisterSupplierPage() {
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 resize-none" />
           </Field>
 
-          {/* 🛡️ 2026-05-20: 에이전시 추천 코드 — 입점 영업 에이전시가 가게에 알려준 코드.
+          {/* 🛡️ 2026-05-20: 벤더사 추천 코드 — 입점 영업 벤더사가 가게에 알려준 코드.
               URL query 로 자동 prefill 시 emerald 배지로 시각 강조. */}
           <Field label={
             agencyFromUrl
-              ? '에이전시 추천 코드 ✓ 자동 입력됨'
-              : '에이전시 추천 코드 (선택)'
+              ? '벤더사 추천 코드 ✓ 자동 입력됨'
+              : '벤더사 추천 코드 (선택)'
           }>
             <input value={form.agency_intro_code}
               onChange={e => setForm(f => ({ ...f, agency_intro_code: e.target.value.toUpperCase().slice(0, 12) }))}
@@ -400,11 +400,11 @@ export default function SellerRegisterSupplierPage() {
             <p className="text-[10px] mt-1">
               {agencyFromUrl ? (
                 <span className="text-emerald-600 font-bold">
-                  ✓ 추천 링크로 들어오셨어요. 에이전시 코드가 자동 입력됐습니다.
+                  ✓ 추천 링크로 들어오셨어요. 벤더사 코드가 자동 입력됐습니다.
                 </span>
               ) : (
                 <span className="text-gray-500">
-                  영업 에이전시가 직접 추천해서 가입하시는 경우만 입력하세요.
+                  영업 벤더사가 직접 추천해서 가입하시는 경우만 입력하세요.
                 </span>
               )}
             </p>

@@ -308,7 +308,7 @@ adminUsersRoutes.get('/users/:id', cors(), async (c) => {
       if (typeof console !== 'undefined') console.warn('[admin-users] review stats failed:', e);
     }
 
-    // 🛡️ 이 카카오 유저에 연결된 셀러 / 에이전시 계정 조회 (있으면 어드민에게 통합 표시)
+    // 🛡️ 이 카카오 유저에 연결된 셀러 / 벤더사 계정 조회 (있으면 어드민에게 통합 표시)
     let linkedSeller: Record<string, unknown> | null = null
     try {
       const row = await executeQuery<Record<string, unknown>>(DB,

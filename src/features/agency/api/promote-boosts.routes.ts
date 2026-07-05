@@ -2,11 +2,11 @@
  * Promote to Live Coupons — 노출 부스팅 쿠폰
  *
  * 마운트:
- *   /api/agency/promote-boosts          — 에이전시: 발급/관리 (coupon 권한)
+ *   /api/agency/promote-boosts          — 벤더사: 발급/관리 (coupon 권한)
  *   /api/seller/promote-boosts          — 셀러: 받은 쿠폰 사용
  *
  * 흐름:
- *   1) 에이전시가 셀러에게 등급별 (bronze/silver/gold) 쿠폰 발급
+ *   1) 벤더사가 셀러에게 등급별 (bronze/silver/gold) 쿠폰 발급
  *   2) 쿠폰은 30일 내 사용 가능
  *   3) 셀러가 라이브 시작 시 쿠폰 활성화 → boost_ends_at 까지 메인 피드 부스팅
  *   4) 메인 피드 정렬 시 active 부스팅 라이브 가중치 부여 (별도 PR 에서 통합)
@@ -98,7 +98,7 @@ async function ensureTable(DB: D1Database) {
   `).run().catch(swallow('agency:api:promote-boosts'));
 }
 
-// ─── 에이전시: 발급/조회 ────────────────────────────────
+// ─── 벤더사: 발급/조회 ────────────────────────────────
 
 // POST / — 발급 (coupon 권한)
 agencyApp.post('/', requireAgencyPermission('coupon'), async (c) => {
@@ -111,11 +111,11 @@ agencyApp.post('/', requireAgencyPermission('coupon'), async (c) => {
     return c.json({ success: false, error: 'seller_id + tier (bronze/silver/gold) 필수' }, 400);
   }
 
-  // 본 에이전시 소속 셀러인지 확인
+  // 본 벤더사 소속 셀러인지 확인
   const ms = await c.env.DB.prepare(
     `SELECT 1 FROM agency_sellers WHERE agency_id = ? AND seller_id = ?`
   ).bind(agency.id, body.seller_id).first().catch(() => null);
-  if (!ms) return c.json({ success: false, error: '본 에이전시 소속 셀러가 아닙니다.' }, 403);
+  if (!ms) return c.json({ success: false, error: '본 벤더사 소속 셀러가 아닙니다.' }, 403);
 
   await ensureTable(c.env.DB);
 
@@ -142,7 +142,7 @@ agencyApp.post('/', requireAgencyPermission('coupon'), async (c) => {
   return c.json({ success: true, data: { id: r.meta.last_row_id, tier: body.tier, duration_hours: durationHours, expires_at: expiresAt } });
 });
 
-// GET / — 본 에이전시 발급 내역
+// GET / — 본 벤더사 발급 내역
 agencyApp.get('/', async (c) => {
   const agency = c.get('agency');
   await ensureTable(c.env.DB);

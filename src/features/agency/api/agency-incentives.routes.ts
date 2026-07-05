@@ -1,18 +1,18 @@
 /**
  * Agency Incentive Rules Routes (Agency P0 #5)
  *
- * 에이전시 = 본인 규칙 CRUD + 본인 셀러 payouts 조회
+ * 벤더사 = 본인 규칙 CRUD + 본인 셀러 payouts 조회
  * 어드민 = 모든 payouts 강제 트리거 + 지급 처리
  *
  * 마운트: /api/agency/incentives
  * 마이그레이션: 0210_agency_incentive_engine.sql
  *
  * Endpoints:
- *   GET    /rules                  — 본인 에이전시 규칙 목록
+ *   GET    /rules                  — 본인 벤더사 규칙 목록
  *   POST   /rules                  — 규칙 생성
  *   PATCH  /rules/:id              — 규칙 수정
  *   DELETE /rules/:id              — 규칙 비활성화 (소프트)
- *   GET    /payouts?month=YYYY-MM  — 본인 에이전시 payouts (월별)
+ *   GET    /payouts?month=YYYY-MM  — 본인 벤더사 payouts (월별)
  *   GET    /preview?month=YYYY-MM  — dry-run 계산 (실제 INSERT 안 함)
  *
  * 참조: docs/AGENCY_BACKSTAGE_GAP_ANALYSIS.md (P0 #5)
@@ -249,7 +249,7 @@ interface PayoutResult {
 }
 
 /**
- * 특정 에이전시 / 월의 인센티브 계산. dry=true 면 INSERT 생략 (preview 용).
+ * 특정 벤더사 / 월의 인센티브 계산. dry=true 면 INSERT 생략 (preview 용).
  */
 export async function calculatePayouts(
   DB: D1Database,
@@ -264,7 +264,7 @@ export async function calculatePayouts(
     ? `${year + 1}-01-01`
     : `${year}-${String(mon + 1).padStart(2, '0')}-01`
 
-  // 1) 활성 규칙 (priority DESC) + 에이전시 commission_rate
+  // 1) 활성 규칙 (priority DESC) + 벤더사 commission_rate
   const [rulesRes, agencyRow] = await Promise.all([
     DB.prepare(
       `SELECT * FROM agency_incentive_rules WHERE agency_id = ? AND is_active = 1 ORDER BY priority DESC, threshold DESC`
@@ -405,7 +405,7 @@ export function computeCommission(args: {
 }
 
 /**
- * 모든 에이전시 대상 인센티브 계산 (cron 매월 1일 사용)
+ * 모든 벤더사 대상 인센티브 계산 (cron 매월 1일 사용)
  */
 export async function calculateAllAgencyIncentives(DB: D1Database, month: string): Promise<{
   agencies_processed: number; total_payouts: number; total_amount: number;

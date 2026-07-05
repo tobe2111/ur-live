@@ -182,7 +182,7 @@ export default function AgencyPage() {
   const currentRev = stats?.revenue_30d ?? 0
   const goalProgress = monthlyGoal > 0 ? (currentRev / monthlyGoal) * 100 : 0
 
-  // 전환 퍼널 (에이전시: 소속 셀러 집계) — 실제 데이터만 표시 (추정값 사용 금지)
+  // 전환 퍼널 (벤더사: 소속 셀러 집계) — 실제 데이터만 표시 (추정값 사용 금지)
   const totalOrdersAgg = stats?.orders_30d ?? 0
 
   const liveScheduleItems = useMemo(() => {
@@ -197,7 +197,7 @@ export default function AgencyPage() {
   }, [streams])
 
   // ── Actionable insights ────────────────────────────────────────────────────
-  // 에이전시 대시보드 데이터로 자동 파생되는 배너
+  // 벤더사 대시보드 데이터로 자동 파생되는 배너
   type AgencyInsightSeverity = 'high' | 'medium' | 'info'
   type AgencyInsightIcon = typeof AlertTriangle | typeof TrendingUp | typeof UserCheck | typeof Radio | typeof Store
   interface AgencyInsight {
@@ -309,8 +309,8 @@ export default function AgencyPage() {
         <DashboardPageHeader
           title={t('seller.dashboard')}
           subtitle={LIVE_COMMERCE_SUSPENDED
-            ? t('agency.dashboardSubtitleStore', { defaultValue: '에이전시 종합 현황 — 소속 셀러 성과 / 매출 / 공구' })
-            : t('agency.dashboardSubtitle', { defaultValue: '에이전시 종합 현황 — 소속 셀러 성과 / 매출 / 라이브' })}
+            ? t('agency.dashboardSubtitleStore', { defaultValue: '벤더사 종합 현황 — 소속 셀러 성과 / 매출 / 공구' })
+            : t('agency.dashboardSubtitle', { defaultValue: '벤더사 종합 현황 — 소속 셀러 성과 / 매출 / 라이브' })}
           icon={<LayoutDashboard className="h-5 w-5" />}
         />
 
@@ -374,7 +374,7 @@ export default function AgencyPage() {
       {/* 1. KPI Row — 🏪 2026-06-17 매장 영입 중심 재편(소속 셀러 지표는 보존하되 후순위로). */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
-          // ① 영입 가게 — 에이전시 핵심 지표
+          // ① 영입 가게 — 벤더사 핵심 지표
           { label: t('agency.kpiStores', { defaultValue: '영입 가게' }), value: String(introduced?.total_stores ?? 0), sub: t('agency.kpiStoresSub', { defaultValue: '입점 매장' }), icon: Store, color: 'bg-indigo-600', delta: 0, showDelta: false, path: '/agency/introduced-stores' },
           // ② 이번달 영입 수익 (실 적립 commission)
           { label: t('agency.kpiStoreCommission', { defaultValue: '이번달 영입 수익' }), value: `${formatNumber(introduced?.month_commission ?? 0)}${t('common.won')}`, sub: t('agency.kpiStoreCommissionSub', { defaultValue: '매장 commission' }), icon: DollarSign, color: 'bg-emerald-500', delta: 0, showDelta: false, path: '/agency/settlements' },

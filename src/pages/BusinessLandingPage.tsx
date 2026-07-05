@@ -38,7 +38,7 @@ export default function BusinessLandingPage() {
         <Link to="/" className="text-lg font-extrabold tracking-tight text-gray-900 dark:text-white">유어딜</Link>
         <div className="flex items-center gap-3">
           <Link to="/influencer" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">인플루언서</Link>
-          {!AGENCY_HIDDEN && <Link to="/agency-partner" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">에이전시</Link>}
+          {!AGENCY_HIDDEN && <Link to="/agency-partner" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">벤더사</Link>}
           {/* 🛡️ 2026-06-01 도매몰(B2B) 진입 — store_owner '공급자 가입'과 구분 */}
           <Link to="/supplier/login" className="hidden sm:inline text-sm text-amber-600 dark:text-amber-400 hover:underline">도매 공급사</Link>
           <button onClick={() => navigate('/seller/register')} className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-full text-sm font-bold">

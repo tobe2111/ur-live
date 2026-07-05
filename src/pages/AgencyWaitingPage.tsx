@@ -1,5 +1,5 @@
 /**
- * 에이전시 승인 대기 페이지
+ * 벤더사 승인 대기 페이지
  *
  * 카카오 로그인 후 sync/callback 이 intent=agency 상태에서
  * linked agency.status === 'pending' 또는 비-active 일 때 진입.
@@ -55,7 +55,7 @@ export default function AgencyWaitingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <SEO title="에이전시 승인 대기 - 유어딜" description="에이전시 승인 대기 안내" url="/agency/waiting" noindex />
+      <SEO title="벤더사 승인 대기 - 유어딜" description="벤더사 승인 대기 안내" url="/agency/waiting" noindex />
       <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-sm">
         <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center ${
           isRejected ? 'bg-red-100' : 'bg-amber-100'

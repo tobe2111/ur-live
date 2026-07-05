@@ -268,7 +268,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'idx_products_voucher_active', sql: "CREATE INDEX IF NOT EXISTS idx_products_voucher_active ON products(category, is_active, group_buy_status)" },
     // 🗺️ 2026-06-18: 매장 행정동(洞) 태깅 — restaurant-geocode cron 이 채움 (하이퍼로컬 "내 동네 딜" 토대).
     //   products 컬럼 예산제 회피 위해 별도 테이블. region_dong_code 인덱스로 동별 집계/조인.
-    // 🤝 2026-07-05: 파트너 약관-as-계약 동의기록 (셀러·에이전시 가입 clickwrap). 설계: partner-terms-as-contract.md
+    // 🤝 2026-07-05: 파트너 약관-as-계약 동의기록 (셀러·벤더사 가입 clickwrap). 설계: partner-terms-as-contract.md
     { desc: 'partner_terms_agreements table', sql: "CREATE TABLE IF NOT EXISTS partner_terms_agreements (id INTEGER PRIMARY KEY AUTOINCREMENT, terms_type TEXT NOT NULL, terms_version INTEGER NOT NULL, subject_type TEXT NOT NULL, subject_id INTEGER NOT NULL, user_id TEXT, per_clause_consent TEXT NOT NULL, ip_address TEXT, user_agent TEXT, agreed_at DATETIME DEFAULT CURRENT_TIMESTAMP, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)" },
     { desc: 'idx_pta_subject_version', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_pta_subject_version ON partner_terms_agreements (subject_type, subject_id, terms_type, terms_version)" },
     { desc: 'product_regions table', sql: "CREATE TABLE IF NOT EXISTS product_regions (product_id INTEGER PRIMARY KEY, region_si TEXT, region_gu TEXT, region_dong TEXT, region_dong_code TEXT, lat REAL, lng REAL, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)" },
@@ -290,8 +290,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.can_broadcast', sql: "ALTER TABLE sellers ADD COLUMN can_broadcast INTEGER DEFAULT 1" },
     { desc: 'sellers.contact_name', sql: "ALTER TABLE sellers ADD COLUMN contact_name TEXT" },
     // 🛡️ 2026-05-20: 역할 분담 명확화 (사용자 요청).
-    //   에이전시 = 업체 입점 영업 (가게 사장님을 발굴/온보딩).
-    //   해당 셀러가 어느 에이전시에 의해 입점됐는지 추적 → 에이전시 입점 commission 산정.
+    //   벤더사 = 업체 입점 영업 (가게 사장님을 발굴/온보딩).
+    //   해당 셀러가 어느 벤더사에 의해 입점됐는지 추적 → 벤더사 입점 commission 산정.
     { desc: 'sellers.introduced_by_agency_id', sql: "ALTER TABLE sellers ADD COLUMN introduced_by_agency_id INTEGER" },
     { desc: 'sellers.introduced_at', sql: "ALTER TABLE sellers ADD COLUMN introduced_at DATETIME" },
     { desc: 'sellers.agency_intro_code', sql: "ALTER TABLE sellers ADD COLUMN agency_intro_code TEXT" },
@@ -517,8 +517,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'idx_wholesale_chat_threads_dist', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_dist ON wholesale_chat_threads(distributor_seller_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_threads_sup', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_threads_sup ON wholesale_chat_threads(supplier_id, last_message_at DESC)" },
     { desc: 'idx_wholesale_chat_messages_thread', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_chat_messages_thread ON wholesale_chat_messages(thread_id, id)" },
-    // 🛡️ 2026-05-21: 에이전시 lock-in 쿼리 성능 — 매장 수만 개 시 풀스캔 방지.
-    //   에이전시가 '내가 입점시킨 매장 N개' 조회 / commission 계산 시 사용.
+    // 🛡️ 2026-05-21: 벤더사 lock-in 쿼리 성능 — 매장 수만 개 시 풀스캔 방지.
+    //   벤더사가 '내가 입점시킨 매장 N개' 조회 / commission 계산 시 사용.
     //   partial index — introduced_by_agency_id IS NOT NULL 인 row 만 (스토리지 절약).
     { desc: 'idx_sellers_intro_agency', sql: "CREATE INDEX IF NOT EXISTS idx_sellers_intro_agency ON sellers(introduced_by_agency_id) WHERE introduced_by_agency_id IS NOT NULL" },
     // 🛡️ 2026-05-21: 지역 기반 검색 — restaurant_address LIKE '%서울%' 100배 느림 회피.
@@ -549,7 +549,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   ledger_entries 는 이미 존재 (worker/utils/ledger.ts). payouts 는 실제 송금 audit trail.
     //   주체별 (seller/agency/store_owner/user) 송금 사이클 + 토스/은행 transaction_id 추적.
     { desc: 'orders.escrow_status', sql: "ALTER TABLE orders ADD COLUMN escrow_status TEXT DEFAULT 'held'" },
-    // 에이전시 본인의 추천 코드 (가게에게 알려줘 가입 시 입력받음).
+    // 벤더사 본인의 추천 코드 (가게에게 알려줘 가입 시 입력받음).
     { desc: 'agencies.intro_code', sql: "ALTER TABLE agencies ADD COLUMN intro_code TEXT" },
     { desc: 'agencies.store_intro_commission_pct', sql: "ALTER TABLE agencies ADD COLUMN store_intro_commission_pct REAL DEFAULT 2.0" },
     { desc: 'agencies.commission_term_months', sql: "ALTER TABLE agencies ADD COLUMN commission_term_months INTEGER" },
@@ -577,7 +577,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'seed: platform_margin_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('platform_margin_pct', '5', '유어딜 운영 마진 (%)', datetime('now'))" },
     { desc: 'seed: influencer_commission_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_commission_pct', '0.5', '인플루언서 referral commission (%)', datetime('now'))" },
     { desc: 'seed: user_referral_bonus_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('user_referral_bonus_pct', '0.5', '사용자 referral 보너스 (%)', datetime('now'))" },
-    { desc: 'seed: agency_commission_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('agency_commission_pct', '2', '에이전시 commission (%)', datetime('now'))" },
+    { desc: 'seed: agency_commission_pct', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('agency_commission_pct', '2', '벤더사 commission (%)', datetime('now'))" },
     { desc: 'seed: refund_window_days', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('refund_window_days', '7', '매장 송금 전 환불 가능 기간 (일)', datetime('now'))" },
     { desc: 'seed: influencer_payout_min', sql: "INSERT OR IGNORE INTO platform_settings (key, value, description, updated_at) VALUES ('influencer_payout_min', '100000', '인플루언서 월 최소 송금액 (원)', datetime('now'))" },
     // 🛡️ 2026-05-16: 정산일자 조절 + 인플 송금방식 (migration 0248)
@@ -765,7 +765,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // 🛡️ 2026-05-28: 영입 커미션 무기한(NULL) 일몰제 강제 — 레거시 영입 매장에 +12개월 캡 (LTV 보호).
     //   introduced_at 기준 (없으면 created_at). 이미 referral_bonus_until 설정된 매장은 불변.
     { desc: 'backfill: sellers.referral_bonus_until cap (introduced, NULL→+12mo)', sql: `UPDATE sellers SET referral_bonus_until = datetime(COALESCE(introduced_at, created_at, datetime('now')), '+12 months'), updated_at = datetime('now') WHERE referral_bonus_until IS NULL AND (introduced_by_agency_id IS NOT NULL OR introduced_by_influencer_id IS NOT NULL)` },
-    // 🛡️ 2026-06-25 (대표 승인 — B4 기존 데이터 복구): 카카오 로그인 에이전시가 영입한 매장의 귀속을
+    // 🛡️ 2026-06-25 (대표 승인 — B4 기존 데이터 복구): 카카오 로그인 벤더사가 영입한 매장의 귀속을
     //   user.id(users.id) → canonical agencies.id 로 정정. 기존 prospect/registration 이 user.id 를 저장해
     //   대시보드(agencies.id 조회)에서 영입 매장·커미션이 안 보였음(forward fix 는 seller-prospects.routes).
     //   가드: '이미 유효한 agencies.id 가 아니면서(NOT IN agencies.id) 유효한 linked_user_id 인(IN …) 값만'
@@ -1196,7 +1196,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       FOREIGN KEY (bundle_id) REFERENCES product_bundles(id) ON DELETE CASCADE,
       FOREIGN KEY (product_id) REFERENCES products(id)
     )` },
-    // 🛡️ 2026-04-23 배치 174: 운영 가이드 테이블 (어드민/셀러/에이전시)
+    // 🛡️ 2026-04-23 배치 174: 운영 가이드 테이블 (어드민/셀러/벤더사)
     { name: 'operation_guides', sql: `CREATE TABLE IF NOT EXISTS operation_guides (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       guide_type TEXT NOT NULL CHECK(guide_type IN ('admin', 'seller', 'agency', 'wholesale')),
@@ -1228,7 +1228,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       admin_memo TEXT
     )` },
     { name: 'idx_user_withdrawals_user_status', sql: `CREATE INDEX IF NOT EXISTS idx_user_withdrawals_user_status ON user_withdrawals(user_id, status, requested_at DESC)` },
-    // 🏦 2026-06-12 지급 센터 (P1 사용자 결정) — 입금완료 기록 + 큐레이터 딜 차감 마커 + 에이전시 지급 이력.
+    // 🏦 2026-06-12 지급 센터 (P1 사용자 결정) — 입금완료 기록 + 큐레이터 딜 차감 마커 + 벤더사 지급 이력.
     { name: 'settlements.paid_at', sql: 'ALTER TABLE settlements ADD COLUMN paid_at DATETIME' },
     { name: 'settlements.admin_memo', sql: 'ALTER TABLE settlements ADD COLUMN admin_memo TEXT' },
     { name: 'user_withdrawals.deal_deducted', sql: 'ALTER TABLE user_withdrawals ADD COLUMN deal_deducted INTEGER DEFAULT 0' },
@@ -1292,8 +1292,8 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
         INSERT INTO products_fts(products_fts, rowid, name, description, category)
         VALUES('delete', OLD.id, COALESCE(OLD.name,''), COALESCE(OLD.description,''), COALESCE(OLD.category,''));
       END` },
-    // 🛡️ 2026-05-20: 에이전시 입점 가게 commission ledger.
-    //   에이전시가 입점시킨 가게 (sellers.introduced_by_agency_id) 의 모든 이용권 매출 →
+    // 🛡️ 2026-05-20: 벤더사 입점 가게 commission ledger.
+    //   벤더사가 입점시킨 가게 (sellers.introduced_by_agency_id) 의 모든 이용권 매출 →
     //   각 주문마다 2% (agencies.store_intro_commission_pct) commission 적립.
     //   타입: 'signup_bonus' (가게 첫 결제 ₩30k) / 'sales_commission' (매출 2%) / 'growth_bonus' (월 100만 돌파 ₩50k).
     //   영구 commission — 12개월 제한 없이 입점 가게 평생 매출에 대해 누적.

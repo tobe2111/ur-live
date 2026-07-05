@@ -382,7 +382,7 @@ export default function IntroducePage() {
             <div className="space-y-5 mb-10">
               {[
                 { title: '입점 수수료 0원, 판매 수수료만', desc: '판매되는 만큼만 부담해요. 가입비·월 고정비 없습니다.' },
-                { title: '에이전시 매칭으로 공구 운영까지', desc: '직접 운영이 어렵다면 검증된 에이전시가 공구 등록·관리를 도와줘요.' },
+                { title: '벤더사 매칭으로 공구 운영까지', desc: '직접 운영이 어렵다면 검증된 벤더사가 공구 등록·관리를 도와줘요.' },
                 { title: '정산·셀러 대시보드 제공', desc: '주문 모니터링 · 정산 · 리뷰 관리까지 한 곳에서.' },
               ].map(b => (
                 <div key={b.title} className="flex items-start gap-4">

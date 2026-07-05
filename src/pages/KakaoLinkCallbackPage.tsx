@@ -1,14 +1,14 @@
 /**
  * KakaoLinkCallbackPage — 카카오 계정 연동용 OAuth 콜백
  *
- * 셀러/에이전시 대시보드에서 "카카오 연동" 클릭 시 팝업으로 이 페이지를 열고,
+ * 셀러/벤더사 대시보드에서 "카카오 연동" 클릭 시 팝업으로 이 페이지를 열고,
  * 팝업 내에서 서버가 /auth/kakao/sync/callback 로 전체 카카오 로그인을 수행.
  * 완료 후엔 redirect=/auth/kakao/link/callback 로 돌아오는데, 이때 URL 에
  *   ?login=success&userId=XXX&userName=YYY
  * 가 붙어있음 (code 는 이미 서버가 소비했고 세션 쿠키가 세팅돼 있음).
  *
  * 이 페이지는 opener(대시보드 창) 에게 postMessage 로 결과 전달.
- * 실제 link 는 opener 가 자신의 셀러/에이전시 JWT 로 /link-kakao 호출 (session mode).
+ * 실제 link 는 opener 가 자신의 셀러/벤더사 JWT 로 /link-kakao 호출 (session mode).
  */
 
 import { useEffect } from 'react'

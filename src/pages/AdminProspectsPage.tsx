@@ -114,7 +114,7 @@ export default function AdminProspectsPage() {
           ) : (
             prospects.map((p) => {
               const meta = STATUS_META[p.status]
-              const introducerLabel = p.introducer_type === 'agency' ? '🏢 에이전시' : '🎤 인플루언서'
+              const introducerLabel = p.introducer_type === 'agency' ? '🏢 벤더사' : '🎤 인플루언서'
               return (
                 <div key={p.id} className="bg-white rounded-xl border border-gray-200 p-4">
                   <div className="flex items-start justify-between gap-3 mb-2">

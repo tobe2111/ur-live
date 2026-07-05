@@ -3,9 +3,9 @@ import { Calculator, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
 /**
- * 에이전시 PL (Profit & Loss) 시뮬레이터 — Phase 2-2
+ * 벤더사 PL (Profit & Loss) 시뮬레이터 — Phase 2-2
  *
- * 컨셉: 에이전시 사업자가 매출/비용 시나리오를 입력하면 순이익 추정.
+ * 컨셉: 벤더사 사업자가 매출/비용 시나리오를 입력하면 순이익 추정.
  * TikTok Backstage 의 "LIVE사업의 PL 예시" 자료 적응.
  *
  * 입력:
@@ -16,7 +16,7 @@ import { formatNumber } from '@/utils/format'
  *
  * 출력:
  *   - 총 매출
- *   - 에이전시 수수료 수익
+ *   - 벤더사 수수료 수익
  *   - 운영 비용
  *   - 순이익 (월/연)
  *   - 영업이익률

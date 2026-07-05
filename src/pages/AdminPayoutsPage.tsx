@@ -326,14 +326,14 @@ export default function AdminPayoutsPage() {
               <p className="text-[10px] text-gray-400 mt-1">위탁 판매 (consignment) 시 셀러 commission</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">에이전시 분배 % <span className="text-gray-400">(default 30)</span></label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">벤더사 분배 % <span className="text-gray-400">(default 30)</span></label>
               <input
                 type="number" min={0} max={100} step={1}
                 value={rates.agency_share_pct}
                 onChange={e => setRates(r => ({ ...r, agency_share_pct: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-blue-500"
               />
-              <p className="text-[10px] text-gray-400 mt-1">플랫폼 fee 중 에이전시에게 분배 (introduced_by_agency_id 있는 가게만)</p>
+              <p className="text-[10px] text-gray-400 mt-1">플랫폼 fee 중 벤더사에게 분배 (introduced_by_agency_id 있는 가게만)</p>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">🎤 인플루언서 입점 유치 % <span className="text-gray-400">(default 20)</span></label>
@@ -404,7 +404,7 @@ export default function AdminPayoutsPage() {
                 <option value="all">전체</option>
                 <option value="store_owner">🏪 사장님 (store_owner)</option>
                 <option value="seller">📺 셀러 (seller)</option>
-                <option value="agency">🤵 에이전시 (agency)</option>
+                <option value="agency">🤵 벤더사 (agency)</option>
               </select>
             </div>
           </div>

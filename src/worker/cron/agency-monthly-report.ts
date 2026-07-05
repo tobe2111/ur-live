@@ -1,13 +1,13 @@
 /**
- * 에이전시 자동 월간 리포트 — Phase 2-6
+ * 벤더사 자동 월간 리포트 — Phase 2-6
  *
  * 매월 1일 KST 09:00 (= 월요일 weekly batch) 실행. 멱등.
  *
  * 처리:
- *   1) 모든 활성 에이전시 순회
+ *   1) 모든 활성 벤더사 순회
  *   2) 전월 KPI 집계 (매출/활성 셀러/신규 셀러/등급 변화)
  *   3) HTML 리포트 생성
- *   4) 에이전시 owner 이메일로 발송 (RESEND_API_KEY 있을 때)
+ *   4) 벤더사 owner 이메일로 발송 (RESEND_API_KEY 있을 때)
  *   5) agency_notifications 에 알림 추가 (대시보드용)
  *
  * 마이그레이션 미적용 또는 RESEND 미설정 시 graceful skip.
@@ -84,7 +84,7 @@ function buildReportHTML(opts: {
       </div>
     </div>
     <div style="padding: 16px; background: #f9fafb; text-align: center; font-size: 11px; color: #9ca3af;">
-      유어딜 — 라이브 커머스 에이전시 플랫폼
+      유어딜 — 라이브 커머스 벤더사 플랫폼
     </div>
   </div>
 </body>
@@ -108,7 +108,7 @@ export async function handleAgencyMonthlyReport(env: Env): Promise<void> {
   const prevPrevMonthEnd = new Date(now.getFullYear(), now.getMonth() - 1, 0, 23, 59, 59);
   const monthStr = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
 
-  // 멱등 체크 — 이미 이번 달 리포트 보낸 에이전시는 skip
+  // 멱등 체크 — 이미 이번 달 리포트 보낸 벤더사는 skip
   const sentSet = new Set<number>();
   try {
     const sent = await DB.prepare(`

@@ -266,7 +266,7 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/sent', requireAdmin(), auditLog('pa
 // 🛡️ 2026-05-21 Phase D: commission rate 어드민 조정 — platform_settings 기반.
 //   - platform_fee_pct: 플랫폼 fee 비율 (default 5)
 //   - seller_commission_pct: 위탁 판매 셀러 commission (default 10)
-//   - agency_share_pct: 에이전시 분배 (default 30, 플랫폼 fee 의 30%)
+//   - agency_share_pct: 벤더사 분배 (default 30, 플랫폼 fee 의 30%)
 adminPayoutsRoutes.get('/admin/payouts/commission-rates', requireAdmin(), async (c) => {
   const { DB } = c.env
   const rows = await DB.prepare(

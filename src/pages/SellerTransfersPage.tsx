@@ -42,7 +42,7 @@ export default function SellerTransfersPage() {
 
   async function respond(id: number, approved: boolean) {
     const msg = approved
-      ? t('seller.transfers.approveConfirm', { defaultValue: '본 에이전시 이전에 동의하시겠습니까? 동의 시 즉시 매핑이 변경되며, 30일간 재이전이 제한됩니다.' })
+      ? t('seller.transfers.approveConfirm', { defaultValue: '본 벤더사 이전에 동의하시겠습니까? 동의 시 즉시 매핑이 변경되며, 30일간 재이전이 제한됩니다.' })
       : t('seller.transfers.rejectConfirm', { defaultValue: '이전을 거부하시겠습니까?' })
     if (!(await confirmDialog(msg))) return
     const reason = approved ? undefined : prompt(t('seller.transfers.rejectReasonPrompt', { defaultValue: '거부 사유 (선택):' })) || ''
@@ -60,16 +60,16 @@ export default function SellerTransfersPage() {
   const others = items.filter(t => t.status !== 'accepted_by_to')
 
   return (
-    <SellerLayout title={t('seller.transfers.title', { defaultValue: '에이전시 이전' })}>
+    <SellerLayout title={t('seller.transfers.title', { defaultValue: '벤더사 이전' })}>
       <div className="p-6 space-y-6">
         <DashboardPageHeader
-          title={t('seller.transfers.title', { defaultValue: '에이전시 이전 요청' })}
-          subtitle={t('seller.transfers.subtitle', { defaultValue: '본인 동의가 필요한 에이전시 이전 요청을 확인하고 응답하세요.' })}
+          title={t('seller.transfers.title', { defaultValue: '벤더사 이전 요청' })}
+          subtitle={t('seller.transfers.subtitle', { defaultValue: '본인 동의가 필요한 벤더사 이전 요청을 확인하고 응답하세요.' })}
           icon={<ArrowRightLeft className="h-5 w-5" />}
         />
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800">
-          ⓘ {t('seller.transfers.notice', { defaultValue: '보내는 에이전시 → 받는 에이전시 → 본인 동의 3단계 후 매핑이 변경됩니다. 본인 동의 없이는 어떤 에이전시도 임의로 이전할 수 없습니다 (보안). 이전 후 30일 cooldown.' })}
+          ⓘ {t('seller.transfers.notice', { defaultValue: '보내는 벤더사 → 받는 벤더사 → 본인 동의 3단계 후 매핑이 변경됩니다. 본인 동의 없이는 어떤 벤더사도 임의로 이전할 수 없습니다 (보안). 이전 후 30일 cooldown.' })}
         </div>
 
         {loading ? (
@@ -130,7 +130,7 @@ function TransferCard({
 }) {
   const { t } = useTranslation()
   const statusMap: Record<string, { label: string; cls: string }> = {
-    pending: { label: t('seller.transfers.statusPending', { defaultValue: '받는 에이전시 응답 대기' }), cls: 'bg-yellow-100 text-yellow-800' },
+    pending: { label: t('seller.transfers.statusPending', { defaultValue: '받는 벤더사 응답 대기' }), cls: 'bg-yellow-100 text-yellow-800' },
     accepted_by_to: { label: t('seller.transfers.statusAcceptedByTo', { defaultValue: '✋ 본인 동의 필요' }), cls: 'bg-blue-100 text-blue-700' },
     completed: { label: t('seller.transfers.statusCompleted', { defaultValue: '이전 완료' }), cls: 'bg-green-100 text-green-700' },
     rejected: { label: t('seller.transfers.statusRejected', { defaultValue: '거절' }), cls: 'bg-red-100 text-red-700' },

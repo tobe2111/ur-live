@@ -142,9 +142,9 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/admin/users',           label: '유저 관리',     icon: Users },
       { path: '/admin/seller-approval', label: '셀러 관리',     icon: UserCheck },
-      { path: '/admin/agency-creator-approval', label: '에이전시 셀러 심사', icon: UserCheck },
+      { path: '/admin/agency-creator-approval', label: '벤더사 셀러 심사', icon: UserCheck },
       { path: '/admin/prospects',       label: '영업 추적',     icon: UserCheck },
-      { path: '/admin/agencies',        label: '에이전시',      icon: Building2 },
+      { path: '/admin/agencies',        label: '벤더사',      icon: Building2 },
     ],
   },
   {

@@ -40,9 +40,9 @@ export const HOSTING_HIDDEN = true
  * COMMUNITY_PROPOSAL_HIDDEN — '동네 공구 제안'(community-group-buy) 진입 숨김 (2026-06-18 사용자 결정).
  *   배경: 제안 기능은 (1) 확정 후 실제 결제·바우처 발급으로 가는 다리가 끊김(보증금 정책 미정),
  *         (2) 보증금 = 고객에게 진 부채, (3) 거의 미사용 + 유저 0 단계. 수요 발굴은 카카오/네이버
- *         공개데이터 + 에이전시 영입(어드민 동별 밀도 보드)이 더 싸고 확실 → 잠정 셸브.
+ *         공개데이터 + 벤더사 영입(어드민 동별 밀도 보드)이 더 싸고 확실 → 잠정 셸브.
  *   true: 소비자 진입(하단바 ➕ · PC 사이드바 '공구 제안' · 홈 동네딜 섹션 · 동네딜 '동네 공구' 탭/배너 ·
- *         마이 RoleCta)을 숨김. 라우트(/community-group-buy/*) · API · DB · 에이전시 뷰는 보존 — false 로 즉시 복원.
+ *         마이 RoleCta)을 숨김. 라우트(/community-group-buy/*) · API · DB · 벤더사 뷰는 보존 — false 로 즉시 복원.
  */
 export const COMMUNITY_PROPOSAL_HIDDEN = true
 
@@ -58,15 +58,15 @@ export const COMMUNITY_PROPOSAL_HIDDEN = true
 export const IOS_HIDE_DIGITAL_TOPUP = false
 
 /**
- * AGENCY_HIDDEN — 에이전시(B2B 매장영입 파트너) 진입 **셸브** (2026-07-04 대표 결정).
- *   배경: 라이브커머스 영구중단으로 에이전시의 차별점이던 '소속 셀러 로스터 관리(MCN 모델)'가 근거를
- *         잃음 + **실제 에이전시 파트너 0명**. 남은 유일 가치인 '매장 영입'은 이미 인플루언서 store-intro
+ * AGENCY_HIDDEN — 벤더사(B2B 매장영입 파트너) 진입 **셸브** (2026-07-04 대표 결정).
+ *   배경: 라이브커머스 영구중단으로 벤더사의 차별점이던 '소속 셀러 로스터 관리(MCN 모델)'가 근거를
+ *         잃음 + **실제 벤더사 파트너 0명**. 남은 유일 가치인 '매장 영입'은 이미 인플루언서 store-intro
  *         커미션으로 존재 → 39페이지 투기적 대시보드를 더 다듬을 시점이 아님. community-proposal·shopping-tab
  *         과 동일 철학으로 **flag 뒤로 접어 보류**(삭제 아님).
- *   true (현재): 소비자/공용 표면의 에이전시 진입(하단바 파트너 시트·푸터·랜딩 nav)과 `/agency/*` 대시보드·
+ *   true (현재): 소비자/공용 표면의 벤더사 진입(하단바 파트너 시트·푸터·랜딩 nav)과 `/agency/*` 대시보드·
  *         `/agency-partner` 랜딩·`/agency/register`·공개 프로필 `/a/:slug` 라우트를 홈으로 리다이렉트.
  *         라우트·페이지·API·admin 승인·정산 크론·`agencies` 데이터 전부 **보존**(가역).
- *   ⚠️ 재정의: 재오픈 시 에이전시 = "조직 규모 매장영입 계정"(store-intro at scale). **로스터/랭킹/비교/PK/
+ *   ⚠️ 재정의: 재오픈 시 벤더사 = "조직 규모 매장영입 계정"(store-intro at scale). **로스터/랭킹/비교/PK/
  *         캠페인 등 라이브 시대 운영도구는 부활 금지** — 영입→입점가게 매출→정산 커미션 루프만 린하게.
  *   복원: 이 값을 false 로. (첫 진짜 파트너 대화 발생 시 위 린 셋만.)
  */

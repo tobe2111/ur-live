@@ -194,9 +194,9 @@ export async function recordVoucherUsedLedger(
 }
 
 /**
- * 🛡️ 2026-05-21 Phase D: voucher 사용 시점에 에이전시 commission 자동 분배.
+ * 🛡️ 2026-05-21 Phase D: voucher 사용 시점에 벤더사 commission 자동 분배.
  *
- * 구조: 플랫폼 fee 의 일부(default 30%)를 에이전시에게 자동 분배.
+ * 구조: 플랫폼 fee 의 일부(default 30%)를 벤더사에게 자동 분배.
  *   - sellers.introduced_by_agency_id 가 있는 가게의 voucher 사용 시 발생.
  *   - 분배 비율은 platform_settings.agency_share_pct (default 30) 에서 조정 (어드민 페이지).
  *   - ledger: platform:revenue → agency:N (debit/credit) 자동 entry.
@@ -218,7 +218,7 @@ export async function recordAgencyCommissionShare(
   ).bind(ref).first().catch(() => null)
   if (existing) return { agency_id: null, amount: 0 }
 
-  // 가게의 추천 에이전시 조회
+  // 가게의 추천 벤더사 조회
   // 🛡️ 2026-05-27 (사용자 결정): 매장별 commission 기간 체크 추가.
   //   referral_bonus_until NULL = 무기한, 날짜 있으면 만료 검사 (admin 이 매장별 설정).
   const seller = await DB.prepare(

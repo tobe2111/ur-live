@@ -420,9 +420,9 @@ export default function MarketingLandingPage() {
               <li style={{ display: 'flex', gap: 9 }}><Check size={17} />자동 주간 리포트</li>
             </ul>
           </div>
-          {/* 에이전시 */}
+          {/* 벤더사 */}
           <div style={{ border: '1px solid var(--line)', borderRadius: 16, padding: 30, background: 'var(--panel)' }}>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>에이전시</div><div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>여러 고객사를 관리하는 대행사</div>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>벤더사</div><div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>여러 고객사를 관리하는 대행사</div>
             <div style={{ margin: '22px 0 0', display: 'flex', alignItems: 'baseline', gap: 6 }}><span className="num" style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-.03em' }}>문의</span><span style={{ fontSize: 14, color: 'var(--muted)' }}>맞춤 견적</span></div>
             <a href={CONTACT} style={{ display: 'block', textAlign: 'center', marginTop: 22, fontSize: 14, fontWeight: 600, color: 'var(--ink)', border: '1px solid var(--btn-bd)', padding: 12, borderRadius: 9 }}>영업팀 문의</a>
             <ul style={{ listStyle: 'none', padding: 0, margin: '24px 0 0', display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13.5, color: 'var(--ink-strong)' }}>
@@ -443,7 +443,7 @@ export default function MarketingLandingPage() {
               { open: true, q: '네이버 약관에 위배되지 않나요?', a: 'UR Ads는 네이버가 공식 제공하는 검색광고 API를 통해 동작합니다. 화면을 긁어오는 크롤링 방식이 아니므로 안심하고 사용하실 수 있습니다. 순위는 공식 API 기반 추정치로 제공됩니다.' },
               { open: false, q: '자동입찰로 광고비가 갑자기 늘 수 있나요?', a: '아니요. 키워드별 최대 입찰가(상한가)를 직접 정하므로, 어떤 경우에도 설정한 금액을 넘지 않습니다. 일/월 예산 한도도 함께 설정할 수 있습니다.' },
               { open: false, q: '광고 계정 연동은 얼마나 걸리나요?', a: '검색광고 API 인증 정보를 한 번 입력하면 연동이 완료됩니다. 보통 1분이면 캠페인·키워드·실적이 모두 동기화됩니다. (스토어 발주 수집 연동은 준비 중입니다.)' },
-              { open: false, q: '대행사인데 여러 고객사를 관리할 수 있나요?', a: '에이전시 플랜에서 고객사를 무제한으로 추가하고, 상단 셀렉터로 즉시 전환하며 관리할 수 있습니다. 고객사별 권한 분리도 지원합니다.' },
+              { open: false, q: '대행사인데 여러 고객사를 관리할 수 있나요?', a: '벤더사 플랜에서 고객사를 무제한으로 추가하고, 상단 셀렉터로 즉시 전환하며 관리할 수 있습니다. 고객사별 권한 분리도 지원합니다.' },
             ].map((f) => (
               <details key={f.q} open={f.open} style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 12, padding: '4px 20px' }}>
                 <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 0', fontSize: 15.5, fontWeight: 600 }}>{f.q}<span className="fp" style={{ fontSize: 20, color: '#3B6EF5', transition: 'transform .2s', lineHeight: 1 }}>+</span></summary>

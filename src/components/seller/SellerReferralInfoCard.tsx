@@ -38,7 +38,7 @@ export default function SellerReferralInfoCard() {
 
   const isAgency = !!info.introduced_by_agency_id
   const introducerName = isAgency
-    ? (info.agency_name || `에이전시 #${info.introduced_by_agency_id}`)
+    ? (info.agency_name || `벤더사 #${info.introduced_by_agency_id}`)
     : (info.influencer_handle ? `@${info.influencer_handle}` : `인플루언서 #${info.introduced_by_influencer_id}`)
   const commissionPct = isAgency ? (info.agency_commission_pct ?? 2) : (info.influencer_commission_pct ?? 1)
   const bonusPct = info.bonus_pct ?? 1
@@ -52,7 +52,7 @@ export default function SellerReferralInfoCard() {
         <div className="text-2xl">{isAgency ? '🏢' : '🎤'}</div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-gray-900">
-            {isAgency ? '소속 에이전시' : '영입 인플루언서'}: {introducerName}
+            {isAgency ? '소속 벤더사' : '영입 인플루언서'}: {introducerName}
           </p>
           <p className="text-xs text-gray-600 mt-1 leading-relaxed">
             매출의 <strong className="text-blue-700">{commissionPct}%</strong> 가 영업 commission 으로 차감됩니다.

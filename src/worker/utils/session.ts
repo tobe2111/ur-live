@@ -70,7 +70,7 @@ export async function createSessionCookie(
 
   const token = await jwt.sign(payload, secret);
 
-  // 어드민/셀러/에이전시 = SameSite=Strict (대시보드는 외부 cross-site 이동 없음).
+  // 어드민/셀러/벤더사 = SameSite=Strict (대시보드는 외부 cross-site 이동 없음).
   // 유저 세션 = Lax (쇼핑 중 외부결제→redirect, SNS 공유 링크 접근 등 호환 필요).
   const sameSite = type === 'user' ? 'Lax' : 'Strict';
   return `${cookieName}=${token}; HttpOnly; Secure; SameSite=${sameSite}; Path=/; Max-Age=${maxAge}`;

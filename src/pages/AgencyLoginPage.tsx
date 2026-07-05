@@ -207,7 +207,7 @@ export default function AgencyLoginPage() {
               </button>
             </form>
 
-            {/* 카카오 로그인 — 연동된 에이전시는 한 번 로그인으로 권한 복원 */}
+            {/* 카카오 로그인 — 연동된 벤더사는 한 번 로그인으로 권한 복원 */}
             <div className="mt-4">
               <div className="flex items-center gap-3 text-[11px] text-gray-400 mb-3">
                 <div className="flex-1 h-px bg-gray-200" />
@@ -220,10 +220,10 @@ export default function AgencyLoginPage() {
                 className="w-full flex items-center justify-center gap-2 py-3 bg-[#FEE500] hover:bg-[#FDD800] text-[#3C1E1E] text-sm font-semibold rounded-xl transition-colors no-underline"
               >
                 <span className="text-base">💬</span>
-                카카오로 에이전시 시작하기
+                카카오로 벤더사 시작하기
               </a>
               <p className="text-[10px] text-gray-400 text-center mt-2">
-                카카오 로그인 후 안내에 따라 에이전시 권한을 신청할 수 있어요
+                카카오 로그인 후 안내에 따라 벤더사 권한을 신청할 수 있어요
               </p>
             </div>
           </div>

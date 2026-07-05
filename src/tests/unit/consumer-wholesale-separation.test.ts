@@ -8,7 +8,7 @@
  * 불변식:
  *   ① 모든 소비자 상품쿼리(리스트/카운트/검색/sitemap/추천/공구피드/cron)는 도매 마스터를 제외한다.
  *   ② 도매몰 카탈로그는 여전히 도매 상품(is_supply_product=1)만 노출한다(반대 방향).
- *   ③ 계정 전환 시 도매/셀러/에이전시/관리자 토큰을 모두 wipe 한다(공유기기 누출 차단).
+ *   ③ 계정 전환 시 도매/셀러/벤더사/관리자 토큰을 모두 wipe 한다(공유기기 누출 차단).
  * 깨지면(제외절 제거/토큰 wipe 누락) CI 빨강.
  */
 import { describe, it, expect } from 'vitest'
@@ -42,7 +42,7 @@ describe('유어딜 소비자 ↔ 도매몰 분리 불변식', () => {
     expect(/is_supply_product\s*=\s*1/.test(read('src/features/supply/api/wholesale.routes.ts'))).toBe(true)
   })
 
-  it('③ 계정 전환 시 도매/셀러/에이전시/관리자 토큰 모두 wipe (KakaoCallbackPage)', () => {
+  it('③ 계정 전환 시 도매/셀러/벤더사/관리자 토큰 모두 wipe (KakaoCallbackPage)', () => {
     const cb = read('src/pages/KakaoCallbackPage.tsx')
     for (const k of ['supplier_token', 'admin_token', 'seller_token', 'agency_token']) {
       expect(cb.includes(`'${k}'`)).toBe(true)

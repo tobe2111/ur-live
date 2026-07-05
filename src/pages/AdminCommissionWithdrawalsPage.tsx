@@ -103,7 +103,7 @@ export default function AdminCommissionWithdrawalsPage() {
       <DashboardPageHeader
         icon={<Wallet className="w-5 h-5" />}
         title="추천 Commission 출금 관리"
-        subtitle="에이전시/셀러/유저의 추천 commission 출금 신청을 승인하거나 거절합니다."
+        subtitle="벤더사/셀러/유저의 추천 commission 출금 신청을 승인하거나 거절합니다."
       />
 
       {/* 🛡️ 2026-07-02 (감사 #10): 5xx/401/403 을 '출금 신청 0건'으로 위장하지 않도록 표면화 */}

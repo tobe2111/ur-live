@@ -1,9 +1,9 @@
 /**
- * 🛡️ 2026-05-21 Phase D-3: 셀러/에이전시 본인 ledger UI.
+ * 🛡️ 2026-05-21 Phase D-3: 셀러/벤더사 본인 ledger UI.
  *
  * URL:
  *   - 셀러: /seller/ledger (인플루언서 commission + 위탁 판매 매출)
- *   - 에이전시: /agency/ledger (commission 분배)
+ *   - 벤더사: /agency/ledger (commission 분배)
  *
  * 두 dashboard 컨텍스트 공통 페이지 — token type 으로 자동 분기.
  */
@@ -47,7 +47,7 @@ interface LedgerData {
 const EVENT_LABEL: Record<string, { label: string; emoji: string }> = {
   voucher_used: { label: '바우처 사용', emoji: '✅' },
   voucher_refund: { label: '환불', emoji: '↩️' },
-  agency_commission: { label: '에이전시 수수료', emoji: '🤵' },
+  agency_commission: { label: '벤더사 수수료', emoji: '🤵' },
   group_buy_join: { label: '공구 참여', emoji: '🤝' },
   charge: { label: '충전', emoji: '💳' },
   refund: { label: '환불', emoji: '↩️' },

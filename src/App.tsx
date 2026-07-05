@@ -155,7 +155,7 @@ const MyStaysPage = lazy(() => import('./pages/MyStaysPage'))
 const StayCheckoutReturnPage = lazy(() => import('./pages/StayCheckoutReturnPage'))
 // 🛡️ 2026-05-18: 인플루언서 referral 대시보드.
 const InfluencerDashboardPage = lazy(() => import('./pages/InfluencerDashboardPage'))
-// 🛡️ 2026-05-15: PC 랜딩 (자영업자/인플루언서/에이전시 영업)
+// 🛡️ 2026-05-15: PC 랜딩 (자영업자/인플루언서/벤더사 영업)
 const BusinessLandingPage = lazy(() => import('./pages/BusinessLandingPage'))
 const SellerProspectsPage = lazy(() => import('./pages/SellerProspectsPage'))
 const SellerProxyProductsPage = lazy(() => import('./pages/SellerProxyProductsPage'))

@@ -107,5 +107,5 @@ export function getCurrentSellerRole(): SellerRole {
 // 외부 컨벤션 명칭 (한국 시장 컨벤션):
 //   "셀러" = 인플루언서 (라이브커머스 컨벤션)
 //   "사장님" = 매장 owner (오프라인 공구 컨벤션)
-//   "에이전시" = 매니징 조직
+//   "벤더사" = 매니징 조직
 // docs/AGENCY_POLICY.md 참조.

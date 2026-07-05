@@ -1,8 +1,8 @@
 /**
- * 에이전시 매칭 제안 관리 페이지 (2026-05-05)
+ * 벤더사 매칭 제안 관리 페이지 (2026-05-05)
  *
  * 자동 매칭 cron (agency-seller-match.ts) 이 생성한 pending 제안을
- * 에이전시가 수락 / 거절합니다.
+ * 벤더사가 수락 / 거절합니다.
  *
  * API: /api/agency/match-suggestions
  */
@@ -88,7 +88,7 @@ function SuggestionCard({ s, onAccept, onDecline }: {
 
       {reason && (
         <div className="space-y-1.5 mb-3">
-          {reason.tierScore !== undefined && <ScoreBar label="에이전시 티어" value={reason.tierScore} max={40} />}
+          {reason.tierScore !== undefined && <ScoreBar label="벤더사 티어" value={reason.tierScore} max={40} />}
           {reason.capacityScore !== undefined && <ScoreBar label="여유 용량" value={reason.capacityScore} max={30} />}
           {reason.activityScore !== undefined && <ScoreBar label="활성도" value={reason.activityScore} max={20} />}
           {reason.acceptScore !== undefined && <ScoreBar label="수락 이력" value={reason.acceptScore} max={10} />}

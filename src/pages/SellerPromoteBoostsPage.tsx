@@ -74,7 +74,7 @@ export default function SellerPromoteBoostsPage() {
       <div className="p-6 space-y-6">
         <DashboardPageHeader
           title={t('seller.boosts.title', { defaultValue: '노출 부스팅 쿠폰' })}
-          subtitle={t('seller.boosts.subtitle', { defaultValue: '에이전시가 발급한 부스팅 쿠폰. 라이브 시작 시 활성화하면 메인 피드 상단 노출!' })}
+          subtitle={t('seller.boosts.subtitle', { defaultValue: '벤더사가 발급한 부스팅 쿠폰. 라이브 시작 시 활성화하면 메인 피드 상단 노출!' })}
           icon={<Rocket className="h-5 w-5" />}
         />
 
@@ -101,7 +101,7 @@ export default function SellerPromoteBoostsPage() {
                     </div>
                     <div className="text-sm font-bold text-gray-900 mb-1">{meta.label} {t('seller.boosts.title', { defaultValue: '노출 부스팅' })}</div>
                     <div className="text-xs text-gray-500 mb-3">
-                      {t('seller.boosts.issued', { defaultValue: '발급' })}: {b.agency_name || t('seller.boosts.agency', { defaultValue: '에이전시' })} · {b.expires_at?.slice(0, 10)} {t('seller.boosts.expires', { defaultValue: '만료' })}
+                      {t('seller.boosts.issued', { defaultValue: '발급' })}: {b.agency_name || t('seller.boosts.agency', { defaultValue: '벤더사' })} · {b.expires_at?.slice(0, 10)} {t('seller.boosts.expires', { defaultValue: '만료' })}
                     </div>
                     {b.note && <div className="text-xs text-gray-600 mb-3 italic">"{b.note}"</div>}
                     <button
@@ -152,7 +152,7 @@ export default function SellerPromoteBoostsPage() {
 
         {!loading && items.length === 0 && (
           <div className="text-center text-sm text-gray-400 py-12 bg-white rounded-xl border border-gray-100">
-            {t('seller.boosts.noCoupons', { defaultValue: '아직 받은 부스팅 쿠폰이 없습니다. 에이전시에 문의해보세요.' })}
+            {t('seller.boosts.noCoupons', { defaultValue: '아직 받은 부스팅 쿠폰이 없습니다. 벤더사에 문의해보세요.' })}
           </div>
         )}
       </div>

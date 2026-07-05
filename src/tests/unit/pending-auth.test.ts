@@ -45,7 +45,7 @@ describe('Pending-Auth fragment 채널 (iOS-safe 역할 토큰 전달)', () => {
   })
 
   it('agency 토큰 + refresh round-trip', () => {
-    const enc = encodePendingAuth({ agency_token: 'A.t', agency_refresh_token: 'A.r', agency_id: 7, agency_name: '에이전시' })
+    const enc = encodePendingAuth({ agency_token: 'A.t', agency_refresh_token: 'A.r', agency_id: 7, agency_name: '벤더사' })
     const obj = decode(enc)
     expect(obj.agency_token).toBe('A.t')
     expect(obj.agency_refresh_token).toBe('A.r')

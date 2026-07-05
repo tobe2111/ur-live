@@ -8,8 +8,8 @@
  *
  * 점수: low/medium/high
  * 액션:
- *   - high: 에이전시 dashboard 알림 + 셀러에게 격려 알림톡
- *   - medium: 에이전시 weekly 리포트
+ *   - high: 벤더사 dashboard 알림 + 셀러에게 격려 알림톡
+ *   - medium: 벤더사 weekly 리포트
  *   - low: 추적만
  *
  * 0원 운영: AI 호출 없이 SQL only.
@@ -72,9 +72,9 @@ export async function handleSellerChurnDetect(env: Env): Promise<void> {
 
       if (score === 'high') {
         highRiskCount++
-        // 에이전시 dashboard 알림
+        // 벤더사 dashboard 알림
         // 🛡️ 2026-05-17: notifications 테이블은 user_type CHECK('seller','user','admin') — 'agency' 안 허용.
-        //   에이전시 대상은 dashboard_notifications 사용 (recipient_type IN admin/seller/agency, migration 0240).
+        //   벤더사 대상은 dashboard_notifications 사용 (recipient_type IN admin/seller/agency, migration 0240).
         if (s.agency_id) {
           stmts.push(
             DB.prepare(`

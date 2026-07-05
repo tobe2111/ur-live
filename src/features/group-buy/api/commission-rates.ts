@@ -5,15 +5,15 @@
  *   - platform_margin_pct (default 5%): 유어딜 운영비
  *   - influencer_commission_pct (default 0.5%): 인플루언서 referral commission (?ref= 진입 시)
  *   - user_referral_bonus_pct (default 0.5%): 사용자 referral 보너스 (구매 시 즉시 적립)
- *   - agency_commission_pct (default 2%): 에이전시 (셀러 소속 시)
+ *   - agency_commission_pct (default 2%): 벤더사 (셀러 소속 시)
  *   - 셀러 receivable = 100 - 위 합계
  *
  * 예시 (모두 default):
- *   - 인플루언서 referral + 에이전시 소속:
- *     5% (유어딜) + 0.5% (인플) + 0.5% (유저) + 2% (에이전시) = 8%
+ *   - 인플루언서 referral + 벤더사 소속:
+ *     5% (유어딜) + 0.5% (인플) + 0.5% (유저) + 2% (벤더사) = 8%
  *     셀러 receivable = 92%
  *
- *   - referral 없음, 에이전시 없음:
+ *   - referral 없음, 벤더사 없음:
  *     5% (유어딜) → 셀러 receivable = 95%
  *
  *   - 인플 차단된 referral:
@@ -88,14 +88,14 @@ export async function getCommissionRates(DB: D1Database): Promise<CommissionRate
 interface SplitInput {
   total_amount: number              // 결제 금액 (원)
   has_influencer: boolean            // ?ref= 진입 + 매장 차단 안 됨 + 공구 referral_disabled=0
-  has_agency: boolean                // 셀러 소속 에이전시 존재
+  has_agency: boolean                // 셀러 소속 벤더사 존재
 }
 
 interface SplitResult {
   platform: number                   // 유어딜 운영비
   influencer: number                 // 인플루언서 commission (없으면 0)
   user_bonus: number                 // 사용자 referral 보너스 (always 지급 if has_influencer flag 원본 = ?ref= 있었음)
-  agency: number                     // 에이전시 commission (없으면 0)
+  agency: number                     // 벤더사 commission (없으면 0)
   seller_receivable: number          // 셀러 receivable (남은 전부)
   platform_absorbs_user_bonus: boolean  // 인플 차단됐는데 사용자 보너스만 지급해야 할 때 true
 }

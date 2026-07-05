@@ -19,7 +19,7 @@ import {
 
 /**
  * 🛡️ 2026-05-17: Agency mode-based IA — 셀러와 동일 패턴.
- *   에이전시는 agency_type 컬럼 없으므로 사용자 UI 선호 기반 토글 (localStorage).
+ *   벤더사는 agency_type 컬럼 없으므로 사용자 UI 선호 기반 토글 (localStorage).
  *   default 'all' = 모든 항목 노출 (backward compat).
  *   'live' / 'store' 선택 시 해당 모드 + common 만 노출.
  */
@@ -42,7 +42,7 @@ interface NavGroup {
   items: NavItem[]
 }
 
-// 🏪 2026-06-17 매장 영입 중심 IA 재편: 에이전시 핵심 = 오프라인 매장 영입(공구 운영).
+// 🏪 2026-06-17 매장 영입 중심 IA 재편: 벤더사 핵심 = 오프라인 매장 영입(공구 운영).
 //   '매장 영입' 그룹을 최상단으로, 라이브 시대의 '소속 셀러 관리'는 '셀러 관리' 보조 그룹으로 강등(코드/경로 전부 보존).
 const NAV_GROUPS: NavGroup[] = [
   {
@@ -140,12 +140,12 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
   // 🏁 2026-06-13: 사이드바 스크롤 영속 — 라우트 이동 시 좌측 카테고리 최상단 복귀 방지
   const navScrollRef = usePersistScroll('agency-sidebar')
 
-  const [agencyName, setAgencyName] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('agency_name') : null) || '에이전시')
+  const [agencyName, setAgencyName] = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('agency_name') : null) || '벤더사')
   const [agencyStatus, setAgencyStatus] = useState<string | null>(null)
   // 🏪 2026-06-17 매장 영입 중심 — 사이드바 헤드라인 미니 통계를 '영입 가게' 수로.
   const [storeCount, setStoreCount] = useState(0)
 
-  // 🛡️ 2026-05-17: Mode 토글 — 라이브 위주 에이전시 vs 매장 위주 에이전시 UI 선호.
+  // 🛡️ 2026-05-17: Mode 토글 — 라이브 위주 벤더사 vs 매장 위주 벤더사 UI 선호.
   //   default 'all' = 모든 항목 (backward compat). localStorage 에 저장.
   const [activeMode, setActiveMode] = useState<AgencyMode>(() => {
     if (typeof window === 'undefined') return 'all'
@@ -211,7 +211,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
     //   기존엔 localStorage 만 지워 쿠키가 남아 재인증됐다(로그아웃해도 로그인). 유저/셀러/어드민 세션은 보존.
     await clearServerSessionCookies('agency')
     ;['agency_token', 'agency_refresh_token', 'agency_id', 'agency_name', 'agency_email'].forEach(k => localStorage.removeItem(k))
-    // 🔑 2026-06-29 (PII 잔존 제거): RQ 캐시에 남은 에이전시 데이터(매장/정산/실적)를 비움 — logoutSeller 와 대칭.
+    // 🔑 2026-06-29 (PII 잔존 제거): RQ 캐시에 남은 벤더사 데이터(매장/정산/실적)를 비움 — logoutSeller 와 대칭.
     try { const { getQueryClient } = await import('@/lib/react-query'); getQueryClient().clear() } catch { /* best-effort */ }
     navigate('/agency/login')
   }
@@ -410,7 +410,7 @@ export default function AgencyLayout({ title, children, headerRight }: AgencyLay
             <h1 className="text-base font-semibold text-gray-900">{title}</h1>
           </div>
           <div className="flex items-center gap-2">
-            {/* 🛡️ 2026-04-28: 에이전시 알림 벨 — 이전엔 마운트 안 됐었음 */}
+            {/* 🛡️ 2026-04-28: 벤더사 알림 벨 — 이전엔 마운트 안 됐었음 */}
             <DashboardNotificationBell tokenKey="agency_token" />
             {headerRight}
           </div>

@@ -100,7 +100,7 @@ export default function KakaoCallbackPage() {
         // 🛡️ 2026-06-20 (A 방식): 이 POST 흐름은 same-origin XHR 200 응답에서 ur_session 쿠키를 set →
         //   iOS 에서도 영속(localStorage Bearer 불필요). 세션은 httpOnly 쿠키로만 인증.
 
-        // ── 카카오 계정에 연결된 셀러/에이전시 권한 자동 복원 ──
+        // ── 카카오 계정에 연결된 셀러/벤더사 권한 자동 복원 ──
         // (백엔드가 linked_user_id 기반으로 JWT 를 이미 발급해서 보내줌)
         if (seller_token) {
           localStorage.setItem('seller_token', seller_token)
@@ -114,7 +114,7 @@ export default function KakaoCallbackPage() {
         }
         if (agency_token) {
           localStorage.setItem('agency_token', agency_token)
-          // 🏁 2026-06-13: refresh token 저장 — 카카오 로그인 에이전시 자동 로그아웃 방지
+          // 🏁 2026-06-13: refresh token 저장 — 카카오 로그인 벤더사 자동 로그아웃 방지
           if (agency_refresh_token) localStorage.setItem('agency_refresh_token', agency_refresh_token)
           if (agency?.id) localStorage.setItem('agency_id', String(agency.id))
           if (agency?.name) localStorage.setItem('agency_name', agency.name)

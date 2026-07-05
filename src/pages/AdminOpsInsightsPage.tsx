@@ -56,14 +56,14 @@ export default function AdminOpsInsightsPage() {
       <div className="p-6 space-y-6">
         <DashboardPageHeader
           title={t('admin.opsInsights.title', { defaultValue: '운영 인사이트' })}
-          subtitle={t('admin.opsInsights.subtitle', { defaultValue: '부진 에이전시 / 미접속 셀러 / 결제 이상 통합 모니터링' })}
+          subtitle={t('admin.opsInsights.subtitle', { defaultValue: '부진 벤더사 / 미접속 셀러 / 결제 이상 통합 모니터링' })}
           icon={<AlertTriangle className="h-5 w-5" />}
         />
 
         {/* 요약 카드 */}
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <SummaryCard label={t('admin.opsInsights.cardInactiveAgencies', { defaultValue: '부진 에이전시' })} value={summary.inactive_agencies} icon={Building2} color="amber" />
+            <SummaryCard label={t('admin.opsInsights.cardInactiveAgencies', { defaultValue: '부진 벤더사' })} value={summary.inactive_agencies} icon={Building2} color="amber" />
             <SummaryCard label={t('admin.opsInsights.cardDormantNewSellers', { defaultValue: '미접속 신규셀러' })} value={summary.dormant_new_sellers} icon={UserX} color="orange" />
             <SummaryCard label={t('admin.opsInsights.cardStuckPending', { defaultValue: '결제 PENDING 24h+' })} value={summary.stuck_pending_orders} icon={Clock} color="red" />
             <SummaryCard label={t('admin.opsInsights.cardDormantSellers', { defaultValue: '휴면 셀러 (30일)' })} value={summary.dormant_sellers} icon={TrendingDown} color="gray" />
@@ -76,12 +76,12 @@ export default function AdminOpsInsightsPage() {
           <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label={t('admin.opsInsights.title', { defaultValue: '운영 인사이트' })} />
         ) : data ? (
           <>
-            {/* 부진 에이전시 */}
-            <Section title="🔴 부진 에이전시 (이번 달 매출 0)" count={data.inactive_agencies.length}>
+            {/* 부진 벤더사 */}
+            <Section title="🔴 부진 벤더사 (이번 달 매출 0)" count={data.inactive_agencies.length}>
               {data.inactive_agencies.length === 0 ? (
                 <Empty />
               ) : (
-                <Table headers={['에이전시', '이메일', '소속 셀러', '월 매출']}>
+                <Table headers={['벤더사', '이메일', '소속 셀러', '월 매출']}>
                   {data.inactive_agencies.map(a => (
                     <tr key={a.id} className="border-t border-gray-100">
                       <td className="py-2 px-3 text-sm">

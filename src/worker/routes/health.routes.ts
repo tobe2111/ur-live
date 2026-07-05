@@ -214,7 +214,7 @@ healthRoutes.get('/env-readiness', requireAuth(), async (c) => {
 
   const SPEC: Array<{ key: string; group: 'blocking' | 'security' | 'perf' | 'payments' | 'optional'; note: string }> = [
     // 대시보드/서비스 자체를 게이트 — 없으면 전 운영자 영향.
-    { key: 'JWT_SECRET', group: 'blocking', note: '모든 대시보드 로그인(어드민/셀러/제조사/판매사/에이전시). 없으면 로그인 500.' },
+    { key: 'JWT_SECRET', group: 'blocking', note: '모든 대시보드 로그인(어드민/셀러/제조사/판매사/벤더사). 없으면 로그인 500.' },
     { key: 'FRONTEND_URL', group: 'blocking', note: 'OAuth 콜백/리다이렉트 베이스 URL.' },
     // 보안 — fail-open(동작하나 약화).
     { key: 'RATE_LIMIT_KV', group: 'security', note: '로그인/결제 brute-force 방어. 없으면 fail-open(무제한 시도).' },

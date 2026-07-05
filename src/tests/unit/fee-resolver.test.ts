@@ -4,11 +4,11 @@
  * docs/design/product-ownership-model.md 의 확정 정책(2026-06-25)을 영구히 잠금:
  *   1. 3P(이용권+쇼핑)=5% / 1P 직판=0%
  *   2. 홍보 소개비=주인 자율(음수 가드)
- *   3. 에이전시=GMV 1%(플랫폼에서), 실판매+시한 내에만, ≤플랫폼
+ *   3. 벤더사=GMV 1%(플랫폼에서), 실판매+시한 내에만, ≤플랫폼
  *   4. 제조가=B2B 원가(별도 슬라이스)
  *
  * 불변식(assertFeeInvariants):
- *   ① 슬라이스 합 = 결제액  ② 주인 순수익 ≥ 0  ③ 에이전시 ≤ 플랫폼
+ *   ① 슬라이스 합 = 결제액  ② 주인 순수익 ≥ 0  ③ 벤더사 ≤ 플랫폼
  *   ④ 1P 플랫폼 0  ⑤ 모든 슬라이스 ≥ 0
  */
 import { describe, it, expect } from 'vitest';
@@ -111,7 +111,7 @@ describe('규칙 2 — 홍보 소개비(주인 자율 + 음수 가드)', () => {
   });
 });
 
-describe('규칙 3 — 에이전시(GMV 1%, 실판매+시한, ≤플랫폼)', () => {
+describe('규칙 3 — 벤더사(GMV 1%, 실판매+시한, ≤플랫폼)', () => {
   it('실판매+시한 내 → 1% = 100, platformNet 400', () => {
     const b = resolveOrderFees({ amount: 10_000, ownership: '3P', productKind: 'voucher', agency: activeAgency() });
     expect(b.agency).toBe(100);
@@ -124,14 +124,14 @@ describe('규칙 3 — 에이전시(GMV 1%, 실판매+시한, ≤플랫폼)', ()
   it('시한 초과(withinTerm=false) → 0', () => {
     expect(resolveOrderFees({ amount: 10_000, ownership: '3P', productKind: 'voucher', agency: activeAgency({ withinTerm: false }) }).agency).toBe(0);
   });
-  it('1P 는 에이전시 미적용 → 0', () => {
+  it('1P 는 벤더사 미적용 → 0', () => {
     expect(resolveOrderFees({ amount: 10_000, ownership: '1P', productKind: 'shopping', agency: activeAgency() }).agency).toBe(0);
   });
   it('per-agency override 율 적용', () => {
     const b = resolveOrderFees({ amount: 10_000, ownership: '3P', productKind: 'voucher', agency: activeAgency({ pctOverride: 3 }) });
     expect(b.agency).toBe(300);
   });
-  it('가드: 에이전시 율이 플랫폼 초과해도 ≤플랫폼 으로 clamp', () => {
+  it('가드: 벤더사 율이 플랫폼 초과해도 ≤플랫폼 으로 clamp', () => {
     const b = resolveOrderFees({ amount: 10_000, ownership: '3P', productKind: 'voucher', agency: activeAgency({ pctOverride: 99 }) });
     expect(b.agency).toBe(b.platform); // 500 로 clamp
     expect(b.agency).toBeLessThanOrEqual(b.platform);

@@ -117,7 +117,7 @@ const API_PREFIXES = {
   agency: [
     '/api/agency', '/api/admin/castings', '/api/seller/castings', '/api/admin/agencies',
     '/api/admin/agency-creator-approvals', '/api/agency-public', '/api/pk-public', '/api/pk',
-    // 크리에이터 영입/정산/랭킹 (E·F2 — 에이전시/영입 소유).
+    // 크리에이터 영입/정산/랭킹 (E·F2 — 벤더사/영입 소유).
     '/api/influencer-discover', '/api/influencer-rankings', '/api/influencer-settlement',
     '/api/seller-marketing', '/api/admin-payouts', '/api/seller/promote-boosts',
     '/api/admin/influencer', '/api/admin/agency',
@@ -144,7 +144,7 @@ const DOMAIN_LABEL = {
   'offline-groupbuy': '오프라인 공구 / 동네딜',
   'online-listing': '온라인 입점 / 라이브커머스',
   linkshop: '링크샵 / 큐레이터',
-  agency: '에이전시',
+  agency: '벤더사',
 }
 
 // 소개서 파일 → 도메인 매핑. (마스터는 전체.)
@@ -457,7 +457,7 @@ function linkshopRows() {
   ]
 }
 
-// ── 에이전시 ──
+// ── 벤더사 ──
 function agencyRows() {
   const agencyShare = num(SRC.policy, /AGENCY_SHARE_PCT:\s*([\d._]+)/)
   const agencyOwn = num(SRC.policy, /AGENCY_OWN_RATE:\s*([\d._]+)/)
@@ -467,8 +467,8 @@ function agencyRows() {
     return m ? Number(m[1].replace(/_/g, '')) : null
   })()
   return [
-    row('에이전시 입점 분배 (platform_fee 중)', pct(agencyShare), 'src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_SHARE_PCT'),
-    row('에이전시 본인 commission (매출 기준)', pct(agencyOwn), 'src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_OWN_RATE'),
+    row('벤더사 입점 분배 (platform_fee 중)', pct(agencyShare), 'src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_SHARE_PCT'),
+    row('벤더사 본인 commission (매출 기준)', pct(agencyOwn), 'src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_OWN_RATE'),
     row('인플루언서 입점 분배 (platform_fee 중)', pct(influencerIntro), 'src/shared/constants/policy.ts:COMMISSION_DEFAULTS.INFLUENCER_INTRO_SHARE_PCT'),
     row('크리에이터 매장 영입 commission (default)', pct(storeIntro), 'src/worker/utils/influencer-store-intro-commission.ts:DEFAULT_STORE_INTRO_PCT'),
     ...taxRows(),

@@ -726,7 +726,7 @@ returnsRoutes.put('/:id/refund', rateLimit({ action: 'refund', max: 3, windowSec
     await reverseInfluencerStoreIntroOnRefund(DB, Number(returnRecord.order_id), 'return_refund');
   } catch { /* best-effort */ }
 
-  // 🔐 2026-06-11 (머니 감사 High#2): 에이전시 매장영입 커미션 역전 (적립 있는데 역전 없던 누수).
+  // 🔐 2026-06-11 (머니 감사 High#2): 벤더사 매장영입 커미션 역전 (적립 있는데 역전 없던 누수).
   try {
     const { reverseAgencyStoreIntroOnRefund } = await import('../../../worker/utils/agency-store-intro-commission');
     await reverseAgencyStoreIntroOnRefund(DB, Number(returnRecord.order_id), 'return_refund');

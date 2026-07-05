@@ -17,7 +17,7 @@ const FRAME_PAGES = [
 const EXCLUDE_MOBILE_LAYOUT = [
   '/seller',     // 셀러 대시보드
   '/admin',      // 어드민 대시보드
-  '/agency',     // 에이전시 대시보드
+  '/agency',     // 벤더사 대시보드
   '/embed',      // 임베드 라이브
 ]
 

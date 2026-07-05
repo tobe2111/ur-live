@@ -39,7 +39,7 @@ function calcSettlement(totalAmount: number, commissionRate: number): Settlement
 }
 
 describe('Settlement 계산 — 정상 케이스', () => {
-  it('100만원 × 2% (에이전시 기본) → 수수료 2만 / VAT 2천 / 순지급 977800', () => {
+  it('100만원 × 2% (벤더사 기본) → 수수료 2만 / VAT 2천 / 순지급 977800', () => {
     const r = calcSettlement(1_000_000, 2.0);
     expect(r).toEqual({
       total_amount: 1_000_000,

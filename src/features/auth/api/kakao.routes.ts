@@ -31,7 +31,7 @@ async function issueLinkedRoleTokens(
   userId: number
 ): Promise<{ seller_token?: string; agency_token?: string; agency_refresh_token?: string; seller?: { id: number; username?: string; status: string; business_name?: string; is_distributor?: number }; agency?: { id: number; status: string; name?: string } }> {
   const out: { seller_token?: string; agency_token?: string; agency_refresh_token?: string; seller?: any; agency?: any } = {}
-  // 🛡️ 2026-06-25 (속도 최적화): 셀러 조회와 에이전시 조회는 서로 독립인데 순차로 2왕복을
+  // 🛡️ 2026-06-25 (속도 최적화): 셀러 조회와 벤더사 조회는 서로 독립인데 순차로 2왕복을
   //   돌고 있었음(일반 유저는 둘 다 null 인데도 2왕복). 병렬(Promise.all)로 → 1왕복.
   //   각 블록의 try/catch·세션·토큰 발급·seller.username 포함 전부 byte-identical, 실행만 동시.
   await Promise.all([
@@ -108,7 +108,7 @@ async function issueLinkedRoleTokens(
         out.agency_token = await jwtSign(payload, jwtSecret)
         // 🔐 단일 세션 강제 — 멤버 시트(없으면 org 시트) 갱신.
         await startDashboardSession(DB, agencyMemberId ? 'agency_member' : 'agency', agencyMemberId ?? agency.id, now)
-        // 🏁 2026-06-13: refresh token 동봉 — 카카오 로그인 에이전시도 자동 로그아웃 방지.
+        // 🏁 2026-06-13: refresh token 동봉 — 카카오 로그인 벤더사도 자동 로그아웃 방지.
         out.agency_refresh_token = await jwtSign({
           sub: String(agency.id), email: agency.email, type: 'agency',
           token_use: 'refresh', exp: now + 90 * 24 * 60 * 60,
@@ -320,7 +320,7 @@ kakaoRoutes.get('/start', rateLimit({ action: 'kakao_start', max: 30, windowSec:
   const redirect = safeRedirect(redirectRaw);
   // intent: 'seller' | 'agency' | 'user'
   //   - seller: 셀러 등록/대시보드 진입 의도 → linked seller 없으면 /seller/register/business 로
-  //   - agency: 에이전시 등록/대시보드 진입 의도
+  //   - agency: 벤더사 등록/대시보드 진입 의도
   //   - user (default): 일반 유저 로그인
   const intentRaw = c.req.query('intent') || 'user';
   const intent = (intentRaw === 'seller' || intentRaw === 'agency') ? intentRaw : 'user';
@@ -894,7 +894,7 @@ kakaoRoutes.post('/callback', cors(), rateLimit({ action: 'kakao_callback', max:
           profile_image: user.profile_image,
           firebaseUID: ''  // 🛡️ legacy field — Firebase 미사용
         },
-        // 카카오 계정에 연결된 셀러/에이전시 권한이 있으면 같이 전달
+        // 카카오 계정에 연결된 셀러/벤더사 권한이 있으면 같이 전달
         ...(linkedRoles.seller_token ? { seller_token: linkedRoles.seller_token } : {}),
         ...(linkedRoles.agency_token ? { agency_token: linkedRoles.agency_token } : {}),
         ...(linkedRoles.agency_refresh_token ? { agency_refresh_token: linkedRoles.agency_refresh_token } : {}),

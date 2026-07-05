@@ -5,12 +5,12 @@
  * 자동 정산 cron (월요일 00:00) 완료 후, 전월 정산 데이터로 송장 발행.
  *
  * 흐름:
- * 1. 활성 에이전시 + 전월 매출 정보 조회
- * 2. 각 에이전시별 invoice_number 생성: INV-YYYY-MM-{agency_id}-NNN
+ * 1. 활성 벤더사 + 전월 매출 정보 조회
+ * 2. 각 벤더사별 invoice_number 생성: INV-YYYY-MM-{agency_id}-NNN
  * 3. HTML 본문 렌더링 (자체 템플릿)
  * 4. agency_settlement_invoices INSERT (UNIQUE agency+month — 멱등)
  * 5. R2 binding 있으면 R2 업로드 (있으면 r2_key 기록)
- * 6. 에이전시 알림 발송 (다운로드 링크)
+ * 6. 벤더사 알림 발송 (다운로드 링크)
  *
  * 멱등: ON CONFLICT DO NOTHING — 같은 (agency,month) 재실행해도 변화 없음.
  *
@@ -108,7 +108,7 @@ export async function handleAgencyMonthlyInvoices(env: BackupEnvLike): Promise<{
       const tax = Math.round(commission * TAX_RATE)
       const net = commission - tax
 
-      // 매출 0인 에이전시는 건너뛰기 (송장 발행 안 함)
+      // 매출 0인 벤더사는 건너뛰기 (송장 발행 안 함)
       if (amount === 0) {
         skipped++
         continue
@@ -165,7 +165,7 @@ export async function handleAgencyMonthlyInvoices(env: BackupEnvLike): Promise<{
         }
       }
 
-      // 에이전시 알림
+      // 벤더사 알림
       await DB.prepare(`
         INSERT INTO agency_notifications (agency_id, type, title, message, link, created_at)
         VALUES (?, 'invoice_issued', '월 정산 명세서 발행', ?, '/agency/settlements', datetime('now'))
@@ -235,9 +235,9 @@ function renderInvoiceHTML(a: RenderArgs): string {
 
   <h1>📋 정산 명세서</h1>
 
-  <h2 style="font-size:15px; margin-top:24px;">에이전시 정보</h2>
+  <h2 style="font-size:15px; margin-top:24px;">벤더사 정보</h2>
   <table>
-    <tr><th>에이전시명</th><td>${a.agency.name}</td></tr>
+    <tr><th>벤더사명</th><td>${a.agency.name}</td></tr>
     <tr><th>이메일</th><td>${a.agency.email}</td></tr>
     <tr><th>대상 월</th><td>${a.month}</td></tr>
   </table>

@@ -65,7 +65,7 @@ function randomKey(len = 16): string {
 }
 
 async function getRoleAndId(c: { env: Bindings; req: { header: (k: string) => string | undefined } }): Promise<{ role: string; id: number } | null> {
-  // 1) Bearer JWT (셀러/어드민/에이전시/유저 토큰).
+  // 1) Bearer JWT (셀러/어드민/벤더사/유저 토큰).
   const auth = c.req.header('Authorization') || ''
   if (auth.startsWith('Bearer ')) {
     try {
