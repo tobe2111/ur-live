@@ -93,6 +93,7 @@ assertCommissionBudgetInvariants(...) — Σgranted ≤ budget · 각 0 ≤ gran
 
 - **'owner' 전환 시 C1 은 플랫폼 부담이 아니게 되므로 §3-B 예산 요청 목록에서 제외**(promo 는 ownerNet 에서 — fee-resolver 모델 그대로).
 - A안(기본 on 2%)/B안(opt-off) 결정은 **코드 무관** — `affiliate_commission_rate`(0=off) + 상품별 override 로 어드민이 표현. 이 설계는 양쪽 다 지원.
+- 🔭 **미래 개선 — per-product owner-funding (2026-07-05 병렬 세션 충돌 정리 시 기록)**: 현재 `promo_funding_source='owner'` 는 **전역**이라 promo% 를 안 건 상품(기본 2%)까지 그 매장 부담으로 돌린다(매장이 동의 안 한 소개비까지 부담). 개선: `debitOwnerPromoForOrder` 가 주문 상품의 `products.referral_commission_rate IS NOT NULL AND referral_enabled=1`(=셀러가 소개비 필드로 명시 설정) 일 때만 매장 부담으로 좁히면, "promo 건 상품만 매장 부담 · 나머지는 현행 플랫폼(또는 예산캡)"으로 정밀해진다. 초기(소수 매장·전부 promo 설정)엔 전역으로 충분하므로 매장 수가 늘고 promo 미설정 상품이 섞일 때 착수. (별도 세션이 §1 필드/실수령 계산기/할인 가이드를 `referral_commission_rate` 저장 방식으로 먼저 구현·머지 — 그와 정합.)
 
 ### 3-E. 정액 보상 월 예산 캡
 | 파일 | 변경 |
