@@ -1,0 +1,72 @@
+# 🕐 Workers(cron) 프로젝트 배포 — scheduled.ts / cron 코드 동기화 전용.
+#
+# 배경 (2026-07-05): main.yml 은 Pages(_worker.js)만 배포 — cron(scheduled handler)은
+#   별도 Workers 프로젝트(`wrangler deploy`)라 **수동 배포 없이는 cron 코드가 낡은 채 돌았음**
+#   (실사고: auto-seed 리뷰 cron 이 옛 게이트로 오픈예정 데모에 generic 리뷰 재주입,
+#    신설 demo-fcfs-renew cron 미탑재). 이 워크플로가 그 수동 단계를 버튼/자동으로 만든다.
+#
+# 트리거:
+#   - workflow_dispatch: 어드민/에이전트가 수동 실행 (Actions 탭 → Run workflow)
+#   - push(main) 중 cron/scheduled 파일 변경 시 자동
+#
+# 요구 secret: CLOUDFLARE_API_TOKEN (Workers Scripts:Edit 권한 포함), CLOUDFLARE_ACCOUNT_ID
+#   — main.yml Pages 배포와 동일 secret 재사용. 권한 부족 시 이 워크플로만 실패(안내 로그).
+name: Deploy Worker (cron sync)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/worker/scheduled.ts'
+      - 'src/worker/cron/**'
+      - 'wrangler.toml'
+
+concurrency:
+  group: worker-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy-worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy Workers (cron)
+        run: |
+          set -e
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN 미설정 — Workers 배포 불가"
+            exit 1
+          fi
+          MAX_RETRY=3
+          for i in $(seq 1 $MAX_RETRY); do
+            echo "=== wrangler deploy attempt $i/$MAX_RETRY ==="
+            if npx wrangler@3 deploy; then
+              echo "✅ Workers(cron) deploy succeeded on attempt $i"
+              exit 0
+            fi
+            if [ $i -lt $MAX_RETRY ]; then
+              SLEEP=$((i * 10))
+              echo "⚠️ Attempt $i failed. Sleeping ${SLEEP}s..."
+              sleep $SLEEP
+            fi
+          done
+          echo "❌ All $MAX_RETRY attempts failed. (토큰에 Workers Scripts:Edit 권한이 있는지 확인)"
+          exit 1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
