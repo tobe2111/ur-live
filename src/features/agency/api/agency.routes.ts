@@ -234,12 +234,18 @@ const requireAgency = async (c: AgencyCtx, next: Next) => {
 // 🛡️ 2026-04-22 배치 147: rate limit 추가 (spam registration 차단 버그 fix)
 app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, windowSec: 3600 }), async (c) => {
   await ensureAgencyTables(c.env.DB)
-  const { name, contact_name, email, password, phone } = await c.req.json<{
+  const { name, contact_name, email, password, phone, terms_agreed_version, core_terms_agreed } = await c.req.json<{
     name: string; contact_name: string; email: string; password: string; phone?: string
+    terms_agreed_version?: string; core_terms_agreed?: boolean
   }>()
 
   if (!name || !contact_name || !email || !password) {
     return c.json({ success: false, error: '에이전시명, 담당자명, 이메일, 비밀번호는 필수입니다.' }, 400)
+  }
+  // 📜 2026-07-05 파트너 약관 v1.0: 약관 동의로 파트너 계약 성립(전문) + 제4·5·9·10조 개별 동의 필수.
+  const { isValidTermsVersion, recordTermsConsent } = await import('../../../worker/utils/terms-consent')
+  if (!isValidTermsVersion(terms_agreed_version) || core_terms_agreed !== true) {
+    return c.json({ success: false, error: '에이전시 파트너 약관 및 핵심 조항 동의가 필요합니다. 화면을 새로고침한 뒤 다시 시도해주세요.' }, 400)
   }
   // 🛡️ 입력 길이 검증
   if (typeof name !== 'string' || name.length < 1 || name.length > 100) {
@@ -260,10 +266,20 @@ app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, win
   if (existing) return c.json({ success: false, error: '이미 사용 중인 이메일입니다.' }, 409)
 
   const hash = await hashPassword(password)
-  await c.env.DB.prepare(`
+  const insertRes = await c.env.DB.prepare(`
     INSERT INTO agencies (name, contact_name, email, password_hash, phone, status)
     VALUES (?, ?, ?, ?, ?, 'pending')
   `).bind(name, contact_name, email, hash, phone || null).run()
+
+  // 📜 약관 동의 기록 (fail-soft — 검증은 위에서 이미 통과)
+  recordTermsConsent(c.env.DB, {
+    subjectType: 'agency',
+    subjectId: insertRes.meta?.last_row_id ?? null,
+    slug: 'agency-partner',
+    version: terms_agreed_version as string,
+    coreAgreed: true,
+    ip: c.req.header('CF-Connecting-IP') || null,
+  }).catch(() => null)
 
   // 🛡️ 2026-04-28: 어드민 알림 — 셀러 가입 흐름과 동일하게 추가 (이전 누락).
   createDashboardNotification(
@@ -315,12 +331,18 @@ app.post('/register-from-user', cors(), rateLimit({ action: 'agency_register_fro
       }, 409)
     }
 
-    const { name, contact_name, phone } = await c.req.json<{
+    const { name, contact_name, phone, terms_agreed_version, core_terms_agreed } = await c.req.json<{
       name: string; contact_name: string; phone?: string
+      terms_agreed_version?: string; core_terms_agreed?: boolean
     }>()
 
     if (!name || !contact_name) {
       return c.json({ success: false, error: '에이전시명과 담당자명은 필수입니다.' }, 400)
+    }
+    // 📜 2026-07-05 파트너 약관 v1.0: 약관 동의로 파트너 계약 성립(전문) + 제4·5·9·10조 개별 동의 필수.
+    const { isValidTermsVersion, recordTermsConsent } = await import('../../../worker/utils/terms-consent')
+    if (!isValidTermsVersion(terms_agreed_version) || core_terms_agreed !== true) {
+      return c.json({ success: false, error: '에이전시 파트너 약관 및 핵심 조항 동의가 필요합니다. 화면을 새로고침한 뒤 다시 시도해주세요.' }, 400)
     }
     if (typeof name !== 'string' || name.length < 1 || name.length > 100) {
       return c.json({ success: false, error: '에이전시명은 1~100자여야 합니다.' }, 400)
@@ -344,10 +366,21 @@ app.post('/register-from-user', cors(), rateLimit({ action: 'agency_register_fro
     const tempPassword = Array.from(tempBytes).map(b => b.toString(16).padStart(2, '0')).join('')
     const passwordHash = await hashPassword(tempPassword)
 
-    await db.prepare(`
+    const insertRes = await db.prepare(`
       INSERT INTO agencies (name, contact_name, email, password_hash, phone, status, linked_user_id)
       VALUES (?, ?, ?, ?, ?, 'pending', ?)
     `).bind(name, contact_name, email, passwordHash, phone || null, userId).run()
+
+    // 📜 약관 동의 기록 (fail-soft)
+    recordTermsConsent(db, {
+      subjectType: 'agency',
+      subjectId: insertRes.meta?.last_row_id ?? null,
+      userId,
+      slug: 'agency-partner',
+      version: terms_agreed_version as string,
+      coreAgreed: true,
+      ip: c.req.header('CF-Connecting-IP') || null,
+    }).catch(() => null)
 
     // 🛡️ 2026-04-28: 어드민 알림 — 유저→에이전시 전환 신청 (이전 누락).
     createDashboardNotification(

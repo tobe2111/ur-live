@@ -2152,7 +2152,9 @@
       "submitting": "Enviando...",
       "submit": "Solicitar como negocio",
       "secondGate": "💳 La liquidación en efectivo requiere una verificación única de licencia comercial tras la aprobación (Panel → Info del negocio).",
-      "prospectBanner": " la agencia preparó la información de tu tienda. Solo revisa y envía."
+      "prospectBanner": " la agencia preparó la información de tu tienda. Solo revisa y envía.",
+      "termsRequired": "Acepte los Términos de Vendedor",
+      "termsAgree": "Acepto los Términos de Vendedor de UrDeal (v1.0)"
     },
     "mailOrderNumber": "N.º de venta a distancia",
     "mailOrderNumberPlaceholder": "ej. 2026-Seul-01234",
@@ -3444,7 +3446,10 @@
       "brandingDesc": "Regístrate como agencia Ur-Live para gestionar el comercio en vivo de tus vendedores y compartir ganancias.",
       "formTitle": "Solicitud de registro de agencia",
       "formDesc": "Disponible tras la aprobación del administrador",
-      "passwordMismatch": "Las contraseñas no coinciden."
+      "passwordMismatch": "Las contraseñas no coinciden.",
+      "termsRequired": "Acepte los términos de socio y las cláusulas clave",
+      "termsAgree": "Acepto los Términos de Socio de Agencia de UrDeal (v1.0)",
+      "coreAgree": "He revisado y acepto las cláusulas clave anteriores (comisión, liquidación, cambios, terminación)"
     },
     "registerBusiness": {
       "startTitle": "Comenzar como agencia",
@@ -3474,7 +3479,10 @@
       "pageTitle": "Empezar como agencia",
       "kakaoDone": "Inicio de sesión Kakao completado",
       "kakaoHint": "Solo completa la información de agencia para finalizar",
-      "approvalNote": "La aprobación tarda 1-2 días. Después de la aprobación, puedes usar las funciones de agencia con Kakao."
+      "approvalNote": "La aprobación tarda 1-2 días. Después de la aprobación, puedes usar las funciones de agencia con Kakao.",
+      "termsRequired": "Acepte los términos de socio y las cláusulas clave",
+      "termsAgree": "Acepto los Términos de Socio de Agencia de UrDeal (v1.0)",
+      "coreAgree": "He revisado y acepto las cláusulas clave anteriores (comisión, liquidación, cambios, terminación)"
     },
     "settlementsAuto": {
       "autoPayout": "✨ Ya no es necesario solicitar",
@@ -5469,7 +5477,12 @@
     "chipVoucher": "Vales y tarjetas regalo",
     "chipWholesale": "Mayorista (B2B)",
     "kakaoHint": "Sin registros complicados — empieza al instante",
-    "aboutLink": "¿Nuevo en Ur-Deal? Conoce el servicio →"
+    "aboutLink": "¿Nuevo en Ur-Deal? Conoce el servicio →",
+    "termsNotice": "Al iniciar sesión, aceptas los",
+    "termsLink": "Términos de Servicio",
+    "termsAnd": "y la",
+    "privacyLink": "Política de Privacidad",
+    "termsNoticeEnd": ""
   },
   "guide": {
     "sectionTitlePlaceholder": "Título de sección",
