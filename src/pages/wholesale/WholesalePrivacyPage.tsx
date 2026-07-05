@@ -8,11 +8,13 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { WT } from './wholesale-theme'
-import { BUSINESS_INFO } from './WholesaleFooter'
+import { useBusinessInfo, type BusinessInfo } from './WholesaleFooter'
 
 const EFFECTIVE_DATE = '2026년 6월 21일'
 
-const SECTIONS: { title: string; body: string[] }[] = [
+// 🏢 2026-07-04 몰별 사업자정보 — company_json 오버레이 주입(미설정 몰은 기본과 동일).
+function buildSections(BUSINESS_INFO: BusinessInfo): { title: string; body: string[] }[] {
+  return [
   {
     title: '제1조 (총칙)',
     body: [
@@ -104,8 +106,11 @@ const SECTIONS: { title: string; body: string[] }[] = [
     body: [`이 개인정보처리방침은 ${EFFECTIVE_DATE}부터 시행합니다.`],
   },
 ]
+}
 
 export default function WholesalePrivacyPage() {
+  const biz = useBusinessInfo()
+  const SECTIONS = buildSections(biz)
   const navigate = useNavigate()
   return (
     <div className="min-h-[100dvh] pb-24" style={{ background: WT.fill }}>
@@ -119,7 +124,7 @@ export default function WholesalePrivacyPage() {
         </div>
       </header>
       <main className="ur-content-medium px-5 lg:px-8 pt-5">
-        <p className="text-[12.5px] mb-3" style={{ color: WT.ink3 }}>시행일: {EFFECTIVE_DATE} · {BUSINESS_INFO.company}</p>
+        <p className="text-[12.5px] mb-3" style={{ color: WT.ink3 }}>시행일: {EFFECTIVE_DATE} · {biz.company}</p>
         <div className="rounded-2xl p-5 lg:p-8 space-y-6" style={{ background: '#fff', border: '1px solid ' + WT.line }}>
           {SECTIONS.map(sec => (
             <section key={sec.title}>

@@ -74,13 +74,32 @@ function validFeaturesJson(raw: unknown): string | null {
   return Object.keys(out).length ? JSON.stringify(out) : null
 }
 
+/**
+ * 🏢 2026-07-04 몰 회사(푸터) 정보 JSON 정규화 — 평평한 { key: string } 만 허용.
+ *   허용 키 화이트리스트(푸터 표시 항목) + 값 300자 cap. 빈/무효 → null(미설정=기본 BUSINESS_INFO 폴백).
+ */
+const COMPANY_KEYS = ['company', 'ceo', 'bizRegNo', 'mailOrderNo', 'address', 'tel', 'fax', 'csEmail', 'bankName', 'bankNo', 'bankHolder'] as const
+function validCompanyJson(raw: unknown): string | null {
+  let obj: unknown = raw
+  if (typeof raw === 'string') { try { obj = JSON.parse(raw) } catch { return null } }
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null
+  const out: Record<string, string> = {}
+  for (const k of COMPANY_KEYS) {
+    const v = (obj as Record<string, unknown>)[k]
+    if (typeof v !== 'string') continue
+    const s = v.trim().slice(0, 300)
+    if (s) out[k] = s
+  }
+  return Object.keys(out).length ? JSON.stringify(out) : null
+}
+
 // ── GET / — 전체 몰 목록 ──────────────────────────────────────────────────────
 app.get('/', async (c) => {
   const { DB } = c.env
   try {
     await ensureMallSchema(DB)
     const { results } = await DB.prepare(
-      `SELECT id, slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, active, created_at
+      `SELECT id, slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, active, created_at
        FROM wholesale_malls ORDER BY id ASC LIMIT 200`
     ).all()
     return c.json({ success: true, malls: results ?? [] })
@@ -111,6 +130,8 @@ app.post('/', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall-cre
     const license_label = cleanText(body.license_label, 80)
     // 🧩 2026-07-03 몰 기능 토글 JSON (제외 레이어). 최대 2000자. 파싱 검증(잘못된 JSON 은 저장 안 함).
     const features_json = validFeaturesJson(body.features_json)
+    // 🏢 2026-07-04 몰 회사(푸터) 정보 JSON.
+    const company_json = validCompanyJson(body.company_json)
     const active = Number(body.active) === 0 ? 0 : 1
 
     // slug 중복 차단 (UNIQUE 와 정합 — 친절한 메시지).
@@ -118,9 +139,9 @@ app.post('/', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall-cre
     if (dupe) return c.json({ success: false, error: '이미 사용 중인 slug 입니다' }, 409)
 
     const ins = await DB.prepare(
-      `INSERT INTO wholesale_malls (slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, active).run()
+      `INSERT INTO wholesale_malls (slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, active).run()
     const id = Number(ins.meta?.last_row_id)
     if (!id) return c.json({ success: false, error: '몰 생성 중 오류가 발생했습니다' }, 500)
     invalidateMallCache(DB)
@@ -159,6 +180,7 @@ app.patch('/:id', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall
     if ('requires_license' in body) { sets.push('requires_license = ?'); binds.push(Number(body.requires_license) === 1 ? 1 : 0) }
     if ('license_label' in body) { sets.push('license_label = ?'); binds.push(cleanText(body.license_label, 80)) }
     if ('features_json' in body) { sets.push('features_json = ?'); binds.push(validFeaturesJson(body.features_json)) }
+    if ('company_json' in body) { sets.push('company_json = ?'); binds.push(validCompanyJson(body.company_json)) }
     if ('active' in body) {
       const act = Number(body.active) === 0 ? 0 : 1
       // 🔒 INVARIANT 가드: 기본 몰(id=1)은 비활성 금지(전 데이터의 기본 몰 — 비활성 시 카탈로그/배너 전멸).

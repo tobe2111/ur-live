@@ -102,9 +102,11 @@
 - **상권 방문 리워드** (2026-07-05, B2G 상권 패키지 — SSOT `worker/utils/visit-reward.ts`): 캠페인(상권 지역코드·기간·
   지급액·총액 캡) 단위로 그 상권 매장 상품 **첫 구매 확정** 시 무상 딜 1인 1회 지급(UNIQUE claim 멱등 · 캡 도달 자동 종료
   +어드민 알림 · 환불 시 회수). 트리거: group-buy `/join`·`/confirm-toss`. 어드민 `/admin/visit-rewards`.
-- **약관 동의 로그** (2026-07-05, 두 체계 역할 분담): **소비자 상시** = `terms_agreements`(SSOT `worker/utils/terms-agreements.ts`,
-  버전 `shared/constants/terms-versions.ts`, UNIQUE 멱등) — `TermsConsentGate` 카카오 첫 로그인 동의 모달(개정 시 버전 업 → 재동의
-  자동 재발동) + 이메일 가입 `/users/init` 실저장 + `/api/terms/status·agree`. **가입 시점(셀러/에이전시)** = 정본 약관 체계
+- **약관 동의 로그** (2026-07-05, 두 체계 역할 분담 — ⚠️ 유어딜 소비자 서비스 전용, 도매몰/유어애즈는 각자 약관 별개):
+  **소비자(유저)** = 간주 동의(차단 UI 없음, 대표 확정 "자연스럽게") — LoginPage 카카오 버튼 아래 "로그인하면 이용약관·개인정보
+  동의" 고지(약관 제5조) + **신규 가입(첫 로그인) 시점에 1회** `terms_agreements`(SSOT `worker/utils/terms-agreements.ts`, 버전
+  `shared/constants/terms-versions.ts`, UNIQUE 멱등) 서버 기록(kakao.routes isNewUser). 이메일 가입은 체크박스 → `/users/init` 실저장.
+  `/api/terms/status·agree` 는 향후 개정 재동의(비차단 배너)용 대기 인프라. **가입 시점(셀러/에이전시)** = 정본 약관 체계
   `terms_consents`(SSOT `worker/utils/terms-consent.ts` + `TermsConsentBox`) — 셀러 `register-from-user`·에이전시 register 2종
   서버 400 강제(에이전시는 핵심조항 제4·5·9·10조 개별 동의).
 - **유입 소스 어트리뷰션** (2026-07-05 — SSOT `worker/utils/acquisition.ts` + `lib/acquisition.ts`): 시설물 QR/광고 URL 규격

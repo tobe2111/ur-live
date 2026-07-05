@@ -10,7 +10,8 @@ import { safeError } from '@/worker/utils/safe-error'
 import { swallow } from '@/worker/utils/swallow'
 import { ensureSupplyVisibilitySchema, visibilityWhere, gradeExposureWhere } from './supply-visibility'
 import { ensureOrderTables, ensureQtyConstraintSchema, sellerIdFrom, loadGradeTable, loadSellerGrade } from './wholesale-helpers'
-import { loadPlatformCommissionPct } from './wholesale-settlement'
+import { loadMallCommissionPct } from './wholesale-settlement'
+import { sellerMallIdOf } from './wholesale-malls'
 import { ensureTaxDocSchema, renderTaxDocHtml, type TaxDocRow } from './tax-documents'
 import { buildCsv, csvResponse } from './supply-csv'
 import { buildXlsx, xlsxResponse } from './xlsx'
@@ -28,7 +29,8 @@ app.get('/proposals', async (c) => {
       id INTEGER PRIMARY KEY AUTOINCREMENT, distributor_seller_id INTEGER NOT NULL, product_id INTEGER NOT NULL,
       note TEXT, status TEXT NOT NULL DEFAULT 'active', created_at DATETIME DEFAULT (datetime('now'))
     )`).run().catch(swallow('wholesale:ensure-proposals'))
-    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadPlatformCommissionPct(DB)])  // 🏭 병렬. 🛡️ 2026-07-02: commPct(표시=청구 정합)
+    const myMallId = await sellerMallIdOf(DB, sellerId) // 🏬 회원 소속 몰 — 몰별 수수료 기준
+    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMallCommissionPct(DB, myMallId)])  // 🏬 2026-07-04: 몰별 수수료
     const { results } = await DB.prepare(`
       SELECT wp.id, wp.note, wp.created_at, p.id AS product_id, p.name, p.image_url, p.stock,
              COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, p.supply_margin_override_pct AS margin_override
@@ -134,7 +136,8 @@ app.get('/catalog-export', async (c) => {
   const { DB } = c.env
   try {
     await ensureSupplyVisibilitySchema(DB)
-    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadPlatformCommissionPct(DB)])  // 🏭 병렬. 🛡️ 2026-07-02: commPct(표시=청구 정합)
+    const myMallId = await sellerMallIdOf(DB, sellerId) // 🏬 회원 소속 몰 — 몰별 수수료 기준
+    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMallCommissionPct(DB, myMallId)])  // 🏬 2026-07-04: 몰별 수수료
     const rows = await DB.prepare(`
       SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price, p.supply_margin_override_pct AS margin_override
       FROM products p
@@ -167,7 +170,8 @@ app.get('/catalog/export', async (c) => {
   try {
     await ensureSupplyVisibilitySchema(DB)
     await ensureQtyConstraintSchema(DB) // pack_size / order_multiple 컬럼 보장(SELECT 전).
-    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadPlatformCommissionPct(DB)]) // 🛡️ 2026-07-02: commPct(표시=청구 정합)
+    const myMallId = await sellerMallIdOf(DB, sellerId) // 🏬 회원 소속 몰 — 몰별 수수료 기준
+    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMallCommissionPct(DB, myMallId)])  // 🏬 2026-07-04: 몰별 수수료
     const rows = await DB.prepare(`
       SELECT p.id, p.name, p.barcode, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple,
@@ -207,7 +211,8 @@ app.get('/order-template', async (c) => {
   try {
     await ensureSupplyVisibilitySchema(DB)
     await ensureQtyConstraintSchema(DB) // order_multiple 컬럼 보장(SELECT 전).
-    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadPlatformCommissionPct(DB)])  // 🏭 병렬. 🛡️ 2026-07-02: commPct(표시=청구 정합)
+    const myMallId = await sellerMallIdOf(DB, sellerId) // 🏬 회원 소속 몰 — 몰별 수수료 기준
+    const [sg, table, commPct] = await Promise.all([loadSellerGrade(DB, sellerId), loadGradeTable(DB), loadMallCommissionPct(DB, myMallId)])  // 🏬 2026-07-04: 몰별 수수료
     const rows = await DB.prepare(`
       SELECT p.id, p.name, p.category, p.stock, COALESCE(p.supply_price,0) AS supply_price, COALESCE(p.price,0) AS retail_price,
              COALESCE(p.min_order_qty,1) AS moq, COALESCE(p.order_multiple,1) AS order_multiple,

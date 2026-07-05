@@ -732,6 +732,18 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
           }
         } catch { /* fail-soft */ }
 
+        // 📜 2026-07-05 (대표 "회원가입 시 1회 — 자연스럽게"): 간주 동의 서버 기록.
+        //   LoginPage 가 카카오 버튼 아래에 "로그인하면 이용약관·개인정보처리방침에 동의" 를
+        //   고지(약관 제5조)하므로, 동의 성립 시점 = 신규 가입(첫 로그인)에 버전 포함 증적을
+        //   1회 남긴다. 차단 UI 없음 — fail-soft·멱등(UNIQUE), 기존 유저 재로그인은 이 블록 미진입.
+        try {
+          const { recordTermsAgreements } = await import('../../../worker/utils/terms-agreements');
+          await recordTermsAgreements(c.env.DB, 'user', String(user.id), [
+            { doc_type: 'service', agreed: true },
+            { doc_type: 'privacy', agreed: true },
+          ]);
+        } catch { /* fail-soft */ }
+
         // 🛡️ 2026-05-01: Option B — 같은 카카오로 재가입이면 복원 동의 안내.
         //   30일 내 탈퇴 기록 있으면 'restorable=1&restored_user_id=X' 부착.
         //   프론트가 복원 동의 모달 표시 → 동의 시 /api/account/restore 호출.
