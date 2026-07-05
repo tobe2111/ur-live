@@ -5278,7 +5278,8 @@
     "sharedShareTitle": "推荐这款商品！",
     "sharedShareDesc": "在Urdeal发现了好商品",
     "sharedShareBtn": "查看商品",
-    "sellerReplyLabel": "卖家回复"
+    "sellerReplyLabel": "卖家回复",
+    "sponsoredBadge": "体验提供"
   },
   "productOption": {
     "title": "商品选项管理",

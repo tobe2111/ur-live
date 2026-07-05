@@ -5278,7 +5278,8 @@
     "sharedShareTitle": "Je recommande ce produit !",
     "sharedShareDesc": "J'ai trouvé un super produit sur Urdeal",
     "sharedShareBtn": "Voir le produit",
-    "sellerReplyLabel": "Réponse du vendeur"
+    "sellerReplyLabel": "Réponse du vendeur",
+    "sponsoredBadge": "Sponsorisé"
   },
   "productOption": {
     "title": "Gestion des options produit",

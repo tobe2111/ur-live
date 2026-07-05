@@ -5278,7 +5278,8 @@
     "sharedShareTitle": "この商品、おすすめです！",
     "sharedShareDesc": "Urdealで素晴らしい商品を見つけました",
     "sharedShareBtn": "商品を見る",
-    "sellerReplyLabel": "販売者の返信"
+    "sellerReplyLabel": "販売者の返信",
+    "sponsoredBadge": "体験提供"
   },
   "productOption": {
     "title": "商品オプション管理",

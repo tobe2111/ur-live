@@ -5524,7 +5524,8 @@
     "sharedShareTitle": "이 상품 추천해요!",
     "sharedShareDesc": "유어딜에서 좋은 상품을 발견했어요",
     "sharedShareBtn": "상품 보러가기",
-    "sellerReplyLabel": "판매자 답글"
+    "sellerReplyLabel": "판매자 답글",
+    "sponsoredBadge": "체험 제공"
   },
   "productOption": {
     "title": "상품 옵션 관리",
