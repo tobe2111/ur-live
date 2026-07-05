@@ -634,6 +634,7 @@ Pre-commit hook 이 다음 파일 변경 시 `guide-seed.ts` 동시 수정 검�
 - 자주 틀리는 컬럼 alias: `stock` / `is_active` / `credit_amount`
 - orders.status: 대문자 (`PAID`, `DONE`, …) / payment_status: 소문자 (`approved`, …)
 - 🛡️ **products 컬럼 추가 금지(예산제, 2026-06-10)**: 새 도매/브랜드/전시 메타는 `product_supply_meta`(K-V 사이드테이블, `src/worker/utils/product-supply-meta.ts`) 사용. products ALTER 가 정말 필요하면 `scripts/products-column-baseline.json` 에 등록 + PR 사유 — CI 가 차단함
+- 🛡️ **sellers 컬럼 추가 금지(2026-07-05 — 한도 도달)**: sellers 는 **정확히 100컬럼 = D1 결과셋 한도**. 새 셀러 메타/설정/플래그는 `seller_meta`(K-V 사이드테이블, `src/worker/utils/seller-meta.ts` — product_supply_meta 미러) 사용. ALTER 는 `scripts/sellers-column-baseline.json` 등록 필요 — CI 차단
 - 검증: `bash scripts/check-schema-refs.sh`
 
 ## 🔒 API 엔드포인트 보안 규칙 (필수)
