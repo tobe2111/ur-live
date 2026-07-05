@@ -620,7 +620,15 @@ export default function GroupBuyDetailPage() {
 
         {/* 타이틀 */}
         <div style={{ padding: '20px 18px 0' }}>
-          {detail.restaurant_name && <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-accent)', letterSpacing: '.01em' }}>{detail.restaurant_name} · 정식 등록 매장</div>}
+          {detail.restaurant_name && (
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-accent)', letterSpacing: '.01em' }}>
+              {detail.restaurant_name} · 정식 등록 매장
+              {/* 🏪 2026-07-05 온누리 가맹 뱃지 (B2G — "온누리 사용 가능 표시" 약속) */}
+              {(detail as { onnuri_merchant?: boolean }).onnuri_merchant && (
+                <span className="ml-1.5 px-1.5 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold align-middle">온누리 사용 가능</span>
+              )}
+            </div>
+          )}
           <h1 style={{ margin: '7px 0 0', fontSize: 22, lineHeight: 1.34, fontWeight: 800, letterSpacing: '-.025em', color: 'var(--gbd-ink)' }}>{detail.name}</h1>
           {(detail.restaurant_address || detail.restaurant_phone) && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginTop: 12 }}>

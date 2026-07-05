@@ -324,7 +324,23 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       }
     } catch { /* fail-soft — 클라 useFcfs 훅이 폴백 */ }
 
-    return c.json({ success: true, data: withFcfs })
+    // 🏪 2026-07-05 온누리 가맹 뱃지 (B2G — "온누리 사용 가능 표시" 약속): seller_meta.onnuri_merchant='1'
+    //   인 매장 상품에 onnuri_merchant: true 를 additive enrich — fcfs/current_price enrich 와 동일 패턴
+    //   (캐시키/헤더/기존 필드 불변, fail-soft).
+    let withOnnuri = withFcfs
+    try {
+      const sellerIds = [...new Set(withFcfs.map((p) => Number((p as { seller_id?: number }).seller_id)).filter((n) => Number.isFinite(n) && n > 0))]
+      if (sellerIds.length > 0) {
+        const { getSellerMeta } = await import('../../../worker/utils/seller-meta')
+        const metaMap = await getSellerMeta(DB, sellerIds)
+        const onnuriSet = new Set([...metaMap.entries()].filter(([, r]) => r.onnuri_merchant === '1').map(([sid]) => sid))
+        if (onnuriSet.size > 0) {
+          withOnnuri = withFcfs.map((p) => (onnuriSet.has(Number((p as { seller_id?: number }).seller_id)) ? { ...p, onnuri_merchant: true } : p))
+        }
+      }
+    } catch { /* fail-soft */ }
+
+    return c.json({ success: true, data: withOnnuri })
   })
 
   // 🛡️ 2026-06-10 (사용자 신고 — 교환권 상세 500 전수 재현): 어드민 전용 단계별 진단.
@@ -490,6 +506,16 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const max_per_person = mppRaw != null && Number.isFinite(Number(mppRaw)) && Number(mppRaw) > 0 ? Math.floor(Number(mppRaw)) : null
     // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 등록 시 캡처한 place_url (있으면 상세 지도가 직접 연결).
     const kakao_place_url = normalizeKakaoPlaceUrl(metaMap?.get(Number(id))?.kakao_place_url)
+    // 🏪 2026-07-05 온누리 가맹 뱃지 (B2G): seller_meta.onnuri_merchant='1' 이면 상세에 additive 동봉.
+    let onnuri_merchant = false
+    try {
+      const sid = Number((product as { seller_id?: number }).seller_id)
+      if (Number.isFinite(sid) && sid > 0) {
+        const { getSellerMeta } = await import('../../../worker/utils/seller-meta')
+        const sm = await getSellerMeta(DB, [sid])
+        onnuri_merchant = sm.get(sid)?.onnuri_merchant === '1'
+      }
+    } catch { /* fail-soft */ }
 
     return c.json({
       success: true,
@@ -503,6 +529,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         ...(menu ? { menu } : {}),                // 🍽️ #5: 대표 메뉴 (있을 때만)
         ...(max_per_person ? { max_per_person } : {}),  // 🎯 1인당 구매 한도 (있을 때만)
         ...(kakao_place_url ? { kakao_place_url } : {}),  // 🎯 카카오 장소 페이지 URL (있을 때만)
+        ...(onnuri_merchant ? { onnuri_merchant: true } : {}),  // 🏪 온누리 가맹 매장 (있을 때만)
       },
     })
     } catch (err) {

@@ -13,6 +13,7 @@ export interface BusinessInfo {
   address: string
   address_detail: string
   mail_order_number?: string | null // 🖼️ 2026-07-01 통신판매업신고번호 (side-table 컬럼)
+  onnuri_merchant?: boolean // 🏪 2026-07-05 온누리상품권 가맹 (seller_meta K-V)
   phone: string
   email: string
   is_verified: boolean
@@ -39,4 +40,5 @@ export interface BusinessFormData {
   mail_order_number: string // 🖼️ 2026-07-01 통신판매업신고번호
   phone: string
   email: string
+  onnuri_merchant: boolean // 🏪 2026-07-05 온누리상품권 가맹 여부 (동네딜 카드/상세 뱃지)
 }
