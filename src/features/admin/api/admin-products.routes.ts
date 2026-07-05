@@ -974,7 +974,102 @@ const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest:
   //   ① 홈/동네딜 어디에도 '일반' 칩이 없고 기본 피드 쿼리도 이용권 4종만이라 소비자 정상 접근 불가(유령),
   //   ② 상세가 쇼핑 UI(/products, 장바구니·배송)로 열리는데 쇼핑탭은 잠정 숨김 — "동네딜=우리 동네 매장"
   //   멘탈모델만 흐림. 동네딜 데모 = 로컬 이용권만. (기존 시드분은 아래 heal 패스가 자동 은퇴.)
+  // ⚠️ 2026-07-05: 이 배열은 **레거시 desc-heal 매칭 전용**으로만 유지 — 시드는 아래 생성형
+  //   DEMO_BIZ(업종 문법)로 전환(대표 "고정 템플릿 말고 랜덤으로 뽑아와야").
 ];
+
+// 🎲 2026-07-05 (대표 "40종 고정이 아니라 랜덤으로 뽑아와야 — 뭐가 이상적?"): **생성형 데모 문법**.
+//   방향 역전: 상품을 정해놓고 매장을 찾는 게 아니라, 카카오에서 그 업종 실매장을 **랜덤으로 뽑고**
+//   그 매장에 맞는 오퍼(구성·가격·할인)를 조합 생성. 업종(28) × 패턴(2~3) × 가격밴드 × 할인 25~45%
+//   × 실매장(지역별 수십 곳 랜덤) × 실사진(매장명 검색) = 사실상 무한 조합, 같은 상품 반복 소멸.
+interface DemoOfferPattern { n: string; d: string; min: number; max: number }
+interface DemoBiz { pq: string; cat: string; iq?: string; pat: DemoOfferPattern[] }
+const DEMO_BIZ: DemoBiz[] = [
+  { pq: '삼겹살', cat: 'meal_voucher', pat: [
+    { n: '숙성 삼겹살 2인 세트 (된찌 포함)', d: '숙성 삼겹살 2인 + 된장찌개 + 볶음밥 마무리. 숯불에 구워드립니다.', min: 26000, max: 38000 },
+    { n: '삼겹살 500g + 김치찌개', d: '두툼한 삼겹살 500g 과 김치찌개. 셀프바 반찬 무제한.', min: 22000, max: 32000 } ] },
+  { pq: '한우', cat: 'meal_voucher', pat: [
+    { n: '한우 모둠 2인 스페셜', d: '등심·살치·안심 모둠 2인. 직원이 부위별로 구워드립니다.', min: 69000, max: 98000 },
+    { n: '한우 런치 정식 2인', d: '한우 불고기 정식 2인 런치 구성. 평일 점심 방문.', min: 32000, max: 45000 } ] },
+  { pq: '스시', cat: 'meal_voucher', pat: [
+    { n: '초밥 오마카세 런치 코스', d: '셰프 추천 니기리 12점 런치 오마카세. 카운터석 진행, 예약 우선.', min: 39000, max: 65000 },
+    { n: '모둠초밥 2인 세트 (우동 포함)', d: '모둠초밥 2인 + 미니우동. 당일 손질 재료만 사용합니다.', min: 28000, max: 42000 } ] },
+  { pq: '파스타', cat: 'meal_voucher', pat: [
+    { n: '파스타 + 리조또 2인 세트', d: '파스타 1 + 리조또 1 + 샐러드. 소스는 매일 매장에서 만듭니다.', min: 24000, max: 36000 } ] },
+  { pq: '화덕피자', cat: 'meal_voucher', pat: [
+    { n: '화덕피자 + 파스타 2인 세트', d: '화덕에서 구운 피자 1판 + 파스타 1개. 방문 시 이용권 QR 제시.', min: 24000, max: 35000 } ] },
+  { pq: '카페', cat: 'meal_voucher', iq: '카페 디저트', pat: [
+    { n: '음료 2잔 + 시그니처 디저트', d: '음료 2잔과 시그니처 디저트 1개. 매장 좌석 이용 가능.', min: 11000, max: 17000 },
+    { n: '핸드드립 2잔 + 오늘의 디저트', d: '스페셜티 핸드드립 2잔 + 오늘의 디저트. 원두 설명과 함께.', min: 12000, max: 19000 } ] },
+  { pq: '브런치 카페', cat: 'meal_voucher', iq: '브런치 플레이트', pat: [
+    { n: '주말 브런치 2인 세트', d: '브런치 플레이트 택2 + 아메리카노 2잔. 주말 방문 가능.', min: 24000, max: 36000 } ] },
+  { pq: '쌀국수', cat: 'meal_voucher', pat: [
+    { n: '쌀국수 + 분짜 2인 세트', d: '양지 쌀국수 2 + 분짜 1. 육수는 매일 아침 우려냅니다.', min: 17000, max: 26000 } ] },
+  { pq: '마라탕', cat: 'meal_voucher', pat: [
+    { n: '마라탕 2인 + 꿔바로우', d: '재료 자유 선택 마라탕 2인 + 꿔바로우(중). 맵기 조절 가능.', min: 21000, max: 30000 } ] },
+  { pq: '돈까스', cat: 'meal_voucher', pat: [
+    { n: '수제 돈까스 정식 2인', d: '저온숙성 등심 돈까스 정식 2인. 매일 아침 빵가루를 입힙니다.', min: 18000, max: 27000 } ] },
+  { pq: '족발', cat: 'meal_voucher', pat: [
+    { n: '족발 中 + 막국수 세트', d: '쫄깃한 앞다리 족발(中) + 비빔막국수. 포장도 가능.', min: 29000, max: 41000 } ] },
+  { pq: '치킨', cat: 'meal_voucher', pat: [
+    { n: '치킨 + 생맥주 2잔 세트', d: '반반 치킨 + 생맥주 500cc 2잔. 매장 취식 전용.', min: 17000, max: 25000 } ] },
+  { pq: '국밥', cat: 'meal_voucher', pat: [
+    { n: '국밥 2인 + 수육 小', d: '진한 국밥 2그릇 + 수육 한 접시. 매일 직접 끓입니다.', min: 19000, max: 28000 } ] },
+  { pq: '곱창', cat: 'meal_voucher', pat: [
+    { n: '곱창 모둠 2인 + 볶음밥', d: '곱창·대창 모둠 2인 + 마무리 볶음밥. 당일 손질 국내산.', min: 34000, max: 49000 } ] },
+  { pq: '베이커리', cat: 'meal_voucher', iq: '베이커리 빵', pat: [
+    { n: '베이커리 인기빵 6종 박스', d: '당일 구운 인기 빵 6종. 매장에서 직접 골라 담으세요.', min: 13000, max: 19000 } ] },
+  { pq: '샤브샤브', cat: 'meal_voucher', pat: [
+    { n: '샤브샤브 2인 (야채바 포함)', d: '소고기 샤브샤브 2인 + 야채바. 마무리 죽 포함.', min: 30000, max: 44000 } ] },
+  { pq: '미용실', cat: 'beauty_voucher', iq: '미용실 인테리어', pat: [
+    { n: '프리미엄 커트 + 두피 샴푸', d: '1:1 맞춤 컨설팅 커트 + 두피 마사지 샴푸. 디자이너 지명 가능.', min: 20000, max: 35000 },
+    { n: '뿌리염색 + 손상모 클리닉', d: '뿌리염색 + 클리닉 패키지. 저자극 염모제 사용, 예약 우선.', min: 39000, max: 65000 } ] },
+  { pq: '네일샵', cat: 'beauty_voucher', iq: '젤네일 아트', pat: [
+    { n: '젤네일 풀케어 + 이달의 아트', d: '젤네일 풀케어와 이달의 아트. 큐티클 정리·영양 마무리 포함.', min: 29000, max: 48000 } ] },
+  { pq: '속눈썹', cat: 'beauty_voucher', iq: '속눈썹 연장', pat: [
+    { n: '속눈썹 연장 풀세트 + 리터치', d: '풀세트 연장 + 2주 내 리터치 1회. 시술 약 90분, 예약제.', min: 25000, max: 45000 } ] },
+  { pq: '왁싱샵', cat: 'beauty_voucher', iq: '왁싱샵 인테리어', pat: [
+    { n: '브라질리언 왁싱 1회', d: '1회용 위생 재료만 사용. 100% 예약제, 개인 룸 진행.', min: 29000, max: 45000 },
+    { n: '전신 왁싱 패키지', d: '전신 왁싱 풀 패키지. 마무리 진정 관리 포함, 예약제.', min: 45000, max: 75000 } ] },
+  { pq: '피부관리', cat: 'beauty_voucher', iq: '피부관리 에스테틱', pat: [
+    { n: '진정 광채 관리 1회 (60분)', d: '클렌징 → 진정 앰플 → 광채 마스크 풀코스. 민감성도 가능.', min: 33000, max: 59000 } ] },
+  { pq: '마사지', cat: 'beauty_voucher', iq: '마사지샵', pat: [
+    { n: '아로마 전신 마사지 60분', d: '아로마 오일 전신 관리 60분. 개인 룸, 100% 예약제.', min: 42000, max: 69000 } ] },
+  { pq: '애견미용', cat: 'etc_voucher', iq: '강아지 미용', pat: [
+    { n: '반려견 종합 미용 (목욕+커트)', d: '목욕 + 전체 커트(소형견 기준). 중·대형견은 매장 문의.', min: 30000, max: 48000 } ] },
+  { pq: '클라이밍', cat: 'etc_voucher', iq: '실내 클라이밍', pat: [
+    { n: '클라이밍 1일권 + 초보 강습', d: '1일 이용권 + 강습 30분 + 암벽화·초크 대여 포함.', min: 16000, max: 25000 } ] },
+  { pq: '필라테스', cat: 'etc_voucher', iq: '기구 필라테스', pat: [
+    { n: '기구 필라테스 체험 2회', d: '리포머 기구 체험 2회. 소수정원 강사 밀착 지도.', min: 25000, max: 42000 } ] },
+  { pq: '헬스장', cat: 'etc_voucher', iq: '헬스장 PT', pat: [
+    { n: 'PT 체험 2회 + 인바디', d: '1:1 PT 2회 + 인바디 측정·식단 상담. 초보 환영.', min: 29000, max: 49000 } ] },
+  { pq: '요가원', cat: 'etc_voucher', iq: '요가 수업', pat: [
+    { n: '요가 3회 체험권', d: '하타·빈야사 자유 수강 3회. 매트 무료 대여.', min: 24000, max: 39000 } ] },
+  { pq: '방탈출', cat: 'etc_voucher', iq: '방탈출 카페', pat: [
+    { n: '방탈출 2인 이용권', d: '테마 자유 선택 2인. 난이도별 테마 보유, 예약 후 방문.', min: 20000, max: 32000 } ] },
+  { pq: '사진관', cat: 'etc_voucher', iq: '프로필 사진 스튜디오', pat: [
+    { n: '프로필 촬영 + 보정 2컷', d: '개인 프로필 30분 촬영 + 고급 보정 2컷. 의상 1벌 교체 가능.', min: 39000, max: 69000 } ] },
+  { pq: '셀프사진관', cat: 'etc_voucher', iq: '셀프사진관 부스', pat: [
+    { n: '셀프사진 2인 (소품 무제한)', d: '부스 촬영 + 인화 2매 + 소품 무제한. 데이트 코스로 인기.', min: 10000, max: 16000 } ] },
+  { pq: '볼링장', cat: 'etc_voucher', iq: '볼링장', pat: [
+    { n: '볼링 2게임 + 대여화 (2인)', d: '2인 2게임 + 볼링화 대여 포함. 주말 저녁도 사용 가능.', min: 15000, max: 24000 } ] },
+  { pq: '스크린골프', cat: 'etc_voucher', iq: '스크린골프', pat: [
+    { n: '스크린골프 2시간 (2인)', d: '룸 2시간 + 음료 2잔. 초보 레슨 모드 지원.', min: 26000, max: 42000 } ] },
+  { pq: '만화카페', cat: 'etc_voucher', iq: '만화카페 내부', pat: [
+    { n: '만화카페 4시간 + 음료 2잔', d: '프라이빗 룸 4시간 + 음료 2잔. 신간 매주 입고.', min: 12000, max: 19000 } ] },
+  { pq: '도자기공방', cat: 'etc_voucher', iq: '도자기 공방 클래스', pat: [
+    { n: '도자기 원데이 클래스 2인', d: '물레 체험 + 소품 1개 제작. 완성품은 2주 후 수령.', min: 34000, max: 55000 } ] },
+];
+// 미지정 지역 시드 시 검색 앵커를 서울 전역에 분산(로테이션 대신 랜덤 구).
+const DEMO_GUS = ['강남구', '서초구', '송파구', '마포구', '성동구', '용산구', '영등포구', '광진구', '종로구', '중구', '강동구', '동작구', '관악구', '서대문구', '노원구'];
+// 오퍼 랜덤 조합: 패턴 → 가격(밴드 내 100원 단위) → 할인 25~45% 역산 정가.
+function buildDemoOffer(t: DemoBiz): { name: string; desc: string; price: number; orig: number; q: string } {
+  const p = t.pat[Math.floor(Math.random() * t.pat.length)];
+  const price = Math.round((p.min + Math.random() * (p.max - p.min)) / 100) * 100;
+  const disc = 0.25 + Math.random() * 0.2;
+  const orig = Math.round(price / (1 - disc) / 1000) * 1000;
+  return { name: p.n, desc: p.d, price, orig, q: t.iq || t.pq };
+}
 
 // 🎯 2026-07-01 (대표 "데모 이용권도 매장 지도 매칭 제대로"): 데모 매장은 가공 이름 + 번지 없는 주소라
 //   좌표/place_url 이 없음 → 카카오 키워드 검색으로 실제 매장의 좌표·주소·place_url 을 붙여 지도 매칭 정상화.
@@ -1006,7 +1101,7 @@ async function resolveRegionCenter(
 async function kakaoPlaceLookup(
   env: { KAKAO_REST_API_KEY?: string },
   query: string,
-  pickIndex = 0,  // 🎯 여러 실매장 중 로테이션 선택(누적 시드 시 매번 다른 실매장 = "랜덤" 다양성)
+  pickIndex = 0,  // 🎯 여러 실매장 중 로테이션 선택 / -1 = 완전 랜덤(랜덤 페이지 + 랜덤 후보)
   center?: { x: string; y: string } | null,  // 🎯 지역 중심좌표 — 있으면 반경 검색 + 거리순(정확도 ↑)
 ): Promise<{ name: string | null; address: string | null; lat: number | null; lng: number | null; placeUrl: string | null } | null> {
   const key = env.KAKAO_REST_API_KEY;
@@ -1014,14 +1109,18 @@ async function kakaoPlaceLookup(
   try {
     // size 넉넉히(15) → 실제 존재하는 매장 후보 확보 후 pickIndex 로 회전 선택(대표 "카카오맵에서 랜덤/필터로 매장 선정").
     //   center 지정 시 그 좌표 반경 20km 내를 거리순으로 → 지역 정확도 극대화(문자열 이어붙이기 대비).
-    let url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query.trim())}&size=15`;
+    // 🎲 2026-07-05 (대표 "랜덤으로 뽑아와야"): pickIndex=-1 이면 페이지(1~3)·후보 모두 랜덤 —
+    //   같은 업종을 여러 번 시드해도 매번 다른 실매장.
+    const randomMode = pickIndex < 0;
+    const page = randomMode ? 1 + Math.floor(Math.random() * 3) : 1;
+    let url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query.trim())}&size=15&page=${page}`;
     if (center) url += `&x=${center.x}&y=${center.y}&radius=20000&sort=distance`;
     const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
     if (!res.ok) return null;
     const data = await res.json() as { documents?: Array<{ place_name?: string; road_address_name?: string; address_name?: string; x?: string; y?: string; id?: string; place_url?: string }> };
     const docs = data?.documents || [];
     if (!docs.length) return null;
-    const doc = docs[pickIndex % docs.length];
+    const doc = randomMode ? docs[Math.floor(Math.random() * docs.length)] : docs[pickIndex % docs.length];
     if (!doc) return null;
     const lat = Number(doc.y), lng = Number(doc.x);
     return {
@@ -1093,8 +1192,9 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as { region?: string; category?: string };
     const region = String(body.region || '').trim().slice(0, 30);
     const catFilter = mapDealCategory(String(body.category || '').trim());
-    const items = catFilter ? DEAL_DEMO.filter((d) => d.cat === catFilter) : DEAL_DEMO;
-    if (items.length === 0) return c.json({ success: false, error: '해당 카테고리 데모 템플릿이 없습니다' }, 400);
+    // 🎲 2026-07-05: 시드 소스 = 생성형 업종 문법(DEMO_BIZ). DEAL_DEMO 는 레거시 heal 매칭 전용.
+    const types = catFilter ? DEMO_BIZ.filter((t) => t.cat === catFilter) : DEMO_BIZ;
+    if (types.length === 0) return c.json({ success: false, error: '해당 카테고리 데모 업종이 없습니다' }, 400);
 
     // 🛡️ 2026-07-02 v2 (라이브 콘솔 증거로 방향 전환): v1 은 phinf/http 원본을 search.pstatic
     //   프록시로 감쌌으나 **그 프록시가 404**(imgnews·yt3 등 외부발 src 거부 — 콘솔 실측).
@@ -1150,27 +1250,19 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       const m = suffixRe.exec(String(row.slug || ''));
       if (m) maxSuffix = Math.max(maxSuffix, Number(m[1]));
     }
-    // 🖼️ 실사진: 네이버 이미지검색(전 단계 search.pstatic 프록시 — 인증서 깨짐 구조적 0).
-    //   실패/키없음 → picsum 폴백. 로테이션 인덱스 = 누적 시드 동일 사진/매장 중복 완화.
-    const batchIndex = Math.floor(maxSuffix / items.length);
-    // 🔁 2026-07-04 (대표 "계속 생성해야 하는데"): count(1~24) 만큼 멀티 패스 — 패스마다 로테이션
-    //   인덱스를 올려 **같은 템플릿이라도 다른 실매장·다른 실사진**으로 생성. 미지정 시 기존 1패스(8종).
-    //   상한 24 = 상품당 외부요청 ~4회(네이버검색+다운로드+R2+카카오) × 24 ≈ 100 서브요청 안전선.
     // 🔁 2026-07-04 (대표 "계속 생성" + "왜 개수가 제각각?"): count(1~24, 기본 8) 를 **정확히 채울 때까지**
-    //   라운드 보충(최대 3라운드) — 실매장 미매칭/중복매장 스킵분을 다음 로테이션의 다른 실매장으로 메꿈.
+    //   라운드 보충(최대 3라운드) — 실매장 미매칭/중복매장 스킵분을 다른 랜덤 매장으로 메꿈.
     //   그 지역 실매장 후보가 고갈될 때만 목표 미달(skipped 표기).
-    const reqCount = Math.max(1, Math.min(24, Math.round(Number((body as { count?: unknown }).count)) || items.length));
+    const reqCount = Math.max(1, Math.min(24, Math.round(Number((body as { count?: unknown }).count)) || 8));
     const { fetchNaverImageUrl } = await import('../../../worker/utils/naver-image-search');
     // 🎯 실제 매장 매칭(카카오): region 을 중심좌표로 1회 해석 → 그 반경 내 거리순 검색(정확도 ↑).
-    //   center 있으면 검색어는 순수 업종(pq)만(지역명은 좌표로 반영), 없으면 "지역 pq" 문자열 폴백.
+    //   center 있으면 검색어는 순수 업종(pq)만(지역명은 좌표로 반영), 없으면 "지역 랜덤구 pq" 폴백.
     const regionCenter = region ? await resolveRegionCenter(c.env, region) : null;
-    let passCursor = 0;
-    const nextWork = (need: number): Array<{ d: (typeof items)[number]; rot: number }> => {
-      const w: Array<{ d: (typeof items)[number]; rot: number }> = [];
-      while (w.length < need) {
-        for (const d of items) { if (w.length >= need) break; w.push({ d, rot: batchIndex + passCursor }); }
-        passCursor++;
-      }
+    // 🎲 업종을 셔플해서 need 만큼 — 한 배치 안에서 업종이 최대한 안 겹치고, 부족하면 순환.
+    const nextWork = (need: number): Array<{ t: DemoBiz }> => {
+      const shuffled = [...types].sort(() => Math.random() - 0.5);
+      const w: Array<{ t: DemoBiz }> = [];
+      for (let i = 0; i < need; i++) w.push({ t: shuffled[i % shuffled.length] });
       return w;
     };
     // 🎯 2026-07-01 (대표 요청): 데모 딜을 추첨 응모(fcfs)로 — 정원 대비 지원수가 이미 넘치게(30/5, 10/3 …).
@@ -1193,44 +1285,58 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     let skipped = 0;  // 🎯 좌표·실사진 둘 다 없어 생성하지 않은 데모 수
     // 🎯 2026-07-03 (대표 "데모 리뷰가 매장 특색에 안 맞음"): 시드된 데모의 매장특색 리뷰 생성 대상.
     const seededForReviews: Array<{ id: number; name: string; category: string; storeName: string | null; price: number }> = [];
-    // 🔁 같은 호출 내 동일 매장 중복 생성 방지(멀티 패스에서 후보 부족 시 같은 매장이 재등장할 수 있음).
+    // 🔁 같은 호출 내 + **기존 시드분과도** 동일 매장 중복 생성 방지 — DB 의 기존 데모 매장을 선적재.
     const usedStores = new Set<string>();
+    try {
+      const prev = await DB.prepare(
+        `SELECT restaurant_name, restaurant_address FROM products WHERE slug LIKE ?`
+      ).bind(DEAL_DEMO_SLUG + '%').all<{ restaurant_name: string | null; restaurant_address: string | null }>();
+      for (const r of (prev.results || [])) usedStores.add(`${r.restaurant_name || ''}|${r.restaurant_address || ''}`);
+    } catch { /* best-effort */ }
     let slugCursor = maxSuffix;  // 누적 추가 — 기존 번호 다음부터, 실제 INSERT 시에만 증가(라운드 무관 충돌 0)
     for (let round = 0; round < 3 && seeded < reqCount; round++) {
       const work = nextWork(reqCount - seeded);
+      // 🎲 1단계: 실매장 랜덤 매칭 먼저(랜덤 페이지·랜덤 후보) — region 미지정이면 서울 랜덤 구로 분산.
+      const resolvedPlaces = await Promise.all(
+        work.map((w) => kakaoPlaceLookup(
+          c.env,
+          regionCenter ? w.t.pq : `서울 ${DEMO_GUS[Math.floor(Math.random() * DEMO_GUS.length)]} ${w.t.pq}`,
+          -1,  // 랜덤 모드
+          regionCenter,
+        ).catch(() => null))
+      );
+      // 🖼️ 2단계: **그 매장 이름으로** 실사진 검색(진짜 그 가게 사진 확률 ↑) → 실패 시 업종 일반 사진 폴백.
       const resolvedImgs = await Promise.all(
-        work.map((w) => fetchNaverImageUrl(c.env, w.d.q, w.rot).catch(() => null))
+        work.map((w, i) => resolvedPlaces[i]?.name
+          ? fetchNaverImageUrl(c.env, `${resolvedPlaces[i]!.name} ${w.t.pq}`, 0)
+              .then((u) => u || fetchNaverImageUrl(c.env, w.t.iq || w.t.pq, Math.floor(Math.random() * 8)))
+              .catch(() => null)
+          : Promise.resolve(null))
       );
       // 🎯 2026-07-03: 검색된 실사진을 우리 R2 로 재호스팅 → 저장 URL 은 항상 우리 도메인(/api/media/…).
       const validImgs = await Promise.all(
         resolvedImgs.map((u) => rehostImageToR2(c.env as unknown as { MEDIA_BUCKET?: R2Bucket }, u)),
       );
-      const resolvedPlaces = await Promise.all(
-        work.map((w) => (w.d.pq || w.d.addr || region)
-          ? kakaoPlaceLookup(c.env, regionCenter ? w.d.pq : `${region || w.d.addr} ${w.d.pq}`.trim(), w.rot, regionCenter).catch(() => null)
-          : Promise.resolve(null))
-      );
       for (let i = 0; i < work.length && seeded < reqCount; i++) {
-        const d = work[i].d;
+        const t = work[i].t;
         const realPhoto = validImgs[i];               // 검증 통과 실사진(없으면 null)
         if (realPhoto) realPhotos++;
-        // 🎯 실제 매장 매칭 성공 시 그 매장의 이름/주소/좌표 사용(지도 정확).
         const place = resolvedPlaces[i];
         const hasCoord = place?.lat != null;
         if (hasCoord) placed++;
         // 🎯 2026-07-03 (대표 "데모는 실제 있는 매장이어야 해"): 카카오 실매장 매칭 실패 = 생성 안 함(스킵).
         if (!hasCoord) { skipped++; continue; }
         const storeKey = `${place?.name || ''}|${place?.address || ''}`;
-        if (usedStores.has(storeKey)) { skipped++; continue; }  // 같은 호출 내 같은 매장 재사용 방지
+        if (usedStores.has(storeKey)) { skipped++; continue; }  // 같은/이전 배치 매장 재사용 방지
         usedStores.add(storeKey);
-        const img = realPhoto || d.img;               // 실사진(R2) 우선, 없으면 깨끗한 picsum 폴백
-        const restName = place?.name || d.rest || null;   // hasCoord 보장 → 항상 실매장명
-        const restAddr = place?.address || d.addr || null;
-        // 🎯 상품명 지역 프리픽스 = 지정 region 우선, 없으면 실매장 주소의 구/시(가공 "[강남]" 오표기 방지).
+        // 🎲 3단계: 그 매장에 맞는 오퍼 랜덤 조합(패턴×가격밴드×할인 25~45%).
+        const offer = buildDemoOffer(t);
+        const img = realPhoto || `https://picsum.photos/seed/urdeal-${t.pq}-${slugCursor + 1}/600/600`;
+        const restName = place?.name || null;         // hasCoord 보장 → 항상 실매장명
+        const restAddr = place?.address || null;
+        // 🎯 상품명 지역 프리픽스 = 지정 region 우선, 없으면 실매장 주소의 구/시.
         const realRegion = region || (place?.address ? (place.address.match(/([가-힣]+구|[가-힣]+시)/)?.[1] || '') : '');
-        const dispName = realRegion
-          ? (/^\[[^\]]+\]/.test(d.name) ? d.name.replace(/^\[[^\]]+\]/, `[${realRegion}]`) : `[${realRegion}] ${d.name}`)
-          : d.name.replace(/^\[[^\]]+\]\s*/, '');  // 지역 못 구하면 프리픽스 제거(가공 지역 표기 금지)
+        const dispName = realRegion ? `[${realRegion}] ${offer.name}` : offer.name;
         const slug = DEAL_DEMO_SLUG + (++slugCursor);
         let res;
         try {
@@ -1238,23 +1344,24 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
             `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
                is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, restaurant_lat, restaurant_lng, slug, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
-          ).bind(dispName, d.desc, d.price, d.orig, img, d.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, slug).run();
+          ).bind(dispName, offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, place?.lat ?? null, place?.lng ?? null, slug).run();
         } catch {
           // 🛡️ restaurant_lat/lng 컬럼 미존재 환경 폴백 — 좌표 없이 시드(클라 지오코딩이 지도 보정).
           res = await DB.prepare(
             `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
                is_active, group_buy_status, group_buy_target, stock, stock_quantity, restaurant_name, restaurant_address, slug, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, 'active', 0, 100, 100, ?, ?, ?, datetime('now'), datetime('now'))`
-          ).bind(dispName, d.desc, d.price, d.orig, img, d.cat, restName, restAddr, slug).run();
+          ).bind(dispName, offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, slug).run();
         }
         seeded++;
-        // 추첨 응모 설정(정원 초과 지원 시드). 실패해도 상품 시딩엔 영향 없음(best-effort).
+        // 추첨 응모 설정 — 정원 3~8 랜덤, 표시 지원자 = 정원×3~6배(범위 지정 시 그 랜덤).
         const pid = Number((res as { meta?: { last_row_id?: number } })?.meta?.last_row_id ?? 0);
-        if (pid > 0 && d.spots > 0 && d.seed > 0) {
+        if (pid > 0) {
+          const spots = 3 + Math.floor(Math.random() * 6);
           await setSupplyMeta(DB, pid, {
             fcfs_enabled: '1',
-            fcfs_spots: d.spots,
-            fcfs_applied_seed: pickApplicants(d.seed),  // 🎛️ 지원자 수 범위 지정 시 랜덤, 아니면 템플릿값
+            fcfs_spots: spots,
+            fcfs_applied_seed: pickApplicants(spots * (3 + Math.floor(Math.random() * 4))),
             fcfs_deadline: fcfsDeadline,
           }).catch(() => {});
         }
@@ -1263,7 +1370,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
           await setSupplyMeta(DB, pid, { kakao_place_url: place.placeUrl }).catch(() => {});
         }
         // 🎯 매장특색 리뷰 생성 대상(응답 후 waitUntil 로 채움 — 실매장명/업종 grounding).
-        if (pid > 0) seededForReviews.push({ id: pid, name: dispName, category: d.cat, storeName: restName, price: d.price });
+        if (pid > 0) seededForReviews.push({ id: pid, name: dispName, category: t.cat, storeName: restName, price: offer.price });
       }
     }
     await writeAuditLog(c, { action: 'dongnedeal_seed_demo', targetType: 'product', after: { seeded, realPhotos, placed, skipped, healed, region: region || null, category: catFilter || null } }).catch(() => {});
