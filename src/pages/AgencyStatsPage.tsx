@@ -5,7 +5,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { BarChart2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
-import { TrendingUp, ShoppingBag, Play, Users, ArrowUpDown, Trophy, DollarSign } from 'lucide-react'
+import { TrendingUp, ShoppingBag, ArrowUpDown, Trophy, DollarSign } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
 interface Seller {
@@ -16,13 +16,11 @@ interface Seller {
   status: string
   total_orders: number
   total_revenue: number
-  active_streams: number
 }
 
 interface SellerStat {
   seller: Seller
   orders: { order_count: number; revenue: number; net_revenue: number } | null
-  streams: { stream_count: number; total_viewers: number } | null
 }
 
 interface ComparisonRow {
@@ -31,8 +29,6 @@ interface ComparisonRow {
   business_name: string
   order_count: number
   revenue: number
-  live_count: number
-  ended_streams: number
   total_vouchers: number
   used_vouchers: number
   voucher_usage_rate: number
@@ -49,7 +45,7 @@ export default function AgencyStatsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [period, setPeriod] = useState<Period>('30d')
-  const [sort, setSort] = useState<'revenue' | 'orders' | 'streams'>('revenue')
+  const [sort, setSort] = useState<'revenue' | 'orders'>('revenue')
 
   // Restaurant comparison sort state
   const [comparisonSort, setComparisonSort] = useState<ComparisonSortKey>('revenue')
@@ -71,14 +67,13 @@ export default function AgencyStatsPage() {
   const commissionRate = profileQ.data ?? 2.0
 
   const days = period === '7d' ? 7 : period === '90d' ? 90 : 30
-  const statsBatchQ = useApiQuery<{ orders: Record<number, { order_count: number; revenue: number; net_revenue: number }>; streams: Record<number, { stream_count: number; total_viewers: number }> } | null>(
+  const statsBatchQ = useApiQuery<{ orders: Record<number, { order_count: number; revenue: number; net_revenue: number }> } | null>(
     ['agency', 'stats-batch', period], '/api/agency/stats/batch',
     { params: { period }, enabled: sellers.length > 0, select: (r: any) => (r?.data || null) },
   )
   const stats: SellerStat[] = useMemo(() => sellers.map(s => ({
     seller: s,
     orders: statsBatchQ.data?.orders?.[s.id] ?? null,
-    streams: statsBatchQ.data?.streams?.[s.id] ?? null,
   })), [sellers, statsBatchQ.data])
   const loading = sellersQ.isLoading || (sellers.length > 0 && statsBatchQ.isLoading)
 
@@ -88,8 +83,7 @@ export default function AgencyStatsPage() {
 
   const sorted = [...stats].sort((a, b) => {
     if (sort === 'revenue') return (b.orders?.revenue ?? 0) - (a.orders?.revenue ?? 0)
-    if (sort === 'orders') return (b.orders?.order_count ?? 0) - (a.orders?.order_count ?? 0)
-    return (b.streams?.stream_count ?? 0) - (a.streams?.stream_count ?? 0)
+    return (b.orders?.order_count ?? 0) - (a.orders?.order_count ?? 0)
   })
 
   const sortedComparison = useMemo(() => {
@@ -117,9 +111,7 @@ export default function AgencyStatsPage() {
     revenue: acc.revenue + (s.orders?.revenue ?? 0),
     orders: acc.orders + (s.orders?.order_count ?? 0),
     net_revenue: acc.net_revenue + (s.orders?.net_revenue ?? 0),
-    streams: acc.streams + (s.streams?.stream_count ?? 0),
-    viewers: acc.viewers + (s.streams?.total_viewers ?? 0),
-  }), { revenue: 0, orders: 0, net_revenue: 0, streams: 0, viewers: 0 })
+  }), { revenue: 0, orders: 0, net_revenue: 0 })
 
   return (
     <AgencyLayout title={t('agency.stats')}>
@@ -146,13 +138,11 @@ export default function AgencyStatsPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {[
           { label: t('agency.stats.totalRevenue', { defaultValue: '총 매출' }), value: `${(totals.revenue / 10000).toFixed(0)}만원`, icon: TrendingUp, color: 'bg-blue-600' },
           { label: t('agency.stats.commissionRevenue', { defaultValue: '수수료 수익' }), value: `${formatNumber(Math.round(totals.revenue * commissionRate / 100))}원`, icon: DollarSign, color: 'bg-indigo-600' },
           { label: t('agency.stats.totalOrders', { defaultValue: '총 주문' }), value: `${totals.orders}건`, icon: ShoppingBag, color: 'bg-emerald-500' },
-          { label: t('agency.stats.totalLives', { defaultValue: '총 라이브' }), value: `${totals.streams}회`, icon: Play, color: 'bg-rose-500' },
-          { label: t('agency.stats.totalViewers', { defaultValue: '총 시청자' }), value: `${formatNumber(totals.viewers)}명`, icon: Users, color: 'bg-violet-500' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-start justify-between">
@@ -179,7 +169,7 @@ export default function AgencyStatsPage() {
           </div>
           <div className="flex items-center gap-1">
             <span className="text-xs text-gray-400 mr-2">{t('common.sort', { defaultValue: '정렬' })}:</span>
-            {(['revenue', 'orders', 'streams'] as const).map(s => (
+            {(['revenue', 'orders'] as const).map(s => (
               <button
                 key={s}
                 onClick={() => setSort(s)}
@@ -187,7 +177,7 @@ export default function AgencyStatsPage() {
                   sort === s ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
-                {s === 'revenue' ? t('agency.stats.sortRevenue', { defaultValue: '매출' }) : s === 'orders' ? t('agency.stats.sortOrders', { defaultValue: '주문' }) : t('agency.stats.sortLive', { defaultValue: '라이브' })}
+                {s === 'revenue' ? t('agency.stats.sortRevenue', { defaultValue: '매출' }) : t('agency.stats.sortOrders', { defaultValue: '주문' })}
               </button>
             ))}
           </div>
@@ -209,8 +199,6 @@ export default function AgencyStatsPage() {
                     t('agency.stats.sortOrders', { defaultValue: '주문' }),
                     t('agency.stats.commissionRevenue', { defaultValue: '수수료 수익' }),
                     t('agency.stats.colSellerRevenue', { defaultValue: '셀러수익' }),
-                    t('agency.stats.sortLive', { defaultValue: '라이브' }),
-                    t('agency.stats.colViewers', { defaultValue: '시청자' }),
                   ].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                   ))}
@@ -243,7 +231,7 @@ export default function AgencyStatsPage() {
                         <span className="font-semibold text-gray-900 whitespace-nowrap">
                           {(revenue / 10000).toFixed(1)}만원
                         </span>
-                        {i < sorted.length && sorted.length > 1 && (
+                        {sorted.length > 1 && (
                           <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden hidden sm:block">
                             <div
                               className="h-full bg-blue-500 rounded-full"
@@ -261,10 +249,6 @@ export default function AgencyStatsPage() {
                     </td>
                     <td className="px-4 py-3 text-gray-700">
                       {((s.orders?.net_revenue ?? 0) / 10000).toFixed(1)}만원
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">{s.streams?.stream_count ?? 0}회</td>
-                    <td className="px-4 py-3 text-gray-700">
-                      {formatNumber(s.streams?.total_viewers ?? 0)}명
                     </td>
                   </tr>
                   )

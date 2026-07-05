@@ -371,6 +371,9 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       agency_intro_code?: string;
       // 🛡️ 2026-05-21 Phase D-6: 인플루언서 입점 유치 — 사장님 가입 시 인플루언서 추천코드 입력.
       influencer_intro_code?: string;
+      // 🤝 2026-07-05: 판매자 약관 개별 동의(계약 성립 증거) — 4개 중요조항 전부 true 여야 함.
+      terms_version?: number;
+      per_clause_consent?: Record<string, boolean>;
     }>();
 
     const { business_name, business_number, phone, seller_type, youtube_email, description, agency_intro_code, influencer_intro_code } = body;
@@ -382,6 +385,13 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     const businessNumberRegex = /^\d{3}-\d{2}-\d{5}$/;
     if (!businessNumberRegex.test(business_number)) {
       return c.json({ success: false, error: '사업자번호 형식이 올바르지 않습니다 (XXX-XX-XXXXX)' }, 400);
+    }
+
+    // 🤝 약관 개별 동의 서버 검증(§2① — 계정 발급 = 계약 체결). 필수 조항 전부 동의해야 진행.
+    const { validatePartnerConsent, recordPartnerTermsAgreement } = await import('../../partner-terms/api/partner-terms.routes');
+    const consentCheck = validatePartnerConsent('seller', body.per_clause_consent);
+    if (!consentCheck.ok) {
+      return c.json({ success: false, error: consentCheck.error }, 400);
     }
 
     const validSellerTypes = ['influencer', 'store_owner', 'both'] as const;
@@ -505,6 +515,18 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     // 🏁 2026-06-17 (#2 정체성 연속성): 큐레이터 프로필 → 신규 셀러 1회 복사(빈 값 skip). best-effort —
     //   컬럼 없는 env / 실패해도 가입은 성공. 승인되면 /u/{handle} 가 빈 셀러프로필 대신 큐레이터 브랜딩 유지.
     const newSellerId = result?.meta?.last_row_id;
+
+    // 🤝 약관 동의기록 저장(계약 성립 증거) — 동의는 위에서 이미 검증됨. 기록 실패가 가입을 막지 않음(fail-soft).
+    if (newSellerId && body.per_clause_consent) {
+      await recordPartnerTermsAgreement(db, {
+        termsType: 'seller', termsVersion: consentCheck.version ?? body.terms_version ?? 1,
+        subjectType: 'seller', subjectId: Number(newSellerId), userId,
+        perClause: body.per_clause_consent,
+        ip: c.req.header('CF-Connecting-IP') || null,
+        userAgent: c.req.header('User-Agent') || null,
+      }).catch(swallow('seller-registration:terms-record'));
+    }
+
     if (newSellerId && curatorProfile) {
       const sets: string[] = [];
       const vals: any[] = [];

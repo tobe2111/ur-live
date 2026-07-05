@@ -62,7 +62,8 @@ const requireAgency = async (c: any, next: Next) => {
 
 app.use('*', requireAgency);
 
-const ALLOWED_METRICS = ['revenue', 'live_count', 'viewer_peak'] as const;
+// 🏭 라이브커머스 영구 중단 — live_count/viewer_peak 지표 제거(항상 0이라 챌린지 달성 불가). 매출 챌린지만.
+const ALLOWED_METRICS = ['revenue'] as const;
 type Metric = (typeof ALLOWED_METRICS)[number];
 
 async function ensureTables(DB: D1Database) {
@@ -132,7 +133,7 @@ app.post('/', requireAgencyPermission('campaign'), async (c) => {
     return c.json({ success: false, error: 'title/start_date/end_date/metric/target_value 필수' }, 400);
   }
   if (!ALLOWED_METRICS.includes(body.metric)) {
-    return c.json({ success: false, error: 'metric: revenue|live_count|viewer_peak' }, 400);
+    return c.json({ success: false, error: 'metric: revenue' }, 400);
   }
   if (body.target_value <= 0 || body.target_value > 1_000_000_000) {
     return c.json({ success: false, error: 'target_value 범위 오류' }, 400);
@@ -167,7 +168,7 @@ app.post('/', requireAgencyPermission('campaign'), async (c) => {
     FROM agency_sellers WHERE agency_id = ?
   `).bind(
     `🎯 새 이벤트: ${body.title}`,
-    `${body.metric === 'revenue' ? '매출' : body.metric === 'live_count' ? '라이브 횟수' : '피크 시청자'} ${Number(body.target_value ?? 0).toLocaleString('ko-KR')} 달성 시 ${Number(body.reward_deal ?? 0).toLocaleString('ko-KR')}딜 지급. 참여하시려면 에이전시에 문의.`,
+    `매출 ${Number(body.target_value ?? 0).toLocaleString('ko-KR')} 달성 시 ${Number(body.reward_deal ?? 0).toLocaleString('ko-KR')}딜 지급. 참여하시려면 에이전시에 문의.`,
     `/seller`,
     agency.id,
   ).run().catch(swallow('agency:api:agency-self-events'));

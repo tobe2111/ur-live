@@ -613,8 +613,8 @@ export default function AgencyPage() {
                   </div>
                   <div className="flex items-center gap-3 ml-3 flex-shrink-0">
                     <div className="text-right hidden sm:block">
-                      <p className="text-xs font-semibold text-gray-900">{(s.total_revenue / 10000).toFixed(0)}{t('agency.manwon')}</p>
-                      <p className="text-xs text-gray-400">{s.total_orders}{t('agency.unitCase')}</p>
+                      <p className="text-xs font-semibold text-gray-900">{((s.total_revenue || 0) / 10000).toFixed(0)}{t('agency.manwon')}</p>
+                      <p className="text-xs text-gray-400">{s.total_orders ?? 0}{t('agency.unitCase')}</p>
                     </div>
                     {!LIVE_COMMERCE_SUSPENDED && s.active_streams > 0 && (
                       <span className="flex items-center gap-1 text-xs bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full">

@@ -19,8 +19,6 @@ const sampleStats = {
   sales: 5_000_000,
   orders: 50,
   rating: 4.5,
-  streams: 8,
-  viewers: 1500,
 }
 
 describe('agency-incentives: matchIncentiveRule', () => {
@@ -68,19 +66,19 @@ describe('agency-incentives: matchIncentiveRule', () => {
     expect(r.matched?.id).toBe(1)
   })
 
-  it('5종 metric 모두 평가 가능', () => {
+  it('orders metric 평가 가능', () => {
     const rules = [
-      { id: 1, name: 'streams 5↑', metric: 'streams' as const, threshold: 5, bonus_rate: 0.3 },
+      { id: 1, name: 'orders 20↑', metric: 'orders' as const, threshold: 20, bonus_rate: 0.3 },
     ]
     const r = matchIncentiveRule(sampleStats, rules)
     expect(r.matched?.id).toBe(1)
-    expect(r.metricValue).toBe(8)
+    expect(r.metricValue).toBe(50)
   })
 
   it('미정의 metric 은 0 으로 처리', () => {
-    const partial = { ...sampleStats, viewers: undefined as any }
+    const partial = { ...sampleStats, orders: undefined as any }
     const rules = [
-      { id: 1, name: 'viewers 100↑', metric: 'viewers' as const, threshold: 100, bonus_rate: 0.2 },
+      { id: 1, name: 'orders 100↑', metric: 'orders' as const, threshold: 100, bonus_rate: 0.2 },
     ]
     const r = matchIncentiveRule(partial, rules)
     expect(r.matched).toBeNull()  // undefined → 0 < 100

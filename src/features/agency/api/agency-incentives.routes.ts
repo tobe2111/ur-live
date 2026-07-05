@@ -63,7 +63,8 @@ const requireAgency = async (c: any, next: Next) => {
 
 app.use('*', requireAgency)
 
-const VALID_METRICS = ['sales', 'rating', 'streams', 'orders', 'viewers'] as const
+// 🏭 라이브커머스 영구 중단 — streams/viewers 지표 제거(항상 0이라 규칙이 절대 발동 안 함). 매출/평점/주문만.
+const VALID_METRICS = ['sales', 'rating', 'orders'] as const
 type Metric = typeof VALID_METRICS[number]
 
 interface RuleRow {
@@ -227,8 +228,6 @@ interface SellerStats {
   sales: number      // 매출 (원)
   orders: number     // 주문 수
   rating: number     // 평균 별점 (없으면 0)
-  streams: number    // 라이브 횟수
-  viewers: number    // 누적 시청자
 }
 
 interface PayoutResult {
@@ -281,9 +280,7 @@ export async function calculatePayouts(
       ag.seller_id,
       COALESCE(SUM(o.total_amount), 0) AS sales,
       COUNT(o.id) AS orders,
-      COALESCE(AVG(s.avg_rating), 0) AS rating,
-      (SELECT COUNT(*) FROM live_streams ls WHERE ls.seller_id = ag.seller_id AND ls.created_at >= ? AND ls.created_at < ?) AS streams,
-      (SELECT COALESCE(SUM(ls.peak_viewers), 0) FROM live_streams ls WHERE ls.seller_id = ag.seller_id AND ls.created_at >= ? AND ls.created_at < ?) AS viewers
+      COALESCE(AVG(s.avg_rating), 0) AS rating
     FROM agency_sellers ag
     LEFT JOIN orders o ON o.seller_id = ag.seller_id
       AND o.status IN ('PAID','DONE')
@@ -292,8 +289,6 @@ export async function calculatePayouts(
     WHERE ag.agency_id = ?
     GROUP BY ag.seller_id
   `).bind(
-    startDate, endDate,    // streams
-    startDate, endDate,    // viewers
     startDate, endDate,    // orders
     agencyId,
   ).all<SellerStats>()

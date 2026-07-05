@@ -200,6 +200,7 @@ import { prospectsRoutes } from '../features/seller-prospects/api/seller-prospec
 import { marketingRoutes } from '../features/marketing/api/marketing.routes';
 import { adminAdsRoutes } from '../features/marketing/api/admin-ads.routes';
 import { agencyKpiRoutes } from '../features/agency/api/agency-kpi.routes';
+import { partnerTermsRoutes } from '../features/partner-terms/api/partner-terms.routes';
 import { agencyMatchSuggestionsRoutes } from '../features/agency/api/agency-match-suggestions.routes';
 import { agencyPublicRoutes, agencyPublicEditRoutes } from '../features/agency/api/agency-public.routes';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
@@ -1869,6 +1870,7 @@ app.route('/api/invite', inviteCodePublicRoutes);
 app.route('/api/prospects', prospectsRoutes);
 // 🛡️ 2026-04-27 Phase 1-4: 6대 KPI 대시보드 API
 app.route('/api/agency/kpi', agencyKpiRoutes);
+app.route('/api/partner-terms', partnerTermsRoutes);
 // 🛡️ 2026-04-27 Phase 1-7: 에이전시 공개 브랜딩 페이지
 app.route('/api/agency-public', agencyPublicRoutes);          // 공개 (인증 X)
 app.route('/api/agency/public-profile', agencyPublicEditRoutes); // 본인 편집 (인증)

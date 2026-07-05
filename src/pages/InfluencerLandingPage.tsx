@@ -9,6 +9,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Sparkles, Megaphone, Wallet, BarChart3, Phone } from 'lucide-react'
 import SEO from '@/components/SEO'
+import { AGENCY_HIDDEN } from '@/shared/feature-flags'
 
 export default function InfluencerLandingPage() {
   const navigate = useNavigate()
@@ -26,7 +27,7 @@ export default function InfluencerLandingPage() {
         <Link to="/" className="text-lg font-extrabold tracking-tight">유어딜</Link>
         <div className="flex items-center gap-3">
           <Link to="/business" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">사장님</Link>
-          <Link to="/agency-partner" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">에이전시</Link>
+          {!AGENCY_HIDDEN && <Link to="/agency-partner" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">에이전시</Link>}
           <button onClick={() => navigate('/register')} className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-full text-sm font-bold">
             지금 가입
           </button>

@@ -57,8 +57,6 @@ const requireAgency = async (c: any, next: Next) => {
 
 app.use('*', requireAgency);
 
-const EFFECTIVE_LIVE_DURATION_SEC = 30 * 60; // 30분
-
 // GET /api/agency/kpi?range=week|month
 app.get('/', async (c) => {
   const agency = c.get('agency');
@@ -86,35 +84,13 @@ app.get('/', async (c) => {
       FROM agency_sellers ag_s
       JOIN orders o ON o.seller_id = ag_s.seller_id
       WHERE ag_s.agency_id = ?
-        AND o.payment_status = 'approved'
+        AND o.status IN ('PAID','DONE')
         AND o.created_at >= ?
     `).bind(agency.id, startISO).first<{ revenue: number }>().catch(() => null);
     const totalRevenue = revRow?.revenue ?? 0;
 
-    // 2) 활성 셀러 + 4) 유효 활성 셀러 (period 동안 1+ 라이브 / 30분+ 라이브)
-    // live_streams 의 ended_at - started_at 으로 duration 계산. 없으면 created_at 기준 1+ 라이브로 fallback.
-    const liveRows = await c.env.DB.prepare(`
-      SELECT
-        ag_s.seller_id,
-        COUNT(ls.id) AS live_count,
-        MAX(
-          CASE WHEN ls.ended_at IS NOT NULL AND ls.started_at IS NOT NULL
-            THEN CAST((julianday(ls.ended_at) - julianday(ls.started_at)) * 86400 AS INTEGER)
-            ELSE 0 END
-        ) AS max_duration_sec
-      FROM agency_sellers ag_s
-      LEFT JOIN live_streams ls ON ls.seller_id = ag_s.seller_id AND ls.created_at >= ?
-      WHERE ag_s.agency_id = ?
-      GROUP BY ag_s.seller_id
-    `).bind(startISO, agency.id).all<{
-      seller_id: number; live_count: number; max_duration_sec: number;
-    }>().catch(() => ({ results: [] as any[] }));
-
-    const liveResults = liveRows.results || [];
-    const activeSellers = liveResults.filter((r) => r.live_count > 0).length;
-    const effectiveActive = liveResults.filter((r) => r.max_duration_sec >= EFFECTIVE_LIVE_DURATION_SEC).length;
-
-    // 6) 신규 셀러 (period 동안 가입한 셀러)
+    // 🏭 라이브커머스 영구 중단 — 라이브 진행률/활성/유효활성(live_streams 기반) 죽은 KPI 제거. 매출/신규 셀러만.
+    // 신규 셀러 (period 동안 가입한 셀러)
     const newRow = await c.env.DB.prepare(`
       SELECT COUNT(DISTINCT s.id) AS cnt
       FROM agency_sellers ag_s
@@ -124,10 +100,6 @@ app.get('/', async (c) => {
     `).bind(agency.id, startISO).first<{ cnt: number }>().catch(() => null);
     const newSellers = newRow?.cnt ?? 0;
 
-    // 3) 라이브 진행률 + 5) 유효 진행률 (소속 셀러 대비 비율, %)
-    const liveProgressRate = totalSellers > 0 ? Math.round((activeSellers / totalSellers) * 1000) / 10 : 0;
-    const effectiveProgressRate = totalSellers > 0 ? Math.round((effectiveActive / totalSellers) * 1000) / 10 : 0;
-
     return c.json({
       success: true,
       data: {
@@ -136,10 +108,6 @@ app.get('/', async (c) => {
         total_sellers: totalSellers,
         kpi: {
           total_revenue: totalRevenue,
-          live_progress_rate: liveProgressRate,         // %
-          effective_progress_rate: effectiveProgressRate, // %
-          active_sellers: activeSellers,
-          effective_active: effectiveActive,
           new_sellers: newSellers,
         },
       },
@@ -152,8 +120,7 @@ app.get('/', async (c) => {
         range,
         total_sellers: 0,
         kpi: {
-          total_revenue: 0, live_progress_rate: 0, effective_progress_rate: 0,
-          active_sellers: 0, effective_active: 0, new_sellers: 0,
+          total_revenue: 0, new_sellers: 0,
         },
       },
     });

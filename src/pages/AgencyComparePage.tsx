@@ -22,7 +22,7 @@ export default function AgencyComparePage() {
     if (!token) navigate('/agency/login', { replace: true })
   }, [token, navigate])
 
-  const maxRevenue = Math.max(...data.map(d => d.revenue), 1)
+  const maxRevenue = Math.max(...data.map(d => Number(d.revenue) || 0), 1)
 
   return (
     <AgencyLayout title={t('agency.compare')}>
@@ -57,12 +57,10 @@ export default function AgencyComparePage() {
                   <span className="text-sm font-bold text-blue-600">{formatNumber(s.revenue)}원</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-3 mb-2">
-                  <div className="bg-blue-500 h-3 rounded-full transition-all" style={{ width: `${(s.revenue / maxRevenue) * 100}%` }} />
+                  <div className="bg-blue-500 h-3 rounded-full transition-all" style={{ width: `${((Number(s.revenue) || 0) / maxRevenue) * 100}%` }} />
                 </div>
                 <div className="flex gap-4 text-xs text-gray-500">
-                  <span>주문 {s.order_count}건</span>
-                  <span>라이브 {s.live_count + s.ended_streams}회</span>
-                  {s.live_count > 0 && <span className="text-red-500 font-medium">현재 방송 중</span>}
+                  <span>주문 {s.order_count ?? 0}건</span>
                 </div>
               </div>
             ))}

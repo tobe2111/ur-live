@@ -21,6 +21,7 @@ import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { ChevronLeft, Loader2, Store, CheckCircle2 } from 'lucide-react'
+import PartnerTermsConsent, { allRequiredAgreed, type PartnerKeyClause } from '@/components/partner/PartnerTermsConsent'
 
 const STORE_CATEGORIES = [
   { value: 'restaurant', label: '음식점' },
@@ -57,6 +58,19 @@ export default function SellerRegisterSupplierPage() {
     //   URL ?agency=AG-XXXXXXXX 가 있으면 useEffect 에서 자동 prefill.
     agency_intro_code: agencyFromUrl,
   })
+
+  // 🤝 파트너 약관 clickwrap (판매자) — 중요조항 개별 동의(§2①) + 계약 성립 시 동의기록.
+  const [termsClauses, setTermsClauses] = useState<PartnerKeyClause[]>([])
+  const [termsVersion, setTermsVersion] = useState<number | null>(null)
+  const [consent, setConsent] = useState<Record<string, boolean>>({})
+  useEffect(() => {
+    api.get('/api/partner-terms/seller/active')
+      .then(r => {
+        const d = r.data?.data
+        if (d?.key_clauses) { setTermsClauses(d.key_clauses); setTermsVersion(d.version) }
+      })
+      .catch(() => { /* 약관 로드 실패 — 제출 시 서버가 재검증하므로 fail-soft */ })
+  }, [])
 
   // URL query 변경 시 (drag-n-drop, copy 링크) prefill 갱신.
   useEffect(() => {
@@ -156,6 +170,11 @@ export default function SellerRegisterSupplierPage() {
       toast.error(t('seller.register.businessNumberFormat', { defaultValue: '사업자번호 형식: XXX-XX-XXXXX' }))
       return
     }
+    // 🤝 약관 개별 동의 게이트 — 필수 조항 전부 체크돼야 진행(서버도 재검증).
+    if (termsClauses.length > 0 && !allRequiredAgreed(termsClauses, consent)) {
+      toast.error(t('seller.register.termsRequired', { defaultValue: '약관의 필수 항목에 모두 동의해주세요' }))
+      return
+    }
 
     setLoading(true)
     try {
@@ -176,6 +195,9 @@ export default function SellerRegisterSupplierPage() {
         seller_type: 'store_owner',
         description: descWithMeta,
         agency_intro_code: form.agency_intro_code.trim() || undefined,
+        // 🤝 약관 동의(계약 성립 증거) — 서버가 재검증 후 동의기록 저장.
+        terms_version: termsVersion ?? undefined,
+        per_clause_consent: termsClauses.length > 0 ? consent : undefined,
       })
       if (res.data?.success) {
         toast.success(t('seller.gateway.applied', {
@@ -397,6 +419,18 @@ export default function SellerRegisterSupplierPage() {
           {/* 🏁 2026-07-02 (#3 2단계 심사 투명화): 정산 직전에야 벽을 만나던 것 → 가입 시점에 고지 */}
           {t('seller.gateway.secondGate', { defaultValue: '💳 현금 정산에는 승인 후 사업자등록증 인증 1회가 추가로 필요해요 (대시보드 → 사업자 정보).' })}
         </p>
+
+        {termsClauses.length > 0 && (
+          <div className="border-t border-gray-100 pt-4">
+            <PartnerTermsConsent
+              clauses={termsClauses}
+              fullTermsHref="/terms/seller"
+              fullTermsLabel="판매자 약관 전문"
+              value={consent}
+              onChange={setConsent}
+            />
+          </div>
+        )}
 
         <button onClick={submit} disabled={loading}
           className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-800 disabled:opacity-50 text-white font-bold rounded-2xl flex items-center justify-center gap-2">

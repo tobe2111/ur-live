@@ -114,7 +114,7 @@ export default function AgencyPublicPage() {
         <div className="bg-gradient-to-r from-gray-800 to-gray-800 rounded-2xl p-6 text-white mb-6">
           <h2 className="text-xl font-bold mb-2">🎟️ {data.name} 와 함께 성장하세요</h2>
           <p className="text-sm text-white/90 mb-4">
-            셀러 가입 신청을 보내고 본 에이전시의 운영 지원과 노출 부스팅을 받아보세요.
+            입점 신청을 보내고 본 에이전시의 공동구매·이용권 운영 지원을 받아보세요.
           </p>
           <Link
             to={`/seller/register?agency=${data.id}`}
@@ -148,7 +148,7 @@ export default function AgencyPublicPage() {
         )}
 
         <div className="text-center text-xs text-gray-400 py-6">
-          <Link to="/" className="hover:text-gray-600">유어딜 — 라이브 커머스 플랫폼</Link>
+          <Link to="/" className="hover:text-gray-600">유어딜 — 공동구매·이용권 플랫폼</Link>
         </div>
       </div>
     </div>

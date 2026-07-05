@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import { Mail, Lock, Eye, EyeOff, BarChart2, Users, TrendingUp } from 'lucide-react'
 import TurnstileWidget from '@/components/auth/TurnstileWidget'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+import { safeInternalPath } from '@/utils/safe-internal-path'
 
 export default function AgencyLoginPage() {
   const { t } = useTranslation()
@@ -58,7 +59,8 @@ export default function AgencyLoginPage() {
         // 🛡️ 2026-06-12 (감사 1단계): BottomNav 등이 active_role 로 표시 분기 — agency 도 설정
         //   (SellerLoginPage 의 'seller' 설정과 동일 패턴, dead flag 해소).
         localStorage.setItem('active_role', 'agency')
-        navigate('/agency', { replace: true })
+        // 🎯 초대 수락 등 returnUrl 지원 (safeInternalPath 로 open-redirect 방어). 없으면 대시보드.
+        navigate(safeInternalPath(searchParams.get('returnUrl'), '/agency'), { replace: true })
       }
     } catch (err: unknown) {
       const err_ = err as { response?: { data?: { error?: string }; status?: number } }

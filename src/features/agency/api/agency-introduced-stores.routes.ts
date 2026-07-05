@@ -41,8 +41,8 @@ app.get('/introduced-stores', async (c) => {
 
   const stores = await c.env.DB.prepare(
     `SELECT s.id, s.business_name, s.name, s.status, s.introduced_at, s.created_at,
-            COALESCE((SELECT COUNT(*) FROM orders o WHERE o.seller_id = s.id AND o.status IN ('PAID','DONE','SHIPPING','COMPLETED')), 0) as total_orders,
-            COALESCE((SELECT SUM(o.total_amount) FROM orders o WHERE o.seller_id = s.id AND o.status IN ('PAID','DONE','SHIPPING','COMPLETED')), 0) as total_sales,
+            COALESCE((SELECT COUNT(*) FROM orders o WHERE o.seller_id = s.id AND o.status IN ('PAID','DONE','PREPARING','SHIPPING','DELIVERED')), 0) as total_orders,
+            COALESCE((SELECT SUM(o.total_amount) FROM orders o WHERE o.seller_id = s.id AND o.status IN ('PAID','DONE','PREPARING','SHIPPING','DELIVERED')), 0) as total_sales,
             COALESCE((SELECT COUNT(*) FROM products p WHERE p.seller_id = s.id AND p.group_buy_status = 'active' AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')), 0) as active_group_buys,
             COALESCE((SELECT SUM(commission_amount) FROM agency_store_intro_commissions WHERE store_seller_id = s.id AND agency_id = ?), 0) as total_commission,
             COALESCE((SELECT SUM(commission_amount) FROM agency_store_intro_commissions WHERE store_seller_id = s.id AND agency_id = ? AND status = 'pending'), 0) as pending_commission,

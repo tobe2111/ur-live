@@ -40,7 +40,7 @@ interface Seller {
 
 type ModalMode = 'create' | 'edit' | null
 
-const initForm = { name: '', contact_name: '', email: '', password: '', phone: '', status: 'active', store_intro_commission_pct: '', commission_term_months: '' }
+const initForm = { name: '', contact_name: '', email: '', password: '', phone: '', status: 'active', commission_rate: '', store_intro_commission_pct: '', commission_term_months: '' }
 
 export default function AdminAgencyPage() {
   const { t } = useTranslation()
@@ -97,6 +97,7 @@ export default function AdminAgencyPage() {
   function openEdit(a: Agency) {
     setForm({
       name: a.name, contact_name: a.contact_name, email: a.email, password: '', phone: a.phone || '', status: a.status,
+      commission_rate: a.commission_rate != null ? String(a.commission_rate) : '',
       store_intro_commission_pct: a.store_intro_commission_pct != null ? String(a.store_intro_commission_pct) : '',
       commission_term_months: a.commission_term_months != null ? String(a.commission_term_months) : '',
     })
@@ -117,6 +118,7 @@ export default function AdminAgencyPage() {
         }
         if (form.password) payload.password = form.password
         // 🛡️ 2026-06-27 per-agency 율·기간: 빈칸이면 미전송(미변경). 기간 0/빈칸 = 무제한(서버에서 NULL).
+        if (form.commission_rate !== '') payload.commission_rate = Number(form.commission_rate)
         if (form.store_intro_commission_pct !== '') payload.store_intro_commission_pct = Number(form.store_intro_commission_pct)
         if (form.commission_term_months !== '') payload.commission_term_months = Number(form.commission_term_months)
         await api.patch(`/api/admin/agencies/${editTarget.id}`, payload, { headers })
@@ -527,6 +529,22 @@ export default function AdminAgencyPage() {
                     <option value="active">{t('admin.agency.k051', { defaultValue: '활성' })}</option>
                     <option value="inactive">{t('admin.agency.k018', { defaultValue: '비활성' })}</option>
                   </select>
+                </div>
+              )}
+
+              {/* 정산 기본 수수료율 (agencies.commission_rate) — 에이전시 GMV 수수료의 실제 SSOT.
+                  이전엔 백엔드만 지원하고 입력이 없어 조정 불가였음 (2026 전수조사). */}
+              {modal === 'edit' && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">정산 수수료율 (%)</label>
+                  <input
+                    type="number" min={0} max={100} step={0.1}
+                    value={form.commission_rate}
+                    onChange={e => setForm(p => ({ ...p, commission_rate: e.target.value }))}
+                    placeholder="기본 2"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">에이전시가 소속 셀러 매출(GMV)에서 받는 기본 수수료율. 정산·통계에 반영.</p>
                 </div>
               )}
 

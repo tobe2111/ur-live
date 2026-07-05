@@ -113,7 +113,7 @@ export default function AgencyCouponsPage() {
       <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
           title={t('agency.coupons.pageTitle', { defaultValue: '쿠폰 캐스케이드' })}
-          subtitle={t('agency.coupons.subtitle', { defaultValue: '에이전시 → 셀러 → 시청자 3단 쿠폰 배포. 셀러별 사용율 분석 가능.' })}
+          subtitle={t('agency.coupons.subtitle', { defaultValue: '에이전시 → 셀러 → 고객 3단 쿠폰 배포. 셀러별 사용율 분석 가능.' })}
           icon={<Ticket className="h-5 w-5" />}
           actions={
             <button onClick={() => { loadSellers(); setCreating(true) }}
@@ -212,7 +212,7 @@ export default function AgencyCouponsPage() {
                 <input type="number" value={form.quantity_per_seller} min={1}
                   onChange={e => setForm({ ...form, quantity_per_seller: Number(e.target.value) })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
-                <p className="text-[10px] text-gray-400 mt-1">각 셀러가 본인 시청자에게 발급할 수 있는 한도</p>
+                <p className="text-[10px] text-gray-400 mt-1">각 셀러가 본인 고객에게 발급할 수 있는 한도</p>
               </div>
               <div>
                 <label className="text-xs font-bold text-gray-700">{t('agency.coupons.labelSellers', { defaultValue: '받을 셀러 (1~100명) *' })}</label>
