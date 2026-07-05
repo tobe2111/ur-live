@@ -1514,6 +1514,16 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
           ).bind(dispName, isPrelaunch ? offer.desc + '\n\n※ 오픈 협의 중인 매장입니다. 사전 응모하시면 오픈 시 알림과 응모자 혜택을 드려요.' : offer.desc, offer.price, offer.orig, img, t.cat, restName, restAddr, slug).run();
         }
         seeded++;
+        // 🧹 2026-07-05 (리뷰 57~119개 부풀림 근본원인): SQLite 가 삭제된 옛 데모의 rowid 를 재사용 →
+        //   과거 고아 리뷰/응모/장바구니가 **새 상품에 상속**됨. 재사용 id 의 잔재를 즉시 청소.
+        {
+          const pid0 = Number((res as { meta?: { last_row_id?: number } })?.meta?.last_row_id ?? 0);
+          if (pid0 > 0) {
+            for (const tbl of ['product_reviews', 'fcfs_applications', 'cart_items', 'wishlists']) {
+              await DB.prepare(`DELETE FROM ${tbl} WHERE product_id = ?`).bind(pid0).run().catch(() => {});
+            }
+          }
+        }
         // 추첨 응모 설정 — 정원 3~8 랜덤, 표시 지원자 = 정원×3~6배(범위 지정 시 그 랜덤).
         const pid = Number((res as { meta?: { last_row_id?: number } })?.meta?.last_row_id ?? 0);
         if (pid > 0) {
