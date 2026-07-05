@@ -202,3 +202,70 @@ describe('requireSeller / requireUser / requireAdmin', () => {
     expect(res.status).toBe(401);
   });
 });
+
+/**
+ * 🛡️ 2026-07-04 실사고 회귀 방지: /admin 무한 403 (대시보드 죽은 채 유지).
+ *
+ * 조합: 만료된 admin Bearer + (같은 브라우저의) 유효한 소비자 세션쿠키.
+ *   requireAuth 가 만료 Bearer 를 버리고 소비자 쿠키로 인증(type='user') →
+ *   requireAdmin 이 403 FORBIDDEN → 클라 401-refresh 인터셉터가 영영 안 돌아
+ *   admin_refresh_token 이 있어도 자동 갱신 불가(대표 /recover 진단 실측).
+ *
+ * 🔒 핵심 불변식: "Bearer 가 요구 타입을 자칭 + 검증 실패 + 다른 신원으로 인증됨 → 401(토큰만료)".
+ *    401 이어야 인터셉터가 refresh → 재시도 → 무개입 자가치유. 이게 403 으로 돌아가면 사건 재발.
+ */
+describe('requireUserType · 만료 Bearer + 타 신원 쿠키 → 401 (2026-07-04 실사고)', () => {
+  async function makeConsumerCookie() {
+    const { createSessionCookie } = await import('@/worker/utils/session');
+    const cookie = await createSessionCookie(42, '소비자', 'consumer@test.com', null, JWT_SECRET);
+    return cookie.split('=')[1].split(';')[0];
+  }
+
+  it('🔒 만료 admin Bearer + 유효 소비자 세션쿠키 → 401 (403 이면 자동갱신 불가 = 사건 재발)', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const expired = await jwt.sign({ userId: '1', email: 'a@a.com', type: 'admin', iat: now - 7200, exp: now - 3600 }, JWT_SECRET);
+    const session = await makeConsumerCookie();
+    const app = buildApp(requireAdmin());
+    const res = await app.request(
+      '/protected',
+      { headers: { Authorization: `Bearer ${expired}`, Cookie: `ur_session=${session}` } },
+      makeEnv()
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('유효 소비자 Bearer 만으로 admin 접근 → 403 유지 (권한부족 의미 보존)', async () => {
+    const token = await signJwt({ userId: '5', email: 'u@u.com', type: 'user' });
+    const app = buildApp(requireAdmin());
+    const res = await app.request(
+      '/protected',
+      { headers: { Authorization: `Bearer ${token}` } },
+      makeEnv()
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('소비자 세션쿠키만(Bearer 없음)으로 admin 접근 → 403 유지', async () => {
+    const session = await makeConsumerCookie();
+    const app = buildApp(requireAdmin());
+    const res = await app.request(
+      '/protected',
+      { headers: { Cookie: `ur_session=${session}` } },
+      makeEnv()
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('만료 seller Bearer + 소비자 쿠키 → requireSeller 도 401 (동일 클래스 전 역할 커버)', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const expired = await jwt.sign({ userId: '9', email: 's@s.com', type: 'seller', iat: now - 7200, exp: now - 3600 }, JWT_SECRET);
+    const session = await makeConsumerCookie();
+    const app = buildApp(requireSeller());
+    const res = await app.request(
+      '/protected',
+      { headers: { Authorization: `Bearer ${expired}`, Cookie: `ur_session=${session}` } },
+      makeEnv()
+    );
+    expect(res.status).toBe(401);
+  });
+});
