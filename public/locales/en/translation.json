@@ -2789,6 +2789,8 @@
       "colPeriod": "Period",
       "colStore": "Store",
       "colUsed": "Redeemed",
+      "colRevenue": "Sales",
+      "colFee": "Fee",
       "colAmount": "Payout",
       "colStatus": "Status",
       "statusPending": "Pending",

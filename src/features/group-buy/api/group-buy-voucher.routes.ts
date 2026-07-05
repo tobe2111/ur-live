@@ -16,7 +16,7 @@ import { auditLog } from '@/worker/middleware/audit-log'
 import type { Env } from '@/worker/types/env'
 import { recordLedger } from '@/worker/utils/ledger'
 import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
-import { sendBuyerVoucherUsedAlimtalk } from './helpers'
+import { sendBuyerVoucherUsedAlimtalk, sendSellerVoucherUsedAlimtalk } from './helpers'
 import { ensureTables, clawbackVoucherCommission, sendRefundAlimtalk } from './helpers'
 // 🛡️ 2026-05-21: 카테고리 라벨 동적 (이용권 hardcode 제거).
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
@@ -206,6 +206,29 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
               )
             )
           }
+          // 📣 2026-07-05 (운영 감사 Q4): 손님 셀프(PIN/매장코드) 사용은 사장님이 실행자가 아님 —
+          //   사장님에게 사용 알림톡 + 대시보드 벨. (use-by-seller 직접 스캔 경로는 본인 실행이라 미발송.)
+          c.executionCtx?.waitUntil((async () => {
+            try {
+              const merchantId = meta.consigned_from_seller_id ?? meta.seller_id
+              if (!merchantId) return
+              const sellerRow = await DB.prepare('SELECT phone, business_name FROM sellers WHERE id = ?')
+                .bind(merchantId).first<{ phone: string | null; business_name: string | null }>()
+              if (sellerRow?.phone) {
+                await sendSellerVoucherUsedAlimtalk(
+                  c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+                  sellerRow.phone,
+                  { restaurantName: sellerRow.business_name || meta.restaurant_name || '매장', productName: meta.product_name, usedAt: new Date().toISOString() },
+                )
+              }
+              const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+              await createDashboardNotification(
+                DB, 'seller', String(merchantId), 'voucher_used',
+                '✅ 이용권 사용', `${meta.product_name} — 손님 셀프 사용 처리`,
+                '/seller/group-buy',
+              ).catch(() => {})
+            } catch { /* fail-soft */ }
+          })())
         }
       } catch { /* graceful */ }
 

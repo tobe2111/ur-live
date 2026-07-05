@@ -170,3 +170,12 @@ agency_signup_bonus_monthly_budget_krw 미설정=무제한
   예산 캡 적용). 가드 R1 베이스라인에서 group-buy 예외 제거(예외 1곳 감소).
   ③ **어드민 스위치 UI**: `/admin/platform-settings` 에 [INV-CB] 섹션 — 5키 전부 편집 가능
   (select 2종 + 숫자 3종, staging 경고 문구 포함). 서버는 제네릭 upsert 라 무수정.
+- 2026-07-05 **Q10 캡 관측성 + 에이전시 우선 보전** (운영 준비 13문항 감사 — 대표 "모두 이상적으로"):
+  ① `allocateCommissions(requests, budget, { priorityKeys })` additive — 우선 축을 예산에서 먼저
+  전액(min(요청, 잔여)) 배정 후 나머지가 잔여를 비례 배분. 미전달=기존과 byte-동일. [INV-CB]
+  (Σ≤budget, granted≤requested) 어느 모드든 성립 — 유닛테스트(우선/초과/여유/미전달 동일성/property) 추가.
+  ② 오케스트레이터 기본 `priorityKeys=['agency_intro']`("에이전시 1% 보호 최우선" 자문 반영) —
+  `platform_settings.commission_priority_axes`(CSV, 빈값=우선 없음) 로 조정.
+  ③ 캡 **발동 시에만**(Σ요청>예산) `commission_budget_logs`(order_id·budget·requested·granted·축별 JSON)
+  1행 기록(평시 write 0, fail-soft) → `GET /api/admin/tools/commission-budget-logs` + 설정 페이지
+  "커미션 캡 발동 이력" 표. 캡이 언제 누굴 얼마 깎았는지 어드민이 직접 확인 가능.

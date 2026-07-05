@@ -2110,6 +2110,8 @@
       "colPeriod": "Período",
       "colStore": "Tienda",
       "colUsed": "Canjeados",
+      "colRevenue": "Ventas",
+      "colFee": "Comisión",
       "colAmount": "Importe",
       "colStatus": "Estado",
       "statusPending": "Pendiente",

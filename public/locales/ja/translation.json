@@ -2789,6 +2789,8 @@
       "colPeriod": "期間",
       "colStore": "店舗",
       "colUsed": "使用数",
+      "colRevenue": "販売額",
+      "colFee": "手数料",
       "colAmount": "精算額",
       "colStatus": "状態",
       "statusPending": "待機",

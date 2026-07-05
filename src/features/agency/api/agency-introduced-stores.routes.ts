@@ -30,6 +30,8 @@ interface IntroducedStoreRow {
   active_group_buys: number
   total_commission: number
   pending_commission: number
+  // 🗓️ 2026-07-05 (운영 감사 Q6): 커미션 기간 기산일 = 가게 첫 결제(signup_bonus 생성) 시각.
+  term_started_at: string | null
 }
 
 // ─── GET /introduced-stores ─────────────────────────────────────────────
@@ -43,12 +45,13 @@ app.get('/introduced-stores', async (c) => {
             COALESCE((SELECT SUM(o.total_amount) FROM orders o WHERE o.seller_id = s.id AND o.status IN ('PAID','DONE','SHIPPING','COMPLETED')), 0) as total_sales,
             COALESCE((SELECT COUNT(*) FROM products p WHERE p.seller_id = s.id AND p.group_buy_status = 'active' AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')), 0) as active_group_buys,
             COALESCE((SELECT SUM(commission_amount) FROM agency_store_intro_commissions WHERE store_seller_id = s.id AND agency_id = ?), 0) as total_commission,
-            COALESCE((SELECT SUM(commission_amount) FROM agency_store_intro_commissions WHERE store_seller_id = s.id AND agency_id = ? AND status = 'pending'), 0) as pending_commission
+            COALESCE((SELECT SUM(commission_amount) FROM agency_store_intro_commissions WHERE store_seller_id = s.id AND agency_id = ? AND status = 'pending'), 0) as pending_commission,
+            (SELECT MIN(created_at) FROM agency_store_intro_commissions WHERE store_seller_id = s.id AND agency_id = ? AND type = 'signup_bonus') as term_started_at
        FROM sellers s
       WHERE s.introduced_by_agency_id = ?
       ORDER BY s.introduced_at DESC, s.created_at DESC
       LIMIT 200`
-  ).bind(agencyId, agencyId, agencyId).all<IntroducedStoreRow>().catch(() => ({ results: [] as IntroducedStoreRow[] }))
+  ).bind(agencyId, agencyId, agencyId, agencyId).all<IntroducedStoreRow>().catch(() => ({ results: [] as IntroducedStoreRow[] }))
 
   return c.json({ success: true, data: stores.results || [] })
 })
@@ -82,6 +85,10 @@ app.get('/introduced-stores/summary', async (c) => {
   const now = new Date()
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()
 
+  // 💰 2026-07-05 (운영 감사 Q7 — 'available' 죽은 수치 수리): 커미션 행은 pending→paid 직행이라
+  //   status='available' 은 실제로 만들어지지 않음 → 에이전시 "출금 가능" 이 항상 ₩0 이던 버그.
+  //   지급센터(admin-payout-center)와 **동일 규칙**(생성 +7일 = 성숙)으로 파생 계산:
+  //   available = 성숙 pending(+레거시 available 행), pending = 7일 미경과분만. 상태 전이 추가 없음.
   const summary = await c.env.DB.prepare(
     `SELECT
         (SELECT COUNT(*) FROM sellers WHERE introduced_by_agency_id = ?) as total_stores,
@@ -92,8 +99,8 @@ app.get('/introduced-stores/summary', async (c) => {
         ) as inactive_stores,
         (SELECT COALESCE(SUM(commission_amount), 0) FROM agency_store_intro_commissions WHERE agency_id = ?) as total_commission,
         (SELECT COALESCE(SUM(commission_amount), 0) FROM agency_store_intro_commissions WHERE agency_id = ? AND created_at >= ?) as month_commission,
-        (SELECT COALESCE(SUM(commission_amount), 0) FROM agency_store_intro_commissions WHERE agency_id = ? AND status = 'pending') as pending_commission,
-        (SELECT COALESCE(SUM(commission_amount), 0) FROM agency_store_intro_commissions WHERE agency_id = ? AND status = 'available') as available_commission,
+        (SELECT COALESCE(SUM(commission_amount), 0) FROM agency_store_intro_commissions WHERE agency_id = ? AND COALESCE(status,'pending') = 'pending' AND datetime(created_at) > datetime('now','-7 days')) as pending_commission,
+        (SELECT COALESCE(SUM(commission_amount), 0) FROM agency_store_intro_commissions WHERE agency_id = ? AND (status = 'available' OR (COALESCE(status,'pending') = 'pending' AND datetime(created_at) <= datetime('now','-7 days')))) as available_commission,
         (SELECT COALESCE(SUM(commission_amount), 0) FROM agency_store_intro_commissions WHERE agency_id = ? AND status = 'paid') as paid_commission`
   ).bind(agencyId, agencyId, agencyId, agencyId, agencyId, monthStart, agencyId, agencyId, agencyId)
     .first<{
@@ -115,9 +122,16 @@ app.get('/intro-code', async (c) => {
   const agencyId = c.get('agency')?.id
   if (!agencyId) return c.json({ success: false, error: 'Unauthorized' }, 401)
 
+  // 🗓️ 2026-07-05 (운영 감사 Q6): commission_term_months 동반 조회 — 컬럼 미존재 환경 폴백(현행 쿼리).
+  type IntroCodeRow = { intro_code: string | null; store_intro_commission_pct: number | null; commission_term_months?: number | null }
   let row = await c.env.DB.prepare(
-    `SELECT intro_code, store_intro_commission_pct FROM agencies WHERE id = ?`
-  ).bind(agencyId).first<{ intro_code: string | null; store_intro_commission_pct: number | null }>().catch(() => null)
+    `SELECT intro_code, store_intro_commission_pct, commission_term_months FROM agencies WHERE id = ?`
+  ).bind(agencyId).first<IntroCodeRow>().catch(() => null)
+  if (!row) {
+    row = await c.env.DB.prepare(
+      `SELECT intro_code, store_intro_commission_pct FROM agencies WHERE id = ?`
+    ).bind(agencyId).first<IntroCodeRow>().catch(() => null)
+  }
 
   if (!row?.intro_code) {
     // 자동 생성 — 충돌 시 재시도 3번.
@@ -139,6 +153,8 @@ app.get('/intro-code', async (c) => {
     data: {
       intro_code: row?.intro_code || null,
       commission_pct: row?.store_intro_commission_pct ?? 2.0,
+      // 0 = 무제한(미설정). 잔여기간 계산은 매장별 term_started_at(첫 결제)과 조합 — UI 담당.
+      term_months: Number(row?.commission_term_months) > 0 ? Number(row?.commission_term_months) : 0,
       share_url: row?.intro_code
         ? `https://live.ur-team.com/seller/register/supplier?agency=${row.intro_code}`
         : null,

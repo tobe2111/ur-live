@@ -42,6 +42,7 @@ interface IntroducedStore {
   active_group_buys: number
   total_commission: number
   pending_commission: number
+  term_started_at: string | null
 }
 
 interface CommissionEntry {
@@ -60,7 +61,20 @@ interface CommissionEntry {
 interface IntroCode {
   intro_code: string | null
   commission_pct: number
+  term_months: number
   share_url: string | null
+}
+
+// 🗓️ 2026-07-05 (운영 감사 Q6): 매장별 커미션 잔여기간 — 기산일 = 첫 결제(signup_bonus).
+//   termMonths=0(미설정) → 무제한. 기산 전(첫 결제 없음) → 기산 전. 경과 → 잔여 N개월/만료.
+function termRemainLabel(termMonths: number, startedAt: string | null): { text: string; tone: 'ok' | 'warn' | 'muted' } {
+  if (!termMonths || termMonths <= 0) return { text: '무제한', tone: 'muted' }
+  if (!startedAt) return { text: `첫 결제 전 (${termMonths}개월)`, tone: 'muted' }
+  const elapsedMonths = (Date.now() - new Date(startedAt).getTime()) / (30.44 * 24 * 3600 * 1000)
+  const remain = termMonths - elapsedMonths
+  if (remain <= 0) return { text: '기간 만료', tone: 'muted' }
+  if (remain <= 3) return { text: `잔여 ${Math.ceil(remain)}개월`, tone: 'warn' }
+  return { text: `잔여 ${Math.floor(remain)}개월`, tone: 'ok' }
 }
 
 const TYPE_LABEL: Record<CommissionEntry['type'], { label: string; color: string }> = {
@@ -139,9 +153,9 @@ export default function AgencyIntroducedStoresPage() {
               />
               <Kpi
                 icon={<Wallet className="w-5 h-5 text-emerald-600" />}
-                label="출금 가능"
+                label="지급 가능 (7일 성숙)"
                 value={`₩${formatNumber(summary?.available_commission ?? 0)}`}
-                sub={`대기 ₩${formatNumber(summary?.pending_commission ?? 0)}`}
+                sub={`성숙 중(7일 미경과) ₩${formatNumber(summary?.pending_commission ?? 0)}`}
                 bg="bg-emerald-50 border-emerald-100"
               />
               <Kpi
@@ -237,6 +251,16 @@ export default function AgencyIntroducedStoresPage() {
                         <p className={`text-sm font-bold ${s.active_group_buys > 0 ? 'text-amber-600' : 'text-gray-300'}`}>{s.active_group_buys}</p>
                         <p className="text-[10px] text-gray-400">개</p>
                       </div>
+                      {(() => {
+                        const term = termRemainLabel(introCode?.term_months ?? 0, s.term_started_at)
+                        return (
+                          <div className="text-center">
+                            <p className="text-[10px] text-gray-500">커미션 기간</p>
+                            <p className={`text-xs font-bold ${term.tone === 'warn' ? 'text-amber-600' : term.tone === 'ok' ? 'text-emerald-600' : 'text-gray-400'}`}>{term.text}</p>
+                            {s.term_started_at && <p className="text-[10px] text-gray-400">기산 {new Date(s.term_started_at).toLocaleDateString('ko-KR')}</p>}
+                          </div>
+                        )
+                      })()}
                       <div className="text-right">
                         <p className="text-[10px] text-gray-500">누적 매출</p>
                         <p className="text-sm font-bold text-gray-900">₩{formatNumber(s.total_sales)}</p>

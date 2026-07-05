@@ -28,6 +28,7 @@ import {
   applyGroupBuyReferral,
   sendBuyerVoucherIssuedAlimtalk,
   sendSellerFirstVoucherAlimtalk,
+  sendSellerVoucherSoldAlimtalk,
 } from './helpers'
 // 🛡️ 2026-05-21: 모든 voucher 카테고리에서 동작하려면 이용권 hardcode 제거 — getVoucherShortLabel 사용.
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
@@ -676,6 +677,15 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             )
           )
           await DB.prepare("UPDATE sellers SET first_voucher_notified = 1 WHERE id = ?").bind(product.seller_id).run()
+        } else if (seller?.phone) {
+          // 📣 2026-07-05 (운영 감사 Q4): 2번째 판매부터 건별 판매 알림톡 — 기존엔 첫 1회 뒤로는
+          //   대시보드 벨뿐이라 대시보드를 안 보는 사장님이 판매를 몰랐음. 같은 블록에서 분기해
+          //   첫 판매(온보딩 상세)와 이중발송 불가(레이스 0).
+          await sendSellerVoucherSoldAlimtalk(
+            c.env as { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+            seller.phone,
+            { restaurantName: seller.business_name, productName: product.name, qty, amount: Number(totalAmount) || 0 },
+          )
         }
       } catch { /* graceful */ }
       }

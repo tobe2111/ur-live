@@ -2110,6 +2110,8 @@
       "colPeriod": "Période",
       "colStore": "Boutique",
       "colUsed": "Utilisés",
+      "colRevenue": "Ventes",
+      "colFee": "Commission",
       "colAmount": "Montant",
       "colStatus": "Statut",
       "statusPending": "En attente",

@@ -2789,6 +2789,8 @@
       "colPeriod": "期间",
       "colStore": "门店",
       "colUsed": "使用数",
+      "colRevenue": "销售额",
+      "colFee": "手续费",
       "colAmount": "结算额",
       "colStatus": "状态",
       "statusPending": "待处理",
