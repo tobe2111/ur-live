@@ -709,6 +709,18 @@ api.interceptors.response.use(
           return Promise.reject(error);
         }
       }
+      // 🛡️ 2026-07-04 (대표 "/admin 무한로딩" 전수조사): IP 화이트리스트 차단은 인증 *이전* 403 이라
+      //   401 인터셉터/재로그인으로 절대 안 풀림 — 조용한 빈 대시보드 대신 원인+해결을 명시(30초 디바운스).
+      if (_code === 'ADMIN_IP_BLOCKED') {
+        const _k = 'ip-blocked';
+        const _last = _recent5xx.get(_k) ?? 0;
+        if (Date.now() - _last > 30_000) {
+          _recent5xx.set(_k, Date.now());
+          import('@/hooks/useToast').then(({ toast }) =>
+            toast.error('현재 네트워크(IP)가 어드민 허용목록에 없어 서버가 차단했습니다. live.ur-team.com/recover 에서 현재 IP 확인 후 Cloudflare 환경변수 ADMIN_IP_WHITELIST 에 추가하세요.', { duration: 10000 })
+          ).catch(() => { /* toast 불가 환경 — console 만 */ });
+        }
+      }
       console.warn('[API] 접근 권한 없음:', url);
     }
 

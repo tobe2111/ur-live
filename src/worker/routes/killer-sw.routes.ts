@@ -173,25 +173,38 @@ const RECOVER_HTML = `<!doctype html>
     if (guard) log('   복구가드 상태: ' + short(guard, 60));
   } catch (e) { log('4. 로그인 상태 점검 실패: ' + short(e, 80)); }
 
-  // 5) 어드민 API 응답 (토큰+쿠키 동시 — 401=토큰 문제 / 403=IP·권한 / 200=정상)
+  // 5) 어드민 API 응답 (토큰+쿠키 동시 — 401=토큰 문제 / 403=IP·권한(본문 code 로 구별) / 200=정상)
   try {
     var t0 = Date.now();
     var hdrs = {}; try { var tk2 = localStorage.getItem('admin_token'); if (tk2) hdrs['Authorization'] = 'Bearer ' + tk2; } catch (e3) {}
     var res = await fetch('/api/admin/dashboard/stats', { headers: hdrs, credentials: 'include', cache: 'no-store' });
     var ms = Date.now() - t0;
-    log('5. 어드민 API: HTTP ' + res.status + ' (' + ms + 'ms)' + (res.status === 200 ? ' ✅' : res.status === 401 ? ' ❌ 인증 실패(재로그인 필요)' : res.status === 403 ? ' ❌ 차단(IP 화이트리스트/권한)' : ' ⚠️'));
-    if (res.status === 401) findings.push('token'); else if (res.status === 403) findings.push('forbidden');
+    var body = null; try { body = await res.json(); } catch (e4) {}
+    var bodyCode = body && (body.code || (body.error && body.error.code)) || '';
+    log('5. 어드민 API: HTTP ' + res.status + ' (' + ms + 'ms)' + (res.status === 200 ? ' ✅' : res.status === 401 ? ' ❌ 인증 실패(재로그인 필요)' : res.status === 403 ? ' ❌ 차단 — ' + (bodyCode || short(body && body.error, 40) || '원인미상') : ' ⚠️'));
+    if (res.status === 401) findings.push('token');
+    else if (res.status === 403) findings.push(bodyCode === 'ADMIN_IP_BLOCKED' ? 'ip-blocked' : 'forbidden');
     if (ms > 5000) findings.push('slow-api');
   } catch (e) { log('5. 어드민 API 점검 실패: ' + short(e, 80)); findings.push('network'); }
+
+  // 6) 현재 접속 IP (Cloudflare /cdn-cgi/trace — ADMIN_IP_WHITELIST 에 넣을 값)
+  var myIp = '';
+  try {
+    var trace = await (await fetch('/cdn-cgi/trace', { cache: 'no-store' })).text();
+    var mIp = trace.match(/ip=([^\\n]+)/);
+    if (mIp) { myIp = mIp[1].trim(); log('6. 현재 접속 IP: ' + myIp); }
+  } catch (e) { /* trace 미지원 — skip */ }
 
   // 판정
   var v = document.getElementById('verdict'), verdict;
   if (findings.indexOf('stale-html') >= 0 || findings.indexOf('sw') >= 0 || findings.indexOf('chunk-missing') >= 0)
     verdict = '🔧 원인: 브라우저에 낡은 캐시/서비스워커가 남아 있습니다. 아래 [🚑 완전 복구] 를 눌러주세요.';
+  else if (findings.indexOf('ip-blocked') >= 0)
+    verdict = '🚫 원인 확정: 현재 네트워크 IP' + (myIp ? '(' + myIp + ')' : '') + ' 가 어드민 IP 허용목록에 없습니다. Cloudflare 대시보드 → Workers & Pages → ur-live → Settings → Variables 의 ADMIN_IP_WHITELIST 에 이 IP 를 추가(쉼표 구분)하거나, 변수를 비우면 IP 제한이 해제됩니다. (로그인·PIN·2FA 보호는 그대로 유지)' + (findings.indexOf('token') >= 0 ? ' 토큰도 만료됨 — IP 해결 후 재로그인하세요.' : '');
   else if (findings.indexOf('token') >= 0)
     verdict = '🔑 원인: 어드민 로그인 상태(토큰)가 만료/손상됐습니다. [🔑 어드민 로그인 상태 초기화] 후 다시 로그인해주세요.';
   else if (findings.indexOf('forbidden') >= 0)
-    verdict = '🚫 원인: 서버가 이 접속을 차단(403)합니다 — IP 화이트리스트 또는 권한 설정 문제. 운영자에게 이 화면을 보내주세요.';
+    verdict = '🚫 원인: 서버가 이 접속을 차단(403)합니다 — 계정 권한(role) 또는 보안 설정 문제. 운영자에게 이 화면을 보내주세요.';
   else if (findings.indexOf('network') >= 0 || findings.indexOf('slow-api') >= 0)
     verdict = '🌐 네트워크/서버 응답 문제가 감지됐습니다. 이 화면을 캡처해 운영자에게 보내주세요.';
   else
