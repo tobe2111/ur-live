@@ -641,7 +641,7 @@ curatorRoutes.patch('/me/profile', requireAuth(), async (c) => {
   try {
     const userId = getAuthUserId(c)
     if (!userId) return c.json({ success: false, error: '인증 필요' }, 401)
-    type ProfileBody = { name?: string; bio?: string; profile_image?: string; banner_url?: string; youtube_url?: string; instagram_url?: string; tiktok_url?: string; headline?: string; accent?: string }
+    type ProfileBody = { name?: string; bio?: string; profile_image?: string; banner_url?: string; youtube_url?: string; instagram_url?: string; tiktok_url?: string; headline?: string; accent?: string; show_recommend?: boolean }
     const body = await c.req.json<ProfileBody>().catch(() => ({} as ProfileBody))
 
     const updates: string[] = []

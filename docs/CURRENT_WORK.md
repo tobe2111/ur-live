@@ -6,6 +6,13 @@
 - **신규 에이전시 커미션 기간 기본 24개월**: 3개 생성 경로(어드민 생성/자체 가입/유저 전환) INSERT 직후 `commission_term_months IS NULL → 24` fail-soft 배선 — NULL=무제한이라 수동 입력 누락 시 무제한으로 도는 사고 방지(약관 "기본 24개월" 정합). 무제한 계약만 어드민이 개별 NULL. **기존 에이전시는 불변.**
 - 동반: 유닛테스트(default 1% 기대값)·운영 가이드 시드 2종(에이전시/어드민 수수료 구조 — 매장영입 1%·24개월·T+7·레거시 rail 봉인 반영)·코드 주석 갱신.
 - ⚠️ **약관·기산일**: 자문이 약관3 을 "매장별 첫 판매 확정일로부터 24개월"로 수정 중 — 코드 기산일(첫 signup_bonus=첫 결제)과 일치.
+## ✅ 2026-07-05 — 약관 v1.0 3종 정본 게시 + 가입 약관 동의 기능 신설 (대표 "초안 빼고 jiwon@ur-team.com, 에이전시 약관에도 적용")
+대표 전달 약관 3종(이용약관/판매자/에이전시 파트너 — 시행 2026-07-05 · v1.0)을 정본으로 게시 + 가입 동의 배선.
+- **약관 페이지(데이터 주도)**: `src/pages/terms/`(terms-types + consumer/seller/agency 콘텐츠 + TermsDocument 렌더러). `/terms`(전면 교체)·`/terms/seller`(구 2026-05-16 초안 대체 — 인플/라이브 송출 조항 폐기)·`/terms/agency`(신규 라우트). 초안 표기 제거·연락처 jiwon@ur-team.com 통일. **에이전시 제4조1항에 요율 변동 가능 명문화**(대표 지시 — "기본 1%, 개별 합의 또는 제9조 절차로 변경 가능").
+- **가입 약관 동의(이전엔 전무)**: `TermsConsentBox` 공용 컴포넌트. ① 에이전시 2경로(`/agency/register`·`/agency/register/business`) — 전체 동의 + **핵심조항(제4·5·9·10조) 요약 상시 노출 + 개별 동의**(약관 전문 요구사항), 서버 400 강제. ② 셀러 가입(`/seller/register/supplier`) — 판매자 약관 동의 필수, 서버 400 강제. ③ 소비자 — LoginPage 에 "로그인 시 이용약관·개인정보처리방침 동의 간주" 고지(제5조 정합).
+- **서버 기록**: `terms_consents` 테이블(repair-schema + `worker/utils/terms-consent.ts` ensure/record) — subject/user/slug/version/core동의/ip/시각. agency /register·/register-from-user + seller /register-from-user 3곳 배선(검증은 400 선행, 기록은 fail-soft).
+- SiteFooter 에 판매자/에이전시 약관 링크 추가. i18n 신규 키 6개 언어.
+- ⚠️ 약관 문구는 대표 정본 — 수정 시 대표 확인 + 버전 +0.1 + BLOG/가이드 정합 확인.
 
 ## ✅ 2026-07-05 — 운영 준비 13문항 감사 수리 배치 (대표 "모두 이상적으로 진행해줘")
 자문 13문항(셀러 온보딩/에이전시/어드민 운영) 코드감사에서 확정된 갭 전부 수리. 도매몰 무접촉.

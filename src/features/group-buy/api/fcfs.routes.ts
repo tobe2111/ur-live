@@ -182,6 +182,16 @@ userApp.post('/:productId/apply', rateLimit({ action: 'fcfs_apply', max: 10, win
     const productId = parseInt(c.req.param('productId') || '', 10)
     const userId = String(c.get('user')?.id || '')
     if (!Number.isFinite(productId) || !userId) return c.json({ success: false, error: 'bad request' }, 400)
+    // 🛡️ 2026-07-02 (감사 26 — 봇 응모 방어): 가입 24시간 미만 신규 계정 응모 제한.
+    //   무료 응모 특성상 계정 양산 봇의 1순위 표적 — 최소 숙성 기간 요구(조회 실패 시 fail-open).
+    try {
+      const u = await DB.prepare('SELECT created_at FROM users WHERE id = ?').bind(userId)
+        .first<{ created_at: string | null }>()
+      const createdMs = u?.created_at ? Date.parse(String(u.created_at).replace(' ', 'T') + 'Z') : NaN
+      if (Number.isFinite(createdMs) && Date.now() - createdMs < 24 * 60 * 60 * 1000) {
+        return c.json({ success: false, error: '가입 후 24시간이 지나야 응모할 수 있어요' }, 403)
+      }
+    } catch { /* fail-open */ }
     await ensureFcfsTable(DB)
     const meta = await getSupplyMeta(DB, [productId])
     const cfg = parseConfig(meta.get(productId))
