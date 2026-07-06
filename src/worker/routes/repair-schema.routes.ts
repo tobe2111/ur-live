@@ -73,6 +73,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     // ── admins ─────────────────────────────────────
     { desc: 'admins.role', sql: "ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'admin'" },
     { desc: 'admins.is_active', sql: "ALTER TABLE admins ADD COLUMN is_active INTEGER DEFAULT 1" },
+    // 🛡️ 2026-07-05: 소프트 삭제 컬럼 — 목록 제외/로그인 차단 필터가 참조(admin-accounts delete).
+    { desc: 'admins.status', sql: "ALTER TABLE admins ADD COLUMN status TEXT DEFAULT 'active'" },
+    { desc: 'admins.deleted_at', sql: "ALTER TABLE admins ADD COLUMN deleted_at DATETIME" },
     { desc: 'admins.last_login_at', sql: "ALTER TABLE admins ADD COLUMN last_login_at TEXT" },
     { desc: 'admins.login_pin_hash', sql: "ALTER TABLE admins ADD COLUMN login_pin_hash TEXT" },
     // ── RBAC 부트스트랩 (2026-06-17) ───────────────────────────────────────────
