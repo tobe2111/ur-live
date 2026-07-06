@@ -119,12 +119,16 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
     try { await DB.prepare("ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'admin'").run() } catch { /* already exists */ }
     try { await DB.prepare("ALTER TABLE admins ADD COLUMN is_active INTEGER DEFAULT 1").run() } catch { /* already exists */ }
 
+    // 🔐 2026-07-05 (대표 지시 — "삭제하면 로그인 못하게 막아야"): 비활성/삭제 계정 로그인 차단.
+    //   기존엔 삭제가 email 을 _deleted_ 접미사로만 바꿔 원 email 매칭 실패에 의존했음(취약 — 접미사
+    //   미부착/이메일변경 경합 시 우회). is_active=0(삭제 시 항상 set, 로그인이 ALTER 로 컬럼 보장)을
+    //   직접 게이트해 확실히 차단. deactivated(is_active=0) 계정도 동일하게 로그인 불가(의도).
     const admins = await executeQuery<any>(
       DB,
-      'SELECT id, username, email, password_hash, name, role, created_at FROM admins WHERE email = ?',
+      "SELECT id, username, email, password_hash, name, role, created_at FROM admins WHERE email = ? AND COALESCE(is_active, 1) = 1",
       [email]
     );
-    
+
     if (admins.length === 0) {
       if (import.meta.env.DEV) console.warn('[Admin Login] Admin not found:', maskEmail(email));
       // 🛡️ 2026-04-22: 타이밍 공격 방어 — 존재하지 않는 계정에도 verifyPassword 실행해서
@@ -309,14 +313,15 @@ adminRoutes.post('/refresh', cors(), rateLimit({ action: 'admin_refresh', max: 2
     }
 
     const adminId = payload.sub;
+    // 🔐 2026-07-05: 삭제/비활성 계정은 refresh 로 세션 재발급 불가 — is_active 게이트(삭제 즉시 무효화).
     const admins = await executeQuery<any>(
       DB,
-      'SELECT id, username, email, name, role FROM admins WHERE id = ?',
+      'SELECT id, username, email, name, role FROM admins WHERE id = ? AND COALESCE(is_active, 1) = 1',
       [adminId]
     );
 
     if (admins.length === 0) {
-      console.warn('[Admin Refresh] Admin not found:', adminId);
+      console.warn('[Admin Refresh] Admin not found or deactivated:', adminId);
       return c.json({ success: false, error: '계정을 찾을 수 없습니다.' }, 401);
     }
 
