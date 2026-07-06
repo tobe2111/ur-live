@@ -1115,8 +1115,14 @@ function demoDiscountRange(cat: string): [number, number] {
   return [0.18, 0.38];
 }
 // mult = 업종별 시세 보정 배율(어드민 편집, platform_settings.demo_price_multipliers) — 물가 드리프트 대응.
-function buildDemoOffer(t: DemoBiz, mult = 1): { name: string; desc: string; price: number; orig: number; q: string } {
-  const p = t.pat[Math.floor(Math.random() * t.pat.length)];
+function buildDemoOffer(t: DemoBiz, mult = 1, avoid?: Set<string>): { name: string; desc: string; price: number; orig: number; q: string } {
+  // 🎯 2026-07-06 (대표 "곱창 모둠 2인+볶음밥이 2번 넘게 나옴 — 최대한 현실적"): 같은 배치에서
+  //   이미 쓴 오퍼 문구는 피해 재추첨(패턴 소진 시에만 허용). 상품명이 매장명으로 유니크해도
+  //   오퍼 문구까지 다양해야 "데모 티" 가 없음.
+  let p = t.pat[Math.floor(Math.random() * t.pat.length)];
+  if (avoid && t.pat.length > 1) {
+    for (let tries = 0; tries < 8 && avoid.has(p.n); tries++) p = t.pat[Math.floor(Math.random() * t.pat.length)];
+  }
   const price = Math.max(1000, Math.round((p.min + Math.random() * (p.max - p.min)) * mult / 100) * 100);
   const [dMin, dMax] = demoDiscountRange(t.cat);
   const disc = dMin + Math.random() * (dMax - dMin);
@@ -1419,10 +1425,15 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     //   center 있으면 검색어는 순수 업종(pq)만(지역명은 좌표로 반영), 없으면 "지역 랜덤구 pq" 폴백.
     const regionCenter = region ? await resolveRegionCenter(c.env, region) : null;
     // 🎲 업종을 셔플해서 need 만큼 — 한 배치 안에서 업종이 최대한 안 겹치고, 부족하면 순환.
+    //   🎯 2026-07-06: 라운드(≤3) 반복 시 **이미 시드된 업종을 뒤로** 밀어(미사용 업종 우선) 라운드
+    //   경계에서 같은 업종·같은 오퍼가 반복되던 것 차단(곱창 2번↑ 사건의 한 축).
+    const usedTypes = new Set<string>();
     const nextWork = (need: number): Array<{ t: DemoBiz }> => {
-      const shuffled = [...types].sort(() => Math.random() - 0.5);
+      const fresh = types.filter((t) => !usedTypes.has(t.pq)).sort(() => Math.random() - 0.5);
+      const rest = types.filter((t) => usedTypes.has(t.pq)).sort(() => Math.random() - 0.5);
+      const pool = [...fresh, ...rest];  // 미사용 업종 먼저 소진 → 다양성 최대
       const w: Array<{ t: DemoBiz }> = [];
-      for (let i = 0; i < need; i++) w.push({ t: shuffled[i % shuffled.length] });
+      for (let i = 0; i < need; i++) w.push({ t: pool[i % pool.length] });
       return w;
     };
     // 🎯 2026-07-01 (대표 요청): 데모 딜을 추첨 응모(fcfs)로 — 정원 대비 지원수가 이미 넘치게(30/5, 10/3 …).
@@ -1447,6 +1458,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     const seededForReviews: Array<{ id: number; name: string; category: string; storeName: string | null; price: number }> = [];
     // 🔁 같은 호출 내 + **기존 시드분과도** 동일 매장 중복 생성 방지 — DB 의 기존 데모 매장을 선적재.
     const usedStores = new Set<string>();
+    const usedOffers = new Set<string>();  // 🎯 2026-07-06: 배치 내 오퍼 문구 반복 억제(패턴 소진 전까지)
     try {
       const prev = await DB.prepare(
         `SELECT restaurant_name, restaurant_address FROM products WHERE slug LIKE ?`
@@ -1490,13 +1502,17 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         if (usedStores.has(storeKey)) { skipped++; continue; }  // 같은/이전 배치 매장 재사용 방지
         usedStores.add(storeKey);
         // 🎲 3단계: 그 매장에 맞는 오퍼 랜덤 조합(패턴×가격밴드×할인 25~45%).
-        const offer = buildDemoOffer(t, priceMult.get(t.pq) ?? priceMult.get('*') ?? 1);
+        const offer = buildDemoOffer(t, priceMult.get(t.pq) ?? priceMult.get('*') ?? 1, usedOffers);
+        usedOffers.add(offer.name);
+        usedTypes.add(t.pq);  // 이 업종은 시드됨 → 다음 라운드 nextWork 에서 뒤로
         const img = realPhoto || `https://picsum.photos/seed/urdeal-${t.pq}-${slugCursor + 1}/600/600`;
         const restName = place?.name || null;         // hasCoord 보장 → 항상 실매장명
         const restAddr = place?.address || null;
-        // 🎯 상품명 지역 프리픽스 = 지정 region 우선, 없으면 실매장 주소의 구/시.
+        // 🎯 2026-07-06 (대표 "가장 현실적인 느낌"): 상품명 = **실매장명 · 오퍼** (쿠팡/카카오 이용권 스타일).
+        //   홈 피드는 상품명만 노출 → 매장명을 앞세워야 (a) 매장마다 유니크(매장 dedup) (b) 진짜 이용권 느낌.
+        //   지역 프리픽스([구])는 제거 — 실 매장명이 지점명(…마포점)으로 지역을 담고, 주소/거리는 카드·상세가 별도 표시.
         const realRegion = region || (place?.address ? (place.address.match(/([가-힣]+구|[가-힣]+시)/)?.[1] || '') : '');
-        const dispName = realRegion ? `[${realRegion}] ${offer.name}` : offer.name;
+        const dispName = restName ? `${restName} · ${offer.name}` : (realRegion ? `[${realRegion}] ${offer.name}` : offer.name);
         const slug = DEAL_DEMO_SLUG + (++slugCursor);
         let res;
         try {
