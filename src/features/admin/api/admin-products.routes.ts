@@ -960,23 +960,10 @@ function parseDealCsv(text: string): Record<string, string>[] {
 //   실제 상품처럼 보여야 함). 데모 식별은 slug(demo-deal-N, 유저 비노출)로만.
 // pq = 카카오 장소검색용 순수 업종 키워드(이미지검색용 q 와 분리 — "상차림/인테리어/시술" 같은 노이즈 배제).
 //   place 매칭은 `{지역} {pq}` 로 질의 → 실제 매장(좌표·주소·place_url) 반환 확률 극대화(대표 "정확하게").
-const DEAL_DEMO: { name: string; cat: string; price: number; orig: number; rest: string; addr: string; img: string; q: string; pq: string; spots: number; seed: number; desc: string }[] = [
-  { name: '[강남] 1++ 한우 오마카세 2인', cat: 'meal_voucher', price: 89000, orig: 140000, rest: '한우공방 강남점', addr: '서울 강남구 봉은사로', img: 'https://picsum.photos/seed/urdeal1/600/600', q: '한우 오마카세 상차림', pq: '한우 오마카세', spots: 5, seed: 30, desc: '1++ 한우 오마카세 2인 코스. 셰프가 부위별로 직접 구워드립니다. 매장 방문 후 이용권 QR 제시로 바로 이용하세요.' },
-  { name: '[연남] 화덕피자 + 파스타 2인 세트', cat: 'meal_voucher', price: 25900, orig: 39000, rest: '포르노 로마노', addr: '서울 마포구 동교로', img: 'https://picsum.photos/seed/urdeal2/600/600', q: '화덕피자', pq: '화덕피자', spots: 3, seed: 10, desc: '400℃ 화덕에서 구운 나폴리식 피자 1판 + 수제 파스타 1개, 2인 세트. 방문 시 이용권 QR 제시.' },
-  { name: '[성수] 스페셜티 핸드드립 2인 + 디저트', cat: 'meal_voucher', price: 12900, orig: 21000, rest: '성수 로스터스', addr: '서울 성동구 연무장길', img: 'https://picsum.photos/seed/urdeal3/600/600', q: '핸드드립 커피', pq: '카페', spots: 10, seed: 47, desc: '스페셜티 원두 핸드드립 2잔 + 오늘의 디저트 1개. 원두는 매주 로스팅분만 사용합니다.' },
-  { name: '두피 스케일링 + 헤어 클리닉', cat: 'beauty_voucher', price: 39000, orig: 80000, rest: '살롱 드 모드', addr: '서울 강남구 압구정로', img: 'https://picsum.photos/seed/urdeal4/600/600', q: '헤어살롱 매장 인테리어', pq: '헤어살롱', spots: 5, seed: 22, desc: '두피 진단 → 스케일링 → 영양 클리닉 풀코스(약 60분). 방문 전 전화 예약을 권장합니다.' },
-  { name: '왁싱 전신 패키지', cat: 'beauty_voucher', price: 49000, orig: 90000, rest: '스무스 왁싱 라운지', addr: '서울 서초구 강남대로', img: 'https://picsum.photos/seed/urdeal5/600/600', q: '왁싱 뷰티샵 매장', pq: '왁싱샵', spots: 8, seed: 35, desc: '전신 왁싱 패키지 — 1회용 위생 재료만 사용합니다. 100% 예약제, 이용권 구매 후 전화 예약.' },
-  { name: '속눈썹 연장 풀세트 + 리터치', cat: 'beauty_voucher', price: 29000, orig: 55000, rest: '아이래쉬 스튜디오', addr: '서울 마포구 양화로', img: 'https://picsum.photos/seed/urdeal6/600/600', q: '속눈썹 연장 시술', pq: '속눈썹', spots: 3, seed: 14, desc: '속눈썹 연장 풀세트 + 2주 내 리터치 1회 포함. 시술 약 90분, 예약 후 방문해주세요.' },
-  { name: '반려견 종합 미용 (목욕+커트)', cat: 'etc_voucher', price: 35000, orig: 60000, rest: '댕댕살롱', addr: '서울 송파구 올림픽로', img: 'https://picsum.photos/seed/urdeal7/600/600', q: '강아지 미용', pq: '애견미용', spots: 6, seed: 28, desc: '목욕 + 전체 커트 종합 미용(소형견 기준). 중·대형견은 매장으로 문의해주세요.' },
-  { name: '실내 클라이밍 1일 체험 + 강습', cat: 'etc_voucher', price: 19000, orig: 35000, rest: '더 클라임', addr: '서울 광진구 아차산로', img: 'https://picsum.photos/seed/urdeal8/600/600', q: '실내 클라이밍', pq: '클라이밍', spots: 4, seed: 19, desc: '실내 클라이밍 1일 이용권 + 초보 강습 30분 + 암벽화·초크 대여 포함. 운동복만 챙겨오세요.' },
-  // ❌ 2026-07-02 (대표 "왜 이런 서비스가 데모에?"): general(배송형) 데모 2종(원두 드립백/한라봉) 제거.
-  //   배경: 06-17 동네딜 리스트에 general 카테고리 서버 지원이 추가되며 06-30 데모 확장이 샘플을 넣었으나,
-  //   ① 홈/동네딜 어디에도 '일반' 칩이 없고 기본 피드 쿼리도 이용권 4종만이라 소비자 정상 접근 불가(유령),
-  //   ② 상세가 쇼핑 UI(/products, 장바구니·배송)로 열리는데 쇼핑탭은 잠정 숨김 — "동네딜=우리 동네 매장"
-  //   멘탈모델만 흐림. 동네딜 데모 = 로컬 이용권만. (기존 시드분은 아래 heal 패스가 자동 은퇴.)
-  // ⚠️ 2026-07-05: 이 배열은 **레거시 desc-heal 매칭 전용**으로만 유지 — 시드는 아래 생성형
-  //   DEMO_BIZ(업종 문법)로 전환(대표 "고정 템플릿 말고 랜덤으로 뽑아와야").
-];
+// 🗑️ 2026-07-06 (worker 번들 4MB 예산 초과 — 743B 오버): 레거시 고정 40종 템플릿 `DEAL_DEMO` 제거.
+//   유일 사용처였던 desc-heal(`description LIKE '데모%'`)은 여러 차례 재생성으로 대상 행이 0(사멸) →
+//   heal 은 이름 stripRegion 폴백만으로 동등 동작. 시드는 생성형 DEMO_BIZ(업종 문법)로 완전 전환됨.
+//   번들 8KB 감량 → 자기부과 사이즈 가드(4MB) 보존(가드 상향 대신 실사(死) 데이터 제거 — 레포 철학).
 
 // 🎲 2026-07-05 (대표 "40종 고정이 아니라 랜덤으로 뽑아와야 — 뭐가 이상적?"): **생성형 데모 문법**.
 //   방향 역전: 상품을 정해놓고 매장을 찾는 게 아니라, 카카오에서 그 업종 실매장을 **랜덤으로 뽑고**
@@ -1115,8 +1102,14 @@ function demoDiscountRange(cat: string): [number, number] {
   return [0.18, 0.38];
 }
 // mult = 업종별 시세 보정 배율(어드민 편집, platform_settings.demo_price_multipliers) — 물가 드리프트 대응.
-function buildDemoOffer(t: DemoBiz, mult = 1): { name: string; desc: string; price: number; orig: number; q: string } {
-  const p = t.pat[Math.floor(Math.random() * t.pat.length)];
+function buildDemoOffer(t: DemoBiz, mult = 1, avoid?: Set<string>): { name: string; desc: string; price: number; orig: number; q: string } {
+  // 🎯 2026-07-06 (대표 "곱창 모둠 2인+볶음밥이 2번 넘게 나옴 — 최대한 현실적"): 같은 배치에서
+  //   이미 쓴 오퍼 문구는 피해 재추첨(패턴 소진 시에만 허용). 상품명이 매장명으로 유니크해도
+  //   오퍼 문구까지 다양해야 "데모 티" 가 없음.
+  let p = t.pat[Math.floor(Math.random() * t.pat.length)];
+  if (avoid && t.pat.length > 1) {
+    for (let tries = 0; tries < 8 && avoid.has(p.n); tries++) p = t.pat[Math.floor(Math.random() * t.pat.length)];
+  }
   const price = Math.max(1000, Math.round((p.min + Math.random() * (p.max - p.min)) * mult / 100) * 100);
   const [dMin, dMax] = demoDiscountRange(t.cat);
   const disc = dMin + Math.random() * (dMax - dMin);
@@ -1347,7 +1340,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as { region?: string; category?: string };
     const region = String(body.region || '').trim().slice(0, 30);
     const catFilter = mapDealCategory(String(body.category || '').trim());
-    // 🎲 2026-07-05: 시드 소스 = 생성형 업종 문법(DEMO_BIZ). DEAL_DEMO 는 레거시 heal 매칭 전용.
+    // 🎲 2026-07-05: 시드 소스 = 생성형 업종 문법(DEMO_BIZ). (레거시 고정 템플릿은 2026-07-06 제거됨.)
     const types = catFilter ? DEMO_BIZ.filter((t) => t.cat === catFilter) : DEMO_BIZ;
     if (types.length === 0) return c.json({ success: false, error: '해당 카테고리 데모 업종이 없습니다' }, 400);
 
@@ -1390,11 +1383,14 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       ).bind(DEAL_DEMO_SLUG + '%').all<{ id: number; name: string }>().catch(() => ({ results: [] as { id: number; name: string }[] }));
       const stripRegion = (s: string) => String(s || '').replace(/^\[[^\]]+\]\s*/, '').trim();
       for (const rowD of (oldDemo.results || [])) {
-        const tpl = DEAL_DEMO.find((d) => stripRegion(d.name) === stripRegion(rowD.name));
-        const newDesc = tpl?.desc || stripRegion(rowD.name);  // 템플릿 미매칭이어도 최소한 "데모" 제거
+        const newDesc = stripRegion(rowD.name);  // 레거시 "데모…" 설명 → 최소한 상품명 기반으로(데모 문구 제거)
         await DB.prepare('UPDATE products SET description = ? WHERE id = ?').bind(newDesc, rowD.id).run().catch(() => {});
       }
     } catch { /* best-effort */ }
+
+    // 🏷️ 2026-07-06 (대표 "기존 데모 데이터 많은데"): 옛 '[구] 오퍼' 이름을 '{실매장명} · {오퍼}' 신형으로
+    //   자동 정정 — 시드마다 멱등 실행(이미 신형이면 skip). 재생성 없이 기존 데모 이름만 최신화.
+    await healDemoNamesInPlace(DB).catch(() => {});
 
     // 누적 추가 — 기존 slug(demo-deal-N)의 최대 N 다음 번호부터(UNIQUE 충돌 원천 제거).
     const slugRows = await DB.prepare(`SELECT slug FROM products WHERE slug LIKE ?`).bind(DEAL_DEMO_SLUG + '%')
@@ -1419,10 +1415,15 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     //   center 있으면 검색어는 순수 업종(pq)만(지역명은 좌표로 반영), 없으면 "지역 랜덤구 pq" 폴백.
     const regionCenter = region ? await resolveRegionCenter(c.env, region) : null;
     // 🎲 업종을 셔플해서 need 만큼 — 한 배치 안에서 업종이 최대한 안 겹치고, 부족하면 순환.
+    //   🎯 2026-07-06: 라운드(≤3) 반복 시 **이미 시드된 업종을 뒤로** 밀어(미사용 업종 우선) 라운드
+    //   경계에서 같은 업종·같은 오퍼가 반복되던 것 차단(곱창 2번↑ 사건의 한 축).
+    const usedTypes = new Set<string>();
     const nextWork = (need: number): Array<{ t: DemoBiz }> => {
-      const shuffled = [...types].sort(() => Math.random() - 0.5);
+      const fresh = types.filter((t) => !usedTypes.has(t.pq)).sort(() => Math.random() - 0.5);
+      const rest = types.filter((t) => usedTypes.has(t.pq)).sort(() => Math.random() - 0.5);
+      const pool = [...fresh, ...rest];  // 미사용 업종 먼저 소진 → 다양성 최대
       const w: Array<{ t: DemoBiz }> = [];
-      for (let i = 0; i < need; i++) w.push({ t: shuffled[i % shuffled.length] });
+      for (let i = 0; i < need; i++) w.push({ t: pool[i % pool.length] });
       return w;
     };
     // 🎯 2026-07-01 (대표 요청): 데모 딜을 추첨 응모(fcfs)로 — 정원 대비 지원수가 이미 넘치게(30/5, 10/3 …).
@@ -1447,6 +1448,7 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     const seededForReviews: Array<{ id: number; name: string; category: string; storeName: string | null; price: number }> = [];
     // 🔁 같은 호출 내 + **기존 시드분과도** 동일 매장 중복 생성 방지 — DB 의 기존 데모 매장을 선적재.
     const usedStores = new Set<string>();
+    const usedOffers = new Set<string>();  // 🎯 2026-07-06: 배치 내 오퍼 문구 반복 억제(패턴 소진 전까지)
     try {
       const prev = await DB.prepare(
         `SELECT restaurant_name, restaurant_address FROM products WHERE slug LIKE ?`
@@ -1490,13 +1492,17 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         if (usedStores.has(storeKey)) { skipped++; continue; }  // 같은/이전 배치 매장 재사용 방지
         usedStores.add(storeKey);
         // 🎲 3단계: 그 매장에 맞는 오퍼 랜덤 조합(패턴×가격밴드×할인 25~45%).
-        const offer = buildDemoOffer(t, priceMult.get(t.pq) ?? priceMult.get('*') ?? 1);
+        const offer = buildDemoOffer(t, priceMult.get(t.pq) ?? priceMult.get('*') ?? 1, usedOffers);
+        usedOffers.add(offer.name);
+        usedTypes.add(t.pq);  // 이 업종은 시드됨 → 다음 라운드 nextWork 에서 뒤로
         const img = realPhoto || `https://picsum.photos/seed/urdeal-${t.pq}-${slugCursor + 1}/600/600`;
         const restName = place?.name || null;         // hasCoord 보장 → 항상 실매장명
         const restAddr = place?.address || null;
-        // 🎯 상품명 지역 프리픽스 = 지정 region 우선, 없으면 실매장 주소의 구/시.
+        // 🎯 2026-07-06 (대표 "가장 현실적인 느낌"): 상품명 = **실매장명 · 오퍼** (쿠팡/카카오 이용권 스타일).
+        //   홈 피드는 상품명만 노출 → 매장명을 앞세워야 (a) 매장마다 유니크(매장 dedup) (b) 진짜 이용권 느낌.
+        //   지역 프리픽스([구])는 제거 — 실 매장명이 지점명(…마포점)으로 지역을 담고, 주소/거리는 카드·상세가 별도 표시.
         const realRegion = region || (place?.address ? (place.address.match(/([가-힣]+구|[가-힣]+시)/)?.[1] || '') : '');
-        const dispName = realRegion ? `[${realRegion}] ${offer.name}` : offer.name;
+        const dispName = restName ? `${restName} · ${offer.name}` : (realRegion ? `[${realRegion}] ${offer.name}` : offer.name);
         const slug = DEAL_DEMO_SLUG + (++slugCursor);
         let res;
         try {
@@ -1785,6 +1791,49 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
     return c.json({ success: true, data: rows });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env), data: [] }, 500);
+  }
+});
+
+// 🎯 2026-07-06 (대표 "기존 데모 데이터 많은데" — 회수+재생성은 사진·응모·인사이트 낭비):
+//   기존 데모 상품명을 '{실매장명} · {오퍼}' 로 **제자리(in-place) 정정** — 좌표·R2사진·리뷰·응모·
+//   수요인사이트 전부 보존한 채 이름만 신형으로. 멱등(이미 ' · ' 신형이면 skip).
+//   엔드포인트(수동) + 시드 heal 블록(자동) + 후속 데모 유지 cron 어디서든 재사용.
+export async function healDemoNamesInPlace(DB: D1Database): Promise<{ healed: number; skipped: number; samples: Array<{ id: number; from: string; to: string }> }> {
+  const { results } = await DB.prepare(
+    `SELECT id, name, restaurant_name FROM products
+       WHERE slug LIKE ? AND COALESCE(slug,'') NOT LIKE 'retired-%'`
+  ).bind(DEAL_DEMO_SLUG + '%').all<{ id: number; name: string | null; restaurant_name: string | null }>()
+    .catch(() => ({ results: [] as { id: number; name: string | null; restaurant_name: string | null }[] }));
+  let healed = 0, skipped = 0;
+  const samples: Array<{ id: number; from: string; to: string }> = [];
+  for (const r of (results || [])) {
+    const store = (r.restaurant_name || '').trim();
+    const cur = (r.name || '').trim();
+    if (!store || !cur) { skipped++; continue; }
+    if (cur.includes(' · ')) { skipped++; continue; }            // 이미 신형
+    const offer = cur.replace(/^\[[^\]]+\]\s*/, '').trim();       // 옛 '[구] ' 프리픽스 제거
+    if (!offer) { skipped++; continue; }
+    const next = `${store} · ${offer}`;
+    if (next === cur) { skipped++; continue; }
+    const res = await DB.prepare(
+      `UPDATE products SET name = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(next, r.id).run().catch(() => null);
+    if (res?.meta?.changes) { healed++; if (samples.length < 8) samples.push({ id: r.id, from: cur, to: next }); }
+    else skipped++;
+  }
+  return { healed, skipped, samples };
+}
+
+// POST /dongnedeal/heal-names — 위 in-place 정정을 수동 트리거(+ 캐시 무효화 + 감사로그).
+adminProductsRoutes.post('/dongnedeal/heal-names', cors(), async (c) => {
+  try {
+    const { healed, skipped, samples } = await healDemoNamesInPlace(c.env.DB);
+    await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
+    await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    await writeAuditLog(c, { action: 'dongnedeal_heal_names', targetType: 'product', after: { healed, skipped } }).catch(() => {});
+    return c.json({ success: true, healed, skipped, samples });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
 
