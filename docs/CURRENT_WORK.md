@@ -1,5 +1,10 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-06 — 도매 상단바에 로그인 역할 배지 (대표 "판매사/제조사 로그인 구별 상단 표시")
+- `WholesaleUtilBar.tsx`(전 도매표면 SSOT 상단바)에 **항상 보이는 역할 배지** 추가 — 판매사(`seller_token`, Store 아이콘·흰 pill) vs 제조사(`supplier_token`, Factory 아이콘·하늘색 pill). 기존 신원 칩(`{companyName} 님 · {grade}`)은 `md:` 이상에서만 보였는데, 배지는 모바일 포함 항상 노출 → 로그인 종류 즉시 인지.
+- i18n `wholesale.role.distributor`/`.manufacturer` 6개 언어(ko 판매사/제조사, en Distributor/Manufacturer, ja 販売社/製造社, zh 销售商/制造商, es, fr). defaultValue 폴백 동봉.
+- 순수 표시 추가(배선/토큰/메뉴 로직 불변). 검증: tsc 0 · build 0 · 테마/파일크기 가드 GREEN.
+
 ## ✅ 2026-07-04 — 멀티몰 완전체: 몰별 회원격리·캐시·푸터/로고/배너/수수료 (대표 신고 "medi 에 유통스타트 로그인/재주문 노출" + "푸터·로고·배너 몰별 + 어드민 조정")
 - **몰별 별도 회원 서버 강제**: sellerMallId 가드 — /me(mall_mismatch)·/home(401)·/recent-items(빈)·카탈로그(게스트 강등)·/orders(빈)·발주(403). 클라 me/orders/recent/banners 훅 ?mall= 전달+몰별 RQ 키. 카탈로그 UI 게스트 강등+배너. **가입도 몰 귀속**(join/register/become POST ?mall=). 카트 localStorage 몰별 키.
 - **게스트 캐시 몰 차원**(크로스몰 상품 누수 — X-WS-Cache:KV-HIT 실측): KV 키 `ws:cat:g:{host}` → `+:m{id}`(비기본 몰만, 기본 키 byte-불변=SSR/prewarm 잠금 보존), 캐논 edge put 은 기본 몰만(역방향 오염 차단).

@@ -6140,6 +6140,10 @@
       "proposal": "Proponer / Reportar",
       "deposit": "Depósito"
     },
+    "role": {
+      "distributor": "Distribuidor",
+      "manufacturer": "Fabricante"
+    },
     "util": {
       "cart": "Carrito",
       "login": "Iniciar sesión",

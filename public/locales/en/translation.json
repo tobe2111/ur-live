@@ -6140,6 +6140,10 @@
       "proposal": "Propose / Report",
       "deposit": "Deposit"
     },
+    "role": {
+      "distributor": "Distributor",
+      "manufacturer": "Manufacturer"
+    },
     "util": {
       "cart": "Cart",
       "login": "Login",

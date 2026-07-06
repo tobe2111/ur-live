@@ -6128,6 +6128,10 @@
       "proposal": "제안/신고",
       "deposit": "예치금"
     },
+    "role": {
+      "distributor": "판매사",
+      "manufacturer": "제조사"
+    },
     "util": {
       "cart": "장바구니",
       "login": "로그인",

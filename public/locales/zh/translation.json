@@ -6140,6 +6140,10 @@
       "proposal": "提案/报告",
       "deposit": "预付款"
     },
+    "role": {
+      "distributor": "销售商",
+      "manufacturer": "制造商"
+    },
     "util": {
       "cart": "购物车",
       "login": "登录",
