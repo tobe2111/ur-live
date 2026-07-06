@@ -1804,6 +1804,43 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
   }
 });
 
+// POST /dongnedeal/heal-names — 기존 데모 상품명을 '{실매장명} · {오퍼}' 로 **제자리(in-place) 정정**.
+//   🎯 2026-07-06 (대표 "기존 데모 데이터 많은데" — 회수+재생성은 사진·응모·인사이트 낭비):
+//   이미 저장된 restaurant_name 을 앞세우고 옛 '[구] ' 프리픽스를 제거 → 좌표·R2사진·리뷰·응모·
+//   수요인사이트 전부 보존한 채 이름만 신형으로. 멱등(이미 ' · ' 신형이면 skip).
+adminProductsRoutes.post('/dongnedeal/heal-names', cors(), async (c) => {
+  try {
+    const { results } = await c.env.DB.prepare(
+      `SELECT id, name, restaurant_name FROM products
+         WHERE slug LIKE ? AND COALESCE(slug,'') NOT LIKE 'retired-%'`
+    ).bind(DEAL_DEMO_SLUG + '%').all<{ id: number; name: string | null; restaurant_name: string | null }>()
+      .catch(() => ({ results: [] as { id: number; name: string | null; restaurant_name: string | null }[] }));
+    let healed = 0, skipped = 0;
+    const samples: Array<{ id: number; from: string; to: string }> = [];
+    for (const r of (results || [])) {
+      const store = (r.restaurant_name || '').trim();
+      const cur = (r.name || '').trim();
+      if (!store || !cur) { skipped++; continue; }
+      if (cur.includes(' · ')) { skipped++; continue; }            // 이미 신형
+      const offer = cur.replace(/^\[[^\]]+\]\s*/, '').trim();       // 옛 '[구] ' 프리픽스 제거
+      if (!offer) { skipped++; continue; }
+      const next = `${store} · ${offer}`;
+      if (next === cur) { skipped++; continue; }
+      const res = await c.env.DB.prepare(
+        `UPDATE products SET name = ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(next, r.id).run().catch(() => null);
+      if (res?.meta?.changes) { healed++; if (samples.length < 8) samples.push({ id: r.id, from: cur, to: next }); }
+      else skipped++;
+    }
+    await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
+    await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    await writeAuditLog(c, { action: 'dongnedeal_heal_names', targetType: 'product', after: { healed, skipped } }).catch(() => {});
+    return c.json({ success: true, healed, skipped, samples });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 // PATCH /dongnedeal/:id — 동네딜 단건 수정(이름/가격/사진/매장/좌표/노출). 부분 업데이트.
 adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
   try {
