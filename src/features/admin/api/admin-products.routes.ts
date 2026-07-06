@@ -1388,6 +1388,10 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
       }
     } catch { /* best-effort */ }
 
+    // 🏷️ 2026-07-06 (대표 "기존 데모 데이터 많은데"): 옛 '[구] 오퍼' 이름을 '{실매장명} · {오퍼}' 신형으로
+    //   자동 정정 — 시드마다 멱등 실행(이미 신형이면 skip). 재생성 없이 기존 데모 이름만 최신화.
+    await healDemoNamesInPlace(DB).catch(() => {});
+
     // 누적 추가 — 기존 slug(demo-deal-N)의 최대 N 다음 번호부터(UNIQUE 충돌 원천 제거).
     const slugRows = await DB.prepare(`SELECT slug FROM products WHERE slug LIKE ?`).bind(DEAL_DEMO_SLUG + '%')
       .all<{ slug: string }>().catch(() => ({ results: [] as { slug: string }[] }));
@@ -1790,34 +1794,40 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
   }
 });
 
-// POST /dongnedeal/heal-names — 기존 데모 상품명을 '{실매장명} · {오퍼}' 로 **제자리(in-place) 정정**.
-//   🎯 2026-07-06 (대표 "기존 데모 데이터 많은데" — 회수+재생성은 사진·응모·인사이트 낭비):
-//   이미 저장된 restaurant_name 을 앞세우고 옛 '[구] ' 프리픽스를 제거 → 좌표·R2사진·리뷰·응모·
+// 🎯 2026-07-06 (대표 "기존 데모 데이터 많은데" — 회수+재생성은 사진·응모·인사이트 낭비):
+//   기존 데모 상품명을 '{실매장명} · {오퍼}' 로 **제자리(in-place) 정정** — 좌표·R2사진·리뷰·응모·
 //   수요인사이트 전부 보존한 채 이름만 신형으로. 멱등(이미 ' · ' 신형이면 skip).
+//   엔드포인트(수동) + 시드 heal 블록(자동) + 후속 데모 유지 cron 어디서든 재사용.
+export async function healDemoNamesInPlace(DB: D1Database): Promise<{ healed: number; skipped: number; samples: Array<{ id: number; from: string; to: string }> }> {
+  const { results } = await DB.prepare(
+    `SELECT id, name, restaurant_name FROM products
+       WHERE slug LIKE ? AND COALESCE(slug,'') NOT LIKE 'retired-%'`
+  ).bind(DEAL_DEMO_SLUG + '%').all<{ id: number; name: string | null; restaurant_name: string | null }>()
+    .catch(() => ({ results: [] as { id: number; name: string | null; restaurant_name: string | null }[] }));
+  let healed = 0, skipped = 0;
+  const samples: Array<{ id: number; from: string; to: string }> = [];
+  for (const r of (results || [])) {
+    const store = (r.restaurant_name || '').trim();
+    const cur = (r.name || '').trim();
+    if (!store || !cur) { skipped++; continue; }
+    if (cur.includes(' · ')) { skipped++; continue; }            // 이미 신형
+    const offer = cur.replace(/^\[[^\]]+\]\s*/, '').trim();       // 옛 '[구] ' 프리픽스 제거
+    if (!offer) { skipped++; continue; }
+    const next = `${store} · ${offer}`;
+    if (next === cur) { skipped++; continue; }
+    const res = await DB.prepare(
+      `UPDATE products SET name = ?, updated_at = datetime('now') WHERE id = ?`
+    ).bind(next, r.id).run().catch(() => null);
+    if (res?.meta?.changes) { healed++; if (samples.length < 8) samples.push({ id: r.id, from: cur, to: next }); }
+    else skipped++;
+  }
+  return { healed, skipped, samples };
+}
+
+// POST /dongnedeal/heal-names — 위 in-place 정정을 수동 트리거(+ 캐시 무효화 + 감사로그).
 adminProductsRoutes.post('/dongnedeal/heal-names', cors(), async (c) => {
   try {
-    const { results } = await c.env.DB.prepare(
-      `SELECT id, name, restaurant_name FROM products
-         WHERE slug LIKE ? AND COALESCE(slug,'') NOT LIKE 'retired-%'`
-    ).bind(DEAL_DEMO_SLUG + '%').all<{ id: number; name: string | null; restaurant_name: string | null }>()
-      .catch(() => ({ results: [] as { id: number; name: string | null; restaurant_name: string | null }[] }));
-    let healed = 0, skipped = 0;
-    const samples: Array<{ id: number; from: string; to: string }> = [];
-    for (const r of (results || [])) {
-      const store = (r.restaurant_name || '').trim();
-      const cur = (r.name || '').trim();
-      if (!store || !cur) { skipped++; continue; }
-      if (cur.includes(' · ')) { skipped++; continue; }            // 이미 신형
-      const offer = cur.replace(/^\[[^\]]+\]\s*/, '').trim();       // 옛 '[구] ' 프리픽스 제거
-      if (!offer) { skipped++; continue; }
-      const next = `${store} · ${offer}`;
-      if (next === cur) { skipped++; continue; }
-      const res = await c.env.DB.prepare(
-        `UPDATE products SET name = ?, updated_at = datetime('now') WHERE id = ?`
-      ).bind(next, r.id).run().catch(() => null);
-      if (res?.meta?.changes) { healed++; if (samples.length < 8) samples.push({ id: r.id, from: cur, to: next }); }
-      else skipped++;
-    }
+    const { healed, skipped, samples } = await healDemoNamesInPlace(c.env.DB);
     await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
     await writeAuditLog(c, { action: 'dongnedeal_heal_names', targetType: 'product', after: { healed, skipped } }).catch(() => {});
