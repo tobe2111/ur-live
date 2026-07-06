@@ -6247,6 +6247,10 @@
       "proposal": "提案/報告",
       "deposit": "デポジット"
     },
+    "role": {
+      "distributor": "販売社",
+      "manufacturer": "製造社"
+    },
     "util": {
       "cart": "カート",
       "login": "ログイン",

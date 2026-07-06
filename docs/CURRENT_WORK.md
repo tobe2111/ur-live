@@ -1,5 +1,10 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-06 — 도매 상단바에 로그인 역할 배지 (대표 "판매사/제조사 로그인 구별 상단 표시")
+- `WholesaleUtilBar.tsx`(전 도매표면 SSOT 상단바)에 **항상 보이는 역할 배지** 추가 — 판매사(`seller_token`, Store 아이콘·흰 pill) vs 제조사(`supplier_token`, Factory 아이콘·하늘색 pill). 기존 신원 칩(`{companyName} 님 · {grade}`)은 `md:` 이상에서만 보였는데, 배지는 모바일 포함 항상 노출 → 로그인 종류 즉시 인지.
+- i18n `wholesale.role.distributor`/`.manufacturer` 6개 언어(ko 판매사/제조사, en Distributor/Manufacturer, ja 販売社/製造社, zh 销售商/制造商, es, fr). defaultValue 폴백 동봉.
+- 순수 표시 추가(배선/토큰/메뉴 로직 불변). 검증: tsc 0 · build 0 · 테마/파일크기 가드 GREEN.
+
 ## ✅ 2026-07-05 — 데모 이용권 생성형 전환 완전체 + 리뷰 부풀림 근본수리 (대표 "랜덤으로 뽑아와야 · 마감돼도 사라지지 말고 · 가격 최대한 이상적으로 · 데모 데이터 활용")
 - **생성형 데모 그래머**: 고정 40종 템플릿 폐기 → `DEMO_BIZ` 34업종 × 83 수기 오퍼 패턴 × 카테고리별 현실 할인율(식사 12-28%/뷰티 30-50%/기타 18-38%, 정상가 역산) × 카카오 **랜덤 실매장**(random page/candidate + category_name/place_name 업종 affinity 필터 — 샤브샤브가 갈비집에 붙던 오매칭 차단). 매장명-우선 네이버 이미지 → **R2 재호스팅**(`uploads/demo/YYYY-MM/`, 외부 URL 썩음 영구 차단).
 - **CF 50-subrequest 한도 대응**: 24개 1요청 시 realPhotos 0/24 실증 → 서버·어드민 UI 모두 **8개/요청 청크**(8×3 → 23/24 실증). 라운드(≤3) fill-to-target 으로 요청 갯수 정확히 충족.
