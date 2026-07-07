@@ -13,6 +13,8 @@ import { cfImage } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { usePinAction } from '@/features/curator/hooks/usePinAction'
 import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
+import GbMyProposals from './gb-market/GbMyProposals'
+import GbMyPerformance from './gb-market/GbMyPerformance'
 
 interface GbDeal {
   product_id: number; name: string; image_url: string | null; category: string
@@ -56,6 +58,12 @@ export default function GbMarketplacePage() {
           지금 <strong className="text-gray-700 dark:text-gray-200">소개비가 걸린 공구</strong>를 소개비 높은 순으로 모았어요.
           담으면 내 링크샵에 추가되고, 내 추천 링크로 팔린 만큼 소개비를 받아요.
         </p>
+
+        {/* 🎟️ 크리에이터 콘솔: 진행 중 공구별 내 실적(판매·확정/예정 소개비) */}
+        <GbMyPerformance />
+
+        {/* 🎟️ §2-B 인플루언서 인박스: 받은 협업 제안 승인/거절 + 내가 낸 제안 상태 */}
+        <GbMyProposals />
 
         {loading ? (
           <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 text-gray-400 animate-spin" /></div>

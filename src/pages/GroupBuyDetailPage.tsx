@@ -7,6 +7,7 @@ import { resolveTossFlow } from '@/lib/toss-key-type'
 import { resolveProductFlow } from '@/shared/product-flow'
 import api from '@/lib/api'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
+import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import KakaoShareButton from '@/components/KakaoShareButton'
@@ -32,6 +33,8 @@ import FcfsApplyBlock from '@/features/group-buy/FcfsApplyBlock'
 const RestaurantMiniMap = lazy(() => import('@/components/RestaurantMiniMap'))
 // 🎨 2026-06-17 (공구상세 후속 — 디자이너 제안 "후기·평점이 가장 큰 신뢰 레버"): 기존 ProductReviews 재사용(lazy, below-fold).
 const ProductReviews = lazy(() => import('./product-detail/ProductReviews'))
+// 🎟️ 2026-07-06 (§2-B B1): 인플루언서 공구 제안 모달 (게이트 OFF, lazy)
+const GbProposeModal = lazy(() => import('./group-buy/GbProposeModal'))
 
 // 🎯 2026-06-23 (대표 신고 — '불필요한 로딩들'): below-fold 섹션(지도/후기)의 lazy 청크가 첫 paint 에
 //   즉시 로드돼 회색 Suspense 블록이 화면 밖에서 깜빡였음. 뷰포트 근처(300px)에 올 때만 mount → 그전엔
@@ -160,6 +163,7 @@ export default function GroupBuyDetailPage() {
   const [loading, setLoading] = useState<boolean>(seedDetail == null)
   const [joining, setJoining] = useState(false)
   const [quantity, setQuantity] = useState(1)
+  const [showPropose, setShowPropose] = useState(false)
   // 🎨 2026-06-16 리디자인: 스와이프 갤러리 활성 인덱스 + 이 셀러의 다른 공구
   const [activeImage, setActiveImage] = useState(0)
   const [otherDeals, setOtherDeals] = useState<Array<{ id: number; name: string; price: number; original_price?: number | null; image_url?: string | null; discount_pct?: number | null }>>([])
@@ -851,7 +855,23 @@ export default function GroupBuyDetailPage() {
               <ProductReviews productId={productId} limit={5} />
             </Suspense>
           </DeferUntilVisible>
+
+          {/* 🎟️ 2026-07-06 (§2-B B1): 인플루언서 공구 제안 — GB_ENGINE_ENABLED 게이트(기본 OFF, 미노출) */}
+          {GB_ENGINE_ENABLED && detail && !isOwnProduct && (
+            <button
+              onClick={() => setShowPropose(true)}
+              style={{ marginTop: 14, width: '100%', padding: '11px', borderRadius: 12, fontSize: 13, fontWeight: 700 }}
+              className="border border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10"
+            >
+              📣 이 매장에 공구 제안하기 (인플루언서)
+            </button>
+          )}
         </div>
+        {GB_ENGINE_ENABLED && showPropose && detail && (
+          <Suspense fallback={null}>
+            <GbProposeModal productId={Number(productId)} listPrice={Number(detail.price)} productName={detail.name} onClose={() => setShowPropose(false)} />
+          </Suspense>
+        )}
 
         {/* 이 셀러의 다른 공구 — 가로 스크롤 */}
         {otherDeals.length > 0 && (
