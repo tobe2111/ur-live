@@ -14,6 +14,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
 import GroupBuyOpenPanel from './seller-group-buy/GroupBuyOpenPanel'
+import GbProposalsPanel from './seller-group-buy/GbProposalsPanel'
 
 interface GroupBuyProduct {
   id: number; name: string; price: number; image_url?: string; category?: string
@@ -190,6 +191,11 @@ export default function SellerGroupBuyPage() {
               </p>
             )}
           </div>
+        )}
+
+        {/* 🎟️ 2026-07-06 (§2-B): 공구 제안 인박스(받은 제안 승인/거절 + 인플루언서에게 협업 제안) — 게이트 OFF */}
+        {GB_ENGINE_ENABLED && products.length > 0 && (
+          <GbProposalsPanel products={products.map(p => ({ id: p.id, name: p.name, price: safeNum(p.price) }))} headers={headers} />
         )}
 
         {/* 상품 없음 */}
