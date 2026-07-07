@@ -1627,6 +1627,93 @@ adminProductsRoutes.delete('/dongnedeal/seed-demo', cors(), async (c) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 🎬 2026-07-07 (대표 — "데모 데이터 실제로 심어서 테스트"): 링크샵 리디자인 확인용 데모 상품 시드.
+//   특정 셀러(seller_id)의 '내 상품' + '이용권'을 채워 링크샵을 꽉 찬 상태로 만든다.
+//   slug 'demo-linkshop-N' 로 식별 → DELETE 로 일괄 제거. 멱등(이미 있으면 skip). 이미지는 기존 데모 R2 사진 재사용.
+const LINKSHOP_DEMO_SLUG = 'demo-linkshop-';
+const LINKSHOP_DEMO_IMGS = [
+  '/api/media/uploads/demo/2026-07/2985830a-52bf-4173-aa0f-e69b9bf97c5c.jpg',
+  '/api/media/uploads/demo/2026-07/47e8a692-c70b-40f9-a190-17cd10ba1a6a.jpg',
+  '/api/media/uploads/demo/2026-07/8ee6cb67-05c1-4fd2-b589-499991c3980c.webp',
+  '/api/media/uploads/demo/2026-07/f3414af6-6fa4-40e2-a74f-90c5f27840ed.jpg',
+  '/api/media/uploads/demo/2026-07/57f1183b-4b70-4377-a299-aa6fb23955aa.jpg',
+  '/api/media/uploads/demo/2026-07/925d1b90-34c2-4ecb-8f0b-e8975f19f114.jpg',
+  '/api/media/uploads/demo/2026-07/bdec2dec-80c4-416c-a67e-a3c9f46790e4.jpg',
+  '/api/media/uploads/demo/2026-07/d3975223-f7ef-4cce-bf87-c5968fd532a1.jpg',
+  '/api/media/uploads/demo/2026-07/67e0aeeb-4b19-4ee6-b38d-09ade8b2d3f0.jpg',
+];
+const LINKSHOP_DEMO_SHOP = [
+  { name: '프리미엄 한우 등심 500g 냉장', price: 69000, original_price: 89000, category: 'food' },
+  { name: '국내산 참기름 선물세트 (500ml x2)', price: 38000, original_price: 0, category: 'food' },
+  { name: '명란젓 500g 특상품 저염', price: 19900, original_price: 24900, category: 'food' },
+  { name: '수제 어묵탕 밀키트 2인분', price: 15900, original_price: 0, category: 'food' },
+  { name: '전통방식 쌀조청 850g', price: 12000, original_price: 0, category: 'food' },
+  { name: '제주 손질 갈치 냉동 5팩', price: 27000, original_price: 32000, category: 'food' },
+];
+const LINKSHOP_DEMO_VOUCHERS = [
+  { name: '[성수] 소금집델리 브런치 이용권', price: 28000, original_price: 34000, restaurant: '소금집델리 성수' },
+  { name: '[연남] 수제버거 세트 교환권', price: 18000, original_price: 0, restaurant: '연남버거하우스' },
+];
+
+// POST /linkshop-demo/seed  { seller_id }  — 데모 상품/이용권 시드 (멱등)
+adminProductsRoutes.post('/linkshop-demo/seed', cors(), async (c) => {
+  try {
+    const body = (await c.req.json().catch(() => ({}))) as { seller_id?: number | string };
+    const sellerId = Number(body.seller_id);
+    if (!Number.isFinite(sellerId) || sellerId <= 0) return c.json({ success: false, error: 'seller_id 필요' }, 400);
+    // 이미 심었으면 skip (멱등)
+    const existing = await c.env.DB.prepare(`SELECT COUNT(*) AS c FROM products WHERE slug LIKE ? AND seller_id = ?`)
+      .bind(LINKSHOP_DEMO_SLUG + '%', sellerId).first<{ c: number }>().catch(() => ({ c: 0 }));
+    if ((existing?.c ?? 0) > 0) return c.json({ success: true, alreadySeeded: true, count: existing!.c });
+    let n = 0, imgI = 0;
+    const insShop = async (p: typeof LINKSHOP_DEMO_SHOP[number]) => {
+      const slug = LINKSHOP_DEMO_SLUG + (++n);
+      await c.env.DB.prepare(
+        `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
+           is_active, seller_id, stock, stock_quantity, slug, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'regular', 1, ?, 50, 50, ?, datetime('now'), datetime('now'))`
+      ).bind(p.name, p.name + ' — 데모 상품', p.price, p.original_price || null, LINKSHOP_DEMO_IMGS[imgI++ % LINKSHOP_DEMO_IMGS.length], p.category, sellerId, slug).run();
+    };
+    const insVoucher = async (v: typeof LINKSHOP_DEMO_VOUCHERS[number]) => {
+      const slug = LINKSHOP_DEMO_SLUG + (++n);
+      await c.env.DB.prepare(
+        `INSERT INTO products (name, description, price, original_price, image_url, category, product_type,
+           is_active, seller_id, stock, stock_quantity, restaurant_name, slug, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 'meal_voucher', 'regular', 1, ?, 50, 50, ?, ?, datetime('now'), datetime('now'))`
+      ).bind(v.name, v.name + ' — 데모 이용권', v.price, v.original_price || null, LINKSHOP_DEMO_IMGS[imgI++ % LINKSHOP_DEMO_IMGS.length], sellerId, v.restaurant, slug).run();
+    };
+    for (const p of LINKSHOP_DEMO_SHOP) await insShop(p).catch(() => {});
+    for (const v of LINKSHOP_DEMO_VOUCHERS) await insVoucher(v).catch(() => {});
+    await writeAuditLog(c, { action: 'linkshop_seed_demo', targetType: 'product', after: { sellerId, seeded: n } }).catch(() => {});
+    return c.json({ success: true, seeded: n, seller_id: sellerId });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// DELETE /linkshop-demo/seed?seller_id=  — 데모 상품/이용권 일괄 제거
+adminProductsRoutes.delete('/linkshop-demo/seed', cors(), async (c) => {
+  try {
+    const sellerId = Number(c.req.query('seller_id'));
+    const rows = await c.env.DB.prepare(`SELECT id FROM products WHERE slug LIKE ?${Number.isFinite(sellerId) && sellerId > 0 ? ' AND seller_id = ?' : ''}`)
+      .bind(...(Number.isFinite(sellerId) && sellerId > 0 ? [LINKSHOP_DEMO_SLUG + '%', sellerId] : [LINKSHOP_DEMO_SLUG + '%']))
+      .all<{ id: number }>().catch(() => ({ results: [] as { id: number }[] }));
+    let deleted = 0, retired = 0;
+    for (const r of (rows.results || [])) {
+      for (const t of ['product_reviews', 'cart_items', 'wishlists']) {
+        await c.env.DB.prepare(`DELETE FROM ${t} WHERE product_id = ?`).bind(r.id).run().catch(() => {});
+      }
+      try { const del = await c.env.DB.prepare(`DELETE FROM products WHERE id = ?`).bind(r.id).run(); if (del.meta?.changes) { deleted++; continue; } } catch { /* FK → retire */ }
+      await c.env.DB.prepare(`UPDATE products SET is_active = 0, slug = 'retired-' || slug || '-' || id WHERE id = ?`).bind(r.id).run().catch(() => {});
+      retired++;
+    }
+    return c.json({ success: true, deleted, retired });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 // POST /dongnedeal/bulk-import — CSV 동네딜 상품 일괄 등록 (즉시 노출). 행 단위 검증 + 리포트.
 adminProductsRoutes.post('/dongnedeal/bulk-import', cors(), async (c) => {
   try {
