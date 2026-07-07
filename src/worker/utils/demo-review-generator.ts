@@ -36,8 +36,10 @@ function detectTopic(name: string, category: string): Topic {
   if (/초밥|스시|사시미/.test(n)) return 'sushi'  // ⚠️ '오마카세'보다 먼저 — 스시 오마카세가 한우 풀로 빠지지 않게
   if (/한우|오마카세|고기|삼겹|스테이크|정육|구이|갈비|흑돼지|항정살/.test(n)) return 'gogi'
   if (/피자|파스타|화덕|이탈리|스테이크|브런치|양식/.test(n)) return 'western'
-  if (/베이커리|소금빵|케이크|크루아상|빵/.test(n)) return 'bakery'  // ⚠️ 카페보다 먼저 — 빵집에 원두 리뷰 방지
-  if (/커피|카페|핸드드립|디저트|원두|브런치/.test(n)) return 'cafe'
+  // ☕ 음료 키워드 있으면 카페(케이크·디저트 곁들여도 카페 — '라떼+케이크'가 빵집으로 오분류되던 버그 수정)
+  if (/커피|카페|핸드드립|원두|라떼|아메리카노|에스프레소|음료|에이드|스무디|버블티/.test(n)) return 'cafe'
+  if (/베이커리|소금빵|크루아상|식빵|바게트|앙버터|빵/.test(n)) return 'bakery'  // 순수 빵집 키워드
+  if (/케이크|디저트|타르트|마카롱/.test(n)) return 'cafe'  // 케이크·디저트만 있으면 디저트카페로
   if (/헤어|두피|펌|염색|클리닉|미용실|살롱|커트/.test(n)) return 'hair'
   if (/왁싱/.test(n)) return 'waxing'
   if (/속눈썹|래쉬|연장/.test(n)) return 'eyelash'
@@ -113,7 +115,7 @@ const POOLS: Record<Topic, { pos: string[]; mid: string[] }> = {
     mid: ['시술은 아주 만족스러웠어요. 인기 시간대는 미리 예약하셔야 해요', '결과는 좋은데 매장이 아담한 편이라 참고하세요', '만족합니다. 주말 예약이 빨리 차는 게 유일한 아쉬움'],
   },
   etc: {
-    pos: ['처음이라 걱정했는데 하나하나 친절하게 알려주셔서 어렵지 않게 즐겼어요', '생각보다 훨씬 알차서 놀랐어요. 이 가격에 이 구성이면 무조건 이득', '설명이 자세하고 응대가 편안해서 시간 가는 줄 몰랐어요', '기대 없이 갔다가 제대로 즐기고 왔습니다. 사진도 잘 나오고요', '혼자 가도 어색하지 않게 챙겨주셔서 편했어요. 재방문 의사 있습니다', '원데이 클래스로 갔는데 결과물 가져갈 수 있어서 뿌듯했어요', '체험 위주라 지루할 틈 없이 알차게 즐겼어요', '초보도 따라 할 수 있게 차근차근 알려주셔서 좋았어요', '연인이랑 갔는데 특별한 추억 만들고 왔어요', '사진 찍기 좋은 공간이라 인생샷 건졌어요'],
+    pos: ['처음이라 걱정했는데 하나하나 친절하게 알려주셔서 어렵지 않게 즐겼어요', '생각보다 훨씬 알차서 놀랐어요. 이 가격에 이 구성이면 무조건 이득', '설명이 자세하고 응대가 편안해서 시간 가는 줄 몰랐어요', '기대 없이 갔다가 제대로 즐기고 왔습니다. 사진도 잘 나오고요', '혼자 가도 어색하지 않게 챙겨주셔서 편했어요. 재방문 의사 있습니다', '원데이 클래스로 갔는데 결과물 가져갈 수 있어서 뿌듯했어요', '체험 위주라 지루할 틈 없이 알차게 즐겼어요', '초보도 따라 할 수 있게 차근차근 알려주셔서 좋았어요', '연인이랑 갔는데 특별한 추억 만들고 왔어요', '사진 찍기 좋은 공간이라 인생샷 건졌어요', '강습 시간이 알차서 시간 가는 줄 몰랐어요. 초보 배려 잘해주심', '장비 대여까지 포함이라 준비물 신경 안 써도 돼서 좋았어요', '주말 데이트 코스로 딱이에요. 색다른 경험이라 기억에 남아요', '분위기가 편해서 처음 온 사람도 금방 적응했어요', '아이랑 같이 했는데 눈높이 맞춰 알려주셔서 둘 다 즐거웠어요'],
     mid: ['만족스럽게 즐겼어요. 주말엔 사람이 조금 몰리는 편이에요', '좋았는데 주차 공간이 협소해서 대중교통 추천드려요', '전반적으로 만족. 인기 시간대는 예약이 빨리 차요'],
   },
 }
@@ -147,7 +149,7 @@ export function composeDemoReview(rating: number, topic: Topic, storeName?: stri
   // 🎭 같은 상품 안 '핵심 문장' 중복 방지 — 오프너/꼬리만 다른 사실상 같은 리뷰 차단(최종 문자열 dedup 의 사각지대).
   if (seen) { for (let i = 0; i < 8 && seen.has(base); i++) base = pick(src); seen.add(base) }
   // 🎭 본문이 이미 방문 맥락으로 시작하면 오프너 생략(‘가봤는데 회식으로 갔는데’ 같은 이중 맥락 방지).
-  const opener = /^(회식|부모님|가족|친구|지인|결혼|아이|혼자|두 번째|처음|딸|아들|엄마|남편|아내|동료|오랜만)/.test(base) ? '' : pick(OPENERS)
+  const opener = /^(회식|부모님|가족|친구|지인|결혼|아이|혼자|두 번째|처음|딸|아들|엄마|남편|아내|동료|오랜만|연인|커플|둘이)/.test(base) ? '' : pick(OPENERS)
   let s = opener + base
   // 12%: 매장명 자연스럽게 앞에(오프너 없을 때만)
   if (!opener && storeName && Math.random() < 0.12) s = `${storeName} 다녀왔어요. ${base}`
@@ -228,12 +230,14 @@ JSON 배열로만. 각 항목 {"content": "리뷰", "rating": 별점}. 그 외 �
  * 매장/업종 특색 리뷰 **생성만**(삽입 X) — LLM(오프라인 이용권·실매장 grounding) 우선, 실패/키없음 시
  * 업종별 결정론 composer 폴백. 대량(어드민)도 40개씩 배치(배치별 LLM→실패분만 compose). 데모·어드민 공용.
  */
-export async function buildStoreReviews(env: Env, p: StoreReviewInput, count = 8): Promise<GenReview[]> {
+export async function buildStoreReviews(env: Env, p: StoreReviewInput, count = 8, seenShared?: Set<string>): Promise<GenReview[]> {
   const topic = detectTopic(p.name, p.category)
   const total = Math.max(1, Math.min(2000, count))
   const out: GenReview[] = []
   const CHUNK = 40
-  const seen = new Set<string>()  // 🎭 같은 상품 안 문구 중복 방지(작은 n 에서 특히 티 남)
+  // 🎭 문구 중복 방지 — 같은 상품 안(기본) + seenShared 넘기면 **여러 매장 간에도** 같은 리뷰 안 뜨게
+  //    (배치 시드에서 보쌈집·곱창집에 동일 리뷰가 뜨던 '조작 티' 제거). 풀 소진 시 graceful 재사용.
+  const seen = seenShared ?? new Set<string>()
   for (let i = 0; i < total; i += CHUNK) {
     const n = Math.min(CHUNK, total - i)
     try {
@@ -254,13 +258,13 @@ export async function buildStoreReviews(env: Env, p: StoreReviewInput, count = 8
  * 데모 상품 1건에 매장 특색 리뷰를 시드(이미 리뷰 있으면 skip).
  * review_count/avg_rating/sold_count 갱신까지 — 시간당 generic cron 이 안 건드리게(review_count>0).
  */
-export async function seedDemoReviews(env: Env, p: DemoProduct, count = 8): Promise<number> {
+export async function seedDemoReviews(env: Env, p: DemoProduct, count = 8, seenShared?: Set<string>): Promise<number> {
   const DB = env.DB
   const existing = await DB.prepare('SELECT COUNT(*) AS c FROM product_reviews WHERE product_id = ?')
     .bind(p.id).first<{ c: number }>().catch(() => ({ c: 0 }))
   if ((existing?.c ?? 0) > 0) return 0
 
-  const reviews = await buildStoreReviews(env, p, Math.max(4, Math.min(20, count)))
+  const reviews = await buildStoreReviews(env, p, Math.max(4, Math.min(20, count)), seenShared)
 
   const stmts = reviews.map((r) => {
     const masked = maskName(pick(KOREAN_NAMES))

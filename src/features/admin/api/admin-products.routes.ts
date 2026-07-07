@@ -1570,10 +1570,11 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     if (seededForReviews.length > 0) {
       try {
         c.executionCtx.waitUntil(
-          import('../../../worker/utils/demo-review-generator').then((m) =>
-            // 🎭 상품별 리뷰 수도 6~12 랜덤 — 전 상품 동일 개수(8)면 그 자체가 조작 티.
-            Promise.all(seededForReviews.map((prod) => m.seedDemoReviews(c.env as unknown as Env, prod, 6 + Math.floor(Math.random() * 7)).catch(() => 0)))
-          ).then(() =>
+          import('../../../worker/utils/demo-review-generator').then((m) => {
+            // 🎭 상품별 리뷰 수 6~12 랜덤(동일 개수=조작 티) + **배치 공용 seen** 으로 매장 간 리뷰 중복 방지.
+            const seenShared = new Set<string>();
+            return Promise.all(seededForReviews.map((prod) => m.seedDemoReviews(c.env as unknown as Env, prod, 6 + Math.floor(Math.random() * 7), seenShared).catch(() => 0)));
+          }).then(() =>
             invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {})
           ).catch(() => {})
         );
