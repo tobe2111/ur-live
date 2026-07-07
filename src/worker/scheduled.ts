@@ -33,9 +33,7 @@ import { handleAgencyMonthlyTasks } from './cron/agency-monthly-tasks';
 import { handleAgencyMonthlyInvoices } from './cron/agency-monthly-invoices';
 import { handleTikTokVideosSync } from './cron/tiktok-videos-sync';
 import { handleAgencyInactiveSellers } from './cron/agency-inactive-sellers';
-import { handleLiveStreamMetrics } from './cron/live-stream-metrics';
 import { handleAgencyMonthlyReport } from './cron/agency-monthly-report';
-import { handlePkBattlesTick } from './cron/pk-battles-tick';
 import { handleAgencySelfEventsTick } from './cron/agency-self-events-tick';
 import { handleSellerTierEval } from './cron/seller-tier-eval';
 import { handleWholesaleGradeEval } from './cron/wholesale-grade-eval';
@@ -49,8 +47,6 @@ import { handleAdSlotsAward } from './cron/ad-slots-award';
 import { handleD1Backup } from './cron/d1-backup';
 import { handleRetryAlimtalk } from './cron/retry-alimtalk';
 import { retryEmailFailures, retryPushFailures } from './cron/retry-notifications';
-import { handleYoutubeBroadcastEndDetect } from './cron/youtube-broadcast-end-detect';
-import { handleYoutubeThumbnailRefresh } from './cron/youtube-thumbnail-refresh';
 import { handleAppointmentReminder } from './cron/appointment-reminder';
 import { handleAppointmentNoshowAlert } from './cron/appointment-noshow-alert';
 import { handlePayoutsGenerate } from './cron/payouts-generate';
@@ -61,7 +57,6 @@ import { handleSellerChurnDetect } from './cron/seller-churn-detect';
 import { handleLedgerReconcile } from './cron/ledger-reconcile';
 import { handleInfluencerPayout } from './cron/influencer-payout';
 import { handleGroupBuyDeadlinePush } from './cron/group-buy-deadline-push';
-import { handleOmeHealthCheck } from './cron/ome-health-check';
 import { handleGroupBuyFeedCache } from './cron/group-buy-feed-cache';
 import { handleCachePrewarm } from './cron/cache-prewarm';
 // 🛡️ 2026-06-09: 어드민 단체메일 큐 drainer (요청 안에서 발송 X → CPU/멱등 hardening).
@@ -123,19 +118,11 @@ export async function handleCronScheduled(
       const { handleScheduled } = await import('./cron/scheduled-cleanup')
       return handleScheduled(env)
     }));
-    // Phase 2-7: PK 이벤트 매출 집계 + 종료 처리 (라이브 중단 시 skip)
-    if (!LIVE_COMMERCE_SUSPENDED) ctx.waitUntil(safeCron('pk-battles-tick', () => handlePkBattlesTick(env)));
     // 🛡️ 2026-05-07: 알림톡 발송 실패 자동 재시도 (max 3회, exponential backoff)
     ctx.waitUntil(safeCron('retry-alimtalk', () => handleRetryAlimtalk(env)));
     // 🛡️ 2026-05-12: 이메일 / 푸시 dead-letter 재시도 drainer
     ctx.waitUntil(safeCron('retry-email-failures', () => retryEmailFailures(env)));
     ctx.waitUntil(safeCron('retry-push-failures', () => retryPushFailures(env)));
-    // 🛡️ 2026-05-07: 외부 도구(YouTube Studio/OBS)에서 종료된 방송 자동 감지 + DB ended 처리 (라이브 중단 시 skip)
-    if (!LIVE_COMMERCE_SUSPENDED) ctx.waitUntil(safeCron('yt-broadcast-end-detect', () => handleYoutubeBroadcastEndDetect(env)));
-    // 🛡️ 2026-05-21: 라이브 썸네일 자동 갱신 (셀러 수동 호출 제거 — YouTube 자동 캡처에 의존) (라이브 중단 시 skip)
-    if (!LIVE_COMMERCE_SUSPENDED) ctx.waitUntil(safeCron('yt-thumbnail-refresh', () => handleYoutubeThumbnailRefresh(env)));
-    // 🛡️ 2026-05-13 (안정성 #3): OME 미디어 서버 health check — 송출 SPOF 감지 (라이브 중단 시 skip)
-    if (!LIVE_COMMERCE_SUSPENDED) ctx.waitUntil(safeCron('ome-health-check', () => handleOmeHealthCheck(env)));
     // 🛡️ 2026-05-16: 공구 마감 3시간/1시간 전 push 알림 (5분마다 체크)
     ctx.waitUntil(safeCron('group-buy-deadline-push', () => handleGroupBuyDeadlinePush(env)));
     // 🛡️ 2026-05-21 Phase E-3: 예약 시작 +30분 지난 confirmed 노쇼 자동 알림.
@@ -349,8 +336,6 @@ export async function handleCronScheduled(
           logInfo(`[cron] agency-store-intro monthly bonus: awarded ${r.awarded} stores, total ₩${r.totalAmount.toLocaleString()}`)
         }
       } catch (e) { await notifyCronFailure(env, 'agency-cron-batch/agency-intro-monthly-bonus', e) }
-      // Phase 2-4: 라이브 종료 메트릭 사전 집계 (매일) — 라이브 중단 시 skip
-      if (!LIVE_COMMERCE_SUSPENDED) await handleLiveStreamMetrics(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/live-metrics', e));
       // 2026-04-27: 자사 이벤트 진행값 자동 갱신 + 보상 지급 (매일)
       await handleAgencySelfEventsTick(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/self-events', e));
       // 2026-04-27: 셀러 일일 리포트 메일 (RESEND_API_KEY 있을 때만)

@@ -52,6 +52,7 @@ const KNOWN_TABLES_EXTRA = new Set([
   //   비라이브 소비처가 참조하는 레거시 테이블 → 예외 등록(정리크론/계정삭제/알림이 안전 참조).
   'broadcast_subscriptions',             // 방송 알림 구독 (kakao-social / notifications / delete-account / scheduled-cleanup)
   'stream_product_timestamps',           // 라이브 상품 타임스탬프 (admin-moderation)
+  'admin_alerts',                        // 어드민 경보 (admin-moderation / scheduled-cleanup — 삭제된 라이브 크론이 CREATE 보유했으나 비라이브 소비처 존재)
   'product_views',                       // 상품 조회수 (seller-analytics / delete-account)
   'social_follows', 'user_follows',      // 팔로우 (notifications / push)
   'search_history',                      // 검색 이력 (delete-account)
