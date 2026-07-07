@@ -12,9 +12,18 @@
 
 import type { Env } from '../types/env'
 import { autoSeedMissingReviews } from '../utils/auto-seed-fake-reviews'
+import { seedMissingDemoReviews } from '../utils/demo-review-generator'
 import { logError, logInfo } from '../utils/logger'
 
 export async function handleAutoSeedReviews(env: Env): Promise<void> {
+  // 🔒 2026-07-06 (대표 "리뷰 퀄리티 영구 유지"): 데모는 **매장특색 composer** 로 먼저 시드 —
+  //   generic 템플릿(아래 autoSeedMissingReviews)은 데모를 제외하므로 데모 품질이 구조적으로 영구 유지.
+  try {
+    const d = await seedMissingDemoReviews(env)
+    if (d.seeded > 0) logInfo(`[cron] demo-reviews(composer): seeded=${d.seeded}`)
+  } catch (e) {
+    logError('[cron] demo-reviews composer FAILED', { error: String(e) })
+  }
   try {
     // 🛡️ 2026-05-27 (사용자 보고 — 카드 별점 미적용): maxBatch 200 → 1000.
     //   기존 일 200 한도라 신규 상품 + 기존 미처리 상품 적용 지연.

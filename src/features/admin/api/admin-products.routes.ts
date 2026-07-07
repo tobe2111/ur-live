@@ -1838,6 +1838,24 @@ adminProductsRoutes.post('/dongnedeal/heal-names', cors(), async (c) => {
   }
 });
 
+// POST /dongnedeal/refresh-reviews — 🔄 2026-07-06 (대표 "기존 100개+도 다 새 리뷰로"): 기존 데모의
+//   옛 리뷰를 새 품질 composer 로 재생성. limit 개씩(기본 20) 청크 — 응답 remaining>0 이면 다시 호출.
+//   review_gen_v='2' 마커로 멱등(이미 새로고침한 건 skip). ?force=1 로 전체 재실행.
+adminProductsRoutes.post('/dongnedeal/refresh-reviews', cors(), async (c) => {
+  try {
+    const limit = Math.min(50, Math.max(1, intParam(c.req.query('limit'), 20)));
+    const force = c.req.query('force') === '1';
+    const { refreshDemoReviews } = await import('../../../worker/utils/demo-review-generator');
+    const { refreshed, reviews, remaining } = await refreshDemoReviews(c.env as unknown as Env, limit, force);
+    await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
+    await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    await writeAuditLog(c, { action: 'dongnedeal_refresh_reviews', targetType: 'product', after: { refreshed, reviews, remaining } }).catch(() => {});
+    return c.json({ success: true, refreshed, reviews, remaining });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
 // PATCH /dongnedeal/:id — 동네딜 단건 수정(이름/가격/사진/매장/좌표/노출). 부분 업데이트.
 adminProductsRoutes.patch('/dongnedeal/:id', cors(), async (c) => {
   try {
