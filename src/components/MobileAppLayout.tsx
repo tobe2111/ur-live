@@ -4,7 +4,7 @@ import DesktopLiveSidebar from './DesktopLiveSidebar'
 import { useTheme } from '@/shared/stores/useTheme'
 
 // 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 제거.
-const LinkshopMobileQR = lazy(() => import('./LinkshopMobileQR'))
+const LinkshopVisitorRails = lazy(() => import('./LinkshopVisitorRails'))
 const ConsumerFrameRails = lazy(() => import('./ConsumerFrameRails'))
 
 interface MobileAppLayoutProps {
@@ -123,10 +123,10 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
     <>
       {/* PC (xl+) 좌측 사이드바 — 일반 페이지 + 라이브/쇼츠 (fixed). */}
       {showSidebar && <DesktopLiveSidebar />}
-      {/* PC (xl+) 라이브 좌/우 패널 — /live/:id 에서만 (fixed). */}
       {/* 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 렌더 제거 */}
-      {/* 🎨 2026-06-18 링크샵 PC 우하단 "모바일로 보기" QR — 방문자에게만(주인은 평소 앱 뷰). */}
-      {linkshopVisitor && <Suspense fallback={null}><LinkshopMobileQR /></Suspense>}
+      {/* 🎨 2026-07-07 (대표 승인) 링크샵 방문자 PC 거터: 좌=창작자 카드 / 우=모바일 QR + "나도 만들기" 성장 훅.
+          유어딜 네비는 안 넣음(독립 쇼핑몰 느낌 유지). xl+ 내부 게이트. (기존 우하단 단독 QR 을 흡수·대체.) */}
+      {linkshopVisitor && <Suspense fallback={null}><LinkshopVisitorRails /></Suspense>}
       {/* 🖥️ 2026-06-20 컨슈머 PC 액자 거터 레일 (브랜드/QR/바로가기) — xl+ 에서만 보임(컴포넌트 내부 게이트). */}
       {showFrameRails && <Suspense fallback={null}><ConsumerFrameRails /></Suspense>}
       <div

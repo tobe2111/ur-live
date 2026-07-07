@@ -1392,6 +1392,17 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
     //   자동 정정 — 시드마다 멱등 실행(이미 신형이면 skip). 재생성 없이 기존 데모 이름만 최신화.
     await healDemoNamesInPlace(DB).catch(() => {});
 
+    // 🏠 2026-07-06 (대표 "주소 미등록 영구 해결"): 주소 없는 데모(레거시·불완전 매칭)는 실매장 검증 불가 →
+    //   자동 은퇴(soft-retire: is_active=0 + slug 리네임). 피드에서 사라지고, 새 생성분은 위 가드로 항상 주소 보유.
+    try {
+      await DB.prepare(
+        `UPDATE products SET is_active = 0, slug = 'retired-' || slug || '-' || id, updated_at = datetime('now')
+          WHERE slug LIKE ? AND COALESCE(slug,'') NOT LIKE 'retired-%'
+            AND COALESCE(is_active,1) = 1
+            AND (restaurant_address IS NULL OR TRIM(restaurant_address) = '')`
+      ).bind(DEAL_DEMO_SLUG + '%').run();
+    } catch { /* best-effort */ }
+
     // 누적 추가 — 기존 slug(demo-deal-N)의 최대 N 다음 번호부터(UNIQUE 충돌 원천 제거).
     const slugRows = await DB.prepare(`SELECT slug FROM products WHERE slug LIKE ?`).bind(DEAL_DEMO_SLUG + '%')
       .all<{ slug: string }>().catch(() => ({ results: [] as { slug: string }[] }));
@@ -1487,7 +1498,8 @@ adminProductsRoutes.post('/dongnedeal/seed-demo', cors(), async (c) => {
         const hasCoord = place?.lat != null;
         if (hasCoord) placed++;
         // 🎯 2026-07-03 (대표 "데모는 실제 있는 매장이어야 해"): 카카오 실매장 매칭 실패 = 생성 안 함(스킵).
-        if (!hasCoord) { skipped++; continue; }
+        // 🏠 2026-07-06 (대표 "주소 미등록 영구 해결"): 좌표뿐 아니라 **주소도 필수** — 둘 다 있어야 실매장 인정.
+        if (!hasCoord || !place?.address) { skipped++; continue; }
         const storeKey = `${place?.name || ''}|${place?.address || ''}`;
         if (usedStores.has(storeKey)) { skipped++; continue; }  // 같은/이전 배치 매장 재사용 방지
         usedStores.add(storeKey);
@@ -1970,6 +1982,24 @@ adminProductsRoutes.post('/dongnedeal/heal-names', cors(), async (c) => {
     await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
     await writeAuditLog(c, { action: 'dongnedeal_heal_names', targetType: 'product', after: { healed, skipped } }).catch(() => {});
     return c.json({ success: true, healed, skipped, samples });
+  } catch (err) {
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// POST /dongnedeal/refresh-reviews — 🔄 2026-07-06 (대표 "기존 100개+도 다 새 리뷰로"): 기존 데모의
+//   옛 리뷰를 새 품질 composer 로 재생성. limit 개씩(기본 20) 청크 — 응답 remaining>0 이면 다시 호출.
+//   review_gen_v='2' 마커로 멱등(이미 새로고침한 건 skip). ?force=1 로 전체 재실행.
+adminProductsRoutes.post('/dongnedeal/refresh-reviews', cors(), async (c) => {
+  try {
+    const limit = Math.min(50, Math.max(1, intParam(c.req.query('limit'), 20)));
+    const force = c.req.query('force') === '1';
+    const { refreshDemoReviews } = await import('../../../worker/utils/demo-review-generator');
+    const { refreshed, reviews, remaining } = await refreshDemoReviews(c.env as unknown as Env, limit, force);
+    await invalidateGroupBuyProductsCache((c.env as Env).SESSION_KV as unknown as Parameters<typeof invalidateGroupBuyProductsCache>[0]).catch(() => {});
+    await import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env, new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(() => {});
+    await writeAuditLog(c, { action: 'dongnedeal_refresh_reviews', targetType: 'product', after: { refreshed, reviews, remaining } }).catch(() => {});
+    return c.json({ success: true, refreshed, reviews, remaining });
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }

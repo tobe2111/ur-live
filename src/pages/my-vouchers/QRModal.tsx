@@ -9,7 +9,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { useInvalidateMyVouchers } from '@/hooks/queries'
 import { safeDate } from '@/utils/safe-date'
-import { CheckCircle, MapPin, Share2, X, XCircle } from 'lucide-react'
+import { CheckCircle, MapPin, Phone, Share2, X, XCircle } from 'lucide-react'
 import type { Voucher } from './types'
 import ReviewBonusButton from './ReviewBonusButton'
 
@@ -46,6 +46,8 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
   const [showRedeem, setShowRedeem] = useState(false)
   // 🎟️ 2026-07-06 (대표 "이용권 페이지에 사용방법을 사장님 설정과 동일하게"): 이 매장의 사용 방식을 미리 안내.
   const [redemptionMode, setRedemptionMode] = useState<'scan_only' | 'store_code' | 'self_free' | null>(null)
+  // 🎟️ 2026-07-06 사장님이 선택한 매장별 사용조건(표준 문구 배열)
+  const [storeConditions, setStoreConditions] = useState<string[]>([])
   // 🛡️ 2026-06-26 (소비자 감사): safeDate — D1 'YYYY-MM-DD HH:MM:SS' 를 사파리가 Invalid Date 로 파싱하면
   //   NaN < window 가 false → 미사용 7일내인데도 환불 버튼이 사라지던 것(기능 차단). safeDate 가 파싱 보정.
   const createdMs = safeDate(voucher.created_at)?.getTime() ?? NaN
@@ -103,7 +105,11 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
     if (voucher.status !== 'unused' || voucher.source === 'kt_alpha') return
     let alive = true
     api.get(`/api/group-buy/vouchers/${encodeURIComponent(voucher.code)}/redemption-info`)
-      .then(res => { if (alive && res.data?.success) setRedemptionMode(res.data.data?.mode ?? null) })
+      .then(res => {
+        if (!alive || !res.data?.success) return
+        setRedemptionMode(res.data.data?.mode ?? null)
+        setStoreConditions(Array.isArray(res.data.data?.conditions) ? res.data.data.conditions : [])
+      })
       .catch(() => { /* silent — 안내 없으면 기본 버튼 흐름 */ })
     return () => { alive = false }
   }, [voucher.code, voucher.status, voucher.source])
@@ -152,6 +158,18 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
       toast.success(t('voucher.linkCopied'))
     } catch { /* ignore */ }
   }
+
+  // 🎟️ 2026-07-06 이용 안내 — 사용 절차(사용방식별) + 유효기간 + 매장정보 + 주의사항.
+  const usageSteps = redemptionMode === 'scan_only'
+    ? ['매장 방문 후 이 QR 화면을 직원에게 보여주세요', '직원이 QR을 스캔해 사용 처리해요', '‘사용 완료’ 화면을 확인하세요']
+    : redemptionMode === 'store_code'
+      ? ['매장 방문 후 아래 ‘현장에서 사용하기’를 누르세요', '카운터에 비치된 매장 확인코드 4자리를 입력하세요', '‘사용 완료’ 화면을 확인하세요']
+      : redemptionMode === 'self_free'
+        ? ['매장 방문 후 아래 ‘현장에서 사용하기’를 누르세요', '바로 사용 처리돼요 (실수 시 60초 내 취소)', '‘사용 완료’ 화면을 확인하세요']
+        : ['매장 방문 후 이 화면을 직원에게 보여주세요', '직원 확인 후 사용 처리됩니다', '‘사용 완료’ 화면을 확인하세요']
+  const modeLabel = redemptionMode === 'scan_only' ? '직원 확인' : redemptionMode === 'store_code' ? '매장 확인코드' : redemptionMode === 'self_free' ? '바로 사용' : '현장 사용'
+  const expDate = safeDate(voucher.expires_at)
+  const expiresLabel = expDate ? `${expDate.getFullYear()}.${String(expDate.getMonth() + 1).padStart(2, '0')}.${String(expDate.getDate()).padStart(2, '0')}까지` : null
 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-[2px]" onClick={onClose} role="presentation">
@@ -230,21 +248,82 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           </p>
         )}
 
-        {/* 🎟️ 2026-07-06 사용방법 — 사장님이 설정한 방식(scan_only/store_code/self_free)을 사용 전에 안내. */}
-        {voucher.status === 'unused' && redemptionMode && (
-          <div className="mt-4 rounded-xl border border-gray-200 dark:border-[#2A2A2A] px-3.5 py-3">
-            <p className="text-[11px] font-extrabold tracking-tight text-gray-900 dark:text-white">
-              {redemptionMode === 'scan_only' ? '사용방법 · 직원 확인'
-                : redemptionMode === 'store_code' ? '사용방법 · 매장 확인코드'
-                : '사용방법 · 바로 사용'}
-            </p>
-            <p className="text-[12px] leading-relaxed text-gray-500 dark:text-gray-400 mt-1">
-              {redemptionMode === 'scan_only'
-                ? '직원에게 이 QR 화면을 보여주세요. 직원이 스캔해 사용 처리해요.'
-                : redemptionMode === 'store_code'
-                  ? "‘현장에서 사용하기’를 누른 뒤, 카운터에 비치된 매장 확인코드 4자리를 입력하면 사용 완료돼요."
-                  : "‘현장에서 사용하기’를 누르면 바로 사용 처리돼요. 실수 시 60초 내 취소할 수 있어요."}
-            </p>
+        {/* 🎟️ 2026-07-06 이용 안내 — 사용 절차(사용방식별 단계) + 유효기간 + 매장 정보 + 주의사항 통합. */}
+        {voucher.status === 'unused' && (
+          <div className="mt-4 rounded-xl border border-gray-200 dark:border-[#2A2A2A] overflow-hidden text-left">
+            <div className="px-3.5 py-2 border-b border-gray-100 dark:border-[#1F1F1F] bg-gray-50 dark:bg-[#141414]">
+              <p className="text-[12px] font-extrabold text-gray-900 dark:text-white">{t('voucher.usageInfo', { defaultValue: '이용 안내' })}</p>
+            </div>
+            <div className="px-3.5 py-3 space-y-3">
+              {/* 사용 방법 (단계) */}
+              <div>
+                <p className="text-[11px] font-bold text-gray-900 dark:text-white mb-1.5">사용 방법 · {modeLabel}</p>
+                <ol className="space-y-1">
+                  {usageSteps.map((s, i) => (
+                    <li key={i} className="flex gap-2 text-[11.5px] text-gray-600 dark:text-gray-300 leading-snug">
+                      <span className="shrink-0 w-4 h-4 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[9px] font-bold flex items-center justify-center mt-px">{i + 1}</span>
+                      <span>{s}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              {/* 매장 안내 — 사장님이 선택한 사용조건(표준 문구) + 상품별 자유 안내(usage_guide) */}
+              {(storeConditions.length > 0 || voucher.usage_guide) && (
+                <div>
+                  <p className="text-[11px] font-bold text-gray-900 dark:text-white mb-1">{t('voucher.storeGuide', { defaultValue: '매장 안내' })}</p>
+                  {storeConditions.length > 0 && (
+                    <ul className="space-y-0.5 mb-1">
+                      {storeConditions.map((cnd, i) => (
+                        <li key={i} className="flex gap-1.5 text-[11.5px] text-gray-500 dark:text-gray-400 leading-snug"><span aria-hidden>·</span><span>{cnd}</span></li>
+                      ))}
+                    </ul>
+                  )}
+                  {voucher.usage_guide && (
+                    <p className="text-[11.5px] text-gray-500 dark:text-gray-400 whitespace-pre-wrap leading-snug">{voucher.usage_guide}</p>
+                  )}
+                </div>
+              )}
+
+              {/* 유효기간 */}
+              {expiresLabel && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-gray-900 dark:text-white">유효기간</span>
+                  <span className="text-[11.5px] font-semibold text-gray-600 dark:text-gray-300">{expiresLabel}</span>
+                </div>
+              )}
+
+              {/* 매장 정보 */}
+              {(voucher.restaurant_address || voucher.restaurant_phone) && (
+                <div>
+                  <p className="text-[11px] font-bold text-gray-900 dark:text-white mb-1">매장 정보</p>
+                  {voucher.restaurant_address && (
+                    <p className="flex items-start gap-1.5 text-[11.5px] text-gray-500 dark:text-gray-400 leading-snug">
+                      <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
+                      <span>{voucher.restaurant_address}
+                        {mapUrl && <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="ml-1 font-semibold text-gray-900 dark:text-white underline underline-offset-2 active:opacity-60">길찾기</a>}
+                      </span>
+                    </p>
+                  )}
+                  {voucher.restaurant_phone && (
+                    <p className="flex items-center gap-1.5 text-[11.5px] text-gray-500 dark:text-gray-400 mt-1">
+                      <Phone className="w-3 h-3 shrink-0" />
+                      <a href={`tel:${voucher.restaurant_phone}`} className="font-semibold text-gray-900 dark:text-white active:opacity-60">{voucher.restaurant_phone}</a>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* 주의사항 */}
+              <div>
+                <p className="text-[11px] font-bold text-gray-900 dark:text-white mb-1">주의사항</p>
+                <ul className="space-y-0.5">
+                  {['사용 후 환불·취소가 불가해요', '1회용 이용권으로 중복 사용은 안 돼요', '현금 교환·잔액 환급은 불가해요', '유효기간이 지나면 자동 소멸돼요'].map((cn, i) => (
+                    <li key={i} className="flex gap-1.5 text-[11px] text-gray-400 dark:text-gray-500 leading-snug"><span aria-hidden>·</span><span>{cn}</span></li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
         )}
 
@@ -256,14 +335,6 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               <p className="text-[13px] font-bold text-gray-900 dark:text-white">{t('voucher.alreadyPaidTitle', { defaultValue: '이미 결제 완료된 이용권이에요' })}</p>
               <p className="text-[11.5px] leading-relaxed text-gray-500 dark:text-gray-400 mt-0.5">{t('voucher.alreadyPaidDesc', { defaultValue: '매장에서 추가 결제 없이 이 화면만 보여주세요' })}</p>
             </div>
-          </div>
-        )}
-
-        {/* 매장 안내 (usage_guide) — 칩 + 텍스트 */}
-        {voucher.usage_guide && voucher.status === 'unused' && (
-          <div className="mt-2.5 flex items-center gap-2 px-0.5">
-            <span className="shrink-0 text-[11px] font-semibold text-gray-900 dark:text-white border border-gray-200 dark:border-[#2A2A2A] rounded-md px-2 py-0.5">{t('voucher.storeGuide', { defaultValue: '매장 안내' })}</span>
-            <span className="text-[11.5px] text-gray-500 dark:text-gray-400 whitespace-pre-wrap">{voucher.usage_guide}</span>
           </div>
         )}
 
