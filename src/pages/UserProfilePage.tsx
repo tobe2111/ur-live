@@ -113,9 +113,15 @@ export default function UserProfilePage() {
   }
 
   // ✅ 로그아웃 핸들러
+  // 🔑 2026-07-07 (대표 신고 "로그아웃이 제 때 안돼"): 반드시 'user'(소비자) 세션을 명시 로그아웃.
+  //   버그: logout() 무인자는 localStorage.user_type 로 타입 자동감지하는데, safeSetUserType()(useAuthKR)
+  //   가 다중역할(사업자유저/어드민) 계정의 user_type='seller'/'admin' 을 보존(다운그레이드 안 함) →
+  //   여기(소비자 마이페이지)에서 무인자 호출 시 seller/admin 세션만 지우고 소비자 ur_session 이 살아남아
+  //   /api/auth/me 가 재인증 → "로그아웃해도 로그인" (+ 엉뚱하게 admin/seller 토큰만 날림).
+  //   이 페이지는 소비자 마이페이지이므로 항상 'user' 세션을 로그아웃(듀얼로그인 보호 — seller/admin 세션은 각 대시보드에서).
   const handleLogout = async () => {
     try {
-      await logout()
+      await logout('user')
       navigate('/', { replace: true })
     } catch (error) {
       if (import.meta.env.DEV) console.error('[UserProfilePage] ❌ 로그아웃 실패:', error)
