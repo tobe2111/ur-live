@@ -878,15 +878,16 @@ app.use('*', async (c, next) => {
       rb = rb.on('#root', {
         element(el) { el.setInnerContent('', { html: true }); },
       });
-    } else if (!isMainPage) {
-      // 🖼️ 2026-07-07 [UNLOCK_LOADING] (대표 신고 "로딩 중간에 이상한 페이지들 계속 떠" — 전수조사):
-      //   **디폴트 차단**. prerender 된 `#root` 에는 홈(=RestaurantMapPage list) shell 이 구워져 있는데,
-      //   기존 분기는 도매/대시보드/블로그/링크샵/상세만 특례 처리하고 **그 외(ELSE)를 안 막아** `/vouchers`·
-      //   `/browse`·`/products/:id`·`/live`·`/search` 등 수십 개 소비자 라우트가 하드로드 첫 페인트에
-      //   **restaurant-map 홈 shell 을 잠깐 노출**(콘텐츠 점프 + raw i18n 키 + "0곳"). 홈(isMainPage)만
-      //   구운 shell 을 유지하고, 그 외 HTML 라우트는 링크샵/상세와 동일한 URDEAL 정적 로더로 통일 →
-      //   [로더 → 완성] 단일 흐름. `__SSR_INITIAL_*` 데이터는 <head> 주입(line 677)이라 #root 교체와 무관
-      //   (0-RTT 불변). 링크샵(`/u`·`/profile`·`/s`)·상세(`/group-buy|vouchers/\d+`)도 이 분기가 커버.
+    } else {
+      // 🖼️ 2026-07-07 [UNLOCK_LOADING] (대표 신고 "로딩 중간에 이상한 페이지들" — 전수조사 + "홈도 이상적으로"):
+      //   **catch-all 디폴트 = URDEAL 정적 로더**. prerender 된 `#root` 에는 홈(=RestaurantMapPage list) shell 이
+      //   구워지는데, 기존 분기는 도매/대시보드/블로그/링크샵/상세만 특례 처리하고 **그 외(ELSE)를 안 막아**
+      //   `/vouchers`·`/browse`·`/products/:id`·`/live`·`/search` 등 소비자 라우트가 하드로드 첫 페인트에
+      //   그 홈 shell 을 노출(콘텐츠 점프 + raw i18n 키 + "0곳"). **홈(`/`) 자신도** 그 shell(스켈레톤/0곳)을
+      //   먼저 보였다가 lazy RestaurantMapPage 로더로 교체 → [shell → 로더 → 콘텐츠] 3단 점프였음.
+      //   → 홈 포함 **모든 HTML 라우트를 동일 로더**로 통일([로더 → 완성] 2단). 홈 shell 은 App.tsx:46 이
+      //   명시하듯 __SSR_INITIAL_MAIN__ 을 홈이 소비 안 해 순수 낭비였으므로 손실 0. `__SSR_INITIAL_*` 데이터는
+      //   <head> 주입(line 677)이라 #root 교체와 무관(0-RTT 불변). needsRootBlank/isBlogSurface 는 위에서 선처리.
       rb = rb.on('#root', {
         element(el) { el.setInnerContent(urdealLoaderHtml, { html: true }); },
       });

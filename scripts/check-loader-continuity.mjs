@@ -51,17 +51,22 @@ const CHECKS = [
   },
   {
     file: 'src/worker/index.ts',
-    name: '비-홈 라우트 정적 URDEAL 로더 주입 (홈 shell 누수/blank 금지)',
-    // 🖼️ 2026-07-07 (대표 신고 "로딩 중간에 이상한 페이지들"): 홈 `/`=RestaurantMapPage 라 prerender 된
-    //   #root 홈 shell 이, 특례 안 된 소비자 라우트(디폴트 ELSE)에서 하드로드 첫 페인트에 새어 나오던 것.
-    //   → `else if (!isMainPage)` 디폴트 분기가 홈 외 모든 HTML 라우트(링크샵/상세 포함)에 정적 로더 주입.
-    //   이 디폴트 분기가 사라지면(누가 특례 화이트리스트로 되돌리면) 홈 shell 누수 재발 → 불변식으로 고정.
+    name: '모든 HTML 라우트 정적 URDEAL 로더 주입 (홈 shell 누수/blank 금지)',
+    // 🖼️ 2026-07-07 (대표 신고 "로딩 중간에 이상한 페이지들" + "홈도 이상적으로"): 홈 `/`=RestaurantMapPage 라
+    //   prerender 된 #root 홈 shell 이, 특례 안 된 라우트(디폴트)에서 하드로드 첫 페인트에 새어 나오던 것.
+    //   → #root 체인의 **catch-all `else`** 가 홈 포함 모든 HTML 라우트(needsRootBlank/blog 선처리 후)에
+    //   정적 로더 주입. 이 catch-all 이 `else if(...)` 로 좁혀지면(누가 화이트리스트로 되돌리면) 어떤
+    //   라우트가 홈 shell 로 새어 재발 → 아래 must(catch-all else + 로더) + mustNot(게이트된 로더)로 고정.
     must: [
       /const\s+urdealLoaderHtml\s*=/,   // 로더 마크업 SSOT const
-      /else\s+if\s*\(\s*!isMainPage\s*\)/, // 비-홈 디폴트 로더 분기(홈 shell 누수 차단)
+      /}\s*else\s*\{[\s\S]*?setInnerContent\(urdealLoaderHtml/, // catch-all else 가 로더 주입(홈 포함 전 라우트)
       /ur-loader-breathe/,                 // 주입 HTML 에 로더 존재
     ],
-    hint: '홈(`/`) 외 HTML 라우트는 prerender 홈 shell 대신 `else if (!isMainPage)` 로 정적 URDEAL 로더를 주입하세요(화이트리스트 특례로 되돌려 디폴트를 열면 홈 shell 이 다른 페이지에 샙니다).',
+    mustNot: [
+      // 로더 주입이 `else if (...isMainPage...)` 로 게이트되면 홈(또는 그 조건 밖 라우트)이 다시 홈 shell 노출.
+      /else\s+if\s*\([^)]*isMainPage[^)]*\)\s*\{[\s\S]{0,600}?setInnerContent\(urdealLoaderHtml/,
+    ],
+    hint: '모든 HTML 라우트는 prerender 홈 shell 대신 catch-all `else { … urdealLoaderHtml … }` 로 정적 로더를 주입하세요(로더를 `else if(isMainPage)` 로 좁히면 그 조건 밖 라우트에 홈 shell 이 샙니다).',
   },
   {
     file: 'src/pages/GroupBuyDetailPage.tsx',
@@ -80,6 +85,32 @@ const CHECKS = [
       /ur-loader-sweep\s+1\.15s/,   // BrandLoader 의 % 1.15 와 일치
     ],
     hint: '주기를 바꾸려면 index.css 와 BrandLoader.tsx(% 상수) 를 함께 바꾸고 이 가드도 갱신하세요.',
+  },
+  {
+    file: 'src/hooks/useOnlineStatus.ts',
+    name: 'OfflineBanner SSR-safe (프리렌더 오프라인 오판 금지)',
+    // 🛡️ 2026-07-07 (대표 신고 — 로딩 중 "인터넷 연결이 끊겼습니다"): prerender(Node)엔 navigator.onLine 이
+    //   undefined → 기존 `navigator.onLine`(falsy) 초기값이 오프라인으로 오판 → 정적 HTML 에 배너가 구워짐.
+    //   초기값은 반드시 `=== false` 일 때만 오프라인(그 외 online). 이 불변식이 깨지면 배너가 전 페이지 첫 paint 노출.
+    must: [
+      /navigator\.onLine\s*===\s*false/, // 명시적 offline 일 때만 오프라인(undefined=online)
+    ],
+    mustNot: [
+      /useState<boolean>\(\s*typeof navigator[^)]*\?\s*navigator\.onLine\s*:/, // 옛 버그: onLine(undefined) 을 초기값으로
+    ],
+    hint: 'useOnlineStatus 초기값은 `!(typeof navigator!==\'undefined\' && navigator.onLine === false)` 형태로 — SSR/undefined 는 online 으로 간주(프리렌더에 오프라인 배너가 구워지지 않게).',
+  },
+  {
+    file: 'src/i18n-critical.ts',
+    name: '홈 above-the-fold i18n 키 critical 포함 (raw 키 flash 금지)',
+    // 🗺️ 2026-07-07 (대표 신고 — 홈 로딩 중 'restaurantMap.nearMe' 등 원본 키 노출): 홈=동네딜 지도라 그 상단
+    //   라벨이 critical 셋에 없으면 full translation.json 도착 전 raw 키 노출. 홈 above-the-fold 키는 critical 필수.
+    must: [
+      /restaurantMap:\s*\{/,   // restaurantMap 네임스페이스가 critical 에 존재
+      /nearMe:/,               // '내 주변' 칩(홈 최상단, 항상 렌더)
+      /sort:\s*\{[^}]*discount:/, // 기본 정렬 라벨
+    ],
+    hint: "홈 상단 라벨(restaurantMap.nearMe / sort.*)을 CRITICAL_I18N(6개 언어)에 유지하세요 — 빼면 홈 로딩 중 원본 키가 노출됩니다.",
   },
 ]
 
@@ -106,4 +137,4 @@ if (failures) {
   console.error(`\n로더 연속성 불변식 ${failures}건 위반 — "로딩이 2번 나뉘어 보임" 재발 위험 (2026-07-02 대표 신고 클래스).`)
   process.exit(STRICT ? 1 : 0)
 }
-console.log('✅ loader-continuity: 로더 연속성 4불변식(위상동기·정적로더·seed+dedupe·주기동기) 모두 존재.')
+console.log('✅ loader-continuity: 로더 연속성 6불변식(위상동기·전-라우트정적로더·seed+dedupe·주기동기·offline-SSR-safe·홈critical-i18n) 모두 존재.')
