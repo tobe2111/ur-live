@@ -42,9 +42,12 @@ export default function InfoTab({
   const hasAnyInfo = !!(seller.business_name || ceo || seller.business_number || seller.mail_order_number || seller.business_address)
 
   // 푸터 한 줄 — `LABEL. value` (라벨 세미볼드/뮤트, 값 살짝 진하게). 값 없으면 렌더 스킵.
+  // ⚠️ 각 <p> 에 명시적 text-[11px] 필수: 전역 `@layer base` 의 `p{font-size:clamp(15px…)}`(index.css)
+  //   이 부모 div 의 text-[10px] 상속을 덮어써 15px 로 커지던 버그(2026-07-07 대표 신고). 유틸리티 레이어가
+  //   base 를 이겨야 하므로 크기 클래스를 <p> 자신에 둔다.
   const Row = ({ label, value, extra }: { label: string; value?: string | null; extra?: ReactNode }) =>
     value ? (
-      <p className="leading-relaxed">
+      <p className="text-[11px] leading-relaxed">
         <span className="font-semibold text-gray-500 dark:text-gray-400">{label}</span>{' '}
         <span className="text-gray-400 dark:text-gray-500">{value}</span>
         {extra ? <> {extra}</> : null}
@@ -107,9 +110,9 @@ export default function InfoTab({
           </button>
 
           {open && (
-            <div className="mt-2 space-y-0.5 text-[10px] leading-relaxed text-gray-400 dark:text-gray-500">
+            <div className="mt-2 space-y-0.5 leading-relaxed text-gray-400 dark:text-gray-500">
               {(seller.business_name || ceo) && (
-                <p className="leading-relaxed">
+                <p className="text-[11px] leading-relaxed">
                   {seller.business_name && (
                     <><span className="font-semibold text-gray-500 dark:text-gray-400">COMPANY.</span> <span className="text-gray-400 dark:text-gray-500">{seller.business_name}</span></>
                   )}
@@ -131,7 +134,7 @@ export default function InfoTab({
               />
               <Row label="ORDER LICENSE." value={seller.mail_order_number} />
               {isOwner && !seller.mail_order_number && (
-                <p className="leading-relaxed">
+                <p className="text-[11px] leading-relaxed">
                   <span className="font-semibold text-gray-500 dark:text-gray-400">ORDER LICENSE.</span>{' '}
                   <Link to="/seller/business-info" className="text-gray-400 dark:text-gray-500 underline underline-offset-2">
                     {t('seller.publicPage.mailOrderNumber', { defaultValue: '통신판매업신고번호' })} {t('common.register', { defaultValue: '등록' })}
