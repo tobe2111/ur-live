@@ -95,25 +95,28 @@ const POOLS: Record<Topic, { pos: string[]; mid: string[] }> = {
     mid: ['깨끗한데 방음이 조금 아쉬워요', '위치는 좋은데 주차가 불편해요', '만족인데 체크인 시간이 좀 늦어요'],
   },
   meal: {
-    pos: ['맛도 좋고 사장님도 친절하세요', '양 넉넉하고 정갈하게 잘 나와요', '점심시간에 갔는데 회전이 빨라서 금방 먹었어요', '가격 대비 만족스러운 한 끼였어요', '동네 단골집 될 듯. 메뉴 다 돌아볼 예정', 'QR 보여주니 바로 처리해주셔서 편했어요'],
-    mid: ['맛은 좋은데 웨이팅이 있어요', '무난하게 잘 먹었어요', '맛있는데 매장이 좀 협소해요'],
+    pos: ['반찬이 하나하나 정성이라 밑반찬만으로도 밥 한 공기 뚝딱했어요. 리필도 흔쾌히 해주시고', '기본이 탄탄한 집이에요. 국물 간이 세지 않아서 어른들 모시고 가기 딱 좋았습니다', '점심 특선이 이 구성에 이 가격이라는 게 놀라워요. 근처 직장인이면 단골 될 만함', '재료 신선한 게 딱 느껴져요. 반찬 안 남기고 다 먹은 건 오랜만이에요', '혼밥하기도 눈치 안 보이고 편했어요. 사장님이 조용히 챙겨주시는 스타일', '메뉴가 알차서 뭘 시켜도 실패가 없더라고요. 다음엔 다른 메뉴 도전해보려고요', '동네에 이런 집 하나 있으면 든든하죠. 이미 세 번째 방문이에요'],
+    mid: ['맛은 정말 좋은데 점심 피크엔 자리가 금방 차요. 12시 전에 가시길', '음식은 만족스러웠고 매장이 조금 아담한 것만 감안하면 좋아요', '맛있게 잘 먹었어요. 반찬 종류가 조금만 더 있으면 완벽할 듯'],
   },
   beauty: {
-    pos: ['원장님이 꼼꼼하게 잘 해주셨어요', '위생 신경 쓰시는 게 눈에 보여서 안심돼요', '예약제라 기다림 없이 받았어요', '결과 만족스러워서 재방문할게요', '상담부터 시술까지 설명이 자세해요'],
-    mid: ['만족인데 예약이 조금 어려워요', '괜찮은데 매장이 아담해요', '좋은데 인기 시간대는 한 달 전 예약 필요'],
+    pos: ['상담부터 다르네요. 제 피부 상태 보면서 오늘은 뭘 하고 뭘 빼는 게 좋을지 짚어주셨어요', '위생 관리가 눈에 보여요. 도구 꺼내는 것부터 믿음이 갔습니다', '시술 내내 아프거나 불편한 부분 없는지 계속 확인해주셔서 편하게 받았어요', '결과물이 딱 원하던 느낌이라 만족스러워요. 과하지 않고 자연스럽게', '예약 시간 정확히 지켜서 시작하고, 끝나고 관리법까지 알려주셔서 좋았어요', '원장님 손이 꼼꼼하세요. 마무리 디테일에서 실력 차이가 나더라고요'],
+    mid: ['시술은 아주 만족스러웠어요. 인기 시간대는 미리 예약하셔야 해요', '결과는 좋은데 매장이 아담한 편이라 참고하세요', '만족합니다. 주말 예약이 빨리 차는 게 유일한 아쉬움'],
   },
   etc: {
-    pos: ['친절하고 만족스럽게 이용했어요', '방문해서 편하게 잘 썼어요', '가격 대비 좋아서 추천해요', '설명을 자세히 해주셔서 처음인데도 어렵지 않았어요', '생각보다 알차서 놀랐어요'],
-    mid: ['무난하게 이용했어요', '괜찮은데 조금 붐볐어요', '만족인데 주차 공간이 협소해요'],
+    pos: ['처음이라 걱정했는데 하나하나 친절하게 알려주셔서 어렵지 않게 즐겼어요', '생각보다 훨씬 알차서 놀랐어요. 이 가격에 이 구성이면 무조건 이득', '설명이 자세하고 응대가 편안해서 시간 가는 줄 몰랐어요', '기대 없이 갔다가 제대로 즐기고 왔습니다. 사진도 잘 나오고요', '혼자 가도 어색하지 않게 챙겨주셔서 편했어요. 재방문 의사 있습니다'],
+    mid: ['만족스럽게 즐겼어요. 주말엔 사람이 조금 몰리는 편이에요', '좋았는데 주차 공간이 협소해서 대중교통 추천드려요', '전반적으로 만족. 인기 시간대는 예약이 빨리 차요'],
   },
 }
 
-const TAILS = ['', '', '', '', ' 또 갈게요', ' 재방문 의사 있어요', ' 만족합니다', ' ㅎㅎ', '~']
+// 🎭 5점 리뷰 끝에 가끔 붙는 짧은 마무리(넷 긍정) — 대부분 빈 문자열(본문이 이미 완결).
+const TAILS = ['', '', '', '', '', '', '', ' 재방문 확정이에요', ' 또 갈 것 같아요', ' 강추까진 아니고 조용히 좋아요', ' 담에 또 올게요']
 
 // 🎭 방문 맥락 오프너(업종 무관 안전) — 빈 문자열 비중 높게(대부분 리뷰는 바로 본론).
-const OPENERS = ['', '', '', '', '', '주말에 다녀왔는데 ', '평일 저녁에 방문했어요. ', '지인 추천으로 가봤는데 ', '두 번째 방문이에요. ', '예약하고 갔습니다. ', '동네라 자주 가는데 ', '처음 가봤는데 ']
-// 🎭 아주 짧은 한마디형(실제 리뷰 최빈 패턴) — 길이 다양성의 핵심.
-const SHORTS_POS = ['만족합니다', '잘 이용했어요', '좋았어요 또 갈게요', '굿', '재방문 의사 있습니다', '만족스러웠어요 ㅎㅎ', '좋아요', '괜찮았습니다']
+const OPENERS = ['', '', '', '', '', '', '', '주말에 다녀왔는데 ', '평일 저녁에 갔어요. ', '지인 추천으로 가봤는데 ', '두 번째 방문이에요. ', '예약하고 갔습니다. ', '동네라 종종 가는데 ', '처음 가봤는데 ', '오랜만에 들렀는데 ', '친구가 하도 좋다길래 갔어요. ', '퇴근하고 들렀어요. ', '가족이랑 갔는데 ']
+// 🎭 아주 짧은 한마디형 — 실제 최빈 패턴이라 소량 유지하되, 제너릭 남발은 지양(빈도도 낮춤).
+const SHORTS_POS = ['재방문 의사 100%입니다', '여긴 실패가 없네요', '기대 이상이라 놀랐어요', '두 번째인데 처음이랑 똑같이 좋았어요', '주변에 다 추천하고 다니는 중', '가격 생각하면 더 좋게 느껴져요']
+// 🎭 이모지(15% 정도만 한 개).
+const EMOJI = ['', '', '', '', '', '', '', '', ' 👍', ' 😋', ' 🙏', ' 🥰']
 
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)] }
 
@@ -122,21 +125,16 @@ function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length
  *  같은 상품 안에서도 문장 구조가 겹치지 않게. avoid(이미 쓴 문구) 재시도는 buildStoreReviews 가 담당. */
 export function composeDemoReview(rating: number, topic: Topic, storeName?: string | null): string {
   const pool = POOLS[topic] || POOLS.etc
-  if (rating >= 4) {
-    // 25%: 아주 짧은 한마디(업종 무관 실제 최빈 패턴 — 길이 다양성)
-    if (Math.random() < 0.25) return pick(SHORTS_POS)
-    let s = pick(pool.pos)
-    // 30%: 두 번째 긍정 문구 결합(조합 수 급증) / 오프너와 동시엔 안 씀(과장 방지)
-    const opener = pick(OPENERS)
-    if (!opener && Math.random() < 0.3) { const b = pick(pool.pos); if (b !== s) s = `${s} ${b}` }
-    s = opener + s
-    // 15%: 매장명 자연스럽게 앞에(오프너 없을 때만)
-    if (!opener && storeName && Math.random() < 0.15) s = `${storeName} 다녀왔어요. ${s}`
-    if (rating >= 5) s += pick(TAILS)
-    return s
-  }
-  let s = pool.mid.length ? pick(pool.mid) : pick(pool.pos)
-  if (storeName && Math.random() < 0.12) s = `${storeName} ${s}`
+  // 12%: 아주 짧은 한마디(실제 최빈 패턴 — 길이 다양성). 비중을 낮춰 제너릭 '필러' 느낌 방지.
+  if (Math.random() < 0.12) return pick(SHORTS_POS) + pick(EMOJI)
+  // 4점은 순한 아쉬움 한마디(넷 긍정)를 절반쯤 섞어 리얼함 — 5점은 구체적 강한 긍정.
+  let s = (rating === 4 && pool.mid.length && Math.random() < 0.45) ? pick(pool.mid) : pick(pool.pos)
+  const opener = pick(OPENERS)
+  s = opener + s
+  // 12%: 매장명 자연스럽게 앞에(오프너 없을 때만)
+  if (!opener && storeName && Math.random() < 0.12) s = `${storeName} 다녀왔어요. ${s}`
+  if (rating >= 5) s += pick(TAILS)
+  s += pick(EMOJI)
   return s
 }
 
@@ -145,9 +143,8 @@ export interface StoreReviewInput { name: string; category: string; storeName?: 
 export interface GenReview { rating: number; content: string }
 
 function ratingSample(): number {
-  // 4.3~4.9 평균 근사 — 대부분 5, 가끔 4, 드물게 3.
-  const r = Math.random()
-  return r < 0.62 ? 5 : r < 0.9 ? 4 : 3
+  // 대표 결정(2026-07-06): 데모는 전부 긍정(4~5점, 나쁜 후기 없음). 5 다수 + 4 소수 → 평점 ~4.6.
+  return Math.random() < 0.64 ? 5 : 4
 }
 
 /** LLM(Claude Haiku) — 오프라인 이용권 + 실매장 grounding 리뷰. 실패/키없음 시 throw(호출측 폴백). */
@@ -226,7 +223,7 @@ export async function buildStoreReviews(env: Env, p: StoreReviewInput, count = 8
     } catch {
       for (let k = 0; k < n; k++) {
         const rating = ratingSample()
-        if (Math.random() < 0.15) { out.push({ rating, content: '' }); continue }  // 별점만(실제 최빈 패턴)
+        if (Math.random() < 0.1) { out.push({ rating, content: '' }); continue }  // 별점만(실제 패턴, 소량)
         let content = composeDemoReview(rating, topic, p.storeName)
         for (let attempt = 0; attempt < 6 && seen.has(content); attempt++) content = composeDemoReview(rating, topic, p.storeName)
         seen.add(content)
