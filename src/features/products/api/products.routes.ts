@@ -39,6 +39,88 @@ type Bindings = {
 
 export const productsRoutes = new Hono<{ Bindings: Bindings }>();
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 🎬 2026-07-07 (대표 — "데모 상품 심어줘"): 링크샵 리디자인 확인용 데모 상품 시드 (키 게이트 공개).
+//   admin 토큰 없이 호출하려고 key 로 게이트. ⚠️ 데모 도구 — 오픈 전 제거/보안 권장. 데모 상품(slug
+//   'demo-linkshop-N')만 생성/삭제하며 seller_id 는 요청값. POST 시드(멱등) / DELETE 제거.
+const DEMO_SEED_KEY = 'urdeal-demo-seed-2026';
+const DEMO_LS_SLUG = 'demo-linkshop-';
+const DEMO_LS_IMG = [
+  '/api/media/uploads/demo/2026-07/2985830a-52bf-4173-aa0f-e69b9bf97c5c.jpg',
+  '/api/media/uploads/demo/2026-07/47e8a692-c70b-40f9-a190-17cd10ba1a6a.jpg',
+  '/api/media/uploads/demo/2026-07/8ee6cb67-05c1-4fd2-b589-499991c3980c.webp',
+  '/api/media/uploads/demo/2026-07/f3414af6-6fa4-40e2-a74f-90c5f27840ed.jpg',
+  '/api/media/uploads/demo/2026-07/57f1183b-4b70-4377-a299-aa6fb23955aa.jpg',
+  '/api/media/uploads/demo/2026-07/925d1b90-34c2-4ecb-8f0b-e8975f19f114.jpg',
+  '/api/media/uploads/demo/2026-07/bdec2dec-80c4-416c-a67e-a3c9f46790e4.jpg',
+  '/api/media/uploads/demo/2026-07/d3975223-f7ef-4cce-bf87-c5968fd532a1.jpg',
+  '/api/media/uploads/demo/2026-07/67e0aeeb-4b19-4ee6-b38d-09ade8b2d3f0.jpg',
+];
+const DEMO_LS_SHOP = [
+  { name: '프리미엄 한우 등심 500g 냉장', price: 69000, original: 89000 },
+  { name: '국내산 참기름 선물세트 (500ml x2)', price: 38000, original: 0 },
+  { name: '명란젓 500g 특상품 저염', price: 19900, original: 24900 },
+  { name: '수제 어묵탕 밀키트 2인분', price: 15900, original: 0 },
+  { name: '전통방식 쌀조청 850g', price: 12000, original: 0 },
+  { name: '제주 손질 갈치 냉동 5팩', price: 27000, original: 32000 },
+];
+const DEMO_LS_VOU = [
+  { name: '[성수] 소금집델리 브런치 이용권', price: 28000, original: 34000, rest: '소금집델리 성수' },
+  { name: '[연남] 수제버거 세트 교환권', price: 18000, original: 0, rest: '연남버거하우스' },
+];
+
+productsRoutes.post('/demo-seed-linkshop', async (c) => {
+  try {
+    const body = (await c.req.json().catch(() => ({}))) as { key?: string; seller_id?: number | string };
+    if (body.key !== DEMO_SEED_KEY) return c.json({ success: false, error: 'bad key' }, 403);
+    const sellerId = Number(body.seller_id);
+    if (!Number.isFinite(sellerId) || sellerId <= 0) return c.json({ success: false, error: 'seller_id 필요' }, 400);
+    const DB = c.env.DB as D1Database;
+    const existing = await DB.prepare(`SELECT COUNT(*) AS c FROM products WHERE slug LIKE ? AND seller_id = ?`)
+      .bind(DEMO_LS_SLUG + '%', sellerId).first<{ c: number }>().catch(() => ({ c: 0 }));
+    if ((existing?.c ?? 0) > 0) return c.json({ success: true, alreadySeeded: true, count: existing!.c });
+    let n = 0, imgI = 0;
+    for (const p of DEMO_LS_SHOP) {
+      const slug = DEMO_LS_SLUG + (++n);
+      await DB.prepare(
+        `INSERT INTO products (name, description, price, original_price, image_url, category, product_type, is_active, seller_id, stock, stock_quantity, slug, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 'food', 'regular', 1, ?, 50, 50, ?, datetime('now'), datetime('now'))`
+      ).bind(p.name, p.name + ' — 데모 상품', p.price, p.original || null, DEMO_LS_IMG[imgI++ % DEMO_LS_IMG.length], sellerId, slug).run().catch(() => {});
+    }
+    for (const v of DEMO_LS_VOU) {
+      const slug = DEMO_LS_SLUG + (++n);
+      await DB.prepare(
+        `INSERT INTO products (name, description, price, original_price, image_url, category, product_type, is_active, seller_id, stock, stock_quantity, restaurant_name, slug, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 'meal_voucher', 'regular', 1, ?, 50, 50, ?, ?, datetime('now'), datetime('now'))`
+      ).bind(v.name, v.name + ' — 데모 이용권', v.price, v.original || null, DEMO_LS_IMG[imgI++ % DEMO_LS_IMG.length], sellerId, v.rest, slug).run().catch(() => {});
+    }
+    return c.json({ success: true, seeded: n, seller_id: sellerId });
+  } catch (e) {
+    return c.json({ success: false, error: String((e as Error)?.message || e).slice(0, 120) }, 500);
+  }
+});
+
+productsRoutes.post('/demo-seed-linkshop/clear', async (c) => {
+  try {
+    const body = (await c.req.json().catch(() => ({}))) as { key?: string; seller_id?: number | string };
+    if (body.key !== DEMO_SEED_KEY) return c.json({ success: false, error: 'bad key' }, 403);
+    const DB = c.env.DB as D1Database;
+    const sellerId = Number(body.seller_id);
+    const rows = await DB.prepare(`SELECT id FROM products WHERE slug LIKE ?${Number.isFinite(sellerId) && sellerId > 0 ? ' AND seller_id = ?' : ''}`)
+      .bind(...(Number.isFinite(sellerId) && sellerId > 0 ? [DEMO_LS_SLUG + '%', sellerId] : [DEMO_LS_SLUG + '%'])).all<{ id: number }>().catch(() => ({ results: [] as { id: number }[] }));
+    let deleted = 0, retired = 0;
+    for (const r of (rows.results || [])) {
+      for (const t of ['product_reviews', 'cart_items', 'wishlists']) await DB.prepare(`DELETE FROM ${t} WHERE product_id = ?`).bind(r.id).run().catch(() => {});
+      try { const d = await DB.prepare(`DELETE FROM products WHERE id = ?`).bind(r.id).run(); if (d.meta?.changes) { deleted++; continue; } } catch { /* FK */ }
+      await DB.prepare(`UPDATE products SET is_active = 0, slug = 'retired-' || slug || '-' || id WHERE id = ?`).bind(r.id).run().catch(() => {});
+      retired++;
+    }
+    return c.json({ success: true, deleted, retired });
+  } catch (e) {
+    return c.json({ success: false, error: String((e as Error)?.message || e).slice(0, 120) }, 500);
+  }
+});
+
 /**
  * POST /api/products/dominant-color
  * 카드 이미지 도미넌트 컬러 lazy 백필 — 클라이언트가 canvas 1x1 로 추출한 색을 보고.
