@@ -28,6 +28,8 @@ import type { KVNamespace } from '@cloudflare/workers-types';
 import { cacheGet } from '@/worker/utils/cache';
 import { ProductService } from '../services/ProductService';
 import type { ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
+import { seedDemoReviews } from '@/worker/utils/demo-review-generator';
+import type { Env } from '@/worker/types/env';
 
 // 🛡️ 2026-04-22: bare cors() 는 모든 origin 허용. 민감 routes 에 쓰지 말고 아래 tightCors 사용.
 const tightCors = () => cors({ origin: [...ALLOWED_ORIGINS], credentials: true });
@@ -96,6 +98,20 @@ productsRoutes.post('/demo-seed-linkshop', async (c) => {
          VALUES (?, ?, ?, ?, ?, 'meal_voucher', 'regular', 1, ?, 50, 50, ?, ?, datetime('now'), datetime('now'))`
       ).bind(v.name, v.name + ' — 데모 이용권', v.price, v.original || null, imgs[imgI++ % imgs.length], sellerId, v.rest, slug).run().catch(() => {});
     }
+    // 🎯 2026-07-07 (대표 폴리시 — "평점/리뷰도"): 시드된 데모에 매장특색 데모 리뷰 부착(신규 → ★평점).
+    //   admin dongnedeal 시드와 동일 헬퍼(seedDemoReviews) 재사용 — LLM(키 있으면) 또는 결정론 폴백,
+    //   상품별 리뷰 수 6~12 랜덤, review_count/avg_rating/sold_count 갱신(멱등: 리뷰 있으면 skip).
+    //   외부 LLM 호출이라 응답 블록 방지 위해 waitUntil(ctx 없으면 동기 fallback).
+    try {
+      const seededRows = await DB.prepare(
+        `SELECT id, name, category, restaurant_name FROM products WHERE slug LIKE ? AND seller_id = ?`
+      ).bind(DEMO_LS_SLUG + '%', sellerId).all<{ id: number; name: string; category: string; restaurant_name: string | null }>().catch(() => ({ results: [] as { id: number; name: string; category: string; restaurant_name: string | null }[] }));
+      const rows = seededRows.results || [];
+      const seedReviews = () => Promise.all(rows.map((r) =>
+        seedDemoReviews(c.env as unknown as Env, { id: r.id, name: r.name, category: r.category, storeName: r.restaurant_name }, 6 + Math.floor(Math.random() * 7)).catch(() => 0)
+      ));
+      try { c.executionCtx.waitUntil(seedReviews()); } catch { await seedReviews(); }
+    } catch { /* 리뷰 시드 실패는 상품 시드 성공에 영향 없음 */ }
     return c.json({ success: true, seeded: n, seller_id: sellerId });
   } catch (e) {
     return c.json({ success: false, error: String((e as Error)?.message || e).slice(0, 120) }, 500);

@@ -50,6 +50,7 @@ export default function VouchersTab({ mealVouchers, isOwner }: Props) {
             avg_rating: p.avg_rating,
             review_count: p.review_count,
             sold_count: p.sold_count,
+            restaurant_name: p.restaurant_name,
           } as BrowseProduct}
           aboveFold={false}
           to={`/products/${p.id}`}

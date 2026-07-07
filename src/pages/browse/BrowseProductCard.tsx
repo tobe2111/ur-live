@@ -9,7 +9,7 @@
 import { useState, memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Bell, ImageOff } from 'lucide-react'
+import { Bell, ImageOff, MapPin } from 'lucide-react'
 import { formatPrice } from '@/utils/currency'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
@@ -90,6 +90,13 @@ const BrowseProductCard = memo(function BrowseProductCard({
         )}
         {/* 사진 하단 → 같은 카드색으로 번짐 (경계 제거) */}
         <div className="absolute inset-x-0 bottom-0 h-[42%] pointer-events-none" style={{ background: grad.imageFade }} />
+        {/* 🎨 2026-07-07 (링크샵 이용권 폴리시): 매장/위치 배지 — restaurant_name 있을 때만(주로 이용권). */}
+        {product.restaurant_name && (
+          <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-0.5 max-w-[85%] rounded-full bg-black/55 backdrop-blur-sm px-1.5 py-[3px] text-[10px] font-semibold text-white">
+            <MapPin className="w-2.5 h-2.5 shrink-0" aria-hidden="true" />
+            <span className="truncate">{product.restaurant_name}</span>
+          </span>
+        )}
         {isMealVoucher && (
           <span className="absolute bottom-1.5 right-1.5 rounded-full p-1.5 bg-white/85 dark:bg-[#0A0A0A]/85 backdrop-blur-sm">
             <Bell
