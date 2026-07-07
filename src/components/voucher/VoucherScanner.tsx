@@ -147,6 +147,23 @@ export default function VoucherScanner() {
     }
   }, [startCamera])
 
+  // 🔆 2026-07-06: 계산대 화면 꺼짐/디밍 방지 — Screen Wake Lock(웹 표준, iOS 16.4+/안드).
+  //   연속 스캔 중 화면이 잠기면 손님 대기가 끊김. fail-soft(미지원/거부 시 무시). QRModal 과 동일 패턴.
+  useEffect(() => {
+    let lock: { release: () => Promise<void> } | null = null
+    let released = false
+    const wl = (typeof navigator !== 'undefined' ? (navigator as unknown as { wakeLock?: { request: (t: string) => Promise<{ release: () => Promise<void> }> } }).wakeLock : undefined)
+    const request = async () => { try { if (wl && !released) lock = await wl.request('screen') } catch { /* unsupported/denied */ } }
+    void request()
+    const onVis = () => { if (typeof document !== 'undefined' && document.visibilityState === 'visible') void request() }
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVis)
+    return () => {
+      released = true
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis)
+      try { lock?.release() } catch { /* ignore */ }
+    }
+  }, [])
+
   const submitManual = (e: React.FormEvent) => {
     e.preventDefault()
     const code = extractCode(manualCode)
