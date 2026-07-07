@@ -84,6 +84,37 @@ app.get('/kakao/place/nearby', rateLimit({ action: 'kakao_proxy', max: 30, windo
   }
 });
 
+// ── 카카오 좌표→행정동 (역지오코딩) ──
+// 🧭 2026-07-07 (대표 — 홈 '내 주변' 기준): GPS 좌표를 동네 이름으로. 좌표를 ~110m 그리드로
+//   라운딩해 30일 KV 캐시(같은 동네 방문자 1콜 공유). region_3depth_name(행정동) 반환.
+app.get('/kakao/coord2region', rateLimit({ action: 'kakao_proxy', max: 30, windowSec: 60 }), async (c) => {
+  const x = c.req.query('lng'); const y = c.req.query('lat');
+  if (!x || !y || !Number.isFinite(Number(x)) || !Number.isFinite(Number(y))) return c.json({ success: false, error: 'lat,lng required' }, 400);
+  const KAKAO_REST_KEY = c.env.KAKAO_REST_API_KEY;
+  if (!KAKAO_REST_KEY) return c.json({ success: false, error: 'KAKAO_REST_API_KEY not configured' }, 500);
+  const KV = (c.env as Env & { RATE_LIMIT_KV?: KVNamespace }).RATE_LIMIT_KV;
+  const gx = Number(x).toFixed(3), gy = Number(y).toFixed(3);
+  const cacheKey = `kakao:coord2region:${gy},${gx}`;
+  if (KV) {
+    const cached = await KV.get(cacheKey, 'json').catch(() => null);
+    if (cached) return c.json({ success: true, data: cached, cached: true });
+  }
+  try {
+    const url = `https://dapi.kakao.com/v2/local/geo/coord2regioncode.json?x=${gx}&y=${gy}`;
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } });
+    const raw = await res.json() as { documents?: Array<{ region_type?: string; region_2depth_name?: string; region_3depth_name?: string }> };
+    // 행정동('H') 우선, 없으면 첫 결과. dong=행정동, city=시군구.
+    const doc = raw.documents?.find((d) => d.region_type === 'H') || raw.documents?.[0];
+    const data = { dong: doc?.region_3depth_name || '', city: doc?.region_2depth_name || '' };
+    if (KV && data.dong) {
+      c.executionCtx?.waitUntil?.(KV.put(cacheKey, JSON.stringify(data), { expirationTtl: 30 * 24 * 60 * 60 }).catch(() => {}));
+    }
+    return c.json({ success: true, data });
+  } catch (e) {
+    console.error("[proxy/coord2region] error:", (e as Error)?.message || String(e)); return c.json({ success: false, error: "외부 API 호출 실패" }, 500);
+  }
+});
+
 // ── 카카오 주소 검색 (영구 캐시) ──
 // 🛡️ 2026-05-07: 같은 주소를 반복 변환하지 않도록 RATE_LIMIT_KV 에 30일 캐시.
 // 한 번 변환된 좌표는 거의 바뀌지 않으므로 Kakao API quota 대폭 절감.
