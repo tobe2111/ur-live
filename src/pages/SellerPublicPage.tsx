@@ -443,18 +443,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
         pinCount={products.length}
         isOwner={ownerView}
         accountType="business"
-        stats={(() => {
-          // 🎨 2026-07-07 리디자인 3차: 실데이터 스탯만 — 상품·이용권(항상 의미) + 평점/팔로워(있을 때만).
-          const ratings = products.map(p => Number(p.avg_rating) || 0).filter(r => r > 0)
-          const avg = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0
-          const fol = Number((seller as { follower_count?: number }).follower_count) || 0
-          const s: { label: string; value: string }[] = []
-          if (shopProducts.length) s.push({ label: '상품', value: String(shopProducts.length) })
-          if (mealVouchers.length) s.push({ label: '이용권', value: String(mealVouchers.length) })
-          if (avg > 0) s.push({ label: '평점', value: avg.toFixed(1) })
-          if (fol > 0) s.push({ label: '팔로워', value: fol >= 1000 ? (fol / 1000).toFixed(1) + 'k' : String(fol) })
-          return s.slice(0, 3)
-        })()}
         onCopyLink={copyLink}
         onCuratorUpdate={(next) => setCuratorEdits((s) => ({ ...s, ...next }))}
       />
