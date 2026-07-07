@@ -170,6 +170,7 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 import { blogRoutes } from '../features/blog/api/blog.routes';
 import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes';
 import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blog-ssr-meta';
+import { buildDetailMeta } from './utils/detail-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
@@ -820,6 +821,34 @@ app.use('*', async (c, next) => {
             .on('head', { element(el) { el.append(`<link rel="canonical" href="${canon}">`, { html: true }); } });
         }
       } catch { /* 파싱 실패 시 기본 메타 유지 */ }
+    }
+    // 🔎 2026-07-07 [UNLOCK_LOADING] (대표 "각 이용권 페이지마다 SEO 다 잘 되지?"): 공구/이용권/교환권 상세
+    //   (DETAIL slot — /group-buy/:id · /vouchers/:id) 서버측 메타/JSON-LD 주입. 그간 DETAIL 은 데이터만
+    //   주입하고 메타는 index.html 기본값(제네릭 홈)을 서빙 → 비-JS 크롤러(네이버/카카오/소셜)가 이용권 링크
+    //   공유·색인 시 "유어딜 홈" 카드를 봄. BLOGPOST/CURATOR/WHOLESALE 과 동일 패턴으로 서빙경로에서 rewrite.
+    //   **SSR inject(__SSR_INITIAL_DETAIL__)·0-RTT·#root 정적 로더·edgeCache 전부 불변 — 메타 rewrite만 additive.**
+    //   순수 계산은 detail-ssr-meta.ts(god 파일 성장 방지). /vouchers/:id(교환권)는 noindex(클라 <SEO noindex> 대칭).
+    if (ssrSlot === 'DETAIL' && ssrPayload) {
+      const dm = buildDetailMeta(ssrPayload, origin2, url.pathname);
+      if (dm) {
+        rb = rb
+          .on('title', { element(el) { el.setInnerContent(dm.pageTitle); } })
+          .on('meta[name="description"]', { element(el) { el.setAttribute('content', dm.description); } })
+          .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', dm.title); } })
+          .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', dm.description); } })
+          .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', dm.canonical); } })
+          .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', dm.ogType); } })
+          .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', dm.ogImage); } })
+          .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', dm.title); } })
+          .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', dm.description); } })
+          .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', dm.ogImage); } })
+          .on('head', { element(el) {
+            el.append(`<link rel="canonical" href="${dm.canonical}">`, { html: true });
+            if (dm.jsonLd) el.append(`<script type="application/ld+json">${dm.jsonLd}</script>`, { html: true });
+          } });
+        // 교환권(/vouchers/:id)은 색인 제외 — index.html 기본 robots(index,follow)를 noindex 로 rewrite.
+        if (dm.noindex) rb = rb.on('meta[name="robots"]', { element(el) { el.setAttribute('content', 'noindex, follow'); } });
+      }
     }
     if (needsRootBlank) {
       // 도매·대시보드 공통: 소비자 홈 shell 깜빡임 제거 (라이트 배경 placeholder).
