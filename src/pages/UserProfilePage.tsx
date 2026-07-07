@@ -6,7 +6,7 @@ import { useAuthWorld } from '@/shared/stores/useAuthWorld'
 import { isKorea } from '@/shared/config/region'
 import SEO from '@/components/SEO'
 import { cfImage } from '@/utils/cf-image'
-import { logout } from '@/features/auth/login-flow.service'
+import { logoutAll } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
 import { ChevronRight, Store } from 'lucide-react'
@@ -113,18 +113,17 @@ export default function UserProfilePage() {
   }
 
   // ✅ 로그아웃 핸들러
-  // 🔑 2026-07-07 (대표 신고 "로그아웃이 제 때 안돼"): 반드시 'user'(소비자) 세션을 명시 로그아웃.
-  //   버그: logout() 무인자는 localStorage.user_type 로 타입 자동감지하는데, safeSetUserType()(useAuthKR)
-  //   가 다중역할(사업자유저/어드민) 계정의 user_type='seller'/'admin' 을 보존(다운그레이드 안 함) →
-  //   여기(소비자 마이페이지)에서 무인자 호출 시 seller/admin 세션만 지우고 소비자 ur_session 이 살아남아
-  //   /api/auth/me 가 재인증 → "로그아웃해도 로그인" (+ 엉뚱하게 admin/seller 토큰만 날림).
-  //   이 페이지는 소비자 마이페이지이므로 항상 'user' 세션을 로그아웃(듀얼로그인 보호 — seller/admin 세션은 각 대시보드에서).
+  // 🔑 2026-07-07 (대표 확정 "전부 로그아웃"): 마이페이지 로그아웃 = 소비자+셀러+어드민+에이전시 전 세션 종료.
+  //   배경: 이전엔 logout('user') 로 소비자만 지웠으나, 다중역할 계정(어드민/셀러 + 소비자)에선
+  //   대시보드 Bearer 토큰(seller_token/admin_token 등)이 남아 isLoggedInSync()=true → 홈이 여전히
+  //   "로그인됨"으로 보임 → 대표 신고 "로그아웃이 안 됨". 이중 로그인 편의를 포기하고 명시적
+  //   로그아웃은 전 역할을 완전히 종료(logoutAll — 서버 ur_* 세션쿠키 전체 삭제 await + 전 역할 localStorage 정리).
   const handleLogout = async () => {
     try {
-      await logout('user')
-      navigate('/', { replace: true })
+      await logoutAll()  // 내부에서 하드 리로드('/') 로 마무리
     } catch (error) {
       if (import.meta.env.DEV) console.error('[UserProfilePage] ❌ 로그아웃 실패:', error)
+      window.location.href = '/'
     }
   }
 
