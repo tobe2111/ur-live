@@ -98,13 +98,6 @@ interface GroupBuyDetail {
   seller_facebook?: string | null
 }
 
-interface Participant {
-  masked_name: string
-  avatar?: string
-  created_at: string
-  quantity: number
-}
-
 function CategoryEmoji({ cat }: { cat: string }) {
   const map: Record<string, string> = {
     meal_voucher: '🍽️', beauty_voucher: '💇', health_voucher: '💪',
@@ -159,7 +152,6 @@ export default function GroupBuyDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [id, qc])
   const [detail, setDetail] = useState<GroupBuyDetail | null>(seedDetail)
-  const [participants, setParticipants] = useState<Participant[]>([])
   const [loading, setLoading] = useState<boolean>(seedDetail == null)
   const [joining, setJoining] = useState(false)
   const [quantity, setQuantity] = useState(1)
@@ -224,10 +216,9 @@ export default function GroupBuyDetailPage() {
       },
       staleTime: 60_000,
     })
-    Promise.all([
-      detailPromise,
-      api.get(`/api/group-buy/products/${productId}/participants`).catch(() => ({ data: { data: [] } })),
-    ]).then(([detailData, partRes]) => {
+    // 🗑️ 2026-07-07 (로딩 낭비 감사): participants fetch 제거 — 리디자인 후 어디서도 렌더 안 되던
+    //   죽은 요청(상세 진입마다 무의미한 왕복 1개). 상세 payload 만 로드.
+    detailPromise.then((detailData) => {
       if (cancelled) return
       if (detailData) {
         setDetail(detailData)
@@ -243,7 +234,6 @@ export default function GroupBuyDetailPage() {
           })
         } catch { /* silent */ }
       }
-      setParticipants(partRes.data?.data || [])
     }).catch((e) => toast.error((e as Error)?.message || '네트워크 오류'))
       .finally(() => !cancelled && setLoading(false))
     return () => { cancelled = true }

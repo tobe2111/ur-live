@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -189,22 +189,45 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
   const { t } = useTranslation()
   const [summary, setSummary] = useState<ReviewSummary | null>(null)
   const [reviews, setReviews] = useState<Review[]>([])
+  // 🗑️ 2026-07-07 (로딩 낭비 감사): 리뷰는 상품상세 최하단(폴드 밖)이라 마운트 즉시 summary+list 를
+  //   받던 것을 IntersectionObserver 로 게이팅(600px). 부모(ProductDetailPage)가 above-fold 평점용
+  //   경량 summary 를 이미 갖고 있어, 여기 상세 summary/목록은 섹션 근처 스크롤 시에만 로드 → 마운트
+  //   중복 요청 제거. HomeProductsRail 동일 패턴.
+  const [inView, setInView] = useState(false)
+  const gateRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = gateRef.current
+    if (!el || inView) return
+    if (typeof IntersectionObserver === 'undefined') { setInView(true); return }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some(e => e.isIntersecting)) { setInView(true); io.disconnect() }
+    }, { rootMargin: '600px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [inView])
+
+  // summary 는 limit 무관 — 전체보기(5→100) 토글이 summary 를 재요청하지 않도록 list 와 분리.
+  useEffect(() => {
+    if (!inView) return
+    api.get(`/api/reviews/product/${productId}/summary`)
+      .then(r => { if (r?.data?.success) setSummary(r.data.data) })
+      .catch(() => { /* silent */ })
+  }, [productId, inView])
 
   useEffect(() => {
-    Promise.all([
-      api.get(`/api/reviews/product/${productId}/summary`).catch(() => null),
-      api.get(`/api/reviews/product/${productId}?limit=${limit}`).catch(() => null),
-    ]).then(([sumRes, listRes]) => {
-      if (sumRes?.data?.success) setSummary(sumRes.data.data)
-      if (listRes?.data?.success) setReviews(listRes.data.data.reviews)
-    })
-  }, [productId, limit])
+    if (!inView) return
+    api.get(`/api/reviews/product/${productId}?limit=${limit}`)
+      .then(r => { if (r?.data?.success) setReviews(r.data.data.reviews) })
+      .catch(() => { /* silent */ })
+  }, [productId, limit, inView])
 
   const avgRating = summary?.avg_rating ?? 0
   const totalCount = summary?.total_count ?? 0
 
   return (
     <div>
+      {/* 🗑️ 2026-07-07 폴드-아래 게이트 센티넬: 뷰포트 600px 안에 들어오면 리뷰 summary/목록 로드. */}
+      <div ref={gateRef} aria-hidden style={{ height: 1 }} />
       <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-4">
         {t('reviews.heading', { defaultValue: '리뷰' })} {totalCount > 0 && <span className="text-gray-500 dark:text-gray-400 font-normal">({totalCount})</span>}
       </h2>

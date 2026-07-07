@@ -75,7 +75,7 @@ function CartPageContent() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   // 🎯 React Query 훅 사용 (refetchOnMount로 항상 최신 데이터 가져오기)
-  const { data: cartData, isLoading: loading, refetch } = useCart()
+  const { data: cartData, isLoading: loading } = useCart()
   const updateQuantityMutation = useUpdateCartQuantity()
   const removeItemMutation = useRemoveFromCart()
   const updateOptionMutation = useUpdateCartOption()
@@ -135,8 +135,8 @@ function CartPageContent() {
     }
 
     // ✅ ProtectedRoute가 /cart를 이미 보호함 → 여기서 requireLogin 불필요 (중복 리다이렉트 방지)
-    // React Query가 자동으로 데이터 로딩
-    refetch()
+    // 🗑️ 2026-07-07 (로딩 낭비 감사): 수동 refetch() 제거 — useCart 가 이미 refetchOnMount:true 라
+    //   콜드 마운트에서 /api/cart 를 2번 치던 중복 요청. React Query 가 자동 로딩.
   }, [])
 
   // 🔄 장바구니 데이터 로딩 시 선택 상태 초기화
