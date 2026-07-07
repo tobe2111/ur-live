@@ -449,6 +449,24 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
       {/* 🏁 2026-06-26 (대표 "추천템 숨김"): 사업자 링크샵 = 본인 상품 주인공 → 한 스크롤 섹션.
           순서: 내 상품 → 교환권 → 영상/라이브 → 정보. (추천 핀 섹션 제거 — 일반 유저 링크샵은 유지) */}
       <div className="ur-content-wide px-4 lg:px-8 py-5">
+        {/* 🎨 2026-07-07 리디자인 3차: 컬렉션 칩 — 상품·이용권 둘 다 있을 때 섹션 점프(스크롤). */}
+        {shopProducts.length > 0 && mealVouchers.length > 0 && (
+          <div className="flex gap-2 mb-4 overflow-x-auto -mx-1 px-1 [&::-webkit-scrollbar]:hidden">
+            {([
+              { label: t('seller.publicPage.chipAll', { defaultValue: '전체' }), to: null as string | null },
+              { label: t('seller.publicPage.shop', { defaultValue: '내 상품' }), to: 'ls-shop' },
+              { label: t('seller.publicPage.vouchers', { defaultValue: '이용권' }), to: 'ls-vou' },
+            ]).map((chip) => (
+              <button
+                key={chip.label}
+                onClick={() => chip.to ? document.getElementById(chip.to)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) : window.scrollTo({ top: 0, behavior: 'smooth' })}
+                className="shrink-0 h-9 px-4 rounded-full border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-95"
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        )}
         {/* 🎨 2026-07-07 리디자인: '이번 주 픽' 대표 상품 히어로 (상품 우선·없으면 이용권). 아이템 적어도 채워짐. */}
         {featured && (
           <div className="mb-2">
@@ -479,7 +497,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
             </div>
           ) : (
             <>
-            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mt-7 mb-3">{t('seller.publicPage.shop', { defaultValue: '내 상품' })} {shopProducts.length}</h3>
+            <h3 id="ls-shop" className="scroll-mt-4 text-[16px] font-extrabold text-gray-900 dark:text-white mt-7 mb-3">{t('seller.publicPage.shop', { defaultValue: '내 상품' })} {shopProducts.length}</h3>
             {/* 🔍 2026-06-16 링크샵 시안: 상품 검색 (이름 필터) — 상품 6개 이상일 때만(적으면 노이즈). */}
             {shopProducts.length >= 6 && (
             <div className="flex items-center gap-2 h-11 px-3.5 mb-4 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212]">
@@ -506,7 +524,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
 
         {/* ③ 이용권 — featured 로 뽑힌 첫 이용권은 그리드에서 제외(gridVouchers). */}
         {gridVouchers.length > 0 && (
-          <section className="pt-7">
+          <section id="ls-vou" className="scroll-mt-4 pt-7">
             <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '이용권' })} {gridVouchers.length}</h3>
             <VouchersTab mealVouchers={gridVouchers} isOwner={ownerView} textClass={T.text} />
           </section>
