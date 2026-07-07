@@ -62,6 +62,17 @@ export const COMMUNITY_PROPOSAL_HIDDEN = true
 export const SELLER_PROMO_FIELD_ENABLED = false
 
 /**
+ * GB_ENGINE_ENABLED — 공구 상태 엔진(상태형·양방향) 표면 노출 (2026-07-06 공구 엔진 완결 스펙).
+ *   배경: 이용권은 상품이 아니라 "이용권에 얹는 상태"(gb_mode off|scheduled|live|ended). 매장이 공구를
+ *         열면 기간·특가·promo 가 얹히고 끝나면 상시로 복귀. 양방향(매장→인플루언서 / 인플루언서 제안→매장).
+ *   ⚠️ **커플링**: 공구 promo 재원은 owner-funding(promo_funding_source='owner') + 예산캡이 스테이징
+ *     검증돼 켜진 뒤에만 안전(그 전엔 매장 소개비를 플랫폼이 부담 = 누수). 활성 순서 = SELLER_PROMO_FIELD
+ *     와 동일 런북의 4단계(commission-funding-restructure.md §1 런북 + 공구 §5). 기본 false = 표면 미노출.
+ *     서버도 `platform_settings.gb_engine_enabled==='true'` 게이트(이중 안전).
+ */
+export const GB_ENGINE_ENABLED = false
+
+/**
  * IOS_HIDE_DIGITAL_TOPUP — iOS 네이티브 앱에서 '딜 충전'(순수 디지털 포인트)을 숨기고
  *   외부 브라우저로 유도 (Apple 인앱결제(IAP) 정책 대비). 2026-06-27 메커니즘 신설.
  *   배경: 애플은 앱 내 디지털 재화에 자사 IAP(30%) 강제 가능. 단, 유어딜 딜은 공구/숙소/교환권

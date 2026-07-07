@@ -18,6 +18,16 @@
 ## 🔵 진행 중 — 인플루언서 이용권 공구 엔진 스프린트 (2026-07-05 대표 개발요청)
 GTM 무게중심 = "인플루언서가 오프라인 이용권을 공동구매로 파는 인프라". 대부분 부품(promo 슬라이스·aff·링크샵·QR·원천징수) 기구현 → 기본값·표면·우선순위 재배치. **핵심 불변: 큰 판매수수료는 매장→인플루언서, 유어딜은 5%만.** 대표 결정(2026-07-05): "둘 다"(§2 안전 표면 라이브 + §1 flip-ready) · 스테이징 있음.
 
+### 🔵 공구 엔진(상태형·양방향) — 기반 레이어 (2026-07-06 스펙, flip-ready 게이트 OFF)
+설계 확정: 공구는 상품 타입이 아니라 **이용권에 얹는 상태**(off|scheduled|live|ended). 매장이 열면 기간·특가·promo 얹히고 끝나면 상시가 자동 복귀. 양방향(매장→인플 / 인플 제안→매장). 전부 게이트 OFF.
+- **§1 상태 모델(SSOT 순수)** `src/shared/gb-session.ts`: GbSession(mode/start/deadline/target/price/promoPct/linkOnly) · `resolveGbStatus`(시간창 파생) · `resolveGbPricing`(실효 소비자가 — 공구 live면 공구가, 종료 시 상시가 복귀 · 카니발라이제이션 "공구가로 통일" 기본 / "링크전용" 옵션) · `validateGbSession`(공구가<상시가·마감>시작·promo 0~50). **유닛 21 pass**.
+- **서버 저장/조회** `src/worker/utils/gb-session-store.ts`: product_supply_meta K-V(컬럼 예산 동결) gb_* 키 get/save. prelaunch 패턴 미러.
+- **§3 3분할 계산기(핵심 UI)** `ThreeWaySplitCalculator.tsx`: 정가 앵커 → [할인율][promo%] 슬라이더 → 소비자가가 promo(인플)/유어딜5%/매장실수령 3분할 막대+금액 실시간(resolveOrderFees owner-funded 재사용). 버티컬 권장 promo + 하한 미만 경고 + 캐파 업종 툴팁.
+- **게이트** `GB_ENGINE_ENABLED`(클라 빌드플래그, OFF) + 서버 `platform_settings.gb_engine_enabled`(예정) — 이중 안전. SELLER_PROMO_FIELD 와 동일 활성 순서(owner-funding 먼저).
+- 검증: tsc 0 · build 0 · vitest +21 · 테마/file-size GREEN.
+- **§2-A 매장 "공구 열기"(방향 A — 서초 사용)**: `POST/GET /api/seller/products/:id/group-buy`(seller 소유권 + `platform_settings.gb_engine_enabled` 게이트 · open/close · validateGbSession) + `GroupBuyOpenPanel`(SellerGroupBuyPage 행별, GB_ENGINE_ENABLED 게이트) — 마감·할인율·promo·링크전용 입력 + ThreeWaySplitCalculator 미리보기 → gb-session-store 저장. **상태 저장만**(소비자가/커미션 authoritative 적용은 owner-funding 검증 후 다음 슬라이스).
+- ⏭️ **다음 슬라이스**: §4 인플루언서 공구 탐색·수익 뷰(promo순 정렬·예상수익·담기 ?ref) → §2-B 인플 제안 플로우(제안→매장 승인) → 소비자 상세 실효가+promo→커미션 authoritative 배선(잠금 group-buy-public + resolver, 게이트). 완료기준: staging 실결제 원장 정합.
+
 ### ✅ §1 매출 엔진 — 셀러 소개비(promo)% 필드 + 마진 계산기 (flip-ready, 게이트 OFF)
 - **발견**: [INV-CB] 예산캡 · owner-funding(promo_funding_source) · fee-resolver · 그림자 기록이 **전부 기구현·게이트 OFF**. §1 = 스테이징 검증 후 flip(신규 코드 아님).
 - **커플링 리스크(중요)**: 셀러 소개비% 는 `products.referral_commission_rate`(라이브 어필리에이트 override)로 저장 → **owner-funding 이 꺼져 있으면 매장 소개비를 플랫폼이 부담**(설계 −14% 누수). 그래서 이번 필드는 **이중 게이트 OFF**: 클라 `SELLER_PROMO_FIELD_ENABLED=false`(빌드타임) + 서버 `platform_settings.seller_promo_field_enabled!=='true'` 면 referral_commission_rate 저장 안 함.

@@ -15,6 +15,9 @@ import type { ThemeTokens } from './theme'
 interface Props {
   seller: Seller
   isOwner: boolean
+  /** 🔑 2026-07-07: 카카오 채팅 링크 인라인 편집(PUT /api/seller/profile)은 seller_token 필요.
+   *  링크샵 소유자여도 셀러 토큰이 없으면(소비자 로그인만) 편집 어포던스 숨김 → 401 방지. */
+  canSellerEdit?: boolean
   T: ThemeTokens
   // 인라인 편집 상태 (카카오 채팅 링크 전용 — bio/SNS 는 CuratorHeader 전담)
   editingField: string | null
@@ -27,7 +30,7 @@ interface Props {
 }
 
 export default function InfoTab({
-  seller, isOwner, T,
+  seller, isOwner, canSellerEdit = false, T,
   editingField, setEditingField, editKakao, setEditKakao,
   saving, startEdit, saveEdit,
 }: Props) {
@@ -64,16 +67,16 @@ export default function InfoTab({
           <button onClick={() => saveEdit('kakao', editKakao)} disabled={saving} aria-label={t('common.save', { defaultValue: '저장' })} className="px-2 py-1.5 bg-pink-500 text-white text-xs rounded-lg"><Check className="w-3 h-3" /></button>
           <button onClick={() => setEditingField(null)} aria-label={t('common.cancel', { defaultValue: '취소' })} className="px-2 py-1.5 bg-gray-100 dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 text-xs rounded-lg"><X className="w-3 h-3" /></button>
         </div>
-      ) : (seller.kakao_chat_link || seller.phone || isOwner) ? (
+      ) : (seller.kakao_chat_link || seller.phone || canSellerEdit) ? (
         <div className="flex gap-2">
           {seller.kakao_chat_link ? (
             <a href={seller.kakao_chat_link} target="_blank" rel="noopener"
-              onClick={e => { if (isOwner) { e.preventDefault(); startEdit('kakao') } }}
+              onClick={e => { if (canSellerEdit) { e.preventDefault(); startEdit('kakao') } }}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-xs font-bold active:scale-[0.97]">
               <MessageCircle className="w-3.5 h-3.5" /> {t('seller.publicPage.kakaoInquiry', { defaultValue: '카카오 문의' })}
-              {isOwner && <Pencil className="w-3 h-3 opacity-50" />}
+              {canSellerEdit && <Pencil className="w-3 h-3 opacity-50" />}
             </a>
-          ) : isOwner ? (
+          ) : canSellerEdit ? (
             <button onClick={() => startEdit('kakao')}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-dashed border-gray-300 dark:border-[#2A2A2A] text-gray-500 dark:text-gray-400 rounded-xl text-xs font-bold active:scale-[0.97]">
               <Plus className="w-3.5 h-3.5" /> {t('seller.publicPage.addKakaoChat', { defaultValue: '카카오 채팅 링크 추가' })}

@@ -910,6 +910,35 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     }
   })
 
+  // ── GET /vouchers/:code/redemption-info — 🎟️ 2026-07-06 (대표 "이용권 페이지에 사용방법을 사장님
+  //   설정과 동일하게"): 소비자가 사용 *전에* 이 매장의 사용 방식을 알 수 있게 모드만 반환.
+  //   scan_only=직원 스캔 / store_code=카운터 확인코드 입력 / self_free=바로 셀프 사용.
+  //   ⚠️ store_code 값(카운터 비밀코드)은 반환하지 않음 — 현장에서만 확인(원격 오사용 차단, 게이트와 동일 철학). ──
+  router.get('/vouchers/:code/redemption-info', requireAuth(), async (c) => {
+    const { DB } = c.env
+    const user = getCurrentUser(c)
+    if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    const code = c.req.param('code')
+    if (!code) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
+    try {
+      // 본인 소유 이용권만 — self-redeem 게이트와 동일한 voucher→product→seller 해석.
+      const pre = await DB.prepare(
+        'SELECT p.seller_id FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code=? AND v.user_id=?'
+      ).bind(code, user.id).first<{ seller_id: number | null }>().catch(() => null)
+      if (!pre) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
+      let mode: 'scan_only' | 'store_code' | 'self_free' = 'self_free'  // 미설정/조회실패 = 기존 동작
+      if (pre.seller_id != null) {
+        try {
+          const { getRedemptionSettings } = await import('../../../worker/utils/redemption-settings')
+          mode = (await getRedemptionSettings(DB, Number(pre.seller_id))).mode
+        } catch { /* fail-open — self_free */ }
+      }
+      return c.json({ success: true, data: { mode } })
+    } catch (err) {
+      return safeError(c, err, '사용 방식 조회 중 오류가 발생했습니다', '[redemption-info]')
+    }
+  })
+
   // ── GET /verify/:code — voucher 정보 조회 (PIN 입력 전, 마스킹) ──
   router.get('/verify/:code', async (c) => {
     const { DB } = c.env
