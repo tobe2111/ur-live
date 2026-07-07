@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 // 🏁 2026-06-26 (대표 결정 — "추천템은 사업자 링크샵에선 숨김"): 사업자 = 본인 상품이 주인공.
 //   추천 핀(CuratorPinsSection) 섹션 제거 → 추천 적립 동선은 크리에이터 콘솔(/creator)에서 유지.
 //   (일반 유저 링크샵(CuratorPage)은 추천템이 메인이라 그대로.)
@@ -7,7 +7,6 @@ import { useEffect, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { compressForThumbnail } from '@/lib/image-compress'
 import { useTheme } from '@/shared/stores/useTheme'
 import { Search, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
@@ -50,9 +49,14 @@ interface SellerPublicPageProps {
   /** ✨ 2026-07-04 링크샵 1단계: CuratorPage 가 이미 보유한 핀 목록 — opt-in 켜진 매장 링크샵
    *  하단 "추천" 섹션에 재사용(추가 fetch 0). 미전달이면 섹션이 자체 fetch. */
   curatorPins?: CuratorPin[] | null
+  /** 🔑 2026-07-07 (대표 — "복잡하게 꼬여있다"): 링크샵 소유권 단일화. `/u/{handle}` 의 주인은 **로그인 유저**
+   *  (user_id === curator.id)이며 CuratorPage 가 이미 그걸 안다. 그 신호를 내려주면, 별도 seller_token 이
+   *  없어도 소유자에게 편집 뷰를 보인다(프로필 편집은 헤더가 소비자 API `/api/curator/me/profile` 로 처리).
+   *  seller_token 은 이제 셀러 대시보드(/seller/*) 접근용일 뿐, 링크샵 뷰를 가르지 않는다. */
+  ownerOverride?: boolean
 }
 
-export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId, curatorPins }: SellerPublicPageProps = {}) {
+export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId, curatorPins, ownerOverride }: SellerPublicPageProps = {}) {
   const { t } = useTranslation()
   const params = useParams<{ sellerId: string }>()
   const rawParam = sellerIdOverride ?? params.sellerId
@@ -111,11 +115,18 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   // 🛡️ 2026-05-16: storedSellerId 가 username 으로 저장된 경우도 매칭 (id vs username 모두 비교)
   const storedSellerId = localStorage.getItem('seller_id')
   const sellerToken = localStorage.getItem('seller_token')
-  const isOwner = !!sellerToken && !!seller && (
+  // 🔑 2026-07-07 소유권 단일화: seller_token 기반(레거시 /profile·/s standalone 진입 폴백) ∪ 링크샵
+  //   소유자 신호(ownerOverride — CuratorPage 의 user_id===curator.id). /u/{handle} 소유자는 seller_token
+  //   이 없어도(카카오 소비자 로그인만) 편집 뷰를 본다. seller_token 은 아래 셀러-API 편집에만 별도로 필요.
+  const tokenOwner = !!sellerToken && !!seller && (
     String(seller.id) === storedSellerId ||
     String(seller.username || '') === storedSellerId ||
     String(seller.username || '') === rawParam  // 본인이 본인 URL 로 진입한 경우
   )
+  const isOwner = !!ownerOverride || tokenOwner
+  // 셀러 대시보드 토큰 보유 여부 — 카카오 채팅 링크 인라인 편집(PUT /api/seller/profile)만 이걸 요구.
+  //   토큰 없는 소유자는 그 필드를 seller 대시보드(사업자 정보)에서 관리 → 링크샵에선 편집 어포던스 숨김(401 방지).
+  const canSellerEdit = !!sellerToken
   // 🛡️ 2026-05-16: DEV 디버그 — isOwner 가 false 일 때 콘솔에 이유 표시 (운영자가 진단 용이)
   if (typeof window !== 'undefined' && import.meta.env.DEV && seller && !isOwner) {
     console.log('[SellerPublicPage] isOwner=false:', {
@@ -138,7 +149,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editKakao, setEditKakao] = useState('')
   const [saving, setSaving] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   // 전역 테마 토글 연동 (useTheme 스토어)
   const { applied } = useTheme()
   const isDark = applied === 'dark'
@@ -164,61 +174,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
       toast.success(t('common.saveSuccess'))
     } catch { toast.error(t('common.saveFailed')) }
     finally { setSaving(false) }
-  }
-
-  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const token = localStorage.getItem('seller_token')
-    if (!token) {
-      toast.error(t('common.loginRequired', { defaultValue: '로그인이 필요합니다' }))
-      return
-    }
-
-    // 🛡️ 2026-05-01: base64 → DB 직접 저장 → upload-image multipart 로 변경.
-    //   원인: 5MB 이미지가 ~7MB base64 → PUT body 한도 초과 + DB row 비대 → 업로드 실패.
-    //   수정: /api/seller/upload-image (multipart) → URL 받기 → PUT /api/seller/profile 로 URL 만 저장.
-    const MAX_BYTES = 5 * 1024 * 1024
-    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-
-    if (file.size > MAX_BYTES) {
-      toast.error(t('common.fileSizeLimit', { defaultValue: `파일 크기는 5MB 이하여야 합니다 (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`, size: (file.size / 1024 / 1024).toFixed(1) }))
-      return
-    }
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error(t('common.imageTypeOnly', { defaultValue: 'JPEG, PNG, WebP, GIF 만 가능합니다' }))
-      return
-    }
-
-    setSaving(true)
-    try {
-      // 1. 클라이언트 압축 → URL 획득 (CF Images 유료 회피, WebP 1024px)
-      const compressed = await compressForThumbnail(file)
-      const formData = new FormData()
-      formData.append('image', compressed)
-      const uploadRes = await api.post('/api/seller/upload-image', formData, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!uploadRes.data?.success || !uploadRes.data?.url) {
-        throw new Error(uploadRes.data?.error || '업로드 실패')
-      }
-      const imageUrl = uploadRes.data.url
-
-      // 2. URL 만 프로필에 저장
-      await api.put('/api/seller/profile', { profile_image: imageUrl }, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      setSeller(prev => prev ? { ...prev, profile_image: imageUrl } : prev)
-      toast.success(t('seller.publicPage.profileImageChanged'))
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: string } }; message?: string }
-      const msg = e.response?.data?.error || e.message || t('seller.publicPage.imageUploadFailed')
-      toast.error(msg)
-      if (import.meta.env.DEV) console.error('[SellerPublic] Upload failed:', err)
-    } finally {
-      setSaving(false)
-    }
   }
 
   useEffect(() => {
@@ -576,6 +531,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           <InfoTab
             seller={seller}
             isOwner={ownerView}
+            canSellerEdit={canSellerEdit}
             T={T}
             editingField={editingField}
             setEditingField={setEditingField}

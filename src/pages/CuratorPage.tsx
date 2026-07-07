@@ -185,7 +185,7 @@ export default function CuratorPage() {
             SellerPublicPage 가 curator.linkshop_show_recommend(opt-in, 기본 off)일 때만 하단
             "추천" 섹션을 렌더. 2026-06-26 "추천템 숨김"의 막다른 골목(담아도 안 보임)을 opt-in 으로 해소.
             🏁 2026-06-26 [UNLOCK_LOADING] — linked_seller.id 전달 → 상품 fetch 를 셀러 fetch 와 병렬로(워터폴 제거). */}
-        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} sellerNumericId={linked_seller.id} curatorPins={pins} />
+        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} sellerNumericId={linked_seller.id} curatorPins={pins} ownerOverride={isOwner} />
       </Suspense>
     )
   }
