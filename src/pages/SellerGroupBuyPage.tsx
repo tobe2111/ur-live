@@ -12,9 +12,11 @@ import SellerLayout from '@/components/SellerLayout'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
+import GroupBuyOpenPanel from './seller-group-buy/GroupBuyOpenPanel'
 
 interface GroupBuyProduct {
-  id: number; name: string; price: number; image_url?: string
+  id: number; name: string; price: number; image_url?: string; category?: string
   restaurant_name?: string; restaurant_phone?: string
   group_buy_target: number; group_buy_current: number
   group_buy_deadline?: string; group_buy_status: string; store_verify_pin?: string
@@ -282,6 +284,11 @@ export default function SellerGroupBuyPage() {
                   >
                     <RefreshCw className="w-3.5 h-3.5" /> {t('seller.groupBuy.reissue', { defaultValue: '같은 내용으로 재발행' })}
                   </button>
+
+                  {/* 🎟️ 2026-07-06 (§2-A 방향 A): 매장이 공구 열기 — GB_ENGINE_ENABLED 게이트(기본 OFF) */}
+                  {GB_ENGINE_ENABLED && (
+                    <GroupBuyOpenPanel productId={p.id} listPrice={safeNum(p.price)} category={p.category || 'meal_voucher'} headers={headers} />
+                  )}
 
                   {/* 식당 사장 공유 링크 (Magic Link 우선) */}
                   <div className="mt-3 p-2.5 bg-gray-50 rounded-lg">
