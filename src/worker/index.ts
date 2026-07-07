@@ -36,7 +36,6 @@ import { adminFeeBreakdownRoutes } from '../features/admin/api/admin-fee-breakdo
 import { funnelRoutes } from '../features/analytics/api/funnel.routes';
 import { adminTaxRoutes } from '../features/admin/api/admin-tax.routes';
 import { ledgerRoutes } from '../features/ledger/api/ledger.routes';
-import { streamsRouter } from './routes/streams.routes';  // ✅ 공개 스트림 라우트
 import { usersRouter } from './routes/users.routes';      // ✅ /api/users/role, /api/users/init
 import { meRegionRoutes, adminRegionRoutes, publicRegionRoutes } from './routes/region.routes'; // 🗺️ 내 동네 + 동별 밀도 + 좌표해석
 import { acquisitionRoutes } from './routes/acquisition.routes'; // 📡 유입 소스 어트리뷰션 (?src= 퍼널)
@@ -101,9 +100,7 @@ import { fundingRoutes } from '../features/funding/api/funding.routes';
 import { sellerPinRoutes } from '../features/seller/api/seller-pin.routes';
 import { sellerOrdersRoutes } from '../features/seller/api/seller-orders.routes';
 import { sellerAnalyticsRoutes } from '../features/seller/api/seller-analytics.routes';
-import { sellerStreamsRoutes } from '../features/seller/api/seller-streams.routes';
 import { sellerOnboardingRoutes } from '../features/seller/api/seller-onboarding.routes';
-import { viewerLoyaltyRoutes } from '../features/seller/api/viewer-loyalty.routes';
 import { optimalTimeRoutes } from '../features/seller/api/optimal-time.routes';
 import { faqBotRoutes } from '../features/guides/api/faq-bot.routes';
 import { moderationRoutes } from '../features/moderation/api/moderation.routes';
@@ -113,7 +110,6 @@ import { adminNotificationSettingsRoutes } from '../features/admin/api/admin-not
 import { adminBusinessMonitoringRoutes } from '../features/admin/api/admin-business-monitoring.routes';
 import { agencySelfEventsRoutes } from '../features/agency/api/agency-self-events.routes';
 import { promoteBoostsAgencyRoutes, promoteBoostsSellerRoutes } from '../features/agency/api/promote-boosts.routes';
-import { liveNotifyFollowersRoutes } from '../features/seller/api/live-notify-followers.routes';
 import { sellerTransferRoutes } from '../features/agency/api/seller-transfer.routes';
 import { sellerTransferRespondRoutes } from '../features/seller/api/seller-transfer-respond.routes';
 import {
@@ -159,7 +155,6 @@ import { sellerDonationsRoutes } from '../features/donations/api/seller-donation
 import youtubeRoutes from '../features/youtube/api/youtube.routes';
 // 🗑️ 2026-07-07 (대표 지시 "라이브커머스 모두 제거"): youtube-live.routes(160KB) 제거 — 워커 다이어트.
 import { multiPlatformRoutes } from '../features/multi-platform/api/multi-platform.routes';
-import { liveSseRoutes, chatRoutes } from './routes/live-sse.routes';
 import { cafe24Routes } from '../features/cafe24/api/cafe24.routes';
 
 import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/constants';
@@ -214,7 +209,6 @@ import { guideRoutes } from '../features/guides/api/guide.routes';
 import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
 import { referralTreeRoutes } from '../features/referral/api/referral-tree.routes';
 import { reportsRoutes } from '../features/reports/api/reports.routes';
-import { broadcastNotifyRoutes } from '../features/broadcast-notify/api/broadcast-notify.routes';
 import { loyaltyRoutes } from '../features/loyalty/api/loyalty.routes';
 import { interestRoutes } from '../features/loyalty/api/interest.routes';
 import { kakaoSocialRoutes } from '../features/kakao-social/api/kakao-social.routes';
@@ -1316,21 +1310,12 @@ app.use('/api/search/*', rateLimit({ action: 'search', max: 120, windowSec: 60 }
 // app.use('/api/products', rateLimit({ action: 'product_list', max: 60, windowSec: 60 }));
 // app.use('/api/sellers/*', rateLimit({ action: 'seller_view', max: 60, windowSec: 60 }));
 // app.use('/api/moderation/*', rateLimit({ action: 'moderation_check', max: 60, windowSec: 60 }));
-// Chat send: prevent spam; only on POSTs handled inside chatRoutes
-// HIGH-4: lowered from 30/min → 10/min to make message-flood / URL-spam harder.
-app.use('/api/chat/*/messages', rateLimit({ action: 'chat_send', max: 10, windowSec: 60 }));
-
 // HIGH-1: Upload endpoints — prevent abusive image/file uploads.
 // Applied before route mount so it fires for POST/PUT/PATCH alike.
 app.use('/api/seller/upload-image', rateLimit({ action: 'upload', max: 10, windowSec: 60 }));
 app.use('/api/seller/upload-*', rateLimit({ action: 'upload', max: 10, windowSec: 60 }));
 
-// ============================================================
-// Streams Routes  ← /api/streams (공개 조회용)
-// 프론트엔드의 LiveNow, useLiveStream, AdminPage 등이 /api/streams 호출
-// 판매자 전용 CRUD는 /api/seller/streams 유지
-// ============================================================
-app.route('/api/streams', streamsRouter);
+// 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/streams(streamsRouter) 마운트 제거.
 
 // ============================================================
 // Product & Seller Routes
@@ -1374,11 +1359,9 @@ app.route('/api/funding', fundingRoutes);
 app.route('/api/seller', sellerPinRoutes);
 app.route('/api/seller', sellerOrdersRoutes);
 app.route('/api/seller/analytics', sellerAnalyticsRoutes);
-app.route('/api/seller/streams', sellerStreamsRoutes);
+// 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/seller/streams·/api/seller/viewers 마운트 제거.
 // 🛡️ 2026-04-27 Phase 1-5: 셀러 7일 부트캠프 온보딩
 app.route('/api/seller/onboarding', sellerOnboardingRoutes);
-// 🛡️ 2026-04-27 Phase 2-3: 시청자 충성도 4단계
-app.route('/api/seller/viewers', viewerLoyaltyRoutes);
 // 🛡️ 2026-04-27 Phase 3-1: 데이터 기반 최적 라이브 시간 추천
 app.route('/api/seller/optimal-time', optimalTimeRoutes);
 // 🛡️ 2026-04-27 Phase 3-2: FAQ 봇 (가이드 검색)
@@ -1401,8 +1384,7 @@ app.route('/api/agency/self-events', agencySelfEventsRoutes);
 // 🛡️ 2026-04-27 노출 부스팅 쿠폰 (Promote to Live)
 app.route('/api/agency/promote-boosts', promoteBoostsAgencyRoutes);
 app.route('/api/seller/promote-boosts', promoteBoostsSellerRoutes);
-// 🛡️ 2026-04-27 라이브 시작 자동 알림 (단골/VIP)
-app.route('/api/seller/live-notify', liveNotifyFollowersRoutes);
+// 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/seller/live-notify 마운트 제거.
 // 🛡️ 2026-04-27 Phase 3-5: 셀러 이전 (Network 마켓플레이스)
 app.route('/api/agency/transfers', sellerTransferRoutes);
 // 🛡️ 2026-04-30 TD-016 CRITICAL: 셀러 본인이 직접 동의/거부 (agency 대행 금지)
@@ -1528,7 +1510,7 @@ adminApp.route('/', adminKtAlphaRoutes);
 adminApp.route('/', adminWithholdingRoutes);
 // 🛡️ 2026-04-22 배치 149 (TD-006 부분): admin-orders 분리 (~356줄)
 adminApp.route('/', adminOrdersRoutes);
-// 🛡️ 2026-04-22 배치 150 (TD-006 부분): admin-streams + alimtalk 분리
+// 🛡️ 2026-04-22 배치 150: admin-streams(알림톡 패키지/크레딧/통계 admin — 라이브 아님, 유지)
 adminApp.route('/', adminStreamsRoutes);
 // 🛡️ 2026-04-22 배치 151 (TD-006 부분): admin-accounts (관리자 CRUD) 분리
 adminApp.route('/', adminAccountsRoutes);
@@ -1811,8 +1793,7 @@ app.route('/api/referral-tree', referralTreeRoutes);
 // ── CS 신고 (유저 신고 접수) ──
 app.route('/api/reports', reportsRoutes);
 
-// ── 방송 알림 구독 ──
-app.route('/api/broadcast-notify', broadcastNotifyRoutes);
+// 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/broadcast-notify(방송 알림 구독) 마운트 제거.
 
 // ── VIP 등급 (유저 로열티) ──
 app.route('/api/loyalty', loyaltyRoutes);
@@ -1906,9 +1887,7 @@ app.route('/api/youtube', youtubeRoutes); // legacy path alias
 //   GET /api/platforms 로 지원 플랫폼 상태 조회. 미구현 플랫폼은 501 반환.
 app.route('/api', multiPlatformRoutes);
 
-// Live stream real-time (SSE fallback + WebSocket → DO + chat messages)
-app.route('/api/live', liveSseRoutes);
-app.route('/api/chat', chatRoutes);
+// 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/live·/api/chat(라이브 SSE+채팅) 마운트 제거.
 
 // ── 사이드 배너 (공개 API, 인증 불필요) ──
 app.get('/api/side-banners', async (c) => {
