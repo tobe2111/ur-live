@@ -44,6 +44,8 @@ interface CuratorHeaderProps {
   isOwner: boolean
   // 🏁 2026-06-25 (대표 — 일반/사업자 구분 표시): 이름 옆 작은 배지. 'business'=사업자 유저(인증/판매), 'user'=일반.
   accountType?: 'user' | 'business'
+  // 🎨 2026-07-07 리디자인 3차: 이름 아래 스탯 줄(실데이터만) — 신뢰·밀도. 빈 값은 부모가 빼서 넘김.
+  stats?: { label: string; value: string }[]
   onCopyLink: () => void
   onCuratorUpdate?: (next: Partial<CuratorHeaderProps['curator']>) => void
 }
@@ -53,6 +55,7 @@ export default function CuratorHeader({
   pinCount,
   isOwner,
   accountType,
+  stats,
   onCopyLink,
   onCuratorUpdate,
 }: CuratorHeaderProps) {
@@ -467,6 +470,18 @@ export default function CuratorHeader({
             </div>
           )}
           <p className="text-[12.5px] text-gray-400 dark:text-gray-500 font-medium mt-0.5">@{curator.handle}</p>
+
+          {/* 🎨 2026-07-07 리디자인 3차: 스탯 줄 (실데이터만) — 신뢰·밀도. 2~3개일 때만 렌더. */}
+          {stats && stats.length >= 2 && (
+            <div className="mt-3 mx-auto max-w-[300px] flex rounded-2xl border border-gray-200 dark:border-[#242424] overflow-hidden bg-gray-50/60 dark:bg-[#101010]">
+              {stats.map((s, i) => (
+                <div key={s.label} className={`flex-1 py-2 text-center ${i > 0 ? 'border-l border-gray-200 dark:border-[#242424]' : ''}`}>
+                  <b className="block text-[15px] font-extrabold text-gray-900 dark:text-white tabular-nums leading-none">{s.value}</b>
+                  <span className="block mt-1 text-[10.5px] font-semibold text-gray-400 dark:text-gray-500">{s.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {editingField === 'bio' ? (
             <div className="mt-2.5 max-w-md mx-auto">
