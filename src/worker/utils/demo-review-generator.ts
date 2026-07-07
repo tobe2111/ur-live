@@ -132,16 +132,63 @@ const EMOJI = ['', '', '', '', '', '', '', '', ' 👍', ' 😋', ' 🙏', ' 🥰
 
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)] }
 
+// 🎯 2026-07-06 (대표 "더 올려야" — 진짜 후기 밀도): 상품명에서 **실제 메뉴/시술 명사**를 뽑아 리뷰에 녹임.
+//    보쌈집 리뷰가 '보쌈'을, 왁싱샵 리뷰가 '왁싱'을 실제로 언급 → 업종-generic 티 제거 + 매장별 유니크(같은
+//    템플릿도 term 이 달라 자동 분화). 조사(은/는) 의존 문구는 배제(받침 무관 안전 구문만).
+const TERM_WORDS = ['오마카세', '한우', '삼겹살', '곱창', '막창', '대창', '보쌈', '족발', '갈비', '스테이크', '초밥', '스시', '사시미', '장어',
+  '파스타', '피자', '리조또', '라멘', '우동', '돈까스', '규동', '덮밥', '쌀국수', '마라탕', '떡볶이', '김밥', '국밥', '찜닭', '닭갈비', '냉면', '짬뽕', '탕수육',
+  '라떼', '아메리카노', '핸드드립', '에스프레소', '소금빵', '크루아상', '바게트', '케이크', '타르트', '마카롱', '빙수',
+  '왁싱', '속눈썹', '젤네일', '네일', '페디', '뿌리염색', '염색', '두피', '스케일링', '클리닉', '필링', '태닝', '반영구',
+  '필라테스', '요가', '클라이밍', '볼링', '도자기', '스크린골프', '방탈출', '드로잉', '베이킹', '가죽공예']
+function extractKeyTerm(name: string): string | null {
+  const n = name || ''
+  for (const w of TERM_WORDS) if (n.includes(w)) return w
+  return null
+}
+type TermGroup = 'food' | 'beauty' | null
+function topicGroup(topic: Topic): TermGroup {
+  if (topic === 'gogi' || topic === 'sushi' || topic === 'western' || topic === 'cafe' || topic === 'bakery' || topic === 'meal') return 'food'
+  if (topic === 'hair' || topic === 'waxing' || topic === 'eyelash' || topic === 'nail' || topic === 'beauty') return 'beauty'
+  return null  // 활동/숙소/반려 등은 term 주입 없이 일반 풀(문장이 이미 구체적)
+}
+// {t}=추출 명사. 조사 없이 어떤 명사에도 자연스러운 구문만.
+const FOOD_TERM_TEMPLATES: ((t: string) => string)[] = [
+  (t) => `${t} 먹으러 또 갈 것 같아요. 그 맛이 자꾸 생각나요`,
+  (t) => `${t} 하나는 진짜 잘하네요. 여기 단골 될 듯`,
+  (t) => `${t} 제대로 하는 집 찾았어요. 재방문 의사 100%`,
+  (t) => `${t} 좋아하는 분이면 여기 꼭 가보세요`,
+  (t) => `${t} 양도 넉넉하고 간도 딱 맞았어요`,
+  (t) => `오늘 ${t} 먹었는데 실패 없이 만족했어요`,
+  (t) => `${t} 이 가격에 이 퀄리티면 자주 올 것 같아요`,
+]
+const BEAUTY_TERM_TEMPLATES: ((t: string) => string)[] = [
+  (t) => `${t} 받으러 갔는데 꼼꼼하게 잘해주셨어요`,
+  (t) => `${t} 하러 종종 가는데 늘 만족스러워요`,
+  (t) => `${t} 잘하는 곳 찾아서 기뻐요. 재방문 확정`,
+  (t) => `${t} 처음 받아봤는데 결과 마음에 들어요`,
+  (t) => `${t} 여기서 받고 다른 데 못 가겠어요`,
+]
+
 /** 결정론 폴백 — 업종 특색 문구 조합(배송어 없음, 별점별 톤).
  *  🎭 2026-07-04 (대표 "최대 다양성, AI 티 0"): 길이 극단(한마디~2문장)·오프너·말투 꼬리 조합으로
  *  같은 상품 안에서도 문장 구조가 겹치지 않게. avoid(이미 쓴 문구) 재시도는 buildStoreReviews 가 담당. */
-export function composeDemoReview(rating: number, topic: Topic, storeName?: string | null, seen?: Set<string>): string {
+export function composeDemoReview(rating: number, topic: Topic, storeName?: string | null, seen?: Set<string>, term?: string | null): string {
   const pool = POOLS[topic] || POOLS.etc
   // 12%: 아주 짧은 한마디(실제 최빈 패턴 — 길이 다양성). 비중을 낮춰 제너릭 '필러' 느낌 방지.
   if (Math.random() < 0.12) {
     let sh = pick(SHORTS_POS)
     if (seen) { for (let i = 0; i < 6 && seen.has(sh); i++) sh = pick(SHORTS_POS); seen.add(sh) }
     return sh + pick(EMOJI)
+  }
+  // 상품 실제 메뉴/시술 명사를 녹인 후기(진짜 후기 밀도·매장별 유니크). **주입 개수는 호출측(buildStoreReviews)
+  //   이 쿼터로 제어** — term 이 non-null 로 넘어온 리뷰만 사용(한 매장에 몰리는 것 방지).
+  const grp = topicGroup(topic)
+  if (term && grp) {
+    const tmpls = grp === 'food' ? FOOD_TERM_TEMPLATES : BEAUTY_TERM_TEMPLATES
+    let ts = pick(tmpls)(term)
+    if (seen) { for (let i = 0; i < 6 && seen.has(ts); i++) ts = pick(tmpls)(term); seen.add(ts) }
+    if (rating >= 5) ts += pick(TAILS)
+    return ts + pick(EMOJI)
   }
   // 4점은 순한 아쉬움 한마디(넷 긍정)를 절반쯤 섞어 리얼함 — 5점은 구체적 강한 긍정.
   const src = (rating === 4 && pool.mid.length && Math.random() < 0.45) ? pool.mid : pool.pos
@@ -232,6 +279,7 @@ JSON 배열로만. 각 항목 {"content": "리뷰", "rating": 별점}. 그 외 �
  */
 export async function buildStoreReviews(env: Env, p: StoreReviewInput, count = 8, seenShared?: Set<string>): Promise<GenReview[]> {
   const topic = detectTopic(p.name, p.category)
+  const term = extractKeyTerm(p.name)  // 🎯 상품 실제 메뉴/시술 명사(있으면 일부 리뷰에 녹임)
   const total = Math.max(1, Math.min(2000, count))
   const out: GenReview[] = []
   const CHUNK = 40
@@ -243,11 +291,15 @@ export async function buildStoreReviews(env: Env, p: StoreReviewInput, count = 8
     try {
       out.push(...await generateReviewsLLM(env, { id: 0, ...p }, n))
     } catch {
+      // 🎯 상품 명사 후기는 한 매장당 1~3개만(전부 'term 매장' 문구면 그것도 티) — 쿼터로 소수 유지.
+      let termQuota = (term && topicGroup(topic)) ? Math.min(3, Math.max(1, Math.round(n * 0.3))) : 0
       for (let k = 0; k < n; k++) {
         const rating = ratingSample()
         if (Math.random() < 0.1) { out.push({ rating, content: '' }); continue }  // 별점만(실제 패턴, 소량)
+        const useTerm = termQuota > 0 && Math.random() < 0.55
+        if (useTerm) termQuota--
         // dedup 은 composeDemoReview 가 '핵심 문장' 기준으로 수행(오프너/꼬리 변형까지 커버).
-        out.push({ rating, content: composeDemoReview(rating, topic, p.storeName, seen) })
+        out.push({ rating, content: composeDemoReview(rating, topic, p.storeName, seen, useTerm ? term : null) })
       }
     }
   }
