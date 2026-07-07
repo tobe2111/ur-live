@@ -250,9 +250,26 @@ export default function GroupBuyDetailPage() {
   }, [productId, navigate, qc])
 
   // 🎨 2026-06-16 리디자인: 이 셀러의 다른 공구 — active 목록에서 같은 seller 필터(현재 상품 제외).
+  // 🗑️ 2026-07-07 [UNLOCK_LOADING] (로딩 낭비 감사): 이 섹션은 폴드 아래(페이지 최하단 가로 스크롤)라
+  //   마운트 즉시 전체 active 목록을 받던 것을 IntersectionObserver 로 게이팅 — 사용자가 그 근처까지
+  //   스크롤할 때만 1회 fetch. HomeProductsRail 과 동일 패턴(600px rootMargin). SSR seed·폴링·below-fold
+  //   lazy 전부 불변(additive — 관찰 게이트 1개 추가). 대다수(빠른 이탈/구매) 뷰에서 요청 자체가 사라짐.
+  const [otherDealsInView, setOtherDealsInView] = useState(false)
+  const otherDealsSentinelRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = otherDealsSentinelRef.current
+    if (!el || otherDealsInView) return
+    if (typeof IntersectionObserver === 'undefined') { setOtherDealsInView(true); return }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some(e => e.isIntersecting)) { setOtherDealsInView(true); io.disconnect() }
+    }, { rootMargin: '600px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [otherDealsInView, detail?.seller_id])
+
   useEffect(() => {
     const sid = detail?.seller_id
-    if (!sid) return
+    if (!sid || !otherDealsInView) return
     let cancelled = false
     api.get('/api/group-buy/products?status=active')
       .then(r => {
@@ -266,7 +283,7 @@ export default function GroupBuyDetailPage() {
       })
       .catch(() => { /* silent */ })
     return () => { cancelled = true }
-  }, [detail?.seller_id, productId])
+  }, [detail?.seller_id, productId, otherDealsInView])
 
   // 🛡️ 2026-05-15: 실시간 polling — 5초±2초 jitter. 페이지 hidden 시 일시정지 (배터리 보호 + D1 thundering herd 방어).
   //   active 공구만 polling. participant 카운터 + 신규 참여자 등장 → toast.
@@ -873,6 +890,8 @@ export default function GroupBuyDetailPage() {
           </Suspense>
         )}
 
+        {/* 🗑️ 2026-07-07 폴드-아래 게이트 센티넬: 이 지점이 뷰포트 600px 안에 들어오면 다른 공구 fetch. */}
+        <div ref={otherDealsSentinelRef} aria-hidden style={{ height: 1 }} />
         {/* 이 셀러의 다른 공구 — 가로 스크롤 */}
         {otherDeals.length > 0 && (
           <>

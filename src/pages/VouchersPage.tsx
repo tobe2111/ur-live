@@ -330,6 +330,22 @@ function ShoppingGrid() {
   //   /api/products/count(카테고리별, edge 15분 캐시) 병렬 조회 → 0개 카테고리 자동 숨김(인벤토리 적든 많든 깔끔).
   const [availableShopCats, setAvailableShopCats] = useState<string[] | null>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  // 🗑️ 2026-07-07 [UNLOCK_LOADING] (로딩 낭비 감사): 쇼핑 그리드는 교환권 리스트 + '더보기' 아래(폴드 밖).
+  //   마운트 즉시 상품 fetch + 카테고리 count 5개 병렬을 하던 것을 IntersectionObserver 로 게이팅 —
+  //   사용자가 쇼핑 섹션 근처(600px)까지 스크롤할 때만 로드(HomeProductsRail 동일 패턴). SSR seed·교환권
+  //   리스트·default sort 전부 불변(이 컴포넌트는 리스트 아래 별도 섹션 — additive 게이트 1개).
+  const [inView, setInView] = useState(false)
+  const gateRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = gateRef.current
+    if (!el || inView) return
+    if (typeof IntersectionObserver === 'undefined') { setInView(true); return }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some(e => e.isIntersecting)) { setInView(true); io.disconnect() }
+    }, { rootMargin: '600px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [inView])
   const load = useCallback((pageNum: number, reset: boolean) => {
     if (reset) setLoading(true); else setLoadingMore(true)
     const params = new URLSearchParams({ page: String(pageNum), limit: '20', exclude_deal_only: '1', sort: 'popular' })
@@ -346,8 +362,8 @@ function ShoppingGrid() {
       .catch(() => { /* graceful */ })
       .finally(() => { setLoading(false); setLoadingMore(false) })
   }, [shopCategory])
-  // 카테고리 변경(load identity 변경) 시 1페이지부터 리셋 로드.
-  useEffect(() => { load(1, true) }, [load])
+  // 카테고리 변경(load identity 변경) 시 1페이지부터 리셋 로드. (폴드 밖 → inView 후에만 최초 로드)
+  useEffect(() => { if (inView) load(1, true) }, [load, inView])
   useEffect(() => {
     if (!sentinelRef.current || !hasMore || loadingMore || loading) return
     const ob = new IntersectionObserver(([e]) => {
@@ -360,6 +376,7 @@ function ShoppingGrid() {
   //   localStorage 캐시(1h) 우선 → 재진입 0-RTT + '전체→확장' 플래시 방지(교환권 카테고리와 동일 패턴).
   useEffect(() => {
     let cancelled = false
+    // localStorage 캐시는 inView 무관 즉시 반영(요청 아님) — 재진입 0-RTT 유지.
     try {
       const raw = localStorage.getItem('shop_cats_v1')
       if (raw) {
@@ -367,6 +384,7 @@ function ShoppingGrid() {
         if (Date.now() - cached.ts < 60 * 60_000 && Array.isArray(cached.data)) setAvailableShopCats(cached.data)
       }
     } catch { /* localStorage 손상 — 무시 */ }
+    if (!inView) return  // 폴드 밖 — count 5종 병렬 요청은 섹션 근처 스크롤 시에만
     const cats = SHOP_CATEGORIES.filter(c => c.key !== 'all')
     Promise.all(cats.map(c =>
       api.get(`/api/products/count?exclude_deal_only=1&category=${encodeURIComponent(c.key)}`)
@@ -379,11 +397,13 @@ function ShoppingGrid() {
       try { localStorage.setItem('shop_cats_v1', JSON.stringify({ ts: Date.now(), data: avail })) } catch { /* quota */ }
     })
     return () => { cancelled = true }
-  }, [])
+  }, [inView])
   // 노출 칩: 로딩 중(null)엔 '전체'만 → 조회되면 '전체' + 상품 있는 카테고리.
   const visibleShopCats = SHOP_CATEGORIES.filter(c => c.key === 'all' || (availableShopCats?.includes(c.key) ?? false))
   return (
     <div className="pb-4">
+      {/* 🗑️ 2026-07-07 폴드-아래 게이트 센티넬: 뷰포트 600px 안에 들어오면 상품/카테고리 count 로드. */}
+      <div ref={gateRef} aria-hidden style={{ height: 1 }} />
       {/* 🛒 2026-06-23 (대표 '가장 이상적으로'): 쇼핑 카테고리 = sticky 바(top-[45px], 탭 바로 아래) —
           쇼핑 섹션에 있는 동안 상단에 따라붙어 어디서든 카테고리 전환 가능. 교환권 reveal 그룹은 이때 숨김(슬롯 공유). */}
       <div className="sticky top-[45px] z-20 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
