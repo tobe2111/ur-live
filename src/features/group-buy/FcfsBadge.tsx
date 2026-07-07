@@ -39,14 +39,14 @@ export default function FcfsBadge(
   if (variant === 'overlay') {
     return (
       <span className={`inline-flex items-center gap-1 rounded-full bg-black/55 backdrop-blur-sm px-2 py-1 text-[10px] font-bold leading-none text-white shadow-sm ${className}`}>
-        🔥 <span className="font-extrabold">{applied}</span>명 지원
+        <span className="animate-fcfs-flame">🔥</span> <span className="font-extrabold animate-fcfs-spark">{applied}</span>명 지원
       </span>
     )
   }
   return (
     <span className={`inline-flex items-center gap-1 text-[12px] text-gray-400 dark:text-gray-500 ${className}`}>
-      <span>🔥</span>
-      <span>지금 <b className="font-extrabold text-gray-900 dark:text-white">{applied}명</b> 지원 중</span>
+      <span className="animate-fcfs-flame">🔥</span>
+      <span>지금 <b className="font-extrabold text-gray-900 dark:text-white animate-fcfs-spark">{applied}명</b> 지원 중</span>
       <span className="opacity-70">· {spots}명 모집</span>
     </span>
   )

@@ -53,6 +53,29 @@
     background-size: 200% 100%;
     animation: shimmer-sweep 1.4s ease-in-out infinite;
   }
+
+  /* 🔥 2026-07-07 (대표 — 추첨 배지 "생동감나게 움직이는"): 불꽃 깜빡임 + 지원 숫자 스파크 글로우. */
+  @keyframes fcfs-flame {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    20% { transform: scale(1.22) rotate(-8deg); }
+    40% { transform: scale(0.93) rotate(6deg); }
+    60% { transform: scale(1.15) rotate(-4deg); }
+    80% { transform: scale(1.03) rotate(3deg); }
+  }
+  .animate-fcfs-flame {
+    display: inline-block;
+    transform-origin: 50% 85%;
+    animation: fcfs-flame 1s ease-in-out infinite;
+    will-change: transform;
+  }
+  @keyframes fcfs-spark {
+    0%, 100% { text-shadow: 0 0 0 rgba(249, 115, 22, 0); }
+    50% { text-shadow: 0 0 9px rgba(249, 115, 22, 0.6); }
+  }
+  .animate-fcfs-spark { animation: fcfs-spark 1.6s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fcfs-flame, .animate-fcfs-spark { animation: none; }
+  }
 }
 
 @layer base {
