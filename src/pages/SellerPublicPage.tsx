@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 // 🏁 2026-06-26 (대표 결정 — "추천템은 사업자 링크샵에선 숨김"): 사업자 = 본인 상품이 주인공.
 //   추천 핀(CuratorPinsSection) 섹션 제거 → 추천 적립 동선은 크리에이터 콘솔(/creator)에서 유지.
 //   (일반 유저 링크샵(CuratorPage)은 추천템이 메인이라 그대로.)
@@ -7,7 +7,6 @@ import { useEffect, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { compressForThumbnail } from '@/lib/image-compress'
 import { useTheme } from '@/shared/stores/useTheme'
 import { Search, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
@@ -23,6 +22,7 @@ import BrowseProductCard from '@/pages/browse/BrowseProductCard'
 import type { Product as BrowseProduct } from '@/pages/browse/types'
 import { seededColor } from '@/utils/card-gradient'
 import InfoTab from './seller-public/InfoTab'
+import FeaturedCard from './seller-public/FeaturedCard'
 // ✨ 2026-07-04 링크샵 1단계(linkshop-role-model §5): 매장 링크샵 하단 추천(핀) opt-in 섹션.
 import CuratorPinsSection from './seller-public/CuratorPinsSection'
 import type { CuratorPin } from '@/features/curator/api/curator-api'
@@ -50,9 +50,14 @@ interface SellerPublicPageProps {
   /** ✨ 2026-07-04 링크샵 1단계: CuratorPage 가 이미 보유한 핀 목록 — opt-in 켜진 매장 링크샵
    *  하단 "추천" 섹션에 재사용(추가 fetch 0). 미전달이면 섹션이 자체 fetch. */
   curatorPins?: CuratorPin[] | null
+  /** 🔑 2026-07-07 (대표 — "복잡하게 꼬여있다"): 링크샵 소유권 단일화. `/u/{handle}` 의 주인은 **로그인 유저**
+   *  (user_id === curator.id)이며 CuratorPage 가 이미 그걸 안다. 그 신호를 내려주면, 별도 seller_token 이
+   *  없어도 소유자에게 편집 뷰를 보인다(프로필 편집은 헤더가 소비자 API `/api/curator/me/profile` 로 처리).
+   *  seller_token 은 이제 셀러 대시보드(/seller/*) 접근용일 뿐, 링크샵 뷰를 가르지 않는다. */
+  ownerOverride?: boolean
 }
 
-export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId, curatorPins }: SellerPublicPageProps = {}) {
+export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId, curatorPins, ownerOverride }: SellerPublicPageProps = {}) {
   const { t } = useTranslation()
   const params = useParams<{ sellerId: string }>()
   const rawParam = sellerIdOverride ?? params.sellerId
@@ -111,11 +116,18 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   // 🛡️ 2026-05-16: storedSellerId 가 username 으로 저장된 경우도 매칭 (id vs username 모두 비교)
   const storedSellerId = localStorage.getItem('seller_id')
   const sellerToken = localStorage.getItem('seller_token')
-  const isOwner = !!sellerToken && !!seller && (
+  // 🔑 2026-07-07 소유권 단일화: seller_token 기반(레거시 /profile·/s standalone 진입 폴백) ∪ 링크샵
+  //   소유자 신호(ownerOverride — CuratorPage 의 user_id===curator.id). /u/{handle} 소유자는 seller_token
+  //   이 없어도(카카오 소비자 로그인만) 편집 뷰를 본다. seller_token 은 아래 셀러-API 편집에만 별도로 필요.
+  const tokenOwner = !!sellerToken && !!seller && (
     String(seller.id) === storedSellerId ||
     String(seller.username || '') === storedSellerId ||
     String(seller.username || '') === rawParam  // 본인이 본인 URL 로 진입한 경우
   )
+  const isOwner = !!ownerOverride || tokenOwner
+  // 셀러 대시보드 토큰 보유 여부 — 카카오 채팅 링크 인라인 편집(PUT /api/seller/profile)만 이걸 요구.
+  //   토큰 없는 소유자는 그 필드를 seller 대시보드(사업자 정보)에서 관리 → 링크샵에선 편집 어포던스 숨김(401 방지).
+  const canSellerEdit = !!sellerToken
   // 🛡️ 2026-05-16: DEV 디버그 — isOwner 가 false 일 때 콘솔에 이유 표시 (운영자가 진단 용이)
   if (typeof window !== 'undefined' && import.meta.env.DEV && seller && !isOwner) {
     console.log('[SellerPublicPage] isOwner=false:', {
@@ -138,7 +150,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editKakao, setEditKakao] = useState('')
   const [saving, setSaving] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   // 전역 테마 토글 연동 (useTheme 스토어)
   const { applied } = useTheme()
   const isDark = applied === 'dark'
@@ -164,61 +175,6 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
       toast.success(t('common.saveSuccess'))
     } catch { toast.error(t('common.saveFailed')) }
     finally { setSaving(false) }
-  }
-
-  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const token = localStorage.getItem('seller_token')
-    if (!token) {
-      toast.error(t('common.loginRequired', { defaultValue: '로그인이 필요합니다' }))
-      return
-    }
-
-    // 🛡️ 2026-05-01: base64 → DB 직접 저장 → upload-image multipart 로 변경.
-    //   원인: 5MB 이미지가 ~7MB base64 → PUT body 한도 초과 + DB row 비대 → 업로드 실패.
-    //   수정: /api/seller/upload-image (multipart) → URL 받기 → PUT /api/seller/profile 로 URL 만 저장.
-    const MAX_BYTES = 5 * 1024 * 1024
-    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-
-    if (file.size > MAX_BYTES) {
-      toast.error(t('common.fileSizeLimit', { defaultValue: `파일 크기는 5MB 이하여야 합니다 (현재: ${(file.size / 1024 / 1024).toFixed(1)}MB)`, size: (file.size / 1024 / 1024).toFixed(1) }))
-      return
-    }
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error(t('common.imageTypeOnly', { defaultValue: 'JPEG, PNG, WebP, GIF 만 가능합니다' }))
-      return
-    }
-
-    setSaving(true)
-    try {
-      // 1. 클라이언트 압축 → URL 획득 (CF Images 유료 회피, WebP 1024px)
-      const compressed = await compressForThumbnail(file)
-      const formData = new FormData()
-      formData.append('image', compressed)
-      const uploadRes = await api.post('/api/seller/upload-image', formData, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!uploadRes.data?.success || !uploadRes.data?.url) {
-        throw new Error(uploadRes.data?.error || '업로드 실패')
-      }
-      const imageUrl = uploadRes.data.url
-
-      // 2. URL 만 프로필에 저장
-      await api.put('/api/seller/profile', { profile_image: imageUrl }, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      setSeller(prev => prev ? { ...prev, profile_image: imageUrl } : prev)
-      toast.success(t('seller.publicPage.profileImageChanged'))
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: string } }; message?: string }
-      const msg = e.response?.data?.error || e.message || t('seller.publicPage.imageUploadFailed')
-      toast.error(msg)
-      if (import.meta.env.DEV) console.error('[SellerPublic] Upload failed:', err)
-    } finally {
-      setSaving(false)
-    }
   }
 
   useEffect(() => {
@@ -357,6 +313,12 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const mealVouchers = products.filter(p => p.category === 'meal_voucher')
   // 🛡️ 2026-05-19: '상품' 탭 — 이용권 외 일반 상품 (deal_only 교환권은 셀러가 등록 안 하므로 자동 제외).
   const shopProducts = products.filter(p => p.category !== 'meal_voucher' && Number(p.deal_only) !== 1)
+  // 🎨 2026-07-07 리디자인(휑함 해소): 대표 상품 1개를 큰 '이번 주 픽' 히어로로. 상품 우선, 없으면 이용권.
+  //   featured 는 자기 섹션 그리드에서 제외(중복 방지) → 아이템 적어도 "큐레이션"으로 보이게.
+  const featured = shopProducts[0] || mealVouchers[0] || null
+  const featuredIsProduct = !!shopProducts[0]
+  const gridProducts = featuredIsProduct ? shopProducts.slice(1) : shopProducts
+  const gridVouchers = (!featuredIsProduct && mealVouchers[0]) ? mealVouchers.slice(1) : mealVouchers
 
   // 🏁 2026-06-17 (사용자 "라이브 커머스 안 해" 영구 결정): 라이브/쇼츠(동영상) 탭 숨김.
   //   LIVE_COMMERCE_SUSPENDED SSOT 가 라이브·쇼츠를 함께 묶음 → 셀러 공개 링크샵에서도 일관 적용.
@@ -488,8 +450,18 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
       {/* 🏁 2026-06-26 (대표 "추천템 숨김"): 사업자 링크샵 = 본인 상품 주인공 → 한 스크롤 섹션.
           순서: 내 상품 → 교환권 → 영상/라이브 → 정보. (추천 핀 섹션 제거 — 일반 유저 링크샵은 유지) */}
       <div className="ur-content-wide px-4 lg:px-8 py-5">
-        {/* ① 내 상품 — 방문자에게 0개면 섹션 숨김(외부 조건), 소유자 0개는 컴팩트 제목 행 + 인라인 추가 */}
-        {(shopProducts.length > 0 || ownerView) && (
+        {/* 🎨 2026-07-07 리디자인: '이번 주 픽' 대표 상품 히어로 (상품 우선·없으면 이용권). 아이템 적어도 채워짐. */}
+        {featured && (
+          <div className="mb-2">
+            <FeaturedCard
+              product={featured}
+              to={`/products/${featured.id}`}
+              eyebrow={t('seller.publicPage.featuredPick', { defaultValue: '이번 주 픽' })}
+            />
+          </div>
+        )}
+        {/* ① 내 상품 — featured 로 뽑힌 첫 상품은 그리드에서 제외(gridProducts). 소유자 0개는 컴팩트 제목 행. */}
+        {(gridProducts.length > 0 || (ownerView && shopProducts.length === 0)) && (
           shopProducts.length === 0 ? (
             // 🏁 2026-06-26 (대표 — "빈 상태가 너무 큼"): py-16 빈 블록 → 제목 행 옆 인라인 '+ 상품 등록'.
             //   정식 등록 풀페이지(/seller/products/new — 이미지·상세·옵션)로 이동 → 간결 + 발견성 ↑.
@@ -505,14 +477,16 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           ) : (
             <>
             <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mt-7 mb-3">{t('seller.publicPage.shop', { defaultValue: '내 상품' })} {shopProducts.length}</h3>
-            {/* 🔍 2026-06-16 링크샵 시안: 상품 검색 (이름 필터) */}
+            {/* 🔍 2026-06-16 링크샵 시안: 상품 검색 (이름 필터) — 상품 6개 이상일 때만(적으면 노이즈). */}
+            {shopProducts.length >= 6 && (
             <div className="flex items-center gap-2 h-11 px-3.5 mb-4 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gray-50 dark:bg-[#121212]">
               <Search className="w-4 h-4 text-gray-400 shrink-0" />
               <input value={shopQuery} onChange={(e) => setShopQuery(e.target.value)} placeholder="상품 이름으로 검색" className={`flex-1 min-w-0 bg-transparent outline-none text-[14px] ${T.text} placeholder:text-gray-400`} />
               {shopQuery && <button onClick={() => setShopQuery('')} aria-label="지우기" className="shrink-0 w-5 h-5 rounded-full bg-gray-300 dark:bg-[#3A3A3A] text-white flex items-center justify-center"><X className="w-3 h-3" /></button>}
             </div>
+            )}
             <div className="grid grid-cols-2 gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-8">
-              {shopProducts.filter(p => !shopQuery.trim() || p.name.toLowerCase().includes(shopQuery.trim().toLowerCase())).map(p => (
+              {gridProducts.filter(p => !shopQuery.trim() || p.name.toLowerCase().includes(shopQuery.trim().toLowerCase())).map(p => (
                 // 🏁 2026-06-25 (대표 "카드 1종"): 추천핀과 동일한 표준 BrowseProductCard 로 통일.
                 <BrowseProductCard
                   key={p.id}
@@ -527,11 +501,11 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           )
         )}
 
-        {/* ③ 교환권 */}
-        {mealVouchers.length > 0 && (
+        {/* ③ 이용권 — featured 로 뽑힌 첫 이용권은 그리드에서 제외(gridVouchers). */}
+        {gridVouchers.length > 0 && (
           <section className="pt-7">
-            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '이용권' })} {mealVouchers.length}</h3>
-            <VouchersTab mealVouchers={mealVouchers} isOwner={ownerView} textClass={T.text} />
+            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '이용권' })} {gridVouchers.length}</h3>
+            <VouchersTab mealVouchers={gridVouchers} isOwner={ownerView} textClass={T.text} />
           </section>
         )}
 
@@ -576,6 +550,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           <InfoTab
             seller={seller}
             isOwner={ownerView}
+            canSellerEdit={canSellerEdit}
             T={T}
             editingField={editingField}
             setEditingField={setEditingField}

@@ -5413,7 +5413,7 @@
     "suspended": "停止",
     "dashboardAria": "セラーダッシュボードへ切替",
     "switching": "切替中...",
-    "sellerMode": "セラーモード",
+    "sellerMode": "事業者モード",
     "applyAria": "セラーとして活動する",
     "applyLabel": "セラーとして活動する",
     "successMsg": "セラーダッシュボードへ移動します!",
@@ -6246,6 +6246,10 @@
       "firstTime": "初めての方",
       "proposal": "提案/報告",
       "deposit": "デポジット"
+    },
+    "role": {
+      "distributor": "販売社",
+      "manufacturer": "製造社"
     },
     "util": {
       "cart": "カート",

@@ -1,5 +1,10 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-06 — 도매 상단바에 로그인 역할 배지 (대표 "판매사/제조사 로그인 구별 상단 표시")
+- `WholesaleUtilBar.tsx`(전 도매표면 SSOT 상단바)에 **항상 보이는 역할 배지** 추가 — 판매사(`seller_token`, Store 아이콘·흰 pill) vs 제조사(`supplier_token`, Factory 아이콘·하늘색 pill). 기존 신원 칩(`{companyName} 님 · {grade}`)은 `md:` 이상에서만 보였는데, 배지는 모바일 포함 항상 노출 → 로그인 종류 즉시 인지.
+- i18n `wholesale.role.distributor`/`.manufacturer` 6개 언어(ko 판매사/제조사, en Distributor/Manufacturer, ja 販売社/製造社, zh 销售商/制造商, es, fr). defaultValue 폴백 동봉.
+- 순수 표시 추가(배선/토큰/메뉴 로직 불변). 검증: tsc 0 · build 0 · 테마/파일크기 가드 GREEN.
+
 ## ✅ 2026-07-05 — 데모 이용권 생성형 전환 완전체 + 리뷰 부풀림 근본수리 (대표 "랜덤으로 뽑아와야 · 마감돼도 사라지지 말고 · 가격 최대한 이상적으로 · 데모 데이터 활용")
 - **생성형 데모 그래머**: 고정 40종 템플릿 폐기 → `DEMO_BIZ` 34업종 × 83 수기 오퍼 패턴 × 카테고리별 현실 할인율(식사 12-28%/뷰티 30-50%/기타 18-38%, 정상가 역산) × 카카오 **랜덤 실매장**(random page/candidate + category_name/place_name 업종 affinity 필터 — 샤브샤브가 갈비집에 붙던 오매칭 차단). 매장명-우선 네이버 이미지 → **R2 재호스팅**(`uploads/demo/YYYY-MM/`, 외부 URL 썩음 영구 차단).
 - **CF 50-subrequest 한도 대응**: 24개 1요청 시 realPhotos 0/24 실증 → 서버·어드민 UI 모두 **8개/요청 청크**(8×3 → 23/24 실증). 라운드(≤3) fill-to-target 으로 요청 갯수 정확히 충족.
@@ -12,6 +17,18 @@
 - 검증: tsc 0 · build 0 · sql bind 가드 0 · 라이브 재생성 24개(실상품 16+오픈예정 8) 전부 카카오 실매장·R2 사진·할인율 캘리브레이션 범위 확인.
 ## 🔵 진행 중 — 인플루언서 이용권 공구 엔진 스프린트 (2026-07-05 대표 개발요청)
 GTM 무게중심 = "인플루언서가 오프라인 이용권을 공동구매로 파는 인프라". 대부분 부품(promo 슬라이스·aff·링크샵·QR·원천징수) 기구현 → 기본값·표면·우선순위 재배치. **핵심 불변: 큰 판매수수료는 매장→인플루언서, 유어딜은 5%만.** 대표 결정(2026-07-05): "둘 다"(§2 안전 표면 라이브 + §1 flip-ready) · 스테이징 있음.
+
+### 🔵 공구 엔진(상태형·양방향) — 기반 레이어 (2026-07-06 스펙, flip-ready 게이트 OFF)
+설계 확정: 공구는 상품 타입이 아니라 **이용권에 얹는 상태**(off|scheduled|live|ended). 매장이 열면 기간·특가·promo 얹히고 끝나면 상시가 자동 복귀. 양방향(매장→인플 / 인플 제안→매장). 전부 게이트 OFF.
+- **§1 상태 모델(SSOT 순수)** `src/shared/gb-session.ts`: GbSession(mode/start/deadline/target/price/promoPct/linkOnly) · `resolveGbStatus`(시간창 파생) · `resolveGbPricing`(실효 소비자가 — 공구 live면 공구가, 종료 시 상시가 복귀 · 카니발라이제이션 "공구가로 통일" 기본 / "링크전용" 옵션) · `validateGbSession`(공구가<상시가·마감>시작·promo 0~50). **유닛 21 pass**.
+- **서버 저장/조회** `src/worker/utils/gb-session-store.ts`: product_supply_meta K-V(컬럼 예산 동결) gb_* 키 get/save. prelaunch 패턴 미러.
+- **§3 3분할 계산기(핵심 UI)** `ThreeWaySplitCalculator.tsx`: 정가 앵커 → [할인율][promo%] 슬라이더 → 소비자가가 promo(인플)/유어딜5%/매장실수령 3분할 막대+금액 실시간(resolveOrderFees owner-funded 재사용). 버티컬 권장 promo + 하한 미만 경고 + 캐파 업종 툴팁.
+- **게이트** `GB_ENGINE_ENABLED`(클라 빌드플래그, OFF) + 서버 `platform_settings.gb_engine_enabled`(예정) — 이중 안전. SELLER_PROMO_FIELD 와 동일 활성 순서(owner-funding 먼저).
+- 검증: tsc 0 · build 0 · vitest +21 · 테마/file-size GREEN.
+- **§2-A 매장 "공구 열기"(방향 A — 서초 사용)**: `POST/GET /api/seller/products/:id/group-buy`(seller 소유권 + `platform_settings.gb_engine_enabled` 게이트 · open/close · validateGbSession) + `GroupBuyOpenPanel`(SellerGroupBuyPage 행별, GB_ENGINE_ENABLED 게이트) — 마감·할인율·promo·링크전용 입력 + ThreeWaySplitCalculator 미리보기 → gb-session-store 저장. **상태 저장만**(소비자가/커미션 authoritative 적용은 owner-funding 검증 후 다음 슬라이스).
+- **§4 인플루언서 공구 탐색·수익 뷰**: `GET /api/gb-marketplace`(신규 라우트 — 잠금 group-buy-public 미변경 · gb_engine 게이트 · live gb 세션 product_supply_meta 수집→상품 조인(정지셀러 `s.is_active=0` 제외)→resolveGbPricing→promo>0만→promo% 순 정렬 · 카테고리/지역 필터 · intParam) + `GbMarketplacePage`(/gb-market, 다크지원): 소개비% 배지·공구가·건당/100건 예상 소개비·**담기(기존 usePinAction 핀 재사용)**. GB_ENGINE_ENABLED OFF면 "준비 중" 빈상태. 나브 링크는 flip 시 추가.
+- **§2-B 양방향 공구 제안(완결 — 게이트 OFF)**: `gb_proposals` 테이블(proposed_by='influencer'|'seller') + `gb-proposals.routes`(잠금 미변경 · gb_engine 게이트 · 승인=CAS 후 gb open, proposerId=인플). 클라: 매장 `GbProposalsPanel`(SellerGroupBuyPage — 받은 제안 승인/거절 + 인플에게 핸들로 협업 제안) · 인플 `GbMyProposals`(GbMarketplacePage — 받은 협업 수락/거절 + 내 제안 상태) · `GbProposeModal`(GroupBuyDetailPage 게이트 버튼 — 인플→매장 제안). 양방향 알림.
+- ⏭️ **남은 것**: 소비자 상세 **실효가(resolveGbPricing)+promo→커미션 authoritative 배선**(잠금 group-buy-public + resolver — owner-funding staging flip 전제) · 크리에이터 콘솔 공구별 실적(어필리에이트 집계 재사용) · flip 시 나브 링크. 완료기준: staging 실결제 원장 정합.
 
 ### ✅ §1 매출 엔진 — 셀러 소개비(promo)% 필드 + 마진 계산기 (flip-ready, 게이트 OFF)
 - **발견**: [INV-CB] 예산캡 · owner-funding(promo_funding_source) · fee-resolver · 그림자 기록이 **전부 기구현·게이트 OFF**. §1 = 스테이징 검증 후 flip(신규 코드 아님).

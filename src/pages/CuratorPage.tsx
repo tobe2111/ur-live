@@ -29,6 +29,7 @@ import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
 import LinkshopOnboardModal from './curator-page/LinkshopOnboardModal'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { storeAffiliateRef } from '@/utils/affiliate-track'
 
 // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있으면 같은 페이지에서 SellerPublicPage 직접 render.
 //   redirect 없음 — URL 그대로 (/u/:handle 유지). lazy chunk — 일반 user 진입 시 chunk fetch 안 함.
@@ -84,6 +85,17 @@ export default function CuratorPage() {
     } catch { /* localStorage unavailable */ }
     return false
   })()
+
+  // 💸 2026-07-07 (대표 결정 — "링크샵에 들어왔다면 수익이 생기게" · 진입=세션 귀속): 링크샵에 들어온 순간
+  //   주인(user_id)을 24h affiliate_ref 로 심는다 → 이후 방문자가 이 링크샵을 통해 뭘 사든(핀·이용권·쇼핑)
+  //   결제 시 referrer_id 로 전송돼 주인에게 커미션 귀속. 기존엔 '핀 클릭'만 귀속돼 링크샵 진입 자체는 무귀속이던
+  //   갭을 메움. storeAffiliateRef 가 본인(my user_id===ref)이면 자동 skip(자기 링크샵 진입은 무귀속) +
+  //   숫자 user_id 검증. 자기 상품 구매는 서버 self-seller 가드로 판매수익만(추천수수료 이중지급 방지).
+  useEffect(() => {
+    const cid = data?.curator?.id
+    if (!cid || isOwner) return
+    storeAffiliateRef(String(cid))
+  }, [data?.curator?.id, isOwner])
 
   useEffect(() => {
     if (!handle) return
@@ -185,7 +197,7 @@ export default function CuratorPage() {
             SellerPublicPage 가 curator.linkshop_show_recommend(opt-in, 기본 off)일 때만 하단
             "추천" 섹션을 렌더. 2026-06-26 "추천템 숨김"의 막다른 골목(담아도 안 보임)을 opt-in 으로 해소.
             🏁 2026-06-26 [UNLOCK_LOADING] — linked_seller.id 전달 → 상품 fetch 를 셀러 fetch 와 병렬로(워터폴 제거). */}
-        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} sellerNumericId={linked_seller.id} curatorPins={pins} />
+        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} sellerNumericId={linked_seller.id} curatorPins={pins} ownerOverride={isOwner} />
       </Suspense>
     )
   }

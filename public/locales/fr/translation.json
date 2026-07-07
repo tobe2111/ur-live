@@ -5413,7 +5413,7 @@
     "suspended": "Suspendu",
     "dashboardAria": "Basculer vers tableau de bord vendeur",
     "switching": "Basculement...",
-    "sellerMode": "Mode vendeur",
+    "sellerMode": "Mode entreprise",
     "applyAria": "Devenir vendeur",
     "applyLabel": "Devenir vendeur",
     "successMsg": "Redirection vers le tableau de bord vendeur!",
@@ -6246,6 +6246,10 @@
       "firstTime": "Première fois ?",
       "proposal": "Proposer / Signaler",
       "deposit": "Dépôt"
+    },
+    "role": {
+      "distributor": "Distributeur",
+      "manufacturer": "Fabricant"
     },
     "util": {
       "cart": "Panier",

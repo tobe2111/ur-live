@@ -51,7 +51,7 @@ export interface AffiliateCreditInput {
 
 export type AffiliateCreditResult =
   | { ok: true; commission: number }
-  | { ok: false; code: 'NOT_FOUND' | 'NOT_PAID' | 'SELF_REFERRAL' | 'SELF_PURCHASE' | 'DUPLICATE' | 'IP_ABUSE' | 'REFERRAL_DISABLED' | 'BUDGET_EXHAUSTED' | 'ERROR' }
+  | { ok: false; code: 'NOT_FOUND' | 'NOT_PAID' | 'SELF_REFERRAL' | 'SELF_PURCHASE' | 'SELF_SELLER' | 'DUPLICATE' | 'IP_ABUSE' | 'REFERRAL_DISABLED' | 'BUDGET_EXHAUSTED' | 'ERROR' }
 
 interface CommissionBreakdown {
   commission: number
@@ -154,6 +154,13 @@ export async function creditAffiliateForOrder(
            VALUES ('self_purchase', ?, 'order', ?, ?, 'high')`
         ).bind(String(order.user_id), String(order.id), JSON.stringify({ sellerOwner, referrer_id: referrerId })).run().catch(() => {})
         return { ok: false, code: 'SELF_PURCHASE' }
+      }
+      // 💸 2026-07-07 (대표 결정 — 진입=세션 귀속의 이중지급 방지 가드): referrer 가 곧 상품의 판매자(셀러 소유주)면
+      //   추천 수수료를 지급하지 않는다 — 그는 이미 '판매수익'을 가져가므로(자기 링크샵에서 자기 상품 판매).
+      //   링크샵 진입 세션귀속(affiliate_ref=주인 user_id)이 도입되며, 주인이 자기 상품을 팔면 referrer==셀러가
+      //   되어 판매수익+추천수수료 이중지급이 발생하던 것을 구조적으로 차단. (핀=타인 상품은 referrer≠셀러라 무영향.)
+      if (sellerOwner?.user_id && String(sellerOwner.user_id) === String(referrerId)) {
+        return { ok: false, code: 'SELF_SELLER' }
       }
     } catch { /* */ }
 

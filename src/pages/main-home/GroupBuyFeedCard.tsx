@@ -203,7 +203,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs }: { p: FeedCardProduct; 
         )}
 
         {/* 🎯 추첨 응모 배지 (우상단) — 결제 없이 응모 → 추첨. 상세에서 응모 가능. */}
-        {fcfs && <FcfsBadge info={fcfs} className="absolute top-2 right-2" />}
+        {fcfs && <FcfsBadge info={fcfs} variant="overlay" className="absolute top-2 right-2" />}
       </div>
 
       <div className="px-2.5 pb-2.5 pt-1.5">

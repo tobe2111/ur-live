@@ -44,6 +44,8 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
   const [cancelling, setCancelling] = useState(false)
   // 🎟️ 2026-06-20 현장 셀프 사용처리 모달
   const [showRedeem, setShowRedeem] = useState(false)
+  // 🎟️ 2026-07-06 (대표 "이용권 페이지에 사용방법을 사장님 설정과 동일하게"): 이 매장의 사용 방식을 미리 안내.
+  const [redemptionMode, setRedemptionMode] = useState<'scan_only' | 'store_code' | 'self_free' | null>(null)
   // 🛡️ 2026-06-26 (소비자 감사): safeDate — D1 'YYYY-MM-DD HH:MM:SS' 를 사파리가 Invalid Date 로 파싱하면
   //   NaN < window 가 false → 미사용 7일내인데도 환불 버튼이 사라지던 것(기능 차단). safeDate 가 파싱 보정.
   const createdMs = safeDate(voucher.created_at)?.getTime() ?? NaN
@@ -94,6 +96,17 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [voucher.status])
+
+  // 🎟️ 2026-07-06: 사용 방식(매장 설정) 미리 조회 — 소비자가 사용 *전에* 방법을 알 수 있게.
+  //   KT 교환권(source=kt_alpha)은 자체 PIN 흐름이라 제외. 조회 실패/미설정=self_free(기본 버튼 흐름).
+  useEffect(() => {
+    if (voucher.status !== 'unused' || voucher.source === 'kt_alpha') return
+    let alive = true
+    api.get(`/api/group-buy/vouchers/${encodeURIComponent(voucher.code)}/redemption-info`)
+      .then(res => { if (alive && res.data?.success) setRedemptionMode(res.data.data?.mode ?? null) })
+      .catch(() => { /* silent — 안내 없으면 기본 버튼 흐름 */ })
+    return () => { alive = false }
+  }, [voucher.code, voucher.status, voucher.source])
 
   // 🎨 2026-06-21 (개선 #3): 매장 스캔 중 화면 꺼짐/디밍 방지 — Screen Wake Lock(웹 표준, iOS 16.4+/안드).
   //   네이티브 밝기 API 는 미보유 → wakeLock 으로 dim/sleep 차단(스캔 끊김 방지). 전부 fail-soft.
@@ -215,6 +228,24 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           <p className="text-center text-[10.5px] text-gray-400 dark:text-gray-500 mt-1.5">
             {t('voucher.wakeOn', { defaultValue: '🔆 화면 꺼짐 방지 중 — 스캔하기 좋게' })}
           </p>
+        )}
+
+        {/* 🎟️ 2026-07-06 사용방법 — 사장님이 설정한 방식(scan_only/store_code/self_free)을 사용 전에 안내. */}
+        {voucher.status === 'unused' && redemptionMode && (
+          <div className="mt-4 rounded-xl border border-gray-200 dark:border-[#2A2A2A] px-3.5 py-3">
+            <p className="text-[11px] font-extrabold tracking-tight text-gray-900 dark:text-white">
+              {redemptionMode === 'scan_only' ? '사용방법 · 직원 확인'
+                : redemptionMode === 'store_code' ? '사용방법 · 매장 확인코드'
+                : '사용방법 · 바로 사용'}
+            </p>
+            <p className="text-[12px] leading-relaxed text-gray-500 dark:text-gray-400 mt-1">
+              {redemptionMode === 'scan_only'
+                ? '직원에게 이 QR 화면을 보여주세요. 직원이 스캔해 사용 처리해요.'
+                : redemptionMode === 'store_code'
+                  ? "‘현장에서 사용하기’를 누른 뒤, 카운터에 비치된 매장 확인코드 4자리를 입력하면 사용 완료돼요."
+                  : "‘현장에서 사용하기’를 누르면 바로 사용 처리돼요. 실수 시 60초 내 취소할 수 있어요."}
+            </p>
+          </div>
         )}
 
         {/* 🛡️ 선결제 안내 — "이미 결제 완료" 🟢 체크 (선물 X, 추가결제 X) */}

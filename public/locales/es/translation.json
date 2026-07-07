@@ -5413,7 +5413,7 @@
     "suspended": "Suspendido",
     "dashboardAria": "Cambiar al panel de vendedor",
     "switching": "Cambiando...",
-    "sellerMode": "Modo vendedor",
+    "sellerMode": "Modo empresa",
     "applyAria": "Convertirse en vendedor",
     "applyLabel": "Convertirse en vendedor",
     "successMsg": "¡Redirigiendo al panel de vendedor!",
@@ -6246,6 +6246,10 @@
       "firstTime": "¿Primera vez?",
       "proposal": "Proponer / Reportar",
       "deposit": "Depósito"
+    },
+    "role": {
+      "distributor": "Distribuidor",
+      "manufacturer": "Fabricante"
     },
     "util": {
       "cart": "Carrito",

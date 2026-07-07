@@ -95,7 +95,7 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
         )}
 
         {/* 🎯 추첨 응모 배지 (우상단) — 결제 없이 응모 → 추첨. 상세에서 응모 가능. */}
-        {fcfs && <FcfsBadge info={fcfs} className="absolute top-2 right-2" />}
+        {fcfs && <FcfsBadge info={fcfs} variant="overlay" className="absolute top-2 right-2" />}
 
         {/* 관심 등록 */}
         <button
