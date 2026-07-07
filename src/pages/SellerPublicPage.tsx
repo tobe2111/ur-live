@@ -463,13 +463,17 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
         {/* ① 내 상품 — featured 로 뽑힌 첫 상품은 그리드에서 제외(gridProducts). 소유자 0개는 컴팩트 제목 행. */}
         {(gridProducts.length > 0 || (ownerView && shopProducts.length === 0)) && (
           shopProducts.length === 0 ? (
-            // 🏁 2026-06-26 (대표 — "빈 상태가 너무 큼"): py-16 빈 블록 → 제목 행 옆 인라인 '+ 상품 등록'.
-            //   정식 등록 풀페이지(/seller/products/new — 이미지·상세·옵션)로 이동 → 간결 + 발견성 ↑.
-            <div className="mt-7 flex items-center justify-between gap-3">
-              <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white">{t('seller.publicPage.shop', { defaultValue: '내 상품' })} 0</h3>
+            // 🎨 2026-07-07 리디자인: 밋밋한 "상품 0" 행 → "쇼핑몰을 채워보세요" 초대 카드(소유자 동기부여).
+            //   내 상품이 링크샵의 주인공이라는 메시지 + 정식 등록 풀페이지로.
+            <div className="mt-7 rounded-2xl border border-dashed border-gray-300 dark:border-[#2E2E2E] bg-gray-50 dark:bg-[#101010] px-5 py-7 text-center">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] flex items-center justify-center">
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              </div>
+              <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white">{t('seller.publicPage.emptyShopTitle', { defaultValue: '첫 상품을 올려 쇼핑몰을 채워보세요' })}</h3>
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-gray-500 dark:text-gray-400">{t('seller.publicPage.emptyShopDesc', { defaultValue: '내 상품이 링크샵의 주인공이에요. 등록하면 방문자에게 바로 판매되고 정산까지 이어집니다.' })}</p>
               <button
                 onClick={() => navigate('/seller/products/new')}
-                className="shrink-0 inline-flex items-center gap-1 px-3.5 py-2 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[12.5px] font-bold active:scale-95"
+                className="mt-4 inline-flex items-center gap-1 px-5 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#020202] text-[13px] font-bold active:scale-95"
               >
                 + {t('seller.publicPage.addProduct', { defaultValue: '상품 등록' })}
               </button>
@@ -544,9 +548,30 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           </section>
         )}
 
+        {/* 🎨 2026-07-07 리디자인(휑함 해소 + 전환): 상품/이용권이 있을 때 구매 신뢰 배지 2종 —
+            "유어딜 안전결제 · 사업자 인증 판매자". 콘텐츠 아래 공간을 가치로 채우고 전환율을 올린다. */}
+        {(shopProducts.length > 0 || mealVouchers.length > 0) && (
+          <div className="mt-8 grid grid-cols-2 gap-2.5">
+            <div className="rounded-2xl border border-gray-200 dark:border-[#242424] bg-gray-50 dark:bg-[#121212] p-3.5">
+              <div className="flex items-center gap-1.5 text-[12.5px] font-extrabold text-gray-900 dark:text-white">
+                <svg className="w-4 h-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                {t('seller.publicPage.trustPay', { defaultValue: '유어딜 안전결제' })}
+              </div>
+              <p className="mt-1 text-[10.5px] leading-snug text-gray-500 dark:text-gray-400 font-medium">{t('seller.publicPage.trustPayDesc', { defaultValue: '결제·정산을 유어딜이 보증해요' })}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 dark:border-[#242424] bg-gray-50 dark:bg-[#121212] p-3.5">
+              <div className="flex items-center gap-1.5 text-[12.5px] font-extrabold text-gray-900 dark:text-white">
+                <svg className="w-4 h-4 text-[#1d9bf0]" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" fill="#1d9bf0"/><path d="M9.8 15.6l-3-3 1.2-1.2 1.8 1.8 4.4-4.4 1.2 1.2z" fill="#fff"/></svg>
+                {t('seller.publicPage.trustVerified', { defaultValue: '사업자 인증 판매자' })}
+              </div>
+              <p className="mt-1 text-[10.5px] leading-snug text-gray-500 dark:text-gray-400 font-medium">{t('seller.publicPage.trustVerifiedDesc', { defaultValue: '사업자등록이 확인된 판매자예요' })}</p>
+            </div>
+          </div>
+        )}
+
         {/* ⑥ 판매자 정보 — 🧾 2026-07-02 (대표 시안): "정보" 제목 카드 → 링크샵 **맨 밑** 쇼핑몰식 작은 푸터.
             콘텐츠와 넉넉히 떨어뜨려(mt-12) 진짜 페이지 하단 푸터로 읽히게. 얇은 구분선 + "MORE INFO +" 접이식. */}
-        <footer className="mt-12 pt-5 border-t border-gray-100 dark:border-[#1A1A1A]">
+        <footer className="mt-10 pt-5 border-t border-gray-100 dark:border-[#1A1A1A]">
           <InfoTab
             seller={seller}
             isOwner={ownerView}
