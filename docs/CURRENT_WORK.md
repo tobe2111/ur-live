@@ -26,7 +26,8 @@ GTM 무게중심 = "인플루언서가 오프라인 이용권을 공동구매로
 - **게이트** `GB_ENGINE_ENABLED`(클라 빌드플래그, OFF) + 서버 `platform_settings.gb_engine_enabled`(예정) — 이중 안전. SELLER_PROMO_FIELD 와 동일 활성 순서(owner-funding 먼저).
 - 검증: tsc 0 · build 0 · vitest +21 · 테마/file-size GREEN.
 - **§2-A 매장 "공구 열기"(방향 A — 서초 사용)**: `POST/GET /api/seller/products/:id/group-buy`(seller 소유권 + `platform_settings.gb_engine_enabled` 게이트 · open/close · validateGbSession) + `GroupBuyOpenPanel`(SellerGroupBuyPage 행별, GB_ENGINE_ENABLED 게이트) — 마감·할인율·promo·링크전용 입력 + ThreeWaySplitCalculator 미리보기 → gb-session-store 저장. **상태 저장만**(소비자가/커미션 authoritative 적용은 owner-funding 검증 후 다음 슬라이스).
-- ⏭️ **다음 슬라이스**: §4 인플루언서 공구 탐색·수익 뷰(promo순 정렬·예상수익·담기 ?ref) → §2-B 인플 제안 플로우(제안→매장 승인) → 소비자 상세 실효가+promo→커미션 authoritative 배선(잠금 group-buy-public + resolver, 게이트). 완료기준: staging 실결제 원장 정합.
+- **§4 인플루언서 공구 탐색·수익 뷰**: `GET /api/gb-marketplace`(신규 라우트 — 잠금 group-buy-public 미변경 · gb_engine 게이트 · live gb 세션 product_supply_meta 수집→상품 조인(정지셀러 `s.is_active=0` 제외)→resolveGbPricing→promo>0만→promo% 순 정렬 · 카테고리/지역 필터 · intParam) + `GbMarketplacePage`(/gb-market, 다크지원): 소개비% 배지·공구가·건당/100건 예상 소개비·**담기(기존 usePinAction 핀 재사용)**. GB_ENGINE_ENABLED OFF면 "준비 중" 빈상태. 나브 링크는 flip 시 추가.
+- ⏭️ **다음 슬라이스**: §2-B 인플 제안 플로우(제안→매장 승인, `seller_influencer_deals` 테이블 기존재) → 소비자 상세 실효가+promo→커미션 authoritative 배선(잠금 group-buy-public + resolver, 게이트) → 크리에이터 콘솔 공구별 실적. 완료기준: staging 실결제 원장 정합.
 
 ### ✅ §1 매출 엔진 — 셀러 소개비(promo)% 필드 + 마진 계산기 (flip-ready, 게이트 OFF)
 - **발견**: [INV-CB] 예산캡 · owner-funding(promo_funding_source) · fee-resolver · 그림자 기록이 **전부 기구현·게이트 OFF**. §1 = 스테이징 검증 후 flip(신규 코드 아님).

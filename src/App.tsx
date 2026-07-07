@@ -118,6 +118,7 @@ const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const FollowingPage = lazy(() => import('./pages/FollowingPage'))
 const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
 const MyStorePage = lazy(() => import('./pages/MyStorePage'))
+const StoreScanPage = lazy(() => import('./pages/StoreScanPage'))
 const InfluencerSettlementPage = lazy(() => import('./pages/InfluencerSettlementPage'))
 const InfluencerDiscoverPage = lazy(() => import('./pages/InfluencerDiscoverPage'))
 const InfluencerAnalyticsPage = lazy(() => import('./pages/InfluencerAnalyticsPage'))
@@ -205,6 +206,7 @@ const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'))
 const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'))
 const GDPRPage = lazy(() => import('./pages/GDPRPage'))
 const AffiliatePage = lazy(() => import('./pages/AffiliatePage'))
+const GbMarketplacePage = lazy(() => import('./pages/GbMarketplacePage'))
 const FAQPage = lazy(() => import('./pages/FAQPage'))
 
 // 🔧 Debug 페이지
@@ -548,7 +550,7 @@ function AppContent() {
   // 🛡️ 2026-05-24 (regression fix): /pay/widget 누락 → BottomNav 가 결제 버튼 가림.
   //   결제 위젯 마운트하는 모든 경로는 반드시 여기 등록. 신규 추가 시 tests/unit/toss-fullscreen-routes.test.ts
   //   가 자동 검증 (App.tsx 의 fullScreenPrefixes 와 TossPaymentWidget 마운트 라우트 일치 확인).
-  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/agency', '/login', '/register', '/auth', '/embed', '/introduce', '/shorts', '/blog', '/my-orders']
+  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/agency', '/login', '/register', '/auth', '/embed', '/introduce', '/shorts', '/blog', '/my-orders', '/store/scan']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
     || location.pathname.startsWith('/live/') // /live/123 은 풀스크린, /live 목록은 아님
   // 🏭 유통스타트 B2B(도매몰/제조사)는 소비자 BottomNav/TopNav 미표시 — 별도 도메인·업태.
@@ -852,6 +854,12 @@ function AppContent() {
                 <MyStorePage />
               </ProtectedRoute>
             } />
+            {/* 🎟️ 2026-07-06 독립 계산대 스캔 POS — 마이 탭에서 1탭, 셀러 대시보드 안 거침. seller_token 자체가드. */}
+            <Route path="/store/scan" element={
+              <ProtectedRoute requireUser>
+                <StoreScanPage />
+              </ProtectedRoute>
+            } />
             <Route path="/influencer/settlement" element={
               <ProtectedRoute requireUser>
                 <InfluencerSettlementPage />
@@ -968,6 +976,7 @@ function AppContent() {
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/gdpr" element={<GDPRPage />} />
             <Route path="/user/affiliate" element={<AffiliatePage />} />
+            <Route path="/gb-market" element={<GbMarketplacePage />} />
             <Route path="/refund" element={<RefundPolicyPage />} />
             <Route path="/faq" element={<FAQPage />} />
             {/* ✅ 마이페이지 메뉴에서 사용하는 긴 형식 경로 → 짧은 경로로 리다이렉트 */}
