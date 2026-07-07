@@ -17,7 +17,6 @@ import { snsUrl } from '@/utils/sns-url'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Share2, Pencil, Check, X, Camera, ImagePlus } from 'lucide-react'
-import KakaoShareButton from '@/components/KakaoShareButton'
 import { cfImage } from '@/utils/cf-image'
 import api from '@/lib/api'
 import { curatorApi } from '@/features/curator/api/curator-api'
@@ -248,15 +247,6 @@ export default function CuratorHeader({
 
   const hasSns = !!(curator.youtube_url || curator.instagram_url || curator.tiktok_url)
 
-  // 🎨 2026-07-07 (대표 승인 리디자인 — "휑함 해소"): 배너 위에 겹치는 아바타 = 링크샵에 '얼굴'을 준다.
-  //   profile_image(카카오/업로드) 정규화 → 없으면 이름 이니셜 + 시드 그라데이션. 배너와 별개(배너=히어로).
-  const normalizedProfile = curator.profile_image?.startsWith('r2://')
-    ? `/api/media/${curator.profile_image.slice(5)}`
-    : curator.profile_image
-  const [avatarBroken, setAvatarBroken] = useState(false)
-  const showAvatar = !!normalizedProfile && !avatarBroken
-  const initial = (curator.name || '').trim().charAt(0) || '★'
-
   return (
     <header className="bg-white dark:bg-[#020202] border-b border-gray-100 dark:border-[#1A1A1A]">
       {/* ① 흐르는 마퀴(헤드라인) — 최상단, 풀블리드 */}
@@ -384,23 +374,9 @@ export default function CuratorHeader({
       </div>
 
       <div className="max-w-3xl mx-auto px-4 pb-4">
-        {/* 🎨 2026-07-07 리디자인: 배너 위에 겹치는 아바타 — 링크샵에 '얼굴'을 줘 휑함 해소. */}
-        <div className="-mt-12 relative z-10 flex justify-center">
-          <div className="w-[88px] h-[88px] rounded-[26px] overflow-hidden ring-4 ring-white dark:ring-[#020202] shadow-[0_8px_24px_-8px_rgba(0,0,0,.35)]"
-            style={showAvatar ? undefined : { background: 'linear-gradient(150deg,#E88A4A,#B23A1E 60%,#5C1E12)' }}>
-            {showAvatar ? (
-              <img
-                src={cfImage(normalizedProfile!, { width: 200, format: 'auto' }) || normalizedProfile!}
-                alt={curator.name} className="w-full h-full object-cover" loading="eager" decoding="async"
-                onError={() => setAvatarBroken(true)}
-              />
-            ) : (
-              <span className="w-full h-full flex items-center justify-center text-white text-[34px] font-extrabold select-none">{initial}</span>
-            )}
-          </div>
-        </div>
-        {/* ③ 이름 / 핸들 / 태그라인 / SNS — 중앙 정렬 */}
-        <div className="mt-3 relative z-10 text-center">
+        {/* ③ 이름 / 핸들 / 태그라인 / SNS — 중앙 정렬 (배너 하단 페이드 위로 살짝 올림) */}
+        {/* 🗑️ 2026-07-07 (대표 — "프로필 사진 없애줘"): 배너 위 아바타 제거. 배너가 정체성. */}
+        <div className="-mt-6 relative z-10 text-center">
 
           {editingField === 'name' ? (
             <div className="flex items-center justify-center gap-2">
@@ -601,25 +577,9 @@ export default function CuratorHeader({
             </div>
           </div>
         ) : (
-          // 🔗 2026-06-17 (방문자 공유): 라벨 단 균등 2버튼 (오너 카드와 동일 톤).
-          <div className="flex gap-2 mt-4 max-w-md mx-auto">
-            <button
-              onClick={onCopyLink}
-              className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
-            >
-              <Share2 className="w-3.5 h-3.5" /> {t('curator.copyLink', { defaultValue: '링크 복사' })}
-            </button>
-            <div className="flex-1">
-              <KakaoShareButton
-                title={`${curator.name}의 링크샵`}
-                description={curator.bio || `${pinCount}개 상품 추천 중`}
-                imageUrl={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
-                link={`/u/${curator.handle}`}
-                className="w-full py-2.5 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[13px] font-bold transition-colors"
-                buttonText="카카오 공유"
-              />
-            </div>
-          </div>
+          // 🗑️ 2026-07-07 (대표 — "링크복사·카카오공유 버튼 없애줘"): 방문자 공유 2버튼 제거.
+          //   공유는 배너 우상단 공유 아이콘으로 일원화(오너/방문자 공통).
+          null
         )}
       </div>
     </header>
