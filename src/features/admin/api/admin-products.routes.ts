@@ -1766,15 +1766,56 @@ adminProductsRoutes.post('/dongnedeal/create', cors(), async (c) => {
 adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
   try {
     const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher', 'general'];
-    const ph = cats.map(() => '?').join(',');
     const limRaw = Number(c.req.query('limit'));
     const lim = Number.isFinite(limRaw) && limRaw > 0 && limRaw <= 200 ? Math.floor(limRaw) : 50;
+
+    // 🔎 2026-07-06 (대표 "등록된 도매딜 필터링 — 지역·카테고리·상품형태 등"): 서버측 필터(전 목록 대상).
+    //   전부 additive — 파라미터 없으면 기존 쿼리와 동일(카테고리 5종·retired 제외·최신순).
+    const where: string[] = [`COALESCE(slug,'') NOT LIKE 'retired-%'`];
+    const params: (string | number)[] = [];
+
+    // 카테고리: 허용 목록 중 하나면 단일, 아니면 5종 전체.
+    const catParam = String(c.req.query('category') || '').trim();
+    if (catParam && cats.includes(catParam)) {
+      where.push('category = ?'); params.push(catParam);
+    } else {
+      where.push(`category IN (${cats.map(() => '?').join(',')})`); params.push(...cats);
+    }
+
+    // 지역: 공백 토큰(예 "서울 강남") 전부 restaurant_address 에 포함(AND) — 최대 3토큰.
+    const regionParam = String(c.req.query('region') || '').trim();
+    if (regionParam) {
+      for (const tok of regionParam.split(/\s+/).filter(Boolean).slice(0, 3)) {
+        where.push('restaurant_address LIKE ?'); params.push(`%${tok}%`);
+      }
+    }
+
+    // 데모/실등록 source.
+    const source = String(c.req.query('source') || '').trim();
+    if (source === 'demo') where.push(`COALESCE(slug,'') LIKE 'demo-deal-%'`);
+    else if (source === 'real') where.push(`COALESCE(slug,'') NOT LIKE 'demo-deal-%'`);
+
+    // 노출 상태.
+    const status = String(c.req.query('status') || '').trim();
+    if (status === 'active') where.push('COALESCE(is_active,1) = 1');
+    else if (status === 'hidden') where.push('COALESCE(is_active,1) = 0');
+
+    // 상품형태: 오픈예정형(prelaunch, product_supply_meta) vs 실상품형(live).
+    const mode = String(c.req.query('mode') || '').trim();
+    if (mode === 'prelaunch') where.push(`EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = products.id AND m.key = 'prelaunch' AND m.value = '1')`);
+    else if (mode === 'live') where.push(`NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = products.id AND m.key = 'prelaunch' AND m.value = '1')`);
+
     const { results } = await c.env.DB.prepare(
       `SELECT id, name, price, original_price, category, restaurant_name, restaurant_address, image_url,
-              COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at
-         FROM products WHERE category IN (${ph}) AND COALESCE(slug,'') NOT LIKE 'retired-%' ORDER BY created_at DESC LIMIT ?`
-    ).bind(...cats, lim).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
+              COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at, slug
+         FROM products WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT ?`
+    ).bind(...params, lim).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
     const rows = results || [];
+    // 🔎 표시용 파생 플래그(뱃지): 데모 여부 + slug 은 노출 안 함(is_demo 만).
+    for (const r of rows) {
+      r.is_demo = String(r.slug || '').startsWith('demo-deal-') ? 1 : 0;
+      delete r.slug;
+    }
     // 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 한도(meta) 첨부 — 수정 폼 prefill 용 (0=무제한).
     try {
       const ids = rows.map(r => Number(r.id)).filter(n => Number.isFinite(n));
@@ -1785,6 +1826,7 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
           r.max_per_person = raw != null && Number.isFinite(Number(raw)) && Number(raw) > 0 ? Math.floor(Number(raw)) : 0;
           const kpu = mm?.get(Number(r.id))?.kakao_place_url;
           r.kakao_place_url = normalizeKakaoPlaceUrl(kpu);
+          r.prelaunch = String(mm?.get(Number(r.id))?.prelaunch || '') === '1' ? 1 : 0; // 🔎 오픈예정형 뱃지
         }
       }
     } catch { /* fail-soft */ }
