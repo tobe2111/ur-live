@@ -108,8 +108,8 @@ const POOLS: Record<Topic, { pos: string[]; mid: string[] }> = {
   },
 }
 
-// 🎭 5점 리뷰 끝에 가끔 붙는 짧은 마무리(넷 긍정) — 대부분 빈 문자열(본문이 이미 완결).
-const TAILS = ['', '', '', '', '', '', '', ' 재방문 확정이에요', ' 또 갈 것 같아요', ' 강추까진 아니고 조용히 좋아요', ' 담에 또 올게요']
+// 🎭 5점 리뷰 끝에 가끔 붙는 짧은 마무리 — 대부분 빈 문자열(본문이 이미 완결이라 과다 append 방지).
+const TAILS = ['', '', '', '', '', '', '', '', '', ' 또 갈 것 같아요', ' 담에 또 올게요']
 
 // 🎭 방문 맥락 오프너(업종 무관 안전) — 빈 문자열 비중 높게(대부분 리뷰는 바로 본론).
 const OPENERS = ['', '', '', '', '', '', '', '주말에 다녀왔는데 ', '평일 저녁에 갔어요. ', '지인 추천으로 가봤는데 ', '두 번째 방문이에요. ', '예약하고 갔습니다. ', '동네라 종종 가는데 ', '처음 가봤는데 ', '오랜만에 들렀는데 ', '친구가 하도 좋다길래 갔어요. ', '퇴근하고 들렀어요. ', '가족이랑 갔는데 ']
@@ -123,16 +123,24 @@ function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length
 /** 결정론 폴백 — 업종 특색 문구 조합(배송어 없음, 별점별 톤).
  *  🎭 2026-07-04 (대표 "최대 다양성, AI 티 0"): 길이 극단(한마디~2문장)·오프너·말투 꼬리 조합으로
  *  같은 상품 안에서도 문장 구조가 겹치지 않게. avoid(이미 쓴 문구) 재시도는 buildStoreReviews 가 담당. */
-export function composeDemoReview(rating: number, topic: Topic, storeName?: string | null): string {
+export function composeDemoReview(rating: number, topic: Topic, storeName?: string | null, seen?: Set<string>): string {
   const pool = POOLS[topic] || POOLS.etc
   // 12%: 아주 짧은 한마디(실제 최빈 패턴 — 길이 다양성). 비중을 낮춰 제너릭 '필러' 느낌 방지.
-  if (Math.random() < 0.12) return pick(SHORTS_POS) + pick(EMOJI)
+  if (Math.random() < 0.12) {
+    let sh = pick(SHORTS_POS)
+    if (seen) { for (let i = 0; i < 6 && seen.has(sh); i++) sh = pick(SHORTS_POS); seen.add(sh) }
+    return sh + pick(EMOJI)
+  }
   // 4점은 순한 아쉬움 한마디(넷 긍정)를 절반쯤 섞어 리얼함 — 5점은 구체적 강한 긍정.
-  let s = (rating === 4 && pool.mid.length && Math.random() < 0.45) ? pick(pool.mid) : pick(pool.pos)
-  const opener = pick(OPENERS)
-  s = opener + s
+  const src = (rating === 4 && pool.mid.length && Math.random() < 0.45) ? pool.mid : pool.pos
+  let base = pick(src)
+  // 🎭 같은 상품 안 '핵심 문장' 중복 방지 — 오프너/꼬리만 다른 사실상 같은 리뷰 차단(최종 문자열 dedup 의 사각지대).
+  if (seen) { for (let i = 0; i < 8 && seen.has(base); i++) base = pick(src); seen.add(base) }
+  // 🎭 본문이 이미 방문 맥락으로 시작하면 오프너 생략(‘가봤는데 회식으로 갔는데’ 같은 이중 맥락 방지).
+  const opener = /^(회식|부모님|가족|친구|지인|결혼|아이|혼자|두 번째|처음|딸|아들|엄마|남편|아내|동료|오랜만)/.test(base) ? '' : pick(OPENERS)
+  let s = opener + base
   // 12%: 매장명 자연스럽게 앞에(오프너 없을 때만)
-  if (!opener && storeName && Math.random() < 0.12) s = `${storeName} 다녀왔어요. ${s}`
+  if (!opener && storeName && Math.random() < 0.12) s = `${storeName} 다녀왔어요. ${base}`
   if (rating >= 5) s += pick(TAILS)
   s += pick(EMOJI)
   return s
@@ -224,10 +232,8 @@ export async function buildStoreReviews(env: Env, p: StoreReviewInput, count = 8
       for (let k = 0; k < n; k++) {
         const rating = ratingSample()
         if (Math.random() < 0.1) { out.push({ rating, content: '' }); continue }  // 별점만(실제 패턴, 소량)
-        let content = composeDemoReview(rating, topic, p.storeName)
-        for (let attempt = 0; attempt < 6 && seen.has(content); attempt++) content = composeDemoReview(rating, topic, p.storeName)
-        seen.add(content)
-        out.push({ rating, content })
+        // dedup 은 composeDemoReview 가 '핵심 문장' 기준으로 수행(오프너/꼬리 변형까지 커버).
+        out.push({ rating, content: composeDemoReview(rating, topic, p.storeName, seen) })
       }
     }
   }
