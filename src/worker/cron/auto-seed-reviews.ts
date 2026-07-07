@@ -12,10 +12,19 @@
 
 import type { Env } from '../types/env'
 import { autoSeedMissingReviews } from '../utils/auto-seed-fake-reviews'
-import { seedMissingDemoReviews } from '../utils/demo-review-generator'
+import { seedMissingDemoReviews, refreshDemoReviews } from '../utils/demo-review-generator'
 import { logError, logInfo } from '../utils/logger'
 
 export async function handleAutoSeedReviews(env: Env): Promise<void> {
+  // 🔄 2026-07-06 (대표 "기존 100개+ 데모도 다 새 리뷰로 · 토큰 없이 자동으로"): 옛 저품질 리뷰를
+  //   새 composer 로 자동 교체. force=false 라 `review_gen_v='2'` 미표시분만 chunk(40)씩 처리 →
+  //   cron 반복으로 전체 소진 후 자연 종료(remaining=0, 이후 no-op). 관리자 수동 트리거·토큰 불필요.
+  try {
+    const rf = await refreshDemoReviews(env, 40, false)
+    if (rf.refreshed > 0) logInfo(`[cron] demo-reviews refresh: refreshed=${rf.refreshed} reviews=${rf.reviews} remaining=${rf.remaining}`)
+  } catch (e) {
+    logError('[cron] demo-reviews refresh FAILED', { error: String(e) })
+  }
   // 🔒 2026-07-06 (대표 "리뷰 퀄리티 영구 유지"): 데모는 **매장특색 composer** 로 먼저 시드 —
   //   generic 템플릿(아래 autoSeedMissingReviews)은 데모를 제외하므로 데모 품질이 구조적으로 영구 유지.
   try {
