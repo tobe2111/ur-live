@@ -27,11 +27,11 @@ export default function FeaturedCard({ product, to, eyebrow }: { product: Produc
           srcSet={cfSrcSet(product.image_url, 640) || undefined}
           sizes="(max-width: 480px) 100vw, 430px"
           alt={product.name} loading="eager" decoding="async"
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover object-[center_38%]"
         />
       )}
-      {/* 하단 어둡게 — 텍스트 가독 */}
-      <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(6,6,10,.84) 0%, rgba(6,6,10,.22) 46%, transparent 72%)' }} />
+      {/* 하단 어둡게 — 텍스트 가독(2단 그라데이션: 하단 짙게 + 중간 부드럽게 이어짐, 음식 중앙은 밝게 유지) */}
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(6,6,10,.86) 0%, rgba(6,6,10,.40) 30%, rgba(6,6,10,.08) 55%, transparent 74%)' }} />
       {disc > 0 && (
         <span className="absolute top-3 left-3 rounded-lg bg-[#DE5F27] text-white text-[12px] font-extrabold px-2.5 py-1">{disc}% 할인</span>
       )}
