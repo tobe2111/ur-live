@@ -250,9 +250,11 @@ export async function logoutAll(): Promise<void> {
   try {
     const { clearAuthData } = await import('@/utils/auth')
     clearAuthData('user'); clearAuthData('seller'); clearAuthData('admin')
-    // 에이전시 키(clearAuthData 미지원) + user_type + 링크샵/도매 파생 신호까지 확실히 제거 →
-    //   isLoggedInSync() 가 검사하는 모든 토큰/신호를 남김없이 삭제(잔여 로그인 0).
+    // 에이전시·제조사(supplier) 키(clearAuthData 미지원) + user_type + 링크샵/도매 파생 신호까지
+    //   확실히 제거 → "전부 로그아웃"이 정말 전 역할을 덮게(잔여 로그인 0). (supplier_token 은
+    //   isLoggedInSync 대상은 아니나, 명시 전체 로그아웃이므로 도매 대시보드 Bearer 도 함께 종료.)
     ;['agency_token', 'agency_refresh_token', 'agency_id', 'agency_name', 'agency_email',
+      'supplier_token', 'supplier_refresh_token', 'supplier_id', 'supplier_name', 'supplier_email',
       'user_type', 'seller_username', 'user_handle', 'linked_seller_username', 'is_distributor']
       .forEach(k => { try { localStorage.removeItem(k) } catch { /* quota */ } })
   } catch (err) {
