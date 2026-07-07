@@ -118,7 +118,6 @@ import {
   sellerCastingRoutes,
 } from '../features/casting/api/casting.routes';
 import { donationBoosterRoutes, donationBoosterPublicRoutes } from '../features/donations/api/donation-booster.routes';
-import { pkBattlesRoutes, pkBattlesPublicRoutes } from '../features/agency/api/pk-battles.routes';
 import { shippingAddressRoutes } from '../features/shipping/api/shipping-address.routes';
 import { wishlistRoutes } from '../features/wishlists/api/wishlists.routes';
 import { supplyRoutes } from '../features/supply/api/supply.routes';
@@ -1397,9 +1396,7 @@ app.route('/api/seller/castings', sellerCastingRoutes);
 // 🛡️ 2026-04-27 Phase 2-5: 라이브 후원 부스터 이벤트
 app.route('/api/donation-boosters', donationBoosterRoutes);
 app.route('/api/donation-boosters-public', donationBoosterPublicRoutes);
-// 🛡️ 2026-04-27 Phase 2-7: PK 이벤트 (셀러 vs 셀러 매출 경쟁)
-app.route('/api/agency/pk', pkBattlesRoutes);
-app.route('/api/pk-public', pkBattlesPublicRoutes);
+// 🗑️ 2026-07-07 (라이브커머스 제거 3/N): PK 배틀(라이브 매출경쟁) 라우트 제거.
 
 // Email notifications (global)
 app.route('/api/email', emailRoutes);
