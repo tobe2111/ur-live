@@ -1,13 +1,24 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 이용권 카드 클러스터(verbatim 추출). 동작 불변.
 //   MiniQrHint·Barcode·KtAlphaVoucherCard 는 모듈 내부 전용, VoucherTicket 만 페이지가 사용.
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import api from '@/lib/api'
 import { safeDate } from '@/utils/safe-date'
 import { formatNumber } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
 import { Ticket, MapPin, QrCode, Copy, Gift, Smartphone } from 'lucide-react'
 import type { Voucher } from './types'
 import ReviewBonusButton from './ReviewBonusButton'
+
+// 🎟️ 2026-07-06 (대표 "ㄴ 이것도 개선해줘"): 이용권 카드에 매장 사용방식 칩 표시 — 유저가 매장 가기 전에
+//   이 카드만 보고도 사용법을 파악. redemption-info(사장님 설정)를 코드별 1회 조회(모듈 캐시로 재조회 방지).
+type RedeemMode = 'scan_only' | 'store_code' | 'self_free'
+const MODE_CHIP: Record<RedeemMode, string> = {
+  scan_only: '🔳 직원 스캔',
+  store_code: '🔢 코드 입력',
+  self_free: '⚡ 바로 사용',
+}
+const _modeCache = new Map<string, RedeemMode | null>()
 
 // 🎨 2026-06-21 시안 A: 패스 풋 'QR 힌트' (장식 — 실제 QR 은 사용하기 모달). 잉크 finder 패턴 + 닷.
 function MiniQrHint({ muted }: { muted?: boolean }) {
@@ -42,6 +53,23 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
   onShowQr: () => void
 }) {
   const navigate = useNavigate()  // 🎨 2026-06-21 (개선 #4): 사용완료/만료 카드 '재구매' 딥링크
+
+  // 🎟️ 2026-07-06: 미사용 내부 이용권만 매장 사용방식 칩 조회 (KT 교환권/사용완료 제외). 코드별 캐시 → 재조회 0.
+  const [mode, setMode] = useState<RedeemMode | null>(() => _modeCache.get(v.code) ?? null)
+  useEffect(() => {
+    if (v.status !== 'unused' || v.source === 'kt_alpha') return
+    if (_modeCache.has(v.code)) { setMode(_modeCache.get(v.code) ?? null); return }
+    let alive = true
+    api.get(`/api/group-buy/vouchers/${encodeURIComponent(v.code)}/redemption-info`)
+      .then((res) => {
+        const m: RedeemMode | null = res.data?.success ? (res.data.data?.mode ?? null) : null
+        _modeCache.set(v.code, m)
+        if (alive) setMode(m)
+      })
+      .catch(() => { /* 조회 실패 시 칩 미표시 */ })
+    return () => { alive = false }
+  }, [v.code, v.status, v.source])
+
   const expiresAt = safeDate(v.expires_at)
   const usedAt = safeDate(v.used_at)
   const daysLeft = expiresAt ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : null
@@ -58,9 +86,17 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
 
   const notchStyle = { background: '#F2F2F7', border: '1px solid #ECECEF' } as const
 
+  // 🎟️ 2026-07-06 (대표 승인): 미사용 카드는 어디를 눌러도 사용 안내(QR/사용법) 모달이 열림 —
+  //   버튼 하나만 찾을 필요 없이 카드 전체가 진입점. 내부 인터랙션(코드 복사)은 stopPropagation 으로 보호.
+  const tappable = v.status === 'unused'
+
   return (
     <div
-      className="relative rounded-[18px] bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F]"
+      onClick={tappable ? onShowQr : undefined}
+      role={tappable ? 'button' : undefined}
+      tabIndex={tappable ? 0 : undefined}
+      onKeyDown={tappable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onShowQr() } } : undefined}
+      className={`relative rounded-[18px] bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#1F1F1F] ${tappable ? 'cursor-pointer' : ''}`}
       style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 2px rgba(10,10,10,0.05), 0 14px 30px -12px rgba(10,10,10,0.16)' }}
     >
       {/* 헤더: 썸네일 + 가게 + 상태 배지 */}
@@ -98,6 +134,15 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
 
       {/* 제목 */}
       <p className="px-4 pt-2 text-[18px] font-extrabold tracking-tight text-gray-900 dark:text-white truncate">{v.product_name}</p>
+
+      {/* 🎟️ 2026-07-06 매장 사용방식 칩 — 가기 전에 사용법 파악 (사장님 설정과 동일 연결) */}
+      {tappable && mode && (
+        <div className="px-4 pt-1.5">
+          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-white/10 px-2.5 py-1 text-[11px] font-bold text-gray-600 dark:text-gray-300">
+            {MODE_CHIP[mode]}
+          </span>
+        </div>
+      )}
 
       {/* 금액 + 사용하기 */}
       <div className="flex items-end justify-between px-4 pt-1.5 pb-4">
