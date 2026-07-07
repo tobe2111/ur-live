@@ -46,6 +46,8 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
   const [showRedeem, setShowRedeem] = useState(false)
   // 🎟️ 2026-07-06 (대표 "이용권 페이지에 사용방법을 사장님 설정과 동일하게"): 이 매장의 사용 방식을 미리 안내.
   const [redemptionMode, setRedemptionMode] = useState<'scan_only' | 'store_code' | 'self_free' | null>(null)
+  // 🎟️ 2026-07-06 사장님이 선택한 매장별 사용조건(표준 문구 배열)
+  const [storeConditions, setStoreConditions] = useState<string[]>([])
   // 🛡️ 2026-06-26 (소비자 감사): safeDate — D1 'YYYY-MM-DD HH:MM:SS' 를 사파리가 Invalid Date 로 파싱하면
   //   NaN < window 가 false → 미사용 7일내인데도 환불 버튼이 사라지던 것(기능 차단). safeDate 가 파싱 보정.
   const createdMs = safeDate(voucher.created_at)?.getTime() ?? NaN
@@ -103,7 +105,11 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
     if (voucher.status !== 'unused' || voucher.source === 'kt_alpha') return
     let alive = true
     api.get(`/api/group-buy/vouchers/${encodeURIComponent(voucher.code)}/redemption-info`)
-      .then(res => { if (alive && res.data?.success) setRedemptionMode(res.data.data?.mode ?? null) })
+      .then(res => {
+        if (!alive || !res.data?.success) return
+        setRedemptionMode(res.data.data?.mode ?? null)
+        setStoreConditions(Array.isArray(res.data.data?.conditions) ? res.data.data.conditions : [])
+      })
       .catch(() => { /* silent — 안내 없으면 기본 버튼 흐름 */ })
     return () => { alive = false }
   }, [voucher.code, voucher.status, voucher.source])
@@ -262,11 +268,20 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                 </ol>
               </div>
 
-              {/* 매장 안내 (사장님 입력 조건) */}
-              {voucher.usage_guide && (
+              {/* 매장 안내 — 사장님이 선택한 사용조건(표준 문구) + 상품별 자유 안내(usage_guide) */}
+              {(storeConditions.length > 0 || voucher.usage_guide) && (
                 <div>
                   <p className="text-[11px] font-bold text-gray-900 dark:text-white mb-1">{t('voucher.storeGuide', { defaultValue: '매장 안내' })}</p>
-                  <p className="text-[11.5px] text-gray-500 dark:text-gray-400 whitespace-pre-wrap leading-snug">{voucher.usage_guide}</p>
+                  {storeConditions.length > 0 && (
+                    <ul className="space-y-0.5 mb-1">
+                      {storeConditions.map((cnd, i) => (
+                        <li key={i} className="flex gap-1.5 text-[11.5px] text-gray-500 dark:text-gray-400 leading-snug"><span aria-hidden>·</span><span>{cnd}</span></li>
+                      ))}
+                    </ul>
+                  )}
+                  {voucher.usage_guide && (
+                    <p className="text-[11.5px] text-gray-500 dark:text-gray-400 whitespace-pre-wrap leading-snug">{voucher.usage_guide}</p>
+                  )}
                 </div>
               )}
 

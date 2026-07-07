@@ -927,13 +927,22 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       ).bind(code, user.id).first<{ seller_id: number | null }>().catch(() => null)
       if (!pre) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
       let mode: 'scan_only' | 'store_code' | 'self_free' = 'self_free'  // 미설정/조회실패 = 기존 동작
+      let conditions: string[] = []
       if (pre.seller_id != null) {
         try {
           const { getRedemptionSettings } = await import('../../../worker/utils/redemption-settings')
           mode = (await getRedemptionSettings(DB, Number(pre.seller_id))).mode
         } catch { /* fail-open — self_free */ }
+        // 🎟️ 2026-07-06 매장별 사용조건(사장님이 선택) → 소비자 '이용 안내'에 표준 문구로 표시.
+        try {
+          const { getSellerMeta } = await import('../../../worker/utils/seller-meta')
+          const { resolveUsageConditions } = await import('../../../shared/voucher-usage-conditions')
+          const raw = (await getSellerMeta(DB, [Number(pre.seller_id)]))?.get(Number(pre.seller_id))
+          const keys = JSON.parse(String(raw?.voucher_usage_conditions || '[]'))
+          conditions = resolveUsageConditions(Array.isArray(keys) ? keys : [], String(raw?.voucher_usage_custom || ''))
+        } catch { /* 미설정 */ }
       }
-      return c.json({ success: true, data: { mode } })
+      return c.json({ success: true, data: { mode, conditions } })
     } catch (err) {
       return safeError(c, err, '사용 방식 조회 중 오류가 발생했습니다', '[redemption-info]')
     }
