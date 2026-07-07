@@ -157,10 +157,8 @@ import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/
 import { donationsRoutes } from '../features/donations/api/donations.routes';
 import { sellerDonationsRoutes } from '../features/donations/api/seller-donations.routes';
 import youtubeRoutes from '../features/youtube/api/youtube.routes';
-import { youtubeLiveRoutes, omeAdmissionHandler, createLiveBroadcastHandler } from '../features/youtube/api/youtube-live.routes';
-import { rateLimit as rateLimitMw } from './middleware/rate-limit';
+// 🗑️ 2026-07-07 (대표 지시 "라이브커머스 모두 제거"): youtube-live.routes(160KB) 제거 — 워커 다이어트.
 import { multiPlatformRoutes } from '../features/multi-platform/api/multi-platform.routes';
-import youtubeChatRoutes from '../features/youtube/api/youtube-chat.routes';
 import { liveSseRoutes, chatRoutes } from './routes/live-sse.routes';
 import { cafe24Routes } from '../features/cafe24/api/cafe24.routes';
 
@@ -1899,48 +1897,10 @@ app.route('/api/guides', guideRoutes);
 //   sub-router 마운트 순서 swap 으로도 405 가 계속 발생 → Hono v4 에서 같은 prefix 의
 //   여러 sub-app 마운트 시 라우팅 분쟁이 있음. top-level 직접 등록은 분쟁 없음.
 //   sub-router 내부 등록도 유지하여 정상 작동 시 동일하게 동작.
-// 🛡️ 2026-05-14: rate limit 제거 (테스트 편의 — 사용자 요청). 필요 시 다시:
-//   `const _liveCreateRateLimit = rateLimitMw({ action: 'youtube_live_create', max: 15, windowSec: 3600 });`
-//   `app.post(..., _liveCreateRateLimit, createLiveBroadcastHandler);`
-app.post('/api/seller/youtube/live/create', createLiveBroadcastHandler);
-app.post('/api/youtube/live/create', createLiveBroadcastHandler);
-
-// 그 외 /live/* 경로 (status, start, end, chat 등) 는 기존대로 sub-router 사용.
-// 🛡️ 2026-05-12: youtubeLiveRoutes 를 먼저 마운트 — Hono v4 에서 같은 prefix 에
-//   두 라우터 마운트 시 첫 번째 라우터가 경로를 "소비"하여 두 번째 라우터의
-//   POST /live/create 가 405 반환되는 문제 해결. /live/* 가 더 구체적이므로 우선.
-app.route('/api/seller/youtube', youtubeLiveRoutes);
-app.route('/api/youtube', youtubeLiveRoutes);
+// 🗑️ 2026-07-07 (대표 지시 "라이브커머스 모두 제거"): youtube-live 방송 생성/OME admission/라이브 채팅
+//   마운트 전부 제거(youtube-live.routes·youtube-chat.routes·ome-push/cache/hmac 삭제). 계정연동(youtubeRoutes)은 유지.
 app.route('/api/seller/youtube', youtubeRoutes);
 app.route('/api/youtube', youtubeRoutes); // legacy path alias
-
-// 🛡️ 2026-05-08: OvenMediaEngine admission webhook (자체 미디어 서버).
-//   OME 가 publish 시도 시 호출 → token 검증 + 셀러의 YouTube RTMP key 동적 push 등록.
-app.post('/api/internal/ome/admission', async (c) => {
-  // signature 검증을 위해 raw body 그대로 보존 (re-stringify 시 OME 의 원본 바이트와 달라질 수 있음).
-  const rawBody = await c.req.text().catch(() => '')
-  if (!rawBody) {
-    return c.json({ allowed: false, reason: 'empty body' }, 400)
-  }
-  // 🛡️ 2026-05-12 (C4): JSON 파싱 실패와 핸들러 실패 분리. 잘못된 JSON 은 400 (재시도 무의미),
-  //   핸들러 내부 실패만 500 (재시도 가능). OME 에게 정확한 신호 전달.
-  let body: unknown
-  try {
-    body = JSON.parse(rawBody)
-  } catch (parseErr) {
-    console.warn('[OME admission] invalid JSON body', { length: rawBody.length, err: String(parseErr).slice(0, 100) })
-    return c.json({ allowed: false, reason: 'invalid JSON' }, 400)
-  }
-  try {
-    const sig = c.req.header('X-OME-Signature') || null
-    const result = await omeAdmissionHandler(body as Parameters<typeof omeAdmissionHandler>[0], sig, c.env, rawBody, (p) => c.executionCtx.waitUntil(p))
-    return c.json(result)
-  } catch (e) {
-    console.error('[OME admission] handler error', e)
-    return c.json({ allowed: false, reason: 'internal error' }, 500)
-  }
-});
-app.route('/api/youtube/chat', youtubeChatRoutes);
 
 // 🛡️ 2026-04-23 배치 164: 다중 플랫폼 stub (TikTok / Naver Chzzk / SOOP)
 //   GET /api/platforms 로 지원 플랫폼 상태 조회. 미구현 플랫폼은 501 반환.

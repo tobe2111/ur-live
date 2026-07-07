@@ -18,6 +18,7 @@ import SuggestionModal from './restaurant-map/SuggestionModal'
 import HeroCarousel from './restaurant-map/HeroCarousel'
 import RestaurantList from './restaurant-map/RestaurantList'
 import { useGeocodeMissing } from './restaurant-map/useGeocodeMissing'
+import { useNearMeAuto } from './restaurant-map/useNearMeAuto'
 import SelectedDealCard from './restaurant-map/SelectedDealCard'
 import MapTopBar from './restaurant-map/MapTopBar'
 import SheetFilterBar from './restaurant-map/SheetFilterBar'
@@ -233,6 +234,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       { timeout: 5000, enableHighAccuracy: false, maximumAge: 600000 }
     )
   }, [])
+
+  // 🧭 2026-07-07 (대표 — 홈 '내 주변' 기준): 위치 확보 시 자동 '가까운 순' + 동네 라벨(useNearMeAuto).
+  const { nearDong, setSortByUser } = useNearMeAuto({ userLoc, region, district, setSortBy, setNearMeMode })
 
   // 🛡️ 2026-06-20 (대표 — "미리 업체들 나오는거 별로"): 옵션B 카카오 일반 업체(회색 '+' 추천핀)를
   //   기본 지도에 자동으로 깔던 것 제거 → 기본 화면엔 '실제 딜'만. 사용자가 직접 검색했을 때만 표시
@@ -473,6 +477,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       ? (findDistrictGroup(region, district)?.label.split('/')[0] || '지역')
       : region
       ? (findRegionByKey(region)?.label.replace('\n', ' ') || '지역')
+      : nearMeMode
+      // 🧭 2026-07-07 (대표 — '내 주변' 기준): 지역 미선택 + 내 주변 모드면 감지된 동네(폴백 '내 주변').
+      ? (nearDong || '내 주변')
       : '전국'
     return (
       <div className="bg-white dark:bg-[#020202] min-h-[100dvh]">
@@ -506,7 +513,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             filteredCount={filtered.length}
             userLoc={userLoc}
             sortBy={sortBy}
-            setSortBy={setSortBy}
+            setSortBy={setSortByUser}
             favorites={favorites}
             showFavoritesOnly={showFavoritesOnly}
             setShowFavoritesOnly={setShowFavoritesOnly}
@@ -542,7 +549,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             region={region} district={district} sortBy={sortBy} radiusKm={radiusKm} priceRange={priceRange}
             hasUserLoc={!!userLoc} countFor={countFor}
             onApply={(rg, dist, sort, radius, price) => {
-              setRegion(rg); setDistrict(dist); setSortBy(sort); setRadiusKm(radius); setPriceRange(price); setFilterSheetOpen(false)
+              setRegion(rg); setDistrict(dist); setSortByUser(sort); setRadiusKm(radius); setPriceRange(price); setFilterSheetOpen(false)
             }}
             onClose={() => setFilterSheetOpen(false)}
           />
@@ -672,7 +679,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             filteredCount={filtered.length}
             userLoc={userLoc}
             sortBy={sortBy}
-            setSortBy={setSortBy}
+            setSortBy={setSortByUser}
             favorites={favorites}
             showFavoritesOnly={showFavoritesOnly}
             setShowFavoritesOnly={setShowFavoritesOnly}
@@ -725,7 +732,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           onApply={(rg, dist, sort, radius, price) => {
             setRegion(rg)
             setDistrict(dist)
-            setSortBy(sort)
+            setSortByUser(sort)
             setRadiusKm(radius)
             setPriceRange(price)
             setMapView(true)
