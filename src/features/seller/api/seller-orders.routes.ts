@@ -1276,3 +1276,72 @@ sellerOrdersRoutes.post('/products/:id/resend-store-link', async (c) => {
     return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
   }
 });
+
+// ─── 공구(group-buy) 상태 세션 — 매장이 이용권에 공구 열기/닫기 (2026-07-06 §2-A) ──────────
+//   ⚠️ 게이트: platform_settings.gb_engine_enabled==='true' 일 때만 동작(이중 안전 — 클라 GB_ENGINE_ENABLED
+//   와 별개). 세션은 product_supply_meta gb_* 키에 저장(gb-session-store). 실제 소비자가/커미션 authoritative
+//   적용(consumer 상세·resolver)은 owner-funding 검증 후 별도 슬라이스 — 여기선 상태 저장만.
+async function gbEngineOn(db: D1Database): Promise<boolean> {
+  const row = await db.prepare("SELECT value FROM platform_settings WHERE key = 'gb_engine_enabled'")
+    .first<{ value: string }>().catch(() => null)
+  return row?.value === 'true'
+}
+
+async function loadOwnedVoucher(c: { req: { header: (k: string) => string | undefined; param: (k: string) => string }; env: { DB: D1Database; JWT_SECRET: string } }) {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return { error: '로그인 필요' as const, status: 401 as const }
+  const { isVoucherCategory } = await import('../../../shared/constants/voucher-categories')
+  const productId = Number(c.req.param('id'))
+  if (!Number.isFinite(productId) || productId <= 0) return { error: '잘못된 상품 ID' as const, status: 400 as const }
+  const product = await c.env.DB.prepare('SELECT id, seller_id, price, category FROM products WHERE id = ? AND seller_id = ?')
+    .bind(productId, sellerId).first<{ id: number; seller_id: number; price: number; category: string }>()
+  if (!product) return { error: '상품을 찾을 수 없습니다' as const, status: 404 as const }
+  if (!isVoucherCategory(product.category)) return { error: '공구는 이용권 상품에만 열 수 있습니다' as const, status: 400 as const }
+  return { sellerId, productId, product }
+}
+
+// GET — 현재 공구 세션 조회
+sellerOrdersRoutes.get('/products/:id/group-buy', async (c) => {
+  try {
+    if (!(await gbEngineOn(c.env.DB))) return c.json({ success: false, error: '공구 엔진이 비활성 상태입니다', code: 'GB_ENGINE_OFF' }, 403)
+    const owned = await loadOwnedVoucher(c)
+    if ('error' in owned) return c.json({ success: false, error: owned.error }, owned.status)
+    const { getGbSession } = await import('../../../worker/utils/gb-session-store')
+    const session = await getGbSession(c.env.DB, owned.productId)
+    return c.json({ success: true, data: { session, list_price: owned.product.price } })
+  } catch { return c.json({ success: false, error: '조회 중 오류가 발생했습니다' }, 500) }
+})
+
+// POST — 공구 열기/수정/닫기 (action: 'open' | 'close')
+sellerOrdersRoutes.post('/products/:id/group-buy', async (c) => {
+  try {
+    if (!(await gbEngineOn(c.env.DB))) return c.json({ success: false, error: '공구 엔진이 비활성 상태입니다', code: 'GB_ENGINE_OFF' }, 403)
+    const owned = await loadOwnedVoucher(c)
+    if ('error' in owned) return c.json({ success: false, error: owned.error }, owned.status)
+    const body = await c.req.json<{
+      action?: 'open' | 'close'; startAt?: string | null; deadline?: string | null
+      target?: number | null; price?: number | null; promoPct?: number | null; linkOnly?: boolean
+    }>().catch(() => ({} as Record<string, never>))
+    const { validateGbSession } = await import('../../../shared/gb-session')
+    const { saveGbSession } = await import('../../../worker/utils/gb-session-store')
+
+    if (body.action === 'close') {
+      await saveGbSession(c.env.DB, owned.productId, { mode: 'off' })
+      return c.json({ success: true, data: { session: { mode: 'off' } } })
+    }
+    // open (기본): 즉시 live (예약 시작은 startAt 있으면 scheduled 로)
+    const session = {
+      mode: (body.startAt && Date.parse(body.startAt) > Date.now() ? 'scheduled' : 'live') as 'scheduled' | 'live',
+      startAt: body.startAt ?? null,
+      deadline: body.deadline ?? null,
+      target: body.target != null && Number.isFinite(Number(body.target)) ? Math.floor(Number(body.target)) : null,
+      price: body.price != null && Number.isFinite(Number(body.price)) ? Math.floor(Number(body.price)) : null,
+      promoPct: body.promoPct != null && Number.isFinite(Number(body.promoPct)) ? Number(body.promoPct) : null,
+      linkOnly: body.linkOnly === true,
+    }
+    const v = validateGbSession(session, Number(owned.product.price))
+    if (!v.ok) return c.json({ success: false, error: v.error }, 400)
+    await saveGbSession(c.env.DB, owned.productId, session)
+    return c.json({ success: true, data: { session } })
+  } catch { return c.json({ success: false, error: '공구 설정 중 오류가 발생했습니다' }, 500) }
+})
