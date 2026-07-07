@@ -9,7 +9,7 @@ import { cfImage } from '@/utils/cf-image'
 import { logout } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
-import { ChevronRight, Store } from 'lucide-react'
+import { ChevronRight, Store, ScanLine } from 'lucide-react'
 import TeamPointsCard from './user-profile/TeamPointsCard'
 import EarningsGroup from './user-profile/EarningsGroup'
 import ReferralEarnedCard from './user-profile/ReferralEarnedCard'
@@ -248,6 +248,24 @@ export default function UserProfilePage() {
         {/* 🛡️ 2026-05-01: linked seller 가 있으면 셀러 대시보드 전환 버튼 표시.
             이전: BottomNav 가 seller_token 만 보고 자동으로 셀러 UI 표시 → 사용자 혼란.
             이번: 명시 전환만 셀러 모드로. */}
+        {/* 🎟️ 2026-07-06 (대표 — 계산대 스캔을 셀러 대시보드 말고 메인에서): 사업자 유저 '매장 계산대'
+            강조 카드. 손님 이용권 QR 스캔 = 매일 수십 번 쓰는 계산대 동선 → 최상단·큰 카드로 노출. */}
+        {!!localStorage.getItem('seller_token') && (
+          <button
+            type="button"
+            onClick={() => navigate('/store/scan')}
+            className="w-full flex items-center gap-3.5 p-4 rounded-2xl bg-gray-900 dark:bg-white active:scale-[0.99] transition-transform"
+          >
+            <span className="w-11 h-11 rounded-xl bg-white/15 dark:bg-gray-900/10 flex items-center justify-center shrink-0">
+              <ScanLine className="w-6 h-6 text-white dark:text-gray-900" aria-hidden="true" />
+            </span>
+            <span className="text-left min-w-0">
+              <span className="block text-[15px] font-extrabold text-white dark:text-gray-900">{t('userProfile.storeCheckout', { defaultValue: '매장 계산대' })}</span>
+              <span className="block text-[11.5px] text-white/75 dark:text-gray-900/70 mt-0.5">{t('userProfile.storeCheckoutDesc', { defaultValue: '손님 이용권 QR을 스캔해 바로 사용 처리' })}</span>
+            </span>
+          </button>
+        )}
+
         {/* 🏪 2026-06-22 (대표 — 소상공인은 풀 대시보드 대신 앱에서 바로): 사업자 유저 경량 '내 매장'. */}
         {!!localStorage.getItem('seller_token') && (
           <button
