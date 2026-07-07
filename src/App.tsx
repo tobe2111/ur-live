@@ -74,7 +74,6 @@ const WholesaleIntroPage = lazy(() => import('./pages/WholesaleIntroPage'))
 const WholesaleJoinPage = lazy(() => import('./pages/WholesaleJoinPage'))
 const WholesaleLoginPage = lazy(() => import('./pages/WholesaleLoginPage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
-const ShortsPage = lazy(() => import('./pages/ShortsPage'))
 const IntroducePage = lazy(() => import('./pages/IntroducePage'))
 const AboutPage = lazy(() => import('./pages/AboutPage'))
 
@@ -84,12 +83,7 @@ const JoinChoicePage = lazy(() => import('./pages/JoinChoicePage'))
 const KakaoCallbackPage = lazy(() => import('./pages/KakaoCallbackPage'))
 const KakaoConsentCallbackPage = lazy(() => import('./pages/KakaoConsentCallbackPage'))
 const KakaoLinkCallbackPage = lazy(() => import('./pages/KakaoLinkCallbackPage'))
-const LivePageV2 = lazy(() => import('./pages/LivePageV2'))
-const LiveListPage = lazy(() => import('./pages/LiveListPage'))
-const LiveRecapPage = lazy(() => import('./pages/LiveRecapPage'))
 const PaymentDemoPage = lazy(() => import('./pages/PaymentDemoPage'))
-const EmbedLivePage = lazy(() => import('./pages/EmbedLivePage'))
-const SellerOverlayPage = lazy(() => import('./pages/SellerOverlayPage'))
 const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'))
 const PaymentFailPage = lazy(() => import('./pages/PaymentFailPage'))
 const PointsChargePage = lazy(() => import('./pages/PointsChargePage'))
@@ -550,9 +544,8 @@ function AppContent() {
   // 🛡️ 2026-05-24 (regression fix): /pay/widget 누락 → BottomNav 가 결제 버튼 가림.
   //   결제 위젯 마운트하는 모든 경로는 반드시 여기 등록. 신규 추가 시 tests/unit/toss-fullscreen-routes.test.ts
   //   가 자동 검증 (App.tsx 의 fullScreenPrefixes 와 TossPaymentWidget 마운트 라우트 일치 확인).
-  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/agency', '/login', '/register', '/auth', '/embed', '/introduce', '/shorts', '/blog', '/my-orders', '/store/scan']
+  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/agency', '/login', '/register', '/auth', '/embed', '/introduce', '/blog', '/my-orders', '/store/scan']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
-    || location.pathname.startsWith('/live/') // /live/123 은 풀스크린, /live 목록은 아님
   // 🏭 유통스타트 B2B(도매몰/제조사)는 소비자 BottomNav/TopNav 미표시 — 별도 도메인·업태.
   //   isWholesaleSurface = SSOT (`/wholesale*`·`/supplier*`). 같은 헬퍼를 BottomNav·DesktopTopNav
   //   컴포넌트가 자기-차단에도 사용 → 1차(여기서 마운트 차단) + 2차(컴포넌트 self-guard) 이중 방어.
@@ -659,7 +652,7 @@ function AppContent() {
             <Route path="/wholesale/start" element={<WholesaleStartPage />} />
             <Route path="/partnership" element={<PartnershipInquiryPage />} />
             <Route path="/wholesale/staff-login" element={<WholesaleStaffLoginPage />} />
-            <Route path="/shorts" element={<ShortsPage />} />
+            {/* 🗑️ 2026-07-07 라이브커머스 제거: /shorts 라우트 제거 */}
             <Route path="/v/:code" element={<VoucherVerifyPage />} />
             {/* 🛡️ 2026-04-28: 선물 받기 페이지 (인증 불필요) */}
             <Route path="/gift/claim/:token" element={<GiftClaimPage />} />
@@ -704,9 +697,7 @@ function AppContent() {
             <Route path="/seller/prospects" element={<SellerProspectsPage />} />
             <Route path="/seller/proxy-products" element={<SellerProxyProductsPage />} />
             <Route path="/seller/plus-friend-guide" element={<SellerPlusFriendGuidePage />} />
-            <Route path="/live" element={<LiveListPage />} />
-            <Route path="/live/recap/:id" element={<LiveRecapPage />} />
-            <Route path="/live/:streamId" element={<ErrorBoundary><LivePageV2 /></ErrorBoundary>} />
+            {/* 🗑️ 2026-07-07 라이브커머스 제거: /live·/live/recap·/live/:streamId 라우트 제거 */}
             <Route path="/products/:id" element={<ErrorBoundary><ProductDetailPage /></ErrorBoundary>} />
             {/* Redirect old single product URL to plural */}
             <Route path="/product/:id" element={<ProductRedirect />} />
@@ -932,8 +923,7 @@ function AppContent() {
             {import.meta.env.DEV && <Route path="/payment/demo" element={<ErrorBoundary><PaymentDemoPage /></ErrorBoundary>} />}
 
             {/* 임베드 위젯 (외부 서비스용) */}
-            <Route path="/embed/live/:streamId" element={<EmbedLivePage />} />
-            <Route path="/embed/seller-overlay/:streamId" element={<SellerOverlayPage />} />
+            {/* 🗑️ 2026-07-07 라이브커머스 제거: /embed/live·/embed/seller-overlay 라우트 제거 */}
             <Route path="/payment/success" element={<ErrorBoundary><PaymentSuccessPage /></ErrorBoundary>} />
             <Route path="/success" element={<ErrorBoundary><PaymentSuccessPage /></ErrorBoundary>} />
             <Route path="/payment/fail" element={<ErrorBoundary><PaymentFailPage /></ErrorBoundary>} />

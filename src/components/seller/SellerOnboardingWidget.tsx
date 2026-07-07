@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { swallow } from '@/shared/utils/swallow'
-import { CheckCircle2, Circle, Trophy, Sparkles, BookOpen, ChevronRight } from 'lucide-react'
-import LiveStartGuideModal from './LiveStartGuideModal'
+import { CheckCircle2, Circle, Trophy, Sparkles, ChevronRight } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 
 interface OnboardingStep {
@@ -35,7 +34,6 @@ export default function SellerOnboardingWidget() {
   const [data, setData] = useState<OnboardingData | null>(null)
   const [loading, setLoading] = useState(true)
   const [dismissed, setDismissed] = useState(() => localStorage.getItem('seller_bootcamp_dismissed') === 'true')
-  const [showLiveGuide, setShowLiveGuide] = useState(false)
 
   useEffect(() => {
     if (dismissed) { setLoading(false); return }
@@ -128,23 +126,7 @@ export default function SellerOnboardingWidget() {
         </div>
       )}
 
-      {/* 🏭 라이브커머스 영구중단(LIVE_COMMERCE_SUSPENDED): '라이브 시작 가이드' 버튼/모달 숨김. */}
-      {!LIVE_COMMERCE_SUSPENDED && (
-        <>
-          <button
-            onClick={() => setShowLiveGuide(true)}
-            className="mt-3 w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors"
-          >
-            <BookOpen className="w-3.5 h-3.5" /> 라이브 시작 가이드 보기
-          </button>
-
-          <LiveStartGuideModal
-            open={showLiveGuide}
-            onClose={() => setShowLiveGuide(false)}
-            onContinue={() => setShowLiveGuide(false)}
-          />
-        </>
-      )}
+      {/* 🗑️ 2026-07-07 라이브커머스 제거: '라이브 시작 가이드' 버튼/모달 제거. */}
     </div>
   )
 }

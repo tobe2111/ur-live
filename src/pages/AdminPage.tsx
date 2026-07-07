@@ -22,7 +22,6 @@ import AdminActivityFeed from './admin-page/AdminActivityFeed'
 const RejectionModal = lazy(() => import('./admin-page/RejectionModal'))
 const BizInfoModal = lazy(() => import('./admin-page/BizInfoModal'))
 import SellersTable from './admin-page/SellersTable'
-import StreamsTable from './admin-page/StreamsTable'
 import type { ApiError, Seller, Stream, Stats, DashboardStats, Alert } from './admin-page/types'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / DeferUntilVisible / ChartSkeleton /
@@ -670,15 +669,7 @@ export default function AdminPage() {
         onReject={openRejectModal}
       />
 
-      {/* ── 라이브 스트림 관리 ── 🏭 2026-07-01 (대표 "라이브 관련 내용 다 빼줘") 라이브 중단 시 숨김(복원 가능) */}
-      {!LIVE_COMMERCE_SUSPENDED && (
-      <StreamsTable
-        streams={streams}
-        loading={loading}
-        onDelete={deleteStream}
-        onBulkDelete={bulkDeleteStreams}
-      />
-      )}
+      {/* 🗑️ 2026-07-07 라이브커머스 제거: StreamsTable(라이브 스트림 관리) 제거. */}
       {/* ── 사업자 정보 상세 모달 ── */}
       {bizInfoSeller && (
         <Suspense fallback={null}>

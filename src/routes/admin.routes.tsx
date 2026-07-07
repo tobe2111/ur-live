@@ -99,7 +99,6 @@ const AdminInfluencerDisputesPage = lazy(() => import('@/pages/AdminInfluencerDi
 const AdminKakaoReviewsPage = lazy(() => import('@/pages/AdminKakaoReviewsPage'))
 const AdminRevenueAnalyticsPage = lazy(() => import('@/pages/AdminRevenueAnalyticsPage'))
 const AdminAccountsPage = lazy(() => import('@/pages/AdminAccountsPage'))
-const AdminLiveMonitorPage = lazy(() => import('@/pages/AdminLiveMonitorPage'))
 // 🛡️ 2026-05-18: 숙소 공구 어드민 — PR 5/6.
 const AdminStaysPage = lazy(() => import('@/pages/AdminStaysPage'))
 // 🛡️ 2026-05-18: 사업자등록증 검증 대기 큐.
@@ -117,7 +116,6 @@ const AdminUsersPage = lazy(() => import('@/pages/AdminUsersPage'))
 const AdminReviewModerationPage = lazy(() => import('@/pages/AdminReviewModerationPage'))
 const AdminTikTokDiscoveryPage = lazy(() => import('@/pages/AdminTikTokDiscoveryPage'))
 const AdminRestaurantDemandPage = lazy(() => import('@/pages/AdminRestaurantDemandPage'))
-const AdminCastingsPage = lazy(() => import('@/pages/AdminCastingsPage'))
 const AdminOpsInsightsPage = lazy(() => import('@/pages/AdminOpsInsightsPage'))
 const AdminGroupBuyPage = lazy(() => import('@/pages/AdminGroupBuyPage'))
 const AdminDisputesPage = lazy(() => import('@/pages/AdminDisputesPage'))
@@ -554,11 +552,6 @@ export function AdminRoutes() {
           <ErrorBoundary><AdminRestaurantDemandPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      <Route path="/admin/castings" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminCastingsPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       <Route path="/admin/insights" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminOpsInsightsPage /></ErrorBoundary>
@@ -622,11 +615,6 @@ export function AdminRoutes() {
       <Route path="/admin/accounts" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminAccountsPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/live-monitor" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminLiveMonitorPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/stays" element={
