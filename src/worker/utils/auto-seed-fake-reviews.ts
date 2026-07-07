@@ -150,10 +150,13 @@ export async function autoSeedMissingReviews(
   const maxBatch = Math.max(1, Math.min(1000, opts.maxBatch ?? 200))
   const rows = await env.DB.prepare(
     // 🎯 2026-07-03 (대표): 실 사업자 유저 업로드(seller_id 있음) 제외 — 자동 리뷰는 데모·플랫폼(seller_id NULL)만.
+    // 🔒 2026-07-06: 데모(slug demo-deal-%)는 여기(generic 템플릿)서 제외 — 데모는 매장특색 composer
+    //   (seedMissingDemoReviews)가 전담해 품질 영구 유지. 이 catch-all 은 비-데모 플랫폼상품(교환권 등)만.
     `SELECT id FROM products p
      WHERE is_active = 1
        AND (review_count IS NULL OR review_count = 0)
        AND seller_id IS NULL
+       AND (p.slug IS NULL OR p.slug NOT LIKE 'demo-deal-%')
        AND NOT EXISTS (SELECT 1 FROM product_reviews r WHERE r.product_id = p.id)
        AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key = 'prelaunch' AND m.value = '1')
      ORDER BY created_at DESC

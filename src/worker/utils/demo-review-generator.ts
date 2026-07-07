@@ -341,3 +341,63 @@ export async function seedDemoReviews(env: Env, p: DemoProduct, count = 8, seenS
     return reviews.length
   } catch { return 0 }
 }
+
+interface DemoRow { id: number; name: string; category: string; restaurant_name: string | null; price: number }
+
+/**
+ * 🔒 2026-07-06 (대표 "리뷰 퀄리티 영구 유지?"): 데모(slug demo-deal-%) 중 리뷰 없는 것을 **좋은 composer**로
+ *   시드. 매시간 cron 에서 호출 — generic 템플릿(auto-seed-fake-reviews)이 데모를 낮은 품질로 채우는 것을
+ *   구조적으로 대체(그쪽은 데모 제외됨). 배치 공용 seen 으로 매장 간 리뷰 중복 방지.
+ */
+export async function seedMissingDemoReviews(env: Env, maxBatch = 400): Promise<{ seeded: number }> {
+  const DB = env.DB
+  const rows = await DB.prepare(
+    `SELECT p.id, p.name, p.category, p.restaurant_name, p.price FROM products p
+      WHERE p.slug LIKE 'demo-deal-%' AND COALESCE(p.slug,'') NOT LIKE 'retired-%'
+        AND COALESCE(p.is_active,1) = 1
+        AND (p.review_count IS NULL OR p.review_count = 0)
+        AND NOT EXISTS (SELECT 1 FROM product_reviews r WHERE r.product_id = p.id)
+        AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = p.id AND m.key='prelaunch' AND m.value='1')
+      ORDER BY p.created_at DESC LIMIT ?`
+  ).bind(maxBatch).all<DemoRow>().catch(() => ({ results: [] as DemoRow[] }))
+  const seen = new Set<string>()
+  let seeded = 0
+  for (const r of (rows.results || [])) {
+    const n = await seedDemoReviews(env, { id: r.id, name: r.name, category: r.category, storeName: r.restaurant_name, price: r.price }, 6 + Math.floor(Math.random() * 7), seen).catch(() => 0)
+    if (n > 0) seeded++
+  }
+  return { seeded }
+}
+
+/**
+ * 🔄 2026-07-06 (대표 "기존 100개+도 다 작업"): 기존 데모의 옛 리뷰를 **새 품질로 재생성**. 청크 단위 —
+ *   `review_gen_v='2'` 메타 마커로 이미 새로고침한 데모는 skip(반복 호출이 전체를 진행, 멱등). limit 개씩.
+ *   반환 remaining>0 이면 다시 호출(클라 루프). force 로 마커 무시 재실행 가능.
+ */
+export async function refreshDemoReviews(env: Env, limit = 20, force = false): Promise<{ refreshed: number; reviews: number; remaining: number }> {
+  const DB = env.DB
+  const markerFilter = force ? '' : `AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id = p.id AND m2.key='review_gen_v' AND m2.value='2')`
+  const baseWhere = `p.slug LIKE 'demo-deal-%' AND COALESCE(p.slug,'') NOT LIKE 'retired-%' AND COALESCE(p.is_active,1)=1
+      AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id=p.id AND m.key='prelaunch' AND m.value='1')`
+  const rows = await DB.prepare(
+    `SELECT p.id, p.name, p.category, p.restaurant_name, p.price FROM products p
+      WHERE ${baseWhere} ${markerFilter}
+      ORDER BY p.created_at ASC LIMIT ?`
+  ).bind(Math.max(1, Math.min(50, limit))).all<DemoRow>().catch(() => ({ results: [] as DemoRow[] }))
+  const seen = new Set<string>()
+  let refreshed = 0, reviews = 0
+  const { setSupplyMeta } = await import('./product-supply-meta')
+  for (const r of (rows.results || [])) {
+    try {
+      await DB.prepare('DELETE FROM product_reviews WHERE product_id = ? AND is_generated = 1').bind(r.id).run()
+      const n = await seedDemoReviews(env, { id: r.id, name: r.name, category: r.category, storeName: r.restaurant_name, price: r.price }, 6 + Math.floor(Math.random() * 7), seen)
+      await setSupplyMeta(DB, r.id, { review_gen_v: '2' }).catch(() => {})
+      refreshed++; reviews += n
+    } catch { /* skip this one */ }
+  }
+  const rem = await DB.prepare(
+    `SELECT COUNT(*) AS c FROM products p WHERE ${baseWhere}
+      AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id=p.id AND m2.key='review_gen_v' AND m2.value='2')`
+  ).first<{ c: number }>().catch(() => ({ c: 0 }))
+  return { refreshed, reviews, remaining: force ? 0 : (rem?.c ?? 0) }
+}
