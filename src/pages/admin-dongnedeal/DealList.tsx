@@ -20,8 +20,11 @@ interface FcfsDraft { id: number; spots: string; applied: string; deadline: stri
 export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; onEdit: (d: DealRow) => void; onChanged: () => void }) {
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
   const [rows, setRows] = useState<DealRow[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [busyId, setBusyId] = useState<number | null>(null)
+  const PAGE = 100
   // 🎯 다중 선택(체크박스) — 선택된 product id 집합.
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
@@ -63,9 +66,11 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
     } catch { toast.error('추첨 설정 저장 실패') }
   }
 
-  const load = () => {
-    setLoading(true)
-    const qs = new URLSearchParams({ limit: '100' })
+  // append=false: 처음부터(필터/새로고침) · append=true: '더 보기'(offset=현재 rows 수).
+  const load = (append = false) => {
+    if (append) setLoadingMore(true); else setLoading(true)
+    const offset = append ? rows.length : 0
+    const qs = new URLSearchParams({ limit: String(PAGE), offset: String(offset) })
     const region = buildRegionParam(fSido, fDistrict)
     if (region) qs.set('region', region)
     if (fCategory) qs.set('category', fCategory)
@@ -73,12 +78,18 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
     if (fSource) qs.set('source', fSource)
     if (fStatus) qs.set('status', fStatus)
     api.get(`/api/admin/dongnedeal/list?${qs.toString()}`, h)
-      .then((r) => { if (r.data?.success) setRows(r.data.data || []) })
+      .then((r) => {
+        if (r.data?.success) {
+          const data: DealRow[] = r.data.data || []
+          setRows((prev) => (append ? [...prev, ...data] : data))
+          setTotal(Number(r.data.total ?? (append ? total : data.length)))
+        }
+      })
       .catch(() => toast.error('목록 불러오기 실패'))
-      .finally(() => setLoading(false))
+      .finally(() => { if (append) setLoadingMore(false); else setLoading(false) })
   }
-  // nonce(외부 갱신) + 필터 변경 시 재조회.
-  useEffect(() => { setSelected(new Set()); load() }, [nonce, fSido, fDistrict, fCategory, fMode, fSource, fStatus]) // eslint-disable-line react-hooks/exhaustive-deps
+  // nonce(외부 갱신) + 필터 변경 시 처음부터 재조회.
+  useEffect(() => { setSelected(new Set()); load(false) }, [nonce, fSido, fDistrict, fCategory, fMode, fSource, fStatus]) // eslint-disable-line react-hooks/exhaustive-deps
   const anyFilter = !!(fSido || fCategory || fMode || fSource || fStatus)
   const resetFilters = () => { setFSido(''); setFDistrict(''); setFCategory(''); setFMode(''); setFSource(''); setFStatus('') }
 
@@ -133,7 +144,7 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
     <div className="bg-white rounded-2xl border border-gray-200 p-5">
       <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-bold text-gray-900">{anyFilter ? '필터 결과' : '등록된 동네딜'} ({rows.length}{rows.length >= 100 ? '+' : ''})</p>
+          <p className="text-sm font-bold text-gray-900">{anyFilter ? '필터 결과' : '등록된 동네딜'} ({total > rows.length ? `${rows.length} / ${total}` : total})</p>
           {selected.size > 0 && (
             <button
               onClick={removeSelected}
@@ -151,7 +162,7 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
               전체 선택
             </label>
           )}
-          <button onClick={load} className="inline-flex items-center gap-1 text-[12px] font-semibold text-gray-500 hover:text-gray-800">
+          <button onClick={() => load(false)} className="inline-flex items-center gap-1 text-[12px] font-semibold text-gray-500 hover:text-gray-800">
             <RefreshCw className="w-3.5 h-3.5" /> 새로고침
           </button>
         </div>
@@ -268,6 +279,13 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
               )}
             </div>
           ))}
+        </div>
+      )}
+      {!loading && rows.length < total && (
+        <div className="mt-3 text-center">
+          <button onClick={() => load(true)} disabled={loadingMore} className="px-4 py-2 rounded-lg text-[13px] font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50">
+            {loadingMore ? '불러오는 중…' : `더 보기 (${rows.length} / ${total})`}
+          </button>
         </div>
       )}
       <p className="mt-2 text-[11px] text-gray-400 flex items-center gap-1"><MapPin className="w-3 h-3" /> 좌표없음 = 지도 미표시(주소 지오코딩 대기). 수정에서 매장 검색으로 좌표 확보 가능.</p>

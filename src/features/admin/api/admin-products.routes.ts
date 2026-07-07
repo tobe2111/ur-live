@@ -1768,6 +1768,8 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
     const cats = ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher', 'general'];
     const limRaw = Number(c.req.query('limit'));
     const lim = Number.isFinite(limRaw) && limRaw > 0 && limRaw <= 200 ? Math.floor(limRaw) : 50;
+    // 🔢 2026-07-06 (대표 "모든 동네딜이 다 나오나?" — 100개 cap 확인): offset 페이지네이션 + total 반환.
+    const off = Math.max(0, intParam(c.req.query('offset'), 0));
 
     // 🔎 2026-07-06 (대표 "등록된 도매딜 필터링 — 지역·카테고리·상품형태 등"): 서버측 필터(전 목록 대상).
     //   전부 additive — 파라미터 없으면 기존 쿼리와 동일(카테고리 5종·retired 제외·최신순).
@@ -1805,11 +1807,17 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
     if (mode === 'prelaunch') where.push(`EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = products.id AND m.key = 'prelaunch' AND m.value = '1')`);
     else if (mode === 'live') where.push(`NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id = products.id AND m.key = 'prelaunch' AND m.value = '1')`);
 
+    const whereClause = where.join(' AND ');
+    // 전체 개수(같은 WHERE) — '더 보기' 판정 + 헤더 표시용.
+    const totalRow = await c.env.DB.prepare(
+      `SELECT COUNT(*) AS total FROM products WHERE ${whereClause}`
+    ).bind(...params).first<{ total: number }>().catch(() => ({ total: 0 }));
+    const total = Number(totalRow?.total ?? 0);
     const { results } = await c.env.DB.prepare(
       `SELECT id, name, price, original_price, category, restaurant_name, restaurant_address, image_url,
               COALESCE(is_active,1) AS is_active, restaurant_lat, restaurant_lng, created_at, slug
-         FROM products WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT ?`
-    ).bind(...params, lim).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
+         FROM products WHERE ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+    ).bind(...params, lim, off).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }));
     const rows = results || [];
     // 🔎 표시용 파생 플래그(뱃지): 데모 여부 + slug 은 노출 안 함(is_demo 만).
     for (const r of rows) {
@@ -1830,9 +1838,9 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
         }
       }
     } catch { /* fail-soft */ }
-    return c.json({ success: true, data: rows });
+    return c.json({ success: true, data: rows, total, offset: off, limit: lim });
   } catch (err) {
-    return c.json({ success: false, error: safeAdminError(err, c.env), data: [] }, 500);
+    return c.json({ success: false, error: safeAdminError(err, c.env), data: [], total: 0 }, 500);
   }
 });
 
