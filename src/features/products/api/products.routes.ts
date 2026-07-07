@@ -45,16 +45,17 @@ export const productsRoutes = new Hono<{ Bindings: Bindings }>();
 //   'demo-linkshop-N')만 생성/삭제하며 seller_id 는 요청값. POST 시드(멱등) / DELETE 제거.
 const DEMO_SEED_KEY = 'urdeal-demo-seed-2026';
 const DEMO_LS_SLUG = 'demo-linkshop-';
+// 🍽️ 동네딜(음식·매장) 실사진 — body.images 로 커스텀 가능(미전달 시 이 기본값).
 const DEMO_LS_IMG = [
-  '/api/media/uploads/demo/2026-07/2985830a-52bf-4173-aa0f-e69b9bf97c5c.jpg',
-  '/api/media/uploads/demo/2026-07/47e8a692-c70b-40f9-a190-17cd10ba1a6a.jpg',
-  '/api/media/uploads/demo/2026-07/8ee6cb67-05c1-4fd2-b589-499991c3980c.webp',
-  '/api/media/uploads/demo/2026-07/f3414af6-6fa4-40e2-a74f-90c5f27840ed.jpg',
-  '/api/media/uploads/demo/2026-07/57f1183b-4b70-4377-a299-aa6fb23955aa.jpg',
-  '/api/media/uploads/demo/2026-07/925d1b90-34c2-4ecb-8f0b-e8975f19f114.jpg',
   '/api/media/uploads/demo/2026-07/bdec2dec-80c4-416c-a67e-a3c9f46790e4.jpg',
   '/api/media/uploads/demo/2026-07/d3975223-f7ef-4cce-bf87-c5968fd532a1.jpg',
-  '/api/media/uploads/demo/2026-07/67e0aeeb-4b19-4ee6-b38d-09ade8b2d3f0.jpg',
+  '/api/media/uploads/demo/2026-07/7e006052-e1ec-4bbb-a1cb-c3c34b6731b2.jpg',
+  '/api/media/uploads/demo/2026-07/5765a2fb-1e16-4014-9164-aec141a8930c.png',
+  '/api/media/uploads/demo/2026-07/00b287a9-3c7e-4906-b5fd-4a436bc3572a.webp',
+  '/api/media/uploads/demo/2026-07/c5e4de89-ea9e-4c74-b5fd-eb0d80d7c250.jpg',
+  '/api/media/uploads/demo/2026-07/bbc21baa-edd6-4e81-970c-63b27f55ef47.jpg',
+  '/api/media/uploads/demo/2026-07/332880ae-61b9-45a1-991d-4e68f6a15482.jpg',
+  '/api/media/uploads/demo/2026-07/997664fa-f6d3-4e2f-be14-8308aa28619f.jpg',
 ];
 const DEMO_LS_SHOP = [
   { name: '프리미엄 한우 등심 500g 냉장', price: 69000, original: 89000 },
@@ -71,7 +72,7 @@ const DEMO_LS_VOU = [
 
 productsRoutes.post('/demo-seed-linkshop', async (c) => {
   try {
-    const body = (await c.req.json().catch(() => ({}))) as { key?: string; seller_id?: number | string };
+    const body = (await c.req.json().catch(() => ({}))) as { key?: string; seller_id?: number | string; images?: string[] };
     if (body.key !== DEMO_SEED_KEY) return c.json({ success: false, error: 'bad key' }, 403);
     const sellerId = Number(body.seller_id);
     if (!Number.isFinite(sellerId) || sellerId <= 0) return c.json({ success: false, error: 'seller_id 필요' }, 400);
@@ -79,20 +80,21 @@ productsRoutes.post('/demo-seed-linkshop', async (c) => {
     const existing = await DB.prepare(`SELECT COUNT(*) AS c FROM products WHERE slug LIKE ? AND seller_id = ?`)
       .bind(DEMO_LS_SLUG + '%', sellerId).first<{ c: number }>().catch(() => ({ c: 0 }));
     if ((existing?.c ?? 0) > 0) return c.json({ success: true, alreadySeeded: true, count: existing!.c });
+    const imgs = Array.isArray(body.images) && body.images.length ? body.images.slice(0, 20) : DEMO_LS_IMG;
     let n = 0, imgI = 0;
     for (const p of DEMO_LS_SHOP) {
       const slug = DEMO_LS_SLUG + (++n);
       await DB.prepare(
         `INSERT INTO products (name, description, price, original_price, image_url, category, product_type, is_active, seller_id, stock, stock_quantity, slug, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, 'food', 'regular', 1, ?, 50, 50, ?, datetime('now'), datetime('now'))`
-      ).bind(p.name, p.name + ' — 데모 상품', p.price, p.original || null, DEMO_LS_IMG[imgI++ % DEMO_LS_IMG.length], sellerId, slug).run().catch(() => {});
+      ).bind(p.name, p.name + ' — 데모 상품', p.price, p.original || null, imgs[imgI++ % imgs.length], sellerId, slug).run().catch(() => {});
     }
     for (const v of DEMO_LS_VOU) {
       const slug = DEMO_LS_SLUG + (++n);
       await DB.prepare(
         `INSERT INTO products (name, description, price, original_price, image_url, category, product_type, is_active, seller_id, stock, stock_quantity, restaurant_name, slug, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, 'meal_voucher', 'regular', 1, ?, 50, 50, ?, ?, datetime('now'), datetime('now'))`
-      ).bind(v.name, v.name + ' — 데모 이용권', v.price, v.original || null, DEMO_LS_IMG[imgI++ % DEMO_LS_IMG.length], sellerId, v.rest, slug).run().catch(() => {});
+      ).bind(v.name, v.name + ' — 데모 이용권', v.price, v.original || null, imgs[imgI++ % imgs.length], sellerId, v.rest, slug).run().catch(() => {});
     }
     return c.json({ success: true, seeded: n, seller_id: sellerId });
   } catch (e) {
