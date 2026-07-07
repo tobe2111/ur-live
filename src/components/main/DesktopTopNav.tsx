@@ -32,7 +32,7 @@ export default function DesktopTopNav() {
   //   링크샵 탭 추가(하단바와 정합). 쇼핑 라우트(/browse·/cart)는 보존 — 장바구니 아이콘으로 도달 가능.
   const navItems = [
     { icon: Home, key: 'home', label: t('nav.home', { defaultValue: '홈' }), path: '/' },
-    ...(LIVE_COMMERCE_SUSPENDED ? [] : [{ icon: Radio, key: 'live', label: t('nav.live', { defaultValue: '라이브' }), path: '/live' }]),
+    // 🗑️ 2026-07-07 라이브커머스 제거: '라이브' 탭 삭제.
     { icon: Gift, key: 'groupBuy', label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/group-buy' },
     ...(SHOPPING_TAB_HIDDEN ? [] : [{ icon: ShoppingCart, key: 'shop', label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' }]),
     { icon: Sparkles, key: 'linkshop', label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath },
@@ -108,16 +108,7 @@ export default function DesktopTopNav() {
 
         {/* 우측 액션 */}
         <div className="flex items-center gap-1 shrink-0 ml-auto">
-          {/* LIVE 배지 — 라이브 영구 중단 동안 숨김 (플래그 가역) */}
-          {!LIVE_COMMERCE_SUSPENDED && (
-          <button
-            onClick={() => navigate('/live')}
-            className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500 text-white text-[12px] font-bold hover:bg-red-600 transition-colors"
-          >
-            <Zap className="w-3.5 h-3.5" />
-            LIVE
-          </button>
-          )}
+          {/* 🗑️ 2026-07-07 라이브커머스 제거: LIVE 배지 삭제(/live 페이지 제거됨). */}
 
           {/* 판매자센터 */}
           <button

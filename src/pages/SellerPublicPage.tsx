@@ -11,8 +11,7 @@ import { useTheme } from '@/shared/stores/useTheme'
 import { Search, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
-import StreamCard from './seller-public/StreamCard'
-import VideosTab from './seller-public/VideosTab'
+// 🗑️ 2026-07-07 라이브커머스 제거: StreamCard/VideosTab import 제거.
 import VouchersTab from './seller-public/VouchersTab'
 // 🏁 2026-06-25 (대표 "통일"): 사업자 링크샵 헤더를 canonical CuratorHeader 로 — ProfileHeader 폐기(헤더 1개).
 import CuratorHeader from './curator-page/CuratorHeader'
@@ -531,25 +530,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           </section>
         )}
 
-        {/* ④ 영상 (있을 때만) */}
-        {!LIVE_COMMERCE_SUSPENDED && shorts.length > 0 && (
-          <section className="pt-7">
-            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.videos', { defaultValue: '영상' })} {shorts.length}</h3>
-            <VideosTab shorts={shorts} isOwner={ownerView} textClass={T.text} />
-          </section>
-        )}
-
-        {/* ⑤ 라이브 (있을 때만) */}
-        {!LIVE_COMMERCE_SUSPENDED && streams.length > 0 && (
-          <section className="pt-7">
-            <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.tabLive', { defaultValue: '라이브' })} {streams.length}</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {streams.map(s => (
-                <StreamCard key={s.id} stream={s} onClick={() => navigate(`/live/${s.id}`)} />
-              ))}
-            </div>
-          </section>
-        )}
+        {/* 🗑️ 2026-07-07 라이브커머스 제거: 영상(VideosTab)·라이브(StreamCard) 섹션 제거. */}
 
         {/* ✨ 2026-07-04 링크샵 1단계(linkshop-role-model §5): 하단 "추천(핀)" opt-in 섹션.
             본인 상품이 hero 인 스토어프론트 정체성은 유지 — 맨 아래, 명확한 라벨, 기본 off.

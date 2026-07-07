@@ -277,15 +277,7 @@ export default function PaymentSuccessPage() {
     } finally {
       setLoading(false)
       isProcessingRef.current = false // 처리 완료
-      // 🛡️ 2026-05-13 (Phase A): 라이브에서 진입한 결제면 5초 카운트다운 후 자동 라이브 복귀.
-      //   시청 유지 + FOMO 자극. 사용자 명시적 취소 가능.
-      const lastLiveId = localStorage.getItem('lastViewedLiveId')
-      const lastViewedAt = localStorage.getItem('lastViewedLiveAt')
-      const isFromLive = lastLiveId && lastViewedAt && (Date.now() - parseInt(lastViewedAt, 10)) < 600_000  // 10분 이내
-      if (isFromLive && lastLiveId) {
-        autoReturnTargetRef.current = `/live/${lastLiveId}`
-        setAutoReturnSec(5)
-      }
+      // 🗑️ 2026-07-07 라이브커머스 제거: 라이브 자동복귀 카운트다운 삭제.
     }
   }
 
@@ -534,24 +526,12 @@ export default function PaymentSuccessPage() {
                 >
                   주문 내역 보기
                 </Button>
+                {/* 🗑️ 2026-07-07 라이브커머스 제거: 라이브 자동복귀 삭제 → 홈으로 쇼핑 계속. */}
                 <Button
-                  onClick={() => {
-                    // ✅ UX M20 FIX: 1시간 이상 경과한 lastViewedLiveId는 stale로 간주하여 홈으로 이동
-                    setAutoReturnSec(null)  // 카운트다운 취소
-                    const lastLiveId = localStorage.getItem('lastViewedLiveId')
-                    const lastViewedAt = localStorage.getItem('lastViewedLiveAt')
-                    const isStale = !lastViewedAt || (Date.now() - parseInt(lastViewedAt, 10)) > 3600000
-                    if (lastLiveId && !isStale) {
-                      navigate(`/live/${lastLiveId}`)
-                    } else {
-                      navigate('/')
-                    }
-                  }}
+                  onClick={() => navigate('/')}
                   className="w-full sm:flex-1 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
                 >
-                  {autoReturnSec !== null && autoReturnSec > 0
-                    ? `라이브 복귀 (${autoReturnSec}초)`
-                    : '쇼핑 계속하기'}
+                  쇼핑 계속하기
                 </Button>
               </>
             )}

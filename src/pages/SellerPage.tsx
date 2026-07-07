@@ -444,17 +444,7 @@ export default function SellerPage() {
           </button>
         ))}
       </div>
-      {/* 🏭 라이브 잠정 중단 동안 송출 버튼 숨김 — nav 는 mode 필터로 숨겨졌는데
-          이 버튼만 역할(isInfluencer) 게이트라 도달불가 페이지로 유도하던 잔재. 재개 시 자동 복원. */}
-      {!LIVE_COMMERCE_SUSPENDED && isInfluencer && (
-        <button
-          onClick={() => navigate('/seller/live-broadcast')}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Play className="w-3.5 h-3.5" />
-          {t('seller.startLive')}
-        </button>
-      )}
+      {/* 🗑️ 2026-07-07 라이브커머스 제거: 송출 버튼 삭제. */}
     </div>
   )
 

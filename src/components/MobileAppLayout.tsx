@@ -3,8 +3,7 @@ import { useLocation } from 'react-router-dom'
 import DesktopLiveSidebar from './DesktopLiveSidebar'
 import { useTheme } from '@/shared/stores/useTheme'
 
-const DesktopLiveLeftPanel = lazy(() => import('./DesktopLiveLeftPanel'))
-const DesktopLiveRightPanel = lazy(() => import('./DesktopLiveRightPanel'))
+// 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 제거.
 const LinkshopVisitorRails = lazy(() => import('./LinkshopVisitorRails'))
 const ConsumerFrameRails = lazy(() => import('./ConsumerFrameRails'))
 
@@ -25,11 +24,8 @@ interface MobileAppLayoutProps {
  * 🛡️ 2026-05-03 hotfix: data-mobile-only 페이지에 xl:pl-56 적용 시 컬럼 압축 사고 → mobile-only 는 padding 0.
  */
 
-// 9:16 비디오 / 모바일 전용 UI 페이지 (PC 에서도 액자 + 좌우 패널). '/live/:id' 만 (리스트 '/live' 는 일반).
-const MOBILE_ONLY_PREFIXES = [
-  '/live/',        // LivePageV2 (9:16 풀스크린 비디오)
-  '/shorts',       // ShortsPage (9:16 쇼츠)
-]
+// 🗑️ 2026-07-07 라이브커머스 제거: 라이브/쇼츠 9:16 전용 페이지가 없어져 빈 목록(mobileOnly 항상 false).
+const MOBILE_ONLY_PREFIXES: string[] = []
 
 // 풀 PC 너비 (프레임/사이드바 제외): 대시보드 + 도매몰/공급자(B2B) + 결제리턴/임베드.
 // 🏭 2026-06-04 도매몰(/wholesale)·제조사(/supplier) = B2B 서피스 — 자체 카테고리 UI 사용.
@@ -127,9 +123,7 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
     <>
       {/* PC (xl+) 좌측 사이드바 — 일반 페이지 + 라이브/쇼츠 (fixed). */}
       {showSidebar && <DesktopLiveSidebar />}
-      {/* PC (xl+) 라이브 좌/우 패널 — /live/:id 에서만 (fixed). */}
-      {mobileOnly && <Suspense fallback={null}><DesktopLiveLeftPanel /></Suspense>}
-      {mobileOnly && <Suspense fallback={null}><DesktopLiveRightPanel /></Suspense>}
+      {/* 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 렌더 제거 */}
       {/* 🎨 2026-07-07 (대표 승인) 링크샵 방문자 PC 거터: 좌=창작자 카드 / 우=모바일 QR + "나도 만들기" 성장 훅.
           유어딜 네비는 안 넣음(독립 쇼핑몰 느낌 유지). xl+ 내부 게이트. (기존 우하단 단독 QR 을 흡수·대체.) */}
       {linkshopVisitor && <Suspense fallback={null}><LinkshopVisitorRails /></Suspense>}

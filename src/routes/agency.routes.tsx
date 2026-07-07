@@ -10,7 +10,6 @@ const AgencyResetPasswordPage = lazy(() => import('@/pages/AgencyResetPasswordPa
 const AgencyPage = lazy(() => import('@/pages/AgencyPage'))
 const AgencySellersPage = lazy(() => import('@/pages/AgencySellersPage'))
 const AgencyOrdersPage = lazy(() => import('@/pages/AgencyOrdersPage'))
-const AgencyStreamsPage = lazy(() => import('@/pages/AgencyStreamsPage'))
 const AgencyStatsPage = lazy(() => import('@/pages/AgencyStatsPage'))
 // 🛡️ 2026-05-20: 에이전시 = 가게 입점 영업 모델 (Phase 2)
 const AgencyIntroducedStoresPage = lazy(() => import('@/pages/AgencyIntroducedStoresPage'))
@@ -68,7 +67,6 @@ export function AgencyRoutes() {
       <Route path="/agency" element={<AgencyAuthGuard><AgencyPage /></AgencyAuthGuard>} />
       <Route path="/agency/sellers" element={<AgencyAuthGuard><AgencySellersPage /></AgencyAuthGuard>} />
       <Route path="/agency/orders" element={<AgencyAuthGuard><AgencyOrdersPage /></AgencyAuthGuard>} />
-      <Route path="/agency/streams" element={<AgencyAuthGuard><AgencyStreamsPage /></AgencyAuthGuard>} />
       <Route path="/agency/stats" element={<AgencyAuthGuard><AgencyStatsPage /></AgencyAuthGuard>} />
       <Route path="/agency/introduced-stores" element={<AgencyAuthGuard><AgencyIntroducedStoresPage /></AgencyAuthGuard>} />
       <Route path="/agency/guide" element={<AgencyAuthGuard><AgencyGuidePage /></AgencyAuthGuard>} />
