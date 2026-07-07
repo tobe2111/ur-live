@@ -127,6 +127,33 @@
 
 ---
 
+## 5.5 소유권 모델 (SSOT — CI 가드 강제, 2026-07-07)
+
+> **왜 이 섹션이 생겼나**: 링크샵이 반복적으로 "내 가게인데 방문자로 보임 / 편집 기능이 사라짐"으로
+> 깨졌다. 근본 원인은 `/u/{handle}` 이 **두 페이지 컴포넌트**로 렌더되는데(일반 유저=`CuratorPage`,
+> 사업자=인라인 `SellerPublicPage`), **소유자 판정 신호가 서로 달랐기** 때문이다. 세션마다 한쪽만
+> 패치하니 다른 쪽 seam 이 계속 터졌다. 아래를 **불변식**으로 고정한다.
+
+**단일 불변식**: **`/u/{handle}` 링크샵의 주인 = 로그인한 소비자 유저** (`user_id === curator.id`, 단일 신호).
+- `seller_token` 은 **셀러 대시보드(`/seller/*`) 접근용일 뿐**, 링크샵 *뷰/편집* 을 가르지 않는다.
+- 프로필·소개·SNS·배너·주소(handle)·핀 편집은 전부 **소비자 API `/api/curator/me/*`** (ur_session 쿠키)로 처리.
+- 소유권 계산은 `CuratorPage.isOwner`(소비자 정체성)에서 **한 번** 하고, 인라인 `SellerPublicPage` 에는
+  `ownerOverride` prop 으로 **내려준다**. `SellerPublicPage.isOwner = !!ownerOverride || tokenOwner`
+  (tokenOwner = seller_token 폴백, **레거시 standalone `/profile`·`/s` 진입 + 소비자 계정 없는 셀러-only** 전용).
+- 순수 뷰 자식(`CuratorHeader`/`InfoTab`/`VouchersTab`/`VideosTab`)은 소유/편집을 **prop 으로만** 게이트 —
+  `localStorage` 의 `seller_token`/`seller_id` 를 직접 읽지 않는다.
+- 셀러 API 를 요구하는 유일한 링크샵 필드(`kakao_chat_link` 인라인 편집)만 `canSellerEdit`(=`!!seller_token`)로
+  별도 게이트(토큰 없으면 어포던스 숨김 → 401 방지). 나머지는 토큰 무관.
+
+**강제**: `scripts/check-linkshop-ownership.mjs` (audit-gate + `verify.yml` strict) — 위 3 불변식(①신호전달
+②isOwner 가 ownerOverride 포함 ③뷰자식 prop 구동)을 검사. 되돌리면 CI 차단. 예외 `linkshop-ownership-ok`.
+
+> 이 클래스 외 링크샵 반복 버그도 각각 가드 보유: **로더 블링크**=`check-loader-continuity.mjs`,
+> **테마**=`check-theme-consistency.mjs`, **OG/메타**=worker SSR CURATOR 슬롯. 새 링크샵 불변식을 발견하면
+> 패치가 아니라 **가드부터** 만든다(CLAUDE.md 철학).
+
+---
+
 ## 6. 현재 코드 vs 목표 차이
 
 | 항목 | 현재 | 목표 |

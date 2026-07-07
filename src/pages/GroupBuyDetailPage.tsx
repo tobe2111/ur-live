@@ -7,6 +7,7 @@ import { resolveTossFlow } from '@/lib/toss-key-type'
 import { resolveProductFlow } from '@/shared/product-flow'
 import api from '@/lib/api'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
+import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import KakaoShareButton from '@/components/KakaoShareButton'
@@ -32,6 +33,8 @@ import FcfsApplyBlock from '@/features/group-buy/FcfsApplyBlock'
 const RestaurantMiniMap = lazy(() => import('@/components/RestaurantMiniMap'))
 // 🎨 2026-06-17 (공구상세 후속 — 디자이너 제안 "후기·평점이 가장 큰 신뢰 레버"): 기존 ProductReviews 재사용(lazy, below-fold).
 const ProductReviews = lazy(() => import('./product-detail/ProductReviews'))
+// 🎟️ 2026-07-06 (§2-B B1): 인플루언서 공구 제안 모달 (게이트 OFF, lazy)
+const GbProposeModal = lazy(() => import('./group-buy/GbProposeModal'))
 
 // 🎯 2026-06-23 (대표 신고 — '불필요한 로딩들'): below-fold 섹션(지도/후기)의 lazy 청크가 첫 paint 에
 //   즉시 로드돼 회색 Suspense 블록이 화면 밖에서 깜빡였음. 뷰포트 근처(300px)에 올 때만 mount → 그전엔
@@ -95,13 +98,6 @@ interface GroupBuyDetail {
   seller_facebook?: string | null
 }
 
-interface Participant {
-  masked_name: string
-  avatar?: string
-  created_at: string
-  quantity: number
-}
-
 function CategoryEmoji({ cat }: { cat: string }) {
   const map: Record<string, string> = {
     meal_voucher: '🍽️', beauty_voucher: '💇', health_voucher: '💪',
@@ -156,10 +152,10 @@ export default function GroupBuyDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [id, qc])
   const [detail, setDetail] = useState<GroupBuyDetail | null>(seedDetail)
-  const [participants, setParticipants] = useState<Participant[]>([])
   const [loading, setLoading] = useState<boolean>(seedDetail == null)
   const [joining, setJoining] = useState(false)
   const [quantity, setQuantity] = useState(1)
+  const [showPropose, setShowPropose] = useState(false)
   // 🎨 2026-06-16 리디자인: 스와이프 갤러리 활성 인덱스 + 이 셀러의 다른 공구
   const [activeImage, setActiveImage] = useState(0)
   const [otherDeals, setOtherDeals] = useState<Array<{ id: number; name: string; price: number; original_price?: number | null; image_url?: string | null; discount_pct?: number | null }>>([])
@@ -220,10 +216,9 @@ export default function GroupBuyDetailPage() {
       },
       staleTime: 60_000,
     })
-    Promise.all([
-      detailPromise,
-      api.get(`/api/group-buy/products/${productId}/participants`).catch(() => ({ data: { data: [] } })),
-    ]).then(([detailData, partRes]) => {
+    // 🗑️ 2026-07-07 (로딩 낭비 감사): participants fetch 제거 — 리디자인 후 어디서도 렌더 안 되던
+    //   죽은 요청(상세 진입마다 무의미한 왕복 1개). 상세 payload 만 로드.
+    detailPromise.then((detailData) => {
       if (cancelled) return
       if (detailData) {
         setDetail(detailData)
@@ -239,16 +234,32 @@ export default function GroupBuyDetailPage() {
           })
         } catch { /* silent */ }
       }
-      setParticipants(partRes.data?.data || [])
     }).catch((e) => toast.error((e as Error)?.message || '네트워크 오류'))
       .finally(() => !cancelled && setLoading(false))
     return () => { cancelled = true }
   }, [productId, navigate, qc])
 
   // 🎨 2026-06-16 리디자인: 이 셀러의 다른 공구 — active 목록에서 같은 seller 필터(현재 상품 제외).
+  // 🗑️ 2026-07-07 [UNLOCK_LOADING] (로딩 낭비 감사): 이 섹션은 폴드 아래(페이지 최하단 가로 스크롤)라
+  //   마운트 즉시 전체 active 목록을 받던 것을 IntersectionObserver 로 게이팅 — 사용자가 그 근처까지
+  //   스크롤할 때만 1회 fetch. HomeProductsRail 과 동일 패턴(600px rootMargin). SSR seed·폴링·below-fold
+  //   lazy 전부 불변(additive — 관찰 게이트 1개 추가). 대다수(빠른 이탈/구매) 뷰에서 요청 자체가 사라짐.
+  const [otherDealsInView, setOtherDealsInView] = useState(false)
+  const otherDealsSentinelRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = otherDealsSentinelRef.current
+    if (!el || otherDealsInView) return
+    if (typeof IntersectionObserver === 'undefined') { setOtherDealsInView(true); return }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some(e => e.isIntersecting)) { setOtherDealsInView(true); io.disconnect() }
+    }, { rootMargin: '600px' })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [otherDealsInView, detail?.seller_id])
+
   useEffect(() => {
     const sid = detail?.seller_id
-    if (!sid) return
+    if (!sid || !otherDealsInView) return
     let cancelled = false
     api.get('/api/group-buy/products?status=active')
       .then(r => {
@@ -262,7 +273,7 @@ export default function GroupBuyDetailPage() {
       })
       .catch(() => { /* silent */ })
     return () => { cancelled = true }
-  }, [detail?.seller_id, productId])
+  }, [detail?.seller_id, productId, otherDealsInView])
 
   // 🛡️ 2026-05-15: 실시간 polling — 5초±2초 jitter. 페이지 hidden 시 일시정지 (배터리 보호 + D1 thundering herd 방어).
   //   active 공구만 polling. participant 카운터 + 신규 참여자 등장 → toast.
@@ -851,8 +862,26 @@ export default function GroupBuyDetailPage() {
               <ProductReviews productId={productId} limit={5} />
             </Suspense>
           </DeferUntilVisible>
-        </div>
 
+          {/* 🎟️ 2026-07-06 (§2-B B1): 인플루언서 공구 제안 — GB_ENGINE_ENABLED 게이트(기본 OFF, 미노출) */}
+          {GB_ENGINE_ENABLED && detail && !isOwnProduct && (
+            <button
+              onClick={() => setShowPropose(true)}
+              style={{ marginTop: 14, width: '100%', padding: '11px', borderRadius: 12, fontSize: 13, fontWeight: 700 }}
+              className="border border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10"
+            >
+              📣 이 매장에 공구 제안하기 (인플루언서)
+            </button>
+          )}
+        </div>
+        {GB_ENGINE_ENABLED && showPropose && detail && (
+          <Suspense fallback={null}>
+            <GbProposeModal productId={Number(productId)} listPrice={Number(detail.price)} productName={detail.name} onClose={() => setShowPropose(false)} />
+          </Suspense>
+        )}
+
+        {/* 🗑️ 2026-07-07 폴드-아래 게이트 센티넬: 이 지점이 뷰포트 600px 안에 들어오면 다른 공구 fetch. */}
+        <div ref={otherDealsSentinelRef} aria-hidden style={{ height: 1 }} />
         {/* 이 셀러의 다른 공구 — 가로 스크롤 */}
         {otherDeals.length > 0 && (
           <>

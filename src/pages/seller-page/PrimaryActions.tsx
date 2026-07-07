@@ -31,16 +31,7 @@ export default function PrimaryActions({ pendingOrders, isInfluencer, settlement
     badgeBg?: string
     show: boolean
   }> = [
-    {
-      to: '/seller/live-broadcast',
-      title: t('seller.primary.startLive', { defaultValue: '라이브 시작' }),
-      subtitle: t('seller.primary.startLiveDesc', { defaultValue: '바로 송출' }),
-      icon: Radio,
-      bg: 'bg-gradient-to-br from-gray-800 to-gray-800 text-white hover:from-gray-900 hover:to-gray-900 shadow-md hover:shadow-lg',
-      iconBg: 'bg-white/20',
-      iconColor: 'text-white',
-      show: isInfluencer,
-    },
+    // 🗑️ 2026-07-07 라이브커머스 제거: '라이브 시작' CTA 카드 삭제.
     {
       to: '/seller/orders',
       title: t('seller.primary.orders', { defaultValue: '주문 확인' }),

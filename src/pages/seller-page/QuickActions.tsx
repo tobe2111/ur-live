@@ -72,29 +72,7 @@ export default function QuickActions({
           <ChevronRight className="w-4 h-4 text-gray-400" />
         </Link>
 
-        {isInfluencer && (
-          <Link to="/seller/live-broadcast"
-            className={`flex items-center justify-between p-4 rounded-xl transition-all ${
-              hasLiveHistory
-                ? 'bg-gradient-to-r from-gray-800 to-gray-800 hover:from-gray-900 hover:to-gray-900 shadow-md hover:shadow-lg'
-                : 'bg-white border border-gray-200 hover:bg-gray-50'
-            }`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${hasLiveHistory ? 'bg-white/20' : 'bg-red-50'}`}>
-                <Radio className={`w-4 h-4 ${hasLiveHistory ? 'text-white' : 'text-red-500'} ${hasLiveHistory ? 'animate-pulse' : ''}`} />
-              </div>
-              <div>
-                <p className={`text-[14px] font-bold ${hasLiveHistory ? 'text-white' : 'text-gray-900'}`}>
-                  {hasLiveHistory ? '🔴 라이브 방송 시작' : t('seller.live')}
-                </p>
-                <p className={`text-[11px] ${hasLiveHistory ? 'text-red-100' : 'text-gray-500'}`}>
-                  {hasLiveHistory ? '지난 방송 정보 자동 불러오기' : t('seller.startFirstLive')}
-                </p>
-              </div>
-            </div>
-            <ChevronRight className={`w-4 h-4 ${hasLiveHistory ? 'text-white/70' : 'text-gray-400'}`} />
-          </Link>
-        )}
+        {/* 🗑️ 2026-07-07 라이브커머스 제거: '라이브 방송 시작' 빠른 액션 삭제. */}
       </div>
     </div>
   )

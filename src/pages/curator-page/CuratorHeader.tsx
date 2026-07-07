@@ -17,7 +17,6 @@ import { snsUrl } from '@/utils/sns-url'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Share2, Pencil, Check, X, Camera, ImagePlus } from 'lucide-react'
-import KakaoShareButton from '@/components/KakaoShareButton'
 import { cfImage } from '@/utils/cf-image'
 import api from '@/lib/api'
 import { curatorApi } from '@/features/curator/api/curator-api'
@@ -373,6 +372,7 @@ export default function CuratorHeader({
 
       <div className="max-w-3xl mx-auto px-4 pb-4">
         {/* ③ 이름 / 핸들 / 태그라인 / SNS — 중앙 정렬 (배너 하단 페이드 위로 살짝 올림) */}
+        {/* 🗑️ 2026-07-07 (대표 — "프로필 사진 없애줘"): 배너 위 아바타 제거. 배너가 정체성. */}
         <div className="-mt-6 relative z-10 text-center">
 
           {editingField === 'name' ? (
@@ -443,6 +443,7 @@ export default function CuratorHeader({
             </div>
           )}
           <p className="text-[12.5px] text-gray-400 dark:text-gray-500 font-medium mt-0.5">@{curator.handle}</p>
+          {/* 🗑️ 2026-07-07 (대표 — "상품·이용권·평점 스탯 필요없어"): 스탯 줄 제거. */}
 
           {editingField === 'bio' ? (
             <div className="mt-2.5 max-w-md mx-auto">
@@ -562,25 +563,9 @@ export default function CuratorHeader({
             </div>
           </div>
         ) : (
-          // 🔗 2026-06-17 (방문자 공유): 라벨 단 균등 2버튼 (오너 카드와 동일 톤).
-          <div className="flex gap-2 mt-4 max-w-md mx-auto">
-            <button
-              onClick={onCopyLink}
-              className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:opacity-80"
-            >
-              <Share2 className="w-3.5 h-3.5" /> {t('curator.copyLink', { defaultValue: '링크 복사' })}
-            </button>
-            <div className="flex-1">
-              <KakaoShareButton
-                title={`${curator.name}의 링크샵`}
-                description={curator.bio || `${pinCount}개 상품 추천 중`}
-                imageUrl={`https://live.ur-team.com/api/og/curator/${curator.handle}`}
-                link={`/u/${curator.handle}`}
-                className="w-full py-2.5 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl text-[13px] font-bold transition-colors"
-                buttonText="카카오 공유"
-              />
-            </div>
-          </div>
+          // 🗑️ 2026-07-07 (대표 — "링크복사·카카오공유 버튼 없애줘"): 방문자 공유 2버튼 제거.
+          //   공유는 배너 우상단 공유 아이콘으로 일원화(오너/방문자 공통).
+          null
         )}
       </div>
     </header>

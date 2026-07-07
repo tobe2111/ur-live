@@ -56,14 +56,14 @@ export default function YouTubeCallbackPage() {
     if (error) {
       setStatus('error')
       setMessage(`OAuth 인증 실패: ${error}`)
-      setTimeout(() => navigate('/seller/live-broadcast'), 3000)
+      setTimeout(() => navigate('/seller'), 3000)
       return
     }
 
     if (!code) {
       setStatus('error')
       setMessage('인증 코드가 없습니다.')
-      setTimeout(() => navigate('/seller/live-broadcast'), 3000)
+      setTimeout(() => navigate('/seller'), 3000)
       return
     }
 
@@ -76,7 +76,7 @@ export default function YouTubeCallbackPage() {
         // 🛡️ 2026-05-11: 재연동 직후 stale 캐시 (token_expired=true) 가 화면에 잠시 깜빡이는
         //   현상 제거 — OAuth 성공 시 캐시 무효화 후 페이지로 이동.
         try { localStorage.removeItem('yt_channels_cache_v1') } catch { /* ignore */ }
-        setTimeout(() => navigate('/seller/live-broadcast'), 2000)
+        setTimeout(() => navigate('/seller'), 2000)
       } else {
         throw new Error(response.data.error || 'Unknown error')
       }
@@ -85,7 +85,7 @@ export default function YouTubeCallbackPage() {
       if (import.meta.env.DEV) console.error('OAuth callback error:', error)
       setStatus('error')
       setMessage(error_.response?.data?.error || error_.message || 'YouTube 연동에 실패했습니다.')
-      setTimeout(() => navigate('/seller/live-broadcast'), 3000)
+      setTimeout(() => navigate('/seller'), 3000)
     }
   }
 
@@ -185,7 +185,7 @@ export default function YouTubeCallbackPage() {
               </p>
             </div>
             <button
-              onClick={() => navigate('/seller/live-broadcast')}
+              onClick={() => navigate('/seller')}
               className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#007aff] text-white rounded-xl hover:bg-[#0051d5] transition-colors text-[15px] font-semibold"
             >
               <RefreshCw className="w-4 h-4" />

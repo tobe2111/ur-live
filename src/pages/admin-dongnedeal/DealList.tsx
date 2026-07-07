@@ -11,6 +11,8 @@ import { formatNumber } from '@/utils/format'
 import { Eye, EyeOff, Pencil, Trash2, MapPin, RefreshCw, Target } from 'lucide-react'
 import type { DealRow } from './types'
 import { CAT_LABEL } from './types'
+import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions'
+import { cleanSido, buildRegionParam } from './region-util'
 
 // 🎛️ 2026-07-04 (대표 "지원자 수·기간 각각 설정"): 행별 추첨 설정 인라인 편집 상태.
 interface FcfsDraft { id: number; spots: string; applied: string; deadline: string; loading: boolean }
@@ -18,12 +20,23 @@ interface FcfsDraft { id: number; spots: string; applied: string; deadline: stri
 export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; onEdit: (d: DealRow) => void; onChanged: () => void }) {
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
   const [rows, setRows] = useState<DealRow[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [busyId, setBusyId] = useState<number | null>(null)
+  const PAGE = 100
   // 🎯 다중 선택(체크박스) — 선택된 product id 집합.
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
   const [fcfsDraft, setFcfsDraft] = useState<FcfsDraft | null>(null)
+  // 🔎 2026-07-06 (대표 "등록된 도매딜 필터링 — 지역·카테고리·상품형태 등"): 서버측 필터 상태.
+  const [fSido, setFSido] = useState('')       // 1차 시/도 (KOREA_REGIONS key)
+  const [fDistrict, setFDistrict] = useState('') // 2차 동네그룹 key
+  const [fCategory, setFCategory] = useState('')
+  const [fMode, setFMode] = useState('')        // '' | 'live' | 'prelaunch'
+  const [fSource, setFSource] = useState('')    // '' | 'real' | 'demo'
+  const [fStatus, setFStatus] = useState('')    // '' | 'active' | 'hidden'
+  const fSidoRegion = findRegionByKey(fSido)
 
   const openFcfs = async (d: DealRow) => {
     if (fcfsDraft?.id === d.id) { setFcfsDraft(null); return }
@@ -53,14 +66,32 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
     } catch { toast.error('추첨 설정 저장 실패') }
   }
 
-  const load = () => {
-    setLoading(true)
-    api.get('/api/admin/dongnedeal/list?limit=100', h)
-      .then((r) => { if (r.data?.success) setRows(r.data.data || []) })
+  // append=false: 처음부터(필터/새로고침) · append=true: '더 보기'(offset=현재 rows 수).
+  const load = (append = false) => {
+    if (append) setLoadingMore(true); else setLoading(true)
+    const offset = append ? rows.length : 0
+    const qs = new URLSearchParams({ limit: String(PAGE), offset: String(offset) })
+    const region = buildRegionParam(fSido, fDistrict)
+    if (region) qs.set('region', region)
+    if (fCategory) qs.set('category', fCategory)
+    if (fMode) qs.set('mode', fMode)
+    if (fSource) qs.set('source', fSource)
+    if (fStatus) qs.set('status', fStatus)
+    api.get(`/api/admin/dongnedeal/list?${qs.toString()}`, h)
+      .then((r) => {
+        if (r.data?.success) {
+          const data: DealRow[] = r.data.data || []
+          setRows((prev) => (append ? [...prev, ...data] : data))
+          setTotal(Number(r.data.total ?? (append ? total : data.length)))
+        }
+      })
       .catch(() => toast.error('목록 불러오기 실패'))
-      .finally(() => setLoading(false))
+      .finally(() => { if (append) setLoadingMore(false); else setLoading(false) })
   }
-  useEffect(() => { setSelected(new Set()); load() }, [nonce]) // eslint-disable-line react-hooks/exhaustive-deps
+  // nonce(외부 갱신) + 필터 변경 시 처음부터 재조회.
+  useEffect(() => { setSelected(new Set()); load(false) }, [nonce, fSido, fDistrict, fCategory, fMode, fSource, fStatus]) // eslint-disable-line react-hooks/exhaustive-deps
+  const anyFilter = !!(fSido || fCategory || fMode || fSource || fStatus)
+  const resetFilters = () => { setFSido(''); setFDistrict(''); setFCategory(''); setFMode(''); setFSource(''); setFStatus('') }
 
   const toggleActive = async (d: DealRow) => {
     setBusyId(d.id)
@@ -113,7 +144,7 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
     <div className="bg-white rounded-2xl border border-gray-200 p-5">
       <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-bold text-gray-900">등록된 동네딜 ({rows.length})</p>
+          <p className="text-sm font-bold text-gray-900">{anyFilter ? '필터 결과' : '등록된 동네딜'} ({total > rows.length ? `${rows.length} / ${total}` : total})</p>
           {selected.size > 0 && (
             <button
               onClick={removeSelected}
@@ -131,16 +162,54 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
               전체 선택
             </label>
           )}
-          <button onClick={load} className="inline-flex items-center gap-1 text-[12px] font-semibold text-gray-500 hover:text-gray-800">
+          <button onClick={() => load(false)} className="inline-flex items-center gap-1 text-[12px] font-semibold text-gray-500 hover:text-gray-800">
             <RefreshCw className="w-3.5 h-3.5" /> 새로고침
           </button>
         </div>
       </div>
 
+      {/* 🔎 필터 바 — 지역(시/도·동네) / 카테고리 / 상품형태 / 데모여부 / 노출상태. 서버측 필터(전 목록 대상). */}
+      <div className="flex items-center gap-2 flex-wrap mb-3 pb-3 border-b border-gray-100">
+        <select value={fSido} onChange={(e) => { setFSido(e.target.value); setFDistrict('') }} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="시/도 필터">
+          <option value="">전체 지역</option>
+          {KOREA_REGIONS.map((r) => <option key={r.key} value={r.key}>{r.label.replace(/\n/g, ' ')}</option>)}
+        </select>
+        <select value={fDistrict} onChange={(e) => setFDistrict(e.target.value)} disabled={!fSidoRegion || fSidoRegion.districtGroups.length === 0} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white disabled:opacity-50 max-w-[180px]" aria-label="동네 필터">
+          <option value="">{fSidoRegion ? `${cleanSido(fSidoRegion.label)} 전체` : '동네'}</option>
+          {fSidoRegion?.districtGroups.map((g) => <option key={g.key} value={g.key}>{g.label}</option>)}
+        </select>
+        <select value={fCategory} onChange={(e) => setFCategory(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="카테고리 필터">
+          <option value="">전체 카테고리</option>
+          <option value="meal_voucher">식사</option>
+          <option value="beauty_voucher">미용</option>
+          <option value="etc_voucher">기타</option>
+          <option value="general">일반</option>
+          <option value="stay_voucher">숙소</option>
+        </select>
+        <select value={fMode} onChange={(e) => setFMode(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="상품형태 필터">
+          <option value="">전체 형태</option>
+          <option value="live">실상품형</option>
+          <option value="prelaunch">오픈예정형</option>
+        </select>
+        <select value={fSource} onChange={(e) => setFSource(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="데모여부 필터">
+          <option value="">전체(실+데모)</option>
+          <option value="real">실등록만</option>
+          <option value="demo">데모만</option>
+        </select>
+        <select value={fStatus} onChange={(e) => setFStatus(e.target.value)} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="노출상태 필터">
+          <option value="">전체 상태</option>
+          <option value="active">노출중</option>
+          <option value="hidden">숨김</option>
+        </select>
+        {anyFilter && (
+          <button onClick={resetFilters} className="text-[12px] text-gray-500 hover:text-gray-800 underline underline-offset-2">필터 초기화</button>
+        )}
+      </div>
+
       {loading ? (
         <p className="text-sm text-gray-400 py-8 text-center">불러오는 중…</p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-gray-400 py-8 text-center">아직 등록된 동네딜이 없습니다. 위에서 추가해보세요.</p>
+        <p className="text-sm text-gray-400 py-8 text-center">{anyFilter ? '이 필터에 해당하는 동네딜이 없습니다. 필터를 조정해보세요.' : '아직 등록된 동네딜이 없습니다. 위에서 추가해보세요.'}</p>
       ) : (
         <div className="divide-y divide-gray-100">
           {rows.map((d) => (
@@ -162,6 +231,8 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
                 <div className="flex items-center gap-1.5">
                   <p className={`text-[13px] font-bold truncate ${d.is_active ? 'text-gray-900' : 'text-gray-400 line-through'}`}>{d.name}</p>
                   <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">{CAT_LABEL[d.category] || d.category}</span>
+                  {d.prelaunch === 1 && <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded shrink-0">오픈예정</span>}
+                  {d.is_demo === 1 && <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded shrink-0">데모</span>}
                   {!d.is_active && <span className="text-[10px] font-bold text-amber-600 shrink-0">숨김</span>}
                 </div>
                 <p className="text-[11px] text-gray-500 truncate">
@@ -208,6 +279,13 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
               )}
             </div>
           ))}
+        </div>
+      )}
+      {!loading && rows.length < total && (
+        <div className="mt-3 text-center">
+          <button onClick={() => load(true)} disabled={loadingMore} className="px-4 py-2 rounded-lg text-[13px] font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50">
+            {loadingMore ? '불러오는 중…' : `더 보기 (${rows.length} / ${total})`}
+          </button>
         </div>
       )}
       <p className="mt-2 text-[11px] text-gray-400 flex items-center gap-1"><MapPin className="w-3 h-3" /> 좌표없음 = 지도 미표시(주소 지오코딩 대기). 수정에서 매장 검색으로 좌표 확보 가능.</p>

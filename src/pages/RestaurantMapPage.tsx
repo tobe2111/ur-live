@@ -18,6 +18,7 @@ import SuggestionModal from './restaurant-map/SuggestionModal'
 import HeroCarousel from './restaurant-map/HeroCarousel'
 import RestaurantList from './restaurant-map/RestaurantList'
 import { useGeocodeMissing } from './restaurant-map/useGeocodeMissing'
+import { useNearMeAuto } from './restaurant-map/useNearMeAuto'
 import SelectedDealCard from './restaurant-map/SelectedDealCard'
 import MapTopBar from './restaurant-map/MapTopBar'
 import SheetFilterBar from './restaurant-map/SheetFilterBar'
@@ -104,7 +105,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 즐겨찾기 (localStorage) + 라이브 셀러 ID 집합
   const [favorites, setFavorites] = useState<number[]>(() => storage.getJSON<number[]>('restaurant_favorites', []))
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
-  const [liveSellerIds, setLiveSellerIds] = useState<Set<number>>(new Set())
+  const [liveSellerIds] = useState<Set<number>>(new Set())
   // 🛡️ 2026-04-30: UX 개선 — 필터 시트 (지역 + 카테고리 통합)
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const activeFilterCount = ((region || district) ? 1 : 0) + (radiusKm > 0 ? 1 : 0) + (priceRange !== 'all' ? 1 : 0)
@@ -176,49 +177,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     })
   }, [])
 
-  // 라이브 셀러 폴링 — 이용권 셀러가 라이브 중이면 핀에 LIVE 배지
-  // 🛡️ 2026-04-30 UX: 30초 → 90초로 완화 + 탭 숨김 시 일시 정지 (배터리·네트워크 절약).
-  //   "자동으로 새로고침되며 긴 로딩" 사용자 신고 대응.
-  useEffect(() => {
-    let cancelled = false
-    let id: ReturnType<typeof setInterval> | null = null
-
-    const fetchLive = async () => {
-      if (document.visibilityState !== 'visible') return // 백그라운드면 skip
-      try {
-        const res = await api.get('/api/streams', { params: { status: 'live', limit: 50 } })
-        if (cancelled) return
-        if (res.data?.success && Array.isArray(res.data.data)) {
-          const ids = new Set<number>(res.data.data.map((s: { seller_id?: number }) => s.seller_id).filter(Boolean) as number[])
-          setLiveSellerIds(ids)
-        }
-      } catch { /* silent */ }
-    }
-
-    const startPolling = () => {
-      if (id) clearInterval(id)
-      id = setInterval(fetchLive, 90_000)
-    }
-
-    fetchLive()
-    startPolling()
-    // 탭 복귀 시 즉시 1회 fetch + 폴링 재시작
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        fetchLive()
-        startPolling()
-      } else if (id) {
-        clearInterval(id)
-        id = null
-      }
-    }
-    document.addEventListener('visibilitychange', onVisibility)
-    return () => {
-      cancelled = true
-      if (id) clearInterval(id)
-      document.removeEventListener('visibilitychange', onVisibility)
-    }
-  }, [])
+  // 🗑️ 2026-07-07 라이브커머스 제거: 홈의 '라이브 셀러' 90초 폴러 삭제(/api/streams 엔드포인트 제거됨).
+  //   liveSellerIds 는 영구 빈 Set → 소비처(HeroCarousel/미니카드)의 LIVE 배지는 렌더되지 않음(의도).
 
   // 사용자 위치 자동 감지 (1회) — 거리순 정렬용
   useEffect(() => {
@@ -233,6 +193,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       { timeout: 5000, enableHighAccuracy: false, maximumAge: 600000 }
     )
   }, [])
+
+  // 🧭 2026-07-07 (대표 — 홈 '내 주변' 기준): 위치 확보 시 자동 '가까운 순' + 동네 라벨(useNearMeAuto).
+  const { nearDong, setSortByUser } = useNearMeAuto({ userLoc, region, district, setSortBy, setNearMeMode })
 
   // 🛡️ 2026-06-20 (대표 — "미리 업체들 나오는거 별로"): 옵션B 카카오 일반 업체(회색 '+' 추천핀)를
   //   기본 지도에 자동으로 깔던 것 제거 → 기본 화면엔 '실제 딜'만. 사용자가 직접 검색했을 때만 표시
@@ -473,6 +436,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       ? (findDistrictGroup(region, district)?.label.split('/')[0] || '지역')
       : region
       ? (findRegionByKey(region)?.label.replace('\n', ' ') || '지역')
+      : nearMeMode
+      // 🧭 2026-07-07 (대표 — '내 주변' 기준): 지역 미선택 + 내 주변 모드면 감지된 동네(폴백 '내 주변').
+      ? (nearDong || '내 주변')
       : '전국'
     return (
       <div className="bg-white dark:bg-[#020202] min-h-[100dvh]">
@@ -506,7 +472,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             filteredCount={filtered.length}
             userLoc={userLoc}
             sortBy={sortBy}
-            setSortBy={setSortBy}
+            setSortBy={setSortByUser}
             favorites={favorites}
             showFavoritesOnly={showFavoritesOnly}
             setShowFavoritesOnly={setShowFavoritesOnly}
@@ -542,7 +508,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             region={region} district={district} sortBy={sortBy} radiusKm={radiusKm} priceRange={priceRange}
             hasUserLoc={!!userLoc} countFor={countFor}
             onApply={(rg, dist, sort, radius, price) => {
-              setRegion(rg); setDistrict(dist); setSortBy(sort); setRadiusKm(radius); setPriceRange(price); setFilterSheetOpen(false)
+              setRegion(rg); setDistrict(dist); setSortByUser(sort); setRadiusKm(radius); setPriceRange(price); setFilterSheetOpen(false)
             }}
             onClose={() => setFilterSheetOpen(false)}
           />
@@ -672,7 +638,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             filteredCount={filtered.length}
             userLoc={userLoc}
             sortBy={sortBy}
-            setSortBy={setSortBy}
+            setSortBy={setSortByUser}
             favorites={favorites}
             showFavoritesOnly={showFavoritesOnly}
             setShowFavoritesOnly={setShowFavoritesOnly}
@@ -725,7 +691,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           onApply={(rg, dist, sort, radius, price) => {
             setRegion(rg)
             setDistrict(dist)
-            setSortBy(sort)
+            setSortByUser(sort)
             setRadiusKm(radius)
             setPriceRange(price)
             setMapView(true)

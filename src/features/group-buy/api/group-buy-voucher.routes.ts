@@ -257,19 +257,39 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
       await upsertRedemptionSettings(c.env.DB, Number(user.id), s.mode, code)
       s.store_code = code
     }
-    return c.json({ success: true, data: s })
+    // 🎟️ 2026-07-06 매장별 사용조건(프리셋 선택 + 커스텀) — seller_meta 저장.
+    let usage_conditions: string[] = []
+    let usage_custom = ''
+    try {
+      const { getSellerMeta } = await import('../../../worker/utils/seller-meta')
+      const meta = await getSellerMeta(c.env.DB, [Number(user.id)])
+      const raw = meta?.get(Number(user.id))
+      usage_conditions = JSON.parse(String(raw?.voucher_usage_conditions || '[]'))
+      usage_custom = String(raw?.voucher_usage_custom || '')
+    } catch { /* 미설정 */ }
+    return c.json({ success: true, data: { ...s, usage_conditions: Array.isArray(usage_conditions) ? usage_conditions : [], usage_custom } })
   })
 
   router.put('/redemption-settings', requireAuth(), async (c) => {
     const user = getCurrentUser(c)
     if (!user || user.type !== 'seller') return c.json({ success: false, error: '셀러만 가능' }, 403)
-    const body = await c.req.json<{ mode?: string; regenerate_code?: boolean }>().catch(() => ({} as { mode?: string; regenerate_code?: boolean }))
+    const body = await c.req.json<{ mode?: string; regenerate_code?: boolean; usage_conditions?: unknown; usage_custom?: unknown }>().catch(() => ({} as { mode?: string; regenerate_code?: boolean; usage_conditions?: unknown; usage_custom?: unknown }))
     const { getRedemptionSettings, upsertRedemptionSettings, generateStoreCode, REDEMPTION_MODES } = await import('../../../worker/utils/redemption-settings')
     const cur = await getRedemptionSettings(c.env.DB, Number(user.id))
     const mode = (REDEMPTION_MODES as readonly string[]).includes(String(body.mode || '')) ? (body.mode as typeof cur.mode) : cur.mode
     const storeCode = body.regenerate_code ? generateStoreCode() : (cur.store_code || generateStoreCode())
     await upsertRedemptionSettings(c.env.DB, Number(user.id), mode, storeCode)
-    return c.json({ success: true, data: { mode, store_code: storeCode } })
+    // 🎟️ 2026-07-06 매장별 사용조건 저장(프리셋 선택 + 커스텀) — 본문에 있을 때만 갱신.
+    let outConditions: string[] | undefined
+    let outCustom: string | undefined
+    if ('usage_conditions' in body || 'usage_custom' in body) {
+      const { sanitizeUsageConditions } = await import('../../../shared/voucher-usage-conditions')
+      const { keys, custom } = sanitizeUsageConditions(body.usage_conditions, body.usage_custom)
+      const { setSellerMeta } = await import('../../../worker/utils/seller-meta')
+      await setSellerMeta(c.env.DB, Number(user.id), { voucher_usage_conditions: JSON.stringify(keys), voucher_usage_custom: custom || null }).catch(() => {})
+      outConditions = keys; outCustom = custom
+    }
+    return c.json({ success: true, data: { mode, store_code: storeCode, ...(outConditions ? { usage_conditions: outConditions, usage_custom: outCustom } : {}) } })
   })
 
   // ── POST /:code/use-by-seller — 매장 사장님이 본인 매장 voucher 사용 (PIN 없이, seller JWT) ──

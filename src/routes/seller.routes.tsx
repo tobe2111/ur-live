@@ -35,21 +35,13 @@ const SellerBookingSlotsPage = lazy(() => import('@/pages/SellerBookingSlotsPage
 const SellerAppointmentsPage = lazy(() => import('@/pages/SellerAppointmentsPage'))
 const MyLedgerPage = lazy(() => import('@/pages/MyLedgerPage'))
 const StoreOwnerDashboardPage = lazy(() => import('@/pages/StoreOwnerDashboardPage'))
-const SellerStreamNewPage = lazy(() => import('@/pages/SellerStreamNewPage'))
-const SellerStreamEditPage = lazy(() => import('@/pages/SellerStreamEditPage'))
 const SellerProfileEditPage = lazy(() => import('@/pages/SellerProfileEditPage'))
 const SellerPublicPage = lazy(() => import('@/pages/SellerPublicPage'))
 const SellerSettlementsPage = lazy(() => import('@/pages/SellerSettlementsPage'))
 const SellerAlimtalkPage = lazy(() => import('@/pages/SellerAlimtalkPage'))
 const SellerYoutubeGrowthPage = lazy(() => import('@/pages/SellerYoutubeGrowthPage'))
 const SellerYoutubeGrowthSuccessPage = lazy(() => import('@/pages/SellerYoutubeGrowthSuccessPage'))
-const SellerDonationsPage = lazy(() => import('@/pages/SellerDonationsPage'))
 const SellerTransfersPage = lazy(() => import('@/pages/SellerTransfersPage'))
-const SellerShortsPage = lazy(() => import('@/pages/SellerShortsPage'))
-const SellerLiveBroadcastPage = lazy(() => import('@/pages/SellerLiveBroadcastPage'))
-const SellerVerifyWhipProxyPage = lazy(() => import('@/pages/SellerVerifyWhipProxyPage'))
-const SellerStreamingSetupPage = lazy(() => import('@/pages/SellerStreamingSetupPage'))
-const SellerLiveAnalyticsPage = lazy(() => import('@/pages/SellerLiveAnalyticsPage'))
 const SellerAnalyticsPage = lazy(() => import('@/pages/SellerAnalyticsPage'))
 const SellerReviewsPage = lazy(() => import('@/pages/SellerReviewsPage'))
 const SellerCouponsPage = lazy(() => import('@/pages/SellerCouponsPage'))
@@ -72,10 +64,8 @@ const SellerVoucherOrdersPage = lazy(() => import('@/pages/SellerVoucherOrdersPa
 const Seller2FASetupPage = lazy(() => import('@/pages/Seller2FASetupPage'))
 const SellerNotifyFollowersPage = lazy(() => import('@/pages/SellerNotifyFollowersPage'))
 const SellerMiniShopPage = lazy(() => import('@/pages/SellerMiniShopPage'))
-const SellerStreamingGuidePage = lazy(() => import('@/pages/SellerStreamingGuidePage'))
 const SellerPromoCodesPage = lazy(() => import('@/pages/SellerPromoCodesPage'))
 const SellerFollowersPage = lazy(() => import('@/pages/SellerFollowersPage'))
-const SellerCastingsPage = lazy(() => import('@/pages/SellerCastingsPage'))
 const SellerPromoteBoostsPage = lazy(() => import('@/pages/SellerPromoteBoostsPage'))
 const YouTubeCallbackPage = lazy(() => import('@/pages/YouTubeCallbackPage'))
 
@@ -115,11 +105,6 @@ export function SellerRoutes() {
       <Route path="/seller/business-info" element={
         <ProtectedRoute requireSeller>
           <SellerBusinessInfoPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/castings" element={
-        <ProtectedRoute requireSeller>
-          <SellerCastingsPage />
         </ProtectedRoute>
       } />
       <Route path="/seller/promote-boosts" element={
@@ -193,18 +178,6 @@ export function SellerRoutes() {
           <StoreOwnerDashboardPage />
         </ProtectedRoute>
       } />
-      <Route path="/seller/live" element={<Navigate to="/seller/live-broadcast" replace />} />
-      <Route path="/seller/live-control" element={<Navigate to="/seller/live-broadcast" replace />} />
-      <Route path="/seller/streams/new" element={
-        <ProtectedRoute requireSeller>
-          <SellerStreamNewPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/streams/:id" element={
-        <ProtectedRoute requireSeller>
-          <SellerStreamEditPage />
-        </ProtectedRoute>
-      } />
       <Route path="/seller/profile" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerProfileEditPage /></ErrorBoundary>
@@ -230,19 +203,9 @@ export function SellerRoutes() {
           <SellerAlimtalkPage />
         </ProtectedRoute>
       } />
-      <Route path="/seller/donations" element={
-        <ProtectedRoute requireSeller>
-          <ErrorBoundary><SellerDonationsPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       <Route path="/seller/transfers" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerTransfersPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/shorts" element={
-        <ProtectedRoute requireSeller>
-          <ErrorBoundary><SellerShortsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/seller/group-buy" element={
@@ -330,12 +293,6 @@ export function SellerRoutes() {
           <ErrorBoundary><SellerMiniShopPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      {/* 🛡️ 2026-05-15 (PRISM 따라잡기): PRISM/OBS 송출 가이드 */}
-      <Route path="/seller/streaming-guide" element={
-        <ProtectedRoute requireSeller>
-          <ErrorBoundary><SellerStreamingGuidePage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
       {/* 🛡️ 2026-05-15: 셀러 promo 코드 (단골 전용 할인) */}
       <Route path="/seller/promo-codes" element={
         <ProtectedRoute requireSeller>
@@ -346,36 +303,6 @@ export function SellerRoutes() {
       <Route path="/seller/followers" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerFollowersPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/streaming-setup" element={
-        <ProtectedRoute requireSeller>
-          <SellerStreamingSetupPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/live-broadcast" element={
-        <ProtectedRoute requireSeller>
-          <SellerLiveBroadcastPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/verify-whip-proxy" element={
-        <ProtectedRoute requireSeller>
-          <SellerVerifyWhipProxyPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/live-broadcast/:streamId" element={
-        <ProtectedRoute requireSeller>
-          <SellerLiveBroadcastPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/live-analytics" element={
-        <ProtectedRoute requireSeller>
-          <SellerLiveAnalyticsPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/live-analytics/:streamId" element={
-        <ProtectedRoute requireSeller>
-          <SellerLiveAnalyticsPage />
         </ProtectedRoute>
       } />
       <Route path="/seller/supply" element={

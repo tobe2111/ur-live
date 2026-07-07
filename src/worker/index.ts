@@ -36,7 +36,6 @@ import { adminFeeBreakdownRoutes } from '../features/admin/api/admin-fee-breakdo
 import { funnelRoutes } from '../features/analytics/api/funnel.routes';
 import { adminTaxRoutes } from '../features/admin/api/admin-tax.routes';
 import { ledgerRoutes } from '../features/ledger/api/ledger.routes';
-import { streamsRouter } from './routes/streams.routes';  // ✅ 공개 스트림 라우트
 import { usersRouter } from './routes/users.routes';      // ✅ /api/users/role, /api/users/init
 import { meRegionRoutes, adminRegionRoutes, publicRegionRoutes } from './routes/region.routes'; // 🗺️ 내 동네 + 동별 밀도 + 좌표해석
 import { acquisitionRoutes } from './routes/acquisition.routes'; // 📡 유입 소스 어트리뷰션 (?src= 퍼널)
@@ -101,9 +100,7 @@ import { fundingRoutes } from '../features/funding/api/funding.routes';
 import { sellerPinRoutes } from '../features/seller/api/seller-pin.routes';
 import { sellerOrdersRoutes } from '../features/seller/api/seller-orders.routes';
 import { sellerAnalyticsRoutes } from '../features/seller/api/seller-analytics.routes';
-import { sellerStreamsRoutes } from '../features/seller/api/seller-streams.routes';
 import { sellerOnboardingRoutes } from '../features/seller/api/seller-onboarding.routes';
-import { viewerLoyaltyRoutes } from '../features/seller/api/viewer-loyalty.routes';
 import { optimalTimeRoutes } from '../features/seller/api/optimal-time.routes';
 import { faqBotRoutes } from '../features/guides/api/faq-bot.routes';
 import { moderationRoutes } from '../features/moderation/api/moderation.routes';
@@ -113,7 +110,6 @@ import { adminNotificationSettingsRoutes } from '../features/admin/api/admin-not
 import { adminBusinessMonitoringRoutes } from '../features/admin/api/admin-business-monitoring.routes';
 import { agencySelfEventsRoutes } from '../features/agency/api/agency-self-events.routes';
 import { promoteBoostsAgencyRoutes, promoteBoostsSellerRoutes } from '../features/agency/api/promote-boosts.routes';
-import { liveNotifyFollowersRoutes } from '../features/seller/api/live-notify-followers.routes';
 import { sellerTransferRoutes } from '../features/agency/api/seller-transfer.routes';
 import { sellerTransferRespondRoutes } from '../features/seller/api/seller-transfer-respond.routes';
 import {
@@ -122,7 +118,6 @@ import {
   sellerCastingRoutes,
 } from '../features/casting/api/casting.routes';
 import { donationBoosterRoutes, donationBoosterPublicRoutes } from '../features/donations/api/donation-booster.routes';
-import { pkBattlesRoutes, pkBattlesPublicRoutes } from '../features/agency/api/pk-battles.routes';
 import { shippingAddressRoutes } from '../features/shipping/api/shipping-address.routes';
 import { wishlistRoutes } from '../features/wishlists/api/wishlists.routes';
 import { supplyRoutes } from '../features/supply/api/supply.routes';
@@ -157,11 +152,8 @@ import { restaurantSuggestionsRoutes } from '../features/restaurant-suggestions/
 import { donationsRoutes } from '../features/donations/api/donations.routes';
 import { sellerDonationsRoutes } from '../features/donations/api/seller-donations.routes';
 import youtubeRoutes from '../features/youtube/api/youtube.routes';
-import { youtubeLiveRoutes, omeAdmissionHandler, createLiveBroadcastHandler } from '../features/youtube/api/youtube-live.routes';
-import { rateLimit as rateLimitMw } from './middleware/rate-limit';
+// 🗑️ 2026-07-07 (대표 지시 "라이브커머스 모두 제거"): youtube-live.routes(160KB) 제거 — 워커 다이어트.
 import { multiPlatformRoutes } from '../features/multi-platform/api/multi-platform.routes';
-import youtubeChatRoutes from '../features/youtube/api/youtube-chat.routes';
-import { liveSseRoutes, chatRoutes } from './routes/live-sse.routes';
 import { cafe24Routes } from '../features/cafe24/api/cafe24.routes';
 
 import { ALLOWED_ORIGINS, FIREBASE_RTDB_URL, FIREBASE_APP_URL } from '../shared/constants';
@@ -178,6 +170,7 @@ import { csrfProtection, csrfTokenHandler } from '../lib/csrf';
 import { blogRoutes } from '../features/blog/api/blog.routes';
 import { blogSeoRoutes } from '../features/blog/api/blog-seo.routes';
 import { buildBlogPostMeta, buildBlogListJsonLd } from '../features/blog/api/blog-ssr-meta';
+import { buildDetailMeta } from './utils/detail-ssr-meta';
 import { agencyRoutes } from '../features/agency/api/agency.routes';
 import { agencyKakaoLinkRoutes } from '../features/agency/api/agency-kakao-link.routes';
 import { agencyStatsRoutes } from '../features/agency/api/agency-stats.routes';
@@ -216,7 +209,6 @@ import { guideRoutes } from '../features/guides/api/guide.routes';
 import { inviteRewardRoutes } from '../features/referral/api/invite-reward.routes';
 import { referralTreeRoutes } from '../features/referral/api/referral-tree.routes';
 import { reportsRoutes } from '../features/reports/api/reports.routes';
-import { broadcastNotifyRoutes } from '../features/broadcast-notify/api/broadcast-notify.routes';
 import { loyaltyRoutes } from '../features/loyalty/api/loyalty.routes';
 import { interestRoutes } from '../features/loyalty/api/interest.routes';
 import { kakaoSocialRoutes } from '../features/kakao-social/api/kakao-social.routes';
@@ -236,6 +228,8 @@ import { uploadRoutes } from '../features/upload/api/upload.routes';
 import { sellerMarketingRoutes, influencerSettlementRoutes, adminPayoutRoutes, influencerDiscoverRoutes, influencerRankingsRoutes } from '../features/group-buy/api/marketing.routes';
 import { reviewBonusUserRoutes, reviewBonusAdminRoutes } from '../features/group-buy/api/review-bonus.routes';
 import { fcfsRoutes, fcfsAdminRoutes } from '../features/group-buy/api/fcfs.routes';
+import { gbMarketplaceRoutes } from '../features/group-buy/api/gb-marketplace.routes';
+import { gbProposalsRoutes } from '../features/group-buy/api/gb-proposals.routes';
 import { voucherDisputeRoutes, voucherDisputeAdminRoutes } from '../features/group-buy/api/voucher-dispute.routes';
 // 🛡️ 2026-05-20: requireAdmin 은 위 (line 127) 에서 이미 import — 중복 제거.
 import { ogRoutes } from './routes/og-image.routes';
@@ -844,6 +838,34 @@ app.use('*', async (c, next) => {
           '<div class="ur-loader-sweep bg-gray-900 dark:bg-white" style="position:absolute;top:0;bottom:0;left:0;border-radius:9999px;width:38%"></div>' +
         '</div>' +
       '</div>';
+    // 🔎 2026-07-07 [UNLOCK_LOADING] (대표 "각 이용권 페이지마다 SEO 다 잘 되지?"): 공구/이용권/교환권 상세
+    //   (DETAIL slot — /group-buy/:id · /vouchers/:id) 서버측 메타/JSON-LD 주입. 그간 DETAIL 은 데이터만
+    //   주입하고 메타는 index.html 기본값(제네릭 홈)을 서빙 → 비-JS 크롤러(네이버/카카오/소셜)가 이용권 링크
+    //   공유·색인 시 "유어딜 홈" 카드를 봄. BLOGPOST/CURATOR/WHOLESALE 과 동일 패턴으로 서빙경로에서 rewrite.
+    //   **SSR inject(__SSR_INITIAL_DETAIL__)·0-RTT·#root 정적 로더·edgeCache 전부 불변 — 메타 rewrite만 additive.**
+    //   순수 계산은 detail-ssr-meta.ts(god 파일 성장 방지). /vouchers/:id(교환권)는 noindex(클라 <SEO noindex> 대칭).
+    if (ssrSlot === 'DETAIL' && ssrPayload) {
+      const dm = buildDetailMeta(ssrPayload, origin2, url.pathname);
+      if (dm) {
+        rb = rb
+          .on('title', { element(el) { el.setInnerContent(dm.pageTitle); } })
+          .on('meta[name="description"]', { element(el) { el.setAttribute('content', dm.description); } })
+          .on('meta[property="og:title"]', { element(el) { el.setAttribute('content', dm.title); } })
+          .on('meta[property="og:description"]', { element(el) { el.setAttribute('content', dm.description); } })
+          .on('meta[property="og:url"]', { element(el) { el.setAttribute('content', dm.canonical); } })
+          .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', dm.ogType); } })
+          .on('meta[property="og:image"]', { element(el) { el.setAttribute('content', dm.ogImage); } })
+          .on('meta[name="twitter:title"]', { element(el) { el.setAttribute('content', dm.title); } })
+          .on('meta[name="twitter:description"]', { element(el) { el.setAttribute('content', dm.description); } })
+          .on('meta[name="twitter:image"]', { element(el) { el.setAttribute('content', dm.ogImage); } })
+          .on('head', { element(el) {
+            el.append(`<link rel="canonical" href="${dm.canonical}">`, { html: true });
+            if (dm.jsonLd) el.append(`<script type="application/ld+json">${dm.jsonLd}</script>`, { html: true });
+          } });
+        // 교환권(/vouchers/:id)은 색인 제외 — index.html 기본 robots(index,follow)를 noindex 로 rewrite.
+        if (dm.noindex) rb = rb.on('meta[name="robots"]', { element(el) { el.setAttribute('content', 'noindex, follow'); } });
+      }
+    }
     if (needsRootBlank) {
       // 도매·대시보드 공통: 소비자 홈 shell 깜빡임 제거 (라이트 배경 placeholder).
       rb = rb.on('#root', {
@@ -1312,21 +1334,12 @@ app.use('/api/search/*', rateLimit({ action: 'search', max: 120, windowSec: 60 }
 // app.use('/api/products', rateLimit({ action: 'product_list', max: 60, windowSec: 60 }));
 // app.use('/api/sellers/*', rateLimit({ action: 'seller_view', max: 60, windowSec: 60 }));
 // app.use('/api/moderation/*', rateLimit({ action: 'moderation_check', max: 60, windowSec: 60 }));
-// Chat send: prevent spam; only on POSTs handled inside chatRoutes
-// HIGH-4: lowered from 30/min → 10/min to make message-flood / URL-spam harder.
-app.use('/api/chat/*/messages', rateLimit({ action: 'chat_send', max: 10, windowSec: 60 }));
-
 // HIGH-1: Upload endpoints — prevent abusive image/file uploads.
 // Applied before route mount so it fires for POST/PUT/PATCH alike.
 app.use('/api/seller/upload-image', rateLimit({ action: 'upload', max: 10, windowSec: 60 }));
 app.use('/api/seller/upload-*', rateLimit({ action: 'upload', max: 10, windowSec: 60 }));
 
-// ============================================================
-// Streams Routes  ← /api/streams (공개 조회용)
-// 프론트엔드의 LiveNow, useLiveStream, AdminPage 등이 /api/streams 호출
-// 판매자 전용 CRUD는 /api/seller/streams 유지
-// ============================================================
-app.route('/api/streams', streamsRouter);
+// 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/streams(streamsRouter) 마운트 제거.
 
 // ============================================================
 // Product & Seller Routes
@@ -1370,11 +1383,9 @@ app.route('/api/funding', fundingRoutes);
 app.route('/api/seller', sellerPinRoutes);
 app.route('/api/seller', sellerOrdersRoutes);
 app.route('/api/seller/analytics', sellerAnalyticsRoutes);
-app.route('/api/seller/streams', sellerStreamsRoutes);
+// 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/seller/streams·/api/seller/viewers 마운트 제거.
 // 🛡️ 2026-04-27 Phase 1-5: 셀러 7일 부트캠프 온보딩
 app.route('/api/seller/onboarding', sellerOnboardingRoutes);
-// 🛡️ 2026-04-27 Phase 2-3: 시청자 충성도 4단계
-app.route('/api/seller/viewers', viewerLoyaltyRoutes);
 // 🛡️ 2026-04-27 Phase 3-1: 데이터 기반 최적 라이브 시간 추천
 app.route('/api/seller/optimal-time', optimalTimeRoutes);
 // 🛡️ 2026-04-27 Phase 3-2: FAQ 봇 (가이드 검색)
@@ -1397,8 +1408,7 @@ app.route('/api/agency/self-events', agencySelfEventsRoutes);
 // 🛡️ 2026-04-27 노출 부스팅 쿠폰 (Promote to Live)
 app.route('/api/agency/promote-boosts', promoteBoostsAgencyRoutes);
 app.route('/api/seller/promote-boosts', promoteBoostsSellerRoutes);
-// 🛡️ 2026-04-27 라이브 시작 자동 알림 (단골/VIP)
-app.route('/api/seller/live-notify', liveNotifyFollowersRoutes);
+// 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/seller/live-notify 마운트 제거.
 // 🛡️ 2026-04-27 Phase 3-5: 셀러 이전 (Network 마켓플레이스)
 app.route('/api/agency/transfers', sellerTransferRoutes);
 // 🛡️ 2026-04-30 TD-016 CRITICAL: 셀러 본인이 직접 동의/거부 (agency 대행 금지)
@@ -1411,9 +1421,7 @@ app.route('/api/seller/castings', sellerCastingRoutes);
 // 🛡️ 2026-04-27 Phase 2-5: 라이브 후원 부스터 이벤트
 app.route('/api/donation-boosters', donationBoosterRoutes);
 app.route('/api/donation-boosters-public', donationBoosterPublicRoutes);
-// 🛡️ 2026-04-27 Phase 2-7: PK 이벤트 (셀러 vs 셀러 매출 경쟁)
-app.route('/api/agency/pk', pkBattlesRoutes);
-app.route('/api/pk-public', pkBattlesPublicRoutes);
+// 🗑️ 2026-07-07 (라이브커머스 제거 3/N): PK 배틀(라이브 매출경쟁) 라우트 제거.
 
 // Email notifications (global)
 app.route('/api/email', emailRoutes);
@@ -1524,7 +1532,7 @@ adminApp.route('/', adminKtAlphaRoutes);
 adminApp.route('/', adminWithholdingRoutes);
 // 🛡️ 2026-04-22 배치 149 (TD-006 부분): admin-orders 분리 (~356줄)
 adminApp.route('/', adminOrdersRoutes);
-// 🛡️ 2026-04-22 배치 150 (TD-006 부분): admin-streams + alimtalk 분리
+// 🛡️ 2026-04-22 배치 150: admin-streams(알림톡 패키지/크레딧/통계 admin — 라이브 아님, 유지)
 adminApp.route('/', adminStreamsRoutes);
 // 🛡️ 2026-04-22 배치 151 (TD-006 부분): admin-accounts (관리자 CRUD) 분리
 adminApp.route('/', adminAccountsRoutes);
@@ -1696,6 +1704,10 @@ app.route('/api/admin-review-bonus', reviewBonusAdminRoutes);
 // 🎯 2026-06-20 선착순 응모 상품 (대표) — 공개(목록/상태) + 유저(지원) + 어드민(설정/지원자/선정)
 app.route('/api/fcfs', fcfsRoutes);
 app.route('/api/admin/fcfs', fcfsAdminRoutes);
+// 🎟️ 2026-07-06 공구 엔진 §4 — 인플루언서 공구 탐색(promo 순). platform_settings.gb_engine_enabled 게이트.
+app.route('/api/gb-marketplace', gbMarketplaceRoutes);
+// 🎟️ 2026-07-06 공구 엔진 §2-B — 양방향 공구 제안(인플↔매장). 상대방 승인 시 gb open.
+app.route('/api/gb-proposals', gbProposalsRoutes);
 // 🎟️ 2026-06-22 사용처리 분쟁(매장 "안 왔어요" 신고 → 정산 보류 + 어드민 중재)
 app.route('/api/voucher-dispute', voucherDisputeRoutes);
 app.route('/api/admin/voucher-dispute', voucherDisputeAdminRoutes);
@@ -1803,8 +1815,7 @@ app.route('/api/referral-tree', referralTreeRoutes);
 // ── CS 신고 (유저 신고 접수) ──
 app.route('/api/reports', reportsRoutes);
 
-// ── 방송 알림 구독 ──
-app.route('/api/broadcast-notify', broadcastNotifyRoutes);
+// 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/broadcast-notify(방송 알림 구독) 마운트 제거.
 
 // ── VIP 등급 (유저 로열티) ──
 app.route('/api/loyalty', loyaltyRoutes);
@@ -1889,56 +1900,16 @@ app.route('/api/guides', guideRoutes);
 //   sub-router 마운트 순서 swap 으로도 405 가 계속 발생 → Hono v4 에서 같은 prefix 의
 //   여러 sub-app 마운트 시 라우팅 분쟁이 있음. top-level 직접 등록은 분쟁 없음.
 //   sub-router 내부 등록도 유지하여 정상 작동 시 동일하게 동작.
-// 🛡️ 2026-05-14: rate limit 제거 (테스트 편의 — 사용자 요청). 필요 시 다시:
-//   `const _liveCreateRateLimit = rateLimitMw({ action: 'youtube_live_create', max: 15, windowSec: 3600 });`
-//   `app.post(..., _liveCreateRateLimit, createLiveBroadcastHandler);`
-app.post('/api/seller/youtube/live/create', createLiveBroadcastHandler);
-app.post('/api/youtube/live/create', createLiveBroadcastHandler);
-
-// 그 외 /live/* 경로 (status, start, end, chat 등) 는 기존대로 sub-router 사용.
-// 🛡️ 2026-05-12: youtubeLiveRoutes 를 먼저 마운트 — Hono v4 에서 같은 prefix 에
-//   두 라우터 마운트 시 첫 번째 라우터가 경로를 "소비"하여 두 번째 라우터의
-//   POST /live/create 가 405 반환되는 문제 해결. /live/* 가 더 구체적이므로 우선.
-app.route('/api/seller/youtube', youtubeLiveRoutes);
-app.route('/api/youtube', youtubeLiveRoutes);
+// 🗑️ 2026-07-07 (대표 지시 "라이브커머스 모두 제거"): youtube-live 방송 생성/OME admission/라이브 채팅
+//   마운트 전부 제거(youtube-live.routes·youtube-chat.routes·ome-push/cache/hmac 삭제). 계정연동(youtubeRoutes)은 유지.
 app.route('/api/seller/youtube', youtubeRoutes);
 app.route('/api/youtube', youtubeRoutes); // legacy path alias
-
-// 🛡️ 2026-05-08: OvenMediaEngine admission webhook (자체 미디어 서버).
-//   OME 가 publish 시도 시 호출 → token 검증 + 셀러의 YouTube RTMP key 동적 push 등록.
-app.post('/api/internal/ome/admission', async (c) => {
-  // signature 검증을 위해 raw body 그대로 보존 (re-stringify 시 OME 의 원본 바이트와 달라질 수 있음).
-  const rawBody = await c.req.text().catch(() => '')
-  if (!rawBody) {
-    return c.json({ allowed: false, reason: 'empty body' }, 400)
-  }
-  // 🛡️ 2026-05-12 (C4): JSON 파싱 실패와 핸들러 실패 분리. 잘못된 JSON 은 400 (재시도 무의미),
-  //   핸들러 내부 실패만 500 (재시도 가능). OME 에게 정확한 신호 전달.
-  let body: unknown
-  try {
-    body = JSON.parse(rawBody)
-  } catch (parseErr) {
-    console.warn('[OME admission] invalid JSON body', { length: rawBody.length, err: String(parseErr).slice(0, 100) })
-    return c.json({ allowed: false, reason: 'invalid JSON' }, 400)
-  }
-  try {
-    const sig = c.req.header('X-OME-Signature') || null
-    const result = await omeAdmissionHandler(body as Parameters<typeof omeAdmissionHandler>[0], sig, c.env, rawBody, (p) => c.executionCtx.waitUntil(p))
-    return c.json(result)
-  } catch (e) {
-    console.error('[OME admission] handler error', e)
-    return c.json({ allowed: false, reason: 'internal error' }, 500)
-  }
-});
-app.route('/api/youtube/chat', youtubeChatRoutes);
 
 // 🛡️ 2026-04-23 배치 164: 다중 플랫폼 stub (TikTok / Naver Chzzk / SOOP)
 //   GET /api/platforms 로 지원 플랫폼 상태 조회. 미구현 플랫폼은 501 반환.
 app.route('/api', multiPlatformRoutes);
 
-// Live stream real-time (SSE fallback + WebSocket → DO + chat messages)
-app.route('/api/live', liveSseRoutes);
-app.route('/api/chat', chatRoutes);
+// 🗑️ 2026-07-07 (라이브커머스 제거 2/N): /api/live·/api/chat(라이브 SSE+채팅) 마운트 제거.
 
 // ── 사이드 배너 (공개 API, 인증 불필요) ──
 app.get('/api/side-banners', async (c) => {

@@ -90,6 +90,7 @@ if domain ui; then
   run "테마 일관성(dark variant)"        node scripts/check-theme-consistency.mjs
   run "RQ initialData 신선도"           node scripts/check-query-initialdata.mjs
   run "모바일 뷰포트(하단 잘림)"          node scripts/check-mobile-viewport.mjs
+  run "링크샵 소유권 단일화"              node scripts/check-linkshop-ownership.mjs -s
 fi
 
 if domain structure; then
