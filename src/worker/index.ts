@@ -828,6 +828,22 @@ app.use('*', async (c, next) => {
         }
       } catch { /* 파싱 실패 시 기본 메타 유지 */ }
     }
+    // 🎯 2026-07-02 (대표 "아직 조금 끊김"): 워드마크를 UrDealLogo(React SSOT)와 픽셀 동일하게 —
+    //   ▶ 플레이 마커 + 블록 도트(size34 사전계산). 이전 평문 "UR·DEAL" 은 React 로더 교체 순간 미세 점프.
+    //   테마 가변 대응: dark: variant 로 다크/라이트 자동. CSS(ur-loader-breathe/sweep)는 번들에 존재.
+    const urdealLoaderHtml =
+      '<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">' +
+        '<div class="ur-loader-breathe text-[#0A0A0A] dark:text-white" style="display:inline-flex;align-items:center;font-family:\'Pretendard Variable\',system-ui,sans-serif;font-weight:900;font-size:34px;font-style:italic;letter-spacing:-0.055em;line-height:1">' +
+          '<span style="position:relative;display:inline-flex;align-items:baseline"><span>UR</span>' +
+            '<span style="position:absolute;left:6.12px;top:9.52px;width:0;height:0;border-left:4.76px solid currentColor;border-top:3.06px solid transparent;border-bottom:3.06px solid transparent;opacity:.85"></span>' +
+          '</span>' +
+          '<span style="display:inline-block;width:4.76px;height:4.76px;background:currentColor;border-radius:50%;margin:0 2.72px;transform:translateY(-2.04px)"></span>' +
+          '<span>DEAL</span>' +
+        '</div>' +
+        '<div class="bg-gray-200/70 dark:bg-white/10" style="position:relative;overflow:hidden;border-radius:9999px;width:96px;height:3px">' +
+          '<div class="ur-loader-sweep bg-gray-900 dark:bg-white" style="position:absolute;top:0;bottom:0;left:0;border-radius:9999px;width:38%"></div>' +
+        '</div>' +
+      '</div>';
     if (needsRootBlank) {
       // 도매·대시보드 공통: 소비자 홈 shell 깜빡임 제거 (라이트 배경 placeholder).
       rb = rb.on('#root', {
@@ -835,42 +851,22 @@ app.use('*', async (c, next) => {
           el.setInnerContent('<div style="position:fixed;inset:0;background:#F4F5F7"></div>', { html: true });
         },
       });
-    } else if (isLinkshopSurface || isDetailSurface) {
-      // 🖼️ 2026-07-01 [UNLOCK_LOADING] (대표 지시 — "콜드 로딩은 풀로, 2~3가지 로딩화면 절대 금지"): 링크샵은
-      //   #root 를 비워 blank flash 를 노출하던 것 → 첫 페인트부터 URDEAL 브랜드 로더 주입(다른 페이지 라우트
-      //   전환/React 로딩과 동일 로더). createRoot(비-hydrate)가 마운트 시 교체 → [로더 → 완성] 단일 흐름.
-      //   테마 가변 대응: dark: variant 로 다크/라이트 자동(index.html 인라인 스크립트가 첫 페인트 전 테마 적용).
-      //   CSS 클래스(ur-loader-breathe/sweep)는 번들에 존재. BrandLoader(React) 와 시각 동일.
-      // 🎯 2026-07-01 [UNLOCK_LOADING] (대표 "상세 로딩 2번 나뉨/느림"): 공구/교환권 상세도 동일 정적 로더 —
-      //   #root 비움(blank flash) 대신 첫 페인트부터 로더. BrandLoader 가 performance.now() 기반 음수
-      //   delay 로 위상을 전역 동기화하므로 [정적 → Suspense 청크 → 페이지 데이터] 로더가 하나로 이어짐.
-      //   (같은 이유로 정적 로더의 옛 200ms sweep 지연 제거 — 위상 0 시작 = React 로더와 정합.)
-      rb = rb.on('#root', {
-        element(el) {
-          el.setInnerContent(
-            // 🎯 2026-07-02 (대표 "아직 조금 끊김"): 워드마크를 UrDealLogo(React SSOT)와 픽셀 동일하게 —
-            //   ▶ 플레이 마커 + 블록 도트(size34 사전계산: ▶ left6.12/top9.52/border4.76·3.06, 도트 4.76 원형/
-            //   margin2.72/↑2.04). 이전 평문 "UR·DEAL" 은 React 로더 교체 순간 로고 형태가 미세하게 점프했음.
-            '<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">' +
-              '<div class="ur-loader-breathe text-[#0A0A0A] dark:text-white" style="display:inline-flex;align-items:center;font-family:\'Pretendard Variable\',system-ui,sans-serif;font-weight:900;font-size:34px;font-style:italic;letter-spacing:-0.055em;line-height:1">' +
-                '<span style="position:relative;display:inline-flex;align-items:baseline"><span>UR</span>' +
-                  '<span style="position:absolute;left:6.12px;top:9.52px;width:0;height:0;border-left:4.76px solid currentColor;border-top:3.06px solid transparent;border-bottom:3.06px solid transparent;opacity:.85"></span>' +
-                '</span>' +
-                '<span style="display:inline-block;width:4.76px;height:4.76px;background:currentColor;border-radius:50%;margin:0 2.72px;transform:translateY(-2.04px)"></span>' +
-                '<span>DEAL</span>' +
-              '</div>' +
-              '<div class="bg-gray-200/70 dark:bg-white/10" style="position:relative;overflow:hidden;border-radius:9999px;width:96px;height:3px">' +
-                '<div class="ur-loader-sweep bg-gray-900 dark:bg-white" style="position:absolute;top:0;bottom:0;left:0;border-radius:9999px;width:38%"></div>' +
-              '</div>' +
-            '</div>',
-            { html: true },
-          );
-        },
-      });
     } else if (isBlogSurface) {
       // 블로그: 홈 shell 잔상 제거 — #root 비움(테마 가변이라 색 placeholder 대신 body 테마 bg 노출).
       rb = rb.on('#root', {
         element(el) { el.setInnerContent('', { html: true }); },
+      });
+    } else if (!isMainPage) {
+      // 🖼️ 2026-07-07 [UNLOCK_LOADING] (대표 신고 "로딩 중간에 이상한 페이지들 계속 떠" — 전수조사):
+      //   **디폴트 차단**. prerender 된 `#root` 에는 홈(=RestaurantMapPage list) shell 이 구워져 있는데,
+      //   기존 분기는 도매/대시보드/블로그/링크샵/상세만 특례 처리하고 **그 외(ELSE)를 안 막아** `/vouchers`·
+      //   `/browse`·`/products/:id`·`/live`·`/search` 등 수십 개 소비자 라우트가 하드로드 첫 페인트에
+      //   **restaurant-map 홈 shell 을 잠깐 노출**(콘텐츠 점프 + raw i18n 키 + "0곳"). 홈(isMainPage)만
+      //   구운 shell 을 유지하고, 그 외 HTML 라우트는 링크샵/상세와 동일한 URDEAL 정적 로더로 통일 →
+      //   [로더 → 완성] 단일 흐름. `__SSR_INITIAL_*` 데이터는 <head> 주입(line 677)이라 #root 교체와 무관
+      //   (0-RTT 불변). 링크샵(`/u`·`/profile`·`/s`)·상세(`/group-buy|vouchers/\d+`)도 이 분기가 커버.
+      rb = rb.on('#root', {
+        element(el) { el.setInnerContent(urdealLoaderHtml, { html: true }); },
       });
     }
     const rewritten = rb.transform(c.res);

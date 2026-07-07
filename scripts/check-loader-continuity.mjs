@@ -51,12 +51,17 @@ const CHECKS = [
   },
   {
     file: 'src/worker/index.ts',
-    name: '상세(detail) 정적 URDEAL 로더 주입 (blank 흰화면 금지)',
+    name: '비-홈 라우트 정적 URDEAL 로더 주입 (홈 shell 누수/blank 금지)',
+    // 🖼️ 2026-07-07 (대표 신고 "로딩 중간에 이상한 페이지들"): 홈 `/`=RestaurantMapPage 라 prerender 된
+    //   #root 홈 shell 이, 특례 안 된 소비자 라우트(디폴트 ELSE)에서 하드로드 첫 페인트에 새어 나오던 것.
+    //   → `else if (!isMainPage)` 디폴트 분기가 홈 외 모든 HTML 라우트(링크샵/상세 포함)에 정적 로더 주입.
+    //   이 디폴트 분기가 사라지면(누가 특례 화이트리스트로 되돌리면) 홈 shell 누수 재발 → 불변식으로 고정.
     must: [
-      /isLinkshopSurface\s*\|\|\s*isDetailSurface/, // 상세도 정적 로더 분기
-      /ur-loader-breathe/,                            // 주입 HTML 에 로더 존재
+      /const\s+urdealLoaderHtml\s*=/,   // 로더 마크업 SSOT const
+      /else\s+if\s*\(\s*!isMainPage\s*\)/, // 비-홈 디폴트 로더 분기(홈 shell 누수 차단)
+      /ur-loader-breathe/,                 // 주입 HTML 에 로더 존재
     ],
-    hint: '공구/교환권 상세 #root 는 비우지 말고 링크샵과 동일 정적 URDEAL 로더를 주입하세요.',
+    hint: '홈(`/`) 외 HTML 라우트는 prerender 홈 shell 대신 `else if (!isMainPage)` 로 정적 URDEAL 로더를 주입하세요(화이트리스트 특례로 되돌려 디폴트를 열면 홈 shell 이 다른 페이지에 샙니다).',
   },
   {
     file: 'src/pages/GroupBuyDetailPage.tsx',
