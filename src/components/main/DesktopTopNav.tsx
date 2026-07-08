@@ -6,7 +6,7 @@
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Home, ShoppingCart, User, Radio, Gift, Search, Bell, Zap, Sparkles } from 'lucide-react'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useUnreadCount, useCartCount } from '@/hooks/queries'
 import { isLoggedInSync } from '@/utils/auth'
 import { isWholesaleSurface } from '@/utils/domain'
@@ -24,9 +24,20 @@ export default function DesktopTopNav() {
   // 🔗 2026-06-17 (대표 신고): 링크샵 탭이 항상 /host/new 로 가던 버그 — 본인 링크샵 경로로 정합(BottomNav 와 동일).
   const linkshopPath = useLinkshopPath()
 
+  // 🗑️ 2026-07-07 (로딩 낭비 감사): 이 네비는 `hidden md:block`(모바일 display:none)인데 React 는 마운트해
+  //   /api/cart·unread 폴링을 안 보이는 배지 위해 돌렸음(모바일=주 트래픽). 데스크탑 뷰포트에서만 카운트 훅 활성.
+  //   모바일 홈 배지는 HomeTopHeader 가 같은 queryKey 로 소비하므로 정상 유지(dedup).
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(min-width: 768px)')
+    const on = () => setIsDesktop(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
   // 🛡️ 2026-05-22 v5: 공통 hook 사용. MainHomePage 와 자동 dedup + localStorage 즉시 표시.
-  const { data: unreadCount = 0 } = useUnreadCount()
-  const { data: cartCount = 0 } = useCartCount()
+  const { data: unreadCount = 0 } = useUnreadCount(isDesktop)
+  const { data: cartCount = 0 } = useCartCount(isDesktop)
 
   // 🛡️ 2026-06-10 [UNLOCK_LOADING] (사용자 결정): 라이브 영구 중단 + 쇼핑 잠정 숨김 — 플래그 가역.
   //   링크샵 탭 추가(하단바와 정합). 쇼핑 라우트(/browse·/cart)는 보존 — 장바구니 아이콘으로 도달 가능.

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Info } from 'lucide-react'
 import api from '@/lib/api'
+import { queryKeys } from '@/hooks/queries/queryKeys'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
 import SEO from '@/components/SEO'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
@@ -126,6 +128,7 @@ export default function VoucherDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const invalidateVouchers = useInvalidateMyVouchers()
+  const qc = useQueryClient()
   // 🎨 2026-06-17 (교환권 상세 리디자인): 보유 딜 + 교환 후 잔액 표시.
   // 🛠️ 2026-06-17 (사용자 신고 — "딜 부족"으로 잘못 뜸): 기본 useBalance() 는 initialData(localStorage,
   //   기본 0)를 staleTime(60s) 동안 fresh 로 간주 → 이 페이지를 직접 진입(잔액 미캐시 브라우저)하면
@@ -166,20 +169,27 @@ export default function VoucherDetailPage() {
       }
     } catch { /* SSR 누락 — fallback */ }
 
-    api.get(`/api/group-buy/products/${id}`)
-      .then(r => {
-        if (cancelled) return
-        if (r.data?.success) setProduct(r.data.data)
-        else setError(r.data?.error || '교환권을 찾을 수 없습니다')
-      })
+    // 🗑️ 2026-07-07 (로딩 낭비 감사): raw axios → RQ fetchQuery(staleTime 60s)로 dedupe.
+    //   /group-buy/:id 와 같은 key(groupBuyProduct) → 홈 카드 touch-prefetch·GroupBuyDetailPage 의
+    //   in-flight/캐시를 그대로 이어받아 SSR seed 위에 얹히던 중복 왕복 제거. (GroupBuyDetailPage 동일 패턴.)
+    qc.fetchQuery({
+      queryKey: queryKeys.groupBuyProduct(id),
+      queryFn: async () => {
+        const r = await api.get(`/api/group-buy/products/${id}`)
+        if (!r.data?.success) throw new Error(r.data?.error || '교환권을 찾을 수 없습니다')
+        return r.data.data as VoucherProduct
+      },
+      staleTime: 60_000,
+    })
+      .then(data => { if (!cancelled) setProduct(data) })
       .catch(err => {
         if (cancelled) return
-        const msg = err?.response?.data?.error || '교환권 로드 실패'
+        const msg = err?.response?.data?.error || err?.message || '교환권 로드 실패'
         setError(msg)
       })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [id])
+  }, [id, qc])
 
   async function handleExchange() {
     if (!product) return
