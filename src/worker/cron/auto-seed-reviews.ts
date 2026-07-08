@@ -13,9 +13,18 @@
 import type { Env } from '../types/env'
 import { autoSeedMissingReviews } from '../utils/auto-seed-fake-reviews'
 import { seedMissingDemoReviews, refreshDemoReviews } from '../utils/demo-review-generator'
+import { updateReviewGenStats } from '../utils/review-gen-tuning'
 import { logError, logInfo } from '../utils/logger'
 
 export async function handleAutoSeedReviews(env: Env): Promise<void> {
+  // 📈 2026-07-07 (대표 "생성하면서 학습"): 실제 유저 리뷰 통계 → 데모 생성 파라미터 자동튜닝(피드백 루프).
+  //   refresh 전에 갱신해 이번 재생성부터 반영. 표본 부족(초기)이면 손튜닝 기본값 유지(무해).
+  try {
+    const t = await updateReviewGenStats(env)
+    logInfo(`[cron] review-gen tuning: source=${t.source} n=${t.sampleSize} short=${t.shortPct.toFixed(2)} long=${t.longPct.toFixed(2)} emoji=${t.emojiPct.toFixed(2)}`)
+  } catch (e) {
+    logError('[cron] review-gen tuning FAILED', { error: String(e) })
+  }
   // 🔄 2026-07-06 (대표 "기존 100개+ 데모도 다 새 리뷰로 · 토큰 없이 자동으로"): 옛 저품질 리뷰를
   //   새 composer 로 자동 교체. force=false 라 `review_gen_v='2'` 미표시분만 chunk(40)씩 처리 →
   //   cron 반복으로 전체 소진 후 자연 종료(remaining=0, 이후 no-op). 관리자 수동 트리거·토큰 불필요.

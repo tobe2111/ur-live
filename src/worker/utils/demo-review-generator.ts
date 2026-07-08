@@ -14,6 +14,7 @@
  * 데모 시드 시점에 리뷰를 채워 review_count>0 → 시간당 generic cron 이 건드리지 않음(이중/generic 방지).
  */
 import type { Env } from '../types/env'
+import { type ReviewTuning, DEFAULT_TUNING, getReviewGenTuning } from './review-gen-tuning'
 
 const KOREAN_NAMES = ['김민서', '이서연', '박지훈', '최유진', '정도윤', '한서진', '오재원', '신다은', '윤하준', '장예린',
   '조현우', '임수아', '강민재', '백서윤', '문지호', '서하은', '권태윤', '홍채원', '류지안', '배소율',
@@ -148,14 +149,16 @@ function emojiGroup(topic: Topic): keyof typeof EMOJI_POOLS {
   return 'active'
 }
 
-/** 업종별 이모지 1~2개(대부분 0개). 앞에 공백 포함해 본문에 그대로 붙임. */
-function pickEmoji(topic: Topic): string {
+/** 업종별 이모지 1~2개(대부분 0개). emojiPct=이모지 포함 비중(자동튜닝). 앞에 공백 포함. */
+function pickEmoji(topic: Topic, emojiPct = 0.23): string {
   const r = Math.random()
-  if (r < 0.77) return ''  // 77%: 무이모지(대표 지시 — 실제 후기처럼 대부분 이모지 없음)
+  const noEmoji = 1 - emojiPct  // 예: 0.23 → 77% 무이모지
+  if (r < noEmoji) return ''
   const pool = EMOJI_POOLS[emojiGroup(topic)]
   const e1 = pool[Math.floor(Math.random() * pool.length)]
-  if (r < 0.96) return ' ' + e1  // 19%: 한 개
-  let e2 = pool[Math.floor(Math.random() * pool.length)]  // 4%: 두 개(서로 다르게)
+  // 이모지 구간 내 ~83% 한 개, ~17% 두 개(서로 다르게)
+  if (r < noEmoji + (1 - noEmoji) * 0.83) return ' ' + e1
+  let e2 = pool[Math.floor(Math.random() * pool.length)]
   for (let i = 0; i < 4 && e2 === e1; i++) e2 = pool[Math.floor(Math.random() * pool.length)]
   return ' ' + e1 + e2
 }
@@ -235,8 +238,9 @@ function casualGroup(topic: Topic): keyof typeof CASUAL {
 /** 결정론 폴백 — 업종 특색 문구 조합(배송어 없음, 별점별 톤).
  *  🎭 2026-07-04 (대표 "최대 다양성, AI 티 0"): 길이 극단(한마디~2문장)·오프너·말투 꼬리 조합으로
  *  같은 상품 안에서도 문장 구조가 겹치지 않게. avoid(이미 쓴 문구) 재시도는 buildStoreReviews 가 담당. */
-export function composeDemoReview(rating: number, topic: Topic, storeName?: string | null, seen?: Set<string>, term?: string | null): string {
+export function composeDemoReview(rating: number, topic: Topic, storeName?: string | null, seen?: Set<string>, term?: string | null, tuning: ReviewTuning = DEFAULT_TUNING): string {
   const pool = POOLS[topic] || POOLS.etc
+  const emojiPct = tuning.emojiPct
   // 상품 실제 메뉴/시술 명사를 녹인 후기(진짜 후기 밀도·매장별 유니크). **주입 개수는 호출측(buildStoreReviews)
   //   이 쿼터로 제어** — term 이 non-null 로 넘어온 리뷰만 사용(한 매장에 몰리는 것 방지).
   const grp = topicGroup(topic)
@@ -245,21 +249,23 @@ export function composeDemoReview(rating: number, topic: Topic, storeName?: stri
     let ts = pick(tmpls)(term)
     if (seen) { for (let i = 0; i < 6 && seen.has(ts); i++) ts = pick(tmpls)(term); seen.add(ts) }
     if (rating >= 5) ts += pick(TAILS)
-    return ts + pickEmoji(topic)
+    return ts + pickEmoji(topic, emojiPct)
   }
-  // 📏 2026-07-07 (대표 "짧고 길고 다양성"): 길이 분포를 명시적으로 — 25% 짧은 한마디 / 22% 긴 정성후기 /
-  //   53% 중간. 실제 리뷰 목록의 길이 스펙트럼(한 단어 ~ 여러 문장)을 재현.
+  // 📏 2026-07-07 길이 분포 — 손튜닝 기본(짧25%/긴22%/중53%)이되, 실제 리뷰가 쌓이면 자동튜닝(review-gen-tuning)
+  //   이 shortPct/longPct 를 실제 분포로 대체(피드백 루프). 실제 리뷰 목록의 길이 스펙트럼 재현.
+  const shortCut = tuning.shortPct
+  const longCut = tuning.shortPct + tuning.longPct
   const roll = Math.random()
-  // 🗣️ 25%: 거친 질감 캐주얼 한마디(짧음 — ㅋㅋ/명사형/slang/잡관찰).
-  if (roll < 0.25) {
+  // 🗣️ 짧은 한마디(거친 질감 — ㅋㅋ/명사형/slang/잡관찰).
+  if (roll < shortCut) {
     const cg = CASUAL[casualGroup(topic)]
     const shPool = Math.random() < 0.82 ? cg : SHORTS_POS
     let sh = pick(shPool)
     if (seen) { for (let i = 0; i < 8 && seen.has(sh); i++) sh = pick(shPool); seen.add(sh) }
-    return sh + pickEmoji(topic)
+    return sh + pickEmoji(topic, emojiPct)
   }
-  // 📝 22%: 긴 정성 후기 — 같은 업종 특색 문장 2~3개를 이어붙여 여러 포인트(맛·서비스·분위기·재방문) 커버.
-  if (roll < 0.47) {
+  // 📝 긴 정성 후기 — 같은 업종 특색 문장 2~3개를 이어붙여 여러 포인트(맛·서비스·분위기·재방문) 커버.
+  if (roll < longCut) {
     const nParts = Math.random() < 0.33 ? 3 : 2
     const parts: string[] = []
     for (let k = 0; k < nParts; k++) {
@@ -274,7 +280,7 @@ export function composeDemoReview(rating: number, topic: Topic, storeName?: stri
       seen.add(joined)
     }
     if (rating >= 5 && Math.random() < 0.4) joined += pick(TAILS)
-    return joined + pickEmoji(topic)
+    return joined + pickEmoji(topic, emojiPct)
   }
   // 🎭 53%: 중간 — 단일 특색 문장 + 오프너. 4점은 순한 아쉬움 한마디(넷 긍정)를 절반쯤 섞어 리얼함.
   const src = (rating === 4 && pool.mid.length && Math.random() < 0.45) ? pool.mid : pool.pos
@@ -287,7 +293,7 @@ export function composeDemoReview(rating: number, topic: Topic, storeName?: stri
   // 6%: 매장명 자연스럽게 앞에(오프너 없을 때만) — 과하면 조작 티라 낮게
   if (!opener && storeName && Math.random() < 0.06) s = `${storeName} 다녀왔어요. ${base}`
   if (rating >= 5) s += pick(TAILS)
-  s += pickEmoji(topic)
+  s += pickEmoji(topic, emojiPct)
   return s
 }
 
@@ -366,6 +372,7 @@ JSON 배열로만. 각 항목 {"content": "리뷰", "rating": 별점}. 그 외 �
 export async function buildStoreReviews(env: Env, p: StoreReviewInput, count = 8, seenShared?: Set<string>): Promise<GenReview[]> {
   const topic = detectTopic(p.name, p.category)
   const term = extractKeyTerm(p.name)  // 🎯 상품 실제 메뉴/시술 명사(있으면 일부 리뷰에 녹임)
+  const tuning = await getReviewGenTuning(env)  // 📈 실제 리뷰 통계 자동튜닝(표본 부족 시 손튜닝 기본값)
   const total = Math.max(1, Math.min(2000, count))
   const out: GenReview[] = []
   const CHUNK = 40
@@ -385,7 +392,7 @@ export async function buildStoreReviews(env: Env, p: StoreReviewInput, count = 8
         const useTerm = termQuota > 0 && Math.random() < 0.55
         if (useTerm) termQuota--
         // dedup 은 composeDemoReview 가 '핵심 문장' 기준으로 수행(오프너/꼬리 변형까지 커버).
-        out.push({ rating, content: composeDemoReview(rating, topic, p.storeName, seen, useTerm ? term : null) })
+        out.push({ rating, content: composeDemoReview(rating, topic, p.storeName, seen, useTerm ? term : null, tuning) })
       }
     }
   }
