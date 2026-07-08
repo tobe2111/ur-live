@@ -18,6 +18,7 @@ import TrendPanel from './TrendPanel'
 import SavedKeywordsPanel from './SavedKeywordsPanel'
 import OpportunityPanel from './OpportunityPanel'
 import ContentStudioPanel from './ContentStudioPanel'
+import ServiceMarketplacePanel from './ServiceMarketplacePanel'
 import OnboardingChecklist from './OnboardingChecklist'
 import LazyMount from './LazyMount'
 import PanelError from './PanelError'
@@ -454,6 +455,9 @@ export default function MarketingDashboardPage() {
 
       {/* AI 콘텐츠 스튜디오 (리퍼포징·생성·댓글답변·성과분석) */}
       {hasToken && <LazyMount id="sec-content"><ContentStudioPanel /></LazyMount>}
+
+      {/* 마케팅 서비스몰 (서비스 패키지 주문 — 무결제 접수) */}
+      {hasToken && <LazyMount id="sec-services"><ServiceMarketplacePanel /></LazyMount>}
 
       {/* AI 마케터 (Claude 진단/추천 — 읽기 전용) */}
       {hasToken && (

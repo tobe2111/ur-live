@@ -58,6 +58,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: '🎯 유어애즈 · 운영',
     items: [
       { path: '/admin/ads-accounts',     label: '유어애즈 가입자', icon: Megaphone },
+      { path: '/admin/ads-services',     label: '서비스몰 주문', icon: Megaphone },
     ],
   },
   {

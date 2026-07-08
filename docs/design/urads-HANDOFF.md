@@ -71,6 +71,7 @@
 | ├ 댓글/리뷰 답변 초안 | 톤 선택(정중/친근/사과/간결) — 답변 초안(자동게시 X) | POST `/content/reply` |
 | └ 성과분석(콘텐츠 관점) | 실적(stats+효율)근거 메시지 분석 + 콘텐츠 방향 제안(연동 시) | POST `/content/analyze` |
 | **미디어 생성 게이트웨이** 🆕(2026-07-02, **킬스위치 기본 OFF**) | `media-gateway.ts`(provider-agnostic: 이미지 OpenAI·음성 ElevenLabs·영상 Replicate/HeyGen · 잡모델 `ad_media_jobs`) — 토스게이트웨이 철학(직접 fetch 금지). ⚠️ egress 차단으로 실호출 미검증 | `/content/media/status`·`image`·`voice`·`video`(submit)·`video/:id`(poll) |
+| **마케팅 서비스몰** 🆕(2026-07-02, **무결제 주문접수**) | `ad-services.ts`(카탈로그+주문큐+순수 `computeServicePrice`+시드3) + `routes/services.routes.ts` + `ServiceMarketplacePanel.tsx` + admin `AdminAdsServicesPage`(접수함·상품관리). 이행=정당한 마케팅 실행(광고/콘텐츠/인플루언서, `fulfillment_method` 기록). **봇/가짜 미구현** | `/services`·`/services/:id`·`/services/quote`·`/services/order`·`/services/order-history` + admin `/service-orders`·`/services` |
 | 발주수집(**보류**) | `order-collection.ts` | `/orders/sync`·`/orders` |
 
 UI 패널: `MarketingDashboardPage`(허브+KPI) + `SearchAdPanel`·`AutobidPanel`·`WeeklyReportPanel`·`PricePanel`·`SourcingPanel`·`AlertsPanel`·`ClickGuardPanel`. 인증/계정: `MarketingLoginPage`·`MarketingSignupPage`·`MarketingAccountPage`(라이트, force-light-theme).

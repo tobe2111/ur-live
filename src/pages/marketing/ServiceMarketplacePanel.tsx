@@ -1,0 +1,168 @@
+import { useState, useEffect, useCallback } from 'react'
+import api from '@/lib/api'
+import { toast } from '@/hooks/useToast'
+import { formatNumber } from '@/utils/format'
+import PanelError from './PanelError'
+
+/**
+ * 🆕 2026-07-02 유어애즈 — 마케팅 서비스몰(카탈로그 + 주문요청, 무결제).
+ *   이행은 정당한 마케팅 실행(광고/콘텐츠/인플루언서). 봇/가짜 없음.
+ */
+const authHeader = () => {
+  const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
+  return t ? { Authorization: `Bearer ${t}` } : undefined
+}
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] p-4'
+const input = 'w-full h-9 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400'
+
+interface Pricing { unit: string; unitPrice: number; minQty: number; maxQty: number; presets?: Array<{ label: string; qty: number }>; qtyDiscounts?: Array<{ min: number; pct: number }>; options?: Array<{ key: string; label: string; price: number }> }
+interface Service { id: number; category: string; name: string; subtitle: string | null; description: string | null; pricing: Pricing }
+interface Price { unitPrice: number; quantity: number; subtotal: number; discountPct: number; discounted: number; optionsTotal: number; total: number }
+interface Order { id: number; service_name: string; preset_label: string | null; quantity: number; total_amount: number; status: string; fulfillment_method: string | null; admin_note: string | null; created_at: string }
+const STATUS_KO: Record<string, string> = { requested: '접수됨', confirmed: '확인됨', in_progress: '진행 중', done: '완료', cancelled: '취소' }
+const STATUS_CLS: Record<string, string> = { requested: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400', confirmed: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400', in_progress: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400', done: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', cancelled: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400' }
+
+export default function ServiceMarketplacePanel() {
+  const [services, setServices] = useState<Service[]>([])
+  const [orders, setOrders] = useState<Order[]>([])
+  const [sel, setSel] = useState<Service | null>(null)
+  const [qty, setQty] = useState(1)
+  const [preset, setPreset] = useState<string | null>(null)
+  const [opts, setOpts] = useState<Set<string>>(new Set())
+  const [price, setPrice] = useState<Price | null>(null)
+  const [kakao, setKakao] = useState('')
+  const [phone, setPhone] = useState('')
+  const [target, setTarget] = useState('')
+  const [memo, setMemo] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState(false)
+
+  const load = useCallback(async () => {
+    setErr(false)
+    try {
+      const [s, o] = await Promise.all([api.get('/api/ads/services', { headers: authHeader() }), api.get('/api/ads/services/order-history', { headers: authHeader() })])
+      if (s.data?.success) setServices(s.data.services || []); else setErr(true)
+      if (o.data?.success) setOrders(o.data.orders || [])
+    } catch { setErr(true) }
+  }, [])
+  useEffect(() => { load() }, [load])
+
+  const openDetail = (svc: Service) => {
+    setSel(svc); setPrice(null); setOpts(new Set())
+    const first = svc.pricing.presets?.[0]
+    setPreset(first?.label || null); setQty(first?.qty || svc.pricing.minQty || 1)
+  }
+  // 가격 미리보기(서버 권위) — 선택 변경 시.
+  useEffect(() => {
+    if (!sel) return
+    let cancelled = false
+    api.post('/api/ads/services/quote', { service_id: sel.id, quantity: qty, option_keys: [...opts] }, { headers: authHeader() })
+      .then(r => { if (!cancelled && r.data?.success) setPrice(r.data.price) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [sel, qty, opts])
+
+  async function submit() {
+    if (!sel) return
+    if (!kakao.trim() && !phone.trim()) { toast.error('연락처(카카오 ID 또는 전화)를 입력해주세요'); return }
+    setBusy(true)
+    try {
+      const r = await api.post('/api/ads/services/order', { service_id: sel.id, quantity: qty, preset_label: preset, option_keys: [...opts], contact_kakao: kakao, contact_phone: phone, target_url: target, memo }, { headers: authHeader() })
+      if (r.data?.success) { toast.success('주문이 접수되었습니다. 담당자가 확인 후 연락드립니다.'); setSel(null); setKakao(''); setPhone(''); setTarget(''); setMemo(''); await load() }
+      else toast.error(r.data?.error || '접수 실패')
+    } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '접수 실패') } finally { setBusy(false) }
+  }
+
+  const toggleOpt = (k: string) => setOpts(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n })
+
+  return (
+    <div className={`mt-3 ${card}`}>
+      <div className="text-[14px] font-bold text-gray-900 dark:text-white">마케팅 서비스몰</div>
+      <p className="mt-0.5 text-[11.5px] text-gray-400 dark:text-gray-500">SNS 성장·상위노출·체험단 등 마케팅 실행을 패키지로 주문하세요. 봇/가짜 없이 실제 광고·콘텐츠로 진행합니다. (결제 없이 요청 접수 → 담당자 확인)</p>
+
+      {err ? <PanelError onRetry={load} /> : !sel ? (
+        <>
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {services.map(s => (
+              <button key={s.id} onClick={() => openDetail(s)} className="text-left rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3 hover:border-blue-300 dark:hover:border-blue-500/40 transition">
+                <span className="text-[10.5px] font-bold text-blue-600 dark:text-blue-400">{s.category}</span>
+                <div className="mt-0.5 text-[13px] font-bold text-gray-900 dark:text-white">{s.name}</div>
+                <div className="mt-0.5 text-[11.5px] text-gray-500 dark:text-gray-400 line-clamp-2">{s.subtitle}</div>
+                <div className="mt-1.5 text-[12px] font-bold text-gray-900 dark:text-white">{formatNumber(s.pricing.unitPrice)}원<span className="text-gray-400 dark:text-gray-500 font-medium"> / {s.pricing.unit}~</span></div>
+              </button>
+            ))}
+          </div>
+
+          {orders.length > 0 && (
+            <div className="mt-4">
+              <div className="text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-1.5">내 주문</div>
+              <div className="space-y-1.5">
+                {orders.slice(0, 10).map(o => (
+                  <div key={o.id} className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 dark:border-[#1A1A1A] p-2.5 text-[12px]">
+                    <div className="min-w-0"><div className="font-medium text-gray-900 dark:text-white truncate">{o.service_name} {o.preset_label && <span className="text-gray-400">· {o.preset_label}</span>}</div><div className="text-[10.5px] text-gray-400 dark:text-gray-500">{o.quantity}개 · {formatNumber(o.total_amount)}원 · {(o.created_at || '').slice(0, 10)}{o.fulfillment_method ? ` · ${o.fulfillment_method}` : ''}</div>{o.admin_note && <div className="text-[10.5px] text-gray-500 dark:text-gray-400 mt-0.5">메모: {o.admin_note}</div>}</div>
+                    <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10.5px] font-bold ${STATUS_CLS[o.status] || STATUS_CLS.requested}`}>{STATUS_KO[o.status] || o.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="mt-3">
+          <button onClick={() => setSel(null)} className="text-[11.5px] text-gray-500 dark:text-gray-400">← 목록</button>
+          <div className="mt-1.5 text-[15px] font-bold text-gray-900 dark:text-white">{sel.name}</div>
+          <div className="text-[12px] text-gray-500 dark:text-gray-400">{sel.subtitle}</div>
+
+          {/* 티어(프리셋) + 수량 */}
+          {sel.pricing.presets && sel.pricing.presets.length > 0 && (
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {sel.pricing.presets.map(p => (
+                <button key={p.label} onClick={() => { setPreset(p.label); setQty(p.qty) }} className={`rounded-lg px-3 py-1.5 text-[12px] font-semibold ${preset === p.label ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0A0A0A]' : 'border border-gray-200 dark:border-[#2A2A2A] text-gray-600 dark:text-gray-300'}`}>{p.label}</button>
+              ))}
+            </div>
+          )}
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-[12px] text-gray-500 dark:text-gray-400">수량({sel.pricing.unit})</span>
+            <input type="number" min={sel.pricing.minQty} max={sel.pricing.maxQty} value={qty} onChange={e => { setQty(Number(e.target.value) || sel.pricing.minQty); setPreset(null) }} className="w-24 h-8 rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] px-2 text-[13px] text-gray-900 dark:text-white" />
+          </div>
+
+          {/* 옵션 */}
+          {sel.pricing.options && sel.pricing.options.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {sel.pricing.options.map(o => (
+                <label key={o.key} className="flex items-center gap-2 text-[12px] text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" checked={opts.has(o.key)} onChange={() => toggleOpt(o.key)} />
+                  {o.label} <span className="text-gray-400 dark:text-gray-500">+{formatNumber(o.price)}원</span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {/* 가격 */}
+          {price && (
+            <div className="mt-2.5 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3 text-[12px]">
+              <div className="flex justify-between text-gray-500 dark:text-gray-400"><span>{formatNumber(price.unitPrice)}원 × {price.quantity}{sel.pricing.unit}</span><span>{formatNumber(price.subtotal)}원</span></div>
+              {price.discountPct > 0 && <div className="flex justify-between text-emerald-600 dark:text-emerald-400"><span>수량 할인 {price.discountPct}%</span><span>-{formatNumber(price.subtotal - price.discounted)}원</span></div>}
+              {price.optionsTotal > 0 && <div className="flex justify-between text-gray-500 dark:text-gray-400"><span>옵션</span><span>+{formatNumber(price.optionsTotal)}원</span></div>}
+              <div className="flex justify-between mt-1 pt-1 border-t border-gray-100 dark:border-[#1A1A1A] text-[14px] font-bold text-gray-900 dark:text-white"><span>합계</span><span>{formatNumber(price.total)}원</span></div>
+            </div>
+          )}
+
+          {/* 연락처 + 주문 */}
+          <div className="mt-2.5 grid grid-cols-2 gap-2">
+            <input className={input} placeholder="카카오톡 ID" value={kakao} onChange={e => setKakao(e.target.value)} />
+            <input className={input} placeholder="전화번호" value={phone} onChange={e => setPhone(e.target.value)} />
+          </div>
+          <input className={`${input} mt-2`} placeholder="대상 URL/계정 (선택, 예: 인스타 주소)" value={target} onChange={e => setTarget(e.target.value)} />
+          <textarea className={`mt-2 w-full rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] p-2.5 text-[13px] text-gray-900 dark:text-white`} rows={2} placeholder="요청사항 (선택)" value={memo} onChange={e => setMemo(e.target.value)} />
+          <button onClick={submit} disabled={busy} className="mt-2 w-full rounded-lg bg-gray-900 dark:bg-white py-2.5 text-[13px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-40">{busy ? '접수 중…' : '주문 요청하기 (결제 없음)'}</button>
+
+          {sel.description && (
+            <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
+              <pre className="text-[12px] text-gray-600 dark:text-gray-300 whitespace-pre-wrap font-sans leading-relaxed">{sel.description}</pre>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

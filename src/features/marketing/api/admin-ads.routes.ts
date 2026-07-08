@@ -9,6 +9,7 @@ import { requireAdmin } from '@/worker/middleware/auth'
 import { ensureAdsAccountSchema } from './ads-account'
 import { ensureEntitlementSchema, setPlan, type AdsPlan } from './ads-entitlements'
 import { mediaStatus } from './media-gateway'
+import { listServices, adminUpsertService, adminListOrders, adminUpdateOrder } from './ad-services'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -68,6 +69,43 @@ app.patch('/accounts/:id', async (c) => {
   }
   if (!sets.length) return c.json({ success: false, error: '변경할 항목이 없습니다' }, 400)
   await c.env.DB.prepare(`UPDATE ad_accounts SET ${sets.join(', ')} WHERE id = ?`).bind(...binds, id).run().catch(() => null)
+  return c.json({ success: true })
+})
+
+// ── 마케팅 서비스몰 운영 — 상품 관리 + 주문 접수함 ──────────────────────────
+// GET /api/admin/ads/services — 전체 상품(비활성 포함)
+app.get('/services', async (c) => c.json({ success: true, services: await listServices(c.env.DB, true) }))
+
+// POST /api/admin/ads/services — 상품 생성/수정(id 있으면 수정)
+app.post('/services', async (c) => {
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await adminUpsertService(c.env.DB, {
+    id: b.id ? Number(b.id) : undefined, category: String(b.category || ''), name: String(b.name || ''),
+    subtitle: b.subtitle ? String(b.subtitle) : undefined, description: b.description ? String(b.description) : undefined,
+    pricing: (b.pricing || {}) as Parameters<typeof adminUpsertService>[1]['pricing'],
+    active: b.active === undefined ? undefined : !!b.active, sort_order: b.sort_order != null ? Number(b.sort_order) : undefined,
+  })
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  return c.json({ success: true, id: r.id })
+})
+
+// GET /api/admin/ads/service-orders?status= — 주문 접수함
+app.get('/service-orders', async (c) => {
+  const status = (c.req.query('status') || '').trim() || undefined
+  return c.json({ success: true, orders: await adminListOrders(c.env.DB, status) })
+})
+
+// PATCH /api/admin/ads/service-orders/:id — 상태/이행방식/메모
+app.patch('/service-orders/:id', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await adminUpdateOrder(c.env.DB, id, {
+    status: b.status !== undefined ? String(b.status) : undefined,
+    fulfillment_method: b.fulfillment_method !== undefined ? String(b.fulfillment_method) : undefined,
+    admin_note: b.admin_note !== undefined ? String(b.admin_note) : undefined,
+  })
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   return c.json({ success: true })
 })
 

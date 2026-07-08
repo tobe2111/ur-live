@@ -28,6 +28,7 @@ const NAV: Array<{ id: string; label: string; icon: ReactNode }> = [
   { id: 'sec-efficiency', label: '키워드 효율', icon: <path d="M3 3v18h18M7 14l3-3 3 2 5-6" /> },
   { id: 'sec-autobid', label: '자동입찰', icon: <path d="M8 5v14M8 5l-3 3M8 5l3 3M16 19V5M16 19l-3-3M16 19l3-3" /> },
   { id: 'sec-content', label: 'AI 콘텐츠', icon: <path d="M4 5h16M4 10h16M4 15h10M4 20h7" /> },
+  { id: 'sec-services', label: '서비스몰', icon: <path d="M3 9l1-5h16l1 5M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M3 9h18M9 13h6" /> },
   { id: 'sec-ai', label: 'AI 마케터', icon: <path d="M12 3l1.9 5.6L19.5 10l-5.6 1.4L12 17l-1.9-5.6L4.5 10l5.6-1.4L12 3z" /> },
   { id: 'sec-report', label: '주간 리포트', icon: <path d="M4 19V5M4 19h16M8 16l3-4 3 2 4-6" /> },
   { id: 'sec-fraud', label: '부정클릭 방어', icon: <path d="M12 3l7 3v5c0 4.6-3 7.8-7 9-4-1.2-7-4.4-7-9V6l7-3zM9 12l2 2 4-4" /> },

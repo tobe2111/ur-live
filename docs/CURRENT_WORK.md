@@ -1,5 +1,14 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-02 — 유어애즈 마케팅 서비스몰(주문 관리) + 미디어 게이트웨이 (대표 시안 "카카오톡 공구 늘리기" 상품 페이지 + "일단 다 해줘")
+대표 스크린샷(마케팅 서비스를 상품처럼 파는 페이지) → **마케팅 서비스몰** 구현. 결정(AskUserQuestion): **무결제(주문요청 접수) · 확장형 카탈로그 · 유어애즈 안(/ads/services)**. 설계: `docs/design/urads-service-marketplace.md`.
+- **⚠️ 윤리/약관 핵심(대표 질문 "팔로워 늘리기 어떻게 구현?")**: 봇/가짜계정/자동팔로우는 **구현하지 않음**(카카오·인스타·네이버 약관 위반·어뷰징). 이 모듈은 **상품몰+주문큐(소프트웨어)만** 담당하고, 실제 성장 이행은 **정당한 마케팅 실행**(유료광고 집행=자동입찰 엔진·AI 콘텐츠·인플루언서·체험단)으로 사람이 채움. 주문에 `fulfillment_method` 기록.
+- **backend** `ad-services.ts`: `ad_services`(카탈로그)·`ad_service_orders`(주문큐, 상태 requested→confirmed→in_progress→done/cancelled) + 순수 `computeServicePrice`(단위가×수량→수량구간할인→+옵션, 서버 권위·클라 불신) + 시드3(카카오톡 오픈채팅/인스타/블로그, 전부 정당 실행 기준 설명) + 어드민 함수.
+- **라우트** `routes/services.routes.ts`: `/services`·`/:id`·`/quote`(가격 미리보기)·`/order`(무결제 접수)·`/order-history`. admin-ads: `/service-orders`(접수함)·`/services`(상품 관리)·PATCH(상태/이행방식/메모).
+- **UI** `ServiceMarketplacePanel.tsx`(카탈로그→상세: 티어 프리셋+수량+옵션+실시간 가격+연락처+주문요청, 내 주문 상태) 대시보드 `sec-services` + 셸 nav. admin `AdminAdsServicesPage`(접수함 탭: 상태/이행방식/메모, 상품관리 탭: 노출토글) + admin.routes/AdminLayout 배선.
+- 단위테스트 `ads-service-price`(할인구간·클램프·옵션). file-size baseline 갱신(AdminLayout 608→609·admin.routes 661→668, 새 어드민 페이지 배선 정당 성장).
+- 검증: tsc 0(config 경고 제외)·sql bind/table/not-null/status-constraint/theme/crossrole/api-auth 가드 0·신규 파일 전부 <600줄. ⚠️ vitest/worker-build CI 검증.
+
 ## ✅ 2026-07-02 — 유어애즈 AI 콘텐츠 스튜디오 (대표 "블로그 자동작성·인스타/틱톡·광고문구·댓글답변·성과분석 서비스 구현" + "리퍼포징/멀티플랫폼 자동화" 아이디어)
 유어애즈에 AI 콘텐츠 스튜디오 신설(유어애즈 경계 안, 소비자 `blog-ai.ts`와 무관). 전부 **초안 생성(자동 게시 없음)** + AI 미터링(`content_per_day`, 집행은 `ADS_BILLING_ENFORCED` 게이트) + `ANTHROPIC_API_KEY` 필요(없으면 503).
 - **모듈**: `claude-client.ts`(공유 Claude 호출 + `parseJsonLoose` 관대 파서) · `content-studio.ts`(생성/리퍼포징/답변/분석 + 라이브러리 `ad_content` + 순수 파서 `normalizeAdCopy`/`extractHashtags`/`extractTitle`) · `routes/content.routes.ts`(`/content/*` 서브라우터, marketing.routes 마운트).

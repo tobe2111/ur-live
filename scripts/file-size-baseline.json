@@ -1,6 +1,6 @@
 {
   "src/App.tsx": 1012,
-  "src/components/AdminLayout.tsx": 608,
+  "src/components/AdminLayout.tsx": 609,
   "src/components/live/ReelCard.tsx": 1419,
   "src/components/streaming/BrowserBroadcaster.tsx": 1185,
   "src/features/admin/api/admin-products.routes.ts": 1135,
@@ -64,7 +64,7 @@
   "src/pages/StayDetailPage.tsx": 709,
   "src/pages/VouchersPage.tsx": 1047,
   "src/pages/WholesaleCatalogPage.tsx": 796,
-  "src/routes/admin.routes.tsx": 661,
+  "src/routes/admin.routes.tsx": 668,
   "src/shared/db/production-schema.ts": 676,
   "src/utils/auth.ts": 616,
   "src/worker/cron/scheduled-cleanup.ts": 1031,
