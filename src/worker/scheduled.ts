@@ -72,6 +72,7 @@ import { getFeatureFlags } from './utils/feature-flags';
 //   플래그만 false 로 되돌리면 즉시 복원 — 코드 보존.
 import { LIVE_COMMERCE_SUSPENDED } from '../shared/feature-flags';
 import { logError, logInfo } from './utils/logger';
+import { reportCronFailure } from './utils/cron-reporter';
 
 /**
  * 🔔 2026-06-12 (4차 감사 D3): cron 내부 실패 공용 통지 — logError + Discord (fail-soft).
@@ -79,10 +80,17 @@ import { logError, logInfo } from './utils/logger';
  * 배경: agency-cron-batch / agency-weekly-batch 의 내부 task 들이 `.catch(logError)` 만 해서
  * batch 자체는 성공으로 끝남 → safeCron 의 Discord 경로에 절대 안 닿았음 (silent 실패).
  * safeCron 의 Discord 패턴을 그대로 재사용해 내부 task 실패도 운영자에게 도달시킨다.
+ *
+ * 🔔 2026-07-08 (무인운영 감사): Discord 만으로는 `DISCORD_WEBHOOK_URL` 미설정 시 전면 무음 +
+ *   실패 이력이 남지 않아 사후추적 불가 → reportCronFailure 를 함께 호출해 **Discord + cron_failures
+ *   테이블 + 어드민 벨 3채널**에 도달시킨다. 이제 모든 safeCron 실패가 pull(어드민 벨/DB)로도 보인다.
+ *   (reportCronFailure 는 내부적으로 완전 fail-soft — 이 호출이 알림 자체를 막지 않는다.)
  */
 export async function notifyCronFailure(env: Env, name: string, err: unknown): Promise<void> {
   const msg = (err as Error)?.message || String(err);
   logError(`[cron:${name}] FAILED`, { error: msg });
+  // 영구 기록 + 어드민 벨 (Discord secret 미설정이어도 pull 로 보이게).
+  try { await reportCronFailure(env, name, err, undefined, 'error'); } catch { /* 리포터 자체 실패 무시 */ }
   const webhook = (env as Env & { DISCORD_WEBHOOK_URL?: string }).DISCORD_WEBHOOK_URL;
   if (webhook) {
     try {

@@ -65,6 +65,9 @@ export async function runWeeklyMetricsSummary(env: Env): Promise<void> {
 
     logInfo(`[cron:weekly-metrics] ${body.replace(/\n/g, ' | ')}`)
   } catch (err) {
+    // 🔔 2026-07-08 (무인운영 감사): 이전엔 삼켜 safeCron 실패 알림에 안 닿았음(주간 리포트가
+    //   조용히 안 와도 경보 0). 재throw → safeCron → notifyCronFailure(Discord + cron_failures + 벨).
     logError('[cron:weekly-metrics] failed', { error: String(err) })
+    throw err
   }
 }
