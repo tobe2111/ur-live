@@ -40,8 +40,26 @@
 - **Layer 3 (선택, 런타임):** 정산 reconcile cron 에서 주문당 "성장 커미션의 platform:revenue debit == 0"(flip 플래그 ON) 확인.
 - 등록: `AUDIT_INVARIANTS.md` #44 + `audit-gate.sh` 머니 도메인.
 
+### 🔧 flip 구현 스펙 (per-axis owner-펀딩 전환 — 2026-07-08 코드 실사 확인, 8월 세션용)
+
+> ⚠️ **핵심 발견: 축마다 재원 지급 방식이 달라 owner 되갚기 산출도 축마다 다르다.** 틀리면 "5% 불변"이 깨진다. **역전은 자동 대칭(안전), debit 금액 산출만 staging 실검증 필수.** 아래는 그 축별 정확한 전환 지점.
+
+**owner 되갚기 메커니즘(기존 C1):** `ledger.ts debitOwnerPromoForOrder` — 주문의 커미션 합을 **주인 계정 debit → platform:revenue credit**(딜 재원 회수) 1개 원장 엔트리(`order:N:promo`, event_type `promo_fee`, 멱등). 역전 `reverseOwnerPromoDebit` 는 **저장된 amount 를 그대로 되돌림 → 합산 대상을 넓혀도 역전 자동 대칭**(리스크 낮음). 호출: 이용권=사용 시점(voucher-use, confirm 이후라 C2/C3 적립 존재 ✓) / 쇼핑=`order-ledger-credit.ts` confirm(현재 `SHOPPING_LEDGER_ENABLED` OFF=휴면).
+
+| 축 | 오늘 재원 지급 방식 | flip 전환(2곳) |
+|---|---|---|
+| **C1 어필리에이트** | 딜포인트, `affiliate_earnings(status IN holding/granted)` | ✅ 완료 — `debitOwnerPromoForOrder` 가 이미 이 합 debit |
+| **C2 멀티티어** | 딜포인트, `referral_commissions(order_id, commission_amount, status)` | ① `budgetedCreditForOrder` 에서 `promoOwnerFunded` 시 mtReq 예산 제외 ② `debitOwnerPromoForOrder` 합에 `SUM(commission_amount) WHERE order_id=? AND status != 'withdrawn'` 추가. ⚠️ status vocabulary(`pending/granted/withdrawal_requested/paid_out/withdrawn`) 중 '되갚을 활성분' 정의를 staging 에서 확정 |
+| **C3 크리에이터 영입** | 현금/딜, `influencer_attributions(source='store_intro', commission_amount, status)` | ① infReq 예산 제외 ② owner debit 합에 `SUM(commission_amount) WHERE order_id=? AND source='store_intro' AND 활성상태` 추가 |
+| **(V) 이용권 20% 인플 share** | **원장 직접** `recordIntroductionCommissionShare` = `debit platform:revenue → user:N` | **debit 계정을 platform:revenue → 주인 계정으로 변경**(when owner) — 이 축은 딜 합산이 아니라 원장 debit 이라 debitOwnerPromoForOrder 가 아니라 *이 함수 자체*를 owner-redirect. 기존 역전이 debit_account 를 읽어 복원하므로 대칭 유지 |
+| **(V) 이용권 30% agency share** | 원장 `recordAgencyCommissionShare` = platform_fee 의 30% debit platform:revenue | **에이전시 = 한시 마중물 예외 → 전환 안 함**(5% 잔류, 추후 축소) |
+
+**#44 가드(전환 후 신설):** owner-redirect 가 완료되면 `check-commission-budget.mjs` R4 = "성장 커미션(C1/C2/C3·V인플)이 `debit_account:'platform:revenue'` 로 5% 를 빼는 곳 0"(에이전시 예외만 허용) 정적 단언 + `commission-budget.test.ts` 에 flip 플래그 시 `platformNet == round(total×5/100)` 항등식. ⚠️ 이 가드는 **owner-redirect 리팩토링 후에** 추가(그 전엔 현행 platform:revenue debit 이 정상이라 false-positive).
+
+**staging 검증(flip 전 필수):** `promo_funding_source='owner'` + `commission_budget_enabled='true'` 로 C1~C3 겹친 3P 주문 실결제 → **주문당 platform:revenue net == 정확히 5%**(커미션이 5% 를 안 건드림) + 환불 시 owner debit 역전으로 주인 receivable 복원 + Σ(인플+벤더 적립) = 매장 promo 슬라이스 확인.
+
 ### 지금 할 것 / 안 할 것
-- **지금:** 원칙 인지 + 문서 박제(본 섹션 + 아래 관련 문서) + flip 체크리스트. **코드·머니 경로 변경 0.**
+- **지금:** 원칙 인지 + 문서 박제(본 섹션 + 아래 관련 문서) + flip 체크리스트 + **per-axis 구현 스펙(위)**. **코드·머니 경로 변경 0.**
 - **8월 promo flip:** 위 갭을 순서대로 — 예산캡 → owner-펀딩 확장(C2/C3/인플 20%) → promo 필드 → 공구엔진, **staging 실결제 검증**. 머니 경로라 **단독 세션 격리**.
 - **에이전시 마중물 조정(1%→축소/정액/폐지):** 별도 결정 후. 지금은 현행 유지.
 
