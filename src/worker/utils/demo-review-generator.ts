@@ -127,8 +127,37 @@ const TAILS = ['', '', '', '', '', '', '', '', '', ' 또 갈 것 같아요', ' �
 const OPENERS = ['', '', '', '', '', '', '', '주말에 다녀왔는데 ', '평일 저녁에 갔어요. ', '지인 추천으로 가봤는데 ', '두 번째 방문이에요. ', '예약하고 갔습니다. ', '동네라 종종 가는데 ', '처음 가봤는데 ', '오랜만에 들렀는데 ', '친구가 하도 좋다길래 갔어요. ', '퇴근하고 들렀어요. ', '가족이랑 갔는데 ']
 // 🎭 아주 짧은 한마디형 — 실제 최빈 패턴이라 소량 유지하되, 제너릭 남발은 지양(빈도도 낮춤).
 const SHORTS_POS = ['재방문 의사 100%입니다', '여긴 실패가 없네요', '기대 이상이라 놀랐어요', '두 번째인데 처음이랑 똑같이 좋았어요', '주변에 다 추천하고 다니는 중', '가격 생각하면 더 좋게 느껴져요']
-// 🎭 이모지(15% 정도만 한 개).
-const EMOJI = ['', '', '', '', '', '', '', '', ' 👍', ' 😋', ' 🙏', ' 🥰']
+// 🎭 2026-07-07 (대표 "이모티콘도 동일 — 더 다양화, 더 이상적으로"): 업종별 이모지 풀 + 가변 개수.
+//   기존: 4종(👍😋🙏🥰) 고정·업종 무관 → 전부 비슷. 개선: 음식/뷰티/활동/숙소/반려 풀을 분리(각 8~14종)
+//   해 매장 특색에 맞는 이모지가 붙고, 절반 이상은 무이모지(진짜 후기 다수) + 가끔 2개(다른 것).
+const EMOJI_POOLS = {
+  food:   ['😋', '🤤', '👍', '😍', '🔥', '💯', '👏', '🙏', '🥰', '😊', '👌', '✨', '🍽️', '😆'],
+  beauty: ['💕', '✨', '😍', '🥰', '👍', '💅', '😊', '🙏', '👏', '💯', '🫶', '😌', '💖', '🤍'],
+  active: ['👍', '😊', '🥰', '✨', '👏', '🙏', '💯', '😆', '🤩', '🙌', '👌'],
+  stay:   ['😌', '🥰', '✨', '👍', '😊', '🏡', '🙏', '💯', '🫶', '🌿'],
+  pet:    ['🐶', '🥰', '😊', '👍', '✨', '🙏', '🐾', '💕', '🤍'],
+} as const
+
+function emojiGroup(topic: Topic): keyof typeof EMOJI_POOLS {
+  if (topic === 'pet') return 'pet'
+  if (topic === 'stay') return 'stay'
+  if (topic === 'climbing') return 'active'
+  if (topic === 'hair' || topic === 'waxing' || topic === 'eyelash' || topic === 'nail' || topic === 'beauty') return 'beauty'
+  if (topic === 'gogi' || topic === 'sushi' || topic === 'western' || topic === 'cafe' || topic === 'bakery' || topic === 'meal') return 'food'
+  return 'active'
+}
+
+/** 업종별 이모지 1~2개(대부분 0개). 앞에 공백 포함해 본문에 그대로 붙임. */
+function pickEmoji(topic: Topic): string {
+  const r = Math.random()
+  if (r < 0.55) return ''  // 55%: 무이모지(실제 후기 다수)
+  const pool = EMOJI_POOLS[emojiGroup(topic)]
+  const e1 = pool[Math.floor(Math.random() * pool.length)]
+  if (r < 0.92) return ' ' + e1  // 37%: 한 개
+  let e2 = pool[Math.floor(Math.random() * pool.length)]  // 8%: 두 개(서로 다르게)
+  for (let i = 0; i < 4 && e2 === e1; i++) e2 = pool[Math.floor(Math.random() * pool.length)]
+  return ' ' + e1 + e2
+}
 
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)] }
 
@@ -178,7 +207,7 @@ export function composeDemoReview(rating: number, topic: Topic, storeName?: stri
   if (Math.random() < 0.12) {
     let sh = pick(SHORTS_POS)
     if (seen) { for (let i = 0; i < 6 && seen.has(sh); i++) sh = pick(SHORTS_POS); seen.add(sh) }
-    return sh + pick(EMOJI)
+    return sh + pickEmoji(topic)
   }
   // 상품 실제 메뉴/시술 명사를 녹인 후기(진짜 후기 밀도·매장별 유니크). **주입 개수는 호출측(buildStoreReviews)
   //   이 쿼터로 제어** — term 이 non-null 로 넘어온 리뷰만 사용(한 매장에 몰리는 것 방지).
@@ -188,7 +217,7 @@ export function composeDemoReview(rating: number, topic: Topic, storeName?: stri
     let ts = pick(tmpls)(term)
     if (seen) { for (let i = 0; i < 6 && seen.has(ts); i++) ts = pick(tmpls)(term); seen.add(ts) }
     if (rating >= 5) ts += pick(TAILS)
-    return ts + pick(EMOJI)
+    return ts + pickEmoji(topic)
   }
   // 4점은 순한 아쉬움 한마디(넷 긍정)를 절반쯤 섞어 리얼함 — 5점은 구체적 강한 긍정.
   const src = (rating === 4 && pool.mid.length && Math.random() < 0.45) ? pool.mid : pool.pos
@@ -201,7 +230,7 @@ export function composeDemoReview(rating: number, topic: Topic, storeName?: stri
   // 12%: 매장명 자연스럽게 앞에(오프너 없을 때만)
   if (!opener && storeName && Math.random() < 0.12) s = `${storeName} 다녀왔어요. ${base}`
   if (rating >= 5) s += pick(TAILS)
-  s += pick(EMOJI)
+  s += pickEmoji(topic)
   return s
 }
 
@@ -371,12 +400,12 @@ export async function seedMissingDemoReviews(env: Env, maxBatch = 400): Promise<
 
 /**
  * 🔄 2026-07-06 (대표 "기존 100개+도 다 작업"): 기존 데모의 옛 리뷰를 **새 품질로 재생성**. 청크 단위 —
- *   `review_gen_v='2'` 메타 마커로 이미 새로고침한 데모는 skip(반복 호출이 전체를 진행, 멱등). limit 개씩.
+ *   `review_gen_v='3'` 메타 마커로 이미 새로고침한 데모는 skip(반복 호출이 전체를 진행, 멱등). limit 개씩.
  *   반환 remaining>0 이면 다시 호출(클라 루프). force 로 마커 무시 재실행 가능.
  */
 export async function refreshDemoReviews(env: Env, limit = 20, force = false): Promise<{ refreshed: number; reviews: number; remaining: number }> {
   const DB = env.DB
-  const markerFilter = force ? '' : `AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id = p.id AND m2.key='review_gen_v' AND m2.value='2')`
+  const markerFilter = force ? '' : `AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id = p.id AND m2.key='review_gen_v' AND m2.value='3')`
   const baseWhere = `p.slug LIKE 'demo-deal-%' AND COALESCE(p.slug,'') NOT LIKE 'retired-%' AND COALESCE(p.is_active,1)=1
       AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id=p.id AND m.key='prelaunch' AND m.value='1')`
   const rows = await DB.prepare(
@@ -391,13 +420,13 @@ export async function refreshDemoReviews(env: Env, limit = 20, force = false): P
     try {
       await DB.prepare('DELETE FROM product_reviews WHERE product_id = ? AND is_generated = 1').bind(r.id).run()
       const n = await seedDemoReviews(env, { id: r.id, name: r.name, category: r.category, storeName: r.restaurant_name, price: r.price }, 6 + Math.floor(Math.random() * 7), seen)
-      await setSupplyMeta(DB, r.id, { review_gen_v: '2' }).catch(() => {})
+      await setSupplyMeta(DB, r.id, { review_gen_v: '3' }).catch(() => {})
       refreshed++; reviews += n
     } catch { /* skip this one */ }
   }
   const rem = await DB.prepare(
     `SELECT COUNT(*) AS c FROM products p WHERE ${baseWhere}
-      AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id=p.id AND m2.key='review_gen_v' AND m2.value='2')`
+      AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id=p.id AND m2.key='review_gen_v' AND m2.value='3')`
   ).first<{ c: number }>().catch(() => ({ c: 0 }))
   return { refreshed, reviews, remaining: force ? 0 : (rem?.c ?? 0) }
 }
