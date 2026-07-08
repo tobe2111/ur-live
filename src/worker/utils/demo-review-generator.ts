@@ -198,6 +198,46 @@ const BEAUTY_TERM_TEMPLATES: ((t: string) => string)[] = [
   (t) => `${t} 여기서 받고 다른 데 못 가겠어요`,
 ]
 
+// 🏪 2026-07-07 (대표 "리뷰 쪽 더 개선"): 사장님(판매자) 답글 — 실제 매장 리뷰페이지는 답글로 가득한데
+//   데모엔 0건이라 '조작 티'. 표시(ProductReviews '판매자 답글')·API 이미 지원 → 일부 리뷰에 업종 답글 부여.
+//   실제 사장님 답글은 템플릿을 재사용하는 경우가 많아(현실적) 풀 크기는 적당히.
+const REPLY_GENERIC = [
+  '방문해 주셔서 진심으로 감사합니다. 또 뵙겠습니다',
+  '소중한 후기 남겨주셔서 감사해요. 더 좋은 모습으로 보답하겠습니다',
+  '좋게 봐주셔서 감사합니다! 늘 한결같이 노력하겠습니다',
+  '따뜻한 리뷰 감사드려요. 다음에도 만족하실 수 있게 준비하겠습니다',
+  '이용해 주셔서 감사합니다. 또 오시면 반갑게 맞이할게요',
+  '남겨주신 후기 잘 읽었습니다. 앞으로도 최선을 다하겠습니다',
+]
+const REPLY_FOOD = [
+  '맛있게 드셨다니 정말 기쁩니다! 다음에 또 찾아주세요',
+  '정성껏 준비한 마음 알아주셔서 감사해요. 또 뵙겠습니다',
+  '좋게 드셔주셔서 감사합니다. 다음엔 다른 메뉴도 추천드릴게요',
+  '맛있게 드셨다니 다행이에요! 늘 신선한 재료로 준비하겠습니다',
+  '방문 감사드려요. 다음에 오시면 더 맛있게 대접하겠습니다',
+]
+const REPLY_BEAUTY = [
+  '만족하셨다니 다행이에요! 다음 방문도 예쁘게 해드릴게요',
+  '편하게 받으셨다니 감사해요. 리터치 필요하시면 언제든 예약 주세요',
+  '마음에 드셨다니 기쁩니다! 다음에도 꼼꼼히 관리해드릴게요',
+  '소중한 후기 감사드려요. 다음 예약도 편하게 도와드리겠습니다',
+]
+const REPLY_STAY = [
+  '편히 머물다 가셨다니 기쁩니다. 다음에 또 모실 수 있으면 좋겠어요',
+  '좋은 추억 되셨길 바라요. 다음 방문도 정성껏 준비하겠습니다',
+]
+const REPLY_EMOJI = ['', '', '', ' 😊', ' 🙏', ' 🙂']
+
+/** 업종별 사장님 답글 1개(재방문 유도·감사 톤). ~30%는 generic 섞음. */
+function pickReply(topic: Topic): string {
+  const g = emojiGroup(topic)
+  let pool = REPLY_GENERIC
+  if (g === 'food' && Math.random() < 0.65) pool = REPLY_FOOD
+  else if (g === 'beauty' && Math.random() < 0.65) pool = REPLY_BEAUTY
+  else if (g === 'stay' && Math.random() < 0.65) pool = REPLY_STAY
+  return pick(pool) + pick(REPLY_EMOJI)
+}
+
 /** 결정론 폴백 — 업종 특색 문구 조합(배송어 없음, 별점별 톤).
  *  🎭 2026-07-04 (대표 "최대 다양성, AI 티 0"): 길이 극단(한마디~2문장)·오프너·말투 꼬리 조합으로
  *  같은 상품 안에서도 문장 구조가 겹치지 않게. avoid(이미 쓴 문구) 재시도는 buildStoreReviews 가 담당. */
@@ -232,6 +272,15 @@ export function composeDemoReview(rating: number, topic: Topic, storeName?: stri
   if (rating >= 5) s += pick(TAILS)
   s += pickEmoji(topic)
   return s
+}
+
+// 🏪 seller_reply 컬럼 보장 — per-DB 1회(WeakSet memoize, 핸들러 내 반복 DDL 방지).
+const _replyColsEnsured = new WeakSet<object>()
+async function ensureReplyColumns(DB: D1Database): Promise<void> {
+  if (_replyColsEnsured.has(DB as unknown as object)) return
+  try { await DB.prepare('ALTER TABLE product_reviews ADD COLUMN seller_reply TEXT').run() } catch { /* exists */ }
+  try { await DB.prepare('ALTER TABLE product_reviews ADD COLUMN seller_reply_at DATETIME').run() } catch { /* exists */ }
+  _replyColsEnsured.add(DB as unknown as object)
 }
 
 interface DemoProduct { id: number; name: string; category: string; storeName?: string | null; price?: number }
@@ -345,16 +394,21 @@ export async function seedDemoReviews(env: Env, p: DemoProduct, count = 8, seenS
     .bind(p.id).first<{ c: number }>().catch(() => ({ c: 0 }))
   if ((existing?.c ?? 0) > 0) return 0
 
+  await ensureReplyColumns(DB)  // 🏪 seller_reply/at 컬럼 보장(멱등·memoize) — INSERT 전
   const reviews = await buildStoreReviews(env, p, Math.max(4, Math.min(20, count)), seenShared)
+  const replyTopic = detectTopic(p.name, p.category)  // 🏪 사장님 답글 업종 톤
 
   const stmts = reviews.map((r) => {
     const masked = maskName(pick(KOREAN_NAMES))
     // 🗓️ 최근일수록 촘촘 + 오래된 후기 꼬리(실제 리뷰 목록의 시간 분포). 0~약 140일.
     const daysAgo = Math.floor(Math.pow(Math.random(), 1.7) * 140)
+    // 🏪 사장님 답글 — 내용 있는 리뷰의 ~42%에만(별점만 리뷰엔 보통 답글 안 닮). 답글일은 방문 1~3일 뒤.
+    const reply = (r.content && Math.random() < 0.42) ? pickReply(replyTopic) : null
+    const replyDaysAgo = reply ? Math.max(0, daysAgo - (1 + Math.floor(Math.random() * 3))) : 0
     return DB.prepare(
-      `INSERT INTO product_reviews (product_id, user_id, user_name, rating, content, is_generated, created_at)
-       VALUES (?, 'system-generated', ?, ?, ?, 1, datetime('now', '-' || ? || ' days'))`,
-    ).bind(p.id, masked, r.rating, r.content || null, daysAgo)
+      `INSERT INTO product_reviews (product_id, user_id, user_name, rating, content, is_generated, created_at, seller_reply, seller_reply_at)
+       VALUES (?, 'system-generated', ?, ?, ?, 1, datetime('now', '-' || ? || ' days'), ?, CASE WHEN ? IS NULL THEN NULL ELSE datetime('now', '-' || ? || ' days') END)`,
+    ).bind(p.id, masked, r.rating, r.content || null, daysAgo, reply, reply, replyDaysAgo)
   })
   try {
     for (let i = 0; i < stmts.length; i += 50) await DB.batch(stmts.slice(i, i + 50))
@@ -400,12 +454,12 @@ export async function seedMissingDemoReviews(env: Env, maxBatch = 400): Promise<
 
 /**
  * 🔄 2026-07-06 (대표 "기존 100개+도 다 작업"): 기존 데모의 옛 리뷰를 **새 품질로 재생성**. 청크 단위 —
- *   `review_gen_v='4'` 메타 마커로 이미 새로고침한 데모는 skip(반복 호출이 전체를 진행, 멱등). limit 개씩.
+ *   `review_gen_v='5'` 메타 마커로 이미 새로고침한 데모는 skip(반복 호출이 전체를 진행, 멱등). limit 개씩.
  *   반환 remaining>0 이면 다시 호출(클라 루프). force 로 마커 무시 재실행 가능.
  */
 export async function refreshDemoReviews(env: Env, limit = 20, force = false): Promise<{ refreshed: number; reviews: number; remaining: number }> {
   const DB = env.DB
-  const markerFilter = force ? '' : `AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id = p.id AND m2.key='review_gen_v' AND m2.value='4')`
+  const markerFilter = force ? '' : `AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id = p.id AND m2.key='review_gen_v' AND m2.value='5')`
   const baseWhere = `p.slug LIKE 'demo-deal-%' AND COALESCE(p.slug,'') NOT LIKE 'retired-%' AND COALESCE(p.is_active,1)=1
       AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id=p.id AND m.key='prelaunch' AND m.value='1')`
   const rows = await DB.prepare(
@@ -420,13 +474,13 @@ export async function refreshDemoReviews(env: Env, limit = 20, force = false): P
     try {
       await DB.prepare('DELETE FROM product_reviews WHERE product_id = ? AND is_generated = 1').bind(r.id).run()
       const n = await seedDemoReviews(env, { id: r.id, name: r.name, category: r.category, storeName: r.restaurant_name, price: r.price }, 6 + Math.floor(Math.random() * 7), seen)
-      await setSupplyMeta(DB, r.id, { review_gen_v: '4' }).catch(() => {})
+      await setSupplyMeta(DB, r.id, { review_gen_v: '5' }).catch(() => {})
       refreshed++; reviews += n
     } catch { /* skip this one */ }
   }
   const rem = await DB.prepare(
     `SELECT COUNT(*) AS c FROM products p WHERE ${baseWhere}
-      AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id=p.id AND m2.key='review_gen_v' AND m2.value='4')`
+      AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id=p.id AND m2.key='review_gen_v' AND m2.value='5')`
   ).first<{ c: number }>().catch(() => ({ c: 0 }))
   return { refreshed, reviews, remaining: force ? 0 : (rem?.c ?? 0) }
 }
