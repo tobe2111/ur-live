@@ -79,6 +79,8 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
   useEffect(() => {
     if (voucher.status !== 'unused') return
     const t = setInterval(async () => {
+      // 🗑️ 2026-07-07 (로딩 낭비 감사): 탭 숨김 시 폴링 skip(배터리·네트워크). 복귀하면 다음 tick 재개.
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
       try {
         const res = await api.get(`/api/vouchers/verify/${voucher.code}`)
         if (res.data?.success && res.data?.data?.status) {
