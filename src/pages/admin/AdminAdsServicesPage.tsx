@@ -14,6 +14,7 @@ interface Order {
   unit_price: number; discount_pct: number; options_total: number; total_amount: number
   contact_kakao: string | null; contact_phone: string | null; target_url: string | null; memo: string | null
   status: string; fulfillment_method: string | null; admin_note: string | null; created_at: string
+  supplier: string | null; supplier_order_id: string | null; supplier_cost: number; margin: number
 }
 interface Service { id: number; category: string; name: string; subtitle: string | null; pricing: { unit: string; unitPrice: number }; active: number; sort_order: number }
 interface Review { id: number; service_id: number; account_id: number; rating: number; title: string; body: string; author_masked: string; status: string; created_at: string }
@@ -102,6 +103,14 @@ export default function AdminAdsServicesPage() {
                   </div>
                   <div className="mt-2 flex gap-2">
                     <input defaultValue={o.admin_note || ''} placeholder="담당자 메모(고객에게 표시)" onBlur={e => { if (e.target.value !== (o.admin_note || '')) patchOrder(o.id, { admin_note: e.target.value }, '메모') }} className="flex-1 h-8 rounded-lg border border-gray-200 px-2 text-[12px] text-gray-900" />
+                  </div>
+                  {/* 조달(리셀러 마진) — 공급처·상위 주문번호·원가 기록 → 마진 자동 계산 */}
+                  <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 p-2">
+                    <span className="text-[11px] font-bold text-gray-500">조달</span>
+                    <input defaultValue={o.supplier || ''} placeholder="공급처" onBlur={e => { if (e.target.value !== (o.supplier || '')) patchOrder(o.id, { supplier: e.target.value }, '공급처') }} className="w-28 h-7 rounded border border-gray-200 px-2 text-[11.5px] text-gray-900" />
+                    <input defaultValue={o.supplier_order_id || ''} placeholder="상위 주문번호" onBlur={e => { if (e.target.value !== (o.supplier_order_id || '')) patchOrder(o.id, { supplier_order_id: e.target.value }, '주문번호') }} className="w-28 h-7 rounded border border-gray-200 px-2 text-[11.5px] text-gray-900" />
+                    <input type="number" defaultValue={o.supplier_cost || 0} placeholder="원가" onBlur={e => { const v = Number(e.target.value) || 0; if (v !== (o.supplier_cost || 0)) patchOrder(o.id, { supplier_cost: v }, '원가') }} className="w-24 h-7 rounded border border-gray-200 px-2 text-[11.5px] text-gray-900 text-right" />
+                    <span className="text-[11.5px] text-gray-500">원가 {formatNumber(o.supplier_cost || 0)}원 → 판매 {formatNumber(o.total_amount)}원 · 마진 <b className={o.margin >= 0 ? 'text-emerald-600' : 'text-red-500'}>{formatNumber(o.margin)}원</b>{o.total_amount > 0 ? ` (${Math.round((o.margin / o.total_amount) * 100)}%)` : ''}</span>
                   </div>
                 </div>
               ))}

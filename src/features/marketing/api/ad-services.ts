@@ -75,9 +75,16 @@ export async function ensureServicesSchema(DB: D1Database): Promise<void> {
     status TEXT NOT NULL DEFAULT 'requested',
     fulfillment_method TEXT,
     admin_note TEXT,
+    supplier TEXT,
+    supplier_order_id TEXT,
+    supplier_cost INTEGER NOT NULL DEFAULT 0,
     created_at DATETIME DEFAULT (datetime('now')),
     updated_at DATETIME DEFAULT (datetime('now'))
   )`).run().catch(() => null)
+  // 리셀러 마진 관리 컬럼 보강(기존 테이블 — best-effort).
+  await DB.prepare('ALTER TABLE ad_service_orders ADD COLUMN supplier TEXT').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_service_orders ADD COLUMN supplier_order_id TEXT').run().catch(() => null)
+  await DB.prepare('ALTER TABLE ad_service_orders ADD COLUMN supplier_cost INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_ad_svc_orders_acct ON ad_service_orders(account_id, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_ad_svc_orders_status ON ad_service_orders(status, id)').run().catch(() => null)
 }
@@ -171,18 +178,20 @@ export async function listMyOrders(DB: D1Database, accountId: number): Promise<O
 }
 
 // ── 어드민 ───────────────────────────────────────────────────────────────────
-export async function adminListOrders(DB: D1Database, status?: string, limit = 200): Promise<Array<OrderRow & { account_id: number; contact_kakao: string | null; contact_phone: string | null; target_url: string | null; memo: string | null; unit_price: number; discount_pct: number; options_total: number }>> {
+export type AdminOrderRow = OrderRow & { account_id: number; contact_kakao: string | null; contact_phone: string | null; target_url: string | null; memo: string | null; unit_price: number; discount_pct: number; options_total: number; supplier: string | null; supplier_order_id: string | null; supplier_cost: number; margin: number }
+export async function adminListOrders(DB: D1Database, status?: string, limit = 200): Promise<AdminOrderRow[]> {
   await ensureServicesSchema(DB)
   const valid = status && SERVICE_ORDER_STATUSES.includes(status as ServiceOrderStatus)
-  const cols = 'id, account_id, service_name, preset_label, quantity, unit_price, discount_pct, options_total, total_amount, contact_kakao, contact_phone, target_url, memo, status, fulfillment_method, admin_note, created_at'
+  const cols = 'id, account_id, service_name, preset_label, quantity, unit_price, discount_pct, options_total, total_amount, contact_kakao, contact_phone, target_url, memo, status, fulfillment_method, admin_note, supplier, supplier_order_id, supplier_cost, created_at'
   const stmt = valid
     ? DB.prepare(`SELECT ${cols} FROM ad_service_orders WHERE status = ? ORDER BY id DESC LIMIT ?`).bind(status, Math.min(500, limit))
     : DB.prepare(`SELECT ${cols} FROM ad_service_orders ORDER BY id DESC LIMIT ?`).bind(Math.min(500, limit))
-  const r = await stmt.all<OrderRow & { account_id: number; contact_kakao: string | null; contact_phone: string | null; target_url: string | null; memo: string | null; unit_price: number; discount_pct: number; options_total: number }>().catch(() => null)
-  return r?.results || []
+  const r = await stmt.all<Omit<AdminOrderRow, 'margin'>>().catch(() => null)
+  // 마진 = 판매가 − 공급원가(순수 파생).
+  return (r?.results || []).map(o => ({ ...o, margin: (Number(o.total_amount) || 0) - (Number(o.supplier_cost) || 0) }))
 }
 
-export async function adminUpdateOrder(DB: D1Database, id: number, patch: { status?: string; fulfillment_method?: string; admin_note?: string }): Promise<{ ok: boolean; error?: string }> {
+export async function adminUpdateOrder(DB: D1Database, id: number, patch: { status?: string; fulfillment_method?: string; admin_note?: string; supplier?: string; supplier_order_id?: string; supplier_cost?: number }): Promise<{ ok: boolean; error?: string }> {
   await ensureServicesSchema(DB)
   const sets: string[] = []
   const binds: (string | number)[] = []
@@ -192,6 +201,10 @@ export async function adminUpdateOrder(DB: D1Database, id: number, patch: { stat
   }
   if (patch.fulfillment_method !== undefined) { sets.push('fulfillment_method = ?'); binds.push(String(patch.fulfillment_method).slice(0, 40) || '') }
   if (patch.admin_note !== undefined) { sets.push('admin_note = ?'); binds.push(String(patch.admin_note).slice(0, 1000)) }
+  // 리셀러 조달 기록(마진 관리) — 공급처·상위 주문번호·원가.
+  if (patch.supplier !== undefined) { sets.push('supplier = ?'); binds.push(String(patch.supplier).slice(0, 80)) }
+  if (patch.supplier_order_id !== undefined) { sets.push('supplier_order_id = ?'); binds.push(String(patch.supplier_order_id).slice(0, 100)) }
+  if (patch.supplier_cost !== undefined) { const cost = Math.max(0, Math.round(Number(patch.supplier_cost) || 0)); sets.push('supplier_cost = ?'); binds.push(cost) }
   if (!sets.length) return { ok: false, error: '변경할 항목이 없습니다' }
   sets.push("updated_at = datetime('now')")
   await DB.prepare(`UPDATE ad_service_orders SET ${sets.join(', ')} WHERE id = ?`).bind(...binds, id).run().catch(() => null)

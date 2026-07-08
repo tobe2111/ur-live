@@ -105,6 +105,9 @@ app.patch('/service-orders/:id', async (c) => {
     status: b.status !== undefined ? String(b.status) : undefined,
     fulfillment_method: b.fulfillment_method !== undefined ? String(b.fulfillment_method) : undefined,
     admin_note: b.admin_note !== undefined ? String(b.admin_note) : undefined,
+    supplier: b.supplier !== undefined ? String(b.supplier) : undefined,
+    supplier_order_id: b.supplier_order_id !== undefined ? String(b.supplier_order_id) : undefined,
+    supplier_cost: b.supplier_cost !== undefined ? Number(b.supplier_cost) : undefined,
   })
   if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   return c.json({ success: true })
