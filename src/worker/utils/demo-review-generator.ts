@@ -237,15 +237,6 @@ function casualGroup(topic: Topic): keyof typeof CASUAL {
  *  같은 상품 안에서도 문장 구조가 겹치지 않게. avoid(이미 쓴 문구) 재시도는 buildStoreReviews 가 담당. */
 export function composeDemoReview(rating: number, topic: Topic, storeName?: string | null, seen?: Set<string>, term?: string | null): string {
   const pool = POOLS[topic] || POOLS.etc
-  // 🗣️ 32%: 거친 질감의 캐주얼 한마디(ㅋㅋ/명사형/slang/잡관찰) — 실제 후기의 최빈 형태. 나머지 68%는
-  //   업종 특색 문장(medium/long)이라 '완결문만' 이던 조작 티가 캐주얼 톤과 섞여 실감 상승.
-  if (Math.random() < 0.32) {
-    const cg = CASUAL[casualGroup(topic)]
-    const shPool = Math.random() < 0.82 ? cg : SHORTS_POS  // 대부분 캐주얼, 가끔 보조 한마디
-    let sh = pick(shPool)
-    if (seen) { for (let i = 0; i < 8 && seen.has(sh); i++) sh = pick(shPool); seen.add(sh) }
-    return sh + pickEmoji(topic)
-  }
   // 상품 실제 메뉴/시술 명사를 녹인 후기(진짜 후기 밀도·매장별 유니크). **주입 개수는 호출측(buildStoreReviews)
   //   이 쿼터로 제어** — term 이 non-null 로 넘어온 리뷰만 사용(한 매장에 몰리는 것 방지).
   const grp = topicGroup(topic)
@@ -256,7 +247,36 @@ export function composeDemoReview(rating: number, topic: Topic, storeName?: stri
     if (rating >= 5) ts += pick(TAILS)
     return ts + pickEmoji(topic)
   }
-  // 4점은 순한 아쉬움 한마디(넷 긍정)를 절반쯤 섞어 리얼함 — 5점은 구체적 강한 긍정.
+  // 📏 2026-07-07 (대표 "짧고 길고 다양성"): 길이 분포를 명시적으로 — 25% 짧은 한마디 / 22% 긴 정성후기 /
+  //   53% 중간. 실제 리뷰 목록의 길이 스펙트럼(한 단어 ~ 여러 문장)을 재현.
+  const roll = Math.random()
+  // 🗣️ 25%: 거친 질감 캐주얼 한마디(짧음 — ㅋㅋ/명사형/slang/잡관찰).
+  if (roll < 0.25) {
+    const cg = CASUAL[casualGroup(topic)]
+    const shPool = Math.random() < 0.82 ? cg : SHORTS_POS
+    let sh = pick(shPool)
+    if (seen) { for (let i = 0; i < 8 && seen.has(sh); i++) sh = pick(shPool); seen.add(sh) }
+    return sh + pickEmoji(topic)
+  }
+  // 📝 22%: 긴 정성 후기 — 같은 업종 특색 문장 2~3개를 이어붙여 여러 포인트(맛·서비스·분위기·재방문) 커버.
+  if (roll < 0.47) {
+    const nParts = Math.random() < 0.33 ? 3 : 2
+    const parts: string[] = []
+    for (let k = 0; k < nParts; k++) {
+      let s = pick(pool.pos)
+      for (let i = 0; i < 8 && parts.includes(s); i++) s = pick(pool.pos)
+      if (!parts.includes(s)) parts.push(s)
+    }
+    let joined = parts.map((p) => p.replace(/[.\s]+$/, '')).join('. ')
+    if (Math.random() < 0.6) joined += '.'
+    if (seen) {
+      if (seen.has(joined)) { const extra = pick(pool.pos).replace(/[.\s]+$/, ''); joined = `${joined} ${extra}.` }
+      seen.add(joined)
+    }
+    if (rating >= 5 && Math.random() < 0.4) joined += pick(TAILS)
+    return joined + pickEmoji(topic)
+  }
+  // 🎭 53%: 중간 — 단일 특색 문장 + 오프너. 4점은 순한 아쉬움 한마디(넷 긍정)를 절반쯤 섞어 리얼함.
   const src = (rating === 4 && pool.mid.length && Math.random() < 0.45) ? pool.mid : pool.pos
   let base = pick(src)
   // 🎭 같은 상품 안 '핵심 문장' 중복 방지 — 오프너/꼬리만 다른 사실상 같은 리뷰 차단(최종 문자열 dedup 의 사각지대).
@@ -437,12 +457,12 @@ export async function seedMissingDemoReviews(env: Env, maxBatch = 400): Promise<
 
 /**
  * 🔄 2026-07-06 (대표 "기존 100개+도 다 작업"): 기존 데모의 옛 리뷰를 **새 품질로 재생성**. 청크 단위 —
- *   `review_gen_v='6'` 메타 마커로 이미 새로고침한 데모는 skip(반복 호출이 전체를 진행, 멱등). limit 개씩.
+ *   `review_gen_v='7'` 메타 마커로 이미 새로고침한 데모는 skip(반복 호출이 전체를 진행, 멱등). limit 개씩.
  *   반환 remaining>0 이면 다시 호출(클라 루프). force 로 마커 무시 재실행 가능.
  */
 export async function refreshDemoReviews(env: Env, limit = 20, force = false): Promise<{ refreshed: number; reviews: number; remaining: number }> {
   const DB = env.DB
-  const markerFilter = force ? '' : `AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id = p.id AND m2.key='review_gen_v' AND m2.value='6')`
+  const markerFilter = force ? '' : `AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id = p.id AND m2.key='review_gen_v' AND m2.value='7')`
   const baseWhere = `p.slug LIKE 'demo-deal-%' AND COALESCE(p.slug,'') NOT LIKE 'retired-%' AND COALESCE(p.is_active,1)=1
       AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id=p.id AND m.key='prelaunch' AND m.value='1')`
   const rows = await DB.prepare(
@@ -457,13 +477,13 @@ export async function refreshDemoReviews(env: Env, limit = 20, force = false): P
     try {
       await DB.prepare('DELETE FROM product_reviews WHERE product_id = ? AND is_generated = 1').bind(r.id).run()
       const n = await seedDemoReviews(env, { id: r.id, name: r.name, category: r.category, storeName: r.restaurant_name, price: r.price }, 6 + Math.floor(Math.random() * 7), seen)
-      await setSupplyMeta(DB, r.id, { review_gen_v: '6' }).catch(() => {})
+      await setSupplyMeta(DB, r.id, { review_gen_v: '7' }).catch(() => {})
       refreshed++; reviews += n
     } catch { /* skip this one */ }
   }
   const rem = await DB.prepare(
     `SELECT COUNT(*) AS c FROM products p WHERE ${baseWhere}
-      AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id=p.id AND m2.key='review_gen_v' AND m2.value='6')`
+      AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id=p.id AND m2.key='review_gen_v' AND m2.value='7')`
   ).first<{ c: number }>().catch(() => ({ c: 0 }))
   return { refreshed, reviews, remaining: force ? 0 : (rem?.c ?? 0) }
 }
