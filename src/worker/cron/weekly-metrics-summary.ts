@@ -45,6 +45,16 @@ export async function runWeeklyMetricsSummary(env: Env): Promise<void> {
       `④ 유입 신호: 추천 경유 적립 ${affiliateOrders}건 · 체험단 응모 ${fcfsApplies}건`,
       `⑤ 커미션 캡 발동: ${capEvents}건`,
     ]
+
+    // 💸 2026-07-08 (머니 감사 ③ — 지급후 환불 미회수 알림): 정산 지급 뒤 환불이 들어와
+    //   자동 회수가 안 되고 의무만 기록된 clawback(로그·의무row만 남던 것)을 주간 조종석에 승격.
+    //   테이블은 lazy-create(voucher-settlement-clawback.ts) — 미존재 시 count() 가 fail-soft 0.
+    const clawbackPending = await count(DB, "SELECT COUNT(*) n FROM settlement_clawbacks WHERE status = 'pending'")
+    if (clawbackPending > 0) {
+      const clawbackAmt = await count(DB, "SELECT COALESCE(SUM(amount),0) n FROM settlement_clawbacks WHERE status = 'pending'")
+      lines.push(`⚠️ 미회수 clawback(지급후 환불): ${clawbackPending}건 ₩${clawbackAmt.toLocaleString()} — 회수/상계 필요 (/admin/payouts)`)
+    }
+
     const body = lines.join('\n')
 
     // 어드민 대시보드 벨 — 매주 1건.

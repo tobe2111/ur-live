@@ -215,9 +215,11 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdminRole('finance
     }
   } catch { /* getLedgerReceivable 실패 시 가드 skip (기존 동작 보존) */ }
 
-  await DB.prepare(
-    `UPDATE payouts SET status = 'approved', approved_at = datetime('now') WHERE id = ?`,
+  // 💸 2026-07-08 (머니 감사 ③): CAS 선점 — 동시 승인 이중 실행 방지(머니 룰 #1). status='pending' 조건.
+  const approveRes = await DB.prepare(
+    `UPDATE payouts SET status = 'approved', approved_at = datetime('now') WHERE id = ? AND status = 'pending'`,
   ).bind(id).run()
+  if ((approveRes.meta?.changes ?? 0) === 0) return c.json({ success: false, error: 'Not pending' }, 409)
   return c.json({ success: true })
 })
 
@@ -228,12 +230,30 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/sent', requireAdmin(), auditLog('pa
   const txId = (body.transaction_id || '').trim()
   if (!txId) return c.json({ success: false, error: 'transaction_id 필수 (은행/토스 송금 ID)' }, 400)
   const { DB } = c.env
-  const row = await DB.prepare('SELECT * FROM payouts WHERE id = ?').bind(id).first<{ id: number; status: string; payee_type: string; payee_id: string; amount: number; bank_name: string | null; account_number: string | null }>()
+  const row = await DB.prepare('SELECT * FROM payouts WHERE id = ?').bind(id).first<{ id: number; status: string; payee_type: string; payee_id: string; amount: number; bank_name: string | null; account_number: string | null; period_start: string | null; period_end: string | null }>()
   if (!row) return c.json({ success: false, error: 'Not found' }, 404)
   if (!['pending', 'approved'].includes(row.status)) return c.json({ success: false, error: '이미 처리됨' }, 409)
-  await DB.prepare(
-    `UPDATE payouts SET status = 'sent', sent_at = datetime('now'), transaction_id = ?, admin_memo = ? WHERE id = ?`,
+
+  // 💸 2026-07-08 (머니 감사 ③ — payout 이중확인 가드): 실수로 잘못/이중 송금 마킹 방어.
+  //   (1) 계좌 누락 → 실제 이체 불가능한 상태이므로 'sent' 마킹 차단(수령자 계좌 등록 유도).
+  if (!row.account_number) {
+    return c.json({ success: false, error: '수령자 계좌번호가 없어 송금 완료로 처리할 수 없습니다. 수령자 계좌 등록을 확인하세요.', code: 'PAYOUT_NO_ACCOUNT' }, 409)
+  }
+  //   (2) 동일 수령자·기간이 이미 송금됨 → 이중지급 방어(생성 UNIQUE 를 우회한 재생성 등 대비).
+  if (row.period_start && row.period_end) {
+    const dupSent = await DB.prepare(
+      `SELECT id FROM payouts WHERE payee_type = ? AND payee_id = ? AND period_start = ? AND period_end = ? AND status = 'sent' AND id != ? LIMIT 1`,
+    ).bind(row.payee_type, row.payee_id, row.period_start, row.period_end, id).first<{ id: number }>().catch(() => null)
+    if (dupSent) {
+      return c.json({ success: false, error: '이 수령자·기간의 정산이 이미 송금 완료되었습니다. 중복 송금이 아닌지 확인하세요.', code: 'PAYOUT_ALREADY_SENT_PERIOD' }, 409)
+    }
+  }
+
+  // 💸 CAS 선점 — 동시 /sent 이중 실행(이중 알림톡·transaction_id 덮어쓰기) 방지(머니 룰 #1).
+  const sentRes = await DB.prepare(
+    `UPDATE payouts SET status = 'sent', sent_at = datetime('now'), transaction_id = ?, admin_memo = ? WHERE id = ? AND status IN ('pending','approved')`,
   ).bind(txId, body.admin_memo || null, id).run()
+  if ((sentRes.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '이미 처리됨' }, 409)
 
   // 🛡️ 2026-05-21 Phase D-3: 송금 완료 자동 알림톡 (waitUntil 비동기).
   //   수령자 type 별 phone 조회 → template 'payout_completed' 발송.
@@ -261,6 +281,28 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/sent', requireAdmin(), auditLog('pa
   })())
 
   return c.json({ success: true })
+})
+
+// 💸 2026-07-08 (머니 감사 ③): 지급후 환불 미회수 clawback 목록 — 운영자 회수/상계 액션용.
+//   정산 지급이 이미 나간 뒤 환불이 들어오면 자동 회수가 안 되고 의무만 기록됨(settlement_clawbacks
+//   'pending' / settlement_adjustments reason='refund'). 이 목록으로 운영자가 회수 대상을 확인한다.
+//   read-only — 테이블 lazy-create 라 미존재 시 빈 배열(fail-soft).
+adminPayoutsRoutes.get('/admin/payouts/clawbacks', requireAdminRole('finance'), async (c) => {
+  const { DB } = c.env
+  const clawbacks = await DB.prepare(
+    `SELECT id, voucher_id, order_id, seller_id, settlement_id, amount, reason, status, created_at
+       FROM settlement_clawbacks WHERE status = 'pending' ORDER BY created_at DESC LIMIT 500`,
+  ).all<{ id: number; amount: number }>().catch(() => ({ results: [] as Array<{ id: number; amount: number }> }))
+  const adjustments = await DB.prepare(
+    `SELECT id, settlement_id, order_id, amount, reason, created_at
+       FROM settlement_adjustments WHERE reason = 'refund' AND created_at > datetime('now','-90 days') ORDER BY created_at DESC LIMIT 500`,
+  ).all().catch(() => ({ results: [] as unknown[] }))
+  const clist = clawbacks.results || []
+  const pendingAmount = clist.reduce((s, r) => s + (Number(r.amount) || 0), 0)
+  return c.json({
+    success: true,
+    data: { clawbacks: clist, adjustments: adjustments.results || [], pending_count: clist.length, pending_amount: pendingAmount },
+  })
 })
 
 // 🛡️ 2026-05-21 Phase D: commission rate 어드민 조정 — platform_settings 기반.
