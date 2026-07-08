@@ -22,16 +22,18 @@
 
 ## 2. 핵심 설계 원리
 
-### 2.1 예산 중립 (가장 중요)
+### 2.1 promo 재원 중립 — 5% 무영향 (가장 중요)
 
-아비터([INV-CB], `order-commissions.ts` `budgetedCreditForOrder`)가 인플루언서 축에 배정한 금액 **C**는 이미 "이 주문에서 인플이 받을 커미션 총액"이다. **B는 C의 크기를 바꾸지 않는다** — C를 **풀**로 삼아 수령자만 나눈다:
+> ⚠️ **2026-07-08 확정 원칙 정합**: 이 풀은 유어딜 5% 재원이 **아니다.** 판매 커미션은 전부 **매장 promo(5% 밖, `promo_funding_source=owner`)** 에서 나온다(`commission-funding-restructure.md` 확정 원칙 §2·§4). 아래 "C" 는 아비터의 5% 예산 배정액이 아니라 **매장 promo 슬라이스에서 인플루언서에게 갈 몫**이다.
+
+인플루언서가 이 주문에서 받을 **promo 커미션 총액 C**(= 매장 promo 재원)를 **풀**로 삼아 수령자만 나눈다:
 
 ```
-소속 아님:  인플에게 C            (현행 A)
-소속 있음:  인플에게 round(C × p) + 벤더에게 (C − round(C × p))   (B, 합 = C)
+소속 아님:  인플에게 C            (현행 A — promo 재원, 직접 지급)
+소속 있음:  인플에게 round(C × p) + 벤더에게 (C − round(C × p))   (B, 합 = C, 전부 promo 재원)
 ```
 
-→ Σ커미션이 불변이므로 **예산(플랫폼 수수료 − PG준비금)·[INV-CB] 불변식·`commission_budget_logs`가 전혀 영향받지 않는다.** B는 새 **예산 축이 아니라**, 이미 배정된 축의 **재라우팅**이다. (이 점이 아비터 가드 `check-commission-budget.mjs`와의 충돌을 원천 차단한다 — §7.)
+→ C 의 **재원이 애초에 5% 밖(promo)** 이므로 **유어딜 5%·[INV-CB] 예산·platform net 에 전혀 영향 없다.** B 는 새 예산 축이 아니라 **promo 풀의 수령자 분할**일 뿐. (5% 를 건드리지 않으므로 아비터 가드 `check-commission-budget.mjs` 및 flip 불변식 #44 "platform net == 5%" 와 구조적으로 무충돌 — §7.)
 
 ### 2.2 얹는 지점 (single choke point)
 
@@ -135,9 +137,10 @@ CLAUDE.md 💸 머니 룰 4종 전부 적용:
 
 ## 7. 예산 아비터 [INV-CB] · 가드와의 관계
 
-- **새 예산 축이 아니다.** B는 이미 아비터가 배정한 인플 축 금액(C)을 재라우팅할 뿐 → `computeCommissionBudget`/`allocateCommissions`/`assertCommissionBudgetInvariants` **무변경**. Σ지출 불변.
-- **가드 `check-commission-budget.mjs`:** 벤더 보유분 크레딧이 "아비터 우회 신규 적립"으로 오탐되지 않도록, 벤더 크레딧을 **오케스트레이터 내부(`routeInfluencerCommission`)에서만** 발생시키고 새 축 INSERT로 만들지 않는다. 필요 시 가드에 "pass-through 재라우팅은 예산 중립" 화이트리스트 주석/규칙 추가.
-- **`only` 필터·`priorityKeys`·게이트 OFF 경로** 전부 그대로 동작. B는 인플 적립 호출부에만 얹힌다.
+- **5% 를 아예 안 건드린다.** B 의 풀 C 는 **promo(owner) 재원**(5% 밖)이므로 `computeCommissionBudget`(=5% − PG준비금) 과 무관 → `allocateCommissions`/`assertCommissionBudgetInvariants` **무변경**, platform net 불변. flip 불변식 #44("platform net == 5%")도 자동 충족.
+- **가드 `check-commission-budget.mjs`:** 벤더 보유분·인플 몫 크레딧은 **promo(owner) 슬라이스 debit** 에서 나와야 하며, `debit_account:'platform:revenue'` 로 5% 를 빼면 안 된다(그 순간 원칙 위반). `routeInfluencerCommission` 내부에서만 발생시키고, R4(#44) 정적 가드가 이 경로가 owner 계정을 debit 하는지 확인.
+- **`only` 필터·`priorityKeys`·게이트 OFF 경로** 전부 그대로 동작. B는 인플 promo 적립 호출부에만 얹힌다.
+- **⚠️ 에이전시 프레이밍 주의:** 여기서 "벤더" 는 promo 재원으로 먹는 조율 주체다. `agencies.id` 를 재사용하더라도, 이 벤더 보유분(promo 재원)은 §3 의 **"에이전시 매장영입 1% 한시 마중물(5% 재원, 콜드스타트 예외)"** 과 **다른 재원**이다 — 혼동 금지. B 는 promo, 마중물은 한시적 5%.
 
 ---
 

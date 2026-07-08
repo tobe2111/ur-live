@@ -712,6 +712,8 @@ navigate(returnUrl)
 - 셀러 정산: 기본 5% 플랫폼 수수료 (`platform_settings.commission_rate_default`). 어드민이 셀러별로 `sellers.commission_rate` 조정 가능. 후원 수수료 별도 15%.
 - 최소 후원: 500딜
 
+> ⭐ **커미션 재원 확정 원칙 (2026-07-08 대표 확정 — 8월 promo flip 방향, 현재 코드 미변경)**: **유어딜 5% 는 판매 커미션에 일절 안 쓴다(불가침 인프라비, PG 포함).** 모든 **판매 커미션(인플루언서·벤더·어필리에이트)은 매장 promo(5% 밖, `promo_funding_source=owner`) 재원** — 인플/벤더에게 얼마를 주든 **유어딜 5% 는 불변(깨지면 버그)**. **에이전시 매장영입 1%/24개월은 콜드스타트 한시 마중물**(5% 재원, 영구 아님 — 생태계 자립 후 축소·폐지). A(직접)/B(벤더 pass-through) 모두 promo 재원. 오늘 owner 스위치는 어필리에이트만 커버 → 8월 flip 이 나머지 확장 + 불변식 #44("platform net == 5%") 신설. **머니 경로라 flip 은 단독 세션 + staging 실결제.** SSOT·flip 체크리스트: `docs/design/commission-funding-restructure.md` §확정 원칙.
+
 ## 🆕 새 페이지 생성 체크리스트
 
 1. **SEO**: `<SEO title="제목 - 유어딜" description="설명" url="/경로" />` 필수 (관리자/콜백 제외)

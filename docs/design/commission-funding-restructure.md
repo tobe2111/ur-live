@@ -2,7 +2,48 @@
 
 > 작성: 2026-07-04 · 출처: 대표 승인 방향 ("수수료율은 건드리지 말고, 수수료 구조를 고쳐라 — 마켓플레이스를 '절대 잃지 않는 층'으로")
 > 상태: **설계 (구현 전)** · 구현 시 이 문서 하단 구현 로그에 commit hash 기록.
-> 관련: `urdeal-platform-model.md` §5 (경제 엔진) · `product-ownership-model.md` (1P/3P·promo 슬라이스) · CLAUDE.md 💸 머니 룰.
+> 관련: `urdeal-platform-model.md` §5 (경제 엔진) · `product-ownership-model.md` (1P/3P·promo 슬라이스) · `vendor-commission-passthrough.md` (벤더 분할 B) · CLAUDE.md 💸 머니 룰.
+
+---
+
+## ⭐ 확정 원칙 (2026-07-08 대표 확정 — "커미션 구조 확정, 8월 promo flip 때 이대로 켠다")
+
+> 이 섹션이 재원 구조의 **최상위 원칙**이다. 아래 §0~§6 은 2026-07-04 시점 "5% 안에서 캡" 프레임으로 쓰여 있고, 본 확정 원칙이 그 프레임을 **판매 커미션에 한해 역전**한다(판매 커미션은 5% 밖 promo 재원). 8월 flip 전까지 **코드 변경 없음** — 원칙 인지 + 문서 박제 + flip 체크리스트만.
+
+**대원칙: 유어딜 5% 는 판매 커미션에 일절 안 쓴다. 모든 판매 커미션은 5% 밖(매장 promo)에서.**
+
+1. **유어딜 5% (불가침)** — 소비자 결제 인프라비(PG 포함). **판매 커미션 재원으로 사용 금지.**
+2. **판매 커미션(인플루언서·벤더·어필리에이트) = 매장 promo(5% 밖) = `promo_funding_source=owner`.** 인플/벤더에게 얼마를 주든 **유어딜 5% 는 불변** — 이 불변식이 깨지면 **버그**.
+3. **에이전시 보상 = 콜드스타트 한시 마중물 (영구 지분 아님).** 지금은 promo 생태계가 없어 조율 마진이 없으므로, 매장 온보딩 보상을 유어딜이 **5% 안에서 한시적으로만** 부담. promo 가 자립하면 에이전시는 매장-인플 조율로 promo 마진에서 먹고, 이 마중물은 **축소·폐지 방향**. (율/정액·폐지 시점·조건 미확정 — 현행 1%/24개월 로직 그대로 두되 "조정 가능한 한시 보상"으로만 취급.)
+4. **A/B 구조는 마진과 무관.** 직접 판매(A)든 벤더 pass-through(B)든 재원이 전부 매장 promo(5% 밖)라 유어딜 5% 무영향. **A 폐지·B 강제 불필요** — 현행 A(병렬 독립 지급) 유지, B 는 실벤더 이주 시 `vendor-commission-passthrough.md` 기반으로 얹기. **B 의 풀 재원도 반드시 promo(5% 밖).**
+
+### 🔴 현행 코드와의 갭 (8월 flip 체크리스트 — 전수조사 2026-07-08)
+
+오늘 `promo_funding_source='owner'` 스위치는 **어필리에이트(C1)만** 5% 밖으로 이전한다. 나머지 판매 커미션은 **여전히 5% 를 잠식**한다. flip 은 이 갭을 닫는 작업이다:
+
+| 축 | 오늘 재원 | flip 조치 | 상태 |
+|---|---|---|---|
+| C1 어필리에이트/핀 | owner 스위치로 이전됨 (`order-commissions.ts:183` + `debitOwnerPromoForOrder` `ledger.ts:471`) | flip 시 `promo_funding_source='owner'` — 이미 커버 | ✅ 확정 |
+| C2 멀티티어 트리 | **5% (예산 캡, owner 미이전)** | owner 제외 분기 + `referral_commissions` owner debit 신설 | ❌ 미구현(갭) |
+| C3 인플루언서 매장영입(1.5%) | **5%** — owner 레버 없음 | owner-펀딩으로 이전 (C1 과 동일 패턴) | ❌ 미구현(갭) |
+| 이용권 사용시 인플 20% share | **5%** (`recordIntroductionCommissionShare` `ledger.ts:356` → `debit platform:revenue`) | owner 이전 또는 flip 시 off | ❌ 미구현(갭) |
+| C4 에이전시 매장영입 1%/24mo + signup ₩30k + 이용권 30% share(`recordAgencyCommissionShare` `ledger.ts:206`) | **5%** (예산 우선보호) | **허용된 한시 마중물 예외 — 5% 잔류, 추후 축소** | 🟡 예외(의도된) |
+| 공급자 B2B (`supply-settlement.ts`) | 매장(공급가) | 없음 — 이미 정합 | ✅ 확정 |
+| 인플 라이브셀/`seller_influencer_deals` 딜% (`group-buy.routes.ts:517`) | 매장(seller receivable debit) | 없음 — 이미 owner-펀딩(=B 의 선례) | ✅ 확정 |
+| 우회 사이트: `/track`(`affiliate.routes.ts:81`, uncapped) · `/calculate-commission`(`referral-tree.routes.ts:629`, uncapped) · 숙소 referral 직접 INSERT(`payment.routes.ts:604`, owner debit 미적용) · agency-incentives 병렬 엔진(`agency-incentives.routes.ts:255`, 아비터 미배선) | 혼재 | flip 전 오케스트레이터/owner 경유로 정리 또는 폐기 | ⚠️ 확인필요 |
+
+### 🛡️ 불변식 #44 (flip 시 신설) — "platform net == 5% (커미션이 5% 를 건드리지 않음)"
+
+오늘의 [INV-CB]는 **"platform net ≥ 0"**(커미션이 5% 를 PG 준비금 바닥까지 잠식 허용)일 뿐, "net == 5%" 는 **어디에도 인코딩 안 됨**. flip 시 **더 강한 불변식**을 신설:
+- **Layer 1 (순수/유닛):** `commission-budget.ts` 에 flip 플래그 추가 → 플랫폼-펀딩 예산을 **0 강제**(모든 판매 커미션은 owner/promo 슬라이스에서). `commission-budget.test.ts` 에 `platformNet(order) === round(total×5/100)` 항등식 단언.
+- **Layer 2 (정적 가드):** `check-commission-budget.mjs` 에 **R4** — 성장 커미션이 `debit_account:'platform:revenue'`(또는 `platform:commission`)로 5% 를 빼는 곳(`recordAgencyCommissionShare`/`recordIntroductionCommissionShare`/`creditUserCommission`)을 래칫 감시, flip 후엔 owner 계정 debit 만 허용(에이전시 예외 제외).
+- **Layer 3 (선택, 런타임):** 정산 reconcile cron 에서 주문당 "성장 커미션의 platform:revenue debit == 0"(flip 플래그 ON) 확인.
+- 등록: `AUDIT_INVARIANTS.md` #44 + `audit-gate.sh` 머니 도메인.
+
+### 지금 할 것 / 안 할 것
+- **지금:** 원칙 인지 + 문서 박제(본 섹션 + 아래 관련 문서) + flip 체크리스트. **코드·머니 경로 변경 0.**
+- **8월 promo flip:** 위 갭을 순서대로 — 예산캡 → owner-펀딩 확장(C2/C3/인플 20%) → promo 필드 → 공구엔진, **staging 실결제 검증**. 머니 경로라 **단독 세션 격리**.
+- **에이전시 마중물 조정(1%→축소/정액/폐지):** 별도 결정 후. 지금은 현행 유지.
 
 ---
 
