@@ -24,6 +24,7 @@
 
 | 페이지 | 시안 받은 날 | 상태 | 파일 |
 |---|---|---|---|
+| **💸 벤더 커미션 Pass-through 분할**(소속 여부 자동분기 A/B + 딜단위 per-promo, order-commissions.ts 위에 얹기) | 2026-07-08 | 🅿️ 설계/구현 파킹 — 실벤더 1곳 이주 의사 시 그 벤더 분배방식에 맞춰 착수(단독 세션+staging). 규모 ≈10~14일 | [vendor-commission-passthrough.md](./vendor-commission-passthrough.md) |
 | **📝 블로그 UI — 토스 테크 스타일**(히어로 캐러셀 + 전체 아티클 리스트 + 페이지네이션) | 2026-07-01 | ✅ 구현 완료 (BlogListPage 전면 개편) | [blog-toss-style.md](./blog-toss-style.md) |
 | 홈 사이드바 (3 섹션 + 카테고리) | 2026-05-06 | ✅ 구현 완료 (단, 홈은 2026-06-20 동네딜 지도로 전환됨 — 사이드바는 라이브 시절 잔재, 라이브 중단으로 사실상 무의미) | [home-sidebar.md](./home-sidebar.md) |
 | Quick Action FAB (당근식 확장 버튼) | 2026-05-24 | ✅ BottomNav ➕ 시트로 구현(역할별 만들기 메뉴) | [quick-action-fab.md](./quick-action-fab.md) |
