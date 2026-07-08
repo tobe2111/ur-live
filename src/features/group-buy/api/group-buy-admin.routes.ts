@@ -154,13 +154,23 @@ groupBuyAdminRoutes.post('/seller-closure/:sellerId', requireAdmin(), require2FA
       const { recordRefundLedger } = await import('../../../worker/utils/ledger')
       if (amount > 0) await recordRefundLedger(DB, { voucher_id: v.id, reason: 'admin bulk refund', amount })
     } catch (e) { if (import.meta.env?.DEV) console.warn('[admin refund ledger]', e) }
-    // 사용자 환불
+    // 사용자 환불 (💸 2026-07-05 버킷: 원거래 무상 차감분 우선 무상 복원 — refundDealPoints SSOT)
     if (amount > 0 && v.user_id) {
       try {
-        await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?").bind(amount, v.user_id).run()
-        await DB.prepare(
-          "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-        ).bind(v.user_id, amount, amount, v.user_id, `[매장 폐업 환불] ${v.product_name}: ${reason}`).run()
+        const { refundDealPoints } = await import('../../../worker/utils/point-buckets')
+        const orderRow = (v as { order_id?: number }).order_id
+          ? await DB.prepare('SELECT order_number FROM orders WHERE id = ?').bind((v as { order_id?: number }).order_id).first<{ order_number: string }>().catch(() => null)
+          : null
+        await refundDealPoints(DB, {
+          userId: v.user_id,
+          amount,
+          ref: orderRow?.order_number || null,
+          type: 'refund',
+          description: `[매장 폐업 환불] ${v.product_name}: ${reason}`,
+        })
+        // 🏙️ 2026-07-05: 트리거 주문 환불 → 방문 리워드 회수 (멱등 CAS, fail-soft)
+        const { reverseVisitRewardOnRefund } = await import('../../../worker/utils/visit-reward')
+        await reverseVisitRewardOnRefund(DB, orderRow?.order_number).catch(() => {})
       } catch (e) { console.error('[seller-closure refund]', e) }
     }
     // 인플 clawback
@@ -241,11 +251,21 @@ groupBuyAdminRoutes.post('/force-refund/:productId', rateLimit({ action: 'group_
       if (v.payment_method === 'deal_points' && v.user_id) {
         const amount = refundAmount
         try {
-          await DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?")
-            .bind(amount, v.user_id).run()
-          await DB.prepare(
-            "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-          ).bind(v.user_id, amount, amount, v.user_id, `[어드민 환불] ${product.name}: ${reason}`).run()
+          // 💸 2026-07-05 버킷: 원거래 무상 차감분 우선 무상 복원 (refundDealPoints SSOT).
+          const { refundDealPoints } = await import('../../../worker/utils/point-buckets')
+          const orderRow = v.order_id
+            ? await DB.prepare('SELECT order_number FROM orders WHERE id = ?').bind(v.order_id).first<{ order_number: string }>().catch(() => null)
+            : null
+          await refundDealPoints(DB, {
+            userId: v.user_id,
+            amount,
+            ref: orderRow?.order_number || null,
+            type: 'refund',
+            description: `[어드민 환불] ${product.name}: ${reason}`,
+          })
+          // 🏙️ 2026-07-05: 트리거 주문 환불 → 방문 리워드 회수 (멱등 CAS, fail-soft)
+          const { reverseVisitRewardOnRefund } = await import('../../../worker/utils/visit-reward')
+          await reverseVisitRewardOnRefund(DB, orderRow?.order_number).catch(() => {})
         } catch (e) { console.error('[admin force-refund credit]', e) }
       }
       // 🛡️ 2026-05-30: 토스(카드) 결제건 실제 환불 — 기존엔 deal_points 만 환불되어
@@ -261,10 +281,25 @@ groupBuyAdminRoutes.post('/force-refund/:productId', rateLimit({ action: 'group_
           )
           if (result.ok) {
             await DB.prepare("UPDATE orders SET status = 'REFUNDED' WHERE id = ?").bind(v.order_id).run().catch(() => null)
-          } else if (import.meta.env?.DEV) {
-            console.warn('[admin force-refund toss failed]', result.error_code)
+          } else {
+            if (import.meta.env?.DEV) console.warn('[admin force-refund toss failed]', result.error_code)
+            // 🚨 non-retryable(4xx)은 cron 이 안 집음 → 어드민 벨/Discord 수동환불 알림.
+            const { alertTossRefundFailure } = await import('../../../worker/utils/toss-refund-alert')
+            await alertTossRefundFailure(c.env as { DISCORD_WEBHOOK_URL?: string }, DB, {
+              source: '어드민 강제환불', paymentKey: v.payment_key, voucherId: v.id,
+              amount: refundAmount, errorCode: result.error_code, errorMessage: result.error_message, httpStatus: result.http_status,
+            }).catch(() => {})
           }
-        } catch (e) { if (import.meta.env?.DEV) console.warn('[admin force-refund toss]', e) }
+        } catch (e) {
+          if (import.meta.env?.DEV) console.warn('[admin force-refund toss]', e)
+          try {
+            const { alertTossRefundFailure } = await import('../../../worker/utils/toss-refund-alert')
+            await alertTossRefundFailure(c.env as { DISCORD_WEBHOOK_URL?: string }, DB, {
+              source: '어드민 강제환불(예외)', paymentKey: v.payment_key, voucherId: v.id, amount: refundAmount,
+              errorCode: 'EXCEPTION', errorMessage: (e as Error)?.message,
+            })
+          } catch { /* fail-soft */ }
+        }
       }
       if (v.user_id) refundedUsers.add(v.user_id)
       refundCount++

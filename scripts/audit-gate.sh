@@ -58,8 +58,12 @@ if domain money; then
   run "CHECK 제약 위반"                 node scripts/check-status-constraints.mjs
   run "쿼리 isError(빈화면 위장)"        node scripts/check-query-iserror.mjs
   run "CSV 수식 인젝션"                 node scripts/check-csv-injection.mjs
+  run "폐기 가격함수 직접호출"           node scripts/check-deprecated-pricing.mjs -s
+  run "잔액 절대값 write(비원자)"        node scripts/check-balance-absolute-write.mjs -s
+  run "커미션 예산 아비터 우회(INV-CB)"  node scripts/check-commission-budget.mjs
   run "블로그 시드 최신성"               node scripts/check-blog-seed-currency.mjs
   run "블로그 fact 동기화"               bash scripts/check-blog-fact-sync.sh
+  run "플랫폼 모델 문서 동기화"          node scripts/check-platform-model-sync.mjs
 fi
 
 if domain schema; then
@@ -77,6 +81,7 @@ fi
 if domain classify; then
   echo "🏷️  상품 종류 판별 · 라우팅"
   run "group_buy_status 종류판별 금지"   node scripts/check-groupbuy-status-classify.mjs
+  run "동네딜↔쇼핑 완전분리(general)"    node scripts/check-dongnedeal-separation.mjs
   run "도매주문 상태 무결성"             env STRICT_WHS_STATUS=1       node scripts/check-wholesale-order-status.mjs
 fi
 
@@ -85,6 +90,7 @@ if domain ui; then
   run "테마 일관성(dark variant)"        node scripts/check-theme-consistency.mjs
   run "RQ initialData 신선도"           node scripts/check-query-initialdata.mjs
   run "모바일 뷰포트(하단 잘림)"          node scripts/check-mobile-viewport.mjs
+  run "링크샵 소유권 단일화"              node scripts/check-linkshop-ownership.mjs -s
 fi
 
 if domain structure; then

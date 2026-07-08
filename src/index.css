@@ -53,6 +53,29 @@
     background-size: 200% 100%;
     animation: shimmer-sweep 1.4s ease-in-out infinite;
   }
+
+  /* 🔥 2026-07-07 (대표 — 추첨 배지 "생동감나게 움직이는"): 불꽃 깜빡임 + 지원 숫자 스파크 글로우. */
+  @keyframes fcfs-flame {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    20% { transform: scale(1.22) rotate(-8deg); }
+    40% { transform: scale(0.93) rotate(6deg); }
+    60% { transform: scale(1.15) rotate(-4deg); }
+    80% { transform: scale(1.03) rotate(3deg); }
+  }
+  .animate-fcfs-flame {
+    display: inline-block;
+    transform-origin: 50% 85%;
+    animation: fcfs-flame 1s ease-in-out infinite;
+    will-change: transform;
+  }
+  @keyframes fcfs-spark {
+    0%, 100% { text-shadow: 0 0 0 rgba(249, 115, 22, 0); }
+    50% { text-shadow: 0 0 9px rgba(249, 115, 22, 0.6); }
+  }
+  .animate-fcfs-spark { animation: fcfs-spark 1.6s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fcfs-flame, .animate-fcfs-spark { animation: none; }
+  }
 }
 
 @layer base {
@@ -1043,4 +1066,45 @@ html.dark .gbd {
 .ur-loader-sweep { animation: ur-loader-sweep 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
 @media (prefers-reduced-motion: reduce) {
   .ur-loader-breathe, .ur-loader-sweep { animation: none; }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   🏭 2026-07-01 도매 카테고리 타일 — CSS 3D + 마이크로 애니메이션 (대표 요청).
+   의존성 0. 잉크/모노톤 브랜드에 맞춰 컬러 대신 입체 음영(gradient+shadow+depth) +
+   상시 float + hover 3D 틸트. prefers-reduced-motion 존중.
+   ────────────────────────────────────────────────────────────── */
+@keyframes ws-cat-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+.ws-cat-tile { perspective: 620px; }
+.ws-cat-badge {
+  background: linear-gradient(145deg, #ffffff 0%, #eceff4 55%, #e4e8ee 100%);
+  box-shadow:
+    0 5px 12px -4px rgba(12, 36, 84, 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -2px 5px rgba(12, 36, 84, 0.06);
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.3, 1.35), box-shadow 0.28s ease;
+  animation: ws-cat-float 3.4s ease-in-out infinite;
+}
+.ws-cat-badge > svg {
+  filter: drop-shadow(0 2px 2.5px rgba(12, 36, 84, 0.28));
+  transition: transform 0.28s ease;
+}
+.ws-cat-tile:nth-child(2) .ws-cat-badge { animation-delay: 0.55s; }
+.ws-cat-tile:nth-child(3) .ws-cat-badge { animation-delay: 1.1s; }
+.ws-cat-tile:hover .ws-cat-badge {
+  transform: translateY(-4px) rotateX(13deg) rotateY(-11deg) scale(1.07);
+  box-shadow:
+    0 14px 24px -7px rgba(12, 36, 84, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.98),
+    inset 0 -2px 6px rgba(12, 36, 84, 0.08);
+}
+.ws-cat-tile:hover .ws-cat-badge > svg { transform: translateZ(10px) scale(1.06); }
+.ws-cat-tile:active .ws-cat-badge { transform: translateY(-1px) scale(1.02); }
+@media (prefers-reduced-motion: reduce) {
+  .ws-cat-badge { animation: none; }
+  .ws-cat-tile:hover .ws-cat-badge { transform: scale(1.04); }
 }

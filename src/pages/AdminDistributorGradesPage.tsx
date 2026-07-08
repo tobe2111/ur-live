@@ -11,6 +11,7 @@ import { formatWon, formatNumber } from '@/utils/format'
 import { SUPPLY_CHANNELS, DEFAULT_SUPPLY_CHANNEL_THRESHOLDS, type SupplyChannelThresholds } from '@/shared/supply-channels'
 import { GRADE_NAME } from '@/pages/wholesale/wholesale-theme'
 import AdminDistributorApprovalPage from '@/pages/admin/AdminDistributorApprovalPage'
+import AdminWholesaleDepositsPage from '@/pages/AdminWholesaleDepositsPage'
 
 // 🏅 등급 코드(A/B/C…) + 친화 라벨(Premium/Standard/Basic) 동시 표기 — 운영자 혼동 방지.
 const gradeLabel = (g: string) => { const n = GRADE_NAME[g]; return n && n !== g ? `${g} · ${n}` : g }
@@ -55,17 +56,21 @@ const ASSIGNABLE = ['A', 'B', 'C', 'D', 'OEM']
 // 🗂️ 2026-06-17: 1,170줄 단일 페이지를 4개 탭(딥링크 라우트)으로 분리 — 머니 로직 무변경(섹션 그룹만 탭 조건부 렌더).
 //   각 탭은 자기 데이터만 로드(useApiQuery enabled 게이트) → 가벼워짐. 사이드바 4개 항목 → 각 탭 라우트.
 // 🏭 2026-06-29 (대표 — 판매사 승인 통합): 승인을 '판매사 관리' 첫 탭으로 흡수(별도 nav 항목 제거).
-type DistTab = 'approval' | 'grades' | 'credit' | 'tax' | 'supply'
+// 🏦 2026-07-02 (대표 — 어드민 도매 IA 통합): '도매 예치금'(입금확인)도 판매사 돈 흐름이라 '예치금' 탭으로 흡수
+//   (💰 도매몰·정산 그룹의 별도 nav 항목 제거). 딥링크 /admin/wholesale-deposits 는 이 페이지의 탭으로 열림.
+type DistTab = 'approval' | 'grades' | 'credit' | 'deposits' | 'tax' | 'supply'
 const DIST_TABS: { key: DistTab; path: string; label: string }[] = [
   { key: 'approval', path: '/admin/distributor-approval', label: '승인' },
   { key: 'grades', path: '/admin/distributor-grades', label: '등급·마진' },
   { key: 'credit', path: '/admin/distributor-credit', label: '여신·외상' },
+  { key: 'deposits', path: '/admin/wholesale-deposits', label: '예치금' },
   { key: 'tax', path: '/admin/distributor-tax', label: '제안·세금' },
   { key: 'supply', path: '/admin/distributor-supply', label: '공급가·채널·OEM' },
 ]
 function tabFromPath(p: string): DistTab {
   if (p.includes('distributor-approval')) return 'approval'
   if (p.includes('distributor-credit')) return 'credit'
+  if (p.includes('wholesale-deposits')) return 'deposits'
   if (p.includes('distributor-tax')) return 'tax'
   if (p.includes('distributor-supply')) return 'supply'
   return 'grades'
@@ -498,6 +503,9 @@ export default function AdminDistributorGradesPage() {
         {/* 🏭 2026-06-29 (대표 — 승인 통합): '승인' 탭 = 판매사 가입 승인 패널(embedded — 자체 AdminLayout 생략). */}
         {tab === 'approval' && <div className="pt-5"><AdminDistributorApprovalPage embedded /></div>}
 
+        {/* 🏦 2026-07-02 (IA 통합): '예치금' 탭 = 도매 예치금 입금확인 패널(embedded — 데이터/핸들러 무변경). */}
+        {tab === 'deposits' && <div className="pt-5"><AdminWholesaleDepositsPage embedded /></div>}
+
         {tab === 'grades' && (<>
         {/* ── 등급별 마진율 ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">
@@ -755,10 +763,15 @@ export default function AdminDistributorGradesPage() {
           <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
             <Wallet className="w-4 h-4 text-emerald-600" /> 여신 · 외상 관리
           </h2>
-          <p className="text-sm text-gray-500 mb-4">
-            판매사에 <b>여신 한도</b>를 부여하면 도매 주문 시 선결제 대신 <b>외상(ON_CREDIT)</b>으로 주문할 수 있습니다.
-            (가용 한도 = 한도 − 미수금. 연체 시 동결.) 한도 0 = 외상 불가(선결제 전용).
-          </p>
+          {/* 🏭 2026-07-01 (라이브 감사 — 여신 잔재 정리): 도매 주문은 현재 예치금(선결제) 단일화라
+              외상(ON_CREDIT) 결제 경로가 없다. 이전 카피는 "외상 주문 가능"을 약속했으나 한도를 줘도
+              외상 결제가 열리지 않음(모순) → 현행 동작을 정직하게 표기. 미수금 원장/상환은 기록·회수용
+              으로 유지, 외상 결제 재개는 별도 기능으로 준비. */}
+          <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-[13px] text-amber-800">
+            ⚠️ 현재 도매 주문은 <b>예치금(선결제) 전용</b>입니다. 외상(ON_CREDIT) 결제 기능은 <b>비활성</b> 상태로,
+            한도를 부여해도 외상 주문은 아직 열리지 않습니다. 이 화면의 한도·미수금·상환은 <b>기록/회수 관리용</b>이며,
+            외상 결제 재개는 별도 기능으로 준비 중입니다.
+          </div>
           <div className="flex flex-wrap items-end gap-2 mb-4">
             <input type="number" value={creditSellerId} onChange={e => setCreditSellerId(e.target.value)} placeholder="판매사 ID" className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
             <button onClick={() => loadCredit(creditSellerId)} disabled={creditBusy} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">{creditBusy ? '처리중…' : '여신 조회'}</button>

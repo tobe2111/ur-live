@@ -13,6 +13,7 @@ import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
+import { intParam } from '@/shared/pagination'
 
 export const adminUsersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -43,8 +44,8 @@ interface UserDetailRow extends UserRow {
 adminUsersRoutes.get('/users', cors(), async (c) => {
   try {
     const DB = c.env.DB;
-    const page = Math.max(1, (parseInt(c.req.query('page') || '1') || 1));
-    const limit = Math.min(100, Math.max(1, (parseInt(c.req.query('limit') || '50') || 50)));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 50)));
     const offset = (page - 1) * limit;
     const search = (c.req.query('search') || '').trim();
     const sortRaw = c.req.query('sort') || 'created_at';
@@ -203,23 +204,19 @@ adminUsersRoutes.post('/users/:id/gift-deal', cors(), async (c) => {
     )`).run().catch(() => null);
 
     // 1. 잔액 적립 (upsert)
-    await DB.prepare(`
-      INSERT INTO user_points (user_id, balance, total_charged)
-      VALUES (?, ?, 0)
-      ON CONFLICT(user_id) DO UPDATE SET
-        balance = balance + excluded.balance,
-        updated_at = datetime('now')
-    `).bind(String(userId), amount).run();
+    // 💸 2026-07-05 버킷: 어드민 선물/CS 보상 = 무상 딜 (creditFreePoints SSOT — 출금 제외·우선 차감).
+    const { creditFreePoints } = await import('../../../worker/utils/point-buckets');
+    await creditFreePoints(DB, {
+      userId: String(userId),
+      amount,
+      type: 'admin_gift',
+      description: reason,
+    });
 
-    // 2. 거래 이력
+    // 감사 로그/응답용 최신 잔액
     const balanceAfterRow = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?')
       .bind(String(userId)).first<{ balance: number }>().catch(() => null);
     const balanceAfter = balanceAfterRow?.balance ?? amount;
-
-    await DB.prepare(`
-      INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, created_at)
-      VALUES (?, 'admin_gift', ?, ?, ?, ?, datetime('now'))
-    `).bind(String(userId), amount, amount, balanceAfter, reason).run().catch(() => null);
 
     // 3. 사용자 알림 (DB)
     await DB.prepare(`

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Info } from 'lucide-react'
 import api from '@/lib/api'
+import { queryKeys } from '@/hooks/queries/queryKeys'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
 import SEO from '@/components/SEO'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
@@ -12,6 +14,7 @@ import { formatPhone } from '@/utils/format-phone'
 import { useInvalidateMyVouchers, useBalance } from '@/hooks/queries'
 import { isLoggedInSync } from '@/utils/auth'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 /**
  * 🛡️ 2026-05-23: 교환권 전용 detail 페이지.
@@ -46,6 +49,8 @@ interface VoucherProduct {
   restaurant_address?: string | null
   seller_id?: number
   seller_name?: string | null
+  /** 🎯 1인당 최대 구매 수량 (설정 시, 없으면 무제한). */
+  max_per_person?: number
 }
 
 /**
@@ -123,6 +128,7 @@ export default function VoucherDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const invalidateVouchers = useInvalidateMyVouchers()
+  const qc = useQueryClient()
   // 🎨 2026-06-17 (교환권 상세 리디자인): 보유 딜 + 교환 후 잔액 표시.
   // 🛠️ 2026-06-17 (사용자 신고 — "딜 부족"으로 잘못 뜸): 기본 useBalance() 는 initialData(localStorage,
   //   기본 0)를 staleTime(60s) 동안 fresh 로 간주 → 이 페이지를 직접 진입(잔액 미캐시 브라우저)하면
@@ -163,20 +169,27 @@ export default function VoucherDetailPage() {
       }
     } catch { /* SSR 누락 — fallback */ }
 
-    api.get(`/api/group-buy/products/${id}`)
-      .then(r => {
-        if (cancelled) return
-        if (r.data?.success) setProduct(r.data.data)
-        else setError(r.data?.error || '교환권을 찾을 수 없습니다')
-      })
+    // 🗑️ 2026-07-07 (로딩 낭비 감사): raw axios → RQ fetchQuery(staleTime 60s)로 dedupe.
+    //   /group-buy/:id 와 같은 key(groupBuyProduct) → 홈 카드 touch-prefetch·GroupBuyDetailPage 의
+    //   in-flight/캐시를 그대로 이어받아 SSR seed 위에 얹히던 중복 왕복 제거. (GroupBuyDetailPage 동일 패턴.)
+    qc.fetchQuery({
+      queryKey: queryKeys.groupBuyProduct(id),
+      queryFn: async () => {
+        const r = await api.get(`/api/group-buy/products/${id}`)
+        if (!r.data?.success) throw new Error(r.data?.error || '교환권을 찾을 수 없습니다')
+        return r.data.data as VoucherProduct
+      },
+      staleTime: 60_000,
+    })
+      .then(data => { if (!cancelled) setProduct(data) })
       .catch(err => {
         if (cancelled) return
-        const msg = err?.response?.data?.error || '교환권 로드 실패'
+        const msg = err?.response?.data?.error || err?.message || '교환권 로드 실패'
         setError(msg)
       })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [id])
+  }, [id, qc])
 
   async function handleExchange() {
     if (!product) return
@@ -260,11 +273,8 @@ export default function VoucherDetailPage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white" />
-      </div>
-    )
+    // 🎨 2026-07-01 (대표 "로더 전면 통일"): 유어딜 BrandLoader(SSOT)로 통일.
+    return <BrandLoader fullScreen />
   }
 
   if (error || !product) {
@@ -411,9 +421,10 @@ export default function VoucherDetailPage() {
           )}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-3.5 border border-[#E6E9ED] dark:border-[#2A2A2A] rounded-2xl px-3.5 h-[54px] shrink-0">
+              {/* 🎯 2026-07-01: 1인당 한도(max_per_person) cap — 미설정 시 10(서버 공통 상한과 별개 UX 가드). */}
               <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1} aria-label="수량 감소" className="text-[20px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">−</button>
               <span className="min-w-[14px] text-center text-[16px] font-bold text-gray-900 dark:text-white">{quantity}</span>
-              <button onClick={() => setQuantity(q => q + 1)} aria-label="수량 증가" className="text-[20px] font-semibold text-gray-900 dark:text-white">+</button>
+              <button onClick={() => { const cap = product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : 10; setQuantity(q => Math.min(cap, q + 1)) }} disabled={quantity >= (product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : 10)} aria-label="수량 증가" className="text-[20px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">+</button>
             </div>
             <button
               onClick={handleExchange}

@@ -36,17 +36,99 @@ function isUserLoggedIn(): boolean {
   return !!localStorage.getItem('user_id') || !!localStorage.getItem('session_login')
 }
 
+// 🔑 2026-07-02 (인증 회복력 P1b — 대표 "상품등록 흰화면"): JWT exp 디코드.
+//   기존 게이트는 토큰 '존재'만 봐, **만료된** seller_token 도 통과시켜 → 페이지 마운트 → API 401 폭포 →
+//   흰화면이 됐다. 만료 + 갱신불가(refresh_token 없음)면 '로그아웃'으로 취급해 로그인으로 **깔끔히** 보낸다.
+//   (만료됐어도 refresh_token 이 있으면 통과 — 인터셉터가 401→refresh 로 복구. 디코드 실패 시 관대하게 통과 = 기존 동작.)
+function isDashboardTokenUsable(role: 'seller' | 'admin' | 'agency'): boolean {
+  const token = localStorage.getItem(`${role}_token`)
+  if (!token) return false
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return true // 비표준 토큰 — 기존처럼 관대 통과
+    let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    b64 += '='.repeat((4 - (b64.length % 4)) % 4) // base64url 패딩 보정 (atob 엄격 엔진 대비)
+    const payload = JSON.parse(atob(b64))
+    const expMs = typeof payload.exp === 'number' ? payload.exp * 1000 : null
+    if (expMs === null) return true // exp 없음 — 관대 통과
+    if (expMs > Date.now()) return true // 아직 유효
+    // 만료됨 → refresh_token 있으면 통과(인터셉터가 복구), 없으면 로그인 필요
+    return !!localStorage.getItem(`${role}_refresh_token`)
+  } catch {
+    return true // 디코드 실패 — 기존 동작(관대 통과)
+  }
+}
+
 function isSellerLoggedIn(): boolean {
-  return !!localStorage.getItem('seller_token')
+  return isDashboardTokenUsable('seller')
 }
 
 function isAdminLoggedIn(): boolean {
-  return !!localStorage.getItem('admin_token')
+  return isDashboardTokenUsable('admin')
 }
 
 function makeLoginUrl(pathname: string, search: string): string {
   const returnUrl = encodeURIComponent(pathname + search)
   return `/login?returnUrl=${returnUrl}`
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🔐 2026-07-04 [UNLOCK_LOADING] (P2 자가치유 — 대표 "다 해줘 이상적으로", platform-model §14-5):
+//   연결 셀러인데 seller_token 만료/부재(셀러는 refresh_token 미발급이 일반)면 곧장 /seller/login
+//   으로 튕기던 갭. 소비자 세션이 살아있으면 same-origin `POST /api/auth/reissue-role-tokens`
+//   (카카오 로그인과 동일 함수 issueLinkedRoleTokens)로 조용히 재발급 후 통과 — 재로그인 0회.
+//   ⚠️ 잠금 불변식 보존: isSellerLoggedIn/isDashboardTokenUsable 의 토큰-존재/exp 검사 로직은
+//   byte-불변(user_type 검사 추가 없음) — 실패 분기 뒤에 additive 복구 단계만 추가.
+//   연결 셀러가 아니면(재발급 결과 seller_token 없음) 기존과 동일하게 로그인으로.
+// ═══════════════════════════════════════════════════════════════════════════════
+function RoleTokenSelfHeal({ role, fallback, children }: {
+  role: 'seller' | 'agency'
+  fallback: React.ReactElement
+  children: React.ReactNode
+}) {
+  const [state, setState] = useState<'trying' | 'ok' | 'fail'>('trying')
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        const r = await fetch('/api/auth/reissue-role-tokens', { method: 'POST', credentials: 'include' })
+        const d = await r.json().catch(() => null) as {
+          success?: boolean
+          data?: {
+            seller_token?: string
+            seller?: { id?: number; username?: string; business_name?: string; is_distributor?: number }
+            agency_token?: string
+            agency_refresh_token?: string
+            agency?: { id?: number; name?: string }
+          }
+        } | null
+        const data = d?.success ? d?.data : null
+        if (role === 'seller' && data?.seller_token) {
+          localStorage.setItem('seller_token', data.seller_token)
+          if (data.seller?.id != null) localStorage.setItem('seller_id', String(data.seller.id))
+          if (data.seller?.username) localStorage.setItem('seller_username', data.seller.username)
+          if (data.seller?.business_name) localStorage.setItem('seller_name', data.seller.business_name)
+          if (data.seller?.is_distributor) localStorage.setItem('is_distributor', '1')
+          if (alive) setState('ok')
+          return
+        }
+        if (role === 'agency' && data?.agency_token) {
+          localStorage.setItem('agency_token', data.agency_token)
+          if (data.agency_refresh_token) localStorage.setItem('agency_refresh_token', data.agency_refresh_token)
+          if (data.agency?.id != null) localStorage.setItem('agency_id', String(data.agency.id))
+          if (data.agency?.name) localStorage.setItem('agency_name', data.agency.name)
+          if (alive) setState('ok')
+          return
+        }
+      } catch { /* 네트워크 실패 → 기존 동작(로그인 이동) */ }
+      if (alive) setState('fail')
+    })()
+    return () => { alive = false }
+  }, [role])
+
+  if (state === 'trying') return null // 1 RTT 동안 빈 화면(수백 ms) — 로그인 튕김보다 우월
+  if (state === 'ok') return <>{children}</>
+  return fallback
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -70,10 +152,21 @@ export function ProtectedRoute({
   // ─── Seller: 동기 체크 (Firebase 완전 무관) ─────────────────────────
   // 듀얼 세션: user_type이 'user'여도 seller_token이 있으면 셀러 대시보드 접근 허용
   if (requireSeller) {
-    const sellerToken = localStorage.getItem('seller_token')
-    const ok = !!sellerToken
+    // 🔑 2026-07-02 (P1b): 존재만 X → 유효성(exp)까지. 만료+갱신불가면 흰화면 대신 로그인으로.
+    const ok = isSellerLoggedIn()
     if (DEBUG) if (import.meta.env.DEV) console.log('[ProtectedRoute] Seller 체크:', { ok, path: location.pathname })
-    if (!ok) return <Navigate to="/seller/login" state={{ from: location.pathname }} replace />
+    if (!ok) {
+      // 🔐 2026-07-04 (P2 자가치유): 소비자 세션이 살아있으면 로그인으로 보내기 전에
+      //   연결 셀러 토큰 재발급을 1회 시도(연결 셀러가 아니면 기존과 동일하게 로그인으로).
+      if (isUserLoggedIn()) {
+        return (
+          <RoleTokenSelfHeal role="seller" fallback={<Navigate to="/seller/login" state={{ from: location.pathname }} replace />}>
+            {children}
+          </RoleTokenSelfHeal>
+        )
+      }
+      return <Navigate to="/seller/login" state={{ from: location.pathname }} replace />
+    }
     return <>{children}</>
   }
 

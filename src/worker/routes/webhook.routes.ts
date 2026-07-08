@@ -387,7 +387,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
         // 가상계좌 입금 알림 — docs: 입금 / 입금 취소 둘 다 트리거.
         //   data.status 'DONE' → 입금 완료, 'CANCELED' → 입금 취소 (반환).
         if (status === 'DONE') {
-          await handleVirtualAccountDeposited(orderRepo, data, tossOrderId, paymentKey, c.env.DB);
+          await handleVirtualAccountDeposited(orderRepo, data, tossOrderId, paymentKey, c.env.DB, c.env);
         } else if (status === 'CANCELED') {
           await handlePaymentCancelled(orderRepo, data, tossOrderId, c.env, c.env.DB);
         } else {
@@ -427,7 +427,7 @@ webhookRouter.post('/', webhookIntakeLimiter, async (c) => {
         await handleVirtualAccountIssued(orderRepo, data, tossOrderId);
         break;
       case 'payment.virtual_account_deposited':
-        await handleVirtualAccountDeposited(orderRepo, data, tossOrderId, paymentKey, c.env.DB);
+        await handleVirtualAccountDeposited(orderRepo, data, tossOrderId, paymentKey, c.env.DB, c.env);
         break;
       case 'refund_completed':
         if (process.env.NODE_ENV !== 'production') console.log('[Webhook] refund_completed:', tossOrderId);
@@ -952,13 +952,17 @@ async function handleVirtualAccountDeposited(
   data: TossWebhookPayload['data'],
   orderNumber: string,
   paymentKey: string,
-  DB?: D1Database
+  DB?: D1Database,
+  env?: Env,
 ): Promise<void> {
   if (process.env.NODE_ENV !== 'production') console.log('[WEBHOOK] VIRTUAL_ACCOUNT_DEPOSITED', { orderNumber });
 
-  // Same as payment.confirmed — pass DB through so amount verification + digital
-  // access grant + auction-hold consume run.
-  await handlePaymentConfirmed(orderRepo, data, orderNumber, paymentKey, DB);
+  // Same as payment.confirmed — pass DB + env through so amount verification + digital
+  // access grant + auction-hold consume + 커미션 적립 + 딜차감 + KT-Alpha 교환권 자동발송
+  // 이 실제 입금 시점에 모두 실행된다.
+  // 🛡️ 2026-07-01 [UNLOCK] (대표 승인 — 결제 전수조사): env 미전달 시 env-gated KT-Alpha 발송이
+  //   가상계좌 입금완료 경로에서 스킵되던 비대칭 보강 (카드 /confirm 과 동일하게 발송).
+  await handlePaymentConfirmed(orderRepo, data, orderNumber, paymentKey, DB, env);
 }
 
 export { webhookRouter };

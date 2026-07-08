@@ -6,7 +6,7 @@
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Home, ShoppingCart, User, Radio, Gift, Search, Bell, Zap, Sparkles } from 'lucide-react'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useUnreadCount, useCartCount } from '@/hooks/queries'
 import { isLoggedInSync } from '@/utils/auth'
 import { isWholesaleSurface } from '@/utils/domain'
@@ -24,15 +24,26 @@ export default function DesktopTopNav() {
   // 🔗 2026-06-17 (대표 신고): 링크샵 탭이 항상 /host/new 로 가던 버그 — 본인 링크샵 경로로 정합(BottomNav 와 동일).
   const linkshopPath = useLinkshopPath()
 
+  // 🗑️ 2026-07-07 (로딩 낭비 감사): 이 네비는 `hidden md:block`(모바일 display:none)인데 React 는 마운트해
+  //   /api/cart·unread 폴링을 안 보이는 배지 위해 돌렸음(모바일=주 트래픽). 데스크탑 뷰포트에서만 카운트 훅 활성.
+  //   모바일 홈 배지는 HomeTopHeader 가 같은 queryKey 로 소비하므로 정상 유지(dedup).
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(min-width: 768px)')
+    const on = () => setIsDesktop(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
   // 🛡️ 2026-05-22 v5: 공통 hook 사용. MainHomePage 와 자동 dedup + localStorage 즉시 표시.
-  const { data: unreadCount = 0 } = useUnreadCount()
-  const { data: cartCount = 0 } = useCartCount()
+  const { data: unreadCount = 0 } = useUnreadCount(isDesktop)
+  const { data: cartCount = 0 } = useCartCount(isDesktop)
 
   // 🛡️ 2026-06-10 [UNLOCK_LOADING] (사용자 결정): 라이브 영구 중단 + 쇼핑 잠정 숨김 — 플래그 가역.
   //   링크샵 탭 추가(하단바와 정합). 쇼핑 라우트(/browse·/cart)는 보존 — 장바구니 아이콘으로 도달 가능.
   const navItems = [
     { icon: Home, key: 'home', label: t('nav.home', { defaultValue: '홈' }), path: '/' },
-    ...(LIVE_COMMERCE_SUSPENDED ? [] : [{ icon: Radio, key: 'live', label: t('nav.live', { defaultValue: '라이브' }), path: '/live' }]),
+    // 🗑️ 2026-07-07 라이브커머스 제거: '라이브' 탭 삭제.
     { icon: Gift, key: 'groupBuy', label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/group-buy' },
     ...(SHOPPING_TAB_HIDDEN ? [] : [{ icon: ShoppingCart, key: 'shop', label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' }]),
     { icon: Sparkles, key: 'linkshop', label: t('nav.linkshop', { defaultValue: '링크샵' }), path: linkshopPath },
@@ -108,16 +119,7 @@ export default function DesktopTopNav() {
 
         {/* 우측 액션 */}
         <div className="flex items-center gap-1 shrink-0 ml-auto">
-          {/* LIVE 배지 — 라이브 영구 중단 동안 숨김 (플래그 가역) */}
-          {!LIVE_COMMERCE_SUSPENDED && (
-          <button
-            onClick={() => navigate('/live')}
-            className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500 text-white text-[12px] font-bold hover:bg-red-600 transition-colors"
-          >
-            <Zap className="w-3.5 h-3.5" />
-            LIVE
-          </button>
-          )}
+          {/* 🗑️ 2026-07-07 라이브커머스 제거: LIVE 배지 삭제(/live 페이지 제거됨). */}
 
           {/* 판매자센터 */}
           <button

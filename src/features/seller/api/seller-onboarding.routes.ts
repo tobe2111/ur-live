@@ -189,6 +189,7 @@ async function autoEvaluate(DB: D1Database, sellerId: number) {
         type: 'bootcamp_reward',
         description: '셀러 부트캠프 완료 보상',
         bumpTotalCharged: true,
+        bucket: 'free', // 💸 2026-07-05: 온보딩 보상 = 무상 딜 (출금 제외·우선 차감)
       });
     } catch { /* graceful skip */ }
   }

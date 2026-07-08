@@ -6,7 +6,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { readCache, writeCache } from './localCache'
+import { readCache, readCacheOrNull, writeCache } from './localCache'
 import { isLoggedInSync } from '@/utils/auth'
 
 export interface ReturnRecord {
@@ -41,7 +41,12 @@ export function useMyReturns() {
           writeCache(CACHE_KEY, arr)
           return arr
         })
-        .catch(() => readCache<ReturnRecord[]>(CACHE_KEY, [])),
+        .catch((err) => {
+          // 🛡️ 2026-07-02: 캐시 폴백은 존재할 때만 — 없으면 throw → isError (빈 목록 위장 방지).
+          const cached = readCacheOrNull<ReturnRecord[]>(CACHE_KEY)
+          if (cached) return cached
+          throw err
+        }),
     initialData: () => readCache<ReturnRecord[]>(CACHE_KEY, []),
     enabled: isLoggedInSync(),
     staleTime: 2 * 60 * 1000,

@@ -18,6 +18,7 @@ import { meterDaily } from '../ads-entitlements'
 import { clickReport } from '../clickguard'
 import { listWatches } from '../price-monitor'
 import { resolveSearchAdCreds, naverOpenId, naverOpenSecret } from './helpers'
+import { intParam } from '@/shared/pagination'
 
 const adsSearchadRoutes = new Hono<{ Bindings: Env }>()
 
@@ -234,7 +235,7 @@ adsSearchadRoutes.get('/searchad/stats', rateLimit({ action: 'ads-sa-stats', max
 adsSearchadRoutes.get('/metrics/history', rateLimit({ action: 'ads-metrics-hist', max: 60, windowSec: 60 }), async (c) => {
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  const days = Math.min(120, Math.max(7, Number(c.req.query('days')) || 30))
+  const days = Math.min(120, Math.max(7, intParam(c.req.query('days'), 30)))
   const tenant = await getActiveTenantId(c.env.DB, sellerId).catch(() => null)
   const series = await getMetricsHistory(c.env.DB, sellerId, days, tenant)
   return c.json({ success: true, series, wow: computeWoW(series) })

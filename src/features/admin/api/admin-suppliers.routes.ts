@@ -14,7 +14,9 @@ import type { Env } from '@/worker/types/env';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes';
 import { matureSupplierSettlements, payoutSupplier } from '@/features/supply/api/supply-settlement';
+import { setWholesaleLicenseVerified } from '@/features/supply/api/wholesale-license';
 import { ensureWholesaleSignupMeta } from '@/worker/utils/wholesale-signup-meta';
+import { intParam } from '@/shared/pagination'
 
 export const adminSuppliersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -53,8 +55,8 @@ adminSuppliersRoutes.get('/suppliers', cors(), async (c) => {
     await matureSupplierSettlements(DB).catch(() => 0);
 
     const status = String(c.req.query('status') || 'all'); // all | pending | approved | suspended | rejected
-    const page = Math.max(1, Number(c.req.query('page') || 1));
-    const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') || 100)));
+    const page = Math.max(1, intParam(c.req.query('page'), 1));
+    const limit = Math.min(200, Math.max(1, intParam(c.req.query('limit'), 100)));
     const offset = (page - 1) * limit;
 
     let where = '1=1';
@@ -105,7 +107,20 @@ ${baseTail.replace(whereWithMall, where)}`
     const total = await DB.prepare(`SELECT COUNT(*) AS count FROM suppliers s WHERE ${where}`).bind(...params).first<{ count: number }>();
     const pendingCount = await DB.prepare("SELECT COUNT(*) AS count FROM suppliers WHERE status = 'pending'").first<{ count: number }>().catch(() => null);
 
-    return c.json({ success: true, data: { items: rows.results ?? [], total: total?.count ?? 0, pending_count: pendingCount?.count ?? 0, page, limit } });
+    // 🏥 2026-07-03 규제 몰(의료용품) 인허가 첨부 — 승인 검토용(신고번호/검증여부). fail-soft(테이블 부재/오류 시 미부착).
+    const items = (rows.results ?? []) as Array<Record<string, unknown>>;
+    try {
+      const supIds = items.map((i) => Number(i.id)).filter((n) => Number.isFinite(n) && n > 0);
+      if (supIds.length) {
+        const ph = supIds.map(() => '?').join(',');
+        const lic = await DB.prepare(`SELECT owner_id, permit_no, verified FROM wholesale_licenses WHERE owner_type = 'supplier' AND owner_id IN (${ph})`)
+          .bind(...supIds).all<{ owner_id: number; permit_no: string | null; verified: number }>().catch(() => ({ results: [] as { owner_id: number; permit_no: string | null; verified: number }[] }));
+        const byId = new Map((lic.results || []).map((r) => [Number(r.owner_id), r]));
+        for (const it of items) { const l = byId.get(Number(it.id)); it.license_no = l?.permit_no ?? null; it.license_verified = l?.verified ?? 0; }
+      }
+    } catch { /* fail-soft */ }
+
+    return c.json({ success: true, data: { items, total: total?.count ?? 0, pending_count: pendingCount?.count ?? 0, page, limit } });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] GET /suppliers error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
@@ -194,6 +209,23 @@ adminSuppliersRoutes.patch('/suppliers/:id', cors(), async (c) => {
     return c.json({ success: true, data: { id: Number(id), status: body.status ?? existing.status }, message: '제조사 정보가 업데이트되었습니다.' });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] PATCH /suppliers/:id error:', err);
+    return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
+  }
+});
+
+// ── POST /suppliers/:id/license-verify — 🏥 2026-07-03 규제 몰 인허가 확인/해제 토글 ──────────
+//   승인 검토자가 신고번호 확인 후 verified=1 로 표시(취소 가능). requires_license 몰 승인 절차 보조.
+adminSuppliersRoutes.post('/suppliers/:id/license-verify', cors(), async (c) => {
+  try {
+    const { DB } = c.env;
+    const id = Number(c.req.param('id'));
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'Invalid ID' }, 400);
+    const body = await c.req.json<{ verified?: boolean }>().catch(() => ({} as { verified?: boolean }));
+    const verified = body.verified !== false; // 기본 true(확인). 명시적 false 면 해제.
+    await setWholesaleLicenseVerified(DB, 'supplier', id, verified);
+    return c.json({ success: true, verified });
+  } catch (err) {
+    if (import.meta.env.DEV) console.error('[Admin] license-verify error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });

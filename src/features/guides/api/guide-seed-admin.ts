@@ -93,11 +93,11 @@ export const ADMIN_SEED: SeedSection[] = [
 - 승인 후 에이전시는 \`/seller/register?agency=<id>\` 링크로 셀러 초대 가능
 - 초대로 가입한 셀러는 **agency_id** 가 자동 연결 → 에이전시 수수료 적용
 
-### 수수료 구조
-- 기본 2% (에이전시가 유치한 셀러의 매출에서 플랫폼 수수료와 별도)
-- 플랫폼 수익 = 총매출 × 10%
-- 에이전시 수익 = 총매출 × 2%
-- 셀러 수익 = 총매출 × 88%
+### 수수료 구조 (2026-07-05 개편)
+- **매장 영입 커미션 기본 1%** — 에이전시별 조정: 에이전시 관리의 store_intro_commission_pct
+- 기간: 매장별 첫 판매 확정일로부터 **기본 24개월** (commission_term_months, NULL=무제한 — 신규는 24 자동)
+- 캡 발동 시 에이전시 커미션 최우선 보전 (플랫폼 설정 → 커미션 캡 발동 이력에서 확인)
+- 레거시 자동정산 rail (소속 셀러 매출 2% + 일률 3.3% 원천징수) 은 봉인됨 — agency_auto_settle_legacy_enabled 기본 OFF
 
 ### 🛡️ 셀러 심사 워크플로우 (2026-04-26 추가)
 - 에이전시가 \`POST /api/agency/invite-seller\` 로 셀러 초대 시 **status='pending'** 으로 생성됨

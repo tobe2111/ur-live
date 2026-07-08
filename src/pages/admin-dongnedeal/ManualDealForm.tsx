@@ -15,16 +15,20 @@ interface KakaoPlace {
   x: string // lng
   y: string // lat
   category_name?: string
+  // 🎯 2026-07-01: 카카오 장소 페이지 직접 링크 — place_url(place.map.kakao.com/{id}) 또는 id.
+  id?: string
+  place_url?: string
 }
 
 const CATS = [
   { v: 'meal_voucher', label: '식사' },
   { v: 'beauty_voucher', label: '미용' },
   { v: 'etc_voucher', label: '기타' },
-  { v: 'general', label: '일반' },
 ]
 
-const EMPTY = { name: '', category: 'meal_voucher', price: '', original_price: '', restaurant_name: '', restaurant_address: '', restaurant_phone: '', image_url: '', description: '' }
+import { cfImage } from '@/utils/cf-image'
+
+const EMPTY = { name: '', category: 'meal_voucher', price: '', original_price: '', restaurant_name: '', restaurant_address: '', restaurant_phone: '', image_url: '', description: '', max_per_person: '', kakao_place_url: '' }
 
 export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { onSaved: () => void; editDeal?: DealRow | null; onCancelEdit?: () => void }) {
   const h = { headers: { Authorization: `Bearer ${localStorage.getItem('admin_token')}` } }
@@ -36,6 +40,8 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
   const [busy, setBusy] = useState(false)
   const [photos, setPhotos] = useState<{ link: string; thumbnail: string }[]>([])
   const [photoBusy, setPhotoBusy] = useState(false)
+  // 🖼️ 2026-07-02 (대표 "사진 여러 장"): 다중 선택 — 첫 장 = 대표(image_url), 전체 = image_urls(JSON, 상세 갤러리).
+  const [selectedPhotos, setSelectedPhotos] = useState<string[]>([])
 
   const isEdit = !!editDeal
 
@@ -52,6 +58,8 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
       restaurant_phone: '',
       image_url: editDeal.image_url || '',
       description: '',
+      max_per_person: editDeal.max_per_person ? String(editDeal.max_per_person) : '',
+      kakao_place_url: editDeal.kakao_place_url || '',
     })
     setCoord(editDeal.restaurant_lat && editDeal.restaurant_lng ? { lat: editDeal.restaurant_lat, lng: editDeal.restaurant_lng } : null)
     setPlaces([]); setPhotos([]); setQ('')
@@ -59,7 +67,7 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
 
   const set = (k: keyof typeof f, v: string) => setF((prev) => ({ ...prev, [k]: v }))
 
-  const resetForm = () => { setF({ ...EMPTY }); setCoord(null); setQ(''); setPlaces([]); setPhotos([]) }
+  const resetForm = () => { setF({ ...EMPTY }); setCoord(null); setQ(''); setPlaces([]); setPhotos([]); setSelectedPhotos([]) }
 
   // 🖼️ 네이버 이미지 검색으로 매장 대표 사진 후보 가져오기 (카카오=정보·좌표, 네이버=사진).
   const fetchPhotos = async () => {
@@ -69,7 +77,16 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
     try {
       const res = await api.get(`/api/naver/image/search?query=${encodeURIComponent(query)}&display=8`)
       const items: { link?: string; thumbnail?: string }[] = res.data?.data?.items || []
-      const mapped = items.map((it) => ({ link: it.link || '', thumbnail: it.thumbnail || it.link || '' })).filter((x) => x.link)
+      // 🛡️ 2026-07-02 v2: search.pstatic 프록시가 외부발 src 에 404(콘솔 실측) → 저장은 **원본**
+      //   (toNaverSafeImageUrl v2 = un-wrap/정규화), 표시·렌더는 cfImage(zone 리사이저)가 담당.
+      const { toNaverSafeImageUrl } = await import('@/shared/naver-safe-image')
+      const mapped = items
+        .map((it) => {
+          const big = toNaverSafeImageUrl(it.link, it.thumbnail)          // 저장용(대형)
+          const small = toNaverSafeImageUrl(it.link, it.thumbnail, 'b400') // 그리드 표시용
+          return big ? { link: big, thumbnail: small || big } : null
+        })
+        .filter((x): x is { link: string; thumbnail: string } => !!x)
       setPhotos(mapped)
       if (mapped.length === 0) toast.info('네이버 사진 결과가 없어요 (다른 매장명으로 시도)')
     } catch (e: unknown) {
@@ -100,6 +117,8 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
       restaurant_address: p.road_address_name || p.address_name || '',
       restaurant_phone: p.phone || '',
       name: prev.name || p.place_name || '', // 상품명 비면 매장명으로 시드
+      // 🎯 2026-07-01: 카카오 장소 페이지 URL 캡처 → 상세 지도가 매장 페이지 직접 연결.
+      kakao_place_url: p.place_url || (p.id ? `https://place.map.kakao.com/${p.id}` : ''),
     }))
     setQ(p.place_name || '')
     setPlaces([])
@@ -110,7 +129,8 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
     if (!(Number(f.price.replace(/[^\d]/g, '')) > 0)) { toast.error('판매가를 입력하세요'); return }
     setBusy(true)
     try {
-      const payload = { ...f, lat: coord?.lat, lng: coord?.lng }
+      // 🖼️ 다중 선택분 전달 — 서버가 products.image_urls(JSON) 저장 → 상세 스와이프 갤러리 표시.
+      const payload = { ...f, lat: coord?.lat, lng: coord?.lng, image_urls: selectedPhotos.length > 0 ? selectedPhotos : undefined }
       if (isEdit && editDeal) {
         const res = await api.patch(`/api/admin/dongnedeal/${editDeal.id}`, payload, h)
         if (res.data?.success) { toast.success('수정 저장됨'); onSaved() }
@@ -203,6 +223,11 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
           <label className={lbl}>정가(원, 선택 · 취소선)</label>
           <input value={f.original_price} onChange={(e) => set('original_price', e.target.value.replace(/[^\d]/g, ''))} inputMode="numeric" placeholder="140000" className={input} />
         </div>
+        {/* 🎯 2026-07-01 (대표 "어드민 도구에도"): 1인당 최대 구매 수량 (0=무제한, 최대 99). */}
+        <div>
+          <label className={lbl}>1인당 최대 구매 수량 (0=무제한)</label>
+          <input value={f.max_per_person} onChange={(e) => set('max_per_person', e.target.value.replace(/[^\d]/g, '').slice(0, 2))} inputMode="numeric" placeholder="0" className={input} />
+        </div>
         <div>
           <label className={lbl}>매장명</label>
           <input value={f.restaurant_name} onChange={(e) => set('restaurant_name', e.target.value)} placeholder="한우공방 강남점" className={input} />
@@ -225,28 +250,52 @@ export default function ManualDealForm({ onSaved, editDeal, onCancelEdit }: { on
           <input value={f.image_url} onChange={(e) => set('image_url', e.target.value)} placeholder="https://… (네이버 검색으로 채우거나 직접 붙여넣기 · 비우면 카테고리 기본)" className={input} />
           {photos.length > 0 && (
             <div className="grid grid-cols-4 gap-2 mt-2">
-              {photos.map((p, i) => (
-                <button
-                  type="button" key={i}
-                  onClick={() => { set('image_url', p.link); setPhotos([]) }}
-                  className={`relative aspect-square rounded-lg overflow-hidden border-2 ${f.image_url === p.link ? 'border-gray-900' : 'border-gray-100'} hover:border-gray-400`}
-                >
-                  <img src={p.thumbnail} alt="" className="w-full h-full object-cover" loading="lazy"
-                    onError={(e) => { const b = (e.currentTarget.closest('button') as HTMLElement | null); if (b) b.style.display = 'none' }} />
-                </button>
-              ))}
+              {photos.map((p, i) => {
+                const sel = selectedPhotos.indexOf(p.link)
+                return (
+                  <button
+                    type="button" key={i}
+                    onClick={() => {
+                      // 토글 다중 선택 — 첫 장이 대표. 그리드는 유지해 여러 장 고르게.
+                      setSelectedPhotos((prev) => {
+                        const next = prev.includes(p.link) ? prev.filter((u) => u !== p.link) : [...prev, p.link]
+                        set('image_url', next[0] || '')
+                        return next
+                      })
+                    }}
+                    className={`relative aspect-square rounded-lg overflow-hidden border-2 ${sel >= 0 ? 'border-gray-900' : 'border-gray-100'} hover:border-gray-400`}
+                  >
+                    <img src={cfImage(p.thumbnail, { width: 200, quality: 80, format: 'auto' }) || p.thumbnail} alt="" className="w-full h-full object-cover" loading="lazy"
+                      onError={(e) => { const b = (e.currentTarget.closest('button') as HTMLElement | null); if (b) b.style.display = 'none' }} />
+                    {sel >= 0 && (
+                      <span className="absolute top-1 left-1 w-5 h-5 rounded-full bg-gray-900 text-white text-[11px] font-bold flex items-center justify-center">
+                        {sel + 1}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
+          )}
+          {photos.length > 0 && (
+            <p className="text-[11px] text-gray-400 mt-1.5">여러 장 클릭해 고르세요 — ①번이 대표 사진, 나머지는 상세 갤러리에 함께 표시돼요.</p>
           )}
           {f.image_url && (
             <div className="mt-2 flex items-center gap-2">
-              <img src={f.image_url} alt="미리보기" className="w-16 h-16 rounded-lg object-cover border border-gray-200" onError={(e) => { e.currentTarget.style.opacity = '0.25' }} />
-              <span className="text-[11px] text-gray-400">선택된 대표 사진 미리보기 — 흐리게 보이면 안 열리는 이미지예요(다른 사진 선택)</span>
+              <img src={cfImage(f.image_url, { width: 128, quality: 80, format: 'auto' }) || f.image_url} alt="미리보기" className="w-16 h-16 rounded-lg object-cover border border-gray-200" onError={(e) => { e.currentTarget.style.opacity = '0.25' }} />
+              <span className="text-[11px] text-gray-400">대표 사진 미리보기{selectedPhotos.length > 1 ? ` · 갤러리 ${selectedPhotos.length}장` : ''} — 흐리게 보이면 안 열리는 이미지예요</span>
             </div>
           )}
         </div>
         <div className="sm:col-span-2">
           <label className={lbl}>설명(선택)</label>
           <textarea value={f.description} onChange={(e) => set('description', e.target.value)} rows={2} placeholder="2인 한우 코스 · 결제 즉시 이용권 발급" className={input} />
+        </div>
+        {/* 🎯 2026-07-01 (대표 예시 — 김밥천국 kko.to): 카카오맵 매장 페이지 직접 연결 링크. */}
+        <div className="sm:col-span-2">
+          <label className={lbl}>카카오맵 링크(선택) — 매장 지도 정확 연결</label>
+          <input value={f.kakao_place_url} onChange={(e) => set('kakao_place_url', e.target.value)} placeholder="https://kko.to/… 또는 place.map.kakao.com/…" className={input} />
+          <p className="text-[11px] text-gray-400 mt-1">매장 검색·선택 시 자동 입력. 안 맞으면 카카오맵에서 매장 &lsquo;공유&rsquo; → 링크 복사해 붙여넣으세요.</p>
         </div>
       </div>
 

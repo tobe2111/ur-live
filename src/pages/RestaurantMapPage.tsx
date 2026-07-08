@@ -17,6 +17,8 @@ import FilterSheet, { type PriceRange } from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
 import HeroCarousel from './restaurant-map/HeroCarousel'
 import RestaurantList from './restaurant-map/RestaurantList'
+import { useGeocodeMissing } from './restaurant-map/useGeocodeMissing'
+import { useNearMeAuto } from './restaurant-map/useNearMeAuto'
 import SelectedDealCard from './restaurant-map/SelectedDealCard'
 import MapTopBar from './restaurant-map/MapTopBar'
 import SheetFilterBar from './restaurant-map/SheetFilterBar'
@@ -44,66 +46,51 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const [search, setSearch] = useState('')
   const [mapView, setMapView] = useState(true)
   // 🛡️ 2026-04-28: Recommended Pack — 거리/카테고리/정렬
-  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
+  // 📍 2026-07-02 (대표 "첫 화면과 완성 화면이 달라 헷갈림"): 거리(km)는 GPS 측위 후에만 계산돼
+  //   1~5초 늦게 나타나던 것 — 마지막 측위를 localStorage 에 캐시해 **재방문부터는 첫 페인트에 즉시**
+  //   표시(수십 m 오차는 km 단위 표시에 무해), fresh GPS 도착 시 조용히 갱신. 첫 방문(캐시 없음)만 기존과 동일.
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => {
+    try {
+      const c = JSON.parse(localStorage.getItem('ur_last_loc_v1') || 'null')
+      return c && Number.isFinite(c.lat) && Number.isFinite(c.lng) ? { lat: c.lat, lng: c.lng } : null
+    } catch { return null }
+  })
   // 🛡️ 2026-04-28: 이용권 카테고리 (식사/뷰티/헬스) — meal_voucher 인프라 재활용
   const [voucherType, setVoucherType] = useState<MapVoucherType>('all')
   // 🛡️ 2026-06-01 Tier2: products fetch 만 React Query(카테고리별 캐시). live-poller 는 유지.
   const { data: restaurants = [], isLoading: loading } = useMapProducts(voucherType === 'all' ? 'all' : voucherType)
-  // 🗺️ 2026-06-20 (대표 — 상품 클릭 시 위치 이동/핀 표시 안 됨): 좌표 없는 딜(주소만 있음)을 클라이언트에서
-  //   주소→좌표 지오코딩(/api/kakao/place/address)으로 보강. 서버 cron(restaurant-geocode)이 채우기 전/
-  //   누락분도 즉시 지도 핀 + 클릭 이동 가능. sessionStorage 캐시 + 딜당 1회 시도 + 최대 12개(레이트리밋 보호).
-  const [geoCache, setGeoCache] = useState<Record<number, { lat: number; lng: number }>>(() => {
-    try { return JSON.parse(sessionStorage.getItem('ur_geocache_v1') || '{}') } catch { return {} }
-  })
-  const geoAttempted = useRef<Set<number>>(new Set())
-  useEffect(() => {
-    const missing = restaurants.filter(r => !r.restaurant_lat && r.restaurant_address && !geoAttempted.current.has(r.id)).slice(0, 12)
-    if (missing.length === 0) return
-    missing.forEach(r => geoAttempted.current.add(r.id))
-    let cancelled = false
-    ;(async () => {
-      const next: Record<number, { lat: number; lng: number }> = {}
-      for (const r of missing) {
-        try {
-          const res = await api.get('/api/kakao/place/address', { params: { query: r.restaurant_address } })
-          const d = res.data?.data?.documents?.[0]
-          const lat = Number(d?.y), lng = Number(d?.x)
-          if (Number.isFinite(lat) && Number.isFinite(lng)) next[r.id] = { lat, lng }
-        } catch { /* skip */ }
-      }
-      if (!cancelled && Object.keys(next).length > 0) {
-        setGeoCache(prev => {
-          const merged = { ...prev, ...next }
-          try { sessionStorage.setItem('ur_geocache_v1', JSON.stringify(merged)) } catch { /* ignore */ }
-          return merged
-        })
-      }
-    })()
-    return () => { cancelled = true }
-  }, [restaurants])
-  const enrichedRestaurants = useMemo(
-    () => restaurants.map(r => (!r.restaurant_lat && geoCache[r.id])
-      ? { ...r, restaurant_lat: geoCache[r.id].lat, restaurant_lng: geoCache[r.id].lng }
-      : r),
-    [restaurants, geoCache]
-  )
+  // 🗺️ 2026-06-20 좌표 없는 딜 지오코딩 보강 → 🚑 2026-07-02 429 폭주 수리와 함께 훅으로 추출
+  //   (캐시 보유분 재요청 금지 + 동일 주소 1회만 + 429 시 배치 중단 — useGeocodeMissing.ts 참조).
+  const enrichedRestaurants = useGeocodeMissing(restaurants)
   // 🎯 2026-06-20 선착순: 활성 선착순 상품 config(상위노출·배지·지원용). id→{spots,appliedDisplay}.
-  const [fcfsMap, setFcfsMap] = useState<Map<number, { spots: number; appliedDisplay: number }>>(new Map())
+  // 🎯 2026-07-02 (대표 "첫 페인트에 응모 버튼 늦게 등장"): 목록 응답에 서버 enrich 된 r.fcfs 를
+  //   첫 페인트 시드로 즉시 사용 — 별도 /api/fcfs/active 도착 전에도 응모 버튼·배지가 함께 그려짐.
+  //   fetch 결과가 오면 그 값(신선 카운트) 우선.
+  // 🎯 2026-07-04 (대표 "데모 이용권 노출은 항상 후순위"): demo 플래그 동반 — '상위노출' boost 는
+  //   실(non-demo) 선착순만. 데모는 base 순서(서버가 이미 데모-후순위 정렬) 그대로 뒤에 남음.
+  const [liveFcfsMap, setLiveFcfsMap] = useState<Map<number, { spots: number; appliedDisplay: number; demo?: boolean; prelaunch?: boolean }>>(new Map())
   useEffect(() => {
     api.get('/api/fcfs/active')
       .then(r => {
-        const m = new Map<number, { spots: number; appliedDisplay: number }>()
+        const m = new Map<number, { spots: number; appliedDisplay: number; demo?: boolean; prelaunch?: boolean }>()
         for (const p of (r.data?.data || [])) {
-          if (p?.fcfs?.enabled) m.set(p.id, { spots: p.fcfs.spots || 0, appliedDisplay: p.fcfs.appliedDisplay || 0 })
+          if (p?.fcfs?.enabled) m.set(p.id, { spots: p.fcfs.spots || 0, appliedDisplay: p.fcfs.appliedDisplay || 0, demo: !!(p.is_demo || p.fcfs.demo), prelaunch: !!p.fcfs.prelaunch })
         }
-        setFcfsMap(m)
+        setLiveFcfsMap(m)
       })
       .catch(() => { /* silent */ })
   }, [])
+  const fcfsMap = useMemo(() => {
+    const m = new Map(liveFcfsMap)
+    for (const r of restaurants as Array<{ id: number; fcfs?: { enabled?: boolean; spots?: number; appliedDisplay?: number; demo?: boolean; prelaunch?: boolean } }>) {
+      if (!m.has(r.id) && r.fcfs?.enabled) m.set(r.id, { spots: r.fcfs.spots || 0, appliedDisplay: r.fcfs.appliedDisplay || 0, demo: !!r.fcfs.demo, prelaunch: !!r.fcfs.prelaunch })
+    }
+    return m
+  }, [liveFcfsMap, restaurants])
   const applyFcfs = useCallback(async (productId: number) => {
     try {
       const res = await api.post(`/api/fcfs/${productId}/apply`)
-      toast.success(res.data?.data?.already ? '이미 응모했어요' : '🎉 응모 완료! 추첨 결과는 알림으로 안내드려요')
+      toast.success(res.data?.data?.already ? '이미 응모했어요' : '🎉 응모 완료! 당첨 시 안내드려요')
     } catch {
       toast.error('응모하려면 로그인이 필요해요')
     }
@@ -118,7 +105,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 즐겨찾기 (localStorage) + 라이브 셀러 ID 집합
   const [favorites, setFavorites] = useState<number[]>(() => storage.getJSON<number[]>('restaurant_favorites', []))
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
-  const [liveSellerIds, setLiveSellerIds] = useState<Set<number>>(new Set())
+  const [liveSellerIds] = useState<Set<number>>(new Set())
   // 🛡️ 2026-04-30: UX 개선 — 필터 시트 (지역 + 카테고리 통합)
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const activeFilterCount = ((region || district) ? 1 : 0) + (radiusKm > 0 ? 1 : 0) + (priceRange !== 'all' ? 1 : 0)
@@ -190,59 +177,25 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     })
   }, [])
 
-  // 라이브 셀러 폴링 — 이용권 셀러가 라이브 중이면 핀에 LIVE 배지
-  // 🛡️ 2026-04-30 UX: 30초 → 90초로 완화 + 탭 숨김 시 일시 정지 (배터리·네트워크 절약).
-  //   "자동으로 새로고침되며 긴 로딩" 사용자 신고 대응.
-  useEffect(() => {
-    let cancelled = false
-    let id: ReturnType<typeof setInterval> | null = null
-
-    const fetchLive = async () => {
-      if (document.visibilityState !== 'visible') return // 백그라운드면 skip
-      try {
-        const res = await api.get('/api/streams', { params: { status: 'live', limit: 50 } })
-        if (cancelled) return
-        if (res.data?.success && Array.isArray(res.data.data)) {
-          const ids = new Set<number>(res.data.data.map((s: { seller_id?: number }) => s.seller_id).filter(Boolean) as number[])
-          setLiveSellerIds(ids)
-        }
-      } catch { /* silent */ }
-    }
-
-    const startPolling = () => {
-      if (id) clearInterval(id)
-      id = setInterval(fetchLive, 90_000)
-    }
-
-    fetchLive()
-    startPolling()
-    // 탭 복귀 시 즉시 1회 fetch + 폴링 재시작
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        fetchLive()
-        startPolling()
-      } else if (id) {
-        clearInterval(id)
-        id = null
-      }
-    }
-    document.addEventListener('visibilitychange', onVisibility)
-    return () => {
-      cancelled = true
-      if (id) clearInterval(id)
-      document.removeEventListener('visibilitychange', onVisibility)
-    }
-  }, [])
+  // 🗑️ 2026-07-07 라이브커머스 제거: 홈의 '라이브 셀러' 90초 폴러 삭제(/api/streams 엔드포인트 제거됨).
+  //   liveSellerIds 는 영구 빈 Set → 소비처(HeroCarousel/미니카드)의 LIVE 배지는 렌더되지 않음(의도).
 
   // 사용자 위치 자동 감지 (1회) — 거리순 정렬용
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
-      (pos) => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => { /* 거부/실패 — 거리순 비활성 */ },
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setUserLoc(loc)
+        try { localStorage.setItem('ur_last_loc_v1', JSON.stringify(loc)) } catch { /* quota */ }
+      },
+      () => { /* 거부/실패 — 캐시 위치(있으면) 유지, 없으면 거리 비표시 */ },
       { timeout: 5000, enableHighAccuracy: false, maximumAge: 600000 }
     )
   }, [])
+
+  // 🧭 2026-07-07 (대표 — 홈 '내 주변' 기준): 위치 확보 시 자동 '가까운 순' + 동네 라벨(useNearMeAuto).
+  const { nearDong, setSortByUser } = useNearMeAuto({ userLoc, region, district, setSortBy, setNearMeMode })
 
   // 🛡️ 2026-06-20 (대표 — "미리 업체들 나오는거 별로"): 옵션B 카카오 일반 업체(회색 '+' 추천핀)를
   //   기본 지도에 자동으로 깔던 것 제거 → 기본 화면엔 '실제 딜'만. 사용자가 직접 검색했을 때만 표시
@@ -322,9 +275,11 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   }, [enrichedRestaurants, region, district, search, sortBy, radiusKm, priceRange, matchesFilter, showFavoritesOnly, favorites])
 
   // 🎯 2026-06-20 선착순 상위노출 — 선착순 상품을 리스트 최상단으로(나머지 순서 보존).
+  // 🎯 2026-07-04 (대표 "데모 항상 후순위"): boost 는 실(non-demo) 선착순만 — 데모는 끌어올리지 않음.
   const displayList = useMemo(() => {
     if (fcfsMap.size === 0) return filtered
-    return [...filtered].sort((a, b) => (fcfsMap.has(b.id) ? 1 : 0) - (fcfsMap.has(a.id) ? 1 : 0))
+    const boost = (id: number) => { const f = fcfsMap.get(id); return f && !f.demo ? 1 : 0 }
+    return [...filtered].sort((a, b) => boost(b.id) - boost(a.id))
   }, [filtered, fcfsMap])
 
   // 🛡️ 2026-04-30 Phase 3: hero carousel — 인기 (할인율 높은 순) 상위 5개
@@ -481,6 +436,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       ? (findDistrictGroup(region, district)?.label.split('/')[0] || '지역')
       : region
       ? (findRegionByKey(region)?.label.replace('\n', ' ') || '지역')
+      : nearMeMode
+      // 🧭 2026-07-07 (대표 — '내 주변' 기준): 지역 미선택 + 내 주변 모드면 감지된 동네(폴백 '내 주변').
+      ? (nearDong || '내 주변')
       : '전국'
     return (
       <div className="bg-white dark:bg-[#020202] min-h-[100dvh]">
@@ -514,7 +472,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             filteredCount={filtered.length}
             userLoc={userLoc}
             sortBy={sortBy}
-            setSortBy={setSortBy}
+            setSortBy={setSortByUser}
             favorites={favorites}
             showFavoritesOnly={showFavoritesOnly}
             setShowFavoritesOnly={setShowFavoritesOnly}
@@ -533,22 +491,24 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             voucherType={voucherType}
           />
         </div>
-        {/* 플로팅 '지도' 버튼 — 하단 네비 위 중앙 */}
+        {/* 플로팅 '지도로 보기' 버튼 — 하단 네비 위 중앙.
+            🎨 2026-07-03 (대표 시안 A 선택): 이모지(📍/기기별 편차) → lucide Map(접힌 지도) 라인 아이콘.
+            전역 Map(생성자) 가림 방지 위해 `Map as MapIcon` 별칭. 아이콘 색 = 알약 글자색(currentColor). */}
         <button
           onClick={() => navigate('/map')}
-          className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full pl-4 pr-5 py-3 shadow-xl active:scale-95 transition-transform"
+          className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-blue-600 text-white rounded-full pl-3.5 pr-4 py-2.5 shadow-lg active:scale-95 transition-transform"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom,0px) + 16px)' }}
           aria-label={t('map.viewMap', { defaultValue: '지도로 보기' })}
         >
-          <MapIcon className="w-4 h-4" />
-          <span className="text-[14px] font-bold">{t('map.viewMap', { defaultValue: '지도' })}</span>
+          <MapIcon className="w-[18px] h-[18px] shrink-0" strokeWidth={2} />
+          <span className="text-[14px] font-bold">{t('map.viewMap', { defaultValue: '지도로 보기' })}</span>
         </button>
         {filterSheetOpen && (
           <FilterSheet
             region={region} district={district} sortBy={sortBy} radiusKm={radiusKm} priceRange={priceRange}
             hasUserLoc={!!userLoc} countFor={countFor}
             onApply={(rg, dist, sort, radius, price) => {
-              setRegion(rg); setDistrict(dist); setSortBy(sort); setRadiusKm(radius); setPriceRange(price); setFilterSheetOpen(false)
+              setRegion(rg); setDistrict(dist); setSortByUser(sort); setRadiusKm(radius); setPriceRange(price); setFilterSheetOpen(false)
             }}
             onClose={() => setFilterSheetOpen(false)}
           />
@@ -678,7 +638,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             filteredCount={filtered.length}
             userLoc={userLoc}
             sortBy={sortBy}
-            setSortBy={setSortBy}
+            setSortBy={setSortByUser}
             favorites={favorites}
             showFavoritesOnly={showFavoritesOnly}
             setShowFavoritesOnly={setShowFavoritesOnly}
@@ -731,7 +691,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           onApply={(rg, dist, sort, radius, price) => {
             setRegion(rg)
             setDistrict(dist)
-            setSortBy(sort)
+            setSortByUser(sort)
             setRadiusKm(radius)
             setPriceRange(price)
             setMapView(true)

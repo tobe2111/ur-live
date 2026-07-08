@@ -13,6 +13,7 @@ import type { Env } from '@/worker/types/env'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
 import { validateImageUrl } from '@/worker/utils/validation'
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
+import { intParam } from '@/shared/pagination'
 
 export const adminToolsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -26,7 +27,7 @@ async function ensureSellerRejectReason(db: D1Database) {
 
 // ── 매출 통계 차트 ──
 adminToolsRoutes.get('/chart/revenue', async (c) => {
-  const days = Number(c.req.query('days') || 30)
+  const days = intParam(c.req.query('days'), 30)
   const { results } = await c.env.DB.prepare(`
     SELECT date(created_at) AS date,
       COUNT(*) AS orders,
@@ -39,7 +40,7 @@ adminToolsRoutes.get('/chart/revenue', async (c) => {
 
 // ── 매출 리포트 CSV ──
 adminToolsRoutes.get('/report/csv', async (c) => {
-  const days = Number(c.req.query('days') || 30)
+  const days = intParam(c.req.query('days'), 30)
   const { results } = await c.env.DB.prepare(`
     SELECT date(o.created_at) AS date, s.name AS seller_name,
       COUNT(*) AS order_count,
@@ -112,7 +113,7 @@ adminToolsRoutes.get('/banners', async (c) => {
 })
 
 adminToolsRoutes.post('/banners', async (c) => {
-  const { title, image_url, link_url, display_order } = await c.req.json<any>()
+  const { title, image_url, link_url, display_order } = await c.req.json<any>().catch(() => ({} as any))
   if (!image_url) return c.json({ success: false, error: '이미지 URL 필수' }, 400)
 
   // 🛡️ 2026-04-22: URL 검증 추가 (XSS/SSRF 방어)
@@ -137,7 +138,7 @@ adminToolsRoutes.post('/banners', async (c) => {
 
 adminToolsRoutes.put('/banners/:id', async (c) => {
   const id = c.req.param('id')
-  const body = await c.req.json<any>()
+  const body = await c.req.json<any>().catch(() => ({} as any))
   const sets: string[] = []; const vals: any[] = []
   if (body.title !== undefined) { sets.push('title = ?'); vals.push(body.title) }
   if (body.image_url) { sets.push('image_url = ?'); vals.push(body.image_url) }
@@ -160,7 +161,7 @@ adminToolsRoutes.delete('/banners/:id', async (c) => {
 
 // ── 공지사항 발송 ──
 adminToolsRoutes.post('/notices', async (c) => {
-  const body = await c.req.json<{ title: string; message: string; target: 'all' | 'sellers' | 'users' }>()
+  const body = await c.req.json<{ title: string; message: string; target: 'all' | 'sellers' | 'users' }>().catch(() => ({} as any))
   const { target } = body
   let { title, message } = body
 
@@ -231,7 +232,7 @@ adminToolsRoutes.get('/settlements/pending', async (c) => {
 })
 
 adminToolsRoutes.post('/settlements/process', async (c) => {
-  const { seller_ids } = await c.req.json<{ seller_ids: number[] }>()
+  const { seller_ids } = await c.req.json<{ seller_ids: number[] }>().catch(() => ({} as { seller_ids?: number[] }))
   if (!seller_ids?.length) return c.json({ success: false, error: '셀러를 선택해주세요' }, 400)
 
   // 🛡️ 2026-04-22: 입력 검증 + 감사 로그 추가
@@ -277,7 +278,7 @@ adminToolsRoutes.get('/reports', async (c) => {
 
 adminToolsRoutes.put('/reports/:id/resolve', async (c) => {
   const id = c.req.param('id')
-  const { action, note } = await c.req.json<{ action: 'dismiss' | 'warn' | 'suspend'; note?: string }>()
+  const { action, note } = await c.req.json<{ action: 'dismiss' | 'warn' | 'suspend'; note?: string }>().catch(() => ({} as any))
   await c.env.DB.prepare("UPDATE user_reports SET status = ?, admin_note = ?, resolved_at = datetime('now') WHERE id = ?")
     .bind(action, note || '', id).run()
 
@@ -303,7 +304,7 @@ adminToolsRoutes.get('/settings', async (c) => {
 })
 
 adminToolsRoutes.put('/settings', async (c) => {
-  const body = await c.req.json<Record<string, string>>()
+  const body = await c.req.json<Record<string, string>>().catch(() => ({} as Record<string, string>))
   try { await c.env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS platform_settings (
       key TEXT PRIMARY KEY, value TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -318,4 +319,15 @@ adminToolsRoutes.put('/settings', async (c) => {
     invalidatePolicyCache()
   } catch { /* ignore — cache 만료 자연 처리 */ }
   return c.json({ success: true })
+})
+
+// 📊 2026-07-05 (운영 감사 Q10 — 캡 관측성): 커미션 예산 캡 발동 이력.
+//   order-commissions.ts 가 Σ요청>예산인 주문만 기록(detail = 축별 요청/배분 JSON).
+//   테이블 미존재(캡 미발동/게이트 OFF)면 빈 배열 — 정상.
+adminToolsRoutes.get('/commission-budget-logs', async (c) => {
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, order_id, budget_krw, requested_krw, granted_krw, detail, created_at
+     FROM commission_budget_logs ORDER BY created_at DESC LIMIT 100`
+  ).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+  return c.json({ success: true, data: results || [] })
 })

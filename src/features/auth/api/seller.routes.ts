@@ -26,6 +26,7 @@ import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/accou
 
 import { swallow } from '@/worker/utils/swallow';
 import { startDashboardSession, isDashboardSessionCurrent, deriveDashboardSeat } from '@/worker/utils/dashboard-session';
+import { filterAliveRefreshRows, rotationGraceExpiryIso } from '@/worker/utils/refresh-rotation';
 import { requireSeller } from '@/worker/middleware/auth';
 import { computeWholesaleOnly } from '@/features/supply/api/wholesale-helpers';
 type Bindings = {
@@ -529,8 +530,11 @@ sellerRoutes.post('/refresh', cors(), rateLimit({ action: 'seller_refresh', max:
 
       const candidates = rows.results || [];
       if (candidates.length > 0) {
+        // 🛡️ 2026-07-04: 행 단위 만료 강제(유예 지난 행 차단) — admin refresh 와 동일 패턴.
+        const nowMs = Date.now();
+        const alive = filterAliveRefreshRows(candidates, nowMs);
         let matchedId: number | null = null;
-        for (const row of candidates) {
+        for (const row of alive) {
           const { valid } = await verifyPassword(refreshToken, row.token_hash);
           if (valid) {
             matchedId = row.id;
@@ -545,18 +549,19 @@ sellerRoutes.post('/refresh', cors(), rateLimit({ action: 'seller_refresh', max:
             code: 'INVALID_REFRESH_TOKEN'
           }, 401);
         }
-        // v27 FIX: 구 토큰 삭제가 실패하면 rotation 중단 (구+신 동시 유효 방지)
-        const deleteResult = await DB.prepare(
-          'DELETE FROM auth_refresh_tokens WHERE id = ?'
-        ).bind(matchedId).run();
-        if (!deleteResult.meta?.changes) {
-          console.warn('[Seller Refresh] old token delete failed (changes=0) — aborting rotation');
-          return c.json<AuthResponse>({
-            success: false,
-            error: '토큰 갱신에 실패했습니다. 다시 로그인해주세요.',
-            code: 'TOKEN_ROTATION_FAILED'
-          }, 401);
-        }
+        // 🛡️ 2026-07-04 (대표 "수시로 로그아웃" — admin 과 동일 클래스): rotate 즉시삭제 →
+        //   **60초 유예**. 즉시 삭제는 다중 탭 동시 갱신에서 진 쪽 401 → 강제 로그아웃 +
+        //   이긴 탭 새 토큰까지 삭제(연쇄 로그아웃). 유예 내 재사용 허용, 유예 후 alive 필터 차단.
+        //   (v27 의 '구+신 동시 유효 방지' 의도는 60초로 한정 유지 — 탈취-재사용 탐지는 유예 후 동일.)
+        await DB.prepare(
+          `UPDATE auth_refresh_tokens SET expires_at = ? WHERE id = ? AND expires_at > ?`,
+        ).bind(
+          rotationGraceExpiryIso(nowMs), matchedId, rotationGraceExpiryIso(nowMs),
+        ).run().catch(() => { /* best-effort — 유예 미설정이어도 갱신은 진행 */ });
+        // 유예 지난 행 정리 (best-effort)
+        await DB.prepare(
+          `DELETE FROM auth_refresh_tokens WHERE user_type = 'seller' AND user_id = ? AND expires_at <= ?`,
+        ).bind(Number(sellerId), new Date(nowMs).toISOString()).run().catch(() => { /* best-effort */ });
       }
     } catch (e) {
       console.error('[Seller Refresh] token store verify failed:', e);

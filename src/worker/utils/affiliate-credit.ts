@@ -51,7 +51,7 @@ export interface AffiliateCreditInput {
 
 export type AffiliateCreditResult =
   | { ok: true; commission: number }
-  | { ok: false; code: 'NOT_FOUND' | 'NOT_PAID' | 'SELF_REFERRAL' | 'SELF_PURCHASE' | 'DUPLICATE' | 'IP_ABUSE' | 'REFERRAL_DISABLED' | 'ERROR' }
+  | { ok: false; code: 'NOT_FOUND' | 'NOT_PAID' | 'SELF_REFERRAL' | 'SELF_PURCHASE' | 'SELF_SELLER' | 'DUPLICATE' | 'IP_ABUSE' | 'REFERRAL_DISABLED' | 'BUDGET_EXHAUSTED' | 'ERROR' }
 
 interface CommissionBreakdown {
   commission: number
@@ -66,8 +66,9 @@ interface CommissionBreakdown {
  *   기존엔 첫 상품 비율 × 주문총액(배송비 포함) 이라 멀티상품 주문에서 과/미적립.
  *   order_items 부재(레거시/직접결제) 시 fallbackProductId 비율 × 주문총액으로 fallback.
  *   반환 null = 적립 대상 라인 0 (REFERRAL_DISABLED).
+ *   💸 2026-07-04 [INV-CB]: 예산 아비터(order-commissions.ts)의 요청액 산출용으로 export.
  */
-async function computeOrderCommission(
+export async function computeOrderCommission(
   DB: D1Database,
   orderId: number,
   orderAmount: number,
@@ -123,6 +124,7 @@ export async function creditAffiliateForOrder(
   DB: D1Database,
   env: unknown,
   input: AffiliateCreditInput,
+  opts?: { amountOverride?: number },
 ): Promise<AffiliateCreditResult> {
   const { referrerId, orderId, productId, productName, buyerIp } = input
   try {
@@ -153,6 +155,13 @@ export async function creditAffiliateForOrder(
         ).bind(String(order.user_id), String(order.id), JSON.stringify({ sellerOwner, referrer_id: referrerId })).run().catch(() => {})
         return { ok: false, code: 'SELF_PURCHASE' }
       }
+      // 💸 2026-07-07 (대표 결정 — 진입=세션 귀속의 이중지급 방지 가드): referrer 가 곧 상품의 판매자(셀러 소유주)면
+      //   추천 수수료를 지급하지 않는다 — 그는 이미 '판매수익'을 가져가므로(자기 링크샵에서 자기 상품 판매).
+      //   링크샵 진입 세션귀속(affiliate_ref=주인 user_id)이 도입되며, 주인이 자기 상품을 팔면 referrer==셀러가
+      //   되어 판매수익+추천수수료 이중지급이 발생하던 것을 구조적으로 차단. (핀=타인 상품은 referrer≠셀러라 무영향.)
+      if (sellerOwner?.user_id && String(sellerOwner.user_id) === String(referrerId)) {
+        return { ok: false, code: 'SELF_SELLER' }
+      }
     } catch { /* */ }
 
     const existing = await DB.prepare(
@@ -172,7 +181,13 @@ export async function creditAffiliateForOrder(
     // 🧾 라인별 귀속 (멀티상품 정확) — order_items 의 referral_enabled 라인만 각 비율로 합산.
     const breakdown = await computeOrderCommission(DB, Number(order.id), orderAmount, productId, productName)
     if (!breakdown) return { ok: false, code: 'REFERRAL_DISABLED' }
-    const commission = breakdown.commission
+    // 💸 2026-07-04 [INV-CB] amountOverride: 예산 아비터가 배분한 상한 — 계산값보다 커질 수 없음(축소만).
+    //   0 이면 적립 자체를 스킵(예산 소진). 미전달 시 현행 동일.
+    let commission = breakdown.commission
+    if (opts?.amountOverride != null) {
+      commission = Math.min(Math.max(0, Math.floor(opts.amountOverride)), commission)
+      if (commission <= 0) return { ok: false, code: 'BUDGET_EXHAUSTED' }
+    }
     const storeProductId = breakdown.primaryProductId
     const storeProductName = breakdown.primaryProductName
 
@@ -359,7 +374,12 @@ export async function saveReferrerIntent(
 }
 
 /** /confirm 확정 직후 호출 — 저장된 의도가 있으면 적립 (멱등). */
-export async function creditAffiliateFromIntent(DB: D1Database, env: unknown, orderId: number): Promise<void> {
+export async function creditAffiliateFromIntent(
+  DB: D1Database,
+  env: unknown,
+  orderId: number,
+  opts?: { amountOverride?: number },
+): Promise<void> {
   try {
     await ensureReferrerIntentsTable(DB)
     const intent = await DB.prepare(
@@ -372,6 +392,35 @@ export async function creditAffiliateFromIntent(DB: D1Database, env: unknown, or
       productId: intent.product_id,
       productName: intent.product_name,
       buyerIp: intent.buyer_ip,
-    })
+    }, opts)
   } catch { /* fail-soft */ }
+}
+
+/**
+ * 💸 2026-07-04 [INV-CB]: 적립 없이 "이 주문의 핀 추천 요청액"만 계산(read-only) — 예산 아비터용.
+ *   intent 없음/셀프추천/이미 적립/비대상이면 0. 일시 오류도 0(미지급 방향 안전).
+ *   ⚠️ credit 의 전체 검증(IP 어뷰즈 등)의 부분집합 — 여기서 >0 이어도 credit 이 거부할 수 있음
+ *   (그 경우 배정 예산이 남을 뿐, 초과 지급은 구조적으로 불가).
+ */
+export async function peekAffiliateIntentRequest(DB: D1Database, orderId: number): Promise<number> {
+  try {
+    await ensureReferrerIntentsTable(DB)
+    const intent = await DB.prepare(
+      'SELECT referrer_id, product_id, product_name FROM order_referrer_intents WHERE order_id = ?'
+    ).bind(orderId).first<{ referrer_id: string; product_id: number | null; product_name: string | null }>()
+    if (!intent?.referrer_id) return 0
+    const order = await DB.prepare(
+      'SELECT id, user_id, total_amount FROM orders WHERE id = ?'
+    ).bind(orderId).first<{ id: number; user_id: string | number; total_amount: number }>()
+    if (!order) return 0
+    if (String(intent.referrer_id) === String(order.user_id)) return 0 // self — credit 도 거부
+    const existing = await DB.prepare(
+      'SELECT id FROM affiliate_earnings WHERE referrer_id = ? AND order_id = ?'
+    ).bind(String(intent.referrer_id), order.id).first().catch(() => null)
+    if (existing) return 0 // 이미 적립 — 예산 요청 불필요
+    const breakdown = await computeOrderCommission(DB, Number(order.id), Number(order.total_amount) || 0, intent.product_id, intent.product_name)
+    return breakdown?.commission ?? 0
+  } catch {
+    return 0
+  }
 }

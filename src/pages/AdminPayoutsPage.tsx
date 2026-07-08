@@ -13,7 +13,7 @@ import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
-import { DashboardPageHeader } from '@/components/dashboard'
+import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Wallet, CheckCircle, Send, XCircle } from 'lucide-react'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -35,6 +35,9 @@ interface Payout {
   created_at: string
   approved_at: string | null
   sent_at: string | null
+  // 💸 2026-07-01 정산 정합: 서버가 pending 건에 부착(정정 전 gross 식별).
+  _stale?: boolean
+  _available?: number
 }
 
 interface PendingRow {
@@ -168,6 +171,18 @@ export default function AdminPayoutsPage() {
         )}
       </div>
 
+      {/* 🛡️ 2026-07-01 (어드민 라이브 감사): 5xx/401/403 을 "정산 대기 잔액 없음" 으로 위장하지 않도록 표면화 */}
+      {((tab === 'pending_ledger' && pendingQ.isError) || (tab === 'payouts' && payoutsQ.isError)) && (
+        <div className="mb-4">
+          <DashboardLoadError
+            error={tab === 'pending_ledger' ? pendingQ.error : payoutsQ.error}
+            onRetry={() => (tab === 'pending_ledger' ? pendingQ.refetch() : payoutsQ.refetch())}
+            loginPath="/admin/login"
+            label={tab === 'pending_ledger' ? 'ledger 잔액' : 'payouts 목록'}
+          />
+        </div>
+      )}
+
       {tab === 'pending_ledger' ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {loading ? (
@@ -237,7 +252,14 @@ export default function AdminPayoutsPage() {
                           <div className="font-mono">{p.payee_type}:{p.payee_id}</div>
                           <div className="text-[10px] text-gray-400">{p.period_start} ~ {p.period_end}</div>
                         </td>
-                        <td className="px-4 py-3 text-right font-bold">{formatWon(p.amount)}</td>
+                        <td className="px-4 py-3 text-right font-bold">
+                          {formatWon(p.amount)}
+                          {p._stale && (
+                            <div className="mt-0.5 text-[10px] font-medium text-red-600" title="정산식 정정 이전에 생성된 금액입니다. 현재 정산 가능액과 다릅니다 — 취소 후 재생성 권장(승인 시 자동 차단).">
+                              ⚠️ 확인 필요 · 현재 {formatWon(p._available ?? 0)}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-gray-700">
                           {p.account_holder || '-'}
                           {p.account_number && <div className="font-mono text-[10px]">{p.account_number}</div>}

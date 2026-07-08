@@ -13,6 +13,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
 import { rateLimit } from '../middleware/rate-limit'
+import { intParam } from '@/shared/pagination'
 
 export const errorTelemetryRoutes = new Hono<{ Bindings: Env }>()
 
@@ -78,7 +79,7 @@ errorTelemetryRoutes.get('/api/_errors/recent', async (c) => {
   }
 
   const hours = Math.min(Math.max(1, Number(c.req.query('hours') || '1')), 168)
-  const limit = Math.min(Math.max(1, Number(c.req.query('limit') || '100') || 100), 1000)
+  const limit = Math.min(Math.max(1, intParam(c.req.query('limit'), 100)), 1000)
 
   try {
     const rows = await c.env.DB.prepare(

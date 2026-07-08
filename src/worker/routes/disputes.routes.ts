@@ -176,19 +176,22 @@ disputesRoutes.post(
         }
         // 2) 환불 금액 / 사용자 조회
         const order = await DB.prepare(
-          "SELECT o.payment_method, o.total_amount, o.user_id, p.price FROM vouchers v LEFT JOIN orders o ON o.id = v.order_id LEFT JOIN products p ON p.id = v.product_id WHERE v.id = ?"
-        ).bind(voucher.id).first<{ payment_method: string; total_amount: number; user_id: string; price: number }>()
+          "SELECT o.payment_method, o.total_amount, o.user_id, o.order_number, o.id AS order_pk, p.price FROM vouchers v LEFT JOIN orders o ON o.id = v.order_id LEFT JOIN products p ON p.id = v.product_id WHERE v.id = ?"
+        ).bind(voucher.id).first<{ payment_method: string; total_amount: number; user_id: string; order_number: string | null; order_pk: number | null; price: number }>()
 
         // 3) 환불 + dispute resolved 마킹을 batch() 로 atomic 실행
+        // 💸 2026-07-05 버킷: 원거래 무상 차감분 산출(computeFreeRestorePortion) 후 batch 로 대칭 복원.
         const stmts = []
         if (order && order.payment_method === 'deal_points' && order.user_id) {
           const refundAmount = order.price
+          const { computeFreeRestorePortion, bucketRestoreUpsertStatement, ensureDealBuckets } = await import('../utils/point-buckets')
+          await ensureDealBuckets(DB)
+          const freePortion = await computeFreeRestorePortion(DB, [order.order_number, order.order_pk != null ? String(order.order_pk) : null], refundAmount, order.user_id)
           stmts.push(
-            DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?")
-              .bind(refundAmount, order.user_id),
+            bucketRestoreUpsertStatement(DB, { userId: order.user_id, amount: refundAmount, freePortion }),
             DB.prepare(
-              "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-            ).bind(order.user_id, refundAmount, refundAmount, order.user_id, `[AI 자동 환불] 분쟁 #${disputeId}: ${category}`)
+              "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id, free_delta) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)"
+            ).bind(order.user_id, refundAmount, refundAmount, order.user_id, `[AI 자동 환불] 분쟁 #${disputeId}: ${category}`, order.order_number || null, freePortion)
           )
         }
         stmts.push(
@@ -276,12 +279,18 @@ disputesRoutes.post('/admin/:id/approve', requireAuth(), require2FA(), auditLog(
   //   부분 실패 시 voucher 만 refunded 로 남고 환불 안 되는 불일치 방지.
   const stmts = []
   if (voucher.payment_method === 'deal_points' && voucher.user_id) {
+    // 💸 2026-07-05 버킷: 원거래 무상 차감분 산출 후 batch 로 대칭 복원.
+    const { computeFreeRestorePortion, bucketRestoreUpsertStatement, ensureDealBuckets } = await import('../utils/point-buckets')
+    await ensureDealBuckets(DB)
+    const orderRefRow = voucher.order_id
+      ? await DB.prepare('SELECT order_number FROM orders WHERE id = ?').bind(voucher.order_id).first<{ order_number: string }>().catch(() => null)
+      : null
+    const freePortion = await computeFreeRestorePortion(DB, [orderRefRow?.order_number, voucher.order_id != null ? String(voucher.order_id) : null], voucher.price, voucher.user_id)
     stmts.push(
-      DB.prepare("UPDATE user_points SET balance = balance + ? WHERE user_id = ?")
-        .bind(voucher.price, voucher.user_id),
+      bucketRestoreUpsertStatement(DB, { userId: voucher.user_id, amount: voucher.price, freePortion }),
       DB.prepare(
-        "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-      ).bind(voucher.user_id, voucher.price, voucher.price, voucher.user_id, `[분쟁 ${id} 환불 승인] ${dispute.ai_category}`)
+        "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id, free_delta) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)"
+      ).bind(voucher.user_id, voucher.price, voucher.price, voucher.user_id, `[분쟁 ${id} 환불 승인] ${dispute.ai_category}`, orderRefRow?.order_number || null, freePortion)
     )
   }
   stmts.push(

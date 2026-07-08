@@ -6,7 +6,7 @@ import {
   LayoutDashboard, ShoppingBag, Package, DollarSign,
   Bell, Image, Monitor, LogOut, Menu, X, Store, ClipboardList, Search, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send, CreditCard,
   BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers, Mail, Crown,
-  ChevronDown, Wrench, RotateCcw, Upload, History, MapPin, Scale,
+  ChevronDown, Wrench, RotateCcw, Upload, History, MapPin, Scale, FileText,
   type LucideIcon
 } from 'lucide-react'
 import { logout as authLogout } from '@/utils/auth'
@@ -48,7 +48,10 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/business-metrics', label: '비즈니스 지표', icon: BarChart3 },
       { path: '/admin/revenue',          label: '매출 분석',     icon: BarChart3 },
       { path: '/admin/operations-guide', label: '운영 가이드',   icon: BookOpen },
+      { path: '/admin/platform-model',   label: '플랫폼 모델',   icon: FileText },
       { path: '/admin/region-density',   label: '동네별 딜 밀도', icon: MapPin },
+      { path: '/admin/district-report',  label: '상권 성과 리포트', icon: BarChart3 },
+      { path: '/admin/visit-rewards',    label: '상권 방문 리워드', icon: MapPin },
       { path: '/admin/abuse',            label: '어뷰징 탐지',   icon: AlertOctagon },
       { path: '/admin/env-readiness',    label: '환경 준비상태', icon: Wrench },
     ],
@@ -68,15 +71,18 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/admin/wholesale-overview', label: '도매 통합 현황', icon: LayoutDashboard },
       // 🏭 2026-06-29 (대표 — 판매사 승인 통합): '판매사 승인' 별도 항목 제거 → '판매사 관리'(아래) 의 '승인' 탭으로 통합.
-      { path: '/admin/suppliers',          label: '제조사 관리', icon: Store },
+      // 🗂️ 2026-07-02 (IA 통합): '제조사 출금'(/admin/wholesale-withdrawals)은 이 페이지의 '출금 처리' 탭으로
+      //   통합 — also 로 딥링크/RBAC 허용 + 활성 표시.
+      { path: '/admin/suppliers',          label: '제조사 관리', icon: Store, also: ['/admin/wholesale-withdrawals'] },
+      // 🗂️ 2026-06-26 (대표 요청): 4개 탭이 한 페이지(AdminDistributorGradesPage)라 nav 1개 통합.
+      //   딥링크 라우트(/admin/distributor-credit 등)는 그대로 — 페이지 탭이 사용.
+      // 🗂️ 2026-07-02 (대표 요청): 판매사 관리를 제조사 관리 바로 아래로 이동(회원 관리 짝 배치).
+      // 🗂️ 2026-07-02 (IA 통합): '도매 예치금'(/admin/wholesale-deposits)도 '예치금' 탭으로 통합 — also 에 추가.
+      { path: '/admin/distributor-grades', label: '판매사 관리', icon: Layers, also: ['/admin/distributor-approval', '/admin/distributor-credit', '/admin/distributor-tax', '/admin/distributor-supply', '/admin/wholesale-deposits'] },
       { path: '/admin/wholesale-import',   label: '상품 일괄 등록', icon: Upload },
       { path: '/admin/wholesale-products', label: '도매 프리미엄관', icon: Crown },
       { path: '/admin/wholesale-orders',   label: '도매 주문',     icon: ShoppingBag },
       { path: '/admin/wholesale-quotes',   label: '도매 견적',     icon: ClipboardList },
-      // 🗂️ 2026-06-26 (대표 요청): 4개 탭(등급·마진 / 여신·외상 / 제안·세금 / 공급가·채널·OEM)이
-      //   한 페이지(AdminDistributorGradesPage)라 좌측 nav 도 1개로 통합. 페이지 내부 탭으로 4영역 이동.
-      //   딥링크 라우트(/admin/distributor-credit 등)는 그대로 유지 — 페이지 탭이 사용.
-      { path: '/admin/distributor-grades', label: '판매사 관리', icon: Layers, also: ['/admin/distributor-approval', '/admin/distributor-credit', '/admin/distributor-tax', '/admin/distributor-supply'] },
       { path: '/admin/wholesale-malls',    label: '도매 몰 관리',  icon: Building2 },
       { path: '/admin/wholesale-activity', label: '처리 이력 (누가 처리?)', icon: History },
     ],
@@ -86,8 +92,8 @@ const NAV_GROUPS: NavGroup[] = [
     title: '💰 도매몰 · 정산',
     domain: 'wholesale',
     items: [
-      { path: '/admin/wholesale-deposits', label: '도매 예치금',   icon: Wallet },
-      { path: '/admin/wholesale-withdrawals', label: '제조사 출금', icon: Wallet },
+      // 🗂️ 2026-07-02 (IA 통합): '도매 예치금'은 '판매사 관리'의 '예치금' 탭, '제조사 출금'은 '제조사 관리'의
+      //   '출금 처리' 탭으로 이동 — 중복 nav 항목 제거(딥링크 라우트는 각 컨테이너 페이지의 탭으로 열림).
       { path: '/admin/wholesale-tax',      label: '도매 세무/정산', icon: Wallet },
       // 🗂️ 2026-06-17: '도매 무결성'(진단 전용)은 상단 nav에서 강등 — '통합 현황' 카드 링크로 접근(/admin/wholesale-integrity 라우트 유지).
     ],
@@ -257,7 +263,9 @@ const ALWAYS_ALLOWED_ADMIN_PATHS = ['/admin/set-pin', '/admin/2fa']
 //   (상품 승인/가격변경 = /admin/products 의 '제조사 등록 상품' 탭 / 판매사 승인 = /admin/seller-approval)
 //   nav 에는 노출 안 하되(소비자 어드민 메뉴는 계속 숨김), 큐 클릭 시 wholesale-overview 로 바운스되던 것 차단.
 //   /admin/products 진입 시 AdminProductsPage 가 도매 파트너에게는 '제조사 등록 상품' 탭만 노출(소비자 상품관리 차단).
-const WHOLESALE_EXTRA_ALLOWED_PATHS = ['/admin/products', '/admin/wholesale-integrity']
+// 🗂️ 2026-07-02 (1페이지화): 예치금/출금 nav 항목이 판매사·제조사 관리의 탭으로 흡수되며 딥링크
+//   경로가 nav 주항목에서 사라짐 → wholesale role 도달성 명시 허용(탭으로 열림).
+const WHOLESALE_EXTRA_ALLOWED_PATHS = ['/admin/products', '/admin/wholesale-integrity', '/admin/wholesale-deposits', '/admin/wholesale-withdrawals']
 
 interface AdminLayoutProps {
   title: string

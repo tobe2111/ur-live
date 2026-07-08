@@ -37,6 +37,110 @@ audit-gate(38 GREEN / file-size RED 1=선재 무관) 후 가드 미보유 4축�
 - **자동입찰 규칙 생성 시 활성 고객사 필수**(`marketing.routes.ts` `/searchad/autobid/rule`·`/rules/bulk`) — `tenant=NULL` 고아 규칙이 cron 에서 '그때 활성' 고객사에 적용되는 **잘못된-계정 과금** 벡터 차단(`getActiveTenantId` null→400). autobid 킬스위치 기본 OFF 라 현재 라이브 영향 0, 켜기 전 예방.
 - 잔존 2건도 **대표 "응 원해" → 서버측 강제로 수정**: ① `access_unlocked` 서버측 게이트(`requireAdsUnlocked` 미들웨어, 데이터 API 전체 — 면제=ping/auth/공개픽셀, 정지계정 옛토큰도 차단) ② clickguard `domainMatches` null-Origin **거부**(위조 hit→의심리포트 오염 완화). HTTP 데이터 라우트 타는 ads 테스트 5개에 unlock 계정 시딩 + 게이트 회귀테스트 신설.
 - 검증: tsc 0(config 경고 제외) · sql-bind/money/pagination/crossrole/api-auth 가드 0. marketing.routes.ts 447줄(baseline+7, `[SKIP_SIZE]` — routes/ 추가분할 시 해소). ⚠️ vitest/worker-build 는 이 환경 제약으로 미실행(CI 검증). 상세: `docs/design/urads-HANDOFF.md` §6.7.
+## ✅ 2026-07-06 — 도매 상단바에 로그인 역할 배지 (대표 "판매사/제조사 로그인 구별 상단 표시")
+- `WholesaleUtilBar.tsx`(전 도매표면 SSOT 상단바)에 **항상 보이는 역할 배지** 추가 — 판매사(`seller_token`, Store 아이콘·흰 pill) vs 제조사(`supplier_token`, Factory 아이콘·하늘색 pill). 기존 신원 칩(`{companyName} 님 · {grade}`)은 `md:` 이상에서만 보였는데, 배지는 모바일 포함 항상 노출 → 로그인 종류 즉시 인지.
+- i18n `wholesale.role.distributor`/`.manufacturer` 6개 언어(ko 판매사/제조사, en Distributor/Manufacturer, ja 販売社/製造社, zh 销售商/制造商, es, fr). defaultValue 폴백 동봉.
+- 순수 표시 추가(배선/토큰/메뉴 로직 불변). 검증: tsc 0 · build 0 · 테마/파일크기 가드 GREEN.
+
+## ✅ 2026-07-05 — 데모 이용권 생성형 전환 완전체 + 리뷰 부풀림 근본수리 (대표 "랜덤으로 뽑아와야 · 마감돼도 사라지지 말고 · 가격 최대한 이상적으로 · 데모 데이터 활용")
+- **생성형 데모 그래머**: 고정 40종 템플릿 폐기 → `DEMO_BIZ` 34업종 × 83 수기 오퍼 패턴 × 카테고리별 현실 할인율(식사 12-28%/뷰티 30-50%/기타 18-38%, 정상가 역산) × 카카오 **랜덤 실매장**(random page/candidate + category_name/place_name 업종 affinity 필터 — 샤브샤브가 갈비집에 붙던 오매칭 차단). 매장명-우선 네이버 이미지 → **R2 재호스팅**(`uploads/demo/YYYY-MM/`, 외부 URL 썩음 영구 차단).
+- **CF 50-subrequest 한도 대응**: 24개 1요청 시 realPhotos 0/24 실증 → 서버·어드민 UI 모두 **8개/요청 청크**(8×3 → 23/24 실증). 라운드(≤3) fill-to-target 으로 요청 갯수 정확히 충족.
+- **오픈 예정(사전 응모) 모드 옵션**: 어드민 시드 모드 선택(실상품형/오픈예정형) → `product_supply_meta.prelaunch='1'` → 리스트/상세/fcfs 응답 enrich([UNLOCK_LOADING] 등재) + FcfsBadge `🔔 오픈 예정` + 상세 CTA '사전 응모하기' 분기(구매 차단).
+- **데모 영속(콜드스타트 보존)**: `demo-fcfs-renew` cron(매시) — 마감 지난 데모 fcfs_deadline 을 now+5~10일 랜덤 롤링. 응모 누적 유지.
+- **가격 현실화 어드민 통제**: `demo_price_multipliers`(platform_settings JSON, 0.5~2.0) 밴드 배수 편집 패널 + 미리보기. **수요 인사이트 대시보드**: 실제 fcfs_applications 를 업종/구/상품 Top 으로 집계(`GET /admin/dongnedeal/demand-insights`) — 데모가 만든 수요 데이터를 입점영업 근거로 활용.
+- **리뷰**: 키리스 결정론 컴포저(토픽 감지 수기 풀 — 스시/베이커리 신설·우선순위 매칭) + 세션 작성 리뷰 `POST /api/admin/reviews/import`. **실 사업자 상품(seller_id 있음) 자동리뷰 구조적 제외**(어드민 수동만).
+- **🐛 리뷰 부풀림(57~119개) 근본수리**: 원인 = 데모 회수(hard delete) 후 **SQLite rowid 재사용** → 새 데모가 과거 상품의 고아 리뷰/응모를 상속. 수리 ① 시드 INSERT 직후 재사용 id 의 product_reviews/fcfs_applications/cart_items/wishlists purge ② auto-seed cron 을 review_count 집계 대신 **실제 행 NOT EXISTS 이중 게이트**. 오염 라이브 3건(2493/2494/2484) wipe 후 세션 수기 리뷰 재부여 완료.
+- **데모별 추첨 편집**: 어드민 리스트 행별 🎯 지원자/모집정원/마감 인라인 편집(PUT /admin/fcfs/:id) + 선택 삭제. 지역 타겟은 소비자 홈 필터와 동일 KOREA_REGIONS 캐스케이드(1차 시/도→2차 동네그룹).
+- 검증: tsc 0 · build 0 · sql bind 가드 0 · 라이브 재생성 24개(실상품 16+오픈예정 8) 전부 카카오 실매장·R2 사진·할인율 캘리브레이션 범위 확인.
+## 🔵 진행 중 — 인플루언서 이용권 공구 엔진 스프린트 (2026-07-05 대표 개발요청)
+GTM 무게중심 = "인플루언서가 오프라인 이용권을 공동구매로 파는 인프라". 대부분 부품(promo 슬라이스·aff·링크샵·QR·원천징수) 기구현 → 기본값·표면·우선순위 재배치. **핵심 불변: 큰 판매수수료는 매장→인플루언서, 유어딜은 5%만.** 대표 결정(2026-07-05): "둘 다"(§2 안전 표면 라이브 + §1 flip-ready) · 스테이징 있음.
+
+### 🔵 공구 엔진(상태형·양방향) — 기반 레이어 (2026-07-06 스펙, flip-ready 게이트 OFF)
+설계 확정: 공구는 상품 타입이 아니라 **이용권에 얹는 상태**(off|scheduled|live|ended). 매장이 열면 기간·특가·promo 얹히고 끝나면 상시가 자동 복귀. 양방향(매장→인플 / 인플 제안→매장). 전부 게이트 OFF.
+- **§1 상태 모델(SSOT 순수)** `src/shared/gb-session.ts`: GbSession(mode/start/deadline/target/price/promoPct/linkOnly) · `resolveGbStatus`(시간창 파생) · `resolveGbPricing`(실효 소비자가 — 공구 live면 공구가, 종료 시 상시가 복귀 · 카니발라이제이션 "공구가로 통일" 기본 / "링크전용" 옵션) · `validateGbSession`(공구가<상시가·마감>시작·promo 0~50). **유닛 21 pass**.
+- **서버 저장/조회** `src/worker/utils/gb-session-store.ts`: product_supply_meta K-V(컬럼 예산 동결) gb_* 키 get/save. prelaunch 패턴 미러.
+- **§3 3분할 계산기(핵심 UI)** `ThreeWaySplitCalculator.tsx`: 정가 앵커 → [할인율][promo%] 슬라이더 → 소비자가가 promo(인플)/유어딜5%/매장실수령 3분할 막대+금액 실시간(resolveOrderFees owner-funded 재사용). 버티컬 권장 promo + 하한 미만 경고 + 캐파 업종 툴팁.
+- **게이트** `GB_ENGINE_ENABLED`(클라 빌드플래그, OFF) + 서버 `platform_settings.gb_engine_enabled`(예정) — 이중 안전. SELLER_PROMO_FIELD 와 동일 활성 순서(owner-funding 먼저).
+- 검증: tsc 0 · build 0 · vitest +21 · 테마/file-size GREEN.
+- **§2-A 매장 "공구 열기"(방향 A — 서초 사용)**: `POST/GET /api/seller/products/:id/group-buy`(seller 소유권 + `platform_settings.gb_engine_enabled` 게이트 · open/close · validateGbSession) + `GroupBuyOpenPanel`(SellerGroupBuyPage 행별, GB_ENGINE_ENABLED 게이트) — 마감·할인율·promo·링크전용 입력 + ThreeWaySplitCalculator 미리보기 → gb-session-store 저장. **상태 저장만**(소비자가/커미션 authoritative 적용은 owner-funding 검증 후 다음 슬라이스).
+- **§4 인플루언서 공구 탐색·수익 뷰**: `GET /api/gb-marketplace`(신규 라우트 — 잠금 group-buy-public 미변경 · gb_engine 게이트 · live gb 세션 product_supply_meta 수집→상품 조인(정지셀러 `s.is_active=0` 제외)→resolveGbPricing→promo>0만→promo% 순 정렬 · 카테고리/지역 필터 · intParam) + `GbMarketplacePage`(/gb-market, 다크지원): 소개비% 배지·공구가·건당/100건 예상 소개비·**담기(기존 usePinAction 핀 재사용)**. GB_ENGINE_ENABLED OFF면 "준비 중" 빈상태. 나브 링크는 flip 시 추가.
+- **§2-B 양방향 공구 제안(완결 — 게이트 OFF)**: `gb_proposals` 테이블(proposed_by='influencer'|'seller') + `gb-proposals.routes`(잠금 미변경 · gb_engine 게이트 · 승인=CAS 후 gb open, proposerId=인플). 클라: 매장 `GbProposalsPanel`(SellerGroupBuyPage — 받은 제안 승인/거절 + 인플에게 핸들로 협업 제안) · 인플 `GbMyProposals`(GbMarketplacePage — 받은 협업 수락/거절 + 내 제안 상태) · `GbProposeModal`(GroupBuyDetailPage 게이트 버튼 — 인플→매장 제안). 양방향 알림.
+- ⏭️ **남은 것**: 소비자 상세 **실효가(resolveGbPricing)+promo→커미션 authoritative 배선**(잠금 group-buy-public + resolver — owner-funding staging flip 전제) · 크리에이터 콘솔 공구별 실적(어필리에이트 집계 재사용) · flip 시 나브 링크. 완료기준: staging 실결제 원장 정합.
+
+### ✅ §1 매출 엔진 — 셀러 소개비(promo)% 필드 + 마진 계산기 (flip-ready, 게이트 OFF)
+- **발견**: [INV-CB] 예산캡 · owner-funding(promo_funding_source) · fee-resolver · 그림자 기록이 **전부 기구현·게이트 OFF**. §1 = 스테이징 검증 후 flip(신규 코드 아님).
+- **커플링 리스크(중요)**: 셀러 소개비% 는 `products.referral_commission_rate`(라이브 어필리에이트 override)로 저장 → **owner-funding 이 꺼져 있으면 매장 소개비를 플랫폼이 부담**(설계 −14% 누수). 그래서 이번 필드는 **이중 게이트 OFF**: 클라 `SELLER_PROMO_FIELD_ENABLED=false`(빌드타임) + 서버 `platform_settings.seller_promo_field_enabled!=='true'` 면 referral_commission_rate 저장 안 함.
+- **구현(게이트 OFF=현행 100% 동일)**: `PromoMarginCalculator`(resolveOrderFees owner-funded 모델 재사용 — 판매가→플랫폼5%→소개비→매장실수령, 버티컬 권장 소개비 §5) · `SellerMealVoucherNewPage` 에 소개비% 입력+계산기(플래그 게이트) · 서버 create 핸들러 이중 게이트 저장(0~0.5 clamp, fail-soft) · 어드민 platform-settings 에 `seller_promo_field_enabled` 스위치 · i18n 6개 언어.
+- **활성 런북**: `docs/design/commission-funding-restructure.md` §1 런북 — 순서 엄수(①예산캡 →②owner-funding →③셀러필드, 각 스테이징 검증). 순서 틀리면 플랫폼 누수.
+- 검증: tsc 0 · build 0 · 테마/sql-bind/column/money/file-size 가드 GREEN. ⚠️ 활성 = 스테이징 실결제 검증 후(이 환경 불가).
+- ⏭️ **다음**: §1 나머지(리졸버 authoritative 전환은 스테이징 대조 후 별도) · **§2 인플루언서 표면**(3분 온보딩·수익형 링크트리·자동 #광고 고지·크리에이터 매장영입 유도 — 머니게이트 무관, 라이브 가능) · §3 소스 어트리뷰션 리포트 · §4 서초 A/B.
+
+
+## ✅ 2026-07-05 — 데모 추첨 구조 차단 + 에이전시 요율 1%·기간 24개월 기본화 (대표+자문 확정)
+- **데모 추첨 (대표 "데모로 만드는 건 실 유저가 추첨될 수 없는 형태")**: 2단 구조 — ① 데모 상품(slug `demo-deal-N`) 응모는 `fcfs_applications.status='demo'` 로 저장 → **추첨 풀(status='applied')에 존재 자체 불가**(표시 카운트에는 포함 — 체감 유지, `/me` 는 'demo' 를 응모완료로 표시). ② 어드민 선정 API 데모 게이트(crypto/수동 모두 400) — 이중 방어. 기존 데모의 옛 'applied' 행도 게이트가 차단.
+- **에이전시 매장영입 요율 기본 1% (자문 (b)안 — 문서 정합)**: `COMMISSION_DEFAULTS.AGENCY_STORE_INTRO_PCT` 2.0→**1.0** (약관3 제4조·파트너 안내·회사소개서 전부 "기본 1%"). intro-code 응답의 하드코딩 `?? 2.0` → SSOT 상수 연동, 에이전시 대시보드 문구도 설정값 연동(`{pct}% · 첫 판매 확정일로부터 {N}개월`). **개별 상향은 어드민 에이전시 관리(store_intro_commission_pct) = 성과 보상 레버.** 기존 per-agency 설정값 보유 에이전시는 무영향(폴백만 변경).
+- **신규 에이전시 커미션 기간 기본 24개월**: 3개 생성 경로(어드민 생성/자체 가입/유저 전환) INSERT 직후 `commission_term_months IS NULL → 24` fail-soft 배선 — NULL=무제한이라 수동 입력 누락 시 무제한으로 도는 사고 방지(약관 "기본 24개월" 정합). 무제한 계약만 어드민이 개별 NULL. **기존 에이전시는 불변.**
+- 동반: 유닛테스트(default 1% 기대값)·운영 가이드 시드 2종(에이전시/어드민 수수료 구조 — 매장영입 1%·24개월·T+7·레거시 rail 봉인 반영)·코드 주석 갱신.
+- ⚠️ **약관·기산일**: 자문이 약관3 을 "매장별 첫 판매 확정일로부터 24개월"로 수정 중 — 코드 기산일(첫 signup_bonus=첫 결제)과 일치.
+## ✅ 2026-07-05 — 약관 v1.0 3종 정본 게시 + 가입 약관 동의 기능 신설 (대표 "초안 빼고 jiwon@ur-team.com, 에이전시 약관에도 적용")
+대표 전달 약관 3종(이용약관/판매자/에이전시 파트너 — 시행 2026-07-05 · v1.0)을 정본으로 게시 + 가입 동의 배선.
+- **약관 페이지(데이터 주도)**: `src/pages/terms/`(terms-types + consumer/seller/agency 콘텐츠 + TermsDocument 렌더러). `/terms`(전면 교체)·`/terms/seller`(구 2026-05-16 초안 대체 — 인플/라이브 송출 조항 폐기)·`/terms/agency`(신규 라우트). 초안 표기 제거·연락처 jiwon@ur-team.com 통일. **에이전시 제4조1항에 요율 변동 가능 명문화**(대표 지시 — "기본 1%, 개별 합의 또는 제9조 절차로 변경 가능").
+- **가입 약관 동의(이전엔 전무)**: `TermsConsentBox` 공용 컴포넌트. ① 에이전시 2경로(`/agency/register`·`/agency/register/business`) — 전체 동의 + **핵심조항(제4·5·9·10조) 요약 상시 노출 + 개별 동의**(약관 전문 요구사항), 서버 400 강제. ② 셀러 가입(`/seller/register/supplier`) — 판매자 약관 동의 필수, 서버 400 강제. ③ 소비자 — LoginPage 에 "로그인 시 이용약관·개인정보처리방침 동의 간주" 고지(제5조 정합).
+- **서버 기록**: `terms_consents` 테이블(repair-schema + `worker/utils/terms-consent.ts` ensure/record) — subject/user/slug/version/core동의/ip/시각. agency /register·/register-from-user + seller /register-from-user 3곳 배선(검증은 400 선행, 기록은 fail-soft).
+- SiteFooter 에 판매자/에이전시 약관 링크 추가. i18n 신규 키 6개 언어.
+- ⚠️ 약관 문구는 대표 정본 — 수정 시 대표 확인 + 버전 +0.1 + BLOG/가이드 정합 확인.
+
+## ✅ 2026-07-04 — 데모 후순위 노출 + 세션 작성 리뷰 교체 (대표 "데모는 항상 후순위 · 리뷰 AI 티 0 · API 키 말고 세션 토큰으로")
+- **데모 항상 후순위**: 피드 모든 정렬 1차 키=데모-후순위(`[UNLOCK_LOADING]` audit 등재) + materialized cron 파리티 + fcfs/active `is_demo` + 지도 '선착순 상위노출' boost 를 non-demo 한정. 라이브 실측 R→DDDD ✅.
+- **POST /api/admin/reviews/import 신설**: 외부(운영 Claude 세션)가 작성한 리뷰를 그대로 삽입 — 서버 ANTHROPIC_API_KEY 불필요. 운영 플로우: 데모 생성 → 세션이 매장별 리뷰 작성 → import.
+- **실행 완료(라이브)**: 관리자 토큰으로 구 데모 8개 삭제 → 신 파이프라인 재생성 7개(전부 카카오 실매장+우리 R2 이미지+좌표+place_url, 미매칭 1 스킵) → 자동생성 리뷰 전량 삭제 후 **세션이 직접 쓴 58개**(매장·가격·업종 반영, 길이/말투/3점 아쉬움 혼합) import. 집계 8~9개/avg 4.4~4.7 확인.
+- ⚠️ 관찰: 재생성 직후 상품당 생성리뷰가 53~115개로 부풀어 있었음(시간당 generic cron 과 시드 waitUntil 의 review_count=0 레이스 추정) — 현재는 review_count>0 이라 재발 불가하나, 다음 데모 생성 시 리뷰 수 재확인 권장.
+
+## ✅ 2026-07-04 — 멀티몰 완전체: 몰별 회원격리·캐시·푸터/로고/배너/수수료 (대표 신고 "medi 에 유통스타트 로그인/재주문 노출" + "푸터·로고·배너 몰별 + 어드민 조정")
+- **몰별 별도 회원 서버 강제**: sellerMallId 가드 — /me(mall_mismatch)·/home(401)·/recent-items(빈)·카탈로그(게스트 강등)·/orders(빈)·발주(403). 클라 me/orders/recent/banners 훅 ?mall= 전달+몰별 RQ 키. 카탈로그 UI 게스트 강등+배너. **가입도 몰 귀속**(join/register/become POST ?mall=). 카트 localStorage 몰별 키.
+- **게스트 캐시 몰 차원**(크로스몰 상품 누수 — X-WS-Cache:KV-HIT 실측): KV 키 `ws:cat:g:{host}` → `+:m{id}`(비기본 몰만, 기본 키 byte-불변=SSR/prewarm 잠금 보존), 캐논 edge put 은 기본 몰만(역방향 오염 차단).
+- **몰별 회사(푸터) 정보** `wholesale_malls.company_json`: useBusinessInfo() 병합(미설정=기본) — 푸터·고객센터·약관·개인정보방침 반영. 푸터 로고 = mall.logo_url(미설정=워드마크). **배너**: 서버/어드민 기완비 — 클라 훅 ?mall= 갭만 수정.
+- **몰별 수수료율 실배선**(write-only 함정 제거): mallCommissionPctOverride/loadMallCommissionPct — resolveDistributorPrice 12개 호출부 전부(회원 표면=소속몰 sellerMallIdOf SSOT, 게스트=요청몰, 어드민 export=per-row). NULL=전역 폴백(라이브 불변).
+- **어드민 몰 관리 폼 완비**: 인허가 체크+라벨 · 기능토글 JSON · 푸터 사업자정보 11필드 · 수수료 힌트. 제조사 상품 몰 상속(3경로 서브쿼리) 기확인 ✓.
+- 잔여(문서화된 트레이드오프): ①프리뷰 중 회원 위성페이지 브랜딩 혼재(자기 데이터 — 도메인 연결 시 소멸) ②로그인 시점 차단 대신 로그인 후 강등+배너(소비자 로그인 API 공유 — 서비스분리).
+- 검증: tsc 0 · vitest 2447 · build 0 · 가드 GREEN. 라이브: /mall?mall=medi 메디 브랜딩 ✓ · 비로그인 401 ✓.
+
+## ✅ 2026-07-03 — 의료용품 도매몰(메디스타트) 신설 (대표 "의료몰 생성 + 모두 이상적으로") — 3커밋
+멀티몰 인프라(`wholesale_malls`, mall_id 격리) 위에 두번째 몰 구축. 유통스타트(mall 1)는 전부 fallback = byte-불변.
+- **커밋1(백엔드 기반)**: 카테고리 전역확장(의료기기/위생/간병 + 라벨 SSOT + 코드접두어 MD/SN/CR + 정규화 몰스코프 클램프) · `wholesale_malls.requires_license`/`license_label` 컬럼 · **메디스타트 시드**(id=2, slug `medi`, `#0ea5e9`, categories_json=의료4종, requires_license=1) · `GET /mall` → `resolveMallId`(?mall= 존중).
+- **커밋2(프론트 per-mall)**: `?mall=<slug>` 클라 전달(`currentWholesaleMallSlug`/`withWholesaleMall`/`wholesaleMallSeg`, URL우선·세션지속) + RQ키 몰분리 · 카탈로그 칩·상품폼 드롭다운이 `mall.categories` 우선(폴백 WHOLESALE_CATEGORIES).
+- **커밋3(규제 게이트)**: `wholesale_licenses` 사이드테이블(컬럼예산 회피) · 제조사/판매사 가입 API가 requires_license 몰에서 신고번호 필수·저장 · 가입폼 조건부 필드 · 어드민 목록에 인허가 표시.
+- **접근**: 도메인 연결 전 **`live.ur-team.com/wholesale?mall=medi`** 로 미리보기/가입. 세션 지속(in-app 이동 유지).
+- ⏭️ **남은 운영 스텝(코드 아님)**: ① 의료몰 **도메인 연결**(어드민 `/admin/wholesale-malls` PATCH host=medi도메인 → host 해석으로 ?mall= 불필요) ② 어드민 **인허가 '확인됨' 토글 버튼**(현재 표시만 — `setWholesaleLicenseVerified` 헬퍼 존재, 승인 UI 버튼 배선은 후속) ③ 의료 상품 큐레이션(카탈로그 비어있음) ④ 법무: 의료기기 판매업/제조업 신고 검증 정책.
+- 검증: tsc 0 · vitest 2447 · build 0 · 가드(table/bind/column/theme/light-input/file-size) 0. 배포: main 9bd5305.
+
+## 📌 보류 결정 — 리마인드 필요 (대표 "고민 중이니 다음에도 리마인드")
+> **다음 세션은 이 블록을 반드시 대표에게 상기시킬 것.** 대표가 아직 결정 보류한 항목.
+
+### ⏸️ 도매몰 항목 6 — "제조사가 등록 상품 마진 직접 설정" (2026-07-03 보류)
+- **현황**: 지금은 **원래대로 유지**(대표 "그건 원래대로 둬야지"). 제조사는 **공급가 + 권장소비자가(SRP)** 만 설정(AddProductModal 에 SRP 마진 보조 UI 존재). **도매 마진은 어드민 관리**(2026-06-17 확정 cost-plus 모델: 마진% = `supply_margin_override_pct` 상품별 또는 `wholesale_platform_commission_pct` 전역, 어드민 편집). **코드 변경 없음.**
+- **왜 보류인가(핵심 트레이드오프)**: 현 모델에선 **"마진 = 플랫폼이 가져가는 수수료"**. 제조사가 마진을 직접 정하게 하면 **제조사가 플랫폼 수익을 정하는 셈**(0% 두면 플랫폼 수익 0) → 2026-06-17 "마진=어드민 관리" 결정과 충돌. 그래서 임의 구현 안 하고 보류.
+- **결정 시 3옵션**:
+  - **A (신모델)**: 제조사가 **도매가(판매사가 내는 가격) 직접 입력** + 플랫폼은 그 위 **별도 수수료%**(어드민)를 뗌(제조사 수령=도매가−수수료). 제조사 자율+플랫폼 수익 보장. → `resolveDistributorPrice`/`splitWholesaleUnit`/정산 손봄(**locked 가격모델** — staging 실결제 검증 필수).
+  - **B**: 제조사 입력 마진을 `supply_margin_override_pct` 로 그대로 저장. 간단하나 제조사가 플랫폼 수수료 통제(위험). **비권장.**
+  - **C (현행)**: 유지. 항목 6 "이미 충족"으로 간주.
+- **리마인드 문구 예시**: "지난번 보류하신 도매 항목 6(제조사 마진 직접설정) 아직 고민 중이신가요? 원하시면 A(신모델)/B/C 중에 정해주세요."
+
+## ✅ 2026-07-01 — 사전방지 가드 2종 신설 (대표 "앞으로 문제 없게 사전 방지") — 이번 감사 미보유 클래스 박제
+도매 3표면 감사에서 **가드가 없어서** 생긴 2개 버그 클래스를 결정론적 가드로 박아 재발 구조적 차단(레포 철학 "버그 클래스 발견 시 가드부터").
+- **① `check-deprecated-pricing.mjs`** — 도매 공급가 모델 드리프트 방지. 폐기 `distributorPriceFromRetail`/`distributorPrice` 직접호출 금지 → `resolveDistributorPrice` SSOT 강제. (내보내기가 실결제가와 다른 등급가 낸 HIGH 사고 재발 차단.)
+- **② `check-balance-absolute-write.mjs`** — `*balance*` 컬럼 절대값 write(비원자 read-modify-write) 금지 → 원자 증감/CAS만(한 UPDATE 에 컬럼 2회+). 스냅샷 `*_after` 예외. (미수금 상환 race 재발 차단.)
+- 배선: audit-gate(머니 도메인) + verify.yml(strict) + pre-commit(warn) + AUDIT_INVARIANTS + CLAUDE.md 방어선. 음성테스트(폐기함수 호출/절대값write 잡고 산술·CAS 통과) 통과. **audit-gate 41 GREEN**.
+
+## ✅ 2026-07-01 — 도매몰 3표면(판매사·제조사·도매어드민) 심층 감사 + 확정 3건 fix (대표 "세 대시보드 모두?")
+pagination 크래시 수정 후속 — 세 표면을 **가드 미보유 영역**(런타임 크래시·정산/금액 정확성·환불 대칭)으로 병렬 심층 감사(에이전트 3). audit-gate GREEN 영역(서비스분리·RBAC·머니패턴·주문상태머신)은 가드 신뢰로 스킵.
+- **판매사 표면: clean**(예치금 차감/복원 CAS·주문 총액 서버재계산·MOQ·tier floor·환불 대칭 전부 정합). 유일 지적=내 pagination 코드모드가 `wholesale.routes.ts` 에 넣은 **mid-file import**(CLAUDE.md 금지 패턴, hoist 되어 무해하나 정리) → 상단 import 블록으로 이동.
+- **제조사 표면: clean**. 에이전트가 올린 '소비자 환불 재고 과다복원'은 **오탐 확정**(이 반품 경로는 `returns.routes:656` 에서 주문 전체 품목 취소=full-order + `reversed>0` 게이트로 멱등 + 판매사복제본↔공급원본 재고는 별개 풀 → 이중복원 없음).
+- **도매어드민: 확정 3건 fix**:
+  - 🔴 **상품 엑셀 내보내기 가격 모델 불일치**(`products-pricing.ts`): 내보내기가 폐기 모델 `distributorPriceFromRetail`(판매가×(1−보장마진)·**등급차등**)을 써 라이브 결제가(`resolveDistributorPrice` cost-plus·**전등급동일**, 2026-06-17 대표확정)와 전혀 다른 A/B/C 등급가를 제안 문서로 내보냄(상거래 분쟁 소지). → `resolveDistributorPrice`(+`loadPlatformCommissionPct` 전역마진)로 통일, 라이브 주문가와 정합. 등급 통일이라 A/B/C 컬럼은 동일값(실가).
+  - 🟡 **강제환불 롤백 상태 강등**(`orders.ts:153`): Toss 취소 실패 시 롤백이 `status='PAID'` 하드코딩 → SHIPPED/ACCEPTED/DONE 레거시 Toss 주문이 '결제완료'로 강등돼 상태머신 꼬임. → 원본 `order.status` 복원.
+  - 🟡 **미수금 상환 비-CAS**(`distributors.ts` credit-repayment): `outstanding_balance` read-modify-write(절대값 write)라 동시 상환 2건이 하나를 덮어써 미수금 과대계상(플랫폼 채권 부풀림) 가능. → 원자 CAS(`WHERE COALESCE(outstanding_balance,0)=prevOut`) + 실패 시 409 재시도, 원장은 CAS 성공 후에만.
+- 검증: tsc 0 · 단위 2443 pass · build 0 · audit-gate 39 GREEN(머니패턴 포함).
 
 ## ✅ 2026-07-01 — 도매몰 라이브 전수조사 + 카탈로그 500 크래시 근본수정 (대표 "라이브로 접근해서 전수조사")
 라이브(`live.ur-team.com/wholesale`) 실접근 전수조사. **결과: 인증/RBAC 게이트 전부 건강(500 없음, 401/404 정상)·엣지캐시 누수 없음·SQL 인젝션 방어 정상.** 발견/수정:
@@ -45,34 +149,6 @@ audit-gate(38 GREEN / file-size RED 1=선재 무관) 후 가드 미보유 4축�
 - **🛡️ 영구 가드 신설**: `scripts/check-pagination-nan.mjs` — request pagination(page/limit/offset/days…)이 `parseInt/Number` NaN 폴백 없이 assign 되면 차단(닫는 괄호 뒤 `|| 숫자` 또는 `isNaN`/`Number.isFinite`/삼항리터럴 필요). `verify.yml`(strict)·`audit-gate.sh`(schema 도메인)·pre-commit(warn)·`AUDIT_INVARIANTS.md`·CLAUDE.md 방어선 표 등록. 현재 위반 0(scanned=143, safe=143). 예외 `pagination-nan-ok` 주석.
 - **검증**: tsc 0(사전 config 경고 제외)·build(client+ssr+prerender+worker+prepare) 0·SQL bind/column 가드 0·audit-gate 38 GREEN(무관 file-size RED 1건=타 세션 blog.routes/worker index).
 - **📋 데이터 큐레이션(코드 아님)**: 라이브 도매 카탈로그 상품이 **시드/테스트 2개뿐**(id 6 "Canvas Tote Bag" 영문 unsplash 데모 · id 2306 "테스트"/"좋은제품" 빈 이미지). 배너·게시판·제안 큐 전부 비어있음(정상 상태이나 운영 콘텐츠 필요).
-## ✅ 2026-07-01 — 알림 라이브 전수조사(프로덕션 실측) + 웹푸시 활성화 견고화 (대표 "전수조사 라이브로 접근해서")
-코드가 아닌 **라이브(live.ur-team.com) 실측**으로 알림 파이프라인 전수조사. 인증 필요 채널(인앱/대시보드/에이전시/공급자)은 401 정상 게이트 확인, `/api/notifications/unread-count`는 비인증 200 `{count:0}`(데이터 누출 0, 무해). **핵심 발견(설정 누락 — 코드 건강)**:
-- 🔴 **웹푸시가 프로덕션에서 완전 비작동(클라·서버 양쪽)**. ① 배포 번들(`app-components`)에 `const a=void 0; if(!a)return` — 빌드타임 `VITE_VAPID_PUBLIC_KEY`가 비어 subscribe 함수가 **항상 즉시 종료**(배너도 안 뜸). ② 서버 `/api/push/vapid-public-key`가 `""` 반환 → 런타임 `VAPID_PUBLIC_KEY` 미설정 → `sendSystemPush` 웹경로 no-op(`system-push.ts:51` 게이트). 인프라는 건강(`push-sw.js`가 push/pushsubscriptionchange/notificationclick 핸들러 전부 배포). **즉 이번 세션들에서 만든 RFC8291 암호화·self-heal·410 복구 등 전체 웹푸시 스택이 라이브에선 휴면** — 교환권 만료/공구 마감/재입고/가격인하/결제완료 웹푸시가 웹 유저에게 0건 도달.
-- 🟠 **네이티브 푸시(FCM v1)도 미설정 가능성**: `messages:send`가 `FIREBASE_PROJECT_ID` 필요(URL). `/api/version`이 그동안 이 값을 안 봐 미확인 — 이번에 진단에 추가. (설정돼도 Capacitor 앱 유저 한정, 웹 미해결.)
-- 🟡 **운영 가시성 공백**: `/api/version` secret 진단이 VAPID_*·FIREBASE_PROJECT_ID를 안 봐 이 누락이 표준 진단에서 안 보였음(그래서 대량 코드작업에도 미발견).
-
-**반영(안전·additive, 잠금파일 무수정)**:
-1. `PushNotificationSetup.tsx` — VAPID 공개키를 **런타임 서버(`/api/push/vapid-public-key`) 우선**으로 해석(`resolveVapidKey()`, 빌드변수 폴백). → 공개키 SSOT를 서버 런타임 하나로 통합(build/runtime drift 제거) + secret 설정만으로 **재배포 없이** 구독+서명 키 자동 일치. 키 없으면 기존처럼 배너/구독 skip.
-2. `public-utility.routes.ts` `/api/version` — secret 진단에 `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`/`FIREBASE_PROJECT_ID` boolean 추가(값 미노출).
-
-**⚠️ 근본 해결은 운영자 몫(코드 아님)**: Cloudflare에 `VAPID_PUBLIC_KEY`·`VAPID_PRIVATE_KEY`·`VAPID_SUBJECT`(웹푸시), `FIREBASE_PROJECT_ID`(+기존 FIREBASE_PRIVATE_KEY/CLIENT_EMAIL, 네이티브푸시) secret 설정 필요. 설정 후 `/api/version`으로 확인 → 웹푸시 즉시 활성(1의 런타임 해석 덕에 재빌드 불필요). VAPID 키쌍 생성: `npx web-push generate-vapid-keys`.
-  - **2026-07-01 후속**: 대표가 VAPID 3종 secret 등록 완료. Pages는 secret 추가 시 새 배포가 있어야 런타임 주입되므로 본 커밋으로 재배포 트리거(secret 값 자체는 미변경). **라이브 검증 완료**: `/api/version` VAPID 3종 `true` · `/api/push/vapid-public-key`가 등록한 공개키 반환(빈문자열→해결) · 서버↔등록키 일치.
-  - **2026-07-01 2차 개선(웹푸시 활성화 후 추가 확인)**: (1) **채널 진단 확장** — `/api/version` secret 진단에 `RESEND_API_KEY`(이메일)·`ALIGO_API_KEY`/`ALIGO_USER_ID`(알림톡) 추가. 이 둘도 키 없으면 조용히 no-op 하는 동일 패턴이라 이제 어느 채널이 죽었는지 한눈에 보임. (2) **셀프 테스트 푸시** `POST /api/push/test`(requireAuth, 호출자 **본인 구독에만** 발송 — 임의 대상 불가) — VAPID 켠 뒤 실제 전달을 E2E 확인할 유일 수단이 없던 공백 해소. 반환값(skipped/subscription_count/delivered/expired)으로 미도달 원인 진단. (3) 어드민 `AdminSystemMonitoringPage`에 **알림 채널 상태 배지(웹푸시/이메일/알림톡/네이티브푸시 ✓✕) + "나에게 테스트 푸시" 버튼**(라이트 테마, dark: 0). 발송경로 조사 결과 `sendSystemPush`는 VAPID 게이트·`push_enabled` 유저설정 존중·410 만료삭제·dead-letter 재시도·네이티브 독립으로 **건강** 확인. push-sw.js는 `no-store`(핸들러 갱신 전파 OK)·subscribe 401(인증) 정상. 검증: tsc 0·theme-consistency(strict) 0·build 0.
-- 검증: tsc 0(사전 config 경고 제외) · build(client+ssr+prerender+worker+prepare) 0 · theme(strict) 0.
-
-## ✅ 2026-07-01 — 이용권 명칭 통일 잔여 "숙소권" → "숙소 이용권" (대표 "이용권 내용 진행 — 모두")
-이용권 전수조사(명칭/버그/UI/기능 4방향 병렬) → **실제 잔여 부채는 명칭 1종**. 나머지 3방향은 오탐/기수정/별도영역 확인.
-- **명칭 (수정 완료)**: 사용자-가시 "숙소권" 12건(6파일) → "숙소 이용권"(SSOT `getVoucherShortLabel`='숙소 이용권'과 정합). 파일: `stay-voucher-expire.ts`(알림톡 제목)·`StayCheckout.tsx`·`SellerStayNewPage.tsx`(판매방식 라벨·유효기간 필드)·`StaysSearchPage.tsx`·`MyStaysPage.tsx`(배지)·`StayDetailPage.tsx`(3곳: 모드 라벨·요약)·`stays-public.routes.ts`(3곳: 에러메시지·응답 라벨). 주석 5건(GroupBuyListPage·stays-public 버그기록)은 CLAUDE.md 규칙대로 보존. "평일권/주말권"(권종 변형)은 불변.
-- **버그 (조사 결과 오탐/기수정)**: ① 셀프취소 정산 미회수 의혹 → 셀프취소는 `status='unused'` CAS 대상뿐이라 정산분 없음(오탐). ② influencer_attributions voucher_id NULL 누수 → 2026-05-31 order_id 기반으로 기수정. ③ MyVouchers 절약액 NaN → 이미 `(pct>0 && pct<100 && paid>0)` 가드. 감사 게이트 머니 GREEN 영역 견고 재확인.
-- **다국어 locale**: zh/es/fr/ja 의 옛 "식사권"·团购券 → **2026-06-29 결정("전면 다국어 prose 정합=KR-primary라 별도")** 유지(대부분 `[TODO]` 미번역 플레이스홀더). ko(주 언어)는 이미 0건.
-- **알아둘 것(미수정, 대표 판단 필요)**: 카드결제 교환권 셀프취소 시 Toss 취소가 waitUntil 비동기라 실패하면 voucher='refunded'인데 orders='PAID' 잔존 갭 — 드물고 잠긴 결제영역 인접이라 문서화만.
-- 검증: tsc 0(config 경고 제외)·theme(strict) 0·sql-bind 0·blog-seed-currency 0·build(client+ssr+prerender+worker+prepare) 0.
-## ✅ 2026-07-01 — 유어딜 소비자 전수감사(가드 미보유 영역) — 확정 3건 fix (대표 "더 깊게 파봐")
-감사 게이트(37 GREEN/1 RED=선재 file-size 드리프트) 후 **가드 미보유 3영역**(결제 금액정확성·런타임 크래시·외부 PG 실응답)을 라이브+정적으로 심층 감사. 라이브 소비자 API/SSR 전부 건강(200·주입 정상), 크래시 스윕 CLEAN(신규 fcfs/블로그/알림 UI 방어적). **확정 3건 수정**:
-- **#1 (SEO) sitemap.xml stale — 블로그 20개 중 16개 404 + 상품/공구 전무**: 근본원인=`public/sitemap.xml`(옛 하드코딩, 폐기 슬러그 why-live-commerce·meal-voucher-business 등)이 `_routes.json` exclude 로 Pages 직접 서빙 → 워커 동적 `sitemap.routes.ts`(`WHERE is_published=1`) 완전 우회. **수정**: exclude 에서 `/sitemap.xml` 제거 + 정적파일 삭제(git rm) → 워커 동적 라우트가 서빙(상품/공구/블로그 published + 서비스분리 필터 포함). 동적 배열의 `/live`·`/shorts`(LIVE_COMMERCE_SUSPENDED)도 제거(폐기기능 URL 크롤 방지).
-- **#2 (머니) 반품환불 경로 쿠폰 미복원**: `returns.routes PUT /:id/refund` 이 역전을 인라인 재구현하며 `coupon_uses` 복원만 누락(`refundOrderFully`·주문취소는 복원). → 1회용 쿠폰 영구소진+used_count 과대. **수정**: order-refund SSOT 미러 쿠폰 un-use 블록 추가(CAS `transitioned` 게이트 하 단일실행, 자연멱등).
-- **#3 (머니) 초대보상 1,000딜 환불 미회수(파밍 벡터)**: `grantInviteRewardForFirstPurchase` 적립만 있고 clawback 0. **수정**: `reverseInviteRewardOnRefund`(invite-reward.ts) 신설 — 환불 후 초대받은 유저 유효주문 0이면 초대자 보상 회수(다른 유효구매 있으면 보류), 멱등 CAS(granted→expired) + `MAX(0,...)` clamp. `reverseOrderAncillaryOnRefund`(전액환불·주문취소 자동커버) + returns 양경로 배선.
-- 검증: tsc 0 · build 0(client+ssr+prerender+worker) · money-pattern/sql bind·not-null·column·table 가드 0 · audit-gate 37 GREEN(file-size RED 는 선재 드리프트, 본 변경 무관). ⚠️ staging 실결제 권장: 쿠폰주문 반품환불 시 쿠폰 재사용 가능 + 초대유저 첫구매 환불 시 초대자 딜 회수.
 
 ## ✅ 2026-07-01 — 알림 코드 마무리 4종 + 위시리스트 오발송 버그 fix (대표 "코드로 더 할 수 있는거")
 - **#4 알림톡 `approve`/`approved` 오탐 정정**: 이전 진단에서 "미등록 의심"으로 잡은 `approve`/`approved`는 삼항 조건(`action==='approve' ? 'distributor_approved' : ...`)이라 실제 template 코드가 아니었음(grep 오탐). SSOT `alimtalk-templates.ts`에서 제거 + `test`는 셀러 브랜드메시지 테스트 코드로 주석. **버그 아님 확인.**

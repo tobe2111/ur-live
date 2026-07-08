@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
+import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -535,6 +536,9 @@ export default function GroupBuyListPage() {
   const showcaseCards = catEmpty ? [catEmpty.card] : DEFAULT_SHOWCASE
   const createPath = catEmpty ? `/community-group-buy/new?category=${category}` : '/community-group-buy/new'
 
+  // 🎨 2026-07-01 (대표 "2번 로딩 근본 해결" — urdeal 로더 유지): 로딩 중 전체화면 BrandLoader early-return
+  //   → 청크 로더와 끊김 없이 이어져 '한 번'으로 보임(헤더가 중간에 안 뜸).
+  if (loading) return <BrandLoader fullScreen />
   return (
     <div className="bg-white dark:bg-[#0A0A0A] min-h-screen">
       <SEO
@@ -716,15 +720,7 @@ export default function GroupBuyListPage() {
             )}
 
             {loading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i}>
-                    <div className="aspect-square bg-gray-100 dark:bg-[#1A1A1A] animate-pulse rounded-xl" />
-                    <div className="mt-2 h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse" />
-                    <div className="mt-1 h-3 bg-gray-100 dark:bg-[#1A1A1A] rounded animate-pulse w-2/3" />
-                  </div>
-                ))}
-              </div>
+              <BrandLoader />
             ) : filtered.length === 0 ? (
               (category !== 'all' || !!regionKey || !!searchQuery.trim()) ? (
                 /* 🧭 2026-06-17 (대표 신고 — 빈 카테고리 UX): 카테고리/지역/검색으로 0건이면 '곧 오픈' 대신

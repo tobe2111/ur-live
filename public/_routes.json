@@ -7,6 +7,7 @@
     "/locales/*",
     "/static/*",
     "/favicon.svg",
+    "/favicon-utong.svg",
     "/robots.txt",
     "/sw.js",
     "/push-sw.js",

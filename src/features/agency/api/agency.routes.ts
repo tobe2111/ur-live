@@ -32,6 +32,7 @@ import type { Env } from '@/worker/types/env'
 import { checkLockout, recordFailure, clearFailures } from '@/worker/utils/account-lockout'
 
 import { swallow } from '@/worker/utils/swallow';
+import { intParam } from '@/shared/pagination'
 type AgencyVars = { agency: { id: number; email: string } }
 type AgencyCtx = Context<{ Bindings: Env; Variables: AgencyVars }>
 
@@ -233,12 +234,18 @@ const requireAgency = async (c: AgencyCtx, next: Next) => {
 // 🛡️ 2026-04-22 배치 147: rate limit 추가 (spam registration 차단 버그 fix)
 app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, windowSec: 3600 }), async (c) => {
   await ensureAgencyTables(c.env.DB)
-  const { name, contact_name, email, password, phone } = await c.req.json<{
+  const { name, contact_name, email, password, phone, terms_agreed_version, core_terms_agreed } = await c.req.json<{
     name: string; contact_name: string; email: string; password: string; phone?: string
+    terms_agreed_version?: string; core_terms_agreed?: boolean
   }>()
 
   if (!name || !contact_name || !email || !password) {
     return c.json({ success: false, error: '에이전시명, 담당자명, 이메일, 비밀번호는 필수입니다.' }, 400)
+  }
+  // 📜 2026-07-05 파트너 약관 v1.0: 약관 동의로 파트너 계약 성립(전문) + 제4·5·9·10조 개별 동의 필수.
+  const { isValidTermsVersion, recordTermsConsent } = await import('../../../worker/utils/terms-consent')
+  if (!isValidTermsVersion(terms_agreed_version) || core_terms_agreed !== true) {
+    return c.json({ success: false, error: '에이전시 파트너 약관 및 핵심 조항 동의가 필요합니다. 화면을 새로고침한 뒤 다시 시도해주세요.' }, 400)
   }
   // 🛡️ 입력 길이 검증
   if (typeof name !== 'string' || name.length < 1 || name.length > 100) {
@@ -259,10 +266,26 @@ app.post('/register', cors(), rateLimit({ action: 'agency_register', max: 3, win
   if (existing) return c.json({ success: false, error: '이미 사용 중인 이메일입니다.' }, 409)
 
   const hash = await hashPassword(password)
-  await c.env.DB.prepare(`
+  const insertRes = await c.env.DB.prepare(`
     INSERT INTO agencies (name, contact_name, email, password_hash, phone, status)
     VALUES (?, ?, ?, ?, ?, 'pending')
   `).bind(name, contact_name, email, hash, phone || null).run()
+
+  // 🗓️ 2026-07-05 대표 확정 (자문): 신규 에이전시 커미션 기간 기본 24개월 — 약관3 제4조 "기본 24개월"과 정합.
+  //   NULL=무제한이라 수동 입력 누락 시 무제한으로 도는 사고 방지. 무제한 계약만 어드민이 개별 NULL.
+  //   fail-soft(컴럼 미존재 구 DB 는 repair-schema 후 반영).
+  await c.env.DB.prepare("UPDATE agencies SET commission_term_months = 24 WHERE email = ? AND commission_term_months IS NULL")
+    .bind(email).run().catch(() => {})
+
+  // 📜 약관 동의 기록 (fail-soft — 검증은 위에서 이미 통과)
+  recordTermsConsent(c.env.DB, {
+    subjectType: 'agency',
+    subjectId: insertRes.meta?.last_row_id ?? null,
+    slug: 'agency-partner',
+    version: terms_agreed_version as string,
+    coreAgreed: true,
+    ip: c.req.header('CF-Connecting-IP') || null,
+  }).catch(() => null)
 
   // 🛡️ 2026-04-28: 어드민 알림 — 셀러 가입 흐름과 동일하게 추가 (이전 누락).
   createDashboardNotification(
@@ -314,12 +337,18 @@ app.post('/register-from-user', cors(), rateLimit({ action: 'agency_register_fro
       }, 409)
     }
 
-    const { name, contact_name, phone } = await c.req.json<{
+    const { name, contact_name, phone, terms_agreed_version, core_terms_agreed } = await c.req.json<{
       name: string; contact_name: string; phone?: string
+      terms_agreed_version?: string; core_terms_agreed?: boolean
     }>()
 
     if (!name || !contact_name) {
       return c.json({ success: false, error: '에이전시명과 담당자명은 필수입니다.' }, 400)
+    }
+    // 📜 2026-07-05 파트너 약관 v1.0: 약관 동의로 파트너 계약 성립(전문) + 제4·5·9·10조 개별 동의 필수.
+    const { isValidTermsVersion, recordTermsConsent } = await import('../../../worker/utils/terms-consent')
+    if (!isValidTermsVersion(terms_agreed_version) || core_terms_agreed !== true) {
+      return c.json({ success: false, error: '에이전시 파트너 약관 및 핵심 조항 동의가 필요합니다. 화면을 새로고침한 뒤 다시 시도해주세요.' }, 400)
     }
     if (typeof name !== 'string' || name.length < 1 || name.length > 100) {
       return c.json({ success: false, error: '에이전시명은 1~100자여야 합니다.' }, 400)
@@ -343,10 +372,27 @@ app.post('/register-from-user', cors(), rateLimit({ action: 'agency_register_fro
     const tempPassword = Array.from(tempBytes).map(b => b.toString(16).padStart(2, '0')).join('')
     const passwordHash = await hashPassword(tempPassword)
 
-    await db.prepare(`
+    const insertRes = await db.prepare(`
       INSERT INTO agencies (name, contact_name, email, password_hash, phone, status, linked_user_id)
       VALUES (?, ?, ?, ?, ?, 'pending', ?)
     `).bind(name, contact_name, email, passwordHash, phone || null, userId).run()
+
+    // 🗓️ 2026-07-05 대표 확정 (자문): 신규 에이전시 커미션 기간 기본 24개월 — 약관3 제4조 "기본 24개월"과 정합.
+    //   NULL=무제한이라 수동 입력 누락 시 무제한으로 도는 사고 방지. 무제한 계약만 어드민이 개별 NULL.
+    //   fail-soft(컴럼 미존재 구 DB 는 repair-schema 후 반영).
+    await db.prepare("UPDATE agencies SET commission_term_months = 24 WHERE email = ? AND commission_term_months IS NULL")
+      .bind(email).run().catch(() => {})
+
+    // 📜 약관 동의 기록 (fail-soft)
+    recordTermsConsent(db, {
+      subjectType: 'agency',
+      subjectId: insertRes.meta?.last_row_id ?? null,
+      userId,
+      slug: 'agency-partner',
+      version: terms_agreed_version as string,
+      coreAgreed: true,
+      ip: c.req.header('CF-Connecting-IP') || null,
+    }).catch(() => null)
 
     // 🛡️ 2026-04-28: 어드민 알림 — 유저→에이전시 전환 신청 (이전 누락).
     createDashboardNotification(
@@ -1021,7 +1067,7 @@ app.post('/invite-seller', rateLimit({ action: 'agency_invite_seller', max: 20, 
 app.get('/report/csv', async (c: AgencyCtx) => {
   const agencyId = c.get('agency').id
   const period = c.req.query('period') || '30'
-  const days = parseInt(period) || 30
+  const days = intParam(period, 30)
 
   // 🛡️ 2026-05-22 정책 중앙화 — PLATFORM_FEE + AGENCY_OWN_RATE 추정 commission
   const { COMMISSION_DEFAULTS } = await import('../../../shared/constants/policy')

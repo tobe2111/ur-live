@@ -91,6 +91,51 @@ export async function handleKtAlphaVoucherRetry(env: Env): Promise<void> {
       return
     }
 
+    // ── C. 미발송 스위퍼 (2026-07-02, 대표 승인 — KT 발송 waitUntil 이동의 백스톱) ──────────
+    //   결제 확정(PAID/DONE) 됐는데 KT 발송이 '시작조차' 안 된 주문을 찾아 재킥. 커버:
+    //   ① waitUntil 이동 후 isolate 조기소멸 ② 기존 동기 경로에도 있던 결제커밋~발송 사이 크래시 갭.
+    //   이중발송 구조적 0: auto-send 는 발송 시도 시작 시점(INSERT 'processing')에 external_order_id
+    //   ('u{oid}-…')를 기록 → 시도 이력이 있는 주문(processing/sent/failed 전부)은 NOT EXISTS 로 제외
+    //   (failed 는 위 A 재시도 담당) + auto-send 내부 per-order 가드가 2차 방어.
+    //   10분 유예(방금 결제된 waitUntil 진행분과 레이스 방지) · 48h 윈도 · run 당 10건 ·
+    //   폰 보유 주문만(shipping_phone 또는 users.phone — 없는 건 스윕해도 발송 불가 + 알림 스팸만 유발).
+    try {
+      const missed = await DB.prepare(
+        `SELECT o.id, o.shipping_phone, o.user_id
+           FROM orders o
+          WHERE o.status IN ('PAID','DONE')
+            AND o.created_at >= datetime('now', '-48 hours')
+            AND o.created_at <= datetime('now', '-10 minutes')
+            AND EXISTS (
+              SELECT 1 FROM order_items oi JOIN products p ON p.id = oi.product_id
+               WHERE oi.order_id = o.id AND p.kt_alpha_gift_code IS NOT NULL AND p.auto_voucher_send = 1
+            )
+            AND NOT EXISTS (
+              SELECT 1 FROM voucher_orders vo
+               WHERE vo.source = 'kt_alpha' AND vo.external_order_id LIKE 'u' || o.id || '-%'
+            )
+            AND (
+              o.shipping_phone GLOB '01[0-9]*'
+              OR EXISTS (SELECT 1 FROM users u WHERE u.id = o.user_id AND u.phone GLOB '01[0-9]*')
+            )
+          ORDER BY o.created_at ASC
+          LIMIT 10`
+      ).all<{ id: number; shipping_phone: string | null; user_id: string | number | null }>()
+        .catch(() => ({ results: [] as Array<{ id: number; shipping_phone: string | null; user_id: string | number | null }> }))
+      const missedList = missed.results || []
+      if (missedList.length > 0) {
+        logInfo(`[kt-alpha-voucher-retry] 미발송 스위퍼 — 발송기록 없는 확정주문 ${missedList.length}건 재킥`)
+        const { autoSendKtAlphaVouchersForOrders } = await import('../utils/kt-alpha-auto-send')
+        await autoSendKtAlphaVouchersForOrders(
+          env as unknown as Parameters<typeof autoSendKtAlphaVouchersForOrders>[0],
+          missedList.map(o => ({ id: Number(o.id), shipping_phone: o.shipping_phone ?? undefined, user_id: o.user_id })),
+          String(missedList.find(o => o.user_id != null)?.user_id ?? ''),
+        )
+      }
+    } catch (e) {
+      logError('[kt-alpha-voucher-retry] 미발송 스위퍼 실패', { error: (e as Error).message })
+    }
+
     const rows = await DB.prepare(
       `SELECT id, goods_code, goods_name, recipient_phone, unit_price, COALESCE(retry_count, 0) AS retry_count
          FROM voucher_orders

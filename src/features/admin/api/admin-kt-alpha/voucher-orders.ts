@@ -2,13 +2,14 @@ import type { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '../../../../worker/utils/safe-error'
+import { intParam } from '@/shared/pagination'
 
 export function registerVoucherOrders(r: Hono<{ Bindings: Env }>) {
   // 🛡️ 2026-05-23: KT Alpha 발송 추적 페이지용 API
   // GET /admin/voucher-orders?hours=24&status=failed&limit=500
   r.get('/voucher-orders', cors(), async (c) => {
     const hours = Math.min(Math.max(1, Number(c.req.query('hours') || '24')), 168)
-    const limit = Math.min(Math.max(1, Number(c.req.query('limit') || '500') || 500), 1000)
+    const limit = Math.min(Math.max(1, intParam(c.req.query('limit'), 500)), 1000)
     const status = c.req.query('status')
     try {
       const statusFilter = status && ['processing', 'sent', 'failed'].includes(status)
@@ -121,8 +122,8 @@ export function registerVoucherOrders(r: Hono<{ Bindings: Env }>) {
   r.post('/voucher-orders/resend-failed', cors(), async (c) => {
     try {
       const body = await c.req.json<{ limit?: number; days?: number }>().catch(() => ({} as { limit?: number; days?: number }))
-      const limit = Math.min(Math.max(Number(body.limit) || 50, 1), 200)
-      const days = Math.min(Math.max(Number(body.days) || 90, 1), 365)
+      const limit = Math.min(Math.max(intParam(body.limit, 50), 1), 200)
+      const days = Math.min(Math.max(intParam(body.days, 90), 1), 365)
 
       const settings = await c.env.DB.prepare(
         "SELECT key, value FROM platform_settings WHERE key IN ('kt_alpha_user_id','kt_alpha_callback_no','kt_alpha_template_id','kt_alpha_banner_id')"

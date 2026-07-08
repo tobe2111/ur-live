@@ -577,14 +577,88 @@ ${data.restaurantName} 사장님,
 }
 
 /**
+ * 📣 2026-07-05 (운영 감사 Q4 — "판매될 때마다 사장님이 알아야"): 건별 판매 알림톡.
+ *   첫 판매는 sendSellerFirstVoucherAlimtalk(온보딩 상세)가 담당 — 이 함수는 2번째 판매부터.
+ *   호출측(group-buy.routes)이 first_voucher_notified 로 분기해 첫 판매 이중발송 없음.
+ */
+export async function sendSellerVoucherSoldAlimtalk(
+  env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+  phone: string,
+  data: { restaurantName: string; productName: string; qty: number; amount: number }
+): Promise<void> {
+  if (!env.ALIMTALK_API_KEY || !phone) return
+  try {
+    const cleanPhone = phone.replace(/[^0-9]/g, '')
+    if (!/^01\d{8,9}$/.test(cleanPhone)) return
+    const message = `[유어딜] 🎟️ 이용권 판매
+
+${data.restaurantName}
+"${data.productName}" ${data.qty}장 · ₩${Number(data.amount).toLocaleString('ko-KR')}
+
+손님이 곧 방문할 수 있어요. 판매/사용 현황:
+https://live.ur-team.com/seller/group-buy
+
+문의: 유어딜 고객센터`
+    await fetch('https://api.solapi.com/messages/v4/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
+      }),
+      signal: AbortSignal.timeout(10000),
+    }).catch(swallow('helpers:alimtalk:seller-voucher-sold'))
+  } catch { /* graceful */ }
+}
+
+/**
+ * 📣 2026-07-05 (운영 감사 Q4): 손님이 **셀프(PIN/매장코드)** 로 사용 처리했을 때 사장님 알림톡.
+ *   사장님이 직접 스캔(use-by-seller)한 경우는 본인이 실행자라 발송하지 않음(호출측 책임).
+ */
+export async function sendSellerVoucherUsedAlimtalk(
+  env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
+  phone: string,
+  data: { restaurantName: string; productName: string; usedAt?: string }
+): Promise<void> {
+  if (!env.ALIMTALK_API_KEY || !phone) return
+  try {
+    const cleanPhone = phone.replace(/[^0-9]/g, '')
+    if (!/^01\d{8,9}$/.test(cleanPhone)) return
+    const ts = data.usedAt ? new Date(data.usedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
+    const message = `[유어딜] ✅ 이용권 사용 처리됨
+
+${data.restaurantName}
+"${data.productName}"${ts ? `
+사용 시각: ${ts}` : ''}
+
+손님이 매장에서 셀프 사용 처리했어요.
+정산은 사용 +7일 후 등록 계좌로 자동 진행됩니다.
+
+사용 내역: https://live.ur-team.com/seller/group-buy
+
+문의: 유어딜 고객센터`
+    await fetch('https://api.solapi.com/messages/v4/send', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: { to: cleanPhone, from: env.ALIMTALK_SENDER_KEY || '15441234', text: message, type: 'LMS' },
+      }),
+      signal: AbortSignal.timeout(10000),
+    }).catch(swallow('helpers:alimtalk:seller-voucher-used'))
+  } catch { /* graceful */ }
+}
+
+/**
  * 🛡️ 2026-05-16: voucher 사용 완료 알림톡 (매장이 QR 스캔 직후).
+ * 🔔 2026-07-05: Aligo 카카오 알림톡(tpl_code 'voucher_used', sendSystemAlimtalk — dedup·캡·재시도 큐)
+ *   경로 추가. 기존 solapi LMS 는 레거시 폴백으로 유지(ALIMTALK_API_KEY 설정 환경만 동작).
+ *   ⚠️ 'voucher_used' 는 Aligo 콘솔 등록·승인 필요 — message 를 승인 템플릿 본문과 일치시켜 유지.
  */
 export async function sendBuyerVoucherUsedAlimtalk(
   env: { ALIMTALK_API_KEY?: string; ALIMTALK_SENDER_KEY?: string },
   phone: string,
   data: { restaurantName: string; productName: string; usedAt?: string; categoryLabel?: string }
 ): Promise<void> {
-  if (!env.ALIMTALK_API_KEY || !phone) return
+  if (!phone) return
   try {
     const cleanPhone = phone.replace(/[^0-9]/g, '')
     if (!/^01\d{8,9}$/.test(cleanPhone)) return
@@ -603,6 +677,13 @@ ${ts ? '사용 시각: ' + ts : ''}
 https://live.ur-team.com/my-vouchers
 
 문의: 유어딜 고객센터`
+    // ① Aligo 카카오 알림톡 (시스템 SSOT — ALIGO_* 미설정 시 내부 silent skip)
+    try {
+      const { sendSystemAlimtalk } = await import('../../../lib/system-alimtalk')
+      await sendSystemAlimtalk(env, cleanPhone, 'voucher_used', message)
+    } catch { /* fail-soft — 아래 레거시 경로가 백업 */ }
+    // ② 레거시 solapi LMS 폴백 (해당 키 설정 환경만)
+    if (!env.ALIMTALK_API_KEY) return
     await fetch('https://api.solapi.com/messages/v4/send', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${env.ALIMTALK_API_KEY}`, 'Content-Type': 'application/json' },
@@ -630,6 +711,9 @@ export async function reverseReferralBonusOnRefund(
 ): Promise<number> {
   if (!orderNumber) return 0
   try {
+    // 💸 2026-07-05 버킷: 아래 회수 UPDATE 가 free_balance 컬럼 참조 — 사전 보장(멱등).
+    const { ensureDealBuckets } = await import('../../../worker/utils/point-buckets')
+    await ensureDealBuckets(DB)
     const rows = await DB.prepare(
       "SELECT user_id, points_amount FROM point_transactions WHERE order_id = ? AND type = 'referral_bonus'"
     ).bind(orderNumber).all<{ user_id: string; points_amount: number }>().catch(() => ({ results: [] as { user_id: string; points_amount: number }[] }))
@@ -641,12 +725,13 @@ export async function reverseReferralBonusOnRefund(
       if (dup) continue
       const amt = Math.floor(t.points_amount || 0)
       if (amt <= 0) continue
-      await DB.prepare("UPDATE user_points SET balance = MAX(0, balance - ?), updated_at = CURRENT_TIMESTAMP WHERE user_id = ?")
-        .bind(amt, t.user_id).run().catch(() => {})
+      // 💸 2026-07-05 버킷: referral_bonus 는 무상 적립 → 회수도 free 에서 (무상 적립-역전 대칭).
+      await DB.prepare("UPDATE user_points SET balance = MAX(0, balance - ?), free_balance = MAX(0, COALESCE(free_balance, 0) - ?), updated_at = CURRENT_TIMESTAMP WHERE user_id = ?")
+        .bind(amt, amt, t.user_id).run().catch(() => {})
       await DB.prepare(
-        `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id)
-         VALUES (?, 'referral_bonus_reversed', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?)`
-      ).bind(t.user_id, -amt, -amt, t.user_id, '추천 보너스 환불 회수', orderNumber).run().catch(() => {})
+        `INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description, order_id, free_delta)
+         VALUES (?, 'referral_bonus_reversed', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?, ?, ?)`
+      ).bind(t.user_id, -amt, -amt, t.user_id, '추천 보너스 환불 회수', orderNumber, -amt).run().catch(() => {})
       reversed++
     }
     return reversed

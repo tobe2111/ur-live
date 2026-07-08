@@ -1,6 +1,8 @@
 import { MapPin } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import { cfImage } from '@/utils/cf-image'
 import { distanceKm } from './utils'
+import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import type { Restaurant } from './types'
 import { type MapVoucherType, MAP_EMPTY_MSG } from './voucher-types'
 
@@ -10,14 +12,15 @@ interface Props {
   selected: Restaurant | null
   userLoc: { lat: number; lng: number } | null
   onSelect: (r: Restaurant) => void
-  /** 🎯 선착순: id→{spots,appliedDisplay}. 있으면 배지 + '지원' 버튼. */
+  /** 🎯 선착순: id→{spots,appliedDisplay}. 있으면 추첨 배지 표시(응모는 카드 탭 → 상세). */
   fcfsMap?: Map<number, { spots: number; appliedDisplay: number }>
+  /** @deprecated 2026-07-03 카드 내 응모 버튼 제거 — 상세에서 응모. 호출부 호환 위해 유지(미사용). */
   onApplyFcfs?: (productId: number) => void
   /** 빈 상태 문구를 카테고리에 맞게 표시 (기본 all). */
   voucherType?: MapVoucherType
 }
 
-export default function RestaurantList({ loading, filtered, selected, userLoc, onSelect, fcfsMap, onApplyFcfs, voucherType = 'all' }: Props) {
+export default function RestaurantList({ loading, filtered, selected, userLoc, onSelect, fcfsMap, voucherType = 'all' }: Props) {
 
   if (loading) {
     return (
@@ -69,22 +72,20 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
             }`}
           >
             {r.image_url ? (
-              <img src={r.image_url} alt="" className="w-[88px] h-[88px] rounded-lg object-cover shrink-0" loading="lazy" />
+              /* 🚑 2026-07-02 (대표 신고 "전체적으로 느림"): raw 원본(네이버 1MB급) → cfImage 리사이즈(88px@2x) */
+              <img src={cfImage(r.image_url, { width: 176, quality: 85, format: 'auto' }) || r.image_url} alt="" className="w-[88px] h-[88px] rounded-lg object-cover shrink-0" loading="lazy" />
             ) : (
               <div className="w-[88px] h-[88px] rounded-lg bg-gray-100 dark:bg-[#1A1A1A] flex items-center justify-center shrink-0">
                 <span className="text-2xl">🍽️</span>
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{r.restaurant_name}</p>
-                {discount > 0 && (
-                  <span className="text-[10px] bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold px-1.5 py-0.5 rounded-md shrink-0">
-                    -{discount}%
-                  </span>
-                )}
-              </div>
-              <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1 truncate flex items-center gap-0.5">
+              {/* 🎨 2026-07-02 (대표 — UI 우선순위): 이용권명(r.name)을 볼드 제목으로, 매장명은 보조 줄로.
+                  🎨 2026-07-03 (대표 — "칙칙해"): 제목 옆 흐린 회색 추첨 배지 제거 → 가격 아래 선명한
+                  모집현황 chip("N명 모집 · M명 지원", FcfsBadge)로 전용 줄에 배치(긴 제목 안 찌그러뜨림). */}
+              <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{r.name}</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{r.restaurant_name}</p>
+              <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-0.5 truncate flex items-center gap-0.5">
                 <MapPin className="w-3 h-3 shrink-0" />
                 {r.restaurant_address || '주소 미등록'}
                 {userLoc && r.restaurant_lat && r.restaurant_lng && (
@@ -93,27 +94,17 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
                   </span>
                 )}
               </p>
-              <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-0.5 truncate">{r.name}</p>
               <div className="flex items-baseline gap-1.5 mt-1.5">
+                {discount > 0 && (
+                  <span className="text-[16px] font-extrabold text-red-500 dark:text-red-400">{discount}%</span>
+                )}
                 <span className="text-[16px] font-extrabold text-gray-900 dark:text-white">{formatNumber(r.price)}원</span>
                 {r.original_price > r.price && (
                   <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(r.original_price)}원</span>
                 )}
               </div>
-              {fcfs && (
-                <span className="inline-flex self-start items-center gap-1 mt-1.5 text-[10px] font-extrabold text-gray-900 dark:text-white bg-gray-900/10 dark:bg-white/15 px-2 py-0.5 rounded-full">
-                  🎯 추첨 {formatNumber(fcfs.appliedDisplay)}/{formatNumber(fcfs.spots)}명
-                </span>
-              )}
+              {fcfs && <div className="mt-2"><FcfsBadge info={fcfs} /></div>}
             </div>
-            {fcfs && onApplyFcfs && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onApplyFcfs(r.id) }}
-                className="self-center px-3.5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold rounded-xl shrink-0 active:scale-95 transition-transform"
-              >
-                응모
-              </button>
-            )}
           </button>
         )
       })}

@@ -16,6 +16,7 @@ import type { Env } from '../../../worker/types/env'
 import { listAdminSettlementInvoices, reissueSettlementInvoice } from '../../seller/api/settlement-tax-invoices'
 import { reverseInvoiceProvider } from '../../../worker/utils/tax-invoice-gateway'
 import { safeError } from '../../../worker/utils/safe-error'
+import { COMMISSION_DEFAULTS } from '../../../shared/constants/policy'
 
 export const adminTaxRoutes = new Hono<{ Bindings: Env }>()
 
@@ -180,4 +181,112 @@ adminTaxRoutes.get('/admin/tax/annual-report', requireAdmin(), async (c) => {
   }
 
   return c.json({ success: true, data: { year, payee_type: payeeType, rows: enriched } })
+})
+
+// ─── 8. 세무사용 월별 통합 회계 export (2026-07-08 무인운영 감사) ──────────────
+//   목적: "세무사에게 이 파일 하나만 넘기면 되게" — 월별 매출·수수료 수익·환불·정산지급
+//   (세금계산서 발행 대상)·원천징수를 한 CSV 로 집계. 흩어진 per-domain export
+//   (settlement/export-csv, tax-withholding/export, annual-report)를 월 단위로 통합.
+//   전부 read-only 집계 — 정산/발행/머니 로직 불변. 각 지표 fail-soft(쿼리 실패 시 0).
+//   ⚠️ 서비스 분리: 소비자/플랫폼 재무만. 도매(제조사 매입)는 별도 도매 전용 export
+//     `/api/wholesale/tax/purchase-invoices?period=YYYY-MM` (서비스 경계 유지).
+//   GET /api/admin/tax/monthly-accounting?month=YYYY-MM   (기본: 지난달 KST)
+adminTaxRoutes.get('/admin/tax/monthly-accounting', requireAdmin(), async (c) => {
+  try {
+    const { DB } = c.env
+    // 대상 월 파싱 (KST 기준). 미지정 시 지난달.
+    let month = (c.req.query('month') || '').trim()
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+      const nowKst = new Date(Date.now() + 9 * 3600_000)
+      nowKst.setUTCDate(1)
+      nowKst.setUTCMonth(nowKst.getUTCMonth() - 1) // 지난달
+      month = `${nowKst.getUTCFullYear()}-${String(nowKst.getUTCMonth() + 1).padStart(2, '0')}`
+    }
+    const [yStr, mStr] = month.split('-')
+    const year = Number(yStr)
+    const monthNum = Number(mStr)
+    const defaultRate = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT
+
+    // ① 매출(GMV) + 플랫폼 수수료 수익 — settlement/export-csv 와 동일 공식.
+    const sales = await DB.prepare(`
+      SELECT COUNT(*) AS n,
+             COALESCE(SUM(o.total_amount), 0) AS gmv,
+             COALESCE(SUM(ROUND(o.total_amount * COALESCE(o.commission_rate, s.commission_rate, ?) / 100)), 0) AS commission
+        FROM orders o
+        LEFT JOIN sellers s ON o.seller_id = s.id
+       WHERE o.status IN ('DONE', 'PAID', 'DELIVERED')
+         AND strftime('%Y-%m', datetime(o.created_at, '+9 hours')) = ?
+    `).bind(defaultRate, month).first<{ n: number; gmv: number; commission: number }>()
+      .catch(() => ({ n: 0, gmv: 0, commission: 0 }))
+
+    // ② 환불/취소 — 환불 발생 월(refunded_at) 기준.
+    const refunds = await DB.prepare(`
+      SELECT COUNT(*) AS n, COALESCE(SUM(refunded_amount), 0) AS refunded
+        FROM orders
+       WHERE COALESCE(refunded_amount, 0) > 0
+         AND strftime('%Y-%m', datetime(COALESCE(refunded_at, updated_at, created_at), '+9 hours')) = ?
+    `).bind(month).first<{ n: number; refunded: number }>()
+      .catch(() => ({ n: 0, refunded: 0 }))
+
+    // ③ 정산 지급(실송금 sent) — payee 유형별. = 매입세금계산서(역발행) 발행 대상.
+    const payouts = await DB.prepare(`
+      SELECT payee_type, COUNT(*) AS n, COALESCE(SUM(amount), 0) AS total
+        FROM payouts
+       WHERE status = 'sent'
+         AND strftime('%Y-%m', datetime(sent_at, '+9 hours')) = ?
+       GROUP BY payee_type
+    `).bind(month).all<{ payee_type: string; n: number; total: number }>()
+      .catch(() => ({ results: [] as Array<{ payee_type: string; n: number; total: number }> }))
+
+    // ④ 원천징수 — tax_withholding_log (지급월 기준).
+    const wht = await DB.prepare(`
+      SELECT COUNT(*) AS n,
+             COALESCE(SUM(gross_amount), 0) AS gross,
+             COALESCE(SUM(withholding_amount), 0) AS withholding,
+             COALESCE(SUM(net_amount), 0) AS net
+        FROM tax_withholding_log
+       WHERE payout_year = ? AND payout_month = ?
+    `).bind(year, monthNum).first<{ n: number; gross: number; withholding: number; net: number }>()
+      .catch(() => ({ n: 0, gross: 0, withholding: 0, net: 0 }))
+
+    // 부가세 분리(공급대가 → 공급가액/세액). 매출·수수료에만 적용(과세 표준 참고용).
+    const supplyOf = (total: number) => Math.round(total / 1.1)
+    const vatOf = (total: number) => total - supplyOf(total)
+
+    // 수식 인젝션 방어(= + - @ 및 탭/CR 선행 셀) + 따옴표 이스케이프.
+    const csvCell = (v: unknown): string => {
+      let s = String(v ?? '')
+      if (/^[=+\-@\t\r]/.test(s)) s = "'" + s
+      return `"${s.replace(/"/g, '""')}"`
+    }
+
+    const payeeLabel: Record<string, string> = {
+      store_owner: '매장(사장님)', seller: '사업자 유저 셀러', agency: '에이전시', user: '유저(영입 커미션)',
+    }
+
+    const header = ['구분', '항목', '건수', '금액(원)', '공급가액(원)', '부가세(원)', '비고']
+    const rows: (string | number)[][] = []
+    rows.push(['요약', '대상 월(KST)', '', '', '', '', month])
+    rows.push(['매출', '이용권/주문 매출(GMV)', sales.n, sales.gmv, supplyOf(sales.gmv), vatOf(sales.gmv), '주문 status DONE/PAID/DELIVERED'])
+    rows.push(['매출', '플랫폼 수수료 수익', sales.n, sales.commission, supplyOf(sales.commission), vatOf(sales.commission), `수수료율 반영(기본 ${defaultRate}%)`])
+    rows.push(['환불', '환불/취소 총액', refunds.n, refunds.refunded, '', '', '환불 발생월(refunded_at) 기준'])
+    let payoutTotal = 0, payoutCount = 0
+    for (const p of (payouts.results || [])) {
+      payoutTotal += p.total; payoutCount += p.n
+      rows.push(['정산지급', payeeLabel[p.payee_type] || p.payee_type, p.n, p.total, '', '', '실송금(sent) — 세금계산서 발행 대상'])
+    }
+    if (payoutCount === 0) rows.push(['정산지급', '(해당 월 실송금 없음)', 0, 0, '', '', 'status=sent 기준'])
+    rows.push(['정산지급', '합계', payoutCount, payoutTotal, '', '', '세금계산서 발행 대상 총계'])
+    rows.push(['원천징수', '원천징수 총계', wht.n, wht.withholding, '', '', `총지급 ${wht.gross.toLocaleString()} · 실지급 ${wht.net.toLocaleString()}`])
+    rows.push(['참고', '도매(제조사) 매입', '', '', '', '', '별도: /api/wholesale/tax/purchase-invoices?period=' + month])
+    rows.push(['참고', '세금계산서 실발행 현황', '', '', '', '', '별도: /api/admin/tax/settlement-invoices'])
+
+    const csv = [header, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n')
+    return c.body('﻿' + csv, 200, {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="urdeal-accounting-${month}.csv"`,
+    })
+  } catch (err) {
+    return safeError(c, err, '월별 회계 export 중 오류가 발생했습니다', '[admin-tax]')
+  }
 })

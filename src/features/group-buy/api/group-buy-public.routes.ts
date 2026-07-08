@@ -17,6 +17,7 @@ import type { Hono } from 'hono'
 import { requireAuth, getCurrentUser, requireAdmin } from '@/worker/middleware/auth'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
+import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 import { safeError } from '@/worker/utils/safe-error'
 import { productDetailCols, productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns'
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
@@ -24,6 +25,7 @@ import type { GroupBuyProductRow, VoucherRow } from '@/shared/db/group-buy-types
 import { ensureTables, maxTierDiscount, getMealVoucherCommissionRate, getSellerCommissionRate } from './helpers'
 // 🍽️ 2026-06-17 (#5 대표 메뉴): products god-table 증식 차단용 K-V 사이드테이블에서 메뉴 읽기.
 import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
+import { intParam } from '@/shared/pagination'
 
 // 🛡️ 2026-05-22 module-scope: gift_catalog JOIN 가능 여부 캐시.
 //   null = 미확인, true = 가능, false = table 부재 → fallback 만 사용.
@@ -91,14 +93,12 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const status = c.req.query('status') || 'active'
     const categoryParam = c.req.query('category') || 'all'
     const validCategories = VOUCHER_CATEGORIES as readonly string[]
-    // 🧭 2026-06-17 [UNLOCK_LOADING] (사용자 요청 — 일반 상품 카테고리): general 은 VOUCHER_CATEGORIES 에
-    //   없어 기존엔 항상 voucher 로 폴백 → 클라 필터에서 0개로 사라지는 구조적 빈 카테고리였음.
-    //   이제 general 도 명시 지원(해당 카테고리 요청 시에만 — 기본 'all' 피드/캐시키/SSR 는 voucher 그대로 불변).
+    // ❌ 2026-07-02 [UNLOCK_LOADING] (대표 확정 "동네딜에는 안 섞는다 — 완전 분리 유지"): 06-17 에
+    //   추가됐던 general(배송형) 명시 지원 제거 — 어떤 소비자 UI 도 안 쓰던 휴면 분기였고, 동네딜=로컬
+    //   이용권 전용. 배송형은 쇼핑(/browse) 전용. 가드: scripts/check-dongnedeal-separation.mjs
     const categories = categoryParam === 'all'
       ? validCategories
-      : categoryParam === 'general'
-        ? ['general']
-        : (validCategories.includes(categoryParam) ? [categoryParam] : validCategories)
+      : (validCategories.includes(categoryParam) ? [categoryParam] : validCategories)
 
     // 🏭 2026-06-05 [UNLOCK_LOADING] (사용자 승인 — 동네딜 필터 근본수정): sort + 페이지네이션 서버사이드.
     //   기존: 클라가 항상 ?status=active(파라미터 없음)로 받아 최신 50개만 → 카테고리/정렬/검색을 클라에서
@@ -112,9 +112,13 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       discount: 'p.discount_rate DESC, p.created_at DESC',
     }
     const sortParam = c.req.query('sort') || ''
-    const orderBy = ALLOWED_GB_SORT[sortParam] || 'p.created_at DESC'
-    const pageNum = Math.max(1, (parseInt(c.req.query('page') || '1', 10) || 1))
-    const pageLimit = Math.min(100, Math.max(1, (parseInt(c.req.query('limit') || '50', 10) || 50)))
+    // 🎯 2026-07-04 [UNLOCK_LOADING] (대표 "데모 이용권 노출은 항상 후순위"): 어떤 정렬이든 1차 키 =
+    //   데모-후순위(slug demo-deal-*). 실 사업자/플랫폼 상품이 항상 먼저, 데모는 뒤 채움용.
+    //   캐시키/헤더/필드 전부 불변 — 응답 내 행 순서만. materialized cron 도 동일 정렬(짝 수정).
+    const DEMO_LAST = "(CASE WHEN COALESCE(p.slug,'') LIKE 'demo-deal-%' THEN 1 ELSE 0 END)"
+    const orderBy = `${DEMO_LAST}, ${ALLOWED_GB_SORT[sortParam] || 'p.created_at DESC'}`
+    const pageNum = Math.max(1, intParam(c.req.query('page'), 1))
+    const pageLimit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 50)))
     const offset = (pageNum - 1) * pageLimit
     // 🗺️ 2026-06-18 [UNLOCK_LOADING]: "내 동네 딜" 지역 필터. region = 시군구코드(5자리) 또는 행정동코드(~10자리).
     //   기본 요청(region 없음)은 키/쿼리/materialized 전부 불변 → SSR 0-RTT 보존. region 붙은 요청만 분기.
@@ -170,7 +174,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           p.group_buy_deadline AS expires_at, p.group_buy_tiers,
           p.discount_rate, p.sold_count, p.avg_rating, p.deal_only,
           p.brand_name, p.brand_icon_url, p.created_at, p.seller_id,
-          p.restaurant_name, p.restaurant_address,
+          p.restaurant_name, p.restaurant_address, p.slug,
           ${_dominantColorCol === false ? '' : 'p.dominant_color,'}
           s.name AS seller_name, s.profile_image AS seller_avatar
         `
@@ -277,7 +281,76 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       return { ...p, current_price: Math.round(base * (1 - md / 100)), current_discount_pct: md }
     })
 
-    return c.json({ success: true, data: mapped })
+    // 🎯 2026-07-02 [UNLOCK_LOADING] (대표 신고 "홈이 미완성으로 먼저 뜨고 응모 버튼이 나중에 등장"):
+    //   추첨(fcfs) 정보 body enrich — 기존엔 카드가 별도 /api/fcfs/active 클라 fetch 를 기다려
+    //   [배지·응모 버튼 없음 → 등장] 2단 페인트였음. 피드 응답에 서버에서 합쳐 SSR/엣지캐시 첫
+    //   페인트부터 완성형(카운트 실시간 보정은 클라 훅이 후속). 2026-05-30 current_price enrich 와
+    //   동일 additive 패턴 — 캐시키/캐시 헤더/tiers parse/기존 필드 전부 불변, fail-soft(실패 시 기존 응답).
+    let withFcfs = mapped
+    try {
+      const ids = mapped.map((p) => Number(p.id)).filter((n) => Number.isFinite(n) && n > 0)
+      if (ids.length > 0) {
+        const ph2 = ids.map(() => '?').join(',')
+        const { results: fcfsMeta } = await DB.prepare(
+          `SELECT product_id, key, value FROM product_supply_meta WHERE (key LIKE 'fcfs_%' OR key = 'prelaunch') AND product_id IN (${ph2})`,
+        ).bind(...ids).all<{ product_id: number; key: string; value: string | null }>()
+        const cfgById = new Map<number, Record<string, string>>()
+        for (const m of fcfsMeta || []) {
+          const rec = cfgById.get(m.product_id) || {}
+          rec[m.key] = m.value ?? ''
+          cfgById.set(m.product_id, rec)
+        }
+        const enabledIds = [...cfgById.entries()].filter(([, r]) => r.fcfs_enabled === '1').map(([id]) => id)
+        if (enabledIds.length > 0) {
+          const ph3 = enabledIds.map(() => '?').join(',')
+          const { results: cnts } = await DB.prepare(
+            `SELECT product_id, COUNT(*) as n FROM fcfs_applications
+              WHERE product_id IN (${ph3}) AND status IN ('applied','selected') GROUP BY product_id`,
+          ).bind(...enabledIds).all<{ product_id: number; n: number }>().catch(() => ({ results: [] as { product_id: number; n: number }[] }))
+          const cntById = new Map((cnts || []).map((r) => [r.product_id, r.n]))
+          const enabledSet = new Set(enabledIds)
+          withFcfs = mapped.map((p) => {
+            const pid = Number(p.id)
+            if (!enabledSet.has(pid)) return p
+            const rec = cfgById.get(pid) || {}
+            const seed = Math.max(0, parseInt(rec.fcfs_applied_seed || '0', 10) || 0)
+            return {
+              ...p,
+              // 🏷️ 2026-07-05 (대표 "옵션으로 선택") — 오픈 예정형 데모: 카드 '오픈 예정' 배지 + 상세 CTA 분기.
+              ...(rec.prelaunch === '1' ? { prelaunch: true } : {}),
+              fcfs: {
+                enabled: true,
+                prelaunch: rec.prelaunch === '1',
+                spots: Math.max(0, parseInt(rec.fcfs_spots || '0', 10) || 0),
+                appliedDisplay: seed + (cntById.get(pid) || 0),
+                deadline: rec.fcfs_deadline || null,
+                // 🎯 2026-07-04 (대표 "데모 항상 후순위"): 클라 '선착순 상위노출' boost 가 데모를
+                //   끌어올리지 않게 demo 플래그 — RestaurantMapPage displayList 가 non-demo 만 boost.
+                demo: String((p as { slug?: string }).slug || '').startsWith('demo-deal-'),
+              },
+            }
+          })
+        }
+      }
+    } catch { /* fail-soft — 클라 useFcfs 훅이 폴백 */ }
+
+    // 🏪 2026-07-05 온누리 가맹 뱃지 (B2G — "온누리 사용 가능 표시" 약속): seller_meta.onnuri_merchant='1'
+    //   인 매장 상품에 onnuri_merchant: true 를 additive enrich — fcfs/current_price enrich 와 동일 패턴
+    //   (캐시키/헤더/기존 필드 불변, fail-soft).
+    let withOnnuri = withFcfs
+    try {
+      const sellerIds = [...new Set(withFcfs.map((p) => Number((p as { seller_id?: number }).seller_id)).filter((n) => Number.isFinite(n) && n > 0))]
+      if (sellerIds.length > 0) {
+        const { getSellerMeta } = await import('../../../worker/utils/seller-meta')
+        const metaMap = await getSellerMeta(DB, sellerIds)
+        const onnuriSet = new Set([...metaMap.entries()].filter(([, r]) => r.onnuri_merchant === '1').map(([sid]) => sid))
+        if (onnuriSet.size > 0) {
+          withOnnuri = withFcfs.map((p) => (onnuriSet.has(Number((p as { seller_id?: number }).seller_id)) ? { ...p, onnuri_merchant: true } : p))
+        }
+      }
+    } catch { /* fail-soft */ }
+
+    return c.json({ success: true, data: withOnnuri })
   })
 
   // 🛡️ 2026-06-10 (사용자 신고 — 교환권 상세 500 전수 재현): 어드민 전용 단계별 진단.
@@ -437,6 +510,23 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr) && arr.length) menu = arr }
     } catch { /* meta 데이터 invalid — 메뉴 없음 */ }
     const seller_handle = (handleRow?.handle && handleRow.handle.toLowerCase() !== 'me') ? handleRow.handle : null
+    // 🛡️ 2026-07-01 (대표 "1인당 결제 최대 한도" — 셀러가 등록 시 설정): product_supply_meta.max_per_person.
+    //   0/미설정=무제한. 클라 스텝퍼 cap + 서버 주문검증(group-buy.routes)이 함께 사용.
+    const mppRaw = metaMap?.get(Number(id))?.max_per_person
+    const max_per_person = mppRaw != null && Number.isFinite(Number(mppRaw)) && Number(mppRaw) > 0 ? Math.floor(Number(mppRaw)) : null
+    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 등록 시 캡처한 place_url (있으면 상세 지도가 직접 연결).
+    const kakao_place_url = normalizeKakaoPlaceUrl(metaMap?.get(Number(id))?.kakao_place_url)
+    const prelaunch = metaMap?.get(Number(id))?.prelaunch === '1'  // 🏷️ 오픈 예정형(상세 배지·구매 CTA 분기)
+    // 🏪 2026-07-05 온누리 가맹 뱃지 (B2G): seller_meta.onnuri_merchant='1' 이면 상세에 additive 동봉.
+    let onnuri_merchant = false
+    try {
+      const sid = Number((product as { seller_id?: number }).seller_id)
+      if (Number.isFinite(sid) && sid > 0) {
+        const { getSellerMeta } = await import('../../../worker/utils/seller-meta')
+        const sm = await getSellerMeta(DB, [sid])
+        onnuri_merchant = sm.get(sid)?.onnuri_merchant === '1'
+      }
+    } catch { /* fail-soft */ }
 
     return c.json({
       success: true,
@@ -448,6 +538,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         next_tier_remaining: null,
         ...(seller_handle ? { seller_handle } : {}),  // 🔗 셀러 링크샵 handle (있을 때만)
         ...(menu ? { menu } : {}),                // 🍽️ #5: 대표 메뉴 (있을 때만)
+        ...(max_per_person ? { max_per_person } : {}),  // 🎯 1인당 구매 한도 (있을 때만)
+        ...(prelaunch ? { prelaunch: true } : {}),  // 🏷️ 오픈 예정형
+        ...(kakao_place_url ? { kakao_place_url } : {}),  // 🎯 카카오 장소 페이지 URL (있을 때만)
+        ...(onnuri_merchant ? { onnuri_merchant: true } : {}),  // 🏪 온누리 가맹 매장 (있을 때만)
       },
     })
     } catch (err) {
@@ -685,7 +779,33 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     if (!code) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
     try {
       // 🛰️ 2026-06-23 사용 위치(소프트 증거, 게이트 X) — body 에 있으면만 기록.
-      const body = await c.req.json<{ lat?: number; lng?: number }>().catch(() => ({} as { lat?: number; lng?: number }))
+      // 🎟️ 2026-07-02 (대표 — 매장별 사용 방식 선택): store_code 모드면 매장 확인코드 동봉 필수.
+      const body = await c.req.json<{ lat?: number; lng?: number; store_code?: string }>().catch(() => ({} as { lat?: number; lng?: number; store_code?: string }))
+
+      // 🎟️ 모드 게이트 — CAS 이전에 매장 설정 확인. scan_only=셀프 차단 / store_code=코드 일치 필수.
+      //   미설정 매장 = self_free(기존 동작). 조회 실패도 fail-open(self_free).
+      const pre = await DB.prepare(
+        'SELECT v.id, v.status, p.seller_id FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code=? AND v.user_id=?'
+      ).bind(code, user.id).first<{ id: number; status: string; seller_id: number | null }>().catch(() => null)
+      if (!pre) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
+      let redemptionMode: 'scan_only' | 'store_code' | 'self_free' = 'self_free'
+      if (pre.seller_id != null && pre.status === 'unused') {
+        try {
+          const { getRedemptionSettings } = await import('../../../worker/utils/redemption-settings')
+          const s = await getRedemptionSettings(DB, Number(pre.seller_id))
+          redemptionMode = s.mode
+          if (redemptionMode === 'scan_only') {
+            return c.json({ success: false, code: 'SCAN_ONLY_MODE', error: '이 매장은 직원 확인 방식이에요. 직원에게 QR 화면을 보여주세요.' }, 403)
+          }
+          if (redemptionMode === 'store_code') {
+            const input = String(body.store_code || '').trim()
+            if (!input || !s.store_code || input !== s.store_code) {
+              return c.json({ success: false, code: 'STORE_CODE_REQUIRED', error: '매장에 비치된 확인코드 4자리를 입력해주세요.' }, 403)
+            }
+          }
+        } catch { /* fail-open — 기존 self_free 동작 */ }
+      }
+
       // 🛡️ 머니룰: claim-before-credit — 미사용+본인 일 때만 원자적 used 선점.
       const res = await DB.prepare(
         "UPDATE vouchers SET status='used', used_at=datetime('now') WHERE code=? AND user_id=? AND status='unused'"
@@ -693,10 +813,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       const claimed = (res.meta?.changes || 0) === 1
 
       const row = await DB.prepare(`
-        SELECT v.id, v.code, v.status, v.used_at, v.product_id, p.name as product_name, p.restaurant_name
+        SELECT v.id, v.code, v.status, v.used_at, v.product_id, v.applied_price, p.name as product_name, p.restaurant_name, p.seller_id
         FROM vouchers v JOIN products p ON p.id = v.product_id
         WHERE v.code=? AND v.user_id=?
-      `).bind(code, user.id).first<{ id: number; code: string; status: string; used_at: string; product_name?: string; restaurant_name?: string }>().catch(() => null)
+      `).bind(code, user.id).first<{ id: number; code: string; status: string; used_at: string; applied_price?: number | null; product_name?: string; restaurant_name?: string; seller_id?: number | null }>().catch(() => null)
 
       if (!row) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
       if (!claimed && row.status !== 'used') {
@@ -709,9 +829,24 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           await recordVoucherRedemptionLocation(DB, Number(row.id), body.lat, body.lng)
         } catch { /* best-effort */ }
       }
+      // 🔔 2026-07-02: 셀프 사용 즉시 사장님 대시보드 알림 — 카운터 크로스체크(위조·취소 악용 억제).
+      if (claimed && row.seller_id != null) {
+        const notifyJob = (async () => {
+          try {
+            const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+            const amt = Number(row.applied_price || 0)
+            await createDashboardNotification(DB, 'seller', String(row.seller_id), 'voucher_self_redeemed',
+              '🎟️ 이용권 셀프 사용', `${row.product_name || '이용권'}${amt > 0 ? ` · ${amt.toLocaleString('ko-KR')}원` : ''} — 손님이 방금 사용 처리했어요`,
+              '/seller/scan')
+          } catch { /* best-effort */ }
+        })()
+        c.executionCtx?.waitUntil?.(notifyJob)
+      }
       // claimed === true (방금 사용) 또는 이미 used(멱등 반환)
       const usedAtMs = row.used_at ? Date.parse(row.used_at.replace(' ', 'T') + 'Z') : Date.now()
-      const cancelableUntil = usedAtMs + 60_000
+      // 🎟️ 셀프취소(60초)는 self_free 모드에서만 — store_code 모드는 2단계 입력이라 오탭이 거의 불가,
+      //   취소 권한은 매장(사장님 스캔 화면)으로. 취소창 0 = "보여주고 나가서 취소" 악용 차단.
+      const cancelableUntil = redemptionMode === 'self_free' ? usedAtMs + 60_000 : usedAtMs
       return c.json({
         success: true,
         data: {
@@ -735,6 +870,20 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const code = c.req.param('code')
     if (!code) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
     try {
+      // 🎟️ 2026-07-02 모드 게이트: 셀프취소는 self_free 매장에서만 — store_code/scan_only 매장은
+      //   취소 권한이 매장(사장님)에 있음("보여주고 나가서 60초 내 취소" 악용 차단).
+      const pre = await DB.prepare(
+        'SELECT p.seller_id, v.applied_price, p.name as product_name FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code=? AND v.user_id=?'
+      ).bind(code, user.id).first<{ seller_id: number | null; applied_price: number | null; product_name?: string }>().catch(() => null)
+      if (pre?.seller_id != null) {
+        try {
+          const { getRedemptionSettings } = await import('../../../worker/utils/redemption-settings')
+          const s = await getRedemptionSettings(DB, Number(pre.seller_id))
+          if (s.mode !== 'self_free') {
+            return c.json({ success: false, error: '이 매장은 셀프 취소가 불가해요. 직원에게 문의해주세요.' }, 403)
+          }
+        } catch { /* fail-open — 기존 동작 */ }
+      }
       // CAS: 본인 + used + used_at 60초 이내 + 아직 정산 전(settlement_id IS NULL) 일 때만 되돌림.
       //   기존 auto-settlement(used 7일 후 정산)와 정합 — 정산된 건 절대 취소 불가(60초 ≪ 7일이라 안전, 명시 가드).
       const res = await DB.prepare(
@@ -743,9 +892,59 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       if ((res.meta?.changes || 0) !== 1) {
         return c.json({ success: false, error: '취소 가능 시간(60초)이 지났습니다' }, 409)
       }
+      // 🔔 취소도 사장님에게 즉시 알림 — "사용완료 보여주고 취소" 수법의 가시화(악용 억제 핵심).
+      if (pre?.seller_id != null) {
+        const notifyJob = (async () => {
+          try {
+            const { createDashboardNotification } = await import('../../notifications/api/dashboard-notifications.routes')
+            await createDashboardNotification(DB, 'seller', String(pre.seller_id), 'voucher_redeem_cancelled',
+              '↩️ 셀프 사용 취소됨', `${pre.product_name || '이용권'} — 손님이 방금 사용을 취소했어요. 매장에서 확인해보세요.`,
+              '/seller/scan')
+          } catch { /* best-effort */ }
+        })()
+        c.executionCtx?.waitUntil?.(notifyJob)
+      }
       return c.json({ success: true, data: { code, status: 'unused' } })
     } catch (err) {
       return safeError(c, err, '취소 중 오류가 발생했습니다', '[cancel-redeem]')
+    }
+  })
+
+  // ── GET /vouchers/:code/redemption-info — 🎟️ 2026-07-06 (대표 "이용권 페이지에 사용방법을 사장님
+  //   설정과 동일하게"): 소비자가 사용 *전에* 이 매장의 사용 방식을 알 수 있게 모드만 반환.
+  //   scan_only=직원 스캔 / store_code=카운터 확인코드 입력 / self_free=바로 셀프 사용.
+  //   ⚠️ store_code 값(카운터 비밀코드)은 반환하지 않음 — 현장에서만 확인(원격 오사용 차단, 게이트와 동일 철학). ──
+  router.get('/vouchers/:code/redemption-info', requireAuth(), async (c) => {
+    const { DB } = c.env
+    const user = getCurrentUser(c)
+    if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    const code = c.req.param('code')
+    if (!code) return c.json({ success: false, error: '잘못된 요청입니다' }, 400)
+    try {
+      // 본인 소유 이용권만 — self-redeem 게이트와 동일한 voucher→product→seller 해석.
+      const pre = await DB.prepare(
+        'SELECT p.seller_id FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code=? AND v.user_id=?'
+      ).bind(code, user.id).first<{ seller_id: number | null }>().catch(() => null)
+      if (!pre) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
+      let mode: 'scan_only' | 'store_code' | 'self_free' = 'self_free'  // 미설정/조회실패 = 기존 동작
+      let conditions: string[] = []
+      if (pre.seller_id != null) {
+        try {
+          const { getRedemptionSettings } = await import('../../../worker/utils/redemption-settings')
+          mode = (await getRedemptionSettings(DB, Number(pre.seller_id))).mode
+        } catch { /* fail-open — self_free */ }
+        // 🎟️ 2026-07-06 매장별 사용조건(사장님이 선택) → 소비자 '이용 안내'에 표준 문구로 표시.
+        try {
+          const { getSellerMeta } = await import('../../../worker/utils/seller-meta')
+          const { resolveUsageConditions } = await import('../../../shared/voucher-usage-conditions')
+          const raw = (await getSellerMeta(DB, [Number(pre.seller_id)]))?.get(Number(pre.seller_id))
+          const keys = JSON.parse(String(raw?.voucher_usage_conditions || '[]'))
+          conditions = resolveUsageConditions(Array.isArray(keys) ? keys : [], String(raw?.voucher_usage_custom || ''))
+        } catch { /* 미설정 */ }
+      }
+      return c.json({ success: true, data: { mode, conditions } })
+    } catch (err) {
+      return safeError(c, err, '사용 방식 조회 중 오류가 발생했습니다', '[redemption-info]')
     }
   })
 

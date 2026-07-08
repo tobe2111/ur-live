@@ -333,6 +333,11 @@ export async function payoutSupplier(
 
   // 🛡️ 2026-06-28 (잔여 P1): held_at(환불/분쟁 보류) 정산은 지급 제외 — 컬럼 보장 후 가드.
   await DB.prepare("ALTER TABLE supplier_settlements ADD COLUMN held_at DATETIME").run().catch(() => { /* 이미 존재 */ });
+  // 🛡️ 2026-07-02 (감사 #3 — 서브초 레이스): payout_ref 로 *이 지급이 실제 flip 한 정산 행*을 태깅 →
+  //   지급 후 그 태그로 실제 합계를 재조회해 payout 행/원장 금액을 reconcile. 지급액 스냅샷과 claim 사이에
+  //   matureSupplierSettlements 가 pending→available 를 더 성숙시키면 claim 이 그 행들까지 flip 하는데,
+  //   기존엔 payout 행에 *스냅샷* 금액만 기록 → "paid 로 마킹된 정산 > 실지급 기록" 불일치(제조사 손해)였음.
+  await DB.prepare("ALTER TABLE supplier_settlements ADD COLUMN payout_ref TEXT").run().catch(() => { /* 이미 존재 */ });
 
   // 지급 대상 합계(available, 보류 제외).
   const agg = await DB.prepare(
@@ -387,11 +392,12 @@ export async function payoutSupplier(
     ),
     // [1] 정산 claim — available → paid. 단 [0] 의 payout 행(payoutTag)이 실제로 들어갔을 때만(캡 통과).
     //     캡 초과로 [0] 이 0행이면 EXISTS=false → claim 0행(no-op). 동시 지급 중복은 status CAS 로 차단.
+    //     🛡️ 감사 #3: flip 하는 행에 payout_ref=payoutTag 태깅 → 지급 후 실제 합계 reconcile 의 근거.
     DB.prepare(
-      `UPDATE supplier_settlements SET status = 'paid', paid_at = datetime('now')
+      `UPDATE supplier_settlements SET status = 'paid', paid_at = datetime('now'), payout_ref = ?
        WHERE supplier_id = ? AND status = 'available' AND held_at IS NULL
          AND EXISTS (SELECT 1 FROM supplier_payouts WHERE supplier_id = ? AND note = ?)`
-    ).bind(supplierId, supplierId, payoutTag),
+    ).bind(payoutTag, supplierId, supplierId, payoutTag),
     // [2] 잔고 이동 — claim 반영 후 SUM 재계산(자가치유, 증분 드리프트 방지).
     DB.prepare(
       `UPDATE supplier_balances SET
@@ -415,17 +421,30 @@ export async function payoutSupplier(
     return { ok: false, amount: 0, settlement_count: 0, error: 'already_paid' };
   }
 
+  // 🛡️ 감사 #3 reconcile: 이 지급이 *실제로* flip 한 정산(payout_ref=payoutTag) 합계를 재조회 →
+  //   스냅샷(amount)과 claim 사이 만기 성숙으로 claim 이 더/덜 flip 했어도 payout 행·원장 금액을 실제와 일치.
+  //   (payout_ref 컬럼 부재 등 예외 시 스냅샷 amount/claimed 로 degrade — 기존 동작.)
+  let paidAmount = amount;
+  let paidCount = claimed;
+  try {
+    const act = await DB.prepare("SELECT COALESCE(SUM(supply_amount), 0) AS amt, COUNT(*) AS cnt FROM supplier_settlements WHERE payout_ref = ?")
+      .bind(payoutTag).first<{ amt: number; cnt: number }>();
+    const a = Math.max(0, Math.floor(Number(act?.amt) || 0));
+    const cc = Number(act?.cnt) || 0;
+    if (cc > 0) { paidAmount = a; paidCount = cc; }
+  } catch { /* degrade to snapshot */ }
+
   const payoutId = Number(batchRes?.[0]?.meta?.last_row_id) || undefined;
-  // 사용자 note 를 payout 행에 반영(태그를 실제 note 로 교체) — 식별 태그는 내부용.
-  await DB.prepare("UPDATE supplier_payouts SET note = ? WHERE supplier_id = ? AND note = ?")
-    .bind(opts.note ?? null, supplierId, payoutTag).run().catch(() => { /* best-effort, 태그여도 기능 무해 */ });
+  // 사용자 note 반영 + 실제 지급액/건수로 payout 행 reconcile(태그는 내부 식별용 → 실 note 로 교체).
+  await DB.prepare("UPDATE supplier_payouts SET note = ?, amount = ?, settlement_count = ? WHERE supplier_id = ? AND note = ?")
+    .bind(opts.note ?? null, paidAmount, paidCount, supplierId, payoutTag).run().catch(() => { /* best-effort, 태그여도 기능 무해 */ });
   try {
     await recordLedger(DB, {
-      event_type: 'supplier_payout', reference_id: String(payoutId ?? supplierId), amount,
+      event_type: 'supplier_payout', reference_id: String(payoutId ?? supplierId), amount: paidAmount,
       debit_account: `supplier:${supplierId}`, credit_account: 'platform:payout',
-      metadata: { settlement_count: claimed, admin_id: opts.adminId ?? null },
+      metadata: { settlement_count: paidCount, admin_id: opts.adminId ?? null },
     });
   } catch { /* ledger best-effort */ }
 
-  return { ok: true, amount, settlement_count: claimed, payout_id: payoutId };
+  return { ok: true, amount: paidAmount, settlement_count: paidCount, payout_id: payoutId };
 }

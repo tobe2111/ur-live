@@ -10,6 +10,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth';
 import type { Env } from '@/worker/types/env';
+import { intParam } from '@/shared/pagination'
 const dashboardNotificationsRoutes = new Hono<{ Bindings: Env }>();
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
 
@@ -102,7 +103,7 @@ dashboardNotificationsRoutes.get('/', requireAuth(), async (c) => {
   const { DB } = c.env;
   await ensureTable(DB);
 
-  const limit = Math.min(Math.max(1, Number(c.req.query('limit') || '20') || 20), 100);
+  const limit = Math.min(Math.max(1, intParam(c.req.query('limit'), 20)), 100);
   const unreadOnly = c.req.query('unread_only') === 'true';
 
   // 🛡️ 2026-04-28: agency 분기 추가. 이전엔 admin/seller 만 분기 → 에이전시는 자기 알림 못 봄.

@@ -10,7 +10,7 @@ import { ChevronRight, Search, ChevronDown, MessageSquare, Phone } from 'lucide-
 import SEO from '@/components/SEO'
 import { WT } from './wholesale-theme'
 import { WholesaleWordmark } from '@/pages/wholesale-catalog/WholesaleLogo'
-import { BUSINESS_INFO } from './WholesaleFooter'
+import { useBusinessInfo } from './WholesaleFooter'
 
 type Cat = '전체' | '주문·결제' | '정산·세금' | '등급·회원' | '배송·반품'
 
@@ -32,6 +32,8 @@ const KEYWORDS = ['예치금 충전', '세금계산서', '회원 등급', '배�
 const CATS: Cat[] = ['전체', '주문·결제', '정산·세금', '등급·회원', '배송·반품']
 
 export default function WholesaleSupportPage() {
+  // 🏢 2026-07-04 몰별 사업자정보 — company_json 오버레이(미설정 몰은 기본과 동일).
+  const BUSINESS_INFO = useBusinessInfo()
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [cat, setCat] = useState<Cat>('전체')

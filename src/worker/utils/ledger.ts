@@ -230,6 +230,24 @@ export async function recordAgencyCommissionShare(
     return { agency_id: null, amount: 0 }
   }
 
+  // 💸 2026-07-04 [INV-CB-DEDUP] (F2 이중 커미션 수정 — commission-funding-restructure.md):
+  //   같은 구매에 결제확정 시 GMV 커미션(agency_store_intro_commissions sales_commission, 아비터 캡 대상)이
+  //   이미 적립됐으면 이 사용시점 셰어(platform_fee 30%)는 **skip** — 두 시스템이 같은 에이전시에
+  //   같은 주문으로 이중 적립(최대 GMV 3.5% > 플랫폼 수수료)하던 구조적 누수 차단.
+  //   확정 커미션이 없을 때(영입 시점이 구매 후 등)만 이 레거시 셰어가 단독 지급(단일-지급 보장).
+  try {
+    const v = await DB.prepare('SELECT order_id FROM vouchers WHERE id = ?')
+      .bind(params.voucher_id).first<{ order_id: number | null }>().catch(() => null)
+    if (v?.order_id) {
+      const dup = await DB.prepare(
+        `SELECT id FROM agency_store_intro_commissions
+          WHERE order_id = ? AND agency_id = ? AND type = 'sales_commission'
+            AND COALESCE(status, 'pending') != 'cancelled' LIMIT 1`,
+      ).bind(v.order_id, seller.introduced_by_agency_id).first().catch(() => null)
+      if (dup) return { agency_id: seller.introduced_by_agency_id, amount: 0 }
+    }
+  } catch { /* dedup 조회 실패 → 기존 동작(지급) — 멱등 ref 가 재실행 이중은 막음 */ }
+
   // 분배 비율 (platform_settings)
   let sharePct = 0.30  // default 30%
   try {
@@ -361,6 +379,22 @@ export async function recordIntroductionCommissionShare(
     return { influencer_id: null, amount: 0 }
   }
 
+  // 💸 2026-07-04 [INV-CB-DEDUP] (F2 이중 커미션 수정): 같은 구매에 결제확정 시 영입 커미션
+  //   (influencer_attributions source='store_intro', 아비터 캡 대상)이 이미 적립됐으면 이 사용시점
+  //   셰어(platform_fee 20%)는 skip — 같은 크리에이터에 같은 주문 이중 적립(GMV 2.5%) 차단.
+  try {
+    const v = await DB.prepare('SELECT order_id FROM vouchers WHERE id = ?')
+      .bind(params.voucher_id).first<{ order_id: number | null }>().catch(() => null)
+    if (v?.order_id) {
+      const dup = await DB.prepare(
+        `SELECT id FROM influencer_attributions
+          WHERE order_id = ? AND influencer_id = ? AND source = 'store_intro'
+            AND COALESCE(status, 'pending') NOT IN ('clawed_back', 'cancelled') LIMIT 1`,
+      ).bind(v.order_id, String(seller.introduced_by_influencer_id)).first().catch(() => null)
+      if (dup) return { influencer_id: seller.introduced_by_influencer_id, amount: 0 }
+    }
+  } catch { /* dedup 조회 실패 → 기존 동작(지급) — 멱등 ref 가 재실행 이중은 막음 */ }
+
   // 분배 비율 (platform_settings.influencer_intro_share_pct, default 20%)
   let sharePct = 0.20
   try {
@@ -421,20 +455,139 @@ export async function recordRefundLedger(
   })
 }
 
-/** 정산 가능 잔액 (특정 payee 의 credit 합 - 이미 payout 처리된 amount 합) */
+/**
+ * 💸 2026-07-04 (promo owner-펀딩 — docs/design/commission-funding-restructure.md §3-D):
+ *   핀 추천 소개비(affiliate)를 **주인(매장/셀러) 부담**으로 이전하는 원장 차감.
+ *   추천인에게는 현행대로 딜이 적립되고(affiliate-credit), 같은 금액을 주인 receivable 에서
+ *   debit → platform:revenue 로 회수(플랫폼이 딜 지급 재원을 주인 몫에서 충당).
+ *
+ *   게이트: platform_settings.promo_funding_source === 'owner' 일 때만 (기본 'platform' = no-op 현행).
+ *   멱등: reference_id = `order:{id}:promo` 주문당 1회. 대상: 해당 주문의 affiliate_earnings
+ *   유효분(holding/granted — refunded 제외) 합계. 0이면 no-op.
+ *   호출: 이용권 사용 확정 시(group-buy-voucher.routes — 주인 receivable 이 생기는 시점과 동일).
+ *   역전: reverseOwnerPromoDebit (환불 시 affiliate clawback 과 함께).
+ * @returns 차감된 금액 (no-op 이면 0)
+ */
+export async function debitOwnerPromoForOrder(
+  DB: D1Database,
+  params: {
+    orderId?: number | string | null
+    /** orderId 미보유 호출부(셀러 PIN 사용 등)용 — vouchers.order_id 를 조회해 해석 */
+    voucherId?: number | string | null
+    /** 주인 원장 계정 — 예: `merchant:{id}` (이용권) / `seller:{id}` (쇼핑) */
+    ownerAccount: string
+  },
+): Promise<number> {
+  try {
+    const src = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'promo_funding_source'")
+      .first<{ value: string }>().catch(() => null)
+    if (src?.value !== 'owner') return 0
+
+    let orderId = params.orderId
+    if (!orderId && params.voucherId) {
+      const v = await DB.prepare('SELECT order_id FROM vouchers WHERE id = ?')
+        .bind(params.voucherId).first<{ order_id: number | null }>().catch(() => null)
+      orderId = v?.order_id ?? null
+    }
+    if (!orderId || !params.ownerAccount) return 0
+
+    await ensureLedgerTable(DB)
+    const ref = `order:${orderId}:promo`
+    const existing = await DB.prepare(
+      `SELECT id FROM ledger_entries WHERE reference_id = ? AND event_type = 'promo_fee' LIMIT 1`,
+    ).bind(ref).first().catch(() => null)
+    if (existing) return 0
+
+    const sum = await DB.prepare(
+      `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
+        WHERE order_id = ? AND COALESCE(status, '') IN ('holding', 'granted')`,
+    ).bind(orderId).first<{ total: number }>().catch(() => null)
+    const promo = Math.max(0, Math.round(Number(sum?.total) || 0))
+    if (promo <= 0) return 0
+
+    await recordLedger(DB, {
+      event_type: 'promo_fee',
+      reference_id: ref,
+      amount: promo,
+      debit_account: params.ownerAccount,   // 주인 receivable 차감
+      credit_account: 'platform:revenue',   // 딜 지급 재원 회수
+      metadata: { kind: 'owner_promo_fee', order_id: orderId },
+    })
+    return promo
+  } catch {
+    return 0 // fail-soft — 사용 확정/정산 흐름 불막음 (미차감 방향 = 주인에게 유리, 안전)
+  }
+}
+
+/**
+ * 환불 시 promo 차감 역전(멱등) — affiliate clawback 과 대칭. debit 이 없으면 no-op.
+ */
+export async function reverseOwnerPromoDebit(
+  DB: D1Database,
+  orderId: number | string,
+  reason: string,
+): Promise<void> {
+  try {
+    if (!orderId) return
+    const ref = `order:${orderId}:promo`
+    const orig = await DB.prepare(
+      `SELECT debit_account, amount FROM ledger_entries WHERE reference_id = ? AND event_type = 'promo_fee' LIMIT 1`,
+    ).bind(ref).first<{ debit_account: string; amount: number }>().catch(() => null)
+    if (!orig || !(Number(orig.amount) > 0)) return
+    const done = await DB.prepare(
+      `SELECT id FROM ledger_entries WHERE reference_id = ? AND event_type = 'promo_fee_reversal' LIMIT 1`,
+    ).bind(ref).first().catch(() => null)
+    if (done) return
+    await recordLedger(DB, {
+      event_type: 'promo_fee_reversal',
+      reference_id: ref,
+      amount: Number(orig.amount),
+      debit_account: 'platform:revenue',
+      credit_account: String(orig.debit_account), // 주인 receivable 복원
+      metadata: { kind: 'owner_promo_fee_reversal', order_id: orderId, reason },
+    })
+  } catch { /* fail-soft */ }
+}
+
+/**
+ * 순 receivable (지급 이력 제외) = (credit − fee_amount) − debit.
+ *
+ * 💸 2026-07-01 (정산 정합 — 대표 승인): 이전 payout 집계가 **credit-only** 여서 두 가지가 새고 있었음:
+ *   ① 공구 seller credit 은 `amount=gross`(수수료 포함)+`fee_amount=수수료` 로 기록 → 수수료 미차감 gross 지급.
+ *      (이용권은 `amount=net`+`fee_amount=0`.) → `amount − fee_amount` 로 통일 net 산출.
+ *   ② seller:N 에 이미 존재하던 debit(환불 역전·인플루언서/추천 커미션)이 무시됨 → receivable 과다.
+ *      → debit 를 차감.
+ * 📐 **규칙(신규 credit 추가 시 준수)**: payout 대상 credit 의 `fee_amount` = `amount` 중 payee 의 net 이
+ *    아닌 부분(플랫폼 수수료). net 을 그대로 credit 하면 fee_amount=0. (이 규칙을 어기면 payout 오산.)
+ */
+export async function getLedgerReceivable(
+  DB: D1Database,
+  account: string,
+): Promise<number> {
+  await ensureLedgerTable(DB)
+  const bal = await DB.prepare(`
+    SELECT
+      COALESCE(SUM(CASE WHEN credit_account = ? THEN amount - COALESCE(fee_amount, 0) ELSE 0 END), 0) AS credit_net,
+      COALESCE(SUM(CASE WHEN debit_account  = ? THEN amount ELSE 0 END), 0) AS debit_total
+    FROM ledger_entries
+    WHERE credit_account = ? OR debit_account = ?
+  `).bind(account, account, account, account)
+    .first<{ credit_net: number; debit_total: number }>()
+    .catch(() => ({ credit_net: 0, debit_total: 0 }))
+  return Number(bal?.credit_net ?? 0) - Number(bal?.debit_total ?? 0)
+}
+
+/** 정산 가능 잔액 = 순 receivable − 이미 payout(approved/sent) 처리분 */
 export async function getPayablePending(
   DB: D1Database,
   payeeAccount: string,
 ): Promise<number> {
-  await ensureLedgerTable(DB)
-  const credit = await DB.prepare(
-    `SELECT COALESCE(SUM(amount), 0) as total FROM ledger_entries WHERE credit_account = ?`,
-  ).bind(payeeAccount).first<{ total: number }>().catch(() => ({ total: 0 }))
+  const receivable = await getLedgerReceivable(DB, payeeAccount)
   const paid = await DB.prepare(
     `SELECT COALESCE(SUM(amount), 0) as total FROM payouts
       WHERE (payee_type || ':' || payee_id) = ? AND status IN ('approved','sent')`,
   ).bind(payeeAccount).first<{ total: number }>().catch(() => ({ total: 0 }))
-  return Number(credit?.total ?? 0) - Number(paid?.total ?? 0)
+  return receivable - Number(paid?.total ?? 0)
 }
 
 

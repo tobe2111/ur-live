@@ -8,7 +8,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { readCache, writeCache } from './localCache'
+import { readCache, readCacheOrNull, writeCache } from './localCache'
 import { isLoggedInSync } from '@/utils/auth'
 
 interface MyOrder {
@@ -52,7 +52,13 @@ export function useMyOrders(filters?: { status?: string; limit?: number }) {
         const arr = (Array.isArray(d) ? d : (d?.items || d?.orders || [])) as MyOrder[]
         writeCache(cacheKey, arr)
         return arr
-      }).catch(() => readCache<MyOrder[]>(cacheKey, []))
+      }).catch((err) => {
+        // 🛡️ 2026-07-02: 캐시 있으면 last-known 폴백(오프라인 UX), 없으면 throw → isError.
+        //   기존 무조건 [] 폴백은 네트워크 오류를 "주문 0건"으로 위장(에러 UI dead branch).
+        const cached = readCacheOrNull<MyOrder[]>(cacheKey)
+        if (cached) return cached
+        throw err
+      })
     },
     initialData: () => readCache<MyOrder[]>(cacheKey, []),
     enabled: isLoggedInSync(),
@@ -72,7 +78,12 @@ export function useMyVouchers() {
         const arr = Array.isArray(r.data?.data) ? (r.data.data as MyVoucher[]) : []
         writeCache('my-vouchers', arr)
         return arr
-      }).catch(() => readCache<MyVoucher[]>('my-vouchers', [])),
+      }).catch((err) => {
+        // 🛡️ 2026-07-02: 캐시 폴백은 존재할 때만 — 없으면 throw → isError (빈 지갑 위장 방지).
+        const cached = readCacheOrNull<MyVoucher[]>('my-vouchers')
+        if (cached) return cached
+        throw err
+      }),
     initialData: () => readCache<MyVoucher[]>('my-vouchers', []),
     enabled: isLoggedInSync(),
     staleTime: 2 * 60 * 1000,
@@ -92,7 +103,12 @@ export function useMyAppointments() {
         const arr = Array.isArray(r.data?.data) ? (r.data.data as MyAppointment[]) : []
         writeCache('my-appointments', arr)
         return arr
-      }).catch(() => readCache<MyAppointment[]>('my-appointments', [])),
+      }).catch((err) => {
+        // 🛡️ 2026-07-02: 캐시 폴백은 존재할 때만 — 없으면 throw → isError.
+        const cached = readCacheOrNull<MyAppointment[]>('my-appointments')
+        if (cached) return cached
+        throw err
+      }),
     initialData: () => readCache<MyAppointment[]>('my-appointments', []),
     enabled: isLoggedInSync(),
     staleTime: 2 * 60 * 1000,

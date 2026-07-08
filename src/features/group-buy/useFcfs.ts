@@ -14,6 +14,8 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 
 export interface FcfsInfo {
+  /** 🏷️ 오픈 예정형 데모 — 배지가 '오픈 예정 · 사전응모' 로 바뀜 */
+  prelaunch?: boolean
   spots: number
   appliedDisplay: number
   deadline?: string | null
@@ -30,9 +32,9 @@ function fetchActive(): Promise<Map<number, FcfsInfo>> {
     .then((r) => {
       const m = new Map<number, FcfsInfo>()
       const data = Array.isArray(r.data?.data) ? r.data.data : []
-      for (const p of data as Array<{ id: number; fcfs?: { enabled?: boolean; spots?: number; appliedDisplay?: number; deadline?: string | null } }>) {
+      for (const p of data as Array<{ id: number; fcfs?: { enabled?: boolean; prelaunch?: boolean; spots?: number; appliedDisplay?: number; deadline?: string | null } }>) {
         if (p?.fcfs?.enabled) {
-          m.set(p.id, { spots: p.fcfs.spots || 0, appliedDisplay: p.fcfs.appliedDisplay || 0, deadline: p.fcfs.deadline ?? null })
+          m.set(p.id, { spots: p.fcfs.spots || 0, appliedDisplay: p.fcfs.appliedDisplay || 0, deadline: p.fcfs.deadline ?? null, prelaunch: !!p.fcfs.prelaunch })
         }
       }
       _cache = { map: m, at: Date.now() }
@@ -62,7 +64,7 @@ export function useFcfsMap(): { fcfsMap: Map<number, FcfsInfo>; applyFcfs: (id: 
       .post(`/api/fcfs/${id}/apply`)
       .then((res) => {
         const already = !!res.data?.data?.already
-        toast.success(already ? '이미 응모했어요' : '🎉 응모 완료! 추첨 결과는 알림으로 안내드려요')
+        toast.success(already ? '이미 응모했어요' : '🎉 응모 완료! 당첨 시 안내드려요')
         // 낙관적 표시 갱신(신규 응모만 +1). 서버가 appliedDisplay 를 주면 그 값 우선.
         setFcfsMap((prev) => {
           const info = prev.get(id)

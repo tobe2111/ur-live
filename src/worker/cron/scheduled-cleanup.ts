@@ -973,25 +973,23 @@ export async function handleScheduled(env: Env) {
           VALUES (?, ?, ?, datetime('now'))
         `).bind(m.group_buy_id, m.user_id, m.deposit_amount).run()
         if (!claim.meta?.changes) continue
-        // 딜 복구 (UPSERT 대신 안전한 SELECT-then-UPDATE) — 실패 시 claim 롤백(catch 에서)
+        // 딜 복구 — 💸 2026-07-05 버킷: 이 유저의 보증금 차감(cgb:{gid} 원장) 무상분을 무상으로 대칭 복원.
+        //   실패 시 claim 롤백(catch 에서). refundDealPoints 가 UPSERT + 원장(free_delta) 기록까지 담당.
         try {
-          const existing = await DB.prepare('SELECT balance FROM user_points WHERE user_id = ?').bind(m.user_id).first<{ balance: number }>()
-          if (existing) {
-            await DB.prepare("UPDATE user_points SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?")
-              .bind(m.deposit_amount, m.user_id).run()
-          } else {
-            await DB.prepare("INSERT INTO user_points (user_id, balance, updated_at) VALUES (?, ?, datetime('now'))")
-              .bind(m.user_id, m.deposit_amount).run()
-          }
+          const { refundDealPoints } = await import('../utils/point-buckets')
+          const restored = await refundDealPoints(DB, {
+            userId: m.user_id,
+            amount: m.deposit_amount,
+            ref: `cgb:${m.group_buy_id}`,
+            type: 'refund',
+            description: `[커뮤니티 공구] 보증금 자동 환불 (group:${m.group_buy_id})`,
+          })
+          if (!restored.ok) throw new Error('refundDealPoints failed')
         } catch (creditErr) {
           await DB.prepare('DELETE FROM community_group_buy_refunds WHERE group_id = ? AND user_id = ?')
             .bind(m.group_buy_id, m.user_id).run().catch(() => null)
           throw creditErr
         }
-        // 💸 2026-06-12 (4차 감사 #4): 보증금 환불 원장 기록 (fail-soft, balance_after 서브쿼리 패턴)
-        await DB.prepare(
-          "INSERT INTO point_transactions (user_id, type, amount, points_amount, balance_after, description) VALUES (?, 'refund', ?, ?, (SELECT balance FROM user_points WHERE user_id = ?), ?)"
-        ).bind(m.user_id, m.deposit_amount, m.deposit_amount, m.user_id, `[커뮤니티 공구] 보증금 자동 환불 (group:${m.group_buy_id})`).run().catch(() => null)
         // 멤버 status 갱신
         await DB.prepare("UPDATE community_group_buy_members SET status = 'refunded' WHERE id = ?").bind(m.member_id).run()
         // 사용자 알림 (best-effort)

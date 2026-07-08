@@ -101,11 +101,28 @@ export function scopedRoleCanAccess(role: AdminRole, pathname: string): boolean 
   return cfg.prefixes.some((p) => seg === p || seg.startsWith(p));
 }
 
+/**
+ * 🛡️ 2026-07-01 (권한 과대부여 감사): 재무성/파괴적 *하위경로*는 명시 역할만 변경 허용.
+ *   WRITE_DOMAINS 는 경로 첫 세그먼트로만 매칭 → 도메인 하나를 주면 그 아래 민감 서브패스까지
+ *   통째로 열렸음(예: ops 가 'tools' 로 정산일괄·플랫폼설정, 'sellers' 로 수수료율 / cs 가 'users' 로
+ *   딜 지급). 이 목록의 경로는 아래 allow(+super/admin) 만 허용해 갭을 차단. super/admin 은
+ *   canAdminRoleMutate 상단에서 이미 통과하므로 여기서 제외해도 전권 유지.
+ */
+const SENSITIVE_MUTATIONS: { readonly pattern: RegExp; readonly allow: readonly AdminRole[] }[] = [
+  { pattern: /\/gift-deal(?:$|[/?])/, allow: ['finance'] },                    // 딜 지급(머니 발행) — cs 차단
+  { pattern: /\/tools\/settlements\/process(?:$|[/?])/, allow: ['finance'] },  // 정산 일괄 처리 — ops 차단
+  { pattern: /\/tools\/settings(?:$|[/?])/, allow: ['finance'] },              // 플랫폼 설정(수수료 기본값 등) — ops 차단
+  { pattern: /\/sellers\/[^/]+\/(?:donation-commission|commission)(?:$|[/?])/, allow: ['finance'] }, // 셀러 수수료율 — ops 차단
+];
+
 /** 이 역할이 해당 경로에 '변경(mutation)' 을 할 수 있는가. (슈퍼전용 경로 차단은 호출 전 isSuperOnlyAdminPath 로) */
 export function canAdminRoleMutate(role: AdminRole, pathname: string): boolean {
   if (role === 'super' || role === 'admin') return true;
   if (role === 'viewer') return false;
   if (isScopedAdminRole(role)) return scopedRoleCanAccess(role, pathname); // 도매: 자기 도메인만 변경
+  // 재무성 하위경로: 넓은 세그먼트 도메인 grant 로 새지 않도록 명시 역할만(첫 세그먼트 매칭 갭 차단).
+  const sensitive = SENSITIVE_MUTATIONS.find((s) => s.pattern.test(pathname));
+  if (sensitive) return sensitive.allow.includes(role);
   const seg = adminPathSegment(pathname);
   if (!seg) return false;
   const domains = WRITE_DOMAINS[role as 'ops' | 'cs' | 'finance'];

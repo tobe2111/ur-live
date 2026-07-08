@@ -1,7 +1,7 @@
 // 🛡️ 2026-04-28: 카카오톡 인앱 강제 외부 브라우저 redirect (흰화면 + 무한 reload 회피)
 //   *반드시* React/i18n/sentry 등 import 보다 먼저 실행 (모듈 로딩 자체 차단 위해).
 import { autoRedirectKakaoToExternal, detectInAppBrowser } from '@/lib/in-app-browser'
-import { isChunkLoadError, isAppChunkUrl, reloadWithCacheBust } from '@/utils/chunk-error'
+import { isChunkLoadError, isAppChunkUrl, recoverFromChunkError, reloadWithCacheBust } from '@/utils/chunk-error'
 const _kakaoRedirected = autoRedirectKakaoToExternal()
 
 // 🛡️ 2026-05-07: Safari Date 파싱 글로벌 정상화.
@@ -118,19 +118,14 @@ try {
 //     수정: ① `__cb` 캐시버스트 파라미터 + location.replace 로 옛 문서 재서빙 우회(항상 새 HTML→새 청크 해시),
 //           ② 가드를 60초 윈도 내 2회로 — 그 안에서 못 고치면 진짜 에러로 보고 멈춤(무한 reload 차단),
 //              60초 지나면 카운트 리셋(나중에 또 배포되면 다음 stale 도 재시도 허용).
+// 🛡️ 단일 SSOT(recoverFromChunkError) 위임 — 가드 키/포맷/윈도(60초 2회)·캐시버스트 reload 를
+//   ErrorBoundary·인라인 부트가드와 공유(이중 카운트·무한 reload 0). 로직 중복 제거.
+//   복구 한도(60초 내 2회) 초과 = stale 고착(예: 잔존 캐시-우선 SW) → 무한 reload/무한로딩 대신 인라인
+//   부트가드의 정적 복구 UI(캐시 완전삭제 후 새로고침 버튼)를 띄운다. React ErrorBoundary 밖(window
+//   리스너·unhandledrejection)에서 난 청크 실패도 "응답 없는 페이지"/무한 스피너에 갇히지 않게 함.
 const reloadOnceForChunk = () => {
-  try {
-    const KEY = '__ur_chunk_reload__'
-    const now = Date.now()
-    let st = { n: 0, t: 0 }
-    try { const raw = sessionStorage.getItem(KEY); if (raw) st = JSON.parse(raw) } catch { /* 옛 '1' 포맷 — 무시하고 리셋 */ }
-    const within = now - st.t < 60_000
-    if (within && st.n >= 2) return // 60초 내 2회 시도 — 더는 stale 아닌 진짜 에러 → 무한 reload 차단
-    sessionStorage.setItem(KEY, JSON.stringify({ n: within ? st.n + 1 : 1, t: now }))
-    // 캐시 우회: 옛 HTML(옛 청크 해시) 재서빙 방지 — bfcache/브라우저/edge 모두 새 문서 강제 fetch (SSOT).
-    reloadWithCacheBust()
-  } catch {
-    try { window.location.reload() } catch { /* sessionStorage 차단 환경 — silent */ }
+  if (!recoverFromChunkError()) {
+    try { (window as { __urShowStuckUI?: () => void }).__urShowStuckUI?.() } catch { /* silent */ }
   }
 }
 window.addEventListener('error', (e) => {

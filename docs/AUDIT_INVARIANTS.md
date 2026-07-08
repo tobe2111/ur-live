@@ -9,7 +9,7 @@
 ## 🚦 한 줄 점검
 
 ```bash
-bash scripts/audit-gate.sh           # 전체 (39개 불변식)
+bash scripts/audit-gate.sh           # 전체 (41개 불변식)
 bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|money|schema|classify|ui|structure|deploy)
 ```
 
@@ -23,10 +23,12 @@ bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|mone
 |---|---|---|---|
 | **서비스 분리** | 도매몰↔유어딜↔유어애즈 3-서비스가 안 샘: 교차역할 API 0(유어애즈 `/api/ads` 포함), 도매 어드민 스코프 내, 소비자 상품조회가 도매 원본 격리, 유어애즈가 도매 폴더에 비의존(공용 인프라는 `@/worker/utils/seller-auth`·`@/services/naver-commerce-core`), **대시보드 라우팅이 다중역할/겸업 계정을 lock-out 안 함(대시보드 레이아웃/페이지가 가산 권한 플래그 `is_*` 단독 게이트로 서비스간 redirect/return null 0 — 셀러↔도매=서버권위 `wholesale_only`, 또는 다중역할 보호 동반조건 `!loggedIn`/단일역할 `role !==`)** | `check-dashboard-api-crossrole`(5그룹) · `check-wholesale-admin-api-scope` · `check-wholesale-admin-nav-reachability` · `check-consumer-product-supply-isolation` · `check-seller-wholesale-redirect` | 2026-06-30 (셀러 대시보드 겸업 lock-out fix + 신규 가드: is_distributor=capability ≠ exclusivity, computeWholesaleOnly SSOT) |
 | **인증·세션·RBAC** | 역할-한정 403 0, 유저↔대시보드 상호 로그아웃 0, OAuth iOS 영속, dead-link 0, 권한 누락 0, **로그인 유도는 토큰으로만(가격 null/0 을 로그아웃으로 오판 0)**, **도매 로그아웃 유지(자동 재로그인 probe 가 명시 로그아웃 무력화 0)**, **도매 엣지캐시 인증 누수 0(비로그인 public CDN 캐시가 로그인 판매사에 서빙 → '공급가 미설정' 0)** | `check-dual-login-guard` · `check-dashboard-login-session-coexist` · `check-auth-cookie-pattern` · `check-internal-links` · `check-api-auth` · `check-light-input-guard` · `check-login-gate-by-price` · `check-wholesale-autologin-guarded` · `check-wholesale-login-spa-navigate` · `check-wholesale-cache-auth-leak` | 2026-06-29 (도매 엣지캐시 인증 누수 — 인증별 응답 public 캐시는 캐시키 분리(cache-auth-ok) 필수, 클라 v=in 부착) |
-| **머니·정합성(패턴)** | CAS-선점/무환불 CANCELLED/빈화면-위장/CSV 인젝션 안티패턴 0 | `check-money-patterns` · `check-status-constraints` · `check-query-iserror` · `check-csv-injection` | 2026-06-26 (정산 clean·결제 셀프취소 latent 별도) |
+| **머니·정합성(패턴)** | CAS-선점/무환불 CANCELLED/빈화면-위장/CSV 인젝션/폐기 가격모델 드리프트/잔액 절대값write 안티패턴 0 | `check-money-patterns` · `check-status-constraints` · `check-query-iserror` · `check-csv-injection` · `check-deprecated-pricing` · `check-balance-absolute-write` | 2026-07-01 (도매 3표면 감사 — 가격 내보내기 모델정합·미수금 CAS 후 가드) |
+| **커미션 예산 [INV-CB]** | 플랫폼 부담 성장 커미션(어필리에이트·멀티티어·영입자·에이전시)의 적립은 오케스트레이터(`creditOrderCommissions`) 경유만 — 3P 주문당 예산(수수료−PG준비금) 캡 우회 호출/신규 적립 INSERT 0. 수학(비례배분·합≤예산)은 `commission-budget.test.ts` 유닛이 보장 | `check-commission-budget` | 2026-07-04 (재원 구조 개편 — `commission-funding-restructure.md`) |
 | **DB·스키마** | 컬럼/bind/NOT NULL/SELECT* /컬럼예산/복구가능성 정합 | `check-schema-refs` · `check-sql-*` · `check-no-select-star-products` · `check-products-column-budget` · `check-product-detail-fields-repairable` | (상시 가드) |
-| **런타임 크래시(pagination NaN)** | request page/limit/offset/days 등이 비숫자('abc')일 때 `parseInt/Number → NaN → SQL .bind(NaN) → 500` 금지(전 서비스 목록 엔드포인트) — `parseInt(...) \|\| <기본값>` NaN 폴백 강제. ID 해석 parseInt(isNaN 가드 보유)는 무관 | `check-pagination-nan` | 2026-07-01 (도매몰 라이브 전수조사 — `/api/wholesale/catalog?page=abc` 500 발견 → 전 서비스 43라인 일괄 수정 후 가드) |
+| **런타임 크래시(pagination NaN)** | request page/limit/offset/days 등이 비숫자('abc')일 때 `parseInt/Number → NaN → SQL .bind(NaN) → 500` 금지(전 서비스 목록 엔드포인트) — 정수 파싱은 `intParam(raw, def)`(`@/shared/pagination`) 경유 강제(0/음수 클램프 보존). ID 해석 parseInt(isNaN 가드 보유)는 무관 | `check-pagination-nan` | 2026-07-01 (도매몰 라이브 전수조사 — `/api/wholesale/catalog?page=abc` 500 발견 → 전 서비스 100+ 라인 intParam 전환 후 가드) |
 | **상품 종류·라우팅** | group_buy_status 로 종류판별·라우팅 금지(쇼핑↔교환권 오분류) | `check-groupbuy-status-classify` | (상시 가드) |
+| **동네딜↔쇼핑 완전분리** | 동네딜 표면/도구(리스트 API·데모 시드·alias·수기 폼)에 배송형(general) 유입 금지 — 동네딜=로컬 이용권 전용 | `check-dongnedeal-separation` | 2026-07-02 (대표 확정 — 유령 general 데모 사고 후 신설) |
 | **도매주문 상태머신** | wholesale_orders.status 가 canonical 집합만(정의 밖 오타/고아 상태 write 0) — 전이는 transitionWholesaleOrder | `check-wholesale-order-status` | 2026-06-27 (B2B 플로우 상태머신 신설: 수락/거절/취소/구매확정 + 발송 전 정산보류) |
 | **UI·테마·첫페인트** | dark variant 일관성, RQ initialData 신선도, 모바일 하단잘림 | `check-theme-consistency` · `check-query-initialdata` · `check-mobile-viewport` | 2026-06-26 (크래시/빈상태 clean) |
 | **코드 구조(god 파일 방지)** | 신규 파일 600줄 초과 차단 + 기존 대형 파일이 `file-size-baseline.json`(82개 동결)보다 성장 시 차단(줄이는 건 OK) → god 파일 재발 0 | `check-file-size` (래칫, `--rebaseline` 로 동결값 갱신) | 2026-06-29 (대표 "리팩토링 반복 말고 애초에 막아라" — MyVouchersPage 1296→386·GroupBuyListPage 1309→827 분해 후 동결) |

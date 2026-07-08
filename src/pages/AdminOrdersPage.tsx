@@ -238,7 +238,16 @@ export default function AdminOrdersPage() {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       const res = await api.patch('/api/admin/orders/bulk-status', { order_numbers, status }, { headers: { Authorization: `Bearer ${token}` } })
       const d = res.data?.data
-      toast.success(`${d?.updated ?? 0}건 '${STATUS_STYLES[status]?.label || status}'(으)로 변경됨${(d?.skipped ?? 0) > 0 ? ` · ${d.skipped}건 건너뜀` : ''}`)
+      const updated = d?.updated ?? 0
+      const skipped = d?.skipped ?? 0
+      const label = STATUS_STYLES[status]?.label || status
+      // 🛡️ 2026-07-05: 0건 변경은 초록 '성공' 대신 경고 — 이미 그 상태거나 전환 불가(예: 취소된 주문)면
+      //   건너뛴 것이므로 왜 안 됐는지 알려준다(이전엔 '0건 변경됨'이 성공 토스트라 혼란).
+      if (updated === 0) {
+        toast.error(`변경된 주문이 없습니다 (${skipped}건 건너뜀 — 이미 '${label}'이거나 해당 상태로 전환할 수 없는 주문)`)
+      } else {
+        toast.success(`${updated}건 '${label}'(으)로 변경됨${skipped > 0 ? ` · ${skipped}건 건너뜀` : ''}`)
+      }
       setSelectedNumbers(new Set())
       loadOrders()
     } catch (err: unknown) {

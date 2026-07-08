@@ -87,15 +87,18 @@ jobs:
           echo "✅ $JS_COUNT JS chunks in assets/"
           test $JS_COUNT -gt 50 || (echo "❌ Too few JS chunks ($JS_COUNT), build may be incomplete" && exit 1)
 
-          # 🛡️ Bundle size budget (2026-04-22 추가)
-          # 번들 비대로 인한 초기 로딩 지연 방지.
-          # 한계: _worker.js 4MB (2026-05-18 상향 from 3MB — 숙소/정산/referral 코드 추가로 임계 근처).
-          #       초기 entry JS 500KB, 총 client 50MB.
-          # 참고: Cloudflare Workers Free plan 한도 1MB compressed (≈4MB uncompressed).
-          #       Paid plan 10MB uncompressed 까지 가능.
+          # 🛡️ Bundle size budget (2026-04-22 추가 · 2026-07-07 압축 기준으로 수정)
+          # ⚠️ 2026-07-07: Cloudflare 실제 한도는 **압축(gzip) 크기**(Free 1MB / Paid 10MB) — 비압축이 아님.
+          #   비압축 4MB 캡은 프록시였는데, 앱 성장으로 비압축 4.0MB 인데 gzip 0.94MB(<1MB free 한도)인
+          #   '배포 가능한' 상태를 오탐으로 막아 전 세션 배포가 몇 시간 중단됨. → 실제 제약인 gzip 으로 게이트.
+          #   임계(~0.97MB)에서 우리가 먼저 실패 = Cloudflare 하드 리젝(무음) 전에 명확한 CI 신호.
+          #   ⚠️ gzip 0.94MB = Free 한도의 94% (여유 ~60KB). 지속 성장 시 Paid 전환 또는 worker 다이어트 필요.
           WORKER_SIZE=$(stat -c%s dist/client/_worker.js 2>/dev/null || stat -f%z dist/client/_worker.js)
-          echo "  _worker.js size: $(($WORKER_SIZE / 1024))KB"
-          test $WORKER_SIZE -lt 4194304 || (echo "❌ _worker.js 너무 큼 ($(($WORKER_SIZE/1024))KB > 4MB)" && exit 1)
+          WORKER_GZ=$(gzip -c dist/client/_worker.js | wc -c)
+          echo "  _worker.js size: $(($WORKER_SIZE / 1024))KB (gzip $(($WORKER_GZ / 1024))KB / CF 압축한도 Free 1024KB)"
+          test $WORKER_GZ -lt 1015000 || (echo "❌ _worker.js 압축 $(($WORKER_GZ/1024))KB > ~0.97MB — Cloudflare Free 1MB 압축한도 임박(Paid 전환/worker 다이어트 필요)" && exit 1)
+          # 비압축은 느슨한 안전망만(Paid 10MB 대비) — 하드 게이트는 위 압축 기준.
+          test $WORKER_SIZE -lt 10485760 || (echo "❌ _worker.js 비압축 $(($WORKER_SIZE/1024))KB > 10MB(Paid 한도)" && exit 1)
 
           ENTRY_SIZE=$(du -b dist/client/assets/index-*.js 2>/dev/null | head -1 | awk '{print $1}' || echo 0)
           echo "  entry JS size: $(($ENTRY_SIZE / 1024))KB"
@@ -147,6 +150,38 @@ jobs:
           # 보안: 소스맵 파일은 R2/CDN 에 노출되지 않도록 삭제 (hidden 모드라 자동으로 노출 X 지만 방어)
           find dist/client/assets -name '*.map' -delete
           echo "✅ Sentry source maps uploaded for release $RELEASE"
+
+      # 🛡️ 2026-07-03 (대표 — "영구적으로 이런 일 발생하지 않도록"): stale-chunk 404 무한로딩 근본차단.
+      #   원인: 매 배포마다 Vite 해시 청크 파일명이 바뀜 → 브라우저/bfcache 에 남은 옛 index.html 이
+      #   삭제된 `/assets/*.js` 를 참조 → 404 → SPA HTML 폴백 → "무한 로딩"(라이브 실사고).
+      #   현재 방어(부트가드 재로드)는 사후복구라 잦은 배포 땐 사용자가 깜빡임을 봄.
+      #   근본 fix = **자산 보존(asset retention)**: 이전 배포들의 해시 청크를 이번 배포에도 함께 올려
+      #   옛 청크가 계속 200 을 반환하게 함(업계 표준 — Vercel/Netlify 가 자동으로 하는 것).
+      #   → HTML 은 여전히 no-cache 라 다음 네비게이션은 최신 청크를 씀. 옛 탭/캐시는 404 없이 살아 있음.
+      #   보존 청크는 mtime 14일 + 6000개 상한으로 정리(CF Pages 20k 파일 한도 안전).
+      - name: Restore prior chunk archive
+        uses: actions/cache@v4
+        with:
+          path: .assets-archive
+          key: assets-archive-${{ github.sha }}
+          restore-keys: |
+            assets-archive-
+      - name: Merge prior chunks into deploy (asset retention)
+        run: |
+          set -e
+          mkdir -p .assets-archive
+          # 1) 이번 빌드 청크를 아카이브에 추가(신선 mtime)
+          find dist/client/assets -maxdepth 1 -type f \( -name '*.js' -o -name '*.css' \) -exec cp -n {} .assets-archive/ \;
+          # 2) 오래된 청크 정리(14일 이상 미갱신)
+          find .assets-archive -type f -mtime +14 -delete 2>/dev/null || true
+          # 3) 개수 상한(6000) — 초과 시 오래된 것부터 제거
+          CNT=$(ls -1 .assets-archive 2>/dev/null | wc -l)
+          if [ "$CNT" -gt 6000 ]; then
+            ls -1t .assets-archive | tail -n +6001 | while read f; do rm -f ".assets-archive/$f"; done
+          fi
+          # 4) 아카이브의 옛 청크를 이번 배포 디렉토리에 병합(이번 빌드에 없는 것만 — 최신 우선)
+          cp -n .assets-archive/* dist/client/assets/ 2>/dev/null || true
+          echo "✅ asset retention: $(find dist/client/assets -name '*.js' | wc -l) js chunks in deploy (archive holds $(ls -1 .assets-archive | wc -l) files)"
 
       # 2026-04-22: Workers 프로젝트 제거 — 이 프로젝트는 Pages (with _worker.js) 구조.
       # 사용자가 이미 Pages(ur-live.pages.dev)에 모든 secret(JWT_SECRET 등)을 세팅함.

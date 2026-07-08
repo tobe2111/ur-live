@@ -24,23 +24,47 @@ import {
   scopedRoleCanAccess,
   type AdminRole,
 } from '../../shared/admin-roles';
+import { parseSessionCookie } from '../utils/session';
 
-/** Bearer admin JWT 에서 role 추출. 유효한 admin 토큰이 아니면 null(→ 라우트 auth 가 처리). */
+/**
+ * 어드민 요청의 role 추출. 유효한 admin 인증이 아니면 null(→ 라우트 requireAdmin 이 처리).
+ *   1) Bearer admin JWT — role 은 토큰 클레임.
+ *   2) 🛡️ 2026-07-01 (어드민 라이브 보안 감사): httpOnly 어드민 세션 쿠키 경로.
+ *      requireAdmin 은 Bearer 없이 쿠키만으로도 admin 인증을 허용하는데(auth.ts §2), 세션 쿠키
+ *      payload 엔 세부 role 이 없어(parseSessionCookie 가 role='admin' 하드코딩) 기존엔 이 게이트가
+ *      쿠키 경로에서 role=null → next() 로 스코핑을 통째로 건너뛰었음 → 제한역할(wholesale/ops/cs/…)
+ *      계정이 Authorization 헤더만 빼고 쿠키로 호출하면 전권(재무·타서비스) 우회. 쿠키 인증이면
+ *      DB 에서 실제 role 을 조회해 Bearer 와 동일 스코핑을 적용해 우회를 차단.
+ */
 async function adminRoleFromRequest(c: Context): Promise<AdminRole | null> {
   const secret = (c.env as { JWT_SECRET?: string }).JWT_SECRET;
   if (!secret) return null;
+
+  // 1) Bearer admin JWT
   const authHeader = c.req.header('Authorization') || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-  if (!token) return null;
-  try {
-    // HS256 고정(alg-confusion 방어) — auth.ts verifyJWT 와 동일.
-    if (!(await jwt.verify(token, secret, { algorithm: 'HS256' }))) return null;
-    const payload = (jwt.decode(token).payload || {}) as { type?: string; role?: string };
-    if (payload.type !== 'admin') return null;
-    return normalizeAdminRole(payload.role);
-  } catch {
-    return null;
+  if (token) {
+    try {
+      // HS256 고정(alg-confusion 방어) — auth.ts verifyJWT 와 동일.
+      if (await jwt.verify(token, secret, { algorithm: 'HS256' })) {
+        const payload = (jwt.decode(token).payload || {}) as { type?: string; role?: string };
+        if (payload.type === 'admin') return normalizeAdminRole(payload.role);
+      }
+    } catch { /* fall through to cookie */ }
   }
+
+  // 2) httpOnly 어드민 세션 쿠키 (Bearer 없을 때 requireAdmin 이 수락하는 경로 — 게이트도 커버).
+  try {
+    const su = await parseSessionCookie(c.req.header('Cookie'), secret, ['admin']);
+    if (su && su.type === 'admin' && su.userId) {
+      const row = await (c.env as { DB: D1Database }).DB
+        .prepare('SELECT role FROM admins WHERE id = ?')
+        .bind(su.userId).first<{ role?: string }>();
+      if (row) return normalizeAdminRole(row.role);
+    }
+  } catch { /* DB/parse 오류 → null (라우트 requireAdmin 이 인증 처리) */ }
+
+  return null;
 }
 
 export function adminRbacMiddleware() {

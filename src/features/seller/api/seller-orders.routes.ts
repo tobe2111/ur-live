@@ -24,6 +24,8 @@ import { swallow } from '@/worker/utils/swallow';
 import { VOUCHER_CATEGORY_SET } from '@/shared/constants/voucher-categories';
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { ensureSupplyVisibilitySchema } from '../../supply/api/supply-visibility';
+import { intParam } from '@/shared/pagination'
+import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -93,8 +95,8 @@ sellerOrdersRoutes.get('/orders', async (c) => {
 
     const db = c.env.DB;
     const status = c.req.query('status');
-    const limit = Math.min((parseInt(c.req.query('limit') || '50') || 50), 200);
-    const offset = (parseInt(c.req.query('offset') || '0') || 0);
+    const limit = Math.min(intParam(c.req.query('limit'), 50), 200);
+    const offset = intParam(c.req.query('offset'), 0);
     const sort = c.req.query('sort') === 'asc' ? 'ASC' : 'DESC';
 
     let query = `
@@ -458,8 +460,8 @@ sellerOrdersRoutes.get('/products', async (c) => {
     // isolate / fresh D1 the column may be missing → "no such column" 500.
     // Memoized (WeakMap-promise) — runs the ALTERs at most once per isolate.
     await ensureSupplyVisibilitySchema(db);
-    const limit = Math.min((parseInt(c.req.query('limit') || '100') || 100), 500);
-    const offset = (parseInt(c.req.query('offset') || '0') || 0);
+    const limit = Math.min(intParam(c.req.query('limit'), 100), 500);
+    const offset = intParam(c.req.query('offset'), 0);
     const sort = c.req.query('sort') === 'asc' ? 'ASC' : 'DESC';
     const search = c.req.query('search') || '';
 
@@ -569,7 +571,23 @@ sellerOrdersRoutes.get('/products/:id', async (c) => {
       // product_options 테이블 미존재 시 무시
     }
 
-    return c.json({ success: true, data: { ...product, options } });
+    // 🎯 2026-07-01 (1인당 한도 수정 prefill): product_supply_meta.max_per_person (0=무제한).
+    let max_per_person = 0;
+    try {
+      const { getSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+      const mm = await getSupplyMeta(db, [Number(productId)]).catch(() => null);
+      const raw = mm?.get(Number(productId))?.max_per_person;
+      if (raw != null && Number.isFinite(Number(raw)) && Number(raw) > 0) max_per_person = Math.floor(Number(raw));
+    } catch { /* fail-soft */ }
+    // 🎯 2026-07-01 (카카오맵 매장 페이지): place_url prefill.
+    let kakao_place_url: string | null = null;
+    try {
+      const { getSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+      const mm = await getSupplyMeta(db, [Number(productId)]).catch(() => null);
+      kakao_place_url = normalizeKakaoPlaceUrl(mm?.get(Number(productId))?.kakao_place_url);
+    } catch { /* fail-soft */ }
+
+    return c.json({ success: true, data: { ...product, options, max_per_person, kakao_place_url } });
   } catch (error: unknown) {
     console.error('Get seller product detail error:', error);
     return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
@@ -721,6 +739,10 @@ sellerOrdersRoutes.post('/products', async (c) => {
       preview_url?: string | null;
       // 🍽️ 2026-06-17 (#5 대표 메뉴): OCR/수동 추출 메뉴 — product_supply_meta 'menu' 에 저장 (products 컬럼 증식 방지).
       menu?: Array<{ name: string; price?: string; desc?: string }>;
+      // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러가 설정한 소개비 % (fraction 0~0.5) → 어필리에이트 override.
+      //   ⚠️ platform_settings.seller_promo_field_enabled==='true' 일 때만 저장(owner-funding 검증 전 누수 방지).
+      referral_enabled?: boolean;
+      referral_commission_rate?: number;
     }>();
 
     const { name, description, price, stock, image_url, category } = body;
@@ -782,6 +804,23 @@ sellerOrdersRoutes.post('/products', async (c) => {
       try { await db.prepare(`UPDATE products SET original_price = ? WHERE id = ?`).bind(body.original_price, productId).run() } catch { /* column may not exist */ }
     }
 
+    // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러 소개비(promo%) → referral_commission_rate override.
+    //   ⚠️ 이중 안전 게이트 — platform_settings.seller_promo_field_enabled==='true' 일 때만 저장.
+    //   어필리에이트 재원이 아직 플랫폼 부담이면 매장이 건 소개비를 유어딜이 무는 누수(설계 −14%)가
+    //   되므로, owner-funding(promo_funding_source='owner')이 스테이징 검증돼 켜진 뒤에만 이 게이트 ON.
+    //   범위 0~0.5(=0~50%) clamp. fail-soft(컬럼 부재 대비). 클라 플래그 우회해도 서버가 최종 차단.
+    if (body.referral_commission_rate !== undefined && body.referral_commission_rate !== null) {
+      try {
+        const gate = await db.prepare("SELECT value FROM platform_settings WHERE key = 'seller_promo_field_enabled'")
+          .first<{ value: string }>().catch(() => null)
+        const rate = Number(body.referral_commission_rate)
+        if (gate?.value === 'true' && Number.isFinite(rate) && rate >= 0 && rate <= 0.5) {
+          await db.prepare(`UPDATE products SET referral_enabled = ?, referral_commission_rate = ? WHERE id = ?`)
+            .bind(body.referral_enabled === false || rate === 0 ? 0 : 1, rate, productId).run()
+        }
+      } catch { /* 게이트 OFF / 컬럼 부재 — 저장 생략(현행과 동일) */ }
+    }
+
     // 🍽️ 2026-06-17 (#5 대표 메뉴): 메뉴(OCR/수동)를 product_supply_meta 사이드테이블에 저장 → 공구 상세가 표시.
     if (Array.isArray(body.menu) && body.menu.length > 0) {
       try {
@@ -792,6 +831,28 @@ sellerOrdersRoutes.post('/products', async (c) => {
           .slice(0, 20);
         if (clean.length) await setSupplyMeta(db, Number(productId), { menu: JSON.stringify(clean) });
       } catch { /* meta 저장 실패 — 상품 생성은 유지 (fail-soft) */ }
+    }
+
+    // 🎯 2026-07-01 (대표 "결제 최대 한도 갯수 1인 당" — 셀러가 이용권 등록 시 설정):
+    //   product_supply_meta.max_per_person. 0/미설정/범위밖 = 무제한(미저장). 1~99 만 저장.
+    {
+      const mpp = Number((body as { max_per_person?: number | string }).max_per_person);
+      if (Number.isFinite(mpp) && mpp >= 1 && mpp <= 99) {
+        try {
+          const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+          await setSupplyMeta(db, Number(productId), { max_per_person: String(Math.floor(mpp)) });
+        } catch { /* fail-soft */ }
+      }
+    }
+    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 장소 선택 시 캡처한 place_url 저장.
+    {
+      const kpu = normalizeKakaoPlaceUrl((body as { kakao_place_url?: string }).kakao_place_url);
+      if (kpu) {
+        try {
+          const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+          await setSupplyMeta(db, Number(productId), { kakao_place_url: kpu });
+        } catch { /* fail-soft */ }
+      }
     }
 
     // 🛡️ 2026-05-05: 디지털 상품 필드 저장 (UPDATE — migration 0243 후 컬럼 존재)
@@ -816,6 +877,19 @@ sellerOrdersRoutes.post('/products', async (c) => {
         if (val !== undefined && val !== null && val !== '') {
           try { await db.prepare(`UPDATE products SET ${field} = ? WHERE id = ?`).bind(val, productId).run() } catch { /* column may not exist */ }
         }
+      }
+
+      // 🧭 2026-07-02 (대표 승인 "가장 이상적으로"): 주소만 있고 좌표 없이 등록되면 즉시 지오코딩
+      //   (waitUntil, fail-soft) — 일일 cron 전의 갭 동안 방문자마다 클라 지오코딩 폴백이 발동하던
+      //   것을 원천 제거. 좌표를 함께 보낸 등록은 helper 가 스스로 skip.
+      if (body.restaurant_address) {
+        try {
+          c.executionCtx.waitUntil(
+            import('../../../worker/cron/restaurant-geocode').then(m =>
+              m.geocodeProductNow(c.env as { DB: D1Database; KAKAO_REST_API_KEY?: string }, Number(productId))
+            ).catch(swallow('seller:product-geocode'))
+          );
+        } catch { /* executionCtx 미가용 — cron 이 자연 처리 */ }
       }
 
       // 🛡️ 2026-04-27: Magic Link — 사장님 전용 영구 token 자동 생성 + 알림톡 발송.
@@ -866,6 +940,8 @@ sellerOrdersRoutes.post('/products', async (c) => {
     if (category && VOUCHER_CATEGORY_SET.has(category)) {
       const kv = (c.env as Bindings).SESSION_KV;
       invalidateGroupBuyProductsCache(kv).catch(swallow('seller:cache-invalidate'));
+      // 🔄 2026-07-01: edge/materialized 피드도 퍼지(어드민 동네딜과 동일) → 홈 즉시 반영.
+      import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env as unknown as Parameters<typeof m.invalidateGroupBuyFeed>[0], new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(swallow('seller:feed-invalidate'));
     }
 
     return c.json({ success: true, data: newProduct }, 201);
@@ -904,6 +980,10 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       group_buy_deadline?: string;
       store_verify_pin?: string;
       group_buy_tiers?: string | null;
+      // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도" 수정 지원): 0=무제한, 1~99.
+      max_per_person?: number;
+      // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): place_url.
+      kakao_place_url?: string;
     }>();
 
     const db = c.env.DB;
@@ -982,6 +1062,41 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       }
     }
 
+    // 🧭 2026-07-02: 주소가 *변경*됐는데 수정 경로엔 lat/lng 필드가 없어 좌표가 옛 주소로 영구
+    //   stale 이던 갭 — 새 주소 기준 즉시 재지오코딩(force, waitUntil, fail-soft. 실패 시 기존 좌표 유지).
+    if (typeof body.restaurant_address === 'string' && body.restaurant_address.trim() !== '') {
+      try {
+        c.executionCtx.waitUntil(
+          import('../../../worker/cron/restaurant-geocode').then(m =>
+            m.geocodeProductNow(c.env as { DB: D1Database; KAKAO_REST_API_KEY?: string }, Number(productId), { force: true })
+          ).catch(swallow('seller:product-geocode-edit'))
+        );
+      } catch { /* executionCtx 미가용 — cron 이 자연 처리 */ }
+    }
+
+    // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도" 수정 지원): product_supply_meta.max_per_person.
+    //   0/미설정=무제한. 1~99 저장, 0 은 '0' 저장(리더가 무제한 처리 → 해제). 소유권은 위 existing 로 확인됨.
+    if (body.max_per_person !== undefined) {
+      const mpp = Number(body.max_per_person);
+      if (Number.isFinite(mpp) && mpp >= 0 && mpp <= 99) {
+        try {
+          const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+          await setSupplyMeta(db, Number(productId), { max_per_person: String(Math.floor(mpp)) });
+        } catch { /* fail-soft */ }
+      }
+    }
+    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): place_url 수정.
+    if (body.kakao_place_url !== undefined) {
+      const raw = String(body.kakao_place_url || '').trim();
+      const kpu = raw === '' ? '' : normalizeKakaoPlaceUrl(raw);  // 빈값=해제, 유효=저장
+      if (raw === '' || kpu) {
+        try {
+          const { setSupplyMeta } = await import('../../../worker/utils/product-supply-meta');
+          await setSupplyMeta(db, Number(productId), { kakao_place_url: kpu || '' });
+        } catch { /* fail-soft */ }
+      }
+    }
+
     const updated = await db.prepare(
       `SELECT id, name, description, price, original_price,
               COALESCE(stock_quantity, stock, 0) AS stock,
@@ -995,6 +1110,8 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
     if (updated?.category && VOUCHER_CATEGORY_SET.has(String(updated.category))) {
       const kv = (c.env as Bindings).SESSION_KV;
       invalidateGroupBuyProductsCache(kv).catch(swallow('seller:cache-invalidate'));
+      // 🔄 2026-07-01: edge/materialized 피드도 퍼지(어드민 동네딜과 동일) → 홈 즉시 반영.
+      import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env as unknown as Parameters<typeof m.invalidateGroupBuyFeed>[0], new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(swallow('seller:feed-invalidate'));
     }
 
     return c.json({ success: true, data: updated });
@@ -1040,6 +1157,8 @@ sellerOrdersRoutes.delete('/products/:id', async (c) => {
     // 🛡️ 2026-05-16: 상품 삭제 시 공구 목록 캐시 무효화 (카테고리 모름 → 전체 nuke)
     const kv = (c.env as Bindings).SESSION_KV;
     invalidateGroupBuyProductsCache(kv).catch(swallow('seller:cache-invalidate'));
+    // 🔄 2026-07-01: edge/materialized 피드도 퍼지(어드민 동네딜과 동일) → 홈 즉시 반영.
+    import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env as unknown as Parameters<typeof m.invalidateGroupBuyFeed>[0], new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(swallow('seller:feed-invalidate'));
 
     return c.json({ success: true, message: '상품이 삭제되었습니다.' });
   } catch (error: unknown) {
@@ -1157,3 +1276,72 @@ sellerOrdersRoutes.post('/products/:id/resend-store-link', async (c) => {
     return c.json({ success: false, error: '요청 처리 중 오류가 발생했습니다' }, 500);
   }
 });
+
+// ─── 공구(group-buy) 상태 세션 — 매장이 이용권에 공구 열기/닫기 (2026-07-06 §2-A) ──────────
+//   ⚠️ 게이트: platform_settings.gb_engine_enabled==='true' 일 때만 동작(이중 안전 — 클라 GB_ENGINE_ENABLED
+//   와 별개). 세션은 product_supply_meta gb_* 키에 저장(gb-session-store). 실제 소비자가/커미션 authoritative
+//   적용(consumer 상세·resolver)은 owner-funding 검증 후 별도 슬라이스 — 여기선 상태 저장만.
+async function gbEngineOn(db: D1Database): Promise<boolean> {
+  const row = await db.prepare("SELECT value FROM platform_settings WHERE key = 'gb_engine_enabled'")
+    .first<{ value: string }>().catch(() => null)
+  return row?.value === 'true'
+}
+
+async function loadOwnedVoucher(c: { req: { header: (k: string) => string | undefined; param: (k: string) => string }; env: { DB: D1Database; JWT_SECRET: string } }) {
+  const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!sellerId) return { error: '로그인 필요' as const, status: 401 as const }
+  const { isVoucherCategory } = await import('../../../shared/constants/voucher-categories')
+  const productId = Number(c.req.param('id'))
+  if (!Number.isFinite(productId) || productId <= 0) return { error: '잘못된 상품 ID' as const, status: 400 as const }
+  const product = await c.env.DB.prepare('SELECT id, seller_id, price, category FROM products WHERE id = ? AND seller_id = ?')
+    .bind(productId, sellerId).first<{ id: number; seller_id: number; price: number; category: string }>()
+  if (!product) return { error: '상품을 찾을 수 없습니다' as const, status: 404 as const }
+  if (!isVoucherCategory(product.category)) return { error: '공구는 이용권 상품에만 열 수 있습니다' as const, status: 400 as const }
+  return { sellerId, productId, product }
+}
+
+// GET — 현재 공구 세션 조회
+sellerOrdersRoutes.get('/products/:id/group-buy', async (c) => {
+  try {
+    if (!(await gbEngineOn(c.env.DB))) return c.json({ success: false, error: '공구 엔진이 비활성 상태입니다', code: 'GB_ENGINE_OFF' }, 403)
+    const owned = await loadOwnedVoucher(c)
+    if ('error' in owned) return c.json({ success: false, error: owned.error }, owned.status)
+    const { getGbSession } = await import('../../../worker/utils/gb-session-store')
+    const session = await getGbSession(c.env.DB, owned.productId)
+    return c.json({ success: true, data: { session, list_price: owned.product.price } })
+  } catch { return c.json({ success: false, error: '조회 중 오류가 발생했습니다' }, 500) }
+})
+
+// POST — 공구 열기/수정/닫기 (action: 'open' | 'close')
+sellerOrdersRoutes.post('/products/:id/group-buy', async (c) => {
+  try {
+    if (!(await gbEngineOn(c.env.DB))) return c.json({ success: false, error: '공구 엔진이 비활성 상태입니다', code: 'GB_ENGINE_OFF' }, 403)
+    const owned = await loadOwnedVoucher(c)
+    if ('error' in owned) return c.json({ success: false, error: owned.error }, owned.status)
+    const body = await c.req.json<{
+      action?: 'open' | 'close'; startAt?: string | null; deadline?: string | null
+      target?: number | null; price?: number | null; promoPct?: number | null; linkOnly?: boolean
+    }>().catch(() => ({} as Record<string, never>))
+    const { validateGbSession } = await import('../../../shared/gb-session')
+    const { saveGbSession } = await import('../../../worker/utils/gb-session-store')
+
+    if (body.action === 'close') {
+      await saveGbSession(c.env.DB, owned.productId, { mode: 'off' })
+      return c.json({ success: true, data: { session: { mode: 'off' } } })
+    }
+    // open (기본): 즉시 live (예약 시작은 startAt 있으면 scheduled 로)
+    const session = {
+      mode: (body.startAt && Date.parse(body.startAt) > Date.now() ? 'scheduled' : 'live') as 'scheduled' | 'live',
+      startAt: body.startAt ?? null,
+      deadline: body.deadline ?? null,
+      target: body.target != null && Number.isFinite(Number(body.target)) ? Math.floor(Number(body.target)) : null,
+      price: body.price != null && Number.isFinite(Number(body.price)) ? Math.floor(Number(body.price)) : null,
+      promoPct: body.promoPct != null && Number.isFinite(Number(body.promoPct)) ? Number(body.promoPct) : null,
+      linkOnly: body.linkOnly === true,
+    }
+    const v = validateGbSession(session, Number(owned.product.price))
+    if (!v.ok) return c.json({ success: false, error: v.error }, 400)
+    await saveGbSession(c.env.DB, owned.productId, session)
+    return c.json({ success: true, data: { session } })
+  } catch { return c.json({ success: false, error: '공구 설정 중 오류가 발생했습니다' }, 500) }
+})

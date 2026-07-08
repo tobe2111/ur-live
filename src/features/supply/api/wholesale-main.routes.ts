@@ -35,6 +35,7 @@ import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admi
 import { createDashboardNotification } from '@/features/notifications/api/dashboard-notifications.routes'
 import { resolveMallId, DEFAULT_MALL_ID } from './wholesale-malls'
 import { PROPOSAL_CATEGORY_KEYS, categoryToType, categoryKeysByType, isProposalKind } from '@/shared/wholesale-proposal-categories'
+import { intParam } from '@/shared/pagination'
 
 // ── 멱등 ensure (repair-schema 와 동일 DDL — cold isolate self-heal) ────────────
 const _bannerEnsured = new WeakSet<object>()
@@ -227,7 +228,7 @@ pub.get('/proposal-tickets/board', async (c) => {
     // 🏬 2026-06-21 필터 탭 3개(전체/제안/신고): kind 우선 — proposal/report 면 해당 type 의 카테고리 key 전부 IN.
     //   화이트리스트('proposal'|'report')만 허용, 그 외는 무시(전체). 기존 category(세부) 파라미터도 하위호환.
     const kind = String(c.req.query('kind') || '').trim()
-    const page = Math.max(1, Math.floor(Number(c.req.query('page')) || 1))
+    const page = Math.max(1, Math.floor(intParam(c.req.query('page'), 1)))
     const PER = 15
     const conds = ['COALESCE(wp.mall_id, 1) = ?']
     const binds: (string | number)[] = [Number(mallId) || DEFAULT_MALL_ID]
@@ -458,8 +459,8 @@ adminProduct.get('/', async (c) => {
     await ensurePremiumColumn(DB)
     const premiumQ = String(c.req.query('premium') || '').trim() // '' | '0' | '1'
     const q = String(c.req.query('q') || '').trim().slice(0, 100)
-    const page = Math.max(1, Number(c.req.query('page') || 1))
-    const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') || 100)))
+    const page = Math.max(1, intParam(c.req.query('page'), 1))
+    const limit = Math.min(200, Math.max(1, intParam(c.req.query('limit'), 100)))
     const offset = (page - 1) * limit
 
     // 도매(공급) 카탈로그 = supplier 가 등록한 원본 상품(리셀 복사본 supply_source_id 제외).
@@ -526,7 +527,10 @@ adminProduct.post('/:id/premium', rateLimit({ action: 'admin-wholesale-premium-t
     await ensurePremiumColumn(DB)
     const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
     const isPremium = Number(body.is_premium) === 1 ? 1 : 0
-    const up = await DB.prepare('UPDATE products SET is_premium = ? WHERE id = ?').bind(isPremium, id).run()
+    // 🛡️ 2026-07-02 (서비스 분리 #1 룰): bulk 형제(/bulk-premium)와 동일하게 도매 원본상품으로 스코프 제한 —
+    //   isolation 플래그 없이 UPDATE products WHERE id 하면 소비자(유어딜) 상품 행의 is_premium 을 도매 어드민이
+    //   변경하는 크로스-서비스 누수가 됨. 도매 원본(is_supply_product=1 AND supply_source_id IS NULL)만 허용.
+    const up = await DB.prepare('UPDATE products SET is_premium = ? WHERE id = ? AND is_supply_product = 1 AND supply_source_id IS NULL').bind(isPremium, id).run()
     if ((up.meta?.changes ?? 0) === 0) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
     return c.json({ success: true, id, is_premium: isPremium })
   } catch (err) {

@@ -475,11 +475,14 @@ export interface TaxWithholdingLogTable {
 // ============================================================
 export interface UserPointsTable {
   user_id: string                  // TEXT PRIMARY KEY
-  balance: number                  // INTEGER NOT NULL DEFAULT 0
+  balance: number                  // INTEGER NOT NULL DEFAULT 0 — 총 잔액 (유상+무상)
   total_charged: number            // INTEGER NOT NULL DEFAULT 0
   total_donated: number            // INTEGER NOT NULL DEFAULT 0
   // 🛡️ 2026-05-23: repair-schema 배포로 추가 — 총 사용 누적 (충전 vs 사용 추적).
   total_used: number               // INTEGER DEFAULT 0
+  // 💸 2026-07-05: 무상(리워드·이벤트·초대) 잔액. 불변식 0 ≤ free_balance ≤ balance.
+  //   유상 잔액 = balance - free_balance (파생). SSOT: worker/utils/point-buckets.ts
+  free_balance: number             // INTEGER NOT NULL DEFAULT 0
   created_at: string
   updated_at: string
 }
@@ -552,7 +555,10 @@ export interface UsersCuratorColumns {
   handle: string | null            // TEXT UNIQUE (partial idx: WHERE NOT NULL)
                                    //   regex: /^[a-z0-9_]{3,30}$/ — slugify + suffix
   bio: string | null               // TEXT — 큐레이터 한 줄 소개
-  linkshop_theme: string           // TEXT DEFAULT 'dark' — 'dark' | 'light' (forward-compat)
+  // ⚰️ DEPRECATED (2026-07-01, 대표 결정): linkshop_theme 은 코드에서 미사용(죽은 필드) — 링크샵은
+  //   방문자 전역 테마(useTheme, /account/settings)를 따름. 기존 prod 컬럼은 D1 DROP 위험이라 방치(무해).
+  //   신규 코드는 이 컬럼을 읽거나 쓰지 말 것. repair-schema/curator.routes 에서 참조 제거됨.
+  linkshop_theme?: string          // (deprecated) TEXT DEFAULT 'dark' — 잔존 컬럼, 미사용
 }
 
 // ============================================================

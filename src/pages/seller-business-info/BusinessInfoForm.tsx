@@ -14,6 +14,7 @@ export default function BusinessInfoForm({
   onAddressSearch,
   onEnterEditMode,
   onCancelEdit,
+  onToggleOnnuri,
 }: {
   businessInfo: BusinessInfo | null
   formData: BusinessFormData
@@ -24,6 +25,7 @@ export default function BusinessInfoForm({
   onAddressSearch: () => void
   onEnterEditMode: () => void
   onCancelEdit: () => void
+  onToggleOnnuri: (v: boolean) => void
 }) {
   const { t } = useTranslation()
 
@@ -108,6 +110,44 @@ export default function BusinessInfoForm({
             className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
           />
         </div>
+      </div>
+
+      {/* 🖼️ 2026-07-01 (대표 — 링크샵 판매자 정보): 통신판매업신고번호 — 전자상거래법 표시 항목.
+          링크샵(/u/·/profile) 판매자 정보 카드에 공개 표시됨. */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {t('seller.mailOrderNumber', { defaultValue: '통신판매업신고번호' })}
+        </label>
+        <input
+          type="text"
+          name="mail_order_number"
+          value={formData.mail_order_number}
+          onChange={onChange}
+          placeholder={t('seller.mailOrderNumberPlaceholder', { defaultValue: '예: 2026-서울강남-01234' })}
+          disabled={businessInfo?.is_verified && !editMode}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+        />
+        <p className="text-xs text-gray-500 mt-1">{t('seller.mailOrderNumberHint', { defaultValue: '링크샵 판매자 정보에 공개 표시됩니다 (전자상거래법 표시 항목)' })}</p>
+      </div>
+
+      {/* 🏪 2026-07-05: 온누리상품권 가맹 여부 — 동네딜 카드/상세·상권관에 뱃지로 공개 표시. */}
+      <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+        <input
+          type="checkbox"
+          id="onnuri_merchant"
+          checked={!!formData.onnuri_merchant}
+          onChange={(e) => onToggleOnnuri(e.target.checked)}
+          disabled={businessInfo?.is_verified && !editMode}
+          className="mt-0.5 w-4 h-4 accent-blue-600 disabled:cursor-not-allowed"
+        />
+        <label htmlFor="onnuri_merchant" className="cursor-pointer">
+          <span className="block text-sm font-medium text-gray-700">
+            {t('seller.onnuriMerchant', { defaultValue: '온누리상품권 가맹점입니다' })}
+          </span>
+          <span className="block text-xs text-gray-500 mt-0.5">
+            {t('seller.onnuriMerchantHint', { defaultValue: '체크하면 내 매장의 동네딜 카드와 상세에 "온누리 사용 가능" 뱃지가 표시됩니다' })}
+          </span>
+        </label>
       </div>
 
       <div>

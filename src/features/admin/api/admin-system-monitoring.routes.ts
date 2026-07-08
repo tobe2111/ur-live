@@ -114,6 +114,75 @@ adminSystemMonitoringRoutes.get('/alimtalk-failures', async (c) => {
   }
 })
 
+// ── GET /delivery-failures ──────────────────────────────────────
+// 🔔 2026-07-01: push_failures / email_failures dead-letter 가시성.
+//   재시도 크론(retry-notifications, 5분)은 있었지만 어드민이 볼 UI/API 가 0 이라
+//   웹푸시·이메일 실패 누적이 아무 데도 안 보였음. 알림톡 진단과 동형으로 노출.
+adminSystemMonitoringRoutes.get('/delivery-failures', async (c) => {
+  const { DB } = c.env
+  const resolved = c.req.query('resolved') === '1'
+  const empty = { items: [], stats: { abandoned: 0, pending: 0, succeeded: 0 } }
+  const statsSql = (table: string) => `
+    SELECT
+      COUNT(*) FILTER (WHERE resolved = 0 AND retry_count >= max_retries) AS abandoned,
+      COUNT(*) FILTER (WHERE resolved = 0 AND retry_count < max_retries) AS pending,
+      COUNT(*) FILTER (WHERE resolved = 1) AS succeeded
+    FROM ${table}
+    WHERE created_at >= datetime('now', '-7 days')
+  `
+  try {
+    const push = await (async () => {
+      try {
+        const { results } = await DB.prepare(`
+          SELECT id, user_type, user_id, title, body, url, subscription_count,
+                 retry_count, max_retries, next_retry_at, resolved, created_at
+          FROM push_failures WHERE resolved = ?
+          ORDER BY created_at DESC LIMIT 100
+        `).bind(resolved ? 1 : 0).all()
+        const stats = await DB.prepare(statsSql('push_failures'))
+          .first<{ abandoned: number; pending: number; succeeded: number }>().catch(() => null)
+        return { items: results || [], stats: stats ?? empty.stats }
+      } catch { return empty } // 테이블 미존재 — 빈 결과
+    })()
+    const email = await (async () => {
+      try {
+        const { results } = await DB.prepare(`
+          SELECT id, recipient, subject, error, retry_count, max_retries,
+                 next_retry_at, resolved, created_at
+          FROM email_failures WHERE resolved = ?
+          ORDER BY created_at DESC LIMIT 100
+        `).bind(resolved ? 1 : 0).all()
+        const stats = await DB.prepare(statsSql('email_failures'))
+          .first<{ abandoned: number; pending: number; succeeded: number }>().catch(() => null)
+        return { items: results || [], stats: stats ?? empty.stats }
+      } catch { return empty }
+    })()
+    return c.json({ success: true, data: { push, email } })
+  } catch {
+    return c.json({ success: true, data: { push: empty, email: empty } })
+  }
+})
+
+// 즉시 재시도 — next_retry_at 을 지금으로 당겨 다음 5분 크론이 집어가게 (알림톡 retry 와 동형)
+adminSystemMonitoringRoutes.post('/delivery-failures/:kind/:id/retry', async (c) => {
+  const { DB } = c.env
+  const kind = c.req.param('kind')
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400)
+  if (kind !== 'push' && kind !== 'email') return c.json({ success: false, error: 'invalid kind' }, 400)
+  const table = kind === 'push' ? 'push_failures' : 'email_failures'
+  try {
+    await DB.prepare(`
+      UPDATE ${table}
+      SET next_retry_at = datetime('now'), retry_count = MIN(retry_count, max_retries - 1)
+      WHERE id = ? AND resolved = 0
+    `).bind(id).run()
+    return c.json({ success: true, message: '5분 이내 자동 재시도됩니다' })
+  } catch (err) {
+    return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
+  }
+})
+
 adminSystemMonitoringRoutes.post('/alimtalk-failures/:id/retry', async (c) => {
   const { DB } = c.env
   const id = Number(c.req.param('id'))

@@ -13,6 +13,10 @@
  *   '0 0 * * 1'    — weekly agency batch (auto-settle, incentives, tier-eval, invoices)
  *
  * Extracted from worker/index.ts (TD-006 부분, 2026-04-27).
+ *
+ * ⚠️ 배포 주의 (2026-07-05): 이 파일(및 cron/**)은 Pages 배포(main.yml)에 **포함되지 않는다** —
+ *   cron 은 별도 Workers 프로젝트에서 돈다. 변경 시 `.github/workflows/worker-deploy.yml` 이
+ *   자동 트리거(이 경로 push 시)되어 `wrangler deploy` 로 동기화. 수동 실행: Actions → Deploy Worker.
  */
 
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types';
@@ -29,9 +33,7 @@ import { handleAgencyMonthlyTasks } from './cron/agency-monthly-tasks';
 import { handleAgencyMonthlyInvoices } from './cron/agency-monthly-invoices';
 import { handleTikTokVideosSync } from './cron/tiktok-videos-sync';
 import { handleAgencyInactiveSellers } from './cron/agency-inactive-sellers';
-import { handleLiveStreamMetrics } from './cron/live-stream-metrics';
 import { handleAgencyMonthlyReport } from './cron/agency-monthly-report';
-import { handlePkBattlesTick } from './cron/pk-battles-tick';
 import { handleAgencySelfEventsTick } from './cron/agency-self-events-tick';
 import { handleSellerTierEval } from './cron/seller-tier-eval';
 import { handleWholesaleGradeEval } from './cron/wholesale-grade-eval';
@@ -45,8 +47,6 @@ import { handleAdSlotsAward } from './cron/ad-slots-award';
 import { handleD1Backup } from './cron/d1-backup';
 import { handleRetryAlimtalk } from './cron/retry-alimtalk';
 import { retryEmailFailures, retryPushFailures } from './cron/retry-notifications';
-import { handleYoutubeBroadcastEndDetect } from './cron/youtube-broadcast-end-detect';
-import { handleYoutubeThumbnailRefresh } from './cron/youtube-thumbnail-refresh';
 import { handleAppointmentReminder } from './cron/appointment-reminder';
 import { handleAppointmentNoshowAlert } from './cron/appointment-noshow-alert';
 import { handlePayoutsGenerate } from './cron/payouts-generate';
@@ -57,13 +57,13 @@ import { handleSellerChurnDetect } from './cron/seller-churn-detect';
 import { handleLedgerReconcile } from './cron/ledger-reconcile';
 import { handleInfluencerPayout } from './cron/influencer-payout';
 import { handleGroupBuyDeadlinePush } from './cron/group-buy-deadline-push';
-import { handleOmeHealthCheck } from './cron/ome-health-check';
 import { handleGroupBuyFeedCache } from './cron/group-buy-feed-cache';
 import { handleCachePrewarm } from './cron/cache-prewarm';
 // 🛡️ 2026-06-09: 어드민 단체메일 큐 drainer (요청 안에서 발송 X → CPU/멱등 hardening).
 import { handleBulkEmailDrain } from './cron/bulk-email-drain';
 // 🛡️ 2026-05-24: 모든 신규 활성 상품 (공구/쇼핑/교환권) 에 자동 허위리뷰 시드.
 import { handleAutoSeedReviews } from './cron/auto-seed-reviews';
+import { renewDemoFcfs } from './cron/demo-fcfs-renew';
 import { recomputeAllActiveCampaigns } from '../features/agency/api/agency-campaigns.routes';
 import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
 import { getFeatureFlags } from './utils/feature-flags';
@@ -72,6 +72,7 @@ import { getFeatureFlags } from './utils/feature-flags';
 //   플래그만 false 로 되돌리면 즉시 복원 — 코드 보존.
 import { LIVE_COMMERCE_SUSPENDED } from '../shared/feature-flags';
 import { logError, logInfo } from './utils/logger';
+import { reportCronFailure } from './utils/cron-reporter';
 
 /**
  * 🔔 2026-06-12 (4차 감사 D3): cron 내부 실패 공용 통지 — logError + Discord (fail-soft).
@@ -79,10 +80,17 @@ import { logError, logInfo } from './utils/logger';
  * 배경: agency-cron-batch / agency-weekly-batch 의 내부 task 들이 `.catch(logError)` 만 해서
  * batch 자체는 성공으로 끝남 → safeCron 의 Discord 경로에 절대 안 닿았음 (silent 실패).
  * safeCron 의 Discord 패턴을 그대로 재사용해 내부 task 실패도 운영자에게 도달시킨다.
+ *
+ * 🔔 2026-07-08 (무인운영 감사): Discord 만으로는 `DISCORD_WEBHOOK_URL` 미설정 시 전면 무음 +
+ *   실패 이력이 남지 않아 사후추적 불가 → reportCronFailure 를 함께 호출해 **Discord + cron_failures
+ *   테이블 + 어드민 벨 3채널**에 도달시킨다. 이제 모든 safeCron 실패가 pull(어드민 벨/DB)로도 보인다.
+ *   (reportCronFailure 는 내부적으로 완전 fail-soft — 이 호출이 알림 자체를 막지 않는다.)
  */
 export async function notifyCronFailure(env: Env, name: string, err: unknown): Promise<void> {
   const msg = (err as Error)?.message || String(err);
   logError(`[cron:${name}] FAILED`, { error: msg });
+  // 영구 기록 + 어드민 벨 (Discord secret 미설정이어도 pull 로 보이게).
+  try { await reportCronFailure(env, name, err, undefined, 'error'); } catch { /* 리포터 자체 실패 무시 */ }
   const webhook = (env as Env & { DISCORD_WEBHOOK_URL?: string }).DISCORD_WEBHOOK_URL;
   if (webhook) {
     try {
@@ -118,19 +126,11 @@ export async function handleCronScheduled(
       const { handleScheduled } = await import('./cron/scheduled-cleanup')
       return handleScheduled(env)
     }));
-    // Phase 2-7: PK 이벤트 매출 집계 + 종료 처리 (라이브 중단 시 skip)
-    if (!LIVE_COMMERCE_SUSPENDED) ctx.waitUntil(safeCron('pk-battles-tick', () => handlePkBattlesTick(env)));
     // 🛡️ 2026-05-07: 알림톡 발송 실패 자동 재시도 (max 3회, exponential backoff)
     ctx.waitUntil(safeCron('retry-alimtalk', () => handleRetryAlimtalk(env)));
     // 🛡️ 2026-05-12: 이메일 / 푸시 dead-letter 재시도 drainer
     ctx.waitUntil(safeCron('retry-email-failures', () => retryEmailFailures(env)));
     ctx.waitUntil(safeCron('retry-push-failures', () => retryPushFailures(env)));
-    // 🛡️ 2026-05-07: 외부 도구(YouTube Studio/OBS)에서 종료된 방송 자동 감지 + DB ended 처리 (라이브 중단 시 skip)
-    if (!LIVE_COMMERCE_SUSPENDED) ctx.waitUntil(safeCron('yt-broadcast-end-detect', () => handleYoutubeBroadcastEndDetect(env)));
-    // 🛡️ 2026-05-21: 라이브 썸네일 자동 갱신 (셀러 수동 호출 제거 — YouTube 자동 캡처에 의존) (라이브 중단 시 skip)
-    if (!LIVE_COMMERCE_SUSPENDED) ctx.waitUntil(safeCron('yt-thumbnail-refresh', () => handleYoutubeThumbnailRefresh(env)));
-    // 🛡️ 2026-05-13 (안정성 #3): OME 미디어 서버 health check — 송출 SPOF 감지 (라이브 중단 시 skip)
-    if (!LIVE_COMMERCE_SUSPENDED) ctx.waitUntil(safeCron('ome-health-check', () => handleOmeHealthCheck(env)));
     // 🛡️ 2026-05-16: 공구 마감 3시간/1시간 전 push 알림 (5분마다 체크)
     ctx.waitUntil(safeCron('group-buy-deadline-push', () => handleGroupBuyDeadlinePush(env)));
     // 🛡️ 2026-05-21 Phase E-3: 예약 시작 +30분 지난 confirmed 노쇼 자동 알림.
@@ -161,6 +161,11 @@ export async function handleCronScheduled(
   // 🛡️ 2026-05-05: 매시간 어뷰징/이상치 탐지 — 후원 폭증, 반복 후원자, 신규 가입 패턴
   if (cron === '0 * * * *') {
     ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
+    // ⏰ 2026-07-02 (#5 승인 SLA): 24h+ 대기 셀러 전환 신청 어드민 리마인드(20h dedup = 하루 1회꼴).
+    ctx.waitUntil(safeCron('seller-approval-reminder', async () => {
+      const { handleSellerApprovalReminder } = await import('./cron/seller-approval-reminder')
+      return handleSellerApprovalReminder(env)
+    }));
     // 🛡️ 2026-05-31: 미결제 pending 숙소 예약 자동 만료 (30분 경과). 재고 미조작 — 정리 목적.
     ctx.waitUntil(safeCron('stay-pending-expire', async () => {
       const { handleStayPendingExpire } = await import('./cron/stay-pending-expire')
@@ -171,15 +176,28 @@ export async function handleCronScheduled(
       const { reconcileOrphanedDepositOrders } = await import('../features/supply/api/wholesale-deposit-core')
       return reconcileOrphanedDepositOrders(env.DB)
     }));
+    // 🏦 2026-07-02: 출금 정산원장 자가복구 — status=paid 인데 net-out row 미확정인 출금을 멱등 완료(재출금 방지).
+    ctx.waitUntil(safeCron('wholesale-withdrawal-reconcile', async () => {
+      const { reconcileWithdrawalLedgers } = await import('../features/supply/api/supplier-withdrawal-core')
+      return reconcileWithdrawalLedgers(env.DB)
+    }));
     // 🛡️ 2026-05-21 Phase TD-3: 토스 환불 실패 자동 재시도 (exponential backoff).
     ctx.waitUntil(safeCron('toss-refund-retry', () => handleTossRefundRetry(env)));
     // 🛡️ 2026-05-24: 별점 "신규" 영구 fix — daily (18 UTC) 외에도 매시간 catch.
     //   신규 활성 상품이 들어오면 최대 1시간 안에 ★ 노출. idempotent (review_count>0 skip).
     ctx.waitUntil(safeCron('auto-seed-reviews-hourly', () => handleAutoSeedReviews(env)));
+    // 🔄 2026-07-05 (대표 "마감돼도 사라지면 안 됨 — 콜드스타트"): 데모 추첨 마감 자동 연장(5~10일 롤링).
+    ctx.waitUntil(safeCron('demo-fcfs-renew', () => renewDemoFcfs(env)));
     // 🏭 2026-06-08 TAX-1: 공급사 정산 성숙 매시간 tick (기존 maturity helper 호출, idempotent).
     ctx.waitUntil(safeCron('wholesale-settle-tick', () => handleWholesaleSettleTick(env)));
     // 🏭 2026-06-08 NOTI-1: 재입고 알림 — 구독 상품 재입고(stock>0) 시 판매사 알림.
     ctx.waitUntil(safeCron('wholesale-restock-notify', () => handleWholesaleRestockNotify(env)));
+    // 🔔 2026-07-01: 알림 채널 설정 회귀 감시 — LIVE 채널 키가 사라지면(true→false) 1회 critical
+    //   경보(cron_failures + 어드민 벨). VAPID 미설정으로 웹푸시가 조용히 죽어있던 사고 재발 방지.
+    ctx.waitUntil(safeCron('channel-watchdog', async () => {
+      const { handleChannelWatchdog } = await import('./cron/channel-watchdog');
+      return handleChannelWatchdog(env);
+    }));
     // 🔔 2026-07-01: 소비자 찜(위시리스트) 재입고 + 가격인하 알림(매시간, 멱등 스캔 — 재고/가격 write 무hook).
     ctx.waitUntil(safeCron('wishlist-restock-notify', async () => {
       const { handleWishlistRestockNotify } = await import('./cron/wishlist-notify');
@@ -332,8 +350,6 @@ export async function handleCronScheduled(
           logInfo(`[cron] agency-store-intro monthly bonus: awarded ${r.awarded} stores, total ₩${r.totalAmount.toLocaleString()}`)
         }
       } catch (e) { await notifyCronFailure(env, 'agency-cron-batch/agency-intro-monthly-bonus', e) }
-      // Phase 2-4: 라이브 종료 메트릭 사전 집계 (매일) — 라이브 중단 시 skip
-      if (!LIVE_COMMERCE_SUSPENDED) await handleLiveStreamMetrics(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/live-metrics', e));
       // 2026-04-27: 자사 이벤트 진행값 자동 갱신 + 보상 지급 (매일)
       await handleAgencySelfEventsTick(env).catch(e => notifyCronFailure(env, 'agency-cron-batch/self-events', e));
       // 2026-04-27: 셀러 일일 리포트 메일 (RESEND_API_KEY 있을 때만)
@@ -404,6 +420,11 @@ export async function handleCronScheduled(
   if (cron === '0 0 * * 1') {
     // 🛡️ 2026-05-21 Phase C: 주 1회 정산 자동 생성 — admin 검토용 pending payouts 생성.
     ctx.waitUntil(safeCron('payouts-generate', () => handlePayoutsGenerate(env)));
+    // 📊 2026-07-05 (자문 ⑤): 주간 조종석 숫자 5개 — 어드민 벨 + Discord (read-only 집계, fail-soft).
+    ctx.waitUntil(safeCron('weekly-metrics-summary', async () => {
+      const { runWeeklyMetricsSummary } = await import('./cron/weekly-metrics-summary');
+      return runWeeklyMetricsSummary(env);
+    }));
     // 📝 2026-07-01: 블로그 AI 홍보 초안 주간 1편(비공개, 관리자 검토 후 발행).
     //   킬스위치 BLOG_AI_DRAFTS_ENABLED='true' 일 때만 — 기본 OFF(토큰 낭비 0). 홍보 전용.
     ctx.waitUntil(safeCron('blog-ai-draft', async () => {

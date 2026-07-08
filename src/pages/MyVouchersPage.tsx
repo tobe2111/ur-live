@@ -13,7 +13,8 @@ import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import { walletTokens } from '@/components/wallet/walletTokens'
 import { formatNumber } from '@/utils/format'
 import VoucherDisputeBanner from '@/components/voucher/VoucherDisputeBanner'
-import { WalletSkeleton, EmptyVouchers } from './my-vouchers/WalletEmpty'
+import { EmptyVouchers } from './my-vouchers/WalletEmpty'
+import BrandLoader from '@/components/brand/BrandLoader'
 import PostJoinShareModal from './my-vouchers/PostJoinShareModal'
 import VoucherTicket from './my-vouchers/VoucherTicket'
 import QRModal from './my-vouchers/QRModal'
@@ -49,7 +50,8 @@ export default function MyVouchersPage() {
   const { t, i18n } = useTranslation()
   // 🛡️ 2026-05-22 P1 영구 fix: useState+useEffect+직접 fetch → useMyVouchers().
   //   localStorage initialData (즉시 0ms 표시) + 2분 stale + 페이지 전환 시 dedup.
-  const { data: vouchersRaw, isLoading: loading } = useMyVouchers()
+  // 🛡️ 2026-07-02: isError 분기 — 훅이 캐시 없는 실패를 throw 하게 바뀜(빈 지갑 위장 방지).
+  const { data: vouchersRaw, isLoading: loading, isError, refetch } = useMyVouchers()
   // 🎨 2026-06-21 (개선 #1): vouchers/mapVouchers/onMarkerClick 메모이즈 — 지도 카드 선택 시
   //   리렌더마다 VoucherMap effect 재실행(지도 재초기화·깜빡임)되던 것 방지.
   const vouchers = useMemo(() => (vouchersRaw ?? []) as unknown as Voucher[], [vouchersRaw])
@@ -313,7 +315,19 @@ export default function MyVouchersPage() {
 
       <div className="ur-content-narrow px-4 lg:px-8 pb-2">
         {loading ? (
-          <WalletSkeleton />
+          <BrandLoader />
+        ) : isError ? (
+          /* 🛡️ 2026-07-02: 네트워크 실패를 "빈 지갑"으로 위장하지 않음 — 에러 + 재시도. */
+          <div className="text-center py-16">
+            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">{t('voucher.loadFailed', { defaultValue: '이용권을 불러오지 못했어요' })}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
+            <button
+              onClick={() => refetch()}
+              className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold"
+            >
+              {t('common.retry', { defaultValue: '다시 시도' })}
+            </button>
+          </div>
         ) : shownVouchers.length === 0 ? (
           <EmptyVouchers
             mode={giftCount > 0 && sourceTab === 'gift' ? 'gift' : 'gb'}

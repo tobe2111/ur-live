@@ -3,6 +3,7 @@
  *   할인율 TOP5 카드. 부모는 heroDeals 배열 + 위치/라이브 정보 + 클릭 핸들러를 props 로 전달.
  */
 import { MapPin, Radio } from 'lucide-react'
+import { cfImage } from '@/utils/cf-image'
 import { distanceKm } from './utils'
 import type { Restaurant } from './types'
 
@@ -34,7 +35,7 @@ export default function HeroCarousel({ heroDeals, userLoc, liveSellerIds, onSele
             >
               <div className="relative aspect-square bg-pink-50 dark:bg-pink-900/20">
                 {r.image_url ? (
-                  <img src={r.image_url} alt="" loading="lazy" decoding="async"
+                  <img src={cfImage(r.image_url, { width: 280, quality: 85, format: 'auto' }) || r.image_url} alt="" loading="lazy" decoding="async"
                     className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center"><span className="text-3xl">🍽️</span></div>
@@ -49,12 +50,14 @@ export default function HeroCarousel({ heroDeals, userLoc, liveSellerIds, onSele
                 )}
               </div>
               <div className="p-2">
-                <p className="text-[11px] font-bold text-gray-900 dark:text-white truncate">{r.restaurant_name}</p>
+                {/* 🎨 2026-07-02 (대표 — UI 우선순위): 이용권명(name)이 제목, 매장명은 보조 줄로. */}
+                <p className="text-[11px] font-bold text-gray-900 dark:text-white truncate">{r.name || r.restaurant_name}</p>
                 <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate flex items-center gap-0.5">
                   <MapPin className="w-2.5 h-2.5 shrink-0" />
-                  {userLoc && r.restaurant_lat && r.restaurant_lng
-                    ? `${distanceKm(userLoc.lat, userLoc.lng, r.restaurant_lat, r.restaurant_lng).toFixed(1)}km`
-                    : (r.restaurant_address || '주소 미등록')}
+                  <span className="truncate">{r.restaurant_name}</span>
+                  {userLoc && r.restaurant_lat && r.restaurant_lng && (
+                    <span className="shrink-0">· {distanceKm(userLoc.lat, userLoc.lng, r.restaurant_lat, r.restaurant_lng).toFixed(1)}km</span>
+                  )}
                 </p>
                 <p className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-1">{r.price?.toLocaleString()}원</p>
               </div>

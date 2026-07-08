@@ -27,6 +27,8 @@ import { buildXlsx, xlsxResponse, type XlsxCell } from './xlsx';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { listSupplierPurchaseInvoices } from './wholesale-tax-invoices';
 import { SUPPLY_CHANNEL_THRESHOLDS_KEY, parseChannelThresholds } from '@/shared/supply-channels';
+import { intParam } from '@/shared/pagination'
+import { loadSpendable } from './supplier-withdrawal-core'
 
 export const supplierDashboardRoutes = new Hono<{ Bindings: Env }>();
 
@@ -116,6 +118,12 @@ supplierDashboardRoutes.get('/me', async (c) => {
     ]);
     if (!profile) return c.json({ success: false, error: '제조사를 찾을 수 없습니다' }, 404);
     const reservedAmount = Math.max(0, Math.floor(Number(rRow?.reserved) || 0));
+    // 🏦 2026-07-01 (라이브 감사): 분쟁/환불 보류(held) 반영한 실가용액 — 이전엔 /me 가 held 를 안 내려
+    //   OverviewTab 이 available-reserved 만 '출금 가능'으로 표시 → held 있으면 출금 모달에서 "잔액 초과" 거절.
+    //   loadSpendable(SSOT) = available - reserved - held. fail-soft(컬럼 없으면 available-reserved).
+    const sp = await loadSpendable(DB, sid).catch(() => null);
+    const spendableAmount = sp ? sp.spendable : Math.max(0, (Number(balance?.available_amount) || 0) - reservedAmount);
+    const heldAmount = Math.max(0, (Number(balance?.available_amount) || 0) - reservedAmount - spendableAmount);
     // 🏦 2026-06-30: 출금 가능하려면 정산 계좌 3종 필요 — 클라가 '계좌 등록' 안내/게이트에 사용.
     const p = profile as { bank_name?: string | null; bank_account?: string | null; account_holder?: string | null };
     const hasPayoutAccount = !!(p.bank_name && p.bank_account && p.account_holder);
@@ -129,6 +137,8 @@ supplierDashboardRoutes.get('/me', async (c) => {
           pending_amount: balance?.pending_amount ?? 0,
           available_amount: balance?.available_amount ?? 0,
           reserved_amount: reservedAmount,
+          held_amount: heldAmount,           // 🏦 분쟁/환불 보류 — 출금 불가분
+          spendable_amount: spendableAmount, // 🏦 실제 출금 가능액(available-reserved-held)
           paid_amount: balance?.paid_amount ?? 0,
         },
         product_counts: {
@@ -283,8 +293,8 @@ supplierDashboardRoutes.get('/products', async (c) => {
   const sid = supplierId(c);
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const { DB } = c.env;
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20', 10) || 20));
+  const page = Math.max(1, intParam(c.req.query('page'), 1));
+  const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)));
   const offset = (page - 1) * limit;
   const status = c.req.query('status') || ''; // pending | approved | rejected
   try {
@@ -804,6 +814,12 @@ supplierDashboardRoutes.patch('/products/:id', async (c) => {
       await recordSupplyPriceChange(DB, Number(pid), sid, existing.supply_price, newSupply, `supplier:${sid}`);
     }
 
+    // 🏭 2026-07-01 (라이브 감사): 수정=pending 재제출이므로 어드민 재승인 필요 → 승인 큐 알림.
+    //   이전엔 신규 등록만 벨을 보내 거부상품 수정 후 재제출이 무기한 대기했음(알림 비대칭 해소).
+    createDashboardNotification(DB, 'admin', null, 'supply_product_submitted', '공급상품 재승인 요청',
+      `제조사 #${sid}: ${(existing as { name?: string }).name || `상품 #${pid}`} 수정 후 재제출`, '/admin/supplier-products')
+      .catch(swallow('supplier-dashboard:patch-notify'));
+
     return c.json({ success: true, data: { id: Number(pid), approval_status: 'pending' }, message: '수정되었습니다. 다시 승인 대기 상태가 됩니다.' });
   } catch (err) {
     return safeError(c, err, '상품 수정 중 오류가 발생했습니다', '[supplier-dashboard]');
@@ -890,8 +906,8 @@ supplierDashboardRoutes.get('/settlements', async (c) => {
   const sid = supplierId(c);
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const { DB } = c.env;
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20', 10) || 20));
+  const page = Math.max(1, intParam(c.req.query('page'), 1));
+  const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)));
   const offset = (page - 1) * limit;
   const status = c.req.query('status') || ''; // pending | available | paid | cancelled
   try {
@@ -991,8 +1007,8 @@ supplierDashboardRoutes.get('/orders', async (c) => {
   const sid = supplierId(c);
   if (!sid) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
   const { DB } = c.env;
-  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') || '20', 10) || 20));
+  const page = Math.max(1, intParam(c.req.query('page'), 1));
+  const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 20)));
   const offset = (page - 1) * limit;
   // status: to_ship(발송대기) | shipped(발송완료) | all
   const status = c.req.query('status') || 'to_ship';
@@ -1347,7 +1363,7 @@ supplierDashboardRoutes.get('/store/products', rateLimit({ action: 'sup-store-pr
       const { loadNaverConnection, listNaverStoreProducts } = await import('../../../services/naver-commerce-core');
       const conn = await loadNaverConnection(c.env.DB, sid, c.env.DATA_ENCRYPTION_KEY, 'supplier');
       if (!conn) return c.json({ success: false, error: '먼저 스마트스토어를 연결해주세요', code: 'NOT_CONNECTED' }, 400);
-      const page = Math.max(1, Math.floor(Number(c.req.query('page')) || 1));
+      const page = Math.max(1, Math.floor(intParam(c.req.query('page'), 1)));
       const r = await listNaverStoreProducts(conn, page, 50);
       if (!r.ok) return c.json({ success: false, error: r.error }, 502);
       return c.json({ success: true, channel, items: r.items, total: r.total, page });

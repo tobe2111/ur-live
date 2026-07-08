@@ -23,6 +23,8 @@ import { Hono } from 'hono'
 import { sellerIdFrom } from '@/worker/utils/seller-auth'
 import { sanitizeString } from '@/worker/utils/validation'
 import { refundWholesaleSupplierLines, type WholesaleRefundResult } from './wholesale-refund'
+import { refundWholesaleOrderFully } from './wholesale-order-status'
+import { ACTIVE_WHOLESALE_STATUSES } from './wholesale-order-status'
 import { holdWholesaleSettlements, reconcileWholesaleHolds } from './wholesale-settlement'
 import { isViewerToken } from './sub-account-gate'
 import type { Env } from '@/worker/types/env'
@@ -285,6 +287,22 @@ app.patch('/admin/claims/:id', requireAdmin(), rateLimit({ action: 'admin-wholes
         supplierId: claim.supplier_id,
         itemIds: claim.wholesale_order_item_id ? [claim.wholesale_order_item_id] : undefined,
         reason: (adminMemo || '클레임 승인 환불').slice(0, 100),
+      })
+      if (refundResult && !refundResult.ok && !refundResult.already) {
+        return c.json({ success: false, error: refundResult.error || '환불 처리에 실패했습니다', code: refundResult.code }, (refundResult.httpStatus as 400 | 402 | 404) || 402)
+      }
+    } else if (action === 'approve') {
+      // 🏭 2026-07-02 (감사 — order-level 자동환불): supplier_id 없는 주문 단위(다제조사) 클레임은
+      //   기존엔 승인=상태만 approved 로 바꾸고 어드민 2차 수동환불 힌트만 반환 → 어드민이 안 누르면 바이어
+      //   영구 미환불 + 정산 영구 HOLD + approved 종결이라 재액션 불가. 이제 승인 시 전액 환불을 서버 집행한다
+      //   (refundWholesaleOrderFully: 라인 전부 REFUNDED + 정산 역전 + 재고복원 + 세금계산서 void, CAS 멱등).
+      //   환불 실패 시 status 미전환(open/reviewing 유지) → 어드민 재시도.
+      refundResult = await refundWholesaleOrderFully(c.env, {
+        orderId: claim.wholesale_order_id,
+        reason: (adminMemo || '클레임 승인 환불').slice(0, 100),
+        allowedPrev: [...ACTIVE_WHOLESALE_STATUSES],
+        finalStatus: 'REFUNDED',
+        notifyTitle: '클레임 승인 환불',
       })
       if (refundResult && !refundResult.ok && !refundResult.already) {
         return c.json({ success: false, error: refundResult.error || '환불 처리에 실패했습니다', code: refundResult.code }, (refundResult.httpStatus as 400 | 402 | 404) || 402)
