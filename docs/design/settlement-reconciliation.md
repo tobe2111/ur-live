@@ -21,10 +21,13 @@
 - `GET /api/admin/payouts/rail-reconciliation`(finance) — 양 레일에 동시 미지급 노출된 매장 + overlap 추정액 나열 → 운영자가 **한 레일에서만** 지급.
 - 주간 요약(`weekly-metrics-summary`)에 이중레일 노출 매장 수 승격.
 
-**근본수정 (파킹 — 머니 경로, 단독 세션 + staging):** 이용권도 §4.1 수렴에 포함 —
-1. **auto-settlement 이 ledger 에 이미 booking 된 voucher 를 skip**(`ledger_entries.reference_id='voucher:'||v.id` EXISTS 게이트) → Rail A 가 Rail B 와 중복 안 함. (최소 침습, 권장)
-2. 또는 `restaurant_settlements` 지급경로 폐기 → 이용권도 `merchant:N` 원장 단일 payout 으로 통일(에이전시가 2026-06-12 수동 레일 폐기한 것과 동일 패턴).
-⚠️ 라이브 정산 흐름이라 어느 쪽이든 staging 실검증 + 어느 레일이 실제 지급에 쓰이는지 확인 후 전환.
+**근본수정 안① — 배포됨 (기본 OFF 게이트, staging flip 대기):** 이용권도 §4.1 수렴에 포함.
+- **게이트 `platform_settings.settlement_skip_ledgered`(기본 OFF).** ON 이면 **Rail A(auto-settlement 크론 + 수동 `POST /calculate`)가 이미 원장(Rail B, `event_type='voucher_used'`)에 booking 된 voucher 를 skip** → `restaurant_settlements` 를 안 만들어 Rail B(원장→payouts) 단일 레일로 수렴.
+- 적용 위치: `cron/auto-settlement.ts` + `settlement/api/restaurant-settlement.routes.ts` (두 진입점 동일 게이트).
+- **기본 OFF = 현행 byte-불변**(두 레일 그대로 = 현재 이중적재 유지 — flip 전까지 상태 변화 0).
+- ⚠️ **flip(ON) 전 필수**: staging 실검증(사용 voucher 가 Rail A 에서 skip 되고 Rail B payout 으로만 잡히는지) + **"운영자가 실제로 어느 레일(restaurant_settlements vs payouts)에서 지급 중인가" 확인** — 만약 restaurant_settlements 로 지급 중이면 ON 시 그 매장 정산이 안 생기므로, 지급을 payouts 레일로 먼저 이전해야 함.
+
+**대안 안② (더 큰 변경, 파킹):** `restaurant_settlements` 지급경로 자체 폐기 → 이용권도 `merchant:N` 원장 단일 payout(에이전시가 2026-06-12 수동 레일 폐기한 것과 동일). 안①로 검증된 뒤 정리 옵션.
 
 ---
 
