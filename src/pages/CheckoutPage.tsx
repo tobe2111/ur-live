@@ -17,6 +17,7 @@ import { isKorea } from '@/config/region'
 import { captureError } from '@/lib/sentry'
 import { toast } from '@/hooks/useToast'
 import { useForceLightTheme } from '@/hooks/useForceLightTheme'
+import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 // 🛡️ 2026-05-01: TD-018 점진 분할 — sub-components.
 import CheckoutHeader from './checkout/CheckoutHeader'
 import OrderItemsList from './checkout/OrderItemsList'
@@ -271,6 +272,10 @@ function CartCheckout() {
 
   // 공동구매 할인 조회 (cartItems 로드 후)
   useEffect(() => {
+    // 🗑️ 2026-07-07 (로딩 낭비 감사): 친구초대 동적할인 종료(REFERRAL_GROUP_DISCOUNT_DISABLED) —
+    //   /api/referral/discount 는 항상 null 반환. 결제 크리티컬 패스에서 상품 수만큼 무의미한 왕복을
+    //   하던 것을 조기 차단(ReferralSection 은 이미 같은 플래그로 단락). 재개 시 배치 엔드포인트 권장.
+    if (REFERRAL_GROUP_DISCOUNT_DISABLED) return
     if (cartItems.length === 0) return
     const uniqueProductIds = Array.from(new Set(cartItems.map(item => Number(item.product_id)).filter(Boolean)))
     if (uniqueProductIds.length === 0) return

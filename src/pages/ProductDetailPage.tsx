@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Gift, ChevronRight, ChevronLeft } from 'lucide-react'
 import api from '@/lib/api'
-import { getUserId, hasConsumerSession } from '@/utils/auth'
+import { getUserId, getUserIdSync, hasConsumerSession } from '@/utils/auth'
 import { resolveProductFlow, canonicalDetailPath } from '@/shared/product-flow'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
@@ -135,15 +135,16 @@ export default function ProductDetailPage() {
   }, [id])
 
   // Check wishlist status when product loads
+  // 🗑️ 2026-07-07 (로딩 낭비 감사): 전체 위시리스트를 받아 .some() 하던 것 → 타깃 check 엔드포인트로.
+  //   위시리스트가 커질수록 페이로드/스캔이 커지던 상품별 오버페치 제거(하트 아이콘 1개용).
   useEffect(() => {
     if (!id || !isLoggedIn) return
+    const uid = getUserIdSync()
+    if (!uid) return
     let cancelled = false
-    api.get('/api/wishlists').then(r => {
+    api.get(`/api/wishlists/check/${uid}/${id}`).then(r => {
       if (cancelled) return
-      if (r.data.success && r.data.data?.items) {
-        const found = r.data.data.items.some((item: { product_id: string | number }) => String(item.product_id) === String(id))
-        setIsWishlisted(found)
-      }
+      if (r.data.success) setIsWishlisted(!!r.data.data?.isWishlisted)
     }).catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
     return () => { cancelled = true }
   }, [id, isLoggedIn])
