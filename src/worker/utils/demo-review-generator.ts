@@ -150,11 +150,11 @@ function emojiGroup(topic: Topic): keyof typeof EMOJI_POOLS {
 /** 업종별 이모지 1~2개(대부분 0개). 앞에 공백 포함해 본문에 그대로 붙임. */
 function pickEmoji(topic: Topic): string {
   const r = Math.random()
-  if (r < 0.55) return ''  // 55%: 무이모지(실제 후기 다수)
+  if (r < 0.77) return ''  // 77%: 무이모지(대표 지시 — 실제 후기처럼 대부분 이모지 없음)
   const pool = EMOJI_POOLS[emojiGroup(topic)]
   const e1 = pool[Math.floor(Math.random() * pool.length)]
-  if (r < 0.92) return ' ' + e1  // 37%: 한 개
-  let e2 = pool[Math.floor(Math.random() * pool.length)]  // 8%: 두 개(서로 다르게)
+  if (r < 0.96) return ' ' + e1  // 19%: 한 개
+  let e2 = pool[Math.floor(Math.random() * pool.length)]  // 4%: 두 개(서로 다르게)
   for (let i = 0; i < 4 && e2 === e1; i++) e2 = pool[Math.floor(Math.random() * pool.length)]
   return ' ' + e1 + e2
 }
@@ -400,12 +400,12 @@ export async function seedMissingDemoReviews(env: Env, maxBatch = 400): Promise<
 
 /**
  * 🔄 2026-07-06 (대표 "기존 100개+도 다 작업"): 기존 데모의 옛 리뷰를 **새 품질로 재생성**. 청크 단위 —
- *   `review_gen_v='3'` 메타 마커로 이미 새로고침한 데모는 skip(반복 호출이 전체를 진행, 멱등). limit 개씩.
+ *   `review_gen_v='4'` 메타 마커로 이미 새로고침한 데모는 skip(반복 호출이 전체를 진행, 멱등). limit 개씩.
  *   반환 remaining>0 이면 다시 호출(클라 루프). force 로 마커 무시 재실행 가능.
  */
 export async function refreshDemoReviews(env: Env, limit = 20, force = false): Promise<{ refreshed: number; reviews: number; remaining: number }> {
   const DB = env.DB
-  const markerFilter = force ? '' : `AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id = p.id AND m2.key='review_gen_v' AND m2.value='3')`
+  const markerFilter = force ? '' : `AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id = p.id AND m2.key='review_gen_v' AND m2.value='4')`
   const baseWhere = `p.slug LIKE 'demo-deal-%' AND COALESCE(p.slug,'') NOT LIKE 'retired-%' AND COALESCE(p.is_active,1)=1
       AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id=p.id AND m.key='prelaunch' AND m.value='1')`
   const rows = await DB.prepare(
@@ -420,13 +420,13 @@ export async function refreshDemoReviews(env: Env, limit = 20, force = false): P
     try {
       await DB.prepare('DELETE FROM product_reviews WHERE product_id = ? AND is_generated = 1').bind(r.id).run()
       const n = await seedDemoReviews(env, { id: r.id, name: r.name, category: r.category, storeName: r.restaurant_name, price: r.price }, 6 + Math.floor(Math.random() * 7), seen)
-      await setSupplyMeta(DB, r.id, { review_gen_v: '3' }).catch(() => {})
+      await setSupplyMeta(DB, r.id, { review_gen_v: '4' }).catch(() => {})
       refreshed++; reviews += n
     } catch { /* skip this one */ }
   }
   const rem = await DB.prepare(
     `SELECT COUNT(*) AS c FROM products p WHERE ${baseWhere}
-      AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id=p.id AND m2.key='review_gen_v' AND m2.value='3')`
+      AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id=p.id AND m2.key='review_gen_v' AND m2.value='4')`
   ).first<{ c: number }>().catch(() => ({ c: 0 }))
   return { refreshed, reviews, remaining: force ? 0 : (rem?.c ?? 0) }
 }
