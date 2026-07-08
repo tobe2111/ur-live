@@ -305,6 +305,40 @@ adminPayoutsRoutes.get('/admin/payouts/clawbacks', requireAdminRole('finance'), 
   })
 })
 
+// 💸 2026-07-08 (머니 감사 Guard 2 — 두 정산 레일 이중지급 대사): 같은 이용권 매출이
+//   Rail A(restaurant_settlements, auto-settlement 크론)와 Rail B(ledger→payouts) 양쪽에
+//   같은 매장(seller_id)으로 중복 적재되나 레일 간 대사가 없음 → 두 화면에서 각각 지급하면 이중지급.
+//   이 endpoint 는 양 레일에 동시 미지급 노출된 매장을 나열해 운영자가 "한 레일에서만" 지급하게 한다.
+//   read-only. 근본수정(레일 통일 — restaurant_settlements 를 원장 단일 레일로 수렴)은 머니 경로 →
+//   별도 세션. 설계: docs/design/settlement-reconciliation.md.
+adminPayoutsRoutes.get('/admin/payouts/rail-reconciliation', requireAdminRole('finance'), async (c) => {
+  const { DB } = c.env
+  // Rail A: restaurant_settlements 미지급(pending) seller별 집계.
+  const railA = await DB.prepare(
+    `SELECT seller_id, COUNT(*) AS a_count, COALESCE(SUM(settlement_amount),0) AS a_pending
+       FROM restaurant_settlements WHERE status = 'pending' GROUP BY seller_id`,
+  ).all<{ seller_id: number; a_count: number; a_pending: number }>()
+    .catch(() => ({ results: [] as Array<{ seller_id: number; a_count: number; a_pending: number }> }))
+  // Rail B: payouts(store_owner) 미완료(pending/approved/sent) payee별 집계.
+  const railB = await DB.prepare(
+    `SELECT payee_id, COUNT(*) AS b_count, COALESCE(SUM(amount),0) AS b_amount
+       FROM payouts WHERE payee_type = 'store_owner' AND status IN ('pending','approved','sent') GROUP BY payee_id`,
+  ).all<{ payee_id: string; b_count: number; b_amount: number }>()
+    .catch(() => ({ results: [] as Array<{ payee_id: string; b_count: number; b_amount: number }> }))
+  const bMap = new Map((railB.results || []).map(r => [String(r.payee_id), r]))
+  const sellers: Array<Record<string, unknown>> = []
+  let totalOverlap = 0
+  for (const a of (railA.results || [])) {
+    const b = bMap.get(String(a.seller_id))
+    if (!b) continue // 한 레일에만 있으면 이중 노출 아님
+    const overlap = Math.min(Number(a.a_pending) || 0, Number(b.b_amount) || 0)
+    totalOverlap += overlap
+    sellers.push({ seller_id: a.seller_id, rail_a_pending: a.a_pending, rail_a_count: a.a_count, rail_b_amount: b.b_amount, rail_b_count: b.b_count, overlap_estimate: overlap })
+  }
+  sellers.sort((x, y) => (Number(y.overlap_estimate) || 0) - (Number(x.overlap_estimate) || 0))
+  return c.json({ success: true, data: { double_exposed_sellers: sellers.length, total_overlap_estimate: totalOverlap, sellers } })
+})
+
 // 🛡️ 2026-05-21 Phase D: commission rate 어드민 조정 — platform_settings 기반.
 //   - platform_fee_pct: 플랫폼 fee 비율 (default 5)
 //   - seller_commission_pct: 위탁 판매 셀러 commission (default 10)

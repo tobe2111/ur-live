@@ -8,6 +8,26 @@
 
 ---
 
+## 🔴 Severe 3 — 이용권 정산 **두 레일 이중지급** (2026-07-08 무인운영 감사 확인)
+
+> **판정: 구조적 이중지급 위험 있음.** 근본수정은 머니 경로 → **단독 세션 + staging** (파킹). 이번엔 read-only 대사 알림만 배포(안전).
+
+**메커니즘:** 같은 이용권(voucher) 1건 사용이 두 레일에 **같은 순매출(≈95%)을 같은 매장(seller_id)에게** 각각 채무로 적재하는데 **레일 간 대사가 전혀 없다**:
+- **Rail A** `restaurant_settlements`: `cron/auto-settlement.ts`(매일 18:00 UTC, 게이트 없음)가 `status='used'` voucher 를 seller 별 `settlement_amount = 매출 − 5%` 로 INSERT. 지급: `restaurant-settlement.routes.ts PATCH /:id/complete`.
+- **Rail B** `ledger_entries`→`payouts`: 사용 시점 `ledger.ts recordVoucherUsedLedger` 가 `merchant:N` 로 net credit → `cron/payouts-generate.ts`(주간)가 `payouts(store_owner:N, pending)` 생성. 지급: `admin-payouts.routes.ts` approve→sent.
+- **멱등 마커가 레일별로 분리**(Rail A=`vouchers.settlement_id` CAS / Rail B=`ledger_entries.reference_id='voucher:N'`)돼 **서로를 조회하지 않음** → 100% 중복 적재. Rail B 과다지급 가드(`PAYOUT_EXCEEDS_RECEIVABLE`)도 `restaurant_settlements` 지급분을 못 봄. 본 문서 §범위(L4)가 restaurant_settlements 를 "범위 밖"으로 제외한 것이 곧 이 갭의 근원 — §4.1 "단일 지급=원장→payouts" 수렴에서 **이용권 가맹점만 누락**됐다.
+
+**배포된 완화 (read-only, 안전):**
+- `GET /api/admin/payouts/rail-reconciliation`(finance) — 양 레일에 동시 미지급 노출된 매장 + overlap 추정액 나열 → 운영자가 **한 레일에서만** 지급.
+- 주간 요약(`weekly-metrics-summary`)에 이중레일 노출 매장 수 승격.
+
+**근본수정 (파킹 — 머니 경로, 단독 세션 + staging):** 이용권도 §4.1 수렴에 포함 —
+1. **auto-settlement 이 ledger 에 이미 booking 된 voucher 를 skip**(`ledger_entries.reference_id='voucher:'||v.id` EXISTS 게이트) → Rail A 가 Rail B 와 중복 안 함. (최소 침습, 권장)
+2. 또는 `restaurant_settlements` 지급경로 폐기 → 이용권도 `merchant:N` 원장 단일 payout 으로 통일(에이전시가 2026-06-12 수동 레일 폐기한 것과 동일 패턴).
+⚠️ 라이브 정산 흐름이라 어느 쪽이든 staging 실검증 + 어느 레일이 실제 지급에 쓰이는지 확인 후 전환.
+
+---
+
 ## 1. 현상 — 정산 회계가 3중으로 분리, 루프가 안 닫힘
 
 | # | 시스템 | 저장소 | 크레딧(적립) 주체 | 지급 주체 | 셀러 대시보드 노출 |
