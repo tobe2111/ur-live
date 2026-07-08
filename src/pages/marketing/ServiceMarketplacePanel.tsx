@@ -19,6 +19,8 @@ interface Pricing { unit: string; unitPrice: number; minQty: number; maxQty: num
 interface Service { id: number; category: string; name: string; subtitle: string | null; description: string | null; pricing: Pricing }
 interface Price { unitPrice: number; quantity: number; subtotal: number; discountPct: number; discounted: number; optionsTotal: number; total: number }
 interface Order { id: number; service_name: string; preset_label: string | null; quantity: number; total_amount: number; status: string; fulfillment_method: string | null; admin_note: string | null; created_at: string }
+interface Review { id: number; rating: number; title: string; body: string; author_masked: string; created_at: string }
+const Stars = ({ n }: { n: number }) => <span className="text-amber-400 text-[12px] tracking-tight">{'★'.repeat(Math.round(n))}<span className="text-gray-300 dark:text-gray-600">{'★'.repeat(Math.max(0, 5 - Math.round(n)))}</span></span>
 const STATUS_KO: Record<string, string> = { requested: '접수됨', confirmed: '확인됨', in_progress: '진행 중', done: '완료', cancelled: '취소' }
 const STATUS_CLS: Record<string, string> = { requested: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400', confirmed: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400', in_progress: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400', done: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', cancelled: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400' }
 
@@ -36,6 +38,13 @@ export default function ServiceMarketplacePanel() {
   const [memo, setMemo] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(false)
+  // 리뷰
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [rvSummary, setRvSummary] = useState<{ count: number; avg: number }>({ count: 0, avg: 0 })
+  const [rvPage, setRvPage] = useState(1)
+  const [rvPages, setRvPages] = useState(1)
+  const [canWrite, setCanWrite] = useState(false)
+  const [rvForm, setRvForm] = useState<{ rating: number; title: string; body: string } | null>(null)
 
   const load = useCallback(async () => {
     setErr(false)
@@ -47,10 +56,26 @@ export default function ServiceMarketplacePanel() {
   }, [])
   useEffect(() => { load() }, [load])
 
+  const loadReviews = useCallback(async (serviceId: number, page = 1) => {
+    try {
+      const r = await api.get(`/api/ads/services/${serviceId}/reviews?page=${page}`, { headers: authHeader() })
+      if (r.data?.success) { setReviews(r.data.reviews || []); setRvSummary(r.data.summary || { count: 0, avg: 0 }); setRvPage(r.data.page || 1); setRvPages(r.data.pages || 1); setCanWrite(!!r.data.can_write) }
+    } catch { /* 리뷰 로드 실패 무시 */ }
+  }, [])
   const openDetail = (svc: Service) => {
-    setSel(svc); setPrice(null); setOpts(new Set())
+    setSel(svc); setPrice(null); setOpts(new Set()); setRvForm(null)
     const first = svc.pricing.presets?.[0]
     setPreset(first?.label || null); setQty(first?.qty || svc.pricing.minQty || 1)
+    loadReviews(svc.id, 1)
+  }
+  async function submitReview() {
+    if (!sel || !rvForm) return
+    setBusy(true)
+    try {
+      const r = await api.post(`/api/ads/services/${sel.id}/review`, rvForm, { headers: authHeader() })
+      if (r.data?.success) { toast.success('후기가 등록되었습니다. 감사합니다!'); setRvForm(null); await loadReviews(sel.id, 1) }
+      else toast.error(r.data?.error || '등록 실패')
+    } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '등록 실패') } finally { setBusy(false) }
   }
   // 가격 미리보기(서버 권위) — 선택 변경 시.
   useEffect(() => {
@@ -161,6 +186,54 @@ export default function ServiceMarketplacePanel() {
               <pre className="text-[12px] text-gray-600 dark:text-gray-300 whitespace-pre-wrap font-sans leading-relaxed">{sel.description}</pre>
             </div>
           )}
+
+          {/* 고객 리뷰(구매 검증형 — 완료 주문 고객만 작성) */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between">
+              <div className="text-[13px] font-bold text-gray-900 dark:text-white">고객 리뷰 {rvSummary.count > 0 && <span className="ml-1 font-medium text-gray-400 dark:text-gray-500"><Stars n={rvSummary.avg} /> {rvSummary.avg} ({rvSummary.count})</span>}</div>
+              {canWrite && !rvForm && <button onClick={() => setRvForm({ rating: 5, title: '', body: '' })} className="rounded-lg border border-gray-200 dark:border-[#2A2A2A] px-2.5 py-1 text-[11px] font-bold text-gray-700 dark:text-gray-200">후기 쓰기</button>}
+            </div>
+
+            {rvForm && (
+              <div className="mt-2 rounded-xl border border-gray-100 dark:border-[#1A1A1A] p-3">
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map(n => <button key={n} onClick={() => setRvForm(f => f && { ...f, rating: n })} className={`text-[18px] ${n <= rvForm.rating ? 'text-amber-400' : 'text-gray-300 dark:text-gray-600'}`}>★</button>)}
+                </div>
+                <input className={`${input} mt-2`} placeholder="제목 (2~60자)" maxLength={60} value={rvForm.title} onChange={e => setRvForm(f => f && { ...f, title: e.target.value })} />
+                <textarea className="mt-2 w-full rounded-lg border border-gray-200 dark:border-[#2A2A2A] bg-white dark:bg-[#0A0A0A] p-2.5 text-[13px] text-gray-900 dark:text-white" rows={3} placeholder="이용 후기를 남겨주세요 (5~1000자)" maxLength={1000} value={rvForm.body} onChange={e => setRvForm(f => f && { ...f, body: e.target.value })} />
+                <div className="mt-1.5 flex justify-end gap-1.5">
+                  <button onClick={() => setRvForm(null)} className="rounded-lg px-2.5 py-1 text-[11.5px] text-gray-500 dark:text-gray-400">취소</button>
+                  <button onClick={submitReview} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11.5px] font-bold text-white dark:text-[#0A0A0A] disabled:opacity-40">{busy ? '등록 중…' : '등록'}</button>
+                </div>
+              </div>
+            )}
+
+            {reviews.length === 0 ? (
+              <p className="mt-2 text-[11.5px] text-gray-400 dark:text-gray-500">아직 후기가 없습니다. {canWrite ? '첫 후기를 남겨보세요.' : '이용 완료 후 후기를 남길 수 있습니다.'}</p>
+            ) : (
+              <>
+                <div className="mt-2 divide-y divide-gray-100 dark:divide-[#1A1A1A]">
+                  {reviews.map(r => (
+                    <div key={r.id} className="py-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[12.5px] font-semibold text-gray-900 dark:text-white truncate">{r.title}</span>
+                        <Stars n={r.rating} />
+                      </div>
+                      <p className="mt-0.5 text-[12px] text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{r.body}</p>
+                      <div className="mt-0.5 text-[10.5px] text-gray-400 dark:text-gray-500">{r.author_masked} · {(r.created_at || '').slice(0, 10)}</div>
+                    </div>
+                  ))}
+                </div>
+                {rvPages > 1 && (
+                  <div className="mt-2 flex items-center justify-center gap-2 text-[12px]">
+                    <button disabled={rvPage <= 1} onClick={() => loadReviews(sel.id, rvPage - 1)} className="text-gray-500 dark:text-gray-400 disabled:opacity-30">‹</button>
+                    <span className="text-gray-500 dark:text-gray-400">{rvPage} / {rvPages}</span>
+                    <button disabled={rvPage >= rvPages} onClick={() => loadReviews(sel.id, rvPage + 1)} className="text-gray-500 dark:text-gray-400 disabled:opacity-30">›</button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -16,15 +16,17 @@ interface Order {
   status: string; fulfillment_method: string | null; admin_note: string | null; created_at: string
 }
 interface Service { id: number; category: string; name: string; subtitle: string | null; pricing: { unit: string; unitPrice: number }; active: number; sort_order: number }
+interface Review { id: number; service_id: number; account_id: number; rating: number; title: string; body: string; author_masked: string; status: string; created_at: string }
 
 const STATUSES = ['requested', 'confirmed', 'in_progress', 'done', 'cancelled']
 const STATUS_KO: Record<string, string> = { requested: '접수됨', confirmed: '확인됨', in_progress: '진행 중', done: '완료', cancelled: '취소' }
 const METHODS = ['유료광고', '콘텐츠', '인플루언서', '체험단', '운영대행', '기타']
 
 export default function AdminAdsServicesPage() {
-  const [tab, setTab] = useState<'orders' | 'catalog'>('orders')
+  const [tab, setTab] = useState<'orders' | 'catalog' | 'reviews'>('orders')
   const [orders, setOrders] = useState<Order[]>([])
   const [services, setServices] = useState<Service[]>([])
+  const [reviews, setReviews] = useState<Review[]>([])
   const [filter, setFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<number | null>(null)
@@ -32,12 +34,14 @@ export default function AdminAdsServicesPage() {
   const load = useCallback(async (status = '') => {
     setLoading(true)
     try {
-      const [o, s] = await Promise.all([
+      const [o, s, rv] = await Promise.all([
         api.get(`/api/admin/ads/service-orders${status ? `?status=${status}` : ''}`),
         api.get('/api/admin/ads/services'),
+        api.get('/api/admin/ads/service-reviews'),
       ])
       if (o.data?.success) setOrders(o.data.orders || [])
       if (s.data?.success) setServices(s.data.services || [])
+      if (rv.data?.success) setReviews(rv.data.reviews || [])
     } catch { toast.error('불러오기 실패') } finally { setLoading(false) }
   }, [])
   useEffect(() => { load() }, [load])
@@ -46,6 +50,11 @@ export default function AdminAdsServicesPage() {
     setBusy(id)
     try { const r = await api.patch(`/api/admin/ads/service-orders/${id}`, body); if (r.data?.success) { toast.success(`${label} 완료`); await load(filter) } else toast.error(r.data?.error || '변경 실패') }
     catch { toast.error('변경 실패') } finally { setBusy(null) }
+  }
+  async function setReviewStatus(id: number, status: 'visible' | 'hidden') {
+    setBusy(id)
+    try { const r = await api.patch(`/api/admin/ads/service-reviews/${id}`, { status }); if (r.data?.success) { toast.success(status === 'hidden' ? '숨김' : '노출'); await load(filter) } }
+    catch { toast.error('실패') } finally { setBusy(null) }
   }
   async function toggleService(s: Service) {
     setBusy(-s.id)
@@ -58,8 +67,8 @@ export default function AdminAdsServicesPage() {
       <DashboardPageHeader title="유어애즈 서비스몰" subtitle="마케팅 서비스 주문 접수함·상품 관리. 무결제 — 담당자가 확인 후 이행(광고·콘텐츠 등)하고 상태를 갱신합니다." />
 
       <div className="flex gap-2 mb-4">
-        {(['orders', 'catalog'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} className={`h-9 px-4 rounded-lg text-sm font-semibold ${tab === t ? 'bg-gray-900 text-white' : 'border border-gray-200 text-gray-600'}`}>{t === 'orders' ? '주문 접수함' : '상품 관리'}</button>
+        {(['orders', 'catalog', 'reviews'] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)} className={`h-9 px-4 rounded-lg text-sm font-semibold ${tab === t ? 'bg-gray-900 text-white' : 'border border-gray-200 text-gray-600'}`}>{t === 'orders' ? '주문 접수함' : t === 'catalog' ? '상품 관리' : '리뷰 관리'}</button>
         ))}
       </div>
 
@@ -119,6 +128,25 @@ export default function AdminAdsServicesPage() {
             </tbody>
           </table>
           <p className="p-3 text-[11.5px] text-gray-400">상품 신규 등록/가격 편집은 API(`POST /api/admin/ads/services`)로 지원됩니다. 시드 3종이 기본 등록되어 있습니다.</p>
+        </div>
+      )}
+
+      {tab === 'reviews' && (
+        <div className="space-y-2">
+          <p className="text-[12px] text-gray-500">고객 리뷰는 <b>완료 주문 고객만</b> 작성합니다(구매 검증형 — 자작/가짜 불가). 부적절한 리뷰만 숨기세요.</p>
+          {reviews.length === 0 ? <p className="py-8 text-center text-gray-400 text-sm">리뷰가 없습니다.</p>
+            : reviews.map(r => (
+              <div key={r.id} className="rounded-xl border border-gray-200 bg-white p-3 text-[13px]">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="text-amber-500">{'★'.repeat(r.rating)}</span> <span className="font-bold text-gray-900">{r.title}</span>
+                    <div className="text-[12px] text-gray-600 mt-0.5 whitespace-pre-wrap">{r.body}</div>
+                    <div className="text-[10.5px] text-gray-400 mt-0.5">{r.author_masked} · 상품#{r.service_id} · 계정#{r.account_id} · {(r.created_at || '').slice(0, 10)}</div>
+                  </div>
+                  <button disabled={busy === r.id} onClick={() => setReviewStatus(r.id, r.status === 'hidden' ? 'visible' : 'hidden')} className={`shrink-0 px-2 py-1 rounded text-[11.5px] font-bold ${r.status === 'hidden' ? 'bg-gray-100 text-gray-500' : 'bg-emerald-50 text-emerald-600'}`}>{r.status === 'hidden' ? '숨김' : '노출'}</button>
+                </div>
+              </div>
+            ))}
         </div>
       )}
     </AdminLayout>

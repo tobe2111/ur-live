@@ -10,6 +10,7 @@ import { ensureAdsAccountSchema } from './ads-account'
 import { ensureEntitlementSchema, setPlan, type AdsPlan } from './ads-entitlements'
 import { mediaStatus } from './media-gateway'
 import { listServices, adminUpsertService, adminListOrders, adminUpdateOrder } from './ad-services'
+import { adminListReviews, adminSetReviewStatus } from './ad-service-reviews'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -106,6 +107,18 @@ app.patch('/service-orders/:id', async (c) => {
     admin_note: b.admin_note !== undefined ? String(b.admin_note) : undefined,
   })
   if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  return c.json({ success: true })
+})
+
+// GET /api/admin/ads/service-reviews — 리뷰 모더레이션 목록
+app.get('/service-reviews', async (c) => c.json({ success: true, reviews: await adminListReviews(c.env.DB) }))
+
+// PATCH /api/admin/ads/service-reviews/:id — 노출/숨김
+app.patch('/service-reviews/:id', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  await adminSetReviewStatus(c.env.DB, id, b.status === 'hidden' ? 'hidden' : 'visible')
   return c.json({ success: true })
 })
 

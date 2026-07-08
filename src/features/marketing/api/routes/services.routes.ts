@@ -7,6 +7,7 @@ import type { Env } from '@/worker/types/env'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { adsAccountIdFrom } from '../ads-account'
 import { listServices, getService, createServiceOrder, listMyOrders, computeServicePrice } from '../ad-services'
+import { listReviews, createReview, reviewSummary, reviewableOrderId } from '../ad-service-reviews'
 
 const adsServicesRoutes = new Hono<{ Bindings: Env }>()
 
@@ -48,6 +49,29 @@ adsServicesRoutes.post('/services/order', rateLimit({ action: 'ads-svc-order', m
   })
   if (!r.ok) return c.json({ success: false, error: r.error }, 400)
   return c.json({ success: true, orderId: r.orderId, price: r.price })
+})
+
+// GET /api/ads/services/:id/reviews?page= — 상품 리뷰 목록(+요약, 작성 자격)
+adsServicesRoutes.get('/services/:id/reviews', async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const sid = Number(c.req.param('id'))
+  const [list, summary, canWrite] = await Promise.all([
+    listReviews(c.env.DB, sid, Number(c.req.query('page')) || 1),
+    reviewSummary(c.env.DB, sid),
+    reviewableOrderId(c.env.DB, id, sid),
+  ])
+  return c.json({ success: true, ...list, summary, can_write: canWrite != null })
+})
+
+// POST /api/ads/services/:id/review — 리뷰 작성(완료 주문 고객만, 주문당 1회)
+adsServicesRoutes.post('/services/:id/review', rateLimit({ action: 'ads-svc-review', max: 10, windowSec: 60 }), async (c) => {
+  const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
+  if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const r = await createReview(c.env.DB, id, Number(c.req.param('id')), { rating: Number(b.rating), title: String(b.title || ''), body: String(b.body || '') })
+  if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+  return c.json({ success: true })
 })
 
 // GET /api/ads/services/:id — 상품 상세(맨 뒤 — 위 정적 경로 우선)
