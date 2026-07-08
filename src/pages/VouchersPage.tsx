@@ -27,6 +27,7 @@ import { extractDominantColor, reportDominantColor } from '@/utils/dominant-colo
 import { SortMenu } from '@/components/ui/sort-menu'
 import BrowseProductCard from './browse/BrowseProductCard'
 import type { Product } from './browse/types'
+import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 
 // 🛡️ 2026-05-21: 교환권 정렬 옵션 (사용자 요청).
 type SortKey = 'popular' | 'newest' | 'price_low' | 'price_high' | 'discount' | 'rating'
@@ -740,7 +741,12 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
           <div className="relative flex items-center justify-center px-2 py-1.5">
             <div className="flex items-center gap-1">
-              {([['vouchers', '교환권'], ['shopping', '쇼핑']] as const).map(([key, label]) => {
+              {/* 🛒 2026-07-03 (대표 결정 — 메인은 교환권만, 쇼핑 잠정 숨김): SHOPPING_TAB_HIDDEN 이면
+                  '쇼핑' 탭 제외(교환권만). 플래그 false 로 되돌리면 즉시 복원(가역). 아래 쇼핑 섹션도 동일 게이트. */}
+              {(SHOPPING_TAB_HIDDEN
+                ? ([['vouchers', '교환권']] as const)
+                : ([['vouchers', '교환권'], ['shopping', '쇼핑']] as const)
+              ).map(([key, label]) => {
                 const active = activeTab === key
                 return (
                   <button
@@ -1022,10 +1028,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               </div>
             )}
             {/* 더보기 로딩 표시 (sentinel — 교환권 무한관찰은 비활성, 더보기 버튼이 로드 담당).
-                '마지막' 표시는 홈(embedded)만 — /vouchers 는 이 아래로 쇼핑 섹션이 이어져 '마지막'이 아님. */}
+                '마지막' 표시는 홈(embedded) + 쇼핑 숨김 /vouchers — 아래에 쇼핑 섹션이 없으면 교환권이 끝. */}
             <div ref={loadMoreRef} className="h-10 flex items-center justify-center mt-4">
               {loadingMore && <div className="text-[11px] text-gray-400 dark:text-gray-500">로드 중...</div>}
-              {embedded && !hasMore && products.length > 0 && (
+              {(embedded || SHOPPING_TAB_HIDDEN) && !hasMore && embedVisible >= displayProducts.length && products.length > 0 && (
                 <div className="text-[11px] text-gray-400 dark:text-gray-500">— 마지막 —</div>
               )}
             </div>
@@ -1033,8 +1039,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         )}
       </div>
       {/* 🛒 2026-06-23 (대표 결정): 쇼핑 섹션 — 교환권 더보기 버튼 아래로 이어지는 일반 상품 그리드(무한 스크롤).
-          상단 '쇼핑' 탭이 이 섹션으로 점프(scroll-mt 로 sticky 탭 높이만큼 여백 확보). 홈(embedded)엔 없음. */}
-      {!embedded && (
+          상단 '쇼핑' 탭이 이 섹션으로 점프(scroll-mt 로 sticky 탭 높이만큼 여백 확보). 홈(embedded)엔 없음.
+          🛒 2026-07-03 (대표 결정 — 메인은 교환권만): SHOPPING_TAB_HIDDEN 이면 섹션 미렌더(교환권만 남김).
+          shoppingRef 는 null 유지 → 스크롤스파이(`if(sec)`)·goToShopping(`?.`)·나머지 전부 null-safe. 가역. */}
+      {!embedded && !SHOPPING_TAB_HIDDEN && (
         <section ref={shoppingRef} className="scroll-mt-14 mt-2 border-t-8 border-gray-50 dark:border-[#121212]">
           <div className="ur-content-wide px-4 lg:px-8 pt-5 pb-1 flex items-center gap-1.5">
             <ShoppingBag className="w-[18px] h-[18px] text-gray-900 dark:text-white" />
