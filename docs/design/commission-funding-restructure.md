@@ -12,7 +12,7 @@
 
 **대원칙: 유어딜 5% 는 판매 커미션에 일절 안 쓴다. 모든 판매 커미션은 5% 밖(매장 promo)에서.**
 
-1. **유어딜 5% (불가침)** — 소비자 결제 인프라비(PG 포함). **판매 커미션 재원으로 사용 금지.**
+1. **유어딜 5% (불가침)** — 소비자 결제 인프라비. **PG 수수료는 이 5% *안에서* 플랫폼이 흡수(자기 비용)** → 유어딜 실현 마진 = 5% − PG. **5% 는 gross(총) take 이고 판매 커미션은 이 5% 를 0 만큼 건드린다**(전부 promo). ⚠️ "5% 불변" = **원장상 `platform:revenue` = 5% 전액(성장 커미션의 platform:revenue debit 0)** 을 뜻하며, PG 후 실현마진(5%−PG)과 구분. **판매 커미션 재원으로 5% 사용 금지.**
 2. **판매 커미션(인플루언서·벤더·어필리에이트) = 매장 promo(5% 밖) = `promo_funding_source=owner`.** 인플/벤더에게 얼마를 주든 **유어딜 5% 는 불변** — 이 불변식이 깨지면 **버그**.
 3. **에이전시 보상 = 콜드스타트 한시 마중물 (영구 지분 아님).** 지금은 promo 생태계가 없어 조율 마진이 없으므로, 매장 온보딩 보상을 유어딜이 **5% 안에서 한시적으로만** 부담. promo 가 자립하면 에이전시는 매장-인플 조율로 promo 마진에서 먹고, 이 마중물은 **축소·폐지 방향**. (율/정액·폐지 시점·조건 미확정 — 현행 1%/24개월 로직 그대로 두되 "조정 가능한 한시 보상"으로만 취급.)
 4. **A/B 구조는 마진과 무관.** 직접 판매(A)든 벤더 pass-through(B)든 재원이 전부 매장 promo(5% 밖)라 유어딜 5% 무영향. **A 폐지·B 강제 불필요** — 현행 A(병렬 독립 지급) 유지, B 는 실벤더 이주 시 `vendor-commission-passthrough.md` 기반으로 얹기. **B 의 풀 재원도 반드시 promo(5% 밖).**
@@ -32,9 +32,11 @@
 | 인플 라이브셀/`seller_influencer_deals` 딜% (`group-buy.routes.ts:517`) | 매장(seller receivable debit) | 없음 — 이미 owner-펀딩(=B 의 선례) | ✅ 확정 |
 | 우회 사이트: `/track`(`affiliate.routes.ts:81`, uncapped) · `/calculate-commission`(`referral-tree.routes.ts:629`, uncapped) · 숙소 referral 직접 INSERT(`payment.routes.ts:604`, owner debit 미적용) · agency-incentives 병렬 엔진(`agency-incentives.routes.ts:255`, 아비터 미배선) | 혼재 | flip 전 오케스트레이터/owner 경유로 정리 또는 폐기 | ⚠️ 확인필요 |
 
-### 🛡️ 불변식 #44 (flip 시 신설) — "platform net == 5% (커미션이 5% 를 건드리지 않음)"
+### 🛡️ 불변식 #44 (flip 시 신설) — "원장상 platform:revenue = 5% 전액 (성장 커미션 debit 0)"
 
-오늘의 [INV-CB]는 **"platform net ≥ 0"**(커미션이 5% 를 PG 준비금 바닥까지 잠식 허용)일 뿐, "net == 5%" 는 **어디에도 인코딩 안 됨**. flip 시 **더 강한 불변식**을 신설:
+> ⚠️ **정의 명확화(2026-07-08 대표 — "PG 는 5% 안에서 해결")**: 여기서 "5%" 는 **원장 `platform:revenue` pool = 결제액의 5% 전액**을 뜻한다(성장 커미션이 이 pool 을 debit 하지 않음). **PG 는 이 5% *안에서* 플랫폼이 흡수하는 원장 밖 비용** — 실현 마진(5%−PG)과 이 불변식은 구분된다. 즉 불변식은 "커미션이 5% pool 을 안 건드림"이지 "PG 후에도 5%"가 아니다.
+
+오늘의 [INV-CB]는 **"platform 원장 net ≥ 0"**(커미션이 5% pool 을 PG 준비금 바닥까지 잠식 허용)일 뿐, "5% pool 불가침" 은 **어디에도 인코딩 안 됨**. flip 시 **더 강한 불변식**을 신설:
 - **Layer 1 (순수/유닛):** `commission-budget.ts` 에 flip 플래그 추가 → 플랫폼-펀딩 예산을 **0 강제**(모든 판매 커미션은 owner/promo 슬라이스에서). `commission-budget.test.ts` 에 `platformNet(order) === round(total×5/100)` 항등식 단언.
 - **Layer 2 (정적 가드):** `check-commission-budget.mjs` 에 **R4** — 성장 커미션이 `debit_account:'platform:revenue'`(또는 `platform:commission`)로 5% 를 빼는 곳(`recordAgencyCommissionShare`/`recordIntroductionCommissionShare`/`creditUserCommission`)을 래칫 감시, flip 후엔 owner 계정 debit 만 허용(에이전시 예외 제외).
 - **Layer 3 (선택, 런타임):** 정산 reconcile cron 에서 주문당 "성장 커미션의 platform:revenue debit == 0"(flip 플래그 ON) 확인.
