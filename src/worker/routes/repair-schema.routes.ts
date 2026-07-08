@@ -561,6 +561,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'product_reviews.user_name', sql: "ALTER TABLE product_reviews ADD COLUMN user_name TEXT" },
     { desc: 'product_reviews.selected_option', sql: "ALTER TABLE product_reviews ADD COLUMN selected_option TEXT" },
     { desc: 'product_reviews.is_generated', sql: "ALTER TABLE product_reviews ADD COLUMN is_generated INTEGER DEFAULT 0" },
+    // 🏪 2026-07-07: 사장님 답글 — 기존엔 seller-analytics ensure 에서만 lazy ALTER(셀러가 답글 달 때) →
+    //   데모 리뷰 시드/표시 경로에서 컬럼 부재 위험. repair-schema 에 등록해 영구 보장(멱등).
+    { desc: 'product_reviews.seller_reply', sql: "ALTER TABLE product_reviews ADD COLUMN seller_reply TEXT" },
+    { desc: 'product_reviews.seller_reply_at', sql: "ALTER TABLE product_reviews ADD COLUMN seller_reply_at DATETIME" },
     // 🛡️ 2026-05-24: /api/vouchers/my SELECT 가 참조하는 컬럼 — 미존재 시 첫 SELECT crash → fallback 만 동작 (applied_price 누락).
     //   영구 fix: repair-schema 에 등록 → 매일 18 UTC cron 이 자동 ADD COLUMN (멱등).
     //   gift_* 컬럼은 선물하기 기능 (voucher 양도) 용. refund_status 는 환불 추적용.
