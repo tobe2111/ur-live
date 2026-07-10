@@ -787,6 +787,28 @@ A. KT Alpha 카탈로그 sync 는 매일 갱신. 신규 브랜드 추가는 KT A
 - \`GET /api/referral-tree/my-commissions\` — 내 commission 내역
 - \`POST /api/referral-tree/withdrawals\` — 출금 신청`,
   },
+  // 🤝 2026-07-10 (PR #479+#483): promo 투명성 + 에이전시 위임 + 인플루언서 협업 3표면
+  {
+    key: 'promo-delegation-influencer', icon: '🤝', title: 'promo 지출 · 에이전시 위임 · 인플루언서 협업 (2026-07-10)', order: 265,
+    content: `### promo 지출 내역 (\`/seller/promo-spend\`)
+- 내 상품에서 나간 소개비(promo)를 **수령인별·딜별**로 조회하는 읽기 전용 페이지입니다.
+- 기간 필터(최근 1~12개월) + status 별 합계 제공.
+- 현재는 **"재원 전환 전(플랫폼 부담)"** 표기 — 8월 재원 전환 후에는 매장 promo 지출(원장 debit)로 표시됩니다.
+- 위임 여부와 무관하게 **항상 내가 직접 조회 가능**(완전위임형이어도 — 투명성 불변 원칙).
+
+### 에이전시 위임 관리 (\`/seller/agency-delegation\`)
+- 나를 영입한 에이전시에 promo 관리 권한을 부여할 수 있습니다.
+- 모드 2종: **승인형(approval)** — 에이전시가 제안하고 내가 승인해야 발효 / **완전위임형(full)** — 에이전시가 직접 운영.
+- **언제든, 조건 없이 회수 가능**(→ 셀프 운영 복귀) — 회수에 에이전시/유어딜 동의가 필요 없습니다.
+- 위임해도 promo 지출 내역은 항상 \`/seller/promo-spend\` 에서 조회할 수 있습니다.
+- 관련 API: \`GET /api/seller/delegation\` · \`POST /api/seller/delegation/:agencyId/grant\` · \`POST .../revoke\`
+
+### 인플루언서 협업 (\`/seller/influencer-deals\`)
+- 인플루언서가 제안한 **우대 커미션** deal 을 수락/거절하거나, 내가 먼저 제안할 수 있습니다.
+- 커미션 % 는 플랫폼 상한(어드민 설정 \`max_influencer_commission_pct\`) 이내에서만 — 초과 시 서버가 차단합니다.
+- 상태 흐름: 제안됨(proposed) → 활성(active) / 거절됨(rejected).
+- 관련 API: \`GET /api/seller-marketing/deals\` · \`POST .../deals/propose\` · \`POST .../deals/:id/respond\``,
+  },
   // 🛡️ 2026-05-25 (migration 0278): 큐레이터 링크샵
   {
     key: 'curator-linkshop', icon: '📌', title: '큐레이터 링크샵 (모든 셀러 기본 보유)', order: 700,

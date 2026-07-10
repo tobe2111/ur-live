@@ -523,4 +523,28 @@ priority: 100
 - \`GET /api/agency/introduced-stores/commissions\` — 소개 commission 내역
 - \`POST /api/referral-tree/withdrawals\` — 출금 신청 (commission_withdrawals row 생성)`,
   },
+  // 🤝 2026-07-10 (PR #479+#483): 매장 위임 + promo 투명성
+  {
+    key: 'store-delegation', icon: '🤝', title: '매장 위임 (promo 관리 권한)', order: 510,
+    content: `### 매장 위임 (\`/agency/delegations\`)
+영입한 매장 목록 + 위임 모드 + promo 설정 요약을 한 화면에서 봅니다.
+
+### 위임 모드 3단
+| 모드 | 의미 |
+|---|---|
+| 미위임(셀프) | 매장이 직접 promo 운영 (위임 행 없음 — 기본) |
+| 승인형(approval) | 에이전시가 제안 → 매장 승인 시 발효 |
+| 완전위임형(full) | 에이전시가 매장 promo 를 직접 운영 |
+
+### 핵심 룰
+- 에이전시는 모드를 **요청만** 할 수 있습니다 — **발효는 매장이 승인할 때**(grant 는 매장만, 유어딜은 값·승인·분배에 관여하지 않음).
+- 매장은 **언제든 조건 없이 위임을 회수**할 수 있습니다 — 회수는 다툴 수 없는 매장 권리.
+- 매장별 **90일 promo 소개비 실측**(promo-summary)으로 "누구에게 얼마 나갔는지" 투명하게 확인.
+- **분배 엔진(pass-through 적립)은 8월 활성 예정** — 현재는 관계/모드 저장 + 읽기 투명성만(돈 효과 0).
+
+### 관련 API
+- \`GET /api/agency/delegation\` — 매장 목록 + 위임 모드
+- \`GET /api/agency/delegation/stores/:sellerId/promo-summary\` — 매장 90일 소개비 실측
+- \`POST /api/agency/delegation/stores/:sellerId/request-mode\` — 위임 모드 요청 (매장에 알림 발송)`,
+  },
 ]
