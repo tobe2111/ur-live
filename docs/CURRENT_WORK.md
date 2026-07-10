@@ -7,6 +7,12 @@
 - **LOW(로더 통일)**: 소비자 11개 풀스크린 + 6개 인라인 ad-hoc 스피너/텍스트 → BrandLoader · Supplier 본문 → WholesaleLoading · RouteGuards self-heal null → 라이트 로더.
 - ⚠️ 이 환경 npm 403 — vite build/vitest 는 CI 검증. staging 확인 권장: 교환권 카드 탭 즉시표시 / 홈 하드로드 첫 페인트 / 겸업 계정 /seller 첫 진입 / 도매전용 /seller 진입 로더→/wholesale.
 
+## ✅ 2026-07-10 — 3단 위임·promo 투명성 표면 선구현 (대표 "미구현+필요한 것 모두, 가장 이상적으로" — 머니 경로 3종은 8월 단독 세션 유지)
+flip UI 체크리스트(`docs/design/flip-ui-checklist-2026-08.md`)의 ❌ 미구현 표면 전부 + C3·C6 구현. **돈 이동 0 — 정산·커미션 계산 파일 접촉 0(diff 증명), 재원 프레이밍은 `promo_funding_source` 런타임 게이트**(owner 일 때만 promo 문구 — 대표 조건 ①② 준수).
+- **백엔드**(`91c7b8f7`): `store_agency_delegation` 테이블(§4.3 스케치 그대로, repair-schema 등록) + `/api/agency/delegation`(목록·promo-summary·모드 요청만) · `/api/seller/delegation`(grant/revoke 무조건) · `/api/seller/promo-spend` · `/api/admin/promo-ledger`(불변식 #44 조종석).
+- **UI**: `AgencyDelegationsPage`(`3f5134c3`) · `AdminPromoLedgerPage`(`dced7699`) · `SellerAgencyDelegationPage`/`SellerPromoSpendPage`/`SellerInfluencerDealsPage`+PrimaryActions CTA 정리+i18n 115키×6언어(`86c3755f`).
+- **8월 flip 세션에 남긴 것**: A1 스위치 ON(staging 실결제) · A3~A9 요율/지급/세무 재배선 · B3 분배 엔진(vendor_commission_splits) · B1/D1 **기존** 표면 문구 전환 · C1/C2/E1. 상세 체크리스트: `flip-ui-checklist-2026-08.md`(구현분 [x] 마킹). 설계 구현 로그: `vendor-commission-passthrough.md` §4.3.
+- guide-update-pending: 셀러/에이전시/어드민 가이드에 신규 표면 링크 추가는 후속.
 
 ## ✅ 2026-07-02 — 유어애즈 마케팅 서비스몰(주문 관리) + 미디어 게이트웨이 (대표 시안 "카카오톡 공구 늘리기" 상품 페이지 + "일단 다 해줘")
 대표 스크린샷(마케팅 서비스를 상품처럼 파는 페이지) → **마케팅 서비스몰** 구현. 결정(AskUserQuestion): **무결제(주문요청 접수) · 확장형 카탈로그 · 유어애즈 안(/ads/services)**. 설계: `docs/design/urads-service-marketplace.md`.

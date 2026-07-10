@@ -233,3 +233,16 @@ export async function changeAdsPassword(DB: D1Database, id: number, currentPassw
   await DB.prepare('UPDATE ad_accounts SET password_hash = ? WHERE id = ?').bind(hash, id).run().catch(() => null)
   return { ok: true }
 }
+
+/** 어드민 강제 비밀번호 재설정 — 현재 비번 확인 없이 새 비번 세팅(운영자 콘솔 전용).
+ *  호출측(라우트)에서 requireAdmin 게이트 필수. 새 비번은 요청 바디로만 전달(레포에 하드코딩 금지). */
+export async function adminSetPassword(DB: D1Database, id: number, newPassword: string): Promise<PasswordResult> {
+  await ensureAdsAccountSchema(DB)
+  const row = await DB.prepare('SELECT id FROM ad_accounts WHERE id = ?').bind(id).first<{ id: number }>().catch(() => null)
+  if (!row) return { ok: false, status: 404, error: '계정을 찾을 수 없습니다' }
+  const pw = validatePasswordComplexity(newPassword, { relaxed: true })
+  if (!pw.ok) return { ok: false, status: 400, error: pw.error }
+  const hash = await hashPassword(newPassword)
+  await DB.prepare('UPDATE ad_accounts SET password_hash = ? WHERE id = ?').bind(hash, id).run().catch(() => null)
+  return { ok: true }
+}

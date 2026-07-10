@@ -162,6 +162,8 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/withholding',      label: '원천징수/지급조서', icon: Shield },
       { path: '/admin/commission-settings', label: '정산 마진 설정', icon: Settings },
       { path: '/admin/merchant-commissions', label: '매장 커미션', icon: Store },
+      // 🧾 2026-07-10: 불변식 #44 콕핏 — promo 재원/원장 platform:revenue 대칭 감사 (read-only, 8월 flip 검증 표면).
+      { path: '/admin/promo-ledger',     label: 'promo 재원 원장', icon: FileText },
       // 🔧 2026-07-01 (대표 "무슨 말인지 모르겠어"): '수수료 규칙 비교'(fee-resolver 그림자검증 — 개발/검증 전용,
       //   기본 OFF·돈 안 움직임)는 재무 실무 메뉴에서 오해 소지 → 아래 '개발자 도구' 그룹으로 이동.
     ],

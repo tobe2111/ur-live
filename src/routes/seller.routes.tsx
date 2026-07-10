@@ -68,6 +68,10 @@ const SellerPromoCodesPage = lazy(() => import('@/pages/SellerPromoCodesPage'))
 const SellerFollowersPage = lazy(() => import('@/pages/SellerFollowersPage'))
 const SellerPromoteBoostsPage = lazy(() => import('@/pages/SellerPromoteBoostsPage'))
 const YouTubeCallbackPage = lazy(() => import('@/pages/YouTubeCallbackPage'))
+// 🤝 2026-07-10: 3단 위임/promo 투명성 모델 (docs/design/vendor-commission-passthrough.md §4.3)
+const SellerAgencyDelegationPage = lazy(() => import('@/pages/SellerAgencyDelegationPage'))
+const SellerPromoSpendPage = lazy(() => import('@/pages/SellerPromoSpendPage'))
+const SellerInfluencerDealsPage = lazy(() => import('@/pages/SellerInfluencerDealsPage'))
 
 export function SellerRoutes() {
   return (
@@ -308,6 +312,22 @@ export function SellerRoutes() {
       <Route path="/seller/supply" element={
         <ProtectedRoute requireSeller>
           <SellerSupplyPage />
+        </ProtectedRoute>
+      } />
+      {/* 🤝 2026-07-10: 에이전시 위임(3단 모델) + promo 지출 투명성 + 인플 협업 deal */}
+      <Route path="/seller/agency-delegation" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerAgencyDelegationPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/promo-spend" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerPromoSpendPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/influencer-deals" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerInfluencerDealsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/seller/youtube/callback" element={

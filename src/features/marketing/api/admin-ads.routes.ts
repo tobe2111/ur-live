@@ -6,7 +6,7 @@
 import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAdmin } from '@/worker/middleware/auth'
-import { ensureAdsAccountSchema } from './ads-account'
+import { ensureAdsAccountSchema, adminSetPassword } from './ads-account'
 import { ensureEntitlementSchema, setPlan, type AdsPlan } from './ads-entitlements'
 import { mediaStatus } from './media-gateway'
 import { listServices, adminUpsertService, adminListOrders, adminUpdateOrder } from './ad-services'
@@ -71,6 +71,18 @@ app.patch('/accounts/:id', async (c) => {
   }
   if (!sets.length) return c.json({ success: false, error: '변경할 항목이 없습니다' }, 400)
   await c.env.DB.prepare(`UPDATE ad_accounts SET ${sets.join(', ')} WHERE id = ?`).bind(...binds, id).run().catch(() => null)
+  return c.json({ success: true })
+})
+
+// POST /api/admin/ads/accounts/:id/reset-password — 어드민 강제 비번 재설정(현재 비번 확인 없음)
+//   가입자가 비번을 잊었거나 초기 세팅이 필요할 때 운영자가 콘솔에서 직접 지정. 새 비번은 요청 바디로만.
+app.post('/accounts/:id/reset-password', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  const body = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  const newPassword = String(body.password || '')
+  const r = await adminSetPassword(c.env.DB, id, newPassword)
+  if (!r.ok) return c.json({ success: false, error: r.error }, r.status as 400 | 404)
   return c.json({ success: true })
 })
 

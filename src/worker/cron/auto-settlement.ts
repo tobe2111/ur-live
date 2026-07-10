@@ -43,6 +43,21 @@ export async function handleAutoSettlement(env: Env) {
     //   (이전 'used 7일 롤링' 대체.) cutoff = 정산 도래한 가장 최근 주 일요일까지의 상한(UTC).
     //   used_at < cutoff 만 정산. cron 이 매일 03:00 KST 돌므로 각 주는 그 차주 목요일 첫 실행에 정산(멱등).
     const settlementCutoff = weeklySettlementCutoffUtc(Date.now());
+
+    // 💸 2026-07-08 (머니 감사 Guard 2 근본수정 — 안①, 기본 OFF 게이트): 이용권 정산이 두 레일
+    //   (restaurant_settlements Rail A ↔ ledger/payouts Rail B)에 같은 매출을 이중 적재하는 것을 원천 차단.
+    //   ON 이면 이미 원장(Rail B, event_type='voucher_used')에 booking 된 voucher 를 Rail A 생성에서 skip
+    //   → 단일 레일(원장→payouts) 수렴(settlement-reconciliation.md §4.1·Severe 3). 기본 OFF = 현행 byte-불변.
+    //   ⚠️ 라이브 정산이라 flip(ON) 전 staging 실검증 + '어느 레일이 실제 지급에 쓰이는지' 확인 필수.
+    let skipLedgered = false;
+    try {
+      const g = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'settlement_skip_ledgered'").first<{ value: string }>();
+      skipLedgered = g?.value === 'true';
+    } catch { /* 키 없으면 OFF(현행) */ }
+    const ledgerSkipClause = skipLedgered
+      ? "AND NOT EXISTS (SELECT 1 FROM ledger_entries le WHERE le.reference_id = 'voucher:' || v.id AND le.event_type = 'voucher_used')"
+      : '';
+
     // 🛡️ 2026-05-30: 정산 매출 = 실제 결제가(applied_price). 미존재 시 정가(price) fallback.
     //   환불(applied_price)과 동일 기준 → 결제·정산·환불 폐루프 정합. 티어 할인 deal 과다정산(플랫폼 손실) 제거.
     const usedVouchers = await DB.prepare(`
@@ -54,6 +69,7 @@ export async function handleAutoSettlement(env: Env) {
         AND v.used_at < ?
         AND v.settlement_id IS NULL
         AND v.id NOT IN (SELECT voucher_id FROM voucher_disputes WHERE status = 'open')
+        ${ledgerSkipClause}
     `).bind(platformRate, settlementCutoff).all();
 
     if (!usedVouchers.results?.length) return;
