@@ -146,6 +146,17 @@ export interface Env {
   //   ⚠️ 실 계정 1회 검증(estimate 응답·bid PUT 동작) 후에만 'true' 로.
   ADS_AUTOBID_ENABLED?: string;
 
+  // ---- 유어애즈 AI 콘텐츠 스튜디오 — 미디어 생성(이미지/음성/영상) provider 게이트웨이 ----
+  //   전부 외부 유료 API. 킬스위치 ADS_MEDIA_ENABLED='true' + 해당 provider 키가 있어야 동작(둘 다 없으면
+  //   NOT_CONFIGURED/DISABLED — 기능 자동 숨김). ⚠️ 이 환경 egress 차단으로 실호출 미검증(docs 기준 배선).
+  ADS_MEDIA_ENABLED?: string;          // 'true' 아니면 미디어 생성 전면 OFF(비용 방어)
+  OPENAI_API_KEY?: string;             // 이미지 생성(OpenAI Images) — image provider
+  ELEVENLABS_API_KEY?: string;         // AI 음성(TTS) — voice provider
+  REPLICATE_API_TOKEN?: string;        // 숏폼 영상 생성(Replicate 모델) — video provider
+  HEYGEN_API_KEY?: string;             // 아바타 영상(HeyGen) — video(avatar) provider
+  ADS_IMAGE_PROVIDER?: string;         // 선택: 'openai'(기본) 등
+  ADS_VIDEO_PROVIDER?: string;         // 선택: 'replicate'(기본) | 'heygen'
+
   // ---- 블로그 AI 홍보 초안 주간 cron 킬스위치 ----
   //   'true' 일 때만 주간 cron 이 홍보 초안(비공개)을 생성. 미설정/기타값이면 skip(기본 OFF).
   //   초안은 항상 관리자 검토 후 발행. ANTHROPIC_API_KEY 필요.

@@ -1,5 +1,42 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-02 — 유어애즈 마케팅 서비스몰(주문 관리) + 미디어 게이트웨이 (대표 시안 "카카오톡 공구 늘리기" 상품 페이지 + "일단 다 해줘")
+대표 스크린샷(마케팅 서비스를 상품처럼 파는 페이지) → **마케팅 서비스몰** 구현. 결정(AskUserQuestion): **무결제(주문요청 접수) · 확장형 카탈로그 · 유어애즈 안(/ads/services)**. 설계: `docs/design/urads-service-marketplace.md`.
+- **⚠️ 윤리/약관 핵심(대표 질문 "팔로워 늘리기 어떻게 구현?")**: 봇/가짜계정/자동팔로우는 **구현하지 않음**(카카오·인스타·네이버 약관 위반·어뷰징). 이 모듈은 **상품몰+주문큐(소프트웨어)만** 담당하고, 실제 성장 이행은 **정당한 마케팅 실행**(유료광고 집행=자동입찰 엔진·AI 콘텐츠·인플루언서·체험단)으로 사람이 채움. 주문에 `fulfillment_method` 기록.
+- **backend** `ad-services.ts`: `ad_services`(카탈로그)·`ad_service_orders`(주문큐, 상태 requested→confirmed→in_progress→done/cancelled) + 순수 `computeServicePrice`(단위가×수량→수량구간할인→+옵션, 서버 권위·클라 불신) + 시드3(카카오톡 오픈채팅/인스타/블로그, 전부 정당 실행 기준 설명) + 어드민 함수.
+- **라우트** `routes/services.routes.ts`: `/services`·`/:id`·`/quote`(가격 미리보기)·`/order`(무결제 접수)·`/order-history`. admin-ads: `/service-orders`(접수함)·`/services`(상품 관리)·PATCH(상태/이행방식/메모).
+- **UI** `ServiceMarketplacePanel.tsx`(카탈로그→상세: 티어 프리셋+수량+옵션+실시간 가격+연락처+주문요청, 내 주문 상태) 대시보드 `sec-services` + 셸 nav. admin `AdminAdsServicesPage`(접수함 탭: 상태/이행방식/메모, 상품관리 탭: 노출토글) + admin.routes/AdminLayout 배선.
+- 단위테스트 `ads-service-price`(할인구간·클램프·옵션). file-size baseline 갱신(AdminLayout 608→609·admin.routes 661→668, 새 어드민 페이지 배선 정당 성장).
+- 검증: tsc 0(config 경고 제외)·sql bind/table/not-null/status-constraint/theme/crossrole/api-auth 가드 0·신규 파일 전부 <600줄. ⚠️ vitest/worker-build CI 검증.
+
+## ✅ 2026-07-02 — 유어애즈 AI 콘텐츠 스튜디오 (대표 "블로그 자동작성·인스타/틱톡·광고문구·댓글답변·성과분석 서비스 구현" + "리퍼포징/멀티플랫폼 자동화" 아이디어)
+유어애즈에 AI 콘텐츠 스튜디오 신설(유어애즈 경계 안, 소비자 `blog-ai.ts`와 무관). 전부 **초안 생성(자동 게시 없음)** + AI 미터링(`content_per_day`, 집행은 `ADS_BILLING_ENFORCED` 게이트) + `ANTHROPIC_API_KEY` 필요(없으면 503).
+- **모듈**: `claude-client.ts`(공유 Claude 호출 + `parseJsonLoose` 관대 파서) · `content-studio.ts`(생성/리퍼포징/답변/분석 + 라이브러리 `ad_content` + 순수 파서 `normalizeAdCopy`/`extractHashtags`/`extractTitle`) · `routes/content.routes.ts`(`/content/*` 서브라우터, marketing.routes 마운트).
+- **① 리퍼포징(핵심)**: 원문 1개(유튜브 대본·블로그·제품설명) → 요약+블로그+인스타+틱톡+광고문구+SEO를 **1회 호출(JSON)**. "하나 올리면 여러 채널" 자동화의 텍스트 파트.
+- **② 생성**: 블로그(SEO 마크다운)·인스타(캡션+해시태그)·틱톡(훅+씬 대본+해시태그)·광고문구(네이버 소재 제목15·설명45자 규격 검증+변형4). 
+- **③ 댓글/리뷰 답변 초안**: 톤 4종(정중/친근/사과·해결/간결).
+- **④ 성과분석(콘텐츠 관점)**: 실적(accountStats+keywordEfficiency, 연동 시) 근거로 "잘 통하는 메시지" 분석 + 콘텐츠 방향 제안 → 생성으로 루프.
+- **UI**: `ContentStudioPanel.tsx` 5모드 탭(리퍼포징/생성/댓글답변/성과분석/보관함) + 복사/보관함저장. 셸 nav `sec-content` + 대시보드 LazyMount. 광고문구 글자수 배지(초과 빨강).
+- **엔타이틀먼트**: `PLAN_LIMITS`에 `content_per_day`(free 10/starter 50/pro 200) 추가.
+- **미디어 생성 게이트웨이(2026-07-02 "일단 다 해줘")**: `media-gateway.ts` — provider-agnostic(이미지 OpenAI·음성 ElevenLabs·영상 Replicate/HeyGen) + 킬스위치 `ADS_MEDIA_ENABLED`(기본 OFF) + 잡모델 `ad_media_jobs`(비동기 영상 submit/poll) + `media_per_day` 한도. 토스게이트웨이 철학(직접 fetch 금지). 라우트 `/content/media/{status,image,voice,video,video/:id}` + 패널 '미디어' 모드(키 없으면 "설정 필요" 안내) + 어드민 provider 상태 배지. env.ts 타입 6종 추가. 게이트 앞단 단위테스트(트랩DB — 킬스위치 OFF/키 없음 시 DB·네트워크 미접근 증명). **⚠️ egress 차단으로 실 provider 호출 미검증 — 대표가 키 설정 후 provider별 스펙(Replicate 모델버전·HeyGen 페이로드) 1회 실검증 필요.** 남은 건 대표의 키 설정 + 킬스위치 ON + 단가/구독 정책.
+- 검증: tsc 0(config 경고 제외) · sql bind/table/not-null/pagination/theme 가드 0 · 신규 파일 전부 <600줄(content-studio 239·panel 226) · 단위테스트 `ads-content-studio`(파서/정규화/규격). ⚠️ vitest/worker-build CI 검증.
+
+## ✅ 2026-07-01 — 유어애즈 기능 확장 6종 (대표 "모두 가장 이상적으로 진행해줘" — 전수감사 후속 개선/아이디어 실행)
+전수감사에서 제안한 개선(A)·신기능(B) 중 **유어애즈 경계 안 + 보유 데이터/인프라만 쓰는 것 전부** 구현. 크로스서비스(유어딜 판매채널 번들)는 분리 룰상 정산·CS·소유권 대표 결정 선행이라 설계 문서 상태 유지(미착수 명시).
+- **① 키워드 기회 발굴기(B1)** — `keyword-opportunities.ts` 순수 스코어러(`score = 월검색량 × 경쟁가중치(낮음1.0/중간0.55/높음0.25)`, 보유(자동입찰 규칙+저장 키워드+선택 시 그룹 등록 키워드) 공백무시 제외, 검색량<100 컷) + GET `/api/ads/keywords/opportunities?seed=` + `OpportunityPanel.tsx`(발굴→포트폴리오 저장 '기회' 태그) + 셸 nav 'sec-opportunity'. 단위테스트 6케이스.
+- **② AI 마케터 grounding 확장(A2)** — `/ai-marketer` 컨텍스트에 4종 주입: 키워드 효율(낭비 키워드 8·상위 전환 5, 연결 시)·쇼핑 오가닉 순위(10)·부정클릭 의심 IP 수·최저가 역전(undercut). 전부 fail-soft(Promise.allSettled). SYSTEM 프롬프트에 각 데이터 활용 지시 4줄. 주간리포트 cron 은 quota 보호 위해 기존(stats+trend) 유지.
+- **③ 수익화 엔타이틀먼트 뼈대(A1)** — `ads-entitlements.ts`: `ad_entitlements`(플랜)·`ad_usage_daily`(사용량) + `PLAN_LIMITS`(free/starter/pro — 숫자만 바꾸면 됨) + `checkCapacity`/`meterDaily`. **집행은 `ADS_BILLING_ENFORCED='true'` 킬스위치(기본 OFF = 현행 무제한 byte-동일)**. 게이트 배선 5곳: 자동입찰 규칙(단일402/벌크)·clickguard 사이트·순위 타겟·가격 워치 + AI 일일 미터링(429). 어드민 `/api/admin/ads` PATCH plan + 목록 plan 컬럼 + `AdminAdsAccountsPage` 플랜 셀렉터. 단위테스트(킬스위치 OFF 무조건 통과 불변식 포함).
+- **④ 자동입찰 섀도우 모드(A6)** — `runAutobidShadowAll`: 활성 규칙을 dryRun 으로 돌려 "했을 변경"만 `ad_autobid_shadow`(seller×keyword×일 UNIQUE 멱등)에 기록. **PUT 0**. 게이트 = `ADS_AUTOBID_SHADOW_ENABLED='true'`(기본 OFF) && 실엔진 OFF(중복 방지). 일일 cron(`ads-autobid-shadow`, scheduled.ts additive) + GET `/searchad/autobid/shadow` + AutobidPanel '섀도우 기록' 섹션. 실엔진 켜기 전 신뢰 축적용. 게이트 단위테스트(트랩 DB 로 미접근 증명).
+- **⑤ 온보딩 체크리스트(A5-lite)** — `OnboardingChecklist.tsx`: 연동→키워드→자동화 3스텝(기존 API 3개 재사용), 앵커 점프, 전부 완료/닫기 시 자동 숨김. 대시보드 상단.
+- **⑥ 랜딩 예시 라벨(A3)** — hero 목업 '예시 화면' + 수치 밴드/고객사례 각주("서비스 소개용 예시"). 시안 훼손 없는 각주 방식(실데이터 교체는 라이브 검증 후).
+- 검증: tsc 0(config 경고 제외) · sql bind/column/table/not-null/pagination/theme 가드 0 · 신규 파일 전부 <600줄. ⚠️ vitest/worker-build 는 환경 제약으로 CI 검증. 상세: `urads-HANDOFF.md` §4 표 + §5 env 표 + §7-B.
+
+## ✅ 2026-07-01 — 유어애즈(UR Ads) 2차 전수감사 (4축 병렬 심층) + 예방 하드닝 2건 (대표 "유어애즈 서비스 전수조사해봐")
+audit-gate(38 GREEN / file-size RED 1=선재 무관) 후 가드 미보유 4축을 병렬 서브에이전트로 심층 재감사: **①인증·IDOR ②머니 하드캡 ③런타임크래시·입력검증 ④서비스분리·배선.** 결과 = 6.6 라이브감사 이후 **신규 확정 결함 0**(unlock 은 이미 상수시간 `timingSafeEqual` 로 수정됨 · IDOR 0 · 크래시 0 · 분리 완전 클린 · JWT HS256 핀·reset토큰 CSPRNG+해시+1회용 · planBid 하드캡 이중강제 확인). 예방적 하드닝 2건만 반영:
+- **refreshWatch 자기-스코프화**(`price-monitor.ts`) — UPDATE 에 `AND seller_id=?` 추가(라우트로 차폐됐던 잠재 IDOR, 헬퍼 자체 안전화, 호출부 3곳 배선).
+- **자동입찰 규칙 생성 시 활성 고객사 필수**(`marketing.routes.ts` `/searchad/autobid/rule`·`/rules/bulk`) — `tenant=NULL` 고아 규칙이 cron 에서 '그때 활성' 고객사에 적용되는 **잘못된-계정 과금** 벡터 차단(`getActiveTenantId` null→400). autobid 킬스위치 기본 OFF 라 현재 라이브 영향 0, 켜기 전 예방.
+- 잔존 2건도 **대표 "응 원해" → 서버측 강제로 수정**: ① `access_unlocked` 서버측 게이트(`requireAdsUnlocked` 미들웨어, 데이터 API 전체 — 면제=ping/auth/공개픽셀, 정지계정 옛토큰도 차단) ② clickguard `domainMatches` null-Origin **거부**(위조 hit→의심리포트 오염 완화). HTTP 데이터 라우트 타는 ads 테스트 5개에 unlock 계정 시딩 + 게이트 회귀테스트 신설.
+- 검증: tsc 0(config 경고 제외) · sql-bind/money/pagination/crossrole/api-auth 가드 0. marketing.routes.ts 447줄(baseline+7, `[SKIP_SIZE]` — routes/ 추가분할 시 해소). ⚠️ vitest/worker-build 는 이 환경 제약으로 미실행(CI 검증). 상세: `docs/design/urads-HANDOFF.md` §6.7.
 ## ✅ 2026-07-06 — 도매 상단바에 로그인 역할 배지 (대표 "판매사/제조사 로그인 구별 상단 표시")
 - `WholesaleUtilBar.tsx`(전 도매표면 SSOT 상단바)에 **항상 보이는 역할 배지** 추가 — 판매사(`seller_token`, Store 아이콘·흰 pill) vs 제조사(`supplier_token`, Factory 아이콘·하늘색 pill). 기존 신원 칩(`{companyName} 님 · {grade}`)은 `md:` 이상에서만 보였는데, 배지는 모바일 포함 항상 노출 → 로그인 종류 즉시 인지.
 - i18n `wholesale.role.distributor`/`.manufacturer` 6개 언어(ko 판매사/제조사, en Distributor/Manufacturer, ja 販売社/製造社, zh 销售商/制造商, es, fr). defaultValue 폴백 동봉.
