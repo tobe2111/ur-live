@@ -45,6 +45,30 @@ export async function runWeeklyMetricsSummary(env: Env): Promise<void> {
       `④ 유입 신호: 추천 경유 적립 ${affiliateOrders}건 · 체험단 응모 ${fcfsApplies}건`,
       `⑤ 커미션 캡 발동: ${capEvents}건`,
     ]
+
+    // 💸 2026-07-08 (머니 감사 ③ — 지급후 환불 미회수 알림): 정산 지급 뒤 환불이 들어와
+    //   자동 회수가 안 되고 의무만 기록된 clawback(로그·의무row만 남던 것)을 주간 조종석에 승격.
+    //   테이블은 lazy-create(voucher-settlement-clawback.ts) — 미존재 시 count() 가 fail-soft 0.
+    const clawbackPending = await count(DB, "SELECT COUNT(*) n FROM settlement_clawbacks WHERE status = 'pending'")
+    if (clawbackPending > 0) {
+      const clawbackAmt = await count(DB, "SELECT COALESCE(SUM(amount),0) n FROM settlement_clawbacks WHERE status = 'pending'")
+      lines.push(`⚠️ 미회수 clawback(지급후 환불): ${clawbackPending}건 ₩${clawbackAmt.toLocaleString()} — 회수/상계 필요 (/admin/payouts)`)
+    }
+
+    // 💸 2026-07-08 (머니 감사 Guard 2): 두 정산 레일(restaurant_settlements ↔ ledger/payouts)이
+    //   같은 이용권 매출을 같은 매장에 중복 적재 → 양쪽에서 지급하면 이중지급. 양 레일 동시 미지급
+    //   노출 매장 수를 조종석에 승격. tables lazy/부재 시 count() fail-soft 0.
+    const dualRailSellers = await count(DB, `SELECT COUNT(*) n FROM (
+      SELECT rs.seller_id FROM restaurant_settlements rs
+       WHERE rs.status = 'pending'
+         AND EXISTS (SELECT 1 FROM payouts p WHERE p.payee_type = 'store_owner'
+                       AND p.payee_id = CAST(rs.seller_id AS TEXT)
+                       AND p.status IN ('pending','approved','sent'))
+       GROUP BY rs.seller_id)`)
+    if (dualRailSellers > 0) {
+      lines.push(`🔴 정산 이중레일 노출: ${dualRailSellers}개 매장이 restaurant_settlements·payouts 양쪽 미지급 — 한 레일에서만 지급 (/admin/payouts/rail-reconciliation)`)
+    }
+
     const body = lines.join('\n')
 
     // 어드민 대시보드 벨 — 매주 1건.
