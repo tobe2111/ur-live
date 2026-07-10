@@ -156,6 +156,8 @@ export interface Env {
   HEYGEN_API_KEY?: string;             // 아바타 영상(HeyGen) — video(avatar) provider
   ADS_IMAGE_PROVIDER?: string;         // 선택: 'openai'(기본) 등
   ADS_VIDEO_PROVIDER?: string;         // 선택: 'replicate'(기본) | 'heygen'
+  // 유어애즈 서비스몰 수기 결제(계좌이체) 안내문 — 예: "국민은행 123-45-678 (주)유어팀". 미설정 시 안내 생략.
+  ADS_BANK_INFO?: string;
 
   // ---- 블로그 AI 홍보 초안 주간 cron 킬스위치 ----
   //   'true' 일 때만 주간 cron 이 홍보 초안(비공개)을 생성. 미설정/기타값이면 skip(기본 OFF).

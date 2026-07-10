@@ -104,6 +104,7 @@ app.patch('/service-orders/:id', async (c) => {
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const r = await adminUpdateOrder(c.env.DB, id, {
     status: b.status !== undefined ? String(b.status) : undefined,
+    payment_status: b.payment_status !== undefined ? String(b.payment_status) : undefined,
     fulfillment_method: b.fulfillment_method !== undefined ? String(b.fulfillment_method) : undefined,
     admin_note: b.admin_note !== undefined ? String(b.admin_note) : undefined,
     supplier: b.supplier !== undefined ? String(b.supplier) : undefined,

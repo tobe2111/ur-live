@@ -78,6 +78,7 @@ export async function ensureServicesSchema(DB: D1Database): Promise<void> {
     supplier TEXT,
     supplier_order_id TEXT,
     supplier_cost INTEGER NOT NULL DEFAULT 0,
+    payment_status TEXT NOT NULL DEFAULT 'unpaid',
     created_at DATETIME DEFAULT (datetime('now')),
     updated_at DATETIME DEFAULT (datetime('now'))
   )`).run().catch(() => null)
@@ -85,6 +86,8 @@ export async function ensureServicesSchema(DB: D1Database): Promise<void> {
   await DB.prepare('ALTER TABLE ad_service_orders ADD COLUMN supplier TEXT').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_service_orders ADD COLUMN supplier_order_id TEXT').run().catch(() => null)
   await DB.prepare('ALTER TABLE ad_service_orders ADD COLUMN supplier_cost INTEGER NOT NULL DEFAULT 0').run().catch(() => null)
+  // 수기 결제(계좌이체) 상태 — unpaid(입금 대기) / paid(입금 확인) / refunded(환불). PG 미연동, 어드민이 확인 후 마킹.
+  await DB.prepare("ALTER TABLE ad_service_orders ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'unpaid'").run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_ad_svc_orders_acct ON ad_service_orders(account_id, id)').run().catch(() => null)
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_ad_svc_orders_status ON ad_service_orders(status, id)').run().catch(() => null)
 }
@@ -169,10 +172,12 @@ export async function createServiceOrder(DB: D1Database, accountId: number, inpu
   return { ok: true, orderId: Number(r.meta.last_row_id), price }
 }
 
-export interface OrderRow { id: number; service_name: string; preset_label: string | null; quantity: number; total_amount: number; status: string; fulfillment_method: string | null; admin_note: string | null; created_at: string }
+export type PaymentStatus = 'unpaid' | 'paid' | 'refunded'
+export const PAYMENT_STATUSES: PaymentStatus[] = ['unpaid', 'paid', 'refunded']
+export interface OrderRow { id: number; service_name: string; preset_label: string | null; quantity: number; total_amount: number; status: string; payment_status: string; fulfillment_method: string | null; admin_note: string | null; created_at: string }
 export async function listMyOrders(DB: D1Database, accountId: number): Promise<OrderRow[]> {
   await ensureServicesSchema(DB)
-  const r = await DB.prepare('SELECT id, service_name, preset_label, quantity, total_amount, status, fulfillment_method, admin_note, created_at FROM ad_service_orders WHERE account_id = ? ORDER BY id DESC LIMIT 100')
+  const r = await DB.prepare('SELECT id, service_name, preset_label, quantity, total_amount, status, payment_status, fulfillment_method, admin_note, created_at FROM ad_service_orders WHERE account_id = ? ORDER BY id DESC LIMIT 100')
     .bind(accountId).all<OrderRow>().catch(() => null)
   return r?.results || []
 }
@@ -182,7 +187,7 @@ export type AdminOrderRow = OrderRow & { account_id: number; contact_kakao: stri
 export async function adminListOrders(DB: D1Database, status?: string, limit = 200): Promise<AdminOrderRow[]> {
   await ensureServicesSchema(DB)
   const valid = status && SERVICE_ORDER_STATUSES.includes(status as ServiceOrderStatus)
-  const cols = 'id, account_id, service_name, preset_label, quantity, unit_price, discount_pct, options_total, total_amount, contact_kakao, contact_phone, target_url, memo, status, fulfillment_method, admin_note, supplier, supplier_order_id, supplier_cost, created_at'
+  const cols = 'id, account_id, service_name, preset_label, quantity, unit_price, discount_pct, options_total, total_amount, contact_kakao, contact_phone, target_url, memo, status, payment_status, fulfillment_method, admin_note, supplier, supplier_order_id, supplier_cost, created_at'
   const stmt = valid
     ? DB.prepare(`SELECT ${cols} FROM ad_service_orders WHERE status = ? ORDER BY id DESC LIMIT ?`).bind(status, Math.min(500, limit))
     : DB.prepare(`SELECT ${cols} FROM ad_service_orders ORDER BY id DESC LIMIT ?`).bind(Math.min(500, limit))
@@ -191,13 +196,17 @@ export async function adminListOrders(DB: D1Database, status?: string, limit = 2
   return (r?.results || []).map(o => ({ ...o, margin: (Number(o.total_amount) || 0) - (Number(o.supplier_cost) || 0) }))
 }
 
-export async function adminUpdateOrder(DB: D1Database, id: number, patch: { status?: string; fulfillment_method?: string; admin_note?: string; supplier?: string; supplier_order_id?: string; supplier_cost?: number }): Promise<{ ok: boolean; error?: string }> {
+export async function adminUpdateOrder(DB: D1Database, id: number, patch: { status?: string; payment_status?: string; fulfillment_method?: string; admin_note?: string; supplier?: string; supplier_order_id?: string; supplier_cost?: number }): Promise<{ ok: boolean; error?: string }> {
   await ensureServicesSchema(DB)
   const sets: string[] = []
   const binds: (string | number)[] = []
   if (patch.status !== undefined) {
     if (!SERVICE_ORDER_STATUSES.includes(patch.status as ServiceOrderStatus)) return { ok: false, error: '잘못된 상태 값' }
     sets.push('status = ?'); binds.push(patch.status)
+  }
+  if (patch.payment_status !== undefined) {
+    if (!PAYMENT_STATUSES.includes(patch.payment_status as PaymentStatus)) return { ok: false, error: '잘못된 결제 상태 값' }
+    sets.push('payment_status = ?'); binds.push(patch.payment_status)
   }
   if (patch.fulfillment_method !== undefined) { sets.push('fulfillment_method = ?'); binds.push(String(patch.fulfillment_method).slice(0, 40) || '') }
   if (patch.admin_note !== undefined) { sets.push('admin_note = ?'); binds.push(String(patch.admin_note).slice(0, 1000)) }

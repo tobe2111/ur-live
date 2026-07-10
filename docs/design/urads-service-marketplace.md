@@ -24,3 +24,6 @@
 - UI `ServiceMarketplacePanel.tsx` · `AdminAdsServicesPage.tsx`
 - 단위테스트 `ads-service-price.test.ts`(가격 계산)
 - commit: (아래 커밋 hash)
+
+## 수기 결제(계좌이체) 흐름 — 2026-07-10 (대표 "내가 수기로 하게")
+PG 미연동 상태에서 수기 운영 완결: ① 주문 접수 직후 + 내 주문(미입금 존재 시)에 **입금 계좌 안내**(`ADS_BANK_INFO` env, 미설정 시 생략) ② `ad_service_orders.payment_status`(unpaid→paid/refunded) ③ 어드민 접수함 **입금확인 토글**. 고객 배지 = 입금 대기/입금 확인. 실 PG(토스) 연동은 별도 작업(잠금 helper 호출 방식).
