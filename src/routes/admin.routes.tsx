@@ -113,6 +113,8 @@ const AdminYoutubeQuotaPage = lazy(() => import('@/pages/AdminYoutubeQuotaPage')
 const AdminHealthPage = lazy(() => import('@/pages/AdminHealthPage'))
 const AdminPolicyDashboardPage = lazy(() => import('@/pages/AdminPolicyDashboardPage'))
 const AdminFeeBreakdownComparePage = lazy(() => import('@/pages/AdminFeeBreakdownComparePage'))
+// 🧾 2026-07-10: promo/커미션 재원 원장 감사 콕핏 — 불변식 #44 검증 표면 (read-only).
+const AdminPromoLedgerPage = lazy(() => import('@/pages/AdminPromoLedgerPage'))
 const AdminFunnelPage = lazy(() => import('@/pages/AdminFunnelPage'))
 const AdminUsersPage = lazy(() => import('@/pages/AdminUsersPage'))
 const AdminReviewModerationPage = lazy(() => import('@/pages/AdminReviewModerationPage'))
@@ -239,6 +241,11 @@ export function AdminRoutes() {
       <Route path="/admin/fee-breakdown" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminFeeBreakdownComparePage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/promo-ledger" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminPromoLedgerPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/funnel" element={
