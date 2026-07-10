@@ -22,16 +22,18 @@
 
 ## 2. 핵심 설계 원리
 
-### 2.1 예산 중립 (가장 중요)
+### 2.1 promo 재원 중립 — 5% 무영향 (가장 중요)
 
-아비터([INV-CB], `order-commissions.ts` `budgetedCreditForOrder`)가 인플루언서 축에 배정한 금액 **C**는 이미 "이 주문에서 인플이 받을 커미션 총액"이다. **B는 C의 크기를 바꾸지 않는다** — C를 **풀**로 삼아 수령자만 나눈다:
+> ⚠️ **2026-07-08 확정 원칙 정합**: 이 풀은 유어딜 5% 재원이 **아니다.** 판매 커미션은 전부 **매장 promo(5% 밖, `promo_funding_source=owner`)** 에서 나온다(`commission-funding-restructure.md` 확정 원칙 §2·§4). 아래 "C" 는 아비터의 5% 예산 배정액이 아니라 **매장 promo 슬라이스에서 인플루언서에게 갈 몫**이다.
+
+인플루언서가 이 주문에서 받을 **promo 커미션 총액 C**(= 매장 promo 재원)를 **풀**로 삼아 수령자만 나눈다:
 
 ```
-소속 아님:  인플에게 C            (현행 A)
-소속 있음:  인플에게 round(C × p) + 벤더에게 (C − round(C × p))   (B, 합 = C)
+소속 아님:  인플에게 C            (현행 A — promo 재원, 직접 지급)
+소속 있음:  인플에게 round(C × p) + 벤더에게 (C − round(C × p))   (B, 합 = C, 전부 promo 재원)
 ```
 
-→ Σ커미션이 불변이므로 **예산(플랫폼 수수료 − PG준비금)·[INV-CB] 불변식·`commission_budget_logs`가 전혀 영향받지 않는다.** B는 새 **예산 축이 아니라**, 이미 배정된 축의 **재라우팅**이다. (이 점이 아비터 가드 `check-commission-budget.mjs`와의 충돌을 원천 차단한다 — §7.)
+→ C 의 **재원이 애초에 5% 밖(promo)** 이므로 **유어딜 5%·[INV-CB] 예산·platform net 에 전혀 영향 없다.** B 는 새 예산 축이 아니라 **promo 풀의 수령자 분할**일 뿐. (5% 를 건드리지 않으므로 아비터 가드 `check-commission-budget.mjs` 및 flip 불변식 #44 "platform net == 5%" 와 구조적으로 무충돌 — §7.)
 
 ### 2.2 얹는 지점 (single choke point)
 
@@ -96,6 +98,44 @@ vendor_commission_splits(
 
 > ⚠️ **열린 결정:** 분배 단위를 "%"로만 할지, "정액 + %" 혼합·계층(벤더→서브벤더→인플)까지 갈지는 실벤더 방식에 맞춰 확정. MVP는 **단일 계층 %** 권장.
 
+### 4.3 수수료율 결정 권한 모델 — 3단 (2026-07-08 대표 확정 · 설계 박제, 구현은 8월 pass-through 와 함께)
+
+> 대전제: **promo 는 매장 돈(95% 안).** 그러므로 위 §4.1~4.2 의 값(promo 총액·인플 분배율)을 **누가 세팅/발효하느냐**는 매장이 에이전시에게 **얼마나 위임했는지**로 갈린다. 현실에선 기존 공구처럼 **에이전시가 대신 관리(스토어 매니저 권한 위임)하는 경우가 더 많다** → 3단 지원하되 기본은 안전한 "승인형".
+
+| 모드 | promo 총액 세팅 | 인플 분배율 세팅 | 발효 | 쓰임 |
+|---|---|---|---|---|
+| **셀프형** (`self`) | 매장 | 매장 | 즉시 | 에이전시 없음/조율만 |
+| **승인형** (`approval`, **기본**) | 에이전시 제안 | 에이전시 제안 | **매장 승인 시** | 위임하되 매장이 최종 게이트 |
+| **완전위임형** (`full`) | 에이전시 | 에이전시 | 즉시(매장 승인 불필요) | 매장이 관리 전권 위임(기존 공구 스토어매니저 패턴) |
+
+**🔒 불변 원칙 (어느 모드에서도 절대) — 유어딜이 강제:**
+1. **투명성:** 매장은 자기 promo 지출 내역(누구에게 얼마·어느 딜)을 **항상 조회 가능**(완전위임형이어도). = promo 원장 read 는 매장에게 늘 열림.
+2. **회수권:** 매장은 위임을 **언제든 회수**(`full`/`approval` → `self`) 가능. 회수 시 진행 중 에이전시 설정은 **매장 승인 대기로 강등**(자동 발효 중단).
+3. **유어딜은 캡·투명성 가드만:** 상·하한(`max_influencer_commission_pct` 등) + 지출 원장 노출 강제. **값·승인·분배엔 관여 안 함. 유어딜 5% 무관.**
+
+**데이터 모델 스케치 (설계):**
+```
+store_agency_delegation(
+  seller_id INTEGER NOT NULL,
+  agency_id INTEGER NOT NULL,
+  mode TEXT NOT NULL DEFAULT 'approval',   -- 'self' | 'approval' | 'full'
+  granted_at DATETIME, revoked_at DATETIME,
+  UNIQUE(seller_id, agency_id)
+)
+```
+- `vendor_commission_splits.status`(§4.1) 재사용: 승인형에서 에이전시 설정은 `status='proposed'` → 매장 승인 시 `'active'`. 완전위임형은 에이전시 설정이 바로 `'active'`. (기존 `seller_influencer_deals` 의 proposed/accept 패턴과 동일 계열 → 재사용 가능.)
+- 회수: `mode → 'self'` 로 UPDATE + 해당 에이전시의 `active` split 을 `'proposed'` 로 강등(매장 재승인 필요) — 이미 나간 정산은 불변(소급 없음).
+- 투명성: 매장 대시보드 promo 지출 뷰 = `ledger_entries`(promo/owner debit) 를 seller 스코프로 read (모드 무관 상시).
+
+> ⚠️ **열린 결정(구현 시 확정):** 기본 모드를 `approval` 로 둘지 신규 에이전시-매장 관계마다 매장이 선택하게 할지 · 회수 시 진행 중 딜의 소급 처리(강등 vs 만료까지 유지) — 실벤더 온보딩 방식에 맞춰. **원칙(투명성·회수·유어딜 캡만)은 고정.**
+
+**🟢 구현 로그 (2026-07-10 — 위임·투명성 표면 선구현; 분배 엔진 §4.1~4.2·§5~6 은 8월 flip):**
+- `store_agency_delegation` 테이블(스케치 그대로 + id/timestamps) — `src/worker/utils/store-agency-delegation.ts` + repair-schema 등록. commit `91c7b8f7`.
+- API: 에이전시 `/api/agency/delegation`(목록·promo-summary·모드 **요청만** — 발효는 매장 grant, 불변원칙 #3) · 매장 `/api/seller/delegation`(grant/revoke — revoke **무조건 허용**, #2) · 매장 `/api/seller/promo-spend`(#1 투명성) · 어드민 `/api/admin/promo-ledger`(불변식 #44 조종석).
+- UI: `AgencyDelegationsPage`(`3f5134c3`) · `SellerAgencyDelegationPage`/`SellerPromoSpendPage`/`SellerInfluencerDealsPage`(`86c3755f`) · `AdminPromoLedgerPage`(`dced7699`).
+- 열린 결정 임시 해소(8월 재확정 가능): 기본 모드 = grant 시 매장 선택(UI 승인형 권장) · 회수 = 모드 `self`+통지만 — `active→proposed` 강등은 splits 테이블(8월)과 함께.
+- ⚠️ 돈 이동 0 — 정산·커미션 계산 파일 접촉 0(diff 증명). 재원 프레이밍은 `promo_funding_source` 런타임 게이트(owner 일 때만 promo 문구 — 문구가 돈 흐름을 앞서지 않음).
+
 ---
 
 ## 5. 적립 흐름 (라우팅 함수)
@@ -135,9 +175,10 @@ CLAUDE.md 💸 머니 룰 4종 전부 적용:
 
 ## 7. 예산 아비터 [INV-CB] · 가드와의 관계
 
-- **새 예산 축이 아니다.** B는 이미 아비터가 배정한 인플 축 금액(C)을 재라우팅할 뿐 → `computeCommissionBudget`/`allocateCommissions`/`assertCommissionBudgetInvariants` **무변경**. Σ지출 불변.
-- **가드 `check-commission-budget.mjs`:** 벤더 보유분 크레딧이 "아비터 우회 신규 적립"으로 오탐되지 않도록, 벤더 크레딧을 **오케스트레이터 내부(`routeInfluencerCommission`)에서만** 발생시키고 새 축 INSERT로 만들지 않는다. 필요 시 가드에 "pass-through 재라우팅은 예산 중립" 화이트리스트 주석/규칙 추가.
-- **`only` 필터·`priorityKeys`·게이트 OFF 경로** 전부 그대로 동작. B는 인플 적립 호출부에만 얹힌다.
+- **5% 를 아예 안 건드린다.** B 의 풀 C 는 **promo(owner) 재원**(5% 밖)이므로 `computeCommissionBudget`(=5% − PG준비금) 과 무관 → `allocateCommissions`/`assertCommissionBudgetInvariants` **무변경**, platform net 불변. flip 불변식 #44("platform net == 5%")도 자동 충족.
+- **가드 `check-commission-budget.mjs`:** 벤더 보유분·인플 몫 크레딧은 **promo(owner) 슬라이스 debit** 에서 나와야 하며, `debit_account:'platform:revenue'` 로 5% 를 빼면 안 된다(그 순간 원칙 위반). `routeInfluencerCommission` 내부에서만 발생시키고, R4(#44) 정적 가드가 이 경로가 owner 계정을 debit 하는지 확인.
+- **`only` 필터·`priorityKeys`·게이트 OFF 경로** 전부 그대로 동작. B는 인플 promo 적립 호출부에만 얹힌다.
+- **⚠️ 에이전시 프레이밍 주의:** 여기서 "벤더" 는 promo 재원으로 먹는 조율 주체다. `agencies.id` 를 재사용하더라도, 이 벤더 보유분(promo 재원)은 §3 의 **"에이전시 매장영입 1% 한시 마중물(5% 재원, 콜드스타트 예외)"** 과 **다른 재원**이다 — 혼동 금지. B 는 promo, 마중물은 한시적 5%.
 
 ---
 

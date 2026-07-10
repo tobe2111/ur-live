@@ -33,6 +33,8 @@ import { emailRoutes } from '../features/notifications/api/email.routes';
 import { appointmentsRoutes } from '../features/appointments/api/appointments.routes';
 import { adminPayoutsRoutes } from '../features/admin/api/admin-payouts.routes';
 import { adminFeeBreakdownRoutes } from '../features/admin/api/admin-fee-breakdown.routes';
+// 🧾 2026-07-10 불변식 #44 검증 콕핏 (promo 재원 원장 감사 — read-only, finance role)
+import { adminPromoLedgerRoutes } from '../features/admin/api/admin-promo-ledger.routes';
 import { funnelRoutes } from '../features/analytics/api/funnel.routes';
 import { adminTaxRoutes } from '../features/admin/api/admin-tax.routes';
 import { ledgerRoutes } from '../features/ledger/api/ledger.routes';
@@ -102,6 +104,9 @@ import { sellerOrdersRoutes } from '../features/seller/api/seller-orders.routes'
 import { sellerAnalyticsRoutes } from '../features/seller/api/seller-analytics.routes';
 import { sellerOnboardingRoutes } from '../features/seller/api/seller-onboarding.routes';
 import { optimalTimeRoutes } from '../features/seller/api/optimal-time.routes';
+// 🤝 2026-07-10 위임 3단 모델 + promo 투명성 (vendor-commission-passthrough §4.3 — 돈 이동 0)
+import { sellerDelegationRoutes } from '../features/seller/api/seller-delegation.routes';
+import { sellerPromoSpendRoutes } from '../features/seller/api/seller-promo-spend.routes';
 import { faqBotRoutes } from '../features/guides/api/faq-bot.routes';
 import { moderationRoutes } from '../features/moderation/api/moderation.routes';
 import { adminTikTokDiscoveryRoutes } from '../features/admin/api/admin-tiktok-discovery.routes';
@@ -195,6 +200,8 @@ import { prospectsRoutes } from '../features/seller-prospects/api/seller-prospec
 import { marketingRoutes } from '../features/marketing/api/marketing.routes';
 import { adminAdsRoutes } from '../features/marketing/api/admin-ads.routes';
 import { agencyKpiRoutes } from '../features/agency/api/agency-kpi.routes';
+// 🤝 2026-07-10 에이전시 위임/promo 투명성 (vendor-commission-passthrough §4.3 — read-only + 요청만)
+import { agencyDelegationRoutes } from '../features/agency/api/agency-delegation.routes';
 import { agencyMatchSuggestionsRoutes } from '../features/agency/api/agency-match-suggestions.routes';
 import { agencyPublicRoutes, agencyPublicEditRoutes } from '../features/agency/api/agency-public.routes';
 import { adminAgencyRoutes } from '../features/admin/api/admin-agency.routes';
@@ -1389,6 +1396,9 @@ app.route('/api/seller/analytics', sellerAnalyticsRoutes);
 app.route('/api/seller/onboarding', sellerOnboardingRoutes);
 // 🛡️ 2026-04-27 Phase 3-1: 데이터 기반 최적 라이브 시간 추천
 app.route('/api/seller/optimal-time', optimalTimeRoutes);
+// 🤝 2026-07-10 매장 위임 관리 + promo 지출 투명성 (§4.3 — 돈 이동 0, 관계/read-only 만)
+app.route('/api/seller/delegation', sellerDelegationRoutes);
+app.route('/api/seller/promo-spend', sellerPromoSpendRoutes);
 // 🛡️ 2026-04-27 Phase 3-2: FAQ 봇 (가이드 검색)
 app.route('/api/faq-bot', faqBotRoutes);
 // 🛡️ 2026-04-27 Phase 3-3: 채팅 모더레이션
@@ -1684,6 +1694,8 @@ app.route('/api', appointmentsRoutes);
 app.route('/api', adminPayoutsRoutes);
 // 🆕 2026-06-29: fee-resolver 그림자 ↔ 현행 정산 비교(읽기 전용, authoritative 전환 검증용).
 app.route('/api', adminFeeBreakdownRoutes);
+// 🧾 2026-07-10 불변식 #44 검증 콕핏 (promo 재원 원장 감사 — read-only, finance role)
+app.route('/api/admin/promo-ledger', adminPromoLedgerRoutes);
 // 🆕 2026-06-29: 경량 퍼널 계측 (소비자 이탈률 측정 — 정체성 결정 근거).
 app.route('/api', funnelRoutes);
 // 🛡️ 2026-05-21 Phase D: 세무 (전자세금계산서 + 연말 리포트).
@@ -1881,6 +1893,8 @@ app.route('/api/invite', inviteCodePublicRoutes);
 app.route('/api/prospects', prospectsRoutes);
 // 🛡️ 2026-04-27 Phase 1-4: 6대 KPI 대시보드 API
 app.route('/api/agency/kpi', agencyKpiRoutes);
+// 🤝 2026-07-10 에이전시 위임/promo 투명성 (§4.3 — grant 는 매장만, 에이전시는 조회+요청만)
+app.route('/api/agency/delegation', agencyDelegationRoutes);
 // 🛡️ 2026-04-27 Phase 1-7: 에이전시 공개 브랜딩 페이지
 app.route('/api/agency-public', agencyPublicRoutes);          // 공개 (인증 X)
 app.route('/api/agency/public-profile', agencyPublicEditRoutes); // 본인 편집 (인증)
