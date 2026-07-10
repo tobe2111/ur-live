@@ -305,6 +305,12 @@ adminToolsRoutes.get('/settings', async (c) => {
 
 adminToolsRoutes.put('/settings', async (c) => {
   const body = await c.req.json<Record<string, string>>().catch(() => ({} as Record<string, string>))
+  // 🎟️ 2026-07-10 (flip-ui-checklist A1): 공구 엔진 게이트는 boolean 문자열만 허용 —
+  //   gb-marketplace/gb-proposals/seller-orders 가 value==='true' 로 읽으므로 오타값(예: 'True', '1')이
+  //   저장되면 조용히 OFF 로 동작해 flip 세션이 오판. 'true'/'false' 외 값은 400 (additive 가드 — 타 키 불변).
+  if ('gb_engine_enabled' in body && body.gb_engine_enabled !== 'true' && body.gb_engine_enabled !== 'false') {
+    return c.json({ success: false, error: "gb_engine_enabled: 'true' 또는 'false' 만 허용됩니다" }, 400)
+  }
   try { await c.env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS platform_settings (
       key TEXT PRIMARY KEY, value TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
