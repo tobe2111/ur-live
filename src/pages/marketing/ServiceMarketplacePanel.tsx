@@ -18,7 +18,9 @@ const input = 'w-full h-9 rounded-lg border border-gray-200 dark:border-[#2A2A2A
 interface Pricing { unit: string; unitPrice: number; minQty: number; maxQty: number; presets?: Array<{ label: string; qty: number }>; qtyDiscounts?: Array<{ min: number; pct: number }>; options?: Array<{ key: string; label: string; price: number }> }
 interface Service { id: number; category: string; name: string; subtitle: string | null; description: string | null; pricing: Pricing }
 interface Price { unitPrice: number; quantity: number; subtotal: number; discountPct: number; discounted: number; optionsTotal: number; total: number }
-interface Order { id: number; service_name: string; preset_label: string | null; quantity: number; total_amount: number; status: string; fulfillment_method: string | null; admin_note: string | null; created_at: string }
+interface Order { id: number; service_name: string; preset_label: string | null; quantity: number; total_amount: number; status: string; payment_status: string; fulfillment_method: string | null; admin_note: string | null; created_at: string }
+const PAY_KO: Record<string, string> = { unpaid: '입금 대기', paid: '입금 확인', refunded: '환불' }
+const PAY_CLS: Record<string, string> = { unpaid: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400', paid: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', refunded: 'bg-gray-100 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400' }
 interface Review { id: number; rating: number; title: string; body: string; author_masked: string; created_at: string }
 const Stars = ({ n }: { n: number }) => <span className="text-amber-400 text-[12px] tracking-tight">{'★'.repeat(Math.round(n))}<span className="text-gray-300 dark:text-gray-600">{'★'.repeat(Math.max(0, 5 - Math.round(n)))}</span></span>
 const STATUS_KO: Record<string, string> = { requested: '접수됨', confirmed: '확인됨', in_progress: '진행 중', done: '완료', cancelled: '취소' }
@@ -27,6 +29,7 @@ const STATUS_CLS: Record<string, string> = { requested: 'bg-blue-50 dark:bg-blue
 export default function ServiceMarketplacePanel() {
   const [services, setServices] = useState<Service[]>([])
   const [orders, setOrders] = useState<Order[]>([])
+  const [bankInfo, setBankInfo] = useState<string | null>(null)
   const [sel, setSel] = useState<Service | null>(null)
   const [qty, setQty] = useState(1)
   const [preset, setPreset] = useState<string | null>(null)
@@ -51,7 +54,7 @@ export default function ServiceMarketplacePanel() {
     try {
       const [s, o] = await Promise.all([api.get('/api/ads/services', { headers: authHeader() }), api.get('/api/ads/services/order-history', { headers: authHeader() })])
       if (s.data?.success) setServices(s.data.services || []); else setErr(true)
-      if (o.data?.success) setOrders(o.data.orders || [])
+      if (o.data?.success) { setOrders(o.data.orders || []); setBankInfo(o.data.bank_info || null) }
     } catch { setErr(true) }
   }, [])
   useEffect(() => { load() }, [load])
@@ -92,7 +95,7 @@ export default function ServiceMarketplacePanel() {
     setBusy(true)
     try {
       const r = await api.post('/api/ads/services/order', { service_id: sel.id, quantity: qty, preset_label: preset, option_keys: [...opts], contact_kakao: kakao, contact_phone: phone, target_url: target, memo }, { headers: authHeader() })
-      if (r.data?.success) { toast.success('주문이 접수되었습니다. 담당자가 확인 후 연락드립니다.'); setSel(null); setKakao(''); setPhone(''); setTarget(''); setMemo(''); await load() }
+      if (r.data?.success) { toast.success(r.data.bank_info ? `주문 접수 완료 — 입금 계좌: ${r.data.bank_info}` : '주문이 접수되었습니다. 담당자가 확인 후 연락드립니다.'); setSel(null); setKakao(''); setPhone(''); setTarget(''); setMemo(''); await load() }
       else toast.error(r.data?.error || '접수 실패')
     } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '접수 실패') } finally { setBusy(false) }
   }
@@ -120,11 +123,19 @@ export default function ServiceMarketplacePanel() {
           {orders.length > 0 && (
             <div className="mt-4">
               <div className="text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-1.5">내 주문</div>
+              {bankInfo && orders.some(o => o.payment_status === 'unpaid' && o.status !== 'cancelled') && (
+                <div className="mb-2 rounded-lg border border-amber-200 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/5 p-2.5 text-[12px] text-amber-700 dark:text-amber-400">
+                  <b>입금 안내</b> · {bankInfo} — 주문 금액을 입금해주시면 확인 후 진행됩니다.
+                </div>
+              )}
               <div className="space-y-1.5">
                 {orders.slice(0, 10).map(o => (
                   <div key={o.id} className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 dark:border-[#1A1A1A] p-2.5 text-[12px]">
                     <div className="min-w-0"><div className="font-medium text-gray-900 dark:text-white truncate">{o.service_name} {o.preset_label && <span className="text-gray-400">· {o.preset_label}</span>}</div><div className="text-[10.5px] text-gray-400 dark:text-gray-500">{o.quantity}개 · {formatNumber(o.total_amount)}원 · {(o.created_at || '').slice(0, 10)}{o.fulfillment_method ? ` · ${o.fulfillment_method}` : ''}</div>{o.admin_note && <div className="text-[10.5px] text-gray-500 dark:text-gray-400 mt-0.5">메모: {o.admin_note}</div>}</div>
-                    <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10.5px] font-bold ${STATUS_CLS[o.status] || STATUS_CLS.requested}`}>{STATUS_KO[o.status] || o.status}</span>
+                    <div className="shrink-0 flex flex-col items-end gap-1">
+                      <span className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold ${STATUS_CLS[o.status] || STATUS_CLS.requested}`}>{STATUS_KO[o.status] || o.status}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-[10.5px] font-bold ${PAY_CLS[o.payment_status] || PAY_CLS.unpaid}`}>{PAY_KO[o.payment_status] || o.payment_status}</span>
+                    </div>
                   </div>
                 ))}
               </div>

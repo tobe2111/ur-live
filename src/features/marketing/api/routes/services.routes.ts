@@ -22,7 +22,8 @@ adsServicesRoutes.get('/services', async (c) => {
 adsServicesRoutes.get('/services/order-history', async (c) => {
   const id = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!id) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
-  return c.json({ success: true, orders: await listMyOrders(c.env.DB, id) })
+  // bank_info: 수기 결제(계좌이체) 안내 — 미입금 주문이 있을 때 고객에게 표시.
+  return c.json({ success: true, orders: await listMyOrders(c.env.DB, id), bank_info: c.env.ADS_BANK_INFO || null })
 })
 
 // POST /api/ads/services/quote — 가격 미리보기(서버 권위 계산)
@@ -48,7 +49,8 @@ adsServicesRoutes.post('/services/order', rateLimit({ action: 'ads-svc-order', m
     targetUrl: b.target_url ? String(b.target_url) : undefined, memo: b.memo ? String(b.memo) : undefined,
   })
   if (!r.ok) return c.json({ success: false, error: r.error }, 400)
-  return c.json({ success: true, orderId: r.orderId, price: r.price })
+  // 수기 결제: 주문 접수 직후 입금 계좌 안내(설정 시) — 입금 확인은 어드민이 수동 마킹.
+  return c.json({ success: true, orderId: r.orderId, price: r.price, bank_info: c.env.ADS_BANK_INFO || null })
 })
 
 // GET /api/ads/services/:id/reviews?page= — 상품 리뷰 목록(+요약, 작성 자격)

@@ -13,9 +13,10 @@ interface Order {
   id: number; account_id: number; service_name: string; preset_label: string | null; quantity: number
   unit_price: number; discount_pct: number; options_total: number; total_amount: number
   contact_kakao: string | null; contact_phone: string | null; target_url: string | null; memo: string | null
-  status: string; fulfillment_method: string | null; admin_note: string | null; created_at: string
+  status: string; payment_status: string; fulfillment_method: string | null; admin_note: string | null; created_at: string
   supplier: string | null; supplier_order_id: string | null; supplier_cost: number; margin: number
 }
+const PAY_KO: Record<string, string> = { unpaid: '입금 대기', paid: '입금 확인', refunded: '환불' }
 interface Service { id: number; category: string; name: string; subtitle: string | null; pricing: { unit: string; unitPrice: number }; active: number; sort_order: number }
 interface Review { id: number; service_id: number; account_id: number; rating: number; title: string; body: string; author_masked: string; status: string; created_at: string }
 
@@ -92,6 +93,10 @@ export default function AdminAdsServicesPage() {
                       {o.memo && <div className="text-[12px] text-gray-500 mt-0.5">요청: {o.memo}</div>}
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <button disabled={busy === o.id} onClick={() => patchOrder(o.id, { payment_status: o.payment_status === 'paid' ? 'unpaid' : 'paid' }, o.payment_status === 'paid' ? '입금 대기로' : '입금 확인')}
+                        className={`px-2 py-0.5 rounded text-[11.5px] font-bold ${o.payment_status === 'paid' ? 'bg-emerald-50 text-emerald-600' : o.payment_status === 'refunded' ? 'bg-gray-100 text-gray-500' : 'bg-amber-50 text-amber-600'}`}>
+                        {PAY_KO[o.payment_status] || o.payment_status}{o.payment_status === 'unpaid' ? ' → 확인' : ''}
+                      </button>
                       <select value={o.status} disabled={busy === o.id} onChange={e => patchOrder(o.id, { status: e.target.value }, '상태 변경')} className="rounded-lg border border-gray-300 px-2 py-1 text-[12px] font-semibold text-gray-900">
                         {STATUSES.map(s => <option key={s} value={s}>{STATUS_KO[s]}</option>)}
                       </select>
