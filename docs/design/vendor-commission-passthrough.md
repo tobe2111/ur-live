@@ -129,6 +129,13 @@ store_agency_delegation(
 
 > ⚠️ **열린 결정(구현 시 확정):** 기본 모드를 `approval` 로 둘지 신규 에이전시-매장 관계마다 매장이 선택하게 할지 · 회수 시 진행 중 딜의 소급 처리(강등 vs 만료까지 유지) — 실벤더 온보딩 방식에 맞춰. **원칙(투명성·회수·유어딜 캡만)은 고정.**
 
+**🟢 구현 로그 (2026-07-10 — 위임·투명성 표면 선구현; 분배 엔진 §4.1~4.2·§5~6 은 8월 flip):**
+- `store_agency_delegation` 테이블(스케치 그대로 + id/timestamps) — `src/worker/utils/store-agency-delegation.ts` + repair-schema 등록. commit `91c7b8f7`.
+- API: 에이전시 `/api/agency/delegation`(목록·promo-summary·모드 **요청만** — 발효는 매장 grant, 불변원칙 #3) · 매장 `/api/seller/delegation`(grant/revoke — revoke **무조건 허용**, #2) · 매장 `/api/seller/promo-spend`(#1 투명성) · 어드민 `/api/admin/promo-ledger`(불변식 #44 조종석).
+- UI: `AgencyDelegationsPage`(`3f5134c3`) · `SellerAgencyDelegationPage`/`SellerPromoSpendPage`/`SellerInfluencerDealsPage`(`86c3755f`) · `AdminPromoLedgerPage`(`dced7699`).
+- 열린 결정 임시 해소(8월 재확정 가능): 기본 모드 = grant 시 매장 선택(UI 승인형 권장) · 회수 = 모드 `self`+통지만 — `active→proposed` 강등은 splits 테이블(8월)과 함께.
+- ⚠️ 돈 이동 0 — 정산·커미션 계산 파일 접촉 0(diff 증명). 재원 프레이밍은 `promo_funding_source` 런타임 게이트(owner 일 때만 promo 문구 — 문구가 돈 흐름을 앞서지 않음).
+
 ---
 
 ## 5. 적립 흐름 (라우팅 함수)

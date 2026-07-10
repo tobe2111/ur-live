@@ -7,7 +7,7 @@
  *   재원 프레이밍은 promo-summary 의 funding_source 로 게이트:
  *   'platform'(현행 기본) 동안엔 절대 owner-펀딩 문구를 노출하지 않는다.
  */
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import AgencyLayout from '@/components/AgencyLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import api from '@/lib/api'
@@ -67,9 +67,9 @@ export default function AgencyDelegationsPage() {
 
   const storesQ = useApiQuery<DelegationStore[]>(
     ['agency', 'delegation-stores'], '/api/agency/delegation',
-    { select: (r: any) => (r?.success ? r.data || [] : []) },
+    { select: (r: any) => (r?.success ? { list: r.data || [], funding: r.funding_source || 'platform' } : { list: [], funding: 'platform' }) },
   )
-  const stores = storesQ.data ?? []
+  const stores = storesQ.data?.list ?? []
 
   const fetchSummary = useCallback(async (sellerId: number) => {
     setSummaryLoading(prev => ({ ...prev, [sellerId]: true }))
@@ -90,19 +90,9 @@ export default function AgencyDelegationsPage() {
     }
   }, [])
 
-  // 재원 스위치(funding_source) 판별 — 첫 매장 promo-summary 를 선로드 (헤더 프레이밍 게이트용).
-  const firstStoreId = stores.length > 0 ? stores[0].seller_id : null
-  useEffect(() => {
-    if (firstStoreId != null && !summaries[firstStoreId] && !summaryLoading[firstStoreId] && !summaryError[firstStoreId]) {
-      fetchSummary(firstStoreId)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [firstStoreId])
-
-  // funding_source: 로드된 아무 summary 에서든 판별. 미확인이면 'platform'(라이브 현행 기본) 취급 —
+  // funding_source: 목록 응답이 직접 제공. 미확인이면 'platform'(라이브 현행 기본) 취급 —
   // 요구사항: platform 동안 owner-펀딩 프레이밍 절대 금지 → unknown 도 중립 카피.
-  const loadedSummaries = Object.values(summaries)
-  const fundingSource = loadedSummaries.length > 0 ? loadedSummaries[0].funding_source : 'platform'
+  const fundingSource = storesQ.data?.funding ?? 'platform'
   const ownerFunded = fundingSource === 'owner'
 
   function toggleExpand(sellerId: number) {

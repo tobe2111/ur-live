@@ -68,7 +68,11 @@ app.get('/', async (c) => {
         ? r.delegation_mode
         : '미위임(셀프)',
     }))
-    return c.json({ success: true, data })
+    // 재원 스위치 — 목록에서 바로 프레이밍 게이트 판별 (promo-summary 선로드 불필요)
+    const fund = await c.env.DB.prepare(
+      `SELECT value FROM platform_settings WHERE key = 'promo_funding_source'`
+    ).first<{ value: string }>().catch(() => null)
+    return c.json({ success: true, data, funding_source: fund?.value || 'platform' })
   } catch (err) {
     return safeError(c, err, '위임 매장 목록 조회 중 오류가 발생했습니다', '[agency-delegation]')
   }

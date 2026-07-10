@@ -2,6 +2,8 @@
 
 > 2026-07-10 전수조사(에이전시·어드민·서비스/매장 3표면 병렬 감사) 종합. **구현은 8월 flip 세션에서** — 설계 논의는 봉인됨(대표 확정). 확정 모델·불변식 SSOT: `docs/design/commission-funding-restructure.md` §확정 원칙 / 3단 권한 §4.3 (`vendor-commission-passthrough.md`).
 >
+> **🟢 2026-07-10 선구현 완료 (대표 지시 "미구현+필요한 것 모두, 머니 경로 제외")**: ❌ 미구현 표면 전부 + C3·C6 구현됨 — A2(`dced7699`)·B2/B4(`91c7b8f7`+`3f5134c3`)·C3/C4/C5/C6(`86c3755f`). **전부 read-only/관계 행만, 정산·커미션 계산 파일 접촉 0(diff 증명), 프레이밍은 `promo_funding_source` 런타임 게이트**(owner일 때만 promo 재원 문구 — 문구가 돈 흐름을 앞서지 않음). 남은 것 = 머니 경로(A1 스위치 ON·A3~A9 재배선·B3 분배 엔진)와 **기존** 표면 문구 전환(B1·D1) — 8월 flip 세션. A6은 이미 2026-07-04에 구현돼 있었음(`fee-breakdown-record.ts:92-101` promo 실측 주입 — 감사 시점 표기 스테일).
+>
 > 확정 모델(박제): 유어딜 5% = 순수 인프라비(PG 포함, 커미션 불사용) · 모든 판매 커미션 + 에이전시 조율 몫 = 매장 promo(95% 안) 재원 · 에이전시 = promo에서 스스로 가져가는 독립 조율 사업자 · 3단 위임(셀프/승인형[기본]/완전위임) · 불변식 #44: 원장 `platform:revenue` = 5% 전액, 성장 커미션 debit 0.
 
 ## 1. 한 줄 결론
@@ -29,7 +31,7 @@
 ### A. 어드민 (스위치 + 재배선 + 신설 1)
 
 - [ ] **A1. flip 스위치 ON** — [어드민] AdminPlatformSettingsPage.tsx:46-86,185-219 · admin-tools.routes.ts:306-322. `commission_budget_enabled` / `promo_funding_source=owner` / `pg_reserve_pct` / `seller_promo_field_enabled` 활성화 (⚠️ 머니 경로 — 단독 세션 + staging 실결제 필수, CLAUDE.md 룰).
-- [ ] **A2. promo 재원 원장 감사 화면 신설 (유일 미구현)** — [어드민] order당 재원 구분(5% vs promo) + `platform:revenue` 5% 전액 검증(불변식 #44) + 매장 promo 잔액·소진 뷰. 현재 부재 (감사 #7).
+- [x] **A2. promo 재원 원장 감사 화면 신설 (유일 미구현)** — [어드민] order당 재원 구분(5% vs promo) + `platform:revenue` 5% 전액 검증(불변식 #44) + 매장 promo 잔액·소진 뷰. 현재 부재 (감사 #7). **→ ✅ 구현 `dced7699` (2026-07-10 선구현 — 표면은 라이브, 재원 프레이밍만 funding 게이트. 상단 🟢 노트 참조)**
 - [ ] **A3. 수수료율 탭 전환** — [어드민] admin-payouts.routes.ts:342-415 · AdminPayoutsPage.tsx:298-376. 5% 분배 슬라이더에서 agency/influencer share 제거, `platform_fee_pct` "인프라비 5% 불변" read-only化.
 - [ ] **A4. 4계정 분배 바 이관** — [어드민] AdminCommissionSettingsPage.tsx:116-158. "매출 100% 분배"(유어딜/인플/유저/에이전시/셀러) 중 인플·유저·에이전시 슬라이스를 promo 재원으로 이관.
 - [ ] **A5. 캡 표면 승격** — [어드민] AdminCommissionSettingsPage.tsx:255-267 · commission-rates.ts:159. `max_influencer_commission_pct`를 구모델 페이지에서 분리해 캡 전용 가드 화면으로 (GMV clamp → promo 분배 clamp 관점 정리).
@@ -41,18 +43,18 @@
 ### B. 에이전시 대시보드 (프레이밍 전환 + 신설 3)
 
 - [ ] **B1. 커미션 전 표면 프레이밍 전환** — [에이전시] AgencySettlementsPage.tsx · agency-settlements.routes.ts · AgencyIncentivesPage.tsx · AgencyStatsPage.tsx · AgencyPage.tsx · AgencyIntroducedStoresPage.tsx. "유어딜로부터 2%/1% 수령" → "매장 promo에서 조율 몫 수령(독립 사업자)".
-- [ ] **B2. 3단 위임 표면 신설** — [에이전시] `store_agency_delegation` 기반 셀프/승인형[기본]/완전위임 상태·전환 UI. 현재 미구현.
+- [x] **B2. 3단 위임 표면 신설** — [에이전시] `store_agency_delegation` 기반 셀프/승인형[기본]/완전위임 상태·전환 UI. 현재 미구현. **→ ✅ 구현 `91c7b8f7·3f5134c3` (2026-07-10 선구현 — 표면은 라이브, 재원 프레이밍만 funding 게이트. 상단 🟢 노트 참조)**
 - [ ] **B3. vendor_commission_splits 분배 UI 신설** — [에이전시] 매장-인플 커미션 조율(에이전시가 promo 안에서 분배 설정하는 화면). 현재 미구현.
-- [ ] **B4. 매장별 promo 잔액/소진 투명성 뷰 신설** — [에이전시] 조율 대상 매장의 promo 재원 현황. 현재 미구현.
+- [x] **B4. 매장별 promo 잔액/소진 투명성 뷰 신설** — [에이전시] 조율 대상 매장의 promo 재원 현황. 현재 미구현. **→ ✅ 구현 `3f5134c3` (2026-07-10 선구현 — 표면은 라이브, 재원 프레이밍만 funding 게이트. 상단 🟢 노트 참조)**
 
 ### C. 셀러(매장) 대시보드
 
 - [ ] **C1. promo 설정 화면 라이브 노출** — [셀러] SellerMealVoucherNewPage.tsx:89,253,637-672 (promo_pct→`products.referral_commission_rate` 매핑 정확) + PromoMarginCalculator.tsx:41-85 — `SELLER_PROMO_FIELD_ENABLED`(feature-flags.ts:62) ON으로 게이트 해제 (A1과 동시).
 - [ ] **C2. 구식 병렬 referral UI 흡수** — [셀러] SellerStayNewPage.tsx:463-499. 게이트 없이 라이브인 influencer_discount_pct/commission_pct("인플 settle 시 지급") → 통합 promo 모델로 흡수.
-- [ ] **C3. promo 지출 브레이크다운 노출** — [셀러] SellerSettlementsPage + seller-settlements.routes.ts:64-66 (현재 5% 수수료만) + SellerRealtimeDashboardPage.tsx:91-94 (총액만). promo 지출·수령인별 내역 추가.
-- [ ] **C4. 매장 위임 회수 UI 신설** — [셀러] 현재 전무 (agency-members.routes.ts:311 `status='removed'`는 에이전시 내부 멤버 제거일 뿐 — 매장 주도 회수 아님). 3단 위임의 매장측 짝.
-- [ ] **C5. 매장→인플 promo 제안 UI 신설** — [셀러] `seller_influencer_deals` seller-facing 화면 전무 (인플측 InfluencerSettlementPage.tsx:106-115만 존재).
-- [ ] **C6. 쇼핑 CTA 잔존물 정리** — [셀러] PrimaryActions.tsx:52-54 "상품 등록 · 쇼핑/공구 모두" — `SHOPPING_TAB_HIDDEN=true`(feature-flags.ts:17)와 불일치.
+- [x] **C3. promo 지출 브레이크다운 노출** — [셀러] SellerSettlementsPage + seller-settlements.routes.ts:64-66 (현재 5% 수수료만) + SellerRealtimeDashboardPage.tsx:91-94 (총액만). promo 지출·수령인별 내역 추가. **→ ✅ 구현 `86c3755f` (2026-07-10 선구현 — 표면은 라이브, 재원 프레이밍만 funding 게이트. 상단 🟢 노트 참조)**
+- [x] **C4. 매장 위임 회수 UI 신설** — [셀러] 현재 전무 (agency-members.routes.ts:311 `status='removed'`는 에이전시 내부 멤버 제거일 뿐 — 매장 주도 회수 아님). 3단 위임의 매장측 짝. **→ ✅ 구현 `86c3755f` (2026-07-10 선구현 — 표면은 라이브, 재원 프레이밍만 funding 게이트. 상단 🟢 노트 참조)**
+- [x] **C5. 매장→인플 promo 제안 UI 신설** — [셀러] `seller_influencer_deals` seller-facing 화면 전무 (인플측 InfluencerSettlementPage.tsx:106-115만 존재). **→ ✅ 구현 `86c3755f` (2026-07-10 선구현 — 표면은 라이브, 재원 프레이밍만 funding 게이트. 상단 🟢 노트 참조)**
+- [x] **C6. 쇼핑 CTA 잔존물 정리** — [셀러] PrimaryActions.tsx:52-54 "상품 등록 · 쇼핑/공구 모두" — `SHOPPING_TAB_HIDDEN=true`(feature-flags.ts:17)와 불일치. **→ ✅ 구현 `86c3755f` (2026-07-10 선구현 — 표면은 라이브, 재원 프레이밍만 funding 게이트. 상단 🟢 노트 참조)**
 
 ### D. 인플루언서
 
