@@ -5,7 +5,7 @@
  * 광고/배너/최근본/카테고리섹션 없음. 오롯이 공구만.
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
@@ -92,9 +92,55 @@ export default function GroupBuyFeed() {
     refetchOnWindowFocus: false,
   })
 
-  // 클라이언트 사이드 정렬 — 50개 cap 이므로 비용 무시 가능.
+  // 📄 2026-07-08 (대표 "전체 상품이 안 나옴 — 50곳밖에"): 서버 기본 피드는 LIMIT 50(캐시/SSR 고정).
+  //   50개 초과분은 페이지네이션으로 이어 로드(page=2,3…, 같은 정렬 = DEMO_LAST,created_at DESC → 중복/누락 0).
+  //   1페이지는 기존 SSR/캐시 fast-path 유지, 이후만 라이브 fetch — 무한스크롤로 전체 노출.
+  const [extraPages, setExtraPages] = useState<FeedProduct[][]>([])
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [reachedEnd, setReachedEnd] = useState(false)
+  // 카테고리 변경 시 누적분 리셋
+  useEffect(() => { setExtraPages([]); setReachedEnd(false) }, [category])
+
+  // page1(items) + 추가 페이지 병합 후 id 중복 제거(경계 겹침 방어).
+  const allItems = useMemo(() => {
+    const merged = [...items, ...extraPages.flat()]
+    const seen = new Set<number | string>()
+    const out: FeedProduct[] = []
+    for (const p of merged) { if (p?.id != null && !seen.has(p.id)) { seen.add(p.id); out.push(p) } }
+    return out
+  }, [items, extraPages])
+
+  const loadMore = async () => {
+    if (loadingMore || reachedEnd) return
+    setLoadingMore(true)
+    try {
+      const nextPage = extraPages.length + 2  // page1 = items → 다음은 2부터
+      const res = await api.get(`/api/group-buy/products?status=active&category=${category}&page=${nextPage}&limit=50`)
+      const arr: FeedProduct[] = Array.isArray(res.data?.data) ? res.data.data : []
+      for (const p of arr) { if (p?.id != null) qc.setQueryData(queryKeys.groupBuyProduct(p.id), p) }
+      setExtraPages(prev => [...prev, arr])
+      if (arr.length < 50) setReachedEnd(true)
+    } catch { /* 실패 시 버튼 유지 — 다음 시도 가능 */ } finally { setLoadingMore(false) }
+  }
+
+  // 무한 스크롤 센티넬 — 바닥 근처 도달 시 다음 페이지 로드. page1 이 꽉 찼을 때(50개)만 활성.
+  const canLoadMore = items.length >= 50 && !reachedEnd
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!canLoadMore) return
+    const el = sentinelRef.current
+    if (!el) return
+    const io = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) loadMore()
+    }, { rootMargin: '400px' })
+    io.observe(el)
+    return () => io.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canLoadMore, extraPages.length, loadingMore])
+
+  // 클라이언트 사이드 정렬 — 누적 로드분 전체를 정렬(모든 페이지 동일 base 정렬이라 전역 정렬 정합).
   const sorted = useMemo(() => {
-    const arr = [...items]
+    const arr = [...allItems]
     switch (sort) {
       case 'popular':
         return arr.sort((a, b) => (b.group_buy_current ?? 0) - (a.group_buy_current ?? 0))
@@ -113,7 +159,7 @@ export default function GroupBuyFeed() {
           return bx - ax
         })
     }
-  }, [items, sort])
+  }, [allItems, sort])
 
   return (
     <>
@@ -194,6 +240,30 @@ export default function GroupBuyFeed() {
             const seed = emb?.enabled ? { spots: emb.spots || 0, appliedDisplay: emb.appliedDisplay || 0, deadline: emb.deadline ?? null, prelaunch: !!emb.prelaunch } : undefined
             return <GroupBuyFeedCard key={p.id} p={p} aboveFold={idx < 4} fcfs={fcfsMap.get(p.id) ?? seed} />
           })}
+        </div>
+      )}
+
+      {/* 📄 무한 스크롤 — 50개 초과분 이어 로드(센티넬 도달 시 자동). 실패/대기 시 수동 버튼. */}
+      {!loading && sorted.length > 0 && canLoadMore && (
+        <div ref={sentinelRef} className="px-4 pb-6 flex justify-center">
+          {loadingMore ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex flex-col gap-1.5">
+                  <div className="aspect-square rounded-xl skeleton-shimmer" />
+                  <div className="h-3 w-3/4 rounded skeleton-shimmer mt-1" />
+                  <div className="h-4 w-1/2 rounded skeleton-shimmer" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <button
+              onClick={loadMore}
+              className="px-5 py-3 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-full text-sm font-bold text-gray-900 dark:text-white"
+            >
+              더 보기
+            </button>
+          )}
         </div>
       )}
 
