@@ -53,6 +53,18 @@ export default function AdminAdsAccountsPage() {
     } catch { toast.error('변경 실패') } finally { setBusy(null) }
   }
 
+  async function resetPassword(row: AdsAccountRow) {
+    const pw = window.prompt(`${row.email} 계정의 새 비밀번호를 입력하세요.\n(8자 이상 · 영문/숫자/특수문자 중 2종 이상)`)
+    if (pw === null) return
+    if (!pw.trim()) { toast.error('비밀번호를 입력해주세요'); return }
+    setBusy(row.id)
+    try {
+      const r = await api.post(`/api/admin/ads/accounts/${row.id}/reset-password`, { password: pw })
+      if (r.data?.success) toast.success('비밀번호를 재설정했습니다')
+      else toast.error(r.data?.error || '재설정 실패')
+    } catch { toast.error('재설정 실패') } finally { setBusy(null) }
+  }
+
   const statCards = [
     { l: '총 가입자', v: stats?.total },
     { l: '액세스 해제', v: stats?.unlocked },
@@ -125,6 +137,8 @@ export default function AdminAdsAccountsPage() {
                     className="text-[12px] font-semibold text-blue-600 hover:underline disabled:opacity-40">{r.access_unlocked ? '잠그기' : '잠금해제'}</button>
                   <button disabled={busy === r.id} onClick={() => patch(r.id, { status: r.status !== 'active' ? 'active' : 'suspended' }, r.status !== 'active' ? '활성화' : '정지')}
                     className="ml-3 text-[12px] font-semibold text-red-500 hover:underline disabled:opacity-40">{r.status !== 'active' ? '활성화' : '정지'}</button>
+                  <button disabled={busy === r.id} onClick={() => resetPassword(r)}
+                    className="ml-3 text-[12px] font-semibold text-gray-500 hover:underline disabled:opacity-40">비번설정</button>
                 </td>
               </tr>
             ))}

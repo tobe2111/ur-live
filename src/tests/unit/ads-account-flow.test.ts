@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 const { DatabaseSync } = await import(/* @vite-ignore */ ('node:' + 'sqlite')) as { DatabaseSync: new (p: string) => { prepare: (sql: string) => { run: (...a: never[]) => { changes: number | bigint; lastInsertRowid: number | bigint }; get: (...a: never[]) => unknown; all: (...a: never[]) => unknown[] } } }
 import {
   createAdsAccount, loginAdsAccount, adsAccountIdFrom, signAdsToken,
-  updateAdsAccount, changeAdsPassword,
+  updateAdsAccount, changeAdsPassword, adminSetPassword,
   requestPasswordReset, resetPasswordWithToken,
   unlockAdsAccount, getAdsAccount, ensureAdsAccountSchema,
 } from '@/features/marketing/api/ads-account'
@@ -88,6 +88,22 @@ describe('UR Ads 독립 계정 — 실제 SQLite 통합', () => {
     expect((await resetPasswordWithToken(DB, req.token, 'Another99!@')).ok).toBe(false) // 재사용 차단
     expect((await resetPasswordWithToken(DB, 'badtoken'.repeat(5), 'Newpass99!@')).ok).toBe(false)
     expect((await loginAdsAccount(DB, 'g@h.com', 'Newpass99!@')).ok).toBe(true)
+  })
+
+  it('어드민 강제 비번 재설정: 현재 비번 없이 세팅 → 새 비번 로그인', async () => {
+    const r = await createAdsAccount(DB, { email: 'admin-reset@x.com', password: PW, company_name: 'X' })
+    if (!r.ok) throw new Error('setup')
+    const id = r.account.id
+    // 완화 정책 준수 비번(대문자 없음)도 어드민 세팅 허용
+    expect((await adminSetPassword(DB, id, '999888aa!!')).ok).toBe(true)
+    expect((await loginAdsAccount(DB, 'admin-reset@x.com', '999888aa!!')).ok).toBe(true)
+    expect((await loginAdsAccount(DB, 'admin-reset@x.com', PW)).ok).toBe(false) // 옛 비번 무효
+    // 복잡도 미달은 거부
+    expect((await adminSetPassword(DB, id, 'short')).ok).toBe(false)
+    // 없는 계정은 404
+    const nf = await adminSetPassword(DB, 999999, '999888aa!!')
+    expect(nf.ok).toBe(false)
+    if (!nf.ok) expect(nf.status).toBe(404)
   })
 
   it('알림 설정 함수 round-trip — rank_drop 포함 전 필드 영속', async () => {
