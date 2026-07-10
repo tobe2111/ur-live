@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, ShoppingBag, Package, Play, DollarSign, Megaphone, Rocket,
-  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine
+  Bell, Building2, Settings, LogOut, Menu, X, Heart, MessageCircle, BarChart3, Globe, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt
 } from 'lucide-react'
 import { logoutSeller } from '@/lib/seller-auth'
 import api from '@/lib/api'
@@ -84,6 +84,8 @@ const NAV_GROUPS: {
       { path: '/seller/reviews', labelKey: 'seller.nav.reviews', icon: Star, mode: 'common' },
       { path: '/seller/coupons', labelKey: 'seller.nav.coupons', icon: Ticket, mode: 'common' },
       { path: '/seller/promo-codes', labelKey: 'seller.nav.promoCodes', icon: Tag, mode: 'common' },
+      // 🤝 2026-07-10: 인플루언서 우대 커미션 협업 deal (marketing.routes sellerApp — 기존 API)
+      { path: '/seller/influencer-deals', labelKey: 'seller.nav.influencerDeals', icon: Handshake, mode: 'common' },
       { path: '/seller/followers', labelKey: 'seller.nav.followers', icon: Heart, mode: 'common' },
     ],
   },
@@ -92,6 +94,9 @@ const NAV_GROUPS: {
     items: [
       { path: '/seller/analytics', labelKey: 'seller.analytics', icon: BarChart2, mode: 'common' },
       { path: '/seller/settlements', labelKey: 'seller.revenue', icon: DollarSign, mode: 'common' },
+      // 🤝 2026-07-10: 3단 위임/promo 투명성 (§4.3) — promo 지출(불변원칙 #1)·매장 위임(grant/revoke)
+      { path: '/seller/promo-spend', labelKey: 'seller.nav.promoSpend', icon: Receipt, mode: 'common' },
+      { path: '/seller/agency-delegation', labelKey: 'seller.nav.agencyDelegation', icon: Handshake, mode: 'common' },
       { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart, hideFor: ['store_owner'], mode: 'live' },
       { path: '/seller/castings', labelKey: 'seller.nav.castings', icon: Megaphone, mode: 'live' },
       { path: '/seller/promote-boosts', labelKey: 'seller.nav.promoteBoosts', icon: Rocket, mode: 'live' },
