@@ -58,7 +58,19 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 🛡️ 2026-04-28: 이용권 카테고리 (식사/뷰티/헬스) — meal_voucher 인프라 재활용
   const [voucherType, setVoucherType] = useState<MapVoucherType>('all')
   // 🛡️ 2026-06-01 Tier2: products fetch 만 React Query(카테고리별 캐시). live-poller 는 유지.
-  const { data: restaurants = [], isLoading: loading } = useMapProducts(voucherType === 'all' ? 'all' : voucherType)
+  // 🌍 2026-07-08 (대표 "수천개 대비 — 업체 근본 방식"): 내 위치(near) 거리순 + 근접 바운드 로딩.
+  const { data: baseRestaurants = [], isLoading: loading } = useMapProducts(voucherType === 'all' ? 'all' : voucherType, userLoc)
+  // 뷰포트(지도 pan)로 추가 로드된 딜 병합(bbox effect ↓). 초기 바운드 밖 영역 커버. 비어있으면 기존과 동일(무회귀).
+  const [viewportDeals, setViewportDeals] = useState<Restaurant[]>([])
+  const restaurants = useMemo(() => {
+    if (viewportDeals.length === 0) return baseRestaurants
+    const seen = new Set<number | string>(); const out: Restaurant[] = []
+    for (const p of [...baseRestaurants, ...viewportDeals]) {
+      const id = (p as { id?: number | string }).id
+      if (id != null && !seen.has(id)) { seen.add(id); out.push(p) }
+    }
+    return out
+  }, [baseRestaurants, viewportDeals])
   // 🗺️ 2026-06-20 좌표 없는 딜 지오코딩 보강 → 🚑 2026-07-02 429 폭주 수리와 함께 훅으로 추출
   //   (캐시 보유분 재요청 금지 + 동일 주소 1회만 + 429 시 배치 중단 — useGeocodeMissing.ts 참조).
   const enrichedRestaurants = useGeocodeMissing(restaurants)
@@ -123,6 +135,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const [searchFocused, setSearchFocused] = useState(false)
   const dragStartY = useRef<number | null>(null)
   const dragStartSnap = useRef<'peek' | 'mid' | 'full'>('mid')
+  const listScrollRef = useRef<HTMLDivElement>(null)  // 📜 지도모드 바텀시트 ScrollArea — 카테고리 전환 시 최상단
 
   // 🛡️ 2026-04-30 Phase 5: 검색어 확정 시 히스토리 저장
   function pushSearchHistory(query: string) {
@@ -375,6 +388,47 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     )
   }, [userLoc, nearMeMode])
 
+  // 📜 2026-07-08 (대표 "카테고리 버튼 누를 때마다 상단으로"): 카테고리 전환 시 리스트 최상단으로 스크롤.
+  const selectVoucherType = useCallback((v: MapVoucherType) => {
+    setVoucherType(v)
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      listScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })  // 지도 모드 바텀시트 ScrollArea
+    }
+  }, [])
+
+  // 🌍 2026-07-08 (대표 "남은 1마일도 마저"): 뷰포트 로딩 — 초기 근접 바운드(SOFT_CAP=500) 밖 영역은 지도
+  //   pan/zoom idle 시 보이는 영역(bbox)의 딜을 로드·병합. 수천개여도 홈은 가볍고 지도 탐색은 완전(업체 방식).
+  //   ⚠️ 바운드 미만(현재 규모 수백)이면 미발동(inert·무회귀). 실패해도 기존 딜 유지(graceful·additive).
+  useEffect(() => { setViewportDeals([]) }, [voucherType])  // 카테고리 전환 시 뷰포트 누적 리셋
+  useEffect(() => {
+    if (!mapView || !sdkLoaded || baseRestaurants.length < 500) return  // 더 있을 때(바운드 도달)만
+    const map = mapInstance.current
+    if (!map || !window.kakao?.maps) return
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const onIdle = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(async () => {
+        try {
+          const b = map.getBounds(); if (!b) return
+          const sw = b.getSouthWest(), ne = b.getNorthEast()
+          const bbox = `${sw.getLat()},${sw.getLng()},${ne.getLat()},${ne.getLng()}`
+          const cat = voucherType === 'all' ? 'all' : voucherType
+          const res = await api.get('/api/group-buy/products', { params: { category: cat, bbox, limit: 500 } })
+          const arr = (res.data?.success ? (res.data.data || []) : []) as Restaurant[]
+          if (arr.length) setViewportDeals(prev => {
+            const seen = new Set(prev.map(p => (p as { id?: number | string }).id))
+            const add = arr.filter(p => !seen.has((p as { id?: number | string }).id))
+            return add.length ? [...prev, ...add] : prev
+          })
+        } catch { /* graceful */ }
+      }, 500)
+    }
+    window.kakao.maps.event.addListener(map, 'idle', onIdle)
+    return () => { if (timer) clearTimeout(timer); try { window.kakao.maps.event.removeListener(map, 'idle', onIdle) } catch { /* */ } }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapView, sdkLoaded, baseRestaurants.length, voucherType])
+
   // 🗺️ 2026-06-22 (대표 시안 — 야놀자식): 상품 선택 시 하단은 납작한 가로 카드(SelectedDealCard)로
   //   바뀌고 지도가 넓어짐. 그 넓은 지도의 중앙('card' 오프셋)에 핀을 배치 + level 4 확대.
   const selectAndPan = (r: Restaurant) => {
@@ -468,7 +522,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             nearMeMode={nearMeMode}
             requestNearMe={requestNearMe}
             voucherType={voucherType}
-            setVoucherType={setVoucherType}
+            setVoucherType={selectVoucherType}
             filteredCount={filtered.length}
             userLoc={userLoc}
             sortBy={sortBy}
@@ -558,7 +612,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         setSearchHistory={setSearchHistory}
         pushSearchHistory={pushSearchHistory}
         voucherType={voucherType}
-        setVoucherType={setVoucherType}
+        setVoucherType={selectVoucherType}
         nearMeMode={nearMeMode}
         requestNearMe={requestNearMe}
         activeFilterCount={activeFilterCount}
@@ -646,7 +700,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           />
 
           {/* ═══ 시트 안 스크롤 결과 리스트 (ScrollArea = flex-1 min-h-0 overflow 내장 → 하단 잘림 함정 제거) ═══ */}
-          <ScrollArea className="px-3 pt-3 pb-24" style={{ overscrollBehavior: 'contain' }}>
+          <ScrollArea ref={listScrollRef} className="px-3 pt-3 pb-24" style={{ overscrollBehavior: 'contain' }}>
             {/* 🛡️ 2026-04-30 Phase 3: hero carousel — 할인율 TOP5 */}
             {!loading && (
               <HeroCarousel
