@@ -178,6 +178,35 @@ function extractKeyTerm(name: string): string | null {
   for (const w of TERM_WORDS) if (n.includes(w)) return w
   return null
 }
+
+// ⌨️ 2026-07-08 (대표 "오타 2% 확률 — AI 아닌 진짜 사람 느낌"): ~2% 리뷰에 현실적인 한글 오타 1개 주입.
+//   실제 손오타 3종: 음절 중복(좋아요→좋아아요) · 인접 음절 전치(먹었어요→먹었요어) · 공백 누락(붙여쓰기).
+//   자모 분해 없이 안전한 문자 단위 변형만 — 뜻 훼손 최소, "급하게 친" 느낌.
+function maybeTypo(s: string): string {
+  if (!s || [...s].length < 4 || Math.random() >= 0.02) return s
+  const chars = [...s]
+  const isHangul = (i: number) => i >= 0 && i < chars.length && /[가-힣]/.test(chars[i])
+  const r = Math.random()
+  if (r < 0.5) {
+    // 음절 중복(fat-finger) — 가장 자연스러움
+    const cands = chars.map((_, i) => i).filter(isHangul)
+    if (!cands.length) return s
+    const i = cands[Math.floor(Math.random() * cands.length)]
+    chars.splice(i + 1, 0, chars[i])
+  } else if (r < 0.72) {
+    // 인접 음절 전치
+    const cands = chars.map((_, i) => i).filter((i) => isHangul(i) && isHangul(i + 1))
+    if (!cands.length) return s
+    const i = cands[Math.floor(Math.random() * cands.length)]
+    const tmp = chars[i]; chars[i] = chars[i + 1]; chars[i + 1] = tmp
+  } else {
+    // 공백 누락(붙여쓰기)
+    const sp = chars.map((c, i) => (c === ' ' ? i : -1)).filter((i) => i >= 0)
+    if (!sp.length) return s
+    chars.splice(sp[Math.floor(Math.random() * sp.length)], 1)
+  }
+  return chars.join('')
+}
 type TermGroup = 'food' | 'beauty' | null
 function topicGroup(topic: Topic): TermGroup {
   if (topic === 'gogi' || topic === 'sushi' || topic === 'western' || topic === 'cafe' || topic === 'bakery' || topic === 'meal') return 'food'
@@ -392,7 +421,8 @@ export async function buildStoreReviews(env: Env, p: StoreReviewInput, count = 8
         const useTerm = termQuota > 0 && Math.random() < 0.55
         if (useTerm) termQuota--
         // dedup 은 composeDemoReview 가 '핵심 문장' 기준으로 수행(오프너/꼬리 변형까지 커버).
-        out.push({ rating, content: composeDemoReview(rating, topic, p.storeName, seen, useTerm ? term : null, tuning) })
+        // ⌨️ ~2% 현실적 오타 주입(진짜 사람 느낌) — dedup 이후 최종 문자열에 적용.
+        out.push({ rating, content: maybeTypo(composeDemoReview(rating, topic, p.storeName, seen, useTerm ? term : null, tuning)) })
       }
     }
   }
@@ -464,12 +494,12 @@ export async function seedMissingDemoReviews(env: Env, maxBatch = 400): Promise<
 
 /**
  * 🔄 2026-07-06 (대표 "기존 100개+도 다 작업"): 기존 데모의 옛 리뷰를 **새 품질로 재생성**. 청크 단위 —
- *   `review_gen_v='7'` 메타 마커로 이미 새로고침한 데모는 skip(반복 호출이 전체를 진행, 멱등). limit 개씩.
+ *   `review_gen_v='8'` 메타 마커로 이미 새로고침한 데모는 skip(반복 호출이 전체를 진행, 멱등). limit 개씩.
  *   반환 remaining>0 이면 다시 호출(클라 루프). force 로 마커 무시 재실행 가능.
  */
 export async function refreshDemoReviews(env: Env, limit = 20, force = false): Promise<{ refreshed: number; reviews: number; remaining: number }> {
   const DB = env.DB
-  const markerFilter = force ? '' : `AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id = p.id AND m2.key='review_gen_v' AND m2.value='7')`
+  const markerFilter = force ? '' : `AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id = p.id AND m2.key='review_gen_v' AND m2.value='8')`
   const baseWhere = `p.slug LIKE 'demo-deal-%' AND COALESCE(p.slug,'') NOT LIKE 'retired-%' AND COALESCE(p.is_active,1)=1
       AND NOT EXISTS (SELECT 1 FROM product_supply_meta m WHERE m.product_id=p.id AND m.key='prelaunch' AND m.value='1')`
   const rows = await DB.prepare(
@@ -484,13 +514,13 @@ export async function refreshDemoReviews(env: Env, limit = 20, force = false): P
     try {
       await DB.prepare('DELETE FROM product_reviews WHERE product_id = ? AND is_generated = 1').bind(r.id).run()
       const n = await seedDemoReviews(env, { id: r.id, name: r.name, category: r.category, storeName: r.restaurant_name, price: r.price }, 6 + Math.floor(Math.random() * 7), seen)
-      await setSupplyMeta(DB, r.id, { review_gen_v: '7' }).catch(() => {})
+      await setSupplyMeta(DB, r.id, { review_gen_v: '8' }).catch(() => {})
       refreshed++; reviews += n
     } catch { /* skip this one */ }
   }
   const rem = await DB.prepare(
     `SELECT COUNT(*) AS c FROM products p WHERE ${baseWhere}
-      AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id=p.id AND m2.key='review_gen_v' AND m2.value='7')`
+      AND NOT EXISTS (SELECT 1 FROM product_supply_meta m2 WHERE m2.product_id=p.id AND m2.key='review_gen_v' AND m2.value='8')`
   ).first<{ c: number }>().catch(() => ({ c: 0 }))
   return { refreshed, reviews, remaining: force ? 0 : (rem?.c ?? 0) }
 }

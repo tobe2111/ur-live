@@ -116,7 +116,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 즐겨찾기 (localStorage) + 라이브 셀러 ID 집합
   const [favorites, setFavorites] = useState<number[]>(() => storage.getJSON<number[]>('restaurant_favorites', []))
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
-  const [liveSellerIds, setLiveSellerIds] = useState<Set<number>>(new Set())
+  const [liveSellerIds] = useState<Set<number>>(new Set())  // 라이브커머스 영구중단 → 항상 빈 Set(LIVE 배지 미표시)
   // 🛡️ 2026-04-30: UX 개선 — 필터 시트 (지역 + 카테고리 통합)
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const activeFilterCount = ((region || district) ? 1 : 0) + (radiusKm > 0 ? 1 : 0) + (priceRange !== 'all' ? 1 : 0)
@@ -189,49 +189,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     })
   }, [])
 
-  // 라이브 셀러 폴링 — 이용권 셀러가 라이브 중이면 핀에 LIVE 배지
-  // 🛡️ 2026-04-30 UX: 30초 → 90초로 완화 + 탭 숨김 시 일시 정지 (배터리·네트워크 절약).
-  //   "자동으로 새로고침되며 긴 로딩" 사용자 신고 대응.
-  useEffect(() => {
-    let cancelled = false
-    let id: ReturnType<typeof setInterval> | null = null
-
-    const fetchLive = async () => {
-      if (document.visibilityState !== 'visible') return // 백그라운드면 skip
-      try {
-        const res = await api.get('/api/streams', { params: { status: 'live', limit: 50 } })
-        if (cancelled) return
-        if (res.data?.success && Array.isArray(res.data.data)) {
-          const ids = new Set<number>(res.data.data.map((s: { seller_id?: number }) => s.seller_id).filter(Boolean) as number[])
-          setLiveSellerIds(ids)
-        }
-      } catch { /* silent */ }
-    }
-
-    const startPolling = () => {
-      if (id) clearInterval(id)
-      id = setInterval(fetchLive, 90_000)
-    }
-
-    fetchLive()
-    startPolling()
-    // 탭 복귀 시 즉시 1회 fetch + 폴링 재시작
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        fetchLive()
-        startPolling()
-      } else if (id) {
-        clearInterval(id)
-        id = null
-      }
-    }
-    document.addEventListener('visibilitychange', onVisibility)
-    return () => {
-      cancelled = true
-      if (id) clearInterval(id)
-      document.removeEventListener('visibilitychange', onVisibility)
-    }
-  }, [])
+  // 🗑️ 2026-07-08 (대표 신고 — `/api/streams` 404 콘솔/Sentry 노이즈): 라이브 셀러 폴링 제거.
+  //   라이브커머스 영구중단(LIVE_COMMERCE_SUSPENDED) 으로 `/api/streams` endpoint 자체가 없어 90초마다
+  //   404 를 발생시키던 dead 폴러. liveSellerIds 는 빈 Set 유지 → 핀 LIVE 배지 미표시(중단 상태와 정합).
 
   // 사용자 위치 자동 감지 (1회) — 거리순 정렬용
   useEffect(() => {
