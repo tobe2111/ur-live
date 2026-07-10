@@ -182,7 +182,7 @@ export function useKakaoMap({
         const cContent = document.createElement('div')
         cContent.innerHTML = `
           <div style="
-            background: linear-gradient(135deg,#6b7280,#6b7280);
+            background: linear-gradient(135deg,#f43f5e,#fb7185);
             color: #fff;
             border: 3px solid #fff;
             border-radius: 999px;
@@ -192,7 +192,7 @@ export function useKakaoMap({
             font-size: 13px;
             font-weight: 800;
             white-space: nowrap;
-            box-shadow: 0 4px 14px rgba(236,72,153,0.4);
+            box-shadow: 0 6px 16px rgba(244,63,94,0.45);
             cursor: pointer;
             transform: translate(-50%, -50%);
             display: inline-flex;
