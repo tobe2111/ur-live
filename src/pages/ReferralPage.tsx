@@ -10,6 +10,7 @@ import { formatNumber } from '@/utils/format'
 import { useReferral, type Tier, type Member, type ReferralGroup, type ProductInfo } from '@/hooks/queries/useReferral'
 import { hasConsumerSession } from '@/utils/auth'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 /** 로그인 여부 판단 (localStorage) — user_type 비의존 (듀얼 로그인 충돌 방지) */
 function useCurrentUserId(): string | null {
@@ -113,10 +114,11 @@ export default function ReferralPage() {
     navigate(`/checkout?product_id=${group.product_id}&referral_code=${group.invite_code}`)
   }
 
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A]">
+        <BrandLoader fullScreen />
       </div>
     )
   }

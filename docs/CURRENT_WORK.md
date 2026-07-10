@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-10 — 로딩 전수조사: 불필요 로딩 화면 일괄 수리 (대표 "철저한 전수조사" + "전부 수정" 승인)
+3축 병렬 감사(워커 첫페인트 / 소비자 페이지 / 가드·대시보드) → 검증된 결함만 수리. 상세는 CLAUDE.md 로딩 잠금 audit log 2026-07-10 항목.
+- **HIGH**: ① 쇼핑 prefetch 키 number/string 불일치(항상 캐시 미스 — `usePrefetchProduct` String 정규화) ② 교환권 카드 prefetch 가 상세와 다른 엔드포인트·키(100% 낭비 — `usePrefetchGroupBuyProduct` 로 교체) ③ 홈 `__SSR_INITIAL_MAIN__` 미소비(useMapProducts 동기 시드 — 첫 페인트 스켈레톤 제거).
+- **MEDIUM**: Browse/VoucherDetail/SellerPublic 시드 동기 소비(+SellerPublic 시드 정체성 검증 신설) · 사업자 링크샵 curator→seller 워터폴 겹침(`seller-public-fetch.ts` in-flight 공유) · worker GROUPBUY 슬롯/데드변수 제거 · 대시보드 Suspense fallback 라이트 정합(BrandLoader forceLight/forceDark + DashboardLoader) · SellerLayout/AdminLayout 바운스 전 오화면 플래시 억제(조건 불변, 페인트만).
+- **LOW(로더 통일)**: 소비자 11개 풀스크린 + 6개 인라인 ad-hoc 스피너/텍스트 → BrandLoader · Supplier 본문 → WholesaleLoading · RouteGuards self-heal null → 라이트 로더.
+- ⚠️ 이 환경 npm 403 — vite build/vitest 는 CI 검증. staging 확인 권장: 교환권 카드 탭 즉시표시 / 홈 하드로드 첫 페인트 / 겸업 계정 /seller 첫 진입 / 도매전용 /seller 진입 로더→/wholesale.
+
 ## ✅ 2026-07-10 — 3단 위임·promo 투명성 표면 선구현 (대표 "미구현+필요한 것 모두, 가장 이상적으로" — 머니 경로 3종은 8월 단독 세션 유지)
 flip UI 체크리스트(`docs/design/flip-ui-checklist-2026-08.md`)의 ❌ 미구현 표면 전부 + C3·C6 구현. **돈 이동 0 — 정산·커미션 계산 파일 접촉 0(diff 증명), 재원 프레이밍은 `promo_funding_source` 런타임 게이트**(owner 일 때만 promo 문구 — 대표 조건 ①② 준수).
 - **백엔드**(`91c7b8f7`): `store_agency_delegation` 테이블(§4.3 스케치 그대로, repair-schema 등록) + `/api/agency/delegation`(목록·promo-summary·모드 요청만) · `/api/seller/delegation`(grant/revoke 무조건) · `/api/seller/promo-spend` · `/api/admin/promo-ledger`(불변식 #44 조종석).

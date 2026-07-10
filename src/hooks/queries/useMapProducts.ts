@@ -21,6 +21,24 @@ function keyOf(category: string, near: Near): string {
   return near ? `${category}@${near.lat.toFixed(2)},${near.lng.toFixed(2)}` : category
 }
 
+// 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사 — 홈 SSR 미소비 수리): 워커가 홈 하드로드마다
+//   head 에 주입하는 __SSR_INITIAL_MAIN__ (= /api/group-buy/products?status=active&category=all)를
+//   page1 시드로 동기 소비 → 홈 첫 페인트가 [리스트 스켈레톤 → 콘텐츠] 대신 즉시 콘텐츠.
+//   서버 기본 status='active'(group-buy-public.routes:93) 라 클라 page1(?category=all)과 동일 페이로드.
+//   ⚠️ near(거리순 랭킹) 요청과는 페이로드/정렬이 다르므로 **near 없는 기본 피드에만** 시드 적용.
+//   'all' 카테고리 + 하드로드 직후 1회만 유효(모듈 플래그) — 이후엔 모듈캐시/일반 fetch 경로 그대로.
+let _ssrSeedUsed = false
+function peekSsrMainSeed(category: string, near: Near): Restaurant[] | null {
+  if (_ssrSeedUsed || near || category !== 'all' || typeof document === 'undefined') return null
+  try {
+    const el = document.getElementById('__SSR_INITIAL_MAIN__')
+    if (!el?.textContent) return null
+    const parsed = JSON.parse(el.textContent)
+    if (parsed?.success && Array.isArray(parsed.data)) return parsed.data as Restaurant[]
+  } catch { /* 손상된 inject — fetch fallback */ }
+  return null
+}
+
 async function fetchPage(category: string, page: number, near: Near): Promise<Restaurant[] | null> {
   const params: Record<string, string | number> = { category }
   if (page > 1) { params.page = page; params.limit = 50 }  // page1 = 무파라미터(near 없을 때 캐시 경로 유지)
@@ -36,8 +54,9 @@ export function useMapProducts(category: string, near?: Near) {
     const c = _cache.get(cacheKey)
     return c && Date.now() - c.ts < CACHE_MS ? c : null
   }
-  const [items, setItems] = useState<Restaurant[]>(() => fresh()?.items ?? [])
-  const [isLoading, setIsLoading] = useState<boolean>(() => !fresh())
+  // 🚑 2026-07-10: 첫 페인트에 [모듈캐시 > SSR 시드] 동기 반영 — 시드 있으면 스켈레톤 프레임 0.
+  const [items, setItems] = useState<Restaurant[]>(() => fresh()?.items ?? peekSsrMainSeed(category, near) ?? [])
+  const [isLoading, setIsLoading] = useState<boolean>(() => !fresh() && !peekSsrMainSeed(category, near))
 
   useEffect(() => {
     const cached = fresh()
@@ -46,11 +65,29 @@ export function useMapProducts(category: string, near?: Near) {
     let cancelled = false
     const seen = new Set<number | string>()
     const acc: Restaurant[] = []
-    setItems([]); setIsLoading(true)
+
+    // 🚑 2026-07-10: SSR 시드 = page1 대체(1회 소비, near 없는 기본 피드 한정). 50개(풀 페이지)면
+    //   page2 부터 이어받아 성장, 50 미만이면 완주로 간주(모듈캐시 기록 후 종료).
+    //   시드 없으면 기존 경로(스켈레톤 + page1 fetch).
+    const seed = peekSsrMainSeed(category, near)
+    let startPage = 1
+    if (seed) {
+      _ssrSeedUsed = true
+      for (const p of seed) {
+        const sid = (p as { id?: number | string }).id
+        if (sid != null && !seen.has(sid)) { seen.add(sid); acc.push(p) }
+      }
+      setItems([...acc]); setIsLoading(false)
+      if (seed.length < 50) { _cache.set(cacheKey, { items: acc, ts: Date.now() }); return }
+      startPage = 2
+    } else {
+      setItems([]); setIsLoading(true)
+    }
 
     ;(async () => {
       let errored = false
-      for (let page = 1; !cancelled; page++) {
+      for (let page = startPage; !cancelled; page++) {
+        // 네트워크 오류 시 1회 재시도, 그래도 실패면 이 페이지에서 중단(부분 표시 · 캐시 안 함 → 재진입 시 재시도).
         let arr = await fetchPage(category, page, near)
         if (arr == null) arr = await fetchPage(category, page, near)  // 1회 재시도
         if (cancelled) return

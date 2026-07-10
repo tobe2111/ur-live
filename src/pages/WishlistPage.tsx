@@ -15,6 +15,7 @@ import { useWishlist, type WishlistItem } from '@/hooks/queries/useWishlist'
 import { cfImage } from '@/utils/cf-image'
 import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 // 🎨 2026-06-10 (사용자 요청): 쇼핑(BrowseProductCard)과 동일한 대표색 그라데이션 카드.
 //   사진 하단이 카드색으로 번져 텍스트 블록과 경계 없이 이어짐 + 글자색 밝기 자동대비.
@@ -183,13 +184,11 @@ const WishlistPage: React.FC = () => {
   const theme = applied === 'dark' ? 'dark' : 'light'
   const tk = walletTokens[theme]
 
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader (지갑 테마 표면과 자동 정합).
   if (loading) {
     return (
-      <WalletPageWrapper theme={theme} className="flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: tk.accent }} />
-          <p style={{ color: tk.secondary }}>{t('wishlist.loading')}</p>
-        </div>
+      <WalletPageWrapper theme={theme}>
+        <BrandLoader fullScreen forceLight={theme === 'light'} forceDark={theme === 'dark'} />
       </WalletPageWrapper>
     )
   }

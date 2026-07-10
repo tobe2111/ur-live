@@ -31,6 +31,7 @@ import {
   ProfileEditModal,
 } from './user-profile/AccountControlsSection'
 import api from '@/lib/api'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 /**
  * 🛡️ 2026-05-01: TD-018 분할 — sub-component 들을 ./user-profile/ 디렉토리로 이동.
@@ -90,13 +91,11 @@ export default function UserProfilePage() {
   }, [user])
 
   // 🔄 로딩 중 (한국: localStorage 인증이므로 isAuthReady 무시)
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (!isAuthReady && !isKorea()) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#020202] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6b7280] mx-auto mb-4"></div>
-          <p className="text-gray-500 dark:text-gray-400">{t('common.loading', { defaultValue: '로딩 중...' })}</p>
-        </div>
+      <div className="min-h-[100dvh] bg-white dark:bg-[#020202]">
+        <BrandLoader fullScreen />
       </div>
     )
   }

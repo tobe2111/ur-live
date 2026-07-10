@@ -13,6 +13,7 @@ import { Building2, Calendar, Star, X as XIcon, ChevronLeft } from 'lucide-react
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import { useMyStays, type MyBooking } from '@/hooks/queries/useMyStays'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending: { label: '결제 대기', color: 'bg-gray-100 text-gray-600 dark:bg-[#1A1A1A] dark:text-gray-300' },
@@ -74,7 +75,8 @@ export default function MyStaysPage() {
 
       <div className="ur-content-wide px-4 lg:px-8 py-4">
         {loading ? (
-          <div className="text-center py-20 text-gray-400 dark:text-gray-500 text-sm">로딩 중...</div>
+          /* 🚑 2026-07-10 로더 통일: 맨 텍스트 → BrandLoader */
+          <BrandLoader />
         ) : isError ? (
           <div className="text-center py-20">
             <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">예약 내역을 불러오지 못했어요</p>

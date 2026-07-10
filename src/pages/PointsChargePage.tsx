@@ -11,6 +11,7 @@ import { toast } from '@/hooks/useToast'
 import { getUserIdSync } from '@/utils/auth'
 import { formatNumber } from '@/utils/format'
 import { useBalance } from '@/hooks/queries'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 const clientKey = getTossClientKey()
 
@@ -169,10 +170,11 @@ export default function PointsChargePage() {
 
   // 🛡️ handleConfirmPayment 제거 — widgets() in-page 결제 경로 폐기.
 
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): Loader2 → BrandLoader.
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400 dark:text-gray-500" />
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A]">
+        <BrandLoader fullScreen />
       </div>
     )
   }

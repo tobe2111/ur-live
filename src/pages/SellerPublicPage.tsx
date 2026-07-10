@@ -29,6 +29,7 @@ import { getThemeTokens } from './seller-public/theme'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import type { Seller, LiveStream, Product, Short } from './seller-public/types'
+import { fetchSellerPublicShared } from './seller-public/seller-public-fetch'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / FollowButton / StreamCard 를
 //   ./seller-public/ 디렉토리로 추출.
@@ -56,6 +57,24 @@ interface SellerPublicPageProps {
   ownerOverride?: boolean
 }
 
+// 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): SSR 시드(__SSR_INITIAL_SELLER__)를 동기(useState 초기값)
+//   소비용 헬퍼로 추출 + **정체성(id/username) 일치 검증 추가** — 기존 effect 소비는 검증 없이 setSeller 라
+//   SPA 로 다른 셀러 페이지 이동 시 이전 하드로드 시드를 오소비할 수 있었음(잘못된 셀러 잔상 + 메인 fetch skip).
+//   일치할 때만 시드 → 로더 프레임 0, 불일치/부재면 기존 fetch fallback.
+function readSellerSeed(sellerId: string | undefined): Seller | null {
+  if (!sellerId || typeof document === 'undefined') return null
+  try {
+    const el = document.getElementById('__SSR_INITIAL_SELLER__')
+    if (!el?.textContent) return null
+    const parsed = JSON.parse(el.textContent)
+    const d = parsed?.success ? parsed.data : null
+    if (!d?.id) return null
+    const key = String(sellerId).toLowerCase().replace(/^@/, '')
+    const ok = String(d.id) === String(sellerId) || (d.username && String(d.username).toLowerCase() === key)
+    return ok ? (d as Seller) : null
+  } catch { return null }
+}
+
 export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId, curatorPins, ownerOverride }: SellerPublicPageProps = {}) {
   const { t } = useTranslation()
   const params = useParams<{ sellerId: string }>()
@@ -63,11 +82,12 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   const navigate = useNavigate()
   // sellerId는 숫자 ID 또는 slug/username
   const sellerId = rawParam
-  const [seller, setSeller] = useState<Seller | null>(null)
+  // 🚑 2026-07-10 [UNLOCK_LOADING]: SSR 시드 동기 소비(일치 검증 포함) — 시드 있으면 로더 프레임 0.
+  const [seller, setSeller] = useState<Seller | null>(() => readSellerSeed(sellerId))
   const [products, setProducts] = useState<Product[]>([])
   const [streams, setStreams] = useState<LiveStream[]>([])
   const [shorts, setShorts] = useState<Short[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(seller == null)
 
   // 🔗 2026-06-21 (대표 승인): 레거시 셀러 공개 URL(/profile·/s) standalone 진입을 연결된 유저 링크샵
   //   (/u/{handle})으로 통일. CuratorPage 임베드(sellerIdOverride)면 이미 /u/ 라 skip, 연결 핸들 없는
@@ -184,20 +204,13 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     //   기존: SSR setSeller 후에도 sellers API axios fetch 재호출 → 중복 RTT 200-500ms
     //   수정: SSR data 있으면 메인 fetch skip, products/streams/shorts 만 background fetch.
     //   효과: 링크샵 페이지 첫 paint + 메인 fetch 0 (SSR hit 시).
-    let initialSellerData: any = null
-    try {
-      if (typeof document !== 'undefined') {
-        const el = document.getElementById('__SSR_INITIAL_SELLER__')
-        if (el?.textContent) {
-          const parsed = JSON.parse(el.textContent)
-          if (parsed?.success && parsed?.data) {
-            initialSellerData = parsed.data
-            setSeller(parsed.data)
-            setLoading(false)
-          }
-        }
-      }
-    } catch { /* SSR inject 누락 / 손상 — fallback */ }
+    // 🚑 2026-07-10: 소비를 readSellerSeed(정체성 일치 검증)로 — 다른 셀러의 잔존 시드 오소비 차단.
+    //   (동기 초기값과 같은 헬퍼 — mount 시엔 이미 시드 반영돼 setLoading(true→false)가 배치로 상쇄됨.)
+    const initialSellerData = readSellerSeed(sellerId)
+    if (initialSellerData) {
+      setSeller(initialSellerData)
+      setLoading(false)
+    }
 
     // 🛡️ 셀러 sub-data (products/streams/shorts) background fetch — 홈탭이 셋 다 프리뷰하므로 모두 즉시(비차단).
     //   로딩 속도는 prewarm(products) + /api/shorts/feed edge cache 로 해결(cold D1 제거). lazy-탭은 홈 프리뷰 회귀라 미적용.
@@ -232,8 +245,10 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     if (sellerNumericId) { fetchSubData(sellerNumericId); subFetched = true }
 
     // SSR miss → 메인 fetch (헤더/정보용). sub-data 는 병렬 시작 안 됐을 때만 여기서.
-    api.get(`/api/sellers/${sellerId}/public`).then(sellerRes => {
-      const sellerData = sellerRes.data.data
+    // 🚑 2026-07-10 [UNLOCK_LOADING]: 공유 in-flight fetch — CuratorPage 가 linked_seller 확인 즉시
+    //   warm 해둔 요청을 이어받아 [curator → 청크 → seller] 직렬을 [curator → max(청크, seller)]로 단축.
+    fetchSellerPublicShared(sellerId).then(raw => {
+      const sellerData = raw as Seller | null
       if (!sellerData) { setSeller(null); setLoading(false); return }
       setSeller(sellerData)
       setLoading(false)

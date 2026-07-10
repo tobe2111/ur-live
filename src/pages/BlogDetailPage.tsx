@@ -50,10 +50,11 @@ export default function BlogDetailPage() {
     api.post(`/api/blog/public/${slug}/view`).catch(() => {})
   }, [slug])
 
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-gray-300 dark:border-[#3A3A3A] border-t-gray-900 rounded-full animate-spin" />
+      <div className="min-h-[100dvh] bg-white dark:bg-[#0A0A0A]">
+        <BrandLoader fullScreen />
       </div>
     )
   }

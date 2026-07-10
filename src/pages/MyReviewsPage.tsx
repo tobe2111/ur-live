@@ -6,6 +6,7 @@ import SEO from '@/components/SEO'
 import { requireLogin, isLoggedInSync } from '@/utils/auth'
 import { useMyOrders } from '@/hooks/queries/useMyData'
 import type { Order } from '@/types/order'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 export default function MyReviewsPage() {
   const { t } = useTranslation()
@@ -49,9 +50,8 @@ export default function MyReviewsPage() {
 
       <main className="ur-content-narrow px-4 py-4 pb-20">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-          </div>
+          /* 🚑 2026-07-10 로더 통일: ad-hoc 스피너 → BrandLoader */
+          <BrandLoader />
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20">
             <AlertCircle className="w-10 h-10 text-red-500 mb-3" />

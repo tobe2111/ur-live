@@ -112,6 +112,52 @@ const CHECKS = [
     ],
     hint: "홈 상단 라벨(restaurantMap.nearMe / sort.*)을 CRITICAL_I18N(6개 언어)에 유지하세요 — 빼면 홈 로딩 중 원본 키가 노출됩니다.",
   },
+  {
+    file: 'src/App.tsx',
+    name: '쿼리 내비 전체 리마운트 금지 (key=location.key 재유입 차단)',
+    // 🚑 2026-07-10 (대표 신고 "로딩→새로고침→다시 로딩" — 라이브 Playwright 재현으로 특정): 라우트 서브트리를
+    //   key={location.key} 로 감싸면 **쿼리만 바뀌는 setSearchParams**(정렬/카테고리/브랜드 칩, /vouchers
+    //   자동 카테고리 선택)에도 페이지 전체가 리마운트 → enter 페이드 재생 + SSR 시드 미매칭 풀 로더 재등장.
+    //   페이지 전환 페이드는 key={location.pathname}(실제 경로 이동만)으로 구현할 것.
+    must: [
+      /key=\{location\.pathname\}/,
+    ],
+    mustNot: [
+      /key=\{location\.key\}/,
+    ],
+    hint: '라우트 래퍼 key 는 location.pathname 으로 — location.key 는 쿼리-전용 내비에도 리마운트를 일으켜 "칩 클릭마다 새로고침" 클래스를 재발시킵니다.',
+  },
+  {
+    file: 'src/hooks/usePrefetchProduct.ts',
+    name: '상품 prefetch 키 String 정규화 (number/string 캐시 미스 금지)',
+    // 🚑 2026-07-10: 카드는 숫자 id, 상세(useProduct)는 useParams 문자열 키 — String 정규화가 빠지면
+    //   ['product',123] ≠ ['product','123'] 로 프리페치가 전부 버려져 카드 탭마다 풀 로더 + 중복 왕복.
+    must: [
+      /const\s+productId\s*=\s*String\(/,
+    ],
+    hint: "prefetch 쿼리 키의 id 는 반드시 String() 정규화 — RQ 키는 123 ≠ '123' 입니다.",
+  },
+  {
+    file: 'src/pages/VouchersPage.tsx',
+    name: '교환권 카드 prefetch = 상세와 동일 세계 (group-buy 키/엔드포인트)',
+    // 🚑 2026-07-10: 카드 목적지 /vouchers/:id 는 /api/group-buy/products/:id + groupBuyProduct 키.
+    //   usePrefetchProduct(/api/products/:id, ['product'] 키)로 되돌리면 프리페치 100% 낭비 재발.
+    must: [
+      /usePrefetchGroupBuyProduct/,
+    ],
+    hint: '교환권 카드(VoucherCard/VoucherRow)의 prefetch 는 usePrefetchGroupBuyProduct 를 사용하세요 — 상세(VoucherDetailPage fetchQuery)와 키/엔드포인트가 일치해야 탭 즉시표시가 됩니다.',
+  },
+  {
+    file: 'src/hooks/queries/useMapProducts.ts',
+    name: '홈 SSR 시드 소비 (첫 페인트 스켈레톤 금지)',
+    // 🚑 2026-07-10: 홈(RestaurantMapPage)이 __SSR_INITIAL_MAIN__ 을 동기 시드 — 제거되면 워커 self-fetch 가
+    //   순수 낭비로 돌아가고 홈 첫 페인트가 다시 스켈레톤부터 시작.
+    must: [
+      /__SSR_INITIAL_MAIN__/,
+      /peekSsrMainSeed/,
+    ],
+    hint: 'useMapProducts 의 __SSR_INITIAL_MAIN__ 동기 시드를 유지하세요 — 빼면 홈 하드로드가 [로더→스켈레톤→콘텐츠] 3단으로 회귀합니다.',
+  },
 ]
 
 let failures = 0
@@ -137,4 +183,4 @@ if (failures) {
   console.error(`\n로더 연속성 불변식 ${failures}건 위반 — "로딩이 2번 나뉘어 보임" 재발 위험 (2026-07-02 대표 신고 클래스).`)
   process.exit(STRICT ? 1 : 0)
 }
-console.log('✅ loader-continuity: 로더 연속성 6불변식(위상동기·전-라우트정적로더·seed+dedupe·주기동기·offline-SSR-safe·홈critical-i18n) 모두 존재.')
+console.log('✅ loader-continuity: 로더 연속성 10불변식(위상동기·전-라우트정적로더·seed+dedupe·주기동기·offline-SSR-safe·홈critical-i18n·pathname-key·prefetch키정규화·교환권prefetch세계일치·홈SSR시드) 모두 존재.')

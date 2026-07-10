@@ -515,11 +515,10 @@ app.use('*', async (c, next) => {
     } else if (url.pathname === '/live' && !url.search) {
       // 🛡️ 2026-05-27 (Step P1-2): 라이브 페이지 SSR inject — 사용자 체류 시간 큰 페이지.
       ssrTarget = { slot: 'LIVE', path: '/api/streams?status=live&limit=20' };
-    } else if (url.pathname === '/group-buy' && !url.search) {
-      // 🛡️ 2026-06-04 [LOADING_ADDITIVE]: 동네딜(공구 리스트) SSR inject — 유일하게 누락됐던 리스트 페이지.
-      //   GroupBuyListPage 가 마운트 후 /api/group-buy/products?status=active 를 cold fetch(3-RTT 워터폴) 하던 것 제거.
-      //   ⚠️ path 는 클라가 보내는 query 와 정확히 일치해야 edge-key hit (prewarm 키도 동일하게 추가).
-      ssrTarget = { slot: 'GROUPBUY', path: '/api/group-buy/products?status=active' };
+    // 🗑️ 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): GROUPBUY 슬롯 제거 — `/group-buy` 는 App.tsx 에서
+    //   `<Navigate to="/" replace/>`(홈으로 즉시 리다이렉트)이고 유일 소비자 GroupBuyListPage 는 미라우팅.
+    //   콜드 시 최대 1.5s self-fetch 로 리다이렉트 응답만 느리게 만들던 순수 낭비였음. (라우트가 부활하면
+    //   이 분기 + GroupBuyListPage 의 __SSR_INITIAL_GROUPBUY__ 소비를 함께 복원할 것.)
     } else if (url.pathname === '/wholesale' && !url.search) {
       // 🏭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — 도매몰 상품 느림): guest 카탈로그 SSR inject.
       //   HTML→JS→fetch 3-RTT 워터폴 제거 — 카드가 첫 페인트에 즉시. 비로그인(공유 응답)만 consume
@@ -649,17 +648,9 @@ app.use('*', async (c, next) => {
     // 🆕 2026-06-26 3번째 서비스(통합 마케팅, /ads) — 도매몰처럼 자체 라이트 surface. 소비자 홈 shell 깜빡임 차단(additive).
     const isMarketingSurface = /^\/(ads)(\/|$)/.test(url.pathname);
     const needsRootBlank = isWholesaleSurface || isDashboardSurface || isMarketingSurface;
-    // 🎨 2026-06-21 [LOADING_ADDITIVE] (대표 신고 — 링크샵 첫 로드 시 옛 홈 shell 잔상): /u·/profile·/s 도
-    //   prerender 된 #root 의 소비자 홈 shell(다크·라이브 nav)이 React 마운트 전 잠깐 보임("예전 잔재 이미지").
-    //   대시보드/도매와 달리 링크샵은 테마 가변(다크 기본+라이트 토글)이라 라이트 placeholder 대신 #root 를
-    //   "비워서"(empty) body 테마 bg(인라인 스크립트가 이미 설정)만 잠깐 노출 → 곧 CuratorPage/SellerPublicPage
-    //   가 SSR 주입데이터(__SSR_INITIAL_CURATOR/SELLER__)로 즉시 렌더. SSR inject/0-RTT·createRoot 비-hydrate 불변.
-    const isLinkshopSurface = /^\/(u|profile|s)(\/|$)/.test(url.pathname);
-    // 🧭 2026-06-22 [LOADING_ADDITIVE] (대표 신고 — "잠시 다른 페이지(홈) 갔다 오는 느낌"): 공구/교환권 상세
-    //   (/group-buy/:id · /vouchers/:id — 같은 DETAIL slot)도 prerender 된 #root 의 소비자 홈 shell(다크·라이브 nav)이
-    //   React 마운트 전 잠깐 보임. linkshop 과 동일하게 #root 비움 — 이 페이지들은 __SSR_INITIAL_DETAIL__ 주입데이터로
-    //   즉시 렌더(테마 가변이라 색 placeholder 대신 body 테마 bg 노출). SSR inject/0-RTT·createRoot 비-hydrate 불변(additive).
-    const isDetailSurface = /^\/(?:group-buy|vouchers)\/\d+(?:[/?#]|$)/.test(url.pathname);
+    // 🗑️ 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): isLinkshopSurface(06-21)·isDetailSurface(06-22) 데드
+    //   변수 제거 — 2026-07-07 catch-all `else` 가 두 표면을 포함한 모든 잔여 HTML 라우트에 URDEAL 정적 로더를
+    //   주입하면서 대체됐는데(#root 분기에서 미참조), 정의와 낡은 주석("#root 비움")만 남아 오독을 유발했음.
     // 📝 2026-07-01 블로그(/blog·/blog/:slug)도 소비자 테마 페이지 — 홈 shell 잔상 제거(#root 비움).
     const isBlogSurface = /^\/blog(?:\/|$)/.test(url.pathname);
     let rb = new HTMLRewriter()

@@ -15,6 +15,7 @@ import { usePinAction } from '@/features/curator/hooks/usePinAction'
 import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
 import GbMyProposals from './gb-market/GbMyProposals'
 import GbMyPerformance from './gb-market/GbMyPerformance'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 interface GbDeal {
   product_id: number; name: string; image_url: string | null; category: string
@@ -66,7 +67,8 @@ export default function GbMarketplacePage() {
         <GbMyProposals />
 
         {loading ? (
-          <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 text-gray-400 animate-spin" /></div>
+          /* 🚑 2026-07-10 로더 통일: Loader2 → BrandLoader */
+          <BrandLoader />
         ) : deals.length === 0 ? (
           <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-sm">
             {GB_ENGINE_ENABLED ? '지금 진행 중인 공구가 없어요.' : '공구 마켓 준비 중이에요.'}
