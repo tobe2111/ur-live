@@ -117,7 +117,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 즐겨찾기 (localStorage) + 라이브 셀러 ID 집합
   const [favorites, setFavorites] = useState<number[]>(() => storage.getJSON<number[]>('restaurant_favorites', []))
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
-  const [liveSellerIds] = useState<Set<number>>(new Set())
+  const [liveSellerIds] = useState<Set<number>>(new Set())  // 라이브커머스 영구중단 → 항상 빈 Set(LIVE 배지 미표시)
   // 🛡️ 2026-04-30: UX 개선 — 필터 시트 (지역 + 카테고리 통합)
   const [filterSheetOpen, setFilterSheetOpen] = useState(false)
   const activeFilterCount = ((region || district) ? 1 : 0) + (radiusKm > 0 ? 1 : 0) + (priceRange !== 'all' ? 1 : 0)
@@ -190,8 +190,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     })
   }, [])
 
-  // 🗑️ 2026-07-07 라이브커머스 제거: 홈의 '라이브 셀러' 90초 폴러 삭제(/api/streams 엔드포인트 제거됨).
-  //   liveSellerIds 는 영구 빈 Set → 소비처(HeroCarousel/미니카드)의 LIVE 배지는 렌더되지 않음(의도).
+  // 🗑️ 2026-07-08 (대표 신고 — `/api/streams` 404 콘솔/Sentry 노이즈): 라이브 셀러 폴링 제거.
+  //   라이브커머스 영구중단(LIVE_COMMERCE_SUSPENDED) 으로 `/api/streams` endpoint 자체가 없어 90초마다
+  //   404 를 발생시키던 dead 폴러. liveSellerIds 는 빈 Set 유지 → 핀 LIVE 배지 미표시(중단 상태와 정합).
 
   // 사용자 위치 자동 감지 (1회) — 거리순 정렬용
   useEffect(() => {
