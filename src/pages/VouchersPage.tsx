@@ -22,6 +22,11 @@ import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
 import { usePrefetchProduct } from '@/hooks/usePrefetchProduct'
+// 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): 교환권 카드 프리페치를 상세와 같은 세계로.
+//   카드 클릭 목적지 /vouchers/:id (VoucherDetailPage) 는 /api/group-buy/products/:id 를
+//   queryKeys.groupBuyProduct 키로 fetchQuery 하는데, 기존 usePrefetchProduct 는 /api/products/:id 를
+//   ['product'] 키로 워밍 → 엔드포인트·키 둘 다 불일치 = 프리페치 100% 낭비(탭마다 풀 로더 + 중복 왕복).
+import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import { cfImage, cfSrcSet } from '@/utils/cf-image'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
 import { SortMenu } from '@/components/ui/sort-menu'
@@ -125,7 +130,7 @@ const EMBEDDED_DEFAULT_CATEGORY = '커피/음료'
 //   props 는 p + aboveFold 만(둘 다 스크롤에 불변) → shallow compare 로 카드 재렌더 0.
 const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProduct; aboveFold: boolean }) {
   const navigate = useNavigate()
-  const prefetchProduct = usePrefetchProduct()
+  const prefetchProduct = usePrefetchGroupBuyProduct()  // 🚑 2026-07-10: /vouchers/:id 와 동일 키·엔드포인트
   const hasStrike = !!p.original_price && p.original_price > p.price
   const discountRate = hasStrike
     ? Math.round(((p.original_price! - p.price) / p.original_price!) * 100)
@@ -219,7 +224,7 @@ const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: VoucherProd
 //   홈(embedded)은 계속 그리드(VoucherCard) — 이 행은 비embedded /vouchers 전용.
 const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: VoucherProduct; aboveFold: boolean }) {
   const navigate = useNavigate()
-  const prefetchProduct = usePrefetchProduct()
+  const prefetchProduct = usePrefetchGroupBuyProduct()  // 🚑 2026-07-10: /vouchers/:id 와 동일 키·엔드포인트
   const hasStrike = !!p.original_price && p.original_price > p.price
   const discountRate = hasStrike
     ? Math.round(((p.original_price! - p.price) / p.original_price!) * 100)

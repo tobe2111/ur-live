@@ -30,6 +30,9 @@ import CuratorHeader from './curator-page/CuratorHeader'
 import LinkshopOnboardModal from './curator-page/LinkshopOnboardModal'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { storeAffiliateRef } from '@/utils/affiliate-track'
+// 🚑 2026-07-10 [UNLOCK_LOADING]: 사업자 링크샵 워터폴 완화 — linked_seller 확인 즉시 셀러 /public 워밍
+//   (SellerPublicPage lazy 청크 다운로드와 병렬). 독립 모듈이라 lazy 청크 분리 불변.
+import { warmSellerPublic } from './seller-public/seller-public-fetch'
 
 // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있으면 같은 페이지에서 SellerPublicPage 직접 render.
 //   redirect 없음 — URL 그대로 (/u/:handle 유지). lazy chunk — 일반 user 진입 시 chunk fetch 안 함.
@@ -122,6 +125,14 @@ export default function CuratorPage() {
       .finally(() => alive && setLoading(false))
     return () => { alive = false }
   }, [handle, t])
+
+  // 🚑 2026-07-10 [UNLOCK_LOADING]: linked_seller 확인 즉시(SSR 시드 포함) 셀러 /public 페치 시작 —
+  //   SellerPublicPage 는 마운트 후 같은 in-flight 를 이어받음(seller-public-fetch 공유 모듈).
+  //   기존엔 [curator 응답 → lazy 청크 로드/마운트 → 그제서야 seller fetch] 완전 직렬 워터폴.
+  useEffect(() => {
+    const u = data?.linked_seller?.username
+    if (u) warmSellerPublic(u)
+  }, [data?.linked_seller?.username])
 
   // 🛡️ 2026-05-27 (셀러 페이지 통일): 핀을 상품/이용권 분류 (deal_only / voucher 카테고리).
   const { shopPins, voucherPins } = useMemo(() => {

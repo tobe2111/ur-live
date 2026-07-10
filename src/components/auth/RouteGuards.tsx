@@ -14,6 +14,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { isKorea } from '@/shared/config/region'
 import { safeInternalPath } from '@/utils/safe-internal-path'
+import BrandLoader from '@/components/brand/BrandLoader'
 import type { User as FirebaseUser } from 'firebase/auth'
 
 interface AuthWorldState {
@@ -126,7 +127,16 @@ function RoleTokenSelfHeal({ role, fallback, children }: {
     return () => { alive = false }
   }, [role])
 
-  if (state === 'trying') return null // 1 RTT 동안 빈 화면(수백 ms) — 로그인 튕김보다 우월
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 통일): 1 RTT 동안 빈 화면(null) → 라이트 브랜드 로더.
+  //   목적지(셀러/에이전시 대시보드)는 라이트 고정 표면이라 forceLight + #F4F5F7 (worker placeholder 와 정합).
+  //   잠긴 토큰-존재 검사 로직은 불변 — 재발급 대기 프레임의 페인트만 변경.
+  if (state === 'trying') {
+    return (
+      <div style={{ background: '#F4F5F7' }}>
+        <BrandLoader fullScreen forceLight />
+      </div>
+    )
+  }
   if (state === 'ok') return <>{children}</>
   return fallback
 }

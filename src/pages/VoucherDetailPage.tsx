@@ -15,6 +15,10 @@ import { useInvalidateMyVouchers, useBalance } from '@/hooks/queries'
 import { isLoggedInSync } from '@/utils/auth'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import BrandLoader from '@/components/brand/BrandLoader'
+// 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): 시드를 useEffect(페인트 후)가 아닌 useState 초기값에서
+//   동기 소비 — 같은 DETAIL 슬롯을 쓰는 GroupBuyDetailPage(pickSeedDetail)와 동일 패턴으로 정렬.
+//   기존엔 SSR/프리페치 데이터가 있어도 첫 프레임에 풀스크린 로더가 떴음(형제 페이지와 비대칭).
+import { pickSeedDetail } from './group-buy/seed-detail'
 
 /**
  * 🛡️ 2026-05-23: 교환권 전용 detail 페이지.
@@ -135,8 +139,17 @@ export default function VoucherDetailPage() {
   //   refetch 없이 0 표시 → '딜 부족' 오표시. 결제 판단 페이지라 PointsChargePage 와 동일하게 fresh
   //   fetch(0s stale + mount 마다 refetch + focus refetch)로 항상 최신 잔액 반영.
   const { data: balance = 0, isFetching: balanceFetching } = useBalance({ fresh: true })
-  const [product, setProduct] = useState<VoucherProduct | null>(null)
-  const [loading, setLoading] = useState(true)
+  // 🚑 2026-07-10 [UNLOCK_LOADING]: 첫 render 에 RQ 캐시(카드 프리페치) > SSR inject 를 동기 시드 —
+  //   시드가 있으면 로더 프레임 0 (GroupBuyDetailPage 와 동일). 없으면 기존 로더+fetch fallback.
+  const [product, setProduct] = useState<VoucherProduct | null>(() =>
+    id
+      ? pickSeedDetail<VoucherProduct>(Number(id), {
+          rqCached: qc.getQueryData(queryKeys.groupBuyProduct(id)),
+          ssrText: typeof document !== 'undefined' ? document.getElementById('__SSR_INITIAL_DETAIL__')?.textContent : null,
+        })
+      : null,
+  )
+  const [loading, setLoading] = useState(product == null)
   const [error, setError] = useState('')
   const [exchanging, setExchanging] = useState(false)
   const [quantity, setQuantity] = useState(1)
@@ -153,21 +166,8 @@ export default function VoucherDetailPage() {
     if (!id) return
     let cancelled = false
 
-    // 🛡️ 2026-05-27 (loading P0): SSR inject 즉시 사용 — worker HTMLRewriter 가 head 에 inject.
-    //   /group-buy/:id 와 /vouchers/:id 둘 다 같은 endpoint → 같은 __SSR_INITIAL_DETAIL__ slot.
-    //   효과: 첫 paint 부터 상품 표시 (axios fetch waterfall ~200-500ms 제거).
-    try {
-      if (typeof document !== 'undefined') {
-        const el = document.getElementById('__SSR_INITIAL_DETAIL__')
-        if (el?.textContent) {
-          const parsed = JSON.parse(el.textContent)
-          if (parsed?.success && String(parsed?.data?.id) === String(id)) {
-            setProduct(parsed.data)
-            setLoading(false)
-          }
-        }
-      }
-    } catch { /* SSR 누락 — fallback */ }
+    // 🛡️ SSR inject(`__SSR_INITIAL_DETAIL__`) 소비는 2026-07-10 부터 useState 초기값(동기, 위 pickSeedDetail)
+    //   에서 수행 — 페인트 후 effect 소비(로더 1프레임)를 제거. 여기선 fetchQuery 신선화만.
 
     // 🗑️ 2026-07-07 (로딩 낭비 감사): raw axios → RQ fetchQuery(staleTime 60s)로 dedupe.
     //   /group-buy/:id 와 같은 key(groupBuyProduct) → 홈 카드 touch-prefetch·GroupBuyDetailPage 의

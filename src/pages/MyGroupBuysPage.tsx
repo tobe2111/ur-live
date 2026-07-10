@@ -7,6 +7,7 @@ import { toast } from '@/hooks/useToast';
 import { useMyGroupBuys, type ReferralGroup, type VoucherEntry, type CommunityGroupBuy, type ProductInfo } from '@/hooks/queries/useMyGroupBuys';
 import { hasConsumerSession } from '@/utils/auth';
 import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags';
+import BrandLoader from '@/components/brand/BrandLoader'
 
 // ─────────────────────────────────────────────────────────────────────
 // Types
@@ -226,9 +227,8 @@ export default function MyGroupBuysPage() {
 
       <main className="ur-content-narrow px-4 lg:px-8 py-4 pb-24">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-6 h-6 border-2 border-gray-300 dark:border-[#3A3A3A] border-t-gray-900 dark:border-t-white rounded-full animate-spin" />
-          </div>
+          /* 🚑 2026-07-10 로더 통일: ad-hoc 스피너 → BrandLoader */
+          <BrandLoader />
         ) : isError ? (
           /* 🛡️ 2026-07-02: 로드 전멸을 "참여 내역 없음"으로 위장하지 않음 — 에러 + 재시도. */
           <div className="text-center py-20">

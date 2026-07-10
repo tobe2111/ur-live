@@ -231,6 +231,19 @@ function CuratorPinClientRedirect() {
 //   로고 호흡 + 진행 바 스윕(BrandLoader SSOT). 라우트 청크 로딩 순간 전용 — SSR/스켈레톤 첫페인트 불변.
 const PageLoader = () => <BrandLoader fullScreen />
 
+// 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): 대시보드(/seller·/admin·/agency)·유어애즈(/ads) 전용
+//   라이트 로더 — worker 가 이 표면들의 #root 를 라이트 #F4F5F7 placeholder 로 깔아주는데, Suspense
+//   fallback 이 테마 추종 PageLoader(다크 토글 사용자는 다크 로고)라 [라이트 빈화면 → 다크 로더 →
+//   라이트 대시보드] 색 점프가 났음. 도매 WholesaleLoader 와 동일한 정합을 유어딜 브랜드로.
+//   (대시보드는 라이트 고정 규칙 — dark: variant 금지 표면이라 forceLight 가 맞는 동작.)
+const DashboardLoader = () => (
+  <div style={{ background: '#F4F5F7' }}>
+    <BrandLoader fullScreen forceLight />
+  </div>
+)
+const isDashboardLoaderSurface = (pathname: string) =>
+  /^\/(seller|admin|agency|ads)(\/|$)/.test(pathname)
+
 // 🏭 2026-06-29 (대표 요청 — 도매몰 페이지 로딩 애니메이션): 도매 surface(/wholesale·/supplier)
 //   전용 *라이트* 브랜드 로더. 소비자 PageLoader 는 다크(흰 spinner) 라 라이트 도매 배경(#F4F5F7)에서
 //   어색 → Suspense fallback 을 surface 별로 분기(아래 isWholesaleSurface). 색상은 WT SSOT
@@ -572,8 +585,13 @@ function AppContent() {
     <>
       <FrameWrapper>
         {/* 🏭 2026-06-29 (대표 요청): 도매 surface 는 라이트 브랜드 로더로, 그 외(소비자)는 기존 PageLoader.
-            isWholesaleSurface = `/wholesale`·`/supplier` SSOT(소비자 경로엔 byte-동일 — PageLoader 유지). */}
-        <Suspense fallback={isWholesaleSurface(location.pathname) ? <WholesaleLoader /> : <PageLoader />}>
+            isWholesaleSurface = `/wholesale`·`/supplier` SSOT(소비자 경로엔 byte-동일 — PageLoader 유지).
+            🚑 2026-07-10: 대시보드/애즈는 라이트 고정 DashboardLoader — worker 라이트 placeholder 와 색 정합. */}
+        <Suspense fallback={
+          isWholesaleSurface(location.pathname) ? <WholesaleLoader />
+            : isDashboardLoaderSurface(location.pathname) ? <DashboardLoader />
+            : <PageLoader />
+        }>
           {/* 📐 2026-05-03: PC 풀너비 활성화 — 모바일 폭 강제 제거.
               각 페이지가 자체 `ur-content-narrow/medium/wide/full` 토큰으로 max-width 관리.
               MobileAppLayout 의 `data-mobile-only="true"` (라이브/쇼츠) 페이지는 여전히 430px 액자 유지. */}

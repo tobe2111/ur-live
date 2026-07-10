@@ -13,6 +13,7 @@ import { useBalance } from '@/hooks/queries'
 import { useDealHistory, type Transaction } from '@/hooks/queries/useDealHistory'
 import { formatNumber } from '@/utils/format'
 import { ChevronLeft } from 'lucide-react'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 type FilterType = '' | 'charge' | 'donate' | 'refund' | 'referral_bonus' | 'ad_reward'
 
@@ -123,9 +124,8 @@ export default function MyDealHistoryPage() {
       {/* 리스트 */}
       <div className="ur-content-medium px-4 lg:px-8 pt-4">
         {loading ? (
-          <div className="py-16 text-center">
-            <div className="w-8 h-8 border-2 border-gray-900 dark:border-white border-t-transparent dark:border-t-transparent rounded-full animate-spin mx-auto" />
-          </div>
+          /* 🚑 2026-07-10 로더 통일: ad-hoc 스피너 → BrandLoader */
+          <BrandLoader />
         ) : error ? (
           <div className="py-16 text-center">
             <p className="text-4xl mb-3">⚠️</p>

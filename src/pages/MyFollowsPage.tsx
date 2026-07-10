@@ -16,6 +16,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { ArrowLeft, Bell, BellOff, Loader2, Heart, ChevronRight } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
+import BrandLoader from '@/components/brand/BrandLoader'
 import {
   useMyFollows,
   useToggleFollowNotify,
@@ -68,9 +69,8 @@ export default function MyFollowsPage() {
 
       <div className="ur-content-narrow mx-auto px-4 lg:px-8 py-5">
         {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-gray-400 dark:text-gray-500" />
-          </div>
+          /* 🚑 2026-07-10 로더 통일: Loader2 → BrandLoader */
+          <BrandLoader />
         ) : isError ? (
           <div className="text-center py-20">
             <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">목록을 불러오지 못했어요</p>

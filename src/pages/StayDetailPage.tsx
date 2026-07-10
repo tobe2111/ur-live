@@ -12,6 +12,7 @@ import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { MapPin, Calendar, Users, Star, Wifi, Coffee, Car, Waves, Sparkles, ChevronLeft, Shield } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 interface StayDetail {
   id: number
@@ -139,7 +140,8 @@ export default function StayDetailPage() {
     try { const v = JSON.parse(stay.amenities); return Array.isArray(v) ? v : [] } catch { return [] }
   })()
 
-  if (loading) return <div className="min-h-screen bg-[#020202] text-white flex items-center justify-center">로딩 중...</div>
+  // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): 맨 텍스트 "로딩 중..." → BrandLoader (다크 표면).
+  if (loading) return <div className="min-h-[100dvh] bg-[#020202]"><BrandLoader fullScreen forceDark /></div>
   if (!stay) return <div className="min-h-screen bg-[#020202] text-white flex items-center justify-center">숙소를 찾을 수 없습니다</div>
 
   return (

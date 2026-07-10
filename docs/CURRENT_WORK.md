@@ -1,5 +1,13 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-10 — 로딩 전수조사: 불필요 로딩 화면 일괄 수리 (대표 "철저한 전수조사" + "전부 수정" 승인)
+3축 병렬 감사(워커 첫페인트 / 소비자 페이지 / 가드·대시보드) → 검증된 결함만 수리. 상세는 CLAUDE.md 로딩 잠금 audit log 2026-07-10 항목.
+- **HIGH**: ① 쇼핑 prefetch 키 number/string 불일치(항상 캐시 미스 — `usePrefetchProduct` String 정규화) ② 교환권 카드 prefetch 가 상세와 다른 엔드포인트·키(100% 낭비 — `usePrefetchGroupBuyProduct` 로 교체) ③ 홈 `__SSR_INITIAL_MAIN__` 미소비(useMapProducts 동기 시드 — 첫 페인트 스켈레톤 제거).
+- **MEDIUM**: Browse/VoucherDetail/SellerPublic 시드 동기 소비(+SellerPublic 시드 정체성 검증 신설) · 사업자 링크샵 curator→seller 워터폴 겹침(`seller-public-fetch.ts` in-flight 공유) · worker GROUPBUY 슬롯/데드변수 제거 · 대시보드 Suspense fallback 라이트 정합(BrandLoader forceLight/forceDark + DashboardLoader) · SellerLayout/AdminLayout 바운스 전 오화면 플래시 억제(조건 불변, 페인트만).
+- **LOW(로더 통일)**: 소비자 11개 풀스크린 + 6개 인라인 ad-hoc 스피너/텍스트 → BrandLoader · Supplier 본문 → WholesaleLoading · RouteGuards self-heal null → 라이트 로더.
+- ⚠️ 이 환경 npm 403 — vite build/vitest 는 CI 검증. staging 확인 권장: 교환권 카드 탭 즉시표시 / 홈 하드로드 첫 페인트 / 겸업 계정 /seller 첫 진입 / 도매전용 /seller 진입 로더→/wholesale.
+
+
 ## ✅ 2026-07-02 — 유어애즈 마케팅 서비스몰(주문 관리) + 미디어 게이트웨이 (대표 시안 "카카오톡 공구 늘리기" 상품 페이지 + "일단 다 해줘")
 대표 스크린샷(마케팅 서비스를 상품처럼 파는 페이지) → **마케팅 서비스몰** 구현. 결정(AskUserQuestion): **무결제(주문요청 접수) · 확장형 카탈로그 · 유어애즈 안(/ads/services)**. 설계: `docs/design/urads-service-marketplace.md`.
 - **⚠️ 윤리/약관 핵심(대표 질문 "팔로워 늘리기 어떻게 구현?")**: 봇/가짜계정/자동팔로우는 **구현하지 않음**(카카오·인스타·네이버 약관 위반·어뷰징). 이 모듈은 **상품몰+주문큐(소프트웨어)만** 담당하고, 실제 성장 이행은 **정당한 마케팅 실행**(유료광고 집행=자동입찰 엔진·AI 콘텐츠·인플루언서·체험단)으로 사람이 채움. 주문에 `fulfillment_method` 기록.
