@@ -528,6 +528,9 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'products.region_si', sql: "ALTER TABLE products ADD COLUMN region_si TEXT" },
     { desc: 'products.region_gu', sql: "ALTER TABLE products ADD COLUMN region_gu TEXT" },
     { desc: 'idx_products_region', sql: "CREATE INDEX IF NOT EXISTS idx_products_region ON products(region_si, region_gu, category) WHERE is_active = 1" },
+    // 🌍 2026-07-08 (대표 "수천개 대비 — 지도영역/거리 조회"): 공간 인덱스. bbox(위경도 BETWEEN)·near(거리정렬)
+    //   쿼리가 스케일에서 풀스캔 안 하도록. group-buy-public GET /products 의 bbox/near 파라미터용 토대.
+    { desc: 'idx_products_geo', sql: "CREATE INDEX IF NOT EXISTS idx_products_geo ON products(restaurant_lat, restaurant_lng) WHERE is_active = 1" },
     // 🛡️ 2026-05-21: 외부 예약 링크 (숙소/뷰티 등 사전 예약 필수 카테고리).
     //   네이버 예약 / 야놀자 / 카카오톡 채널 URL — 자체 캘린더 안 만들고 위임.
     { desc: 'products.external_booking_url', sql: "ALTER TABLE products ADD COLUMN external_booking_url TEXT" },

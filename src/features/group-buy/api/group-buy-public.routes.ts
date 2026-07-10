@@ -116,9 +116,32 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     //   데모-후순위(slug demo-deal-*). 실 사업자/플랫폼 상품이 항상 먼저, 데모는 뒤 채움용.
     //   캐시키/헤더/필드 전부 불변 — 응답 내 행 순서만. materialized cron 도 동일 정렬(짝 수정).
     const DEMO_LAST = "(CASE WHEN COALESCE(p.slug,'') LIKE 'demo-deal-%' THEN 1 ELSE 0 END)"
-    const orderBy = `${DEMO_LAST}, ${ALLOWED_GB_SORT[sortParam] || 'p.created_at DESC'}`
+    // 🌍 2026-07-08 (대표 "수천개 늘 때 미리 — 업체들 근본 방식"): 지오 스케일 파라미터(additive, 검증 float 인라인).
+    //   near=lat,lng → 거리순 랭킹. bbox=swLat,swLng,neLat,neLng → 보이는 지도영역만 반환(스케일 핵심 — 전국
+    //   전체 대신 뷰포트만 로드). 검증된 숫자만 SQL 에 들어가므로 인젝션 불가. 기본 요청(파라미터 없음)엔 미영향
+    //   → 키/materialized/SSR 0-RTT 불변. (공간 인덱스 idx_products_geo 로 스케일 시 빠른 조회.)
+    const fnum = (v: string, lo: number, hi: number): number | null => { const n = parseFloat(v); return Number.isFinite(n) && n >= lo && n <= hi ? n : null }
+    const np = (c.req.query('near') || '').split(',')
+    const nearLat = np.length === 2 ? fnum(np[0], -90, 90) : null
+    const nearLng = np.length === 2 ? fnum(np[1], -180, 180) : null
+    const hasNear = nearLat != null && nearLng != null
+    const bp = (c.req.query('bbox') || '').split(',')
+    let bbox: { swLat: number; swLng: number; neLat: number; neLng: number } | null = null
+    if (bp.length === 4) {
+      const a = fnum(bp[0], -90, 90), b = fnum(bp[1], -180, 180), cc = fnum(bp[2], -90, 90), d = fnum(bp[3], -180, 180)
+      if (a != null && b != null && cc != null && d != null && a <= cc && b <= d) bbox = { swLat: a, swLng: b, neLat: cc, neLng: d }
+    }
+    const hasBbox = !!bbox
+    // near 있으면 거리 오름차순(제곱거리 — sqrt 불필요, 정렬만), 없으면 기존 정렬.
+    const baseOrder = hasNear
+      ? `((p.restaurant_lat-(${nearLat}))*(p.restaurant_lat-(${nearLat})) + (p.restaurant_lng-(${nearLng}))*(p.restaurant_lng-(${nearLng}))) ASC`
+      : (ALLOWED_GB_SORT[sortParam] || 'p.created_at DESC')
+    const orderBy = `${DEMO_LAST}, ${baseOrder}`
+    const bboxWhere = hasBbox
+      ? `AND p.restaurant_lat BETWEEN ${bbox!.swLat} AND ${bbox!.neLat} AND p.restaurant_lng BETWEEN ${bbox!.swLng} AND ${bbox!.neLng}`
+      : ''
     const pageNum = Math.max(1, intParam(c.req.query('page'), 1))
-    const pageLimit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 50)))
+    const pageLimit = Math.min(hasBbox ? 500 : 100, Math.max(1, intParam(c.req.query('limit'), 50)))  // bbox 는 뷰포트 전체 → 상한 ↑
     const offset = (pageNum - 1) * pageLimit
     // 🗺️ 2026-06-18 [UNLOCK_LOADING]: "내 동네 딜" 지역 필터. region = 시군구코드(5자리) 또는 행정동코드(~10자리).
     //   기본 요청(region 없음)은 키/쿼리/materialized 전부 불변 → SSR 0-RTT 보존. region 붙은 요청만 분기.
@@ -126,10 +149,15 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     const regionParam = /^\d{5,12}$/.test(regionRaw) ? regionRaw : ''
     const hasRegion = !!regionParam
     // hasFilters=false 인 "정확한 기본 요청"만 기존 경로(키/materialized/LIMIT 50). 그 외는 분기.
-    const hasFilters = !!ALLOWED_GB_SORT[sortParam] || pageNum > 1 || c.req.query('limit') != null || hasRegion
+    const hasFilters = !!ALLOWED_GB_SORT[sortParam] || pageNum > 1 || c.req.query('limit') != null || hasRegion || hasNear || hasBbox
     const limitClause = hasFilters ? `${pageLimit} OFFSET ${offset}` : '50'
+    // near/bbox 는 좌표를 ~0.02°(≈2km)로 라운딩해 캐시키 카디널리티 억제(에지 캐시 적중률 유지).
+    const rnd = (n: number) => (Math.round(n / 0.02) * 0.02).toFixed(2)
+    const geoKey = hasBbox
+      ? `b${[bbox!.swLat, bbox!.swLng, bbox!.neLat, bbox!.neLng].map(rnd).join('_')}`
+      : hasNear ? `n${rnd(nearLat!)}_${rnd(nearLng!)}` : 'geoall'
     const cacheKey = hasFilters
-      ? `group_buy_products:${status}:${categories.join(',')}:s${sortParam || 'def'}:p${pageNum}:l${pageLimit}:r${regionParam || 'all'}`
+      ? `group_buy_products:${status}:${categories.join(',')}:s${sortParam || 'def'}:p${pageNum}:l${pageLimit}:r${regionParam || 'all'}:${geoKey}`
       : `group_buy_products:${status}:${categories.join(',')}`
 
     const results = await cacheGet(
@@ -196,6 +224,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
                   AND (p.group_buy_status = ? OR ? = 'all')
                   AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
                   ${regionWhere}
+                  ${bboxWhere}
                 ORDER BY ${orderBy}
                 LIMIT ${limitClause}
               `).bind(...categories, status, status, ...regionBind).all()
@@ -215,6 +244,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
               AND (p.group_buy_status = ? OR ? = 'all')
               AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
               ${regionWhere}
+              ${bboxWhere}
             ORDER BY ${orderBy}
             LIMIT ${limitClause}
           `).bind(...categories, status, status, ...regionBind).all()
