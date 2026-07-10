@@ -581,6 +581,23 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     }
   })
 
+  // ── POST /products/:id/ensure-geocode — 좌표 없는 딜의 서버측 지오코딩 lazy 백필 ──
+  // 🌍 2026-07-08 (대표 "수천개 대비 — 업체 근본 방식"): 지도가 좌표 없는 딜을 만나면 이 endpoint 를 1회 호출 →
+  //   서버가 **저장된 주소로** 지오코딩(geocodeProductNow, only-if-NULL)해 products.restaurant_lat/lng 영구 저장.
+  //   → 다음 로드부터 피드가 좌표 반환(클라 지오코딩 0 = 429 스케일 문제 근본 해소). 신규 사업자 상품은 이미
+  //   등록 시 지오코딩되므로 이건 기존/누락분 자가치유. 좌표는 클라 신뢰 X(서버가 주소로 계산) → 위조 불가.
+  router.post('/products/:id/ensure-geocode', async (c) => {
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: 'bad id' }, 400)
+    try {
+      const { geocodeProductNow } = await import('../../../worker/cron/restaurant-geocode')
+      const geocoded = await geocodeProductNow(c.env, id)  // 좌표 이미 있으면 내부 skip(반복 호출 무해)
+      return c.json({ success: true, geocoded })
+    } catch {
+      return c.json({ success: true, geocoded: false })  // fail-soft — 지도 표시엔 클라 폴백 유지
+    }
+  })
+
   // ── GET /live-ticker — 전체 공구 최근 참여 (SNS 스타일 ticker) ──
   router.get('/live-ticker', async (c) => {
     const { DB } = c.env
