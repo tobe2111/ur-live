@@ -203,6 +203,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           p.discount_rate, p.sold_count, p.avg_rating, p.deal_only,
           p.brand_name, p.brand_icon_url, p.created_at, p.seller_id,
           p.restaurant_name, p.restaurant_address, p.slug,
+          p.restaurant_lat, p.restaurant_lng,
           ${_dominantColorCol === false ? '' : 'p.dominant_color,'}
           s.name AS seller_name, s.profile_image AS seller_avatar
         `
