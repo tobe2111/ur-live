@@ -36,6 +36,10 @@ export function useGeocodeMissing<T extends GeoTarget>(restaurants: T[]): T[] {
       .slice(0, 12)
     if (missing.length === 0) return
     missing.forEach(r => geoAttempted.current.add(r.id))
+    // 🌍 2026-07-08 (대표 "수천개 대비 — 업체 근본 방식"): 서버측 영구 백필 트리거(자가치유). 서버가 저장된
+    //   주소로 지오코딩해 products.restaurant_lat/lng 저장 → 다음 로드부터 피드가 좌표 반환 → 클라 지오코딩
+    //   소멸(429 스케일 문제 근본 해소). fire-and-forget — 즉시 표시는 아래 클라 지오코딩이 담당. only-if-NULL.
+    missing.forEach(r => { api.post(`/api/group-buy/products/${r.id}/ensure-geocode`).catch(() => { /* best-effort */ }) })
     let cancelled = false
     ;(async () => {
       const next: Record<number, Coord> = {}
