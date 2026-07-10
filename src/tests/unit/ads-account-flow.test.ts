@@ -62,6 +62,8 @@ describe('UR Ads 독립 계정 — 실제 SQLite 통합', () => {
     expect(dup.ok).toBe(false)
     if (!dup.ok) expect(dup.status).toBe(409)
     expect((await createAdsAccount(DB, { email: 'c@d.com', password: 'short', company_name: 'X' })).ok).toBe(false)
+    // 2026-07-10 대표 결정 잠금: 완화 정책(8자+·2종+) — 대문자 없는 비번(숫자+소문자+특수) 허용.
+    expect((await createAdsAccount(DB, { email: 'relaxed@x.com', password: '358533aa!!'.replace('358533', '999888'), company_name: 'X' })).ok).toBe(true)
   })
 
   it('프로필 수정 + 비밀번호 변경(현재 비번 검증)', async () => {
