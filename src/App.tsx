@@ -438,8 +438,14 @@ function AppContent() {
 
   const location = useLocation()
   // 🧭 2026-06-10 페이지 전환 페이드 — 첫 로드(LCP)는 제외, 라우트 이동부터 적용.
-  const initialLocationKeyRef = useRef(location.key)
-  const pageEnterCls = location.key === initialLocationKeyRef.current ? undefined : 'ur-page-enter'
+  // 🚑 2026-07-10 [UNLOCK_LOADING]: 기준을 location.key → pathname 변경 여부로. key 기준이면 쿼리-전용
+  //   내비(setSearchParams — 정렬/카테고리 칩)가 첫 내비일 때 클래스가 처음 붙으며 전체 페이드가 재생됨
+  //   (아래 div key 가 pathname 인 지금은 리마운트 없이 class 추가만으로 애니메이션이 1회 발화하는 아티팩트).
+  //   실제 경로 이동이 한 번이라도 있으면 클래스 상시 유지 — 애니메이션은 리마운트(key=pathname 변경)가 트리거.
+  const initialPathRef = useRef(location.pathname)
+  const pathChangedRef = useRef(false)
+  if (location.pathname !== initialPathRef.current) pathChangedRef.current = true
+  const pageEnterCls = pathChangedRef.current ? 'ur-page-enter' : undefined
 
   // 🛡️ 2026-05-27 v5 [UNLOCK_LOADING] (Lighthouse 100점 시도, 사용자 명령):
   //   idle prefetch 전체 제거 — Lighthouse 메인 페이지 측정 시 lazy chunk 동시 fetch → 점수 ↓.
@@ -618,11 +624,18 @@ function AppContent() {
               hideBottomNav 페이지(결제/풀스크린/대시보드 등)는 여백 0 — 자체 레이아웃 보존. */}
           {/* 🖥️ 2026-06-20: 하단 네비가 이제 PC(lg+) 액자에도 표시되므로 lg:pb-0 제거 — 모든 뷰포트에서 하단 여백 예약. */}
           <main id="main-content" className={(hideBottomNav || mapFullScreen) ? undefined : 'pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]'}>
-          <ErrorBoundary key={location.key}>
+          {/* 🚑 2026-07-10 [UNLOCK_LOADING] (대표 신고 "로딩 → 새로고침 → 다시 로딩" — 라이브 재현으로 특정):
+              key 를 location.key → location.pathname 으로. location.key 는 **쿼리만 바뀌는
+              setSearchParams(정렬/카테고리/브랜드 칩, /vouchers 첫 진입 자동 카테고리 선택 등)에도 매번
+              새 값** → 페이지 전체 리마운트 + enter 페이드 재생 + (리마운트로 SSR 시드 미매칭 →) 풀스크린
+              로더 재등장 — "방금 뜬 페이지가 리셋되고 다시 로딩"의 정체. pathname keying 은 실제 페이지
+              이동(06-10 페이드 의도)에만 리마운트/페이드, 쿼리 변경은 제자리 갱신(각 페이지 effect 가
+              searchParams deps 로 이미 처리 — 06-05 "화면 비우지 않고 백그라운드 교체" 설계 복원). */}
+          <ErrorBoundary key={location.pathname}>
           {/* 🏭 2026-06-04 도매몰 도메인 SPA 가드 — utongstart.com 비-도매몰 경로 navigate() 차단.
               worker 302(src/worker/index.ts)가 주 방어, 이건 SPA 내부 이동 보강(직접 로드는 worker 가 처리). */}
           {isUtongstart() && !isWholesaleAllowedPath(location.pathname) && <Navigate to="/wholesale" replace />}
-          <div key={location.key} className={pageEnterCls}>
+          <div key={location.pathname} className={pageEnterCls}>
           <Routes>
             {/* Public 페이지들 */}
             <Route path="/introduce" element={<IntroducePage />} />
