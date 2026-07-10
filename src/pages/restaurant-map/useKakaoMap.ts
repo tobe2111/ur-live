@@ -179,31 +179,26 @@ export function useKakaoMap({
         const cy = sumLng / items.length
         const minPrice = Math.min(...items.map(x => x.price || 0))
         const cPos = new window.kakao.maps.LatLng(cx, cy)
+        // 🖼️ 2026-07-08 (대표 시안 ③ 선택): 클러스터 = 대표 딜 실사진 썸네일 + 카운트 배지 + 가격바(Airbnb식).
+        //   회색 알약 → 딜 미리보기 카드. 대표 = 사진 있는 딜(없으면 첫 딜) · 업종 이모지 폴백.
+        const cRep = items.find(x => x.image_url) || items[0]
+        const cCat = (cRep?.category || '').toLowerCase()
+        const cEmoji = cCat.includes('beauty') ? '💇' : cCat.includes('health') ? '💪' : cCat.includes('pet') ? '🐶' : cCat.includes('stay') ? '🏨' : cCat.includes('activity') ? '🎯' : '🍽️'
+        const cThumb = cRep?.image_url ? cfImage(cRep.image_url, { width: 132, height: 132, fit: 'cover', format: 'auto' }) : ''
         const cContent = document.createElement('div')
         cContent.innerHTML = `
-          <div style="
-            background: linear-gradient(135deg,#f43f5e,#fb7185);
-            color: #fff;
-            border: 3px solid #fff;
-            border-radius: 999px;
-            min-width: 44px;
-            height: 44px;
-            padding: 0 12px;
-            font-size: 13px;
-            font-weight: 800;
-            white-space: nowrap;
-            box-shadow: 0 6px 16px rgba(244,63,94,0.45);
-            cursor: pointer;
-            transform: translate(-50%, -50%);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-          ">
-            <span>${items.length}</span>
-            <span style="font-size:9px;opacity:0.9;font-weight:600;">${formatNumber(minPrice)}원~</span>
+          <div style="position:relative;width:64px;height:64px;transform:translate(-50%,-50%);cursor:pointer;">
+            <div style="width:100%;height:100%;border-radius:16px;overflow:hidden;border:2.5px solid #fff;box-shadow:0 8px 18px rgba(0,0,0,0.28);position:relative;background:linear-gradient(135deg,#fca5a5,#fdba74);">
+              <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;line-height:1;">${cEmoji}</span>
+              ${cThumb ? `<img class="ur-cluster-photo" src="${escapeHtml(cThumb)}" alt="" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" />` : ''}
+              <span style="position:absolute;left:0;right:0;bottom:0;background:rgba(17,24,39,0.72);color:#fff;font-size:9.5px;font-weight:700;text-align:center;padding:3px 0;">${formatNumber(minPrice)}원~</span>
+            </div>
+            <span style="position:absolute;top:-7px;right:-7px;background:#f43f5e;color:#fff;border:2px solid #fff;border-radius:999px;min-width:23px;height:23px;padding:0 5px;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.22);">${items.length}</span>
           </div>
         `
+        // 사진 로드 실패 시 img 제거 → 뒤 이모지 폴백(CSP 로 inline onerror 불가 → addEventListener).
+        const cPinImg = cContent.querySelector('img.ur-cluster-photo')
+        if (cPinImg) cPinImg.addEventListener('error', () => cPinImg.remove())
         cContent.addEventListener('click', () => {
           if (mapInstance.current) {
             mapInstance.current.panTo(cPos)
