@@ -17,6 +17,8 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Search, Gift, Heart, Wallet, Sparkles, Users, ArrowRight, ChevronDown, ShoppingBag } from 'lucide-react'
+// 🎟️ 2026-07-10 (대표 결정): 일반상품(쇼핑) 노출은 SHOPPING_TAB_HIDDEN 게이트 — 교환권은 유지.
+import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
@@ -763,7 +765,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur border-b border-gray-100 dark:border-[#1A1A1A]">
           <div className="relative flex items-center justify-center px-2 py-1.5">
             <div className="flex items-center gap-1">
-              {([['vouchers', '교환권'], ['shopping', '쇼핑']] as const).map(([key, label]) => {
+              {/* 🎟️ 2026-07-10 (대표 결정): SHOPPING_TAB_HIDDEN 이면 쇼핑 탭 숨김 — 교환권 단일 탭. */}
+              {([['vouchers', '교환권'], ['shopping', '쇼핑']] as const).filter(([key]) => key !== 'shopping' || !SHOPPING_TAB_HIDDEN).map(([key, label]) => {
                 const active = activeTab === key
                 return (
                   <button
@@ -1056,8 +1059,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         )}
       </div>
       {/* 🛒 2026-06-23 (대표 결정): 쇼핑 섹션 — 교환권 더보기 버튼 아래로 이어지는 일반 상품 그리드(무한 스크롤).
-          상단 '쇼핑' 탭이 이 섹션으로 점프(scroll-mt 로 sticky 탭 높이만큼 여백 확보). 홈(embedded)엔 없음. */}
-      {!embedded && (
+          상단 '쇼핑' 탭이 이 섹션으로 점프(scroll-mt 로 sticky 탭 높이만큼 여백 확보). 홈(embedded)엔 없음.
+          🎟️ 2026-07-10 (대표 결정 — 일반상품 숨김·교환권 유지): SHOPPING_TAB_HIDDEN 게이트 — 숨김 시
+          순수 교환권 페이지(인플 딜포인트→교환권 구매 경로 보존). 플래그 false 로 즉시 복원(가역). */}
+      {!embedded && !SHOPPING_TAB_HIDDEN && (
         <section ref={shoppingRef} className="scroll-mt-14 mt-2 border-t-8 border-gray-50 dark:border-[#121212]">
           <div className="ur-content-wide px-4 lg:px-8 pt-5 pb-1 flex items-center gap-1.5">
             <ShoppingBag className="w-[18px] h-[18px] text-gray-900 dark:text-white" />

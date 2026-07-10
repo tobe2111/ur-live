@@ -56,7 +56,7 @@
   "src/pages/SellerProfileEditPage.tsx": 728,
   "src/pages/SellerStayDetailPage.tsx": 648,
   "src/pages/StayDetailPage.tsx": 709,
-  "src/pages/VouchersPage.tsx": 1071,
+  "src/pages/VouchersPage.tsx": 1076,
   "src/pages/WholesaleCatalogPage.tsx": 813,
   "src/routes/admin.routes.tsx": 682,
   "src/shared/db/production-schema.ts": 682,
