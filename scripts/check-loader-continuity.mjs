@@ -158,6 +158,20 @@ const CHECKS = [
     ],
     hint: 'useMapProducts 의 __SSR_INITIAL_MAIN__ 동기 시드를 유지하세요 — 빼면 홈 하드로드가 [로더→스켈레톤→콘텐츠] 3단으로 회귀합니다.',
   },
+  {
+    file: 'src/utils/kakao-login-overlay.ts',
+    name: '카카오 로그인 오버레이 = BrandLoader 클래스/위상 재사용 (별도 keyframes 금지)',
+    // 🚑 2026-07-10 (대표 "카카오 로그인 스플래시도 모두 이상적으로"): 순수 DOM 오버레이(iOS freeze 제약)가
+    //   번들 클래스(ur-loader-breathe/sweep) + FCP-기준 음수 delay 를 재사용해야 전체 로더와 픽셀·위상 일치.
+    //   자체 keyframes(위상 0 리셋)로 되돌리면 로그인 순간만 "다른 로더" 블링크가 재발.
+    must: [
+      /ur-loader-breathe/,
+      /ur-loader-sweep/,
+      /%\s*1\.5/,
+      /%\s*1\.15/,
+    ],
+    hint: '카카오 오버레이는 번들 클래스(ur-loader-breathe/sweep) + BrandLoader 와 동일한 음수 delay 계산을 유지하세요 — 자체 keyframes 재유입 금지.',
+  },
 ]
 
 let failures = 0
@@ -183,4 +197,4 @@ if (failures) {
   console.error(`\n로더 연속성 불변식 ${failures}건 위반 — "로딩이 2번 나뉘어 보임" 재발 위험 (2026-07-02 대표 신고 클래스).`)
   process.exit(STRICT ? 1 : 0)
 }
-console.log('✅ loader-continuity: 로더 연속성 10불변식(위상동기·전-라우트정적로더·seed+dedupe·주기동기·offline-SSR-safe·홈critical-i18n·pathname-key·prefetch키정규화·교환권prefetch세계일치·홈SSR시드) 모두 존재.')
+console.log('✅ loader-continuity: 로더 연속성 11불변식(위상동기·전-라우트정적로더·seed+dedupe·주기동기·offline-SSR-safe·홈critical-i18n·pathname-key·prefetch키정규화·교환권prefetch세계일치·홈SSR시드·카카오오버레이동기) 모두 존재.')
