@@ -4,7 +4,11 @@
  * 배경(전수조사): 카카오 알림톡은 `tpl_code` 가 **Aligo 콘솔에 사전 등록·승인된 템플릿**이어야
  *   하고, 보낸 `message` 도 승인된 템플릿 본문과 일치해야 한다. 미등록/불일치면 Aligo 가
  *   `result_code != '1'` 로 거부 → `alimtalk_failures` 에 쌓여 3회 재시도 후 방치(전달 0, quota 낭비).
- *   `aligo.ts sendAlimtalk` 에는 **SMS 폴백이 없어**, 거부된 알림톡은 어떤 채널로도 안 감.
+ *   SMS 대체발송(failover)은 2026-07-11 부로 **env 게이트로 배선됨(기본 OFF)** —
+ *   `features/alimtalk/send.ts`(공용 발송 경로) 한 곳에서 Aligo `failover`/`fsubject_1`/`fmessage_1`
+ *   파라미터를 주입. 활성 절차: ① Aligo 콘솔에 SMS 발신번호(ALIGO_SENDER_PHONE) 등록·인증 확인
+ *   ② env `ALIMTALK_SMS_FAILOVER=true` 설정. OFF 인 동안(그리고 `lib/aligo.ts` 경유
+ *   system-alimtalk 경로는 여전히) 거부된 알림톡은 SMS 로도 안 감.
  *   (인앱 알림/웹푸시는 별개 경로라 대부분 사용자가 완전 무통보는 아님.)
  *
  * 이 파일의 역할:
