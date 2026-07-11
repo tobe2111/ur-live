@@ -179,7 +179,15 @@ PENDING → PAID → SHIPPING → DELIVERED → DONE
 - 셀러는 \`/seller/settlements\` 에서 **승인** → 발행 확정. 비사업자/미검증 셀러는 대상 아님(원천징수 경로).
 - 현황/재발행: \`GET /api/admin/tax/settlement-invoices\`, \`POST /api/admin/tax/settlement-invoices/:id/reissue\`.
 - **실 발행 활성화**: 환경변수 \`REVERSE_INVOICE_PROVIDER\`(\`unipost\`/\`stub\`) + \`UNIPOST_API_URL\`/\`UNIPOST_API_KEY\`/\`UNIPOST_CORP_NUM\` 설정.
-  미설정 시 초안(draft)으로만 남습니다(실 발행 없음). 설계: \`docs/design/settlement-reverse-issuance.md\`.`,
+  미설정 시 초안(draft)으로만 남습니다(실 발행 없음). 설계: \`docs/design/settlement-reverse-issuance.md\`.
+
+### 🛡️ 정산 지급 가드 (2026-07 머니 감사 — 통합정산 payouts)
+- **승인/송금 CAS**: 승인·송금완료는 status 조건부 UPDATE(CAS)라 동시 클릭 이중 실행이 구조적으로 차단됩니다(409 "이미 처리됨" = 정상 방어이니 당황 금지).
+- **계좌 누락 차단**: 수령자 계좌번호가 없으면 송금완료 마킹 불가 → \`PAYOUT_NO_ACCOUNT\` 409. 수령자 계좌 등록 확인 후 재시도.
+- **동일 수령자·기간 중복 송금 차단**: 같은 수령자·기간에 이미 'sent' 건이 있으면 \`PAYOUT_ALREADY_SENT_PERIOD\` 409 — 이중지급 방어(정말 별건인지 먼저 확인).
+- **과다지급 가드**: 승인 시 현재 원장 net receivable 을 재검증 — 초과분은 \`PAYOUT_EXCEEDS_RECEIVABLE\` 로 차단(오래된 gross 건은 취소 후 재생성).
+- **미회수 clawback 조회**: 지급 후 환불이 들어오면 자동 회수가 안 되고 의무만 기록됨 — \`GET /api/admin/payouts/clawbacks\` 로 pending 회수 대상·금액 합계를 확인하고 회수/상계 처리.
+- **두 레일 대사**: 같은 매장이 restaurant_settlements 와 payouts 양쪽에 미지급 노출되면 이중지급 위험 — \`GET /api/admin/payouts/rail-reconciliation\` 으로 확인 후 **한 레일에서만** 지급.`,
   },
   {
     key: 'live', icon: '🔴', title: '라이브 방송 운영', order: 70,
@@ -1036,5 +1044,19 @@ WITHDRAWAL_DEFAULTS.UPGRADE_REOFFER_DAYS  // 30
 5. **진행 확인**: 최근 작업 목록에서 큐 진척(발송/대기/실패)을 확인합니다.
 
 > ⚠️ 스팸/수신거부 정책을 준수하고, 광고성 메일은 표기 의무를 지키세요. 민감 정보(가격/계좌 등)는 본문에 직접 넣지 말고 페이지 링크로 안내하세요.`,
+  },
+  // 🧾 2026-07-10 (PR #479+#483): promo 재원 원장 — 불변식 #44 감사 콕핏
+  {
+    key: 'promo-ledger-admin', icon: '🧾', title: 'promo 재원 원장 (불변식 #44 콕핏)', order: 850,
+    content: `### promo 재원 원장 (\`/admin/promo-ledger\`) — read-only
+8월 promo flip(재원 owner 전환) staging 검증 조종석입니다. 돈 이동 0 · 정산 로직 무변경.
+
+- **재원 스위치 상태**: \`promo_funding_source\`(platform/owner) · \`commission_budget_enabled\` · \`pg_reserve_pct\` · \`seller_promo_field_enabled\` 를 칩으로 표시.
+- **월별 분배 집계**: 주문 수/금액 · affiliate promo 합계 · order_fee_breakdown(플랫폼/promo/에이전시/owner net) 월 단위 대사.
+- **불변식 #44 패널**: "원장 platform:revenue = 5% 전액 · 성장 커미션 debit 0" 검증.
+  - **전환 전(platform)엔 커미션 debit 항목이 파란 정보 톤 = 정상**(예상된 현행 항목 — 위반 아님).
+  - 전환 후(owner)에 debit 존재 = 🔴 위반 — 즉시 조사 대상.
+- 데이터: \`GET /api/admin/promo-ledger/summary?month=\` · \`GET /api/admin/promo-ledger/orders?month=&page=\`
+- 재원 확정 원칙(유어딜 5% 는 어떤 커미션에도 안 쓴다)·flip 체크리스트: \`docs/design/commission-funding-restructure.md\``,
   },
 ]

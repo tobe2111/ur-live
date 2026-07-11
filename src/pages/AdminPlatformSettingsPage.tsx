@@ -47,7 +47,7 @@ const SETTINGS_FIELDS = [
 //   전부 미설정=현행. 활성화는 staging 실결제 검증 후(설계 §5). select 형은 숫자 검증 제외.
 const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: string; options?: Array<{ value: string; label: string }>; hint?: string }> = [
   {
-    key: 'commission_budget_enabled', label: '커미션 예산 캡 활성화', default: 'false',
+    key: 'commission_budget_enabled', label: '① 커미션 예산 캡 활성화', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행)' }, { value: 'true', label: 'ON — 예산 캡 적용' }],
     hint: '3P 주문당 성장 커미션 총합 ≤ 수수료 − PG준비금 (비례 축소). ⚠️ staging 검증 후 ON',
   },
@@ -56,7 +56,7 @@ const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: str
     hint: '예산 = 플랫폼 수수료 − 결제액×이 비율',
   },
   {
-    key: 'promo_funding_source', label: '핀 추천(어필리에이트) 재원', default: 'platform',
+    key: 'promo_funding_source', label: '② 핀 추천(어필리에이트) 재원', default: 'platform',
     options: [{ value: 'platform', label: '플랫폼 부담 (현행)' }, { value: 'owner', label: '주인(셀러) 부담 — promo 슬라이스' }],
     hint: "'owner' 시 추천인 딜 적립은 유지, 같은 금액을 매장/셀러 정산에서 차감",
   },
@@ -79,9 +79,16 @@ const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: str
   },
   // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러 딜 등록 화면의 소개비(promo)% 저장 게이트.
   {
-    key: 'seller_promo_field_enabled', label: '셀러 소개비(promo)% 필드 저장', default: 'false',
+    key: 'seller_promo_field_enabled', label: '③ 셀러 소개비(promo)% 필드 저장', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행 — 저장 안 함)' }, { value: 'true', label: 'ON — referral_commission_rate 저장' }],
     hint: "⚠️ owner-funding('주인 부담') 을 먼저 켜고 staging 검증한 뒤에만 ON. 안 그러면 매장 소개비를 플랫폼이 부담(누수). 클라 플래그 SELLER_PROMO_FIELD_ENABLED 도 함께 배포",
+  },
+  // 🎟️ 2026-07-10 (flip-ui-checklist A1): 공구 엔진 서버 게이트 — gb-marketplace/gb-proposals/seller-orders 가
+  //   platform_settings.gb_engine_enabled==='true' 로 읽음. 8월 flip 단계 ④ 조종석 토글.
+  {
+    key: 'gb_engine_enabled', label: '④ 공구 엔진 (gb_engine)', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 표면 미노출)' }, { value: 'true', label: 'ON — 공구 엔진 서버 게이트' }],
+    hint: '활성화 순서 ④ — ①예산캡 ②owner펀딩 ③promo필드가 staging 검증 후 켜진 뒤에만. ⚠️ 서버 게이트만 켜짐 — 클라 표면은 GB_ENGINE_ENABLED(코드 배포) 별도. 런북: commission-funding-restructure.md §1',
   },
 ]
 

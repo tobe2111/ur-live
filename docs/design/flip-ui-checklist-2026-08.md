@@ -32,7 +32,7 @@
 
 - [ ] **A1. flip 스위치 ON** — [어드민] AdminPlatformSettingsPage.tsx:46-86,185-219 · admin-tools.routes.ts:306-322. `commission_budget_enabled` / `promo_funding_source=owner` / `pg_reserve_pct` / `seller_promo_field_enabled` 활성화 (⚠️ 머니 경로 — 단독 세션 + staging 실결제 필수, CLAUDE.md 룰).
   - **활성화 순서 매핑(2026-07-10 확인)**: ①예산캡(`commission_budget_enabled` — `pg_reserve_pct` 는 별도 단계가 아니라 이 캡의 **파라미터**: 주문당 예산 = 수수료 − PG준비금, commission-budget.ts:5) → ②owner펀딩(`promo_funding_source`) → ③promo필드(`seller_promo_field_enabled`) → ④공구엔진.
-  - ⚠️ **공구엔진 게이트는 조종석에 없음**: 서버 `platform_settings.gb_engine_enabled`(gb-marketplace/gb-proposals/seller-orders 가 읽음) + 클라 `GB_ENGINE_ENABLED`(feature-flags.ts, 코드 배포) 2중인데 **AdminPlatformSettingsPage 에 토글 미존재** — 8월에 토글 추가(또는 키 직접 세팅 런북 명시) 필요.
+  - ⚠️ **공구엔진 게이트는 조종석에 없음**: 서버 `platform_settings.gb_engine_enabled`(gb-marketplace/gb-proposals/seller-orders 가 읽음) + 클라 `GB_ENGINE_ENABLED`(feature-flags.ts, 코드 배포) 2중인데 **AdminPlatformSettingsPage 에 토글 미존재** — 8월에 토글 추가(또는 키 직접 세팅 런북 명시) 필요. **→ ✅ 해소: 토글 추가됨(본 커밋 — ④ 공구 엔진 스위치, 서버 'true'/'false' 가드 포함). 클라 플래그 `GB_ENGINE_ENABLED` 는 여전히 코드 배포 필요(이중 게이트 유지).**
 - [x] **A2. promo 재원 원장 감사 화면 신설 (유일 미구현)** — [어드민] order당 재원 구분(5% vs promo) + `platform:revenue` 5% 전액 검증(불변식 #44) + 매장 promo 잔액·소진 뷰. 현재 부재 (감사 #7). **→ ✅ 구현 `dced7699` (2026-07-10 선구현 — 표면은 라이브, 재원 프레이밍만 funding 게이트. 상단 🟢 노트 참조)**
 - [ ] **A3. 수수료율 탭 전환** — [어드민] admin-payouts.routes.ts:342-415 · AdminPayoutsPage.tsx:298-376. 5% 분배 슬라이더에서 agency/influencer share 제거, `platform_fee_pct` "인프라비 5% 불변" read-only化.
 - [ ] **A4. 4계정 분배 바 이관** — [어드민] AdminCommissionSettingsPage.tsx:116-158. "매출 100% 분배"(유어딜/인플/유저/에이전시/셀러) 중 인플·유저·에이전시 슬라이스를 promo 재원으로 이관.
