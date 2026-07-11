@@ -926,6 +926,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     //   requiresTable 가드 — voucher_orders 는 아래 tables 루프에서 먼저 생성됨.
     { desc: 'voucher_orders.retry_count', sql: "ALTER TABLE voucher_orders ADD COLUMN retry_count INTEGER DEFAULT 0", requiresTable: 'voucher_orders' },
     { desc: 'voucher_orders.last_retry_at', sql: "ALTER TABLE voucher_orders ADD COLUMN last_retry_at DATETIME", requiresTable: 'voucher_orders' },
+    // 📖 2026-07-11 (가이드 버전 재시드): 수동편집 보존 플래그 — blog_posts.manually_edited 미러.
+    //   guide.routes.ts maybeSyncGuideSeed 가 manually_edited=0 섹션만 시드 최신화(관리자 편집 보존).
+    //   guide.routes.ts 인라인 ensure(ensureGuideEditColumn) 병행 — 여기 등록은 repair 경로용.
+    { desc: 'operation_guides.manually_edited', sql: "ALTER TABLE operation_guides ADD COLUMN manually_edited INTEGER DEFAULT 0", requiresTable: 'operation_guides' },
   ];
 
   const results: Array<{ desc: string; status: 'added' | 'exists' | 'error'; error?: string }> = [];
@@ -1245,6 +1249,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
       section_title TEXT NOT NULL,
       section_order INTEGER DEFAULT 0,
       content_md TEXT NOT NULL,
+      manually_edited INTEGER DEFAULT 0,
       updated_by INTEGER,
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(guide_type, section_key)
@@ -2067,13 +2072,15 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
         section_title TEXT NOT NULL,
         section_order INTEGER DEFAULT 0,
         content_md TEXT NOT NULL,
+        manually_edited INTEGER DEFAULT 0,
         updated_by INTEGER,
         updated_at TEXT NOT NULL DEFAULT (datetime('now')),
         UNIQUE(guide_type, section_key)
       )`).run();
+      // manually_edited 는 위 runColumnSteps 의 ALTER 가 old 테이블에 이미 추가함(같은 repair 실행 내 선행) → 보존 copy.
       await DB.prepare(`INSERT INTO operation_guides
-        (id, guide_type, section_key, section_icon, section_title, section_order, content_md, updated_by, updated_at)
-        SELECT id, guide_type, section_key, section_icon, section_title, section_order, content_md, updated_by, updated_at
+        (id, guide_type, section_key, section_icon, section_title, section_order, content_md, manually_edited, updated_by, updated_at)
+        SELECT id, guide_type, section_key, section_icon, section_title, section_order, content_md, COALESCE(manually_edited, 0), updated_by, updated_at
         FROM operation_guides_old`).run();
       await DB.prepare("DROP TABLE operation_guides_old").run();
       tableResults.push({ name: 'operation_guides:check-migration', status: 'ok' });

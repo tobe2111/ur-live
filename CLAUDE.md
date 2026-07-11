@@ -350,7 +350,9 @@ DB(`operation_guides` 테이블) 에 저장된 3개 가이드:
 - `seller` → `/seller/guide`
 - `agency` → `/agency/guide`
 
-**시드**: `src/features/guides/api/guide-seed.ts` (DB 비었을 때 1회 시드, UI 편집 시 DB 가 시드 덮어씀).
+**시드 SSOT**: `src/features/guides/api/guide-seed.ts`(집계) + `guide-seed-{admin,seller,agency,wholesale}.ts`(콘텐츠) + `guide.routes.ts` 의 `GUIDE_SEED_VERSION` 상수.
+
+**자동 반영 원리 (2026-07-11 — 블로그 `BLOG_SEED_VERSION` 메커니즘 미러)**: `GUIDE_SEED_VERSION` > DB 저장 버전(`platform_settings.guide_seed_version`)이면 배포 후 첫 가이드 접근 시 `maybeSyncGuideSeed()` 가 자동 동기화 — 신규 섹션 삽입 / 시드 관리 섹션(`manually_edited=0`) 최신화. 관리자가 UI 에서 **직접 수정·생성한 섹션(`manually_edited=1`)은 절대 덮어쓰지 않음**(수동 편집 보존). 시드에서 빠진 섹션은 삭제 안 함(가이드는 큐레이션 문서 — 정리는 관리자 삭제/강제 리셋으로).
 
 ### 코드 변경 시 함께 업데이트
 - 새 API 엔드포인트 → 영향받는 역할의 가이드 섹션
@@ -361,8 +363,9 @@ DB(`operation_guides` 테이블) 에 저장된 3개 가이드:
 - FAQ 추가 → 해당 역할 "자주 묻는 문제"
 
 ### 업데이트 방법
-- **권장**: `guide-seed.ts` 수정 + 프로덕션 DB 해당 섹션 DELETE → 재시드
-- **대안**: 관리자가 `/admin/operations-guide` 에서 직접 편집
+- **권장**: `guide-seed-*.ts` 수정 + **같은 커밋에서 `GUIDE_SEED_VERSION` +1**(guide.routes.ts) → 배포 후 자동 반영(수동 편집 보존). 버전 안 올리면 라이브 미반영.
+- **대안**: 관리자가 `/admin/operations-guide` 에서 직접 편집(해당 섹션 `manually_edited=1` → 이후 재시드 불침범)
+- **강제 리셋**: `POST /api/guides/:type/reseed {"confirm":true}` — 수동 편집까지 초기화하고 해당 type 전체를 시드로 교체(footgun 가드 있음)
 
 ### 자동 강제 (`scripts/check-guide-sync.sh`)
 Pre-commit hook 이 다음 파일 변경 시 `guide-seed.ts` 동시 수정 검사:
