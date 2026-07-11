@@ -352,19 +352,39 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
             const cap = computeCouponDiscount(coupon, discountBase);
             const claimed = Math.min(clientCoupon, cap);
             if (claimed > 0) {
-              // 원자 소비 — UNIQUE(coupon_id,user_id). order_id 는 생성 후 링크(아래 best-effort).
+              // 🛡️ 2026-07-11 (pre-launch audit R6 — 한정수량 쿠폰 초과발급): 게이트를 원자
+              //   UPDATE 로 '선행' + meta.changes 검사(머니룰 #1). 이전: coupon_uses INSERT 가
+              //   먼저 + used_count 증가 결과 미검사 → 동시 사용자 N명이 soldOut 사전검사(stale
+              //   SELECT)를 함께 통과하면 total_count 초과 발급. changes==0 = 소진 → 쿠폰 미적용
+              //   (주문은 할인 없이 진행). NULL/0 total_count = 무제한(기존 soldOut 판정과 정합).
+              //   할인 금액 계산(claimed/cap)은 무변경 — 발급 가능 여부 게이트만 원자화.
               try {
-                const ins = await c.env.DB.prepare(
-                  'INSERT INTO coupon_uses (coupon_id, user_id, order_id, discount_amount) VALUES (?, ?, NULL, ?)'
-                ).bind(couponIdNum, userId, claimed).run();
-                if ((ins.meta?.changes ?? 0) > 0) {
-                  couponDiscount = claimed;
-                  couponConsumed = true;
-                  await c.env.DB.prepare(
-                    'UPDATE coupons SET used_count = used_count + 1 WHERE id = ? AND (total_count = 0 OR used_count < total_count)'
-                  ).bind(couponIdNum).run().catch(() => {});
+                const gate = await c.env.DB.prepare(
+                  'UPDATE coupons SET used_count = COALESCE(used_count, 0) + 1 WHERE id = ? AND (total_count IS NULL OR total_count = 0 OR COALESCE(used_count, 0) < total_count)'
+                ).bind(couponIdNum).run();
+                if ((gate.meta?.changes ?? 0) > 0) {
+                  // 원자 소비 — UNIQUE(coupon_id,user_id). order_id 는 생성 후 링크(아래 best-effort).
+                  try {
+                    const ins = await c.env.DB.prepare(
+                      'INSERT INTO coupon_uses (coupon_id, user_id, order_id, discount_amount) VALUES (?, ?, NULL, ?)'
+                    ).bind(couponIdNum, userId, claimed).run();
+                    if ((ins.meta?.changes ?? 0) > 0) {
+                      couponDiscount = claimed;
+                      couponConsumed = true;
+                    } else {
+                      // 소비 미발생 → 게이트 증가분 보상 복원 (used_count 과대계상 방지, 원자 감소)
+                      await c.env.DB.prepare(
+                        'UPDATE coupons SET used_count = used_count - 1 WHERE id = ? AND used_count > 0'
+                      ).bind(couponIdNum).run().catch(() => {});
+                    }
+                  } catch {
+                    // UNIQUE 위반 = 이미 사용 → 게이트 증가분 보상 복원 + couponDiscount 0 (할인 없음)
+                    await c.env.DB.prepare(
+                      'UPDATE coupons SET used_count = used_count - 1 WHERE id = ? AND used_count > 0'
+                    ).bind(couponIdNum).run().catch(() => {});
+                  }
                 }
-              } catch { /* UNIQUE 위반 = 이미 사용 → couponDiscount 0 (할인 없음) */ }
+              } catch { /* 게이트 실패 → couponDiscount 0 (할인 없음, 주문 차단 안 함) */ }
             }
           }
         }

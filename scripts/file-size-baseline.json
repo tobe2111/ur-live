@@ -69,7 +69,7 @@
   "src/worker/repositories/order.repository.ts": 746,
   "src/worker/routes/curator.routes.ts": 1475,
   "src/worker/routes/internal-admin-tools.routes.ts": 1327,
-  "src/worker/routes/order.routes.ts": 1168,
+  "src/worker/routes/order.routes.ts": 1188,
   "src/worker/routes/payment.routes.ts": 956,
   "src/worker/routes/repair-schema.routes.ts": 2329,
   "src/worker/routes/webhook.routes.ts": 968,
