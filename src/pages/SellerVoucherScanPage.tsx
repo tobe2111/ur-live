@@ -134,7 +134,7 @@ function RedemptionModeCard() {
   if (!loaded) return null
   const OPTIONS: { value: 'scan_only' | 'store_code' | 'self_free'; label: string; desc: string }[] = [
     { value: 'scan_only', label: '직원 확인만', desc: '손님 셀프 사용 차단 — 직원이 QR 스캔으로만 처리 (가장 엄격)' },
-    { value: 'store_code', label: '매장 확인코드', desc: '손님이 셀프 사용 시 카운터의 코드 4자리 입력 필수 (추천)' },
+    { value: 'store_code', label: '매장 확인코드', desc: '손님이 셀프 사용 시 카운터의 확인코드 입력 필수 (추천)' },
     { value: 'self_free', label: '자유 셀프 사용', desc: '손님이 코드 없이 셀프 사용 (카운터가 바쁜 매장, 60초 취소 허용)' },
   ]
   return (

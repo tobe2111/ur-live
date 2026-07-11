@@ -15,6 +15,7 @@
 
 import type { Hono } from 'hono'
 import { requireAuth, getCurrentUser, requireAdmin } from '@/worker/middleware/auth'
+import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
 import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
@@ -816,10 +817,27 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     return c.json({ success: true, data: merged })
   })
 
+  // 🛡️ self-redeem rate limit 키 SSOT — 미들웨어 keyFn + 성공 시 리셋(DELETE)이 같은 키를 써야 함.
+  const SELF_REDEEM_RL_ACTION = 'voucher_self_redeem'
+
   // ── POST /vouchers/:code/self-redeem — 🎟️ 2026-06-20 소비자 셀프 사용처리 (대표 — 카운터 느슨/정산 검문) ──
   //   본인 미사용 이용권을 현장에서 직접 사용. CAS(claim-before-credit) 일회성 — 동시/중복 차단.
   //   라이브 '사용완료' 화면 데이터 반환(매장명·used_at). 60초 내 cancel 가능(아래). 돈 이동 X(에스크로는 Phase 2).
-  router.post('/vouchers/:code/self-redeem', requireAuth(), async (c) => {
+  //   🛡️ 2026-07-11 보안(R1, docs/design/pre-launch-security-audit-2026-07.md): rate limit 추가 —
+  //   store_code 브루트포스 차단. 키 = voucher code(IP 아님 — IP 로테이션 무력화). 5회/300초.
+  //   store_code 불일치(403)도 카운트에 잡힘(미들웨어가 핸들러 앞에서 전부 카운트) — 성공 시에만
+  //   아래 claimed 지점에서 리셋. 소유자 본인 오타 여유 5회/5분이면 충분.
+  router.post(
+    '/vouchers/:code/self-redeem',
+    rateLimit({
+      action: SELF_REDEEM_RL_ACTION,
+      max: 5,
+      windowSec: 300,
+      // 코드 미매칭(이론상 없음) 시 IP 폴백 — 무제한 버킷 방지.
+      keyFn: (c) => `${SELF_REDEEM_RL_ACTION}:${c.req.param('code') || c.req.header('CF-Connecting-IP') || 'unknown'}`,
+    }),
+    requireAuth(),
+    async (c) => {
     const { DB } = c.env
     const user = getCurrentUser(c)
     if (!user) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
@@ -848,7 +866,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           if (redemptionMode === 'store_code') {
             const input = String(body.store_code || '').trim()
             if (!input || !s.store_code || input !== s.store_code) {
-              return c.json({ success: false, code: 'STORE_CODE_REQUIRED', error: '매장에 비치된 확인코드 4자리를 입력해주세요.' }, 403)
+              // 🛡️ 자릿수 하드코딩 제거(신규 6자리·기존 4자리 병존) — 이 403 도 rate limit 카운트에 잡힘(브루트포스 소진).
+              return c.json({ success: false, code: 'STORE_CODE_REQUIRED', error: '매장에 비치된 확인코드를 입력해주세요.' }, 403)
             }
           }
         } catch { /* fail-open — 기존 self_free 동작 */ }
@@ -859,6 +878,16 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         "UPDATE vouchers SET status='used', used_at=datetime('now') WHERE code=? AND user_id=? AND status='unused'"
       ).bind(code, user.id).run()
       const claimed = (res.meta?.changes || 0) === 1
+
+      // 🛡️ 2026-07-11: 성공(방금 사용 확정) 시에만 rate limit 카운터 리셋 — 정당 사용자의 앞선
+      //   오타 시도가 남아 잠기지 않게. 실패(코드 불일치 403)는 리셋 안 됨 → 브루트포스 방어 불변.
+      //   커스텀 키(voucher code)라 resetRateLimit(IP 키 전용) 대신 동일 키로 직접 DELETE(best-effort).
+      if (claimed) {
+        const rlResetJob = DB.prepare('DELETE FROM rate_limit_attempts WHERE key = ? AND action = ?')
+          .bind(`${SELF_REDEEM_RL_ACTION}:${code}`, SELF_REDEEM_RL_ACTION).run()
+          .catch(() => { /* best-effort — 리셋 실패해도 사용처리 무영향 */ })
+        c.executionCtx?.waitUntil?.(rlResetJob as Promise<unknown>)
+      }
 
       const row = await DB.prepare(`
         SELECT v.id, v.code, v.status, v.used_at, v.product_id, v.applied_price, p.name as product_name, p.restaurant_name, p.seller_id
