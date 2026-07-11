@@ -37,6 +37,7 @@ type IntroducedSummary = {
   total_stores: number; active_stores: number; inactive_stores?: number
   total_commission: number; month_commission: number
   pending_commission: number; available_commission: number; paid_commission: number
+  funding_source?: string // 💡 flip B1 선반영 — 'platform'(기본) | 'owner' (프레이밍 게이트)
 }
 
 type AgencyBundle = {
@@ -130,6 +131,9 @@ export default function AgencyPage() {
   const agencyProfile = bundleQ.data?.agencyProfile ?? null
   // 🏪 매장 영입 요약 (대시보드 1순위 지표)
   const introduced = bundleQ.data?.introducedSummary ?? null
+  // 💡 2026-07-11 (flip B1 선반영): 재원 게이트 — 'owner' 확인 시에만 promo 재원 프레이밍.
+  //   미확인/로딩/platform(현행 기본)은 기존 문구 byte-동일.
+  const ownerFunded = introduced?.funding_source === 'owner'
   const loading = bundleQ.isLoading && !bundleQ.data
 
   // 세션 만료(success=false → fetcher 가 null 반환) → 로그인. (캐시 갱신은 fetcher 내부에서 성공 시 수행.)
@@ -470,10 +474,17 @@ export default function AgencyPage() {
               })}
             </p>
             <p className="text-[11px] opacity-50 mt-0.5">
-              {t('agency.sellerCommissionAside', {
-                defaultValue: '소속 셀러 매출 추정 수수료 {{c}}원 ({{rate}}%)',
-                c: formatNumber(commission), rate: commissionRate,
-              })}
+              {/* 💡 flip B1 (게이트드 선반영): owner-펀딩 확인 시에만 "조율 몫 · 매장 promo 재원" 프레이밍 —
+                  platform(현행 기본) 은 기존 문구 byte-동일 */}
+              {ownerFunded
+                ? t('agency.sellerCommissionAsideOwner', {
+                    defaultValue: '소속 셀러 매출 추정 조율 몫 {{c}}원 ({{rate}}% · 매장 promo 재원)',
+                    c: formatNumber(commission), rate: commissionRate,
+                  })
+                : t('agency.sellerCommissionAside', {
+                    defaultValue: '소속 셀러 매출 추정 수수료 {{c}}원 ({{rate}}%)',
+                    c: formatNumber(commission), rate: commissionRate,
+                  })}
             </p>
           </div>
           <button

@@ -3612,8 +3612,10 @@
     },
     "settlementsAuto": {
       "autoPayout": "✨ Plus besoin de demander",
-      "autoPayoutDesc": "Les commissions sont calculées automatiquement et versées chaque vendredi (après 7 jours de protection remboursement)"
-    }
+      "autoPayoutDesc": "Les commissions sont calculées automatiquement et versées chaque vendredi (après 7 jours de protection remboursement)",
+      "autoPayoutDescOwner": "Les commissions de recrutement sont financées par le promo de chaque boutique (part de la boutique), calculées automatiquement et versées chaque vendredi (après 7 jours de protection remboursement)"
+    },
+    "sellerCommissionAsideOwner": "Part de coordination estimée sur les ventes des vendeurs : {{c}} KRW ({{rate}}% · financée par le promo boutique)"
   },
   "nav": {
     "home": "Accueil",

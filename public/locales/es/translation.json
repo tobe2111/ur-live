@@ -3612,8 +3612,10 @@
     },
     "settlementsAuto": {
       "autoPayout": "✨ Ya no es necesario solicitar",
-      "autoPayoutDesc": "Las comisiones se calculan automáticamente y se pagan cada viernes (tras 7 días de protección por reembolsos)"
-    }
+      "autoPayoutDesc": "Las comisiones se calculan automáticamente y se pagan cada viernes (tras 7 días de protección por reembolsos)",
+      "autoPayoutDescOwner": "Las comisiones de captación se financian con el promo de cada tienda (la parte de la tienda), se calculan automáticamente y se pagan cada viernes (tras 7 días de protección por reembolsos)"
+    },
+    "sellerCommissionAsideOwner": "Parte de coordinación estimada de ventas de vendedores: {{c}} KRW ({{rate}}% · financiada por el promo de la tienda)"
   },
   "nav": {
     "home": "Inicio",

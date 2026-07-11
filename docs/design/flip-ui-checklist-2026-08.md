@@ -28,6 +28,15 @@
 
 ## 4. 8월 flip UI 변경 체크리스트 (우선순위 순)
 
+### 0. ⛔ flip 선행 차단 조건 — 자가구매/공모 방어 4종 (2026-07-10 리스크 감사, 이거 없이 스위치 ON 금지)
+
+> 근거·상세: `docs/design/pre-flip-risk-audit-2026-07.md` §③. promo 20~30% 가 되는 순간 아래 구멍들의 기대수익이 양수가 됨 — **A1 스위치 ON 전에 전부 닫아야 함**(전부 커미션 적립 조건 변경 = 머니 경로 → flip 단독 세션의 1번 블록).
+
+- [ ] **0-1. 매장 공모 콤보 차단** — `use-by-seller` 사용 처리가 affiliate holding 을 **즉시 확정**(group-buy-voucher.routes.ts:184-191)하는 경로에 T+N 유예 또는 매장별 사용률/구매→사용 간격 이상치 감지 + 확정 보류.
+- [ ] **0-2. 영입 인플 본인 구매 가드 2축** — `recordIntroductionCommissionShare`(20% share, ledger.ts:356+) + `creditInfluencerStoreIntroCommission`(1.5%, influencer-store-intro-commission.ts:81-85 — 주석은 "차단"인데 코드 부재)에 구매자==인플 체크.
+- [ ] **0-3. 부계정/referrer 캡** — referrer 단위 일/월 적립 캡 + referrer 클라이언트 임의 지정(order.routes.ts:509, affiliate.routes.ts:64) 서버측 attribution 보강. IP 캡(현재 1곳 24h 3건) 확대.
+- [ ] **0-4. 커미션 레일 이상 탐지** — anomaly-detect cron 에 affiliate/referral/이용권 사용 패턴(반복·IP 군집·간격 0분) 추가 + AdminAbusePage 라벨 + (선택) 적립 자동 동결. granted 역전 clamp 누수는 회수 부채 기록 테이블로 보완.
+
 ### A. 어드민 (스위치 + 재배선 + 신설 1)
 
 - [ ] **A1. flip 스위치 ON** — [어드민] AdminPlatformSettingsPage.tsx:46-86,185-219 · admin-tools.routes.ts:306-322. `commission_budget_enabled` / `promo_funding_source=owner` / `pg_reserve_pct` / `seller_promo_field_enabled` 활성화 (⚠️ 머니 경로 — 단독 세션 + staging 실결제 필수, CLAUDE.md 룰).
@@ -45,7 +54,7 @@
 
 ### B. 에이전시 대시보드 (프레이밍 전환 + 신설 3)
 
-- [ ] **B1. 커미션 전 표면 프레이밍 전환** — [에이전시] AgencySettlementsPage.tsx · agency-settlements.routes.ts · AgencyIncentivesPage.tsx · AgencyStatsPage.tsx · AgencyPage.tsx · AgencyIntroducedStoresPage.tsx. "유어딜로부터 2%/1% 수령" → "매장 promo에서 조율 몫 수령(독립 사업자)".
+- [ ] **B1. 커미션 전 표면 프레이밍 전환** — [에이전시] AgencySettlementsPage.tsx · agency-settlements.routes.ts · AgencyIncentivesPage.tsx · AgencyStatsPage.tsx · AgencyPage.tsx · AgencyIntroducedStoresPage.tsx. "유어딜로부터 2%/1% 수령" → "매장 promo에서 조율 몫 수령(독립 사업자)". **→ 🟢 게이트드 선반영(본 커밋) — flip 시 자동 전환, 잔여=문구 검수만.** owner 문구는 `promo_funding_source==='owner'` 런타임 게이트(AgencyDelegationsPage 패턴) 뒤에만 렌더 — platform(현행 기본/미확인/로딩)은 기존 문구 byte-동일. funding_source 는 각 페이지가 이미 호출하던 응답에 additive 동봉(정산=`/api/agency/settlements` 톱레벨 · 통계=`/api/agency/profile` data · 영입/대시보드=`/api/agency/introduced-stores/summary` data → bundle 경유). AgencyIncentivesPage 는 에이전시→소속셀러 자체 보너스 표면(지급 주체=에이전시)이라 유어딜-재원 프레이밍 부재 — 전환 대상 없음(스킵).
 - [x] **B2. 3단 위임 표면 신설** — [에이전시] `store_agency_delegation` 기반 셀프/승인형[기본]/완전위임 상태·전환 UI. 현재 미구현. **→ ✅ 구현 `91c7b8f7·3f5134c3` (2026-07-10 선구현 — 표면은 라이브, 재원 프레이밍만 funding 게이트. 상단 🟢 노트 참조)**
 - [ ] **B3. vendor_commission_splits 분배 UI 신설** — [에이전시] 매장-인플 커미션 조율(에이전시가 promo 안에서 분배 설정하는 화면). 현재 미구현.
 - [x] **B4. 매장별 promo 잔액/소진 투명성 뷰 신설** — [에이전시] 조율 대상 매장의 promo 재원 현황. 현재 미구현. **→ ✅ 구현 `3f5134c3` (2026-07-10 선구현 — 표면은 라이브, 재원 프레이밍만 funding 게이트. 상단 🟢 노트 참조)**
@@ -61,7 +70,7 @@
 
 ### D. 인플루언서
 
-- [ ] **D1. 정산 재원 출처 표기 전환** — [인플] InfluencerSettlementPage.tsx:204,286. "유어딜에서 받는 돈" → "○○매장 promo에서 지급".
+- [ ] **D1. 정산 재원 출처 표기 전환** — [인플] InfluencerSettlementPage.tsx:204,286. "유어딜에서 받는 돈" → "○○매장 promo에서 지급". **→ 🟢 게이트드 선반영(본 커밋) — flip 시 자동 전환, 잔여=문구 검수만.** `/api/influencer-settlement/me` 응답에 `funding_source` additive 동봉 → owner 확인 시에만 SEO description·재원 출처 배너·딜포인트 옵션 병기·협업(:106-115) 재원 노트 렌더 — platform(현행 기본/미확인/로딩)은 기존 화면 byte-동일.
 
 ### E. 소비자
 

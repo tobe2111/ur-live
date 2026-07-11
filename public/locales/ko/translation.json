@@ -4291,8 +4291,10 @@
     },
     "settlementsAuto": {
       "autoPayout": "✨ 이제 신청이 필요 없어요",
-      "autoPayoutDesc": "영입 커미션이 자동 집계되어 매주 금요일 일괄 입금됩니다 (환불 보호를 위해 7일 경과분)"
-    }
+      "autoPayoutDesc": "영입 커미션이 자동 집계되어 매주 금요일 일괄 입금됩니다 (환불 보호를 위해 7일 경과분)",
+      "autoPayoutDescOwner": "영입 커미션은 매장 promo(매장 몫) 재원에서 자동 집계되어 매주 금요일 일괄 지급됩니다 (환불 보호를 위해 7일 경과분)"
+    },
+    "sellerCommissionAsideOwner": "소속 셀러 매출 추정 조율 몫 {{c}}원 ({{rate}}% · 매장 promo 재원)"
   },
   "nav": {
     "home": "홈",
