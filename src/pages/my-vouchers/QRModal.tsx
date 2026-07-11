@@ -320,7 +320,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               <div>
                 <p className="text-[11px] font-bold text-gray-900 dark:text-white mb-1">주의사항</p>
                 <ul className="space-y-0.5">
-                  {['사용 후 환불·취소가 불가해요', '1회용 이용권으로 중복 사용은 안 돼요', '현금 교환·잔액 환급은 불가해요', '유효기간이 지나면 자동 소멸돼요'].map((cn, i) => (
+                  {['사용 후 환불·취소가 불가해요', '1회용 이용권으로 중복 사용은 안 돼요', '현금 교환·잔액 환급은 불가해요', '유효기간이 지나면 결제 수단으로 자동 환불돼요'].map((cn, i) => (
                     <li key={i} className="flex gap-1.5 text-[11px] text-gray-400 dark:text-gray-500 leading-snug"><span aria-hidden>·</span><span>{cn}</span></li>
                   ))}
                 </ul>
