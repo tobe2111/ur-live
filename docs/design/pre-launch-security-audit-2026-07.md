@@ -65,7 +65,8 @@
 
 | 항목 | 트랙 | 상태 |
 |---|---|---|
-| R1 store_code · R2 ref 3종 · R3 게이트/덮어쓰기 버그 · R4 is_verified 복원 · R6 멱등/쿠폰/누수 | 즉시 수리(비-머니) | 승인 대기 |
+| R1 store_code · R2 ref 3종 · R3 게이트/덮어쓰기 버그 · R4 is_verified 복원 · R6 쿠폰/다품목/공구누수 | 즉시 수리(비-머니) | ✅ 구현·커밋(2026-07-11) |
+| **R6 fix1 refund.ts restoreStock 멱등화** | 즉시 수리이나 **Toss 잠금 파일** — 커밋 보류 | ⏸ **잠금 대기**: 변경은 재고복원 SQL만(Toss 게이트웨이/환불금액 무접촉), 방어심화(processRefund 에 이미 status='REFUNDED' 이중환불 가드 존재). 대표 `[UNLOCK]` 허가 시 반영 예정 |
 | R3 ADMIN_IP_WHITELIST | 대표 액션(env) | ⏳ |
 | R4 1원인증 · R1 PIN정책 · R3 2FA강제 | 정책+외부연동 | 대표 결정 |
 | R5 위치정보법 | 법무(전금법 의뢰 병합) | ⏳ |
