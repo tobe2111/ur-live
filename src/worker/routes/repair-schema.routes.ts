@@ -354,6 +354,10 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'sellers.distributor_credit_limit', sql: "ALTER TABLE sellers ADD COLUMN distributor_credit_limit INTEGER DEFAULT 0" },
     { desc: 'sellers.outstanding_balance', sql: "ALTER TABLE sellers ADD COLUMN outstanding_balance INTEGER DEFAULT 0" },
     { desc: 'sellers.credit_frozen', sql: "ALTER TABLE sellers ADD COLUMN credit_frozen INTEGER DEFAULT 0" },
+    // 🔐 2026-07-11 계좌 재검증 게이트 — 정산 계좌 변경 시 0으로 리셋, 어드민 재검증 후 1 복원.
+    //   production-drift 컬럼(seller-profile.routes.ts 에서 동적 UPDATE 로만 써 repair-schema 미등록이었음).
+    //   check-sql-column-exists 가 static UPDATE 를 분석하려면 inline DDL 에 등록 필요.
+    { desc: 'sellers.is_verified', sql: "ALTER TABLE sellers ADD COLUMN is_verified INTEGER DEFAULT 1" },
     { desc: 'wholesale_credit_ledger', sql: `CREATE TABLE IF NOT EXISTS wholesale_credit_ledger (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       distributor_seller_id INTEGER NOT NULL,
