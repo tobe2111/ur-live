@@ -223,7 +223,10 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdminRole('finance
   return c.json({ success: true })
 })
 
-adminPayoutsRoutes.patch('/admin/payouts/:id/sent', requireAdmin(), auditLog('payouts.sent'), async (c) => {
+// 🔐 2026-07-11 (사전점검 보안감사 R3): /sent 를 /approve(:185) 와 동일한 finance 게이트로 승격.
+//   기존엔 requireAdmin() 만이라 송금완료 마킹이 승인보다 약한 게이트였음(비-finance 어드민도
+//   sent 마킹 + 알림톡 발송 가능). 게이트만 변경 — 핸들러/정산 로직 byte-불변.
+adminPayoutsRoutes.patch('/admin/payouts/:id/sent', requireAdminRole('finance'), auditLog('payouts.sent'), async (c) => {
   const id = parseInt(c.req.param('id') || '', 10)
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'Invalid id' }, 400)
   const body = await c.req.json<{ transaction_id?: string; admin_memo?: string }>().catch(() => ({} as { transaction_id?: string; admin_memo?: string }))

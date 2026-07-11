@@ -452,7 +452,12 @@ adminRoutes.post('/set-login-pin', cors(), rateLimit({ action: 'admin_set_pin', 
   const user = (c as unknown as { get: (k: string) => unknown }).get('user') as { id?: string | number } | undefined;
   if (!user?.id) return c.json({ success: false, error: 'Unauthorized' }, 401);
   let pin = '';
-  try { pin = String(((await c.req.json<{ pin?: string }>()) || {}).pin || '').trim(); } catch { /* invalid json */ }
+  let currentPin = '';
+  try {
+    const body = (await c.req.json<{ pin?: string; current_pin?: string }>()) || {};
+    pin = String(body.pin || '').trim();
+    currentPin = String(body.current_pin || '').trim();
+  } catch { /* invalid json */ }
   if (!/^\d{6}$/.test(pin)) return c.json({ success: false, error: '6자리 숫자 PIN을 입력하세요' }, 400);
   // 너무 단순한 PIN 차단 (같은 숫자 6개 / 순차).
   if (/^(\d)\1{5}$/.test(pin) || ['123456', '654321', '012345', '111111'].includes(pin)) {
@@ -460,6 +465,21 @@ adminRoutes.post('/set-login-pin', cors(), rateLimit({ action: 'admin_set_pin', 
   }
   try {
     await ensureLoginPinColumn(DB);
+    // 🔐 2026-07-11 (사전점검 보안감사 R3): 이미 PIN 이 설정된 계정은 기존 PIN(current_pin) 검증
+    //   후에만 변경 가능 — 토큰 탈취자가 PIN 을 무단 재설정하는 경로 차단(단계적 재인증).
+    //   최초 설정(login_pin_hash IS NULL)은 현행 옵트인 흐름 그대로(current_pin 불요).
+    //   검증은 로그인 PIN 검증(:180)과 동일하게 verifyPassword(bcrypt) 재사용.
+    const existingRow = await DB.prepare('SELECT login_pin_hash FROM admins WHERE id = ?')
+      .bind(user.id).first<{ login_pin_hash: string | null }>();
+    if (existingRow?.login_pin_hash) {
+      if (!/^\d{6}$/.test(currentPin)) {
+        return c.json({ success: false, error: '기존 보안 PIN(current_pin)을 입력해야 변경할 수 있습니다', code: 'CURRENT_PIN_REQUIRED' }, 400);
+      }
+      const { valid: currentOk } = await verifyPassword(currentPin, existingRow.login_pin_hash);
+      if (!currentOk) {
+        return c.json({ success: false, error: '기존 보안 PIN이 올바르지 않습니다', code: 'CURRENT_PIN_MISMATCH' }, 403);
+      }
+    }
     const hash = await hashPassword(pin);
     await DB.prepare('UPDATE admins SET login_pin_hash = ? WHERE id = ?').bind(hash, user.id).run();
     return c.json({ success: true, message: '보안 PIN이 설정되었습니다. 다음 로그인부터 사용됩니다.' });
