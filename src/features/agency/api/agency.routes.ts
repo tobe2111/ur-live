@@ -744,7 +744,13 @@ app.get('/profile', async (c) => {
      FROM agencies WHERE id = ?`
   ).bind(id).first()
   if (!agency) return c.json({ success: false, error: 'Not found' }, 404)
-  return c.json({ success: true, data: agency })
+  // 💡 2026-07-11 (flip 체크리스트 B1 선반영 — additive): 재원 스위치 동봉 —
+  //   AgencyStatsPage 등 클라 프레이밍 게이트('platform' 기본 = 현행 문구 불변, 'owner' = 매장 promo 재원).
+  //   fail-soft — read 실패해도 프로필 응답 불변 (agency-delegation.routes.ts 패턴).
+  const fund = await c.env.DB.prepare(
+    `SELECT value FROM platform_settings WHERE key = 'promo_funding_source'`
+  ).first<{ value: string }>().catch(() => null)
+  return c.json({ success: true, data: { ...agency, funding_source: fund?.value || 'platform' } })
 })
 
 // ── GET /dashboard/bundle ─────────────────────────────────────

@@ -63,7 +63,9 @@ function MyRankCard() {
 }
 
 // 🛡️ 2026-05-16: 내가 영입한 매장 + 협업 deals
-function MyStoresAndDeals() {
+// 💡 2026-07-11 (flip D1 선반영): ownerFunded — promo_funding_source==='owner' 일 때만
+//   "매장 promo 재원" 프레이밍 노출. platform(현행 기본/미확인) 동안 기존 문구 byte-동일.
+function MyStoresAndDeals({ ownerFunded }: { ownerFunded: boolean }) {
   const [referred, setReferred] = useState<Array<{ id: number; name: string; referral_bonus_until: string | null; total_commission: number }>>([])
   const [deals, setDeals] = useState<Array<{ id: number; seller_id: number; seller_name: string | null; commission_pct: number; status: string; proposed_by: string; created_at: string; ends_at: string | null }>>([])
   useEffect(() => {
@@ -104,6 +106,12 @@ function MyStoresAndDeals() {
 
       <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">🤝 매장 협업 ({deals.length}건)</h3>
+        {/* 💡 flip D1: owner-펀딩일 때만 재원 출처 표기 — platform 동안 미렌더(기존 화면 불변) */}
+        {ownerFunded && (
+          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mb-2">
+            우대 커미션은 매장 promo(매장 몫) 재원에서 지급됩니다 — 유어딜 5%(인프라비)와 무관.
+          </p>
+        )}
         {deals.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-4">매장과 우대 commission 협상 가능 (예: 1.5%). 매장 홍보 가서 직접 협의하거나 사이트에서 신청.</p>
         ) : (
@@ -142,6 +150,9 @@ export default function InfluencerSettlementPage() {
   const [recent, setRecent] = useState<Attribution[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  // 💡 2026-07-11 (flip D1 선반영): 재원 게이트 — /me 응답의 funding_source 가 'owner' 일 때만
+  //   "매장 promo 재원" 프레이밍. 미확인/로딩/platform(현행 기본)은 기존 문구 byte-동일.
+  const [ownerFunded, setOwnerFunded] = useState(false)
   const [form, setForm] = useState({
     business_number: '',
     tax_type: 'other_income' as 'business_income' | 'other_income' | 'unreported',
@@ -164,6 +175,7 @@ export default function InfluencerSettlementPage() {
           const b = r.data.data.balance as Balance
           setBalance(b)
           setRecent(r.data.data.recent || [])
+          setOwnerFunded(r.data.data.funding_source === 'owner')
           setForm({
             business_number: b.business_number || '',
             tax_type: (b.tax_type as 'business_income' | 'other_income' | 'unreported') || 'other_income',
@@ -201,7 +213,8 @@ export default function InfluencerSettlementPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#121212] pb-20">
-      <SEO title="인플루언서 정산 - 유어딜" description="referral commission 잔액 / 송금 내역 / 세금 정보 관리" url="/influencer/settlement" />
+      {/* 💡 flip D1: description 만 재원 게이트 — platform(기본) 은 기존 문구 byte-동일 */}
+      <SEO title="인플루언서 정산 - 유어딜" description={ownerFunded ? '매장 promo(매장 몫) 재원 커미션 잔액 / 송금 내역 / 세금 정보 관리' : 'referral commission 잔액 / 송금 내역 / 세금 정보 관리'} url="/influencer/settlement" />
       <header className="sticky top-0 z-30 bg-white dark:bg-[#0A0A0A] border-b border-gray-100 dark:border-[#1A1A1A] px-4 py-3 flex items-center gap-2">
         <Wallet className="w-5 h-5 text-pink-500" />
         <h1 className="text-base font-bold text-gray-900 dark:text-white flex-1">인플루언서 정산</h1>
@@ -243,6 +256,17 @@ export default function InfluencerSettlementPage() {
         {/* 본인 랭킹 카드 */}
         <MyRankCard />
 
+        {/* 💡 flip D1 (게이트드 선반영): owner-펀딩 확인 시에만 재원 출처 배너 —
+            platform(현행 기본/미확인) 동안 미렌더(기존 화면 byte-동일) */}
+        {ownerFunded && (
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-3">
+            <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">커미션은 매장 promo(매장 몫)에서 지급됩니다</p>
+            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
+              각 매장이 자기 promo 재원(매장 95% 안)에서 부담하는 몫입니다 — 유어딜 5%(인프라비)와 무관합니다.
+            </p>
+          </div>
+        )}
+
         {/* 잔액 요약 */}
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-yellow-50 rounded-xl p-3 text-center">
@@ -283,7 +307,8 @@ export default function InfluencerSettlementPage() {
                 className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'deal' ? 'border-pink-500 bg-pink-50' : 'border-gray-200 bg-white dark:bg-[#0A0A0A]'}`}
               >
                 <p className="text-sm font-bold text-gray-900 dark:text-white">딜 포인트 <span className="text-pink-600">+20%</span></p>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">유어딜 결제 / 환불 X</p>
+                {/* 💡 flip D1: owner-펀딩일 때만 재원 출처 병기 — platform 은 기존 문구 byte-동일 */}
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{ownerFunded ? '매장 promo 재원 · 유어딜 결제 사용 / 환불 X' : '유어딜 결제 / 환불 X'}</p>
               </button>
             </div>
           </div>
@@ -371,7 +396,7 @@ export default function InfluencerSettlementPage() {
         </div>
 
         {/* 내가 영입한 매장 (Phase 1) + 협업 deals (Phase 2) */}
-        <MyStoresAndDeals />
+        <MyStoresAndDeals ownerFunded={ownerFunded} />
 
         {/* 최근 내역 */}
         <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl p-5">

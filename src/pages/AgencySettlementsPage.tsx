@@ -13,12 +13,15 @@ import { formatNumber } from '@/utils/format'
 export default function AgencySettlementsPage() {
   const { t } = useTranslation()
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 페칭 → useApiQuery (data+summary).
-  const { data: settle, isLoading: loading, refetch } = useApiQuery<{ data: any[]; summary: any }>(
+  // 💡 2026-07-11 (flip B1 선반영): funding_source 동봉 소비 — 'owner' 일 때만 promo 재원 문구.
+  const { data: settle, isLoading: loading, refetch } = useApiQuery<{ data: any[]; summary: any; funding: string }>(
     ['agency', 'settlements'], '/api/agency/settlements',
-    { select: (r: any) => (r?.success ? { data: r.data || [], summary: r.summary || {} } : { data: [], summary: {} }) },
+    { select: (r: any) => (r?.success ? { data: r.data || [], summary: r.summary || {}, funding: r.funding_source || 'platform' } : { data: [], summary: {}, funding: 'platform' }) },
   )
   const data = settle?.data ?? []
   const summary = settle?.summary ?? {}
+  // 미확인/로딩/platform(현행 기본) → 기존 문구 byte-동일. owner 확인 시에만 전환 문구.
+  const ownerFunded = settle?.funding === 'owner'
   const load = () => refetch()
 
   const payableAmount = summary.total_agency_commission || 0
@@ -50,7 +53,11 @@ export default function AgencySettlementsPage() {
                 {t('agency.settlementsAuto.autoPayout', { defaultValue: '✨ 이제 신청이 필요 없어요' })}
               </p>
               <p className="text-[11px] opacity-80 mt-2 max-w-[220px]">
-                {t('agency.settlementsAuto.autoPayoutDesc', { defaultValue: '영입 커미션이 자동 집계되어 매주 금요일 일괄 입금됩니다 (환불 보호를 위해 7일 경과분)' })}
+                {/* 💡 flip B1 (게이트드 선반영): owner-펀딩 확인 시에만 "매장 promo 재원" 프레이밍 —
+                    platform(현행 기본) 은 기존 문구 byte-동일 */}
+                {ownerFunded
+                  ? t('agency.settlementsAuto.autoPayoutDescOwner', { defaultValue: '영입 커미션은 매장 promo(매장 몫) 재원에서 자동 집계되어 매주 금요일 일괄 지급됩니다 (환불 보호를 위해 7일 경과분)' })
+                  : t('agency.settlementsAuto.autoPayoutDesc', { defaultValue: '영입 커미션이 자동 집계되어 매주 금요일 일괄 입금됩니다 (환불 보호를 위해 7일 경과분)' })}
               </p>
             </div>
           </div>

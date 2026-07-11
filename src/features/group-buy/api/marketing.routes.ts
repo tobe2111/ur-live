@@ -208,11 +208,19 @@ influencerApp.get('/me', async (c) => {
      LIMIT 50`
   ).bind(userId).all().catch(() => ({ results: [] }))
 
+  // 💡 2026-07-11 (flip 체크리스트 D1 선반영 — additive): 재원 스위치를 함께 반환해
+  //   클라 프레이밍을 게이트('platform' 기본 = 현행 문구 불변, 'owner' = 매장 promo 재원 문구).
+  //   fail-soft — 이 read 가 실패해도 정산 응답을 절대 막지 않음 (agency-delegation.routes.ts 패턴).
+  const fund = await DB.prepare(
+    `SELECT value FROM platform_settings WHERE key = 'promo_funding_source'`
+  ).first<{ value: string }>().catch(() => null)
+
   return c.json({
     success: true,
     data: {
       balance: balance || { pending_amount: 0, available_amount: 0, total_paid_out: 0 },
       recent: recent.results || [],
+      funding_source: fund?.value || 'platform',
     },
   })
 })

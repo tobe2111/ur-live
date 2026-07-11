@@ -4291,8 +4291,10 @@
     },
     "settlementsAuto": {
       "autoPayout": "✨ No request needed",
-      "autoPayoutDesc": "Intro commissions are aggregated automatically and paid out every Friday (after a 7-day refund window)"
-    }
+      "autoPayoutDesc": "Intro commissions are aggregated automatically and paid out every Friday (after a 7-day refund window)",
+      "autoPayoutDescOwner": "Intro commissions are funded by each store's promo (the store's share), aggregated automatically and paid out every Friday (after a 7-day refund window)"
+    },
+    "sellerCommissionAsideOwner": "Estimated coordination share from managed sellers: {{c}} KRW ({{rate}}% · funded by store promo)"
   },
   "nav": {
     "home": "Home",
