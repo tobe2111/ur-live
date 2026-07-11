@@ -15,6 +15,7 @@ import { isKorea } from '@/config/region'
 import { getTempCartItem, clearTempCartItem } from '@/utils/auth'
 import { toast } from '@/hooks/useToast'
 import { safeInternalPath } from '@/utils/safe-internal-path'
+import BrandLoader from '@/components/brand/BrandLoader'
 
 export default function KakaoCallbackPage() {
   const navigate = useNavigate()
@@ -183,14 +184,13 @@ export default function KakaoCallbackPage() {
     handleCallback()
   }, [])
 
+  // 🚑 2026-07-10 (로딩 전수조사 후속 — 대표 "다 웬만해선 하고싶은데"): 카카오 콜백 전용 스플래시
+  //   (한글 텍스트 "유어딜" + 자체 keyframes 바 — 마운트마다 0부터 리셋, 유일한 비-BrandLoader 잔존)
+  //   → BrandLoader 로 통일. UR·DEAL 워드마크 + 전역 위상동기라 목적지(홈 등)의 로더와 끊김 없이 이어짐.
+  //   ⚠️ 잠긴 로직(seller_username 저장·admin/agency user_type 보존)은 위 effect — byte-불변, 로딩 마크업만.
   return (
-    <div role="status" aria-live="polite" className="min-h-[100dvh] bg-white dark:bg-[#0a0a0a] flex flex-col items-center justify-center gap-[22px]">
-      <div className="text-[27px] font-bold tracking-[-0.035em] text-gray-900 dark:text-white">유어딜</div>
-      <div className="relative w-32 h-[3px] rounded-full overflow-hidden bg-gray-900/[0.08] dark:bg-white/10">
-        <div className="ur-splash-seg absolute inset-y-0 left-0 w-2/5 rounded-full bg-gray-900 dark:bg-white" />
-      </div>
-      <p className="text-[12.5px] font-medium text-gray-900/40 dark:text-white/40">로그인 처리 중이에요</p>
-      <style>{`@keyframes ur-splash-bar{0%{transform:translateX(-120%)}100%{transform:translateX(320%)}}.ur-splash-seg{animation:ur-splash-bar 1.15s cubic-bezier(0.4,0,0.2,1) infinite}@media(prefers-reduced-motion:reduce){.ur-splash-seg{animation:none;width:100%;opacity:0.55}}`}</style>
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0a0a0a]">
+      <BrandLoader fullScreen label="로그인 처리 중이에요" />
     </div>
   )
 }
