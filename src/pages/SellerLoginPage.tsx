@@ -9,6 +9,7 @@ import { Mail, Lock, Eye, EyeOff, Users, Package, TrendingUp, ArrowRight, Chevro
 import TurnstileWidget from '@/components/auth/TurnstileWidget'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { safeInternalPath } from '@/utils/safe-internal-path'
+import { showKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
 
 export default function SellerLoginPage() {
   const { t } = useTranslation()
@@ -175,6 +176,9 @@ export default function SellerLoginPage() {
             {/* 🔗 카카오 로그인 = 기본(권장). 카카오 한 번으로 셀러 권한 자동 복원/신청 */}
             <a
               href={`/auth/kakao/start?redirect=${encodeURIComponent(returnUrl || '/seller')}&intent=seller`}
+              /* 🚑 2026-07-10 (로딩 전수조사 후속): 클릭~카카오 이동 사이 무반응 구간에 공용 브랜드
+                 오버레이(순수 DOM — navigation 방해 0) — 소비자 LoginPage 와 동일 UX. 라이트 고정 표면. */
+              onClick={() => showKakaoLoadingOverlay({ forceLight: true })}
               className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#FEE500] hover:bg-[#FDD800] active:opacity-90 text-[#191600] text-[15px] font-bold rounded-2xl transition-colors no-underline shadow-sm"
             >
               <span className="text-lg">💬</span>
