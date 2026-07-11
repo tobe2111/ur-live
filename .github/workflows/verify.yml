@@ -20,7 +20,12 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
+      # fetch-depth: 0 — file-size ratchet 의 --changed-only 가 origin/main 과의 merge-base 를
+      # 계산해야 함 (기본 shallow(depth 1) clone 엔 main 이력이 없어 merge-base 불가 → 전수 폴백돼
+      # main 드리프트로 무관한 PR 이 실패하는 원래 문제가 재발). PR/push 양쪽 이벤트 모두 커버.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -180,8 +185,13 @@ jobs:
       #   대형 파일이 더 커지면 차단 → 줄이는 건 OK, 키우는 건 금지(god 파일이 다시 못 자람).
       #   대형 파일을 더 줄였으면 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신.
       #   우회: 파일 상단 `file-size-ok` 주석 또는 커밋 메시지 [SKIP_SIZE]. 규칙: CLAUDE.md 영구 방어선.
+      # 🛡️ 2026-07-11: `-a`(전수) → `--changed-only`(merge-base(origin/main, HEAD)..HEAD 변경분만).
+      #   main 자체 머지로 baseline 동결 파일이 자라면(RestaurantMapPage 714→768→769) 전수 모드는
+      #   **무관한 PR 을 건드리지도 않은 파일로 실패**시켜 baseline 정렬 잡일 커밋이 반복됨(당일 3회).
+      #   PR 은 자기 변경 파일만 책임 — repo 전체 드리프트는 audit-gate(-a)/rebaseline 담당.
+      #   merge-base 는 위 checkout fetch-depth: 0 이 보장 (실패 시 스크립트가 전수 폴백 + 안내).
       - name: File-size ratchet (god file guard, strict)
-        run: node scripts/check-file-size.mjs -a -s
+        run: node scripts/check-file-size.mjs --changed-only -s
         continue-on-error: false
 
       # 🛡️ 2026-06-17: 듀얼 로그인(소비자↔대시보드) 재발 방지 — 현재 위반 0 → strict.
