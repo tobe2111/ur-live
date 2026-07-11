@@ -7,6 +7,7 @@
 // ============================================================
 
 import { Hono } from 'hono';
+import { getCookie } from 'hono/cookie';
 import { z } from 'zod';
 import { rateLimit } from '../middleware/rate-limit';
 import { tracedEndpoint } from '../utils/request-tracing';
@@ -506,7 +507,21 @@ ordersRouter.post('/', rateLimit({ action: 'create_order', max: 10, windowSec: 6
     }
 
     // 제휴 마케팅 수수료 추적 (ref 파라미터)
-    const referrerId = body.referrer_id || body.ref
+    // 🧭 2026-07-11 (감사 §R2 어트리뷰션 생존성): body 에 ref 가 없을 때만 `affiliate_ref` 쿠키를
+    //   fallback 으로 읽음 — 클라 localStorage 가 유실돼도(인앱 브라우저 → 외부 브라우저 재방문 등)
+    //   affiliate-track.ts 가 심은 SameSite=Lax 쿠키는 이미 서버로 전송되고 있었는데 안 읽고 있었음.
+    //   검증은 클라(storeAffiliateRef :14)와 동일: 숫자 1~12자리 + 본인(user_id) 구매 skip.
+    //   ⚠️ body 에 referrer_id/ref 가 있으면 기존과 byte-동일(순수 additive fallback SOURCE).
+    //   커미션 계산/적립 로직(affiliate-credit.ts 등)은 무변경 — intent 저장 입력값만 보강.
+    let referrerId = body.referrer_id || body.ref
+    if (!referrerId) {
+      try {
+        const cookieRef = getCookie(c, 'affiliate_ref')
+        if (cookieRef && /^\d{1,12}$/.test(cookieRef) && cookieRef !== String(userId)) {
+          referrerId = cookieRef
+        }
+      } catch { /* 쿠키 파싱 실패 — fallback 없이 기존 동작 */ }
+    }
     if (referrerId && referrerId !== String(userId)) {
       // 🏁 2026-06-12 (전 플로우 감사 🔴): 기존 내부 fetch('/api/affiliate/track') 는
       //   ① 인증 헤더 없음 → requireAuth 401 ② 주문이 아직 PENDING → 상태검사 차단 — 이중 사망으로
