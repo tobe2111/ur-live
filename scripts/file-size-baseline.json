@@ -66,7 +66,7 @@
   "src/worker/index.ts": 2369,
   "src/worker/middleware/auth.ts": 737,
   "src/worker/openapi.ts": 1544,
-  "src/worker/repositories/order.repository.ts": 746,
+  "src/worker/repositories/order.repository.ts": 764,
   "src/worker/routes/curator.routes.ts": 1475,
   "src/worker/routes/internal-admin-tools.routes.ts": 1327,
   "src/worker/routes/order.routes.ts": 1188,
