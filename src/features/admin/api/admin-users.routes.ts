@@ -13,6 +13,10 @@ import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { executeQuery, executeRun } from '@/worker/utils/database';
 import { writeAuditLog } from '@/worker/middleware/admin-security';
+// 🔐 2026-07-11 (사전점검 보안감사 R3 ③): 딜 선물(최대 1,000만딜 발행 — 돈 액션) require2FA — 옵트인
+//   (2FA 미등록 관리자는 no-op 통과). adminApp 체인의 requireAdmin() 이 먼저 user 컨텍스트를
+//   세팅하므로 require2FA 는 admins 테이블(totp_secret/totp_enabled)로 정상 해석된다.
+import { require2FA } from '@/worker/middleware/require-2fa';
 import { intParam } from '@/shared/pagination'
 
 export const adminUsersRoutes = new Hono<{ Bindings: Env }>();
@@ -172,7 +176,7 @@ adminUsersRoutes.patch('/users/:id/status', cors(), async (c) => {
 //   4. push 알림 fire-and-forget
 //   5. audit log
 // ============================================================
-adminUsersRoutes.post('/users/:id/gift-deal', cors(), async (c) => {
+adminUsersRoutes.post('/users/:id/gift-deal', cors(), require2FA(), async (c) => {
   try {
     const DB = c.env.DB;
     const userId = c.req.param('id');

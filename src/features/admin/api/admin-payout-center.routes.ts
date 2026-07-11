@@ -11,6 +11,10 @@ import { Hono } from 'hono'
 import type { Env } from '../../../worker/types/env'
 import { safeError } from '../../../worker/utils/safe-error'
 import { createDashboardNotification } from '../../notifications/api/dashboard-notifications.routes'
+// 🔐 2026-07-11 (사전점검 보안감사 R3 ③): 돈 액션(입금완료 마킹 3종) require2FA — 옵트인
+//   (2FA 미등록 관리자는 no-op 통과). adminApp 체인의 requireAdmin() 이 먼저 user 컨텍스트를
+//   세팅하므로 require2FA 는 admins 테이블(totp_secret/totp_enabled)로 정상 해석된다.
+import { require2FA } from '../../../worker/middleware/require-2fa'
 
 const payoutCenterRoutes = new Hono<{ Bindings: Env }>()
 // 인증: adminApp 체인(CORS+IP whitelist+requireAdmin+audit)이 처리 — /api/admin/* 마운트 전제.
@@ -110,7 +114,7 @@ payoutCenterRoutes.get('/', async (c) => {
 })
 
 // ── 셀러 정산 입금완료 ──
-payoutCenterRoutes.patch('/seller/:id/paid', async (c) => {
+payoutCenterRoutes.patch('/seller/:id/paid', require2FA(), async (c) => {
   try {
     const DB = c.env.DB
     await ensurePayoutCols(DB)
@@ -150,7 +154,7 @@ payoutCenterRoutes.patch('/seller/:id/paid', async (c) => {
 })
 
 // ── 큐레이터 환급 입금완료 / 반려 ──
-payoutCenterRoutes.patch('/curator/:id/paid', async (c) => {
+payoutCenterRoutes.patch('/curator/:id/paid', require2FA(), async (c) => {
   try {
     const DB = c.env.DB
     await ensurePayoutCols(DB)
@@ -218,7 +222,7 @@ payoutCenterRoutes.patch('/curator/:id/reject', async (c) => {
 })
 
 // ── 에이전시 영입 커미션 일괄 지급 (T+7 성숙분) ──
-payoutCenterRoutes.post('/agency/:agencyId/paid', async (c) => {
+payoutCenterRoutes.post('/agency/:agencyId/paid', require2FA(), async (c) => {
   try {
     const DB = c.env.DB
     await ensurePayoutCols(DB)

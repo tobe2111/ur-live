@@ -57,7 +57,9 @@ async function generateTOTP(secretBase32: string, timestamp: number): Promise<st
   return code.toString().padStart(6, '0')
 }
 
-async function verifyTOTP(secretBase32: string, code: string): Promise<boolean> {
+// 🔐 2026-07-11 (사전점검 보안감사 R3 ④): admin 로그인 TOTP 게이트(admin.routes.ts)가 재사용하도록 export.
+//   검증 로직 자체는 불변(±30s 창) — export 키워드만 추가.
+export async function verifyTOTP(secretBase32: string, code: string): Promise<boolean> {
   if (!/^\d{6}$/.test(code)) return false
   const now = Math.floor(Date.now() / 1000)
   for (const offset of [-30, 0, 30]) {
