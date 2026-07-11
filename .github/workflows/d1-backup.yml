@@ -1,0 +1,90 @@
+name: D1 Weekly Backup (GitHub Actions)
+
+# 🛡️ 2026-07-11: D1 독립 2차 백업 경로 (docs/design/pre-flip-risk-audit-2026-07.md §④)
+#
+# 배경: 확정 안전망은 D1 Time Travel(30일)뿐. Worker cron R2 덤프(d1-backup.ts,
+#       일요일 20:00 UTC)는 BACKUP_BUCKET 대시보드 바인딩 여부 미확정.
+#       → Worker 내부 덤프와 **완전 독립된** GitHub Actions 주간 export 경로 추가.
+#
+# 스케줄: 수요일 20:00 UTC (목 05:00 KST) — Worker cron(일요일)과 요일 분산.
+# 보존:   GH artifact 90일 (gzip 압축).
+# 알림:   실패 시 워크플로 자체가 빨갛게 뜸 + Discord(DISCORD_WEBHOOK_URL 있으면,
+#         d1-migrate.yml 과 동일 패턴).
+#
+# 필요 GitHub Secrets (기존 워크플로들과 동일 — 신규 등록 불필요):
+#   - CLOUDFLARE_API_TOKEN  (D1 Read 권한 포함)
+#   - CLOUDFLARE_ACCOUNT_ID
+#   - DISCORD_WEBHOOK_URL   (선택 — 실패 알림)
+#
+# 복구: artifact 다운로드 → gunzip → wrangler d1 execute (docs/D1_RESTORE_RUNBOOK.md)
+# ⚠️ 머지 후 workflow_dispatch 로 1회 수동 실행해 실제 export 동작 검증할 것.
+
+on:
+  schedule:
+    - cron: '0 20 * * 3' # 수요일 20:00 UTC (Worker cron 은 일요일 20:00 UTC — 분산)
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30 # export 가 대용량일 수 있음 — 넉넉히
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verify secrets
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "❌ CLOUDFLARE_API_TOKEN 미설정 — GitHub repo Settings → Secrets 에 등록 필요 (d1-migrate.yml 과 동일 secret)"
+            exit 1
+          fi
+          if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "❌ CLOUDFLARE_ACCOUNT_ID 미설정 — GitHub repo Settings → Secrets 에 등록 필요 (d1-migrate.yml 과 동일 secret)"
+            exit 1
+          fi
+
+      - name: Export D1 (remote)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # DB 이름 SSOT: wrangler.toml:33 (database_name = "toss-live-commerce-db")
+          DB_NAME="toss-live-commerce-db"
+          echo "==> wrangler d1 export $DB_NAME (--remote)"
+          npx wrangler@3 d1 export "$DB_NAME" --remote --output=backup.sql
+          ls -la backup.sql
+          # 빈/깨진 덤프 방어 — schema 문장이 하나도 없으면 실패 처리
+          if ! grep -qi 'CREATE TABLE' backup.sql; then
+            echo "❌ backup.sql 에 CREATE TABLE 없음 — export 결과 의심, 실패 처리"
+            exit 1
+          fi
+
+      - name: Compress
+        run: |
+          STAMP=$(date -u +%Y%m%d)
+          gzip -9 backup.sql
+          mv backup.sql.gz "d1-backup-${STAMP}.sql.gz"
+          ls -la d1-backup-*.sql.gz
+          echo "STAMP=${STAMP}" >> "$GITHUB_ENV"
+
+      - name: Upload artifact (90일 보존)
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-backup-${{ env.STAMP }}
+          path: d1-backup-*.sql.gz
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Discord notification (실패 시)
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H 'Content-Type: application/json' \
+              -d "{\"content\":\"🚨 D1 weekly backup (GitHub Actions) FAILED — run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+              "$DISCORD_WEBHOOK_URL" || true
+          fi
