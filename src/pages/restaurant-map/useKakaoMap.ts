@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import { escapeHtml } from '@/shared/utils/html'
 import { formatNumber } from '@/utils/format'
 import { cfImage } from '@/utils/cf-image'
+import { distanceKm } from './utils'
 import type { Restaurant, KakaoPlace } from './types'
 
 // 🗺️ 2026-06-22 (대표 — 핀 아이콘 변경, "흑백일 필요 없음"): 카테고리별 핀 링 색상.
@@ -146,7 +147,10 @@ export function useKakaoMap({
   const initMap = useCallback(() => {
     if (!sdkLoaded || !mapRef.current || !window.kakao?.maps) return
 
-    const center = withCoords.length > 0
+    // 🏘️ 생성 시점 중심 = 내 위치(캐시 포함) 우선 → 데이터 도착 전에도 첫 프레임부터 내 동네(점프 없음).
+    const center = (userLoc && Number.isFinite(userLoc.lat) && Number.isFinite(userLoc.lng))
+      ? new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng)
+      : withCoords.length > 0
       ? new window.kakao.maps.LatLng(withCoords[0].restaurant_lat, withCoords[0].restaurant_lng)
       : new window.kakao.maps.LatLng(37.5665, 126.978)
 
@@ -462,9 +466,24 @@ export function useKakaoMap({
     //   내 위치(캐시 포함) 있으면 그 중심 level 6(동네·구), 없으면 가장 가까운/첫 딜 중심 level 7.
     //   전국 뷰는 사용자가 줌아웃하면 서버 집계(레이어 3)가 가볍게 커버.
     if (!didInitialFit.current) {
-      if (userLoc && Number.isFinite(userLoc.lat) && Number.isFinite(userLoc.lng)) {
-        mapInstance.current.setCenter(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
-        mapInstance.current.setLevel(6)
+      // ⚠️ userLoc 분기도 딜 도착 후에만 확정 — 데이터 이전에 fit 을 확정하면 '가까운 딜 폴백'이 영영 안 돎.
+      if (userLoc && Number.isFinite(userLoc.lat) && Number.isFinite(userLoc.lng) && withCoords.length > 0) {
+        // 🏘️ 내 동네(level 6, 반경 ~3km)에 딜이 없으면 텅 빈 첫 화면 — 가장 가까운 딜까지 화면에 포함(자동 폴백).
+        let nearest: Restaurant | null = null
+        let nearestKm = Infinity
+        for (const r of withCoords) {
+          const d = distanceKm(userLoc.lat, userLoc.lng, r.restaurant_lat, r.restaurant_lng)
+          if (d < nearestKm) { nearestKm = d; nearest = r }
+        }
+        if (nearest && nearestKm > 3) {
+          const b = new window.kakao.maps.LatLngBounds()
+          b.extend(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
+          b.extend(new window.kakao.maps.LatLng(nearest.restaurant_lat, nearest.restaurant_lng))
+          mapInstance.current.setBounds(b)
+        } else {
+          mapInstance.current.setCenter(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
+          mapInstance.current.setLevel(6)
+        }
         didInitialFit.current = true
       } else if (withCoords.length >= 1) {
         mapInstance.current.setCenter(new window.kakao.maps.LatLng(withCoords[0].restaurant_lat, withCoords[0].restaurant_lng))
