@@ -1,5 +1,12 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-12 — 전 표면 로딩 스윕 + "앞으로의 페이지" 로딩 표준화 (대표 "전체적으로도 봐봐 + 앞으로 만들 페이지들도 이상적이어야")
+- **스윕(라이브 13표면)**: 콘텐츠 완성 0.4~1.3s(warm) — 병적 표면 0. 잔여 변수는 콜드 콜로 HTML TTFB(SSR self-fetch, 콜로별 edge 캐시) — 운영 레버 `CACHE_KV` 전역 캐시 바인딩 권장(2026-06-19 audit log 참조).
+- **표준화**: `docs/LOADING_ARCHITECTURE.md` "✅ 새 페이지 로딩 체크리스트" 신설(로더=BrandLoader·시드 동기소비·prefetch 세계일치·청크표면 등재·쿼리 제자리갱신·probe 실측) + CLAUDE.md 새 페이지 체크리스트 7번 갱신.
+- **도구**: `scripts/probe-loading.mjs`(표면당 TTFB/로더구간/콘텐츠/스켈레톤 1줄 + 로더 재등장 ⚠️ 감지) 레포 커밋.
+- **가드**: loader-continuity 에 chunk-surface 동기 검사 신설 — 생성기 ROUTES ↔ worker chunkSurface 키셋 불일치 차단(negative test 검증).
+
+
 ## ✅ 2026-07-12 — 상세 하드로드 청크 병렬화 (대표 "/group-buy/2609 로딩 아쉬워")
 실측: 로더 구간(~1.2s) 대부분 = lazy 페이지 청크 직렬 다운로드. vite manifest → 라우트별 청크 맵 생성(`generate-route-chunk-map.mjs`, build:worker 선두) → 워커가 7개 표면에 modulepreload 주입(엔트리와 병렬). 상세: CLAUDE.md 로딩 audit log 2026-07-12. ⚠️ 배포 후 라이브 실측으로 단축 확인.
 
