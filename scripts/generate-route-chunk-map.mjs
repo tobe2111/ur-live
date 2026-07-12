@@ -8,7 +8,7 @@
  *   워커가 해당 라우트의 청크를 `<link rel="modulepreload">` 로 HTML head 에 주입하면
  *   엔트리와 **병렬** 다운로드 → 로더 구간이 실행 시간 수준으로 단축.
  *
- * 동작: dist/client/.vite/manifest.json(vite build --manifest)을 읽어
+ * 동작: dist/client/.vite/manifest.json(vite 의 build.manifest 출력)을 읽어
  *   [라우트 표면 → 페이지 소스 모듈]의 import 폐쇄(closure)에서 엔트리(index.html) 폐쇄를 뺀
  *   잔여 청크(js+css)를 src/worker/generated/route-chunk-map.ts 로 출력.
  *   매니페스트가 없으면(로컬 워커 단독 빌드) 빈 맵으로 출력 — 주입이 조용히 생략될 뿐 안전.
