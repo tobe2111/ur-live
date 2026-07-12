@@ -252,9 +252,14 @@ export async function creditOrderCommissions(
   let promoOwnerFunded = false
   // 🥇 Q10 기본: agency_intro 최우선("에이전시 1% 보호" 자문) — platform_settings 로 조정 가능.
   let priorityKeys: string[] = ['agency_intro']
+  // 💸 2026-07-12 파일럿 매장 스코프 — 전역 스위치 OFF 여도 지정 매장 주문만 flip 검증(프로덕션 실카드).
+  let pilotIds = new Set<number>()
   try {
     gateOn = (await readSetting(DB, 'commission_budget_enabled')) === 'true'
-    if (gateOn) {
+    const { readFlipPilotSellerIds } = await import('./flip-pilot')
+    pilotIds = await readFlipPilotSellerIds(DB)
+    // 전역 ON 또는 파일럿 존재 시에만 flip 파라미터 조회(그 외 = 현행 경로).
+    if (gateOn || pilotIds.size > 0) {
       const pg = Number(await readSetting(DB, 'pg_reserve_pct'))
       if (Number.isFinite(pg) && pg >= 0 && pg <= 100) pgReservePct = pg
       promoOwnerFunded = (await readSetting(DB, 'promo_funding_source')) === 'owner'
@@ -268,19 +273,30 @@ export async function creditOrderCommissions(
     gateOn = false // 설정 조회 실패 → 현행 경로(안전)
   }
 
-  if (!gateOn) {
+  const isPilot = (o: OrderLike): boolean => o.seller_id != null && pilotIds.has(Number(o.seller_id))
+
+  // 전역 OFF + 파일럿 해당 없음 = 완전 현행(byte-동일).
+  if (!gateOn && !orders.some(isPilot)) {
     await legacyCredit(DB, orders, opts)
     return
   }
 
+  // 주문별 라우팅: 전역 ON 또는 파일럿 매장 → 예산 아비터(파일럿은 owner 펀딩 강제). 그 외 → 현행.
+  const legacyOrders: OrderLike[] = []
   for (const o of orders) {
-    await budgetedCreditForOrder(DB, o, pgReservePct, promoOwnerFunded, priorityKeys, opts).catch(() => { /* fail-soft — 다음 주문 계속 */ })
+    if (gateOn || isPilot(o)) {
+      const ownerFunded = isPilot(o) ? true : promoOwnerFunded
+      await budgetedCreditForOrder(DB, o, pgReservePct, ownerFunded, priorityKeys, opts).catch(() => { /* fail-soft — 다음 주문 계속 */ })
+    } else {
+      legacyOrders.push(o)
+    }
   }
-  // 공급자(B2B) 정산 — 플랫폼 부담 아님(예산 무관), 기존대로 항상(only 필터만 존중).
+  if (legacyOrders.length) await legacyCredit(DB, legacyOrders, opts) // supplier 포함
+  // 공급자(B2B) 정산 — budgeted 경로 주문분(legacyCredit 은 legacyOrders 만 처리). 플랫폼 부담 아님(예산 무관).
   if (axisOn(opts, 'supplier')) try {
     const { creditSupplierOnOrder } = await import('../../features/supply/api/supply-settlement')
     for (const o of orders) {
-      await creditSupplierOnOrder(DB, Number(o.id))
+      if (gateOn || isPilot(o)) await creditSupplierOnOrder(DB, Number(o.id))
     }
   } catch { /* fail-soft */ }
 }

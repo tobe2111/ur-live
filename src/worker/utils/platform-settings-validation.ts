@@ -58,6 +58,13 @@ function priorityAxes(value: string): string | null {
   return bad.length === 0 ? null : `알 수 없는 축: ${bad.join(', ')} (허용: ${COMMISSION_AXES.join(', ')} — 쉼표 구분, 빈 값=우선 없음)`
 }
 
+/** CSV of 양의 정수 (예: seller_ids "1234,5678") — 빈 값 허용(없음). */
+function csvPosInts(value: string): string | null {
+  if (value.trim() === '') return null
+  const bad = value.split(',').map((s) => s.trim()).filter(Boolean).filter((s) => !/^\d+$/.test(s) || Number(s) <= 0)
+  return bad.length === 0 ? null : `양의 정수 CSV 여야 함 (잘못된 항목: ${bad.join(', ')})`
+}
+
 /** key → 검증 규칙. read-site 주석은 규칙 근거(범위 출처). */
 const SETTING_VALIDATORS: Record<string, Validator> = {
   // ── boolean 스위치 (read-site === 'true') ──
@@ -70,6 +77,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   // ── enum ──
   promo_funding_source: enumOf(['platform', 'owner']),           // ledger.ts:482 등 === 'owner'
   commission_priority_axes: priorityAxes,                        // order-commissions.ts:257 CSV parse
+  flip_pilot_seller_ids: csvPosInts,                             // flip-pilot.ts (전역 스위치 OFF 여도 지정 매장만 flip 검증)
   influencer_payout_frequency: enumOf(['weekly', 'biweekly', 'monthly']), // AdminCommissionSettingsPage select
 
   // ── 비율(%) 0~100 ──
@@ -115,6 +123,9 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   pin_max_per_user: nonNegNum,
   hosting_max_active: nonNegNum,
   seller_referral_bonus_months: nonNegNum,
+  affiliate_use_mature_min_hours: nonNegNum,          // affiliate-credit.ts §0-1 (0=즉시확정 현행)
+  affiliate_referrer_daily_cap_krw: nonNegNum,        // affiliate-credit.ts §0-3 (0=무제한)
+  affiliate_referrer_monthly_cap_krw: nonNegNum,      // affiliate-credit.ts §0-3 (0=무제한)
 
   // ── 일/날짜 ──
   refund_window_days: intRange(0, 365),

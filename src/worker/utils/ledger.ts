@@ -487,7 +487,13 @@ export async function debitOwnerPromoForOrder(
   try {
     const src = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'promo_funding_source'")
       .first<{ value: string }>().catch(() => null)
-    if (src?.value !== 'owner') return 0
+    let ownerFunded = src?.value === 'owner'
+
+    // 💸 2026-07-12 파일럿 매장 스코프 — 전역이 platform 이어도 지정 매장 주문이면 owner 되갚기(검증용).
+    //   전역 owner 면 pilot 조회 생략(perf). 전역 platform + 파일럿 없음 = 즉시 현행(return 0).
+    const { readFlipPilotSellerIds } = await import('./flip-pilot')
+    const pilot = ownerFunded ? new Set<number>() : await readFlipPilotSellerIds(DB)
+    if (!ownerFunded && pilot.size === 0) return 0
 
     let orderId = params.orderId
     if (!orderId && params.voucherId) {
@@ -496,6 +502,18 @@ export async function debitOwnerPromoForOrder(
       orderId = v?.order_id ?? null
     }
     if (!orderId || !params.ownerAccount) return 0
+
+    // 파일럿 판정 — ownerAccount('merchant:{id}'/'seller:{id}') 또는 orders.seller_id 가 파일럿 목록에.
+    if (!ownerFunded) {
+      const m = /(?:merchant|seller):(\d+)/.exec(params.ownerAccount)
+      let sellerId = m ? Number(m[1]) : null
+      if (sellerId == null || !pilot.has(sellerId)) {
+        const row = await DB.prepare('SELECT seller_id FROM orders WHERE id = ?')
+          .bind(orderId).first<{ seller_id: number | null }>().catch(() => null)
+        if (row?.seller_id != null) sellerId = Number(row.seller_id)
+      }
+      if (!(sellerId != null && pilot.has(sellerId))) return 0
+    }
 
     await ensureLedgerTable(DB)
     const ref = `order:${orderId}:promo`
