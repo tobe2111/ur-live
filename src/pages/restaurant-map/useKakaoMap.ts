@@ -36,6 +36,15 @@ function centerOffsetForSheet(snap: 'peek' | 'mid' | 'full' | 'card'): number {
   return Math.max(0, H / 2 - visibleCenter)
 }
 
+/** 🌍 2026-07-08 (레이어 3): 서버 집계 셀 — 줌아웃에선 개별 딜 대신 격자별 개수·최저가·대표사진만 렌더. */
+export interface ServerCluster {
+  lat: number
+  lng: number
+  count: number
+  min_price: number
+  image_url: string | null
+}
+
 interface UseKakaoMapParams {
   kr: boolean
   /** 리스트 모드 등 지도를 안 쓰는 화면에선 false → Kakao SDK 미로드(홈 피드 perf). */
@@ -51,6 +60,8 @@ interface UseKakaoMapParams {
   favorites: number[]
   /** 현재 바텀시트 snap — 핀 클릭 시 보이는 영역 중앙 오프셋 계산에 사용. */
   sheetSnap?: 'peek' | 'mid' | 'full'
+  /** 🌍 줌아웃 시 서버 집계(레이어 3). non-null·비어있지 않으면 개별 핀 대신 이것만 렌더. */
+  serverClusters?: ServerCluster[] | null
 }
 
 export function useKakaoMap({
@@ -66,6 +77,7 @@ export function useKakaoMap({
   liveSellerIds,
   favorites,
   sheetSnap = 'peek',
+  serverClusters = null,
 }: UseKakaoMapParams) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<any>(null)
@@ -74,6 +86,13 @@ export function useKakaoMap({
   sheetSnapRef.current = sheetSnap
   const markersRef = useRef<any[]>([])
   const overlaysRef = useRef<any[]>([])
+  // ⚡ 2026-07-08 (대표 "매장 많아지니 렉" — 레이어 1/4): 선택 변경은 전량 재빌드 대신 해당 핀만 직접 restyle.
+  //   initMap 은 selectedIdRef 로 현재값만 읽고(의존성 X), 별도 effect 가 registry 의 DOM 을 갱신.
+  const selectedIdRef = useRef<number | null>(null)
+  selectedIdRef.current = selected?.id ?? null
+  const pinElsRef = useRef(new Map<number, HTMLElement>())
+  // ⚡ 뷰포트 컬링: 지도 idle(이동/줌 멈춤)마다 rev 를 올려 보이는 영역만 다시 그림(컬링 덕에 회당 수십 개 = 저렴).
+  const [viewportRev, setViewportRev] = useState(0)
   // 🛡️ 2026-06-20 (대표 — 줌 전수조사): 초기 fit(setBounds/setLevel)은 데이터 로드 후 '한 번만'.
   //   기존엔 initMap 의존성에 mapLevel 이 있어 zoom_changed→setMapLevel→initMap 재실행→fit 재호출로
   //   매 줌마다 setLevel(5)/setBounds 가 사용자 줌을 원위치시켜 "줌이 안 먹는" 근본 원인이었음.
@@ -151,6 +170,10 @@ export function useKakaoMap({
       window.kakao.maps.event.addListener(mapInstance.current, 'zoom_changed', () => {
         if (mapInstance.current) setMapLevel(mapInstance.current.getLevel())
       })
+      // ⚡ 2026-07-08 (레이어 1 — 뷰포트 컬링): 이동/줌 멈춤(idle)마다 보이는 영역 기준으로 다시 그림.
+      window.kakao.maps.event.addListener(mapInstance.current, 'idle', () => {
+        setViewportRev(v => v + 1)
+      })
       // 🛡️ 2026-06-20: 커스텀 wheel 핸들러 제거 — 네이티브 scrollwheel 줌(위 옵션)에 위임(커서기준·트랙패드 핀치 부드럽게).
     }
 
@@ -158,10 +181,63 @@ export function useKakaoMap({
     markersRef.current = []
     overlaysRef.current.forEach(o => o.setMap(null))
     overlaysRef.current = []
+    pinElsRef.current.clear()
+
+    // 🌍 레이어 3 — 줌아웃 서버 집계 모드: 페이지가 집계를 내려주면 개별 핀/로컬 클러스터 대신 집계 버블만.
+    //   전국 뷰에서도 오버레이 수가 격자 수(수십 개)로 고정 → 매장 수만 개여도 지도 가벼움.
+    const aggMode = !!(serverClusters && serverClusters.length > 0)
+
+    // ⚡ 레이어 1 — 뷰포트 컬링: 보이는 지도 영역(+35% 마진)의 딜만 오버레이 생성.
+    //   맵 생성 직후(bounds 미확정 첫 run)엔 전체 렌더 → 곧 idle 이 재컬링. 컬링 후 회당 수십 개 = 저렴.
+    let visible = withCoords
+    if (!aggMode) {
+      try {
+        const b = mapInstance.current.getBounds()
+        if (b) {
+          const sw = b.getSouthWest(), ne = b.getNorthEast()
+          const mLat = (ne.getLat() - sw.getLat()) * 0.35
+          const mLng = (ne.getLng() - sw.getLng()) * 0.35
+          const lo = sw.getLat() - mLat, hi = ne.getLat() + mLat
+          const lo2 = sw.getLng() - mLng, hi2 = ne.getLng() + mLng
+          visible = withCoords.filter(r => r.restaurant_lat >= lo && r.restaurant_lat <= hi && r.restaurant_lng >= lo2 && r.restaurant_lng <= hi2)
+        }
+      } catch { /* bounds 실패 — 전체 렌더 폴백 */ }
+    }
+
+    // 🌍 서버 집계 버블 렌더 (클러스터 시안 ③과 동일 비주얼 — 사진+카운트+최저가)
+    if (aggMode) {
+      for (const sc of serverClusters!) {
+        if (!Number.isFinite(sc.lat) || !Number.isFinite(sc.lng)) continue
+        const aPos = new window.kakao.maps.LatLng(sc.lat, sc.lng)
+        const aThumb = sc.image_url ? cfImage(sc.image_url, { width: 132, height: 132, fit: 'cover', format: 'auto' }) : ''
+        const aContent = document.createElement('div')
+        aContent.innerHTML = `
+          <div style="position:relative;width:64px;height:64px;transform:translate(-50%,-50%);cursor:pointer;">
+            <div style="width:100%;height:100%;border-radius:16px;overflow:hidden;border:2.5px solid #fff;box-shadow:0 8px 18px rgba(0,0,0,0.28);position:relative;background:linear-gradient(135deg,#fca5a5,#fdba74);">
+              <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;line-height:1;">🍽️</span>
+              ${aThumb ? `<img class="ur-agg-photo" src="${escapeHtml(aThumb)}" alt="" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" />` : ''}
+              <span style="position:absolute;left:0;right:0;bottom:0;background:rgba(17,24,39,0.72);color:#fff;font-size:9.5px;font-weight:700;text-align:center;padding:3px 0;">${formatNumber(sc.min_price || 0)}원~</span>
+            </div>
+            <span style="position:absolute;top:-7px;right:-7px;background:#f43f5e;color:#fff;border:2px solid #fff;border-radius:999px;min-width:23px;height:23px;padding:0 5px;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.22);">${sc.count}</span>
+          </div>
+        `
+        const aImg = aContent.querySelector('img.ur-agg-photo')
+        if (aImg) aImg.addEventListener('error', () => aImg.remove())
+        aContent.addEventListener('click', () => {
+          if (mapInstance.current) {
+            mapInstance.current.panTo(aPos)
+            mapInstance.current.setLevel(Math.max(1, mapInstance.current.getLevel() - 2))
+          }
+        })
+        overlaysRef.current.push(new window.kakao.maps.CustomOverlay({
+          position: aPos, content: aContent, yAnchor: 0.5, xAnchor: 0.5, zIndex: 5, map: mapInstance.current,
+        }))
+      }
+    }
 
     const clusters = new Map<string, Restaurant[]>()
-    if (gridSize > 0) {
-      withCoords.forEach(r => {
+    if (!aggMode && gridSize > 0) {
+      visible.forEach(r => {
         const gx = Math.floor(r.restaurant_lng / gridSize)
         const gy = Math.floor(r.restaurant_lat / gridSize)
         const key = `${gx}_${gy}`
@@ -170,7 +246,7 @@ export function useKakaoMap({
       })
     }
 
-    if (gridSize > 0) {
+    if (!aggMode && gridSize > 0) {
       clusters.forEach((items) => {
         if (items.length < 2) return
         const sumLat = items.reduce((s, x) => s + x.restaurant_lat, 0)
@@ -219,13 +295,13 @@ export function useKakaoMap({
     }
 
     const clusteredKeys = new Set<string>()
-    if (gridSize > 0) {
+    if (!aggMode && gridSize > 0) {
       clusters.forEach((items, key) => {
         if (items.length >= 2) clusteredKeys.add(key)
       })
     }
 
-    withCoords.forEach(r => {
+    ;(aggMode ? [] : visible).forEach(r => {
       if (gridSize > 0) {
         const gx = Math.floor(r.restaurant_lng / gridSize)
         const gy = Math.floor(r.restaurant_lat / gridSize)
@@ -236,7 +312,7 @@ export function useKakaoMap({
       const hasDiscount = r.original_price > r.price
       const isLive = r.seller_id ? liveSellerIds.has(r.seller_id) : false
       const isFav = favorites.includes(r.id)
-      const isSelected = selected?.id === r.id
+      const isSelected = selectedIdRef.current === r.id
 
       const cat = (r.category || '').toLowerCase()
       const emoji = cat.includes('beauty') ? '💇'
@@ -319,6 +395,9 @@ export function useKakaoMap({
         map: mapInstance.current,
       })
       overlaysRef.current.push(overlay)
+      // ⚡ 선택 restyle 용 registry — 핀 루트 div 기억(선택 변경 시 전량 재빌드 없이 이 노드만 갱신).
+      const rootEl = content.firstElementChild as HTMLElement | null
+      if (rootEl) { rootEl.dataset.ring = ring; pinElsRef.current.set(r.id, rootEl) }
     })
 
     kakaoPlaces.forEach(p => {
@@ -378,17 +457,18 @@ export function useKakaoMap({
     }
 
     // 🛡️ 2026-06-20 (대표 — 줌 전수조사): 초기 뷰 맞춤은 데이터가 처음 들어온 시점 '한 번만'.
-    //   이후(줌/마커 재빌드)엔 절대 재-fit 안 함 → 사용자 줌/이동 보존. category 변경 등으로 다시
-    //   맞추고 싶으면 didInitialFit.current=false 로 리셋하는 별도 트리거를 추가(현재는 최초 1회).
+    //   이후(줌/마커 재빌드)엔 절대 재-fit 안 함 → 사용자 줌/이동 보존.
+    // 🏘️ 2026-07-08 (레이어 1 — 대표 "전국 다 보여서 렉"): 전국 setBounds → **내 동네 레벨**로 시작.
+    //   내 위치(캐시 포함) 있으면 그 중심 level 6(동네·구), 없으면 가장 가까운/첫 딜 중심 level 7.
+    //   전국 뷰는 사용자가 줌아웃하면 서버 집계(레이어 3)가 가볍게 커버.
     if (!didInitialFit.current) {
-      if (withCoords.length > 1) {
-        const bounds = new window.kakao.maps.LatLngBounds()
-        withCoords.forEach(r => bounds.extend(new window.kakao.maps.LatLng(r.restaurant_lat, r.restaurant_lng)))
-        mapInstance.current.setBounds(bounds)
+      if (userLoc && Number.isFinite(userLoc.lat) && Number.isFinite(userLoc.lng)) {
+        mapInstance.current.setCenter(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
+        mapInstance.current.setLevel(6)
         didInitialFit.current = true
-      } else if (withCoords.length === 1) {
+      } else if (withCoords.length >= 1) {
         mapInstance.current.setCenter(new window.kakao.maps.LatLng(withCoords[0].restaurant_lat, withCoords[0].restaurant_lng))
-        mapInstance.current.setLevel(5)
+        mapInstance.current.setLevel(withCoords.length > 1 ? 7 : 5)
         didInitialFit.current = true
       } else if (kakaoPlaces.length > 0 && userLoc) {
         mapInstance.current.setCenter(new window.kakao.maps.LatLng(userLoc.lat, userLoc.lng))
@@ -396,9 +476,24 @@ export function useKakaoMap({
         didInitialFit.current = true
       }
     }
-  }, [sdkLoaded, withCoords, selected?.id, kakaoPlaces, userLoc, liveSellerIds, favorites, coordGroupSize, gridSize, setSelected, setSuggestionFor, panToProduct])
+    // ⚡ selected?.id 를 의존성에서 제거(핀 탭 = 전량 재빌드이던 렉 근본 원인) — 선택 반영은 아래 restyle effect.
+    //   viewportRev(idle)·serverClusters 추가 — 컬링 덕에 재실행 비용은 화면 내 수십 개로 저렴.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sdkLoaded, withCoords, kakaoPlaces, userLoc, liveSellerIds, favorites, coordGroupSize, gridSize, setSelected, setSuggestionFor, panToProduct, viewportRev, serverClusters])
 
   useEffect(() => { initMap() }, [initMap])
+
+  // ⚡ 2026-07-08 (레이어 4의 핫패스): 선택 변경 시 해당 핀 DOM 만 직접 restyle — 전량 재빌드 0.
+  useEffect(() => {
+    pinElsRef.current.forEach((el, id) => {
+      const sel = selected?.id === id
+      const size = sel ? 50 : 42
+      el.style.width = `${size}px`
+      el.style.height = `${size}px`
+      el.style.boxShadow = `0 4px 12px rgba(0,0,0,0.30)${sel ? ', 0 0 0 3px rgba(17,24,39,0.85)' : ''}`
+      el.style.transform = `translate(-50%, -50%) scale(${sel ? 1.08 : 1})`
+    })
+  }, [selected?.id])
 
   useEffect(() => {
     return () => {

@@ -25,7 +25,7 @@ import SheetFilterBar from './restaurant-map/SheetFilterBar'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Screen } from '@/components/ui/screen'
 import { type MapVoucherType } from './restaurant-map/voucher-types'
-import { useKakaoMap } from './restaurant-map/useKakaoMap'
+import { useKakaoMap, type ServerCluster } from './restaurant-map/useKakaoMap'
 import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
 import { useMapProducts } from '@/hooks/queries/useMapProducts'
@@ -62,6 +62,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const { data: baseRestaurants = [], isLoading: loading } = useMapProducts(voucherType === 'all' ? 'all' : voucherType, userLoc)
   // 뷰포트(지도 pan)로 추가 로드된 딜 병합(bbox effect ↓). 초기 바운드 밖 영역 커버. 비어있으면 기존과 동일(무회귀).
   const [viewportDeals, setViewportDeals] = useState<Restaurant[]>([])
+  // 🌍 줌아웃 서버 집계(레이어 3) — non-null 이면 지도는 개별 핀 대신 격자 버블만 렌더.
+  const [aggClusters, setAggClusters] = useState<ServerCluster[] | null>(null)
   const restaurants = useMemo(() => {
     if (viewportDeals.length === 0) return baseRestaurants
     const seen = new Set<number | string>(); const out: Restaurant[] = []
@@ -347,6 +349,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     liveSellerIds,
     favorites,
     sheetSnap,
+    serverClusters: aggClusters,
   })
 
   // 🛡️ 2026-04-30 Phase 5: '내 주변' 클릭 — GPS 요청 + 거리순 + 위치로 pan
@@ -398,12 +401,15 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     }
   }, [])
 
-  // 🌍 2026-07-08 (대표 "남은 1마일도 마저"): 뷰포트 로딩 — 초기 근접 바운드(SOFT_CAP=500) 밖 영역은 지도
-  //   pan/zoom idle 시 보이는 영역(bbox)의 딜을 로드·병합. 수천개여도 홈은 가볍고 지도 탐색은 완전(업체 방식).
-  //   ⚠️ 바운드 미만(현재 규모 수백)이면 미발동(inert·무회귀). 실패해도 기존 딜 유지(graceful·additive).
-  useEffect(() => { setViewportDeals([]) }, [voucherType])  // 카테고리 전환 시 뷰포트 누적 리셋
+  // 🌍 2026-07-08 (대표 "가장 이상적으로" — 레이어 2+3): 줌-인지형 뷰포트 로딩.
+  //   · 줌아웃(level ≥ 9, 시/전국): 서버 **집계**(/products/map-clusters)만 받아 격자 버블 렌더 —
+  //     매장 수만 개여도 다운로드·오버레이가 격자 수(수십 개)로 고정.
+  //   · 동네 줌(level < 9): 집계 해제 + (로드분이 바운드에 도달했을 때만) 보이는 영역 bbox 딜 로드·병합.
+  //   실패 시 기존 딜 렌더 유지(graceful) — 집계 fetch 가 죽어도 지도는 동작.
+  const AGG_LEVEL = 9
+  useEffect(() => { setViewportDeals([]); setAggClusters(null) }, [voucherType])  // 카테고리 전환 시 리셋
   useEffect(() => {
-    if (!mapView || !sdkLoaded || baseRestaurants.length < 500) return  // 더 있을 때(바운드 도달)만
+    if (!mapView || !sdkLoaded) return
     const map = mapInstance.current
     if (!map || !window.kakao?.maps) return
     let timer: ReturnType<typeof setTimeout> | null = null
@@ -415,15 +421,28 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           const sw = b.getSouthWest(), ne = b.getNorthEast()
           const bbox = `${sw.getLat()},${sw.getLng()},${ne.getLat()},${ne.getLng()}`
           const cat = voucherType === 'all' ? 'all' : voucherType
-          const res = await api.get('/api/group-buy/products', { params: { category: cat, bbox, limit: 500 } })
-          const arr = (res.data?.success ? (res.data.data || []) : []) as Restaurant[]
-          if (arr.length) setViewportDeals(prev => {
-            const seen = new Set(prev.map(p => (p as { id?: number | string }).id))
-            const add = arr.filter(p => !seen.has((p as { id?: number | string }).id))
-            return add.length ? [...prev, ...add] : prev
-          })
-        } catch { /* graceful */ }
-      }, 500)
+          const level = map.getLevel()
+          if (level >= AGG_LEVEL) {
+            // 줌아웃 — 서버 격자 집계(레벨별 격자 크기)
+            const cell = level >= 12 ? 1 : level >= 11 ? 0.5 : level >= 10 ? 0.25 : 0.1
+            const res = await api.get('/api/group-buy/products/map-clusters', { params: { category: cat, bbox, cell } })
+            const arr = (res.data?.success ? (res.data.data || []) : []) as ServerCluster[]
+            if (arr.length) setAggClusters(arr)  // 빈 응답이면 기존 렌더 유지(깜빡임 방지)
+          } else {
+            setAggClusters(null)
+            // 동네 줌 — 로드분이 바운드(500)에 닿았을 때만 뷰포트 bbox 딜 보충(현재 규모에선 미발동=무회귀)
+            if (baseRestaurants.length >= 500) {
+              const res = await api.get('/api/group-buy/products', { params: { category: cat, bbox, limit: 500 } })
+              const arr = (res.data?.success ? (res.data.data || []) : []) as Restaurant[]
+              if (arr.length) setViewportDeals(prev => {
+                const seen = new Set(prev.map(p => (p as { id?: number | string }).id))
+                const add = arr.filter(p => !seen.has((p as { id?: number | string }).id))
+                return add.length ? [...prev, ...add] : prev
+              })
+            }
+          }
+        } catch { /* graceful — 기존 딜 렌더 유지 */ }
+      }, 400)
     }
     window.kakao.maps.event.addListener(map, 'idle', onIdle)
     return () => { if (timer) clearTimeout(timer); try { window.kakao.maps.event.removeListener(map, 'idle', onIdle) } catch { /* */ } }

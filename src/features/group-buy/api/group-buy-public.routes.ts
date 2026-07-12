@@ -384,6 +384,63 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     return c.json({ success: true, data: withOnnuri })
   })
 
+  // ── GET /products/map-clusters — 🌍 2026-07-08 (대표 "수천개 대비 가장 이상적으로" — 레이어 3) ──
+  //   줌아웃(전국/시 단위) 지도에서 개별 딜 대신 **격자별 집계**(개수·최저가·중심좌표·대표사진)만 반환.
+  //   매장 수만 개여도 응답은 격자 수(수십~수백)로 고정 → 다운로드·렌더 모두 O(화면). 업체(직방/Airbnb) 정석.
+  //   cell = 격자 크기(도 단위, 화이트리스트 스냅 — 인젝션 불가), bbox = 보이는 영역(검증 float 인라인).
+  //   ⚠️ /products/:id 보다 먼저 등록해야 'map-clusters' 가 :id 로 매칭되지 않음.
+  router.get('/products/map-clusters', async (c) => {
+    const { DB } = c.env
+    const categoryParam = c.req.query('category') || 'all'
+    const validCategories = VOUCHER_CATEGORIES as readonly string[]
+    const categories = categoryParam === 'all'
+      ? validCategories
+      : (validCategories.includes(categoryParam) ? [categoryParam] : validCategories)
+    const fnum = (v: string, lo: number, hi: number): number | null => { const n = parseFloat(v); return Number.isFinite(n) && n >= lo && n <= hi ? n : null }
+    const bp = (c.req.query('bbox') || '').split(',')
+    if (bp.length !== 4) return c.json({ success: false, error: 'bbox required' }, 400)
+    const swLat = fnum(bp[0], -90, 90), swLng = fnum(bp[1], -180, 180), neLat = fnum(bp[2], -90, 90), neLng = fnum(bp[3], -180, 180)
+    if (swLat == null || swLng == null || neLat == null || neLng == null || swLat > neLat || swLng > neLng) {
+      return c.json({ success: false, error: 'bad bbox' }, 400)
+    }
+    const CELLS = [0.02, 0.05, 0.1, 0.25, 0.5, 1, 2] as const
+    const cellRaw = parseFloat(c.req.query('cell') || '0.25')
+    const cell = CELLS.reduce<number>((best, cd) => (Number.isFinite(cellRaw) && Math.abs(cd - cellRaw) < Math.abs(best - cellRaw) ? cd : best), 0.25)
+    // 캐시키: bbox 를 cell 단위로 라운딩(팬 미세이동에도 적중) + cell + 카테고리.
+    const rnd = (n: number) => (Math.round(n / cell) * cell).toFixed(3)
+    const cacheKey = `gb_map_clusters:${categories.join(',')}:c${cell}:${rnd(swLat)}_${rnd(swLng)}_${rnd(neLat)}_${rnd(neLng)}`
+    try {
+      const results = await cacheGet(
+        c.env.SESSION_KV,
+        cacheKey,
+        async () => {
+          const placeholders = categories.map(() => '?').join(',')
+          const r = await DB.prepare(`
+            SELECT COUNT(*) AS count,
+                   MIN(p.price) AS min_price,
+                   AVG(p.restaurant_lat) AS lat,
+                   AVG(p.restaurant_lng) AS lng,
+                   MAX(p.image_url) AS image_url
+            FROM products p
+            WHERE p.category IN (${placeholders}) AND p.is_active = 1
+              AND p.group_buy_status = 'active'
+              AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
+              AND p.restaurant_lat BETWEEN ? AND ? AND p.restaurant_lng BETWEEN ? AND ?
+            GROUP BY CAST(p.restaurant_lat / ${cell} AS INTEGER), CAST(p.restaurant_lng / ${cell} AS INTEGER)
+            LIMIT 400
+          `).bind(...categories, swLat, neLat, swLng, neLng).all()
+          return r.results ?? []
+        },
+        { ttl: 120, staleWhileRevalidate: 120 },
+      )
+      c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=120')
+      c.header('CDN-Cache-Control', 'public, max-age=300')
+      return c.json({ success: true, data: results })
+    } catch (err) {
+      return safeError(c, err, '지도 집계 조회 중 오류가 발생했습니다', '[gb map-clusters]')
+    }
+  })
+
   // 🛡️ 2026-06-10 (사용자 신고 — 교환권 상세 500 전수 재현): 어드민 전용 단계별 진단.
   //   프로덕션 로그 접근 없이 브라우저 콘솔에서 원인 즉시 식별용. 각 SELECT 의 실제 에러 문자열 반환
   //   (requireAdmin 게이트 — 공개 누출 없음). 원인 확정 후 제거 가능.
