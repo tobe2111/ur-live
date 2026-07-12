@@ -1,5 +1,9 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-11 — 사업자 링크샵 1-RTT 화 (로딩 전수조사 마지막 항목, 대표 "가장 이상적으로")
+curator 응답에 `linked_seller_public`(셀러 공개 페이로드, `buildSellerPublicPayload` SSOT — seller.routes `/public` 와 공유) additive 동봉 → SellerPublicPage 가 시드로 동기 소비, 셀러 `/public` fetch 생략. 하드로드는 SSR CURATOR 슬롯에 실려 0-RTT. 구캐시 호환 폴백(warm) 유지. 가드: loader-continuity 12·13번째 불변식. 상세: CLAUDE.md 로딩 audit log 2026-07-11.
+
+
 ## ✅ 2026-07-10 — 로딩 전수조사: 불필요 로딩 화면 일괄 수리 (대표 "철저한 전수조사" + "전부 수정" 승인)
 3축 병렬 감사(워커 첫페인트 / 소비자 페이지 / 가드·대시보드) → 검증된 결함만 수리. 상세는 CLAUDE.md 로딩 잠금 audit log 2026-07-10 항목.
 - **HIGH**: ① 쇼핑 prefetch 키 number/string 불일치(항상 캐시 미스 — `usePrefetchProduct` String 정규화) ② 교환권 카드 prefetch 가 상세와 다른 엔드포인트·키(100% 낭비 — `usePrefetchGroupBuyProduct` 로 교체) ③ 홈 `__SSR_INITIAL_MAIN__` 미소비(useMapProducts 동기 시드 — 첫 페인트 스켈레톤 제거).
