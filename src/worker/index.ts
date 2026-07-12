@@ -236,6 +236,7 @@ import { uploadRoutes } from '../features/upload/api/upload.routes';
 import { sellerMarketingRoutes, influencerSettlementRoutes, adminPayoutRoutes, influencerDiscoverRoutes, influencerRankingsRoutes } from '../features/group-buy/api/marketing.routes';
 import { reviewBonusUserRoutes, reviewBonusAdminRoutes } from '../features/group-buy/api/review-bonus.routes';
 import { fcfsRoutes, fcfsAdminRoutes } from '../features/group-buy/api/fcfs.routes';
+import { experienceCampaignPublicRoutes, experienceCampaignAdminRoutes } from '../features/group-buy/api/experience-campaign.routes';
 import { gbMarketplaceRoutes } from '../features/group-buy/api/gb-marketplace.routes';
 import { gbProposalsRoutes } from '../features/group-buy/api/gb-proposals.routes';
 import { voucherDisputeRoutes, voucherDisputeAdminRoutes } from '../features/group-buy/api/voucher-dispute.routes';
@@ -1751,6 +1752,9 @@ app.route('/api/admin-review-bonus', reviewBonusAdminRoutes);
 // 🎯 2026-06-20 선착순 응모 상품 (대표) — 공개(목록/상태) + 유저(지원) + 어드민(설정/지원자/선정)
 app.route('/api/fcfs', fcfsRoutes);
 app.route('/api/admin/fcfs', fcfsAdminRoutes);
+// 🎁 2026-07-12 체험 캠페인 모듈 (trial-campaign-track). 공개+유저 / 어드민 대행 생성(1순위).
+app.route('/api/experience-campaigns', experienceCampaignPublicRoutes);
+app.route('/api/admin/experience-campaigns', experienceCampaignAdminRoutes);
 // 🎟️ 2026-07-06 공구 엔진 §4 — 인플루언서 공구 탐색(promo 순). platform_settings.gb_engine_enabled 게이트.
 app.route('/api/gb-marketplace', gbMarketplaceRoutes);
 // 🎟️ 2026-07-06 공구 엔진 §2-B — 양방향 공구 제안(인플↔매장). 상대방 승인 시 gb open.
