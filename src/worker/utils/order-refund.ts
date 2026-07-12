@@ -94,7 +94,7 @@ export async function reverseOrderAncillaryOnRefund(
   // 💸 2026-07-04 [INV-CB §3-D]: promo owner-펀딩 차감(이용권 사용 시 매장 몫에서 debit) 역전 —
   //   위 affiliate clawback 과 대칭(추천인 딜 회수 ↔ 주인 차감 복원). 게이트 무관 멱등(debit 없으면 no-op).
   try {
-    const { reverseOwnerPromoDebit } = await import('./ledger')
+    const { reverseOwnerPromoDebit } = await import('./owner-promo')
     await reverseOwnerPromoDebit(DB, orderId, 'order_refund')
   } catch { /* best-effort */ }
   // 구매자 referral_bonus 포인트 회수.
