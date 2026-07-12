@@ -64,8 +64,23 @@
 
 | 항목 | 트랙 | 상태 |
 |---|---|---|
-| ① A·C·D·E·F·G·H·I·J (비-머니 버그/방어) | 즉시 수리 | 대표 승인 대기 |
-| ② 3000딜 루프·유상딜 소멸·죽은계정 적립·CHECK위반·복수계정·admin 머니비대칭 | 8월 머니 세션 | 박제 |
+| ① A·C·D·E·F·G·I·J (비-머니 버그/방어 8건) | 즉시 수리 | ✅ 구현·커밋(2026-07-12, 대표 "모두 진행") |
+| ① H 탈퇴세션 타기기 무효화 | 즉시 수리이나 **설계 필요** | ⏸ 소비자 세션이 무상태 JWT(로딩최적화 잠금) — 매 요청 `deleted_at` 조회는 퍼포 회귀. 소비자 세션 리보케이션(users.session_epoch bump+검증) 설계 후 별도. |
+| ② 3000딜 재가입 루프 | 머니(승인받아 선반영) | ✅ 구현·커밋(2026-07-12, kakao_id 영구 dedup) |
+| ② 유상딜 소멸·죽은계정 적립·CHECK위반·복수계정·admin 머니비대칭 | 8월 머니 세션 | 박제 |
 | ③ PIPA(고지 불일치·간주동의·파기·아동·평문PII) + 위치정보 | 법무 의뢰 병합 | ⏳ |
 | 성능 스냅샷(Lighthouse 3페이지) | 8월 인앱 QA | 분리 |
 | 인프라 한도(CF 플랜·D1/R2) | 대표 대시보드 | 분리 |
+
+### 구현 로그 (2026-07-12)
+- **A** `KakaoAuthService.ts` — 로그인 시 email `= COALESCE(?, email)`(동의 철회 시 NULL 덮어쓰기 방지, phone 패턴과 통일). 메인+최소 fallback UPDATE 2곳.
+- **C** `delete-account.service.ts restoreUser`(+`account.routes /restore`) — 복원 전 신규 중복 row 의 kakao_id 소프트-폐기(`restored_dup_*`)로 UNIQUE 충돌 제거 → 복원 UPDATE 성공. 프론트는 /login 재로그인으로 옛 row 매칭.
+- **D** `admin-rbac.ts` — `optimize-db`(GET+DDL)를 읽기 예외에서 제외 → viewer/제한역할 403(super/admin 만).
+- **E** `admin-roles.ts` SENSITIVE 패턴 `commission(?:-settings)?` 확장 → ops 의 셀러 수수료율 변경 갭 차단(finance 전용).
+- **F** `admin-rbac.ts` 쿠키경로 role 조회 DB 오류 → 재시도+fail-CLOSED(viewer). fail-OPEN 제거(requireAdminRole 정책과 통일).
+- **G** `admin-roles.ts normalizeAdminRole` — 미지/손상 non-empty role → viewer(fail-CLOSED). 빈값/NULL(레거시 원조 super)은 super 유지(락아웃 방지).
+- **I** `account.routes.ts` — `/restorable` requireAuth+본인 kakao_id 검증(타인 실명 열거 차단)+rate limit, `/check-restriction` rate limit.
+- **J** `sentry.ts` — Cookie/Authorization 등 민감 헤더 `[redacted]` 스크러빙.
+- **②** `signup-bonus.ts`(+`kakao.routes.ts` 호출부) — kakaoId 기준 영구 dedup(익명화 `deleted_%_<id>` 매칭)로 탈퇴→재가입 3000딜 루프 차단. 금액(3000) 불변 = 계산 무변경, dedup 키만 추가(머니룰 #3).
+- 검증: tsc 0(touched)·money-pattern 0·sql-bind/column/table 0·file-size(changed) skip. 머니계산 파일(payment/toss/fee-resolver/commission-budget/refund) diff 0.
+- ⚠️ 이 환경 npm 403 으로 build/vitest 미실행 — CI(verify.yml) + staging 검증 권장: (C) 탈퇴→즉시재가입→복원 클릭→옛 이력 복귀, (②) 탈퇴→재가입 시 보너스 미지급(bonus 파라미터 없음), (F) 제한역할 쿠키 로그인 정상 스코핑.

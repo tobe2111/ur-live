@@ -768,7 +768,8 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
         //   fail-soft — 적립 실패해도 로그인 진행. 프론트에 ?bonus= 부착해 환영 모달에서 노출.
         try {
           const { grantSignupBonus } = await import('../../../worker/utils/signup-bonus');
-          const r = await grantSignupBonus(c.env.DB, String(user.id));
+          // 🛡️ 2026-07-12 (감사 ②): kakaoId 전달 — 탈퇴→재가입 3000딜 루프 영구 차단(kakao_id 기준 dedup).
+          const r = await grantSignupBonus(c.env.DB, String(user.id), kakaoUser.kakaoId);
           if (r.granted) {
             stateUrl.searchParams.set('bonus', String(r.amount));
           }
