@@ -55,6 +55,9 @@ interface SellerPublicPageProps {
    *  없어도 소유자에게 편집 뷰를 보인다(프로필 편집은 헤더가 소비자 API `/api/curator/me/profile` 로 처리).
    *  seller_token 은 이제 셀러 대시보드(/seller/*) 접근용일 뿐, 링크샵 뷰를 가르지 않는다. */
   ownerOverride?: boolean
+  /** 🚀 2026-07-11 (1-RTT): CuratorPage 가 서버 동봉(linked_seller_public)으로 받은 셀러 공개 페이로드.
+   *  일치 검증 후 동기 소비 → 셀러 /public fetch 자체를 생략(구캐시/미동봉이면 기존 fetch 폴백). */
+  sellerSeed?: Record<string, unknown> | null
 }
 
 // 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): SSR 시드(__SSR_INITIAL_SELLER__)를 동기(useState 초기값)
@@ -75,7 +78,18 @@ function readSellerSeed(sellerId: string | undefined): Seller | null {
   } catch { return null }
 }
 
-export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId, curatorPins, ownerOverride }: SellerPublicPageProps = {}) {
+// 🚀 2026-07-11 (1-RTT): 서버 동봉 시드(prop)도 동일한 정체성 검증 후 채택 — curator 응답이 준
+//   linked_seller.username 과 같은 응답에서 온 페이로드라 사실상 항상 일치하나, 방어적으로 검증.
+function matchSellerSeedProp(seed: Record<string, unknown> | null | undefined, sellerId: string | undefined): Seller | null {
+  if (!seed || !sellerId) return null
+  const d = seed as { id?: number | string; username?: string }
+  if (!d.id) return null
+  const key = String(sellerId).toLowerCase().replace(/^@/, '')
+  const ok = String(d.id) === String(sellerId) || (d.username && String(d.username).toLowerCase() === key)
+  return ok ? (seed as unknown as Seller) : null
+}
+
+export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId, curatorPins, ownerOverride, sellerSeed }: SellerPublicPageProps = {}) {
   const { t } = useTranslation()
   const params = useParams<{ sellerId: string }>()
   const rawParam = sellerIdOverride ?? params.sellerId
@@ -83,7 +97,8 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
   // sellerId는 숫자 ID 또는 slug/username
   const sellerId = rawParam
   // 🚑 2026-07-10 [UNLOCK_LOADING]: SSR 시드 동기 소비(일치 검증 포함) — 시드 있으면 로더 프레임 0.
-  const [seller, setSeller] = useState<Seller | null>(() => readSellerSeed(sellerId))
+  // 🚀 2026-07-11: 서버 동봉 시드(prop, /u/ 사업자 경로)도 동기 소비 — 둘 중 있는 쪽으로 즉시 페인트.
+  const [seller, setSeller] = useState<Seller | null>(() => readSellerSeed(sellerId) ?? matchSellerSeedProp(sellerSeed, sellerId))
   const [products, setProducts] = useState<Product[]>([])
   const [streams, setStreams] = useState<LiveStream[]>([])
   const [shorts, setShorts] = useState<Short[]>([])
@@ -206,7 +221,8 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     //   효과: 링크샵 페이지 첫 paint + 메인 fetch 0 (SSR hit 시).
     // 🚑 2026-07-10: 소비를 readSellerSeed(정체성 일치 검증)로 — 다른 셀러의 잔존 시드 오소비 차단.
     //   (동기 초기값과 같은 헬퍼 — mount 시엔 이미 시드 반영돼 setLoading(true→false)가 배치로 상쇄됨.)
-    const initialSellerData = readSellerSeed(sellerId)
+    // 🚀 2026-07-11: 서버 동봉 시드(prop)도 동급 — 있으면 셀러 /public fetch 자체를 생략(1-RTT 완성).
+    const initialSellerData = readSellerSeed(sellerId) ?? matchSellerSeedProp(sellerSeed, sellerId)
     if (initialSellerData) {
       setSeller(initialSellerData)
       setLoading(false)
