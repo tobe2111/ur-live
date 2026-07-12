@@ -3,7 +3,7 @@
 export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = {
   "home": {
     "js": [
-      "/assets/RestaurantMapPage-BjNyDf0u.js"
+      "/assets/RestaurantMapPage-D5yDusGh.js"
     ],
     "css": []
   },

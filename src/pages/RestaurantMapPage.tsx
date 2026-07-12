@@ -64,15 +64,17 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const [viewportDeals, setViewportDeals] = useState<Restaurant[]>([])
   // 🌍 줌아웃 서버 집계(레이어 3) — non-null 이면 지도는 개별 핀 대신 격자 버블만 렌더.
   const [aggClusters, setAggClusters] = useState<ServerCluster[] | null>(null)
+  // 🔎 2026-07-12 (스케일 검색): 검색어 입력 시 서버 q 검색 결과 병합 — 근접 바운드 밖 먼 매장도 검색에 잡힘.
+  const [searchDeals, setSearchDeals] = useState<Restaurant[]>([])
   const restaurants = useMemo(() => {
-    if (viewportDeals.length === 0) return baseRestaurants
+    if (viewportDeals.length === 0 && searchDeals.length === 0) return baseRestaurants
     const seen = new Set<number | string>(); const out: Restaurant[] = []
-    for (const p of [...baseRestaurants, ...viewportDeals]) {
+    for (const p of [...baseRestaurants, ...viewportDeals, ...searchDeals]) {
       const id = (p as { id?: number | string }).id
       if (id != null && !seen.has(id)) { seen.add(id); out.push(p) }
     }
     return out
-  }, [baseRestaurants, viewportDeals])
+  }, [baseRestaurants, viewportDeals, searchDeals])
   // 🗺️ 2026-06-20 좌표 없는 딜 지오코딩 보강 → 🚑 2026-07-02 429 폭주 수리와 함께 훅으로 추출
   //   (캐시 보유분 재요청 금지 + 동일 주소 1회만 + 429 시 배치 중단 — useGeocodeMissing.ts 참조).
   const enrichedRestaurants = useGeocodeMissing(restaurants)
@@ -232,6 +234,20 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     }, 300)
     return () => clearTimeout(handle)
   }, [userLoc, kr, search])
+
+  // 🔎 2026-07-12 (스케일 검색): 검색어 입력 시 서버 q 검색(이름/매장명 LIKE)도 병행 — 근접 바운드/뷰포트
+  //   로딩에 안 실린 먼 매장까지 지도·리스트 검색에 잡힘. 300ms 디바운스, 실패 무해(로드분 클라 필터는 그대로).
+  useEffect(() => {
+    const q = search.trim()
+    if (!q) { setSearchDeals([]); return }
+    const handle = setTimeout(() => {
+      const cat = voucherType === 'all' ? 'all' : voucherType
+      api.get('/api/group-buy/products', { params: { category: cat, q, limit: 100 } })
+        .then(r => { if (r.data?.success && Array.isArray(r.data.data)) setSearchDeals(r.data.data) })
+        .catch(() => { /* silent — 로드분 필터만으로 동작 */ })
+    }, 300)
+    return () => clearTimeout(handle)
+  }, [search, voucherType])
 
   // 🛡️ 2026-05-19: 클라이언트 geocoding loop 제거.
   //   이전: 사용자 1명당 카카오 API ~10 호출 (페이지 진입 시마다).
@@ -408,6 +424,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   //   실패 시 기존 딜 렌더 유지(graceful) — 집계 fetch 가 죽어도 지도는 동작.
   const AGG_LEVEL = 9
   useEffect(() => { setViewportDeals([]); setAggClusters(null) }, [voucherType])  // 카테고리 전환 시 리셋
+  // 🔎 집계 모드 진입(줌아웃) 시 선택 해제 — 핀이 사라졌는데 하단 선택 카드만 남던 잔존 UX 제거.
+  useEffect(() => { if (aggClusters && aggClusters.length > 0) setSelected(null) }, [aggClusters])
   useEffect(() => {
     if (!mapView || !sdkLoaded) return
     const map = mapInstance.current
