@@ -19,6 +19,13 @@ import { marketingRoutes } from '@/features/marketing/api/marketing.routes'
 // ── node:sqlite → D1Database 호환 어댑터 ─────────────────────────────────────
 function makeD1(): D1Database {
   const db = new DatabaseSync(':memory:')
+  // 프로덕션에 상시 존재하는 rate_limit_attempts 를 테스트 DB 에도 생성 —
+  //   없으면 rateLimit() 미들웨어의 INSERT 가 throw → sensitive 라우트(ads-unlock 등)가
+  //   fail-CLOSED(429) 로 떨어져 라우트 assertion(200/400)이 깨진다(실제 동작 아님).
+  db.prepare(`CREATE TABLE IF NOT EXISTS rate_limit_attempts (
+    key TEXT NOT NULL, action TEXT NOT NULL, window_start INTEGER NOT NULL, count INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(key, action, window_start)
+  )`).run()
   const wrap = (sql: string) => {
     let args: unknown[] = []
     const api = {
