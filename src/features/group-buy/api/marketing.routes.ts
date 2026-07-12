@@ -373,6 +373,18 @@ influencerApp.post('/deals/:id/submit-proof', async (c) => {
   return c.json({ success: true })
 })
 
+// 🎬 WP-B: 인플이 자기에게 온 우대 제안 목록(콘텐츠 인증 상태 포함). submit-proof 대상 노출용.
+influencerApp.get('/deals', async (c) => {
+  const userId = String((c.get('user') as AuthUser).id)
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, seller_id, commission_pct, ends_at, status, proposed_by, message, created_at, responded_at,
+            requires_content_proof, proof_url, proof_status
+     FROM seller_influencer_deals WHERE influencer_id = ?
+     ORDER BY created_at DESC LIMIT 100`
+  ).bind(userId).all().catch(() => ({ results: [] as any[] }))
+  return c.json({ success: true, data: results || [] })
+})
+
 // 🎬 WP-B: 매장이 인플 콘텐츠 인증 검토 → 승인 시 발효(status='active'). CAS(이중승인 방지).
 //   이 UPDATE 가 우대율 발효 트리거 — 이후 판매분만 우대율(판매쿼리 status='active' 게이트), 소급 없음.
 sellerApp.post('/deals/:id/approve-proof', async (c) => {

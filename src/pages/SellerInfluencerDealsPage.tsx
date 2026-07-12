@@ -33,6 +33,10 @@ interface Deal {
   message: string | null
   created_at: string
   responded_at: string | null
+  // 🎬 WP-B 조건부 우대(콘텐츠 인증 시 발효)
+  requires_content_proof?: number | null
+  proof_url?: string | null
+  proof_status?: string | null // 'pending' | 'submitted' | 'approved' | 'rejected'
 }
 
 export default function SellerInfluencerDealsPage() {
@@ -40,7 +44,7 @@ export default function SellerInfluencerDealsPage() {
   const [showForm, setShowForm] = useState(false)
   const [proposing, setProposing] = useState(false)
   const [responding, setResponding] = useState<number | null>(null)
-  const [form, setForm] = useState({ influencer_id: '', commission_pct: '1.5', ends_at: '', message: '' })
+  const [form, setForm] = useState({ influencer_id: '', commission_pct: '1.5', ends_at: '', message: '', requires_content_proof: false })
 
   // /api/seller-marketing prefix 는 api 인터셉터 자동 토큰 미주입 → 수동 헤더 (SellerMarketingPage 동일).
   const headers = { Authorization: `Bearer ${getSellerToken() || ''}` }
@@ -78,11 +82,14 @@ export default function SellerInfluencerDealsPage() {
         commission_pct: pct,
         ends_at: form.ends_at || undefined,
         message: form.message || undefined,
+        requires_content_proof: form.requires_content_proof || undefined,
       }, { headers })
       if (r.data?.success) {
-        toast.success(t('seller.influencerDeals.proposeSuccess', { defaultValue: '제안을 보냈습니다 — 인플루언서가 수락하면 활성화됩니다' }))
+        toast.success(form.requires_content_proof
+          ? t('seller.influencerDeals.proposeSuccessConditional', { defaultValue: '조건부 제안을 보냈습니다 — 인플루언서가 콘텐츠를 게시하고 링크를 제출하면 검토 후 발효됩니다' })
+          : t('seller.influencerDeals.proposeSuccess', { defaultValue: '제안을 보냈습니다 — 인플루언서가 수락하면 활성화됩니다' }))
         setShowForm(false)
-        setForm({ influencer_id: '', commission_pct: '1.5', ends_at: '', message: '' })
+        setForm({ influencer_id: '', commission_pct: '1.5', ends_at: '', message: '', requires_content_proof: false })
         dealsQ.refetch()
       } else {
         // cap 초과 등 — 서버 메시지(허용 범위 포함) 그대로 노출
@@ -112,6 +119,35 @@ export default function SellerInfluencerDealsPage() {
         toast.success(action === 'accept'
           ? t('seller.influencerDeals.respondAccepted', { defaultValue: '수락했습니다 — 우대 커미션이 활성화되었습니다' })
           : t('seller.influencerDeals.respondRejected', { defaultValue: '거절했습니다' }))
+        dealsQ.refetch()
+      } else {
+        toast.error(r.data?.error || t('seller.influencerDeals.respondFailed', { defaultValue: '응답 처리에 실패했습니다' }))
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || t('seller.influencerDeals.respondFailed', { defaultValue: '응답 처리에 실패했습니다' }))
+    } finally {
+      setResponding(null)
+    }
+  }
+
+  // 🎬 WP-B: 인플이 제출한 콘텐츠 인증 검토 → 승인(발효) / 반려. 승인이 우대율 발효 트리거.
+  async function reviewProof(deal: Deal, action: 'approve' | 'reject') {
+    if (responding != null) return
+    const ok = await confirmDialog({
+      title: `${deal.influencer_id} · ${deal.commission_pct}%`,
+      message: action === 'approve'
+        ? t('seller.influencerDeals.confirmApproveProof', { defaultValue: '콘텐츠 게시를 확인했나요? 승인하면 우대 커미션이 발효됩니다 (이후 판매분부터 적용, 소급 없음).' })
+        : t('seller.influencerDeals.confirmRejectProof', { defaultValue: '이 콘텐츠 인증을 반려할까요? 인플루언서가 다시 제출할 수 있습니다.' }),
+      danger: action === 'reject',
+    })
+    if (!ok) return
+    setResponding(deal.id)
+    try {
+      const r = await api.post(`/api/seller-marketing/deals/${deal.id}/approve-proof`, { action }, { headers })
+      if (r.data?.success) {
+        toast.success(action === 'approve'
+          ? t('seller.influencerDeals.proofApproved', { defaultValue: '승인했습니다 — 우대 커미션이 발효되었습니다' })
+          : t('seller.influencerDeals.proofRejected', { defaultValue: '반려했습니다' }))
         dealsQ.refetch()
       } else {
         toast.error(r.data?.error || t('seller.influencerDeals.respondFailed', { defaultValue: '응답 처리에 실패했습니다' }))
@@ -209,6 +245,20 @@ export default function SellerInfluencerDealsPage() {
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
                 />
               </div>
+              {/* 🎬 WP-B: 콘텐츠 인증 조건 (opt-in — 미체크 시 기존 무조건부 흐름과 동일) */}
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={form.requires_content_proof}
+                  onChange={(e) => setForm((f) => ({ ...f, requires_content_proof: e.target.checked }))}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-amber-600"
+                />
+                <span className="text-[11px] leading-relaxed text-amber-800">
+                  <b className="font-bold">{t('seller.influencerDeals.proofGateLabel', { defaultValue: '콘텐츠 게시 인증 시 발효' })}</b>
+                  {' — '}
+                  {t('seller.influencerDeals.proofGateDesc', { defaultValue: '인플루언서가 콘텐츠(블로그/SNS)를 게시하고 링크를 제출한 뒤, 내가 확인·승인해야 우대 커미션이 발효됩니다. 승인 전 판매분은 기본 커미션이 적용됩니다.' })}
+                </span>
+              </label>
               <div className="flex gap-2 pt-1">
                 <button
                   type="button"
@@ -278,6 +328,8 @@ export default function SellerInfluencerDealsPage() {
                 {deals.map((d) => {
                   const badge = statusBadge(d.status)
                   const canRespond = d.status === 'proposed' && d.proposed_by === 'influencer'
+                  const isConditional = d.requires_content_proof === 1
+                  const canReviewProof = isConditional && d.proof_status === 'submitted'
                   return (
                     <div key={d.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                       <div className="min-w-[170px] flex-1">
@@ -300,10 +352,50 @@ export default function SellerInfluencerDealsPage() {
                           )}
                         </p>
                         {d.message && <p className="mt-0.5 truncate text-[10px] italic text-gray-600">&ldquo;{d.message}&rdquo;</p>}
+                        {/* 🎬 WP-B: 조건부 딜 인증 상태 */}
+                        {isConditional && d.status !== 'active' && (
+                          <p className="mt-1 text-[10px] font-medium text-amber-700">
+                            {d.proof_status === 'submitted'
+                              ? t('seller.influencerDeals.proofSubmitted', { defaultValue: '📎 콘텐츠 인증 제출됨 — 검토 필요' })
+                              : d.proof_status === 'rejected'
+                                ? t('seller.influencerDeals.proofRejectedLabel', { defaultValue: '↩︎ 인증 반려됨 — 재제출 대기' })
+                                : t('seller.influencerDeals.proofPending', { defaultValue: '⏳ 콘텐츠 게시·링크 제출 대기 중' })}
+                            {d.proof_url && (
+                              <>
+                                {' · '}
+                                <a href={d.proof_url} target="_blank" rel="noopener noreferrer" className="underline hover:text-amber-900">
+                                  {t('seller.influencerDeals.viewProof', { defaultValue: '콘텐츠 보기 ↗' })}
+                                </a>
+                              </>
+                            )}
+                          </p>
+                        )}
                       </div>
                       <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${badge.cls}`}>
                         {badge.label}
                       </span>
+                      {canReviewProof && (
+                        <div className="flex shrink-0 gap-1.5">
+                          <button
+                            type="button"
+                            disabled={responding != null}
+                            onClick={() => reviewProof(d, 'approve')}
+                            className="inline-flex items-center gap-1 rounded-full border border-emerald-200 px-3 py-1.5 text-[11px] font-bold text-emerald-600 hover:bg-emerald-50 disabled:opacity-40"
+                          >
+                            <Check className="h-3 w-3" />
+                            {t('seller.influencerDeals.approveProof', { defaultValue: '인증 승인' })}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={responding != null}
+                            onClick={() => reviewProof(d, 'reject')}
+                            className="inline-flex items-center gap-1 rounded-full border border-red-200 px-3 py-1.5 text-[11px] font-bold text-red-600 hover:bg-red-50 disabled:opacity-40"
+                          >
+                            <X className="h-3 w-3" />
+                            {t('seller.influencerDeals.rejectProof', { defaultValue: '반려' })}
+                          </button>
+                        </div>
+                      )}
                       {canRespond && (
                         <div className="flex shrink-0 gap-1.5">
                           <button

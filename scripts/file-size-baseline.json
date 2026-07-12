@@ -15,7 +15,7 @@
   "src/features/group-buy/api/group-buy-voucher.routes.ts": 765,
   "src/features/group-buy/api/group-buy.routes.ts": 1426,
   "src/features/group-buy/api/helpers.ts": 740,
-  "src/features/group-buy/api/marketing.routes.ts": 781,
+  "src/features/group-buy/api/marketing.routes.ts": 793,
   "src/features/group-buy/api/stays-public.routes.ts": 1375,
   "src/features/guides/api/guide-seed-admin.ts": 1062,
   "src/features/guides/api/guide-seed-seller.ts": 956,
