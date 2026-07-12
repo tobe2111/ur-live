@@ -26,7 +26,7 @@
  */
 import { Hono } from 'hono'
 import type { D1Database } from '@cloudflare/workers-types'
-import { requireAuth, requireAdmin, getCurrentUser } from '@/worker/middleware/auth'
+import { requireAuth, requireAdmin, requireSeller, getCurrentUser } from '@/worker/middleware/auth'
 import { intParam } from '@/shared/pagination'
 import { generateUniqueVoucherCode } from './helpers'
 
@@ -387,8 +387,127 @@ adminApp.get('/:id/report.csv', async (c) => {
   return new Response(csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="campaign-${id}-report.csv"` } })
 })
 
-// 공개+유저 결합 export (공개 먼저, 유저는 requireAuth) + 어드민 별도.
+// ══════════════════════════════════ 셀러 셀프 생성 (2순위 · 게이트 뒤) ══════════════════════════════════
+// 게이트: platform_settings.experience_campaign_seller_create='true' 일 때만 생성 허용(기본 OFF).
+// 어드민 대행생성(1순위)은 게이트 무관. 셀러는 자기 매장(seller_id) 캠페인만 생성/조회/추첨.
+const sellerApp = new Hono<{ Bindings: Env }>()
+sellerApp.use('*', requireSeller())
+
+async function sellerCreateEnabled(DB: D1Database): Promise<boolean> {
+  const r = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'experience_campaign_seller_create'")
+    .first<{ value: string }>().catch(() => null)
+  return r?.value === 'true'
+}
+
+sellerApp.post('/', async (c) => {
+  await ensureTables(c.env.DB)
+  if (!(await sellerCreateEnabled(c.env.DB))) {
+    return c.json({ success: false, error: '셀러 셀프 캠페인 개설은 준비 중입니다 (관리자 문의).' }, 403)
+  }
+  const sellerId = Number((getCurrentUser(c) as { id: string | number }).id)
+  const b = await c.req.json<{ product_id?: unknown; title?: unknown; description?: unknown; slots?: unknown; apply_start?: unknown; apply_end?: unknown; mission?: unknown }>().catch(() => ({} as Record<string, unknown>))
+  const productId = intParam(b.product_id, 0)
+  const title = typeof b.title === 'string' ? b.title.trim().slice(0, 200) : ''
+  const slots = Math.max(1, intParam(b.slots, 1))
+  if (!productId || !title) return c.json({ success: false, error: 'product_id, title 필수' }, 400)
+  // 본인 매장 상품만 (IDOR 방지 — 셀러는 seller_id 를 body 로 못 넘김, 세션 값 강제).
+  const prod = await c.env.DB.prepare('SELECT id FROM products WHERE id = ? AND seller_id = ?')
+    .bind(productId, sellerId).first().catch(() => null)
+  if (!prod) return c.json({ success: false, error: '본인 매장의 상품이 아닙니다' }, 400)
+  const r = await c.env.DB.prepare(`
+    INSERT INTO experience_campaigns (seller_id, product_id, title, description, slots, apply_start, apply_end, mission, status, created_by, created_by_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', 'owner', ?) RETURNING id
+  `).bind(
+    sellerId, productId, title,
+    typeof b.description === 'string' ? b.description.slice(0, 2000) : null,
+    slots,
+    typeof b.apply_start === 'string' ? b.apply_start : null,
+    typeof b.apply_end === 'string' ? b.apply_end : null,
+    typeof b.mission === 'string' ? b.mission.slice(0, 1000) : null,
+    String(sellerId),
+  ).first<{ id: number }>().catch(() => null)
+  if (!r?.id) return c.json({ success: false, error: '생성 실패' }, 500)
+  return c.json({ success: true, id: r.id })
+})
+
+sellerApp.get('/', async (c) => {
+  await ensureTables(c.env.DB)
+  const sellerId = Number((getCurrentUser(c) as { id: string | number }).id)
+  const rows = await c.env.DB.prepare(`
+    SELECT ec.*, p.name AS product_name, p.restaurant_name,
+           (SELECT COUNT(*) FROM experience_campaign_entries e WHERE e.campaign_id = ec.id) AS entry_count,
+           (SELECT COUNT(*) FROM experience_campaign_entries e WHERE e.campaign_id = ec.id AND e.status = 'selected') AS selected_count
+    FROM experience_campaigns ec JOIN products p ON p.id = ec.product_id
+    WHERE ec.seller_id = ? ORDER BY ec.created_at DESC LIMIT 200
+  `).bind(sellerId).all().catch(() => ({ results: [] }))
+  return c.json({ success: true, campaigns: rows.results || [], seller_create_enabled: await sellerCreateEnabled(c.env.DB) })
+})
+
+sellerApp.get('/:id/entries', async (c) => {
+  await ensureTables(c.env.DB)
+  const sellerId = Number((getCurrentUser(c) as { id: string | number }).id)
+  const id = intParam(c.req.param('id'), 0)
+  // 소유권 확인 — 본인 캠페인만.
+  const own = await c.env.DB.prepare('SELECT id FROM experience_campaigns WHERE id = ? AND seller_id = ?').bind(id, sellerId).first().catch(() => null)
+  if (!own) return c.json({ success: false, error: 'not found' }, 404)
+  const rows = await c.env.DB.prepare(`
+    SELECT e.id, e.user_id, e.status, e.voucher_id, e.created_at, e.selected_at, u.name AS user_name
+    FROM experience_campaign_entries e LEFT JOIN users u ON u.id = e.user_id
+    WHERE e.campaign_id = ? ORDER BY e.created_at ASC LIMIT 1000
+  `).bind(id).all().catch(() => ({ results: [] }))
+  return c.json({ success: true, entries: rows.results || [] })
+})
+
+sellerApp.post('/:id/draw', async (c) => {
+  await ensureTables(c.env.DB)
+  const sellerId = Number((getCurrentUser(c) as { id: string | number }).id)
+  const id = intParam(c.req.param('id'), 0)
+  const b = await c.req.json<{ count?: unknown }>().catch(() => ({}))
+  const camp = await c.env.DB.prepare(
+    "SELECT id, seller_id, product_id, slots, status, title FROM experience_campaigns WHERE id = ? AND seller_id = ?",
+  ).bind(id, sellerId).first<{ id: number; seller_id: number; product_id: number; slots: number; status: string; title: string }>().catch(() => null)
+  if (!camp) return c.json({ success: false, error: 'not found' }, 404)
+  const claim = await c.env.DB.prepare(
+    "UPDATE experience_campaigns SET status='drawn', drawn_at=datetime('now') WHERE id=? AND seller_id=? AND status='open'",
+  ).bind(id, sellerId).run().catch(() => null)
+  if (!claim || claim.meta.changes === 0) return c.json({ success: false, error: '이미 추첨된 캠페인입니다' }, 409)
+  const count = Math.max(1, intParam(b.count, camp.slots))
+  const pool = await c.env.DB.prepare(
+    "SELECT user_id FROM experience_campaign_entries WHERE campaign_id = ? AND status = 'applied'",
+  ).bind(id).all<{ user_id: string }>().catch(() => ({ results: [] as { user_id: string }[] }))
+  const poolIds = (pool.results || []).map((r) => r.user_id)
+  const seed = drawSeedHex()
+  const winners = cryptoShuffle(poolIds).slice(0, Math.min(count, poolIds.length))
+  await c.env.DB.prepare(
+    "INSERT INTO experience_draw_logs (campaign_id, admin_id, method, seed, pool_size, requested_count, pool_snapshot, winners) VALUES (?, ?, 'random', ?, ?, ?, ?, ?)",
+  ).bind(id, `seller:${sellerId}`, seed, poolIds.length, count, JSON.stringify(poolIds), JSON.stringify(winners)).run().catch(() => {})
+  let issued = 0
+  for (const uid of winners) {
+    const vid = await issueExperienceVoucher(c.env.DB, camp, uid)
+    await c.env.DB.prepare(
+      "UPDATE experience_campaign_entries SET status='selected', voucher_id=?, selected_at=datetime('now') WHERE campaign_id=? AND user_id=?",
+    ).bind(vid, id, uid).run().catch(() => {})
+    if (vid) issued++
+    await notifyEntry(c.env.DB, uid, '🎉 체험단 선정!', `[${camp.title}] 체험단에 선정되셨어요! 체험권이 이용권 지갑에 발급되었습니다.`, '/my-vouchers')
+  }
+  for (const uid of poolIds.filter((u) => !winners.includes(u))) {
+    await notifyEntry(c.env.DB, uid, '체험단 결과 안내', `[${camp.title}] 아쉽게도 이번엔 선정되지 않으셨어요. 다음 기회에!`, '/my-vouchers')
+  }
+  return c.json({ success: true, pool_size: poolIds.length, winners: winners.length, vouchers_issued: issued, seed })
+})
+
+sellerApp.get('/:id/report', async (c) => {
+  await ensureTables(c.env.DB)
+  const sellerId = Number((getCurrentUser(c) as { id: string | number }).id)
+  const id = intParam(c.req.param('id'), 0)
+  const own = await c.env.DB.prepare('SELECT id FROM experience_campaigns WHERE id = ? AND seller_id = ?').bind(id, sellerId).first().catch(() => null)
+  if (!own) return c.json({ success: false, error: 'not found' }, 404)
+  return c.json({ success: true, ...(await buildReport(c.env.DB, id)) })
+})
+
+// 공개+유저 결합 export (공개 먼저, 유저는 requireAuth) + 어드민/셀러 별도.
 export const experienceCampaignPublicRoutes = new Hono<{ Bindings: Env }>()
 experienceCampaignPublicRoutes.route('/', publicApp)
 experienceCampaignPublicRoutes.route('/', userApp)
 export const experienceCampaignAdminRoutes = adminApp
+export const experienceCampaignSellerRoutes = sellerApp

@@ -2425,7 +2425,8 @@
       "proxyProducts": "Proxy Listing Approvals",
       "agencyDelegation": "Agency Delegation",
       "promoSpend": "Promo Spend",
-      "influencerDeals": "Influencer Deals"
+      "influencerDeals": "Influencer Deals",
+      "experienceCampaigns": "Experience Campaigns"
     },
     "bundlesSubtitle": "Bundle multiple products for set-discount sales",
     "bundleCreate": "Create Bundle",

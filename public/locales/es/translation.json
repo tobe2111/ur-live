@@ -1736,7 +1736,8 @@
       "proxyProducts": "Aprobación de registros delegados",
       "agencyDelegation": "Delegación de agencia",
       "promoSpend": "Gasto promo",
-      "influencerDeals": "Colabs influencers"
+      "influencerDeals": "Colabs influencers",
+      "experienceCampaigns": "Campañas de prueba"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

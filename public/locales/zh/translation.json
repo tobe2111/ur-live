@@ -2415,7 +2415,8 @@
       "proxyProducts": "代理上架审批",
       "agencyDelegation": "门店委托",
       "promoSpend": "促销支出",
-      "influencerDeals": "达人合作"
+      "influencerDeals": "达人合作",
+      "experienceCampaigns": "体验活动"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

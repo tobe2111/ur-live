@@ -1736,7 +1736,8 @@
       "proxyProducts": "Approbation des annonces déléguées",
       "agencyDelegation": "Délégation d'agence",
       "promoSpend": "Dépenses promo",
-      "influencerDeals": "Collabs influenceurs"
+      "influencerDeals": "Collabs influenceurs",
+      "experienceCampaigns": "Campagnes d'essai"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
