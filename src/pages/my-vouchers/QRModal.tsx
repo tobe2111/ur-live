@@ -7,6 +7,7 @@ import { toast } from '@/hooks/useToast'
 import VoucherRedeemModal from '@/components/voucher/VoucherRedeemModal'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { useInvalidateMyVouchers } from '@/hooks/queries'
 import { safeDate } from '@/utils/safe-date'
 import { CheckCircle, MapPin, Phone, Share2, X, XCircle } from 'lucide-react'
@@ -34,6 +35,7 @@ function VoucherQRCode({ value, size = 160 }: { value: string; size?: number }) 
 export default function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClose: () => void }) {
   const { t } = useTranslation()
   useEscapeKey(onClose)
+  const isOnline = useOnlineStatus()
   const [voucher, setVoucher] = useState(initialVoucher)
   const [now, setNow] = useState(Date.now())
   const [wakeActive, setWakeActive] = useState(false)  // 🎨 개선 #3: 화면 꺼짐 방지 활성 표시
@@ -247,6 +249,13 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
         {!isUsed && !isExpired && wakeActive && (
           <p className="text-center text-[10.5px] text-gray-400 dark:text-gray-500 mt-1.5">
             {t('voucher.wakeOn', { defaultValue: '🔆 화면 꺼짐 방지 중 — 스캔하기 좋게' })}
+          </p>
+        )}
+        {/* 🌐 2026-07-12 (앱-레디): 오프라인이어도 이 QR/코드는 저장돼 있어 매장에서 그대로 사용 가능 —
+            지하·신호 약한 매장에서 "안 열릴까" 불안 제거(저장된 데이터로 렌더). */}
+        {!isUsed && !isExpired && !isOnline && (
+          <p className="text-center text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1.5">
+            {t('voucher.offlineUsable', { defaultValue: '📶 오프라인에서도 이 화면으로 사용할 수 있어요' })}
           </p>
         )}
 
