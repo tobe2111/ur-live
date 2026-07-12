@@ -69,8 +69,14 @@ export async function handleAutoSettlement(env: Env) {
         AND v.used_at < ?
         AND v.settlement_id IS NULL
         AND v.id NOT IN (SELECT voucher_id FROM voucher_disputes WHERE status = 'open')
+        AND COALESCE(v.is_experience, 0) = 0
         ${ledgerSkipClause}
     `).bind(platformRate, settlementCutoff).all();
+    // 🎁 2026-07-12 (체험 캠페인 트랙 WP-A#4 — trial-campaign-track-2026-07.md): 0원 체험권은
+    //   매장 자기부담 무상제공이라 정산 대상 아님. applied_price=0 은 위 매출계산(:99)에서 정가로
+    //   폴백되므로 **SELECT 대상에서 구조적으로 제외**(voucher_disputes 제외와 동일 패턴 — 금액/분배
+    //   계산식 무변경). is_experience 마킹은 발급 시점(experience-voucher.ts)에만 세팅. 캠페인
+    //   미개설 시 이 컬럼은 항상 0/NULL → 현행 byte-불변.
 
     if (!usedVouchers.results?.length) return;
 

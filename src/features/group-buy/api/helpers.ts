@@ -135,7 +135,8 @@ export async function ensureTables(DB: D1Database): Promise<void> {
     `).run()
   } catch { /* exists */ }
   // applied_* 컬럼 자동 추가 (기존 테이블 마이그레이션)
-  for (const col of ['applied_discount_pct INTEGER DEFAULT 0', 'applied_price INTEGER']) {
+  // 🎁 2026-07-12 is_experience: 0원 체험권 마킹(정산 제외용, 체험 캠페인 트랙 WP-A).
+  for (const col of ['applied_discount_pct INTEGER DEFAULT 0', 'applied_price INTEGER', 'is_experience INTEGER DEFAULT 0']) {
     try { await DB.prepare(`ALTER TABLE vouchers ADD COLUMN ${col}`).run() } catch { /* exists */ }
   }
   _ensuredTables = true

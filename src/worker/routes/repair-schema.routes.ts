@@ -580,6 +580,7 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'vouchers.delivered_gift_name', sql: "ALTER TABLE vouchers ADD COLUMN delivered_gift_name TEXT" },
     { desc: 'vouchers.applied_discount_pct', sql: "ALTER TABLE vouchers ADD COLUMN applied_discount_pct INTEGER DEFAULT 0" },
     { desc: 'vouchers.applied_price', sql: "ALTER TABLE vouchers ADD COLUMN applied_price INTEGER" },
+    { desc: 'vouchers.is_experience', sql: "ALTER TABLE vouchers ADD COLUMN is_experience INTEGER DEFAULT 0" },
     { desc: 'table influencer_balances', sql: "CREATE TABLE IF NOT EXISTS influencer_balances (influencer_id TEXT PRIMARY KEY, pending_amount INTEGER DEFAULT 0, available_amount INTEGER DEFAULT 0, total_paid_out INTEGER DEFAULT 0, business_number TEXT, tax_type TEXT DEFAULT 'other_income', bank_name TEXT, bank_account TEXT, account_holder TEXT, created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now')))" },
     { desc: 'table influencer_attributions', sql: "CREATE TABLE IF NOT EXISTS influencer_attributions (id INTEGER PRIMARY KEY AUTOINCREMENT, influencer_id TEXT NOT NULL, order_id INTEGER, voucher_id INTEGER, product_id INTEGER, seller_id INTEGER, commission_amount INTEGER NOT NULL, status TEXT DEFAULT 'pending', created_at DATETIME DEFAULT (datetime('now')), available_at DATETIME, paid_at DATETIME, clawback_reason TEXT)" },
     { desc: 'idx_inf_attr_influencer', sql: "CREATE INDEX IF NOT EXISTS idx_inf_attr_influencer ON influencer_attributions(influencer_id, status)" },
