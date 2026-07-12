@@ -85,7 +85,7 @@ export default function MarketingSignupPage() {
         <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <input className="ua-auth-input" placeholder="회사(고객사) 이름" value={company} onChange={(e) => setCompany(e.target.value)} />
           <input className="ua-auth-input" type="email" autoComplete="email" placeholder="이메일" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input className="ua-auth-input" type="password" autoComplete="new-password" placeholder="비밀번호 (10자 이상·대소문자·숫자·특수문자)" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input className="ua-auth-input" type="password" autoComplete="new-password" placeholder="비밀번호 (8자 이상·영문·숫자·특수문자 중 2종 이상)" value={password} onChange={(e) => setPassword(e.target.value)} />
           <input className="ua-auth-input" type="tel" autoComplete="tel" placeholder="연락처 (선택)" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
 

@@ -418,10 +418,17 @@ marketingRoutes.post('/searchad/autobid/preview', rateLimit({ action: 'ads-ab-pr
   return c.json({ success: true, results })
 })
 
-// POST /api/ads/searchad/autobid/run — 수동 즉시 실행(활성 규칙 적용, WRITE). 킬스위치 무관(사용자 명시 액션).
+// POST /api/ads/searchad/autobid/run — 수동 즉시 실행(활성 규칙 적용, WRITE).
+//   🛡️ 글로벌 킬스위치(ADS_AUTOBID_ENABLED) gate — cron(runAutobidAll)과 동일.
+//   라이브검증 전 OFF 상태에선 자율 cron 뿐 아니라 이 수동 경로도 실제 입찰(PUT)을 막아야
+//   "모든 라이브 입찰 동결" 안전장치가 성립(수동이라도 미검증 엔진이 실광고비를 건드리면 안 됨).
+//   preview(dryRun)는 항상 허용 — 진짜 실행만 게이트. 라이브 전환 시 env 를 켜면 둘 다 동작.
 marketingRoutes.post('/searchad/autobid/run', rateLimit({ action: 'ads-ab-run', max: 6, windowSec: 60 }), async (c) => {
   const sellerId = await adsAccountIdFrom(c.req.header('Authorization'), c.env.JWT_SECRET)
   if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+  if (c.env.ADS_AUTOBID_ENABLED !== 'true') {
+    return c.json({ success: false, error: '자동입찰이 라이브 검증 중입니다. 미리보기(preview)로 계획만 확인할 수 있어요.', code: 'AUTOBID_DISABLED' }, 503)
+  }
   const creds = await loadSearchAdConnection(c.env.DB, sellerId, c.env.DATA_ENCRYPTION_KEY)
   if (!creds) return c.json({ success: false, error: '검색광고 계정을 먼저 연결해주세요', code: 'NOT_CONNECTED' }, 400)
   const tenant = (await getActiveTenantId(c.env.DB, sellerId)) || undefined

@@ -93,10 +93,16 @@ export default function AdminAdsServicesPage() {
                       {o.memo && <div className="text-[12px] text-gray-500 mt-0.5">요청: {o.memo}</div>}
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
-                      <button disabled={busy === o.id} onClick={() => patchOrder(o.id, { payment_status: o.payment_status === 'paid' ? 'unpaid' : 'paid' }, o.payment_status === 'paid' ? '입금 대기로' : '입금 확인')}
-                        className={`px-2 py-0.5 rounded text-[11.5px] font-bold ${o.payment_status === 'paid' ? 'bg-emerald-50 text-emerald-600' : o.payment_status === 'refunded' ? 'bg-gray-100 text-gray-500' : 'bg-amber-50 text-amber-600'}`}>
-                        {PAY_KO[o.payment_status] || o.payment_status}{o.payment_status === 'unpaid' ? ' → 확인' : ''}
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button disabled={busy === o.id} onClick={() => patchOrder(o.id, { payment_status: o.payment_status === 'paid' ? 'unpaid' : 'paid' }, o.payment_status === 'paid' ? '입금 대기로' : '입금 확인')}
+                          className={`px-2 py-0.5 rounded text-[11.5px] font-bold ${o.payment_status === 'paid' ? 'bg-emerald-50 text-emerald-600' : o.payment_status === 'refunded' ? 'bg-gray-100 text-gray-500' : 'bg-amber-50 text-amber-600'}`}>
+                          {PAY_KO[o.payment_status] || o.payment_status}{o.payment_status === 'unpaid' ? ' → 확인' : ''}
+                        </button>
+                        {o.payment_status === 'paid' && (
+                          <button disabled={busy === o.id} onClick={() => { if (window.confirm('이 주문을 환불 처리로 표시할까요? (매출·마진 집계에서 제외됩니다)')) patchOrder(o.id, { payment_status: 'refunded' }, '환불 처리') }}
+                            className="px-1.5 py-0.5 rounded text-[11px] font-semibold text-rose-500 hover:bg-rose-50 disabled:opacity-40">환불</button>
+                        )}
+                      </div>
                       <select value={o.status} disabled={busy === o.id} onChange={e => patchOrder(o.id, { status: e.target.value }, '상태 변경')} className="rounded-lg border border-gray-300 px-2 py-1 text-[12px] font-semibold text-gray-900">
                         {STATUSES.map(s => <option key={s} value={s}>{STATUS_KO[s]}</option>)}
                       </select>

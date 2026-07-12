@@ -40,4 +40,13 @@ describe('computeServicePrice', () => {
     const P2: ServicePricing = { ...P, minQty: 2 }
     expect(computeServicePrice(P2, 1).quantity).toBe(2)
   })
+  it('구간 pct 가 비단조(오설정)여도 자격 구간 중 최대 할인 적용 — 큰 주문이 손해보지 않음', () => {
+    const bad: ServicePricing = { ...P, qtyDiscounts: [{ min: 5, pct: 20 }, { min: 10, pct: 8 }] }
+    // qty=12 는 두 구간(5,10) 모두 자격 → max(20,8)=20% 여야 함(마지막 8% 아님)
+    expect(computeServicePrice(bad, 12).discountPct).toBe(20)
+  })
+  it('카탈로그에 중복 key 옵션이 있어도 1회만 가산(중복합산 방지)', () => {
+    const dup: ServicePricing = { ...P, options: [{ key: 'report', label: 'A', price: 30000 }, { key: 'report', label: 'B', price: 30000 }] }
+    expect(computeServicePrice(dup, 4, ['report']).optionsTotal).toBe(30000)
+  })
 })

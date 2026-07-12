@@ -70,6 +70,27 @@ export async function setPlan(DB: D1Database, accountId: number, plan: AdsPlan, 
 
 const enforced = (env: Env): boolean => (env as unknown as { ADS_BILLING_ENFORCED?: string }).ADS_BILLING_ENFORCED === 'true'
 
+// 비용 방어 하드캡 — 미디어(이미지·음성·영상)·AI 는 **외부 유료 API** 라 수익화(billing)와 무관하게
+//   계정당 일일 폭주를 막아야 한다. billing OFF(현행)여도 이 캡은 항상 적용(수량 한도가 아니라 비용 방어).
+//   기본값 = pro 플랜 상한(현실적 사용은 못 넘는 수준), env 로 상향/하향 가능.
+const COST_DEFENSE_FEATURES = new Set<keyof PlanLimits>(['media_per_day', 'ai_per_day', 'content_per_day'])
+function costDefenseCap(env: Env, feature: keyof PlanLimits): number {
+  const e = env as unknown as Record<string, string | undefined>
+  const ov = feature === 'media_per_day' ? e.ADS_MEDIA_DAILY_CAP
+    : feature === 'ai_per_day' ? e.ADS_AI_DAILY_CAP
+    : feature === 'content_per_day' ? e.ADS_CONTENT_DAILY_CAP : undefined
+  const n = ov != null ? Number(ov) : NaN
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : PLAN_LIMITS.pro[feature]
+}
+
+/** 일일 사용량 −1(환불) — 호출이 DISABLED/NOT_CONFIGURED/파싱실패 등으로 실제 비용 0 이었을 때
+ *  meterDaily 로 미리 차감한 슬롯을 되돌린다(무료/실패 시도가 한도를 갉아먹지 않게). best-effort·0 미만 방지. */
+export async function refundDaily(env: Env, accountId: number, feature: keyof PlanLimits): Promise<void> {
+  const day = new Date().toISOString().slice(0, 10)
+  await env.DB.prepare('UPDATE ad_usage_daily SET count = MAX(0, count - 1) WHERE account_id = ? AND day = ? AND feature = ?')
+    .bind(accountId, day, feature).run().catch(() => null)
+}
+
 export type CapacityResult = { ok: true } | { ok: false; error: string; limit: number; plan: AdsPlan }
 
 /** 수량 한도 검사 — 집행 OFF(기본)면 항상 ok. currentCount 는 호출측이 이미 아는 값(추가 쿼리 회피). */
@@ -88,7 +109,15 @@ export async function meterDaily(env: Env, accountId: number, feature: keyof Pla
   await env.DB.prepare(`INSERT INTO ad_usage_daily (account_id, day, feature, count) VALUES (?, ?, ?, 1)
     ON CONFLICT(account_id, day, feature) DO UPDATE SET count = count + 1`)
     .bind(accountId, day, feature).run().catch(() => null)
-  if (!enforced(env)) return { ok: true }
+  if (!enforced(env)) {
+    // 집행 OFF 여도 비용방어 기능(미디어·AI)은 하드캡을 적용해 외부 유료 API 폭주를 막는다.
+    if (!COST_DEFENSE_FEATURES.has(feature)) return { ok: true }
+    const cap = costDefenseCap(env, feature)
+    const row0 = await env.DB.prepare('SELECT count FROM ad_usage_daily WHERE account_id = ? AND day = ? AND feature = ?')
+      .bind(accountId, day, feature).first<{ count: number }>().catch(() => null)
+    if ((Number(row0?.count) || 0) <= cap) return { ok: true }
+    return { ok: false, error: `오늘 생성 한도(${cap}회)에 도달했습니다. 내일 다시 시도해주세요.`, limit: cap, plan: 'free' }
+  }
   const plan = await getPlan(env.DB, accountId)
   const limit = PLAN_LIMITS[plan][feature]
   if (limit < 0) return { ok: true }

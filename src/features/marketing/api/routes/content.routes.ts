@@ -7,7 +7,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { adsAccountIdFrom } from '../ads-account'
-import { meterDaily } from '../ads-entitlements'
+import { meterDaily, refundDaily } from '../ads-entitlements'
 import {
   generateContent, generateRepurpose, generateReply, analyzeContentPerformance,
   saveContent, listContent, deleteContent, type ContentType, type PerfContext,
@@ -138,7 +138,13 @@ adsContentRoutes.post('/content/media/image', rateLimit({ action: 'ads-media-ima
   const meter = await meterDaily(c.env, id, 'media_per_day')
   if (!meter.ok) return c.json({ success: false, error: meter.error, plan: meter.plan }, 429)
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
-  const r = await generateImage(c.env, id, String(b.prompt || ''), { size: b.size ? String(b.size) : undefined })
+  // size 화이트리스트 — 임의/고가 사이즈로 유료 API 비용/에러 유발 방지.
+  const ALLOWED_SIZES = ['1024x1024', '1024x1536', '1536x1024']
+  const size = b.size ? String(b.size) : undefined
+  if (size && !ALLOWED_SIZES.includes(size)) { await refundDaily(c.env, id, 'media_per_day'); return c.json({ success: false, error: '지원하지 않는 이미지 크기입니다' }, 400) }
+  const r = await generateImage(c.env, id, String(b.prompt || ''), { size })
+  // 실제 비용 0(비활성/미설정)이면 미리 차감한 일일 슬롯 환불.
+  if (!r.ok && (r.error === 'NOT_CONFIGURED' || r.error === 'DISABLED')) await refundDaily(c.env, id, 'media_per_day')
   if (!r.ok) return c.json({ success: false, error: r.error === 'NOT_CONFIGURED' ? '이미지 생성이 아직 설정되지 않았습니다' : r.error === 'DISABLED' ? '미디어 생성이 비활성화되어 있습니다' : r.error }, r.error === 'NOT_CONFIGURED' || r.error === 'DISABLED' ? 503 : 400)
   return c.json({ success: true, url: r.url, jobId: r.jobId })
 })
@@ -151,6 +157,7 @@ adsContentRoutes.post('/content/media/voice', rateLimit({ action: 'ads-media-voi
   if (!meter.ok) return c.json({ success: false, error: meter.error, plan: meter.plan }, 429)
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const r = await generateVoice(c.env, id, String(b.text || ''), { voiceId: b.voiceId ? String(b.voiceId) : undefined })
+  if (!r.ok && (r.error === 'NOT_CONFIGURED' || r.error === 'DISABLED')) await refundDaily(c.env, id, 'media_per_day')
   if (!r.ok) return c.json({ success: false, error: r.error === 'NOT_CONFIGURED' ? '음성 생성이 아직 설정되지 않았습니다' : r.error === 'DISABLED' ? '미디어 생성이 비활성화되어 있습니다' : r.error }, r.error === 'NOT_CONFIGURED' || r.error === 'DISABLED' ? 503 : 400)
   return c.json({ success: true, url: r.url, jobId: r.jobId })
 })
@@ -163,6 +170,7 @@ adsContentRoutes.post('/content/media/video', rateLimit({ action: 'ads-media-vid
   if (!meter.ok) return c.json({ success: false, error: meter.error, plan: meter.plan }, 429)
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
   const r = await submitVideo(c.env, id, String(b.prompt || ''))
+  if (!r.ok && (r.error === 'NOT_CONFIGURED' || r.error === 'DISABLED')) await refundDaily(c.env, id, 'media_per_day')
   if (!r.ok) return c.json({ success: false, error: r.error === 'NOT_CONFIGURED' ? '영상 생성이 아직 설정되지 않았습니다' : r.error === 'DISABLED' ? '미디어 생성이 비활성화되어 있습니다' : r.error }, r.error === 'NOT_CONFIGURED' || r.error === 'DISABLED' ? 503 : 400)
   return c.json({ success: true, jobId: r.jobId, status: r.status })
 })
