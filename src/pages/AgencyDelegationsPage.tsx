@@ -65,11 +65,12 @@ export default function AgencyDelegationsPage() {
   const [summaryError, setSummaryError] = useState<Record<number, boolean>>({})
   const [requesting, setRequesting] = useState<number | null>(null)
 
-  const storesQ = useApiQuery<DelegationStore[]>(
+  // select 가 { list, funding } 를 반환하므로 제네릭도 동일 형태(이전 DelegationStore[] 는 타입 불일치 — tsc 에러).
+  const storesQ = useApiQuery<{ list: DelegationStore[]; funding: string }>(
     ['agency', 'delegation-stores'], '/api/agency/delegation',
     { select: (r: any) => (r?.success ? { list: r.data || [], funding: r.funding_source || 'platform' } : { list: [], funding: 'platform' }) },
   )
-  const stores = storesQ.data?.list ?? []
+  const stores: DelegationStore[] = storesQ.data?.list ?? []
 
   const fetchSummary = useCallback(async (sellerId: number) => {
     setSummaryLoading(prev => ({ ...prev, [sellerId]: true }))

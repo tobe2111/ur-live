@@ -414,10 +414,13 @@ jobs:
         continue-on-error: true   # drift 가 있어도 fail 하지 않음 (정보 용도)
 
       # ── 3. 타입 체크 ──
+      # 🛡️ 2026-07-12: frontend tsc 를 strict 로 (이전 warn-only → BrandLoader import 누락이
+      #   Verify 를 통과하고 배포까지 가 블로그 상세 전면 크래시). 현재 에러 0 — 유지 강제.
       - name: Type check (frontend)
         run: npx tsc --noEmit --skipLibCheck
-        continue-on-error: true
+        continue-on-error: false
 
+      # worker 전용 tsconfig 는 선재 에러(env 타입/Buffer 등) 정리 전까지 warn 유지 — 별도 세션에서 정리.
       - name: Type check (worker)
         run: npx tsc --noEmit --skipLibCheck --project tsconfig.worker.json
         continue-on-error: true

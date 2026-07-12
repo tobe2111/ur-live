@@ -823,6 +823,7 @@ npx wrangler@3 pages deploy dist/client --project-name=ur-live `
 | 검사 항목 | Pre-commit Hook | CI Workflow | 사고 출처 |
 |---|---|---|---|
 | Hono v4 wildcard `cors()` | `check-router-patterns.sh` | `verify.yml` | 2026-05-12/13 405 |
+| 타입 에러 라이브 유출 (배포 타입체크 게이트) | - | `main.yml` "Typecheck gate"(배포 차단) + `verify.yml` frontend tsc strict | 2026-07-12 BrandLoader import 누락(타입 에러)이 그대로 배포 → 블로그 상세 전면 크래시. vite build 는 타입검사 안 함 + verify tsc 가 warn-only + 배포는 Verify 와 독립이라 어디서도 못 막았음. **main.yml 의 Typecheck gate·verify 의 `continue-on-error: false` 제거/약화 금지**(제거하면 이 사고 재발). worker 전용 tsconfig 체크는 선재 에러 정리 후 strict 승격 예정(현재 warn) |
 | `vite build` 단독 사용 | `check-build-command.sh` | `verify.yml` | 2026-05-12 _worker.js 미갱신 |
 | `_worker.js` 신선도 | `validate-build-output.cjs` (post-build) | - | 2026-05-12 |
 | Hardcoded secret | `check-no-secrets.sh` | `verify.yml` | public repo 전환 후 영구 노출 위험 |
