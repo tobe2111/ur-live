@@ -610,6 +610,11 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     { desc: 'table seller_influencer_deals', sql: "CREATE TABLE IF NOT EXISTS seller_influencer_deals (id INTEGER PRIMARY KEY AUTOINCREMENT, seller_id INTEGER NOT NULL, influencer_id TEXT NOT NULL, commission_pct REAL NOT NULL, starts_at DATETIME DEFAULT (datetime('now')), ends_at DATETIME, status TEXT DEFAULT 'proposed', proposed_by TEXT NOT NULL, message TEXT, created_at DATETIME DEFAULT (datetime('now')), responded_at DATETIME, UNIQUE(seller_id, influencer_id))" },
     { desc: 'idx_seller_inf_deals_seller', sql: "CREATE INDEX IF NOT EXISTS idx_seller_inf_deals_seller ON seller_influencer_deals(seller_id, status)" },
     { desc: 'idx_seller_inf_deals_inf', sql: "CREATE INDEX IF NOT EXISTS idx_seller_inf_deals_inf ON seller_influencer_deals(influencer_id, status)" },
+    // 🎬 2026-07-12 WP-B 조건부 우대커미션 (콘텐츠 인증 시 발효). requires_content_proof=1 이면
+    //   인플 링크제출(proof_url,proof_status='submitted') → 매장 승인 시 status='active'(발효).
+    { desc: 'seller_influencer_deals.requires_content_proof', sql: "ALTER TABLE seller_influencer_deals ADD COLUMN requires_content_proof INTEGER DEFAULT 0" },
+    { desc: 'seller_influencer_deals.proof_url', sql: "ALTER TABLE seller_influencer_deals ADD COLUMN proof_url TEXT" },
+    { desc: 'seller_influencer_deals.proof_status', sql: "ALTER TABLE seller_influencer_deals ADD COLUMN proof_status TEXT" },
     // 🤝 2026-07-10 매장↔에이전시 위임 3단 모델 (docs/design/vendor-commission-passthrough.md §4.3)
     //   관계+모드 저장만 — 돈 효과 0 (분배 엔진은 8월 flip 과 함께). SSOT ensure: store-agency-delegation.ts
     { desc: 'table store_agency_delegation', sql: "CREATE TABLE IF NOT EXISTS store_agency_delegation (id INTEGER PRIMARY KEY AUTOINCREMENT, seller_id INTEGER NOT NULL, agency_id INTEGER NOT NULL, mode TEXT NOT NULL DEFAULT 'approval', granted_at DATETIME, revoked_at DATETIME, created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now')), UNIQUE(seller_id, agency_id))" },

@@ -323,7 +323,7 @@ influencerApp.put('/me', async (c) => {
 // 매장이 인플에게 우대 commission 제안
 sellerApp.post('/deals/propose', async (c) => {
   const sellerId = getSellerId(c)
-  const body = await c.req.json<{ influencer_id: string; commission_pct: number; ends_at?: string; message?: string }>().catch(() => ({} as any))
+  const body = await c.req.json<{ influencer_id: string; commission_pct: number; ends_at?: string; message?: string; requires_content_proof?: unknown }>().catch(() => ({} as any))
   const influencerId = String(body.influencer_id || '').trim()
   const pct = Number(body.commission_pct)
   if (!influencerId || !/^[a-zA-Z0-9_\-:]{1,64}$/.test(influencerId)) {
@@ -335,25 +335,71 @@ sellerApp.post('/deals/propose', async (c) => {
   if (!Number.isFinite(pct) || pct <= 0 || pct > cap) {
     return c.json({ success: false, error: `commission % 은 0 ~ ${cap} 범위` }, 400)
   }
+  // 🎬 WP-B: 콘텐츠 인증 조건. 1 이면 인플 링크제출→매장 승인 시 발효(status='active'). proof_status
+  //   'pending' 으로 시작해 propose 만으로는 발효 안 됨(기존 무조건부 흐름과 격리).
+  const requiresProof = body.requires_content_proof === true || body.requires_content_proof === 1 || body.requires_content_proof === '1' ? 1 : 0
   await c.env.DB.prepare(
-    `INSERT INTO seller_influencer_deals (seller_id, influencer_id, commission_pct, ends_at, status, proposed_by, message)
-     VALUES (?, ?, ?, ?, 'proposed', 'seller', ?)
+    `INSERT INTO seller_influencer_deals (seller_id, influencer_id, commission_pct, ends_at, status, proposed_by, message, requires_content_proof, proof_status)
+     VALUES (?, ?, ?, ?, 'proposed', 'seller', ?, ?, ?)
      ON CONFLICT(seller_id, influencer_id) DO UPDATE SET
        commission_pct = excluded.commission_pct,
        ends_at = excluded.ends_at,
        status = 'proposed',
        proposed_by = 'seller',
        message = excluded.message,
+       requires_content_proof = excluded.requires_content_proof,
+       proof_url = NULL,
+       proof_status = excluded.proof_status,
        created_at = datetime('now'),
        responded_at = NULL`
-  ).bind(sellerId, influencerId, pct, body.ends_at || null, body.message || null).run()
+  ).bind(sellerId, influencerId, pct, body.ends_at || null, body.message || null, requiresProof, requiresProof ? 'pending' : null).run()
   return c.json({ success: true })
+})
+
+// 🎬 WP-B: 인플이 매장의 조건부 제안에 콘텐츠 링크 제출(=수락). status 는 'proposed' 유지 —
+//   발효는 매장 승인(approve-proof)에서만. (기존엔 매장→인플 제안 수락 API 부재 = 이 자리를 채움.)
+influencerApp.post('/deals/:id/submit-proof', async (c) => {
+  const userId = String((c.get('user') as AuthUser).id)
+  const dealId = Number(c.req.param('id'))
+  const body = await c.req.json<{ proof_url?: string }>().catch(() => ({}))
+  const url = String(body.proof_url || '').trim()
+  if (!/^https:\/\/[^\s]{5,500}$/i.test(url)) return c.json({ success: false, error: '유효한 https 콘텐츠 링크가 필요합니다' }, 400)
+  const r = await c.env.DB.prepare(
+    `UPDATE seller_influencer_deals SET proof_url = ?, proof_status = 'submitted', responded_at = datetime('now')
+     WHERE id = ? AND influencer_id = ? AND proposed_by = 'seller' AND requires_content_proof = 1
+       AND status = 'proposed' AND COALESCE(proof_status,'') IN ('pending','rejected')`
+  ).bind(url, dealId, userId).run().catch(() => null)
+  if (!r || !r.meta?.changes) return c.json({ success: false, error: '제출 가능한 제안이 없습니다' }, 404)
+  return c.json({ success: true })
+})
+
+// 🎬 WP-B: 매장이 인플 콘텐츠 인증 검토 → 승인 시 발효(status='active'). CAS(이중승인 방지).
+//   이 UPDATE 가 우대율 발효 트리거 — 이후 판매분만 우대율(판매쿼리 status='active' 게이트), 소급 없음.
+sellerApp.post('/deals/:id/approve-proof', async (c) => {
+  const sellerId = getSellerId(c)
+  const dealId = Number(c.req.param('id'))
+  const body = await c.req.json<{ action: 'approve' | 'reject' }>().catch(() => ({ action: 'reject' as const }))
+  if (body.action === 'approve') {
+    const r = await c.env.DB.prepare(
+      `UPDATE seller_influencer_deals SET status = 'active', proof_status = 'approved', responded_at = datetime('now')
+       WHERE id = ? AND seller_id = ? AND requires_content_proof = 1 AND proof_status = 'submitted'`
+    ).bind(dealId, sellerId).run().catch(() => null)
+    if (!r || !r.meta?.changes) return c.json({ success: false, error: '승인 가능한 제출이 없습니다' }, 404)
+    return c.json({ success: true, status: 'active' })
+  }
+  const r = await c.env.DB.prepare(
+    `UPDATE seller_influencer_deals SET proof_status = 'rejected', responded_at = datetime('now')
+     WHERE id = ? AND seller_id = ? AND proof_status = 'submitted'`
+  ).bind(dealId, sellerId).run().catch(() => null)
+  if (!r || !r.meta?.changes) return c.json({ success: false, error: '반려 가능한 제출이 없습니다' }, 404)
+  return c.json({ success: true, status: 'rejected' })
 })
 
 sellerApp.get('/deals', async (c) => {
   const sellerId = getSellerId(c)
   const { results } = await c.env.DB.prepare(
-    `SELECT id, influencer_id, commission_pct, starts_at, ends_at, status, proposed_by, message, created_at, responded_at
+    `SELECT id, influencer_id, commission_pct, starts_at, ends_at, status, proposed_by, message, created_at, responded_at,
+            requires_content_proof, proof_url, proof_status
      FROM seller_influencer_deals WHERE seller_id = ?
      ORDER BY created_at DESC LIMIT 100`
   ).bind(sellerId).all().catch(() => ({ results: [] as any[] }))
