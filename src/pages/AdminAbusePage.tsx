@@ -34,6 +34,13 @@ const PATTERN_LABEL: Record<string, string> = {
   repeat_donor_24h: '반복 후원 (24h)',
   new_account_donation_pattern: '신규계정 후원 패턴',
   rapid_signups_same_ip: '동일 IP 대량 가입',
+  // §0-4 커미션 레일 (2026-07-12 flip 선행)
+  self_referral: '자기추천 시도',
+  self_purchase: '본인상품 구매',
+  self_store_intro_purchase: '영입매장 본인구매',
+  affiliate_referrer_cap: '추천 적립 캡 초과',
+  commission_velocity_referrer: '커미션 폭주 (referrer)',
+  voucher_fast_use_store: '초단기 사용 매장 (공모 의심)',
 }
 
 const SEVERITY_STYLE: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
