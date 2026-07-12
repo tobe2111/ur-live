@@ -30,14 +30,20 @@ export function computeServicePrice(pricing: ServicePricing, quantity: number, o
   const q = Math.min(maxQ, Math.max(minQ, Math.round(Number(quantity) || minQ)))
   const unitPrice = Math.max(0, Math.round(Number(pricing.unitPrice) || 0))
   const subtotal = unitPrice * q
-  // 할인: qty 이하 최대 임계의 pct 적용.
+  // 할인: 자격 있는(q >= min) 모든 구간 중 **가장 큰** pct 적용.
+  //   (구간 pct 가 min 오름차순으로 단조증가라는 보장이 없음 — 오설정 시 큰 주문이 손해보지 않게 max.)
   let discountPct = 0
-  for (const d of (pricing.qtyDiscounts || []).slice().sort((a, b) => a.min - b.min)) {
-    if (q >= (Number(d.min) || 0)) discountPct = Math.min(90, Math.max(0, Number(d.pct) || 0))
+  for (const d of (pricing.qtyDiscounts || [])) {
+    if (q >= (Number(d.min) || 0)) discountPct = Math.max(discountPct, Math.min(90, Math.max(0, Number(d.pct) || 0)))
   }
   const discounted = Math.round(subtotal * (1 - discountPct / 100))
+  // 옵션: 선택된 key 만, 카탈로그 중복 key 는 1회만 가산(중복합산 방지).
   const optSet = new Set(optionKeys)
-  const optionsTotal = (pricing.options || []).filter(o => optSet.has(o.key)).reduce((s, o) => s + Math.max(0, Math.round(Number(o.price) || 0)), 0)
+  const seenOpt = new Set<string>()
+  let optionsTotal = 0
+  for (const o of (pricing.options || [])) {
+    if (optSet.has(o.key) && !seenOpt.has(o.key)) { seenOpt.add(o.key); optionsTotal += Math.max(0, Math.round(Number(o.price) || 0)) }
+  }
   return { unitPrice, quantity: q, subtotal, discountPct, discounted, optionsTotal, total: discounted + optionsTotal }
 }
 
@@ -192,8 +198,13 @@ export async function adminListOrders(DB: D1Database, status?: string, limit = 2
     ? DB.prepare(`SELECT ${cols} FROM ad_service_orders WHERE status = ? ORDER BY id DESC LIMIT ?`).bind(status, Math.min(500, limit))
     : DB.prepare(`SELECT ${cols} FROM ad_service_orders ORDER BY id DESC LIMIT ?`).bind(Math.min(500, limit))
   const r = await stmt.all<Omit<AdminOrderRow, 'margin'>>().catch(() => null)
-  // 마진 = 판매가 − 공급원가(순수 파생).
-  return (r?.results || []).map(o => ({ ...o, margin: (Number(o.total_amount) || 0) - (Number(o.supplier_cost) || 0) }))
+  // 마진 = 실현매출 − 공급원가(순수 파생). 환불/취소 주문은 매출 0 으로 계상 →
+  //   이미 공급처에 원가를 지급했다면 마진이 음수(손실)로 정직하게 표시된다(리셀러 P&L 과대계상 방지).
+  return (r?.results || []).map(o => {
+    const counted = o.payment_status !== 'refunded' && o.status !== 'cancelled'
+    const realizedRevenue = counted ? (Number(o.total_amount) || 0) : 0
+    return { ...o, margin: realizedRevenue - (Number(o.supplier_cost) || 0) }
+  })
 }
 
 export async function adminUpdateOrder(DB: D1Database, id: number, patch: { status?: string; payment_status?: string; fulfillment_method?: string; admin_note?: string; supplier?: string; supplier_order_id?: string; supplier_cost?: number }): Promise<{ ok: boolean; error?: string }> {

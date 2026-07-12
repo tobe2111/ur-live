@@ -57,7 +57,11 @@ export async function createReview(DB: D1Database, accountId: number, serviceId:
   if (body.length < 5 || body.length > 1000) return { ok: false, error: '내용을 5~1000자로 입력해주세요' }
   // 🔒 구매 검증: 완료 주문이 있어야만(구조적으로 가짜 차단).
   const orderId = await reviewableOrderId(DB, accountId, serviceId)
-  if (!orderId) return { ok: false, error: '완료된 주문 고객만 후기를 작성할 수 있습니다 (주문당 1회).' }
+  if (!orderId) return { ok: false, error: '완료된 주문 고객만 후기를 작성할 수 있습니다.' }
+  // 계정당 상품별 1회 — 같은 계정이 여러 완료주문으로 후기를 도배해 평점을 조작하는 것 방지.
+  //   (주문은 무결제라 한 계정이 자기 상품에 다건 주문→다건 5점 리뷰가 구조적으로 가능했음.)
+  const dup = await DB.prepare('SELECT 1 AS x FROM ad_service_reviews WHERE account_id = ? AND service_id = ? LIMIT 1').bind(accountId, serviceId).first<{ x: number }>().catch(() => null)
+  if (dup) return { ok: false, error: '이미 이 상품에 후기를 작성하셨습니다 (상품당 1회).' }
   const acc = await DB.prepare('SELECT company_name, email FROM ad_accounts WHERE id = ?').bind(accountId).first<{ company_name: string | null; email: string | null }>().catch(() => null)
   const author = maskAuthor(acc?.company_name || null, acc?.email || null)
   const r = await DB.prepare('INSERT OR IGNORE INTO ad_service_reviews (service_id, account_id, order_id, rating, title, body, author_masked) VALUES (?, ?, ?, ?, ?, ?, ?)')
