@@ -188,6 +188,43 @@ async function ensureKakaoColumns(DB: D1Database): Promise<void> {
 const OAUTH_STATE_COOKIE = 'kakao_oauth_state';
 
 /**
+ * 🧭 2026-07-11 (감사 §R2 어트리뷰션 생존성): query 제거 시에도 보존하는 파라미터 화이트리스트.
+ *   ?ref=(인플)·?aff=(큐레이터)·?invite=(초대) 가 카카오 왕복에서 통째로 제거돼 콜백 후
+ *   재캡처 불가였음. 값 검증([A-Za-z0-9_-]{1,64}) 통과분만 재부착 — 나머지 query/hash 와
+ *   open-redirect 방어는 기존 그대로(약화 없음).
+ * ⚠️ 프론트 safe-internal-path.ts 와 동일 화이트리스트 — 양쪽 같이 갱신할 것.
+ */
+const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite'] as const;
+const PRESERVED_VALUE_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** query(+hash) 부분에서 화이트리스트 파라미터만 추출 — 안전값만, 없으면 '' */
+function extractPreservedQuery(rawQueryAndHash: string): string {
+  if (!rawQueryAndHash.startsWith('?')) return '';
+  const hashIdx = rawQueryAndHash.indexOf('#');
+  const queryOnly = hashIdx >= 0 ? rawQueryAndHash.slice(1, hashIdx) : rawQueryAndHash.slice(1);
+  try {
+    const params = new URLSearchParams(queryOnly);
+    const kept = new URLSearchParams();
+    for (const key of PRESERVED_QUERY_PARAMS) {
+      const v = params.get(key);
+      if (v && PRESERVED_VALUE_RE.test(v)) kept.set(key, v);
+    }
+    const s = kept.toString();
+    return s ? `?${s}` : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * redirect 대상에 query param 부착 — 🧭 2026-07-11: safeRedirect 가 보존 query(?ref= 등)를
+ * 반환할 수 있으므로 `${target}?...` 직결 대신 ?/& 분기. (기존 `?from=kakao` 재할당 케이스도 커버.)
+ */
+function appendQuery(target: string, qs: string): string {
+  return target + (target.includes('?') ? '&' : '?') + qs;
+}
+
+/**
  * Only accept internal paths as redirect target:
  *  - must start with "/"
  *  - must NOT start with "//" (protocol-relative URL)
@@ -206,8 +243,13 @@ function safeRedirect(path: string | null | undefined): string {
   if (/[\n\t\r\0]/.test(path)) return '/';
   // 🛡️ 2026-05-01: query string / hash 제거 — 사용자 신고: 에러 URL 누적 (?error=...?error=...)
   //   redirect 대상은 pathname only. ?error=, ?login=success 등은 worker 가 새로 부착.
+  // 🧭 2026-07-11: 단, ref/aff/invite 화이트리스트 파라미터만 검증 후 보존 (§R2).
   const queryIdx = path.search(/[?#]/);
-  if (queryIdx >= 0) path = path.slice(0, queryIdx);
+  let preserved = '';
+  if (queryIdx >= 0) {
+    preserved = extractPreservedQuery(path.slice(queryIdx));
+    path = path.slice(0, queryIdx);
+  }
   if (!path) return '/';
   const FORBIDDEN = ['/login', '/seller/login', '/admin/login', '/agency/login', '/auth/', '/oauth/'];
   for (const prefix of FORBIDDEN) {
@@ -219,7 +261,7 @@ function safeRedirect(path: string | null | undefined): string {
       }
     }
   }
-  return path;
+  return path + preserved;
 }
 
 // 🧪 단위 테스트용 export — frontend safeInternalPath 와 양쪽 일관성 검증
@@ -500,13 +542,13 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
     if (error) {
       if (import.meta.env.DEV) console.error('[Kakao Sync] OAuth error:', error);
       c.header('Set-Cookie', clearStateCookieHeader());
-      return c.redirect(`${redirectTarget}?error=kakao_oauth_${error}`);
+      return c.redirect(appendQuery(redirectTarget, `error=kakao_oauth_${error}`));
     }
 
     if (!code) {
       if (import.meta.env.DEV) console.error('[Kakao Sync] No authorization code');
       c.header('Set-Cookie', clearStateCookieHeader());
-      return c.redirect(`${redirectTarget}?error=no_code`);
+      return c.redirect(appendQuery(redirectTarget, 'error=no_code'));
     }
 
     // If a state cookie exists but doesn't match, reject (CSRF guard)
@@ -524,7 +566,7 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
         if (import.meta.env.DEV) console.error('[Kakao Sync] OAuth state mismatch');
         c.header('Set-Cookie', clearStateCookieHeader());
         fireDiag('error', 'oauth_state_mismatch');
-        return c.redirect(`${redirectTarget}?error=oauth_state_mismatch`);
+        return c.redirect(appendQuery(redirectTarget, 'error=oauth_state_mismatch'));
       }
     }
     
@@ -636,7 +678,7 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
         if (import.meta.env.DEV) console.error('[Kakao Sync] Session cookie creation failed:', e);
         // 🛡️ 2026-06-01 하드닝: 원시 에러를 redirect URL 에 노출 금지 — 정적 코드만.
         fireDiag('error', 'session_cookie_failed');
-        return c.redirect(`${redirectTarget}?error=session_cookie_failed`, 302);
+        return c.redirect(appendQuery(redirectTarget, 'error=session_cookie_failed'), 302);
       }
 
       // 🛡️ 2026-06-20 (A 방식): localStorage Bearer 토큰 미발급 — 대신 아래 redirect 에 단명 세션 티켓을
@@ -787,9 +829,9 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       // 🛡️ 2026-05-01: Firebase 분기 제거 (KR 미사용). Database 만 별도 처리.
       // 🛡️ 2026-06-01 하드닝: 원시 에러를 redirect URL 에 노출 금지 — 정적 코드만.
       if (errorMsg.includes('Database')) {
-        return c.redirect(`${redirectTarget}?error=database_error`);
+        return c.redirect(appendQuery(redirectTarget, 'error=database_error'));
       }
-      return c.redirect(`${redirectTarget}?error=kakao_auth_failed`);
+      return c.redirect(appendQuery(redirectTarget, 'error=kakao_auth_failed'));
     }
 
   } catch (error) {
@@ -799,10 +841,10 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
     const code = (error as { code?: string })?.code;
     if (code === 'EMAIL_ALREADY_LINKED_TO_OTHER_METHOD') {
       const method = (error as { existingMethod?: string })?.existingMethod || 'other';
-      return c.redirect(`${redirectTarget}?error=email_already_linked&method=${method}`);
+      return c.redirect(appendQuery(redirectTarget, `error=email_already_linked&method=${method}`));
     }
     // 🛡️ 2026-06-01 하드닝: 원시 에러 redirect 노출 금지.
-    return c.redirect(`${redirectTarget}?error=kakao_sync_failed`);
+    return c.redirect(appendQuery(redirectTarget, 'error=kakao_sync_failed'));
   }
 });
 

@@ -59,7 +59,7 @@ export default function VoucherRedeemModal({
   const cancelLeft = Math.max(0, Math.ceil((cancelableUntil - now) / 1000))
 
   async function redeem() {
-    if (needCode && storeCode.trim().length < 4) { toast.error('매장 확인코드 4자리를 입력해주세요'); return }
+    if (needCode && storeCode.trim().length < 4) { toast.error('매장 확인코드를 입력해주세요'); return }
     setPhase('loading')
     try {
       const geo = await getGeo() // 소프트 — 없어도 진행(게이트 X)
@@ -132,16 +132,16 @@ export default function VoucherRedeemModal({
             <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5">
               <b className="text-gray-900 dark:text-white">{store}</b> 에서 지금 사용합니다.<br />
               {needCode
-                ? '카운터에 비치된 매장 확인코드 4자리를 입력해주세요.'
+                ? '카운터에 비치된 매장 확인코드를 입력해주세요.'
                 : '사용 후 환불은 불가하며, 실수 시 60초 내 취소할 수 있어요.'}
             </p>
             {needCode && (
               <input
                 value={storeCode}
-                onChange={(e) => setStoreCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                onChange={(e) => setStoreCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 inputMode="numeric"
-                maxLength={4}
-                placeholder="매장 확인코드 4자리"
+                maxLength={6}
+                placeholder="매장 확인코드"
                 className="mt-4 w-full text-center tracking-[0.5em] text-[22px] font-black py-3 rounded-2xl border-2 border-gray-300 dark:border-[#2A2A2A] bg-white dark:bg-[#121212] text-gray-900 dark:text-white"
                 autoFocus
               />

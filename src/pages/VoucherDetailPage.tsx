@@ -158,8 +158,12 @@ export default function VoucherDetailPage() {
   const [phoneConsent, setPhoneConsent] = useState(false)
 
   // 🧭 2026-06-10 (링크샵 적립): 핀 리다이렉트 ?aff= → affiliate_ref 저장 (물리 ?ref= 와 동일 키)
+  // 🧭 2026-07-11 (감사 §R2): ?ref=(인플 share_url) fallback — GroupBuyDetailPage 와 정합. aff 우선.
   useEffect(() => {
-    try { storeAffiliateRef(new URLSearchParams(window.location.search).get('aff')) } catch { /* noop */ }
+    try {
+      const q = new URLSearchParams(window.location.search)
+      storeAffiliateRef(q.get('aff') || q.get('ref'))
+    } catch { /* noop */ }
   }, [])
 
   useEffect(() => {

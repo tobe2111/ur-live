@@ -12,6 +12,10 @@
 import { Hono } from 'hono'
 import { safeError } from '@/worker/utils/safe-error'
 import { requireAdmin, requireAdminRole } from '../../../worker/middleware/auth'
+// 🔐 2026-07-11 (사전점검 보안감사 R3 ③): 돈 액션 require2FA — 옵트인(2FA 미등록 관리자는 no-op 통과,
+//   등록 시 X-2FA-Code 헤더 필수 — disputes.routes.ts 와 동일 패턴). 클라 인터셉터(api.ts:425)가
+//   403+2FA_REQUIRED 에 자동 프롬프트 + 1회 재시도. 핸들러 본문 불변 — 미들웨어 체인만 추가.
+import { require2FA } from '../../../worker/middleware/require-2fa'
 // 🛡️ 2026-05-21 정합성: 모든 sensitive action 에 audit log 강제.
 import { auditLog } from '../../../worker/middleware/audit-log'
 import type { Env } from '../../../worker/types/env'
@@ -74,7 +78,7 @@ adminPayoutsRoutes.get('/admin/payouts/pending', requireAdmin(), async (c) => {
 })
 
 // 주기간 정산 일괄 생성 — pending 잔액을 payouts row 로 변환.
-adminPayoutsRoutes.post('/admin/payouts/generate', requireAdmin(), auditLog('payouts.generate'), async (c) => {
+adminPayoutsRoutes.post('/admin/payouts/generate', requireAdmin(), require2FA(), auditLog('payouts.generate'), async (c) => {
   const body = await c.req.json<{ period_start?: string; period_end?: string; min_amount?: number }>().catch(() => ({} as { period_start?: string; period_end?: string; min_amount?: number }))
   const periodStart = body.period_start || new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
   const periodEnd = body.period_end || new Date().toISOString().slice(0, 10)
@@ -182,7 +186,7 @@ adminPayoutsRoutes.get('/admin/payouts', requireAdmin(), async (c) => {
   return c.json({ success: true, data: list })
 })
 
-adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdminRole('finance'), auditLog('payouts.approve'), async (c) => {
+adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdminRole('finance'), require2FA(), auditLog('payouts.approve'), async (c) => {
   const id = parseInt(c.req.param('id') || '', 10)
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'Invalid id' }, 400)
   const { DB } = c.env
@@ -223,7 +227,10 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/approve', requireAdminRole('finance
   return c.json({ success: true })
 })
 
-adminPayoutsRoutes.patch('/admin/payouts/:id/sent', requireAdmin(), auditLog('payouts.sent'), async (c) => {
+// 🔐 2026-07-11 (사전점검 보안감사 R3): /sent 를 /approve(:185) 와 동일한 finance 게이트로 승격.
+//   기존엔 requireAdmin() 만이라 송금완료 마킹이 승인보다 약한 게이트였음(비-finance 어드민도
+//   sent 마킹 + 알림톡 발송 가능). 게이트만 변경 — 핸들러/정산 로직 byte-불변.
+adminPayoutsRoutes.patch('/admin/payouts/:id/sent', requireAdminRole('finance'), require2FA(), auditLog('payouts.sent'), async (c) => {
   const id = parseInt(c.req.param('id') || '', 10)
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'Invalid id' }, 400)
   const body = await c.req.json<{ transaction_id?: string; admin_memo?: string }>().catch(() => ({} as { transaction_id?: string; admin_memo?: string }))
@@ -354,7 +361,7 @@ adminPayoutsRoutes.get('/admin/payouts/commission-rates', requireAdmin(), async 
   return c.json({ success: true, data: result })
 })
 
-adminPayoutsRoutes.patch('/admin/payouts/commission-rates', requireAdminRole('finance'), auditLog('payouts.commission_rates'), async (c) => {
+adminPayoutsRoutes.patch('/admin/payouts/commission-rates', requireAdminRole('finance'), require2FA(), auditLog('payouts.commission_rates'), async (c) => {
   const body = await c.req.json<{ platform_fee_pct?: number; seller_commission_pct?: number; agency_share_pct?: number; influencer_intro_share_pct?: number }>().catch(() => ({} as { platform_fee_pct?: number; seller_commission_pct?: number; agency_share_pct?: number; influencer_intro_share_pct?: number }))
   const { DB } = c.env
 
@@ -414,7 +421,7 @@ adminPayoutsRoutes.patch('/admin/payouts/commission-rates', requireAdminRole('fi
   return c.json({ success: true, data: { changes } })
 })
 
-adminPayoutsRoutes.patch('/admin/payouts/:id/cancel', requireAdmin(), auditLog('payouts.cancel'), async (c) => {
+adminPayoutsRoutes.patch('/admin/payouts/:id/cancel', requireAdmin(), require2FA(), auditLog('payouts.cancel'), async (c) => {
   const id = parseInt(c.req.param('id') || '', 10)
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'Invalid id' }, 400)
   const body = await c.req.json<{ reason?: string }>().catch(() => ({} as { reason?: string }))

@@ -184,6 +184,48 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
       }
     }
 
+    // 🔐 2026-07-11 (사전점검 보안감사 R3 ④): 로그인 TOTP 게이트 + finance/super 등록 강제 (must_set_pin 미러).
+    //   - SSOT 축 = admins.totp_secret/totp_enabled 컬럼 — generic /api/2fa/* (twofa.routes.ts, Admin2FASetupPage
+    //     가 사용) 가 쓰고 require-2fa.ts 미들웨어가 읽는 바로 그 축. 본 파일 하단의 admin_2fa 테이블 경로
+    //     (/api/admin/2fa/setup·verify·validate)는 로그인이 /validate 를 호출한 적 없는 휴면(dead) 경로 —
+    //     사용하지 않음(삭제 아님, 존치).
+    //   - totp_enabled=1 계정: body.totp_code(6자리, 인증앱) 필수 — require-2fa.ts 의 verifyTOTP(±30s 창) 재사용.
+    //     부재/형식오류 → ADMIN_2FA_REQUIRED, 불일치 → ADMIN_2FA_INVALID. 둘 다 401 + 토큰 미발급.
+    //   - role ∈ {finance, super(레거시 super_admin 포함)} 인데 미등록(totp_enabled=0): 토큰은 오늘처럼 발급하되
+    //     must_set_2fa 플래그 → 프론트가 /admin/2fa 설정 페이지로 유도(잠금 없음 — 단독 관리자 lock-out 방지).
+    //     등록 완료 후부터 매 로그인 코드 필수. 그 외 역할 + 미등록: 현행 그대로(무변화).
+    //   ⚠️ fail-safe: totp_* 컬럼 미존재(프로덕션 drift 가능 — twofa.routes 가 setup 시 ALTER 로 추가)면
+    //     catch → null → 미등록 취급(로그인 차단 없음). admins 테이블 컬럼 추가 없음(read-only).
+    let mustSet2fa = false;
+    {
+      const totpRow = await DB.prepare('SELECT totp_secret, totp_enabled FROM admins WHERE id = ?')
+        .bind(admin.id).first<{ totp_secret: string | null; totp_enabled: number }>().catch(() => null);
+      if (totpRow?.totp_enabled && totpRow.totp_secret) {
+        const totpCode = String((body as { totp_code?: string }).totp_code || '').trim();
+        if (!/^\d{6}$/.test(totpCode)) {
+          return c.json({
+            success: false,
+            totp_required: true,
+            code: 'ADMIN_2FA_REQUIRED',
+            message: '이 계정은 2단계 인증(OTP)이 설정되어 있습니다. 인증 앱의 6자리 코드를 입력하세요.',
+          }, 401);
+        }
+        const { verifyTOTP } = await import('../../../worker/middleware/require-2fa');
+        const totpOk = await verifyTOTP(totpRow.totp_secret, totpCode);
+        if (!totpOk) {
+          return c.json({
+            success: false,
+            totp_required: true,
+            code: 'ADMIN_2FA_INVALID',
+            error: 'OTP 코드가 올바르지 않습니다. 인증 앱의 최신 코드를 다시 입력하세요.',
+          }, 401);
+        }
+      } else {
+        const TOTP_ENFORCED_ROLES = ['finance', 'super', 'super_admin'];
+        if (TOTP_ENFORCED_ROLES.includes(String(admin.role))) mustSet2fa = true;
+      }
+    }
+
     // 🛡️ 2026-06-24: 성공 로그인 → 이 IP 의 admin_login rate-limit 카운터 비움.
     //   "본인이 5분에 5번 로그인하면 전부 성공이어도 잠기는" 문제 방지. 실패 시도는
     //   위(잘못된 비번/PIN)에서 이미 반환되어 카운터에 남으므로 brute-force 방어 불변.
@@ -259,6 +301,7 @@ adminRoutes.post('/login', cors(), rateLimit({ action: 'admin_login', max: 5, wi
         refreshToken,
         token, // backward compatibility
         must_set_pin: mustSetPin, // 🆕 강제 대상(도매 파트너/슈퍼)인데 보안 PIN 미설정 → 프론트가 PIN 설정 유도
+        must_set_2fa: mustSet2fa, // 🔐 R3 ④: finance/super 인데 2FA 미등록 → 프론트가 /admin/2fa 설정 유도 (must_set_pin 미러)
         admin: {
           id: admin.id as number,
           username: admin.username as string,
@@ -452,7 +495,12 @@ adminRoutes.post('/set-login-pin', cors(), rateLimit({ action: 'admin_set_pin', 
   const user = (c as unknown as { get: (k: string) => unknown }).get('user') as { id?: string | number } | undefined;
   if (!user?.id) return c.json({ success: false, error: 'Unauthorized' }, 401);
   let pin = '';
-  try { pin = String(((await c.req.json<{ pin?: string }>()) || {}).pin || '').trim(); } catch { /* invalid json */ }
+  let currentPin = '';
+  try {
+    const body = (await c.req.json<{ pin?: string; current_pin?: string }>()) || {};
+    pin = String(body.pin || '').trim();
+    currentPin = String(body.current_pin || '').trim();
+  } catch { /* invalid json */ }
   if (!/^\d{6}$/.test(pin)) return c.json({ success: false, error: '6자리 숫자 PIN을 입력하세요' }, 400);
   // 너무 단순한 PIN 차단 (같은 숫자 6개 / 순차).
   if (/^(\d)\1{5}$/.test(pin) || ['123456', '654321', '012345', '111111'].includes(pin)) {
@@ -460,6 +508,21 @@ adminRoutes.post('/set-login-pin', cors(), rateLimit({ action: 'admin_set_pin', 
   }
   try {
     await ensureLoginPinColumn(DB);
+    // 🔐 2026-07-11 (사전점검 보안감사 R3): 이미 PIN 이 설정된 계정은 기존 PIN(current_pin) 검증
+    //   후에만 변경 가능 — 토큰 탈취자가 PIN 을 무단 재설정하는 경로 차단(단계적 재인증).
+    //   최초 설정(login_pin_hash IS NULL)은 현행 옵트인 흐름 그대로(current_pin 불요).
+    //   검증은 로그인 PIN 검증(:180)과 동일하게 verifyPassword(bcrypt) 재사용.
+    const existingRow = await DB.prepare('SELECT login_pin_hash FROM admins WHERE id = ?')
+      .bind(user.id).first<{ login_pin_hash: string | null }>();
+    if (existingRow?.login_pin_hash) {
+      if (!/^\d{6}$/.test(currentPin)) {
+        return c.json({ success: false, error: '기존 보안 PIN(current_pin)을 입력해야 변경할 수 있습니다', code: 'CURRENT_PIN_REQUIRED' }, 400);
+      }
+      const { valid: currentOk } = await verifyPassword(currentPin, existingRow.login_pin_hash);
+      if (!currentOk) {
+        return c.json({ success: false, error: '기존 보안 PIN이 올바르지 않습니다', code: 'CURRENT_PIN_MISMATCH' }, 403);
+      }
+    }
     const hash = await hashPassword(pin);
     await DB.prepare('UPDATE admins SET login_pin_hash = ? WHERE id = ?').bind(hash, user.id).run();
     return c.json({ success: true, message: '보안 PIN이 설정되었습니다. 다음 로그인부터 사용됩니다.' });
