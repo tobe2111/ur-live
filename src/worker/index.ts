@@ -584,6 +584,23 @@ app.use('*', async (c, next) => {
       } catch { /* edge cache unavailable */ }
       timings.push(`edge;dur=${Date.now() - edgeStart}`);
 
+      // 🌍 2026-07-12 [UNLOCK_LOADING] (대표 "계속, 이상적으로" — 콜드 콜로 TTFB 마감): edge(콜로별) miss 여도
+      //   self-fetch(콜드 D1, 0.5~1.5s 를 응답 전에 대기) 전에 **전역 KV**(cron 이 15분 표본화로 기록,
+      //   cache-prewarm.ts SSR_KV_PATHS)를 먼저 본다 — 어느 콜로든 ~수십 ms 에 페이로드 확보 → TTFB 급감.
+      //   CACHE_KV 미바인딩/미기록 키(상세 등 롱테일)는 miss → 기존 self-fetch 로 폴백(현행 100% 동일).
+      //   잠긴 caches.default read·self-fetch 타임아웃·주입 로직 전부 불변 — 계층 1개 additive.
+      if (!ssrPayload && (c.env as { CACHE_KV?: KVNamespace }).CACHE_KV) {
+        const kvStart = Date.now();
+        try {
+          const raw = await (c.env as { CACHE_KV?: KVNamespace }).CACHE_KV!.get(`ssr:${ssrTarget.path}`, 'text');
+          if (raw && raw.startsWith('{')) {
+            ssrPayload = raw.replace(/<\/script/gi, '<\\/script');
+            ssrStatus = 'kv-hit';
+          }
+        } catch { /* KV 불가 — self-fetch 폴백 */ }
+        timings.push(`kv;dur=${Date.now() - kvStart}`);
+      }
+
       if (!ssrPayload) {
         // 🛡️ 2026-05-27 v2: timeout 증가 — cold start 시 fresh inject 보장.
         //   이전: MAIN 150ms / DETAIL 250ms — cold 시 self-fetch-timeout → 클라가 직접 fetch → 10초+ timeout
