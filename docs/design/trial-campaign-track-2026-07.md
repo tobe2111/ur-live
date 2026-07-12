@@ -7,7 +7,11 @@
 - [x] 머니 계산 파일 diff 0 — WP-A#4 0원 발급이 정산·커미션 구조적 우회(§A-4), WP-B 발효=기존 status='active' 게이트 재사용([INV-CB] green 유지)
 - [x] 캠페인 1회 왕복 스모크 시나리오 문서화(§스모크)
 
-**진행**: WP-A 백엔드+어드민 대행생성 UI+소비자 응모 페이지 완료(campaign/1~4). WP-B 백엔드+셀러/인플 UI 완료(campaign/6~7). WP-C TTL 연장 완료(campaign/5). 남음: WP-A 셀러 셀프생성 UI(게이트 뒤, 2순위) + promo-ledger 0원 비정산 표기(A2 화면).
+**진행(전 WP 구현 완료 · draft PR #499, 머지 전 스모크 검증 대기)**:
+- WP-A: 백엔드+어드민 대행생성(1순위)+소비자 응모 `/experience`+리포트/CSV(campaign/1~4) · promo-ledger 0원 비정산 패널(campaign/8) · 셀러 셀프생성 UI(2순위·게이트 `experience_campaign_seller_create` 뒤, campaign/9).
+- WP-B: 백엔드+셀러/인플 UI(campaign/6~7).
+- WP-C: TTL 24h→7d(campaign/5).
+- 머지 전: §스모크 1회 왕복 + WP-B 발효 전후 요율 비교(staging/파일럿).
 
 ---
 
