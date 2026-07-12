@@ -361,7 +361,7 @@ sellerApp.post('/deals/propose', async (c) => {
 influencerApp.post('/deals/:id/submit-proof', async (c) => {
   const userId = String((c.get('user') as AuthUser).id)
   const dealId = Number(c.req.param('id'))
-  const body = await c.req.json<{ proof_url?: string }>().catch(() => ({}))
+  const body = await c.req.json<{ proof_url?: string }>().catch(() => ({} as { proof_url?: string }))
   const url = String(body.proof_url || '').trim()
   if (!/^https:\/\/[^\s]{5,500}$/i.test(url)) return c.json({ success: false, error: '유효한 https 콘텐츠 링크가 필요합니다' }, 400)
   const r = await c.env.DB.prepare(

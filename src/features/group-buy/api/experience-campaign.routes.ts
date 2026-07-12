@@ -295,7 +295,7 @@ adminApp.post('/:id/draw', async (c) => {
   await ensureTables(c.env.DB)
   const admin = getCurrentUser(c)
   const id = intParam(c.req.param('id'), 0)
-  const b = await c.req.json<{ count?: unknown }>().catch(() => ({}))
+  const b = await c.req.json<{ count?: unknown }>().catch(() => ({} as { count?: unknown }))
   const camp = await c.env.DB.prepare(
     "SELECT id, seller_id, product_id, slots, status, title FROM experience_campaigns WHERE id = ?",
   ).bind(id).first<{ id: number; seller_id: number; product_id: number; slots: number; status: string; title: string }>().catch(() => null)
@@ -462,7 +462,7 @@ sellerApp.post('/:id/draw', async (c) => {
   await ensureTables(c.env.DB)
   const sellerId = Number((getCurrentUser(c) as { id: string | number }).id)
   const id = intParam(c.req.param('id'), 0)
-  const b = await c.req.json<{ count?: unknown }>().catch(() => ({}))
+  const b = await c.req.json<{ count?: unknown }>().catch(() => ({} as { count?: unknown }))
   const camp = await c.env.DB.prepare(
     "SELECT id, seller_id, product_id, slots, status, title FROM experience_campaigns WHERE id = ? AND seller_id = ?",
   ).bind(id, sellerId).first<{ id: number; seller_id: number; product_id: number; slots: number; status: string; title: string }>().catch(() => null)
