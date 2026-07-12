@@ -1,5 +1,9 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-12 — 상세 하드로드 청크 병렬화 (대표 "/group-buy/2609 로딩 아쉬워")
+실측: 로더 구간(~1.2s) 대부분 = lazy 페이지 청크 직렬 다운로드. vite manifest → 라우트별 청크 맵 생성(`generate-route-chunk-map.mjs`, build:worker 선두) → 워커가 7개 표면에 modulepreload 주입(엔트리와 병렬). 상세: CLAUDE.md 로딩 audit log 2026-07-12. ⚠️ 배포 후 라이브 실측으로 단축 확인.
+
+
 ## ✅ 2026-07-11 — 사업자 링크샵 1-RTT 화 (로딩 전수조사 마지막 항목, 대표 "가장 이상적으로")
 curator 응답에 `linked_seller_public`(셀러 공개 페이로드, `buildSellerPublicPayload` SSOT — seller.routes `/public` 와 공유) additive 동봉 → SellerPublicPage 가 시드로 동기 소비, 셀러 `/public` fetch 생략. 하드로드는 SSR CURATOR 슬롯에 실려 0-RTT. 구캐시 호환 폴백(warm) 유지. 가드: loader-continuity 12·13번째 불변식. 상세: CLAUDE.md 로딩 audit log 2026-07-11.
 

@@ -9,6 +9,7 @@ import type { Context, Next } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { timing } from 'hono/timing';
+import { ROUTE_CHUNK_MAP } from './generated/route-chunk-map'; // 🚀 2026-07-12 라우트 청크 modulepreload(빌드 시 자동 생성)
 import { docsRoutes } from './routes/docs.routes'; // 2026-04-27 TD-006 split (openapi/swagger)
 import { internalDiagnosticsRoutes } from './routes/internal-diagnostics.routes'; // 2026-04-27 TD-006 split
 import { internalAdminToolsRoutes } from './routes/internal-admin-tools.routes'; // 2026-04-27 TD-006 Phase C
@@ -653,6 +654,20 @@ app.use('*', async (c, next) => {
     //   주입하면서 대체됐는데(#root 분기에서 미참조), 정의와 낡은 주석("#root 비움")만 남아 오독을 유발했음.
     // 📝 2026-07-01 블로그(/blog·/blog/:slug)도 소비자 테마 페이지 — 홈 shell 잔상 제거(#root 비움).
     const isBlogSurface = /^\/blog(?:\/|$)/.test(url.pathname);
+    // 🚀 2026-07-12 [UNLOCK_LOADING] (대표 "이용권 페이지 로딩 아쉬워" — /group-buy/2609 실측): 하드로드
+    //   로더 구간(~1.2s)의 대부분이 **lazy 페이지 청크 직렬 다운로드**(엔트리 실행 후에야 발견) —
+    //   라우트별 청크를 modulepreload 로 head 에 주입해 엔트리와 **병렬** 다운로드.
+    //   맵은 빌드 시 vite manifest 로 생성(generate-route-chunk-map.mjs → generated/route-chunk-map.ts,
+    //   같은 빌드의 해시와 항상 일치). 맵에 없는 표면/빈 맵(로컬 워커 단독 빌드)은 조용히 생략.
+    const chunkSurface = url.pathname === '/' || url.pathname === '/index.html' ? 'home'
+      : /^\/group-buy\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'gbDetail'
+      : /^\/vouchers\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'voucherDetail'
+      : /^\/products\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'product'
+      : /^\/(u|profile|s)(\/|$)/.test(url.pathname) ? 'linkshop'
+      : url.pathname === '/vouchers' ? 'vouchers'
+      : url.pathname === '/browse' ? 'browse'
+      : null;
+    const routeChunks = chunkSurface ? ROUTE_CHUNK_MAP[chunkSurface] : undefined;
     let rb = new HTMLRewriter()
       .on('script', {
         element(el) { el.setAttribute('nonce', nonce); },
@@ -662,6 +677,17 @@ app.use('*', async (c, next) => {
       })
       .on('head', {
         element(el) {
+          // 🚀 2026-07-12 [UNLOCK_LOADING]: 라우트 청크 modulepreload 주입(엔트리와 병렬 다운로드) —
+          //   Vite 가 index.html 에 넣는 modulepreload 와 동일 속성(crossorigin). css 는 preload(as=style).
+          //   SSR payload 유무와 무관(청크는 항상 필요). 상세 주석은 위 chunkSurface 선언부.
+          if (routeChunks) {
+            for (const f of routeChunks.js) {
+              el.append(`<link rel="modulepreload" crossorigin href="${f}">`, { html: true });
+            }
+            for (const f of routeChunks.css) {
+              el.append(`<link rel="preload" as="style" crossorigin href="${f}">`, { html: true });
+            }
+          }
           if (ssrPayload) {
             // 🛡️ 2026-05-27: slot-prefixed script id — 클라이언트가 페이지별 inject 구별.
             //   기존 __SSR_INITIAL_MAIN__ 호환 유지 (main slot 은 같은 id).
