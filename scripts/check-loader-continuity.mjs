@@ -195,7 +195,34 @@ const CHECKS = [
   },
 ]
 
+// ── 🚀 2026-07-12 (대표 "앞으로 만들 페이지들도 로딩은 이상적이어야 해"): 라우트 청크 병렬화 표면 동기 ──
+//   worker(index.ts chunkSurface)와 생성기(generate-route-chunk-map.mjs ROUTES)의 표면 키셋이 어긋나면
+//   새 표면이 modulepreload 를 조용히 못 받거나(워커에만 추가) 죽은 맵을 만든다(생성기에만 추가).
+//   새 하드로드 진입 페이지를 만들면 **두 파일에 같은 키를 함께 등재**할 것 (docs/LOADING_ARCHITECTURE.md 체크리스트).
+function checkChunkSurfaceSync() {
+  const worker = read('src/worker/index.ts')
+  const gen = read('scripts/generate-route-chunk-map.mjs')
+  if (!worker || !gen) return ['chunk-surface: 파일 누락']
+  const workerKeys = new Set([...worker.matchAll(/\?\s*'([A-Za-z]+)'\s*(?::|;)/g)].map((m) => m[1]))
+  // worker 의 chunkSurface 삼항 체인에서 키 추출이 과추출될 수 있어, 생성기 ROUTES 키 기준으로 양방향 포함 검사
+  const genKeys = [...gen.matchAll(/^\s{2}([A-Za-z]+):\s*\[/gm)].map((m) => m[1])
+  const errs = []
+  for (const k of genKeys) {
+    if (!worker.includes(`'${k}'`)) errs.push(`chunk-surface: 생성기 ROUTES '${k}' 가 worker chunkSurface 에 없음 — modulepreload 미주입(죽은 맵)`)
+  }
+  const workerSurfaceBlock = worker.match(/const chunkSurface =[\s\S]*?: null;/)?.[0] || ''
+  for (const m of workerSurfaceBlock.matchAll(/'([A-Za-z]+)'\s*$/gm)) {
+    const k = m[1]
+    if (k !== 'null' && !genKeys.includes(k)) errs.push(`chunk-surface: worker 표면 '${k}' 가 생성기 ROUTES 에 없음 — 그 표면은 청크 병렬화를 못 받음`)
+  }
+  return errs
+}
+
 let failures = 0
+for (const e of checkChunkSurfaceSync()) {
+  console.error(`❌ [loader-continuity] ${e}`)
+  failures++
+}
 for (const c of CHECKS) {
   const src = read(c.file)
   if (src == null) {
@@ -218,4 +245,4 @@ if (failures) {
   console.error(`\n로더 연속성 불변식 ${failures}건 위반 — "로딩이 2번 나뉘어 보임" 재발 위험 (2026-07-02 대표 신고 클래스).`)
   process.exit(STRICT ? 1 : 0)
 }
-console.log('✅ loader-continuity: 로더 연속성 13불변식(위상동기·전-라우트정적로더·seed+dedupe·주기동기·offline-SSR-safe·홈critical-i18n·pathname-key·prefetch키정규화·교환권prefetch세계일치·홈SSR시드·카카오오버레이동기·링크샵1RTT동봉·링크샵1RTT소비) 모두 존재.')
+console.log('✅ loader-continuity: 로더 연속성 14불변식(위상동기·전-라우트정적로더·seed+dedupe·주기동기·offline-SSR-safe·홈critical-i18n·pathname-key·prefetch키정규화·교환권prefetch세계일치·홈SSR시드·카카오오버레이동기·링크샵1RTT동봉·링크샵1RTT소비·청크표면동기) 모두 존재.')

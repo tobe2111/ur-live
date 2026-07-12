@@ -67,6 +67,28 @@
 | 부가 데이터 | 첫 페인트와 경쟁 금지 — requestIdleCallback 이후 enabled (헤더 필수값만 즉시) | 도매 월통계/재주문 레일 |
 | 다음 행동 | idle 에 다음 페이지 chunk + 상세 데이터 prefetch | 카드 hover/viewport prefetch |
 
+| 하드로드 청크 | **라우트 청크 modulepreload** — `scripts/generate-route-chunk-map.mjs` ROUTES + `worker/index.ts` chunkSurface 에 표면 등재(가드가 양쪽 동기 강제) | 홈/상세/링크샵/교환권/쇼핑 7표면 (2026-07-12) |
+
 **위반 신호**: 페이지 진입 → 스피너/스켈레톤만 1초+ → 콘텐츠. 이러면 위 표에서 빠진 장치를 찾을 것.
 **현재 준수**: 홈/교환권/쇼핑/동네딜/라이브/상세 3종/셀러/큐레이터/도매 카탈로그.
 **잔여 (가벼운 페이지 — 후순위)**: /wholesale/board(공지 prewarm 적용)·wishlist·딜내역 — 단일 목록이라 1-fetch, 필요 시 동일 표준 적용.
+
+
+## ✅ 새 페이지 로딩 체크리스트 (2026-07-12 확정 — 대표 "앞으로 만들 페이지들도 로딩은 이상적이어야 해")
+
+**새 소비자 페이지는 만들 때부터 아래를 전부 충족해야 한다. 사후 감사로 잡지 말고 처음부터.**
+
+1. **로더는 BrandLoader 하나** — 풀스크린은 `<BrandLoader fullScreen/>`(첫 페인트 전용), 인라인은 `<BrandLoader/>`.
+   ad-hoc 스피너/텍스트/자체 keyframes 금지(위상동기 깨짐 = "로딩 두 번" 체감). 라이트 고정 표면은 `forceLight`, 다크 고정은 `forceDark`.
+2. **데이터 시드는 useState 초기값에서 동기 소비** — SSR 슬롯/RQ 프리페치/서버 동봉 prop 이 있으면
+   `useState(() => seed ?? null)` + `loading = seed == null`. useEffect(페인트 후) 소비는 로더 1프레임 낭비.
+   시드엔 반드시 **정체성(id) 일치 검증**(잔존 시드 오소비 방지 — `pickSeedDetail`/`readSellerSeed` 패턴).
+3. **목록 → 상세 프리페치는 상세와 같은 세계** — 같은 엔드포인트 + 같은 RQ 키(**String(id) 정규화**).
+   상세는 `qc.fetchQuery`(in-flight 이어받기)로. (다르면 프리페치 100% 낭비 — 2026-07-10 실사고 2건.)
+4. **하드로드 진입점이면 두 곳 등재**:
+   - (트래픽 큰 공개 페이지) `worker/index.ts` SSR 슬롯 + `cache-prewarm HOT_PATHS`
+   - (모든 하드로드 진입점) `scripts/generate-route-chunk-map.mjs` ROUTES + `worker/index.ts` chunkSurface — 청크가 엔트리와 병렬 다운로드. **한쪽만 넣으면 loader-continuity 가드가 차단.**
+5. **쿼리 파라미터 변경은 제자리 갱신** — 페이지가 searchParams 를 반응형으로 처리(effect deps). 리마운트 유발 금지(App.tsx key 는 pathname — 가드 고정).
+6. **검증은 실측** — `node scripts/probe-loading.mjs /new-page` (원격 세션은 `PROXY_RELAY=1`). 기준: 풀스크린 로더 1회만(재등장=⚠️), warm 콘텐츠 ≤ ~1.5s. 추측으로 "빠르겠지" 금지.
+
+이 체크리스트의 기계화 가능한 부분(로더 위상·pathname key·prefetch 정합·시드·청크 표면 동기)은 `scripts/check-loader-continuity.mjs` 가 pre-commit + CI 에서 강제한다.
