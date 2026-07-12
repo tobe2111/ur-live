@@ -28,6 +28,11 @@ describe('computeCommissionBudget', () => {
     expect(computeCommissionBudget({ amountKrw: 10000, platformFeeKrw: 500, pgReservePct: -1 })).toBe(withDefault)
     expect(computeCommissionBudget({ amountKrw: 10000, platformFeeKrw: 500, pgReservePct: 999 })).toBe(withDefault)
   })
+  it('기본 PG 준비금 = 2.75% (VAT 포함 실측, 2026-07-12 flip 준비)', () => {
+    expect(DEFAULT_PG_RESERVE_PCT).toBe(2.75)
+    // 10,000원 · fee 5% = 500 · PG 2.75% = 275 → 예산 225
+    expect(computeCommissionBudget({ amountKrw: 10000, platformFeeKrw: 500, pgReservePct: DEFAULT_PG_RESERVE_PCT })).toBe(225)
+  })
   it('음수/NaN 입력은 0 처리', () => {
     expect(computeCommissionBudget({ amountKrw: -5, platformFeeKrw: NaN, pgReservePct: 2.5 })).toBe(0)
   })

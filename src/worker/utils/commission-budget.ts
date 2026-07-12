@@ -13,8 +13,15 @@
  * 설계 SSOT: docs/design/commission-funding-restructure.md
  */
 
-/** PG 준비금 기본 % — platform_settings.pg_reserve_pct 미설정 시 폴백(카드 수수료 보수 추정). */
-export const DEFAULT_PG_RESERVE_PCT = 2.5
+/**
+ * PG 준비금 기본 % — platform_settings.pg_reserve_pct 미설정 시 폴백.
+ * 💸 2026-07-12 (8월 flip 준비, 대표 지시): 2.5 → **2.75 (VAT 포함 실측)**.
+ *   토스 정가 3.4% 는 리스트가이고 볼륨 협상 실효는 카드 2%대 + VAT — 실측 2.75% 를 예산 산출의
+ *   보수적 PG 준비금으로 채택(예산 = 수수료 − 2.75% → 커미션 상한이 더 보수적 = 플랫폼 안전).
+ *   ⚠️ 이 상수는 commission_budget_enabled 게이트 ON + pg_reserve_pct 설정 미존재 시에만 사용 →
+ *      게이트 OFF(현행 라이브)에선 미참조 = 라이브 영향 0. flip 시 platform_settings 로 재확정 가능.
+ */
+export const DEFAULT_PG_RESERVE_PCT = 2.75
 
 export interface CommissionRequest {
   /** 커미션 식별 키 (예: 'affiliate' | 'multi_tier' | 'influencer_intro' | 'agency_intro') */
