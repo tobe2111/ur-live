@@ -1,5 +1,9 @@
 # 🚧 진행 중 작업
 
+## ✅ 2026-07-12 — SSR 페이로드 전역(KV) 워밍: 콜드 콜로 TTFB 마감 (대표 "계속 진행. 이상적으로")
+로딩 전수 최적화의 마지막 레버. `caches.default` 는 콜로별이라 콜드 콜로 하드로드가 self-fetch(콜드 D1, 0.5~1.5s)를 대기 → TTFB 1.1~1.9s. 진단 중 발견: `CACHE_KV` 는 선언/안내만 있고 SSR 경로에서 **아무도 KV 를 읽지도 쓰지도 않음**(바인딩만 해선 no-op) → 코드 완성. ① cron `cache-prewarm.ts` 가 SSR 슬롯 6키만 `ssr:{path}` KV put(**15분 표본화 576 writes/day < 무료 1K — KV 비용 잠금 준수**, TTL 30분). ② worker SSR 읽기 [edge miss → KV read → self-fetch] 계층(`X-SSR-Status: kv-hit`). 상세: CLAUDE.md 로딩 audit log 2026-07-12.
+- ⚠️ **효과 발생엔 운영 1스텝**: Cloudflare 대시보드 → Workers & Pages → ur-live → Settings → Bindings → KV `CACHE_KV` 바인딩(미바인딩=현행 100% 동일). 바인딩 후 `curl -sI https://live.ur-team.com/ | grep -i x-ssr-status` 로 kv-hit 확인.
+
 ## ✅ 2026-07-12 — 전 표면 로딩 스윕 + "앞으로의 페이지" 로딩 표준화 (대표 "전체적으로도 봐봐 + 앞으로 만들 페이지들도 이상적이어야")
 - **스윕(라이브 13표면)**: 콘텐츠 완성 0.4~1.3s(warm) — 병적 표면 0. 잔여 변수는 콜드 콜로 HTML TTFB(SSR self-fetch, 콜로별 edge 캐시) — 운영 레버 `CACHE_KV` 전역 캐시 바인딩 권장(2026-06-19 audit log 참조).
 - **표준화**: `docs/LOADING_ARCHITECTURE.md` "✅ 새 페이지 로딩 체크리스트" 신설(로더=BrandLoader·시드 동기소비·prefetch 세계일치·청크표면 등재·쿼리 제자리갱신·probe 실측) + CLAUDE.md 새 페이지 체크리스트 7번 갱신.
