@@ -3,9 +3,11 @@
 > 대표 신규 트랙(체험단 시장 전환). flip 검증과 **완전 별개 PR**(`claude/trial-campaign-track`). 전부 **게이트 OFF·additive**, 머니 계산 파일 diff 0. 목표 시점 = 서초 온보딩~8월 캠페인 전. 3축 병렬 지형조사(2026-07-12) 기반.
 
 ## 완료 기준 (대표 명시)
-- [ ] 전부 게이트 OFF (`platform_settings` 키, 기본 미설정=비활성)
-- [ ] 머니 계산 파일 diff 0 — **WP-A#4 0원 발급이 정산·커미션을 구조적으로 우회**(아래 §A-4 명시)
-- [ ] 캠페인 1회 왕복 스모크 시나리오 문서화(§스모크)
+- [x] 전부 게이트 OFF (`platform_settings` 키, 기본 미설정=비활성) — WP-A 어드민 대행생성/응모/추첨/0원발급, WP-B opt-in 체크박스(미체크=현행)
+- [x] 머니 계산 파일 diff 0 — WP-A#4 0원 발급이 정산·커미션 구조적 우회(§A-4), WP-B 발효=기존 status='active' 게이트 재사용([INV-CB] green 유지)
+- [x] 캠페인 1회 왕복 스모크 시나리오 문서화(§스모크)
+
+**진행**: WP-A 백엔드+어드민 대행생성 UI+소비자 응모 페이지 완료(campaign/1~4). WP-B 백엔드+셀러/인플 UI 완료(campaign/6~7). WP-C TTL 연장 완료(campaign/5). 남음: WP-A 셀러 셀프생성 UI(게이트 뒤, 2순위) + promo-ledger 0원 비정산 표기(A2 화면).
 
 ---
 
@@ -51,6 +53,16 @@
 3. **매장 승인 라우트**(sellerApp): `review-bonus` adminApp approve/reject **CAS 패턴**(`WHERE ... AND status='submitted'` + `meta.changes`) → 승인 시 `status='active'` UPDATE(발효). 거절 시 proposed 유지.
 - **캡 가드**: 제안 시점 `max_influencer_commission_pct` 검증(marketing.routes:333-337) 그대로. 조건부 딜도 이 경로.
 - **UI**: 셀러 `SellerInfluencerDealsPage.tsx` propose 폼에 조건 체크박스, 인플 `InfluencerSettlementPage.tsx:119-132` deal 항목에 "수락+링크제출" 버튼.
+
+### ✅ WP-B 구현 완료 (campaign/6 백엔드 `c796f55d` + campaign/7 UI `389aeead`)
+실제 엔드포인트(마운트: seller `/api/seller-marketing`, influencer `/api/influencer-settlement`):
+- `POST /seller-marketing/deals/propose` — body 에 `requires_content_proof` 수용. 1이면 `status='proposed'` 유지 + `proof_status='pending'`(propose 만으로 발효 안 됨).
+- `POST /influencer-settlement/deals/:id/submit-proof` — 인플 https 링크 제출. CAS `WHERE influencer_id=me AND proposed_by='seller' AND requires_content_proof=1 AND status='proposed' AND proof_status IN(pending,rejected)` → `'submitted'`.
+- `POST /seller-marketing/deals/:id/approve-proof` — 매장 승인 시 CAS `WHERE seller_id=me AND requires_content_proof=1 AND proof_status='submitted'` → `status='active'`(**발효 트리거**) + `proof_status='approved'`. reject → `proof_status='rejected'`(재제출 대기).
+- `GET /influencer-settlement/deals` — 인플이 자기에게 온 제안 목록(신규, submit 대상 노출용).
+- 컬럼(repair-schema): `seller_influencer_deals.{requires_content_proof(INT DEFAULT 0), proof_url(TEXT), proof_status(TEXT)}`.
+- UI: 셀러 propose 폼 체크박스(opt-in) + 인증상태 라인 + 승인/반려 버튼; 인플 `influencer-settlement/ConditionalDealsSection.tsx`(조건부 제안만, 대상 없으면 미렌더) 링크 제출.
+- **머니**: 계산 파일 diff 0. 발효는 기존 `status='active'` 게이트 재사용 — 새 요율 로직 0, 인증 전 판매분 기본율(소급 없음). opt-in 미체크 = 현행 무조건부 흐름 byte-동일.
 
 ---
 
