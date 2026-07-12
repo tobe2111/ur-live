@@ -589,10 +589,10 @@ app.use('*', async (c, next) => {
       //   cache-prewarm.ts SSR_KV_PATHS)를 먼저 본다 — 어느 콜로든 ~수십 ms 에 페이로드 확보 → TTFB 급감.
       //   CACHE_KV 미바인딩/미기록 키(상세 등 롱테일)는 miss → 기존 self-fetch 로 폴백(현행 100% 동일).
       //   잠긴 caches.default read·self-fetch 타임아웃·주입 로직 전부 불변 — 계층 1개 additive.
-      if (!ssrPayload && (c.env as { CACHE_KV?: KVNamespace }).CACHE_KV) {
+      if (!ssrPayload && c.env.CACHE_KV) {
         const kvStart = Date.now();
         try {
-          const raw = await (c.env as { CACHE_KV?: KVNamespace }).CACHE_KV!.get(`ssr:${ssrTarget.path}`, 'text');
+          const raw = await c.env.CACHE_KV.get(`ssr:${ssrTarget.path}`, 'text');
           if (raw && raw.startsWith('{')) {
             ssrPayload = raw.replace(/<\/script/gi, '<\\/script');
             ssrStatus = 'kv-hit';

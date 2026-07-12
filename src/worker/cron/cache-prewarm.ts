@@ -22,6 +22,7 @@
  *   - KV write 한도 도달 시 prewarm 주기 줄이거나 (10-15분) endpoint 수 줄임
  */
 
+import type { KVNamespace } from '@cloudflare/workers-types';
 import { logInfo, logError } from '../utils/logger';
 import { normalizeSupplyProductData } from '../../features/supply/api/supply-visibility';
 
