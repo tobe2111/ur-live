@@ -8,8 +8,13 @@ import api from '@/lib/api'
 
 const KEY = 'affiliate_ref'
 const EXP_KEY = 'affiliate_ref_expires'
+// 🧭 2026-07-12 (WP-C — 블로거 영입 트랙): 어트리뷰션 윈도우 24h→7d. 네이버 블로그는 롱테일
+//   유입(글 발행 뒤 며칠~몇 주 후 클릭·구매)이라 24h 로는 인플 귀속이 유실됨. ProductDetailPage
+//   와 동일 상수(4곳 동기). 비-머니(귀속 타이밍만) — 서버 /track 검증·중복차단 불변.
+const REF_TTL_MS = 7 * 24 * 60 * 60 * 1000
+const REF_TTL_SEC = 7 * 24 * 60 * 60
 
-/** ?aff=/?ref= 값 저장 (24h) — ProductDetailPage 와 동일 포맷. */
+/** ?aff=/?ref= 값 저장 (7d) — ProductDetailPage 와 동일 포맷. */
 export function storeAffiliateRef(ref: string | null | undefined): void {
   if (!ref || !/^\d{1,12}$/.test(ref)) return
   try {
@@ -17,8 +22,8 @@ export function storeAffiliateRef(ref: string | null | undefined): void {
     const myId = localStorage.getItem('user_id')
     if (myId && myId === ref) return
     localStorage.setItem(KEY, ref)
-    localStorage.setItem(EXP_KEY, String(Date.now() + 24 * 60 * 60 * 1000))
-    document.cookie = `affiliate_ref=${ref}; path=/; max-age=86400; SameSite=Lax`
+    localStorage.setItem(EXP_KEY, String(Date.now() + REF_TTL_MS))
+    document.cookie = `affiliate_ref=${ref}; path=/; max-age=${REF_TTL_SEC}; SameSite=Lax`
   } catch { /* storage unavailable */ }
 }
 

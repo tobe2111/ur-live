@@ -52,10 +52,11 @@ export default function ProductDetailPage() {
   useEffect(() => {
     const ref = searchParams.get('ref')
     if (ref) {
+      // 🧭 2026-07-12 (WP-C): 어트리뷰션 24h→7d (블로그 롱테일). affiliate-track.ts 와 동기.
       localStorage.setItem('affiliate_ref', ref)
-      localStorage.setItem('affiliate_ref_expires', String(Date.now() + 24 * 60 * 60 * 1000))
+      localStorage.setItem('affiliate_ref_expires', String(Date.now() + 7 * 24 * 60 * 60 * 1000))
       // 쿠키로도 저장 (다른 탭/세션에서도 유지)
-      document.cookie = `affiliate_ref=${ref}; path=/; max-age=86400; SameSite=Lax`
+      document.cookie = `affiliate_ref=${ref}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`
     }
   }, [searchParams])
   
