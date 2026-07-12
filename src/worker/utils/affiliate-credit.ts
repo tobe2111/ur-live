@@ -51,7 +51,7 @@ export interface AffiliateCreditInput {
 
 export type AffiliateCreditResult =
   | { ok: true; commission: number }
-  | { ok: false; code: 'NOT_FOUND' | 'NOT_PAID' | 'SELF_REFERRAL' | 'SELF_PURCHASE' | 'SELF_SELLER' | 'DUPLICATE' | 'IP_ABUSE' | 'REFERRAL_DISABLED' | 'BUDGET_EXHAUSTED' | 'ERROR' }
+  | { ok: false; code: 'NOT_FOUND' | 'NOT_PAID' | 'SELF_REFERRAL' | 'SELF_PURCHASE' | 'SELF_SELLER' | 'DUPLICATE' | 'IP_ABUSE' | 'REFERRER_CAP' | 'REFERRAL_DISABLED' | 'BUDGET_EXHAUSTED' | 'ERROR' }
 
 interface CommissionBreakdown {
   commission: number
@@ -188,6 +188,41 @@ export async function creditAffiliateForOrder(
       commission = Math.min(Math.max(0, Math.floor(opts.amountOverride)), commission)
       if (commission <= 0) return { ok: false, code: 'BUDGET_EXHAUSTED' }
     }
+
+    // 🛡️ 2026-07-12 (§0-3 referrer 일/월 적립 캡 — flip 선행 조건, 대표 [UNLOCK]):
+    //   self 체크가 전부 user_id 동일성 기반이라 **부계정이면 무방비**(pre-flip-risk-audit §③-2).
+    //   기기지문/그래프 없이도 폭주를 구조적으로 막는 최소가드 = referrer 단위 금액 캡.
+    //   게이트: platform_settings.affiliate_referrer_daily_cap_krw / _monthly_cap_krw —
+    //   미설정/0/파싱실패 = 무제한(현행 그대로, OFF-parity). 초과 시 미적립 + 어뷰즈 기록(관측).
+    try {
+      const readCap = async (key: string): Promise<number> => {
+        const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
+          .bind(key).first<{ value: string }>().catch(() => null)
+        const n = Number(row?.value)
+        return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
+      }
+      const dailyCap = await readCap('affiliate_referrer_daily_cap_krw')
+      const monthlyCap = await readCap('affiliate_referrer_monthly_cap_krw')
+      if (dailyCap > 0 || monthlyCap > 0) {
+        const sums = await DB.prepare(`
+          SELECT
+            COALESCE(SUM(CASE WHEN created_at > datetime('now', '-24 hours') THEN commission ELSE 0 END), 0) AS day_sum,
+            COALESCE(SUM(CASE WHEN created_at > datetime('now', '-30 days') THEN commission ELSE 0 END), 0) AS month_sum
+          FROM affiliate_earnings
+          WHERE referrer_id = ? AND COALESCE(status, '') != 'refunded'
+        `).bind(String(referrerId)).first<{ day_sum: number; month_sum: number }>()
+        const daySum = Number(sums?.day_sum) || 0
+        const monthSum = Number(sums?.month_sum) || 0
+        if ((dailyCap > 0 && daySum + commission > dailyCap) || (monthlyCap > 0 && monthSum + commission > monthlyCap)) {
+          await DB.prepare(
+            `INSERT INTO abuse_detections (pattern, user_id, ref_type, ref_id, evidence, severity)
+             VALUES ('affiliate_referrer_cap', ?, 'order', ?, ?, 'medium')`
+          ).bind(String(referrerId), String(order.id), JSON.stringify({ daySum, monthSum, commission, dailyCap, monthlyCap })).run().catch(() => {})
+          return { ok: false, code: 'REFERRER_CAP' }
+        }
+      }
+    } catch { /* 캡 판정 실패 → 현행(적립 진행) — 가용성 우선, 관측은 이상탐지 cron 이 보완 */ }
+
     const storeProductId = breakdown.primaryProductId
     const storeProductName = breakdown.primaryProductName
 
@@ -276,16 +311,35 @@ async function grantHoldingEarning(
  * 🆕 2026-06-17 (대표 결정 "둘 다 — 예정→사용 시 확정"): 교환권을 실제 사용(QR/PIN)한 시점에
  *   해당 주문의 holding 추천적립을 즉시 확정(granted)+잔액 적립. group-buy-voucher 사용 핸들러가 호출.
  *   멱등(CAS) — cron 안전망과 동시 실행돼도 한 번만 확정. 반환: 적립 금액 합.
+ *
+ * 🛡️ 2026-07-12 (§0-1 매장 공모 콤보 차단 — flip 선행 조건, 대표 [UNLOCK]):
+ *   `use-by-seller`(매장 QR 스캔)가 실거래 증빙 없이 holding 을 **즉시 확정**시키는 경로라,
+ *   promo 가 커지면 [부계정 구매 → 공모 매장이 바로 사용처리 → 즉시 확정 → 환불창 무력화] 콤보의
+ *   기대수익이 양수가 됨. 게이트: `platform_settings.affiliate_use_mature_min_hours` (기본 0 =
+ *   현행 즉시확정 그대로). N>0 이면 **구매 후 N시간 이내의 사용은 즉시확정을 보류** — holding 유지,
+ *   기존 T+7 성숙 cron(matureAffiliateEarnings — 주문상태 가드 포함)이 안전망으로 확정.
+ *   미지급이 아니라 '지연'이라 정직 모델 유지 + 환불창이 어뷰즈를 잡을 시간을 확보.
  */
 export async function matureAffiliateForOrder(DB: D1Database, env: unknown, orderId: number): Promise<number> {
   try {
+    // §0-1 게이트 — 설정 없음/0/파싱실패 = 현행(즉시확정).
+    let minHours = 0
+    try {
+      const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'affiliate_use_mature_min_hours'")
+        .first<{ value: string }>()
+      const n = Number(row?.value)
+      if (Number.isFinite(n) && n > 0) minHours = n
+    } catch { /* 현행 */ }
+    const cutoffIso = minHours > 0 ? new Date(Date.now() - minHours * 3600_000).toISOString() : null
+
     const due = await DB.prepare(`
       SELECT ae.id, ae.referrer_id, ae.commission, ae.order_id, ae.product_name
       FROM affiliate_earnings ae
       JOIN orders o ON o.id = ae.order_id
       WHERE ae.order_id = ? AND COALESCE(ae.status, 'pending') = 'holding'
         AND UPPER(COALESCE(o.status, '')) NOT IN ('REFUNDED', 'CANCELLED', 'FAILED')
-    `).bind(orderId).all<{ id: number; referrer_id: string; commission: number; order_id: number | null; product_name: string | null }>()
+        ${cutoffIso ? 'AND o.created_at <= ?' : ''}
+    `).bind(...(cutoffIso ? [orderId, cutoffIso] : [orderId])).all<{ id: number; referrer_id: string; commission: number; order_id: number | null; product_name: string | null }>()
       .catch(() => ({ results: [] as { id: number; referrer_id: string; commission: number; order_id: number | null; product_name: string | null }[] }))
     let credited = 0
     for (const row of due.results ?? []) credited += await grantHoldingEarning(DB, env, row)
@@ -312,6 +366,19 @@ export async function matureAffiliateEarnings(
     if (Number.isFinite(n) && n >= 0) holdDays = n
   } catch { /* default */ }
 
+  // 🛡️ 2026-07-12 (§0-1 짝 — matureAffiliateForOrder 의 min-hours 게이트와 동일):
+  //   사용 즉시확정을 N시간 보류해도 이 cron 이 다음 틱에 v.status='used' 로 바로 확정하면
+  //   게이트가 무력화됨 → **used 분기에만** 같은 cutoff(주문 N시간 경과) 적용.
+  //   expired/만료 분기는 어뷰즈 벡터가 아니고(사용 안 함) 정직하게 즉시 확정 유지.
+  let useMatureMinHours = 0
+  try {
+    const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'affiliate_use_mature_min_hours'")
+      .first<{ value: string }>()
+    const n = Number(row?.value)
+    if (Number.isFinite(n) && n > 0) useMatureMinHours = n
+  } catch { /* 현행 */ }
+  const usedCutoffIso = useMatureMinHours > 0 ? new Date(Date.now() - useMatureMinHours * 3600_000).toISOString() : null
+
   let matured = 0
   let credited = 0
   try {
@@ -324,7 +391,8 @@ export async function matureAffiliateEarnings(
         AND (
           EXISTS (
             SELECT 1 FROM vouchers v WHERE v.order_id = ae.order_id
-              AND ( v.status IN ('used', 'expired')
+              AND ( (v.status = 'used' ${usedCutoffIso ? 'AND o.created_at <= ?' : ''})
+                    OR v.status = 'expired'
                     OR (v.status = 'unused' AND v.expires_at IS NOT NULL AND v.expires_at < datetime('now')) )
           )
           OR (
@@ -333,7 +401,7 @@ export async function matureAffiliateEarnings(
           )
         )
       LIMIT 500
-    `).bind(`-${holdDays} days`).all<{ id: number; referrer_id: string; commission: number; order_id: number | null; product_name: string | null }>()
+    `).bind(...(usedCutoffIso ? [usedCutoffIso, `-${holdDays} days`] : [`-${holdDays} days`])).all<{ id: number; referrer_id: string; commission: number; order_id: number | null; product_name: string | null }>()
       .catch(() => ({ results: [] as { id: number; referrer_id: string; commission: number; order_id: number | null; product_name: string | null }[] }))
 
     for (const row of due.results ?? []) {
