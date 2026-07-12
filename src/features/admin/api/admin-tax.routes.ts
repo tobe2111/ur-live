@@ -208,7 +208,8 @@ adminTaxRoutes.get('/admin/tax/monthly-accounting', requireAdmin(), async (c) =>
     const defaultRate = COMMISSION_DEFAULTS.PLATFORM_FEE_PCT
 
     // ① 매출(GMV) + 플랫폼 수수료 수익 — settlement/export-csv 와 동일 공식.
-    const sales = await DB.prepare(`
+    // ⚠️ .first() 는 T|null — 집계라 실제론 항상 행이 오지만, null 이면 0 기본값(타입·안전 동시 보장).
+    const sales = (await DB.prepare(`
       SELECT COUNT(*) AS n,
              COALESCE(SUM(o.total_amount), 0) AS gmv,
              COALESCE(SUM(ROUND(o.total_amount * COALESCE(o.commission_rate, s.commission_rate, ?) / 100)), 0) AS commission
@@ -217,16 +218,16 @@ adminTaxRoutes.get('/admin/tax/monthly-accounting', requireAdmin(), async (c) =>
        WHERE o.status IN ('DONE', 'PAID', 'DELIVERED')
          AND strftime('%Y-%m', datetime(o.created_at, '+9 hours')) = ?
     `).bind(defaultRate, month).first<{ n: number; gmv: number; commission: number }>()
-      .catch(() => ({ n: 0, gmv: 0, commission: 0 }))
+      .catch(() => null)) ?? { n: 0, gmv: 0, commission: 0 }
 
     // ② 환불/취소 — 환불 발생 월(refunded_at) 기준.
-    const refunds = await DB.prepare(`
+    const refunds = (await DB.prepare(`
       SELECT COUNT(*) AS n, COALESCE(SUM(refunded_amount), 0) AS refunded
         FROM orders
        WHERE COALESCE(refunded_amount, 0) > 0
          AND strftime('%Y-%m', datetime(COALESCE(refunded_at, updated_at, created_at), '+9 hours')) = ?
     `).bind(month).first<{ n: number; refunded: number }>()
-      .catch(() => ({ n: 0, refunded: 0 }))
+      .catch(() => null)) ?? { n: 0, refunded: 0 }
 
     // ③ 정산 지급(실송금 sent) — payee 유형별. = 매입세금계산서(역발행) 발행 대상.
     const payouts = await DB.prepare(`
@@ -239,7 +240,7 @@ adminTaxRoutes.get('/admin/tax/monthly-accounting', requireAdmin(), async (c) =>
       .catch(() => ({ results: [] as Array<{ payee_type: string; n: number; total: number }> }))
 
     // ④ 원천징수 — tax_withholding_log (지급월 기준).
-    const wht = await DB.prepare(`
+    const wht = (await DB.prepare(`
       SELECT COUNT(*) AS n,
              COALESCE(SUM(gross_amount), 0) AS gross,
              COALESCE(SUM(withholding_amount), 0) AS withholding,
@@ -247,7 +248,7 @@ adminTaxRoutes.get('/admin/tax/monthly-accounting', requireAdmin(), async (c) =>
         FROM tax_withholding_log
        WHERE payout_year = ? AND payout_month = ?
     `).bind(year, monthNum).first<{ n: number; gross: number; withholding: number; net: number }>()
-      .catch(() => ({ n: 0, gross: 0, withholding: 0, net: 0 }))
+      .catch(() => null)) ?? { n: 0, gross: 0, withholding: 0, net: 0 }
 
     // 부가세 분리(공급대가 → 공급가액/세액). 매출·수수료에만 적용(과세 표준 참고용).
     const supplyOf = (total: number) => Math.round(total / 1.1)
