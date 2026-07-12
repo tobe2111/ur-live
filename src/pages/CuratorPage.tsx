@@ -129,10 +129,12 @@ export default function CuratorPage() {
   // 🚑 2026-07-10 [UNLOCK_LOADING]: linked_seller 확인 즉시(SSR 시드 포함) 셀러 /public 페치 시작 —
   //   SellerPublicPage 는 마운트 후 같은 in-flight 를 이어받음(seller-public-fetch 공유 모듈).
   //   기존엔 [curator 응답 → lazy 청크 로드/마운트 → 그제서야 seller fetch] 완전 직렬 워터폴.
+  // 🚀 2026-07-11 (1-RTT): 서버가 linked_seller_public 을 동봉하면 fetch 자체가 불필요 → warm 스킵.
+  //   구캐시(필드 없는 edge 응답 최대 900s)/동봉 실패 시에만 기존 warm 폴백(점진 롤아웃 호환).
   useEffect(() => {
     const u = data?.linked_seller?.username
-    if (u) warmSellerPublic(u)
-  }, [data?.linked_seller?.username])
+    if (u && !data?.linked_seller_public) warmSellerPublic(u)
+  }, [data?.linked_seller?.username, data?.linked_seller_public])
 
   // 🛡️ 2026-05-27 (셀러 페이지 통일): 핀을 상품/이용권 분류 (deal_only / voucher 카테고리).
   const { shopPins, voucherPins } = useMemo(() => {
@@ -208,7 +210,9 @@ export default function CuratorPage() {
             SellerPublicPage 가 curator.linkshop_show_recommend(opt-in, 기본 off)일 때만 하단
             "추천" 섹션을 렌더. 2026-06-26 "추천템 숨김"의 막다른 골목(담아도 안 보임)을 opt-in 으로 해소.
             🏁 2026-06-26 [UNLOCK_LOADING] — linked_seller.id 전달 → 상품 fetch 를 셀러 fetch 와 병렬로(워터폴 제거). */}
-        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} sellerNumericId={linked_seller.id} curatorPins={pins} ownerOverride={isOwner} />
+        {/* 🚀 2026-07-11 (1-RTT): 서버 동봉 셀러 페이로드를 시드로 전달 — SellerPublicPage 가 동기 소비해
+            셀러 fetch 생략(없으면 기존 fetch 폴백). */}
+        <SellerPublicPage sellerIdOverride={linked_seller.username} curator={curator} sellerNumericId={linked_seller.id} curatorPins={pins} ownerOverride={isOwner} sellerSeed={data.linked_seller_public ?? null} />
       </Suspense>
     )
   }
