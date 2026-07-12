@@ -504,11 +504,31 @@ export async function debitOwnerPromoForOrder(
     ).bind(ref).first().catch(() => null)
     if (existing) return 0
 
-    const sum = await DB.prepare(
-      `SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
-        WHERE order_id = ? AND COALESCE(status, '') IN ('holding', 'granted')`,
-    ).bind(orderId).first<{ total: number }>().catch(() => null)
-    const promo = Math.max(0, Math.round(Number(sum?.total) || 0))
+    // 💸 2026-07-12 (S4a per-axis owner-redirect — commission-funding-restructure.md §flip 구현 스펙):
+    //   owner 되갚기 = 이 주문에서 **딜로 지급된** 성장 커미션 총합. 딜 지급 축은 platform:revenue 를
+    //   debit 하지 않으므로(user_points 부채), 여기서 merchant→platform:revenue 로 크레딧해 그 딜 재원을
+    //   매장 promo(5% 밖)로 충당. 역전(reverseOwnerPromoDebit)이 이 저장 금액을 그대로 되돌리므로
+    //   **합산 대상을 넓혀도 환불 대칭 자동 보장**(리스크 낮음 — 대표 조건 ②). 축:
+    //     C1 affiliate_earnings(holding/granted) · C2 referral_commissions · C3 influencer_attributions
+    //     (source='store_intro') · C4 agency_store_intro_commissions(sales_commission).
+    //   confirm-시점(system-1)과 사용-시점 셰어(system-2)는 주문당 상호배타(dedup)라 이중합산 없음.
+    //   ⚠️ C2 status 어휘('되갚을 활성분' 정의)는 코드만으론 확정 불가 → 아래는 보수적 필터(cancelled/
+    //      withdrawn/refunded/clawed_back 제외 = 실지급분). **staging 실결제 축별 검증 필수(조건 ①).**
+    const sums = await DB.batch<{ total: number }>([
+      DB.prepare(`SELECT COALESCE(SUM(commission), 0) AS total FROM affiliate_earnings
+                   WHERE order_id = ? AND COALESCE(status, '') IN ('holding', 'granted')`).bind(orderId),
+      DB.prepare(`SELECT COALESCE(SUM(commission_amount), 0) AS total FROM referral_commissions
+                   WHERE order_id = ? AND COALESCE(status, '') NOT IN ('withdrawn')`).bind(orderId),
+      DB.prepare(`SELECT COALESCE(SUM(commission_amount), 0) AS total FROM influencer_attributions
+                   WHERE order_id = ? AND source = 'store_intro'
+                     AND COALESCE(status, '') NOT IN ('clawed_back', 'cancelled')`).bind(orderId),
+      DB.prepare(`SELECT COALESCE(SUM(commission_amount), 0) AS total FROM agency_store_intro_commissions
+                   WHERE order_id = ? AND type = 'sales_commission'
+                     AND COALESCE(status, '') != 'cancelled'`).bind(orderId),
+    ]).catch(() => null)
+    const promo = Math.max(0, Math.round(
+      (sums || []).reduce((acc, r) => acc + (Number(r?.results?.[0]?.total) || 0), 0)
+    ))
     if (promo <= 0) return 0
 
     await recordLedger(DB, {

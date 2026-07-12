@@ -189,12 +189,14 @@ async function budgetedCreditForOrder(
       const entries = await computeMultiTierEntries(DB, oid, total, String(opts.buyerUserId))
       mtReq = entries.reduce((s, e) => s + (Number(e.amount) || 0), 0)
     } catch { mtReq = 0 }
-    if (mtReq > 0) requests.push({ key: 'multi_tier', amountKrw: mtReq })
+    // 💸 2026-07-12 (S4a per-axis owner-redirect): owner-펀딩이면 C2 도 C1 처럼 셀러(promo) 부담 →
+    //   플랫폼 예산 대상 아님(push 안 함, 아래에서 전액 적립). owner 되갚기는 debitOwnerPromoForOrder.
+    if (mtReq > 0 && !promoOwnerFunded) requests.push({ key: 'multi_tier', amountKrw: mtReq })
   }
   const infReq = axisOn(opts, 'influencer_intro') ? await computeInfluencerStoreIntroRequest(DB, order) : 0
-  if (infReq > 0) requests.push({ key: 'influencer_intro', amountKrw: infReq })
+  if (infReq > 0 && !promoOwnerFunded) requests.push({ key: 'influencer_intro', amountKrw: infReq })
   const agReq = axisOn(opts, 'agency_intro') ? await computeAgencyStoreIntroRequest(DB, order) : 0
-  if (agReq > 0) requests.push({ key: 'agency_intro', amountKrw: agReq })
+  if (agReq > 0 && !promoOwnerFunded) requests.push({ key: 'agency_intro', amountKrw: agReq })
 
   // ── 예산 배분 ([INV-CB]) ────────────────────────────────────────────────
   const platformFeeKrw = await resolveOrderPlatformFeeKrw(DB, order)
@@ -228,12 +230,14 @@ async function budgetedCreditForOrder(
     await creditAffiliateFromIntent(DB, opts?.env, oid, promoOwnerFunded ? undefined : { amountOverride: granted('affiliate') }).catch(() => {})
   }
   if (mtReq > 0 && opts?.buyerUserId) {
-    await calculateMultiTierCommission(DB, oid, total, String(opts.buyerUserId), { totalCapKrw: granted('multi_tier') }).catch(() => {})
+    // owner-펀딩이면 전액(셀러 부담 — 예산 캡 비대상), 아니면 배분액.
+    await calculateMultiTierCommission(DB, oid, total, String(opts.buyerUserId), { totalCapKrw: promoOwnerFunded ? mtReq : granted('multi_tier') }).catch(() => {})
   }
   // C3/C4 는 요청 0(부적격)이어도 호출 — helper 자체가 안전 skip 하고, C4 는 signup 보너스
   // (월예산 캡, 거래 예산 밖 정액)를 독립 처리해야 하므로 항상 통과시킨다.
-  if (axisOn(opts, 'influencer_intro')) await creditInfluencerStoreIntroCommission(DB, order, { amountOverride: granted('influencer_intro') }).catch(() => {})
-  if (axisOn(opts, 'agency_intro')) await creditAgencyStoreIntroCommission(DB, order, { amountOverride: granted('agency_intro') }).catch(() => {})
+  // 💸 owner-펀딩이면 amountOverride 미전달=전액(셀러 promo 부담, C1 과 동일 패턴). 되갚기는 debitOwnerPromoForOrder.
+  if (axisOn(opts, 'influencer_intro')) await creditInfluencerStoreIntroCommission(DB, order, promoOwnerFunded ? undefined : { amountOverride: granted('influencer_intro') }).catch(() => {})
+  if (axisOn(opts, 'agency_intro')) await creditAgencyStoreIntroCommission(DB, order, promoOwnerFunded ? undefined : { amountOverride: granted('agency_intro') }).catch(() => {})
 }
 
 export async function creditOrderCommissions(
