@@ -1,5 +1,17 @@
 # 🚧 진행 중 작업
 
+## 🔶 2026-07-12 — 4트랙 상태 (다음 세션 필독: 전부 대표 검증/클릭 대기)
+| 트랙 | PR | 상태 | 대표 액션 |
+|---|---|---|---|
+| flip(커미션 재원 owner 전환) | #496 | **main 머지·전 스위치 OFF**(`promo_funding_source`/`commission_budget_enabled`/`flip_pilot_seller_ids`) | 서초 테스트매장 온보딩 → seller_id 파일럿 지정 → 8단계 실결제 → promo-ledger net==5% 확인 → 전역 ON |
+| 체험 캠페인+조건부 우대커미션 | #499 (draft) | CI green. WP-A(어드민 대행생성 1순위·소비자 `/experience`·추첨 B2G·0원발급 비정산·리포트 CSV·셀러 게이트드 셀프생성) + WP-B(콘텐츠 인증 시 발효 — `requires_content_proof`/`submit-proof`/`approve-proof`) + WP-C(ref TTL 7d). 게이트: `experience_campaign_seller_create`(OFF) | §스모크 1회 왕복 후 머지 (`docs/design/trial-campaign-track-2026-07.md`) |
+| 앱-레디(PWA/TWA 대비) | #503 (draft) | CI green. `.well-known` 서빙 결함 수정·오프라인 QR 안심문구·컨텍스트 A2HS. 점검표 `docs/design/app-ready-audit-2026-07.md` | 리뷰 후 머지. 전환 착수 시 선결: in-app-browser.ts 래퍼 UA 감지 |
+| 상권 쿠폰(영수증 페이백) 견적 | #504 (draft, 문서만) | **병렬 엔티티(district_coupons) 확정·retrofit 금지**(대표 승인). 공수 ~7~7.5주/500만 방어 가능. `docs/design/district-coupon-estimate-2026-07.md` | 실장 제안서 확정. **구현은 계약 확정 후 별도 지시** |
+
+- 룰(대표): 실장 연락·견적 건 발생 시 세션 즉시 중단하고 그쪽 먼저.
+- 이 커밋에서 #499 룰-컴플라이언스 마감: 가이드 시드(admin+seller) `GUIDE_SEED_VERSION=4` · 플랫폼모델 §3~4(체험 캠페인·`/experience`) · SellerExperienceCampaignsPage i18n(6개 언어 `seller.expCampaigns.*`).
+
+
 ## ✅ 2026-07-12 — SSR 페이로드 전역(KV) 워밍: 콜드 콜로 TTFB 마감 (대표 "계속 진행. 이상적으로")
 로딩 전수 최적화의 마지막 레버. `caches.default` 는 콜로별이라 콜드 콜로 하드로드가 self-fetch(콜드 D1, 0.5~1.5s)를 대기 → TTFB 1.1~1.9s. 진단 중 발견: `CACHE_KV` 는 선언/안내만 있고 SSR 경로에서 **아무도 KV 를 읽지도 쓰지도 않음**(바인딩만 해선 no-op) → 코드 완성. ① cron `cache-prewarm.ts` 가 SSR 슬롯 6키만 `ssr:{path}` KV put(**15분 표본화 576 writes/day < 무료 1K — KV 비용 잠금 준수**, TTL 30분). ② worker SSR 읽기 [edge miss → KV read → self-fetch] 계층(`X-SSR-Status: kv-hit`). 상세: CLAUDE.md 로딩 audit log 2026-07-12.
 - ⚠️ **효과 발생엔 운영 1스텝**: Cloudflare 대시보드 → Workers & Pages → ur-live → Settings → Bindings → KV `CACHE_KV` 바인딩(미바인딩=현행 100% 동일). 바인딩 후 `curl -sI https://live.ur-team.com/ | grep -i x-ssr-status` 로 kv-hit 확인.

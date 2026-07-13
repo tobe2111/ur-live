@@ -116,6 +116,16 @@ adminPromoLedgerRoutes.get('/summary', requireAdminRole('finance'), async (c) =>
                OR event_type LIKE '%affiliate%')`
     ).bind(month).first<{ cnt: number }>().catch(() => null)
 
+    // ⑥ 🎬 WP-A 비정산 마킹 — 0원 체험권 발급(매장 자기부담 제공). payment_method='experience'
+    //   0원 order 는 정산/커미션/원장(amount>0 게이트)을 구조적으로 우회 → 여기 '비정산'으로만 가시화.
+    //   sum_amount 는 항상 0 이어야 함(0 아니면 발급 경로 회귀 — 감사 신호).
+    const experience = await DB.prepare(
+      `SELECT COUNT(*) AS cnt, COALESCE(SUM(total_amount), 0) AS sum_amount
+         FROM orders
+        WHERE payment_method = 'experience'
+          AND strftime('%Y-%m', created_at) = ?`
+    ).bind(month).first<{ cnt: number; sum_amount: number }>().catch(() => null)
+
     return c.json({
       success: true,
       data: {
@@ -123,6 +133,11 @@ adminPromoLedgerRoutes.get('/summary', requireAdminRole('finance'), async (c) =>
         switches,
         orders: { count: Number(orders?.cnt) || 0, amount: Number(orders?.amount) || 0 },
         affiliate_promo: { sum: Number(promo?.total) || 0, count: Number(promo?.cnt) || 0 },
+        experience_noncash: {
+          count: Number(experience?.cnt) || 0,
+          sum_amount: Number(experience?.sum_amount) || 0,
+          note: '비정산 (매장 자기부담 0원 체험권) — 정산·커미션·유어딜 5% 무관. sum_amount 는 0 이어야 정상.',
+        },
         fee_breakdown: {
           count: Number(shadow?.cnt) || 0,
           platform_sum: Number(shadow?.platform_sum) || 0,

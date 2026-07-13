@@ -124,6 +124,7 @@ const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
 // 🛡️ 2026-05-19: 교환권 전용 페이지 — /browse 와 분리 (카카오 선물하기 스타일).
 const VouchersPage = lazy(() => import('./pages/VouchersPage'))
+const ExperienceCampaignsPage = lazy(() => import('./pages/ExperienceCampaignsPage'))
 // 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 3번째 서비스 /ads (유어딜/도매몰과 분리된 surface)
 // 🆕 2026-06-27 /ads = 공개 랜딩(소개), /ads/dashboard = 로그인 후 입점 대시보드
 const MarketingLandingPage = lazy(() => import('./pages/marketing/MarketingLandingPage'))
@@ -692,6 +693,7 @@ function AppContent() {
             <Route path="/store/stats/:productId" element={<StoreStatsPage />} />
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/vouchers" element={<VouchersPage />} />
+            <Route path="/experience" element={<ExperienceCampaignsPage />} />
             {/* 🆕 통합 마케팅 서비스(가칭) — 3번째 서비스. 도매몰처럼 자체 surface 로 분리 */}
             {/* 🆕 2026-06-27 /ads = 공개 랜딩(소개), /ads/dashboard = 로그인 후 입점 대시보드 */}
             <Route path="/ads" element={<ErrorBoundary><MarketingLandingPage /></ErrorBoundary>} />
