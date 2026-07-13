@@ -11,6 +11,7 @@ import { ensureEntitlementSchema, setPlan, type AdsPlan } from './ads-entitlemen
 import { mediaStatus } from './media-gateway'
 import { listServices, adminUpsertService, adminListOrders, adminUpdateOrder } from './ad-services'
 import { adminListReviews, adminSetReviewStatus } from './ad-service-reviews'
+import { adminListShortLinks, adminSetShortLinkActive } from './short-links'
 import { intParam } from '@/shared/pagination'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -136,6 +137,19 @@ app.patch('/service-reviews/:id', async (c) => {
   if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
   const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
   await adminSetReviewStatus(c.env.DB, id, b.status === 'hidden' ? 'hidden' : 'visible')
+  return c.json({ success: true })
+})
+
+// ── 단축 링크 모더레이션 (피싱/스팸 신고 대응) ───────────────────────────────
+// GET /api/admin/ads/short-links — 최근 링크(계정 포함)
+app.get('/short-links', async (c) => c.json({ success: true, links: await adminListShortLinks(c.env.DB) }))
+
+// PATCH /api/admin/ads/short-links/:id — 활성/비활성(비활성 = 즉시 404)
+app.patch('/short-links/:id', async (c) => {
+  const id = Number(c.req.param('id'))
+  if (!Number.isFinite(id)) return c.json({ success: false, error: '잘못된 ID' }, 400)
+  const b = await c.req.json().catch(() => ({} as Record<string, unknown>))
+  await adminSetShortLinkActive(c.env.DB, id, !!b.active)
   return c.json({ success: true })
 })
 

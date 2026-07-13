@@ -18,6 +18,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import PostJoinShareModal from './my-vouchers/PostJoinShareModal'
 import VoucherTicket from './my-vouchers/VoucherTicket'
 import QRModal from './my-vouchers/QRModal'
+import AddToHomeHint from '@/components/AddToHomeHint'
 import type { Voucher, ViewMode } from './my-vouchers/types'
 
 
@@ -336,6 +337,8 @@ export default function MyVouchersPage() {
           />
         ) : (
           <>
+            {/* 🏠 2026-07-12 (앱-레디): 지갑 = 최고 관여 순간 → 홈 화면 추가 컨텍스트 유도(자가 게이트) */}
+            <AddToHomeHint context="wallet" />
             {/* 사용 가능 N + 🗺 지도 토글 (화면1) */}
             <div className="flex items-center justify-between mb-3">
               <span className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">

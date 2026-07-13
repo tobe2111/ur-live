@@ -177,6 +177,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/business-verification', label: '사업자 검증', icon: Shield },
       { path: '/admin/review-moderation', label: '리뷰 관리',     icon: MessageSquare },
       { path: '/admin/kakao-reviews',    label: '카카오맵 후기 검증', icon: MessageSquare },
+      { path: '/admin/district-coupons', label: '상권 쿠폰(영수증 페이백)', icon: Ticket },
       { path: '/admin/policy',           label: '정책 대시보드', icon: Shield },
     ],
   },
