@@ -20,6 +20,7 @@ import OpportunityPanel from './OpportunityPanel'
 import ContentStudioPanel from './ContentStudioPanel'
 import ServiceMarketplacePanel from './ServiceMarketplacePanel'
 import ShortLinksPanel from './ShortLinksPanel'
+import InfluencerDiscoveryPanel from './InfluencerDiscoveryPanel'
 import OnboardingChecklist from './OnboardingChecklist'
 import LazyMount from './LazyMount'
 import PanelError from './PanelError'
@@ -462,6 +463,9 @@ export default function MarketingDashboardPage() {
 
       {/* 무료 단축 링크 — /l/{code} 생성·클릭 추적 (무료 리드 마그넷, 액세스 코드 불요) */}
       {hasToken && <LazyMount id="sec-links"><ShortLinksPanel /></LazyMount>}
+
+      {/* 인플루언서 발굴 — 유튜브 API 로 채널+연락처 수집(인스타/틱톡 링크 교차 수집) */}
+      {hasToken && <LazyMount id="sec-influencers"><InfluencerDiscoveryPanel /></LazyMount>}
 
       {/* AI 마케터 (Claude 진단/추천 — 읽기 전용) */}
       {hasToken && (

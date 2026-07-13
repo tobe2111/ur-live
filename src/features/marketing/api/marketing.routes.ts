@@ -27,6 +27,7 @@ import { adsClickguardRoutes } from './routes/clickguard.routes'
 import { adsContentRoutes } from './routes/content.routes'
 import { adsServicesRoutes } from './routes/services.routes'
 import { adsLinksRoutes } from './routes/links.routes'
+import { adsInfluencersRoutes } from './routes/influencers.routes'
 
 const marketingRoutes = new Hono<{ Bindings: Env }>()
 
@@ -491,5 +492,6 @@ marketingRoutes.route('/', adsClickguardRoutes)
 marketingRoutes.route('/', adsContentRoutes)
 marketingRoutes.route('/', adsServicesRoutes)
 marketingRoutes.route('/', adsLinksRoutes)
+marketingRoutes.route('/', adsInfluencersRoutes)
 
 export { marketingRoutes }
