@@ -16,6 +16,7 @@ import {
   ensureDistrictTables, parseRewardTiers, matchTier, insertCouponForReceipt, notifyDistrictUser,
   type DistrictEnv, type RewardTier,
 } from './district-coupon.routes'
+import { normalizeFundingSource } from '../district-shared'
 
 const adminApp = new Hono<{ Bindings: DistrictEnv }>()
 adminApp.use('*', requireAdmin())
@@ -43,16 +44,19 @@ adminApp.post('/campaigns', async (c) => {
   const slug = String(b.slug || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 64)
   const name = String(b.name || '').trim().slice(0, 100)
   const budget = intParam(String(b.budget_total ?? ''), 0)
+  const budgetUrteam = intParam(String(b.budget_urteam ?? ''), 0)
+  const autoIssue = b.auto_issue_enabled === true || b.auto_issue_enabled === 1 || b.auto_issue_enabled === '1' ? 1 : 0
+  const autoFunding = normalizeFundingSource(typeof b.auto_issue_funding_source === 'string' ? b.auto_issue_funding_source : undefined)
   const tiers = sanitizeTiers(b.reward_tiers)
   const expiresDays = Math.min(365, Math.max(1, intParam(String(b.coupon_expires_days ?? ''), 30)))
   if (!slug || !name) return c.json({ success: false, error: 'slug·이름은 필수입니다' }, 400)
   if (!tiers.length) return c.json({ success: false, error: '보상 구간(reward_tiers)을 1개 이상 지정하세요 (예: 3만↑→3천)' }, 400)
   const r = await c.env.DB.prepare(
-    `INSERT INTO district_campaigns (slug, name, description, status, budget_total, reward_tiers, coupon_expires_days, starts_at, ends_at, created_by)
-     VALUES (?, ?, ?, 'open', ?, ?, ?, ?, ?, ?) RETURNING id`,
+    `INSERT INTO district_campaigns (slug, name, description, status, budget_total, budget_urteam, reward_tiers, coupon_expires_days, auto_issue_enabled, auto_issue_funding_source, starts_at, ends_at, created_by)
+     VALUES (?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
   ).bind(
     slug, name, typeof b.description === 'string' ? b.description.slice(0, 2000) : null,
-    budget, JSON.stringify(tiers), expiresDays,
+    budget, budgetUrteam, JSON.stringify(tiers), expiresDays, autoIssue, autoFunding,
     typeof b.starts_at === 'string' ? b.starts_at : null,
     typeof b.ends_at === 'string' ? b.ends_at : null,
     admin ? String(admin.id) : null,
@@ -82,6 +86,22 @@ adminApp.post('/campaigns/:id/status', async (c) => {
   const r = await c.env.DB.prepare('UPDATE district_campaigns SET status = ? WHERE id = ?').bind(status, id).run().catch(() => null)
   if (!r || r.meta.changes === 0) return c.json({ success: false, error: 'not found' }, 404)
   return c.json({ success: true })
+})
+
+// 🧾 경로 B 설정 — 기존 캠페인의 자동발급 게이트·재원·유어팀 예산풀 조정(auto_issue_enabled / auto_issue_funding_source / budget_urteam / budget_total).
+adminApp.post('/campaigns/:id/auto-issue', async (c) => {
+  await ensureDistrictTables(c.env.DB)
+  const id = intParam(c.req.param('id'), 0)
+  const b = await c.req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>))
+  const autoIssue = b.auto_issue_enabled === true || b.auto_issue_enabled === 1 || b.auto_issue_enabled === '1' ? 1 : 0
+  const autoFunding = normalizeFundingSource(typeof b.auto_issue_funding_source === 'string' ? b.auto_issue_funding_source : undefined)
+  const budgetUrteam = Math.max(0, intParam(String(b.budget_urteam ?? ''), 0))
+  const budgetTotal = Math.max(0, intParam(String(b.budget_total ?? ''), 0))
+  const r = await c.env.DB.prepare(
+    'UPDATE district_campaigns SET auto_issue_enabled = ?, auto_issue_funding_source = ?, budget_urteam = ?, budget_total = ? WHERE id = ?',
+  ).bind(autoIssue, autoFunding, budgetUrteam, budgetTotal, id).run().catch(() => null)
+  if (!r || r.meta.changes === 0) return c.json({ success: false, error: 'not found' }, 404)
+  return c.json({ success: true, auto_issue_enabled: autoIssue, auto_issue_funding_source: autoFunding, budget_urteam: budgetUrteam, budget_total: budgetTotal })
 })
 
 // ── 매장 일괄 등록(줄바꿈 텍스트: 이름 | 주소? | 전화? | 은행? | 계좌? | 예금주?) — PIN 자동 ──
@@ -246,7 +266,16 @@ async function buildReport(DB: D1Database, campaignId: number) {
      WHERE s.campaign_id = ?
      GROUP BY s.id ORDER BY payable_amount DESC, s.name LIMIT 500`,
   ).bind(campaignId).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
-  return { totals, by_store: byStore.results || [] }
+  // 🧾 경로 A/B(source) × 재원(funding_source) 구분 집계 — 온라인/오프라인 유입 효과 + 재단/유어팀 재원 분리.
+  const bySource = await DB.prepare(
+    `SELECT COALESCE(source,'receipt') AS source, COALESCE(funding_source,'foundation') AS funding_source,
+            COUNT(*) AS issued_count,
+            COALESCE(SUM(face_value),0) AS issued_amount,
+            COALESCE(SUM(CASE WHEN status='used' THEN face_value ELSE 0 END),0) AS used_amount
+     FROM district_coupons WHERE campaign_id = ?
+     GROUP BY COALESCE(source,'receipt'), COALESCE(funding_source,'foundation')`,
+  ).bind(campaignId).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+  return { totals, by_store: byStore.results || [], by_source: bySource.results || [] }
 }
 
 adminApp.get('/campaigns/:id/report', async (c) => {
@@ -259,7 +288,7 @@ adminApp.get('/campaigns/:id/report', async (c) => {
 adminApp.get('/campaigns/:id/report.csv', async (c) => {
   await ensureDistrictTables(c.env.DB)
   const id = intParam(c.req.param('id'), 0)
-  const { totals, by_store } = await buildReport(c.env.DB, id)
+  const { totals, by_store, by_source } = await buildReport(c.env.DB, id)
   const esc = (v: unknown) => {
     const s = String(v ?? '')
     const g = /^[=+\-@\t\r]/.test(s) ? "'" + s : s
@@ -269,10 +298,15 @@ adminApp.get('/campaigns/:id/report.csv', async (c) => {
   const rows: unknown[][] = (by_store as Array<Record<string, unknown>>).map((r) => [
     r.store_id, r.name, r.used_count, r.payable_amount, r.bank_name, r.bank_account, r.account_holder,
   ])
+  const srcLabel = (s: unknown) => (String(s) === 'online' ? '경로B(온라인결제)' : '경로A(영수증)')
+  const fundLabel = (f: unknown) => (String(f) === 'urteam' ? '유어팀' : '재단')
+  const sourceRows: unknown[][] = [[], ['— 경로/재원 구분 —'], ['구분', '재원', '발급건수', '발급액', '사용액']]
+    .concat((by_source as Array<Record<string, unknown>>).map((r) => [srcLabel(r.source), fundLabel(r.funding_source), r.issued_count, r.issued_amount, r.used_amount]))
   const summary = [
     [], ['— 요약 —'],
     ['발급 총액', totals?.issued_amount ?? 0], ['사용 총액(정산 대상)', totals?.used_amount ?? 0],
     ['미사용(유효)', totals?.outstanding_amount ?? 0], ['소멸(만료 — 미집행액)', totals?.lapsed_amount ?? 0],
+    ...sourceRows,
   ]
   const csv = '﻿' + [head, ...rows, ...summary].map((r) => r.map(esc).join(',')).join('\r\n')
   return new Response(csv, {

@@ -179,6 +179,13 @@ export interface Env {
   //   이용권/공구 주문은 skip(각자 경로에서 이미 원장 기록). 역전은 order-refund 에 배선(게이트 무관).
   SHOPPING_LEDGER_ENABLED?: string;
 
+  // ---- 상권 쿠폰 경로 B: 온라인 결제 자동발급 마스터 스위치 (2026-07-13) ----
+  //   'true' 면 유어딜 결제 확정 시 참여 매장(district_stores.seller_id 연결)의 auto_issue 캠페인에서
+  //   기준액 이상이면 상권 쿠폰 자동 발급(waitUntil 후처리, 완전 fail-soft — 결제 성공 경로 영향 0).
+  //   기본 OFF — 미설정/기타값이면 /confirm byte-동일. 캠페인별 auto_issue_enabled + 기간 게이트가 2차.
+  //   staging 실결제 검증(계약 후) 전까지 미설정 유지.
+  DISTRICT_AUTO_ISSUE_ENABLED?: string;
+
   // ---- 전자세금계산서 (Bill36524 / Popbill / 바로빌) ----
   // 🏭 2026-06-09 Wave 3c: 도매 세금계산서 자동발행 stub(admin-tax.routes.issueTaxInvoice).
   //   미설정 시 provider 발행 silent skip(cost-0) — 레코드는 'draft' 로 남아 후속 발행 가능.

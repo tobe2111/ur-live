@@ -1,5 +1,10 @@
 # 🚧 진행 중 작업
 
+## 🔶 2026-07-13 — 상권 쿠폰 경로 B(온라인 결제 자동발급) 구현 (대표 "(b) 전면 구현", draft·미배포)
+페이백을 두 경로로 확장: 경로 A(오프라인 영수증→어드민 승인, **이미 라이브**) + **경로 B(유어딜 결제→기준액 이상 자동발급, 신규)**. 게이트 `DISTRICT_AUTO_ISSUE_ENABLED`(env, 기본 OFF) + 캠페인 `auto_issue_enabled` + 행사기간. 병렬 엔티티(딜/유어딜5%/원장 무접촉). 대표 4제약: ①결제 성공 영향 0(waitUntil 후처리+fail-soft) ②재원 2풀(foundation/urteam) ③source='online' 자동승인 영수증 행+source_ref 멱등 ④발급 실패가 결제 롤백 못 함.
+- **⚠️ 대표 조건 ①: draft PR·main 머지 금지 — staging 실결제 검증 후에만 머지.** 검증: 파일럿 매장 결제→쿠폰 1장 + 1인 한도 A/B 합산 + 재원별 예산 가드 + 중복결제 재발급 0.
+- 설계: `docs/design/district-coupon-estimate-2026-07.md §9`. 변경: district-shared(withinCampaignWindow/normalizeFundingSource)·district-coupon.routes(autoIssue+스키마)·admin.routes(auto-issue 설정·A/B 리포트)·payment.routes(게이트드 배선, CLAUDE.md Toss audit log)·AdminDistrictCouponsPage·DistrictCouponPage.
+
 ## ✅ 2026-07-13 — 게이트 활성화 (대표 "알아서 모두 활성화")
 비머니 게이트 2종을 **코드 기본값 ON(opt-out)** 으로 전환(어드민이 `platform_settings` 에 `'false'` 저장 시 즉시 복원):
 - `district_deal_bridge_enabled` — 상권 쿠폰 소비자 표면에 유어딜 동네딜 병기/추천(공개 카탈로그 read enrich, 비머니).
