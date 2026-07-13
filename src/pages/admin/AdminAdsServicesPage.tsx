@@ -19,16 +19,18 @@ interface Order {
 const PAY_KO: Record<string, string> = { unpaid: '입금 대기', paid: '입금 확인', refunded: '환불' }
 interface Service { id: number; category: string; name: string; subtitle: string | null; pricing: { unit: string; unitPrice: number }; active: number; sort_order: number }
 interface Review { id: number; service_id: number; account_id: number; rating: number; title: string; body: string; author_masked: string; status: string; created_at: string }
+interface ShortLink { id: number; account_id: number; code: string; target_url: string; title: string | null; active: number; click_count: number; created_at: string }
 
 const STATUSES = ['requested', 'confirmed', 'in_progress', 'done', 'cancelled']
 const STATUS_KO: Record<string, string> = { requested: '접수됨', confirmed: '확인됨', in_progress: '진행 중', done: '완료', cancelled: '취소' }
 const METHODS = ['유료광고', '콘텐츠', '인플루언서', '체험단', '운영대행', '기타']
 
 export default function AdminAdsServicesPage() {
-  const [tab, setTab] = useState<'orders' | 'catalog' | 'reviews'>('orders')
+  const [tab, setTab] = useState<'orders' | 'catalog' | 'reviews' | 'links'>('orders')
   const [orders, setOrders] = useState<Order[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
+  const [shortLinks, setShortLinks] = useState<ShortLink[]>([])
   const [filter, setFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<number | null>(null)
@@ -36,14 +38,16 @@ export default function AdminAdsServicesPage() {
   const load = useCallback(async (status = '') => {
     setLoading(true)
     try {
-      const [o, s, rv] = await Promise.all([
+      const [o, s, rv, sl] = await Promise.all([
         api.get(`/api/admin/ads/service-orders${status ? `?status=${status}` : ''}`),
         api.get('/api/admin/ads/services'),
         api.get('/api/admin/ads/service-reviews'),
+        api.get('/api/admin/ads/short-links'),
       ])
       if (o.data?.success) setOrders(o.data.orders || [])
       if (s.data?.success) setServices(s.data.services || [])
       if (rv.data?.success) setReviews(rv.data.reviews || [])
+      if (sl.data?.success) setShortLinks(sl.data.links || [])
     } catch { toast.error('불러오기 실패') } finally { setLoading(false) }
   }, [])
   useEffect(() => { load() }, [load])
@@ -58,6 +62,11 @@ export default function AdminAdsServicesPage() {
     try { const r = await api.patch(`/api/admin/ads/service-reviews/${id}`, { status }); if (r.data?.success) { toast.success(status === 'hidden' ? '숨김' : '노출'); await load(filter) } }
     catch { toast.error('실패') } finally { setBusy(null) }
   }
+  async function toggleShortLink(l: ShortLink) {
+    setBusy(l.id)
+    try { const r = await api.patch(`/api/admin/ads/short-links/${l.id}`, { active: !l.active }); if (r.data?.success) { toast.success(l.active ? '비활성화(즉시 404)' : '활성화'); await load(filter) } }
+    catch { toast.error('실패') } finally { setBusy(null) }
+  }
   async function toggleService(s: Service) {
     setBusy(-s.id)
     try { const r = await api.post('/api/admin/ads/services', { id: s.id, category: s.category, name: s.name, subtitle: s.subtitle, pricing: s.pricing, active: !s.active, sort_order: s.sort_order }); if (r.data?.success) { toast.success('반영됨'); await load(filter) } }
@@ -69,8 +78,8 @@ export default function AdminAdsServicesPage() {
       <DashboardPageHeader title="유어애즈 서비스몰" subtitle="마케팅 서비스 주문 접수함·상품 관리. 무결제 — 담당자가 확인 후 이행(광고·콘텐츠 등)하고 상태를 갱신합니다." />
 
       <div className="flex gap-2 mb-4">
-        {(['orders', 'catalog', 'reviews'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} className={`h-9 px-4 rounded-lg text-sm font-semibold ${tab === t ? 'bg-gray-900 text-white' : 'border border-gray-200 text-gray-600'}`}>{t === 'orders' ? '주문 접수함' : t === 'catalog' ? '상품 관리' : '리뷰 관리'}</button>
+        {(['orders', 'catalog', 'reviews', 'links'] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)} className={`h-9 px-4 rounded-lg text-sm font-semibold ${tab === t ? 'bg-gray-900 text-white' : 'border border-gray-200 text-gray-600'}`}>{t === 'orders' ? '주문 접수함' : t === 'catalog' ? '상품 관리' : t === 'reviews' ? '리뷰 관리' : '단축링크'}</button>
         ))}
       </div>
 
@@ -164,6 +173,26 @@ export default function AdminAdsServicesPage() {
                     <div className="text-[10.5px] text-gray-400 mt-0.5">{r.author_masked} · 상품#{r.service_id} · 계정#{r.account_id} · {(r.created_at || '').slice(0, 10)}</div>
                   </div>
                   <button disabled={busy === r.id} onClick={() => setReviewStatus(r.id, r.status === 'hidden' ? 'visible' : 'hidden')} className={`shrink-0 px-2 py-1 rounded text-[11.5px] font-bold ${r.status === 'hidden' ? 'bg-gray-100 text-gray-500' : 'bg-emerald-50 text-emerald-600'}`}>{r.status === 'hidden' ? '숨김' : '노출'}</button>
+                </div>
+              </div>
+            ))}
+        </div>
+      )}
+      {tab === 'links' && (
+        <div className="space-y-2">
+          <p className="text-[12px] text-gray-500">유어애즈 가입자가 만든 단축 링크(/l/코드) 모더레이션 — 피싱/스팸 신고 시 <b>비활성</b>(즉시 404) 처리하세요. 상습 계정은 '유어애즈 가입자'에서 정지.</p>
+          {shortLinks.length === 0 ? <p className="py-8 text-center text-gray-400 text-sm">단축 링크가 없습니다.</p>
+            : shortLinks.map(l => (
+              <div key={l.id} className="rounded-xl border border-gray-200 bg-white p-3 text-[13px]">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className={`font-bold ${l.active ? 'text-blue-600' : 'text-gray-400 line-through'}`}>/l/{l.code}</span>
+                    {l.title && <span className="ml-2 text-[11.5px] text-gray-500">{l.title}</span>}
+                    <span className="ml-2 text-[11.5px] text-gray-400 tabular-nums">{formatNumber(l.click_count)} 클릭</span>
+                    <div className="text-[11px] text-gray-400 mt-0.5 break-all">{l.target_url}</div>
+                    <div className="text-[10.5px] text-gray-400 mt-0.5">계정#{l.account_id} · {(l.created_at || '').slice(0, 10)}</div>
+                  </div>
+                  <button disabled={busy === l.id} onClick={() => toggleShortLink(l)} className={`shrink-0 px-2 py-1 rounded text-[11.5px] font-bold ${l.active ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'}`}>{l.active ? '활성' : '비활성'}</button>
                 </div>
               </div>
             ))}

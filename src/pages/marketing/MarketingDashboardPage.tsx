@@ -19,6 +19,7 @@ import SavedKeywordsPanel from './SavedKeywordsPanel'
 import OpportunityPanel from './OpportunityPanel'
 import ContentStudioPanel from './ContentStudioPanel'
 import ServiceMarketplacePanel from './ServiceMarketplacePanel'
+import ShortLinksPanel from './ShortLinksPanel'
 import OnboardingChecklist from './OnboardingChecklist'
 import LazyMount from './LazyMount'
 import PanelError from './PanelError'
@@ -458,6 +459,9 @@ export default function MarketingDashboardPage() {
 
       {/* 마케팅 서비스몰 (서비스 패키지 주문 — 무결제 접수) */}
       {hasToken && <LazyMount id="sec-services"><ServiceMarketplacePanel /></LazyMount>}
+
+      {/* 무료 단축 링크 — /l/{code} 생성·클릭 추적 (무료 리드 마그넷, 액세스 코드 불요) */}
+      {hasToken && <LazyMount id="sec-links"><ShortLinksPanel /></LazyMount>}
 
       {/* AI 마케터 (Claude 진단/추천 — 읽기 전용) */}
       {hasToken && (
