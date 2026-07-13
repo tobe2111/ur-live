@@ -189,7 +189,18 @@ adminApp.post('/receipts/:id/approve', async (c) => {
   if (!cas || cas.meta.changes === 0) return c.json({ success: false, error: '이미 처리된 영수증입니다' }, 409)
 
   const coupon = await insertCouponForReceipt(c.env.DB, receipt, face, receipt.coupon_expires_days)
-  if (!coupon) return c.json({ success: false, error: '쿠폰 발급 실패 — 재시도하세요 (영수증은 승인됨)' }, 500)
+  if (!coupon) {
+    // 🛡️ 전수조사 MED fix: 발급 실패 시 CAS 롤백(approved→submitted) — 아니면 영수증이
+    //   '지급 완료' 표시로 영구 고착 + 재승인 불가(CAS 가 submitted 만 받음). UNIQUE(receipt_id)
+    //   멱등 덕에, 쿠폰이 실제 삽입됐는데 조회만 실패한 극단 케이스도 재승인 시 기존 쿠폰
+    //   반환 → 이중발급 구조적 0. 롤백 실패 시에만 수동 개입 안내.
+    const rb = await c.env.DB.prepare(
+      `UPDATE district_receipts SET status = 'submitted', reviewed_by = NULL, reviewed_at = NULL
+       WHERE id = ? AND status = 'approved'`,
+    ).bind(id).run().catch(() => null)
+    const rolled = !!rb && rb.meta.changes > 0
+    return c.json({ success: false, error: rolled ? '쿠폰 발급 실패 — 잠시 후 다시 승인해주세요 (대기 상태로 복원됨)' : '쿠폰 발급 실패 — 관리자 확인 필요 (복원 실패)' }, 500)
+  }
   await notifyDistrictUser(c.env.DB, receipt.user_id, '🎉 상권 쿠폰 지급!', `영수증 승인 완료 — ${face.toLocaleString()}원 쿠폰이 지급되었어요. 참여 점포 어디서든 쓸 수 있어요.`)
   return c.json({ success: true, coupon_code: coupon.code, face_value: face })
 })

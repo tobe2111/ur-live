@@ -111,6 +111,17 @@ export default function AdminDistrictCouponsPage() {
     } catch (e) { toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '처리 실패') }
   }
 
+  // 인증 헤더를 실은 blob 다운로드(평문 앵커는 Bearer 불가).
+  const downloadCsv = async (id: number) => {
+    try {
+      const r = await api.get(`/api/admin/district/campaigns/${id}/report.csv`, { responseType: 'blob' })
+      const url = URL.createObjectURL(r.data as Blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = `district-${id}-settlement.csv`; a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 5000)
+    } catch { toast.error('CSV 다운로드 실패') }
+  }
+
   const toggleStatus = async (c: Campaign) => {
     const next = c.status === 'open' ? 'closed' : 'open'
     if (!window.confirm(`캠페인을 ${next === 'open' ? '재개' : '종료'}할까요?`)) return
@@ -188,7 +199,8 @@ export default function AdminDistrictCouponsPage() {
                     </button>
                   ))}
                   <div className="flex-1" />
-                  <a href={`/api/admin/district/campaigns/${c.id}/report.csv`} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-[12px]"><FileDown className="w-3.5 h-3.5" />정산 CSV</a>
+                  {/* 🛡️ 전수조사 MED fix: 평문 <a> 는 Bearer 미탑재(+듀얼로그인 시 user 쿠키 우선 403) → api blob 다운로드 */}
+                  <button type="button" onClick={() => void downloadCsv(c.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-[12px]"><FileDown className="w-3.5 h-3.5" />정산 CSV</button>
                   <button type="button" onClick={() => void toggleStatus(c)} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-[12px] text-gray-600">{c.status === 'open' ? '캠페인 종료' : '재개'}</button>
                 </div>
 

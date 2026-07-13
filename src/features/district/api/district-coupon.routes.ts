@@ -237,7 +237,8 @@ userApp.post('/campaigns/:slug/receipts',
     const ext = sniffExt(bytes)
     if (!ext) return c.json({ success: false, error: 'JPG/PNG/WebP 사진만 업로드할 수 있습니다' }, 400)
     const ym = new Date().toISOString().slice(0, 7)
-    const key = `uploads/district/${camp.id}/${ym}/${randomKey(20)}.${ext}`
+    // 🛡️ 32자 CSPRNG(≈190bit) — 영수증(카드 승인번호 노출)은 biz-cert 와 동급 민감문서(공개 버킷 키=접근통제).
+    const key = `uploads/district/${camp.id}/${ym}/${randomKey(32)}.${ext}`
     if (!c.env.MEDIA_BUCKET) return c.json({ success: false, error: '업로드 저장소가 준비되지 않았습니다' }, 500)
     await c.env.MEDIA_BUCKET.put(key, bytes, { httpMetadata: { contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}` } })
 
