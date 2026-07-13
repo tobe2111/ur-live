@@ -15,6 +15,7 @@
 
 import type { Hono } from 'hono'
 import { requireAuth, getCurrentUser, requireAdmin } from '@/worker/middleware/auth'
+import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
@@ -751,6 +752,13 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
 
     const { DB } = c.env
 
+    // 🔑 user_id 정규화(데이터 감사 1단계): 쓰기 경로가 DB users.id(숫자)로 통일되므로 읽기도 정규화.
+    //   전환기 안전: 정규화 id(신규 행)와 raw id(과거 firebase_uid 키 행)를 **둘 다** 매칭(IN)해
+    //   backfill 없이 이력 유실 0. live(카카오)=두 값 동일→기존과 동일 동작. (코드베이스 dual-key 관행)
+    const uidNorm = await resolveUserIdString(DB, user.id, user.isDbId)
+    const uidRaw = String(user.id)
+    const uidBinds: string[] = uidNorm === uidRaw ? [uidRaw, uidRaw] : [uidNorm, uidRaw]
+
     // 🛡️ 2026-05-22 P1 영구 fix (사용자 신고 "교환권 로딩 늦음"):
     //   - 이전: ensureTables(20+ ALTER/CREATE) cold-start 마다 첫 호출 시 ~50-200ms.
     //   - 이전: SELECT v.* (모든 컬럼) + LEFT JOIN products + ORDER BY DESC + LIMIT 없음.
@@ -778,11 +786,11 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
              p.restaurant_lat, p.restaurant_lng, p.restaurant_phone
       FROM vouchers v
       LEFT JOIN products p ON v.product_id = p.id
-      WHERE v.user_id = ?
+      WHERE v.user_id IN (?, ?)
         AND (p.kt_alpha_gift_code IS NULL OR p.kt_alpha_gift_code = '')
       ORDER BY v.created_at DESC
       LIMIT 200
-    `).bind(String(user.id)).all().catch(async (err) => {
+    `).bind(...uidBinds).all().catch(async (err) => {
       if (typeof console !== 'undefined') console.warn('[/vouchers/my] full SELECT failed, fallback:', String(err))
       // 컬럼 누락 환경 graceful fallback — applied_price 도 포함.
       const r = await DB.prepare(`
@@ -794,10 +802,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
                p.restaurant_lat, p.restaurant_lng, p.restaurant_phone
         FROM vouchers v
         LEFT JOIN products p ON v.product_id = p.id
-        WHERE v.user_id = ?
+        WHERE v.user_id IN (?, ?)
         ORDER BY v.created_at DESC
         LIMIT 200
-      `).bind(String(user.id)).all().catch(async (err2) => {
+      `).bind(...uidBinds).all().catch(async (err2) => {
         // 한 번 더 fallback — applied_price 도 없는 극단 환경 (구 DB).
         if (typeof console !== 'undefined') console.warn('[/vouchers/my] applied_price SELECT failed, fallback again:', String(err2))
         return await DB.prepare(`
@@ -808,10 +816,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
                  p.restaurant_lat, p.restaurant_lng, p.restaurant_phone
           FROM vouchers v
           LEFT JOIN products p ON v.product_id = p.id
-          WHERE v.user_id = ?
+          WHERE v.user_id IN (?, ?)
           ORDER BY v.created_at DESC
           LIMIT 200
-        `).bind(String(user.id)).all()
+        `).bind(...uidBinds).all()
       })
       return r
     })
@@ -841,8 +849,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         WHERE o.user_id = ? AND vo.status IN ('sent', 'processing', 'failed')
         ORDER BY vo.created_at DESC
         LIMIT 100`
-      let ktRes: { results?: any[] } | null = await DB.prepare(ktSelect(true)).bind(Number(user.id)).all<any>().catch(() => null)
-      if (!ktRes) ktRes = await DB.prepare(ktSelect(false)).bind(Number(user.id)).all<any>().catch(() => ({ results: [] as any[] }))
+      let ktRes: { results?: any[] } | null = await DB.prepare(ktSelect(true)).bind(Number(uidNorm)).all<any>().catch(() => null)
+      if (!ktRes) ktRes = await DB.prepare(ktSelect(false)).bind(Number(uidNorm)).all<any>().catch(() => ({ results: [] as any[] }))
       ktAlphaItems = (ktRes?.results || []).map((vo: any) => ({
         source: 'kt_alpha',
         id: `kt-${vo.id}`,
