@@ -235,6 +235,9 @@ import { staysPublicRoutes } from '../features/group-buy/api/stays-public.routes
 // 🛡️ 2026-05-18: R2 이미지 업로드 (seller/admin/agency/user 공용).
 import { uploadRoutes } from '../features/upload/api/upload.routes';
 import { sellerMarketingRoutes, influencerSettlementRoutes, adminPayoutRoutes, influencerDiscoverRoutes, influencerRankingsRoutes } from '../features/group-buy/api/marketing.routes';
+// 🧾 2026-07-13 상권 쿠폰(영수증 페이백) — 병렬 엔티티(vouchers 무접촉), district-coupon-estimate-2026-07.md
+import { districtPublicRoutes } from '../features/district/api/district-coupon.routes';
+import { districtAdminRoutes } from '../features/district/api/district-coupon-admin.routes';
 import { reviewBonusUserRoutes, reviewBonusAdminRoutes } from '../features/group-buy/api/review-bonus.routes';
 import { fcfsRoutes, fcfsAdminRoutes } from '../features/group-buy/api/fcfs.routes';
 import { gbMarketplaceRoutes } from '../features/group-buy/api/gb-marketplace.routes';
@@ -1742,6 +1745,8 @@ app.route('/api', ledgerRoutes);
 // 🛡️ 2026-05-16: 셀러 마케팅 (인플 차단) + 인플루언서 정산 + 어드민 송금 + 인플 카탈로그
 app.route('/api/seller-marketing', sellerMarketingRoutes);
 app.route('/api/influencer-settlement', influencerSettlementRoutes);
+app.route('/api/district', districtPublicRoutes);
+app.route('/api/admin/district', districtAdminRoutes);
 app.use('/api/admin-payouts/*', requireAdmin());
 app.route('/api/admin-payouts', adminPayoutRoutes);
 app.route('/api/influencer-discover', influencerDiscoverRoutes);

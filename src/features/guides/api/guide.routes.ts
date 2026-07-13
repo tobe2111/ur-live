@@ -23,7 +23,8 @@ export const guideRoutes = new Hono<{ Bindings: Env }>()
 //   신규 섹션 INSERT + 시드 관리 섹션(manually_edited=0) 최신화. 관리자가
 //   /admin/operations-guide 에서 직접 수정/생성한 섹션(manually_edited=1)은 절대 안 덮어씀.
 //   v1 = 암묵적 레거시(버전 미저장, ensureSeeded '0행일 때만' 시대) / v2 = 버전 메커니즘 도입.
-const GUIDE_SEED_VERSION = 3
+//   v4 = 2026-07-13 상권 쿠폰(영수증 페이백) 운영 섹션. (⚠️ #499 가이드 bump 와 병행 — 나중 머지가 +1 로 해소)
+const GUIDE_SEED_VERSION = 4
 
 // 🏭 2026-06-07: 'wholesale' 추가 — 도매몰 전용 가이드. 어드민 전용(읽기+편집).
 type GuideType = 'admin' | 'seller' | 'agency' | 'wholesale'
