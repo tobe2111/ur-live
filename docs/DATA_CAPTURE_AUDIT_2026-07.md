@@ -72,7 +72,9 @@
 
 1. **off-live user_id backfill 실행** — 코드는 완료(dry-run 엔드포인트). live 는 대상 0. off-live 데이터가 있으면:
    `GET /api/_internal/backfill-user-id`(dry-run 카운트 확인) → `POST` `{ "confirm": true }`(적용). user_points 충돌(conflict)은 자동 병합 안 함 — 있으면 수동 검토.
-2. **PII 평문 암호화** — `data-crypto.ts`(encryptAtRest/decryptAtRest)는 이미 dual-read(평문 통과) 지원하나, users.email/phone/name 읽기 지점이 raw SQL 로 코드 전역에 흩어져 있어 **일괄 암호화 = 전 읽기지점 복호화 배선 필요**(repo 계층 없음). 테스트 불가 환경에서 blind big-bang = 라이브 로그인/표시 전면 붕괴 위험. → **전용 세션 + staging 테스트**로 (write 암호화 + 읽기지점 점진 복호화 + 백필, 기본 OFF 플래그) 진행 권장. 키(`DATA_ENCRYPTION_KEY`) 미설정 시 평문 fallback → 암호화 켤 땐 fail-closed 로 전환.
+2. **PII 평문 암호화** — 대표 확정(2026-07-13): **인프라·플래그는 코드로 지금(완료), 라이브 실제 암호화 스위치는 staging 검증 후**(flip·경로 B 패턴).
+   - ✅ **지금 완료(라이브 무영향)**: `pii-crypto.ts`(encryptPii/decryptPii dual-read + `blindIndex` HMAC 조회키) + 마스터 스위치 env `PII_ENCRYPTION_ENABLED`(기본 OFF, 키 없으면 강제 OFF). 어떤 라이브 읽기/쓰기 경로도 **미배선** — 순수 인프라.
+   - ⏳ **staging 활성화 게이트**(별도 세션): 조회키 컬럼(email/kakao_id/phone) blind index dual-mode 배선 → 표시지점 decryptPii 배선 → 기존 평문 backfill → `PII_ENCRYPTION_ENABLED='true'`. 상세 순서·필드·지점: `docs/design/pii-encryption-rollout.md`.
 3. **백업 파이프라인 실행·검증** — `d1-backup.ts` 코드는 견고(커서 덤프+알림)하나 `BACKUP_BUCKET` 미바인딩이라 미동작(의도적 throw 로 표면화 중). GitHub Actions `d1-backup.yml`(R2 독립, 주간 export→아티팩트)이 가장 안전한 경로 → **workflow_dispatch 로 1회 실제 실행 + 복원 리허설 1회**(D1_RESTORE_RUNBOOK.md "미실시" 해소). R2 백업 원하면 `ur-live-backups` 버킷 생성 후 대시보드 바인딩.
 4. **ADMIN_IP_WHITELIST 켜기** — 코드 지원됨(기본 allow-all). 운영 IP 확정되면 대시보드 env 설정.
 

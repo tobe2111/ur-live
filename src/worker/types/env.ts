@@ -119,6 +119,13 @@ export interface Env {
   // 32자 이상의 random string. Cloudflare Dashboard → Variables and Secrets 에서 설정.
   DATA_ENCRYPTION_KEY?: string;
 
+  // 🔒 2026-07-13 (데이터 감사 3단계): PII 컬럼 at-rest 암호화 마스터 스위치.
+  //   'true' 일 때만 신규 쓰기가 PII 를 암호화(+blind index) 로 저장. 기본 미설정=OFF=현행 평문(무변화).
+  //   ⚠️ 활성화 전 staging 필수: 조회(blind index)·표시(복호화) 배선 검증 후에만 ON.
+  PII_ENCRYPTION_ENABLED?: string;
+  // blind index(조회용 결정적 HMAC) 전용 키. 미설정 시 DATA_ENCRYPTION_KEY 파생값 사용.
+  PII_BLIND_INDEX_KEY?: string;
+
   // ---- Naver Ad Scraper ----
   // ⚠️ [LEGAL/PIPA] 크롤러로 수집한 이메일/연락처를 마케팅 목적으로 사용하려면
   // 정보주체의 명시적 동의가 선행되어야 합니다(개인정보 보호법 제15·22조).
