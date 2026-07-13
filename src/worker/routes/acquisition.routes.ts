@@ -11,6 +11,8 @@ import { requireAuth, getCurrentUser } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
 import type { Env } from '../types/env'
 import { ensureAcquisitionTables, normalizeAcqSource } from '../utils/acquisition'
+import { recordInflowClick, bindInflowClicksToUser, isValidAnonId, normalizeRefId } from '../utils/inflow-clicks'
+import { resolveUserIdString } from '../utils/resolve-user-id'
 
 export const acquisitionRoutes = new Hono<{ Bindings: Env }>()
 
@@ -43,4 +45,30 @@ acquisitionRoutes.post('/claim', rateLimit({ action: 'acq_claim', max: 10, windo
      VALUES (?, ?, ?, COALESCE(?, datetime('now')))`,
   ).bind(String(user.id), src, code, landedAt).run().catch(() => null)
   return c.json({ success: true, data: { claimed: (r?.meta?.changes ?? 0) > 0 } })
+})
+
+// 📡 2026-07-13 (데이터 감사 2단계): 인플루언서 유입 클릭 이벤트 — 완결고리 '유입' 노드.
+//  - POST /inflow  (공개, rate-limit): ?ref 링크 클릭 시점 익명 기록(클라 anon UUID + 인플루언서 users.id).
+//  - POST /inflow/bind (인증): 로그인/가입 후 익명 클릭을 유저에 귀속(전환 안 해도 유입 보존).
+acquisitionRoutes.post('/inflow', rateLimit({ action: 'inflow_click', max: 20, windowSec: 60 }), async (c) => {
+  const body = await c.req.json<{ anon_id?: string; ref?: string; ref_type?: string; campaign?: string; path?: string }>().catch(() => ({} as Record<string, never>))
+  if (!isValidAnonId(body.anon_id)) return c.json({ success: false, error: '유효하지 않은 anon_id' }, 400)
+  const refId = normalizeRefId(body.ref)
+  if (!refId) return c.json({ success: false, error: 'ref 는 숫자 users.id (1~12자리)' }, 400)
+  const created = await recordInflowClick(c.env.DB, {
+    anonId: body.anon_id!, refId,
+    refType: body.ref_type, campaign: normalizeAcqSource(body.campaign), path: body.path,
+  })
+  return c.json({ success: true, data: { recorded: created } })
+})
+
+acquisitionRoutes.post('/inflow/bind', rateLimit({ action: 'inflow_bind', max: 20, windowSec: 300 }), requireAuth(), async (c) => {
+  const user = getCurrentUser(c)
+  if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
+  const body = await c.req.json<{ anon_id?: string }>().catch(() => ({} as Record<string, never>))
+  if (!isValidAnonId(body.anon_id)) return c.json({ success: false, error: '유효하지 않은 anon_id' }, 400)
+  // 완결고리 조인키 정합(1단계와 동일): 귀속 user_id 는 정규화된 DB users.id.
+  const uid = await resolveUserIdString(c.env.DB, user.id, (user as { isDbId?: boolean }).isDbId)
+  const bound = await bindInflowClicksToUser(c.env.DB, body.anon_id!, uid)
+  return c.json({ success: true, data: { bound } })
 })

@@ -978,6 +978,14 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           const { recordVoucherRedemptionLocation } = await import('../../../worker/utils/voucher-redemption')
           await recordVoucherRedemptionLocation(DB, Number(row.id), body.lat, body.lng)
         } catch { /* best-effort */ }
+        // 🚪 2026-07-13 (데이터 감사 2단계): 방문 통합 이벤트 — 완결고리 '방문' 노드(멱등·best-effort).
+        try {
+          const { recordVoucherVisit } = await import('../../../worker/utils/voucher-visit')
+          await recordVoucherVisit(DB, {
+            voucher_id: Number(row.id), user_id: user.id, seller_id: row.seller_id,
+            product_id: row.product_id, amount: row.applied_price, path: 'self',
+          })
+        } catch { /* best-effort */ }
       }
       // 🔔 2026-07-02: 셀프 사용 즉시 사장님 대시보드 알림 — 카운터 크로스체크(위조·취소 악용 억제).
       if (claimed && row.seller_id != null) {
@@ -1023,8 +1031,8 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       // 🎟️ 2026-07-02 모드 게이트: 셀프취소는 self_free 매장에서만 — store_code/scan_only 매장은
       //   취소 권한이 매장(사장님)에 있음("보여주고 나가서 60초 내 취소" 악용 차단).
       const pre = await DB.prepare(
-        'SELECT p.seller_id, v.applied_price, p.name as product_name FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code=? AND v.user_id=?'
-      ).bind(code, user.id).first<{ seller_id: number | null; applied_price: number | null; product_name?: string }>().catch(() => null)
+        'SELECT v.id AS voucher_id, p.seller_id, v.applied_price, p.name as product_name FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code=? AND v.user_id=?'
+      ).bind(code, user.id).first<{ voucher_id: number; seller_id: number | null; applied_price: number | null; product_name?: string }>().catch(() => null)
       if (pre?.seller_id != null) {
         try {
           const { getRedemptionSettings } = await import('../../../worker/utils/redemption-settings')
@@ -1041,6 +1049,13 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       ).bind(code, user.id).run()
       if ((res.meta?.changes || 0) !== 1) {
         return c.json({ success: false, error: '취소 가능 시간(60초)이 지났습니다' }, 409)
+      }
+      // 🚪 2026-07-13 (데이터 감사 2단계): 오스캔 정정 → 방문 이벤트도 되돌림(실제 방문 아님).
+      if (pre?.voucher_id != null) {
+        try {
+          const { removeVoucherVisit } = await import('../../../worker/utils/voucher-visit')
+          await removeVoucherVisit(DB, Number(pre.voucher_id))
+        } catch { /* best-effort */ }
       }
       // 🔔 취소도 사장님에게 즉시 알림 — "사용완료 보여주고 취소" 수법의 가시화(악용 억제 핵심).
       if (pre?.seller_id != null) {

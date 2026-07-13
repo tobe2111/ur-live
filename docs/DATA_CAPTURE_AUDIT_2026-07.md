@@ -55,9 +55,10 @@
 - 모든 order/voucher/deal/stay INSERT를 `resolveUserId` 경유로 통일. 읽기 측 정합(기존 firebase_uid 행 호환) 확인.
 - `voucher_redemptions` GPS 원좌표 적재 중단(상권/매장 단위만) — 법무 답변 전까지.
 
-### 2단계 (1단계 staging 통과 후): 유입 클릭 이벤트 + 방문 통합 이벤트 (additive 묶음)
-- 인플루언서 링크 진입 시 익명 이벤트(`session_id, curator/ref_id, campaign, ts`, user_id는 로그인 후 바인딩) 서버 적재.
-- 이용권 사용 시 append-only 방문 이벤트(`user_id, seller_id/store, ts`) — `district_coupons` 모델 이식, 전 경로 공통.
+### 2단계 (대표 "2단계도 함께 지원" — 1단계와 병행 착수): 유입 클릭 이벤트 + 방문 통합 이벤트 (additive)
+- 인플루언서 링크 진입 시 익명 이벤트(`anon_id, ref_id, campaign, path`, user_id는 로그인 후 바인딩) 서버 적재.
+- 이용권 사용 시 방문 이벤트(`user_id, seller_id/store, ts`) — `district_coupons` 모델 이식, 전 경로 공통.
+- **구현 완료** — 아래 구현 로그 참조.
 
 ### 3단계 (2단계 후): 백업 검증 + 보안 5종
 - GitHub Actions D1 export 실제 1회 실행 + 복원 리허설.
@@ -77,3 +78,8 @@
   - 검증(이 원격환경): sql-bind/column/table/money 가드 GREEN. tsc/build/vitest 는 npm 403 로 CI 에서(deps 미설치). ⚠️ **staging 실결제 필수**: (1) 카카오 공구 참여/카드결제/딜결제 → 주문·이용권 정상 + 내 이용권 노출, (2) 셀프 사용처리 → 위치 상권격자 저장 확인.
   - **off-live/과거 이력 backfill(firebase_uid→숫자, orders/vouchers/user_points/point_transactions)** 은 3단계에서. off-live 지갑 완전 정합은 backfill 후 완성.
   - 미포함(현행 유지, 판단): stays(Firebase=401 이라 분열 안 만듦)·experience-campaign(저볼륨)·points 지갑 키 — live 이미 숫자라 완결고리 영향 0.
+- 2026-07-13 (2단계 구현 — 대표 "2단계도 함께 지원") — **유입 클릭 이벤트 + 방문 통합 이벤트**(전부 additive, 머니 로직 무변경):
+  - **방문 통합 이벤트** `voucher_visits`(신규 사이드테이블, `voucher-visit.ts`): `voucher_id`(PK·멱등), `user_id`(=vouchers.user_id 동일 키), `seller_id`(매장=consigned_from ?? seller), `product_id`, `amount`, `path`, `created_at` + user/seller 인덱스. **3개 사용처리 경로 전부** 배선(PIN `/:code/use` · 셀러스캔 `/use-by-seller` · 셀프 `/vouchers/:code/self-redeem`) = best-effort waitUntil, INSERT OR IGNORE(이중 0). cancel-redeem(오스캔 60초 정정)은 `removeVoucherVisit` 로 되돌림. → "누가 어느 매장 언제 사용" 한 행 조인(재방문 = user_id group by).
+  - **유입 클릭 이벤트** `inflow_clicks`(신규, `inflow-clicks.ts`): `anon_id`(클라 UUID `ur_anon_id_v1`, `anon-id.ts`), `ref_id`(인플루언서 users.id), `ref_type`, `campaign`, `landing_path`, `user_id`(로그인 후 바인딩) + UNIQUE(anon_id, ref_id) first-touch. 서버 `POST /api/acquisition/inflow`(공개·rl 20/60s) + `/inflow/bind`(인증, user_id=정규화). 클라: `storeAffiliateRef`(affiliate-track.ts)가 ref 캡처 즉시 클릭 발사(ref별 1회 dedup) + App.tsx 부트스트랩이 로그인 시 bind(멱등). → **전환 안 해도 인플루언서→방문자 유입 서버 보존**(구매 전 유실 0). acquisition(?src=)·affiliate 적립 로직 **미변경**(격리).
+  - 개인정보 원칙 준수: 로그는 **가명 키(anon_id / 숫자 user_id)** 만, PII(이름/전화)는 users 분리 유지. 위치 미포함.
+  - 검증(이 원격환경): sql-bind/column/table(373→375)/not-null/money 가드 GREEN. tsc/build/vitest 는 CI. ⚠️ staging: (1) `?ref=` 링크 진입 → `inflow_clicks` 1행 + 로그인 후 user_id 바인딩, (2) 이용권 3경로 사용 → `voucher_visits` 1행 + cancel 시 삭제.

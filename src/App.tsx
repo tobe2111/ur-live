@@ -313,7 +313,12 @@ function AppContent() {
     import('@/lib/acquisition').then(({ captureAcquisitionSource, claimAcquisitionIfLoggedIn }) => {
       captureAcquisitionSource()
       import('@/utils/auth').then(({ isLoggedInSync }) => {
-        claimAcquisitionIfLoggedIn(isLoggedInSync())
+        const loggedIn = isLoggedInSync()
+        claimAcquisitionIfLoggedIn(loggedIn)
+        // 📡 2026-07-13 (데이터 감사 2단계): 익명 유입 클릭 → 유저 귀속(멱등, 완결고리 '유입' 노드).
+        import('@/utils/affiliate-track').then(({ bindInflowClicksIfLoggedIn }) => {
+          bindInflowClicksIfLoggedIn(loggedIn)
+        }).catch(() => {})
       }).catch(() => {})
     }).catch(swallow('app:acquisition-import'))
   }, [])
