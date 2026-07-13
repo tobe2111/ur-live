@@ -96,15 +96,17 @@ adminApp.post('/campaigns/:id/stores/bulk', async (c) => {
   let inserted = 0
   const created: Array<{ name: string; store_code: string }> = []
   for (const line of lines) {
-    const [name, address, phone, bank, account, holder] = line.split('|').map((s) => (s || '').trim())
+    // 🔗 7번째 필드(선택) = 유어딜 seller_id — 전환 다리(딜 병기/추천)용 연결. 비워도 됨.
+    const [name, address, phone, bank, account, holder, sellerIdRaw] = line.split('|').map((s) => (s || '').trim())
     if (!name) continue
+    const linkSellerId = intParam(sellerIdRaw || '', 0) || null
     // PIN 충돌(캠페인 내 UNIQUE) 시 재시도 3회
     for (let i = 0; i < 3; i++) {
       const pin = storePin()
       const r = await c.env.DB.prepare(
-        `INSERT OR IGNORE INTO district_stores (campaign_id, name, store_code, address, phone, bank_name, bank_account, account_holder)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).bind(id, name.slice(0, 100), pin, address || null, phone || null, bank || null, account || null, holder || null)
+        `INSERT OR IGNORE INTO district_stores (campaign_id, name, store_code, address, phone, bank_name, bank_account, account_holder, seller_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(id, name.slice(0, 100), pin, address || null, phone || null, bank || null, account || null, holder || null, linkSellerId)
         .run().catch(() => null)
       if (r && r.meta.changes > 0) { inserted++; created.push({ name, store_code: pin }); break }
     }
@@ -116,7 +118,7 @@ adminApp.get('/campaigns/:id/stores', async (c) => {
   await ensureDistrictTables(c.env.DB)
   const id = intParam(c.req.param('id'), 0)
   const rows = await c.env.DB.prepare(
-    `SELECT s.id, s.name, s.store_code, s.address, s.phone, s.bank_name, s.bank_account, s.account_holder, s.is_active,
+    `SELECT s.id, s.name, s.store_code, s.address, s.phone, s.bank_name, s.bank_account, s.account_holder, s.is_active, s.seller_id,
        (SELECT COUNT(*) FROM district_coupons cp WHERE cp.redeemed_store_id = s.id) AS used_count,
        (SELECT COALESCE(SUM(cp.face_value), 0) FROM district_coupons cp WHERE cp.redeemed_store_id = s.id) AS used_amount
      FROM district_stores s WHERE s.campaign_id = ? ORDER BY s.name LIMIT 500`,

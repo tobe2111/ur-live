@@ -54,8 +54,11 @@ export async function ensureDistrictTables(DB: D1Database): Promise<void> {
       address TEXT, phone TEXT,
       bank_name TEXT, bank_account TEXT, account_holder TEXT,
       is_active INTEGER NOT NULL DEFAULT 1,
+      seller_id INTEGER,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`).run()
+    // 🔗 2026-07-13 전환 다리: 상권 점포 ↔ 유어딜 매장(sellers) 선택 연결 — 딜 병기/추천용(비머니).
+    try { await DB.prepare("ALTER TABLE district_stores ADD COLUMN seller_id INTEGER").run() } catch { /* exists */ }
     await DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_district_store_pin ON district_stores(campaign_id, store_code)").run()
     await DB.prepare("CREATE INDEX IF NOT EXISTS idx_district_store_campaign ON district_stores(campaign_id, is_active)").run()
     await DB.prepare(`CREATE TABLE IF NOT EXISTS district_receipts (
@@ -153,6 +156,36 @@ async function settingInt(DB: D1Database, key: string, fallback: number): Promis
   return Number.isFinite(n) && n > 0 ? n : fallback
 }
 
+// 🔗 2026-07-13 전환 다리 게이트(기본 OFF) — 상권 쿠폰 소비자 표면에 유어딜 동네딜 병기/추천.
+//   비머니(공개 카탈로그 read 만) · OFF 면 기존 응답 byte-동일.
+async function bridgeEnabled(DB: D1Database): Promise<boolean> {
+  const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'district_deal_bridge_enabled'")
+    .first<{ value: string }>().catch(() => null)
+  return row?.value === 'true'
+}
+/** 연결된 매장(seller_id)별 활성 동네딜 — 소비자 카탈로그 가시성 조건과 동일(도매 원본·교환권 제외). */
+async function activeDealsBySeller(DB: D1Database, campaignId: number): Promise<Map<number, { count: number; product_id: number; name: string }>> {
+  const rows = await DB.prepare(
+    `SELECT p.seller_id AS sid, COUNT(*) AS cnt, MIN(p.id) AS pid
+     FROM products p
+     WHERE p.seller_id IN (SELECT seller_id FROM district_stores WHERE campaign_id = ? AND seller_id IS NOT NULL AND is_active = 1)
+       AND p.is_active = 1 AND p.group_buy_status = 'active'
+       AND COALESCE(p.deal_only, 0) = 0
+       AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
+     GROUP BY p.seller_id LIMIT 300`,
+  ).bind(campaignId).all<{ sid: number; cnt: number; pid: number }>().catch(() => ({ results: [] as { sid: number; cnt: number; pid: number }[] }))
+  const list = rows.results || []
+  const map = new Map<number, { count: number; product_id: number; name: string }>()
+  if (!list.length) return map
+  const pids = list.map((r) => r.pid).slice(0, 100)
+  const names = await DB.prepare(
+    `SELECT id, name FROM products WHERE id IN (${pids.map(() => '?').join(',')})`,
+  ).bind(...pids).all<{ id: number; name: string }>().catch(() => ({ results: [] as { id: number; name: string }[] }))
+  const nameById = new Map((names.results || []).map((n) => [n.id, n.name]))
+  for (const r of list) map.set(r.sid, { count: Number(r.cnt) || 0, product_id: r.pid, name: nameById.get(r.pid) || '동네딜' })
+  return map
+}
+
 // ══════════════════════════ 공개 ══════════════════════════
 const publicApp = new Hono<{ Bindings: DistrictEnv }>()
 
@@ -165,12 +198,23 @@ publicApp.get('/campaigns/:slug', async (c) => {
   ).bind(slug).first<Record<string, unknown>>().catch(() => null)
   if (!camp) return c.json({ success: false, error: '캠페인을 찾을 수 없습니다' }, 404)
   const stores = await c.env.DB.prepare(
-    `SELECT id, name, address FROM district_stores WHERE campaign_id = ? AND is_active = 1 ORDER BY name LIMIT 500`,
-  ).bind(camp.id).all().catch(() => ({ results: [] }))
+    `SELECT id, name, address, seller_id FROM district_stores WHERE campaign_id = ? AND is_active = 1 ORDER BY name LIMIT 500`,
+  ).bind(camp.id).all<{ id: number; name: string; address: string | null; seller_id: number | null }>().catch(() => ({ results: [] as { id: number; name: string; address: string | null; seller_id: number | null }[] }))
+  let storeRows: Array<Record<string, unknown>> = (stores.results || []) as unknown as Array<Record<string, unknown>>
+  // 🔗 전환 다리(게이트 ON): 연결 매장의 활성 동네딜 병기 — 실패해도 기본 응답 유지(fail-soft).
+  if (await bridgeEnabled(c.env.DB)) {
+    try {
+      const deals = await activeDealsBySeller(c.env.DB, Number(camp.id))
+      storeRows = storeRows.map((st) => {
+        const d = st.seller_id ? deals.get(Number(st.seller_id)) : undefined
+        return d ? { ...st, deal_count: d.count, deal_product_id: d.product_id, deal_name: d.name } : st
+      })
+    } catch { /* fail-soft */ }
+  }
   return c.json({
     success: true,
     campaign: { ...camp, reward_tiers: parseRewardTiers(camp.reward_tiers as string) },
-    stores: stores.results || [],
+    stores: storeRows,
   })
 })
 
@@ -324,7 +368,19 @@ userApp.post('/coupons/:code/redeem',
       await c.env.DB.prepare("DELETE FROM rate_limit_attempts WHERE action = 'district_redeem' AND key = ?")
         .bind(`district_redeem:${code}`).run()
     } catch { /* best-effort */ }
-    return c.json({ success: true, message: '사용 완료! 결제 금액에서 쿠폰 금액을 빼고 결제하세요' })
+    // 🔗 전환 다리(게이트 ON): 사용 완료 화면에 상권 딜 추천 1줄 — 사용 매장 딜 우선, 없으면 캠페인 내 딜.
+    let bridge: { product_id: number; name: string } | null = null
+    try {
+      if (await bridgeEnabled(c.env.DB)) {
+        const deals = await activeDealsBySeller(c.env.DB, coupon.campaign_id)
+        const linked = await c.env.DB.prepare('SELECT seller_id FROM district_stores WHERE id = ?')
+          .bind(storeId).first<{ seller_id: number | null }>().catch(() => null)
+        const own = linked?.seller_id ? deals.get(Number(linked.seller_id)) : undefined
+        const any = own || deals.values().next().value
+        if (any) bridge = { product_id: any.product_id, name: any.name }
+      }
+    } catch { /* fail-soft — 추천은 부가 정보 */ }
+    return c.json({ success: true, message: '사용 완료! 결제 금액에서 쿠폰 금액을 빼고 결제하세요', bridge })
   })
 
 // 사후 알림 도우미(어드민 승인/반려에서 재사용)
